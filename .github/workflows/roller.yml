@@ -1,0 +1,71 @@
+name: Roller
+
+on:
+  push:
+    branches:
+      - main
+      - staging
+    paths:
+      - 'roller/**'
+  pull_request:
+    branches:
+      - main
+      - staging
+    paths:
+      - 'roller/**'
+
+defaults:
+  run:
+    working-directory: 'roller'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions-rs/toolchain@v1
+      with:
+        toolchain: nightly-2022-08-23
+        override: true
+        components: rustfmt, clippy
+    - name: Install Go
+      uses: actions/setup-go@v2
+      with:
+        go-version: 1.17.x
+    - name: Checkout code
+      uses: actions/checkout@v2
+    - name: Test
+      run: |
+        make roller
+        go test -v ./...
+  check:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Install Go
+      uses: actions/setup-go@v2
+      with:
+        go-version: 1.17.x
+    - name: Checkout code
+      uses: actions/checkout@v2
+    - name: Lint
+      run: |
+        rm -rf $HOME/.cache/golangci-lint
+        make lint
+  goimports-lint:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Install Go
+      uses: actions/setup-go@v2
+      with:
+        go-version: 1.17.x
+    - name: Checkout code
+      uses: actions/checkout@v2
+    - name: Install goimports
+      run: go get golang.org/x/tools/cmd/goimports
+    - run: goimports -local scroll-tech/go-roller/ -w .
+    - run: go mod tidy
+    # If there are any diffs from goimports or go mod tidy, fail.
+    - name: Verify no changes from goimports and go mod tidy
+      run: |
+        if [ -n "$(git status --porcelain)" ]; then
+          exit 1
+        fi

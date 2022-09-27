@@ -1,0 +1,9 @@
+roller_name = "my_roller"
+secret_key = "dcf2cbdd171a21c480aa7f53d77f31bb102282b3ff099c78e3118b37348c72f7"
+scroll_url = "ws://localhost:9000"
+db_path = "bbolt_db"
+
+[prover]
+mock_mode = false
+params_path = "params"
+seed_path = "seed"
