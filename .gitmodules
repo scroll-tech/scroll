@@ -1,6 +1,6 @@
 [submodule "l2geth"]
 	path = l2geth
 	url = git@github.com:scroll-tech/go-ethereum.git
-[submodule "rollupscan/backend/third-paries/scroll"]
-	path = rollupscan/backend/third-paries/scroll
+[submodule "rollupscan/backend/third-parties/scroll"]
+	path = rollupscan/backend/third-parties/scroll
 	url = git@github.com:scroll-tech/scroll.git

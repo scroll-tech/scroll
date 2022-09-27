@@ -25,6 +25,6 @@ impl L2BlocksResponse {
             .await
             .ok()
             .flatten()
-            .and_then(|any| any.downcast_ref::<L2BlocksResponse>().cloned())
+            .and_then(|any| any.downcast_ref::<Self>().cloned())
     }
 }

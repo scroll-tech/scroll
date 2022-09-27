@@ -21,6 +21,6 @@ impl TpsResponse {
             .await
             .ok()
             .flatten()
-            .and_then(|any| any.downcast_ref::<TpsResponse>().cloned())
+            .and_then(|any| any.downcast_ref::<Self>().cloned())
     }
 }
