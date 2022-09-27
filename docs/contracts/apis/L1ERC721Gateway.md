@@ -1,0 +1,433 @@
+# L1ERC721Gateway
+
+
+
+> L1ERC721Gateway
+
+The `L1ERC721Gateway` is used to deposit ERC721 compatible NFT in layer 1 and finalize withdraw the NFTs from layer 2.
+
+*The deposited NFTs are held in this gateway. On finalizing withdraw, the corresponding NFT will be transfer to the recipient directly. This will be changed if we have more specific scenarios.*
+
+## Methods
+
+### batchDepositERC721
+
+```solidity
+function batchDepositERC721(address _token, address _to, uint256[] _tokenIds, uint256 _gasLimit) external nonpayable
+```
+
+Deposit a list of some ERC721 NFT to a recipient&#39;s account on layer 2.
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| _token | address | The address of ERC721 NFT in layer 1. |
+| _to | address | The address of recipient in layer 2. |
+| _tokenIds | uint256[] | The list of token ids to deposit. |
+| _gasLimit | uint256 | Estimated gas limit required to complete the deposit on layer 2. |
+
+### batchDepositERC721
+
+```solidity
+function batchDepositERC721(address _token, uint256[] _tokenIds, uint256 _gasLimit) external nonpayable
+```
+
+Deposit a list of some ERC721 NFT to caller&#39;s account on layer 2.
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| _token | address | The address of ERC721 NFT in layer 1. |
+| _tokenIds | uint256[] | The list of token ids to deposit. |
+| _gasLimit | uint256 | Estimated gas limit required to complete the deposit on layer 2. |
+
+### counterpart
+
+```solidity
+function counterpart() external view returns (address)
+```
+
+The address of corresponding L1/L2 Gateway contract.
+
+
+
+
+#### Returns
+
+| Name | Type | Description |
+|---|---|---|
+| _0 | address | undefined |
+
+### depositERC721
+
+```solidity
+function depositERC721(address _token, address _to, uint256 _tokenId, uint256 _gasLimit) external nonpayable
+```
+
+Deposit some ERC721 NFT to a recipient&#39;s account on layer 2.
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| _token | address | The address of ERC721 NFT in layer 1. |
+| _to | address | The address of recipient in layer 2. |
+| _tokenId | uint256 | The token id to deposit. |
+| _gasLimit | uint256 | Estimated gas limit required to complete the deposit on layer 2. |
+
+### depositERC721
+
+```solidity
+function depositERC721(address _token, uint256 _tokenId, uint256 _gasLimit) external nonpayable
+```
+
+Deposit some ERC721 NFT to caller&#39;s account on layer 2.
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| _token | address | The address of ERC721 NFT in layer 1. |
+| _tokenId | uint256 | The token id to deposit. |
+| _gasLimit | uint256 | Estimated gas limit required to complete the deposit on layer 2. |
+
+### finalizeBatchWithdrawERC721
+
+```solidity
+function finalizeBatchWithdrawERC721(address _l1Token, address _l2Token, address _from, address _to, uint256[] _tokenIds) external nonpayable
+```
+
+Complete ERC721 batch withdraw from layer 2 to layer 1 and send NFT to recipient&#39;s account in layer 1.
+
+*Requirements:  - The function should only be called by L1ScrollMessenger.  - The function should also only be called by L2ERC721Gateway in layer 2.*
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| _l1Token | address | The address of corresponding layer 1 token. |
+| _l2Token | address | The address of corresponding layer 2 token. |
+| _from | address | The address of account who withdraw the token in layer 2. |
+| _to | address | The address of recipient in layer 1 to receive the token. |
+| _tokenIds | uint256[] | The list of token ids to withdraw. |
+
+### finalizeDropMessage
+
+```solidity
+function finalizeDropMessage() external payable
+```
+
+
+
+
+
+
+### finalizeWithdrawERC721
+
+```solidity
+function finalizeWithdrawERC721(address _l1Token, address _l2Token, address _from, address _to, uint256 _tokenId) external nonpayable
+```
+
+Complete ERC721 withdraw from layer 2 to layer 1 and send NFT to recipient&#39;s account in layer 1.
+
+*Requirements:  - The function should only be called by L1ScrollMessenger.  - The function should also only be called by L2ERC721Gateway in layer 2.*
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| _l1Token | address | The address of corresponding layer 1 token. |
+| _l2Token | address | The address of corresponding layer 2 token. |
+| _from | address | The address of account who withdraw the token in layer 2. |
+| _to | address | The address of recipient in layer 1 to receive the token. |
+| _tokenId | uint256 | The token id to withdraw. |
+
+### initialize
+
+```solidity
+function initialize(address _counterpart, address _messenger) external nonpayable
+```
+
+
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| _counterpart | address | undefined |
+| _messenger | address | undefined |
+
+### messenger
+
+```solidity
+function messenger() external view returns (address)
+```
+
+The address of L1ScrollMessenger/L2ScrollMessenger contract.
+
+
+
+
+#### Returns
+
+| Name | Type | Description |
+|---|---|---|
+| _0 | address | undefined |
+
+### onERC721Received
+
+```solidity
+function onERC721Received(address, address, uint256, bytes) external nonpayable returns (bytes4)
+```
+
+
+
+*See {IERC721Receiver-onERC721Received}. Always returns `IERC721Receiver.onERC721Received.selector`.*
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| _0 | address | undefined |
+| _1 | address | undefined |
+| _2 | uint256 | undefined |
+| _3 | bytes | undefined |
+
+#### Returns
+
+| Name | Type | Description |
+|---|---|---|
+| _0 | bytes4 | undefined |
+
+### owner
+
+```solidity
+function owner() external view returns (address)
+```
+
+
+
+*Returns the address of the current owner.*
+
+
+#### Returns
+
+| Name | Type | Description |
+|---|---|---|
+| _0 | address | undefined |
+
+### renounceOwnership
+
+```solidity
+function renounceOwnership() external nonpayable
+```
+
+
+
+*Leaves the contract without owner. It will not be possible to call `onlyOwner` functions anymore. Can only be called by the current owner. NOTE: Renouncing ownership will leave the contract without an owner, thereby removing any functionality that is only available to the owner.*
+
+
+### router
+
+```solidity
+function router() external view returns (address)
+```
+
+The address of L1GatewayRouter/L2GatewayRouter contract.
+
+
+
+
+#### Returns
+
+| Name | Type | Description |
+|---|---|---|
+| _0 | address | undefined |
+
+### tokenMapping
+
+```solidity
+function tokenMapping(address) external view returns (address)
+```
+
+Mapping from l1 token address to l2 token address for ERC721 NFT.
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| _0 | address | undefined |
+
+#### Returns
+
+| Name | Type | Description |
+|---|---|---|
+| _0 | address | undefined |
+
+### transferOwnership
+
+```solidity
+function transferOwnership(address newOwner) external nonpayable
+```
+
+
+
+*Transfers ownership of the contract to a new account (`newOwner`). Can only be called by the current owner.*
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| newOwner | address | undefined |
+
+### updateTokenMapping
+
+```solidity
+function updateTokenMapping(address _l1Token, address _l2Token) external nonpayable
+```
+
+Update layer 2 to layer 2 token mapping.
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| _l1Token | address | The address of corresponding ERC721 token in layer 2. |
+| _l2Token | address | undefined |
+
+
+
+## Events
+
+### BatchDepositERC721
+
+```solidity
+event BatchDepositERC721(address indexed _l1Token, address indexed _l2Token, address indexed _from, address _to, uint256[] _tokenIds)
+```
+
+Emitted when the ERC721 NFT is batch deposited to gateway in layer 1.
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| _l1Token `indexed` | address | undefined |
+| _l2Token `indexed` | address | undefined |
+| _from `indexed` | address | undefined |
+| _to  | address | undefined |
+| _tokenIds  | uint256[] | undefined |
+
+### DepositERC721
+
+```solidity
+event DepositERC721(address indexed _l1Token, address indexed _l2Token, address indexed _from, address _to, uint256 _tokenId)
+```
+
+Emitted when the ERC721 NFT is deposited to gateway in layer 1.
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| _l1Token `indexed` | address | undefined |
+| _l2Token `indexed` | address | undefined |
+| _from `indexed` | address | undefined |
+| _to  | address | undefined |
+| _tokenId  | uint256 | undefined |
+
+### FinalizeBatchWithdrawERC721
+
+```solidity
+event FinalizeBatchWithdrawERC721(address indexed _l1Token, address indexed _l2Token, address indexed _from, address _to, uint256[] _tokenIds)
+```
+
+Emitted when the ERC721 NFT is batch transfered to recipient in layer 1.
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| _l1Token `indexed` | address | undefined |
+| _l2Token `indexed` | address | undefined |
+| _from `indexed` | address | undefined |
+| _to  | address | undefined |
+| _tokenIds  | uint256[] | undefined |
+
+### FinalizeWithdrawERC721
+
+```solidity
+event FinalizeWithdrawERC721(address indexed _l1Token, address indexed _l2Token, address indexed _from, address _to, uint256 _tokenId)
+```
+
+Emitted when the ERC721 NFT is transfered to recipient in layer 1.
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| _l1Token `indexed` | address | undefined |
+| _l2Token `indexed` | address | undefined |
+| _from `indexed` | address | undefined |
+| _to  | address | undefined |
+| _tokenId  | uint256 | undefined |
+
+### OwnershipTransferred
+
+```solidity
+event OwnershipTransferred(address indexed previousOwner, address indexed newOwner)
+```
+
+
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| previousOwner `indexed` | address | undefined |
+| newOwner `indexed` | address | undefined |
+
+### UpdateTokenMapping
+
+```solidity
+event UpdateTokenMapping(address _l1Token, address _l2Token)
+```
+
+Emitted when token mapping for ERC721 token is updated.
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| _l1Token  | address | The address of corresponding ERC721 token in layer 2. |
+| _l2Token  | address | undefined |
+
+
+

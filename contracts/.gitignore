@@ -1,0 +1,16 @@
+node_modules
+.env
+coverage
+coverage.json
+typechain
+
+# Hardhat/Foundry files
+cache
+cache-hardhat
+artifacts
+
+# logs
+*.log
+
+# eslint
+.eslintcache
