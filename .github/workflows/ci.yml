@@ -1,5 +1,23 @@
-on: [pull_request]
-name: Continuous Integration
+name: Roller
+
+on:
+  push:
+    branches:
+      - main
+      - staging
+    paths:
+      - 'roller/**'
+  pull_request:
+    branches:
+      - main
+      - staging
+    paths:
+      - 'roller/**'
+
+defaults:
+  run:
+    working-directory: 'roller'
+
 jobs:
   test:
     runs-on: ubuntu-latest
