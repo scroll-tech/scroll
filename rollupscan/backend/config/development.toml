@@ -1,0 +1,1 @@
+db_url = "postgres://scroll:scroll2022@localhost:5434/scroll"

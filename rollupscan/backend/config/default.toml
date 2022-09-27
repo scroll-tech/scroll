@@ -1,0 +1,2 @@
+# It may be replaced by ENV `OPEN_API_ADDR`.
+open_api_addr = "http://0.0.0.0:5001"

@@ -1,0 +1,36 @@
+version: "3"
+name: "rollup-explorer-backend"
+
+services:
+  db:
+    image: postgres:13.6
+    container_name: rollup_explorer_postgres
+    restart: always
+    volumes:
+      - ./docker-data/postgres:/var/lib/postgresql/data
+    environment:
+        POSTGRES_DB: "scroll"
+        POSTGRES_HOST_AUTH_METHOD: "trust"
+        POSTGRES_PASSWORD: "scroll2022"
+        POSTGRES_USER: "scroll"
+    ports:
+      - "5434:5432"
+    healthcheck:
+      test: ['CMD', 'pg_isready']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+  rollup_explorer_backend:
+    container_name: rollup_explorer_backend
+    depends_on:
+      - db
+    restart: always
+    build:
+      dockerfile: Dockerfile
+    image: rollup-explorer-backend
+    links:
+      - db
+    environment:
+      OPEN_API_ADDR: "localhost:8600"
+    ports:
+      - "8600:5001"
