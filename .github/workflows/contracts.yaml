@@ -1,4 +1,4 @@
-name: CI
+name: Contracts
 
 on:
   push:
@@ -8,6 +8,9 @@ on:
       - prod
       - release/*
       - staging
+    paths:
+      - 'contracts/**'
+      - '.github/workflows/contracts.yaml'
   pull_request:
     branches:
       - master
@@ -15,6 +18,13 @@ on:
       - prod
       - release/*
       - staging
+    paths:
+      - 'contracts/**'
+      - '.github/workflows/contracts.yaml'
+
+defaults:
+  run:
+    working-directory: 'contracts'
 
 jobs:
   foundry:
