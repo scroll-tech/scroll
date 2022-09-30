@@ -5,10 +5,9 @@ import (
 	"encoding/json"
 	"errors"
 
+	"github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/log"
 	"go.etcd.io/bbolt"
-
-	rollertypes "scroll-tech/go-roller/types"
 )
 
 var (
@@ -40,20 +39,20 @@ func NewStack(path string) (*Stack, error) {
 }
 
 // Push appends the block-traces on the top of Stack.
-func (s *Stack) Push(traces *rollertypes.BlockTraces) error {
+func (s *Stack) Push(traces *types.BlockResult) error {
 	byt, err := json.Marshal(traces)
 	if err != nil {
 		return err
 	}
 	key := make([]byte, 8)
-	binary.BigEndian.PutUint64(key, traces.ID)
+	binary.BigEndian.PutUint64(key, traces.BlockTrace.Number.ToInt().Uint64())
 	return s.Update(func(tx *bbolt.Tx) error {
 		return tx.Bucket(bucket).Put(key, byt)
 	})
 }
 
 // Pop pops the block-traces on the top of Stack.
-func (s *Stack) Pop() (*rollertypes.BlockTraces, error) {
+func (s *Stack) Pop() (*types.BlockResult, error) {
 	var value []byte
 	if err := s.Update(func(tx *bbolt.Tx) error {
 		var key []byte
@@ -68,6 +67,6 @@ func (s *Stack) Pop() (*rollertypes.BlockTraces, error) {
 		return nil, ErrEmpty
 	}
 
-	traces := &rollertypes.BlockTraces{}
+	traces := &types.BlockResult{}
 	return traces, json.Unmarshal(value, traces)
 }

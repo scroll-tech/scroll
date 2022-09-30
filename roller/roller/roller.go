@@ -1,22 +1,24 @@
 package roller
 
 import (
-	"encoding/json"
+	"context"
 	"errors"
 	"fmt"
 	"strings"
 	"sync/atomic"
 	"time"
 
-	"github.com/gorilla/websocket"
+	"github.com/scroll-tech/go-ethereum"
 	"github.com/scroll-tech/go-ethereum/common"
+	"github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/crypto"
 	"github.com/scroll-tech/go-ethereum/log"
 
+	"scroll-tech/go-roller/client"
 	"scroll-tech/go-roller/config"
+	"scroll-tech/go-roller/message"
 	"scroll-tech/go-roller/roller/prover"
 	"scroll-tech/go-roller/store"
-	. "scroll-tech/go-roller/types"
 )
 
 var (
@@ -31,10 +33,12 @@ var (
 
 // Roller contains websocket conn to Scroll, Stack, unix-socket to ipc-prover.
 type Roller struct {
-	cfg    *config.Config
-	conn   *websocket.Conn
-	stack  *store.Stack
-	prover *prover.Prover
+	cfg       *config.Config
+	client    *client.RollerClient
+	stack     *store.Stack
+	prover    *prover.Prover
+	traceChan chan *types.BlockResult
+	sub       ethereum.Subscription
 
 	isClosed int64
 	stopChan chan struct{}
@@ -56,17 +60,19 @@ func NewRoller(cfg *config.Config) (*Roller, error) {
 	}
 	log.Info("init prover successfully!")
 
-	conn, _, err := websocket.DefaultDialer.Dial(cfg.ScrollURL, nil)
+	rClient, err := client.Dial(cfg.ScrollURL)
 	if err != nil {
 		return nil, err
 	}
 
 	return &Roller{
-		cfg:      cfg,
-		conn:     conn,
-		stack:    stackDb,
-		prover:   pver,
-		stopChan: make(chan struct{}),
+		cfg:       cfg,
+		client:    rClient,
+		stack:     stackDb,
+		prover:    pver,
+		sub:       nil,
+		traceChan: make(chan *types.BlockResult, 2),
+		stopChan:  make(chan struct{}),
 	}, nil
 }
 
@@ -91,8 +97,8 @@ func (r *Roller) Register() error {
 	if err != nil {
 		return fmt.Errorf("generate private-key failed %v", err)
 	}
-	authMsg := &AuthMessage{
-		Identity: Identity{
+	authMsg := &message.AuthMessage{
+		Identity: &message.Identity{
 			Name:      r.cfg.RollerName,
 			Timestamp: time.Now().UnixMilli(),
 			PublicKey: common.Bytes2Hex(crypto.FromECDSAPub(&priv.PublicKey)),
@@ -105,12 +111,9 @@ func (r *Roller) Register() error {
 		return fmt.Errorf("Sign auth message failed %v", err)
 	}
 
-	msgByt, err := MakeMsgByt(Register, authMsg)
-	if err != nil {
-		return err
-	}
-
-	return r.conn.WriteMessage(websocket.BinaryMessage, msgByt)
+	sub, err := r.client.SubscribeRegister(context.Background(), r.traceChan, authMsg)
+	r.sub = sub
+	return err
 }
 
 // HandleScroll accepts block-traces from Scroll through the Websocket and store it into Stack.
@@ -119,31 +122,18 @@ func (r *Roller) HandleScroll() {
 		select {
 		case <-r.stopChan:
 			return
-		default:
-			_ = r.conn.SetWriteDeadline(time.Now().Add(writeWait))
-			_ = r.conn.SetReadDeadline(time.Now().Add(readWait))
-			if err := r.handMessage(); err != nil && !strings.Contains(err.Error(), errNormalClose.Error()) {
-				log.Error("handle scroll failed", "error", err)
-				r.mustRetryScroll()
-				continue
-			}
+		case trace := <-r.traceChan:
+			log.Info("Accept BlockTrace from Scroll", "ID")
+			r.stack.Push(trace)
+		case err := <-r.sub.Err():
+			r.sub.Unsubscribe()
+			log.Error("Subscribe trace with scroll failed", "error", err)
+			r.mustRetryScroll()
 		}
 	}
 }
 
 func (r *Roller) mustRetryScroll() {
-	for {
-		log.Info("retry to connect to scroll...")
-		conn, _, err := websocket.DefaultDialer.Dial(r.cfg.ScrollURL, nil)
-		if err != nil {
-			log.Error("failed to connect scroll: ", "error", err)
-			time.Sleep(retryWait)
-		} else {
-			r.conn = conn
-			log.Info("re-connect to scroll successfully!")
-			break
-		}
-	}
 	for {
 		log.Info("retry to register to scroll...")
 		err := r.Register()
@@ -165,7 +155,6 @@ func (r *Roller) ProveLoop() (err error) {
 		case <-r.stopChan:
 			return nil
 		default:
-			_ = r.conn.SetWriteDeadline(time.Now().Add(writeWait))
 			if err = r.prove(); err != nil {
 				if errors.Is(err, store.ErrEmpty) {
 					log.Debug("get empty trace", "error", err)
@@ -181,52 +170,49 @@ func (r *Roller) ProveLoop() (err error) {
 	}
 }
 
-func (r *Roller) handMessage() error {
-	mt, msg, err := r.conn.ReadMessage()
-	if err != nil {
-		return err
-	}
-
-	switch mt {
-	case websocket.BinaryMessage:
-		if err = r.persistTrace(msg); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 func (r *Roller) prove() error {
 	traces, err := r.stack.Pop()
 	if err != nil {
 		return err
 	}
-	log.Info("start to prove block", "block-id", traces.ID)
+	log.Info("start to prove block", "block-Number", traces.BlockTrace.Number.String())
 
-	var proofMsg *ProofMsg
-	proof, err := r.prover.Prove(traces.Traces)
+	var proofMsg *message.ProofMsg
+	proof, err := r.prover.Prove(traces)
 	if err != nil {
-		proofMsg = &ProofMsg{
-			Status: StatusProofError,
+		proofMsg = &message.ProofMsg{
+			Status: message.StatusProofError,
 			Error:  err.Error(),
-			ID:     traces.ID,
-			Proof:  &AggProof{},
+			ID:     traces.BlockTrace.Number.ToInt().Uint64(),
+			Proof:  &message.AggProof{},
 		}
-		log.Error("prove block failed!", "block-id", traces.ID)
+		log.Error("prove block failed!", "block-Number", traces.BlockTrace.Number.String())
 	} else {
-		proofMsg = &ProofMsg{
-			Status: StatusOk,
-			ID:     traces.ID,
+		proofMsg = &message.ProofMsg{
+			Status: message.StatusOk,
+			ID:     traces.BlockTrace.Number.ToInt().Uint64(),
 			Proof:  proof,
 		}
-		log.Info("prove block successfully!", "block-id", traces.ID)
+		log.Info("prove block successfully!", "block-id", traces.BlockTrace.Number.String())
 	}
 
-	msgByt, err := MakeMsgByt(Proof, proofMsg)
+	priv, err := crypto.HexToECDSA(r.cfg.SecretKey)
 	if err != nil {
-		return err
+		return fmt.Errorf("generate private-key failed %v", err)
 	}
-	return r.conn.WriteMessage(websocket.BinaryMessage, msgByt)
+
+	authZkProof := &message.AuthZkProof{
+		ProofMsg:  proofMsg,
+		PublicKey: common.Bytes2Hex(crypto.FromECDSAPub(&priv.PublicKey)),
+		Signature: "",
+	}
+	authZkProof.Sign(priv)
+
+	ok, err := r.client.SubmitProof(context.Background(), authZkProof)
+	if !ok {
+		log.Error("Submit proof to scroll failed! auzhZkProofID: ", authZkProof.ID)
+	}
+	return err
 }
 
 // Close closes the websocket connection.
@@ -238,40 +224,9 @@ func (r *Roller) Close() {
 
 	close(r.stopChan)
 	// Close scroll's ws
-	_ = r.conn.Close()
+	r.sub.Unsubscribe()
 	// Close db
 	if err := r.stack.Close(); err != nil {
 		log.Error("failed to close bbolt db", "error", err)
 	}
-}
-
-func (r *Roller) persistTrace(byt []byte) error {
-	var msg = &Msg{}
-	err := json.Unmarshal(byt, msg)
-	if err != nil {
-		return err
-	}
-	if msg.Type != BlockTrace {
-		log.Error("message from Scroll illegal")
-		return nil
-	}
-	var traces = &BlockTraces{}
-	if err := json.Unmarshal(msg.Payload, traces); err != nil {
-		return err
-	}
-	log.Info("Accept BlockTrace from Scroll", "ID", traces.ID)
-	return r.stack.Push(traces)
-}
-
-// MakeMsgByt Marshals Msg to bytes.
-func MakeMsgByt(msgTyp MsgType, payloadVal interface{}) ([]byte, error) {
-	payload, err := json.Marshal(payloadVal)
-	if err != nil {
-		return nil, err
-	}
-	msg := &Msg{
-		Type:    msgTyp,
-		Payload: payload,
-	}
-	return json.Marshal(msg)
 }

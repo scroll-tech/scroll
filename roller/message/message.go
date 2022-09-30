@@ -5,9 +5,8 @@ import (
 	"encoding/json"
 
 	"github.com/scroll-tech/go-ethereum/common"
-	"github.com/scroll-tech/go-ethereum/core/types"
+	"github.com/scroll-tech/go-ethereum/common/hexutil"
 	"github.com/scroll-tech/go-ethereum/crypto"
-	"golang.org/x/crypto/blake2s"
 )
 
 // MsgType denotes the type of message being sent or received.
@@ -26,13 +25,10 @@ const (
 	Proof
 )
 
-// RespStatus represents status code from roller to scroll
 type RespStatus uint32
 
 const (
-	// StatusOk means generate proof success
 	StatusOk RespStatus = iota
-	// StatusProofError means generate proof failed
 	StatusProofError
 )
 
@@ -50,7 +46,7 @@ type Msg struct {
 // known to the Sequencer.
 type AuthMessage struct {
 	// Message fields
-	Identity Identity `json:"message"`
+	*Identity `json:"message"`
 	// Roller signature
 	Signature string `json:"signature"`
 }
@@ -58,7 +54,7 @@ type AuthMessage struct {
 // Sign auth message
 func (a *AuthMessage) Sign(priv *ecdsa.PrivateKey) error {
 	// Hash identity content
-	hash, err := a.Identity.Hash()
+	hash, err := a.Hash()
 	if err != nil {
 		return err
 	}
@@ -67,17 +63,25 @@ func (a *AuthMessage) Sign(priv *ecdsa.PrivateKey) error {
 	if err != nil {
 		return err
 	}
-	a.Signature = common.Bytes2Hex(sig)
+	a.Signature = hexutil.Encode(sig)
 
 	return nil
+}
+
+func (a *AuthMessage) Verify() (bool, error) {
+	hash, err := a.Hash()
+	if err != nil {
+		return false, err
+	}
+	sig := common.FromHex(a.Signature)
+	return crypto.VerifySignature(common.FromHex(a.PublicKey), hash, sig[:len(sig)-1]), nil
 }
 
 // Identity contains all the fields to be signed by the roller.
 type Identity struct {
 	// Roller name
-	Name string `json:"name"`
-	// Time of message creation
-	Timestamp int64 `json:"timestamp"`
+	Name      string `json:"name"`
+	Timestamp int64
 	// Roller public key
 	PublicKey string `json:"publicKey"`
 }
@@ -90,34 +94,63 @@ func (i *Identity) Hash() ([]byte, error) {
 		return nil, err
 	}
 
-	hash := blake2s.Sum256(bs)
+	hash := crypto.Keccak256Hash(bs)
 	return hash[:], nil
 }
 
-// BlockTraces is a wrapper type around types.BlockResult which adds an ID
-// that identifies which proof generation session these block traces are
-// associated to. This then allows the roller to add the ID back to their
-// proof message once generated, and in turn helps the sequencer understand
-// where to handle the proof.
-type BlockTraces struct {
-	ID     uint64             `json:"id"`
-	Traces *types.BlockResult `json:"blockTraces"`
+type AuthZkProof struct {
+	*ProofMsg `json:"zkProof"`
+	// Roller public key
+	PublicKey string `json:"publicKey"`
+	// Roller signature
+	Signature string `json:"signature"`
+}
+
+func (a *AuthZkProof) Sign(priv *ecdsa.PrivateKey) error {
+	hash, err := a.Hash()
+	if err != nil {
+		return err
+	}
+	sig, err := crypto.Sign(hash, priv)
+	if err != nil {
+		return err
+	}
+	a.Signature = hexutil.Encode(sig)
+	return nil
+}
+
+func (a *AuthZkProof) Verify() (bool, error) {
+	hash, err := a.Hash()
+	if err != nil {
+		return false, err
+	}
+	sig := common.FromHex(a.Signature)
+	return crypto.VerifySignature(common.FromHex(a.PublicKey), hash, sig[:len(sig)-1]), nil
 }
 
 // ProofMsg is the message received from rollers that contains zk proof, the status of
 // the proof generation succeeded, and an error message if proof generation failed.
 type ProofMsg struct {
-	Status RespStatus `json:"status"`
-	Error  string     `json:"error,omitempty"`
 	ID     uint64     `json:"id"`
-	// FIXME: Maybe we need to allow Proof omitempty? Also in scroll.
-	Proof *AggProof `json:"proof"`
+	Status RespStatus `json:"status"`
+	Proof  *AggProof  `json:"proof"`
+	Error  string     `json:"error,omitempty"`
+}
+
+func (z *ProofMsg) Hash() ([]byte, error) {
+	bs, err := json.Marshal(z)
+	if err != nil {
+		return nil, err
+	}
+
+	hash := crypto.Keccak256Hash(bs)
+	return hash[:], nil
 }
 
 // AggProof includes the proof and public input that are required to verification and rollup.
 type AggProof struct {
-	Proof     []byte `json:"proof"`
-	Instance  []byte `json:"instance"`
-	FinalPair []byte `json:"final_pair"`
-	Vk        []byte `json:"vk"`
+	Proof     string `json:"proof"`
+	Instance  string `json:"instance"`
+	FinalPair string `json:"final_pair"`
+	Vk        string `json:"vk"`
 }

@@ -2,13 +2,14 @@ package store
 
 import (
 	"io/ioutil"
+	"math/big"
 	"os"
 	"path/filepath"
 	"testing"
 
+	"github.com/scroll-tech/go-ethereum/common/hexutil"
+	"github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/stretchr/testify/assert"
-
-	. "scroll-tech/go-roller/types"
 )
 
 func TestStack(t *testing.T) {
@@ -23,9 +24,10 @@ func TestStack(t *testing.T) {
 	defer s.Close()
 
 	for i := 0; i < 3; i++ {
-		trace := &BlockTraces{
-			ID:     uint64(i),
-			Traces: nil,
+		trace := &types.BlockResult{
+			BlockTrace: &types.BlockTrace{
+				Number: (*hexutil.Big)(big.NewInt(int64(i))),
+			},
 		}
 		err := s.Push(trace)
 		assert.NoError(t, err)
@@ -34,6 +36,6 @@ func TestStack(t *testing.T) {
 	for i := 2; i >= 0; i-- {
 		trace, err := s.Pop()
 		assert.NoError(t, err)
-		assert.Equal(t, uint64(i), trace.ID)
+		assert.Equal(t, uint64(i), trace.BlockTrace.Number.ToInt().Uint64())
 	}
 }
