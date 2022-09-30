@@ -10,7 +10,6 @@ import (
 
 	"github.com/scroll-tech/go-ethereum"
 	"github.com/scroll-tech/go-ethereum/common"
-	"github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/crypto"
 	"github.com/scroll-tech/go-ethereum/log"
 
@@ -37,7 +36,7 @@ type Roller struct {
 	client    *client.RollerClient
 	stack     *store.Stack
 	prover    *prover.Prover
-	traceChan chan *types.BlockResult
+	traceChan chan *message.BlockTraces
 	sub       ethereum.Subscription
 
 	isClosed int64
@@ -71,7 +70,7 @@ func NewRoller(cfg *config.Config) (*Roller, error) {
 		stack:     stackDb,
 		prover:    pver,
 		sub:       nil,
-		traceChan: make(chan *types.BlockResult, 2),
+		traceChan: make(chan *message.BlockTraces, 2),
 		stopChan:  make(chan struct{}),
 	}, nil
 }
@@ -175,25 +174,25 @@ func (r *Roller) prove() error {
 	if err != nil {
 		return err
 	}
-	log.Info("start to prove block", "block-Number", traces.BlockTrace.Number.String())
+	log.Info("start to prove block", "block-Number", traces.ID)
 
 	var proofMsg *message.ProofMsg
-	proof, err := r.prover.Prove(traces)
+	proof, err := r.prover.Prove(traces.Traces)
 	if err != nil {
 		proofMsg = &message.ProofMsg{
 			Status: message.StatusProofError,
 			Error:  err.Error(),
-			ID:     traces.BlockTrace.Number.ToInt().Uint64(),
+			ID:     traces.ID,
 			Proof:  &message.AggProof{},
 		}
-		log.Error("prove block failed!", "block-Number", traces.BlockTrace.Number.String())
+		log.Error("prove block failed!", "block-id", traces.ID)
 	} else {
 		proofMsg = &message.ProofMsg{
 			Status: message.StatusOk,
-			ID:     traces.BlockTrace.Number.ToInt().Uint64(),
+			ID:     traces.ID,
 			Proof:  proof,
 		}
-		log.Info("prove block successfully!", "block-id", traces.BlockTrace.Number.String())
+		log.Info("prove block successfully!", "block-id", traces.ID)
 	}
 
 	priv, err := crypto.HexToECDSA(r.cfg.SecretKey)

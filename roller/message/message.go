@@ -6,8 +6,19 @@ import (
 
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/common/hexutil"
+	"github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/crypto"
 )
+
+// BlockTraces is a wrapper type around types.BlockResult which adds an ID
+// that identifies which proof generation session these block traces are
+// associated to. This then allows the roller to add the ID back to their
+// proof message once generated, and in turn helps the sequencer understand
+// where to handle the proof.
+type BlockTraces struct {
+	ID     uint64             `json:"id"`
+	Traces *types.BlockResult `json:"blockTraces"`
+}
 
 // MsgType denotes the type of message being sent or received.
 type MsgType uint16

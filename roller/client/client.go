@@ -4,14 +4,13 @@ import (
 	"context"
 
 	"github.com/scroll-tech/go-ethereum"
-	"github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/rpc"
 
 	"scroll-tech/go-roller/message"
 )
 
 type rollerClient interface {
-	SubscribeRegister(ctx context.Context, traceChan chan *types.BlockResult, authMsg *message.AuthMessage) (ethereum.Subscription, error)
+	SubscribeRegister(ctx context.Context, traceChan chan *message.BlockTraces, authMsg *message.AuthMessage) (ethereum.Subscription, error)
 	SubmitProof(ctx context.Context, proof *message.AuthZkProof) (bool, error)
 }
 
@@ -23,7 +22,7 @@ type RollerClient struct {
 	rollerClient
 }
 
-func (c *Client) SubscribeRegister(ctx context.Context, traceChan chan *types.BlockResult, authMsg *message.AuthMessage) (ethereum.Subscription, error) {
+func (c *Client) SubscribeRegister(ctx context.Context, traceChan chan *message.BlockTraces, authMsg *message.AuthMessage) (ethereum.Subscription, error) {
 	return c.Subscribe(ctx, "roller", traceChan, "register", authMsg)
 }
 
