@@ -6,19 +6,10 @@ import (
 
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/common/hexutil"
-	"github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/crypto"
-)
 
-// BlockTraces is a wrapper type around types.BlockResult which adds an ID
-// that identifies which proof generation session these block traces are
-// associated to. This then allows the roller to add the ID back to their
-// proof message once generated, and in turn helps the sequencer understand
-// where to handle the proof.
-type BlockTraces struct {
-	ID     uint64             `json:"id"`
-	Traces *types.BlockResult `json:"blockTraces"`
-}
+	"github.com/scroll-tech/go-ethereum/core/types"
+)
 
 // MsgType denotes the type of message being sent or received.
 type MsgType uint16
@@ -60,6 +51,9 @@ type AuthMessage struct {
 	*Identity `json:"message"`
 	// Roller signature
 	Signature string `json:"signature"`
+
+	// public key
+	publicKey string
 }
 
 // Sign auth message
@@ -85,16 +79,43 @@ func (a *AuthMessage) Verify() (bool, error) {
 		return false, err
 	}
 	sig := common.FromHex(a.Signature)
-	return crypto.VerifySignature(common.FromHex(a.PublicKey), hash, sig[:len(sig)-1]), nil
+	// recover public key
+	if a.publicKey == "" {
+		pk, err := crypto.SigToPub(hash, sig)
+		if err != nil {
+			return false, err
+		}
+		a.publicKey = common.Bytes2Hex(crypto.CompressPubkey(pk))
+	}
+
+	return crypto.VerifySignature(common.FromHex(a.publicKey), hash, sig[:len(sig)-1]), nil
+}
+
+// PublicKey return public key from signature
+func (a *AuthMessage) PublicKey() (string, error) {
+	if a.publicKey == "" {
+		hash, err := a.Hash()
+		if err != nil {
+			return "", err
+		}
+		sig := common.FromHex(a.Signature)
+		// recover public key
+		pk, err := crypto.SigToPub(hash, sig)
+		if err != nil {
+			return "", err
+		}
+		a.publicKey = common.Bytes2Hex(crypto.CompressPubkey(pk))
+		return a.publicKey, nil
+	}
+
+	return a.publicKey, nil
 }
 
 // Identity contains all the fields to be signed by the roller.
 type Identity struct {
 	// Roller name
 	Name      string `json:"name"`
-	Timestamp int64
-	// Roller public key
-	PublicKey string `json:"publicKey"`
+	Timestamp int64  `json:"timestamp"`
 }
 
 // Hash returns the hash of the auth message, which should be the message used
@@ -111,10 +132,11 @@ func (i *Identity) Hash() ([]byte, error) {
 
 type AuthZkProof struct {
 	*ProofMsg `json:"zkProof"`
-	// Roller public key
-	PublicKey string `json:"publicKey"`
 	// Roller signature
 	Signature string `json:"signature"`
+
+	// Roller public key
+	publicKey string
 }
 
 func (a *AuthZkProof) Sign(priv *ecdsa.PrivateKey) error {
@@ -136,7 +158,46 @@ func (a *AuthZkProof) Verify() (bool, error) {
 		return false, err
 	}
 	sig := common.FromHex(a.Signature)
-	return crypto.VerifySignature(common.FromHex(a.PublicKey), hash, sig[:len(sig)-1]), nil
+	// recover public key
+	if a.publicKey == "" {
+		pk, err := crypto.SigToPub(hash, sig)
+		if err != nil {
+			return false, err
+		}
+		a.publicKey = common.Bytes2Hex(crypto.CompressPubkey(pk))
+	}
+
+	return crypto.VerifySignature(common.FromHex(a.publicKey), hash, sig[:len(sig)-1]), nil
+}
+
+// PublicKey return public key from signature
+func (a *AuthZkProof) PublicKey() (string, error) {
+	if a.publicKey == "" {
+		hash, err := a.Hash()
+		if err != nil {
+			return "", err
+		}
+		sig := common.FromHex(a.Signature)
+		// recover public key
+		pk, err := crypto.SigToPub(hash, sig)
+		if err != nil {
+			return "", err
+		}
+		a.publicKey = common.Bytes2Hex(crypto.CompressPubkey(pk))
+		return a.publicKey, nil
+	}
+
+	return a.publicKey, nil
+}
+
+// BlockTraces is a wrapper type around types.BlockResult which adds an ID
+// that identifies which proof generation session these block traces are
+// associated to. This then allows the roller to add the ID back to their
+// proof message once generated, and in turn helps the sequencer understand
+// where to handle the proof.
+type BlockTraces struct {
+	ID     uint64             `json:"id"`
+	Traces *types.BlockResult `json:"blockTraces"`
 }
 
 // ProofMsg is the message received from rollers that contains zk proof, the status of
@@ -148,6 +209,7 @@ type ProofMsg struct {
 	Error  string     `json:"error,omitempty"`
 }
 
+// Hash return proofMsg content hash.
 func (z *ProofMsg) Hash() ([]byte, error) {
 	bs, err := json.Marshal(z)
 	if err != nil {
