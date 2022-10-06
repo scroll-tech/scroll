@@ -1,0 +1,73 @@
+pipeline {
+    agent any
+    tools {
+        go 'go-1.17'
+    }
+    environment {
+        GO111MODULE = 'on'
+    }
+    stages {
+        stage('Build') {
+            steps { 
+                //start to build project
+                sh '''#!/bin/bash
+                    export PATH=/home/ubuntu/go/bin:$PATH
+                    make mock_abi
+                    make bridge
+                    make docker
+                    '''
+            }
+        }
+        stage('Test') {
+            steps {
+               sh 'ls $PWD/build/bin'
+               // prepare test DB. TODO: remove this dependency
+               sh '''#!/bin/bash
+                    ./build/bin/bridge reset --config ./test_config.json 
+                    ./build/bin/bridge migrate --config ./test_config.json
+                    ''' 
+               catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
+                   //sh '''cat $PWD/logs/geth.log'''
+                   sh '''
+                      go get ./...
+                      go test -v -race -coverprofile=coverage.txt -covermode=atomic $(go list ./... | grep -v 'bridge')
+                      go test -v -race -coverprofile=coverage.txt -covermode=atomic -p 1 scroll-tech/bridge/bridge/abi
+                      go test -v -race -coverprofile=coverage.txt -covermode=atomic -p 1 scroll-tech/bridge/bridge/l1
+                      go test -v -race -coverprofile=coverage.txt -covermode=atomic -p 1 scroll-tech/bridge/bridge/l2
+                      go test -v -race -coverprofile=coverage.txt -covermode=atomic -p 1 scroll-tech/bridge/bridge/sender
+                      '''
+               }
+            }
+        }
+        stage('Docker') {
+                environment {
+                // Extract the username and password of our credentials into "DOCKER_CREDENTIALS_USR" and "DOCKER_CREDENTIALS_PSW".
+                // (NOTE 1: DOCKER_CREDENTIALS will be set to "your_username:your_password".)
+                // The new variables will always be YOUR_VARIABLE_NAME + _USR and _PSW.
+                // (NOTE 2: You can't print credentials in the pipeline for security reasons.)
+                DOCKER_CREDENTIALS = credentials('dockerhub')
+            }
+           steps {                           
+                // Use a scripted pipeline.
+                script {
+                        def app
+                        stage('Docker Build') {
+                            app = docker.build("${env.DOCKER_CREDENTIALS_USR}/bridge")
+                        }                         
+                }
+            }
+        }
+    }
+    post { 
+          success {
+            slackSend(message: "Bridge ${GIT_COMMIT} CI Successed, Go to Github check the latest status")
+          }
+          // triggered when red sign
+          failure {
+            slackSend(message: "Bridge ${GIT_COMMIT} CI Failed, Go to Github check the latest status")
+          }
+          always { 
+            cleanWs() 
+        }
+    }
+}

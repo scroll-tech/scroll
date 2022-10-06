@@ -1,0 +1,37 @@
+pipeline {
+    agent any
+    tools {
+        go 'go-1.17'
+    }
+    environment {
+        GO111MODULE = 'on'
+    }
+    stages {
+        stage('Test') {
+            steps {
+               catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
+                   //sh '''cat $PWD/logs/geth.log'''
+                   sh '''
+                      go get ./...
+                      go test -v -race -coverprofile=coverage.txt -covermode=atomic $(go list ./... | grep -v 'internal')
+                      go test -v -race -coverprofile=coverage.txt -covermode=atomic -p 1 scroll-tech/internal
+                      go test -v -race -coverprofile=coverage.txt -covermode=atomic -p 1 scroll-tech/internal/docker
+
+                      '''
+               }
+            }
+        }
+    }
+    post { 
+          success {
+            slackSend(message: "Coordinator ${GIT_COMMIT} CI Successed, Go to Github check the latest status")
+          }
+          // triggered when red sign
+          failure {
+            slackSend(message: "Coordinator ${GIT_COMMIT} CI Failed, Go to Github check the latest status")
+          }
+          always { 
+            cleanWs() 
+        }
+    }
+}
