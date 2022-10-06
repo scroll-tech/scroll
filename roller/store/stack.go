@@ -8,7 +8,7 @@ import (
 	"github.com/scroll-tech/go-ethereum/log"
 	"go.etcd.io/bbolt"
 
-	rollertypes "scroll-tech/go-roller/types"
+	rollertypes "scroll-tech/common/message"
 )
 
 var (

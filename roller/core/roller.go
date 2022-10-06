@@ -18,10 +18,11 @@ import (
 	"github.com/scroll-tech/go-ethereum/crypto"
 	"github.com/scroll-tech/go-ethereum/log"
 
+	message "scroll-tech/common/message"
+
 	"scroll-tech/go-roller/config"
 	"scroll-tech/go-roller/core/prover"
 	"scroll-tech/go-roller/store"
-	. "scroll-tech/go-roller/types"
 )
 
 var (
@@ -96,8 +97,8 @@ func (r *Roller) Register() error {
 	if err != nil {
 		return err
 	}
-	authMsg := &AuthMessage{
-		Identity: Identity{
+	authMsg := &message.AuthMessage{
+		Identity: message.Identity{
 			Name:      r.cfg.RollerName,
 			Timestamp: time.Now().UnixMilli(),
 			PublicKey: common.Bytes2Hex(crypto.FromECDSAPub(&priv.PublicKey)),
@@ -110,7 +111,7 @@ func (r *Roller) Register() error {
 		return fmt.Errorf("sign auth message failed %v", err)
 	}
 
-	msgByt, err := MakeMsgByt(Register, authMsg)
+	msgByt, err := MakeMsgByt(message.Register, authMsg)
 	if err != nil {
 		return err
 	}
@@ -208,26 +209,26 @@ func (r *Roller) prove() error {
 	}
 	log.Info("start to prove block", "block-id", traces.ID)
 
-	var proofMsg *ProofMsg
+	var proofMsg *message.ProofMsg
 	proof, err := r.prover.Prove(traces.Traces)
 	if err != nil {
-		proofMsg = &ProofMsg{
-			Status: StatusProofError,
+		proofMsg = &message.ProofMsg{
+			Status: message.StatusProofError,
 			Error:  err.Error(),
 			ID:     traces.ID,
-			Proof:  &AggProof{},
+			Proof:  &message.AggProof{},
 		}
 		log.Error("prove block failed!", "block-id", traces.ID)
 	} else {
-		proofMsg = &ProofMsg{
-			Status: StatusOk,
+		proofMsg = &message.ProofMsg{
+			Status: message.StatusOk,
 			ID:     traces.ID,
 			Proof:  proof,
 		}
 		log.Info("prove block successfully!", "block-id", traces.ID)
 	}
 
-	msgByt, err := MakeMsgByt(Proof, proofMsg)
+	msgByt, err := MakeMsgByt(message.Proof, proofMsg)
 	if err != nil {
 		return err
 	}
@@ -251,16 +252,16 @@ func (r *Roller) Close() {
 }
 
 func (r *Roller) persistTrace(byt []byte) error {
-	var msg = &Msg{}
+	var msg = &message.Msg{}
 	err := json.Unmarshal(byt, msg)
 	if err != nil {
 		return err
 	}
-	if msg.Type != BlockTrace {
+	if msg.Type != message.BlockTrace {
 		log.Error("message from Scroll illegal")
 		return nil
 	}
-	var traces = &BlockTraces{}
+	var traces = &message.BlockTraces{}
 	if err := json.Unmarshal(msg.Payload, traces); err != nil {
 		return err
 	}
@@ -300,12 +301,12 @@ func (r *Roller) loadOrCreateKey() (*ecdsa.PrivateKey, error) {
 }
 
 // MakeMsgByt Marshals Msg to bytes.
-func MakeMsgByt(msgTyp MsgType, payloadVal interface{}) ([]byte, error) {
+func MakeMsgByt(msgTyp message.MsgType, payloadVal interface{}) ([]byte, error) {
 	payload, err := json.Marshal(payloadVal)
 	if err != nil {
 		return nil, err
 	}
-	msg := &Msg{
+	msg := &message.Msg{
 		Type:    msgTyp,
 		Payload: payload,
 	}
