@@ -13,4 +13,4 @@ core/prover/rust/target
 params/
 seed
 
-roller-keystore
+keystore
