@@ -9,17 +9,26 @@ import (
 	"scroll-tech/go-roller/message"
 )
 
-type rollerClient interface {
-	SubscribeRegister(ctx context.Context, traceChan chan *message.BlockTraces, authMsg *message.AuthMessage) (ethereum.Subscription, error)
-	SubmitProof(ctx context.Context, proof *message.AuthZkProof) (bool, error)
-}
-
 type Client struct {
 	*rpc.Client
 }
 
-type RollerClient struct {
-	rollerClient
+// Dial connects a client to the given URL.
+func Dial(rawurl string) (*Client, error) {
+	return DialContext(context.Background(), rawurl)
+}
+
+func DialContext(ctx context.Context, rawurl string) (*Client, error) {
+	c, err := rpc.DialContext(ctx, rawurl)
+	if err != nil {
+		return nil, err
+	}
+	return NewClient(c), nil
+}
+
+// NewClient creates a client that uses the given RPC client.
+func NewClient(c *rpc.Client) *Client {
+	return &Client{Client: c}
 }
 
 func (c *Client) SubscribeRegister(ctx context.Context, traceChan chan *message.BlockTraces, authMsg *message.AuthMessage) (ethereum.Subscription, error) {
@@ -29,22 +38,4 @@ func (c *Client) SubscribeRegister(ctx context.Context, traceChan chan *message.
 func (c *Client) SubmitProof(ctx context.Context, proof *message.AuthZkProof) (bool, error) {
 	var ok bool
 	return ok, c.CallContext(ctx, &ok, "roller_submitProof", proof)
-}
-
-// Dial connects a client to the given URL.
-func Dial(rawurl string) (*RollerClient, error) {
-	return DialContext(context.Background(), rawurl)
-}
-
-func DialContext(ctx context.Context, rawurl string) (*RollerClient, error) {
-	c, err := rpc.DialContext(ctx, rawurl)
-	if err != nil {
-		return nil, err
-	}
-	return NewClient(c), nil
-}
-
-// NewClient creates a client that uses the given RPC client.
-func NewClient(c *rpc.Client) *RollerClient {
-	return &RollerClient{rollerClient: rollerClient(&Client{c})}
 }

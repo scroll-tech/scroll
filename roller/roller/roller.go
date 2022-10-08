@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/scroll-tech/go-ethereum"
-	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/crypto"
 	"github.com/scroll-tech/go-ethereum/log"
 
@@ -33,7 +32,7 @@ var (
 // Roller contains websocket conn to Scroll, Stack, unix-socket to ipc-prover.
 type Roller struct {
 	cfg       *config.Config
-	client    *client.RollerClient
+	client    *client.Client
 	stack     *store.Stack
 	prover    *prover.Prover
 	traceChan chan *message.BlockTraces
@@ -100,14 +99,12 @@ func (r *Roller) Register() error {
 		Identity: &message.Identity{
 			Name:      r.cfg.RollerName,
 			Timestamp: time.Now().UnixMilli(),
-			PublicKey: common.Bytes2Hex(crypto.FromECDSAPub(&priv.PublicKey)),
 		},
-		Signature: "",
 	}
 
 	// Sign auth message
 	if err = authMsg.Sign(priv); err != nil {
-		return fmt.Errorf("Sign auth message failed %v", err)
+		return fmt.Errorf("sign auth message failed %v", err)
 	}
 
 	sub, err := r.client.SubscribeRegister(context.Background(), r.traceChan, authMsg)
@@ -200,12 +197,10 @@ func (r *Roller) prove() error {
 		return fmt.Errorf("generate private-key failed %v", err)
 	}
 
-	authZkProof := &message.AuthZkProof{
-		ProofMsg:  proofMsg,
-		PublicKey: common.Bytes2Hex(crypto.FromECDSAPub(&priv.PublicKey)),
-		Signature: "",
+	authZkProof := &message.AuthZkProof{ProofMsg: proofMsg}
+	if err = authZkProof.Sign(priv); err != nil {
+		return err
 	}
-	authZkProof.Sign(priv)
 
 	ok, err := r.client.SubmitProof(context.Background(), authZkProof)
 	if !ok {
