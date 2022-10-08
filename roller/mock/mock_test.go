@@ -16,7 +16,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"scroll-tech/go-roller/config"
-	"scroll-tech/go-roller/roller"
+	"scroll-tech/go-roller/core"
 	. "scroll-tech/go-roller/types"
 )
 
@@ -48,7 +48,7 @@ func TestMain(m *testing.M) {
 func TestRoller(t *testing.T) {
 	go mockScroll(t)
 
-	r, err := roller.NewRoller(cfg)
+	r, err := core.NewRoller(cfg)
 	assert.NoError(t, err)
 	go r.Run()
 
@@ -93,14 +93,14 @@ func mockScroll(t *testing.T) {
 		if !secp256k1.VerifySignature(common.FromHex(authMsg.Identity.PublicKey), hash, common.FromHex(authMsg.Signature)[:64]) {
 			assert.NoError(t, err)
 		}
-		t.Log("signature verification successful. Roller: ", authMsg.Identity.Name)
+		t.Log("signature verification successfully. Roller: ", authMsg.Identity.Name)
 		assert.Equal(t, cfg.RollerName, authMsg.Identity.Name)
 
 		traces := &BlockTraces{
 			ID:     16,
 			Traces: nil,
 		}
-		msgByt, err := roller.MakeMsgByt(BlockTrace, traces)
+		msgByt, err := core.MakeMsgByt(BlockTrace, traces)
 		assert.NoError(t, err)
 
 		err = c.WriteMessage(websocket.BinaryMessage, msgByt)
