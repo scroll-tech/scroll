@@ -102,7 +102,7 @@ func (r *Roller) Register() error {
 
 	// Sign auth message
 	if err = authMsg.Sign(priv); err != nil {
-		return fmt.Errorf("Sign auth message failed %v", err)
+		return fmt.Errorf("sign auth message failed %v", err)
 	}
 
 	msgByt, err := MakeMsgByt(Register, authMsg)
@@ -197,29 +197,38 @@ func (r *Roller) handMessage() error {
 }
 
 func (r *Roller) prove() error {
+PROVE:
 	traces, err := r.stack.Pop()
 	if err != nil {
 		return err
 	}
-	log.Info("start to prove block", "block-id", traces.ID)
+	log.Info("start to prove block", "block-id", traces.Traces.ID)
 
 	var proofMsg *ProofMsg
-	proof, err := r.prover.Prove(traces.Traces)
+	proof, err := r.prover.Prove(traces.Traces.Traces)
 	if err != nil {
+		if traces.Times < 2 {
+			log.Error("prove failed, retry...")
+			err = r.stack.Push(traces)
+			if err != nil {
+				return err
+			}
+			goto PROVE
+		}
 		proofMsg = &ProofMsg{
 			Status: StatusProofError,
 			Error:  err.Error(),
-			ID:     traces.ID,
+			ID:     traces.Traces.ID,
 			Proof:  &AggProof{},
 		}
-		log.Error("prove block failed!", "block-id", traces.ID)
+		log.Error("prove block failed!", "block-id", traces.Traces.ID)
 	} else {
 		proofMsg = &ProofMsg{
 			Status: StatusOk,
-			ID:     traces.ID,
+			ID:     traces.Traces.ID,
 			Proof:  proof,
 		}
-		log.Info("prove block successfully!", "block-id", traces.ID)
+		log.Info("prove block successfully!", "block-id", traces.Traces.ID)
 	}
 
 	msgByt, err := MakeMsgByt(Proof, proofMsg)
@@ -260,7 +269,10 @@ func (r *Roller) persistTrace(byt []byte) error {
 		return err
 	}
 	log.Info("Accept BlockTrace from Scroll", "ID", traces.ID)
-	return r.stack.Push(traces)
+	return r.stack.Push(&store.ProvingTraces{
+		Traces: traces,
+		Times:  0,
+	})
 }
 
 // MakeMsgByt Marshals Msg to bytes.
