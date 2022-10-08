@@ -31,14 +31,15 @@ func TestStack(t *testing.T) {
 			Times: 0,
 		}
 
-		err := s.Push(trace)
+		err = s.Push(trace)
 		assert.NoError(t, err)
 	}
 
 	for i := 2; i >= 0; i-- {
-		trace, err := s.Pop()
+		var pop *ProvingTraces
+		pop, err = s.Pop()
 		assert.NoError(t, err)
-		assert.Equal(t, uint64(i), trace.Traces.ID)
+		assert.Equal(t, uint64(i), pop.Traces.ID)
 	}
 
 	// test times
