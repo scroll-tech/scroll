@@ -14,7 +14,7 @@ import (
 	"github.com/scroll-tech/go-ethereum/log"
 
 	"scroll-tech/go-roller/config"
-	"scroll-tech/go-roller/roller/prover"
+	"scroll-tech/go-roller/core/prover"
 	"scroll-tech/go-roller/store"
 	. "scroll-tech/go-roller/types"
 )
