@@ -8,7 +8,7 @@ import (
 	"github.com/urfave/cli/v2"
 
 	"scroll-tech/go-roller/config"
-	"scroll-tech/go-roller/roller"
+	"scroll-tech/go-roller/core"
 )
 
 var (

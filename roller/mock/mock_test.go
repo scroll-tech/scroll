@@ -16,7 +16,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"scroll-tech/go-roller/config"
-	"scroll-tech/go-roller/roller"
+	"scroll-tech/go-roller/core"
 	. "scroll-tech/go-roller/types"
 )
 
