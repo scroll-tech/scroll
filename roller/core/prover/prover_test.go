@@ -8,7 +8,7 @@ import (
 
 	"scroll-tech/go-roller/config"
 
-	"scroll-tech/go-roller/roller/prover"
+	"scroll-tech/go-roller/core/prover"
 
 	"github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/stretchr/testify/assert"

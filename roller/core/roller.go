@@ -1,4 +1,4 @@
-package roller
+package core
 
 import (
 	"context"
@@ -14,8 +14,8 @@ import (
 
 	"scroll-tech/go-roller/client"
 	"scroll-tech/go-roller/config"
+	"scroll-tech/go-roller/core/prover"
 	"scroll-tech/go-roller/message"
-	"scroll-tech/go-roller/roller/prover"
 	"scroll-tech/go-roller/store"
 )
 
