@@ -1,14 +1,10 @@
 package mock
 
-import (
-	"scroll-tech/go-roller/config"
-)
-
-var (
-	cfg        *config.Config
-	scrollPort = 9020
-	mockPath   string
-)
+//var (
+//	cfg        *config.Config
+//	scrollPort = 9020
+//	mockPath   string
+//)
 
 // func TestMain(m *testing.M) {
 // 	mockPath = "/tmp/roller_mock_test"

@@ -4,6 +4,7 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"errors"
+
 	"scroll-tech/go-roller/message"
 
 	"github.com/scroll-tech/go-ethereum/log"

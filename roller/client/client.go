@@ -9,6 +9,7 @@ import (
 	"scroll-tech/go-roller/message"
 )
 
+// Client wrap the ethclient websocket for roller.
 type Client struct {
 	*rpc.Client
 }
@@ -18,6 +19,7 @@ func Dial(rawurl string) (*Client, error) {
 	return DialContext(context.Background(), rawurl)
 }
 
+// DialContext connects a client to the given URL and context.
 func DialContext(ctx context.Context, rawurl string) (*Client, error) {
 	c, err := rpc.DialContext(ctx, rawurl)
 	if err != nil {
@@ -31,10 +33,12 @@ func NewClient(c *rpc.Client) *Client {
 	return &Client{Client: c}
 }
 
+// SubscribeRegister register roller into scroll and subscribe blocktraces from scroll.
 func (c *Client) SubscribeRegister(ctx context.Context, traceChan chan *message.BlockTraces, authMsg *message.AuthMessage) (ethereum.Subscription, error) {
 	return c.Subscribe(ctx, "roller", traceChan, "register", authMsg)
 }
 
+// SubmitProof submit proof into scroll.
 func (c *Client) SubmitProof(ctx context.Context, proof *message.AuthZkProof) (bool, error) {
 	var ok bool
 	return ok, c.CallContext(ctx, &ok, "roller_submitProof", proof)

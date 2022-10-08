@@ -4,8 +4,9 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"scroll-tech/go-roller/message"
 	"testing"
+
+	"scroll-tech/go-roller/message"
 
 	"github.com/stretchr/testify/assert"
 )
