@@ -1,4 +1,4 @@
-package roller
+package core
 
 import (
 	"encoding/json"
