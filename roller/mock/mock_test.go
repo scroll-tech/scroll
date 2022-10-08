@@ -35,11 +35,12 @@ func TestMain(m *testing.M) {
 	}
 	scrollPort = rand.Intn(9000)
 	cfg = &config.Config{
-		RollerName: "test-roller",
-		SecretKey:  "dcf2cbdd171a21c480aa7f53d77f31bb102282b3ff099c78e3118b37348c72f7",
-		ScrollURL:  fmt.Sprintf("ws://localhost:%d", scrollPort),
-		Prover:     &config.ProverConfig{MockMode: true},
-		DBPath:     filepath.Join(mockPath, "stack_db"),
+		RollerName:       "test-roller",
+		KeystorePath:     "/tmp/",
+		KeystorePassword: "mock_test",
+		ScrollURL:        fmt.Sprintf("ws://localhost:%d", scrollPort),
+		Prover:           &config.ProverConfig{MockMode: true},
+		DBPath:           filepath.Join(mockPath, "stack_db"),
 	}
 
 	os.Exit(m.Run())
