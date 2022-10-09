@@ -1,4 +1,4 @@
-.PHONY: lint docker clean roller
+.PHONY: lint docker clean roller mock_roller
 
 IMAGE_NAME=roller-go
 IMAGE_VERSION=latest
@@ -9,6 +9,9 @@ prepare-libprover:
 roller: ## Builds the Roller instance.
 	cd core/prover/rust && cargo build --release && cp target/release/libprover.a ../lib/
 	GOBIN=$(PWD)/build/bin go install ./cmd/roller
+
+mock_roller:
+	go build -o $(PWD)/build/bin/roller -tags mock_prover $(PWD)/cmd/roller
 
 gpu-roller: ## Builds the GPU Roller instance.
 	cd core/prover/rust && cargo build --release && cp target/release/libprover.a ../lib/
