@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -269,6 +270,7 @@ func (r *Roller) persistTrace(byt []byte) error {
 }
 
 func (r *Roller) loadOrCreateKey() (*ecdsa.PrivateKey, error) {
+	keystoreFilePath := r.cfg.KeystorePath
 	if _, err := os.Stat(r.cfg.KeystorePath); os.IsNotExist(err) {
 		// If there is no keystore, make a new one.
 		ks := keystore.NewKeyStore(r.cfg.KeystorePath, keystore.StandardScryptN, keystore.StandardScryptP)
@@ -277,9 +279,17 @@ func (r *Roller) loadOrCreateKey() (*ecdsa.PrivateKey, error) {
 			return nil, fmt.Errorf("generate crypto account failed %v", err)
 		}
 		log.Info("create a new account", "address", account.Address.Hex())
+
+		fis, err := ioutil.ReadDir(r.cfg.KeystorePath)
+		if err != nil {
+			return nil, err
+		}
+		keystoreFilePath = filepath.Join(r.cfg.KeystorePath, fis[0].Name())
+	} else {
+		return nil, err
 	}
 
-	keyjson, err := ioutil.ReadFile(r.cfg.KeystorePath)
+	keyjson, err := ioutil.ReadFile(keystoreFilePath)
 	if err != nil {
 		return nil, err
 	}
