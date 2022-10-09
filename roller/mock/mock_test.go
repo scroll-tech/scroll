@@ -3,10 +3,10 @@ package mock
 import (
 	"encoding/json"
 	"fmt"
-	// "math/rand"
+	"math/rand"
 	"net/http"
-	// "os"
-	// "path/filepath"
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
