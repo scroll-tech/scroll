@@ -56,7 +56,7 @@ func TestRoller(t *testing.T) {
 
 	go r.Run()
 
-	<-time.NewTimer(5 * time.Second).C
+	<-time.NewTimer(2 * time.Second).C
 
 	r.Close()
 }
