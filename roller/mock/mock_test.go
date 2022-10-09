@@ -29,15 +29,11 @@ var (
 func TestMain(m *testing.M) {
 	mockPath = "./roller_mock_test"
 
-	fmt.Println("1")
-
 	_ = os.RemoveAll(mockPath)
 	if err := os.Mkdir(mockPath, os.ModePerm); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
-
-	fmt.Println("2")
 
 	scrollPort = rand.Intn(9000)
 	cfg = &config.Config{
@@ -49,36 +45,20 @@ func TestMain(m *testing.M) {
 		DBPath:           filepath.Join(mockPath, "stack_db"),
 	}
 
-	fmt.Println("3")
-
-	tttt := m.Run()
-
-	fmt.Println("31")
-
-	os.Exit(tttt)
+	os.Exit(m.Run())
 }
 
 func TestRoller(t *testing.T) {
 	go mockScroll(t)
 
-	fmt.Println("4")
-
 	r, err := core.NewRoller(cfg)
 	assert.NoError(t, err)
 
-	fmt.Println("5")
-
 	go r.Run()
-
-	fmt.Println("6")
 
 	<-time.NewTimer(5 * time.Second).C
 
-	fmt.Println("7")
-
 	r.Close()
-
-	fmt.Println("8")
 }
 
 func mockScroll(t *testing.T) {
@@ -86,8 +66,6 @@ func mockScroll(t *testing.T) {
 		up := websocket.Upgrader{}
 		c, err := up.Upgrade(w, req, nil)
 		assert.NoError(t, err, "Upgrade WS")
-
-		t.Log("start mock")
 
 		var payload []byte
 		payload, err = func(c *websocket.Conn) ([]byte, error) {
@@ -98,16 +76,12 @@ func mockScroll(t *testing.T) {
 					return nil, err
 				}
 
-				t.Log("mock: read msg from roller")
-
 				if mt == websocket.BinaryMessage {
 					return payload, nil
 				}
 			}
 		}(c)
 		assert.NoError(t, err, "read payload")
-
-		t.Log("accept!")
 
 		msg := &Msg{}
 		err = json.Unmarshal(payload, msg)
