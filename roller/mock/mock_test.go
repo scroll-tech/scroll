@@ -68,7 +68,7 @@ func TestRoller(t *testing.T) {
 
 	fmt.Println("6")
 
-	<-time.NewTimer(2 * time.Second).C
+	<-time.NewTimer(5 * time.Second).C
 
 	fmt.Println("7")
 
