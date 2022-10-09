@@ -72,7 +72,7 @@ func TestRoller(t *testing.T) {
 
 	fmt.Println("6")
 
-	<-time.NewTimer(2 * time.Second).C
+	<-time.NewTimer(5 * time.Second).C
 
 	fmt.Println("7")
 
@@ -87,6 +87,8 @@ func mockScroll(t *testing.T) {
 		c, err := up.Upgrade(w, req, nil)
 		assert.NoError(t, err)
 
+		t.Log("start mock")
+
 		var payload []byte
 		payload, err = func(c *websocket.Conn) ([]byte, error) {
 			for {
@@ -96,12 +98,16 @@ func mockScroll(t *testing.T) {
 					return nil, err
 				}
 
+				t.Log("mock: read msg from roller")
+
 				if mt == websocket.BinaryMessage {
 					return payload, nil
 				}
 			}
 		}(c)
 		assert.NoError(t, err)
+
+		t.Log("accept!")
 
 		msg := &Msg{}
 		err = json.Unmarshal(payload, msg)
