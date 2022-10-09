@@ -52,7 +52,7 @@ func NewRoller(cfg *config.Config) (*Roller, error) {
 
 	// Create prover instance
 	log.Info("init prover")
-	pver, err := prover.NewProver(cfg.Prover)
+	prover, err := prover.NewProver(cfg.Prover)
 	if err != nil {
 		return nil, err
 	}
@@ -67,7 +67,7 @@ func NewRoller(cfg *config.Config) (*Roller, error) {
 		cfg:       cfg,
 		client:    rClient,
 		stack:     stackDb,
-		prover:    pver,
+		prover:    prover,
 		sub:       nil,
 		traceChan: make(chan *message.BlockTraces, 2),
 		stopChan:  make(chan struct{}),
