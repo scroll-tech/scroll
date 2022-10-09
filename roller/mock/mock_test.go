@@ -51,7 +51,11 @@ func TestMain(m *testing.M) {
 
 	fmt.Println("3")
 
-	os.Exit(m.Run())
+	tttt := m.Run()
+
+	fmt.Println("31")
+
+	os.Exit(tttt)
 }
 
 func TestRoller(t *testing.T) {
@@ -73,6 +77,8 @@ func TestRoller(t *testing.T) {
 	fmt.Println("7")
 
 	r.Close()
+
+	fmt.Println("8")
 }
 
 func mockScroll(t *testing.T) {
