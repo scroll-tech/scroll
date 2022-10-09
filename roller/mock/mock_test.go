@@ -8,7 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
-	// "time"
+	"time"
 
 	"github.com/ethereum/go-ethereum/crypto/secp256k1"
 	"github.com/gorilla/websocket"
