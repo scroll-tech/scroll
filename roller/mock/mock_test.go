@@ -26,7 +26,8 @@ var (
 	mockPath   string
 )
 
-func TestMain(m *testing.M) {
+func TestRoller(t *testing.T) {
+
 	mockPath = "./roller_mock_test"
 
 	fmt.Println("1")
@@ -49,37 +50,27 @@ func TestMain(m *testing.M) {
 		DBPath:           filepath.Join(mockPath, "stack_db"),
 	}
 
-	fmt.Println("3")
+	go mockScroll(t)
 
-	tttt := m.Run()
+	fmt.Println("4")
 
-	fmt.Println("31")
+	r, err := core.NewRoller(cfg)
+	assert.NoError(t, err)
 
-	os.Exit(tttt)
+	fmt.Println("5")
+
+	go r.Run()
+
+	fmt.Println("6")
+
+	<-time.NewTimer(5 * time.Second).C
+
+	fmt.Println("7")
+
+	r.Close()
+
+	fmt.Println("8")
 }
-
-// func TestRoller(t *testing.T) {
-// 	go mockScroll(t)
-
-// 	fmt.Println("4")
-
-// 	r, err := core.NewRoller(cfg)
-// 	assert.NoError(t, err)
-
-// 	fmt.Println("5")
-
-// 	go r.Run()
-
-// 	fmt.Println("6")
-
-// 	<-time.NewTimer(5 * time.Second).C
-
-// 	fmt.Println("7")
-
-// 	r.Close()
-
-// 	fmt.Println("8")
-// }
 
 func mockScroll(t *testing.T) {
 	http.HandleFunc("/", func(w http.ResponseWriter, req *http.Request) {
