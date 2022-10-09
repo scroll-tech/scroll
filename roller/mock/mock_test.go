@@ -85,7 +85,7 @@ func mockScroll(t *testing.T) {
 	http.HandleFunc("/", func(w http.ResponseWriter, req *http.Request) {
 		up := websocket.Upgrader{}
 		c, err := up.Upgrade(w, req, nil)
-		assert.NoError(t, err)
+		assert.NoError(t, err, "Upgrade WS")
 
 		t.Log("start mock")
 
@@ -105,24 +105,24 @@ func mockScroll(t *testing.T) {
 				}
 			}
 		}(c)
-		assert.NoError(t, err)
+		assert.NoError(t, err, "read payload")
 
 		t.Log("accept!")
 
 		msg := &Msg{}
 		err = json.Unmarshal(payload, msg)
-		assert.NoError(t, err)
+		assert.NoError(t, err, "json Unmarshal raw payload")
 
 		authMsg := &AuthMessage{}
 		err = json.Unmarshal(msg.Payload, authMsg)
-		assert.NoError(t, err)
+		assert.NoError(t, err, "json Unmarshal inner payload")
 
 		// Verify signature
 		hash, err := authMsg.Identity.Hash()
-		assert.NoError(t, err)
+		assert.NoError(t, err, "authMsg.Identity.Hash()")
 
 		if !secp256k1.VerifySignature(common.FromHex(authMsg.Identity.PublicKey), hash, common.FromHex(authMsg.Signature)[:64]) {
-			assert.NoError(t, err)
+			assert.NoError(t, err, "VerifySignature")
 		}
 		t.Log("signature verification successfully. Roller: ", authMsg.Identity.Name)
 		assert.Equal(t, cfg.RollerName, authMsg.Identity.Name)
@@ -132,10 +132,10 @@ func mockScroll(t *testing.T) {
 			Traces: nil,
 		}
 		msgByt, err := core.MakeMsgByt(BlockTrace, traces)
-		assert.NoError(t, err)
+		assert.NoError(t, err, "MakeMsgByt")
 
 		err = c.WriteMessage(websocket.BinaryMessage, msgByt)
-		assert.NoError(t, err)
+		assert.NoError(t, err, "WriteMessage")
 	})
 	http.ListenAndServe(fmt.Sprintf(":%d", scrollPort), nil)
 }
