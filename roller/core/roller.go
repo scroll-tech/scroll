@@ -80,6 +80,7 @@ func (r *Roller) Run() error {
 	log.Info("start to register to scroll")
 	println("start regsiter!")
 	if err := r.Register(); err != nil {
+		println("register error: ", err)
 		log.Crit("register to scroll failed", "error", err)
 	}
 	println("register successfully!")
