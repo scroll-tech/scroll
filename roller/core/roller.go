@@ -78,6 +78,7 @@ func NewRoller(cfg *config.Config) (*Roller, error) {
 // Run runs Roller.
 func (r *Roller) Run() error {
 	log.Info("start to register to scroll")
+	println("start regsiter!")
 	if err := r.Register(); err != nil {
 		log.Crit("register to scroll failed", "error", err)
 	}
