@@ -26,37 +26,37 @@ var (
 	mockPath   string
 )
 
-func TestMain(m *testing.M) {
-	mockPath = "./roller_mock_test"
+// func TestMain(m *testing.M) {
+// 	mockPath = "./roller_mock_test"
 
-	fmt.Println("1")
+// 	fmt.Println("1")
 
-	_ = os.RemoveAll(mockPath)
-	if err := os.Mkdir(mockPath, os.ModePerm); err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
+// 	_ = os.RemoveAll(mockPath)
+// 	if err := os.Mkdir(mockPath, os.ModePerm); err != nil {
+// 		fmt.Fprintln(os.Stderr, err)
+// 		os.Exit(1)
+// 	}
 
-	fmt.Println("2")
+// 	fmt.Println("2")
 
-	scrollPort = rand.Intn(9000)
-	cfg = &config.Config{
-		RollerName:       "test-roller",
-		KeystorePath:     filepath.Join(mockPath, "roller-keystore"),
-		KeystorePassword: "mock_test",
-		ScrollURL:        fmt.Sprintf("ws://localhost:%d", scrollPort),
-		Prover:           &config.ProverConfig{MockMode: true},
-		DBPath:           filepath.Join(mockPath, "stack_db"),
-	}
+// 	scrollPort = rand.Intn(9000)
+// 	cfg = &config.Config{
+// 		RollerName:       "test-roller",
+// 		KeystorePath:     filepath.Join(mockPath, "roller-keystore"),
+// 		KeystorePassword: "mock_test",
+// 		ScrollURL:        fmt.Sprintf("ws://localhost:%d", scrollPort),
+// 		Prover:           &config.ProverConfig{MockMode: true},
+// 		DBPath:           filepath.Join(mockPath, "stack_db"),
+// 	}
 
-	fmt.Println("3")
+// 	fmt.Println("3")
 
-	tttt := m.Run()
+// 	tttt := m.Run()
 
-	fmt.Println("31")
+// 	fmt.Println("31")
 
-	os.Exit(tttt)
-}
+// 	os.Exit(tttt)
+// }
 
 func TestRoller(t *testing.T) {
 	go mockScroll(t)
