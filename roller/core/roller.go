@@ -119,7 +119,7 @@ func (r *Roller) HandleScroll() {
 		case <-r.stopChan:
 			return
 		case trace := <-r.traceChan:
-			log.Info("Accept BlockTrace from Scroll", "ID")
+			log.Info("Accept BlockTrace from Scroll", "ID", trace.ID)
 			err := r.stack.Push(trace)
 			if err != nil {
 				panic(fmt.Sprintf("could not push trace(%d) into stack: %v", trace.ID, err))
