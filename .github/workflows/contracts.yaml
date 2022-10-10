@@ -67,7 +67,7 @@ jobs:
           key: node_modules-${{ hashFiles('contracts/yarn.lock') }}
 
       - name: yarn install
-        if: steps.npm_cache.outputs.cache-hit != 'true'
+        # if: steps.npm_cache.outputs.cache-hit != 'true'
         run: yarn install
 
       - name: Compile with foundry
@@ -111,7 +111,7 @@ jobs:
           key: node_modules-${{ hashFiles('contracts/yarn.lock') }}
 
       - name: yarn install
-        if: steps.npm_cache.outputs.cache-hit != 'true'
+        # if: steps.npm_cache.outputs.cache-hit != 'true'
         run: yarn install
 
       - name: Compile with hardhat
