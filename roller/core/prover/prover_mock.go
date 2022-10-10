@@ -6,6 +6,7 @@ package prover
 import (
 	"scroll-tech/go-roller/config"
 	"scroll-tech/go-roller/message"
+	"time"
 
 	"github.com/scroll-tech/go-ethereum/core/types"
 )
@@ -30,5 +31,6 @@ func (p *Prover) Prove(traces *types.BlockResult) (*message.AggProof, error) {
 }
 
 func (p *Prover) prove(traces *types.BlockResult) (*message.AggProof, error) {
+	time.Sleep(5 * time.Second)
 	return &message.AggProof{}, nil
 }
