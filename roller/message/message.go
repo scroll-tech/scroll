@@ -27,6 +27,7 @@ const (
 	Proof
 )
 
+// RespStatus represents status code from roller to scroll
 type RespStatus uint32
 
 const (
@@ -75,6 +76,7 @@ func (a *AuthMessage) Sign(priv *ecdsa.PrivateKey) error {
 	return nil
 }
 
+// Verify verifies the message of auth.
 func (a *AuthMessage) Verify() (bool, error) {
 	hash, err := a.Hash()
 	if err != nil {
@@ -132,6 +134,7 @@ func (i *Identity) Hash() ([]byte, error) {
 	return hash[:], nil
 }
 
+// AuthZkProof is the data structure sent to scroll.
 type AuthZkProof struct {
 	*ProofMsg `json:"zkProof"`
 	// Roller signature
@@ -141,6 +144,7 @@ type AuthZkProof struct {
 	publicKey string
 }
 
+// Sign signs the AuthZkProof.
 func (a *AuthZkProof) Sign(priv *ecdsa.PrivateKey) error {
 	hash, err := a.Hash()
 	if err != nil {
@@ -154,6 +158,7 @@ func (a *AuthZkProof) Sign(priv *ecdsa.PrivateKey) error {
 	return nil
 }
 
+// Verify verifies AuthZkProof.Signature.
 func (a *AuthZkProof) Verify() (bool, error) {
 	hash, err := a.Hash()
 	if err != nil {
