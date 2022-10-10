@@ -8,7 +8,7 @@ import (
 	"github.com/urfave/cli/v2"
 
 	"scroll-tech/go-roller/config"
-	"scroll-tech/go-roller/roller"
+	"scroll-tech/go-roller/core"
 )
 
 var (
@@ -65,12 +65,12 @@ func action(ctx *cli.Context) error {
 	}
 
 	// Create roller
-	r, err := roller.NewRoller(cfg)
+	r, err := core.NewRoller(cfg)
 	if err != nil {
 		return err
 	}
 	defer r.Close()
-	log.Info("go-roller start successful", "name", cfg.RollerName)
+	log.Info("go-roller start successfully", "name", cfg.RollerName)
 
 	return r.Run()
 }
