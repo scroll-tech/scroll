@@ -4,9 +4,10 @@
 package prover
 
 import (
+	"time"
+
 	"scroll-tech/go-roller/config"
 	"scroll-tech/go-roller/message"
-	"time"
 
 	"github.com/scroll-tech/go-ethereum/core/types"
 )
