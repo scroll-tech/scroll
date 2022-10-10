@@ -1,4 +1,4 @@
-name: CI
+name: Contracts
 
 on:
   push:
@@ -8,6 +8,9 @@ on:
       - prod
       - release/*
       - staging
+    paths:
+      - 'contracts/**'
+      - '.github/workflows/contracts.yaml'
   pull_request:
     branches:
       - master
@@ -15,6 +18,13 @@ on:
       - prod
       - release/*
       - staging
+    paths:
+      - 'contracts/**'
+      - '.github/workflows/contracts.yaml'
+
+defaults:
+  run:
+    working-directory: 'contracts'
 
 jobs:
   foundry:
@@ -45,7 +55,7 @@ jobs:
         id: yarn-cache # use this to check for `cache-hit` (`steps.yarn-cache.outputs.cache-hit != 'true'`)
         with:
           path: ${{ steps.yarn-cache-dir-path.outputs.dir }}
-          key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
+          key: ${{ runner.os }}-yarn-${{ hashFiles('contracts/yarn.lock') }}
           restore-keys: |
             ${{ runner.os }}-yarn-
 
@@ -54,7 +64,7 @@ jobs:
         uses: actions/cache@v2
         with:
           path: node_modules
-          key: node_modules-${{ hashFiles('yarn.lock') }}
+          key: node_modules-${{ hashFiles('contracts/yarn.lock') }}
 
       - name: yarn install
         if: steps.npm_cache.outputs.cache-hit != 'true'
@@ -89,7 +99,7 @@ jobs:
         id: yarn-cache # use this to check for `cache-hit` (`steps.yarn-cache.outputs.cache-hit != 'true'`)
         with:
           path: ${{ steps.yarn-cache-dir-path.outputs.dir }}
-          key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
+          key: ${{ runner.os }}-yarn-${{ hashFiles('contracts/yarn.lock') }}
           restore-keys: |
             ${{ runner.os }}-yarn-
 
@@ -98,7 +108,7 @@ jobs:
         uses: actions/cache@v2
         with:
           path: node_modules
-          key: node_modules-${{ hashFiles('yarn.lock') }}
+          key: node_modules-${{ hashFiles('contracts/yarn.lock') }}
 
       - name: yarn install
         if: steps.npm_cache.outputs.cache-hit != 'true'
