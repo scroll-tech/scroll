@@ -174,7 +174,7 @@ func (r *Roller) prove() error {
 	if err != nil {
 		return err
 	}
-	log.Info("start to prove block", "block-Number", traces.ID)
+	log.Info("start to prove block", "block-id", traces.ID)
 
 	var proofMsg *message.ProofMsg
 	proof, err := r.prover.Prove(traces.Traces)
