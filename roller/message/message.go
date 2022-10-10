@@ -30,7 +30,9 @@ const (
 type RespStatus uint32
 
 const (
+	// StatusOk means generate proof success
 	StatusOk RespStatus = iota
+	// StatusProofError means generate proof failed
 	StatusProofError
 )
 

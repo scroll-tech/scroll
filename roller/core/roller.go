@@ -120,7 +120,10 @@ func (r *Roller) HandleScroll() {
 			return
 		case trace := <-r.traceChan:
 			log.Info("Accept BlockTrace from Scroll", "ID")
-			r.stack.Push(trace)
+			err := r.stack.Push(trace)
+			if err != nil {
+				panic(fmt.Sprintf("could not push trace(%d) into stack: %v", trace.ID, err))
+			}
 		case err := <-r.sub.Err():
 			r.sub.Unsubscribe()
 			log.Error("Subscribe trace with scroll failed", "error", err)
