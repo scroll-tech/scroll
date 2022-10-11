@@ -12,10 +12,10 @@ mock_abi:
 	awk '{sub("github.com/ethereum","github.com/scroll-tech")}1' bridge/mock_bridge/Mock_Bridge.go > temp && mv temp bridge/mock_bridge/Mock_Bridge.go
 
 bridge: ## Builds the Bridge instance.
-	GOBIN=$(PWD)/build/bin go install ./cmd/bridge
+	GOBIN=$(PWD)/build/bin go install ./cmd
 
 lint: ## Lint the files - used for CI
-	GOBIN=$(PWD)/build/bin go run build/lint.go
+	GOBIN=$(PWD)/build/bin go run ../build/lint.go
 
 clean: ## Empty out the bin folder
 	@rm -rf build/bin

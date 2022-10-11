@@ -5,7 +5,7 @@ import (
 
 	"github.com/scroll-tech/go-ethereum/core/types"
 
-	"scroll-tech/coordinator/coordinator/message"
+	"scroll-tech/coordinator/message"
 )
 
 // Verifier represents a socket connection to a halo2 verifier.

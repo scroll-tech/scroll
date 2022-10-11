@@ -3,21 +3,20 @@ module scroll-tech/bridge
 go 1.17
 
 require (
-	github.com/jmoiron/sqlx v1.3.5
-	github.com/mattn/go-colorable v0.1.11
-	github.com/mattn/go-isatty v0.0.14
 	github.com/scroll-tech/go-ethereum v1.10.14-0.20220920070544-3a7da33cd53d
 	github.com/stretchr/testify v1.7.2
 	github.com/urfave/cli/v2 v2.3.0
 	golang.org/x/sync v0.0.0-20220722155255-886fb9371eb4
 	scroll-tech/internal v1.0.0
 	scroll-tech/store v1.0.0
+	scroll-tech/utils v1.0.0
 )
 
 replace (
 	scroll-tech/coordinator v1.0.0 => ../coordinator
 	scroll-tech/internal v1.0.0 => ../internal
 	scroll-tech/store v1.0.0 => ../store
+	scroll-tech/utils v1.0.0 => ../utils
 )
 
 require (
@@ -54,11 +53,13 @@ require (
 	github.com/influxdata/influxdb-client-go/v2 v2.4.0 // indirect
 	github.com/influxdata/line-protocol v0.0.0-20210311194329-9aa0e372d097 // indirect
 	github.com/jackpal/go-nat-pmp v1.0.2-0.20160603034137-1fa385a6f458 // indirect
+	github.com/jmoiron/sqlx v1.3.5 // indirect
 	github.com/lib/pq v1.10.6 // indirect
+	github.com/mattn/go-colorable v0.1.11 // indirect
+	github.com/mattn/go-isatty v0.0.14 // indirect
 	github.com/mattn/go-runewidth v0.0.9 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/mitchellh/pointerstructure v1.2.0 // indirect
-	github.com/nxadm/tail v1.4.8 // indirect
 	github.com/olekukonko/tablewriter v0.0.5 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.0.2 // indirect

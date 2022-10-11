@@ -4,10 +4,10 @@ IMAGE_NAME=coordinator
 IMAGE_VERSION=latest
 
 coordinator: ## Builds the Coordinator instance.
-	GOBIN=$(PWD)/build/bin go install ./cmd/coordinator
+	GOBIN=$(PWD)/build/bin go install ./cmd
 
 lint: ## Lint the files - used for CI
-	GOBIN=$(PWD)/build/bin go run build/lint.go
+	GOBIN=$(PWD)/build/bin go run ../build/lint.go
 
 clean: ## Empty out the bin folder
 	@rm -rf build/bin

@@ -7,8 +7,8 @@ import (
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/stretchr/testify/assert"
 
-	"scroll-tech/store/config"
 	"scroll-tech/store"
+	"scroll-tech/store/config"
 	"scroll-tech/store/migrate"
 )
 

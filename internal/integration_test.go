@@ -10,11 +10,13 @@ import (
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/stretchr/testify/assert"
 
-	bridge_config "scroll-tech/bridge/config"
 	coordinator_config "scroll-tech/coordinator/config"
+	"scroll-tech/coordinator/message"
 	db_config "scroll-tech/store/config"
+
+	bridge_config "scroll-tech/bridge/config"
+
 	"scroll-tech/internal/mock"
-	"scroll-tech/coordinator/coordinator/message"
 )
 
 var DB_CONFIG = &db_config.DBConfig{

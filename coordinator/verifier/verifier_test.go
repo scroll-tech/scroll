@@ -7,7 +7,7 @@ import (
 	"github.com/scroll-tech/go-ethereum/crypto"
 	"github.com/stretchr/testify/assert"
 
-	"scroll-tech/coordinator/coordinator/message"
+	"scroll-tech/coordinator/message"
 )
 
 // skipped due to verifier upgrade

@@ -7,11 +7,11 @@ then
 	exit
 fi
 
-if [ -d "bridge/contracts" ]; then
-  echo "Directory bridge/contracts exists"
+if [ -d "contracts" ]; then
+  echo "Directory contracts exists"
 else
-  echo "Creating directory bridge/contracts"
-  mkdir -p bridge/contracts
+  echo "Creating directory contracts"
+  mkdir -p contracts
 fi
 
 abi_name=("IL1GatewayRouter" "IL2GatewayRouter" "IL1ScrollMessenger" "IL2ScrollMessenger" "ZKRollup")
@@ -21,9 +21,9 @@ gen_name=("L1GatewayRouter" "L2GatewayRouter" "L1ScrollMessenger" "L2ScrollMesse
 for i in "${!abi_name[@]}"; do
   abi="bridge/abi/${abi_name[$i]}.json"
   pkg="${pkg_name[$i]}"
-  out="bridge/contracts/${pkg}/${gen_name[$i]}.go"
+  out="contracts/${pkg}/${gen_name[$i]}.go"
   echo "generating ${out} from ${abi}"
-  mkdir -p bridge/contracts/$pkg
+  mkdir -p contracts/$pkg
   abigen --abi=$abi --pkg=$pkg --out=$out
   awk '{sub("github.com/ethereum","github.com/scroll-tech")}1' $out > temp && mv temp $out
 done

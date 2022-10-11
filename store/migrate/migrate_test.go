@@ -8,9 +8,10 @@ import (
 	"github.com/pressly/goose/v3"
 	"github.com/stretchr/testify/assert"
 
-	db_config "scroll-tech/store/config"
 	"scroll-tech/internal/docker"
+
 	"scroll-tech/store"
+	db_config "scroll-tech/store/config"
 )
 
 var (

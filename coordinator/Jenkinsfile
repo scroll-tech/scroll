@@ -30,7 +30,7 @@ pipeline {
                    sh '''
                       go get ./...
                       go test -v -race -coverprofile=coverage.txt -covermode=atomic $(go list ./... | grep -v 'coordinator')
-                      go test -v -race -coverprofile=coverage.txt -covermode=atomic -p 1 scroll-tech/coordinator/coordinator
+                      go test -v -race -coverprofile=coverage.txt -covermode=atomic -p 1 scroll-tech/coordinator
                       '''
                }
             }

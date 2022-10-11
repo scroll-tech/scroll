@@ -4,9 +4,6 @@ go 1.17
 
 require (
 	github.com/gorilla/websocket v1.4.2
-	github.com/jmoiron/sqlx v1.3.5
-	github.com/mattn/go-colorable v0.1.11
-	github.com/mattn/go-isatty v0.0.14
 	github.com/orcaman/concurrent-map v1.0.0
 	github.com/scroll-tech/go-ethereum v1.10.14-0.20220920070544-3a7da33cd53d
 	github.com/stretchr/testify v1.7.2
@@ -15,12 +12,14 @@ require (
 	scroll-tech/bridge v1.0.0
 	scroll-tech/internal v1.0.0
 	scroll-tech/store v1.0.0
+	scroll-tech/utils v1.0.0
 )
 
 replace (
 	scroll-tech/bridge v1.0.0 => ../bridge
 	scroll-tech/internal v1.0.0 => ../internal
 	scroll-tech/store v1.0.0 => ../store
+	scroll-tech/utils v1.0.0 => ../utils
 )
 
 require (
@@ -39,9 +38,7 @@ require (
 	github.com/edsrzf/mmap-go v1.0.0 // indirect
 	github.com/ethereum/go-ethereum v1.10.14 // indirect
 	github.com/fjl/memsize v0.0.0-20190710130421-bcb5799ab5e5 // indirect
-	github.com/fsnotify/fsnotify v1.5.1 // indirect
 	github.com/gballet/go-libpcsclite v0.0.0-20190607065134-2772fd86a8ff // indirect
-	github.com/go-kit/kit v0.9.0 // indirect
 	github.com/go-ole/go-ole v1.2.6 // indirect
 	github.com/go-stack/stack v1.8.0 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
@@ -58,13 +55,15 @@ require (
 	github.com/influxdata/influxdb-client-go/v2 v2.4.0 // indirect
 	github.com/influxdata/line-protocol v0.0.0-20210311194329-9aa0e372d097 // indirect
 	github.com/jackpal/go-nat-pmp v1.0.2-0.20160603034137-1fa385a6f458 // indirect
+	github.com/jmoiron/sqlx v1.3.5 // indirect
 	github.com/lib/pq v1.10.6 // indirect
+	github.com/mattn/go-colorable v0.1.11 // indirect
+	github.com/mattn/go-isatty v0.0.14 // indirect
 	github.com/mattn/go-runewidth v0.0.9 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/mitchellh/pointerstructure v1.2.0 // indirect
+	github.com/nxadm/tail v1.4.8 // indirect
 	github.com/olekukonko/tablewriter v0.0.5 // indirect
-	github.com/onsi/ginkgo v1.16.4 // indirect
-	github.com/onsi/gomega v1.16.0 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.0.2 // indirect
 	github.com/opentracing/opentracing-go v1.1.0 // indirect

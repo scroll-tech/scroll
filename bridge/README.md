@@ -1,6 +1,6 @@
 # Bridge
 
-[![Actions Status](https://github.com/scroll-tech/bridge/workflows/Continuous%20Integration/badge.svg)](https://github.com/scroll-tech/bridge/actions)
+[![Actions Status](https://scroll-tech/bridge/workflows/Continuous%20Integration/badge.svg)](https://scroll-tech/bridge/actions)
 [![codecov](https://codecov.io/gh/scroll-tech/bridge/branch/master/graph/badge.svg)](https://codecov.io/gh/scroll-tech/bridge)
 
 This repo contains the Scroll bridge.

@@ -22,16 +22,18 @@ import (
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/stretchr/testify/assert"
 
-	"scroll-tech/bridge/bridge"
-	"scroll-tech/bridge/bridge/l2"
-	bridge_config "scroll-tech/bridge/config"
+	rollers "scroll-tech/coordinator"
 	coordinator_config "scroll-tech/coordinator/config"
-	db_config "scroll-tech/store/config"
-	"scroll-tech/internal/docker"
-	"scroll-tech/coordinator/coordinator"
-	"scroll-tech/coordinator/coordinator/message"
+	"scroll-tech/coordinator/message"
 	"scroll-tech/store"
+	db_config "scroll-tech/store/config"
 	"scroll-tech/store/migrate"
+
+	"scroll-tech/bridge"
+	bridge_config "scroll-tech/bridge/config"
+	"scroll-tech/bridge/l2"
+
+	"scroll-tech/internal/docker"
 )
 
 // PerformHandshake sets up a websocket client to connect to the roller manager.

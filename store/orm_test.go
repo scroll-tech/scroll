@@ -15,8 +15,9 @@ import (
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/stretchr/testify/assert"
 
-	"scroll-tech/store/config"
 	"scroll-tech/internal/docker"
+
+	"scroll-tech/store/config"
 	"scroll-tech/store/migrate"
 	"scroll-tech/store/orm"
 )

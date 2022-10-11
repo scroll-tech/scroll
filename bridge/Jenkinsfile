@@ -30,11 +30,11 @@ pipeline {
                    //sh '''cat $PWD/logs/geth.log'''
                    sh '''
                       go get ./...
-                      go test -v -race -coverprofile=coverage.txt -covermode=atomic $(go list ./... | grep -v 'bridge')
-                      go test -v -race -coverprofile=coverage.txt -covermode=atomic -p 1 scroll-tech/bridge/bridge/abi
-                      go test -v -race -coverprofile=coverage.txt -covermode=atomic -p 1 scroll-tech/bridge/bridge/l1
-                      go test -v -race -coverprofile=coverage.txt -covermode=atomic -p 1 scroll-tech/bridge/bridge/l2
-                      go test -v -race -coverprofile=coverage.txt -covermode=atomic -p 1 scroll-tech/bridge/bridge/sender
+                      go test -v -race -coverprofile=coverage.txt -covermode=atomic $(go list ./...)
+                      go test -v -race -coverprofile=coverage.txt -covermode=atomic -p 1 scroll-tech/bridge/abi
+                      go test -v -race -coverprofile=coverage.txt -covermode=atomic -p 1 scroll-tech/bridge/l1
+                      go test -v -race -coverprofile=coverage.txt -covermode=atomic -p 1 scroll-tech/bridge/l2
+                      go test -v -race -coverprofile=coverage.txt -covermode=atomic -p 1 scroll-tech/bridge/sender
                       '''
                }
             }

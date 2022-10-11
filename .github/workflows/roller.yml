@@ -77,11 +77,12 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v2
     - name: Install goimports
-      run: go get golang.org/x/tools/cmd/goimports
+      run: |
+        go get golang.org/x/tools/cmd/goimports
     - run: goimports -local scroll-tech/go-roller/ -w .
-    - run: go mod tidy
-    # If there are any diffs from goimports or go mod tidy, fail.
-    - name: Verify no changes from goimports and go mod tidy
+    - run: go mod tidy -compat=1.17
+    # If there are any diffs from goimports or go mod tidy -compat=1.17, fail.
+    - name: Verify no changes from goimports and go mod tidy -compat=1.17
       run: |
         if [ -n "$(git status --porcelain)" ]; then
           exit 1

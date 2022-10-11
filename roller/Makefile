@@ -8,11 +8,11 @@ prepare-libprover:
 
 roller: ## Builds the Roller instance.
 	cd core/prover/rust && cargo build --release && cp target/release/libprover.a ../lib/
-	GOBIN=$(PWD)/build/bin go install ./cmd/roller
+	GOBIN=$(PWD)/build/bin go install ./cmd
 
 gpu-roller: ## Builds the GPU Roller instance.
 	cd core/prover/rust && cargo build --release && cp target/release/libprover.a ../lib/
-	GOBIN=$(PWD)/build/bin go install -tags gpu ./cmd/roller
+	GOBIN=$(PWD)/build/bin go install -tags gpu ./cmd
 
 test-prover:
 	go test -timeout 0 -v ./core/prover
@@ -21,7 +21,7 @@ test-gpu-prover:
 	go test -tags gpu -timeout 0 -v ./core/prover
 
 lint: ## Lint the files - used for CI
-	GOBIN=$(PWD)/build/bin go run build/lint.go
+	GOBIN=$(PWD)/build/bin go run ../build/lint.go
 
 clean: ## Empty out the bin folder
 	@rm -rf build/bin
