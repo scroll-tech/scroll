@@ -1,14 +1,19 @@
 package core
 
 import (
+	"crypto/ecdsa"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/ioutil"
+	"os"
+	"path/filepath"
 	"strings"
 	"sync/atomic"
 	"time"
 
 	"github.com/gorilla/websocket"
+	"github.com/scroll-tech/go-ethereum/accounts/keystore"
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/crypto"
 	"github.com/scroll-tech/go-ethereum/log"
@@ -87,9 +92,9 @@ func (r *Roller) Run() error {
 
 // Register registers Roller to the Scroll through Websocket.
 func (r *Roller) Register() error {
-	priv, err := crypto.HexToECDSA(r.cfg.SecretKey)
+	priv, err := r.loadOrCreateKey()
 	if err != nil {
-		return fmt.Errorf("generate private-key failed %v", err)
+		return err
 	}
 	authMsg := &AuthMessage{
 		Identity: Identity{
@@ -273,6 +278,37 @@ func (r *Roller) persistTrace(byt []byte) error {
 		Traces: traces,
 		Times:  0,
 	})
+}
+
+func (r *Roller) loadOrCreateKey() (*ecdsa.PrivateKey, error) {
+	keystoreFilePath := r.cfg.KeystorePath
+	if _, err := os.Stat(r.cfg.KeystorePath); os.IsNotExist(err) {
+		// If there is no keystore, make a new one.
+		ks := keystore.NewKeyStore(r.cfg.KeystorePath, keystore.StandardScryptN, keystore.StandardScryptP)
+		account, err := ks.NewAccount(r.cfg.KeystorePassword)
+		if err != nil {
+			return nil, fmt.Errorf("generate crypto account failed %v", err)
+		}
+		log.Info("create a new account", "address", account.Address.Hex())
+
+		fis, err := ioutil.ReadDir(r.cfg.KeystorePath)
+		if err != nil {
+			return nil, err
+		}
+		keystoreFilePath = filepath.Join(r.cfg.KeystorePath, fis[0].Name())
+	} else {
+		return nil, err
+	}
+
+	keyjson, err := ioutil.ReadFile(keystoreFilePath)
+	if err != nil {
+		return nil, err
+	}
+	key, err := keystore.DecryptKey(keyjson, r.cfg.KeystorePassword)
+	if err != nil {
+		return nil, err
+	}
+	return key.PrivateKey, nil
 }
 
 // MakeMsgByt Marshals Msg to bytes.
