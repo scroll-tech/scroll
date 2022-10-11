@@ -12,3 +12,5 @@ core/prover/rust/target
 
 params/
 seed
+
+keystore

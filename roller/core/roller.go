@@ -2,14 +2,18 @@ package core
 
 import (
 	"context"
+	"crypto/ecdsa"
 	"errors"
 	"fmt"
+	"io/ioutil"
+	"os"
+	"path/filepath"
 	"strings"
 	"sync/atomic"
 	"time"
 
 	"github.com/scroll-tech/go-ethereum"
-	"github.com/scroll-tech/go-ethereum/crypto"
+	"github.com/scroll-tech/go-ethereum/accounts/keystore"
 	"github.com/scroll-tech/go-ethereum/log"
 
 	"scroll-tech/go-roller/client"
@@ -40,10 +44,18 @@ type Roller struct {
 
 	isClosed int64
 	stopChan chan struct{}
+
+	priv *ecdsa.PrivateKey
 }
 
 // NewRoller new a Roller object.
 func NewRoller(cfg *config.Config) (*Roller, error) {
+	// load or create wallet
+	priv, err := loadOrCreateKey(cfg)
+	if err != nil {
+		return nil, err
+	}
+
 	// Get stack db handler
 	stackDb, err := store.NewStack(cfg.DBPath)
 	if err != nil {
@@ -71,6 +83,7 @@ func NewRoller(cfg *config.Config) (*Roller, error) {
 		sub:       nil,
 		traceChan: make(chan *message.BlockTraces, 2),
 		stopChan:  make(chan struct{}),
+		priv:      priv,
 	}, nil
 }
 
@@ -91,10 +104,6 @@ func (r *Roller) Run() error {
 
 // Register registers Roller to the Scroll through Websocket.
 func (r *Roller) Register() error {
-	priv, err := crypto.HexToECDSA(r.cfg.SecretKey)
-	if err != nil {
-		return fmt.Errorf("generate private-key failed %v", err)
-	}
 	authMsg := &message.AuthMessage{
 		Identity: &message.Identity{
 			Name:      r.cfg.RollerName,
@@ -103,7 +112,7 @@ func (r *Roller) Register() error {
 	}
 
 	// Sign auth message
-	if err = authMsg.Sign(priv); err != nil {
+	if err := authMsg.Sign(r.priv); err != nil {
 		return fmt.Errorf("sign auth message failed %v", err)
 	}
 
@@ -195,13 +204,8 @@ func (r *Roller) prove() error {
 		log.Info("prove block successfully!", "block-id", traces.ID)
 	}
 
-	priv, err := crypto.HexToECDSA(r.cfg.SecretKey)
-	if err != nil {
-		return fmt.Errorf("generate private-key failed %v", err)
-	}
-
 	authZkProof := &message.AuthZkProof{ProofMsg: proofMsg}
-	if err = authZkProof.Sign(priv); err != nil {
+	if err = authZkProof.Sign(r.priv); err != nil {
 		return err
 	}
 
@@ -226,4 +230,35 @@ func (r *Roller) Close() {
 	if err := r.stack.Close(); err != nil {
 		log.Error("failed to close bbolt db", "error", err)
 	}
+}
+
+func loadOrCreateKey(cfg *config.Config) (*ecdsa.PrivateKey, error) {
+	keystoreFilePath := cfg.KeystorePath
+	if _, err := os.Stat(cfg.KeystorePath); os.IsNotExist(err) {
+		// If there is no keystore, make a new one.
+		ks := keystore.NewKeyStore(cfg.KeystorePath, keystore.StandardScryptN, keystore.StandardScryptP)
+		account, err := ks.NewAccount(cfg.KeystorePassword)
+		if err != nil {
+			return nil, fmt.Errorf("generate crypto account failed %v", err)
+		}
+		log.Info("create a new account", "address", account.Address.Hex())
+
+		fis, err := ioutil.ReadDir(cfg.KeystorePath)
+		if err != nil {
+			return nil, err
+		}
+		keystoreFilePath = filepath.Join(cfg.KeystorePath, fis[0].Name())
+	} else {
+		return nil, err
+	}
+
+	keyjson, err := ioutil.ReadFile(keystoreFilePath)
+	if err != nil {
+		return nil, err
+	}
+	key, err := keystore.DecryptKey(keyjson, cfg.KeystorePassword)
+	if err != nil {
+		return nil, err
+	}
+	return key.PrivateKey, nil
 }

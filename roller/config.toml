@@ -1,5 +1,6 @@
 roller_name = "my_roller"
-secret_key = "dcf2cbdd171a21c480aa7f53d77f31bb102282b3ff099c78e3118b37348c72f7"
+keystore_path = "keystore"
+keystore_password = "roller-pwd"
 scroll_url = "ws://localhost:8291"
 db_path = "bbolt_db"
 

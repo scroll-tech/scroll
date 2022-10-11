@@ -9,11 +9,12 @@ import (
 
 // Config loads roller configuration items.
 type Config struct {
-	RollerName string        `toml:"roller_name"`
-	SecretKey  string        `toml:"secret_key"`
-	ScrollURL  string        `toml:"scroll_url"`
-	Prover     *ProverConfig `toml:"prover"`
-	DBPath     string        `toml:"db_path"`
+	RollerName       string        `toml:"roller_name"`
+	KeystorePath     string        `toml:"keystore_path"`
+	KeystorePassword string        `toml:"keystore_password"`
+	ScrollURL        string        `toml:"scroll_url"`
+	Prover           *ProverConfig `toml:"prover"`
+	DBPath           string        `toml:"db_path"`
 }
 
 // ProverConfig loads zk roller configuration items.
