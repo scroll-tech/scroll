@@ -3,7 +3,6 @@ package store
 import (
 	"context"
 	"encoding/json"
-	"io/ioutil"
 	"os"
 	"testing"
 	"time"
@@ -172,14 +171,8 @@ func TestOrm_BlockResults(t *testing.T) {
 	// check content
 	assert.Equal(t, true, string(data1) == string(data2))
 
-	// Retrieve pre-generated proofs
-	evmProof, err := ioutil.ReadFile("../assets/evm_proof")
-	assert.NoError(t, err)
-	stateProof, err := ioutil.ReadFile("../assets/state_proof")
-	assert.NoError(t, err)
-
 	// Update proof by hash
-	assert.NoError(t, ormTrace.UpdateProofByNumber(context.Background(), blockResult.BlockTrace.Number.ToInt().Uint64(), evmProof, stateProof, 1200))
+	assert.NoError(t, ormTrace.UpdateProofByNumber(context.Background(), blockResult.BlockTrace.Number.ToInt().Uint64(), []byte{1}, []byte{2}, 1200))
 
 	// Update trace and check result.
 	err = ormTrace.UpdateBlockStatus(blockResult.BlockTrace.Number.ToInt().Uint64(), orm.BlockVerified)
