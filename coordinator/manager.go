@@ -391,9 +391,9 @@ func (m *Manager) CollectProofs(id uint64, s session) {
 	}
 }
 
-// GetWsChan returns the channel in which newly created websockets are sent.
-func (m *Manager) GetWsChan() chan *Roller {
-	return m.server.wsChan
+// GetRollerChan returns the channel in which newly created wrapped roller connections are sent.
+func (m *Manager) GetRollerChan() chan *Roller {
+	return m.server.rollerChan
 }
 
 // APIs collect API services.
@@ -437,7 +437,7 @@ func (m *Manager) StartProofGenerationSession(trace *types.BlockResult) bool {
 		)
 		return false
 	}
-	if err := sendMessage(roller.WS, msg); err != nil {
+	if err := roller.sendMessage(msg); err != nil {
 		log.Error(
 			"could not send traces message to roller",
 			"error", err,

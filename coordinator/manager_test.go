@@ -72,7 +72,7 @@ func TestHandshake(t *testing.T) {
 
 	// Roller manager should send a Websocket over the WsChan
 	select {
-	case <-rollerManager.GetWsChan():
+	case <-rollerManager.GetRollerChan():
 		// Test succeeded
 	case <-time.After(rollers.HandshakeTimeout):
 		t.Fail()
@@ -81,7 +81,7 @@ func TestHandshake(t *testing.T) {
 
 func TestHandshakeTimeout(t *testing.T) {
 	assert := assert.New(t)
-	cfg, err := bridge_config.NewConfig("../config.json")
+	cfg, err := bridge_config.config.NewConfig("../config.json")
 	assert.NoError(err)
 
 	verifierEndpoint := setupMockVerifier(assert)
@@ -108,7 +108,7 @@ func TestHandshakeTimeout(t *testing.T) {
 
 	// No websocket should be received
 	select {
-	case <-rollerManager.GetWsChan():
+	case <-rollerManager.GetRollerChan():
 		t.Fail()
 	case <-time.After(1 * time.Second):
 		// Test succeeded
@@ -142,7 +142,7 @@ func TestTwoConnections(t *testing.T) {
 
 		// Roller manager should send a Websocket over the WsChan
 		select {
-		case <-rollerManager.GetWsChan():
+		case <-rollerManager.GetRollerChan():
 			// Test succeeded
 		case <-time.After(rollers.HandshakeTimeout):
 			t.Fail()

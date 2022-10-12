@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -35,7 +36,12 @@ var upgrader = websocket.Upgrader{} // use default options
 // the roller authentication, and the websocket connection to the roller.
 type Roller struct {
 	AuthMsg *message.AuthMessage
-	WS      *websocket.Conn
+
+	// A mutex guarding the ws write methods.
+	wMu sync.RWMutex
+	// A mutex guarding the ws read methods.
+	rMu sync.RWMutex
+	ws  *websocket.Conn
 
 	closed  int64
 	closeCh chan struct{}
@@ -47,7 +53,7 @@ func (r *Roller) close() error {
 	}
 	atomic.StoreInt64(&r.closed, 1)
 	close(r.closeCh)
-	if err := r.WS.Close(); err != nil {
+	if err := r.ws.Close(); err != nil {
 		log.Error("fail to close WS", "err", err)
 		return err
 	}
@@ -68,8 +74,8 @@ type messageAndPk struct {
 // A websocket server, responsible for establishing connections with rollers,
 // and reading their messages, before passing them on to be handled by the roller manager.
 type server struct {
-	wsChan chan *Roller
-	server *http.Server
+	rollerChan chan *Roller
+	server     *http.Server
 
 	// All live connections to the rollers in the network.
 	conns *conns
@@ -79,9 +85,9 @@ type server struct {
 
 func newServer(addr string) *server {
 	s := &server{
-		wsChan:  make(chan *Roller, 10),
-		conns:   newConns(),
-		msgChan: make(chan *messageAndPk, 100),
+		rollerChan: make(chan *Roller, 100),
+		conns:      newConns(),
+		msgChan:    make(chan *messageAndPk, 100),
 	}
 
 	var srv http.Server
@@ -120,43 +126,52 @@ func (s *server) wsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	c.SetReadLimit(wsMessageSizeLimit)
 
+	// There will not be concurrent read/write on a connection when we handshake
+	// at the very beginning, so there's no need to lock here.
 	authMessage, err := s.handshake(c)
 	if err != nil {
 		log.Error("Could not complete handshake", "error", err)
 		return
 	}
 
-	ws := &Roller{
+	roller := &Roller{
 		AuthMsg: authMessage,
-		WS:      c,
+		ws:      c,
 		closeCh: make(chan struct{}),
 	}
 
 	// Overwrite existing connection.
 	// We don't need to worry about a malicious roller faking its pubkey, because
 	// we've checked `VerifySignature` in `handshake` above
-	if s.conns.get(ws.AuthMsg.Identity.PublicKey) != nil {
+	if s.conns.get(roller.AuthMsg.Identity.PublicKey) != nil {
 		log.Warn("Roller attempted to connect more than once",
-			"name", ws.AuthMsg.Identity.Name,
-			"pk", ws.AuthMsg.Identity.PublicKey)
+			"name", roller.AuthMsg.Identity.Name,
+			"pk", roller.AuthMsg.Identity.PublicKey)
 	}
 
-	ws.WS.SetPingHandler(
+	// There will not be concurrent read/write on a connection when we
+	// SetPingHandler/SetPongHandler at the very beginning, so there's no need
+	// to lock for them. But we may still need to lock for the handlers.
+	roller.ws.SetPingHandler(
 		func(string) error {
-			return ws.WS.WriteMessage(websocket.PongMessage, nil)
+			roller.wMu.Lock()
+			defer roller.wMu.Unlock()
+			return roller.ws.WriteMessage(websocket.PongMessage, nil)
 		})
-	ws.WS.SetPongHandler(
+	roller.ws.SetPongHandler(
 		func(string) error {
-			return ws.WS.SetReadDeadline(time.Now().Add(pongWait))
+			roller.rMu.Lock()
+			defer roller.rMu.Unlock()
+			return roller.ws.SetReadDeadline(time.Now().Add(pongWait))
 		})
-	s.conns.add(ws)
-	go s.readLoop(ws)
-	go s.pingLoop(ws)
+	s.conns.add(roller)
+	go s.readLoop(roller)
+	go s.pingLoop(roller)
 
 	// avoid being blocked
-	if s.wsChan != nil {
+	if s.rollerChan != nil {
 		select {
-		case s.wsChan <- ws:
+		case s.rollerChan <- roller:
 		default:
 			return
 		}
@@ -214,7 +229,7 @@ func (s *server) handshake(c *websocket.Conn) (*message.AuthMessage, error) {
 	if !crypto.VerifySignature(common.FromHex(authMsg.Identity.PublicKey), hash, common.FromHex(authMsg.Signature)[:64]) {
 		return nil, errors.New("signature verification failed")
 	}
-	log.Info("signature verification successful", "roller name", authMsg.Identity.Name)
+	log.Info("signature verification successfully", "roller name", authMsg.Identity.Name)
 
 	return authMsg, nil
 }
@@ -227,16 +242,22 @@ func (s *server) readLoop(c *Roller) {
 		case <-c.closeCh:
 			return
 		default:
-			if err := c.WS.SetReadDeadline(time.Now().Add(pongWait)); err != nil {
+			c.rMu.Lock()
+
+			if err := c.ws.SetReadDeadline(time.Now().Add(pongWait)); err != nil {
 				log.Error("could not set read deadline", "error", err)
+				c.rMu.Unlock()
 				return
 			}
 
-			mt, msg, err := c.WS.ReadMessage()
+			mt, msg, err := c.ws.ReadMessage()
 			if err != nil {
 				log.Error("could not read msg", "error", err, "name", c.AuthMsg.Identity.Name)
+				c.rMu.Unlock()
 				return
 			}
+
+			c.rMu.Unlock()
 
 			// Check if this msg needs to be handled manually.
 			if mt == websocket.BinaryMessage {
@@ -255,53 +276,43 @@ func (s *server) readLoop(c *Roller) {
 func (s *server) pingLoop(c *Roller) {
 	pingTicker := time.NewTicker(pingWait)
 	defer pingTicker.Stop()
+
 	for {
 		select {
 		case <-c.closeCh:
 			return
 		case <-pingTicker.C:
-			if err := c.WS.SetWriteDeadline(time.Now().Add(writeWait)); err != nil {
+			c.wMu.Lock()
+
+			if err := c.ws.SetWriteDeadline(time.Now().Add(writeWait)); err != nil {
 				log.Error("could not set write deadline", "error", err)
+				c.wMu.Unlock()
 				return
 			}
 
-			if err := c.WS.WriteMessage(websocket.PingMessage, nil); err != nil {
+			if err := c.ws.WriteMessage(websocket.PingMessage, nil); err != nil {
 				log.Error("could not send ping", "error", err)
+				c.wMu.Unlock()
 				return
 			}
+
+			c.wMu.Unlock()
 		}
 	}
 }
 
-func sendMessage(c *websocket.Conn, msg message.Msg) error {
+func (r *Roller) sendMessage(msg message.Msg) error {
 	b, err := json.Marshal(&msg)
 	if err != nil {
 		return err
 	}
 
-	if err := c.SetWriteDeadline(time.Now().Add(writeWait)); err != nil {
+	r.wMu.Lock()
+	defer r.wMu.Unlock()
+
+	if err := r.ws.SetWriteDeadline(time.Now().Add(writeWait)); err != nil {
 		log.Error("could not set write deadline", "error", err)
 		return err
 	}
-	return c.WriteMessage(websocket.BinaryMessage, b)
-}
-
-//nolint:unused
-func (s *server) sendAll(msg message.Msg) {
-	for _, c := range s.conns.getAll() {
-		if c.isClosed() {
-			continue
-		}
-		if err := c.WS.SetWriteDeadline(time.Now().Add(writeWait)); err != nil {
-			log.Error("could not set write deadline", "error", err)
-			continue
-		}
-		if err := sendMessage(c.WS, msg); err != nil {
-			log.Error(
-				"could not send block traces to roller",
-				"error", err,
-				"roller", c.AuthMsg.Identity.Name,
-			)
-		}
-	}
+	return r.ws.WriteMessage(websocket.BinaryMessage, b)
 }

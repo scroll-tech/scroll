@@ -24,7 +24,7 @@ func (c *conns) add(conn *Roller) {
 func swapFn(exists bool, valueInMap interface{}, newValue interface{}) interface{} {
 	// If the roller already exists, close its connection.
 	if exists {
-		_ = valueInMap.(*Roller).WS.Close()
+		_ = valueInMap.(*Roller).ws.Close()
 	}
 
 	return newValue
@@ -49,7 +49,7 @@ func (c *conns) delete(conn *Roller) {
 
 func removeFn(key string, v interface{}, exists bool) bool {
 	if exists {
-		_ = v.(*Roller).WS.Close()
+		_ = v.(*Roller).ws.Close()
 	}
 
 	return true
