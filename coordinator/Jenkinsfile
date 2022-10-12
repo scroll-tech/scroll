@@ -20,11 +20,6 @@ pipeline {
         stage('Test') {
             steps {
                sh 'ls $PWD/build/bin'
-               // prepare test DB. TODO: remove this dependency
-               sh '''#!/bin/bash
-                    ./build/bin/coordinator reset --config ./test_config.json
-                    ./build/bin/coordinator migrate --config ./test_config.json
-                    ''' 
                catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
                    //sh '''cat $PWD/logs/geth.log'''
                    sh '''
