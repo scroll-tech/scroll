@@ -7,9 +7,10 @@ import (
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/stretchr/testify/assert"
 
-	"scroll-tech/internal/mock"
 	"scroll-tech/store"
 	db_config "scroll-tech/store/config"
+
+	"scroll-tech/internal/mock"
 
 	"scroll-tech/bridge/config"
 	"scroll-tech/bridge/l1"

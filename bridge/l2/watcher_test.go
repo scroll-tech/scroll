@@ -20,9 +20,10 @@ import (
 	bridge_abi "scroll-tech/bridge/abi"
 	"scroll-tech/bridge/l2"
 
-	"scroll-tech/internal/mock"
 	"scroll-tech/store"
 	db_config "scroll-tech/store/config"
+
+	"scroll-tech/internal/mock"
 
 	"scroll-tech/bridge/config"
 	"scroll-tech/bridge/mock_bridge"
