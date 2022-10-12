@@ -46,7 +46,7 @@ func TestCreateNewL1Relayer(t *testing.T) {
 	db, err := store.NewOrmFactory(TEST_CONFIG.DB_CONFIG)
 	assert.NoError(t, err)
 
-	relayer, err := l1.NewLayer1Relayer(context.Background(), client, db, cfg.L2Config.RelayerConfig)
+	relayer, err := l1.NewLayer1Relayer(context.Background(), client, 1, db, cfg.L2Config.RelayerConfig)
 	assert.NoError(t, err)
 
 	relayer.Start()

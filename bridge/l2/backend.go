@@ -47,7 +47,7 @@ func New(ctx context.Context, cfg *config.L2Config, orm store.OrmFactory) (*Back
 		proofGenerationFreq = 1
 	}
 
-	relayer, err := NewLayer2Relayer(ctx, client, proofGenerationFreq, skippedOpcodes, orm, cfg.RelayerConfig)
+	relayer, err := NewLayer2Relayer(ctx, client, proofGenerationFreq, skippedOpcodes, int64(cfg.Confirmations), orm, cfg.RelayerConfig)
 	if err != nil {
 		return nil, err
 	}

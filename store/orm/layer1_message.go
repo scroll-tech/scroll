@@ -20,6 +20,18 @@ func NewLayer1MessageOrm(db *sqlx.DB) Layer1MessageOrm {
 	return &layer1MessageOrm{db: db}
 }
 
+// GetLayer1MessageByLayer1Hash fetch message by nonce
+func (m *layer1MessageOrm) GetLayer1MessageByLayer1Hash(layer1Hash string) (*Layer1Message, error) {
+	msg := Layer1Message{}
+
+	row := m.db.QueryRow(`SELECT nonce, height, sender, target, value, fee, gas_limit, deadline, calldata, layer1_hash, status FROM layer1_message WHERE layer1_hash = $1`, layer1Hash)
+
+	if err := row.Scan(&msg.Nonce, &msg.Height, &msg.Sender, &msg.Target, &msg.Value, &msg.Fee, &msg.GasLimit, &msg.Deadline, &msg.Calldata, &msg.Layer1Hash, &msg.Status); err != nil {
+		return nil, err
+	}
+	return &msg, nil
+}
+
 // GetLayer1MessageByNonce fetch message by nonce
 func (m *layer1MessageOrm) GetLayer1MessageByNonce(nonce uint64) (*Layer1Message, error) {
 	msg := Layer1Message{}
@@ -98,8 +110,8 @@ func (m *layer1MessageOrm) SaveLayer1Messages(ctx context.Context, messages []*L
 }
 
 // UpdateLayer2Hash update corresponding layer2 hash given message nonce
-func (m *layer1MessageOrm) UpdateLayer2Hash(ctx context.Context, nonce uint64, layer2_hash string) error {
-	if _, err := m.db.ExecContext(ctx, m.db.Rebind("update layer1_message set layer2_hash = ? where nonce = ?;"), layer2_hash, nonce); err != nil {
+func (m *layer1MessageOrm) UpdateLayer2Hash(ctx context.Context, layer1Hash string, layer2Hash string) error {
+	if _, err := m.db.ExecContext(ctx, m.db.Rebind("update layer1_message set layer2_hash = ? where layer1_hash = ?;"), layer2Hash, layer1Hash); err != nil {
 		return err
 	}
 
@@ -107,8 +119,8 @@ func (m *layer1MessageOrm) UpdateLayer2Hash(ctx context.Context, nonce uint64, l
 }
 
 // UpdateLayer1Status updates message stauts
-func (m *layer1MessageOrm) UpdateLayer1Status(ctx context.Context, nonce uint64, status MsgStatus) error {
-	if _, err := m.db.ExecContext(ctx, m.db.Rebind("update layer1_message set status = ? where nonce = ?;"), status, nonce); err != nil {
+func (m *layer1MessageOrm) UpdateLayer1Status(ctx context.Context, layer1Hash string, status MsgStatus) error {
+	if _, err := m.db.ExecContext(ctx, m.db.Rebind("update layer1_message set status = ? where layer1_hash = ?;"), status, layer1Hash); err != nil {
 		return err
 	}
 
@@ -116,8 +128,8 @@ func (m *layer1MessageOrm) UpdateLayer1Status(ctx context.Context, nonce uint64,
 }
 
 // UpdateLayer1StatusAndLayer2Hash updates message status and layer2 transaction hash
-func (m *layer1MessageOrm) UpdateLayer1StatusAndLayer2Hash(ctx context.Context, nonce uint64, layer2_hash string, status MsgStatus) error {
-	if _, err := m.db.ExecContext(ctx, m.db.Rebind("update layer1_message set status = ?, layer2_hash = ? where nonce = ?;"), status, layer2_hash, nonce); err != nil {
+func (m *layer1MessageOrm) UpdateLayer1StatusAndLayer2Hash(ctx context.Context, layer1Hash, layer2Hash string, status MsgStatus) error {
+	if _, err := m.db.ExecContext(ctx, m.db.Rebind("update layer1_message set status = ?, layer2_hash = ? where layer1_hash = ?;"), status, layer2Hash, layer1Hash); err != nil {
 		return err
 	}
 

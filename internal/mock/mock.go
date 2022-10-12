@@ -22,16 +22,17 @@ import (
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/stretchr/testify/assert"
 
-	rollers "scroll-tech/coordinator"
-	coordinator_config "scroll-tech/coordinator/config"
-	"scroll-tech/coordinator/message"
+	"scroll-tech/rollers"
+	"scroll-tech/rollers/message"
+	"scroll-tech/scroll/bridge"
+	"scroll-tech/scroll/bridge/l2"
 	"scroll-tech/store"
 	db_config "scroll-tech/store/config"
 	"scroll-tech/store/migrate"
 
-	"scroll-tech/bridge"
+	coordinator_config "scroll-tech/coordinator/config"
+
 	bridge_config "scroll-tech/bridge/config"
-	"scroll-tech/bridge/l2"
 
 	"scroll-tech/internal/docker"
 )
@@ -146,7 +147,7 @@ func NewTestL1Docker(t *testing.T, tcfg *TestConfig) docker.ImgInstance {
 	return img_geth
 }
 
-func GetTestL2Docker(t *testing.T, tcfg *TestConfig) docker.ImgInstance {
+func NewTestL2Docker(t *testing.T, tcfg *TestConfig) docker.ImgInstance {
 	img_geth := docker.NewImgGeth(t, "scroll_l2geth", "", "", tcfg.L2GethTestConfig.HPort, tcfg.L2GethTestConfig.WPort)
 	assert.NoError(t, img_geth.Start())
 	return img_geth
@@ -161,14 +162,14 @@ func GetDbDocker(t *testing.T, tcfg *TestConfig) docker.ImgInstance {
 // Mockl2geth return mock l2geth client created with docker for test
 func Mockl2gethDocker(t *testing.T, cfg *bridge_config.Config, tcfg *TestConfig) (bridge.MockL2BackendClient, docker.ImgInstance, docker.ImgInstance) {
 	// initialize l2geth docker image
-	img_geth := GetTestL2Docker(t, tcfg)
+	img_geth := NewTestL2Docker(t, tcfg)
 
 	cfg.L2Config.Endpoint = img_geth.Endpoint()
 
 	// initialize db docker image
 	img_db := GetDbDocker(t, tcfg)
 
-	db, err := store.NewOrmFactory(&db_config.DBConfig{
+	db, err := store.NewOrmFactory(&config.db_DBConfig{
 		DriverName: "postgres",
 		DSN:        img_db.Endpoint(),
 	})

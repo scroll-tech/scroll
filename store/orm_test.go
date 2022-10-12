@@ -203,13 +203,13 @@ func TestOrm_Layer1Message(t *testing.T) {
 	err := ormLayer1.SaveLayer1Messages(context.Background(), templateLayer1Message)
 	assert.NoError(t, err)
 
-	err = ormLayer1.UpdateLayer1Status(context.Background(), 1, orm.MsgConfirmed)
+	err = ormLayer1.UpdateLayer1Status(context.Background(), "hash0", orm.MsgConfirmed)
 	assert.NoError(t, err)
 
-	err = ormLayer1.UpdateLayer1Status(context.Background(), 2, orm.MsgSubmitted)
+	err = ormLayer1.UpdateLayer1Status(context.Background(), "hash1", orm.MsgSubmitted)
 	assert.NoError(t, err)
 
-	err = ormLayer1.UpdateLayer2Hash(context.Background(), 2, expected)
+	err = ormLayer1.UpdateLayer2Hash(context.Background(), "hash1", expected)
 	assert.NoError(t, err)
 
 	result, err := ormLayer1.GetL1ProcessedNonce()
@@ -220,8 +220,9 @@ func TestOrm_Layer1Message(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, int64(2), height)
 
-	_, err = ormLayer1.GetLayer1MessageByNonce(2)
+	msg, err := ormLayer1.GetLayer1MessageByLayer1Hash("hash1")
 	assert.NoError(t, err)
+	assert.Equal(t, orm.MsgSubmitted, msg.Status)
 
 	// todo : we should have a method to verify layer2hash in layer1message
 	defer sqlxdb.Close()
@@ -237,13 +238,13 @@ func TestOrm_Layer2Message(t *testing.T) {
 	err := ormLayer2.SaveLayer2Messages(context.Background(), templateLayer2Message)
 	assert.NoError(t, err)
 
-	err = ormLayer2.UpdateLayer2Status(context.Background(), 1, orm.MsgConfirmed)
+	err = ormLayer2.UpdateLayer2Status(context.Background(), "hash0", orm.MsgConfirmed)
 	assert.NoError(t, err)
 
-	err = ormLayer2.UpdateLayer2Status(context.Background(), 2, orm.MsgSubmitted)
+	err = ormLayer2.UpdateLayer2Status(context.Background(), "hash1", orm.MsgSubmitted)
 	assert.NoError(t, err)
 
-	err = ormLayer2.UpdateLayer1Hash(context.Background(), 2, expected)
+	err = ormLayer2.UpdateLayer1Hash(context.Background(), "hash1", expected)
 	assert.NoError(t, err)
 
 	result, err := ormLayer2.GetL2ProcessedNonce()
@@ -254,8 +255,9 @@ func TestOrm_Layer2Message(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, int64(2), height)
 
-	_, err = ormLayer2.GetLayer2MessageByNonce(2)
+	msg, err := ormLayer2.GetLayer2MessageByLayer2Hash("hash1")
 	assert.NoError(t, err)
+	assert.Equal(t, orm.MsgSubmitted, msg.Status)
 
 	// todo : we should have a method to verify layer1hash in layer1message
 	defer sqlxdb.Close()

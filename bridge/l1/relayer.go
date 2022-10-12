@@ -3,6 +3,7 @@ package l1
 import (
 	"context"
 	"math/big"
+	"sync/atomic"
 	"time"
 
 	// not sure if this will make problems when relay with l1geth
@@ -39,21 +40,19 @@ type Layer1Relayer struct {
 	db  orm.Layer1MessageOrm
 	cfg *config.RelayerConfig
 
-	l2MessengerABI *abi.ABI
-
-	// a list of processing message, from tx.nonce to message nonce
-	processingMessage map[uint64]uint64
+	//checked block height
+	l1ConfirmNum          int64
+	checkedPendingTxBlock uint64
 
 	// channel used to communicate with transaction sender
-	confirmationCh chan *sender.Confirmation
-	stop           chan bool
+	confirmationCh <-chan *sender.Confirmation
+	l2MessengerABI *abi.ABI
+
+	stopCh chan struct{}
 }
 
 // NewLayer1Relayer will return a new instance of Layer1RelayerClient
-func NewLayer1Relayer(ctx context.Context, ethClient *ethclient.Client, db orm.Layer1MessageOrm, cfg *config.RelayerConfig) (*Layer1Relayer, error) {
-
-	confirmationCh := make(chan *sender.Confirmation, confirmationChanSize)
-
+func NewLayer1Relayer(ctx context.Context, ethClient *ethclient.Client, l1ConfirmNum int64, db orm.Layer1MessageOrm, cfg *config.RelayerConfig) (*Layer1Relayer, error) {
 	l2MessengerABI, err := bridge_abi.L2MessengerMetaData.GetAbi()
 	if err != nil {
 		log.Warn("new L2MessengerABI failed", "err", err)
@@ -66,22 +65,29 @@ func NewLayer1Relayer(ctx context.Context, ethClient *ethclient.Client, db orm.L
 		return nil, err
 	}
 
-	sender, err := sender.NewSender(ctx, confirmationCh, *cfg.SenderConfig, prv)
+	sender, err := sender.NewSender(ctx, cfg.SenderConfig, prv)
 	if err != nil {
 		log.Error("new sender failed", "err", err)
 		return nil, err
 	}
 
+	checkedPendingTxBlock, err := ethClient.BlockNumber(ctx)
+	if err != nil {
+		log.Error("Failed to get block number in l1/relayer", "err", err)
+		return nil, err
+	}
+
 	return &Layer1Relayer{
-		ctx:               ctx,
-		client:            ethClient,
-		sender:            sender,
-		db:                db,
-		l2MessengerABI:    l2MessengerABI,
-		cfg:               cfg,
-		processingMessage: map[uint64]uint64{},
-		confirmationCh:    confirmationCh,
-		stop:              make(chan bool),
+		ctx:                   ctx,
+		client:                ethClient,
+		sender:                sender,
+		db:                    db,
+		l2MessengerABI:        l2MessengerABI,
+		cfg:                   cfg,
+		l1ConfirmNum:          l1ConfirmNum,
+		checkedPendingTxBlock: checkedPendingTxBlock,
+		stopCh:                make(chan struct{}),
+		confirmationCh:        sender.ConfirmChan(),
 	}, nil
 }
 
@@ -117,20 +123,17 @@ func (r *Layer1Relayer) ProcessSavedEvents() {
 		return
 	}
 
-	nonce, hash, err := r.sender.SendTransaction(&r.cfg.MessengerContractAddress, big.NewInt(0), data)
+	hash, err := r.sender.SendTransaction(msg.Layer1Hash, &r.cfg.MessengerContractAddress, big.NewInt(0), data)
 	if err != nil {
 		log.Error("Failed to send relayMessage tx to L2", "msg.nonce", msg.Nonce, "msg.height", msg.Height, "err", err)
 		return
 	}
-	log.Info("relayMessage to layer2", "tx.nonce", nonce, "hash", hash)
+	log.Info("relayMessage to layer2", "layer1 hash", msg.Layer1Hash, "tx hash", hash)
 
-	// save status in db
-	// @todo handle db error
-	err = r.db.UpdateLayer1StatusAndLayer2Hash(r.ctx, msg.Nonce, hash.String(), orm.MsgSubmitted)
+	err = r.db.UpdateLayer1StatusAndLayer2Hash(r.ctx, msg.Layer1Hash, hash.String(), orm.MsgSubmitted)
 	if err != nil {
-		log.Error("UpdateLayer1StatusAndLayer2Hash failed", "msg.nonce", msg.Nonce, "msg.height", msg.Height, "err", err)
+		log.Error("UpdateLayer1StatusAndLayer2Hash failed", "msg.layer1hash", msg.Layer1Hash, "msg.height", msg.Height, "err", err)
 	}
-	r.processingMessage[nonce] = msg.Nonce
 }
 
 // Start the relayer process
@@ -145,24 +148,45 @@ func (r *Layer1Relayer) Start() {
 			case <-ticker.C:
 				// number, err := r.client.BlockNumber(r.ctx)
 				// log.Info("receive header", "height", number)
+				err := r.checkPendingTransaction()
+				if err != nil {
+					log.Warn("Can not check the pending Transaction from l1 relayer", "err", err)
+				}
 				r.ProcessSavedEvents()
-			case confirmation := <-r.confirmationCh:
-				msgNonce := r.processingMessage[confirmation.Nonce]
-				// @todo handle db error
-				err := r.db.UpdateLayer1StatusAndLayer2Hash(r.ctx, msgNonce, confirmation.Hash.String(), orm.MsgConfirmed)
+			case cfm := <-r.confirmationCh: // @todo handle db error
+				err := r.db.UpdateLayer1StatusAndLayer2Hash(r.ctx, cfm.ID, cfm.TxHash.String(), orm.MsgConfirmed)
 				if err != nil {
 					log.Warn("UpdateLayer1StatusAndLayer2Hash failed", "err", err)
 				}
-				delete(r.processingMessage, confirmation.Nonce)
-				log.Info("transaction confirmed in layer2", "confirmation", confirmation)
-			case <-r.stop:
+				log.Info("transaction confirmed in layer2", "confirmation", cfm)
+			case <-r.stopCh:
 				return
 			}
 		}
 	}()
 }
 
+func (r *Layer1Relayer) checkPendingTransaction() error {
+	uBlockNum, err := r.client.BlockNumber(r.ctx)
+	if err != nil {
+		return err
+	}
+	blockNum := int64(uBlockNum) - r.l1ConfirmNum
+	if blockNum < 0 {
+		blockNum = 0
+	}
+	for i := int64(r.checkedPendingTxBlock + 1); i <= blockNum; i++ {
+		block, err := r.client.BlockByNumber(r.ctx, big.NewInt(i))
+		if err != nil {
+			return err
+		}
+		r.sender.CheckPendingTransaction(block)
+		atomic.AddUint64(&r.checkedPendingTxBlock, 1)
+	}
+	return nil
+}
+
 // Stop the relayer module, for a graceful shutdown.
 func (r *Layer1Relayer) Stop() {
-	r.stop <- true
+	close(r.stopCh)
 }

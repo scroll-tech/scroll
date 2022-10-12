@@ -3,6 +3,7 @@ module scroll-tech/bridge
 go 1.17
 
 require (
+	github.com/orcaman/concurrent-map v1.0.0
 	github.com/scroll-tech/go-ethereum v1.10.14-0.20220920070544-3a7da33cd53d
 	github.com/stretchr/testify v1.7.2
 	github.com/urfave/cli/v2 v2.3.0
@@ -64,7 +65,6 @@ require (
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.0.2 // indirect
 	github.com/opentracing/opentracing-go v1.1.0 // indirect
-	github.com/orcaman/concurrent-map v1.0.0 // indirect
 	github.com/peterh/liner v1.1.1-0.20190123174540-a2c9a5303de7 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect

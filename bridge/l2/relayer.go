@@ -3,6 +3,8 @@ package l2
 import (
 	"context"
 	"math/big"
+	"strconv"
+	"sync/atomic"
 	"time"
 
 	// not sure if this will make problems when relay with l1geth
@@ -47,24 +49,26 @@ type Layer2Relayer struct {
 	l1MessengerABI *abi.ABI
 	l1RollupABI    *abi.ABI
 
-	// a list of processing message, from tx.nonce to message nonce
-	processingMessage map[uint64]uint64
+	// a list of processing message, indexed by layer2 hash
+	processingMessage map[string]string
 
-	// a list of processing block, from tx.nonce to block height
-	processingBlock map[uint64]uint64
+	// a list of processing block, indexed by block height
+	processingBlock map[string]uint64
 
-	// a list of processing proof, from tx.nonce to block height
-	processingProof map[uint64]uint64
+	// a list of processing proof, indexed by block height
+	processingProof map[string]uint64
+
+	//checked block height
+	l2ConfirmNum          int64
+	checkedPendingTxBlock uint64
 
 	// channel used to communicate with transaction sender
-	confirmationCh chan *sender.Confirmation
-	stop           chan bool
+	confirmationCh <-chan *sender.Confirmation
+	stopCh         chan struct{}
 }
 
 // NewLayer2Relayer will return a new instance of Layer2RelayerClient
-func NewLayer2Relayer(ctx context.Context, ethClient *ethclient.Client, proofGenFreq uint64, skippedOpcodes map[string]struct{}, db store.OrmFactory, cfg *config.RelayerConfig) (*Layer2Relayer, error) {
-
-	confirmationCh := make(chan *sender.Confirmation, confirmationChanSize)
+func NewLayer2Relayer(ctx context.Context, ethClient *ethclient.Client, proofGenFreq uint64, skippedOpcodes map[string]struct{}, l2ConfirmNum int64, db store.OrmFactory, cfg *config.RelayerConfig) (*Layer2Relayer, error) {
 
 	l1MessengerABI, err := bridge_abi.L1MessengerMetaData.GetAbi()
 	if err != nil {
@@ -85,27 +89,35 @@ func NewLayer2Relayer(ctx context.Context, ethClient *ethclient.Client, proofGen
 	}
 
 	// @todo use different sender for relayer, block commit and proof finalize
-	sender, err := sender.NewSender(ctx, confirmationCh, *cfg.SenderConfig, prv)
+	sender, err := sender.NewSender(ctx, cfg.SenderConfig, prv)
 	if err != nil {
 		log.Error("Failed to create sender", "err", err)
 		return nil, err
 	}
 
+	checkedPendingTxBlock, err := ethClient.BlockNumber(ctx)
+	if err != nil {
+		log.Error("Failed to get block number in l2/relayer", "err", err)
+		return nil, err
+	}
+
 	return &Layer2Relayer{
-		ctx:                 ctx,
-		client:              ethClient,
-		sender:              sender,
-		db:                  db,
-		l1MessengerABI:      l1MessengerABI,
-		l1RollupABI:         l1RollupABI,
-		cfg:                 cfg,
-		proofGenerationFreq: proofGenFreq,
-		skippedOpcodes:      skippedOpcodes,
-		processingMessage:   map[uint64]uint64{},
-		processingBlock:     map[uint64]uint64{},
-		processingProof:     map[uint64]uint64{},
-		confirmationCh:      confirmationCh,
-		stop:                make(chan bool),
+		ctx:                   ctx,
+		client:                ethClient,
+		sender:                sender,
+		db:                    db,
+		l1MessengerABI:        l1MessengerABI,
+		l1RollupABI:           l1RollupABI,
+		cfg:                   cfg,
+		proofGenerationFreq:   proofGenFreq,
+		skippedOpcodes:        skippedOpcodes,
+		processingMessage:     map[string]string{},
+		processingBlock:       map[string]uint64{},
+		processingProof:       map[string]uint64{},
+		l2ConfirmNum:          l2ConfirmNum,
+		checkedPendingTxBlock: checkedPendingTxBlock,
+		stopCh:                make(chan struct{}),
+		confirmationCh:        sender.ConfirmChan(),
 	}, nil
 }
 
@@ -158,20 +170,20 @@ func (r *Layer2Relayer) ProcessSavedEvents() {
 		return
 	}
 
-	nonce, hash, err := r.sender.SendTransaction(&r.cfg.MessengerContractAddress, big.NewInt(0), data)
+	hash, err := r.sender.SendTransaction(msg.Layer2Hash, &r.cfg.MessengerContractAddress, big.NewInt(0), data)
 	if err != nil {
 		log.Error("Failed to send relayMessageWithProof tx to L1", "err", err)
 		return
 	}
-	log.Info("relayMessageWithProof to layer1", "tx.nonce", nonce, "hash", hash)
+	log.Info("relayMessageWithProof to layer1", "layer2hash", msg.Layer2Hash, "txhash", hash.String())
 
 	// save status in db
 	// @todo handle db error
-	err = r.db.UpdateLayer2StatusAndLayer1Hash(r.ctx, msg.Nonce, hash.String(), orm.MsgSubmitted)
+	err = r.db.UpdateLayer2StatusAndLayer1Hash(r.ctx, msg.Layer2Hash, hash.String(), orm.MsgSubmitted)
 	if err != nil {
-		log.Error("UpdateLayer2StatusAndLayer1Hash failed", "msg.nonce", msg.Nonce, "err", err)
+		log.Error("UpdateLayer2StatusAndLayer1Hash failed", "layer2hash", msg.Layer2Hash, "err", err)
 	}
-	r.processingMessage[nonce] = msg.Nonce
+	r.processingMessage[msg.Layer2Hash] = msg.Layer2Hash
 }
 
 // ProcessPendingBlocks submit block data to layer rollup contract
@@ -247,19 +259,19 @@ func (r *Layer2Relayer) ProcessPendingBlocks() {
 		log.Error("Failed to pack commitBlock", "height", height, "err", err)
 		return
 	}
-	nonce, hash, err := r.sender.SendTransaction(&r.cfg.RollupContractAddress, big.NewInt(0), data)
+	hash, err := r.sender.SendTransaction(strconv.FormatUint(height, 10), &r.cfg.RollupContractAddress, big.NewInt(0), data)
 	if err != nil {
 		log.Error("Failed to send commitBlock tx to layer1 ", "height", height, "err", err)
 		return
 	}
-	log.Info("commitBlock in layer1", "height", height, "nonce", nonce, "hash", hash)
+	log.Info("commitBlock in layer1", "height", height, "hash", hash)
 
 	// record and sync with db, @todo handle db error
 	err = r.db.UpdateRollupTxHashAndStatus(r.ctx, height, hash.String(), orm.RollupCommitting)
 	if err != nil {
 		log.Error("UpdateRollupTxHashAndStatus failed", "height", height, "err", err)
 	}
-	r.processingBlock[nonce] = height
+	r.processingBlock[strconv.FormatUint(height, 10)] = height
 }
 
 // ProcessCommittedBlocks submit proof to layer rollup contract
@@ -346,7 +358,8 @@ func (r *Layer2Relayer) ProcessCommittedBlocks() {
 			log.Error("Pack finalizeBlockWithProof failed", err)
 			return
 		}
-		nonce, hash, err := r.sender.SendTransaction(&r.cfg.RollupContractAddress, big.NewInt(0), data)
+		txHash, err := r.sender.SendTransaction(strconv.FormatUint(height, 10), &r.cfg.RollupContractAddress, big.NewInt(0), data)
+		hash = &txHash
 		if err != nil {
 			log.Error("finalizeBlockWithProof in layer1 failed",
 				"height", height,
@@ -354,7 +367,7 @@ func (r *Layer2Relayer) ProcessCommittedBlocks() {
 			)
 			return
 		}
-		log.Info("finalizeBlockWithProof in layer1", "nonce", nonce, "height", height, "hash", hash)
+		log.Info("finalizeBlockWithProof in layer1", "height", height, "hash", hash)
 
 		// record and sync with db, @todo handle db error
 		err = r.db.UpdateFinalizeTxHashAndStatus(r.ctx, height, hash.String(), orm.RollupFinalizing)
@@ -362,7 +375,7 @@ func (r *Layer2Relayer) ProcessCommittedBlocks() {
 			log.Warn("UpdateFinalizeTxHashAndStatus failed", "height", height, "err", err)
 		}
 		success = true
-		r.processingProof[nonce] = height
+		r.processingProof[strconv.FormatUint(height, 10)] = height
 
 	default:
 		log.Error("encounter unreachable case in ProcessCommittedBlocks",
@@ -381,14 +394,16 @@ func (r *Layer2Relayer) Start() {
 		for {
 			select {
 			case <-ticker.C:
-				// number, err := r.client.BlockNumber(r.ctx)
-				// log.Info("receive header", "height", number)
+				err := r.checkPendingTransaction()
+				if err != nil {
+					log.Warn("Can not check the pending Transaction from l2 relayer", "err", err)
+				}
 				r.ProcessSavedEvents()
 				r.ProcessPendingBlocks()
 				r.ProcessCommittedBlocks()
 			case confirmation := <-r.confirmationCh:
 				r.handleConfirmation(confirmation)
-			case <-r.stop:
+			case <-r.stopCh:
 				return
 			}
 		}
@@ -397,7 +412,27 @@ func (r *Layer2Relayer) Start() {
 
 // Stop the relayer module, for a graceful shutdown.
 func (r *Layer2Relayer) Stop() {
-	r.stop <- true
+	close(r.stopCh)
+}
+
+func (r *Layer2Relayer) checkPendingTransaction() error {
+	uBlockNum, err := r.client.BlockNumber(r.ctx)
+	if err != nil {
+		return err
+	}
+	blockNum := int64(uBlockNum) - r.l2ConfirmNum
+	if blockNum < 0 {
+		blockNum = 0
+	}
+	for i := int64(r.checkedPendingTxBlock + 1); i <= blockNum; i++ {
+		block, err := r.client.BlockByNumber(r.ctx, big.NewInt(i))
+		if err != nil {
+			return err
+		}
+		r.sender.CheckPendingTransaction(block)
+		atomic.AddUint64(&r.checkedPendingTxBlock, 1)
+	}
+	return nil
 }
 
 func (r *Layer2Relayer) getOrFetchBlockHashByHeight(height uint64) (*common.Hash, error) {
@@ -461,36 +496,36 @@ func (r *Layer2Relayer) fetchMissingBlockResultByHeight(height uint64) (*types.B
 func (r *Layer2Relayer) handleConfirmation(confirmation *sender.Confirmation) {
 	transactionType := "Unknown"
 	// check whether it is message relay transaction
-	if msgNonce, ok := r.processingMessage[confirmation.Nonce]; ok {
+	if layer2Hash, ok := r.processingMessage[confirmation.ID]; ok {
 		transactionType = "MessageRelay"
 		// @todo handle db error
-		err := r.db.UpdateLayer2StatusAndLayer1Hash(r.ctx, msgNonce, confirmation.Hash.String(), orm.MsgConfirmed)
+		err := r.db.UpdateLayer2StatusAndLayer1Hash(r.ctx, layer2Hash, confirmation.TxHash.String(), orm.MsgConfirmed)
 		if err != nil {
 			log.Warn("UpdateLayer2StatusAndLayer1Hash failed", "err", err)
 		}
-		delete(r.processingMessage, confirmation.Nonce)
+		delete(r.processingMessage, confirmation.ID)
 	}
 
 	// check whether it is block commitment transaction
-	if blockHeight, ok := r.processingBlock[confirmation.Nonce]; ok {
+	if blockHeight, ok := r.processingBlock[confirmation.ID]; ok {
 		transactionType = "BlockCommitment"
 		// @todo handle db error
-		err := r.db.UpdateRollupTxHashAndStatus(r.ctx, blockHeight, confirmation.Hash.String(), orm.RollupCommitted)
+		err := r.db.UpdateRollupTxHashAndStatus(r.ctx, blockHeight, confirmation.TxHash.String(), orm.RollupCommitted)
 		if err != nil {
 			log.Warn("UpdateRollupTxHashAndStatus failed", "err", err)
 		}
-		delete(r.processingBlock, confirmation.Nonce)
+		delete(r.processingBlock, confirmation.ID)
 	}
 
 	// check whether it is proof finalization transaction
-	if blockHeight, ok := r.processingProof[confirmation.Nonce]; ok {
+	if blockHeight, ok := r.processingProof[confirmation.ID]; ok {
 		transactionType = "ProofFinalization"
 		// @todo handle db error
-		err := r.db.UpdateFinalizeTxHashAndStatus(r.ctx, blockHeight, confirmation.Hash.String(), orm.RollupFinalized)
+		err := r.db.UpdateFinalizeTxHashAndStatus(r.ctx, blockHeight, confirmation.TxHash.String(), orm.RollupFinalized)
 		if err != nil {
 			log.Warn("UpdateFinalizeTxHashAndStatus failed", "err", err)
 		}
-		delete(r.processingProof, confirmation.Nonce)
+		delete(r.processingProof, confirmation.ID)
 
 		// try to delete block trace
 		err = r.db.DeleteTraceByNumber(blockHeight)

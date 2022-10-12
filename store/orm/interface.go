@@ -99,23 +99,27 @@ type Layer1MessageOrm interface {
 	GetL1UnprocessedMessages() ([]*Layer1Message, error)
 	GetL1ProcessedNonce() (int64, error)
 	SaveLayer1Messages(ctx context.Context, messages []*Layer1Message) error
-	UpdateLayer2Hash(ctx context.Context, nonce uint64, layer2_hash string) error
-	UpdateLayer1Status(ctx context.Context, nonce uint64, status MsgStatus) error
-	UpdateLayer1StatusAndLayer2Hash(ctx context.Context, nonce uint64, layer2_hash string, status MsgStatus) error
+	UpdateLayer2Hash(ctx context.Context, layer1Hash string, layer2Hash string) error
+	UpdateLayer1Status(ctx context.Context, layer1Hash string, status MsgStatus) error
+	UpdateLayer1StatusAndLayer2Hash(ctx context.Context, layer1Hash, layer2Hash string, status MsgStatus) error
 	GetLayer1LatestWatchedHeight() (int64, error)
+	GetLayer1MessageByLayer1Hash(layer1Hash string) (*Layer1Message, error)
 }
 
 // Layer2MessageOrm is layer2 message db interface
 type Layer2MessageOrm interface {
 	GetLayer2MessageByNonce(nonce uint64) (*Layer2Message, error)
 	MessageProofExist(nonce uint64) (bool, error)
-	GetMessageProofByNonce(nonce uint64) (*string, error)
+	GetMessageProofByNonce(nonce uint64) (string, error)
 	GetL2UnprocessedMessages() ([]*Layer2Message, error)
 	GetL2ProcessedNonce() (int64, error)
 	SaveLayer2Messages(ctx context.Context, messages []*Layer2Message) error
-	UpdateLayer1Hash(ctx context.Context, nonce uint64, layer1_hash string) error
-	UpdateLayer2Status(ctx context.Context, nonce uint64, status MsgStatus) error
-	UpdateLayer2StatusAndLayer1Hash(ctx context.Context, nonce uint64, layer1_hash string, status MsgStatus) error
-	UpdateMessageProof(ctx context.Context, nonce uint64, proof string) error
+	UpdateLayer1Hash(ctx context.Context, layer2Hash string, layer1Hash string) error
+	UpdateLayer2Status(ctx context.Context, layer2Hash string, status MsgStatus) error
+	GetLayer2MessageByLayer2Hash(layer2Hash string) (*Layer2Message, error)
+	UpdateMessageProof(ctx context.Context, layer2Hash, proof string) error
 	GetLayer2LatestWatchedHeight() (int64, error)
+	GetMessageProofByLayer2Hash(layer2Hash string) (string, error)
+	MessageProofExistByLayer2Hash(layer2Hash string) (bool, error)
+	UpdateLayer2StatusAndLayer1Hash(ctx context.Context, layer2Hash string, layer1Hash string, status MsgStatus) error
 }

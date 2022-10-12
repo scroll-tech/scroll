@@ -53,7 +53,7 @@ func TestCreateNewRelayer(t *testing.T) {
 		skippedOpcodes[op] = struct{}{}
 	}
 
-	relayer, err := l2.NewLayer2Relayer(context.Background(), client, cfg.L2Config.ProofGenerationFreq, skippedOpcodes, db, cfg.L2Config.RelayerConfig)
+	relayer, err := l2.NewLayer2Relayer(context.Background(), client, cfg.L2Config.ProofGenerationFreq, skippedOpcodes, 1, db, cfg.L2Config.RelayerConfig)
 	assert.NoError(err)
 
 	relayer.Start()
@@ -84,7 +84,7 @@ func TestL2RelayerProcessSaveEvents(t *testing.T) {
 	for _, op := range cfg.L2Config.SkippedOpcodes {
 		skippedOpcodes[op] = struct{}{}
 	}
-	relayer, err := l2.NewLayer2Relayer(context.Background(), client, cfg.L2Config.ProofGenerationFreq, skippedOpcodes, db, cfg.L2Config.RelayerConfig)
+	relayer, err := l2.NewLayer2Relayer(context.Background(), client, cfg.L2Config.ProofGenerationFreq, skippedOpcodes, 1, db, cfg.L2Config.RelayerConfig)
 	assert.NoError(err)
 
 	err = db.SaveLayer2Messages(context.Background(), templateLayer2Message)
@@ -117,7 +117,6 @@ func TestL2RelayerProcessPendingBlocks(t *testing.T) {
 	l1docker := mock.NewTestL1Docker(t, TEST_CONFIG)
 	defer l1docker.Stop()
 	cfg.L2Config.RelayerConfig.SenderConfig.Endpoint = l1docker.Endpoint()
-
 	_, l2Docker, dbDocker := mock.Mockl2gethDocker(t, cfg, TEST_CONFIG)
 	defer l2Docker.Stop()
 	defer dbDocker.Stop()
@@ -131,7 +130,7 @@ func TestL2RelayerProcessPendingBlocks(t *testing.T) {
 	for _, op := range cfg.L2Config.SkippedOpcodes {
 		skippedOpcodes[op] = struct{}{}
 	}
-	relayer, err := l2.NewLayer2Relayer(context.Background(), client, cfg.L2Config.ProofGenerationFreq, skippedOpcodes, db, cfg.L2Config.RelayerConfig)
+	relayer, err := l2.NewLayer2Relayer(context.Background(), client, cfg.L2Config.ProofGenerationFreq, skippedOpcodes, 1, db, cfg.L2Config.RelayerConfig)
 	assert.NoError(err)
 
 	// this blockresult has number of 0x4, need to change it to match the testcase
@@ -180,6 +179,9 @@ func TestL2RelayerProcessCommittedBlocks(t *testing.T) {
 	assert := assert.New(t)
 	cfg, err := config.NewConfig("../config.json")
 	assert.NoError(err)
+	l1docker := mock.NewTestL1Docker(t, TEST_CONFIG)
+	defer l1docker.Stop()
+	cfg.L2Config.RelayerConfig.SenderConfig.Endpoint = l1docker.Endpoint()
 
 	_, l2Docker, dbDocker := mock.Mockl2gethDocker(t, cfg, TEST_CONFIG)
 	defer l2Docker.Stop()
@@ -194,7 +196,7 @@ func TestL2RelayerProcessCommittedBlocks(t *testing.T) {
 	for _, op := range cfg.L2Config.SkippedOpcodes {
 		skippedOpcodes[op] = struct{}{}
 	}
-	relayer, err := l2.NewLayer2Relayer(context.Background(), client, cfg.L2Config.ProofGenerationFreq, skippedOpcodes, db, cfg.L2Config.RelayerConfig)
+	relayer, err := l2.NewLayer2Relayer(context.Background(), client, cfg.L2Config.ProofGenerationFreq, skippedOpcodes, 1, db, cfg.L2Config.RelayerConfig)
 	assert.NoError(err)
 
 	templateBlockResult, err := os.ReadFile("../../internal/testdata/blockResult_relayer.json")

@@ -10,9 +10,10 @@ import (
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/stretchr/testify/assert"
 
+	db_config "scroll-tech/store/config"
+
 	coordinator_config "scroll-tech/coordinator/config"
 	"scroll-tech/coordinator/message"
-	db_config "scroll-tech/store/config"
 
 	bridge_config "scroll-tech/bridge/config"
 
