@@ -39,8 +39,6 @@ type Roller struct {
 
 	// A mutex guarding the ws write methods.
 	wMu sync.RWMutex
-	// A mutex guarding the ws read methods.
-	rMu sync.RWMutex
 	ws  *websocket.Conn
 
 	closed  int64
@@ -160,8 +158,6 @@ func (s *server) wsHandler(w http.ResponseWriter, r *http.Request) {
 		})
 	roller.ws.SetPongHandler(
 		func(string) error {
-			roller.rMu.Lock()
-			defer roller.rMu.Unlock()
 			return roller.ws.SetReadDeadline(time.Now().Add(pongWait))
 		})
 	s.conns.add(roller)
@@ -242,22 +238,16 @@ func (s *server) readLoop(c *Roller) {
 		case <-c.closeCh:
 			return
 		default:
-			c.rMu.Lock()
-
 			if err := c.ws.SetReadDeadline(time.Now().Add(pongWait)); err != nil {
 				log.Error("could not set read deadline", "error", err)
-				c.rMu.Unlock()
 				return
 			}
 
 			mt, msg, err := c.ws.ReadMessage()
 			if err != nil {
 				log.Error("could not read msg", "error", err, "name", c.AuthMsg.Identity.Name)
-				c.rMu.Unlock()
 				return
 			}
-
-			c.rMu.Unlock()
 
 			// Check if this msg needs to be handled manually.
 			if mt == websocket.BinaryMessage {
