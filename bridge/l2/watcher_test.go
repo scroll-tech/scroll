@@ -59,7 +59,7 @@ func TestTraceHasUnsupportedOpcodes(t *testing.T) {
 	cfg, err := config.NewConfig("../config.json")
 	assert.NoError(t, err)
 
-	delegateTrace, err := os.ReadFile("../../internal/testdata/blockResult_delegate.json")
+	delegateTrace, err := os.ReadFile("../internal/testdata/blockResult_delegate.json")
 	assert.NoError(t, err)
 
 	trace := &types.BlockResult{}

@@ -22,10 +22,10 @@ import (
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/stretchr/testify/assert"
 
-	"scroll-tech/rollers"
-	"scroll-tech/rollers/message"
-	"scroll-tech/scroll/bridge"
-	"scroll-tech/scroll/bridge/l2"
+	"scroll-tech/bridge"
+	"scroll-tech/bridge/l2"
+	rollers "scroll-tech/coordinator"
+	"scroll-tech/coordinator/message"
 	"scroll-tech/store"
 	db_config "scroll-tech/store/config"
 	"scroll-tech/store/migrate"
@@ -169,7 +169,7 @@ func Mockl2gethDocker(t *testing.T, cfg *bridge_config.Config, tcfg *TestConfig)
 	// initialize db docker image
 	img_db := GetDbDocker(t, tcfg)
 
-	db, err := store.NewOrmFactory(&config.db_DBConfig{
+	db, err := store.NewOrmFactory(&db_config.DBConfig{
 		DriverName: "postgres",
 		DSN:        img_db.Endpoint(),
 	})

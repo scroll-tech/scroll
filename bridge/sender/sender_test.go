@@ -49,7 +49,7 @@ func TestFunction(t *testing.T) {
 	setupEnv(t)
 	t.Run("test Run sender", func(t *testing.T) {
 		// set config
-		cfg, err := config.NewConfig("../../config.json")
+		cfg, err := config.NewConfig("../config.json")
 		assert.NoError(t, err)
 		cfg.L2Config.RelayerConfig.SenderConfig.Endpoint = l1gethImg.Endpoint()
 

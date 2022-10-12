@@ -10,6 +10,7 @@ import (
 	"github.com/urfave/cli/v2"
 
 	"scroll-tech/store"
+
 	"scroll-tech/utils"
 
 	"scroll-tech/bridge/config"

@@ -14,7 +14,7 @@ import (
 	"github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/stretchr/testify/assert"
 
-	bridge_config "scroll-tech/config"
+	bridge_config "scroll-tech/bridge/config"
 	"scroll-tech/store"
 	db_config "scroll-tech/store/config"
 	"scroll-tech/store/orm"
@@ -49,7 +49,7 @@ var TEST_CONFIG = &mock.TestConfig{
 
 func TestHandshake(t *testing.T) {
 	assert := assert.New(t)
-	cfg, err := bridge_config.NewConfig("../config.json")
+	cfg, err := bridge_config.NewConfig("./config.json")
 	assert.NoError(err)
 
 	verifierEndpoint := setupMockVerifier(assert)
@@ -81,7 +81,7 @@ func TestHandshake(t *testing.T) {
 
 func TestHandshakeTimeout(t *testing.T) {
 	assert := assert.New(t)
-	cfg, err := bridge_config.config.NewConfig("../config.json")
+	cfg, err := bridge_config.NewConfig("./config.json")
 	assert.NoError(err)
 
 	verifierEndpoint := setupMockVerifier(assert)
@@ -117,7 +117,7 @@ func TestHandshakeTimeout(t *testing.T) {
 
 func TestTwoConnections(t *testing.T) {
 	assert := assert.New(t)
-	cfg, err := bridge_config.NewConfig("../config.json")
+	cfg, err := bridge_config.NewConfig("./config.json")
 	assert.NoError(err)
 
 	verifierEndpoint := setupMockVerifier(assert)
@@ -152,7 +152,7 @@ func TestTwoConnections(t *testing.T) {
 
 func TestTriggerProofGenerationSession(t *testing.T) {
 	assert := assert.New(t)
-	cfg, err := bridge_config.NewConfig("../config.json")
+	cfg, err := bridge_config.NewConfig("./config.json")
 	assert.NoError(err)
 
 	l2, l2geth_img, db_imge := mock.Mockl2gethDocker(t, cfg, TEST_CONFIG)
@@ -187,13 +187,13 @@ func TestTriggerProofGenerationSession(t *testing.T) {
 
 	var results []*types.BlockResult
 
-	templateBlockResult, err := os.ReadFile("../../internal/testdata/blockResult_orm.json")
+	templateBlockResult, err := os.ReadFile("../internal/testdata/blockResult_orm.json")
 	assert.NoError(err)
 	blockResult := &types.BlockResult{}
 	err = json.Unmarshal(templateBlockResult, blockResult)
 	assert.NoError(err)
 	results = append(results, blockResult)
-	templateBlockResult, err = os.ReadFile("../../internal/testdata/blockResult_delegate.json")
+	templateBlockResult, err = os.ReadFile("../internal/testdata/blockResult_delegate.json")
 	assert.NoError(err)
 	blockResult = &types.BlockResult{}
 	err = json.Unmarshal(templateBlockResult, blockResult)
@@ -228,7 +228,7 @@ func TestTriggerProofGenerationSession(t *testing.T) {
 
 func TestIdleRollerSelection(t *testing.T) {
 	assert := assert.New(t)
-	cfg, err := bridge_config.NewConfig("../config.json")
+	cfg, err := bridge_config.NewConfig("./config.json")
 	assert.NoError(err)
 
 	l2, l2geth_img, db_imge := mock.Mockl2gethDocker(t, cfg, TEST_CONFIG)
@@ -269,7 +269,7 @@ func TestIdleRollerSelection(t *testing.T) {
 
 	assert.Equal(2, rollerManager.GetNumberOfIdleRollers())
 
-	templateBlockResult, err := os.ReadFile("../../internal/testdata/blockResult_orm.json")
+	templateBlockResult, err := os.ReadFile("../internal/testdata/blockResult_orm.json")
 	assert.NoError(err)
 	blockResult := &types.BlockResult{}
 	err = json.Unmarshal(templateBlockResult, blockResult)
@@ -283,7 +283,7 @@ func TestIdleRollerSelection(t *testing.T) {
 
 	assert.Equal(1, rollerManager.GetNumberOfIdleRollers())
 
-	templateBlockResult, err = os.ReadFile("../../internal/testdata/blockResult_delegate.json")
+	templateBlockResult, err = os.ReadFile("../internal/testdata/blockResult_delegate.json")
 	assert.NoError(err)
 	blockResult = &types.BlockResult{}
 	err = json.Unmarshal(templateBlockResult, blockResult)

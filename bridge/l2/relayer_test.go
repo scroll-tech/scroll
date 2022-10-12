@@ -43,7 +43,7 @@ var (
 )
 
 func setupEnv(t *testing.T) {
-	cfg, err := config.NewConfig("../../config.json")
+	cfg, err := config.NewConfig("../config.json")
 	assert.NoError(t, err)
 	l2Backend, l2Docker, dbDocker = mock.Mockl2gethDocker(t, cfg, TEST_CONFIG)
 }
@@ -53,7 +53,7 @@ func TestFunction(t *testing.T) {
 	setupEnv(t)
 
 	t.Run("TestCreateNewRelayer", func(t *testing.T) {
-		cfg, err := config.NewConfig("../../config.json")
+		cfg, err := config.NewConfig("../config.json")
 		assert.NoError(t, err)
 
 		client, err := ethclient.Dial(l2Docker.Endpoint())
@@ -77,7 +77,7 @@ func TestFunction(t *testing.T) {
 
 	t.Run("TestL2RelayerProcessSaveEvents", func(t *testing.T) {
 		assert := assert.New(t)
-		cfg, err := config.NewConfig("../../config.json")
+		cfg, err := config.NewConfig("../config.json")
 		assert.NoError(err)
 
 		client, err := ethclient.Dial(l2Docker.Endpoint())
@@ -117,7 +117,7 @@ func TestFunction(t *testing.T) {
 
 	t.Run("TestL2RelayerProcessPendingBlocks", func(t *testing.T) {
 		assert := assert.New(t)
-		cfg, err := config.NewConfig("../../config.json")
+		cfg, err := config.NewConfig("../config.json")
 		assert.NoError(err)
 
 		client, err := ethclient.Dial(l2Docker.Endpoint())
@@ -137,13 +137,13 @@ func TestFunction(t *testing.T) {
 		// In this testcase scenario, db will store two blocks with height 0x4 and 0x3
 		var results []*types.BlockResult
 
-		templateBlockResult, err := os.ReadFile("../../internal/testdata/blockResult_relayer_parent.json")
+		templateBlockResult, err := os.ReadFile("../internal/testdata/blockResult_relayer_parent.json")
 		assert.NoError(err)
 		blockResult := &types.BlockResult{}
 		err = json.Unmarshal(templateBlockResult, blockResult)
 		assert.NoError(err)
 		results = append(results, blockResult)
-		templateBlockResult, err = os.ReadFile("../../internal/testdata/blockResult_relayer.json")
+		templateBlockResult, err = os.ReadFile("../internal/testdata/blockResult_relayer.json")
 		assert.NoError(err)
 		blockResult = &types.BlockResult{}
 		err = json.Unmarshal(templateBlockResult, blockResult)
@@ -176,7 +176,7 @@ func TestFunction(t *testing.T) {
 
 	t.Run("TestL2RelayerProcessCommittedBlocks", func(t *testing.T) {
 		assert := assert.New(t)
-		cfg, err := config.NewConfig("../../config.json")
+		cfg, err := config.NewConfig("../config.json")
 		assert.NoError(err)
 
 		client, err := ethclient.Dial(l2Docker.Endpoint())
@@ -192,7 +192,7 @@ func TestFunction(t *testing.T) {
 		relayer, err := l2.NewLayer2Relayer(context.Background(), client, cfg.L2Config.ProofGenerationFreq, skippedOpcodes, int64(cfg.L2Config.Confirmations), db, cfg.L2Config.RelayerConfig)
 		assert.NoError(err)
 
-		templateBlockResult, err := os.ReadFile("../../internal/testdata/blockResult_relayer.json")
+		templateBlockResult, err := os.ReadFile("../internal/testdata/blockResult_relayer.json")
 		assert.NoError(err)
 		blockResult := &types.BlockResult{}
 		err = json.Unmarshal(templateBlockResult, blockResult)
