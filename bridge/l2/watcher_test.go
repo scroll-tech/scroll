@@ -55,10 +55,10 @@ var (
 )
 
 func TestTraceHasUnsupportedOpcodes(t *testing.T) {
-	cfg, err := config.NewConfig("../../config.json")
+	cfg, err := config.NewConfig("../config.json")
 	assert.NoError(t, err)
 
-	delegateTrace, err := os.ReadFile("../../../internal/testdata/blockResult_delegate.json")
+	delegateTrace, err := os.ReadFile("../../internal/testdata/blockResult_delegate.json")
 	assert.NoError(t, err)
 
 	trace := &types.BlockResult{}
@@ -74,7 +74,7 @@ func TestTraceHasUnsupportedOpcodes(t *testing.T) {
 // test start l2 backend and shut it down gracefully
 func TestL2Backend(t *testing.T) {
 	assert := assert.New(t)
-	cfg, err := config.NewConfig("../../config.json")
+	cfg, err := config.NewConfig("../config.json")
 	assert.NoError(err)
 
 	// Set up mock l2 geth
@@ -90,7 +90,7 @@ func TestL2Backend(t *testing.T) {
 // TestCreateNewRelayerAndStop will test creating a new instance of watcher client client and stoping it
 func TestCreateNewWatcherAndStop(t *testing.T) {
 	assert := assert.New(t)
-	cfg, err := config.NewConfig("../../config.json")
+	cfg, err := config.NewConfig("../config.json")
 	assert.NoError(err)
 
 	_, img_geth, img_db := mock.Mockl2gethDocker(t, cfg, TEST_CONFIG)
@@ -140,7 +140,7 @@ func TestCreateNewWatcherAndStop(t *testing.T) {
 func TestMonitorBridgeContract(t *testing.T) {
 	assert := assert.New(t)
 
-	cfg, err := config.NewConfig("../../config.json")
+	cfg, err := config.NewConfig("../config.json")
 	assert.NoError(err)
 	t.Log("confirmations:", cfg.L2Config.Confirmations)
 
@@ -221,7 +221,7 @@ func TestMonitorBridgeContract(t *testing.T) {
 func TestFetchMultipleSentMessageInOneBlock(t *testing.T) {
 	assert := assert.New(t)
 
-	cfg, err := config.NewConfig("../../config.json")
+	cfg, err := config.NewConfig("../config.json")
 	assert.NoError(err)
 
 	_, img_geth, img_db := mock.Mockl2gethDocker(t, cfg, TEST_CONFIG)

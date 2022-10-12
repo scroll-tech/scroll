@@ -164,7 +164,6 @@ func Mockl2gethDocker(t *testing.T, cfg *bridge_config.Config, tcfg *TestConfig)
 	img_geth := GetTestL2Docker(t, tcfg)
 
 	cfg.L2Config.Endpoint = img_geth.Endpoint()
-	cfg.L2Config.RelayerConfig.SenderConfig.Endpoint = cfg.L2Config.Endpoint
 
 	// initialize db docker image
 	img_db := GetDbDocker(t, tcfg)

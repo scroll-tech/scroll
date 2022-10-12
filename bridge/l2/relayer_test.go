@@ -37,7 +37,7 @@ var templateLayer2Message = []*orm.Layer2Message{
 // TestCreateNewRelayer test create new relayer instance and stop
 func TestCreateNewRelayer(t *testing.T) {
 	assert := assert.New(t)
-	cfg, err := config.NewConfig("../../config.json")
+	cfg, err := config.NewConfig("../config.json")
 	assert.NoError(err)
 	_, l2Docker, dbDocker := mock.Mockl2gethDocker(t, cfg, TEST_CONFIG)
 	defer l2Docker.Stop()
@@ -65,11 +65,10 @@ func TestCreateNewRelayer(t *testing.T) {
 // TestL2RelayerProcessSaveEvents will test l2relayer process db stored block events to sender
 func TestL2RelayerProcessSaveEvents(t *testing.T) {
 	assert := assert.New(t)
-	cfg, err := config.NewConfig("../../config.json")
+	cfg, err := config.NewConfig("../config.json")
 	assert.NoError(err)
 
 	l1docker := mock.NewTestL1Docker(t, TEST_CONFIG)
-	l1docker.Start()
 	defer l1docker.Stop()
 	cfg.L2Config.RelayerConfig.SenderConfig.Endpoint = l1docker.Endpoint()
 	_, l2Docker, dbDocker := mock.Mockl2gethDocker(t, cfg, TEST_CONFIG)
@@ -112,8 +111,12 @@ func TestL2RelayerProcessSaveEvents(t *testing.T) {
 // TestL2RelayerProcessPendingBlocks will test reayer process pending blocks event
 func TestL2RelayerProcessPendingBlocks(t *testing.T) {
 	assert := assert.New(t)
-	cfg, err := config.NewConfig("../../config.json")
+	cfg, err := config.NewConfig("../config.json")
 	assert.NoError(err)
+
+	l1docker := mock.NewTestL1Docker(t, TEST_CONFIG)
+	defer l1docker.Stop()
+	cfg.L2Config.RelayerConfig.SenderConfig.Endpoint = l1docker.Endpoint()
 
 	_, l2Docker, dbDocker := mock.Mockl2gethDocker(t, cfg, TEST_CONFIG)
 	defer l2Docker.Stop()
@@ -135,13 +138,13 @@ func TestL2RelayerProcessPendingBlocks(t *testing.T) {
 	// In this testcase scenario, db will store two blocks with height 0x4 and 0x3
 	var results []*types.BlockResult
 
-	templateBlockResult, err := os.ReadFile("../../../internal/testdata/blockResult_relayer_parent.json")
+	templateBlockResult, err := os.ReadFile("../../internal/testdata/blockResult_relayer_parent.json")
 	assert.NoError(err)
 	blockResult := &types.BlockResult{}
 	err = json.Unmarshal(templateBlockResult, blockResult)
 	assert.NoError(err)
 	results = append(results, blockResult)
-	templateBlockResult, err = os.ReadFile("../../../internal/testdata/blockResult_relayer.json")
+	templateBlockResult, err = os.ReadFile("../../internal/testdata/blockResult_relayer.json")
 	assert.NoError(err)
 	blockResult = &types.BlockResult{}
 	err = json.Unmarshal(templateBlockResult, blockResult)
@@ -175,7 +178,7 @@ func TestL2RelayerProcessPendingBlocks(t *testing.T) {
 // TestL2RelayerProcessCommittedBlocks test relayer process db stored blocks
 func TestL2RelayerProcessCommittedBlocks(t *testing.T) {
 	assert := assert.New(t)
-	cfg, err := config.NewConfig("../../config.json")
+	cfg, err := config.NewConfig("../config.json")
 	assert.NoError(err)
 
 	_, l2Docker, dbDocker := mock.Mockl2gethDocker(t, cfg, TEST_CONFIG)
@@ -194,7 +197,7 @@ func TestL2RelayerProcessCommittedBlocks(t *testing.T) {
 	relayer, err := l2.NewLayer2Relayer(context.Background(), client, cfg.L2Config.ProofGenerationFreq, skippedOpcodes, db, cfg.L2Config.RelayerConfig)
 	assert.NoError(err)
 
-	templateBlockResult, err := os.ReadFile("../../../internal/testdata/blockResult_relayer.json")
+	templateBlockResult, err := os.ReadFile("../../internal/testdata/blockResult_relayer.json")
 	assert.NoError(err)
 	blockResult := &types.BlockResult{}
 	err = json.Unmarshal(templateBlockResult, blockResult)

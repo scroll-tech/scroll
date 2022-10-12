@@ -32,10 +32,9 @@ var TEST_CONFIG = &mock.TestConfig{
 
 // TestCreateNewRelayer test create new relayer instance and stop
 func TestCreateNewL1Relayer(t *testing.T) {
-	cfg, err := config.NewConfig("../../config.json")
+	cfg, err := config.NewConfig("../config.json")
 	assert.NoError(t, err)
 	l1docker := mock.NewTestL1Docker(t, TEST_CONFIG)
-	l1docker.Start()
 	defer l1docker.Stop()
 
 	client, err := ethclient.Dial(l1docker.Endpoint())
