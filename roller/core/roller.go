@@ -81,7 +81,7 @@ func NewRoller(cfg *config.Config) (*Roller, error) {
 		stack:     stackDb,
 		prover:    prover,
 		sub:       nil,
-		traceChan: make(chan *message.BlockTraces, 2),
+		traceChan: make(chan *message.BlockTraces, 10),
 		stopChan:  make(chan struct{}),
 		priv:      priv,
 	}, nil
