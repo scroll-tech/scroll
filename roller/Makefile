@@ -3,16 +3,26 @@
 IMAGE_NAME=roller-go
 IMAGE_VERSION=latest
 
-prepare-libprover:
+BUILD_FLAGS := -ldflags "-X scroll-tech/go-roller/version.GitCommit=`git rev-parse HEAD`"
+
+libprover:
 	cd core/prover/rust && cargo build --release && cp target/release/libprover.a ../lib/
 
-roller: ## Builds the Roller instance.
+roller: ## Build the Roller instance.
 	cd core/prover/rust && cargo build --release && cp target/release/libprover.a ../lib/
-	GOBIN=$(PWD)/build/bin go install ./cmd/roller
+	GOBIN=$(PWD)/build/bin go build $(BUILD_FLAGS) ./cmd/roller
 
-gpu-roller: ## Builds the GPU Roller instance.
+intall-roller: ## Install the Roller instance.
 	cd core/prover/rust && cargo build --release && cp target/release/libprover.a ../lib/
-	GOBIN=$(PWD)/build/bin go install -tags gpu ./cmd/roller
+	GOBIN=$(PWD)/build/bin go install $(BUILD_FLAGS) ./cmd/roller
+
+gpu-roller: ## Build the GPU Roller instance.
+	cd core/prover/rust && cargo build --release && cp target/release/libprover.a ../lib/
+	GOBIN=$(PWD)/build/bin go build $(BUILD_FLAGS) -tags gpu ./cmd/roller
+
+intall-gpu-roller: ## Build the GPU Roller instance.
+	cd core/prover/rust && cargo build --release && cp target/release/libprover.a ../lib/
+	GOBIN=$(PWD)/build/bin go install $(BUILD_FLAGS) -tags gpu ./cmd/roller
 
 test-prover:
 	go test -timeout 0 -v ./core/prover
