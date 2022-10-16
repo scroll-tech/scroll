@@ -19,7 +19,7 @@ async function main() {
   }
 
   // Export contract address to testnet.
-  console.log(`testnet-export: ${addressFile.get("L2ScrollMessenger")})}`);
+  console.log(`testnet-export: ${addressFile.get("L2ScrollMessenger")}`);
 }
 
 // We recommend this pattern to be able to use async/await everywhere
