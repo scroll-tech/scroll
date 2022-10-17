@@ -62,10 +62,32 @@ Mapping from block hash to block index.
 | transactionRoot | bytes32 | undefined |
 | verified | bool | undefined |
 
+### branches
+
+```solidity
+function branches(uint256) external view returns (bytes32)
+```
+
+The list of minimum merkle proofs needed to compute next root.
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| _0 | uint256 | undefined |
+
+#### Returns
+
+| Name | Type | Description |
+|---|---|---|
+| _0 | bytes32 | undefined |
+
 ### commitBlock
 
 ```solidity
-function commitBlock(IZKRollup.BlockHeader _header, IZKRollup.Layer2Transaction[] _txn) external nonpayable
+function commitBlock(IZKRollup.BlockHeader _header, IZKRollup.Layer2Transaction[] _txn, bytes32[] _pendingMessages) external nonpayable
 ```
 
 
@@ -78,6 +100,7 @@ function commitBlock(IZKRollup.BlockHeader _header, IZKRollup.Layer2Transaction[
 |---|---|---|
 | _header | IZKRollup.BlockHeader | undefined |
 | _txn | IZKRollup.Layer2Transaction[] | undefined |
+| _pendingMessages | bytes32[] | undefined |
 
 ### finalizeBlockWithProof
 
@@ -175,6 +198,28 @@ Return the total number of appended message.
 |---|---|---|
 | _0 | uint256 | undefined |
 
+### historicMessageRoot
+
+```solidity
+function historicMessageRoot(uint256) external view returns (bytes32)
+```
+
+Mapping from layer2 message nonce to corresponding message root.
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| _0 | uint256 | undefined |
+
+#### Returns
+
+| Name | Type | Description |
+|---|---|---|
+| _0 | bytes32 | undefined |
+
 ### importGenesisBlock
 
 ```solidity
@@ -263,6 +308,23 @@ Return the layer 2 block gas limit.
 |---|---|---|
 | _0 | uint256 | undefined |
 
+### messageRoot
+
+```solidity
+function messageRoot() external view returns (bytes32)
+```
+
+The merkle root of the current merkle tree.
+
+
+
+
+#### Returns
+
+| Name | Type | Description |
+|---|---|---|
+| _0 | bytes32 | undefined |
+
 ### messenger
 
 ```solidity
@@ -279,6 +341,23 @@ The address of L1ScrollMessenger.
 | Name | Type | Description |
 |---|---|---|
 | _0 | address | undefined |
+
+### nextMessageIndex
+
+```solidity
+function nextMessageIndex() external view returns (uint256)
+```
+
+The next unused message index.
+
+
+
+
+#### Returns
+
+| Name | Type | Description |
+|---|---|---|
+| _0 | uint256 | undefined |
 
 ### operator
 
@@ -392,7 +471,7 @@ Update the address of operator.
 ### verifyMessageStateProof
 
 ```solidity
-function verifyMessageStateProof(uint256 _blockNumber) external view returns (bool)
+function verifyMessageStateProof(uint256 _blockNumber, uint256 _nonce) external view returns (bytes32)
 ```
 
 Verify a state proof for message relay.
@@ -403,13 +482,14 @@ Verify a state proof for message relay.
 
 | Name | Type | Description |
 |---|---|---|
-| _blockNumber | uint256 | undefined |
+| _blockNumber | uint256 | The layer 2 block number of the message. |
+| _nonce | uint256 | The layer 2 message nonce. |
 
 #### Returns
 
 | Name | Type | Description |
 |---|---|---|
-| _0 | bool | undefined |
+| _0 | bytes32 | the merkle root of the corresponding merkle tree. |
 
 
 

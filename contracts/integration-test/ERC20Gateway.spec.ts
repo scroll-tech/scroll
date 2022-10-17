@@ -425,7 +425,7 @@ describe("ERC20Gateway", async () => {
             deadline,
             nonce,
             messageData,
-            { blockNumber: 0, merkleProof: "0x" }
+            { blockNumber: 0, proofs: [] }
           );
           await relayTx.wait();
           // should emit RelayedMessage
@@ -477,7 +477,7 @@ describe("ERC20Gateway", async () => {
             deadline,
             nonce,
             messageData,
-            { blockNumber: 0, merkleProof: "0x" }
+            { blockNumber: 0, proofs: [] }
           );
           await relayTx.wait();
           // should emit RelayedMessage
@@ -744,7 +744,7 @@ describe("ERC20Gateway", async () => {
             deadline,
             nonce,
             messageData,
-            { blockNumber: 0, merkleProof: "0x" }
+            { blockNumber: 0, proofs: [] }
           );
           await relayTx.wait();
           const afterBalanceLayer1 = await l1WETH.balanceOf(recipient.address);
@@ -801,7 +801,7 @@ describe("ERC20Gateway", async () => {
             deadline,
             nonce,
             messageData,
-            { blockNumber: 0, merkleProof: "0x" }
+            { blockNumber: 0, proofs: [] }
           );
           await relayTx.wait();
           const afterBalanceLayer1 = await l1WETH.balanceOf(recipient.address);

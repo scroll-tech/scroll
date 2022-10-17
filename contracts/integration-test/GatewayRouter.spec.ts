@@ -195,7 +195,7 @@ describe("GatewayRouter", async () => {
             deadline,
             nonce,
             messageData,
-            { blockNumber: 0, merkleProof: "0x" }
+            { blockNumber: 0, proofs: [] }
           );
           await relayTx.wait();
           const afterBalanceLayer1 = await ethers.provider.getBalance(recipient.address);

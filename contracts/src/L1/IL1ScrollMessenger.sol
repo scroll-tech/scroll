@@ -6,9 +6,10 @@ import { IScrollMessenger } from "../libraries/IScrollMessenger.sol";
 
 interface IL1ScrollMessenger is IScrollMessenger {
   struct L2MessageProof {
-    // @todo add more fields
+    // The layer2 block number the message belongs
     uint256 blockNumber;
-    bytes merkleProof;
+    // The minimum number of nodes needed to compute merkle root.
+    bytes32[] proofs;
   }
 
   /**************************************** Mutated Functions ****************************************/

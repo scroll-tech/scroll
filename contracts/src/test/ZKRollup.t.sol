@@ -121,7 +121,7 @@ contract ZKRollupTest is DSTestPlus {
 
     // not operator call, should revert
     hevm.expectRevert("caller not operator");
-    rollup.commitBlock(_header, _txns);
+    rollup.commitBlock(_header, _txns, new bytes32[](0));
 
     // import fake genesis
     _header.blockHash = bytes32(uint256(1));
@@ -131,22 +131,22 @@ contract ZKRollupTest is DSTestPlus {
     // block submitted, should revert
     _header.blockHash = bytes32(uint256(1));
     hevm.expectRevert("Block has been committed before");
-    rollup.commitBlock(_header, _txns);
+    rollup.commitBlock(_header, _txns, new bytes32[](0));
 
     // no parent block, should revert
     _header.blockHash = bytes32(uint256(2));
     hevm.expectRevert("Parent hasn't been committed");
-    rollup.commitBlock(_header, _txns);
+    rollup.commitBlock(_header, _txns, new bytes32[](0));
 
     // block height mismatch, should revert
     _header.blockHash = bytes32(uint256(2));
     _header.parentHash = bytes32(uint256(1));
     hevm.expectRevert("Block height and parent block height mismatch");
-    rollup.commitBlock(_header, _txns);
+    rollup.commitBlock(_header, _txns, new bytes32[](0));
 
     _header.blockHeight = 2;
     hevm.expectRevert("Block height and parent block height mismatch");
-    rollup.commitBlock(_header, _txns);
+    rollup.commitBlock(_header, _txns, new bytes32[](0));
     hevm.stopPrank();
   }
 
@@ -170,7 +170,7 @@ contract ZKRollupTest is DSTestPlus {
     // mock caller as operator
     assertEq(rollup.finalizedBlocks(1), bytes32(0));
     hevm.startPrank(address(1));
-    rollup.commitBlock(_header, _txns);
+    rollup.commitBlock(_header, _txns, new bytes32[](0));
     hevm.stopPrank();
 
     (IZKRollup.BlockHeader memory _storedHeader, , bool _verified) = rollup.blocks(_header.blockHash);

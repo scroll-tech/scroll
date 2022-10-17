@@ -117,7 +117,7 @@ Mapping from relay id to relay status.
 function messageNonce() external view returns (uint256)
 ```
 
-Message nonce, used to avoid relay attack.
+Return the current message nonce.
 
 
 

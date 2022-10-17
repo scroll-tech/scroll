@@ -49,7 +49,10 @@ interface IZKRollup {
 
   /// @notice Verify a state proof for message relay.
   /// @dev add more fields.
-  function verifyMessageStateProof(uint256 _blockNumber) external view returns (bool);
+  /// @param _blockNumber The layer 2 block number of the message.
+  /// @param _nonce The layer 2 message nonce.
+  /// @return the merkle root of the corresponding merkle tree.
+  function verifyMessageStateProof(uint256 _blockNumber, uint256 _nonce) external view returns (bytes32);
 
   /**************************************** Mutated Functions ****************************************/
 
@@ -76,7 +79,11 @@ interface IZKRollup {
   /// @dev will add more parameters if needed.
   /// @param _header The block header.
   /// @param _txns The transactions included in the block.
-  function commitBlock(BlockHeader memory _header, Layer2Transaction[] memory _txns) external;
+  function commitBlock(
+    BlockHeader memory _header,
+    Layer2Transaction[] memory _txns,
+    bytes32[] memory _pendingMessages
+  ) external;
 
   /// @notice revert a pending block.
   /// @dev one can only revert unfinalized blocks.

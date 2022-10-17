@@ -27,9 +27,6 @@ contract L2ScrollMessenger is ScrollMessengerBase, OwnableBase, IL2ScrollMesseng
   /// @notice Mapping from message hash to execution status.
   mapping(bytes32 => bool) public isMessageExecuted;
 
-  /// @notice Message nonce, used to avoid relay attack.
-  uint256 public messageNonce;
-
   /// @notice Contract to store the sent message.
   L2ToL1MessagePasser public messagePasser;
 
@@ -41,6 +38,13 @@ contract L2ScrollMessenger is ScrollMessengerBase, OwnableBase, IL2ScrollMesseng
     xDomainMessageSender = ScrollConstants.DEFAULT_XDOMAIN_MESSAGE_SENDER;
 
     messagePasser = new L2ToL1MessagePasser(address(this));
+  }
+
+  /**************************************** View Functions ****************************************/
+
+  /// @notice Return the current message nonce.
+  function messageNonce() external view returns (uint256) {
+    return messagePasser.nextMessageIndex();
   }
 
   /**************************************** Mutated Functions ****************************************/
@@ -60,7 +64,7 @@ contract L2ScrollMessenger is ScrollMessengerBase, OwnableBase, IL2ScrollMesseng
     uint256 _minFee = gasOracle == address(0) ? 0 : IGasOracle(gasOracle).estimateMessageFee(msg.sender, _to, _message);
     require(_fee >= _minFee, "fee too small");
 
-    uint256 _nonce = messageNonce;
+    uint256 _nonce = messagePasser.nextMessageIndex();
     uint256 _value;
     unchecked {
       _value = msg.value - _fee;
@@ -71,10 +75,6 @@ contract L2ScrollMessenger is ScrollMessengerBase, OwnableBase, IL2ScrollMesseng
     messagePasser.passMessageToL1(_msghash);
 
     emit SentMessage(_to, msg.sender, _value, _fee, _deadline, _message, _nonce, _gasLimit);
-
-    unchecked {
-      messageNonce = _nonce + 1;
-    }
   }
 
   /// @inheritdoc IL2ScrollMessenger

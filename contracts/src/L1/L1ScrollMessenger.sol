@@ -96,9 +96,9 @@ contract L1ScrollMessenger is OwnableUpgradeable, PausableUpgradeable, ScrollMes
 
     require(!isMessageExecuted[_msghash], "Message successfully executed");
 
-    // @todo check proof
-    require(IZKRollup(rollup).verifyMessageStateProof(_proof.blockNumber), "invalid state proof");
-    require(ZkTrieVerifier.verifyMerkleProof(_proof.merkleProof), "invalid proof");
+    bytes32 _root = IZKRollup(rollup).verifyMessageStateProof(_proof.blockNumber, _nonce);
+    // @todo get merkle root from nonce in Rollup Contract.
+    require(ZkTrieVerifier.verifyMerkleProof(_root, _msghash, _nonce, _proof.proofs), "invalid proof");
 
     // @todo check `_to` address to avoid attack.
 
