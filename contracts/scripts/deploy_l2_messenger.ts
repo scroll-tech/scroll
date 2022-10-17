@@ -8,10 +8,11 @@ async function main() {
 
   const [deployer] = await ethers.getSigners();
 
+  const owner = process.env.CONTRACT_OWNER || deployer.address;
   if (!addressFile.get("L2ScrollMessenger")) {
     console.log(">> Deploy L2ScrollMessenger implementation");
     const L2ScrollMessenger = await ethers.getContractFactory("L2ScrollMessenger", deployer);
-    const impl = await L2ScrollMessenger.deploy(deployer.address);
+    const impl = await L2ScrollMessenger.deploy(owner);
     console.log(`>> waiting for transaction: ${impl.deployTransaction.hash}`);
     await impl.deployed();
     console.log(`✅ L2ScrollMessenger implementation deployed at ${impl.address}`);
