@@ -8,10 +8,11 @@ async function main() {
 
   const [deployer] = await ethers.getSigners();
 
+  const owner = process.env.CONTRACT_OWNER || deployer.address;
   if (!addressFile.get("L2ScrollMessenger")) {
     console.log(">> Deploy L2ScrollMessenger implementation");
     const L2ScrollMessenger = await ethers.getContractFactory("L2ScrollMessenger", deployer);
-    const impl = await L2ScrollMessenger.deploy(deployer.address);
+    const impl = await L2ScrollMessenger.deploy(owner);
     console.log(`>> waiting for transaction: ${impl.deployTransaction.hash}`);
     await impl.deployed();
     console.log(`✅ L2ScrollMessenger implementation deployed at ${impl.address}`);
@@ -19,7 +20,7 @@ async function main() {
   }
 
   // Export contract address to testnet.
-  console.log(`testnet-export: ${addressFile.get("L2ScrollMessenger")})}`);
+  console.log(`testnet-export: ${addressFile.get("L2ScrollMessenger")}`);
 }
 
 // We recommend this pattern to be able to use async/await everywhere
