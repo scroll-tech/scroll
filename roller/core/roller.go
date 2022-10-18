@@ -207,6 +207,13 @@ PROVE:
 	if err != nil {
 		return err
 	}
+	if traces.Times < 2 {
+		err = r.stack.Push(traces)
+		if err != nil {
+			return err
+		}
+	}
+
 	log.Info("start to prove block", "block-id", traces.Traces.ID)
 
 	var proofMsg *ProofMsg
@@ -214,12 +221,9 @@ PROVE:
 	if err != nil {
 		if traces.Times < 2 {
 			log.Error("prove failed, retry...")
-			err = r.stack.Push(traces)
-			if err != nil {
-				return err
-			}
 			goto PROVE
 		}
+
 		proofMsg = &ProofMsg{
 			Status: StatusProofError,
 			Error:  err.Error(),

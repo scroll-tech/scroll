@@ -43,11 +43,7 @@ func NewProver(cfg *config.ProverConfig) (*Prover, error) {
 
 // Prove call rust ffi to generate proof, if first failed, try again.
 func (p *Prover) Prove(traces *types.BlockResult) (*AggProof, error) {
-	proof, err := p.prove(traces)
-	if err != nil {
-		return p.prove(traces)
-	}
-	return proof, nil
+	return p.prove(traces)
 }
 
 func (p *Prover) prove(traces *types.BlockResult) (*AggProof, error) {

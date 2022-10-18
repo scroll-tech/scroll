@@ -49,7 +49,6 @@ func NewStack(path string) (*Stack, error) {
 
 // Push appends the block-traces on the top of Stack.
 func (s *Stack) Push(traces *ProvingTraces) error {
-	traces.Times++
 	byt, err := json.Marshal(traces)
 	if err != nil {
 		return err
@@ -78,5 +77,10 @@ func (s *Stack) Pop() (*ProvingTraces, error) {
 	}
 
 	traces := &ProvingTraces{}
-	return traces, json.Unmarshal(value, traces)
+	err := json.Unmarshal(value, traces)
+	if err != nil {
+		return nil, err
+	}
+	traces.Times++
+	return traces, nil
 }
