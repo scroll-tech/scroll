@@ -33,8 +33,8 @@ func NewClient(c *rpc.Client) *Client {
 	return &Client{Client: c}
 }
 
-// SubscribeRegister register roller into scroll and subscribe blocktraces from scroll.
-func (c *Client) SubscribeRegister(ctx context.Context, traceChan chan *message.BlockTraces, authMsg *message.AuthMessage) (ethereum.Subscription, error) {
+// RegisterAndSubscribe register roller into scroll and subscribe blocktraces from scroll.
+func (c *Client) RegisterAndSubscribe(ctx context.Context, traceChan chan *message.BlockTraces, authMsg *message.AuthMessage) (ethereum.Subscription, error) {
 	return c.Subscribe(ctx, "roller", traceChan, "register", authMsg)
 }
 
