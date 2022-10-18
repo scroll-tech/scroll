@@ -207,11 +207,9 @@ PROVE:
 	if err != nil {
 		return err
 	}
-	if traces.Times < 2 {
-		err = r.stack.Push(traces)
-		if err != nil {
-			return err
-		}
+	err = r.stack.Push(traces)
+	if err != nil {
+		return err
 	}
 
 	log.Info("start to prove block", "block-id", traces.Traces.ID)
@@ -238,6 +236,10 @@ PROVE:
 			Proof:  proof,
 		}
 		log.Info("prove block successfully!", "block-id", traces.Traces.ID)
+	}
+	_, err = r.stack.Pop()
+	if err != nil {
+		return err
 	}
 
 	msgByt, err := MakeMsgByt(Proof, proofMsg)
