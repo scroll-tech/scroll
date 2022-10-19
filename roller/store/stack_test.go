@@ -4,6 +4,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"scroll-tech/common/message"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -22,7 +23,7 @@ func TestStack(t *testing.T) {
 
 	for i := 0; i < 3; i++ {
 		trace := &ProvingTraces{
-			Traces: &BlockTraces{
+			Traces: &message.BlockTraces{
 				ID:     uint64(i),
 				Traces: nil,
 			},
@@ -42,7 +43,7 @@ func TestStack(t *testing.T) {
 
 	// test times
 	trace := &ProvingTraces{
-		Traces: &BlockTraces{
+		Traces: &message.BlockTraces{
 			ID:     1,
 			Traces: nil,
 		},
