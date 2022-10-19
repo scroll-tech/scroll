@@ -15,9 +15,10 @@ import (
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/stretchr/testify/assert"
 
+	message "scroll-tech/common/message"
+
 	"scroll-tech/go-roller/config"
 	"scroll-tech/go-roller/core"
-	. "scroll-tech/go-roller/types"
 )
 
 var (
@@ -83,11 +84,11 @@ func mockScroll(t *testing.T) {
 		}(c)
 		assert.NoError(t, err, "read payload")
 
-		msg := &Msg{}
+		msg := &message.Msg{}
 		err = json.Unmarshal(payload, msg)
 		assert.NoError(t, err, "json Unmarshal raw payload")
 
-		authMsg := &AuthMessage{}
+		authMsg := &message.AuthMessage{}
 		err = json.Unmarshal(msg.Payload, authMsg)
 		assert.NoError(t, err, "json Unmarshal inner payload")
 
@@ -101,11 +102,11 @@ func mockScroll(t *testing.T) {
 		t.Log("signature verification successfully. Roller: ", authMsg.Identity.Name)
 		assert.Equal(t, cfg.RollerName, authMsg.Identity.Name)
 
-		traces := &BlockTraces{
+		traces := &message.BlockTraces{
 			ID:     16,
 			Traces: nil,
 		}
-		msgByt, err := core.MakeMsgByt(BlockTrace, traces)
+		msgByt, err := core.MakeMsgByt(message.BlockTrace, traces)
 		assert.NoError(t, err, "MakeMsgByt")
 
 		err = c.WriteMessage(websocket.BinaryMessage, msgByt)

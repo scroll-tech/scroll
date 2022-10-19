@@ -1,0 +1,12 @@
+{
+  "roller_manager_config": {
+    "endpoint": ":9000",
+    "rollers_per_session": 1,
+    "verifier_endpoint": "/tmp/verifier.sock",
+    "collection_time": 180
+  },
+  "db_config": {
+    "driver_name": "postgres",
+    "dsn": "postgres://admin:123456@localhost/test?sslmode=disable"
+  }
+}

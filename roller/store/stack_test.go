@@ -7,8 +7,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-
-	. "scroll-tech/go-roller/types"
 )
 
 func TestStack(t *testing.T) {
