@@ -6,15 +6,14 @@ import (
 	"os"
 	"testing"
 
-	"scroll-tech/go-roller/config"
-
-	"scroll-tech/go-roller/core/prover"
-
 	"github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/stretchr/testify/assert"
+
+	"scroll-tech/go-roller/config"
+	"scroll-tech/go-roller/core/prover"
 )
 
-type RpcTrace struct {
+type RPCTrace struct {
 	Jsonrpc string             `json:"jsonrpc"`
 	ID      int64              `json:"id"`
 	Result  *types.BlockResult `json:"result"`
@@ -38,7 +37,7 @@ func TestFFI(t *testing.T) {
 	as.NoError(err)
 	byt, err := ioutil.ReadAll(f)
 	as.NoError(err)
-	rpcTrace := &RpcTrace{}
+	rpcTrace := &RPCTrace{}
 	as.NoError(json.Unmarshal(byt, rpcTrace))
 
 	_, err = prover.Prove(rpcTrace.Result)

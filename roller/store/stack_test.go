@@ -8,7 +8,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	. "scroll-tech/go-roller/types"
+	"scroll-tech/common/message"
 )
 
 func TestStack(t *testing.T) {
@@ -23,7 +23,7 @@ func TestStack(t *testing.T) {
 	defer s.Close()
 
 	for i := 0; i < 3; i++ {
-		trace := &BlockTraces{
+		trace := &message.BlockTraces{
 			ID:     uint64(i),
 			Traces: nil,
 		}

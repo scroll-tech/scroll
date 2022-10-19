@@ -32,7 +32,7 @@ jobs:
     - name: Install Go
       uses: actions/setup-go@v2
       with:
-        go-version: 1.17.x
+        go-version: 1.18.x
     - name: Checkout code
       uses: actions/checkout@v2
     - name: Cache cargo registry
@@ -60,7 +60,7 @@ jobs:
     - name: Install Go
       uses: actions/setup-go@v2
       with:
-        go-version: 1.17.x
+        go-version: 1.18.x
     - name: Checkout code
       uses: actions/checkout@v2
     - name: Lint
@@ -73,11 +73,11 @@ jobs:
     - name: Install Go
       uses: actions/setup-go@v2
       with:
-        go-version: 1.17.x
+        go-version: 1.18.x
     - name: Checkout code
       uses: actions/checkout@v2
     - name: Install goimports
-      run: go get golang.org/x/tools/cmd/goimports
+      run: go install golang.org/x/tools/cmd/goimports
     - run: goimports -local scroll-tech/go-roller/ -w .
     - run: go mod tidy
     # If there are any diffs from goimports or go mod tidy, fail.
