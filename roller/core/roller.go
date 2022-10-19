@@ -116,7 +116,7 @@ func (r *Roller) Register() error {
 		return fmt.Errorf("sign auth message failed %v", err)
 	}
 
-	sub, err := r.client.SubscribeRegister(context.Background(), r.traceChan, authMsg)
+	sub, err := r.client.RegisterAndSubscribe(context.Background(), r.traceChan, authMsg)
 	r.sub = sub
 	return err
 }
