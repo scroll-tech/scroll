@@ -110,12 +110,7 @@ func (r *Roller) Register() error {
 		return fmt.Errorf("sign auth message failed %v", err)
 	}
 
-	msgByt, err := MakeMsgByt(Register, authMsg)
-	if err != nil {
-		return err
-	}
-
-	return r.conn.WriteMessage(websocket.BinaryMessage, msgByt)
+	return r.sendMessage(Register, authMsg)
 }
 
 // HandleScroll accepts block-traces from Scroll through the Websocket and store it into Stack.
@@ -186,6 +181,14 @@ func (r *Roller) ProveLoop() (err error) {
 	}
 }
 
+func (r *Roller) sendMessage(msgType MsgType, payload interface{}) error {
+	msgByt, err := MakeMsgByt(msgType, payload)
+	if err != nil {
+		return err
+	}
+	return r.conn.WriteMessage(websocket.BinaryMessage, msgByt)
+}
+
 func (r *Roller) handMessage() error {
 	mt, msg, err := r.conn.ReadMessage()
 	if err != nil {
@@ -202,11 +205,22 @@ func (r *Roller) handMessage() error {
 }
 
 func (r *Roller) prove() error {
-PROVE:
 	traces, err := r.stack.Pop()
 	if err != nil {
 		return err
 	}
+
+	var proofMsg *ProofMsg
+	if traces.Times >= 2 {
+		proofMsg = &ProofMsg{
+			Status: StatusProofError,
+			Error:  "prove panic",
+			ID:     traces.Traces.ID,
+			Proof:  &AggProof{},
+		}
+		return r.sendMessage(Proof, proofMsg)
+	}
+
 	err = r.stack.Push(traces)
 	if err != nil {
 		return err
@@ -214,14 +228,8 @@ PROVE:
 
 	log.Info("start to prove block", "block-id", traces.Traces.ID)
 
-	var proofMsg *ProofMsg
 	proof, err := r.prover.Prove(traces.Traces.Traces)
 	if err != nil {
-		if traces.Times < 2 {
-			log.Error("prove failed, retry...")
-			goto PROVE
-		}
-
 		proofMsg = &ProofMsg{
 			Status: StatusProofError,
 			Error:  err.Error(),
@@ -242,11 +250,7 @@ PROVE:
 		return err
 	}
 
-	msgByt, err := MakeMsgByt(Proof, proofMsg)
-	if err != nil {
-		return err
-	}
-	return r.conn.WriteMessage(websocket.BinaryMessage, msgByt)
+	return r.sendMessage(Proof, proofMsg)
 }
 
 // Close closes the websocket connection.
