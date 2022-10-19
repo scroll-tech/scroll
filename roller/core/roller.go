@@ -51,7 +51,7 @@ type Roller struct {
 // NewRoller new a Roller object.
 func NewRoller(cfg *config.Config) (*Roller, error) {
 	// load or create wallet
-	priv, err := loadOrCreateKey(cfg)
+	priv, err := loadOrCreateKey(cfg.KeystorePath, cfg.KeystorePassword)
 	if err != nil {
 		return nil, err
 	}
@@ -232,22 +232,21 @@ func (r *Roller) Close() {
 	}
 }
 
-func loadOrCreateKey(cfg *config.Config) (*ecdsa.PrivateKey, error) {
-	keystoreFilePath := cfg.KeystorePath
-	if _, err := os.Stat(cfg.KeystorePath); os.IsNotExist(err) {
+func loadOrCreateKey(keystoreFilePath string, keystorePassword string) (*ecdsa.PrivateKey, error) {
+	if _, err := os.Stat(keystoreFilePath); os.IsNotExist(err) {
 		// If there is no keystore, make a new one.
-		ks := keystore.NewKeyStore(cfg.KeystorePath, keystore.StandardScryptN, keystore.StandardScryptP)
-		account, err := ks.NewAccount(cfg.KeystorePassword)
+		ks := keystore.NewKeyStore(keystoreFilePath, keystore.StandardScryptN, keystore.StandardScryptP)
+		account, err := ks.NewAccount(keystorePassword)
 		if err != nil {
 			return nil, fmt.Errorf("generate crypto account failed %v", err)
 		}
 		log.Info("create a new account", "address", account.Address.Hex())
 
-		fis, err := ioutil.ReadDir(cfg.KeystorePath)
+		fis, err := ioutil.ReadDir(keystoreFilePath)
 		if err != nil {
 			return nil, err
 		}
-		keystoreFilePath = filepath.Join(cfg.KeystorePath, fis[0].Name())
+		keystoreFilePath = filepath.Join(keystoreFilePath, fis[0].Name())
 	} else {
 		return nil, err
 	}
@@ -256,7 +255,7 @@ func loadOrCreateKey(cfg *config.Config) (*ecdsa.PrivateKey, error) {
 	if err != nil {
 		return nil, err
 	}
-	key, err := keystore.DecryptKey(keyjson, cfg.KeystorePassword)
+	key, err := keystore.DecryptKey(keyjson, keystorePassword)
 	if err != nil {
 		return nil, err
 	}
