@@ -10,8 +10,9 @@ import "C"
 
 import (
 	"fmt"
-	"github.com/pkg/errors"
 	"unsafe"
+
+	"github.com/pkg/errors"
 )
 
 func main() {
