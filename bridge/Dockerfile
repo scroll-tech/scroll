@@ -8,7 +8,6 @@ RUN cd /bridge/cmd && go build -v -p 4 -o bridge
 # Pull bridge into a second stage deploy alpine container
 FROM alpine:latest
 
-COPY --from=builder /bridge/cmd /bin/
+COPY --from=builder /bridge/cmd/bridge /bin/
 
-EXPOSE 8645
 ENTRYPOINT ["bridge"]
