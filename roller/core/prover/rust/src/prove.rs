@@ -23,7 +23,6 @@ pub unsafe extern "C" fn init_prover(params_path: *const c_char, seed_path: *con
 /// # Safety
 #[no_mangle]
 pub unsafe extern "C" fn create_agg_proof(trace_char: *const c_char) -> *const c_char {
-    panic!("boom!!");
     let trace_vec = c_char_to_vec(trace_char);
     let trace = serde_json::from_slice::<BlockResult>(&trace_vec).unwrap();
     let proof = PROVER
