@@ -1,6 +1,6 @@
 .PHONY: lint docker clean roller
 
-IMAGE_NAME=roller-go
+IMAGE_NAME=go-roller
 IMAGE_VERSION=latest
 
 prepare-libprover:
@@ -26,5 +26,5 @@ lint: ## Lint the files - used for CI
 clean: ## Empty out the bin folder
 	@rm -rf build/bin
 
-docker:
-	docker build -t scrolltech/${IMAGE_NAME}:${IMAGE_VERSION} ../ -f ./Dockerfile
+# docker:
+# 	docker build -t scrolltech/${IMAGE_NAME}:${IMAGE_VERSION} ../ -f ./Dockerfile

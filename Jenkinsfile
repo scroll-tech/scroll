@@ -17,7 +17,14 @@ pipeline {
     stages {
         stage('Build') {
             when {
-                anyOf { changeset "bridge/**"; changeset "build/**"; changeset "coordinator/**"; changeset "common/**"; changeset "database/**" }
+                anyOf {
+                    changeset "Jenkinsfile"
+                    changeset "build/**"
+                    changeset "bridge/**"
+                    changeset "coordinator/**"
+                    changeset "common/**"
+                    changeset "database/**"
+                }
             }
             steps { 
                 //start to build project
@@ -33,14 +40,20 @@ pipeline {
         }
         stage('Test') {
             when {
-                anyOf { changeset "bridge/**"; changeset "build/**"; changeset "coordinator/**"; changeset "common/**"; changeset "database/**" }
+                anyOf {
+                    changeset "Jenkinsfile"
+                    changeset "build/**"
+                    changeset "bridge/**"
+                    changeset "coordinator/**"
+                    changeset "common/**"
+                    changeset "database/**"
+                }
             }
             steps {
                sh "docker ps -aq | xargs -r docker stop"
                sh "docker container prune -f"
                catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
                     sh '''
-                        cd ./bridge
                         go test -v -race -coverprofile=coverage.txt -covermode=atomic -p 1 scroll-tech/database
                         go test -v -race -coverprofile=coverage.txt -covermode=atomic -p 1 scroll-tech/database/migrate
                         go test -v -race -coverprofile=coverage.txt -covermode=atomic -p 1 scroll-tech/database/docker
@@ -65,7 +78,14 @@ pipeline {
         }
         stage('Docker') {
             when {
-                anyOf { changeset "bridge/**"; changeset "build/**"; changeset "coordinator/**"; changeset "common/**"; changeset "database/**" }
+                anyOf {
+                    changeset "Jenkinsfile"
+                    changeset "build/**"
+                    changeset "bridge/**"
+                    changeset "coordinator/**"
+                    changeset "common/**"
+                    changeset "database/**"
+                }
             }
             steps {
                 withCredentials([usernamePassword(credentialsId: "${credentialDocker}", passwordVariable: 'dockerPassword', usernameVariable: 'dockerUser')]) {
@@ -74,11 +94,8 @@ pipeline {
                             sh 'docker login --username=${dockerUser} --password=${dockerPassword}'
                             for (i in ['bridge', 'coordinator']) {
                                 sh "docker build -t ${imagePrefix}/$i:${GIT_COMMIT} -f $i/Dockerfile ."
-                                sh "docker tag ${imagePrefix}/$i:${GIT_COMMIT} ${imagePrefix}/$i:latest"
                                 sh "docker push ${imagePrefix}/$i:${GIT_COMMIT}"
-                                sh "docker push ${imagePrefix}/$i:latest"
                                 sh "docker rmi ${imagePrefix}/$i:${GIT_COMMIT}"
-                                sh "docker rmi ${imagePrefix}/$i:latest"
                             }
                         }
                     }
