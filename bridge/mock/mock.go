@@ -18,16 +18,20 @@ import (
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/stretchr/testify/assert"
 
+	"scroll-tech/common/docker"
+	"scroll-tech/common/message"
+	"scroll-tech/coordinator"
+	coordinator_config "scroll-tech/coordinator/config"
 	"scroll-tech/database"
-	"scroll-tech/scroll/bridge"
-	"scroll-tech/scroll/bridge/l2"
-	client2 "scroll-tech/scroll/client"
-	"scroll-tech/scroll/config"
-	"scroll-tech/scroll/coordinator"
-	"scroll-tech/scroll/coordinator/message"
-	"scroll-tech/scroll/internal/docker"
-	"scroll-tech/scroll/store"
-	"scroll-tech/scroll/store/migrate"
+	db_docker "scroll-tech/database/docker"
+	"scroll-tech/database/migrate"
+
+	db_config "scroll-tech/database"
+
+	client2 "scroll-tech/coordinator/client"
+
+	bridge_config "scroll-tech/bridge/config"
+	"scroll-tech/bridge/l2"
 )
 
 // PerformHandshake sets up a websocket client to connect to the roller manager.
@@ -115,48 +119,55 @@ func SetupMockVerifier(t *testing.T, verifierEndpoint string) {
 
 }
 
+// L1GethTestConfig is the http and web socket port of l1geth docker
 type L1GethTestConfig struct {
 	HPort int
 	WPort int
 }
 
+// L2GethTestConfig is the http and web socket port of l2geth docker
 type L2GethTestConfig struct {
 	HPort int
 	WPort int
 }
 
+// DbTestconfig is the test config of database docker
 type DbTestconfig struct {
 	DbName    string
 	DbPort    int
 	DB_CONFIG *database.DBConfig
 }
 
+// TestConfig is the config for test
 type TestConfig struct {
 	L1GethTestConfig
 	L2GethTestConfig
 	DbTestconfig
 }
 
+// NewL1Docker starts and returns l1geth docker
 func NewL1Docker(t *testing.T, tcfg *TestConfig) docker.ImgInstance {
 	imgGeth := docker.NewImgGeth(t, "scroll_l1geth", "", "", tcfg.L1GethTestConfig.HPort, tcfg.L1GethTestConfig.WPort)
 	assert.NoError(t, imgGeth.Start())
 	return imgGeth
 }
 
+// NewL2Docker starts and returns l2geth docker
 func NewL2Docker(t *testing.T, tcfg *TestConfig) docker.ImgInstance {
 	imgGeth := docker.NewImgGeth(t, "scroll_l2geth", "", "", tcfg.L2GethTestConfig.HPort, tcfg.L2GethTestConfig.WPort)
 	assert.NoError(t, imgGeth.Start())
 	return imgGeth
 }
 
+// NewDBDocker starts and returns database docker
 func NewDBDocker(t *testing.T, tcfg *TestConfig) docker.ImgInstance {
-	imgDb := docker.NewImgDB(t, "postgres", "123456", tcfg.DbName, tcfg.DbPort)
+	imgDb := db_docker.NewImgDB(t, "postgres", "123456", tcfg.DbName, tcfg.DbPort)
 	assert.NoError(t, imgDb.Start())
 	return imgDb
 }
 
-// Mockl2gethDocker return mock l2geth client created with docker for test
-func Mockl2gethDocker(t *testing.T, cfg *config.Config, tcfg *TestConfig) (bridge.MockL2BackendClient, docker.ImgInstance, docker.ImgInstance) {
+// L2gethDocker return mock l2geth client created with docker for test
+func L2gethDocker(t *testing.T, cfg *bridge_config.Config, tcfg *TestConfig) (*l2.Backend, docker.ImgInstance, docker.ImgInstance) {
 	// initialize l2geth docker image
 	imgGeth := NewL2Docker(t, tcfg)
 
@@ -176,7 +187,7 @@ func Mockl2gethDocker(t *testing.T, cfg *config.Config, tcfg *TestConfig) (bridg
 }
 
 // SetupRollerManager return rollers.Manager for testcase
-func SetupRollerManager(t *testing.T, cfg *config.RollerManagerConfig, orm store.OrmFactory) *coordinator.Manager {
+func SetupRollerManager(t *testing.T, cfg *coordinator_config.RollerManagerConfig, orm database.OrmFactory) *coordinator.Manager {
 	// Load config file.
 	ctx := context.Background()
 
@@ -193,18 +204,18 @@ func SetupRollerManager(t *testing.T, cfg *config.RollerManagerConfig, orm store
 }
 
 // PrepareDB clears and reset db
-func PrepareDB(t *testing.T, db_cfg *config.DBConfig) store.OrmFactory {
-	db, err := store.NewOrmFactory(db_cfg)
+func PrepareDB(t *testing.T, db_cfg *db_config.DBConfig) database.OrmFactory {
+	db, err := database.NewOrmFactory(db_cfg)
 	assert.NoError(t, err)
 
 	version0 := int64(0)
-	assert.NoError(t, migrate.Rollback(db.GetDB(), &version0))
-	assert.NoError(t, migrate.Migrate(db.GetDB()))
+	assert.NoError(t, migrate.Rollback(db.GetDB().DB, &version0))
+	assert.NoError(t, migrate.Migrate(db.GetDB().DB))
 	return db
 }
 
-// MockSendTxToL2Client will send a default Tx by calling l2geth client
-func MockSendTxToL2Client(t *testing.T, client *ethclient.Client, private string) {
+// SendTxToL2Client will send a default Tx by calling l2geth client
+func SendTxToL2Client(t *testing.T, client *ethclient.Client, private string) {
 	privateKey, err := crypto.HexToECDSA(private)
 	assert.NoError(t, err)
 	publicKey := privateKey.Public()

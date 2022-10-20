@@ -11,18 +11,23 @@ import (
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/sync/errgroup"
 
-	"scroll-tech/scroll/bridge"
-	client2 "scroll-tech/scroll/client"
-	"scroll-tech/scroll/config"
-	"scroll-tech/scroll/coordinator"
-	"scroll-tech/scroll/internal/docker"
-	"scroll-tech/scroll/internal/mock"
-	"scroll-tech/scroll/internal/rpc"
-	"scroll-tech/scroll/store"
-	"scroll-tech/scroll/store/orm"
+	"scroll-tech/bridge/l2"
+	"scroll-tech/bridge/mock"
+	"scroll-tech/common/docker"
+	"scroll-tech/common/utils"
+	"scroll-tech/database"
+	"scroll-tech/database/orm"
+
+	client2 "scroll-tech/coordinator/client"
+
+	bridge_config "scroll-tech/bridge/config"
+	db_config "scroll-tech/database"
+
+	"scroll-tech/coordinator"
+	coordinator_config "scroll-tech/coordinator/config"
 )
 
-const managerUrl = "localhost:8132"
+const managerURL = "localhost:8132"
 const managerPort = ":8132"
 
 var (
@@ -34,38 +39,38 @@ var (
 		DbTestconfig: mock.DbTestconfig{
 			DbName: "testmanager_db",
 			DbPort: 5436,
-			DB_CONFIG: &config.DBConfig{
-				DriverName: config.GetEnvWithDefault("TEST_DB_DRIVER", "postgres"),
-				DSN:        config.GetEnvWithDefault("TEST_DB_DSN", "postgres://postgres:123456@localhost:5436/testmanager_db?sslmode=disable"),
+			DB_CONFIG: &db_config.DBConfig{
+				DriverName: utils.GetEnvWithDefault("TEST_DB_DRIVER", "postgres"),
+				DSN:        utils.GetEnvWithDefault("TEST_DB_DSN", "postgres://postgres:123456@localhost:5436/testmanager_db?sslmode=disable"),
 			},
 		},
 	}
 )
 
 var (
-	cfg            *config.Config
-	l2backend      bridge.MockL2BackendClient
+	cfg            *bridge_config.Config
+	l2backend      *l2.Backend
 	imgGeth, imgDb docker.ImgInstance
-	db             store.OrmFactory
+	db             database.OrmFactory
 	rollerManager  *coordinator.Manager
 	handle         *http.Server
 )
 
 func setEnv(t *testing.T) {
 	var err error
-	cfg, err = config.NewConfig("../config.json")
+	cfg, err = bridge_config.NewConfig("./config.json")
 	assert.NoError(t, err)
 
-	l2backend, imgGeth, imgDb = mock.Mockl2gethDocker(t, cfg, TEST_CONFIG)
+	l2backend, imgGeth, imgDb = mock.L2gethDocker(t, cfg, TEST_CONFIG)
 
 	// reset db and return orm handler
 	db = mock.PrepareDB(t, TEST_CONFIG.DB_CONFIG)
 
 	// start roller manager
-	rollerManager = setupRollerManager(t, 1, l2backend, "", db)
+	rollerManager = setupRollerManager(t, "", db)
 
 	// start ws service
-	handle, _, err = rpc.StartWSEndpoint(managerUrl, rollerManager.APIs())
+	handle, _, err = utils.StartWSEndpoint(managerURL, rollerManager.APIs())
 	assert.NoError(t, err)
 }
 
@@ -93,7 +98,7 @@ func testHandshake(t *testing.T) {
 	mock.PrepareDB(t, TEST_CONFIG.DB_CONFIG)
 
 	// create a new
-	client, err := client2.DialContext(ctx, "ws://"+managerUrl)
+	client, err := client2.DialContext(ctx, "ws://"+managerURL)
 	assert.NoError(t, err)
 
 	stopCh := make(chan struct{})
@@ -117,7 +122,7 @@ func testSeveralConnections(t *testing.T) {
 		idx := i
 		eg.Go(func() error {
 			// create a new ws connection
-			client, err := client2.DialContext(ctx, "ws://"+managerUrl)
+			client, err := client2.DialContext(ctx, "ws://"+managerURL)
 			assert.NoError(t, err)
 			mock.PerformHandshake(t, 1, "roller_test"+strconv.Itoa(idx), client, stopCh)
 			return nil
@@ -163,15 +168,16 @@ func testIdleRollerSelection(t *testing.T) {
 	batch := 20
 	stopCh := make(chan struct{})
 	for i := 0; i < batch; i++ {
-		client, err := client2.DialContext(ctx, "ws://"+managerUrl)
+		var client *client2.Client
+		client, err = client2.DialContext(ctx, "ws://"+managerURL)
 		assert.NoError(t, err)
 		mock.PerformHandshake(t, 1, "roller_test"+strconv.Itoa(i), client, stopCh)
 	}
 	assert.Equal(t, batch, rollerManager.GetNumberOfIdleRollers())
 
 	// send two txs
-	mock.MockSendTxToL2Client(t, ethClient, cfg.L2Config.RelayerConfig.PrivateKey)
-	mock.MockSendTxToL2Client(t, ethClient, cfg.L2Config.RelayerConfig.PrivateKey)
+	mock.SendTxToL2Client(t, ethClient, cfg.L2Config.RelayerConfig.PrivateKey)
+	mock.SendTxToL2Client(t, ethClient, cfg.L2Config.RelayerConfig.PrivateKey)
 
 	// verify proof status
 	var (
@@ -203,10 +209,10 @@ func testIdleRollerSelection(t *testing.T) {
 	}
 }
 
-func setupRollerManager(t *testing.T, rollersPerSession uint8, l2 bridge.MockL2BackendClient, verifierEndpoint string, orm store.OrmFactory) *coordinator.Manager {
-	rollerManager, err := coordinator.New(context.Background(), &config.RollerManagerConfig{
+func setupRollerManager(t *testing.T, verifierEndpoint string, orm database.OrmFactory) *coordinator.Manager {
+	rollerManager, err := coordinator.New(context.Background(), &coordinator_config.RollerManagerConfig{
 		Endpoint:          managerPort,
-		RollersPerSession: rollersPerSession,
+		RollersPerSession: 1,
 		VerifierEndpoint:  verifierEndpoint,
 		CollectionTime:    1,
 	}, orm)

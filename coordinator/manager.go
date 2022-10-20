@@ -16,11 +16,12 @@ import (
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/scroll-tech/go-ethereum/rpc"
 
-	"scroll-tech/scroll/config"
-	"scroll-tech/scroll/coordinator/message"
-	"scroll-tech/scroll/store"
-	"scroll-tech/scroll/store/orm"
-	"scroll-tech/scroll/verifier"
+	"scroll-tech/common/message"
+	"scroll-tech/database"
+	"scroll-tech/database/orm"
+
+	"scroll-tech/coordinator/config"
+	"scroll-tech/coordinator/verifier"
 )
 
 const (
@@ -71,12 +72,12 @@ type Manager struct {
 	verifier *verifier.Verifier
 
 	// db interface
-	orm store.OrmFactory
+	orm database.OrmFactory
 }
 
 // New returns a new instance of Manager. The instance will be not fully prepared,
 // and still needs to be finalized and ran by calling `manager.Start`.
-func New(ctx context.Context, cfg *config.RollerManagerConfig, orm store.OrmFactory) (*Manager, error) {
+func New(ctx context.Context, cfg *config.RollerManagerConfig, orm database.OrmFactory) (*Manager, error) {
 	var v *verifier.Verifier
 	if cfg.VerifierEndpoint != "" {
 		var err error
@@ -184,7 +185,7 @@ func (m *Manager) Loop() {
 
 // handleZkProof handle a ZkProof submitted from a roller.
 // For now only proving/verifying error will lead to setting status as skipped.
-// db/unmarshal errors will not because they are errors on the bussiness logic side.
+// db/unmarshal errors will not because they are errors on the business logic side.
 func (m *Manager) handleZkProof(pk string, msg *message.ProofMsg) error {
 	var dbErr error
 
@@ -320,7 +321,7 @@ func (m *Manager) CollectProofs(id uint64, s *session) {
 		}
 
 		// Now, select a random index for this slice.
-		randIndex, err := rand.Int(rand.Reader, big.NewInt(int64(len(participatingRollers))))
+		randIndex, err := rand.Int(rand.Reader, big.NewInt(int64(len(participatingRollers)))) //nolint
 		if err != nil {
 			// If, for whatever reason, we can not generate a random number
 			// using a strong random number generator, we can fall back on

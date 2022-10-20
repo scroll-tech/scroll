@@ -104,7 +104,7 @@ func TestWatcherFunction(t *testing.T) {
 		numTransactions := 3
 
 		for i := 0; i < numTransactions; i++ {
-			mock.MockSendTxToL2Client(t, client, cfg.L2Config.RelayerConfig.PrivateKey)
+			mock.SendTxToL2Client(t, client, cfg.L2Config.RelayerConfig.PrivateKey)
 		}
 
 		<-time.After(10 * time.Second)

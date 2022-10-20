@@ -5,7 +5,7 @@ import (
 
 	"github.com/scroll-tech/go-ethereum/rpc"
 
-	"scroll-tech/scroll/coordinator"
+	"scroll-tech/coordinator"
 )
 
 type client interface {
@@ -22,6 +22,7 @@ func Dial(rawurl string) (*Client, error) {
 	return DialContext(context.Background(), rawurl)
 }
 
+// nolint
 func DialContext(ctx context.Context, rawurl string) (*Client, error) {
 	c, err := rpc.DialContext(ctx, rawurl)
 	if err != nil {

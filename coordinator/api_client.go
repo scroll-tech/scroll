@@ -6,7 +6,7 @@ import (
 	"github.com/scroll-tech/go-ethereum"
 	"github.com/scroll-tech/go-ethereum/rpc"
 
-	"scroll-tech/scroll/common/message"
+	"scroll-tech/common/message"
 )
 
 // RollerClient scroll api for rollers, send trace and receive proof.
@@ -15,6 +15,7 @@ type RollerClient interface {
 	SubmitProof(ctx context.Context, proof *message.AuthZkProof) (bool, error)
 }
 
+// nolint
 type Client struct {
 	*rpc.Client
 }

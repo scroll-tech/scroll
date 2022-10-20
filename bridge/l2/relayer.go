@@ -381,7 +381,7 @@ func (r *Layer2Relayer) Start() {
 			case <-ticker.C:
 				r.ProcessSavedEvents()
 				r.ProcessPendingBlocks()
-				r.ProcessCommittedBlocks()
+				r.ProcessCommittedBlocks() //nolint
 			case confirmation := <-r.confirmationCh:
 				r.handleConfirmation(confirmation)
 			case <-r.stopCh:

@@ -11,7 +11,7 @@ import (
 	"github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/log"
 
-	"scroll-tech/scroll/coordinator/message"
+	"scroll-tech/common/message"
 )
 
 // roller node message
@@ -24,7 +24,7 @@ type rollerNode struct {
 	// trace channel
 	traceChan chan *message.BlockTraces
 	// session id list which delivered to roller.
-	IdList cmap.ConcurrentMap
+	IDList cmap.ConcurrentMap
 
 	// Time of message creation
 	registerTime time.Time
@@ -36,7 +36,7 @@ func (r *rollerNode) sendMsg(id uint64, trace *types.BlockResult) bool {
 		ID:     id,
 		Traces: trace,
 	}:
-		r.IdList.Set(strconv.Itoa(int(id)), struct{}{})
+		r.IDList.Set(strconv.Itoa(int(id)), struct{}{})
 	default:
 		log.Warn("roller channel is full")
 		return false
@@ -50,7 +50,7 @@ func (m *Manager) register(pubkey string, identity *message.Identity) (<-chan *m
 		node = &rollerNode{
 			Name:      identity.Name,
 			PublicKey: pubkey,
-			IdList:    cmap.New(),
+			IDList:    cmap.New(),
 			traceChan: make(chan *message.BlockTraces, 4),
 		}
 		m.rollerPool.Set(pubkey, node)
@@ -73,7 +73,7 @@ func (m *Manager) freeRoller(pk string) {
 func (m *Manager) existID(pk string, id uint64) bool {
 	if node, ok := m.rollerPool.Get(pk); ok {
 		r := node.(*rollerNode)
-		return r.IdList.Has(strconv.Itoa(int(id)))
+		return r.IDList.Has(strconv.Itoa(int(id)))
 	}
 	return false
 }
@@ -81,7 +81,7 @@ func (m *Manager) existID(pk string, id uint64) bool {
 func (m *Manager) freeID(pk string, id uint64) {
 	if node, ok := m.rollerPool.Get(pk); ok {
 		r := node.(*rollerNode)
-		r.IdList.Pop(strconv.Itoa(int(id)))
+		r.IDList.Pop(strconv.Itoa(int(id)))
 	}
 }
 
@@ -91,7 +91,7 @@ func (m *Manager) GetNumberOfIdleRollers() int {
 	for i := 0; i < len(pubkeys); i++ {
 		if val, ok := m.rollerPool.Get(pubkeys[i]); ok {
 			r := val.(*rollerNode)
-			if r.IdList.Count() > int(m.cfg.RollersPerSession) {
+			if r.IDList.Count() > int(m.cfg.RollersPerSession) {
 				pubkeys[i], pubkeys = pubkeys[len(pubkeys)-1], pubkeys[:len(pubkeys)-1]
 			}
 		}
@@ -105,7 +105,7 @@ func (m *Manager) selectRoller() *rollerNode {
 		idx, _ := rand.Int(rand.Reader, big.NewInt(int64(len(pubkeys))))
 		if val, ok := m.rollerPool.Get(pubkeys[idx.Int64()]); ok {
 			r := val.(*rollerNode)
-			if r.IdList.Count() < int(m.cfg.RollersPerSession) {
+			if r.IDList.Count() < int(m.cfg.RollersPerSession) {
 				return r
 			}
 		}

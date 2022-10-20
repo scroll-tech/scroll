@@ -12,6 +12,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"scroll-tech/common/docker"
+	db_config "scroll-tech/database"
 
 	"scroll-tech/database"
 	"scroll-tech/database/orm"
@@ -84,7 +85,7 @@ func TestRelayerFunction(t *testing.T) {
 		client, err := ethclient.Dial(l2Docker.Endpoint())
 		assert.NoError(t, err)
 
-		db, err := database.NewOrmFactory(&config.DBConfig{
+		db, err := database.NewOrmFactory(&db_config.DBConfig{
 			DriverName: "postgres",
 			DSN:        dbDocker.Endpoint(),
 		})
@@ -139,7 +140,7 @@ func TestRelayerFunction(t *testing.T) {
 		client, err := ethclient.Dial(l2Docker.Endpoint())
 		assert.NoError(t, err)
 
-		db, err := database.NewOrmFactory(&config.DBConfig{
+		db, err := database.NewOrmFactory(&db_config.DBConfig{
 			DriverName: "postgres",
 			DSN:        dbDocker.Endpoint(),
 		})
@@ -213,7 +214,7 @@ func TestRelayerFunction(t *testing.T) {
 		client, err := ethclient.Dial(l2Docker.Endpoint())
 		assert.NoError(t, err)
 
-		db, err := database.NewOrmFactory(&config.DBConfig{
+		db, err := database.NewOrmFactory(&db_config.DBConfig{
 			DriverName: "postgres",
 			DSN:        dbDocker.Endpoint(),
 		})

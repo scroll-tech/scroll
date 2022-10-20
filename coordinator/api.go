@@ -8,7 +8,7 @@ import (
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/scroll-tech/go-ethereum/rpc"
 
-	"scroll-tech/scroll/common/message"
+	"scroll-tech/common/message"
 )
 
 // RollerAPI for rollers inorder to register and submit proof
@@ -48,7 +48,7 @@ func (m *Manager) Register(ctx context.Context, authMsg *message.AuthMessage) (*
 		for {
 			select {
 			case trace := <-traceCh:
-				notifier.Notify(rpcSub.ID, trace)
+				notifier.Notify(rpcSub.ID, trace) //nolint
 			case <-rpcSub.Err():
 				return
 			case <-notifier.Closed():

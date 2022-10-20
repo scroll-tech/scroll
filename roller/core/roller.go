@@ -98,7 +98,7 @@ func (r *Roller) Register() error {
 		return err
 	}
 	authMsg := &message.AuthMessage{
-		Identity: message.Identity{
+		Identity: &message.Identity{
 			Name:      r.cfg.RollerName,
 			Timestamp: time.Now().UnixMilli(),
 			PublicKey: common.Bytes2Hex(crypto.FromECDSAPub(&priv.PublicKey)),
