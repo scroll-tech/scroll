@@ -20,6 +20,7 @@ pipeline {
                 anyOf {
                     changeset "Jenkinsfile"
                     changeset "build/**"
+                    changeset "go.work**"
                     changeset "bridge/**"
                     changeset "coordinator/**"
                     changeset "common/**"
@@ -43,6 +44,7 @@ pipeline {
                 anyOf {
                     changeset "Jenkinsfile"
                     changeset "build/**"
+                    changeset "go.work**"
                     changeset "bridge/**"
                     changeset "coordinator/**"
                     changeset "common/**"
@@ -81,6 +83,7 @@ pipeline {
                 anyOf {
                     changeset "Jenkinsfile"
                     changeset "build/**"
+                    changeset "go.work**"
                     changeset "bridge/**"
                     changeset "coordinator/**"
                     changeset "common/**"
