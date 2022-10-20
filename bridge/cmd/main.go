@@ -33,7 +33,7 @@ func main() {
 
 	app.Before = func(ctx *cli.Context) error {
 		return utils.Setup(&utils.LogConfig{
-			LogFile:       ctx.String(configFileFlag.Name),
+			LogFile:       ctx.String(logFileFlag.Name),
 			LogJSONFormat: ctx.Bool(logJSONFormat.Name),
 			LogDebug:      ctx.Bool(logDebugFlag.Name),
 			Verbosity:     ctx.Int(verbosityFlag.Name),
