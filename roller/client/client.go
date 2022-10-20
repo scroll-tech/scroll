@@ -6,7 +6,7 @@ import (
 	"github.com/scroll-tech/go-ethereum"
 	"github.com/scroll-tech/go-ethereum/rpc"
 
-	"scroll-tech/go-roller/message"
+	"scroll-tech/common/message"
 )
 
 // Client wrap the ethclient websocket for roller.
