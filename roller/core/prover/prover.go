@@ -10,6 +10,7 @@ import "C" //nolint:typecheck
 
 import (
 	"encoding/json"
+	"github.com/scroll-tech/go-ethereum/log"
 	"unsafe"
 
 	"github.com/scroll-tech/go-ethereum/core/types"
@@ -42,11 +43,7 @@ func NewProver(cfg *config.ProverConfig) (*Prover, error) {
 
 // Prove call rust ffi to generate proof, if first failed, try again.
 func (p *Prover) Prove(traces *types.BlockResult) (*message.AggProof, error) {
-	proof, err := p.prove(traces)
-	if err != nil {
-		return p.prove(traces)
-	}
-	return proof, nil
+	return p.prove(traces)
 }
 
 func (p *Prover) prove(traces *types.BlockResult) (*message.AggProof, error) {
@@ -61,6 +58,9 @@ func (p *Prover) prove(traces *types.BlockResult) (*message.AggProof, error) {
 
 	defer func() {
 		C.free(unsafe.Pointer(tracesStr))
+		if r := recover(); r != nil {
+			log.Error("rust zk panic", "panic", r)
+		}
 	}()
 	cProof := C.create_agg_proof(tracesStr)
 	proof := C.GoString(cProof)
