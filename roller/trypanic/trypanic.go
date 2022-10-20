@@ -4,7 +4,7 @@ package main
 #cgo LDFLAGS: ./core/prover/lib/libprover.a -lm -ldl
 #cgo gpu LDFLAGS: ./core/prover/lib/libprover.a -lm -ldl -lgmp -lstdc++ -lprocps -L/usr/local/cuda/lib64/ -lcudart
 #include <stdlib.h>
-#include "./lib/prover.h"
+#include "../core/prover/lib/prover.h"
 */
 import "C"
 
