@@ -8,7 +8,6 @@ RUN cd /coordinator/cmd && go build -v -p 4 -o coordinator
 # Pull scroll into a second stage deploy alpine container
 FROM alpine:latest
 
-COPY --from=builder /coordinator/cmd /bin/
+COPY --from=builder /coordinator/cmd/coordinator /bin/
 
-EXPOSE 8645
 ENTRYPOINT ["coordinator"]
