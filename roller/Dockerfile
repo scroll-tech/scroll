@@ -7,8 +7,7 @@ COPY go.work go.work
 COPY go.work.sum go.work.sum
 COPY ./roller /go-roller
 COPY ./common ./common
-RUN apk add --no-cache gcc musl-dev linux-headers git ca-certificates \
-    && cd /go-roller/cmd/ && go build -v -p 4 -o roller
+RUN cd /go-roller/cmd/ && go build -v -p 4 -o roller
 
 # Pull roller into a second stage deploy alpine container
 FROM alpine:latest
