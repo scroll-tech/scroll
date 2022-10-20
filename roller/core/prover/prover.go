@@ -9,16 +9,17 @@ package prover
 #include <stdlib.h>
 #include "./lib/prover.h"
 */
-import "C"
+import "C" //nolint:typecheck
 
 import (
 	"encoding/json"
 	"unsafe"
 
-	"scroll-tech/go-roller/config"
-	"scroll-tech/go-roller/message"
-
 	"github.com/scroll-tech/go-ethereum/core/types"
+
+	"scroll-tech/common/message"
+
+	"scroll-tech/go-roller/config"
 )
 
 // Prover sends block-traces to rust-prover through socket and get back the zk-proof.

@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"scroll-tech/go-roller/message"
+	"scroll-tech/common/message"
 
 	"github.com/stretchr/testify/assert"
 )

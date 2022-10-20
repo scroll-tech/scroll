@@ -12,14 +12,16 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/scroll-tech/go-ethereum"
 	"github.com/scroll-tech/go-ethereum/accounts/keystore"
+
+	"github.com/scroll-tech/go-ethereum"
 	"github.com/scroll-tech/go-ethereum/log"
+
+	"scroll-tech/common/message"
 
 	"scroll-tech/go-roller/client"
 	"scroll-tech/go-roller/config"
 	"scroll-tech/go-roller/core/prover"
-	"scroll-tech/go-roller/message"
 	"scroll-tech/go-roller/store"
 )
 

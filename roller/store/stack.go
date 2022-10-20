@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 
-	"scroll-tech/go-roller/message"
+	"scroll-tech/common/message"
 
 	"github.com/scroll-tech/go-ethereum/log"
 	"go.etcd.io/bbolt"
