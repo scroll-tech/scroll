@@ -65,7 +65,7 @@ var (
 func setenv(t *testing.T) {
 	cfg, err := config.NewConfig("../config.json")
 	assert.NoError(t, err)
-	l1gethImg = mock.NewTestL1Docker(t, TEST_CONFIG)
+	l1gethImg = mock.NewL1Docker(t, TEST_CONFIG)
 	cfg.L2Config.RelayerConfig.SenderConfig.Endpoint = l1gethImg.Endpoint()
 	l2Backend, l2gethImg, dbImg = mock.L2gethDocker(t, cfg, TEST_CONFIG)
 }
@@ -84,12 +84,10 @@ func TestWatcherFunction(t *testing.T) {
 		cfg.L2Config.Endpoint = l2gethImg.Endpoint()
 		client, err := ethclient.Dial(cfg.L2Config.Endpoint)
 		assert.NoError(t, err)
-		mock.ClearDB(t, TEST_CONFIG.DB_CONFIG)
-
+		db, err := database.NewOrmFactory(TEST_CONFIG.DB_CONFIG)
+		assert.NoError(t, err)
 		messengerABI, err := bridge_abi.L2MessengerMetaData.GetAbi()
 		assert.NoError(t, err)
-
-		l2db := mock.PrepareDB(t, TEST_CONFIG.DB_CONFIG)
 
 		skippedOpcodes := make(map[string]struct{}, len(cfg.L2Config.SkippedOpcodes))
 		for _, op := range cfg.L2Config.SkippedOpcodes {
@@ -99,17 +97,14 @@ func TestWatcherFunction(t *testing.T) {
 		if proofGenerationFreq == 0 {
 			proofGenerationFreq = 1
 		}
-		rc := l2.NewL2WatcherClient(context.Background(), client, cfg.L2Config.Confirmations, proofGenerationFreq, skippedOpcodes, cfg.L2Config.L2MessengerAddress, messengerABI, l2db)
+		rc := l2.NewL2WatcherClient(context.Background(), client, cfg.L2Config.Confirmations, proofGenerationFreq, skippedOpcodes, cfg.L2Config.L2MessengerAddress, messengerABI, db)
 		rc.Start()
 
 		// Create several transactions and commit to block
 		numTransactions := 3
 
 		for i := 0; i < numTransactions; i++ {
-			tx := mock.SendTxToL2Client(t, client, cfg.L2Config.RelayerConfig.PrivateKey)
-			// wait for mining
-			_, err = bind.WaitMined(context.Background(), client, tx)
-			assert.NoError(t, err)
+			mock.MockSendTxToL2Client(t, client, cfg.L2Config.RelayerConfig.PrivateKey)
 		}
 
 		<-time.After(10 * time.Second)
@@ -118,7 +113,7 @@ func TestWatcherFunction(t *testing.T) {
 		assert.GreaterOrEqual(t, blockNum, uint64(numTransactions))
 
 		rc.Stop()
-		l2db.Close()
+		db.Close()
 	})
 
 	t.Run("TestMonitorBridgeContract", func(t *testing.T) {
@@ -130,7 +125,8 @@ func TestWatcherFunction(t *testing.T) {
 		client, err := ethclient.Dial(cfg.L2Config.Endpoint)
 		assert.NoError(t, err)
 
-		mock.ClearDB(t, TEST_CONFIG.DB_CONFIG)
+		db, err := database.NewOrmFactory(TEST_CONFIG.DB_CONFIG)
+		assert.NoError(t, err)
 		previousHeight, err = client.BlockNumber(context.Background())
 		assert.NoError(t, err)
 
@@ -142,7 +138,6 @@ func TestWatcherFunction(t *testing.T) {
 		address, err := bind.WaitDeployed(context.Background(), client, tx)
 		assert.NoError(t, err)
 
-		db := mock.PrepareDB(t, TEST_CONFIG.DB_CONFIG)
 		rc := prepareRelayerClient(client, db, address)
 		rc.Start()
 
@@ -203,7 +198,8 @@ func TestWatcherFunction(t *testing.T) {
 		client, err := ethclient.Dial(cfg.L2Config.Endpoint)
 		assert.NoError(t, err)
 
-		mock.ClearDB(t, TEST_CONFIG.DB_CONFIG)
+		db, err := database.NewOrmFactory(TEST_CONFIG.DB_CONFIG)
+		assert.NoError(t, err)
 
 		previousHeight, err := client.BlockNumber(context.Background()) // shallow the global previousHeight
 		assert.NoError(t, err)
@@ -215,7 +211,6 @@ func TestWatcherFunction(t *testing.T) {
 		address, err := bind.WaitDeployed(context.Background(), client, trx)
 		assert.NoError(t, err)
 
-		db := mock.PrepareDB(t, TEST_CONFIG.DB_CONFIG)
 		rc := prepareRelayerClient(client, db, address)
 		rc.Start()
 

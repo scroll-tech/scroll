@@ -43,9 +43,9 @@ var (
 )
 
 func setupEnv(t *testing.T) {
-	l1Docker = mock.NewTestL1Docker(t, TEST_CONFIG)
-	l2Docker = mock.NewTestL2Docker(t, TEST_CONFIG)
-	dbDocker = mock.GetDbDocker(t, TEST_CONFIG)
+	l1Docker = mock.NewL1Docker(t, TEST_CONFIG)
+	l2Docker = mock.NewL2Docker(t, TEST_CONFIG)
+	dbDocker = mock.NewDBDocker(t, TEST_CONFIG)
 }
 
 func TestRelayerFunction(t *testing.T) {
@@ -84,8 +84,11 @@ func TestRelayerFunction(t *testing.T) {
 		client, err := ethclient.Dial(l2Docker.Endpoint())
 		assert.NoError(t, err)
 
-		mock.ClearDB(t, TEST_CONFIG.DB_CONFIG)
-		db := mock.PrepareDB(t, TEST_CONFIG.DB_CONFIG)
+		db, err := database.NewOrmFactory(&config.DBConfig{
+			DriverName: "postgres",
+			DSN:        dbDocker.Endpoint(),
+		})
+		assert.NoError(t, err)
 
 		skippedOpcodes := make(map[string]struct{}, len(cfg.L2Config.SkippedOpcodes))
 		for _, op := range cfg.L2Config.SkippedOpcodes {
@@ -110,9 +113,21 @@ func TestRelayerFunction(t *testing.T) {
 		assert.NoError(t, err)
 		relayer.ProcessSavedEvents()
 
-		msg, err := db.GetLayer2MessageByNonce(templateLayer2Message[0].Nonce)
-		assert.NoError(t, err)
-		assert.Equal(t, orm.MsgSubmitted, msg.Status)
+		var (
+			tick     = time.Tick(time.Millisecond * 500)
+			tickStop = time.Tick(time.Second * 3)
+		)
+		for {
+			select {
+			case <-tick:
+				msg, err := db.GetLayer2MessageByNonce(templateLayer2Message[0].Nonce)
+				if err == nil && orm.MsgSubmitted == msg.Status {
+					return
+				}
+			case <-tickStop:
+				t.Error("wait l2 message MsgSubmitted status timeout")
+			}
+		}
 
 	})
 
@@ -124,8 +139,11 @@ func TestRelayerFunction(t *testing.T) {
 		client, err := ethclient.Dial(l2Docker.Endpoint())
 		assert.NoError(t, err)
 
-		mock.ClearDB(t, TEST_CONFIG.DB_CONFIG)
-		db := mock.PrepareDB(t, TEST_CONFIG.DB_CONFIG)
+		db, err := database.NewOrmFactory(&config.DBConfig{
+			DriverName: "postgres",
+			DSN:        dbDocker.Endpoint(),
+		})
+		assert.NoError(t, err)
 
 		skippedOpcodes := make(map[string]struct{}, len(cfg.L2Config.SkippedOpcodes))
 		for _, op := range cfg.L2Config.SkippedOpcodes {
@@ -169,10 +187,22 @@ func TestRelayerFunction(t *testing.T) {
 
 		relayer.ProcessPendingBlocks()
 
-		// Check if Rollup Result is changed successfully
-		status, err := db.GetRollupStatus(uint64(blocks[0].Number))
-		assert.NoError(t, err)
-		assert.Equal(t, orm.RollupCommitting, status)
+		var (
+			tick     = time.Tick(time.Millisecond * 500)
+			tickStop = time.Tick(time.Second * 3)
+		)
+		for {
+			select {
+			case <-tick:
+				// Check if Rollup Result is changed successfully
+				status, err := db.GetRollupStatus(uint64(blocks[0].Number))
+				if err == nil && orm.RollupCommitting == status {
+					return
+				}
+			case <-tickStop:
+				t.Error("wait rollup RollupCommitting status timeout")
+			}
+		}
 	})
 
 	t.Run("TestL2RelayerProcessCommittedBlocks", func(t *testing.T) {
@@ -183,8 +213,11 @@ func TestRelayerFunction(t *testing.T) {
 		client, err := ethclient.Dial(l2Docker.Endpoint())
 		assert.NoError(t, err)
 
-		mock.ClearDB(t, TEST_CONFIG.DB_CONFIG)
-		db := mock.PrepareDB(t, TEST_CONFIG.DB_CONFIG)
+		db, err := database.NewOrmFactory(&config.DBConfig{
+			DriverName: "postgres",
+			DSN:        dbDocker.Endpoint(),
+		})
+		assert.NoError(t, err)
 
 		skippedOpcodes := make(map[string]struct{}, len(cfg.L2Config.SkippedOpcodes))
 		for _, op := range cfg.L2Config.SkippedOpcodes {
@@ -218,7 +251,9 @@ func TestRelayerFunction(t *testing.T) {
 
 		err = db.UpdateProofByNumber(context.Background(), uint64(blocks[0].Number), tProof, tStateProof, 100)
 		assert.NoError(t, err)
-		relayer.ProcessCommittedBlocks()
+		assert.NoError(t, relayer.ProcessCommittedBlocks())
+
+		<-time.After(time.Millisecond * 500)
 
 		status, err := db.GetRollupStatus(uint64(blocks[0].Number))
 		assert.NoError(t, err)

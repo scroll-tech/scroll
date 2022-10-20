@@ -36,13 +36,13 @@ var TEST_CONFIG = &mock.TestConfig{
 func TestCreateNewL1Relayer(t *testing.T) {
 	cfg, err := config.NewConfig("../config.json")
 	assert.NoError(t, err)
-	l1docker := mock.NewTestL1Docker(t, TEST_CONFIG)
+	l1docker := mock.NewL1Docker(t, TEST_CONFIG)
 	defer l1docker.Stop()
 
 	client, err := ethclient.Dial(l1docker.Endpoint())
 	assert.NoError(t, err)
 
-	dbImg := mock.GetDbDocker(t, TEST_CONFIG)
+	dbImg := mock.NewDBDocker(t, TEST_CONFIG)
 	dbImg.Start()
 	defer dbImg.Stop()
 	db, err := database.NewOrmFactory(TEST_CONFIG.DB_CONFIG)
