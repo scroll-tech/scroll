@@ -10,8 +10,9 @@ import "C" //nolint:typecheck
 
 import (
 	"encoding/json"
-	"github.com/scroll-tech/go-ethereum/log"
 	"unsafe"
+
+	"github.com/pkg/errors"
 
 	"github.com/scroll-tech/go-ethereum/core/types"
 
@@ -46,7 +47,7 @@ func (p *Prover) Prove(traces *types.BlockResult) (*message.AggProof, error) {
 	return p.prove(traces)
 }
 
-func (p *Prover) prove(traces *types.BlockResult) (*message.AggProof, error) {
+func (p *Prover) prove(traces *types.BlockResult) (zkProof *message.AggProof, err error) {
 	if p.cfg.MockMode {
 		return &message.AggProof{}, nil
 	}
@@ -59,12 +60,12 @@ func (p *Prover) prove(traces *types.BlockResult) (*message.AggProof, error) {
 	defer func() {
 		C.free(unsafe.Pointer(tracesStr))
 		if r := recover(); r != nil {
-			log.Error("rust zk panic", "panic", r)
+			err = errors.Errorf("rust zk prove panic %d", r)
 		}
 	}()
 	cProof := C.create_agg_proof(tracesStr)
 	proof := C.GoString(cProof)
-	zkProof := &message.AggProof{}
+	zkProof = &message.AggProof{}
 	err = json.Unmarshal([]byte(proof), zkProof)
-	return zkProof, err
+	return
 }
