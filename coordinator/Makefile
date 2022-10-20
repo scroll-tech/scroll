@@ -2,6 +2,7 @@
 
 IMAGE_NAME=coordinator
 IMAGE_VERSION=latest
+REPO_ROOT_DIR=./..
 
 coordinator: ## Builds the Coordinator instance.
 	go build -o $(PWD)/build/bin/coordinator ./cmd
@@ -14,7 +15,7 @@ clean: ## Empty out the bin folder
 
 docker:
 	docker container prune -f
-	docker build -t scrolltech/${IMAGE_NAME}:${IMAGE_VERSION} ../ -f ./Dockerfile
+	docker build -t scrolltech/${IMAGE_NAME}:${IMAGE_VERSION} ${REPO_ROOT_DIR}/ -f ${REPO_ROOT_DIR}/build/dockerfiles/coordinator.Dockerfile
 
 docker_push:
 	docker push scrolltech/${IMAGE_NAME}:${IMAGE_VERSION}
