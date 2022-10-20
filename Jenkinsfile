@@ -72,8 +72,8 @@ pipeline {
                     script {
                         if (test_result == true) {
                             sh 'docker login --username=${dockerUser} --password=${dockerPassword}'
-                            for (i in ['bridge', 'coordinator']) {
-                                sh "docker build -t ${imagePrefix}/$i:${GIT_COMMIT} -f $i/Dockerfile ."
+                            for (i in ['bridge', 'coordinator', 'roller']) {
+                                sh "docker build -t ${imagePrefix}/$i:${GIT_COMMIT} -f build/dockerfiles/$i.Dockerfile ."
                                 sh "docker tag ${imagePrefix}/$i:${GIT_COMMIT} ${imagePrefix}/$i:latest"
                                 sh "docker push ${imagePrefix}/$i:${GIT_COMMIT}"
                                 sh "docker push ${imagePrefix}/$i:latest"
