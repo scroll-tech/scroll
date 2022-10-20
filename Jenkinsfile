@@ -85,7 +85,6 @@ pipeline {
                     changeset "coordinator/**"
                     changeset "common/**"
                     changeset "database/**"
-                    changeset "roller/**"
                 }
             }
             steps {
@@ -93,7 +92,7 @@ pipeline {
                     script {
                         if (test_result == true) {
                             sh 'docker login --username=${dockerUser} --password=${dockerPassword}'
-                            for (i in ['bridge', 'coordinator', 'roller']) {
+                            for (i in ['bridge', 'coordinator']) {
                                 sh "docker build -t ${imagePrefix}/$i:${GIT_COMMIT} -f $i/Dockerfile ."
                                 sh "docker push ${imagePrefix}/$i:${GIT_COMMIT}"
                                 sh "docker rmi ${imagePrefix}/$i:${GIT_COMMIT}"
