@@ -22,7 +22,7 @@ type RPCTrace struct {
 func TestFFI(t *testing.T) {
 	as := assert.New(t)
 	cfg := &config.ProverConfig{
-		MockMode:   false,
+		MockMode:   true,
 		ParamsPath: "../../assets/test_params",
 		SeedPath:   "../../assets/test_seed",
 	}
