@@ -212,10 +212,10 @@ func (r *Roller) prove() error {
 	}
 
 	var proofMsg *message.ProofMsg
-	if traces.Times >= 2 {
+	if traces.Times > 2 {
 		proofMsg = &message.ProofMsg{
 			Status: message.StatusProofError,
-			Error:  "prove panic",
+			Error:  "prover has retried several times due to FFI panic",
 			ID:     traces.Traces.ID,
 			Proof:  &message.AggProof{},
 		}
