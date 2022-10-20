@@ -20,13 +20,9 @@ type RPCTrace struct {
 }
 
 func TestFFI(t *testing.T) {
-	if os.Getenv("TEST_FFI") != "true" {
-		return
-	}
-
 	as := assert.New(t)
 	cfg := &config.ProverConfig{
-		MockMode:   false,
+		MockMode:   true,
 		ParamsPath: "../../assets/test_params",
 		SeedPath:   "../../assets/test_seed",
 	}
