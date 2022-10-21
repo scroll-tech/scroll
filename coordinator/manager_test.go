@@ -2,39 +2,35 @@ package coordinator_test
 
 import (
 	"context"
-	"encoding/json"
-	mathrand "math/rand"
-	"net/url"
-	"os"
+	"net/http"
 	"strconv"
 	"testing"
 	"time"
 
-	"github.com/gorilla/websocket"
-	"github.com/scroll-tech/go-ethereum/core/types"
+	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/stretchr/testify/assert"
+	"golang.org/x/sync/errgroup"
 
+	"scroll-tech/bridge/l2"
+	"scroll-tech/bridge/mock"
 	"scroll-tech/common/docker"
-	"scroll-tech/common/message"
 	"scroll-tech/common/utils"
-	db_config "scroll-tech/database"
+	"scroll-tech/database"
 	"scroll-tech/database/orm"
 
-	"scroll-tech/bridge/mock"
+	client2 "scroll-tech/coordinator/client"
+
+	bridge_config "scroll-tech/bridge/config"
+	db_config "scroll-tech/database"
 
 	"scroll-tech/coordinator"
-	"scroll-tech/coordinator/config"
+	coordinator_config "scroll-tech/coordinator/config"
 )
 
-const managerAddr = "localhost:8132"
+const managerURL = "localhost:8132"
 const managerPort = ":8132"
 
 var (
-	DB_CONFIG = &db_config.DBConfig{
-		DriverName: utils.GetEnvWithDefault("TEST_DB_DRIVER", "postgres"),
-		DSN:        utils.GetEnvWithDefault("TEST_DB_DSN", "postgres://postgres:123456@localhost:5436/testmanager_db?sslmode=disable"),
-	}
-
 	TEST_CONFIG = &mock.TestConfig{
 		L2GethTestConfig: mock.L2GethTestConfig{
 			HPort: 8536,
@@ -43,240 +39,178 @@ var (
 		DbTestconfig: mock.DbTestconfig{
 			DbName: "testmanager_db",
 			DbPort: 5436,
+			DB_CONFIG: &db_config.DBConfig{
+				DriverName: utils.GetEnvWithDefault("TEST_DB_DRIVER", "postgres"),
+				DSN:        utils.GetEnvWithDefault("TEST_DB_DSN", "postgres://postgres:123456@localhost:5436/testmanager_db?sslmode=disable"),
+			},
 		},
 	}
-	l2gethImg docker.ImgInstance
-	dbImg     docker.ImgInstance
 )
 
-func setupEnv(t *testing.T) {
-	// initialize l2geth docker image
-	l2gethImg = mock.NewTestL2Docker(t, TEST_CONFIG)
-	// initialize db docker image
-	dbImg = mock.GetDbDocker(t, TEST_CONFIG)
+var (
+	cfg            *bridge_config.Config
+	l2backend      *l2.Backend
+	imgGeth, imgDb docker.ImgInstance
+	db             database.OrmFactory
+	rollerManager  *coordinator.Manager
+	handle         *http.Server
+)
+
+func setEnv(t *testing.T) {
+	var err error
+	cfg, err = bridge_config.NewConfig("./config.json")
+	assert.NoError(t, err)
+
+	l2backend, imgGeth, imgDb = mock.L2gethDocker(t, cfg, TEST_CONFIG)
+
+	// reset db and return orm handler
+	db = mock.PrepareDB(t, TEST_CONFIG.DB_CONFIG)
+
+	// start roller manager
+	rollerManager = setupRollerManager(t, "", db)
+
+	// start ws service
+	handle, _, err = utils.StartWSEndpoint(managerURL, rollerManager.APIs())
+	assert.NoError(t, err)
 }
 
-func TestFunction(t *testing.T) {
-	// Setup
-	setupEnv(t)
+func TestApis(t *testing.T) {
+	setEnv(t)
 
-	t.Run("TestHandshake", func(t *testing.T) {
-		verifierEndpoint := setupMockVerifier(t)
+	t.Run("TestHandshake", testHandshake)
+	t.Run("TestSeveralConnections", testSeveralConnections)
+	t.Run("TestIdleRollerSelection", testIdleRollerSelection)
 
-		rollerManager := setupRollerManager(t, verifierEndpoint, nil)
-		defer rollerManager.Stop()
-
-		// Set up client
-		u := url.URL{Scheme: "ws", Host: managerAddr, Path: "/"}
-		c, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
-		assert.NoError(t, err)
-		defer c.Close()
-
-		mock.PerformHandshake(t, c)
-
-		// Roller manager should send a Websocket over the GetRollerChan
-		select {
-		case <-rollerManager.GetRollerChan():
-			// Test succeeded
-		case <-time.After(coordinator.HandshakeTimeout):
-			t.Fail()
-		}
-	})
-
-	t.Run("TestHandshakeTimeout", func(t *testing.T) {
-		verifierEndpoint := setupMockVerifier(t)
-
-		rollerManager := setupRollerManager(t, verifierEndpoint, nil)
-		defer rollerManager.Stop()
-
-		// Set up client
-		u := url.URL{Scheme: "ws", Host: managerAddr, Path: "/"}
-
-		c, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
-		assert.NoError(t, err)
-		defer c.Close()
-
-		// Wait for the handshake timeout to pass
-		<-time.After(coordinator.HandshakeTimeout + 1*time.Second)
-
-		mock.PerformHandshake(t, c)
-
-		// No websocket should be received
-		select {
-		case <-rollerManager.GetRollerChan():
-			t.Fail()
-		case <-time.After(1 * time.Second):
-			// Test succeeded
-		}
-	})
-
-	t.Run("TestTwoConnections", func(t *testing.T) {
-		verifierEndpoint := setupMockVerifier(t)
-		rollerManager := setupRollerManager(t, verifierEndpoint, nil)
-		defer rollerManager.Stop()
-
-		// Set up and register 2 clients
-		for i := 0; i < 2; i++ {
-			u := url.URL{Scheme: "ws", Host: managerAddr, Path: "/"}
-
-			c, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
-			assert.NoError(t, err)
-			defer c.Close()
-
-			mock.PerformHandshake(t, c)
-
-			// Roller manager should send a Websocket over the GetRollerChan
-			select {
-			case <-rollerManager.GetRollerChan():
-				// Test succeeded
-			case <-time.After(coordinator.HandshakeTimeout):
-				t.Fail()
-			}
-		}
-	})
-
-	t.Run("TestTriggerProofGenerationSession", func(t *testing.T) {
-		// prepare DB
-		mock.ClearDB(t, DB_CONFIG)
-		db := mock.PrepareDB(t, DB_CONFIG)
-
-		// Test with two clients to make sure traces messages aren't duplicated
-		// to rollers.
-		numClients := uint8(2)
-		verifierEndpoint := setupMockVerifier(t)
-		rollerManager := setupRollerManager(t, verifierEndpoint, db)
-
-		// Set up and register `numClients` clients
-		conns := make([]*websocket.Conn, numClients)
-		for i := 0; i < int(numClients); i++ {
-			u := url.URL{Scheme: "ws", Host: managerAddr, Path: "/"}
-
-			c, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
-			assert.NoError(t, err)
-			defer c.Close()
-
-			mock.PerformHandshake(t, c)
-
-			conns[i] = c
-		}
-
-		var results []*types.BlockResult
-
-		templateBlockResult, err := os.ReadFile("../common/testdata/blockResult_orm.json")
-		assert.NoError(t, err)
-		blockResult := &types.BlockResult{}
-		err = json.Unmarshal(templateBlockResult, blockResult)
-		assert.NoError(t, err)
-		results = append(results, blockResult)
-		templateBlockResult, err = os.ReadFile("../common/testdata/blockResult_delegate.json")
-		assert.NoError(t, err)
-		blockResult = &types.BlockResult{}
-		err = json.Unmarshal(templateBlockResult, blockResult)
-		assert.NoError(t, err)
-		results = append(results, blockResult)
-
-		err = db.InsertBlockResultsWithStatus(context.Background(), results, orm.BlockUnassigned)
-		assert.NoError(t, err)
-
-		// Need to send a tx to trigger block committed
-		// Sleep for a little bit, so that we can avoid prematurely fetching connections. Trigger for manager is 3 seconds
-		time.Sleep(4 * time.Second)
-
-		// Both rollers should now receive a `BlockTraces` message and should send something back.
-		for _, c := range conns {
-			mt, payload, err := c.ReadMessage()
-			assert.NoError(t, err)
-
-			assert.Equal(t, mt, websocket.BinaryMessage)
-
-			msg := &message.Msg{}
-			assert.NoError(t, json.Unmarshal(payload, msg))
-			assert.Equal(t, msg.Type, message.BlockTrace)
-
-			traces := &message.BlockTraces{}
-			assert.NoError(t, json.Unmarshal(payload, traces))
-
-		}
-
-		rollerManager.Stop()
-	})
-
-	t.Run("TestIdleRollerSelection", func(t *testing.T) {
-		// Test with two clients to make sure traces messages aren't duplicated
-		// to rollers.
-		numClients := uint8(2)
-		verifierEndpoint := setupMockVerifier(t)
-
-		mock.ClearDB(t, DB_CONFIG)
-		db := mock.PrepareDB(t, DB_CONFIG)
-
-		// Ensure only one roller is picked per session.
-		rollerManager := setupRollerManager(t, verifierEndpoint, db)
-		defer rollerManager.Stop()
-
-		// Set up and register `numClients` clients
-		conns := make([]*websocket.Conn, numClients)
-		for i := 0; i < int(numClients); i++ {
-			u := url.URL{Scheme: "ws", Host: managerAddr, Path: "/"}
-
-			c, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
-			assert.NoError(t, err)
-			c.SetReadDeadline(time.Now().Add(100 * time.Second))
-
-			mock.PerformHandshake(t, c)
-			time.Sleep(1 * time.Second)
-			conns[i] = c
-		}
-		defer func() {
-			for _, conn := range conns {
-				assert.NoError(t, conn.Close())
-			}
-		}()
-
-		assert.Equal(t, 2, rollerManager.GetNumberOfIdleRollers())
-
-		templateBlockResult, err := os.ReadFile("../common/testdata/blockResult_orm.json")
-		assert.NoError(t, err)
-		blockResult := &types.BlockResult{}
-		err = json.Unmarshal(templateBlockResult, blockResult)
-		assert.NoError(t, err)
-		err = db.InsertBlockResultsWithStatus(context.Background(), []*types.BlockResult{blockResult}, orm.BlockUnassigned)
-		assert.NoError(t, err)
-
-		// Sleep for a little bit, so that we can avoid prematurely fetching connections.
-		// Test first roller and check if we have one roller idle one roller busy
-		time.Sleep(4 * time.Second)
-
-		assert.Equal(t, 1, rollerManager.GetNumberOfIdleRollers())
-
-		templateBlockResult, err = os.ReadFile("../common/testdata/blockResult_delegate.json")
-		assert.NoError(t, err)
-		blockResult = &types.BlockResult{}
-		err = json.Unmarshal(templateBlockResult, blockResult)
-		assert.NoError(t, err)
-		err = db.InsertBlockResultsWithStatus(context.Background(), []*types.BlockResult{blockResult}, orm.BlockUnassigned)
-		assert.NoError(t, err)
-
-		// Sleep for a little bit, so that we can avoid prematurely fetching connections.
-		// Test Second roller and check if we have all rollers busy
-		time.Sleep(4 * time.Second)
-
-		for _, c := range conns {
-			c.ReadMessage()
-		}
-
-		assert.Equal(t, 0, rollerManager.GetNumberOfIdleRollers())
-	})
-	// Teardown
 	t.Cleanup(func() {
-		assert.NoError(t, l2gethImg.Stop())
-		assert.NoError(t, dbImg.Stop())
+		handle.Shutdown(context.Background())
+		rollerManager.Stop()
+		l2backend.Stop()
+		imgGeth.Stop()
+		imgDb.Stop()
 	})
-
 }
 
-func setupRollerManager(t *testing.T, verifierEndpoint string, orm orm.BlockResultOrm) *coordinator.Manager {
-	rollerManager, err := coordinator.New(context.Background(), &config.RollerManagerConfig{
+func testHandshake(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// reset db
+	mock.PrepareDB(t, TEST_CONFIG.DB_CONFIG)
+
+	// create a new
+	client, err := client2.DialContext(ctx, "ws://"+managerURL)
+	assert.NoError(t, err)
+
+	stopCh := make(chan struct{})
+	mock.PerformHandshake(t, 1, "roller_test", client, stopCh)
+
+	assert.Equal(t, 1, rollerManager.GetNumberOfIdleRollers())
+
+	close(stopCh)
+}
+
+func testSeveralConnections(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	var (
+		batch  = 100
+		stopCh = make(chan struct{})
+		eg     = errgroup.Group{}
+	)
+	for i := 0; i < batch; i++ {
+		idx := i
+		eg.Go(func() error {
+			// create a new ws connection
+			client, err := client2.DialContext(ctx, "ws://"+managerURL)
+			assert.NoError(t, err)
+			mock.PerformHandshake(t, 1, "roller_test"+strconv.Itoa(idx), client, stopCh)
+			return nil
+		})
+	}
+	assert.NoError(t, eg.Wait())
+
+	// check roller's idle connections
+	assert.Equal(t, batch, rollerManager.GetNumberOfIdleRollers())
+
+	// close connection
+	close(stopCh)
+
+	var (
+		tick     = time.Tick(time.Second)
+		tickStop = time.Tick(time.Second * 10)
+	)
+	for {
+		select {
+		case <-tick:
+			if rollerManager.GetNumberOfIdleRollers() == 0 {
+				return
+			}
+		case <-tickStop:
+			t.Error("roller connect is blocked")
+			return
+		}
+	}
+}
+
+func testIdleRollerSelection(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// reset db
+	traceDB := orm.BlockResultOrm(mock.PrepareDB(t, TEST_CONFIG.DB_CONFIG))
+
+	// create l2geth client
+	ethClient, err := ethclient.DialContext(ctx, imgGeth.Endpoint())
+	assert.NoError(t, err)
+
+	// create ws connections.
+	batch := 20
+	stopCh := make(chan struct{})
+	for i := 0; i < batch; i++ {
+		var client *client2.Client
+		client, err = client2.DialContext(ctx, "ws://"+managerURL)
+		assert.NoError(t, err)
+		mock.PerformHandshake(t, 1, "roller_test"+strconv.Itoa(i), client, stopCh)
+	}
+	assert.Equal(t, batch, rollerManager.GetNumberOfIdleRollers())
+
+	// send two txs
+	mock.SendTxToL2Client(t, ethClient, cfg.L2Config.RelayerConfig.PrivateKey)
+	mock.SendTxToL2Client(t, ethClient, cfg.L2Config.RelayerConfig.PrivateKey)
+
+	// verify proof status
+	var (
+		number   int64 = 1
+		latest   int64
+		tick     = time.Tick(time.Second)
+		tickStop = time.Tick(time.Second * 20)
+	)
+	for {
+		select {
+		case <-tick:
+			// get the latest number
+			if latest, err = traceDB.GetBlockResultsLatestHeight(); err != nil || latest <= 0 {
+				continue
+			}
+			if number > latest {
+				close(stopCh)
+				return
+			}
+			status, err := traceDB.GetBlockStatusByNumber(uint64(number))
+			if err == nil && (status == orm.BlockVerified || status == orm.BlockSkipped) {
+				number++
+			}
+		case <-tickStop:
+			t.Error("failed to check proof status")
+			close(stopCh)
+			return
+		}
+	}
+}
+
+func setupRollerManager(t *testing.T, verifierEndpoint string, orm database.OrmFactory) *coordinator.Manager {
+	rollerManager, err := coordinator.New(context.Background(), &coordinator_config.RollerManagerConfig{
 		Endpoint:          managerPort,
 		RollersPerSession: 1,
 		VerifierEndpoint:  verifierEndpoint,
@@ -287,15 +221,4 @@ func setupRollerManager(t *testing.T, verifierEndpoint string, orm orm.BlockResu
 	assert.NoError(t, rollerManager.Start())
 
 	return rollerManager
-}
-
-func setupMockVerifier(t *testing.T) string {
-	id := strconv.Itoa(mathrand.Int())
-	verifierEndpoint := "/tmp/" + id + ".sock"
-	err := os.RemoveAll(verifierEndpoint)
-	assert.NoError(t, err)
-
-	mock.SetupMockVerifier(t, verifierEndpoint)
-
-	return verifierEndpoint
 }

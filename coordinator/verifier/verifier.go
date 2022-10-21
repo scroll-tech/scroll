@@ -1,6 +1,7 @@
 package verifier
 
 import (
+	"encoding/json"
 	"net"
 
 	"scroll-tech/common/message"
@@ -32,7 +33,7 @@ func (v *Verifier) Stop() error {
 
 // VerifyProof Verify a ZkProof by marshaling it and sending it to the Halo2 Verifier.
 func (v *Verifier) VerifyProof(blockResult *types.BlockResult, proof *message.AggProof) (bool, error) {
-	buf, err := proof.Marshal()
+	buf, err := json.Marshal(proof)
 	if err != nil {
 		return false, err
 	}

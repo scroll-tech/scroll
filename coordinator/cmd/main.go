@@ -6,13 +6,12 @@ import (
 	"os/signal"
 
 	"github.com/scroll-tech/go-ethereum/log"
-	"github.com/scroll-tech/go-ethereum/rpc"
 	"github.com/urfave/cli/v2"
 
 	"scroll-tech/common/utils"
 	"scroll-tech/database"
 
-	rollers "scroll-tech/coordinator"
+	"scroll-tech/coordinator"
 	"scroll-tech/coordinator/config"
 )
 
@@ -68,7 +67,7 @@ func action(ctx *cli.Context) error {
 	}
 
 	// Initialize all coordinator modules.
-	rollerManager, err := rollers.New(ctx.Context, cfg.RollerManagerConfig, ormFactory)
+	rollerManager, err := coordinator.New(ctx.Context, cfg.RollerManagerConfig, ormFactory)
 	if err != nil {
 		return err
 	}
@@ -85,30 +84,39 @@ func action(ctx *cli.Context) error {
 		log.Crit("couldn't start roller manager", "error", err)
 	}
 
+	apis := rollerManager.APIs()
 	// Register api and start rpc service.
 	if ctx.Bool(httpEnabledFlag.Name) {
-		srv := rpc.NewServer()
-		apis := rollerManager.APIs()
-		for _, api := range apis {
-			if err = srv.RegisterName(api.Namespace, api.Service); err != nil {
-				log.Crit("register namespace failed", "namespace", api.Namespace, "error", err)
-			}
-		}
 		handler, addr, err := utils.StartHTTPEndpoint(
 			fmt.Sprintf(
 				"%s:%d",
 				ctx.String(httpListenAddrFlag.Name),
 				ctx.Int(httpPortFlag.Name)),
-			rpc.DefaultHTTPTimeouts,
-			srv)
+			apis)
 		if err != nil {
-			log.Crit("Could not start RPC api", "error", err)
+			log.Crit("Could not start HTTP api", "error", err)
 		}
 		defer func() {
 			_ = handler.Shutdown(ctx.Context)
 			log.Info("HTTP endpoint closed", "url", fmt.Sprintf("http://%v/", addr))
 		}()
 		log.Info("HTTP endpoint opened", "url", fmt.Sprintf("http://%v/", addr))
+	}
+	if ctx.Bool(wsEnabledFlag.Name) {
+		handler, addr, err := utils.StartWSEndpoint(
+			fmt.Sprintf(
+				"%s:%d",
+				ctx.String(wsListenAddrFlag.Name),
+				ctx.Int(wsPortFlag.Name)),
+			apis)
+		if err != nil {
+			log.Crit("Could not start WS api", "error", err)
+		}
+		defer func() {
+			_ = handler.Shutdown(ctx.Context)
+			log.Info("WS endpoint closed", "url", fmt.Sprintf("ws://%v/", addr))
+		}()
+		log.Info("WS endpoint opened", "url", fmt.Sprintf("ws://%v/", addr))
 	}
 
 	// Catch CTRL-C to ensure a graceful shutdown.

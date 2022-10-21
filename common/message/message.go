@@ -6,7 +6,12 @@ import (
 
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/common/hexutil"
+	"github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/crypto"
+)
+
+// MsgType denotes the type of message being sent or received.
+type MsgType uint16
 
 	"github.com/scroll-tech/go-ethereum/core/types"
 )
@@ -20,6 +25,25 @@ const (
 	// StatusProofError means generate proof failed
 	StatusProofError
 )
+
+// Msg is the top-level message container which contains the payload and the
+// message identifier.
+type Msg struct {
+	// Message type
+	Type MsgType `json:"type"`
+	// Message payload
+	Payload []byte `json:"payload"`
+}
+
+// BlockTraces is a wrapper type around types.BlockResult which adds an ID
+// that identifies which proof generation session these block traces are
+// associated to. This then allows the roller to add the ID back to their
+// proof message once generated, and in turn helps the sequencer understand
+// where to handle the proof.
+type BlockTraces struct {
+	ID     uint64             `json:"id"`
+	Traces *types.BlockResult `json:"blockTraces"`
+}
 
 // AuthMessage is the first message exchanged from the Roller to the Sequencer.
 // It effectively acts as a registration, and makes the Roller identification
@@ -51,7 +75,7 @@ func (a *AuthMessage) Sign(priv *ecdsa.PrivateKey) error {
 	return nil
 }
 
-// Verify verifies the message of auth.
+// Verify auth message
 func (a *AuthMessage) Verify() (bool, error) {
 	hash, err := a.Hash()
 	if err != nil {
@@ -93,8 +117,11 @@ func (a *AuthMessage) PublicKey() (string, error) {
 // Identity contains all the fields to be signed by the roller.
 type Identity struct {
 	// Roller name
-	Name      string `json:"name"`
-	Timestamp int64  `json:"timestamp"`
+	Name string `json:"name"`
+	// Time of message creation
+	Timestamp int64 `json:"timestamp"`
+	// Roller public key
+	PublicKey string `json:"publicKey"`
 }
 
 // Hash returns the hash of the auth message, which should be the message used
@@ -109,7 +136,7 @@ func (i *Identity) Hash() ([]byte, error) {
 	return hash[:], nil
 }
 
-// AuthZkProof is the data structure sent to scroll.
+// nolint
 type AuthZkProof struct {
 	*ProofMsg `json:"zkProof"`
 	// Roller signature
@@ -119,7 +146,7 @@ type AuthZkProof struct {
 	publicKey string
 }
 
-// Sign signs the AuthZkProof.
+// Sign AuthZkProof
 func (a *AuthZkProof) Sign(priv *ecdsa.PrivateKey) error {
 	hash, err := a.Hash()
 	if err != nil {
@@ -133,7 +160,7 @@ func (a *AuthZkProof) Sign(priv *ecdsa.PrivateKey) error {
 	return nil
 }
 
-// Verify verifies AuthZkProof.Signature.
+// Verify AuthZkProof
 func (a *AuthZkProof) Verify() (bool, error) {
 	hash, err := a.Hash()
 	if err != nil {
@@ -170,16 +197,6 @@ func (a *AuthZkProof) PublicKey() (string, error) {
 	}
 
 	return a.publicKey, nil
-}
-
-// BlockTraces is a wrapper type around types.BlockResult which adds an ID
-// that identifies which proof generation session these block traces are
-// associated to. This then allows the roller to add the ID back to their
-// proof message once generated, and in turn helps the sequencer understand
-// where to handle the proof.
-type BlockTraces struct {
-	ID     uint64             `json:"id"`
-	Traces *types.BlockResult `json:"blockTraces"`
 }
 
 // ProofMsg is the message received from rollers that contains zk proof, the status of

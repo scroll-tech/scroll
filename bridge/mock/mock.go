@@ -3,10 +3,7 @@ package mock
 import (
 	"context"
 	"crypto/ecdsa"
-	"crypto/elliptic"
-	"crypto/rand"
 	"encoding/binary"
-	"encoding/json"
 	"io"
 	"math/big"
 	"net"
@@ -14,75 +11,78 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ethereum/go-ethereum/crypto/secp256k1"
-	"github.com/gorilla/websocket"
+	"github.com/scroll-tech/go-ethereum/accounts/abi/bind"
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/crypto"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/stretchr/testify/assert"
 
-	"scroll-tech/database"
-	"scroll-tech/database/migrate"
-
+	"scroll-tech/common/docker"
 	"scroll-tech/common/message"
 	"scroll-tech/coordinator"
 	coordinator_config "scroll-tech/coordinator/config"
+	"scroll-tech/database"
+	db_docker "scroll-tech/database/docker"
+	"scroll-tech/database/migrate"
+
+	db_config "scroll-tech/database"
+
+	client2 "scroll-tech/coordinator/client"
 
 	bridge_config "scroll-tech/bridge/config"
 	"scroll-tech/bridge/l2"
-
-	"scroll-tech/common/docker"
-
-	docker_db "scroll-tech/database/docker"
 )
 
 // PerformHandshake sets up a websocket client to connect to the roller manager.
-func PerformHandshake(t *testing.T, c *websocket.Conn) {
-	// Try to perform handshake
-	pk, sk := generateKeyPair()
+func PerformHandshake(t *testing.T, proofTime time.Duration, name string, client *client2.Client, stopCh chan struct{}) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	// create private key
+	privkey, err := crypto.GenerateKey()
+	assert.NoError(t, err)
+
 	authMsg := &message.AuthMessage{
-		Identity: message.Identity{
-			Name:      "testRoller",
+		Identity: &message.Identity{
+			Name:      name,
 			Timestamp: time.Now().UnixNano(),
-			PublicKey: common.Bytes2Hex(pk),
 		},
-		Signature: "",
 	}
+	assert.NoError(t, authMsg.Sign(privkey))
 
-	hash, err := authMsg.Identity.Hash()
-	assert.NoError(t, err)
-	sig, err := secp256k1.Sign(hash, sk)
-	assert.NoError(t, err)
-
-	authMsg.Signature = common.Bytes2Hex(sig)
-
-	b, err := json.Marshal(authMsg)
-	assert.NoError(t, err)
-
-	msg := &message.Msg{
-		Type:    message.Register,
-		Payload: b,
-	}
-
-	b, err = json.Marshal(msg)
-	assert.NoError(t, err)
-
-	assert.NoError(t, c.WriteMessage(websocket.BinaryMessage, b))
-}
-
-func generateKeyPair() (pubkey, privkey []byte) {
-	key, err := ecdsa.GenerateKey(secp256k1.S256(), rand.Reader)
+	traceCh := make(chan *message.BlockTraces, 4)
+	sub, err := client.SubscribeRegister(ctx, traceCh, authMsg)
 	if err != nil {
-		panic(err)
+		t.Error(err)
+		return
 	}
-	pubkey = elliptic.Marshal(secp256k1.S256(), key.X, key.Y)
 
-	privkey = make([]byte, 32)
-	blob := key.D.Bytes()
-	copy(privkey[32-len(blob):], blob)
-
-	return pubkey, privkey
+	go func() {
+		for {
+			select {
+			case trace := <-traceCh:
+				id := trace.Traces.BlockTrace.Number.ToInt().Uint64()
+				// sleep several seconds to mock the proof process.
+				<-time.After(proofTime * time.Second)
+				proof := &message.AuthZkProof{
+					ProofMsg: &message.ProofMsg{
+						ID:     id,
+						Status: message.StatusOk,
+						Proof:  &message.AggProof{},
+					},
+				}
+				assert.NoError(t, proof.Sign(privkey))
+				ok, err := client.SubmitProof(context.Background(), proof)
+				if err != nil {
+					t.Error(err)
+				}
+				assert.Equal(t, true, ok)
+			case <-stopCh:
+				sub.Unsubscribe()
+				return
+			}
+		}
+	}()
 }
 
 // SetupMockVerifier sets up a mocked verifier for a test case.
@@ -145,56 +145,56 @@ type TestConfig struct {
 	DbTestconfig
 }
 
-// NewTestL1Docker starts and returns l1geth docker
-func NewTestL1Docker(t *testing.T, tcfg *TestConfig) docker.ImgInstance {
-	img_geth := docker.NewImgGeth(t, "scroll_l1geth", "", "", tcfg.L1GethTestConfig.HPort, tcfg.L1GethTestConfig.WPort)
-	assert.NoError(t, img_geth.Start())
-	return img_geth
+// NewL1Docker starts and returns l1geth docker
+func NewL1Docker(t *testing.T, tcfg *TestConfig) docker.ImgInstance {
+	imgGeth := docker.NewImgGeth(t, "scroll_l1geth", "", "", tcfg.L1GethTestConfig.HPort, tcfg.L1GethTestConfig.WPort)
+	assert.NoError(t, imgGeth.Start())
+	return imgGeth
 }
 
-// NewTestL2Docker starts and returns l2geth docker
-func NewTestL2Docker(t *testing.T, tcfg *TestConfig) docker.ImgInstance {
-	img_geth := docker.NewImgGeth(t, "scroll_l2geth", "", "", tcfg.L2GethTestConfig.HPort, tcfg.L2GethTestConfig.WPort)
-	assert.NoError(t, img_geth.Start())
-	return img_geth
+// NewL2Docker starts and returns l2geth docker
+func NewL2Docker(t *testing.T, tcfg *TestConfig) docker.ImgInstance {
+	imgGeth := docker.NewImgGeth(t, "scroll_l2geth", "", "", tcfg.L2GethTestConfig.HPort, tcfg.L2GethTestConfig.WPort)
+	assert.NoError(t, imgGeth.Start())
+	return imgGeth
 }
 
-// GetDbDocker starts and returns database docker
-func GetDbDocker(t *testing.T, tcfg *TestConfig) docker.ImgInstance {
-	img_db := docker_db.NewImgDB(t, "postgres", "123456", tcfg.DbName, tcfg.DbPort)
-	assert.NoError(t, img_db.Start())
-	return img_db
+// NewDBDocker starts and returns database docker
+func NewDBDocker(t *testing.T, tcfg *TestConfig) docker.ImgInstance {
+	imgDb := db_docker.NewImgDB(t, "postgres", "123456", tcfg.DbName, tcfg.DbPort)
+	assert.NoError(t, imgDb.Start())
+	return imgDb
 }
 
 // L2gethDocker return mock l2geth client created with docker for test
 func L2gethDocker(t *testing.T, cfg *bridge_config.Config, tcfg *TestConfig) (*l2.Backend, docker.ImgInstance, docker.ImgInstance) {
 	// initialize l2geth docker image
-	img_geth := NewTestL2Docker(t, tcfg)
+	imgGeth := NewL2Docker(t, tcfg)
 
-	cfg.L2Config.Endpoint = img_geth.Endpoint()
+	cfg.L2Config.Endpoint = imgGeth.Endpoint()
 
 	// initialize db docker image
-	img_db := GetDbDocker(t, tcfg)
+	imgDb := NewDBDocker(t, tcfg)
 
-	db, err := database.NewOrmFactory(&database.DBConfig{
-		DriverName: "postgres",
-		DSN:        img_db.Endpoint(),
-	})
-	assert.NoError(t, err)
+	db := PrepareDB(t, tcfg.DB_CONFIG)
+	assert.Equal(t, true, db != nil)
 
 	client, err := l2.New(context.Background(), cfg.L2Config, db)
 	assert.NoError(t, err)
+	assert.NoError(t, client.Start())
 
-	return client, img_geth, img_db
+	return client, imgGeth, imgDb
 }
 
-// SetupRollerManager return coordinator.Manager for testcase
-func SetupRollerManager(t *testing.T, cfg *coordinator_config.Config, orm database.OrmFactory) *coordinator.Manager {
+// SetupRollerManager return rollers.Manager for testcase
+func SetupRollerManager(t *testing.T, cfg *coordinator_config.RollerManagerConfig, orm database.OrmFactory) *coordinator.Manager {
 	// Load config file.
 	ctx := context.Background()
 
-	SetupMockVerifier(t, cfg.RollerManagerConfig.VerifierEndpoint)
-	rollerManager, err := coordinator.New(ctx, cfg.RollerManagerConfig, orm)
+	if cfg.VerifierEndpoint != "" {
+		SetupMockVerifier(t, cfg.VerifierEndpoint)
+	}
+	rollerManager, err := coordinator.New(ctx, cfg, orm)
 	assert.NoError(t, err)
 
 	// Start rollermanager modules.
@@ -203,29 +203,19 @@ func SetupRollerManager(t *testing.T, cfg *coordinator_config.Config, orm databa
 	return rollerManager
 }
 
-// ClearDB clears db
-func ClearDB(t *testing.T, db_cfg *database.DBConfig) {
-	factory, err := database.NewOrmFactory(db_cfg)
-	assert.NoError(t, err)
-	db := factory.GetDB()
-	version0 := int64(0)
-	err = migrate.Rollback(db.DB, &version0)
-	assert.NoError(t, err)
-	err = migrate.Migrate(db.DB)
-	assert.NoError(t, err)
-	err = db.DB.Close()
-	assert.NoError(t, err)
-}
-
-// PrepareDB will return DB for testcase
-func PrepareDB(t *testing.T, db_cfg *database.DBConfig) database.OrmFactory {
+// PrepareDB clears and reset db
+func PrepareDB(t *testing.T, db_cfg *db_config.DBConfig) database.OrmFactory {
 	db, err := database.NewOrmFactory(db_cfg)
 	assert.NoError(t, err)
+
+	version0 := int64(0)
+	assert.NoError(t, migrate.Rollback(db.GetDB().DB, &version0))
+	assert.NoError(t, migrate.Migrate(db.GetDB().DB))
 	return db
 }
 
 // SendTxToL2Client will send a default Tx by calling l2geth client
-func SendTxToL2Client(t *testing.T, client *ethclient.Client, private string) *types.Transaction {
+func SendTxToL2Client(t *testing.T, client *ethclient.Client, private string) {
 	privateKey, err := crypto.HexToECDSA(private)
 	assert.NoError(t, err)
 	publicKey := privateKey.Public()
@@ -243,9 +233,14 @@ func SendTxToL2Client(t *testing.T, client *ethclient.Client, private string) *t
 	chainID, err := client.ChainID(context.Background())
 	assert.NoError(t, err)
 
+	// sign tx
 	signedTx, err := types.SignTx(tx, types.NewEIP155Signer(chainID), privateKey)
 	assert.NoError(t, err)
 
+	// send tx
 	assert.NoError(t, client.SendTransaction(context.Background(), signedTx))
-	return signedTx
+
+	// wait util on chain
+	_, err = bind.WaitMined(context.Background(), client, signedTx)
+	assert.NoError(t, err)
 }

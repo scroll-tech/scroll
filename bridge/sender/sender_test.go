@@ -42,7 +42,7 @@ func setupEnv(t *testing.T) {
 	prv, err := crypto.HexToECDSA(cfg.L2Config.RelayerConfig.PrivateKey)
 	assert.NoError(t, err)
 	private = prv
-	l1gethImg = mock.NewTestL1Docker(t, TestConfig)
+	l1gethImg = mock.NewL1Docker(t, TestConfig)
 }
 
 func TestFunction(t *testing.T) {

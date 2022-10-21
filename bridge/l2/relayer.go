@@ -2,6 +2,7 @@ package l2
 
 import (
 	"context"
+	"fmt"
 	"math/big"
 	"strconv"
 	"time"
@@ -257,15 +258,15 @@ func (r *Layer2Relayer) ProcessPendingBlocks() {
 }
 
 // ProcessCommittedBlocks submit proof to layer rollup contract
-func (r *Layer2Relayer) ProcessCommittedBlocks() {
+func (r *Layer2Relayer) ProcessCommittedBlocks() error {
 	// blocks are sorted by height in increasing order
 	blocksInDB, err := r.db.GetCommittedBlocks()
 	if err != nil {
 		log.Error("Failed to fetch committed L2 blocks", "err", err)
-		return
+		return err
 	}
 	if len(blocksInDB) == 0 {
-		return
+		return nil
 	}
 	height := blocksInDB[0]
 	// @todo add support to relay multiple blocks
@@ -273,18 +274,18 @@ func (r *Layer2Relayer) ProcessCommittedBlocks() {
 	status, err := r.db.GetBlockStatusByNumber(height)
 	if err != nil {
 		log.Error("GetBlockStatusByNumber failed", "height", height, "err", err)
-		return
+		return err
 	}
 
 	switch status {
 	case orm.BlockUnassigned, orm.BlockAssigned:
 		// The proof for this block is not ready yet.
-		return
+		return fmt.Errorf("block status is not ready yet")
 
 	case orm.BlockProved:
 		// It's an intermediate state. The roller manager received the proof but has not verified
 		// the proof yet. We don't roll up the proof until it's verified.
-		return
+		return fmt.Errorf("the roller manager received the proof but has not verified the proof yet")
 
 	case orm.BlockFailed, orm.BlockSkipped:
 		if err = r.db.UpdateRollupStatus(r.ctx, height, orm.RollupFinalizationSkipped); err != nil {
@@ -308,19 +309,19 @@ func (r *Layer2Relayer) ProcessCommittedBlocks() {
 		proofBuffer, instanceBuffer, err := r.db.GetVerifiedProofAndInstanceByNumber(height)
 		if err != nil {
 			log.Warn("fetch get proof by height failed", "height", height, "err", err)
-			return
+			return err
 		}
 		if proofBuffer == nil || instanceBuffer == nil {
 			log.Warn("proof or instance not ready", "height", height)
-			return
+			return fmt.Errorf("proof or instance not ready")
 		}
 		if len(proofBuffer)%32 != 0 {
 			log.Error("proof buffer has wrong length", "height", height, "length", len(proofBuffer))
-			return
+			return fmt.Errorf("proof buffer has wrong length")
 		}
 		if len(instanceBuffer)%32 != 0 {
 			log.Warn("instance buffer has wrong length", "height", height, "length", len(instanceBuffer))
-			return
+			return fmt.Errorf("instance buffer has wrong length")
 		}
 
 		proof := bufferToUint256Le(proofBuffer)
@@ -333,12 +334,12 @@ func (r *Layer2Relayer) ProcessCommittedBlocks() {
 		}
 		if hash == nil {
 			// only happen when trace validate failed
-			return
+			return fmt.Errorf("block hash from db is empty")
 		}
 		data, err := r.l1RollupABI.Pack("finalizeBlockWithProof", hash, proof, instance)
 		if err != nil {
 			log.Error("Pack finalizeBlockWithProof failed", err)
-			return
+			return fmt.Errorf("pack finalizeBlockWithProof failed, err: %v", err)
 		}
 		txHash, err := r.sender.SendTransaction(strconv.FormatUint(height, 10), &r.cfg.RollupContractAddress, big.NewInt(0), data)
 		hash = &txHash
@@ -347,7 +348,7 @@ func (r *Layer2Relayer) ProcessCommittedBlocks() {
 				"height", height,
 				"err", err,
 			)
-			return
+			return fmt.Errorf("finalizeBlockWithProof in layer1 failed, height: %d, err: %v", height, err)
 		}
 		log.Info("finalizeBlockWithProof in layer1", "height", height, "hash", hash)
 
@@ -355,6 +356,7 @@ func (r *Layer2Relayer) ProcessCommittedBlocks() {
 		err = r.db.UpdateFinalizeTxHashAndStatus(r.ctx, height, hash.String(), orm.RollupFinalizing)
 		if err != nil {
 			log.Warn("UpdateFinalizeTxHashAndStatus failed", "height", height, "err", err)
+			return fmt.Errorf("UpdateFinalizeTxHashAndStatus failed, height: %d, err: %v", height, err)
 		}
 		success = true
 		r.processingProof[strconv.FormatUint(height, 10)] = height
@@ -364,6 +366,7 @@ func (r *Layer2Relayer) ProcessCommittedBlocks() {
 			"block_status", status,
 		)
 	}
+	return nil
 }
 
 // Start the relayer process
@@ -378,7 +381,7 @@ func (r *Layer2Relayer) Start() {
 			case <-ticker.C:
 				r.ProcessSavedEvents()
 				r.ProcessPendingBlocks()
-				r.ProcessCommittedBlocks()
+				r.ProcessCommittedBlocks() //nolint
 			case confirmation := <-r.confirmationCh:
 				r.handleConfirmation(confirmation)
 			case <-r.stopCh:
