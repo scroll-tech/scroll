@@ -130,7 +130,7 @@ func (r *Roller) HandleScroll() {
 			return
 		case trace := <-r.traceChan:
 			log.Info("Accept BlockTrace from Scroll", "ID", trace.ID)
-			err := r.stack.Push(trace)
+			err := r.stack.Push(&store.ProvingTraces{Traces: trace, Times: 0})
 			if err != nil {
 				panic(fmt.Sprintf("could not push trace(%d) into stack: %v", trace.ID, err))
 			}
@@ -184,37 +184,64 @@ func (r *Roller) prove() error {
 	if err != nil {
 		return err
 	}
-	log.Info("start to prove block", "block-id", traces.ID)
 
 	var proofMsg *message.ProofMsg
-	proof, err := r.prover.Prove(traces.Traces)
+	if traces.Times > 2 {
+		proofMsg = &message.ProofMsg{
+			Status: message.StatusProofError,
+			Error:  "prover has retried several times due to FFI panic",
+			ID:     traces.Traces.ID,
+			Proof:  &message.AggProof{},
+		}
+
+		_, err = r.signAndSubmitProof(proofMsg)
+		return err
+	}
+
+	err = r.stack.Push(traces)
+	if err != nil {
+		return err
+	}
+
+	log.Info("start to prove block", "block-id", traces.Traces.ID)
+
+	proof, err := r.prover.Prove(traces.Traces.Traces)
 	if err != nil {
 		proofMsg = &message.ProofMsg{
 			Status: message.StatusProofError,
 			Error:  err.Error(),
-			ID:     traces.ID,
+			ID:     traces.Traces.ID,
 			Proof:  &message.AggProof{},
 		}
-		log.Error("prove block failed!", "block-id", traces.ID)
+		log.Error("prove block failed!", "block-id", traces.Traces.ID)
 	} else {
+
 		proofMsg = &message.ProofMsg{
 			Status: message.StatusOk,
-			ID:     traces.ID,
+			ID:     traces.Traces.ID,
 			Proof:  proof,
 		}
-		log.Info("prove block successfully!", "block-id", traces.ID)
+		log.Info("prove block successfully!", "block-id", traces.Traces.ID)
 	}
-
-	authZkProof := &message.AuthZkProof{ProofMsg: proofMsg}
-	if err = authZkProof.Sign(r.priv); err != nil {
+	_, err = r.stack.Pop()
+	if err != nil {
 		return err
 	}
 
-	ok, err := r.client.SubmitProof(context.Background(), authZkProof)
+	ok, err := r.signAndSubmitProof(proofMsg)
 	if !ok {
-		log.Error("Submit proof to scroll failed! auzhZkProofID: ", authZkProof.ID)
+		log.Error("Submit proof to scroll failed! auzhZkProofID: ", proofMsg.ID)
 	}
 	return err
+}
+
+func (r *Roller) signAndSubmitProof(msg *message.ProofMsg) (bool, error) {
+	authZkProof := &message.AuthZkProof{ProofMsg: msg}
+	if err := authZkProof.Sign(r.priv); err != nil {
+		return false, err
+	}
+
+	return r.client.SubmitProof(context.Background(), authZkProof)
 }
 
 // Close closes the websocket connection.
