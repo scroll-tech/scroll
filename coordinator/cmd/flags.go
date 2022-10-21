@@ -84,6 +84,6 @@ var (
 	wsPortFlag = cli.IntFlag{
 		Name:  "ws.port",
 		Usage: "WS-RPC server listening port",
-		Value: 8291,
+		Value: 8391,
 	}
 )

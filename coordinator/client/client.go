@@ -4,17 +4,11 @@ import (
 	"context"
 
 	"github.com/scroll-tech/go-ethereum/rpc"
-
-	"scroll-tech/coordinator"
 )
-
-type client interface {
-	coordinator.RollerClient
-}
 
 // Client defines typed wrappers for the Ethereum RPC API.
 type Client struct {
-	client
+	*rpc.Client
 }
 
 // Dial connects a client to the given URL.
@@ -33,5 +27,5 @@ func DialContext(ctx context.Context, rawurl string) (*Client, error) {
 
 // NewClient creates a client that uses the given RPC client.
 func NewClient(c *rpc.Client) *Client {
-	return &Client{client: client(&coordinator.Client{Client: c})}
+	return &Client{Client: c}
 }

@@ -7,6 +7,14 @@ import (
 	"scroll-tech/database/orm"
 )
 
+// RollerDebugAPI roller api interface in order go get debug message.
+type RollerDebugAPI interface {
+	// ListRollers returns all live rollers
+	ListRollers() ([]*RollerInfo, error)
+	// GetSessionInfo returns the session information given the session id.
+	GetSessionInfo(sessionID uint64) (*SessionInfo, error)
+}
+
 // RollerInfo records the roller name, pub key and active session info (id, start time).
 type RollerInfo struct {
 	Name                   string    `json:"name"`
@@ -23,14 +31,6 @@ type SessionInfo struct {
 	FinishTime      time.Time `json:"finish_time,omitempty"`      // set to 0 if not finished
 	AssignedRollers []string  `json:"assigned_rollers,omitempty"` // roller name list
 	Error           string    `json:"error,omitempty"`            // empty string if no error encountered
-}
-
-// RollerDebugAPI roller api interface in order go get debug message.
-type RollerDebugAPI interface {
-	// ListRollers returns all live rollers
-	ListRollers() ([]*RollerInfo, error)
-	// GetSessionInfo returns the session information given the session id.
-	GetSessionInfo(sessionID uint64) (*SessionInfo, error)
 }
 
 // ListRollers returns all live rollers.
