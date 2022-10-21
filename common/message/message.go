@@ -13,6 +13,19 @@ import (
 // MsgType denotes the type of message being sent or received.
 type MsgType uint16
 
+const (
+	// Error message.
+	Error MsgType = iota
+	// Register message, sent by a roller when a connection is established.
+	Register
+	// BlockTrace message, sent by a sequencer to a roller to notify them
+	// they need to generate a proof.
+	BlockTrace
+	// Proof message, sent by a roller to a sequencer when they have finished
+	// proof generation of a given set of block traces.
+	Proof
+)
+
 // RespStatus represents status code from roller to scroll
 type RespStatus uint32
 
