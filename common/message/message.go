@@ -13,9 +13,6 @@ import (
 // MsgType denotes the type of message being sent or received.
 type MsgType uint16
 
-	"github.com/scroll-tech/go-ethereum/core/types"
-)
-
 // RespStatus represents status code from roller to scroll
 type RespStatus uint32
 
