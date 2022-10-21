@@ -184,25 +184,42 @@ func (r *Roller) prove() error {
 	if err != nil {
 		return err
 	}
-	log.Info("start to prove block", "block-id", traces.ID)
 
 	var proofMsg *message.ProofMsg
-	proof, err := r.prover.Prove(traces.Traces)
+	if traces.Times > 2 {
+		proofMsg = &message.ProofMsg{
+			Status: message.StatusProofError,
+			Error:  "prover has retried several times due to FFI panic",
+			ID:     traces.Traces.ID,
+			Proof:  &message.AggProof{},
+		}
+		return r.sendMessage(message.Proof, proofMsg)
+	}
+
+	err = r.stack.Push(traces)
+	if err != nil {
+		return err
+	}
+
+	log.Info("start to prove block", "block-id", traces.Traces.ID)
+
+	proof, err := r.prover.Prove(traces.Traces.Traces)
 	if err != nil {
 		proofMsg = &message.ProofMsg{
 			Status: message.StatusProofError,
 			Error:  err.Error(),
-			ID:     traces.ID,
+			ID:     traces.Traces.ID,
 			Proof:  &message.AggProof{},
 		}
-		log.Error("prove block failed!", "block-id", traces.ID)
+		log.Error("prove block failed!", "block-id", traces.Traces.ID)
 	} else {
+
 		proofMsg = &message.ProofMsg{
 			Status: message.StatusOk,
-			ID:     traces.ID,
+			ID:     traces.Traces.ID,
 			Proof:  proof,
 		}
-		log.Info("prove block successfully!", "block-id", traces.ID)
+		log.Info("prove block successfully!", "block-id", traces.Traces.ID)
 	}
 
 	authZkProof := &message.AuthZkProof{ProofMsg: proofMsg}

@@ -21,6 +21,14 @@ type Stack struct {
 	*bbolt.DB
 }
 
+// ProvingTraces is the value in stack.
+// It contains traces and proved times.
+type ProvingTraces struct {
+	Traces *rollertypes.BlockTraces `json:"traces"`
+	// Times is how many times roller proved.
+	Times int `json:"times"`
+}
+
 var bucket = []byte("stack")
 
 // NewStack new a Stack object.
@@ -46,7 +54,7 @@ func (s *Stack) Push(traces *message.BlockTraces) error {
 		return err
 	}
 	key := make([]byte, 8)
-	binary.BigEndian.PutUint64(key, traces.ID)
+	binary.BigEndian.PutUint64(key, traces.Traces.ID)
 	return s.Update(func(tx *bbolt.Tx) error {
 		return tx.Bucket(bucket).Put(key, byt)
 	})
