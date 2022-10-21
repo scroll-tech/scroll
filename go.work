@@ -1,0 +1,9 @@
+go 1.18
+
+use (
+	./bridge
+	./common
+	./coordinator
+	./database
+	./roller
+)

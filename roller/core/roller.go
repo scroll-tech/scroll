@@ -18,10 +18,11 @@ import (
 	"github.com/scroll-tech/go-ethereum/crypto"
 	"github.com/scroll-tech/go-ethereum/log"
 
+	message "scroll-tech/common/message"
+
 	"scroll-tech/go-roller/config"
 	"scroll-tech/go-roller/core/prover"
 	"scroll-tech/go-roller/store"
-	. "scroll-tech/go-roller/types"
 )
 
 var (
@@ -96,8 +97,8 @@ func (r *Roller) Register() error {
 	if err != nil {
 		return err
 	}
-	authMsg := &AuthMessage{
-		Identity: Identity{
+	authMsg := &message.AuthMessage{
+		Identity: message.Identity{
 			Name:      r.cfg.RollerName,
 			Timestamp: time.Now().UnixMilli(),
 			PublicKey: common.Bytes2Hex(crypto.FromECDSAPub(&priv.PublicKey)),
@@ -110,12 +111,7 @@ func (r *Roller) Register() error {
 		return fmt.Errorf("sign auth message failed %v", err)
 	}
 
-	msgByt, err := MakeMsgByt(Register, authMsg)
-	if err != nil {
-		return err
-	}
-
-	return r.conn.WriteMessage(websocket.BinaryMessage, msgByt)
+	return r.sendMessage(message.Register, authMsg)
 }
 
 // HandleScroll accepts block-traces from Scroll through the Websocket and store it into Stack.
@@ -186,6 +182,14 @@ func (r *Roller) ProveLoop() (err error) {
 	}
 }
 
+func (r *Roller) sendMessage(msgType message.MsgType, payload interface{}) error {
+	msgByt, err := MakeMsgByt(msgType, payload)
+	if err != nil {
+		return err
+	}
+	return r.conn.WriteMessage(websocket.BinaryMessage, msgByt)
+}
+
 func (r *Roller) handMessage() error {
 	mt, msg, err := r.conn.ReadMessage()
 	if err != nil {
@@ -206,32 +210,49 @@ func (r *Roller) prove() error {
 	if err != nil {
 		return err
 	}
-	log.Info("start to prove block", "block-id", traces.ID)
 
-	var proofMsg *ProofMsg
-	proof, err := r.prover.Prove(traces.Traces)
-	if err != nil {
-		proofMsg = &ProofMsg{
-			Status: StatusProofError,
-			Error:  err.Error(),
-			ID:     traces.ID,
-			Proof:  &AggProof{},
+	var proofMsg *message.ProofMsg
+	if traces.Times > 2 {
+		proofMsg = &message.ProofMsg{
+			Status: message.StatusProofError,
+			Error:  "prover has retried several times due to FFI panic",
+			ID:     traces.Traces.ID,
+			Proof:  &message.AggProof{},
 		}
-		log.Error("prove block failed!", "block-id", traces.ID)
-	} else {
-		proofMsg = &ProofMsg{
-			Status: StatusOk,
-			ID:     traces.ID,
-			Proof:  proof,
-		}
-		log.Info("prove block successfully!", "block-id", traces.ID)
+		return r.sendMessage(message.Proof, proofMsg)
 	}
 
-	msgByt, err := MakeMsgByt(Proof, proofMsg)
+	err = r.stack.Push(traces)
 	if err != nil {
 		return err
 	}
-	return r.conn.WriteMessage(websocket.BinaryMessage, msgByt)
+
+	log.Info("start to prove block", "block-id", traces.Traces.ID)
+
+	proof, err := r.prover.Prove(traces.Traces.Traces)
+	if err != nil {
+		proofMsg = &message.ProofMsg{
+			Status: message.StatusProofError,
+			Error:  err.Error(),
+			ID:     traces.Traces.ID,
+			Proof:  &message.AggProof{},
+		}
+		log.Error("prove block failed!", "block-id", traces.Traces.ID)
+	} else {
+
+		proofMsg = &message.ProofMsg{
+			Status: message.StatusOk,
+			ID:     traces.Traces.ID,
+			Proof:  proof,
+		}
+		log.Info("prove block successfully!", "block-id", traces.Traces.ID)
+	}
+	_, err = r.stack.Pop()
+	if err != nil {
+		return err
+	}
+
+	return r.sendMessage(message.Proof, proofMsg)
 }
 
 // Close closes the websocket connection.
@@ -251,21 +272,24 @@ func (r *Roller) Close() {
 }
 
 func (r *Roller) persistTrace(byt []byte) error {
-	var msg = &Msg{}
+	var msg = &message.Msg{}
 	err := json.Unmarshal(byt, msg)
 	if err != nil {
 		return err
 	}
-	if msg.Type != BlockTrace {
+	if msg.Type != message.BlockTrace {
 		log.Error("message from Scroll illegal")
 		return nil
 	}
-	var traces = &BlockTraces{}
+	var traces = &message.BlockTraces{}
 	if err := json.Unmarshal(msg.Payload, traces); err != nil {
 		return err
 	}
 	log.Info("Accept BlockTrace from Scroll", "ID", traces.ID)
-	return r.stack.Push(traces)
+	return r.stack.Push(&store.ProvingTraces{
+		Traces: traces,
+		Times:  0,
+	})
 }
 
 func (r *Roller) loadOrCreateKey() (*ecdsa.PrivateKey, error) {
@@ -300,12 +324,12 @@ func (r *Roller) loadOrCreateKey() (*ecdsa.PrivateKey, error) {
 }
 
 // MakeMsgByt Marshals Msg to bytes.
-func MakeMsgByt(msgTyp MsgType, payloadVal interface{}) ([]byte, error) {
+func MakeMsgByt(msgTyp message.MsgType, payloadVal interface{}) ([]byte, error) {
 	payload, err := json.Marshal(payloadVal)
 	if err != nil {
 		return nil, err
 	}
-	msg := &Msg{
+	msg := &message.Msg{
 		Type:    msgTyp,
 		Payload: payload,
 	}
