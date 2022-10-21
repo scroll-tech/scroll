@@ -1,28 +1,18 @@
 .PHONY: lint docker clean roller
 
-IMAGE_NAME=roller-go
+IMAGE_NAME=go-roller
 IMAGE_VERSION=latest
 
-BUILD_FLAGS := -ldflags "-X scroll-tech/go-roller/version.GitCommit=`git rev-parse HEAD`"
-
-libprover:
+prepare-libprover:
 	cd core/prover/rust && cargo build --release && cp target/release/libprover.a ../lib/
 
-roller: ## Build the Roller instance.
+roller: ## Builds the Roller instance.
 	cd core/prover/rust && cargo build --release && cp target/release/libprover.a ../lib/
-	GOBIN=$(PWD)/build/bin go build $(BUILD_FLAGS) ./cmd/roller
+	go build -o $(PWD)/build/bin/roller ./cmd
 
-intall-roller: ## Install the Roller instance.
+gpu-roller: ## Builds the GPU Roller instance.
 	cd core/prover/rust && cargo build --release && cp target/release/libprover.a ../lib/
-	GOBIN=$(PWD)/build/bin go install $(BUILD_FLAGS) ./cmd/roller
-
-gpu-roller: ## Build the GPU Roller instance.
-	cd core/prover/rust && cargo build --release && cp target/release/libprover.a ../lib/
-	GOBIN=$(PWD)/build/bin go build $(BUILD_FLAGS) -tags gpu ./cmd/roller
-
-intall-gpu-roller: ## Build the GPU Roller instance.
-	cd core/prover/rust && cargo build --release && cp target/release/libprover.a ../lib/
-	GOBIN=$(PWD)/build/bin go install $(BUILD_FLAGS) -tags gpu ./cmd/roller
+	GOBIN=$(PWD)/build/bin go install -tags gpu ./cmd/roller
 
 test-prover:
 	go test -timeout 0 -v ./core/prover
@@ -31,10 +21,10 @@ test-gpu-prover:
 	go test -tags gpu -timeout 0 -v ./core/prover
 
 lint: ## Lint the files - used for CI
-	GOBIN=$(PWD)/build/bin go run build/lint.go
+	GOBIN=$(PWD)/build/bin go run ../build/lint.go
 
 clean: ## Empty out the bin folder
 	@rm -rf build/bin
 
-docker:
-	docker build -t scrolltech/${IMAGE_NAME}:${IMAGE_VERSION} ./
+# docker:
+# 	docker build -t scrolltech/${IMAGE_NAME}:${IMAGE_VERSION} ../ -f ./Dockerfile
