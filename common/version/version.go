@@ -1,7 +1,22 @@
 package version
 
-var (
-	// GitCommit is set with --ldflags "-X scroll-tech/go-roller/version.GitCommit=$(git rev-parse HEAD)"
-	// TODO: upgrade to go 1.18+ and use build info, see: https://icinga.com/blog/2022/05/25/embedding-git-commit-information-in-go-binaries/
-	GitCommit string
-)
+import "runtime/debug"
+
+var tag = "prealpha-v3.0"
+
+var commit = func() string {
+	if info, ok := debug.ReadBuildInfo(); ok {
+		for _, setting := range info.Settings {
+			if setting.Key == "vcs.revision" {
+				value := setting.Value
+				if len(value) >= 8 {
+					return value[:8]
+				}
+				return value
+			}
+		}
+	}
+	return ""
+}()
+
+var Version = fmt.Sprintf("%s-%s", tag, commit)
