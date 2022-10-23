@@ -2,6 +2,7 @@
 
 IMAGE_NAME=bridge
 IMAGE_VERSION=latest
+REPO_ROOT_DIR=./..
 
 mock_abi:
 	solc --bin mock_bridge/Mock_Bridge.sol -o mock_bridge/ --overwrite
@@ -24,7 +25,7 @@ docker:
 #	docker container prune -f
 #	docker build -t scroll_l1geth ../common/docker/l1geth/
 #	docker build -t scroll_l2geth ../common/docker/l2geth/
-	docker build -t scrolltech/${IMAGE_NAME}:${IMAGE_VERSION} ../ -f ./Dockerfile
+	docker build -t scrolltech/${IMAGE_NAME}:${IMAGE_VERSION} ${REPO_ROOT_DIR}/ -f ${REPO_ROOT_DIR}/build/dockerfiles/bridge.Dockerfile
 
 docker_push:
 	docker push scrolltech/${IMAGE_NAME}:${IMAGE_VERSION}

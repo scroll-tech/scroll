@@ -59,20 +59,15 @@ pipeline {
                         go test -v -race -coverprofile=coverage.txt -covermode=atomic -p 1 scroll-tech/database
                         go test -v -race -coverprofile=coverage.txt -covermode=atomic -p 1 scroll-tech/database/migrate
                         go test -v -race -coverprofile=coverage.txt -covermode=atomic -p 1 scroll-tech/database/docker
-                        go test -v -race -coverprofile=coverage.txt -covermode=atomic -p 1 scroll-tech/bridge/abi
-                        go test -v -race -coverprofile=coverage.txt -covermode=atomic -p 1 scroll-tech/bridge/l1
-                        go test -v -race -coverprofile=coverage.txt -covermode=atomic -p 1 scroll-tech/bridge/l2
                         go test -v -race -coverprofile=coverage.txt -covermode=atomic -p 1 scroll-tech/bridge/sender
                         go test -v -race -coverprofile=coverage.txt -covermode=atomic -p 1 scroll-tech/common/docker
                         go test -v -race -coverprofile=coverage.txt -covermode=atomic -p 1 scroll-tech/coordinator
                         go test -v -race -coverprofile=coverage.txt -covermode=atomic -p 1 scroll-tech/coordinator/verifier
-                        cd ..
+                        go test -v -race -coverprofile=coverage.txt -covermode=atomic -p 1 scroll-tech/bridge/abi
+                        go test -v -race -coverprofile=coverage.txt -covermode=atomic -p 1 scroll-tech/bridge/l1
+                        go test -v -race -coverprofile=coverage.txt -covermode=atomic -p 1 scroll-tech/bridge/l2
+                        go test -v -race -coverprofile=coverage.txt -covermode=atomic $(cd bridge && go list ./... | grep -v 'l1\\|l2\\|sender')
                     '''
-                    script {
-                        for (i in ['bridge', 'coordinator', 'database']) {
-                            sh "cd $i && go test -v -race -coverprofile=coverage.txt -covermode=atomic \$(go list ./... | grep -v 'database\\|l2\\|l1\\|common\\|coordinator')"
-                        }
-                    }
 
                     script { test_result = true }
                }
@@ -96,7 +91,7 @@ pipeline {
                         if (test_result == true) {
                             sh 'docker login --username=${dockerUser} --password=${dockerPassword}'
                             for (i in ['bridge', 'coordinator']) {
-                                sh "docker build -t ${imagePrefix}/$i:${GIT_COMMIT} -f $i/Dockerfile ."
+                                sh "docker build -t ${imagePrefix}/$i:${GIT_COMMIT} -f build/dockerfiles/${i}.Dockerfile ."
                                 sh "docker push ${imagePrefix}/$i:${GIT_COMMIT}"
                                 sh "docker rmi ${imagePrefix}/$i:${GIT_COMMIT}"
                             }

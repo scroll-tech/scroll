@@ -10,6 +10,7 @@ import (
 	"github.com/scroll-tech/go-ethereum/crypto"
 )
 
+<<<<<<< HEAD
 // MsgType denotes the type of message being sent or received.
 type MsgType uint16
 
@@ -27,6 +28,8 @@ const (
 )
 
 // RespStatus represents status code from roller to scroll
+=======
+>>>>>>> update_ws
 type RespStatus uint32
 
 const (
@@ -35,15 +38,6 @@ const (
 	// StatusProofError means generate proof failed
 	StatusProofError
 )
-
-// Msg is the top-level message container which contains the payload and the
-// message identifier.
-type Msg struct {
-	// Message type
-	Type MsgType `json:"type"`
-	// Message payload
-	Payload []byte `json:"payload"`
-}
 
 // BlockTraces is a wrapper type around types.BlockResult which adds an ID
 // that identifies which proof generation session these block traces are
@@ -130,8 +124,6 @@ type Identity struct {
 	Name string `json:"name"`
 	// Time of message creation
 	Timestamp int64 `json:"timestamp"`
-	// Roller public key
-	PublicKey string `json:"publicKey"`
 }
 
 // Hash returns the hash of the auth message, which should be the message used
