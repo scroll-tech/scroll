@@ -22,4 +22,5 @@ var commit = func() string {
 	return ""
 }()
 
+// Version denote the version of scroll protocol, including the l2geth, relayer, coordinator, roller, contracts and etc.
 var Version = fmt.Sprintf("%s-%s", tag, commit)
