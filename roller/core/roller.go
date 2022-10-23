@@ -111,12 +111,7 @@ func (r *Roller) Register() error {
 		return fmt.Errorf("sign auth message failed %v", err)
 	}
 
-	msgByt, err := MakeMsgByt(message.Register, authMsg)
-	if err != nil {
-		return err
-	}
-
-	return r.conn.WriteMessage(websocket.BinaryMessage, msgByt)
+	return r.sendMessage(message.Register, authMsg)
 }
 
 // HandleScroll accepts block-traces from Scroll through the Websocket and store it into Stack.
@@ -187,6 +182,14 @@ func (r *Roller) ProveLoop() (err error) {
 	}
 }
 
+func (r *Roller) sendMessage(msgType message.MsgType, payload interface{}) error {
+	msgByt, err := MakeMsgByt(msgType, payload)
+	if err != nil {
+		return err
+	}
+	return r.conn.WriteMessage(websocket.BinaryMessage, msgByt)
+}
+
 func (r *Roller) handMessage() error {
 	mt, msg, err := r.conn.ReadMessage()
 	if err != nil {
@@ -207,32 +210,49 @@ func (r *Roller) prove() error {
 	if err != nil {
 		return err
 	}
-	log.Info("start to prove block", "block-id", traces.ID)
 
 	var proofMsg *message.ProofMsg
-	proof, err := r.prover.Prove(traces.Traces)
+	if traces.Times > 2 {
+		proofMsg = &message.ProofMsg{
+			Status: message.StatusProofError,
+			Error:  "prover has retried several times due to FFI panic",
+			ID:     traces.Traces.ID,
+			Proof:  &message.AggProof{},
+		}
+		return r.sendMessage(message.Proof, proofMsg)
+	}
+
+	err = r.stack.Push(traces)
+	if err != nil {
+		return err
+	}
+
+	log.Info("start to prove block", "block-id", traces.Traces.ID)
+
+	proof, err := r.prover.Prove(traces.Traces.Traces)
 	if err != nil {
 		proofMsg = &message.ProofMsg{
 			Status: message.StatusProofError,
 			Error:  err.Error(),
-			ID:     traces.ID,
+			ID:     traces.Traces.ID,
 			Proof:  &message.AggProof{},
 		}
-		log.Error("prove block failed!", "block-id", traces.ID)
+		log.Error("prove block failed!", "block-id", traces.Traces.ID)
 	} else {
+
 		proofMsg = &message.ProofMsg{
 			Status: message.StatusOk,
-			ID:     traces.ID,
+			ID:     traces.Traces.ID,
 			Proof:  proof,
 		}
-		log.Info("prove block successfully!", "block-id", traces.ID)
+		log.Info("prove block successfully!", "block-id", traces.Traces.ID)
 	}
-
-	msgByt, err := MakeMsgByt(message.Proof, proofMsg)
+	_, err = r.stack.Pop()
 	if err != nil {
 		return err
 	}
-	return r.conn.WriteMessage(websocket.BinaryMessage, msgByt)
+
+	return r.sendMessage(message.Proof, proofMsg)
 }
 
 // Close closes the websocket connection.
@@ -266,7 +286,10 @@ func (r *Roller) persistTrace(byt []byte) error {
 		return err
 	}
 	log.Info("Accept BlockTrace from Scroll", "ID", traces.ID)
-	return r.stack.Push(traces)
+	return r.stack.Push(&store.ProvingTraces{
+		Traces: traces,
+		Times:  0,
+	})
 }
 
 func (r *Roller) loadOrCreateKey() (*ecdsa.PrivateKey, error) {

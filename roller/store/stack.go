@@ -21,6 +21,14 @@ type Stack struct {
 	*bbolt.DB
 }
 
+// ProvingTraces is the value in stack.
+// It contains traces and proved times.
+type ProvingTraces struct {
+	Traces *rollertypes.BlockTraces `json:"traces"`
+	// Times is how many times roller proved.
+	Times int `json:"times"`
+}
+
 var bucket = []byte("stack")
 
 // NewStack new a Stack object.
@@ -40,20 +48,20 @@ func NewStack(path string) (*Stack, error) {
 }
 
 // Push appends the block-traces on the top of Stack.
-func (s *Stack) Push(traces *rollertypes.BlockTraces) error {
+func (s *Stack) Push(traces *ProvingTraces) error {
 	byt, err := json.Marshal(traces)
 	if err != nil {
 		return err
 	}
 	key := make([]byte, 8)
-	binary.BigEndian.PutUint64(key, traces.ID)
+	binary.BigEndian.PutUint64(key, traces.Traces.ID)
 	return s.Update(func(tx *bbolt.Tx) error {
 		return tx.Bucket(bucket).Put(key, byt)
 	})
 }
 
 // Pop pops the block-traces on the top of Stack.
-func (s *Stack) Pop() (*rollertypes.BlockTraces, error) {
+func (s *Stack) Pop() (*ProvingTraces, error) {
 	var value []byte
 	if err := s.Update(func(tx *bbolt.Tx) error {
 		var key []byte
@@ -68,6 +76,11 @@ func (s *Stack) Pop() (*rollertypes.BlockTraces, error) {
 		return nil, ErrEmpty
 	}
 
-	traces := &rollertypes.BlockTraces{}
-	return traces, json.Unmarshal(value, traces)
+	traces := &ProvingTraces{}
+	err := json.Unmarshal(value, traces)
+	if err != nil {
+		return nil, err
+	}
+	traces.Times++
+	return traces, nil
 }
