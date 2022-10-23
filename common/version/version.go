@@ -1,6 +1,9 @@
 package version
 
-import "runtime/debug"
+import (
+	"fmt"
+	"runtime/debug"
+)
 
 var tag = "prealpha-v3.0"
 
