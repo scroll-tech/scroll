@@ -1,0 +1,7 @@
+assets/
+coordinator/
+docs/
+integration-test/
+l2geth/
+roller/
+rpc-gateway/
