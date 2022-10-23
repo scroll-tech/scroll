@@ -5,10 +5,10 @@ import (
 	"encoding/json"
 	"errors"
 
+	"scroll-tech/common/message"
+
 	"github.com/scroll-tech/go-ethereum/log"
 	"go.etcd.io/bbolt"
-
-	rollertypes "scroll-tech/common/message"
 )
 
 var (
@@ -24,7 +24,7 @@ type Stack struct {
 // ProvingTraces is the value in stack.
 // It contains traces and proved times.
 type ProvingTraces struct {
-	Traces *rollertypes.BlockTraces `json:"traces"`
+	Traces *message.BlockTraces `json:"traces"`
 	// Times is how many times roller proved.
 	Times int `json:"times"`
 }

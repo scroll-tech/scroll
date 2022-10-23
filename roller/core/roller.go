@@ -1,8 +1,8 @@
 package core
 
 import (
+	"context"
 	"crypto/ecdsa"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -12,14 +12,12 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/gorilla/websocket"
+	"github.com/scroll-tech/go-ethereum"
 	"github.com/scroll-tech/go-ethereum/accounts/keystore"
-	"github.com/scroll-tech/go-ethereum/common"
-	"github.com/scroll-tech/go-ethereum/crypto"
 	"github.com/scroll-tech/go-ethereum/log"
 
-	message "scroll-tech/common/message"
-
+	"scroll-tech/common/message"
+	"scroll-tech/coordinator/client"
 	"scroll-tech/go-roller/config"
 	"scroll-tech/go-roller/core/prover"
 	"scroll-tech/go-roller/store"
@@ -37,17 +35,27 @@ var (
 
 // Roller contains websocket conn to Scroll, Stack, unix-socket to ipc-prover.
 type Roller struct {
-	cfg    *config.Config
-	conn   *websocket.Conn
-	stack  *store.Stack
-	prover *prover.Prover
+	cfg       *config.Config
+	client    *client.Client
+	stack     *store.Stack
+	prover    *prover.Prover
+	traceChan chan *message.BlockTraces
+	sub       ethereum.Subscription
 
 	isClosed int64
 	stopChan chan struct{}
+
+	priv *ecdsa.PrivateKey
 }
 
 // NewRoller new a Roller object.
 func NewRoller(cfg *config.Config) (*Roller, error) {
+	// load or create wallet
+	priv, err := loadOrCreateKey(cfg.KeystorePath, cfg.KeystorePassword)
+	if err != nil {
+		return nil, err
+	}
+
 	// Get stack db handler
 	stackDb, err := store.NewStack(cfg.DBPath)
 	if err != nil {
@@ -56,23 +64,26 @@ func NewRoller(cfg *config.Config) (*Roller, error) {
 
 	// Create prover instance
 	log.Info("init prover")
-	pver, err := prover.NewProver(cfg.Prover)
+	prover, err := prover.NewProver(cfg.Prover)
 	if err != nil {
 		return nil, err
 	}
 	log.Info("init prover successfully!")
 
-	conn, _, err := websocket.DefaultDialer.Dial(cfg.ScrollURL, nil)
+	rClient, err := client.Dial(cfg.ScrollURL)
 	if err != nil {
 		return nil, err
 	}
 
 	return &Roller{
-		cfg:      cfg,
-		conn:     conn,
-		stack:    stackDb,
-		prover:   pver,
-		stopChan: make(chan struct{}),
+		cfg:       cfg,
+		client:    rClient,
+		stack:     stackDb,
+		prover:    prover,
+		sub:       nil,
+		traceChan: make(chan *message.BlockTraces, 10),
+		stopChan:  make(chan struct{}),
+		priv:      priv,
 	}, nil
 }
 
@@ -93,25 +104,21 @@ func (r *Roller) Run() error {
 
 // Register registers Roller to the Scroll through Websocket.
 func (r *Roller) Register() error {
-	priv, err := r.loadOrCreateKey()
-	if err != nil {
-		return err
-	}
 	authMsg := &message.AuthMessage{
 		Identity: &message.Identity{
 			Name:      r.cfg.RollerName,
 			Timestamp: time.Now().UnixMilli(),
-			PublicKey: common.Bytes2Hex(crypto.FromECDSAPub(&priv.PublicKey)),
 		},
-		Signature: "",
 	}
 
 	// Sign auth message
-	if err = authMsg.Sign(priv); err != nil {
+	if err := authMsg.Sign(r.priv); err != nil {
 		return fmt.Errorf("sign auth message failed %v", err)
 	}
 
-	return r.sendMessage(message.Register, authMsg)
+	sub, err := r.client.RegisterAndSubscribe(context.Background(), r.traceChan, authMsg)
+	r.sub = sub
+	return err
 }
 
 // HandleScroll accepts block-traces from Scroll through the Websocket and store it into Stack.
@@ -120,31 +127,21 @@ func (r *Roller) HandleScroll() {
 		select {
 		case <-r.stopChan:
 			return
-		default:
-			_ = r.conn.SetWriteDeadline(time.Now().Add(writeWait))
-			_ = r.conn.SetReadDeadline(time.Now().Add(readWait))
-			if err := r.handMessage(); err != nil && !strings.Contains(err.Error(), errNormalClose.Error()) {
-				log.Error("handle scroll failed", "error", err)
-				r.mustRetryScroll()
-				continue
+		case trace := <-r.traceChan:
+			log.Info("Accept BlockTrace from Scroll", "ID", trace.ID)
+			err := r.stack.Push(&store.ProvingTraces{Traces: trace, Times: 0})
+			if err != nil {
+				panic(fmt.Sprintf("could not push trace(%d) into stack: %v", trace.ID, err))
 			}
+		case err := <-r.sub.Err():
+			r.sub.Unsubscribe()
+			log.Error("Subscribe trace with scroll failed", "error", err)
+			r.mustRetryScroll()
 		}
 	}
 }
 
 func (r *Roller) mustRetryScroll() {
-	for {
-		log.Info("retry to connect to scroll...")
-		conn, _, err := websocket.DefaultDialer.Dial(r.cfg.ScrollURL, nil)
-		if err != nil {
-			log.Error("failed to connect scroll: ", "error", err)
-			time.Sleep(retryWait)
-		} else {
-			r.conn = conn
-			log.Info("re-connect to scroll successfully!")
-			break
-		}
-	}
 	for {
 		log.Info("retry to register to scroll...")
 		err := r.Register()
@@ -166,7 +163,6 @@ func (r *Roller) ProveLoop() (err error) {
 		case <-r.stopChan:
 			return nil
 		default:
-			_ = r.conn.SetWriteDeadline(time.Now().Add(writeWait))
 			if err = r.prove(); err != nil {
 				if errors.Is(err, store.ErrEmpty) {
 					log.Debug("get empty trace", "error", err)
@@ -180,29 +176,6 @@ func (r *Roller) ProveLoop() (err error) {
 			}
 		}
 	}
-}
-
-func (r *Roller) sendMessage(msgType message.MsgType, payload interface{}) error {
-	msgByt, err := MakeMsgByt(msgType, payload)
-	if err != nil {
-		return err
-	}
-	return r.conn.WriteMessage(websocket.BinaryMessage, msgByt)
-}
-
-func (r *Roller) handMessage() error {
-	mt, msg, err := r.conn.ReadMessage()
-	if err != nil {
-		return err
-	}
-
-	switch mt {
-	case websocket.BinaryMessage:
-		if err = r.persistTrace(msg); err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 func (r *Roller) prove() error {
@@ -219,7 +192,9 @@ func (r *Roller) prove() error {
 			ID:     traces.Traces.ID,
 			Proof:  &message.AggProof{},
 		}
-		return r.sendMessage(message.Proof, proofMsg)
+
+		_, err = r.signAndSubmitProof(proofMsg)
+		return err
 	}
 
 	err = r.stack.Push(traces)
@@ -252,7 +227,20 @@ func (r *Roller) prove() error {
 		return err
 	}
 
-	return r.sendMessage(message.Proof, proofMsg)
+	ok, err := r.signAndSubmitProof(proofMsg)
+	if !ok {
+		log.Error("Submit proof to scroll failed! auzhZkProofID: ", proofMsg.ID)
+	}
+	return err
+}
+
+func (r *Roller) signAndSubmitProof(msg *message.ProofMsg) (bool, error) {
+	authZkProof := &message.AuthZkProof{ProofMsg: msg}
+	if err := authZkProof.Sign(r.priv); err != nil {
+		return false, err
+	}
+
+	return r.client.SubmitProof(context.Background(), authZkProof)
 }
 
 // Close closes the websocket connection.
@@ -264,50 +252,28 @@ func (r *Roller) Close() {
 
 	close(r.stopChan)
 	// Close scroll's ws
-	_ = r.conn.Close()
+	r.sub.Unsubscribe()
 	// Close db
 	if err := r.stack.Close(); err != nil {
 		log.Error("failed to close bbolt db", "error", err)
 	}
 }
 
-func (r *Roller) persistTrace(byt []byte) error {
-	var msg = &message.Msg{}
-	err := json.Unmarshal(byt, msg)
-	if err != nil {
-		return err
-	}
-	if msg.Type != message.BlockTrace {
-		log.Error("message from Scroll illegal")
-		return nil
-	}
-	var traces = &message.BlockTraces{}
-	if err := json.Unmarshal(msg.Payload, traces); err != nil {
-		return err
-	}
-	log.Info("Accept BlockTrace from Scroll", "ID", traces.ID)
-	return r.stack.Push(&store.ProvingTraces{
-		Traces: traces,
-		Times:  0,
-	})
-}
-
-func (r *Roller) loadOrCreateKey() (*ecdsa.PrivateKey, error) {
-	keystoreFilePath := r.cfg.KeystorePath
-	if _, err := os.Stat(r.cfg.KeystorePath); os.IsNotExist(err) {
+func loadOrCreateKey(keystoreFilePath string, keystorePassword string) (*ecdsa.PrivateKey, error) {
+	if _, err := os.Stat(keystoreFilePath); os.IsNotExist(err) {
 		// If there is no keystore, make a new one.
-		ks := keystore.NewKeyStore(r.cfg.KeystorePath, keystore.StandardScryptN, keystore.StandardScryptP)
-		account, err := ks.NewAccount(r.cfg.KeystorePassword)
+		ks := keystore.NewKeyStore(keystoreFilePath, keystore.StandardScryptN, keystore.StandardScryptP)
+		account, err := ks.NewAccount(keystorePassword)
 		if err != nil {
 			return nil, fmt.Errorf("generate crypto account failed %v", err)
 		}
 		log.Info("create a new account", "address", account.Address.Hex())
 
-		fis, err := ioutil.ReadDir(r.cfg.KeystorePath)
+		fis, err := ioutil.ReadDir(keystoreFilePath)
 		if err != nil {
 			return nil, err
 		}
-		keystoreFilePath = filepath.Join(r.cfg.KeystorePath, fis[0].Name())
+		keystoreFilePath = filepath.Join(keystoreFilePath, fis[0].Name())
 	} else {
 		return nil, err
 	}
@@ -316,22 +282,9 @@ func (r *Roller) loadOrCreateKey() (*ecdsa.PrivateKey, error) {
 	if err != nil {
 		return nil, err
 	}
-	key, err := keystore.DecryptKey(keyjson, r.cfg.KeystorePassword)
+	key, err := keystore.DecryptKey(keyjson, keystorePassword)
 	if err != nil {
 		return nil, err
 	}
 	return key.PrivateKey, nil
-}
-
-// MakeMsgByt Marshals Msg to bytes.
-func MakeMsgByt(msgTyp message.MsgType, payloadVal interface{}) ([]byte, error) {
-	payload, err := json.Marshal(payloadVal)
-	if err != nil {
-		return nil, err
-	}
-	msg := &message.Msg{
-		Type:    msgTyp,
-		Payload: payload,
-	}
-	return json.Marshal(msg)
 }

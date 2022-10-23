@@ -11,17 +11,19 @@ import (
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/sync/errgroup"
 
-	"scroll-tech/bridge/l2"
-	"scroll-tech/bridge/mock"
 	"scroll-tech/common/docker"
 	"scroll-tech/common/utils"
 	"scroll-tech/database"
 	"scroll-tech/database/orm"
 
+	"scroll-tech/bridge/l2"
+	"scroll-tech/bridge/mock"
+
 	client2 "scroll-tech/coordinator/client"
 
-	bridge_config "scroll-tech/bridge/config"
 	db_config "scroll-tech/database"
+
+	bridge_config "scroll-tech/bridge/config"
 
 	"scroll-tech/coordinator"
 	coordinator_config "scroll-tech/coordinator/config"

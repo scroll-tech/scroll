@@ -10,12 +10,13 @@ import (
 	"github.com/scroll-tech/go-ethereum/crypto"
 )
 
+// RespStatus represents status code from roller to scroll
 type RespStatus uint32
 
 const (
-	// StatusOk indicates the proof generation succeeded
+	// StatusOk means generate proof success
 	StatusOk RespStatus = iota
-	// StatusProofError indicates the proof generation failed
+	// StatusProofError means generate proof failed
 	StatusProofError
 )
 
@@ -59,7 +60,7 @@ func (a *AuthMessage) Sign(priv *ecdsa.PrivateKey) error {
 	return nil
 }
 
-// Verify auth message
+// Verify verifies the message of auth.
 func (a *AuthMessage) Verify() (bool, error) {
 	hash, err := a.Hash()
 	if err != nil {
@@ -118,7 +119,7 @@ func (i *Identity) Hash() ([]byte, error) {
 	return hash[:], nil
 }
 
-// nolint
+// AuthZkProof is the data structure sent to scroll.
 type AuthZkProof struct {
 	*ProofMsg `json:"zkProof"`
 	// Roller signature
@@ -128,7 +129,7 @@ type AuthZkProof struct {
 	publicKey string
 }
 
-// Sign AuthZkProof
+// Sign signs the AuthZkProof.
 func (a *AuthZkProof) Sign(priv *ecdsa.PrivateKey) error {
 	hash, err := a.Hash()
 	if err != nil {
@@ -142,7 +143,7 @@ func (a *AuthZkProof) Sign(priv *ecdsa.PrivateKey) error {
 	return nil
 }
 
-// Verify AuthZkProof
+// Verify verifies AuthZkProof.Signature.
 func (a *AuthZkProof) Verify() (bool, error) {
 	hash, err := a.Hash()
 	if err != nil {

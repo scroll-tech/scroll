@@ -8,8 +8,8 @@ import (
 	"scroll-tech/common/message"
 )
 
-// SubscribeRegister subscribe roller and register, verified by sign data.
-func (c *Client) SubscribeRegister(ctx context.Context, traceChan chan *message.BlockTraces, authMsg *message.AuthMessage) (ethereum.Subscription, error) {
+// RegisterAndSubscribe subscribe roller and register, verified by sign data.
+func (c *Client) RegisterAndSubscribe(ctx context.Context, traceChan chan *message.BlockTraces, authMsg *message.AuthMessage) (ethereum.Subscription, error) {
 	return c.Subscribe(ctx, "roller", traceChan, "register", authMsg)
 }
 
