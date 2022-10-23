@@ -51,7 +51,7 @@ func PerformHandshake(t *testing.T, proofTime time.Duration, name string, client
 	assert.NoError(t, authMsg.Sign(privkey))
 
 	traceCh := make(chan *message.BlockTraces, 4)
-	sub, err := client.SubscribeRegister(ctx, traceCh, authMsg)
+	sub, err := client.RegisterAndSubscribe(ctx, traceCh, authMsg)
 	if err != nil {
 		t.Error(err)
 		return
