@@ -70,7 +70,6 @@ func TestRelayerFunction(t *testing.T) {
 		assert.NoError(t, err)
 
 		relayer.Start()
-
 		defer relayer.Stop()
 	})
 
@@ -120,6 +119,8 @@ func TestRelayerFunction(t *testing.T) {
 				}
 			case <-tickStop:
 				t.Error("wait l2 message MsgSubmitted status timeout")
+				t.FailNow()
+				return
 			}
 		}
 
@@ -191,6 +192,8 @@ func TestRelayerFunction(t *testing.T) {
 				}
 			case <-tickStop:
 				t.Error("wait rollup RollupCommitting status timeout")
+				t.FailNow()
+				return
 			}
 		}
 	})
