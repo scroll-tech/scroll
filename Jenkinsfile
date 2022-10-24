@@ -59,10 +59,10 @@ pipeline {
                         go test -v -race -coverprofile=coverage.txt -covermode=atomic -p 1 scroll-tech/database
                         go test -v -race -coverprofile=coverage.txt -covermode=atomic -p 1 scroll-tech/database/migrate
                         go test -v -race -coverprofile=coverage.txt -covermode=atomic -p 1 scroll-tech/database/docker
-                        go test -v -race -coverprofile=coverage.txt -covermode=atomic -p 1 scroll-tech/bridge/sender
                         go test -v -race -coverprofile=coverage.txt -covermode=atomic -p 1 scroll-tech/common/docker
                         go test -v -race -coverprofile=coverage.txt -covermode=atomic -p 1 scroll-tech/coordinator
                         go test -v -race -coverprofile=coverage.txt -covermode=atomic -p 1 scroll-tech/coordinator/verifier
+                        go test -v -race -coverprofile=coverage.txt -covermode=atomic -p 1 scroll-tech/bridge/sender
                         go test -v -race -coverprofile=coverage.txt -covermode=atomic -p 1 scroll-tech/bridge/abi
                         go test -v -race -coverprofile=coverage.txt -covermode=atomic -p 1 scroll-tech/bridge/l1
                         go test -v -race -coverprofile=coverage.txt -covermode=atomic -p 1 scroll-tech/bridge/l2

@@ -176,7 +176,7 @@ func L2gethDocker(t *testing.T, cfg *bridge_config.Config, tcfg *TestConfig) (*l
 	// initialize db docker image
 	imgDb := NewDBDocker(t, tcfg)
 
-	db := PrepareDB(t, tcfg.DB_CONFIG)
+	db := ResetDB(t, tcfg.DB_CONFIG)
 	assert.Equal(t, true, db != nil)
 
 	client, err := l2.New(context.Background(), cfg.L2Config, db)
@@ -203,8 +203,8 @@ func SetupRollerManager(t *testing.T, cfg *coordinator_config.RollerManagerConfi
 	return rollerManager
 }
 
-// PrepareDB clears and reset db
-func PrepareDB(t *testing.T, db_cfg *db_config.DBConfig) database.OrmFactory {
+// ResetDB clears and reset db
+func ResetDB(t *testing.T, db_cfg *db_config.DBConfig) database.OrmFactory {
 	db, err := database.NewOrmFactory(db_cfg)
 	assert.NoError(t, err)
 

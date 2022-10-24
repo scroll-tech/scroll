@@ -12,9 +12,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"scroll-tech/common/docker"
-	db_config "scroll-tech/database"
 
-	"scroll-tech/database"
 	"scroll-tech/database/orm"
 
 	"scroll-tech/bridge/config"
@@ -61,8 +59,7 @@ func TestRelayerFunction(t *testing.T) {
 		client, err := ethclient.Dial(l2Docker.Endpoint())
 		assert.NoError(t, err)
 
-		db, err := database.NewOrmFactory(TEST_CONFIG.DB_CONFIG)
-		assert.NoError(t, err)
+		db := mock.ResetDB(t, TEST_CONFIG.DB_CONFIG)
 
 		skippedOpcodes := make(map[string]struct{}, len(cfg.L2Config.SkippedOpcodes))
 		for _, op := range cfg.L2Config.SkippedOpcodes {
@@ -85,11 +82,7 @@ func TestRelayerFunction(t *testing.T) {
 		client, err := ethclient.Dial(l2Docker.Endpoint())
 		assert.NoError(t, err)
 
-		db, err := database.NewOrmFactory(&db_config.DBConfig{
-			DriverName: "postgres",
-			DSN:        dbDocker.Endpoint(),
-		})
-		assert.NoError(t, err)
+		db := mock.ResetDB(t, TEST_CONFIG.DB_CONFIG)
 
 		skippedOpcodes := make(map[string]struct{}, len(cfg.L2Config.SkippedOpcodes))
 		for _, op := range cfg.L2Config.SkippedOpcodes {
@@ -140,11 +133,7 @@ func TestRelayerFunction(t *testing.T) {
 		client, err := ethclient.Dial(l2Docker.Endpoint())
 		assert.NoError(t, err)
 
-		db, err := database.NewOrmFactory(&db_config.DBConfig{
-			DriverName: "postgres",
-			DSN:        dbDocker.Endpoint(),
-		})
-		assert.NoError(t, err)
+		db := mock.ResetDB(t, TEST_CONFIG.DB_CONFIG)
 
 		skippedOpcodes := make(map[string]struct{}, len(cfg.L2Config.SkippedOpcodes))
 		for _, op := range cfg.L2Config.SkippedOpcodes {
@@ -214,11 +203,7 @@ func TestRelayerFunction(t *testing.T) {
 		client, err := ethclient.Dial(l2Docker.Endpoint())
 		assert.NoError(t, err)
 
-		db, err := database.NewOrmFactory(&db_config.DBConfig{
-			DriverName: "postgres",
-			DSN:        dbDocker.Endpoint(),
-		})
-		assert.NoError(t, err)
+		db := mock.ResetDB(t, TEST_CONFIG.DB_CONFIG)
 
 		skippedOpcodes := make(map[string]struct{}, len(cfg.L2Config.SkippedOpcodes))
 		for _, op := range cfg.L2Config.SkippedOpcodes {

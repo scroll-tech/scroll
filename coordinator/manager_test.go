@@ -66,7 +66,7 @@ func setEnv(t *testing.T) {
 	l2backend, imgGeth, imgDb = mock.L2gethDocker(t, cfg, TEST_CONFIG)
 
 	// reset db and return orm handler
-	db = mock.PrepareDB(t, TEST_CONFIG.DB_CONFIG)
+	db = mock.ResetDB(t, TEST_CONFIG.DB_CONFIG)
 
 	// start roller manager
 	rollerManager = setupRollerManager(t, "", db)
@@ -97,7 +97,7 @@ func testHandshake(t *testing.T) {
 	defer cancel()
 
 	// reset db
-	mock.PrepareDB(t, TEST_CONFIG.DB_CONFIG)
+	mock.ResetDB(t, TEST_CONFIG.DB_CONFIG)
 
 	// create a new
 	client, err := client2.DialContext(ctx, "ws://"+managerURL)
@@ -160,7 +160,7 @@ func testIdleRollerSelection(t *testing.T) {
 	defer cancel()
 
 	// reset db
-	traceDB := orm.BlockResultOrm(mock.PrepareDB(t, TEST_CONFIG.DB_CONFIG))
+	traceDB := orm.BlockResultOrm(mock.ResetDB(t, TEST_CONFIG.DB_CONFIG))
 
 	// create l2geth client
 	ethClient, err := ethclient.DialContext(ctx, imgGeth.Endpoint())

@@ -84,8 +84,7 @@ func TestWatcherFunction(t *testing.T) {
 		cfg.L2Config.Endpoint = l2gethImg.Endpoint()
 		client, err := ethclient.Dial(cfg.L2Config.Endpoint)
 		assert.NoError(t, err)
-		db, err := database.NewOrmFactory(TEST_CONFIG.DB_CONFIG)
-		assert.NoError(t, err)
+		db := mock.ResetDB(t, TEST_CONFIG.DB_CONFIG)
 		messengerABI, err := bridge_abi.L2MessengerMetaData.GetAbi()
 		assert.NoError(t, err)
 
@@ -125,8 +124,7 @@ func TestWatcherFunction(t *testing.T) {
 		client, err := ethclient.Dial(cfg.L2Config.Endpoint)
 		assert.NoError(t, err)
 
-		db, err := database.NewOrmFactory(TEST_CONFIG.DB_CONFIG)
-		assert.NoError(t, err)
+		db := mock.ResetDB(t, TEST_CONFIG.DB_CONFIG)
 		previousHeight, err = client.BlockNumber(context.Background())
 		assert.NoError(t, err)
 
@@ -198,8 +196,7 @@ func TestWatcherFunction(t *testing.T) {
 		client, err := ethclient.Dial(cfg.L2Config.Endpoint)
 		assert.NoError(t, err)
 
-		db, err := database.NewOrmFactory(TEST_CONFIG.DB_CONFIG)
-		assert.NoError(t, err)
+		db := mock.ResetDB(t, TEST_CONFIG.DB_CONFIG)
 
 		previousHeight, err := client.BlockNumber(context.Background()) // shallow the global previousHeight
 		assert.NoError(t, err)
