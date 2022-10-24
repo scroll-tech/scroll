@@ -3,16 +3,16 @@
 IMAGE_NAME=go-roller
 IMAGE_VERSION=latest
 
-prepare-libprover:
+libprover:
 	cd core/prover/rust && cargo build --release && cp target/release/libprover.a ../lib/
 
-roller: ## Builds the Roller instance.
+roller: ## Build the Roller instance.
 	cd core/prover/rust && cargo build --release && cp target/release/libprover.a ../lib/
-	go build -o $(PWD)/build/bin/roller ./cmd
+	GOBIN=$(PWD)/build/bin go build -o $(PWD)/build/bin/roller ./cmd
 
-gpu-roller: ## Builds the GPU Roller instance.
+gpu-roller: ## Build the GPU Roller instance.
 	cd core/prover/rust && cargo build --release && cp target/release/libprover.a ../lib/
-	GOBIN=$(PWD)/build/bin go install -tags gpu ./cmd/roller
+	GOBIN=$(PWD)/build/bin go build -tags gpu -o $(PWD)/build/bin/roller ./cmd
 
 test-prover:
 	go test -timeout 0 -v ./core/prover
