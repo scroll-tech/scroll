@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/scroll-tech/go-ethereum/log"
@@ -195,11 +196,8 @@ func (m *layer2MessageOrm) GetLayer2LatestWatchedHeight() (int64, error) {
 	row := m.db.QueryRow("SELECT COALESCE(MAX(height), -1) FROM layer2_message;")
 
 	var height int64
-	if err := row.Scan(&height); err != nil {
-		if err == sql.ErrNoRows {
-			return -1, nil
-		}
-		return 0, err
+	if err := row.Scan(&height); err != nil || height < 0 {
+		return 0, fmt.Errorf("could not get latest height, error: %s or empty", err.Error())
 	}
 	return height, nil
 }
