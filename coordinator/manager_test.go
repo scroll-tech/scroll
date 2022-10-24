@@ -60,7 +60,7 @@ var (
 
 func setEnv(t *testing.T) {
 	var err error
-	cfg, err = bridge_config.NewConfig("./config.json")
+	cfg, err = bridge_config.NewConfig("../bridge/config.json")
 	if err != nil {
 		t.Error(err)
 		return
