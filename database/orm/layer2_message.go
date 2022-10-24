@@ -196,8 +196,11 @@ func (m *layer2MessageOrm) GetLayer2LatestWatchedHeight() (int64, error) {
 	row := m.db.QueryRow("SELECT COALESCE(MAX(height), -1) FROM layer2_message;")
 
 	var height int64
-	if err := row.Scan(&height); err != nil || height < 0 {
-		return 0, fmt.Errorf("could not get latest height, error: %s or empty", err.Error())
+	if err := row.Scan(&height); err != nil {
+		return 0, err
+	}
+	if height < 0 {
+		return 0, fmt.Errorf("could not get height due to database return negative")
 	}
 	return height, nil
 }
