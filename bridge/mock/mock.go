@@ -61,7 +61,7 @@ func PerformHandshake(t *testing.T, c *websocket.Conn) {
 	assert.NoError(t, err)
 
 	msg := &message.Msg{
-		Type:    message.Register,
+		Type:    message.RegisterMsgType,
 		Payload: b,
 	}
 

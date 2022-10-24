@@ -111,7 +111,7 @@ func (r *Roller) Register() error {
 		return fmt.Errorf("sign auth message failed %v", err)
 	}
 
-	return r.sendMessage(message.Register, authMsg)
+	return r.sendMessage(message.RegisterMsgType, authMsg)
 }
 
 // HandleScroll accepts block-traces from Scroll through the Websocket and store it into Stack.

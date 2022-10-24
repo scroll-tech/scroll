@@ -207,19 +207,19 @@ func (m *Manager) HandleMessage(pk string, payload []byte) error {
 	}
 
 	switch msg.Type {
-	case message.Error:
+	case message.ErrorMsgType:
 		// Just log it for now.
 		log.Error("error message received from roller", "message", msg)
 		// TODO: handle in m.failedSessionInfos
 		return nil
-	case message.Register:
+	case message.RegisterMsgType:
 		// We shouldn't get this message, as the sequencer should handle registering at the start
 		// of the connection.
 		return errors.New("attempted handshake at the wrong time")
-	case message.BlockTrace:
+	case message.TaskMsgType:
 		// We shouldn't get this message, as the sequencer should always be the one to send it
 		return errors.New("received illegal message")
-	case message.Proof:
+	case message.ProofMsgType:
 		return m.HandleZkProof(pk, msg.Payload)
 	default:
 		return fmt.Errorf("unrecognized message type %v", msg.Type)
@@ -515,10 +515,11 @@ func (m *Manager) GetNumberOfIdleRollers() int {
 	return cnt
 }
 
+// TODO: implement this
 func createBlockTracesMsg(traces *types.BlockResult) (message.Msg, error) {
-	idAndTraces := message.BlockTraces{
+	idAndTraces := message.Task{
 		ID:     traces.BlockTrace.Number.ToInt().Uint64(),
-		Traces: traces,
+		Traces: nil,
 	}
 
 	payload, err := json.Marshal(idAndTraces)
@@ -527,7 +528,7 @@ func createBlockTracesMsg(traces *types.BlockResult) (message.Msg, error) {
 	}
 
 	return message.Msg{
-		Type:    message.BlockTrace,
+		Type:    message.TaskMsgType,
 		Payload: payload,
 	}, nil
 }
