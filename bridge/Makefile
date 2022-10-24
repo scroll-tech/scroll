@@ -22,9 +22,6 @@ clean: ## Empty out the bin folder
 	@rm -rf build/bin
 
 docker:
-#	docker container prune -f
-#	docker build -t scroll_l1geth ../common/docker/l1geth/
-#	docker build -t scroll_l2geth ../common/docker/l2geth/
 	docker build -t scrolltech/${IMAGE_NAME}:${IMAGE_VERSION} ${REPO_ROOT_DIR}/ -f ${REPO_ROOT_DIR}/build/dockerfiles/bridge.Dockerfile
 
 docker_push:

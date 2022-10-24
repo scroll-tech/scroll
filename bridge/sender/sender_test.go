@@ -54,16 +54,16 @@ func TestFunction(t *testing.T) {
 		assert.NoError(t, err)
 		cfg.L2Config.RelayerConfig.SenderConfig.Endpoint = l1gethImg.Endpoint()
 
-		// create sender
-		sender, err := sender.NewSender(context.Background(), cfg.L2Config.RelayerConfig.SenderConfig, private)
+		// create newSender
+		newSender, err := sender.NewSender(context.Background(), cfg.L2Config.RelayerConfig.SenderConfig, private)
 		assert.NoError(t, err)
-		defer sender.Stop()
+		defer newSender.Stop()
 
 		assert.NoError(t, err)
 
 		// send transactions
 		idCache := cmap.New()
-		confirmCh := sender.ConfirmChan()
+		confirmCh := newSender.ConfirmChan()
 		var (
 			eg    errgroup.Group
 			errCh chan error
@@ -74,7 +74,7 @@ func TestFunction(t *testing.T) {
 				toAddr := common.BigToAddress(big.NewInt(int64(i + 1000)))
 				id := strconv.Itoa(i + 1000)
 				eg.Go(func() error {
-					txHash, err := sender.SendTransaction(id, &toAddr, big.NewInt(1), nil)
+					txHash, err := newSender.SendTransaction(id, &toAddr, big.NewInt(1), nil)
 					if err != nil {
 						t.Error("failed to send tx", "err", err)
 						return err
@@ -88,7 +88,7 @@ func TestFunction(t *testing.T) {
 		}()
 
 		// avoid 10 mins cause testcase panic
-		after := time.After(598 * time.Second)
+		after := time.After(60 * time.Second)
 		for {
 			select {
 			case cmsg := <-confirmCh:
@@ -107,7 +107,7 @@ func TestFunction(t *testing.T) {
 				}
 				assert.NoError(t, err)
 			case <-after:
-				t.Logf("sender test failed because timeout")
+				t.Logf("newSender test failed because timeout")
 				t.FailNow()
 			}
 		}
