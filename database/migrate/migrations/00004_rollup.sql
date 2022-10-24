@@ -2,7 +2,7 @@
 -- +goose StatementBegin
 create table rollup_result
 (
-    number              integer not null,
+    id                  BIGINT  not null, -- INCREMENTAL
     status              integer default 1,
     rollup_tx_hash      varchar default null,
     finalize_tx_hash    varchar default null,
@@ -13,8 +13,8 @@ create table rollup_result
 comment
 on column rollup_result.status is 'undefined, pending, committing, committed, finalizing, finalized, finalization_skipped';
 
-create unique index rollup_result_number_uindex
-    on rollup_result (number);
+create unique index rollup_result_id_uindex
+    on rollup_result (id);
 
 CREATE OR REPLACE FUNCTION update_timestamp()
 RETURNS TRIGGER AS $$
