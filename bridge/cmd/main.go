@@ -9,7 +9,7 @@ import (
 	"github.com/urfave/cli/v2"
 
 	"scroll-tech/common/utils"
-
+	"scroll-tech/common/version"
 	"scroll-tech/database"
 
 	"scroll-tech/bridge/config"
@@ -24,7 +24,7 @@ func main() {
 	app.Action = action
 	app.Name = "bridge"
 	app.Usage = "The Scroll Bridge"
-	app.Version = "v0.0.1"
+	app.Version = version.Version
 	app.Flags = append(app.Flags, commonFlags...)
 	app.Flags = append(app.Flags, apiFlags...)
 	app.Flags = append(app.Flags, l1Flags...)

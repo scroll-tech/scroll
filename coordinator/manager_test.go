@@ -61,8 +61,12 @@ var (
 func setEnv(t *testing.T) {
 	var err error
 	cfg, err = bridge_config.NewConfig("./config.json")
-	assert.NoError(t, err)
+	if err != nil {
+		t.Error(err)
+		return
+	}
 
+	// create docker instance
 	l2backend, imgGeth, imgDb = mock.L2gethDocker(t, cfg, TEST_CONFIG)
 
 	// reset db and return orm handler
