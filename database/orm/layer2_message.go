@@ -197,10 +197,10 @@ func (m *layer2MessageOrm) GetLayer2LatestWatchedHeight() (int64, error) {
 
 	var height int64
 	if err := row.Scan(&height); err != nil {
-		return 0, err
+		return -1, err
 	}
 	if height < 0 {
-		return 0, fmt.Errorf("could not get height due to database return negative")
+		return -1, fmt.Errorf("could not get height due to database return negative")
 	}
 	return height, nil
 }
