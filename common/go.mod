@@ -4,6 +4,7 @@ go 1.18
 
 require (
 	github.com/docker/docker v20.10.17+incompatible
+	github.com/jmoiron/sqlx v1.3.5
 	github.com/mattn/go-colorable v0.1.8
 	github.com/mattn/go-isatty v0.0.14
 	github.com/scroll-tech/go-ethereum v1.10.14-0.20221012120556-b3a7c9b6917d
@@ -44,7 +45,9 @@ require (
 	github.com/influxdata/influxdb-client-go/v2 v2.4.0 // indirect
 	github.com/influxdata/line-protocol v0.0.0-20210311194329-9aa0e372d097 // indirect
 	github.com/jackpal/go-nat-pmp v1.0.2-0.20160603034137-1fa385a6f458 // indirect
+	github.com/lib/pq v1.10.6 // indirect
 	github.com/mattn/go-runewidth v0.0.9 // indirect
+	github.com/mattn/go-sqlite3 v1.14.14 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/mitchellh/pointerstructure v1.2.0 // indirect
 	github.com/moby/term v0.0.0-20220808134915-39b0c02b01ae // indirect
