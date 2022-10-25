@@ -116,7 +116,7 @@ func TestRelayerFunction(t *testing.T) {
 
 	})
 
-	t.Run("TestL2RelayerProcessPendingBlocks", func(t *testing.T) {
+	t.Run("TestL2RelayerProcessPendingBatches", func(t *testing.T) {
 		cfg, err := config.NewConfig("../config.json")
 		assert.NoError(t, err)
 		cfg.L2Config.RelayerConfig.SenderConfig.Endpoint = l1Docker.Endpoint()
@@ -167,7 +167,7 @@ func TestRelayerFunction(t *testing.T) {
 		err = db.UpdateRollupStatus(context.Background(), uint64(blocks[0].Number), orm.RollupPending)
 		assert.NoError(t, err)
 
-		relayer.ProcessPendingBlocks()
+		relayer.ProcessPendingBatches()
 
 		// Check if Rollup Result is changed successfully
 		status, err := db.GetRollupStatus(uint64(blocks[0].Number))
@@ -175,7 +175,7 @@ func TestRelayerFunction(t *testing.T) {
 		assert.Equal(t, orm.RollupCommitting, status)
 	})
 
-	t.Run("TestL2RelayerProcessCommittedBlocks", func(t *testing.T) {
+	t.Run("TestL2RelayerProcessCommittedBatches", func(t *testing.T) {
 		cfg, err := config.NewConfig("../config.json")
 		assert.NoError(t, err)
 		cfg.L2Config.RelayerConfig.SenderConfig.Endpoint = l1Docker.Endpoint()
@@ -214,11 +214,12 @@ func TestRelayerFunction(t *testing.T) {
 		err = db.UpdateRollupStatus(context.Background(), uint64(blocks[0].Number), orm.RollupCommitted)
 		assert.NoError(t, err)
 		tProof := []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31}
-		tStateProof := []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31}
+		tInstanceCommitments := []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31}
 
-		err = db.UpdateProofByNumber(context.Background(), uint64(blocks[0].Number), tProof, tStateProof, 100)
+		// TODO: fix this
+		err = db.UpdateProofByID(context.Background(), uint64(blocks[0].Number), tProof, tInstanceCommitments, 100)
 		assert.NoError(t, err)
-		relayer.ProcessCommittedBlocks()
+		relayer.ProcessCommittedBatches()
 
 		status, err := db.GetRollupStatus(uint64(blocks[0].Number))
 		assert.NoError(t, err)
