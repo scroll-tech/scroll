@@ -9,8 +9,9 @@ import (
 
 // OrmFactory include all ormFactory interface
 type OrmFactory interface {
-	orm.BlockResultOrm
 	// TODO: add more orm intreface at here
+	orm.ProveTaskOrm
+	orm.BlockResultOrm
 	orm.Layer1MessageOrm
 	orm.Layer2MessageOrm
 	orm.RollupResultOrm
@@ -19,6 +20,7 @@ type OrmFactory interface {
 }
 
 type ormFactory struct {
+	orm.ProveTaskOrm
 	orm.BlockResultOrm
 	orm.Layer1MessageOrm
 	orm.Layer2MessageOrm
@@ -41,6 +43,7 @@ func NewOrmFactory(cfg *DBConfig) (OrmFactory, error) {
 	}
 
 	return &ormFactory{
+		ProveTaskOrm:     orm.NewProveTaskOrm(db),
 		BlockResultOrm:   orm.NewBlockResultOrm(db),
 		Layer1MessageOrm: orm.NewLayer1MessageOrm(db),
 		Layer2MessageOrm: orm.NewLayer2MessageOrm(db),
