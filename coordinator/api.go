@@ -56,7 +56,7 @@ func (m *Manager) ListRollers() ([]*RollerInfo, error) {
 	return res, nil
 }
 
-func newSessionInfo(s *session, status orm.BlockStatus, errMsg string, finished bool) *SessionInfo {
+func newSessionInfo(s *session, status orm.TaskStatus, errMsg string, finished bool) *SessionInfo {
 	now := time.Now()
 	var nameList []string
 	for pk := range s.roller_names {
@@ -83,7 +83,7 @@ func (m *Manager) GetSessionInfo(sessionID uint64) (*SessionInfo, error) {
 		return &info, nil
 	}
 	if s, ok := m.sessions[sessionID]; ok {
-		return newSessionInfo(&s, orm.BlockAssigned, "", false), nil
+		return newSessionInfo(&s, orm.TaskAssigned, "", false), nil
 	}
 	return nil, fmt.Errorf("no such session, sessionID: %d", sessionID)
 }
