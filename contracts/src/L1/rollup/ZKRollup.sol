@@ -176,7 +176,7 @@ contract ZKRollup is OwnableUpgradeable, IZKRollup {
   }
 
   /// @inheritdoc IZKRollup
-  function commitBatch(Layer2Batch memory _batch) external override OnlyOperator {
+  function commitBatch(Layer2Batch calldata _batch) external override OnlyOperator {
     // check whether the batch is empty
     require(_batch.blocks.length > 0, "Batch is empty");
 
@@ -188,13 +188,13 @@ contract ZKRollup is OwnableUpgradeable, IZKRollup {
     require(_batchStored.batchHash == bytes32(0), "Batch has been committed before");
 
     // make sure the parent batch is commited before
-    Layer2BlockStored storage _blockStored = blocks[_batch.parentHash];
-    require(_blockStored.transactionRoot != bytes32(0), "Parent batch hasn't been committed");
-    require(_blockStored.batchIndex + 1 == _batch.batchIndex, "Batch index and parent batch index mismatch");
+    Layer2BlockStored storage _parentBlock = blocks[_batch.parentHash];
+    require(_parentBlock.transactionRoot != bytes32(0), "Parent batch hasn't been committed");
+    require(_parentBlock.batchIndex + 1 == _batch.batchIndex, "Batch index and parent batch index mismatch");
 
     // check whether the blocks are corrected.
     unchecked {
-      uint256 _expectedBlockHeight = _blockStored.blockHeight;
+      uint256 _expectedBlockHeight = _parentBlock.blockHeight;
       bytes32 _expectedParentHash = _batch.parentHash;
       for (uint256 i = 0; i < _batch.blocks.length; i++) {
         Layer2BlockHeader memory _block = _batch.blocks[i];
@@ -210,7 +210,7 @@ contract ZKRollup is OwnableUpgradeable, IZKRollup {
     // do block commit
     for (uint256 i = 0; i < _batch.blocks.length; i++) {
       Layer2BlockHeader memory _block = _batch.blocks[i];
-      _blockStored = blocks[_block.blockHash];
+      Layer2BlockStored storage _blockStored = blocks[_block.blockHash];
       _blockStored.parentHash = _block.parentHash;
       _blockStored.transactionRoot = _computeTransactionRoot(_block.txs);
       _blockStored.blockHeight = _block.blockHeight;

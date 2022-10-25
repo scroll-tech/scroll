@@ -123,7 +123,6 @@ contract ZKRollupTest is DSTestPlus {
     rollup.updateOperator(address(1));
 
     IZKRollup.Layer2BlockHeader memory _header;
-    IZKRollup.Layer2Transaction[] memory _txns = new IZKRollup.Layer2Transaction[](0);
     IZKRollup.Layer2Batch memory _batch;
 
     // not operator call, should revert
