@@ -62,6 +62,7 @@ type ProveTask struct {
 
 // RollupResult is structure of stored rollup result
 type RollupResult struct {
+	// TODO:
 	Number         int          `json:"number" db:"number"`
 	Status         RollupStatus `json:"status" db:"status"`
 	RollupTxHash   string       `json:"rollup_tx_hash" db:"rollup_tx_hash"`
@@ -84,13 +85,9 @@ type BlockResultOrm interface {
 	GetBlockResultsLatestHeight() (int64, error)
 	GetBlockResultsOldestHeight() (int64, error)
 	GetBlockResults(fields map[string]interface{}, args ...string) ([]*types.BlockResult, error)
-	GetVerifiedProofAndInstanceByNumber(number uint64) ([]byte, []byte, error)
 	GetHashByNumber(number uint64) (*common.Hash, error)
-	GetBlockStatusByNumber(number uint64) (BlockStatus, error)
 	DeleteTraceByNumber(number uint64) error
-	InsertBlockResultsWithStatus(ctx context.Context, blockResults []*types.BlockResult, status BlockStatus) error
-	UpdateProofByNumber(ctx context.Context, number uint64, evmProof, stateProof []byte, proofTimeSec uint64) error
-	UpdateBlockStatus(number uint64, status BlockStatus) error
+	InsertBlockResults(ctx context.Context, blockResults []*types.BlockResult) error
 	NumberOfBlocksInLastHour() (uint64, error)
 }
 
