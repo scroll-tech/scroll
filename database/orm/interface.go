@@ -54,12 +54,28 @@ type Layer2Message struct {
 	Status     MsgStatus `json:"status" db:"status"`
 }
 
+// TODO: define prove_task structure
+// ProveTask is structure of stored prove_task
+type ProveTask struct {
+	ID uint64 `json:"id" db:"id"`
+}
+
 // RollupResult is structure of stored rollup result
 type RollupResult struct {
 	Number         int          `json:"number" db:"number"`
 	Status         RollupStatus `json:"status" db:"status"`
 	RollupTxHash   string       `json:"rollup_tx_hash" db:"rollup_tx_hash"`
 	FinalizeTxHash string       `json:"finalize_tx_hash" db:"finalize_tx_hash"`
+}
+
+// ProveTaskOrm prove_task operation interface
+type ProveTaskOrm interface {
+	GetProveTasks(fields map[string]interface{}, args ...string) ([]*ProveTask, error)
+	GetTaskStatusByID(id uint64) (TaskStatus, error)
+	GetVerifiedProofAndInstanceByID(id uint64) ([]byte, []byte, error)
+	// TODO: fix this
+	UpdateProofByID(ctx context.Context, id uint64, proof, instance_commitments []byte, proofTimeSec uint64) error
+	UpdateTaskStatus(id uint64, status TaskStatus) error
 }
 
 // BlockResultOrm blockResult operation interface
