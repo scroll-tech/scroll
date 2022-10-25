@@ -55,7 +55,7 @@ func testCreateNewWatcherAndStop(t *testing.T) {
 	numTransactions := 3
 	toAddress := common.HexToAddress("0x4592d8f8d7b001e72cb26a73e4fa1806a51ac79d")
 	for i := 0; i < numTransactions; i++ {
-		_, err := newSender.SendTransaction(strconv.Itoa(1000+i), &toAddress, big.NewInt(1000000000), nil)
+		_, err = newSender.SendTransaction(strconv.Itoa(1000+i), &toAddress, big.NewInt(1000000000), nil)
 		assert.NoError(t, err)
 		<-newSender.ConfirmChan()
 	}
