@@ -88,17 +88,6 @@ func (o *blockResultOrm) GetBlockResults(fields map[string]interface{}, args ...
 	return traces, rows.Close()
 }
 
-func (o *blockResultOrm) GetVerifiedProofAndInstanceByNumber(number uint64) ([]byte, []byte, error) {
-	var proof []byte
-	var instance []byte
-	row := o.db.QueryRow(`SELECT proof, instance_commitments FROM block_result WHERE number = $1 and status = $2`, number, BlockVerified)
-
-	if err := row.Scan(&proof, &instance); err != nil {
-		return nil, nil, err
-	}
-	return proof, instance, nil
-}
-
 func (o *blockResultOrm) GetHashByNumber(number uint64) (*common.Hash, error) {
 	row := o.db.QueryRow(`SELECT hash FROM block_result WHERE number = $1`, number)
 	var hashStr string
@@ -109,16 +98,7 @@ func (o *blockResultOrm) GetHashByNumber(number uint64) (*common.Hash, error) {
 	return &hash, nil
 }
 
-func (o *blockResultOrm) GetBlockStatusByNumber(number uint64) (BlockStatus, error) {
-	row := o.db.QueryRow(`SELECT status FROM block_result WHERE number = $1`, number)
-	var status BlockStatus
-	if err := row.Scan(&status); err != nil {
-		return BlockUndefined, err
-	}
-	return status, nil
-}
-
-func (o *blockResultOrm) InsertBlockResultsWithStatus(ctx context.Context, blockResults []*types.BlockResult, status BlockStatus) error {
+func (o *blockResultOrm) InsertBlockResults(ctx context.Context, blockResults []*types.BlockResult) error {
 	traceMaps := make([]map[string]interface{}, len(blockResults))
 	for i, trace := range blockResults {
 		number, hash, tx_num, mtime := trace.BlockTrace.Number.ToInt().Int64(),
@@ -135,32 +115,16 @@ func (o *blockResultOrm) InsertBlockResultsWithStatus(ctx context.Context, block
 			"number":          number,
 			"hash":            hash,
 			"content":         string(data),
-			"status":          status,
 			"tx_num":          tx_num,
 			"block_timestamp": mtime,
 		}
 	}
 
-	_, err := o.db.NamedExec(`INSERT INTO public.block_result (number, hash, content, status, tx_num, block_timestamp) VALUES (:number, :hash, :content, :status, :tx_num, :block_timestamp);`, traceMaps)
+	_, err := o.db.NamedExec(`INSERT INTO public.block_result (number, hash, content, tx_num, block_timestamp) VALUES (:number, :hash, :content, :tx_num, :block_timestamp);`, traceMaps)
 	if err != nil {
 		log.Error("failed to insert blockResults", "err", err)
 	}
 	return err
-}
-
-func (o *blockResultOrm) UpdateProofByNumber(ctx context.Context, number uint64, proof, instance_commitments []byte, proofTimeSec uint64) error {
-	db := o.db
-	if _, err := db.ExecContext(ctx, db.Rebind(`update block_result set proof = ?, instance_commitments = ?, proof_time_sec = ? where number = ?;`), proof, instance_commitments, proofTimeSec, number); err != nil {
-		log.Error("failed to update proof", "err", err)
-	}
-	return nil
-}
-
-func (o *blockResultOrm) UpdateBlockStatus(number uint64, status BlockStatus) error {
-	if _, err := o.db.Exec(o.db.Rebind("update block_result set status = ? where number = ?;"), status, number); err != nil {
-		return err
-	}
-	return nil
 }
 
 func (o *blockResultOrm) DeleteTraceByNumber(number uint64) error {
