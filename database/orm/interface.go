@@ -95,8 +95,8 @@ type RollupResultOrm interface {
 	GetPendingBatches() ([]uint64, error)
 	GetCommittedBatches() ([]uint64, error)
 	GetRollupStatus(number uint64) (RollupStatus, error)
-	GetLatestFinalizedBlock() (uint64, error)
-	InsertPendingBlocks(ctx context.Context, blocks []uint64) error // TODO: rename this
+	GetLatestFinalizedBatch() (uint64, error)
+	InsertPendingBatches(ctx context.Context, blocks []uint64) error
 	UpdateRollupStatus(ctx context.Context, number uint64, status RollupStatus) error
 	UpdateRollupTxHash(ctx context.Context, number uint64, rollup_tx_hash string) error
 	UpdateFinalizeTxHash(ctx context.Context, number uint64, finalize_tx_hash string) error

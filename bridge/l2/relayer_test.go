@@ -104,7 +104,7 @@ func TestRelayerFunction(t *testing.T) {
 				FinalizeTxHash: "Finalized Hash",
 			},
 		}
-		err = db.InsertPendingBlocks(context.Background(), []uint64{uint64(blocks[0].Number)})
+		err = db.InsertPendingBatches(context.Background(), []uint64{uint64(blocks[0].Number)})
 		assert.NoError(t, err)
 		err = db.UpdateRollupStatus(context.Background(), uint64(blocks[0].Number), orm.RollupFinalized)
 		assert.NoError(t, err)
@@ -162,7 +162,7 @@ func TestRelayerFunction(t *testing.T) {
 				FinalizeTxHash: "Finalized Hash",
 			},
 		}
-		err = db.InsertPendingBlocks(context.Background(), []uint64{uint64(blocks[0].Number)})
+		err = db.InsertPendingBatches(context.Background(), []uint64{uint64(blocks[0].Number)})
 		assert.NoError(t, err)
 		err = db.UpdateRollupStatus(context.Background(), uint64(blocks[0].Number), orm.RollupPending)
 		assert.NoError(t, err)
@@ -209,7 +209,7 @@ func TestRelayerFunction(t *testing.T) {
 				FinalizeTxHash: "Finalized Hash",
 			},
 		}
-		err = db.InsertPendingBlocks(context.Background(), []uint64{uint64(blocks[0].Number)})
+		err = db.InsertPendingBatches(context.Background(), []uint64{uint64(blocks[0].Number)})
 		assert.NoError(t, err)
 		err = db.UpdateRollupStatus(context.Background(), uint64(blocks[0].Number), orm.RollupCommitted)
 		assert.NoError(t, err)

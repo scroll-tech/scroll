@@ -4,4 +4,4 @@ package coordinator
 // ~~1. blockTraceIsValid~~
 // 2. proofGenerationFreq
 // 3. TraceHasUnsupportedOpcodes
-// should also InsertPendingBlocks?
+// should also InsertPendingBatches?

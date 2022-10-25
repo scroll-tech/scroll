@@ -266,7 +266,7 @@ func TestOrm_RollupResult(t *testing.T) {
 	defer img.Stop()
 
 	blocks := []uint64{uint64(templateRollup[0].Number), uint64(templateRollup[1].Number)}
-	err := ormRollup.InsertPendingBlocks(context.Background(), blocks)
+	err := ormRollup.InsertPendingBatches(context.Background(), blocks)
 	assert.NoError(t, err)
 
 	err = ormRollup.UpdateFinalizeTxHash(context.Background(), uint64(templateRollup[0].Number), templateRollup[0].FinalizeTxHash)
@@ -282,7 +282,8 @@ func TestOrm_RollupResult(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, len(results), 1)
 
-	result, err := ormRollup.GetLatestFinalizedBlock()
+	// TODO: fix this
+	result, err := ormRollup.GetLatestFinalizedBatch()
 	assert.NoError(t, err)
 	assert.Equal(t, templateRollup[1].Number, int(result))
 }

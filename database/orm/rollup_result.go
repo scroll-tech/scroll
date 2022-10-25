@@ -40,13 +40,13 @@ func NewRollupResultOrm(db *sqlx.DB) RollupResultOrm {
 	return &rollupResultOrm{db: db}
 }
 
-func (o *rollupResultOrm) RollupRecordExist(number uint64) (bool, error) {
+func (o *rollupResultOrm) RollupRecordExist(id uint64) (bool, error) {
 	var res int
-	return res == 1, o.db.Get(&res, o.db.Rebind(`SELECT 1 from rollup_result where number = ? limit 1;`), number)
+	return res == 1, o.db.Get(&res, o.db.Rebind(`SELECT 1 from rollup_result where id = ? limit 1;`), id)
 }
 
 func (o *rollupResultOrm) GetPendingBatches() ([]uint64, error) {
-	rows, err := o.db.Queryx(`SELECT number FROM rollup_result WHERE status = $1 ORDER BY id ASC`, RollupPending)
+	rows, err := o.db.Queryx(`SELECT id FROM rollup_result WHERE status = $1 ORDER BY id ASC`, RollupPending)
 	if err != nil {
 		return nil, err
 	}
@@ -68,14 +68,13 @@ func (o *rollupResultOrm) GetPendingBatches() ([]uint64, error) {
 	return ids, rows.Close()
 }
 
-// TODO: fix this
-func (o *rollupResultOrm) GetLatestFinalizedBlock() (uint64, error) {
-	row := o.db.QueryRow(`SELECT MAX(number) FROM rollup_result WHERE status = $1;`, RollupFinalized)
-	var number uint64
-	if err := row.Scan(&number); err != nil {
+func (o *rollupResultOrm) GetLatestFinalizedBatch() (uint64, error) {
+	row := o.db.QueryRow(`SELECT MAX(id) FROM rollup_result WHERE status = $1;`, RollupFinalized)
+	var id uint64
+	if err := row.Scan(&id); err != nil {
 		return 0, err
 	}
-	return number, nil
+	return id, nil
 }
 
 func (o *rollupResultOrm) GetCommittedBatches() ([]uint64, error) {
@@ -101,8 +100,8 @@ func (o *rollupResultOrm) GetCommittedBatches() ([]uint64, error) {
 	return ids, rows.Close()
 }
 
-func (o *rollupResultOrm) GetRollupStatus(number uint64) (RollupStatus, error) {
-	row := o.db.QueryRow(`SELECT status FROM rollup_result WHERE number = $1`, number)
+func (o *rollupResultOrm) GetRollupStatus(id uint64) (RollupStatus, error) {
+	row := o.db.QueryRow(`SELECT status FROM rollup_result WHERE id = $1`, id)
 	var status RollupStatus
 	if err := row.Scan(&status); err != nil {
 		return RollupUndefined, err
@@ -110,48 +109,48 @@ func (o *rollupResultOrm) GetRollupStatus(number uint64) (RollupStatus, error) {
 	return status, nil
 }
 
-func (o *rollupResultOrm) InsertPendingBlocks(ctx context.Context, blocks []uint64) error {
-	blockMaps := make([]map[string]interface{}, len(blocks))
-	for i, number := range blocks {
-		blockMaps[i] = map[string]interface{}{
-			"number": number,
+func (o *rollupResultOrm) InsertPendingBatches(ctx context.Context, batches []uint64) error {
+	batchMaps := make([]map[string]interface{}, len(batches))
+	for i, id := range batches {
+		batchMaps[i] = map[string]interface{}{
+			"id": id,
 		}
 	}
 
-	_, err := o.db.NamedExec(`INSERT INTO public.rollup_result (number) VALUES (:number);`, blockMaps)
+	_, err := o.db.NamedExec(`INSERT INTO public.rollup_result (id) VALUES (:id);`, batchMaps)
 	if err != nil {
 		log.Error("failed to insert rollupResults", "err", err)
 	}
 	return err
 }
 
-func (o *rollupResultOrm) UpdateRollupStatus(ctx context.Context, number uint64, status RollupStatus) error {
-	if _, err := o.db.Exec(o.db.Rebind("update rollup_result set status = ? where number = ?;"), status, number); err != nil {
+func (o *rollupResultOrm) UpdateRollupStatus(ctx context.Context, id uint64, status RollupStatus) error {
+	if _, err := o.db.Exec(o.db.Rebind("update rollup_result set status = ? where id = ?;"), status, id); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (o *rollupResultOrm) UpdateRollupTxHash(ctx context.Context, number uint64, rollup_tx_hash string) error {
-	if _, err := o.db.Exec(o.db.Rebind("update rollup_result set rollup_tx_hash = ? where number = ?;"), rollup_tx_hash, number); err != nil {
+func (o *rollupResultOrm) UpdateRollupTxHash(ctx context.Context, id uint64, rollup_tx_hash string) error {
+	if _, err := o.db.Exec(o.db.Rebind("update rollup_result set rollup_tx_hash = ? where id = ?;"), rollup_tx_hash, id); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (o *rollupResultOrm) UpdateFinalizeTxHash(ctx context.Context, number uint64, finalize_tx_hash string) error {
-	if _, err := o.db.Exec(o.db.Rebind("update rollup_result set finalize_tx_hash = ? where number = ?;"), finalize_tx_hash, number); err != nil {
+func (o *rollupResultOrm) UpdateFinalizeTxHash(ctx context.Context, id uint64, finalize_tx_hash string) error {
+	if _, err := o.db.Exec(o.db.Rebind("update rollup_result set finalize_tx_hash = ? where id = ?;"), finalize_tx_hash, id); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (o *rollupResultOrm) UpdateRollupTxHashAndStatus(ctx context.Context, number uint64, rollup_tx_hash string, status RollupStatus) error {
-	_, err := o.db.Exec(o.db.Rebind("update rollup_result set rollup_tx_hash = ?, status = ? where number = ?;"), rollup_tx_hash, status, number)
+func (o *rollupResultOrm) UpdateRollupTxHashAndStatus(ctx context.Context, id uint64, rollup_tx_hash string, status RollupStatus) error {
+	_, err := o.db.Exec(o.db.Rebind("update rollup_result set rollup_tx_hash = ?, status = ? where id = ?;"), rollup_tx_hash, status, id)
 	return err
 }
 
-func (o *rollupResultOrm) UpdateFinalizeTxHashAndStatus(ctx context.Context, number uint64, finalize_tx_hash string, status RollupStatus) error {
-	_, err := o.db.Exec(o.db.Rebind("update rollup_result set finalize_tx_hash = ?, status = ? where number = ?;"), finalize_tx_hash, status, number)
+func (o *rollupResultOrm) UpdateFinalizeTxHashAndStatus(ctx context.Context, id uint64, finalize_tx_hash string, status RollupStatus) error {
+	_, err := o.db.Exec(o.db.Rebind("update rollup_result set finalize_tx_hash = ?, status = ? where id = ?;"), finalize_tx_hash, status, id)
 	return err
 }

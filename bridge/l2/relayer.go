@@ -116,9 +116,10 @@ func (r *Layer2Relayer) ProcessSavedEvents() {
 	}
 	msg := msgs[0]
 	// @todo add support to relay multiple messages
-	latestFinalizeHeight, err := r.db.GetLatestFinalizedBlock()
+	// TODO: get related block_result and corresponding height
+	latestFinalizeHeight, err := r.db.GetLatestFinalizedBatch()
 	if err != nil {
-		log.Error("GetLatestFinalizedBlock failed", "err", err)
+		log.Error("GetLatestFinalizedBatch failed", "err", err)
 		return
 	}
 	if latestFinalizeHeight < msg.Height {
