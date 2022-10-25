@@ -21,6 +21,7 @@ import (
 	"scroll-tech/bridge/l2"
 	"scroll-tech/bridge/mock_bridge"
 	"scroll-tech/bridge/sender"
+
 	"scroll-tech/database"
 	"scroll-tech/database/migrate"
 )

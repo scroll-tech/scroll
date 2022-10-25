@@ -22,10 +22,12 @@ import (
 	"github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/stretchr/testify/assert"
 
-	"scroll-tech/common/docker"
-	"scroll-tech/common/message"
 	"scroll-tech/coordinator"
 	"scroll-tech/coordinator/config"
+
+	"scroll-tech/common/docker"
+	"scroll-tech/common/message"
+
 	"scroll-tech/database"
 	"scroll-tech/database/migrate"
 	"scroll-tech/database/orm"

@@ -5,10 +5,11 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
-	"scroll-tech/common/message"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"scroll-tech/common/message"
 
 	"github.com/gorilla/websocket"
 	"github.com/scroll-tech/go-ethereum/common"

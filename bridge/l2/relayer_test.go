@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"scroll-tech/bridge/l2"
+
 	"scroll-tech/database"
 	"scroll-tech/database/migrate"
 	"scroll-tech/database/orm"

@@ -11,8 +11,10 @@ import (
 
 	"scroll-tech/bridge/config"
 	"scroll-tech/bridge/l2"
-	"scroll-tech/common/docker"
+
 	"scroll-tech/database"
+
+	"scroll-tech/common/docker"
 )
 
 var (

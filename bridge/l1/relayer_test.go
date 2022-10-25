@@ -2,17 +2,19 @@ package l1_test
 
 import (
 	"context"
-	"scroll-tech/common/docker"
-	"scroll-tech/database/migrate"
 	"testing"
 
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/stretchr/testify/assert"
 
-	"scroll-tech/database"
+	"scroll-tech/database/migrate"
 
 	"scroll-tech/bridge/config"
 	"scroll-tech/bridge/l1"
+
+	"scroll-tech/database"
+
+	"scroll-tech/common/docker"
 )
 
 // TestCreateNewRelayer test create new relayer instance and stop
