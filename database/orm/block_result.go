@@ -15,45 +15,6 @@ import (
 	"github.com/scroll-tech/go-ethereum/log"
 )
 
-// BlockStatus blockResult status(unassigned, assigned, proved, verified, submitted)
-type BlockStatus int
-
-const (
-	// BlockUndefined : undefined block status
-	BlockUndefined BlockStatus = iota
-	// BlockUnassigned : block is not assigned to be proved
-	BlockUnassigned
-	// BlockSkipped : block is skipped for proof generation
-	BlockSkipped
-	// BlockAssigned : block is assigned to be proved
-	BlockAssigned
-	// BlockProved : block proof has been returned by prover
-	BlockProved
-	// BlockVerified : block proof is valid
-	BlockVerified
-	// BlockFailed : fail to generate block proof
-	BlockFailed
-)
-
-func (bs BlockStatus) String() string {
-	switch bs {
-	case BlockUnassigned:
-		return "unassigned"
-	case BlockSkipped:
-		return "skipped"
-	case BlockAssigned:
-		return "assigned"
-	case BlockProved:
-		return "proved"
-	case BlockVerified:
-		return "undefined"
-	case BlockFailed:
-		return "failed"
-	default:
-		return "undefined"
-	}
-}
-
 type blockResultOrm struct {
 	db *sqlx.DB
 }
