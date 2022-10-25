@@ -1,4 +1,4 @@
-package prover_test
+package prover
 
 import (
 	"encoding/json"

@@ -1,4 +1,4 @@
-package sender_test
+package sender
 
 import (
 	"context"

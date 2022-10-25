@@ -1,4 +1,4 @@
-package bridgeabi_test
+package bridgeabi
 
 import (
 	"math/big"
