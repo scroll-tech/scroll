@@ -23,14 +23,14 @@ func initEnv(t *testing.T) error {
 	dbImg = docker.NewTestDBDocker(t, "postgres")
 
 	// Create db orm handler.
-	if factory, err := database.NewOrmFactory(&database.DBConfig{
+	factory, err := database.NewOrmFactory(&database.DBConfig{
 		DriverName: "postgres",
 		DSN:        dbImg.Endpoint(),
-	}); err != nil {
+	})
+	if err != nil {
 		return err
-	} else {
-		pgDB = factory.GetDB()
 	}
+	pgDB = factory.GetDB()
 	return nil
 }
 

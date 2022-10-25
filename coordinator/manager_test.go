@@ -148,13 +148,14 @@ func TestFunction(t *testing.T) {
 		for i := 0; i < int(numClients); i++ {
 			u := url.URL{Scheme: "ws", Host: managerAddr, Path: "/"}
 
-			c, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
+			var conn *websocket.Conn
+			conn, _, err = websocket.DefaultDialer.Dial(u.String(), nil)
 			assert.NoError(t, err)
-			defer c.Close()
+			defer conn.Close()
 
-			performHandshake(t, c)
+			performHandshake(t, conn)
 
-			conns[i] = c
+			conns[i] = conn
 		}
 
 		var results []*types.BlockResult
@@ -218,13 +219,14 @@ func TestFunction(t *testing.T) {
 		for i := 0; i < int(numClients); i++ {
 			u := url.URL{Scheme: "ws", Host: managerAddr, Path: "/"}
 
-			c, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
+			var conn *websocket.Conn
+			conn, _, err = websocket.DefaultDialer.Dial(u.String(), nil)
 			assert.NoError(t, err)
-			c.SetReadDeadline(time.Now().Add(100 * time.Second))
+			conn.SetReadDeadline(time.Now().Add(100 * time.Second))
 
-			performHandshake(t, c)
+			performHandshake(t, conn)
 			time.Sleep(1 * time.Second)
-			conns[i] = c
+			conns[i] = conn
 		}
 		defer func() {
 			for _, conn := range conns {
