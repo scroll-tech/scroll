@@ -62,8 +62,7 @@ type ProveTask struct {
 
 // RollupResult is structure of stored rollup result
 type RollupResult struct {
-	// TODO:
-	Number         int          `json:"number" db:"number"`
+	ID             uint64       `json:"id" db:"id"`
 	Status         RollupStatus `json:"status" db:"status"`
 	RollupTxHash   string       `json:"rollup_tx_hash" db:"rollup_tx_hash"`
 	FinalizeTxHash string       `json:"finalize_tx_hash" db:"finalize_tx_hash"`
@@ -74,7 +73,6 @@ type ProveTaskOrm interface {
 	GetProveTasks(fields map[string]interface{}, args ...string) ([]*ProveTask, error)
 	GetTaskStatusByID(id uint64) (TaskStatus, error)
 	GetVerifiedProofAndInstanceByID(id uint64) ([]byte, []byte, error)
-	// TODO: fix this
 	UpdateProofByID(ctx context.Context, id uint64, proof, instance_commitments []byte, proofTimeSec uint64) error
 	UpdateTaskStatus(id uint64, status TaskStatus) error
 }
@@ -98,7 +96,7 @@ type RollupResultOrm interface {
 	GetCommittedBatches() ([]uint64, error)
 	GetRollupStatus(number uint64) (RollupStatus, error)
 	GetLatestFinalizedBlock() (uint64, error)
-	InsertPendingBlocks(ctx context.Context, blocks []uint64) error
+	InsertPendingBlocks(ctx context.Context, blocks []uint64) error // TODO: rename this
 	UpdateRollupStatus(ctx context.Context, number uint64, status RollupStatus) error
 	UpdateRollupTxHash(ctx context.Context, number uint64, rollup_tx_hash string) error
 	UpdateFinalizeTxHash(ctx context.Context, number uint64, finalize_tx_hash string) error
