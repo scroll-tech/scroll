@@ -131,48 +131,25 @@ func (w *WatcherClient) tryFetchRunningMissingBlocks(ctx context.Context, backTr
 	}
 
 	// start backtracking
-	heights := []uint64{}
-	toSkipped := []*types.BlockResult{}
-	toUnassigned := []*types.BlockResult{}
 
-	var (
-		header *types.Header
-		trace  *types.BlockResult
-	)
+	traces := []*types.BlockResult{}
 	for number := backTrackFrom; number > backTrackTo; number-- {
-		header, err = w.HeaderByNumber(ctx, big.NewInt(int64(number)))
+		header, err := w.HeaderByNumber(ctx, big.NewInt(int64(number)))
 		if err != nil {
 			return fmt.Errorf("Failed to get HeaderByNumber: %v. number: %v", err, number)
 		}
-		trace, err = w.GetBlockResultByHash(ctx, header.Hash())
+		trace, err := w.GetBlockResultByHash(ctx, header.Hash())
 		if err != nil {
 			return fmt.Errorf("Failed to GetBlockResultByHash: %v. number: %v", err, number)
 		}
 		log.Info("Retrieved block result", "height", header.Number, "hash", header.Hash())
 
-		heights = append(heights, number)
-		if number%w.proofGenerationFreq != 0 {
-			toSkipped = append(toSkipped, trace)
-		} else if TraceHasUnsupportedOpcodes(w.skippedOpcodes, trace) {
-			toSkipped = append(toSkipped, trace)
-		} else {
-			toUnassigned = append(toUnassigned, trace)
-		}
-	}
+		traces = append(traces, trace)
 
-	if len(heights) > 0 {
-		if err = w.orm.InsertPendingBlocks(ctx, heights); err != nil {
-			return fmt.Errorf("Failed to batch insert PendingBlocks: %v", err)
-		}
 	}
-	if len(toSkipped) > 0 {
-		if err = w.orm.InsertBlockResultsWithStatus(ctx, toSkipped, orm.BlockSkipped); err != nil {
-			return fmt.Errorf("failed to batch insert PendingBlocks: %v", err)
-		}
-	}
-	if len(toUnassigned) > 0 {
-		if err = w.orm.InsertBlockResultsWithStatus(ctx, toUnassigned, orm.BlockUnassigned); err != nil {
-			return fmt.Errorf("failed to batch insert PendingBlocks: %v", err)
+	if len(traces) > 0 {
+		if err = w.orm.InsertBlockResults(ctx, traces); err != nil {
+			return fmt.Errorf("failed to batch insert BlockResults: %v", err)
 		}
 	}
 	return nil
