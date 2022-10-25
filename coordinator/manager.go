@@ -5,13 +5,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"math/big"
 	mathrand "math/rand"
 	"sync"
 	"sync/atomic"
 	"time"
 
-	"github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/scroll-tech/go-ethereum/rpc"
 
@@ -70,12 +68,12 @@ type Manager struct {
 	verifier *verifier.Verifier
 
 	// db interface
-	orm orm.BlockResultOrm
+	orm orm.ProveTaskOrm
 }
 
 // New returns a new instance of Manager. The instance will be not fully prepared,
 // and still needs to be finalized and ran by calling `manager.Start`.
-func New(ctx context.Context, cfg *config.RollerManagerConfig, orm orm.BlockResultOrm) (*Manager, error) {
+func New(ctx context.Context, cfg *config.RollerManagerConfig, orm orm.ProveTaskOrm) (*Manager, error) {
 	var v *verifier.Verifier
 	if cfg.VerifierEndpoint != "" {
 		var err error
@@ -107,15 +105,15 @@ func (m *Manager) Start() error {
 	// m.orm may be nil in scroll tests
 	if m.orm != nil {
 		// clean up assigned but not submitted task
-		blocks, err := m.orm.GetBlockResults(map[string]interface{}{"status": orm.BlockAssigned})
+		tasks, err := m.orm.GetProveTasks(map[string]interface{}{"status": orm.TaskAssigned})
 		if err == nil {
-			for _, block := range blocks {
-				if err := m.orm.UpdateBlockStatus(block.BlockTrace.Number.ToInt().Uint64(), orm.BlockUnassigned); err != nil {
-					log.Error("fail to reset block_status as Unassigned")
+			for _, task := range tasks {
+				if err := m.orm.UpdateTaskStatus(task.ID, orm.TaskUnassigned); err != nil {
+					log.Error("fail to reset task as Unassigned")
 				}
 			}
 		} else {
-			log.Error("fail to fetch assigned blocks")
+			log.Error("fail to fetch assigned tasks")
 		}
 	}
 
@@ -151,33 +149,33 @@ func (m *Manager) isRunning() bool {
 // Loop keeps the manager running.
 func (m *Manager) Loop() {
 	var (
-		tick   = time.NewTicker(time.Second * 3)
-		traces []*types.BlockResult
+		tick  = time.NewTicker(time.Second * 3)
+		tasks []*orm.ProveTask
 	)
 	defer tick.Stop()
 
 	for {
 		select {
 		case <-tick.C:
-			if len(traces) == 0 && m.orm != nil {
+			if len(tasks) == 0 && m.orm != nil {
 				var err error
 				numIdleRollers := m.GetNumberOfIdleRollers()
 				// TODO: add cache
-				if traces, err = m.orm.GetBlockResults(
-					map[string]interface{}{"status": orm.BlockUnassigned},
+				if tasks, err = m.orm.GetProveTasks(
+					map[string]interface{}{"status": orm.TaskUnassigned},
 					fmt.Sprintf(
-						"ORDER BY number %s LIMIT %d;",
+						"ORDER BY id %s LIMIT %d;",
 						m.cfg.OrderSession,
 						numIdleRollers,
 					),
 				); err != nil {
-					log.Error("failed to get blockResult", "error", err)
+					log.Error("failed to GetProveTasks", "error", err)
 					continue
 				}
 			}
 			// Select roller and send message
-			for len(traces) > 0 && m.StartProofGenerationSession(traces[0]) {
-				traces = traces[1:]
+			for len(tasks) > 0 && m.StartProofGenerationSession(tasks[0]) {
+				tasks = tasks[1:]
 			}
 		case msg := <-m.server.msgChan:
 			if err := m.HandleMessage(msg.pk, msg.message); err != nil {
@@ -260,16 +258,16 @@ func (m *Manager) HandleZkProof(pk string, payload []byte) error {
 		// TODO: maybe we should use db tx for the whole process?
 		// Roll back current proof's status.
 		if dbErr != nil {
-			if err := m.orm.UpdateBlockStatus(msg.ID, orm.BlockUnassigned); err != nil {
-				log.Error("fail to reset block_status as Unassigned", "msg.ID", msg.ID)
+			if err := m.orm.UpdateTaskStatus(msg.ID, orm.TaskUnassigned); err != nil {
+				log.Error("fail to reset task_status as Unassigned", "msg.ID", msg.ID)
 			}
 		}
 	}()
 
 	if msg.Status != message.StatusOk {
 		log.Error("Roller failed to generate proof", "msg.ID", msg.ID, "error", msg.Error)
-		if dbErr = m.orm.UpdateBlockStatus(msg.ID, orm.BlockFailed); dbErr != nil {
-			log.Error("failed to update blockResult status", "status", orm.BlockFailed, "error", dbErr)
+		if dbErr = m.orm.UpdateTaskStatus(msg.ID, orm.TaskFailed); dbErr != nil {
+			log.Error("failed to update task status as failed", "error", dbErr)
 		}
 		// record the failed session.
 		m.addFailedSession(&s, msg.Error)
@@ -277,26 +275,28 @@ func (m *Manager) HandleZkProof(pk string, payload []byte) error {
 	}
 
 	// store proof content
-	if dbErr = m.orm.UpdateProofByNumber(m.ctx, msg.ID, msg.Proof.Proof, msg.Proof.FinalPair, proofTimeSec); dbErr != nil {
+	if dbErr = m.orm.UpdateProofByID(m.ctx, msg.ID, msg.Proof.Proof, msg.Proof.FinalPair, proofTimeSec); dbErr != nil {
 		log.Error("failed to store proof into db", "error", dbErr)
 		return dbErr
 	}
-	if dbErr = m.orm.UpdateBlockStatus(msg.ID, orm.BlockProved); dbErr != nil {
-		log.Error("failed to update blockResult status", "status", orm.BlockProved, "error", dbErr)
+	if dbErr = m.orm.UpdateTaskStatus(msg.ID, orm.TaskProved); dbErr != nil {
+		log.Error("failed to update task status as proved", "error", dbErr)
 		return dbErr
 	}
 
 	var success bool
 	if m.verifier != nil {
-		blockResults, err := m.orm.GetBlockResults(map[string]interface{}{"number": msg.ID})
-		if len(blockResults) == 0 {
-			if err != nil {
-				log.Error("failed to get blockResults", "error", err)
-			}
-			return err
-		}
+		// TODO: fix
+		var err error
+		// tasks, err := m.orm.GetProveTasks(map[string]interface{}{"number": msg.ID})
+		// if len(tasks) == 0 {
+		// 	if err != nil {
+		// 		log.Error("failed to get tasks", "error", err)
+		// 	}
+		// 	return err
+		// }
 
-		success, err = m.verifier.VerifyProof(blockResults[0], msg.Proof)
+		success, err = m.verifier.VerifyProof(nil, msg.Proof)
 		if err != nil {
 			// record failed session.
 			m.addFailedSession(&s, err.Error())
@@ -313,17 +313,17 @@ func (m *Manager) HandleZkProof(pk string, payload []byte) error {
 		log.Info("Verify zk proof successfully", "verification result", success, "proof id", msg.ID)
 	}
 
-	var status orm.BlockStatus
+	var status orm.TaskStatus
 	if success {
-		status = orm.BlockVerified
+		status = orm.TaskVerified
 	} else {
 		// Set status as skipped if verification fails.
 		// Note that this is only a workaround for testnet here.
-		// TODO: In real cases we should reset to orm.BlockUnassigned
+		// TODO: In real cases we should reset to orm.TaskUnassigned
 		// so as to re-distribute the task in the future
-		status = orm.BlockFailed
+		status = orm.TaskFailed
 	}
-	if dbErr = m.orm.UpdateBlockStatus(msg.ID, status); dbErr != nil {
+	if dbErr = m.orm.UpdateTaskStatus(msg.ID, status); dbErr != nil {
 		log.Error("failed to update blockResult status", "status", status, "error", dbErr)
 	}
 
@@ -361,10 +361,10 @@ func (m *Manager) CollectProofs(id uint64, s session) {
 				log.Warn(errMsg, "session id", id)
 				// Set status as skipped.
 				// Note that this is only a workaround for testnet here.
-				// TODO: In real cases we should reset to orm.BlockUnassigned
+				// TODO: In real cases we should reset to orm.TaskUnassigned
 				// so as to re-distribute the task in the future
-				if err := m.orm.UpdateBlockStatus(id, orm.BlockFailed); err != nil {
-					log.Error("fail to reset block_status as Unassigned", "id", id)
+				if err := m.orm.UpdateTaskStatus(id, orm.TaskFailed); err != nil {
+					log.Error("fail to reset task_status as Unassigned", "id", id)
 				}
 				return
 			}
@@ -399,20 +399,20 @@ func (m *Manager) APIs() []rpc.API {
 }
 
 // StartProofGenerationSession starts a proof generation session
-func (m *Manager) StartProofGenerationSession(trace *types.BlockResult) bool {
+func (m *Manager) StartProofGenerationSession(task *orm.ProveTask) bool {
 	roller := m.SelectRoller()
 	if roller == nil || roller.isClosed() {
 		return false
 	}
 
-	id := (*big.Int)(trace.BlockTrace.Number).Uint64()
+	id := task.ID
 	log.Info("start proof generation session", "id", id)
 
 	var dbErr error
 	defer func() {
 		if dbErr != nil {
-			if err := m.orm.UpdateBlockStatus(id, orm.BlockUnassigned); err != nil {
-				log.Error("fail to reset block_status as Unassigned", "id", id)
+			if err := m.orm.UpdateTaskStatus(id, orm.TaskUnassigned); err != nil {
+				log.Error("fail to reset task_status as Unassigned", "id", id)
 			}
 		}
 	}()
@@ -420,7 +420,7 @@ func (m *Manager) StartProofGenerationSession(trace *types.BlockResult) bool {
 	pk := roller.AuthMsg.Identity.PublicKey
 	log.Info("roller is picked", "name", roller.AuthMsg.Identity.Name, "public_key", pk)
 
-	msg, err := createBlockTracesMsg(trace)
+	msg, err := createTaskMsg(task)
 	if err != nil {
 		log.Error(
 			"could not create block traces message",
@@ -428,6 +428,7 @@ func (m *Manager) StartProofGenerationSession(trace *types.BlockResult) bool {
 		)
 		return false
 	}
+	// TODO: use some compression?
 	if err := roller.sendMessage(msg); err != nil {
 		log.Error(
 			"could not send traces message to roller",
@@ -453,7 +454,7 @@ func (m *Manager) StartProofGenerationSession(trace *types.BlockResult) bool {
 	m.sessions[id] = s
 	m.mu.Unlock()
 
-	dbErr = m.orm.UpdateBlockStatus(id, orm.BlockAssigned)
+	dbErr = m.orm.UpdateTaskStatus(id, orm.TaskAssigned)
 	go m.CollectProofs(id, s)
 
 	return true
@@ -516,9 +517,9 @@ func (m *Manager) GetNumberOfIdleRollers() int {
 }
 
 // TODO: implement this
-func createBlockTracesMsg(traces *types.BlockResult) (message.Msg, error) {
+func createTaskMsg(task *orm.ProveTask) (message.Msg, error) {
 	idAndTraces := message.Task{
-		ID:     traces.BlockTrace.Number.ToInt().Uint64(),
+		ID:     task.ID,
 		Traces: nil,
 	}
 
@@ -534,5 +535,5 @@ func createBlockTracesMsg(traces *types.BlockResult) (message.Msg, error) {
 }
 
 func (m *Manager) addFailedSession(s *session, errMsg string) {
-	m.failedSessionInfos[s.id] = *newSessionInfo(s, orm.BlockFailed, errMsg, true)
+	m.failedSessionInfos[s.id] = *newSessionInfo(s, orm.TaskFailed, errMsg, true)
 }
