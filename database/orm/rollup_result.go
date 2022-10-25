@@ -45,7 +45,7 @@ func (o *rollupResultOrm) RollupRecordExist(number uint64) (bool, error) {
 	return res == 1, o.db.Get(&res, o.db.Rebind(`SELECT 1 from rollup_result where number = ? limit 1;`), number)
 }
 
-func (o *rollupResultOrm) GetPendingBlocks() ([]uint64, error) {
+func (o *rollupResultOrm) GetPendingBatches() ([]uint64, error) {
 	rows, err := o.db.Queryx(`SELECT number FROM rollup_result WHERE status = $1 ORDER BY number ASC`, RollupPending)
 	if err != nil {
 		return nil, err
@@ -77,7 +77,7 @@ func (o *rollupResultOrm) GetLatestFinalizedBlock() (uint64, error) {
 	return number, nil
 }
 
-func (o *rollupResultOrm) GetCommittedBlocks() ([]uint64, error) {
+func (o *rollupResultOrm) GetCommittedBatches() ([]uint64, error) {
 	rows, err := o.db.Queryx(`SELECT number FROM rollup_result WHERE status = $1 ORDER BY number ASC`, RollupCommitted)
 	if err != nil {
 		return nil, err

@@ -94,8 +94,8 @@ type BlockResultOrm interface {
 // RollupResultOrm rollupResult operation interface
 type RollupResultOrm interface {
 	RollupRecordExist(number uint64) (bool, error)
-	GetPendingBlocks() ([]uint64, error)
-	GetCommittedBlocks() ([]uint64, error)
+	GetPendingBatches() ([]uint64, error)
+	GetCommittedBatches() ([]uint64, error)
 	GetRollupStatus(number uint64) (RollupStatus, error)
 	GetLatestFinalizedBlock() (uint64, error)
 	InsertPendingBlocks(ctx context.Context, blocks []uint64) error

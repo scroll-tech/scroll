@@ -175,7 +175,8 @@ func TestOrm_BlockResults(t *testing.T) {
 	assert.Equal(t, true, string(data1) == string(data2))
 
 	// Update proof by hash
-	assert.NoError(t, ormTrace.UpdateProofByNumber(context.Background(), blockResult.BlockTrace.Number.ToInt().Uint64(), []byte{1}, []byte{2}, 1200))
+	// TODO: fix this
+	assert.NoError(t, ormTrace.UpdateProofByID(context.Background(), blockResult.BlockTrace.Number.ToInt().Uint64(), []byte{1}, []byte{2}, 1200))
 
 	// Update trace and check result.
 	err = ormTrace.UpdateBlockStatus(blockResult.BlockTrace.Number.ToInt().Uint64(), orm.BlockVerified)
@@ -277,7 +278,7 @@ func TestOrm_RollupResult(t *testing.T) {
 	err = ormRollup.UpdateFinalizeTxHashAndStatus(context.Background(), uint64(templateRollup[1].Number), templateRollup[1].FinalizeTxHash, templateRollup[1].Status)
 	assert.NoError(t, err)
 
-	results, err := ormRollup.GetPendingBlocks()
+	results, err := ormRollup.GetPendingBatches()
 	assert.NoError(t, err)
 	assert.Equal(t, len(results), 1)
 
