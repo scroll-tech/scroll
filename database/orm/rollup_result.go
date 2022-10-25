@@ -46,28 +46,29 @@ func (o *rollupResultOrm) RollupRecordExist(number uint64) (bool, error) {
 }
 
 func (o *rollupResultOrm) GetPendingBatches() ([]uint64, error) {
-	rows, err := o.db.Queryx(`SELECT number FROM rollup_result WHERE status = $1 ORDER BY number ASC`, RollupPending)
+	rows, err := o.db.Queryx(`SELECT number FROM rollup_result WHERE status = $1 ORDER BY id ASC`, RollupPending)
 	if err != nil {
 		return nil, err
 	}
 
-	var blocks []uint64
+	var ids []uint64
 	for rows.Next() {
-		var number uint64
-		if err = rows.Scan(&number); err != nil {
+		var id uint64
+		if err = rows.Scan(&id); err != nil {
 			break
 		}
-		blocks = append(blocks, number)
+		ids = append(ids, id)
 	}
-	if len(blocks) == 0 || errors.Is(err, sql.ErrNoRows) {
-		// log.Warn("no pending blocks in db", "err", err)
+	if len(ids) == 0 || errors.Is(err, sql.ErrNoRows) {
+		// log.Warn("no pending batches in db", "err", err)
 	} else if err != nil {
 		return nil, err
 	}
 
-	return blocks, rows.Close()
+	return ids, rows.Close()
 }
 
+// TODO: fix this
 func (o *rollupResultOrm) GetLatestFinalizedBlock() (uint64, error) {
 	row := o.db.QueryRow(`SELECT MAX(number) FROM rollup_result WHERE status = $1;`, RollupFinalized)
 	var number uint64
@@ -78,26 +79,26 @@ func (o *rollupResultOrm) GetLatestFinalizedBlock() (uint64, error) {
 }
 
 func (o *rollupResultOrm) GetCommittedBatches() ([]uint64, error) {
-	rows, err := o.db.Queryx(`SELECT number FROM rollup_result WHERE status = $1 ORDER BY number ASC`, RollupCommitted)
+	rows, err := o.db.Queryx(`SELECT id FROM rollup_result WHERE status = $1 ORDER BY id ASC`, RollupCommitted)
 	if err != nil {
 		return nil, err
 	}
 
-	var blocks []uint64
+	var ids []uint64
 	for rows.Next() {
-		var number uint64
-		if err = rows.Scan(&number); err != nil {
+		var id uint64
+		if err = rows.Scan(&id); err != nil {
 			break
 		}
-		blocks = append(blocks, number)
+		ids = append(ids, id)
 	}
-	if len(blocks) == 0 || errors.Is(err, sql.ErrNoRows) {
-		// log.Warn("no committed blocks in db", "err", err)
+	if len(ids) == 0 || errors.Is(err, sql.ErrNoRows) {
+		// log.Warn("no committed batches in db", "err", err)
 	} else if err != nil {
 		return nil, err
 	}
 
-	return blocks, rows.Close()
+	return ids, rows.Close()
 }
 
 func (o *rollupResultOrm) GetRollupStatus(number uint64) (RollupStatus, error) {
