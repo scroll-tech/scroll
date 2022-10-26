@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/scroll-tech/go-ethereum/common"
@@ -207,16 +206,4 @@ func (o *blockResultOrm) DeleteTraceByNumber(number uint64) error {
 		return err
 	}
 	return nil
-}
-
-func (o *blockResultOrm) NumberOfBlocksInLastHour() (uint64, error) {
-	startTime := time.Now().Unix() - 3600
-	row := o.db.QueryRow(`SELECT COUNT(*) FROM block_result WHERE block_timestamp >= $1;`, startTime)
-
-	var count uint64
-	err := row.Scan(&count)
-	if err != nil {
-		return 0, nil
-	}
-	return count, nil
 }
