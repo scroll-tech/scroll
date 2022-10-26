@@ -3,10 +3,12 @@ package l2_test
 import (
 	"context"
 	"encoding/json"
+	"math/big"
 	"os"
 	"testing"
 	"time"
 
+	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/stretchr/testify/assert"
@@ -25,15 +27,17 @@ import (
 var (
 	templateLayer2Message = []*orm.Layer2Message{
 		{
-			Nonce:      1,
+			Content: orm.MsgContent{
+				Nonce:    big.NewInt(1),
+				Sender:   common.HexToAddress("0x596a746661dbed76a84556111c2872249b070e15"),
+				Value:    big.NewInt(106190),
+				Fee:      big.NewInt(106190),
+				GasLimit: big.NewInt(11529940),
+				Deadline: big.NewInt(int64(time.Now().Unix())),
+				Target:   common.HexToAddress("0x2c73620b223808297ea734d946813f0dd78eb8f7"),
+				Calldata: []byte("testdata"),
+			},
 			Height:     1,
-			Sender:     "0x596a746661dbed76a84556111c2872249b070e15",
-			Value:      "100",
-			Fee:        "100",
-			GasLimit:   11529940,
-			Deadline:   uint64(time.Now().Unix()),
-			Target:     "0x2c73620b223808297ea734d946813f0dd78eb8f7",
-			Calldata:   "testdata",
 			Layer2Hash: "hash0",
 		},
 	}
@@ -110,7 +114,7 @@ func TestRelayerFunction(t *testing.T) {
 		assert.NoError(t, err)
 		relayer.ProcessSavedEvents()
 
-		msg, err := db.GetLayer2MessageByNonce(templateLayer2Message[0].Nonce)
+		msg, err := db.GetLayer2MessageByLayer2Hash(templateLayer2Message[0].Layer2Hash)
 		assert.NoError(t, err)
 		assert.Equal(t, orm.MsgSubmitted, msg.Status)
 

@@ -2,6 +2,7 @@ package orm
 
 import (
 	"context"
+	"math/big"
 
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/core/types"
@@ -24,34 +25,32 @@ const (
 	MsgConfirmed
 )
 
+// MsgContent is structure of entreis of layer messages
+type MsgContent struct {
+	Nonce    *big.Int       `json:"nonce" db:"nonce"`
+	Sender   common.Address `json:"sender" db:"sender"`
+	Value    *big.Int       `json:"value" db:"value"`
+	Fee      *big.Int       `json:"fee" db:"fee"`
+	GasLimit *big.Int       `json:"gas_limit" db:"gas_limit"`
+	Deadline *big.Int       `json:"deadline" db:"deadline"`
+	Target   common.Address `json:"target" db:"target"`
+	Calldata []byte         `json:"calldata" db:"calldata"`
+}
+
 // Layer1Message is structure of stored layer1 bridge message
 type Layer1Message struct {
-	Nonce      uint64    `json:"nonce" db:"nonce"`
-	Height     uint64    `json:"height" db:"height"`
-	Sender     string    `json:"sender" db:"sender"`
-	Value      string    `json:"value" db:"value"`
-	Fee        string    `json:"fee" db:"fee"`
-	GasLimit   uint64    `json:"gas_limit" db:"gas_limit"`
-	Deadline   uint64    `json:"deadline" db:"deadline"`
-	Target     string    `json:"target" db:"target"`
-	Calldata   string    `json:"calldata" db:"calldata"`
-	Layer1Hash string    `json:"layer1_hash" db:"layer1_hash"`
-	Status     MsgStatus `json:"status" db:"status"`
+	Content    MsgContent `json:"content" db:"content"`
+	Height     uint64     `json:"height" db:"height"`
+	Layer1Hash string     `json:"layer1_hash" db:"layer1_hash"`
+	Status     MsgStatus  `json:"status" db:"status"`
 }
 
 // Layer2Message is structure of stored layer2 bridge message
 type Layer2Message struct {
-	Nonce      uint64    `json:"nonce" db:"nonce"`
-	Height     uint64    `json:"height" db:"height"`
-	Sender     string    `json:"sender" db:"sender"`
-	Value      string    `json:"value" db:"value"`
-	Fee        string    `json:"fee" db:"fee"`
-	GasLimit   uint64    `json:"gas_limit" db:"gas_limit"`
-	Deadline   uint64    `json:"deadline" db:"deadline"`
-	Target     string    `json:"target" db:"target"`
-	Calldata   string    `json:"calldata" db:"calldata"`
-	Layer2Hash string    `json:"layer2_hash" db:"layer2_hash"`
-	Status     MsgStatus `json:"status" db:"status"`
+	Content    MsgContent `json:"content" db:"content"`
+	Height     uint64     `json:"height" db:"height"`
+	Layer2Hash string     `json:"layer2_hash" db:"layer2_hash"`
+	Status     MsgStatus  `json:"status" db:"status"`
 }
 
 // RollupResult is structure of stored rollup result
@@ -97,7 +96,6 @@ type RollupResultOrm interface {
 type Layer1MessageOrm interface {
 	GetLayer1MessageByNonce(nonce uint64) (*Layer1Message, error)
 	GetL1UnprocessedMessages() ([]*Layer1Message, error)
-	GetL1ProcessedNonce() (int64, error)
 	SaveLayer1Messages(ctx context.Context, messages []*Layer1Message) error
 	UpdateLayer2Hash(ctx context.Context, layer1Hash string, layer2Hash string) error
 	UpdateLayer1Status(ctx context.Context, layer1Hash string, status MsgStatus) error
@@ -109,10 +107,7 @@ type Layer1MessageOrm interface {
 // Layer2MessageOrm is layer2 message db interface
 type Layer2MessageOrm interface {
 	GetLayer2MessageByNonce(nonce uint64) (*Layer2Message, error)
-	MessageProofExist(nonce uint64) (bool, error)
-	GetMessageProofByNonce(nonce uint64) (string, error)
 	GetL2UnprocessedMessages() ([]*Layer2Message, error)
-	GetL2ProcessedNonce() (int64, error)
 	SaveLayer2Messages(ctx context.Context, messages []*Layer2Message) error
 	UpdateLayer1Hash(ctx context.Context, layer2Hash string, layer1Hash string) error
 	UpdateLayer2Status(ctx context.Context, layer2Hash string, status MsgStatus) error

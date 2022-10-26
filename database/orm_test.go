@@ -3,6 +3,7 @@ package database_test
 import (
 	"context"
 	"encoding/json"
+	"math/big"
 	"os"
 	"testing"
 	"time"
@@ -10,6 +11,7 @@ import (
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
 	_ "github.com/mattn/go-sqlite3"
+	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/stretchr/testify/assert"
@@ -40,54 +42,61 @@ var (
 	}
 	templateLayer1Message = []*orm.Layer1Message{
 		{
-			Nonce:      1,
+			Content: orm.MsgContent{
+				Nonce:    big.NewInt(1),
+				Sender:   common.HexToAddress("0x596a746661dbed76a84556111c2872249b070e15"),
+				Value:    big.NewInt(106190),
+				Fee:      big.NewInt(106190),
+				GasLimit: big.NewInt(11529940),
+				Deadline: big.NewInt(int64(time.Now().Unix())),
+				Target:   common.HexToAddress("0x2c73620b223808297ea734d946813f0dd78eb8f7"),
+				Calldata: []byte("testdata"),
+			},
 			Height:     1,
-			Sender:     "0x596a746661dbed76a84556111c2872249b070e15",
-			Value:      "0x19ece",
-			Fee:        "0x19ece",
-			GasLimit:   11529940,
-			Deadline:   uint64(time.Now().Unix()),
-			Target:     "0x2c73620b223808297ea734d946813f0dd78eb8f7",
-			Calldata:   "testdata",
 			Layer1Hash: "hash0",
 		},
 		{
-			Nonce:      2,
+			Content: orm.MsgContent{
+				Nonce:    big.NewInt(2),
+				Sender:   common.HexToAddress("0x596a746661dbed76a84556111c2872249b070e15"),
+				Value:    big.NewInt(106190),
+				Fee:      big.NewInt(106190),
+				GasLimit: big.NewInt(11529940),
+				Deadline: big.NewInt(int64(time.Now().Unix())),
+				Target:   common.HexToAddress("0x2c73620b223808297ea734d946813f0dd78eb8f7"),
+				Calldata: []byte("testdata"),
+			},
 			Height:     2,
-			Sender:     "0x596a746661dbed76a84556111c2872249b070e15",
-			Value:      "0x19ece",
-			Fee:        "0x19ece",
-			GasLimit:   11529940,
-			Deadline:   uint64(time.Now().Unix()),
-			Target:     "0x2c73620b223808297ea734d946813f0dd78eb8f7",
-			Calldata:   "testdata",
 			Layer1Hash: "hash1",
 		},
 	}
-
 	templateLayer2Message = []*orm.Layer2Message{
 		{
-			Nonce:      1,
+			Content: orm.MsgContent{
+				Nonce:    big.NewInt(1),
+				Sender:   common.HexToAddress("0x596a746661dbed76a84556111c2872249b070e15"),
+				Value:    big.NewInt(106190),
+				Fee:      big.NewInt(106190),
+				GasLimit: big.NewInt(11529940),
+				Deadline: big.NewInt(int64(time.Now().Unix())),
+				Target:   common.HexToAddress("0x2c73620b223808297ea734d946813f0dd78eb8f7"),
+				Calldata: []byte("testdata"),
+			},
 			Height:     1,
-			Sender:     "0x596a746661dbed76a84556111c2872249b070e15",
-			Value:      "0x19ece",
-			Fee:        "0x19ece",
-			GasLimit:   11529940,
-			Deadline:   uint64(time.Now().Unix()),
-			Target:     "0x2c73620b223808297ea734d946813f0dd78eb8f7",
-			Calldata:   "testdata",
 			Layer2Hash: "hash0",
 		},
 		{
-			Nonce:      2,
+			Content: orm.MsgContent{
+				Nonce:    big.NewInt(2),
+				Sender:   common.HexToAddress("0x596a746661dbed76a84556111c2872249b070e15"),
+				Value:    big.NewInt(106190),
+				Fee:      big.NewInt(106190),
+				GasLimit: big.NewInt(11529940),
+				Deadline: big.NewInt(int64(time.Now().Unix())),
+				Target:   common.HexToAddress("0x2c73620b223808297ea734d946813f0dd78eb8f7"),
+				Calldata: []byte("testdata"),
+			},
 			Height:     2,
-			Sender:     "0x596a746661dbed76a84556111c2872249b070e15",
-			Value:      "0x19ece",
-			Fee:        "0x19ece",
-			GasLimit:   11529940,
-			Deadline:   uint64(time.Now().Unix()),
-			Target:     "0x2c73620b223808297ea734d946813f0dd78eb8f7",
-			Calldata:   "testdata",
 			Layer2Hash: "hash1",
 		},
 	}
@@ -208,10 +217,6 @@ func TestOrm_Layer1Message(t *testing.T) {
 	err = ormLayer1.UpdateLayer2Hash(context.Background(), "hash1", expected)
 	assert.NoError(t, err)
 
-	result, err := ormLayer1.GetL1ProcessedNonce()
-	assert.NoError(t, err)
-	assert.Equal(t, int64(1), result)
-
 	height, err := ormLayer1.GetLayer1LatestWatchedHeight()
 	assert.NoError(t, err)
 	assert.Equal(t, int64(2), height)
@@ -242,10 +247,6 @@ func TestOrm_Layer2Message(t *testing.T) {
 
 	err = ormLayer2.UpdateLayer1Hash(context.Background(), "hash1", expected)
 	assert.NoError(t, err)
-
-	result, err := ormLayer2.GetL2ProcessedNonce()
-	assert.NoError(t, err)
-	assert.Equal(t, int64(1), result)
 
 	height, err := ormLayer2.GetLayer2LatestWatchedHeight()
 	assert.NoError(t, err)

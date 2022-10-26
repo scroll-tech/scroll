@@ -3,6 +3,7 @@ package orm
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 
@@ -25,10 +26,18 @@ func NewLayer2MessageOrm(db *sqlx.DB) Layer2MessageOrm {
 func (m *layer2MessageOrm) GetLayer2MessageByNonce(nonce uint64) (*Layer2Message, error) {
 	msg := Layer2Message{}
 
-	row := m.db.QueryRow(`SELECT nonce, height, sender, target, value, fee, gas_limit, deadline, calldata, layer2_hash, status FROM layer2_message WHERE nonce = $1`, nonce)
-	if err := row.Scan(&msg.Nonce, &msg.Height, &msg.Sender, &msg.Target, &msg.Value, &msg.Fee, &msg.GasLimit, &msg.Deadline, &msg.Calldata, &msg.Layer2Hash, &msg.Status); err != nil {
+	var tempcontent []byte
+	row := m.db.QueryRow(`SELECT content, height, layer2_hash, status FROM layer2_message WHERE nonce = $1`, nonce)
+	if err := row.Scan(&tempcontent, &msg.Height, &msg.Layer2Hash, &msg.Status); err != nil {
 		return nil, err
 	}
+
+	err := json.Unmarshal(tempcontent, &msg.Content)
+	if err != nil {
+		log.Error("failed to unmarshal layer2Messages content", "err", err)
+		return nil, err
+	}
+
 	return &msg, nil
 }
 
@@ -36,10 +45,18 @@ func (m *layer2MessageOrm) GetLayer2MessageByNonce(nonce uint64) (*Layer2Message
 func (m *layer2MessageOrm) GetLayer2MessageByLayer2Hash(layer2Hash string) (*Layer2Message, error) {
 	msg := Layer2Message{}
 
-	row := m.db.QueryRow(`SELECT nonce, height, sender, target, value, fee, gas_limit, deadline, calldata, layer2_hash, status FROM layer2_message WHERE layer2_hash = $1`, layer2Hash)
-	if err := row.Scan(&msg.Nonce, &msg.Height, &msg.Sender, &msg.Target, &msg.Value, &msg.Fee, &msg.GasLimit, &msg.Deadline, &msg.Calldata, &msg.Layer2Hash, &msg.Status); err != nil {
+	var tempcontent []byte
+	row := m.db.QueryRow(`SELECT content, height, layer2_hash, status FROM layer2_message WHERE layer2_hash = $1`, layer2Hash)
+	if err := row.Scan(&tempcontent, &msg.Height, &msg.Layer2Hash, &msg.Status); err != nil {
 		return nil, err
 	}
+
+	err := json.Unmarshal(tempcontent, &msg.Content)
+	if err != nil {
+		log.Error("failed to unmarshal layer2Messages content", "err", err)
+		return nil, err
+	}
+
 	return &msg, nil
 }
 
@@ -65,48 +82,9 @@ func (m *layer2MessageOrm) MessageProofExistByLayer2Hash(layer2Hash string) (boo
 	return true, nil
 }
 
-// GetMessageProofByNonce fetch message by nonce
-func (m *layer2MessageOrm) GetMessageProofByNonce(nonce uint64) (string, error) {
-	row := m.db.QueryRow(`SELECT proof FROM layer2_message WHERE nonce = $1`, nonce)
-	var proof string
-	if err := row.Scan(&proof); err != nil {
-		return "", err
-	}
-	return proof, nil
-}
-
-// MessageProofExist fetch message by nonce
-func (m *layer2MessageOrm) MessageProofExist(nonce uint64) (bool, error) {
-	err := m.db.QueryRow(`SELECT nonce FROM layer2_message WHERE nonce = $1 and proof IS NOT NULL`, nonce).Scan(&nonce)
-	if err != nil {
-		if err != sql.ErrNoRows {
-			return false, err
-		}
-		return false, nil
-	}
-	return true, nil
-}
-
-// GetL2ProcessedNonce fetch latest processed message nonce
-func (m *layer2MessageOrm) GetL2ProcessedNonce() (int64, error) {
-	row := m.db.QueryRow(`SELECT MAX(nonce) FROM layer2_message WHERE status = $1;`, MsgConfirmed)
-
-	var nonce int64
-	err := row.Scan(&nonce)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			// no row means no message
-			// since nonce starts with 0, return -1 as the processed nonce
-			return -1, nil
-		}
-		return 0, err
-	}
-	return nonce, nil
-}
-
 // GetL2UnprocessedMessages fetch list of unprocessed messages
 func (m *layer2MessageOrm) GetL2UnprocessedMessages() ([]*Layer2Message, error) {
-	rows, err := m.db.Queryx(`SELECT nonce, height, sender, target, value, fee, gas_limit, deadline, calldata, layer2_hash FROM layer2_message WHERE status = $1 ORDER BY nonce ASC;`, MsgPending)
+	rows, err := m.db.Queryx(`SELECT content, height, layer2_hash FROM layer2_message WHERE status = $1 ORDER BY nonce ASC;`, MsgPending)
 	if err != nil {
 		return nil, err
 	}
@@ -114,8 +92,15 @@ func (m *layer2MessageOrm) GetL2UnprocessedMessages() ([]*Layer2Message, error) 
 	var msgs []*Layer2Message
 	for rows.Next() {
 		msg := &Layer2Message{}
-		if err = rows.StructScan(&msg); err != nil {
-			break
+		var tempcontent []byte
+		if err := rows.Scan(&tempcontent, &msg.Height, &msg.Layer2Hash, &msg.Status); err != nil {
+			return nil, err
+		}
+
+		err := json.Unmarshal(tempcontent, &msg.Content)
+		if err != nil {
+			log.Error("failed to unmarshal layer2Messages content", "err", err)
+			return nil, err
 		}
 		msgs = append(msgs, msg)
 	}
@@ -132,21 +117,19 @@ func (m *layer2MessageOrm) GetL2UnprocessedMessages() ([]*Layer2Message, error) 
 func (m *layer2MessageOrm) SaveLayer2Messages(ctx context.Context, messages []*Layer2Message) error {
 	messageMaps := make([]map[string]interface{}, len(messages))
 	for i, msg := range messages {
+		content, err := json.Marshal(msg.Content)
+		if err != nil {
+			log.Error("failed to marshal layer2Messages content", "err", err)
+			return err
+		}
 		messageMaps[i] = map[string]interface{}{
-			"nonce":       msg.Nonce,
+			"content":     content,
 			"height":      msg.Height,
-			"sender":      msg.Sender,
-			"target":      msg.Target,
-			"value":       msg.Value,
-			"fee":         msg.Fee,
-			"gas_limit":   msg.GasLimit,
-			"deadline":    msg.Deadline,
-			"calldata":    msg.Calldata,
 			"layer2_hash": msg.Layer2Hash,
 		}
 	}
 
-	_, err := m.db.NamedExec(`INSERT INTO public.layer2_message (nonce, height, sender, target, value, fee, gas_limit, deadline, calldata, layer2_hash) VALUES (:nonce, :height, :sender, :target, :value, :fee, :gas_limit, :deadline, :calldata, :layer2_hash);`, messageMaps)
+	_, err := m.db.NamedExec(`INSERT INTO public.layer2_message (content, height, layer2_hash) VALUES (:content, :height, :layer2_hash);`, messageMaps)
 	if err != nil {
 		log.Error("failed to insert layer2Messages", "err", err)
 	}

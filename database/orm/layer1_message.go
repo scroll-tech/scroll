@@ -3,6 +3,7 @@ package orm
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 
 	"github.com/jmoiron/sqlx"
@@ -24,11 +25,19 @@ func NewLayer1MessageOrm(db *sqlx.DB) Layer1MessageOrm {
 func (m *layer1MessageOrm) GetLayer1MessageByLayer1Hash(layer1Hash string) (*Layer1Message, error) {
 	msg := Layer1Message{}
 
-	row := m.db.QueryRow(`SELECT nonce, height, sender, target, value, fee, gas_limit, deadline, calldata, layer1_hash, status FROM layer1_message WHERE layer1_hash = $1`, layer1Hash)
+	row := m.db.QueryRow(`SELECT content, height, layer1_hash, status FROM layer1_message WHERE layer1_hash = $1`, layer1Hash)
 
-	if err := row.Scan(&msg.Nonce, &msg.Height, &msg.Sender, &msg.Target, &msg.Value, &msg.Fee, &msg.GasLimit, &msg.Deadline, &msg.Calldata, &msg.Layer1Hash, &msg.Status); err != nil {
+	var tempcontent []byte
+	if err := row.Scan(&tempcontent, &msg.Height, &msg.Layer1Hash, &msg.Status); err != nil {
 		return nil, err
 	}
+
+	err := json.Unmarshal(tempcontent, &msg.Content)
+	if err != nil {
+		log.Error("failed to unmarshal layer1Messages content", "err", err)
+		return nil, err
+	}
+
 	return &msg, nil
 }
 
@@ -36,9 +45,15 @@ func (m *layer1MessageOrm) GetLayer1MessageByLayer1Hash(layer1Hash string) (*Lay
 func (m *layer1MessageOrm) GetLayer1MessageByNonce(nonce uint64) (*Layer1Message, error) {
 	msg := Layer1Message{}
 
-	row := m.db.QueryRow(`SELECT nonce, height, sender, target, value, fee, gas_limit, deadline, calldata, layer1_hash, status FROM layer1_message WHERE nonce = $1`, nonce)
+	row := m.db.QueryRow(`SELECT content, height, layer1_hash, status FROM layer1_message WHERE nonce = $1`, nonce)
 
-	if err := row.Scan(&msg.Nonce, &msg.Height, &msg.Sender, &msg.Target, &msg.Value, &msg.Fee, &msg.GasLimit, &msg.Deadline, &msg.Calldata, &msg.Layer1Hash, &msg.Status); err != nil {
+	var tempcontent []byte
+	if err := row.Scan(&tempcontent, &msg.Height, &msg.Layer1Hash, &msg.Status); err != nil {
+		return nil, err
+	}
+	err := json.Unmarshal(tempcontent, &msg.Content)
+	if err != nil {
+		log.Error("failed to unmarshal layer1Messages content", "err", err)
 		return nil, err
 	}
 	return &msg, nil
@@ -46,7 +61,7 @@ func (m *layer1MessageOrm) GetLayer1MessageByNonce(nonce uint64) (*Layer1Message
 
 // GetL1UnprocessedMessages fetch list of unprocessed messages
 func (m *layer1MessageOrm) GetL1UnprocessedMessages() ([]*Layer1Message, error) {
-	rows, err := m.db.Queryx(`SELECT nonce, height, sender, target, value, fee, gas_limit, deadline, calldata, layer1_hash, status FROM layer1_message WHERE status = $1 ORDER BY nonce ASC;`, MsgPending)
+	rows, err := m.db.Queryx(`SELECT content, height, layer1_hash, status FROM layer1_message WHERE status = $1 ORDER BY nonce ASC;`, MsgPending)
 	if err != nil {
 		return nil, err
 	}
@@ -54,8 +69,14 @@ func (m *layer1MessageOrm) GetL1UnprocessedMessages() ([]*Layer1Message, error) 
 	var msgs []*Layer1Message
 	for rows.Next() {
 		msg := &Layer1Message{}
-		if err = rows.StructScan(&msg); err != nil {
-			break
+		var tempcontent []byte
+		if err := rows.Scan(&tempcontent, &msg.Height, &msg.Layer1Hash, &msg.Status); err != nil {
+			return nil, err
+		}
+		err := json.Unmarshal(tempcontent, &msg.Content)
+		if err != nil {
+			log.Error("failed to unmarshal layer1Messages content", "err", err)
+			return nil, err
 		}
 		msgs = append(msgs, msg)
 	}
@@ -68,41 +89,22 @@ func (m *layer1MessageOrm) GetL1UnprocessedMessages() ([]*Layer1Message, error) 
 	return msgs, rows.Close()
 }
 
-// GetL1ProcessedNonce fetch latest processed message nonce
-func (m *layer1MessageOrm) GetL1ProcessedNonce() (int64, error) {
-	row := m.db.QueryRow(`SELECT MAX(nonce) FROM layer1_message WHERE status = $1;`, MsgConfirmed)
-
-	var nonce int64
-	err := row.Scan(&nonce)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			// no row means no message
-			// since nonce starts with 0, return -1 as the processed nonce
-			return -1, nil
-		}
-		return 0, err
-	}
-	return nonce, nil
-}
-
 // SaveLayer1Messages batch save a list of layer1 messages
 func (m *layer1MessageOrm) SaveLayer1Messages(ctx context.Context, messages []*Layer1Message) error {
 	messageMaps := make([]map[string]interface{}, len(messages))
 	for i, msg := range messages {
+		content, err := json.Marshal(msg.Content)
+		if err != nil {
+			log.Error("failed to marshal msg content", "err", err)
+			return err
+		}
 		messageMaps[i] = map[string]interface{}{
-			"nonce":       msg.Nonce,
+			"content":     content,
 			"height":      msg.Height,
-			"sender":      msg.Sender,
-			"target":      msg.Target,
-			"value":       msg.Value,
-			"fee":         msg.Fee,
-			"gas_limit":   msg.GasLimit,
-			"deadline":    msg.Deadline,
-			"calldata":    msg.Calldata,
 			"layer1_hash": msg.Layer1Hash,
 		}
 	}
-	_, err := m.db.NamedExec(`INSERT INTO public.layer1_message (nonce, height, sender, target, value, fee, gas_limit, deadline, calldata, layer1_hash) VALUES (:nonce, :height, :sender, :target, :value, :fee, :gas_limit, :deadline, :calldata, :layer1_hash);`, messageMaps)
+	_, err := m.db.NamedExec(`INSERT INTO public.layer1_message (content, height, layer1_hash) VALUES (:content, :height, :layer1_hash);`, messageMaps)
 	if err != nil {
 		log.Error("failed to insert layer1Messages", "err", err)
 	}

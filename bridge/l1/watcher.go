@@ -163,15 +163,17 @@ func parseBridgeEventLogs(logs []types.Log, messengerABI *abi.ABI) ([]*orm.Layer
 		// target is in topics[1]
 		event.Target = common.HexToAddress(vLog.Topics[1].String())
 		parsedlogs = append(parsedlogs, &orm.Layer1Message{
-			Nonce:      event.MessageNonce.Uint64(),
+			Content: orm.MsgContent{
+				Nonce:    event.MessageNonce,
+				Sender:   event.Sender,
+				Value:    event.Value,
+				Fee:      event.Fee,
+				GasLimit: event.GasLimit,
+				Deadline: event.Deadline,
+				Target:   event.Target,
+				Calldata: event.Message,
+			},
 			Height:     vLog.BlockNumber,
-			Sender:     event.Sender.String(),
-			Value:      event.Value.String(),
-			Fee:        event.Fee.String(),
-			GasLimit:   event.GasLimit.Uint64(),
-			Deadline:   event.Deadline.Uint64(),
-			Target:     event.Target.String(),
-			Calldata:   common.Bytes2Hex(event.Message),
 			Layer1Hash: vLog.TxHash.Hex(),
 		})
 	}

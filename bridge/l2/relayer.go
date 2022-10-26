@@ -127,27 +127,15 @@ func (r *Layer2Relayer) ProcessSavedEvents() {
 	}
 
 	// @todo fetch merkle proof from l2geth
-	log.Info("Processing L2 Message", "msg.nonce", msg.Nonce, "msg.height", msg.Height)
+	log.Info("Processing L2 Message", "msg.nonce", msg.Content.Nonce, "msg.height", msg.Height)
 
 	proof := bridge_abi.IL1ScrollMessengerL2MessageProof{
 		BlockNumber: big.NewInt(int64(msg.Height)),
 		MerkleProof: make([]byte, 0),
 	}
-	sender := common.HexToAddress(msg.Sender)
-	target := common.HexToAddress(msg.Target)
-	value, ok := big.NewInt(0).SetString(msg.Value, 10)
-	if !ok {
-		// @todo maybe panic?
-		log.Error("Failed to parse message value", "msg.nonce", msg.Nonce, "msg.height", msg.Height)
-		// TODO: need to skip this message by changing its status to MsgError
-	}
-	fee, _ := big.NewInt(0).SetString(msg.Fee, 10)
-	deadline := big.NewInt(int64(msg.Deadline))
-	msgNonce := big.NewInt(int64(msg.Nonce))
-	calldata := common.Hex2Bytes(msg.Calldata)
-	data, err := r.l1MessengerABI.Pack("relayMessageWithProof", sender, target, value, fee, deadline, msgNonce, calldata, proof)
+	data, err := r.l1MessengerABI.Pack("relayMessageWithProof", msg.Content.Sender, msg.Content.Target, msg.Content.Value, msg.Content.Fee, msg.Content.Deadline, msg.Content.Nonce, msg.Content.Calldata, proof)
 	if err != nil {
-		log.Error("Failed to pack relayMessageWithProof", "msg.nonce", msg.Nonce, "err", err)
+		log.Error("Failed to pack relayMessageWithProof", "msg.nonce", msg.Content.Nonce, "err", err)
 		// TODO: need to skip this message by changing its status to MsgError
 		return
 	}
