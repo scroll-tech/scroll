@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/scroll-tech/go-ethereum/log"
@@ -196,10 +197,10 @@ func (m *layer2MessageOrm) GetLayer2LatestWatchedHeight() (int64, error) {
 
 	var height int64
 	if err := row.Scan(&height); err != nil {
-		if err == sql.ErrNoRows {
-			return -1, nil
-		}
-		return 0, err
+		return -1, err
+	}
+	if height < 0 {
+		return -1, fmt.Errorf("could not get height due to database return negative")
 	}
 	return height, nil
 }
