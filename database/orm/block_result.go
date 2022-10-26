@@ -88,6 +88,34 @@ func (o *blockResultOrm) GetBlockResults(fields map[string]interface{}, args ...
 	return traces, rows.Close()
 }
 
+func (o *blockResultOrm) GetBlocksInfos(fields map[string]interface{}, args ...string) ([]*BlockInfo, error) {
+	query := "SELECT number, hash, task_id, tx_num, gas_used, block_timestamp FROM block_result WHERE 1 = 1 "
+	for key := range fields {
+		query += fmt.Sprintf("AND %s=:%s ", key, key)
+	}
+	query = strings.Join(append([]string{query}, args...), " ")
+
+	db := o.db
+	rows, err := db.NamedQuery(db.Rebind(query), fields)
+	if err != nil {
+		return nil, err
+	}
+
+	var blocks []*BlockInfo
+	for rows.Next() {
+		block := &BlockInfo{}
+		if err = rows.StructScan(block); err != nil {
+			break
+		}
+		blocks = append(blocks, block)
+	}
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return nil, err
+	}
+
+	return blocks, rows.Close()
+}
+
 func (o *blockResultOrm) GetHashByNumber(number uint64) (*common.Hash, error) {
 	row := o.db.QueryRow(`SELECT hash FROM block_result WHERE number = $1`, number)
 	var hashStr string
@@ -105,6 +133,12 @@ func (o *blockResultOrm) InsertBlockResults(ctx context.Context, blockResults []
 			trace.BlockTrace.Hash.String(),
 			len(trace.BlockTrace.Transactions),
 			trace.BlockTrace.Time
+
+		var gasUsed uint64
+		for _, tx := range trace.BlockTrace.Transactions {
+			gasUsed += tx.Gas
+		}
+
 		var data []byte
 		data, err := json.Marshal(trace)
 		if err != nil {
@@ -116,21 +150,39 @@ func (o *blockResultOrm) InsertBlockResults(ctx context.Context, blockResults []
 			"hash":            hash,
 			"content":         string(data),
 			"tx_num":          tx_num,
+			"gas_used":        gasUsed,
 			"block_timestamp": mtime,
 		}
 	}
 
-	_, err := o.db.NamedExec(`INSERT INTO public.block_result (number, hash, content, tx_num, block_timestamp) VALUES (:number, :hash, :content, :tx_num, :block_timestamp);`, traceMaps)
+	_, err := o.db.NamedExec(`INSERT INTO public.block_result (number, hash, content, tx_num, gas_used, block_timestamp) VALUES (:number, :hash, :content, :tx_num, :gas_used, :block_timestamp);`, traceMaps)
 	if err != nil {
 		log.Error("failed to insert blockResults", "err", err)
 	}
 	return err
 }
 
+// TODO: DeleteTracesByBatchID
 func (o *blockResultOrm) DeleteTraceByNumber(number uint64) error {
 	if _, err := o.db.Exec(o.db.Rebind("update block_result set content = ? where number = ?;"), "{}", number); err != nil {
 		return err
 	}
+	return nil
+}
+
+// TODO: migrate to new table
+func (o *blockResultOrm) SetBatchIDForBlocksInDBTx(dbTx *sqlx.Tx, blocks []uint64, batchID uint64) error {
+	query := "UPDATE block_result SET task_id=? WHERE number IN (?)"
+
+	qry, args, err := sqlx.In(query, batchID, blocks)
+	if err != nil {
+		return err
+	}
+
+	if _, err := dbTx.Exec(dbTx.Rebind(qry), args...); err != nil {
+		return err
+	}
+
 	return nil
 }
 

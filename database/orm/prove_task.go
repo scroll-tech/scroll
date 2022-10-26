@@ -123,3 +123,23 @@ func (o *proveTaskOrm) UpdateTaskStatus(id uint64, status TaskStatus) error {
 	}
 	return nil
 }
+
+func (o *proveTaskOrm) NewBatchInDBTx(dbTx *sqlx.Tx, total_l2_gas uint64) (uint64, error) {
+	row := dbTx.QueryRow("SELECT MAX(id) FROM prove_task;")
+
+	var id int64 // 0 by default for sql.ErrNoRows
+	if err := row.Scan(&id); err != nil && err != sql.ErrNoRows {
+		return 0, err
+	}
+
+	id += 1
+	if _, err := dbTx.NamedExec(`INSERT INTO public.prove_task (id, total_l2_gas) VALUES (:id, :total_l2_gas)`,
+		map[string]interface{}{
+			"id":           id,
+			"total_l2_gas": total_l2_gas,
+		}); err != nil {
+		return 0, err
+	}
+
+	return uint64(id), nil
+}

@@ -4,6 +4,7 @@ create table prove_task
 (
     -- hash                    varchar         not null, -- TODO: hash? index? id?
     id                      BIGINT          not null, -- INCREMENTAL
+    total_l2_gas            BIGINT          NOT NULL DEFAULT 0,
     proof                   BYTEA           default null,
     instance_commitments    BYTEA           default null,
     status                  integer         default 1,

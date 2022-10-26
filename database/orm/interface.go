@@ -3,6 +3,7 @@ package orm
 import (
 	"context"
 
+	"github.com/jmoiron/sqlx"
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/core/types"
 )
@@ -54,6 +55,16 @@ type Layer2Message struct {
 	Status     MsgStatus `json:"status" db:"status"`
 }
 
+// BlockInfo is structure of stored block_result without content
+type BlockInfo struct {
+	Number         uint64 `json:"number" db:"number"`
+	Hash           string `json:"hash" db:"hash"`
+	TaskID         string `json:"task_id" db:"task_id"`
+	TxNum          string `json:"tx_num" db:"tx_num"`
+	GasUsed        uint64 `json:"gas_used" db:"gas_used"`
+	BlockTimestamp uint64 `json:"block_timestamp" db:"block_timestamp"`
+}
+
 // TODO: define prove_task structure
 // ProveTask is structure of stored prove_task
 type ProveTask struct {
@@ -75,6 +86,7 @@ type ProveTaskOrm interface {
 	GetVerifiedProofAndInstanceByID(id uint64) ([]byte, []byte, error)
 	UpdateProofByID(ctx context.Context, id uint64, proof, instance_commitments []byte, proofTimeSec uint64) error
 	UpdateTaskStatus(id uint64, status TaskStatus) error
+	NewBatchInDBTx(dbTx *sqlx.Tx, gasUsed uint64) (uint64, error)
 }
 
 // BlockResultOrm blockResult operation interface
@@ -83,10 +95,12 @@ type BlockResultOrm interface {
 	GetBlockResultsLatestHeight() (int64, error)
 	GetBlockResultsOldestHeight() (int64, error)
 	GetBlockResults(fields map[string]interface{}, args ...string) ([]*types.BlockResult, error)
+	GetBlocksInfos(fields map[string]interface{}, args ...string) ([]*BlockInfo, error)
 	GetHashByNumber(number uint64) (*common.Hash, error)
 	DeleteTraceByNumber(number uint64) error
 	InsertBlockResults(ctx context.Context, blockResults []*types.BlockResult) error
 	NumberOfBlocksInLastHour() (uint64, error)
+	SetBatchIDForBlocksInDBTx(dbTx *sqlx.Tx, blocks []uint64, batchID uint64) error
 }
 
 // RollupResultOrm rollupResult operation interface

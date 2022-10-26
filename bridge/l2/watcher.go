@@ -82,7 +82,8 @@ func (w *WatcherClient) Start() {
 		}
 
 		// trigger by timer
-		ticker := time.NewTicker(10 * time.Second)
+		// TODO: make it configurable
+		ticker := time.NewTicker(3 * time.Second)
 		defer ticker.Stop()
 
 		for {
@@ -94,14 +95,17 @@ func (w *WatcherClient) Start() {
 					log.Error("Failed to get_BlockNumber", "err", err)
 					continue
 				}
-				if err = w.tryFetchRunningMissingBlocks(w.ctx, number); err != nil {
+				if err := w.tryFetchRunningMissingBlocks(w.ctx, number); err != nil {
 					log.Error("Failed to fetchRunningMissingBlocks", "err", err)
 				}
 
 				// @todo handle error
-				err = w.fetchContractEvent(number)
-				if err != nil {
+				if err := w.fetchContractEvent(number); err != nil {
 					log.Error("Failed to fetchContractEvent", "err", err)
+				}
+
+				if err := w.tryProposeBatch(); err != nil {
+					log.Error("Failed to tryProposeBatch", "err", err)
 				}
 
 			case <-w.stopCh:
@@ -239,4 +243,73 @@ func parseBridgeEventLogs(logs []types.Log, messengerABI *abi.ABI) ([]*orm.Layer
 	}
 
 	return parsedlogs, nil
+}
+
+var batchTimeSec = uint64(5 * 60) // 5min
+
+// TODO:
+// + generate batch parallelly
+// + TraceHasUnsupportedOpcodes
+// + proofGenerationFreq
+func (w *WatcherClient) tryProposeBatch() error {
+	blocks, err := w.orm.GetBlocksInfos(
+		map[string]interface{}{"batch_id": "null"},
+		"order by number DESC",
+	)
+	if err != nil {
+		return err
+	}
+	if len(blocks) == 0 {
+		return nil
+	}
+
+	toBacth := []uint64{}
+	gasUsed := uint64(0)
+	for _, block := range blocks {
+		gasUsed += block.GasUsed
+		if gasUsed > 3000000 {
+			break
+		}
+
+		toBacth = append(toBacth, block.Number)
+	}
+
+	if gasUsed < 3000000 && blocks[0].BlockTimestamp+batchTimeSec < uint64(time.Now().Unix()) {
+		return nil
+	}
+
+	// keep gasUsed below 3M
+	if len(toBacth) >= 2 {
+		gasUsed -= blocks[len(toBacth)-1].GasUsed
+		toBacth = toBacth[:len(toBacth)-1]
+	}
+
+	return w.createBatchForBlocks(toBacth, gasUsed)
+}
+
+func (w *WatcherClient) createBatchForBlocks(blocks []uint64, gasUsed uint64) error {
+	dbTx, err := w.orm.Beginx()
+	if err != nil {
+		return err
+	}
+
+	var dbTxErr error
+	defer func() {
+		if dbTxErr != nil {
+			dbTx.Rollback()
+		}
+	}()
+
+	var batchID uint64
+	batchID, dbTxErr = w.orm.NewBatchInDBTx(dbTx, gasUsed)
+	if dbTxErr != nil {
+		return dbTxErr
+	}
+
+	if dbTxErr = w.orm.SetBatchIDForBlocksInDBTx(dbTx, blocks, batchID); dbTxErr != nil {
+		return dbTxErr
+	}
+
+	dbTxErr = dbTx.Commit()
+	return dbTxErr
 }

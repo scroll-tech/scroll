@@ -16,6 +16,7 @@ type OrmFactory interface {
 	orm.Layer2MessageOrm
 	orm.RollupResultOrm
 	GetDB() *sqlx.DB
+	Beginx() (*sqlx.Tx, error)
 	Close() error
 }
 
@@ -54,4 +55,8 @@ func NewOrmFactory(cfg *DBConfig) (OrmFactory, error) {
 
 func (o *ormFactory) GetDB() *sqlx.DB {
 	return o.DB
+}
+
+func (o *ormFactory) Beginx() (*sqlx.Tx, error) {
+	return o.DB.Beginx()
 }
