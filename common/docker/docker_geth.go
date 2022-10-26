@@ -44,7 +44,7 @@ type ImgGeth struct {
 func NewImgGeth(t *testing.T, image, volume, ipc string, hPort, wPort int) ImgInstance {
 	return &ImgGeth{
 		image:    image,
-		name:     fmt.Sprintf("%s-%d", image, time.Now().Unix()),
+		name:     fmt.Sprintf("%s-%d", image, time.Now().Nanosecond()),
 		volume:   volume,
 		ipcPath:  ipc,
 		httpPort: hPort,
