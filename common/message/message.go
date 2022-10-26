@@ -95,8 +95,7 @@ func (i *Identity) Hash() ([]byte, error) {
 	return hash[:], nil
 }
 
-// TODO: update comments
-// Task is a wrapper type around db Task type.
+// Task is a wrapper type around db ProveTask type.
 type Task struct {
 	ID     uint64               `json:"id"`
 	Traces []*types.BlockResult `json:"blockTraces"`
