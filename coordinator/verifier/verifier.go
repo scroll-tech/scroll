@@ -4,8 +4,6 @@ import (
 	"net"
 
 	"scroll-tech/common/message"
-
-	"github.com/scroll-tech/go-ethereum/core/types"
 )
 
 // Verifier represents a socket connection to a halo2 verifier.
@@ -31,7 +29,7 @@ func (v *Verifier) Stop() error {
 }
 
 // VerifyProof Verify a ZkProof by marshaling it and sending it to the Halo2 Verifier.
-func (v *Verifier) VerifyProof(blockResult *types.BlockResult, proof *message.AggProof) (bool, error) {
+func (v *Verifier) VerifyProof(proof *message.AggProof) (bool, error) {
 	buf, err := proof.Marshal()
 	if err != nil {
 		return false, err

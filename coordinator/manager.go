@@ -10,6 +10,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/scroll-tech/go-ethereum/rpc"
 
@@ -286,17 +287,16 @@ func (m *Manager) HandleZkProof(pk string, payload []byte) error {
 
 	var success bool
 	if m.verifier != nil {
-		// TODO: fix
 		var err error
-		// tasks, err := m.orm.GetProveTasks(map[string]interface{}{"number": msg.ID})
-		// if len(tasks) == 0 {
-		// 	if err != nil {
-		// 		log.Error("failed to get tasks", "error", err)
-		// 	}
-		// 	return err
-		// }
+		tasks, err := m.orm.GetProveTasks(map[string]interface{}{"id": msg.ID})
+		if len(tasks) == 0 {
+			if err != nil {
+				log.Error("failed to get tasks", "error", err)
+			}
+			return err
+		}
 
-		success, err = m.verifier.VerifyProof(nil, msg.Proof)
+		success, err = m.verifier.VerifyProof(msg.Proof)
 		if err != nil {
 			// record failed session.
 			m.addFailedSession(&s, err.Error())
@@ -420,7 +420,8 @@ func (m *Manager) StartProofGenerationSession(task *orm.ProveTask) bool {
 	pk := roller.AuthMsg.Identity.PublicKey
 	log.Info("roller is picked", "name", roller.AuthMsg.Identity.Name, "public_key", pk)
 
-	msg, err := createTaskMsg(task)
+	// TODO: implement getTraces
+	msg, err := createTaskMsg(task.ID, nil)
 	if err != nil {
 		log.Error(
 			"could not create block traces message",
@@ -516,11 +517,10 @@ func (m *Manager) GetNumberOfIdleRollers() int {
 	return cnt
 }
 
-// TODO: implement this
-func createTaskMsg(task *orm.ProveTask) (message.Msg, error) {
+func createTaskMsg(taskID uint64, traces []*types.BlockResult) (message.Msg, error) {
 	idAndTraces := message.Task{
-		ID:     task.ID,
-		Traces: nil,
+		ID:     taskID,
+		Traces: traces, // roller should sort traces by height
 	}
 
 	payload, err := json.Marshal(idAndTraces)
