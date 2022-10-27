@@ -31,8 +31,12 @@ pipeline {
                 //start to build project
                 sh '''#!/bin/bash
                     export PATH=/home/ubuntu/go/bin:$PATH
-                    make docker
-                    make install
+                    make dev_docker
+                    make -C bridge mock_abi
+                    make -C bridge bridge
+                    make -C bridge docker
+                    make -C coordinator coordinator
+                    make -C coordinator docker
                     '''
             }
         }
