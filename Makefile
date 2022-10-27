@@ -1,4 +1,4 @@
-.PHONY: check update docker clean install
+.PHONY: check update dev_docker clean
 
 check: ## The code's format and security checks.
 	make -C bridge lint
@@ -21,24 +21,9 @@ update: ## update dependencies
 	goimports -local $(PWD)/database/ -w .
 	goimports -local $(PWD)/roller/ -w .
 
-docker:
+dev_docker:
 	docker build -t scroll_l1geth ./common/docker/l1geth/
-	docker build -t scroll_l2geth ./common/docker/l2geth/
-
-install: 
-	make -C bridge mock_abi
-	make -C bridge bridge
-	make -C bridge docker
-	make -C coordinator coordinator
-	make -C coordinator docker
-
-test: ## run test
-	make -C roller test-prover
-	make -C roller test-gpu-prover
-	go test -v -race -coverprofile=coverage.txt -covermode=atomic -p 1 $(PWD)/database/...
-	go test -v -race -coverprofile=coverage.txt -covermode=atomic -p 1 $(PWD)/bridge/...
-	go test -v -race -coverprofile=coverage.txt -covermode=atomic -p 1 $(PWD)/common/...
-	go test -v -race -coverprofile=coverage.txt -covermode=atomic -p 1 $(PWD)/coordinator/...
+	docker build -t scroll_l2geth ./common/docker/l2geth/.
 
 clean: ## Empty out the bin folder
 	@rm -rf build/bin
