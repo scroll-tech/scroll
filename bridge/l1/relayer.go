@@ -9,7 +9,6 @@ import (
 
 	"github.com/scroll-tech/go-ethereum/accounts/abi"
 	"github.com/scroll-tech/go-ethereum/common"
-	"github.com/scroll-tech/go-ethereum/crypto"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
 
@@ -49,13 +48,7 @@ func NewLayer1Relayer(ctx context.Context, ethClient *ethclient.Client, l1Confir
 		return nil, err
 	}
 
-	prv, err := crypto.HexToECDSA(cfg.PrivateKey)
-	if err != nil {
-		log.Error("Failed to import private key from config file")
-		return nil, err
-	}
-
-	sender, err := sender.NewSender(ctx, cfg.SenderConfig, prv)
+	sender, err := sender.NewSender(ctx, cfg.SenderConfig, cfg.PrivateKeyList)
 	if err != nil {
 		log.Error("new sender failed", "err", err)
 		return nil, err

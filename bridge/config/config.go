@@ -1,7 +1,10 @@
 package config
 
 import (
+	"crypto/ecdsa"
 	"encoding/json"
+	"fmt"
+	"github.com/scroll-tech/go-ethereum/crypto"
 	"os"
 	"path/filepath"
 
@@ -75,7 +78,31 @@ type RelayerConfig struct {
 	// sender config
 	SenderConfig *SenderConfig `json:"sender_config"`
 	// The private key of the relayer
-	PrivateKey string `json:"private_key"`
+	PrivateKeyList []*ecdsa.PrivateKey `json:"private_key_list"`
+}
+
+type RelayerConfigAlias RelayerConfig
+
+// UnmarshalJSON unmarshal relayer_config struct.
+func (r *RelayerConfig) UnmarshalJSON(input []byte) error {
+	var jsonConfig struct {
+		RelayerConfigAlias
+		// The private key of the relayer
+		PrivateKeyList []string `json:"private_key_list"`
+	}
+	if err := json.Unmarshal(input, &jsonConfig); err != nil {
+		return err
+	}
+	*r = RelayerConfig(jsonConfig.RelayerConfigAlias)
+	for _, privStr := range jsonConfig.PrivateKeyList {
+		priv, err := crypto.HexToECDSA(privStr)
+		if err != nil {
+			return fmt.Errorf("uncorrect private key format, err: %v", err)
+		}
+		r.PrivateKeyList = append(r.PrivateKeyList, priv)
+	}
+
+	return nil
 }
 
 // Config load configuration items.

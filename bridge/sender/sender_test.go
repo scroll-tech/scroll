@@ -12,7 +12,6 @@ import (
 
 	cmap "github.com/orcaman/concurrent-map"
 	"github.com/scroll-tech/go-ethereum/common"
-	"github.com/scroll-tech/go-ethereum/crypto"
 	"github.com/stretchr/testify/assert"
 
 	"scroll-tech/common/docker"
@@ -32,16 +31,14 @@ var (
 		},
 	}
 
-	l1gethImg docker.ImgInstance
-	private   *ecdsa.PrivateKey
+	l1gethImg   docker.ImgInstance
+	privateKeys []*ecdsa.PrivateKey
 )
 
 func setupEnv(t *testing.T) {
 	cfg, err := config.NewConfig("../config.json")
 	assert.NoError(t, err)
-	prv, err := crypto.HexToECDSA(cfg.L2Config.RelayerConfig.PrivateKey)
-	assert.NoError(t, err)
-	private = prv
+	privateKeys = cfg.L2Config.RelayerConfig.PrivateKeyList
 	l1gethImg = mock.NewTestL1Docker(t, TestConfig)
 }
 
@@ -55,7 +52,7 @@ func TestFunction(t *testing.T) {
 		cfg.L2Config.RelayerConfig.SenderConfig.Endpoint = l1gethImg.Endpoint()
 
 		// create newSender
-		newSender, err := sender.NewSender(context.Background(), cfg.L2Config.RelayerConfig.SenderConfig, private)
+		newSender, err := sender.NewSender(context.Background(), cfg.L2Config.RelayerConfig.SenderConfig, privateKeys)
 		assert.NoError(t, err)
 		defer newSender.Stop()
 

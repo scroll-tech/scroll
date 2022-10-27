@@ -11,7 +11,6 @@ import (
 	"github.com/scroll-tech/go-ethereum/accounts/abi"
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/core/types"
-	"github.com/scroll-tech/go-ethereum/crypto"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
 
@@ -72,14 +71,8 @@ func NewLayer2Relayer(ctx context.Context, ethClient *ethclient.Client, proofGen
 		return nil, err
 	}
 
-	prv, err := crypto.HexToECDSA(cfg.PrivateKey)
-	if err != nil {
-		log.Error("Failed to import private key from config file")
-		return nil, err
-	}
-
 	// @todo use different sender for relayer, block commit and proof finalize
-	sender, err := sender.NewSender(ctx, cfg.SenderConfig, prv)
+	sender, err := sender.NewSender(ctx, cfg.SenderConfig, cfg.PrivateKeyList)
 	if err != nil {
 		log.Error("Failed to create sender", "err", err)
 		return nil, err
