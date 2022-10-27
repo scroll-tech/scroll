@@ -16,7 +16,7 @@ bridge: ## Builds the Bridge instance.
 	go build -o $(PWD)/build/bin/bridge ./cmd
 
 test:
-	go test -v -race -coverprofile=coverage.txt -covermode=atomic -p 4 $(PWD)/...
+	go test -v -race -coverprofile=coverage.txt -covermode=atomic -p 1 $(PWD)/...
 
 lint: ## Lint the files - used for CI
 	GOBIN=$(PWD)/build/bin go run ../build/lint.go
