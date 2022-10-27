@@ -6,7 +6,6 @@ ALTER TABLE layer2_message
   ADD content text;
 
 ALTER TABLE layer1_message
-  DROP COLUMN nonce,
   DROP COLUMN sender,
   DROP COLUMN target,
   DROP COLUMN value,
@@ -15,7 +14,6 @@ ALTER TABLE layer1_message
   DROP COLUMN deadline,
   DROP COLUMN calldata;
 ALTER TABLE layer2_message
-DROP COLUMN nonce,
   DROP COLUMN sender,
   DROP COLUMN target,
   DROP COLUMN value,
@@ -28,7 +26,6 @@ DROP COLUMN nonce,
 -- +goose Down
 -- +goose StatementBegin
 ALTER TABLE layer1_message
-  ADD nonce bigint,
   ADD sender varchar,
   ADD target varchar,
   ADD value bigint,
@@ -37,7 +34,6 @@ ALTER TABLE layer1_message
   ADD deadline bigint,
   ADD calldata text;
 ALTER TABLE layer2_message
-  ADD nonce bigint,
   ADD sender varchar,
   ADD target varchar,
   ADD value bigint,

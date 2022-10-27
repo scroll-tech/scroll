@@ -2,9 +2,10 @@ package orm
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
 	"errors"
+
+	"database/sql"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/scroll-tech/go-ethereum/log"
@@ -25,10 +26,10 @@ func NewLayer1MessageOrm(db *sqlx.DB) Layer1MessageOrm {
 func (m *layer1MessageOrm) GetLayer1MessageByLayer1Hash(layer1Hash string) (*Layer1Message, error) {
 	msg := Layer1Message{}
 
-	row := m.db.QueryRow(`SELECT content, height, layer1_hash, status FROM layer1_message WHERE layer1_hash = $1`, layer1Hash)
+	row := m.db.QueryRow(`SELECT content, nonce, height, layer1_hash, status FROM layer1_message WHERE layer1_hash = $1`, layer1Hash)
 
 	var tempcontent []byte
-	if err := row.Scan(&tempcontent, &msg.Height, &msg.Layer1Hash, &msg.Status); err != nil {
+	if err := row.Scan(&tempcontent, &msg.Nonce, &msg.Height, &msg.Layer1Hash, &msg.Status); err != nil {
 		return nil, err
 	}
 
@@ -45,10 +46,10 @@ func (m *layer1MessageOrm) GetLayer1MessageByLayer1Hash(layer1Hash string) (*Lay
 func (m *layer1MessageOrm) GetLayer1MessageByNonce(nonce uint64) (*Layer1Message, error) {
 	msg := Layer1Message{}
 
-	row := m.db.QueryRow(`SELECT content, height, layer1_hash, status FROM layer1_message WHERE nonce = $1`, nonce)
+	row := m.db.QueryRow(`SELECT content, nonce, height, layer1_hash, status FROM layer1_message WHERE nonce = $1`, nonce)
 
 	var tempcontent []byte
-	if err := row.Scan(&tempcontent, &msg.Height, &msg.Layer1Hash, &msg.Status); err != nil {
+	if err := row.Scan(&tempcontent, &msg.Nonce, &msg.Height, &msg.Layer1Hash, &msg.Status); err != nil {
 		return nil, err
 	}
 	err := json.Unmarshal(tempcontent, &msg.Content)
@@ -61,7 +62,7 @@ func (m *layer1MessageOrm) GetLayer1MessageByNonce(nonce uint64) (*Layer1Message
 
 // GetL1UnprocessedMessages fetch list of unprocessed messages
 func (m *layer1MessageOrm) GetL1UnprocessedMessages() ([]*Layer1Message, error) {
-	rows, err := m.db.Queryx(`SELECT content, height, layer1_hash, status FROM layer1_message WHERE status = $1 ORDER BY nonce ASC;`, MsgPending)
+	rows, err := m.db.Queryx(`SELECT content, nonce, height, layer1_hash, status FROM layer1_message WHERE status = $1 ORDER BY nonce ASC;`, MsgPending)
 	if err != nil {
 		return nil, err
 	}
@@ -70,10 +71,10 @@ func (m *layer1MessageOrm) GetL1UnprocessedMessages() ([]*Layer1Message, error) 
 	for rows.Next() {
 		msg := &Layer1Message{}
 		var tempcontent []byte
-		if err := rows.Scan(&tempcontent, &msg.Height, &msg.Layer1Hash, &msg.Status); err != nil {
+		if err = rows.Scan(&tempcontent, &msg.Nonce, &msg.Height, &msg.Layer1Hash, &msg.Status); err != nil {
 			return nil, err
 		}
-		err := json.Unmarshal(tempcontent, &msg.Content)
+		err = json.Unmarshal(tempcontent, &msg.Content)
 		if err != nil {
 			log.Error("failed to unmarshal layer1Messages content", "err", err)
 			return nil, err
@@ -100,11 +101,12 @@ func (m *layer1MessageOrm) SaveLayer1Messages(ctx context.Context, messages []*L
 		}
 		messageMaps[i] = map[string]interface{}{
 			"content":     content,
+			"nonce":       msg.Nonce,
 			"height":      msg.Height,
 			"layer1_hash": msg.Layer1Hash,
 		}
 	}
-	_, err := m.db.NamedExec(`INSERT INTO public.layer1_message (content, height, layer1_hash) VALUES (:content, :height, :layer1_hash);`, messageMaps)
+	_, err := m.db.NamedExec(`INSERT INTO public.layer1_message (content, nonce, height, layer1_hash) VALUES (:content, :nonce, :height, :layer1_hash);`, messageMaps)
 	if err != nil {
 		log.Error("failed to insert layer1Messages", "err", err)
 	}

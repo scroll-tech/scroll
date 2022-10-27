@@ -127,15 +127,16 @@ func (r *Layer2Relayer) ProcessSavedEvents() {
 	}
 
 	// @todo fetch merkle proof from l2geth
-	log.Info("Processing L2 Message", "msg.nonce", msg.Content.Nonce, "msg.height", msg.Height)
+	log.Info("Processing L2 Message", "msg.nonce", msg.Nonce, "msg.height", msg.Height)
 
 	proof := bridge_abi.IL1ScrollMessengerL2MessageProof{
 		BlockNumber: big.NewInt(int64(msg.Height)),
 		MerkleProof: make([]byte, 0),
 	}
-	data, err := r.l1MessengerABI.Pack("relayMessageWithProof", msg.Content.Sender, msg.Content.Target, msg.Content.Value, msg.Content.Fee, msg.Content.Deadline, msg.Content.Nonce, msg.Content.Calldata, proof)
+	msgNonce := big.NewInt(int64(msg.Nonce))
+	data, err := r.l1MessengerABI.Pack("relayMessageWithProof", msg.Content.Sender, msg.Content.Target, msg.Content.Value, msg.Content.Fee, msg.Content.Deadline, msgNonce, msg.Content.Calldata, proof)
 	if err != nil {
-		log.Error("Failed to pack relayMessageWithProof", "msg.nonce", msg.Content.Nonce, "err", err)
+		log.Error("Failed to pack relayMessageWithProof", "msg.nonce", msg.Nonce, "err", err)
 		// TODO: need to skip this message by changing its status to MsgError
 		return
 	}

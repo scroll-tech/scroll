@@ -27,7 +27,6 @@ const (
 
 // MsgContent is structure of entreis of layer messages
 type MsgContent struct {
-	Nonce    *big.Int       `json:"nonce" db:"nonce"`
 	Sender   common.Address `json:"sender" db:"sender"`
 	Value    *big.Int       `json:"value" db:"value"`
 	Fee      *big.Int       `json:"fee" db:"fee"`
@@ -40,6 +39,7 @@ type MsgContent struct {
 // Layer1Message is structure of stored layer1 bridge message
 type Layer1Message struct {
 	Content    MsgContent `json:"content" db:"content"`
+	Nonce      uint64     `json:"nonce" db:"nonce"`
 	Height     uint64     `json:"height" db:"height"`
 	Layer1Hash string     `json:"layer1_hash" db:"layer1_hash"`
 	Status     MsgStatus  `json:"status" db:"status"`
@@ -48,6 +48,7 @@ type Layer1Message struct {
 // Layer2Message is structure of stored layer2 bridge message
 type Layer2Message struct {
 	Content    MsgContent `json:"content" db:"content"`
+	Nonce      uint64     `json:"nonce" db:"nonce"`
 	Height     uint64     `json:"height" db:"height"`
 	Layer2Hash string     `json:"layer2_hash" db:"layer2_hash"`
 	Status     MsgStatus  `json:"status" db:"status"`

@@ -43,29 +43,29 @@ var (
 	templateLayer1Message = []*orm.Layer1Message{
 		{
 			Content: orm.MsgContent{
-				Nonce:    big.NewInt(1),
 				Sender:   common.HexToAddress("0x596a746661dbed76a84556111c2872249b070e15"),
 				Value:    big.NewInt(106190),
 				Fee:      big.NewInt(106190),
 				GasLimit: big.NewInt(11529940),
-				Deadline: big.NewInt(int64(time.Now().Unix())),
+				Deadline: big.NewInt(time.Now().Unix()),
 				Target:   common.HexToAddress("0x2c73620b223808297ea734d946813f0dd78eb8f7"),
 				Calldata: []byte("testdata"),
 			},
+			Nonce:      1,
 			Height:     1,
 			Layer1Hash: "hash0",
 		},
 		{
 			Content: orm.MsgContent{
-				Nonce:    big.NewInt(2),
 				Sender:   common.HexToAddress("0x596a746661dbed76a84556111c2872249b070e15"),
 				Value:    big.NewInt(106190),
 				Fee:      big.NewInt(106190),
 				GasLimit: big.NewInt(11529940),
-				Deadline: big.NewInt(int64(time.Now().Unix())),
+				Deadline: big.NewInt(time.Now().Unix()),
 				Target:   common.HexToAddress("0x2c73620b223808297ea734d946813f0dd78eb8f7"),
 				Calldata: []byte("testdata"),
 			},
+			Nonce:      2,
 			Height:     2,
 			Layer1Hash: "hash1",
 		},
@@ -73,29 +73,29 @@ var (
 	templateLayer2Message = []*orm.Layer2Message{
 		{
 			Content: orm.MsgContent{
-				Nonce:    big.NewInt(1),
 				Sender:   common.HexToAddress("0x596a746661dbed76a84556111c2872249b070e15"),
 				Value:    big.NewInt(106190),
 				Fee:      big.NewInt(106190),
 				GasLimit: big.NewInt(11529940),
-				Deadline: big.NewInt(int64(time.Now().Unix())),
+				Deadline: big.NewInt(time.Now().Unix()),
 				Target:   common.HexToAddress("0x2c73620b223808297ea734d946813f0dd78eb8f7"),
 				Calldata: []byte("testdata"),
 			},
+			Nonce:      1,
 			Height:     1,
 			Layer2Hash: "hash0",
 		},
 		{
 			Content: orm.MsgContent{
-				Nonce:    big.NewInt(2),
 				Sender:   common.HexToAddress("0x596a746661dbed76a84556111c2872249b070e15"),
 				Value:    big.NewInt(106190),
 				Fee:      big.NewInt(106190),
 				GasLimit: big.NewInt(11529940),
-				Deadline: big.NewInt(int64(time.Now().Unix())),
+				Deadline: big.NewInt(time.Now().Unix()),
 				Target:   common.HexToAddress("0x2c73620b223808297ea734d946813f0dd78eb8f7"),
 				Calldata: []byte("testdata"),
 			},
+			Nonce:      2,
 			Height:     2,
 			Layer2Hash: "hash1",
 		},
@@ -224,6 +224,7 @@ func TestOrm_Layer1Message(t *testing.T) {
 	msg, err := ormLayer1.GetLayer1MessageByLayer1Hash("hash1")
 	assert.NoError(t, err)
 	assert.Equal(t, orm.MsgSubmitted, msg.Status)
+	assert.Equal(t, []byte("testdata"), msg.Content.Calldata)
 
 	// todo : we should have a method to verify layer2hash in layer1message
 	defer sqlxdb.Close()
@@ -252,7 +253,11 @@ func TestOrm_Layer2Message(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, int64(2), height)
 
-	msg, err := ormLayer2.GetLayer2MessageByLayer2Hash("hash1")
+	msg, err := ormLayer2.GetLayer2MessageByNonce(1)
+	assert.NoError(t, err)
+	assert.Equal(t, []byte("testdata"), msg.Content.Calldata)
+
+	msg, err = ormLayer2.GetLayer2MessageByLayer2Hash("hash1")
 	assert.NoError(t, err)
 	assert.Equal(t, orm.MsgSubmitted, msg.Status)
 

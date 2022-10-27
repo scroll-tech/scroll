@@ -28,15 +28,15 @@ var (
 	templateLayer2Message = []*orm.Layer2Message{
 		{
 			Content: orm.MsgContent{
-				Nonce:    big.NewInt(1),
 				Sender:   common.HexToAddress("0x596a746661dbed76a84556111c2872249b070e15"),
 				Value:    big.NewInt(106190),
 				Fee:      big.NewInt(106190),
 				GasLimit: big.NewInt(11529940),
-				Deadline: big.NewInt(int64(time.Now().Unix())),
+				Deadline: big.NewInt(time.Now().Unix()),
 				Target:   common.HexToAddress("0x2c73620b223808297ea734d946813f0dd78eb8f7"),
 				Calldata: []byte("testdata"),
 			},
+			Nonce:      1,
 			Height:     1,
 			Layer2Hash: "hash0",
 		},
