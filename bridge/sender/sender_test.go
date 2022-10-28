@@ -56,7 +56,7 @@ func setupEnv(t *testing.T) {
 	cfg.L1Config.RelayerConfig.SenderConfig.Endpoint = l2gethImg.Endpoint()
 }
 
-func TestFunction(t *testing.T) {
+func TestSender(t *testing.T) {
 	// Setup
 	setupEnv(t)
 
@@ -71,7 +71,7 @@ func TestFunction(t *testing.T) {
 }
 
 func testBatchSender(t *testing.T, batchSize int) {
-	for i := 0; i < batchSize-1; i++ {
+	for i := 0; i < batchSize; i++ {
 		priv, err := crypto.GenerateKey()
 		if err != nil {
 			t.Fatal(err)

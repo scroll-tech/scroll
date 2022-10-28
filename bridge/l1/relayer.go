@@ -88,7 +88,7 @@ func (r *Layer1Relayer) processSavedEvent(msg *orm.Layer1Message) error {
 		return fmt.Errorf("msg is empty")
 	}
 	// @todo add support to relay multiple messages
-	sender := common.HexToAddress(msg.Sender)
+	from := common.HexToAddress(msg.Sender)
 	target := common.HexToAddress(msg.Target)
 	value, ok := big.NewInt(0).SetString(msg.Value, 10)
 	if !ok {
@@ -100,7 +100,7 @@ func (r *Layer1Relayer) processSavedEvent(msg *orm.Layer1Message) error {
 	deadline := big.NewInt(int64(msg.Deadline))
 	msgNonce := big.NewInt(int64(msg.Nonce))
 	calldata := common.Hex2Bytes(msg.Calldata)
-	data, err := r.l2MessengerABI.Pack("relayMessage", sender, target, value, fee, deadline, msgNonce, calldata)
+	data, err := r.l2MessengerABI.Pack("relayMessage", from, target, value, fee, deadline, msgNonce, calldata)
 	if err != nil {
 		log.Error("Failed to pack relayMessage", "msg.nonce", msg.Nonce, "msg.height", msg.Height, "err", err)
 		// TODO: need to skip this message by changing its status to MsgError

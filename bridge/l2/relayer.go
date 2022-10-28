@@ -2,6 +2,7 @@ package l2
 
 import (
 	"context"
+	"crypto/ecdsa"
 	"math/big"
 	"strconv"
 	"time"
@@ -31,7 +32,6 @@ import (
 type Layer2Relayer struct {
 	ctx    context.Context
 	client *ethclient.Client
-	sender *sender.Sender
 
 	proofGenerationFreq uint64
 	skippedOpcodes      map[string]struct{}
@@ -39,8 +39,13 @@ type Layer2Relayer struct {
 	db  database.OrmFactory
 	cfg *config.RelayerConfig
 
-	l1MessengerABI *abi.ABI
-	l1RollupABI    *abi.ABI
+	messengerSender *sender.Sender
+	messengerCh     <-chan *sender.Confirmation
+	l1MessengerABI  *abi.ABI
+
+	rollupSender *sender.Sender
+	rollupCh     <-chan *sender.Confirmation
+	l1RollupABI  *abi.ABI
 
 	// a list of processing message, indexed by layer2 hash
 	processingMessage map[string]string
@@ -51,9 +56,7 @@ type Layer2Relayer struct {
 	// a list of processing proof, indexed by block height
 	processingProof map[string]uint64
 
-	// channel used to communicate with transaction sender
-	confirmationCh <-chan *sender.Confirmation
-	stopCh         chan struct{}
+	stopCh chan struct{}
 }
 
 // NewLayer2Relayer will return a new instance of Layer2RelayerClient
@@ -72,18 +75,27 @@ func NewLayer2Relayer(ctx context.Context, ethClient *ethclient.Client, proofGen
 	}
 
 	// @todo use different sender for relayer, block commit and proof finalize
-	sender, err := sender.NewSender(ctx, cfg.SenderConfig, cfg.PrivateKeyList)
+	messengerSender, err := sender.NewSender(ctx, cfg.SenderConfig, cfg.PrivateKeyList)
 	if err != nil {
-		log.Error("Failed to create sender", "err", err)
+		log.Error("Failed to create messenger sender", "err", err)
+		return nil, err
+	}
+
+	rollupSender, err := sender.NewSender(ctx, cfg.SenderConfig, []*ecdsa.PrivateKey{cfg.RollerPrivateKey})
+	if err != nil {
+		log.Error("Failed to create rollup sender", "err", err)
 		return nil, err
 	}
 
 	return &Layer2Relayer{
 		ctx:                 ctx,
 		client:              ethClient,
-		sender:              sender,
 		db:                  db,
+		messengerSender:     messengerSender,
+		messengerCh:         messengerSender.ConfirmChan(),
 		l1MessengerABI:      l1MessengerABI,
+		rollupSender:        rollupSender,
+		rollupCh:            rollupSender.ConfirmChan(),
 		l1RollupABI:         l1RollupABI,
 		cfg:                 cfg,
 		proofGenerationFreq: proofGenFreq,
@@ -92,7 +104,6 @@ func NewLayer2Relayer(ctx context.Context, ethClient *ethclient.Client, proofGen
 		processingBlock:     map[string]uint64{},
 		processingProof:     map[string]uint64{},
 		stopCh:              make(chan struct{}),
-		confirmationCh:      sender.ConfirmChan(),
 	}, nil
 }
 
@@ -131,7 +142,7 @@ func (r *Layer2Relayer) processSavedEvent(msg *orm.Layer2Message) error {
 		BlockNumber: big.NewInt(int64(msg.Height)),
 		MerkleProof: make([]byte, 0),
 	}
-	sender := common.HexToAddress(msg.Sender)
+	from := common.HexToAddress(msg.Sender)
 	target := common.HexToAddress(msg.Target)
 	value, ok := big.NewInt(0).SetString(msg.Value, 10)
 	if !ok {
@@ -143,14 +154,14 @@ func (r *Layer2Relayer) processSavedEvent(msg *orm.Layer2Message) error {
 	deadline := big.NewInt(int64(msg.Deadline))
 	msgNonce := big.NewInt(int64(msg.Nonce))
 	calldata := common.Hex2Bytes(msg.Calldata)
-	data, err := r.l1MessengerABI.Pack("relayMessageWithProof", sender, target, value, fee, deadline, msgNonce, calldata, proof)
+	data, err := r.l1MessengerABI.Pack("relayMessageWithProof", from, target, value, fee, deadline, msgNonce, calldata, proof)
 	if err != nil {
 		log.Error("Failed to pack relayMessageWithProof", "msg.nonce", msg.Nonce, "err", err)
 		// TODO: need to skip this message by changing its status to MsgError
 		return err
 	}
 
-	hash, err := r.sender.SendTransaction(msg.Layer2Hash, &r.cfg.MessengerContractAddress, big.NewInt(0), data)
+	hash, err := r.messengerSender.SendTransaction(msg.Layer2Hash, &r.cfg.MessengerContractAddress, big.NewInt(0), data)
 	if err != nil {
 		log.Error("Failed to send relayMessageWithProof tx to L1", "err", err)
 		return err
@@ -240,7 +251,7 @@ func (r *Layer2Relayer) ProcessPendingBlocks() {
 		log.Error("Failed to pack commitBlock", "height", height, "err", err)
 		return
 	}
-	hash, err := r.sender.SendTransaction(strconv.FormatUint(height, 10), &r.cfg.RollupContractAddress, big.NewInt(0), data)
+	hash, err := r.messengerSender.SendTransaction(strconv.FormatUint(height, 10), &r.cfg.RollupContractAddress, big.NewInt(0), data)
 	if err != nil {
 		log.Error("Failed to send commitBlock tx to layer1 ", "height", height, "err", err)
 		return
@@ -339,7 +350,7 @@ func (r *Layer2Relayer) ProcessCommittedBlocks() {
 			log.Error("Pack finalizeBlockWithProof failed", err)
 			return
 		}
-		txHash, err := r.sender.SendTransaction(strconv.FormatUint(height, 10), &r.cfg.RollupContractAddress, big.NewInt(0), data)
+		txHash, err := r.rollupSender.SendTransaction(strconv.FormatUint(height, 10), &r.cfg.RollupContractAddress, big.NewInt(0), data)
 		hash = &txHash
 		if err != nil {
 			log.Error("finalizeBlockWithProof in layer1 failed",
@@ -378,7 +389,9 @@ func (r *Layer2Relayer) Start() {
 				r.ProcessSavedEvents()
 				r.ProcessPendingBlocks()
 				r.ProcessCommittedBlocks()
-			case confirmation := <-r.confirmationCh:
+			case confirmation := <-r.messengerCh:
+				r.handleConfirmation(confirmation)
+			case confirmation := <-r.rollupCh:
 				r.handleConfirmation(confirmation)
 			case <-r.stopCh:
 				return
