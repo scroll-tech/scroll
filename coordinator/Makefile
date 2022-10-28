@@ -4,6 +4,9 @@ IMAGE_NAME=coordinator
 IMAGE_VERSION=latest
 REPO_ROOT_DIR=./..
 
+test:
+	go test -v -race -coverprofile=coverage.txt -covermode=atomic -p 1 $(PWD)/...
+
 coordinator: ## Builds the Coordinator instance.
 	go build -o $(PWD)/build/bin/coordinator ./cmd
 

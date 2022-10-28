@@ -31,8 +31,7 @@ pipeline {
                 //start to build project
                 sh '''#!/bin/bash
                     export PATH=/home/ubuntu/go/bin:$PATH
-                    docker build -t scroll_l1geth ./common/docker/l1geth/
-                    docker build -t scroll_l2geth ./common/docker/l2geth/
+                    make dev_docker
                     make -C bridge mock_abi
                     make -C bridge bridge
                     make -C bridge docker
