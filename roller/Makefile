@@ -11,7 +11,7 @@ roller: ## Build the Roller instance.
 	GOBIN=$(PWD)/build/bin go build -o $(PWD)/build/bin/roller ./cmd
 
 mock_roller:
-	go build -o $(PWD)/build/bin/roller -tags mock_prover $(PWD)/cmd/roller
+	GOBIN=$(PWD)/build/bin go build -o $(PWD)/build/bin/roller -tags mock_prover $(PWD)/cmd
 
 gpu-roller: ## Builds the GPU Roller instance.
 	cd core/prover/rust && cargo build --release && cp target/release/libprover.a ../lib/
