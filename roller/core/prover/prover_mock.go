@@ -6,8 +6,9 @@ package prover
 import (
 	"time"
 
+	"scroll-tech/common/message"
+
 	"scroll-tech/go-roller/config"
-	"scroll-tech/go-roller/message"
 
 	"github.com/scroll-tech/go-ethereum/core/types"
 )

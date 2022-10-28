@@ -18,6 +18,7 @@ import (
 
 	"scroll-tech/common/message"
 	"scroll-tech/coordinator/client"
+
 	"scroll-tech/go-roller/config"
 	"scroll-tech/go-roller/core/prover"
 	"scroll-tech/go-roller/store"
