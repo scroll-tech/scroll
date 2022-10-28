@@ -1,11 +1,10 @@
 package migrate
 
 import (
+	"database/sql"
 	"embed"
 	"os"
 	"strconv"
-
-	"database/sql"
 
 	"github.com/pressly/goose/v3"
 )

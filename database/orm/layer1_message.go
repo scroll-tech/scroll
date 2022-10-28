@@ -2,9 +2,8 @@ package orm
 
 import (
 	"context"
-	"errors"
-
 	"database/sql"
+	"errors"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/scroll-tech/go-ethereum/log"
