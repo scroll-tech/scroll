@@ -91,7 +91,7 @@ func (r *RelayerConfig) UnmarshalJSON(input []byte) error {
 		RelayerConfigAlias
 		// The private key of the relayer
 		PrivateKeyList   []string `json:"private_key_list"`
-		RollerPrivateKey string   `json:"roller_private_key"`
+		RollerPrivateKey string   `json:"roller_private_key,omitempty"`
 	}
 	if err := json.Unmarshal(input, &jsonConfig); err != nil {
 		return err
@@ -108,11 +108,13 @@ func (r *RelayerConfig) UnmarshalJSON(input []byte) error {
 	}
 
 	// Get rollup private key
-	priv, err := crypto.HexToECDSA(jsonConfig.RollerPrivateKey)
-	if err != nil {
-		return fmt.Errorf("uncorrect roller_private_key format, err: %v", err)
+	if len(jsonConfig.RollerPrivateKey) > 0 {
+		priv, err := crypto.HexToECDSA(jsonConfig.RollerPrivateKey)
+		if err != nil {
+			return fmt.Errorf("uncorrect roller_private_key format, err: %v", err)
+		}
+		r.RollerPrivateKey = priv
 	}
-	r.RollerPrivateKey = priv
 
 	return nil
 }

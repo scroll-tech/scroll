@@ -9,10 +9,9 @@ import (
 
 	"scroll-tech/database"
 
-	"scroll-tech/bridge/mock"
-
 	"scroll-tech/bridge/config"
 	"scroll-tech/bridge/l1"
+	"scroll-tech/bridge/mock"
 
 	"scroll-tech/common/utils"
 )
@@ -38,6 +37,7 @@ func TestCreateNewL1Relayer(t *testing.T) {
 	assert.NoError(t, err)
 	l1docker := mock.NewTestL1Docker(t, TEST_CONFIG)
 	defer l1docker.Stop()
+	cfg.L2Config.RelayerConfig.SenderConfig.Endpoint = l1docker.Endpoint()
 
 	client, err := ethclient.Dial(l1docker.Endpoint())
 	assert.NoError(t, err)
