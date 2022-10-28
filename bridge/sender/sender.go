@@ -155,9 +155,6 @@ func (s *Sender) AccCount() int {
 
 func (s *Sender) getFeeData(auth *bind.TransactOpts, target *common.Address, value *big.Int, data []byte) (*FeeData, error) {
 	// estimate gas limit
-	if data == nil {
-		data = []byte{}
-	}
 	gasLimit, err := s.client.EstimateGas(s.ctx, ethereum.CallMsg{From: auth.From, To: target, Value: value, Data: data})
 	if err != nil {
 		return nil, err
