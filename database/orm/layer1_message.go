@@ -90,6 +90,23 @@ func (m *layer1MessageOrm) GetL1UnprocessedMessages() ([]*Layer1Message, error) 
 	return msgs, rows.Close()
 }
 
+// GetL1ProcessedNonce returns max nonce of confirmed layer1message
+func (m *layer1MessageOrm) GetL1ProcessedNonce() (int64, error) {
+	row := m.db.QueryRow(`SELECT MAX(nonce) FROM layer1_message WHERE status = $1;`, MsgConfirmed)
+
+	var nonce int64
+	err := row.Scan(&nonce)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			// no row means no message
+			// since nonce starts with 0, return -1 as the processed nonce
+			return -1, nil
+		}
+		return 0, err
+	}
+	return nonce, nil
+}
+
 // SaveLayer1Messages batch save a list of layer1 messages
 func (m *layer1MessageOrm) SaveLayer1Messages(ctx context.Context, messages []*Layer1Message) error {
 	messageMaps := make([]map[string]interface{}, len(messages))

@@ -71,6 +71,45 @@ func (m *layer2MessageOrm) GetMessageProofByLayer2Hash(layer2Hash string) (strin
 	return proof, nil
 }
 
+// GetMessageProofByNonce fetch message by nonce
+func (m *layer2MessageOrm) GetMessageProofByNonce(nonce uint64) (string, error) {
+	row := m.db.QueryRow(`SELECT proof FROM layer2_message WHERE nonce = $1`, nonce)
+	var proof string
+	if err := row.Scan(&proof); err != nil {
+		return "", err
+	}
+	return proof, nil
+}
+
+// MessageProofExist fetch message by nonce
+func (m *layer2MessageOrm) MessageProofExist(nonce uint64) (bool, error) {
+	err := m.db.QueryRow(`SELECT nonce FROM layer2_message WHERE nonce = $1 and proof IS NOT NULL`, nonce).Scan(&nonce)
+	if err != nil {
+		if err != sql.ErrNoRows {
+			return false, err
+		}
+		return false, nil
+	}
+	return true, nil
+}
+
+// GetL2ProcessedNonce fetch latest processed message nonce
+func (m *layer2MessageOrm) GetL2ProcessedNonce() (int64, error) {
+	row := m.db.QueryRow(`SELECT MAX(nonce) FROM layer2_message WHERE status = $1;`, MsgConfirmed)
+
+	var nonce int64
+	err := row.Scan(&nonce)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			// no row means no message
+			// since nonce starts with 0, return -1 as the processed nonce
+			return -1, nil
+		}
+		return 0, err
+	}
+	return nonce, nil
+}
+
 // MessageProofExistByLayer2Hash fetch message by layer2Hash
 func (m *layer2MessageOrm) MessageProofExistByLayer2Hash(layer2Hash string) (bool, error) {
 	err := m.db.QueryRow(`SELECT layer2_hash FROM layer2_message WHERE layer2_hash = $1 and proof IS NOT NULL`, layer2Hash).Scan(&layer2Hash)
