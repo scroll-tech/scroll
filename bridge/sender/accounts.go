@@ -3,6 +3,7 @@ package sender
 import (
 	"context"
 	"crypto/ecdsa"
+	"fmt"
 	"github.com/scroll-tech/go-ethereum/accounts/abi/bind"
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/core/types"
@@ -56,14 +57,11 @@ func newAccounts(ctx context.Context, client *ethclient.Client, privs []*ecdsa.P
 			return nil, err
 		}
 		auth.Nonce = big.NewInt(int64(nonce))
-
 		accs.accounts[auth.From] = auth
 		accs.accsCh <- auth
 	}
 
-	accs.checkAndSetBalance(ctx)
-
-	return accs, nil
+	return accs, accs.checkAndSetBalance(ctx)
 }
 
 // getAccount get auth from channel.
@@ -92,41 +90,59 @@ func (a *accounts) reSetNonce(ctx context.Context, auth *bind.TransactOpts) {
 }
 
 // checkAndSetBalance check balance and set min balance.
-func (a *accounts) checkAndSetBalance(ctx context.Context) {
+func (a *accounts) checkAndSetBalance(ctx context.Context) error {
 	var (
 		root      *bind.TransactOpts
 		maxBls    = big.NewInt(0)
-		loseAuths []common.Address
+		loseAuths []*bind.TransactOpts
 	)
 
 	for addr, auth := range a.accounts {
 		bls, err := a.client.BalanceAt(ctx, addr, nil)
-		if err == nil || bls.Cmp(minBls) < 0 {
-			log.Warn("failed to get balance", "address", addr.String(), "err", err)
-			loseAuths = append(loseAuths, addr)
+		if err != nil || bls.Cmp(minBls) < 0 {
+			if err != nil {
+				log.Warn("failed to get balance", "address", addr.String(), "err", err)
+				return err
+			}
+			loseAuths = append(loseAuths, auth)
 			continue
-		}
-		// Find the biggest balance account.
-		if bls != nil && bls.Cmp(maxBls) > 0 {
+		} else if bls.Cmp(maxBls) > 0 { // Find the biggest balance account.
 			root, maxBls = auth, bls
 		}
 	}
+	if root == nil {
+		return fmt.Errorf("no account has enough balance")
+	}
+	if len(loseAuths) == 0 {
+		return nil
+	}
 
-	for _, addr := range loseAuths {
-		tx, err := a.createSignedTx(root, &addr, minBls)
+	var (
+		tx  *types.Transaction
+		err error
+	)
+	for _, auth := range loseAuths {
+		tx, err = a.createSignedTx(root, &auth.From, minBls)
 		if err != nil {
-			log.Error("failed to create tx", "err", err)
-			continue
+			return err
 		}
 		err = a.client.SendTransaction(ctx, tx)
 		if err != nil {
 			log.Error("Failed to send balance to account", "err", err)
+			return err
 		} else {
-			log.Debug("send balance to account", "account", addr.String(), "balance", minBls.String())
+			log.Debug("send balance to account", "account", auth.From.String(), "balance", minBls.String())
 		}
 	}
+	// wait util minded
+	if _, err = bind.WaitMined(ctx, a.client, tx); err != nil {
+		return err
+	}
+
 	// Reset root's nonce.
 	a.reSetNonce(ctx, root)
+
+	return nil
 }
 
 func (a *accounts) createSignedTx(from *bind.TransactOpts, to *common.Address, value *big.Int) (*types.Transaction, error) {
@@ -134,8 +150,16 @@ func (a *accounts) createSignedTx(from *bind.TransactOpts, to *common.Address, v
 	if err != nil {
 		return nil, err
 	}
+	gasPrice.Mul(gasPrice, big.NewInt(2))
+
+	// Get pending nonce
+	nonce, err := a.client.PendingNonceAt(context.Background(), from.From)
+	if err != nil {
+		return nil, err
+	}
+
 	tx := types.NewTx(&types.LegacyTx{
-		Nonce:    from.Nonce.Uint64(),
+		Nonce:    nonce,
 		To:       to,
 		Value:    value,
 		Gas:      500000,
@@ -145,5 +169,6 @@ func (a *accounts) createSignedTx(from *bind.TransactOpts, to *common.Address, v
 	if err != nil {
 		return nil, err
 	}
+
 	return signedTx, nil
 }

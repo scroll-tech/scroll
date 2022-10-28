@@ -35,7 +35,7 @@ const (
 )
 
 var (
-	ErrEmptyAccount = errors.New("not enough accounts to send transaction")
+	ErrEmptyAccount = errors.New("has no enough accounts to send transaction")
 )
 
 // DefaultSenderConfig The default config
@@ -147,8 +147,16 @@ func (s *Sender) ConfirmChan() <-chan *Confirmation {
 	return s.confirmCh
 }
 
-func (s *Sender) getFeeData(msg ethereum.CallMsg) (*FeeData, error) {
-	gasLimit, err := s.client.EstimateGas(s.ctx, msg)
+func (s *Sender) AccCount() int {
+	return len(s.accs.accounts)
+}
+
+func (s *Sender) getFeeData(auth *bind.TransactOpts, target *common.Address, value *big.Int, data []byte) (*FeeData, error) {
+	// estimate gas limit
+	if data == nil {
+		data = []byte{}
+	}
+	gasLimit, err := s.client.EstimateGas(s.ctx, ethereum.CallMsg{From: auth.From, To: target, Value: value, Data: data})
 	if err != nil {
 		return nil, err
 	}
@@ -193,24 +201,11 @@ func (s *Sender) SendTransaction(ID string, target *common.Address, value *big.I
 	defer s.accs.setAccount(auth)
 
 	var (
-		// estimate gas limit
-		call = ethereum.CallMsg{
-			From:       auth.From,
-			To:         target,
-			Gas:        0,
-			GasPrice:   nil,
-			GasFeeCap:  nil,
-			GasTipCap:  nil,
-			Value:      value,
-			Data:       data,
-			AccessList: make(types.AccessList, 0),
-		}
 		feeData *FeeData
 		tx      *types.Transaction
 	)
-
 	// estimate gas fee
-	if feeData, err = s.getFeeData(call); err != nil {
+	if feeData, err = s.getFeeData(auth, target, value, data); err != nil {
 		return
 	}
 	if tx, err = s.createAndSendTx(auth, feeData, target, value, data); err == nil {
