@@ -3,13 +3,13 @@ package l1
 import (
 	"context"
 	"fmt"
-	"github.com/scroll-tech/go-ethereum/common"
 	"math/big"
 	"time"
 
 	// not sure if this will make problems when relay with l1geth
 
 	"github.com/scroll-tech/go-ethereum/accounts/abi"
+	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
 

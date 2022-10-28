@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"errors"
-	"github.com/scroll-tech/go-ethereum/crypto"
 	"math/big"
 	"strconv"
 	"testing"
@@ -14,6 +13,7 @@ import (
 
 	cmap "github.com/orcaman/concurrent-map"
 	"github.com/scroll-tech/go-ethereum/common"
+	"github.com/scroll-tech/go-ethereum/crypto"
 	"github.com/stretchr/testify/assert"
 
 	"scroll-tech/common/docker"

@@ -4,11 +4,11 @@ import (
 	"crypto/ecdsa"
 	"encoding/json"
 	"fmt"
-	"github.com/scroll-tech/go-ethereum/crypto"
 	"os"
 	"path/filepath"
 
 	"github.com/scroll-tech/go-ethereum/common"
+	"github.com/scroll-tech/go-ethereum/crypto"
 
 	"scroll-tech/common/utils"
 
@@ -82,6 +82,7 @@ type RelayerConfig struct {
 	RollerPrivateKey *ecdsa.PrivateKey   `json:"-"`
 }
 
+// RelayerConfigAlias RelayerConfig alias name
 type RelayerConfigAlias RelayerConfig
 
 // UnmarshalJSON unmarshal relayer_config struct.

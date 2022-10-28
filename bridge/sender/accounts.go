@@ -4,13 +4,13 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"fmt"
+	"math/big"
+
 	"github.com/scroll-tech/go-ethereum/accounts/abi/bind"
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
-	"math/big"
-	"sync"
 )
 
 var (
@@ -25,9 +25,8 @@ func init() {
 type accounts struct {
 	client *ethclient.Client
 
-	accounts    map[common.Address]*bind.TransactOpts
-	failedAddrs sync.Map
-	accsCh      chan *bind.TransactOpts
+	accounts map[common.Address]*bind.TransactOpts
+	accsCh   chan *bind.TransactOpts
 }
 
 // newAccounts Create a accounts instance.
@@ -130,9 +129,8 @@ func (a *accounts) checkAndSetBalance(ctx context.Context) error {
 		if err != nil {
 			log.Error("Failed to send balance to account", "err", err)
 			return err
-		} else {
-			log.Debug("send balance to account", "account", auth.From.String(), "balance", minBls.String())
 		}
+		log.Debug("send balance to account", "account", auth.From.String(), "balance", minBls.String())
 	}
 	// wait util minded
 	if _, err = bind.WaitMined(ctx, a.client, tx); err != nil {

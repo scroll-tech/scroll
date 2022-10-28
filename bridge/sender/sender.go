@@ -5,7 +5,6 @@ import (
 	"crypto/ecdsa"
 	"errors"
 	"fmt"
-	"github.com/scroll-tech/go-ethereum/accounts/abi/bind"
 	"math/big"
 	"strings"
 	"sync"
@@ -13,6 +12,7 @@ import (
 	"time"
 
 	"github.com/scroll-tech/go-ethereum"
+	"github.com/scroll-tech/go-ethereum/accounts/abi/bind"
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/common/math"
 	"github.com/scroll-tech/go-ethereum/core/types"
@@ -35,6 +35,7 @@ const (
 )
 
 var (
+	// ErrEmptyAccount empty account of error.
 	ErrEmptyAccount = errors.New("has no enough accounts to send transaction")
 )
 
@@ -147,6 +148,7 @@ func (s *Sender) ConfirmChan() <-chan *Confirmation {
 	return s.confirmCh
 }
 
+// AccCount return the count of accounts.
 func (s *Sender) AccCount() int {
 	return len(s.accs.accounts)
 }
@@ -399,7 +401,7 @@ func (s *Sender) loop(ctx context.Context) {
 			s.CheckPendingTransaction(header)
 		case <-tick.C:
 			// Check and set balance.
-			s.accs.checkAndSetBalance(ctx)
+			_ = s.accs.checkAndSetBalance(ctx)
 		case <-ctx.Done():
 			return
 		case <-s.stopCh:

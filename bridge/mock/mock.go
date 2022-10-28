@@ -225,9 +225,7 @@ func PrepareDB(t *testing.T, db_cfg *database.DBConfig) database.OrmFactory {
 }
 
 // SendTxToL2Client will send a default Tx by calling l2geth client
-func SendTxToL2Client(t *testing.T, client *ethclient.Client, private string) *types.Transaction {
-	privateKey, err := crypto.HexToECDSA(private)
-	assert.NoError(t, err)
+func SendTxToL2Client(t *testing.T, client *ethclient.Client, privateKey *ecdsa.PrivateKey) *types.Transaction {
 	publicKey := privateKey.Public()
 	publicKeyECDSA, ok := publicKey.(*ecdsa.PublicKey)
 	assert.True(t, ok)

@@ -106,7 +106,7 @@ func TestWatcherFunction(t *testing.T) {
 		numTransactions := 3
 
 		for i := 0; i < numTransactions; i++ {
-			tx := mock.SendTxToL2Client(t, client, cfg.L2Config.RelayerConfig.PrivateKey)
+			tx := mock.SendTxToL2Client(t, client, cfg.L2Config.RelayerConfig.PrivateKeyList[0])
 			// wait for mining
 			_, err = bind.WaitMined(context.Background(), client, tx)
 			assert.NoError(t, err)
@@ -134,7 +134,7 @@ func TestWatcherFunction(t *testing.T) {
 		previousHeight, err = client.BlockNumber(context.Background())
 		assert.NoError(t, err)
 
-		auth := prepareAuth(t, client, cfg.L2Config.RelayerConfig.PrivateKey)
+		auth := prepareAuth(t, client, cfg.L2Config.RelayerConfig.PrivateKeyList[0])
 
 		// deploy mock bridge
 		_, tx, instance, err := mock_bridge.DeployMockBridge(auth, client)
@@ -208,7 +208,7 @@ func TestWatcherFunction(t *testing.T) {
 		previousHeight, err := client.BlockNumber(context.Background()) // shallow the global previousHeight
 		assert.NoError(t, err)
 
-		auth := prepareAuth(t, client, cfg.L2Config.RelayerConfig.PrivateKey)
+		auth := prepareAuth(t, client, cfg.L2Config.RelayerConfig.PrivateKeyList[0])
 
 		_, trx, instance, err := mock_bridge.DeployMockBridge(auth, client)
 		assert.NoError(t, err)
@@ -299,9 +299,7 @@ func prepareRelayerClient(client *ethclient.Client, db database.OrmFactory, cont
 	return l2.NewL2WatcherClient(context.Background(), client, 0, 1, map[string]struct{}{}, contractAddr, messengerABI, db)
 }
 
-func prepareAuth(t *testing.T, client *ethclient.Client, private string) *bind.TransactOpts {
-	privateKey, err := crypto.HexToECDSA(private)
-	assert.NoError(t, err)
+func prepareAuth(t *testing.T, client *ethclient.Client, privateKey *ecdsa.PrivateKey) *bind.TransactOpts {
 	publicKey := privateKey.Public()
 	publicKeyECDSA, ok := publicKey.(*ecdsa.PublicKey)
 	assert.True(t, ok)
