@@ -61,14 +61,19 @@ func newAccounts(ctx context.Context, client *ethclient.Client, privs []*ecdsa.P
 		accs.accsCh <- auth
 	}
 
-	go accs.checkAndSetBalance(ctx)
+	accs.checkAndSetBalance(ctx)
 
 	return accs, nil
 }
 
 // getAccount get auth from channel.
 func (a *accounts) getAccount() *bind.TransactOpts {
-	return <-a.accsCh
+	select {
+	case auth := <-a.accsCh:
+		return auth
+	default:
+		return nil
+	}
 }
 
 // setAccount set used auth into channel.

@@ -2,13 +2,14 @@ package l1
 
 import (
 	"context"
+	"fmt"
+	"github.com/scroll-tech/go-ethereum/common"
 	"math/big"
 	"time"
 
 	// not sure if this will make problems when relay with l1geth
 
 	"github.com/scroll-tech/go-ethereum/accounts/abi"
-	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
 
@@ -74,10 +75,18 @@ func (r *Layer1Relayer) ProcessSavedEvents() {
 		log.Error("Failed to fetch unprocessed L1 messages", "err", err)
 		return
 	}
-	if len(msgs) == 0 {
-		return
+	for _, msg := range msgs {
+		if err = r.processSavedEvent(msg); err != nil {
+			log.Error("failed to process event", "err", err)
+			return
+		}
 	}
-	msg := msgs[0]
+}
+
+func (r *Layer1Relayer) processSavedEvent(msg *orm.Layer1Message) error {
+	if msg == nil {
+		return fmt.Errorf("msg is empty")
+	}
 	// @todo add support to relay multiple messages
 	sender := common.HexToAddress(msg.Sender)
 	target := common.HexToAddress(msg.Target)
@@ -95,13 +104,13 @@ func (r *Layer1Relayer) ProcessSavedEvents() {
 	if err != nil {
 		log.Error("Failed to pack relayMessage", "msg.nonce", msg.Nonce, "msg.height", msg.Height, "err", err)
 		// TODO: need to skip this message by changing its status to MsgError
-		return
+		return err
 	}
 
 	hash, err := r.sender.SendTransaction(msg.Layer1Hash, &r.cfg.MessengerContractAddress, big.NewInt(0), data)
 	if err != nil {
 		log.Error("Failed to send relayMessage tx to L2", "msg.nonce", msg.Nonce, "msg.height", msg.Height, "err", err)
-		return
+		return err
 	}
 	log.Info("relayMessage to layer2", "layer1 hash", msg.Layer1Hash, "tx hash", hash)
 
@@ -109,6 +118,7 @@ func (r *Layer1Relayer) ProcessSavedEvents() {
 	if err != nil {
 		log.Error("UpdateLayer1StatusAndLayer2Hash failed", "msg.layer1hash", msg.Layer1Hash, "msg.height", msg.Height, "err", err)
 	}
+	return err
 }
 
 // Start the relayer process

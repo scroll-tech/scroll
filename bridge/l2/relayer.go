@@ -104,19 +104,24 @@ func (r *Layer2Relayer) ProcessSavedEvents() {
 		log.Error("Failed to fetch unprocessed L2 messages", "err", err)
 		return
 	}
-	if len(msgs) == 0 {
-		return
+	for _, msg := range msgs {
+		if err := r.processSavedEvent(msg); err != nil {
+			log.Error("failed to process l2 saved event", "err", err)
+			return
+		}
 	}
-	msg := msgs[0]
+}
+
+func (r *Layer2Relayer) processSavedEvent(msg *orm.Layer2Message) error {
 	// @todo add support to relay multiple messages
 	latestFinalizeHeight, err := r.db.GetLatestFinalizedBlock()
 	if err != nil {
 		log.Error("GetLatestFinalizedBlock failed", "err", err)
-		return
+		return err
 	}
 	if latestFinalizeHeight < msg.Height {
 		// log.Warn("corresponding block not finalized", "status", status)
-		return
+		return nil
 	}
 
 	// @todo fetch merkle proof from l2geth
@@ -142,13 +147,13 @@ func (r *Layer2Relayer) ProcessSavedEvents() {
 	if err != nil {
 		log.Error("Failed to pack relayMessageWithProof", "msg.nonce", msg.Nonce, "err", err)
 		// TODO: need to skip this message by changing its status to MsgError
-		return
+		return err
 	}
 
 	hash, err := r.sender.SendTransaction(msg.Layer2Hash, &r.cfg.MessengerContractAddress, big.NewInt(0), data)
 	if err != nil {
 		log.Error("Failed to send relayMessageWithProof tx to L1", "err", err)
-		return
+		return err
 	}
 	log.Info("relayMessageWithProof to layer1", "layer2hash", msg.Layer2Hash, "txhash", hash.String())
 
@@ -159,6 +164,7 @@ func (r *Layer2Relayer) ProcessSavedEvents() {
 		log.Error("UpdateLayer2StatusAndLayer1Hash failed", "layer2hash", msg.Layer2Hash, "err", err)
 	}
 	r.processingMessage[msg.Layer2Hash] = msg.Layer2Hash
+	return err
 }
 
 // ProcessPendingBlocks submit block data to layer rollup contract

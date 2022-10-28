@@ -3,6 +3,7 @@ package sender
 import (
 	"context"
 	"crypto/ecdsa"
+	"errors"
 	"fmt"
 	"github.com/scroll-tech/go-ethereum/accounts/abi/bind"
 	"math/big"
@@ -22,6 +23,7 @@ import (
 )
 
 const (
+
 	// AccessListTxType type for AccessListTx
 	AccessListTxType = "AccessListTx"
 
@@ -30,6 +32,10 @@ const (
 
 	// LegacyTxType type for LegacyTx
 	LegacyTxType = "LegacyTx"
+)
+
+var (
+	ErrEmptyAccount = errors.New("not enough accounts to send transaction")
 )
 
 // DefaultSenderConfig The default config
@@ -181,6 +187,9 @@ func (s *Sender) SendTransaction(ID string, target *common.Address, value *big.I
 	}
 	// get
 	auth := s.accs.getAccount()
+	if auth == nil {
+		return common.Hash{}, ErrEmptyAccount
+	}
 	defer s.accs.setAccount(auth)
 
 	var (
@@ -296,6 +305,9 @@ func (s *Sender) createAndSendTx(auth *bind.TransactOpts, feeData *FeeData, targ
 func (s *Sender) resubmitTransaction(feeData *FeeData, tx *types.Transaction) (*types.Transaction, error) {
 	// Get a idle account from account pool.
 	auth := s.accs.getAccount()
+	if auth == nil {
+		return nil, ErrEmptyAccount
+	}
 	defer s.accs.setAccount(auth)
 
 	escalateMultipleNum := new(big.Int).SetUint64(s.config.EscalateMultipleNum)
@@ -358,6 +370,10 @@ func (s *Sender) CheckPendingTransaction(header *types.Header) {
 			var tx *types.Transaction
 			tx, err := s.resubmitTransaction(pending.feeData, pending.tx)
 			if err != nil {
+				// If accounts channel is empty, wait 1 second.
+				if errors.Is(err, ErrEmptyAccount) {
+					time.Sleep(time.Second)
+				}
 				log.Error("failed to resubmit transaction, reset submitAt", "tx hash", pending.tx.Hash().String(), "err", err)
 			} else {
 				// flush submitAt
