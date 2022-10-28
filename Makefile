@@ -6,7 +6,6 @@ check: ## The code's format and security checks.
 	make -C coordinator lint
 	make -C database lint
 	make -C roller lint
-	make -C roller libprover
 
 update: ## update dependencies
 	go work sync
