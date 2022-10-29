@@ -34,7 +34,7 @@ func initEnv(t *testing.T) error {
 	return nil
 }
 
-func TestMegration(t *testing.T) {
+func TestMigration(t *testing.T) {
 	defer func() {
 		if dbImg != nil {
 			assert.NoError(t, dbImg.Stop())
