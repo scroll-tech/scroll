@@ -142,6 +142,7 @@ func TestFunction(t *testing.T) {
 		numClients := uint8(2)
 		verifierEndpoint := setupMockVerifier(t)
 		rollerManager := setupRollerManager(t, verifierEndpoint, db)
+		defer rollerManager.Stop()
 
 		// Set up and register `numClients` clients
 		conns := make([]*websocket.Conn, numClients)
@@ -195,8 +196,6 @@ func TestFunction(t *testing.T) {
 			assert.NoError(t, json.Unmarshal(payload, traces))
 
 		}
-
-		rollerManager.Stop()
 	})
 
 	t.Run("TestIdleRollerSelection", func(t *testing.T) {
