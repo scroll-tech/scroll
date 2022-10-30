@@ -15,6 +15,7 @@ import (
 	"github.com/scroll-tech/go-ethereum/rpc"
 
 	"scroll-tech/common/message"
+	"scroll-tech/database"
 	"scroll-tech/database/orm"
 
 	"scroll-tech/coordinator/config"
@@ -69,12 +70,12 @@ type Manager struct {
 	verifier *verifier.Verifier
 
 	// db interface
-	orm orm.ProveTaskOrm
+	orm database.OrmFactory
 }
 
 // New returns a new instance of Manager. The instance will be not fully prepared,
 // and still needs to be finalized and ran by calling `manager.Start`.
-func New(ctx context.Context, cfg *config.RollerManagerConfig, orm orm.ProveTaskOrm) (*Manager, error) {
+func New(ctx context.Context, cfg *config.RollerManagerConfig, orm database.OrmFactory) (*Manager, error) {
 	var v *verifier.Verifier
 	if cfg.VerifierEndpoint != "" {
 		var err error
@@ -420,8 +421,17 @@ func (m *Manager) StartProofGenerationSession(task *orm.ProveTask) bool {
 	pk := roller.AuthMsg.Identity.PublicKey
 	log.Info("roller is picked", "name", roller.AuthMsg.Identity.Name, "public_key", pk)
 
-	// TODO: implement getTraces
-	msg, err := createTaskMsg(task.ID, nil)
+	traces, err := m.orm.GetBlockResults(map[string]interface{}{"task_id": task.ID})
+	if err != nil {
+		log.Error(
+			"could not GetBlockResults",
+			"task_id", task.ID,
+			"error", err,
+		)
+		return false
+	}
+
+	msg, err := createTaskMsg(task.ID, traces)
 	if err != nil {
 		log.Error(
 			"could not create block traces message",
