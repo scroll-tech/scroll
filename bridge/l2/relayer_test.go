@@ -102,6 +102,7 @@ func testL2RelayerProcessPendingBlocks(t *testing.T) {
 	}
 	relayer, err := l2.NewLayer2Relayer(context.Background(), l2Cli, cfg.L2Config.ProofGenerationFreq, skippedOpcodes, int64(cfg.L2Config.Confirmations), db, cfg.L2Config.RelayerConfig)
 	assert.NoError(t, err)
+	defer relayer.Stop()
 
 	// this blockresult has number of 0x4, need to change it to match the testcase
 	// In this testcase scenario, db will store two blocks with height 0x4 and 0x3
