@@ -61,7 +61,7 @@ contract ZKRollup is OwnableUpgradeable, IZKRollup {
   /// @dev The list of appended message hash.
   bytes32[] private messageQueue;
 
-  /// @notice The hash of the latest finalized batch id.
+  /// @notice The latest finalized batch id.
   bytes32 public lastFinalizedBatchID;
 
   /// @notice Mapping from block hash to block struct.
@@ -120,8 +120,8 @@ contract ZKRollup is OwnableUpgradeable, IZKRollup {
     // check block height is in batch range.
     if (_maxBlockHeightInBatch == 0) return _blockHeight == 0;
     else {
-      uint256 _minBlockHeightInBatch = blocks[batches[_batchId].parentHash].blockHeight;
-      return _minBlockHeightInBatch < _blockHeight && _blockHeight <= _maxBlockHeightInBatch;
+      uint256 _minBlockHeightInBatch = blocks[batches[_batchId].parentHash].blockHeight + 1;
+      return _minBlockHeightInBatch <= _blockHeight && _blockHeight <= _maxBlockHeightInBatch;
     }
   }
 
@@ -176,7 +176,7 @@ contract ZKRollup is OwnableUpgradeable, IZKRollup {
   }
 
   /// @inheritdoc IZKRollup
-  function commitBatch(Layer2Batch calldata _batch) external override OnlyOperator {
+  function commitBatch(Layer2Batch memory _batch) external override OnlyOperator {
     // check whether the batch is empty
     require(_batch.blocks.length > 0, "Batch is empty");
 
@@ -192,18 +192,19 @@ contract ZKRollup is OwnableUpgradeable, IZKRollup {
     require(_parentBlock.transactionRoot != bytes32(0), "Parent batch hasn't been committed");
     require(_parentBlock.batchIndex + 1 == _batch.batchIndex, "Batch index and parent batch index mismatch");
 
-    // check whether the blocks are corrected.
+    // check whether the blocks are correct.
     unchecked {
-      uint256 _expectedBlockHeight = _parentBlock.blockHeight;
+            uint256 _expectedBlockHeight = _parentBlock.blockHeight + 1;
       bytes32 _expectedParentHash = _batch.parentHash;
       for (uint256 i = 0; i < _batch.blocks.length; i++) {
         Layer2BlockHeader memory _block = _batch.blocks[i];
         require(_verifyBlockHash(_block), "Block hash verification failed");
         require(_block.parentHash == _expectedParentHash, "Block parent hash mismatch");
-        _expectedBlockHeight += 1;
         require(_block.blockHeight == _expectedBlockHeight, "Block height mismatch");
+        require(blocks[_block.blockHash].transactionRoot == bytes32(0), "Block has been commited before");
+
+        _expectedBlockHeight += 1;
         _expectedParentHash = _block.blockHash;
-        require(blocks[_expectedParentHash].transactionRoot == bytes32(0), "Block has been commited before");
       }
     }
 
@@ -242,7 +243,7 @@ contract ZKRollup is OwnableUpgradeable, IZKRollup {
       _blockHash = _nextBlockHash;
     }
 
-    // delete commited batches
+    // delete commited batch
     delete batches[_batchId];
 
     emit RevertBatch(_batchId);
@@ -268,7 +269,7 @@ contract ZKRollup is OwnableUpgradeable, IZKRollup {
     RollupVerifier.verify(_proof, _instances);
 
     uint256 _batchIndex = _batch.batchIndex;
-    finalizedBatches[_batch.batchIndex] = _batchId;
+    finalizedBatches[_batchIndex] = _batchId;
     _batch.verified = true;
 
     Layer2BatchStored storage _finalizedBatch = batches[lastFinalizedBatchID];
