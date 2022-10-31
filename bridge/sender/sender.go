@@ -385,7 +385,7 @@ func (s *Sender) loop(ctx context.Context) {
 	defer checkTick.Stop()
 
 	checkBalanceTicker := time.NewTicker(time.Minute * 10)
-	defer tick.Stop()
+	defer checkBalanceTicker.Stop()
 
 	for {
 		select {
@@ -396,7 +396,7 @@ func (s *Sender) loop(ctx context.Context) {
 				continue
 			}
 			s.CheckPendingTransaction(header)
-		case <-tick.C:
+		case <-checkBalanceTicker.C:
 			// Check and set balance.
 			_ = s.accs.checkAndSetBalance(ctx)
 		case <-ctx.Done():
