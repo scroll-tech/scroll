@@ -384,7 +384,7 @@ func (s *Sender) loop(ctx context.Context) {
 	checkTick := time.NewTicker(time.Duration(s.config.CheckPendingTime) * time.Second)
 	defer checkTick.Stop()
 
-	tick := time.NewTicker(time.Minute * 10)
+	checkBalanceTicker := time.NewTicker(time.Minute * 10)
 	defer tick.Stop()
 
 	for {
