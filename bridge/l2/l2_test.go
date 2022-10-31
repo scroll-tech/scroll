@@ -92,7 +92,6 @@ func free(t *testing.T) {
 }
 
 func TestFunction(t *testing.T) {
-	defer free(t)
 	if err := setupEnv(t); err != nil {
 		t.Fatal(err)
 	}
@@ -108,4 +107,8 @@ func TestFunction(t *testing.T) {
 	t.Run("TestL2RelayerProcessSaveEvents", testL2RelayerProcessSaveEvents)
 	t.Run("TestL2RelayerProcessPendingBlocks", testL2RelayerProcessPendingBlocks)
 	t.Run("TestL2RelayerProcessCommittedBlocks", testL2RelayerProcessCommittedBlocks)
+
+	t.Cleanup(func() {
+		free(t)
+	})
 }

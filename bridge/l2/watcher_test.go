@@ -31,7 +31,7 @@ func testCreateNewWatcherAndStop(t *testing.T) {
 	l2db, err := database.NewOrmFactory(cfg.DBConfig)
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(l2db.GetDB().DB))
-	defer assert.NoError(t, l2db.Close())
+	defer l2db.Close()
 
 	messengerABI, err := bridge_abi.L2MessengerMetaData.GetAbi()
 	assert.NoError(t, err)
@@ -72,7 +72,7 @@ func testMonitorBridgeContract(t *testing.T) {
 	db, err := database.NewOrmFactory(cfg.DBConfig)
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(db.GetDB().DB))
-	defer assert.NoError(t, db.Close())
+	defer db.Close()
 
 	previousHeight, err := l2Cli.BlockNumber(context.Background())
 	assert.NoError(t, err)
@@ -140,7 +140,7 @@ func testFetchMultipleSentMessageInOneBlock(t *testing.T) {
 	db, err := database.NewOrmFactory(cfg.DBConfig)
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(db.GetDB().DB))
-	defer assert.NoError(t, db.Close())
+	defer db.Close()
 
 	previousHeight, err := l2Cli.BlockNumber(context.Background()) // shallow the global previousHeight
 	assert.NoError(t, err)
