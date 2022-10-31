@@ -2,7 +2,6 @@ package l1
 
 import (
 	"context"
-	"fmt"
 	"math/big"
 	"time"
 
@@ -84,9 +83,6 @@ func (r *Layer1Relayer) ProcessSavedEvents() {
 }
 
 func (r *Layer1Relayer) processSavedEvent(msg *orm.Layer1Message) error {
-	if msg == nil {
-		return fmt.Errorf("msg is empty")
-	}
 	// @todo add support to relay multiple messages
 	from := common.HexToAddress(msg.Sender)
 	target := common.HexToAddress(msg.Target)
