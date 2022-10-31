@@ -251,7 +251,7 @@ func (r *Layer2Relayer) ProcessPendingBlocks() {
 		log.Error("Failed to pack commitBlock", "height", height, "err", err)
 		return
 	}
-	hash, err := r.messengerSender.SendTransaction(strconv.FormatUint(height, 10), &r.cfg.RollupContractAddress, big.NewInt(0), data)
+	hash, err := r.rollupSender.SendTransaction(strconv.FormatUint(height, 10), &r.cfg.RollupContractAddress, big.NewInt(0), data)
 	if err != nil {
 		log.Error("Failed to send commitBlock tx to layer1 ", "height", height, "err", err)
 		return
