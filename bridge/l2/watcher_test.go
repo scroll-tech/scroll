@@ -72,6 +72,7 @@ func testMonitorBridgeContract(t *testing.T) {
 	db, err := database.NewOrmFactory(cfg.DBConfig)
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(db.GetDB().DB))
+	defer assert.NoError(t, db.Close())
 
 	previousHeight, err := l2Cli.BlockNumber(context.Background())
 	assert.NoError(t, err)
@@ -86,6 +87,7 @@ func testMonitorBridgeContract(t *testing.T) {
 
 	rc := prepareRelayerClient(l2Cli, db, address)
 	rc.Start()
+	defer rc.Stop()
 
 	// Call mock_bridge instance sendMessage to trigger emit events
 	addr := common.HexToAddress("0x1c5a77d9fa7ef466951b2f01f724bca3a5820b63")
@@ -131,9 +133,6 @@ func testMonitorBridgeContract(t *testing.T) {
 	msgs, err := db.GetL2UnprocessedMessages()
 	assert.NoError(t, err)
 	assert.Equal(t, 2, len(msgs))
-
-	rc.Stop()
-	db.Close()
 }
 
 func testFetchMultipleSentMessageInOneBlock(t *testing.T) {
@@ -141,6 +140,7 @@ func testFetchMultipleSentMessageInOneBlock(t *testing.T) {
 	db, err := database.NewOrmFactory(cfg.DBConfig)
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(db.GetDB().DB))
+	defer assert.NoError(t, db.Close())
 
 	previousHeight, err := l2Cli.BlockNumber(context.Background()) // shallow the global previousHeight
 	assert.NoError(t, err)
@@ -154,6 +154,7 @@ func testFetchMultipleSentMessageInOneBlock(t *testing.T) {
 
 	rc := prepareRelayerClient(l2Cli, db, address)
 	rc.Start()
+	defer rc.Stop()
 
 	// Call mock_bridge instance sendMessage to trigger emit events multiple times
 	numTransactions := 4
@@ -200,9 +201,6 @@ func testFetchMultipleSentMessageInOneBlock(t *testing.T) {
 	msgs, err := db.GetL2UnprocessedMessages()
 	assert.NoError(t, err)
 	assert.Equal(t, 5, len(msgs))
-
-	rc.Stop()
-	db.Close()
 }
 
 func testTraceHasUnsupportedOpcodes(t *testing.T) {

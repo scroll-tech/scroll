@@ -9,9 +9,9 @@ import (
 )
 
 var (
-	l1StartPort = 11000
-	l2StartPort = 12000
-	dbStartPort = 13000
+	l1StartPort = 10000
+	l2StartPort = 20000
+	dbStartPort = 30000
 )
 
 // NewTestL1Docker starts and returns l1geth docker

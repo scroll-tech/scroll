@@ -58,6 +58,7 @@ func testL2RelayerProcessSaveEvents(t *testing.T) {
 	db, err := database.NewOrmFactory(cfg.DBConfig)
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(db.GetDB().DB))
+	defer assert.NoError(t, db.Close())
 
 	skippedOpcodes := make(map[string]struct{}, len(cfg.L2Config.SkippedOpcodes))
 	for _, op := range cfg.L2Config.SkippedOpcodes {
@@ -65,6 +66,7 @@ func testL2RelayerProcessSaveEvents(t *testing.T) {
 	}
 	relayer, err := l2.NewLayer2Relayer(context.Background(), l2Cli, cfg.L2Config.ProofGenerationFreq, skippedOpcodes, int64(cfg.L2Config.Confirmations), db, cfg.L2Config.RelayerConfig)
 	assert.NoError(t, err)
+	defer relayer.Stop()
 
 	err = db.SaveLayer2Messages(context.Background(), templateLayer2Message)
 	assert.NoError(t, err)
@@ -146,6 +148,7 @@ func testL2RelayerProcessCommittedBlocks(t *testing.T) {
 	db, err := database.NewOrmFactory(cfg.DBConfig)
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(db.GetDB().DB))
+	defer assert.NoError(t, db.Close())
 
 	skippedOpcodes := make(map[string]struct{}, len(cfg.L2Config.SkippedOpcodes))
 	for _, op := range cfg.L2Config.SkippedOpcodes {
@@ -153,6 +156,7 @@ func testL2RelayerProcessCommittedBlocks(t *testing.T) {
 	}
 	relayer, err := l2.NewLayer2Relayer(context.Background(), l2Cli, cfg.L2Config.ProofGenerationFreq, skippedOpcodes, int64(cfg.L2Config.Confirmations), db, cfg.L2Config.RelayerConfig)
 	assert.NoError(t, err)
+	defer relayer.Stop()
 
 	templateBlockResult, err := os.ReadFile("../../common/testdata/blockResult_relayer.json")
 	assert.NoError(t, err)
