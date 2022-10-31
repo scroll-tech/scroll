@@ -132,7 +132,7 @@ func (a *accounts) checkAndSetBalance(ctx context.Context) error {
 		}
 		log.Debug("send balance to account", "account", auth.From.String(), "balance", minBls.String())
 	}
-	// wait util minded
+	// wait util mined
 	if _, err = bind.WaitMined(ctx, a.client, tx); err != nil {
 		return err
 	}
