@@ -88,6 +88,7 @@ func (o *blockResultOrm) GetBlockResults(fields map[string]interface{}, args ...
 	return traces, rows.Close()
 }
 
+// TODO: TODO:
 func (o *blockResultOrm) GetBlocksInfos(fields map[string]interface{}, args ...string) ([]*BlockInfo, error) {
 	query := "SELECT number, hash, task_id, tx_num, gas_used, block_timestamp FROM block_result WHERE 1 = 1 "
 	for key := range fields {
@@ -170,7 +171,7 @@ func (o *blockResultOrm) DeleteTraceByNumber(number uint64) error {
 	return nil
 }
 
-// TODO: migrate to new table
+// TODO: TODO:
 func (o *blockResultOrm) SetBatchIDForBlocksInDBTx(dbTx *sqlx.Tx, blocks []uint64, batchID uint64) error {
 	query := "UPDATE block_result SET task_id=? WHERE number IN (?)"
 
