@@ -1,8 +1,9 @@
 package verifier_test
 
 import (
-	"scroll-tech/roller/core"
 	"testing"
+
+	"scroll-tech/roller/core"
 
 	"scroll-tech/common/message"
 
