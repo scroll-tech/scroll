@@ -247,8 +247,8 @@ func parseBridgeEventLogs(logs []types.Log, messengerABI *abi.ABI) ([]*orm.Layer
 
 // batch-related config
 var (
-	batchTimeSec      = uint64(5 * 60) // 5min
-	batchGasThreshold = 3000000
+	batchTimeSec      = uint64(5 * 60)  // 5min
+	batchGasThreshold = uint64(3000000) // 3M
 )
 
 // TODO:

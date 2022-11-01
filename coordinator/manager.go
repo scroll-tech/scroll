@@ -406,14 +406,13 @@ func (m *Manager) StartProofGenerationSession(task *orm.BlockBatch) bool {
 		return false
 	}
 
-	id := task.ID
-	log.Info("start proof generation session", "id", id)
+	log.Info("start proof generation session", "id", task.ID)
 
 	var dbErr error
 	defer func() {
 		if dbErr != nil {
-			if err := m.orm.UpdateProvingStatus(id, orm.ProvingTaskUnassigned); err != nil {
-				log.Error("fail to reset task_status as Unassigned", "id", id)
+			if err := m.orm.UpdateProvingStatus(task.ID, orm.ProvingTaskUnassigned); err != nil {
+				log.Error("fail to reset task_status as Unassigned", "id", task.ID)
 			}
 		}
 	}()
@@ -449,7 +448,7 @@ func (m *Manager) StartProofGenerationSession(task *orm.BlockBatch) bool {
 	}
 
 	s := session{
-		id: id,
+		id: task.ID,
 		rollers: map[string]bool{
 			pk: false,
 		},
@@ -462,11 +461,11 @@ func (m *Manager) StartProofGenerationSession(task *orm.BlockBatch) bool {
 
 	// Create a proof generation session.
 	m.mu.Lock()
-	m.sessions[id] = s
+	m.sessions[task.ID] = s
 	m.mu.Unlock()
 
-	dbErr = m.orm.UpdateProvingStatus(id, orm.ProvingTaskAssigned)
-	go m.CollectProofs(id, s)
+	dbErr = m.orm.UpdateProvingStatus(task.ID, orm.ProvingTaskAssigned)
+	go m.CollectProofs(task.ID, s)
 
 	return true
 }
