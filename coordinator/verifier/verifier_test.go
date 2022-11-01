@@ -1,7 +1,7 @@
 package verifier_test
 
 import (
-	"scroll-tech/go-roller/core"
+	"scroll-tech/roller/core"
 	"testing"
 
 	"scroll-tech/common/message"

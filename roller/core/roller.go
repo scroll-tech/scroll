@@ -20,9 +20,9 @@ import (
 
 	"scroll-tech/common/message"
 
-	"scroll-tech/go-roller/config"
-	"scroll-tech/go-roller/core/prover"
-	"scroll-tech/go-roller/store"
+	"scroll-tech/roller/config"
+	"scroll-tech/roller/core/prover"
+	"scroll-tech/roller/store"
 )
 
 // ZK_VERSION is commit-id of prover/rust/cargo.lock/common-rs
