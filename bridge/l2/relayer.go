@@ -165,7 +165,6 @@ func (r *Layer2Relayer) processSavedEvent(msg *orm.Layer2Message) error {
 
 	hash, err := r.messengeSender.SendTransaction(msg.Layer2Hash, &r.cfg.MessengerContractAddress, big.NewInt(0), data)
 	if err != nil {
-		log.Error("Failed to send relayMessageWithProof tx to L1", "err", err)
 		return err
 	}
 	log.Info("relayMessageWithProof to layer1", "layer2hash", msg.Layer2Hash, "txhash", hash.String())
@@ -255,7 +254,9 @@ func (r *Layer2Relayer) ProcessPendingBlocks() {
 	}
 	hash, err := r.rollupSender.SendTransaction(strconv.FormatUint(height, 10), &r.cfg.RollupContractAddress, big.NewInt(0), data)
 	if err != nil {
-		log.Error("Failed to send commitBlock tx to layer1 ", "height", height, "err", err)
+		if !errors.Is(err, sender.ErrNoAvailableAccount) {
+			log.Error("Failed to send commitBlock tx to layer1 ", "height", height, "err", err)
+		}
 		return
 	}
 	log.Info("commitBlock in layer1", "height", height, "hash", hash)
@@ -355,10 +356,9 @@ func (r *Layer2Relayer) ProcessCommittedBlocks() {
 		txHash, err := r.rollupSender.SendTransaction(strconv.FormatUint(height, 10), &r.cfg.RollupContractAddress, big.NewInt(0), data)
 		hash = &txHash
 		if err != nil {
-			log.Error("finalizeBlockWithProof in layer1 failed",
-				"height", height,
-				"err", err,
-			)
+			if !errors.Is(err, sender.ErrNoAvailableAccount) {
+				log.Error("finalizeBlockWithProof in layer1 failed", "height", height, "err", err)
+			}
 			return
 		}
 		log.Info("finalizeBlockWithProof in layer1", "height", height, "hash", hash)

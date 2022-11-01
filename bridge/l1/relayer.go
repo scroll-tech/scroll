@@ -2,6 +2,7 @@ package l1
 
 import (
 	"context"
+	"errors"
 	"math/big"
 	"time"
 
@@ -76,7 +77,9 @@ func (r *Layer1Relayer) ProcessSavedEvents() {
 	}
 	for _, msg := range msgs {
 		if err = r.processSavedEvent(msg); err != nil {
-			log.Error("failed to process event", "err", err)
+			if !errors.Is(err, sender.ErrNoAvailableAccount) {
+				log.Error("failed to process event", "err", err)
+			}
 			return
 		}
 	}

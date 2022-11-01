@@ -365,10 +365,9 @@ func (s *Sender) CheckPendingTransaction(header *types.Header) {
 			tx, err := s.resubmitTransaction(pending.feeData, pending.tx)
 			if err != nil {
 				// If accounts channel is empty, wait 1 second.
-				if errors.Is(err, ErrNoAvailableAccount) {
-					time.Sleep(time.Second)
+				if !errors.Is(err, ErrNoAvailableAccount) {
+					log.Error("failed to resubmit transaction, reset submitAt", "tx hash", pending.tx.Hash().String(), "err", err)
 				}
-				log.Error("failed to resubmit transaction, reset submitAt", "tx hash", pending.tx.Hash().String(), "err", err)
 			} else {
 				// flush submitAt
 				pending.tx = tx
