@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/scroll-tech/go-ethereum/log"
@@ -81,8 +82,9 @@ func NewBlockBatchOrm(db *sqlx.DB) BlockBatchOrm {
 	return &blockBatchOrm{db: db}
 }
 
-func (o *blockBatchOrm) GetProveTasks(fields map[string]interface{}, args ...string) ([]*ProveTask, error) {
-	query := "SELECT id, proof, instance_commitments, status, proof_time_sec FROM prove_task WHERE 1 = 1 "
+func (o *blockBatchOrm) GetBlockBatches(fields map[string]interface{}, args ...string) ([]*BlockBatch, error) {
+	// TODO: TODO: add more fields
+	query := "SELECT id, proof, instance_commitments, proving_status, proof_time_sec FROM block_batch WHERE 1 = 1 "
 	for key := range fields {
 		query += fmt.Sprintf("AND %s=:%s ", key, key)
 	}
@@ -94,26 +96,26 @@ func (o *blockBatchOrm) GetProveTasks(fields map[string]interface{}, args ...str
 		return nil, err
 	}
 
-	var tasks []*ProveTask
+	var batches []*BlockBatch
 	for rows.Next() {
-		task := &ProveTask{}
-		if err = rows.StructScan(task); err != nil {
+		batch := &BlockBatch{}
+		if err = rows.StructScan(batch); err != nil {
 			break
 		}
-		tasks = append(tasks, task)
+		batches = append(batches, batch)
 	}
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return nil, err
 	}
 
-	return tasks, rows.Close()
+	return batches, rows.Close()
 }
 
-func (o *blockBatchOrm) GetTaskStatusByID(id uint64) (TaskStatus, error) {
-	row := o.db.QueryRow(`SELECT status FROM prove_task WHERE id = $1`, id)
-	var status TaskStatus
+func (o *blockBatchOrm) GetProvingStatusByID(id uint64) (ProvingStatus, error) {
+	row := o.db.QueryRow(`SELECT proving_status FROM block_batch WHERE id = $1`, id)
+	var status ProvingStatus
 	if err := row.Scan(&status); err != nil {
-		return TaskUndefined, err
+		return ProvingStatusUndefined, err
 	}
 	return status, nil
 }
@@ -121,7 +123,7 @@ func (o *blockBatchOrm) GetTaskStatusByID(id uint64) (TaskStatus, error) {
 func (o *blockBatchOrm) GetVerifiedProofAndInstanceByID(id uint64) ([]byte, []byte, error) {
 	var proof []byte
 	var instance []byte
-	row := o.db.QueryRow(`SELECT proof, instance_commitments FROM prove_task WHERE id = $1 and status = $2`, id, TaskVerified)
+	row := o.db.QueryRow(`SELECT proof, instance_commitments FROM block_batch WHERE id = $1 and proving_status = $2`, id, ProvingTaskVerified)
 
 	if err := row.Scan(&proof, &instance); err != nil {
 		return nil, nil, err
@@ -131,22 +133,25 @@ func (o *blockBatchOrm) GetVerifiedProofAndInstanceByID(id uint64) ([]byte, []by
 
 func (o *blockBatchOrm) UpdateProofByID(ctx context.Context, id uint64, proof, instance_commitments []byte, proofTimeSec uint64) error {
 	db := o.db
-	if _, err := db.ExecContext(ctx, db.Rebind(`update prove_task set proof = ?, instance_commitments = ?, proof_time_sec = ? where id = ?;`), proof, instance_commitments, proofTimeSec, id); err != nil {
+	if _, err := db.ExecContext(ctx,
+		db.Rebind(`UPDATE block_batch set proof = ?, instance_commitments = ?, proof_time_sec = ?, proved_at = ? where id = ?;`),
+		proof, instance_commitments, proofTimeSec, time.Now(), id,
+	); err != nil {
 		log.Error("failed to update proof", "err", err)
 	}
 	return nil
 }
 
-func (o *blockBatchOrm) UpdateTaskStatus(id uint64, status TaskStatus) error {
-	if _, err := o.db.Exec(o.db.Rebind("update prove_task set status = ? where id = ?;"), status, id); err != nil {
+// `proved_at` is handled in `UpdateProofByID`, so we don't need to worry about it here
+func (o *blockBatchOrm) UpdateProvingStatus(id uint64, status TaskStatus) error {
+	if _, err := o.db.Exec(o.db.Rebind("UPDATE block_batch set proving_status = ? where id = ?;"), status, id); err != nil {
 		return err
 	}
 	return nil
 }
 
-// TODO: TODO: created_at
 func (o *blockBatchOrm) NewBatchInDBTx(dbTx *sqlx.Tx, total_l2_gas uint64) (uint64, error) {
-	row := dbTx.QueryRow("SELECT MAX(id) FROM prove_task;")
+	row := dbTx.QueryRow("SELECT MAX(id) FROM block_batch;")
 
 	var id int64 // 0 by default for sql.ErrNoRows
 	if err := row.Scan(&id); err != nil && err != sql.ErrNoRows {
@@ -158,6 +163,7 @@ func (o *blockBatchOrm) NewBatchInDBTx(dbTx *sqlx.Tx, total_l2_gas uint64) (uint
 		map[string]interface{}{
 			"id":           id,
 			"total_l2_gas": total_l2_gas,
+			"created_at":   time.Now(),
 		}); err != nil {
 		return 0, err
 	}
