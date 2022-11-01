@@ -24,16 +24,16 @@ import (
 )
 
 var (
-	templateRollup = []*orm.RollupResult{
+	templateRollup = []*orm.BlockBatch{
 		{
-			Number:         1,
-			Status:         orm.RollupPending,
+			ID:             1,
+			RollupStatus:   orm.RollupPending,
 			RollupTxHash:   "Rollup Test Hash",
 			FinalizeTxHash: "",
 		},
 		{
-			Number:         2,
-			Status:         orm.RollupFinalized,
+			ID:             2,
+			RollupStatus:   orm.RollupFinalized,
 			RollupTxHash:   "Rollup Test Hash",
 			FinalizeTxHash: "",
 		},
@@ -92,12 +92,12 @@ var (
 		},
 	}
 	sqlxdb      *sqlx.DB
-	ormTrace    orm.BlockResultOrm
+	ormBlock    orm.BlockResultOrm
 	blockResult *types.BlockResult
 	ormLayer1   orm.Layer1MessageOrm
 	ormLayer2   orm.Layer2MessageOrm
 	img         docker.ImgInstance
-	ormRollup   orm.RollupResultOrm
+	ormBatch    orm.BlockBatchOrm
 )
 
 func initEnv(t *testing.T) error {
@@ -112,10 +112,10 @@ func initEnv(t *testing.T) error {
 	}
 	db := factory.GetDB()
 	sqlxdb = db
-	ormTrace = orm.NewBlockResultOrm(db)
+	ormBlock = orm.NewBlockResultOrm(db)
 	ormLayer1 = orm.NewLayer1MessageOrm(db)
 	ormLayer2 = orm.NewLayer2MessageOrm(db)
-	ormRollup = orm.NewRollupResultOrm(db)
+	ormBatch = orm.NewBlockBatchOrm(db)
 
 	// init db
 	version := int64(0)
@@ -148,19 +148,19 @@ func TestOrm_BlockResults(t *testing.T) {
 	assert.NoError(t, initEnv(t))
 	defer img.Stop()
 
-	res, err := ormTrace.GetBlockResults(map[string]interface{}{})
+	res, err := ormBlock.GetBlockResults(map[string]interface{}{})
 	assert.NoError(t, err)
 	assert.Equal(t, true, len(res) == 0)
 
 	// Insert into db
-	err = ormTrace.InsertBlockResultsWithStatus(context.Background(), []*types.BlockResult{blockResult}, orm.BlockUnassigned)
+	err = ormBlock.InsertBlockResults(context.Background(), []*types.BlockResult{blockResult})
 	assert.NoError(t, err)
 
-	exist, err := ormTrace.Exist(blockResult.BlockTrace.Number.ToInt().Uint64())
+	exist, err := ormBlock.Exist(blockResult.BlockTrace.Number.ToInt().Uint64())
 	assert.NoError(t, err)
 	assert.Equal(t, true, exist)
 
-	res, err = ormTrace.GetBlockResults(map[string]interface{}{
+	res, err = ormBlock.GetBlockResults(map[string]interface{}{
 		"hash": blockResult.BlockTrace.Hash.String(),
 	})
 	assert.NoError(t, err)
@@ -176,12 +176,12 @@ func TestOrm_BlockResults(t *testing.T) {
 
 	// Update proof by hash
 	// TODO: fix this
-	assert.NoError(t, ormTrace.UpdateProofByID(context.Background(), blockResult.BlockTrace.Number.ToInt().Uint64(), []byte{1}, []byte{2}, 1200))
+	assert.NoError(t, ormBlock.UpdateProofByID(context.Background(), blockResult.BlockTrace.Number.ToInt().Uint64(), []byte{1}, []byte{2}, 1200))
 
 	// Update trace and check result.
-	err = ormTrace.UpdateBlockStatus(blockResult.BlockTrace.Number.ToInt().Uint64(), orm.BlockVerified)
+	err = ormBlock.UpdateBlockStatus(blockResult.BlockTrace.Number.ToInt().Uint64(), orm.BlockVerified)
 	assert.NoError(t, err)
-	res, err = ormTrace.GetBlockResults(map[string]interface{}{
+	res, err = ormBlock.GetBlockResults(map[string]interface{}{
 		"status": orm.BlockVerified,
 	})
 	assert.NoError(t, err)
