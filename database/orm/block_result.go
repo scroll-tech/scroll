@@ -162,9 +162,8 @@ func (o *blockResultOrm) InsertBlockResults(ctx context.Context, blockResults []
 	return err
 }
 
-// TODO: DeleteTracesByBatchID
-func (o *blockResultOrm) DeleteTraceByNumber(number uint64) error {
-	if _, err := o.db.Exec(o.db.Rebind("update block_result set content = ? where number = ?;"), "{}", number); err != nil {
+func (o *blockResultOrm) DeleteTracesByBatchID(batch_id uint64) error {
+	if _, err := o.db.Exec(o.db.Rebind("update block_result set content = ? where batch_id = ?;"), "{}", batch_id); err != nil {
 		return err
 	}
 	return nil

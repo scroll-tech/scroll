@@ -73,7 +73,7 @@ type BlockResultOrm interface {
 	GetBlockResults(fields map[string]interface{}, args ...string) ([]*types.BlockResult, error)
 	GetBlockInfos(fields map[string]interface{}, args ...string) ([]*BlockInfo, error)
 	GetHashByNumber(number uint64) (*common.Hash, error)
-	DeleteTraceByNumber(number uint64) error
+	DeleteTracesByBatchID(batch_id uint64) error
 	InsertBlockResults(ctx context.Context, blockResults []*types.BlockResult) error
 	NumberOfBlocksInLastHour() (uint64, error)
 	SetBatchIDForBlocksInDBTx(dbTx *sqlx.Tx, blocks []uint64, batchID uint64) error

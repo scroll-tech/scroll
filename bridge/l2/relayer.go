@@ -454,36 +454,36 @@ func (r *Layer2Relayer) handleConfirmation(confirmation *sender.Confirmation) {
 		// @todo handle db error
 		err := r.db.UpdateLayer2StatusAndLayer1Hash(r.ctx, layer2Hash, confirmation.TxHash.String(), orm.MsgConfirmed)
 		if err != nil {
-			log.Warn("UpdateLayer2StatusAndLayer1Hash failed", "err", err)
+			log.Warn("UpdateLayer2StatusAndLayer1Hash failed", "layer2Hash", layer2Hash, "err", err)
 		}
 		delete(r.processingMessage, confirmation.ID)
 	}
 
 	// check whether it is block commitment transaction
-	if blockHeight, ok := r.processingCommitment[confirmation.ID]; ok {
+	if batch_id, ok := r.processingCommitment[confirmation.ID]; ok {
 		transactionType = "BlockCommitment"
 		// @todo handle db error
-		err := r.db.UpdateRollupTxHashAndRollupStatus(r.ctx, blockHeight, confirmation.TxHash.String(), orm.RollupCommitted)
+		err := r.db.UpdateRollupTxHashAndRollupStatus(r.ctx, batch_id, confirmation.TxHash.String(), orm.RollupCommitted)
 		if err != nil {
-			log.Warn("UpdateRollupTxHashAndRollupStatus failed", "err", err)
+			log.Warn("UpdateRollupTxHashAndRollupStatus failed", "batch_id", batch_id, "err", err)
 		}
 		delete(r.processingCommitment, confirmation.ID)
 	}
 
 	// check whether it is proof finalization transaction
-	if blockHeight, ok := r.processingFinalization[confirmation.ID]; ok {
+	if batch_id, ok := r.processingFinalization[confirmation.ID]; ok {
 		transactionType = "ProofFinalization"
 		// @todo handle db error
-		err := r.db.UpdateFinalizeTxHashAndRollupStatus(r.ctx, blockHeight, confirmation.TxHash.String(), orm.RollupFinalized)
+		err := r.db.UpdateFinalizeTxHashAndRollupStatus(r.ctx, batch_id, confirmation.TxHash.String(), orm.RollupFinalized)
 		if err != nil {
-			log.Warn("UpdateFinalizeTxHashAndRollupStatus failed", "err", err)
+			log.Warn("UpdateFinalizeTxHashAndRollupStatus failed", "batch_id", batch_id, "err", err)
 		}
 		delete(r.processingFinalization, confirmation.ID)
 
 		// try to delete block trace
-		err = r.db.DeleteTraceByNumber(blockHeight)
+		err = r.db.DeleteTracesByBatchID(batch_id)
 		if err != nil {
-			log.Warn("DeleteTraceByNumber failed", "err", err)
+			log.Warn("DeleteTracesByBatchID failed", "batch_id", batch_id, "err", err)
 		}
 	}
 	log.Info("transaction confirmed in layer1", "type", transactionType, "confirmation", confirmation)
