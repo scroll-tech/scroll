@@ -71,13 +71,21 @@ const (
 	RollupFinalizationSkipped
 )
 
-// TODO: TODO:
 // BlockBatch is structure of stored block_batch
 type BlockBatch struct {
-	ID             uint64       `json:"id" db:"id"`
-	Status         RollupStatus `json:"status" db:"status"`
-	RollupTxHash   string       `json:"rollup_tx_hash" db:"rollup_tx_hash"`
-	FinalizeTxHash string       `json:"finalize_tx_hash" db:"finalize_tx_hash"`
+	ID                  uint64        `json:"id" db:"id"`
+	TotalL2Gas          uint64        `json:"total_l2_gas" db:"total_l2_gas"`
+	ProvingStatus       ProvingStatus `json:"proving_status" db:"proving_status"`
+	Proof               []byte        `json:"proof" db:"proof"`
+	InstanceCommitments []byte        `json:"instance_commitments" db:"instance_commitments"`
+	ProofTimeSec        uint64        `json:"proof_time_sec" db:"proof_time_sec"`
+	RollupStatus        RollupStatus  `json:"rollup_status" db:"rollup_status"`
+	RollupTxHash        string        `json:"rollup_tx_hash" db:"rollup_tx_hash"`
+	FinalizeTxHash      string        `json:"finalize_tx_hash" db:"finalize_tx_hash"`
+	CreatedAt           time.Time     `json:"created_at" db:"created_at"`
+	ProvedAt            time.Time     `json:"proved_at" db:"proved_at"`
+	CommittedAt         time.Time     `json:"committed_at" db:"committed_at"`
+	FinalizedAt         time.Time     `json:"finalized_at" db:"finalized_at"`
 }
 
 type blockBatchOrm struct {

@@ -15,7 +15,7 @@ create table block_batch
     finalize_tx_hash        varchar         default null,
     created_at              TIMESTAMP(0)    NOT NULL DEFAULT CURRENT_TIMESTAMP,
     proved_at               TIMESTAMP(0)    DEFAULT NULL,
-    commited_at             TIMESTAMP(0)    DEFAULT NULL,
+    committed_at            TIMESTAMP(0)    DEFAULT NULL,
     finalized_at            TIMESTAMP(0)    DEFAULT NULL
 );
 
