@@ -260,36 +260,37 @@ func (o *blockBatchOrm) GetRollupStatus(id uint64) (RollupStatus, error) {
 }
 
 func (o *blockBatchOrm) UpdateRollupStatus(ctx context.Context, id uint64, status RollupStatus) error {
-	if _, err := o.db.Exec(o.db.Rebind("update block_batch set rollup_status = ? where id = ?;"), status, id); err != nil {
+	switch status {
+	case RollupCommitted:
+		_, err := o.db.Exec(o.db.Rebind("update block_batch set rollup_status = ?, committed_at = ? where id = ?;"), status, time.Now(), id)
+		return err
+	case RollupFinalized:
+		_, err := o.db.Exec(o.db.Rebind("update block_batch set rollup_status = ?, finalized_at = ? where id = ?;"), status, time.Now(), id)
+		return err
+	default:
+		_, err := o.db.Exec(o.db.Rebind("update block_batch set rollup_status = ? where id = ?;"), status, id)
 		return err
 	}
-	return nil
 }
 
-// TODO: TODO: committed_at
-func (o *blockBatchOrm) UpdateRollupTxHash(ctx context.Context, id uint64, rollup_tx_hash string) error {
-	if _, err := o.db.Exec(o.db.Rebind("update block_batch set rollup_tx_hash = ? where id = ?;"), rollup_tx_hash, id); err != nil {
-		return err
-	}
-	return nil
-}
-
-// TODO: TODO: finalized_at
-func (o *blockBatchOrm) UpdateFinalizeTxHash(ctx context.Context, id uint64, finalize_tx_hash string) error {
-	if _, err := o.db.Exec(o.db.Rebind("update block_batch set finalize_tx_hash = ? where id = ?;"), finalize_tx_hash, id); err != nil {
-		return err
-	}
-	return nil
-}
-
-// TODO: TODO: committed_at
 func (o *blockBatchOrm) UpdateRollupTxHashAndRollupStatus(ctx context.Context, id uint64, rollup_tx_hash string, status RollupStatus) error {
-	_, err := o.db.Exec(o.db.Rebind("update block_batch set rollup_tx_hash = ?, rollup_status = ? where id = ?;"), rollup_tx_hash, status, id)
-	return err
+	switch status {
+	case RollupCommitted:
+		_, err := o.db.Exec(o.db.Rebind("update block_batch set rollup_tx_hash = ?, rollup_status = ?, committed_at = ? where id = ?;"), rollup_tx_hash, status, time.Now(), id)
+		return err
+	default:
+		_, err := o.db.Exec(o.db.Rebind("update block_batch set rollup_tx_hash = ?, rollup_status = ? where id = ?;"), rollup_tx_hash, status, id)
+		return err
+	}
 }
 
-// TODO: TODO: finalized_at
 func (o *blockBatchOrm) UpdateFinalizeTxHashAndRollupStatus(ctx context.Context, id uint64, finalize_tx_hash string, status RollupStatus) error {
-	_, err := o.db.Exec(o.db.Rebind("update block_batch set finalize_tx_hash = ?, rollup_status = ? where id = ?;"), finalize_tx_hash, status, id)
-	return err
+	switch status {
+	case RollupFinalized:
+		_, err := o.db.Exec(o.db.Rebind("update block_batch set finalize_tx_hash = ?, rollup_status = ?, finalized_at = ? where id = ?;"), finalize_tx_hash, status, time.Now(), id)
+		return err
+	default:
+		_, err := o.db.Exec(o.db.Rebind("update block_batch set finalize_tx_hash = ?, rollup_status = ? where id = ?;"), finalize_tx_hash, status, id)
+		return err
+	}
 }

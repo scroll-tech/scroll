@@ -93,8 +93,6 @@ type BlockBatchOrm interface {
 	GetRollupStatus(number uint64) (RollupStatus, error)
 	GetLatestFinalizedBatch() (uint64, error)
 	UpdateRollupStatus(ctx context.Context, number uint64, status RollupStatus) error
-	UpdateRollupTxHash(ctx context.Context, number uint64, rollup_tx_hash string) error
-	UpdateFinalizeTxHash(ctx context.Context, number uint64, finalize_tx_hash string) error
 	UpdateRollupTxHashAndRollupStatus(ctx context.Context, number uint64, rollup_tx_hash string, status RollupStatus) error
 	UpdateFinalizeTxHashAndRollupStatus(ctx context.Context, number uint64, finalize_tx_hash string, status RollupStatus) error
 }
