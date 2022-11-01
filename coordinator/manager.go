@@ -421,11 +421,11 @@ func (m *Manager) StartProofGenerationSession(task *orm.BlockBatch) bool {
 	pk := roller.AuthMsg.Identity.PublicKey
 	log.Info("roller is picked", "name", roller.AuthMsg.Identity.Name, "public_key", pk)
 
-	traces, err := m.orm.GetBlockResults(map[string]interface{}{"task_id": task.ID})
+	traces, err := m.orm.GetBlockResults(map[string]interface{}{"batch_id": task.ID})
 	if err != nil {
 		log.Error(
 			"could not GetBlockResults",
-			"task_id", task.ID,
+			"batch_id", task.ID,
 			"error", err,
 		)
 		return false

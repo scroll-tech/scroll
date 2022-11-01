@@ -88,9 +88,8 @@ func (o *blockResultOrm) GetBlockResults(fields map[string]interface{}, args ...
 	return traces, rows.Close()
 }
 
-// TODO: TODO:
 func (o *blockResultOrm) GetBlocksInfos(fields map[string]interface{}, args ...string) ([]*BlockInfo, error) {
-	query := "SELECT number, hash, task_id, tx_num, gas_used, block_timestamp FROM block_result WHERE 1 = 1 "
+	query := "SELECT number, hash, batch_id, tx_num, gas_used, block_timestamp FROM block_result WHERE 1 = 1 "
 	for key := range fields {
 		query += fmt.Sprintf("AND %s=:%s ", key, key)
 	}
@@ -171,9 +170,8 @@ func (o *blockResultOrm) DeleteTraceByNumber(number uint64) error {
 	return nil
 }
 
-// TODO: TODO:
 func (o *blockResultOrm) SetBatchIDForBlocksInDBTx(dbTx *sqlx.Tx, blocks []uint64, batchID uint64) error {
-	query := "UPDATE block_result SET task_id=? WHERE number IN (?)"
+	query := "UPDATE block_result SET batch_id=? WHERE number IN (?)"
 
 	qry, args, err := sqlx.In(query, batchID, blocks)
 	if err != nil {
