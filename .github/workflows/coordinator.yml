@@ -32,8 +32,8 @@ jobs:
       uses: actions/checkout@v2
     - name: Lint
       run: |
-        rm -rf $HOME/.cache/golangci-lint 
-        cd coordinator && make lint
+        rm -rf $HOME/.cache/golangci-lint
+        make lint
   goimports-lint:
     runs-on: ubuntu-latest
     steps:
