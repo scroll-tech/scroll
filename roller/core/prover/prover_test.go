@@ -9,8 +9,8 @@ import (
 	"github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/stretchr/testify/assert"
 
-	"scroll-tech/go-roller/config"
-	"scroll-tech/go-roller/core/prover"
+	"scroll-tech/roller/config"
+	"scroll-tech/roller/core/prover"
 )
 
 type RPCTrace struct {

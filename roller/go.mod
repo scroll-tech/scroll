@@ -1,4 +1,4 @@
-module scroll-tech/go-roller
+module scroll-tech/roller
 
 go 1.18
 

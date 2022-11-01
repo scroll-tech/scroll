@@ -64,6 +64,9 @@ type Identity struct {
 	Timestamp int64 `json:"timestamp"`
 	// Roller public key
 	PublicKey string `json:"publicKey"`
+	// Version is common.Version+ZK_VERSION. Use the following to check the latest ZK_VERSION version.
+	// curl -sL https://api.github.com/repos/scroll-tech/common-rs/commits | jq -r ".[0].sha"
+	Version string `json:"version"`
 }
 
 // Sign auth message

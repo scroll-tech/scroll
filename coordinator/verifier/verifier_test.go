@@ -3,11 +3,11 @@ package verifier_test
 import (
 	"testing"
 
-	"scroll-tech/common/message"
-
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/crypto"
 	"github.com/stretchr/testify/assert"
+
+	"scroll-tech/common/message"
 )
 
 // skipped due to verifier upgrade
@@ -52,6 +52,7 @@ func TestVerifier(t *testing.T) {
 		Name:      "scroll_roller",
 		Timestamp: 1649663001,
 		PublicKey: common.Bytes2Hex(pubkey),
+		Version:   "some_version",
 	}
 	hash, err := msg.Hash()
 	assert.NoError(t, err)
