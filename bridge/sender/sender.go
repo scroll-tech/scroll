@@ -36,7 +36,7 @@ const (
 
 var (
 	// ErrEmptyAccount empty account of error.
-	ErrEmptyAccount = errors.New("has no enough accounts to send transaction")
+	ErrNoAvailableAccount = errors.New("Sender has no available account to send transaction")
 )
 
 // DefaultSenderConfig The default config
