@@ -8,8 +8,6 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"scroll-tech/common/message"
-
-	"scroll-tech/roller/core"
 )
 
 // skipped due to verifier upgrade
@@ -54,7 +52,7 @@ func TestVerifier(t *testing.T) {
 		Name:      "scroll_roller",
 		Timestamp: 1649663001,
 		PublicKey: common.Bytes2Hex(pubkey),
-		Version:   core.Version,
+		Version:   "some_version",
 	}
 	hash, err := msg.Hash()
 	assert.NoError(t, err)
