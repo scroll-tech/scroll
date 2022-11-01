@@ -2,7 +2,7 @@ package l2
 
 import (
 	"context"
-	"crypto/ecdsa"
+	"errors"
 	"math/big"
 	"strconv"
 	"time"
@@ -41,7 +41,7 @@ type Layer2Relayer struct {
 
 	messengeSender *sender.Sender
 	messengeCh     <-chan *sender.Confirmation
-	l1MessengerABI  *abi.ABI
+	l1MessengerABI *abi.ABI
 
 	rollupSender *sender.Sender
 	rollupCh     <-chan *sender.Confirmation
@@ -75,13 +75,13 @@ func NewLayer2Relayer(ctx context.Context, ethClient *ethclient.Client, proofGen
 	}
 
 	// @todo use different sender for relayer, block commit and proof finalize
-	messengerSender, err := sender.NewSender(ctx, cfg.SenderConfig, cfg.PrivateKeyList)
+	messengerSender, err := sender.NewSender(ctx, cfg.SenderConfig, cfg.MessageSenderPrivateKeys)
 	if err != nil {
 		log.Error("Failed to create messenger sender", "err", err)
 		return nil, err
 	}
 
-	rollupSender, err := sender.NewSender(ctx, cfg.SenderConfig, []*ecdsa.PrivateKey{cfg.RollerPrivateKey})
+	rollupSender, err := sender.NewSender(ctx, cfg.SenderConfig, cfg.RollupSenderPrivateKey)
 	if err != nil {
 		log.Error("Failed to create rollup sender", "err", err)
 		return nil, err
@@ -91,8 +91,8 @@ func NewLayer2Relayer(ctx context.Context, ethClient *ethclient.Client, proofGen
 		ctx:                 ctx,
 		client:              ethClient,
 		db:                  db,
-		messengerSender:     messengerSender,
-		messengerCh:         messengerSender.ConfirmChan(),
+		messengeSender:      messengerSender,
+		messengeCh:          messengerSender.ConfirmChan(),
 		l1MessengerABI:      l1MessengerABI,
 		rollupSender:        rollupSender,
 		rollupCh:            rollupSender.ConfirmChan(),
@@ -117,7 +117,9 @@ func (r *Layer2Relayer) ProcessSavedEvents() {
 	}
 	for _, msg := range msgs {
 		if err := r.processSavedEvent(msg); err != nil {
-			log.Error("failed to process l2 saved event", "err", err)
+			if !errors.Is(err, sender.ErrNoAvailableAccount) {
+				log.Error("failed to process l2 saved event", "err", err)
+			}
 			return
 		}
 	}
@@ -161,7 +163,7 @@ func (r *Layer2Relayer) processSavedEvent(msg *orm.Layer2Message) error {
 		return err
 	}
 
-	hash, err := r.messengerSender.SendTransaction(msg.Layer2Hash, &r.cfg.MessengerContractAddress, big.NewInt(0), data)
+	hash, err := r.messengeSender.SendTransaction(msg.Layer2Hash, &r.cfg.MessengerContractAddress, big.NewInt(0), data)
 	if err != nil {
 		log.Error("Failed to send relayMessageWithProof tx to L1", "err", err)
 		return err
@@ -389,7 +391,7 @@ func (r *Layer2Relayer) Start() {
 				r.ProcessSavedEvents()
 				r.ProcessPendingBlocks()
 				r.ProcessCommittedBlocks()
-			case confirmation := <-r.messengerCh:
+			case confirmation := <-r.messengeCh:
 				r.handleConfirmation(confirmation)
 			case confirmation := <-r.rollupCh:
 				r.handleConfirmation(confirmation)

@@ -78,8 +78,8 @@ type RelayerConfig struct {
 	// sender config
 	SenderConfig *SenderConfig `json:"sender_config"`
 	// The private key of the relayer
-	MessageSenderPrivateKeys   []*ecdsa.PrivateKey `json:"-"`
-	RollupSenderPrivateKey []*ecdsa.PrivateKey   `json:"-"`
+	MessageSenderPrivateKeys []*ecdsa.PrivateKey `json:"-"`
+	RollupSenderPrivateKey   []*ecdsa.PrivateKey `json:"-"`
 }
 
 // RelayerConfigAlias RelayerConfig alias name
@@ -90,8 +90,8 @@ func (r *RelayerConfig) UnmarshalJSON(input []byte) error {
 	var jsonConfig struct {
 		RelayerConfigAlias
 		// The private key of the relayer
-		PrivateKeyList   []string `json:"private_key_list"`
-		RollerPrivateKey string   `json:"roller_private_key,omitempty"`
+		MessageSenderPrivateKeys []string `json:"message_sender_private_keys"`
+		RollupSenderPrivateKey   string   `json:"roller_private_key,omitempty"`
 	}
 	if err := json.Unmarshal(input, &jsonConfig); err != nil {
 		return err
@@ -99,21 +99,21 @@ func (r *RelayerConfig) UnmarshalJSON(input []byte) error {
 
 	// Get messenger private key list.
 	*r = RelayerConfig(jsonConfig.RelayerConfigAlias)
-	for _, privStr := range jsonConfig.PrivateKeyList {
+	for _, privStr := range jsonConfig.MessageSenderPrivateKeys {
 		priv, err := crypto.HexToECDSA(privStr)
 		if err != nil {
 			return fmt.Errorf("uncorrect private_key_list format, err: %v", err)
 		}
-		r.PrivateKeyList = append(r.PrivateKeyList, priv)
+		r.MessageSenderPrivateKeys = append(r.MessageSenderPrivateKeys, priv)
 	}
 
 	// Get rollup private key
-	if len(jsonConfig.RollerPrivateKey) > 0 {
-		priv, err := crypto.HexToECDSA(jsonConfig.RollerPrivateKey)
+	if len(jsonConfig.RollupSenderPrivateKey) > 0 {
+		priv, err := crypto.HexToECDSA(jsonConfig.RollupSenderPrivateKey)
 		if err != nil {
 			return fmt.Errorf("uncorrect roller_private_key format, err: %v", err)
 		}
-		r.RollerPrivateKey = priv
+		r.RollupSenderPrivateKey = append(r.RollupSenderPrivateKey, priv)
 	}
 
 	return nil

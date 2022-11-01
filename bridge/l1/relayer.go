@@ -48,7 +48,7 @@ func NewLayer1Relayer(ctx context.Context, ethClient *ethclient.Client, l1Confir
 		return nil, err
 	}
 
-	sender, err := sender.NewSender(ctx, cfg.SenderConfig, cfg.PrivateKeyList)
+	sender, err := sender.NewSender(ctx, cfg.SenderConfig, cfg.MessageSenderPrivateKeys)
 	if err != nil {
 		log.Error("new sender failed", "err", err)
 		return nil, err

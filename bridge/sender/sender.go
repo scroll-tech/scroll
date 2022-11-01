@@ -35,8 +35,8 @@ const (
 )
 
 var (
-	// ErrEmptyAccount empty account of error.
-	ErrNoAvailableAccount = errors.New("Sender has no available account to send transaction")
+	// ErrNoAvailableAccount empty account of error.
+	ErrNoAvailableAccount = errors.New("sender has no available account to send transaction")
 )
 
 // DefaultSenderConfig The default config
@@ -195,7 +195,7 @@ func (s *Sender) SendTransaction(ID string, target *common.Address, value *big.I
 	// get
 	auth := s.accs.getAccount()
 	if auth == nil {
-		return common.Hash{}, ErrEmptyAccount
+		return common.Hash{}, ErrNoAvailableAccount
 	}
 	defer s.accs.setAccount(auth)
 
@@ -300,7 +300,7 @@ func (s *Sender) resubmitTransaction(feeData *FeeData, tx *types.Transaction) (*
 	// Get a idle account from account pool.
 	auth := s.accs.getAccount()
 	if auth == nil {
-		return nil, ErrEmptyAccount
+		return nil, ErrNoAvailableAccount
 	}
 	defer s.accs.setAccount(auth)
 
@@ -365,7 +365,7 @@ func (s *Sender) CheckPendingTransaction(header *types.Header) {
 			tx, err := s.resubmitTransaction(pending.feeData, pending.tx)
 			if err != nil {
 				// If accounts channel is empty, wait 1 second.
-				if errors.Is(err, ErrEmptyAccount) {
+				if errors.Is(err, ErrNoAvailableAccount) {
 					time.Sleep(time.Second)
 				}
 				log.Error("failed to resubmit transaction, reset submitAt", "tx hash", pending.tx.Hash().String(), "err", err)

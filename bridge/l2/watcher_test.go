@@ -106,7 +106,7 @@ func TestWatcherFunction(t *testing.T) {
 		numTransactions := 3
 
 		for i := 0; i < numTransactions; i++ {
-			tx := mock.SendTxToL2Client(t, client, cfg.L2Config.RelayerConfig.PrivateKeyList[0])
+			tx := mock.SendTxToL2Client(t, client, cfg.L2Config.RelayerConfig.MessageSenderPrivateKeys[0])
 			// wait for mining
 			_, err = bind.WaitMined(context.Background(), client, tx)
 			assert.NoError(t, err)
@@ -134,7 +134,7 @@ func TestWatcherFunction(t *testing.T) {
 		previousHeight, err = client.BlockNumber(context.Background())
 		assert.NoError(t, err)
 
-		auth := prepareAuth(t, client, cfg.L2Config.RelayerConfig.PrivateKeyList[0])
+		auth := prepareAuth(t, client, cfg.L2Config.RelayerConfig.MessageSenderPrivateKeys[0])
 
 		// deploy mock bridge
 		_, tx, instance, err := mock_bridge.DeployMockBridge(auth, client)
@@ -208,7 +208,7 @@ func TestWatcherFunction(t *testing.T) {
 		previousHeight, err := client.BlockNumber(context.Background()) // shallow the global previousHeight
 		assert.NoError(t, err)
 
-		auth := prepareAuth(t, client, cfg.L2Config.RelayerConfig.PrivateKeyList[0])
+		auth := prepareAuth(t, client, cfg.L2Config.RelayerConfig.MessageSenderPrivateKeys[0])
 
 		_, trx, instance, err := mock_bridge.DeployMockBridge(auth, client)
 		assert.NoError(t, err)
