@@ -93,7 +93,7 @@ func testBatchSender(t *testing.T, batchSize int) {
 		idCache   = cmap.New()
 		confirmCh = newSender.ConfirmChan()
 	)
-	for idx := 0; idx < newSender.AccCount(); idx++ {
+	for idx := 0; idx < newSender.NumberOfAccounts(); idx++ {
 		index := idx
 		eg.Go(func() error {
 			for i := 0; i < TX_BATCH; i++ {
@@ -115,7 +115,7 @@ func testBatchSender(t *testing.T, batchSize int) {
 	if err := eg.Wait(); err != nil {
 		t.Error(err)
 	}
-	t.Logf("successful send batch txs, batch size: %d, total count: %d", newSender.AccCount(), TX_BATCH*newSender.AccCount())
+	t.Logf("successful send batch txs, batch size: %d, total count: %d", newSender.NumberOfAccounts(), TX_BATCH*newSender.NumberOfAccounts())
 
 	// avoid 10 mins cause testcase panic
 	after := time.After(80 * time.Second)

@@ -81,7 +81,7 @@ func NewLayer2Relayer(ctx context.Context, ethClient *ethclient.Client, proofGen
 		return nil, err
 	}
 
-	rollupSender, err := sender.NewSender(ctx, cfg.SenderConfig, cfg.RollupSenderPrivateKey)
+	rollupSender, err := sender.NewSender(ctx, cfg.SenderConfig, cfg.RollupSenderPrivateKeys)
 	if err != nil {
 		log.Error("Failed to create rollup sender", "err", err)
 		return nil, err

@@ -105,7 +105,6 @@ func (r *Layer1Relayer) processSavedEvent(msg *orm.Layer1Message) error {
 
 	hash, err := r.sender.SendTransaction(msg.Layer1Hash, &r.cfg.MessengerContractAddress, big.NewInt(0), data)
 	if err != nil {
-		log.Error("Failed to send relayMessage tx to L2", "msg.nonce", msg.Nonce, "msg.height", msg.Height, "err", err)
 		return err
 	}
 	log.Info("relayMessage to layer2", "layer1 hash", msg.Layer1Hash, "tx hash", hash)
