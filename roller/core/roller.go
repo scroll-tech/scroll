@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"scroll-tech/common/version"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -105,7 +106,7 @@ func (r *Roller) Register() error {
 			Name:      r.cfg.RollerName,
 			Timestamp: time.Now().UnixMilli(),
 			PublicKey: common.Bytes2Hex(crypto.FromECDSAPub(&priv.PublicKey)),
-			Version:   ZK_VERSION,
+			Version:   fmt.Sprintf("%s-%s", version.Version, ZK_VERSION),
 		},
 		Signature: "",
 	}
