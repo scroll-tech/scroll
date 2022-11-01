@@ -39,7 +39,7 @@ type Layer2Relayer struct {
 	db  database.OrmFactory
 	cfg *config.RelayerConfig
 
-	messengerSender *sender.Sender
+	messengeSender *sender.Sender
 	messengeCh     <-chan *sender.Confirmation
 	l1MessengerABI  *abi.ABI
 
