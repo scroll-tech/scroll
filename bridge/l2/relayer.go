@@ -253,9 +253,9 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 	log.Info("commitBatch in layer1", "id", id, "hash", hash)
 
 	// record and sync with db, @todo handle db error
-	err = r.db.UpdateRollupTxHashAndStatus(r.ctx, id, hash.String(), orm.RollupCommitting)
+	err = r.db.UpdateRollupTxHashAndRollupStatus(r.ctx, id, hash.String(), orm.RollupCommitting)
 	if err != nil {
-		log.Error("UpdateRollupTxHashAndStatus failed", "id", id, "err", err)
+		log.Error("UpdateRollupTxHashAndRollupStatus failed", "id", id, "err", err)
 	}
 	r.processingCommitment[strconv.FormatUint(id, 10)] = id
 }
@@ -274,28 +274,28 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 	id := batches[0]
 	// @todo add support to relay multiple batches
 
-	status, err := r.db.GetTaskStatusByID(id)
+	status, err := r.db.GetProvingStatusByID(id)
 	if err != nil {
 		log.Error("GetTaskStatusByID failed", "id", id, "err", err)
 		return
 	}
 
 	switch status {
-	case orm.TaskUnassigned, orm.TaskAssigned:
+	case orm.ProvingTaskUnassigned, orm.ProvingTaskAssigned:
 		// The proof for this block is not ready yet.
 		return
 
-	case orm.TaskProved:
+	case orm.ProvingTaskProved:
 		// It's an intermediate state. The roller manager received the proof but has not verified
 		// the proof yet. We don't roll up the proof until it's verified.
 		return
 
-	case orm.TaskFailed, orm.TaskSkipped:
+	case orm.ProvingTaskFailed, orm.ProvingTaskSkipped:
 		if err = r.db.UpdateRollupStatus(r.ctx, id, orm.RollupFinalizationSkipped); err != nil {
 			log.Warn("UpdateRollupStatus failed", "id", id, "err", err)
 		}
 
-	case orm.TaskVerified:
+	case orm.ProvingTaskVerified:
 		log.Info("Start to roll up zk proof", "id", id)
 		success := false
 
@@ -356,9 +356,9 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 		log.Info("finalizeBlockWithProof in layer1", "id", id, "hash", hash)
 
 		// record and sync with db, @todo handle db error
-		err = r.db.UpdateFinalizeTxHashAndStatus(r.ctx, id, hash.String(), orm.RollupFinalizing)
+		err = r.db.UpdateFinalizeTxHashAndRollupStatus(r.ctx, id, hash.String(), orm.RollupFinalizing)
 		if err != nil {
-			log.Warn("UpdateFinalizeTxHashAndStatus failed", "id", id, "err", err)
+			log.Warn("UpdateFinalizeTxHashAndRollupStatus failed", "id", id, "err", err)
 		}
 		success = true
 		r.processingFinalization[strconv.FormatUint(id, 10)] = id
@@ -457,9 +457,9 @@ func (r *Layer2Relayer) handleConfirmation(confirmation *sender.Confirmation) {
 	if blockHeight, ok := r.processingCommitment[confirmation.ID]; ok {
 		transactionType = "BlockCommitment"
 		// @todo handle db error
-		err := r.db.UpdateRollupTxHashAndStatus(r.ctx, blockHeight, confirmation.TxHash.String(), orm.RollupCommitted)
+		err := r.db.UpdateRollupTxHashAndRollupStatus(r.ctx, blockHeight, confirmation.TxHash.String(), orm.RollupCommitted)
 		if err != nil {
-			log.Warn("UpdateRollupTxHashAndStatus failed", "err", err)
+			log.Warn("UpdateRollupTxHashAndRollupStatus failed", "err", err)
 		}
 		delete(r.processingCommitment, confirmation.ID)
 	}
@@ -468,9 +468,9 @@ func (r *Layer2Relayer) handleConfirmation(confirmation *sender.Confirmation) {
 	if blockHeight, ok := r.processingFinalization[confirmation.ID]; ok {
 		transactionType = "ProofFinalization"
 		// @todo handle db error
-		err := r.db.UpdateFinalizeTxHashAndStatus(r.ctx, blockHeight, confirmation.TxHash.String(), orm.RollupFinalized)
+		err := r.db.UpdateFinalizeTxHashAndRollupStatus(r.ctx, blockHeight, confirmation.TxHash.String(), orm.RollupFinalized)
 		if err != nil {
-			log.Warn("UpdateFinalizeTxHashAndStatus failed", "err", err)
+			log.Warn("UpdateFinalizeTxHashAndRollupStatus failed", "err", err)
 		}
 		delete(r.processingFinalization, confirmation.ID)
 
