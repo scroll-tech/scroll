@@ -39,8 +39,8 @@ type Layer2Relayer struct {
 	db  database.OrmFactory
 	cfg *config.RelayerConfig
 
-	messengeSender *sender.Sender
-	messengeCh     <-chan *sender.Confirmation
+	messageSender  *sender.Sender
+	messageCh      <-chan *sender.Confirmation
 	l1MessengerABI *abi.ABI
 
 	rollupSender *sender.Sender
@@ -91,8 +91,8 @@ func NewLayer2Relayer(ctx context.Context, ethClient *ethclient.Client, proofGen
 		ctx:                 ctx,
 		client:              ethClient,
 		db:                  db,
-		messengeSender:      messengerSender,
-		messengeCh:          messengerSender.ConfirmChan(),
+		messageSender:       messengerSender,
+		messageCh:           messengerSender.ConfirmChan(),
 		l1MessengerABI:      l1MessengerABI,
 		rollupSender:        rollupSender,
 		rollupCh:            rollupSender.ConfirmChan(),
@@ -163,7 +163,7 @@ func (r *Layer2Relayer) processSavedEvent(msg *orm.Layer2Message) error {
 		return err
 	}
 
-	hash, err := r.messengeSender.SendTransaction(msg.Layer2Hash, &r.cfg.MessengerContractAddress, big.NewInt(0), data)
+	hash, err := r.messageSender.SendTransaction(msg.Layer2Hash, &r.cfg.MessengerContractAddress, big.NewInt(0), data)
 	if err != nil {
 		return err
 	}
@@ -391,7 +391,7 @@ func (r *Layer2Relayer) Start() {
 				r.ProcessSavedEvents()
 				r.ProcessPendingBlocks()
 				r.ProcessCommittedBlocks()
-			case confirmation := <-r.messengeCh:
+			case confirmation := <-r.messageCh:
 				r.handleConfirmation(confirmation)
 			case confirmation := <-r.rollupCh:
 				r.handleConfirmation(confirmation)

@@ -103,7 +103,7 @@ func (r *RelayerConfig) UnmarshalJSON(input []byte) error {
 	// Get messenger private key list.
 	*r = RelayerConfig(jsonConfig.RelayerConfigAlias)
 	for _, privStr := range jsonConfig.MessageSenderPrivateKeys {
-		priv, err := crypto.HexToECDSA(privStr)
+		priv, err := crypto.ToECDSA(common.FromHex(privStr))
 		if err != nil {
 			return fmt.Errorf("uncorrect private_key_list format, err: %v", err)
 		}
@@ -112,7 +112,7 @@ func (r *RelayerConfig) UnmarshalJSON(input []byte) error {
 
 	// Get rollup private key
 	for _, privStr := range jsonConfig.RollupSenderPrivateKeys {
-		priv, err := crypto.HexToECDSA(privStr)
+		priv, err := crypto.ToECDSA(common.FromHex(privStr))
 		if err != nil {
 			return fmt.Errorf("uncorrect roller_private_key format, err: %v", err)
 		}

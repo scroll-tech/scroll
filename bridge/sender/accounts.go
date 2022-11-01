@@ -70,8 +70,8 @@ func (a *accounts) getAccount() *bind.TransactOpts {
 	}
 }
 
-// setAccount set used auth into channel.
-func (a *accounts) setAccount(auth *bind.TransactOpts) {
+// releaseAccount set used auth into channel.
+func (a *accounts) releaseAccount(auth *bind.TransactOpts) {
 	a.accsCh <- auth
 }
 

@@ -197,7 +197,7 @@ func (s *Sender) SendTransaction(ID string, target *common.Address, value *big.I
 	if auth == nil {
 		return common.Hash{}, ErrNoAvailableAccount
 	}
-	defer s.auths.setAccount(auth)
+	defer s.auths.releaseAccount(auth)
 
 	var (
 		feeData *FeeData
@@ -302,7 +302,7 @@ func (s *Sender) resubmitTransaction(feeData *FeeData, tx *types.Transaction) (*
 	if auth == nil {
 		return nil, ErrNoAvailableAccount
 	}
-	defer s.auths.setAccount(auth)
+	defer s.auths.releaseAccount(auth)
 
 	escalateMultipleNum := new(big.Int).SetUint64(s.config.EscalateMultipleNum)
 	escalateMultipleDen := new(big.Int).SetUint64(s.config.EscalateMultipleDen)
