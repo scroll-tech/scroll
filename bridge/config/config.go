@@ -4,6 +4,7 @@ import (
 	"crypto/ecdsa"
 	"encoding/json"
 	"fmt"
+	"math/big"
 	"os"
 	"path/filepath"
 
@@ -31,8 +32,10 @@ type SenderConfig struct {
 	EscalateMultipleDen uint64 `json:"escalate_multiple_den"`
 	// The maximum gas price can be used to send transaction.
 	MaxGasPrice uint64 `json:"max_gas_price"`
-	// the transaction type to use: LegacyTx, AccessListTx, DynamicFeeTx
+	// The transaction type to use: LegacyTx, AccessListTx, DynamicFeeTx
 	TxType string `json:"tx_type"`
+	// The min balance set for check and set balance for sender's accounts.
+	MinBalance *big.Int `json:"min_balance,omitempty"`
 }
 
 // L1Config loads l1eth configuration items.

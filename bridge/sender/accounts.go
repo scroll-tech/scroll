@@ -13,28 +13,25 @@ import (
 	"github.com/scroll-tech/go-ethereum/log"
 )
 
-var (
-	minBls = big.NewInt(0)
-)
-
-func init() {
-	// Min balance is 100 Ether
-	minBls.SetString("100000000000000000000", 10)
-}
-
 type accounts struct {
 	client *ethclient.Client
 
-	accounts map[common.Address]*bind.TransactOpts
-	accsCh   chan *bind.TransactOpts
+	minBalance *big.Int
+	accounts   map[common.Address]*bind.TransactOpts
+	accsCh     chan *bind.TransactOpts
 }
 
 // newAccounts Create an accounts instance.
-func newAccounts(ctx context.Context, client *ethclient.Client, privs []*ecdsa.PrivateKey) (*accounts, error) {
+func newAccounts(ctx context.Context, minBalance *big.Int, client *ethclient.Client, privs []*ecdsa.PrivateKey) (*accounts, error) {
+	if minBalance == nil {
+		minBalance = big.NewInt(0)
+		minBalance.SetString("100000000000000000000", 10)
+	}
 	accs := &accounts{
-		client:   client,
-		accounts: make(map[common.Address]*bind.TransactOpts, len(privs)),
-		accsCh:   make(chan *bind.TransactOpts, len(privs)+2),
+		client:     client,
+		minBalance: minBalance,
+		accounts:   make(map[common.Address]*bind.TransactOpts, len(privs)),
+		accsCh:     make(chan *bind.TransactOpts, len(privs)+2),
 	}
 
 	// get chainID from client
@@ -74,8 +71,8 @@ func (a *accounts) getAccount() *bind.TransactOpts {
 }
 
 // setAccount set used auth into channel.
-func (a *accounts) setAccount(acc *bind.TransactOpts) {
-	a.accsCh <- acc
+func (a *accounts) setAccount(auth *bind.TransactOpts) {
+	a.accsCh <- auth
 }
 
 // reSetNonce reset nonce if send signed tx failed.
@@ -98,7 +95,7 @@ func (a *accounts) checkAndSetBalance(ctx context.Context) error {
 
 	for addr, auth := range a.accounts {
 		bls, err := a.client.BalanceAt(ctx, addr, nil)
-		if err != nil || bls.Cmp(minBls) < 0 {
+		if err != nil || bls.Cmp(a.minBalance) < 0 {
 			if err != nil {
 				log.Warn("failed to get balance", "address", addr.String(), "err", err)
 				return err
@@ -121,7 +118,7 @@ func (a *accounts) checkAndSetBalance(ctx context.Context) error {
 		err error
 	)
 	for _, auth := range loseAuths {
-		tx, err = a.createSignedTx(root, &auth.From, minBls)
+		tx, err = a.createSignedTx(root, &auth.From, a.minBalance)
 		if err != nil {
 			return err
 		}
@@ -130,7 +127,7 @@ func (a *accounts) checkAndSetBalance(ctx context.Context) error {
 			log.Error("Failed to send balance to account", "err", err)
 			return err
 		}
-		log.Debug("send balance to account", "account", auth.From.String(), "balance", minBls.String())
+		log.Debug("send balance to account", "account", auth.From.String(), "balance", a.minBalance.String())
 	}
 	// wait util mined
 	if _, err = bind.WaitMined(ctx, a.client, tx); err != nil {
@@ -138,7 +135,7 @@ func (a *accounts) checkAndSetBalance(ctx context.Context) error {
 	}
 
 	// Reset root's nonce.
-	a.reSetNonce(ctx, root)
+	a.resetNonce(ctx, root)
 
 	return nil
 }

@@ -15,7 +15,8 @@
         "escalate_multiple_num": 11,
         "escalate_multiple_den": 10,
         "max_gas_price": 10000000000,
-        "tx_type": "AccessListTx"
+        "tx_type": "AccessListTx",
+        "min_balance": 100000000000000000000
       },
       "message_sender_private_keys": [
         "abc123abc123abc123abc123abc123abc123abc123abc123abc123abc123abc1"
@@ -43,7 +44,8 @@
         "escalate_multiple_num": 11,
         "escalate_multiple_den": 10,
         "max_gas_price": 10000000000,
-        "tx_type": "DynamicFeeTx"
+        "tx_type": "DynamicFeeTx",
+        "min_balance": 100000000000000000000
       },
       "message_sender_private_keys": [
         "1212121212121212121212121212121212121212121212121212121212121212"

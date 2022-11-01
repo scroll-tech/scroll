@@ -81,7 +81,7 @@ type Sender struct {
 	ctx     context.Context
 
 	// account fields.
-	accs *accounts
+	auths *accounts
 
 	mu            sync.Mutex
 	blockNumber   uint64   // Current block number on chain.
@@ -109,7 +109,7 @@ func NewSender(ctx context.Context, config *config.SenderConfig, privs []*ecdsa.
 		return nil, err
 	}
 
-	accs, err := newAccounts(ctx, client, privs)
+	auths, err := newAccounts(ctx, config.MinBalance, client, privs)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create account pool, err: %v", err)
 	}
@@ -125,7 +125,7 @@ func NewSender(ctx context.Context, config *config.SenderConfig, privs []*ecdsa.
 		config:        config,
 		client:        client,
 		chainID:       chainID,
-		accs:          accs,
+		auths:         auths,
 		confirmCh:     make(chan *Confirmation, 128),
 		baseFeePerGas: header.BaseFee.Uint64(),
 		pendingTxs:    sync.Map{},
@@ -150,7 +150,7 @@ func (s *Sender) ConfirmChan() <-chan *Confirmation {
 
 // NumberOfAccounts return the count of accounts.
 func (s *Sender) NumberOfAccounts() int {
-	return len(s.accs.accounts)
+	return len(s.auths.accounts)
 }
 
 func (s *Sender) getFeeData(auth *bind.TransactOpts, target *common.Address, value *big.Int, data []byte) (*FeeData, error) {
@@ -193,11 +193,11 @@ func (s *Sender) SendTransaction(ID string, target *common.Address, value *big.I
 		return common.Hash{}, fmt.Errorf("has the repeat tx ID, ID: %s", ID)
 	}
 	// get
-	auth := s.accs.getAccount()
+	auth := s.auths.getAccount()
 	if auth == nil {
 		return common.Hash{}, ErrNoAvailableAccount
 	}
-	defer s.accs.setAccount(auth)
+	defer s.auths.setAccount(auth)
 
 	var (
 		feeData *FeeData
@@ -286,7 +286,7 @@ func (s *Sender) createAndSendTx(auth *bind.TransactOpts, feeData *FeeData, targ
 		log.Error("failed to send tx", "tx hash", tx.Hash().String(), "err", err)
 		// Check if contain nonce, and reset nonce
 		if strings.Contains(err.Error(), "nonce") {
-			s.accs.reSetNonce(context.Background(), auth)
+			s.auths.resetNonce(context.Background(), auth)
 		}
 		return
 	}
@@ -298,11 +298,11 @@ func (s *Sender) createAndSendTx(auth *bind.TransactOpts, feeData *FeeData, targ
 
 func (s *Sender) resubmitTransaction(feeData *FeeData, tx *types.Transaction) (*types.Transaction, error) {
 	// Get a idle account from account pool.
-	auth := s.accs.getAccount()
+	auth := s.auths.getAccount()
 	if auth == nil {
 		return nil, ErrNoAvailableAccount
 	}
-	defer s.accs.setAccount(auth)
+	defer s.auths.setAccount(auth)
 
 	escalateMultipleNum := new(big.Int).SetUint64(s.config.EscalateMultipleNum)
 	escalateMultipleDen := new(big.Int).SetUint64(s.config.EscalateMultipleDen)
@@ -397,7 +397,7 @@ func (s *Sender) loop(ctx context.Context) {
 			s.CheckPendingTransaction(header)
 		case <-checkBalanceTicker.C:
 			// Check and set balance.
-			_ = s.accs.checkAndSetBalance(ctx)
+			_ = s.auths.checkAndSetBalance(ctx)
 		case <-ctx.Done():
 			return
 		case <-s.stopCh:
