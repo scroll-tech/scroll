@@ -88,7 +88,7 @@ func (o *blockResultOrm) GetBlockResults(fields map[string]interface{}, args ...
 	return traces, rows.Close()
 }
 
-func (o *blockResultOrm) GetBlocksInfos(fields map[string]interface{}, args ...string) ([]*BlockInfo, error) {
+func (o *blockResultOrm) GetBlockInfos(fields map[string]interface{}, args ...string) ([]*BlockInfo, error) {
 	query := "SELECT number, hash, batch_id, tx_num, gas_used, block_timestamp FROM block_result WHERE 1 = 1 "
 	for key := range fields {
 		query += fmt.Sprintf("AND %s=:%s ", key, key)

@@ -71,7 +71,7 @@ type BlockResultOrm interface {
 	GetBlockResultsLatestHeight() (int64, error)
 	GetBlockResultsOldestHeight() (int64, error)
 	GetBlockResults(fields map[string]interface{}, args ...string) ([]*types.BlockResult, error)
-	GetBlocksInfos(fields map[string]interface{}, args ...string) ([]*BlockInfo, error)
+	GetBlockInfos(fields map[string]interface{}, args ...string) ([]*BlockInfo, error)
 	GetHashByNumber(number uint64) (*common.Hash, error)
 	DeleteTraceByNumber(number uint64) error
 	InsertBlockResults(ctx context.Context, blockResults []*types.BlockResult) error

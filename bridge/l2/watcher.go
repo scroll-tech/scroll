@@ -256,7 +256,7 @@ var (
 // + TraceHasUnsupportedOpcodes
 // + proofGenerationFreq
 func (w *WatcherClient) tryProposeBatch() error {
-	blocks, err := w.orm.GetBlocksInfos(
+	blocks, err := w.orm.GetBlockInfos(
 		map[string]interface{}{"batch_id": "null"}, // TODO: TODO: is this syntax correct?
 		"order by number DESC",
 	)
