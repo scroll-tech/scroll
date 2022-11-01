@@ -60,7 +60,7 @@ type Layer2Message struct {
 type BlockInfo struct {
 	Number         uint64 `json:"number" db:"number"`
 	Hash           string `json:"hash" db:"hash"`
-	TaskID         string `json:"task_id" db:"task_id"`
+	BatchID        string `json:"batch_id" db:"batch_id"`
 	TxNum          string `json:"tx_num" db:"tx_num"`
 	GasUsed        uint64 `json:"gas_used" db:"gas_used"`
 	BlockTimestamp uint64 `json:"block_timestamp" db:"block_timestamp"`
@@ -80,36 +80,25 @@ type BlockResultOrm interface {
 	SetBatchIDForBlocksInDBTx(dbTx *sqlx.Tx, blocks []uint64, batchID uint64) error
 }
 
-// TODO: TODO:
-// BlockBatch is structure of stored block_batch
-type BlockBatch struct {
-	ID             uint64       `json:"id" db:"id"`
-	Status         RollupStatus `json:"status" db:"status"`
-	RollupTxHash   string       `json:"rollup_tx_hash" db:"rollup_tx_hash"`
-	FinalizeTxHash string       `json:"finalize_tx_hash" db:"finalize_tx_hash"`
-}
-
-// TODO: TODO:
 // BlockBatchOrm block_batch operation interface
 type BlockBatchOrm interface {
-	GetProveTasks(fields map[string]interface{}, args ...string) ([]*ProveTask, error)
-	GetTaskStatusByID(id uint64) (TaskStatus, error)
+	GetBlockBatches(fields map[string]interface{}, args ...string) ([]*BlockBatch, error)
+	GetProvingStatusByID(id uint64) (ProvingStatus, error)
 	GetVerifiedProofAndInstanceByID(id uint64) ([]byte, []byte, error)
 	UpdateProofByID(ctx context.Context, id uint64, proof, instance_commitments []byte, proofTimeSec uint64) error
-	UpdateTaskStatus(id uint64, status TaskStatus) error
+	UpdateProvingStatus(id uint64, status ProvingStatus) error
 	NewBatchInDBTx(dbTx *sqlx.Tx, gasUsed uint64) (uint64, error)
-
-	RollupRecordExist(number uint64) (bool, error)
+	BatchRecordExist(number uint64) (bool, error)
 	GetPendingBatches() ([]uint64, error)
 	GetCommittedBatches() ([]uint64, error)
 	GetRollupStatus(number uint64) (RollupStatus, error)
 	GetLatestFinalizedBatch() (uint64, error)
-	InsertPendingBatches(ctx context.Context, blocks []uint64) error
+	// InsertPendingBatches(ctx context.Context, blocks []uint64) error
 	UpdateRollupStatus(ctx context.Context, number uint64, status RollupStatus) error
 	UpdateRollupTxHash(ctx context.Context, number uint64, rollup_tx_hash string) error
 	UpdateFinalizeTxHash(ctx context.Context, number uint64, finalize_tx_hash string) error
-	UpdateRollupTxHashAndStatus(ctx context.Context, number uint64, rollup_tx_hash string, status RollupStatus) error
-	UpdateFinalizeTxHashAndStatus(ctx context.Context, number uint64, finalize_tx_hash string, status RollupStatus) error
+	UpdateRollupTxHashAndRollupStatus(ctx context.Context, number uint64, rollup_tx_hash string, status RollupStatus) error
+	UpdateFinalizeTxHashAndRollupStatus(ctx context.Context, number uint64, finalize_tx_hash string, status RollupStatus) error
 }
 
 // Layer1MessageOrm is layer1 message db interface

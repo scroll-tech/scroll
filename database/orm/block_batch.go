@@ -71,6 +71,15 @@ const (
 	RollupFinalizationSkipped
 )
 
+// TODO: TODO:
+// BlockBatch is structure of stored block_batch
+type BlockBatch struct {
+	ID             uint64       `json:"id" db:"id"`
+	Status         RollupStatus `json:"status" db:"status"`
+	RollupTxHash   string       `json:"rollup_tx_hash" db:"rollup_tx_hash"`
+	FinalizeTxHash string       `json:"finalize_tx_hash" db:"finalize_tx_hash"`
+}
+
 type blockBatchOrm struct {
 	db *sqlx.DB
 }
@@ -143,7 +152,7 @@ func (o *blockBatchOrm) UpdateProofByID(ctx context.Context, id uint64, proof, i
 }
 
 // `proved_at` is handled in `UpdateProofByID`, so we don't need to worry about it here
-func (o *blockBatchOrm) UpdateProvingStatus(id uint64, status TaskStatus) error {
+func (o *blockBatchOrm) UpdateProvingStatus(id uint64, status ProvingStatus) error {
 	if _, err := o.db.Exec(o.db.Rebind("UPDATE block_batch set proving_status = ? where id = ?;"), status, id); err != nil {
 		return err
 	}
