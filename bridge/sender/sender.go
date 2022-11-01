@@ -149,7 +149,7 @@ func (s *Sender) ConfirmChan() <-chan *Confirmation {
 }
 
 // AccCount return the count of accounts.
-func (s *Sender) AccCount() int {
+func (s *Sender) NumberOfAccounts() int {
 	return len(s.accs.accounts)
 }
 
