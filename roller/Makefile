@@ -22,6 +22,9 @@ test-prover:
 test-gpu-prover:
 	go test -tags gpu -timeout 0 -v ./core/prover
 
+lastest-zk-version:
+	curl -sL https://api.github.com/repos/scroll-tech/common-rs/commits | jq -r ".[0].sha"
+
 lint: ## Lint the files - used for CI
 	GOBIN=$(PWD)/build/bin go run ../build/lint.go
 
