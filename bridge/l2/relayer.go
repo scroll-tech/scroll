@@ -2,6 +2,7 @@ package l2
 
 import (
 	"context"
+	"fmt"
 	"math/big"
 	"strconv"
 	"time"
@@ -276,7 +277,7 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 
 	status, err := r.db.GetProvingStatusByID(id)
 	if err != nil {
-		log.Error("GetTaskStatusByID failed", "id", id, "err", err)
+		log.Error("GetProvingStatusByID failed", "id", id, "err", err)
 		return
 	}
 
@@ -436,8 +437,9 @@ func (r *Layer2Relayer) fetchMissingBlockResultByHeight(height uint64) (*types.B
 			log.Error("failed to store missing blockResult", "height", height, "err", err)
 		}
 		return trace, nil
+	} else {
+		return nil, fmt.Errorf("fetched block_trace is invalid, height: %d", height)
 	}
-	return nil, nil
 }
 
 func (r *Layer2Relayer) handleConfirmation(confirmation *sender.Confirmation) {
