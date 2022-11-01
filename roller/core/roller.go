@@ -27,7 +27,10 @@ import (
 )
 
 // ZK_VERSION is commit-id of prover/rust/cargo.lock/common-rs
-var ZK_VERSION string
+var (
+	ZK_VERSION string
+	Version    = fmt.Sprintf("%s-%s", version.Version, ZK_VERSION)
+)
 
 var (
 	writeWait = time.Second + readWait
@@ -106,7 +109,7 @@ func (r *Roller) Register() error {
 			Name:      r.cfg.RollerName,
 			Timestamp: time.Now().UnixMilli(),
 			PublicKey: common.Bytes2Hex(crypto.FromECDSAPub(&priv.PublicKey)),
-			Version:   fmt.Sprintf("%s-%s", version.Version, ZK_VERSION),
+			Version:   Version,
 		},
 		Signature: "",
 	}

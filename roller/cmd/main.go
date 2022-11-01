@@ -8,8 +8,6 @@ import (
 	"github.com/urfave/cli/v2"
 
 	"scroll-tech/common/utils"
-	"scroll-tech/common/version"
-
 	"scroll-tech/roller/config"
 	"scroll-tech/roller/core"
 )
@@ -43,7 +41,7 @@ func main() {
 	app.Action = action
 	app.Name = "Roller"
 	app.Usage = "The Scroll L2 Roller"
-	app.Version = version.Version
+	app.Version = core.Version
 	app.Flags = append(app.Flags, []cli.Flag{
 		&cfgFileFlag,
 		&logFileFlag,
