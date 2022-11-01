@@ -40,7 +40,7 @@ type Layer2Relayer struct {
 	cfg *config.RelayerConfig
 
 	messengerSender *sender.Sender
-	messengerCh     <-chan *sender.Confirmation
+	messengeCh     <-chan *sender.Confirmation
 	l1MessengerABI  *abi.ABI
 
 	rollupSender *sender.Sender
