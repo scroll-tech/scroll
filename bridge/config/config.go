@@ -79,7 +79,7 @@ type RelayerConfig struct {
 	SenderConfig *SenderConfig `json:"sender_config"`
 	// The private key of the relayer
 	MessageSenderPrivateKeys []*ecdsa.PrivateKey `json:"-"`
-	RollupSenderPrivateKey   []*ecdsa.PrivateKey `json:"-"`
+	RollupSenderPrivateKeys   []*ecdsa.PrivateKey `json:"-"`
 }
 
 // RelayerConfigAlias RelayerConfig alias name
