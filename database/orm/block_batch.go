@@ -249,22 +249,6 @@ func (o *blockBatchOrm) GetRollupStatus(id uint64) (RollupStatus, error) {
 	return status, nil
 }
 
-// TODO: TODO: should remove
-// func (o *blockBatchOrm) InsertPendingBatches(ctx context.Context, batches []uint64) error {
-// 	batchMaps := make([]map[string]interface{}, len(batches))
-// 	for i, id := range batches {
-// 		batchMaps[i] = map[string]interface{}{
-// 			"id": id,
-// 		}
-// 	}
-
-// 	_, err := o.db.NamedExec(`INSERT INTO public.block_batch (id) VALUES (:id);`, batchMaps)
-// 	if err != nil {
-// 		log.Error("failed to insert rollupResults", "err", err)
-// 	}
-// 	return err
-// }
-
 func (o *blockBatchOrm) UpdateRollupStatus(ctx context.Context, id uint64, status RollupStatus) error {
 	if _, err := o.db.Exec(o.db.Rebind("update block_batch set rollup_status = ? where id = ?;"), status, id); err != nil {
 		return err

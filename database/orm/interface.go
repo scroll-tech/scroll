@@ -55,8 +55,7 @@ type Layer2Message struct {
 	Status     MsgStatus `json:"status" db:"status"`
 }
 
-// TODO: TODO:
-// BlockInfo is structure of stored block_result without content
+// BlockInfo is structure of stored `block_result` without `content`
 type BlockInfo struct {
 	Number         uint64 `json:"number" db:"number"`
 	Hash           string `json:"hash" db:"hash"`
@@ -93,7 +92,6 @@ type BlockBatchOrm interface {
 	GetCommittedBatches() ([]uint64, error)
 	GetRollupStatus(number uint64) (RollupStatus, error)
 	GetLatestFinalizedBatch() (uint64, error)
-	// InsertPendingBatches(ctx context.Context, blocks []uint64) error
 	UpdateRollupStatus(ctx context.Context, number uint64, status RollupStatus) error
 	UpdateRollupTxHash(ctx context.Context, number uint64, rollup_tx_hash string) error
 	UpdateFinalizeTxHash(ctx context.Context, number uint64, finalize_tx_hash string) error
