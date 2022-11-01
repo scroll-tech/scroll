@@ -79,7 +79,7 @@ func (a *accounts) setAccount(acc *bind.TransactOpts) {
 }
 
 // reSetNonce reset nonce if send signed tx failed.
-func (a *accounts) reSetNonce(ctx context.Context, auth *bind.TransactOpts) {
+func (a *accounts) resetNonce(ctx context.Context, auth *bind.TransactOpts) {
 	nonce, err := a.client.PendingNonceAt(ctx, auth.From)
 	if err != nil {
 		log.Warn("failed to reset nonce", "address", auth.From.String(), "err", err)
