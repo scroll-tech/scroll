@@ -107,10 +107,10 @@ func (m *Manager) Start() error {
 	// m.orm may be nil in scroll tests
 	if m.orm != nil {
 		// clean up assigned but not submitted task
-		tasks, err := m.orm.GetProveTasks(map[string]interface{}{"status": orm.TaskAssigned})
+		tasks, err := m.orm.GetBlockBatches(map[string]interface{}{"proving_status": orm.ProvingTaskAssigned})
 		if err == nil {
 			for _, task := range tasks {
-				if err := m.orm.UpdateTaskStatus(task.ID, orm.TaskUnassigned); err != nil {
+				if err := m.orm.UpdateProvingStatus(task.ID, orm.ProvingTaskUnassigned); err != nil {
 					log.Error("fail to reset task as Unassigned")
 				}
 			}
@@ -152,7 +152,7 @@ func (m *Manager) isRunning() bool {
 func (m *Manager) Loop() {
 	var (
 		tick  = time.NewTicker(time.Second * 3)
-		tasks []*orm.ProveTask
+		tasks []*orm.BlockBatch
 	)
 	defer tick.Stop()
 
@@ -163,15 +163,15 @@ func (m *Manager) Loop() {
 				var err error
 				numIdleRollers := m.GetNumberOfIdleRollers()
 				// TODO: add cache
-				if tasks, err = m.orm.GetProveTasks(
-					map[string]interface{}{"status": orm.TaskUnassigned},
+				if tasks, err = m.orm.GetBlockBatches(
+					map[string]interface{}{"proving_status": orm.ProvingTaskUnassigned},
 					fmt.Sprintf(
 						"ORDER BY id %s LIMIT %d;",
 						m.cfg.OrderSession,
 						numIdleRollers,
 					),
 				); err != nil {
-					log.Error("failed to GetProveTasks", "error", err)
+					log.Error("failed to get unassigned batches", "error", err)
 					continue
 				}
 			}
@@ -260,15 +260,15 @@ func (m *Manager) HandleZkProof(pk string, payload []byte) error {
 		// TODO: maybe we should use db tx for the whole process?
 		// Roll back current proof's status.
 		if dbErr != nil {
-			if err := m.orm.UpdateTaskStatus(msg.ID, orm.TaskUnassigned); err != nil {
-				log.Error("fail to reset task_status as Unassigned", "msg.ID", msg.ID)
+			if err := m.orm.UpdateProvingStatus(msg.ID, orm.ProvingTaskUnassigned); err != nil {
+				log.Error("fail to reset task status as Unassigned", "msg.ID", msg.ID)
 			}
 		}
 	}()
 
 	if msg.Status != message.StatusOk {
 		log.Error("Roller failed to generate proof", "msg.ID", msg.ID, "error", msg.Error)
-		if dbErr = m.orm.UpdateTaskStatus(msg.ID, orm.TaskFailed); dbErr != nil {
+		if dbErr = m.orm.UpdateProvingStatus(msg.ID, orm.ProvingTaskFailed); dbErr != nil {
 			log.Error("failed to update task status as failed", "error", dbErr)
 		}
 		// record the failed session.
@@ -281,7 +281,7 @@ func (m *Manager) HandleZkProof(pk string, payload []byte) error {
 		log.Error("failed to store proof into db", "error", dbErr)
 		return dbErr
 	}
-	if dbErr = m.orm.UpdateTaskStatus(msg.ID, orm.TaskProved); dbErr != nil {
+	if dbErr = m.orm.UpdateProvingStatus(msg.ID, orm.ProvingTaskProved); dbErr != nil {
 		log.Error("failed to update task status as proved", "error", dbErr)
 		return dbErr
 	}
@@ -289,7 +289,7 @@ func (m *Manager) HandleZkProof(pk string, payload []byte) error {
 	var success bool
 	if m.verifier != nil {
 		var err error
-		tasks, err := m.orm.GetProveTasks(map[string]interface{}{"id": msg.ID})
+		tasks, err := m.orm.GetBlockBatches(map[string]interface{}{"id": msg.ID})
 		if len(tasks) == 0 {
 			if err != nil {
 				log.Error("failed to get tasks", "error", err)
@@ -314,17 +314,17 @@ func (m *Manager) HandleZkProof(pk string, payload []byte) error {
 		log.Info("Verify zk proof successfully", "verification result", success, "proof id", msg.ID)
 	}
 
-	var status orm.TaskStatus
+	var status orm.ProvingStatus
 	if success {
-		status = orm.TaskVerified
+		status = orm.ProvingTaskVerified
 	} else {
 		// Set status as skipped if verification fails.
 		// Note that this is only a workaround for testnet here.
-		// TODO: In real cases we should reset to orm.TaskUnassigned
+		// TODO: In real cases we should reset to orm.ProvingTaskUnassigned
 		// so as to re-distribute the task in the future
-		status = orm.TaskFailed
+		status = orm.ProvingTaskFailed
 	}
-	if dbErr = m.orm.UpdateTaskStatus(msg.ID, status); dbErr != nil {
+	if dbErr = m.orm.UpdateProvingStatus(msg.ID, status); dbErr != nil {
 		log.Error("failed to update blockResult status", "status", status, "error", dbErr)
 	}
 
@@ -362,9 +362,9 @@ func (m *Manager) CollectProofs(id uint64, s session) {
 				log.Warn(errMsg, "session id", id)
 				// Set status as skipped.
 				// Note that this is only a workaround for testnet here.
-				// TODO: In real cases we should reset to orm.TaskUnassigned
+				// TODO: In real cases we should reset to orm.ProvingTaskUnassigned
 				// so as to re-distribute the task in the future
-				if err := m.orm.UpdateTaskStatus(id, orm.TaskFailed); err != nil {
+				if err := m.orm.UpdateProvingStatus(id, orm.ProvingTaskFailed); err != nil {
 					log.Error("fail to reset task_status as Unassigned", "id", id)
 				}
 				return
@@ -400,7 +400,7 @@ func (m *Manager) APIs() []rpc.API {
 }
 
 // StartProofGenerationSession starts a proof generation session
-func (m *Manager) StartProofGenerationSession(task *orm.ProveTask) bool {
+func (m *Manager) StartProofGenerationSession(task *orm.BlockBatch) bool {
 	roller := m.SelectRoller()
 	if roller == nil || roller.isClosed() {
 		return false
@@ -412,7 +412,7 @@ func (m *Manager) StartProofGenerationSession(task *orm.ProveTask) bool {
 	var dbErr error
 	defer func() {
 		if dbErr != nil {
-			if err := m.orm.UpdateTaskStatus(id, orm.TaskUnassigned); err != nil {
+			if err := m.orm.UpdateProvingStatus(id, orm.ProvingTaskUnassigned); err != nil {
 				log.Error("fail to reset task_status as Unassigned", "id", id)
 			}
 		}
@@ -465,7 +465,7 @@ func (m *Manager) StartProofGenerationSession(task *orm.ProveTask) bool {
 	m.sessions[id] = s
 	m.mu.Unlock()
 
-	dbErr = m.orm.UpdateTaskStatus(id, orm.TaskAssigned)
+	dbErr = m.orm.UpdateProvingStatus(id, orm.ProvingTaskAssigned)
 	go m.CollectProofs(id, s)
 
 	return true
@@ -545,5 +545,5 @@ func createTaskMsg(taskID uint64, traces []*types.BlockResult) (message.Msg, err
 }
 
 func (m *Manager) addFailedSession(s *session, errMsg string) {
-	m.failedSessionInfos[s.id] = *newSessionInfo(s, orm.TaskFailed, errMsg, true)
+	m.failedSessionInfos[s.id] = *newSessionInfo(s, orm.ProvingTaskFailed, errMsg, true)
 }
