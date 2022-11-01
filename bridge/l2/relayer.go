@@ -174,8 +174,8 @@ func (r *Layer2Relayer) ProcessSavedEvents() {
 	r.processingMessage[msg.Layer2Hash] = msg.Layer2Hash
 }
 
-// TODO: this logic is definitely wrong
 // ProcessPendingBatches submit batch data to layer 1 rollup contract
+// TODO: this logic is definitely wrong
 func (r *Layer2Relayer) ProcessPendingBatches() {
 	// batches are sorted by id in increasing order
 	batchesInDB, err := r.db.GetPendingBatches()
@@ -441,9 +441,8 @@ func (r *Layer2Relayer) fetchMissingBlockResultByHeight(height uint64) (*types.B
 			log.Error("failed to store missing blockResult", "height", height, "err", err)
 		}
 		return trace, nil
-	} else {
-		return nil, fmt.Errorf("fetched block_trace is invalid, height: %d", height)
 	}
+	return nil, fmt.Errorf("fetched block_trace is invalid, height: %d", height)
 }
 
 func (r *Layer2Relayer) handleConfirmation(confirmation *sender.Confirmation) {

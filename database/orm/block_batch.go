@@ -177,7 +177,7 @@ func (o *blockBatchOrm) NewBatchInDBTx(dbTx *sqlx.Tx, total_l2_gas uint64) (uint
 		return 0, err
 	}
 
-	id += 1
+	id++
 	if _, err := dbTx.NamedExec(`INSERT INTO public.block_batch (id, total_l2_gas) VALUES (:id, :total_l2_gas)`,
 		map[string]interface{}{
 			"id":           id,

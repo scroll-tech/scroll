@@ -138,13 +138,13 @@ func (w *WatcherClient) tryFetchRunningMissingBlocks(ctx context.Context, backTr
 
 	traces := []*types.BlockResult{}
 	for number := backTrackFrom; number > backTrackTo; number-- {
-		header, err := w.HeaderByNumber(ctx, big.NewInt(int64(number)))
-		if err != nil {
-			return fmt.Errorf("Failed to get HeaderByNumber: %v. number: %v", err, number)
+		header, err2 := w.HeaderByNumber(ctx, big.NewInt(int64(number)))
+		if err2 != nil {
+			return fmt.Errorf("Failed to get HeaderByNumber: %v. number: %v", err2, number)
 		}
-		trace, err := w.GetBlockResultByHash(ctx, header.Hash())
-		if err != nil {
-			return fmt.Errorf("Failed to GetBlockResultByHash: %v. number: %v", err, number)
+		trace, err2 := w.GetBlockResultByHash(ctx, header.Hash())
+		if err2 != nil {
+			return fmt.Errorf("Failed to GetBlockResultByHash: %v. number: %v", err2, number)
 		}
 		log.Info("Retrieved block result", "height", header.Number, "hash", header.Hash())
 
@@ -300,7 +300,9 @@ func (w *WatcherClient) createBatchForBlocks(blocks []uint64, gasUsed uint64) er
 	var dbTxErr error
 	defer func() {
 		if dbTxErr != nil {
-			dbTx.Rollback()
+			if err := dbTx.Rollback(); err != nil {
+				log.Error("dbTx.Rollback()", "err", err)
+			}
 		}
 	}()
 
