@@ -55,6 +55,7 @@ type Layer2Message struct {
 	Status     MsgStatus `json:"status" db:"status"`
 }
 
+// TODO: TODO:
 // BlockInfo is structure of stored block_result without content
 type BlockInfo struct {
 	Number         uint64 `json:"number" db:"number"`
@@ -63,30 +64,6 @@ type BlockInfo struct {
 	TxNum          string `json:"tx_num" db:"tx_num"`
 	GasUsed        uint64 `json:"gas_used" db:"gas_used"`
 	BlockTimestamp uint64 `json:"block_timestamp" db:"block_timestamp"`
-}
-
-// TODO: define prove_task structure
-// ProveTask is structure of stored prove_task
-type ProveTask struct {
-	ID uint64 `json:"id" db:"id"`
-}
-
-// RollupResult is structure of stored rollup result
-type RollupResult struct {
-	ID             uint64       `json:"id" db:"id"`
-	Status         RollupStatus `json:"status" db:"status"`
-	RollupTxHash   string       `json:"rollup_tx_hash" db:"rollup_tx_hash"`
-	FinalizeTxHash string       `json:"finalize_tx_hash" db:"finalize_tx_hash"`
-}
-
-// ProveTaskOrm prove_task operation interface
-type ProveTaskOrm interface {
-	GetProveTasks(fields map[string]interface{}, args ...string) ([]*ProveTask, error)
-	GetTaskStatusByID(id uint64) (TaskStatus, error)
-	GetVerifiedProofAndInstanceByID(id uint64) ([]byte, []byte, error)
-	UpdateProofByID(ctx context.Context, id uint64, proof, instance_commitments []byte, proofTimeSec uint64) error
-	UpdateTaskStatus(id uint64, status TaskStatus) error
-	NewBatchInDBTx(dbTx *sqlx.Tx, gasUsed uint64) (uint64, error)
 }
 
 // BlockResultOrm blockResult operation interface
@@ -103,8 +80,25 @@ type BlockResultOrm interface {
 	SetBatchIDForBlocksInDBTx(dbTx *sqlx.Tx, blocks []uint64, batchID uint64) error
 }
 
-// RollupResultOrm rollupResult operation interface
-type RollupResultOrm interface {
+// TODO: TODO:
+// BlockBatch is structure of stored block_batch
+type BlockBatch struct {
+	ID             uint64       `json:"id" db:"id"`
+	Status         RollupStatus `json:"status" db:"status"`
+	RollupTxHash   string       `json:"rollup_tx_hash" db:"rollup_tx_hash"`
+	FinalizeTxHash string       `json:"finalize_tx_hash" db:"finalize_tx_hash"`
+}
+
+// TODO: TODO:
+// BlockBatchOrm block_batch operation interface
+type BlockBatchOrm interface {
+	GetProveTasks(fields map[string]interface{}, args ...string) ([]*ProveTask, error)
+	GetTaskStatusByID(id uint64) (TaskStatus, error)
+	GetVerifiedProofAndInstanceByID(id uint64) ([]byte, []byte, error)
+	UpdateProofByID(ctx context.Context, id uint64, proof, instance_commitments []byte, proofTimeSec uint64) error
+	UpdateTaskStatus(id uint64, status TaskStatus) error
+	NewBatchInDBTx(dbTx *sqlx.Tx, gasUsed uint64) (uint64, error)
+
 	RollupRecordExist(number uint64) (bool, error)
 	GetPendingBatches() ([]uint64, error)
 	GetCommittedBatches() ([]uint64, error)
