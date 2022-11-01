@@ -8,8 +8,9 @@ import (
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/stretchr/testify/assert"
 
-	"scroll-tech/bridge/config"
 	"scroll-tech/common/docker"
+
+	"scroll-tech/bridge/config"
 )
 
 var (
