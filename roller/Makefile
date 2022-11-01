@@ -1,6 +1,6 @@
 .PHONY: lint docker clean roller
 
-IMAGE_NAME=roller
+IMAGE_NAME=go-roller
 IMAGE_VERSION=latest
 
 ZK_VERSION=$(shell grep -m 1 "common-rs" core/prover/rust/Cargo.lock | cut -d "\#" -f2 | sed 's/"//g')

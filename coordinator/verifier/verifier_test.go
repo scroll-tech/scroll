@@ -2,16 +2,16 @@ package verifier_test
 
 import (
 	"fmt"
-	"scroll-tech/common/version"
 	"testing"
-
-	"scroll-tech/roller/core"
-
-	"scroll-tech/common/message"
 
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/crypto"
 	"github.com/stretchr/testify/assert"
+
+	"scroll-tech/common/message"
+	"scroll-tech/common/version"
+
+	"scroll-tech/roller/core"
 )
 
 // skipped due to verifier upgrade
