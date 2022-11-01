@@ -1,6 +1,7 @@
 package verifier_test
 
 import (
+	"scroll-tech/go-roller/core"
 	"testing"
 
 	"scroll-tech/common/message"
@@ -52,6 +53,7 @@ func TestVerifier(t *testing.T) {
 		Name:      "scroll_roller",
 		Timestamp: 1649663001,
 		PublicKey: common.Bytes2Hex(pubkey),
+		Version:   core.ZK_VERSION,
 	}
 	hash, err := msg.Hash()
 	assert.NoError(t, err)
