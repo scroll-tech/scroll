@@ -171,7 +171,7 @@ func (m *Manager) Loop() {
 						numIdleRollers,
 					),
 				); err != nil {
-					log.Error("failed to get unassigned batches", "error", err)
+					log.Error("failed to get unassigned proving tasks", "error", err)
 					continue
 				}
 			}

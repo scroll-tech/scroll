@@ -245,7 +245,11 @@ func parseBridgeEventLogs(logs []types.Log, messengerABI *abi.ABI) ([]*orm.Layer
 	return parsedlogs, nil
 }
 
-var batchTimeSec = uint64(5 * 60) // 5min
+// batch-related config
+var (
+	batchTimeSec      = uint64(5 * 60) // 5min
+	batchGasThreshold = 3000000
+)
 
 // TODO:
 // + generate batch parallelly
@@ -253,7 +257,7 @@ var batchTimeSec = uint64(5 * 60) // 5min
 // + proofGenerationFreq
 func (w *WatcherClient) tryProposeBatch() error {
 	blocks, err := w.orm.GetBlocksInfos(
-		map[string]interface{}{"batch_id": "null"},
+		map[string]interface{}{"batch_id": "null"}, // TODO: TODO: is this syntax correct?
 		"order by number DESC",
 	)
 	if err != nil {
@@ -267,18 +271,18 @@ func (w *WatcherClient) tryProposeBatch() error {
 	gasUsed := uint64(0)
 	for _, block := range blocks {
 		gasUsed += block.GasUsed
-		if gasUsed > 3000000 {
+		if gasUsed > batchGasThreshold {
 			break
 		}
 
 		toBacth = append(toBacth, block.Number)
 	}
 
-	if gasUsed < 3000000 && blocks[0].BlockTimestamp+batchTimeSec < uint64(time.Now().Unix()) {
+	if gasUsed < batchGasThreshold && blocks[0].BlockTimestamp+batchTimeSec < uint64(time.Now().Unix()) {
 		return nil
 	}
 
-	// keep gasUsed below 3M
+	// keep gasUsed below threshold
 	if len(toBacth) >= 2 {
 		gasUsed -= blocks[len(toBacth)-1].GasUsed
 		toBacth = toBacth[:len(toBacth)-1]
