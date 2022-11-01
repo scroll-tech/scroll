@@ -105,7 +105,7 @@ func (r *RelayerConfig) UnmarshalJSON(input []byte) error {
 	for _, privStr := range jsonConfig.MessageSenderPrivateKeys {
 		priv, err := crypto.ToECDSA(common.FromHex(privStr))
 		if err != nil {
-			return fmt.Errorf("uncorrect private_key_list format, err: %v", err)
+			return fmt.Errorf("incorrect private_key_list format, err: %v", err)
 		}
 		r.MessageSenderPrivateKeys = append(r.MessageSenderPrivateKeys, priv)
 	}
