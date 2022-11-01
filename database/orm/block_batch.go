@@ -100,8 +100,7 @@ func NewBlockBatchOrm(db *sqlx.DB) BlockBatchOrm {
 }
 
 func (o *blockBatchOrm) GetBlockBatches(fields map[string]interface{}, args ...string) ([]*BlockBatch, error) {
-	// TODO: TODO: add more fields
-	query := "SELECT id, proof, instance_commitments, proving_status, proof_time_sec FROM block_batch WHERE 1 = 1 "
+	query := "SELECT * FROM block_batch WHERE 1 = 1 "
 	for key := range fields {
 		query += fmt.Sprintf("AND %s=:%s ", key, key)
 	}
@@ -167,6 +166,9 @@ func (o *blockBatchOrm) UpdateProvingStatus(id uint64, status ProvingStatus) err
 	return nil
 }
 
+// TODO: maybe we can use "`RETURNING` clause" like in
+// https://stackoverflow.com/questions/33382981/go-how-to-get-last-insert-id-on-postgresql-with-namedexec
+// then we don't need to manually query and manage this ID, and can define it as `SERIAL PRIMARY KEY` for auto-increment
 func (o *blockBatchOrm) NewBatchInDBTx(dbTx *sqlx.Tx, total_l2_gas uint64) (uint64, error) {
 	row := dbTx.QueryRow("SELECT MAX(id) FROM block_batch;")
 
