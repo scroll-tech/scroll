@@ -78,7 +78,7 @@ type RelayerConfig struct {
 	// sender config
 	SenderConfig *SenderConfig `json:"sender_config"`
 	// The private key of the relayer
-	PrivateKeyList   []*ecdsa.PrivateKey `json:"-"`
+	MessageSenderPrivateKeys   []*ecdsa.PrivateKey `json:"-"`
 	RollupSenderPrivateKey []*ecdsa.PrivateKey   `json:"-"`
 }
 
