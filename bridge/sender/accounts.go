@@ -29,7 +29,7 @@ type accounts struct {
 	accsCh   chan *bind.TransactOpts
 }
 
-// newAccounts Create a accounts instance.
+// newAccounts Create an accounts instance.
 func newAccounts(ctx context.Context, client *ethclient.Client, privs []*ecdsa.PrivateKey) (*accounts, error) {
 	accs := &accounts{
 		client:   client,
