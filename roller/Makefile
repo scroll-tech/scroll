@@ -3,7 +3,7 @@
 IMAGE_NAME=go-roller
 IMAGE_VERSION=latest
 
-ZK_VERSION=$(shell grep -m 1 "common-rs" core/prover/rust/Cargo.lock | cut -d "\#" -f2 | sed 's/"//g')
+ZK_VERSION=$(shell grep -m 1 "common-rs" core/prover/rust/Cargo.lock | cut -d "\#" -f2 | cut -c-7)
 
 libprover:
 	cd core/prover/rust && cargo build --release && cp target/release/libprover.a ../lib/
