@@ -18,12 +18,15 @@ import (
 	"github.com/scroll-tech/go-ethereum/crypto"
 	"github.com/scroll-tech/go-ethereum/log"
 
-	message "scroll-tech/common/message"
+	"scroll-tech/common/message"
 
 	"scroll-tech/go-roller/config"
 	"scroll-tech/go-roller/core/prover"
 	"scroll-tech/go-roller/store"
 )
+
+// ZK_VERSION is commit-id of prover/rust/cargo.lock/common-rs
+var ZK_VERSION string
 
 var (
 	writeWait = time.Second + readWait
@@ -102,6 +105,7 @@ func (r *Roller) Register() error {
 			Name:      r.cfg.RollerName,
 			Timestamp: time.Now().UnixMilli(),
 			PublicKey: common.Bytes2Hex(crypto.FromECDSAPub(&priv.PublicKey)),
+			Version:   ZK_VERSION,
 		},
 		Signature: "",
 	}

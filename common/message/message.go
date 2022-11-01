@@ -64,6 +64,8 @@ type Identity struct {
 	Timestamp int64 `json:"timestamp"`
 	// Roller public key
 	PublicKey string `json:"publicKey"`
+	// Version is ZK_VERSION
+	Version string `json:"version"`
 }
 
 // Sign auth message

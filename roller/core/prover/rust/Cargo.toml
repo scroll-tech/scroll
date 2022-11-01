@@ -8,8 +8,8 @@ edition = "2021"
 crate-type = ["staticlib", "cdylib"]
 
 [dependencies]
-zkevm = { git = "https://github.com/scroll-tech/common-rs"}
-types = { git = "https://github.com/scroll-tech/common-rs"}
+zkevm = { git = "https://github.com/scroll-tech/common-rs" }
+types = { git = "https://github.com/scroll-tech/common-rs" }
 
 log = "0.4"
 serde = "1.0"

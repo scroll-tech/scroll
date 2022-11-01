@@ -8,11 +8,11 @@ libprover:
 
 roller: ## Build the Roller instance.
 	cd core/prover/rust && cargo build --release && cp target/release/libprover.a ../lib/
-	GOBIN=$(PWD)/build/bin go build -o $(PWD)/build/bin/roller ./cmd
+	GOBIN=$(PWD)/build/bin go build -ldflags "-X core.ZK_VERSION=${curl -sL https://api.github.com/repos/scroll-tech/common-rs/commits | jq -r ".[0].sha"}" -o $(PWD)/build/bin/roller ./cmd
 
 gpu-roller: ## Build the GPU Roller instance.
 	cd core/prover/rust && cargo build --release && cp target/release/libprover.a ../lib/
-	GOBIN=$(PWD)/build/bin go build -tags gpu -o $(PWD)/build/bin/roller ./cmd
+	GOBIN=$(PWD)/build/bin go build -ldflags "-X core.ZK_VERSION=${curl -sL https://api.github.com/repos/scroll-tech/common-rs/commits | jq -r ".[0].sha"}" -tags gpu -o $(PWD)/build/bin/roller ./cmd
 
 test-prover:
 	go test -timeout 0 -v ./core/prover
