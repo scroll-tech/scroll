@@ -1,7 +1,6 @@
 package l2_test
 
 import (
-	"context"
 	"crypto/ecdsa"
 	"testing"
 
@@ -10,10 +9,6 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"scroll-tech/bridge/config"
-	"scroll-tech/bridge/l2"
-
-	"scroll-tech/database"
-
 	"scroll-tech/common/docker"
 )
 
@@ -29,9 +24,6 @@ var (
 
 	// l2geth client
 	l2Cli *ethclient.Client
-
-	// l2 backend
-	l2Backend *l2.Backend
 )
 
 func setupEnv(t *testing.T) (err error) {
@@ -61,25 +53,10 @@ func setupEnv(t *testing.T) (err error) {
 	l2Cli, err = ethclient.Dial(cfg.L2Config.Endpoint)
 	assert.NoError(t, err)
 
-	// Create orm factory.
-	db, err := database.NewOrmFactory(&database.DBConfig{
-		DriverName: cfg.DBConfig.DriverName,
-		DSN:        dbImg.Endpoint(),
-	})
-	assert.NoError(t, err)
-
-	// Create l2backend instance.
-	l2Backend, err = l2.New(context.Background(), cfg.L2Config, db)
-	assert.NoError(t, err)
-	assert.NoError(t, l2Backend.Start())
-
 	return err
 }
 
 func free(t *testing.T) {
-	if l2Backend != nil {
-		l2Backend.Stop()
-	}
 	if dbImg != nil {
 		assert.NoError(t, dbImg.Stop())
 	}
