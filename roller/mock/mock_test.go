@@ -17,8 +17,8 @@ import (
 
 	message "scroll-tech/common/message"
 
-	"scroll-tech/go-roller/config"
-	"scroll-tech/go-roller/core"
+	"scroll-tech/roller/config"
+	"scroll-tech/roller/core"
 )
 
 var (

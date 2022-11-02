@@ -4,19 +4,12 @@ version = "0.1.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-[patch.crates-io]
-# This fork makes bitvec 0.20.x work with funty 1.1 and funty 1.2.  Without
-# this fork, bitvec 0.20.x is incompatible with funty 1.2, which we depend on,
-# and leads to a compilation error.  This can be removed once the upstream PR
-# is resolved: https://github.com/bitvecto-rs/bitvec/pull/141
-bitvec = { git = "https://github.com/ed255/bitvec.git", rev = "5cfc5fa8496c66872d21905e677120fc3e79693c" }
-
 [lib]
 crate-type = ["staticlib", "cdylib"]
 
 [dependencies]
-zkevm = { git = "https://github.com/scroll-tech/common-rs", rev = "4f76d52004dd87a" }
-types = { git = "https://github.com/scroll-tech/common-rs", rev = "4f76d52004dd87a" }
+zkevm = { git = "https://github.com/scroll-tech/common-rs" }
+types = { git = "https://github.com/scroll-tech/common-rs" }
 
 log = "0.4"
 serde = "1.0"

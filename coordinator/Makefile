@@ -4,6 +4,9 @@ IMAGE_NAME=coordinator
 IMAGE_VERSION=latest
 REPO_ROOT_DIR=./..
 
+test:
+	go test -v -race -coverprofile=coverage.txt -covermode=atomic -p 1 $(PWD)/...
+
 coordinator: ## Builds the Coordinator instance.
 	go build -o $(PWD)/build/bin/coordinator ./cmd
 
@@ -14,7 +17,6 @@ clean: ## Empty out the bin folder
 	@rm -rf build/bin
 
 docker:
-	docker container prune -f
 	docker build -t scrolltech/${IMAGE_NAME}:${IMAGE_VERSION} ${REPO_ROOT_DIR}/ -f ${REPO_ROOT_DIR}/build/dockerfiles/coordinator.Dockerfile
 
 docker_push:
