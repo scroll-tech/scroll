@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
-	"scroll-tech/common/message"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -14,6 +13,8 @@ import (
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/crypto"
 	"github.com/scroll-tech/go-ethereum/log"
+
+	"scroll-tech/common/message"
 )
 
 const (
@@ -224,7 +225,7 @@ func (s *server) handshake(c *websocket.Conn) (*message.AuthMessage, error) {
 	if !crypto.VerifySignature(common.FromHex(authMsg.Identity.PublicKey), hash, common.FromHex(authMsg.Signature)[:64]) {
 		return nil, errors.New("signature verification failed")
 	}
-	log.Info("signature verification successfully", "roller name", authMsg.Identity.Name)
+	log.Info("signature verification successfully", "roller name", authMsg.Identity.Name, "version", authMsg.Identity.Version)
 
 	return authMsg, nil
 }

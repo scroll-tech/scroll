@@ -7,6 +7,8 @@ import { OwnableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/O
 import { IZKRollup } from "./IZKRollup.sol";
 import { RollupVerifier } from "../../libraries/verifier/RollupVerifier.sol";
 
+// solhint-disable reason-string
+
 /// @title ZKRollup
 /// @notice This contract maintains essential data for zk rollup, including:
 ///
@@ -29,10 +31,17 @@ contract ZKRollup is OwnableUpgradeable, IZKRollup {
 
   /**************************************** Variables ****************************************/
 
-  struct Block {
-    // @todo simplify fields later
-    BlockHeader header;
+  struct Layer2BlockStored {
+    bytes32 parentHash;
     bytes32 transactionRoot;
+    uint64 blockHeight;
+    uint64 batchIndex;
+  }
+
+  struct Layer2BatchStored {
+    bytes32 batchHash;
+    bytes32 parentHash;
+    uint64 batchIndex;
     bool verified;
   }
 
@@ -52,14 +61,17 @@ contract ZKRollup is OwnableUpgradeable, IZKRollup {
   /// @dev The list of appended message hash.
   bytes32[] private messageQueue;
 
-  /// @notice The hash of the latest finalized block.
-  bytes32 public lastFinalizedBlockHash;
+  /// @notice The latest finalized batch id.
+  bytes32 public lastFinalizedBatchID;
 
-  /// @notice Mapping from block hash to block index.
-  mapping(bytes32 => Block) public blocks;
+  /// @notice Mapping from block hash to block struct.
+  mapping(bytes32 => Layer2BlockStored) public blocks;
 
-  /// @notice Mapping from block height to finalized block hash.
-  mapping(uint256 => bytes32) public finalizedBlocks;
+  /// @notice Mapping from batch id to batch struct.
+  mapping(bytes32 => Layer2BatchStored) public batches;
+
+  /// @notice Mapping from batch index to finalized batch id.
+  mapping(uint256 => bytes32) public finalizedBatches;
 
   modifier OnlyOperator() {
     // @todo In the decentralize mode, it should be only called by a list of validator.
@@ -99,12 +111,18 @@ contract ZKRollup is OwnableUpgradeable, IZKRollup {
   }
 
   /// @inheritdoc IZKRollup
-  function verifyMessageStateProof(uint256 _blockNumber) external view override returns (bool) {
-    if (finalizedBlocks[_blockNumber] != bytes32(0)) {
-      return true;
+  function verifyMessageStateProof(uint256 _batchIndex, uint256 _blockHeight) external view returns (bool) {
+    bytes32 _batchId = finalizedBatches[_batchIndex];
+    // check if batch is verified
+    if (_batchId == bytes32(0)) return false;
+
+    uint256 _maxBlockHeightInBatch = blocks[batches[_batchId].batchHash].blockHeight;
+    // check block height is in batch range.
+    if (_maxBlockHeightInBatch == 0) return _blockHeight == 0;
+    else {
+      uint256 _minBlockHeightInBatch = blocks[batches[_batchId].parentHash].blockHeight + 1;
+      return _minBlockHeightInBatch <= _blockHeight && _blockHeight <= _maxBlockHeightInBatch;
     }
-    Block storage _block = blocks[lastFinalizedBlockHash];
-    return uint256(_block.header.blockHeight) >= _blockNumber;
   }
 
   /**************************************** Mutated Functions ****************************************/
@@ -133,73 +151,113 @@ contract ZKRollup is OwnableUpgradeable, IZKRollup {
   }
 
   /// @notice Import layer 2 genesis block
-  function importGenesisBlock(BlockHeader memory _genesis) external onlyOwner {
-    require(lastFinalizedBlockHash == bytes32(0), "genesis block imported");
-    require(_genesis.blockHash != bytes32(0), "invalid block hash");
-    require(_genesis.blockHeight == 0, "not genesis block");
-    require(_genesis.parentHash == bytes32(0), "parent hash not empty");
+  function importGenesisBlock(Layer2BlockHeader memory _genesis) external onlyOwner {
+    require(lastFinalizedBatchID == bytes32(0), "Genesis block imported");
+    require(_genesis.blockHash != bytes32(0), "Block hash is zero");
+    require(_genesis.blockHeight == 0, "Block is not genesis");
+    require(_genesis.parentHash == bytes32(0), "Parent hash not empty");
 
-    Block storage _block = blocks[_genesis.blockHash];
-    _block.header = _genesis;
-    _block.verified = true; // force commited
+    require(_verifyBlockHash(_genesis), "Block hash verification failed");
 
-    lastFinalizedBlockHash = _genesis.blockHash;
-    finalizedBlocks[0] = _genesis.blockHash;
+    Layer2BlockStored storage _block = blocks[_genesis.blockHash];
+    _block.transactionRoot = _computeTransactionRoot(_genesis.txs);
 
-    emit CommitBlock(_genesis.blockHash, 0, bytes32(0));
+    bytes32 _batchId = _computeBatchId(_genesis.blockHash, bytes32(0), 0);
+    Layer2BatchStored storage _batch = batches[_batchId];
+
+    _batch.batchHash = _genesis.blockHash;
+    _batch.verified = true;
+
+    lastFinalizedBatchID = _batchId;
+    finalizedBatches[0] = _batchId;
+
+    emit CommitBatch(_batchId, _genesis.blockHash, 0, bytes32(0));
+    emit FinalizeBatch(_batchId, _genesis.blockHash, 0, bytes32(0));
   }
 
   /// @inheritdoc IZKRollup
-  function commitBlock(BlockHeader memory _header, Layer2Transaction[] memory _txn) external override OnlyOperator {
-    Block storage _block = blocks[_header.blockHash];
-    require(_block.header.blockHash == bytes32(0), "Block has been committed before");
-    require(blocks[_header.parentHash].header.blockHash != bytes32(0), "Parent hasn't been committed");
+  function commitBatch(Layer2Batch memory _batch) external override OnlyOperator {
+    // check whether the batch is empty
+    require(_batch.blocks.length > 0, "Batch is empty");
 
-    uint256 _parentHeight = blocks[_header.parentHash].header.blockHeight;
-    // solhint-disable-next-line reason-string
-    require(_parentHeight + 1 == _header.blockHeight, "Block height and parent block height mismatch");
+    bytes32 _batchHash = _batch.blocks[_batch.blocks.length - 1].blockHash;
+    bytes32 _batchId = _computeBatchId(_batchHash, _batch.parentHash, _batch.batchIndex);
+    Layer2BatchStored storage _batchStored = batches[_batchId];
 
-    bytes32[] memory _hashes = new bytes32[](_txn.length);
-    for (uint256 i = 0; i < _txn.length; i++) {
-      // @todo use rlp
-      _hashes[i] = keccak256(
-        abi.encode(
-          _txn[i].caller,
-          _txn[i].nonce,
-          _txn[i].target,
-          _txn[i].gas,
-          _txn[i].gasPrice,
-          _txn[i].value,
-          _txn[i].data
-        )
-      );
+    // check whether the batch is commited before
+    require(_batchStored.batchHash == bytes32(0), "Batch has been committed before");
+
+    // make sure the parent batch is commited before
+    Layer2BlockStored storage _parentBlock = blocks[_batch.parentHash];
+    require(_parentBlock.transactionRoot != bytes32(0), "Parent batch hasn't been committed");
+    require(_parentBlock.batchIndex + 1 == _batch.batchIndex, "Batch index and parent batch index mismatch");
+
+    // check whether the blocks are correct.
+    unchecked {
+      uint256 _expectedBlockHeight = _parentBlock.blockHeight + 1;
+      bytes32 _expectedParentHash = _batch.parentHash;
+      for (uint256 i = 0; i < _batch.blocks.length; i++) {
+        Layer2BlockHeader memory _block = _batch.blocks[i];
+        require(_verifyBlockHash(_block), "Block hash verification failed");
+        require(_block.parentHash == _expectedParentHash, "Block parent hash mismatch");
+        require(_block.blockHeight == _expectedBlockHeight, "Block height mismatch");
+        require(blocks[_block.blockHash].transactionRoot == bytes32(0), "Block has been commited before");
+
+        _expectedBlockHeight += 1;
+        _expectedParentHash = _block.blockHash;
+      }
     }
-    _block.header = _header;
-    _block.transactionRoot = keccak256(abi.encode(_hashes));
 
-    emit CommitBlock(_header.blockHash, _header.blockHeight, _header.parentHash);
+    // do block commit
+    for (uint256 i = 0; i < _batch.blocks.length; i++) {
+      Layer2BlockHeader memory _block = _batch.blocks[i];
+      Layer2BlockStored storage _blockStored = blocks[_block.blockHash];
+      _blockStored.parentHash = _block.parentHash;
+      _blockStored.transactionRoot = _computeTransactionRoot(_block.txs);
+      _blockStored.blockHeight = _block.blockHeight;
+      _blockStored.batchIndex = _batch.batchIndex;
+    }
+
+    _batchStored.batchHash = _batchHash;
+    _batchStored.parentHash = _batch.parentHash;
+    _batchStored.batchIndex = _batch.batchIndex;
+
+    emit CommitBatch(_batchId, _batchHash, _batch.batchIndex, _batch.parentHash);
   }
 
   /// @inheritdoc IZKRollup
-  function revertBlock(bytes32 _blockHash) external override OnlyOperator {
-    Block storage _block = blocks[_blockHash];
-    require(_block.header.blockHash != bytes32(0), "No such block");
-    require(!_block.verified, "Unable to revert verified block");
+  function revertBatch(bytes32 _batchId) external override OnlyOperator {
+    Layer2BatchStored storage _batch = batches[_batchId];
 
-    delete blocks[_blockHash];
+    require(_batch.batchHash != bytes32(0), "No such batch");
+    require(!_batch.verified, "Unable to revert verified batch");
 
-    emit RevertBlock(_blockHash);
+    bytes32 _blockHash = _batch.batchHash;
+    bytes32 _parentHash = _batch.parentHash;
+
+    // delete commited blocks
+    while (_blockHash != _parentHash) {
+      bytes32 _nextBlockHash = blocks[_blockHash].parentHash;
+      delete blocks[_blockHash];
+
+      _blockHash = _nextBlockHash;
+    }
+
+    // delete commited batch
+    delete batches[_batchId];
+
+    emit RevertBatch(_batchId);
   }
 
   /// @inheritdoc IZKRollup
-  function finalizeBlockWithProof(
-    bytes32 _blockHash,
+  function finalizeBatchWithProof(
+    bytes32 _batchId,
     uint256[] memory _proof,
     uint256[] memory _instances
   ) external override OnlyOperator {
-    Block storage _block = blocks[_blockHash];
-    require(_block.header.blockHash != bytes32(0), "No such block");
-    require(!_block.verified, "Block already verified");
+    Layer2BatchStored storage _batch = batches[_batchId];
+    require(_batch.batchHash != bytes32(0), "No such batch");
+    require(!_batch.verified, "Batch already verified");
 
     // @note skip parent check for now, since we may not prove blocks in order.
     // bytes32 _parentHash = _block.header.parentHash;
@@ -210,14 +268,16 @@ contract ZKRollup is OwnableUpgradeable, IZKRollup {
     // @todo add verification logic
     RollupVerifier.verify(_proof, _instances);
 
-    uint256 _height = _block.header.blockHeight; // gas saving
-    _block.verified = true;
-    finalizedBlocks[_height] = _blockHash;
-    Block storage _finalizedBlock = blocks[lastFinalizedBlockHash];
-    if (_height > _finalizedBlock.header.blockHeight) {
-      lastFinalizedBlockHash = _blockHash;
+    uint256 _batchIndex = _batch.batchIndex;
+    finalizedBatches[_batchIndex] = _batchId;
+    _batch.verified = true;
+
+    Layer2BatchStored storage _finalizedBatch = batches[lastFinalizedBatchID];
+    if (_batchIndex > _finalizedBatch.batchIndex) {
+      lastFinalizedBatchID = _batchId;
     }
-    emit FinalizeBlock(_blockHash, uint64(_height));
+
+    emit FinalizeBatch(_batchId, _batch.batchHash, _batchIndex, _batch.parentHash);
   }
 
   /**************************************** Restricted Functions ****************************************/
@@ -244,5 +304,50 @@ contract ZKRollup is OwnableUpgradeable, IZKRollup {
     messenger = _newMessenger;
 
     emit UpdateMesssenger(_oldMessenger, _newMessenger);
+  }
+
+  /**************************************** Internal Functions ****************************************/
+
+  function _verifyBlockHash(Layer2BlockHeader memory) internal pure returns (bool) {
+    // @todo finish logic after more discussions
+    return true;
+  }
+
+  /// @dev Internal function to compute a unique batch id for mapping.
+  /// @param _batchHash The hash of the batch.
+  /// @param _parentHash The hash of the batch.
+  /// @param _batchIndex The index of the batch.
+  /// @return Return the computed batch id.
+  function _computeBatchId(
+    bytes32 _batchHash,
+    bytes32 _parentHash,
+    uint256 _batchIndex
+  ) internal pure returns (bytes32) {
+    return keccak256(abi.encode(_batchHash, _parentHash, _batchIndex));
+  }
+
+  /// @dev Internal function to compute transaction root.
+  /// @param _txn The list of transactions in the block.
+  /// @return Return the hash of transaction root.
+  function _computeTransactionRoot(Layer2Transaction[] memory _txn) internal pure returns (bytes32) {
+    bytes32[] memory _hashes = new bytes32[](_txn.length);
+    for (uint256 i = 0; i < _txn.length; i++) {
+      // @todo use rlp
+      _hashes[i] = keccak256(
+        abi.encode(
+          _txn[i].caller,
+          _txn[i].nonce,
+          _txn[i].target,
+          _txn[i].gas,
+          _txn[i].gasPrice,
+          _txn[i].value,
+          _txn[i].data,
+          _txn[i].r,
+          _txn[i].s,
+          _txn[i].v
+        )
+      );
+    }
+    return keccak256(abi.encode(_hashes));
   }
 }

@@ -8,10 +8,9 @@ import (
 	"github.com/urfave/cli/v2"
 
 	"scroll-tech/common/utils"
-	"scroll-tech/common/version"
 
-	"scroll-tech/go-roller/config"
-	"scroll-tech/go-roller/core"
+	"scroll-tech/roller/config"
+	"scroll-tech/roller/core"
 )
 
 var (
@@ -43,7 +42,7 @@ func main() {
 	app.Action = action
 	app.Name = "Roller"
 	app.Usage = "The Scroll L2 Roller"
-	app.Version = version.Version
+	app.Version = core.Version
 	app.Flags = append(app.Flags, []cli.Flag{
 		&cfgFileFlag,
 		&logFileFlag,
@@ -76,7 +75,7 @@ func action(ctx *cli.Context) error {
 		return err
 	}
 	defer r.Close()
-	log.Info("go-roller start successfully", "name", cfg.RollerName)
+	log.Info("roller start successfully", "name", cfg.RollerName)
 
 	return r.Run()
 }

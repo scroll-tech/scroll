@@ -43,6 +43,7 @@ describe("GatewayRouter", async () => {
       gasUsed: 0,
       timestamp: 0,
       extraData: "0x",
+      txs: []
     });
 
     // deploy L1ScrollMessenger in layer 1
@@ -195,7 +196,7 @@ describe("GatewayRouter", async () => {
             deadline,
             nonce,
             messageData,
-            { blockNumber: 0, merkleProof: "0x" }
+            { batchIndex: 0, blockHeight: 0, merkleProof: "0x" }
           );
           await relayTx.wait();
           const afterBalanceLayer1 = await ethers.provider.getBalance(recipient.address);
