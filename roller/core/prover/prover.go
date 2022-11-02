@@ -50,7 +50,7 @@ func (p *Prover) prove(traces []*types.BlockResult) (*message.AggProof, error) {
 		return &message.AggProof{}, nil
 	}
 
-	// TODO: sort by height in persist and prove multiple here
+	// TODO: prove multiple blocks
 	tracesByt, err := json.Marshal(traces[0])
 	if err != nil {
 		return nil, err

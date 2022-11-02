@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -294,8 +295,17 @@ func (r *Roller) persistTask(byt []byte) error {
 		return err
 	}
 	log.Info("Accept task from coordinator", "ID", task.ID)
+
+	blocks := task.Traces
+	sort.Slice(blocks, func(i, j int) bool {
+		return blocks[i].BlockTrace.Number.ToInt().Uint64() < blocks[j].BlockTrace.Number.ToInt().Uint64()
+	})
+
 	return r.stack.Push(&store.ProvingTask{
-		Task:  task,
+		Task: &message.TaskMsg{
+			ID:     task.ID,
+			Traces: blocks,
+		},
 		Times: 0,
 	})
 }
