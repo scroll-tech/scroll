@@ -67,7 +67,7 @@ Reference testnet [run_deploy_contracts.sh](https://github.com/scroll-tech/testn
 
 ## Deployment using Foundry
 
-The Foundry scripts take parameters like `CHAIN_ID_L2` and `L1_ZK_ROLLUP_PROXY_ADDR` and environment variables.
+Note: The Foundry scripts take parameters like `CHAIN_ID_L2` and `L1_ZK_ROLLUP_PROXY_ADDR` as environment variables.
 
 ```bash
 # allexport
