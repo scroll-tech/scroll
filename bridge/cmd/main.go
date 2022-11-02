@@ -39,54 +39,6 @@ func main() {
 			Verbosity:     ctx.Int(verbosityFlag.Name),
 		})
 	}
-	app.Commands = []*cli.Command{
-		{
-			Name:   "reset",
-			Usage:  "Clean and reset database.",
-			Action: ResetDB,
-			Flags: []cli.Flag{
-				&configFileFlag,
-			},
-		},
-		{
-			Name:   "status",
-			Usage:  "Check migration status.",
-			Action: CheckDBStatus,
-			Flags: []cli.Flag{
-				&configFileFlag,
-			},
-		},
-		{
-			Name:   "version",
-			Usage:  "Display the current database version.",
-			Action: DBVersion,
-			Flags: []cli.Flag{
-				&configFileFlag,
-			},
-		},
-		{
-			Name:   "migrate",
-			Usage:  "Migrate the database to the latest version.",
-			Action: MigrateDB,
-			Flags: []cli.Flag{
-				&configFileFlag,
-			},
-		},
-		{
-			Name:   "rollback",
-			Usage:  "Roll back the database to a previous <version>. Rolls back a single migration if no version specified.",
-			Action: RollbackDB,
-			Flags: []cli.Flag{
-				&configFileFlag,
-				&cli.IntFlag{
-					Name:  "version",
-					Usage: "Rollback to the specified version.",
-					Value: 0,
-				},
-			},
-		},
-	}
-
 	// Run the sequencer.
 	if err := app.Run(os.Args); err != nil {
 		_, _ = fmt.Fprintln(os.Stderr, err)

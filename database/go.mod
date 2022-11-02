@@ -10,11 +10,13 @@ require (
 	github.com/pressly/goose/v3 v3.7.0
 	github.com/scroll-tech/go-ethereum v1.10.14-0.20221012120556-b3a7c9b6917d
 	github.com/stretchr/testify v1.8.0
+	github.com/urfave/cli/v2 v2.3.0
 )
 
 require (
 	github.com/Microsoft/go-winio v0.6.0 // indirect
 	github.com/btcsuite/btcd v0.20.1-beta // indirect
+	github.com/cpuguy83/go-md2man/v2 v2.0.0-20190314233015-f79a8a8ca69d // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/docker/distribution v2.8.1+incompatible // indirect
 	github.com/docker/go-connections v0.4.0 // indirect
@@ -29,7 +31,9 @@ require (
 	github.com/opencontainers/image-spec v1.0.2 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
+	github.com/russross/blackfriday/v2 v2.0.1 // indirect
 	github.com/shirou/gopsutil v3.21.11+incompatible // indirect
+	github.com/shurcooL/sanitized_anchor_name v1.0.0 // indirect
 	github.com/sirupsen/logrus v1.9.0 // indirect
 	github.com/yusufpapurcu/wmi v1.2.2 // indirect
 	golang.org/x/crypto v0.0.0-20220722155217-630584e8d5aa // indirect

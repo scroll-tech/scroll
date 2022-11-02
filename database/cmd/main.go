@@ -1,0 +1,97 @@
+package main
+
+import (
+	"fmt"
+	"os"
+	"os/signal"
+
+	"github.com/urfave/cli/v2"
+
+	"scroll-tech/common/utils"
+	"scroll-tech/common/version"
+)
+
+func main() {
+	// Set up Coordinator app info.
+	app := cli.NewApp()
+
+	app.Action = action
+	app.Name = "database"
+	app.Usage = "The Scroll Database"
+	app.Version = version.Version
+	app.Flags = append(app.Flags, commonFlags...)
+
+	app.Before = func(ctx *cli.Context) error {
+		return utils.Setup(&utils.LogConfig{
+			LogFile:       ctx.String(logFileFlag.Name),
+			LogJSONFormat: ctx.Bool(logJSONFormat.Name),
+			LogDebug:      ctx.Bool(logDebugFlag.Name),
+			Verbosity:     ctx.Int(verbosityFlag.Name),
+		})
+	}
+
+	app.Commands = []*cli.Command{
+		{
+			Name:   "reset",
+			Usage:  "Clean and reset database.",
+			Action: ResetDB,
+			Flags: []cli.Flag{
+				&configFileFlag,
+			},
+		},
+		{
+			Name:   "status",
+			Usage:  "Check migration status.",
+			Action: CheckDBStatus,
+			Flags: []cli.Flag{
+				&configFileFlag,
+			},
+		},
+		{
+			Name:   "version",
+			Usage:  "Display the current database version.",
+			Action: DBVersion,
+			Flags: []cli.Flag{
+				&configFileFlag,
+			},
+		},
+		{
+			Name:   "migrate",
+			Usage:  "Migrate the database to the latest version.",
+			Action: MigrateDB,
+			Flags: []cli.Flag{
+				&configFileFlag,
+			},
+		},
+		{
+			Name:   "rollback",
+			Usage:  "Roll back the database to a previous <version>. Rolls back a single migration if no version specified.",
+			Action: RollbackDB,
+			Flags: []cli.Flag{
+				&configFileFlag,
+				&cli.IntFlag{
+					Name:  "version",
+					Usage: "Rollback to the specified version.",
+					Value: 0,
+				},
+			},
+		},
+	}
+
+	// Run the coordinator.
+	if err := app.Run(os.Args); err != nil {
+		_, _ = fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+}
+
+func action(ctx *cli.Context) error {
+	// Catch CTRL-C to ensure a graceful shutdown.
+	interrupt := make(chan os.Signal, 1)
+	signal.Notify(interrupt, os.Interrupt)
+
+	// Wait until the interrupt signal is received from an OS signal.
+	<-interrupt
+
+	return nil
+}

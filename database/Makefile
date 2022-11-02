@@ -1,5 +1,7 @@
 .PHONY: lint
 
+database:
+	go build -o $(PWD)/build/bin/database ./cmd
 test:
 	go test -v -race -coverprofile=coverage.txt -covermode=atomic -p 1 $(PWD)/...
 

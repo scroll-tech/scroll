@@ -1,0 +1,6 @@
+{
+    "db_config": {
+      "driver_name": "postgres",
+      "dsn": "postgres://postgres:123456@localhost:5444/test?sslmode=disable"
+    }
+  }
