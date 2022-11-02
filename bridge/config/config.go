@@ -116,7 +116,7 @@ func (r *RelayerConfig) UnmarshalJSON(input []byte) error {
 	for _, privStr := range jsonConfig.RollupSenderPrivateKeys {
 		priv, err := crypto.ToECDSA(common.FromHex(privStr))
 		if err != nil {
-			return fmt.Errorf("uncorrect roller_private_key format, err: %v", err)
+			return fmt.Errorf("incorrect roller_private_key format, err: %v", err)
 		}
 		r.RollupSenderPrivateKeys = append(r.RollupSenderPrivateKeys, priv)
 	}
