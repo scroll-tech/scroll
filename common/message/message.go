@@ -38,9 +38,19 @@ type AuthMessage struct {
 	*Identity `json:"message"`
 	// Roller signature
 	Signature string `json:"signature"`
+}
 
-	// public key
-	publicKey string
+// Identity contains all the fields to be signed by the roller.
+type Identity struct {
+	// Roller name
+	Name string `json:"name"`
+	// Time of message creation
+	Timestamp int64 `json:"timestamp"`
+	// Roller public key
+	PublicKey string `json:"publicKey"`
+	// Version is common.Version+ZK_VERSION. Use the following to check the latest ZK_VERSION version.
+	// curl -sL https://api.github.com/repos/scroll-tech/common-rs/commits | jq -r ".[0].sha"
+	Version string `json:"version"`
 }
 
 // Sign auth message
@@ -68,20 +78,20 @@ func (a *AuthMessage) Verify() (bool, error) {
 	}
 	sig := common.FromHex(a.Signature)
 	// recover public key
-	if a.publicKey == "" {
+	if a.Identity.PublicKey == "" {
 		pk, err := crypto.SigToPub(hash, sig)
 		if err != nil {
 			return false, err
 		}
-		a.publicKey = common.Bytes2Hex(crypto.CompressPubkey(pk))
+		a.Identity.PublicKey = common.Bytes2Hex(crypto.CompressPubkey(pk))
 	}
 
-	return crypto.VerifySignature(common.FromHex(a.publicKey), hash, sig[:len(sig)-1]), nil
+	return crypto.VerifySignature(common.FromHex(a.Identity.PublicKey), hash, sig[:len(sig)-1]), nil
 }
 
 // PublicKey return public key from signature
 func (a *AuthMessage) PublicKey() (string, error) {
-	if a.publicKey == "" {
+	if a.Identity.PublicKey == "" {
 		hash, err := a.Hash()
 		if err != nil {
 			return "", err
@@ -92,19 +102,11 @@ func (a *AuthMessage) PublicKey() (string, error) {
 		if err != nil {
 			return "", err
 		}
-		a.publicKey = common.Bytes2Hex(crypto.CompressPubkey(pk))
-		return a.publicKey, nil
+		a.Identity.PublicKey = common.Bytes2Hex(crypto.CompressPubkey(pk))
+		return a.Identity.PublicKey, nil
 	}
 
-	return a.publicKey, nil
-}
-
-// Identity contains all the fields to be signed by the roller.
-type Identity struct {
-	// Roller name
-	Name string `json:"name"`
-	// Time of message creation
-	Timestamp int64 `json:"timestamp"`
+	return a.Identity.PublicKey, nil
 }
 
 // Hash returns the hash of the auth message, which should be the message used

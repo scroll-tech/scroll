@@ -18,6 +18,7 @@ type RollerDebugAPI interface {
 // RollerInfo records the roller name, pub key and active session info (id, start time).
 type RollerInfo struct {
 	Name                   string    `json:"name"`
+	Version                string    `json:"version"`
 	PublicKey              string    `json:"public_key"`
 	ActiveSession          uint64    `json:"active_session,omitempty"`
 	ActiveSessionStartTime time.Time `json:"active_session_start_time"` // latest proof start time.
@@ -46,6 +47,7 @@ func (m *Manager) ListRollers() ([]*RollerInfo, error) {
 		roller := node.(*rollerNode)
 		info := &RollerInfo{
 			Name:      roller.Name,
+			Version:   roller.Version,
 			PublicKey: pk,
 		}
 		for id, sess := range m.sessions {

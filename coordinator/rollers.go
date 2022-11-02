@@ -20,6 +20,8 @@ type rollerNode struct {
 	Name string
 	// Roller public key
 	PublicKey string
+	// Roller version
+	Version string
 
 	// trace channel
 	traceChan chan *message.BlockTraces
@@ -49,6 +51,7 @@ func (m *Manager) register(pubkey string, identity *message.Identity) (<-chan *m
 	if !ok {
 		node = &rollerNode{
 			Name:      identity.Name,
+			Version:   identity.Version,
 			PublicKey: pubkey,
 			IDList:    cmap.New(),
 			traceChan: make(chan *message.BlockTraces, 4),

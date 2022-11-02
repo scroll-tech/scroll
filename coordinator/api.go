@@ -56,7 +56,7 @@ func (m *Manager) Register(ctx context.Context, authMsg *message.AuthMessage) (*
 			}
 		}
 	}()
-	log.Info("roller register", "name", authMsg.Name)
+	log.Info("roller register", "name", authMsg.Name, "version", authMsg.Version)
 
 	return rpcSub, nil
 }

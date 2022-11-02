@@ -19,7 +19,7 @@ import (
 
 	"scroll-tech/common/message"
 
-	"scroll-tech/go-roller/config"
+	"scroll-tech/roller/config"
 )
 
 // Prover sends block-traces to rust-prover through socket and get back the zk-proof.

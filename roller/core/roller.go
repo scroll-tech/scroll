@@ -5,6 +5,8 @@ import (
 	"crypto/ecdsa"
 	"errors"
 	"fmt"
+	"github.com/scroll-tech/go-ethereum/common"
+	"github.com/scroll-tech/go-ethereum/crypto"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -17,11 +19,18 @@ import (
 	"github.com/scroll-tech/go-ethereum/log"
 
 	"scroll-tech/common/message"
+	"scroll-tech/common/version"
 	"scroll-tech/coordinator/client"
 
-	"scroll-tech/go-roller/config"
-	"scroll-tech/go-roller/core/prover"
-	"scroll-tech/go-roller/store"
+	"scroll-tech/roller/config"
+	"scroll-tech/roller/core/prover"
+	"scroll-tech/roller/store"
+)
+
+// ZK_VERSION is commit-id of prover/rust/cargo.lock/common-rs
+var (
+	ZK_VERSION string
+	Version    = fmt.Sprintf("%s-%s", version.Version, ZK_VERSION)
 )
 
 var (
@@ -109,6 +118,8 @@ func (r *Roller) Register() error {
 		Identity: &message.Identity{
 			Name:      r.cfg.RollerName,
 			Timestamp: time.Now().UnixMilli(),
+			PublicKey: common.Bytes2Hex(crypto.FromECDSAPub(&r.priv.PublicKey)),
+			Version:   Version,
 		},
 	}
 
