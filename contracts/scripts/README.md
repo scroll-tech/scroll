@@ -67,6 +67,8 @@ Reference testnet [run_deploy_contracts.sh](https://github.com/scroll-tech/testn
 
 ## Deployment using Foundry
 
+The Foundry scripts take parameters like `CHAIN_ID_L2` and `L1_ZK_ROLLUP_PROXY_ADDR` and environment variables.
+
 ```bash
 # allexport
 $ set -a
@@ -81,17 +83,18 @@ L1_ROLLUP_OPERATOR_ADDR="0x1111111111111111111111111111111111111111"
 
 $ source .env
 
-# deploy L1 contracts
+# Deploy L1 contracts
+# Note: We extract the logged addresses as environment variables.
 $ OUTPUT=$(forge script scripts/foundry/DeployL1BridgeContracts.s.sol:DeployL1BridgeContracts --rpc-url $SCROLL_L1_RPC --broadcast); echo $OUTPUT
 $ echo "$OUTPUT" | grep -Eo "(L1)_.*" > .env.l1_addresses
 $ source .env.l1_addresses
 
-# deploy L2 contracts
+# Deploy L2 contracts
 $ OUTPUT=$(forge script scripts/foundry/DeployL2BridgeContracts.s.sol:DeployL2BridgeContracts --rpc-url $SCROLL_L2_RPC --broadcast); echo $OUTPUT
 $ echo "$OUTPUT" | grep -Eo "(L2)_.*" > .env.l2_addresses
 $ source .env.l2_addresses
 
-# initialize contracts
+# Initialize contracts
 $ forge script scripts/foundry/InitializeL1BridgeContracts.s.sol:InitializeL1BridgeContracts --rpc-url $SCROLL_L1_RPC --broadcast
 $ forge script scripts/foundry/InitializeL2BridgeContracts.s.sol:InitializeL2BridgeContracts --rpc-url $SCROLL_L2_RPC --broadcast
 ```
