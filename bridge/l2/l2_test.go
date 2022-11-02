@@ -1,10 +1,8 @@
 package l2_test
 
 import (
-	"crypto/ecdsa"
 	"testing"
 
-	"github.com/scroll-tech/go-ethereum/crypto"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/stretchr/testify/assert"
 
@@ -17,7 +15,6 @@ var (
 	// config
 	cfg *config.Config
 
-	privkey *ecdsa.PrivateKey
 	// docker consider handler.
 	l1gethImg docker.ImgInstance
 	l2gethImg docker.ImgInstance
@@ -30,10 +27,6 @@ var (
 func setupEnv(t *testing.T) (err error) {
 	// Load config.
 	cfg, err = config.NewConfig("../config.json")
-	assert.NoError(t, err)
-
-	// private key just for test.
-	privkey, err = crypto.HexToECDSA("7ecb571e8858355e10d1e73e8446366fbb1b13750a8e22f33f9319f3bbac5919")
 	assert.NoError(t, err)
 
 	// Create l1geth container.

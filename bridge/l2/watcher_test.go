@@ -48,6 +48,9 @@ func testCreateNewWatcherAndStop(t *testing.T) {
 	rc.Start()
 	defer rc.Stop()
 
+	privkey, err := crypto.ToECDSA(common.FromHex(cfg.L1Config.RelayerConfig.PrivateKey))
+	assert.NoError(t, err)
+
 	cfg.L1Config.RelayerConfig.SenderConfig.Confirmations = 0
 	newSender, err := sender.NewSender(context.Background(), cfg.L1Config.RelayerConfig.SenderConfig, privkey)
 	assert.NoError(t, err)
