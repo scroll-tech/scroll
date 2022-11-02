@@ -38,13 +38,13 @@ Append a cross chain message to message queue.
 |---|---|---|
 | _0 | uint256 | undefined |
 
-### blocks
+### batches
 
 ```solidity
-function blocks(bytes32) external view returns (struct IZKRollup.BlockHeader header, bytes32 transactionRoot, bool verified)
+function batches(bytes32) external view returns (bytes32 batchHash, bytes32 parentHash, uint64 batchIndex, bool verified)
 ```
 
-Mapping from block hash to block index.
+Mapping from batch id to batch struct.
 
 
 
@@ -58,14 +58,40 @@ Mapping from block hash to block index.
 
 | Name | Type | Description |
 |---|---|---|
-| header | IZKRollup.BlockHeader | undefined |
-| transactionRoot | bytes32 | undefined |
+| batchHash | bytes32 | undefined |
+| parentHash | bytes32 | undefined |
+| batchIndex | uint64 | undefined |
 | verified | bool | undefined |
 
-### commitBlock
+### blocks
 
 ```solidity
-function commitBlock(IZKRollup.BlockHeader _header, IZKRollup.Layer2Transaction[] _txn) external nonpayable
+function blocks(bytes32) external view returns (bytes32 parentHash, bytes32 transactionRoot, uint64 blockHeight, uint64 batchIndex)
+```
+
+Mapping from block hash to block struct.
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| _0 | bytes32 | undefined |
+
+#### Returns
+
+| Name | Type | Description |
+|---|---|---|
+| parentHash | bytes32 | undefined |
+| transactionRoot | bytes32 | undefined |
+| blockHeight | uint64 | undefined |
+| batchIndex | uint64 | undefined |
+
+### commitBatch
+
+```solidity
+function commitBatch(IZKRollup.Layer2Batch _batch) external nonpayable
 ```
 
 
@@ -76,16 +102,15 @@ function commitBlock(IZKRollup.BlockHeader _header, IZKRollup.Layer2Transaction[
 
 | Name | Type | Description |
 |---|---|---|
-| _header | IZKRollup.BlockHeader | undefined |
-| _txn | IZKRollup.Layer2Transaction[] | undefined |
+| _batch | IZKRollup.Layer2Batch | undefined |
 
-### finalizeBlockWithProof
+### finalizeBatchWithProof
 
 ```solidity
-function finalizeBlockWithProof(bytes32 _blockHash, uint256[] _proof, uint256[] _instances) external nonpayable
+function finalizeBatchWithProof(bytes32 _batchId, uint256[] _proof, uint256[] _instances) external nonpayable
 ```
 
-finalize commited block in layer 1
+finalize commited batch in layer 1
 
 *will add more parameters if needed.*
 
@@ -93,17 +118,17 @@ finalize commited block in layer 1
 
 | Name | Type | Description |
 |---|---|---|
-| _blockHash | bytes32 | The block hash of the commited block. |
-| _proof | uint256[] | The corresponding proof of the commited block. |
-| _instances | uint256[] | Instance used to verify, generated from block. |
+| _batchId | bytes32 | The identification of the commited batch. |
+| _proof | uint256[] | The corresponding proof of the commited batch. |
+| _instances | uint256[] | Instance used to verify, generated from batch. |
 
-### finalizedBlocks
+### finalizedBatches
 
 ```solidity
-function finalizedBlocks(uint256) external view returns (bytes32)
+function finalizedBatches(uint256) external view returns (bytes32)
 ```
 
-Mapping from block height to finalized block hash.
+Mapping from batch index to finalized batch id.
 
 
 
@@ -178,7 +203,7 @@ Return the total number of appended message.
 ### importGenesisBlock
 
 ```solidity
-function importGenesisBlock(IZKRollup.BlockHeader _genesis) external nonpayable
+function importGenesisBlock(IZKRollup.Layer2BlockHeader _genesis) external nonpayable
 ```
 
 
@@ -189,7 +214,7 @@ function importGenesisBlock(IZKRollup.BlockHeader _genesis) external nonpayable
 
 | Name | Type | Description |
 |---|---|---|
-| _genesis | IZKRollup.BlockHeader | undefined |
+| _genesis | IZKRollup.Layer2BlockHeader | undefined |
 
 ### initialize
 
@@ -207,13 +232,13 @@ function initialize(uint256 _chainId) external nonpayable
 |---|---|---|
 | _chainId | uint256 | undefined |
 
-### lastFinalizedBlockHash
+### lastFinalizedBatchID
 
 ```solidity
-function lastFinalizedBlockHash() external view returns (bytes32)
+function lastFinalizedBatchID() external view returns (bytes32)
 ```
 
-The hash of the latest finalized block.
+The latest finalized batch id.
 
 
 
@@ -325,21 +350,21 @@ function renounceOwnership() external nonpayable
 *Leaves the contract without owner. It will not be possible to call `onlyOwner` functions anymore. Can only be called by the current owner. NOTE: Renouncing ownership will leave the contract without an owner, thereby removing any functionality that is only available to the owner.*
 
 
-### revertBlock
+### revertBatch
 
 ```solidity
-function revertBlock(bytes32 _blockHash) external nonpayable
+function revertBatch(bytes32 _batchId) external nonpayable
 ```
 
-revert a pending block.
+revert a pending batch.
 
-*one can only revert unfinalized blocks.*
+*one can only revert unfinalized batches.*
 
 #### Parameters
 
 | Name | Type | Description |
 |---|---|---|
-| _blockHash | bytes32 | The block hash of the block. |
+| _batchId | bytes32 | The identification of the batch. |
 
 ### transferOwnership
 
@@ -392,7 +417,7 @@ Update the address of operator.
 ### verifyMessageStateProof
 
 ```solidity
-function verifyMessageStateProof(uint256 _blockNumber) external view returns (bool)
+function verifyMessageStateProof(uint256 _batchIndex, uint256 _blockHeight) external view returns (bool)
 ```
 
 Verify a state proof for message relay.
@@ -403,7 +428,8 @@ Verify a state proof for message relay.
 
 | Name | Type | Description |
 |---|---|---|
-| _blockNumber | uint256 | undefined |
+| _batchIndex | uint256 | undefined |
+| _blockHeight | uint256 | undefined |
 
 #### Returns
 
@@ -415,13 +441,13 @@ Verify a state proof for message relay.
 
 ## Events
 
-### CommitBlock
+### CommitBatch
 
 ```solidity
-event CommitBlock(bytes32 indexed _blockHash, uint64 indexed _blockHeight, bytes32 _parentHash)
+event CommitBatch(bytes32 indexed _batchId, bytes32 _batchHash, uint256 _batchIndex, bytes32 _parentHash)
 ```
 
-
+Emitted when a new batch is commited.
 
 
 
@@ -429,17 +455,18 @@ event CommitBlock(bytes32 indexed _blockHash, uint64 indexed _blockHeight, bytes
 
 | Name | Type | Description |
 |---|---|---|
-| _blockHash `indexed` | bytes32 | undefined |
-| _blockHeight `indexed` | uint64 | undefined |
+| _batchId `indexed` | bytes32 | undefined |
+| _batchHash  | bytes32 | undefined |
+| _batchIndex  | uint256 | undefined |
 | _parentHash  | bytes32 | undefined |
 
-### FinalizeBlock
+### FinalizeBatch
 
 ```solidity
-event FinalizeBlock(bytes32 indexed _blockHash, uint64 indexed _blockHeight)
+event FinalizeBatch(bytes32 indexed _batchId, bytes32 _batchHash, uint256 _batchIndex, bytes32 _parentHash)
 ```
 
-
+Emitted when a batch is finalized.
 
 
 
@@ -447,8 +474,10 @@ event FinalizeBlock(bytes32 indexed _blockHash, uint64 indexed _blockHeight)
 
 | Name | Type | Description |
 |---|---|---|
-| _blockHash `indexed` | bytes32 | undefined |
-| _blockHeight `indexed` | uint64 | undefined |
+| _batchId `indexed` | bytes32 | undefined |
+| _batchHash  | bytes32 | undefined |
+| _batchIndex  | uint256 | undefined |
+| _parentHash  | bytes32 | undefined |
 
 ### OwnershipTransferred
 
@@ -467,13 +496,13 @@ event OwnershipTransferred(address indexed previousOwner, address indexed newOwn
 | previousOwner `indexed` | address | undefined |
 | newOwner `indexed` | address | undefined |
 
-### RevertBlock
+### RevertBatch
 
 ```solidity
-event RevertBlock(bytes32 indexed _blockHash)
+event RevertBatch(bytes32 indexed _batchId)
 ```
 
-
+Emitted when a batch is reverted.
 
 
 
@@ -481,7 +510,7 @@ event RevertBlock(bytes32 indexed _blockHash)
 
 | Name | Type | Description |
 |---|---|---|
-| _blockHash `indexed` | bytes32 | undefined |
+| _batchId `indexed` | bytes32 | undefined |
 
 ### UpdateMesssenger
 

@@ -60,7 +60,7 @@ contract ZKRollupTest is DSTestPlus {
     rollup.updateMessenger(_messenger);
   }
 
-  function testImportGenesisBlock(IZKRollup.BlockHeader memory _genesis) public {
+  function testImportGenesisBlock(IZKRollup.Layer2BlockHeader memory _genesis) public {
     if (_genesis.blockHash == bytes32(0)) {
       _genesis.blockHash = bytes32(uint256(1));
     }
@@ -75,82 +75,142 @@ contract ZKRollupTest is DSTestPlus {
 
     // not genesis block, should revert
     _genesis.blockHeight = 1;
-    hevm.expectRevert("not genesis block");
+    hevm.expectRevert("Block is not genesis");
     rollup.importGenesisBlock(_genesis);
     _genesis.blockHeight = 0;
 
     // parent hash not empty, should revert
     _genesis.parentHash = bytes32(uint256(2));
-    hevm.expectRevert("parent hash not empty");
+    hevm.expectRevert("Parent hash not empty");
     rollup.importGenesisBlock(_genesis);
     _genesis.parentHash = bytes32(0);
 
     // invalid block hash, should revert
     bytes32 _originalHash = _genesis.blockHash;
     _genesis.blockHash = bytes32(0);
-    hevm.expectRevert("invalid block hash");
+    hevm.expectRevert("Block hash is zero");
     rollup.importGenesisBlock(_genesis);
     _genesis.blockHash = _originalHash;
 
+    // TODO: add Block hash verification failed
+
     // import correctly
-    assertEq(rollup.finalizedBlocks(0), bytes32(0));
+    assertEq(rollup.finalizedBatches(0), bytes32(0));
     rollup.importGenesisBlock(_genesis);
-    (IZKRollup.BlockHeader memory _header, , bool _verified) = rollup.blocks(_genesis.blockHash);
-    assertEq(_genesis.blockHash, rollup.lastFinalizedBlockHash());
-    assertEq(_genesis.blockHash, _header.blockHash);
-    assertEq(_genesis.parentHash, _header.parentHash);
-    assertEq(_genesis.baseFee, _header.baseFee);
-    assertEq(_genesis.stateRoot, _header.stateRoot);
-    assertEq(_genesis.blockHeight, _header.blockHeight);
-    assertEq(_genesis.gasUsed, _header.gasUsed);
-    assertEq(_genesis.timestamp, _header.timestamp);
-    assertBytesEq(_genesis.extraData, _header.extraData);
-    assertBoolEq(_verified, true);
-    assertEq(rollup.finalizedBlocks(0), _genesis.blockHash);
+    {
+      (bytes32 parentHash, , uint64 blockHeight, uint64 batchIndex) = rollup.blocks(_genesis.blockHash);
+      assertEq(_genesis.parentHash, parentHash);
+      assertEq(_genesis.blockHeight, blockHeight);
+      assertEq(batchIndex, 0);
+    }
+    {
+      bytes32 _batchId = keccak256(abi.encode(_genesis.blockHash, bytes32(0), 0));
+      assertEq(rollup.finalizedBatches(0), _batchId);
+      assertEq(rollup.lastFinalizedBatchID(), _batchId);
+      (bytes32 batchHash, bytes32 parentHash, uint64 batchIndex, bool verified) = rollup.batches(_batchId);
+      assertEq(batchHash, _genesis.blockHash);
+      assertEq(parentHash, bytes32(0));
+      assertEq(batchIndex, 0);
+      assertBoolEq(verified, true);
+    }
 
     // genesis block imported
-    hevm.expectRevert("genesis block imported");
+    hevm.expectRevert("Genesis block imported");
     rollup.importGenesisBlock(_genesis);
   }
 
-  function testCommitBlockFailed() public {
+  function testCommitBatchFailed() public {
     rollup.updateOperator(address(1));
 
-    IZKRollup.BlockHeader memory _header;
-    IZKRollup.Layer2Transaction[] memory _txns = new IZKRollup.Layer2Transaction[](0);
+    IZKRollup.Layer2BlockHeader memory _header;
+    IZKRollup.Layer2Batch memory _batch;
 
     // not operator call, should revert
     hevm.expectRevert("caller not operator");
-    rollup.commitBlock(_header, _txns);
+    rollup.commitBatch(_batch);
 
     // import fake genesis
     _header.blockHash = bytes32(uint256(1));
     rollup.importGenesisBlock(_header);
 
     hevm.startPrank(address(1));
+    // batch is empty
+    hevm.expectRevert("Batch is empty");
+    rollup.commitBatch(_batch);
+
     // block submitted, should revert
     _header.blockHash = bytes32(uint256(1));
-    hevm.expectRevert("Block has been committed before");
-    rollup.commitBlock(_header, _txns);
+    _batch.blocks = new IZKRollup.Layer2BlockHeader[](1);
+    _batch.blocks[0] = _header;
+    _batch.batchIndex = 0;
+    _batch.parentHash = bytes32(0);
+    hevm.expectRevert("Batch has been committed before");
+    rollup.commitBatch(_batch);
 
-    // no parent block, should revert
+    // no parent batch, should revert
     _header.blockHash = bytes32(uint256(2));
-    hevm.expectRevert("Parent hasn't been committed");
-    rollup.commitBlock(_header, _txns);
+    _batch.blocks = new IZKRollup.Layer2BlockHeader[](1);
+    _batch.blocks[0] = _header;
+    _batch.batchIndex = 0;
+    _batch.parentHash = bytes32(0);
+    hevm.expectRevert("Parent batch hasn't been committed");
+    rollup.commitBatch(_batch);
 
-    // block height mismatch, should revert
+    // Batch index and parent batch index mismatch
+    _header.blockHash = bytes32(uint256(2));
+    _batch.blocks = new IZKRollup.Layer2BlockHeader[](1);
+    _batch.blocks[0] = _header;
+    _batch.batchIndex = 2;
+    _batch.parentHash = bytes32(uint256(1));
+    hevm.expectRevert("Batch index and parent batch index mismatch");
+    rollup.commitBatch(_batch);
+
+    // BLock parent hash mismatch
+    _header.blockHash = bytes32(uint256(2));
+    _header.parentHash = bytes32(0);
+    _batch.blocks = new IZKRollup.Layer2BlockHeader[](1);
+    _batch.blocks[0] = _header;
+    _batch.batchIndex = 1;
+    _batch.parentHash = bytes32(uint256(1));
+    hevm.expectRevert("Block parent hash mismatch");
+    rollup.commitBatch(_batch);
+
+    // Block height mismatch
     _header.blockHash = bytes32(uint256(2));
     _header.parentHash = bytes32(uint256(1));
-    hevm.expectRevert("Block height and parent block height mismatch");
-    rollup.commitBlock(_header, _txns);
-
     _header.blockHeight = 2;
-    hevm.expectRevert("Block height and parent block height mismatch");
-    rollup.commitBlock(_header, _txns);
+    _batch.blocks = new IZKRollup.Layer2BlockHeader[](1);
+    _batch.blocks[0] = _header;
+    _batch.batchIndex = 1;
+    _batch.parentHash = bytes32(uint256(1));
+    hevm.expectRevert("Block height mismatch");
+    rollup.commitBatch(_batch);
+
+    _header.blockHash = bytes32(uint256(2));
+    _header.parentHash = bytes32(uint256(1));
+    _header.blockHeight = 0;
+    _batch.blocks = new IZKRollup.Layer2BlockHeader[](1);
+    _batch.blocks[0] = _header;
+    _batch.batchIndex = 1;
+    _batch.parentHash = bytes32(uint256(1));
+    hevm.expectRevert("Block height mismatch");
+    rollup.commitBatch(_batch);
+
+    // Block has been commited before
+    _header.blockHash = bytes32(uint256(1));
+    _header.parentHash = bytes32(uint256(1));
+    _header.blockHeight = 1;
+    _batch.blocks = new IZKRollup.Layer2BlockHeader[](1);
+    _batch.blocks[0] = _header;
+    _batch.batchIndex = 1;
+    _batch.parentHash = bytes32(uint256(1));
+    hevm.expectRevert("Block has been commited before");
+    rollup.commitBatch(_batch);
+
     hevm.stopPrank();
   }
 
-  function testCommitBlock(IZKRollup.BlockHeader memory _header) public {
+  function testCommitBatch(IZKRollup.Layer2BlockHeader memory _header) public {
     if (_header.parentHash == bytes32(0)) {
       _header.parentHash = bytes32(uint256(1));
     }
@@ -159,30 +219,40 @@ contract ZKRollupTest is DSTestPlus {
     }
     rollup.updateOperator(address(1));
 
-    IZKRollup.Layer2Transaction[] memory _txns = new IZKRollup.Layer2Transaction[](0);
-
     // import fake genesis
-    IZKRollup.BlockHeader memory _genesis;
+    IZKRollup.Layer2BlockHeader memory _genesis;
     _genesis.blockHash = _header.parentHash;
     rollup.importGenesisBlock(_genesis);
     _header.blockHeight = 1;
 
+    IZKRollup.Layer2Batch memory _batch;
+    _batch.blocks = new IZKRollup.Layer2BlockHeader[](1);
+    _batch.blocks[0] = _header;
+    _batch.batchIndex = 1;
+    _batch.parentHash = _header.parentHash;
+
     // mock caller as operator
-    assertEq(rollup.finalizedBlocks(1), bytes32(0));
+    assertEq(rollup.finalizedBatches(1), bytes32(0));
     hevm.startPrank(address(1));
-    rollup.commitBlock(_header, _txns);
+    rollup.commitBatch(_batch);
     hevm.stopPrank();
 
-    (IZKRollup.BlockHeader memory _storedHeader, , bool _verified) = rollup.blocks(_header.blockHash);
-    assertEq(_header.blockHash, _storedHeader.blockHash);
-    assertEq(_header.parentHash, _storedHeader.parentHash);
-    assertEq(_header.baseFee, _storedHeader.baseFee);
-    assertEq(_header.stateRoot, _storedHeader.stateRoot);
-    assertEq(_header.blockHeight, _storedHeader.blockHeight);
-    assertEq(_header.gasUsed, _storedHeader.gasUsed);
-    assertEq(_header.timestamp, _storedHeader.timestamp);
-    assertBytesEq(_header.extraData, _storedHeader.extraData);
-    assertBoolEq(_verified, false);
-    assertEq(rollup.finalizedBlocks(1), bytes32(0));
+    // verify block
+    {
+      (bytes32 parentHash, , uint64 blockHeight, uint64 batchIndex) = rollup.blocks(_header.blockHash);
+      assertEq(parentHash, _header.parentHash);
+      assertEq(blockHeight, _header.blockHeight);
+      assertEq(batchIndex, _batch.batchIndex);
+    }
+    // verify batch
+    {
+      bytes32 _batchId = keccak256(abi.encode(_header.blockHash, _header.parentHash, 1));
+      (bytes32 batchHash, bytes32 parentHash, uint64 batchIndex, bool verified) = rollup.batches(_batchId);
+      assertEq(batchHash, _header.blockHash);
+      assertEq(parentHash, _batch.parentHash);
+      assertEq(batchIndex, _batch.batchIndex);
+      assertBoolEq(verified, false);
+      assertEq(rollup.finalizedBatches(1), bytes32(0));
+    }
   }
 }
