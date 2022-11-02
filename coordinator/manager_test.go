@@ -193,7 +193,7 @@ func TestFunction(t *testing.T) {
 			assert.NoError(t, json.Unmarshal(payload, msg))
 			assert.Equal(t, msg.Type, message.TaskMsgType)
 
-			traces := &message.Task{}
+			traces := &message.TaskMsg{}
 			assert.NoError(t, json.Unmarshal(payload, traces))
 
 		}

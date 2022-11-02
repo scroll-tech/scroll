@@ -4,10 +4,11 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"scroll-tech/common/message"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+
+	"scroll-tech/common/message"
 )
 
 func TestStack(t *testing.T) {
@@ -22,34 +23,34 @@ func TestStack(t *testing.T) {
 	defer s.Close()
 
 	for i := 0; i < 3; i++ {
-		trace := &ProvingTraces{
-			Traces: &message.BlockTraces{
+		task := &ProvingTask{
+			Task: &message.TaskMsg{
 				ID:     uint64(i),
 				Traces: nil,
 			},
 			Times: 0,
 		}
 
-		err = s.Push(trace)
+		err = s.Push(task)
 		assert.NoError(t, err)
 	}
 
 	for i := 2; i >= 0; i-- {
-		var pop *ProvingTraces
+		var pop *ProvingTask
 		pop, err = s.Pop()
 		assert.NoError(t, err)
-		assert.Equal(t, uint64(i), pop.Traces.ID)
+		assert.Equal(t, uint64(i), pop.Task.ID)
 	}
 
 	// test times
-	trace := &ProvingTraces{
-		Traces: &message.BlockTraces{
+	task := &ProvingTask{
+		Task: &message.TaskMsg{
 			ID:     1,
 			Traces: nil,
 		},
 		Times: 0,
 	}
-	err = s.Push(trace)
+	err = s.Push(task)
 	assert.NoError(t, err)
 	pop, err := s.Pop()
 	assert.NoError(t, err)

@@ -21,7 +21,7 @@ type RPCTrace struct {
 
 func TestFFI(t *testing.T) {
 	if os.Getenv("TEST_FFI") != "true" {
-		return
+		t.Skip("Skipping testing FFI")
 	}
 
 	as := assert.New(t)
@@ -40,7 +40,7 @@ func TestFFI(t *testing.T) {
 	rpcTrace := &RPCTrace{}
 	as.NoError(json.Unmarshal(byt, rpcTrace))
 
-	_, err = prover.Prove(rpcTrace.Result)
+	_, err = prover.Prove([]*types.BlockResult{rpcTrace.Result})
 	as.NoError(err)
 	t.Log("prove success")
 }
