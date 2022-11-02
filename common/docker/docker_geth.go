@@ -9,21 +9,7 @@ import (
 	"time"
 
 	"github.com/docker/docker/api/types"
-	"github.com/docker/docker/client"
 )
-
-var (
-	cli *client.Client
-)
-
-func init() {
-	var err error
-	cli, err = client.NewClientWithOpts(client.FromEnv)
-	if err != nil {
-		panic(err)
-	}
-	cli.NegotiateAPIVersion(context.Background())
-}
 
 // ImgGeth the geth image manager include l1geth and l2geth.
 type ImgGeth struct {
