@@ -194,7 +194,7 @@ contract ZKRollup is OwnableUpgradeable, IZKRollup {
 
     // check whether the blocks are correct.
     unchecked {
-            uint256 _expectedBlockHeight = _parentBlock.blockHeight + 1;
+      uint256 _expectedBlockHeight = _parentBlock.blockHeight + 1;
       bytes32 _expectedParentHash = _batch.parentHash;
       for (uint256 i = 0; i < _batch.blocks.length; i++) {
         Layer2BlockHeader memory _block = _batch.blocks[i];

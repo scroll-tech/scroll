@@ -238,7 +238,7 @@ function initialize(uint256 _chainId) external nonpayable
 function lastFinalizedBatchID() external view returns (bytes32)
 ```
 
-The hash of the latest finalized batch id.
+The latest finalized batch id.
 
 
 
