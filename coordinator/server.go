@@ -9,8 +9,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"scroll-tech/common/message"
-
 	"github.com/gorilla/websocket"
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/crypto"
