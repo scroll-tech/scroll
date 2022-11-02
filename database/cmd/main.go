@@ -12,7 +12,7 @@ import (
 )
 
 func main() {
-	// Set up Coordinator app info.
+	// Set up database app info.
 	app := cli.NewApp()
 
 	app.Action = action
@@ -78,7 +78,7 @@ func main() {
 		},
 	}
 
-	// Run the coordinator.
+	// Run the database.
 	if err := app.Run(os.Args); err != nil {
 		_, _ = fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
