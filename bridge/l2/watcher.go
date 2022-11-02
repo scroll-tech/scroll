@@ -116,7 +116,7 @@ func (w *WatcherClient) Stop() {
 	w.stopCh <- struct{}{}
 }
 
-var blockResultsFetchLimit = 10
+var blockResultsFetchLimit = uint64(10)
 
 // try fetch missing blocks if inconsistent
 func (w *WatcherClient) tryFetchRunningMissingBlocks(ctx context.Context, backTrackFrom uint64) error {
@@ -185,7 +185,7 @@ func (w *WatcherClient) tryFetchRunningMissingBlocks(ctx context.Context, backTr
 	return nil
 }
 
-var contractEventsBlocksFetchLimit = 10
+var contractEventsBlocksFetchLimit = int64(10)
 
 // FetchContractEvent pull latest event logs from given contract address and save in DB
 func (w *WatcherClient) fetchContractEvent(blockHeight uint64) error {

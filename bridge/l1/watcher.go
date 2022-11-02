@@ -93,7 +93,7 @@ func (r *Watcher) Stop() {
 	r.stop <- true
 }
 
-var contractEventsBlocksFetchLimit = 10
+var contractEventsBlocksFetchLimit = int64(10)
 
 // FetchContractEvent pull latest event logs from given contract address and save in DB
 func (r *Watcher) fetchContractEvent(blockHeight uint64) error {
