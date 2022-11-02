@@ -40,7 +40,8 @@ func TestFFI(t *testing.T) {
 	rpcTrace := &RPCTrace{}
 	as.NoError(json.Unmarshal(byt, rpcTrace))
 
-	_, err = prover.Prove([]*types.BlockResult{rpcTrace.Result})
+	twoTraces := []*types.BlockResult{rpcTrace.Result, rpcTrace.Result}
+	_, err = prover.Prove(twoTraces)
 	as.NoError(err)
 	t.Log("prove success")
 }
