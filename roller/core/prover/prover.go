@@ -50,8 +50,7 @@ func (p *Prover) prove(traces []*types.BlockResult) (*message.AggProof, error) {
 		return &message.AggProof{}, nil
 	}
 
-	// TODO: prove multiple blocks
-	tracesByt, err := json.Marshal(traces[0])
+	tracesByt, err := json.Marshal(traces)
 	if err != nil {
 		return nil, err
 	}
@@ -60,7 +59,7 @@ func (p *Prover) prove(traces []*types.BlockResult) (*message.AggProof, error) {
 	defer func() {
 		C.free(unsafe.Pointer(tracesStr))
 	}()
-	cProof := C.create_agg_proof(tracesStr)
+	cProof := C.create_agg_proof_multi(tracesStr)
 	proof := C.GoString(cProof)
 	zkProof := &message.AggProof{}
 	err = json.Unmarshal([]byte(proof), zkProof)
