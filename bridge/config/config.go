@@ -73,6 +73,8 @@ type L2Config struct {
 }
 
 // RelayerConfig loads relayer configuration items.
+// What we need to pay attention to is that
+// `MessageSenderPrivateKeys` and `RollupSenderPrivateKeys` cannot have common private keys.
 type RelayerConfig struct {
 	// RollupContractAddress store the rollup contract address.
 	RollupContractAddress common.Address `json:"rollup_contract_address,omitempty"`
