@@ -78,7 +78,7 @@ jobs:
       uses: actions/checkout@v2
     - name: Install goimports
       run: go install golang.org/x/tools/cmd/goimports
-    - run: goimports -local scroll-tech/go-roller/ -w .
+    - run: goimports -local scroll-tech/roller/ -w .
     - run: go mod tidy
     # If there are any diffs from goimports or go mod tidy, fail.
     - name: Verify no changes from goimports and go mod tidy
