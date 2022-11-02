@@ -8,7 +8,7 @@ integration-test
 lib
 |- forge-std - "foundry dependency"
 scripts
-|- deploy.ts - "hardhat deploy script"
+|- deploy_xxx.ts - "hardhat deploy script"
 |- foundry - "foundry deploy scripts"
 src
 |- test
