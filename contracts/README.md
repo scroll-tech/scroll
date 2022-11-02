@@ -9,6 +9,7 @@ lib
 |- forge-std - "foundry dependency"
 scripts
 |- deploy.ts - "hardhat deploy script"
+|- foundry - "foundry deploy scripts"
 src
 |- test
 |  `- xxx.t.sol - "Unit testi in solidity"
