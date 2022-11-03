@@ -1,14 +1,13 @@
 package main
 
 import (
-	"scroll-tech/bridge/config"
-	"scroll-tech/common/utils"
-
 	"github.com/jmoiron/sqlx"
 	"github.com/urfave/cli/v2"
 
 	"github.com/scroll-tech/go-ethereum/log"
 
+	"scroll-tech/bridge/config"
+	"scroll-tech/common/utils"
 	"scroll-tech/database"
 	"scroll-tech/database/migrate"
 )
