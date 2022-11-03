@@ -130,7 +130,7 @@ func testBatchSender(t *testing.T, batchSize int) {
 				return
 			}
 		case <-after:
-			t.Error("newSender test failed because timeout")
+			t.Error("newSender test failed because of timeout")
 			return
 		}
 	}
