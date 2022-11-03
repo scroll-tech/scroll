@@ -16,6 +16,7 @@ import (
 	"github.com/scroll-tech/go-ethereum/rpc"
 
 	"scroll-tech/common/message"
+
 	"scroll-tech/database/orm"
 
 	"scroll-tech/coordinator/config"
