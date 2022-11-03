@@ -174,9 +174,10 @@ func (r *Layer2Relayer) processSavedEvent(msg *orm.Layer2Message) error {
 	err = r.db.UpdateLayer2StatusAndLayer1Hash(r.ctx, msg.Layer2Hash, hash.String(), orm.MsgSubmitted)
 	if err != nil {
 		log.Error("UpdateLayer2StatusAndLayer1Hash failed", "layer2hash", msg.Layer2Hash, "err", err)
+		return err
 	}
 	r.processingMessage[msg.Layer2Hash] = msg.Layer2Hash
-	return err
+	return nil
 }
 
 // ProcessPendingBlocks submit block data to layer rollup contract
