@@ -85,7 +85,7 @@ func (a *accounts) resetNonce(ctx context.Context, auth *bind.TransactOpts) {
 }
 
 // checkAndSetBalance check balance and set min balance.
-func (a *accounts) checkAndSetBalance(ctx context.Context) error {
+func (a *accounts) checkAndSetBalances(ctx context.Context) error {
 	var (
 		root      *bind.TransactOpts
 		maxBls    = big.NewInt(0)
