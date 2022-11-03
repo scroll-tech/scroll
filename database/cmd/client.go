@@ -1,8 +1,6 @@
 package main
 
 import (
-	"scroll-tech/bridge/config"
-
 	"github.com/jmoiron/sqlx"
 	"github.com/urfave/cli/v2"
 
@@ -13,11 +11,10 @@ import (
 )
 
 func initDB(file string) (*sqlx.DB, error) {
-	cfg, err := config.NewConfig(file)
+	dbCfg, err := database.NewConfig(file)
 	if err != nil {
 		return nil, err
 	}
-	dbCfg := cfg.DBConfig
 	factory, err := database.NewOrmFactory(dbCfg)
 	if err != nil {
 		return nil, err
