@@ -13,7 +13,7 @@ import (
 	"github.com/scroll-tech/go-ethereum/log"
 )
 
-type accounts struct {
+type accountPool struct {
 	client *ethclient.Client
 
 	minBalance *big.Int
