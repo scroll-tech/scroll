@@ -4,6 +4,8 @@ import (
 	"context"
 	"testing"
 
+	"github.com/jmoiron/sqlx"
+	_ "github.com/lib/pq" //nolint:golint
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/stretchr/testify/assert"
 )
@@ -38,4 +40,14 @@ func TestL2Geth(t *testing.T) {
 	chainID, err := client.ChainID(ctx)
 	assert.NoError(t, err)
 	t.Logf("chainId: %s", chainID.String())
+}
+
+func TestDB(t *testing.T) {
+	driverName := "postgres"
+	dbImg := NewTestDBDocker(t, driverName)
+	defer dbImg.Stop()
+
+	db, err := sqlx.Open(driverName, dbImg.Endpoint())
+	assert.NoError(t, err)
+	assert.NoError(t, db.Ping())
 }

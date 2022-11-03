@@ -8,35 +8,41 @@ import (
 	"github.com/pressly/goose/v3"
 	"github.com/stretchr/testify/assert"
 
-	"scroll-tech/common/utils"
-
 	"scroll-tech/common/docker"
 
 	"scroll-tech/database"
-	docker_db "scroll-tech/database/docker"
 )
 
 var (
-	pgDB *sqlx.DB
-	img  docker.ImgInstance
+	pgDB  *sqlx.DB
+	dbImg docker.ImgInstance
 )
 
-func initEnv(t *testing.T) {
-	img = docker_db.NewImgDB(t, "postgres", "123456", "test_1", 5434)
-	assert.NoError(t, img.Start())
+func initEnv(t *testing.T) error {
+	// Start db container.
+	dbImg = docker.NewTestDBDocker(t, "postgres")
 
-	var err error
+	// Create db orm handler.
 	factory, err := database.NewOrmFactory(&database.DBConfig{
-		DriverName: utils.GetEnvWithDefault("TEST_DB_DRIVER", "postgres"),
-		DSN:        img.Endpoint(),
+		DriverName: "postgres",
+		DSN:        dbImg.Endpoint(),
 	})
-	assert.NoError(t, err)
+	if err != nil {
+		return err
+	}
 	pgDB = factory.GetDB()
+	return nil
 }
 
-func TestMegration(t *testing.T) {
-	initEnv(t)
-	defer img.Stop()
+func TestMigration(t *testing.T) {
+	defer func() {
+		if dbImg != nil {
+			assert.NoError(t, dbImg.Stop())
+		}
+	}()
+	if err := initEnv(t); err != nil {
+		t.Fatal(err)
+	}
 
 	err := Migrate(pgDB.DB)
 	assert.NoError(t, err)
