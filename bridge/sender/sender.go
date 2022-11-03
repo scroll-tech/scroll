@@ -35,7 +35,7 @@ const (
 )
 
 var (
-	// ErrNoAvailableAccount empty account of error.
+	// ErrNoAvailableAccount indicates no available account error in the account pool.
 	ErrNoAvailableAccount = errors.New("sender has no available account to send transaction")
 )
 
