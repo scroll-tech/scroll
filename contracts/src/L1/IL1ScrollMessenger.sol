@@ -7,7 +7,8 @@ import { IScrollMessenger } from "../libraries/IScrollMessenger.sol";
 interface IL1ScrollMessenger is IScrollMessenger {
   struct L2MessageProof {
     // @todo add more fields
-    uint256 blockNumber;
+    uint256 batchIndex;
+    uint256 blockHeight;
     bytes merkleProof;
   }
 
