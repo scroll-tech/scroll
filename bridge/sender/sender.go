@@ -23,7 +23,6 @@ import (
 )
 
 const (
-
 	// AccessListTxType type for AccessListTx
 	AccessListTxType = "AccessListTx"
 
@@ -81,7 +80,7 @@ type Sender struct {
 	ctx     context.Context
 
 	// account fields.
-	auths *accounts
+	auths *accountPool
 
 	mu            sync.Mutex
 	blockNumber   uint64   // Current block number on chain.
@@ -109,7 +108,7 @@ func NewSender(ctx context.Context, config *config.SenderConfig, privs []*ecdsa.
 		return nil, err
 	}
 
-	auths, err := newAccounts(ctx, config.MinBalance, client, privs)
+	auths, err := newAccountPool(ctx, config.MinBalance, client, privs)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create account pool, err: %v", err)
 	}
@@ -364,7 +363,7 @@ func (s *Sender) CheckPendingTransaction(header *types.Header) {
 			var tx *types.Transaction
 			tx, err := s.resubmitTransaction(pending.feeData, pending.tx)
 			if err != nil {
-				// If accounts channel is empty, wait 1 second.
+				// If account pool is empty, it will try again in next loop.
 				if !errors.Is(err, ErrNoAvailableAccount) {
 					log.Error("failed to resubmit transaction, reset submitAt", "tx hash", pending.tx.Hash().String(), "err", err)
 				}
@@ -397,7 +396,7 @@ func (s *Sender) loop(ctx context.Context) {
 			s.CheckPendingTransaction(header)
 		case <-checkBalanceTicker.C:
 			// Check and set balance.
-			_ = s.auths.checkAndSetBalance(ctx)
+			_ = s.auths.checkAndSetBalances(ctx)
 		case <-ctx.Done():
 			return
 		case <-s.stopCh:

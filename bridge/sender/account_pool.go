@@ -22,11 +22,12 @@ type accountPool struct {
 }
 
 // newAccounts creates an accountPool instance.
-func newAccountPool(ctx context.Context, minBalance *big.Int, client *ethclient.Client, privs []*ecdsa.PrivateKey) (*accounts, error) {
+func newAccountPool(ctx context.Context, minBalance *big.Int, client *ethclient.Client, privs []*ecdsa.PrivateKey) (*accountPool, error) {
 	if minBalance == nil {
-		minBalance = big.NewInt(0).SetString("100000000000000000000", 10)
+		minBalance = big.NewInt(0)
+		minBalance.SetString("100000000000000000000", 10)
 	}
-	accs := &accounts{
+	accs := &accountPool{
 		client:     client,
 		minBalance: minBalance,
 		accounts:   make(map[common.Address]*bind.TransactOpts, len(privs)),
@@ -56,11 +57,11 @@ func newAccountPool(ctx context.Context, minBalance *big.Int, client *ethclient.
 		accs.accsCh <- auth
 	}
 
-	return accs, accs.checkAndSetBalance(ctx)
+	return accs, accs.checkAndSetBalances(ctx)
 }
 
 // getAccount get auth from channel.
-func (a *accounts) getAccount() *bind.TransactOpts {
+func (a *accountPool) getAccount() *bind.TransactOpts {
 	select {
 	case auth := <-a.accsCh:
 		return auth
@@ -70,12 +71,12 @@ func (a *accounts) getAccount() *bind.TransactOpts {
 }
 
 // releaseAccount set used auth into channel.
-func (a *accounts) releaseAccount(auth *bind.TransactOpts) {
+func (a *accountPool) releaseAccount(auth *bind.TransactOpts) {
 	a.accsCh <- auth
 }
 
 // reSetNonce reset nonce if send signed tx failed.
-func (a *accounts) resetNonce(ctx context.Context, auth *bind.TransactOpts) {
+func (a *accountPool) resetNonce(ctx context.Context, auth *bind.TransactOpts) {
 	nonce, err := a.client.PendingNonceAt(ctx, auth.From)
 	if err != nil {
 		log.Warn("failed to reset nonce", "address", auth.From.String(), "err", err)
@@ -85,7 +86,7 @@ func (a *accounts) resetNonce(ctx context.Context, auth *bind.TransactOpts) {
 }
 
 // checkAndSetBalance check balance and set min balance.
-func (a *accounts) checkAndSetBalances(ctx context.Context) error {
+func (a *accountPool) checkAndSetBalances(ctx context.Context) error {
 	var (
 		root      *bind.TransactOpts
 		maxBls    = big.NewInt(0)
@@ -99,7 +100,7 @@ func (a *accounts) checkAndSetBalances(ctx context.Context) error {
 				log.Warn("failed to get balance", "address", addr.String(), "err", err)
 				return err
 			}
-			loseAuths = append(loseAuths, auth)
+			lostAuths = append(lostAuths, auth)
 			continue
 		} else if bls.Cmp(maxBls) > 0 { // Find the biggest balance account.
 			root, maxBls = auth, bls
@@ -108,7 +109,7 @@ func (a *accounts) checkAndSetBalances(ctx context.Context) error {
 	if root == nil {
 		return fmt.Errorf("no account has enough balance")
 	}
-	if len(loseAuths) == 0 {
+	if len(lostAuths) == 0 {
 		return nil
 	}
 
@@ -116,7 +117,7 @@ func (a *accounts) checkAndSetBalances(ctx context.Context) error {
 		tx  *types.Transaction
 		err error
 	)
-	for _, auth := range loseAuths {
+	for _, auth := range lostAuths {
 		tx, err = a.createSignedTx(root, &auth.From, a.minBalance)
 		if err != nil {
 			return err
@@ -139,7 +140,7 @@ func (a *accounts) checkAndSetBalances(ctx context.Context) error {
 	return nil
 }
 
-func (a *accounts) createSignedTx(from *bind.TransactOpts, to *common.Address, value *big.Int) (*types.Transaction, error) {
+func (a *accountPool) createSignedTx(from *bind.TransactOpts, to *common.Address, value *big.Int) (*types.Transaction, error) {
 	gasPrice, err := a.client.SuggestGasPrice(context.Background())
 	if err != nil {
 		return nil, err

@@ -75,7 +75,7 @@ func NewLayer2Relayer(ctx context.Context, ethClient *ethclient.Client, proofGen
 	}
 
 	// @todo use different sender for relayer, block commit and proof finalize
-	messengerSender, err := sender.NewSender(ctx, cfg.SenderConfig, cfg.MessageSenderPrivateKeys)
+	messageSender, err := sender.NewSender(ctx, cfg.SenderConfig, cfg.MessageSenderPrivateKeys)
 	if err != nil {
 		log.Error("Failed to create messenger sender", "err", err)
 		return nil, err
@@ -91,8 +91,8 @@ func NewLayer2Relayer(ctx context.Context, ethClient *ethclient.Client, proofGen
 		ctx:                 ctx,
 		client:              ethClient,
 		db:                  db,
-		messageSender:       messengerSender,
-		messageCh:           messengerSender.ConfirmChan(),
+		messageSender:       messageSender,
+		messageCh:           messageSender.ConfirmChan(),
 		l1MessengerABI:      l1MessengerABI,
 		rollupSender:        rollupSender,
 		rollupCh:            rollupSender.ConfirmChan(),

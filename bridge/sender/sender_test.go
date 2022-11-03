@@ -71,7 +71,7 @@ func TestSender(t *testing.T) {
 }
 
 func testBatchSender(t *testing.T, batchSize int) {
-	for i := 0; i < batchSize; i++ {
+	for i := 0; i < batchSize-len(privateKeys); i++ {
 		priv, err := crypto.GenerateKey()
 		if err != nil {
 			t.Fatal(err)
