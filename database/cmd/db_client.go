@@ -27,8 +27,8 @@ func initDB(file string) (*sqlx.DB, error) {
 	return factory.GetDB(), nil
 }
 
-// ResetDB clean or reset database.
-func ResetDB(ctx *cli.Context) error {
+// resetDB clean or reset database.
+func resetDB(ctx *cli.Context) error {
 	db, err := initDB(ctx.String(configFileFlag.Name))
 	if err != nil {
 		return err

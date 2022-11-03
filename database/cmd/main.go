@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"os"
-	"os/signal"
 
 	"github.com/urfave/cli/v2"
 
@@ -14,8 +13,6 @@ import (
 func main() {
 	// Set up database app info.
 	app := cli.NewApp()
-
-	app.Action = action
 	app.Name = "database"
 	app.Usage = "The Scroll Database CLI"
 	app.Version = version.Version
@@ -83,15 +80,4 @@ func main() {
 		_, _ = fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
-}
-
-func action(ctx *cli.Context) error {
-	// Catch CTRL-C to ensure a graceful shutdown.
-	interrupt := make(chan os.Signal, 1)
-	signal.Notify(interrupt, os.Interrupt)
-
-	// Wait until the interrupt signal is received from an OS signal.
-	<-interrupt
-
-	return nil
 }
