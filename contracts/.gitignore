@@ -8,6 +8,7 @@ typechain
 cache
 cache-hardhat
 artifacts
+broadcast
 
 # logs
 *.log

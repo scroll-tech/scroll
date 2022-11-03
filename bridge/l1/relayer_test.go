@@ -7,52 +7,41 @@ import (
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/stretchr/testify/assert"
 
-	"scroll-tech/database"
-
-	"scroll-tech/bridge/mock"
+	"scroll-tech/database/migrate"
 
 	"scroll-tech/bridge/config"
 	"scroll-tech/bridge/l1"
 
-	"scroll-tech/common/utils"
-)
+	"scroll-tech/database"
 
-var TEST_CONFIG = &mock.TestConfig{
-	L1GethTestConfig: mock.L1GethTestConfig{
-		HPort: 0,
-		WPort: 8570,
-	},
-	DbTestconfig: mock.DbTestconfig{
-		DbName: "testl1relayer_db",
-		DbPort: 5440,
-		DB_CONFIG: &database.DBConfig{
-			DriverName: utils.GetEnvWithDefault("TEST_DB_DRIVER", "postgres"),
-			DSN:        utils.GetEnvWithDefault("TEST_DB_DSN", "postgres://postgres:123456@localhost:5440/testl1relayer_db?sslmode=disable"),
-		},
-	},
-}
+	"scroll-tech/common/docker"
+)
 
 // TestCreateNewRelayer test create new relayer instance and stop
 func TestCreateNewL1Relayer(t *testing.T) {
 	cfg, err := config.NewConfig("../config.json")
 	assert.NoError(t, err)
-	l1docker := mock.NewTestL1Docker(t, TEST_CONFIG)
+	l1docker := docker.NewTestL1Docker(t)
 	defer l1docker.Stop()
+	cfg.L2Config.RelayerConfig.SenderConfig.Endpoint = l1docker.Endpoint()
+	cfg.L1Config.Endpoint = l1docker.Endpoint()
 
 	client, err := ethclient.Dial(l1docker.Endpoint())
 	assert.NoError(t, err)
 
-	dbImg := mock.GetDbDocker(t, TEST_CONFIG)
-	dbImg.Start()
+	dbImg := docker.NewTestDBDocker(t, cfg.DBConfig.DriverName)
 	defer dbImg.Stop()
-	db, err := database.NewOrmFactory(TEST_CONFIG.DB_CONFIG)
+	cfg.DBConfig.DSN = dbImg.Endpoint()
+
+	// Create db handler and reset db.
+	db, err := database.NewOrmFactory(cfg.DBConfig)
 	assert.NoError(t, err)
+	assert.NoError(t, migrate.ResetDB(db.GetDB().DB))
+	defer db.Close()
 
 	relayer, err := l1.NewLayer1Relayer(context.Background(), client, 1, db, cfg.L2Config.RelayerConfig)
 	assert.NoError(t, err)
-
-	relayer.Start()
-
 	defer relayer.Stop()
 
+	relayer.Start()
 }

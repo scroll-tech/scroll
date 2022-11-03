@@ -5,11 +5,21 @@ pragma solidity ^0.8.0;
 interface IZKRollup {
   /**************************************** Events ****************************************/
 
-  event CommitBlock(bytes32 indexed _blockHash, uint64 indexed _blockHeight, bytes32 _parentHash);
+  /// @notice Emitted when a new batch is commited.
+  /// @param _batchHash The hash of the batch
+  /// @param _batchIndex The index of the batch
+  /// @param _parentHash The hash of parent batch
+  event CommitBatch(bytes32 indexed _batchId, bytes32 _batchHash, uint256 _batchIndex, bytes32 _parentHash);
 
-  event RevertBlock(bytes32 indexed _blockHash);
+  /// @notice Emitted when a batch is reverted.
+  /// @param _batchId The identification of the batch.
+  event RevertBatch(bytes32 indexed _batchId);
 
-  event FinalizeBlock(bytes32 indexed _blockHash, uint64 indexed _blockHeight);
+  /// @notice Emitted when a batch is finalized.
+  /// @param _batchHash The hash of the batch
+  /// @param _batchIndex The index of the batch
+  /// @param _parentHash The hash of parent batch
+  event FinalizeBatch(bytes32 indexed _batchId, bytes32 _batchHash, uint256 _batchIndex, bytes32 _parentHash);
 
   /// @dev The transanction struct
   struct Layer2Transaction {
@@ -20,10 +30,14 @@ interface IZKRollup {
     uint256 gasPrice;
     uint256 value;
     bytes data;
+    // signature
+    uint256 r;
+    uint256 s;
+    uint64 v;
   }
 
   /// @dev The block header struct
-  struct BlockHeader {
+  struct Layer2BlockHeader {
     bytes32 blockHash;
     bytes32 parentHash;
     uint256 baseFee;
@@ -32,6 +46,15 @@ interface IZKRollup {
     uint64 gasUsed;
     uint64 timestamp;
     bytes extraData;
+    Layer2Transaction[] txs;
+  }
+
+  /// @dev The batch struct, the batch hash is always the last block hash of `blocks`.
+  struct Layer2Batch {
+    uint64 batchIndex;
+    // The hash of the last block in the parent batch
+    bytes32 parentHash;
+    Layer2BlockHeader[] blocks;
   }
 
   /**************************************** View Functions ****************************************/
@@ -49,7 +72,7 @@ interface IZKRollup {
 
   /// @notice Verify a state proof for message relay.
   /// @dev add more fields.
-  function verifyMessageStateProof(uint256 _blockNumber) external view returns (bool);
+  function verifyMessageStateProof(uint256 _batchIndex, uint256 _blockHeight) external view returns (bool);
 
   /**************************************** Mutated Functions ****************************************/
 
@@ -72,24 +95,23 @@ interface IZKRollup {
     uint256 _gasLimit
   ) external returns (uint256);
 
-  /// @notice commit block in layer 1
-  /// @dev will add more parameters if needed.
-  /// @param _header The block header.
-  /// @param _txns The transactions included in the block.
-  function commitBlock(BlockHeader memory _header, Layer2Transaction[] memory _txns) external;
+  /// @notice commit a batch in layer 1
+  /// @dev store in a more compacted form later.
+  /// @param _batch The layer2 batch to commit.
+  function commitBatch(Layer2Batch memory _batch) external;
 
-  /// @notice revert a pending block.
-  /// @dev one can only revert unfinalized blocks.
-  /// @param _blockHash The block hash of the block.
-  function revertBlock(bytes32 _blockHash) external;
+  /// @notice revert a pending batch.
+  /// @dev one can only revert unfinalized batches.
+  /// @param _batchId The identification of the batch.
+  function revertBatch(bytes32 _batchId) external;
 
-  /// @notice finalize commited block in layer 1
+  /// @notice finalize commited batch in layer 1
   /// @dev will add more parameters if needed.
-  /// @param _blockHash The block hash of the commited block.
-  /// @param _proof The corresponding proof of the commited block.
-  /// @param _instances Instance used to verify, generated from block.
-  function finalizeBlockWithProof(
-    bytes32 _blockHash,
+  /// @param _batchId The identification of the commited batch.
+  /// @param _proof The corresponding proof of the commited batch.
+  /// @param _instances Instance used to verify, generated from batch.
+  function finalizeBatchWithProof(
+    bytes32 _batchId,
     uint256[] memory _proof,
     uint256[] memory _instances
   ) external;

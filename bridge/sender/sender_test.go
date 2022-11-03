@@ -8,30 +8,21 @@ import (
 	"testing"
 	"time"
 
-	"golang.org/x/sync/errgroup"
-
 	cmap "github.com/orcaman/concurrent-map"
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/crypto"
 	"github.com/stretchr/testify/assert"
-
-	"scroll-tech/common/docker"
+	"golang.org/x/sync/errgroup"
 
 	"scroll-tech/bridge/config"
-	"scroll-tech/bridge/mock"
 	"scroll-tech/bridge/sender"
+
+	"scroll-tech/common/docker"
 )
 
 const TX_BATCH = 100
 
 var (
-	TestConfig = &mock.TestConfig{
-		L1GethTestConfig: mock.L1GethTestConfig{
-			HPort: 0,
-			WPort: 8576,
-		},
-	}
-
 	l1gethImg docker.ImgInstance
 	private   *ecdsa.PrivateKey
 )
@@ -42,17 +33,18 @@ func setupEnv(t *testing.T) {
 	prv, err := crypto.HexToECDSA(cfg.L2Config.RelayerConfig.PrivateKey)
 	assert.NoError(t, err)
 	private = prv
-	l1gethImg = mock.NewTestL1Docker(t, TestConfig)
+	l1gethImg = docker.NewTestL1Docker(t)
 }
 
 func TestFunction(t *testing.T) {
 	// Setup
 	setupEnv(t)
-	t.Run("test Run sender", func(t *testing.T) {
+	t.Run("TestRunSender", func(t *testing.T) {
 		// set config
 		cfg, err := config.NewConfig("../config.json")
 		assert.NoError(t, err)
 		cfg.L2Config.RelayerConfig.SenderConfig.Endpoint = l1gethImg.Endpoint()
+		cfg.L1Config.Endpoint = l1gethImg.Endpoint()
 
 		// create newSender
 		newSender, err := sender.NewSender(context.Background(), cfg.L2Config.RelayerConfig.SenderConfig, private)
