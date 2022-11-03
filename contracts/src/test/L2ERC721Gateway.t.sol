@@ -286,6 +286,7 @@ contract L2ERC721GatewayTest is DSTestPlus {
   ) public {
     if (to == address(0)) to = address(1);
     if (to == address(mockRecipient)) to = address(1);
+    if (to == address(this)) to = address(1);
 
     gateway.updateTokenMapping(address(token), address(token));
 
