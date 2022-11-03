@@ -175,7 +175,7 @@ func (r *Layer2Relayer) ProcessSavedEvents() {
 }
 
 // ProcessPendingBatches submit batch data to layer 1 rollup contract
-// TODO: this logic is definitely wrong
+// TODO: TODO: finish implementing this logic
 func (r *Layer2Relayer) ProcessPendingBatches() {
 	// batches are sorted by id in increasing order
 	batchesInDB, err := r.db.GetPendingBatches()
@@ -189,63 +189,53 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 	id := batchesInDB[0]
 	// @todo add support to relay multiple batches
 
-	// will fetch missing block result from l2geth
-	trace, err := r.getOrFetchBlockResultByHeight(id)
+	// batch := orm.BlockBatch{} // TODO: get from DB, then also add a "ParentHash" to orm.BlockBatch
+
+	traces, err := r.db.GetBlockResults(map[string]interface{}{"batch_id": id}, "ORDER BY number ASC")
 	if err != nil {
-		log.Error("getOrFetchBlockResultByHeight failed",
-			"id", id,
-			"err", err,
-		)
+		log.Error("Failed to GetBlockResults", "batch_id", id, "err", err)
 		return
 	}
-	if trace == nil {
-		return
-	}
-
-	// TODO: rethink about this?????
-	parentHash, err := r.getOrFetchBlockHashByHeight(id - 1)
-	if err != nil {
-		log.Error("getOrFetchBlockHashByHeight for parent block failed",
-			"parent id", id-1,
-			"err", err,
-		)
-		return
-	}
-	if parentHash == nil {
-		log.Error("parent hash is empty",
-			"id", id,
-			"err", err,
-		)
+	if len(traces) == 0 {
+		log.Error("No BlockResults for batch", "batch_id", id)
 		return
 	}
 
-	header := bridge_abi.IZKRollupBlockHeader{
-		BlockHash:   trace.BlockTrace.Hash,
-		ParentHash:  *parentHash,
-		BaseFee:     trace.BlockTrace.BaseFee.ToInt(),
-		StateRoot:   trace.StorageTrace.RootAfter,
-		BlockHeight: trace.BlockTrace.Number.ToInt().Uint64(),
-		GasUsed:     0,
-		Timestamp:   trace.BlockTrace.Time,
-		ExtraData:   make([]byte, 0),
-	}
-	txns := make([]bridge_abi.IZKRollupLayer2Transaction, len(trace.BlockTrace.Transactions))
-	for i, tx := range trace.BlockTrace.Transactions {
-		txns[i] = bridge_abi.IZKRollupLayer2Transaction{
-			Caller:   tx.From,
-			Nonce:    tx.Nonce,
-			Gas:      tx.Gas,
-			GasPrice: tx.GasPrice.ToInt(),
-			Value:    tx.Value.ToInt(),
-			Data:     common.Hex2Bytes(tx.Data),
+	parentHash := common.Hash{} // TODO: get from BlockBatch.ParentHash
+
+	for _, trace := range traces {
+		header := bridge_abi.IZKRollupBlockHeader{
+			BlockHash:   trace.BlockTrace.Hash,
+			ParentHash:  parentHash,
+			BaseFee:     trace.BlockTrace.BaseFee.ToInt(),
+			StateRoot:   trace.StorageTrace.RootAfter,
+			BlockHeight: trace.BlockTrace.Number.ToInt().Uint64(),
+			GasUsed:     0,
+			Timestamp:   trace.BlockTrace.Time,
+			ExtraData:   make([]byte, 0),
 		}
-		if tx.To != nil {
-			txns[i].Target = *tx.To
+		txns := make([]bridge_abi.IZKRollupLayer2Transaction, len(trace.BlockTrace.Transactions))
+		for i, tx := range trace.BlockTrace.Transactions {
+			txns[i] = bridge_abi.IZKRollupLayer2Transaction{
+				Caller:   tx.From,
+				Nonce:    tx.Nonce,
+				Gas:      tx.Gas,
+				GasPrice: tx.GasPrice.ToInt(),
+				Value:    tx.Value.ToInt(),
+				Data:     common.Hex2Bytes(tx.Data),
+			}
+			if tx.To != nil {
+				txns[i].Target = *tx.To
+			}
+			header.GasUsed += trace.ExecutionResults[i].Gas
 		}
-		header.GasUsed += trace.ExecutionResults[i].Gas
+
+		// for next iteration
+		parentHash = header.BlockHash
 	}
 
-	data, err := r.l1RollupABI.Pack("commitBlock", header, txns)
+	// TODO: implement this
+	data, err := r.l1RollupABI.Pack("commitBatch", nil, nil)
 	if err != nil {
 		log.Error("Failed to pack commitBatch", "id", id, "err", err)
 		return
