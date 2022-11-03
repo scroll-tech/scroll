@@ -1,5 +1,7 @@
 # Deployment scripts of Scroll contracts
 
+## Deployment using Hardhat
+
 The scripts should run as below sequence:
 
 ```bash
@@ -61,4 +63,38 @@ env CONTRACT_NAME=L2ERC721Gateway CONTRACT_OWNER=$owner npx hardhat run --networ
 env CONTRACT_NAME=L2ERC1155Gateway CONTRACT_OWNER=$owner npx hardhat run --network $layer2 scripts/transfer_ownership.ts
 ```
 
-Reference testnet [run.sh](https://github.com/scroll-tech/testnet/blob/main/run.sh) for details.
+Reference testnet [run_deploy_contracts.sh](https://github.com/scroll-tech/testnet/blob/staging/run_deploy_contracts.sh) for details.
+
+## Deployment using Foundry
+
+Note: The Foundry scripts take parameters like `CHAIN_ID_L2` and `L1_ZK_ROLLUP_PROXY_ADDR` as environment variables.
+
+```bash
+# allexport
+$ set -a
+
+$ cat .env
+CHAIN_ID_L2="5343541"
+SCROLL_L1_RPC="http://localhost:8543"
+SCROLL_L2_RPC="http://localhost:8545"
+L1_DEPLOYER_PRIVATE_KEY="0x0000000000000000000000000000000000000000000000000000000000000001"
+L2_DEPLOYER_PRIVATE_KEY="0x0000000000000000000000000000000000000000000000000000000000000002"
+L1_ROLLUP_OPERATOR_ADDR="0x1111111111111111111111111111111111111111"
+
+$ source .env
+
+# Deploy L1 contracts
+# Note: We extract the logged addresses as environment variables.
+$ OUTPUT=$(forge script scripts/foundry/DeployL1BridgeContracts.s.sol:DeployL1BridgeContracts --rpc-url $SCROLL_L1_RPC --broadcast); echo $OUTPUT
+$ echo "$OUTPUT" | grep -Eo "(L1)_.*" > .env.l1_addresses
+$ source .env.l1_addresses
+
+# Deploy L2 contracts
+$ OUTPUT=$(forge script scripts/foundry/DeployL2BridgeContracts.s.sol:DeployL2BridgeContracts --rpc-url $SCROLL_L2_RPC --broadcast); echo $OUTPUT
+$ echo "$OUTPUT" | grep -Eo "(L2)_.*" > .env.l2_addresses
+$ source .env.l2_addresses
+
+# Initialize contracts
+$ forge script scripts/foundry/InitializeL1BridgeContracts.s.sol:InitializeL1BridgeContracts --rpc-url $SCROLL_L1_RPC --broadcast
+$ forge script scripts/foundry/InitializeL2BridgeContracts.s.sol:InitializeL2BridgeContracts --rpc-url $SCROLL_L2_RPC --broadcast
+```
