@@ -9,9 +9,10 @@ import (
 	"github.com/scroll-tech/go-ethereum/rpc"
 	"github.com/urfave/cli/v2"
 
+	"scroll-tech/database"
+
 	"scroll-tech/common/utils"
 	"scroll-tech/common/version"
-	"scroll-tech/database"
 
 	"scroll-tech/bridge/config"
 	"scroll-tech/bridge/l1"
