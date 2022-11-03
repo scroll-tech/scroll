@@ -265,24 +265,24 @@ func testOrmRollupResult(t *testing.T) {
 	assert.NoError(t, migrate.ResetDB(factory.GetDB().DB))
 
 	blocks := []uint64{uint64(templateRollup[0].Number), uint64(templateRollup[1].Number)}
-	err = ormRollup.InsertPendingBatches(context.Background(), blocks)
+	err = ormBatch.InsertPendingBatches(context.Background(), blocks)
 	assert.NoError(t, err)
 
-	err = ormRollup.UpdateFinalizeTxHash(context.Background(), uint64(templateRollup[0].Number), templateRollup[0].FinalizeTxHash)
+	err = ormBatch.UpdateFinalizeTxHash(context.Background(), uint64(templateRollup[0].Number), templateRollup[0].FinalizeTxHash)
 	assert.NoError(t, err)
 
-	err = ormRollup.UpdateRollupStatus(context.Background(), uint64(templateRollup[0].Number), orm.RollupPending)
+	err = ormBatch.UpdateRollupStatus(context.Background(), uint64(templateRollup[0].Number), orm.RollupPending)
 	assert.NoError(t, err)
 
-	err = ormRollup.UpdateFinalizeTxHashAndStatus(context.Background(), uint64(templateRollup[1].Number), templateRollup[1].FinalizeTxHash, templateRollup[1].Status)
+	err = ormBatch.UpdateFinalizeTxHashAndRollupStatus(context.Background(), uint64(templateRollup[1].Number), templateRollup[1].FinalizeTxHash, templateRollup[1].Status)
 	assert.NoError(t, err)
 
-	results, err := ormRollup.GetPendingBatches()
+	results, err := ormBatch.GetPendingBatches()
 	assert.NoError(t, err)
 	assert.Equal(t, len(results), 1)
 
 	// TODO: fix this
-	result, err := ormRollup.GetLatestFinalizedBatch()
+	result, err := ormBatch.GetLatestFinalizedBatch()
 	assert.NoError(t, err)
 	assert.Equal(t, templateRollup[1].Number, int(result))
 }

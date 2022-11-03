@@ -30,7 +30,6 @@ import (
 
 	"scroll-tech/database"
 	"scroll-tech/database/migrate"
-	"scroll-tech/database/orm"
 )
 
 const managerAddr = "localhost:8132"
@@ -174,7 +173,7 @@ func TestFunction(t *testing.T) {
 		assert.NoError(t, err)
 		results = append(results, blockResult)
 
-		err = db.InsertBlockResultsWithStatus(context.Background(), results, orm.BlockUnassigned)
+		err = db.InsertBlockResults(context.Background(), results)
 		assert.NoError(t, err)
 
 		// Need to send a tx to trigger block committed
@@ -240,7 +239,7 @@ func TestFunction(t *testing.T) {
 		blockResult := &types.BlockResult{}
 		err = json.Unmarshal(templateBlockResult, blockResult)
 		assert.NoError(t, err)
-		err = db.InsertBlockResultsWithStatus(context.Background(), []*types.BlockResult{blockResult}, orm.BlockUnassigned)
+		err = db.InsertBlockResults(context.Background(), []*types.BlockResult{blockResult})
 		assert.NoError(t, err)
 
 		// Sleep for a little bit, so that we can avoid prematurely fetching connections.
@@ -254,7 +253,7 @@ func TestFunction(t *testing.T) {
 		blockResult = &types.BlockResult{}
 		err = json.Unmarshal(templateBlockResult, blockResult)
 		assert.NoError(t, err)
-		err = db.InsertBlockResultsWithStatus(context.Background(), []*types.BlockResult{blockResult}, orm.BlockUnassigned)
+		err = db.InsertBlockResults(context.Background(), []*types.BlockResult{blockResult})
 		assert.NoError(t, err)
 
 		// Sleep for a little bit, so that we can avoid prematurely fetching connections.
@@ -274,7 +273,7 @@ func TestFunction(t *testing.T) {
 	})
 }
 
-func setupRollerManager(t *testing.T, verifierEndpoint string, orm orm.BlockResultOrm) *coordinator.Manager {
+func setupRollerManager(t *testing.T, verifierEndpoint string, orm database.OrmFactory) *coordinator.Manager {
 	rollerManager, err := coordinator.New(context.Background(), &config.RollerManagerConfig{
 		Endpoint:          managerPort,
 		RollersPerSession: 1,
