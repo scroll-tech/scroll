@@ -59,7 +59,7 @@ type Layer2Message struct {
 type BlockInfo struct {
 	Number         uint64 `json:"number" db:"number"`
 	Hash           string `json:"hash" db:"hash"`
-	BatchID        string `json:"batch_id" db:"batch_id"`
+	BatchID        uint64 `json:"batch_id" db:"batch_id"`
 	TxNum          string `json:"tx_num" db:"tx_num"`
 	GasUsed        uint64 `json:"gas_used" db:"gas_used"`
 	BlockTimestamp uint64 `json:"block_timestamp" db:"block_timestamp"`

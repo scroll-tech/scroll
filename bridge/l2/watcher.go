@@ -2,6 +2,7 @@ package l2
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"math/big"
 	"time"
@@ -257,7 +258,7 @@ var (
 // + proofGenerationFreq
 func (w *WatcherClient) tryProposeBatch() error {
 	blocks, err := w.orm.GetBlockInfos(
-		map[string]interface{}{"batch_id": "null"}, // TODO: TODO: is this syntax correct?
+		map[string]interface{}{"batch_id": sql.NullInt64{Valid: false}},
 		"order by number DESC",
 	)
 	if err != nil {
