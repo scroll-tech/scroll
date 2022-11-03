@@ -5,7 +5,21 @@ import (
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/filters"
+	"github.com/docker/docker/client"
 )
+
+var (
+	cli *client.Client
+)
+
+func init() {
+	var err error
+	cli, err = client.NewClientWithOpts(client.FromEnv)
+	if err != nil {
+		panic(err)
+	}
+	cli.NegotiateAPIVersion(context.Background())
+}
 
 // ImgInstance is an img instance.
 type ImgInstance interface {

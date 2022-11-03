@@ -19,24 +19,12 @@ import (
 	"scroll-tech/common/docker"
 
 	"scroll-tech/bridge/config"
-	"scroll-tech/bridge/mock"
 	"scroll-tech/bridge/sender"
 )
 
 const TX_BATCH = 50
 
 var (
-	TestConfig = &mock.TestConfig{
-		L1GethTestConfig: mock.L1GethTestConfig{
-			HPort: 0,
-			WPort: 8576,
-		},
-		L2GethTestConfig: mock.L2GethTestConfig{
-			HPort: 0,
-			WPort: 8676,
-		},
-	}
-
 	privateKeys []*ecdsa.PrivateKey
 	cfg         *config.Config
 	l2gethImg   docker.ImgInstance
@@ -52,7 +40,7 @@ func setupEnv(t *testing.T) {
 	// Load default private key.
 	privateKeys = []*ecdsa.PrivateKey{priv}
 
-	l2gethImg = mock.NewTestL2Docker(t, TestConfig)
+	l2gethImg = docker.NewTestL2Docker(t)
 	cfg.L1Config.RelayerConfig.SenderConfig.Endpoint = l2gethImg.Endpoint()
 }
 
