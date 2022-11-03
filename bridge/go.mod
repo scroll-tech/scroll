@@ -3,9 +3,6 @@ module scroll-tech/bridge
 go 1.18
 
 require (
-	github.com/ethereum/go-ethereum v1.10.13
-	github.com/gorilla/websocket v1.4.2
-	github.com/jmoiron/sqlx v1.3.5
 	github.com/orcaman/concurrent-map v1.0.0
 	github.com/scroll-tech/go-ethereum v1.10.14-0.20221012120556-b3a7c9b6917d
 	github.com/stretchr/testify v1.8.0
