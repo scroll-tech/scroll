@@ -17,7 +17,7 @@ func main() {
 
 	app.Action = action
 	app.Name = "database"
-	app.Usage = "The Scroll Database"
+	app.Usage = "The Scroll Database CLI"
 	app.Version = version.Version
 	app.Flags = append(app.Flags, commonFlags...)
 
