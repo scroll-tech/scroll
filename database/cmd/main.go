@@ -34,7 +34,7 @@ func main() {
 		{
 			Name:   "reset",
 			Usage:  "Clean and reset database.",
-			Action: ResetDB,
+			Action: resetDB,
 			Flags: []cli.Flag{
 				&configFileFlag,
 			},
