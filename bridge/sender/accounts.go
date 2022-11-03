@@ -90,7 +90,7 @@ func (a *accounts) checkAndSetBalance(ctx context.Context) error {
 	var (
 		root      *bind.TransactOpts
 		maxBls    = big.NewInt(0)
-		loseAuths []*bind.TransactOpts
+		lostAuths []*bind.TransactOpts
 	)
 
 	for addr, auth := range a.accounts {
