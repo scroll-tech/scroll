@@ -21,7 +21,7 @@ type accountPool struct {
 	accsCh     chan *bind.TransactOpts
 }
 
-// newAccounts Create an accounts instance.
+// newAccounts creates an accountPool instance.
 func newAccounts(ctx context.Context, minBalance *big.Int, client *ethclient.Client, privs []*ecdsa.PrivateKey) (*accounts, error) {
 	if minBalance == nil {
 		minBalance = big.NewInt(0).SetString("100000000000000000000", 10)
