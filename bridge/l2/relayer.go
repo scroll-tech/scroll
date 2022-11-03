@@ -166,7 +166,7 @@ func (r *Layer2Relayer) processSavedEvent(msg *orm.Layer2Message) error {
 	hash, err := r.messageSender.SendTransaction(msg.Layer2Hash, &r.cfg.MessengerContractAddress, big.NewInt(0), data)
 	if err != nil {
 		if !errors.Is(err, sender.ErrNoAvailableAccount) {
-			log.Error("Failed to send relayMessageWithProof tx to layer1 ", "msg.height", msg.height, "msg.Layer2Hash", msg.Layer2Hash, "err", err)
+			log.Error("Failed to send relayMessageWithProof tx to layer1 ", "msg.height", msg.Height, "msg.Layer2Hash", msg.Layer2Hash, "err", err)
 		}
 		return err
 	}
