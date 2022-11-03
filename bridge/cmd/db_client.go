@@ -2,6 +2,7 @@ package main
 
 import (
 	"scroll-tech/bridge/config"
+	"scroll-tech/common/utils"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/urfave/cli/v2"
@@ -29,7 +30,7 @@ func initDB(file string) (*sqlx.DB, error) {
 
 // ResetDB clean or reset database.
 func ResetDB(ctx *cli.Context) error {
-	db, err := initDB(ctx.String(configFileFlag.Name))
+	db, err := initDB(ctx.String(utils.ConfigFileFlag.Name))
 	if err != nil {
 		return err
 	}
@@ -46,7 +47,7 @@ func ResetDB(ctx *cli.Context) error {
 
 // CheckDBStatus check db status
 func CheckDBStatus(ctx *cli.Context) error {
-	db, err := initDB(ctx.String(configFileFlag.Name))
+	db, err := initDB(ctx.String(utils.ConfigFileFlag.Name))
 	if err != nil {
 		return err
 	}
@@ -56,7 +57,7 @@ func CheckDBStatus(ctx *cli.Context) error {
 
 // DBVersion return the latest version
 func DBVersion(ctx *cli.Context) error {
-	db, err := initDB(ctx.String(configFileFlag.Name))
+	db, err := initDB(ctx.String(utils.ConfigFileFlag.Name))
 	if err != nil {
 		return err
 	}
@@ -69,7 +70,7 @@ func DBVersion(ctx *cli.Context) error {
 
 // MigrateDB migrate db
 func MigrateDB(ctx *cli.Context) error {
-	db, err := initDB(ctx.String(configFileFlag.Name))
+	db, err := initDB(ctx.String(utils.ConfigFileFlag.Name))
 	if err != nil {
 		return err
 	}
@@ -79,7 +80,7 @@ func MigrateDB(ctx *cli.Context) error {
 
 // RollbackDB rollback db by version
 func RollbackDB(ctx *cli.Context) error {
-	db, err := initDB(ctx.String(configFileFlag.Name))
+	db, err := initDB(ctx.String(utils.ConfigFileFlag.Name))
 	if err != nil {
 		return err
 	}
