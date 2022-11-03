@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"testing"
 
+	"scroll-tech/common/message"
+
 	"github.com/stretchr/testify/assert"
 
 	"scroll-tech/common/message"

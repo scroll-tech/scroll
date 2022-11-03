@@ -8,18 +8,13 @@ import (
 	"time"
 
 	"github.com/scroll-tech/go-ethereum/core/types"
-	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/stretchr/testify/assert"
 
-	"scroll-tech/common/docker"
+	"scroll-tech/bridge/l2"
 
 	"scroll-tech/database"
+	"scroll-tech/database/migrate"
 	"scroll-tech/database/orm"
-
-	"scroll-tech/bridge/config"
-
-	"scroll-tech/bridge/l2"
-	"scroll-tech/bridge/mock"
 )
 
 var (
@@ -37,16 +32,7 @@ var (
 			Layer2Hash: "hash0",
 		},
 	}
-	l1Docker docker.ImgInstance
-	l2Docker docker.ImgInstance
-	dbDocker docker.ImgInstance
 )
-
-func setupEnv(t *testing.T) {
-	l1Docker = mock.NewTestL1Docker(t, TEST_CONFIG)
-	l2Docker = mock.NewTestL2Docker(t, TEST_CONFIG)
-	dbDocker = mock.GetDbDocker(t, TEST_CONFIG)
-}
 
 func TestRelayerFunction(t *testing.T) {
 	// Setup

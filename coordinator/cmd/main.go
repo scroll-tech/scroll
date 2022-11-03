@@ -11,6 +11,7 @@ import (
 
 	"scroll-tech/common/utils"
 	"scroll-tech/common/version"
+
 	"scroll-tech/database"
 
 	"scroll-tech/coordinator"
