@@ -2,9 +2,8 @@ package main
 
 import (
 	"github.com/jmoiron/sqlx"
-	"github.com/urfave/cli/v2"
-
 	"github.com/scroll-tech/go-ethereum/log"
+	"github.com/urfave/cli/v2"
 
 	"scroll-tech/bridge/config"
 	"scroll-tech/common/utils"
