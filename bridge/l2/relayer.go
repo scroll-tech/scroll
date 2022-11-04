@@ -397,7 +397,7 @@ func (r *Layer2Relayer) Start() {
 			case <-ticker.C:
 				r.ProcessSavedEvents()
 				r.ProcessPendingBlocks()
-				r.ProcessCommittedBlocks()
+				_ = r.ProcessCommittedBlocks()
 			case confirmation := <-r.messageCh:
 				r.handleConfirmation(confirmation)
 			case confirmation := <-r.rollupCh:

@@ -37,16 +37,11 @@ func setupEnv(t *testing.T) {
 
 	priv, err := crypto.HexToECDSA("1212121212121212121212121212121212121212121212121212121212121212")
 	assert.NoError(t, err)
-<<<<<<< HEAD
-	private = prv
-	l1gethImg = mock.NewL1Docker(t, TestConfig)
-=======
 	// Load default private key.
 	privateKeys = []*ecdsa.PrivateKey{priv}
 
 	l2gethImg = docker.NewTestL2Docker(t)
 	cfg.L1Config.RelayerConfig.SenderConfig.Endpoint = l2gethImg.Endpoint()
->>>>>>> staging
 }
 
 func TestSender(t *testing.T) {
