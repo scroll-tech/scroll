@@ -89,6 +89,7 @@ type BlockBatch struct {
 	RollupTxHash        string        `json:"rollup_tx_hash" db:"rollup_tx_hash"`
 	FinalizeTxHash      string        `json:"finalize_tx_hash" db:"finalize_tx_hash"`
 	CreatedAt           time.Time     `json:"created_at" db:"created_at"`
+	ProverAssignedAt    time.Time     `json:"prover_assigned_at" db:"prover_assigned_at"`
 	ProvedAt            time.Time     `json:"proved_at" db:"proved_at"`
 	CommittedAt         time.Time     `json:"committed_at" db:"committed_at"`
 	FinalizedAt         time.Time     `json:"finalized_at" db:"finalized_at"`
@@ -156,20 +157,29 @@ func (o *blockBatchOrm) GetVerifiedProofAndInstanceByID(id uint64) ([]byte, []by
 func (o *blockBatchOrm) UpdateProofByID(ctx context.Context, id uint64, proof, instance_commitments []byte, proofTimeSec uint64) error {
 	db := o.db
 	if _, err := db.ExecContext(ctx,
-		db.Rebind(`UPDATE block_batch set proof = ?, instance_commitments = ?, proof_time_sec = ?, proved_at = ? where id = ?;`),
-		proof, instance_commitments, proofTimeSec, time.Now(), id,
+		db.Rebind(`UPDATE block_batch set proof = ?, instance_commitments = ?, proof_time_sec = ? where id = ?;`),
+		proof, instance_commitments, proofTimeSec, id,
 	); err != nil {
 		log.Error("failed to update proof", "err", err)
 	}
 	return nil
 }
 
-// `proved_at` is handled in `UpdateProofByID`, so we don't need to worry about it here
 func (o *blockBatchOrm) UpdateProvingStatus(id uint64, status ProvingStatus) error {
-	if _, err := o.db.Exec(o.db.Rebind("UPDATE block_batch set proving_status = ? where id = ?;"), status, id); err != nil {
+	switch status {
+	case ProvingTaskAssigned:
+		_, err := o.db.Exec(o.db.Rebind("update block_batch set proving_status = ?, prover_assigned_at = ? where id = ?;"), status, time.Now(), id)
+		return err
+	case ProvingTaskUnassigned:
+		_, err := o.db.Exec(o.db.Rebind("update block_batch set proving_status = ?, prover_assigned_at = null where id = ?;"), status, id)
+		return err
+	case ProvingTaskProved, ProvingTaskVerified:
+		_, err := o.db.Exec(o.db.Rebind("update block_batch set proving_status = ?, proved_at = ? where id = ?;"), status, time.Now(), id)
+		return err
+	default:
+		_, err := o.db.Exec(o.db.Rebind("update block_batch set proving_status = ? where id = ?;"), status, id)
 		return err
 	}
-	return nil
 }
 
 // TODO: maybe we can use "`RETURNING` clause" like in
