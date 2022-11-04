@@ -1,11 +1,15 @@
 package config
 
 import (
+	"crypto/ecdsa"
 	"encoding/json"
+	"fmt"
+	"math/big"
 	"os"
 	"path/filepath"
 
 	"github.com/scroll-tech/go-ethereum/common"
+	"github.com/scroll-tech/go-ethereum/crypto"
 
 	"scroll-tech/common/utils"
 
@@ -28,8 +32,10 @@ type SenderConfig struct {
 	EscalateMultipleDen uint64 `json:"escalate_multiple_den"`
 	// The maximum gas price can be used to send transaction.
 	MaxGasPrice uint64 `json:"max_gas_price"`
-	// the transaction type to use: LegacyTx, AccessListTx, DynamicFeeTx
+	// The transaction type to use: LegacyTx, AccessListTx, DynamicFeeTx
 	TxType string `json:"tx_type"`
+	// The min balance set for check and set balance for sender's accounts.
+	MinBalance *big.Int `json:"min_balance,omitempty"`
 }
 
 // L1Config loads l1eth configuration items.
@@ -67,6 +73,8 @@ type L2Config struct {
 }
 
 // RelayerConfig loads relayer configuration items.
+// What we need to pay attention to is that
+// `MessageSenderPrivateKeys` and `RollupSenderPrivateKeys` cannot have common private keys.
 type RelayerConfig struct {
 	// RollupContractAddress store the rollup contract address.
 	RollupContractAddress common.Address `json:"rollup_contract_address,omitempty"`
@@ -75,7 +83,45 @@ type RelayerConfig struct {
 	// sender config
 	SenderConfig *SenderConfig `json:"sender_config"`
 	// The private key of the relayer
-	PrivateKey string `json:"private_key"`
+	MessageSenderPrivateKeys []*ecdsa.PrivateKey `json:"-"`
+	RollupSenderPrivateKeys  []*ecdsa.PrivateKey `json:"-"`
+}
+
+// RelayerConfigAlias RelayerConfig alias name
+type RelayerConfigAlias RelayerConfig
+
+// UnmarshalJSON unmarshal relayer_config struct.
+func (r *RelayerConfig) UnmarshalJSON(input []byte) error {
+	var jsonConfig struct {
+		RelayerConfigAlias
+		// The private key of the relayer
+		MessageSenderPrivateKeys []string `json:"message_sender_private_keys"`
+		RollupSenderPrivateKeys  []string `json:"roller_sender_private_keys,omitempty"`
+	}
+	if err := json.Unmarshal(input, &jsonConfig); err != nil {
+		return err
+	}
+
+	// Get messenger private key list.
+	*r = RelayerConfig(jsonConfig.RelayerConfigAlias)
+	for _, privStr := range jsonConfig.MessageSenderPrivateKeys {
+		priv, err := crypto.ToECDSA(common.FromHex(privStr))
+		if err != nil {
+			return fmt.Errorf("incorrect private_key_list format, err: %v", err)
+		}
+		r.MessageSenderPrivateKeys = append(r.MessageSenderPrivateKeys, priv)
+	}
+
+	// Get rollup private key
+	for _, privStr := range jsonConfig.RollupSenderPrivateKeys {
+		priv, err := crypto.ToECDSA(common.FromHex(privStr))
+		if err != nil {
+			return fmt.Errorf("incorrect roller_private_key format, err: %v", err)
+		}
+		r.RollupSenderPrivateKeys = append(r.RollupSenderPrivateKeys, priv)
+	}
+
+	return nil
 }
 
 // Config load configuration items.

@@ -36,23 +36,22 @@ func testCreateNewWatcherAndStop(t *testing.T) {
 	messengerABI, err := bridge_abi.L2MessengerMetaData.GetAbi()
 	assert.NoError(t, err)
 
-	skippedOpcodes := make(map[string]struct{}, len(cfg.L2Config.SkippedOpcodes))
-	for _, op := range cfg.L2Config.SkippedOpcodes {
+	l2cfg := cfg.L2Config
+	skippedOpcodes := make(map[string]struct{}, len(l2cfg.SkippedOpcodes))
+	for _, op := range l2cfg.SkippedOpcodes {
 		skippedOpcodes[op] = struct{}{}
 	}
-	proofGenerationFreq := cfg.L2Config.ProofGenerationFreq
+	proofGenerationFreq := l2cfg.ProofGenerationFreq
 	if proofGenerationFreq == 0 {
 		proofGenerationFreq = 1
 	}
-	rc := l2.NewL2WatcherClient(context.Background(), l2Cli, cfg.L2Config.Confirmations, proofGenerationFreq, skippedOpcodes, cfg.L2Config.L2MessengerAddress, messengerABI, l2db)
+	rc := l2.NewL2WatcherClient(context.Background(), l2Cli, l2cfg.Confirmations, proofGenerationFreq, skippedOpcodes, cfg.L2Config.L2MessengerAddress, messengerABI, l2db)
 	rc.Start()
 	defer rc.Stop()
 
-	privkey, err := crypto.ToECDSA(common.FromHex(cfg.L1Config.RelayerConfig.PrivateKey))
-	assert.NoError(t, err)
-
-	cfg.L1Config.RelayerConfig.SenderConfig.Confirmations = 0
-	newSender, err := sender.NewSender(context.Background(), cfg.L1Config.RelayerConfig.SenderConfig, privkey)
+	l1cfg := cfg.L1Config
+	l1cfg.RelayerConfig.SenderConfig.Confirmations = 0
+	newSender, err := sender.NewSender(context.Background(), l1cfg.RelayerConfig.SenderConfig, l1cfg.RelayerConfig.MessageSenderPrivateKeys)
 	assert.NoError(t, err)
 
 	// Create several transactions and commit to block
@@ -80,7 +79,7 @@ func testMonitorBridgeContract(t *testing.T) {
 	previousHeight, err := l2Cli.BlockNumber(context.Background())
 	assert.NoError(t, err)
 
-	auth := prepareAuth(t, l2Cli, cfg.L2Config.RelayerConfig.PrivateKey)
+	auth := prepareAuth(t, l2Cli, cfg.L2Config.RelayerConfig.MessageSenderPrivateKeys[0])
 
 	// deploy mock bridge
 	_, tx, instance, err := mock_bridge.DeployMockBridge(auth, l2Cli)
@@ -148,7 +147,7 @@ func testFetchMultipleSentMessageInOneBlock(t *testing.T) {
 	previousHeight, err := l2Cli.BlockNumber(context.Background()) // shallow the global previousHeight
 	assert.NoError(t, err)
 
-	auth := prepareAuth(t, l2Cli, cfg.L2Config.RelayerConfig.PrivateKey)
+	auth := prepareAuth(t, l2Cli, cfg.L2Config.RelayerConfig.MessageSenderPrivateKeys[0])
 
 	_, trx, instance, err := mock_bridge.DeployMockBridge(auth, l2Cli)
 	assert.NoError(t, err)
@@ -224,9 +223,7 @@ func prepareRelayerClient(l2Cli *ethclient.Client, db database.OrmFactory, contr
 	return l2.NewL2WatcherClient(context.Background(), l2Cli, 0, 1, map[string]struct{}{}, contractAddr, messengerABI, db)
 }
 
-func prepareAuth(t *testing.T, l2Cli *ethclient.Client, private string) *bind.TransactOpts {
-	privateKey, err := crypto.HexToECDSA(private)
-	assert.NoError(t, err)
+func prepareAuth(t *testing.T, l2Cli *ethclient.Client, privateKey *ecdsa.PrivateKey) *bind.TransactOpts {
 	publicKey := privateKey.Public()
 	publicKeyECDSA, ok := publicKey.(*ecdsa.PublicKey)
 	assert.True(t, ok)

@@ -8,6 +8,8 @@ This repo contains the Scroll bridge.
 In addition, launching the bridge will launch a separate instance of l2geth, and sets up a communication channel
 between the two, over JSON-RPC sockets.
 
+Something we should pay attention is that all private keys inside sender instance cannot be duplicated.
+
 ## Dependency
 
 + install `abigen`
