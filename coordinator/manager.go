@@ -29,7 +29,7 @@ const (
 // Contains all the information on an ongoing proof generation session.
 type session struct {
 	// session id
-	id uint64
+	id string
 	// A list of all participating rollers and if they finished proof generation for this session.
 	// The map key is a hexadecimal encoding of the roller public key, as byte slices
 	// can not be compared explicitly.
@@ -61,9 +61,9 @@ type Manager struct {
 	// A mutex guarding the boolean below.
 	mu sync.RWMutex
 	// A map containing all active proof generation sessions.
-	sessions map[uint64]session
+	sessions map[string]session
 	// A map containing proof failed or verify failed proof.
-	failedSessionInfos map[uint64]SessionInfo
+	failedSessionInfos map[string]SessionInfo
 
 	// A direct connection to the Halo2 verifier, used to verify
 	// incoming proofs.
@@ -91,8 +91,8 @@ func New(ctx context.Context, cfg *config.RollerManagerConfig, orm database.OrmF
 		ctx:                ctx,
 		cfg:                cfg,
 		server:             newServer(cfg.Endpoint),
-		sessions:           make(map[uint64]session),
-		failedSessionInfos: make(map[uint64]SessionInfo),
+		sessions:           make(map[string]session),
+		failedSessionInfos: make(map[string]SessionInfo),
 		verifier:           v,
 		orm:                orm,
 	}, nil
@@ -166,7 +166,7 @@ func (m *Manager) Loop() {
 				if tasks, err = m.orm.GetBlockBatches(
 					map[string]interface{}{"proving_status": orm.ProvingTaskUnassigned},
 					fmt.Sprintf(
-						"ORDER BY id %s LIMIT %d;",
+						"ORDER BY index %s LIMIT %d;",
 						m.cfg.OrderSession,
 						numIdleRollers,
 					),
@@ -332,7 +332,7 @@ func (m *Manager) HandleZkProof(pk string, payload []byte) error {
 }
 
 // CollectProofs collects proofs corresponding to a proof generation session.
-func (m *Manager) CollectProofs(id uint64, s session) {
+func (m *Manager) CollectProofs(id string, s session) {
 	timer := time.NewTimer(time.Duration(m.cfg.CollectionTime) * time.Minute)
 
 	for {
@@ -526,7 +526,7 @@ func (m *Manager) GetNumberOfIdleRollers() int {
 	return cnt
 }
 
-func createTaskMsg(taskID uint64, traces []*types.BlockResult) (message.Msg, error) {
+func createTaskMsg(taskID string, traces []*types.BlockResult) (message.Msg, error) {
 	idAndTraces := message.TaskMsg{
 		ID:     taskID,
 		Traces: traces, // roller should sort traces by height
