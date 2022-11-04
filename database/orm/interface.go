@@ -73,7 +73,7 @@ type BlockResultOrm interface {
 	GetBlockResults(fields map[string]interface{}, args ...string) ([]*types.BlockResult, error)
 	GetBlockInfos(fields map[string]interface{}, args ...string) ([]*BlockInfo, error)
 	GetHashByNumber(number uint64) (*common.Hash, error)
-	DeleteTracesByBatchID(batch_id uint64) error
+	DeleteTracesByBatchID(batchID string) error
 	InsertBlockResults(ctx context.Context, blockResults []*types.BlockResult) error
 	SetBatchIDForBlocksInDBTx(dbTx *sqlx.Tx, blocks []uint64, batchID string) error
 }
@@ -81,19 +81,19 @@ type BlockResultOrm interface {
 // BlockBatchOrm block_batch operation interface
 type BlockBatchOrm interface {
 	GetBlockBatches(fields map[string]interface{}, args ...string) ([]*BlockBatch, error)
-	GetProvingStatusByID(id uint64) (ProvingStatus, error)
-	GetVerifiedProofAndInstanceByID(id uint64) ([]byte, []byte, error)
-	UpdateProofByID(ctx context.Context, id uint64, proof, instance_commitments []byte, proofTimeSec uint64) error
-	UpdateProvingStatus(id uint64, status ProvingStatus) error
+	GetProvingStatusByID(id string) (ProvingStatus, error)
+	GetVerifiedProofAndInstanceByID(id string) ([]byte, []byte, error)
+	UpdateProofByID(ctx context.Context, id string, proof, instance_commitments []byte, proofTimeSec uint64) error
+	UpdateProvingStatus(id string, status ProvingStatus) error
 	NewBatchInDBTx(dbTx *sqlx.Tx, startBlock *BlockInfo, endBlock *BlockInfo, parentHash string, totalTxNum uint64, gasUsed uint64) (string, error)
-	BatchRecordExist(number uint64) (bool, error)
+	BatchRecordExist(id string) (bool, error)
 	GetPendingBatches() ([]uint64, error)
 	GetCommittedBatches() ([]uint64, error)
-	GetRollupStatus(number uint64) (RollupStatus, error)
+	GetRollupStatus(id string) (RollupStatus, error)
 	GetLatestFinalizedBatch() (uint64, error)
-	UpdateRollupStatus(ctx context.Context, number uint64, status RollupStatus) error
-	UpdateRollupTxHashAndRollupStatus(ctx context.Context, number uint64, rollup_tx_hash string, status RollupStatus) error
-	UpdateFinalizeTxHashAndRollupStatus(ctx context.Context, number uint64, finalize_tx_hash string, status RollupStatus) error
+	UpdateRollupStatus(ctx context.Context, id string, status RollupStatus) error
+	UpdateRollupTxHashAndRollupStatus(ctx context.Context, id string, rollup_tx_hash string, status RollupStatus) error
+	UpdateFinalizeTxHashAndRollupStatus(ctx context.Context, id string, finalize_tx_hash string, status RollupStatus) error
 }
 
 // Layer1MessageOrm is layer1 message db interface
