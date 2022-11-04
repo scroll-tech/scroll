@@ -85,7 +85,7 @@ type BlockBatchOrm interface {
 	GetVerifiedProofAndInstanceByID(id uint64) ([]byte, []byte, error)
 	UpdateProofByID(ctx context.Context, id uint64, proof, instance_commitments []byte, proofTimeSec uint64) error
 	UpdateProvingStatus(id uint64, status ProvingStatus) error
-	NewBatchInDBTx(dbTx *sqlx.Tx, gasUsed uint64) (uint64, error)
+	NewBatchInDBTx(dbTx *sqlx.Tx, parent_hash string, gasUsed uint64) (uint64, error)
 	BatchRecordExist(number uint64) (bool, error)
 	GetPendingBatches() ([]uint64, error)
 	GetCommittedBatches() ([]uint64, error)
