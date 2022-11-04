@@ -5,10 +5,11 @@ import (
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/urfave/cli/v2"
 
-	"scroll-tech/bridge/config"
 	"scroll-tech/common/utils"
 	"scroll-tech/database"
 	"scroll-tech/database/migrate"
+
+	"scroll-tech/bridge/config"
 )
 
 func initDB(file string) (*sqlx.DB, error) {
