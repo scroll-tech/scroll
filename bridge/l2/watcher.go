@@ -269,7 +269,7 @@ func (w *WatcherClient) tryProposeBatch() error {
 		return nil
 	}
 
-	toBacth := []uint64{}
+	toBatch := []uint64{}
 	gasUsed := uint64(0)
 	for _, block := range blocks {
 		gasUsed += block.GasUsed
@@ -277,7 +277,7 @@ func (w *WatcherClient) tryProposeBatch() error {
 			break
 		}
 
-		toBacth = append(toBacth, block.Number)
+		toBatch = append(toBatch, block.Number)
 	}
 
 	if gasUsed < batchGasThreshold && blocks[0].BlockTimestamp+batchTimeSec < uint64(time.Now().Unix()) {
@@ -285,12 +285,12 @@ func (w *WatcherClient) tryProposeBatch() error {
 	}
 
 	// keep gasUsed below threshold
-	if len(toBacth) >= 2 {
-		gasUsed -= blocks[len(toBacth)-1].GasUsed
-		toBacth = toBacth[:len(toBacth)-1]
+	if len(toBatch) >= 2 {
+		gasUsed -= blocks[len(toBatch)-1].GasUsed
+		toBatch = toBatch[:len(toBatch)-1]
 	}
 
-	return w.createBatchForBlocks(toBacth, gasUsed)
+	return w.createBatchForBlocks(toBatch, gasUsed)
 }
 
 func (w *WatcherClient) createBatchForBlocks(blocks []uint64, gasUsed uint64) error {
