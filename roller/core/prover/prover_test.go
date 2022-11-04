@@ -2,8 +2,9 @@ package prover_test
 
 import (
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/scroll-tech/go-ethereum/core/types"
@@ -11,6 +12,12 @@ import (
 
 	"scroll-tech/roller/config"
 	"scroll-tech/roller/core/prover"
+)
+
+const (
+	ParamsPath = "../../assets/test_params"
+	SeedPath   = "../../assets/test_seed"
+	TracesPath = "../../assets/traces"
 )
 
 type RPCTrace struct {
@@ -27,21 +34,27 @@ func TestFFI(t *testing.T) {
 	as := assert.New(t)
 	cfg := &config.ProverConfig{
 		MockMode:   false,
-		ParamsPath: "../../assets/test_params",
-		SeedPath:   "../../assets/test_seed",
+		ParamsPath: ParamsPath,
+		SeedPath:   SeedPath,
 	}
 	prover, err := prover.NewProver(cfg)
 	as.NoError(err)
 
-	f, err := os.Open("../../assets/trace.json")
+	files, err := os.ReadDir(TracesPath)
 	as.NoError(err)
-	byt, err := ioutil.ReadAll(f)
-	as.NoError(err)
-	rpcTrace := &RPCTrace{}
-	as.NoError(json.Unmarshal(byt, rpcTrace))
 
-	twoTraces := []*types.BlockResult{rpcTrace.Result, rpcTrace.Result}
-	_, err = prover.Prove(twoTraces)
+	traces := make([]*types.BlockResult, 0)
+	for _, file := range files {
+		t.Log("add trace: ", file.Name())
+		f, err := os.Open(filepath.Join(TracesPath, file.Name()))
+		as.NoError(err)
+		byt, err := io.ReadAll(f)
+		as.NoError(err)
+		rpcTrace := &RPCTrace{}
+		as.NoError(json.Unmarshal(byt, rpcTrace))
+		traces = append(traces, rpcTrace.Result)
+	}
+	_, err = prover.Prove(traces)
 	as.NoError(err)
 	t.Log("prove success")
 }
