@@ -16,12 +16,12 @@ require (
 	github.com/cespare/xxhash/v2 v2.1.2 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.2 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
-	github.com/deckarep/golang-set v1.8.0 // indirect
-	github.com/ethereum/go-ethereum v1.10.23 // indirect
+	github.com/deckarep/golang-set v0.0.0-20180603214616-504e848d77ea // indirect
+	github.com/ethereum/go-ethereum v1.10.13 // indirect
 	github.com/go-ole/go-ole v1.2.6 // indirect
 	github.com/go-stack/stack v1.8.0 // indirect
 	github.com/google/uuid v1.3.0 // indirect
-	github.com/gorilla/websocket v1.5.0 // indirect
+	github.com/gorilla/websocket v1.4.2 // indirect
 	github.com/holiman/uint256 v1.2.0 // indirect
 	github.com/iden3/go-iden3-crypto v0.0.13 // indirect
 	github.com/kr/pretty v0.3.0 // indirect

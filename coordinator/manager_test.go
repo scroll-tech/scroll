@@ -2,30 +2,34 @@ package coordinator_test
 
 import (
 	"context"
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
+	"encoding/json"
+	"github.com/ethereum/go-ethereum/crypto/secp256k1"
+	"github.com/gorilla/websocket"
 	"net/http"
+	"scroll-tech/common/message"
+	"scroll-tech/database/migrate"
 	"strconv"
 	"testing"
 	"time"
 
 	"github.com/scroll-tech/go-ethereum/ethclient"
+
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/sync/errgroup"
 
 	"scroll-tech/common/docker"
 	"scroll-tech/common/utils"
+	"scroll-tech/coordinator"
 	"scroll-tech/database"
 	"scroll-tech/database/orm"
 
-	"scroll-tech/bridge/l2"
-	"scroll-tech/bridge/mock"
-
 	client2 "scroll-tech/coordinator/client"
-
-	db_config "scroll-tech/database"
 
 	bridge_config "scroll-tech/bridge/config"
 
-	"scroll-tech/coordinator"
 	coordinator_config "scroll-tech/coordinator/config"
 )
 
@@ -33,44 +37,32 @@ const managerURL = "localhost:8132"
 const managerPort = ":8132"
 
 var (
-	TEST_CONFIG = &mock.TestConfig{
-		L2GethTestConfig: mock.L2GethTestConfig{
-			HPort: 8536,
-			WPort: 0,
-		},
-		DbTestconfig: mock.DbTestconfig{
-			DbName: "testmanager_db",
-			DbPort: 5436,
-			DB_CONFIG: &db_config.DBConfig{
-				DriverName: utils.GetEnvWithDefault("TEST_DB_DRIVER", "postgres"),
-				DSN:        utils.GetEnvWithDefault("TEST_DB_DSN", "postgres://postgres:123456@localhost:5436/testmanager_db?sslmode=disable"),
-			},
-		},
-	}
+	cfg              *bridge_config.Config
+	l2gethImg, dbImg docker.ImgInstance
+	db               database.OrmFactory
+	rollerManager    *coordinator.Manager
+	handle           *http.Server
 )
 
-var (
-	cfg            *bridge_config.Config
-	l2backend      *l2.Backend
-	imgGeth, imgDb docker.ImgInstance
-	db             database.OrmFactory
-	rollerManager  *coordinator.Manager
-	handle         *http.Server
-)
-
-func setEnv(t *testing.T) {
+func setEnv(t *testing.T) error {
 	var err error
+	// Load config.
 	cfg, err = bridge_config.NewConfig("../bridge/config.json")
-	if err != nil {
-		t.Error(err)
-		return
-	}
+	assert.NoError(t, err)
 
-	// create docker instance
-	l2backend, imgGeth, imgDb = mock.L2gethDocker(t, cfg, TEST_CONFIG)
+	// Create l2geth container.
+	l2gethImg = docker.NewTestL2Docker(t)
+	cfg.L1Config.RelayerConfig.SenderConfig.Endpoint = l2gethImg.Endpoint()
+	cfg.L2Config.Endpoint = l2gethImg.Endpoint()
 
-	// reset db and return orm handler
-	db = mock.ResetDB(t, TEST_CONFIG.DB_CONFIG)
+	// Create db container.
+	dbImg = docker.NewTestDBDocker(t, cfg.DBConfig.DriverName)
+	cfg.DBConfig.DSN = dbImg.Endpoint()
+
+	// Create db handler and reset db.
+	db, err = database.NewOrmFactory(cfg.DBConfig)
+	assert.NoError(t, err)
+	assert.NoError(t, migrate.ResetDB(db.GetDB().DB))
 
 	// start roller manager
 	rollerManager = setupRollerManager(t, "", db)
@@ -78,10 +70,11 @@ func setEnv(t *testing.T) {
 	// start ws service
 	handle, _, err = utils.StartWSEndpoint(managerURL, rollerManager.APIs())
 	assert.NoError(t, err)
+	return err
 }
 
 func TestApis(t *testing.T) {
-	setEnv(t)
+	assert.True(t, assert.NoError(t, setEnv(t)))
 
 	t.Run("TestHandshake", testHandshake)
 	t.Run("TestSeveralConnections", testSeveralConnections)
@@ -90,9 +83,9 @@ func TestApis(t *testing.T) {
 	t.Cleanup(func() {
 		handle.Shutdown(context.Background())
 		rollerManager.Stop()
-		l2backend.Stop()
-		imgGeth.Stop()
-		imgDb.Stop()
+		l2gethImg.Stop()
+		db.Close()
+		dbImg.Stop()
 	})
 }
 
@@ -167,7 +160,7 @@ func testIdleRollerSelection(t *testing.T) {
 	traceDB := orm.BlockResultOrm(mock.ResetDB(t, TEST_CONFIG.DB_CONFIG))
 
 	// create l2geth client
-	ethClient, err := ethclient.DialContext(ctx, imgGeth.Endpoint())
+	ethClient, err := ethclient.DialContext(ctx, l2gethImg.Endpoint())
 	assert.NoError(t, err)
 
 	// create ws connections.
@@ -227,4 +220,52 @@ func setupRollerManager(t *testing.T, verifierEndpoint string, orm database.OrmF
 	assert.NoError(t, rollerManager.Start())
 
 	return rollerManager
+}
+
+// performHandshake sets up a websocket client to connect to the roller manager.
+func performHandshake(t *testing.T, c *websocket.Conn) {
+	// Try to perform handshake
+	pk, sk := generateKeyPair()
+	authMsg := &message.AuthMessage{
+		Identity: message.Identity{
+			Name:      "testRoller",
+			Timestamp: time.Now().UnixNano(),
+			PublicKey: common.Bytes2Hex(pk),
+		},
+		Signature: "",
+	}
+
+	hash, err := authMsg.Identity.Hash()
+	assert.NoError(t, err)
+	sig, err := secp256k1.Sign(hash, sk)
+	assert.NoError(t, err)
+
+	authMsg.Signature = common.Bytes2Hex(sig)
+
+	b, err := json.Marshal(authMsg)
+	assert.NoError(t, err)
+
+	msg := &message.Msg{
+		Type:    message.Register,
+		Payload: b,
+	}
+
+	b, err = json.Marshal(msg)
+	assert.NoError(t, err)
+
+	assert.NoError(t, c.WriteMessage(websocket.BinaryMessage, b))
+}
+
+func generateKeyPair() (pubkey, privkey []byte) {
+	key, err := ecdsa.GenerateKey(secp256k1.S256(), rand.Reader)
+	if err != nil {
+		panic(err)
+	}
+	pubkey = elliptic.Marshal(secp256k1.S256(), key.X, key.Y)
+
+	privkey = make([]byte, 32)
+	blob := key.D.Bytes()
+	copy(privkey[32-len(blob):], blob)
+
+	return pubkey, privkey
 }
