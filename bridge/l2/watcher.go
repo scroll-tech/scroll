@@ -250,6 +250,7 @@ func parseBridgeEventLogs(logs []types.Log, messengerABI *abi.ABI) ([]*orm.Layer
 var (
 	batchTimeSec      = uint64(5 * 60)  // 5min
 	batchGasThreshold = uint64(3000000) // 3M
+	batchBlocksLimit  = uint64(10)
 )
 
 // TODO:
@@ -259,7 +260,7 @@ var (
 func (w *WatcherClient) tryProposeBatch() error {
 	blocks, err := w.orm.GetBlockInfos(
 		map[string]interface{}{"batch_id": sql.NullInt64{Valid: false}},
-		"order by number DESC",
+		fmt.Sprintf("order by number DESC LIMIT %s", batchBlocksLimit),
 	)
 	if err != nil {
 		return err
