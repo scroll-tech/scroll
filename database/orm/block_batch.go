@@ -135,7 +135,7 @@ func (o *blockBatchOrm) GetBlockBatches(fields map[string]interface{}, args ...s
 	return batches, rows.Close()
 }
 
-func (o *blockBatchOrm) GetProvingStatusByID(id uint64) (ProvingStatus, error) {
+func (o *blockBatchOrm) GetProvingStatusByID(id string) (ProvingStatus, error) {
 	row := o.db.QueryRow(`SELECT proving_status FROM block_batch WHERE id = $1`, id)
 	var status ProvingStatus
 	if err := row.Scan(&status); err != nil {
@@ -144,7 +144,7 @@ func (o *blockBatchOrm) GetProvingStatusByID(id uint64) (ProvingStatus, error) {
 	return status, nil
 }
 
-func (o *blockBatchOrm) GetVerifiedProofAndInstanceByID(id uint64) ([]byte, []byte, error) {
+func (o *blockBatchOrm) GetVerifiedProofAndInstanceByID(id string) ([]byte, []byte, error) {
 	var proof []byte
 	var instance []byte
 	row := o.db.QueryRow(`SELECT proof, instance_commitments FROM block_batch WHERE id = $1 and proving_status = $2`, id, ProvingTaskVerified)
@@ -155,7 +155,7 @@ func (o *blockBatchOrm) GetVerifiedProofAndInstanceByID(id uint64) ([]byte, []by
 	return proof, instance, nil
 }
 
-func (o *blockBatchOrm) UpdateProofByID(ctx context.Context, id uint64, proof, instance_commitments []byte, proofTimeSec uint64) error {
+func (o *blockBatchOrm) UpdateProofByID(ctx context.Context, id string, proof, instance_commitments []byte, proofTimeSec uint64) error {
 	db := o.db
 	if _, err := db.ExecContext(ctx,
 		db.Rebind(`UPDATE block_batch set proof = ?, instance_commitments = ?, proof_time_sec = ? where id = ?;`),
@@ -166,7 +166,7 @@ func (o *blockBatchOrm) UpdateProofByID(ctx context.Context, id uint64, proof, i
 	return nil
 }
 
-func (o *blockBatchOrm) UpdateProvingStatus(id uint64, status ProvingStatus) error {
+func (o *blockBatchOrm) UpdateProvingStatus(id string, status ProvingStatus) error {
 	switch status {
 	case ProvingTaskAssigned:
 		_, err := o.db.Exec(o.db.Rebind("update block_batch set proving_status = ?, prover_assigned_at = ? where id = ?;"), status, time.Now(), id)
@@ -217,20 +217,20 @@ func (o *blockBatchOrm) NewBatchInDBTx(dbTx *sqlx.Tx, startBlock *BlockInfo, end
 	return id, nil
 }
 
-func (o *blockBatchOrm) BatchRecordExist(id uint64) (bool, error) {
+func (o *blockBatchOrm) BatchRecordExist(id string) (bool, error) {
 	var res int
 	return res == 1, o.db.Get(&res, o.db.Rebind(`SELECT 1 FROM block_batch where id = ? limit 1;`), id)
 }
 
-func (o *blockBatchOrm) GetPendingBatches() ([]uint64, error) {
-	rows, err := o.db.Queryx(`SELECT id FROM block_batch WHERE status = $1 ORDER BY id ASC`, RollupPending)
+func (o *blockBatchOrm) GetPendingBatches() ([]string, error) {
+	rows, err := o.db.Queryx(`SELECT id FROM block_batch WHERE status = $1 ORDER BY index ASC`, RollupPending)
 	if err != nil {
 		return nil, err
 	}
 
-	var ids []uint64
+	var ids []string
 	for rows.Next() {
-		var id uint64
+		var id string
 		if err = rows.Scan(&id); err != nil {
 			break
 		}
@@ -245,24 +245,24 @@ func (o *blockBatchOrm) GetPendingBatches() ([]uint64, error) {
 	return ids, rows.Close()
 }
 
-func (o *blockBatchOrm) GetLatestFinalizedBatch() (uint64, error) {
-	row := o.db.QueryRow(`SELECT MAX(id) FROM block_batch WHERE status = $1;`, RollupFinalized)
-	var id uint64
+func (o *blockBatchOrm) GetLatestFinalizedBatch() (string, error) {
+	row := o.db.QueryRow(`SELECT MAX(index) FROM block_batch WHERE status = $1;`, RollupFinalized)
+	var id string
 	if err := row.Scan(&id); err != nil {
-		return 0, err
+		return "", err
 	}
 	return id, nil
 }
 
-func (o *blockBatchOrm) GetCommittedBatches() ([]uint64, error) {
-	rows, err := o.db.Queryx(`SELECT id FROM block_batch WHERE rollup_status = $1 ORDER BY id ASC`, RollupCommitted)
+func (o *blockBatchOrm) GetCommittedBatches() ([]string, error) {
+	rows, err := o.db.Queryx(`SELECT id FROM block_batch WHERE rollup_status = $1 ORDER BY index ASC`, RollupCommitted)
 	if err != nil {
 		return nil, err
 	}
 
-	var ids []uint64
+	var ids []string
 	for rows.Next() {
-		var id uint64
+		var id string
 		if err = rows.Scan(&id); err != nil {
 			break
 		}
@@ -277,7 +277,7 @@ func (o *blockBatchOrm) GetCommittedBatches() ([]uint64, error) {
 	return ids, rows.Close()
 }
 
-func (o *blockBatchOrm) GetRollupStatus(id uint64) (RollupStatus, error) {
+func (o *blockBatchOrm) GetRollupStatus(id string) (RollupStatus, error) {
 	row := o.db.QueryRow(`SELECT rollup_status FROM block_batch WHERE id = $1`, id)
 	var status RollupStatus
 	if err := row.Scan(&status); err != nil {
@@ -286,7 +286,7 @@ func (o *blockBatchOrm) GetRollupStatus(id uint64) (RollupStatus, error) {
 	return status, nil
 }
 
-func (o *blockBatchOrm) UpdateRollupStatus(ctx context.Context, id uint64, status RollupStatus) error {
+func (o *blockBatchOrm) UpdateRollupStatus(ctx context.Context, id string, status RollupStatus) error {
 	switch status {
 	case RollupCommitted:
 		_, err := o.db.Exec(o.db.Rebind("update block_batch set rollup_status = ?, committed_at = ? where id = ?;"), status, time.Now(), id)
@@ -300,7 +300,7 @@ func (o *blockBatchOrm) UpdateRollupStatus(ctx context.Context, id uint64, statu
 	}
 }
 
-func (o *blockBatchOrm) UpdateRollupTxHashAndRollupStatus(ctx context.Context, id uint64, rollup_tx_hash string, status RollupStatus) error {
+func (o *blockBatchOrm) UpdateRollupTxHashAndRollupStatus(ctx context.Context, id string, rollup_tx_hash string, status RollupStatus) error {
 	switch status {
 	case RollupCommitted:
 		_, err := o.db.Exec(o.db.Rebind("update block_batch set rollup_tx_hash = ?, rollup_status = ?, committed_at = ? where id = ?;"), rollup_tx_hash, status, time.Now(), id)
@@ -311,7 +311,7 @@ func (o *blockBatchOrm) UpdateRollupTxHashAndRollupStatus(ctx context.Context, i
 	}
 }
 
-func (o *blockBatchOrm) UpdateFinalizeTxHashAndRollupStatus(ctx context.Context, id uint64, finalize_tx_hash string, status RollupStatus) error {
+func (o *blockBatchOrm) UpdateFinalizeTxHashAndRollupStatus(ctx context.Context, id string, finalize_tx_hash string, status RollupStatus) error {
 	switch status {
 	case RollupFinalized:
 		_, err := o.db.Exec(o.db.Rebind("update block_batch set finalize_tx_hash = ?, rollup_status = ?, finalized_at = ? where id = ?;"), finalize_tx_hash, status, time.Now(), id)

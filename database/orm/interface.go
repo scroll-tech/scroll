@@ -87,10 +87,10 @@ type BlockBatchOrm interface {
 	UpdateProvingStatus(id string, status ProvingStatus) error
 	NewBatchInDBTx(dbTx *sqlx.Tx, startBlock *BlockInfo, endBlock *BlockInfo, parentHash string, totalTxNum uint64, gasUsed uint64) (string, error)
 	BatchRecordExist(id string) (bool, error)
-	GetPendingBatches() ([]uint64, error)
-	GetCommittedBatches() ([]uint64, error)
+	GetPendingBatches() ([]string, error)
+	GetCommittedBatches() ([]string, error)
 	GetRollupStatus(id string) (RollupStatus, error)
-	GetLatestFinalizedBatch() (uint64, error)
+	GetLatestFinalizedBatch() (string, error)
 	UpdateRollupStatus(ctx context.Context, id string, status RollupStatus) error
 	UpdateRollupTxHashAndRollupStatus(ctx context.Context, id string, rollup_tx_hash string, status RollupStatus) error
 	UpdateFinalizeTxHashAndRollupStatus(ctx context.Context, id string, finalize_tx_hash string, status RollupStatus) error
