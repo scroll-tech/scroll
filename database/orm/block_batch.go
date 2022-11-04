@@ -170,7 +170,7 @@ func (o *blockBatchOrm) UpdateProvingStatus(id uint64, status ProvingStatus) err
 // TODO: maybe we can use "`RETURNING` clause" like in
 // https://stackoverflow.com/questions/33382981/go-how-to-get-last-insert-id-on-postgresql-with-namedexec
 // then we don't need to manually query and manage this ID, and can define it as `SERIAL PRIMARY KEY` for auto-increment
-func (o *blockBatchOrm) NewBatchInDBTx(dbTx *sqlx.Tx, startBlock *BlockInfo, endBlock *BlockInfo, parentHash string, total_tx_num uint64, total_l2_gas uint64) (uint64, error) {
+func (o *blockBatchOrm) NewBatchInDBTx(dbTx *sqlx.Tx, startBlock *BlockInfo, endBlock *BlockInfo, parentHash string, totalTxNum uint64, totalL2Gas uint64) (uint64, error) {
 	row := dbTx.QueryRow("SELECT MAX(id) FROM block_batch;")
 
 	var id int64 // 0 by default for sql.ErrNoRows
@@ -179,16 +179,16 @@ func (o *blockBatchOrm) NewBatchInDBTx(dbTx *sqlx.Tx, startBlock *BlockInfo, end
 	}
 
 	id++
-	if _, err := dbTx.NamedExec(`INSERT INTO public.block_batch (id, total_l2_gas) VALUES (:id, :total_l2_gas)`,
+	if _, err := dbTx.NamedExec(`INSERT INTO public.block_batch (id, parent_hash, start_block_number, start_block_hash, end_block_number, end_block_hash, total_tx_num, total_l2_gas) VALUES (:id, :parent_hash, :start_block_number, :start_block_hash, :end_block_number, :end_block_hash, :total_tx_num, :total_l2_gas)`,
 		map[string]interface{}{
 			"id":                 id,
 			"parent_hash":        parentHash,
 			"start_block_number": startBlock.Number,
-			"start_block_hah":    startBlock.Hash,
+			"start_block_hash":   startBlock.Hash,
 			"end_block_number":   endBlock.Number,
 			"end_block_hash":     endBlock.Hash,
-			"total_tx_num":       total_tx_num,
-			"total_l2_gas":       total_l2_gas,
+			"total_tx_num":       totalTxNum,
+			"total_l2_gas":       totalL2Gas,
 			"created_at":         time.Now(),
 		}); err != nil {
 		return 0, err
