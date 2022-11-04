@@ -14,10 +14,11 @@ import (
 	"scroll-tech/common/docker"
 	"scroll-tech/common/message"
 	"scroll-tech/common/utils"
-	"scroll-tech/coordinator"
-	client2 "scroll-tech/coordinator/client"
 	"scroll-tech/database"
 	"scroll-tech/database/migrate"
+
+	"scroll-tech/coordinator"
+	client2 "scroll-tech/coordinator/client"
 
 	bridge_config "scroll-tech/bridge/config"
 
