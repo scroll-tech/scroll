@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
-	"strconv"
 	"time"
 
 	// not sure if this will make problems when relay with l1geth
@@ -51,11 +50,11 @@ type Layer2Relayer struct {
 	// a list of processing message, indexed by layer2 hash
 	processingMessage map[string]string
 
-	// a list of processing batch commitment, indexed by block height
-	processingCommitment map[string]uint64
+	// a list of processing batch commitment, indexed by batch id
+	processingCommitment map[string]string
 
-	// a list of processing batch finalization, indexed by block height
-	processingFinalization map[string]uint64
+	// a list of processing batch finalization, indexed by batch id
+	processingFinalization map[string]string
 
 	stopCh chan struct{}
 }
@@ -102,8 +101,8 @@ func NewLayer2Relayer(ctx context.Context, ethClient *ethclient.Client, proofGen
 		proofGenerationFreq:    proofGenFreq,
 		skippedOpcodes:         skippedOpcodes,
 		processingMessage:      map[string]string{},
-		processingCommitment:   map[string]uint64{},
-		processingFinalization: map[string]uint64{},
+		processingCommitment:   map[string]string{},
+		processingFinalization: map[string]string{},
 		stopCh:                 make(chan struct{}),
 	}, nil
 }
@@ -256,7 +255,7 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 		return
 	}
 
-	hash, err := r.rollupSender.SendTransaction(strconv.FormatUint(id, 10), &r.cfg.RollupContractAddress, big.NewInt(0), data)
+	hash, err := r.rollupSender.SendTransaction(id, &r.cfg.RollupContractAddress, big.NewInt(0), data)
 	if err != nil {
 		if !errors.Is(err, sender.ErrNoAvailableAccount) {
 			log.Error("Failed to send commitBatch tx to layer1 ", "id", id, "err", err)
@@ -270,7 +269,7 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 	if err != nil {
 		log.Error("UpdateRollupTxHashAndRollupStatus failed", "id", id, "err", err)
 	}
-	r.processingCommitment[strconv.FormatUint(id, 10)] = id
+	r.processingCommitment[id] = id
 }
 
 // ProcessCommittedBatches submit proof to layer rollup contract
@@ -343,22 +342,23 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 		proof := bufferToUint256Le(proofBuffer)
 		instance := bufferToUint256Le(instanceBuffer)
 
-		// it must in db
-		hash, err := r.db.GetHashByNumber(id)
-		if err != nil {
-			log.Warn("fetch missing block result by id failed", "id", id, "err", err)
-		}
-		if hash == nil {
-			// only happen when trace validate failed
-			return
-		}
+		// // it must in db
+		// hash, err := r.db.GetHashByNumber(id)
+		// if err != nil {
+		// 	log.Warn("fetch missing block result by id failed", "id", id, "err", err)
+		// }
+		// if hash == nil {
+		// 	// only happen when trace validate failed
+		// 	return
+		// }
+		hash := &common.Hash{} // TODO: TODO: fix this
 		data, err := r.l1RollupABI.Pack("finalizeBlockWithProof", hash, proof, instance)
 		if err != nil {
 			log.Error("Pack finalizeBlockWithProof failed", err)
 			return
 		}
 
-		txHash, err := r.rollupSender.SendTransaction(strconv.FormatUint(id, 10), &r.cfg.RollupContractAddress, big.NewInt(0), data)
+		txHash, err := r.rollupSender.SendTransaction(id, &r.cfg.RollupContractAddress, big.NewInt(0), data)
 		hash = &txHash
 		if err != nil {
 			if !errors.Is(err, sender.ErrNoAvailableAccount) {
@@ -374,7 +374,7 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 			log.Warn("UpdateFinalizeTxHashAndRollupStatus failed", "id", id, "err", err)
 		}
 		success = true
-		r.processingFinalization[strconv.FormatUint(id, 10)] = id
+		r.processingFinalization[id] = id
 
 	default:
 		log.Error("encounter unreachable case in ProcessCommittedBatches",
