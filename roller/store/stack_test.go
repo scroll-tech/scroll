@@ -4,6 +4,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strconv"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -25,7 +26,7 @@ func TestStack(t *testing.T) {
 	for i := 0; i < 3; i++ {
 		task := &ProvingTask{
 			Task: &message.TaskMsg{
-				ID:     uint64(i),
+				ID:     strconv.Itoa(i),
 				Traces: nil,
 			},
 			Times: 0,
@@ -45,7 +46,7 @@ func TestStack(t *testing.T) {
 	// test times
 	task := &ProvingTask{
 		Task: &message.TaskMsg{
-			ID:     1,
+			ID:     strconv.Itoa(1),
 			Traces: nil,
 		},
 		Times: 0,

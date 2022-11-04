@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"testing"
 	"time"
 
@@ -103,7 +104,7 @@ func mockScroll(t *testing.T) {
 		assert.Equal(t, cfg.RollerName, authMsg.Identity.Name)
 
 		task := &message.TaskMsg{
-			ID:     16,
+			ID:     strconv.Itoa(16),
 			Traces: nil,
 		}
 		msgByt, err := core.MakeMsgByt(message.TaskMsgType, task)

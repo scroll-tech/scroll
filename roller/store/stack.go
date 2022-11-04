@@ -53,8 +53,7 @@ func (s *Stack) Push(task *ProvingTask) error {
 	if err != nil {
 		return err
 	}
-	key := make([]byte, 8)
-	binary.BigEndian.PutUint64(key, task.Task.ID)
+	key := []byte{task.Task.ID}
 	return s.Update(func(tx *bbolt.Tx) error {
 		return tx.Bucket(bucket).Put(key, byt)
 	})
