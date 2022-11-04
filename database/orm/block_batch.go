@@ -170,7 +170,7 @@ func (o *blockBatchOrm) UpdateProvingStatus(id uint64, status ProvingStatus) err
 // TODO: maybe we can use "`RETURNING` clause" like in
 // https://stackoverflow.com/questions/33382981/go-how-to-get-last-insert-id-on-postgresql-with-namedexec
 // then we don't need to manually query and manage this ID, and can define it as `SERIAL PRIMARY KEY` for auto-increment
-func (o *blockBatchOrm) NewBatchInDBTx(dbTx *sqlx.Tx, parent_hash string, total_l2_gas uint64) (uint64, error) {
+func (o *blockBatchOrm) NewBatchInDBTx(dbTx *sqlx.Tx, startBlock *BlockInfo, endBlock *BlockInfo, parent_hash string, total_tx_num uint64, total_l2_gas uint64) (uint64, error) {
 	row := dbTx.QueryRow("SELECT MAX(id) FROM block_batch;")
 
 	var id int64 // 0 by default for sql.ErrNoRows

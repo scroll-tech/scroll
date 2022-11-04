@@ -270,15 +270,19 @@ func (w *WatcherClient) tryProposeBatch() error {
 		return nil
 	}
 
-	toBatch := []uint64{}
+	idsToBatch := []uint64{}
+	blocksToBatch := []*orm.BlockInfo{}
+	txNum := uint64(0)
 	gasUsed := uint64(0)
 	for _, block := range blocks {
+		txNum += block.TxNum
 		gasUsed += block.GasUsed
 		if gasUsed > batchGasThreshold {
 			break
 		}
 
-		toBatch = append(toBatch, block.Number)
+		idsToBatch = append(idsToBatch, block.Number)
+		blocksToBatch = append(blocksToBatch, block)
 	}
 
 	if gasUsed < batchGasThreshold && blocks[0].BlockTimestamp+batchTimeSec < uint64(time.Now().Unix()) {
@@ -286,20 +290,23 @@ func (w *WatcherClient) tryProposeBatch() error {
 	}
 
 	// keep gasUsed below threshold
-	if len(toBatch) >= 2 {
-		gasUsed -= blocks[len(toBatch)-1].GasUsed
-		toBatch = toBatch[:len(toBatch)-1]
+	if len(idsToBatch) >= 2 {
+		gasUsed -= blocks[len(idsToBatch)-1].GasUsed
+		txNum -= blocks[len(idsToBatch)-1].TxNum
+		idsToBatch = idsToBatch[:len(idsToBatch)-1]
+		blocksToBatch = blocksToBatch[:len(blocksToBatch)-1]
 	}
 
-	parents, err := w.orm.GetBlockInfos(map[string]interface{}{"numer": toBatch[0] - 1})
+	// TODO: use start_block.parent_hash after we upgrade `BlockTrace` type
+	parents, err := w.orm.GetBlockInfos(map[string]interface{}{"numer": idsToBatch[0] - 1})
 	if err != nil || len(parents) == 0 {
 		return errors.New("Cannot find last batch's end_block")
 	}
 
-	return w.createBatchForBlocks(toBatch, parents[0].Hash, gasUsed)
+	return w.createBatchForBlocks(idsToBatch, blocksToBatch, parents[0].Hash, txNum, gasUsed)
 }
 
-func (w *WatcherClient) createBatchForBlocks(blocks []uint64, parent_hash string, gasUsed uint64) error {
+func (w *WatcherClient) createBatchForBlocks(blockIDs []uint64, blocks []*orm.BlockInfo, parent_hash string, txNum uint64, gasUsed uint64) error {
 	dbTx, err := w.orm.Beginx()
 	if err != nil {
 		return err
@@ -314,13 +321,15 @@ func (w *WatcherClient) createBatchForBlocks(blocks []uint64, parent_hash string
 		}
 	}()
 
+	startBlock := blocks[0]
+	endBlock := blocks[len(blocks)-1]
 	var batchID uint64
-	batchID, dbTxErr = w.orm.NewBatchInDBTx(dbTx, parent_hash, gasUsed)
+	batchID, dbTxErr = w.orm.NewBatchInDBTx(dbTx, startBlock, endBlock, parent_hash, txNum, gasUsed)
 	if dbTxErr != nil {
 		return dbTxErr
 	}
 
-	if dbTxErr = w.orm.SetBatchIDForBlocksInDBTx(dbTx, blocks, batchID); dbTxErr != nil {
+	if dbTxErr = w.orm.SetBatchIDForBlocksInDBTx(dbTx, blockIDs, batchID); dbTxErr != nil {
 		return dbTxErr
 	}
 

@@ -60,7 +60,7 @@ type BlockInfo struct {
 	Number         uint64 `json:"number" db:"number"`
 	Hash           string `json:"hash" db:"hash"`
 	BatchID        uint64 `json:"batch_id" db:"batch_id"`
-	TxNum          string `json:"tx_num" db:"tx_num"`
+	TxNum          uint64 `json:"tx_num" db:"tx_num"`
 	GasUsed        uint64 `json:"gas_used" db:"gas_used"`
 	BlockTimestamp uint64 `json:"block_timestamp" db:"block_timestamp"`
 }
@@ -85,7 +85,7 @@ type BlockBatchOrm interface {
 	GetVerifiedProofAndInstanceByID(id uint64) ([]byte, []byte, error)
 	UpdateProofByID(ctx context.Context, id uint64, proof, instance_commitments []byte, proofTimeSec uint64) error
 	UpdateProvingStatus(id uint64, status ProvingStatus) error
-	NewBatchInDBTx(dbTx *sqlx.Tx, parent_hash string, gasUsed uint64) (uint64, error)
+	NewBatchInDBTx(dbTx *sqlx.Tx, startBlock *BlockInfo, endBlock *BlockInfo, parent_hash string, total_tx_num uint64, gasUsed uint64) (uint64, error)
 	BatchRecordExist(number uint64) (bool, error)
 	GetPendingBatches() ([]uint64, error)
 	GetCommittedBatches() ([]uint64, error)
