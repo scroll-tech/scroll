@@ -5,6 +5,7 @@ create table block_batch
 (
     id                      BIGINT          not null, -- INCREMENTAL
     -- hash                    varchar         not null, -- TODO: hash? index? id?
+    parent_hash             VARCHAR         NOT NULL,
     total_l2_gas            BIGINT          NOT NULL DEFAULT 0,
     proving_status          integer         default 1,
     proof                   BYTEA           default null,

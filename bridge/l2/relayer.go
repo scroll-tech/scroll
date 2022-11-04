@@ -204,20 +204,20 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 	id := batchesInDB[0]
 	// @todo add support to relay multiple batches
 
-	// batch := orm.BlockBatch{} // TODO: get from DB, then also add a "ParentHash" to orm.BlockBatch
+	batches, err := r.db.GetBlockBatches(map[string]interface{}{"id": id}, "ORDER BY number ASC")
+	if err != nil || len(batches) == 0 {
+		log.Error("Failed to GetBlockBatches", "batch_id", id, "err", err)
+		return
+	}
+	batch := batches[0]
 
 	traces, err := r.db.GetBlockResults(map[string]interface{}{"batch_id": id}, "ORDER BY number ASC")
-	if err != nil {
+	if err != nil || len(traces) == 0 {
 		log.Error("Failed to GetBlockResults", "batch_id", id, "err", err)
 		return
 	}
-	if len(traces) == 0 {
-		log.Error("No BlockResults for batch", "batch_id", id)
-		return
-	}
 
-	parentHash := common.Hash{} // TODO: get from BlockBatch.ParentHash
-
+	parentHash := common.HexToHash(batch.ParentHash)
 	for _, trace := range traces {
 		header := bridge_abi.IZKRollupBlockHeader{
 			BlockHash:   trace.BlockTrace.Hash,
