@@ -306,7 +306,7 @@ func (w *WatcherClient) tryProposeBatch() error {
 	return w.createBatchForBlocks(idsToBatch, blocksToBatch, parents[0].Hash, txNum, gasUsed)
 }
 
-func (w *WatcherClient) createBatchForBlocks(blockIDs []uint64, blocks []*orm.BlockInfo, parent_hash string, txNum uint64, gasUsed uint64) error {
+func (w *WatcherClient) createBatchForBlocks(blockIDs []uint64, blocks []*orm.BlockInfo, parentHash string, txNum uint64, gasUsed uint64) error {
 	dbTx, err := w.orm.Beginx()
 	if err != nil {
 		return err
@@ -324,7 +324,7 @@ func (w *WatcherClient) createBatchForBlocks(blockIDs []uint64, blocks []*orm.Bl
 	startBlock := blocks[0]
 	endBlock := blocks[len(blocks)-1]
 	var batchID uint64
-	batchID, dbTxErr = w.orm.NewBatchInDBTx(dbTx, startBlock, endBlock, parent_hash, txNum, gasUsed)
+	batchID, dbTxErr = w.orm.NewBatchInDBTx(dbTx, startBlock, endBlock, parentHash, txNum, gasUsed)
 	if dbTxErr != nil {
 		return dbTxErr
 	}
