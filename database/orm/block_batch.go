@@ -182,21 +182,25 @@ func (o *blockBatchOrm) UpdateProvingStatus(id uint64, status ProvingStatus) err
 	}
 }
 
-// TODO: maybe we can use "`RETURNING` clause" like in
-// https://stackoverflow.com/questions/33382981/go-how-to-get-last-insert-id-on-postgresql-with-namedexec
-// then we don't need to manually query and manage this ID, and can define it as `SERIAL PRIMARY KEY` for auto-increment
-func (o *blockBatchOrm) NewBatchInDBTx(dbTx *sqlx.Tx, startBlock *BlockInfo, endBlock *BlockInfo, parentHash string, totalTxNum uint64, totalL2Gas uint64) (uint64, error) {
-	row := dbTx.QueryRow("SELECT MAX(id) FROM block_batch;")
+// TODO: TODO: move to common
+func computeBatchID(endBlockHash string, lastEndBlockHash string, index int64) string {
+	return ""
+}
 
-	var id int64 // 0 by default for sql.ErrNoRows
-	if err := row.Scan(&id); err != nil && err != sql.ErrNoRows {
-		return 0, err
+func (o *blockBatchOrm) NewBatchInDBTx(dbTx *sqlx.Tx, startBlock *BlockInfo, endBlock *BlockInfo, parentHash string, totalTxNum uint64, totalL2Gas uint64) (string, error) {
+	row := dbTx.QueryRow("SELECT MAX(index) FROM block_batch;")
+
+	var index int64 // 0 by default for sql.ErrNoRows
+	if err := row.Scan(&index); err != nil && err != sql.ErrNoRows {
+		return "", err
 	}
 
-	id++
-	if _, err := dbTx.NamedExec(`INSERT INTO public.block_batch (id, parent_hash, start_block_number, start_block_hash, end_block_number, end_block_hash, total_tx_num, total_l2_gas) VALUES (:id, :parent_hash, :start_block_number, :start_block_hash, :end_block_number, :end_block_hash, :total_tx_num, :total_l2_gas)`,
+	index++
+	id := computeBatchID(endBlock.Hash, parentHash, index)
+	if _, err := dbTx.NamedExec(`INSERT INTO public.block_batch (id, index, parent_hash, start_block_number, start_block_hash, end_block_number, end_block_hash, total_tx_num, total_l2_gas) VALUES (:id, :index, :parent_hash, :start_block_number, :start_block_hash, :end_block_number, :end_block_hash, :total_tx_num, :total_l2_gas)`,
 		map[string]interface{}{
 			"id":                 id,
+			"index":              index,
 			"parent_hash":        parentHash,
 			"start_block_number": startBlock.Number,
 			"start_block_hash":   startBlock.Hash,
@@ -206,10 +210,10 @@ func (o *blockBatchOrm) NewBatchInDBTx(dbTx *sqlx.Tx, startBlock *BlockInfo, end
 			"total_l2_gas":       totalL2Gas,
 			"created_at":         time.Now(),
 		}); err != nil {
-		return 0, err
+		return "", err
 	}
 
-	return uint64(id), nil
+	return id, nil
 }
 
 func (o *blockBatchOrm) BatchRecordExist(id uint64) (bool, error) {

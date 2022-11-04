@@ -75,7 +75,7 @@ type BlockResultOrm interface {
 	GetHashByNumber(number uint64) (*common.Hash, error)
 	DeleteTracesByBatchID(batch_id uint64) error
 	InsertBlockResults(ctx context.Context, blockResults []*types.BlockResult) error
-	SetBatchIDForBlocksInDBTx(dbTx *sqlx.Tx, blocks []uint64, batchID uint64) error
+	SetBatchIDForBlocksInDBTx(dbTx *sqlx.Tx, blocks []uint64, batchID string) error
 }
 
 // BlockBatchOrm block_batch operation interface
@@ -85,7 +85,7 @@ type BlockBatchOrm interface {
 	GetVerifiedProofAndInstanceByID(id uint64) ([]byte, []byte, error)
 	UpdateProofByID(ctx context.Context, id uint64, proof, instance_commitments []byte, proofTimeSec uint64) error
 	UpdateProvingStatus(id uint64, status ProvingStatus) error
-	NewBatchInDBTx(dbTx *sqlx.Tx, startBlock *BlockInfo, endBlock *BlockInfo, parentHash string, totalTxNum uint64, gasUsed uint64) (uint64, error)
+	NewBatchInDBTx(dbTx *sqlx.Tx, startBlock *BlockInfo, endBlock *BlockInfo, parentHash string, totalTxNum uint64, gasUsed uint64) (string, error)
 	BatchRecordExist(number uint64) (bool, error)
 	GetPendingBatches() ([]uint64, error)
 	GetCommittedBatches() ([]uint64, error)
