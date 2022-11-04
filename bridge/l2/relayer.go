@@ -341,25 +341,14 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 
 		proof := bufferToUint256Le(proofBuffer)
 		instance := bufferToUint256Le(instanceBuffer)
-
-		// // it must in db
-		// hash, err := r.db.GetHashByNumber(id)
-		// if err != nil {
-		// 	log.Warn("fetch missing block result by id failed", "id", id, "err", err)
-		// }
-		// if hash == nil {
-		// 	// only happen when trace validate failed
-		// 	return
-		// }
-		hash := &common.Hash{} // TODO: TODO: fix this
-		data, err := r.l1RollupABI.Pack("finalizeBlockWithProof", hash, proof, instance)
+		data, err := r.l1RollupABI.Pack("finalizeBlockWithProof", id, proof, instance)
 		if err != nil {
 			log.Error("Pack finalizeBlockWithProof failed", err)
 			return
 		}
 
 		txHash, err := r.rollupSender.SendTransaction(id, &r.cfg.RollupContractAddress, big.NewInt(0), data)
-		hash = &txHash
+		hash := &txHash
 		if err != nil {
 			if !errors.Is(err, sender.ErrNoAvailableAccount) {
 				log.Error("finalizeBlockWithProof in layer1 failed", "id", id, "err", err)
