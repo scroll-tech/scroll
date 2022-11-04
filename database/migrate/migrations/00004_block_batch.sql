@@ -3,8 +3,8 @@
 
 create table block_batch
 (
-    id                      BIGINT          not null, -- INCREMENTAL
-    -- hash                    varchar         not null, -- TODO: hash? index? id?
+    id                      VARCHAR         NOT NULL,
+    index                   BIGINT          NOT NULL,
     start_block_number      BIGINT          NOT NULL,
     start_block_hash        VARCHAR         NOT NULL,
     end_block_number        BIGINT          NOT NULL,

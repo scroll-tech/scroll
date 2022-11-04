@@ -73,7 +73,8 @@ const (
 
 // BlockBatch is structure of stored block_batch
 type BlockBatch struct {
-	ID                  uint64        `json:"id" db:"id"`
+	ID                  string        `json:"id" db:"id"`
+	Index               uint64        `json:"index" db:"index"`
 	ParentHash          string        `json:"parent_hash" db:"parent_hash"`
 	StartBlockNumber    uint64        `json:"start_block_number" db:"start_block_number"`
 	StartBlockHash      string        `json:"start_block_hash" db:"start_block_hash"`
