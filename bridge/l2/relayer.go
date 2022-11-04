@@ -89,22 +89,22 @@ func NewLayer2Relayer(ctx context.Context, ethClient *ethclient.Client, proofGen
 	}
 
 	return &Layer2Relayer{
-		ctx:                 ctx,
-		client:              ethClient,
-		db:                  db,
-		messageSender:       messageSender,
-		messageCh:           messageSender.ConfirmChan(),
-		l1MessengerABI:      l1MessengerABI,
-		rollupSender:        rollupSender,
-		rollupCh:            rollupSender.ConfirmChan(),
-		l1RollupABI:         l1RollupABI,
-		cfg:                 cfg,
-		proofGenerationFreq: proofGenFreq,
-		skippedOpcodes:      skippedOpcodes,
-		processingMessage:   map[string]string{},
-		processingBlock:     map[string]uint64{},
-		processingProof:     map[string]uint64{},
-		stopCh:              make(chan struct{}),
+		ctx:                    ctx,
+		client:                 ethClient,
+		db:                     db,
+		messageSender:          messageSender,
+		messageCh:              messageSender.ConfirmChan(),
+		l1MessengerABI:         l1MessengerABI,
+		rollupSender:           rollupSender,
+		rollupCh:               rollupSender.ConfirmChan(),
+		l1RollupABI:            l1RollupABI,
+		cfg:                    cfg,
+		proofGenerationFreq:    proofGenFreq,
+		skippedOpcodes:         skippedOpcodes,
+		processingMessage:      map[string]string{},
+		processingCommitment:   map[string]uint64{},
+		processingFinalization: map[string]uint64{},
+		stopCh:                 make(chan struct{}),
 	}, nil
 }
 
