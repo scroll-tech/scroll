@@ -45,7 +45,6 @@ func TestFFI(t *testing.T) {
 
 	traces := make([]*types.BlockResult, 0)
 	for _, file := range files {
-		t.Log("add trace: ", file.Name())
 		f, err := os.Open(filepath.Join(TracesPath, file.Name()))
 		as.NoError(err)
 		byt, err := io.ReadAll(f)
