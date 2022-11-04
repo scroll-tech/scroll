@@ -39,7 +39,7 @@ func main() {
 		{
 			Name:   "status",
 			Usage:  "Check migration status.",
-			Action: CheckDBStatus,
+			Action: checkDBStatus,
 			Flags: []cli.Flag{
 				&configFileFlag,
 			},
@@ -47,7 +47,7 @@ func main() {
 		{
 			Name:   "version",
 			Usage:  "Display the current database version.",
-			Action: DBVersion,
+			Action: dbVersion,
 			Flags: []cli.Flag{
 				&configFileFlag,
 			},
@@ -55,7 +55,7 @@ func main() {
 		{
 			Name:   "migrate",
 			Usage:  "Migrate the database to the latest version.",
-			Action: MigrateDB,
+			Action: migrateDB,
 			Flags: []cli.Flag{
 				&configFileFlag,
 			},
@@ -63,7 +63,7 @@ func main() {
 		{
 			Name:   "rollback",
 			Usage:  "Roll back the database to a previous <version>. Rolls back a single migration if no version specified.",
-			Action: RollbackDB,
+			Action: rollbackDB,
 			Flags: []cli.Flag{
 				&configFileFlag,
 				&cli.IntFlag{
