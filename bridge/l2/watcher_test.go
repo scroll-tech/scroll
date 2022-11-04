@@ -36,21 +36,22 @@ func testCreateNewWatcherAndStop(t *testing.T) {
 	messengerABI, err := bridge_abi.L2MessengerMetaData.GetAbi()
 	assert.NoError(t, err)
 
-	l2Config := cfg.L2Config
-	skippedOpcodes := make(map[string]struct{}, len(l2Config.SkippedOpcodes))
-	for _, op := range l2Config.SkippedOpcodes {
+	l2cfg := cfg.L2Config
+	skippedOpcodes := make(map[string]struct{}, len(l2cfg.SkippedOpcodes))
+	for _, op := range l2cfg.SkippedOpcodes {
 		skippedOpcodes[op] = struct{}{}
 	}
-	proofGenerationFreq := l2Config.ProofGenerationFreq
+	proofGenerationFreq := l2cfg.ProofGenerationFreq
 	if proofGenerationFreq == 0 {
 		proofGenerationFreq = 1
 	}
-	rc := l2.NewL2WatcherClient(context.Background(), l2Cli, l2Config.Confirmations, proofGenerationFreq, skippedOpcodes, cfg.L2Config.L2MessengerAddress, messengerABI, l2db)
+	rc := l2.NewL2WatcherClient(context.Background(), l2Cli, l2cfg.Confirmations, proofGenerationFreq, skippedOpcodes, cfg.L2Config.L2MessengerAddress, messengerABI, l2db)
 	rc.Start()
 	defer rc.Stop()
 
-	l2Config.RelayerConfig.SenderConfig.Confirmations = 0
-	newSender, err := sender.NewSender(context.Background(), l2Config.RelayerConfig.SenderConfig, l2Config.RelayerConfig.MessageSenderPrivateKeys)
+	l1cfg := cfg.L1Config
+	l1cfg.RelayerConfig.SenderConfig.Confirmations = 0
+	newSender, err := sender.NewSender(context.Background(), l1cfg.RelayerConfig.SenderConfig, l1cfg.RelayerConfig.MessageSenderPrivateKeys)
 	assert.NoError(t, err)
 
 	// Create several transactions and commit to block
