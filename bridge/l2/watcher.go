@@ -3,6 +3,7 @@ package l2
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"math/big"
 	"time"
@@ -290,10 +291,15 @@ func (w *WatcherClient) tryProposeBatch() error {
 		toBatch = toBatch[:len(toBatch)-1]
 	}
 
-	return w.createBatchForBlocks(toBatch, gasUsed)
+	parents, err := w.orm.GetBlockInfos(map[string]interface{}{"numer": toBatch[0] - 1})
+	if err != nil || len(parents) == 0 {
+		return errors.New("Cannot find last batch's end_block")
+	}
+
+	return w.createBatchForBlocks(toBatch, parents[0].Hash, gasUsed)
 }
 
-func (w *WatcherClient) createBatchForBlocks(blocks []uint64, gasUsed uint64) error {
+func (w *WatcherClient) createBatchForBlocks(blocks []uint64, parent_hash string, gasUsed uint64) error {
 	dbTx, err := w.orm.Beginx()
 	if err != nil {
 		return err
@@ -309,7 +315,7 @@ func (w *WatcherClient) createBatchForBlocks(blocks []uint64, gasUsed uint64) er
 	}()
 
 	var batchID uint64
-	batchID, dbTxErr = w.orm.NewBatchInDBTx(dbTx, gasUsed)
+	batchID, dbTxErr = w.orm.NewBatchInDBTx(dbTx, parent_hash, gasUsed)
 	if dbTxErr != nil {
 		return dbTxErr
 	}
