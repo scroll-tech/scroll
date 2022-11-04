@@ -3,9 +3,14 @@
 
 create table block_batch
 (
-    id                      BIGINT          not null, -- INCREMENTAL
-    -- hash                    varchar         not null, -- TODO: hash? index? id?
+    id                      VARCHAR         NOT NULL,
+    index                   BIGINT          NOT NULL,
+    start_block_number      BIGINT          NOT NULL,
+    start_block_hash        VARCHAR         NOT NULL,
+    end_block_number        BIGINT          NOT NULL,
+    end_block_hash          VARCHAR         NOT NULL,
     parent_hash             VARCHAR         NOT NULL,
+    total_tx_num            BIGINT          NOT NULL DEFAULT 0,
     total_l2_gas            BIGINT          NOT NULL DEFAULT 0,
     proving_status          integer         default 1,
     proof                   BYTEA           default null,

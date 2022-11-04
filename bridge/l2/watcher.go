@@ -2,10 +2,9 @@ package l2
 
 import (
 	"context"
-	"database/sql"
-	"errors"
 	"fmt"
 	"math/big"
+	"sync"
 	"time"
 
 	"github.com/scroll-tech/go-ethereum"
@@ -51,6 +50,8 @@ type WatcherClient struct {
 
 	stopped uint64
 	stopCh  chan struct{}
+
+	bpMutex sync.Mutex
 }
 
 // NewL2WatcherClient take a l2geth instance to generate a l2watcherclient instance
@@ -73,6 +74,7 @@ func NewL2WatcherClient(ctx context.Context, client *ethclient.Client, confirmat
 		messengerABI:        messengerABI,
 		stopCh:              make(chan struct{}),
 		stopped:             0,
+		bpMutex:             sync.Mutex{},
 	}
 }
 
@@ -245,85 +247,4 @@ func parseBridgeEventLogs(logs []types.Log, messengerABI *abi.ABI) ([]*orm.Layer
 	}
 
 	return parsedlogs, nil
-}
-
-// batch-related config
-var (
-	batchTimeSec      = uint64(5 * 60)  // 5min
-	batchGasThreshold = uint64(3000000) // 3M
-	batchBlocksLimit  = uint64(10)
-)
-
-// TODO:
-// + generate batch parallelly
-// + TraceHasUnsupportedOpcodes
-// + proofGenerationFreq
-func (w *WatcherClient) tryProposeBatch() error {
-	blocks, err := w.orm.GetBlockInfos(
-		map[string]interface{}{"batch_id": sql.NullInt64{Valid: false}},
-		fmt.Sprintf("order by number DESC LIMIT %s", batchBlocksLimit),
-	)
-	if err != nil {
-		return err
-	}
-	if len(blocks) == 0 {
-		return nil
-	}
-
-	toBatch := []uint64{}
-	gasUsed := uint64(0)
-	for _, block := range blocks {
-		gasUsed += block.GasUsed
-		if gasUsed > batchGasThreshold {
-			break
-		}
-
-		toBatch = append(toBatch, block.Number)
-	}
-
-	if gasUsed < batchGasThreshold && blocks[0].BlockTimestamp+batchTimeSec < uint64(time.Now().Unix()) {
-		return nil
-	}
-
-	// keep gasUsed below threshold
-	if len(toBatch) >= 2 {
-		gasUsed -= blocks[len(toBatch)-1].GasUsed
-		toBatch = toBatch[:len(toBatch)-1]
-	}
-
-	parents, err := w.orm.GetBlockInfos(map[string]interface{}{"numer": toBatch[0].Number - 1})
-	if err != nil || len(parents) == 0 {
-		return errors.New("Cannot find last batch's end_block")
-	}
-
-	return w.createBatchForBlocks(toBatch, parents[0].Hash, gasUsed)
-}
-
-func (w *WatcherClient) createBatchForBlocks(blocks []uint64, parent_hash string, gasUsed uint64) error {
-	dbTx, err := w.orm.Beginx()
-	if err != nil {
-		return err
-	}
-
-	var dbTxErr error
-	defer func() {
-		if dbTxErr != nil {
-			if err := dbTx.Rollback(); err != nil {
-				log.Error("dbTx.Rollback()", "err", err)
-			}
-		}
-	}()
-
-	var batchID uint64
-	batchID, dbTxErr = w.orm.NewBatchInDBTx(dbTx, parent_hash, gasUsed)
-	if dbTxErr != nil {
-		return dbTxErr
-	}
-
-	if dbTxErr = w.orm.SetBatchIDForBlocksInDBTx(dbTx, blocks, batchID); dbTxErr != nil {
-		return dbTxErr
-	}
-
-	dbTxErr = dbTx.Commit()
-	return dbTxErr
 }

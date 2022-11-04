@@ -73,8 +73,14 @@ const (
 
 // BlockBatch is structure of stored block_batch
 type BlockBatch struct {
-	ID                  uint64        `json:"id" db:"id"`
-	ParentHash          string        `json:"parent_hash" db:"parent_hash"` // TODO: TODO:
+	ID                  string        `json:"id" db:"id"`
+	Index               uint64        `json:"index" db:"index"`
+	ParentHash          string        `json:"parent_hash" db:"parent_hash"`
+	StartBlockNumber    uint64        `json:"start_block_number" db:"start_block_number"`
+	StartBlockHash      string        `json:"start_block_hash" db:"start_block_hash"`
+	EndBlockNumber      uint64        `json:"end_block_number" db:"end_block_number"`
+	EndBlockHash        string        `json:"end_block_hash" db:"end_block_hash"`
+	TotalTxNum          uint64        `json:"total_tx_num" db:"total_tx_num"`
 	TotalL2Gas          uint64        `json:"total_l2_gas" db:"total_l2_gas"`
 	ProvingStatus       ProvingStatus `json:"proving_status" db:"proving_status"`
 	Proof               []byte        `json:"proof" db:"proof"`
@@ -84,6 +90,7 @@ type BlockBatch struct {
 	RollupTxHash        string        `json:"rollup_tx_hash" db:"rollup_tx_hash"`
 	FinalizeTxHash      string        `json:"finalize_tx_hash" db:"finalize_tx_hash"`
 	CreatedAt           time.Time     `json:"created_at" db:"created_at"`
+	ProverAssignedAt    time.Time     `json:"prover_assigned_at" db:"prover_assigned_at"`
 	ProvedAt            time.Time     `json:"proved_at" db:"proved_at"`
 	CommittedAt         time.Time     `json:"committed_at" db:"committed_at"`
 	FinalizedAt         time.Time     `json:"finalized_at" db:"finalized_at"`
@@ -128,7 +135,7 @@ func (o *blockBatchOrm) GetBlockBatches(fields map[string]interface{}, args ...s
 	return batches, rows.Close()
 }
 
-func (o *blockBatchOrm) GetProvingStatusByID(id uint64) (ProvingStatus, error) {
+func (o *blockBatchOrm) GetProvingStatusByID(id string) (ProvingStatus, error) {
 	row := o.db.QueryRow(`SELECT proving_status FROM block_batch WHERE id = $1`, id)
 	var status ProvingStatus
 	if err := row.Scan(&status); err != nil {
@@ -137,7 +144,7 @@ func (o *blockBatchOrm) GetProvingStatusByID(id uint64) (ProvingStatus, error) {
 	return status, nil
 }
 
-func (o *blockBatchOrm) GetVerifiedProofAndInstanceByID(id uint64) ([]byte, []byte, error) {
+func (o *blockBatchOrm) GetVerifiedProofAndInstanceByID(id string) ([]byte, []byte, error) {
 	var proof []byte
 	var instance []byte
 	row := o.db.QueryRow(`SELECT proof, instance_commitments FROM block_batch WHERE id = $1 and proving_status = $2`, id, ProvingTaskVerified)
@@ -148,63 +155,82 @@ func (o *blockBatchOrm) GetVerifiedProofAndInstanceByID(id uint64) ([]byte, []by
 	return proof, instance, nil
 }
 
-func (o *blockBatchOrm) UpdateProofByID(ctx context.Context, id uint64, proof, instance_commitments []byte, proofTimeSec uint64) error {
+func (o *blockBatchOrm) UpdateProofByID(ctx context.Context, id string, proof, instance_commitments []byte, proofTimeSec uint64) error {
 	db := o.db
 	if _, err := db.ExecContext(ctx,
-		db.Rebind(`UPDATE block_batch set proof = ?, instance_commitments = ?, proof_time_sec = ?, proved_at = ? where id = ?;`),
-		proof, instance_commitments, proofTimeSec, time.Now(), id,
+		db.Rebind(`UPDATE block_batch set proof = ?, instance_commitments = ?, proof_time_sec = ? where id = ?;`),
+		proof, instance_commitments, proofTimeSec, id,
 	); err != nil {
 		log.Error("failed to update proof", "err", err)
 	}
 	return nil
 }
 
-// `proved_at` is handled in `UpdateProofByID`, so we don't need to worry about it here
-func (o *blockBatchOrm) UpdateProvingStatus(id uint64, status ProvingStatus) error {
-	if _, err := o.db.Exec(o.db.Rebind("UPDATE block_batch set proving_status = ? where id = ?;"), status, id); err != nil {
+func (o *blockBatchOrm) UpdateProvingStatus(id string, status ProvingStatus) error {
+	switch status {
+	case ProvingTaskAssigned:
+		_, err := o.db.Exec(o.db.Rebind("update block_batch set proving_status = ?, prover_assigned_at = ? where id = ?;"), status, time.Now(), id)
+		return err
+	case ProvingTaskUnassigned:
+		_, err := o.db.Exec(o.db.Rebind("update block_batch set proving_status = ?, prover_assigned_at = null where id = ?;"), status, id)
+		return err
+	case ProvingTaskProved, ProvingTaskVerified:
+		_, err := o.db.Exec(o.db.Rebind("update block_batch set proving_status = ?, proved_at = ? where id = ?;"), status, time.Now(), id)
+		return err
+	default:
+		_, err := o.db.Exec(o.db.Rebind("update block_batch set proving_status = ? where id = ?;"), status, id)
 		return err
 	}
-	return nil
 }
 
-// TODO: maybe we can use "`RETURNING` clause" like in
-// https://stackoverflow.com/questions/33382981/go-how-to-get-last-insert-id-on-postgresql-with-namedexec
-// then we don't need to manually query and manage this ID, and can define it as `SERIAL PRIMARY KEY` for auto-increment
-func (o *blockBatchOrm) NewBatchInDBTx(dbTx *sqlx.Tx, parent_hash string, total_l2_gas uint64) (uint64, error) {
-	row := dbTx.QueryRow("SELECT MAX(id) FROM block_batch;")
+// TODO: TODO: move to common
+func computeBatchID(endBlockHash string, lastEndBlockHash string, index int64) string {
+	return ""
+}
 
-	var id int64 // 0 by default for sql.ErrNoRows
-	if err := row.Scan(&id); err != nil && err != sql.ErrNoRows {
-		return 0, err
+func (o *blockBatchOrm) NewBatchInDBTx(dbTx *sqlx.Tx, startBlock *BlockInfo, endBlock *BlockInfo, parentHash string, totalTxNum uint64, totalL2Gas uint64) (string, error) {
+	row := dbTx.QueryRow("SELECT MAX(index) FROM block_batch;")
+
+	var index int64 // 0 by default for sql.ErrNoRows
+	if err := row.Scan(&index); err != nil && err != sql.ErrNoRows {
+		return "", err
 	}
 
-	id++
-	if _, err := dbTx.NamedExec(`INSERT INTO public.block_batch (id, total_l2_gas) VALUES (:id, :total_l2_gas)`,
+	index++
+	id := computeBatchID(endBlock.Hash, parentHash, index)
+	if _, err := dbTx.NamedExec(`INSERT INTO public.block_batch (id, index, parent_hash, start_block_number, start_block_hash, end_block_number, end_block_hash, total_tx_num, total_l2_gas) VALUES (:id, :index, :parent_hash, :start_block_number, :start_block_hash, :end_block_number, :end_block_hash, :total_tx_num, :total_l2_gas)`,
 		map[string]interface{}{
-			"id":           id,
-			"total_l2_gas": total_l2_gas,
-			"created_at":   time.Now(),
+			"id":                 id,
+			"index":              index,
+			"parent_hash":        parentHash,
+			"start_block_number": startBlock.Number,
+			"start_block_hash":   startBlock.Hash,
+			"end_block_number":   endBlock.Number,
+			"end_block_hash":     endBlock.Hash,
+			"total_tx_num":       totalTxNum,
+			"total_l2_gas":       totalL2Gas,
+			"created_at":         time.Now(),
 		}); err != nil {
-		return 0, err
+		return "", err
 	}
 
-	return uint64(id), nil
+	return id, nil
 }
 
-func (o *blockBatchOrm) BatchRecordExist(id uint64) (bool, error) {
+func (o *blockBatchOrm) BatchRecordExist(id string) (bool, error) {
 	var res int
 	return res == 1, o.db.Get(&res, o.db.Rebind(`SELECT 1 FROM block_batch where id = ? limit 1;`), id)
 }
 
-func (o *blockBatchOrm) GetPendingBatches() ([]uint64, error) {
-	rows, err := o.db.Queryx(`SELECT id FROM block_batch WHERE status = $1 ORDER BY id ASC`, RollupPending)
+func (o *blockBatchOrm) GetPendingBatches() ([]string, error) {
+	rows, err := o.db.Queryx(`SELECT id FROM block_batch WHERE status = $1 ORDER BY index ASC`, RollupPending)
 	if err != nil {
 		return nil, err
 	}
 
-	var ids []uint64
+	var ids []string
 	for rows.Next() {
-		var id uint64
+		var id string
 		if err = rows.Scan(&id); err != nil {
 			break
 		}
@@ -219,24 +245,24 @@ func (o *blockBatchOrm) GetPendingBatches() ([]uint64, error) {
 	return ids, rows.Close()
 }
 
-func (o *blockBatchOrm) GetLatestFinalizedBatch() (uint64, error) {
-	row := o.db.QueryRow(`SELECT MAX(id) FROM block_batch WHERE status = $1;`, RollupFinalized)
-	var id uint64
+func (o *blockBatchOrm) GetLatestFinalizedBatch() (string, error) {
+	row := o.db.QueryRow(`SELECT MAX(index) FROM block_batch WHERE status = $1;`, RollupFinalized)
+	var id string
 	if err := row.Scan(&id); err != nil {
-		return 0, err
+		return "", err
 	}
 	return id, nil
 }
 
-func (o *blockBatchOrm) GetCommittedBatches() ([]uint64, error) {
-	rows, err := o.db.Queryx(`SELECT id FROM block_batch WHERE rollup_status = $1 ORDER BY id ASC`, RollupCommitted)
+func (o *blockBatchOrm) GetCommittedBatches() ([]string, error) {
+	rows, err := o.db.Queryx(`SELECT id FROM block_batch WHERE rollup_status = $1 ORDER BY index ASC`, RollupCommitted)
 	if err != nil {
 		return nil, err
 	}
 
-	var ids []uint64
+	var ids []string
 	for rows.Next() {
-		var id uint64
+		var id string
 		if err = rows.Scan(&id); err != nil {
 			break
 		}
@@ -251,7 +277,7 @@ func (o *blockBatchOrm) GetCommittedBatches() ([]uint64, error) {
 	return ids, rows.Close()
 }
 
-func (o *blockBatchOrm) GetRollupStatus(id uint64) (RollupStatus, error) {
+func (o *blockBatchOrm) GetRollupStatus(id string) (RollupStatus, error) {
 	row := o.db.QueryRow(`SELECT rollup_status FROM block_batch WHERE id = $1`, id)
 	var status RollupStatus
 	if err := row.Scan(&status); err != nil {
@@ -260,7 +286,7 @@ func (o *blockBatchOrm) GetRollupStatus(id uint64) (RollupStatus, error) {
 	return status, nil
 }
 
-func (o *blockBatchOrm) UpdateRollupStatus(ctx context.Context, id uint64, status RollupStatus) error {
+func (o *blockBatchOrm) UpdateRollupStatus(ctx context.Context, id string, status RollupStatus) error {
 	switch status {
 	case RollupCommitted:
 		_, err := o.db.Exec(o.db.Rebind("update block_batch set rollup_status = ?, committed_at = ? where id = ?;"), status, time.Now(), id)
@@ -274,7 +300,7 @@ func (o *blockBatchOrm) UpdateRollupStatus(ctx context.Context, id uint64, statu
 	}
 }
 
-func (o *blockBatchOrm) UpdateRollupTxHashAndRollupStatus(ctx context.Context, id uint64, rollup_tx_hash string, status RollupStatus) error {
+func (o *blockBatchOrm) UpdateRollupTxHashAndRollupStatus(ctx context.Context, id string, rollup_tx_hash string, status RollupStatus) error {
 	switch status {
 	case RollupCommitted:
 		_, err := o.db.Exec(o.db.Rebind("update block_batch set rollup_tx_hash = ?, rollup_status = ?, committed_at = ? where id = ?;"), rollup_tx_hash, status, time.Now(), id)
@@ -285,7 +311,7 @@ func (o *blockBatchOrm) UpdateRollupTxHashAndRollupStatus(ctx context.Context, i
 	}
 }
 
-func (o *blockBatchOrm) UpdateFinalizeTxHashAndRollupStatus(ctx context.Context, id uint64, finalize_tx_hash string, status RollupStatus) error {
+func (o *blockBatchOrm) UpdateFinalizeTxHashAndRollupStatus(ctx context.Context, id string, finalize_tx_hash string, status RollupStatus) error {
 	switch status {
 	case RollupFinalized:
 		_, err := o.db.Exec(o.db.Rebind("update block_batch set finalize_tx_hash = ?, rollup_status = ?, finalized_at = ? where id = ?;"), finalize_tx_hash, status, time.Now(), id)

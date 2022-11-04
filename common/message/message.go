@@ -100,7 +100,7 @@ func (i *Identity) Hash() ([]byte, error) {
 
 // TaskMsg is a wrapper type around db ProveTask type.
 type TaskMsg struct {
-	ID     uint64               `json:"id"`
+	ID     string               `json:"id"`
 	Traces []*types.BlockResult `json:"blockTraces"`
 }
 
@@ -109,7 +109,7 @@ type TaskMsg struct {
 type ProofMsg struct {
 	Status RespStatus `json:"status"`
 	Error  string     `json:"error,omitempty"`
-	ID     uint64     `json:"id"`
+	ID     string     `json:"id"`
 	// FIXME: Maybe we need to allow Proof omitempty
 	Proof *AggProof `json:"proof"`
 }

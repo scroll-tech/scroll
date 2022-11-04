@@ -161,7 +161,7 @@ func (o *blockResultOrm) InsertBlockResults(ctx context.Context, blockResults []
 	return err
 }
 
-func (o *blockResultOrm) DeleteTracesByBatchID(batch_id uint64) error {
+func (o *blockResultOrm) DeleteTracesByBatchID(batch_id string) error {
 	if _, err := o.db.Exec(o.db.Rebind("update block_result set content = ? where batch_id = ?;"), "{}", batch_id); err != nil {
 		return err
 	}
@@ -170,7 +170,7 @@ func (o *blockResultOrm) DeleteTracesByBatchID(batch_id uint64) error {
 
 // http://jmoiron.github.io/sqlx/#inQueries
 // https://stackoverflow.com/questions/56568799/how-to-update-multiple-rows-using-sqlx
-func (o *blockResultOrm) SetBatchIDForBlocksInDBTx(dbTx *sqlx.Tx, blocks []uint64, batchID uint64) error {
+func (o *blockResultOrm) SetBatchIDForBlocksInDBTx(dbTx *sqlx.Tx, blocks []uint64, batchID string) error {
 	query := "UPDATE block_result SET batch_id=? WHERE number IN (?)"
 
 	qry, args, err := sqlx.In(query, batchID, blocks)
