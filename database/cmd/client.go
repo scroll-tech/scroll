@@ -5,18 +5,16 @@ import (
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/urfave/cli/v2"
 
-	"scroll-tech/bridge/config"
 	"scroll-tech/common/utils"
 	"scroll-tech/database"
 	"scroll-tech/database/migrate"
 )
 
 func initDB(file string) (*sqlx.DB, error) {
-	cfg, err := config.NewConfig(file)
+	dbCfg, err := database.NewConfig(file)
 	if err != nil {
 		return nil, err
 	}
-	dbCfg := cfg.DBConfig
 	factory, err := database.NewOrmFactory(dbCfg)
 	if err != nil {
 		return nil, err
@@ -26,8 +24,8 @@ func initDB(file string) (*sqlx.DB, error) {
 	return factory.GetDB(), nil
 }
 
-// ResetDB clean or reset database.
-func ResetDB(ctx *cli.Context) error {
+// resetDB clean or reset database.
+func resetDB(ctx *cli.Context) error {
 	db, err := initDB(ctx.String(utils.ConfigFileFlag.Name))
 	if err != nil {
 		return err
@@ -43,8 +41,8 @@ func ResetDB(ctx *cli.Context) error {
 	return nil
 }
 
-// CheckDBStatus check db status
-func CheckDBStatus(ctx *cli.Context) error {
+// checkDBStatus check db status
+func checkDBStatus(ctx *cli.Context) error {
 	db, err := initDB(ctx.String(utils.ConfigFileFlag.Name))
 	if err != nil {
 		return err
@@ -53,8 +51,8 @@ func CheckDBStatus(ctx *cli.Context) error {
 	return migrate.Status(db.DB)
 }
 
-// DBVersion return the latest version
-func DBVersion(ctx *cli.Context) error {
+// dbVersion return the latest version
+func dbVersion(ctx *cli.Context) error {
 	db, err := initDB(ctx.String(utils.ConfigFileFlag.Name))
 	if err != nil {
 		return err
@@ -66,8 +64,8 @@ func DBVersion(ctx *cli.Context) error {
 	return err
 }
 
-// MigrateDB migrate db
-func MigrateDB(ctx *cli.Context) error {
+// migrateDB migrate db
+func migrateDB(ctx *cli.Context) error {
 	db, err := initDB(ctx.String(utils.ConfigFileFlag.Name))
 	if err != nil {
 		return err
@@ -76,8 +74,8 @@ func MigrateDB(ctx *cli.Context) error {
 	return migrate.Migrate(db.DB)
 }
 
-// RollbackDB rollback db by version
-func RollbackDB(ctx *cli.Context) error {
+// rollbackDB rollback db by version
+func rollbackDB(ctx *cli.Context) error {
 	db, err := initDB(ctx.String(utils.ConfigFileFlag.Name))
 	if err != nil {
 		return err
