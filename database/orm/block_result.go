@@ -14,45 +14,6 @@ import (
 	"github.com/scroll-tech/go-ethereum/log"
 )
 
-// BlockStatus blockResult status(unassigned, assigned, proved, verified, submitted)
-type BlockStatus int
-
-const (
-	// BlockUndefined : undefined block status
-	BlockUndefined BlockStatus = iota
-	// BlockUnassigned : block is not assigned to be proved
-	BlockUnassigned
-	// BlockSkipped : block is skipped for proof generation
-	BlockSkipped
-	// BlockAssigned : block is assigned to be proved
-	BlockAssigned
-	// BlockProved : block proof has been returned by prover
-	BlockProved
-	// BlockVerified : block proof is valid
-	BlockVerified
-	// BlockFailed : fail to generate block proof
-	BlockFailed
-)
-
-func (bs BlockStatus) String() string {
-	switch bs {
-	case BlockUnassigned:
-		return "unassigned"
-	case BlockSkipped:
-		return "skipped"
-	case BlockAssigned:
-		return "assigned"
-	case BlockProved:
-		return "proved"
-	case BlockVerified:
-		return "undefined"
-	case BlockFailed:
-		return "failed"
-	default:
-		return "undefined"
-	}
-}
-
 type blockResultOrm struct {
 	db *sqlx.DB
 }
@@ -126,15 +87,32 @@ func (o *blockResultOrm) GetBlockResults(fields map[string]interface{}, args ...
 	return traces, rows.Close()
 }
 
-func (o *blockResultOrm) GetVerifiedProofAndInstanceByNumber(number uint64) ([]byte, []byte, error) {
-	var proof []byte
-	var instance []byte
-	row := o.db.QueryRow(`SELECT proof, instance_commitments FROM block_result WHERE number = $1 and status = $2`, number, BlockVerified)
-
-	if err := row.Scan(&proof, &instance); err != nil {
-		return nil, nil, err
+func (o *blockResultOrm) GetBlockInfos(fields map[string]interface{}, args ...string) ([]*BlockInfo, error) {
+	query := "SELECT number, hash, batch_id, tx_num, gas_used, block_timestamp FROM block_result WHERE 1 = 1 "
+	for key := range fields {
+		query += fmt.Sprintf("AND %s=:%s ", key, key)
 	}
-	return proof, instance, nil
+	query = strings.Join(append([]string{query}, args...), " ")
+
+	db := o.db
+	rows, err := db.NamedQuery(db.Rebind(query), fields)
+	if err != nil {
+		return nil, err
+	}
+
+	var blocks []*BlockInfo
+	for rows.Next() {
+		block := &BlockInfo{}
+		if err = rows.StructScan(block); err != nil {
+			break
+		}
+		blocks = append(blocks, block)
+	}
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return nil, err
+	}
+
+	return blocks, rows.Close()
 }
 
 func (o *blockResultOrm) GetHashByNumber(number uint64) (*common.Hash, error) {
@@ -147,22 +125,19 @@ func (o *blockResultOrm) GetHashByNumber(number uint64) (*common.Hash, error) {
 	return &hash, nil
 }
 
-func (o *blockResultOrm) GetBlockStatusByNumber(number uint64) (BlockStatus, error) {
-	row := o.db.QueryRow(`SELECT status FROM block_result WHERE number = $1`, number)
-	var status BlockStatus
-	if err := row.Scan(&status); err != nil {
-		return BlockUndefined, err
-	}
-	return status, nil
-}
-
-func (o *blockResultOrm) InsertBlockResultsWithStatus(ctx context.Context, blockResults []*types.BlockResult, status BlockStatus) error {
+func (o *blockResultOrm) InsertBlockResults(ctx context.Context, blockResults []*types.BlockResult) error {
 	traceMaps := make([]map[string]interface{}, len(blockResults))
 	for i, trace := range blockResults {
 		number, hash, tx_num, mtime := trace.BlockTrace.Number.ToInt().Int64(),
 			trace.BlockTrace.Hash.String(),
 			len(trace.BlockTrace.Transactions),
 			trace.BlockTrace.Time
+
+		var gasUsed uint64
+		for _, tx := range trace.BlockTrace.Transactions {
+			gasUsed += tx.Gas
+		}
+
 		var data []byte
 		data, err := json.Marshal(trace)
 		if err != nil {
@@ -173,37 +148,39 @@ func (o *blockResultOrm) InsertBlockResultsWithStatus(ctx context.Context, block
 			"number":          number,
 			"hash":            hash,
 			"content":         string(data),
-			"status":          status,
 			"tx_num":          tx_num,
+			"gas_used":        gasUsed,
 			"block_timestamp": mtime,
 		}
 	}
 
-	_, err := o.db.NamedExec(`INSERT INTO public.block_result (number, hash, content, status, tx_num, block_timestamp) VALUES (:number, :hash, :content, :status, :tx_num, :block_timestamp);`, traceMaps)
+	_, err := o.db.NamedExec(`INSERT INTO public.block_result (number, hash, content, tx_num, gas_used, block_timestamp) VALUES (:number, :hash, :content, :tx_num, :gas_used, :block_timestamp);`, traceMaps)
 	if err != nil {
 		log.Error("failed to insert blockResults", "err", err)
 	}
 	return err
 }
 
-func (o *blockResultOrm) UpdateProofByNumber(ctx context.Context, number uint64, proof, instance_commitments []byte, proofTimeSec uint64) error {
-	db := o.db
-	if _, err := db.ExecContext(ctx, db.Rebind(`update block_result set proof = ?, instance_commitments = ?, proof_time_sec = ? where number = ?;`), proof, instance_commitments, proofTimeSec, number); err != nil {
-		log.Error("failed to update proof", "err", err)
-	}
-	return nil
-}
-
-func (o *blockResultOrm) UpdateBlockStatus(number uint64, status BlockStatus) error {
-	if _, err := o.db.Exec(o.db.Rebind("update block_result set status = ? where number = ?;"), status, number); err != nil {
+func (o *blockResultOrm) DeleteTracesByBatchID(batch_id string) error {
+	if _, err := o.db.Exec(o.db.Rebind("update block_result set content = ? where batch_id = ?;"), "{}", batch_id); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (o *blockResultOrm) DeleteTraceByNumber(number uint64) error {
-	if _, err := o.db.Exec(o.db.Rebind("update block_result set content = ? where number = ?;"), "{}", number); err != nil {
+// http://jmoiron.github.io/sqlx/#inQueries
+// https://stackoverflow.com/questions/56568799/how-to-update-multiple-rows-using-sqlx
+func (o *blockResultOrm) SetBatchIDForBlocksInDBTx(dbTx *sqlx.Tx, blocks []uint64, batchID string) error {
+	query := "UPDATE block_result SET batch_id=? WHERE number IN (?)"
+
+	qry, args, err := sqlx.In(query, batchID, blocks)
+	if err != nil {
 		return err
 	}
+
+	if _, err := dbTx.Exec(dbTx.Rebind(qry), args...); err != nil {
+		return err
+	}
+
 	return nil
 }

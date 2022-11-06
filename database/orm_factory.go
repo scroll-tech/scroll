@@ -10,19 +10,19 @@ import (
 // OrmFactory include all ormFactory interface
 type OrmFactory interface {
 	orm.BlockResultOrm
-	// TODO: add more orm intreface at here
+	orm.BlockBatchOrm
 	orm.Layer1MessageOrm
 	orm.Layer2MessageOrm
-	orm.RollupResultOrm
 	GetDB() *sqlx.DB
+	Beginx() (*sqlx.Tx, error)
 	Close() error
 }
 
 type ormFactory struct {
 	orm.BlockResultOrm
+	orm.BlockBatchOrm
 	orm.Layer1MessageOrm
 	orm.Layer2MessageOrm
-	orm.RollupResultOrm
 	*sqlx.DB
 }
 
@@ -42,13 +42,17 @@ func NewOrmFactory(cfg *DBConfig) (OrmFactory, error) {
 
 	return &ormFactory{
 		BlockResultOrm:   orm.NewBlockResultOrm(db),
+		BlockBatchOrm:    orm.NewBlockBatchOrm(db),
 		Layer1MessageOrm: orm.NewLayer1MessageOrm(db),
 		Layer2MessageOrm: orm.NewLayer2MessageOrm(db),
-		RollupResultOrm:  orm.NewRollupResultOrm(db),
 		DB:               db,
 	}, nil
 }
 
 func (o *ormFactory) GetDB() *sqlx.DB {
 	return o.DB
+}
+
+func (o *ormFactory) Beginx() (*sqlx.Tx, error) {
+	return o.DB.Beginx()
 }

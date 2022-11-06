@@ -21,8 +21,8 @@ create table layer1_message
 comment
 on column layer1_message.status is 'undefined, pending, submitted, confirmed';
 
-create unique index layer1_message_nonce_uindex
-    on layer1_message (nonce);
+create unique index layer1_message_layer1_hash_uindex
+    on layer1_message (layer1_hash);
 
 create index layer1_message_height_index
     on layer1_message (height);

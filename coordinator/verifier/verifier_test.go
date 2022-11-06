@@ -36,7 +36,7 @@ func TestIPCComm(t *testing.T) {
 
 	traces := &types.BlockResult{}
 
-	verified, err := verifier.VerifyProof(traces, proof)
+	verified, err := verifier.VerifyProof(proof)
 	assert.NoError(err)
 	assert.True(verified)
 }

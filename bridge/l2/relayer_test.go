@@ -78,7 +78,7 @@ func testL2RelayerProcessSaveEvents(t *testing.T) {
 			FinalizeTxHash: "Finalized Hash",
 		},
 	}
-	err = db.InsertPendingBlocks(context.Background(), []uint64{uint64(blocks[0].Number)})
+	err = db.InsertPendingBatches(context.Background(), []uint64{uint64(blocks[0].Number)})
 	assert.NoError(t, err)
 	err = db.UpdateRollupStatus(context.Background(), uint64(blocks[0].Number), orm.RollupFinalized)
 	assert.NoError(t, err)
@@ -89,7 +89,7 @@ func testL2RelayerProcessSaveEvents(t *testing.T) {
 	assert.Equal(t, orm.MsgSubmitted, msg.Status)
 }
 
-func testL2RelayerProcessPendingBlocks(t *testing.T) {
+func testL2RelayerProcessPendingBatches(t *testing.T) {
 	// Create db handler and reset db.
 	db, err := database.NewOrmFactory(cfg.DBConfig)
 	assert.NoError(t, err)
@@ -132,12 +132,12 @@ func testL2RelayerProcessPendingBlocks(t *testing.T) {
 			FinalizeTxHash: "Finalized Hash",
 		},
 	}
-	err = db.InsertPendingBlocks(context.Background(), []uint64{uint64(blocks[0].Number)})
+	err = db.InsertPendingBatches(context.Background(), []uint64{uint64(blocks[0].Number)})
 	assert.NoError(t, err)
 	err = db.UpdateRollupStatus(context.Background(), uint64(blocks[0].Number), orm.RollupPending)
 	assert.NoError(t, err)
 
-	relayer.ProcessPendingBlocks()
+	relayer.ProcessPendingBatches()
 
 	// Check if Rollup Result is changed successfully
 	status, err := db.GetRollupStatus(uint64(blocks[0].Number))
@@ -145,7 +145,7 @@ func testL2RelayerProcessPendingBlocks(t *testing.T) {
 	assert.Equal(t, orm.RollupCommitting, status)
 }
 
-func testL2RelayerProcessCommittedBlocks(t *testing.T) {
+func testL2RelayerProcessCommittedBatches(t *testing.T) {
 	// Create db handler and reset db.
 	db, err := database.NewOrmFactory(cfg.DBConfig)
 	assert.NoError(t, err)
@@ -176,16 +176,17 @@ func testL2RelayerProcessCommittedBlocks(t *testing.T) {
 			FinalizeTxHash: "Finalized Hash",
 		},
 	}
-	err = db.InsertPendingBlocks(context.Background(), []uint64{uint64(blocks[0].Number)})
+	err = db.InsertPendingBatches(context.Background(), []uint64{uint64(blocks[0].Number)})
 	assert.NoError(t, err)
 	err = db.UpdateRollupStatus(context.Background(), uint64(blocks[0].Number), orm.RollupCommitted)
 	assert.NoError(t, err)
 	tProof := []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31}
-	tStateProof := []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31}
+	tInstanceCommitments := []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31}
 
-	err = db.UpdateProofByNumber(context.Background(), uint64(blocks[0].Number), tProof, tStateProof, 100)
+	// TODO: fix this
+	err = db.UpdateProofByID(context.Background(), uint64(blocks[0].Number), tProof, tInstanceCommitments, 100)
 	assert.NoError(t, err)
-	relayer.ProcessCommittedBlocks()
+	relayer.ProcessCommittedBatches()
 
 	status, err := db.GetRollupStatus(uint64(blocks[0].Number))
 	assert.NoError(t, err)

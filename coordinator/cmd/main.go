@@ -14,7 +14,7 @@ import (
 
 	"scroll-tech/database"
 
-	rollers "scroll-tech/coordinator"
+	"scroll-tech/coordinator"
 	"scroll-tech/coordinator/config"
 )
 
@@ -70,7 +70,7 @@ func action(ctx *cli.Context) error {
 	}
 
 	// Initialize all coordinator modules.
-	rollerManager, err := rollers.New(ctx.Context, cfg.RollerManagerConfig, ormFactory)
+	rollerManager, err := coordinator.New(ctx.Context, cfg.RollerManagerConfig, ormFactory)
 	if err != nil {
 		return err
 	}

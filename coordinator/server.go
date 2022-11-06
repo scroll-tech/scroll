@@ -207,7 +207,7 @@ func (s *server) handshake(c *websocket.Conn) (*message.AuthMessage, error) {
 	}
 
 	// We should receive a Register message
-	if msg.Type != message.Register {
+	if msg.Type != message.RegisterMsgType {
 		return nil, errors.New("got wrong handshake message, expected Register")
 	}
 
