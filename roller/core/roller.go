@@ -287,7 +287,7 @@ func loadOrCreateKey(keystoreFilePath string, keystorePassword string) (*ecdsa.P
 			return nil, err
 		}
 		keystoreFilePath = filepath.Join(keystoreFilePath, fis[0].Name())
-	} else {
+	} else if err != nil {
 		return nil, err
 	}
 
