@@ -104,7 +104,13 @@ func (m *layer1MessageOrm) SaveLayer1Messages(ctx context.Context, messages []*L
 	}
 	_, err := m.db.NamedExec(`INSERT INTO public.layer1_message (nonce, height, sender, target, value, fee, gas_limit, deadline, calldata, layer1_hash) VALUES (:nonce, :height, :sender, :target, :value, :fee, :gas_limit, :deadline, :calldata, :layer1_hash);`, messageMaps)
 	if err != nil {
-		log.Error("failed to insert layer1Messages", "err", err)
+		nonces := []uint64{}
+		heights := []uint64{}
+		for _, msg := range messages {
+			nonces = append(nonces, msg.Nonce)
+			heights = append(heights, msg.Height)
+		}
+		log.Error("failed to insert layer1Messages", "nonces", nonces, "heights", heights, "err", err)
 	}
 	return err
 }
