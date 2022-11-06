@@ -272,26 +272,31 @@ func (r *Roller) Close() {
 	}
 }
 
-func loadOrCreateKey(keystoreFilePath string, keystorePassword string) (*ecdsa.PrivateKey, error) {
-	if _, err := os.Stat(keystoreFilePath); os.IsNotExist(err) {
+func loadOrCreateKey(keystoreDir string, keystorePassword string) (*ecdsa.PrivateKey, error) {
+	if _, err := os.Stat(keystoreDir); os.IsNotExist(err) {
 		// If there is no keystore, make a new one.
-		ks := keystore.NewKeyStore(keystoreFilePath, keystore.StandardScryptN, keystore.StandardScryptP)
+		ks := keystore.NewKeyStore(keystoreDir, keystore.StandardScryptN, keystore.StandardScryptP)
 		account, err := ks.NewAccount(keystorePassword)
 		if err != nil {
 			return nil, fmt.Errorf("generate crypto account failed %v", err)
 		}
 		log.Info("create a new account", "address", account.Address.Hex())
 
-		fis, err := ioutil.ReadDir(keystoreFilePath)
+		fis, err := ioutil.ReadDir(keystoreDir)
 		if err != nil {
 			return nil, err
 		}
-		keystoreFilePath = filepath.Join(keystoreFilePath, fis[0].Name())
+		keystoreDir = filepath.Join(keystoreDir, fis[0].Name())
 	} else if err != nil {
 		return nil, err
 	}
 
-	keyjson, err := ioutil.ReadFile(keystoreFilePath)
+	entries, err := os.ReadDir(keystoreDir)
+	if err != nil {
+		return nil, err
+	}
+	keystorePath := filepath.Join(keystoreDir, entries[0].Name())
+	keyjson, err := ioutil.ReadFile(keystorePath)
 	if err != nil {
 		return nil, err
 	}
