@@ -119,7 +119,7 @@ func (r *Roller) Register() error {
 		Identity: &message.Identity{
 			Name:      r.cfg.RollerName,
 			Timestamp: time.Now().UnixMilli(),
-			PublicKey: common.Bytes2Hex(crypto.FromECDSAPub(&r.priv.PublicKey)),
+			PublicKey: common.Bytes2Hex(crypto.CompressPubkey(&r.priv.PublicKey)),
 			Version:   Version,
 		},
 	}
