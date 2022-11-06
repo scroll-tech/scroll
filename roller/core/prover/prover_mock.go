@@ -8,7 +8,7 @@ import (
 
 	"scroll-tech/common/message"
 
-	"scroll-tech/go-roller/config"
+	"scroll-tech/roller/config"
 
 	"github.com/scroll-tech/go-ethereum/core/types"
 )
