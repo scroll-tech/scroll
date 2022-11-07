@@ -17,7 +17,6 @@ import (
 	"github.com/scroll-tech/go-ethereum/rpc"
 
 	"scroll-tech/common/message"
-	"scroll-tech/database"
 	"scroll-tech/database/orm"
 
 	"scroll-tech/coordinator/config"
@@ -72,12 +71,12 @@ type Manager struct {
 	verifier *verifier.Verifier
 
 	// db interface
-	orm database.OrmFactory
+	orm orm.BlockResultOrm
 }
 
 // New returns a new instance of Manager. The instance will be not fully prepared,
 // and still needs to be finalized and ran by calling `manager.Start`.
-func New(ctx context.Context, cfg *config.RollerManagerConfig, orm database.OrmFactory) (*Manager, error) {
+func New(ctx context.Context, cfg *config.RollerManagerConfig, orm orm.BlockResultOrm) (*Manager, error) {
 	var v *verifier.Verifier
 	if cfg.VerifierEndpoint != "" {
 		var err error
