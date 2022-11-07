@@ -37,5 +37,5 @@ create unique index block_batch_id_uindex
 
 -- +goose Down
 -- +goose StatementBegin
-drop table if exists  rollup_result;
+drop table if exists  block_batch;
 -- +goose StatementEnd

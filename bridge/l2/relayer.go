@@ -125,16 +125,20 @@ func (r *Layer2Relayer) ProcessSavedEvents() {
 
 func (r *Layer2Relayer) processSavedEvent(msg *orm.Layer2Message) error {
 	// @todo add support to relay multiple messages
-	batch_id, err := r.db.GetLatestFinalizedBatch()
+	batch, err := r.db.GetLatestFinalizedBatch()
 	if err != nil {
 		log.Error("GetLatestFinalizedBatch failed", "err", err)
 		return err
 	}
-	blocks, err := r.db.GetBlockInfos(map[string]interface{}{"batch_id": batch_id}, "ORDER BY number DESC")
+
+	// using batch.id or batch.end_block_hash than using batch.end_block_number in msg.Height comparison
+	blocks, err := r.db.GetBlockInfos(map[string]interface{}{"batch_id": batch.ID}, "ORDER BY number DESC")
 	if err != nil || len(blocks) == 0 {
-		log.Error("GetBlockResults failed", "batch_id", batch_id, "err", err)
+		log.Error("GetBlockResults failed", "batch_id", batch.ID, "err", err)
 		return err
 	}
+
+	// again, using batch.id or batch.end_block_hash than using batch.end_block_number in msg.Height comparison
 	if blocks[0].Number < msg.Height {
 		// log.Warn("corresponding block not finalized", "status", status)
 		return nil
@@ -145,8 +149,7 @@ func (r *Layer2Relayer) processSavedEvent(msg *orm.Layer2Message) error {
 
 	proof := bridge_abi.IL1ScrollMessengerL2MessageProof{
 		BlockHeight: big.NewInt(int64(msg.Height)),
-		// @todo fetch batch id from db
-		BatchIndex:  big.NewInt(0),
+		BatchIndex:  big.NewInt(int64(batch.Index)),
 		MerkleProof: make([]byte, 0),
 	}
 	from := common.HexToAddress(msg.Sender)
@@ -348,9 +351,9 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 
 		proof := bufferToUint256Le(proofBuffer)
 		instance := bufferToUint256Le(instanceBuffer)
-		data, err := r.l1RollupABI.Pack("finalizeBlockWithProof", common.HexToHash(id), proof, instance)
+		data, err := r.l1RollupABI.Pack("finalizeBatchWithProof", common.HexToHash(id), proof, instance)
 		if err != nil {
-			log.Error("Pack finalizeBlockWithProof failed", err)
+			log.Error("Pack finalizeBatchWithProof failed", "err", err)
 			return
 		}
 
@@ -358,11 +361,11 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 		hash := &txHash
 		if err != nil {
 			if !errors.Is(err, sender.ErrNoAvailableAccount) {
-				log.Error("finalizeBlockWithProof in layer1 failed", "id", id, "err", err)
+				log.Error("finalizeBatchWithProof in layer1 failed", "id", id, "err", err)
 			}
 			return
 		}
-		log.Info("finalizeBlockWithProof in layer1", "id", id, "hash", hash)
+		log.Info("finalizeBatchWithProof in layer1", "id", id, "hash", hash)
 
 		// record and sync with db, @todo handle db error
 		err = r.db.UpdateFinalizeTxHashAndRollupStatus(r.ctx, id, hash.String(), orm.RollupFinalizing)

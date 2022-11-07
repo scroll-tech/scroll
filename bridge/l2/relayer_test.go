@@ -3,10 +3,13 @@ package l2_test
 import (
 	"context"
 	"encoding/json"
+	"math/big"
 	"os"
 	"testing"
 	"time"
 
+	"github.com/scroll-tech/go-ethereum/common"
+	"github.com/scroll-tech/go-ethereum/common/hexutil"
 	"github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/stretchr/testify/assert"
 
@@ -70,18 +73,41 @@ func testL2RelayerProcessSaveEvents(t *testing.T) {
 
 	err = db.SaveLayer2Messages(context.Background(), templateLayer2Message)
 	assert.NoError(t, err)
-	blocks := []*orm.RollupResult{
-		{
-			Number:         3,
-			Status:         orm.RollupFinalized,
-			CommitTxHash:   "Rollup Test Hash",
-			FinalizeTxHash: "Finalized Hash",
+
+	results := []*types.BlockResult{
+		&types.BlockResult{
+			BlockTrace: &types.BlockTrace{
+				Number: (*hexutil.Big)(big.NewInt(int64(templateLayer2Message[0].Height))),
+				Hash:   common.HexToHash("00"),
+			},
+		},
+		&types.BlockResult{
+			BlockTrace: &types.BlockTrace{
+				Number: (*hexutil.Big)(big.NewInt(int64(templateLayer2Message[0].Height + 1))),
+				Hash:   common.HexToHash("01"),
+			},
 		},
 	}
-	err = db.InsertPendingBatches(context.Background(), []uint64{uint64(blocks[0].Number)})
+	err = db.InsertBlockResults(context.Background(), results)
 	assert.NoError(t, err)
-	err = db.UpdateRollupStatus(context.Background(), uint64(blocks[0].Number), orm.RollupFinalized)
+
+	dbTx, err := db.Beginx()
 	assert.NoError(t, err)
+	batchID, err := db.NewBatchInDBTx(dbTx,
+		&orm.BlockInfo{Number: templateLayer2Message[0].Height},
+		&orm.BlockInfo{Number: templateLayer2Message[0].Height + 1},
+		"0f", 1, 194676) // parentHash & totalTxNum & totalL2Gas don't really matter here
+	assert.NoError(t, err)
+	err = db.SetBatchIDForBlocksInDBTx(dbTx, []uint64{
+		templateLayer2Message[0].Height,
+		templateLayer2Message[0].Height + 1}, batchID)
+	assert.NoError(t, err)
+	err = dbTx.Commit()
+	assert.NoError(t, err)
+
+	err = db.UpdateRollupStatus(context.Background(), batchID, orm.RollupFinalized)
+	assert.NoError(t, err)
+
 	relayer.ProcessSavedEvents()
 
 	msg, err := db.GetLayer2MessageByNonce(templateLayer2Message[0].Nonce)
@@ -121,26 +147,30 @@ func testL2RelayerProcessPendingBatches(t *testing.T) {
 	assert.NoError(t, err)
 	results = append(results, blockResult)
 
-	err = db.InsertBlockResultsWithStatus(context.Background(), results, orm.BlockUnassigned)
+	err = db.InsertBlockResults(context.Background(), results)
 	assert.NoError(t, err)
 
-	blocks := []*orm.RollupResult{
-		{
-			Number:         4,
-			Status:         1,
-			CommitTxHash:   "Rollup Test Hash",
-			FinalizeTxHash: "Finalized Hash",
-		},
-	}
-	err = db.InsertPendingBatches(context.Background(), []uint64{uint64(blocks[0].Number)})
+	dbTx, err := db.Beginx()
 	assert.NoError(t, err)
-	err = db.UpdateRollupStatus(context.Background(), uint64(blocks[0].Number), orm.RollupPending)
+	batchID, err := db.NewBatchInDBTx(dbTx,
+		&orm.BlockInfo{Number: results[0].BlockTrace.Number.ToInt().Uint64()},
+		&orm.BlockInfo{Number: results[1].BlockTrace.Number.ToInt().Uint64()},
+		"ff", 1, 194676) // parentHash & totalTxNum & totalL2Gas don't really matter here
 	assert.NoError(t, err)
+	err = db.SetBatchIDForBlocksInDBTx(dbTx, []uint64{
+		results[0].BlockTrace.Number.ToInt().Uint64(),
+		results[1].BlockTrace.Number.ToInt().Uint64()}, batchID)
+	assert.NoError(t, err)
+	err = dbTx.Commit()
+	assert.NoError(t, err)
+
+	// err = db.UpdateRollupStatus(context.Background(), batchID, orm.RollupPending)
+	// assert.NoError(t, err)
 
 	relayer.ProcessPendingBatches()
 
 	// Check if Rollup Result is changed successfully
-	status, err := db.GetRollupStatus(uint64(blocks[0].Number))
+	status, err := db.GetRollupStatus(batchID)
 	assert.NoError(t, err)
 	assert.Equal(t, orm.RollupCommitting, status)
 }
@@ -160,35 +190,36 @@ func testL2RelayerProcessCommittedBatches(t *testing.T) {
 	assert.NoError(t, err)
 	defer relayer.Stop()
 
-	templateBlockResult, err := os.ReadFile("../../common/testdata/blockResult_relayer.json")
+	// templateBlockResult, err := os.ReadFile("../../common/testdata/blockResult_relayer.json")
+	// assert.NoError(t, err)
+	// blockResult := &types.BlockResult{}
+	// err = json.Unmarshal(templateBlockResult, blockResult)
+	// assert.NoError(t, err)
+	// err = db.InsertBlockResults(context.Background(), []*types.BlockResult{blockResult})
+	// assert.NoError(t, err)
+
+	dbTx, err := db.Beginx()
 	assert.NoError(t, err)
-	blockResult := &types.BlockResult{}
-	err = json.Unmarshal(templateBlockResult, blockResult)
+	batchID, err := db.NewBatchInDBTx(dbTx, &orm.BlockInfo{}, &orm.BlockInfo{}, "0", 1, 194676) // startBlock & endBlock & parentHash & totalTxNum & totalL2Gas don't really matter here
 	assert.NoError(t, err)
-	err = db.InsertBlockResultsWithStatus(context.Background(), []*types.BlockResult{blockResult}, orm.BlockVerified)
+	// err = db.SetBatchIDForBlocksInDBTx(dbTx, blockIDs, batchID)
+	// assert.NoError(t, err)
+	err = dbTx.Commit()
 	assert.NoError(t, err)
 
-	blocks := []*orm.RollupResult{
-		{
-			Number:         4,
-			Status:         1,
-			CommitTxHash:   "Rollup Test Hash",
-			FinalizeTxHash: "Finalized Hash",
-		},
-	}
-	err = db.InsertPendingBatches(context.Background(), []uint64{uint64(blocks[0].Number)})
+	err = db.UpdateRollupStatus(context.Background(), batchID, orm.RollupCommitted)
 	assert.NoError(t, err)
-	err = db.UpdateRollupStatus(context.Background(), uint64(blocks[0].Number), orm.RollupCommitted)
-	assert.NoError(t, err)
+
 	tProof := []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31}
 	tInstanceCommitments := []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31}
-
-	// TODO: fix this
-	err = db.UpdateProofByID(context.Background(), uint64(blocks[0].Number), tProof, tInstanceCommitments, 100)
+	err = db.UpdateProofByID(context.Background(), batchID, tProof, tInstanceCommitments, 100)
 	assert.NoError(t, err)
+	err = db.UpdateProvingStatus(batchID, orm.ProvingTaskVerified)
+	assert.NoError(t, err)
+
 	relayer.ProcessCommittedBatches()
 
-	status, err := db.GetRollupStatus(uint64(blocks[0].Number))
+	status, err := db.GetRollupStatus(batchID)
 	assert.NoError(t, err)
 	assert.Equal(t, orm.RollupFinalizing, status)
 }
