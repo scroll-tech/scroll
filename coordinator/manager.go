@@ -77,15 +77,10 @@ type Manager struct {
 // New returns a new instance of Manager. The instance will be not fully prepared,
 // and still needs to be finalized and ran by calling `manager.Start`.
 func New(ctx context.Context, cfg *config.RollerManagerConfig, orm orm.BlockResultOrm) (*Manager, error) {
-	var v *verifier.Verifier
-	if cfg.VerifierEndpoint != "" {
-		var err error
-		v, err = verifier.NewVerifier(cfg.VerifierEndpoint)
-		if err != nil {
-			return nil, err
-		}
+	v, err := verifier.NewVerifier(cfg.Verifier)
+	if err != nil {
+		return nil, err
 	}
-
 	log.Info("Start rollerManager successfully.")
 
 	return &Manager{
@@ -288,29 +283,23 @@ func (m *Manager) HandleZkProof(pk string, payload []byte) error {
 	}
 
 	var success bool
-	if m.verifier != nil {
-		blockResults, err := m.orm.GetBlockResults(map[string]interface{}{"number": msg.ID})
-		if len(blockResults) == 0 {
-			if err != nil {
-				log.Error("failed to get blockResults", "error", err)
-			}
-			return err
-		}
-
-		success, err = m.verifier.VerifyProof(blockResults[0], msg.Proof)
+	blockResults, err := m.orm.GetBlockResults(map[string]interface{}{"number": msg.ID})
+	if len(blockResults) == 0 {
 		if err != nil {
-			// record failed session.
-			m.addFailedSession(&s, err.Error())
-			// TODO: this is only a temp workaround for testnet, we should return err in real cases
-			success = false
-			log.Error("Failed to verify zk proof", "proof id", msg.ID, "error", err)
-			// TODO: Roller needs to be slashed if proof is invalid.
-		} else {
-			log.Info("Verify zk proof successfully", "verification result", success, "proof id", msg.ID)
+			log.Error("failed to get blockResults", "error", err)
 		}
+		return err
+	}
+
+	success, err = m.verifier.VerifyProof(msg.Proof)
+	if err != nil {
+		// record failed session.
+		m.addFailedSession(&s, err.Error())
+		// TODO: this is only a temp workaround for testnet, we should return err in real cases
+		success = false
+		log.Error("Failed to verify zk proof", "proof id", msg.ID, "error", err)
+		// TODO: Roller needs to be slashed if proof is invalid.
 	} else {
-		success = true
-		log.Info("Verifier disabled, VerifyProof skipped")
 		log.Info("Verify zk proof successfully", "verification result", success, "proof id", msg.ID)
 	}
 

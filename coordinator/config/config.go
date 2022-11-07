@@ -20,8 +20,8 @@ type RollerManagerConfig struct {
 	OrderSession string `json:"order_session,omitempty"`
 	// The amount of rollers to pick per proof generation session.
 	RollersPerSession uint8 `json:"rollers_per_session"`
-	// Unix socket endpoint to which we send proofs to be verified.
-	VerifierEndpoint string `json:"verifier_endpoint,omitempty"`
+	// Zk verifier config to be verified.
+	Verifier *VerifierConfig `json:"verifier,omitempty"`
 	// Proof collection time (in minutes).
 	CollectionTime int `json:"collection_time"`
 }
@@ -30,6 +30,12 @@ type RollerManagerConfig struct {
 type Config struct {
 	RollerManagerConfig *RollerManagerConfig `json:"roller_manager_config"`
 	DBConfig            *db_config.DBConfig  `json:"db_config"`
+}
+
+type VerifierConfig struct {
+	MockMode   bool   `toml:"mock_mode"`
+	ParamsPath string `toml:"params_path"`
+	AggVkPath  string `toml:"agg_vk_path"`
 }
 
 // NewConfig returns a new instance of Config.
