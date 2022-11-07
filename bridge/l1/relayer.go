@@ -9,8 +9,6 @@ import (
 	// not sure if this will make problems when relay with l1geth
 
 	"github.com/scroll-tech/go-ethereum/accounts/abi"
-	"github.com/scroll-tech/go-ethereum/crypto"
-	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
 
@@ -88,19 +86,8 @@ func (r *Layer1Relayer) ProcessSavedEvents() {
 
 func (r *Layer1Relayer) processSavedEvent(msg *orm.Layer1Message) error {
 	// @todo add support to relay multiple messages
-	from := common.HexToAddress(msg.Sender)
-	target := common.HexToAddress(msg.Target)
-	value, ok := big.NewInt(0).SetString(msg.Value, 10)
-	if !ok {
-		// @todo maybe panic?
-		log.Error("Failed to parse message value", "msg.nonce", msg.Nonce, "msg.height", msg.Height)
-		// TODO: need to skip this message by changing its status to MsgError
-	}
-	fee, _ := big.NewInt(0).SetString(msg.Fee, 10)
-	deadline := big.NewInt(int64(msg.Deadline))
 	msgNonce := big.NewInt(int64(msg.Nonce))
-	calldata := common.Hex2Bytes(msg.Calldata)
-	data, err := r.l2MessengerABI.Pack("relayMessage", from, target, value, fee, deadline, msgNonce, calldata)
+	data, err := r.l2MessengerABI.Pack("relayMessage", msg.Content.Sender, msg.Content.Target, msg.Content.Value, msg.Content.Fee, msg.Content.Deadline, msgNonce, msg.Content.Calldata)
 	if err != nil {
 		log.Error("Failed to pack relayMessage", "msg.nonce", msg.Nonce, "msg.height", msg.Height, "err", err)
 		// TODO: need to skip this message by changing its status to MsgError
