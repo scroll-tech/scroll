@@ -36,8 +36,11 @@ var L2MessengerMetaData = &bind.MetaData{
 }
 
 var (
-	RollupMetaABI      *abi.ABI
+	// RollupMetaABI holds information about a contract's context and available invokable methods.
+	RollupMetaABI *abi.ABI
+	// L1MessengerMetaABI holds information about a contract's context and available invokable methods.
 	L1MessengerMetaABI *abi.ABI
+	// L2MessengerMetaABI holds information about a contract's context and available invokable methods.
 	L2MessengerMetaABI *abi.ABI
 )
 
