@@ -116,6 +116,8 @@ func (w *WatcherClient) Stop() {
 	w.stopCh <- struct{}{}
 }
 
+const blockResultsFetchLimit = uint64(10)
+
 // try fetch missing blocks if inconsistent
 func (w *WatcherClient) tryFetchRunningMissingBlocks(ctx context.Context, backTrackFrom uint64) error {
 	// Get newest block in DB. must have blocks at that time.
@@ -128,6 +130,11 @@ func (w *WatcherClient) tryFetchRunningMissingBlocks(ctx context.Context, backTr
 	backTrackTo := uint64(0)
 	if heightInDB > 0 {
 		backTrackTo = uint64(heightInDB)
+	}
+
+	// note that backTrackFrom >= backTrackTo because we are doing backtracking
+	if backTrackFrom > backTrackTo+blockResultsFetchLimit {
+		backTrackFrom = backTrackTo + blockResultsFetchLimit
 	}
 
 	// start backtracking
@@ -178,6 +185,8 @@ func (w *WatcherClient) tryFetchRunningMissingBlocks(ctx context.Context, backTr
 	return nil
 }
 
+const contractEventsBlocksFetchLimit = int64(10)
+
 // FetchContractEvent pull latest event logs from given contract address and save in DB
 func (w *WatcherClient) fetchContractEvent(blockHeight uint64) error {
 	fromBlock := int64(w.processedMsgHeight) + 1
@@ -185,6 +194,10 @@ func (w *WatcherClient) fetchContractEvent(blockHeight uint64) error {
 
 	if toBlock < fromBlock {
 		return nil
+	}
+
+	if toBlock > fromBlock+contractEventsBlocksFetchLimit {
+		toBlock = fromBlock + contractEventsBlocksFetchLimit - 1
 	}
 
 	// warning: uint int conversion...
