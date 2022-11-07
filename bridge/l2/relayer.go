@@ -144,7 +144,9 @@ func (r *Layer2Relayer) processSavedEvent(msg *orm.Layer2Message) error {
 	log.Info("Processing L2 Message", "msg.nonce", msg.Nonce, "msg.height", msg.Height)
 
 	proof := bridge_abi.IL1ScrollMessengerL2MessageProof{
-		BlockNumber: big.NewInt(int64(msg.Height)),
+		BlockHeight: big.NewInt(int64(msg.Height)),
+		// @todo fetch batch id from db
+		BatchIndex:  big.NewInt(0),
 		MerkleProof: make([]byte, 0),
 	}
 	from := common.HexToAddress(msg.Sender)
@@ -213,15 +215,15 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 		return
 	}
 
-	layer2Batch := bridge_abi.Layer2Batch{
+	layer2Batch := bridge_abi.IZKRollupLayer2Batch{
 		BatchIndex: uint64(batch.Index),
 		ParentHash: common.HexToHash(batch.ParentHash),
-		Blocks:     make([]bridge_abi.IZKRollupBlockHeader, len(traces)),
+		Blocks:     make([]bridge_abi.IZKRollupLayer2BlockHeader, len(traces)),
 	}
 
 	parentHash := common.HexToHash(batch.ParentHash)
 	for i, trace := range traces {
-		layer2Batch.Blocks[i] = bridge_abi.IZKRollupBlockHeader{
+		layer2Batch.Blocks[i] = bridge_abi.IZKRollupLayer2BlockHeader{
 			BlockHash:   trace.BlockTrace.Hash,
 			ParentHash:  parentHash,
 			BaseFee:     trace.BlockTrace.BaseFee.ToInt(),
