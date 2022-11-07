@@ -82,3 +82,12 @@ func TestPackRelayMessage(t *testing.T) {
 	_, err = l2MessengerABI.Pack("relayMessage", common.Address{}, common.Address{}, big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), make([]byte, 0))
 	assert.NoError(err)
 }
+
+func TestInitABI(t *testing.T) {
+	_, err := bridge_abi.RollupMetaData.GetAbi()
+	assert.True(t, assert.NoError(t, err), "failed to get rollup meta abi")
+	_, err = bridge_abi.L1MessengerMetaData.GetAbi()
+	assert.True(t, assert.NoError(t, err), "failed to get l1 messenger meta abi")
+	_, err = bridge_abi.L2MessengerMetaData.GetAbi()
+	assert.True(t, assert.NoError(t, err), "failed to get l2 messenger meta abi")
+}
