@@ -37,15 +37,7 @@ func testCreateNewWatcherAndStop(t *testing.T) {
 	assert.NoError(t, err)
 
 	l2cfg := cfg.L2Config
-	skippedOpcodes := make(map[string]struct{}, len(l2cfg.SkippedOpcodes))
-	for _, op := range l2cfg.SkippedOpcodes {
-		skippedOpcodes[op] = struct{}{}
-	}
-	proofGenerationFreq := l2cfg.ProofGenerationFreq
-	if proofGenerationFreq == 0 {
-		proofGenerationFreq = 1
-	}
-	rc := l2.NewL2WatcherClient(context.Background(), l2Cli, l2cfg.Confirmations, proofGenerationFreq, skippedOpcodes, cfg.L2Config.L2MessengerAddress, messengerABI, l2db)
+	rc := l2.NewL2WatcherClient(context.Background(), l2Cli, l2cfg.Confirmations, l2cfg.ProofGenerationFreq, l2cfg.SkippedOpcodes, cfg.L2Config.L2MessengerAddress, messengerABI, l2db)
 	rc.Start()
 	defer rc.Stop()
 
@@ -212,10 +204,7 @@ func testTraceHasUnsupportedOpcodes(t *testing.T) {
 	trace := &types.BlockResult{}
 	assert.NoError(t, json.Unmarshal(delegateTrace, &trace))
 
-	unsupportedOpcodes := make(map[string]struct{})
-	for _, val := range cfg.L2Config.SkippedOpcodes {
-		unsupportedOpcodes[val] = struct{}{}
-	}
+	assert.Equal(t, true, len(cfg.L2Config.SkippedOpcodes) > 0)
 }
 
 func prepareRelayerClient(l2Cli *ethclient.Client, db database.OrmFactory, contractAddr common.Address) *l2.WatcherClient {

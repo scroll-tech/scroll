@@ -67,9 +67,32 @@ type L2Config struct {
 	// Proof generation frequency, generating proof every k blocks
 	ProofGenerationFreq uint64 `json:"proof_generation_freq"`
 	// Skip generating proof when that opcodes appeared
-	SkippedOpcodes []string `json:"skipped_opcodes"`
+	SkippedOpcodes map[string]struct{} `json:"-"`
 	// The relayer config
 	RelayerConfig *RelayerConfig `json:"relayer_config"`
+}
+
+// L2ConfigAlias L2Config alias name, designed just for unmarshal.
+type L2ConfigAlias L2Config
+
+// UnmarshalJSON unmarshal l2config.
+func (l2 *L2Config) UnmarshalJSON(input []byte) error {
+	var jsonConfig struct {
+		L2ConfigAlias
+		SkippedOpcodes []string `json:"skipped_opcodes"`
+	}
+	if err := json.Unmarshal(input, &jsonConfig); err != nil {
+		return err
+	}
+	*l2 = L2Config(jsonConfig.L2ConfigAlias)
+	l2.SkippedOpcodes = make(map[string]struct{}, len(jsonConfig.SkippedOpcodes))
+	for _, opcode := range jsonConfig.SkippedOpcodes {
+		l2.SkippedOpcodes[opcode] = struct{}{}
+	}
+	if 0 == l2.ProofGenerationFreq {
+		l2.ProofGenerationFreq = 1
+	}
+	return nil
 }
 
 // RelayerConfig loads relayer configuration items.
