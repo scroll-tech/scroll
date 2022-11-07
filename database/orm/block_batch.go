@@ -89,7 +89,7 @@ type BlockBatch struct {
 	InstanceCommitments []byte        `json:"instance_commitments" db:"instance_commitments"`
 	ProofTimeSec        uint64        `json:"proof_time_sec" db:"proof_time_sec"`
 	RollupStatus        RollupStatus  `json:"rollup_status" db:"rollup_status"`
-	RollupTxHash        string        `json:"rollup_tx_hash" db:"rollup_tx_hash"`
+	CommitTxHash        string        `json:"commit_tx_hash" db:"commit_tx_hash"`
 	FinalizeTxHash      string        `json:"finalize_tx_hash" db:"finalize_tx_hash"`
 	CreatedAt           time.Time     `json:"created_at" db:"created_at"`
 	ProverAssignedAt    time.Time     `json:"prover_assigned_at" db:"prover_assigned_at"`
@@ -297,13 +297,13 @@ func (o *blockBatchOrm) UpdateRollupStatus(ctx context.Context, id string, statu
 	}
 }
 
-func (o *blockBatchOrm) UpdateRollupTxHashAndRollupStatus(ctx context.Context, id string, rollup_tx_hash string, status RollupStatus) error {
+func (o *blockBatchOrm) UpdateCommitTxHashAndRollupStatus(ctx context.Context, id string, commit_tx_hash string, status RollupStatus) error {
 	switch status {
 	case RollupCommitted:
-		_, err := o.db.Exec(o.db.Rebind("update block_batch set rollup_tx_hash = ?, rollup_status = ?, committed_at = ? where id = ?;"), rollup_tx_hash, status, time.Now(), id)
+		_, err := o.db.Exec(o.db.Rebind("update block_batch set commit_tx_hash = ?, rollup_status = ?, committed_at = ? where id = ?;"), commit_tx_hash, status, time.Now(), id)
 		return err
 	default:
-		_, err := o.db.Exec(o.db.Rebind("update block_batch set rollup_tx_hash = ?, rollup_status = ? where id = ?;"), rollup_tx_hash, status, id)
+		_, err := o.db.Exec(o.db.Rebind("update block_batch set commit_tx_hash = ?, rollup_status = ? where id = ?;"), commit_tx_hash, status, id)
 		return err
 	}
 }

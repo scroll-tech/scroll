@@ -24,13 +24,13 @@ var (
 		{
 			ID:             1,
 			RollupStatus:   orm.RollupPending,
-			RollupTxHash:   "Rollup Test Hash",
+			CommitTxHash:   "Rollup Test Hash",
 			FinalizeTxHash: "",
 		},
 		{
 			ID:             2,
 			RollupStatus:   orm.RollupFinalized,
-			RollupTxHash:   "Rollup Test Hash",
+			CommitTxHash:   "Rollup Test Hash",
 			FinalizeTxHash: "",
 		},
 	}

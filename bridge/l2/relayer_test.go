@@ -74,7 +74,7 @@ func testL2RelayerProcessSaveEvents(t *testing.T) {
 		{
 			Number:         3,
 			Status:         orm.RollupFinalized,
-			RollupTxHash:   "Rollup Test Hash",
+			CommitTxHash:   "Rollup Test Hash",
 			FinalizeTxHash: "Finalized Hash",
 		},
 	}
@@ -128,7 +128,7 @@ func testL2RelayerProcessPendingBatches(t *testing.T) {
 		{
 			Number:         4,
 			Status:         1,
-			RollupTxHash:   "Rollup Test Hash",
+			CommitTxHash:   "Rollup Test Hash",
 			FinalizeTxHash: "Finalized Hash",
 		},
 	}
@@ -172,7 +172,7 @@ func testL2RelayerProcessCommittedBatches(t *testing.T) {
 		{
 			Number:         4,
 			Status:         1,
-			RollupTxHash:   "Rollup Test Hash",
+			CommitTxHash:   "Rollup Test Hash",
 			FinalizeTxHash: "Finalized Hash",
 		},
 	}

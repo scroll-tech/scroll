@@ -17,7 +17,7 @@ create table block_batch
     instance_commitments    BYTEA           default null,
     proof_time_sec          integer         default 0,
     rollup_status           integer         default 1,
-    rollup_tx_hash          varchar         default null,
+    commit_tx_hash          varchar         default null,
     finalize_tx_hash        varchar         default null,
     created_at              TIMESTAMP(0)    NOT NULL DEFAULT CURRENT_TIMESTAMP,
     proved_at               TIMESTAMP(0)    DEFAULT NULL,

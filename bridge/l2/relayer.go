@@ -267,9 +267,9 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 	log.Info("commitBatch in layer1", "id", id, "index", batch.Index, "hash", hash)
 
 	// record and sync with db, @todo handle db error
-	err = r.db.UpdateRollupTxHashAndRollupStatus(r.ctx, id, hash.String(), orm.RollupCommitting)
+	err = r.db.UpdateCommitTxHashAndRollupStatus(r.ctx, id, hash.String(), orm.RollupCommitting)
 	if err != nil {
-		log.Error("UpdateRollupTxHashAndRollupStatus failed", "id", id, "index", batch.Index, "err", err)
+		log.Error("UpdateCommitTxHashAndRollupStatus failed", "id", id, "index", batch.Index, "err", err)
 	}
 	r.processingCommitment[id] = id
 }
@@ -420,9 +420,9 @@ func (r *Layer2Relayer) handleConfirmation(confirmation *sender.Confirmation) {
 	if batch_id, ok := r.processingCommitment[confirmation.ID]; ok {
 		transactionType = "BlockCommitment"
 		// @todo handle db error
-		err := r.db.UpdateRollupTxHashAndRollupStatus(r.ctx, batch_id, confirmation.TxHash.String(), orm.RollupCommitted)
+		err := r.db.UpdateCommitTxHashAndRollupStatus(r.ctx, batch_id, confirmation.TxHash.String(), orm.RollupCommitted)
 		if err != nil {
-			log.Warn("UpdateRollupTxHashAndRollupStatus failed", "batch_id", batch_id, "err", err)
+			log.Warn("UpdateCommitTxHashAndRollupStatus failed", "batch_id", batch_id, "err", err)
 		}
 		delete(r.processingCommitment, confirmation.ID)
 	}
