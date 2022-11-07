@@ -65,7 +65,7 @@ func (t *Cmd) ErrMsg() <-chan error {
 
 func (t *Cmd) Write(data []byte) (int, error) {
 	out := string(data)
-	t.Logf(out)
+	// t.Logf(out)
 	go func(content string) {
 		t.checkFuncs.Range(func(key, value interface{}) bool {
 			check := value.(checkFunc)
