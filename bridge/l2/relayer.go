@@ -348,7 +348,7 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 
 		proof := bufferToUint256Le(proofBuffer)
 		instance := bufferToUint256Le(instanceBuffer)
-		data, err := r.l1RollupABI.Pack("finalizeBlockWithProof", id, proof, instance)
+		data, err := r.l1RollupABI.Pack("finalizeBlockWithProof", common.HexToHash(id), proof, instance)
 		if err != nil {
 			log.Error("Pack finalizeBlockWithProof failed", err)
 			return
