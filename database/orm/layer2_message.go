@@ -148,8 +148,8 @@ func (m *layer2MessageOrm) SaveLayer2Messages(ctx context.Context, messages []*L
 
 	_, err := m.db.NamedExec(`INSERT INTO public.layer2_message (nonce, height, sender, target, value, fee, gas_limit, deadline, calldata, layer2_hash) VALUES (:nonce, :height, :sender, :target, :value, :fee, :gas_limit, :deadline, :calldata, :layer2_hash);`, messageMaps)
 	if err != nil {
-		nonces := []uint64{}
-		heights := []uint64{}
+		nonces := make([]uint64, 0, len(messages))
+		heights := make([]uint64, 0, len(messages))
 		for _, msg := range messages {
 			nonces = append(nonces, msg.Nonce)
 			heights = append(heights, msg.Height)
