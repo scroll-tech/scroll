@@ -6,6 +6,7 @@ import (
 	"github.com/urfave/cli/v2"
 
 	"scroll-tech/common/utils"
+
 	"scroll-tech/database"
 	"scroll-tech/database/migrate"
 )
