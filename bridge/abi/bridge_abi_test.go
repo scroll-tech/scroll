@@ -83,7 +83,7 @@ func TestPackRelayMessage(t *testing.T) {
 	assert.NoError(err)
 }
 
-func TestInitABI(t *testing.T) {
+func TestGetAbi(t *testing.T) {
 	_, err := bridge_abi.RollupMetaData.GetAbi()
 	assert.True(t, assert.NoError(t, err), "failed to get rollup meta abi")
 	_, err = bridge_abi.L1MessengerMetaData.GetAbi()
