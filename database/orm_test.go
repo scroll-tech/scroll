@@ -227,9 +227,6 @@ func testOrmLayer1Message(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, orm.MsgSubmitted, msg.Status)
 	assert.Equal(t, []byte("testdata"), msg.Content.Calldata)
-
-	// todo : we should have a method to verify layer2hash in layer1message
-	defer sqlxdb.Close()
 }
 
 func testOrmLayer2Message(t *testing.T) {
