@@ -3,6 +3,7 @@ module scroll-tech/coordinator
 go 1.18
 
 require (
+	github.com/ethereum/go-ethereum v1.10.13
 	github.com/gorilla/websocket v1.4.2
 	github.com/orcaman/concurrent-map v1.0.0
 	github.com/scroll-tech/go-ethereum v1.10.14-0.20221012120556-b3a7c9b6917d
@@ -15,7 +16,6 @@ require (
 	github.com/cpuguy83/go-md2man/v2 v2.0.0-20190314233015-f79a8a8ca69d // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/deckarep/golang-set v0.0.0-20180603214616-504e848d77ea // indirect
-	github.com/ethereum/go-ethereum v1.10.13 // indirect
 	github.com/go-ole/go-ole v1.2.6 // indirect
 	github.com/go-stack/stack v1.8.0 // indirect
 	github.com/iden3/go-iden3-crypto v0.0.12 // indirect

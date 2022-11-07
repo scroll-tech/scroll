@@ -75,7 +75,6 @@ type BlockResultOrm interface {
 	InsertBlockResultsWithStatus(ctx context.Context, blockResults []*types.BlockResult, status BlockStatus) error
 	UpdateProofByNumber(ctx context.Context, number uint64, evmProof, stateProof []byte, proofTimeSec uint64) error
 	UpdateBlockStatus(number uint64, status BlockStatus) error
-	NumberOfBlocksInLastHour() (uint64, error)
 }
 
 // RollupResultOrm rollupResult operation interface

@@ -3,6 +3,7 @@ package sender
 import (
 	"context"
 	"crypto/ecdsa"
+	"errors"
 	"fmt"
 	"math/big"
 	"strings"
@@ -30,6 +31,11 @@ const (
 
 	// LegacyTxType type for LegacyTx
 	LegacyTxType = "LegacyTx"
+)
+
+var (
+	// ErrNoAvailableAccount indicates no available account error in the account pool.
+	ErrNoAvailableAccount = errors.New("sender has no available account to send transaction")
 )
 
 // DefaultSenderConfig The default config
@@ -73,20 +79,21 @@ type Sender struct {
 	chainID *big.Int          // The chain id of the endpoint
 	ctx     context.Context
 
+	// account fields.
+	auths *accountPool
+
 	mu            sync.Mutex
-	auth          *bind.TransactOpts
 	blockNumber   uint64   // Current block number on chain.
 	baseFeePerGas uint64   // Current base fee per gas on chain
 	pendingTxs    sync.Map // Mapping from nonce to pending transaction
 	confirmCh     chan *Confirmation
-	sendTxErrCh   chan error
 
 	stopCh chan struct{}
 }
 
 // NewSender returns a new instance of transaction sender
 // txConfirmationCh is used to notify confirmed transaction
-func NewSender(ctx context.Context, config *config.SenderConfig, prv *ecdsa.PrivateKey) (*Sender, error) {
+func NewSender(ctx context.Context, config *config.SenderConfig, privs []*ecdsa.PrivateKey) (*Sender, error) {
 	if config == nil {
 		config = &DefaultSenderConfig
 	}
@@ -101,20 +108,10 @@ func NewSender(ctx context.Context, config *config.SenderConfig, prv *ecdsa.Priv
 		return nil, err
 	}
 
-	auth, err := bind.NewKeyedTransactorWithChainID(prv, chainID)
+	auths, err := newAccountPool(ctx, config.MinBalance, client, privs)
 	if err != nil {
-		log.Error("failed to create account", "chainID", chainID.String(), "err", err)
-		return nil, err
+		return nil, fmt.Errorf("failed to create account pool, err: %v", err)
 	}
-	log.Info("sender", "chainID", chainID.String(), "address", auth.From.String())
-
-	// set nonce
-	nonce, err := client.PendingNonceAt(ctx, auth.From)
-	if err != nil {
-		log.Error("failed to get pending nonce", "address", auth.From.String(), "err", err)
-		return nil, err
-	}
-	auth.Nonce = big.NewInt(int64(nonce))
 
 	// get header by number
 	header, err := client.HeaderByNumber(ctx, nil)
@@ -127,15 +124,14 @@ func NewSender(ctx context.Context, config *config.SenderConfig, prv *ecdsa.Priv
 		config:        config,
 		client:        client,
 		chainID:       chainID,
-		auth:          auth,
-		sendTxErrCh:   make(chan error, 4),
+		auths:         auths,
 		confirmCh:     make(chan *Confirmation, 128),
 		baseFeePerGas: header.BaseFee.Uint64(),
 		pendingTxs:    sync.Map{},
 		stopCh:        make(chan struct{}),
 	}
 
-	go sender.loop()
+	go sender.loop(ctx)
 
 	return sender, nil
 }
@@ -151,8 +147,14 @@ func (s *Sender) ConfirmChan() <-chan *Confirmation {
 	return s.confirmCh
 }
 
-func (s *Sender) getFeeData(msg ethereum.CallMsg) (*FeeData, error) {
-	gasLimit, err := s.client.EstimateGas(s.ctx, msg)
+// NumberOfAccounts return the count of accounts.
+func (s *Sender) NumberOfAccounts() int {
+	return len(s.auths.accounts)
+}
+
+func (s *Sender) getFeeData(auth *bind.TransactOpts, target *common.Address, value *big.Int, data []byte) (*FeeData, error) {
+	// estimate gas limit
+	gasLimit, err := s.client.EstimateGas(s.ctx, ethereum.CallMsg{From: auth.From, To: target, Value: value, Data: data})
 	if err != nil {
 		return nil, err
 	}
@@ -189,28 +191,22 @@ func (s *Sender) SendTransaction(ID string, target *common.Address, value *big.I
 	if _, ok := s.pendingTxs.Load(ID); ok {
 		return common.Hash{}, fmt.Errorf("has the repeat tx ID, ID: %s", ID)
 	}
+	// get
+	auth := s.auths.getAccount()
+	if auth == nil {
+		return common.Hash{}, ErrNoAvailableAccount
+	}
+	defer s.auths.releaseAccount(auth)
+
 	var (
-		// estimate gas limit
-		call = ethereum.CallMsg{
-			From:       s.auth.From,
-			To:         target,
-			Gas:        0,
-			GasPrice:   nil,
-			GasFeeCap:  nil,
-			GasTipCap:  nil,
-			Value:      value,
-			Data:       data,
-			AccessList: make(types.AccessList, 0),
-		}
 		feeData *FeeData
 		tx      *types.Transaction
 	)
-
 	// estimate gas fee
-	if feeData, err = s.getFeeData(call); err != nil {
+	if feeData, err = s.getFeeData(auth, target, value, data); err != nil {
 		return
 	}
-	if tx, err = s.createAndSendTx(feeData, target, value, data); err == nil {
+	if tx, err = s.createAndSendTx(auth, feeData, target, value, data); err == nil {
 		// add pending transaction to queue
 		pending := &PendingTransaction{
 			tx:       tx,
@@ -225,12 +221,12 @@ func (s *Sender) SendTransaction(ID string, target *common.Address, value *big.I
 	return
 }
 
-func (s *Sender) createAndSendTx(feeData *FeeData, target *common.Address, value *big.Int, data []byte) (tx *types.Transaction, err error) {
+func (s *Sender) createAndSendTx(auth *bind.TransactOpts, feeData *FeeData, target *common.Address, value *big.Int, data []byte) (tx *types.Transaction, err error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	var (
-		nonce  = s.auth.Nonce.Uint64()
+		nonce  = auth.Nonce.Uint64()
 		txData types.TxData
 	)
 	// lock here to avoit blocking when call `SuggestGasPrice`
@@ -280,24 +276,32 @@ func (s *Sender) createAndSendTx(feeData *FeeData, target *common.Address, value
 	}
 
 	// sign and send
-	tx, err = s.auth.Signer(s.auth.From, types.NewTx(txData))
+	tx, err = auth.Signer(auth.From, types.NewTx(txData))
 	if err != nil {
 		log.Error("failed to sign tx", "err", err)
 		return
 	}
 	if err = s.client.SendTransaction(s.ctx, tx); err != nil {
 		log.Error("failed to send tx", "tx hash", tx.Hash().String(), "err", err)
-		s.sendTxErrCh <- err
+		// Check if contain nonce, and reset nonce
+		if strings.Contains(err.Error(), "nonce") {
+			s.auths.resetNonce(context.Background(), auth)
+		}
 		return
 	}
 
 	// update nonce
-	s.auth.Nonce = big.NewInt(int64(nonce + 1))
+	auth.Nonce = big.NewInt(int64(nonce + 1))
 	return
 }
 
 func (s *Sender) resubmitTransaction(feeData *FeeData, tx *types.Transaction) (*types.Transaction, error) {
-	// @todo move query out of lock scope
+	// Get a idle account from account pool.
+	auth := s.auths.getAccount()
+	if auth == nil {
+		return nil, ErrNoAvailableAccount
+	}
+	defer s.auths.releaseAccount(auth)
 
 	escalateMultipleNum := new(big.Int).SetUint64(s.config.EscalateMultipleNum)
 	escalateMultipleDen := new(big.Int).SetUint64(s.config.EscalateMultipleDen)
@@ -334,7 +338,7 @@ func (s *Sender) resubmitTransaction(feeData *FeeData, tx *types.Transaction) (*
 		feeData.gasTipCap = gasTipCap
 	}
 
-	return s.createAndSendTx(feeData, tx.To(), tx.Value(), tx.Data())
+	return s.createAndSendTx(auth, feeData, tx.To(), tx.Value(), tx.Data())
 }
 
 // CheckPendingTransaction Check pending transaction given number of blocks to wait before confirmation.
@@ -359,7 +363,10 @@ func (s *Sender) CheckPendingTransaction(header *types.Header) {
 			var tx *types.Transaction
 			tx, err := s.resubmitTransaction(pending.feeData, pending.tx)
 			if err != nil {
-				log.Error("failed to resubmit transaction, reset submitAt", "tx hash", pending.tx.Hash().String(), "err", err)
+				// If account pool is empty, it will try again in next loop.
+				if !errors.Is(err, ErrNoAvailableAccount) {
+					log.Error("failed to resubmit transaction, reset submitAt", "tx hash", pending.tx.Hash().String(), "err", err)
+				}
 			} else {
 				// flush submitAt
 				pending.tx = tx
@@ -371,10 +378,13 @@ func (s *Sender) CheckPendingTransaction(header *types.Header) {
 }
 
 // Loop is the main event loop
-func (s *Sender) loop() {
-	t := time.Duration(s.config.CheckPendingTime) * time.Second
-	checkTick := time.NewTicker(t)
+func (s *Sender) loop(ctx context.Context) {
+	checkTick := time.NewTicker(time.Duration(s.config.CheckPendingTime) * time.Second)
 	defer checkTick.Stop()
+
+	checkBalanceTicker := time.NewTicker(time.Minute * 10)
+	defer checkBalanceTicker.Stop()
+
 	for {
 		select {
 		case <-checkTick.C:
@@ -384,17 +394,11 @@ func (s *Sender) loop() {
 				continue
 			}
 			s.CheckPendingTransaction(header)
-		case err := <-s.sendTxErrCh:
-			// redress nonce
-			if strings.Contains(err.Error(), "nonce") {
-				if nonce, err := s.client.PendingNonceAt(s.ctx, s.auth.From); err != nil {
-					log.Error("failed to get pending nonce", "address", s.auth.From.String(), "err", err)
-				} else {
-					s.mu.Lock()
-					s.auth.Nonce = big.NewInt(int64(nonce))
-					s.mu.Unlock()
-				}
-			}
+		case <-checkBalanceTicker.C:
+			// Check and set balance.
+			_ = s.auths.checkAndSetBalances(ctx)
+		case <-ctx.Done():
+			return
 		case <-s.stopCh:
 			return
 		}

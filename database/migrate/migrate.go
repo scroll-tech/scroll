@@ -39,6 +39,14 @@ func Rollback(db *sql.DB, version *int64) error {
 	return goose.Down(db, MigrationsDir)
 }
 
+// ResetDB clean and migrate db.
+func ResetDB(db *sql.DB) error {
+	if err := Rollback(db, new(int64)); err != nil {
+		return err
+	}
+	return Migrate(db)
+}
+
 // Current get current version
 func Current(db *sql.DB) (int64, error) {
 	return goose.GetDBVersion(db)

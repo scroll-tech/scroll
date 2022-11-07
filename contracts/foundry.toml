@@ -1,6 +1,7 @@
-[default]
+[profile.default]
 src = 'src'                                             # the source directory
 test = 'src/test'                                       # the test directory
+script = 'scripts'                                      # the script directory
 out = 'artifacts/src'                                   # the output directory (for artifacts)
 libs = []                                                     # a list of library directories
 remappings = []                                               # a list of remappings

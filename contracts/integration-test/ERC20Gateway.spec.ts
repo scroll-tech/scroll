@@ -56,6 +56,7 @@ describe("ERC20Gateway", async () => {
       gasUsed: 0,
       timestamp: 0,
       extraData: "0x",
+      txs: [],
     });
 
     // deploy L1ScrollMessenger in layer 1
@@ -425,7 +426,7 @@ describe("ERC20Gateway", async () => {
             deadline,
             nonce,
             messageData,
-            { blockNumber: 0, merkleProof: "0x" }
+            { batchIndex: 0, blockHeight: 0, merkleProof: "0x" }
           );
           await relayTx.wait();
           // should emit RelayedMessage
@@ -477,7 +478,7 @@ describe("ERC20Gateway", async () => {
             deadline,
             nonce,
             messageData,
-            { blockNumber: 0, merkleProof: "0x" }
+            { batchIndex: 0, blockHeight: 0, merkleProof: "0x" }
           );
           await relayTx.wait();
           // should emit RelayedMessage
@@ -744,7 +745,7 @@ describe("ERC20Gateway", async () => {
             deadline,
             nonce,
             messageData,
-            { blockNumber: 0, merkleProof: "0x" }
+            { batchIndex: 0, blockHeight: 0, merkleProof: "0x" }
           );
           await relayTx.wait();
           const afterBalanceLayer1 = await l1WETH.balanceOf(recipient.address);
@@ -801,7 +802,7 @@ describe("ERC20Gateway", async () => {
             deadline,
             nonce,
             messageData,
-            { blockNumber: 0, merkleProof: "0x" }
+            { batchIndex: 0, blockHeight: 0, merkleProof: "0x" }
           );
           await relayTx.wait();
           const afterBalanceLayer1 = await l1WETH.balanceOf(recipient.address);

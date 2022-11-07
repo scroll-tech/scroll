@@ -2,6 +2,7 @@ package l1
 
 import (
 	"context"
+	"errors"
 	"math/big"
 	"time"
 
@@ -9,6 +10,7 @@ import (
 
 	"github.com/scroll-tech/go-ethereum/accounts/abi"
 	"github.com/scroll-tech/go-ethereum/crypto"
+	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
 
@@ -48,13 +50,7 @@ func NewLayer1Relayer(ctx context.Context, ethClient *ethclient.Client, l1Confir
 		return nil, err
 	}
 
-	prv, err := crypto.HexToECDSA(cfg.PrivateKey)
-	if err != nil {
-		log.Error("Failed to import private key from config file")
-		return nil, err
-	}
-
-	sender, err := sender.NewSender(ctx, cfg.SenderConfig, prv)
+	sender, err := sender.NewSender(ctx, cfg.SenderConfig, cfg.MessageSenderPrivateKeys)
 	if err != nil {
 		log.Error("new sender failed", "err", err)
 		return nil, err
@@ -80,22 +76,40 @@ func (r *Layer1Relayer) ProcessSavedEvents() {
 		log.Error("Failed to fetch unprocessed L1 messages", "err", err)
 		return
 	}
-	if len(msgs) == 0 {
-		return
+	for _, msg := range msgs {
+		if err = r.processSavedEvent(msg); err != nil {
+			if !errors.Is(err, sender.ErrNoAvailableAccount) {
+				log.Error("failed to process event", "err", err)
+			}
+			return
+		}
 	}
-	msg := msgs[0]
+}
+
+func (r *Layer1Relayer) processSavedEvent(msg *orm.Layer1Message) error {
+	// @todo add support to relay multiple messages
+	from := common.HexToAddress(msg.Sender)
+	target := common.HexToAddress(msg.Target)
+	value, ok := big.NewInt(0).SetString(msg.Value, 10)
+	if !ok {
+		// @todo maybe panic?
+		log.Error("Failed to parse message value", "msg.nonce", msg.Nonce, "msg.height", msg.Height)
+		// TODO: need to skip this message by changing its status to MsgError
+	}
+	fee, _ := big.NewInt(0).SetString(msg.Fee, 10)
+	deadline := big.NewInt(int64(msg.Deadline))
 	msgNonce := big.NewInt(int64(msg.Nonce))
-	data, err := r.l2MessengerABI.Pack("relayMessage", msg.Content.Sender, msg.Content.Target, msg.Content.Value, msg.Content.Fee, msg.Content.Deadline, msgNonce, msg.Content.Calldata)
+	calldata := common.Hex2Bytes(msg.Calldata)
+	data, err := r.l2MessengerABI.Pack("relayMessage", from, target, value, fee, deadline, msgNonce, calldata)
 	if err != nil {
 		log.Error("Failed to pack relayMessage", "msg.nonce", msg.Nonce, "msg.height", msg.Height, "err", err)
 		// TODO: need to skip this message by changing its status to MsgError
-		return
+		return err
 	}
 
 	hash, err := r.sender.SendTransaction(msg.Layer1Hash, &r.cfg.MessengerContractAddress, big.NewInt(0), data)
 	if err != nil {
-		log.Error("Failed to send relayMessage tx to L2", "msg.nonce", msg.Nonce, "msg.height", msg.Height, "err", err)
-		return
+		return err
 	}
 	log.Info("relayMessage to layer2", "layer1 hash", msg.Layer1Hash, "tx hash", hash)
 
@@ -103,6 +117,7 @@ func (r *Layer1Relayer) ProcessSavedEvents() {
 	if err != nil {
 		log.Error("UpdateLayer1StatusAndLayer2Hash failed", "msg.layer1hash", msg.Layer1Hash, "msg.height", msg.Height, "err", err)
 	}
+	return err
 }
 
 // Start the relayer process

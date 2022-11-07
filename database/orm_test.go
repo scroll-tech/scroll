@@ -8,17 +8,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/core/types"
-	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/stretchr/testify/assert"
 
 	"scroll-tech/common/docker"
-
-	docker_db "scroll-tech/database/docker"
 
 	"scroll-tech/database"
 	"scroll-tech/database/migrate"
@@ -100,62 +96,68 @@ var (
 			Layer2Hash: "hash1",
 		},
 	}
-	sqlxdb      *sqlx.DB
-	ormTrace    orm.BlockResultOrm
 	blockResult *types.BlockResult
-	ormLayer1   orm.Layer1MessageOrm
-	ormLayer2   orm.Layer2MessageOrm
-	img         docker.ImgInstance
-	ormRollup   orm.RollupResultOrm
+
+	dbConfig  *database.DBConfig
+	dbImg     docker.ImgInstance
+	ormTrace  orm.BlockResultOrm
+	ormLayer1 orm.Layer1MessageOrm
+	ormLayer2 orm.Layer2MessageOrm
+	ormRollup orm.RollupResultOrm
 )
 
-func initEnv(t *testing.T) error {
-	img = docker_db.NewImgDB(t, "postgres", "123456", "test", 5444)
-	assert.NoError(t, img.Start())
-	factory, err := database.NewOrmFactory(&database.DBConfig{
-		DriverName: "postgres",
-		DSN:        img.Endpoint(),
-	})
-	if err != nil {
-		return err
-	}
+func setupEnv(t *testing.T) error {
+	// Init db config and start db container.
+	dbConfig = &database.DBConfig{DriverName: "postgres"}
+	dbImg = docker.NewTestDBDocker(t, dbConfig.DriverName)
+	dbConfig.DSN = dbImg.Endpoint()
+
+	// Create db handler and reset db.
+	factory, err := database.NewOrmFactory(dbConfig)
+	assert.NoError(t, err)
 	db := factory.GetDB()
-	sqlxdb = db
+	assert.NoError(t, migrate.ResetDB(db.DB))
+
+	// Init several orm handles.
 	ormTrace = orm.NewBlockResultOrm(db)
 	ormLayer1 = orm.NewLayer1MessageOrm(db)
 	ormLayer2 = orm.NewLayer2MessageOrm(db)
 	ormRollup = orm.NewRollupResultOrm(db)
 
-	// init db
-	version := int64(0)
-	err = migrate.Rollback(db.DB, &version)
-	if err != nil {
-		log.Error("failed to rollback in test db", "err", err)
-		return err
-	}
-
-	err = migrate.Migrate(db.DB)
-	if err != nil {
-		log.Error("migrate failed in test db", "err", err)
-		return err
-	}
-
 	templateBlockResult, err := os.ReadFile("../common/testdata/blockResult_orm.json")
 	if err != nil {
 		return err
 	}
-
 	// unmarshal blockResult
-	if blockResult == nil {
-		blockResult = &types.BlockResult{}
-		return json.Unmarshal(templateBlockResult, blockResult)
-	}
-	return nil
+	blockResult = &types.BlockResult{}
+	return json.Unmarshal(templateBlockResult, blockResult)
 }
 
-func TestOrm_BlockResults(t *testing.T) {
-	assert.NoError(t, initEnv(t))
-	defer img.Stop()
+// TestOrmFactory run several test cases.
+func TestOrmFactory(t *testing.T) {
+	defer func() {
+		if dbImg != nil {
+			assert.NoError(t, dbImg.Stop())
+		}
+	}()
+	if err := setupEnv(t); err != nil {
+		t.Fatal(err)
+	}
+
+	t.Run("testOrm_BlockResults", testOrmBlockResults)
+
+	t.Run("testOrmLayer1Message", testOrmLayer1Message)
+
+	t.Run("testOrmLayer2Message", testOrmLayer2Message)
+
+	t.Run("testOrmRollupResult", testOrmRollupResult)
+}
+
+func testOrmBlockResults(t *testing.T) {
+	// Create db handler and reset db.
+	factory, err := database.NewOrmFactory(dbConfig)
+	assert.NoError(t, err)
+	assert.NoError(t, migrate.ResetDB(factory.GetDB().DB))
 
 	res, err := ormTrace.GetBlockResults(map[string]interface{}{})
 	assert.NoError(t, err)
@@ -194,18 +196,18 @@ func TestOrm_BlockResults(t *testing.T) {
 	})
 	assert.NoError(t, err)
 	assert.Equal(t, true, len(res) == 1 && res[0].BlockTrace.Hash.String() == blockResult.BlockTrace.Hash.String())
-
-	defer sqlxdb.Close()
 }
 
-func TestOrm_Layer1Message(t *testing.T) {
-	assert.NoError(t, initEnv(t))
-	defer img.Stop()
+func testOrmLayer1Message(t *testing.T) {
+	// Create db handler and reset db.
+	factory, err := database.NewOrmFactory(dbConfig)
+	assert.NoError(t, err)
+	assert.NoError(t, migrate.ResetDB(factory.GetDB().DB))
 
 	expected := "expect hash"
 
 	// Insert into db
-	err := ormLayer1.SaveLayer1Messages(context.Background(), templateLayer1Message)
+	err = ormLayer1.SaveLayer1Messages(context.Background(), templateLayer1Message)
 	assert.NoError(t, err)
 
 	err = ormLayer1.UpdateLayer1Status(context.Background(), "hash0", orm.MsgConfirmed)
@@ -230,14 +232,16 @@ func TestOrm_Layer1Message(t *testing.T) {
 	defer sqlxdb.Close()
 }
 
-func TestOrm_Layer2Message(t *testing.T) {
-	assert.NoError(t, initEnv(t))
-	defer img.Stop()
+func testOrmLayer2Message(t *testing.T) {
+	// Create db handler and reset db.
+	factory, err := database.NewOrmFactory(dbConfig)
+	assert.NoError(t, err)
+	assert.NoError(t, migrate.ResetDB(factory.GetDB().DB))
 
 	expected := "expect hash"
 
 	// Insert into db
-	err := ormLayer2.SaveLayer2Messages(context.Background(), templateLayer2Message)
+	err = ormLayer2.SaveLayer2Messages(context.Background(), templateLayer2Message)
 	assert.NoError(t, err)
 
 	err = ormLayer2.UpdateLayer2Status(context.Background(), "hash0", orm.MsgConfirmed)
@@ -260,18 +264,17 @@ func TestOrm_Layer2Message(t *testing.T) {
 	msg, err = ormLayer2.GetLayer2MessageByLayer2Hash("hash1")
 	assert.NoError(t, err)
 	assert.Equal(t, orm.MsgSubmitted, msg.Status)
-
-	// todo : we should have a method to verify layer1hash in layer1message
-	defer sqlxdb.Close()
 }
 
-// TestOrm_RollupResult test rollup result table functions
-func TestOrm_RollupResult(t *testing.T) {
-	assert.NoError(t, initEnv(t))
-	defer img.Stop()
+// testOrmRollupResult test rollup result table functions
+func testOrmRollupResult(t *testing.T) {
+	// Create db handler and reset db.
+	factory, err := database.NewOrmFactory(dbConfig)
+	assert.NoError(t, err)
+	assert.NoError(t, migrate.ResetDB(factory.GetDB().DB))
 
 	blocks := []uint64{uint64(templateRollup[0].Number), uint64(templateRollup[1].Number)}
-	err := ormRollup.InsertPendingBlocks(context.Background(), blocks)
+	err = ormRollup.InsertPendingBlocks(context.Background(), blocks)
 	assert.NoError(t, err)
 
 	err = ormRollup.UpdateFinalizeTxHash(context.Background(), uint64(templateRollup[0].Number), templateRollup[0].FinalizeTxHash)
