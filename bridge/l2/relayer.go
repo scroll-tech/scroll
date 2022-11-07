@@ -242,6 +242,9 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 				GasPrice: tx.GasPrice.ToInt(),
 				Value:    tx.Value.ToInt(),
 				Data:     common.Hex2Bytes(tx.Data),
+				R:        tx.R.ToInt(),
+				S:        tx.S.ToInt(),
+				V:        uint64(tx.V.ToInt().Int64()),
 			}
 			if tx.To != nil {
 				layer2Batch.Blocks[i].Txs[j].Target = *tx.To
