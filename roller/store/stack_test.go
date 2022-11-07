@@ -40,7 +40,7 @@ func TestStack(t *testing.T) {
 		var pop *ProvingTask
 		pop, err = s.Pop()
 		assert.NoError(t, err)
-		assert.Equal(t, uint64(i), pop.Task.ID)
+		assert.Equal(t, strconv.Itoa(i), pop.Task.ID)
 	}
 
 	// test times

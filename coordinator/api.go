@@ -87,5 +87,5 @@ func (m *Manager) GetSessionInfo(sessionID string) (*SessionInfo, error) {
 	if s, ok := m.sessions[sessionID]; ok {
 		return newSessionInfo(&s, orm.ProvingTaskAssigned, "", false), nil
 	}
-	return nil, fmt.Errorf("no such session, sessionID: %d", sessionID)
+	return nil, fmt.Errorf("no such session, sessionID: %s", sessionID)
 }

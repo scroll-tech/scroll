@@ -28,7 +28,7 @@ func (w *WatcherClient) tryProposeBatch() error {
 
 	blocks, err := w.orm.GetBlockInfos(
 		map[string]interface{}{"batch_id": sql.NullString{Valid: false}},
-		fmt.Sprintf("order by number DESC LIMIT %s", batchBlocksLimit),
+		fmt.Sprintf("order by number DESC LIMIT %d", batchBlocksLimit),
 	)
 	if err != nil {
 		return err

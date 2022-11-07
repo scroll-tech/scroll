@@ -22,13 +22,13 @@ import (
 var (
 	templateRollup = []*orm.BlockBatch{
 		{
-			ID:             1,
+			ID:             "1",
 			RollupStatus:   orm.RollupPending,
 			CommitTxHash:   "Rollup Test Hash",
 			FinalizeTxHash: "",
 		},
 		{
-			ID:             2,
+			ID:             "2",
 			RollupStatus:   orm.RollupFinalized,
 			CommitTxHash:   "Rollup Test Hash",
 			FinalizeTxHash: "",
