@@ -57,15 +57,15 @@ pipeline {
                sh "docker container prune -f"
                catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
                     sh '''
-                        go test -v -race -coverprofile=coverage.txt -covermode=atomic -p 1 scroll-tech/database/...
                         go test -v -race -coverprofile=coverage.txt -covermode=atomic -p 1 scroll-tech/bridge/...
                         go test -v -race -coverprofile=coverage.txt -covermode=atomic -p 1 scroll-tech/common/...
-                        go test -v -race -coverprofile=coverage.txt -covermode=atomic -p 1 scroll-tech/coordinator/...
+                        go test -v -race -coverprofile=coverage.txt -covermode=atomic -p 4 scroll-tech/coordinator/...
+                        go test -v -race -coverprofile=coverage.txt -covermode=atomic -p 1 scroll-tech/database/...
                         cd ..
                     '''
                     script {
-                        for (i in ['bridge', 'coordinator', 'database']) {
-                            sh "cd $i && go test -v -race -coverprofile=coverage.txt -covermode=atomic \$(go list ./... | grep -v 'database\\|l2\\|l1\\|common\\|coordinator')"
+                        for (i in ['bridge', 'common', 'coordinator', 'database']) {
+                            sh "cd $i && go test -v -race -coverprofile=coverage.txt -covermode=atomic \$(go list ./... | grep -v 'database\\|docker\\|l2\\|l1')"
                         }
                     }
 
