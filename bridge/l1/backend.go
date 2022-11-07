@@ -5,8 +5,9 @@ import (
 
 	"github.com/scroll-tech/go-ethereum/ethclient"
 
-	"scroll-tech/bridge/config"
 	"scroll-tech/database/orm"
+
+	"scroll-tech/bridge/config"
 )
 
 // Backend manage the resources and services of L1 backend.

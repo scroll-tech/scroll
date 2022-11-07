@@ -12,8 +12,9 @@ import (
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
 
-	bridge_abi "scroll-tech/bridge/abi"
 	"scroll-tech/database/orm"
+
+	bridge_abi "scroll-tech/bridge/abi"
 )
 
 const (
