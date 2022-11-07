@@ -43,12 +43,6 @@ type Layer1Relayer struct {
 
 // NewLayer1Relayer will return a new instance of Layer1RelayerClient
 func NewLayer1Relayer(ctx context.Context, ethClient *ethclient.Client, l1ConfirmNum int64, db orm.Layer1MessageOrm, cfg *config.RelayerConfig) (*Layer1Relayer, error) {
-	l2MessengerABI, err := bridge_abi.L2MessengerMetaData.GetAbi()
-	if err != nil {
-		log.Warn("new L2MessengerABI failed", "err", err)
-		return nil, err
-	}
-
 	sender, err := sender.NewSender(ctx, cfg.SenderConfig, cfg.MessageSenderPrivateKeys)
 	if err != nil {
 		log.Error("new sender failed", "err", err)
@@ -60,7 +54,7 @@ func NewLayer1Relayer(ctx context.Context, ethClient *ethclient.Client, l1Confir
 		client:         ethClient,
 		sender:         sender,
 		db:             db,
-		l2MessengerABI: l2MessengerABI,
+		l2MessengerABI: bridge_abi.L2MessengerMetaABI,
 		cfg:            cfg,
 		stopCh:         make(chan struct{}),
 		confirmationCh: sender.ConfirmChan(),

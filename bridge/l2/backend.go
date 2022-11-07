@@ -5,12 +5,10 @@ import (
 
 	"github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/ethclient"
-	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/scroll-tech/go-ethereum/rpc"
 
 	"scroll-tech/database"
 
-	bridge_abi "scroll-tech/bridge/abi"
 	"scroll-tech/bridge/config"
 )
 
@@ -30,18 +28,12 @@ func New(ctx context.Context, cfg *config.L2Config, orm database.OrmFactory) (*B
 		return nil, err
 	}
 
-	l2MessengerABI, err := bridge_abi.L2MessengerMetaData.GetAbi()
-	if err != nil {
-		log.Warn("new L2MessengerABI failed", "err", err)
-		return nil, err
-	}
-
 	relayer, err := NewLayer2Relayer(ctx, client, cfg.ProofGenerationFreq, cfg.SkippedOpcodes, int64(cfg.Confirmations), orm, cfg.RelayerConfig)
 	if err != nil {
 		return nil, err
 	}
 
-	l2Watcher := NewL2WatcherClient(ctx, client, cfg.Confirmations, cfg.ProofGenerationFreq, cfg.SkippedOpcodes, cfg.L2MessengerAddress, l2MessengerABI, orm)
+	l2Watcher := NewL2WatcherClient(ctx, client, cfg.Confirmations, cfg.ProofGenerationFreq, cfg.SkippedOpcodes, cfg.L2MessengerAddress, orm)
 
 	return &Backend{
 		cfg:       cfg,

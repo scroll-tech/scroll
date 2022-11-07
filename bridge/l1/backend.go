@@ -4,12 +4,9 @@ import (
 	"context"
 
 	"github.com/scroll-tech/go-ethereum/ethclient"
-	"github.com/scroll-tech/go-ethereum/log"
 
-	"scroll-tech/database/orm"
-
-	bridge_abi "scroll-tech/bridge/abi"
 	"scroll-tech/bridge/config"
+	"scroll-tech/database/orm"
 )
 
 // Backend manage the resources and services of L1 backend.
@@ -28,18 +25,12 @@ func New(ctx context.Context, cfg *config.L1Config, orm orm.Layer1MessageOrm) (*
 		return nil, err
 	}
 
-	l1MessengerABI, err := bridge_abi.L1MessengerMetaData.GetAbi()
-	if err != nil {
-		log.Warn("new L1MessengerABI failed", "err", err)
-		return nil, err
-	}
-
 	relayer, err := NewLayer1Relayer(ctx, client, int64(cfg.Confirmations), orm, cfg.RelayerConfig)
 	if err != nil {
 		return nil, err
 	}
 
-	watcher := NewWatcher(ctx, client, cfg.StartHeight, cfg.Confirmations, cfg.L1MessengerAddress, l1MessengerABI, orm)
+	watcher := NewWatcher(ctx, client, cfg.StartHeight, cfg.Confirmations, cfg.L1MessengerAddress, orm)
 
 	return &Backend{
 		cfg:     cfg,

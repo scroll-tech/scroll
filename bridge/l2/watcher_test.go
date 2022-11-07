@@ -17,7 +17,6 @@ import (
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/stretchr/testify/assert"
 
-	bridge_abi "scroll-tech/bridge/abi"
 	"scroll-tech/bridge/l2"
 	"scroll-tech/bridge/mock_bridge"
 	"scroll-tech/bridge/sender"
@@ -33,11 +32,8 @@ func testCreateNewWatcherAndStop(t *testing.T) {
 	assert.NoError(t, migrate.ResetDB(l2db.GetDB().DB))
 	defer l2db.Close()
 
-	messengerABI, err := bridge_abi.L2MessengerMetaData.GetAbi()
-	assert.NoError(t, err)
-
 	l2cfg := cfg.L2Config
-	rc := l2.NewL2WatcherClient(context.Background(), l2Cli, l2cfg.Confirmations, l2cfg.ProofGenerationFreq, l2cfg.SkippedOpcodes, cfg.L2Config.L2MessengerAddress, messengerABI, l2db)
+	rc := l2.NewL2WatcherClient(context.Background(), l2Cli, l2cfg.Confirmations, l2cfg.ProofGenerationFreq, l2cfg.SkippedOpcodes, cfg.L2Config.L2MessengerAddress, l2db)
 	rc.Start()
 	defer rc.Stop()
 
@@ -208,8 +204,7 @@ func testTraceHasUnsupportedOpcodes(t *testing.T) {
 }
 
 func prepareRelayerClient(l2Cli *ethclient.Client, db database.OrmFactory, contractAddr common.Address) *l2.WatcherClient {
-	messengerABI, _ := bridge_abi.L1MessengerMetaData.GetAbi()
-	return l2.NewL2WatcherClient(context.Background(), l2Cli, 0, 1, map[string]struct{}{}, contractAddr, messengerABI, db)
+	return l2.NewL2WatcherClient(context.Background(), l2Cli, 0, 1, map[string]struct{}{}, contractAddr, db)
 }
 
 func prepareAuth(t *testing.T, l2Cli *ethclient.Client, privateKey *ecdsa.PrivateKey) *bind.TransactOpts {
