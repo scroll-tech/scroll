@@ -5,10 +5,12 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"math/big"
 	"strings"
 	"time"
 
 	"github.com/jmoiron/sqlx"
+	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/log"
 
 	"scroll-tech/common/utils"
@@ -188,13 +190,14 @@ func (o *blockBatchOrm) UpdateProvingStatus(id string, status ProvingStatus) err
 func (o *blockBatchOrm) NewBatchInDBTx(dbTx *sqlx.Tx, startBlock *BlockInfo, endBlock *BlockInfo, parentHash string, totalTxNum uint64, totalL2Gas uint64) (string, error) {
 	row := dbTx.QueryRow("SELECT MAX(index) FROM block_batch;")
 
+	// TODO: use big.Int for this
 	var index int64 // 0 by default for sql.ErrNoRows
 	if err := row.Scan(&index); err != nil && err != sql.ErrNoRows {
 		return "", err
 	}
 
 	index++
-	id := utils.ComputeBatchID(endBlock.Hash, parentHash, index)
+	id := utils.ComputeBatchID(common.HexToHash(endBlock.Hash), common.HexToHash(parentHash), big.NewInt(index))
 	if _, err := dbTx.NamedExec(`INSERT INTO public.block_batch (id, index, parent_hash, start_block_number, start_block_hash, end_block_number, end_block_hash, total_tx_num, total_l2_gas) VALUES (:id, :index, :parent_hash, :start_block_number, :start_block_hash, :end_block_number, :end_block_hash, :total_tx_num, :total_l2_gas)`,
 		map[string]interface{}{
 			"id":                 id,
