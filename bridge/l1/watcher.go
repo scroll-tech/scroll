@@ -95,6 +95,8 @@ func (r *Watcher) Stop() {
 	r.stop <- true
 }
 
+const contractEventsBlocksFetchLimit = int64(10)
+
 // FetchContractEvent pull latest event logs from given contract address and save in DB
 func (r *Watcher) fetchContractEvent(blockHeight uint64) error {
 	fromBlock := int64(r.processedMsgHeight) + 1
@@ -102,6 +104,10 @@ func (r *Watcher) fetchContractEvent(blockHeight uint64) error {
 
 	if toBlock < fromBlock {
 		return nil
+	}
+
+	if toBlock > fromBlock+contractEventsBlocksFetchLimit {
+		toBlock = fromBlock + contractEventsBlocksFetchLimit - 1
 	}
 
 	// warning: uint int conversion...
