@@ -49,8 +49,8 @@ func applyConfig(ctx *cli.Context, cfg *config.Config) {
 	if ctx.IsSet(wsPortFlag.Name) {
 		cfg.RollerManagerConfig.Endpoint = fmt.Sprintf(":%d", ctx.Int(wsPortFlag.Name))
 	}
-	if ctx.IsSet(verifierFlag.Name) {
-		cfg.RollerManagerConfig.VerifierEndpoint = ctx.String(verifierFlag.Name)
+	if ctx.IsSet(verifierMockFlag.Name) {
+		cfg.RollerManagerConfig.Verifier = &config.VerifierConfig{MockMode: ctx.Bool(verifierMockFlag.Name)}
 	}
 }
 

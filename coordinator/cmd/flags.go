@@ -9,7 +9,7 @@ var (
 		&logFileFlag,
 		&logJSONFormat,
 		&logDebugFlag,
-		&verifierFlag,
+		&verifierMockFlag,
 	}
 	// configFileFlag load json type config file.
 	configFileFlag = cli.StringFlag{
@@ -38,10 +38,10 @@ var (
 		Name:  "log.debug",
 		Usage: "Prepends log messages with call-site location (file and line number)",
 	}
-	verifierFlag = cli.StringFlag{
-		Name:  "verifier-socket-file",
-		Usage: "The path of ipc-verifier socket file",
-		Value: "/tmp/verifier.sock",
+	verifierMockFlag = cli.BoolFlag{
+		Name:  "verifier mock mode",
+		Usage: "Mock the verifier",
+		Value: false,
 	}
 	apiFlags = []cli.Flag{
 		&wsPortFlag,
