@@ -3,7 +3,7 @@ FROM scrolltech/go-builder:1.18 as builder
 
 COPY ./ /
 
-RUN cd /coordinator/cmd && go build -v -p 4 -o coordinator
+RUN cd /coordinator && make coordinator
 
 # Pull scroll into a second stage deploy alpine container
 FROM alpine:latest
