@@ -1,3 +1,3 @@
 /build/bin
 .idea
-verifier/lib
+verifier/lib/libzkp.a

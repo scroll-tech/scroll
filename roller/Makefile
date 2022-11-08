@@ -5,15 +5,18 @@ IMAGE_VERSION=latest
 
 ZK_VERSION=$(shell grep -m 1 "common-rs" core/prover/rust/Cargo.lock | cut -d "\#" -f2 | cut -c-7)
 
-libprover:
-	cd core/prover/rust && cargo build --release && cp target/release/libprover.a ../lib/
+libzkp:
+	cd ../common/zkp/rust && cargo build --release && cp ./target/release/libzkp.a ../lib/
+	cp -r ../common/zkp/lib ./core/prover/
 
 roller: ## Build the Roller instance.
-	cd core/prover/rust && cargo build --release && cp target/release/libprover.a ../lib/
+	cd ../common/zkp/rust && cargo build --release && cp ./target/release/libzkp.a ../lib/
+	cp -r ../common/zkp/lib ./core/prover/
 	GOBIN=$(PWD)/build/bin go build -ldflags "-X core.ZK_VERSION=${ZK_VERSION}" -o $(PWD)/build/bin/roller ./cmd
 
 gpu-roller: ## Build the GPU Roller instance.
-	cd core/prover/rust && cargo build --release && cp target/release/libprover.a ../lib/
+	cd ../common/zkp/rust && cargo build --release && cp ./target/release/libzkp.a ../lib/
+	cp -r ../common/zkp/lib ./core/prover/
 	GOBIN=$(PWD)/build/bin go build -ldflags "-X core.ZK_VERSION=${ZK_VERSION}" -tags gpu -o $(PWD)/build/bin/roller ./cmd
 
 test-prover:

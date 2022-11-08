@@ -7,7 +7,7 @@ build/bin/
 bbolt_db
 
 # ignore cgo in macOS
-core/prover/lib/libprover.a
+core/prover/lib/libzkp.a
 core/prover/rust/target
 
 params/
