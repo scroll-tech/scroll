@@ -2,6 +2,7 @@ package orm
 
 import (
 	"context"
+	"database/sql"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/scroll-tech/go-ethereum/common"
@@ -57,12 +58,12 @@ type Layer2Message struct {
 
 // BlockInfo is structure of stored `block_result` without `content`
 type BlockInfo struct {
-	Number         uint64 `json:"number" db:"number"`
-	Hash           string `json:"hash" db:"hash"`
-	BatchID        uint64 `json:"batch_id" db:"batch_id"`
-	TxNum          uint64 `json:"tx_num" db:"tx_num"`
-	GasUsed        uint64 `json:"gas_used" db:"gas_used"`
-	BlockTimestamp uint64 `json:"block_timestamp" db:"block_timestamp"`
+	Number         uint64         `json:"number" db:"number"`
+	Hash           string         `json:"hash" db:"hash"`
+	BatchID        sql.NullString `json:"batch_id" db:"batch_id"`
+	TxNum          uint64         `json:"tx_num" db:"tx_num"`
+	GasUsed        uint64         `json:"gas_used" db:"gas_used"`
+	BlockTimestamp uint64         `json:"block_timestamp" db:"block_timestamp"`
 }
 
 // BlockResultOrm blockResult operation interface
@@ -90,7 +91,7 @@ type BlockBatchOrm interface {
 	GetPendingBatches() ([]string, error)
 	GetCommittedBatches() ([]string, error)
 	GetRollupStatus(id string) (RollupStatus, error)
-	GetLatestFinalizedBatch() (string, error)
+	GetLatestFinalizedBatch() (*BlockBatch, error)
 	UpdateRollupStatus(ctx context.Context, id string, status RollupStatus) error
 	UpdateCommitTxHashAndRollupStatus(ctx context.Context, id string, commit_tx_hash string, status RollupStatus) error
 	UpdateFinalizeTxHashAndRollupStatus(ctx context.Context, id string, finalize_tx_hash string, status RollupStatus) error

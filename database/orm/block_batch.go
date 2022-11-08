@@ -77,27 +77,27 @@ const (
 
 // BlockBatch is structure of stored block_batch
 type BlockBatch struct {
-	ID                  string        `json:"id" db:"id"`
-	Index               uint64        `json:"index" db:"index"`
-	ParentHash          string        `json:"parent_hash" db:"parent_hash"`
-	StartBlockNumber    uint64        `json:"start_block_number" db:"start_block_number"`
-	StartBlockHash      string        `json:"start_block_hash" db:"start_block_hash"`
-	EndBlockNumber      uint64        `json:"end_block_number" db:"end_block_number"`
-	EndBlockHash        string        `json:"end_block_hash" db:"end_block_hash"`
-	TotalTxNum          uint64        `json:"total_tx_num" db:"total_tx_num"`
-	TotalL2Gas          uint64        `json:"total_l2_gas" db:"total_l2_gas"`
-	ProvingStatus       ProvingStatus `json:"proving_status" db:"proving_status"`
-	Proof               []byte        `json:"proof" db:"proof"`
-	InstanceCommitments []byte        `json:"instance_commitments" db:"instance_commitments"`
-	ProofTimeSec        uint64        `json:"proof_time_sec" db:"proof_time_sec"`
-	RollupStatus        RollupStatus  `json:"rollup_status" db:"rollup_status"`
-	CommitTxHash        string        `json:"commit_tx_hash" db:"commit_tx_hash"`
-	FinalizeTxHash      string        `json:"finalize_tx_hash" db:"finalize_tx_hash"`
-	CreatedAt           time.Time     `json:"created_at" db:"created_at"`
-	ProverAssignedAt    time.Time     `json:"prover_assigned_at" db:"prover_assigned_at"`
-	ProvedAt            time.Time     `json:"proved_at" db:"proved_at"`
-	CommittedAt         time.Time     `json:"committed_at" db:"committed_at"`
-	FinalizedAt         time.Time     `json:"finalized_at" db:"finalized_at"`
+	ID                  string         `json:"id" db:"id"`
+	Index               uint64         `json:"index" db:"index"`
+	ParentHash          string         `json:"parent_hash" db:"parent_hash"`
+	StartBlockNumber    uint64         `json:"start_block_number" db:"start_block_number"`
+	StartBlockHash      string         `json:"start_block_hash" db:"start_block_hash"`
+	EndBlockNumber      uint64         `json:"end_block_number" db:"end_block_number"`
+	EndBlockHash        string         `json:"end_block_hash" db:"end_block_hash"`
+	TotalTxNum          uint64         `json:"total_tx_num" db:"total_tx_num"`
+	TotalL2Gas          uint64         `json:"total_l2_gas" db:"total_l2_gas"`
+	ProvingStatus       ProvingStatus  `json:"proving_status" db:"proving_status"`
+	Proof               []byte         `json:"proof" db:"proof"`
+	InstanceCommitments []byte         `json:"instance_commitments" db:"instance_commitments"`
+	ProofTimeSec        uint64         `json:"proof_time_sec" db:"proof_time_sec"`
+	RollupStatus        RollupStatus   `json:"rollup_status" db:"rollup_status"`
+	CommitTxHash        sql.NullString `json:"commit_tx_hash" db:"commit_tx_hash"`
+	FinalizeTxHash      sql.NullString `json:"finalize_tx_hash" db:"finalize_tx_hash"`
+	CreatedAt           *time.Time     `json:"created_at" db:"created_at"`
+	ProverAssignedAt    *time.Time     `json:"prover_assigned_at" db:"prover_assigned_at"`
+	ProvedAt            *time.Time     `json:"proved_at" db:"proved_at"`
+	CommittedAt         *time.Time     `json:"committed_at" db:"committed_at"`
+	FinalizedAt         *time.Time     `json:"finalized_at" db:"finalized_at"`
 }
 
 type blockBatchOrm struct {
@@ -188,10 +188,10 @@ func (o *blockBatchOrm) UpdateProvingStatus(id string, status ProvingStatus) err
 }
 
 func (o *blockBatchOrm) NewBatchInDBTx(dbTx *sqlx.Tx, startBlock *BlockInfo, endBlock *BlockInfo, parentHash string, totalTxNum uint64, totalL2Gas uint64) (string, error) {
-	row := dbTx.QueryRow("SELECT MAX(index) FROM block_batch;")
+	row := dbTx.QueryRow("SELECT COALESCE(MAX(index), 0) FROM block_batch;")
 
-	// TODO: use big.Int for this
-	var index int64 // 0 by default for sql.ErrNoRows
+	// TODO: use *big.Int for this
+	var index int64
 	if err := row.Scan(&index); err != nil && err != sql.ErrNoRows {
 		return "", err
 	}
@@ -210,6 +210,8 @@ func (o *blockBatchOrm) NewBatchInDBTx(dbTx *sqlx.Tx, startBlock *BlockInfo, end
 			"total_tx_num":       totalTxNum,
 			"total_l2_gas":       totalL2Gas,
 			"created_at":         time.Now(),
+			// "proving_status":     ProvingTaskUnassigned, // actually no need, because we have default value in DB schema
+			// "rollup_status":      RollupPending,         // actually no need, because we have default value in DB schema
 		}); err != nil {
 		return "", err
 	}
@@ -223,7 +225,7 @@ func (o *blockBatchOrm) BatchRecordExist(id string) (bool, error) {
 }
 
 func (o *blockBatchOrm) GetPendingBatches() ([]string, error) {
-	rows, err := o.db.Queryx(`SELECT id FROM block_batch WHERE status = $1 ORDER BY index ASC`, RollupPending)
+	rows, err := o.db.Queryx(`SELECT id FROM block_batch WHERE rollup_status = $1 ORDER BY index ASC`, RollupPending)
 	if err != nil {
 		return nil, err
 	}
@@ -245,13 +247,13 @@ func (o *blockBatchOrm) GetPendingBatches() ([]string, error) {
 	return ids, rows.Close()
 }
 
-func (o *blockBatchOrm) GetLatestFinalizedBatch() (string, error) {
-	row := o.db.QueryRow(`SELECT MAX(index) FROM block_batch WHERE status = $1;`, RollupFinalized)
-	var id string
-	if err := row.Scan(&id); err != nil {
-		return "", err
+func (o *blockBatchOrm) GetLatestFinalizedBatch() (*BlockBatch, error) {
+	row := o.db.QueryRowx(`SELECT * FROM block_batch WHERE rollup_status = $1 ORDER BY index DESC;`, RollupFinalized)
+	batch := &BlockBatch{}
+	if err := row.StructScan(batch); err != nil {
+		return nil, err
 	}
-	return id, nil
+	return batch, nil
 }
 
 func (o *blockBatchOrm) GetCommittedBatches() ([]string, error) {

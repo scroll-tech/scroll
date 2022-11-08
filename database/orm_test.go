@@ -2,6 +2,7 @@ package database_test
 
 import (
 	"context"
+	// "database/sql"
 	"encoding/json"
 	"os"
 	"testing"
@@ -20,20 +21,6 @@ import (
 )
 
 var (
-	templateRollup = []*orm.BlockBatch{
-		{
-			ID:             "1",
-			RollupStatus:   orm.RollupPending,
-			CommitTxHash:   "Rollup Test Hash",
-			FinalizeTxHash: "",
-		},
-		{
-			ID:             "2",
-			RollupStatus:   orm.RollupFinalized,
-			CommitTxHash:   "Rollup Test Hash",
-			FinalizeTxHash: "",
-		},
-	}
 	templateLayer1Message = []*orm.Layer1Message{
 		{
 			Nonce:      1,
@@ -134,13 +121,13 @@ func TestOrmFactory(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	t.Run("testOrm_BlockResults", testOrmBlockResults)
+	t.Run("testOrmBlockResults", testOrmBlockResults)
 
 	t.Run("testOrmLayer1Message", testOrmLayer1Message)
 
 	t.Run("testOrmLayer2Message", testOrmLayer2Message)
 
-	t.Run("testOrmRollupResult", testOrmRollupResult)
+	t.Run("testOrmBlockbatch", testOrmBlockbatch)
 }
 
 func testOrmBlockResults(t *testing.T) {
@@ -174,19 +161,6 @@ func testOrmBlockResults(t *testing.T) {
 	assert.NoError(t, err)
 	// check content
 	assert.Equal(t, true, string(data1) == string(data2))
-
-	// Update proof by hash
-	// TODO: fix this
-	assert.NoError(t, ormBlock.UpdateProofByID(context.Background(), blockResult.BlockTrace.Number.ToInt().Uint64(), []byte{1}, []byte{2}, 1200))
-
-	// Update trace and check result.
-	err = ormBlock.UpdateBlockStatus(blockResult.BlockTrace.Number.ToInt().Uint64(), orm.BlockVerified)
-	assert.NoError(t, err)
-	res, err = ormBlock.GetBlockResults(map[string]interface{}{
-		"status": orm.BlockVerified,
-	})
-	assert.NoError(t, err)
-	assert.Equal(t, true, len(res) == 1 && res[0].BlockTrace.Hash.String() == blockResult.BlockTrace.Hash.String())
 }
 
 func testOrmLayer1Message(t *testing.T) {
@@ -257,32 +231,74 @@ func testOrmLayer2Message(t *testing.T) {
 	assert.Equal(t, orm.MsgSubmitted, msg.Status)
 }
 
-// testOrmRollupResult test rollup result table functions
-func testOrmRollupResult(t *testing.T) {
+// testOrmBlockbatch test rollup result table functions
+func testOrmBlockbatch(t *testing.T) {
 	// Create db handler and reset db.
 	factory, err := database.NewOrmFactory(dbConfig)
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(factory.GetDB().DB))
 
-	blocks := []uint64{uint64(templateRollup[0].Number), uint64(templateRollup[1].Number)}
-	err = ormBatch.InsertPendingBatches(context.Background(), blocks)
+	dbTx, err := factory.Beginx()
+	assert.NoError(t, err)
+	batchID1, err := ormBatch.NewBatchInDBTx(dbTx,
+		&orm.BlockInfo{Number: blockResult.BlockTrace.Number.ToInt().Uint64()},
+		&orm.BlockInfo{Number: blockResult.BlockTrace.Number.ToInt().Uint64() + 1},
+		"ff", 1, 194676) // parentHash & totalTxNum & totalL2Gas don't really matter here
+	assert.NoError(t, err)
+	err = ormBlock.SetBatchIDForBlocksInDBTx(dbTx, []uint64{
+		blockResult.BlockTrace.Number.ToInt().Uint64(),
+		blockResult.BlockTrace.Number.ToInt().Uint64() + 1}, batchID1)
+	assert.NoError(t, err)
+	batchID2, err := ormBatch.NewBatchInDBTx(dbTx,
+		&orm.BlockInfo{Number: blockResult.BlockTrace.Number.ToInt().Uint64() + 2},
+		&orm.BlockInfo{Number: blockResult.BlockTrace.Number.ToInt().Uint64() + 3},
+		"ff", 1, 194676) // parentHash & totalTxNum & totalL2Gas don't really matter here
+	assert.NoError(t, err)
+	err = ormBlock.SetBatchIDForBlocksInDBTx(dbTx, []uint64{
+		blockResult.BlockTrace.Number.ToInt().Uint64() + 2,
+		blockResult.BlockTrace.Number.ToInt().Uint64() + 3}, batchID2)
+	assert.NoError(t, err)
+	err = dbTx.Commit()
 	assert.NoError(t, err)
 
-	err = ormBatch.UpdateFinalizeTxHash(context.Background(), uint64(templateRollup[0].Number), templateRollup[0].FinalizeTxHash)
+	batches, err := ormBatch.GetBlockBatches(map[string]interface{}{})
+	assert.NoError(t, err)
+	assert.Equal(t, int(2), len(batches))
+
+	batcheIDs, err := ormBatch.GetPendingBatches()
+	assert.NoError(t, err)
+	assert.Equal(t, int(2), len(batcheIDs))
+	assert.Equal(t, batchID1, batcheIDs[0])
+	assert.Equal(t, batchID2, batcheIDs[1])
+
+	err = ormBatch.UpdateCommitTxHashAndRollupStatus(context.Background(), batchID1, "commit_tx_1", orm.RollupCommitted)
 	assert.NoError(t, err)
 
-	err = ormBatch.UpdateRollupStatus(context.Background(), uint64(templateRollup[0].Number), orm.RollupPending)
+	batcheIDs, err = ormBatch.GetPendingBatches()
 	assert.NoError(t, err)
+	assert.Equal(t, int(1), len(batcheIDs))
+	assert.Equal(t, batchID2, batcheIDs[0])
 
-	err = ormBatch.UpdateFinalizeTxHashAndRollupStatus(context.Background(), uint64(templateRollup[1].Number), templateRollup[1].FinalizeTxHash, templateRollup[1].Status)
+	proving_status, err := ormBatch.GetProvingStatusByID(batchID1)
 	assert.NoError(t, err)
-
-	results, err := ormBatch.GetPendingBatches()
+	assert.Equal(t, orm.ProvingTaskUnassigned, proving_status)
+	err = ormBatch.UpdateProofByID(context.Background(), batchID1, []byte{1}, []byte{2}, 1200)
 	assert.NoError(t, err)
-	assert.Equal(t, len(results), 1)
+	err = ormBatch.UpdateProvingStatus(batchID1, orm.ProvingTaskVerified)
+	assert.NoError(t, err)
+	proving_status, err = ormBatch.GetProvingStatusByID(batchID1)
+	assert.NoError(t, err)
+	assert.Equal(t, orm.ProvingTaskVerified, proving_status)
 
-	// TODO: fix this
+	rollup_status, err := ormBatch.GetRollupStatus(batchID1)
+	assert.NoError(t, err)
+	assert.Equal(t, orm.RollupCommitted, rollup_status)
+	err = ormBatch.UpdateFinalizeTxHashAndRollupStatus(context.Background(), batchID1, "finalize_tx_1", orm.RollupFinalized)
+	assert.NoError(t, err)
+	rollup_status, err = ormBatch.GetRollupStatus(batchID1)
+	assert.NoError(t, err)
+	assert.Equal(t, orm.RollupFinalized, rollup_status)
 	result, err := ormBatch.GetLatestFinalizedBatch()
 	assert.NoError(t, err)
-	assert.Equal(t, templateRollup[1].Number, int(result))
+	assert.Equal(t, batchID1, result.ID)
 }

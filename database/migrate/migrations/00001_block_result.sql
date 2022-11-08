@@ -1,15 +1,17 @@
 -- +goose Up
 -- +goose StatementBegin
 
+-- TODO: use foreign key for batch_id?
+-- TODO: why tx_num is bigint?
 create table block_result
 (
     number                  BIGINT          not null,
-    hash                    varchar         not null,
+    hash                    VARCHAR         not null,
     content                 json            not null,
-    batch_id                integer         default null, -- TODO: foreign key?
-    tx_num                  integer         NOT NULL DEFAULT 0, -- FIXME: why tx_num is bigint?
+    batch_id                VARCHAR         default null,
+    tx_num                  INTEGER         NOT NULL DEFAULT 0,
     gas_used                BIGINT          NOT NULL DEFAULT 0,
-    block_timestamp         NUMERIC         NOT NULL DEFAULT 0,
+    block_timestamp         NUMERIC         NOT NULL DEFAULT 0
 );
 
 create unique index block_result_hash_uindex
@@ -22,5 +24,5 @@ create unique index block_result_number_uindex
 
 -- +goose Down
 -- +goose StatementBegin
-drop table if exists  block_result;
+drop table if exists block_result;
 -- +goose StatementEnd
