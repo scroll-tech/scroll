@@ -16,6 +16,8 @@ type Cmd struct {
 
 	checkFuncs sync.Map //map[string]checkFunc
 
+	openLog bool
+
 	//stdout bytes.Buffer
 	errMsg chan error
 }
@@ -29,11 +31,18 @@ func NewCmd(t *testing.T) *Cmd {
 	}
 	cmd.RegistFunc("panic", func(buf string) {
 		if strings.Contains(buf, "panic") {
-			cmd.errMsg <- errors.New(buf)
+			select {
+			case cmd.errMsg <- errors.New(buf):
+			default:
+			}
 		}
 	})
 
 	return cmd
+}
+
+func (t *Cmd) OpenLog(open bool) {
+	t.openLog = open
 }
 
 // RegistFunc register check func
@@ -65,7 +74,9 @@ func (t *Cmd) ErrMsg() <-chan error {
 
 func (t *Cmd) Write(data []byte) (int, error) {
 	out := string(data)
-	t.Logf(out)
+	if t.openLog {
+		t.Logf(out)
+	}
 	go func(content string) {
 		t.checkFuncs.Range(func(key, value interface{}) bool {
 			check := value.(checkFunc)

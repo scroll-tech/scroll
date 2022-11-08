@@ -47,6 +47,10 @@ func setupEnv(t *testing.T) (err error) {
 	l2Cli, err = ethclient.Dial(cfg.L2Config.Endpoint)
 	assert.NoError(t, err)
 
+	l1gethImg.OpenLog(true)
+	l2gethImg.OpenLog(true)
+	dbImg.OpenLog(true)
+
 	return err
 }
 
