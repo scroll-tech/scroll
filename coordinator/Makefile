@@ -8,7 +8,14 @@ test:
 	go test -v -race -coverprofile=coverage.txt -covermode=atomic -p 1 $(PWD)/...
 
 coordinator: ## Builds the Coordinator instance.
+	cd ../common/zkp/rust && cargo build --release
+	mv ../common/zkp/lib ./verifier/
 	go build -o $(PWD)/build/bin/coordinator ./cmd
+
+gpu-coordinator:
+	cd ../common/zkp/rust && cargo build --release
+	mv ../common/zkp/lib ./verifier/
+    go build -tags gpu -o $(PWD)/build/bin/coordinator ./cmd
 
 lint: ## Lint the files - used for CI
 	GOBIN=$(PWD)/build/bin go run ../build/lint.go

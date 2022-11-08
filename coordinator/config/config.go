@@ -32,6 +32,7 @@ type Config struct {
 	DBConfig            *db_config.DBConfig  `json:"db_config"`
 }
 
+// VerifierConfig load zk verifier config.
 type VerifierConfig struct {
 	MockMode   bool   `toml:"mock_mode"`
 	ParamsPath string `toml:"params_path"`

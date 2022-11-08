@@ -1,10 +1,9 @@
 package config
 
 import (
-	"path/filepath"
-
 	"github.com/BurntSushi/toml"
 	"github.com/scroll-tech/go-ethereum/log"
+	"path/filepath"
 )
 
 // Config loads roller configuration items.
@@ -17,7 +16,7 @@ type Config struct {
 	DBPath           string        `toml:"db_path"`
 }
 
-// ProverConfig loads zk roller configuration items.
+// ProverConfig load zk prover config.
 type ProverConfig struct {
 	MockMode   bool   `toml:"mock_mode"`
 	ParamsPath string `toml:"params_path"`
