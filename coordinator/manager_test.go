@@ -5,14 +5,9 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
-	"encoding/binary"
 	"encoding/json"
-	"io"
-	mathrand "math/rand"
-	"net"
 	"net/url"
 	"os"
-	"strconv"
 	"testing"
 	"time"
 
@@ -57,9 +52,8 @@ func TestFunction(t *testing.T) {
 	setupEnv(t)
 
 	t.Run("TestHandshake", func(t *testing.T) {
-		verifierEndpoint := setupMockVerifier(t)
 
-		rollerManager := setupRollerManager(t, verifierEndpoint, nil)
+		rollerManager := setupRollerManager(t, nil)
 		defer rollerManager.Stop()
 
 		// Set up client
@@ -80,9 +74,7 @@ func TestFunction(t *testing.T) {
 	})
 
 	t.Run("TestHandshakeTimeout", func(t *testing.T) {
-		verifierEndpoint := setupMockVerifier(t)
-
-		rollerManager := setupRollerManager(t, verifierEndpoint, nil)
+		rollerManager := setupRollerManager(t, nil)
 		defer rollerManager.Stop()
 
 		// Set up client
@@ -107,8 +99,7 @@ func TestFunction(t *testing.T) {
 	})
 
 	t.Run("TestTwoConnections", func(t *testing.T) {
-		verifierEndpoint := setupMockVerifier(t)
-		rollerManager := setupRollerManager(t, verifierEndpoint, nil)
+		rollerManager := setupRollerManager(t, nil)
 		defer rollerManager.Stop()
 
 		// Set up and register 2 clients
@@ -140,8 +131,7 @@ func TestFunction(t *testing.T) {
 		// Test with two clients to make sure traces messages aren't duplicated
 		// to rollers.
 		numClients := uint8(2)
-		verifierEndpoint := setupMockVerifier(t)
-		rollerManager := setupRollerManager(t, verifierEndpoint, db)
+		rollerManager := setupRollerManager(t, db)
 		defer rollerManager.Stop()
 
 		// Set up and register `numClients` clients
@@ -207,10 +197,8 @@ func TestFunction(t *testing.T) {
 		// Test with two clients to make sure traces messages aren't duplicated
 		// to rollers.
 		numClients := uint8(2)
-		verifierEndpoint := setupMockVerifier(t)
-
 		// Ensure only one roller is picked per session.
-		rollerManager := setupRollerManager(t, verifierEndpoint, db)
+		rollerManager := setupRollerManager(t, db)
 		defer rollerManager.Stop()
 
 		// Set up and register `numClients` clients
@@ -274,11 +262,11 @@ func TestFunction(t *testing.T) {
 	})
 }
 
-func setupRollerManager(t *testing.T, verifierEndpoint string, orm orm.BlockResultOrm) *coordinator.Manager {
+func setupRollerManager(t *testing.T, orm orm.BlockResultOrm) *coordinator.Manager {
 	rollerManager, err := coordinator.New(context.Background(), &config.RollerManagerConfig{
 		Endpoint:          managerPort,
 		RollersPerSession: 1,
-		VerifierEndpoint:  verifierEndpoint,
+		Verifier:          &config.VerifierConfig{MockMode: true},
 		CollectionTime:    1,
 	}, orm)
 	assert.NoError(t, err)
@@ -334,43 +322,4 @@ func generateKeyPair() (pubkey, privkey []byte) {
 	copy(privkey[32-len(blob):], blob)
 
 	return pubkey, privkey
-}
-
-// setupMockVerifier sets up a mocked verifier for a test case.
-func setupMockVerifier(t *testing.T) string {
-	id := strconv.Itoa(mathrand.Int())
-	verifierEndpoint := "/tmp/" + id + ".sock"
-	err := os.RemoveAll(verifierEndpoint)
-	assert.NoError(t, err)
-
-	err = os.RemoveAll(verifierEndpoint)
-	assert.NoError(t, err)
-
-	l, err := net.Listen("unix", verifierEndpoint)
-	assert.NoError(t, err)
-
-	go func() {
-		conn, err := l.Accept()
-		assert.NoError(t, err)
-
-		// Simply read all incoming messages and send a true boolean straight back.
-		for {
-			// Read length
-			buf := make([]byte, 4)
-			_, err = io.ReadFull(conn, buf)
-			assert.NoError(t, err)
-
-			// Read message
-			msgLength := binary.LittleEndian.Uint64(buf)
-			buf = make([]byte, msgLength)
-			_, err = io.ReadFull(conn, buf)
-			assert.NoError(t, err)
-
-			// Return boolean
-			buf = []byte{1}
-			_, err = conn.Write(buf)
-			assert.NoError(t, err)
-		}
-	}()
-	return verifierEndpoint
 }
