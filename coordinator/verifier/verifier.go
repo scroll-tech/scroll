@@ -9,9 +9,11 @@ package verifier
 import "C" //nolint:typecheck
 
 import (
-	"github.com/scroll-tech/go-ethereum/log"
-	"scroll-tech/coordinator/config"
 	"unsafe"
+
+	"github.com/scroll-tech/go-ethereum/log"
+
+	"scroll-tech/coordinator/config"
 
 	"scroll-tech/common/message"
 )

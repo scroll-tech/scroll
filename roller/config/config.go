@@ -1,9 +1,10 @@
 package config
 
 import (
+	"path/filepath"
+
 	"github.com/BurntSushi/toml"
 	"github.com/scroll-tech/go-ethereum/log"
-	"path/filepath"
 )
 
 // Config loads roller configuration items.
