@@ -2,12 +2,18 @@ package coordinator_test
 
 import (
 	"context"
+	"math/big"
 	"net/http"
+	"scroll-tech/bridge/l2"
+	"scroll-tech/bridge/sender"
+	"scroll-tech/database/orm"
 	"strconv"
 	"testing"
 	"time"
 
+	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/crypto"
+	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/sync/errgroup"
 
@@ -65,8 +71,7 @@ func TestApis(t *testing.T) {
 
 	t.Run("TestHandshake", testHandshake)
 	t.Run("TestSeveralConnections", testSeveralConnections)
-	// TODO: temporary disable this test case.
-	//t.Run("TestIdleRollerSelection", testIdleRollerSelection)
+	t.Run("TestIdleRollerSelection", testIdleRollerSelection)
 
 	t.Cleanup(func() {
 		handle.Shutdown(context.Background())
@@ -135,7 +140,7 @@ func testSeveralConnections(t *testing.T) {
 	}
 }
 
-/*func testIdleRollerSelection(t *testing.T) {
+func testIdleRollerSelection(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -144,14 +149,16 @@ func testSeveralConnections(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(l2db.GetDB().DB))
 	defer l2db.Close()
-	// Transfer to trace interface.
-	traceDB := orm.BlockResultOrm(l2db)
 
-	// Start l2 backend.
-	var l2Backend *l2.Backend
-	l2Backend, err = l2.New(context.Background(), cfg.L2Config, l2db)
+	var (
+		l2cfg = cfg.L2Config
+		l2Cli *ethclient.Client
+	)
+	l2Cli, err = ethclient.Dial(l2cfg.Endpoint)
 	assert.NoError(t, err)
-	defer l2Backend.Stop()
+	rc := l2.NewL2WatcherClient(context.Background(), l2Cli, l2cfg.Confirmations, l2cfg.ProofGenerationFreq, l2cfg.SkippedOpcodes, l2cfg.L2MessengerAddress, l2db)
+	rc.Start()
+	defer rc.Stop()
 
 	// create ws connections.
 	batch := 20
@@ -161,10 +168,10 @@ func testSeveralConnections(t *testing.T) {
 	}
 	assert.Equal(t, batch, rollerManager.GetNumberOfIdleRollers())
 
-	l1Cfg := cfg.L1Config
-	l1Cfg.RelayerConfig.SenderConfig.Confirmations = 0
+	relayCfg := cfg.L1Config.RelayerConfig
+	relayCfg.SenderConfig.Confirmations = 0
 	to := common.HexToAddress("0x4592d8f8d7b001e72cb26a73e4fa1806a51ac79d")
-	newSender, err := sender.NewSender(ctx, l1Cfg.RelayerConfig.SenderConfig, l1Cfg.RelayerConfig.MessageSenderPrivateKeys)
+	newSender, err := sender.NewSender(ctx, relayCfg.SenderConfig, relayCfg.MessageSenderPrivateKeys)
 	assert.True(t, assert.NoError(t, err), "unable to create a sender instance.")
 	for i := 0; i < 2; i++ {
 		_, err = newSender.SendTransaction(strconv.Itoa(1000+i), &to, big.NewInt(1000000000), nil)
@@ -183,14 +190,14 @@ func testSeveralConnections(t *testing.T) {
 		select {
 		case <-tick:
 			// get the latest number
-			if latest, err = traceDB.GetBlockResultsLatestHeight(); err != nil || latest <= 0 {
+			if latest, err = l2db.GetBlockResultsLatestHeight(); err != nil || latest <= 0 {
 				continue
 			}
 			if number > latest {
 				close(stopCh)
 				return
 			}
-			status, err := traceDB.GetBlockStatusByNumber(uint64(number))
+			status, err := l2db.GetBlockStatusByNumber(uint64(number))
 			if err == nil && (status == orm.BlockVerified || status == orm.BlockSkipped) {
 				number++
 			}
@@ -200,7 +207,7 @@ func testSeveralConnections(t *testing.T) {
 			return
 		}
 	}
-}*/
+}
 
 func setupRollerManager(t *testing.T, verifierEndpoint string, dbCfg *database.DBConfig) *coordinator.Manager {
 	// Get db handler.
