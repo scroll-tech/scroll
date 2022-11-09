@@ -12,11 +12,6 @@ coordinator: ## Builds the Coordinator instance.
 	cp -r ../common/zkp/lib ./verifier/
 	go build -o $(PWD)/build/bin/coordinator ./cmd
 
-gpu-coordinator:
-	cd ../common/zkp/rust && cargo build --release && cp ./target/release/libzkp.a ../lib/
-	cp -r ../common/zkp/lib ./verifier/
-	go build -tags gpu -o $(PWD)/build/bin/coordinator ./cmd
-
 lint: ## Lint the files - used for CI
 	GOBIN=$(PWD)/build/bin go run ../build/lint.go
 
