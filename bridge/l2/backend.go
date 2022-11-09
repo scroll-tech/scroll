@@ -5,7 +5,6 @@ import (
 
 	"github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/ethclient"
-	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/scroll-tech/go-ethereum/rpc"
 
 	"scroll-tech/database"
@@ -29,23 +28,12 @@ func New(ctx context.Context, cfg *config.L2Config, orm database.OrmFactory) (*B
 		return nil, err
 	}
 
-	skippedOpcodes := make(map[string]struct{}, len(cfg.SkippedOpcodes))
-	for _, op := range cfg.SkippedOpcodes {
-		skippedOpcodes[op] = struct{}{}
-	}
-
-	proofGenerationFreq := cfg.ProofGenerationFreq
-	if proofGenerationFreq == 0 {
-		log.Warn("receive 0 proof_generation_freq, change to 1")
-		proofGenerationFreq = 1
-	}
-
-	relayer, err := NewLayer2Relayer(ctx, client, proofGenerationFreq, skippedOpcodes, int64(cfg.Confirmations), orm, cfg.RelayerConfig)
+	relayer, err := NewLayer2Relayer(ctx, client, cfg.ProofGenerationFreq, cfg.SkippedOpcodes, int64(cfg.Confirmations), orm, cfg.RelayerConfig)
 	if err != nil {
 		return nil, err
 	}
 
-	l2Watcher := NewL2WatcherClient(ctx, client, cfg.Confirmations, proofGenerationFreq, skippedOpcodes, cfg.L2MessengerAddress, orm)
+	l2Watcher := NewL2WatcherClient(ctx, client, cfg.Confirmations, cfg.ProofGenerationFreq, cfg.SkippedOpcodes, cfg.L2MessengerAddress, orm)
 
 	return &Backend{
 		cfg:       cfg,
