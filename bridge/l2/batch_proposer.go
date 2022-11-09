@@ -40,6 +40,7 @@ func (w *WatcherClient) tryProposeBatch() error {
 	blocksToBatch := []*orm.BlockInfo{}
 	var txNum uint64
 	var gasUsed uint64
+	// add blocks into batch until reach batchGasThreshold
 	for _, block := range blocks {
 		txNum += block.TxNum
 		gasUsed += block.GasUsed
@@ -51,19 +52,21 @@ func (w *WatcherClient) tryProposeBatch() error {
 		blocksToBatch = append(blocksToBatch, block)
 	}
 
-	// if too few gas gathered, but we don't want to halt, we then check the first block in the batch:
-	// if it's not old enough we skip proposing the batch,
-	// otherwise we will still propose a batch
-	if gasUsed < batchGasThreshold && blocks[0].BlockTimestamp+batchTimeSec > uint64(time.Now().Unix()) {
-		return nil
-	}
-
-	// keep gasUsed below threshold
-	if len(idsToBatch) >= 2 {
-		gasUsed -= blocks[len(idsToBatch)-1].GasUsed
-		txNum -= blocks[len(idsToBatch)-1].TxNum
-		idsToBatch = idsToBatch[:len(idsToBatch)-1]
-		blocksToBatch = blocksToBatch[:len(blocksToBatch)-1]
+	if gasUsed > batchGasThreshold {
+		// keep gasUsed below threshold
+		if len(idsToBatch) >= 2 {
+			gasUsed -= blocks[len(idsToBatch)-1].GasUsed
+			txNum -= blocks[len(idsToBatch)-1].TxNum
+			idsToBatch = idsToBatch[:len(idsToBatch)-1]
+			blocksToBatch = blocksToBatch[:len(blocksToBatch)-1]
+		}
+	} else {
+		// if too few gas gathered, but we don't want to halt, we then check the first block in the batch:
+		// if it's not old enough we will skip proposing the batch,
+		// otherwise we will still propose a batch
+		if blocks[0].BlockTimestamp+batchTimeSec > uint64(time.Now().Unix()) {
+			return nil
+		}
 	}
 
 	// TODO: use start_block.parent_hash after we upgrade `BlockTrace` type
