@@ -100,7 +100,7 @@ func (r *Roller) Run() error {
 
 // Register registers Roller to the Scroll through Websocket.
 func (r *Roller) Register() error {
-	priv, err := r.loadOrCreateKey()
+	priv, err := loadOrCreateKey(r.cfg.KeystorePath, r.cfg.KeystorePassword)
 	if err != nil {
 		return err
 	}
@@ -300,31 +300,35 @@ func (r *Roller) persistTrace(byt []byte) error {
 	})
 }
 
-func (r *Roller) loadOrCreateKey() (*ecdsa.PrivateKey, error) {
-	keystoreFilePath := r.cfg.KeystorePath
-	if _, err := os.Stat(r.cfg.KeystorePath); os.IsNotExist(err) {
+func loadOrCreateKey(keystoreDir string, keystorePassword string) (*ecdsa.PrivateKey, error) {
+	if _, err := os.Stat(keystoreDir); os.IsNotExist(err) {
 		// If there is no keystore, make a new one.
-		ks := keystore.NewKeyStore(r.cfg.KeystorePath, keystore.StandardScryptN, keystore.StandardScryptP)
-		account, err := ks.NewAccount(r.cfg.KeystorePassword)
+		ks := keystore.NewKeyStore(keystoreDir, keystore.StandardScryptN, keystore.StandardScryptP)
+		account, err := ks.NewAccount(keystorePassword)
 		if err != nil {
 			return nil, fmt.Errorf("generate crypto account failed %v", err)
 		}
 		log.Info("create a new account", "address", account.Address.Hex())
 
-		fis, err := ioutil.ReadDir(r.cfg.KeystorePath)
+		fis, err := ioutil.ReadDir(keystoreDir)
 		if err != nil {
 			return nil, err
 		}
-		keystoreFilePath = filepath.Join(r.cfg.KeystorePath, fis[0].Name())
-	} else {
+		keystoreDir = filepath.Join(keystoreDir, fis[0].Name())
+	} else if err != nil {
 		return nil, err
 	}
 
-	keyjson, err := ioutil.ReadFile(keystoreFilePath)
+	entries, err := os.ReadDir(keystoreDir)
 	if err != nil {
 		return nil, err
 	}
-	key, err := keystore.DecryptKey(keyjson, r.cfg.KeystorePassword)
+	keystorePath := filepath.Join(keystoreDir, entries[0].Name())
+	keyjson, err := ioutil.ReadFile(keystorePath)
+	if err != nil {
+		return nil, err
+	}
+	key, err := keystore.DecryptKey(keyjson, keystorePassword)
 	if err != nil {
 		return nil, err
 	}
