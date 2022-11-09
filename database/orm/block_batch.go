@@ -192,7 +192,7 @@ func (o *blockBatchOrm) NewBatchInDBTx(dbTx *sqlx.Tx, startBlock *BlockInfo, end
 
 	// TODO: use *big.Int for this
 	var index int64
-	if err := row.Scan(&index); err != nil && err != sql.ErrNoRows {
+	if err := row.Scan(&index); err != nil {
 		return "", err
 	}
 
