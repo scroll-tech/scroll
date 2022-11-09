@@ -58,9 +58,7 @@ func TestFunction(t *testing.T) {
 
 	t.Run("TestHandshake", func(t *testing.T) {
 		verifierEndpoint := setupMockVerifier(t)
-		defer func() {
-			assert.NoError(t, os.RemoveAll(verifierEndpoint))
-		}()
+		defer os.RemoveAll(verifierEndpoint)
 
 		rollerManager := setupRollerManager(t, verifierEndpoint, nil)
 		defer rollerManager.Stop()
@@ -84,9 +82,7 @@ func TestFunction(t *testing.T) {
 
 	t.Run("TestHandshakeTimeout", func(t *testing.T) {
 		verifierEndpoint := setupMockVerifier(t)
-		defer func() {
-			assert.NoError(t, os.RemoveAll(verifierEndpoint))
-		}()
+		defer os.RemoveAll(verifierEndpoint)
 
 		rollerManager := setupRollerManager(t, verifierEndpoint, nil)
 		defer rollerManager.Stop()
@@ -114,9 +110,7 @@ func TestFunction(t *testing.T) {
 
 	t.Run("TestTwoConnections", func(t *testing.T) {
 		verifierEndpoint := setupMockVerifier(t)
-		defer func() {
-			assert.NoError(t, os.RemoveAll(verifierEndpoint))
-		}()
+		defer os.RemoveAll(verifierEndpoint)
 
 		rollerManager := setupRollerManager(t, verifierEndpoint, nil)
 		defer rollerManager.Stop()
@@ -151,9 +145,7 @@ func TestFunction(t *testing.T) {
 		// to rollers.
 		numClients := uint8(2)
 		verifierEndpoint := setupMockVerifier(t)
-		defer func() {
-			assert.NoError(t, os.RemoveAll(verifierEndpoint))
-		}()
+		defer os.RemoveAll(verifierEndpoint)
 
 		rollerManager := setupRollerManager(t, verifierEndpoint, db)
 		defer rollerManager.Stop()
@@ -222,9 +214,7 @@ func TestFunction(t *testing.T) {
 		// to rollers.
 		numClients := uint8(2)
 		verifierEndpoint := setupMockVerifier(t)
-		defer func() {
-			assert.NoError(t, os.RemoveAll(verifierEndpoint))
-		}()
+		defer os.RemoveAll(verifierEndpoint)
 
 		// Ensure only one roller is picked per session.
 		rollerManager := setupRollerManager(t, verifierEndpoint, db)
