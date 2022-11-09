@@ -8,7 +8,6 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"io"
-	mathrand "math/rand"
 	"net"
 	"net/url"
 	"os"
@@ -345,7 +344,7 @@ func generateKeyPair() (pubkey, privkey []byte) {
 
 // setupMockVerifier sets up a mocked verifier for a test case.
 func setupMockVerifier(t *testing.T) string {
-	verifierEndpoint := "/tmp/" + strconv.Itoa(mathrand.Int()) + ".sock"
+	verifierEndpoint := "/tmp/" + strconv.Itoa(time.Now().Nanosecond()) + ".sock"
 
 	// Create and listen sock file.
 	l, err := net.Listen("unix", verifierEndpoint)
