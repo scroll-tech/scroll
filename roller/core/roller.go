@@ -310,12 +310,6 @@ func loadOrCreateKey(keystoreDir string, keystorePassword string) (*ecdsa.Privat
 			return nil, fmt.Errorf("generate crypto account failed %v", err)
 		}
 		log.Info("create a new account", "address", account.Address.Hex())
-
-		fis, err := ioutil.ReadDir(keystoreDir)
-		if err != nil {
-			return nil, err
-		}
-		keystoreDir = filepath.Join(keystoreDir, fis[0].Name())
 	} else if err != nil {
 		return nil, err
 	}
