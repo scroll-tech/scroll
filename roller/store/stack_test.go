@@ -54,5 +54,6 @@ func TestStack(t *testing.T) {
 	peak, err := s.Peak()
 	assert.NoError(t, err)
 	peak2, err := s.Peak()
+	assert.NoError(t, err)
 	assert.Equal(t, peak, peak2)
 }
