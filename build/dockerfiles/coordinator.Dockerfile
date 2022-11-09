@@ -3,7 +3,7 @@ FROM scrolltech/go-rust-builder:go-1.18-rust-nightly-2022-08-23 as builder
 
 COPY ./ /
 
-RUN apt install -y make
+RUN apt-get install  make
 
 RUN cd /coordinator && make coordinator
 
