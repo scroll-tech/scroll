@@ -52,6 +52,7 @@ jobs:
         key: ${{ runner.os }}-roller-cargo-build-target-${{ hashFiles('roller/core/prover/rust/Cargo.lock') }}
     - name: Test
       run: |
+        uname -a
         make roller
         go test -v ./...
   check:
