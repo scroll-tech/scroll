@@ -342,9 +342,6 @@ func setupMockVerifier(t *testing.T) string {
 	err := os.RemoveAll(verifierEndpoint)
 	assert.NoError(t, err)
 
-	err = os.RemoveAll(verifierEndpoint)
-	assert.NoError(t, err)
-
 	l, err := net.Listen("unix", verifierEndpoint)
 	assert.NoError(t, err)
 
