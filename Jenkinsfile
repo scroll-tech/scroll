@@ -13,6 +13,7 @@ pipeline {
     }
     environment {
         GO111MODULE = 'on'
+        LOG_DOCKER = 'true'
     }
     stages {
         stage('Build') {
