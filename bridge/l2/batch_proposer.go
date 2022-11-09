@@ -2,7 +2,6 @@ package l2
 
 import (
 	"database/sql"
-	"errors"
 	"fmt"
 	"time"
 
@@ -28,7 +27,7 @@ func (w *WatcherClient) tryProposeBatch() error {
 
 	blocks, err := w.orm.GetBlockInfos(
 		map[string]interface{}{"batch_id": sql.NullString{Valid: false}},
-		fmt.Sprintf("order by number DESC LIMIT %d", batchBlocksLimit),
+		fmt.Sprintf("order by number ASC LIMIT %d", batchBlocksLimit),
 	)
 	if err != nil {
 		return err
@@ -39,8 +38,8 @@ func (w *WatcherClient) tryProposeBatch() error {
 
 	idsToBatch := []uint64{}
 	blocksToBatch := []*orm.BlockInfo{}
-	txNum := uint64(0)
-	gasUsed := uint64(0)
+	var txNum uint64
+	var gasUsed uint64
 	for _, block := range blocks {
 		txNum += block.TxNum
 		gasUsed += block.GasUsed
@@ -52,7 +51,10 @@ func (w *WatcherClient) tryProposeBatch() error {
 		blocksToBatch = append(blocksToBatch, block)
 	}
 
-	if gasUsed < batchGasThreshold && blocks[0].BlockTimestamp+batchTimeSec < uint64(time.Now().Unix()) {
+	// if too few gas gathered, but we don't want to halt, we then check the first block in the batch:
+	// if it's not old enough we skip proposing the batch,
+	// otherwise we will still propose a batch
+	if gasUsed < batchGasThreshold && blocks[0].BlockTimestamp+batchTimeSec > uint64(time.Now().Unix()) {
 		return nil
 	}
 
@@ -65,9 +67,9 @@ func (w *WatcherClient) tryProposeBatch() error {
 	}
 
 	// TODO: use start_block.parent_hash after we upgrade `BlockTrace` type
-	parents, err := w.orm.GetBlockInfos(map[string]interface{}{"numer": idsToBatch[0] - 1})
+	parents, err := w.orm.GetBlockInfos(map[string]interface{}{"number": idsToBatch[0] - 1})
 	if err != nil || len(parents) == 0 {
-		return errors.New("Cannot find last batch's end_block")
+		return fmt.Errorf("cannot find last batch's end_block (block_number %d)", idsToBatch[0]-1)
 	}
 
 	return w.createBatchForBlocks(idsToBatch, blocksToBatch, parents[0].Hash, txNum, gasUsed)
