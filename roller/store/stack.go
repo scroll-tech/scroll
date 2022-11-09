@@ -60,6 +60,30 @@ func (s *Stack) Push(traces *ProvingTraces) error {
 	})
 }
 
+// Peak return the top element of the stack
+func (s *Stack) Peak() (*ProvingTraces, error) {
+	var value []byte
+	if err := s.View(func(tx *bbolt.Tx) error {
+		bu := tx.Bucket(bucket)
+		c := bu.Cursor()
+		_, value = c.Last()
+		if len(value) == 0 {
+			return ErrEmpty
+		}
+		return nil
+	}); err != nil {
+		return nil, err
+	}
+
+	traces := &ProvingTraces{}
+	err := json.Unmarshal(value, traces)
+	if err != nil {
+		return nil, err
+	}
+	// notice return pointer of the trace
+	return traces, nil
+}
+
 // Pop pops the block-traces on the top of Stack.
 func (s *Stack) Pop() (*ProvingTraces, error) {
 	var value []byte
@@ -81,6 +105,5 @@ func (s *Stack) Pop() (*ProvingTraces, error) {
 	if err != nil {
 		return nil, err
 	}
-	traces.Times++
 	return traces, nil
 }

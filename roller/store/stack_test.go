@@ -42,7 +42,6 @@ func TestStack(t *testing.T) {
 		assert.Equal(t, uint64(i), pop.Traces.ID)
 	}
 
-	// test times
 	trace := &ProvingTraces{
 		Traces: &message.BlockTraces{
 			ID:     1,
@@ -52,12 +51,8 @@ func TestStack(t *testing.T) {
 	}
 	err = s.Push(trace)
 	assert.NoError(t, err)
-	pop, err := s.Pop()
+	peak, err := s.Peak()
 	assert.NoError(t, err)
-	err = s.Push(pop)
-	assert.NoError(t, err)
-
-	pop2, err := s.Pop()
-	assert.NoError(t, err)
-	assert.Equal(t, 2, pop2.Times)
+	peak2, err := s.Peak()
+	assert.Equal(t, peak, peak2)
 }

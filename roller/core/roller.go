@@ -30,6 +30,7 @@ import (
 var (
 	ZK_VERSION string
 	Version    = fmt.Sprintf("%s-%s", version.Version, ZK_VERSION)
+	CacheTrace map[uint64]int
 )
 
 var (
@@ -175,6 +176,7 @@ func (r *Roller) ProveLoop() (err error) {
 			return nil
 		default:
 			_ = r.conn.SetWriteDeadline(time.Now().Add(writeWait))
+			CacheTrace = make(map[uint64]int)
 			if err = r.prove(); err != nil {
 				if errors.Is(err, store.ErrEmpty) {
 					log.Debug("get empty trace", "error", err)
@@ -214,25 +216,34 @@ func (r *Roller) handMessage() error {
 }
 
 func (r *Roller) prove() error {
-	traces, err := r.stack.Pop()
+	traces, err := r.stack.Peak()
 	if err != nil {
 		return err
 	}
-
+	if _, ok := CacheTrace[traces.Traces.ID]; ok {
+		CacheTrace[traces.Traces.ID]++
+	} else {
+		CacheTrace[traces.Traces.ID] = 1
+	}
 	var proofMsg *message.ProofMsg
-	if traces.Times > 2 {
+	if CacheTrace[traces.Traces.ID] > 2 {
 		proofMsg = &message.ProofMsg{
 			Status: message.StatusProofError,
 			Error:  "prover has retried several times due to FFI panic",
 			ID:     traces.Traces.ID,
 			Proof:  &message.AggProof{},
 		}
-		return r.sendMessage(message.Proof, proofMsg)
-	}
 
-	err = r.stack.Push(traces)
-	if err != nil {
-		return err
+		err = r.sendMessage(message.Proof, proofMsg)
+		if err != nil {
+			return err
+		}
+		_, err = r.stack.Pop()
+		if err != nil {
+			return err
+		}
+		delete(CacheTrace, traces.Traces.ID)
+		return nil
 	}
 
 	log.Info("start to prove block", "block-id", traces.Traces.ID)
@@ -255,12 +266,16 @@ func (r *Roller) prove() error {
 		}
 		log.Info("prove block successfully!", "block-id", traces.Traces.ID)
 	}
+	err = r.sendMessage(message.Proof, proofMsg)
+	if err != nil {
+		return err
+	}
 	_, err = r.stack.Pop()
 	if err != nil {
 		return err
 	}
-
-	return r.sendMessage(message.Proof, proofMsg)
+	delete(CacheTrace, traces.Traces.ID)
+	return nil
 }
 
 // Close closes the websocket connection.
