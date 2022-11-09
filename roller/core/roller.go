@@ -102,6 +102,7 @@ func (r *Roller) Run() error {
 func (r *Roller) Register() error {
 	priv, err := loadOrCreateKey(r.cfg.KeystorePath, r.cfg.KeystorePassword)
 	if err != nil {
+		fmt.Println("load or create key error: ", err)
 		return err
 	}
 	authMsg := &message.AuthMessage{
