@@ -25,8 +25,6 @@ type Stack struct {
 // It contains traces and proved times.
 type ProvingTraces struct {
 	Traces *rollertypes.BlockTraces `json:"traces"`
-	// Times is how many times roller proved.
-	Times int `json:"times"`
 }
 
 var bucket = []byte("stack")

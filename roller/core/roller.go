@@ -311,7 +311,6 @@ func (r *Roller) persistTrace(byt []byte) error {
 	log.Info("Accept BlockTrace from Scroll", "ID", traces.ID)
 	return r.stack.Push(&store.ProvingTraces{
 		Traces: traces,
-		Times:  0,
 	})
 }
 

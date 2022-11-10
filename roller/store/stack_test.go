@@ -28,7 +28,6 @@ func TestStack(t *testing.T) {
 				ID:     uint64(i),
 				Traces: nil,
 			},
-			Times: 0,
 		}
 
 		err = s.Push(trace)
@@ -47,7 +46,6 @@ func TestStack(t *testing.T) {
 			ID:     1,
 			Traces: nil,
 		},
-		Times: 0,
 	}
 	err = s.Push(trace)
 	assert.NoError(t, err)

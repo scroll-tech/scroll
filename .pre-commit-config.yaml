@@ -1,5 +1,5 @@
 repos:
-  - repo: git@github.com:scroll-tech/keydead.git
+  - repo: https://github.com/scroll-tech/keydead.git
     rev: main
     hooks:
       - id: keydead
