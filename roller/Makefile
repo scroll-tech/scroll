@@ -3,12 +3,10 @@
 IMAGE_NAME=go-roller
 IMAGE_VERSION=latest
 
-OS=$(shell uname)
-
-ifeq ($(OS), Darwin)
-	ZK_VERSION=$(shell grep -m 1 "common-rs" core/prover/rust/Cargo.lock | cut -d "\#" -f2 | cut -c-7)
-else ifeq ($(OS), Linux)
+ifeq (4.3,$(firstword $(sort $(MAKE_VERSION) 4.3)))
 	ZK_VERSION=$(shell grep -m 1 "common-rs" core/prover/rust/Cargo.lock | cut -d "#" -f2 | cut -c-7)
+else
+	ZK_VERSION=$(shell grep -m 1 "common-rs" core/prover/rust/Cargo.lock | cut -d "\#" -f2 | cut -c-7)
 endif
 
 libprover:
