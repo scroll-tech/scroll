@@ -3,18 +3,22 @@
 IMAGE_NAME=go-roller
 IMAGE_VERSION=latest
 
-ZK_VERSION=$(shell grep -m 1 "common-rs" core/prover/rust/Cargo.lock | cut -d "\#" -f2 | cut -c-7)
+ifeq (4.3,$(firstword $(sort $(MAKE_VERSION) 4.3)))
+	ZK_VERSION=$(shell grep -m 1 "common-rs" core/prover/rust/Cargo.lock | cut -d "#" -f2 | cut -c-7)
+else
+	ZK_VERSION=$(shell grep -m 1 "common-rs" core/prover/rust/Cargo.lock | cut -d "\#" -f2 | cut -c-7)
+endif
 
 libprover:
 	cd core/prover/rust && cargo build --release && cp target/release/libprover.a ../lib/
 
 roller: ## Build the Roller instance.
 	cd core/prover/rust && cargo build --release && cp target/release/libprover.a ../lib/
-	GOBIN=$(PWD)/build/bin go build -ldflags "-X core.ZK_VERSION=${ZK_VERSION}" -o $(PWD)/build/bin/roller ./cmd
+	GOBIN=$(PWD)/build/bin go build -ldflags "-X scroll-tech/roller/core.ZK_VERSION=${ZK_VERSION}" -o $(PWD)/build/bin/roller ./cmd
 
 gpu-roller: ## Build the GPU Roller instance.
 	cd core/prover/rust && cargo build --release && cp target/release/libprover.a ../lib/
-	GOBIN=$(PWD)/build/bin go build -ldflags "-X core.ZK_VERSION=${ZK_VERSION}" -tags gpu -o $(PWD)/build/bin/roller ./cmd
+	GOBIN=$(PWD)/build/bin go build -ldflags "-X scroll-tech/roller/core.ZK_VERSION=${ZK_VERSION}" -tags gpu -o $(PWD)/build/bin/roller ./cmd
 
 test-prover:
 	go test -timeout 0 -v ./core/prover
