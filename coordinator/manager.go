@@ -365,7 +365,7 @@ func (m *Manager) CollectProofs(id string, s session) {
 				// TODO: In real cases we should reset to orm.ProvingTaskUnassigned
 				// so as to re-distribute the task in the future
 				if err := m.orm.UpdateProvingStatus(id, orm.ProvingTaskFailed); err != nil {
-					log.Error("fail to reset task_status as Unassigned", "id", id)
+					log.Error("fail to reset task_status as Unassigned", "id", id, "err", err)
 				}
 				return
 			}
@@ -412,7 +412,11 @@ func (m *Manager) StartProofGenerationSession(task *orm.BlockBatch) bool {
 	defer func() {
 		if dbErr != nil {
 			if err := m.orm.UpdateProvingStatus(task.ID, orm.ProvingTaskUnassigned); err != nil {
-				log.Error("fail to reset task_status as Unassigned", "id", task.ID)
+				log.Error("fail to reset task_status as Unassigned",
+					"id", task.ID,
+					"dbErr", dbErr,
+					"err", err,
+				)
 			}
 		}
 	}()

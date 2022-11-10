@@ -20,6 +20,7 @@ create table block_batch
     commit_tx_hash          varchar         default null,
     finalize_tx_hash        varchar         default null,
     created_at              TIMESTAMP(0)    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    prover_assigned_at      TIMESTAMP(0)    DEFAULT NULL,
     proved_at               TIMESTAMP(0)    DEFAULT NULL,
     committed_at            TIMESTAMP(0)    DEFAULT NULL,
     finalized_at            TIMESTAMP(0)    DEFAULT NULL
