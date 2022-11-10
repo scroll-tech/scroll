@@ -2,4 +2,3 @@
 assets/params*
 assets/seed
 coverage.txt
-.pre-commit-config.yaml
