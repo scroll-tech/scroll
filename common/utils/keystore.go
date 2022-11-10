@@ -10,13 +10,14 @@ import (
 	"github.com/scroll-tech/go-ethereum/log"
 )
 
+// LoadOrCreateKey load or create keystore by keystorePath,  keystorePath cannot be a dir.
 func LoadOrCreateKey(keystorePath string, keystorePassword string) (*ecdsa.PrivateKey, error) {
 	if fi, err := os.Stat(keystorePath); os.IsNotExist(err) {
 		// If there is no keystore, make a new one.
 		ks := keystore.NewKeyStore(filepath.Dir(keystorePath), keystore.StandardScryptN, keystore.StandardScryptP)
-		account, err := ks.NewAccount(keystorePassword)
-		if err != nil {
-			return nil, fmt.Errorf("generate crypto account failed %v", err)
+		account, kerr := ks.NewAccount(keystorePassword)
+		if kerr != nil {
+			return nil, fmt.Errorf("generate crypto account failed %v", kerr)
 		}
 
 		err = os.Rename(account.URL.Path, keystorePath)
@@ -30,7 +31,7 @@ func LoadOrCreateKey(keystorePath string, keystorePassword string) (*ecdsa.Priva
 		return nil, fmt.Errorf("keystorePath cannot be a dir")
 	}
 
-	keyjson, err := os.ReadFile(keystorePath)
+	keyjson, err := os.ReadFile(filepath.Clean(keystorePath))
 	if err != nil {
 		return nil, err
 	}
