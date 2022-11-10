@@ -1,5 +1,5 @@
 roller_name = "my_roller"
-keystore_path = "keystore"
+keystore_path = "keystore.json"
 keystore_password = "roller-pwd"
 coordinator_url = "ws://localhost:9000"
 db_path = "bbolt_db"
