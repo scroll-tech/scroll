@@ -14,6 +14,8 @@ import (
 	"github.com/scroll-tech/go-ethereum/event"
 	"github.com/scroll-tech/go-ethereum/log"
 
+	bridge_abi "scroll-tech/bridge/abi"
+
 	"scroll-tech/database"
 	"scroll-tech/database/orm"
 )
@@ -52,7 +54,7 @@ type WatcherClient struct {
 }
 
 // NewL2WatcherClient take a l2geth instance to generate a l2watcherclient instance
-func NewL2WatcherClient(ctx context.Context, client *ethclient.Client, confirmations uint64, proofGenFreq uint64, skippedOpcodes map[string]struct{}, messengerAddress common.Address, messengerABI *abi.ABI, orm database.OrmFactory) *WatcherClient {
+func NewL2WatcherClient(ctx context.Context, client *ethclient.Client, confirmations uint64, proofGenFreq uint64, skippedOpcodes map[string]struct{}, messengerAddress common.Address, orm database.OrmFactory) *WatcherClient {
 	savedHeight, err := orm.GetLayer2LatestWatchedHeight()
 	if err != nil {
 		log.Warn("fetch height from db failed", "err", err)
@@ -68,7 +70,7 @@ func NewL2WatcherClient(ctx context.Context, client *ethclient.Client, confirmat
 		proofGenerationFreq: proofGenFreq,
 		skippedOpcodes:      skippedOpcodes,
 		messengerAddress:    messengerAddress,
-		messengerABI:        messengerABI,
+		messengerABI:        bridge_abi.L2MessengerMetaABI,
 		stopCh:              make(chan struct{}),
 		stopped:             0,
 	}
@@ -116,6 +118,8 @@ func (w *WatcherClient) Stop() {
 	w.stopCh <- struct{}{}
 }
 
+const blockResultsFetchLimit = uint64(10)
+
 // try fetch missing blocks if inconsistent
 func (w *WatcherClient) tryFetchRunningMissingBlocks(ctx context.Context, backTrackFrom uint64) error {
 	// Get newest block in DB. must have blocks at that time.
@@ -128,6 +132,11 @@ func (w *WatcherClient) tryFetchRunningMissingBlocks(ctx context.Context, backTr
 	backTrackTo := uint64(0)
 	if heightInDB > 0 {
 		backTrackTo = uint64(heightInDB)
+	}
+
+	// note that backTrackFrom >= backTrackTo because we are doing backtracking
+	if backTrackFrom > backTrackTo+blockResultsFetchLimit {
+		backTrackFrom = backTrackTo + blockResultsFetchLimit
 	}
 
 	// start backtracking
@@ -178,6 +187,8 @@ func (w *WatcherClient) tryFetchRunningMissingBlocks(ctx context.Context, backTr
 	return nil
 }
 
+const contractEventsBlocksFetchLimit = int64(10)
+
 // FetchContractEvent pull latest event logs from given contract address and save in DB
 func (w *WatcherClient) fetchContractEvent(blockHeight uint64) error {
 	fromBlock := int64(w.processedMsgHeight) + 1
@@ -185,6 +196,10 @@ func (w *WatcherClient) fetchContractEvent(blockHeight uint64) error {
 
 	if toBlock < fromBlock {
 		return nil
+	}
+
+	if toBlock > fromBlock+contractEventsBlocksFetchLimit {
+		toBlock = fromBlock + contractEventsBlocksFetchLimit - 1
 	}
 
 	// warning: uint int conversion...

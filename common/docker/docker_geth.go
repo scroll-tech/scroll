@@ -9,21 +9,7 @@ import (
 	"time"
 
 	"github.com/docker/docker/api/types"
-	"github.com/docker/docker/client"
 )
-
-var (
-	cli *client.Client
-)
-
-func init() {
-	var err error
-	cli, err = client.NewClientWithOpts(client.FromEnv)
-	if err != nil {
-		panic(err)
-	}
-	cli.NegotiateAPIVersion(context.Background())
-}
 
 // ImgGeth the geth image manager include l1geth and l2geth.
 type ImgGeth struct {
@@ -44,7 +30,7 @@ type ImgGeth struct {
 func NewImgGeth(t *testing.T, image, volume, ipc string, hPort, wPort int) ImgInstance {
 	return &ImgGeth{
 		image:    image,
-		name:     fmt.Sprintf("%s-%d", image, time.Now().Unix()),
+		name:     fmt.Sprintf("%s-%d", image, time.Now().Nanosecond()),
 		volume:   volume,
 		ipcPath:  ipc,
 		httpPort: hPort,
