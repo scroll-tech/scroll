@@ -8,7 +8,7 @@ OS=$(shell uname)
 ifeq ($(OS), Darwin)
 	ZK_VERSION=$(shell grep -m 1 "common-rs" core/prover/rust/Cargo.lock | cut -d "\#" -f2 | cut -c-7)
 else ifeq ($(OS), Linux)
-	ZK_VERSION=$(shell grep -m 1 "common-rs" core/prover/rust/Cargo.lock | cut -d "#" -f2 | cut -c-7)
+	ZK_VERSION=$(bash grep -m 1 "common-rs" core/prover/rust/Cargo.lock | cut -d "#" -f2 | cut -c-7)
 endif
 
 libprover:
