@@ -27,7 +27,7 @@ var (
 	mockPath   string
 )
 
-func InitTest() {
+func TestMain(m *testing.M) {
 	mockPath = "./roller_mock_test"
 
 	_ = os.RemoveAll(mockPath)
@@ -45,11 +45,11 @@ func InitTest() {
 		Prover:           &config.ProverConfig{MockMode: true},
 		DBPath:           filepath.Join(mockPath, "stack_db"),
 	}
+
+	os.Exit(m.Run())
 }
 
 func TestRoller(t *testing.T) {
-	InitTest()
-
 	go mockScroll(t)
 
 	r, err := core.NewRoller(cfg)
