@@ -59,19 +59,6 @@ type Layer2Relayer struct {
 
 // NewLayer2Relayer will return a new instance of Layer2RelayerClient
 func NewLayer2Relayer(ctx context.Context, ethClient *ethclient.Client, proofGenFreq uint64, skippedOpcodes map[string]struct{}, l2ConfirmNum int64, db database.OrmFactory, cfg *config.RelayerConfig) (*Layer2Relayer, error) {
-
-	l1MessengerABI, err := bridge_abi.L1MessengerMetaData.GetAbi()
-	if err != nil {
-		log.Error("Get L1MessengerABI failed", "err", err)
-		return nil, err
-	}
-
-	l1RollupABI, err := bridge_abi.RollupMetaData.GetAbi()
-	if err != nil {
-		log.Error("Get RollupABI failed", "err", err)
-		return nil, err
-	}
-
 	// @todo use different sender for relayer, block commit and proof finalize
 	messageSender, err := sender.NewSender(ctx, cfg.SenderConfig, cfg.MessageSenderPrivateKeys)
 	if err != nil {
@@ -91,10 +78,10 @@ func NewLayer2Relayer(ctx context.Context, ethClient *ethclient.Client, proofGen
 		db:                     db,
 		messageSender:          messageSender,
 		messageCh:              messageSender.ConfirmChan(),
-		l1MessengerABI:         l1MessengerABI,
+		l1MessengerABI:         bridge_abi.L1MessengerMetaABI,
 		rollupSender:           rollupSender,
 		rollupCh:               rollupSender.ConfirmChan(),
-		l1RollupABI:            l1RollupABI,
+		l1RollupABI:            bridge_abi.RollupMetaABI,
 		cfg:                    cfg,
 		proofGenerationFreq:    proofGenFreq,
 		skippedOpcodes:         skippedOpcodes,

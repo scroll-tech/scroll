@@ -3,9 +3,25 @@ package bridgeabi
 import (
 	"math/big"
 
+	"github.com/scroll-tech/go-ethereum/accounts/abi"
 	"github.com/scroll-tech/go-ethereum/accounts/abi/bind"
 	"github.com/scroll-tech/go-ethereum/common"
 )
+
+var (
+	// RollupMetaABI holds information about a contract's context and available invokable methods.
+	RollupMetaABI *abi.ABI
+	// L1MessengerMetaABI holds information about a contract's context and available invokable methods.
+	L1MessengerMetaABI *abi.ABI
+	// L2MessengerMetaABI holds information about a contract's context and available invokable methods.
+	L2MessengerMetaABI *abi.ABI
+)
+
+func init() {
+	RollupMetaABI, _ = RollupMetaData.GetAbi()
+	L1MessengerMetaABI, _ = L1MessengerMetaData.GetAbi()
+	L2MessengerMetaABI, _ = L2MessengerMetaData.GetAbi()
+}
 
 // Generated manually from abigen and only necessary events and mutable calls are kept.
 
