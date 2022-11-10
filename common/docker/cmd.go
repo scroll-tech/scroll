@@ -43,13 +43,6 @@ func NewCmd(t *testing.T) *Cmd {
 			cmd.errMsg <- errors.New(buf)
 		}
 	})
-	// Directly output error or warning message if verbose not set.
-	cmd.RegistFunc("error or warning", func(buf string) {
-		if !verbose && (strings.Contains(buf, "error") || strings.Contains(buf, "warning")) {
-			cmd.Log(buf)
-		}
-	})
-
 	return cmd
 }
 
@@ -83,6 +76,8 @@ func (t *Cmd) ErrMsg() <-chan error {
 func (t *Cmd) Write(data []byte) (int, error) {
 	out := string(data)
 	if verbose {
+		t.Logf(out)
+	} else if strings.Contains(out, "error") || strings.Contains(out, "warning") {
 		t.Logf(out)
 	}
 	go func(content string) {
