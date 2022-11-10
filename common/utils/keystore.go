@@ -3,10 +3,11 @@ package utils
 import (
 	"crypto/ecdsa"
 	"fmt"
-	"github.com/scroll-tech/go-ethereum/accounts/keystore"
-	"github.com/scroll-tech/go-ethereum/log"
 	"os"
 	"path/filepath"
+
+	"github.com/scroll-tech/go-ethereum/accounts/keystore"
+	"github.com/scroll-tech/go-ethereum/log"
 )
 
 func LoadOrCreateKey(keystorePath string, keystorePassword string) (*ecdsa.PrivateKey, error) {
