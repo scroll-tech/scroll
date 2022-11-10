@@ -37,9 +37,16 @@ func NewCmd(t *testing.T) *Cmd {
 		//stdout:   bytes.Buffer{},
 		errMsg: make(chan error, 2),
 	}
+	// Handle panic.
 	cmd.RegistFunc("panic", func(buf string) {
 		if strings.Contains(buf, "panic") {
 			cmd.errMsg <- errors.New(buf)
+		}
+	})
+	// Directly output error or warning message if verbose not set.
+	cmd.RegistFunc("error or warning", func(buf string) {
+		if !verbose && (strings.Contains(buf, "error") || strings.Contains(buf, "warning")) {
+			cmd.Log(buf)
 		}
 	})
 
