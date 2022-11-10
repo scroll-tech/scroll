@@ -49,9 +49,9 @@ func TestStack(t *testing.T) {
 	}
 	err = s.Push(trace)
 	assert.NoError(t, err)
-	peak, err := s.Peak()
+	Peek, err := s.Peek()
 	assert.NoError(t, err)
-	peak2, err := s.Peak()
+	Peek2, err := s.Peek()
 	assert.NoError(t, err)
-	assert.Equal(t, peak, peak2)
+	assert.Equal(t, Peek, Peek2)
 }

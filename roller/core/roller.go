@@ -216,7 +216,7 @@ func (r *Roller) handMessage() error {
 }
 
 func (r *Roller) prove() error {
-	traces, err := r.stack.Peak()
+	traces, err := r.stack.Peek()
 	if err != nil {
 		return err
 	}

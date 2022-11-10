@@ -59,7 +59,7 @@ func (s *Stack) Push(traces *ProvingTraces) error {
 }
 
 // Peak return the top element of the stack
-func (s *Stack) Peak() (*ProvingTraces, error) {
+func (s *Stack) Peek() (*ProvingTraces, error) {
 	var value []byte
 	if err := s.View(func(tx *bbolt.Tx) error {
 		bu := tx.Bucket(bucket)
