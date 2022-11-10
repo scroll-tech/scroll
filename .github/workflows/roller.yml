@@ -53,6 +53,7 @@ jobs:
     - name: Test
       run: |
         uname -a
+        make -v
         make roller
         go test -v ./...
   check:
