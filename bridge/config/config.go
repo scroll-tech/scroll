@@ -18,8 +18,6 @@ import (
 
 // SenderConfig The config for transaction sender
 type SenderConfig struct {
-	// The RPC endpoint of the ethereum or scroll public node.
-	Endpoint string `json:"endpoint"`
 	// The time to trigger check pending txs in sender.
 	CheckPendingTime uint64 `json:"check_pending_time"`
 	// The number of blocks to wait to escalate increase gas price of the transaction.

@@ -14,11 +14,11 @@ import (
 	cmap "github.com/orcaman/concurrent-map"
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/crypto"
+	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/stretchr/testify/assert"
 
 	"scroll-tech/common/docker"
 
-	"scroll-tech/bridge/config"
 	"scroll-tech/bridge/sender"
 )
 
@@ -26,22 +26,24 @@ const TX_BATCH = 50
 
 var (
 	privateKeys []*ecdsa.PrivateKey
-	cfg         *config.Config
 	l2gethImg   docker.ImgInstance
+
+	// l2geth client
+	l2Cli *ethclient.Client
 )
 
 func setupEnv(t *testing.T) {
-	var err error
-	cfg, err = config.NewConfig("../config.json")
-	assert.NoError(t, err)
-
 	priv, err := crypto.HexToECDSA("1212121212121212121212121212121212121212121212121212121212121212")
 	assert.NoError(t, err)
 	// Load default private key.
 	privateKeys = []*ecdsa.PrivateKey{priv}
 
+	// Create l2geth docker instance.
 	l2gethImg = docker.NewTestL2Docker(t)
-	cfg.L1Config.RelayerConfig.SenderConfig.Endpoint = l2gethImg.Endpoint()
+
+	// Create l2geth client.
+	l2Cli, err = ethclient.Dial(l2gethImg.Endpoint())
+	assert.NoError(t, err)
 }
 
 func TestSender(t *testing.T) {
@@ -67,9 +69,7 @@ func testBatchSender(t *testing.T, batchSize int) {
 		privateKeys = append(privateKeys, priv)
 	}
 
-	senderCfg := cfg.L1Config.RelayerConfig.SenderConfig
-	senderCfg.Confirmations = 0
-	newSender, err := sender.NewSender(context.Background(), senderCfg, privateKeys)
+	newSender, err := sender.NewSender(context.Background(), l2Cli, nil, privateKeys)
 	if err != nil {
 		t.Fatal(err)
 	}

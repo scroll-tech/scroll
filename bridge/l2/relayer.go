@@ -60,15 +60,15 @@ type Layer2Relayer struct {
 }
 
 // NewLayer2Relayer will return a new instance of Layer2RelayerClient
-func NewLayer2Relayer(ctx context.Context, ethClient *ethclient.Client, proofGenFreq uint64, skippedOpcodes map[string]struct{}, l2ConfirmNum int64, db database.OrmFactory, cfg *config.RelayerConfig) (*Layer2Relayer, error) {
+func NewLayer2Relayer(ctx context.Context, l2Client, l1Client *ethclient.Client, proofGenFreq uint64, skippedOpcodes map[string]struct{}, db database.OrmFactory, cfg *config.RelayerConfig) (*Layer2Relayer, error) {
 	// @todo use different sender for relayer, block commit and proof finalize
-	messageSender, err := sender.NewSender(ctx, cfg.SenderConfig, cfg.MessageSenderPrivateKeys)
+	messageSender, err := sender.NewSender(ctx, l1Client, cfg.SenderConfig, cfg.MessageSenderPrivateKeys)
 	if err != nil {
 		log.Error("Failed to create messenger sender", "err", err)
 		return nil, err
 	}
 
-	rollupSender, err := sender.NewSender(ctx, cfg.SenderConfig, cfg.RollupSenderPrivateKeys)
+	rollupSender, err := sender.NewSender(ctx, l1Client, cfg.SenderConfig, cfg.RollupSenderPrivateKeys)
 	if err != nil {
 		log.Error("Failed to create rollup sender", "err", err)
 		return nil, err
@@ -76,7 +76,7 @@ func NewLayer2Relayer(ctx context.Context, ethClient *ethclient.Client, proofGen
 
 	return &Layer2Relayer{
 		ctx:                 ctx,
-		client:              ethClient,
+		client:              l2Client,
 		db:                  db,
 		messageSender:       messageSender,
 		messageCh:           messageSender.ConfirmChan(),

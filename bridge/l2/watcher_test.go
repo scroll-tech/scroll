@@ -33,22 +33,20 @@ func testCreateNewWatcherAndStop(t *testing.T) {
 	defer l2db.Close()
 
 	l2cfg := cfg.L2Config
-	rc := l2.NewL2WatcherClient(context.Background(), l2Cli, l2cfg.Confirmations, l2cfg.ProofGenerationFreq, l2cfg.SkippedOpcodes, l2cfg.L2MessengerAddress, l2db)
-	rc.Start()
-	defer rc.Stop()
+	l2Watcher := l2.NewL2WatcherClient(context.Background(), l2Cli, l2cfg.Confirmations, l2cfg.ProofGenerationFreq, l2cfg.SkippedOpcodes, l2cfg.L2MessengerAddress, l2db)
+	l2Watcher.Start()
+	defer l2Watcher.Stop()
 
-	l1cfg := cfg.L1Config
-	l1cfg.RelayerConfig.SenderConfig.Confirmations = 0
-	newSender, err := sender.NewSender(context.Background(), l1cfg.RelayerConfig.SenderConfig, l1cfg.RelayerConfig.MessageSenderPrivateKeys)
+	l2Sender, err := sender.NewSender(context.Background(), l2Cli, nil, l2cfg.RelayerConfig.MessageSenderPrivateKeys)
 	assert.NoError(t, err)
 
 	// Create several transactions and commit to block
 	numTransactions := 3
 	toAddress := common.HexToAddress("0x4592d8f8d7b001e72cb26a73e4fa1806a51ac79d")
 	for i := 0; i < numTransactions; i++ {
-		_, err = newSender.SendTransaction(strconv.Itoa(1000+i), &toAddress, big.NewInt(1000000000), nil)
+		_, err = l2Sender.SendTransaction(strconv.Itoa(1000+i), &toAddress, big.NewInt(1000000000), nil)
 		assert.NoError(t, err)
-		<-newSender.ConfirmChan()
+		<-l2Sender.ConfirmChan()
 	}
 
 	//<-time.After(10 * time.Second)

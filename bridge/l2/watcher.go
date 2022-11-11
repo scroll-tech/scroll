@@ -54,7 +54,7 @@ type WatcherClient struct {
 }
 
 // NewL2WatcherClient take a l2geth instance to generate a l2watcherclient instance
-func NewL2WatcherClient(ctx context.Context, client *ethclient.Client, confirmations uint64, proofGenFreq uint64, skippedOpcodes map[string]struct{}, messengerAddress common.Address, orm database.OrmFactory) *WatcherClient {
+func NewL2WatcherClient(ctx context.Context, l2Client *ethclient.Client, confirmations uint64, proofGenFreq uint64, skippedOpcodes map[string]struct{}, messengerAddress common.Address, orm database.OrmFactory) *WatcherClient {
 	savedHeight, err := orm.GetLayer2LatestWatchedHeight()
 	if err != nil {
 		log.Warn("fetch height from db failed", "err", err)
@@ -63,7 +63,7 @@ func NewL2WatcherClient(ctx context.Context, client *ethclient.Client, confirmat
 
 	return &WatcherClient{
 		ctx:                 ctx,
-		Client:              client,
+		Client:              l2Client,
 		orm:                 orm,
 		processedMsgHeight:  uint64(savedHeight),
 		confirmations:       confirmations,

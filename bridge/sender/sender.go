@@ -40,7 +40,7 @@ var (
 
 // DefaultSenderConfig The default config
 var DefaultSenderConfig = config.SenderConfig{
-	Endpoint:            "",
+	CheckPendingTime:    10,
 	EscalateBlocks:      3,
 	EscalateMultipleNum: 11,
 	EscalateMultipleDen: 10,
@@ -93,13 +93,9 @@ type Sender struct {
 
 // NewSender returns a new instance of transaction sender
 // txConfirmationCh is used to notify confirmed transaction
-func NewSender(ctx context.Context, config *config.SenderConfig, privs []*ecdsa.PrivateKey) (*Sender, error) {
+func NewSender(ctx context.Context, client *ethclient.Client, config *config.SenderConfig, privs []*ecdsa.PrivateKey) (*Sender, error) {
 	if config == nil {
 		config = &DefaultSenderConfig
-	}
-	client, err := ethclient.Dial(config.Endpoint)
-	if err != nil {
-		return nil, err
 	}
 
 	// get chainID from client

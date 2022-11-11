@@ -7,6 +7,8 @@ import (
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/rpc"
 
+	"scroll-tech/bridge"
+
 	"scroll-tech/database"
 
 	"scroll-tech/bridge/config"
@@ -16,19 +18,20 @@ import (
 // The backend should monitor events in layer 2 and relay transactions to layer 1
 type Backend struct {
 	cfg       *config.L2Config
+	client    *ethclient.Client
 	l2Watcher *WatcherClient
 	relayer   *Layer2Relayer
 	orm       database.OrmFactory
 }
 
 // New returns a new instance of Backend.
-func New(ctx context.Context, cfg *config.L2Config, orm database.OrmFactory) (*Backend, error) {
+func New(ctx context.Context, cfg *config.L2Config, orm database.OrmFactory, l1Backend bridge.API) (*Backend, error) {
 	client, err := ethclient.Dial(cfg.Endpoint)
 	if err != nil {
 		return nil, err
 	}
 
-	relayer, err := NewLayer2Relayer(ctx, client, cfg.ProofGenerationFreq, cfg.SkippedOpcodes, int64(cfg.Confirmations), orm, cfg.RelayerConfig)
+	relayer, err := NewLayer2Relayer(ctx, client, l1Backend.GetClient(), cfg.ProofGenerationFreq, cfg.SkippedOpcodes, orm, cfg.RelayerConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -37,10 +40,16 @@ func New(ctx context.Context, cfg *config.L2Config, orm database.OrmFactory) (*B
 
 	return &Backend{
 		cfg:       cfg,
+		client:    client,
 		l2Watcher: l2Watcher,
 		relayer:   relayer,
 		orm:       orm,
 	}, nil
+}
+
+// GetClient return l2 chain client instance.
+func (l2 *Backend) GetClient() *ethclient.Client {
+	return l2.client
 }
 
 // Start Backend module.

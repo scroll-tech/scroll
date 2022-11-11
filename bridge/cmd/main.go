@@ -82,11 +82,11 @@ func action(ctx *cli.Context) error {
 		l2Backend *l2.Backend
 	)
 	// @todo change nil to actual client after https://scroll-tech/bridge/pull/40 merged
-	l1Backend, err = l1.New(ctx.Context, cfg.L1Config, ormFactory)
+	l1Backend, err = l1.New(ctx.Context, cfg.L1Config, ormFactory, l2Backend)
 	if err != nil {
 		return err
 	}
-	l2Backend, err = l2.New(ctx.Context, cfg.L2Config, ormFactory)
+	l2Backend, err = l2.New(ctx.Context, cfg.L2Config, ormFactory, l1Backend)
 	if err != nil {
 		return err
 	}

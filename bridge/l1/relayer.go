@@ -27,9 +27,8 @@ import (
 // Actions are triggered by new head from layer 1 geth node.
 // @todo It's better to be triggered by watcher.
 type Layer1Relayer struct {
-	ctx    context.Context
-	client *ethclient.Client
-	sender *sender.Sender
+	ctx      context.Context
+	l2Sender *sender.Sender
 
 	db  orm.Layer1MessageOrm
 	cfg *config.RelayerConfig
@@ -42,28 +41,20 @@ type Layer1Relayer struct {
 }
 
 // NewLayer1Relayer will return a new instance of Layer1RelayerClient
-func NewLayer1Relayer(ctx context.Context, ethClient *ethclient.Client, l1ConfirmNum int64, db orm.Layer1MessageOrm, cfg *config.RelayerConfig) (*Layer1Relayer, error) {
-	l2MessengerABI, err := bridge_abi.L2MessengerMetaData.GetAbi()
-	if err != nil {
-		log.Warn("new L2MessengerABI failed", "err", err)
-		return nil, err
-	}
-
-	sender, err := sender.NewSender(ctx, cfg.SenderConfig, cfg.MessageSenderPrivateKeys)
+func NewLayer1Relayer(ctx context.Context, l2Client *ethclient.Client, cfg *config.RelayerConfig, db orm.Layer1MessageOrm) (*Layer1Relayer, error) {
+	l2Sender, err := sender.NewSender(ctx, l2Client, cfg.SenderConfig, cfg.MessageSenderPrivateKeys)
 	if err != nil {
 		log.Error("new sender failed", "err", err)
 		return nil, err
 	}
-
 	return &Layer1Relayer{
 		ctx:            ctx,
-		client:         ethClient,
-		sender:         sender,
-		db:             db,
-		l2MessengerABI: l2MessengerABI,
 		cfg:            cfg,
+		l2Sender:       l2Sender,
+		confirmationCh: l2Sender.ConfirmChan(),
+		db:             db,
+		l2MessengerABI: bridge_abi.L2MessengerMetaABI,
 		stopCh:         make(chan struct{}),
-		confirmationCh: sender.ConfirmChan(),
 	}, nil
 }
 
@@ -106,7 +97,7 @@ func (r *Layer1Relayer) processSavedEvent(msg *orm.Layer1Message) error {
 		return err
 	}
 
-	hash, err := r.sender.SendTransaction(msg.Layer1Hash, &r.cfg.MessengerContractAddress, big.NewInt(0), data)
+	hash, err := r.l2Sender.SendTransaction(msg.Layer1Hash, &r.cfg.MessengerContractAddress, big.NewInt(0), data)
 	if err != nil {
 		return err
 	}

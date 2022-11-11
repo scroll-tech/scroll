@@ -15,13 +15,18 @@ var (
 	// config
 	cfg *config.Config
 
-	// docker consider handler.
+	// l1 chain docker consider handler.
 	l1gethImg docker.ImgInstance
+	// l2 chain docker consider handler.
 	l2gethImg docker.ImgInstance
-	dbImg     docker.ImgInstance
 
+	// l1geth client
+	l1Cli *ethclient.Client
 	// l2geth client
 	l2Cli *ethclient.Client
+
+	// postgres docker handler.
+	dbImg docker.ImgInstance
 )
 
 func setupEnv(t *testing.T) (err error) {
@@ -31,21 +36,23 @@ func setupEnv(t *testing.T) (err error) {
 
 	// Create l1geth container.
 	l1gethImg = docker.NewTestL1Docker(t)
-	cfg.L2Config.RelayerConfig.SenderConfig.Endpoint = l1gethImg.Endpoint()
 	cfg.L1Config.Endpoint = l1gethImg.Endpoint()
 
 	// Create l2geth container.
 	l2gethImg = docker.NewTestL2Docker(t)
-	cfg.L1Config.RelayerConfig.SenderConfig.Endpoint = l2gethImg.Endpoint()
 	cfg.L2Config.Endpoint = l2gethImg.Endpoint()
 
-	// Create db container.
-	dbImg = docker.NewTestDBDocker(t, cfg.DBConfig.DriverName)
-	cfg.DBConfig.DSN = dbImg.Endpoint()
+	// Create l2geth client.
+	l1Cli, err = ethclient.Dial(cfg.L1Config.Endpoint)
+	assert.NoError(t, err)
 
 	// Create l2geth client.
 	l2Cli, err = ethclient.Dial(cfg.L2Config.Endpoint)
 	assert.NoError(t, err)
+
+	// Create db container.
+	dbImg = docker.NewTestDBDocker(t, cfg.DBConfig.DriverName)
+	cfg.DBConfig.DSN = dbImg.Endpoint()
 
 	return err
 }

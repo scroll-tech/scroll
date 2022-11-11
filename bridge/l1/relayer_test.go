@@ -21,13 +21,6 @@ import (
 func TestCreateNewL1Relayer(t *testing.T) {
 	cfg, err := config.NewConfig("../config.json")
 	assert.NoError(t, err)
-	l1docker := docker.NewTestL1Docker(t)
-	defer l1docker.Stop()
-	cfg.L2Config.RelayerConfig.SenderConfig.Endpoint = l1docker.Endpoint()
-	cfg.L1Config.Endpoint = l1docker.Endpoint()
-
-	client, err := ethclient.Dial(l1docker.Endpoint())
-	assert.NoError(t, err)
 
 	dbImg := docker.NewTestDBDocker(t, cfg.DBConfig.DriverName)
 	defer dbImg.Stop()
@@ -39,7 +32,13 @@ func TestCreateNewL1Relayer(t *testing.T) {
 	assert.NoError(t, migrate.ResetDB(db.GetDB().DB))
 	defer db.Close()
 
-	relayer, err := l1.NewLayer1Relayer(context.Background(), client, 1, db, cfg.L2Config.RelayerConfig)
+	l2docker := docker.NewTestL2Docker(t)
+	defer l2docker.Stop()
+
+	l2Client, err := ethclient.Dial(l2docker.Endpoint())
+	assert.NoError(t, err)
+
+	relayer, err := l1.NewLayer1Relayer(context.Background(), l2Client, cfg.L2Config.RelayerConfig, db)
 	assert.NoError(t, err)
 	defer relayer.Stop()
 

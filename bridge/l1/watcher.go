@@ -5,6 +5,8 @@ import (
 	"math/big"
 	"time"
 
+	bridge_abi "scroll-tech/bridge/abi"
+
 	"github.com/scroll-tech/go-ethereum"
 	"github.com/scroll-tech/go-ethereum/accounts/abi"
 	"github.com/scroll-tech/go-ethereum/common"
@@ -40,7 +42,7 @@ type Watcher struct {
 
 // NewWatcher returns a new instance of Watcher. The instance will be not fully prepared,
 // and still needs to be finalized and ran by calling `watcher.Start`.
-func NewWatcher(ctx context.Context, client *ethclient.Client, startHeight uint64, confirmations uint64, messengerAddress common.Address, messengerABI *abi.ABI, db orm.Layer1MessageOrm) *Watcher {
+func NewWatcher(ctx context.Context, client *ethclient.Client, startHeight uint64, confirmations uint64, messengerAddress common.Address, db orm.Layer1MessageOrm) *Watcher {
 	savedHeight, err := db.GetLayer1LatestWatchedHeight()
 	if err != nil {
 		log.Warn("Failed to fetch height from db", "err", err)
@@ -50,17 +52,15 @@ func NewWatcher(ctx context.Context, client *ethclient.Client, startHeight uint6
 		savedHeight = int64(startHeight)
 	}
 
-	stop := make(chan bool)
-
 	return &Watcher{
 		ctx:                ctx,
 		client:             client,
 		db:                 db,
 		confirmations:      confirmations,
 		messengerAddress:   messengerAddress,
-		messengerABI:       messengerABI,
+		messengerABI:       bridge_abi.L1MessengerMetaABI,
 		processedMsgHeight: uint64(savedHeight),
-		stop:               stop,
+		stop:               make(chan bool),
 	}
 }
 

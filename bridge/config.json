@@ -8,7 +8,6 @@
     "relayer_config": {
       "messenger_contract_address": "0x0000000000000000000000000000000000000000",
       "sender_config": {
-        "endpoint": "/var/lib/jenkins/workspace/SequencerPipeline/MyPrivateNetwork/geth.ipc",
         "check_pending_time": 3,
         "escalate_blocks": 100,
         "confirmations": 1,
@@ -37,7 +36,6 @@
       "messenger_contract_address": "0x0000000000000000000000000000000000000000",
       "rollup_contract_address": "0x0000000000000000000000000000000000000000",
       "sender_config": {
-        "endpoint": "https://goerli.infura.io/v3/9aa3d95b3bc440fa88ea12eaa4456161",
         "check_pending_time": 10,
         "escalate_blocks": 100,
         "confirmations": 6,
