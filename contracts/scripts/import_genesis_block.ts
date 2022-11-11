@@ -15,7 +15,10 @@ async function main() {
 
   const [deployer] = await ethers.getSigners();
 
-  const ZKRollup = await ethers.getContractAt("ZKRollup", addressFile.get("ZKRollup.proxy"), deployer);
+  const rollupAddr = process.env.L1_ZK_ROLLUP_PROXY_ADDR || addressFile.get("ZKRollup.proxy") || "0x";
+  console.log("Using rollup proxy address:", rollupAddr);
+
+  const ZKRollup = await ethers.getContractAt("ZKRollup", rollupAddr, deployer);
   const genesis = JSON.parse(fs.readFileSync(GENESIS_FILE_PATH, 'utf8'));
   console.log("Using genesis block:", genesis.blockHash);
 

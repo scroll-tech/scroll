@@ -4,9 +4,6 @@ import (
 	"context"
 	"math/big"
 	"net/http"
-	"scroll-tech/bridge/l2"
-	"scroll-tech/bridge/sender"
-	"scroll-tech/database/orm"
 	"strconv"
 	"testing"
 	"time"
@@ -16,6 +13,10 @@ import (
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/sync/errgroup"
+
+	"scroll-tech/bridge/l2"
+	"scroll-tech/bridge/sender"
+	"scroll-tech/database/orm"
 
 	"scroll-tech/common/docker"
 	"scroll-tech/common/message"

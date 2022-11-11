@@ -2,11 +2,21 @@ package docker
 
 import (
 	"errors"
+	"os"
 	"os/exec"
 	"strings"
 	"sync"
 	"testing"
 )
+
+var verbose bool
+
+func init() {
+	v := os.Getenv("LOG_DOCKER")
+	if v == "true" || v == "TRUE" {
+		verbose = true
+	}
+}
 
 type checkFunc func(buf string)
 
@@ -27,12 +37,12 @@ func NewCmd(t *testing.T) *Cmd {
 		//stdout:   bytes.Buffer{},
 		errMsg: make(chan error, 2),
 	}
+	// Handle panic.
 	cmd.RegistFunc("panic", func(buf string) {
 		if strings.Contains(buf, "panic") {
 			cmd.errMsg <- errors.New(buf)
 		}
 	})
-
 	return cmd
 }
 
@@ -65,7 +75,11 @@ func (t *Cmd) ErrMsg() <-chan error {
 
 func (t *Cmd) Write(data []byte) (int, error) {
 	out := string(data)
-	t.Logf(out)
+	if verbose {
+		t.Logf(out)
+	} else if strings.Contains(out, "error") || strings.Contains(out, "warning") {
+		t.Logf(out)
+	}
 	go func(content string) {
 		t.checkFuncs.Range(func(key, value any) bool {
 			check := value.(checkFunc)
