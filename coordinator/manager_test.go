@@ -18,17 +18,16 @@ import (
 	"github.com/ethereum/go-ethereum/crypto/secp256k1"
 	"github.com/gorilla/websocket"
 	"github.com/scroll-tech/go-ethereum/common"
-	"github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/stretchr/testify/assert"
-
-	"scroll-tech/coordinator"
-	"scroll-tech/coordinator/config"
 
 	"scroll-tech/common/docker"
 	"scroll-tech/common/message"
-
 	"scroll-tech/database"
 	"scroll-tech/database/migrate"
+	"scroll-tech/database/orm"
+
+	"scroll-tech/coordinator"
+	"scroll-tech/coordinator/config"
 )
 
 const managerAddr = "localhost:8132"
@@ -163,22 +162,13 @@ func TestFunction(t *testing.T) {
 			conns[i] = conn
 		}
 
-		var results []*types.BlockResult
-
-		templateBlockResult, err := os.ReadFile("../common/testdata/blockResult_orm.json")
+		dbTx, err := db.Beginx()
 		assert.NoError(t, err)
-		blockResult := &types.BlockResult{}
-		err = json.Unmarshal(templateBlockResult, blockResult)
+		_, err = db.NewBatchInDBTx(dbTx, &orm.BlockInfo{Number: uint64(1)}, &orm.BlockInfo{Number: uint64(1)}, "0f", 1, 194676)
 		assert.NoError(t, err)
-		results = append(results, blockResult)
-		templateBlockResult, err = os.ReadFile("../common/testdata/blockResult_delegate.json")
+		_, err = db.NewBatchInDBTx(dbTx, &orm.BlockInfo{Number: uint64(2)}, &orm.BlockInfo{Number: uint64(2)}, "0e", 1, 194676)
 		assert.NoError(t, err)
-		blockResult = &types.BlockResult{}
-		err = json.Unmarshal(templateBlockResult, blockResult)
-		assert.NoError(t, err)
-		results = append(results, blockResult)
-
-		err = db.InsertBlockResults(context.Background(), results)
+		err = dbTx.Commit()
 		assert.NoError(t, err)
 
 		// Need to send a tx to trigger block committed
@@ -240,12 +230,11 @@ func TestFunction(t *testing.T) {
 
 		assert.Equal(t, 2, rollerManager.GetNumberOfIdleRollers())
 
-		templateBlockResult, err := os.ReadFile("../common/testdata/blockResult_orm.json")
+		dbTx, err := db.Beginx()
 		assert.NoError(t, err)
-		blockResult := &types.BlockResult{}
-		err = json.Unmarshal(templateBlockResult, blockResult)
+		_, err = db.NewBatchInDBTx(dbTx, &orm.BlockInfo{Number: uint64(1)}, &orm.BlockInfo{Number: uint64(1)}, "0f", 1, 194676)
 		assert.NoError(t, err)
-		err = db.InsertBlockResults(context.Background(), []*types.BlockResult{blockResult})
+		err = dbTx.Commit()
 		assert.NoError(t, err)
 
 		// Sleep for a little bit, so that we can avoid prematurely fetching connections.
@@ -254,12 +243,11 @@ func TestFunction(t *testing.T) {
 
 		assert.Equal(t, 1, rollerManager.GetNumberOfIdleRollers())
 
-		templateBlockResult, err = os.ReadFile("../common/testdata/blockResult_delegate.json")
+		dbTx, err = db.Beginx()
 		assert.NoError(t, err)
-		blockResult = &types.BlockResult{}
-		err = json.Unmarshal(templateBlockResult, blockResult)
+		_, err = db.NewBatchInDBTx(dbTx, &orm.BlockInfo{Number: uint64(2)}, &orm.BlockInfo{Number: uint64(2)}, "0e", 1, 194676)
 		assert.NoError(t, err)
-		err = db.InsertBlockResults(context.Background(), []*types.BlockResult{blockResult})
+		err = dbTx.Commit()
 		assert.NoError(t, err)
 
 		// Sleep for a little bit, so that we can avoid prematurely fetching connections.
