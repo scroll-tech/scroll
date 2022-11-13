@@ -14,11 +14,13 @@ libzkp:
 	cp -r ../common/zkp/lib ./core/prover/
 
 roller: ## Build the Roller instance.
-	@libzkp
+	cd ../common/zkp/rust && cargo build --release && cp ./target/release/libzkp.a ../lib/
+	cp -r ../common/zkp/lib ./core/prover/
 	GOBIN=$(PWD)/build/bin go build -ldflags "-X scroll-tech/roller/core.ZK_VERSION=${ZK_VERSION}" -o $(PWD)/build/bin/roller ./cmd
 
 gpu-roller: ## Build the GPU Roller instance.
-	@libzkp
+	cd ../common/zkp/rust && cargo build --release && cp ./target/release/libzkp.a ../lib/
+	cp -r ../common/zkp/lib ./core/prover/
 	GOBIN=$(PWD)/build/bin go build -ldflags "-X scroll-tech/roller/core.ZK_VERSION=${ZK_VERSION}" -tags gpu -o $(PWD)/build/bin/roller ./cmd
 
 test-prover:
