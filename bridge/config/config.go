@@ -40,8 +40,6 @@ type SenderConfig struct {
 type L1Config struct {
 	// Confirmations block height confirmations number.
 	Confirmations uint64 `json:"confirmations"`
-	// l1 chainID.
-	ChainID int64 `json:"chain_id"`
 	// l1 eth node url.
 	Endpoint string `json:"endpoint"`
 	// The start height to sync event from layer 1
@@ -56,8 +54,6 @@ type L1Config struct {
 type L2Config struct {
 	// Confirmations block height confirmations number.
 	Confirmations uint64 `json:"confirmations"`
-	// l2geth chainId.
-	ChainID int64 `json:"chain_id"`
 	// l2geth node url.
 	Endpoint string `json:"endpoint"`
 	// The messenger contract address deployed on layer 2 chain.

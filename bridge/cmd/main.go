@@ -9,20 +9,21 @@ import (
 	"github.com/scroll-tech/go-ethereum/rpc"
 	"github.com/urfave/cli/v2"
 
-	"scroll-tech/database"
-
 	"scroll-tech/common/utils"
 	"scroll-tech/common/version"
+	"scroll-tech/database"
 
 	"scroll-tech/bridge/config"
 	"scroll-tech/bridge/l1"
 	"scroll-tech/bridge/l2"
 )
 
-func main() {
+var (
 	// Set up Bridge app info.
-	app := cli.NewApp()
+	app = cli.NewApp()
+)
 
+func init() {
 	app.Action = action
 	app.Name = "bridge"
 	app.Usage = "The Scroll Bridge"
@@ -40,6 +41,9 @@ func main() {
 			Verbosity:     ctx.Int(verbosityFlag.Name),
 		})
 	}
+}
+
+func main() {
 	// Run the sequencer.
 	if err := app.Run(os.Args); err != nil {
 		_, _ = fmt.Fprintln(os.Stderr, err)
@@ -47,35 +51,40 @@ func main() {
 	}
 }
 
-func applyConfig(ctx *cli.Context, cfg *config.Config) {
-	if ctx.IsSet(l1ChainIDFlag.Name) {
-		cfg.L1Config.ChainID = ctx.Int64(l1ChainIDFlag.Name)
-	}
-	if ctx.IsSet(l1UrlFlag.Name) {
-		cfg.L1Config.Endpoint = ctx.String(l1UrlFlag.Name)
-	}
-	if ctx.IsSet(l2ChainIDFlag.Name) {
-		cfg.L2Config.ChainID = ctx.Int64(l2ChainIDFlag.Name)
-	}
-	if ctx.IsSet(l2UrlFlag.Name) {
-		cfg.L2Config.Endpoint = ctx.String(l2UrlFlag.Name)
-	}
-}
-
-func action(ctx *cli.Context) error {
+func applyConfig(ctx *cli.Context) (*config.Config, error) {
 	// Load config file.
 	cfgFile := ctx.String(configFileFlag.Name)
 	cfg, err := config.NewConfig(cfgFile)
 	if err != nil {
-		log.Crit("failed to load config file", "config file", cfgFile, "error", err)
+		return nil, err
 	}
-	applyConfig(ctx, cfg)
+	if ctx.IsSet(l1UrlFlag.Name) {
+		cfg.L1Config.Endpoint = ctx.String(l1UrlFlag.Name)
+	}
+	if ctx.IsSet(l2UrlFlag.Name) {
+		cfg.L2Config.Endpoint = ctx.String(l2UrlFlag.Name)
+	}
+	return cfg, nil
+}
+
+func action(ctx *cli.Context) error {
+	// Load config file.
+	cfg, err := applyConfig(ctx)
+	if err != nil {
+		log.Crit("failed to load config file", "error", err)
+	}
 
 	// init db connection
 	var ormFactory database.OrmFactory
 	if ormFactory, err = database.NewOrmFactory(cfg.DBConfig); err != nil {
 		log.Crit("failed to init db connection", "err", err)
 	}
+	defer func() {
+		err = ormFactory.Close()
+		if err != nil {
+			log.Error("can not close ormFactory", err)
+		}
+	}()
 
 	var (
 		l1Backend *l1.Backend
@@ -93,10 +102,6 @@ func action(ctx *cli.Context) error {
 	defer func() {
 		l1Backend.Stop()
 		l2Backend.Stop()
-		err = ormFactory.Close()
-		if err != nil {
-			log.Error("can not close ormFactory", err)
-		}
 	}()
 
 	// Start all modules.
