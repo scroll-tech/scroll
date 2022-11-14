@@ -4,9 +4,10 @@ import (
 	"encoding/json"
 	"io"
 	"os"
+	"testing"
+
 	"scroll-tech/coordinator/config"
 	"scroll-tech/coordinator/verifier"
-	"testing"
 
 	"github.com/stretchr/testify/assert"
 
