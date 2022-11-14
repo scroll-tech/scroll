@@ -6,12 +6,12 @@ import (
 	"os"
 	"testing"
 
+	"scroll-tech/common/message"
+
 	"scroll-tech/coordinator/config"
 	"scroll-tech/coordinator/verifier"
 
 	"github.com/stretchr/testify/assert"
-
-	"scroll-tech/common/message"
 )
 
 func TestFFI(t *testing.T) {
