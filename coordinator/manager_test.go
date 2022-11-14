@@ -232,8 +232,9 @@ func TestFunction(t *testing.T) {
 
 		dbTx, err := db.Beginx()
 		assert.NoError(t, err)
-		_, err = db.NewBatchInDBTx(dbTx, &orm.BlockInfo{Number: uint64(1)}, &orm.BlockInfo{Number: uint64(1)}, "0f", 1, 194676)
+		batch_id_1, err := db.NewBatchInDBTx(dbTx, &orm.BlockInfo{Number: uint64(1)}, &orm.BlockInfo{Number: uint64(1)}, "0f", 1, 194676)
 		assert.NoError(t, err)
+		log.Info("batch_id_1", batch_id_1)
 		err = dbTx.Commit()
 		assert.NoError(t, err)
 
@@ -245,8 +246,9 @@ func TestFunction(t *testing.T) {
 
 		dbTx, err = db.Beginx()
 		assert.NoError(t, err)
-		_, err = db.NewBatchInDBTx(dbTx, &orm.BlockInfo{Number: uint64(2)}, &orm.BlockInfo{Number: uint64(2)}, "0e", 1, 194676)
+		batch_id_2, err := db.NewBatchInDBTx(dbTx, &orm.BlockInfo{Number: uint64(2)}, &orm.BlockInfo{Number: uint64(2)}, "0e", 1, 194676)
 		assert.NoError(t, err)
+		log.Info("batch_id_2", batch_id_2)
 		err = dbTx.Commit()
 		assert.NoError(t, err)
 
