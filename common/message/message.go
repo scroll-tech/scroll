@@ -2,7 +2,6 @@ package message
 
 import (
 	"crypto/ecdsa"
-	"encoding/binary"
 	"encoding/json"
 
 	"github.com/scroll-tech/go-ethereum/common"
@@ -124,15 +123,4 @@ type AggProof struct {
 	Instance  []byte `json:"instance"`
 	FinalPair []byte `json:"final_pair"`
 	Vk        []byte `json:"vk"`
-}
-
-// Marshal marshals the TraceProof as bytes
-func (proof *AggProof) Marshal() ([]byte, error) {
-	jsonByt, err := json.Marshal(proof)
-	if err != nil {
-		return nil, err
-	}
-	buf := make([]byte, 4)
-	binary.BigEndian.PutUint32(buf, uint32(len(jsonByt)))
-	return append(buf, jsonByt...), nil
 }
