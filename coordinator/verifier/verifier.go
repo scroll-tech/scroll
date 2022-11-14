@@ -8,6 +8,7 @@ package verifier
 import "C" //nolint:typecheck
 
 import (
+	"encoding/json"
 	"unsafe"
 
 	"github.com/scroll-tech/go-ethereum/log"
@@ -45,7 +46,7 @@ func (v *Verifier) VerifyProof(proof *message.AggProof) (bool, error) {
 		log.Info("Verifier disabled, VerifyProof skipped")
 		return true, nil
 	}
-	buf, err := proof.Marshal()
+	buf, err := json.Marshal(proof)
 	if err != nil {
 		return false, err
 	}
