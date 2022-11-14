@@ -25,6 +25,8 @@ type Stack struct {
 // It contains traces and proved times.
 type ProvingTraces struct {
 	Traces *rollertypes.BlockTraces `json:"traces"`
+	// Times is how many times roller proved.
+	Times int `json:"times"`
 }
 
 var bucket = []byte("stack")
@@ -79,7 +81,25 @@ func (s *Stack) Peek() (*ProvingTraces, error) {
 		return nil, err
 	}
 	// notice return pointer of the trace
-	return traces, nil
+	return traces, s.updateTimes(traces)
+}
+
+func (s *Stack) updateTimes(traces *ProvingTraces) error {
+	traces.Times++
+	byt, err := json.Marshal(traces)
+	if err != nil {
+		return err
+	}
+	key := make([]byte, 8)
+	binary.BigEndian.PutUint64(key, traces.Traces.ID)
+	return s.Update(func(tx *bbolt.Tx) error {
+		var key []byte
+		bu := tx.Bucket(bucket)
+		c := bu.Cursor()
+		key, _ = c.Last()
+		return bu.Put(key, byt)
+	})
+
 }
 
 // Pop pops the block-traces on the top of Stack.

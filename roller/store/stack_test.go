@@ -28,6 +28,7 @@ func TestStack(t *testing.T) {
 				ID:     uint64(i),
 				Traces: nil,
 			},
+			Times: 0,
 		}
 
 		err = s.Push(trace)
@@ -46,12 +47,14 @@ func TestStack(t *testing.T) {
 			ID:     1,
 			Traces: nil,
 		},
+		Times: 0,
 	}
 	err = s.Push(trace)
 	assert.NoError(t, err)
 	Peek, err := s.Peek()
 	assert.NoError(t, err)
+	assert.Equal(t, 1, Peek.Times)
 	Peek2, err := s.Peek()
 	assert.NoError(t, err)
-	assert.Equal(t, Peek, Peek2)
+	assert.Equal(t, 2, Peek2.Times)
 }

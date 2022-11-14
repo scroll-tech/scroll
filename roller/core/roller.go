@@ -26,7 +26,6 @@ import (
 var (
 	ZK_VERSION string
 	Version    = fmt.Sprintf("%s-%s", version.Version, ZK_VERSION)
-	CacheTrace map[uint64]int
 )
 
 var (
@@ -172,7 +171,6 @@ func (r *Roller) ProveLoop() (err error) {
 			return nil
 		default:
 			_ = r.conn.SetWriteDeadline(time.Now().Add(writeWait))
-			CacheTrace = make(map[uint64]int)
 			if err = r.prove(); err != nil {
 				if errors.Is(err, store.ErrEmpty) {
 					log.Debug("get empty trace", "error", err)
@@ -216,13 +214,8 @@ func (r *Roller) prove() error {
 	if err != nil {
 		return err
 	}
-	if _, ok := CacheTrace[traces.Traces.ID]; ok {
-		CacheTrace[traces.Traces.ID]++
-	} else {
-		CacheTrace[traces.Traces.ID] = 1
-	}
 	var proofMsg *message.ProofMsg
-	if CacheTrace[traces.Traces.ID] > 2 {
+	if traces.Times > 2 {
 		proofMsg = &message.ProofMsg{
 			Status: message.StatusProofError,
 			Error:  "prover has retried several times due to FFI panic",
@@ -238,7 +231,6 @@ func (r *Roller) prove() error {
 		if err != nil {
 			return err
 		}
-		delete(CacheTrace, traces.Traces.ID)
 		return nil
 	}
 
@@ -270,7 +262,6 @@ func (r *Roller) prove() error {
 	if err != nil {
 		return err
 	}
-	delete(CacheTrace, traces.Traces.ID)
 	return nil
 }
 
