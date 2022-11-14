@@ -3,6 +3,8 @@ FROM scrolltech/go-rust-builder:go-1.18-rust-nightly-2022-08-23 as builder
 
 COPY ./ /
 
+RUN apk add --no-cache gcc g++ make musl-dev
+
 RUN cd ../common/zkp/rust && cargo build --release && cp ./target/release/libzkp.a ../lib/
 RUN cp -r ../common/zkp/lib ./verifier/
 
