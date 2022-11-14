@@ -22,13 +22,13 @@ func TestFFI(t *testing.T) {
 	as := assert.New(t)
 	cfg := &config.VerifierConfig{
 		MockMode:   false,
-		ParamsPath: "../../assets/test_params",
-		AggVkPath:  "../../assets/agg_vk",
+		ParamsPath: "../assets/test_params",
+		AggVkPath:  "../assets/agg_vk",
 	}
 	v, err := verifier.NewVerifier(cfg)
 	as.NoError(err)
 
-	f, err := os.Open("../../assets/agg_proof")
+	f, err := os.Open("../assets/agg_proof")
 	as.NoError(err)
 	byt, err := io.ReadAll(f)
 	as.NoError(err)
