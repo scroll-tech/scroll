@@ -18,6 +18,7 @@ import (
 	"github.com/ethereum/go-ethereum/crypto/secp256k1"
 	"github.com/gorilla/websocket"
 	"github.com/scroll-tech/go-ethereum/common"
+	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/stretchr/testify/assert"
 
 	"scroll-tech/common/docker"
