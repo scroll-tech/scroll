@@ -205,7 +205,7 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 		return
 	}
 
-	layer2Batch := bridge_abi.IZKRollupLayer2Batch{
+	layer2Batch := &bridge_abi.IZKRollupLayer2Batch{
 		BatchIndex: batch.Index,
 		ParentHash: common.HexToHash(batch.ParentHash),
 		Blocks:     make([]bridge_abi.IZKRollupLayer2BlockHeader, len(traces)),
