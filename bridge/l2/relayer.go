@@ -205,7 +205,7 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 		return
 	}
 
-	layer2Batch := bridge_abi.IZKRollupLayer2Batch{
+	layer2Batch := &bridge_abi.IZKRollupLayer2Batch{
 		BatchIndex: batch.Index,
 		ParentHash: common.HexToHash(batch.ParentHash),
 		Blocks:     make([]bridge_abi.IZKRollupLayer2BlockHeader, len(traces)),
@@ -234,7 +234,7 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 				Data:     common.Hex2Bytes(tx.Data),
 				R:        tx.R.ToInt(),
 				S:        tx.S.ToInt(),
-				V:        uint64(tx.V.ToInt().Int64()),
+				V:        tx.V.ToInt().Uint64(),
 			}
 			if tx.To != nil {
 				layer2Batch.Blocks[i].Txs[j].Target = *tx.To

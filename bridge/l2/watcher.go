@@ -98,20 +98,20 @@ func (w *WatcherClient) Start() {
 				// get current height
 				number, err := w.BlockNumber(w.ctx)
 				if err != nil {
-					log.Error("Failed to get_BlockNumber", "err", err)
+					log.Error("failed to get_BlockNumber", "err", err)
 					continue
 				}
 				if err := w.tryFetchRunningMissingBlocks(w.ctx, number); err != nil {
-					log.Error("Failed to fetchRunningMissingBlocks", "err", err)
+					log.Error("failed to fetchRunningMissingBlocks", "err", err)
 				}
 
 				// @todo handle error
 				if err := w.fetchContractEvent(number); err != nil {
-					log.Error("Failed to fetchContractEvent", "err", err)
+					log.Error("failed to fetchContractEvent", "err", err)
 				}
 
 				if err := w.tryProposeBatch(); err != nil {
-					log.Error("Failed to tryProposeBatch", "err", err)
+					log.Error("failed to tryProposeBatch", "err", err)
 				}
 
 			case <-w.stopCh:
@@ -135,7 +135,7 @@ func (w *WatcherClient) tryFetchRunningMissingBlocks(ctx context.Context, backTr
 	// because it might be empty if the corresponding rollup_result is finalized/finalization_skipped
 	heightInDB, err := w.orm.GetBlockResultsLatestHeight()
 	if err != nil {
-		return fmt.Errorf("Failed to GetBlockResults in DB: %v", err)
+		return fmt.Errorf("failed to GetBlockResults in DB: %v", err)
 	}
 	backTrackTo := uint64(0)
 	if heightInDB > 0 {
@@ -153,11 +153,11 @@ func (w *WatcherClient) tryFetchRunningMissingBlocks(ctx context.Context, backTr
 	for number := backTrackFrom; number > backTrackTo; number-- {
 		header, err2 := w.HeaderByNumber(ctx, big.NewInt(int64(number)))
 		if err2 != nil {
-			return fmt.Errorf("Failed to get HeaderByNumber: %v. number: %v", err2, number)
+			return fmt.Errorf("failed to get HeaderByNumber: %v. number: %v", err2, number)
 		}
 		trace, err2 := w.GetBlockResultByHash(ctx, header.Hash())
 		if err2 != nil {
-			return fmt.Errorf("Failed to GetBlockResultByHash: %v. number: %v", err2, number)
+			return fmt.Errorf("failed to GetBlockResultByHash: %v. number: %v", err2, number)
 		}
 		log.Info("Retrieved block result", "height", header.Number, "hash", header.Hash())
 
@@ -201,18 +201,18 @@ func (w *WatcherClient) fetchContractEvent(blockHeight uint64) error {
 
 	logs, err := w.FilterLogs(w.ctx, query)
 	if err != nil {
-		log.Error("Failed to get event logs", "err", err)
+		log.Error("failed to get event logs", "err", err)
 		return err
 	}
 	if len(logs) == 0 {
 		return nil
 	}
-	log.Info("Received new L2 messages", "fromBlock", fromBlock, "toBlock", toBlock,
+	log.Info("received new L2 messages", "fromBlock", fromBlock, "toBlock", toBlock,
 		"cnt", len(logs))
 
 	eventLogs, err := parseBridgeEventLogs(logs, w.messengerABI)
 	if err != nil {
-		log.Error("Failed to parse emitted event log", "err", err)
+		log.Error("failed to parse emitted event log", "err", err)
 		return err
 	}
 
@@ -242,7 +242,7 @@ func parseBridgeEventLogs(logs []types.Log, messengerABI *abi.ABI) ([]*orm.Layer
 
 		err := messengerABI.UnpackIntoInterface(&event, "SentMessage", vLog.Data)
 		if err != nil {
-			log.Error("Failed to unpack layer2 SentMessage event", "err", err)
+			log.Error("failed to unpack layer2 SentMessage event", "err", err)
 			return parsedlogs, err
 		}
 		// target is in topics[1]

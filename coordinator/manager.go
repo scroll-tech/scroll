@@ -107,15 +107,8 @@ func (m *Manager) Start() error {
 	// m.orm may be nil in scroll tests
 	if m.orm != nil {
 		// clean up assigned but not submitted task
-		tasks, err := m.orm.GetBlockBatches(map[string]interface{}{"proving_status": orm.ProvingTaskAssigned})
-		if err == nil {
-			for _, task := range tasks {
-				if err := m.orm.UpdateProvingStatus(task.ID, orm.ProvingTaskUnassigned); err != nil {
-					log.Error("fail to reset task as Unassigned")
-				}
-			}
-		} else {
-			log.Error("fail to fetch assigned tasks")
+		if err := m.orm.TransistProvingStatus(orm.ProvingTaskAssigned, orm.ProvingTaskUnassigned); err != nil {
+			log.Error("fail to reset assigned tasks as unassigned")
 		}
 	}
 
