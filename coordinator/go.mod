@@ -1,6 +1,6 @@
 module scroll-tech/coordinator
 
-go 1.18
+go 1.17
 
 require (
 	github.com/ethereum/go-ethereum v1.10.13
@@ -9,6 +9,11 @@ require (
 	github.com/scroll-tech/go-ethereum v1.10.14-0.20221012120556-b3a7c9b6917d
 	github.com/stretchr/testify v1.8.0
 	github.com/urfave/cli/v2 v2.3.0
+)
+
+replace (
+	scroll-tech/common => ../common
+	scroll-tech/database => ../database
 )
 
 require (

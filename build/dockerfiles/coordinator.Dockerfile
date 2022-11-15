@@ -1,5 +1,5 @@
 # Build scroll in a stock Go builder container
-FROM scrolltech/go-rust-builder:go-1.18-rust-nightly-2022-08-23 as builder
+FROM scrolltech/go-rust-builder:go-1.17-rust-nightly-2022-08-23 as builder
 
 COPY ./ /
 
