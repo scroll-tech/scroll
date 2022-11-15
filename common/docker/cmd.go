@@ -1,12 +1,15 @@
 package docker
 
 import (
-	"errors"
+	"bytes"
+	"github.com/docker/docker/pkg/reexec"
+	"github.com/stretchr/testify/assert"
 	"os"
 	"os/exec"
 	"strings"
 	"sync"
 	"testing"
+	"time"
 )
 
 var verbose bool
@@ -24,26 +27,40 @@ type checkFunc func(buf string)
 type Cmd struct {
 	*testing.T
 
+	cmd *exec.Cmd
+	buf bytes.Buffer
+
 	checkFuncs sync.Map //map[string]checkFunc
 
 	//stdout bytes.Buffer
-	errMsg chan error
+	Err error
 }
 
 // NewCmd create Cmd instance.
 func NewCmd(t *testing.T) *Cmd {
-	cmd := &Cmd{
-		T: t,
-		//stdout:   bytes.Buffer{},
-		errMsg: make(chan error, 2),
+	return &Cmd{T: t}
+}
+
+// Run exec's the current binary using name as argv[0] which will trigger the
+// reexec init function for that name (e.g. "geth-test" in cmd/geth/run_test.go)
+func (tt *Cmd) Run(name string, args ...string) {
+	tt.cmd = &exec.Cmd{
+		Path:   reexec.Self(),
+		Args:   append([]string{name}, args...),
+		Stderr: tt,
+		Stdout: tt,
 	}
-	// Handle panic.
-	cmd.RegistFunc("panic", func(buf string) {
-		if strings.Contains(buf, "panic") {
-			cmd.errMsg <- errors.New(buf)
-		}
-	})
-	return cmd
+	if err := tt.cmd.Run(); err != nil {
+		tt.Fatal(err)
+	}
+}
+
+func (tt *Cmd) WaitExit() {
+	tt.Err = tt.cmd.Wait()
+}
+
+func (tt *Cmd) Interrupt() {
+	tt.Err = tt.cmd.Process.Signal(os.Interrupt)
 }
 
 // RegistFunc register check func
@@ -58,6 +75,36 @@ func (t *Cmd) UnRegistFunc(key string) {
 	}
 }
 
+func (t *Cmd) ExpectWithTimeout(timeout time.Duration, keyword string) {
+	okCh := make(chan struct{}, 1)
+	t.RegistFunc(keyword, func(buf string) {
+		if strings.Contains(buf, keyword) {
+			select {
+			case okCh <- struct{}{}:
+			default:
+				return
+			}
+		}
+	})
+	defer t.UnRegistFunc(keyword)
+
+	go func() {
+		select {
+		case <-okCh:
+			return
+		case <-time.After(timeout):
+			assert.Fail(t, "should have the keyword", keyword)
+		}
+	}()
+}
+
+func (t *Cmd) runCmd(args []string) {
+	cmd := exec.Command(args[0], args[1:]...) //nolint:gosec
+	cmd.Stdout = t
+	cmd.Stderr = t
+	_ = cmd.Run()
+}
+
 // RunCmd parallel running when parallel is true.
 func (t *Cmd) RunCmd(args []string, parallel bool) {
 	t.Log("RunCmd cmd", args)
@@ -68,11 +115,6 @@ func (t *Cmd) RunCmd(args []string, parallel bool) {
 	}
 }
 
-// ErrMsg return error output channel
-func (t *Cmd) ErrMsg() <-chan error {
-	return t.errMsg
-}
-
 func (t *Cmd) Write(data []byte) (int, error) {
 	out := string(data)
 	if verbose {
@@ -80,19 +122,10 @@ func (t *Cmd) Write(data []byte) (int, error) {
 	} else if strings.Contains(out, "error") || strings.Contains(out, "warning") {
 		t.Logf(out)
 	}
-	go func(content string) {
-		t.checkFuncs.Range(func(key, value interface{}) bool {
-			check := value.(checkFunc)
-			check(content)
-			return true
-		})
-	}(out)
+	go t.checkFuncs.Range(func(key, value interface{}) bool {
+		check := value.(checkFunc)
+		check(out)
+		return true
+	})
 	return len(data), nil
-}
-
-func (t *Cmd) runCmd(args []string) {
-	cmd := exec.Command(args[0], args[1:]...) //nolint:gosec
-	cmd.Stdout = t
-	cmd.Stderr = t
-	_ = cmd.Run()
 }

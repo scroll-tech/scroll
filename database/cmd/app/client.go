@@ -1,4 +1,4 @@
-package main
+package app
 
 import (
 	"github.com/jmoiron/sqlx"
@@ -9,6 +9,10 @@ import (
 	"scroll-tech/database"
 	"scroll-tech/database/migrate"
 )
+
+func applyDBConfig(ctx *cli.Context) *database.DBConfig {
+
+}
 
 func initDB(file string) (*sqlx.DB, error) {
 	dbCfg, err := database.NewConfig(file)
