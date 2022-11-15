@@ -118,15 +118,7 @@ func (r *Layer2Relayer) processSavedEvent(msg *orm.Layer2Message) error {
 		return err
 	}
 
-	// using batch.id or batch.end_block_hash than using batch.end_block_number in msg.Height comparison
-	blocks, err := r.db.GetBlockInfos(map[string]interface{}{"batch_id": batch.ID}, "ORDER BY number DESC")
-	if err != nil || len(blocks) == 0 {
-		log.Error("GetBlockResults failed", "batch_id", batch.ID, "err", err)
-		return err
-	}
-
-	// again, using batch.id or batch.end_block_hash than using batch.end_block_number in msg.Height comparison
-	if blocks[0].Number < msg.Height {
+	if batch.EndBlockNumber < msg.Height {
 		// log.Warn("corresponding block not finalized", "status", status)
 		return nil
 	}
