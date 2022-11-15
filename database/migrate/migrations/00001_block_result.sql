@@ -7,6 +7,7 @@ create table block_result
 (
     number                  BIGINT          not null,
     hash                    VARCHAR         not null,
+    parent_hash             VARCHAR         default null,
     content                 json            not null,
     batch_id                VARCHAR         default null,
     tx_num                  INTEGER         NOT NULL DEFAULT 0,

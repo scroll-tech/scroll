@@ -57,6 +57,8 @@ type Layer2Message struct {
 }
 
 // BlockInfo is structure of stored `block_result` without `content`
+// TODO: add `parent_hash`. Though we already add it into db schema, we avoid adding it here atm,
+// in case people think they can already use it
 type BlockInfo struct {
 	Number         uint64         `json:"number" db:"number"`
 	Hash           string         `json:"hash" db:"hash"`
