@@ -53,6 +53,7 @@ type WatcherClient struct {
 	stopped uint64
 	stopCh  chan struct{}
 
+	// mutex for batch proposer
 	bpMutex sync.Mutex
 }
 
