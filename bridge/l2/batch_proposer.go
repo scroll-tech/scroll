@@ -59,6 +59,10 @@ func (w *WatcherClient) tryProposeBatch() error {
 		return nil
 	}
 
+	if len(blocksToBatch) == 0 {
+		panic(fmt.Sprintf("gas overflow even for only 1 block. blocks: %v", blocks))
+	}
+
 	// TODO: use start_block.parent_hash after we upgrade `BlockTrace` type
 	parents, err := w.orm.GetBlockInfos(map[string]interface{}{"number": idsToBatch[0] - 1})
 	if err != nil || len(parents) == 0 {
