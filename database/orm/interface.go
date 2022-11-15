@@ -76,7 +76,7 @@ type BlockResultOrm interface {
 	GetHashByNumber(number uint64) (*common.Hash, error)
 	DeleteTracesByBatchID(batchID string) error
 	InsertBlockResults(ctx context.Context, blockResults []*types.BlockResult) error
-	SetBatchIDForBlocksInDBTx(dbTx *sqlx.Tx, blocks []uint64, batchID string) error
+	SetBatchIDForBlocksInDBTx(dbTx *sqlx.Tx, numbers []uint64, batchID string) error
 }
 
 // BlockBatchOrm block_batch operation interface

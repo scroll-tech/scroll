@@ -169,10 +169,10 @@ func (o *blockResultOrm) DeleteTracesByBatchID(batch_id string) error {
 
 // http://jmoiron.github.io/sqlx/#inQueries
 // https://stackoverflow.com/questions/56568799/how-to-update-multiple-rows-using-sqlx
-func (o *blockResultOrm) SetBatchIDForBlocksInDBTx(dbTx *sqlx.Tx, blocks []uint64, batchID string) error {
+func (o *blockResultOrm) SetBatchIDForBlocksInDBTx(dbTx *sqlx.Tx, numbers []uint64, batchID string) error {
 	query := "UPDATE block_result SET batch_id=? WHERE number IN (?)"
 
-	qry, args, err := sqlx.In(query, batchID, blocks)
+	qry, args, err := sqlx.In(query, batchID, numbers)
 	if err != nil {
 		return err
 	}
