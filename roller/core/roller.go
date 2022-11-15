@@ -227,11 +227,8 @@ func (r *Roller) prove() error {
 		if err != nil {
 			return err
 		}
-		return r.stack.Pop()
-		if err != nil {
-			return err
-		}
-		return nil
+		_, err = r.stack.Pop()
+		return err
 	}
 
 	log.Info("start to prove block", "block-id", traces.Traces.ID)
@@ -260,9 +257,6 @@ func (r *Roller) prove() error {
 	}
 	_, err = r.stack.Pop()
 	return err
-		return err
-	}
-	return nil
 }
 
 // Close closes the websocket connection.
