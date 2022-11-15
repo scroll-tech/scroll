@@ -88,8 +88,6 @@ pipeline {
                             sh 'docker login --username=${dockerUser} --password=${dockerPassword}'
                             for (i in ['bridge', 'coordinator']) {
                                 sh "docker build -t ${imagePrefix}/$i:${GIT_COMMIT} -f build/dockerfiles/${i}.Dockerfile ."
-                                sh "docker push ${imagePrefix}/$i:${GIT_COMMIT}"
-                                sh "docker rmi ${imagePrefix}/$i:${GIT_COMMIT}"
                             }
                         }
                     }
