@@ -187,6 +187,11 @@ func (o *blockBatchOrm) UpdateProvingStatus(id string, status ProvingStatus) err
 	}
 }
 
+func (o *blockBatchOrm) TransistProvingStatus(before ProvingStatus, after ProvingStatus) error {
+	_, err := o.db.Exec(o.db.Rebind("update block_batch set proving_status = ? where proving_status = ?;"), after, before)
+	return err
+}
+
 func (o *blockBatchOrm) NewBatchInDBTx(dbTx *sqlx.Tx, startBlock *BlockInfo, endBlock *BlockInfo, parentHash string, totalTxNum uint64, totalL2Gas uint64) (string, error) {
 	row := dbTx.QueryRow("SELECT COALESCE(MAX(index), 0) FROM block_batch;")
 
