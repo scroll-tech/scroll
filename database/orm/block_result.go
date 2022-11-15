@@ -138,7 +138,6 @@ func (o *blockResultOrm) InsertBlockResults(ctx context.Context, blockResults []
 			gasUsed += tx.Gas
 		}
 
-		var data []byte
 		data, err := json.Marshal(trace)
 		if err != nil {
 			log.Error("failed to marshal blockResult", "hash", hash, "err", err)
