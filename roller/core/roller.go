@@ -259,7 +259,7 @@ func (r *Roller) prove() error {
 		return err
 	}
 	_, err = r.stack.Pop()
-	if err != nil {
+	return err
 		return err
 	}
 	return nil
