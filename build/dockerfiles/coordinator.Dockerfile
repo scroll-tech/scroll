@@ -6,11 +6,11 @@ COPY ./ /
 RUN cd /common/zkp/rust && cargo build --release && cp ./target/release/libzkp.a ../lib/
 RUN cp -r /common/zkp/lib /coordinator/verifier/
 
-RUN cd /coordinator/cmd && go build -v -p 4 -o coordinator
+RUN cd /coordinator && go build -v -p 4 -o coordinator ./cmd
 
 # Pull scroll into a second stage deploy alpine container
 FROM alpine:latest
 
-COPY --from=builder /coordinator/cmd/coordinator /bin/
+COPY --from=builder /coordinator/coordinator /bin/
 
 ENTRYPOINT ["coordinator"]
