@@ -269,7 +269,7 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 	r.processingCommitment[id] = id
 }
 
-// ProcessCommittedBatches submit proof to layer rollup contract
+// ProcessCommittedBatches submit proof to layer 1 rollup contract
 func (r *Layer2Relayer) ProcessCommittedBatches() {
 	// batches are sorted by id in increasing order
 	batches, err := r.db.GetCommittedBatches()
