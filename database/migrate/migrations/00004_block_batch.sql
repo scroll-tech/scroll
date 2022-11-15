@@ -33,6 +33,8 @@ on column block_batch.rollup_status is 'undefined, pending, committing, committe
 
 create unique index block_batch_id_uindex
     on block_batch (id);
+create unique index block_batch_index_uindex
+    on block_batch (index);
 
 -- +goose StatementEnd
 
