@@ -21,7 +21,7 @@ import (
 )
 
 var (
-	templateLayer2Message = []*orm.Layer2Message{
+	templateL2Message = []*orm.L2Message{
 		{
 			Nonce:      1,
 			Height:     1,
@@ -63,19 +63,19 @@ func testL2RelayerProcessSaveEvents(t *testing.T) {
 	assert.NoError(t, err)
 	defer relayer.Stop()
 
-	err = db.SaveLayer2Messages(context.Background(), templateLayer2Message)
+	err = db.SaveL2Messages(context.Background(), templateL2Message)
 	assert.NoError(t, err)
 
 	results := []*types.BlockResult{
 		{
 			BlockTrace: &types.BlockTrace{
-				Number: (*hexutil.Big)(big.NewInt(int64(templateLayer2Message[0].Height))),
+				Number: (*hexutil.Big)(big.NewInt(int64(templateL2Message[0].Height))),
 				Hash:   common.HexToHash("00"),
 			},
 		},
 		{
 			BlockTrace: &types.BlockTrace{
-				Number: (*hexutil.Big)(big.NewInt(int64(templateLayer2Message[0].Height + 1))),
+				Number: (*hexutil.Big)(big.NewInt(int64(templateL2Message[0].Height + 1))),
 				Hash:   common.HexToHash("01"),
 			},
 		},
@@ -86,13 +86,13 @@ func testL2RelayerProcessSaveEvents(t *testing.T) {
 	dbTx, err := db.Beginx()
 	assert.NoError(t, err)
 	batchID, err := db.NewBatchInDBTx(dbTx,
-		&orm.BlockInfo{Number: templateLayer2Message[0].Height},
-		&orm.BlockInfo{Number: templateLayer2Message[0].Height + 1},
+		&orm.BlockInfo{Number: templateL2Message[0].Height},
+		&orm.BlockInfo{Number: templateL2Message[0].Height + 1},
 		"0f", 1, 194676) // parentHash & totalTxNum & totalL2Gas don't really matter here
 	assert.NoError(t, err)
 	err = db.SetBatchIDForBlocksInDBTx(dbTx, []uint64{
-		templateLayer2Message[0].Height,
-		templateLayer2Message[0].Height + 1}, batchID)
+		templateL2Message[0].Height,
+		templateL2Message[0].Height + 1}, batchID)
 	assert.NoError(t, err)
 	err = dbTx.Commit()
 	assert.NoError(t, err)
@@ -102,7 +102,7 @@ func testL2RelayerProcessSaveEvents(t *testing.T) {
 
 	relayer.ProcessSavedEvents()
 
-	msg, err := db.GetLayer2MessageByNonce(templateLayer2Message[0].Nonce)
+	msg, err := db.GetL2MessageByNonce(templateL2Message[0].Nonce)
 	assert.NoError(t, err)
 	assert.Equal(t, orm.MsgSubmitted, msg.Status)
 }

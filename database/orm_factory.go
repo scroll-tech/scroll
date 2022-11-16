@@ -12,7 +12,7 @@ type OrmFactory interface {
 	orm.BlockResultOrm
 	orm.BlockBatchOrm
 	orm.L1MessageOrm
-	orm.Layer2MessageOrm
+	orm.L2MessageOrm
 	GetDB() *sqlx.DB
 	Beginx() (*sqlx.Tx, error)
 	Close() error
@@ -22,7 +22,7 @@ type ormFactory struct {
 	orm.BlockResultOrm
 	orm.BlockBatchOrm
 	orm.L1MessageOrm
-	orm.Layer2MessageOrm
+	orm.L2MessageOrm
 	*sqlx.DB
 }
 
@@ -41,11 +41,11 @@ func NewOrmFactory(cfg *DBConfig) (OrmFactory, error) {
 	}
 
 	return &ormFactory{
-		BlockResultOrm:   orm.NewBlockResultOrm(db),
-		BlockBatchOrm:    orm.NewBlockBatchOrm(db),
-		L1MessageOrm:     orm.NewL1MessageOrm(db),
-		Layer2MessageOrm: orm.NewLayer2MessageOrm(db),
-		DB:               db,
+		BlockResultOrm: orm.NewBlockResultOrm(db),
+		BlockBatchOrm:  orm.NewBlockBatchOrm(db),
+		L1MessageOrm:   orm.NewL1MessageOrm(db),
+		L2MessageOrm:   orm.NewL2MessageOrm(db),
+		DB:             db,
 	}, nil
 }
 

@@ -110,7 +110,7 @@ func (r *Layer2Relayer) ProcessSavedEvents() {
 	}
 }
 
-func (r *Layer2Relayer) processSavedEvent(msg *orm.Layer2Message) error {
+func (r *Layer2Relayer) processSavedEvent(msg *orm.L2Message) error {
 	// @todo add support to relay multiple messages
 	batch, err := r.db.GetLatestFinalizedBatch()
 	if err != nil {

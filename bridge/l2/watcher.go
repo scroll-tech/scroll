@@ -217,18 +217,18 @@ func (w *WatcherClient) fetchContractEvent(blockHeight uint64) error {
 		return err
 	}
 
-	err = w.orm.SaveLayer2Messages(w.ctx, eventLogs)
+	err = w.orm.SaveL2Messages(w.ctx, eventLogs)
 	if err == nil {
 		w.processedMsgHeight = uint64(toBlock)
 	}
 	return err
 }
 
-func parseBridgeEventLogs(logs []types.Log, messengerABI *abi.ABI) ([]*orm.Layer2Message, error) {
+func parseBridgeEventLogs(logs []types.Log, messengerABI *abi.ABI) ([]*orm.L2Message, error) {
 	// Need use contract abi to parse event Log
 	// Can only be tested after we have our contracts set up
 
-	var parsedlogs []*orm.Layer2Message
+	var parsedlogs []*orm.L2Message
 	for _, vLog := range logs {
 		event := struct {
 			Target       common.Address
@@ -248,7 +248,7 @@ func parseBridgeEventLogs(logs []types.Log, messengerABI *abi.ABI) ([]*orm.Layer
 		}
 		// target is in topics[1]
 		event.Target = common.HexToAddress(vLog.Topics[1].String())
-		parsedlogs = append(parsedlogs, &orm.Layer2Message{
+		parsedlogs = append(parsedlogs, &orm.L2Message{
 			Nonce:      event.MessageNonce.Uint64(),
 			Height:     vLog.BlockNumber,
 			Sender:     event.Sender.String(),
