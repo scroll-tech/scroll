@@ -21,6 +21,12 @@ create unique index block_result_hash_uindex
 create unique index block_result_number_uindex
     on block_result (number);
 
+create unique index block_result_parent_uindex
+    on block_result (number, parent_hash);
+
+create unique index block_result_parent_hash_uindex
+    on block_result (hash, parent_hash);
+
 -- +goose StatementEnd
 
 -- +goose Down
