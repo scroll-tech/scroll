@@ -14,23 +14,23 @@ import (
 	"github.com/scroll-tech/go-ethereum/log"
 )
 
-type blockResultOrm struct {
+type blockTraceOrm struct {
 	db *sqlx.DB
 }
 
-var _ BlockResultOrm = (*blockResultOrm)(nil)
+var _ BlockTraceOrm = (*blockTraceOrm)(nil)
 
-// NewBlockResultOrm create an blockResultOrm instance
-func NewBlockResultOrm(db *sqlx.DB) BlockResultOrm {
-	return &blockResultOrm{db: db}
+// NewBlockTraceOrm create an blockTraceOrm instance
+func NewBlockTraceOrm(db *sqlx.DB) BlockTraceOrm {
+	return &blockTraceOrm{db: db}
 }
 
-func (o *blockResultOrm) Exist(number uint64) (bool, error) {
+func (o *blockTraceOrm) Exist(number uint64) (bool, error) {
 	var res int
 	return res == 1, o.db.Get(&res, o.db.Rebind(`SELECT 1 from block_trace where number = ? limit 1;`), number)
 }
 
-func (o *blockResultOrm) GetBlockResultsLatestHeight() (int64, error) {
+func (o *blockTraceOrm) GetBlockTracesLatestHeight() (int64, error) {
 	row := o.db.QueryRow("SELECT COALESCE(MAX(number), -1) FROM block_trace;")
 
 	var height int64
@@ -40,7 +40,7 @@ func (o *blockResultOrm) GetBlockResultsLatestHeight() (int64, error) {
 	return height, nil
 }
 
-func (o *blockResultOrm) GetBlockResultsOldestHeight() (int64, error) {
+func (o *blockTraceOrm) GetBlockTracesOldestHeight() (int64, error) {
 	row := o.db.QueryRow("SELECT COALESCE(MIN(number), -1) FROM block_trace;")
 
 	var height int64
@@ -50,7 +50,7 @@ func (o *blockResultOrm) GetBlockResultsOldestHeight() (int64, error) {
 	return height, nil
 }
 
-func (o *blockResultOrm) GetBlockResults(fields map[string]interface{}, args ...string) ([]*types.BlockResult, error) {
+func (o *blockTraceOrm) GetBlockTraces(fields map[string]interface{}, args ...string) ([]*types.BlockResult, error) {
 	type Result struct {
 		Trace string
 	}
@@ -87,7 +87,7 @@ func (o *blockResultOrm) GetBlockResults(fields map[string]interface{}, args ...
 	return traces, rows.Close()
 }
 
-func (o *blockResultOrm) GetBlockInfos(fields map[string]interface{}, args ...string) ([]*BlockInfo, error) {
+func (o *blockTraceOrm) GetBlockInfos(fields map[string]interface{}, args ...string) ([]*BlockInfo, error) {
 	query := "SELECT number, hash, batch_id, tx_num, gas_used, block_timestamp FROM block_trace WHERE 1 = 1 "
 	for key := range fields {
 		query += fmt.Sprintf("AND %s=:%s ", key, key)
@@ -115,7 +115,7 @@ func (o *blockResultOrm) GetBlockInfos(fields map[string]interface{}, args ...st
 	return blocks, rows.Close()
 }
 
-func (o *blockResultOrm) GetHashByNumber(number uint64) (*common.Hash, error) {
+func (o *blockTraceOrm) GetHashByNumber(number uint64) (*common.Hash, error) {
 	row := o.db.QueryRow(`SELECT hash FROM block_trace WHERE number = $1`, number)
 	var hashStr string
 	if err := row.Scan(&hashStr); err != nil {
@@ -125,9 +125,9 @@ func (o *blockResultOrm) GetHashByNumber(number uint64) (*common.Hash, error) {
 	return &hash, nil
 }
 
-func (o *blockResultOrm) InsertBlockResults(ctx context.Context, blockResults []*types.BlockResult) error {
-	traceMaps := make([]map[string]interface{}, len(blockResults))
-	for i, trace := range blockResults {
+func (o *blockTraceOrm) InsertBlockTraces(ctx context.Context, blockTraces []*types.BlockResult) error {
+	traceMaps := make([]map[string]interface{}, len(blockTraces))
+	for i, trace := range blockTraces {
 		number, hash, tx_num, mtime := trace.BlockTrace.Number.ToInt().Int64(),
 			trace.BlockTrace.Hash.String(),
 			len(trace.BlockTrace.Transactions),
@@ -155,12 +155,12 @@ func (o *blockResultOrm) InsertBlockResults(ctx context.Context, blockResults []
 
 	_, err := o.db.NamedExec(`INSERT INTO public.block_trace (number, hash, trace, tx_num, gas_used, block_timestamp) VALUES (:number, :hash, :trace, :tx_num, :gas_used, :block_timestamp);`, traceMaps)
 	if err != nil {
-		log.Error("failed to insert blockResults", "err", err)
+		log.Error("failed to insert blockTraces", "err", err)
 	}
 	return err
 }
 
-func (o *blockResultOrm) DeleteTracesByBatchID(batch_id string) error {
+func (o *blockTraceOrm) DeleteTracesByBatchID(batch_id string) error {
 	if _, err := o.db.Exec(o.db.Rebind("update block_trace set trace = ? where batch_id = ?;"), "{}", batch_id); err != nil {
 		return err
 	}
@@ -169,7 +169,7 @@ func (o *blockResultOrm) DeleteTracesByBatchID(batch_id string) error {
 
 // http://jmoiron.github.io/sqlx/#inQueries
 // https://stackoverflow.com/questions/56568799/how-to-update-multiple-rows-using-sqlx
-func (o *blockResultOrm) SetBatchIDForBlocksInDBTx(dbTx *sqlx.Tx, numbers []uint64, batchID string) error {
+func (o *blockTraceOrm) SetBatchIDForBlocksInDBTx(dbTx *sqlx.Tx, numbers []uint64, batchID string) error {
 	query := "UPDATE block_trace SET batch_id=? WHERE number IN (?)"
 
 	qry, args, err := sqlx.In(query, batchID, numbers)

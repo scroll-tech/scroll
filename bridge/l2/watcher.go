@@ -22,12 +22,6 @@ import (
 )
 
 const (
-	// BufferSize for the BlockResult channel
-	BufferSize = 16
-
-	// BlockResultCacheSize for the latest handled blockresults in memory.
-	BlockResultCacheSize = 64
-
 	// keccak256("SentMessage(address,address,uint256,uint256,uint256,bytes,uint256,uint256)")
 	sentMessageEventSignature = "806b28931bc6fbe6c146babfb83d5c2b47e971edb43b4566f010577a0ee7d9f4"
 )
@@ -127,16 +121,16 @@ func (w *WatcherClient) Stop() {
 	w.stopCh <- struct{}{}
 }
 
-const blockResultsFetchLimit = uint64(10)
+const blockTracesFetchLimit = uint64(10)
 
 // try fetch missing blocks if inconsistent
 func (w *WatcherClient) tryFetchRunningMissingBlocks(ctx context.Context, backTrackFrom uint64) error {
 	// Get newest block in DB. must have blocks at that time.
 	// Don't use "block_trace" table "trace" column's BlockTrace.Number,
 	// because it might be empty if the corresponding rollup_result is finalized/finalization_skipped
-	heightInDB, err := w.orm.GetBlockResultsLatestHeight()
+	heightInDB, err := w.orm.GetBlockTracesLatestHeight()
 	if err != nil {
-		return fmt.Errorf("failed to GetBlockResults in DB: %v", err)
+		return fmt.Errorf("failed to GetBlockTraces in DB: %v", err)
 	}
 	backTrackTo := uint64(0)
 	if heightInDB > 0 {
@@ -144,8 +138,8 @@ func (w *WatcherClient) tryFetchRunningMissingBlocks(ctx context.Context, backTr
 	}
 
 	// note that backTrackFrom >= backTrackTo because we are doing backtracking
-	if backTrackFrom > backTrackTo+blockResultsFetchLimit {
-		backTrackFrom = backTrackTo + blockResultsFetchLimit
+	if backTrackFrom > backTrackTo+blockTracesFetchLimit {
+		backTrackFrom = backTrackTo + blockTracesFetchLimit
 	}
 
 	// start backtracking
@@ -166,8 +160,8 @@ func (w *WatcherClient) tryFetchRunningMissingBlocks(ctx context.Context, backTr
 
 	}
 	if len(traces) > 0 {
-		if err = w.orm.InsertBlockResults(ctx, traces); err != nil {
-			return fmt.Errorf("failed to batch insert BlockResults: %v", err)
+		if err = w.orm.InsertBlockTraces(ctx, traces); err != nil {
+			return fmt.Errorf("failed to batch insert BlockTraces: %v", err)
 		}
 	}
 	return nil

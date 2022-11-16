@@ -9,7 +9,7 @@ import (
 
 // OrmFactory include all ormFactory interface
 type OrmFactory interface {
-	orm.BlockResultOrm
+	orm.BlockTraceOrm
 	orm.BlockBatchOrm
 	orm.L1MessageOrm
 	orm.L2MessageOrm
@@ -19,7 +19,7 @@ type OrmFactory interface {
 }
 
 type ormFactory struct {
-	orm.BlockResultOrm
+	orm.BlockTraceOrm
 	orm.BlockBatchOrm
 	orm.L1MessageOrm
 	orm.L2MessageOrm
@@ -41,11 +41,11 @@ func NewOrmFactory(cfg *DBConfig) (OrmFactory, error) {
 	}
 
 	return &ormFactory{
-		BlockResultOrm: orm.NewBlockResultOrm(db),
-		BlockBatchOrm:  orm.NewBlockBatchOrm(db),
-		L1MessageOrm:   orm.NewL1MessageOrm(db),
-		L2MessageOrm:   orm.NewL2MessageOrm(db),
-		DB:             db,
+		BlockTraceOrm: orm.NewBlockTraceOrm(db),
+		BlockBatchOrm: orm.NewBlockBatchOrm(db),
+		L1MessageOrm:  orm.NewL1MessageOrm(db),
+		L2MessageOrm:  orm.NewL2MessageOrm(db),
+		DB:            db,
 	}, nil
 }
 

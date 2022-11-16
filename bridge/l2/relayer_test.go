@@ -80,7 +80,7 @@ func testL2RelayerProcessSaveEvents(t *testing.T) {
 			},
 		},
 	}
-	err = db.InsertBlockResults(context.Background(), results)
+	err = db.InsertBlockTraces(context.Background(), results)
 	assert.NoError(t, err)
 
 	dbTx, err := db.Beginx()
@@ -136,7 +136,7 @@ func testL2RelayerProcessPendingBatches(t *testing.T) {
 	assert.NoError(t, err)
 	results = append(results, blockResult)
 
-	err = db.InsertBlockResults(context.Background(), results)
+	err = db.InsertBlockTraces(context.Background(), results)
 	assert.NoError(t, err)
 
 	dbTx, err := db.Beginx()
@@ -181,7 +181,7 @@ func testL2RelayerProcessCommittedBatches(t *testing.T) {
 	// blockResult := &types.BlockResult{}
 	// err = json.Unmarshal(templateBlockResult, blockResult)
 	// assert.NoError(t, err)
-	// err = db.InsertBlockResults(context.Background(), []*types.BlockResult{blockResult})
+	// err = db.InsertBlockTraces(context.Background(), []*types.BlockResult{blockResult})
 	// assert.NoError(t, err)
 
 	dbTx, err := db.Beginx()

@@ -68,16 +68,16 @@ type BlockInfo struct {
 	BlockTimestamp uint64         `json:"block_timestamp" db:"block_timestamp"`
 }
 
-// BlockResultOrm blockResult operation interface
-type BlockResultOrm interface {
+// BlockTraceOrm block_trace operation interface
+type BlockTraceOrm interface {
 	Exist(number uint64) (bool, error)
-	GetBlockResultsLatestHeight() (int64, error)
-	GetBlockResultsOldestHeight() (int64, error)
-	GetBlockResults(fields map[string]interface{}, args ...string) ([]*types.BlockResult, error)
+	GetBlockTracesLatestHeight() (int64, error)
+	GetBlockTracesOldestHeight() (int64, error)
+	GetBlockTraces(fields map[string]interface{}, args ...string) ([]*types.BlockResult, error)
 	GetBlockInfos(fields map[string]interface{}, args ...string) ([]*BlockInfo, error)
 	GetHashByNumber(number uint64) (*common.Hash, error)
 	DeleteTracesByBatchID(batchID string) error
-	InsertBlockResults(ctx context.Context, blockResults []*types.BlockResult) error
+	InsertBlockTraces(ctx context.Context, blockTraces []*types.BlockResult) error
 	SetBatchIDForBlocksInDBTx(dbTx *sqlx.Tx, numbers []uint64, batchID string) error
 }
 

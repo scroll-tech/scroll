@@ -69,6 +69,7 @@ func (l2 *Backend) APIs() []rpc.API {
 }
 
 // MockBlockResult for test case
+// TODO: rename to BlockTrace once upgrade l2geth types
 func (l2 *Backend) MockBlockResult(blockResult *types.BlockResult) {
 	l2.l2Watcher.Send(blockResult)
 }
