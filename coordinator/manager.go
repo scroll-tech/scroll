@@ -404,12 +404,9 @@ func (m *Manager) StartProofGenerationSession(task *orm.BlockBatch) bool {
 	var dbErr error
 	defer func() {
 		if dbErr != nil {
+			log.Error("StartProofGenerationSession", "dbErr", dbErr)
 			if err := m.orm.UpdateProvingStatus(task.ID, orm.ProvingTaskUnassigned); err != nil {
-				log.Error("fail to reset task_status as Unassigned",
-					"id", task.ID,
-					"dbErr", dbErr,
-					"err", err,
-				)
+				log.Error("fail to reset task_status as Unassigned", "id", task.ID, "dbErr", dbErr, "err", err)
 			}
 		}
 	}()
