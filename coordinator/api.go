@@ -64,7 +64,7 @@ func newSessionInfo(s *session, status orm.ProvingStatus, errMsg string, finishe
 	for pk := range s.roller_names {
 		nameList = append(nameList, s.roller_names[pk])
 	}
-	info := SessionInfo{
+	info := &SessionInfo{
 		ID:              s.id,
 		Status:          status.String(),
 		AssignedRollers: nameList,
@@ -74,7 +74,7 @@ func newSessionInfo(s *session, status orm.ProvingStatus, errMsg string, finishe
 	if finished {
 		info.FinishTime = now
 	}
-	return &info
+	return info
 }
 
 // GetSessionInfo returns the session information given the session id.
@@ -82,10 +82,10 @@ func (m *Manager) GetSessionInfo(sessionID string) (*SessionInfo, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 	if info, ok := m.failedSessionInfos[sessionID]; ok {
-		return &info, nil
+		return info, nil
 	}
 	if s, ok := m.sessions[sessionID]; ok {
-		return newSessionInfo(&s, orm.ProvingTaskAssigned, "", false), nil
+		return newSessionInfo(s, orm.ProvingTaskAssigned, "", false), nil
 	}
 	return nil, fmt.Errorf("no such session, sessionID: %s", sessionID)
 }
