@@ -121,7 +121,7 @@ func (i *Identity) Hash() ([]byte, error) {
 	return hash[:], nil
 }
 
-// AuthZkProof is the data structure sent to scroll.
+// AuthZkProof is the data structure sent to the coordinator.
 type AuthZkProof struct {
 	*ProofMsg `json:"zkProof"`
 	// Roller signature
