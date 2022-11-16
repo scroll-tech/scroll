@@ -91,7 +91,7 @@ pipeline {
                     script {
                         if (test_result == true) {
                             sh 'docker login --username=${dockerUser} --password=${dockerPassword}'
-                            for (i in ['bridge', 'coordinator']) {
+                            for (i in ['bridge', 'coordinator', 'db_cli']) {
                                 sh "docker build -t ${imagePrefix}/$i:${GIT_COMMIT} -f build/dockerfiles/${i}.Dockerfile ."
                             }
                         }
