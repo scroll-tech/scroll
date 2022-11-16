@@ -51,7 +51,7 @@ func (m *Manager) ListRollers() ([]*RollerInfo, error) {
 			PublicKey: pk,
 		}
 		for id, sess := range m.sessions {
-			if sess.rollers[pk] {
+			if _, ok := sess.rollers[pk]; ok {
 				info.ActiveSessionStartTime = sess.startTime
 				info.ActiveSession = id
 				break
