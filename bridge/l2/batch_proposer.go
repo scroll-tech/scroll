@@ -1,7 +1,6 @@
 package l2
 
 import (
-	"database/sql"
 	"fmt"
 	"time"
 
@@ -25,8 +24,8 @@ func (w *WatcherClient) tryProposeBatch() error {
 	w.bpMutex.Lock()
 	defer w.bpMutex.Unlock()
 
-	blocks, err := w.orm.GetBlockInfos(
-		map[string]interface{}{"batch_id": sql.NullString{Valid: false}},
+	blocks, err := w.orm.GetUnbatchedBlocks(
+		map[string]interface{}{},
 		fmt.Sprintf("order by number ASC LIMIT %d", batchBlocksLimit),
 	)
 	if err != nil {
