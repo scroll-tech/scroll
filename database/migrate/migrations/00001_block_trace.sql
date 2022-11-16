@@ -27,6 +27,9 @@ create unique index block_trace_parent_uindex
 create unique index block_trace_parent_hash_uindex
     on block_trace (hash, parent_hash);
 
+create index block_trace_batch_id_index
+    on block_trace (batch_id);
+
 -- +goose StatementEnd
 
 -- +goose Down
