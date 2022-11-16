@@ -26,8 +26,8 @@ const (
 	MsgConfirmed
 )
 
-// Layer1Message is structure of stored layer1 bridge message
-type Layer1Message struct {
+// L1Message is structure of stored layer1 bridge message
+type L1Message struct {
 	Nonce      uint64    `json:"nonce" db:"nonce"`
 	Height     uint64    `json:"height" db:"height"`
 	Sender     string    `json:"sender" db:"sender"`
@@ -41,8 +41,8 @@ type Layer1Message struct {
 	Status     MsgStatus `json:"status" db:"status"`
 }
 
-// Layer2Message is structure of stored layer2 bridge message
-type Layer2Message struct {
+// L2Message is structure of stored layer2 bridge message
+type L2Message struct {
 	Nonce      uint64    `json:"nonce" db:"nonce"`
 	Height     uint64    `json:"height" db:"height"`
 	Sender     string    `json:"sender" db:"sender"`
@@ -56,7 +56,7 @@ type Layer2Message struct {
 	Status     MsgStatus `json:"status" db:"status"`
 }
 
-// BlockInfo is structure of stored `block_result` without `content`
+// BlockInfo is structure of stored `block_trace` without `trace`
 // TODO: add `parent_hash`. Though we already add it into db schema, we avoid adding it here atm,
 // in case people think they can already use it
 type BlockInfo struct {
@@ -68,16 +68,16 @@ type BlockInfo struct {
 	BlockTimestamp uint64         `json:"block_timestamp" db:"block_timestamp"`
 }
 
-// BlockResultOrm blockResult operation interface
-type BlockResultOrm interface {
+// BlockTraceOrm block_trace operation interface
+type BlockTraceOrm interface {
 	Exist(number uint64) (bool, error)
-	GetBlockResultsLatestHeight() (int64, error)
-	GetBlockResultsOldestHeight() (int64, error)
-	GetBlockResults(fields map[string]interface{}, args ...string) ([]*types.BlockResult, error)
+	GetBlockTracesLatestHeight() (int64, error)
+	GetBlockTracesOldestHeight() (int64, error)
+	GetBlockTraces(fields map[string]interface{}, args ...string) ([]*types.BlockResult, error)
 	GetBlockInfos(fields map[string]interface{}, args ...string) ([]*BlockInfo, error)
 	GetHashByNumber(number uint64) (*common.Hash, error)
 	DeleteTracesByBatchID(batchID string) error
-	InsertBlockResults(ctx context.Context, blockResults []*types.BlockResult) error
+	InsertBlockTraces(ctx context.Context, blockTraces []*types.BlockResult) error
 	SetBatchIDForBlocksInDBTx(dbTx *sqlx.Tx, numbers []uint64, batchID string) error
 }
 
@@ -100,30 +100,30 @@ type BlockBatchOrm interface {
 	UpdateFinalizeTxHashAndRollupStatus(ctx context.Context, id string, finalize_tx_hash string, status RollupStatus) error
 }
 
-// Layer1MessageOrm is layer1 message db interface
-type Layer1MessageOrm interface {
-	GetLayer1MessageByNonce(nonce uint64) (*Layer1Message, error)
-	GetL1UnprocessedMessages() ([]*Layer1Message, error)
+// L1MessageOrm is layer1 message db interface
+type L1MessageOrm interface {
+	GetL1MessageByNonce(nonce uint64) (*L1Message, error)
+	GetL1UnprocessedMessages() ([]*L1Message, error)
 	GetL1ProcessedNonce() (int64, error)
-	SaveLayer1Messages(ctx context.Context, messages []*Layer1Message) error
+	SaveL1Messages(ctx context.Context, messages []*L1Message) error
 	UpdateLayer2Hash(ctx context.Context, layer1Hash string, layer2Hash string) error
 	UpdateLayer1Status(ctx context.Context, layer1Hash string, status MsgStatus) error
 	UpdateLayer1StatusAndLayer2Hash(ctx context.Context, layer1Hash, layer2Hash string, status MsgStatus) error
 	GetLayer1LatestWatchedHeight() (int64, error)
-	GetLayer1MessageByLayer1Hash(layer1Hash string) (*Layer1Message, error)
+	GetL1MessageByLayer1Hash(layer1Hash string) (*L1Message, error)
 }
 
-// Layer2MessageOrm is layer2 message db interface
-type Layer2MessageOrm interface {
-	GetLayer2MessageByNonce(nonce uint64) (*Layer2Message, error)
+// L2MessageOrm is layer2 message db interface
+type L2MessageOrm interface {
+	GetL2MessageByNonce(nonce uint64) (*L2Message, error)
 	MessageProofExist(nonce uint64) (bool, error)
 	GetMessageProofByNonce(nonce uint64) (string, error)
-	GetL2UnprocessedMessages() ([]*Layer2Message, error)
+	GetL2UnprocessedMessages() ([]*L2Message, error)
 	GetL2ProcessedNonce() (int64, error)
-	SaveLayer2Messages(ctx context.Context, messages []*Layer2Message) error
+	SaveL2Messages(ctx context.Context, messages []*L2Message) error
 	UpdateLayer1Hash(ctx context.Context, layer2Hash string, layer1Hash string) error
 	UpdateLayer2Status(ctx context.Context, layer2Hash string, status MsgStatus) error
-	GetLayer2MessageByLayer2Hash(layer2Hash string) (*Layer2Message, error)
+	GetL2MessageByLayer2Hash(layer2Hash string) (*L2Message, error)
 	UpdateMessageProof(ctx context.Context, layer2Hash, proof string) error
 	GetLayer2LatestWatchedHeight() (int64, error)
 	GetMessageProofByLayer2Hash(layer2Hash string) (string, error)

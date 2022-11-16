@@ -18,11 +18,11 @@ type Backend struct {
 	cfg     *config.L1Config
 	watcher *Watcher
 	relayer *Layer1Relayer
-	orm     orm.Layer1MessageOrm
+	orm     orm.L1MessageOrm
 }
 
 // New returns a new instance of Backend.
-func New(ctx context.Context, cfg *config.L1Config, orm orm.Layer1MessageOrm) (*Backend, error) {
+func New(ctx context.Context, cfg *config.L1Config, orm orm.L1MessageOrm) (*Backend, error) {
 	client, err := ethclient.Dial(cfg.Endpoint)
 	if err != nil {
 		return nil, err

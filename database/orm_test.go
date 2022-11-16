@@ -21,7 +21,7 @@ import (
 )
 
 var (
-	templateLayer1Message = []*orm.Layer1Message{
+	templateL1Message = []*orm.L1Message{
 		{
 			Nonce:      1,
 			Height:     1,
@@ -47,7 +47,7 @@ var (
 			Layer1Hash: "hash1",
 		},
 	}
-	templateLayer2Message = []*orm.Layer2Message{
+	templateL2Message = []*orm.L2Message{
 		{
 			Nonce:      1,
 			Height:     1,
@@ -73,13 +73,13 @@ var (
 			Layer2Hash: "hash1",
 		},
 	}
-	blockResult *types.BlockResult
+	blockTrace *types.BlockResult
 
 	dbConfig  *database.DBConfig
 	dbImg     docker.ImgInstance
-	ormBlock  orm.BlockResultOrm
-	ormLayer1 orm.Layer1MessageOrm
-	ormLayer2 orm.Layer2MessageOrm
+	ormBlock  orm.BlockTraceOrm
+	ormLayer1 orm.L1MessageOrm
+	ormLayer2 orm.L2MessageOrm
 	ormBatch  orm.BlockBatchOrm
 )
 
@@ -96,18 +96,18 @@ func setupEnv(t *testing.T) error {
 	assert.NoError(t, migrate.ResetDB(db.DB))
 
 	// Init several orm handles.
-	ormBlock = orm.NewBlockResultOrm(db)
-	ormLayer1 = orm.NewLayer1MessageOrm(db)
-	ormLayer2 = orm.NewLayer2MessageOrm(db)
+	ormBlock = orm.NewBlockTraceOrm(db)
+	ormLayer1 = orm.NewL1MessageOrm(db)
+	ormLayer2 = orm.NewL2MessageOrm(db)
 	ormBatch = orm.NewBlockBatchOrm(db)
 
 	templateBlockResult, err := os.ReadFile("../common/testdata/blockResult_orm.json")
 	if err != nil {
 		return err
 	}
-	// unmarshal blockResult
-	blockResult = &types.BlockResult{}
-	return json.Unmarshal(templateBlockResult, blockResult)
+	// unmarshal blockTrace
+	blockTrace = &types.BlockResult{}
+	return json.Unmarshal(templateBlockResult, blockTrace)
 }
 
 // TestOrmFactory run several test cases.
@@ -121,49 +121,49 @@ func TestOrmFactory(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	t.Run("testOrmBlockResults", testOrmBlockResults)
+	t.Run("testOrmBlockTraces", testOrmBlockTraces)
 
-	t.Run("testOrmLayer1Message", testOrmLayer1Message)
+	t.Run("testOrmL1Message", testOrmL1Message)
 
-	t.Run("testOrmLayer2Message", testOrmLayer2Message)
+	t.Run("testOrmL2Message", testOrmL2Message)
 
 	t.Run("testOrmBlockbatch", testOrmBlockbatch)
 }
 
-func testOrmBlockResults(t *testing.T) {
+func testOrmBlockTraces(t *testing.T) {
 	// Create db handler and reset db.
 	factory, err := database.NewOrmFactory(dbConfig)
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(factory.GetDB().DB))
 
-	res, err := ormBlock.GetBlockResults(map[string]interface{}{})
+	res, err := ormBlock.GetBlockTraces(map[string]interface{}{})
 	assert.NoError(t, err)
 	assert.Equal(t, true, len(res) == 0)
 
 	// Insert into db
-	err = ormBlock.InsertBlockResults(context.Background(), []*types.BlockResult{blockResult})
+	err = ormBlock.InsertBlockTraces(context.Background(), []*types.BlockResult{blockTrace})
 	assert.NoError(t, err)
 
-	exist, err := ormBlock.Exist(blockResult.BlockTrace.Number.ToInt().Uint64())
+	exist, err := ormBlock.Exist(blockTrace.BlockTrace.Number.ToInt().Uint64())
 	assert.NoError(t, err)
 	assert.Equal(t, true, exist)
 
-	res, err = ormBlock.GetBlockResults(map[string]interface{}{
-		"hash": blockResult.BlockTrace.Hash.String(),
+	res, err = ormBlock.GetBlockTraces(map[string]interface{}{
+		"hash": blockTrace.BlockTrace.Hash.String(),
 	})
 	assert.NoError(t, err)
 	assert.Equal(t, true, len(res) == 1)
 
-	// Compare content
+	// Compare trace
 	data1, err := json.Marshal(res[0])
 	assert.NoError(t, err)
-	data2, err := json.Marshal(blockResult)
+	data2, err := json.Marshal(blockTrace)
 	assert.NoError(t, err)
-	// check content
+	// check trace
 	assert.Equal(t, true, string(data1) == string(data2))
 }
 
-func testOrmLayer1Message(t *testing.T) {
+func testOrmL1Message(t *testing.T) {
 	// Create db handler and reset db.
 	factory, err := database.NewOrmFactory(dbConfig)
 	assert.NoError(t, err)
@@ -172,7 +172,7 @@ func testOrmLayer1Message(t *testing.T) {
 	expected := "expect hash"
 
 	// Insert into db
-	err = ormLayer1.SaveLayer1Messages(context.Background(), templateLayer1Message)
+	err = ormLayer1.SaveL1Messages(context.Background(), templateL1Message)
 	assert.NoError(t, err)
 
 	err = ormLayer1.UpdateLayer1Status(context.Background(), "hash0", orm.MsgConfirmed)
@@ -192,12 +192,12 @@ func testOrmLayer1Message(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, int64(2), height)
 
-	msg, err := ormLayer1.GetLayer1MessageByLayer1Hash("hash1")
+	msg, err := ormLayer1.GetL1MessageByLayer1Hash("hash1")
 	assert.NoError(t, err)
 	assert.Equal(t, orm.MsgSubmitted, msg.Status)
 }
 
-func testOrmLayer2Message(t *testing.T) {
+func testOrmL2Message(t *testing.T) {
 	// Create db handler and reset db.
 	factory, err := database.NewOrmFactory(dbConfig)
 	assert.NoError(t, err)
@@ -206,7 +206,7 @@ func testOrmLayer2Message(t *testing.T) {
 	expected := "expect hash"
 
 	// Insert into db
-	err = ormLayer2.SaveLayer2Messages(context.Background(), templateLayer2Message)
+	err = ormLayer2.SaveL2Messages(context.Background(), templateL2Message)
 	assert.NoError(t, err)
 
 	err = ormLayer2.UpdateLayer2Status(context.Background(), "hash0", orm.MsgConfirmed)
@@ -226,7 +226,7 @@ func testOrmLayer2Message(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, int64(2), height)
 
-	msg, err := ormLayer2.GetLayer2MessageByLayer2Hash("hash1")
+	msg, err := ormLayer2.GetL2MessageByLayer2Hash("hash1")
 	assert.NoError(t, err)
 	assert.Equal(t, orm.MsgSubmitted, msg.Status)
 }
@@ -241,22 +241,22 @@ func testOrmBlockbatch(t *testing.T) {
 	dbTx, err := factory.Beginx()
 	assert.NoError(t, err)
 	batchID1, err := ormBatch.NewBatchInDBTx(dbTx,
-		&orm.BlockInfo{Number: blockResult.BlockTrace.Number.ToInt().Uint64()},
-		&orm.BlockInfo{Number: blockResult.BlockTrace.Number.ToInt().Uint64() + 1},
+		&orm.BlockInfo{Number: blockTrace.BlockTrace.Number.ToInt().Uint64()},
+		&orm.BlockInfo{Number: blockTrace.BlockTrace.Number.ToInt().Uint64() + 1},
 		"ff", 1, 194676) // parentHash & totalTxNum & totalL2Gas don't really matter here
 	assert.NoError(t, err)
 	err = ormBlock.SetBatchIDForBlocksInDBTx(dbTx, []uint64{
-		blockResult.BlockTrace.Number.ToInt().Uint64(),
-		blockResult.BlockTrace.Number.ToInt().Uint64() + 1}, batchID1)
+		blockTrace.BlockTrace.Number.ToInt().Uint64(),
+		blockTrace.BlockTrace.Number.ToInt().Uint64() + 1}, batchID1)
 	assert.NoError(t, err)
 	batchID2, err := ormBatch.NewBatchInDBTx(dbTx,
-		&orm.BlockInfo{Number: blockResult.BlockTrace.Number.ToInt().Uint64() + 2},
-		&orm.BlockInfo{Number: blockResult.BlockTrace.Number.ToInt().Uint64() + 3},
+		&orm.BlockInfo{Number: blockTrace.BlockTrace.Number.ToInt().Uint64() + 2},
+		&orm.BlockInfo{Number: blockTrace.BlockTrace.Number.ToInt().Uint64() + 3},
 		"ff", 1, 194676) // parentHash & totalTxNum & totalL2Gas don't really matter here
 	assert.NoError(t, err)
 	err = ormBlock.SetBatchIDForBlocksInDBTx(dbTx, []uint64{
-		blockResult.BlockTrace.Number.ToInt().Uint64() + 2,
-		blockResult.BlockTrace.Number.ToInt().Uint64() + 3}, batchID2)
+		blockTrace.BlockTrace.Number.ToInt().Uint64() + 2,
+		blockTrace.BlockTrace.Number.ToInt().Uint64() + 3}, batchID2)
 	assert.NoError(t, err)
 	err = dbTx.Commit()
 	assert.NoError(t, err)

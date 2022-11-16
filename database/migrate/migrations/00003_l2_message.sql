@@ -1,6 +1,6 @@
 -- +goose Up
 -- +goose StatementBegin
-create table layer1_message
+create table l2_message
 (
     nonce       bigint  not null,
     height      bigint  not null,
@@ -11,21 +11,22 @@ create table layer1_message
     gas_limit   bigint  not null,
     deadline    bigint  not null,
     calldata    text    not null,
-    layer1_hash varchar not null,
-    layer2_hash varchar default null,
+    layer2_hash varchar not null,
+    layer1_hash varchar default null,
+    proof       text    default null,
     status      integer  default 1,
     created_time TIMESTAMP(0) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_time TIMESTAMP(0) NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 comment
-on column layer1_message.status is 'undefined, pending, submitted, confirmed';
+on column l2_message.status is 'undefined, pending, submitted, confirmed';
 
-create unique index layer1_message_layer1_hash_uindex
-    on layer1_message (layer1_hash);
+create unique index l2_message_layer2_hash_uindex
+    on l2_message (layer2_hash);
 
-create index layer1_message_height_index
-    on layer1_message (height);
+create index l2_message_height_index
+    on l2_message (height);
 
 CREATE OR REPLACE FUNCTION update_timestamp()
 RETURNS TRIGGER AS $$
@@ -36,7 +37,7 @@ END;
 $$ language 'plpgsql';
 
 CREATE TRIGGER update_timestamp BEFORE UPDATE
-ON layer1_message FOR EACH ROW EXECUTE PROCEDURE
+ON l2_message FOR EACH ROW EXECUTE PROCEDURE
 update_timestamp();
 
 
@@ -44,5 +45,5 @@ update_timestamp();
 
 -- +goose Down
 -- +goose StatementBegin
-drop table if exists layer1_message;
+drop table if exists l2_message;
 -- +goose StatementEnd

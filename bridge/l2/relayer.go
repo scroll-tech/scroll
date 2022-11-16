@@ -110,7 +110,7 @@ func (r *Layer2Relayer) ProcessSavedEvents() {
 	}
 }
 
-func (r *Layer2Relayer) processSavedEvent(msg *orm.Layer2Message) error {
+func (r *Layer2Relayer) processSavedEvent(msg *orm.L2Message) error {
 	// @todo add support to relay multiple messages
 	batch, err := r.db.GetLatestFinalizedBatch()
 	if err != nil {
@@ -191,9 +191,9 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 	}
 	batch := batches[0]
 
-	traces, err := r.db.GetBlockResults(map[string]interface{}{"batch_id": id}, "ORDER BY number ASC")
+	traces, err := r.db.GetBlockTraces(map[string]interface{}{"batch_id": id}, "ORDER BY number ASC")
 	if err != nil || len(traces) == 0 {
-		log.Error("Failed to GetBlockResults", "batch_id", id, "err", err)
+		log.Error("Failed to GetBlockTraces", "batch_id", id, "err", err)
 		return
 	}
 

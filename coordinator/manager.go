@@ -318,7 +318,7 @@ func (m *Manager) HandleZkProof(pk string, payload []byte) error {
 		status = orm.ProvingTaskFailed
 	}
 	if dbErr = m.orm.UpdateProvingStatus(msg.ID, status); dbErr != nil {
-		log.Error("failed to update blockResult status", "status", status, "error", dbErr)
+		log.Error("failed to update proving_status", "msg.ID", msg.ID, "status", status, "error", dbErr)
 	}
 
 	return dbErr
@@ -417,10 +417,10 @@ func (m *Manager) StartProofGenerationSession(task *orm.BlockBatch) bool {
 	pk := roller.AuthMsg.Identity.PublicKey
 	log.Info("roller is picked", "name", roller.AuthMsg.Identity.Name, "public_key", pk)
 
-	traces, err := m.orm.GetBlockResults(map[string]interface{}{"batch_id": task.ID})
+	traces, err := m.orm.GetBlockTraces(map[string]interface{}{"batch_id": task.ID})
 	if err != nil {
 		log.Error(
-			"could not GetBlockResults",
+			"could not GetBlockTraces",
 			"batch_id", task.ID,
 			"error", err,
 		)
