@@ -2,7 +2,7 @@ package database_test
 
 import (
 	"context"
-	// "database/sql"
+	"database/sql"
 	"encoding/json"
 	"os"
 	"testing"
@@ -144,11 +144,11 @@ func testOrmBlockTraces(t *testing.T) {
 	err = ormBlock.InsertBlockTraces(context.Background(), []*types.BlockResult{blockTrace})
 	assert.NoError(t, err)
 
-	resxxx, err = ormBlock.GetBlockInfos(map[string]interface{}{
+	res2, err := ormBlock.GetBlockInfos(map[string]interface{}{
 		"batch_id": sql.NullString{Valid: false},
 	})
 	assert.NoError(t, err)
-	assert.Equal(t, true, len(resxxx) == 1)
+	assert.Equal(t, true, len(res2) == 1)
 
 	exist, err := ormBlock.Exist(blockTrace.BlockTrace.Number.ToInt().Uint64())
 	assert.NoError(t, err)
