@@ -144,11 +144,11 @@ func testOrmBlockTraces(t *testing.T) {
 	err = ormBlock.InsertBlockTraces(context.Background(), []*types.BlockResult{blockTrace})
 	assert.NoError(t, err)
 
-	res, err = ormBlock.GetBlockInfos(map[string]interface{}{
+	resxxx, err = ormBlock.GetBlockInfos(map[string]interface{}{
 		"batch_id": sql.NullString{Valid: false},
 	})
 	assert.NoError(t, err)
-	assert.Equal(t, true, len(res) == 1)
+	assert.Equal(t, true, len(resxxx) == 1)
 
 	exist, err := ormBlock.Exist(blockTrace.BlockTrace.Number.ToInt().Uint64())
 	assert.NoError(t, err)
