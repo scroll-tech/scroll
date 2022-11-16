@@ -26,8 +26,8 @@ const (
 	MsgConfirmed
 )
 
-// Layer1Message is structure of stored layer1 bridge message
-type Layer1Message struct {
+// L1Message is structure of stored layer1 bridge message
+type L1Message struct {
 	Nonce      uint64    `json:"nonce" db:"nonce"`
 	Height     uint64    `json:"height" db:"height"`
 	Sender     string    `json:"sender" db:"sender"`
@@ -100,17 +100,17 @@ type BlockBatchOrm interface {
 	UpdateFinalizeTxHashAndRollupStatus(ctx context.Context, id string, finalize_tx_hash string, status RollupStatus) error
 }
 
-// Layer1MessageOrm is layer1 message db interface
-type Layer1MessageOrm interface {
-	GetLayer1MessageByNonce(nonce uint64) (*Layer1Message, error)
-	GetL1UnprocessedMessages() ([]*Layer1Message, error)
+// L1MessageOrm is layer1 message db interface
+type L1MessageOrm interface {
+	GetL1MessageByNonce(nonce uint64) (*L1Message, error)
+	GetL1UnprocessedMessages() ([]*L1Message, error)
 	GetL1ProcessedNonce() (int64, error)
-	SaveLayer1Messages(ctx context.Context, messages []*Layer1Message) error
+	SaveL1Messages(ctx context.Context, messages []*L1Message) error
 	UpdateLayer2Hash(ctx context.Context, layer1Hash string, layer2Hash string) error
 	UpdateLayer1Status(ctx context.Context, layer1Hash string, status MsgStatus) error
 	UpdateLayer1StatusAndLayer2Hash(ctx context.Context, layer1Hash, layer2Hash string, status MsgStatus) error
 	GetLayer1LatestWatchedHeight() (int64, error)
-	GetLayer1MessageByLayer1Hash(layer1Hash string) (*Layer1Message, error)
+	GetL1MessageByLayer1Hash(layer1Hash string) (*L1Message, error)
 }
 
 // Layer2MessageOrm is layer2 message db interface

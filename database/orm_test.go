@@ -21,7 +21,7 @@ import (
 )
 
 var (
-	templateLayer1Message = []*orm.Layer1Message{
+	templateL1Message = []*orm.L1Message{
 		{
 			Nonce:      1,
 			Height:     1,
@@ -78,7 +78,7 @@ var (
 	dbConfig  *database.DBConfig
 	dbImg     docker.ImgInstance
 	ormBlock  orm.BlockResultOrm
-	ormLayer1 orm.Layer1MessageOrm
+	ormLayer1 orm.L1MessageOrm
 	ormLayer2 orm.Layer2MessageOrm
 	ormBatch  orm.BlockBatchOrm
 )
@@ -97,7 +97,7 @@ func setupEnv(t *testing.T) error {
 
 	// Init several orm handles.
 	ormBlock = orm.NewBlockResultOrm(db)
-	ormLayer1 = orm.NewLayer1MessageOrm(db)
+	ormLayer1 = orm.NewL1MessageOrm(db)
 	ormLayer2 = orm.NewLayer2MessageOrm(db)
 	ormBatch = orm.NewBlockBatchOrm(db)
 
@@ -123,7 +123,7 @@ func TestOrmFactory(t *testing.T) {
 
 	t.Run("testOrmBlockResults", testOrmBlockResults)
 
-	t.Run("testOrmLayer1Message", testOrmLayer1Message)
+	t.Run("testOrmL1Message", testOrmL1Message)
 
 	t.Run("testOrmLayer2Message", testOrmLayer2Message)
 
@@ -163,7 +163,7 @@ func testOrmBlockResults(t *testing.T) {
 	assert.Equal(t, true, string(data1) == string(data2))
 }
 
-func testOrmLayer1Message(t *testing.T) {
+func testOrmL1Message(t *testing.T) {
 	// Create db handler and reset db.
 	factory, err := database.NewOrmFactory(dbConfig)
 	assert.NoError(t, err)
@@ -172,7 +172,7 @@ func testOrmLayer1Message(t *testing.T) {
 	expected := "expect hash"
 
 	// Insert into db
-	err = ormLayer1.SaveLayer1Messages(context.Background(), templateLayer1Message)
+	err = ormLayer1.SaveL1Messages(context.Background(), templateL1Message)
 	assert.NoError(t, err)
 
 	err = ormLayer1.UpdateLayer1Status(context.Background(), "hash0", orm.MsgConfirmed)
@@ -192,7 +192,7 @@ func testOrmLayer1Message(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, int64(2), height)
 
-	msg, err := ormLayer1.GetLayer1MessageByLayer1Hash("hash1")
+	msg, err := ormLayer1.GetL1MessageByLayer1Hash("hash1")
 	assert.NoError(t, err)
 	assert.Equal(t, orm.MsgSubmitted, msg.Status)
 }
