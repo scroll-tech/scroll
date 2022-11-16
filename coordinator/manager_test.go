@@ -8,7 +8,6 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"io"
-	mathrand "math/rand"
 	"net"
 	"net/url"
 	"os"
@@ -58,6 +57,7 @@ func TestFunction(t *testing.T) {
 
 	t.Run("TestHandshake", func(t *testing.T) {
 		verifierEndpoint := setupMockVerifier(t)
+		defer os.RemoveAll(verifierEndpoint)
 
 		rollerManager := setupRollerManager(t, verifierEndpoint, nil)
 		defer rollerManager.Stop()
@@ -81,6 +81,7 @@ func TestFunction(t *testing.T) {
 
 	t.Run("TestHandshakeTimeout", func(t *testing.T) {
 		verifierEndpoint := setupMockVerifier(t)
+		defer os.RemoveAll(verifierEndpoint)
 
 		rollerManager := setupRollerManager(t, verifierEndpoint, nil)
 		defer rollerManager.Stop()
@@ -108,6 +109,8 @@ func TestFunction(t *testing.T) {
 
 	t.Run("TestTwoConnections", func(t *testing.T) {
 		verifierEndpoint := setupMockVerifier(t)
+		defer os.RemoveAll(verifierEndpoint)
+
 		rollerManager := setupRollerManager(t, verifierEndpoint, nil)
 		defer rollerManager.Stop()
 
@@ -141,6 +144,8 @@ func TestFunction(t *testing.T) {
 		// to rollers.
 		numClients := uint8(2)
 		verifierEndpoint := setupMockVerifier(t)
+		defer os.RemoveAll(verifierEndpoint)
+
 		rollerManager := setupRollerManager(t, verifierEndpoint, db)
 		defer rollerManager.Stop()
 
@@ -208,6 +213,7 @@ func TestFunction(t *testing.T) {
 		// to rollers.
 		numClients := uint8(2)
 		verifierEndpoint := setupMockVerifier(t)
+		defer os.RemoveAll(verifierEndpoint)
 
 		// Ensure only one roller is picked per session.
 		rollerManager := setupRollerManager(t, verifierEndpoint, db)
@@ -338,14 +344,9 @@ func generateKeyPair() (pubkey, privkey []byte) {
 
 // setupMockVerifier sets up a mocked verifier for a test case.
 func setupMockVerifier(t *testing.T) string {
-	id := strconv.Itoa(mathrand.Int())
-	verifierEndpoint := "/tmp/" + id + ".sock"
-	err := os.RemoveAll(verifierEndpoint)
-	assert.NoError(t, err)
+	verifierEndpoint := "/tmp/" + strconv.Itoa(time.Now().Nanosecond()) + ".sock"
 
-	err = os.RemoveAll(verifierEndpoint)
-	assert.NoError(t, err)
-
+	// Create and listen sock file.
 	l, err := net.Listen("unix", verifierEndpoint)
 	assert.NoError(t, err)
 

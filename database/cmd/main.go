@@ -13,7 +13,7 @@ import (
 func main() {
 	// Set up database app info.
 	app := cli.NewApp()
-	app.Name = "database"
+	app.Name = "db_cli"
 	app.Usage = "The Scroll Database CLI"
 	app.Version = version.Version
 	app.Flags = append(app.Flags, commonFlags...)
