@@ -115,6 +115,34 @@ func (o *blockTraceOrm) GetBlockInfos(fields map[string]interface{}, args ...str
 	return blocks, rows.Close()
 }
 
+func (o *blockTraceOrm) GetUnbatchedBlocks(fields map[string]interface{}, args ...string) ([]*BlockInfo, error) {
+	query := "SELECT number, hash, batch_id, tx_num, gas_used, block_timestamp FROM block_trace WHERE batch_id is NULL "
+	for key := range fields {
+		query += fmt.Sprintf("AND %s=:%s ", key, key)
+	}
+	query = strings.Join(append([]string{query}, args...), " ")
+
+	db := o.db
+	rows, err := db.NamedQuery(db.Rebind(query), fields)
+	if err != nil {
+		return nil, err
+	}
+
+	var blocks []*BlockInfo
+	for rows.Next() {
+		block := &BlockInfo{}
+		if err = rows.StructScan(block); err != nil {
+			break
+		}
+		blocks = append(blocks, block)
+	}
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return nil, err
+	}
+
+	return blocks, rows.Close()
+}
+
 func (o *blockTraceOrm) GetHashByNumber(number uint64) (*common.Hash, error) {
 	row := o.db.QueryRow(`SELECT hash FROM block_trace WHERE number = $1`, number)
 	var hashStr string

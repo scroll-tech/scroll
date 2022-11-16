@@ -75,6 +75,8 @@ type BlockTraceOrm interface {
 	GetBlockTracesOldestHeight() (int64, error)
 	GetBlockTraces(fields map[string]interface{}, args ...string) ([]*types.BlockResult, error)
 	GetBlockInfos(fields map[string]interface{}, args ...string) ([]*BlockInfo, error)
+	// add `GetUnbatchedBlocks` because `GetBlockInfos` cannot support query "batch_id is NULL"
+	GetUnbatchedBlocks(fields map[string]interface{}, args ...string) ([]*BlockInfo, error)
 	GetHashByNumber(number uint64) (*common.Hash, error)
 	DeleteTracesByBatchID(batchID string) error
 	InsertBlockTraces(ctx context.Context, blockTraces []*types.BlockResult) error
