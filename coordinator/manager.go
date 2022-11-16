@@ -520,7 +520,7 @@ func (m *Manager) GetNumberOfIdleRollers() int {
 	return cnt
 }
 
-func createTaskMsg(taskID string, traces []*types.BlockResult) (message.Msg, error) {
+func createTaskMsg(taskID string, traces []*types.BlockResult) (*message.Msg, error) {
 	idAndTraces := message.TaskMsg{
 		ID:     taskID,
 		Traces: traces, // roller should sort traces by height
@@ -528,10 +528,10 @@ func createTaskMsg(taskID string, traces []*types.BlockResult) (message.Msg, err
 
 	payload, err := json.Marshal(idAndTraces)
 	if err != nil {
-		return message.Msg{}, err
+		return nil, err
 	}
 
-	return message.Msg{
+	return &message.Msg{
 		Type:    message.TaskMsgType,
 		Payload: payload,
 	}, nil
