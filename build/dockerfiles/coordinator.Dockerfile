@@ -6,7 +6,7 @@ COPY ./ /
 RUN cd /common/zkp/rust && cargo build --release && cp ./target/release/libzkp.a ../lib/
 RUN cp -r /common/zkp/lib /coordinator/verifier/
 
-RUN cd /coordinator && go build -v -p 4 -o coordinator ./cmd; exit 0
+RUN export CGO_CFLAGS="-w" && cd /coordinator && go build -v -p 4 -o coordinator ./cmd
 
 # Pull scroll into a second stage deploy alpine container
 FROM alpine:latest
