@@ -6,11 +6,13 @@ ARG DEFAULT_RUST_TOOLCHAIN=nightly-2022-08-23
 RUN apk add --no-cache \
         ca-certificates \
         gcc \
+        git \
         musl-dev
 
 ENV RUSTUP_HOME=/usr/local/rustup \
     CARGO_HOME=/usr/local/cargo \
-    PATH=/usr/local/cargo/bin:$PATH
+    PATH=/usr/local/cargo/bin:$PATH \
+    CARGO_NET_GIT_FETCH_WITH_CLI=true
 
 RUN set -eux; \
     apkArch="$(apk --print-arch)"; \
