@@ -291,8 +291,8 @@ func (s *server) pingLoop(c *Roller) {
 	}
 }
 
-func (r *Roller) sendMessage(msg message.Msg) error {
-	b, err := json.Marshal(&msg)
+func (r *Roller) sendMessage(msg *message.Msg) error {
+	b, err := json.Marshal(msg)
 	if err != nil {
 		return err
 	}

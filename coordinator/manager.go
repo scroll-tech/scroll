@@ -61,9 +61,9 @@ type Manager struct {
 	// A mutex guarding the boolean below.
 	mu sync.RWMutex
 	// A map containing all active proof generation sessions.
-	sessions map[string]session
+	sessions map[string]*session
 	// A map containing proof failed or verify failed proof.
-	failedSessionInfos map[string]SessionInfo
+	failedSessionInfos map[string]*SessionInfo
 
 	// A direct connection to the Halo2 verifier, used to verify
 	// incoming proofs.
@@ -91,8 +91,8 @@ func New(ctx context.Context, cfg *config.RollerManagerConfig, orm database.OrmF
 		ctx:                ctx,
 		cfg:                cfg,
 		server:             newServer(cfg.Endpoint),
-		sessions:           make(map[string]session),
-		failedSessionInfos: make(map[string]SessionInfo),
+		sessions:           make(map[string]*session),
+		failedSessionInfos: make(map[string]*SessionInfo),
 		verifier:           v,
 		orm:                orm,
 	}, nil
@@ -265,7 +265,7 @@ func (m *Manager) HandleZkProof(pk string, payload []byte) error {
 			log.Error("failed to update task status as failed", "error", dbErr)
 		}
 		// record the failed session.
-		m.addFailedSession(&s, msg.Error)
+		m.addFailedSession(s, msg.Error)
 		return nil
 	}
 
@@ -293,7 +293,7 @@ func (m *Manager) HandleZkProof(pk string, payload []byte) error {
 		success, err = m.verifier.VerifyProof(msg.Proof)
 		if err != nil {
 			// record failed session.
-			m.addFailedSession(&s, err.Error())
+			m.addFailedSession(s, err.Error())
 			// TODO: this is only a temp workaround for testnet, we should return err in real cases
 			success = false
 			log.Error("Failed to verify zk proof", "proof id", msg.ID, "error", err)
@@ -325,7 +325,7 @@ func (m *Manager) HandleZkProof(pk string, payload []byte) error {
 }
 
 // CollectProofs collects proofs corresponding to a proof generation session.
-func (m *Manager) CollectProofs(id string, s session) {
+func (m *Manager) CollectProofs(id string, s *session) {
 	timer := time.NewTimer(time.Duration(m.cfg.CollectionTime) * time.Minute)
 
 	for {
@@ -351,7 +351,7 @@ func (m *Manager) CollectProofs(id string, s session) {
 			if len(participatingRollers) == 0 {
 				// record failed session.
 				errMsg := "proof generation session ended without receiving any proofs"
-				m.addFailedSession(&s, errMsg)
+				m.addFailedSession(s, errMsg)
 				log.Warn(errMsg, "session id", id)
 				// Set status as skipped.
 				// Note that this is only a workaround for testnet here.
@@ -404,12 +404,9 @@ func (m *Manager) StartProofGenerationSession(task *orm.BlockBatch) bool {
 	var dbErr error
 	defer func() {
 		if dbErr != nil {
+			log.Error("StartProofGenerationSession", "dbErr", dbErr)
 			if err := m.orm.UpdateProvingStatus(task.ID, orm.ProvingTaskUnassigned); err != nil {
-				log.Error("fail to reset task_status as Unassigned",
-					"id", task.ID,
-					"dbErr", dbErr,
-					"err", err,
-				)
+				log.Error("fail to reset task_status as Unassigned", "id", task.ID, "dbErr", dbErr, "err", err)
 			}
 		}
 	}()
@@ -444,7 +441,7 @@ func (m *Manager) StartProofGenerationSession(task *orm.BlockBatch) bool {
 		return false
 	}
 
-	s := session{
+	s := &session{
 		id: task.ID,
 		rollers: map[string]bool{
 			pk: false,
@@ -523,7 +520,7 @@ func (m *Manager) GetNumberOfIdleRollers() int {
 	return cnt
 }
 
-func createTaskMsg(taskID string, traces []*types.BlockResult) (message.Msg, error) {
+func createTaskMsg(taskID string, traces []*types.BlockResult) (*message.Msg, error) {
 	idAndTraces := message.TaskMsg{
 		ID:     taskID,
 		Traces: traces, // roller should sort traces by height
@@ -531,15 +528,15 @@ func createTaskMsg(taskID string, traces []*types.BlockResult) (message.Msg, err
 
 	payload, err := json.Marshal(idAndTraces)
 	if err != nil {
-		return message.Msg{}, err
+		return nil, err
 	}
 
-	return message.Msg{
+	return &message.Msg{
 		Type:    message.TaskMsgType,
 		Payload: payload,
 	}, nil
 }
 
 func (m *Manager) addFailedSession(s *session, errMsg string) {
-	m.failedSessionInfos[s.id] = *newSessionInfo(s, orm.ProvingTaskFailed, errMsg, true)
+	m.failedSessionInfos[s.id] = newSessionInfo(s, orm.ProvingTaskFailed, errMsg, true)
 }
