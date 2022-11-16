@@ -3,7 +3,7 @@
 
 -- TODO: use foreign key for batch_id?
 -- TODO: why tx_num is bigint?
-create table block_result
+create table block_trace
 (
     number                  BIGINT          NOT NULL,
     hash                    VARCHAR         NOT NULL,
@@ -15,21 +15,21 @@ create table block_result
     block_timestamp         NUMERIC         NOT NULL DEFAULT 0
 );
 
-create unique index block_result_hash_uindex
-    on block_result (hash);
+create unique index block_trace_hash_uindex
+    on block_trace (hash);
 
-create unique index block_result_number_uindex
-    on block_result (number);
+create unique index block_trace_number_uindex
+    on block_trace (number);
 
-create unique index block_result_parent_uindex
-    on block_result (number, parent_hash);
+create unique index block_trace_parent_uindex
+    on block_trace (number, parent_hash);
 
-create unique index block_result_parent_hash_uindex
-    on block_result (hash, parent_hash);
+create unique index block_trace_parent_hash_uindex
+    on block_trace (hash, parent_hash);
 
 -- +goose StatementEnd
 
 -- +goose Down
 -- +goose StatementBegin
-drop table if exists block_result;
+drop table if exists block_trace;
 -- +goose StatementEnd

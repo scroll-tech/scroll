@@ -132,7 +132,7 @@ const blockResultsFetchLimit = uint64(10)
 // try fetch missing blocks if inconsistent
 func (w *WatcherClient) tryFetchRunningMissingBlocks(ctx context.Context, backTrackFrom uint64) error {
 	// Get newest block in DB. must have blocks at that time.
-	// Don't use "block_result" table "trace" column's BlockTrace.Number,
+	// Don't use "block_trace" table "trace" column's BlockTrace.Number,
 	// because it might be empty if the corresponding rollup_result is finalized/finalization_skipped
 	heightInDB, err := w.orm.GetBlockResultsLatestHeight()
 	if err != nil {
