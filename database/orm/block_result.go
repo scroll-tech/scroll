@@ -52,10 +52,10 @@ func (o *blockResultOrm) GetBlockResultsOldestHeight() (int64, error) {
 
 func (o *blockResultOrm) GetBlockResults(fields map[string]interface{}, args ...string) ([]*types.BlockResult, error) {
 	type Result struct {
-		Content string
+		Trace string
 	}
 
-	query := "SELECT content FROM block_result WHERE 1 = 1 "
+	query := "SELECT trace FROM block_result WHERE 1 = 1 "
 	for key := range fields {
 		query += fmt.Sprintf("AND %s=:%s ", key, key)
 	}
@@ -74,7 +74,7 @@ func (o *blockResultOrm) GetBlockResults(fields map[string]interface{}, args ...
 			break
 		}
 		trace := types.BlockResult{}
-		err = json.Unmarshal([]byte(result.Content), &trace)
+		err = json.Unmarshal([]byte(result.Trace), &trace)
 		if err != nil {
 			break
 		}
@@ -146,14 +146,14 @@ func (o *blockResultOrm) InsertBlockResults(ctx context.Context, blockResults []
 		traceMaps[i] = map[string]interface{}{
 			"number":          number,
 			"hash":            hash,
-			"content":         string(data),
+			"trace":           string(data),
 			"tx_num":          tx_num,
 			"gas_used":        gasUsed,
 			"block_timestamp": mtime,
 		}
 	}
 
-	_, err := o.db.NamedExec(`INSERT INTO public.block_result (number, hash, content, tx_num, gas_used, block_timestamp) VALUES (:number, :hash, :content, :tx_num, :gas_used, :block_timestamp);`, traceMaps)
+	_, err := o.db.NamedExec(`INSERT INTO public.block_result (number, hash, trace, tx_num, gas_used, block_timestamp) VALUES (:number, :hash, :trace, :tx_num, :gas_used, :block_timestamp);`, traceMaps)
 	if err != nil {
 		log.Error("failed to insert blockResults", "err", err)
 	}
@@ -161,7 +161,7 @@ func (o *blockResultOrm) InsertBlockResults(ctx context.Context, blockResults []
 }
 
 func (o *blockResultOrm) DeleteTracesByBatchID(batch_id string) error {
-	if _, err := o.db.Exec(o.db.Rebind("update block_result set content = ? where batch_id = ?;"), "{}", batch_id); err != nil {
+	if _, err := o.db.Exec(o.db.Rebind("update block_result set trace = ? where batch_id = ?;"), "{}", batch_id); err != nil {
 		return err
 	}
 	return nil

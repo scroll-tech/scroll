@@ -56,7 +56,7 @@ type Layer2Message struct {
 	Status     MsgStatus `json:"status" db:"status"`
 }
 
-// BlockInfo is structure of stored `block_result` without `content`
+// BlockInfo is structure of stored `block_result` without `trace`
 // TODO: add `parent_hash`. Though we already add it into db schema, we avoid adding it here atm,
 // in case people think they can already use it
 type BlockInfo struct {

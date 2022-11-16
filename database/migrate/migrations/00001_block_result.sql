@@ -5,11 +5,11 @@
 -- TODO: why tx_num is bigint?
 create table block_result
 (
-    number                  BIGINT          not null,
-    hash                    VARCHAR         not null,
-    parent_hash             VARCHAR         default null,
-    content                 json            not null,
-    batch_id                VARCHAR         default null,
+    number                  BIGINT          NOT NULL,
+    hash                    VARCHAR         NOT NULL,
+    parent_hash             VARCHAR         DEFAULT NULL,
+    trace                   JSON            NOT NULL,
+    batch_id                VARCHAR         DEFAULT NULL,
     tx_num                  INTEGER         NOT NULL DEFAULT 0,
     gas_used                BIGINT          NOT NULL DEFAULT 0,
     block_timestamp         NUMERIC         NOT NULL DEFAULT 0

@@ -154,12 +154,12 @@ func testOrmBlockResults(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, true, len(res) == 1)
 
-	// Compare content
+	// Compare trace
 	data1, err := json.Marshal(res[0])
 	assert.NoError(t, err)
 	data2, err := json.Marshal(blockResult)
 	assert.NoError(t, err)
-	// check content
+	// check trace
 	assert.Equal(t, true, string(data1) == string(data2))
 }
 
