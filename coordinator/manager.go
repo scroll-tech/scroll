@@ -221,7 +221,7 @@ func (m *Manager) handleZkProof(pk string, msg *message.ProofMsg) error {
 		// TODO: Defend invalid proof resubmissions by one of the following two methods:
 		// (i) slash the roller for each submission of invalid proof
 		// (ii) set the maximum failure retry times
-		log.Error("roller has already submitted valid proof in proof session", "roller", pk, "proof id", msg.ID)
+		log.Warn("roller has already submitted valid proof in proof session", "roller", pk, "proof id", msg.ID)
 		return nil
 	}
 	log.Info("Received zk proof", "proof id", msg.ID)
