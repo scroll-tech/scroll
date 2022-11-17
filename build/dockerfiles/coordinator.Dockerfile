@@ -1,14 +1,14 @@
 # Build scroll in a stock Go builder container
 FROM scrolltech/go-rust-builder:go-1.17-rust-nightly-2022-08-23 as zkp-builder
 
-COPY ./ /
+COPY ./ /src/
 
-RUN cd /common/zkp/rust && cargo build --release && cp ./target/release/libzkp.a ../lib/
-RUN cp -r /common/zkp/lib /coordinator/verifier/
+RUN cd /src/common/zkp/rust && cargo build --release && cp ./target/release/libzkp.a ../lib/
+RUN cp -r /src/common/zkp/lib /src/coordinator/verifier/
 
 FROM scrolltech/go-builder:1.18 as builder
 
-COPY --from=zkp-builder / /
+COPY --from=zkp-builder /src/ /
 
 RUN cd /coordinator && go build -v -p 4 -o coordinator ./cmd
 
