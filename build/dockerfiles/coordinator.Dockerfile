@@ -6,7 +6,9 @@ COPY ./ /
 RUN cd /common/zkp/rust && cargo build --release && cp ./target/release/libzkp.a ../lib/
 RUN cp -r /common/zkp/lib /coordinator/verifier/
 
-RUN cd /coordinator && go build -v -p 4 -o coordinator ./cmd; exit 0
+FROM scrolltech/go-builder:1.18 as builder
+
+RUN cd /coordinator && go build -v -p 4 -o coordinator ./cmd
 
 # Pull scroll into a second stage deploy alpine container
 FROM alpine:latest
