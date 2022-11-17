@@ -15,6 +15,9 @@ coordinator: ## Builds the Coordinator instance.
 test-verifier:
 	go test -tags ffi -timeout 0 -v ./verifier
 
+test-gpu-verifier:
+	go test -tags="gpu ffi" -timeout 0 -v ./verifier
+
 lint: ## Lint the files - used for CI
 	GOBIN=$(PWD)/build/bin go run ../build/lint.go
 

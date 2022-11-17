@@ -2,6 +2,7 @@ package verifier
 
 /*
 #cgo LDFLAGS: ./verifier/lib/libzkp.a -lm -ldl
+#cgo gpu LDFLAGS: ./verifier/lib/libzkp.a -lm -ldl -lgmp -lstdc++ -lprocps -L/usr/local/cuda/lib64/ -lcudart
 #include <stdlib.h>
 #include "./lib/zkp.h"
 */
