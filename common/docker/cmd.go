@@ -1,15 +1,15 @@
 package docker
 
 import (
-	"bytes"
-	"github.com/docker/docker/pkg/reexec"
-	"github.com/stretchr/testify/assert"
 	"os"
 	"os/exec"
 	"strings"
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/docker/docker/pkg/reexec"
+	"github.com/stretchr/testify/assert"
 )
 
 var verbose bool
@@ -28,7 +28,6 @@ type Cmd struct {
 	*testing.T
 
 	cmd *exec.Cmd
-	buf bytes.Buffer
 
 	checkFuncs sync.Map //map[string]checkFunc
 
@@ -55,29 +54,32 @@ func (tt *Cmd) Run(name string, args ...string) {
 	}
 }
 
+// WaitExit wait util process exit.
 func (tt *Cmd) WaitExit() {
 	tt.Err = tt.cmd.Wait()
 }
 
+// Interrupt send interrupt signal.
 func (tt *Cmd) Interrupt() {
 	tt.Err = tt.cmd.Process.Signal(os.Interrupt)
 }
 
 // RegistFunc register check func
-func (t *Cmd) RegistFunc(key string, check checkFunc) {
-	t.checkFuncs.Store(key, check)
+func (tt *Cmd) RegistFunc(key string, check checkFunc) {
+	tt.checkFuncs.Store(key, check)
 }
 
 // UnRegistFunc unregister check func
-func (t *Cmd) UnRegistFunc(key string) {
-	if _, ok := t.checkFuncs.Load(key); ok {
-		t.checkFuncs.Delete(key)
+func (tt *Cmd) UnRegistFunc(key string) {
+	if _, ok := tt.checkFuncs.Load(key); ok {
+		tt.checkFuncs.Delete(key)
 	}
 }
 
-func (t *Cmd) ExpectWithTimeout(timeout time.Duration, keyword string) {
+// ExpectWithTimeout wait result during timeout time.
+func (tt *Cmd) ExpectWithTimeout(timeout time.Duration, keyword string) {
 	okCh := make(chan struct{}, 1)
-	t.RegistFunc(keyword, func(buf string) {
+	tt.RegistFunc(keyword, func(buf string) {
 		if strings.Contains(buf, keyword) {
 			select {
 			case okCh <- struct{}{}:
@@ -86,43 +88,43 @@ func (t *Cmd) ExpectWithTimeout(timeout time.Duration, keyword string) {
 			}
 		}
 	})
-	defer t.UnRegistFunc(keyword)
+	defer tt.UnRegistFunc(keyword)
 
 	go func() {
 		select {
 		case <-okCh:
 			return
 		case <-time.After(timeout):
-			assert.Fail(t, "should have the keyword", keyword)
+			assert.Fail(tt, "should have the keyword", keyword)
 		}
 	}()
 }
 
-func (t *Cmd) runCmd(args []string) {
+func (tt *Cmd) runCmd(args []string) {
 	cmd := exec.Command(args[0], args[1:]...) //nolint:gosec
-	cmd.Stdout = t
-	cmd.Stderr = t
+	cmd.Stdout = tt
+	cmd.Stderr = tt
 	_ = cmd.Run()
 }
 
 // RunCmd parallel running when parallel is true.
-func (t *Cmd) RunCmd(args []string, parallel bool) {
-	t.Log("RunCmd cmd", args)
+func (tt *Cmd) RunCmd(args []string, parallel bool) {
+	tt.Log("RunCmd cmd", args)
 	if parallel {
-		go t.runCmd(args)
+		go tt.runCmd(args)
 	} else {
-		t.runCmd(args)
+		tt.runCmd(args)
 	}
 }
 
-func (t *Cmd) Write(data []byte) (int, error) {
+func (tt *Cmd) Write(data []byte) (int, error) {
 	out := string(data)
 	if verbose {
-		t.Logf(out)
+		tt.Logf(out)
 	} else if strings.Contains(out, "error") || strings.Contains(out, "warning") {
-		t.Logf(out)
+		tt.Logf(out)
 	}
-	go t.checkFuncs.Range(func(key, value interface{}) bool {
+	go tt.checkFuncs.Range(func(_, value interface{}) bool {
 		check := value.(checkFunc)
 		check(out)
 		return true

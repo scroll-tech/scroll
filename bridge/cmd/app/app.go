@@ -2,11 +2,13 @@ package app
 
 import (
 	"fmt"
+	"os"
+	"os/signal"
+
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/scroll-tech/go-ethereum/rpc"
 	"github.com/urfave/cli/v2"
-	"os"
-	"os/signal"
+
 	"scroll-tech/bridge/config"
 	"scroll-tech/bridge/l1"
 	"scroll-tech/bridge/l2"

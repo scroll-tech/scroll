@@ -2,9 +2,10 @@ package app
 
 import (
 	"fmt"
-	"github.com/docker/docker/pkg/reexec"
 	"os"
 	"os/signal"
+
+	"github.com/docker/docker/pkg/reexec"
 
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/scroll-tech/go-ethereum/rpc"

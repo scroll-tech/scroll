@@ -2,9 +2,11 @@ package app
 
 import (
 	"fmt"
+	"os"
+
 	"github.com/docker/docker/pkg/reexec"
 	"github.com/urfave/cli/v2"
-	"os"
+
 	"scroll-tech/common/utils"
 	"scroll-tech/common/version"
 )

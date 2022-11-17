@@ -10,15 +10,22 @@ import (
 	"scroll-tech/database/migrate"
 )
 
-func applyDBConfig(ctx *cli.Context) *database.DBConfig {
-
-}
-
-func initDB(file string) (*sqlx.DB, error) {
+func applyConfig(ctx *cli.Context) (*database.DBConfig, error) {
+	file := ctx.String(configFileFlag.Name)
 	dbCfg, err := database.NewConfig(file)
 	if err != nil {
 		return nil, err
 	}
+	if ctx.IsSet(driverFlag.Name) {
+		dbCfg.DriverName = ctx.String(driverFlag.Name)
+	}
+	if ctx.IsSet(dsnFlag.Name) {
+		dbCfg.DSN = ctx.String(dsnFlag.Name)
+	}
+	return dbCfg, nil
+}
+
+func initDB(dbCfg *database.DBConfig) (*sqlx.DB, error) {
 	factory, err := database.NewOrmFactory(dbCfg)
 	if err != nil {
 		return nil, err
@@ -30,7 +37,11 @@ func initDB(file string) (*sqlx.DB, error) {
 
 // resetDB clean or reset database.
 func resetDB(ctx *cli.Context) error {
-	db, err := initDB(ctx.String(configFileFlag.Name))
+	cfg, err := applyConfig(ctx)
+	if err != nil {
+		return err
+	}
+	db, err := initDB(cfg)
 	if err != nil {
 		return err
 	}
@@ -47,7 +58,11 @@ func resetDB(ctx *cli.Context) error {
 
 // checkDBStatus check db status
 func checkDBStatus(ctx *cli.Context) error {
-	db, err := initDB(ctx.String(configFileFlag.Name))
+	cfg, err := applyConfig(ctx)
+	if err != nil {
+		return err
+	}
+	db, err := initDB(cfg)
 	if err != nil {
 		return err
 	}
@@ -57,7 +72,11 @@ func checkDBStatus(ctx *cli.Context) error {
 
 // dbVersion return the latest version
 func dbVersion(ctx *cli.Context) error {
-	db, err := initDB(ctx.String(configFileFlag.Name))
+	cfg, err := applyConfig(ctx)
+	if err != nil {
+		return err
+	}
+	db, err := initDB(cfg)
 	if err != nil {
 		return err
 	}
@@ -70,7 +89,11 @@ func dbVersion(ctx *cli.Context) error {
 
 // migrateDB migrate db
 func migrateDB(ctx *cli.Context) error {
-	db, err := initDB(ctx.String(configFileFlag.Name))
+	cfg, err := applyConfig(ctx)
+	if err != nil {
+		return err
+	}
+	db, err := initDB(cfg)
 	if err != nil {
 		return err
 	}
@@ -80,7 +103,11 @@ func migrateDB(ctx *cli.Context) error {
 
 // rollbackDB rollback db by version
 func rollbackDB(ctx *cli.Context) error {
-	db, err := initDB(ctx.String(configFileFlag.Name))
+	cfg, err := applyConfig(ctx)
+	if err != nil {
+		return err
+	}
+	db, err := initDB(cfg)
 	if err != nil {
 		return err
 	}

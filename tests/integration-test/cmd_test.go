@@ -1,9 +1,10 @@
 package integration_test
 
 import (
-	"scroll-tech/common/docker"
 	"testing"
 	"time"
+
+	"scroll-tech/common/docker"
 )
 
 func testBridgeCmd(t *testing.T) {
@@ -26,12 +27,22 @@ func testDatabaseCmd(t *testing.T) {
 	cmd := docker.NewCmd(t)
 	// Wait expect result
 	cmd.ExpectWithTimeout(time.Second*3, "database version prealpha-v4.1-")
-	cmd.Run("database-test", "--version")
+	cmd.Run("database-test", "--log.debug", "--version")
 	cmd.WaitExit()
 }
 
-func testDatabase(t *testing.T) {
+func testDatabaseOperation(t *testing.T) {
+	cmd := docker.NewCmd(t)
 
+	// Wait reset result
+	cmd.ExpectWithTimeout(time.Second*3, "successful to reset")
+	cmd.Run("database-test", "--log.debug", "reset", "--config", "../../database/config.json", "--db.dsn", dbImg.Endpoint())
+
+	// Wait migrate result
+	cmd.ExpectWithTimeout(time.Second*3, "current version: 5")
+	cmd.Run("database-test", "--log.debug", "migrate", "--config", "../../database/config.json", "--db.dsn", dbImg.Endpoint())
+
+	cmd.WaitExit()
 }
 
 /*func TestROllerCmd(t *testing.T) {

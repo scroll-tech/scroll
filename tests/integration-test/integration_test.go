@@ -1,13 +1,15 @@
 package integration_test
 
 import (
+	"testing"
+
 	"github.com/stretchr/testify/assert"
+
 	_ "scroll-tech/bridge/cmd/app"
 	"scroll-tech/common/docker"
 	_ "scroll-tech/coordinator/cmd/app"
 	"scroll-tech/database"
 	_ "scroll-tech/database/cmd/app"
-	"testing"
 )
 
 var (
@@ -40,15 +42,16 @@ func free(t *testing.T) {
 	assert.NoError(t, dbImg.Stop())
 }
 
-func TestIntegration(t *testing.T) {
-	//setupEnv(t)
+func TestVersion(t *testing.T) {
+	setupEnv(t)
 
 	// test cmd --version
 	t.Run("TestBridgeCmd", testBridgeCmd)
 	t.Run("testCoordinatorCmd", testCoordinatorCmd)
 	t.Run("testDatabaseCmd", testDatabaseCmd)
+	t.Run("testDatabaseOperation", testDatabaseOperation)
 
-	/*t.Cleanup(func() {
+	t.Cleanup(func() {
 		free(t)
-	})*/
+	})
 }
