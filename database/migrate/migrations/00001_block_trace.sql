@@ -10,9 +10,9 @@ create table block_trace
     parent_hash             VARCHAR         DEFAULT NULL,
     trace                   JSON            NOT NULL,
     batch_id                VARCHAR         DEFAULT NULL,
-    tx_num                  INTEGER         NOT NULL DEFAULT 0,
-    gas_used                BIGINT          NOT NULL DEFAULT 0,
-    block_timestamp         NUMERIC         NOT NULL DEFAULT 0
+    tx_num                  INTEGER         NOT NULL,
+    gas_used                BIGINT          NOT NULL,
+    block_timestamp         NUMERIC         NOT NULL
 );
 
 create unique index block_trace_hash_uindex
