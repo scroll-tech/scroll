@@ -26,8 +26,8 @@ func main() {
 	app.Name = "coordinator"
 	app.Usage = "The Scroll L2 Coordinator"
 	app.Version = version.Version
-	commonFlags := append(utils.CommonFlags, []cli.Flag{&verifierFlag}...)
-	app.Flags = append(app.Flags, commonFlags...)
+	app.Flags = append(app.Flags, utils.CommonFlags...)
+	app.Flags = append(app.Flags, []cli.Flag{&verifierFlag}...)
 	app.Flags = append(app.Flags, apiFlags...)
 
 	app.Before = func(ctx *cli.Context) error {
