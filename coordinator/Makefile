@@ -7,6 +7,10 @@ REPO_ROOT_DIR=./..
 test:
 	go test -v -race -coverprofile=coverage.txt -covermode=atomic -p 1 $(PWD)/...
 
+libzkp:
+	cd ../common/zkp/rust && cargo build --release && cp ./target/release/libzkp.a ../lib/
+	cp -r ../common/zkp/lib ./verifier/
+
 coordinator: ## Builds the Coordinator instance.
 	cd ../common/zkp/rust && cargo build --release && cp ./target/release/libzkp.a ../lib/
 	cp -r ../common/zkp/lib ./verifier/
