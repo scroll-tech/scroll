@@ -32,6 +32,7 @@ func NewCmd(t *testing.T) *Cmd {
 	return &Cmd{T: t}
 }
 
+// OpenLog set log open or close.
 func (tt *Cmd) OpenLog(open bool) {
 	tt.verbose = open
 }
