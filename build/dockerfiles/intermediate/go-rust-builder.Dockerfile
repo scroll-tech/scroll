@@ -6,7 +6,8 @@ RUN apk add --no-cache gcc musl-dev linux-headers git ca-certificates
 
 ENV RUSTUP_HOME=/usr/local/rustup \
     CARGO_HOME=/usr/local/cargo \
-    PATH=/usr/local/cargo/bin:$PATH
+    PATH=/usr/local/cargo/bin:$PATH \
+    CARGO_NET_GIT_FETCH_WITH_CLI=true
 
 RUN set -eux; \
     apkArch="$(apk --print-arch)"; \

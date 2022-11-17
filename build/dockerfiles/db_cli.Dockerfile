@@ -9,15 +9,15 @@ COPY ./database/go.* ./database/
 COPY ./roller/go.* ./roller/
 RUN go mod download -x
 
-# Build bridge
+# Build db_cli
 FROM base as builder
 
 COPY ./ /
-RUN cd /bridge/cmd && go build -v -p 4 -o bridge
+RUN cd /database/cmd && go build -v -p 4 -o db_cli
 
-# Pull bridge into a second stage deploy alpine container
+# Pull db_cli into a second stage deploy alpine container
 FROM alpine:latest
 
-COPY --from=builder /bridge/cmd/bridge /bin/
+COPY --from=builder /database/cmd/db_cli /bin/
 
-ENTRYPOINT ["bridge"]
+ENTRYPOINT ["db_cli"]

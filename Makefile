@@ -27,7 +27,7 @@ update: ## update dependencies
 
 dev_docker: ## build docker images for development/testing usages
 	docker build -t scroll_l1geth ./common/docker/l1geth/
-	docker build -t scroll_l2geth ./common/docker/l2geth/.
+	docker build -t scroll_l2geth ./common/docker/l2geth/
 
 clean: ## Empty out the bin folder
 	@rm -rf build/bin

@@ -2,9 +2,8 @@ package app
 
 import (
 	"github.com/jmoiron/sqlx"
-	"github.com/urfave/cli/v2"
-
 	"github.com/scroll-tech/go-ethereum/log"
+	"github.com/urfave/cli/v2"
 
 	"scroll-tech/database"
 	"scroll-tech/database/migrate"

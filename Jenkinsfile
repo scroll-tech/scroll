@@ -34,10 +34,14 @@ pipeline {
                     export PATH=/home/ubuntu/go/bin:$PATH
                     make dev_docker
                     make -C bridge mock_abi
+                    # check compilation
                     make -C bridge bridge
-                    make -C bridge docker
                     make -C coordinator coordinator
+                    make -C database db_cli
+                    # check docker build
+                    make -C bridge docker
                     make -C coordinator docker
+                    make -C database docker
                     '''
             }
         }
@@ -72,31 +76,6 @@ pipeline {
 
                     script { test_result = true }
                }
-            }
-        }
-        stage('Docker') {
-            when {
-                anyOf {
-                    changeset "Jenkinsfile"
-                    changeset "build/**"
-                    changeset "go.work**"
-                    changeset "bridge/**"
-                    changeset "coordinator/**"
-                    changeset "common/**"
-                    changeset "database/**"
-                }
-            }
-            steps {
-                withCredentials([usernamePassword(credentialsId: "${credentialDocker}", passwordVariable: 'dockerPassword', usernameVariable: 'dockerUser')]) {
-                    script {
-                        if (test_result == true) {
-                            sh 'docker login --username=${dockerUser} --password=${dockerPassword}'
-                            for (i in ['bridge', 'coordinator']) {
-                                sh "docker build -t ${imagePrefix}/$i:${GIT_COMMIT} -f build/dockerfiles/${i}.Dockerfile ."
-                            }
-                        }
-                    }
-                }
             }
         }
     }
