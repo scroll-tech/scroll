@@ -72,7 +72,6 @@ type BlockInfo struct {
 type BlockTraceOrm interface {
 	Exist(number uint64) (bool, error)
 	GetBlockTracesLatestHeight() (int64, error)
-	GetBlockTracesOldestHeight() (int64, error)
 	GetBlockTraces(fields map[string]interface{}, args ...string) ([]*types.BlockResult, error)
 	GetBlockInfos(fields map[string]interface{}, args ...string) ([]*BlockInfo, error)
 	// add `GetUnbatchedBlocks` because `GetBlockInfos` cannot support query "batch_id is NULL"

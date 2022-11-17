@@ -40,16 +40,6 @@ func (o *blockTraceOrm) GetBlockTracesLatestHeight() (int64, error) {
 	return height, nil
 }
 
-func (o *blockTraceOrm) GetBlockTracesOldestHeight() (int64, error) {
-	row := o.db.QueryRow("SELECT COALESCE(MIN(number), -1) FROM block_trace;")
-
-	var height int64
-	if err := row.Scan(&height); err != nil {
-		return -1, err
-	}
-	return height, nil
-}
-
 func (o *blockTraceOrm) GetBlockTraces(fields map[string]interface{}, args ...string) ([]*types.BlockResult, error) {
 	type Result struct {
 		Trace string
