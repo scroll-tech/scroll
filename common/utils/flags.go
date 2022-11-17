@@ -40,4 +40,21 @@ var (
 		Name:  "log.debug",
 		Usage: "Prepends log messages with call-site location (file and line number)",
 	}
+	// DBFlags is used for db cmd.
+	DBFlags = []cli.Flag{
+		&DriverFlag,
+		&DSNFlag,
+	}
+	// DriverFlag db driver name.
+	DriverFlag = cli.StringFlag{
+		Name:  "db.driver",
+		Usage: "db driver name",
+		Value: "postgres",
+	}
+	// DSNFlag db url.
+	DSNFlag = cli.StringFlag{
+		Name:  "db.dsn",
+		Usage: "data source name",
+		Value: "postgres://postgres:@localhost/postgres?sslmode=disable",
+	}
 )

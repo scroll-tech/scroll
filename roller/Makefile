@@ -1,4 +1,4 @@
-.PHONY: lint docker clean roller
+.PHONY: lint docker clean roller mock_roller
 
 IMAGE_NAME=go-roller
 IMAGE_VERSION=latest
@@ -16,9 +16,12 @@ roller: ## Build the Roller instance.
 	cd core/prover/rust && cargo build --release && cp target/release/libprover.a ../lib/
 	GOBIN=$(PWD)/build/bin go build -ldflags "-X scroll-tech/roller/core.ZK_VERSION=${ZK_VERSION}" -o $(PWD)/build/bin/roller ./cmd
 
+mock_roller:
+	go build -o $(PWD)/build/bin/roller ./cmd
+
 gpu-roller: ## Build the GPU Roller instance.
 	cd core/prover/rust && cargo build --release && cp target/release/libprover.a ../lib/
-	GOBIN=$(PWD)/build/bin go build -ldflags "-X scroll-tech/roller/core.ZK_VERSION=${ZK_VERSION}" -tags gpu -o $(PWD)/build/bin/roller ./cmd
+	GOBIN=$(PWD)/build/bin go build -ldflags "-X scroll-tech/roller/core.ZK_VERSION=${ZK_VERSION}" -tags gpu roller -o $(PWD)/build/bin/roller ./cmd
 
 test-prover:
 	go test -timeout 0 -v ./core/prover

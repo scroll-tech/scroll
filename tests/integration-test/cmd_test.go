@@ -9,54 +9,52 @@ import (
 
 func testBridgeCmd(t *testing.T) {
 	cmd := docker.NewCmd(t)
+	defer cmd.WaitExit()
+
 	// wait result
 	cmd.ExpectWithTimeout(time.Second*3, "bridge version prealpha-v4.1-")
 	cmd.Run("bridge-test", "--version")
-	cmd.WaitExit()
 }
 
 func testCoordinatorCmd(t *testing.T) {
 	cmd := docker.NewCmd(t)
+	defer cmd.WaitExit()
+
 	// Wait expect result
 	cmd.ExpectWithTimeout(time.Second*3, "coordinator version prealpha-v4.1-")
 	cmd.Run("coordinator-test", "--version")
-	cmd.WaitExit()
 }
 
 func testDatabaseCmd(t *testing.T) {
 	cmd := docker.NewCmd(t)
+	defer cmd.WaitExit()
+
+	cmd.OpenLog(true)
 	// Wait expect result
 	cmd.ExpectWithTimeout(time.Second*3, "database version prealpha-v4.1-")
-	cmd.Run("database-test", "--log.debug", "--version")
-	cmd.WaitExit()
+	cmd.Run("db_cli-test", "--log.debug", "--version")
 }
 
 func testDatabaseOperation(t *testing.T) {
 	cmd := docker.NewCmd(t)
+	defer cmd.WaitExit()
+
+	cmd.OpenLog(true)
 
 	// Wait reset result
 	cmd.ExpectWithTimeout(time.Second*3, "successful to reset")
-	cmd.Run("database-test", "--log.debug", "reset", "--config", "../../database/config.json", "--db.dsn", dbImg.Endpoint())
+	cmd.Run("db_cli-test", "--log.debug", "reset", "--config", "../../database/config.json", "--db.dsn", dbImg.Endpoint())
 
 	// Wait migrate result
 	cmd.ExpectWithTimeout(time.Second*3, "current version: 5")
-	cmd.Run("database-test", "--log.debug", "migrate", "--config", "../../database/config.json", "--db.dsn", dbImg.Endpoint())
-
-	cmd.WaitExit()
+	cmd.Run("db_cli-test", "--log.debug", "migrate", "--config", "../../database/config.json", "--db.dsn", dbImg.Endpoint())
 }
 
-/*func TestROllerCmd(t *testing.T) {
-	cmd := &exec.Cmd{
-		Path: reexec.Self(),
-		Args: []string{"roller-test", "--help"},
-	}
-	cmd.Stdin = os.Stdin
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
+func testRollerCmd(t *testing.T) {
+	cmd := docker.NewCmd(t)
+	defer cmd.WaitExit()
 
-	if err := cmd.Run(); err != nil {
-		t.Error(err)
-		fmt.Printf("Error running the reexec.Command - %s\n", err)
-		os.Exit(1)
-	}
-}*/
+	cmd.OpenLog(true)
+	cmd.ExpectWithTimeout(time.Second*3, "Roller version prealpha-v4.1-")
+	cmd.Run("roller-test", "--log.debug", "--version")
+}

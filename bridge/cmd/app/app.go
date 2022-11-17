@@ -27,17 +27,17 @@ func applyConfig(ctx *cli.Context, cfg *config.Config) {
 		cfg.L2Config.Endpoint = url
 		cfg.L1Config.RelayerConfig.SenderConfig.Endpoint = url
 	}
-	if ctx.IsSet(driverFlag.Name) {
-		cfg.DBConfig.DriverName = ctx.String(driverFlag.Name)
+	if ctx.IsSet(utils.DriverFlag.Name) {
+		cfg.DBConfig.DriverName = ctx.String(utils.DriverFlag.Name)
 	}
-	if ctx.IsSet(dsnFlag.Name) {
-		cfg.DBConfig.DSN = ctx.String(dsnFlag.Name)
+	if ctx.IsSet(utils.DSNFlag.Name) {
+		cfg.DBConfig.DSN = ctx.String(utils.DSNFlag.Name)
 	}
 }
 
 func action(ctx *cli.Context) error {
 	// Load config file.
-	cfgFile := ctx.String(configFileFlag.Name)
+	cfgFile := ctx.String(utils.ConfigFileFlag.Name)
 	cfg, err := config.NewConfig(cfgFile)
 	if err != nil {
 		log.Crit("failed to load config file", "config file", cfgFile, "error", err)

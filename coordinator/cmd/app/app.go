@@ -28,15 +28,16 @@ func init() {
 	app.Name = "coordinator"
 	app.Usage = "The Scroll L2 Coordinator"
 	app.Version = version.Version
-	app.Flags = append(app.Flags, commonFlags...)
+	app.Flags = append(app.Flags, utils.CommonFlags...)
+	app.Flags = append(app.Flags, utils.DBFlags...)
 	app.Flags = append(app.Flags, apiFlags...)
 
 	app.Before = func(ctx *cli.Context) error {
 		return utils.Setup(&utils.LogConfig{
-			LogFile:       ctx.String(logFileFlag.Name),
-			LogJSONFormat: ctx.Bool(logJSONFormat.Name),
-			LogDebug:      ctx.Bool(logDebugFlag.Name),
-			Verbosity:     ctx.Int(verbosityFlag.Name),
+			LogFile:       ctx.String(utils.LogFileFlag.Name),
+			LogJSONFormat: ctx.Bool(utils.LogJSONFormat.Name),
+			LogDebug:      ctx.Bool(utils.LogDebugFlag.Name),
+			Verbosity:     ctx.Int(utils.VerbosityFlag.Name),
 		})
 	}
 
@@ -68,11 +69,17 @@ func applyConfig(ctx *cli.Context, cfg *config.Config) {
 	if ctx.IsSet(verifierFlag.Name) {
 		cfg.RollerManagerConfig.VerifierEndpoint = ctx.String(verifierFlag.Name)
 	}
+	if ctx.IsSet(utils.DriverFlag.Name) {
+		cfg.DBConfig.DriverName = ctx.String(utils.DriverFlag.Name)
+	}
+	if ctx.IsSet(utils.DSNFlag.Name) {
+		cfg.DBConfig.DSN = ctx.String(utils.DSNFlag.Name)
+	}
 }
 
 func action(ctx *cli.Context) error {
 	// Load config file.
-	cfgFile := ctx.String(configFileFlag.Name)
+	cfgFile := ctx.String(utils.ConfigFileFlag.Name)
 	cfg, err := config.NewConfig(cfgFile)
 	if err != nil {
 		log.Crit("failed to load config file", "config file", cfgFile, "error", err)

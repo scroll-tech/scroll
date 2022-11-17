@@ -12,59 +12,12 @@ import (
 )
 
 var (
-	commonFlags = []cli.Flag{
-		&verbosityFlag,
-		&logFileFlag,
-		&logJSONFormat,
-		&logDebugFlag,
-	}
-	// verbosityFlag log level.
-	verbosityFlag = cli.IntFlag{
-		Name:  "verbosity",
-		Usage: "Logging verbosity: 0=silent, 1=error, 2=warn, 3=info, 4=debug, 5=detail",
-		Value: 3,
-	}
-	// logFileFlag decides where the logger output is sent. If this flag is left
-	// empty, it will log to stdout.
-	logFileFlag = cli.StringFlag{
-		Name:  "log.file",
-		Usage: "Tells the database where to write log entries",
-	}
-	logJSONFormat = cli.BoolFlag{
-		Name:  "log.json",
-		Usage: "Tells the database whether log format is json or not",
-		Value: true,
-	}
-	logDebugFlag = cli.BoolFlag{
-		Name:  "log.debug",
-		Usage: "Prepends log messages with call-site location (file and line number)",
-	}
-	dbFlags = []cli.Flag{
-		&configFileFlag,
-		&driverFlag,
-		&dsnFlag,
-	}
-	// configFileFlag load json type config file.
-	configFileFlag = cli.StringFlag{
-		Name:  "config",
-		Usage: "JSON configuration file",
-		Value: "./config.json",
-	}
-	driverFlag = cli.StringFlag{
-		Name:  "db.driver",
-		Usage: "db driver name",
-		Value: "postgres",
-	}
-	dsnFlag = cli.StringFlag{
-		Name:  "db.dsn",
-		Usage: "data source name",
-		Value: "postgres://postgres:@localhost/postgres?sslmode=disable",
-	}
+	// Set up database app info.
+	app = cli.NewApp()
 )
 
 var (
-	// Set up database app info.
-	app = cli.NewApp()
+	dbFlags = append(utils.DBFlags, &utils.ConfigFileFlag)
 )
 
 func init() {
@@ -72,14 +25,15 @@ func init() {
 	app.Name = "database"
 	app.Usage = "The Scroll Database CLI"
 	app.Version = version.Version
-	app.Flags = append(app.Flags, commonFlags...)
+	app.Flags = append(app.Flags, utils.CommonFlags...)
+	app.Flags = append(app.Flags, utils.DBFlags...)
 
 	app.Before = func(ctx *cli.Context) error {
 		return utils.Setup(&utils.LogConfig{
-			LogFile:       ctx.String(logFileFlag.Name),
-			LogJSONFormat: ctx.Bool(logJSONFormat.Name),
-			LogDebug:      ctx.Bool(logDebugFlag.Name),
-			Verbosity:     ctx.Int(verbosityFlag.Name),
+			LogFile:       ctx.String(utils.LogFileFlag.Name),
+			LogJSONFormat: ctx.Bool(utils.LogJSONFormat.Name),
+			LogDebug:      ctx.Bool(utils.LogDebugFlag.Name),
+			Verbosity:     ctx.Int(utils.VerbosityFlag.Name),
 		})
 	}
 
@@ -94,13 +48,13 @@ func init() {
 			Name:   "status",
 			Usage:  "Check migration status.",
 			Action: checkDBStatus,
-			Flags:  dbFlags,
+			Flags:  utils.DBFlags,
 		},
 		{
 			Name:   "version",
 			Usage:  "Display the current database version.",
 			Action: dbVersion,
-			Flags:  dbFlags,
+			Flags:  utils.DBFlags,
 		},
 		{
 			Name:   "migrate",
@@ -112,7 +66,7 @@ func init() {
 			Name:   "rollback",
 			Usage:  "Roll back the database to a previous <version>. Rolls back a single migration if no version specified.",
 			Action: rollbackDB,
-			Flags: append(dbFlags,
+			Flags: append(utils.DBFlags,
 				&cli.IntFlag{
 					Name:  "version",
 					Usage: "Rollback to the specified version.",
@@ -122,7 +76,7 @@ func init() {
 	}
 
 	// Run the app for integration-test
-	reexec.Register("database-test", func() {
+	reexec.Register("db_cli-test", func() {
 		if err := app.Run(os.Args); err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)

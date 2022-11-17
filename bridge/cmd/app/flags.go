@@ -51,21 +51,6 @@ var (
 		Usage: "The endpoint connect to l2chain node",
 		Value: "/var/lib/jenkins/workspace/SequencerPipeline/MyPrivateNetwork/geth.ipc",
 	}
-	// db
-	dbflags = []cli.Flag{
-		&driverFlag,
-		&dsnFlag,
-	}
-	driverFlag = cli.StringFlag{
-		Name:  "db.driver",
-		Usage: "db driver name",
-		Value: "postgres",
-	}
-	dsnFlag = cli.StringFlag{
-		Name:  "db.dsn",
-		Usage: "data source name",
-		Value: "postgres://postgres:@localhost/postgres?sslmode=disable",
-	}
 )
 
 var (
@@ -78,18 +63,18 @@ func init() {
 	app.Name = "bridge"
 	app.Usage = "The Scroll Bridge"
 	app.Version = version.Version
-	app.Flags = append(app.Flags, commonFlags...)
+	app.Flags = append(app.Flags, utils.CommonFlags...)
+	app.Flags = append(app.Flags, utils.DBFlags...)
 	app.Flags = append(app.Flags, apiFlags...)
 	app.Flags = append(app.Flags, l1Flags...)
 	app.Flags = append(app.Flags, l2Flags...)
-	app.Flags = append(app.Flags, dbflags...)
 
 	app.Before = func(ctx *cli.Context) error {
 		return utils.Setup(&utils.LogConfig{
-			LogFile:       ctx.String(logFileFlag.Name),
-			LogJSONFormat: ctx.Bool(logJSONFormat.Name),
-			LogDebug:      ctx.Bool(logDebugFlag.Name),
-			Verbosity:     ctx.Int(verbosityFlag.Name),
+			LogFile:       ctx.String(utils.LogFileFlag.Name),
+			LogJSONFormat: ctx.Bool(utils.LogJSONFormat.Name),
+			LogDebug:      ctx.Bool(utils.LogDebugFlag.Name),
+			Verbosity:     ctx.Int(utils.VerbosityFlag.Name),
 		})
 	}
 

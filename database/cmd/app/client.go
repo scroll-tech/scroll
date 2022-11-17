@@ -5,21 +5,22 @@ import (
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/urfave/cli/v2"
 
+	"scroll-tech/common/utils"
 	"scroll-tech/database"
 	"scroll-tech/database/migrate"
 )
 
 func applyConfig(ctx *cli.Context) (*database.DBConfig, error) {
-	file := ctx.String(configFileFlag.Name)
+	file := ctx.String(utils.ConfigFileFlag.Name)
 	dbCfg, err := database.NewConfig(file)
 	if err != nil {
 		return nil, err
 	}
-	if ctx.IsSet(driverFlag.Name) {
-		dbCfg.DriverName = ctx.String(driverFlag.Name)
+	if ctx.IsSet(utils.DriverFlag.Name) {
+		dbCfg.DriverName = ctx.String(utils.DriverFlag.Name)
 	}
-	if ctx.IsSet(dsnFlag.Name) {
-		dbCfg.DSN = ctx.String(dsnFlag.Name)
+	if ctx.IsSet(utils.DSNFlag.Name) {
+		dbCfg.DSN = ctx.String(utils.DSNFlag.Name)
 	}
 	return dbCfg, nil
 }

@@ -1,3 +1,6 @@
+//go:build roller
+// +build roller
+
 package prover
 
 /*

@@ -20,19 +20,10 @@ var (
 		Usage: "TOML configuration file",
 		Value: "./config.toml",
 	}
-
-	// logFileFlag decides where the logger output is sent. If this flag is left
-	// empty, it will log to stdout.
-	logFileFlag = cli.StringFlag{
-		Name:  "logfile",
-		Usage: "Tells the sequencer where to write log entries",
-	}
-
-	// verbosityFlag log level.
-	verbosityFlag = cli.IntFlag{
-		Name:  "verbosity",
-		Usage: "Logging verbosity: 0=silent, 1=error, 2=warn, 3=info, 4=debug, 5=detail",
-		Value: 3,
+	urlFlag = cli.StringFlag{
+		Name:  "url",
+		Usage: "coordinator ws url",
+		Value: "ws://localhost:9000",
 	}
 
 	app = cli.NewApp()
@@ -45,13 +36,15 @@ func init() {
 	app.Version = core.Version
 	app.Flags = append(app.Flags, []cli.Flag{
 		&cfgFileFlag,
-		&logFileFlag,
-		&verbosityFlag,
+		&urlFlag,
+		&utils.LogFileFlag,
+		&utils.LogDebugFlag,
+		&utils.VerbosityFlag,
 	}...)
 	app.Before = func(ctx *cli.Context) error {
 		return utils.Setup(&utils.LogConfig{
-			LogFile:   ctx.String(logFileFlag.Name),
-			Verbosity: ctx.Int(verbosityFlag.Name),
+			LogFile:   ctx.String(utils.LogFileFlag.Name),
+			Verbosity: ctx.Int(utils.VerbosityFlag.Name),
 		})
 	}
 
@@ -79,6 +72,9 @@ func action(ctx *cli.Context) error {
 	cfg, err := config.InitConfig(ctx.String(cfgFileFlag.Name))
 	if err != nil {
 		return err
+	}
+	if ctx.IsSet(urlFlag.Name) {
+		cfg.ScrollURL = ctx.String(urlFlag.Name)
 	}
 
 	// Create roller

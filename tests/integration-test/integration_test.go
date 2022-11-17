@@ -10,6 +10,7 @@ import (
 	_ "scroll-tech/coordinator/cmd/app"
 	"scroll-tech/database"
 	_ "scroll-tech/database/cmd/app"
+	_ "scroll-tech/roller/cmd/app"
 )
 
 var (
@@ -46,9 +47,12 @@ func TestVersion(t *testing.T) {
 	setupEnv(t)
 
 	// test cmd --version
-	t.Run("TestBridgeCmd", testBridgeCmd)
+	t.Run("testBridgeCmd", testBridgeCmd)
 	t.Run("testCoordinatorCmd", testCoordinatorCmd)
 	t.Run("testDatabaseCmd", testDatabaseCmd)
+	t.Run("testRollerCmd", testRollerCmd)
+
+	// test db_cli operation
 	t.Run("testDatabaseOperation", testDatabaseOperation)
 
 	t.Cleanup(func() {
