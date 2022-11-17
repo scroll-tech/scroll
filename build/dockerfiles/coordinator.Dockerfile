@@ -8,7 +8,7 @@ RUN cp -r /common/zkp/lib /coordinator/verifier/
 
 FROM scrolltech/go-builder:1.18 as builder
 
-COPY --from=zkp-builder ./ /
+COPY --from=zkp-builder / /
 
 RUN cd /coordinator && go build -v -p 4 -o coordinator ./cmd
 
