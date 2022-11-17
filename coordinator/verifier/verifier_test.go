@@ -1,3 +1,5 @@
+//go:build ffi
+
 package verifier_test
 
 import (
@@ -15,9 +17,6 @@ import (
 )
 
 func TestFFI(t *testing.T) {
-	if os.Getenv("TEST_FFI") != "true" {
-		return
-	}
 
 	as := assert.New(t)
 	cfg := &config.VerifierConfig{

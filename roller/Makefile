@@ -24,10 +24,10 @@ gpu-roller: ## Build the GPU Roller instance.
 	GOBIN=$(PWD)/build/bin go build -ldflags "-X scroll-tech/roller/core.ZK_VERSION=${ZK_VERSION}" -tags gpu -o $(PWD)/build/bin/roller ./cmd
 
 test-prover:
-	go test -timeout 0 -v ./core/prover
+	go test -tags ffi -timeout 0 -v ./core/prover
 
 test-gpu-prover:
-	go test -tags gpu -timeout 0 -v ./core/prover
+	go test -tags="gpu ffi" -timeout 0 -v ./core/prover
 
 lastest-zk-version:
 	curl -sL https://api.github.com/repos/scroll-tech/common-rs/commits | jq -r ".[0].sha"

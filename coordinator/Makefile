@@ -12,6 +12,9 @@ coordinator: ## Builds the Coordinator instance.
 	cp -r ../common/zkp/lib ./verifier/
 	go build -o $(PWD)/build/bin/coordinator ./cmd
 
+test-verifier:
+	go test -tags ffi -timeout 0 -v ./verifier
+
 lint: ## Lint the files - used for CI
 	GOBIN=$(PWD)/build/bin go run ../build/lint.go
 
