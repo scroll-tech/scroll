@@ -176,20 +176,10 @@ func testL2RelayerProcessCommittedBatches(t *testing.T) {
 	assert.NoError(t, err)
 	defer relayer.Stop()
 
-	// templateBlockResult, err := os.ReadFile("../../common/testdata/blockResult_relayer.json")
-	// assert.NoError(t, err)
-	// blockResult := &types.BlockResult{}
-	// err = json.Unmarshal(templateBlockResult, blockResult)
-	// assert.NoError(t, err)
-	// err = db.InsertBlockTraces(context.Background(), []*types.BlockResult{blockResult})
-	// assert.NoError(t, err)
-
 	dbTx, err := db.Beginx()
 	assert.NoError(t, err)
 	batchID, err := db.NewBatchInDBTx(dbTx, &orm.BlockInfo{}, &orm.BlockInfo{}, "0", 1, 194676) // startBlock & endBlock & parentHash & totalTxNum & totalL2Gas don't really matter here
 	assert.NoError(t, err)
-	// err = db.SetBatchIDForBlocksInDBTx(dbTx, blockIDs, batchID)
-	// assert.NoError(t, err)
 	err = dbTx.Commit()
 	assert.NoError(t, err)
 
