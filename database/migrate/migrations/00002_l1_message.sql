@@ -2,18 +2,18 @@
 -- +goose StatementBegin
 create table l1_message
 (
-    nonce       bigint  not null,
-    height      bigint  not null,
-    sender      varchar not null,
-    target      varchar not null,
-    value       varchar not null,
-    fee         varchar not null,
-    gas_limit   bigint  not null,
-    deadline    bigint  not null,
-    calldata    text    not null,
-    layer1_hash varchar not null,
-    layer2_hash varchar default null,
-    status      integer  default 1,
+    nonce        BIGINT  NOT NULL,
+    height       BIGINT  NOT NULL,
+    sender       VARCHAR NOT NULL,
+    target       VARCHAR NOT NULL,
+    value        VARCHAR NOT NULL,
+    fee          VARCHAR NOT NULL,
+    gas_limit    BIGINT  NOT NULL,
+    deadline     BIGINT  NOT NULL,
+    calldata     TEXT    NOT NULL,
+    layer1_hash  VARCHAR NOT NULL,
+    layer2_hash  VARCHAR DEFAULT NULL,
+    status       INTEGER  DEFAULT 1,
     created_time TIMESTAMP(0) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_time TIMESTAMP(0) NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
