@@ -2,7 +2,6 @@ assets/
 bridge/
 contracts/
 docs/
-integration-test/
 l2geth/
 roller/
 rpc-gateway/

@@ -7,6 +7,7 @@ COPY ./common/go.* ./common/
 COPY ./coordinator/go.* ./coordinator/
 COPY ./database/go.* ./database/
 COPY ./roller/go.* ./roller/
+COPY ./tests/integration-test/go.* ./tests/integration-test/
 RUN go mod download -x
 
 # Build coordinator
