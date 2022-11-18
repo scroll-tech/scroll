@@ -85,14 +85,14 @@ func (tt *Cmd) ExpectWithTimeout(timeout time.Duration, keyword string) {
 			}
 		}
 	})
-	defer tt.UnRegistFunc(keyword)
 
 	go func() {
+		defer tt.UnRegistFunc(keyword)
 		select {
 		case <-okCh:
 			return
 		case <-time.After(timeout):
-			assert.Fail(tt, "should have the keyword", keyword)
+			assert.Failf(tt, "should have the keyword", keyword)
 		}
 	}()
 }

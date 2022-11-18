@@ -37,17 +37,17 @@ func testDatabaseCmd(t *testing.T) {
 
 func testDatabaseOperation(t *testing.T) {
 	cmd := docker.NewCmd(t)
-	defer cmd.WaitExit()
 
 	cmd.OpenLog(true)
-
 	// Wait reset result
 	cmd.ExpectWithTimeout(time.Second*3, "successful to reset")
 	cmd.Run("db_cli-test", "--log.debug", "reset", "--config", "../../database/config.json", "--db.dsn", dbImg.Endpoint())
+	cmd.WaitExit()
 
 	// Wait migrate result
 	cmd.ExpectWithTimeout(time.Second*3, "current version: 5")
 	cmd.Run("db_cli-test", "--log.debug", "migrate", "--config", "../../database/config.json", "--db.dsn", dbImg.Endpoint())
+	cmd.WaitExit()
 }
 
 func testRollerCmd(t *testing.T) {

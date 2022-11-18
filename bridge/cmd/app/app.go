@@ -9,11 +9,12 @@ import (
 	"github.com/scroll-tech/go-ethereum/rpc"
 	"github.com/urfave/cli/v2"
 
+	"scroll-tech/common/utils"
+	"scroll-tech/database"
+
 	"scroll-tech/bridge/config"
 	"scroll-tech/bridge/l1"
 	"scroll-tech/bridge/l2"
-	"scroll-tech/common/utils"
-	"scroll-tech/database"
 )
 
 func applyConfig(ctx *cli.Context, cfg *config.Config) {

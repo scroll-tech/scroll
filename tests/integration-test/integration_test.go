@@ -22,9 +22,7 @@ var (
 
 func setupEnv(t *testing.T) {
 	l1gethImg = docker.NewTestL1Docker(t)
-
 	l2gethImg = docker.NewTestL2Docker(t)
-
 	dbImg = docker.NewTestDBDocker(t, "postgres")
 
 	// Create db handler and reset db.
