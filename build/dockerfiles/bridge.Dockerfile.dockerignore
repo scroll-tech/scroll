@@ -1,7 +1,7 @@
 assets/
 coordinator/
 docs/
-integration-test/
+tests/
 l2geth/
 roller/
 rpc-gateway/

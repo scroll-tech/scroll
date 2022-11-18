@@ -1,6 +1,6 @@
 assets/
 contracts/
 docs/
-integration-test/
+tests/
 l2geth/
 rpc-gateway/
