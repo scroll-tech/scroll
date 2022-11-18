@@ -106,6 +106,8 @@ func testL2RelayerProcessSaveEvents(t *testing.T) {
 }
 
 func testL2RelayerProcessPendingBatches(t *testing.T) {
+	t.Skip()
+
 	// Create db handler and reset db.
 	db, err := database.NewOrmFactory(cfg.DBConfig)
 	assert.NoError(t, err)
