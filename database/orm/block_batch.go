@@ -187,8 +187,8 @@ func (o *blockBatchOrm) UpdateProvingStatus(id string, status ProvingStatus) err
 	}
 }
 
-func (o *blockBatchOrm) TransistProvingStatus(before ProvingStatus, after ProvingStatus) error {
-	_, err := o.db.Exec(o.db.Rebind("update block_batch set proving_status = ? where proving_status = ?;"), after, before)
+func (o *blockBatchOrm) ResetProvingStatusFor(before ProvingStatus) error {
+	_, err := o.db.Exec(o.db.Rebind("update block_batch set proving_status = ? where proving_status = ?;"), ProvingTaskUnassigned, before)
 	return err
 }
 
@@ -226,7 +226,14 @@ func (o *blockBatchOrm) NewBatchInDBTx(dbTx *sqlx.Tx, startBlock *BlockInfo, end
 
 func (o *blockBatchOrm) BatchRecordExist(id string) (bool, error) {
 	var res int
-	return res == 1, o.db.Get(&res, o.db.Rebind(`SELECT 1 FROM block_batch where id = ? limit 1;`), id)
+	err := o.db.QueryRow(o.db.Rebind(`SELECT 1 FROM block_batch where id = ? limit 1;`), id).Scan(&res)
+	if err != nil {
+		if err != sql.ErrNoRows {
+			return false, err
+		}
+		return false, nil
+	}
+	return true, nil
 }
 
 func (o *blockBatchOrm) GetPendingBatches() ([]string, error) {

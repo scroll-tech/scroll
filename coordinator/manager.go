@@ -120,7 +120,7 @@ func (m *Manager) Start() error {
 	// m.orm may be nil in scroll tests
 	if m.orm != nil {
 		// clean up assigned but not submitted task
-		if err := m.orm.TransistProvingStatus(orm.ProvingTaskAssigned, orm.ProvingTaskUnassigned); err != nil {
+		if err := m.orm.ResetProvingStatusFor(orm.ProvingTaskAssigned); err != nil {
 			log.Error("fail to reset assigned tasks as unassigned")
 		}
 	}

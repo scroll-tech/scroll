@@ -172,7 +172,7 @@ func (r *Layer2Relayer) processSavedEvent(msg *orm.L2Message) error {
 
 // ProcessPendingBatches submit batch data to layer 1 rollup contract
 func (r *Layer2Relayer) ProcessPendingBatches() {
-	// batches are sorted by id in increasing order
+	// batches are sorted by batch index in increasing order
 	batchesInDB, err := r.db.GetPendingBatches()
 	if err != nil {
 		log.Error("Failed to fetch pending L2 batches", "err", err)
@@ -263,7 +263,7 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 
 // ProcessCommittedBatches submit proof to layer 1 rollup contract
 func (r *Layer2Relayer) ProcessCommittedBatches() {
-	// batches are sorted by id in increasing order
+	// batches are sorted by batch index in increasing order
 	batches, err := r.db.GetCommittedBatches()
 	if err != nil {
 		log.Error("Failed to fetch committed L2 batches", "err", err)

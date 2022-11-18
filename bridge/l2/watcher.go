@@ -150,7 +150,7 @@ func (w *WatcherClient) tryFetchRunningMissingBlocks(ctx context.Context, backTr
 		if err2 != nil {
 			return fmt.Errorf("failed to GetBlockResultByHash: %v. number: %v", err2, number)
 		}
-		log.Info("Retrieved block result", "height", trace.BlockTrace.Number, "hash", trace.BlockTrace.Hash)
+		log.Info("retrieved block result", "height", trace.BlockTrace.Number, "hash", trace.BlockTrace.Hash)
 
 		traces = append(traces, trace)
 
