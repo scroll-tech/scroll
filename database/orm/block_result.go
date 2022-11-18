@@ -27,7 +27,14 @@ func NewBlockTraceOrm(db *sqlx.DB) BlockTraceOrm {
 
 func (o *blockTraceOrm) Exist(number uint64) (bool, error) {
 	var res int
-	return res == 1, o.db.Get(&res, o.db.Rebind(`SELECT 1 from block_trace where number = ? limit 1;`), number)
+	err := o.db.QueryRow(`SELECT 1 from block_trace where number = ? limit 1;`, number).Scan(&res)
+	if err != nil {
+		if err != sql.ErrNoRows {
+			return false, err
+		}
+		return false, nil
+	}
+	return true, nil
 }
 
 func (o *blockTraceOrm) GetBlockTracesLatestHeight() (int64, error) {
