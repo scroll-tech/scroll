@@ -1,6 +1,7 @@
 # Download Go dependencies
 FROM scrolltech/go-builder:1.18 as base
 
+WORKDIR /src
 COPY go.work* ./
 COPY ./bridge/go.* ./bridge/
 COPY ./common/go.* ./common/
@@ -13,12 +14,14 @@ RUN go mod download -x
 # Build coordinator
 FROM base as builder
 
-COPY ./ /
-RUN cd /coordinator/cmd && go build -v -p 4 -o coordinator
+RUN --mount=target=. \
+    --mount=type=cache,target=/root/.cache/go-build \
+    cd /src/coordinator/cmd && go build -v -p 4 -o /bin/coordinator
 
 # Pull coordinator into a second stage deploy alpine container
 FROM alpine:latest
 
-COPY --from=builder /coordinator/cmd/coordinator /bin/
+COPY --from=builder /bin/coordinator /bin/
 
 ENTRYPOINT ["coordinator"]
+
