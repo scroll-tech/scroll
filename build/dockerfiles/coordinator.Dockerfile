@@ -10,6 +10,7 @@ RUN cp -r /src/common/zkp/lib /src/coordinator/verifier/
 # Download Go dependencies
 FROM scrolltech/go-builder:1.18 as base
 
+WORKDIR /src
 COPY go.work* ./
 COPY ./bridge/go.* ./bridge/
 COPY ./common/go.* ./common/
@@ -24,12 +25,15 @@ FROM base as builder
 
 COPY --from=zkp-builder /src/ /
 
-RUN cd /coordinator && go build -v -p 4 -o coordinator ./cmd
+RUN --mount=target=. \
+    --mount=type=cache,target=/root/.cache/go-build
 
+RUN cd /src/coordinator && go build -v -p 4 -o /bin/coordinator ./cmd
 
 # Pull coordinator into a second stage deploy alpine container
 FROM alpine:latest
 
-COPY --from=builder /coordinator/coordinator /bin/
+COPY --from=builder /bin/coordinator /bin/
 
 ENTRYPOINT ["coordinator"]
+
