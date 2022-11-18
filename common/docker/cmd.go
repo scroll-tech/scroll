@@ -74,7 +74,7 @@ func (tt *Cmd) UnRegistFunc(key string) {
 }
 
 // ExpectWithTimeout wait result during timeout time.
-func (tt *Cmd) ExpectWithTimeout(timeout time.Duration, keyword string) {
+func (tt *Cmd) ExpectWithTimeout(parallel bool, timeout time.Duration, keyword string) {
 	okCh := make(chan struct{}, 1)
 	tt.RegistFunc(keyword, func(buf string) {
 		if strings.Contains(buf, keyword) {
@@ -86,7 +86,8 @@ func (tt *Cmd) ExpectWithTimeout(timeout time.Duration, keyword string) {
 		}
 	})
 
-	go func() {
+	//Wait result func.
+	waitResult := func() {
 		defer tt.UnRegistFunc(keyword)
 		select {
 		case <-okCh:
@@ -94,7 +95,13 @@ func (tt *Cmd) ExpectWithTimeout(timeout time.Duration, keyword string) {
 		case <-time.After(timeout):
 			assert.Failf(tt, "should have the keyword", keyword)
 		}
-	}()
+	}
+
+	if parallel {
+		go waitResult()
+	} else {
+		waitResult()
+	}
 }
 
 func (tt *Cmd) runCmd(args []string) {

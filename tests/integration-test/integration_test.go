@@ -50,8 +50,10 @@ func TestVersion(t *testing.T) {
 	t.Run("testDatabaseCmd", testDatabaseCmd)
 	t.Run("testRollerCmd", testRollerCmd)
 
-	// test db_cli operation
+	// test db_cli
 	t.Run("testDatabaseOperation", testDatabaseOperation)
+	// test bridge service
+	t.Run("testBridgeOperation", testBridgeOperation)
 
 	t.Cleanup(func() {
 		free(t)
