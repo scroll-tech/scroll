@@ -1,6 +1,7 @@
 # Download Go dependencies
 FROM scrolltech/go-builder:1.18 as base
 
+WORKDIR /src
 COPY go.work* ./
 COPY ./bridge/go.* ./bridge/
 COPY ./common/go.* ./common/
@@ -12,12 +13,13 @@ RUN go mod download -x
 # Build db_cli
 FROM base as builder
 
-COPY ./ /
-RUN cd /database/cmd && go build -v -p 4 -o db_cli
+RUN --mount=target=. \
+    --mount=type=cache,target=/root/.cache/go-build \
+    cd /src/database/cmd && go build -v -p 4 -o /bin/db_cli
 
 # Pull db_cli into a second stage deploy alpine container
 FROM alpine:latest
 
-COPY --from=builder /database/cmd/db_cli /bin/
+COPY --from=builder /bin/db_cli /bin/
 
 ENTRYPOINT ["db_cli"]
