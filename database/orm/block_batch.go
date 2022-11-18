@@ -226,7 +226,7 @@ func (o *blockBatchOrm) NewBatchInDBTx(dbTx *sqlx.Tx, startBlock *BlockInfo, end
 
 func (o *blockBatchOrm) BatchRecordExist(id string) (bool, error) {
 	var res int
-	err := o.db.QueryRow(o.db.Rebind(`SELECT 1 FROM block_batch where id = ? limit 1;`, id)).Scan(&res)
+	err := o.db.QueryRow(o.db.Rebind(`SELECT 1 FROM block_batch where id = ? limit 1;`), id).Scan(&res)
 	if err != nil {
 		if err != sql.ErrNoRows {
 			return false, err
