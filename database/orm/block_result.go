@@ -27,7 +27,7 @@ func NewBlockTraceOrm(db *sqlx.DB) BlockTraceOrm {
 
 func (o *blockTraceOrm) Exist(number uint64) (bool, error) {
 	var res int
-	err := o.db.QueryRow(`SELECT 1 from block_trace where number = ? limit 1;`, number).Scan(&res)
+	err := o.db.QueryRow(o.db.Rebind(`SELECT 1 from block_trace where number = ? limit 1;`, number)).Scan(&res)
 	if err != nil {
 		if err != sql.ErrNoRows {
 			return false, err
