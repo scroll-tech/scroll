@@ -60,6 +60,7 @@ func init() {
 	reexec.Init()
 }
 
+// RunRoller the roller cmd func.
 func RunRoller() {
 	if err := app.Run(os.Args); err != nil {
 		_, _ = fmt.Fprintln(os.Stderr, err)
