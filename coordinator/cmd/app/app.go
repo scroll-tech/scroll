@@ -13,9 +13,10 @@ import (
 
 	"scroll-tech/common/utils"
 	"scroll-tech/common/version"
+	"scroll-tech/database"
+
 	rollers "scroll-tech/coordinator"
 	"scroll-tech/coordinator/config"
-	"scroll-tech/database"
 )
 
 var (

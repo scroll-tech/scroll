@@ -9,6 +9,7 @@ import (
 	"github.com/urfave/cli/v2"
 
 	"scroll-tech/common/utils"
+
 	"scroll-tech/roller/config"
 	"scroll-tech/roller/core"
 )
