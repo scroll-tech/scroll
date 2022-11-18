@@ -197,7 +197,7 @@ func testTraceHasUnsupportedOpcodes(t *testing.T) {
 	delegateTrace, err := os.ReadFile("../../common/testdata/blockResult_delegate.json")
 	assert.NoError(t, err)
 
-	trace := &types.BlockResult{}
+	trace := &types.BlockTrace{}
 	assert.NoError(t, json.Unmarshal(delegateTrace, &trace))
 
 	assert.Equal(t, true, len(cfg.L2Config.SkippedOpcodes) == 2)

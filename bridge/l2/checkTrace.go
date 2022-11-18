@@ -11,7 +11,7 @@ import (
 )
 
 //nolint:unused
-func blockTraceIsValid(trace *types.BlockResult) bool {
+func blockTraceIsValid(trace *types.BlockTrace) bool {
 	if trace == nil {
 		log.Warn("block trace is empty")
 		return false
@@ -77,7 +77,7 @@ func stateIsValid(txLog *types.StructLogRes, n int) bool {
 }
 
 // TraceHasUnsupportedOpcodes check if exist unsupported opcodes
-func TraceHasUnsupportedOpcodes(opcodes map[string]struct{}, trace *types.BlockResult) bool {
+func TraceHasUnsupportedOpcodes(opcodes map[string]struct{}, trace *types.BlockTrace) bool {
 	if trace == nil {
 		return false
 	}

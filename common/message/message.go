@@ -100,8 +100,8 @@ func (i *Identity) Hash() ([]byte, error) {
 
 // TaskMsg is a wrapper type around db ProveTask type.
 type TaskMsg struct {
-	ID     string               `json:"id"`
-	Traces []*types.BlockResult `json:"blockTraces"`
+	ID     string              `json:"id"`
+	Traces []*types.BlockTrace `json:"blockTraces"`
 }
 
 // ProofMsg is the message received from rollers that contains zk proof, the status of

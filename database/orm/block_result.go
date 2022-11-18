@@ -47,7 +47,7 @@ func (o *blockTraceOrm) GetBlockTracesLatestHeight() (int64, error) {
 	return height, nil
 }
 
-func (o *blockTraceOrm) GetBlockTraces(fields map[string]interface{}, args ...string) ([]*types.BlockResult, error) {
+func (o *blockTraceOrm) GetBlockTraces(fields map[string]interface{}, args ...string) ([]*types.BlockTrace, error) {
 	type Result struct {
 		Trace string
 	}
@@ -64,13 +64,13 @@ func (o *blockTraceOrm) GetBlockTraces(fields map[string]interface{}, args ...st
 		return nil, err
 	}
 
-	var traces []*types.BlockResult
+	var traces []*types.BlockTrace
 	for rows.Next() {
 		result := &Result{}
 		if err = rows.StructScan(result); err != nil {
 			break
 		}
-		trace := types.BlockResult{}
+		trace := types.BlockTrace{}
 		err = json.Unmarshal([]byte(result.Trace), &trace)
 		if err != nil {
 			break
@@ -150,22 +150,22 @@ func (o *blockTraceOrm) GetHashByNumber(number uint64) (*common.Hash, error) {
 	return &hash, nil
 }
 
-func (o *blockTraceOrm) InsertBlockTraces(ctx context.Context, blockTraces []*types.BlockResult) error {
+func (o *blockTraceOrm) InsertBlockTraces(ctx context.Context, blockTraces []*types.BlockTrace) error {
 	traceMaps := make([]map[string]interface{}, len(blockTraces))
 	for i, trace := range blockTraces {
-		number, hash, tx_num, mtime := trace.BlockTrace.Number.ToInt().Int64(),
-			trace.BlockTrace.Hash.String(),
-			len(trace.BlockTrace.Transactions),
-			trace.BlockTrace.Time
+		number, hash, tx_num, mtime := trace.Header.Number.Int64(),
+			trace.Header.Hash().String(),
+			len(trace.Transactions),
+			trace.Header.Time
 
 		var gasUsed uint64
-		for _, tx := range trace.BlockTrace.Transactions {
-			gasUsed += tx.Gas
+		for _, tx := range trace.Transactions {
+			gasUsed += tx.Gas()
 		}
 
 		data, err := json.Marshal(trace)
 		if err != nil {
-			log.Error("failed to marshal blockResult", "hash", hash, "err", err)
+			log.Error("failed to marshal blockTrace", "hash", hash, "err", err)
 			return err
 		}
 		traceMaps[i] = map[string]interface{}{

@@ -8,8 +8,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/scroll-tech/go-ethereum/common"
-	"github.com/scroll-tech/go-ethereum/common/hexutil"
 	"github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/stretchr/testify/assert"
 
@@ -66,21 +64,21 @@ func testL2RelayerProcessSaveEvents(t *testing.T) {
 	err = db.SaveL2Messages(context.Background(), templateL2Message)
 	assert.NoError(t, err)
 
-	results := []*types.BlockResult{
+	traces := []*types.BlockTrace{
 		{
-			BlockTrace: &types.BlockTrace{
-				Number: (*hexutil.Big)(big.NewInt(int64(templateL2Message[0].Height))),
-				Hash:   common.HexToHash("00"),
+			Header: &types.Header{
+				Number: big.NewInt(int64(templateL2Message[0].Height)),
+				// Hash:   common.HexToHash("00"),
 			},
 		},
 		{
-			BlockTrace: &types.BlockTrace{
-				Number: (*hexutil.Big)(big.NewInt(int64(templateL2Message[0].Height + 1))),
-				Hash:   common.HexToHash("01"),
+			Header: &types.Header{
+				Number: big.NewInt(int64(templateL2Message[0].Height + 1)),
+				// Hash:   common.HexToHash("01"),
 			},
 		},
 	}
-	err = db.InsertBlockTraces(context.Background(), results)
+	err = db.InsertBlockTraces(context.Background(), traces)
 	assert.NoError(t, err)
 
 	dbTx, err := db.Beginx()
@@ -121,34 +119,34 @@ func testL2RelayerProcessPendingBatches(t *testing.T) {
 
 	// this blockresult has number of 0x4, need to change it to match the testcase
 	// In this testcase scenario, db will store two blocks with height 0x4 and 0x3
-	var results []*types.BlockResult
+	var traces []*types.BlockTrace
 
-	templateBlockResult, err := os.ReadFile("../../common/testdata/blockResult_relayer_parent.json")
+	templateBlockTrace, err := os.ReadFile("../../common/testdata/blockTrace_relayer_parent.json")
 	assert.NoError(t, err)
-	blockResult := &types.BlockResult{}
-	err = json.Unmarshal(templateBlockResult, blockResult)
+	blockTrace := &types.BlockTrace{}
+	err = json.Unmarshal(templateBlockTrace, blockTrace)
 	assert.NoError(t, err)
-	results = append(results, blockResult)
-	templateBlockResult, err = os.ReadFile("../../common/testdata/blockResult_relayer.json")
+	traces = append(traces, blockTrace)
+	templateBlockTrace, err = os.ReadFile("../../common/testdata/blockTrace_relayer.json")
 	assert.NoError(t, err)
-	blockResult = &types.BlockResult{}
-	err = json.Unmarshal(templateBlockResult, blockResult)
+	blockTrace = &types.BlockTrace{}
+	err = json.Unmarshal(templateBlockTrace, blockTrace)
 	assert.NoError(t, err)
-	results = append(results, blockResult)
+	traces = append(traces, blockTrace)
 
-	err = db.InsertBlockTraces(context.Background(), results)
+	err = db.InsertBlockTraces(context.Background(), traces)
 	assert.NoError(t, err)
 
 	dbTx, err := db.Beginx()
 	assert.NoError(t, err)
 	batchID, err := db.NewBatchInDBTx(dbTx,
-		&orm.BlockInfo{Number: results[0].BlockTrace.Number.ToInt().Uint64()},
-		&orm.BlockInfo{Number: results[1].BlockTrace.Number.ToInt().Uint64()},
+		&orm.BlockInfo{Number: traces[0].Header.Number.Uint64()},
+		&orm.BlockInfo{Number: traces[1].Header.Number.Uint64()},
 		"ff", 1, 194676) // parentHash & totalTxNum & totalL2Gas don't really matter here
 	assert.NoError(t, err)
 	err = db.SetBatchIDForBlocksInDBTx(dbTx, []uint64{
-		results[0].BlockTrace.Number.ToInt().Uint64(),
-		results[1].BlockTrace.Number.ToInt().Uint64()}, batchID)
+		traces[0].Header.Number.Uint64(),
+		traces[1].Header.Number.Uint64()}, batchID)
 	assert.NoError(t, err)
 	err = dbTx.Commit()
 	assert.NoError(t, err)

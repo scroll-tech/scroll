@@ -144,13 +144,13 @@ func (w *WatcherClient) tryFetchRunningMissingBlocks(ctx context.Context, backTr
 
 	// start backtracking
 
-	var traces []*types.BlockResult
+	var traces []*types.BlockTrace
 	for number := backTrackFrom; number > backTrackTo; number-- {
-		trace, err2 := w.GetBlockResultByNumber(ctx, big.NewInt(int64(number)))
+		trace, err2 := w.GetBlockTraceByNumber(ctx, big.NewInt(int64(number)))
 		if err2 != nil {
 			return fmt.Errorf("failed to GetBlockResultByHash: %v. number: %v", err2, number)
 		}
-		log.Info("retrieved block result", "height", trace.BlockTrace.Number, "hash", trace.BlockTrace.Hash)
+		log.Info("retrieved block trace", "height", trace.Header.Number, "hash", trace.Header.Hash)
 
 		traces = append(traces, trace)
 

@@ -206,30 +206,31 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 	parentHash := common.HexToHash(batch.ParentHash)
 	for i, trace := range traces {
 		layer2Batch.Blocks[i] = bridge_abi.IZKRollupLayer2BlockHeader{
-			BlockHash:   trace.BlockTrace.Hash,
+			BlockHash:   trace.Header.Hash(),
 			ParentHash:  parentHash,
-			BaseFee:     trace.BlockTrace.BaseFee.ToInt(),
+			BaseFee:     trace.Header.BaseFee,
 			StateRoot:   trace.StorageTrace.RootAfter,
-			BlockHeight: trace.BlockTrace.Number.ToInt().Uint64(),
+			BlockHeight: trace.Header.Number.Uint64(),
 			GasUsed:     0,
-			Timestamp:   trace.BlockTrace.Time,
+			Timestamp:   trace.Header.Time,
 			ExtraData:   make([]byte, 0),
-			Txs:         make([]bridge_abi.IZKRollupLayer2Transaction, len(trace.BlockTrace.Transactions)),
+			Txs:         make([]bridge_abi.IZKRollupLayer2Transaction, len(trace.Transactions)),
 		}
-		for j, tx := range trace.BlockTrace.Transactions {
+		for j, tx := range trace.Transactions {
+			v, r, s := tx.RawSignatureValues()
 			layer2Batch.Blocks[i].Txs[j] = bridge_abi.IZKRollupLayer2Transaction{
 				Caller:   tx.From,
-				Nonce:    tx.Nonce,
-				Gas:      tx.Gas,
-				GasPrice: tx.GasPrice.ToInt(),
-				Value:    tx.Value.ToInt(),
-				Data:     common.Hex2Bytes(tx.Data),
-				R:        tx.R.ToInt(),
-				S:        tx.S.ToInt(),
-				V:        tx.V.ToInt().Uint64(),
+				Nonce:    tx.Nonce(),
+				Gas:      tx.Gas(),
+				GasPrice: tx.GasPrice(),
+				Value:    tx.Value(),
+				Data:     tx.Data(),
+				R:        r,
+				S:        s,
+				V:        v.Uint64(),
 			}
-			if tx.To != nil {
-				layer2Batch.Blocks[i].Txs[j].Target = *tx.To
+			if tx.To() != nil {
+				layer2Batch.Blocks[i].Txs[j].Target = *tx.To()
 			}
 			layer2Batch.Blocks[i].GasUsed += trace.ExecutionResults[j].Gas
 		}
