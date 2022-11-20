@@ -21,7 +21,7 @@ type RollerAPI interface {
 // RequestTicket generates and sends back register ticket for roller
 func (m *Manager) RequestTicket(authMsg *message.AuthMessage) (*message.Ticket, error) {
 	// todo: save to ticket to cache
-	return message.GenerateTicket(), nil
+	return message.GenerateTicket()
 }
 
 // Register register api for roller

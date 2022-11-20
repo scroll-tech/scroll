@@ -8,6 +8,7 @@ import (
 	"scroll-tech/common/message"
 )
 
+// RequestTicket generates ticket for roller
 func (c *Client) RequestTicket(ctx context.Context, authMsg *message.AuthMessage) (message.Ticket, error) {
 	var ticket message.Ticket
 	err := c.CallContext(ctx, &ticket, "roller_requestTicket", authMsg)
