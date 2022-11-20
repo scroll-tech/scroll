@@ -71,6 +71,7 @@ func TestApis(t *testing.T) {
 	assert.True(t, assert.NoError(t, setEnv(t)), "failed to setup the test environment.")
 
 	t.Run("TestHandshake", testHandshake)
+	t.Run("TestFailedHandshake", testFailedHandshake)
 	t.Run("TestSeveralConnections", testSeveralConnections)
 	t.Run("TestIdleRollerSelection", testIdleRollerSelection)
 
@@ -93,6 +94,70 @@ func testHandshake(t *testing.T) {
 	performHandshake(t, 1, "roller_test", "ws://"+managerURL, stopCh)
 
 	assert.Equal(t, 1, rollerManager.GetNumberOfIdleRollers())
+
+	close(stopCh)
+}
+
+func testFailedHandshake(t *testing.T) {
+	// Create db handler and reset db.
+	l2db, err := database.NewOrmFactory(cfg.DBConfig)
+	assert.NoError(t, err)
+	assert.NoError(t, migrate.ResetDB(l2db.GetDB().DB))
+	defer l2db.Close()
+
+	stopCh := make(chan struct{})
+
+	// prepare
+	name := "roller_test"
+	wsURL := "ws://" + managerURL
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// Try to perform handshake without ticket
+	// create a new ws connection
+	client, err := client2.DialContext(ctx, wsURL)
+	assert.NoError(t, err)
+	// create private key
+	privkey, err := crypto.GenerateKey()
+	assert.NoError(t, err)
+
+	authMsg := &message.AuthMessage{
+		Identity: &message.Identity{
+			Name:      name,
+			Timestamp: time.Now().UnixNano(),
+		},
+	}
+	assert.NoError(t, authMsg.Sign(privkey))
+	traceCh := make(chan *message.BlockTraces, 4)
+	_, err = client.RegisterAndSubscribe(ctx, traceCh, authMsg)
+	assert.Error(t, err)
+
+	// Try to perform handshake with timeouted ticket
+	// create a new ws connection
+	client, err = client2.DialContext(ctx, wsURL)
+	assert.NoError(t, err)
+	// create private key
+	privkey, err = crypto.GenerateKey()
+	assert.NoError(t, err)
+
+	authMsg = &message.AuthMessage{
+		Identity: &message.Identity{
+			Name:      name,
+			Timestamp: time.Now().UnixNano(),
+		},
+	}
+	ticket, err := client.RequestTicket(ctx, authMsg)
+	assert.NoError(t, err)
+
+	authMsg.Identity.Ticket = &ticket
+
+	assert.NoError(t, authMsg.Sign(privkey))
+	// time.Sleep()  take ttl of tickets from config
+	traceCh = make(chan *message.BlockTraces, 4)
+	_, err = client.RegisterAndSubscribe(ctx, traceCh, authMsg)
+	assert.Error(t, err)
+
+	assert.Equal(t, 0, rollerManager.GetNumberOfIdleRollers())
 
 	close(stopCh)
 }
@@ -248,6 +313,12 @@ func performHandshake(t *testing.T, proofTime time.Duration, name string, wsURL 
 			Timestamp: time.Now().UnixNano(),
 		},
 	}
+
+	ticket, err := client.RequestTicket(ctx, authMsg)
+	assert.NoError(t, err)
+
+	authMsg.Identity.Ticket = &ticket
+
 	assert.NoError(t, authMsg.Sign(privkey))
 
 	traceCh := make(chan *message.BlockTraces, 4)
