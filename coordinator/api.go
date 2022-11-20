@@ -13,20 +13,28 @@ import (
 
 // RollerAPI for rollers inorder to register and submit proof
 type RollerAPI interface {
+	RequestTicket(authMsg *message.AuthMessage) (*message.Ticket, error)
 	Register(ctx context.Context, authMsg *message.AuthMessage) (*rpc.Subscription, error)
 	SubmitProof(proof *message.AuthZkProof) (bool, error)
 }
 
+// RequestTicket generates and sends back register ticket for roller
+func (m *Manager) RequestTicket(authMsg *message.AuthMessage) (*message.Ticket, error) {
+	// todo: save to ticket to cache
+	return message.GenerateTicket(), nil
+}
+
 // Register register api for roller
 func (m *Manager) Register(ctx context.Context, authMsg *message.AuthMessage) (*rpc.Subscription, error) {
-	// Verify register message.
+	// Verify register message
+
+	// todo: verify ticket
 	if ok, err := authMsg.Verify(); !ok {
 		if err != nil {
 			log.Error("failed to verify auth message", "error", err)
 		}
 		return nil, errors.New("signature verification failed")
 	}
-
 	pubkey, _ := authMsg.PublicKey()
 	// create or get the roller message channel
 	traceCh, err := m.register(pubkey, authMsg.Identity)

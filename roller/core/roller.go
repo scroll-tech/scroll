@@ -121,7 +121,15 @@ func (r *Roller) Register() error {
 			Timestamp: time.Now().UnixMilli(),
 			PublicKey: common.Bytes2Hex(crypto.CompressPubkey(&r.priv.PublicKey)),
 			Version:   Version,
+			Ticket:    nil,
 		},
+	}
+
+	ticket, err := r.client.RequestTicket(context.Background(), authMsg)
+	if err != nil {
+		return fmt.Errorf("request ticket failed %v", err)
+	} else {
+		authMsg.Identity.Ticket = &ticket
 	}
 
 	// Sign auth message

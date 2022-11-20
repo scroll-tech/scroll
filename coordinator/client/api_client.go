@@ -8,6 +8,12 @@ import (
 	"scroll-tech/common/message"
 )
 
+func (c *Client) RequestTicket(ctx context.Context, authMsg *message.AuthMessage) (message.Ticket, error) {
+	var ticket message.Ticket
+	err := c.CallContext(ctx, &ticket, "roller_requestTicket", authMsg)
+	return ticket, err
+}
+
 // RegisterAndSubscribe subscribe roller and register, verified by sign data.
 func (c *Client) RegisterAndSubscribe(ctx context.Context, traceChan chan *message.BlockTraces, authMsg *message.AuthMessage) (ethereum.Subscription, error) {
 	return c.Subscribe(ctx, "roller", traceChan, "register", authMsg)
