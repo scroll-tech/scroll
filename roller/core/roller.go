@@ -124,6 +124,10 @@ func (r *Roller) Register() error {
 			Ticket:    nil,
 		},
 	}
+	// No need to sing authMsg here, manager can extract roller's PublicKey from corresponding field in Identity
+	// if err := authMsg.Sign(r.priv); err != nil {
+	// 	return fmt.Errorf("sign auth message failed %v", err)
+	// }
 
 	ticket, err := r.client.RequestTicket(context.Background(), authMsg)
 	if err != nil {

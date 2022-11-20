@@ -144,6 +144,7 @@ func testFailedHandshake(t *testing.T) {
 		Identity: &message.Identity{
 			Name:      name,
 			Timestamp: time.Now().UnixNano(),
+			PublicKey: common.Bytes2Hex(crypto.CompressPubkey(&privkey.PublicKey)),
 		},
 	}
 	ticket, err := client.RequestTicket(ctx, authMsg)
@@ -311,6 +312,7 @@ func performHandshake(t *testing.T, proofTime time.Duration, name string, wsURL 
 		Identity: &message.Identity{
 			Name:      name,
 			Timestamp: time.Now().UnixNano(),
+			PublicKey: common.Bytes2Hex(crypto.CompressPubkey(&privkey.PublicKey)),
 		},
 	}
 
