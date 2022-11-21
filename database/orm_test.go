@@ -109,7 +109,6 @@ func setupEnv(t *testing.T) error {
 	return json.Unmarshal(templateBlockTrace, blockTrace)
 }
 
-// TODO: fix trace json
 // TestOrmFactory run several test cases.
 func TestOrmFactory(t *testing.T) {
 	defer func() {
