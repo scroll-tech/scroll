@@ -294,7 +294,7 @@ func (r *Roller) persistTask(byt []byte) error {
 
 	blocks := task.Traces
 	sort.Slice(blocks, func(i, j int) bool {
-		return blocks[i].BlockTrace.Number.ToInt().Uint64() < blocks[j].BlockTrace.Number.ToInt().Uint64()
+		return blocks[i].Header.Number.Uint64() < blocks[j].Header.Number.Uint64()
 	})
 
 	return r.stack.Push(&store.ProvingTask{
