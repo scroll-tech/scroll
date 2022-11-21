@@ -57,11 +57,10 @@ type L2Message struct {
 }
 
 // BlockInfo is structure of stored `block_trace` without `trace`
-// TODO: add `parent_hash`. Though we already add it into db schema, we avoid adding it here atm,
-// in case people think they can already use it
 type BlockInfo struct {
 	Number         uint64         `json:"number" db:"number"`
 	Hash           string         `json:"hash" db:"hash"`
+	ParentHash     string         `json:"parent_hash" db:"parent_hash"`
 	BatchID        sql.NullString `json:"batch_id" db:"batch_id"`
 	TxNum          uint64         `json:"tx_num" db:"tx_num"`
 	GasUsed        uint64         `json:"gas_used" db:"gas_used"`

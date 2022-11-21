@@ -85,7 +85,7 @@ func (o *blockTraceOrm) GetBlockTraces(fields map[string]interface{}, args ...st
 }
 
 func (o *blockTraceOrm) GetBlockInfos(fields map[string]interface{}, args ...string) ([]*BlockInfo, error) {
-	query := "SELECT number, hash, batch_id, tx_num, gas_used, block_timestamp FROM block_trace WHERE 1 = 1 "
+	query := "SELECT number, hash, parent_hash, batch_id, tx_num, gas_used, block_timestamp FROM block_trace WHERE 1 = 1 "
 	for key := range fields {
 		query += fmt.Sprintf("AND %s=:%s ", key, key)
 	}
@@ -113,7 +113,7 @@ func (o *blockTraceOrm) GetBlockInfos(fields map[string]interface{}, args ...str
 }
 
 func (o *blockTraceOrm) GetUnbatchedBlocks(fields map[string]interface{}, args ...string) ([]*BlockInfo, error) {
-	query := "SELECT number, hash, batch_id, tx_num, gas_used, block_timestamp FROM block_trace WHERE batch_id is NULL "
+	query := "SELECT number, hash, parent_hash, batch_id, tx_num, gas_used, block_timestamp FROM block_trace WHERE batch_id is NULL "
 	for key := range fields {
 		query += fmt.Sprintf("AND %s=:%s ", key, key)
 	}
@@ -171,6 +171,7 @@ func (o *blockTraceOrm) InsertBlockTraces(ctx context.Context, blockTraces []*ty
 		traceMaps[i] = map[string]interface{}{
 			"number":          number,
 			"hash":            hash,
+			"parent_hash":     trace.Header.ParentHash.String(),
 			"trace":           string(data),
 			"tx_num":          tx_num,
 			"gas_used":        gasUsed,
@@ -178,7 +179,7 @@ func (o *blockTraceOrm) InsertBlockTraces(ctx context.Context, blockTraces []*ty
 		}
 	}
 
-	_, err := o.db.NamedExec(`INSERT INTO public.block_trace (number, hash, trace, tx_num, gas_used, block_timestamp) VALUES (:number, :hash, :trace, :tx_num, :gas_used, :block_timestamp);`, traceMaps)
+	_, err := o.db.NamedExec(`INSERT INTO public.block_trace (number, hash, parent_hash, trace, tx_num, gas_used, block_timestamp) VALUES (:number, :hash, :parent_hash, :trace, :tx_num, :gas_used, :block_timestamp);`, traceMaps)
 	if err != nil {
 		log.Error("failed to insert blockTraces", "err", err)
 	}
