@@ -37,7 +37,6 @@ pipeline {
                     make -C bridge mock_abi
                     # check compilation
                     make -C bridge bridge
-                    make -C coordinator coordinator
                     make -C database db_cli
                     # check docker build
                     make -C bridge docker
@@ -53,7 +52,6 @@ pipeline {
                     changeset "build/**"
                     changeset "go.work**"
                     changeset "bridge/**"
-                    changeset "coordinator/**"
                     changeset "common/**"
                     changeset "database/**"
                 }
@@ -63,16 +61,14 @@ pipeline {
                sh "docker container prune -f"
                catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
                     sh '''
-                        rustup default nightly-2022-08-23
                         go test -v -race -coverprofile=coverage.txt -covermode=atomic -p 1 scroll-tech/database/...
                         go test -v -race -coverprofile=coverage.txt -covermode=atomic -p 1 scroll-tech/bridge/...
                         go test -v -race -coverprofile=coverage.txt -covermode=atomic -p 1 scroll-tech/common/...
-                        go test -v -race -coverprofile=coverage.txt -covermode=atomic -p 1 scroll-tech/coordinator/...
                         cd ..
                     '''
                     script {
-                        for (i in ['bridge', 'coordinator', 'database']) {
-                            sh "cd $i && go test -v -race -coverprofile=coverage.txt -covermode=atomic \$(go list ./... | grep -v 'database\\|l2\\|l1\\|common\\|coordinator')"
+                        for (i in ['bridge', 'database']) {
+                            sh "cd $i && go test -v -race -coverprofile=coverage.txt -covermode=atomic \$(go list ./... | grep -v 'database\\|l2\\|l1\\|common')"
                         }
                     }
 
