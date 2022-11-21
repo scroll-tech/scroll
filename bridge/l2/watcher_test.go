@@ -193,7 +193,6 @@ func testFetchMultipleSentMessageInOneBlock(t *testing.T) {
 	assert.Equal(t, 5, len(msgs))
 }
 
-// TODO: fix this
 func testTraceHasUnsupportedOpcodes(t *testing.T) {
 	t.Skip()
 
@@ -203,7 +202,10 @@ func testTraceHasUnsupportedOpcodes(t *testing.T) {
 	trace := &types.BlockTrace{}
 	assert.NoError(t, json.Unmarshal(delegateTrace, &trace))
 
-	assert.Equal(t, true, len(cfg.L2Config.SkippedOpcodes) == 2)
+	_, exist := cfg.L2Config.SkippedOpcodes["DELEGATECALL"]
+	assert.Equal(t, true, exist)
+
+	assert.True(t, l2.TraceHasUnsupportedOpcodes(cfg.L2Config.SkippedOpcodes, trace))
 }
 
 func prepareRelayerClient(l2Cli *ethclient.Client, db database.OrmFactory, contractAddr common.Address) *l2.WatcherClient {
