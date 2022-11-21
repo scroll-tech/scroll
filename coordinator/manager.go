@@ -15,6 +15,7 @@ import (
 	"github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/scroll-tech/go-ethereum/rpc"
+	"github.com/zekroTJA/timedmap"
 
 	"scroll-tech/common/message"
 	"scroll-tech/database/orm"
@@ -72,6 +73,9 @@ type Manager struct {
 
 	// db interface
 	orm orm.BlockResultOrm
+
+	// Ticket cache
+	timedmap *timedmap.TimedMap
 }
 
 // New returns a new instance of Manager. The instance will be not fully prepared,
@@ -96,6 +100,7 @@ func New(ctx context.Context, cfg *config.RollerManagerConfig, orm orm.BlockResu
 		failedSessionInfos: make(map[uint64]*SessionInfo),
 		verifier:           v,
 		orm:                orm,
+		timedmap:           timedmap.New(1 * time.Hour),
 	}, nil
 }
 

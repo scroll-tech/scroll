@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/scroll-tech/go-ethereum/rpc"
@@ -20,22 +21,34 @@ type RollerAPI interface {
 
 // RequestTicket generates and sends back register ticket for roller
 func (m *Manager) RequestTicket(authMsg *message.AuthMessage) (*message.Ticket, error) {
-	// todo: save to ticket to cache
-	return message.GenerateTicket()
+	pubkey, _ := authMsg.PublicKey()
+	ticket, err := message.GenerateTicket()
+	if err != nil {
+		return nil, errors.New("ticket generation failed")
+	}
+	m.timedmap.Set(ticket.Token, pubkey, 1*time.Minute) // todo: expiration time from config
+	return ticket, nil
 }
 
 // Register register api for roller
 func (m *Manager) Register(ctx context.Context, authMsg *message.AuthMessage) (*rpc.Subscription, error) {
 	// Verify register message
 
-	// todo: verify ticket
+	pubkey, _ := authMsg.PublicKey()
+	if m.timedmap.GetValue(authMsg.Ticket.Token) != pubkey {
+		return nil, errors.New("failed to find corresponding ticket")
+	}
+
 	if ok, err := authMsg.Verify(); !ok {
 		if err != nil {
 			log.Error("failed to verify auth message", "error", err)
 		}
 		return nil, errors.New("signature verification failed")
 	}
-	pubkey, _ := authMsg.PublicKey()
+
+	// roller successfully registered, remove ticket
+	m.timedmap.Remove(authMsg.Ticket.Token)
+
 	// create or get the roller message channel
 	traceCh, err := m.register(pubkey, authMsg.Identity)
 	if err != nil {

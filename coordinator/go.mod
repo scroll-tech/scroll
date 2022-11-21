@@ -7,6 +7,7 @@ require (
 	github.com/scroll-tech/go-ethereum v1.10.14-0.20221012120556-b3a7c9b6917d
 	github.com/stretchr/testify v1.8.0
 	github.com/urfave/cli/v2 v2.10.2
+	github.com/zekroTJA/timedmap v1.4.0
 	golang.org/x/sync v0.0.0-20220722155255-886fb9371eb4
 )
 
