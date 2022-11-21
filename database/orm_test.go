@@ -100,7 +100,7 @@ func setupEnv(t *testing.T) error {
 	ormLayer2 = orm.NewL2MessageOrm(db)
 	ormBatch = orm.NewBlockBatchOrm(db)
 
-	templateBlockTrace, err := os.ReadFile("../common/testdata/blockTrace_orm.json")
+	templateBlockTrace, err := os.ReadFile("../common/testdata/blockTrace_03.json")
 	if err != nil {
 		return err
 	}
@@ -112,8 +112,6 @@ func setupEnv(t *testing.T) error {
 // TODO: fix trace json
 // TestOrmFactory run several test cases.
 func TestOrmFactory(t *testing.T) {
-	t.Skip()
-
 	defer func() {
 		if dbImg != nil {
 			assert.NoError(t, dbImg.Stop())

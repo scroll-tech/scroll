@@ -104,8 +104,6 @@ func testL2RelayerProcessSaveEvents(t *testing.T) {
 }
 
 func testL2RelayerProcessPendingBatches(t *testing.T) {
-	t.Skip()
-
 	// Create db handler and reset db.
 	db, err := database.NewOrmFactory(cfg.DBConfig)
 	assert.NoError(t, err)
@@ -121,13 +119,13 @@ func testL2RelayerProcessPendingBatches(t *testing.T) {
 	// In this testcase scenario, db will store two blocks with height 0x4 and 0x3
 	var traces []*types.BlockTrace
 
-	templateBlockTrace, err := os.ReadFile("../../common/testdata/blockTrace_relayer_parent.json")
+	templateBlockTrace, err := os.ReadFile("../../common/testdata/blockTrace_02.json")
 	assert.NoError(t, err)
 	blockTrace := &types.BlockTrace{}
 	err = json.Unmarshal(templateBlockTrace, blockTrace)
 	assert.NoError(t, err)
 	traces = append(traces, blockTrace)
-	templateBlockTrace, err = os.ReadFile("../../common/testdata/blockTrace_relayer.json")
+	templateBlockTrace, err = os.ReadFile("../../common/testdata/blockTrace_03.json")
 	assert.NoError(t, err)
 	blockTrace = &types.BlockTrace{}
 	err = json.Unmarshal(templateBlockTrace, blockTrace)
