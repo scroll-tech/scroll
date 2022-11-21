@@ -131,7 +131,7 @@ func testFailedHandshake(t *testing.T) {
 	traceCh := make(chan *message.BlockTraces, 4)
 	_, err = client.RegisterAndSubscribe(ctx, traceCh, authMsg)
 	assert.Error(t, err)
-
+	client.Close()
 	// Try to perform handshake with timeouted ticket
 	// create a new ws connection
 	client, err = client2.DialContext(ctx, wsURL)
@@ -153,10 +153,11 @@ func testFailedHandshake(t *testing.T) {
 	authMsg.Identity.Ticket = &ticket
 
 	assert.NoError(t, authMsg.Sign(privkey))
-	// time.Sleep()  take ttl of tickets from config
+	time.Sleep(6 * time.Second)
 	traceCh = make(chan *message.BlockTraces, 4)
 	_, err = client.RegisterAndSubscribe(ctx, traceCh, authMsg)
 	assert.Error(t, err)
+	client.Close()
 
 	assert.Equal(t, 0, rollerManager.GetNumberOfIdleRollers())
 
@@ -288,6 +289,7 @@ func setupRollerManager(t *testing.T, verifierEndpoint string, dbCfg *database.D
 		RollersPerSession: 1,
 		VerifierEndpoint:  verifierEndpoint,
 		CollectionTime:    1,
+		TicketTimeToLive:  5,
 	}, db)
 	assert.NoError(t, err)
 	assert.NoError(t, rollerManager.Start())

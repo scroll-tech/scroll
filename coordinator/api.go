@@ -26,7 +26,7 @@ func (m *Manager) RequestTicket(authMsg *message.AuthMessage) (*message.Ticket, 
 	if err != nil {
 		return nil, errors.New("ticket generation failed")
 	}
-	m.timedmap.Set(ticket.Token, pubkey, 1*time.Minute) // todo: expiration time from config
+	m.timedmap.Set(ticket.Token, pubkey, time.Duration(m.cfg.TicketTimeToLive)*time.Second)
 	return ticket, nil
 }
 
@@ -35,7 +35,7 @@ func (m *Manager) Register(ctx context.Context, authMsg *message.AuthMessage) (*
 	// Verify register message
 
 	pubkey, _ := authMsg.PublicKey()
-	if m.timedmap.GetValue(authMsg.Ticket.Token) != pubkey {
+	if authMsg.Ticket == nil || m.timedmap.GetValue(authMsg.Ticket.Token) != pubkey {
 		return nil, errors.New("failed to find corresponding ticket")
 	}
 
