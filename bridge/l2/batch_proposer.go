@@ -59,7 +59,7 @@ func (w *WatcherClient) tryProposeBatch() error {
 	}
 
 	if len(blocksToBatch) == 0 {
-		panic(fmt.Sprintf("gas overflow even for only 1 block. blocks: %v", blocks))
+		panic(fmt.Sprintf("gas overflow even for only 1 block. gas: %v", blocks[0].GasUsed))
 	}
 
 	return w.createBatchForBlocks(idsToBatch, blocksToBatch, blocksToBatch[0].ParentHash, txNum, gasUsed)
