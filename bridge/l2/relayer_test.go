@@ -68,13 +68,11 @@ func testL2RelayerProcessSaveEvents(t *testing.T) {
 		{
 			Header: &types.Header{
 				Number: big.NewInt(int64(templateL2Message[0].Height)),
-				// Hash:   common.HexToHash("00"),
 			},
 		},
 		{
 			Header: &types.Header{
 				Number: big.NewInt(int64(templateL2Message[0].Height + 1)),
-				// Hash:   common.HexToHash("01"),
 			},
 		},
 	}
