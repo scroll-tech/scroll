@@ -1,8 +1,8 @@
 package prover
 
 /*
-#cgo LDFLAGS: ./core/prover/lib/libzkp.a -lm -ldl
-#cgo gpu LDFLAGS: ./core/prover/lib/libzkp.a -lm -ldl -lgmp -lstdc++ -lprocps -L/usr/local/cuda/lib64/ -lcudart
+#cgo LDFLAGS: ${SRCDIR}/lib/libzkp.a -lm -ldl
+#cgo gpu LDFLAGS: ${SRCDIR}/lib/libzkp.a -lm -ldl -lgmp -lstdc++ -lprocps -L/usr/local/cuda/lib64/ -lcudart
 #include <stdlib.h>
 #include "./lib/zkp.h"
 */
