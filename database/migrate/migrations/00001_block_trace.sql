@@ -7,7 +7,7 @@ create table block_trace
 (
     number                  BIGINT          NOT NULL,
     hash                    VARCHAR         NOT NULL,
-    parent_hash             VARCHAR         DEFAULT NULL,
+    parent_hash             VARCHAR         NOT NULL,
     trace                   JSON            NOT NULL,
     batch_id                VARCHAR         DEFAULT NULL,
     tx_num                  INTEGER         NOT NULL,

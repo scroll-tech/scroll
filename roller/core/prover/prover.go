@@ -41,11 +41,11 @@ func NewProver(cfg *config.ProverConfig) (*Prover, error) {
 }
 
 // Prove call rust ffi to generate proof, if first failed, try again.
-func (p *Prover) Prove(traces []*types.BlockResult) (*message.AggProof, error) {
+func (p *Prover) Prove(traces []*types.BlockTrace) (*message.AggProof, error) {
 	return p.prove(traces)
 }
 
-func (p *Prover) prove(traces []*types.BlockResult) (*message.AggProof, error) {
+func (p *Prover) prove(traces []*types.BlockTrace) (*message.AggProof, error) {
 	if p.cfg.MockMode {
 		return &message.AggProof{}, nil
 	}

@@ -8,7 +8,7 @@ require (
 	github.com/lib/pq v1.10.6
 	github.com/mattn/go-colorable v0.1.8
 	github.com/mattn/go-isatty v0.0.14
-	github.com/scroll-tech/go-ethereum v1.10.14-0.20221012120556-b3a7c9b6917d
+	github.com/scroll-tech/go-ethereum v1.10.14-0.20221121034025-07f21c5075dc
 	github.com/stretchr/testify v1.8.0
 	github.com/urfave/cli/v2 v2.3.0
 	golang.org/x/crypto v0.0.0-20220722155217-630584e8d5aa
@@ -65,6 +65,7 @@ require (
 	github.com/rjeczalik/notify v0.9.1 // indirect
 	github.com/rs/cors v1.7.0 // indirect
 	github.com/russross/blackfriday/v2 v2.0.1 // indirect
+	github.com/scroll-tech/zktrie v0.3.0 // indirect
 	github.com/shirou/gopsutil v3.21.11+incompatible // indirect
 	github.com/shurcooL/sanitized_anchor_name v1.0.0 // indirect
 	github.com/sirupsen/logrus v1.9.0 // indirect

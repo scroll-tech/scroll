@@ -6,7 +6,7 @@ require (
 	github.com/BurntSushi/toml v0.3.1
 	github.com/ethereum/go-ethereum v1.10.13
 	github.com/gorilla/websocket v1.4.2
-	github.com/scroll-tech/go-ethereum v1.10.14-0.20221012120556-b3a7c9b6917d
+	github.com/scroll-tech/go-ethereum v1.10.14-0.20221121034025-07f21c5075dc
 	github.com/stretchr/testify v1.8.0
 	github.com/urfave/cli/v2 v2.3.0
 	go.etcd.io/bbolt v1.3.6
@@ -20,6 +20,7 @@ require (
 	github.com/iden3/go-iden3-crypto v0.0.12 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/russross/blackfriday/v2 v2.0.1 // indirect
+	github.com/scroll-tech/zktrie v0.3.0 // indirect
 	github.com/shirou/gopsutil v3.21.11+incompatible // indirect
 	github.com/shurcooL/sanitized_anchor_name v1.0.0 // indirect
 	github.com/yusufpapurcu/wmi v1.2.2 // indirect

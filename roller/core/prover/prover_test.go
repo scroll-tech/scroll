@@ -21,9 +21,9 @@ const (
 )
 
 type RPCTrace struct {
-	Jsonrpc string             `json:"jsonrpc"`
-	ID      int64              `json:"id"`
-	Result  *types.BlockResult `json:"result"`
+	Jsonrpc string            `json:"jsonrpc"`
+	ID      int64             `json:"id"`
+	Result  *types.BlockTrace `json:"result"`
 }
 
 func TestFFI(t *testing.T) {
@@ -43,7 +43,7 @@ func TestFFI(t *testing.T) {
 	files, err := os.ReadDir(tracesPath)
 	as.NoError(err)
 
-	traces := make([]*types.BlockResult, 0)
+	traces := make([]*types.BlockTrace, 0)
 	for _, file := range files {
 		f, err := os.Open(filepath.Join(tracesPath, file.Name()))
 		as.NoError(err)

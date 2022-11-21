@@ -47,7 +47,7 @@ func (o *blockTraceOrm) GetBlockTracesLatestHeight() (int64, error) {
 	return height, nil
 }
 
-func (o *blockTraceOrm) GetBlockTraces(fields map[string]interface{}, args ...string) ([]*types.BlockResult, error) {
+func (o *blockTraceOrm) GetBlockTraces(fields map[string]interface{}, args ...string) ([]*types.BlockTrace, error) {
 	type Result struct {
 		Trace string
 	}
@@ -64,13 +64,13 @@ func (o *blockTraceOrm) GetBlockTraces(fields map[string]interface{}, args ...st
 		return nil, err
 	}
 
-	var traces []*types.BlockResult
+	var traces []*types.BlockTrace
 	for rows.Next() {
 		result := &Result{}
 		if err = rows.StructScan(result); err != nil {
 			break
 		}
-		trace := types.BlockResult{}
+		trace := types.BlockTrace{}
 		err = json.Unmarshal([]byte(result.Trace), &trace)
 		if err != nil {
 			break
@@ -85,7 +85,7 @@ func (o *blockTraceOrm) GetBlockTraces(fields map[string]interface{}, args ...st
 }
 
 func (o *blockTraceOrm) GetBlockInfos(fields map[string]interface{}, args ...string) ([]*BlockInfo, error) {
-	query := "SELECT number, hash, batch_id, tx_num, gas_used, block_timestamp FROM block_trace WHERE 1 = 1 "
+	query := "SELECT number, hash, parent_hash, batch_id, tx_num, gas_used, block_timestamp FROM block_trace WHERE 1 = 1 "
 	for key := range fields {
 		query += fmt.Sprintf("AND %s=:%s ", key, key)
 	}
@@ -113,7 +113,7 @@ func (o *blockTraceOrm) GetBlockInfos(fields map[string]interface{}, args ...str
 }
 
 func (o *blockTraceOrm) GetUnbatchedBlocks(fields map[string]interface{}, args ...string) ([]*BlockInfo, error) {
-	query := "SELECT number, hash, batch_id, tx_num, gas_used, block_timestamp FROM block_trace WHERE batch_id is NULL "
+	query := "SELECT number, hash, parent_hash, batch_id, tx_num, gas_used, block_timestamp FROM block_trace WHERE batch_id is NULL "
 	for key := range fields {
 		query += fmt.Sprintf("AND %s=:%s ", key, key)
 	}
@@ -150,27 +150,30 @@ func (o *blockTraceOrm) GetHashByNumber(number uint64) (*common.Hash, error) {
 	return &hash, nil
 }
 
-func (o *blockTraceOrm) InsertBlockTraces(ctx context.Context, blockTraces []*types.BlockResult) error {
+func (o *blockTraceOrm) InsertBlockTraces(ctx context.Context, blockTraces []*types.BlockTrace) error {
 	traceMaps := make([]map[string]interface{}, len(blockTraces))
 	for i, trace := range blockTraces {
-		number, hash, tx_num, mtime := trace.BlockTrace.Number.ToInt().Int64(),
-			trace.BlockTrace.Hash.String(),
-			len(trace.BlockTrace.Transactions),
-			trace.BlockTrace.Time
+		number, hash, tx_num, mtime := trace.Header.Number.Int64(),
+			trace.Header.Hash().String(),
+			len(trace.Transactions),
+			trace.Header.Time
 
 		var gasUsed uint64
-		for _, tx := range trace.BlockTrace.Transactions {
-			gasUsed += tx.Gas
+		for _, er := range trace.ExecutionResults {
+			for _, sl := range er.StructLogs {
+				gasUsed += sl.GasCost
+			}
 		}
 
 		data, err := json.Marshal(trace)
 		if err != nil {
-			log.Error("failed to marshal blockResult", "hash", hash, "err", err)
+			log.Error("failed to marshal blockTrace", "hash", hash, "err", err)
 			return err
 		}
 		traceMaps[i] = map[string]interface{}{
 			"number":          number,
 			"hash":            hash,
+			"parent_hash":     trace.Header.ParentHash.String(),
 			"trace":           string(data),
 			"tx_num":          tx_num,
 			"gas_used":        gasUsed,
@@ -178,7 +181,7 @@ func (o *blockTraceOrm) InsertBlockTraces(ctx context.Context, blockTraces []*ty
 		}
 	}
 
-	_, err := o.db.NamedExec(`INSERT INTO public.block_trace (number, hash, trace, tx_num, gas_used, block_timestamp) VALUES (:number, :hash, :trace, :tx_num, :gas_used, :block_timestamp);`, traceMaps)
+	_, err := o.db.NamedExec(`INSERT INTO public.block_trace (number, hash, parent_hash, trace, tx_num, gas_used, block_timestamp) VALUES (:number, :hash, :parent_hash, :trace, :tx_num, :gas_used, :block_timestamp);`, traceMaps)
 	if err != nil {
 		log.Error("failed to insert blockTraces", "err", err)
 	}

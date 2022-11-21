@@ -34,7 +34,7 @@ func TestIPCComm(t *testing.T) {
 		StateProof: stateProof,
 	}
 
-	traces := &types.BlockResult{}
+	traces := &types.BlockTrace{}
 
 	verified, err := verifier.VerifyProof(proof)
 	assert.NoError(err)

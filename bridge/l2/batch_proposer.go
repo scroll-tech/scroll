@@ -59,16 +59,10 @@ func (w *WatcherClient) tryProposeBatch() error {
 	}
 
 	if len(blocksToBatch) == 0 {
-		panic(fmt.Sprintf("gas overflow even for only 1 block. blocks: %v", blocks))
+		panic(fmt.Sprintf("gas overflow even for only 1 block. gas: %v", blocks[0].GasUsed))
 	}
 
-	// TODO: use start_block.parent_hash after we upgrade `BlockTrace` type
-	parents, err := w.orm.GetBlockInfos(map[string]interface{}{"number": idsToBatch[0] - 1})
-	if err != nil || len(parents) == 0 {
-		return fmt.Errorf("cannot find last batch's end_block (block_number %d)", idsToBatch[0]-1)
-	}
-
-	return w.createBatchForBlocks(idsToBatch, blocksToBatch, parents[0].Hash, txNum, gasUsed)
+	return w.createBatchForBlocks(idsToBatch, blocksToBatch, blocksToBatch[0].ParentHash, txNum, gasUsed)
 }
 
 func (w *WatcherClient) createBatchForBlocks(blockIDs []uint64, blocks []*orm.BlockInfo, parentHash string, txNum uint64, gasUsed uint64) error {
