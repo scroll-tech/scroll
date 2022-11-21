@@ -39,23 +39,21 @@ jobs:
       run: |
         rm -rf $HOME/.cache/golangci-lint
         make lint
-    - name: copy cargo lock file for cache
-      run: cp ../common/zkp/rust/Cargo.lock .
     - name: Cache cargo registry
       uses: actions/cache@v2
       with:
         path: ~/.cargo/registry
-        key: ${{ runner.os }}-registry-${{ hashFiles('./Cargo.lock') }}
+        key: ${{ runner.os }}-registry-${{ hashFiles('../common/zkp/rust/Cargo.lock') }}
     - name: Cache cargo index
       uses: actions/cache@v2
       with:
         path: ~/.cargo/git
-        key: ${{ runner.os }}-index-${{ hashFiles('./Cargo.lock') }}
+        key: ${{ runner.os }}-index-${{ hashFiles('../common/zkp/rust/Cargo.lock') }}
     - name: Cache cargo target
       uses: actions/cache@v2
       with:
         path: /home/runner/work/scroll/scroll/common/zkp/rust/target
-        key: ${{ runner.os }}-target-${{ hashFiles('./Cargo.lock') }}
+        key: ${{ runner.os }}-target-${{ hashFiles('../common/zkp/rust/Cargo.lock') }}
     - name: Test
       run: |
         make coordinator 
