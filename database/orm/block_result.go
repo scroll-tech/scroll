@@ -159,8 +159,10 @@ func (o *blockTraceOrm) InsertBlockTraces(ctx context.Context, blockTraces []*ty
 			trace.Header.Time
 
 		var gasUsed uint64
-		for _, tx := range trace.Transactions {
-			gasUsed += tx.Gas()
+		for _, er := range trace.ExecutionResults {
+			for _, sl := range er.StructLogs {
+				gasUsed += sl.GasCost
+			}
 		}
 
 		data, err := json.Marshal(trace)
