@@ -18,18 +18,16 @@ import (
 	"github.com/ethereum/go-ethereum/crypto/secp256k1"
 	"github.com/gorilla/websocket"
 	"github.com/scroll-tech/go-ethereum/common"
-	"github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/stretchr/testify/assert"
-
-	"scroll-tech/coordinator"
-	"scroll-tech/coordinator/config"
 
 	"scroll-tech/common/docker"
 	"scroll-tech/common/message"
-
 	"scroll-tech/database"
 	"scroll-tech/database/migrate"
 	"scroll-tech/database/orm"
+
+	"scroll-tech/coordinator"
+	"scroll-tech/coordinator/config"
 )
 
 const managerAddr = "localhost:8132"
@@ -164,22 +162,13 @@ func TestFunction(t *testing.T) {
 			conns[i] = conn
 		}
 
-		var results []*types.BlockResult
-
-		templateBlockResult, err := os.ReadFile("../common/testdata/blockResult_orm.json")
+		dbTx, err := db.Beginx()
 		assert.NoError(t, err)
-		blockResult := &types.BlockResult{}
-		err = json.Unmarshal(templateBlockResult, blockResult)
+		_, err = db.NewBatchInDBTx(dbTx, &orm.BlockInfo{Number: uint64(1)}, &orm.BlockInfo{Number: uint64(1)}, "0f", 1, 194676)
 		assert.NoError(t, err)
-		results = append(results, blockResult)
-		templateBlockResult, err = os.ReadFile("../common/testdata/blockResult_delegate.json")
+		_, err = db.NewBatchInDBTx(dbTx, &orm.BlockInfo{Number: uint64(2)}, &orm.BlockInfo{Number: uint64(2)}, "0e", 1, 194676)
 		assert.NoError(t, err)
-		blockResult = &types.BlockResult{}
-		err = json.Unmarshal(templateBlockResult, blockResult)
-		assert.NoError(t, err)
-		results = append(results, blockResult)
-
-		err = db.InsertBlockResultsWithStatus(context.Background(), results, orm.BlockUnassigned)
+		err = dbTx.Commit()
 		assert.NoError(t, err)
 
 		// Need to send a tx to trigger block committed
@@ -195,9 +184,9 @@ func TestFunction(t *testing.T) {
 
 			msg := &message.Msg{}
 			assert.NoError(t, json.Unmarshal(payload, msg))
-			assert.Equal(t, msg.Type, message.BlockTrace)
+			assert.Equal(t, msg.Type, message.TaskMsgType)
 
-			traces := &message.BlockTraces{}
+			traces := &message.TaskMsg{}
 			assert.NoError(t, json.Unmarshal(payload, traces))
 
 		}
@@ -241,12 +230,11 @@ func TestFunction(t *testing.T) {
 
 		assert.Equal(t, 2, rollerManager.GetNumberOfIdleRollers())
 
-		templateBlockResult, err := os.ReadFile("../common/testdata/blockResult_orm.json")
+		dbTx, err := db.Beginx()
 		assert.NoError(t, err)
-		blockResult := &types.BlockResult{}
-		err = json.Unmarshal(templateBlockResult, blockResult)
+		_, err = db.NewBatchInDBTx(dbTx, &orm.BlockInfo{Number: uint64(1)}, &orm.BlockInfo{Number: uint64(1)}, "0f", 1, 194676)
 		assert.NoError(t, err)
-		err = db.InsertBlockResultsWithStatus(context.Background(), []*types.BlockResult{blockResult}, orm.BlockUnassigned)
+		err = dbTx.Commit()
 		assert.NoError(t, err)
 
 		// Sleep for a little bit, so that we can avoid prematurely fetching connections.
@@ -255,12 +243,11 @@ func TestFunction(t *testing.T) {
 
 		assert.Equal(t, 1, rollerManager.GetNumberOfIdleRollers())
 
-		templateBlockResult, err = os.ReadFile("../common/testdata/blockResult_delegate.json")
+		dbTx, err = db.Beginx()
 		assert.NoError(t, err)
-		blockResult = &types.BlockResult{}
-		err = json.Unmarshal(templateBlockResult, blockResult)
+		_, err = db.NewBatchInDBTx(dbTx, &orm.BlockInfo{Number: uint64(2)}, &orm.BlockInfo{Number: uint64(2)}, "0e", 1, 194676)
 		assert.NoError(t, err)
-		err = db.InsertBlockResultsWithStatus(context.Background(), []*types.BlockResult{blockResult}, orm.BlockUnassigned)
+		err = dbTx.Commit()
 		assert.NoError(t, err)
 
 		// Sleep for a little bit, so that we can avoid prematurely fetching connections.
@@ -280,7 +267,7 @@ func TestFunction(t *testing.T) {
 	})
 }
 
-func setupRollerManager(t *testing.T, verifierEndpoint string, orm orm.BlockResultOrm) *coordinator.Manager {
+func setupRollerManager(t *testing.T, verifierEndpoint string, orm database.OrmFactory) *coordinator.Manager {
 	rollerManager, err := coordinator.New(context.Background(), &config.RollerManagerConfig{
 		Endpoint:          managerPort,
 		RollersPerSession: 1,
@@ -318,7 +305,7 @@ func performHandshake(t *testing.T, c *websocket.Conn) {
 	assert.NoError(t, err)
 
 	msg := &message.Msg{
-		Type:    message.Register,
+		Type:    message.RegisterMsgType,
 		Payload: b,
 	}
 
