@@ -309,6 +309,7 @@ func testOrmBlockbatch(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, batchID1, result.ID)
 
+	// test session rollers info
 	rollers_info, err := ormBatch.GetRollersInfoByID(batchID1)
 	assert.NoError(t, err)
 	assert.Equal(t, orm.RollersInfo{}, *rollers_info)
@@ -323,12 +324,22 @@ func testOrmBlockbatch(t *testing.T) {
 			"0": "roller 0",
 		},
 		AssignedTime: time.Now().Unix()}
-	err = ormBatch.UpdateRollersInfoByID(batchID1, rollersInfo)
+	err = ormBatch.SetRollersInfoByID(batchID1, rollersInfo)
 	assert.NoError(t, err)
 	rollers_info, err = ormBatch.GetRollersInfoByID(batchID1)
 	assert.NoError(t, err)
 	assert.Equal(t, rollersInfo, *rollers_info)
+	rollersInfo.RollerStatus["0"] = 1
+	err = ormBatch.UpdateRollerProofStatusByID(batchID1, "0", 1)
+	assert.NoError(t, err)
+	rollers_info, err = ormBatch.GetRollersInfoByID(batchID1)
+	assert.Equal(t, rollersInfo, *rollers_info)
 	all_rollers_info, err = ormBatch.GetAllRollersInfo()
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(all_rollers_info))
+	err = ormBatch.DeleteRollersInfoByID(batchID1)
+	assert.NoError(t, err)
+	all_rollers_info, err = ormBatch.GetAllRollersInfo()
+	assert.NoError(t, err)
+	assert.Equal(t, 0, len(all_rollers_info))
 }

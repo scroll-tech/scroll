@@ -107,7 +107,9 @@ type BlockBatchOrm interface {
 	UpdateFinalizeTxHashAndRollupStatus(ctx context.Context, id string, finalize_tx_hash string, status RollupStatus) error
 	GetRollersInfoByID(id string) (*RollersInfo, error)
 	GetAllRollersInfo() ([]RollersInfo, error)
-	UpdateRollersInfoByID(id string, rollersInfo RollersInfo) error
+	SetRollersInfoByID(id string, rollersInfo RollersInfo) error
+	UpdateRollerProofStatusByID(id string, rollerPublicKey string, rollerProofStatus int32) error
+	DeleteRollersInfoByID(id string) error
 }
 
 // L1MessageOrm is layer1 message db interface

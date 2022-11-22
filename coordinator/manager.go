@@ -36,6 +36,7 @@ const (
 )
 
 type rollerProofStatus struct {
+	id     string
 	pk     string
 	status rollerStatus
 }
@@ -77,7 +78,7 @@ type Manager struct {
 	// A map containing all active proof generation sessions.
 	sessions map[string]*session
 	// A map containing proof failed or verify failed proof.
-	// TODO(colinlyguo): once put into use, should add to graceful restart.
+	// TODO: once put into use, should add to graceful restart.
 	failedSessionInfos map[string]*SessionInfo
 
 	// A direct connection to the Halo2 verifier, used to verify
@@ -279,7 +280,7 @@ func (m *Manager) HandleZkProof(pk string, payload []byte) error {
 			status = rollerProofInvalid
 		}
 		// notify the session that the roller finishes the proving process
-		s.finishChan <- rollerProofStatus{pk, status}
+		s.finishChan <- rollerProofStatus{msg.ID, pk, status}
 	}()
 
 	if msg.Status != message.StatusOk {
@@ -357,7 +358,9 @@ func (m *Manager) CollectProofs(id string, s *session) {
 
 			// Ensure proper clean-up of resources.
 			defer func() {
-				// TODO(colinlyguo): delete session db
+				if err := m.orm.DeleteRollersInfoByID(id); err != nil {
+					log.Crit("delete db session rollers info fail", "error", err)
+				}
 				delete(m.sessions, id)
 				m.mu.Unlock()
 			}()
@@ -392,8 +395,10 @@ func (m *Manager) CollectProofs(id string, s *session) {
 			// TODO: reward winner
 			return
 		case ret := <-s.finishChan:
+			if err := m.orm.UpdateRollerProofStatusByID(ret.id, ret.pk, int32(ret.status)); err != nil {
+				log.Crit("update db session rollers info fail", "error", err)
+			}
 			m.mu.Lock()
-			// TODO(colinlyguo): modify session in db
 			s.rollers[ret.pk] = ret.status
 			m.mu.Unlock()
 		}
@@ -422,8 +427,6 @@ func (m *Manager) StartProofGenerationSession(task *orm.BlockBatch) bool {
 	if roller == nil || roller.isClosed() {
 		return false
 	}
-
-	// TODO(colinlyguo): check status
 
 	log.Info("start proof generation session", "id", task.ID)
 
@@ -467,6 +470,21 @@ func (m *Manager) StartProofGenerationSession(task *orm.BlockBatch) bool {
 		return false
 	}
 
+	sessionTimestamp := time.Now()
+
+	if err = m.orm.SetRollersInfoByID(task.ID, orm.RollersInfo{
+		RollerStatus: map[string]int32{
+			pk: int32(rollerAssigned),
+		},
+		RollerNames: map[string]string{
+			pk: roller.AuthMsg.Identity.Name,
+		},
+		AssignedTime: sessionTimestamp.Unix(),
+	}); err != nil {
+		// TODO: change to error
+		log.Crit("write db session rollers info fail", "error", err)
+	}
+
 	s := &session{
 		id: task.ID,
 		rollers: map[string]rollerStatus{
@@ -475,13 +493,12 @@ func (m *Manager) StartProofGenerationSession(task *orm.BlockBatch) bool {
 		roller_names: map[string]string{
 			pk: roller.AuthMsg.Identity.Name,
 		},
-		startTime:  time.Now(),
+		startTime:  sessionTimestamp,
 		finishChan: make(chan rollerProofStatus, proofAndPkBufferSize),
 	}
 
 	// Create a proof generation session.
 	m.mu.Lock()
-	// TODO(colinlyguo): modify session db
 	m.sessions[task.ID] = s
 	m.mu.Unlock()
 

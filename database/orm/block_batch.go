@@ -347,11 +347,11 @@ func (o *blockBatchOrm) GetRollersInfoByID(id string) (*RollersInfo, error) {
 		}
 		return nil, err
 	}
-	info := &RollersInfo{}
-	if err := json.Unmarshal(infoBytes, info); err != nil {
+	rollersInfo := &RollersInfo{}
+	if err := json.Unmarshal(infoBytes, rollersInfo); err != nil {
 		return nil, err
 	}
-	return info, nil
+	return rollersInfo, nil
 }
 
 func (o *blockBatchOrm) GetAllRollersInfo() ([]RollersInfo, error) {
@@ -366,11 +366,11 @@ func (o *blockBatchOrm) GetAllRollersInfo() ([]RollersInfo, error) {
 		if err := rows.Scan(&infoBytes); err != nil {
 			return nil, err
 		}
-		var info RollersInfo
-		if err := json.Unmarshal(infoBytes, &info); err != nil {
+		var rollersInfo RollersInfo
+		if err := json.Unmarshal(infoBytes, &rollersInfo); err != nil {
 			return nil, err
 		}
-		infos = append(infos, info)
+		infos = append(infos, rollersInfo)
 	}
 	if err != nil {
 		return nil, err
@@ -379,11 +379,35 @@ func (o *blockBatchOrm) GetAllRollersInfo() ([]RollersInfo, error) {
 	return infos, rows.Close()
 }
 
-func (o *blockBatchOrm) UpdateRollersInfoByID(id string, rollersInfo RollersInfo) error {
+func (o *blockBatchOrm) SetRollersInfoByID(id string, rollersInfo RollersInfo) error {
 	infoBytes, err := json.Marshal(rollersInfo)
 	if err != nil {
 		return err
 	}
 	_, err = o.db.Exec(o.db.Rebind(`UPDATE block_batch set rollers_info = ? where id = ?;`), infoBytes, id)
+	return err
+}
+
+func (o *blockBatchOrm) UpdateRollerProofStatusByID(id string, rollerPublicKey string, rollerProofStatus int32) error {
+	row := o.db.QueryRow(`SELECT rollers_info FROM block_batch WHERE id = $1 and rollers_info IS NOT NULL`, id)
+	var infoBytes []byte
+	if err := row.Scan(&infoBytes); err != nil {
+		return err
+	}
+	var rollersInfo RollersInfo
+	if err := json.Unmarshal(infoBytes, &rollersInfo); err != nil {
+		return err
+	}
+	rollersInfo.RollerStatus[rollerPublicKey] = rollerProofStatus
+	infoBytes, err := json.Marshal(rollersInfo)
+	if err != nil {
+		return err
+	}
+	_, err = o.db.Exec(o.db.Rebind(`UPDATE block_batch set rollers_info = ? where id = ?;`), infoBytes, id)
+	return err
+}
+
+func (o *blockBatchOrm) DeleteRollersInfoByID(id string) error {
+	_, err := o.db.Exec(o.db.Rebind(`UPDATE block_batch set rollers_info = ? where id = ?;`), sql.NullString{}, id)
 	return err
 }
