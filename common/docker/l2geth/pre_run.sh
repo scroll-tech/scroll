@@ -27,7 +27,7 @@ deploy_bridge_contracts() {
     mv solmate lib/
 
     export layer2=l2geth # change to actual network name
-    export owner=0x0000000000000000000000000000000000000000 # change to actual owner
+    export owner=0x1c5a77d9fa7ef466951b2f01f724bca3a5820b63 # change to actual owner
     npx hardhat --network $layer2 run scripts/deploy_proxy_admin.ts
     npx hardhat --network $layer2 run scripts/deploy_l2_messenger.ts
     npx hardhat --network $layer2 run scripts/deploy_l2_token_factory.ts
