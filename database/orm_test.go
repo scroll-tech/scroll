@@ -312,6 +312,9 @@ func testOrmBlockbatch(t *testing.T) {
 	rollers_info, err := ormBatch.GetRollersInfoByID(batchID1)
 	assert.NoError(t, err)
 	assert.Equal(t, orm.RollersInfo{}, *rollers_info)
+	all_rollers_info, err := ormBatch.GetAllRollersInfo()
+	assert.NoError(t, err)
+	assert.Equal(t, 0, len(all_rollers_info))
 	rollersInfo := orm.RollersInfo{
 		RollerStatus: map[string]int32{
 			"0": 0,
@@ -323,5 +326,9 @@ func testOrmBlockbatch(t *testing.T) {
 	err = ormBatch.UpdateRollersInfoByID(batchID1, rollersInfo)
 	assert.NoError(t, err)
 	rollers_info, err = ormBatch.GetRollersInfoByID(batchID1)
+	assert.NoError(t, err)
 	assert.Equal(t, rollersInfo, *rollers_info)
+	all_rollers_info, err = ormBatch.GetAllRollersInfo()
+	assert.NoError(t, err)
+	assert.Equal(t, 1, len(all_rollers_info))
 }

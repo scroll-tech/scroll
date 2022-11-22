@@ -339,18 +339,44 @@ func (o *blockBatchOrm) UpdateFinalizeTxHashAndRollupStatus(ctx context.Context,
 }
 
 func (o *blockBatchOrm) GetRollersInfoByID(id string) (*RollersInfo, error) {
-	row := o.db.QueryRow(`SELECT rollers_info FROM block_batch WHERE id = $1`, id)
-	var infoStr sql.NullString
-	if err := row.Scan(&infoStr); err != nil {
-		return nil, err
-	} else if !infoStr.Valid { // NULL
-		return &RollersInfo{}, nil
-	}
-	var info RollersInfo
-	if err := json.Unmarshal([]byte(infoStr.String), &info); err != nil {
+	row := o.db.QueryRow(`SELECT rollers_info FROM block_batch WHERE id = $1 and rollers_info IS NOT NULL`, id)
+	var infoBytes []byte
+	if err := row.Scan(&infoBytes); err != nil {
+		if err == sql.ErrNoRows {
+			return &RollersInfo{}, nil
+		}
 		return nil, err
 	}
-	return &info, nil
+	info := &RollersInfo{}
+	if err := json.Unmarshal(infoBytes, info); err != nil {
+		return nil, err
+	}
+	return info, nil
+}
+
+func (o *blockBatchOrm) GetAllRollersInfo() ([]RollersInfo, error) {
+	rows, err := o.db.Queryx(`SELECT rollers_info FROM block_batch WHERE rollers_info IS NOT NULL`)
+	if err != nil {
+		return nil, err
+	}
+
+	var infos []RollersInfo
+	for rows.Next() {
+		var infoBytes []byte
+		if err := rows.Scan(&infoBytes); err != nil {
+			return nil, err
+		}
+		var info RollersInfo
+		if err := json.Unmarshal(infoBytes, &info); err != nil {
+			return nil, err
+		}
+		infos = append(infos, info)
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	return infos, rows.Close()
 }
 
 func (o *blockBatchOrm) UpdateRollersInfoByID(id string, rollersInfo RollersInfo) error {

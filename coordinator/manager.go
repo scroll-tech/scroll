@@ -26,7 +26,7 @@ const (
 	proofAndPkBufferSize = 10
 )
 
-// TODO(colinlyguo): remove duplicated status
+// TODO: remove duplicated status, compared to db
 type rollerStatus int32
 
 const (
@@ -118,15 +118,6 @@ func New(ctx context.Context, cfg *config.RollerManagerConfig, orm database.OrmF
 func (m *Manager) Start() error {
 	if m.isRunning() {
 		return nil
-	}
-
-	// m.orm may be nil in scroll tests
-	if m.orm != nil {
-		// clean up assigned but not submitted task
-		// TODO(colinlyguo): don't set this, assigned remain assigned
-		if err := m.orm.ResetProvingStatusFor(orm.ProvingTaskAssigned); err != nil {
-			log.Error("fail to reset assigned tasks as unassigned")
-		}
 	}
 
 	if err := m.server.start(); err != nil {

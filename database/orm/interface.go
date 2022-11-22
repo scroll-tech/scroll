@@ -106,6 +106,7 @@ type BlockBatchOrm interface {
 	UpdateCommitTxHashAndRollupStatus(ctx context.Context, id string, commit_tx_hash string, status RollupStatus) error
 	UpdateFinalizeTxHashAndRollupStatus(ctx context.Context, id string, finalize_tx_hash string, status RollupStatus) error
 	GetRollersInfoByID(id string) (*RollersInfo, error)
+	GetAllRollersInfo() ([]RollersInfo, error)
 	UpdateRollersInfoByID(id string, rollersInfo RollersInfo) error
 }
 
