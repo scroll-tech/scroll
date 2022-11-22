@@ -11,7 +11,7 @@ nohup ./gethbin/geth --mine --datadir "." --unlock 0 --password "./password" --a
   --http --http.addr "127.0.0.1" --http.port 8545 --http.api "eth,scroll,net,web3,debug" \
   --ws --ws.addr "127.0.0.1" --ws.port 8546 --ws.api "eth,scroll,net,web3,debug" > l2geth.log 2>&1 &
 
-# this function is using for deploying mock contract into scroll_l2/l1geth image
+# this function deploys mock contracts in the scroll_l2 image
 deploy_bridge_contracts() {
     cd contracts
     export SCROLL_L2_RPC="http://127.0.0.1:8545"

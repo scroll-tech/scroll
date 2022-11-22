@@ -1,8 +1,6 @@
 FROM scrolltech/l2geth:prealpha-v4.1 as GethBin
 
-
-#FROM rust:alpine3.16
-FROM ghcr.io/foundry-rs/foundry:latest
+FROM alpine:latest
 
 COPY  --from=GethBin /usr/local/bin/geth ./gethbin/
 RUN apk update
