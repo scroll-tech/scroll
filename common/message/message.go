@@ -2,6 +2,7 @@ package message
 
 import (
 	"crypto/ecdsa"
+	"encoding/binary"
 	"encoding/json"
 
 	"github.com/scroll-tech/go-ethereum/common"
@@ -19,16 +20,6 @@ const (
 	// StatusProofError means generate proof failed
 	StatusProofError
 )
-
-// BlockTraces is a wrapper type around types.BlockResult which adds an ID
-// that identifies which proof generation session these block traces are
-// associated to. This then allows the roller to add the ID back to their
-// proof message once generated, and in turn helps the sequencer understand
-// where to handle the proof.
-type BlockTraces struct {
-	ID     uint64             `json:"id"`
-	Traces *types.BlockResult `json:"blockTraces"`
-}
 
 // AuthMessage is the first message exchanged from the Roller to the Sequencer.
 // It effectively acts as a registration, and makes the Roller identification
@@ -184,10 +175,16 @@ func (a *AuthZkProof) PublicKey() (string, error) {
 	return a.publicKey, nil
 }
 
+// TaskMsg is a wrapper type around db ProveTask type.
+type TaskMsg struct {
+	ID     string              `json:"id"`
+	Traces []*types.BlockTrace `json:"blockTraces"`
+}
+
 // ProofMsg is the message received from rollers that contains zk proof, the status of
 // the proof generation succeeded, and an error message if proof generation failed.
 type ProofMsg struct {
-	ID     uint64     `json:"id"`
+	ID     string     `json:"id"`
 	Status RespStatus `json:"status"`
 	Proof  *AggProof  `json:"proof"`
 	Error  string     `json:"error,omitempty"`
@@ -206,8 +203,19 @@ func (z *ProofMsg) Hash() ([]byte, error) {
 
 // AggProof includes the proof and public input that are required to verification and rollup.
 type AggProof struct {
-	Proof     string `json:"proof"`
-	Instance  string `json:"instance"`
-	FinalPair string `json:"final_pair"`
-	Vk        string `json:"vk"`
+	Proof     []byte `json:"proof"`
+	Instance  []byte `json:"instance"`
+	FinalPair []byte `json:"final_pair"`
+	Vk        []byte `json:"vk"`
+}
+
+// Marshal marshals the TraceProof as bytes
+func (proof *AggProof) Marshal() ([]byte, error) {
+	jsonByt, err := json.Marshal(proof)
+	if err != nil {
+		return nil, err
+	}
+	buf := make([]byte, 4)
+	binary.BigEndian.PutUint32(buf, uint32(len(jsonByt)))
+	return append(buf, jsonByt...), nil
 }

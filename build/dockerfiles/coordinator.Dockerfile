@@ -1,13 +1,26 @@
-# Build scroll in a stock Go builder container
-FROM scrolltech/go-builder:1.18 as builder
+# Download Go dependencies
+FROM scrolltech/go-builder:1.18 as base
 
-COPY ./ /
+WORKDIR /src
+COPY go.work* ./
+COPY ./bridge/go.* ./bridge/
+COPY ./common/go.* ./common/
+COPY ./coordinator/go.* ./coordinator/
+COPY ./database/go.* ./database/
+COPY ./roller/go.* ./roller/
+RUN go mod download -x
 
-RUN cd /coordinator/cmd && go build -v -p 4 -o coordinator
+# Build coordinator
+FROM base as builder
 
-# Pull scroll into a second stage deploy alpine container
+RUN --mount=target=. \
+    --mount=type=cache,target=/root/.cache/go-build \
+    cd /src/coordinator/cmd && go build -v -p 4 -o /bin/coordinator
+
+# Pull coordinator into a second stage deploy alpine container
 FROM alpine:latest
 
-COPY --from=builder /coordinator/cmd/coordinator /bin/
+COPY --from=builder /bin/coordinator /bin/
 
 ENTRYPOINT ["coordinator"]
+

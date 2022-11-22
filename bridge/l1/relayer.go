@@ -21,7 +21,7 @@ import (
 )
 
 // Layer1Relayer is responsible for
-//  1. fetch pending Layer1Message from db
+//  1. fetch pending L1Message from db
 //  2. relay pending message to layer 2 node
 //
 // Actions are triggered by new head from layer 1 geth node.
@@ -31,7 +31,7 @@ type Layer1Relayer struct {
 	client *ethclient.Client
 	sender *sender.Sender
 
-	db  orm.Layer1MessageOrm
+	db  orm.L1MessageOrm
 	cfg *config.RelayerConfig
 
 	// channel used to communicate with transaction sender
@@ -42,7 +42,7 @@ type Layer1Relayer struct {
 }
 
 // NewLayer1Relayer will return a new instance of Layer1RelayerClient
-func NewLayer1Relayer(ctx context.Context, ethClient *ethclient.Client, l1ConfirmNum int64, db orm.Layer1MessageOrm, cfg *config.RelayerConfig) (*Layer1Relayer, error) {
+func NewLayer1Relayer(ctx context.Context, ethClient *ethclient.Client, l1ConfirmNum int64, db orm.L1MessageOrm, cfg *config.RelayerConfig) (*Layer1Relayer, error) {
 	l2MessengerABI, err := bridge_abi.L2MessengerMetaData.GetAbi()
 	if err != nil {
 		log.Warn("new L2MessengerABI failed", "err", err)
@@ -85,7 +85,7 @@ func (r *Layer1Relayer) ProcessSavedEvents() {
 	}
 }
 
-func (r *Layer1Relayer) processSavedEvent(msg *orm.Layer1Message) error {
+func (r *Layer1Relayer) processSavedEvent(msg *orm.L1Message) error {
 	// @todo add support to relay multiple messages
 	from := common.HexToAddress(msg.Sender)
 	target := common.HexToAddress(msg.Target)

@@ -24,7 +24,7 @@ func (r *WatcherClient) ReplayBlockResultByHash(blockNrOrHash rpc.BlockNumberOrH
 	if len(params) == 0 {
 		return false, errors.New("empty params")
 	}
-	trace, err := orm.GetBlockResults(params)
+	trace, err := orm.GetBlockTraces(params)
 	if err != nil {
 		return false, err
 	}

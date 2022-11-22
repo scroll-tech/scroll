@@ -2,6 +2,7 @@ package coordinator_test
 
 import (
 	"context"
+	"github.com/scroll-tech/go-ethereum/ethclient"
 	"math/big"
 	"net/http"
 	"strconv"
@@ -9,8 +10,6 @@ import (
 	"time"
 
 	"github.com/scroll-tech/go-ethereum/common"
-	"github.com/scroll-tech/go-ethereum/crypto"
-	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/sync/errgroup"
 
@@ -74,6 +73,7 @@ func TestApis(t *testing.T) {
 	t.Run("TestSeveralConnections", testSeveralConnections)
 	t.Run("TestIdleRollerSelection", testIdleRollerSelection)
 
+	// Teardown
 	t.Cleanup(func() {
 		handle.Shutdown(context.Background())
 		rollerManager.Stop()
@@ -180,6 +180,8 @@ func testIdleRollerSelection(t *testing.T) {
 		<-newSender.ConfirmChan()
 	}
 
+	l2Cli,err :=
+
 	// verify proof status
 	var (
 		number   int64 = 1
@@ -191,7 +193,7 @@ func testIdleRollerSelection(t *testing.T) {
 		select {
 		case <-tick:
 			// get the latest number
-			if latest, err = l2db.GetBlockResultsLatestHeight(); err != nil || latest <= 0 {
+			if latest, err = l2db.GetBlockTracesLatestHeight(); err != nil || latest <= 0 {
 				continue
 			}
 			if number > latest {

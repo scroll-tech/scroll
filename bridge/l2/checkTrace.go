@@ -10,7 +10,8 @@ import (
 	"github.com/scroll-tech/go-ethereum/log"
 )
 
-func blockTraceIsValid(trace *types.BlockResult) bool {
+//nolint:unused
+func blockTraceIsValid(trace *types.BlockTrace) bool {
 	if trace == nil {
 		log.Warn("block trace is empty")
 		return false
@@ -22,6 +23,7 @@ func blockTraceIsValid(trace *types.BlockResult) bool {
 	return flag
 }
 
+//nolint:unused
 func structLogResIsValid(txLogs []*types.StructLogRes) bool {
 	res := true
 	for i := 0; i < len(txLogs); i++ {
@@ -48,6 +50,7 @@ func structLogResIsValid(txLogs []*types.StructLogRes) bool {
 	return res
 }
 
+//nolint:unused
 func codeIsValid(txLog *types.StructLogRes, n int) bool {
 	extraData := txLog.ExtraData
 	if extraData == nil {
@@ -60,6 +63,7 @@ func codeIsValid(txLog *types.StructLogRes, n int) bool {
 	return true
 }
 
+//nolint:unused
 func stateIsValid(txLog *types.StructLogRes, n int) bool {
 	extraData := txLog.ExtraData
 	if extraData == nil {
@@ -73,7 +77,7 @@ func stateIsValid(txLog *types.StructLogRes, n int) bool {
 }
 
 // TraceHasUnsupportedOpcodes check if exist unsupported opcodes
-func TraceHasUnsupportedOpcodes(opcodes map[string]struct{}, trace *types.BlockResult) bool {
+func TraceHasUnsupportedOpcodes(opcodes map[string]struct{}, trace *types.BlockTrace) bool {
 	if trace == nil {
 		return false
 	}

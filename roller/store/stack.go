@@ -1,7 +1,6 @@
 package store
 
 import (
-	"encoding/binary"
 	"encoding/json"
 	"errors"
 
@@ -9,6 +8,11 @@ import (
 
 	"github.com/scroll-tech/go-ethereum/log"
 	"go.etcd.io/bbolt"
+<<<<<<< HEAD
+=======
+
+	"scroll-tech/common/message"
+>>>>>>> staging
 )
 
 var (
@@ -21,10 +25,17 @@ type Stack struct {
 	*bbolt.DB
 }
 
+<<<<<<< HEAD
 // ProvingTraces is the value in stack.
 // It contains traces and proved times.
 type ProvingTraces struct {
 	Traces *message.BlockTraces `json:"traces"`
+=======
+// ProvingTask is the value in stack.
+// It contains TaskMsg and proved times.
+type ProvingTask struct {
+	Task *message.TaskMsg `json:"task"`
+>>>>>>> staging
 	// Times is how many times roller proved.
 	Times int `json:"times"`
 }
@@ -47,21 +58,20 @@ func NewStack(path string) (*Stack, error) {
 	return &Stack{DB: kvdb}, nil
 }
 
-// Push appends the block-traces on the top of Stack.
-func (s *Stack) Push(traces *ProvingTraces) error {
-	byt, err := json.Marshal(traces)
+// Push appends the proving-task on the top of Stack.
+func (s *Stack) Push(task *ProvingTask) error {
+	byt, err := json.Marshal(task)
 	if err != nil {
 		return err
 	}
-	key := make([]byte, 8)
-	binary.BigEndian.PutUint64(key, traces.Traces.ID)
+	key := []byte(task.Task.ID)
 	return s.Update(func(tx *bbolt.Tx) error {
 		return tx.Bucket(bucket).Put(key, byt)
 	})
 }
 
-// Pop pops the block-traces on the top of Stack.
-func (s *Stack) Pop() (*ProvingTraces, error) {
+// Pop pops the proving-task on the top of Stack.
+func (s *Stack) Pop() (*ProvingTask, error) {
 	var value []byte
 	if err := s.Update(func(tx *bbolt.Tx) error {
 		var key []byte
@@ -76,11 +86,11 @@ func (s *Stack) Pop() (*ProvingTraces, error) {
 		return nil, ErrEmpty
 	}
 
-	traces := &ProvingTraces{}
-	err := json.Unmarshal(value, traces)
+	task := &ProvingTask{}
+	err := json.Unmarshal(value, task)
 	if err != nil {
 		return nil, err
 	}
-	traces.Times++
-	return traces, nil
+	task.Times++
+	return task, nil
 }
