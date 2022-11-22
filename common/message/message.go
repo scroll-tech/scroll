@@ -15,16 +15,16 @@ import (
 type MsgType uint16
 
 const (
-	// Error message.
-	Error MsgType = iota
-	// Register message, sent by a roller when a connection is established.
-	Register
-	// BlockTrace message, sent by a sequencer to a roller to notify them
+	// ErrorMsgType error type of message.
+	ErrorMsgType MsgType = iota
+	// RegisterMsgType register type of message, sent by a roller when a connection is established.
+	RegisterMsgType
+	// TaskMsgType task type of message, sent by a sequencer to a roller to notify them
 	// they need to generate a proof.
-	BlockTrace
-	// Proof message, sent by a roller to a sequencer when they have finished
+	TaskMsgType
+	// ProofMsgType proof type of message, sent by a roller to a sequencer when they have finished
 	// proof generation of a given set of block traces.
-	Proof
+	ProofMsgType
 )
 
 // RespStatus is the status of the proof generation
@@ -98,14 +98,10 @@ func (i *Identity) Hash() ([]byte, error) {
 	return hash[:], nil
 }
 
-// BlockTraces is a wrapper type around types.BlockResult which adds an ID
-// that identifies which proof generation session these block traces are
-// associated to. This then allows the roller to add the ID back to their
-// proof message once generated, and in turn helps the sequencer understand
-// where to handle the proof.
-type BlockTraces struct {
-	ID     uint64             `json:"id"`
-	Traces *types.BlockResult `json:"blockTraces"`
+// TaskMsg is a wrapper type around db ProveTask type.
+type TaskMsg struct {
+	ID     string              `json:"id"`
+	Traces []*types.BlockTrace `json:"blockTraces"`
 }
 
 // ProofMsg is the message received from rollers that contains zk proof, the status of
@@ -113,8 +109,8 @@ type BlockTraces struct {
 type ProofMsg struct {
 	Status RespStatus `json:"status"`
 	Error  string     `json:"error,omitempty"`
-	ID     uint64     `json:"id"`
-	// FIXME: Maybe we need to allow Proof omitempty? Also in scroll.
+	ID     string     `json:"id"`
+	// FIXME: Maybe we need to allow Proof omitempty
 	Proof *AggProof `json:"proof"`
 }
 

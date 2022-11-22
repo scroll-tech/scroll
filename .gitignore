@@ -2,3 +2,4 @@
 assets/params*
 assets/seed
 coverage.txt
+build/bin

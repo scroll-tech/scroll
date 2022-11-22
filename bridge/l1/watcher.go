@@ -25,7 +25,7 @@ const (
 type Watcher struct {
 	ctx    context.Context
 	client *ethclient.Client
-	db     orm.Layer1MessageOrm
+	db     orm.L1MessageOrm
 
 	// The number of new blocks to wait for a block to be confirmed
 	confirmations    uint64
@@ -40,7 +40,7 @@ type Watcher struct {
 
 // NewWatcher returns a new instance of Watcher. The instance will be not fully prepared,
 // and still needs to be finalized and ran by calling `watcher.Start`.
-func NewWatcher(ctx context.Context, client *ethclient.Client, startHeight uint64, confirmations uint64, messengerAddress common.Address, messengerABI *abi.ABI, db orm.Layer1MessageOrm) *Watcher {
+func NewWatcher(ctx context.Context, client *ethclient.Client, startHeight uint64, confirmations uint64, messengerAddress common.Address, messengerABI *abi.ABI, db orm.L1MessageOrm) *Watcher {
 	savedHeight, err := db.GetLayer1LatestWatchedHeight()
 	if err != nil {
 		log.Warn("Failed to fetch height from db", "err", err)
@@ -137,18 +137,18 @@ func (r *Watcher) fetchContractEvent(blockHeight uint64) error {
 		return err
 	}
 
-	err = r.db.SaveLayer1Messages(r.ctx, eventLogs)
+	err = r.db.SaveL1Messages(r.ctx, eventLogs)
 	if err == nil {
 		r.processedMsgHeight = uint64(toBlock)
 	}
 	return err
 }
 
-func parseBridgeEventLogs(logs []types.Log, messengerABI *abi.ABI) ([]*orm.Layer1Message, error) {
+func parseBridgeEventLogs(logs []types.Log, messengerABI *abi.ABI) ([]*orm.L1Message, error) {
 	// Need use contract abi to parse event Log
 	// Can only be tested after we have our contracts set up
 
-	var parsedlogs []*orm.Layer1Message
+	var parsedlogs []*orm.L1Message
 	for _, vLog := range logs {
 		event := struct {
 			Target       common.Address
@@ -168,7 +168,7 @@ func parseBridgeEventLogs(logs []types.Log, messengerABI *abi.ABI) ([]*orm.Layer
 		}
 		// target is in topics[1]
 		event.Target = common.HexToAddress(vLog.Topics[1].String())
-		parsedlogs = append(parsedlogs, &orm.Layer1Message{
+		parsedlogs = append(parsedlogs, &orm.L1Message{
 			Nonce:      event.MessageNonce.Uint64(),
 			Height:     vLog.BlockNumber,
 			Sender:     event.Sender.String(),
