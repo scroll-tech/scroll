@@ -26,6 +26,7 @@ const (
 	proofAndPkBufferSize = 10
 )
 
+// TODO(colinlyguo): remove duplicated status
 type rollerStatus int32
 
 const (
@@ -76,6 +77,7 @@ type Manager struct {
 	// A map containing all active proof generation sessions.
 	sessions map[string]*session
 	// A map containing proof failed or verify failed proof.
+	// TODO(colinlyguo): once put into use, should add to graceful restart.
 	failedSessionInfos map[string]*SessionInfo
 
 	// A direct connection to the Halo2 verifier, used to verify
@@ -101,9 +103,10 @@ func New(ctx context.Context, cfg *config.RollerManagerConfig, orm database.OrmF
 	log.Info("Start rollerManager successfully.")
 
 	return &Manager{
-		ctx:                ctx,
-		cfg:                cfg,
-		server:             newServer(cfg.Endpoint),
+		ctx:    ctx,
+		cfg:    cfg,
+		server: newServer(cfg.Endpoint),
+		// TODO(colinlyguo): load session from db, and create CollectProofs
 		sessions:           make(map[string]*session),
 		failedSessionInfos: make(map[string]*SessionInfo),
 		verifier:           v,
@@ -120,6 +123,7 @@ func (m *Manager) Start() error {
 	// m.orm may be nil in scroll tests
 	if m.orm != nil {
 		// clean up assigned but not submitted task
+		// TODO(colinlyguo): don't set this, assigned remain assigned
 		if err := m.orm.ResetProvingStatusFor(orm.ProvingTaskAssigned); err != nil {
 			log.Error("fail to reset assigned tasks as unassigned")
 		}
@@ -362,6 +366,7 @@ func (m *Manager) CollectProofs(id string, s *session) {
 
 			// Ensure proper clean-up of resources.
 			defer func() {
+				// TODO(colinlyguo): delete session db
 				delete(m.sessions, id)
 				m.mu.Unlock()
 			}()
@@ -397,6 +402,7 @@ func (m *Manager) CollectProofs(id string, s *session) {
 			return
 		case ret := <-s.finishChan:
 			m.mu.Lock()
+			// TODO(colinlyguo): modify session in db
 			s.rollers[ret.pk] = ret.status
 			m.mu.Unlock()
 		}
@@ -425,6 +431,8 @@ func (m *Manager) StartProofGenerationSession(task *orm.BlockBatch) bool {
 	if roller == nil || roller.isClosed() {
 		return false
 	}
+
+	// TODO(colinlyguo): check status
 
 	log.Info("start proof generation session", "id", task.ID)
 
@@ -482,6 +490,7 @@ func (m *Manager) StartProofGenerationSession(task *orm.BlockBatch) bool {
 
 	// Create a proof generation session.
 	m.mu.Lock()
+	// TODO(colinlyguo): modify session db
 	m.sessions[task.ID] = s
 	m.mu.Unlock()
 

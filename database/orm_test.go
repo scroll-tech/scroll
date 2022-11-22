@@ -308,4 +308,20 @@ func testOrmBlockbatch(t *testing.T) {
 	result, err := ormBatch.GetLatestFinalizedBatch()
 	assert.NoError(t, err)
 	assert.Equal(t, batchID1, result.ID)
+
+	rollers_info, err := ormBatch.GetRollersInfoByID(batchID1)
+	assert.NoError(t, err)
+	assert.Equal(t, orm.RollersInfo{}, *rollers_info)
+	rollersInfo := orm.RollersInfo{
+		RollerStatus: map[string]int32{
+			"0": 0,
+		},
+		RollerNames: map[string]string{
+			"0": "roller 0",
+		},
+		AssignedTime: time.Now().Unix()}
+	err = ormBatch.UpdateRollersInfoByID(batchID1, rollersInfo)
+	assert.NoError(t, err)
+	rollers_info, err = ormBatch.GetRollersInfoByID(batchID1)
+	assert.Equal(t, rollersInfo, *rollers_info)
 }

@@ -273,20 +273,17 @@ func (s *server) pingLoop(c *Roller) {
 			return
 		case <-pingTicker.C:
 			c.wMu.Lock()
+			defer c.wMu.Unlock()
 
 			if err := c.ws.SetWriteDeadline(time.Now().Add(writeWait)); err != nil {
 				log.Error("could not set write deadline", "error", err)
-				c.wMu.Unlock()
 				return
 			}
 
 			if err := c.ws.WriteMessage(websocket.PingMessage, nil); err != nil {
 				log.Error("could not send ping", "error", err)
-				c.wMu.Unlock()
 				return
 			}
-
-			c.wMu.Unlock()
 		}
 	}
 }

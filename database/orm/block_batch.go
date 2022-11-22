@@ -3,6 +3,7 @@ package orm
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math/big"
@@ -86,6 +87,7 @@ type BlockBatch struct {
 	EndBlockHash        string         `json:"end_block_hash" db:"end_block_hash"`
 	TotalTxNum          uint64         `json:"total_tx_num" db:"total_tx_num"`
 	TotalL2Gas          uint64         `json:"total_l2_gas" db:"total_l2_gas"`
+	RollersInfo         []byte         `json:"rollers_info" db:"rollers_info"`
 	ProvingStatus       ProvingStatus  `json:"proving_status" db:"proving_status"`
 	Proof               []byte         `json:"proof" db:"proof"`
 	InstanceCommitments []byte         `json:"instance_commitments" db:"instance_commitments"`
@@ -334,4 +336,28 @@ func (o *blockBatchOrm) UpdateFinalizeTxHashAndRollupStatus(ctx context.Context,
 		_, err := o.db.Exec(o.db.Rebind("update block_batch set finalize_tx_hash = ?, rollup_status = ? where id = ?;"), finalize_tx_hash, status, id)
 		return err
 	}
+}
+
+func (o *blockBatchOrm) GetRollersInfoByID(id string) (*RollersInfo, error) {
+	row := o.db.QueryRow(`SELECT rollers_info FROM block_batch WHERE id = $1`, id)
+	var infoStr sql.NullString
+	if err := row.Scan(&infoStr); err != nil {
+		return nil, err
+	} else if !infoStr.Valid { // NULL
+		return &RollersInfo{}, nil
+	}
+	var info RollersInfo
+	if err := json.Unmarshal([]byte(infoStr.String), &info); err != nil {
+		return nil, err
+	}
+	return &info, nil
+}
+
+func (o *blockBatchOrm) UpdateRollersInfoByID(id string, rollersInfo RollersInfo) error {
+	infoBytes, err := json.Marshal(rollersInfo)
+	if err != nil {
+		return err
+	}
+	_, err = o.db.Exec(o.db.Rebind(`UPDATE block_batch set rollers_info = ? where id = ?;`), infoBytes, id)
+	return err
 }
