@@ -363,11 +363,11 @@ func (o *blockBatchOrm) GetAllRollersInfo() ([]RollersInfo, error) {
 	var infos []RollersInfo
 	for rows.Next() {
 		var infoBytes []byte
-		if err := rows.Scan(&infoBytes); err != nil {
+		if err = rows.Scan(&infoBytes); err != nil {
 			return nil, err
 		}
 		var rollersInfo RollersInfo
-		if err := json.Unmarshal(infoBytes, &rollersInfo); err != nil {
+		if err = json.Unmarshal(infoBytes, &rollersInfo); err != nil {
 			return nil, err
 		}
 		infos = append(infos, rollersInfo)

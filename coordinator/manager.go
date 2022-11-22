@@ -462,7 +462,7 @@ func (m *Manager) StartProofGenerationSession(task *orm.BlockBatch) bool {
 		return false
 	}
 	// TODO: use some compression?
-	if err := roller.sendMessage(msg); err != nil {
+	if err = roller.sendMessage(msg); err != nil {
 		log.Error(
 			"could not send traces message to roller",
 			"error", err,

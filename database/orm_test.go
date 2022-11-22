@@ -333,6 +333,7 @@ func testOrmBlockbatch(t *testing.T) {
 	err = ormBatch.UpdateRollerProofStatusByID(batchID1, "0", 1)
 	assert.NoError(t, err)
 	rollers_info, err = ormBatch.GetRollersInfoByID(batchID1)
+	assert.NoError(t, err)
 	assert.Equal(t, rollersInfo, *rollers_info)
 	all_rollers_info, err = ormBatch.GetAllRollersInfo()
 	assert.NoError(t, err)
