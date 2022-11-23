@@ -25,54 +25,36 @@ func NewL2MessageOrm(db *sqlx.DB) L2MessageOrm {
 func (m *layer2MessageOrm) GetL2MessageByNonce(nonce uint64) (*L2Message, error) {
 	msg := L2Message{}
 
-	row := m.db.QueryRow(`SELECT nonce, height, sender, target, value, fee, gas_limit, deadline, calldata, layer2_hash, status FROM l2_message WHERE nonce = $1`, nonce)
-	if err := row.Scan(&msg.Nonce, &msg.Height, &msg.Sender, &msg.Target, &msg.Value, &msg.Fee, &msg.GasLimit, &msg.Deadline, &msg.Calldata, &msg.Layer2Hash, &msg.Status); err != nil {
+	row := m.db.QueryRow(`SELECT nonce, msg_hash, height, sender, target, value, fee, gas_limit, deadline, calldata, layer2_hash, status FROM l2_message WHERE nonce = $1`, nonce)
+	if err := row.Scan(&msg.Nonce, &msg.MsgHash, &msg.Height, &msg.Sender, &msg.Target, &msg.Value, &msg.Fee, &msg.GasLimit, &msg.Deadline, &msg.Calldata, &msg.Layer2Hash, &msg.Status); err != nil {
 		return nil, err
 	}
 	return &msg, nil
 }
 
-// GetL2MessageByLayer2Hash fetch message by layer2Hash
-func (m *layer2MessageOrm) GetL2MessageByLayer2Hash(layer2Hash string) (*L2Message, error) {
+// GetL2MessageByMsgHash fetch message by message hash
+func (m *layer2MessageOrm) GetL2MessageByMsgHash(msgHash string) (*L2Message, error) {
 	msg := L2Message{}
 
-	row := m.db.QueryRow(`SELECT nonce, height, sender, target, value, fee, gas_limit, deadline, calldata, layer2_hash, status FROM l2_message WHERE layer2_hash = $1`, layer2Hash)
+	row := m.db.QueryRow(`SELECT nonce, height, sender, target, value, fee, gas_limit, deadline, calldata, layer2_hash, status FROM l2_message WHERE msg_hash = $1`, msgHash)
 	if err := row.Scan(&msg.Nonce, &msg.Height, &msg.Sender, &msg.Target, &msg.Value, &msg.Fee, &msg.GasLimit, &msg.Deadline, &msg.Calldata, &msg.Layer2Hash, &msg.Status); err != nil {
 		return nil, err
 	}
+	msg.MsgHash = msgHash
 	return &msg, nil
-}
-
-// GetMessageProofByLayer2Hash fetch message proof by layer2Hash
-func (m *layer2MessageOrm) GetMessageProofByLayer2Hash(layer2Hash string) (string, error) {
-	row := m.db.QueryRow(`SELECT proof FROM l2_message WHERE layer2_hash = $1`, layer2Hash)
-	var proof string
-	if err := row.Scan(&proof); err != nil {
-		return "", err
-	}
-	return proof, nil
-}
-
-// MessageProofExistByLayer2Hash fetch message by layer2Hash
-func (m *layer2MessageOrm) MessageProofExistByLayer2Hash(layer2Hash string) (bool, error) {
-	err := m.db.QueryRow(`SELECT layer2_hash FROM l2_message WHERE layer2_hash = $1 and proof IS NOT NULL`, layer2Hash).Scan(&layer2Hash)
-	if err != nil {
-		if err != sql.ErrNoRows {
-			return false, err
-		}
-		return false, nil
-	}
-	return true, nil
 }
 
 // GetMessageProofByNonce fetch message by nonce
 func (m *layer2MessageOrm) GetMessageProofByNonce(nonce uint64) (string, error) {
 	row := m.db.QueryRow(`SELECT proof FROM l2_message WHERE nonce = $1`, nonce)
-	var proof string
+	var proof sql.NullString
 	if err := row.Scan(&proof); err != nil {
 		return "", err
 	}
-	return proof, nil
+	if proof.Valid {
+		return proof.String, nil
+	}
+	return "", nil
 }
 
 // MessageProofExist fetch message by nonce
@@ -91,22 +73,24 @@ func (m *layer2MessageOrm) MessageProofExist(nonce uint64) (bool, error) {
 func (m *layer2MessageOrm) GetL2ProcessedNonce() (int64, error) {
 	row := m.db.QueryRow(`SELECT MAX(nonce) FROM l2_message WHERE status = $1;`, MsgConfirmed)
 
-	var nonce int64
-	err := row.Scan(&nonce)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			// no row means no message
-			// since nonce starts with 0, return -1 as the processed nonce
+	// no row means no message
+	// since nonce starts with 0, return -1 as the processed nonce
+	var nonce sql.NullInt64
+	if err := row.Scan(&nonce); err != nil {
+		if err == sql.ErrNoRows || !nonce.Valid {
 			return -1, nil
 		}
 		return 0, err
 	}
-	return nonce, nil
+	if nonce.Valid {
+		return nonce.Int64, nil
+	}
+	return -1, nil
 }
 
-// GetL2UnprocessedMessages fetch list of unprocessed messages
-func (m *layer2MessageOrm) GetL2UnprocessedMessages() ([]*L2Message, error) {
-	rows, err := m.db.Queryx(`SELECT nonce, height, sender, target, value, fee, gas_limit, deadline, calldata, layer2_hash FROM l2_message WHERE status = $1 ORDER BY nonce ASC;`, MsgPending)
+// GetL2MessagesByStatus fetch list of messages given msg status
+func (m *layer2MessageOrm) GetL2MessagesByStatus(status MsgStatus) ([]*L2Message, error) {
+	rows, err := m.db.Queryx(`SELECT nonce, msg_hash, height, sender, target, value, fee, gas_limit, deadline, calldata, layer2_hash FROM l2_message WHERE status = $1 ORDER BY nonce ASC;`, status)
 	if err != nil {
 		return nil, err
 	}
@@ -134,6 +118,7 @@ func (m *layer2MessageOrm) SaveL2Messages(ctx context.Context, messages []*L2Mes
 	for i, msg := range messages {
 		messageMaps[i] = map[string]interface{}{
 			"nonce":       msg.Nonce,
+			"msg_hash":    msg.MsgHash,
 			"height":      msg.Height,
 			"sender":      msg.Sender,
 			"target":      msg.Target,
@@ -146,7 +131,7 @@ func (m *layer2MessageOrm) SaveL2Messages(ctx context.Context, messages []*L2Mes
 		}
 	}
 
-	_, err := m.db.NamedExec(`INSERT INTO public.l2_message (nonce, height, sender, target, value, fee, gas_limit, deadline, calldata, layer2_hash) VALUES (:nonce, :height, :sender, :target, :value, :fee, :gas_limit, :deadline, :calldata, :layer2_hash);`, messageMaps)
+	_, err := m.db.NamedExec(`INSERT INTO public.l2_message (nonce, msg_hash, height, sender, target, value, fee, gas_limit, deadline, calldata, layer2_hash) VALUES (:nonce, :msg_hash, :height, :sender, :target, :value, :fee, :gas_limit, :deadline, :calldata, :layer2_hash);`, messageMaps)
 	if err != nil {
 		nonces := make([]uint64, 0, len(messages))
 		heights := make([]uint64, 0, len(messages))
@@ -159,36 +144,36 @@ func (m *layer2MessageOrm) SaveL2Messages(ctx context.Context, messages []*L2Mes
 	return err
 }
 
-// UpdateLayer1Hash update corresponding layer1 hash given message nonce
-func (m *layer2MessageOrm) UpdateLayer1Hash(ctx context.Context, layer2Hash string, layer1Hash string) error {
-	if _, err := m.db.ExecContext(ctx, m.db.Rebind("update l2_message set layer1_hash = ? where layer2_hash = ?;"), layer1Hash, layer2Hash); err != nil {
+// UpdateLayer1Hash update corresponding layer1 hash, given message hash
+func (m *layer2MessageOrm) UpdateLayer1Hash(ctx context.Context, msgHash, layer1Hash string) error {
+	if _, err := m.db.ExecContext(ctx, m.db.Rebind("update l2_message set layer1_hash = ? where msg_hash = ?;"), layer1Hash, msgHash); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-// UpdateMessageProof update corresponding message proof given message nonce
-func (m *layer2MessageOrm) UpdateMessageProof(ctx context.Context, layer2Hash, proof string) error {
-	if _, err := m.db.ExecContext(ctx, m.db.Rebind("update l2_message set proof = ? where layer2_hash = ?;"), proof, layer2Hash); err != nil {
+// UpdateMessageProof update corresponding message proof, given message nonce
+func (m *layer2MessageOrm) UpdateMessageProof(ctx context.Context, nonce uint64, proof string) error {
+	if _, err := m.db.ExecContext(ctx, m.db.Rebind("update l2_message set proof = ? where nonce = ?;"), proof, nonce); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-// UpdateLayer2Status updates message stauts
-func (m *layer2MessageOrm) UpdateLayer2Status(ctx context.Context, layer2Hash string, status MsgStatus) error {
-	if _, err := m.db.ExecContext(ctx, m.db.Rebind("update l2_message set status = ? where layer2_hash = ?;"), status, layer2Hash); err != nil {
+// UpdateLayer2Status updates message stauts, given message hash
+func (m *layer2MessageOrm) UpdateLayer2Status(ctx context.Context, msgHash string, status MsgStatus) error {
+	if _, err := m.db.ExecContext(ctx, m.db.Rebind("update l2_message set status = ? where msg_hash = ?;"), status, msgHash); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-// UpdateLayer2StatusAndLayer1Hash updates message stauts and layer1 transaction hash
-func (m *layer2MessageOrm) UpdateLayer2StatusAndLayer1Hash(ctx context.Context, layer2Hash string, layer1Hash string, status MsgStatus) error {
-	if _, err := m.db.ExecContext(ctx, m.db.Rebind("update l2_message set status = ?, layer1_hash = ? where layer2_hash = ?;"), status, layer1Hash, layer2Hash); err != nil {
+// UpdateLayer2StatusAndLayer1Hash updates message stauts and layer1 transaction hash, given message hash
+func (m *layer2MessageOrm) UpdateLayer2StatusAndLayer1Hash(ctx context.Context, msgHash, layer1Hash string, status MsgStatus) error {
+	if _, err := m.db.ExecContext(ctx, m.db.Rebind("update l2_message set status = ?, layer1_hash = ? where msg_hash = ?;"), status, layer1Hash, msgHash); err != nil {
 		return err
 	}
 

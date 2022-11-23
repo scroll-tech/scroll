@@ -19,6 +19,7 @@ import (
 	bridge_abi "scroll-tech/bridge/abi"
 	"scroll-tech/bridge/config"
 	"scroll-tech/bridge/sender"
+	"scroll-tech/bridge/utils"
 )
 
 // Layer2Relayer is responsible for
@@ -95,7 +96,7 @@ func NewLayer2Relayer(ctx context.Context, ethClient *ethclient.Client, proofGen
 // ProcessSavedEvents relays saved un-processed cross-domain transactions to desired blockchain
 func (r *Layer2Relayer) ProcessSavedEvents() {
 	// msgs are sorted by nonce in increasing order
-	msgs, err := r.db.GetL2UnprocessedMessages()
+	msgs, err := r.db.GetL2MessagesByStatus(orm.MsgPending)
 	if err != nil {
 		log.Error("Failed to fetch unprocessed L2 messages", "err", err)
 		return
@@ -150,23 +151,23 @@ func (r *Layer2Relayer) processSavedEvent(msg *orm.L2Message) error {
 		return err
 	}
 
-	hash, err := r.messageSender.SendTransaction(msg.Layer2Hash, &r.cfg.MessengerContractAddress, big.NewInt(0), data)
+	hash, err := r.messageSender.SendTransaction(msg.MsgHash, &r.cfg.MessengerContractAddress, big.NewInt(0), data)
 	if err != nil {
 		if !errors.Is(err, sender.ErrNoAvailableAccount) {
-			log.Error("Failed to send relayMessageWithProof tx to layer1 ", "msg.height", msg.Height, "msg.Layer2Hash", msg.Layer2Hash, "err", err)
+			log.Error("Failed to send relayMessageWithProof tx to layer1 ", "msg.height", msg.Height, "msg.MsgHash", msg.MsgHash, "err", err)
 		}
 		return err
 	}
-	log.Info("relayMessageWithProof to layer1", "layer2hash", msg.Layer2Hash, "txhash", hash.String())
+	log.Info("relayMessageWithProof to layer1", "msgHash", msg.MsgHash, "txhash", hash.String())
 
 	// save status in db
 	// @todo handle db error
-	err = r.db.UpdateLayer2StatusAndLayer1Hash(r.ctx, msg.Layer2Hash, hash.String(), orm.MsgSubmitted)
+	err = r.db.UpdateLayer2StatusAndLayer1Hash(r.ctx, msg.MsgHash, hash.String(), orm.MsgSubmitted)
 	if err != nil {
-		log.Error("UpdateLayer2StatusAndLayer1Hash failed", "layer2hash", msg.Layer2Hash, "err", err)
+		log.Error("UpdateLayer2StatusAndLayer1Hash failed", "msgHash", msg.MsgHash, "err", err)
 		return err
 	}
-	r.processingMessage[msg.Layer2Hash] = msg.Layer2Hash
+	r.processingMessage[msg.MsgHash] = msg.MsgHash
 	return nil
 }
 
@@ -328,8 +329,8 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 			return
 		}
 
-		proof := bufferToUint256Le(proofBuffer)
-		instance := bufferToUint256Le(instanceBuffer)
+		proof := utils.BufferToUint256Le(proofBuffer)
+		instance := utils.BufferToUint256Le(instanceBuffer)
 		data, err := r.l1RollupABI.Pack("finalizeBatchWithProof", common.HexToHash(id), proof, instance)
 		if err != nil {
 			log.Error("Pack finalizeBatchWithProof failed", "err", err)
@@ -398,12 +399,12 @@ func (r *Layer2Relayer) handleConfirmation(confirmation *sender.Confirmation) {
 
 	transactionType := "Unknown"
 	// check whether it is message relay transaction
-	if layer2Hash, ok := r.processingMessage[confirmation.ID]; ok {
+	if msgHash, ok := r.processingMessage[confirmation.ID]; ok {
 		transactionType = "MessageRelay"
 		// @todo handle db error
-		err := r.db.UpdateLayer2StatusAndLayer1Hash(r.ctx, layer2Hash, confirmation.TxHash.String(), orm.MsgConfirmed)
+		err := r.db.UpdateLayer2StatusAndLayer1Hash(r.ctx, msgHash, confirmation.TxHash.String(), orm.MsgConfirmed)
 		if err != nil {
-			log.Warn("UpdateLayer2StatusAndLayer1Hash failed", "layer2Hash", layer2Hash, "err", err)
+			log.Warn("UpdateLayer2StatusAndLayer1Hash failed", "msgHash", msgHash, "err", err)
 		}
 		delete(r.processingMessage, confirmation.ID)
 	}
@@ -436,31 +437,4 @@ func (r *Layer2Relayer) handleConfirmation(confirmation *sender.Confirmation) {
 		}
 	}
 	log.Info("transaction confirmed in layer1", "type", transactionType, "confirmation", confirmation)
-}
-
-//nolint:unused
-func bufferToUint256Be(buffer []byte) []*big.Int {
-	buffer256 := make([]*big.Int, len(buffer)/32)
-	for i := 0; i < len(buffer)/32; i++ {
-		buffer256[i] = big.NewInt(0)
-		for j := 0; j < 32; j++ {
-			buffer256[i] = buffer256[i].Lsh(buffer256[i], 8)
-			buffer256[i] = buffer256[i].Add(buffer256[i], big.NewInt(int64(buffer[i*32+j])))
-		}
-	}
-	return buffer256
-}
-
-func bufferToUint256Le(buffer []byte) []*big.Int {
-	buffer256 := make([]*big.Int, len(buffer)/32)
-	for i := 0; i < len(buffer)/32; i++ {
-		v := big.NewInt(0)
-		shft := big.NewInt(1)
-		for j := 0; j < 32; j++ {
-			v = new(big.Int).Add(v, new(big.Int).Mul(shft, big.NewInt(int64(buffer[i*32+j]))))
-			shft = new(big.Int).Mul(shft, big.NewInt(256))
-		}
-		buffer256[i] = v
-	}
-	return buffer256
 }

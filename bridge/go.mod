@@ -3,6 +3,7 @@ module scroll-tech/bridge
 go 1.18
 
 require (
+	github.com/iden3/go-iden3-crypto v0.0.12
 	github.com/orcaman/concurrent-map v1.0.0
 	github.com/scroll-tech/go-ethereum v1.10.14-0.20221125025612-4ea77a7577c6
 	github.com/stretchr/testify v1.8.0
