@@ -111,11 +111,11 @@ func (m *Manager) Start() error {
 		return nil
 	}
 
+	// m.orm may be nil in scroll tests
 	if m.orm != nil {
 		persistedSessions, err := m.orm.GetAllRollersInfo()
 		if err != nil {
-			// TODO: change to error
-			log.Crit("db get all rollers info fail", "error", err)
+			log.Error("db get all rollers info fail", "error", err)
 		} else {
 			for _, v := range persistedSessions {
 				s := &session{
@@ -372,8 +372,7 @@ func (m *Manager) CollectProofs(id string, s *session) {
 			// Ensure proper clean-up of resources.
 			defer func() {
 				if err := m.orm.DeleteRollersInfoByID(id); err != nil {
-					// TODO: change to error
-					log.Crit("db delete session rollers info fail", "error", err)
+					log.Error("db delete session rollers info fail", "error", err)
 				}
 				delete(m.sessions, id)
 				m.mu.Unlock()
@@ -410,8 +409,7 @@ func (m *Manager) CollectProofs(id string, s *session) {
 			return
 		case ret := <-s.finishChan:
 			if err := m.orm.UpdateRollerProofStatusByID(ret.id, ret.pk, ret.status); err != nil {
-				// TODO: change to error
-				log.Crit("db update session rollers info fail", "error", err)
+				log.Error("db update session rollers info fail", "error", err)
 			}
 			m.mu.Lock()
 			s.rollers[ret.pk] = ret.status
@@ -497,8 +495,7 @@ func (m *Manager) StartProofGenerationSession(task *orm.BlockBatch) bool {
 		},
 		AssignedTime: sessionTimestamp.Unix(),
 	}); err != nil {
-		// TODO: change to error
-		log.Crit("db write session rollers info fail", "error", err)
+		log.Error("db write session rollers info fail", "error", err)
 	}
 
 	s := &session{
