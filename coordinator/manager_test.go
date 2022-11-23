@@ -251,12 +251,7 @@ func TestFunction(t *testing.T) {
 		assert.NoError(t, migrate.ResetDB(db.GetDB().DB))
 
 		rollerManager := setupRollerManager(t, "", db)
-		hasStopped := false
-		defer func() {
-			if !hasStopped {
-				defer rollerManager.Stop()
-			}
-		}()
+		defer rollerManager.Stop()
 
 		numClients := 2
 		rollers := make([]mockRoller, numClients)
@@ -291,10 +286,8 @@ func TestFunction(t *testing.T) {
 			assert.NoError(t, rollers[i].readMessage())
 		}
 
-		// restart coordinator
+		// restart coordinator, can stop mutiple times
 		rollerManager.Stop()
-		hasStopped = true
-
 		newRollerManager := setupRollerManager(t, "", db)
 		defer newRollerManager.Stop()
 
@@ -303,8 +296,7 @@ func TestFunction(t *testing.T) {
 			assert.NoError(t, rollers[i].performHandshake())
 			assert.NoError(t, rollers[i].sendProof())
 		}
-
-		time.Sleep(4 * time.Second)
+		time.Sleep(3 * time.Second)
 	})
 
 	// Teardown
