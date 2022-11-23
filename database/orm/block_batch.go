@@ -388,7 +388,7 @@ func (o *blockBatchOrm) SetRollersInfoByID(id string, rollersInfo RollersInfo) e
 	return err
 }
 
-func (o *blockBatchOrm) UpdateRollerProofStatusByID(id string, rollerPublicKey string, rollerProofStatus int32) error {
+func (o *blockBatchOrm) UpdateRollerProofStatusByID(id string, rollerPublicKey string, rollerProofStatus RollerProveStatus) error {
 	row := o.db.QueryRow(`SELECT rollers_info FROM block_batch WHERE id = $1 and rollers_info IS NOT NULL`, id)
 	var infoBytes []byte
 	if err := row.Scan(&infoBytes); err != nil {

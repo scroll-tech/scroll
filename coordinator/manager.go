@@ -26,19 +26,10 @@ const (
 	proofAndPkBufferSize = 10
 )
 
-// TODO: remove duplicated status, compared to db
-type rollerStatus int32
-
-const (
-	rollerAssigned rollerStatus = iota
-	rollerProofValid
-	rollerProofInvalid
-)
-
 type rollerProofStatus struct {
 	id     string
 	pk     string
-	status rollerStatus
+	status orm.RollerProveStatus
 }
 
 // Contains all the information on an ongoing proof generation session.
@@ -48,7 +39,7 @@ type session struct {
 	// A list of all participating rollers and if they finished proof generation for this session.
 	// The map key is a hexadecimal encoding of the roller public key, as byte slices
 	// can not be compared explicitly.
-	rollers      map[string]rollerStatus
+	rollers      map[string]orm.RollerProveStatus
 	roller_names map[string]string
 	// session start time
 	startTime time.Time
@@ -104,10 +95,9 @@ func New(ctx context.Context, cfg *config.RollerManagerConfig, orm database.OrmF
 	log.Info("Start rollerManager successfully.")
 
 	return &Manager{
-		ctx:    ctx,
-		cfg:    cfg,
-		server: newServer(cfg.Endpoint),
-		// TODO(colinlyguo): load session from db, and create CollectProofs
+		ctx:                ctx,
+		cfg:                cfg,
+		server:             newServer(cfg.Endpoint),
 		sessions:           make(map[string]*session),
 		failedSessionInfos: make(map[string]*SessionInfo),
 		verifier:           v,
@@ -119,6 +109,27 @@ func New(ctx context.Context, cfg *config.RollerManagerConfig, orm database.OrmF
 func (m *Manager) Start() error {
 	if m.isRunning() {
 		return nil
+	}
+
+	sessions := make(map[string]*session)
+	if persistedSessions, err := m.orm.GetAllRollersInfo(); err != nil {
+		// TODO: change to error
+		log.Crit("db get all rollers info fail", "error", err)
+	} else {
+		for _, v := range persistedSessions {
+			s := &session{
+				id:           v.SessionID,
+				rollers:      v.RollerStatus,
+				roller_names: v.RollerNames,
+				startTime:    time.Unix(v.AssignedTime, 0),
+				finishChan:   make(chan rollerProofStatus, proofAndPkBufferSize),
+			}
+			// TODO: change to debug
+			log.Error("session info: ", "id", s.id, "rollers", s.rollers, "roller_names", s.roller_names, "startTime", s.startTime, "finishChan", s.finishChan)
+			// no lock is required until the port is opened by the coordinator
+			sessions[v.SessionID] = s
+			go m.CollectProofs(s.id, s)
+		}
 	}
 
 	if err := m.server.start(); err != nil {
@@ -254,7 +265,7 @@ func (m *Manager) HandleZkProof(pk string, payload []byte) error {
 	// Ensure this roller is eligible to participate in the session.
 	if status, ok := s.rollers[pk]; !ok {
 		return fmt.Errorf("roller %s is not eligible to partake in proof session %v", pk, msg.ID)
-	} else if status == rollerProofValid {
+	} else if status == orm.RollerProofValid {
 		// In order to prevent DoS attacks, it is forbidden to repeatedly submit valid proofs.
 		// TODO: Defend invalid proof resubmissions by one of the following two methods:
 		// (i) slash the roller for each submission of invalid proof
@@ -273,11 +284,11 @@ func (m *Manager) HandleZkProof(pk string, payload []byte) error {
 			}
 		}
 		// set proof status
-		var status rollerStatus
+		var status orm.RollerProveStatus
 		if success && dbErr == nil {
-			status = rollerProofValid
+			status = orm.RollerProofValid
 		} else {
-			status = rollerProofInvalid
+			status = orm.RollerProofInvalid
 		}
 		// notify the session that the roller finishes the proving process
 		s.finishChan <- rollerProofStatus{msg.ID, pk, status}
@@ -359,7 +370,8 @@ func (m *Manager) CollectProofs(id string, s *session) {
 			// Ensure proper clean-up of resources.
 			defer func() {
 				if err := m.orm.DeleteRollersInfoByID(id); err != nil {
-					log.Crit("delete db session rollers info fail", "error", err)
+					// TODO: change to error
+					log.Crit("db delete session rollers info fail", "error", err)
 				}
 				delete(m.sessions, id)
 				m.mu.Unlock()
@@ -369,7 +381,7 @@ func (m *Manager) CollectProofs(id string, s *session) {
 			// First, round up the keys that actually sent in a valid proof.
 			var participatingRollers []string
 			for pk, status := range s.rollers {
-				if status == rollerProofValid {
+				if status == orm.RollerProofValid {
 					participatingRollers = append(participatingRollers, pk)
 				}
 			}
@@ -395,8 +407,9 @@ func (m *Manager) CollectProofs(id string, s *session) {
 			// TODO: reward winner
 			return
 		case ret := <-s.finishChan:
-			if err := m.orm.UpdateRollerProofStatusByID(ret.id, ret.pk, int32(ret.status)); err != nil {
-				log.Crit("update db session rollers info fail", "error", err)
+			if err := m.orm.UpdateRollerProofStatusByID(ret.id, ret.pk, ret.status); err != nil {
+				// TODO: change to error
+				log.Crit("db update session rollers info fail", "error", err)
 			}
 			m.mu.Lock()
 			s.rollers[ret.pk] = ret.status
@@ -473,8 +486,9 @@ func (m *Manager) StartProofGenerationSession(task *orm.BlockBatch) bool {
 	sessionTimestamp := time.Now()
 
 	if err = m.orm.SetRollersInfoByID(task.ID, orm.RollersInfo{
-		RollerStatus: map[string]int32{
-			pk: int32(rollerAssigned),
+		SessionID: task.ID,
+		RollerStatus: map[string]orm.RollerProveStatus{
+			pk: orm.RollerAssigned,
 		},
 		RollerNames: map[string]string{
 			pk: roller.AuthMsg.Identity.Name,
@@ -482,13 +496,13 @@ func (m *Manager) StartProofGenerationSession(task *orm.BlockBatch) bool {
 		AssignedTime: sessionTimestamp.Unix(),
 	}); err != nil {
 		// TODO: change to error
-		log.Crit("write db session rollers info fail", "error", err)
+		log.Crit("db write session rollers info fail", "error", err)
 	}
 
 	s := &session{
 		id: task.ID,
-		rollers: map[string]rollerStatus{
-			pk: rollerAssigned,
+		rollers: map[string]orm.RollerProveStatus{
+			pk: orm.RollerAssigned,
 		},
 		roller_names: map[string]string{
 			pk: roller.AuthMsg.Identity.Name,
@@ -543,7 +557,7 @@ func (m *Manager) IsRollerIdle(hexPk string) bool {
 	// timeout. So a busy roller could be marked as idle in a finished session.
 	for _, sess := range m.sessions {
 		for pk, status := range sess.rollers {
-			if pk == hexPk && status == rollerAssigned {
+			if pk == hexPk && status == orm.RollerAssigned {
 				return false
 			}
 		}

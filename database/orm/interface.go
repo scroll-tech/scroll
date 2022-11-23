@@ -67,11 +67,20 @@ type BlockInfo struct {
 	BlockTimestamp uint64         `json:"block_timestamp" db:"block_timestamp"`
 }
 
+type RollerProveStatus int32
+
+const (
+	RollerAssigned RollerProveStatus = iota
+	RollerProofValid
+	RollerProofInvalid
+)
+
 // RollersInfo is assigned rollers info of a block batch (session)
 type RollersInfo struct {
-	RollerStatus map[string]int32  `json:"roller_status" db:"roller_status"`
-	RollerNames  map[string]string `json:"roller_names" db:"roller_names"`
-	AssignedTime int64             `json:"assigned_time" db:"assigned_time"`
+	SessionID    string                       `json:"session_id" db:"session_id"`
+	RollerStatus map[string]RollerProveStatus `json:"roller_status" db:"roller_status"`
+	RollerNames  map[string]string            `json:"roller_names" db:"roller_names"`
+	AssignedTime int64                        `json:"assigned_time" db:"assigned_time"`
 }
 
 // BlockTraceOrm block_trace operation interface
@@ -108,7 +117,7 @@ type BlockBatchOrm interface {
 	GetRollersInfoByID(id string) (*RollersInfo, error)
 	GetAllRollersInfo() ([]RollersInfo, error)
 	SetRollersInfoByID(id string, rollersInfo RollersInfo) error
-	UpdateRollerProofStatusByID(id string, rollerPublicKey string, rollerProofStatus int32) error
+	UpdateRollerProofStatusByID(id string, rollerPublicKey string, rollerProofStatus RollerProveStatus) error
 	DeleteRollersInfoByID(id string) error
 }
 
