@@ -4,10 +4,10 @@ go 1.18
 
 require (
 	github.com/BurntSushi/toml v1.1.0
-	github.com/scroll-tech/go-ethereum v1.10.14-0.20221012120556-b3a7c9b6917d
-	github.com/ethereum/go-ethereum v1.10.13
-	github.com/gorilla/websocket v1.4.2
+	github.com/scroll-tech/go-ethereum v1.10.14-0.20221121043753-0bdd2e0575a2
 	github.com/stretchr/testify v1.8.0
+	github.com/urfave/cli/v2 v2.10.2
+	go.etcd.io/bbolt v1.3.6
 )
 
 require (

@@ -4,8 +4,6 @@
 package prover
 
 import (
-	"time"
-
 	"scroll-tech/common/message"
 
 	"scroll-tech/roller/config"
@@ -24,15 +22,6 @@ func NewProver(cfg *config.ProverConfig) (*Prover, error) {
 }
 
 // Prove call rust ffi to generate proof, if first failed, try again.
-func (p *Prover) Prove(traces *types.BlockResult) (*message.AggProof, error) {
-	proof, err := p.prove(traces)
-	if err != nil {
-		return p.prove(traces)
-	}
-	return proof, nil
-}
-
-func (p *Prover) prove(traces *types.BlockResult) (*message.AggProof, error) {
-	time.Sleep(10 * time.Second)
+func (p *Prover) Prove(_ []*types.BlockTrace) (*message.AggProof, error) {
 	return &message.AggProof{}, nil
 }

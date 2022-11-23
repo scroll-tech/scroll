@@ -4,15 +4,10 @@ import (
 	"encoding/json"
 	"errors"
 
-	"scroll-tech/common/message"
-
 	"github.com/scroll-tech/go-ethereum/log"
 	"go.etcd.io/bbolt"
-<<<<<<< HEAD
-=======
 
 	"scroll-tech/common/message"
->>>>>>> staging
 )
 
 var (
@@ -25,17 +20,10 @@ type Stack struct {
 	*bbolt.DB
 }
 
-<<<<<<< HEAD
-// ProvingTraces is the value in stack.
-// It contains traces and proved times.
-type ProvingTraces struct {
-	Traces *message.BlockTraces `json:"traces"`
-=======
 // ProvingTask is the value in stack.
 // It contains TaskMsg and proved times.
 type ProvingTask struct {
 	Task *message.TaskMsg `json:"task"`
->>>>>>> staging
 	// Times is how many times roller proved.
 	Times int `json:"times"`
 }

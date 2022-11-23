@@ -5,13 +5,9 @@ import (
 	"crypto/ecdsa"
 	"errors"
 	"fmt"
-<<<<<<< HEAD
 	"io/ioutil"
 	"os"
 	"path/filepath"
-=======
-	"sort"
->>>>>>> staging
 	"strings"
 	"sync/atomic"
 	"time"
@@ -54,7 +50,7 @@ type Roller struct {
 	client    *client.Client
 	stack     *store.Stack
 	prover    *prover.Prover
-	traceChan chan *message.BlockTraces
+	traceChan chan *message.TaskMsg
 	sub       ethereum.Subscription
 
 	isClosed int64
@@ -85,11 +81,8 @@ func NewRoller(cfg *config.Config) (*Roller, error) {
 	}
 	log.Info("init prover successfully!")
 
-<<<<<<< HEAD
-	rClient, err := client.Dial(cfg.ScrollURL)
-=======
-	conn, _, err := websocket.DefaultDialer.Dial(cfg.CoordinatorURL, nil)
->>>>>>> staging
+	rClient, err := client.Dial(cfg.CoordinatorURL)
+
 	if err != nil {
 		return nil, err
 	}
@@ -100,7 +93,7 @@ func NewRoller(cfg *config.Config) (*Roller, error) {
 		stack:     stackDb,
 		prover:    prover,
 		sub:       nil,
-		traceChan: make(chan *message.BlockTraces, 10),
+		traceChan: make(chan *message.TaskMsg, 10),
 		stopChan:  make(chan struct{}),
 		priv:      priv,
 	}, nil
@@ -137,13 +130,9 @@ func (r *Roller) Register() error {
 		return fmt.Errorf("sign auth message failed %v", err)
 	}
 
-<<<<<<< HEAD
 	sub, err := r.client.RegisterAndSubscribe(context.Background(), r.traceChan, authMsg)
 	r.sub = sub
 	return err
-=======
-	return r.sendMessage(message.RegisterMsgType, authMsg)
->>>>>>> staging
 }
 
 // HandleCoordinator accepts block-traces from coordinator through the Websocket and store it into Stack.
@@ -152,49 +141,23 @@ func (r *Roller) HandleCoordinator() {
 		select {
 		case <-r.stopChan:
 			return
-<<<<<<< HEAD
 		case trace := <-r.traceChan:
 			log.Info("Accept BlockTrace from Scroll", "ID", trace.ID)
-			err := r.stack.Push(&store.ProvingTraces{Traces: trace, Times: 0})
+			err := r.stack.Push(&store.ProvingTask{Task: trace, Times: 0})
 			if err != nil {
-				panic(fmt.Sprintf("could not push trace(%d) into stack: %v", trace.ID, err))
-=======
-		default:
-			_ = r.conn.SetWriteDeadline(time.Now().Add(writeWait))
-			_ = r.conn.SetReadDeadline(time.Now().Add(readWait))
-			if err := r.handMessage(); err != nil && !strings.Contains(err.Error(), errNormalClose.Error()) {
-				log.Error("handle coordinator failed", "error", err)
-				r.mustRetryCoordinator()
-				continue
->>>>>>> staging
+				panic(fmt.Sprintf("could not push trace(%s) into stack: %v", trace.ID, err))
 			}
 		case err := <-r.sub.Err():
 			r.sub.Unsubscribe()
 			log.Error("Subscribe trace with scroll failed", "error", err)
-			r.mustRetryScroll()
+			r.mustRetryCoordinator()
 		}
 	}
 }
 
 func (r *Roller) mustRetryCoordinator() {
 	for {
-<<<<<<< HEAD
-		log.Info("retry to register to scroll...")
-=======
 		log.Info("retry to connect to coordinator...")
-		conn, _, err := websocket.DefaultDialer.Dial(r.cfg.CoordinatorURL, nil)
-		if err != nil {
-			log.Error("failed to connect coordinator: ", "error", err)
-			time.Sleep(retryWait)
-		} else {
-			r.conn = conn
-			log.Info("re-connect to coordinator successfully!")
-			break
-		}
-	}
-	for {
-		log.Info("retry to register to coordinator...")
->>>>>>> staging
 		err := r.Register()
 		if err != nil {
 			log.Error("register to coordinator failed", "error", err)
@@ -229,32 +192,6 @@ func (r *Roller) ProveLoop() (err error) {
 	}
 }
 
-<<<<<<< HEAD
-=======
-func (r *Roller) sendMessage(msgType message.MsgType, payload interface{}) error {
-	msgByt, err := MakeMsgByt(msgType, payload)
-	if err != nil {
-		return err
-	}
-	return r.conn.WriteMessage(websocket.BinaryMessage, msgByt)
-}
-
-func (r *Roller) handMessage() error {
-	mt, msg, err := r.conn.ReadMessage()
-	if err != nil {
-		return err
-	}
-
-	switch mt {
-	case websocket.BinaryMessage:
-		if err = r.persistTask(msg); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
->>>>>>> staging
 func (r *Roller) prove() error {
 	task, err := r.stack.Pop()
 	if err != nil {
@@ -269,13 +206,9 @@ func (r *Roller) prove() error {
 			ID:     task.Task.ID,
 			Proof:  &message.AggProof{},
 		}
-<<<<<<< HEAD
 
 		_, err = r.signAndSubmitProof(proofMsg)
 		return err
-=======
-		return r.sendMessage(message.ProofMsgType, proofMsg)
->>>>>>> staging
 	}
 
 	err = r.stack.Push(task)
@@ -308,7 +241,6 @@ func (r *Roller) prove() error {
 		return err
 	}
 
-<<<<<<< HEAD
 	ok, err := r.signAndSubmitProof(proofMsg)
 	if !ok {
 		log.Error("Submit proof to scroll failed! auzhZkProofID: ", proofMsg.ID)
@@ -323,9 +255,6 @@ func (r *Roller) signAndSubmitProof(msg *message.ProofMsg) (bool, error) {
 	}
 
 	return r.client.SubmitProof(context.Background(), authZkProof)
-=======
-	return r.sendMessage(message.ProofMsgType, proofMsg)
->>>>>>> staging
 }
 
 // Close closes the websocket connection.
@@ -336,20 +265,14 @@ func (r *Roller) Close() {
 	atomic.StoreInt64(&r.isClosed, 1)
 
 	close(r.stopChan)
-<<<<<<< HEAD
 	// Close scroll's ws
 	r.sub.Unsubscribe()
-=======
-	// Close coordinator's ws
-	_ = r.conn.Close()
->>>>>>> staging
 	// Close db
 	if err := r.stack.Close(); err != nil {
 		log.Error("failed to close bbolt db", "error", err)
 	}
 }
 
-<<<<<<< HEAD
 func loadOrCreateKey(keystoreDir string, keystorePassword string) (*ecdsa.PrivateKey, error) {
 	if _, err := os.Stat(keystoreDir); os.IsNotExist(err) {
 		// If there is no keystore, make a new one.
@@ -362,37 +285,6 @@ func loadOrCreateKey(keystoreDir string, keystorePassword string) (*ecdsa.Privat
 	} else if err != nil {
 		return nil, err
 	}
-=======
-func (r *Roller) persistTask(byt []byte) error {
-	var msg = &message.Msg{}
-	err := json.Unmarshal(byt, msg)
-	if err != nil {
-		return err
-	}
-	if msg.Type != message.TaskMsgType {
-		log.Error("message from coordinator illegal")
-		return nil
-	}
-	var task = &message.TaskMsg{}
-	if err := json.Unmarshal(msg.Payload, task); err != nil {
-		return err
-	}
-	log.Info("Accept task from coordinator", "ID", task.ID)
-
-	blocks := task.Traces
-	sort.Slice(blocks, func(i, j int) bool {
-		return blocks[i].Header.Number.Uint64() < blocks[j].Header.Number.Uint64()
-	})
-
-	return r.stack.Push(&store.ProvingTask{
-		Task: &message.TaskMsg{
-			ID:     task.ID,
-			Traces: blocks,
-		},
-		Times: 0,
-	})
-}
->>>>>>> staging
 
 	entries, err := os.ReadDir(keystoreDir)
 	if err != nil {

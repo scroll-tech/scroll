@@ -2,12 +2,14 @@ package coordinator_test
 
 import (
 	"context"
-	"github.com/scroll-tech/go-ethereum/ethclient"
 	"math/big"
 	"net/http"
 	"strconv"
 	"testing"
 	"time"
+
+	"github.com/scroll-tech/go-ethereum/crypto"
+	"github.com/scroll-tech/go-ethereum/ethclient"
 
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/stretchr/testify/assert"
@@ -15,13 +17,12 @@ import (
 
 	"scroll-tech/bridge/l2"
 	"scroll-tech/bridge/sender"
-	"scroll-tech/database/orm"
-
 	"scroll-tech/common/docker"
 	"scroll-tech/common/message"
 	"scroll-tech/common/utils"
 	"scroll-tech/database"
 	"scroll-tech/database/migrate"
+	"scroll-tech/database/orm"
 
 	"scroll-tech/coordinator"
 	client2 "scroll-tech/coordinator/client"
@@ -180,29 +181,31 @@ func testIdleRollerSelection(t *testing.T) {
 		<-newSender.ConfirmChan()
 	}
 
-	l2Cli,err :=
+	// Get the latest block number.
+	latest, err := l2Cli.BlockNumber(ctx)
+	assert.NoError(t, err)
 
 	// verify proof status
 	var (
-		number   int64 = 1
-		latest   int64
+		number   int64
 		tick     = time.Tick(time.Second)
-		tickStop = time.Tick(time.Second * 600)
+		tickStop = time.Tick(10 * 60 * time.Second)
 	)
 	for {
 		select {
 		case <-tick:
 			// get the latest number
-			if latest, err = l2db.GetBlockTracesLatestHeight(); err != nil || latest <= 0 {
+			if number, err = l2db.GetBlockTracesLatestHeight(); err != nil || number < int64(latest) {
 				continue
 			}
-			if number > latest {
-				close(stopCh)
-				return
+			infos, err := l2db.GetBlockInfos(map[string]interface{}{"number": number}, "LIMIT 1")
+			if err != nil || len(infos) == 0 || !infos[0].BatchID.Valid {
+				continue
 			}
-			status, err := l2db.GetBlockStatusByNumber(uint64(number))
-			if err == nil && (status == orm.BlockVerified || status == orm.BlockSkipped) {
-				number++
+			batchID := infos[0].BatchID.String
+			status, err := l2db.GetProvingStatusByID(batchID)
+			if err == nil && status == orm.ProvingTaskVerified {
+				return
 			}
 		case <-tickStop:
 			t.Error("failed to check proof status")
@@ -252,7 +255,7 @@ func performHandshake(t *testing.T, proofTime time.Duration, name string, wsURL 
 	}
 	assert.NoError(t, authMsg.Sign(privkey))
 
-	traceCh := make(chan *message.BlockTraces, 4)
+	traceCh := make(chan *message.TaskMsg, 4)
 	sub, err := client.RegisterAndSubscribe(ctx, traceCh, authMsg)
 	if err != nil {
 		t.Error(err)
@@ -263,7 +266,7 @@ func performHandshake(t *testing.T, proofTime time.Duration, name string, wsURL 
 		for {
 			select {
 			case trace := <-traceCh:
-				id := trace.Traces.BlockTrace.Number.ToInt().Uint64()
+				id := trace.ID
 				// sleep several seconds to mock the proof process.
 				<-time.After(proofTime * time.Second)
 				proof := &message.AuthZkProof{
