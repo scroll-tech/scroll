@@ -33,7 +33,7 @@ func testCreateNewWatcherAndStop(t *testing.T) {
 	defer l2db.Close()
 
 	l2cfg := cfg.L2Config
-	rc := l2.NewL2WatcherClient(context.Background(), l2Cli, l2cfg.Confirmations, l2cfg.ProofGenerationFreq, l2cfg.SkippedOpcodes, l2cfg.L2MessengerAddress, l2db)
+	rc := l2.NewL2WatcherClient(context.Background(), l2Cli, l2cfg.BatchTimeSec, l2cfg.Confirmations, l2cfg.ProofGenerationFreq, l2cfg.SkippedOpcodes, l2cfg.L2MessengerAddress, l2db)
 	rc.Start()
 	defer rc.Stop()
 
@@ -208,7 +208,7 @@ func testTraceHasUnsupportedOpcodes(t *testing.T) {
 }
 
 func prepareRelayerClient(l2Cli *ethclient.Client, db database.OrmFactory, contractAddr common.Address) *l2.WatcherClient {
-	return l2.NewL2WatcherClient(context.Background(), l2Cli, 0, 1, map[string]struct{}{}, contractAddr, db)
+	return l2.NewL2WatcherClient(context.Background(), l2Cli, 0, 0, 1, map[string]struct{}{}, contractAddr, db)
 }
 
 func prepareAuth(t *testing.T, l2Cli *ethclient.Client, privateKey *ecdsa.PrivateKey) *bind.TransactOpts {
