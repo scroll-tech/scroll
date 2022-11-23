@@ -125,8 +125,6 @@ func (m *Manager) Start() error {
 					startTime:    time.Unix(v.AssignedTime, 0),
 					finishChan:   make(chan rollerProofStatus, proofAndPkBufferSize),
 				}
-				// TODO: change to debug
-				// log.Error("session info: ", "id", s.id, "rollers", s.rollers, "roller_names", s.roller_names, "startTime", s.startTime, "finishChan", s.finishChan)
 				// no lock is required until the port is opened by the coordinator
 				m.sessions[v.SessionID] = s
 				go m.CollectProofs(s.id, s)
@@ -509,8 +507,6 @@ func (m *Manager) StartProofGenerationSession(task *orm.BlockBatch) bool {
 		startTime:  sessionTimestamp,
 		finishChan: make(chan rollerProofStatus, proofAndPkBufferSize),
 	}
-
-	// log.Error("add session: ", "id", s.id, "rollers", s.rollers, "roller_names", s.roller_names, "startTime", s.startTime, "finishChan", s.finishChan)
 
 	// Create a proof generation session.
 	m.mu.Lock()
