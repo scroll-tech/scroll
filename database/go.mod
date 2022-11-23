@@ -7,7 +7,7 @@ require (
 	github.com/lib/pq v1.10.6
 	github.com/mattn/go-sqlite3 v1.14.14
 	github.com/pressly/goose/v3 v3.7.0
-	github.com/scroll-tech/go-ethereum v1.10.14-0.20221012120556-b3a7c9b6917d
+	github.com/scroll-tech/go-ethereum v1.10.14-0.20221121034025-07f21c5075dc
 	github.com/stretchr/testify v1.8.0
 	github.com/urfave/cli/v2 v2.3.0
 )
@@ -21,6 +21,7 @@ require (
 	github.com/iden3/go-iden3-crypto v0.0.12 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/russross/blackfriday/v2 v2.0.1 // indirect
+	github.com/scroll-tech/zktrie v0.3.0 // indirect
 	github.com/shirou/gopsutil v3.21.11+incompatible // indirect
 	github.com/shurcooL/sanitized_anchor_name v1.0.0 // indirect
 	github.com/yusufpapurcu/wmi v1.2.2 // indirect

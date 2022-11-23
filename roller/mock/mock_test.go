@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"testing"
 	"time"
 
@@ -15,16 +16,16 @@ import (
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/stretchr/testify/assert"
 
-	message "scroll-tech/common/message"
+	"scroll-tech/common/message"
 
 	"scroll-tech/roller/config"
 	"scroll-tech/roller/core"
 )
 
 var (
-	cfg        *config.Config
-	scrollPort = 9020
-	mockPath   string
+	cfg             *config.Config
+	coordinatorPort = 9020
+	mockPath        string
 )
 
 func TestMain(m *testing.M) {
@@ -36,12 +37,12 @@ func TestMain(m *testing.M) {
 		os.Exit(1)
 	}
 
-	scrollPort = rand.Intn(9000)
+	coordinatorPort = rand.Intn(9000)
 	cfg = &config.Config{
 		RollerName:       "test-roller",
 		KeystorePath:     filepath.Join(mockPath, "roller-keystore"),
 		KeystorePassword: "mock_test",
-		ScrollURL:        fmt.Sprintf("ws://localhost:%d", scrollPort),
+		CoordinatorURL:   fmt.Sprintf("ws://localhost:%d", coordinatorPort),
 		Prover:           &config.ProverConfig{MockMode: true},
 		DBPath:           filepath.Join(mockPath, "stack_db"),
 	}
@@ -102,15 +103,15 @@ func mockScroll(t *testing.T) {
 		t.Log("signature verification successfully. Roller: ", authMsg.Identity.Name)
 		assert.Equal(t, cfg.RollerName, authMsg.Identity.Name)
 
-		traces := &message.BlockTraces{
-			ID:     16,
+		task := &message.TaskMsg{
+			ID:     strconv.Itoa(16),
 			Traces: nil,
 		}
-		msgByt, err := core.MakeMsgByt(message.BlockTrace, traces)
+		msgByt, err := core.MakeMsgByt(message.TaskMsgType, task)
 		assert.NoError(t, err, "MakeMsgByt")
 
 		err = c.WriteMessage(websocket.BinaryMessage, msgByt)
 		assert.NoError(t, err, "WriteMessage")
 	})
-	http.ListenAndServe(fmt.Sprintf(":%d", scrollPort), nil)
+	http.ListenAndServe(fmt.Sprintf(":%d", coordinatorPort), nil)
 }

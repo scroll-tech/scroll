@@ -207,7 +207,7 @@ func (s *server) handshake(c *websocket.Conn) (*message.AuthMessage, error) {
 	}
 
 	// We should receive a Register message
-	if msg.Type != message.Register {
+	if msg.Type != message.RegisterMsgType {
 		return nil, errors.New("got wrong handshake message, expected Register")
 	}
 
@@ -291,8 +291,8 @@ func (s *server) pingLoop(c *Roller) {
 	}
 }
 
-func (r *Roller) sendMessage(msg message.Msg) error {
-	b, err := json.Marshal(&msg)
+func (r *Roller) sendMessage(msg *message.Msg) error {
+	b, err := json.Marshal(msg)
 	if err != nil {
 		return err
 	}

@@ -27,17 +27,17 @@ func main() {
 	app.Name = "bridge"
 	app.Usage = "The Scroll Bridge"
 	app.Version = version.Version
-	app.Flags = append(app.Flags, commonFlags...)
+	app.Flags = append(app.Flags, utils.CommonFlags...)
 	app.Flags = append(app.Flags, apiFlags...)
 	app.Flags = append(app.Flags, l1Flags...)
 	app.Flags = append(app.Flags, l2Flags...)
 
 	app.Before = func(ctx *cli.Context) error {
 		return utils.Setup(&utils.LogConfig{
-			LogFile:       ctx.String(logFileFlag.Name),
-			LogJSONFormat: ctx.Bool(logJSONFormat.Name),
-			LogDebug:      ctx.Bool(logDebugFlag.Name),
-			Verbosity:     ctx.Int(verbosityFlag.Name),
+			LogFile:       ctx.String(utils.LogFileFlag.Name),
+			LogJSONFormat: ctx.Bool(utils.LogJSONFormat.Name),
+			LogDebug:      ctx.Bool(utils.LogDebugFlag.Name),
+			Verbosity:     ctx.Int(utils.VerbosityFlag.Name),
 		})
 	}
 	// Run the sequencer.
@@ -64,7 +64,7 @@ func applyConfig(ctx *cli.Context, cfg *config.Config) {
 
 func action(ctx *cli.Context) error {
 	// Load config file.
-	cfgFile := ctx.String(configFileFlag.Name)
+	cfgFile := ctx.String(utils.ConfigFileFlag.Name)
 	cfg, err := config.NewConfig(cfgFile)
 	if err != nil {
 		log.Crit("failed to load config file", "config file", cfgFile, "error", err)
