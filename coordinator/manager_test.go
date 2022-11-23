@@ -303,15 +303,17 @@ func TestFunction(t *testing.T) {
 		rollerManager.Stop()
 		hasStopped = true
 
-		rollerManager = setupRollerManager(t, verifierEndpoint, db)
-		defer rollerManager.Stop()
+		newRollerManager := setupRollerManager(t, verifierEndpoint, db)
+		defer newRollerManager.Stop()
 
 		for i := 0; i < numClients; i++ {
 			assert.NoError(t, rollers[i].dialCoordinator())
 			assert.NoError(t, rollers[i].performHandshake())
 		}
 
-		// TODO: send proof
+		for i := 0; i < numClients; i++ {
+			assert.NoError(t, rollers[i].sendProof())
+		}
 	})
 
 	// Teardown
@@ -374,7 +376,7 @@ type mockRoller struct {
 	publicKey  []byte
 	privateKey []byte
 	conn       *websocket.Conn
-	sessions   map[string]bool
+	sessionID  string // currently only one session
 }
 
 func mustGenerateKeyPair() (pubkey, privkey []byte) {
@@ -395,7 +397,7 @@ func mustNewMockRoller() mockRoller {
 	u := url.URL{Scheme: "ws", Host: coordinatorAddr, Path: "/"}
 	wsURL := u.String()
 	publicKey, privateKey := mustGenerateKeyPair()
-	return mockRoller{wsURL: wsURL, publicKey: publicKey, privateKey: privateKey, sessions: make(map[string]bool)}
+	return mockRoller{wsURL: wsURL, publicKey: publicKey, privateKey: privateKey}
 }
 
 func (r *mockRoller) dialCoordinator() error {
@@ -408,7 +410,7 @@ func (r *mockRoller) performHandshake() error {
 	// TODO: deal with unconnected conn
 	authMsg := &message.AuthMessage{
 		Identity: message.Identity{
-			Name:      "testRoller-" + common.Bytes2Hex(r.publicKey),
+			Name:      "testRoller",
 			Timestamp: time.Now().UnixNano(),
 			PublicKey: common.Bytes2Hex(r.publicKey),
 		},
@@ -455,11 +457,32 @@ func (r *mockRoller) readMessage() error {
 		log.Crit("msg.Type != message.TaskMsgType", "msg.Type", msg.Type)
 	}
 	task := &message.TaskMsg{}
-	if err := json.Unmarshal(payload, task); err != nil {
+	if err := json.Unmarshal(msg.Payload, task); err != nil {
 		return err
 	}
-	r.sessions[task.ID] = true
+	r.sessionID = task.ID
 	return nil
+}
+
+func (r *mockRoller) sendProof() error {
+	proofMsg := &message.ProofMsg{
+		Status: message.StatusOk,
+		ID:     r.sessionID,
+		Proof:  &message.AggProof{},
+	}
+	payload, err := json.Marshal(proofMsg)
+	if err != nil {
+		return err
+	}
+	msg := &message.Msg{
+		Type:    message.ProofMsgType,
+		Payload: payload,
+	}
+	msgByt, err := json.Marshal(msg)
+	if err != nil {
+		return err
+	}
+	return r.conn.WriteMessage(websocket.BinaryMessage, msgByt)
 }
 
 func (r *mockRoller) stop() {
