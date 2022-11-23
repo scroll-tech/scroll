@@ -2,9 +2,6 @@ package coordinator_test
 
 import (
 	"context"
-	"crypto/ecdsa"
-	"crypto/elliptic"
-	"crypto/rand"
 	"encoding/binary"
 	"encoding/json"
 	"io"
@@ -15,9 +12,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ethereum/go-ethereum/crypto/secp256k1"
 	"github.com/gorilla/websocket"
-	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/stretchr/testify/assert"
 
 	"scroll-tech/common/docker"
@@ -28,6 +23,7 @@ import (
 
 	"scroll-tech/coordinator"
 	"scroll-tech/coordinator/config"
+	mockRoller "scroll-tech/coordinator/mock"
 )
 
 const managerAddr = "localhost:8132"
@@ -37,8 +33,11 @@ var (
 	dbConfig = &database.DBConfig{
 		DriverName: "postgres",
 	}
-	l2gethImg docker.ImgInstance
-	dbImg     docker.ImgInstance
+	l2gethImg  docker.ImgInstance
+	dbImg      docker.ImgInstance
+	roller     mockRoller.MockRoller
+	rollers    []mockRoller.MockRoller
+	numClients int
 )
 
 func setupEnv(t *testing.T) {
@@ -47,6 +46,12 @@ func setupEnv(t *testing.T) {
 	// initialize db docker image
 	dbImg = docker.NewTestDBDocker(t, "postgres")
 	dbConfig.DSN = dbImg.Endpoint()
+	numClients = 2
+	rollers = make([]mockRoller.MockRoller, numClients)
+	for i := 0; i < numClients; i++ {
+		rollers[i] = mockRoller.MustNewmockRoller()
+	}
+	roller = rollers[0]
 }
 
 func TestFunction(t *testing.T) {
@@ -66,7 +71,8 @@ func TestFunction(t *testing.T) {
 		assert.NoError(t, err)
 		defer c.Close()
 
-		performHandshake(t, c)
+		err = roller.PerformHandshake(c)
+		assert.NoError(t, err)
 
 		// Roller manager should send a Websocket over the GetRollerChan
 		select {
@@ -94,7 +100,8 @@ func TestFunction(t *testing.T) {
 		// Wait for the handshake timeout to pass
 		<-time.After(coordinator.HandshakeTimeout + 1*time.Second)
 
-		performHandshake(t, c)
+		err = roller.PerformHandshake(c)
+		assert.NoError(t, err)
 
 		// No websocket should be received
 		select {
@@ -112,15 +119,16 @@ func TestFunction(t *testing.T) {
 		rollerManager := setupRollerManager(t, verifierEndpoint, nil)
 		defer rollerManager.Stop()
 
-		// Set up and register 2 clients
-		for i := 0; i < 2; i++ {
+		// Set up and register numClients clients
+		for i := 0; i < numClients; i++ {
 			u := url.URL{Scheme: "ws", Host: managerAddr, Path: "/"}
 
 			c, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
 			assert.NoError(t, err)
 			defer c.Close()
 
-			performHandshake(t, c)
+			err = rollers[i].PerformHandshake(c)
+			assert.NoError(t, err)
 
 			// Roller manager should send a Websocket over the GetRollerChan
 			select {
@@ -140,7 +148,6 @@ func TestFunction(t *testing.T) {
 
 		// Test with two clients to make sure traces messages aren't duplicated
 		// to rollers.
-		numClients := uint8(2)
 		verifierEndpoint := setupMockVerifier(t)
 		defer os.RemoveAll(verifierEndpoint)
 
@@ -149,7 +156,7 @@ func TestFunction(t *testing.T) {
 
 		// Set up and register `numClients` clients
 		conns := make([]*websocket.Conn, numClients)
-		for i := 0; i < int(numClients); i++ {
+		for i := 0; i < numClients; i++ {
 			u := url.URL{Scheme: "ws", Host: managerAddr, Path: "/"}
 
 			var conn *websocket.Conn
@@ -157,7 +164,8 @@ func TestFunction(t *testing.T) {
 			assert.NoError(t, err)
 			defer conn.Close()
 
-			performHandshake(t, conn)
+			err = rollers[i].PerformHandshake(conn)
+			assert.NoError(t, err)
 
 			conns[i] = conn
 		}
@@ -200,7 +208,6 @@ func TestFunction(t *testing.T) {
 
 		// Test with two clients to make sure traces messages aren't duplicated
 		// to rollers.
-		numClients := uint8(2)
 		verifierEndpoint := setupMockVerifier(t)
 		defer os.RemoveAll(verifierEndpoint)
 
@@ -210,7 +217,7 @@ func TestFunction(t *testing.T) {
 
 		// Set up and register `numClients` clients
 		conns := make([]*websocket.Conn, numClients)
-		for i := 0; i < int(numClients); i++ {
+		for i := 0; i < numClients; i++ {
 			u := url.URL{Scheme: "ws", Host: managerAddr, Path: "/"}
 
 			var conn *websocket.Conn
@@ -218,7 +225,8 @@ func TestFunction(t *testing.T) {
 			assert.NoError(t, err)
 			conn.SetReadDeadline(time.Now().Add(100 * time.Second))
 
-			performHandshake(t, conn)
+			err = rollers[i].PerformHandshake(conn)
+			assert.NoError(t, err)
 			time.Sleep(1 * time.Second)
 			conns[i] = conn
 		}
@@ -265,6 +273,111 @@ func TestFunction(t *testing.T) {
 		assert.NoError(t, l2gethImg.Stop())
 		assert.NoError(t, dbImg.Stop())
 	})
+
+	t.Run("TestGracefulRestart", func(t *testing.T) {
+		// Create db handler and reset db.
+		db, err := database.NewOrmFactory(dbConfig)
+		assert.NoError(t, err)
+		assert.NoError(t, migrate.ResetDB(db.GetDB().DB))
+
+		// Test with two clients to make sure traces messages aren't duplicated
+		// to rollers.
+		verifierEndpoint := setupMockVerifier(t)
+		defer os.RemoveAll(verifierEndpoint)
+
+		rollerManager := setupRollerManager(t, verifierEndpoint, db)
+		hasStopped := false
+		defer func() {
+			if !hasStopped {
+				defer rollerManager.Stop()
+			}
+		}()
+
+		// Set up and register `numClients` clients
+		conns := make([]*websocket.Conn, numClients)
+		for i := 0; i < numClients; i++ {
+			u := url.URL{Scheme: "ws", Host: managerAddr, Path: "/"}
+
+			var conn *websocket.Conn
+			conn, _, err = websocket.DefaultDialer.Dial(u.String(), nil)
+			assert.NoError(t, err)
+			defer conn.Close()
+
+			err = rollers[i].PerformHandshake(conn)
+			assert.NoError(t, err)
+
+			conns[i] = conn
+		}
+
+		dbTx, err := db.Beginx()
+		assert.NoError(t, err)
+		_, err = db.NewBatchInDBTx(dbTx, &orm.BlockInfo{Number: uint64(1)}, &orm.BlockInfo{Number: uint64(1)}, "0f", 1, 194676)
+		assert.NoError(t, err)
+		_, err = db.NewBatchInDBTx(dbTx, &orm.BlockInfo{Number: uint64(2)}, &orm.BlockInfo{Number: uint64(2)}, "0e", 1, 194676)
+		assert.NoError(t, err)
+		err = dbTx.Commit()
+		assert.NoError(t, err)
+
+		// Need to send a tx to trigger block committed
+		// Sleep for a little bit, so that we can avoid prematurely fetching connections. Trigger for manager is 3 seconds
+		time.Sleep(4 * time.Second)
+
+		// Both rollers should now receive a `BlockTraces` message and should send something back.
+		for _, c := range conns {
+			var mt int
+			var payload []byte
+			mt, payload, err = c.ReadMessage()
+			assert.NoError(t, err)
+
+			assert.Equal(t, mt, websocket.BinaryMessage)
+
+			msg := &message.Msg{}
+			assert.NoError(t, json.Unmarshal(payload, msg))
+			assert.Equal(t, msg.Type, message.TaskMsgType)
+
+			traces := &message.TaskMsg{}
+			assert.NoError(t, json.Unmarshal(payload, traces))
+		}
+
+		// restart coordinator
+		rollerManager.Stop()
+		hasStopped = true
+
+		rollerManager = setupRollerManager(t, verifierEndpoint, db)
+		defer rollerManager.Stop()
+
+		for i := 0; i < numClients; i++ {
+			u := url.URL{Scheme: "ws", Host: managerAddr, Path: "/"}
+
+			var conn *websocket.Conn
+			conn, _, err = websocket.DefaultDialer.Dial(u.String(), nil)
+			assert.NoError(t, err)
+			defer conn.Close()
+
+			err = rollers[i].PerformHandshake(conn)
+			assert.NoError(t, err)
+
+			conns[i] = conn
+		}
+
+		for _, c := range conns {
+			proofMsg := &message.ProofMsg{
+				Status: message.StatusProofError,
+				ID:     "0",
+				Proof:  &message.AggProof{},
+			}
+			payload, err := json.Marshal(proofMsg)
+			assert.NoError(t, err)
+			msg := &message.Msg{
+				Type:    message.ProofMsgType,
+				Payload: payload,
+			}
+			msgByt, err := json.Marshal(msg)
+			assert.NoError(t, err)
+			err = c.WriteMessage(websocket.BinaryMessage, msgByt)
+			assert.NoError(t, err)
+		}
+	})
 }
 
 func setupRollerManager(t *testing.T, verifierEndpoint string, orm database.OrmFactory) *coordinator.Manager {
@@ -279,54 +392,6 @@ func setupRollerManager(t *testing.T, verifierEndpoint string, orm database.OrmF
 	assert.NoError(t, rollerManager.Start())
 
 	return rollerManager
-}
-
-// performHandshake sets up a websocket client to connect to the roller manager.
-func performHandshake(t *testing.T, c *websocket.Conn) {
-	// Try to perform handshake
-	pk, sk := generateKeyPair()
-	authMsg := &message.AuthMessage{
-		Identity: message.Identity{
-			Name:      "testRoller",
-			Timestamp: time.Now().UnixNano(),
-			PublicKey: common.Bytes2Hex(pk),
-		},
-		Signature: "",
-	}
-
-	hash, err := authMsg.Identity.Hash()
-	assert.NoError(t, err)
-	sig, err := secp256k1.Sign(hash, sk)
-	assert.NoError(t, err)
-
-	authMsg.Signature = common.Bytes2Hex(sig)
-
-	b, err := json.Marshal(authMsg)
-	assert.NoError(t, err)
-
-	msg := &message.Msg{
-		Type:    message.RegisterMsgType,
-		Payload: b,
-	}
-
-	b, err = json.Marshal(msg)
-	assert.NoError(t, err)
-
-	assert.NoError(t, c.WriteMessage(websocket.BinaryMessage, b))
-}
-
-func generateKeyPair() (pubkey, privkey []byte) {
-	key, err := ecdsa.GenerateKey(secp256k1.S256(), rand.Reader)
-	if err != nil {
-		panic(err)
-	}
-	pubkey = elliptic.Marshal(secp256k1.S256(), key.X, key.Y)
-
-	privkey = make([]byte, 32)
-	blob := key.D.Bytes()
-	copy(privkey[32-len(blob):], blob)
-
-	return pubkey, privkey
 }
 
 // setupMockVerifier sets up a mocked verifier for a test case.

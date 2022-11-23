@@ -513,6 +513,8 @@ func (m *Manager) StartProofGenerationSession(task *orm.BlockBatch) bool {
 		finishChan: make(chan rollerProofStatus, proofAndPkBufferSize),
 	}
 
+	log.Error("add session: ", "id", s.id, "rollers", s.rollers, "roller_names", s.roller_names, "startTime", s.startTime, "finishChan", s.finishChan)
+
 	// Create a proof generation session.
 	m.mu.Lock()
 	m.sessions[task.ID] = s
