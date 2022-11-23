@@ -111,24 +111,26 @@ func (m *Manager) Start() error {
 		return nil
 	}
 
-	sessions := make(map[string]*session)
-	if persistedSessions, err := m.orm.GetAllRollersInfo(); err != nil {
-		// TODO: change to error
-		log.Crit("db get all rollers info fail", "error", err)
-	} else {
-		for _, v := range persistedSessions {
-			s := &session{
-				id:           v.SessionID,
-				rollers:      v.RollerStatus,
-				roller_names: v.RollerNames,
-				startTime:    time.Unix(v.AssignedTime, 0),
-				finishChan:   make(chan rollerProofStatus, proofAndPkBufferSize),
+	if m.orm != nil {
+		persistedSessions, err := m.orm.GetAllRollersInfo()
+		if err != nil {
+			// TODO: change to error
+			log.Crit("db get all rollers info fail", "error", err)
+		} else {
+			for _, v := range persistedSessions {
+				s := &session{
+					id:           v.SessionID,
+					rollers:      v.RollerStatus,
+					roller_names: v.RollerNames,
+					startTime:    time.Unix(v.AssignedTime, 0),
+					finishChan:   make(chan rollerProofStatus, proofAndPkBufferSize),
+				}
+				// TODO: change to debug
+				log.Error("session info: ", "id", s.id, "rollers", s.rollers, "roller_names", s.roller_names, "startTime", s.startTime, "finishChan", s.finishChan)
+				// no lock is required until the port is opened by the coordinator
+				m.sessions[v.SessionID] = s
+				go m.CollectProofs(s.id, s)
 			}
-			// TODO: change to debug
-			log.Error("session info: ", "id", s.id, "rollers", s.rollers, "roller_names", s.roller_names, "startTime", s.startTime, "finishChan", s.finishChan)
-			// no lock is required until the port is opened by the coordinator
-			sessions[v.SessionID] = s
-			go m.CollectProofs(s.id, s)
 		}
 	}
 
