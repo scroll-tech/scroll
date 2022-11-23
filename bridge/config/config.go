@@ -58,6 +58,8 @@ type L1Config struct {
 type L2Config struct {
 	// Confirmations block height confirmations number.
 	Confirmations uint64 `json:"confirmations"`
+	// ContractEventsBlocksFetchLimit limit the number of blocks we parse events
+	ContractEventsBlocksFetchLimit int64 `json:"contracteventsblocksfetchlimit"`
 	// l2geth chainId.
 	ChainID int64 `json:"chain_id"`
 	// l2geth node url.
@@ -89,7 +91,10 @@ func (l2 *L2Config) UnmarshalJSON(input []byte) error {
 	for _, opcode := range jsonConfig.SkippedOpcodes {
 		l2.SkippedOpcodes[opcode] = struct{}{}
 	}
-	if 0 == l2.ProofGenerationFreq {
+	if l2.ContractEventsBlocksFetchLimit == 0 {
+		l2.ContractEventsBlocksFetchLimit = 10
+	}
+	if l2.ProofGenerationFreq == 0 {
 		l2.ProofGenerationFreq = 1
 	}
 	return nil
