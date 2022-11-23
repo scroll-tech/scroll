@@ -70,8 +70,6 @@ type L2Config struct {
 	SkippedOpcodes map[string]struct{} `json:"-"`
 	// The relayer config
 	RelayerConfig *RelayerConfig `json:"relayer_config"`
-	// Batch time second
-	BatchTimeSec uint64 `json:"-"`
 }
 
 // L2ConfigAlias L2Config alias name, designed just for unmarshal.
@@ -93,9 +91,6 @@ func (l2 *L2Config) UnmarshalJSON(input []byte) error {
 	}
 	if 0 == l2.ProofGenerationFreq {
 		l2.ProofGenerationFreq = 1
-	}
-	if l2.BatchTimeSec == 0 {
-		l2.BatchTimeSec = uint64(5 * 60) // 5min
 	}
 	return nil
 }

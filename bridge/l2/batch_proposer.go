@@ -10,7 +10,8 @@ import (
 )
 
 // batch-related config
-const (
+var (
+	BatchTimeSec      = uint64(5 * 60) // 5min
 	batchGasThreshold = uint64(3_000_000)
 	batchBlocksLimit  = uint64(100)
 )
@@ -53,7 +54,7 @@ func (w *WatcherClient) tryProposeBatch() error {
 	// if it's not old enough we will skip proposing the batch,
 	// otherwise we will still propose a batch
 	if len(blocksToBatch) == len(blocks) && gasUsed < batchGasThreshold &&
-		blocks[0].BlockTimestamp+w.batchTimeSec > uint64(time.Now().Unix()) {
+		blocks[0].BlockTimestamp+BatchTimeSec > uint64(time.Now().Unix()) {
 		return nil
 	}
 
