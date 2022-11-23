@@ -1,11 +1,13 @@
 package integration_test
 
 import (
-	"github.com/stretchr/testify/assert"
-	"scroll-tech/database"
-	"scroll-tech/database/migrate"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
+
+	"scroll-tech/database"
+	"scroll-tech/database/migrate"
 
 	"scroll-tech/common/docker"
 )
