@@ -327,7 +327,6 @@ func (m *Manager) HandleZkProof(pk string, payload []byte) error {
 		}
 
 		success, err = m.verifier.VerifyProof(msg.Proof)
-		log.Error("VerifyProof", "success", success)
 		if err != nil {
 			// record failed session.
 			m.addFailedSession(s, err.Error())

@@ -141,12 +141,7 @@ func TestFunction(t *testing.T) {
 		assert.NoError(t, err)
 		assert.NoError(t, migrate.ResetDB(db.GetDB().DB))
 
-		// Test with two clients to make sure traces messages aren't duplicated
-		// to rollers.
-		verifierEndpoint := setupMockVerifier(t)
-		defer os.RemoveAll(verifierEndpoint)
-
-		rollerManager := setupRollerManager(t, verifierEndpoint, db)
+		rollerManager := setupRollerManager(t, "", db)
 		defer rollerManager.Stop()
 
 		numClients := 2
@@ -180,7 +175,9 @@ func TestFunction(t *testing.T) {
 		// Both rollers should now receive a `BlockTraces` message and should send something back.
 		for i := 0; i < numClients; i++ {
 			assert.NoError(t, rollers[i].readMessage())
+			assert.NoError(t, rollers[i].sendProof())
 		}
+		time.Sleep(3 * time.Second)
 	})
 
 	t.Run("TestIdleRollerSelection", func(t *testing.T) {
@@ -253,12 +250,7 @@ func TestFunction(t *testing.T) {
 		assert.NoError(t, err)
 		assert.NoError(t, migrate.ResetDB(db.GetDB().DB))
 
-		// Test with two clients to make sure traces messages aren't duplicated
-		// to rollers.
-		verifierEndpoint := setupMockVerifier(t)
-		defer os.RemoveAll(verifierEndpoint)
-
-		rollerManager := setupRollerManager(t, verifierEndpoint, db)
+		rollerManager := setupRollerManager(t, "", db)
 		hasStopped := false
 		defer func() {
 			if !hasStopped {
@@ -303,17 +295,16 @@ func TestFunction(t *testing.T) {
 		rollerManager.Stop()
 		hasStopped = true
 
-		newRollerManager := setupRollerManager(t, verifierEndpoint, db)
+		newRollerManager := setupRollerManager(t, "", db)
 		defer newRollerManager.Stop()
 
 		for i := 0; i < numClients; i++ {
 			assert.NoError(t, rollers[i].dialCoordinator())
 			assert.NoError(t, rollers[i].performHandshake())
-		}
-
-		for i := 0; i < numClients; i++ {
 			assert.NoError(t, rollers[i].sendProof())
 		}
+
+		time.Sleep(4 * time.Second)
 	})
 
 	// Teardown
