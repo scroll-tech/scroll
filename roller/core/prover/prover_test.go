@@ -45,9 +45,13 @@ func TestFFI(t *testing.T) {
 
 	traces := make([]*types.BlockTrace, 0)
 	for _, file := range files {
-		f, err := os.Open(filepath.Join(tracesPath, file.Name()))
+		var (
+			f   *os.File
+			byt []byte
+		)
+		f, err = os.Open(filepath.Join(tracesPath, file.Name()))
 		as.NoError(err)
-		byt, err := io.ReadAll(f)
+		byt, err = io.ReadAll(f)
 		as.NoError(err)
 		rpcTrace := &RPCTrace{}
 		as.NoError(json.Unmarshal(byt, rpcTrace))

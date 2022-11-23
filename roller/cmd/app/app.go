@@ -76,7 +76,7 @@ func action(ctx *cli.Context) error {
 		return err
 	}
 	if ctx.IsSet(urlFlag.Name) {
-		cfg.ScrollURL = ctx.String(urlFlag.Name)
+		cfg.CoordinatorURL = ctx.String(urlFlag.Name)
 	}
 
 	// Create roller
