@@ -61,7 +61,7 @@ func TestFunction(t *testing.T) {
 		rollerManager := setupRollerManager(t, verifierEndpoint, nil)
 		defer rollerManager.Stop()
 
-		roller := mustNewMockRoller(coordinatorAddr)
+		roller := mustNewMockRoller()
 		defer roller.stop()
 
 		assert.NoError(t, roller.dialCoordinator())
@@ -83,7 +83,7 @@ func TestFunction(t *testing.T) {
 		rollerManager := setupRollerManager(t, verifierEndpoint, nil)
 		defer rollerManager.Stop()
 
-		roller := mustNewMockRoller(coordinatorAddr)
+		roller := mustNewMockRoller()
 		defer roller.stop()
 
 		assert.NoError(t, roller.dialCoordinator())
@@ -112,7 +112,7 @@ func TestFunction(t *testing.T) {
 		numClients := 2
 		rollers := make([]mockRoller, numClients)
 		for i := 0; i < numClients; i++ {
-			rollers[i] = mustNewMockRoller(coordinatorAddr)
+			rollers[i] = mustNewMockRoller()
 		}
 		defer func() {
 			for i := 0; i < numClients; i++ {
@@ -122,12 +122,6 @@ func TestFunction(t *testing.T) {
 
 		// Set up and register numClients clients
 		for i := 0; i < numClients; i++ {
-			u := url.URL{Scheme: "ws", Host: coordinatorAddr, Path: "/"}
-
-			c, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
-			assert.NoError(t, err)
-			defer c.Close()
-
 			assert.NoError(t, rollers[i].dialCoordinator())
 			assert.NoError(t, rollers[i].performHandshake())
 
@@ -158,7 +152,7 @@ func TestFunction(t *testing.T) {
 		numClients := 2
 		rollers := make([]mockRoller, numClients)
 		for i := 0; i < numClients; i++ {
-			rollers[i] = mustNewMockRoller(coordinatorAddr)
+			rollers[i] = mustNewMockRoller()
 		}
 		defer func() {
 			for i := 0; i < numClients; i++ {
@@ -207,7 +201,7 @@ func TestFunction(t *testing.T) {
 		numClients := 2
 		rollers := make([]mockRoller, numClients)
 		for i := 0; i < numClients; i++ {
-			rollers[i] = mustNewMockRoller(coordinatorAddr)
+			rollers[i] = mustNewMockRoller()
 		}
 		defer func() {
 			for i := 0; i < numClients; i++ {
@@ -275,7 +269,7 @@ func TestFunction(t *testing.T) {
 		numClients := 2
 		rollers := make([]mockRoller, numClients)
 		for i := 0; i < numClients; i++ {
-			rollers[i] = mustNewMockRoller(coordinatorAddr)
+			rollers[i] = mustNewMockRoller()
 		}
 		defer func() {
 			for i := 0; i < numClients; i++ {
@@ -397,7 +391,7 @@ func mustGenerateKeyPair() (pubkey, privkey []byte) {
 	return pubkey, privkey
 }
 
-func mustNewMockRoller(coordinatorAddr string) mockRoller {
+func mustNewMockRoller() mockRoller {
 	u := url.URL{Scheme: "ws", Host: coordinatorAddr, Path: "/"}
 	wsURL := u.String()
 	publicKey, privateKey := mustGenerateKeyPair()
