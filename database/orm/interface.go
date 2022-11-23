@@ -67,11 +67,15 @@ type BlockInfo struct {
 	BlockTimestamp uint64         `json:"block_timestamp" db:"block_timestamp"`
 }
 
+// RollerProveStatus is the roller prove status of a block batch (session)
 type RollerProveStatus int32
 
 const (
+	// RollerAssigned indicates roller assigned but has not submitted proof
 	RollerAssigned RollerProveStatus = iota
+	// RollerProofValid indicates roller has submitted valid proof
 	RollerProofValid
+	// RollerProofInvalid indicates roller has submitted invalid proof
 	RollerProofInvalid
 )
 
