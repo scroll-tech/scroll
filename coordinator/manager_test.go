@@ -268,11 +268,6 @@ func TestFunction(t *testing.T) {
 
 		assert.Equal(t, 0, rollerManager.GetNumberOfIdleRollers())
 	})
-	// Teardown
-	t.Cleanup(func() {
-		assert.NoError(t, l2gethImg.Stop())
-		assert.NoError(t, dbImg.Stop())
-	})
 
 	t.Run("TestGracefulRestart", func(t *testing.T) {
 		// Create db handler and reset db.
@@ -377,6 +372,12 @@ func TestFunction(t *testing.T) {
 			err = c.WriteMessage(websocket.BinaryMessage, msgByt)
 			assert.NoError(t, err)
 		}
+	})
+
+	// Teardown
+	t.Cleanup(func() {
+		assert.NoError(t, l2gethImg.Stop())
+		assert.NoError(t, dbImg.Stop())
 	})
 }
 
