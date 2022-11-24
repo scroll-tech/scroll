@@ -13,6 +13,7 @@ type OrmFactory interface {
 	orm.BlockBatchOrm
 	orm.L1MessageOrm
 	orm.L2MessageOrm
+	orm.SessionInfoOrm
 	GetDB() *sqlx.DB
 	Beginx() (*sqlx.Tx, error)
 	Close() error
@@ -23,6 +24,7 @@ type ormFactory struct {
 	orm.BlockBatchOrm
 	orm.L1MessageOrm
 	orm.L2MessageOrm
+	orm.SessionInfoOrm
 	*sqlx.DB
 }
 
@@ -41,11 +43,12 @@ func NewOrmFactory(cfg *DBConfig) (OrmFactory, error) {
 	}
 
 	return &ormFactory{
-		BlockTraceOrm: orm.NewBlockTraceOrm(db),
-		BlockBatchOrm: orm.NewBlockBatchOrm(db),
-		L1MessageOrm:  orm.NewL1MessageOrm(db),
-		L2MessageOrm:  orm.NewL2MessageOrm(db),
-		DB:            db,
+		BlockTraceOrm:  orm.NewBlockTraceOrm(db),
+		BlockBatchOrm:  orm.NewBlockBatchOrm(db),
+		L1MessageOrm:   orm.NewL1MessageOrm(db),
+		L2MessageOrm:   orm.NewL2MessageOrm(db),
+		SessionInfoOrm: orm.NewSessionInfoOrm(db),
+		DB:             db,
 	}, nil
 }
 

@@ -369,9 +369,6 @@ func (m *Manager) CollectProofs(id string, s *session) {
 
 			// Ensure proper clean-up of resources.
 			defer func() {
-				if err := m.orm.DeleteRollersInfoByID(id); err != nil {
-					log.Error("db delete session rollers info fail", "error", err)
-				}
 				delete(m.sessions, id)
 				m.mu.Unlock()
 			}()

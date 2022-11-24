@@ -101,6 +101,15 @@ type BlockTraceOrm interface {
 	SetBatchIDForBlocksInDBTx(dbTx *sqlx.Tx, numbers []uint64, batchID string) error
 }
 
+// SessionInfoOrm sessions info operation inte
+type SessionInfoOrm interface {
+	GetRollersInfoByID(id string) (*RollersInfo, error)
+	GetAllRollersInfo() ([]*RollersInfo, error)
+	SetRollersInfoByID(id string, rollersInfo *RollersInfo) error
+	UpdateRollerProofStatusByID(id string, rollerPublicKey string, rollerProofStatus RollerProveStatus) error
+	GetProvingSessionIDs() ([]string, error)
+}
+
 // BlockBatchOrm block_batch operation interface
 type BlockBatchOrm interface {
 	GetBlockBatches(fields map[string]interface{}, args ...string) ([]*BlockBatch, error)
@@ -118,11 +127,6 @@ type BlockBatchOrm interface {
 	UpdateRollupStatus(ctx context.Context, id string, status RollupStatus) error
 	UpdateCommitTxHashAndRollupStatus(ctx context.Context, id string, commit_tx_hash string, status RollupStatus) error
 	UpdateFinalizeTxHashAndRollupStatus(ctx context.Context, id string, finalize_tx_hash string, status RollupStatus) error
-	GetRollersInfoByID(id string) (*RollersInfo, error)
-	GetAllRollersInfo() ([]*RollersInfo, error)
-	SetRollersInfoByID(id string, rollersInfo *RollersInfo) error
-	UpdateRollerProofStatusByID(id string, rollerPublicKey string, rollerProofStatus RollerProveStatus) error
-	DeleteRollersInfoByID(id string) error
 }
 
 // L1MessageOrm is layer1 message db interface

@@ -3,7 +3,6 @@ package orm
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"math/big"
@@ -336,78 +335,4 @@ func (o *blockBatchOrm) UpdateFinalizeTxHashAndRollupStatus(ctx context.Context,
 		_, err := o.db.Exec(o.db.Rebind("update block_batch set finalize_tx_hash = ?, rollup_status = ? where id = ?;"), finalize_tx_hash, status, id)
 		return err
 	}
-}
-
-func (o *blockBatchOrm) GetRollersInfoByID(id string) (*RollersInfo, error) {
-	row := o.db.QueryRow(`SELECT rollers_info FROM block_batch WHERE id = $1 and rollers_info IS NOT NULL`, id)
-	var infoBytes []byte
-	if err := row.Scan(&infoBytes); err != nil {
-		if err == sql.ErrNoRows {
-			return &RollersInfo{}, nil
-		}
-		return nil, err
-	}
-	rollersInfo := &RollersInfo{}
-	if err := json.Unmarshal(infoBytes, rollersInfo); err != nil {
-		return nil, err
-	}
-	return rollersInfo, nil
-}
-
-func (o *blockBatchOrm) GetAllRollersInfo() ([]*RollersInfo, error) {
-	rows, err := o.db.Queryx(`SELECT rollers_info FROM block_batch WHERE rollers_info IS NOT NULL`)
-	if err != nil {
-		return nil, err
-	}
-
-	var infos []*RollersInfo
-	for rows.Next() {
-		var infoBytes []byte
-		if err = rows.Scan(&infoBytes); err != nil {
-			return nil, err
-		}
-		var rollersInfo RollersInfo
-		if err = json.Unmarshal(infoBytes, &rollersInfo); err != nil {
-			return nil, err
-		}
-		infos = append(infos, &rollersInfo)
-	}
-	if err != nil {
-		return nil, err
-	}
-
-	return infos, rows.Close()
-}
-
-func (o *blockBatchOrm) SetRollersInfoByID(id string, rollersInfo *RollersInfo) error {
-	infoBytes, err := json.Marshal(rollersInfo)
-	if err != nil {
-		return err
-	}
-	_, err = o.db.Exec(o.db.Rebind(`UPDATE block_batch set rollers_info = ? where id = ?;`), infoBytes, id)
-	return err
-}
-
-func (o *blockBatchOrm) UpdateRollerProofStatusByID(id string, rollerPublicKey string, rollerProofStatus RollerProveStatus) error {
-	row := o.db.QueryRow(`SELECT rollers_info FROM block_batch WHERE id = $1 and rollers_info IS NOT NULL`, id)
-	var infoBytes []byte
-	if err := row.Scan(&infoBytes); err != nil {
-		return err
-	}
-	var rollersInfo RollersInfo
-	if err := json.Unmarshal(infoBytes, &rollersInfo); err != nil {
-		return err
-	}
-	rollersInfo.RollerStatus[rollerPublicKey] = rollerProofStatus
-	infoBytes, err := json.Marshal(rollersInfo)
-	if err != nil {
-		return err
-	}
-	_, err = o.db.Exec(o.db.Rebind(`UPDATE block_batch set rollers_info = ? where id = ?;`), infoBytes, id)
-	return err
-}
-
-func (o *blockBatchOrm) DeleteRollersInfoByID(id string) error {
-	_, err := o.db.Exec(o.db.Rebind(`UPDATE block_batch set rollers_info = ? where id = ?;`), sql.NullString{}, id)
-	return err
 }
