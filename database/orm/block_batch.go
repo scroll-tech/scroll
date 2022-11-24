@@ -354,7 +354,7 @@ func (o *blockBatchOrm) GetRollersInfoByID(id string) (*RollersInfo, error) {
 	return rollersInfo, nil
 }
 
-func (o *blockBatchOrm) GetAllRollersInfo() ([]RollersInfo, error) {
+func (o *blockBatchOrm) GetAllRollersInfo() ([]*RollersInfo, error) {
 	rows, err := o.db.Queryx(`SELECT rollers_info FROM block_batch WHERE rollers_info IS NOT NULL`)
 	if err != nil {
 		return nil, err
@@ -370,7 +370,7 @@ func (o *blockBatchOrm) GetAllRollersInfo() ([]RollersInfo, error) {
 		if err = json.Unmarshal(infoBytes, &rollersInfo); err != nil {
 			return nil, err
 		}
-		infos = append(infos, rollersInfo)
+		infos = append(infos, &rollersInfo)
 	}
 	if err != nil {
 		return nil, err

@@ -325,7 +325,7 @@ func testOrmBlockbatch(t *testing.T) {
 			"0": "roller 0",
 		},
 		AssignedTime: time.Now().Unix()}
-	err = ormBatch.SetRollersInfoByID(batchID1, rollersInfo)
+	err = ormBatch.SetRollersInfoByID(batchID1, &rollersInfo)
 	assert.NoError(t, err)
 	rollers_info, err = ormBatch.GetRollersInfoByID(batchID1)
 	assert.NoError(t, err)

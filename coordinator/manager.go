@@ -483,7 +483,7 @@ func (m *Manager) StartProofGenerationSession(task *orm.BlockBatch) bool {
 
 	sessionTimestamp := time.Now()
 
-	if err = m.orm.SetRollersInfoByID(task.ID, orm.RollersInfo{
+	if err = m.orm.SetRollersInfoByID(task.ID, &orm.RollersInfo{
 		SessionID: task.ID,
 		RollerStatus: map[string]orm.RollerProveStatus{
 			pk: orm.RollerAssigned,
