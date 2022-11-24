@@ -2,21 +2,15 @@ package coordinator_test
 
 import (
 	"context"
-	"math/big"
 	"net/http"
 	"strconv"
 	"testing"
 	"time"
 
 	"github.com/scroll-tech/go-ethereum/crypto"
-	"github.com/scroll-tech/go-ethereum/ethclient"
-
-	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/sync/errgroup"
 
-	"scroll-tech/bridge/l2"
-	"scroll-tech/bridge/sender"
 	"scroll-tech/common/docker"
 	"scroll-tech/common/message"
 	"scroll-tech/common/utils"
@@ -36,10 +30,10 @@ const managerURL = "localhost:8132"
 const managerPort = ":8132"
 
 var (
-	cfg              *bridge_config.Config
-	l2gethImg, dbImg docker.ImgInstance
-	rollerManager    *coordinator.Manager
-	handle           *http.Server
+	cfg           *bridge_config.Config
+	dbImg         docker.ImgInstance
+	rollerManager *coordinator.Manager
+	handle        *http.Server
 )
 
 func setEnv(t *testing.T) error {
@@ -47,11 +41,6 @@ func setEnv(t *testing.T) error {
 	// Load config.
 	cfg, err = bridge_config.NewConfig("../bridge/config.json")
 	assert.NoError(t, err)
-
-	// Create l2geth container.
-	l2gethImg = docker.NewTestL2Docker(t)
-	cfg.L1Config.RelayerConfig.SenderConfig.Endpoint = l2gethImg.Endpoint()
-	cfg.L2Config.Endpoint = l2gethImg.Endpoint()
 
 	// Create db container.
 	dbImg = docker.NewTestDBDocker(t, cfg.DBConfig.DriverName)
@@ -78,7 +67,6 @@ func TestApis(t *testing.T) {
 	t.Cleanup(func() {
 		handle.Shutdown(context.Background())
 		rollerManager.Stop()
-		l2gethImg.Stop()
 		dbImg.Stop()
 	})
 }
@@ -143,69 +131,41 @@ func testSeveralConnections(t *testing.T) {
 }
 
 func testIdleRollerSelection(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
 	// Create db handler and reset db.
 	l2db, err := database.NewOrmFactory(cfg.DBConfig)
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(l2db.GetDB().DB))
 	defer l2db.Close()
 
-	var (
-		l2cfg = cfg.L2Config
-		l2Cli *ethclient.Client
-	)
-	l2Cli, err = ethclient.Dial(l2cfg.Endpoint)
-	assert.NoError(t, err)
-	rc := l2.NewL2WatcherClient(context.Background(), l2Cli, l2cfg.Confirmations, l2cfg.ProofGenerationFreq, l2cfg.SkippedOpcodes, l2cfg.L2MessengerAddress, l2db)
-	rc.Start()
-	defer rc.Stop()
-
 	// create ws connections.
 	batch := 20
 	stopCh := make(chan struct{})
 	for i := 0; i < batch; i++ {
-		performHandshake(t, 1, "roller_test"+strconv.Itoa(i), "ws://"+managerURL, stopCh)
+		performHandshake(t, 0, "roller_test"+strconv.Itoa(i), "ws://"+managerURL, stopCh)
 	}
 	assert.Equal(t, batch, rollerManager.GetNumberOfIdleRollers())
 
-	relayCfg := cfg.L1Config.RelayerConfig
-	relayCfg.SenderConfig.Confirmations = 0
-	to := common.HexToAddress("0x4592d8f8d7b001e72cb26a73e4fa1806a51ac79d")
-	newSender, err := sender.NewSender(ctx, relayCfg.SenderConfig, relayCfg.MessageSenderPrivateKeys)
-	assert.True(t, assert.NoError(t, err), "unable to create a sender instance.")
-	for i := 0; i < 2; i++ {
-		_, err = newSender.SendTransaction(strconv.Itoa(1000+i), &to, big.NewInt(1000000000), nil)
-		assert.NoError(t, err)
-		<-newSender.ConfirmChan()
-	}
-
-	// Get the latest block number.
-	latest, err := l2Cli.BlockNumber(ctx)
+	var ids = make([]string, 2)
+	dbTx, err := l2db.Beginx()
 	assert.NoError(t, err)
+	for i := range ids {
+		ID, err := l2db.NewBatchInDBTx(dbTx, &orm.BlockInfo{Number: uint64(i)}, &orm.BlockInfo{Number: uint64(i)}, "0f", 1, 194676)
+		assert.NoError(t, err)
+		ids[i] = ID
+	}
+	assert.NoError(t, dbTx.Commit())
 
 	// verify proof status
 	var (
-		number   int64
-		tick     = time.Tick(time.Second)
+		tick     = time.Tick(500 * time.Millisecond)
 		tickStop = time.Tick(10 * 60 * time.Second)
 	)
-	for {
+	for len(ids) > 0 {
 		select {
 		case <-tick:
-			// get the latest number
-			if number, err = l2db.GetBlockTracesLatestHeight(); err != nil || number < int64(latest) {
-				continue
-			}
-			infos, err := l2db.GetBlockInfos(map[string]interface{}{"number": number}, "LIMIT 1")
-			if err != nil || len(infos) == 0 || !infos[0].BatchID.Valid {
-				continue
-			}
-			batchID := infos[0].BatchID.String
-			status, err := l2db.GetProvingStatusByID(batchID)
+			status, err := l2db.GetProvingStatusByID(ids[0])
 			if err == nil && status == orm.ProvingTaskVerified {
-				return
+				ids = ids[1:]
 			}
 		case <-tickStop:
 			t.Error("failed to check proof status")
@@ -268,7 +228,9 @@ func performHandshake(t *testing.T, proofTime time.Duration, name string, wsURL 
 			case trace := <-traceCh:
 				id := trace.ID
 				// sleep several seconds to mock the proof process.
-				<-time.After(proofTime * time.Second)
+				if proofTime > 0 {
+					<-time.After(proofTime * time.Second)
+				}
 				proof := &message.AuthZkProof{
 					ProofMsg: &message.ProofMsg{
 						ID:     id,
