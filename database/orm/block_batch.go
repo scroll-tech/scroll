@@ -360,7 +360,7 @@ func (o *blockBatchOrm) GetAllRollersInfo() ([]RollersInfo, error) {
 		return nil, err
 	}
 
-	var infos []RollersInfo
+	var infos []*RollersInfo
 	for rows.Next() {
 		var infoBytes []byte
 		if err = rows.Scan(&infoBytes); err != nil {
