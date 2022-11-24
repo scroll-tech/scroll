@@ -107,7 +107,6 @@ type SessionInfoOrm interface {
 	GetAllRollersInfo() ([]*RollersInfo, error)
 	SetRollersInfoByID(id string, rollersInfo *RollersInfo) error
 	UpdateRollerProofStatusByID(id string, rollerPublicKey string, rollerProofStatus RollerProveStatus) error
-	GetProvingSessionIDs() ([]string, error)
 }
 
 // BlockBatchOrm block_batch operation interface

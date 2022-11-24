@@ -14,7 +14,7 @@ type sessionInfoOrm struct {
 
 var _ SessionInfoOrm = (*sessionInfoOrm)(nil)
 
-// NewBlockBatchOrm create an blockBatchOrm instance
+// NewSessionInfoOrm create an sessionInfoOrm instance
 func NewSessionInfoOrm(db *sqlx.DB) SessionInfoOrm {
 	return &sessionInfoOrm{db: db}
 }

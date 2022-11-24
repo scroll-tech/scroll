@@ -366,17 +366,11 @@ func testOrmSessionInfo(t *testing.T) {
 	assert.Equal(t, rollersInfo, *rollers_info)
 
 	assert.NoError(t, ormBatch.UpdateProvingStatus(batchID, orm.ProvingTaskAssigned))
-	ids, err := ormSession.GetProvingSessionIDs()
-	assert.NoError(t, err)
-	assert.Equal(t, 1, len(ids))
 	all_rollers_info, err = ormSession.GetAllRollersInfo()
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(all_rollers_info))
 
 	assert.NoError(t, ormBatch.UpdateProvingStatus(batchID, orm.ProvingTaskVerified))
-	ids, err = ormSession.GetProvingSessionIDs()
-	assert.NoError(t, err)
-	assert.Equal(t, 0, len(ids))
 	all_rollers_info, err = ormSession.GetAllRollersInfo()
 	assert.NoError(t, err)
 	assert.Equal(t, 0, len(all_rollers_info))
