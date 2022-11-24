@@ -168,10 +168,6 @@ func TestFunction(t *testing.T) {
 		err = dbTx.Commit()
 		assert.NoError(t, err)
 
-		// Need to send a tx to trigger block committed
-		// Sleep for a little bit, so that we can avoid prematurely fetching connections. Trigger for manager is 3 seconds
-		time.Sleep(4 * time.Second)
-
 		// Both rollers should now receive a `BlockTraces` message and should send something back.
 		for i := 0; i < numClients; i++ {
 			assert.NoError(t, rollers[i].readMessage())
@@ -221,8 +217,8 @@ func TestFunction(t *testing.T) {
 		assert.NoError(t, err)
 
 		// Sleep for a little bit, so that we can avoid prematurely fetching connections.
-		// Test first roller and check if we have one roller idle one roller busy
-		time.Sleep(4 * time.Second)
+		// Test Second roller and check if we have all rollers busy
+		time.Sleep(3 * time.Second)
 
 		assert.Equal(t, 1, rollerManager.GetNumberOfIdleRollers())
 
@@ -235,7 +231,7 @@ func TestFunction(t *testing.T) {
 
 		// Sleep for a little bit, so that we can avoid prematurely fetching connections.
 		// Test Second roller and check if we have all rollers busy
-		time.Sleep(4 * time.Second)
+		time.Sleep(3 * time.Second)
 
 		for i := 0; i < numClients; i++ {
 			assert.NoError(t, rollers[i].readMessage())
