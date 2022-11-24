@@ -379,7 +379,7 @@ func (o *blockBatchOrm) GetAllRollersInfo() ([]RollersInfo, error) {
 	return infos, rows.Close()
 }
 
-func (o *blockBatchOrm) SetRollersInfoByID(id string, rollersInfo RollersInfo) error {
+func (o *blockBatchOrm) SetRollersInfoByID(id string, rollersInfo *RollersInfo) error {
 	infoBytes, err := json.Marshal(rollersInfo)
 	if err != nil {
 		return err
