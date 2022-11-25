@@ -6,7 +6,7 @@ require (
 	github.com/ethereum/go-ethereum v1.10.13
 	github.com/gorilla/websocket v1.4.2
 	github.com/orcaman/concurrent-map v1.0.0
-	github.com/scroll-tech/go-ethereum v1.10.14-0.20221121034025-07f21c5075dc
+	github.com/scroll-tech/go-ethereum v1.10.14-0.20221125025612-4ea77a7577c6
 	github.com/stretchr/testify v1.8.0
 	github.com/urfave/cli/v2 v2.3.0
 )
