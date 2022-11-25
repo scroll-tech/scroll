@@ -148,6 +148,13 @@ func testOrmBlockTraces(t *testing.T) {
 	assert.Equal(t, true, len(res) == 0)
 	t.Log(5)
 
+	t.Log(blockTrace)
+	t.Log(666)
+	t.Log(blockTrace.Header)
+	t.Log(7777)
+	t.Log(blockTrace.Header.Number)
+	t.Log(888)
+
 	exist, err := ormBlock.Exist(blockTrace.Header.Number.Uint64())
 	t.Log(6)
 	assert.NoError(t, err)
