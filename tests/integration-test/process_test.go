@@ -1,6 +1,14 @@
 package integration_test
 
 import (
+	"context"
+	"github.com/scroll-tech/go-ethereum/common"
+	"github.com/scroll-tech/go-ethereum/ethclient"
+	"golang.org/x/sync/errgroup"
+	"math/big"
+	"scroll-tech/bridge/config"
+	"scroll-tech/bridge/sender"
+	"strconv"
 	"testing"
 	"time"
 
@@ -28,7 +36,12 @@ func testDatabaseOperation(t *testing.T) {
 }
 
 func testBridgeOperation(t *testing.T) {
-	cmd := docker.NewCmd(t)
+	cfg, err := config.NewConfig("../../bridge/config.json")
+	assert.NoError(t, err)
+	cfg.L2Config.Endpoint = l2gethImg.Endpoint()
+	cfg.L1Config.Endpoint = l1gethImg.Endpoint()
+	cfg.L1Config.RelayerConfig.SenderConfig.Endpoint = l2gethImg.Endpoint()
+	cfg.L2Config.RelayerConfig.SenderConfig.Endpoint = l1gethImg.Endpoint()
 
 	db, err := database.NewOrmFactory(&database.DBConfig{
 		DriverName: "postgres",
@@ -38,14 +51,54 @@ func testBridgeOperation(t *testing.T) {
 	// Reset db.
 	assert.NoError(t, migrate.ResetDB(db.GetDB().DB))
 
+	cmd := docker.NewCmd(t)
+	cmd.OpenLog(true)
+	defer cmd.WaitExit()
 	// Start bridge service.
-	cmd.Run("bridge-test", "--log.debug",
+	go cmd.Run("bridge-test", "--log.debug",
 		"--config", "../../bridge/config.json",
 		"--l1.endpoint", l1gethImg.Endpoint(),
 		"--l2.endpoint", l2gethImg.Endpoint(),
 		"--db.dsn", dbImg.Endpoint())
 
-	//cmd.ExpectWithTimeout(false, time.Second*20, "")
-	<-time.After(time.Second * 20)
-	cmd.WaitExit()
+	relayerCfg := cfg.L1Config.RelayerConfig
+	relayerCfg.SenderConfig.Confirmations = 0
+	newSender, err := sender.NewSender(context.Background(), relayerCfg.SenderConfig, relayerCfg.MessageSenderPrivateKeys)
+	assert.NoError(t, err)
+
+	// Send txs in parallel.
+	var (
+		eg errgroup.Group
+		to = common.HexToAddress("0xFe94e28e4092A4Edc906D59b59623544B81b7F80")
+	)
+	for i := 0; i < newSender.NumberOfAccounts(); i++ {
+		eg.Go(func() error {
+			_, err = newSender.SendTransaction(strconv.Itoa(i), &to, big.NewInt(1), nil)
+			if err == nil {
+				<-newSender.ConfirmChan()
+			}
+			return err
+		})
+	}
+	assert.NoError(t, eg.Wait())
+
+	l2Cli, err := ethclient.Dial(l2gethImg.Endpoint())
+	assert.NoError(t, err)
+	latest, err := l2Cli.BlockNumber(context.Background())
+	assert.NoError(t, err)
+
+	var (
+		tick     = time.NewTicker(time.Second)
+		tickStop = time.After(time.Second * 30)
+		number   int64
+	)
+	for latest > uint64(number) {
+		select {
+		case <-tick.C:
+			number, _ = db.GetBlockTracesLatestHeight()
+		case <-tickStop:
+			t.Errorf("has not receive the latest trace after %d seconds", 10)
+			return
+		}
+	}
 }

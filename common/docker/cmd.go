@@ -50,12 +50,14 @@ func (tt *Cmd) Run(name string, args ...string) {
 		Stdout: tt,
 	}
 	if err := tt.cmd.Run(); err != nil {
-		tt.Fatal(err)
+		tt.Error(err)
 	}
 }
 
 // WaitExit wait util process exit.
 func (tt *Cmd) WaitExit() {
+	// Send interrupt signal.
+	tt.cmd.Process.Signal(os.Interrupt)
 	tt.Err = tt.cmd.Wait()
 	select {
 	case tt.stopCh <- struct{}{}:
