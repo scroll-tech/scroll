@@ -34,7 +34,7 @@ type rollerProofStatus struct {
 
 // Contains all the information on an ongoing proof generation session.
 type session struct {
-	sessionInfo *orm.SessionInfo
+	sess *orm.SessionInfo
 	// finish channel is used to pass the public key of the rollers who finished proving process.
 	finishChan chan rollerProofStatus
 }
@@ -115,12 +115,12 @@ func (m *Manager) Start() error {
 		} else {
 			for _, v := range persistedSessions {
 				s := &session{
-					sessionInfo: v,
+					sess: v,
 					finishChan:  make(chan rollerProofStatus, proofAndPkBufferSize),
 				}
 				// no lock is required until the port is opened by the coordinator
-				m.sessions[s.sessionInfo.ID] = s
-				go m.CollectProofs(s.sessionInfo.ID, s)
+				m.sessions[s.sess.ID] = s
+				go m.CollectProofs(s.sess.ID, s)
 			}
 		}
 	}
@@ -253,10 +253,10 @@ func (m *Manager) HandleZkProof(pk string, payload []byte) error {
 	if !ok {
 		return fmt.Errorf("proof generation session for id %v does not exist", msg.ID)
 	}
-	proofTimeSec := uint64(time.Since(time.Unix(s.sessionInfo.StartTimestamp, 0)).Seconds())
+	proofTimeSec := uint64(time.Since(time.Unix(s.sess.StartTimestamp, 0)).Seconds())
 
 	// Ensure this roller is eligible to participate in the session.
-	if status, ok := s.sessionInfo.RollerStatus[pk]; !ok {
+	if status, ok := s.sess.RollerStatus[pk]; !ok {
 		return fmt.Errorf("roller %s is not eligible to partake in proof session %v", pk, msg.ID)
 	} else if status == orm.RollerProofValid {
 		// In order to prevent DoS attacks, it is forbidden to repeatedly submit valid proofs.
@@ -369,7 +369,7 @@ func (m *Manager) CollectProofs(id string, s *session) {
 			// Pick a random winner.
 			// First, round up the keys that actually sent in a valid proof.
 			var participatingRollers []string
-			for pk, status := range s.sessionInfo.RollerStatus {
+			for pk, status := range s.sess.RollerStatus {
 				if status == orm.RollerProofValid {
 					participatingRollers = append(participatingRollers, pk)
 				}
@@ -397,9 +397,9 @@ func (m *Manager) CollectProofs(id string, s *session) {
 			return
 		case ret := <-s.finishChan:
 			m.mu.Lock()
-			s.sessionInfo.RollerStatus[ret.pk] = ret.status
+			s.sess.RollerStatus[ret.pk] = ret.status
 			m.mu.Unlock()
-			if err := m.orm.SetSessionInfo(s.sessionInfo); err != nil {
+			if err := m.orm.SetSessionInfo(s.sess); err != nil {
 				log.Error("db set session info fail", "pk", ret.pk, "error", err)
 			}
 		}
@@ -471,7 +471,7 @@ func (m *Manager) StartProofGenerationSession(task *orm.BlockBatch) bool {
 		return false
 	}
 
-	sessionInfo := &orm.SessionInfo{
+	sess := &orm.SessionInfo{
 		ID: task.ID,
 		RollerStatus: map[string]orm.RollerProveStatus{
 			pk: orm.RollerAssigned,
@@ -481,13 +481,13 @@ func (m *Manager) StartProofGenerationSession(task *orm.BlockBatch) bool {
 		},
 		StartTimestamp: time.Now().Unix(),
 	}
-	if err := m.orm.SetSessionInfo(sessionInfo); err != nil {
+	if err := m.orm.SetSessionInfo(sess); err != nil {
 		log.Error("db set session info fail", "pk", pk, "error", err)
 	}
 
 	// Create a proof generation session.
 	s := &session{
-		sessionInfo: sessionInfo,
+		sess: sess,
 		finishChan:  make(chan rollerProofStatus, proofAndPkBufferSize),
 	}
 	m.mu.Lock()
@@ -534,7 +534,7 @@ func (m *Manager) IsRollerIdle(hexPk string) bool {
 	// We need to iterate over all sessions because finished sessions will be deleted until the
 	// timeout. So a busy roller could be marked as idle in a finished session.
 	for _, sess := range m.sessions {
-		for pk, status := range sess.sessionInfo.RollerStatus {
+		for pk, status := range sess.sess.RollerStatus {
 			if pk == hexPk && status == orm.RollerAssigned {
 				return false
 			}
@@ -574,5 +574,5 @@ func createTaskMsg(taskID string, traces []*types.BlockTrace) (*message.Msg, err
 }
 
 func (m *Manager) addFailedSession(s *session, errMsg string) {
-	m.failedSessionInfos[s.sessionInfo.ID] = newSessionInfo(s, orm.ProvingTaskFailed, errMsg, true)
+	m.failedSessionInfos[s.sess.ID] = newSessionInfo(s, orm.ProvingTaskFailed, errMsg, true)
 }
