@@ -115,7 +115,7 @@ func (m *Manager) Start() error {
 					sess:       v,
 					finishChan: make(chan rollerProofStatus, proofAndPkBufferSize),
 				}
-				// no lock is required until the port is opened by the coordinator
+				// no lock is required now
 				m.sessions[s.sess.ID] = s
 				go m.CollectProofs(s.sess.ID, s)
 			}

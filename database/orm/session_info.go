@@ -19,7 +19,7 @@ func NewSessionInfoOrm(db *sqlx.DB) SessionInfoOrm {
 }
 
 func (o *sessionInfoOrm) GetSessionInfoByID(id string) (*SessionInfo, error) {
-	row := o.db.QueryRow(`SELECT rollers_info FROM session_info WHERE id = $1 and rollers_info IS NOT NULL`, id)
+	row := o.db.QueryRow(`SELECT rollers_info FROM session_info WHERE id = $1`, id)
 	var infoBytes []byte
 	if err := row.Scan(&infoBytes); err != nil {
 		if err == sql.ErrNoRows {
