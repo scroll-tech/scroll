@@ -105,18 +105,15 @@ func (m *Manager) Start() error {
 
 	// m.orm may be nil in scroll tests
 	if m.orm != nil {
-		ids, err := m.orm.GetProvingBatchesIDs()
-		if err != nil {
+		if ids, err := m.orm.GetProvingBatchesIDs(); err != nil {
 			log.Error("db get proving batches ids fail", "error", err)
-		}
-		persistedSessions, err := m.orm.GetSessionInfosByIDs(ids)
-		if err != nil {
+		} else if persistedSessions, err := m.orm.GetSessionInfosByIDs(ids); err != nil {
 			log.Error("db get session info fail", "error", err)
 		} else {
 			for _, v := range persistedSessions {
 				s := &session{
-					sess: v,
-					finishChan:  make(chan rollerProofStatus, proofAndPkBufferSize),
+					sess:       v,
+					finishChan: make(chan rollerProofStatus, proofAndPkBufferSize),
 				}
 				// no lock is required until the port is opened by the coordinator
 				m.sessions[s.sess.ID] = s
@@ -487,8 +484,8 @@ func (m *Manager) StartProofGenerationSession(task *orm.BlockBatch) bool {
 
 	// Create a proof generation session.
 	s := &session{
-		sess: sess,
-		finishChan:  make(chan rollerProofStatus, proofAndPkBufferSize),
+		sess:       sess,
+		finishChan: make(chan rollerProofStatus, proofAndPkBufferSize),
 	}
 	m.mu.Lock()
 	m.sessions[task.ID] = s
