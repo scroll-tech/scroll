@@ -339,8 +339,7 @@ func testOrmSessionInfo(t *testing.T) {
 	assert.Equal(t, 1, len(ids))
 	session_infos, err := ormSession.GetSessionInfosByIDs(ids)
 	assert.NoError(t, err)
-	assert.Equal(t, 1, len(session_infos))
-	assert.Equal(t, orm.SessionInfo{}, *session_infos[0])
+	assert.Equal(t, 0, len(session_infos))
 
 	sessionInfo := orm.SessionInfo{
 		ID: batchID,

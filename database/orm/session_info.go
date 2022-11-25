@@ -1,7 +1,6 @@
 package orm
 
 import (
-	"database/sql"
 	"encoding/json"
 
 	"github.com/jmoiron/sqlx"
@@ -18,27 +17,26 @@ func NewSessionInfoOrm(db *sqlx.DB) SessionInfoOrm {
 	return &sessionInfoOrm{db: db}
 }
 
-func (o *sessionInfoOrm) GetSessionInfoByID(id string) (*SessionInfo, error) {
-	row := o.db.QueryRow(`SELECT rollers_info FROM session_info WHERE id = $1`, id)
-	var infoBytes []byte
-	if err := row.Scan(&infoBytes); err != nil {
-		if err == sql.ErrNoRows {
-			return &SessionInfo{}, nil
-		}
-		return nil, err
-	}
-	rollersInfo := &SessionInfo{}
-	if err := json.Unmarshal(infoBytes, rollersInfo); err != nil {
-		return nil, err
-	}
-	return rollersInfo, nil
-}
-
 func (o *sessionInfoOrm) GetSessionInfosByIDs(ids []string) ([]*SessionInfo, error) {
+	if len(ids) == 0 {
+		return []*SessionInfo{}, nil
+	}
+	query, args, err := sqlx.In("SELECT rollers_info FROM session_info WHERE id IN (?);", ids)
+	if err != nil {
+		return nil, err
+	}
+	rows, err := o.db.Queryx(o.db.Rebind(query), args...)
+	if err != nil {
+		return nil, err
+	}
 	var sessionInfos []*SessionInfo
-	for _, id := range ids {
-		sessionInfo, err := o.GetSessionInfoByID(id)
-		if err != nil {
+	for rows.Next() {
+		var infoBytes []byte
+		if err := rows.Scan(&infoBytes); err != nil {
+			return nil, err
+		}
+		sessionInfo := &SessionInfo{}
+		if err := json.Unmarshal(infoBytes, sessionInfo); err != nil {
 			return nil, err
 		}
 		sessionInfos = append(sessionInfos, sessionInfo)
