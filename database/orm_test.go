@@ -331,47 +331,46 @@ func testOrmSessionInfo(t *testing.T) {
 		blockTrace.Header.Number.Uint64(),
 		blockTrace.Header.Number.Uint64() + 1}, batchID))
 	assert.NoError(t, dbTx.Commit())
-	rollers_info, err := ormSession.GetRollersInfoByID(batchID)
+	assert.NoError(t, ormBatch.UpdateProvingStatus(batchID, orm.ProvingTaskAssigned))
+
+	// empty
+	ids, err := ormBatch.GetProvingBatchesIDs()
 	assert.NoError(t, err)
-	assert.Equal(t, orm.RollersInfo{}, *rollers_info)
-	all_rollers_info, err := ormSession.GetAllRollersInfo()
+	session_infos, err := ormSession.GetSessionInfosByIDs(ids)
 	assert.NoError(t, err)
-	assert.Equal(t, 0, len(all_rollers_info))
-	rollersInfo := orm.RollersInfo{
-		SessionID: batchID,
+	assert.Equal(t, 1, len(session_infos))
+	assert.Equal(t, orm.SessionInfo{}, *session_infos[0])
+
+	sessionInfo := orm.SessionInfo{
+		ID: batchID,
 		RollerStatus: map[string]orm.RollerProveStatus{
 			"0": orm.RollerAssigned,
 		},
 		RollerNames: map[string]string{
 			"0": "roller-0",
 		},
-		AssignedTime: time.Now().Unix()}
-	assert.NoError(t, ormSession.SetRollersInfoByID(batchID, &rollersInfo))
-	rollers_info, err = ormSession.GetRollersInfoByID(batchID)
-	assert.NoError(t, err)
-	assert.Equal(t, rollersInfo, *rollers_info)
-	assert.Equal(t, batchID, (*rollers_info).SessionID)
+		StartTimestamp: time.Now().Unix()}
 
-	rollersInfo.RollerStatus["0"] = orm.RollerProofValid
-	assert.NoError(t, ormSession.SetRollersInfoByID(batchID, &rollersInfo))
-	rollers_info, err = ormSession.GetRollersInfoByID(batchID)
+	// insert
+	assert.NoError(t, ormSession.SetSessionInfo(&sessionInfo))
+	session_infos, err = ormSession.GetSessionInfosByIDs(ids)
 	assert.NoError(t, err)
-	assert.Equal(t, rollersInfo, *rollers_info)
-	assert.Equal(t, batchID, (*rollers_info).SessionID)
+	assert.Equal(t, 1, len(session_infos))
+	assert.Equal(t, sessionInfo, *session_infos[0])
 
-	rollersInfo.RollerStatus["0"] = orm.RollerProofInvalid
-	assert.NoError(t, ormSession.UpdateRollerProofStatusByID(batchID, "0", orm.RollerProofInvalid))
-	rollers_info, err = ormSession.GetRollersInfoByID(batchID)
+	// update
+	sessionInfo.RollerStatus["0"] = orm.RollerProofValid
+	assert.NoError(t, ormSession.SetSessionInfo(&sessionInfo))
+	session_infos, err = ormSession.GetSessionInfosByIDs(ids)
 	assert.NoError(t, err)
-	assert.Equal(t, rollersInfo, *rollers_info)
+	assert.Equal(t, 1, len(session_infos))
+	assert.Equal(t, sessionInfo, *session_infos[0])
 
-	assert.NoError(t, ormBatch.UpdateProvingStatus(batchID, orm.ProvingTaskAssigned))
-	all_rollers_info, err = ormSession.GetAllRollersInfo()
-	assert.NoError(t, err)
-	assert.Equal(t, 1, len(all_rollers_info))
-
+	// delete
 	assert.NoError(t, ormBatch.UpdateProvingStatus(batchID, orm.ProvingTaskVerified))
-	all_rollers_info, err = ormSession.GetAllRollersInfo()
+	ids, err = ormBatch.GetProvingBatchesIDs()
 	assert.NoError(t, err)
-	assert.Equal(t, 0, len(all_rollers_info))
+	session_infos, err = ormSession.GetSessionInfosByIDs(ids)
+	assert.NoError(t, err)
+	assert.Equal(t, 0, len(session_infos))
 }

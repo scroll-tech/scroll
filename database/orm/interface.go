@@ -79,12 +79,12 @@ const (
 	RollerProofInvalid
 )
 
-// RollersInfo is assigned rollers info of a block batch (session)
-type RollersInfo struct {
-	SessionID    string                       `json:"session_id" db:"session_id"`
-	RollerStatus map[string]RollerProveStatus `json:"roller_status" db:"roller_status"`
-	RollerNames  map[string]string            `json:"roller_names" db:"roller_names"`
-	AssignedTime int64                        `json:"assigned_time" db:"assigned_time"`
+// SessionInfo is assigned rollers info of a block batch (session)
+type SessionInfo struct {
+	ID             string                       `json:"id" db:"id"`
+	RollerStatus   map[string]RollerProveStatus `json:"roller_status" db:"roller_status"`
+	RollerNames    map[string]string            `json:"roller_names" db:"roller_names"`
+	StartTimestamp int64                        `json:"start_timestamp" db:"start_timestamp"`
 }
 
 // BlockTraceOrm block_trace operation interface
@@ -103,10 +103,8 @@ type BlockTraceOrm interface {
 
 // SessionInfoOrm sessions info operation inte
 type SessionInfoOrm interface {
-	GetRollersInfoByID(id string) (*RollersInfo, error)
-	GetAllRollersInfo() ([]*RollersInfo, error)
-	SetRollersInfoByID(id string, rollersInfo *RollersInfo) error
-	UpdateRollerProofStatusByID(id string, rollerPublicKey string, rollerProofStatus RollerProveStatus) error
+	GetSessionInfosByIDs(ids []string) ([]*SessionInfo, error)
+	SetSessionInfo(rollersInfo *SessionInfo) error
 }
 
 // BlockBatchOrm block_batch operation interface
@@ -126,6 +124,7 @@ type BlockBatchOrm interface {
 	UpdateRollupStatus(ctx context.Context, id string, status RollupStatus) error
 	UpdateCommitTxHashAndRollupStatus(ctx context.Context, id string, commit_tx_hash string, status RollupStatus) error
 	UpdateFinalizeTxHashAndRollupStatus(ctx context.Context, id string, finalize_tx_hash string, status RollupStatus) error
+	GetProvingBatchesIDs() ([]string, error)
 }
 
 // L1MessageOrm is layer1 message db interface

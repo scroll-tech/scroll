@@ -335,3 +335,31 @@ func (o *blockBatchOrm) UpdateFinalizeTxHashAndRollupStatus(ctx context.Context,
 		return err
 	}
 }
+
+func (o *blockBatchOrm) GetProvingBatchesIDs() ([]string, error) {
+	// undefined, unassigned, skipped, assigned, proved, verified, failed
+	rows, err := o.db.Queryx(`SELECT id FROM block_batch WHERE 
+		proving_status != $1 AND proving_status != $2 AND proving_status != $3 AND 
+		proving_status != $4 AND proving_status != $5 AND proving_status IS NOT NULL`,
+		ProvingStatusUndefined, ProvingTaskUnassigned, ProvingTaskSkipped,
+		ProvingTaskVerified, ProvingTaskFailed)
+	if err != nil {
+		return nil, err
+	}
+
+	var ids []string
+	for rows.Next() {
+		var id string
+		if err = rows.Scan(&id); err != nil {
+			break
+		}
+		ids = append(ids, id)
+	}
+	if len(ids) == 0 || errors.Is(err, sql.ErrNoRows) {
+		// log.Warn("no pending batches in db", "err", err)
+	} else if err != nil {
+		return nil, err
+	}
+
+	return ids, rows.Close()
+}
