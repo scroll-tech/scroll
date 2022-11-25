@@ -8,7 +8,7 @@ require (
 	github.com/lib/pq v1.10.6
 	github.com/mattn/go-colorable v0.1.8
 	github.com/mattn/go-isatty v0.0.14
-	github.com/scroll-tech/go-ethereum v1.10.14-0.20221121034025-07f21c5075dc
+	github.com/scroll-tech/go-ethereum v1.10.14-0.20221125025612-4ea77a7577c6
 	github.com/stretchr/testify v1.8.0
 	github.com/urfave/cli/v2 v2.3.0
 	golang.org/x/crypto v0.0.0-20220722155217-630584e8d5aa
