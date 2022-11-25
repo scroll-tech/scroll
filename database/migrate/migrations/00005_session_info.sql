@@ -3,8 +3,8 @@
 
 create table session_info
 (
-    id           TEXT NOT NULL,
-    rollers_info TEXT NOT NULL
+    id           VARCHAR NOT NULL,
+    rollers_info BYTEA   NOT NULL
 );
 
 create unique index session_info_id_uindex
