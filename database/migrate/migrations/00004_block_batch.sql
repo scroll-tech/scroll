@@ -12,7 +12,6 @@ create table block_batch
     parent_hash             VARCHAR         NOT NULL,
     total_tx_num            BIGINT          NOT NULL,
     total_l2_gas            BIGINT          NOT NULL,
-    rollers_info            VARCHAR         DEFAULT NULL,
     proving_status          INTEGER         DEFAULT 1,
     proof                   BYTEA           DEFAULT NULL,
     instance_commitments    BYTEA           DEFAULT NULL,

@@ -86,7 +86,6 @@ type BlockBatch struct {
 	EndBlockHash        string         `json:"end_block_hash" db:"end_block_hash"`
 	TotalTxNum          uint64         `json:"total_tx_num" db:"total_tx_num"`
 	TotalL2Gas          uint64         `json:"total_l2_gas" db:"total_l2_gas"`
-	RollersInfo         []byte         `json:"rollers_info" db:"rollers_info"`
 	ProvingStatus       ProvingStatus  `json:"proving_status" db:"proving_status"`
 	Proof               []byte         `json:"proof" db:"proof"`
 	InstanceCommitments []byte         `json:"instance_commitments" db:"instance_commitments"`
