@@ -124,7 +124,7 @@ type BlockBatchOrm interface {
 	UpdateRollupStatus(ctx context.Context, id string, status RollupStatus) error
 	UpdateCommitTxHashAndRollupStatus(ctx context.Context, id string, commit_tx_hash string, status RollupStatus) error
 	UpdateFinalizeTxHashAndRollupStatus(ctx context.Context, id string, finalize_tx_hash string, status RollupStatus) error
-	GetProvingBatchesIDs() ([]string, error)
+	GetAssignedBatchIDs() ([]string, error)
 }
 
 // L1MessageOrm is layer1 message db interface

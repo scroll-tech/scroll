@@ -334,8 +334,9 @@ func testOrmSessionInfo(t *testing.T) {
 	assert.NoError(t, ormBatch.UpdateProvingStatus(batchID, orm.ProvingTaskAssigned))
 
 	// empty
-	ids, err := ormBatch.GetProvingBatchesIDs()
+	ids, err := ormBatch.GetAssignedBatchIDs()
 	assert.NoError(t, err)
+	assert.Equal(t, 1, len(ids))
 	session_infos, err := ormSession.GetSessionInfosByIDs(ids)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(session_infos))
@@ -368,8 +369,9 @@ func testOrmSessionInfo(t *testing.T) {
 
 	// delete
 	assert.NoError(t, ormBatch.UpdateProvingStatus(batchID, orm.ProvingTaskVerified))
-	ids, err = ormBatch.GetProvingBatchesIDs()
+	ids, err = ormBatch.GetAssignedBatchIDs()
 	assert.NoError(t, err)
+	assert.Equal(t, 0, len(ids))
 	session_infos, err = ormSession.GetSessionInfosByIDs(ids)
 	assert.NoError(t, err)
 	assert.Equal(t, 0, len(session_infos))

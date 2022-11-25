@@ -336,12 +336,8 @@ func (o *blockBatchOrm) UpdateFinalizeTxHashAndRollupStatus(ctx context.Context,
 	}
 }
 
-func (o *blockBatchOrm) GetProvingBatchesIDs() ([]string, error) {
-	rows, err := o.db.Queryx(`SELECT id FROM block_batch WHERE 
-		proving_status != $1 AND proving_status != $2 AND proving_status != $3 AND 
-		proving_status != $4 AND proving_status != $5 AND proving_status IS NOT NULL`,
-		ProvingStatusUndefined, ProvingTaskUnassigned, ProvingTaskSkipped,
-		ProvingTaskVerified, ProvingTaskFailed)
+func (o *blockBatchOrm) GetAssignedBatchIDs() ([]string, error) {
+	rows, err := o.db.Queryx(`SELECT id FROM block_batch WHERE proving_status IN ($1, $2)`, ProvingTaskAssigned, ProvingTaskProved)
 	if err != nil {
 		return nil, err
 	}
@@ -353,9 +349,6 @@ func (o *blockBatchOrm) GetProvingBatchesIDs() ([]string, error) {
 			break
 		}
 		ids = append(ids, id)
-	}
-	if err != nil && err != sql.ErrNoRows {
-		return nil, err
 	}
 
 	return ids, rows.Close()
