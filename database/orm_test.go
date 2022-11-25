@@ -132,78 +132,42 @@ func TestOrmFactory(t *testing.T) {
 func testOrmBlockTraces(t *testing.T) {
 	// Create db handler and reset db.
 	factory, err := database.NewOrmFactory(dbConfig)
-	t.Log(1)
-
 	assert.NoError(t, err)
-	t.Log(2)
-
 	assert.NoError(t, migrate.ResetDB(factory.GetDB().DB))
-	t.Log(3)
 
 	res, err := ormBlock.GetBlockTraces(map[string]interface{}{})
-	t.Log(4)
-
 	assert.NoError(t, err)
-	t.Log(4.1)
 	assert.Equal(t, true, len(res) == 0)
-	t.Log(5)
-
-	t.Log(blockTrace)
-	t.Log(666)
-	t.Log(blockTrace.Header)
-	t.Log(7777)
-	t.Log(blockTrace.Header.Number)
-	t.Log(888)
 
 	exist, err := ormBlock.Exist(blockTrace.Header.Number.Uint64())
-	t.Log(6)
 	assert.NoError(t, err)
-	t.Log(7)
 	assert.Equal(t, false, exist)
-	t.Log(8)
 
 	// Insert into db
 	err = ormBlock.InsertBlockTraces(context.Background(), []*types.BlockTrace{blockTrace})
-	t.Log(9)
 	assert.NoError(t, err)
-
-	t.Log(10)
 
 	res2, err := ormBlock.GetUnbatchedBlocks(map[string]interface{}{})
-	t.Log(11)
 	assert.NoError(t, err)
-	t.Log(12)
 	assert.Equal(t, true, len(res2) == 1)
-	t.Log(13)
 
 	exist, err = ormBlock.Exist(blockTrace.Header.Number.Uint64())
-	t.Log(14)
 	assert.NoError(t, err)
-	t.Log(15)
 	assert.Equal(t, true, exist)
-	t.Log(16)
 
 	res, err = ormBlock.GetBlockTraces(map[string]interface{}{
 		"hash": blockTrace.Header.Hash().String(),
 	})
-	t.Log(17)
 	assert.NoError(t, err)
-	t.Log(18)
 	assert.Equal(t, true, len(res) == 1)
-	t.Log(19)
 
 	// Compare trace
 	data1, err := json.Marshal(res[0])
-	t.Log(20)
 	assert.NoError(t, err)
-	t.Log(21)
 	data2, err := json.Marshal(blockTrace)
-	t.Log(22)
 	assert.NoError(t, err)
-	t.Log(23)
 	// check trace
 	assert.Equal(t, true, string(data1) == string(data2))
-	t.Log(24)
 }
 
 func testOrmL1Message(t *testing.T) {
