@@ -108,7 +108,7 @@ func (m *Manager) Start() error {
 		if ids, err := m.orm.GetAssignedBatchIDs(); err != nil {
 			log.Error("db get proving batches ids fail", "error", err)
 		} else if persistedSessions, err := m.orm.GetSessionInfosByIDs(ids); err != nil {
-			log.Error("db get session info fail", "error", err)
+			log.Error("failed to recover roller session info from db", "error", err)
 		} else {
 			for _, v := range persistedSessions {
 				s := &session{
