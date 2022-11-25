@@ -17,12 +17,12 @@ func testDatabaseOperation(t *testing.T) {
 
 	cmd.OpenLog(true)
 	// Wait reset result
-	cmd.ExpectWithTimeout(false, time.Second*3, "successful to reset")
+	cmd.ExpectWithTimeout(true, time.Second*3, "successful to reset")
 	cmd.Run("db_cli-test", "--log.debug", "reset", "--config", "../../database/config.json", "--db.dsn", dbImg.Endpoint())
 	cmd.WaitExit()
 
 	// Wait migrate result
-	cmd.ExpectWithTimeout(false, time.Second*3, "current version: 5")
+	cmd.ExpectWithTimeout(true, time.Second*3, "current version: 5")
 	cmd.Run("db_cli-test", "--log.debug", "migrate", "--config", "../../database/config.json", "--db.dsn", dbImg.Endpoint())
 	cmd.WaitExit()
 }

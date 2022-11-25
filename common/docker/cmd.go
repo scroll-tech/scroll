@@ -1,6 +1,7 @@
 package docker
 
 import (
+	"fmt"
 	"os"
 	"os/exec"
 	"strings"
@@ -25,11 +26,13 @@ type Cmd struct {
 
 	//stdout bytes.Buffer
 	Err error
+
+	stopCh chan struct{}
 }
 
 // NewCmd create Cmd instance.
 func NewCmd(t *testing.T) *Cmd {
-	return &Cmd{T: t}
+	return &Cmd{T: t, stopCh: make(chan struct{})}
 }
 
 // OpenLog set log open or close.
@@ -54,6 +57,10 @@ func (tt *Cmd) Run(name string, args ...string) {
 // WaitExit wait util process exit.
 func (tt *Cmd) WaitExit() {
 	tt.Err = tt.cmd.Wait()
+	select {
+	case tt.stopCh <- struct{}{}:
+	default:
+	}
 }
 
 // Interrupt send interrupt signal.
@@ -92,8 +99,10 @@ func (tt *Cmd) ExpectWithTimeout(parallel bool, timeout time.Duration, keyword s
 		select {
 		case <-okCh:
 			return
+		case <-tt.stopCh:
+			assert.Error(tt, fmt.Errorf("didn't get the desired result before cmd stoped, keyword: %s", keyword))
 		case <-time.After(timeout):
-			assert.Failf(tt, "should have the keyword", keyword)
+			assert.Error(tt, fmt.Errorf("didn't get the desired result before timeout, keyword: %s", keyword))
 		}
 	}
 
