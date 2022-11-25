@@ -217,20 +217,19 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 			Txs:         make([]bridge_abi.IZKRollupLayer2Transaction, len(trace.Transactions)),
 		}
 		for j, tx := range trace.Transactions {
-			v, r, s := tx.RawSignatureValues()
 			layer2Batch.Blocks[i].Txs[j] = bridge_abi.IZKRollupLayer2Transaction{
 				Caller:   tx.From,
-				Nonce:    tx.Nonce(),
-				Gas:      tx.Gas(),
-				GasPrice: tx.GasPrice(),
-				Value:    tx.Value(),
-				Data:     tx.Data(),
-				R:        r,
-				S:        s,
-				V:        v.Uint64(),
+				Nonce:    tx.Nonce,
+				Gas:      tx.Gas,
+				GasPrice: tx.GasPrice.ToInt(),
+				Value:    tx.Value.ToInt(),
+				Data:     common.Hex2Bytes(tx.Data),
+				R:        tx.R.ToInt(),
+				S:        tx.S.ToInt(),
+				V:        tx.V.ToInt().Uint64(),
 			}
-			if tx.To() != nil {
-				layer2Batch.Blocks[i].Txs[j].Target = *tx.To()
+			if tx.To != nil {
+				layer2Batch.Blocks[i].Txs[j].Target = *tx.To
 			}
 			layer2Batch.Blocks[i].GasUsed += trace.ExecutionResults[j].Gas
 		}
