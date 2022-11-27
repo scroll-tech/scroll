@@ -85,7 +85,7 @@ contract L1ScrollMessenger is OwnableUpgradeable, PausableUpgradeable, ScrollMes
     uint256 _nonce,
     bytes memory _message,
     L2MessageProof memory _proof
-  ) external override whenNotPaused onlyWhitelistedSender(msg.sender) {
+  ) external virtual override whenNotPaused onlyWhitelistedSender(msg.sender) {
     require(xDomainMessageSender == ScrollConstants.DEFAULT_XDOMAIN_MESSAGE_SENDER, "already in execution");
 
     // solhint-disable-next-line not-rely-on-time
@@ -96,9 +96,10 @@ contract L1ScrollMessenger is OwnableUpgradeable, PausableUpgradeable, ScrollMes
 
     require(!isMessageExecuted[_msghash], "Message successfully executed");
 
-    // @todo check proof
-    require(IZKRollup(rollup).verifyMessageStateProof(_proof.batchIndex, _proof.blockHeight), "invalid state proof");
-    require(ZkTrieVerifier.verifyMerkleProof(_proof.merkleProof), "invalid proof");
+    bytes32 _messageRoot = IZKRollup(rollup).verifyMessageStateProof(_proof.batchIndex, _proof.blockHash);
+    require(_messageRoot != bytes32(0), "invalid state proof");
+
+    require(ZkTrieVerifier.verifyMerkleProof(_messageRoot, _msghash, _nonce, _proof.merkleProof), "invalid proof");
 
     // @todo check `_to` address to avoid attack.
 

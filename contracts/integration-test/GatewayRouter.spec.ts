@@ -3,9 +3,16 @@
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { expect } from "chai";
 import { constants } from "ethers";
-import { keccak256 } from "ethers/lib/utils";
+import { concat, keccak256 } from "ethers/lib/utils";
 import { ethers } from "hardhat";
-import { ZKRollup, L1ScrollMessenger, L2ScrollMessenger, L1GatewayRouter, L2GatewayRouter } from "../typechain";
+import {
+  ZKRollup,
+  MockL1ScrollMessenger,
+  L2ScrollMessenger,
+  L1GatewayRouter,
+  L2GatewayRouter,
+  L2ToL1MessagePasser,
+} from "../typechain";
 
 describe("GatewayRouter", async () => {
   const layer1GasLimit = 12345;
@@ -17,8 +24,9 @@ describe("GatewayRouter", async () => {
   let bob: SignerWithAddress;
 
   let rollup: ZKRollup;
-  let l1Messenger: L1ScrollMessenger;
+  let l1Messenger: MockL1ScrollMessenger;
   let l2Messenger: L2ScrollMessenger;
+  let passer: L2ToL1MessagePasser;
 
   beforeEach(async () => {
     [deployer, alice, bob] = await ethers.getSigners();
@@ -43,18 +51,22 @@ describe("GatewayRouter", async () => {
       gasUsed: 0,
       timestamp: 0,
       extraData: "0x",
-      txs: []
+      txs: [],
+      messageRoot: constants.HashZero,
     });
 
-    // deploy L1ScrollMessenger in layer 1
-    const L1ScrollMessenger = await ethers.getContractFactory("L1ScrollMessenger", deployer);
-    l1Messenger = await L1ScrollMessenger.deploy();
+    // deploy MockL1ScrollMessenger in layer 1
+    const MockL1ScrollMessenger = await ethers.getContractFactory("MockL1ScrollMessenger", deployer);
+    l1Messenger = await MockL1ScrollMessenger.deploy();
     await l1Messenger.initialize(rollup.address);
     await rollup.updateMessenger(l1Messenger.address);
+    await rollup.updateOperator(deployer.address);
 
     // deploy L2ScrollMessenger in layer 2
     const L2ScrollMessenger = await ethers.getContractFactory("L2ScrollMessenger", deployer);
     l2Messenger = await L2ScrollMessenger.deploy(deployer.address);
+
+    passer = await ethers.getContractAt("L2ToL1MessagePasser", await l2Messenger.messagePasser(), deployer);
   });
 
   context("WETHGateway", async () => {
@@ -180,13 +192,47 @@ describe("GatewayRouter", async () => {
             amount,
             "0x",
           ]);
+          const messageHash = keccak256(
+            concat([
+              l2Gateway.address,
+              l1Gateway.address,
+              ethers.utils.defaultAbiCoder.encode(["uint256"], [amount]),
+              ethers.utils.defaultAbiCoder.encode(["uint256"], [0]),
+              ethers.utils.defaultAbiCoder.encode(["uint256"], [deadline]),
+              ethers.utils.defaultAbiCoder.encode(["uint256"], [nonce]),
+              messageData,
+            ])
+          );
           await expect(withdrawTx)
             .to.emit(l2Messenger, "SentMessage")
-            .withArgs(l1Gateway.address, l2Gateway.address, amount, 0, deadline, messageData, nonce, layer2GasLimit);
+            .withArgs(l1Gateway.address, l2Gateway.address, amount, 0, deadline, messageData, nonce, layer2GasLimit)
+            .to.emit(passer, "PassMessage")
+            .withArgs(0, messageHash);
           // should unwrap transfer to messenger
           expect(afterBalanceLayer2.sub(beforeBalanceLayer2)).to.eq(amount);
 
-          // 3. do relay in layer 1
+          // 3. import block to rollup contract
+          const blockHash = (await ethers.provider.getBlock("latest")).hash;
+          await rollup.commitBatch({
+            batchIndex: 1,
+            parentHash: keccak256(constants.HashZero),
+            blocks: [
+              {
+                blockHash,
+                parentHash: keccak256(constants.HashZero),
+                baseFee: 0,
+                stateRoot: constants.HashZero,
+                blockHeight: 1,
+                gasUsed: 0,
+                timestamp: 0,
+                extraData: [],
+                txs: [],
+                messageRoot: await passer.messageRoot(),
+              },
+            ],
+          });
+
+          // 4. do relay in layer 1
           const beforeBalanceLayer1 = await ethers.provider.getBalance(recipient.address);
           const relayTx = await l1Messenger.relayMessageWithProof(
             l2Gateway.address,
@@ -196,7 +242,7 @@ describe("GatewayRouter", async () => {
             deadline,
             nonce,
             messageData,
-            { batchIndex: 0, blockHeight: 0, merkleProof: "0x" }
+            { batchIndex: 1, blockHash, merkleProof: [] }
           );
           await relayTx.wait();
           const afterBalanceLayer1 = await ethers.provider.getBalance(recipient.address);

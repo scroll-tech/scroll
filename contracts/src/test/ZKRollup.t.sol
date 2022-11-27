@@ -98,7 +98,7 @@ contract ZKRollupTest is DSTestPlus {
     assertEq(rollup.finalizedBatches(0), bytes32(0));
     rollup.importGenesisBlock(_genesis);
     {
-      (bytes32 parentHash, , uint64 blockHeight, uint64 batchIndex) = rollup.blocks(_genesis.blockHash);
+      (bytes32 parentHash, , uint64 blockHeight, uint64 batchIndex, ) = rollup.blocks(_genesis.blockHash);
       assertEq(_genesis.parentHash, parentHash);
       assertEq(_genesis.blockHeight, blockHeight);
       assertEq(batchIndex, 0);
@@ -239,7 +239,7 @@ contract ZKRollupTest is DSTestPlus {
 
     // verify block
     {
-      (bytes32 parentHash, , uint64 blockHeight, uint64 batchIndex) = rollup.blocks(_header.blockHash);
+      (bytes32 parentHash, , uint64 blockHeight, uint64 batchIndex, ) = rollup.blocks(_header.blockHash);
       assertEq(parentHash, _header.parentHash);
       assertEq(blockHeight, _header.blockHeight);
       assertEq(batchIndex, _batch.batchIndex);
