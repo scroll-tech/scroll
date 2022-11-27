@@ -29,14 +29,14 @@ func TestKeccak2(t *testing.T) {
 func TestComputeMessageHash(t *testing.T) {
 	hash := utils.ComputeMessageHash(
 		common.HexToAddress("0xdafea492d9c6733ae3d56b7ed1adb60692c98bc5"),
-		common.HexToAddress("0xdafea492d9c6733ae3d56b7ed1adb60692c98bc5"),
-		big.NewInt(0),
-		big.NewInt(0),
-		big.NewInt(1234567),
-		common.Hex2Bytes("0x"),
+		common.HexToAddress("0xeafea492d9c6733ae3d56b7ed1adb60692c98bf7"),
 		big.NewInt(1),
+		big.NewInt(2),
+		big.NewInt(1234567),
+		common.Hex2Bytes("0011223344"),
+		big.NewInt(3),
 	)
-	if hash != common.HexToHash("0x2ebffc1a6671c51e30777a680904b103992630ec995b6e6ff76a04d5259d4901") {
-		t.Fatalf("Invalid ComputeMessageHash, want %s, got %s", "0x2ebffc1a6671c51e30777a680904b103992630ec995b6e6ff76a04d5259d4901", hash.Hex())
+	if hash != common.HexToHash("0x58c9a5abfd2a558bb6a6fd5192b36fe9325d98763bafd3a51a1ea28a5d0b990b") {
+		t.Fatalf("Invalid ComputeMessageHash, want %s, got %s", "0x58c9a5abfd2a558bb6a6fd5192b36fe9325d98763bafd3a51a1ea28a5d0b990b", hash.Hex())
 	}
 }

@@ -1,16 +1,21 @@
 package utils
 
 import (
+	"bytes"
 	"math/big"
 
 	"github.com/iden3/go-iden3-crypto/keccak256"
-	"github.com/scroll-tech/go-ethereum/accounts/abi"
 	"github.com/scroll-tech/go-ethereum/common"
+	"github.com/scroll-tech/go-ethereum/common/math"
 )
 
 // Keccak2 compute the keccack256 of two concatenations of bytes32
 func Keccak2(a common.Hash, b common.Hash) common.Hash {
 	return common.BytesToHash(keccak256.Hash(append(a.Bytes()[:], b.Bytes()[:]...)))
+}
+
+func encodePacked(input ...[]byte) []byte {
+	return bytes.Join(input, nil)
 }
 
 // ComputeMessageHash compute the message hash
@@ -23,47 +28,15 @@ func ComputeMessageHash(
 	message []byte,
 	messageNonce *big.Int,
 ) common.Hash {
-	addressType, _ := abi.NewType("address", "address", nil)
-	uint256Type, _ := abi.NewType("uint256", "uint256", nil)
-	bytesType, _ := abi.NewType("bytes", "bytes", nil)
-	args := abi.Arguments{
-		{
-			Name:    "sender",
-			Type:    addressType,
-			Indexed: false,
-		},
-		{
-			Name:    "target",
-			Type:    addressType,
-			Indexed: false,
-		},
-		{
-			Name:    "value",
-			Type:    uint256Type,
-			Indexed: false,
-		},
-		{
-			Name:    "fee",
-			Type:    uint256Type,
-			Indexed: false,
-		},
-		{
-			Name:    "deadline",
-			Type:    uint256Type,
-			Indexed: false,
-		},
-		{
-			Name:    "nonce",
-			Type:    uint256Type,
-			Indexed: false,
-		},
-		{
-			Name:    "message",
-			Type:    bytesType,
-			Indexed: false,
-		},
-	}
-	packed, _ := args.Pack(sender, target, value, fee, deadline, messageNonce, message)
+	packed := encodePacked(
+		target.Bytes(),
+		sender.Bytes(),
+		math.U256Bytes(value),
+		math.U256Bytes(fee),
+		math.U256Bytes(deadline),
+		math.U256Bytes(messageNonce),
+		message,
+	)
 	return common.BytesToHash(keccak256.Hash(packed))
 }
 

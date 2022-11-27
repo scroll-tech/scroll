@@ -34,9 +34,9 @@ const (
 )
 
 type relayedMessage struct {
-	msgHash common.Hash
-	txHash  common.Hash
-	status  bool
+	msgHash      common.Hash
+	txHash       common.Hash
+	isSuccessful bool
 }
 
 // WatcherClient provide APIs which support others to subscribe to various event from l2geth
@@ -224,10 +224,10 @@ func (w *WatcherClient) fetchContractEvent(blockHeight uint64) error {
 		return err
 	}
 
-	// Update relayed message first to make sure we don't forget to update subbmited message.
+	// Update relayed message first to make sure we don't forget to update submited message.
 	// Since, we always start sync from the latest unprocessed message.
 	for _, msg := range relayedMessages {
-		if msg.status {
+		if msg.isSuccessful {
 			// succeed
 			err = w.orm.UpdateLayer1StatusAndLayer2Hash(w.ctx, msg.msgHash.String(), msg.txHash.String(), orm.MsgConfirmed)
 		} else {
@@ -290,31 +290,23 @@ func (w *WatcherClient) parseBridgeEventLogs(logs []types.Log) ([]*orm.L2Message
 			event := struct {
 				MsgHash common.Hash
 			}{}
-			err := w.messengerABI.UnpackIntoInterface(&event, "RelayedMessage", vLog.Data)
-			if err != nil {
-				log.Warn("Failed to unpack layer2 RelayedMessage event", "err", err)
-				return parsedlogs, relayedMessages, err
-			}
-
+			// MsgHash is in topics[1]
+			event.MsgHash = common.HexToHash(vLog.Topics[1].String())
 			relayedMessages = append(relayedMessages, relayedMessage{
-				msgHash: event.MsgHash,
-				txHash:  vLog.TxHash,
-				status:  true,
+				msgHash:      event.MsgHash,
+				txHash:       vLog.TxHash,
+				isSuccessful: true,
 			})
 		} else if vLog.Topics[0] == common.HexToHash(FAILED_RELAYED_MESSAGE_EVENT_SIGNATURE) {
 			event := struct {
 				MsgHash common.Hash
 			}{}
-			err := w.messengerABI.UnpackIntoInterface(&event, "FailedRelayedMessage", vLog.Data)
-			if err != nil {
-				log.Warn("Failed to unpack layer2 FailedRelayedMessage event", "err", err)
-				return parsedlogs, relayedMessages, err
-			}
-
+			// MsgHash is in topics[1]
+			event.MsgHash = common.HexToHash(vLog.Topics[1].String())
 			relayedMessages = append(relayedMessages, relayedMessage{
-				msgHash: event.MsgHash,
-				txHash:  vLog.TxHash,
-				status:  false,
+				msgHash:      event.MsgHash,
+				txHash:       vLog.TxHash,
+				isSuccessful: false,
 			})
 		}
 	}

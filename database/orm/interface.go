@@ -99,6 +99,7 @@ type BlockBatchOrm interface {
 	GetPendingBatches() ([]string, error)
 	GetCommittedBatches() ([]string, error)
 	GetRollupStatus(id string) (RollupStatus, error)
+	GetRollupStatusByIDList(ids []string) ([]RollupStatus, error)
 	GetLatestFinalizedBatch() (*BlockBatch, error)
 	UpdateRollupStatus(ctx context.Context, id string, status RollupStatus) error
 	UpdateCommitTxHashAndRollupStatus(ctx context.Context, id string, commit_tx_hash string, status RollupStatus) error
