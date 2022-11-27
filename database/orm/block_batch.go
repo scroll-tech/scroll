@@ -80,9 +80,9 @@ type BlockBatch struct {
 	ID                  string         `json:"id" db:"id"`
 	Index               uint64         `json:"index" db:"index"`
 	ParentHash          string         `json:"parent_hash" db:"parent_hash"`
-	StartBlockNumber    uint64         `json:"start_block_number" db:"start_block_number"`
+	StartBlockNumber    *big.Int       `json:"start_block_number" db:"start_block_number"`
 	StartBlockHash      string         `json:"start_block_hash" db:"start_block_hash"`
-	EndBlockNumber      uint64         `json:"end_block_number" db:"end_block_number"`
+	EndBlockNumber      *big.Int       `json:"end_block_number" db:"end_block_number"`
 	EndBlockHash        string         `json:"end_block_hash" db:"end_block_hash"`
 	TotalTxNum          uint64         `json:"total_tx_num" db:"total_tx_num"`
 	TotalL2Gas          uint64         `json:"total_l2_gas" db:"total_l2_gas"`

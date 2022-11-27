@@ -3,6 +3,7 @@ package orm
 import (
 	"context"
 	"database/sql"
+	"math/big"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/scroll-tech/go-ethereum/common"
@@ -29,7 +30,7 @@ const (
 // L1Message is structure of stored layer1 bridge message
 type L1Message struct {
 	Nonce      uint64    `json:"nonce" db:"nonce"`
-	Height     uint64    `json:"height" db:"height"`
+	Height     *big.Int  `json:"height" db:"height"`
 	Sender     string    `json:"sender" db:"sender"`
 	Value      string    `json:"value" db:"value"`
 	Fee        string    `json:"fee" db:"fee"`
@@ -44,7 +45,7 @@ type L1Message struct {
 // L2Message is structure of stored layer2 bridge message
 type L2Message struct {
 	Nonce      uint64    `json:"nonce" db:"nonce"`
-	Height     uint64    `json:"height" db:"height"`
+	Height     *big.Int  `json:"height" db:"height"`
 	Sender     string    `json:"sender" db:"sender"`
 	Value      string    `json:"value" db:"value"`
 	Fee        string    `json:"fee" db:"fee"`
@@ -58,7 +59,7 @@ type L2Message struct {
 
 // BlockInfo is structure of stored `block_trace` without `trace`
 type BlockInfo struct {
-	Number         uint64         `json:"number" db:"number"`
+	Number         *big.Int       `json:"number" db:"number"`
 	Hash           string         `json:"hash" db:"hash"`
 	ParentHash     string         `json:"parent_hash" db:"parent_hash"`
 	BatchID        sql.NullString `json:"batch_id" db:"batch_id"`
@@ -69,16 +70,16 @@ type BlockInfo struct {
 
 // BlockTraceOrm block_trace operation interface
 type BlockTraceOrm interface {
-	Exist(number uint64) (bool, error)
-	GetBlockTracesLatestHeight() (int64, error)
+	Exist(number *big.Int) (bool, error)
+	GetBlockTracesLatestHeight() (*big.Int, error)
 	GetBlockTraces(fields map[string]interface{}, args ...string) ([]*types.BlockTrace, error)
 	GetBlockInfos(fields map[string]interface{}, args ...string) ([]*BlockInfo, error)
 	// add `GetUnbatchedBlocks` because `GetBlockInfos` cannot support query "batch_id is NULL"
 	GetUnbatchedBlocks(fields map[string]interface{}, args ...string) ([]*BlockInfo, error)
-	GetHashByNumber(number uint64) (*common.Hash, error)
+	GetHashByNumber(number *big.Int) (*common.Hash, error)
 	DeleteTracesByBatchID(batchID string) error
 	InsertBlockTraces(ctx context.Context, blockTraces []*types.BlockTrace) error
-	SetBatchIDForBlocksInDBTx(dbTx *sqlx.Tx, numbers []uint64, batchID string) error
+	SetBatchIDForBlocksInDBTx(dbTx *sqlx.Tx, numbers []*big.Int, batchID string) error
 }
 
 // BlockBatchOrm block_batch operation interface
@@ -109,7 +110,7 @@ type L1MessageOrm interface {
 	UpdateLayer2Hash(ctx context.Context, layer1Hash string, layer2Hash string) error
 	UpdateLayer1Status(ctx context.Context, layer1Hash string, status MsgStatus) error
 	UpdateLayer1StatusAndLayer2Hash(ctx context.Context, layer1Hash, layer2Hash string, status MsgStatus) error
-	GetLayer1LatestWatchedHeight() (int64, error)
+	GetLayer1LatestWatchedHeight() (*big.Int, error)
 	GetL1MessageByLayer1Hash(layer1Hash string) (*L1Message, error)
 }
 
@@ -125,7 +126,7 @@ type L2MessageOrm interface {
 	UpdateLayer2Status(ctx context.Context, layer2Hash string, status MsgStatus) error
 	GetL2MessageByLayer2Hash(layer2Hash string) (*L2Message, error)
 	UpdateMessageProof(ctx context.Context, layer2Hash, proof string) error
-	GetLayer2LatestWatchedHeight() (int64, error)
+	GetLayer2LatestWatchedHeight() (*big.Int, error)
 	GetMessageProofByLayer2Hash(layer2Hash string) (string, error)
 	MessageProofExistByLayer2Hash(layer2Hash string) (bool, error)
 	UpdateLayer2StatusAndLayer1Hash(ctx context.Context, layer2Hash string, layer1Hash string, status MsgStatus) error

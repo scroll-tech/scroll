@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math/big"
 	"strings"
 
 	"github.com/jmoiron/sqlx"
@@ -25,9 +26,9 @@ func NewBlockTraceOrm(db *sqlx.DB) BlockTraceOrm {
 	return &blockTraceOrm{db: db}
 }
 
-func (o *blockTraceOrm) Exist(number uint64) (bool, error) {
+func (o *blockTraceOrm) Exist(number *big.Int) (bool, error) {
 	var res int
-	err := o.db.QueryRow(o.db.Rebind(`SELECT 1 from block_trace where number = ? limit 1;`), number).Scan(&res)
+	err := o.db.QueryRow(o.db.Rebind(`SELECT 1 from block_trace where number = ? limit 1;`), number.String()).Scan(&res)
 	if err != nil {
 		if err != sql.ErrNoRows {
 			return false, err
@@ -37,12 +38,12 @@ func (o *blockTraceOrm) Exist(number uint64) (bool, error) {
 	return true, nil
 }
 
-func (o *blockTraceOrm) GetBlockTracesLatestHeight() (int64, error) {
+func (o *blockTraceOrm) GetBlockTracesLatestHeight() (*big.Int, error) {
 	row := o.db.QueryRow("SELECT COALESCE(MAX(number), -1) FROM block_trace;")
 
-	var height int64
-	if err := row.Scan(&height); err != nil {
-		return -1, err
+	height := new(big.Int)
+	if err := row.Scan(height); err != nil {
+		return height.SetInt64(-1), err
 	}
 	return height, nil
 }
@@ -140,7 +141,7 @@ func (o *blockTraceOrm) GetUnbatchedBlocks(fields map[string]interface{}, args .
 	return blocks, rows.Close()
 }
 
-func (o *blockTraceOrm) GetHashByNumber(number uint64) (*common.Hash, error) {
+func (o *blockTraceOrm) GetHashByNumber(number *big.Int) (*common.Hash, error) {
 	row := o.db.QueryRow(`SELECT hash FROM block_trace WHERE number = $1`, number)
 	var hashStr string
 	if err := row.Scan(&hashStr); err != nil {
@@ -153,7 +154,7 @@ func (o *blockTraceOrm) GetHashByNumber(number uint64) (*common.Hash, error) {
 func (o *blockTraceOrm) InsertBlockTraces(ctx context.Context, blockTraces []*types.BlockTrace) error {
 	traceMaps := make([]map[string]interface{}, len(blockTraces))
 	for i, trace := range blockTraces {
-		number, hash, tx_num, mtime := trace.Header.Number.Int64(),
+		number, hash, tx_num, mtime := new(big.Int).Set(trace.Header.Number),
 			trace.Header.Hash().String(),
 			len(trace.Transactions),
 			trace.Header.Time
@@ -164,7 +165,7 @@ func (o *blockTraceOrm) InsertBlockTraces(ctx context.Context, blockTraces []*ty
 			return err
 		}
 		traceMaps[i] = map[string]interface{}{
-			"number":          number,
+			"number":          number.String(),
 			"hash":            hash,
 			"parent_hash":     trace.Header.ParentHash.String(),
 			"trace":           string(data),
@@ -190,7 +191,7 @@ func (o *blockTraceOrm) DeleteTracesByBatchID(batch_id string) error {
 
 // http://jmoiron.github.io/sqlx/#inQueries
 // https://stackoverflow.com/questions/56568799/how-to-update-multiple-rows-using-sqlx
-func (o *blockTraceOrm) SetBatchIDForBlocksInDBTx(dbTx *sqlx.Tx, numbers []uint64, batchID string) error {
+func (o *blockTraceOrm) SetBatchIDForBlocksInDBTx(dbTx *sqlx.Tx, numbers []*big.Int, batchID string) error {
 	query := "UPDATE block_trace SET batch_id=? WHERE number IN (?)"
 
 	qry, args, err := sqlx.In(query, batchID, numbers)

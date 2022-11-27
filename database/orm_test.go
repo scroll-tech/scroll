@@ -3,6 +3,7 @@ package database_test
 import (
 	"context"
 	"encoding/json"
+	"math/big"
 	"os"
 	"testing"
 	"time"
@@ -23,7 +24,7 @@ var (
 	templateL1Message = []*orm.L1Message{
 		{
 			Nonce:      1,
-			Height:     1,
+			Height:     big.NewInt(1),
 			Sender:     "0x596a746661dbed76a84556111c2872249b070e15",
 			Value:      "0x19ece",
 			Fee:        "0x19ece",
@@ -35,7 +36,7 @@ var (
 		},
 		{
 			Nonce:      2,
-			Height:     2,
+			Height:     big.NewInt(2),
 			Sender:     "0x596a746661dbed76a84556111c2872249b070e15",
 			Value:      "0x19ece",
 			Fee:        "0x19ece",
@@ -49,7 +50,7 @@ var (
 	templateL2Message = []*orm.L2Message{
 		{
 			Nonce:      1,
-			Height:     1,
+			Height:     big.NewInt(1),
 			Sender:     "0x596a746661dbed76a84556111c2872249b070e15",
 			Value:      "0x19ece",
 			Fee:        "0x19ece",
@@ -61,7 +62,7 @@ var (
 		},
 		{
 			Nonce:      2,
-			Height:     2,
+			Height:     big.NewInt(2),
 			Sender:     "0x596a746661dbed76a84556111c2872249b070e15",
 			Value:      "0x19ece",
 			Fee:        "0x19ece",
@@ -139,7 +140,7 @@ func testOrmBlockTraces(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, true, len(res) == 0)
 
-	exist, err := ormBlock.Exist(blockTrace.Header.Number.Uint64())
+	exist, err := ormBlock.Exist(blockTrace.Header.Number)
 	assert.NoError(t, err)
 	assert.Equal(t, false, exist)
 
@@ -151,7 +152,7 @@ func testOrmBlockTraces(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, true, len(res2) == 1)
 
-	exist, err = ormBlock.Exist(blockTrace.Header.Number.Uint64())
+	exist, err = ormBlock.Exist(blockTrace.Header.Number)
 	assert.NoError(t, err)
 	assert.Equal(t, true, exist)
 
@@ -248,22 +249,22 @@ func testOrmBlockbatch(t *testing.T) {
 	dbTx, err := factory.Beginx()
 	assert.NoError(t, err)
 	batchID1, err := ormBatch.NewBatchInDBTx(dbTx,
-		&orm.BlockInfo{Number: blockTrace.Header.Number.Uint64()},
-		&orm.BlockInfo{Number: blockTrace.Header.Number.Uint64() + 1},
+		&orm.BlockInfo{Number: blockTrace.Header.Number},
+		&orm.BlockInfo{Number: new(big.Int).Add(blockTrace.Header.Number, big.NewInt(1))},
 		"ff", 1, 194676) // parentHash & totalTxNum & totalL2Gas don't really matter here
 	assert.NoError(t, err)
-	err = ormBlock.SetBatchIDForBlocksInDBTx(dbTx, []uint64{
-		blockTrace.Header.Number.Uint64(),
-		blockTrace.Header.Number.Uint64() + 1}, batchID1)
+	err = ormBlock.SetBatchIDForBlocksInDBTx(dbTx, []*big.Int{
+		blockTrace.Header.Number,
+		new(big.Int).Add(blockTrace.Header.Number, big.NewInt(1))}, batchID1)
 	assert.NoError(t, err)
 	batchID2, err := ormBatch.NewBatchInDBTx(dbTx,
-		&orm.BlockInfo{Number: blockTrace.Header.Number.Uint64() + 2},
-		&orm.BlockInfo{Number: blockTrace.Header.Number.Uint64() + 3},
+		&orm.BlockInfo{Number: new(big.Int).Add(blockTrace.Header.Number, big.NewInt(2))},
+		&orm.BlockInfo{Number: new(big.Int).Add(blockTrace.Header.Number, big.NewInt(3))},
 		"ff", 1, 194676) // parentHash & totalTxNum & totalL2Gas don't really matter here
 	assert.NoError(t, err)
-	err = ormBlock.SetBatchIDForBlocksInDBTx(dbTx, []uint64{
-		blockTrace.Header.Number.Uint64() + 2,
-		blockTrace.Header.Number.Uint64() + 3}, batchID2)
+	err = ormBlock.SetBatchIDForBlocksInDBTx(dbTx, []*big.Int{
+		new(big.Int).Add(blockTrace.Header.Number, big.NewInt(2)),
+		new(big.Int).Add(blockTrace.Header.Number, big.NewInt(3))}, batchID2)
 	assert.NoError(t, err)
 	err = dbTx.Commit()
 	assert.NoError(t, err)

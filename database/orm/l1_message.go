@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"math/big"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/scroll-tech/go-ethereum/log"
@@ -105,10 +106,10 @@ func (m *l1MessageOrm) SaveL1Messages(ctx context.Context, messages []*L1Message
 	_, err := m.db.NamedExec(`INSERT INTO public.l1_message (nonce, height, sender, target, value, fee, gas_limit, deadline, calldata, layer1_hash) VALUES (:nonce, :height, :sender, :target, :value, :fee, :gas_limit, :deadline, :calldata, :layer1_hash);`, messageMaps)
 	if err != nil {
 		nonces := make([]uint64, 0, len(messages))
-		heights := make([]uint64, 0, len(messages))
+		heights := make([]*big.Int, 0, len(messages))
 		for _, msg := range messages {
 			nonces = append(nonces, msg.Nonce)
-			heights = append(heights, msg.Height)
+			heights = append(heights, new(big.Int).Set(msg.Height))
 		}
 		log.Error("failed to insert l1Messages", "nonces", nonces, "heights", heights, "err", err)
 	}
@@ -143,17 +144,17 @@ func (m *l1MessageOrm) UpdateLayer1StatusAndLayer2Hash(ctx context.Context, laye
 }
 
 // GetLayer1LatestWatchedHeight returns latest height stored in the table
-func (m *l1MessageOrm) GetLayer1LatestWatchedHeight() (int64, error) {
+func (m *l1MessageOrm) GetLayer1LatestWatchedHeight() (*big.Int, error) {
 	// @note It's not correct, since we may don't have message in some blocks.
 	// But it will only be called at start, some redundancy is acceptable.
 	row := m.db.QueryRow("SELECT MAX(height) FROM l1_message;")
 
-	var height int64
-	if err := row.Scan(&height); err != nil {
+	height := new(big.Int)
+	if err := row.Scan(height); err != nil {
 		if err == sql.ErrNoRows {
-			return -1, nil
+			return height.SetInt64(-1), nil
 		}
-		return 0, err
+		return height.SetInt64(0), err
 	}
 	return height, nil
 }
