@@ -4,7 +4,6 @@ import (
 	"crypto/rand"
 	"fmt"
 	"math/big"
-	"strconv"
 	"time"
 
 	cmap "github.com/orcaman/concurrent-map"
@@ -24,7 +23,7 @@ type rollerNode struct {
 	Version string
 
 	// trace channel
-	traceChan chan *message.BlockTraces
+	traceChan chan *message.TaskMsg
 	// session id list which delivered to roller.
 	IDList cmap.ConcurrentMap
 
@@ -32,13 +31,13 @@ type rollerNode struct {
 	registerTime time.Time
 }
 
-func (r *rollerNode) sendMsg(id uint64, trace *types.BlockResult) bool {
+func (r *rollerNode) sendMsg(id string, traces []*types.BlockTrace) bool {
 	select {
-	case r.traceChan <- &message.BlockTraces{
+	case r.traceChan <- &message.TaskMsg{
 		ID:     id,
-		Traces: trace,
+		Traces: traces,
 	}:
-		r.IDList.Set(strconv.Itoa(int(id)), struct{}{})
+		r.IDList.Set(id, struct{}{})
 	default:
 		log.Warn("roller channel is full")
 		return false
@@ -46,7 +45,7 @@ func (r *rollerNode) sendMsg(id uint64, trace *types.BlockResult) bool {
 	return true
 }
 
-func (m *Manager) register(pubkey string, identity *message.Identity) (<-chan *message.BlockTraces, error) {
+func (m *Manager) register(pubkey string, identity *message.Identity) (<-chan *message.TaskMsg, error) {
 	node, ok := m.rollerPool.Get(pubkey)
 	if !ok {
 		node = &rollerNode{
@@ -54,7 +53,7 @@ func (m *Manager) register(pubkey string, identity *message.Identity) (<-chan *m
 			Version:   identity.Version,
 			PublicKey: pubkey,
 			IDList:    cmap.New(),
-			traceChan: make(chan *message.BlockTraces, 4),
+			traceChan: make(chan *message.TaskMsg, 4),
 		}
 		m.rollerPool.Set(pubkey, node)
 	}
@@ -73,18 +72,18 @@ func (m *Manager) freeRoller(pk string) {
 	m.rollerPool.Pop(pk)
 }
 
-func (m *Manager) existID(pk string, id uint64) bool {
+func (m *Manager) existID(pk string, id string) bool {
 	if node, ok := m.rollerPool.Get(pk); ok {
 		r := node.(*rollerNode)
-		return r.IDList.Has(strconv.Itoa(int(id)))
+		return r.IDList.Has(id)
 	}
 	return false
 }
 
-func (m *Manager) freeID(pk string, id uint64) {
+func (m *Manager) freeID(pk string, id string) {
 	if node, ok := m.rollerPool.Get(pk); ok {
 		r := node.(*rollerNode)
-		r.IDList.Pop(strconv.Itoa(int(id)))
+		r.IDList.Pop(id)
 	}
 }
 

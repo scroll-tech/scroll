@@ -24,7 +24,6 @@ package mock
 
 // 	os.Exit(m.Run())
 // }
-
 // func TestRoller(t *testing.T) {
 // 	go mockScroll(t)
 

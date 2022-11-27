@@ -12,7 +12,7 @@ type Config struct {
 	RollerName       string        `toml:"roller_name"`
 	KeystorePath     string        `toml:"keystore_path"`
 	KeystorePassword string        `toml:"keystore_password"`
-	ScrollURL        string        `toml:"scroll_url"`
+	CoordinatorURL   string        `toml:"coordinator_url"`
 	Prover           *ProverConfig `toml:"prover"`
 	DBPath           string        `toml:"db_path"`
 }

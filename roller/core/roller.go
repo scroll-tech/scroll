@@ -38,19 +38,19 @@ var (
 	writeWait = time.Second + readWait
 	// consider ping message
 	readWait = time.Minute * 30
-	// retry scroll
+	// retry connecting to coordinator
 	retryWait = time.Second * 10
 	// net normal close
 	errNormalClose = errors.New("use of closed network connection")
 )
 
-// Roller contains websocket conn to Scroll, Stack, unix-socket to ipc-prover.
+// Roller contains websocket conn to coordinator, Stack, unix-socket to ipc-prover.
 type Roller struct {
 	cfg       *config.Config
 	client    *client.Client
 	stack     *store.Stack
 	prover    *prover.Prover
-	traceChan chan *message.BlockTraces
+	traceChan chan *message.TaskMsg
 	sub       ethereum.Subscription
 
 	isClosed int64
@@ -81,7 +81,8 @@ func NewRoller(cfg *config.Config) (*Roller, error) {
 	}
 	log.Info("init prover successfully!")
 
-	rClient, err := client.Dial(cfg.ScrollURL)
+	rClient, err := client.Dial(cfg.CoordinatorURL)
+
 	if err != nil {
 		return nil, err
 	}
@@ -92,7 +93,7 @@ func NewRoller(cfg *config.Config) (*Roller, error) {
 		stack:     stackDb,
 		prover:    prover,
 		sub:       nil,
-		traceChan: make(chan *message.BlockTraces, 10),
+		traceChan: make(chan *message.TaskMsg, 10),
 		stopChan:  make(chan struct{}),
 		priv:      priv,
 	}, nil
@@ -100,20 +101,20 @@ func NewRoller(cfg *config.Config) (*Roller, error) {
 
 // Run runs Roller.
 func (r *Roller) Run() error {
-	log.Info("start to register to scroll")
+	log.Info("start to register to coordinator")
 	if err := r.Register(); err != nil {
-		log.Crit("register to scroll failed", "error", err)
+		log.Crit("register to coordinator failed", "error", err)
 	}
-	log.Info("register to scroll successfully!")
+	log.Info("register to coordinator successfully!")
 	go func() {
-		r.HandleScroll()
+		r.HandleCoordinator()
 		r.Close()
 	}()
 
 	return r.ProveLoop()
 }
 
-// Register registers Roller to the Scroll through Websocket.
+// Register registers Roller to the coordinator through Websocket.
 func (r *Roller) Register() error {
 	authMsg := &message.AuthMessage{
 		Identity: &message.Identity{
@@ -146,35 +147,35 @@ func (r *Roller) Register() error {
 	return err
 }
 
-// HandleScroll accepts block-traces from Scroll through the Websocket and store it into Stack.
-func (r *Roller) HandleScroll() {
+// HandleCoordinator accepts block-traces from coordinator through the Websocket and store it into Stack.
+func (r *Roller) HandleCoordinator() {
 	for {
 		select {
 		case <-r.stopChan:
 			return
 		case trace := <-r.traceChan:
 			log.Info("Accept BlockTrace from Scroll", "ID", trace.ID)
-			err := r.stack.Push(&store.ProvingTraces{Traces: trace, Times: 0})
+			err := r.stack.Push(&store.ProvingTask{Task: trace, Times: 0})
 			if err != nil {
-				panic(fmt.Sprintf("could not push trace(%d) into stack: %v", trace.ID, err))
+				panic(fmt.Sprintf("could not push trace(%s) into stack: %v", trace.ID, err))
 			}
 		case err := <-r.sub.Err():
 			r.sub.Unsubscribe()
 			log.Error("Subscribe trace with scroll failed", "error", err)
-			r.mustRetryScroll()
+			r.mustRetryCoordinator()
 		}
 	}
 }
 
-func (r *Roller) mustRetryScroll() {
+func (r *Roller) mustRetryCoordinator() {
 	for {
-		log.Info("retry to register to scroll...")
+		log.Info("retry to connect to coordinator...")
 		err := r.Register()
 		if err != nil {
-			log.Error("register to scroll failed", "error", err)
+			log.Error("register to coordinator failed", "error", err)
 			time.Sleep(retryWait)
 		} else {
-			log.Info("re-register to scroll successfully!")
+			log.Info("re-register to coordinator successfully!")
 			break
 		}
 	}
@@ -204,17 +205,17 @@ func (r *Roller) ProveLoop() (err error) {
 }
 
 func (r *Roller) prove() error {
-	traces, err := r.stack.Pop()
+	task, err := r.stack.Pop()
 	if err != nil {
 		return err
 	}
 
 	var proofMsg *message.ProofMsg
-	if traces.Times > 2 {
+	if task.Times > 2 {
 		proofMsg = &message.ProofMsg{
 			Status: message.StatusProofError,
 			Error:  "prover has retried several times due to FFI panic",
-			ID:     traces.Traces.ID,
+			ID:     task.Task.ID,
 			Proof:  &message.AggProof{},
 		}
 
@@ -222,30 +223,30 @@ func (r *Roller) prove() error {
 		return err
 	}
 
-	err = r.stack.Push(traces)
+	err = r.stack.Push(task)
 	if err != nil {
 		return err
 	}
 
-	log.Info("start to prove block", "block-id", traces.Traces.ID)
+	log.Info("start to prove block", "task-id", task.Task.ID)
 
-	proof, err := r.prover.Prove(traces.Traces.Traces)
+	proof, err := r.prover.Prove(task.Task.Traces)
 	if err != nil {
 		proofMsg = &message.ProofMsg{
 			Status: message.StatusProofError,
 			Error:  err.Error(),
-			ID:     traces.Traces.ID,
+			ID:     task.Task.ID,
 			Proof:  &message.AggProof{},
 		}
-		log.Error("prove block failed!", "block-id", traces.Traces.ID)
+		log.Error("prove block failed!", "task-id", task.Task.ID)
 	} else {
 
 		proofMsg = &message.ProofMsg{
 			Status: message.StatusOk,
-			ID:     traces.Traces.ID,
+			ID:     task.Task.ID,
 			Proof:  proof,
 		}
-		log.Info("prove block successfully!", "block-id", traces.Traces.ID)
+		log.Info("prove block successfully!", "task-id", task.Task.ID)
 	}
 	_, err = r.stack.Pop()
 	if err != nil {

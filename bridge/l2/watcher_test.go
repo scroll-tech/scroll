@@ -13,7 +13,6 @@ import (
 	"github.com/scroll-tech/go-ethereum/accounts/abi/bind"
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/core/types"
-	"github.com/scroll-tech/go-ethereum/crypto"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/stretchr/testify/assert"
 
@@ -51,7 +50,6 @@ func testCreateNewWatcherAndStop(t *testing.T) {
 		<-newSender.ConfirmChan()
 	}
 
-	//<-time.After(10 * time.Second)
 	blockNum, err := l2Cli.BlockNumber(context.Background())
 	assert.NoError(t, err)
 	assert.GreaterOrEqual(t, blockNum, uint64(numTransactions))
@@ -80,10 +78,6 @@ func testMonitorBridgeContract(t *testing.T) {
 	defer rc.Stop()
 
 	// Call mock_bridge instance sendMessage to trigger emit events
-	addr := common.HexToAddress("0x1c5a77d9fa7ef466951b2f01f724bca3a5820b63")
-	nonce, err := l2Cli.PendingNonceAt(context.Background(), addr)
-	assert.NoError(t, err)
-	auth.Nonce = big.NewInt(int64(nonce))
 	toAddress := common.HexToAddress("0x4592d8f8d7b001e72cb26a73e4fa1806a51ac79d")
 	message := []byte("testbridgecontract")
 	tx, err = instance.SendMessage(auth, toAddress, message, auth.GasPrice)
@@ -94,10 +88,6 @@ func testMonitorBridgeContract(t *testing.T) {
 	}
 
 	//extra block mined
-	addr = common.HexToAddress("0x1c5a77d9fa7ef466951b2f01f724bca3a5820b63")
-	nonce, nounceErr := l2Cli.PendingNonceAt(context.Background(), addr)
-	assert.NoError(t, nounceErr)
-	auth.Nonce = big.NewInt(int64(nonce))
 	toAddress = common.HexToAddress("0x4592d8f8d7b001e72cb26a73e4fa1806a51ac79d")
 	message = []byte("testbridgecontract")
 	tx, err = instance.SendMessage(auth, toAddress, message, auth.GasPrice)
@@ -194,13 +184,17 @@ func testFetchMultipleSentMessageInOneBlock(t *testing.T) {
 }
 
 func testTraceHasUnsupportedOpcodes(t *testing.T) {
-	delegateTrace, err := os.ReadFile("../../common/testdata/blockResult_delegate.json")
+	delegateTrace, err := os.ReadFile("../../common/testdata/blockTrace_delegate.json")
 	assert.NoError(t, err)
 
-	trace := &types.BlockResult{}
+	trace := &types.BlockTrace{}
 	assert.NoError(t, json.Unmarshal(delegateTrace, &trace))
 
 	assert.Equal(t, true, len(cfg.L2Config.SkippedOpcodes) == 2)
+	_, exist := cfg.L2Config.SkippedOpcodes["DELEGATECALL"]
+	assert.Equal(t, true, exist)
+
+	assert.True(t, l2.TraceHasUnsupportedOpcodes(cfg.L2Config.SkippedOpcodes, trace))
 }
 
 func prepareRelayerClient(l2Cli *ethclient.Client, db database.OrmFactory, contractAddr common.Address) *l2.WatcherClient {
@@ -208,17 +202,10 @@ func prepareRelayerClient(l2Cli *ethclient.Client, db database.OrmFactory, contr
 }
 
 func prepareAuth(t *testing.T, l2Cli *ethclient.Client, privateKey *ecdsa.PrivateKey) *bind.TransactOpts {
-	publicKey := privateKey.Public()
-	publicKeyECDSA, ok := publicKey.(*ecdsa.PublicKey)
-	assert.True(t, ok)
-	fromAddress := crypto.PubkeyToAddress(*publicKeyECDSA)
-	nonce, err := l2Cli.PendingNonceAt(context.Background(), fromAddress)
-	assert.NoError(t, err)
 	auth, err := bind.NewKeyedTransactorWithChainID(privateKey, big.NewInt(53077))
 	assert.NoError(t, err)
-	auth.Nonce = big.NewInt(int64(nonce))
-	auth.Value = big.NewInt(0)       // in wei
-	auth.GasLimit = uint64(30000000) // in units
+	auth.Value = big.NewInt(0) // in wei
+	assert.NoError(t, err)
 	auth.GasPrice, err = l2Cli.SuggestGasPrice(context.Background())
 	assert.NoError(t, err)
 	return auth

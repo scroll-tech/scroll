@@ -2,27 +2,22 @@ package coordinator_test
 
 import (
 	"context"
-	"math/big"
 	"net/http"
 	"strconv"
 	"testing"
 	"time"
 
-	"github.com/scroll-tech/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/crypto"
-	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/sync/errgroup"
-
-	"scroll-tech/bridge/l2"
-	"scroll-tech/bridge/sender"
-	"scroll-tech/database/orm"
 
 	"scroll-tech/common/docker"
 	"scroll-tech/common/message"
 	"scroll-tech/common/utils"
 	"scroll-tech/database"
 	"scroll-tech/database/migrate"
+	"scroll-tech/database/orm"
 
 	"scroll-tech/coordinator"
 	client2 "scroll-tech/coordinator/client"
@@ -36,10 +31,10 @@ const managerURL = "localhost:8132"
 const managerPort = ":8132"
 
 var (
-	cfg              *bridge_config.Config
-	l2gethImg, dbImg docker.ImgInstance
-	rollerManager    *coordinator.Manager
-	handle           *http.Server
+	cfg           *bridge_config.Config
+	dbImg         docker.ImgInstance
+	rollerManager *coordinator.Manager
+	handle        *http.Server
 )
 
 func setEnv(t *testing.T) error {
@@ -47,11 +42,6 @@ func setEnv(t *testing.T) error {
 	// Load config.
 	cfg, err = bridge_config.NewConfig("../bridge/config.json")
 	assert.NoError(t, err)
-
-	// Create l2geth container.
-	l2gethImg = docker.NewTestL2Docker(t)
-	cfg.L1Config.RelayerConfig.SenderConfig.Endpoint = l2gethImg.Endpoint()
-	cfg.L2Config.Endpoint = l2gethImg.Endpoint()
 
 	// Create db container.
 	dbImg = docker.NewTestDBDocker(t, cfg.DBConfig.DriverName)
@@ -75,10 +65,10 @@ func TestApis(t *testing.T) {
 	t.Run("TestSeveralConnections", testSeveralConnections)
 	t.Run("TestIdleRollerSelection", testIdleRollerSelection)
 
+	// Teardown
 	t.Cleanup(func() {
 		handle.Shutdown(context.Background())
 		rollerManager.Stop()
-		l2gethImg.Stop()
 		dbImg.Stop()
 	})
 }
@@ -128,7 +118,7 @@ func testFailedHandshake(t *testing.T) {
 		},
 	}
 	assert.NoError(t, authMsg.Sign(privkey))
-	traceCh := make(chan *message.BlockTraces, 4)
+	traceCh := make(chan *message.TaskMsg, 4)
 	_, err = client.RegisterAndSubscribe(ctx, traceCh, authMsg)
 	assert.Error(t, err)
 	client.Close()
@@ -154,7 +144,7 @@ func testFailedHandshake(t *testing.T) {
 
 	assert.NoError(t, authMsg.Sign(privkey))
 	time.Sleep(6 * time.Second)
-	traceCh = make(chan *message.BlockTraces, 4)
+	traceCh = make(chan *message.TaskMsg, 4)
 	_, err = client.RegisterAndSubscribe(ctx, traceCh, authMsg)
 	assert.Error(t, err)
 	client.Close()
@@ -209,65 +199,41 @@ func testSeveralConnections(t *testing.T) {
 }
 
 func testIdleRollerSelection(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
 	// Create db handler and reset db.
 	l2db, err := database.NewOrmFactory(cfg.DBConfig)
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(l2db.GetDB().DB))
 	defer l2db.Close()
 
-	var (
-		l2cfg = cfg.L2Config
-		l2Cli *ethclient.Client
-	)
-	l2Cli, err = ethclient.Dial(l2cfg.Endpoint)
-	assert.NoError(t, err)
-	rc := l2.NewL2WatcherClient(context.Background(), l2Cli, l2cfg.Confirmations, l2cfg.ProofGenerationFreq, l2cfg.SkippedOpcodes, l2cfg.L2MessengerAddress, l2db)
-	rc.Start()
-	defer rc.Stop()
-
 	// create ws connections.
 	batch := 20
 	stopCh := make(chan struct{})
 	for i := 0; i < batch; i++ {
-		performHandshake(t, 1, "roller_test"+strconv.Itoa(i), "ws://"+managerURL, stopCh)
+		performHandshake(t, 0, "roller_test"+strconv.Itoa(i), "ws://"+managerURL, stopCh)
 	}
 	assert.Equal(t, batch, rollerManager.GetNumberOfIdleRollers())
 
-	relayCfg := cfg.L1Config.RelayerConfig
-	relayCfg.SenderConfig.Confirmations = 0
-	to := common.HexToAddress("0x4592d8f8d7b001e72cb26a73e4fa1806a51ac79d")
-	newSender, err := sender.NewSender(ctx, relayCfg.SenderConfig, relayCfg.MessageSenderPrivateKeys)
-	assert.True(t, assert.NoError(t, err), "unable to create a sender instance.")
-	for i := 0; i < 2; i++ {
-		_, err = newSender.SendTransaction(strconv.Itoa(1000+i), &to, big.NewInt(1000000000), nil)
+	var ids = make([]string, 2)
+	dbTx, err := l2db.Beginx()
+	assert.NoError(t, err)
+	for i := range ids {
+		ID, err := l2db.NewBatchInDBTx(dbTx, &orm.BlockInfo{Number: uint64(i)}, &orm.BlockInfo{Number: uint64(i)}, "0f", 1, 194676)
 		assert.NoError(t, err)
-		<-newSender.ConfirmChan()
+		ids[i] = ID
 	}
+	assert.NoError(t, dbTx.Commit())
 
 	// verify proof status
 	var (
-		number   int64 = 1
-		latest   int64
-		tick     = time.Tick(time.Second)
-		tickStop = time.Tick(time.Second * 600)
+		tick     = time.Tick(500 * time.Millisecond)
+		tickStop = time.Tick(10 * 60 * time.Second)
 	)
-	for {
+	for len(ids) > 0 {
 		select {
 		case <-tick:
-			// get the latest number
-			if latest, err = l2db.GetBlockResultsLatestHeight(); err != nil || latest <= 0 {
-				continue
-			}
-			if number > latest {
-				close(stopCh)
-				return
-			}
-			status, err := l2db.GetBlockStatusByNumber(uint64(number))
-			if err == nil && (status == orm.BlockVerified || status == orm.BlockSkipped) {
-				number++
+			status, err := l2db.GetProvingStatusByID(ids[0])
+			if err == nil && status == orm.ProvingTaskVerified {
+				ids = ids[1:]
 			}
 		case <-tickStop:
 			t.Error("failed to check proof status")
@@ -325,7 +291,7 @@ func performHandshake(t *testing.T, proofTime time.Duration, name string, wsURL 
 
 	assert.NoError(t, authMsg.Sign(privkey))
 
-	traceCh := make(chan *message.BlockTraces, 4)
+	traceCh := make(chan *message.TaskMsg, 4)
 	sub, err := client.RegisterAndSubscribe(ctx, traceCh, authMsg)
 	if err != nil {
 		t.Error(err)
@@ -336,9 +302,11 @@ func performHandshake(t *testing.T, proofTime time.Duration, name string, wsURL 
 		for {
 			select {
 			case trace := <-traceCh:
-				id := trace.Traces.BlockTrace.Number.ToInt().Uint64()
+				id := trace.ID
 				// sleep several seconds to mock the proof process.
-				<-time.After(proofTime * time.Second)
+				if proofTime > 0 {
+					<-time.After(proofTime * time.Second)
+				}
 				proof := &message.AuthZkProof{
 					ProofMsg: &message.ProofMsg{
 						ID:     id,

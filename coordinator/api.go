@@ -95,7 +95,7 @@ func (m *Manager) SubmitProof(proof *message.AuthZkProof) (bool, error) {
 	pubkey, _ := proof.PublicKey()
 	// Only allow registered pub-key.
 	if !m.existID(pubkey, proof.ID) {
-		return false, fmt.Errorf("the roller or session id doesn't exist, pubkey: %s, ID: %d", pubkey, proof.ID)
+		return false, fmt.Errorf("the roller or session id doesn't exist, pubkey: %s, ID: %s", pubkey, proof.ID)
 	}
 
 	defer m.freeID(pubkey, proof.ID)

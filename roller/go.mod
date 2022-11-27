@@ -4,7 +4,7 @@ go 1.18
 
 require (
 	github.com/BurntSushi/toml v1.1.0
-	github.com/scroll-tech/go-ethereum v1.10.14-0.20221012120556-b3a7c9b6917d
+	github.com/scroll-tech/go-ethereum v1.10.14-0.20221121043753-0bdd2e0575a2
 	github.com/stretchr/testify v1.8.0
 	github.com/urfave/cli/v2 v2.10.2
 	go.etcd.io/bbolt v1.3.6
@@ -25,6 +25,7 @@ require (
 	github.com/rjeczalik/notify v0.9.1 // indirect
 	github.com/rogpeppe/go-internal v1.8.1 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
+	github.com/scroll-tech/zktrie v0.3.0 // indirect
 	github.com/shirou/gopsutil v3.21.11+incompatible // indirect
 	github.com/xrash/smetrics v0.0.0-20201216005158-039620a65673 // indirect
 	github.com/yusufpapurcu/wmi v1.2.2 // indirect
