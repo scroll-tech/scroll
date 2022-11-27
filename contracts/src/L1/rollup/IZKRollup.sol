@@ -47,6 +47,7 @@ interface IZKRollup {
     uint64 timestamp;
     bytes extraData;
     Layer2Transaction[] txs;
+    bytes32 messageRoot;
   }
 
   /// @dev The batch struct, the batch hash is always the last block hash of `blocks`.
@@ -71,8 +72,11 @@ interface IZKRollup {
   function layer2GasLimit(uint256 _blockNumber) external view returns (uint256);
 
   /// @notice Verify a state proof for message relay.
-  /// @dev add more fields.
-  function verifyMessageStateProof(uint256 _batchIndex, uint256 _blockHeight) external view returns (bool);
+  /// @dev return `bytes32(0)` when verification is failed.
+  /// @param _batchIndex The batch index to query.
+  /// @param _blockHash The block hash to query.
+  /// @return the merkle root of the corresponding merkle tree.
+  function verifyMessageStateProof(uint256 _batchIndex, bytes32 _blockHash) external view returns (bytes32);
 
   /**************************************** Mutated Functions ****************************************/
 

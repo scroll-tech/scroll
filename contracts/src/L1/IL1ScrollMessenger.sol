@@ -8,8 +8,8 @@ interface IL1ScrollMessenger is IScrollMessenger {
   struct L2MessageProof {
     // @todo add more fields
     uint256 batchIndex;
-    uint256 blockHeight;
-    bytes merkleProof;
+    bytes32 blockHash;
+    bytes32[] merkleProof;
   }
 
   /**************************************** Mutated Functions ****************************************/

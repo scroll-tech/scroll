@@ -66,7 +66,7 @@ Mapping from batch id to batch struct.
 ### blocks
 
 ```solidity
-function blocks(bytes32) external view returns (bytes32 parentHash, bytes32 transactionRoot, uint64 blockHeight, uint64 batchIndex)
+function blocks(bytes32) external view returns (bytes32 parentHash, bytes32 transactionRoot, uint64 blockHeight, uint64 batchIndex, bytes32 messageRoot)
 ```
 
 Mapping from block hash to block struct.
@@ -87,6 +87,7 @@ Mapping from block hash to block struct.
 | transactionRoot | bytes32 | undefined |
 | blockHeight | uint64 | undefined |
 | batchIndex | uint64 | undefined |
+| messageRoot | bytes32 | undefined |
 
 ### commitBatch
 
@@ -417,25 +418,25 @@ Update the address of operator.
 ### verifyMessageStateProof
 
 ```solidity
-function verifyMessageStateProof(uint256 _batchIndex, uint256 _blockHeight) external view returns (bool)
+function verifyMessageStateProof(uint256 _batchIndex, bytes32 _blockHash) external view returns (bytes32)
 ```
 
 Verify a state proof for message relay.
 
-*add more fields.*
+*return `bytes32(0)` when verification is failed.*
 
 #### Parameters
 
 | Name | Type | Description |
 |---|---|---|
-| _batchIndex | uint256 | undefined |
-| _blockHeight | uint256 | undefined |
+| _batchIndex | uint256 | The batch index to query. |
+| _blockHash | bytes32 | The block hash to query. |
 
 #### Returns
 
 | Name | Type | Description |
 |---|---|---|
-| _0 | bool | undefined |
+| _0 | bytes32 | the merkle root of the corresponding merkle tree. |
 
 
 

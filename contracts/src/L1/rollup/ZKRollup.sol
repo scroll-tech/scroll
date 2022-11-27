@@ -36,6 +36,7 @@ contract ZKRollup is OwnableUpgradeable, IZKRollup {
     bytes32 transactionRoot;
     uint64 blockHeight;
     uint64 batchIndex;
+    bytes32 messageRoot;
   }
 
   struct Layer2BatchStored {
@@ -111,17 +112,32 @@ contract ZKRollup is OwnableUpgradeable, IZKRollup {
   }
 
   /// @inheritdoc IZKRollup
-  function verifyMessageStateProof(uint256 _batchIndex, uint256 _blockHeight) external view returns (bool) {
+  function verifyMessageStateProof(uint256 _batchIndex, bytes32 _blockHash) external view returns (bytes32) {
     bytes32 _batchId = finalizedBatches[_batchIndex];
     // check if batch is verified
-    if (_batchId == bytes32(0)) return false;
+    if (_batchId == bytes32(0)) return bytes32(0);
+
+    uint256 _blockHeight = blocks[_blockHash].blockHeight;
+    uint256 _batchIndexInBlock = blocks[_blockHash].batchIndex;
+    if (_batchIndexInBlock != _batchIndex) {
+      return bytes32(0);
+    }
 
     uint256 _maxBlockHeightInBatch = blocks[batches[_batchId].batchHash].blockHeight;
     // check block height is in batch range.
-    if (_maxBlockHeightInBatch == 0) return _blockHeight == 0;
-    else {
+    if (_maxBlockHeightInBatch == 0) {
+      if (_blockHeight == 0) {
+        return blocks[_blockHash].messageRoot;
+      } else {
+        return bytes32(0);
+      }
+    } else {
       uint256 _minBlockHeightInBatch = blocks[batches[_batchId].parentHash].blockHeight + 1;
-      return _minBlockHeightInBatch <= _blockHeight && _blockHeight <= _maxBlockHeightInBatch;
+      if (_minBlockHeightInBatch <= _blockHeight && _blockHeight <= _maxBlockHeightInBatch) {
+        return blocks[_blockHash].messageRoot;
+      } else {
+        return bytes32(0);
+      }
     }
   }
 
