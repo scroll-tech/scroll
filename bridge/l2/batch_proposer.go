@@ -35,38 +35,35 @@ func (w *WatcherClient) tryProposeBatch() error {
 		return nil
 	}
 
-	idsToBatch := []uint64{}
-	var txNum uint64
-	var gasUsed uint64
+	if blocks[0].GasUsed > batchGasThreshold {
+		log.Warn("gas overflow even for only 1 block", "gas", blocks[0].GasUsed)
+		return w.createBatchForBlocks(blocks[:1])
+	}
+
+	var (
+		length  = len(blocks)
+		gasUsed uint64
+	)
 	// add blocks into batch until reach batchGasThreshold
-	for _, block := range blocks {
+	for i, block := range blocks {
 		if gasUsed+block.GasUsed > batchGasThreshold {
+			blocks = blocks[:i]
 			break
 		}
-		txNum += block.TxNum
 		gasUsed += block.GasUsed
-		idsToBatch = append(idsToBatch, block.Number)
 	}
 
 	// if too few gas gathered, but we don't want to halt, we then check the first block in the batch:
 	// if it's not old enough we will skip proposing the batch,
 	// otherwise we will still propose a batch
-	if len(idsToBatch) == len(blocks) && gasUsed < batchGasThreshold &&
-		blocks[0].BlockTimestamp+batchTimeSec > uint64(time.Now().Unix()) {
+	if length == len(blocks) && blocks[0].BlockTimestamp+batchTimeSec > uint64(time.Now().Unix()) {
 		return nil
 	}
 
-	if len(idsToBatch) == 0 {
-		log.Warn("gas overflow even for only 1 block", "gas", blocks[0].GasUsed)
-		txNum = blocks[0].TxNum
-		gasUsed = blocks[0].GasUsed
-		idsToBatch = []uint64{blocks[0].Number}
-	}
-
-	return w.createBatchForBlocks(idsToBatch, blocks[:len(idsToBatch)], txNum, gasUsed)
+	return w.createBatchForBlocks(blocks)
 }
 
-func (w *WatcherClient) createBatchForBlocks(blockIDs []uint64, blocks []*orm.BlockInfo, txNum uint64, gasUsed uint64) error {
+func (w *WatcherClient) createBatchForBlocks(blocks []*orm.BlockInfo) error {
 	dbTx, err := w.orm.Beginx()
 	if err != nil {
 		return err
@@ -81,9 +78,19 @@ func (w *WatcherClient) createBatchForBlocks(blockIDs []uint64, blocks []*orm.Bl
 		}
 	}()
 
-	startBlock := blocks[0]
-	endBlock := blocks[len(blocks)-1]
-	var batchID string
+	var (
+		batchID        string
+		startBlock     = blocks[0]
+		endBlock       = blocks[len(blocks)-1]
+		txNum, gasUsed uint64
+		blockIDs       = make([]uint64, len(blocks))
+	)
+	for i, block := range blocks {
+		txNum += block.TxNum
+		gasUsed += block.GasUsed
+		blockIDs[i] = block.Number
+	}
+
 	batchID, dbTxErr = w.orm.NewBatchInDBTx(dbTx, startBlock, endBlock, startBlock.ParentHash, txNum, gasUsed)
 	if dbTxErr != nil {
 		return dbTxErr
