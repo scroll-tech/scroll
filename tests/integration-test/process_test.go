@@ -72,8 +72,9 @@ func testBridgeOperation(t *testing.T) {
 		to = common.HexToAddress("0xFe94e28e4092A4Edc906D59b59623544B81b7F80")
 	)
 	for i := 0; i < newSender.NumberOfAccounts(); i++ {
+		idx := i
 		eg.Go(func() error {
-			_, err = newSender.SendTransaction(strconv.Itoa(i), &to, big.NewInt(1), nil)
+			_, err = newSender.SendTransaction(strconv.Itoa(idx), &to, big.NewInt(1), nil)
 			if err == nil {
 				<-newSender.ConfirmChan()
 			}

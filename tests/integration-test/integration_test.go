@@ -41,7 +41,7 @@ func free(t *testing.T) {
 	assert.NoError(t, dbImg.Stop())
 }
 
-func TestVersion(t *testing.T) {
+func TestIntegration(t *testing.T) {
 	setupEnv(t)
 
 	// test cmd --version

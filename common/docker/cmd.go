@@ -57,7 +57,7 @@ func (tt *Cmd) Run(name string, args ...string) {
 // WaitExit wait util process exit.
 func (tt *Cmd) WaitExit() {
 	// Send interrupt signal.
-	tt.cmd.Process.Signal(os.Interrupt)
+	_ = tt.cmd.Process.Signal(os.Interrupt)
 	tt.Err = tt.cmd.Wait()
 	select {
 	case tt.stopCh <- struct{}{}:
