@@ -36,7 +36,6 @@ func (w *WatcherClient) tryProposeBatch() error {
 	}
 
 	idsToBatch := []uint64{}
-	blocksToBatch := []*orm.BlockInfo{}
 	var txNum uint64
 	var gasUsed uint64
 	// add blocks into batch until reach batchGasThreshold
@@ -47,26 +46,24 @@ func (w *WatcherClient) tryProposeBatch() error {
 		txNum += block.TxNum
 		gasUsed += block.GasUsed
 		idsToBatch = append(idsToBatch, block.Number)
-		blocksToBatch = append(blocksToBatch, block)
 	}
 
 	// if too few gas gathered, but we don't want to halt, we then check the first block in the batch:
 	// if it's not old enough we will skip proposing the batch,
 	// otherwise we will still propose a batch
-	if len(blocksToBatch) == len(blocks) && gasUsed < batchGasThreshold &&
+	if len(idsToBatch) == len(blocks) && gasUsed < batchGasThreshold &&
 		blocks[0].BlockTimestamp+batchTimeSec > uint64(time.Now().Unix()) {
 		return nil
 	}
 
-	if len(blocksToBatch) == 0 {
+	if len(idsToBatch) == 0 {
 		log.Warn("gas overflow even for only 1 block", "gas", blocks[0].GasUsed)
 		txNum = blocks[0].TxNum
 		gasUsed = blocks[0].GasUsed
 		idsToBatch = []uint64{blocks[0].Number}
-		blocksToBatch = []*orm.BlockInfo{blocks[0]}
 	}
 
-	return w.createBatchForBlocks(idsToBatch, blocksToBatch, txNum, gasUsed)
+	return w.createBatchForBlocks(idsToBatch, blocks[:len(idsToBatch)], txNum, gasUsed)
 }
 
 func (w *WatcherClient) createBatchForBlocks(blockIDs []uint64, blocks []*orm.BlockInfo, txNum uint64, gasUsed uint64) error {
