@@ -36,6 +36,7 @@ func (w *WatcherClient) tryProposeBatch() error {
 	}
 
 	if blocks[0].GasUsed > batchGasThreshold {
+		log.Warn("gas overflow even for only 1 block", "gas", blocks[0].GasUsed)
 		return w.createBatchForBlocks(blocks[:1])
 	}
 
