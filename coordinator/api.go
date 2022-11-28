@@ -47,7 +47,7 @@ func (m *Manager) ListRollers() ([]*RollerInfo, error) {
 			PublicKey: pk,
 		}
 		for id, s := range m.sessions {
-			if _, ok := s.sess.RollerStatus[pk]; ok {
+			if _, ok := s.sess.Rollers[pk]; ok {
 				info.ActiveSessionStartTime = time.Unix(s.sess.StartTimestamp, 0)
 				info.ActiveSession = id
 				break
@@ -61,8 +61,8 @@ func (m *Manager) ListRollers() ([]*RollerInfo, error) {
 func newSessionInfo(s *session, status orm.ProvingStatus, errMsg string, finished bool) *SessionInfo {
 	now := time.Now()
 	var nameList []string
-	for pk := range s.sess.RollerNames {
-		nameList = append(nameList, s.sess.RollerNames[pk])
+	for pk := range s.sess.Rollers {
+		nameList = append(nameList, s.sess.Rollers[pk].Name)
 	}
 	info := &SessionInfo{
 		ID:              s.sess.ID,

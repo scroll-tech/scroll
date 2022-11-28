@@ -79,12 +79,17 @@ const (
 	RollerProofInvalid
 )
 
+// RollerStatus is the roller name and roller prove status
+type RollerStatus struct {
+	Name   string            `json:"name" db:"name"`
+	Status RollerProveStatus `json:"status" db:"status"`
+}
+
 // SessionInfo is assigned rollers info of a block batch (session)
 type SessionInfo struct {
-	ID             string                       `json:"id" db:"id"`
-	RollerStatus   map[string]RollerProveStatus `json:"roller_status" db:"roller_status"`
-	RollerNames    map[string]string            `json:"roller_names" db:"roller_names"`
-	StartTimestamp int64                        `json:"start_timestamp" db:"start_timestamp"`
+	ID             string                   `json:"id" db:"id"`
+	Rollers        map[string]*RollerStatus `json:"rollers" db:"rollers"`
+	StartTimestamp int64                    `json:"start_timestamp" db:"start_timestamp"`
 }
 
 // BlockTraceOrm block_trace operation interface

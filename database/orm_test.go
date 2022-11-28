@@ -343,11 +343,11 @@ func testOrmSessionInfo(t *testing.T) {
 
 	sessionInfo := orm.SessionInfo{
 		ID: batchID,
-		RollerStatus: map[string]orm.RollerProveStatus{
-			"0": orm.RollerAssigned,
-		},
-		RollerNames: map[string]string{
-			"0": "roller-0",
+		Rollers: map[string]*orm.RollerStatus{
+			"0": {
+				Name:   "roller-0",
+				Status: orm.RollerAssigned,
+			},
 		},
 		StartTimestamp: time.Now().Unix()}
 
@@ -359,7 +359,7 @@ func testOrmSessionInfo(t *testing.T) {
 	assert.Equal(t, sessionInfo, *session_infos[0])
 
 	// update
-	sessionInfo.RollerStatus["0"] = orm.RollerProofValid
+	sessionInfo.Rollers["0"].Status = orm.RollerProofValid
 	assert.NoError(t, ormSession.SetSessionInfo(&sessionInfo))
 	session_infos, err = ormSession.GetSessionInfosByIDs(ids)
 	assert.NoError(t, err)

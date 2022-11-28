@@ -253,9 +253,9 @@ func (m *Manager) HandleZkProof(pk string, payload []byte) error {
 	proofTimeSec := uint64(time.Since(time.Unix(s.sess.StartTimestamp, 0)).Seconds())
 
 	// Ensure this roller is eligible to participate in the session.
-	if status, ok := s.sess.RollerStatus[pk]; !ok {
+	if roller, ok := s.sess.Rollers[pk]; !ok {
 		return fmt.Errorf("roller %s is not eligible to partake in proof session %v", pk, msg.ID)
-	} else if status == orm.RollerProofValid {
+	} else if roller.Status == orm.RollerProofValid {
 		// In order to prevent DoS attacks, it is forbidden to repeatedly submit valid proofs.
 		// TODO: Defend invalid proof resubmissions by one of the following two methods:
 		// (i) slash the roller for each submission of invalid proof
@@ -364,8 +364,8 @@ func (m *Manager) CollectProofs(id string, s *session) {
 			// Pick a random winner.
 			// First, round up the keys that actually sent in a valid proof.
 			var participatingRollers []string
-			for pk, status := range s.sess.RollerStatus {
-				if status == orm.RollerProofValid {
+			for pk, roller := range s.sess.Rollers {
+				if roller.Status == orm.RollerProofValid {
 					participatingRollers = append(participatingRollers, pk)
 				}
 			}
@@ -392,7 +392,7 @@ func (m *Manager) CollectProofs(id string, s *session) {
 			return
 		case ret := <-s.finishChan:
 			m.mu.Lock()
-			s.sess.RollerStatus[ret.pk] = ret.status
+			s.sess.Rollers[ret.pk].Status = ret.status
 			m.mu.Unlock()
 			if err := m.orm.SetSessionInfo(s.sess); err != nil {
 				log.Error("db set session info fail", "pk", ret.pk, "error", err)
@@ -468,11 +468,11 @@ func (m *Manager) StartProofGenerationSession(task *orm.BlockBatch) bool {
 
 	sess := &orm.SessionInfo{
 		ID: task.ID,
-		RollerStatus: map[string]orm.RollerProveStatus{
-			pk: orm.RollerAssigned,
-		},
-		RollerNames: map[string]string{
-			pk: roller.AuthMsg.Identity.Name,
+		Rollers: map[string]*orm.RollerStatus{
+			pk: {
+				Name:   roller.AuthMsg.Identity.Name,
+				Status: orm.RollerAssigned,
+			},
 		},
 		StartTimestamp: time.Now().Unix(),
 	}
@@ -529,8 +529,8 @@ func (m *Manager) IsRollerIdle(hexPk string) bool {
 	// We need to iterate over all sessions because finished sessions will be deleted until the
 	// timeout. So a busy roller could be marked as idle in a finished session.
 	for _, sess := range m.sessions {
-		for pk, status := range sess.sess.RollerStatus {
-			if pk == hexPk && status == orm.RollerAssigned {
+		for pk, roller := range sess.sess.Rollers {
+			if pk == hexPk && roller.Status == orm.RollerAssigned {
 				return false
 			}
 		}
