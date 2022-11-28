@@ -250,7 +250,7 @@ func testOrmBlockbatch(t *testing.T) {
 	batchID1, err := ormBatch.NewBatchInDBTx(dbTx,
 		&orm.BlockInfo{Number: blockTrace.Header.Number.Uint64()},
 		&orm.BlockInfo{Number: blockTrace.Header.Number.Uint64() + 1},
-		"ff", 1, 194676, false) // parentHash & totalTxNum & totalL2Gas don't really matter here
+		"ff", 1, 194676) // parentHash & totalTxNum & totalL2Gas don't really matter here
 	assert.NoError(t, err)
 	err = ormBlock.SetBatchIDForBlocksInDBTx(dbTx, []uint64{
 		blockTrace.Header.Number.Uint64(),
@@ -259,7 +259,7 @@ func testOrmBlockbatch(t *testing.T) {
 	batchID2, err := ormBatch.NewBatchInDBTx(dbTx,
 		&orm.BlockInfo{Number: blockTrace.Header.Number.Uint64() + 2},
 		&orm.BlockInfo{Number: blockTrace.Header.Number.Uint64() + 3},
-		"ff", 1, 194676, false) // parentHash & totalTxNum & totalL2Gas don't really matter here
+		"ff", 1, 194676) // parentHash & totalTxNum & totalL2Gas don't really matter here
 	assert.NoError(t, err)
 	err = ormBlock.SetBatchIDForBlocksInDBTx(dbTx, []uint64{
 		blockTrace.Header.Number.Uint64() + 2,

@@ -58,20 +58,18 @@ func (w *WatcherClient) tryProposeBatch() error {
 		return nil
 	}
 
-	var isGasOverflow bool
 	if len(blocksToBatch) == 0 {
 		log.Warn("gas overflow even for only 1 block", "gas", blocks[0].GasUsed)
 		txNum = blocks[0].TxNum
 		gasUsed = blocks[0].GasUsed
 		idsToBatch = []uint64{blocks[0].Number}
 		blocksToBatch = []*orm.BlockInfo{blocks[0]}
-		isGasOverflow = true
 	}
 
-	return w.createBatchForBlocks(idsToBatch, blocksToBatch, txNum, gasUsed, isGasOverflow)
+	return w.createBatchForBlocks(idsToBatch, blocksToBatch, txNum, gasUsed)
 }
 
-func (w *WatcherClient) createBatchForBlocks(blockIDs []uint64, blocks []*orm.BlockInfo, txNum uint64, gasUsed uint64, isGasOverflow bool) error {
+func (w *WatcherClient) createBatchForBlocks(blockIDs []uint64, blocks []*orm.BlockInfo, txNum uint64, gasUsed uint64) error {
 	dbTx, err := w.orm.Beginx()
 	if err != nil {
 		return err
@@ -89,7 +87,7 @@ func (w *WatcherClient) createBatchForBlocks(blockIDs []uint64, blocks []*orm.Bl
 	startBlock := blocks[0]
 	endBlock := blocks[len(blocks)-1]
 	var batchID string
-	batchID, dbTxErr = w.orm.NewBatchInDBTx(dbTx, startBlock, endBlock, startBlock.ParentHash, txNum, gasUsed, isGasOverflow)
+	batchID, dbTxErr = w.orm.NewBatchInDBTx(dbTx, startBlock, endBlock, startBlock.ParentHash, txNum, gasUsed)
 	if dbTxErr != nil {
 		return dbTxErr
 	}
