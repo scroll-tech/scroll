@@ -61,10 +61,10 @@ func (w *WatcherClient) tryProposeBatch() error {
 	var isGasOverflow bool
 	if len(blocksToBatch) == 0 {
 		log.Warn("gas overflow even for only 1 block", "gas", blocks[0].GasUsed)
-		txNum += blocks[0].TxNum
-		gasUsed += blocks[0].GasUsed
-		idsToBatch = append(idsToBatch, blocks[0].Number)
-		blocksToBatch = append(blocksToBatch, blocks[0])
+		txNum = blocks[0].TxNum
+		gasUsed = blocks[0].GasUsed
+		idsToBatch = []uint64{blocks[0].Number}
+		blocksToBatch = []*orm.BlockInfo{blocks[0]}
 		isGasOverflow = true
 	}
 
