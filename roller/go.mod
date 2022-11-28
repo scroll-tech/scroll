@@ -4,7 +4,7 @@ go 1.18
 
 require (
 	github.com/BurntSushi/toml v1.1.0
-	github.com/scroll-tech/go-ethereum v1.10.14-0.20221121043753-0bdd2e0575a2
+	github.com/scroll-tech/go-ethereum v1.10.14-0.20221125025612-4ea77a7577c6
 	github.com/stretchr/testify v1.8.0
 	github.com/urfave/cli/v2 v2.10.2
 	go.etcd.io/bbolt v1.3.6
