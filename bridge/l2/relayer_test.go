@@ -84,7 +84,7 @@ func testL2RelayerProcessSaveEvents(t *testing.T) {
 	batchID, err := db.NewBatchInDBTx(dbTx,
 		&orm.BlockInfo{Number: templateL2Message[0].Height},
 		&orm.BlockInfo{Number: templateL2Message[0].Height + 1},
-		"0f", 1, 194676) // parentHash & totalTxNum & totalL2Gas don't really matter here
+		"0f", 1, 194676, false) // parentHash & totalTxNum & totalL2Gas don't really matter here
 	assert.NoError(t, err)
 	err = db.SetBatchIDForBlocksInDBTx(dbTx, []uint64{
 		templateL2Message[0].Height,
@@ -140,7 +140,7 @@ func testL2RelayerProcessPendingBatches(t *testing.T) {
 	batchID, err := db.NewBatchInDBTx(dbTx,
 		&orm.BlockInfo{Number: traces[0].Header.Number.Uint64()},
 		&orm.BlockInfo{Number: traces[1].Header.Number.Uint64()},
-		"ff", 1, 194676) // parentHash & totalTxNum & totalL2Gas don't really matter here
+		"ff", 1, 194676, false) // parentHash & totalTxNum & totalL2Gas don't really matter here
 	assert.NoError(t, err)
 	err = db.SetBatchIDForBlocksInDBTx(dbTx, []uint64{
 		traces[0].Header.Number.Uint64(),
@@ -174,7 +174,7 @@ func testL2RelayerProcessCommittedBatches(t *testing.T) {
 
 	dbTx, err := db.Beginx()
 	assert.NoError(t, err)
-	batchID, err := db.NewBatchInDBTx(dbTx, &orm.BlockInfo{}, &orm.BlockInfo{}, "0", 1, 194676) // startBlock & endBlock & parentHash & totalTxNum & totalL2Gas don't really matter here
+	batchID, err := db.NewBatchInDBTx(dbTx, &orm.BlockInfo{}, &orm.BlockInfo{}, "0", 1, 194676, false) // startBlock & endBlock & parentHash & totalTxNum & totalL2Gas don't really matter here
 	assert.NoError(t, err)
 	err = dbTx.Commit()
 	assert.NoError(t, err)

@@ -58,8 +58,14 @@ func (w *WatcherClient) tryProposeBatch() error {
 		return nil
 	}
 
+	var isGasOverflow bool
 	if len(blocksToBatch) == 0 {
-		panic(fmt.Sprintf("gas overflow even for only 1 block. gas: %v", blocks[0].GasUsed))
+		log.Warn("gas overflow even for only 1 block", "gas", blocks[0].GasUsed)
+		txNum += blocks[0].TxNum
+		gasUsed += blocks[0].GasUsed
+		idsToBatch = append(idsToBatch, blocks[0].Number)
+		blocksToBatch = append(blocksToBatch, blocks[0])
+		isGasOverflow = true
 	}
 
 	return w.createBatchForBlocks(idsToBatch, blocksToBatch, blocksToBatch[0].ParentHash, txNum, gasUsed)
@@ -83,7 +89,7 @@ func (w *WatcherClient) createBatchForBlocks(blockIDs []uint64, blocks []*orm.Bl
 	startBlock := blocks[0]
 	endBlock := blocks[len(blocks)-1]
 	var batchID string
-	batchID, dbTxErr = w.orm.NewBatchInDBTx(dbTx, startBlock, endBlock, parentHash, txNum, gasUsed)
+	batchID, dbTxErr = w.orm.NewBatchInDBTx(dbTx, startBlock, endBlock, parentHash, txNum, gasUsed, isGasOverflow)
 	if dbTxErr != nil {
 		return dbTxErr
 	}

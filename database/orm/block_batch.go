@@ -192,7 +192,7 @@ func (o *blockBatchOrm) ResetProvingStatusFor(before ProvingStatus) error {
 	return err
 }
 
-func (o *blockBatchOrm) NewBatchInDBTx(dbTx *sqlx.Tx, startBlock *BlockInfo, endBlock *BlockInfo, parentHash string, totalTxNum uint64, totalL2Gas uint64) (string, error) {
+func (o *blockBatchOrm) NewBatchInDBTx(dbTx *sqlx.Tx, startBlock *BlockInfo, endBlock *BlockInfo, parentHash string, totalTxNum uint64, totalL2Gas uint64, isGasOverflow bool) (string, error) {
 	row := dbTx.QueryRow("SELECT COALESCE(MAX(index), 0) FROM block_batch;")
 
 	// TODO: use *big.Int for this
@@ -203,6 +203,12 @@ func (o *blockBatchOrm) NewBatchInDBTx(dbTx *sqlx.Tx, startBlock *BlockInfo, end
 
 	index++
 	id := utils.ComputeBatchID(common.HexToHash(endBlock.Hash), common.HexToHash(parentHash), big.NewInt(index))
+	var provingStatus ProvingStatus
+	if isGasOverflow {
+		provingStatus = ProvingTaskSkipped
+	} else {
+		provingStatus = ProvingTaskUnassigned
+	}
 	if _, err := dbTx.NamedExec(`INSERT INTO public.block_batch (id, index, parent_hash, start_block_number, start_block_hash, end_block_number, end_block_hash, total_tx_num, total_l2_gas) VALUES (:id, :index, :parent_hash, :start_block_number, :start_block_hash, :end_block_number, :end_block_hash, :total_tx_num, :total_l2_gas)`,
 		map[string]interface{}{
 			"id":                 id,
@@ -215,7 +221,7 @@ func (o *blockBatchOrm) NewBatchInDBTx(dbTx *sqlx.Tx, startBlock *BlockInfo, end
 			"total_tx_num":       totalTxNum,
 			"total_l2_gas":       totalL2Gas,
 			"created_at":         time.Now(),
-			// "proving_status":     ProvingTaskUnassigned, // actually no need, because we have default value in DB schema
+			"proving_status":     provingStatus,
 			// "rollup_status":      RollupPending,         // actually no need, because we have default value in DB schema
 		}); err != nil {
 		return "", err
