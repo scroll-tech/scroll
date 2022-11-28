@@ -14,40 +14,47 @@ import (
 
 // RollerAPI for rollers inorder to register and submit proof
 type RollerAPI interface {
-	RequestTicket(authMsg *message.AuthMessage) (*message.Ticket, error)
+	RequestToken(authMsg *message.AuthMessage) (string, error)
 	Register(ctx context.Context, authMsg *message.AuthMessage) (*rpc.Subscription, error)
 	SubmitProof(proof *message.AuthZkProof) (bool, error)
 }
 
-// RequestTicket generates and sends back register ticket for roller
-func (m *Manager) RequestTicket(authMsg *message.AuthMessage) (*message.Ticket, error) {
-	pubkey, _ := authMsg.PublicKey()
-	ticket, err := message.GenerateTicket()
-	if err != nil {
-		return nil, errors.New("ticket generation failed")
+// RequestToken generates and sends back register token for roller
+func (m *Manager) RequestToken(authMsg *message.AuthMessage) (string, error) {
+	if ok, err := authMsg.Verify(); !ok {
+		if err != nil {
+			log.Error("failed to verify auth message", "error", err)
+		}
+		return "", errors.New("signature verification failed")
 	}
-	m.timedmap.Set(ticket.Token, pubkey, time.Duration(m.cfg.TicketTimeToLive)*time.Second)
-	return ticket, nil
+	pubkey, _ := authMsg.PublicKey()
+	if m.timedmap.Contains(pubkey) {
+		return "", errors.New("token for this roller already exists")
+	}
+	token, err := message.GenerateToken()
+	if err != nil {
+		return "", errors.New("token generation failed")
+	}
+	m.timedmap.Set(pubkey, token, time.Duration(m.cfg.TokenTimeToLive)*time.Second)
+	return token, nil
 }
 
 // Register register api for roller
 func (m *Manager) Register(ctx context.Context, authMsg *message.AuthMessage) (*rpc.Subscription, error) {
 	// Verify register message
-
-	pubkey, _ := authMsg.PublicKey()
-	if authMsg.Ticket == nil || m.timedmap.GetValue(authMsg.Ticket.Token) != pubkey {
-		return nil, errors.New("failed to find corresponding ticket")
-	}
-
 	if ok, err := authMsg.Verify(); !ok {
 		if err != nil {
 			log.Error("failed to verify auth message", "error", err)
 		}
 		return nil, errors.New("signature verification failed")
 	}
+	pubkey, _ := authMsg.PublicKey()
 
-	// roller successfully registered, remove ticket
-	m.timedmap.Remove(authMsg.Ticket.Token)
+	if ok, err := m.VerifyToken(*authMsg); !ok {
+		return nil, err
+	}
+	// roller successfully registered, remove token associated with this roller
+	m.timedmap.Remove(pubkey)
 
 	// create or get the roller message channel
 	traceCh, err := m.register(pubkey, authMsg.Identity)

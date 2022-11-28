@@ -7,7 +7,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/crypto"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/sync/errgroup"
@@ -103,7 +102,7 @@ func testFailedHandshake(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	// Try to perform handshake without ticket
+	// Try to perform handshake without token
 	// create a new ws connection
 	client, err := client2.DialContext(ctx, wsURL)
 	assert.NoError(t, err)
@@ -122,7 +121,8 @@ func testFailedHandshake(t *testing.T) {
 	_, err = client.RegisterAndSubscribe(ctx, traceCh, authMsg)
 	assert.Error(t, err)
 	client.Close()
-	// Try to perform handshake with timeouted ticket
+
+	// Try to perform handshake with timeouted token
 	// create a new ws connection
 	client, err = client2.DialContext(ctx, wsURL)
 	assert.NoError(t, err)
@@ -134,13 +134,13 @@ func testFailedHandshake(t *testing.T) {
 		Identity: &message.Identity{
 			Name:      name,
 			Timestamp: time.Now().UnixNano(),
-			PublicKey: common.Bytes2Hex(crypto.CompressPubkey(&privkey.PublicKey)),
 		},
 	}
-	ticket, err := client.RequestTicket(ctx, authMsg)
+	assert.NoError(t, authMsg.Sign(privkey))
+	token, err := client.RequestToken(ctx, authMsg)
 	assert.NoError(t, err)
 
-	authMsg.Identity.Ticket = &ticket
+	authMsg.Identity.Token = token
 
 	assert.NoError(t, authMsg.Sign(privkey))
 	time.Sleep(6 * time.Second)
@@ -255,7 +255,7 @@ func setupRollerManager(t *testing.T, verifierEndpoint string, dbCfg *database.D
 		RollersPerSession: 1,
 		VerifierEndpoint:  verifierEndpoint,
 		CollectionTime:    1,
-		TicketTimeToLive:  5,
+		TokenTimeToLive:   5,
 	}, db)
 	assert.NoError(t, err)
 	assert.NoError(t, rollerManager.Start())
@@ -280,14 +280,13 @@ func performHandshake(t *testing.T, proofTime time.Duration, name string, wsURL 
 		Identity: &message.Identity{
 			Name:      name,
 			Timestamp: time.Now().UnixNano(),
-			PublicKey: common.Bytes2Hex(crypto.CompressPubkey(&privkey.PublicKey)),
 		},
 	}
+	assert.NoError(t, authMsg.Sign(privkey))
 
-	ticket, err := client.RequestTicket(ctx, authMsg)
+	token, err := client.RequestToken(ctx, authMsg)
 	assert.NoError(t, err)
-
-	authMsg.Identity.Ticket = &ticket
+	authMsg.Identity.Token = token
 
 	assert.NoError(t, authMsg.Sign(privkey))
 

@@ -8,11 +8,11 @@ import (
 	"scroll-tech/common/message"
 )
 
-// RequestTicket generates ticket for roller
-func (c *Client) RequestTicket(ctx context.Context, authMsg *message.AuthMessage) (message.Ticket, error) {
-	var ticket message.Ticket
-	err := c.CallContext(ctx, &ticket, "roller_requestTicket", authMsg)
-	return ticket, err
+// RequestToken generates token for roller
+func (c *Client) RequestToken(ctx context.Context, authMsg *message.AuthMessage) (string, error) {
+	var token string
+	err := c.CallContext(ctx, &token, "roller_requestToken", authMsg)
+	return token, err
 }
 
 // RegisterAndSubscribe subscribe roller and register, verified by sign data.

@@ -2,6 +2,7 @@ package coordinator
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	mathrand "math/rand"
 	"sync"
@@ -84,7 +85,7 @@ type Manager struct {
 	// db interface
 	orm database.OrmFactory
 
-	// Ticket cache
+	// Token cache
 	timedmap *timedmap.TimedMap
 }
 
@@ -448,4 +449,14 @@ func (m *Manager) IsRollerIdle(hexPk string) bool {
 
 func (m *Manager) addFailedSession(s *session, errMsg string) {
 	m.failedSessionInfos[s.id] = newSessionInfo(s, orm.ProvingTaskFailed, errMsg, true)
+}
+
+// VerifyToken verifies pukey for token and expiration time
+func (m *Manager) VerifyToken(authMsg message.AuthMessage) (bool, error) {
+	pubkey, _ := authMsg.PublicKey()
+	// GetValue returns nil if value is expired
+	if m.timedmap.GetValue(pubkey) != authMsg.Token {
+		return false, errors.New("failed to find corresponding token")
+	}
+	return true, nil
 }

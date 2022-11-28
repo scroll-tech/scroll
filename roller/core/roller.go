@@ -122,19 +122,18 @@ func (r *Roller) Register() error {
 			Timestamp: time.Now().UnixMilli(),
 			PublicKey: common.Bytes2Hex(crypto.CompressPubkey(&r.priv.PublicKey)),
 			Version:   Version,
-			Ticket:    nil,
 		},
 	}
-	// No need to sing authMsg here, manager can extract roller's PublicKey from corresponding field in Identity
-	// if err := authMsg.Sign(r.priv); err != nil {
-	// 	return fmt.Errorf("sign auth message failed %v", err)
-	// }
+	// Sign request token message
+	if err := authMsg.Sign(r.priv); err != nil {
+		return fmt.Errorf("sign request token message failed %v", err)
+	}
 
-	ticket, err := r.client.RequestTicket(context.Background(), authMsg)
+	token, err := r.client.RequestToken(context.Background(), authMsg)
 	if err != nil {
-		return fmt.Errorf("request ticket failed %v", err)
+		return fmt.Errorf("request token failed %v", err)
 	} else {
-		authMsg.Identity.Ticket = &ticket
+		authMsg.Identity.Token = token
 	}
 
 	// Sign auth message
