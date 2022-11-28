@@ -19,7 +19,7 @@ func NewSessionInfoOrm(db *sqlx.DB) SessionInfoOrm {
 
 func (o *sessionInfoOrm) GetSessionInfosByIDs(ids []string) ([]*SessionInfo, error) {
 	if len(ids) == 0 {
-		return []*SessionInfo{}, nil
+		return nil, nil
 	}
 	query, args, err := sqlx.In("SELECT rollers_info FROM session_info WHERE id IN (?);", ids)
 	if err != nil {
