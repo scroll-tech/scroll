@@ -2,22 +2,21 @@ package integration_test
 
 import (
 	"context"
-	"github.com/scroll-tech/go-ethereum/common"
-	"github.com/scroll-tech/go-ethereum/ethclient"
-	"golang.org/x/sync/errgroup"
 	"math/big"
-	"scroll-tech/bridge/config"
-	"scroll-tech/bridge/sender"
 	"strconv"
 	"testing"
 	"time"
 
+	"github.com/scroll-tech/go-ethereum/common"
+	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/stretchr/testify/assert"
+	"golang.org/x/sync/errgroup"
 
+	"scroll-tech/bridge/config"
+	"scroll-tech/bridge/sender"
+	"scroll-tech/common/docker"
 	"scroll-tech/database"
 	"scroll-tech/database/migrate"
-
-	"scroll-tech/common/docker"
 )
 
 func testDatabaseOperation(t *testing.T) {
