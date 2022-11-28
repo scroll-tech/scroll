@@ -5,7 +5,7 @@ go 1.18
 require (
 	github.com/docker/docker v20.10.21+incompatible
 	github.com/orcaman/concurrent-map v1.0.0
-	github.com/scroll-tech/go-ethereum v1.10.14-0.20221121034025-07f21c5075dc
+	github.com/scroll-tech/go-ethereum v1.10.14-0.20221125025612-4ea77a7577c6
 	github.com/stretchr/testify v1.8.0
 	github.com/urfave/cli/v2 v2.3.0
 	golang.org/x/sync v0.0.0-20220722155255-886fb9371eb4
