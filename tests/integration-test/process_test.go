@@ -95,7 +95,10 @@ func testBridgeOperation(t *testing.T) {
 	for latest > uint64(number) {
 		select {
 		case <-tick.C:
-			number, _ = db.GetBlockTracesLatestHeight()
+			number, err = db.GetBlockTracesLatestHeight()
+			if err == nil {
+				t.Logf("current latest trace number is %d", number)
+			}
 		case <-tickStop:
 			t.Errorf("has not receive the latest trace after %d seconds", 10)
 			return
