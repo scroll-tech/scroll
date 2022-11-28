@@ -274,11 +274,9 @@ func (m *Manager) HandleZkProof(pk string, payload []byte) error {
 			}
 		}
 		// set proof status
-		var status orm.RollerProveStatus
+		status := orm.RollerProofInvalid
 		if success && dbErr == nil {
 			status = orm.RollerProofValid
-		} else {
-			status = orm.RollerProofInvalid
 		}
 		// notify the session that the roller finishes the proving process
 		s.finishChan <- rollerProofStatus{msg.ID, pk, status}
