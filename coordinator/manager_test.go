@@ -141,12 +141,16 @@ func testFailedHandshake(t *testing.T) {
 	assert.NoError(t, err)
 
 	authMsg.Identity.Token = token
-
 	assert.NoError(t, authMsg.Sign(privkey))
-	time.Sleep(6 * time.Second)
-	traceCh = make(chan *message.TaskMsg, 4)
-	_, err = client.RegisterAndSubscribe(ctx, traceCh, authMsg)
-	assert.Error(t, err)
+
+	tick := time.Tick(6 * time.Second)
+	select {
+	case <-tick:
+		traceCh = make(chan *message.TaskMsg, 4)
+		_, err = client.RegisterAndSubscribe(ctx, traceCh, authMsg)
+		assert.Error(t, err)
+	}
+
 	client.Close()
 
 	assert.Equal(t, 0, rollerManager.GetNumberOfIdleRollers())
