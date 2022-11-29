@@ -391,6 +391,11 @@ func (r *Layer2Relayer) Stop() {
 }
 
 func (r *Layer2Relayer) handleConfirmation(confirmation *sender.Confirmation) {
+	if !confirmation.IsSuccessful {
+		log.Warn("transaction confirmed but failed in layer1", "confirmation", confirmation)
+		return
+	}
+
 	transactionType := "Unknown"
 	// check whether it is message relay transaction
 	if layer2Hash, ok := r.processingMessage[confirmation.ID]; ok {
