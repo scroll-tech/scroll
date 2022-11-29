@@ -19,7 +19,6 @@ type checkFunc func(buf string)
 type Cmd struct {
 	*testing.T
 
-	mu      sync.Mutex
 	cmd     *exec.Cmd
 	verbose bool
 
@@ -44,8 +43,6 @@ func (tt *Cmd) OpenLog(open bool) {
 // Run exec's the current binary using name as argv[0] which will trigger the
 // reexec init function for that name (e.g. "geth-test" in cmd/geth/run_test.go)
 func (tt *Cmd) Run(name string, args ...string) {
-	tt.mu.Lock()
-	defer tt.mu.Unlock()
 	tt.cmd = &exec.Cmd{
 		Path:   reexec.Self(),
 		Args:   append([]string{name}, args...),
@@ -59,8 +56,6 @@ func (tt *Cmd) Run(name string, args ...string) {
 
 // WaitExit wait util process exit.
 func (tt *Cmd) WaitExit() {
-	tt.mu.Lock()
-	defer tt.mu.Unlock()
 	// Send interrupt signal.
 	_ = tt.cmd.Process.Signal(os.Interrupt)
 	tt.Err = tt.cmd.Wait()
@@ -72,8 +67,6 @@ func (tt *Cmd) WaitExit() {
 
 // Interrupt send interrupt signal.
 func (tt *Cmd) Interrupt() {
-	tt.mu.Lock()
-	defer tt.mu.Unlock()
 	tt.Err = tt.cmd.Process.Signal(os.Interrupt)
 }
 

@@ -35,20 +35,14 @@ func setupEnv(t *testing.T) {
 }
 
 func free(t *testing.T) {
-	assert.NoError(t, l2db.Close())
 	assert.NoError(t, l1gethImg.Stop())
 	assert.NoError(t, l2gethImg.Stop())
+	assert.NoError(t, l2db.Close())
 	assert.NoError(t, dbImg.Stop())
 }
 
 func TestIntegration(t *testing.T) {
 	setupEnv(t)
-
-	// test cmd --version
-	t.Run("testBridgeCmd", testBridgeCmd)
-	t.Run("testCoordinatorCmd", testCoordinatorCmd)
-	t.Run("testDatabaseCmd", testDatabaseCmd)
-	t.Run("testRollerCmd", testRollerCmd)
 
 	// test db_cli
 	t.Run("testDatabaseOperation", testDatabaseOperation)

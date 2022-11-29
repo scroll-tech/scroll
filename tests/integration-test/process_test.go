@@ -52,7 +52,6 @@ func testBridgeOperation(t *testing.T) {
 
 	cmd := docker.NewCmd(t)
 	cmd.OpenLog(true)
-	defer cmd.WaitExit()
 	// Start bridge service.
 	go cmd.Run("bridge-test", "--log.debug",
 		"--config", "../../bridge/config.json",
@@ -104,4 +103,5 @@ func testBridgeOperation(t *testing.T) {
 			return
 		}
 	}
+	cmd.WaitExit()
 }

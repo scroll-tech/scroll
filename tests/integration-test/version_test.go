@@ -7,6 +7,14 @@ import (
 	"scroll-tech/common/docker"
 )
 
+func TestVersion(t *testing.T) {
+	// test cmd --version
+	t.Run("testBridgeCmd", testBridgeCmd)
+	t.Run("testCoordinatorCmd", testCoordinatorCmd)
+	t.Run("testDatabaseCmd", testDatabaseCmd)
+	t.Run("testRollerCmd", testRollerCmd)
+}
+
 func testBridgeCmd(t *testing.T) {
 	cmd := docker.NewCmd(t)
 	defer cmd.WaitExit()
