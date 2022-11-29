@@ -22,7 +22,7 @@ make clean
 make bridge
 ```
 
-## db config
+## DB config
 
 * db settings in config
 
@@ -31,14 +31,8 @@ make bridge
 export DB_DSN="postgres://admin:123456@localhost/test_db?sslmode=disable"
 # DB_DRIVER: db driver name
 export DB_DRIVER="postgres"
-
-# TEST_DB_DRIVER, TEST_DB_DSN: It is required when executing db test cases
-export TEST_DB_DRIVER="postgres"
-export TEST_DB_DSN="postgres://admin:123456@localhost/test_db?sslmode=disable" 
 ```
-
 ## Start
-
 * use default ports and config.json
 
 ```bash
