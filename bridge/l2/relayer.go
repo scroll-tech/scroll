@@ -405,7 +405,7 @@ func (r *Layer2Relayer) handleConfirmation(confirmation *sender.Confirmation) {
 
 	// check whether it is block commitment transaction
 	if batch_id, ok := r.processingCommitment[confirmation.ID]; ok {
-		transactionType = "BlockCommitment"
+		transactionType = "BatchCommitment"
 		// @todo handle db error
 		err := r.db.UpdateCommitTxHashAndRollupStatus(r.ctx, batch_id, confirmation.TxHash.String(), orm.RollupCommitted)
 		if err != nil {
