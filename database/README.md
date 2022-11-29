@@ -1,8 +1,5 @@
 # DATABASE CLIENT
 
-[![Actions Status](https://scroll-tech/bridge/workflows/Continuous%20Integration/badge.svg)](https://scroll-tech/database/actions)
-[![codecov](https://codecov.io/gh/scroll-tech/bridge/branch/master/graph/badge.svg)](https://codecov.io/gh/scroll-tech/database)
-
 This repo contains the Scroll database client.
 
 Database client will provide init, show version, rollback, check status services

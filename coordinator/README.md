@@ -1,8 +1,5 @@
 # Coordinator
 
-[![Actions Status](https://scroll-tech/coordinator/workflows/Continuous%20Integration/badge.svg)](https://scroll-tech/coordinator/actions)
-[![codecov](https://codecov.io/gh/scroll-tech/coordinator/branch/master/graph/badge.svg)](https://codecov.io/gh/scroll-tech/coordinator)
-
 This repo contains the Scroll coordinator.
 
 ## Build
