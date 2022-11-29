@@ -3,7 +3,7 @@
 create table l2_message
 (
     nonce        BIGINT  NOT NULL,
-    height       BIGINT  NOT NULL,
+    height       NUMERIC NOT NULL,
     sender       VARCHAR NOT NULL,
     target       VARCHAR NOT NULL,
     value        VARCHAR NOT NULL,

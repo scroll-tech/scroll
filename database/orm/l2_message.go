@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/islishude/bigint"
 	"github.com/jmoiron/sqlx"
 	"github.com/scroll-tech/go-ethereum/log"
 )
@@ -153,7 +154,7 @@ func (m *layer2MessageOrm) SaveL2Messages(ctx context.Context, messages []*L2Mes
 		heights := make([]*big.Int, 0, len(messages))
 		for _, msg := range messages {
 			nonces = append(nonces, msg.Nonce)
-			heights = append(heights, new(big.Int).Set(msg.Height))
+			heights = append(heights, new(big.Int).Set(msg.Height.ToInt()))
 		}
 		log.Error("failed to insert layer2Messages", "nonces", nonces, "heights", heights, "err", err)
 	}
@@ -202,12 +203,12 @@ func (m *layer2MessageOrm) GetLayer2LatestWatchedHeight() (*big.Int, error) {
 	// But it will only be called at start, some redundancy is acceptable.
 	row := m.db.QueryRow("SELECT COALESCE(MAX(height), -1) FROM l2_message;")
 
-	height := new(big.Int)
-	if err := row.Scan(height); err != nil {
+	var height bigint.Int = bigint.New(0)
+	if err := row.Scan(&height); err != nil {
 		return height.SetInt64(-1), err
 	}
 	if height.Cmp(big.NewInt(0)) < 0 {
 		return height.SetInt64(-1), fmt.Errorf("could not get height due to database return negative")
 	}
-	return height, nil
+	return height.ToInt(), nil
 }
