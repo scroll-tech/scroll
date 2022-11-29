@@ -2,7 +2,9 @@ package docker
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"strconv"
 	"strings"
 	"testing"
@@ -17,13 +19,38 @@ type ImgGeth struct {
 	name  string
 	id    string
 
-	volume   string
-	ipcPath  string
-	httpPort int
-	wsPort   int
+	volume    string
+	ipcPath   string
+	httpPort  int
+	wsPort    int
+	contracts Contract
 
 	running bool
 	*Cmd
+}
+type Contract struct {
+	L2 L2Contracts
+	L1 L1Contracts
+}
+
+type Proxy struct {
+	implementation string `json:"implementation"`
+	proxy          string `json:"proxy"`
+}
+
+type L1Contracts struct {
+}
+
+type L2Contracts struct {
+	ProxyAdmin                 string `json:"ProxyAdmin"`
+	WETH                       string `json:"WETH"`
+	Whitelist                  string `json:"Whitelist"`
+	ScrollStandardERC20        string `json:"ScrollStandardERC20"`
+	ScrollStandardERC20Factory string `json:"ScrollStandardERC20Factory"`
+	L2ScrollMessenger          string `json:"L2ScrollMessenger"`
+	L2GatewayRouter            Proxy  `json:"L2GatewayRouter"`
+	L2StandardERC20Gateway     Proxy  `json:"L2StandardERC20Gateway"`
+	L2WETHGateway              Proxy  `json:"L2WETHGateway"`
 }
 
 // NewImgGeth return geth img instance.
@@ -136,4 +163,22 @@ func (i *ImgGeth) prepare() []string {
 	cmds = append(cmds, envs...)
 
 	return append(cmds, i.image)
+}
+
+// GetDeployments returns pre_deployed contract address
+func (i *ImgGeth) GetDeployments() map[string]string {
+	if !i.running {
+		return nil
+	}
+	cmds := []string{"docker", "copy", "--name", i.name}
+	cmds = append(cmds, []string{"/deployments/l2geth.json", "l2geth.json"}...)
+	//cmds = append(cmds, []string{"/deployments/l1geth.json", "l1geth.json"}...)
+
+	i.Cmd.RunCmd(cmds, false)
+	plan, _ := ioutil.ReadFile("l2geth.json")
+
+	err := json.Unmarshal(plan, &data)
+
+	return nil
+
 }
