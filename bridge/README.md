@@ -25,9 +25,9 @@ make clean
 make bridge
 ```
 
-## db operation
+## db config
 
-* init, show version, rollback, check status db
+* db settings in config
 
 ```bash
 # DB_DSN: db data source name
@@ -38,21 +38,6 @@ export DB_DRIVER="postgres"
 # TEST_DB_DRIVER, TEST_DB_DSN: It is required when executing db test cases
 export TEST_DB_DRIVER="postgres"
 export TEST_DB_DSN="postgres://admin:123456@localhost/test_db?sslmode=disable" 
-
-# init db
-./build/bin/bridge reset [--config ./config.json]
-
-# show db version
-./build/bin/bridge version [--config ./config.json]
-
-# rollback db
-/build/bin/bridge rollback [--version version] [--config ./config.json]
-
-# show db status
-./build/bin/bridge status [--config ./config.json]
-
-# migrate db
-./build/bin/bridge migrate [--config ./config.json]
 ```
 
 ## Start

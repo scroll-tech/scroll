@@ -12,9 +12,9 @@ make clean
 make coordinator
 ```
 
-## db operation
+## db config
 
-* init, show version, rollback, check status db
+* db settings in config
 
 ```bash
 # DB_DSN: db data source name
