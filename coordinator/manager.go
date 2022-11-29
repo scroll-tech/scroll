@@ -470,8 +470,9 @@ func (m *Manager) StartProofGenerationSession(task *orm.BlockBatch) bool {
 		ID: task.ID,
 		Rollers: map[string]*orm.RollerStatus{
 			pk: {
-				Name:   roller.AuthMsg.Identity.Name,
-				Status: orm.RollerAssigned,
+				PublicKey: pk,
+				Name:      roller.AuthMsg.Identity.Name,
+				Status:    orm.RollerAssigned,
 			},
 		},
 		StartTimestamp: time.Now().Unix(),

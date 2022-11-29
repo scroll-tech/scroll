@@ -81,8 +81,9 @@ const (
 
 // RollerStatus is the roller name and roller prove status
 type RollerStatus struct {
-	Name   string            `json:"name"`
-	Status RollerProveStatus `json:"status"`
+	PublicKey string            `json:"public_key"`
+	Name      string            `json:"name"`
+	Status    RollerProveStatus `json:"status"`
 }
 
 // SessionInfo is assigned rollers info of a block batch (session)

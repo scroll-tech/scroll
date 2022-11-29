@@ -345,8 +345,9 @@ func testOrmSessionInfo(t *testing.T) {
 		ID: batchID,
 		Rollers: map[string]*orm.RollerStatus{
 			"0": {
-				Name:   "roller-0",
-				Status: orm.RollerAssigned,
+				PublicKey: "0",
+				Name:      "roller-0",
+				Status:    orm.RollerAssigned,
 			},
 		},
 		StartTimestamp: time.Now().Unix()}
