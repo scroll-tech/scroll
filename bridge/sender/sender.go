@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"reflect"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -69,7 +70,7 @@ type PendingTransaction struct {
 	submitAt uint64
 	id       string
 	feeData  *FeeData
-	signer   common.Address
+	signer   *bind.TransactOpts
 	tx       *types.Transaction
 }
 
@@ -83,7 +84,6 @@ type Sender struct {
 	// account fields.
 	auths *accountPool
 
-	mu            sync.Mutex
 	blockNumber   uint64   // Current block number on chain.
 	baseFeePerGas uint64   // Current base fee per gas on chain
 	pendingTxs    sync.Map // Mapping from nonce to pending transaction
@@ -191,24 +191,22 @@ func (s *Sender) getFeeData(auth *bind.TransactOpts, target *common.Address, val
 // SendTransaction send a signed L2tL1 transaction.
 func (s *Sender) SendTransaction(ID string, target *common.Address, value *big.Int, data []byte) (hash common.Hash, err error) {
 	// We occupy the ID, in case some other threads call with the same ID in the same time
-	if _, loaded := s.pendingTxs.LoadOrStore(ID, &PendingTransaction{id: ""}); loaded {
+	if _, loaded := s.pendingTxs.LoadOrStore(ID, nil); loaded {
 		return common.Hash{}, fmt.Errorf("has the repeat tx ID, ID: %s", ID)
 	}
 	// get
 	auth := s.auths.getAccount()
+	if auth == nil {
+		s.pendingTxs.Delete(ID) // release the ID on failure
+		return common.Hash{}, ErrNoAvailableAccount
+	}
 
+	defer s.auths.releaseAccount(auth)
 	defer func() {
-		if auth != nil {
-			s.auths.releaseAccount(auth)
-		}
 		if err != nil {
 			s.pendingTxs.Delete(ID) // release the ID on failure
 		}
 	}()
-
-	if auth == nil {
-		return common.Hash{}, ErrNoAvailableAccount
-	}
 
 	var (
 		feeData *FeeData
@@ -223,7 +221,7 @@ func (s *Sender) SendTransaction(ID string, target *common.Address, value *big.I
 		pending := &PendingTransaction{
 			tx:       tx,
 			id:       ID,
-			signer:   auth.From,
+			signer:   auth,
 			submitAt: atomic.LoadUint64(&s.blockNumber),
 			feeData:  feeData,
 		}
@@ -235,9 +233,6 @@ func (s *Sender) SendTransaction(ID string, target *common.Address, value *big.I
 }
 
 func (s *Sender) createAndSendTx(auth *bind.TransactOpts, feeData *FeeData, target *common.Address, value *big.Int, data []byte, overrideNonce *uint64) (tx *types.Transaction, err error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
 	var (
 		nonce  = auth.Nonce.Uint64()
 		txData types.TxData
@@ -317,13 +312,7 @@ func (s *Sender) createAndSendTx(auth *bind.TransactOpts, feeData *FeeData, targ
 	return
 }
 
-func (s *Sender) resubmitTransaction(feeData *FeeData, signer common.Address, tx *types.Transaction) (*types.Transaction, error) {
-	// Get a idle account from account pool.
-	auth := s.auths.getAccountByAddress(signer)
-	if auth == nil {
-		return nil, ErrNoAvailableAccount
-	}
-
+func (s *Sender) resubmitTransaction(feeData *FeeData, auth *bind.TransactOpts, tx *types.Transaction) (*types.Transaction, error) {
 	escalateMultipleNum := new(big.Int).SetUint64(s.config.EscalateMultipleNum)
 	escalateMultipleDen := new(big.Int).SetUint64(s.config.EscalateMultipleDen)
 	maxGasPrice := new(big.Int).SetUint64(s.config.MaxGasPrice)
@@ -369,13 +358,12 @@ func (s *Sender) CheckPendingTransaction(header *types.Header) {
 	atomic.StoreUint64(&s.blockNumber, number)
 	atomic.StoreUint64(&s.baseFeePerGas, header.BaseFee.Uint64())
 	s.pendingTxs.Range(func(key, value interface{}) bool {
-		pending := value.(*PendingTransaction)
-
 		// ignore empty id, since we use empty id to occupy pending task
-		if pending.id == "" {
+		if value == nil || reflect.ValueOf(value).IsNil() {
 			return true
 		}
 
+		pending := value.(*PendingTransaction)
 		receipt, err := s.client.TransactionReceipt(s.ctx, pending.tx.Hash())
 		if (err == nil) && (receipt != nil) {
 			if number >= receipt.BlockNumber.Uint64()+s.config.Confirmations {
@@ -396,6 +384,18 @@ func (s *Sender) CheckPendingTransaction(header *types.Header) {
 					log.Error("failed to resubmit transaction, reset submitAt", "tx hash", pending.tx.Hash().String(), "err", err)
 				}
 				// This means one of the old transactions is confirmed
+				// One scenario is
+				//   1. Initially, we replace the tx three times and submit it to local node.
+				//      Currently, we keep the last tx hash in the memory.
+				//   2. Other node packed the 2-nd tx or 3-rd tx, and the local node has received the block now.
+				//   3. When we resubmit the 4-th tx, we got a nonce error.
+				//   4. We need to check the status of 3-rd tx stored in our memory
+				//     4.1 If the 3-rd tx is packed, we got a receipt and 3-nd is marked as confirmed.
+				//     4.2 If the 2-nd tx is packed, we got nothing from `TransactionReceipt` call. Since we
+				//         cannot do  anything about, we just log some information. In this case, the caller
+				//         of `sender.SendTransaction` should write extra code to handle the situation.
+				// Another scenario is private key leaking and someone send a transaction with the same nonce.
+				// We need to stop the program and manually handle the situation.
 				if strings.Contains(err.Error(), "nonce") {
 					// This key can be deleted
 					s.pendingTxs.Delete(key)
@@ -410,8 +410,8 @@ func (s *Sender) CheckPendingTransaction(header *types.Header) {
 						}
 					} else {
 						// The receipt can be nil since the confirmed transaction may not be the latest one.
-						// We just ignore it, the owner of the sender pool should handle this situation.
-						log.Warn("Peding transaction is confirnmed by one of the replaced transactions", "key", key, "signer", pending.signer, "nonce", pending.tx.Nonce())
+						// We just ignore it, the caller of the sender pool should handle this situation.
+						log.Warn("Pending transaction is confirmed by one of the replaced transactions", "key", key, "signer", pending.signer.From, "nonce", pending.tx.Nonce())
 					}
 				}
 			} else {

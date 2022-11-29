@@ -70,12 +70,6 @@ func (a *accountPool) getAccount() *bind.TransactOpts {
 	}
 }
 
-// getAccountByAddress get auth with given address.
-// This auth should only be used to sign transaction.
-func (a *accountPool) getAccountByAddress(address common.Address) *bind.TransactOpts {
-	return a.accounts[address]
-}
-
 // releaseAccount set used auth into channel.
 func (a *accountPool) releaseAccount(auth *bind.TransactOpts) {
 	a.accsCh <- auth
