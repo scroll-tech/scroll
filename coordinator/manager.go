@@ -111,13 +111,13 @@ func (m *Manager) Start() error {
 			log.Error("failed to recover roller session info from db", "error", err)
 		} else {
 			for _, v := range persistedSessions {
-				s := &session{
-					sess:       v,
+				sess := &session{
+					info:       v,
 					finishChan: make(chan rollerProofStatus, proofAndPkBufferSize),
 				}
 				// no lock is required now
-				m.sessions[s.sess.ID] = s
-				go m.CollectProofs(s.sess.ID, s)
+				m.sessions[sess.info.ID] = sess
+				go m.CollectProofs(sess.info.ID, sess)
 			}
 		}
 	}
@@ -246,14 +246,14 @@ func (m *Manager) HandleZkProof(pk string, payload []byte) error {
 	// potential race for channel deletion.
 	m.mu.RLock()
 	defer m.mu.RUnlock()
-	s, ok := m.sessions[msg.ID]
+	sess, ok := m.sessions[msg.ID]
 	if !ok {
 		return fmt.Errorf("proof generation session for id %v does not exist", msg.ID)
 	}
-	proofTimeSec := uint64(time.Since(time.Unix(s.sess.StartTimestamp, 0)).Seconds())
+	proofTimeSec := uint64(time.Since(time.Unix(sess.info.StartTimestamp, 0)).Seconds())
 
 	// Ensure this roller is eligible to participate in the session.
-	if roller, ok := s.sess.Rollers[pk]; !ok {
+	if roller, ok := sess.info.Rollers[pk]; !ok {
 		return fmt.Errorf("roller %s is not eligible to partake in proof session %v", pk, msg.ID)
 	} else if roller.Status == orm.RollerProofValid {
 		// In order to prevent DoS attacks, it is forbidden to repeatedly submit valid proofs.
@@ -279,7 +279,7 @@ func (m *Manager) HandleZkProof(pk string, payload []byte) error {
 			status = orm.RollerProofValid
 		}
 		// notify the session that the roller finishes the proving process
-		s.finishChan <- rollerProofStatus{msg.ID, pk, status}
+		sess.finishChan <- rollerProofStatus{msg.ID, pk, status}
 	}()
 
 	if msg.Status != message.StatusOk {
@@ -288,7 +288,7 @@ func (m *Manager) HandleZkProof(pk string, payload []byte) error {
 			log.Error("failed to update task status as failed", "error", dbErr)
 		}
 		// record the failed session.
-		m.addFailedSession(s, msg.Error)
+		m.addFailedSession(sess, msg.Error)
 		return nil
 	}
 
@@ -315,7 +315,7 @@ func (m *Manager) HandleZkProof(pk string, payload []byte) error {
 		success, err = m.verifier.VerifyProof(msg.Proof)
 		if err != nil {
 			// record failed session.
-			m.addFailedSession(s, err.Error())
+			m.addFailedSession(sess, err.Error())
 			// TODO: this is only a temp workaround for testnet, we should return err in real cases
 			success = false
 			log.Error("Failed to verify zk proof", "proof id", msg.ID, "error", err)
@@ -347,7 +347,7 @@ func (m *Manager) HandleZkProof(pk string, payload []byte) error {
 }
 
 // CollectProofs collects proofs corresponding to a proof generation session.
-func (m *Manager) CollectProofs(id string, s *session) {
+func (m *Manager) CollectProofs(id string, sess *session) {
 	timer := time.NewTimer(time.Duration(m.cfg.CollectionTime) * time.Minute)
 
 	for {
@@ -364,7 +364,7 @@ func (m *Manager) CollectProofs(id string, s *session) {
 			// Pick a random winner.
 			// First, round up the keys that actually sent in a valid proof.
 			var participatingRollers []string
-			for pk, roller := range s.sess.Rollers {
+			for pk, roller := range sess.info.Rollers {
 				if roller.Status == orm.RollerProofValid {
 					participatingRollers = append(participatingRollers, pk)
 				}
@@ -373,7 +373,7 @@ func (m *Manager) CollectProofs(id string, s *session) {
 			if len(participatingRollers) == 0 {
 				// record failed session.
 				errMsg := "proof generation session ended without receiving any valid proofs"
-				m.addFailedSession(s, errMsg)
+				m.addFailedSession(sess, errMsg)
 				log.Warn(errMsg, "session id", id)
 				// Set status as skipped.
 				// Note that this is only a workaround for testnet here.
@@ -390,11 +390,11 @@ func (m *Manager) CollectProofs(id string, s *session) {
 			_ = participatingRollers[randIndex]
 			// TODO: reward winner
 			return
-		case ret := <-s.finishChan:
+		case ret := <-sess.finishChan:
 			m.mu.Lock()
-			s.sess.Rollers[ret.pk].Status = ret.status
+			sess.info.Rollers[ret.pk].Status = ret.status
 			m.mu.Unlock()
-			if err := m.orm.SetSessionInfo(s.sess); err != nil {
+			if err := m.orm.SetSessionInfo(sess.info); err != nil {
 				log.Error("db set session info fail", "pk", ret.pk, "error", err)
 			}
 		}
@@ -466,7 +466,7 @@ func (m *Manager) StartProofGenerationSession(task *orm.BlockBatch) bool {
 		return false
 	}
 
-	sess := &orm.SessionInfo{
+	sessionInfo := &orm.SessionInfo{
 		ID: task.ID,
 		Rollers: map[string]*orm.RollerStatus{
 			pk: {
@@ -477,13 +477,13 @@ func (m *Manager) StartProofGenerationSession(task *orm.BlockBatch) bool {
 		},
 		StartTimestamp: time.Now().Unix(),
 	}
-	if err := m.orm.SetSessionInfo(sess); err != nil {
+	if err := m.orm.SetSessionInfo(sessionInfo); err != nil {
 		log.Error("db set session info fail", "pk", pk, "error", err)
 	}
 
 	// Create a proof generation session.
 	s := &session{
-		sess:       sess,
+		info:       sessionInfo,
 		finishChan: make(chan rollerProofStatus, proofAndPkBufferSize),
 	}
 	m.mu.Lock()
@@ -530,7 +530,7 @@ func (m *Manager) IsRollerIdle(hexPk string) bool {
 	// We need to iterate over all sessions because finished sessions will be deleted until the
 	// timeout. So a busy roller could be marked as idle in a finished session.
 	for _, sess := range m.sessions {
-		for pk, roller := range sess.sess.Rollers {
+		for pk, roller := range sess.info.Rollers {
 			if pk == hexPk && roller.Status == orm.RollerAssigned {
 				return false
 			}
@@ -569,6 +569,6 @@ func createTaskMsg(taskID string, traces []*types.BlockTrace) (*message.Msg, err
 	}, nil
 }
 
-func (m *Manager) addFailedSession(s *session, errMsg string) {
-	m.failedSessionInfos[s.sess.ID] = newSessionInfo(s, orm.ProvingTaskFailed, errMsg, true)
+func (m *Manager) addFailedSession(sess *session, errMsg string) {
+	m.failedSessionInfos[sess.info.ID] = newSessionInfo(sess, orm.ProvingTaskFailed, errMsg, true)
 }
