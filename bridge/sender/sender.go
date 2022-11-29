@@ -190,17 +190,25 @@ func (s *Sender) getFeeData(auth *bind.TransactOpts, target *common.Address, val
 
 // SendTransaction send a signed L2tL1 transaction.
 func (s *Sender) SendTransaction(ID string, target *common.Address, value *big.Int, data []byte) (hash common.Hash, err error) {
-	// We occupy the ID, in case some other thread call with the same ID in the same time
+	// We occupy the ID, in case some other threads call with the same ID in the same time
 	if _, loaded := s.pendingTxs.LoadOrStore(ID, &PendingTransaction{id: ""}); loaded {
 		return common.Hash{}, fmt.Errorf("has the repeat tx ID, ID: %s", ID)
 	}
 	// get
 	auth := s.auths.getAccount()
+
+	defer func() {
+		if auth != nil {
+			s.auths.releaseAccount(auth)
+		}
+		if err != nil {
+			s.pendingTxs.Delete(ID) // release the ID on failure
+		}
+	}()
+
 	if auth == nil {
-		s.pendingTxs.Delete(ID) // release the ID on failure
 		return common.Hash{}, ErrNoAvailableAccount
 	}
-	defer s.auths.releaseAccount(auth)
 
 	var (
 		feeData *FeeData
@@ -208,7 +216,6 @@ func (s *Sender) SendTransaction(ID string, target *common.Address, value *big.I
 	)
 	// estimate gas fee
 	if feeData, err = s.getFeeData(auth, target, value, data); err != nil {
-		s.pendingTxs.Delete(ID) // release the ID on failure
 		return
 	}
 	if tx, err = s.createAndSendTx(auth, feeData, target, value, data, nil); err == nil {
@@ -223,7 +230,6 @@ func (s *Sender) SendTransaction(ID string, target *common.Address, value *big.I
 		s.pendingTxs.Store(ID, pending)
 		return tx.Hash(), nil
 	}
-	s.pendingTxs.Delete(ID) // release the ID on failure
 
 	return
 }
