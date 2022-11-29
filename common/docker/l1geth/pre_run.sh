@@ -8,7 +8,7 @@ if [ ! -f ./keystore ]; then
 fi
 
 nohup ./gethbin/geth --mine --datadir "." --unlock 0 --password "./password" --allow-insecure-unlock --nodiscover \
-  --http --ws --ws.addr "127.0.0.1" --ws.port 8546 --ipcpath ${IPC_PATH} > l1geth.log 2>&1 &
+  --http --ws --ws.addr "127.0.0.1" --ws.port 8546 > l1geth.log 2>&1 &
 
 # this function deploys mock contracts in the scroll_l2 image
 deploy_bridge_contracts() {
@@ -39,13 +39,13 @@ deploy_bridge_contracts() {
     env CONTRACT_NAME=L1ERC1155Gateway npx hardhat run --network $layer1 scripts/deploy_proxy_contract.ts
 
     # initalize contracts in layer 1, should set proper bash env variables first
-    npx hardhat --network $layer1 run scripts/initialize_l1_erc20_gateway.ts
-    npx hardhat --network $layer1 run scripts/initialize_l1_gateway_router.ts
-    npx hardhat --network $layer1 run scripts/initialize_zkrollup.ts
-    npx hardhat --network $layer1 run scripts/initialize_l1_messenger.ts
-    npx hardhat --network $layer1 run scripts/initialize_l1_custom_erc20_gateway.ts
-    npx hardhat --network $layer1 run scripts/initialize_l1_erc1155_gateway.ts
-    npx hardhat --network $layer1 run scripts/initialize_l1_erc721_gateway.ts
+    #npx hardhat --network $layer1 run scripts/initialize_l1_erc20_gateway.ts
+    #npx hardhat --network $layer1 run scripts/initialize_l1_gateway_router.ts
+    #npx hardhat --network $layer1 run scripts/initialize_zkrollup.ts
+    #npx hardhat --network $layer1 run scripts/initialize_l1_messenger.ts
+    #npx hardhat --network $layer1 run scripts/initialize_l1_custom_erc20_gateway.ts
+    #npx hardhat --network $layer1 run scripts/initialize_l1_erc1155_gateway.ts
+    #npx hardhat --network $layer1 run scripts/initialize_l1_erc721_gateway.ts
 
 }
 
