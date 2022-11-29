@@ -391,6 +391,11 @@ func (r *Layer2Relayer) Stop() {
 }
 
 func (r *Layer2Relayer) handleConfirmation(confirmation *sender.Confirmation) {
+	if !confirmation.IsSuccessful {
+		log.Warn("transaction confirmed but failed in layer1", "confirmation", confirmation)
+		return
+	}
+
 	transactionType := "Unknown"
 	// check whether it is message relay transaction
 	if layer2Hash, ok := r.processingMessage[confirmation.ID]; ok {
@@ -405,7 +410,7 @@ func (r *Layer2Relayer) handleConfirmation(confirmation *sender.Confirmation) {
 
 	// check whether it is block commitment transaction
 	if batch_id, ok := r.processingCommitment[confirmation.ID]; ok {
-		transactionType = "BlockCommitment"
+		transactionType = "BatchCommitment"
 		// @todo handle db error
 		err := r.db.UpdateCommitTxHashAndRollupStatus(r.ctx, batch_id, confirmation.TxHash.String(), orm.RollupCommitted)
 		if err != nil {
