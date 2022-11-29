@@ -53,7 +53,7 @@ func testBridgeOperation(t *testing.T) {
 	cmd := docker.NewCmd(t)
 	cmd.OpenLog(true)
 	// Start bridge service.
-	go cmd.Run("bridge-test", "--log.debug",
+	cmd.Run("bridge-test", "--log.debug",
 		"--config", "../../bridge/config.json",
 		"--l1.endpoint", l1gethImg.Endpoint(),
 		"--l2.endpoint", l2gethImg.Endpoint(),
@@ -103,5 +103,8 @@ func testBridgeOperation(t *testing.T) {
 			return
 		}
 	}
+
+	// Release handler.
+	newSender.Stop()
 	cmd.WaitExit()
 }
