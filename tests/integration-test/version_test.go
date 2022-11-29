@@ -16,31 +16,28 @@ func TestVersion(t *testing.T) {
 }
 
 func testBridgeCmd(t *testing.T) {
-	cmd := docker.NewCmd(t)
-	defer cmd.WaitExit()
+	cmd := runBridgeApp(t, "--version")
 
 	// wait result
 	cmd.ExpectWithTimeout(true, time.Second*3, "bridge version prealpha-v4.1-")
-	cmd.Run("bridge-test", "--version")
+	cmd.WaitExit()
 }
 
 func testCoordinatorCmd(t *testing.T) {
-	cmd := docker.NewCmd(t)
+	cmd := runCoordinatorApp(t, "--version")
 	defer cmd.WaitExit()
 
 	// Wait expect result
 	cmd.ExpectWithTimeout(true, time.Second*3, "coordinator version prealpha-v4.1-")
-	cmd.Run("coordinator-test", "--version")
 }
 
 func testDatabaseCmd(t *testing.T) {
-	cmd := docker.NewCmd(t)
+	cmd := runDBCliApp(t, "--version")
 	defer cmd.WaitExit()
 
 	cmd.OpenLog(true)
 	// Wait expect result
 	cmd.ExpectWithTimeout(true, time.Second*3, "database version prealpha-v4.1-")
-	cmd.Run("db_cli-test", "--log.debug", "--version")
 }
 
 func testRollerCmd(t *testing.T) {

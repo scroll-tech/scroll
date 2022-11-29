@@ -46,6 +46,7 @@ func (tt *Cmd) OpenLog(open bool) {
 func (tt *Cmd) Run(name string, args ...string) {
 	tt.mu.Lock()
 	defer tt.mu.Unlock()
+	tt.Logf("Process cmd %v", append([]string{name}, args...))
 	tt.cmd = &exec.Cmd{
 		Path:   reexec.Self(),
 		Args:   append([]string{name}, args...),

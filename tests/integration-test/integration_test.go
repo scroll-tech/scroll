@@ -41,6 +41,50 @@ func free(t *testing.T) {
 	assert.NoError(t, dbImg.Stop())
 }
 
+func runBridgeApp(t *testing.T, args ...string) *docker.Cmd {
+	cmd := docker.NewCmd(t)
+	args = append(args, "--log.debug", "--config", "../../bridge/config.json")
+	if l1gethImg != nil {
+		args = append(args, "--l1.endpoint", l1gethImg.Endpoint())
+	}
+	if l2gethImg != nil {
+		args = append(args, "--l2.endpoint", l2gethImg.Endpoint())
+	}
+	if dbImg != nil {
+		args = append(args, "--db.dsn", dbImg.Endpoint())
+	}
+	// start process
+	cmd.Run("bridge-test", args...)
+	return cmd
+}
+
+func runCoordinatorApp(t *testing.T, args ...string) *docker.Cmd {
+	cmd := docker.NewCmd(t)
+	args = append(args, "--log.debug", "--config", "../../coordinator/config.json")
+	if l1gethImg != nil {
+		args = append(args, "--l1.endpoint", l1gethImg.Endpoint())
+	}
+	if l2gethImg != nil {
+		args = append(args, "--l2.endpoint", l2gethImg.Endpoint())
+	}
+	if dbImg != nil {
+		args = append(args, "--db.dsn", dbImg.Endpoint())
+	}
+	// start process
+	cmd.Run("coordinator-test", args...)
+	return cmd
+}
+
+func runDBCliApp(t *testing.T, args ...string) *docker.Cmd {
+	cmd := docker.NewCmd(t)
+	args = append(args, "--log.debug", "--config", "../../database/config.json")
+	if dbImg != nil {
+		args = append(args, "--db.dsn", dbImg.Endpoint())
+	}
+	cmd.Run("db_cli-test", args...)
+	return cmd
+}
+
 func TestIntegration(t *testing.T) {
 	setupEnv(t)
 
