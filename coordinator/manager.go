@@ -34,7 +34,7 @@ type rollerProofStatus struct {
 
 // Contains all the information on an ongoing proof generation session.
 type session struct {
-	sess *orm.SessionInfo
+	info *orm.SessionInfo
 	// finish channel is used to pass the public key of the rollers who finished proving process.
 	finishChan chan rollerProofStatus
 }
