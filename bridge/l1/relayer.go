@@ -132,12 +132,17 @@ func (r *Layer1Relayer) Start() {
 				// number, err := r.client.BlockNumber(r.ctx)
 				// log.Info("receive header", "height", number)
 				r.ProcessSavedEvents()
-			case cfm := <-r.confirmationCh: // @todo handle db error
-				err := r.db.UpdateLayer1StatusAndLayer2Hash(r.ctx, cfm.ID, cfm.TxHash.String(), orm.MsgConfirmed)
-				if err != nil {
-					log.Warn("UpdateLayer1StatusAndLayer2Hash failed", "err", err)
+			case cfm := <-r.confirmationCh:
+				if !cfm.IsSuccessful {
+					log.Warn("transaction confirmed but failed in layer2", "confirmation", cfm)
+				} else {
+					// @todo handle db error
+					err := r.db.UpdateLayer1StatusAndLayer2Hash(r.ctx, cfm.ID, cfm.TxHash.String(), orm.MsgConfirmed)
+					if err != nil {
+						log.Warn("UpdateLayer1StatusAndLayer2Hash failed", "err", err)
+					}
+					log.Info("transaction confirmed in layer2", "confirmation", cfm)
 				}
-				log.Info("transaction confirmed in layer2", "confirmation", cfm)
 			case <-r.stopCh:
 				return
 			}
