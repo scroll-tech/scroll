@@ -227,6 +227,5 @@ func (i *ImgGeth) getDeployments() *AddressFile {
 		L1: l1data,
 		L2: l2data,
 	}
-	return nil
 
 }
