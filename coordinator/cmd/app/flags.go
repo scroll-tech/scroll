@@ -18,7 +18,7 @@ var (
 	wsPortFlag = cli.IntFlag{
 		Name:  "ws.port",
 		Usage: "WS-RPC server listening port",
-		Value: 9000,
+		Value: 8391,
 	}
 	// httpEnabledFlag enable rpc server.
 	httpEnabledFlag = cli.BoolFlag{

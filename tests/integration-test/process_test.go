@@ -1,31 +1,40 @@
-package integration_test
+package integration
 
 import (
 	"context"
-	"math/big"
-	"strconv"
 	"testing"
 	"time"
 
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/stretchr/testify/assert"
-	"golang.org/x/sync/errgroup"
 
 	"scroll-tech/bridge/config"
-	"scroll-tech/bridge/sender"
 	"scroll-tech/database"
 )
+
+func TestIntegration(t *testing.T) {
+	setupEnv(t)
+
+	// test db_cli
+	t.Run("testDatabaseOperation", testDatabaseOperation)
+	// test bridge service
+	t.Run("testBridgeOperation", testBridgeOperation)
+
+	t.Cleanup(func() {
+		free(t)
+	})
+}
 
 func testDatabaseOperation(t *testing.T) {
 	resetCmd := runDBCliApp(t, "reset")
 	// Wait reset result
-	resetCmd.ExpectWithTimeout(true, time.Second*3, "successful to reset")
+	resetCmd.ExpectWithTimeout(false, time.Second*3, "successful to reset")
 	resetCmd.WaitExit()
 
 	migrateCmd := runDBCliApp(t, "migrate")
 	// Wait migrate result
-	migrateCmd.ExpectWithTimeout(true, time.Second*3, "current version: 5")
+	migrateCmd.ExpectWithTimeout(false, time.Second*3, "current version:")
 	migrateCmd.WaitExit()
 }
 
@@ -34,36 +43,27 @@ func testBridgeOperation(t *testing.T) {
 	assert.NoError(t, err)
 
 	// reset db.
-	dbCmd := runDBCliApp(t, "reset")
+	dbCmd := runDBCliApp(t, "migrate")
 	dbCmd.WaitExit()
 
 	// Start bridge process.
 	bridgeCmd := runBridgeApp(t)
 	defer bridgeCmd.WaitExit()
 
+	// Start coordinator process.
+	coordinatorCmd := runCoordinatorApp(t, "--ws.port", "8391")
+	defer coordinatorCmd.WaitExit()
+
+	// Start roller process.
+	rollerCmd := runRollerApp(t)
+	defer rollerCmd.WaitExit()
+
 	// Create sender.
 	relayerCfg := cfg.L1Config.RelayerConfig
 	relayerCfg.SenderConfig.Endpoint = l2gethImg.Endpoint()
 	relayerCfg.SenderConfig.Confirmations = 0
-	newSender, err := sender.NewSender(context.Background(), relayerCfg.SenderConfig, relayerCfg.MessageSenderPrivateKeys)
-	assert.NoError(t, err)
 	// Send txs in parallel.
-	var (
-		eg errgroup.Group
-		to = common.HexToAddress("0xFe94e28e4092A4Edc906D59b59623544B81b7F80")
-	)
-	// Send txs.
-	for i := 0; i < newSender.NumberOfAccounts(); i++ {
-		idx := i
-		eg.Go(func() error {
-			_, err = newSender.SendTransaction(strconv.Itoa(idx), &to, big.NewInt(1), nil)
-			if err == nil {
-				<-newSender.ConfirmChan()
-			}
-			return err
-		})
-	}
-	assert.NoError(t, eg.Wait())
+	newSender := runSender(t, relayerCfg.SenderConfig, relayerCfg.MessageSenderPrivateKeys, common.HexToAddress("0xFe94e28e4092A4Edc906D59b59623544B81b7F80"), nil)
 
 	// Create l2client and get the latest block number.
 	l2Cli, err := ethclient.Dial(l2gethImg.Endpoint())
@@ -86,10 +86,15 @@ func testBridgeOperation(t *testing.T) {
 	for latest > uint64(number) {
 		select {
 		case <-tick.C:
-			number, err = db.GetBlockTracesLatestHeight()
+			batch, err := db.GetLatestFinalizedBatch()
+			if err == nil && batch.StartBlockNumber < latest && batch.EndBlockNumber >= latest {
+				t.Logf("get latest finalized batch, ID: %s", batch.ID)
+				return
+			}
+			/*number, err = db.GetBlockTracesLatestHeight()
 			if err == nil {
 				t.Logf("current latest trace number is %d", number)
-			}
+			}*/
 		case <-tickStop:
 			t.Errorf("has not receive the latest trace after %d seconds", 10)
 			return

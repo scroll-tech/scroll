@@ -1,11 +1,19 @@
-package integration_test
+package integration
 
 import (
+	"context"
+	"crypto/ecdsa"
+	"golang.org/x/sync/errgroup"
+	"math/big"
+	"strconv"
 	"testing"
 
+	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/stretchr/testify/assert"
 
 	_ "scroll-tech/bridge/cmd/app"
+	"scroll-tech/bridge/config"
+	"scroll-tech/bridge/sender"
 	"scroll-tech/common/docker"
 	_ "scroll-tech/coordinator/cmd/app"
 	"scroll-tech/database"
@@ -61,12 +69,6 @@ func runBridgeApp(t *testing.T, args ...string) *docker.Cmd {
 func runCoordinatorApp(t *testing.T, args ...string) *docker.Cmd {
 	cmd := docker.NewCmd(t)
 	args = append(args, "--log.debug", "--config", "../../coordinator/config.json")
-	if l1gethImg != nil {
-		args = append(args, "--l1.endpoint", l1gethImg.Endpoint())
-	}
-	if l2gethImg != nil {
-		args = append(args, "--l2.endpoint", l2gethImg.Endpoint())
-	}
 	if dbImg != nil {
 		args = append(args, "--db.dsn", dbImg.Endpoint())
 	}
@@ -77,7 +79,7 @@ func runCoordinatorApp(t *testing.T, args ...string) *docker.Cmd {
 
 func runDBCliApp(t *testing.T, args ...string) *docker.Cmd {
 	cmd := docker.NewCmd(t)
-	args = append(args, "--log.debug", "--config", "../../database/config.json")
+	args = append(args, "--config", "../../database/config.json")
 	if dbImg != nil {
 		args = append(args, "--db.dsn", dbImg.Endpoint())
 	}
@@ -85,15 +87,27 @@ func runDBCliApp(t *testing.T, args ...string) *docker.Cmd {
 	return cmd
 }
 
-func TestIntegration(t *testing.T) {
-	setupEnv(t)
+func runRollerApp(t *testing.T, args ...string) *docker.Cmd {
+	cmd := docker.NewCmd(t)
+	args = append(args, "--log.debug", "--config", "../../roller/config.toml")
+	cmd.Run("roller-test", args...)
+	return cmd
+}
 
-	// test db_cli
-	t.Run("testDatabaseOperation", testDatabaseOperation)
-	// test bridge service
-	t.Run("testBridgeOperation", testBridgeOperation)
-
-	t.Cleanup(func() {
-		free(t)
-	})
+func runSender(t *testing.T, cfg *config.SenderConfig, privs []*ecdsa.PrivateKey, to common.Address, data []byte) *sender.Sender {
+	newSender, err := sender.NewSender(context.Background(), cfg, privs)
+	assert.NoError(t, err)
+	eg := errgroup.Group{}
+	for i := 0; i < newSender.NumberOfAccounts(); i++ {
+		idx := i
+		eg.Go(func() error {
+			_, err = newSender.SendTransaction(strconv.Itoa(idx), &to, big.NewInt(1), nil)
+			if err == nil {
+				<-newSender.ConfirmChan()
+			}
+			return err
+		})
+	}
+	assert.NoError(t, eg.Wait())
+	return newSender
 }
