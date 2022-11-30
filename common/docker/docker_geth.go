@@ -86,6 +86,7 @@ func (i *ImgGeth) Start() error {
 		_ = i.Stop()
 		return fmt.Errorf("failed to start image: %s", i.image)
 	}
+	i.addressFile = i.getDeployments()
 	return nil
 }
 
@@ -175,10 +176,6 @@ func (i *ImgGeth) prepare() []string {
 
 // GetAddressFile returnsd addressfile in imgGeth
 func (i *ImgGeth) GetAddressFile() *AddressFile {
-	if !i.running {
-		return nil
-	}
-	i.getDeployments()
 	return i.addressFile
 }
 
