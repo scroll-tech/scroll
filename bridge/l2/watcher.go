@@ -197,6 +197,7 @@ func (w *WatcherClient) fetchContractEvent(blockHeight uint64) error {
 		return err
 	}
 	if len(logs) == 0 {
+		w.processedMsgHeight = uint64(toBlock)
 		return nil
 	}
 	log.Info("received new L2 messages", "fromBlock", fromBlock, "toBlock", toBlock,
