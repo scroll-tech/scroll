@@ -35,7 +35,6 @@ func testDatabaseCmd(t *testing.T) {
 	cmd := runDBCliApp(t, "--version")
 	defer cmd.WaitExit()
 
-	cmd.OpenLog(true)
 	// Wait expect result
 	cmd.ExpectWithTimeout(true, time.Second*3, "database version prealpha-v4.1-")
 }
@@ -44,7 +43,6 @@ func testRollerCmd(t *testing.T) {
 	cmd := docker.NewCmd(t)
 	defer cmd.WaitExit()
 
-	cmd.OpenLog(true)
 	cmd.ExpectWithTimeout(true, time.Second*3, "Roller version prealpha-v4.1-")
 	cmd.Run("roller-test", "--log.debug", "--version")
 }

@@ -13,15 +13,23 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+var verbose bool
+
+func init() {
+	v := os.Getenv("LOG_DOCKER")
+	if v == "true" || v == "TRUE" {
+		verbose = true
+	}
+}
+
 type checkFunc func(buf string)
 
 // Cmd struct
 type Cmd struct {
 	*testing.T
 
-	mu      sync.Mutex
-	cmd     *exec.Cmd
-	verbose bool
+	mu  sync.Mutex
+	cmd *exec.Cmd
 
 	checkFuncs sync.Map //map[string]checkFunc
 
@@ -34,11 +42,6 @@ type Cmd struct {
 // NewCmd create Cmd instance.
 func NewCmd(t *testing.T) *Cmd {
 	return &Cmd{T: t, stopCh: make(chan struct{})}
-}
-
-// OpenLog set log open or close.
-func (tt *Cmd) OpenLog(open bool) {
-	tt.verbose = open
 }
 
 // Run exec's the current binary using name as argv[0] which will trigger the
@@ -142,7 +145,7 @@ func (tt *Cmd) RunCmd(args []string, parallel bool) {
 
 func (tt *Cmd) Write(data []byte) (int, error) {
 	out := string(data)
-	if tt.verbose {
+	if verbose {
 		tt.Logf(out)
 	} else if strings.Contains(out, "error") || strings.Contains(out, "warning") {
 		tt.Logf(out)

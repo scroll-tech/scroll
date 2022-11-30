@@ -26,7 +26,6 @@ type ImgInstance interface {
 	Start() error
 	Stop() error
 	Endpoint() string
-	OpenLog(open bool)
 }
 
 // GetContainerID returns the ID of Container.

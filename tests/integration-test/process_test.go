@@ -19,7 +19,6 @@ import (
 
 func testDatabaseOperation(t *testing.T) {
 	resetCmd := runDBCliApp(t, "reset")
-	resetCmd.OpenLog(true)
 	// Wait reset result
 	resetCmd.ExpectWithTimeout(true, time.Second*3, "successful to reset")
 	resetCmd.WaitExit()
