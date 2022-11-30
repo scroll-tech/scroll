@@ -51,3 +51,30 @@ func TestDB(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NoError(t, db.Ping())
 }
+
+func TestL1AddressFile(t *testing.T) {
+	_, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	img := NewImgGeth(t, "scroll_l1geth", "", "", 8535, 0)
+	assert.NoError(t, img.Start())
+	defer img.Stop()
+
+	addressffile := img.GetAddressFile()
+
+	assert.NotEqual(t, "", addressffile.L1.L1ScrollMessenger.Implementation)
+	assert.NotEqual(t, "", addressffile.L1.L1ScrollMessenger.Proxy)
+}
+
+func TestL2AddressFile(t *testing.T) {
+	_, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	img := NewImgGeth(t, "scroll_l2geth", "", "", 8535, 0)
+	assert.NoError(t, img.Start())
+	defer img.Stop()
+
+	addressffile := img.GetAddressFile()
+
+	assert.NotEqual(t, "", addressffile.L2.L2ScrollMessenger)
+}

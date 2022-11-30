@@ -26,7 +26,7 @@ update: ## update dependencies
 	goimports -local $(PWD)/roller/ -w .
 
 dev_docker: ## build docker images for development/testing usages
-	docker build -t scroll_l1geth ./common/docker/l1geth/
+	docker build --progress=plain -t scroll_l1geth -f ./common/docker/l1geth/Dockerfile .
 	docker build --progress=plain -t scroll_l2geth -f ./common/docker/l2geth/Dockerfile .
 
 clean: ## Empty out the bin folder

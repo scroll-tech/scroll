@@ -26,6 +26,7 @@ type ImgInstance interface {
 	Start() error
 	Stop() error
 	Endpoint() string
+	GetAddressFile() *AddressFile
 }
 
 // GetContainerID returns the ID of Container.

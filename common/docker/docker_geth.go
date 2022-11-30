@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"os"
 	"strconv"
 	"strings"
 	"testing"
@@ -19,26 +20,32 @@ type ImgGeth struct {
 	name  string
 	id    string
 
-	volume    string
-	ipcPath   string
-	httpPort  int
-	wsPort    int
-	contracts Contract
+	volume      string
+	ipcPath     string
+	httpPort    int
+	wsPort      int
+	addressFile *AddressFile
 
 	running bool
 	*Cmd
 }
-type Contract struct {
-	L2 L2Contracts
-	L1 L1Contracts
+type AddressFile struct {
+	L2 *L2Contracts
+	L1 *L1Contracts
 }
 
 type Proxy struct {
-	implementation string `json:"implementation"`
-	proxy          string `json:"proxy"`
+	Implementation string `json:"implementation"`
+	Proxy          string `json:"proxy"`
 }
 
 type L1Contracts struct {
+	ProxyAdmin             string `json:"ProxyAdmin"`
+	ZKRollup               Proxy  `json:"ZKRollup"`
+	L1ScrollMessenger      Proxy  `json:"L1ScrollMessenger"`
+	L1GatewayRouter        Proxy  `json:"L1GatewayRouter"`
+	L1StandardERC20Gateway Proxy  `json:"L1StandardERC20Gateway"`
+	L1WETHGateway          Proxy  `json:"L1WETHGateway"`
 }
 
 type L2Contracts struct {
@@ -56,13 +63,14 @@ type L2Contracts struct {
 // NewImgGeth return geth img instance.
 func NewImgGeth(t *testing.T, image, volume, ipc string, hPort, wPort int) ImgInstance {
 	return &ImgGeth{
-		image:    image,
-		name:     fmt.Sprintf("%s-%d", image, time.Now().Nanosecond()),
-		volume:   volume,
-		ipcPath:  ipc,
-		httpPort: hPort,
-		wsPort:   wPort,
-		Cmd:      NewCmd(t),
+		image:       image,
+		name:        fmt.Sprintf("%s-%d", image, time.Now().Nanosecond()),
+		volume:      volume,
+		ipcPath:     ipc,
+		httpPort:    hPort,
+		wsPort:      wPort,
+		Cmd:         NewCmd(t),
+		addressFile: nil,
 	}
 }
 
@@ -165,20 +173,60 @@ func (i *ImgGeth) prepare() []string {
 	return append(cmds, i.image)
 }
 
-// GetDeployments returns pre_deployed contract address
-func (i *ImgGeth) GetDeployments() map[string]string {
+// GetAddressFile returnsd addressfile in imgGeth
+func (i *ImgGeth) GetAddressFile() *AddressFile {
 	if !i.running {
 		return nil
 	}
-	cmds := []string{"docker", "copy", "--name", i.name}
-	cmds = append(cmds, []string{"/deployments/l2geth.json", "l2geth.json"}...)
-	//cmds = append(cmds, []string{"/deployments/l1geth.json", "l1geth.json"}...)
+	i.getDeployments()
+	return i.addressFile
+}
+
+// getDeployments returns pre_deployed contract address
+func (i *ImgGeth) getDeployments() *AddressFile {
+	cmds := []string{"docker", "cp", i.name + ":/deployments/l2geth.json", "."}
 
 	i.Cmd.RunCmd(cmds, false)
-	plan, _ := ioutil.ReadFile("l2geth.json")
+	L2addressFile, err := ioutil.ReadFile("l2geth.json")
+	if err != nil {
+		fmt.Println(err)
+		return nil
+	}
+	var l2data *L2Contracts
+	err = json.Unmarshal(L2addressFile, &l2data)
+	if err != nil {
+		fmt.Println(err)
+		l2data = nil
+	}
+	err = os.Remove("l2geth.json")
+	if err != nil {
+		fmt.Println(err)
+		return nil
+	}
 
-	err := json.Unmarshal(plan, &data)
+	cmds = []string{"docker", "cp", i.name + ":/deployments/l1geth.json", "."}
+	i.Cmd.RunCmd(cmds, false)
+	L1addressFile, err := ioutil.ReadFile("l1geth.json")
+	if err != nil {
+		fmt.Println(err)
+		return nil
+	}
+	var l1data *L1Contracts
+	err = json.Unmarshal(L1addressFile, &l1data)
+	if err != nil {
+		fmt.Println(err)
+		l1data = nil
+	}
+	err = os.Remove("l1geth.json")
+	if err != nil {
+		fmt.Println(err)
+		return nil
+	}
 
+	return &AddressFile{
+		L1: l1data,
+		L2: l2data,
+	}
 	return nil
 
 }

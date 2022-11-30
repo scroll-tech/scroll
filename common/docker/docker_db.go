@@ -114,3 +114,8 @@ func (i *ImgDB) isOk() bool {
 		return false
 	}
 }
+
+// GetAddressFile returnsd addressfile in imgGeth, db has no this field
+func (i *ImgDB) GetAddressFile() *AddressFile {
+	return nil
+}
