@@ -13,12 +13,12 @@ import (
 
 // RollerAPI for rollers inorder to register and submit proof
 type RollerAPI interface {
-	Register(ctx context.Context, authMsg *message.AuthMessage) (*rpc.Subscription, error)
+	Register(ctx context.Context, authMsg *message.AuthMsg) (*rpc.Subscription, error)
 	SubmitProof(proof *message.ProofMsg) (bool, error)
 }
 
 // Register register api for roller
-func (m *Manager) Register(ctx context.Context, authMsg *message.AuthMessage) (*rpc.Subscription, error) {
+func (m *Manager) Register(ctx context.Context, authMsg *message.AuthMsg) (*rpc.Subscription, error) {
 	// Verify register message.
 	if ok, err := authMsg.Verify(); !ok {
 		if err != nil {

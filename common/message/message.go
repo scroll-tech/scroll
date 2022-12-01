@@ -21,10 +21,10 @@ const (
 	StatusProofError
 )
 
-// AuthMessage is the first message exchanged from the Roller to the Sequencer.
+// AuthMsg is the first message exchanged from the Roller to the Sequencer.
 // It effectively acts as a registration, and makes the Roller identification
 // known to the Sequencer.
-type AuthMessage struct {
+type AuthMsg struct {
 	// Message fields
 	Identity *Identity `json:"message"`
 	// Roller signature
@@ -45,7 +45,7 @@ type Identity struct {
 }
 
 // Sign auth message
-func (a *AuthMessage) Sign(priv *ecdsa.PrivateKey) error {
+func (a *AuthMsg) Sign(priv *ecdsa.PrivateKey) error {
 	// Hash identity content
 	hash, err := a.Identity.Hash()
 	if err != nil {
@@ -62,7 +62,7 @@ func (a *AuthMessage) Sign(priv *ecdsa.PrivateKey) error {
 }
 
 // Verify verifies the message of auth.
-func (a *AuthMessage) Verify() (bool, error) {
+func (a *AuthMsg) Verify() (bool, error) {
 	hash, err := a.Identity.Hash()
 	if err != nil {
 		return false, err
@@ -81,7 +81,7 @@ func (a *AuthMessage) Verify() (bool, error) {
 }
 
 // PublicKey return public key from signature
-func (a *AuthMessage) PublicKey() (string, error) {
+func (a *AuthMsg) PublicKey() (string, error) {
 	if a.Identity.PublicKey == "" {
 		hash, err := a.Identity.Hash()
 		if err != nil {

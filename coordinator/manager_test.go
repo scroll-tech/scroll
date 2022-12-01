@@ -207,7 +207,7 @@ func performHandshake(t *testing.T, proofTime time.Duration, name string, wsURL 
 	privkey, err := crypto.GenerateKey()
 	assert.NoError(t, err)
 
-	authMsg := &message.AuthMessage{
+	authMsg := &message.AuthMsg{
 		Identity: &message.Identity{
 			Name:      name,
 			Timestamp: time.Now().UnixNano(),

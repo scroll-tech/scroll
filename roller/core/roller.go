@@ -116,7 +116,7 @@ func (r *Roller) Run() error {
 
 // Register registers Roller to the coordinator through Websocket.
 func (r *Roller) Register() error {
-	authMsg := &message.AuthMessage{
+	authMsg := &message.AuthMsg{
 		Identity: &message.Identity{
 			Name:      r.cfg.RollerName,
 			Timestamp: time.Now().UnixMilli(),
