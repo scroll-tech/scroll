@@ -5,20 +5,17 @@ import (
 	"crypto/ecdsa"
 	"errors"
 	"fmt"
-	"io/ioutil"
-	"os"
-	"path/filepath"
 	"strings"
 	"sync/atomic"
 	"time"
 
 	"github.com/scroll-tech/go-ethereum"
-	"github.com/scroll-tech/go-ethereum/accounts/keystore"
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/crypto"
 	"github.com/scroll-tech/go-ethereum/log"
 
 	"scroll-tech/common/message"
+	"scroll-tech/common/utils"
 	"scroll-tech/common/version"
 
 	"scroll-tech/coordinator/client"
@@ -62,7 +59,7 @@ type Roller struct {
 // NewRoller new a Roller object.
 func NewRoller(cfg *config.Config) (*Roller, error) {
 	// load or create wallet
-	priv, err := loadOrCreateKey(cfg.KeystorePath, cfg.KeystorePassword)
+	priv, err := utils.LoadOrCreateKey(cfg.KeystorePath, cfg.KeystorePassword)
 	if err != nil {
 		return nil, err
 	}
@@ -270,33 +267,4 @@ func (r *Roller) Close() {
 	if err := r.stack.Close(); err != nil {
 		log.Error("failed to close bbolt db", "error", err)
 	}
-}
-
-func loadOrCreateKey(keystoreDir string, keystorePassword string) (*ecdsa.PrivateKey, error) {
-	if _, err := os.Stat(keystoreDir); os.IsNotExist(err) {
-		// If there is no keystore, make a new one.
-		ks := keystore.NewKeyStore(keystoreDir, keystore.StandardScryptN, keystore.StandardScryptP)
-		account, err := ks.NewAccount(keystorePassword)
-		if err != nil {
-			return nil, fmt.Errorf("generate crypto account failed %v", err)
-		}
-		log.Info("create a new account", "address", account.Address.Hex())
-	} else if err != nil {
-		return nil, err
-	}
-
-	entries, err := os.ReadDir(keystoreDir)
-	if err != nil {
-		return nil, err
-	}
-	keystorePath := filepath.Join(keystoreDir, entries[0].Name())
-	keyjson, err := ioutil.ReadFile(keystorePath)
-	if err != nil {
-		return nil, err
-	}
-	key, err := keystore.DecryptKey(keyjson, keystorePassword)
-	if err != nil {
-		return nil, err
-	}
-	return key.PrivateKey, nil
 }
