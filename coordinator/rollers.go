@@ -72,7 +72,7 @@ func (m *Manager) freeRoller(pk string) {
 	m.rollerPool.Pop(pk)
 }
 
-func (m *Manager) existID(pk string, id string) bool {
+func (m *Manager) exisTaskIDForRoller(pk string, id string) bool {
 	if node, ok := m.rollerPool.Get(pk); ok {
 		r := node.(*rollerNode)
 		return r.TaskIDs.Has(id)
