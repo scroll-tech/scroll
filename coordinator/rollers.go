@@ -25,7 +25,7 @@ type rollerNode struct {
 	// task channel
 	taskChan chan *message.TaskMsg
 	// session id list which delivered to roller.
-	IDList cmap.ConcurrentMap
+	TaskIDs cmap.ConcurrentMap
 
 	// Time of message creation
 	registerTime time.Time
@@ -37,7 +37,7 @@ func (r *rollerNode) sendTask(id string, traces []*types.BlockTrace) bool {
 		ID:     id,
 		Traces: traces,
 	}:
-		r.IDList.Set(id, struct{}{})
+		r.TaskIDs.Set(id, struct{}{})
 	default:
 		log.Warn("roller channel is full")
 		return false
@@ -52,7 +52,7 @@ func (m *Manager) register(pubkey string, identity *message.Identity) (<-chan *m
 			Name:      identity.Name,
 			Version:   identity.Version,
 			PublicKey: pubkey,
-			IDList:    cmap.New(),
+			TaskIDs:   cmap.New(),
 			taskChan:  make(chan *message.TaskMsg, 4),
 		}
 		m.rollerPool.Set(pubkey, node)
@@ -75,7 +75,7 @@ func (m *Manager) freeRoller(pk string) {
 func (m *Manager) existID(pk string, id string) bool {
 	if node, ok := m.rollerPool.Get(pk); ok {
 		r := node.(*rollerNode)
-		return r.IDList.Has(id)
+		return r.TaskIDs.Has(id)
 	}
 	return false
 }
@@ -83,7 +83,7 @@ func (m *Manager) existID(pk string, id string) bool {
 func (m *Manager) freeID(pk string, id string) {
 	if node, ok := m.rollerPool.Get(pk); ok {
 		r := node.(*rollerNode)
-		r.IDList.Pop(id)
+		r.TaskIDs.Pop(id)
 	}
 }
 
@@ -93,7 +93,7 @@ func (m *Manager) GetNumberOfIdleRollers() int {
 	for i := 0; i < len(pubkeys); i++ {
 		if val, ok := m.rollerPool.Get(pubkeys[i]); ok {
 			r := val.(*rollerNode)
-			if r.IDList.Count() > int(m.cfg.RollersPerSession) {
+			if r.TaskIDs.Count() > int(m.cfg.RollersPerSession) {
 				pubkeys[i], pubkeys = pubkeys[len(pubkeys)-1], pubkeys[:len(pubkeys)-1]
 			}
 		}
@@ -107,7 +107,7 @@ func (m *Manager) selectRoller() *rollerNode {
 		idx, _ := rand.Int(rand.Reader, big.NewInt(int64(len(pubkeys))))
 		if val, ok := m.rollerPool.Get(pubkeys[idx.Int64()]); ok {
 			r := val.(*rollerNode)
-			if r.IDList.Count() < int(m.cfg.RollersPerSession) {
+			if r.TaskIDs.Count() > 0 {
 				return r
 			}
 		}
