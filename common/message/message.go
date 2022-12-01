@@ -63,7 +63,7 @@ func (a *AuthMessage) Sign(priv *ecdsa.PrivateKey) error {
 
 // Verify verifies the message of auth.
 func (a *AuthMessage) Verify() (bool, error) {
-	hash, err := a.Hash()
+	hash, err := a.Identity.Hash()
 	if err != nil {
 		return false, err
 	}
@@ -83,7 +83,7 @@ func (a *AuthMessage) Verify() (bool, error) {
 // PublicKey return public key from signature
 func (a *AuthMessage) PublicKey() (string, error) {
 	if a.Identity.PublicKey == "" {
-		hash, err := a.Hash()
+		hash, err := a.Identity.Hash()
 		if err != nil {
 			return "", err
 		}
@@ -124,7 +124,7 @@ type AuthZkProof struct {
 
 // Sign signs the AuthZkProof.
 func (a *AuthZkProof) Sign(priv *ecdsa.PrivateKey) error {
-	hash, err := a.Hash()
+	hash, err := a.ProofMsg.Hash()
 	if err != nil {
 		return err
 	}
@@ -138,7 +138,7 @@ func (a *AuthZkProof) Sign(priv *ecdsa.PrivateKey) error {
 
 // Verify verifies AuthZkProof.Signature.
 func (a *AuthZkProof) Verify() (bool, error) {
-	hash, err := a.Hash()
+	hash, err := a.ProofMsg.Hash()
 	if err != nil {
 		return false, err
 	}
@@ -158,7 +158,7 @@ func (a *AuthZkProof) Verify() (bool, error) {
 // PublicKey return public key from signature
 func (a *AuthZkProof) PublicKey() (string, error) {
 	if a.publicKey == "" {
-		hash, err := a.Hash()
+		hash, err := a.ProofMsg.Hash()
 		if err != nil {
 			return "", err
 		}
