@@ -22,8 +22,8 @@ type rollerNode struct {
 	// Roller version
 	Version string
 
-	// trace channel
-	traceChan chan *message.TaskMsg
+	// task channel
+	taskChan chan *message.TaskMsg
 	// session id list which delivered to roller.
 	IDList cmap.ConcurrentMap
 
