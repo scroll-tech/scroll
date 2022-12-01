@@ -73,7 +73,7 @@ func (m *Manager) SubmitProof(proof *message.ProofMsg) (bool, error) {
 
 	pubkey, _ := proof.PublicKey()
 	// Only allow registered pub-key.
-	if !m.existID(pubkey, proof.ID) {
+	if !m.exisTaskIDForRoller(pubkey, proof.ID) {
 		return false, fmt.Errorf("the roller or session id doesn't exist, pubkey: %s, ID: %s", pubkey, proof.ID)
 	}
 
@@ -81,7 +81,7 @@ func (m *Manager) SubmitProof(proof *message.ProofMsg) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	defer m.freeID(pubkey, proof.ID)
+	defer m.freeTaskIDForRoller(pubkey, proof.ID)
 
 	log.Info("Received zk proof", "proof id", proof.ID, "result", true)
 	return true, nil
