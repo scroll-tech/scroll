@@ -47,7 +47,7 @@ type Identity struct {
 // Sign auth message
 func (a *AuthMessage) Sign(priv *ecdsa.PrivateKey) error {
 	// Hash identity content
-	hash, err := a.Hash()
+	hash, err := a.Identity.Hash()
 	if err != nil {
 		return err
 	}
