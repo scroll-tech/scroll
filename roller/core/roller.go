@@ -47,7 +47,7 @@ type Roller struct {
 	client    *client.Client
 	stack     *store.Stack
 	prover    *prover.Prover
-	traceChan chan *message.TaskMsg
+	taskChan chan *message.TaskMsg
 	sub       ethereum.Subscription
 
 	isClosed int64
