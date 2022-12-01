@@ -33,7 +33,7 @@ type rollerNode struct {
 
 func (r *rollerNode) sendMsg(id string, traces []*types.BlockTrace) bool {
 	select {
-	case r.traceChan <- &message.TaskMsg{
+	case r.taskChan <- &message.TaskMsg{
 		ID:     id,
 		Traces: traces,
 	}:
@@ -53,7 +53,7 @@ func (m *Manager) register(pubkey string, identity *message.Identity) (<-chan *m
 			Version:   identity.Version,
 			PublicKey: pubkey,
 			IDList:    cmap.New(),
-			traceChan: make(chan *message.TaskMsg, 4),
+			taskChan:  make(chan *message.TaskMsg, 4),
 		}
 		m.rollerPool.Set(pubkey, node)
 	}
@@ -65,7 +65,7 @@ func (m *Manager) register(pubkey string, identity *message.Identity) (<-chan *m
 	// update register time and status
 	roller.registerTime = time.Now()
 
-	return roller.traceChan, nil
+	return roller.taskChan, nil
 }
 
 func (m *Manager) freeRoller(pk string) {

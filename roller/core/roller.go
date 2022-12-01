@@ -43,12 +43,12 @@ var (
 
 // Roller contains websocket conn to coordinator, Stack, unix-socket to ipc-prover.
 type Roller struct {
-	cfg       *config.Config
-	client    *client.Client
-	stack     *store.Stack
-	prover    *prover.Prover
+	cfg      *config.Config
+	client   *client.Client
+	stack    *store.Stack
+	prover   *prover.Prover
 	taskChan chan *message.TaskMsg
-	sub       ethereum.Subscription
+	sub      ethereum.Subscription
 
 	isClosed int64
 	stopChan chan struct{}
@@ -84,14 +84,14 @@ func NewRoller(cfg *config.Config) (*Roller, error) {
 	}
 
 	return &Roller{
-		cfg:       cfg,
-		client:    rClient,
-		stack:     stackDb,
-		prover:    newProver,
-		sub:       nil,
-		traceChan: make(chan *message.TaskMsg, 10),
-		stopChan:  make(chan struct{}),
-		priv:      priv,
+		cfg:      cfg,
+		client:   rClient,
+		stack:    stackDb,
+		prover:   newProver,
+		sub:      nil,
+		taskChan: make(chan *message.TaskMsg, 10),
+		stopChan: make(chan struct{}),
+		priv:     priv,
 	}, nil
 }
 
@@ -126,7 +126,7 @@ func (r *Roller) Register() error {
 		return fmt.Errorf("sign auth message failed %v", err)
 	}
 
-	sub, err := r.client.RegisterAndSubscribe(context.Background(), r.traceChan, authMsg)
+	sub, err := r.client.RegisterAndSubscribe(context.Background(), r.taskChan, authMsg)
 	r.sub = sub
 	return err
 }
@@ -137,7 +137,7 @@ func (r *Roller) HandleCoordinator() {
 		select {
 		case <-r.stopChan:
 			return
-		case trace := <-r.traceChan:
+		case trace := <-r.taskChan:
 			log.Info("Accept BlockTrace from Scroll", "ID", trace.ID)
 			err := r.stack.Push(&store.ProvingTask{Task: trace, Times: 0})
 			if err != nil {
