@@ -194,7 +194,7 @@ func (m *Manager) Loop() {
 // HandleZkProof handle a ZkProof submitted from a roller.
 // For now only proving/verifying error will lead to setting status as skipped.
 // db/unmarshal errors will not because they are errors on the business logic side.
-func (m *Manager) handleZkProof(pk string, msg *message.ProofMsg) error {
+func (m *Manager) handleZkProof(pk string, msg *message.ProofDetail) error {
 	var dbErr error
 	var success bool
 
@@ -404,7 +404,7 @@ func (m *Manager) StartProofGenerationSession(task *orm.BlockBatch) bool {
 
 	log.Info("roller is picked", "name", roller.Name, "public_key", roller.PublicKey)
 	// send trace to roller
-	roller.sendMsg(task.ID, traces)
+	roller.sendTask(task.ID, traces)
 
 	pk := roller.PublicKey
 	s := &session{
@@ -452,10 +452,10 @@ func (m *Manager) addFailedSession(s *session, errMsg string) {
 }
 
 // VerifyToken verifies pukey for token and expiration time
-func (m *Manager) VerifyToken(authMsg message.AuthMessage) (bool, error) {
+func (m *Manager) VerifyToken(authMsg message.AuthMsg) (bool, error) {
 	pubkey, _ := authMsg.PublicKey()
 	// GetValue returns nil if value is expired
-	if m.timedmap.GetValue(pubkey) != authMsg.Token {
+	if m.timedmap.GetValue(pubkey) != authMsg.Identity.Token {
 		return false, errors.New("failed to find corresponding token")
 	}
 	return true, nil

@@ -14,13 +14,13 @@ import (
 
 // RollerAPI for rollers inorder to register and submit proof
 type RollerAPI interface {
-	RequestToken(authMsg *message.AuthMessage) (string, error)
-	Register(ctx context.Context, authMsg *message.AuthMessage) (*rpc.Subscription, error)
-	SubmitProof(proof *message.AuthZkProof) (bool, error)
+	RequestToken(authMsg *message.AuthMsg) (string, error)
+	Register(ctx context.Context, authMsg *message.AuthMsg) (*rpc.Subscription, error)
+	SubmitProof(proof *message.ProofMsg) (bool, error)
 }
 
 // RequestToken generates and sends back register token for roller
-func (m *Manager) RequestToken(authMsg *message.AuthMessage) (string, error) {
+func (m *Manager) RequestToken(authMsg *message.AuthMsg) (string, error) {
 	if ok, err := authMsg.Verify(); !ok {
 		if err != nil {
 			log.Error("failed to verify auth message", "error", err)
@@ -40,8 +40,8 @@ func (m *Manager) RequestToken(authMsg *message.AuthMessage) (string, error) {
 }
 
 // Register register api for roller
-func (m *Manager) Register(ctx context.Context, authMsg *message.AuthMessage) (*rpc.Subscription, error) {
-	// Verify register message
+func (m *Manager) Register(ctx context.Context, authMsg *message.AuthMsg) (*rpc.Subscription, error) {
+	// Verify register message.
 	if ok, err := authMsg.Verify(); !ok {
 		if err != nil {
 			log.Error("failed to verify auth message", "error", err)
@@ -57,7 +57,7 @@ func (m *Manager) Register(ctx context.Context, authMsg *message.AuthMessage) (*
 	m.timedmap.Remove(pubkey)
 
 	// create or get the roller message channel
-	traceCh, err := m.register(pubkey, authMsg.Identity)
+	taskCh, err := m.register(pubkey, authMsg.Identity)
 	if err != nil {
 		return nil, err
 	}
@@ -70,13 +70,13 @@ func (m *Manager) Register(ctx context.Context, authMsg *message.AuthMessage) (*
 	go func() {
 		defer func() {
 			m.freeRoller(pubkey)
-			log.Info("roller unregister", "name", authMsg.Name)
+			log.Info("roller unregister", "name", authMsg.Identity.Name)
 		}()
 
 		for {
 			select {
-			case trace := <-traceCh:
-				notifier.Notify(rpcSub.ID, trace) //nolint
+			case task := <-taskCh:
+				notifier.Notify(rpcSub.ID, task) //nolint
 			case <-rpcSub.Err():
 				return
 			case <-notifier.Closed():
@@ -84,13 +84,13 @@ func (m *Manager) Register(ctx context.Context, authMsg *message.AuthMessage) (*
 			}
 		}
 	}()
-	log.Info("roller register", "name", authMsg.Name, "version", authMsg.Version)
+	log.Info("roller register", "name", authMsg.Identity.Name, "version", authMsg.Identity.Version)
 
 	return rpcSub, nil
 }
 
 // SubmitProof roller pull proof
-func (m *Manager) SubmitProof(proof *message.AuthZkProof) (bool, error) {
+func (m *Manager) SubmitProof(proof *message.ProofMsg) (bool, error) {
 	// Verify the signature
 	if ok, err := proof.Verify(); !ok {
 		if err != nil {
@@ -101,16 +101,15 @@ func (m *Manager) SubmitProof(proof *message.AuthZkProof) (bool, error) {
 
 	pubkey, _ := proof.PublicKey()
 	// Only allow registered pub-key.
-	if !m.existID(pubkey, proof.ID) {
+	if !m.exisTaskIDForRoller(pubkey, proof.ID) {
 		return false, fmt.Errorf("the roller or session id doesn't exist, pubkey: %s, ID: %s", pubkey, proof.ID)
 	}
 
-	defer m.freeID(pubkey, proof.ID)
-
-	err := m.handleZkProof(pubkey, proof.ProofMsg)
+	err := m.handleZkProof(pubkey, proof.ProofDetail)
 	if err != nil {
 		return false, err
 	}
+	defer m.freeTaskIDForRoller(pubkey, proof.ID)
 
 	log.Info("Received zk proof", "proof id", proof.ID, "result", true)
 	return true, nil

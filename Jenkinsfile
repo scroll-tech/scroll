@@ -68,6 +68,11 @@ pipeline {
                         go test -v -race -coverprofile=coverage.txt -covermode=atomic -p 1 scroll-tech/coordinator/...
                         cd ..
                     '''
+                    script {
+                        for (i in ['bridge', 'coordinator', 'database']) {
+                            sh "cd $i && go test -v -race -coverprofile=coverage.txt -covermode=atomic \$(go list ./... | grep -v 'database\\|l2\\|l1\\|common\\|coordinator')"
+                        }
+                    }
 
                     script { test_result = true }
                }

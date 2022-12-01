@@ -2,6 +2,7 @@ package coordinator_test
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"strconv"
 	"testing"
@@ -110,17 +111,17 @@ func testFailedHandshake(t *testing.T) {
 	privkey, err := crypto.GenerateKey()
 	assert.NoError(t, err)
 
-	authMsg := &message.AuthMessage{
+	authMsg := &message.AuthMsg{
 		Identity: &message.Identity{
 			Name:      name,
 			Timestamp: time.Now().UnixNano(),
 		},
 	}
 	assert.NoError(t, authMsg.Sign(privkey))
-	traceCh := make(chan *message.TaskMsg, 4)
-	_, err = client.RegisterAndSubscribe(ctx, traceCh, authMsg)
+	taskCh := make(chan *message.TaskMsg, 4)
+	sub, err := client.RegisterAndSubscribe(ctx, taskCh, authMsg)
+	fmt.Println(sub)
 	assert.Error(t, err)
-	client.Close()
 
 	// Try to perform handshake with timeouted token
 	// create a new ws connection
@@ -130,7 +131,7 @@ func testFailedHandshake(t *testing.T) {
 	privkey, err = crypto.GenerateKey()
 	assert.NoError(t, err)
 
-	authMsg = &message.AuthMessage{
+	authMsg = &message.AuthMsg{
 		Identity: &message.Identity{
 			Name:      name,
 			Timestamp: time.Now().UnixNano(),
@@ -144,14 +145,11 @@ func testFailedHandshake(t *testing.T) {
 	assert.NoError(t, authMsg.Sign(privkey))
 
 	tick := time.Tick(6 * time.Second)
-	select {
-	case <-tick:
-		traceCh = make(chan *message.TaskMsg, 4)
-		_, err = client.RegisterAndSubscribe(ctx, traceCh, authMsg)
-		assert.Error(t, err)
-	}
 
-	client.Close()
+	<-tick
+	taskCh = make(chan *message.TaskMsg, 4)
+	_, err = client.RegisterAndSubscribe(ctx, taskCh, authMsg)
+	assert.Error(t, err)
 
 	assert.Equal(t, 0, rollerManager.GetNumberOfIdleRollers())
 
@@ -280,7 +278,7 @@ func performHandshake(t *testing.T, proofTime time.Duration, name string, wsURL 
 	privkey, err := crypto.GenerateKey()
 	assert.NoError(t, err)
 
-	authMsg := &message.AuthMessage{
+	authMsg := &message.AuthMsg{
 		Identity: &message.Identity{
 			Name:      name,
 			Timestamp: time.Now().UnixNano(),
@@ -293,9 +291,8 @@ func performHandshake(t *testing.T, proofTime time.Duration, name string, wsURL 
 	authMsg.Identity.Token = token
 
 	assert.NoError(t, authMsg.Sign(privkey))
-
-	traceCh := make(chan *message.TaskMsg, 4)
-	sub, err := client.RegisterAndSubscribe(ctx, traceCh, authMsg)
+	taskCh := make(chan *message.TaskMsg, 4)
+	sub, err := client.RegisterAndSubscribe(ctx, taskCh, authMsg)
 	if err != nil {
 		t.Error(err)
 		return
@@ -304,14 +301,14 @@ func performHandshake(t *testing.T, proofTime time.Duration, name string, wsURL 
 	go func() {
 		for {
 			select {
-			case trace := <-traceCh:
-				id := trace.ID
+			case task := <-taskCh:
+				id := task.ID
 				// sleep several seconds to mock the proof process.
 				if proofTime > 0 {
 					<-time.After(proofTime * time.Second)
 				}
-				proof := &message.AuthZkProof{
-					ProofMsg: &message.ProofMsg{
+				proof := &message.ProofMsg{
+					ProofDetail: &message.ProofDetail{
 						ID:     id,
 						Status: message.StatusOk,
 						Proof:  &message.AggProof{},

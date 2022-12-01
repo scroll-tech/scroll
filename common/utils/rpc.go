@@ -5,7 +5,6 @@ import (
 	"net/http"
 
 	"github.com/scroll-tech/go-ethereum/log"
-
 	"github.com/scroll-tech/go-ethereum/rpc"
 )
 

@@ -12,7 +12,7 @@ func TestAuthMessageSignAndVerify(t *testing.T) {
 	privkey, err := crypto.GenerateKey()
 	assert.NoError(t, err)
 
-	authMsg := &AuthMessage{
+	authMsg := &AuthMsg{
 		Identity: &Identity{
 			Name:      "testRoller",
 			Timestamp: time.Now().UnixNano(),

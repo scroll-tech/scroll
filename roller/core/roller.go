@@ -5,20 +5,18 @@ import (
 	"crypto/ecdsa"
 	"errors"
 	"fmt"
-	"io/ioutil"
-	"os"
-	"path/filepath"
+	"sort"
 	"strings"
 	"sync/atomic"
 	"time"
 
 	"github.com/scroll-tech/go-ethereum"
-	"github.com/scroll-tech/go-ethereum/accounts/keystore"
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/crypto"
 	"github.com/scroll-tech/go-ethereum/log"
 
 	"scroll-tech/common/message"
+	"scroll-tech/common/utils"
 	"scroll-tech/common/version"
 
 	"scroll-tech/coordinator/client"
@@ -46,12 +44,12 @@ var (
 
 // Roller contains websocket conn to coordinator, Stack, unix-socket to ipc-prover.
 type Roller struct {
-	cfg       *config.Config
-	client    *client.Client
-	stack     *store.Stack
-	prover    *prover.Prover
-	traceChan chan *message.TaskMsg
-	sub       ethereum.Subscription
+	cfg      *config.Config
+	client   *client.Client
+	stack    *store.Stack
+	prover   *prover.Prover
+	taskChan chan *message.TaskMsg
+	sub      ethereum.Subscription
 
 	isClosed int64
 	stopChan chan struct{}
@@ -62,7 +60,7 @@ type Roller struct {
 // NewRoller new a Roller object.
 func NewRoller(cfg *config.Config) (*Roller, error) {
 	// load or create wallet
-	priv, err := loadOrCreateKey(cfg.KeystorePath, cfg.KeystorePassword)
+	priv, err := utils.LoadOrCreateKey(cfg.KeystorePath, cfg.KeystorePassword)
 	if err != nil {
 		return nil, err
 	}
@@ -75,27 +73,26 @@ func NewRoller(cfg *config.Config) (*Roller, error) {
 
 	// Create prover instance
 	log.Info("init prover")
-	prover, err := prover.NewProver(cfg.Prover)
+	newProver, err := prover.NewProver(cfg.Prover)
 	if err != nil {
 		return nil, err
 	}
 	log.Info("init prover successfully!")
 
 	rClient, err := client.Dial(cfg.CoordinatorURL)
-
 	if err != nil {
 		return nil, err
 	}
 
 	return &Roller{
-		cfg:       cfg,
-		client:    rClient,
-		stack:     stackDb,
-		prover:    prover,
-		sub:       nil,
-		traceChan: make(chan *message.TaskMsg, 10),
-		stopChan:  make(chan struct{}),
-		priv:      priv,
+		cfg:      cfg,
+		client:   rClient,
+		stack:    stackDb,
+		prover:   newProver,
+		sub:      nil,
+		taskChan: make(chan *message.TaskMsg, 10),
+		stopChan: make(chan struct{}),
+		priv:     priv,
 	}, nil
 }
 
@@ -116,7 +113,7 @@ func (r *Roller) Run() error {
 
 // Register registers Roller to the coordinator through Websocket.
 func (r *Roller) Register() error {
-	authMsg := &message.AuthMessage{
+	authMsg := &message.AuthMsg{
 		Identity: &message.Identity{
 			Name:      r.cfg.RollerName,
 			Timestamp: time.Now().UnixMilli(),
@@ -141,7 +138,7 @@ func (r *Roller) Register() error {
 		return fmt.Errorf("sign auth message failed %v", err)
 	}
 
-	sub, err := r.client.RegisterAndSubscribe(context.Background(), r.traceChan, authMsg)
+	sub, err := r.client.RegisterAndSubscribe(context.Background(), r.taskChan, authMsg)
 	r.sub = sub
 	return err
 }
@@ -152,15 +149,15 @@ func (r *Roller) HandleCoordinator() {
 		select {
 		case <-r.stopChan:
 			return
-		case trace := <-r.traceChan:
-			log.Info("Accept BlockTrace from Scroll", "ID", trace.ID)
-			err := r.stack.Push(&store.ProvingTask{Task: trace, Times: 0})
+		case task := <-r.taskChan:
+			log.Info("Accept BlockTrace from Scroll", "ID", task.ID)
+			err := r.stack.Push(&store.ProvingTask{Task: task, Times: 0})
 			if err != nil {
-				panic(fmt.Sprintf("could not push trace(%s) into stack: %v", trace.ID, err))
+				panic(fmt.Sprintf("could not push task(%s) into stack: %v", task.ID, err))
 			}
 		case err := <-r.sub.Err():
 			r.sub.Unsubscribe()
-			log.Error("Subscribe trace with scroll failed", "error", err)
+			log.Error("Subscribe task with scroll failed", "error", err)
 			r.mustRetryCoordinator()
 		}
 	}
@@ -209,9 +206,9 @@ func (r *Roller) prove() error {
 		return err
 	}
 
-	var proofMsg *message.ProofMsg
+	var proofMsg *message.ProofDetail
 	if task.Times > 2 {
-		proofMsg = &message.ProofMsg{
+		proofMsg = &message.ProofDetail{
 			Status: message.StatusProofError,
 			Error:  "prover has retried several times due to FFI panic",
 			ID:     task.Task.ID,
@@ -229,9 +226,14 @@ func (r *Roller) prove() error {
 
 	log.Info("start to prove block", "task-id", task.Task.ID)
 
-	proof, err := r.prover.Prove(task.Task.Traces)
+	// sort BlockTrace
+	traces := task.Task.Traces
+	sort.Slice(traces, func(i, j int) bool {
+		return traces[i].Header.Number.Int64() < traces[j].Header.Number.Int64()
+	})
+	proof, err := r.prover.Prove(traces)
 	if err != nil {
-		proofMsg = &message.ProofMsg{
+		proofMsg = &message.ProofDetail{
 			Status: message.StatusProofError,
 			Error:  err.Error(),
 			ID:     task.Task.ID,
@@ -240,7 +242,7 @@ func (r *Roller) prove() error {
 		log.Error("prove block failed!", "task-id", task.Task.ID)
 	} else {
 
-		proofMsg = &message.ProofMsg{
+		proofMsg = &message.ProofDetail{
 			Status: message.StatusOk,
 			ID:     task.Task.ID,
 			Proof:  proof,
@@ -254,13 +256,13 @@ func (r *Roller) prove() error {
 
 	ok, err := r.signAndSubmitProof(proofMsg)
 	if !ok {
-		log.Error("Submit proof to scroll failed! auzhZkProofID: ", proofMsg.ID)
+		log.Error("submit proof to coordinator failed", "task ID", proofMsg.ID)
 	}
 	return err
 }
 
-func (r *Roller) signAndSubmitProof(msg *message.ProofMsg) (bool, error) {
-	authZkProof := &message.AuthZkProof{ProofMsg: msg}
+func (r *Roller) signAndSubmitProof(msg *message.ProofDetail) (bool, error) {
+	authZkProof := &message.ProofMsg{ProofDetail: msg}
 	if err := authZkProof.Sign(r.priv); err != nil {
 		return false, err
 	}
@@ -282,33 +284,4 @@ func (r *Roller) Close() {
 	if err := r.stack.Close(); err != nil {
 		log.Error("failed to close bbolt db", "error", err)
 	}
-}
-
-func loadOrCreateKey(keystoreDir string, keystorePassword string) (*ecdsa.PrivateKey, error) {
-	if _, err := os.Stat(keystoreDir); os.IsNotExist(err) {
-		// If there is no keystore, make a new one.
-		ks := keystore.NewKeyStore(keystoreDir, keystore.StandardScryptN, keystore.StandardScryptP)
-		account, err := ks.NewAccount(keystorePassword)
-		if err != nil {
-			return nil, fmt.Errorf("generate crypto account failed %v", err)
-		}
-		log.Info("create a new account", "address", account.Address.Hex())
-	} else if err != nil {
-		return nil, err
-	}
-
-	entries, err := os.ReadDir(keystoreDir)
-	if err != nil {
-		return nil, err
-	}
-	keystorePath := filepath.Join(keystoreDir, entries[0].Name())
-	keyjson, err := ioutil.ReadFile(keystorePath)
-	if err != nil {
-		return nil, err
-	}
-	key, err := keystore.DecryptKey(keyjson, keystorePassword)
-	if err != nil {
-		return nil, err
-	}
-	return key.PrivateKey, nil
 }
