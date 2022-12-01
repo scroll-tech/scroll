@@ -31,7 +31,7 @@ type rollerNode struct {
 	registerTime time.Time
 }
 
-func (r *rollerNode) sendMsg(id string, traces []*types.BlockTrace) bool {
+func (r *rollerNode) sendTask(id string, traces []*types.BlockTrace) bool {
 	select {
 	case r.taskChan <- &message.TaskMsg{
 		ID:     id,
