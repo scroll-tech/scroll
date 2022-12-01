@@ -26,7 +26,7 @@ const (
 // known to the Sequencer.
 type AuthMessage struct {
 	// Message fields
-	*Identity `json:"message"`
+	Identity *Identity `json:"message"`
 	// Roller signature
 	Signature string `json:"signature"`
 }

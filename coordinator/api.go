@@ -42,7 +42,7 @@ func (m *Manager) Register(ctx context.Context, authMsg *message.AuthMessage) (*
 	go func() {
 		defer func() {
 			m.freeRoller(pubkey)
-			log.Info("roller unregister", "name", authMsg.Name)
+			log.Info("roller unregister", "name", authMsg.Identity.Name)
 		}()
 
 		for {
@@ -56,7 +56,7 @@ func (m *Manager) Register(ctx context.Context, authMsg *message.AuthMessage) (*
 			}
 		}
 	}()
-	log.Info("roller register", "name", authMsg.Name, "version", authMsg.Version)
+	log.Info("roller register", "name", authMsg.Identity.Name, "version", authMsg.Identity.Version)
 
 	return rpcSub, nil
 }
