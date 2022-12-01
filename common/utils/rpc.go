@@ -4,11 +4,18 @@ import (
 	"net"
 	"net/http"
 
+	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/scroll-tech/go-ethereum/rpc"
 )
 
 // StartHTTPEndpoint starts the HTTP RPC endpoint.
-func StartHTTPEndpoint(endpoint string, timeouts rpc.HTTPTimeouts, handler http.Handler) (*http.Server, net.Addr, error) {
+func StartHTTPEndpoint(endpoint string, apis []rpc.API) (*http.Server, net.Addr, error) {
+	srv := rpc.NewServer()
+	for _, api := range apis {
+		if err := srv.RegisterName(api.Namespace, api.Service); err != nil {
+			log.Crit("register namespace failed", "namespace", api.Namespace, "error", err)
+		}
+	}
 	// start the HTTP listener
 	var (
 		listener net.Listener
@@ -19,13 +26,23 @@ func StartHTTPEndpoint(endpoint string, timeouts rpc.HTTPTimeouts, handler http.
 	}
 	// Bundle and start the HTTP server
 	httpSrv := &http.Server{
-		Handler:      handler,
-		ReadTimeout:  timeouts.ReadTimeout,
-		WriteTimeout: timeouts.WriteTimeout,
-		IdleTimeout:  timeouts.IdleTimeout,
+		Handler:      srv,
+		ReadTimeout:  rpc.DefaultHTTPTimeouts.ReadTimeout,
+		WriteTimeout: rpc.DefaultHTTPTimeouts.WriteTimeout,
+		IdleTimeout:  rpc.DefaultHTTPTimeouts.IdleTimeout,
 	}
 	go func() {
 		_ = httpSrv.Serve(listener)
 	}()
 	return httpSrv, listener.Addr(), err
+}
+
+// StartWSEndpoint starts the WS RPC endpoint.
+func StartWSEndpoint(endpoint string, apis []rpc.API) (*http.Server, net.Addr, error) {
+	handler, addr, err := StartHTTPEndpoint(endpoint, apis)
+	if err == nil {
+		srv := (handler.Handler).(*rpc.Server)
+		handler.Handler = srv.WebsocketHandler(nil)
+	}
+	return handler, addr, err
 }
