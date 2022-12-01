@@ -13,7 +13,7 @@ import (
 	"scroll-tech/common/message"
 )
 
-// roller node message
+// rollerNode records roller status and send task to connected roller.
 type rollerNode struct {
 	// Roller name
 	Name string

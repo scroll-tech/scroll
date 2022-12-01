@@ -5,6 +5,7 @@ import (
 	"crypto/ecdsa"
 	"errors"
 	"fmt"
+	"sort"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -214,7 +215,12 @@ func (r *Roller) prove() error {
 
 	log.Info("start to prove block", "task-id", task.Task.ID)
 
-	proof, err := r.prover.Prove(task.Task.Traces)
+	// sort BlockTrace
+	traces := task.Task.Traces
+	sort.Slice(traces, func(i, j int) bool {
+		return traces[i].Header.Number.Int64() < traces[j].Header.Number.Int64()
+	})
+	proof, err := r.prover.Prove(traces)
 	if err != nil {
 		proofMsg = &message.ProofDetail{
 			Status: message.StatusProofError,
