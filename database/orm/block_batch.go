@@ -261,7 +261,7 @@ func (o *blockBatchOrm) GetPendingBatches() ([]string, error) {
 }
 
 func (o *blockBatchOrm) GetLatestFinalizedBatch() (*BlockBatch, error) {
-	row := o.db.QueryRowx(`SELECT * FROM block_batch WHERE rollup_status = $1 ORDER BY index DESC;`, RollupFinalized)
+	row := o.db.QueryRowx(`SELECT * FROM block_batch WHERE rollup_status = $1 OR rollup_status = $2 ORDER BY index DESC;`, RollupFinalized, RollupFinalizationSkipped)
 	batch := &BlockBatch{}
 	if err := row.StructScan(batch); err != nil {
 		return nil, err
