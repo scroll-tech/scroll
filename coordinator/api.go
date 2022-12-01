@@ -14,7 +14,7 @@ import (
 // RollerAPI for rollers inorder to register and submit proof
 type RollerAPI interface {
 	Register(ctx context.Context, authMsg *message.AuthMessage) (*rpc.Subscription, error)
-	SubmitProof(proof *message.AuthZkProof) (bool, error)
+	SubmitProof(proof *message.ProofMsg) (bool, error)
 }
 
 // Register register api for roller
@@ -62,7 +62,7 @@ func (m *Manager) Register(ctx context.Context, authMsg *message.AuthMessage) (*
 }
 
 // SubmitProof roller pull proof
-func (m *Manager) SubmitProof(proof *message.AuthZkProof) (bool, error) {
+func (m *Manager) SubmitProof(proof *message.ProofMsg) (bool, error) {
 	// Verify the signature
 	if ok, err := proof.Verify(); !ok {
 		if err != nil {
@@ -79,7 +79,7 @@ func (m *Manager) SubmitProof(proof *message.AuthZkProof) (bool, error) {
 
 	defer m.freeID(pubkey, proof.ID)
 
-	err := m.handleZkProof(pubkey, proof.ProofMsg)
+	err := m.handleZkProof(pubkey, proof.ProofDetail)
 	if err != nil {
 		return false, err
 	}

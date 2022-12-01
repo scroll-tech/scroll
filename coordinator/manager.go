@@ -188,7 +188,7 @@ func (m *Manager) Loop() {
 // HandleZkProof handle a ZkProof submitted from a roller.
 // For now only proving/verifying error will lead to setting status as skipped.
 // db/unmarshal errors will not because they are errors on the business logic side.
-func (m *Manager) handleZkProof(pk string, msg *message.ProofMsg) error {
+func (m *Manager) handleZkProof(pk string, msg *message.ProofDetail) error {
 	var dbErr error
 	var success bool
 

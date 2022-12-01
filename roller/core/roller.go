@@ -198,9 +198,9 @@ func (r *Roller) prove() error {
 		return err
 	}
 
-	var proofMsg *message.ProofMsg
+	var proofMsg *message.ProofDetail
 	if task.Times > 2 {
-		proofMsg = &message.ProofMsg{
+		proofMsg = &message.ProofDetail{
 			Status: message.StatusProofError,
 			Error:  "prover has retried several times due to FFI panic",
 			ID:     task.Task.ID,
@@ -220,7 +220,7 @@ func (r *Roller) prove() error {
 
 	proof, err := r.prover.Prove(task.Task.Traces)
 	if err != nil {
-		proofMsg = &message.ProofMsg{
+		proofMsg = &message.ProofDetail{
 			Status: message.StatusProofError,
 			Error:  err.Error(),
 			ID:     task.Task.ID,
@@ -229,7 +229,7 @@ func (r *Roller) prove() error {
 		log.Error("prove block failed!", "task-id", task.Task.ID)
 	} else {
 
-		proofMsg = &message.ProofMsg{
+		proofMsg = &message.ProofDetail{
 			Status: message.StatusOk,
 			ID:     task.Task.ID,
 			Proof:  proof,
@@ -248,8 +248,8 @@ func (r *Roller) prove() error {
 	return err
 }
 
-func (r *Roller) signAndSubmitProof(msg *message.ProofMsg) (bool, error) {
-	authZkProof := &message.AuthZkProof{ProofMsg: msg}
+func (r *Roller) signAndSubmitProof(msg *message.ProofDetail) (bool, error) {
+	authZkProof := &message.ProofMsg{ProofDetail: msg}
 	if err := authZkProof.Sign(r.priv); err != nil {
 		return false, err
 	}

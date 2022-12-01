@@ -112,9 +112,9 @@ func (i *Identity) Hash() ([]byte, error) {
 	return hash[:], nil
 }
 
-// AuthZkProof is the data structure sent to the coordinator.
-type AuthZkProof struct {
-	*ProofMsg `json:"zkProof"`
+// ProofMsg is the data structure sent to the coordinator.
+type ProofMsg struct {
+	*ProofDetail `json:"zkProof"`
 	// Roller signature
 	Signature string `json:"signature"`
 
@@ -122,9 +122,9 @@ type AuthZkProof struct {
 	publicKey string
 }
 
-// Sign signs the AuthZkProof.
-func (a *AuthZkProof) Sign(priv *ecdsa.PrivateKey) error {
-	hash, err := a.ProofMsg.Hash()
+// Sign signs the ProofMsg.
+func (a *ProofMsg) Sign(priv *ecdsa.PrivateKey) error {
+	hash, err := a.ProofDetail.Hash()
 	if err != nil {
 		return err
 	}
@@ -136,9 +136,9 @@ func (a *AuthZkProof) Sign(priv *ecdsa.PrivateKey) error {
 	return nil
 }
 
-// Verify verifies AuthZkProof.Signature.
-func (a *AuthZkProof) Verify() (bool, error) {
-	hash, err := a.ProofMsg.Hash()
+// Verify verifies ProofMsg.Signature.
+func (a *ProofMsg) Verify() (bool, error) {
+	hash, err := a.ProofDetail.Hash()
 	if err != nil {
 		return false, err
 	}
@@ -156,9 +156,9 @@ func (a *AuthZkProof) Verify() (bool, error) {
 }
 
 // PublicKey return public key from signature
-func (a *AuthZkProof) PublicKey() (string, error) {
+func (a *ProofMsg) PublicKey() (string, error) {
 	if a.publicKey == "" {
-		hash, err := a.ProofMsg.Hash()
+		hash, err := a.ProofDetail.Hash()
 		if err != nil {
 			return "", err
 		}
@@ -181,9 +181,9 @@ type TaskMsg struct {
 	Traces []*types.BlockTrace `json:"blockTraces"`
 }
 
-// ProofMsg is the message received from rollers that contains zk proof, the status of
+// ProofDetail is the message received from rollers that contains zk proof, the status of
 // the proof generation succeeded, and an error message if proof generation failed.
-type ProofMsg struct {
+type ProofDetail struct {
 	ID     string     `json:"id"`
 	Status RespStatus `json:"status"`
 	Proof  *AggProof  `json:"proof"`
@@ -191,7 +191,7 @@ type ProofMsg struct {
 }
 
 // Hash return proofMsg content hash.
-func (z *ProofMsg) Hash() ([]byte, error) {
+func (z *ProofDetail) Hash() ([]byte, error) {
 	bs, err := json.Marshal(z)
 	if err != nil {
 		return nil, err

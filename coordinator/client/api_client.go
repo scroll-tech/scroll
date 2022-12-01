@@ -14,7 +14,7 @@ func (c *Client) RegisterAndSubscribe(ctx context.Context, traceChan chan *messa
 }
 
 // SubmitProof get proof from roller.
-func (c *Client) SubmitProof(ctx context.Context, proof *message.AuthZkProof) (bool, error) {
+func (c *Client) SubmitProof(ctx context.Context, proof *message.ProofMsg) (bool, error) {
 	var ok bool
 	return ok, c.CallContext(ctx, &ok, "roller_submitProof", proof)
 }

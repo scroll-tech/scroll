@@ -231,8 +231,8 @@ func performHandshake(t *testing.T, proofTime time.Duration, name string, wsURL 
 				if proofTime > 0 {
 					<-time.After(proofTime * time.Second)
 				}
-				proof := &message.AuthZkProof{
-					ProofMsg: &message.ProofMsg{
+				proof := &message.ProofMsg{
+					ProofDetail: &message.ProofDetail{
 						ID:     id,
 						Status: message.StatusOk,
 						Proof:  &message.AggProof{},
