@@ -242,7 +242,7 @@ func (r *Roller) prove() error {
 
 	ok, err := r.signAndSubmitProof(proofMsg)
 	if !ok {
-		log.Error("Submit proof to scroll failed! auzhZkProofID: ", proofMsg.ID)
+		log.Error("submit proof to coordinator failed", "task ID", proofMsg.ID)
 	}
 	return err
 }
