@@ -17,7 +17,7 @@ roller: ## Build the Roller instance.
 	GOBIN=$(PWD)/build/bin go build -ldflags "-X scroll-tech/roller/core.ZK_VERSION=${ZK_VERSION}" -o $(PWD)/build/bin/roller ./cmd
 
 mock_roller:
-	GOBIN=$(PWD)/build/bin go build -o $(PWD)/build/bin/roller -tags mock_prover $(PWD)/cmd
+	GOBIN=$(PWD)/build/bin go build -tags mock_prover -o $(PWD)/build/bin/roller $(PWD)/cmd
 
 gpu-roller: ## Builds the GPU Roller instance.
 	cd core/prover/rust && cargo build --release && cp target/release/libprover.a ../lib/
