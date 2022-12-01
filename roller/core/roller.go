@@ -138,15 +138,15 @@ func (r *Roller) HandleCoordinator() {
 		select {
 		case <-r.stopChan:
 			return
-		case trace := <-r.taskChan:
-			log.Info("Accept BlockTrace from Scroll", "ID", trace.ID)
-			err := r.stack.Push(&store.ProvingTask{Task: trace, Times: 0})
+		case task := <-r.taskChan:
+			log.Info("Accept BlockTrace from Scroll", "ID", task.ID)
+			err := r.stack.Push(&store.ProvingTask{Task: task, Times: 0})
 			if err != nil {
-				panic(fmt.Sprintf("could not push trace(%s) into stack: %v", trace.ID, err))
+				panic(fmt.Sprintf("could not push task(%s) into stack: %v", task.ID, err))
 			}
 		case err := <-r.sub.Err():
 			r.sub.Unsubscribe()
-			log.Error("Subscribe trace with scroll failed", "error", err)
+			log.Error("Subscribe task with scroll failed", "error", err)
 			r.mustRetryCoordinator()
 		}
 	}

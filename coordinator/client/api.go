@@ -9,8 +9,8 @@ import (
 )
 
 // RegisterAndSubscribe subscribe roller and register, verified by sign data.
-func (c *Client) RegisterAndSubscribe(ctx context.Context, traceChan chan *message.TaskMsg, authMsg *message.AuthMsg) (ethereum.Subscription, error) {
-	return c.client.Subscribe(ctx, "roller", traceChan, "register", authMsg)
+func (c *Client) RegisterAndSubscribe(ctx context.Context, taskCh chan *message.TaskMsg, authMsg *message.AuthMsg) (ethereum.Subscription, error) {
+	return c.client.Subscribe(ctx, "roller", taskCh, "register", authMsg)
 }
 
 // SubmitProof get proof from roller.

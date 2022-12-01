@@ -215,8 +215,8 @@ func performHandshake(t *testing.T, proofTime time.Duration, name string, wsURL 
 	}
 	assert.NoError(t, authMsg.Sign(privkey))
 
-	traceCh := make(chan *message.TaskMsg, 4)
-	sub, err := client.RegisterAndSubscribe(ctx, traceCh, authMsg)
+	taskCh := make(chan *message.TaskMsg, 4)
+	sub, err := client.RegisterAndSubscribe(ctx, taskCh, authMsg)
 	if err != nil {
 		t.Error(err)
 		return
@@ -225,8 +225,8 @@ func performHandshake(t *testing.T, proofTime time.Duration, name string, wsURL 
 	go func() {
 		for {
 			select {
-			case trace := <-traceCh:
-				id := trace.ID
+			case task := <-taskCh:
+				id := task.ID
 				// sleep several seconds to mock the proof process.
 				if proofTime > 0 {
 					<-time.After(proofTime * time.Second)

@@ -29,7 +29,7 @@ func (m *Manager) Register(ctx context.Context, authMsg *message.AuthMsg) (*rpc.
 
 	pubkey, _ := authMsg.PublicKey()
 	// create or get the roller message channel
-	traceCh, err := m.register(pubkey, authMsg.Identity)
+	taskCh, err := m.register(pubkey, authMsg.Identity)
 	if err != nil {
 		return nil, err
 	}
@@ -47,8 +47,8 @@ func (m *Manager) Register(ctx context.Context, authMsg *message.AuthMsg) (*rpc.
 
 		for {
 			select {
-			case trace := <-traceCh:
-				notifier.Notify(rpcSub.ID, trace) //nolint
+			case task := <-taskCh:
+				notifier.Notify(rpcSub.ID, task) //nolint
 			case <-rpcSub.Err():
 				return
 			case <-notifier.Closed():
