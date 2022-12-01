@@ -35,21 +35,9 @@ jobs:
         go-version: 1.18.x
     - name: Checkout code
       uses: actions/checkout@v2
-    - name: Cache cargo registry
-      uses: actions/cache@v2
+    - uses: Swatinem/rust-cache@v2
       with:
-        path: ~/.cargo/registry
-        key: ${{ runner.os }}-roller-cargo-registry-${{ hashFiles('roller/core/prover/rust/Cargo.lock') }}
-    - name: Cache cargo index
-      uses: actions/cache@v2
-      with:
-        path: ~/.cargo/git
-        key: ${{ runner.os }}-roller-cargo-index-${{ hashFiles('roller/core/prover/rust/Cargo.lock') }}
-    - name: Cache cargo target
-      uses: actions/cache@v2
-      with:
-        path: /home/runner/work/scroll/scroll/roller/core/prover/rust/target
-        key: ${{ runner.os }}-roller-cargo-build-target-${{ hashFiles('roller/core/prover/rust/Cargo.lock') }}
+        workspaces: "roller/core/prover/rust"
     - name: Test
       run: |
         make roller
