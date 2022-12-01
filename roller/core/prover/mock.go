@@ -4,11 +4,10 @@
 package prover
 
 import (
-	"scroll-tech/common/message"
-
-	"scroll-tech/roller/config"
-
 	"github.com/scroll-tech/go-ethereum/core/types"
+
+	"scroll-tech/common/message"
+	"scroll-tech/roller/config"
 )
 
 // Prover sends block-traces to rust-prover through socket and get back the zk-proof.
