@@ -77,12 +77,11 @@ func (m *Manager) SubmitProof(proof *message.ProofMsg) (bool, error) {
 		return false, fmt.Errorf("the roller or session id doesn't exist, pubkey: %s, ID: %s", pubkey, proof.ID)
 	}
 
-	defer m.freeID(pubkey, proof.ID)
-
 	err := m.handleZkProof(pubkey, proof.ProofDetail)
 	if err != nil {
 		return false, err
 	}
+	defer m.freeID(pubkey, proof.ID)
 
 	log.Info("Received zk proof", "proof id", proof.ID, "result", true)
 	return true, nil
