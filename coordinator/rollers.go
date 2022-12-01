@@ -93,7 +93,7 @@ func (m *Manager) GetNumberOfIdleRollers() int {
 	for i := 0; i < len(pubkeys); i++ {
 		if val, ok := m.rollerPool.Get(pubkeys[i]); ok {
 			r := val.(*rollerNode)
-			if r.TaskIDs.Count() > int(m.cfg.RollersPerSession) {
+			if r.TaskIDs.Count() == 0 {
 				pubkeys[i], pubkeys = pubkeys[len(pubkeys)-1], pubkeys[:len(pubkeys)-1]
 			}
 		}
@@ -107,7 +107,7 @@ func (m *Manager) selectRoller() *rollerNode {
 		idx, _ := rand.Int(rand.Reader, big.NewInt(int64(len(pubkeys))))
 		if val, ok := m.rollerPool.Get(pubkeys[idx.Int64()]); ok {
 			r := val.(*rollerNode)
-			if r.TaskIDs.Count() > 0 {
+			if r.TaskIDs.Count() == 0 {
 				return r
 			}
 		}
