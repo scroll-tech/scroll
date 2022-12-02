@@ -75,7 +75,7 @@ func action(ctx *cli.Context) error {
 		return err
 	}
 	defer r.Close()
-	log.Info("roller start successfully", "name", cfg.RollerName)
+	log.Info("roller start successfully", "name", cfg.RollerName, "publickey", r.PublicKey(), "version", core.Version)
 
 	return r.Run()
 }
