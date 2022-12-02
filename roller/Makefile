@@ -4,23 +4,23 @@ IMAGE_NAME=go-roller
 IMAGE_VERSION=latest
 
 ifeq (4.3,$(firstword $(sort $(MAKE_VERSION) 4.3)))
-	ZK_VERSION=$(shell grep -m 1 "common-rs" ../common/zkp/rust/Cargo.lock | cut -d "#" -f2 | cut -c-7)
+	ZK_VERSION=$(shell grep -m 1 "common-rs" ../common/libzkp/impl/Cargo.lock | cut -d "#" -f2 | cut -c-7)
 else
-	ZK_VERSION=$(shell grep -m 1 "common-rs" ../common/zkp/rust/Cargo.lock | cut -d "\#" -f2 | cut -c-7)
+	ZK_VERSION=$(shell grep -m 1 "common-rs" ../common/libzkp/impl/Cargo.lock | cut -d "\#" -f2 | cut -c-7)
 endif
 
 libzkp:
-	cd ../common/zkp/rust && cargo build --release && cp ./target/release/libzkp.a ../lib/
-	cp -r ../common/zkp/lib ./core/prover/
+	cd ../common/libzkp/impl && cargo build --release && cp ./target/release/libzkp.a ../interface/
+	cp -r ../common/libzkp/interface ./core/prover/
 
 roller: ## Build the Roller instance.
-	cd ../common/zkp/rust && cargo build --release && cp ./target/release/libzkp.a ../lib/
-	cp -r ../common/zkp/lib ./core/prover/
+	cd ../common/libzkp/impl && cargo build --release && cp ./target/release/libzkp.a ../interface/
+	cp -r ../common/libzkp/interface ./core/prover/
 	GOBIN=$(PWD)/build/bin go build -ldflags "-X scroll-tech/roller/core.ZK_VERSION=${ZK_VERSION}" -o $(PWD)/build/bin/roller ./cmd
 
 gpu-roller: ## Build the GPU Roller instance.
-	cd ../common/zkp/rust && cargo build --release && cp ./target/release/libzkp.a ../lib/
-	cp -r ../common/zkp/lib ./core/prover/
+	cd ../common/libzkp/impl && cargo build --release && cp ./target/release/libzkp.a ../interface/
+	cp -r ../common/libzkp/interface ./core/prover/
 	GOBIN=$(PWD)/build/bin go build -ldflags "-X scroll-tech/roller/core.ZK_VERSION=${ZK_VERSION}" -tags gpu -o $(PWD)/build/bin/roller ./cmd
 
 mock_roller:

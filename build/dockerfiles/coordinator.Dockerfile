@@ -3,8 +3,8 @@ FROM scrolltech/go-rust-builder:go-1.17-rust-nightly-2022-08-23 as zkp-builder
 
 COPY ./ /src/
 
-RUN cd /src/common/zkp/rust && cargo build --release && cp ./target/release/libzkp.a ../lib/
-RUN cp -r /src/common/zkp/lib /src/coordinator/verifier/
+RUN cd /src/common/libzkp/impl && cargo build --release && cp ./target/release/libzkp.a ../interface/
+RUN cp -r /src/common/libzkp/interface /src/coordinator/verifier/lib
 
 
 # Download Go dependencies

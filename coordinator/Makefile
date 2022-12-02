@@ -8,12 +8,12 @@ test:
 	go test -v -race -coverprofile=coverage.txt -covermode=atomic -p 1 $(PWD)/...
 
 libzkp:
-	cd ../common/zkp/rust && cargo build --release && cp ./target/release/libzkp.a ../lib/
-	cp -r ../common/zkp/lib ./verifier/
+	cd ../common/libzkp/impl && cargo build --release && cp ./target/release/libzkp.a ../interface/
+	cp -r ../common/libzkp/interface ./verifier/
 
 coordinator: ## Builds the Coordinator instance.
-	cd ../common/zkp/rust && cargo build --release && cp ./target/release/libzkp.a ../lib/
-	cp -r ../common/zkp/lib ./verifier/
+	cd ../common/libzkp/impl && cargo build --release && cp ./target/release/libzkp.a ../interface/
+	cp -r ../common/libzkp/interface ./verifier/
 	go build -o $(PWD)/build/bin/coordinator ./cmd
 
 test-verifier:
