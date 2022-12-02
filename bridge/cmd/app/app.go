@@ -6,7 +6,6 @@ import (
 	"os/signal"
 
 	"github.com/scroll-tech/go-ethereum/log"
-	"github.com/scroll-tech/go-ethereum/rpc"
 	"github.com/urfave/cli/v2"
 
 	"scroll-tech/common/utils"
@@ -83,20 +82,12 @@ func action(ctx *cli.Context) error {
 
 	// Register api and start rpc service.
 	if ctx.Bool(httpEnabledFlag.Name) {
-		srv := rpc.NewServer()
-		apis := l2Backend.APIs()
-		for _, api := range apis {
-			if err = srv.RegisterName(api.Namespace, api.Service); err != nil {
-				log.Crit("register namespace failed", "namespace", api.Namespace, "error", err)
-			}
-		}
 		handler, addr, err := utils.StartHTTPEndpoint(
 			fmt.Sprintf(
 				"%s:%d",
 				ctx.String(httpListenAddrFlag.Name),
 				ctx.Int(httpPortFlag.Name)),
-			rpc.DefaultHTTPTimeouts,
-			srv)
+			l2Backend.APIs())
 		if err != nil {
 			log.Crit("Could not start RPC api", "error", err)
 		}

@@ -1,6 +1,6 @@
 //go:build roller
-// +build roller
 
+//nolint:typecheck
 package prover
 
 /*
@@ -18,7 +18,6 @@ import (
 	"github.com/scroll-tech/go-ethereum/core/types"
 
 	"scroll-tech/common/message"
-
 	"scroll-tech/roller/config"
 )
 

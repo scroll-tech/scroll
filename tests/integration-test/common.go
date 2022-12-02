@@ -3,10 +3,11 @@ package integration
 import (
 	"context"
 	"crypto/ecdsa"
-	"golang.org/x/sync/errgroup"
 	"math/big"
 	"strconv"
 	"testing"
+
+	"golang.org/x/sync/errgroup"
 
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/stretchr/testify/assert"
