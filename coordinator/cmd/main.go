@@ -30,12 +30,7 @@ func main() {
 	app.Flags = append(app.Flags, apiFlags...)
 
 	app.Before = func(ctx *cli.Context) error {
-		return utils.Setup(&utils.LogConfig{
-			LogFile:       ctx.String(utils.LogFileFlag.Name),
-			LogJSONFormat: ctx.Bool(utils.LogJSONFormat.Name),
-			LogDebug:      ctx.Bool(utils.LogDebugFlag.Name),
-			Verbosity:     ctx.Int(utils.VerbosityFlag.Name),
-		})
+		return utils.LogSetup(ctx)
 	}
 
 	// Run the coordinator.

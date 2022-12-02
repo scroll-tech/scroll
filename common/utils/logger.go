@@ -9,6 +9,7 @@ import (
 	"github.com/mattn/go-isatty"
 	"github.com/scroll-tech/go-ethereum/cmd/utils"
 	"github.com/scroll-tech/go-ethereum/log"
+	"github.com/urfave/cli/v2"
 )
 
 // LogConfig is for setup log types of the logger
@@ -19,8 +20,15 @@ type LogConfig struct {
 	Verbosity     int
 }
 
-// Setup is for setup logger
-func Setup(cfg *LogConfig) error {
+// LogSetup is for setup logger
+func LogSetup(ctx *cli.Context) error {
+	cfg := &LogConfig{
+		LogFile:       ctx.String(LogFileFlag.Name),
+		LogJSONFormat: ctx.Bool(LogJSONFormat.Name),
+		LogDebug:      ctx.Bool(LogDebugFlag.Name),
+		Verbosity:     ctx.Int(VerbosityFlag.Name),
+	}
+
 	var ostream log.Handler
 	if logFile := cfg.LogFile; len(logFile) > 0 {
 		fp, err := os.OpenFile(filepath.Clean(logFile), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
