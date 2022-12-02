@@ -17,29 +17,20 @@ func TestPackRelayMessageWithProof(t *testing.T) {
 	assert.NoError(err)
 
 	proof := bridge_abi.IL1ScrollMessengerL2MessageProof{
-		BlockNumber: big.NewInt(0),
+		BlockHeight: big.NewInt(0),
+		BatchIndex:  big.NewInt(0),
 		MerkleProof: make([]byte, 0),
 	}
 	_, err = l1MessengerABI.Pack("relayMessageWithProof", common.Address{}, common.Address{}, big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), make([]byte, 0), proof)
 	assert.NoError(err)
 }
 
-func TestPackCommitBlock(t *testing.T) {
+func TestPackCommitBatch(t *testing.T) {
 	assert := assert.New(t)
 
 	l1RollupABI, err := bridge_abi.RollupMetaData.GetAbi()
 	assert.NoError(err)
 
-	header := bridge_abi.IZKRollupBlockHeader{
-		BlockHash:   common.Hash{},
-		ParentHash:  common.Hash{},
-		BaseFee:     big.NewInt(0),
-		StateRoot:   common.Hash{},
-		BlockHeight: 0,
-		GasUsed:     0,
-		Timestamp:   0,
-		ExtraData:   make([]byte, 0),
-	}
 	txns := make([]bridge_abi.IZKRollupLayer2Transaction, 5)
 	for i := 0; i < 5; i++ {
 		txns[i] = bridge_abi.IZKRollupLayer2Transaction{
@@ -50,13 +41,35 @@ func TestPackCommitBlock(t *testing.T) {
 			GasPrice: big.NewInt(0),
 			Value:    big.NewInt(0),
 			Data:     make([]byte, 0),
+			R:        big.NewInt(0),
+			S:        big.NewInt(0),
+			V:        0,
 		}
 	}
-	_, err = l1RollupABI.Pack("commitBlock", header, txns)
+
+	header := bridge_abi.IZKRollupLayer2BlockHeader{
+		BlockHash:   common.Hash{},
+		ParentHash:  common.Hash{},
+		BaseFee:     big.NewInt(0),
+		StateRoot:   common.Hash{},
+		BlockHeight: 0,
+		GasUsed:     0,
+		Timestamp:   0,
+		ExtraData:   make([]byte, 0),
+		Txs:         txns,
+	}
+
+	batch := bridge_abi.IZKRollupLayer2Batch{
+		BatchIndex: 0,
+		ParentHash: common.Hash{},
+		Blocks:     []bridge_abi.IZKRollupLayer2BlockHeader{header},
+	}
+
+	_, err = l1RollupABI.Pack("commitBatch", batch)
 	assert.NoError(err)
 }
 
-func TestPackFinalizeBlockWithProof(t *testing.T) {
+func TestPackFinalizeBatchWithProof(t *testing.T) {
 	assert := assert.New(t)
 
 	l1RollupABI, err := bridge_abi.RollupMetaData.GetAbi()
@@ -69,7 +82,7 @@ func TestPackFinalizeBlockWithProof(t *testing.T) {
 		instance[i] = big.NewInt(0)
 	}
 
-	_, err = l1RollupABI.Pack("finalizeBlockWithProof", common.Hash{}, proof, instance)
+	_, err = l1RollupABI.Pack("finalizeBatchWithProof", common.Hash{}, proof, instance)
 	assert.NoError(err)
 }
 

@@ -68,7 +68,7 @@ func (l2 *Backend) APIs() []rpc.API {
 	}
 }
 
-// MockBlockResult for test case
-func (l2 *Backend) MockBlockResult(blockResult *types.BlockResult) {
-	l2.l2Watcher.Send(blockResult)
+// MockBlockTrace for test case
+func (l2 *Backend) MockBlockTrace(blockTrace *types.BlockTrace) {
+	l2.l2Watcher.Send(blockTrace)
 }

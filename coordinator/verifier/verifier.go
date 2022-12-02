@@ -46,6 +46,7 @@ func (v *Verifier) VerifyProof(proof *message.AggProof) (bool, error) {
 	if v.cfg.MockMode {
 		log.Info("Verifier disabled, VerifyProof skipped")
 		return true, nil
+
 	}
 	buf, err := json.Marshal(proof)
 	if err != nil {

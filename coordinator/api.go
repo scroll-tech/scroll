@@ -1,91 +1,88 @@
 package coordinator
 
 import (
+	"context"
+	"errors"
 	"fmt"
-	"time"
 
-	"scroll-tech/database/orm"
+	"github.com/scroll-tech/go-ethereum/log"
+	"github.com/scroll-tech/go-ethereum/rpc"
+
+	"scroll-tech/common/message"
 )
 
-// RollerInfo records the roller name, pub key and active session info (id, start time).
-type RollerInfo struct {
-	Name                   string    `json:"name"`
-	Version                string    `json:"version"`
-	PublicKey              string    `json:"public_key"`
-	ActiveSession          uint64    `json:"active_session,omitempty"`
-	ActiveSessionStartTime time.Time `json:"active_session_start_time"` // latest proof start time.
+// RollerAPI for rollers inorder to register and submit proof
+type RollerAPI interface {
+	Register(ctx context.Context, authMsg *message.AuthMsg) (*rpc.Subscription, error)
+	SubmitProof(proof *message.ProofMsg) (bool, error)
 }
 
-// SessionInfo records proof create or proof verify failed session.
-type SessionInfo struct {
-	ID              uint64    `json:"id"`
-	Status          string    `json:"status"`
-	StartTime       time.Time `json:"start_time"`
-	FinishTime      time.Time `json:"finish_time,omitempty"`      // set to 0 if not finished
-	AssignedRollers []string  `json:"assigned_rollers,omitempty"` // roller name list
-	Error           string    `json:"error,omitempty"`            // empty string if no error encountered
-}
-
-// RollerDebugAPI roller api interface in order go get debug message.
-type RollerDebugAPI interface {
-	// ListRollers returns all live rollers
-	ListRollers() ([]*RollerInfo, error)
-	// GetSessionInfo returns the session information given the session id.
-	GetSessionInfo(sessionID uint64) (*SessionInfo, error)
-}
-
-// ListRollers returns all live rollers.
-func (m *Manager) ListRollers() ([]*RollerInfo, error) {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
-	var res []*RollerInfo
-	for _, roller := range m.server.conns.getAll() {
-		pk := roller.AuthMsg.Identity.PublicKey
-		info := &RollerInfo{
-			Name:      roller.AuthMsg.Identity.Name,
-			Version:   roller.AuthMsg.Identity.Version,
-			PublicKey: pk,
+// Register register api for roller
+func (m *Manager) Register(ctx context.Context, authMsg *message.AuthMsg) (*rpc.Subscription, error) {
+	// Verify register message.
+	if ok, err := authMsg.Verify(); !ok {
+		if err != nil {
+			log.Error("failed to verify auth message", "error", err)
 		}
-		for id, sess := range m.sessions {
-			if _, ok := sess.rollers[pk]; ok {
-				info.ActiveSessionStartTime = sess.startTime
-				info.ActiveSession = id
-				break
+		return nil, errors.New("signature verification failed")
+	}
+
+	pubkey, _ := authMsg.PublicKey()
+	// create or get the roller message channel
+	taskCh, err := m.register(pubkey, authMsg.Identity)
+	if err != nil {
+		return nil, err
+	}
+
+	notifier, supported := rpc.NotifierFromContext(ctx)
+	if !supported {
+		return &rpc.Subscription{}, rpc.ErrNotificationsUnsupported
+	}
+	rpcSub := notifier.CreateSubscription()
+	go func() {
+		defer func() {
+			m.freeRoller(pubkey)
+			log.Info("roller unregister", "name", authMsg.Identity.Name)
+		}()
+
+		for {
+			select {
+			case task := <-taskCh:
+				notifier.Notify(rpcSub.ID, task) //nolint
+			case <-rpcSub.Err():
+				return
+			case <-notifier.Closed():
+				return
 			}
 		}
-		res = append(res, info)
-	}
-	return res, nil
+	}()
+	log.Info("roller register", "name", authMsg.Identity.Name, "version", authMsg.Identity.Version)
+
+	return rpcSub, nil
 }
 
-func newSessionInfo(s *session, status orm.BlockStatus, errMsg string, finished bool) *SessionInfo {
-	now := time.Now()
-	var nameList []string
-	for pk := range s.roller_names {
-		nameList = append(nameList, s.roller_names[pk])
+// SubmitProof roller pull proof
+func (m *Manager) SubmitProof(proof *message.ProofMsg) (bool, error) {
+	// Verify the signature
+	if ok, err := proof.Verify(); !ok {
+		if err != nil {
+			log.Error("failed to verify proof message", "error", err)
+		}
+		return false, errors.New("auth signature verify fail")
 	}
-	info := SessionInfo{
-		ID:              s.id,
-		Status:          status.String(),
-		AssignedRollers: nameList,
-		StartTime:       s.startTime,
-		Error:           errMsg,
-	}
-	if finished {
-		info.FinishTime = now
-	}
-	return &info
-}
 
-// GetSessionInfo returns the session information given the session id.
-func (m *Manager) GetSessionInfo(sessionID uint64) (*SessionInfo, error) {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
-	if info, ok := m.failedSessionInfos[sessionID]; ok {
-		return &info, nil
+	pubkey, _ := proof.PublicKey()
+	// Only allow registered pub-key.
+	if !m.exisTaskIDForRoller(pubkey, proof.ID) {
+		return false, fmt.Errorf("the roller or session id doesn't exist, pubkey: %s, ID: %s", pubkey, proof.ID)
 	}
-	if s, ok := m.sessions[sessionID]; ok {
-		return newSessionInfo(&s, orm.BlockAssigned, "", false), nil
+
+	err := m.handleZkProof(pubkey, proof.ProofDetail)
+	if err != nil {
+		return false, err
 	}
-	return nil, fmt.Errorf("no such session, sessionID: %d", sessionID)
+	defer m.freeTaskIDForRoller(pubkey, proof.ID)
+
+	log.Info("Received zk proof", "proof id", proof.ID, "result", true)
+	return true, nil
 }

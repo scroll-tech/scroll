@@ -5,52 +5,27 @@ import (
 	"encoding/json"
 
 	"github.com/scroll-tech/go-ethereum/common"
+	"github.com/scroll-tech/go-ethereum/common/hexutil"
 	"github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/crypto"
-	"golang.org/x/crypto/blake2s"
 )
 
-// MsgType denotes the type of message being sent or received.
-type MsgType uint16
-
-const (
-	// Error message.
-	Error MsgType = iota
-	// Register message, sent by a roller when a connection is established.
-	Register
-	// BlockTrace message, sent by a sequencer to a roller to notify them
-	// they need to generate a proof.
-	BlockTrace
-	// Proof message, sent by a roller to a sequencer when they have finished
-	// proof generation of a given set of block traces.
-	Proof
-)
-
-// RespStatus is the status of the proof generation
+// RespStatus represents status code from roller to scroll
 type RespStatus uint32
 
 const (
-	// StatusOk indicates the proof generation succeeded
+	// StatusOk means generate proof success
 	StatusOk RespStatus = iota
-	// StatusProofError indicates the proof generation failed
+	// StatusProofError means generate proof failed
 	StatusProofError
 )
 
-// Msg is the top-level message container which contains the payload and the
-// message identifier.
-type Msg struct {
-	// Message type
-	Type MsgType `json:"type"`
-	// Message payload
-	Payload []byte `json:"payload"`
-}
-
-// AuthMessage is the first message exchanged from the Roller to the Sequencer.
+// AuthMsg is the first message exchanged from the Roller to the Sequencer.
 // It effectively acts as a registration, and makes the Roller identification
 // known to the Sequencer.
-type AuthMessage struct {
+type AuthMsg struct {
 	// Message fields
-	Identity Identity `json:"message"`
+	Identity *Identity `json:"message"`
 	// Roller signature
 	Signature string `json:"signature"`
 }
@@ -69,7 +44,7 @@ type Identity struct {
 }
 
 // Sign auth message
-func (a *AuthMessage) Sign(priv *ecdsa.PrivateKey) error {
+func (a *AuthMsg) Sign(priv *ecdsa.PrivateKey) error {
 	// Hash identity content
 	hash, err := a.Identity.Hash()
 	if err != nil {
@@ -80,9 +55,48 @@ func (a *AuthMessage) Sign(priv *ecdsa.PrivateKey) error {
 	if err != nil {
 		return err
 	}
-	a.Signature = common.Bytes2Hex(sig)
+	a.Signature = hexutil.Encode(sig)
 
 	return nil
+}
+
+// Verify verifies the message of auth.
+func (a *AuthMsg) Verify() (bool, error) {
+	hash, err := a.Identity.Hash()
+	if err != nil {
+		return false, err
+	}
+	sig := common.FromHex(a.Signature)
+	// recover public key
+	if a.Identity.PublicKey == "" {
+		pk, err := crypto.SigToPub(hash, sig)
+		if err != nil {
+			return false, err
+		}
+		a.Identity.PublicKey = common.Bytes2Hex(crypto.CompressPubkey(pk))
+	}
+
+	return crypto.VerifySignature(common.FromHex(a.Identity.PublicKey), hash, sig[:len(sig)-1]), nil
+}
+
+// PublicKey return public key from signature
+func (a *AuthMsg) PublicKey() (string, error) {
+	if a.Identity.PublicKey == "" {
+		hash, err := a.Identity.Hash()
+		if err != nil {
+			return "", err
+		}
+		sig := common.FromHex(a.Signature)
+		// recover public key
+		pk, err := crypto.SigToPub(hash, sig)
+		if err != nil {
+			return "", err
+		}
+		a.Identity.PublicKey = common.Bytes2Hex(crypto.CompressPubkey(pk))
+		return a.Identity.PublicKey, nil
+	}
+
+	return a.Identity.PublicKey, nil
 }
 
 // Hash returns the hash of the auth message, which should be the message used
@@ -93,28 +107,97 @@ func (i *Identity) Hash() ([]byte, error) {
 		return nil, err
 	}
 
-	hash := blake2s.Sum256(bs)
+	hash := crypto.Keccak256Hash(bs)
 	return hash[:], nil
 }
 
-// BlockTraces is a wrapper type around types.BlockResult which adds an ID
-// that identifies which proof generation session these block traces are
-// associated to. This then allows the roller to add the ID back to their
-// proof message once generated, and in turn helps the sequencer understand
-// where to handle the proof.
-type BlockTraces struct {
-	ID     uint64             `json:"id"`
-	Traces *types.BlockResult `json:"blockTraces"`
+// ProofMsg is the data structure sent to the coordinator.
+type ProofMsg struct {
+	*ProofDetail `json:"zkProof"`
+	// Roller signature
+	Signature string `json:"signature"`
+
+	// Roller public key
+	publicKey string
 }
 
-// ProofMsg is the message received from rollers that contains zk proof, the status of
+// Sign signs the ProofMsg.
+func (a *ProofMsg) Sign(priv *ecdsa.PrivateKey) error {
+	hash, err := a.ProofDetail.Hash()
+	if err != nil {
+		return err
+	}
+	sig, err := crypto.Sign(hash, priv)
+	if err != nil {
+		return err
+	}
+	a.Signature = hexutil.Encode(sig)
+	return nil
+}
+
+// Verify verifies ProofMsg.Signature.
+func (a *ProofMsg) Verify() (bool, error) {
+	hash, err := a.ProofDetail.Hash()
+	if err != nil {
+		return false, err
+	}
+	sig := common.FromHex(a.Signature)
+	// recover public key
+	if a.publicKey == "" {
+		pk, err := crypto.SigToPub(hash, sig)
+		if err != nil {
+			return false, err
+		}
+		a.publicKey = common.Bytes2Hex(crypto.CompressPubkey(pk))
+	}
+
+	return crypto.VerifySignature(common.FromHex(a.publicKey), hash, sig[:len(sig)-1]), nil
+}
+
+// PublicKey return public key from signature
+func (a *ProofMsg) PublicKey() (string, error) {
+	if a.publicKey == "" {
+		hash, err := a.ProofDetail.Hash()
+		if err != nil {
+			return "", err
+		}
+		sig := common.FromHex(a.Signature)
+		// recover public key
+		pk, err := crypto.SigToPub(hash, sig)
+		if err != nil {
+			return "", err
+		}
+		a.publicKey = common.Bytes2Hex(crypto.CompressPubkey(pk))
+		return a.publicKey, nil
+	}
+
+	return a.publicKey, nil
+}
+
+// TaskMsg is a wrapper type around db ProveTask type.
+type TaskMsg struct {
+	ID     string              `json:"id"`
+	Traces []*types.BlockTrace `json:"blockTraces"`
+}
+
+// ProofDetail is the message received from rollers that contains zk proof, the status of
 // the proof generation succeeded, and an error message if proof generation failed.
-type ProofMsg struct {
+type ProofDetail struct {
+	ID     string     `json:"id"`
 	Status RespStatus `json:"status"`
+	Proof  *AggProof  `json:"proof"`
 	Error  string     `json:"error,omitempty"`
-	ID     uint64     `json:"id"`
-	// FIXME: Maybe we need to allow Proof omitempty? Also in scroll.
-	Proof *AggProof `json:"proof"`
+}
+
+// Hash return proofMsg content hash.
+func (z *ProofDetail) Hash() ([]byte, error) {
+	bs, err := json.Marshal(z)
+	if err != nil {
+		return nil, err
+	}
+
+	hash := crypto.Keccak256Hash(bs)
+	return hash[:], nil
 }
 
 // AggProof includes the proof and public input that are required to verification and rollup.

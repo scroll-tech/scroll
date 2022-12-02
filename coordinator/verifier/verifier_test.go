@@ -17,7 +17,6 @@ import (
 )
 
 func TestFFI(t *testing.T) {
-
 	as := assert.New(t)
 	cfg := &config.VerifierConfig{
 		MockMode:   false,
