@@ -8,9 +8,10 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/scroll-tech/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/crypto"
 
+	"scroll-tech/common/docker"
 	"scroll-tech/common/utils"
 
 	db_config "scroll-tech/database"
@@ -177,4 +178,13 @@ func NewConfig(file string) (*Config, error) {
 	cfg.DBConfig.DriverName = utils.GetEnvWithDefault("DB_DRIVER", cfg.DBConfig.DriverName)
 
 	return cfg, nil
+}
+
+func SetDeployedContract(addressfile docker.AddressFile, config *Config) {
+	config.L1Config.L1MessengerAddress = common.HexToAddress(addressfile.L1.L1ScrollMessenger.Implementation)
+	config.L1Config.RelayerConfig.MessengerContractAddress = common.HexToAddress(addressfile.L1.L1ScrollMessenger.Implementation)
+	config.L1Config.RelayerConfig.RollupContractAddress = common.HexToAddress(addressfile.L1.ZKRollup.Implementation)
+	config.L2Config.L2MessengerAddress = common.HexToAddress(addressfile.L2.L2ScrollMessenger)
+	config.L2Config.RelayerConfig.MessengerContractAddress = common.HexToAddress(addressfile.L2.L2ScrollMessenger)
+	config.L2Config.RelayerConfig.RollupContractAddress = common.HexToAddress(addressfile.L1.ZKRollup.Implementation)
 }
