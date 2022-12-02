@@ -46,7 +46,7 @@ func setEnv(t *testing.T) error {
 	dbImg = docker.NewTestDBDocker(t, cfg.DBConfig.DriverName)
 	cfg.DBConfig.DSN = dbImg.Endpoint()
 	// start roller manager
-	rollerManager = setupRollerManager(t, "", cfg.DBConfig)
+	rollerManager = setupRollerManager(t, cfg.DBConfig)
 
 	// start ws service
 	handle, _, err = utils.StartWSEndpoint(managerURL, rollerManager.APIs())
@@ -172,7 +172,7 @@ func testIdleRollerSelection(t *testing.T) {
 	}
 }
 
-func setupRollerManager(t *testing.T, verifierEndpoint string, dbCfg *database.DBConfig) *coordinator.Manager {
+func setupRollerManager(t *testing.T, dbCfg *database.DBConfig) *coordinator.Manager {
 	// Get db handler.
 	db, err := database.NewOrmFactory(dbCfg)
 	assert.True(t, assert.NoError(t, err), "failed to get db handler.")
