@@ -26,9 +26,8 @@ FROM base as builder
 COPY --from=zkp-builder /src/ /
 
 RUN --mount=target=. \
-    --mount=type=cache,target=/root/.cache/go-build
-
-RUN cd /src/coordinator && go build -v -p 4 -o /bin/coordinator ./cmd
+    --mount=type=cache,target=/root/.cache/go-build \
+    cd /src/coordinator && go build -v -p 4 -o /bin/coordinator ./cmd
 
 # Pull coordinator into a second stage deploy alpine container
 FROM alpine:latest
