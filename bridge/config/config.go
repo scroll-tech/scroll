@@ -182,9 +182,9 @@ func NewConfig(file string) (*Config, error) {
 
 func SetDeployedContract(addressfile docker.AddressFile, config *Config) {
 	config.L1Config.L1MessengerAddress = common.HexToAddress(addressfile.L1.L1ScrollMessenger.Implementation)
-	config.L1Config.RelayerConfig.MessengerContractAddress = common.HexToAddress(addressfile.L1.L1ScrollMessenger.Implementation)
+	config.L1Config.RelayerConfig.MessengerContractAddress = common.HexToAddress(addressfile.L2.L2ScrollMessenger)
 	config.L1Config.RelayerConfig.RollupContractAddress = common.HexToAddress(addressfile.L1.ZKRollup.Implementation)
 	config.L2Config.L2MessengerAddress = common.HexToAddress(addressfile.L2.L2ScrollMessenger)
-	config.L2Config.RelayerConfig.MessengerContractAddress = common.HexToAddress(addressfile.L2.L2ScrollMessenger)
+	config.L2Config.RelayerConfig.MessengerContractAddress = common.HexToAddress(addressfile.L1.L1ScrollMessenger.Implementation)
 	config.L2Config.RelayerConfig.RollupContractAddress = common.HexToAddress(addressfile.L1.ZKRollup.Implementation)
 }
