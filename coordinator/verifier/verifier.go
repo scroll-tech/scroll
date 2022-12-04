@@ -24,7 +24,7 @@ type Verifier struct {
 	cfg *config.VerifierConfig
 }
 
-// NewVerifier Sets up a connection with the Unix socket at `path`.
+// NewVerifier Sets up a rust ffi to call verify.
 func NewVerifier(cfg *config.VerifierConfig) (*Verifier, error) {
 	if cfg.MockMode {
 		return &Verifier{cfg: cfg}, nil
