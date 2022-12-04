@@ -40,7 +40,6 @@ func ComputeMessageHash(
 	return common.BytesToHash(keccak256.Hash(packed))
 }
 
-//nolint:unused
 // BufferToUint256Be convert bytes array to uint256 array assuming big-endian
 func BufferToUint256Be(buffer []byte) []*big.Int {
 	buffer256 := make([]*big.Int, len(buffer)/32)

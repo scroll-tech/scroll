@@ -301,6 +301,10 @@ func (o *blockBatchOrm) GetRollupStatus(id string) (RollupStatus, error) {
 }
 
 func (o *blockBatchOrm) GetRollupStatusByIDList(ids []string) ([]RollupStatus, error) {
+	if len(ids) == 0 {
+		return make([]RollupStatus, 0), nil
+	}
+
 	query, args, err := sqlx.In("SELECT rollup_status FROM block_batch WHERE id IN (?);", ids)
 	if err != nil {
 		return make([]RollupStatus, 0), err

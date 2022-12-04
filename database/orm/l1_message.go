@@ -24,12 +24,11 @@ func NewL1MessageOrm(db *sqlx.DB) L1MessageOrm {
 func (m *l1MessageOrm) GetL1MessageByMsgHash(msgHash string) (*L1Message, error) {
 	msg := L1Message{}
 
-	row := m.db.QueryRow(`SELECT nonce, height, sender, target, value, fee, gas_limit, deadline, calldata, layer1_hash, status FROM l1_message WHERE msg_hash = $1`, msgHash)
+	row := m.db.QueryRowx(`SELECT nonce, msg_hash, height, sender, target, value, fee, gas_limit, deadline, calldata, layer1_hash, status FROM l1_message WHERE msg_hash = $1`, msgHash)
 
-	if err := row.Scan(&msg.Nonce, &msg.Height, &msg.Sender, &msg.Target, &msg.Value, &msg.Fee, &msg.GasLimit, &msg.Deadline, &msg.Calldata, &msg.Layer1Hash, &msg.Status); err != nil {
+	if err := row.StructScan(&msg); err != nil {
 		return nil, err
 	}
-	msg.MsgHash = msgHash
 	return &msg, nil
 }
 
@@ -37,9 +36,9 @@ func (m *l1MessageOrm) GetL1MessageByMsgHash(msgHash string) (*L1Message, error)
 func (m *l1MessageOrm) GetL1MessageByNonce(nonce uint64) (*L1Message, error) {
 	msg := L1Message{}
 
-	row := m.db.QueryRow(`SELECT nonce, msg_hash, height, sender, target, value, fee, gas_limit, deadline, calldata, layer1_hash, status FROM l1_message WHERE nonce = $1`, nonce)
+	row := m.db.QueryRowx(`SELECT nonce, msg_hash, height, sender, target, value, fee, gas_limit, deadline, calldata, layer1_hash, status FROM l1_message WHERE nonce = $1`, nonce)
 
-	if err := row.Scan(&msg.Nonce, &msg.MsgHash, &msg.Height, &msg.Sender, &msg.Target, &msg.Value, &msg.Fee, &msg.GasLimit, &msg.Deadline, &msg.Calldata, &msg.Layer1Hash, &msg.Status); err != nil {
+	if err := row.StructScan(&msg); err != nil {
 		return nil, err
 	}
 	return &msg, nil

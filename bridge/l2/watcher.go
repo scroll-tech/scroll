@@ -22,17 +22,6 @@ import (
 	"scroll-tech/database/orm"
 )
 
-const (
-	// SENT_MESSAGE_EVENT_SIGNATURE = keccak256("SentMessage(address,address,uint256,uint256,uint256,bytes,uint256,uint256)")
-	SENT_MESSAGE_EVENT_SIGNATURE = "806b28931bc6fbe6c146babfb83d5c2b47e971edb43b4566f010577a0ee7d9f4"
-
-	// RELAYED_MESSAGE_EVENT_SIGNATURE = keccak256("RelayedMessage(bytes32)")
-	RELAYED_MESSAGE_EVENT_SIGNATURE = "4641df4a962071e12719d8c8c8e5ac7fc4d97b927346a3d7a335b1f7517e133c"
-
-	// FAILED_RELAYED_MESSAGE_EVENT_SIGNATURE = keccak256("FailedRelayedMessage(bytes32)")
-	FAILED_RELAYED_MESSAGE_EVENT_SIGNATURE = "99d0e048484baa1b1540b1367cb128acd7ab2946d1ed91ec10e3c85e4bf51b8f"
-)
-
 type relayedMessage struct {
 	msgHash      common.Hash
 	txHash       common.Hash
@@ -202,9 +191,9 @@ func (w *WatcherClient) fetchContractEvent(blockHeight uint64) error {
 		Topics: make([][]common.Hash, 1),
 	}
 	query.Topics[0] = make([]common.Hash, 3)
-	query.Topics[0][0] = common.HexToHash(SENT_MESSAGE_EVENT_SIGNATURE)
-	query.Topics[0][1] = common.HexToHash(RELAYED_MESSAGE_EVENT_SIGNATURE)
-	query.Topics[0][2] = common.HexToHash(FAILED_RELAYED_MESSAGE_EVENT_SIGNATURE)
+	query.Topics[0][0] = common.HexToHash(bridge_abi.SENT_MESSAGE_EVENT_SIGNATURE)
+	query.Topics[0][1] = common.HexToHash(bridge_abi.RELAYED_MESSAGE_EVENT_SIGNATURE)
+	query.Topics[0][2] = common.HexToHash(bridge_abi.FAILED_RELAYED_MESSAGE_EVENT_SIGNATURE)
 
 	logs, err := w.FilterLogs(w.ctx, query)
 	if err != nil {
@@ -218,7 +207,7 @@ func (w *WatcherClient) fetchContractEvent(blockHeight uint64) error {
 	log.Info("received new L2 messages", "fromBlock", fromBlock, "toBlock", toBlock,
 		"cnt", len(logs))
 
-	eventLogs, relayedMessages, err := w.parseBridgeEventLogs(logs)
+	sentMessageEvents, relayedMessageEvents, err := w.parseBridgeEventLogs(logs)
 	if err != nil {
 		log.Error("failed to parse emitted event log", "err", err)
 		return err
@@ -226,7 +215,7 @@ func (w *WatcherClient) fetchContractEvent(blockHeight uint64) error {
 
 	// Update relayed message first to make sure we don't forget to update submited message.
 	// Since, we always start sync from the latest unprocessed message.
-	for _, msg := range relayedMessages {
+	for _, msg := range relayedMessageEvents {
 		if msg.isSuccessful {
 			// succeed
 			err = w.orm.UpdateLayer1StatusAndLayer2Hash(w.ctx, msg.msgHash.String(), msg.txHash.String(), orm.MsgConfirmed)
@@ -240,7 +229,7 @@ func (w *WatcherClient) fetchContractEvent(blockHeight uint64) error {
 		}
 	}
 
-	err = w.orm.SaveL2Messages(w.ctx, eventLogs)
+	err = w.orm.SaveL2Messages(w.ctx, sentMessageEvents)
 	if err == nil {
 		w.processedMsgHeight = uint64(toBlock)
 	}
@@ -251,10 +240,10 @@ func (w *WatcherClient) parseBridgeEventLogs(logs []types.Log) ([]*orm.L2Message
 	// Need use contract abi to parse event Log
 	// Can only be tested after we have our contracts set up
 
-	var parsedlogs []*orm.L2Message
+	var l2Messages []*orm.L2Message
 	var relayedMessages []relayedMessage
 	for _, vLog := range logs {
-		if vLog.Topics[0] == common.HexToHash(SENT_MESSAGE_EVENT_SIGNATURE) {
+		if vLog.Topics[0] == common.HexToHash(bridge_abi.SENT_MESSAGE_EVENT_SIGNATURE) {
 			event := struct {
 				Target       common.Address
 				Sender       common.Address
@@ -269,11 +258,11 @@ func (w *WatcherClient) parseBridgeEventLogs(logs []types.Log) ([]*orm.L2Message
 			err := w.messengerABI.UnpackIntoInterface(&event, "SentMessage", vLog.Data)
 			if err != nil {
 				log.Error("failed to unpack layer2 SentMessage event", "err", err)
-				return parsedlogs, relayedMessages, err
+				return l2Messages, relayedMessages, err
 			}
 			// target is in topics[1]
 			event.Target = common.HexToAddress(vLog.Topics[1].String())
-			parsedlogs = append(parsedlogs, &orm.L2Message{
+			l2Messages = append(l2Messages, &orm.L2Message{
 				Nonce:      event.MessageNonce.Uint64(),
 				MsgHash:    utils.ComputeMessageHash(event.Target, event.Sender, event.Value, event.Fee, event.Deadline, event.Message, event.MessageNonce).String(),
 				Height:     vLog.BlockNumber,
@@ -286,7 +275,7 @@ func (w *WatcherClient) parseBridgeEventLogs(logs []types.Log) ([]*orm.L2Message
 				Calldata:   common.Bytes2Hex(event.Message),
 				Layer2Hash: vLog.TxHash.Hex(),
 			})
-		} else if vLog.Topics[0] == common.HexToHash(RELAYED_MESSAGE_EVENT_SIGNATURE) {
+		} else if vLog.Topics[0] == common.HexToHash(bridge_abi.RELAYED_MESSAGE_EVENT_SIGNATURE) {
 			event := struct {
 				MsgHash common.Hash
 			}{}
@@ -297,7 +286,7 @@ func (w *WatcherClient) parseBridgeEventLogs(logs []types.Log) ([]*orm.L2Message
 				txHash:       vLog.TxHash,
 				isSuccessful: true,
 			})
-		} else if vLog.Topics[0] == common.HexToHash(FAILED_RELAYED_MESSAGE_EVENT_SIGNATURE) {
+		} else if vLog.Topics[0] == common.HexToHash(bridge_abi.FAILED_RELAYED_MESSAGE_EVENT_SIGNATURE) {
 			event := struct {
 				MsgHash common.Hash
 			}{}
@@ -311,5 +300,5 @@ func (w *WatcherClient) parseBridgeEventLogs(logs []types.Log) ([]*orm.L2Message
 		}
 	}
 
-	return parsedlogs, relayedMessages, nil
+	return l2Messages, relayedMessages, nil
 }

@@ -25,8 +25,8 @@ func NewL2MessageOrm(db *sqlx.DB) L2MessageOrm {
 func (m *layer2MessageOrm) GetL2MessageByNonce(nonce uint64) (*L2Message, error) {
 	msg := L2Message{}
 
-	row := m.db.QueryRow(`SELECT nonce, msg_hash, height, sender, target, value, fee, gas_limit, deadline, calldata, layer2_hash, status FROM l2_message WHERE nonce = $1`, nonce)
-	if err := row.Scan(&msg.Nonce, &msg.MsgHash, &msg.Height, &msg.Sender, &msg.Target, &msg.Value, &msg.Fee, &msg.GasLimit, &msg.Deadline, &msg.Calldata, &msg.Layer2Hash, &msg.Status); err != nil {
+	row := m.db.QueryRowx(`SELECT nonce, msg_hash, height, sender, target, value, fee, gas_limit, deadline, calldata, layer2_hash, status FROM l2_message WHERE nonce = $1`, nonce)
+	if err := row.StructScan(&msg); err != nil {
 		return nil, err
 	}
 	return &msg, nil
@@ -36,11 +36,10 @@ func (m *layer2MessageOrm) GetL2MessageByNonce(nonce uint64) (*L2Message, error)
 func (m *layer2MessageOrm) GetL2MessageByMsgHash(msgHash string) (*L2Message, error) {
 	msg := L2Message{}
 
-	row := m.db.QueryRow(`SELECT nonce, height, sender, target, value, fee, gas_limit, deadline, calldata, layer2_hash, status FROM l2_message WHERE msg_hash = $1`, msgHash)
-	if err := row.Scan(&msg.Nonce, &msg.Height, &msg.Sender, &msg.Target, &msg.Value, &msg.Fee, &msg.GasLimit, &msg.Deadline, &msg.Calldata, &msg.Layer2Hash, &msg.Status); err != nil {
+	row := m.db.QueryRowx(`SELECT nonce, msg_hash, height, sender, target, value, fee, gas_limit, deadline, calldata, layer2_hash, status FROM l2_message WHERE msg_hash = $1`, msgHash)
+	if err := row.StructScan(&msg); err != nil {
 		return nil, err
 	}
-	msg.MsgHash = msgHash
 	return &msg, nil
 }
 

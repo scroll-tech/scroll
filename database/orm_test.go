@@ -240,6 +240,7 @@ func testOrmL2Message(t *testing.T) {
 	msg, err := ormLayer2.GetL2MessageByMsgHash("msg_hash2")
 	assert.NoError(t, err)
 	assert.Equal(t, orm.MsgSubmitted, msg.Status)
+	assert.Equal(t, msg.MsgHash, "msg_hash2")
 }
 
 // testOrmBlockbatch test rollup result table functions
