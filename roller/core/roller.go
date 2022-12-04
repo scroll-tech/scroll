@@ -96,6 +96,10 @@ func NewRoller(cfg *config.Config) (*Roller, error) {
 	}, nil
 }
 
+func (r *Roller) PublicKey() string {
+	return common.Bytes2Hex(crypto.CompressPubkey(&r.priv.PublicKey))
+}
+
 // Run runs Roller.
 func (r *Roller) Run() error {
 	log.Info("start to register to coordinator")
@@ -117,7 +121,7 @@ func (r *Roller) Register() error {
 		Identity: &message.Identity{
 			Name:      r.cfg.RollerName,
 			Timestamp: time.Now().UnixMilli(),
-			PublicKey: common.Bytes2Hex(crypto.CompressPubkey(&r.priv.PublicKey)),
+			PublicKey: r.PublicKey(),
 			Version:   Version,
 		},
 	}
