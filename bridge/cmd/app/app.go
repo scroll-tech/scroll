@@ -27,12 +27,6 @@ func applyConfig(ctx *cli.Context, cfg *config.Config) {
 		cfg.L2Config.Endpoint = url
 		cfg.L1Config.RelayerConfig.SenderConfig.Endpoint = url
 	}
-	if ctx.IsSet(utils.DriverFlag.Name) {
-		cfg.DBConfig.DriverName = ctx.String(utils.DriverFlag.Name)
-	}
-	if ctx.IsSet(utils.DSNFlag.Name) {
-		cfg.DBConfig.DSN = ctx.String(utils.DSNFlag.Name)
-	}
 }
 
 func action(ctx *cli.Context) error {

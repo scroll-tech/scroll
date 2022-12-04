@@ -2,7 +2,6 @@ package docker
 
 import (
 	"context"
-
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/client"

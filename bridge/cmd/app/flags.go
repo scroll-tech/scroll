@@ -64,7 +64,6 @@ func init() {
 	app.Usage = "The Scroll Bridge"
 	app.Version = version.Version
 	app.Flags = append(app.Flags, utils.CommonFlags...)
-	app.Flags = append(app.Flags, utils.DBFlags...)
 	app.Flags = append(app.Flags, apiFlags...)
 	app.Flags = append(app.Flags, l1Flags...)
 	app.Flags = append(app.Flags, l2Flags...)

@@ -22,14 +22,14 @@ package mock
 // 		DBPath:     filepath.Join(mockPath, "stack_db"),
 // 	}
 
-// 	os.Exit(m.Run())
+// 	os.Exit(m.RunApp())
 // }
 // func TestRoller(t *testing.T) {
 // 	go mockScroll(t)
 
 // 	r, err := roller.NewRoller(cfg)
 // 	assert.NoError(t, err)
-// 	go r.Run()
+// 	go r.RunApp()
 
 // 	<-time.NewTimer(2 * time.Second).C
 // 	r.Close()

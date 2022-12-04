@@ -17,12 +17,6 @@ func applyConfig(ctx *cli.Context) (*database.DBConfig, error) {
 	if err != nil {
 		return nil, err
 	}
-	if ctx.IsSet(utils.DriverFlag.Name) {
-		dbCfg.DriverName = ctx.String(utils.DriverFlag.Name)
-	}
-	if ctx.IsSet(utils.DSNFlag.Name) {
-		dbCfg.DSN = ctx.String(utils.DSNFlag.Name)
-	}
 	return dbCfg, nil
 }
 

@@ -16,17 +16,12 @@ var (
 	app = cli.NewApp()
 )
 
-var (
-	dbFlags = append(utils.DBFlags, &utils.ConfigFileFlag)
-)
-
 func init() {
 	// Set up database app info.
 	app.Name = "database"
 	app.Usage = "The Scroll Database CLI"
 	app.Version = version.Version
 	app.Flags = append(app.Flags, utils.CommonFlags...)
-	app.Flags = append(app.Flags, utils.DBFlags...)
 
 	app.Before = func(ctx *cli.Context) error {
 		return utils.Setup(&utils.LogConfig{
@@ -42,40 +37,41 @@ func init() {
 			Name:   "reset",
 			Usage:  "Clean and reset database.",
 			Action: resetDB,
-			Flags:  dbFlags,
+			Flags:  []cli.Flag{&utils.ConfigFileFlag},
 		},
 		{
 			Name:   "status",
 			Usage:  "Check migration status.",
 			Action: checkDBStatus,
-			Flags:  utils.DBFlags,
+			Flags:  []cli.Flag{&utils.ConfigFileFlag},
 		},
 		{
 			Name:   "version",
 			Usage:  "Display the current database version.",
 			Action: dbVersion,
-			Flags:  utils.DBFlags,
+			Flags:  []cli.Flag{&utils.ConfigFileFlag},
 		},
 		{
 			Name:   "migrate",
 			Usage:  "Migrate the database to the latest version.",
 			Action: migrateDB,
-			Flags:  dbFlags,
+			Flags:  []cli.Flag{&utils.ConfigFileFlag},
 		},
 		{
 			Name:   "rollback",
 			Usage:  "Roll back the database to a previous <version>. Rolls back a single migration if no version specified.",
 			Action: rollbackDB,
-			Flags: append(utils.DBFlags,
+			Flags: []cli.Flag{
+				&utils.ConfigFileFlag,
 				&cli.IntFlag{
 					Name:  "version",
 					Usage: "Rollback to the specified version.",
 					Value: 0,
-				}),
+				}},
 		},
 	}
 
-	// Run the app for integration-test
+	// RunApp the app for integration-test
 	reexec.Register("db_cli-test", func() {
 		if err := app.Run(os.Args); err != nil {
 			fmt.Fprintln(os.Stderr, err)

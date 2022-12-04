@@ -49,7 +49,7 @@ func init() {
 		})
 	}
 
-	// Run the app for integration-test
+	// RunApp the app for integration-test
 	reexec.Register("roller-test", func() {
 		if err := app.Run(os.Args); err != nil {
 			fmt.Fprintln(os.Stderr, err)

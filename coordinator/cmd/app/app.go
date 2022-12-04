@@ -29,7 +29,6 @@ func init() {
 	app.Usage = "The Scroll L2 Coordinator"
 	app.Version = version.Version
 	app.Flags = append(app.Flags, utils.CommonFlags...)
-	app.Flags = append(app.Flags, utils.DBFlags...)
 	app.Flags = append(app.Flags, apiFlags...)
 
 	app.Before = func(ctx *cli.Context) error {
@@ -41,7 +40,7 @@ func init() {
 		})
 	}
 
-	// Run the app for integration-test
+	// RunApp the app for integration-test
 	reexec.Register("coordinator-test", func() {
 		if err := app.Run(os.Args); err != nil {
 			fmt.Fprintln(os.Stderr, err)
@@ -55,7 +54,7 @@ func init() {
 
 // RunCoordinator run coordinator.
 func RunCoordinator() {
-	// Run the coordinator.
+	// RunApp the coordinator.
 	if err := app.Run(os.Args); err != nil {
 		_, _ = fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
@@ -68,12 +67,6 @@ func applyConfig(ctx *cli.Context, cfg *config.Config) {
 	}
 	if ctx.IsSet(verifierFlag.Name) {
 		cfg.RollerManagerConfig.VerifierEndpoint = ctx.String(verifierFlag.Name)
-	}
-	if ctx.IsSet(utils.DriverFlag.Name) {
-		cfg.DBConfig.DriverName = ctx.String(utils.DriverFlag.Name)
-	}
-	if ctx.IsSet(utils.DSNFlag.Name) {
-		cfg.DBConfig.DSN = ctx.String(utils.DSNFlag.Name)
 	}
 }
 
