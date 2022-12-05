@@ -84,7 +84,7 @@ func action(ctx *cli.Context) error {
 
 	// Start all modules.
 	if err = rollerManager.Start(); err != nil {
-		log.Crit("couldn't start roller manager", "error", err)
+		log.Crit("couldn't start coordinator", "error", err)
 	}
 
 	apis := rollerManager.APIs()
