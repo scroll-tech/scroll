@@ -64,36 +64,46 @@ type L2Config struct {
 	Endpoint string `json:"endpoint"`
 	// The messenger contract address deployed on layer 2 chain.
 	L2MessengerAddress common.Address `json:"l2_messenger_address,omitempty"`
+	// The relayer config
+	RelayerConfig *RelayerConfig `json:"relayer_config"`
+	// The batch_proposer config
+	BatchProposerConfig *BatchProposerConfig `json:"batch_proposer_config"`
+}
+
+type BatchProposerConfig struct {
 	// Proof generation frequency, generating proof every k blocks
 	ProofGenerationFreq uint64 `json:"proof_generation_freq"`
 	// Skip generating proof when that opcodes appeared
 	SkippedOpcodes map[string]struct{} `json:"-"`
-	// The relayer config
-	RelayerConfig *RelayerConfig `json:"relayer_config"`
+
+	// TODO: add comments
+	BatchTimeSec      uint64 `json:"batch_time_sec"`
+	BatchGasThreshold uint64 `json:"batch_gas_threshold"`
+	BatchBlocksLimit  uint64 `json:"batch_block_limit"`
 }
 
-// L2ConfigAlias L2Config alias name, designed just for unmarshal.
-type L2ConfigAlias L2Config
+// // L2ConfigAlias L2Config alias name, designed just for unmarshal.
+// type L2ConfigAlias L2Config
 
-// UnmarshalJSON unmarshal l2config.
-func (l2 *L2Config) UnmarshalJSON(input []byte) error {
-	var jsonConfig struct {
-		L2ConfigAlias
-		SkippedOpcodes []string `json:"skipped_opcodes"`
-	}
-	if err := json.Unmarshal(input, &jsonConfig); err != nil {
-		return err
-	}
-	*l2 = L2Config(jsonConfig.L2ConfigAlias)
-	l2.SkippedOpcodes = make(map[string]struct{}, len(jsonConfig.SkippedOpcodes))
-	for _, opcode := range jsonConfig.SkippedOpcodes {
-		l2.SkippedOpcodes[opcode] = struct{}{}
-	}
-	if 0 == l2.ProofGenerationFreq {
-		l2.ProofGenerationFreq = 1
-	}
-	return nil
-}
+// // UnmarshalJSON unmarshal l2config.
+// func (l2 *L2Config) UnmarshalJSON(input []byte) error {
+// 	var jsonConfig struct {
+// 		L2ConfigAlias
+// 		SkippedOpcodes []string `json:"skipped_opcodes"`
+// 	}
+// 	if err := json.Unmarshal(input, &jsonConfig); err != nil {
+// 		return err
+// 	}
+// 	*l2 = L2Config(jsonConfig.L2ConfigAlias)
+// 	l2.SkippedOpcodes = make(map[string]struct{}, len(jsonConfig.SkippedOpcodes))
+// 	for _, opcode := range jsonConfig.SkippedOpcodes {
+// 		l2.SkippedOpcodes[opcode] = struct{}{}
+// 	}
+// 	if 0 == l2.ProofGenerationFreq {
+// 		l2.ProofGenerationFreq = 1
+// 	}
+// 	return nil
+// }
 
 // RelayerConfig loads relayer configuration items.
 // What we need to pay attention to is that
