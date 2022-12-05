@@ -75,11 +75,12 @@ type BatchProposerConfig struct {
 	ProofGenerationFreq uint64 `json:"proof_generation_freq"`
 	// Skip generating proof when that opcodes appeared
 	SkippedOpcodes map[string]struct{} `json:"-"`
-
-	// TODO: add comments
-	BatchTimeSec      uint64 `json:"batch_time_sec"`
+	// Gas threshold in a batch
 	BatchGasThreshold uint64 `json:"batch_gas_threshold"`
-	BatchBlocksLimit  uint64 `json:"batch_block_limit"`
+	// Time waited to generate a batch even if gas_threshold not met
+	BatchTimeSec uint64 `json:"batch_time_sec"`
+	// Max number of blocks in a batch
+	BatchBlocksLimit uint64 `json:"batch_block_limit"`
 }
 
 // // L2ConfigAlias L2Config alias name, designed just for unmarshal.
