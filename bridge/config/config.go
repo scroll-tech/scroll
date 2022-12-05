@@ -147,6 +147,7 @@ func (r *RelayerConfig) UnmarshalJSON(input []byte) error {
 	return nil
 }
 
+// MarshalJSON translate private key into hex.
 func (r *RelayerConfig) MarshalJSON() ([]byte, error) {
 	jsonConfig := struct {
 		relayerConfigAlias

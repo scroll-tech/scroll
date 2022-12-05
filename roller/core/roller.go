@@ -33,9 +33,6 @@ var (
 )
 
 var (
-	writeWait = time.Second + readWait
-	// consider ping message
-	readWait = time.Minute * 30
 	// retry connecting to coordinator
 	retryWait = time.Second * 10
 	// net normal close
@@ -96,6 +93,7 @@ func NewRoller(cfg *config.Config) (*Roller, error) {
 	}, nil
 }
 
+// PublicKey translate public key to hex and return.
 func (r *Roller) PublicKey() string {
 	return common.Bytes2Hex(crypto.CompressPubkey(&r.priv.PublicKey))
 }

@@ -62,7 +62,7 @@ func (tt *Cmd) RunApp(parallel bool) {
 		Stdout: tt,
 	}
 	if parallel {
-		go tt.cmd.Run()
+		go func() { _ = tt.cmd.Run() }()
 	} else {
 		_ = tt.cmd.Run()
 	}
