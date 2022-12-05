@@ -19,7 +19,7 @@ import (
 	"scroll-tech/common/message"
 )
 
-// Verifier represents a socket connection to a halo2 verifier.
+// Verifier represents a rust ffi to a halo2 verifier.
 type Verifier struct {
 	cfg *config.VerifierConfig
 }
