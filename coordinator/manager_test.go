@@ -27,7 +27,6 @@ import (
 )
 
 const managerURL = "localhost:8132"
-const managerPort = ":8132"
 
 var (
 	cfg           *bridge_config.Config
@@ -183,7 +182,6 @@ func setupRollerManager(t *testing.T, verifierEndpoint string, dbCfg *database.D
 	assert.NoError(t, migrate.ResetDB(db.GetDB().DB), "failed to reset db.")
 
 	rollerManager, err := coordinator.New(context.Background(), &coordinator_config.RollerManagerConfig{
-		Endpoint:          managerPort,
 		RollersPerSession: 1,
 		VerifierEndpoint:  verifierEndpoint,
 		CollectionTime:    1,
