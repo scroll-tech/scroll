@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"strings"
-	"sync"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/scroll-tech/go-ethereum/common"
@@ -153,44 +152,40 @@ func (o *blockTraceOrm) GetHashByNumber(number uint64) (*common.Hash, error) {
 
 func (o *blockTraceOrm) InsertBlockTraces(ctx context.Context, blockTraces []*types.BlockTrace) error {
 	traceMaps := make([]map[string]interface{}, len(blockTraces))
-	finishCh := make(chan error)
 	for i, trace := range blockTraces {
-		lock := &sync.Mutex{}
-		go func(index int, trace *types.BlockTrace, lock *sync.Mutex, finishCh chan error) {
-			number, hash, tx_num, mtime := trace.Header.Number.Int64(),
-				trace.Header.Hash().String(),
-				len(trace.Transactions),
-				trace.Header.Time
+		number, hash, tx_num, mtime := trace.Header.Number.Int64(),
+			trace.Header.Hash().String(),
+			len(trace.Transactions),
+			trace.Header.Time
 
-			data, err := json.Marshal(trace)
-			if err != nil {
-				log.Error("failed to marshal blockTrace", "hash", hash, "err", err)
-				finishCh <- err
-			}
-			var gas_cost uint64 = 0
-			for _, v := range trace.ExecutionResults {
-				for _, structV := range v.StructLogs {
-					gas_cost += structV.GasCost
-				}
-			}
-			lock.Lock()
-			traceMaps[index] = map[string]interface{}{
-				"number":          number,
-				"hash":            hash,
-				"parent_hash":     trace.Header.ParentHash.String(),
-				"trace":           string(data),
-				"tx_num":          tx_num,
-				"gas_used":        gas_cost,
-				"block_timestamp": mtime,
-			}
-			lock.Unlock()
-			finishCh <- nil
-		}(i, trace, lock, finishCh)
-	}
-	for range blockTraces {
-		err := <-finishCh
+		data, err := json.Marshal(trace)
 		if err != nil {
+			log.Error("failed to marshal blockTrace", "hash", hash, "err", err)
 			return err
+		}
+		var gas_cost uint64 = 0
+		finishCh := make(chan uint64)
+		for _, v := range trace.ExecutionResults {
+			go func(v *types.ExecutionResult) {
+				var sum uint64 = 0
+				for _, structV := range v.StructLogs {
+					sum += structV.GasCost
+				}
+				finishCh <- sum
+			}(v)
+		}
+		for range trace.ExecutionResults {
+			res := <-finishCh
+			gas_cost += res
+		}
+		traceMaps[i] = map[string]interface{}{
+			"number":          number,
+			"hash":            hash,
+			"parent_hash":     trace.Header.ParentHash.String(),
+			"trace":           string(data),
+			"tx_num":          tx_num,
+			"gas_used":        gas_cost,
+			"block_timestamp": mtime,
 		}
 	}
 	_, err := o.db.NamedExec(`INSERT INTO public.block_trace (number, hash, parent_hash, trace, tx_num, gas_used, block_timestamp) VALUES (:number, :hash, :parent_hash, :trace, :tx_num, :gas_used, :block_timestamp);`, traceMaps)
