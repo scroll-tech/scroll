@@ -62,9 +62,6 @@ func RunCoordinator() {
 }
 
 func applyConfig(ctx *cli.Context, cfg *config.Config) {
-	if ctx.Bool(wsEnabledFlag.Name) {
-		cfg.RollerManagerConfig.Endpoint = fmt.Sprintf("%s:%d", ctx.String(wsListenAddrFlag.Name), ctx.Int(wsPortFlag.Name))
-	}
 	if ctx.IsSet(verifierFlag.Name) {
 		cfg.RollerManagerConfig.VerifierEndpoint = ctx.String(verifierFlag.Name)
 	}

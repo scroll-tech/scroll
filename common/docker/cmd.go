@@ -76,15 +76,10 @@ func (tt *Cmd) WaitExit() {
 	// Send interrupt signal.
 	_ = tt.cmd.Process.Signal(os.Interrupt)
 
-	// Wait all the check funcs are finished.
+	// Wait all the check funcs are finished or test status is failed.
 	tick := time.NewTicker(time.Millisecond * 500)
-	for {
-		select {
-		case <-tick.C:
-			if tt.Failed() || tt.checkFuncs.IsEmpty() {
-				return
-			}
-		}
+	for !(tt.Failed() || tt.checkFuncs.IsEmpty()) {
+		<-tick.C
 	}
 }
 
