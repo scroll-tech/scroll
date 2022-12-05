@@ -5,15 +5,16 @@ import (
 	"crypto/ecdsa"
 	"encoding/json"
 	"fmt"
-	"golang.org/x/sync/errgroup"
 	"math/big"
 	"os"
-	coordinatorConfig "scroll-tech/coordinator/config"
 	"strconv"
 	"testing"
 	"time"
 
+	"golang.org/x/sync/errgroup"
+
 	"github.com/scroll-tech/go-ethereum/common"
+	"github.com/scroll-tech/go-ethereum/crypto"
 	"github.com/stretchr/testify/assert"
 
 	_ "scroll-tech/bridge/cmd/app"
@@ -21,6 +22,7 @@ import (
 	"scroll-tech/bridge/sender"
 	"scroll-tech/common/docker"
 	_ "scroll-tech/coordinator/cmd/app"
+	coordinatorConfig "scroll-tech/coordinator/config"
 	"scroll-tech/database"
 	_ "scroll-tech/database/cmd/app"
 	_ "scroll-tech/roller/cmd/app"
@@ -75,7 +77,7 @@ func runCoordinatorApp(t *testing.T, args ...string) appAPI {
 }
 
 func runDBCliApp(t *testing.T, option, keyword string) {
-	args := []string{option, "--log.debug", "--config", dbFile}
+	args := []string{option, "--config", dbFile}
 	cmd := docker.NewCmd(t, "db_cli-test", args...)
 	defer cmd.WaitExit()
 
@@ -89,8 +91,18 @@ func runRollerApp(t *testing.T, args ...string) appAPI {
 	return docker.NewCmd(t, "roller-test", args...)
 }
 
-func runSender(t *testing.T, cfg *bridgeConfig.SenderConfig, privs []*ecdsa.PrivateKey, to common.Address, data []byte) *sender.Sender {
-	newSender, err := sender.NewSender(context.Background(), cfg, privs)
+func runSender(t *testing.T, endpoint string, to common.Address, data []byte) *sender.Sender {
+	priv, err := crypto.HexToECDSA("1212121212121212121212121212121212121212121212121212121212121212")
+	assert.NoError(t, err)
+	newSender, err := sender.NewSender(context.Background(), &bridgeConfig.SenderConfig{
+		Endpoint:            endpoint,
+		CheckPendingTime:    3,
+		EscalateBlocks:      100,
+		Confirmations:       0,
+		EscalateMultipleNum: 11,
+		EscalateMultipleDen: 10,
+		TxType:              "DynamicFeeTx",
+	}, []*ecdsa.PrivateKey{priv})
 	assert.NoError(t, err)
 	eg := errgroup.Group{}
 	for i := 0; i < newSender.NumberOfAccounts(); i++ {
