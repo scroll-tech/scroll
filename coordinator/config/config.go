@@ -14,8 +14,6 @@ import (
 
 // RollerManagerConfig loads sequencer configuration items.
 type RollerManagerConfig struct {
-	// Endpoint to set websocket server up on.
-	Endpoint string `json:"endpoint"`
 	// asc or desc (default: asc)
 	OrderSession string `json:"order_session,omitempty"`
 	// The amount of rollers to pick per proof generation session.

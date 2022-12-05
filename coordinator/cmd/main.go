@@ -45,9 +45,6 @@ func main() {
 }
 
 func applyConfig(ctx *cli.Context, cfg *config.Config) {
-	if ctx.IsSet(wsPortFlag.Name) {
-		cfg.RollerManagerConfig.Endpoint = fmt.Sprintf(":%d", ctx.Int(wsPortFlag.Name))
-	}
 	if ctx.IsSet(verifierMockFlag.Name) {
 		cfg.RollerManagerConfig.Verifier = &config.VerifierConfig{MockMode: ctx.Bool(verifierMockFlag.Name)}
 	}
@@ -83,7 +80,7 @@ func action(ctx *cli.Context) error {
 
 	// Start all modules.
 	if err = rollerManager.Start(); err != nil {
-		log.Crit("couldn't start roller manager", "error", err)
+		log.Crit("couldn't start coordinator", "error", err)
 	}
 
 	apis := rollerManager.APIs()
