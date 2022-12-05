@@ -101,7 +101,7 @@ func New(ctx context.Context, cfg *config.RollerManagerConfig, orm database.OrmF
 		}
 	}
 
-	log.Info("Start rollerManager successfully.")
+	log.Info("Start coordinator successfully.")
 
 	return &Manager{
 		ctx:                ctx,
