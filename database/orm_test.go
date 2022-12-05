@@ -132,7 +132,7 @@ func TestOrmFactory(t *testing.T) {
 
 	t.Run("testParallelParseTrace", testParallelParseTrace)
 
-	t.Run("testParallelParseWrongTrace", testParallelParseWrongTrace)
+	t.Run("testParseWrongTrace", testParseWrongTrace)
 }
 
 func testOrmBlockTraces(t *testing.T) {
