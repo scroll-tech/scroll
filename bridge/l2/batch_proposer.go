@@ -21,17 +21,19 @@ type batchProposer struct {
 	batchGasThreshold uint64
 	batchBlocksLimit  uint64
 
-	// proofGenerationFreq uint64
-	// skippedOpcodes      map[string]struct{}
+	proofGenerationFreq uint64
+	skippedOpcodes      map[string]struct{}
 }
 
 func newBatchProposer(cfg *config.BatchProposerConfig, orm database.OrmFactory) *batchProposer {
 	return &batchProposer{
-		mutex:             sync.Mutex{},
-		orm:               orm,
-		batchTimeSec:      cfg.BatchTimeSec,
-		batchGasThreshold: cfg.BatchGasThreshold,
-		batchBlocksLimit:  cfg.BatchBlocksLimit,
+		mutex:               sync.Mutex{},
+		orm:                 orm,
+		batchTimeSec:        cfg.BatchTimeSec,
+		batchGasThreshold:   cfg.BatchGasThreshold,
+		batchBlocksLimit:    cfg.BatchBlocksLimit,
+		proofGenerationFreq: cfg.ProofGenerationFreq,
+		skippedOpcodes:      cfg.SkippedOpcodes,
 	}
 }
 
