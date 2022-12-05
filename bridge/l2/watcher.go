@@ -16,9 +16,10 @@ import (
 
 	bridge_abi "scroll-tech/bridge/abi"
 
-	"scroll-tech/bridge/config"
 	"scroll-tech/database"
 	"scroll-tech/database/orm"
+
+	"scroll-tech/bridge/config"
 )
 
 const (

@@ -7,9 +7,10 @@ import (
 
 	"github.com/scroll-tech/go-ethereum/log"
 
-	"scroll-tech/bridge/config"
 	"scroll-tech/database"
 	"scroll-tech/database/orm"
+
+	"scroll-tech/bridge/config"
 )
 
 type batchProposer struct {
