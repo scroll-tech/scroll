@@ -31,9 +31,6 @@ type Layer2Relayer struct {
 	ctx    context.Context
 	client *ethclient.Client
 
-	proofGenerationFreq uint64
-	skippedOpcodes      map[string]struct{}
-
 	db  database.OrmFactory
 	cfg *config.RelayerConfig
 

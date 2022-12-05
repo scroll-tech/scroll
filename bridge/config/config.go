@@ -70,6 +70,7 @@ type L2Config struct {
 	BatchProposerConfig *BatchProposerConfig `json:"batch_proposer_config"`
 }
 
+// BatchProposerConfig loads l2watcher batch_proposer configuration items.
 type BatchProposerConfig struct {
 	// Proof generation frequency, generating proof every k blocks
 	ProofGenerationFreq uint64 `json:"proof_generation_freq"`

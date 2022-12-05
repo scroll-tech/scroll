@@ -32,7 +32,7 @@ func testCreateNewWatcherAndStop(t *testing.T) {
 	defer l2db.Close()
 
 	l2cfg := cfg.L2Config
-	rc := l2.NewL2WatcherClient(context.Background(), l2Cli, l2cfg.Confirmations, l2cfg.ProofGenerationFreq, l2cfg.SkippedOpcodes, l2cfg.L2MessengerAddress, l2db)
+	rc := l2.NewL2WatcherClient(context.Background(), l2Cli, l2cfg.Confirmations, l2cfg.BatchProposerConfig, l2cfg.L2MessengerAddress, l2db)
 	rc.Start()
 	defer rc.Stop()
 
@@ -183,22 +183,25 @@ func testFetchMultipleSentMessageInOneBlock(t *testing.T) {
 	assert.Equal(t, 5, len(msgs))
 }
 
-func testTraceHasUnsupportedOpcodes(t *testing.T) {
-	delegateTrace, err := os.ReadFile("../../common/testdata/blockTrace_delegate.json")
-	assert.NoError(t, err)
+// func testTraceHasUnsupportedOpcodes(t *testing.T) {
+// 	delegateTrace, err := os.ReadFile("../../common/testdata/blockTrace_delegate.json")
+// 	assert.NoError(t, err)
 
-	trace := &types.BlockTrace{}
-	assert.NoError(t, json.Unmarshal(delegateTrace, &trace))
+// 	trace := &types.BlockTrace{}
+// 	assert.NoError(t, json.Unmarshal(delegateTrace, &trace))
 
-	assert.Equal(t, true, len(cfg.L2Config.SkippedOpcodes) == 2)
-	_, exist := cfg.L2Config.SkippedOpcodes["DELEGATECALL"]
-	assert.Equal(t, true, exist)
+// 	assert.Equal(t, true, len(cfg.L2Config.SkippedOpcodes) == 2)
+// 	_, exist := cfg.L2Config.SkippedOpcodes["DELEGATECALL"]
+// 	assert.Equal(t, true, exist)
 
-	assert.True(t, l2.TraceHasUnsupportedOpcodes(cfg.L2Config.SkippedOpcodes, trace))
-}
+// 	assert.True(t, l2.TraceHasUnsupportedOpcodes(cfg.L2Config.SkippedOpcodes, trace))
+// }
 
 func prepareRelayerClient(l2Cli *ethclient.Client, db database.OrmFactory, contractAddr common.Address) *l2.WatcherClient {
-	return l2.NewL2WatcherClient(context.Background(), l2Cli, 0, 1, map[string]struct{}{}, contractAddr, db)
+	return l2.NewL2WatcherClient(context.Background(), l2Cli, 0,
+		// TODO:
+		1, map[string]struct{}{},
+		contractAddr, db)
 }
 
 func prepareAuth(t *testing.T, l2Cli *ethclient.Client, privateKey *ecdsa.PrivateKey) *bind.TransactOpts {
