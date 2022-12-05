@@ -20,7 +20,6 @@ type Config struct {
 
 // ProverConfig loads zk roller configuration items.
 type ProverConfig struct {
-	MockMode   bool   `json:"mock_mode"`
 	ParamsPath string `json:"params_path"`
 	SeedPath   string `json:"seed_path"`
 }
