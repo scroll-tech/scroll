@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"math/big"
-	"sync"
 	"time"
 
 	"github.com/scroll-tech/go-ethereum"
@@ -36,11 +35,9 @@ type WatcherClient struct {
 
 	orm database.OrmFactory
 
-	confirmations       uint64
-	proofGenerationFreq uint64
-	skippedOpcodes      map[string]struct{}
-	messengerAddress    common.Address
-	messengerABI        *abi.ABI
+	confirmations    uint64
+	messengerAddress common.Address
+	messengerABI     *abi.ABI
 
 	// The height of the block that the watcher has retrieved event logs
 	processedMsgHeight uint64
@@ -48,8 +45,7 @@ type WatcherClient struct {
 	stopped uint64
 	stopCh  chan struct{}
 
-	// mutex for batch proposer
-	bpMutex sync.Mutex
+	batchProposer *batchProposer
 }
 
 // NewL2WatcherClient take a l2geth instance to generate a l2watcherclient instance
@@ -61,18 +57,16 @@ func NewL2WatcherClient(ctx context.Context, client *ethclient.Client, confirmat
 	}
 
 	return &WatcherClient{
-		ctx:                 ctx,
-		Client:              client,
-		orm:                 orm,
-		processedMsgHeight:  uint64(savedHeight),
-		confirmations:       confirmations,
-		proofGenerationFreq: bpCfg.ProofGenerationFreq,
-		skippedOpcodes:      bpCfg.SkippedOpcodes,
-		messengerAddress:    messengerAddress,
-		messengerABI:        bridge_abi.L2MessengerMetaABI,
-		stopCh:              make(chan struct{}),
-		stopped:             0,
-		bpMutex:             sync.Mutex{},
+		ctx:                ctx,
+		Client:             client,
+		orm:                orm,
+		processedMsgHeight: uint64(savedHeight),
+		confirmations:      confirmations,
+		messengerAddress:   messengerAddress,
+		messengerABI:       bridge_abi.L2MessengerMetaABI,
+		stopCh:             make(chan struct{}),
+		stopped:            0,
+		batchProposer:      newBatchProposer(bpCfg, orm),
 	}
 }
 
@@ -106,7 +100,7 @@ func (w *WatcherClient) Start() {
 					log.Error("failed to fetchContractEvent", "err", err)
 				}
 
-				if err := w.tryProposeBatch(); err != nil {
+				if err := w.batchProposer.tryProposeBatch(); err != nil {
 					log.Error("failed to tryProposeBatch", "err", err)
 				}
 

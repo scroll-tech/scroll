@@ -2,31 +2,50 @@ package l2
 
 import (
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/scroll-tech/go-ethereum/log"
 
+	"scroll-tech/bridge/config"
+	"scroll-tech/database"
 	"scroll-tech/database/orm"
 )
 
-// batch-related config
-const (
-	batchTimeSec      = uint64(5 * 60) // 5min
-	batchGasThreshold = uint64(3_000_000)
-	batchBlocksLimit  = uint64(100)
-)
+type batchProposer struct {
+	mutex sync.Mutex
+
+	orm database.OrmFactory
+
+	batchTimeSec      uint64
+	batchGasThreshold uint64
+	batchBlocksLimit  uint64
+
+	// proofGenerationFreq uint64
+	// skippedOpcodes      map[string]struct{}
+}
+
+func newBatchProposer(cfg *config.BatchProposerConfig, orm database.OrmFactory) *batchProposer {
+	return &batchProposer{
+		mutex:             sync.Mutex{},
+		orm:               orm,
+		batchTimeSec:      cfg.BatchTimeSec,
+		batchGasThreshold: cfg.BatchGasThreshold,
+		batchBlocksLimit:  cfg.BatchBlocksLimit,
+	}
+}
 
 // TODO:
 // + generate batch parallelly
 // + TraceHasUnsupportedOpcodes
 // + proofGenerationFreq
-func (w *WatcherClient) tryProposeBatch() error {
-	w.bpMutex.Lock()
-	defer w.bpMutex.Unlock()
+func (w *batchProposer) tryProposeBatch() error {
+	w.mutex.Lock()
+	defer w.mutex.Unlock()
 
 	blocks, err := w.orm.GetUnbatchedBlocks(
 		map[string]interface{}{},
-		fmt.Sprintf("order by number ASC LIMIT %d", batchBlocksLimit),
+		fmt.Sprintf("order by number ASC LIMIT %d", w.batchBlocksLimit),
 	)
 	if err != nil {
 		return err
@@ -35,7 +54,7 @@ func (w *WatcherClient) tryProposeBatch() error {
 		return nil
 	}
 
-	if blocks[0].GasUsed > batchGasThreshold {
+	if blocks[0].GasUsed > w.batchGasThreshold {
 		log.Warn("gas overflow even for only 1 block", "height", blocks[0].Number, "gas", blocks[0].GasUsed)
 		return w.createBatchForBlocks(blocks[:1])
 	}
@@ -46,7 +65,7 @@ func (w *WatcherClient) tryProposeBatch() error {
 	)
 	// add blocks into batch until reach batchGasThreshold
 	for i, block := range blocks {
-		if gasUsed+block.GasUsed > batchGasThreshold {
+		if gasUsed+block.GasUsed > w.batchGasThreshold {
 			blocks = blocks[:i]
 			break
 		}
@@ -56,14 +75,14 @@ func (w *WatcherClient) tryProposeBatch() error {
 	// if too few gas gathered, but we don't want to halt, we then check the first block in the batch:
 	// if it's not old enough we will skip proposing the batch,
 	// otherwise we will still propose a batch
-	if length == len(blocks) && blocks[0].BlockTimestamp+batchTimeSec > uint64(time.Now().Unix()) {
+	if length == len(blocks) && blocks[0].BlockTimestamp+w.batchTimeSec > uint64(time.Now().Unix()) {
 		return nil
 	}
 
 	return w.createBatchForBlocks(blocks)
 }
 
-func (w *WatcherClient) createBatchForBlocks(blocks []*orm.BlockInfo) error {
+func (w *batchProposer) createBatchForBlocks(blocks []*orm.BlockInfo) error {
 	dbTx, err := w.orm.Beginx()
 	if err != nil {
 		return err
