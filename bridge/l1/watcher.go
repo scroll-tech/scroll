@@ -220,7 +220,8 @@ func (w *Watcher) parseBridgeEventLogs(logs []types.Log) ([]*orm.L1Message, []re
 	var relayedMessages []relayedMessage
 	var rollupEvents []rollupEvent
 	for _, vLog := range logs {
-		if vLog.Topics[0] == common.HexToHash(bridge_abi.SENT_MESSAGE_EVENT_SIGNATURE) {
+		switch vLog.Topics[0] {
+		case common.HexToHash(bridge_abi.SENT_MESSAGE_EVENT_SIGNATURE):
 			event := struct {
 				Target       common.Address
 				Sender       common.Address
@@ -252,7 +253,7 @@ func (w *Watcher) parseBridgeEventLogs(logs []types.Log) ([]*orm.L1Message, []re
 				Calldata:   common.Bytes2Hex(event.Message),
 				Layer1Hash: vLog.TxHash.Hex(),
 			})
-		} else if vLog.Topics[0] == common.HexToHash(bridge_abi.RELAYED_MESSAGE_EVENT_SIGNATURE) {
+		case common.HexToHash(bridge_abi.RELAYED_MESSAGE_EVENT_SIGNATURE):
 			event := struct {
 				MsgHash common.Hash
 			}{}
@@ -263,7 +264,7 @@ func (w *Watcher) parseBridgeEventLogs(logs []types.Log) ([]*orm.L1Message, []re
 				txHash:       vLog.TxHash,
 				isSuccessful: true,
 			})
-		} else if vLog.Topics[0] == common.HexToHash(bridge_abi.FAILED_RELAYED_MESSAGE_EVENT_SIGNATURE) {
+		case common.HexToHash(bridge_abi.FAILED_RELAYED_MESSAGE_EVENT_SIGNATURE):
 			event := struct {
 				MsgHash common.Hash
 			}{}
@@ -274,7 +275,7 @@ func (w *Watcher) parseBridgeEventLogs(logs []types.Log) ([]*orm.L1Message, []re
 				txHash:       vLog.TxHash,
 				isSuccessful: false,
 			})
-		} else if vLog.Topics[0] == common.HexToHash(bridge_abi.COMMIT_BATCH_EVENT_SIGNATURE) {
+		case common.HexToHash(bridge_abi.COMMIT_BATCH_EVENT_SIGNATURE):
 			event := struct {
 				BatchID    common.Hash
 				BatchHash  common.Hash
@@ -294,7 +295,7 @@ func (w *Watcher) parseBridgeEventLogs(logs []types.Log) ([]*orm.L1Message, []re
 				txHash:  vLog.TxHash,
 				status:  orm.RollupCommitted,
 			})
-		} else if vLog.Topics[0] == common.HexToHash(bridge_abi.FINALIZED_BATCH_EVENT_SIGNATURE) {
+		case common.HexToHash(bridge_abi.FINALIZED_BATCH_EVENT_SIGNATURE):
 			event := struct {
 				BatchID    common.Hash
 				BatchHash  common.Hash
@@ -314,6 +315,8 @@ func (w *Watcher) parseBridgeEventLogs(logs []types.Log) ([]*orm.L1Message, []re
 				txHash:  vLog.TxHash,
 				status:  orm.RollupFinalized,
 			})
+		default:
+			log.Error("Unknown event", "topic", vLog.Topics[0], "txHash", vLog.TxHash)
 		}
 	}
 

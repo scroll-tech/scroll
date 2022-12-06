@@ -243,7 +243,8 @@ func (w *WatcherClient) parseBridgeEventLogs(logs []types.Log) ([]*orm.L2Message
 	var l2Messages []*orm.L2Message
 	var relayedMessages []relayedMessage
 	for _, vLog := range logs {
-		if vLog.Topics[0] == common.HexToHash(bridge_abi.SENT_MESSAGE_EVENT_SIGNATURE) {
+		switch vLog.Topics[0] {
+		case common.HexToHash(bridge_abi.SENT_MESSAGE_EVENT_SIGNATURE):
 			event := struct {
 				Target       common.Address
 				Sender       common.Address
@@ -275,7 +276,7 @@ func (w *WatcherClient) parseBridgeEventLogs(logs []types.Log) ([]*orm.L2Message
 				Calldata:   common.Bytes2Hex(event.Message),
 				Layer2Hash: vLog.TxHash.Hex(),
 			})
-		} else if vLog.Topics[0] == common.HexToHash(bridge_abi.RELAYED_MESSAGE_EVENT_SIGNATURE) {
+		case common.HexToHash(bridge_abi.RELAYED_MESSAGE_EVENT_SIGNATURE):
 			event := struct {
 				MsgHash common.Hash
 			}{}
@@ -286,7 +287,7 @@ func (w *WatcherClient) parseBridgeEventLogs(logs []types.Log) ([]*orm.L2Message
 				txHash:       vLog.TxHash,
 				isSuccessful: true,
 			})
-		} else if vLog.Topics[0] == common.HexToHash(bridge_abi.FAILED_RELAYED_MESSAGE_EVENT_SIGNATURE) {
+		case common.HexToHash(bridge_abi.FAILED_RELAYED_MESSAGE_EVENT_SIGNATURE):
 			event := struct {
 				MsgHash common.Hash
 			}{}
@@ -297,6 +298,8 @@ func (w *WatcherClient) parseBridgeEventLogs(logs []types.Log) ([]*orm.L2Message
 				txHash:       vLog.TxHash,
 				isSuccessful: false,
 			})
+		default:
+			log.Error("Unknown event", "topic", vLog.Topics[0], "txHash", vLog.TxHash)
 		}
 	}
 
