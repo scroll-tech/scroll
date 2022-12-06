@@ -23,5 +23,5 @@ func TestComputetTraceCost(t *testing.T) {
 	// Insert into db
 	res := utils.ComputeTraceGasCost(blockTrace)
 	assert.NotEqual(t, res, blockTrace.Header.GasUsed)
-	assert.Greater(t, res, uint64(0))
+	assert.Equal(t, uint64(113874), res)
 }

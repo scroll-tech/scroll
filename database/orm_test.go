@@ -131,10 +131,6 @@ func TestOrmFactory(t *testing.T) {
 	t.Run("testOrmL2Message", testOrmL2Message)
 
 	t.Run("testOrmBlockbatch", testOrmBlockbatch)
-
-	t.Run("testParallelParseTrace", testParallelParseTrace)
-
-	t.Run("testParseWrongTrace", testParseWrongTrace)
 }
 
 func testOrmBlockTraces(t *testing.T) {
@@ -317,66 +313,4 @@ func testOrmBlockbatch(t *testing.T) {
 	result, err := ormBatch.GetLatestFinalizedBatch()
 	assert.NoError(t, err)
 	assert.Equal(t, batchID1, result.ID)
-}
-
-func testParallelParseTrace(t *testing.T) {
-	templateBlockTrace, err := os.ReadFile("../common/testdata/blockTrace_02.json")
-	assert.NoError(t, err)
-	// unmarshal blockTrace
-	blockTrace_02 := &types.BlockTrace{}
-	err = json.Unmarshal(templateBlockTrace, blockTrace_02)
-	assert.NoError(t, err)
-
-	// Create db handler and reset db.
-	factory, err := database.NewOrmFactory(dbConfig)
-	assert.NoError(t, err)
-	assert.NoError(t, migrate.ResetDB(factory.GetDB().DB))
-
-	res, err := ormBlock.GetBlockTraces(map[string]interface{}{})
-	assert.NoError(t, err)
-	assert.Equal(t, true, len(res) == 0)
-	exist, err := ormBlock.Exist(blockTrace.Header.Number.Uint64())
-	assert.NoError(t, err)
-	assert.Equal(t, false, exist)
-
-	// Insert into db
-	err = ormBlock.InsertBlockTraces(context.Background(), []*types.BlockTrace{blockTrace, blockTrace_02})
-	assert.NoError(t, err)
-	res, err = ormBlock.GetBlockTraces(map[string]interface{}{})
-	assert.NoError(t, err)
-	assert.Equal(t, 2, len(res))
-	assert.Equal(t, res[0].Header.ParentHash, blockTrace.Header.ParentHash)
-	assert.Equal(t, res[1].Header.ParentHash, blockTrace_02.Header.ParentHash)
-
-}
-
-func testParseWrongTrace(t *testing.T) {
-
-	blockTrace_02 := &types.BlockTrace{
-		Coinbase: blockTrace.Coinbase,
-		Header: &types.Header{
-			Number: blockTrace.Header.Number,
-			Time:   blockTrace.Header.Time,
-		},
-		Transactions:     blockTrace.Transactions,
-		StorageTrace:     blockTrace.StorageTrace,
-		ExecutionResults: blockTrace.ExecutionResults,
-		MPTWitness:       blockTrace.MPTWitness,
-	}
-
-	// Create db handler and reset db.
-	factory, err := database.NewOrmFactory(dbConfig)
-	assert.NoError(t, err)
-	assert.NoError(t, migrate.ResetDB(factory.GetDB().DB))
-
-	res, err := ormBlock.GetBlockTraces(map[string]interface{}{})
-	assert.NoError(t, err)
-	assert.Equal(t, true, len(res) == 0)
-	exist, err := ormBlock.Exist(blockTrace.Header.Number.Uint64())
-	assert.NoError(t, err)
-	assert.Equal(t, false, exist)
-
-	// Insert into db
-	err = ormBlock.InsertBlockTraces(context.Background(), []*types.BlockTrace{blockTrace, blockTrace_02})
-	assert.Error(t, err)
 }
