@@ -3,11 +3,12 @@ package utils_test
 import (
 	"encoding/json"
 	"os"
-	"scroll-tech/common/utils"
 	"testing"
 
 	"github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/stretchr/testify/assert"
+
+	"scroll-tech/common/utils"
 )
 
 // TestComputetTraceCost test ComputeTraceGasCost function
