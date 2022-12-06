@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"scroll-tech/common/utils"
 	"strings"
 
 	"github.com/jmoiron/sqlx"
@@ -163,21 +164,7 @@ func (o *blockTraceOrm) InsertBlockTraces(ctx context.Context, blockTraces []*ty
 			log.Error("failed to marshal blockTrace", "hash", hash, "err", err)
 			return err
 		}
-		var gas_cost uint64 = 0
-		finishCh := make(chan uint64)
-		for _, v := range trace.ExecutionResults {
-			go func(v *types.ExecutionResult) {
-				var sum uint64 = 0
-				for _, structV := range v.StructLogs {
-					sum += structV.GasCost
-				}
-				finishCh <- sum
-			}(v)
-		}
-		for range trace.ExecutionResults {
-			res := <-finishCh
-			gas_cost += res
-		}
+		gas_cost := utils.ComputeTraceGasCost(trace)
 		traceMaps[i] = map[string]interface{}{
 			"number":          number,
 			"hash":            hash,

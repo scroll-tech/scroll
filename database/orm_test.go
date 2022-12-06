@@ -128,8 +128,6 @@ func TestOrmFactory(t *testing.T) {
 
 	t.Run("testOrmBlockbatch", testOrmBlockbatch)
 
-	t.Run("tesComputetTraceCost", tesComputetTraceCost)
-
 	t.Run("testParallelParseTrace", testParallelParseTrace)
 
 	t.Run("testParseWrongTrace", testParseWrongTrace)
@@ -314,29 +312,6 @@ func testOrmBlockbatch(t *testing.T) {
 	result, err := ormBatch.GetLatestFinalizedBatch()
 	assert.NoError(t, err)
 	assert.Equal(t, batchID1, result.ID)
-}
-
-func tesComputetTraceCost(t *testing.T) {
-	// Create db handler and reset db.
-	factory, err := database.NewOrmFactory(dbConfig)
-	assert.NoError(t, err)
-	assert.NoError(t, migrate.ResetDB(factory.GetDB().DB))
-
-	res, err := ormBlock.GetBlockTraces(map[string]interface{}{})
-	assert.NoError(t, err)
-	assert.Equal(t, true, len(res) == 0)
-
-	exist, err := ormBlock.Exist(blockTrace.Header.Number.Uint64())
-	assert.NoError(t, err)
-	assert.Equal(t, false, exist)
-
-	// Insert into db
-	err = ormBlock.InsertBlockTraces(context.Background(), []*types.BlockTrace{blockTrace})
-	assert.NoError(t, err)
-
-	info, err := ormBlock.GetBlockInfos(map[string]interface{}{})
-	assert.NoError(t, err)
-	assert.NotEqual(t, info[0].GasUsed, blockTrace.Header.GasUsed)
 }
 
 func testParallelParseTrace(t *testing.T) {
