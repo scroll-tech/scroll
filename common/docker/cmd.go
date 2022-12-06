@@ -81,7 +81,7 @@ func (t *Cmd) Write(data []byte) (int, error) {
 		t.Logf(out)
 	}
 	go func(content string) {
-		t.checkFuncs.Range(func(key, value interface{}) bool {
+		t.checkFuncs.Range(func(key, value any) bool {
 			check := value.(checkFunc)
 			check(content)
 			return true

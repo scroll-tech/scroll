@@ -2,15 +2,13 @@ package coordinator
 
 import (
 	"context"
-	"encoding/json"
-	"errors"
 	"fmt"
 	mathrand "math/rand"
 	"sync"
 	"sync/atomic"
 	"time"
 
-	"github.com/scroll-tech/go-ethereum/core/types"
+	cmap "github.com/orcaman/concurrent-map"
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/scroll-tech/go-ethereum/rpc"
 
@@ -53,13 +51,14 @@ type Manager struct {
 
 	// The indicator whether the backend is running or not.
 	running int32
-	// The websocket server which holds the connections with active rollers.
-	server *server
 
 	// A mutex guarding the boolean below.
 	mu sync.RWMutex
 	// A map containing all active proof generation sessions.
 	sessions map[string]*session
+
+	rollerPool cmap.ConcurrentMap
+
 	// A map containing proof failed or verify failed proof.
 	// TODO: once put into use, should add to graceful restart.
 	failedSessionInfos map[string]*SessionInfo
@@ -84,12 +83,12 @@ func New(ctx context.Context, cfg *config.RollerManagerConfig, orm database.OrmF
 		}
 	}
 
-	log.Info("Start rollerManager successfully.")
+	log.Info("Start coordinator successfully.")
 
 	return &Manager{
 		ctx:                ctx,
 		cfg:                cfg,
-		server:             newServer(cfg.Endpoint),
+		rollerPool:         cmap.New(),
 		sessions:           make(map[string]*session),
 		failedSessionInfos: make(map[string]*SessionInfo),
 		verifier:           v,
@@ -122,9 +121,6 @@ func (m *Manager) Start() error {
 		}
 	}
 
-	if err := m.server.start(); err != nil {
-		return err
-	}
 	atomic.StoreInt32(&m.running, 1)
 
 	go m.Loop()
@@ -134,12 +130,6 @@ func (m *Manager) Start() error {
 // Stop the Manager module, for a graceful shutdown.
 func (m *Manager) Stop() {
 	if !m.isRunning() {
-		return
-	}
-
-	// Stop accepting connections
-	if err := m.server.stop(); err != nil {
-		log.Error("Server shutdown failed", "error", err)
 		return
 	}
 
@@ -164,14 +154,13 @@ func (m *Manager) Loop() {
 		case <-tick.C:
 			if len(tasks) == 0 && m.orm != nil {
 				var err error
-				numIdleRollers := m.GetNumberOfIdleRollers()
 				// TODO: add cache
 				if tasks, err = m.orm.GetBlockBatches(
 					map[string]interface{}{"proving_status": orm.ProvingTaskUnassigned},
 					fmt.Sprintf(
 						"ORDER BY index %s LIMIT %d;",
 						m.cfg.OrderSession,
-						numIdleRollers,
+						m.GetNumberOfIdleRollers(),
 					),
 				); err != nil {
 					log.Error("failed to get unassigned proving tasks", "error", err)
@@ -181,13 +170,6 @@ func (m *Manager) Loop() {
 			// Select roller and send message
 			for len(tasks) > 0 && m.StartProofGenerationSession(tasks[0]) {
 				tasks = tasks[1:]
-			}
-		case msg := <-m.server.msgChan:
-			if err := m.HandleMessage(msg.pk, msg.message); err != nil {
-				log.Error(
-					"could not handle message",
-					"error", err,
-				)
 			}
 		case <-m.ctx.Done():
 			if m.ctx.Err() != nil {
@@ -201,45 +183,12 @@ func (m *Manager) Loop() {
 	}
 }
 
-// HandleMessage handle a message from a roller.
-func (m *Manager) HandleMessage(pk string, payload []byte) error {
-	// Recover message
-	msg := &message.Msg{}
-	if err := json.Unmarshal(payload, msg); err != nil {
-		return err
-	}
-
-	switch msg.Type {
-	case message.ErrorMsgType:
-		// Just log it for now.
-		log.Error("error message received from roller", "message", msg)
-		// TODO: handle in m.failedSessionInfos
-		return nil
-	case message.RegisterMsgType:
-		// We shouldn't get this message, as the sequencer should handle registering at the start
-		// of the connection.
-		return errors.New("attempted handshake at the wrong time")
-	case message.TaskMsgType:
-		// We shouldn't get this message, as the sequencer should always be the one to send it
-		return errors.New("received illegal message")
-	case message.ProofMsgType:
-		return m.HandleZkProof(pk, msg.Payload)
-	default:
-		return fmt.Errorf("unrecognized message type %v", msg.Type)
-	}
-}
-
 // HandleZkProof handle a ZkProof submitted from a roller.
 // For now only proving/verifying error will lead to setting status as skipped.
 // db/unmarshal errors will not because they are errors on the business logic side.
-func (m *Manager) HandleZkProof(pk string, payload []byte) error {
+func (m *Manager) handleZkProof(pk string, msg *message.ProofDetail) error {
 	var dbErr error
 	var success bool
-
-	msg := &message.ProofMsg{}
-	if err := json.Unmarshal(payload, msg); err != nil {
-		return err
-	}
 
 	// Assess if the proof generation session for the given ID is still active.
 	// We hold the read lock until the end of the function so that there is no
@@ -248,7 +197,7 @@ func (m *Manager) HandleZkProof(pk string, payload []byte) error {
 	defer m.mu.RUnlock()
 	sess, ok := m.sessions[msg.ID]
 	if !ok {
-		return fmt.Errorf("proof generation session for id %v does not exist", msg.ID)
+		return fmt.Errorf("proof generation session for id %v does not existID", msg.ID)
 	}
 	proofTimeSec := uint64(time.Since(time.Unix(sess.info.StartTimestamp, 0)).Seconds())
 
@@ -401,16 +350,16 @@ func (m *Manager) CollectProofs(id string, sess *session) {
 	}
 }
 
-// GetRollerChan returns the channel in which newly created wrapped roller connections are sent.
-func (m *Manager) GetRollerChan() chan *Roller {
-	return m.server.rollerChan
-}
-
 // APIs collect API services.
 func (m *Manager) APIs() []rpc.API {
 	return []rpc.API{
 		{
 			Namespace: "roller",
+			Service:   RollerAPI(m),
+			Public:    true,
+		},
+		{
+			Namespace: "debug",
 			Public:    true,
 			Service:   RollerDebugAPI(m),
 		},
@@ -419,8 +368,8 @@ func (m *Manager) APIs() []rpc.API {
 
 // StartProofGenerationSession starts a proof generation session
 func (m *Manager) StartProofGenerationSession(task *orm.BlockBatch) bool {
-	roller := m.SelectRoller()
-	if roller == nil || roller.isClosed() {
+	roller := m.selectRoller()
+	if roller == nil {
 		return false
 	}
 
@@ -436,9 +385,6 @@ func (m *Manager) StartProofGenerationSession(task *orm.BlockBatch) bool {
 		}
 	}()
 
-	pk := roller.AuthMsg.Identity.PublicKey
-	log.Info("roller is picked", "name", roller.AuthMsg.Identity.Name, "public_key", pk)
-
 	traces, err := m.orm.GetBlockTraces(map[string]interface{}{"batch_id": task.ID})
 	if err != nil {
 		log.Error(
@@ -449,29 +395,17 @@ func (m *Manager) StartProofGenerationSession(task *orm.BlockBatch) bool {
 		return false
 	}
 
-	msg, err := createTaskMsg(task.ID, traces)
-	if err != nil {
-		log.Error(
-			"could not create block traces message",
-			"error", err,
-		)
-		return false
-	}
-	// TODO: use some compression?
-	if err = roller.sendMessage(msg); err != nil {
-		log.Error(
-			"could not send traces message to roller",
-			"error", err,
-		)
-		return false
-	}
+	log.Info("roller is picked", "name", roller.Name, "public_key", roller.PublicKey)
+	// send trace to roller
+	roller.sendTask(task.ID, traces)
+	pk := roller.PublicKey
 
 	sessionInfo := &orm.SessionInfo{
 		ID: task.ID,
 		Rollers: map[string]*orm.RollerStatus{
 			pk: {
 				PublicKey: pk,
-				Name:      roller.AuthMsg.Identity.Name,
+				Name:      roller.Name,
 				Status:    orm.RollerAssigned,
 			},
 		},
@@ -496,33 +430,6 @@ func (m *Manager) StartProofGenerationSession(task *orm.BlockBatch) bool {
 	return true
 }
 
-// SelectRoller randomly get one idle roller.
-func (m *Manager) SelectRoller() *Roller {
-	allRollers := m.server.conns.getAll()
-	for len(allRollers) > 0 {
-		idx := mathrand.Intn(len(allRollers))
-		conn := allRollers[idx]
-		pk := conn.AuthMsg.Identity.PublicKey
-		if conn.isClosed() {
-			log.Debug("roller is closed", "public_key", pk)
-			// Delete closed connection.
-			m.server.conns.delete(conn)
-			// Delete the offline roller.
-			allRollers[idx], allRollers = allRollers[0], allRollers[1:]
-			continue
-		}
-		// Ensure the roller is not currently working on another session.
-		if !m.IsRollerIdle(pk) {
-			log.Debug("roller is busy", "public_key", pk)
-			// Delete the busy roller.
-			allRollers[idx], allRollers = allRollers[0], allRollers[1:]
-			continue
-		}
-		return conn
-	}
-	return nil
-}
-
 // IsRollerIdle determines whether this roller is idle.
 func (m *Manager) IsRollerIdle(hexPk string) bool {
 	m.mu.RLock()
@@ -538,35 +445,6 @@ func (m *Manager) IsRollerIdle(hexPk string) bool {
 	}
 
 	return true
-}
-
-// GetNumberOfIdleRollers returns the number of idle rollers in maintain list
-func (m *Manager) GetNumberOfIdleRollers() int {
-	cnt := 0
-	// m.server.conns doesn't have any lock
-	for _, roller := range m.server.conns.getAll() {
-		if m.IsRollerIdle(roller.AuthMsg.Identity.PublicKey) {
-			cnt++
-		}
-	}
-	return cnt
-}
-
-func createTaskMsg(taskID string, traces []*types.BlockTrace) (*message.Msg, error) {
-	idAndTraces := message.TaskMsg{
-		ID:     taskID,
-		Traces: traces, // roller should sort traces by height
-	}
-
-	payload, err := json.Marshal(idAndTraces)
-	if err != nil {
-		return nil, err
-	}
-
-	return &message.Msg{
-		Type:    message.TaskMsgType,
-		Payload: payload,
-	}, nil
 }
 
 func (m *Manager) addFailedSession(sess *session, errMsg string) {
