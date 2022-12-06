@@ -112,7 +112,7 @@ func (r *Layer1Relayer) processSavedEvent(msg *orm.L1Message) error {
 	}
 	log.Info("relayMessage to layer2", "msg hash", msg.MsgHash, "tx hash", hash)
 
-	err = r.db.UpdateLayer1StatusAndLayer2Hash(r.ctx, msg.MsgHash, hash.String(), orm.MsgSubmitted)
+	err = r.db.UpdateLayer1StatusAndLayer2Hash(r.ctx, msg.MsgHash, orm.MsgSubmitted, hash.String())
 	if err != nil {
 		log.Error("UpdateLayer1StatusAndLayer2Hash failed", "msg.msgHash", msg.MsgHash, "msg.height", msg.Height, "err", err)
 	}
@@ -137,7 +137,7 @@ func (r *Layer1Relayer) Start() {
 					log.Warn("transaction confirmed but failed in layer2", "confirmation", cfm)
 				} else {
 					// @todo handle db error
-					err := r.db.UpdateLayer1StatusAndLayer2Hash(r.ctx, cfm.ID, cfm.TxHash.String(), orm.MsgConfirmed)
+					err := r.db.UpdateLayer1StatusAndLayer2Hash(r.ctx, cfm.ID, orm.MsgConfirmed, cfm.TxHash.String())
 					if err != nil {
 						log.Warn("UpdateLayer1StatusAndLayer2Hash failed", "err", err)
 					}

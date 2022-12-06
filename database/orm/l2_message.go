@@ -171,7 +171,7 @@ func (m *layer2MessageOrm) UpdateLayer2Status(ctx context.Context, msgHash strin
 }
 
 // UpdateLayer2StatusAndLayer1Hash updates message stauts and layer1 transaction hash, given message hash
-func (m *layer2MessageOrm) UpdateLayer2StatusAndLayer1Hash(ctx context.Context, msgHash, layer1Hash string, status MsgStatus) error {
+func (m *layer2MessageOrm) UpdateLayer2StatusAndLayer1Hash(ctx context.Context, msgHash string, status MsgStatus, layer1Hash string) error {
 	if _, err := m.db.ExecContext(ctx, m.db.Rebind("update l2_message set status = ?, layer1_hash = ? where msg_hash = ?;"), status, layer1Hash, msgHash); err != nil {
 		return err
 	}

@@ -115,7 +115,7 @@ type L1MessageOrm interface {
 	SaveL1Messages(ctx context.Context, messages []*L1Message) error
 	UpdateLayer2Hash(ctx context.Context, msgHash string, layer2Hash string) error
 	UpdateLayer1Status(ctx context.Context, msgHash string, status MsgStatus) error
-	UpdateLayer1StatusAndLayer2Hash(ctx context.Context, msgHash string, layer2Hash string, status MsgStatus) error
+	UpdateLayer1StatusAndLayer2Hash(ctx context.Context, msgHash string, status MsgStatus, layer2Hash string) error
 	GetLayer1LatestWatchedHeight() (int64, error)
 }
 
@@ -130,7 +130,7 @@ type L2MessageOrm interface {
 	SaveL2Messages(ctx context.Context, messages []*L2Message) error
 	UpdateLayer1Hash(ctx context.Context, msgHash string, layer1Hash string) error
 	UpdateLayer2Status(ctx context.Context, msgHash string, status MsgStatus) error
-	UpdateLayer2StatusAndLayer1Hash(ctx context.Context, msgHash string, layer1Hash string, status MsgStatus) error
+	UpdateLayer2StatusAndLayer1Hash(ctx context.Context, msgHash string, status MsgStatus, layer1Hash string) error
 	UpdateMessageProof(ctx context.Context, nonce uint64, proof string) error
 	GetLayer2LatestWatchedHeight() (int64, error)
 }
