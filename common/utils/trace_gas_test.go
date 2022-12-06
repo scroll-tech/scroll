@@ -20,8 +20,6 @@ func TestComputetTraceCost(t *testing.T) {
 	err = json.Unmarshal(templateBlockTrace, blockTrace)
 	assert.NoError(t, err)
 
-	// Insert into db
 	res := utils.ComputeTraceGasCost(blockTrace)
-	assert.NotEqual(t, res, blockTrace.Header.GasUsed)
 	assert.Equal(t, uint64(113874), res)
 }
