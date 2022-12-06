@@ -2,6 +2,7 @@ package utils
 
 import "github.com/scroll-tech/go-ethereum/core/types"
 
+// ComputeTraceGasCost computes gascost based on ExecutionResults.StructLogs.GasCost
 func ComputeTraceGasCost(trace *types.BlockTrace) uint64 {
 	var gas_cost uint64 = 0
 	finishCh := make(chan uint64)
