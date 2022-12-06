@@ -22,6 +22,7 @@ import (
 
 	"scroll-tech/database"
 	"scroll-tech/database/migrate"
+	"scroll-tech/database/orm"
 )
 
 func testCreateNewWatcherAndStop(t *testing.T) {
@@ -110,7 +111,7 @@ func testMonitorBridgeContract(t *testing.T) {
 	assert.NoError(t, err)
 	t.Log("Height in DB is", height)
 	assert.Greater(t, height, int64(previousHeight))
-	msgs, err := db.GetL2UnprocessedMessages()
+	msgs, err := db.GetL2MessagesByStatus(orm.MsgPending)
 	assert.NoError(t, err)
 	assert.Equal(t, 2, len(msgs))
 }
@@ -178,7 +179,7 @@ func testFetchMultipleSentMessageInOneBlock(t *testing.T) {
 	assert.NoError(t, err)
 	t.Log("LatestHeight is", height)
 	assert.Greater(t, height, int64(previousHeight)) // height must be greater than previousHeight because confirmations is 0
-	msgs, err := db.GetL2UnprocessedMessages()
+	msgs, err := db.GetL2MessagesByStatus(orm.MsgPending)
 	assert.NoError(t, err)
 	assert.Equal(t, 5, len(msgs))
 }
