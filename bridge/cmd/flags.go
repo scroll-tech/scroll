@@ -28,13 +28,7 @@ var (
 	}
 
 	l1Flags = []cli.Flag{
-		&l1ChainIDFlag,
 		&l1UrlFlag,
-	}
-	l1ChainIDFlag = cli.IntFlag{
-		Name:  "l1.chainID",
-		Usage: "l1 chain id",
-		Value: 4,
 	}
 	l1UrlFlag = cli.StringFlag{
 		Name:  "l1.endpoint",
@@ -43,13 +37,7 @@ var (
 	}
 
 	l2Flags = []cli.Flag{
-		&l2ChainIDFlag,
 		&l2UrlFlag,
-	}
-	l2ChainIDFlag = cli.IntFlag{
-		Name:  "l2.chainID",
-		Usage: "l2 chain id",
-		Value: 53077,
 	}
 	l2UrlFlag = cli.StringFlag{
 		Name:  "l2.endpoint",

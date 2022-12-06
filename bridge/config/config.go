@@ -43,8 +43,6 @@ type SenderConfig struct {
 type L1Config struct {
 	// Confirmations block height confirmations number.
 	Confirmations uint64 `json:"confirmations"`
-	// l1 chainID.
-	ChainID int64 `json:"chain_id"`
 	// l1 eth node url.
 	Endpoint string `json:"endpoint"`
 	// The start height to sync event from layer 1

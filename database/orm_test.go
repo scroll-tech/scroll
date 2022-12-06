@@ -23,6 +23,7 @@ var (
 	templateL1Message = []*orm.L1Message{
 		{
 			Nonce:      1,
+			MsgHash:    "msg_hash1",
 			Height:     1,
 			Sender:     "0x596a746661dbed76a84556111c2872249b070e15",
 			Value:      "0x19ece",
@@ -35,6 +36,7 @@ var (
 		},
 		{
 			Nonce:      2,
+			MsgHash:    "msg_hash2",
 			Height:     2,
 			Sender:     "0x596a746661dbed76a84556111c2872249b070e15",
 			Value:      "0x19ece",
@@ -49,6 +51,7 @@ var (
 	templateL2Message = []*orm.L2Message{
 		{
 			Nonce:      1,
+			MsgHash:    "msg_hash1",
 			Height:     1,
 			Sender:     "0x596a746661dbed76a84556111c2872249b070e15",
 			Value:      "0x19ece",
@@ -61,6 +64,7 @@ var (
 		},
 		{
 			Nonce:      2,
+			MsgHash:    "msg_hash2",
 			Height:     2,
 			Sender:     "0x596a746661dbed76a84556111c2872249b070e15",
 			Value:      "0x19ece",
@@ -182,13 +186,13 @@ func testOrmL1Message(t *testing.T) {
 	err = ormLayer1.SaveL1Messages(context.Background(), templateL1Message)
 	assert.NoError(t, err)
 
-	err = ormLayer1.UpdateLayer1Status(context.Background(), "hash0", orm.MsgConfirmed)
+	err = ormLayer1.UpdateLayer1Status(context.Background(), "msg_hash1", orm.MsgConfirmed)
 	assert.NoError(t, err)
 
-	err = ormLayer1.UpdateLayer1Status(context.Background(), "hash1", orm.MsgSubmitted)
+	err = ormLayer1.UpdateLayer1Status(context.Background(), "msg_hash2", orm.MsgSubmitted)
 	assert.NoError(t, err)
 
-	err = ormLayer1.UpdateLayer2Hash(context.Background(), "hash1", expected)
+	err = ormLayer1.UpdateLayer2Hash(context.Background(), "msg_hash2", expected)
 	assert.NoError(t, err)
 
 	result, err := ormLayer1.GetL1ProcessedNonce()
@@ -199,7 +203,7 @@ func testOrmL1Message(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, int64(2), height)
 
-	msg, err := ormLayer1.GetL1MessageByLayer1Hash("hash1")
+	msg, err := ormLayer1.GetL1MessageByMsgHash("msg_hash2")
 	assert.NoError(t, err)
 	assert.Equal(t, orm.MsgSubmitted, msg.Status)
 }
@@ -216,13 +220,13 @@ func testOrmL2Message(t *testing.T) {
 	err = ormLayer2.SaveL2Messages(context.Background(), templateL2Message)
 	assert.NoError(t, err)
 
-	err = ormLayer2.UpdateLayer2Status(context.Background(), "hash0", orm.MsgConfirmed)
+	err = ormLayer2.UpdateLayer2Status(context.Background(), "msg_hash1", orm.MsgConfirmed)
 	assert.NoError(t, err)
 
-	err = ormLayer2.UpdateLayer2Status(context.Background(), "hash1", orm.MsgSubmitted)
+	err = ormLayer2.UpdateLayer2Status(context.Background(), "msg_hash2", orm.MsgSubmitted)
 	assert.NoError(t, err)
 
-	err = ormLayer2.UpdateLayer1Hash(context.Background(), "hash1", expected)
+	err = ormLayer2.UpdateLayer1Hash(context.Background(), "msg_hash2", expected)
 	assert.NoError(t, err)
 
 	result, err := ormLayer2.GetL2ProcessedNonce()
@@ -233,9 +237,10 @@ func testOrmL2Message(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, int64(2), height)
 
-	msg, err := ormLayer2.GetL2MessageByLayer2Hash("hash1")
+	msg, err := ormLayer2.GetL2MessageByMsgHash("msg_hash2")
 	assert.NoError(t, err)
 	assert.Equal(t, orm.MsgSubmitted, msg.Status)
+	assert.Equal(t, msg.MsgHash, "msg_hash2")
 }
 
 // testOrmBlockbatch test rollup result table functions

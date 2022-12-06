@@ -16,15 +16,17 @@ import (
 	"github.com/scroll-tech/go-ethereum/log"
 
 	bridge_abi "scroll-tech/bridge/abi"
+	"scroll-tech/bridge/utils"
 
 	"scroll-tech/database"
 	"scroll-tech/database/orm"
 )
 
-const (
-	// keccak256("SentMessage(address,address,uint256,uint256,uint256,bytes,uint256,uint256)")
-	sentMessageEventSignature = "806b28931bc6fbe6c146babfb83d5c2b47e971edb43b4566f010577a0ee7d9f4"
-)
+type relayedMessage struct {
+	msgHash      common.Hash
+	txHash       common.Hash
+	isSuccessful bool
+}
 
 // WatcherClient provide APIs which support others to subscribe to various event from l2geth
 type WatcherClient struct {
@@ -188,8 +190,10 @@ func (w *WatcherClient) fetchContractEvent(blockHeight uint64) error {
 		},
 		Topics: make([][]common.Hash, 1),
 	}
-	query.Topics[0] = make([]common.Hash, 1)
-	query.Topics[0][0] = common.HexToHash(sentMessageEventSignature)
+	query.Topics[0] = make([]common.Hash, 3)
+	query.Topics[0][0] = common.HexToHash(bridge_abi.SENT_MESSAGE_EVENT_SIGNATURE)
+	query.Topics[0][1] = common.HexToHash(bridge_abi.RELAYED_MESSAGE_EVENT_SIGNATURE)
+	query.Topics[0][2] = common.HexToHash(bridge_abi.FAILED_RELAYED_MESSAGE_EVENT_SIGNATURE)
 
 	logs, err := w.FilterLogs(w.ctx, query)
 	if err != nil {
@@ -197,61 +201,107 @@ func (w *WatcherClient) fetchContractEvent(blockHeight uint64) error {
 		return err
 	}
 	if len(logs) == 0 {
+		w.processedMsgHeight = uint64(toBlock)
 		return nil
 	}
 	log.Info("received new L2 messages", "fromBlock", fromBlock, "toBlock", toBlock,
 		"cnt", len(logs))
 
-	eventLogs, err := parseBridgeEventLogs(logs, w.messengerABI)
+	sentMessageEvents, relayedMessageEvents, err := w.parseBridgeEventLogs(logs)
 	if err != nil {
 		log.Error("failed to parse emitted event log", "err", err)
 		return err
 	}
 
-	err = w.orm.SaveL2Messages(w.ctx, eventLogs)
+	// Update relayed message first to make sure we don't forget to update submited message.
+	// Since, we always start sync from the latest unprocessed message.
+	for _, msg := range relayedMessageEvents {
+		if msg.isSuccessful {
+			// succeed
+			err = w.orm.UpdateLayer1StatusAndLayer2Hash(w.ctx, msg.msgHash.String(), orm.MsgConfirmed, msg.txHash.String())
+		} else {
+			// failed
+			err = w.orm.UpdateLayer1StatusAndLayer2Hash(w.ctx, msg.msgHash.String(), orm.MsgFailed, msg.txHash.String())
+		}
+		if err != nil {
+			log.Error("Failed to update layer1 status and layer2 hash", "err", err)
+			return err
+		}
+	}
+
+	err = w.orm.SaveL2Messages(w.ctx, sentMessageEvents)
 	if err == nil {
 		w.processedMsgHeight = uint64(toBlock)
 	}
 	return err
 }
 
-func parseBridgeEventLogs(logs []types.Log, messengerABI *abi.ABI) ([]*orm.L2Message, error) {
+func (w *WatcherClient) parseBridgeEventLogs(logs []types.Log) ([]*orm.L2Message, []relayedMessage, error) {
 	// Need use contract abi to parse event Log
 	// Can only be tested after we have our contracts set up
 
-	var parsedlogs []*orm.L2Message
+	var l2Messages []*orm.L2Message
+	var relayedMessages []relayedMessage
 	for _, vLog := range logs {
-		event := struct {
-			Target       common.Address
-			Sender       common.Address
-			Value        *big.Int // uint256
-			Fee          *big.Int // uint256
-			Deadline     *big.Int // uint256
-			Message      []byte
-			MessageNonce *big.Int // uint256
-			GasLimit     *big.Int // uint256
-		}{}
+		switch vLog.Topics[0] {
+		case common.HexToHash(bridge_abi.SENT_MESSAGE_EVENT_SIGNATURE):
+			event := struct {
+				Target       common.Address
+				Sender       common.Address
+				Value        *big.Int // uint256
+				Fee          *big.Int // uint256
+				Deadline     *big.Int // uint256
+				Message      []byte
+				MessageNonce *big.Int // uint256
+				GasLimit     *big.Int // uint256
+			}{}
 
-		err := messengerABI.UnpackIntoInterface(&event, "SentMessage", vLog.Data)
-		if err != nil {
-			log.Error("failed to unpack layer2 SentMessage event", "err", err)
-			return parsedlogs, err
+			err := w.messengerABI.UnpackIntoInterface(&event, "SentMessage", vLog.Data)
+			if err != nil {
+				log.Error("failed to unpack layer2 SentMessage event", "err", err)
+				return l2Messages, relayedMessages, err
+			}
+			// target is in topics[1]
+			event.Target = common.HexToAddress(vLog.Topics[1].String())
+			l2Messages = append(l2Messages, &orm.L2Message{
+				Nonce:      event.MessageNonce.Uint64(),
+				MsgHash:    utils.ComputeMessageHash(event.Target, event.Sender, event.Value, event.Fee, event.Deadline, event.Message, event.MessageNonce).String(),
+				Height:     vLog.BlockNumber,
+				Sender:     event.Sender.String(),
+				Value:      event.Value.String(),
+				Fee:        event.Fee.String(),
+				GasLimit:   event.GasLimit.Uint64(),
+				Deadline:   event.Deadline.Uint64(),
+				Target:     event.Target.String(),
+				Calldata:   common.Bytes2Hex(event.Message),
+				Layer2Hash: vLog.TxHash.Hex(),
+			})
+		case common.HexToHash(bridge_abi.RELAYED_MESSAGE_EVENT_SIGNATURE):
+			event := struct {
+				MsgHash common.Hash
+			}{}
+			// MsgHash is in topics[1]
+			event.MsgHash = common.HexToHash(vLog.Topics[1].String())
+			relayedMessages = append(relayedMessages, relayedMessage{
+				msgHash:      event.MsgHash,
+				txHash:       vLog.TxHash,
+				isSuccessful: true,
+			})
+		case common.HexToHash(bridge_abi.FAILED_RELAYED_MESSAGE_EVENT_SIGNATURE):
+			event := struct {
+				MsgHash common.Hash
+			}{}
+			// MsgHash is in topics[1]
+			event.MsgHash = common.HexToHash(vLog.Topics[1].String())
+			relayedMessages = append(relayedMessages, relayedMessage{
+				msgHash:      event.MsgHash,
+				txHash:       vLog.TxHash,
+				isSuccessful: false,
+			})
+		default:
+			log.Error("Unknown event", "topic", vLog.Topics[0], "txHash", vLog.TxHash)
 		}
-		// target is in topics[1]
-		event.Target = common.HexToAddress(vLog.Topics[1].String())
-		parsedlogs = append(parsedlogs, &orm.L2Message{
-			Nonce:      event.MessageNonce.Uint64(),
-			Height:     vLog.BlockNumber,
-			Sender:     event.Sender.String(),
-			Value:      event.Value.String(),
-			Fee:        event.Fee.String(),
-			GasLimit:   event.GasLimit.Uint64(),
-			Deadline:   event.Deadline.Uint64(),
-			Target:     event.Target.String(),
-			Calldata:   common.Bytes2Hex(event.Message),
-			Layer2Hash: vLog.TxHash.Hex(),
-		})
 	}
 
-	return parsedlogs, nil
+	return l2Messages, relayedMessages, nil
 }

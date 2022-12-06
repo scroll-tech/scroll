@@ -1,8 +1,5 @@
 # Coordinator
 
-[![Actions Status](https://scroll-tech/coordinator/workflows/Continuous%20Integration/badge.svg)](https://scroll-tech/coordinator/actions)
-[![codecov](https://codecov.io/gh/scroll-tech/coordinator/branch/master/graph/badge.svg)](https://codecov.io/gh/scroll-tech/coordinator)
-
 This repo contains the Scroll coordinator.
 
 ## Build
@@ -12,19 +9,15 @@ make clean
 make coordinator
 ```
 
-## db operation
+## db config
 
-* init, show version, rollback, check status db
+* db settings in config
 
 ```bash
 # DB_DSN: db data source name
 export DB_DSN="postgres://admin:123456@localhost/test_db?sslmode=disable"
 # DB_DRIVER: db driver name
 export DB_DRIVER="postgres"
-
-# TEST_DB_DRIVER, TEST_DB_DSN: It is required when executing db test cases
-export TEST_DB_DRIVER="postgres"
-export TEST_DB_DSN="postgres://admin:123456@localhost/test_db?sslmode=disable" 
 ```
 
 ## Start

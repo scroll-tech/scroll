@@ -1,4 +1,4 @@
-FROM scrolltech/l2geth:prealpha-v4.1 as GethBin
+FROM scrolltech/l2geth:prealpha-v4.2 as GethBin
 
 FROM alpine:latest as pre_deploy
 
@@ -15,7 +15,7 @@ COPY /common/docker/l2geth/pre_run.sh /bin/
 COPY /contracts /contracts
 RUN sh /bin/pre_run.sh
 
-FROM scrolltech/l2geth:prealpha-v4.1
+FROM scrolltech/l2geth:prealpha-v4.2
 COPY --from=pre_deploy /geth /geth
 COPY --from=pre_deploy /contracts/deployments /deployments
 COPY /common/docker/l2geth/password password
