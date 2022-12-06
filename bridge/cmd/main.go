@@ -47,14 +47,8 @@ func main() {
 }
 
 func applyConfig(ctx *cli.Context, cfg *config.Config) {
-	if ctx.IsSet(l1ChainIDFlag.Name) {
-		cfg.L1Config.ChainID = ctx.Int64(l1ChainIDFlag.Name)
-	}
 	if ctx.IsSet(l1UrlFlag.Name) {
 		cfg.L1Config.Endpoint = ctx.String(l1UrlFlag.Name)
-	}
-	if ctx.IsSet(l2ChainIDFlag.Name) {
-		cfg.L2Config.ChainID = ctx.Int64(l2ChainIDFlag.Name)
 	}
 	if ctx.IsSet(l2UrlFlag.Name) {
 		cfg.L2Config.Endpoint = ctx.String(l2UrlFlag.Name)
