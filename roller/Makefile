@@ -14,6 +14,7 @@ libprover:
 
 roller: ## Build the Roller instance.
 	cd core/prover/rust && cargo build --release && cp target/release/libprover.a ../lib/
+	echo "----------------- $(PWD)"
 	GOBIN=$(PWD)/build/bin go build -ldflags -tags roller "-X scroll-tech/roller/core.ZK_VERSION=${ZK_VERSION}" -o $(PWD)/build/bin/roller ./cmd
 
 mock_roller:

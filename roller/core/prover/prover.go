@@ -18,6 +18,7 @@ import (
 	"github.com/scroll-tech/go-ethereum/core/types"
 
 	"scroll-tech/common/message"
+
 	"scroll-tech/roller/config"
 )
 
