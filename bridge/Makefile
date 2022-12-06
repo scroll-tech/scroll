@@ -5,12 +5,7 @@ IMAGE_VERSION=latest
 REPO_ROOT_DIR=./..
 
 mock_abi:
-	solc --bin mock_bridge/Mock_Bridge.sol -o mock_bridge/ --overwrite
-	solc --abi mock_bridge/Mock_Bridge.sol -o mock_bridge/ --overwrite
-	abigen --bin=mock_bridge/Mock_Bridge.bin \
-			--abi=mock_bridge/Mock_Bridge.abi \
-			--pkg=mock_bridge --out=mock_bridge/Mock_Bridge.go
-	awk '{sub("github.com/ethereum","github.com/scroll-tech")}1' mock_bridge/Mock_Bridge.go > temp && mv temp mock_bridge/Mock_Bridge.go
+	abigen --sol mock_bridge/Mock_Bridge.sol --pkg mock_bridge --out mock_bridge/Mock_Bridge.go
 
 bridge: ## Builds the Bridge instance.
 	go build -o $(PWD)/build/bin/bridge ./cmd
