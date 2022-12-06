@@ -69,7 +69,7 @@ func newSessionInfo(sess *session, status orm.ProvingStatus, errMsg string, fini
 	for pk := range sess.info.Rollers {
 		nameList = append(nameList, sess.info.Rollers[pk].Name)
 	}
-	info := &SessionInfo{
+	info := SessionInfo{
 		ID:              sess.info.ID,
 		Status:          status.String(),
 		AssignedRollers: nameList,
@@ -79,7 +79,7 @@ func newSessionInfo(sess *session, status orm.ProvingStatus, errMsg string, fini
 	if finished {
 		info.FinishTime = now
 	}
-	return info
+	return &info
 }
 
 // GetSessionInfo returns the session information given the session id.

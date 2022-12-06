@@ -56,10 +56,9 @@ type Manager struct {
 	mu sync.RWMutex
 	// A map containing all active proof generation sessions.
 	sessions map[string]*session
-
+	// A map containing proof failed or verify failed proof.
 	rollerPool cmap.ConcurrentMap
 
-	// A map containing proof failed or verify failed proof.
 	// TODO: once put into use, should add to graceful restart.
 	failedSessionInfos map[string]*SessionInfo
 
