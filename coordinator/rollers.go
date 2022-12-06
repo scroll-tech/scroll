@@ -11,6 +11,7 @@ import (
 	"github.com/scroll-tech/go-ethereum/log"
 
 	"scroll-tech/common/message"
+	"scroll-tech/database/orm"
 )
 
 // rollerNode records roller status and send task to connected roller.
@@ -47,12 +48,20 @@ func (r *rollerNode) sendTask(id string, traces []*types.BlockTrace) bool {
 
 func (m *Manager) register(pubkey string, identity *message.Identity) (<-chan *message.TaskMsg, error) {
 	node, ok := m.rollerPool.Get(pubkey)
+	TaskIDs := cmap.New()
+	for id, sess := range m.sessions {
+		for pk, roller := range sess.info.Rollers {
+			if pk == pubkey && roller.Status == orm.RollerAssigned {
+				TaskIDs.Set(id, struct{}{})
+			}
+		}
+	}
 	if !ok {
 		node = &rollerNode{
 			Name:      identity.Name,
 			Version:   identity.Version,
 			PublicKey: pubkey,
-			TaskIDs:   cmap.New(),
+			TaskIDs:   TaskIDs,
 			taskChan:  make(chan *message.TaskMsg, 4),
 		}
 		m.rollerPool.Set(pubkey, node)
@@ -72,7 +81,7 @@ func (m *Manager) freeRoller(pk string) {
 	m.rollerPool.Pop(pk)
 }
 
-func (m *Manager) exisTaskIDForRoller(pk string, id string) bool {
+func (m *Manager) existTaskIDForRoller(pk string, id string) bool {
 	if node, ok := m.rollerPool.Get(pk); ok {
 		r := node.(*rollerNode)
 		return r.TaskIDs.Has(id)
