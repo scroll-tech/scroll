@@ -6,13 +6,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"scroll-tech/common/utils"
 	"strings"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/log"
+
+	"scroll-tech/common/utils"
 )
 
 type blockTraceOrm struct {

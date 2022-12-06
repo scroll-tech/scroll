@@ -1,24 +1,30 @@
 package utils
 
-import "github.com/scroll-tech/go-ethereum/core/types"
+import (
+	"sync/atomic"
+
+	"github.com/scroll-tech/go-ethereum/core/types"
+	"golang.org/x/sync/errgroup"
+)
 
 // ComputeTraceGasCost computes gascost based on ExecutionResults.StructLogs.GasCost
 func ComputeTraceGasCost(trace *types.BlockTrace) uint64 {
-	var gas_cost uint64 = 0
-	finishCh := make(chan uint64)
-	for _, v := range trace.ExecutionResults {
-		go func(v *types.ExecutionResult) {
-			var sum uint64 = 0
-			for _, structV := range v.StructLogs {
-				sum += structV.GasCost
+	var (
+		gasCost uint64
+		eg      errgroup.Group
+	)
+	for idx := range trace.ExecutionResults {
+		i := idx
+		eg.Go(func() error {
+			var sum uint64
+			for _, log := range trace.ExecutionResults[i].StructLogs {
+				sum += log.GasCost
 			}
-			finishCh <- sum
-		}(v)
+			atomic.AddUint64(&gasCost, sum)
+			return nil
+		})
 	}
-	for range trace.ExecutionResults {
-		res := <-finishCh
-		gas_cost += res
-	}
+	_ = eg.Wait()
 
-	return gas_cost
+	return gasCost
 }
