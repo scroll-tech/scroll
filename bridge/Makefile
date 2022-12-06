@@ -5,7 +5,7 @@ IMAGE_VERSION=latest
 REPO_ROOT_DIR=./..
 
 mock_abi:
-	abigen --sol mock_bridge/Mock_Bridge.sol --pkg mock_bridge --out mock_bridge/Mock_Bridge.go
+	go run github.com/scroll-tech/go-ethereum/cmd/abigen --sol mock_bridge/Mock_Bridge.sol --pkg mock_bridge --out mock_bridge/Mock_Bridge.go
 
 bridge: ## Builds the Bridge instance.
 	go build -o $(PWD)/build/bin/bridge ./cmd
