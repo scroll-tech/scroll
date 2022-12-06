@@ -61,6 +61,7 @@ func TestApis(t *testing.T) {
 	t.Run("TestHandshake", testHandshake)
 	t.Run("TestSeveralConnections", testSeveralConnections)
 	t.Run("TestIdleRollerSelection", testIdleRollerSelection)
+	//t.Run("TestGracefulRestart", testGracefulRestart)
 
 	// Teardown
 	t.Cleanup(func() {
@@ -140,9 +141,10 @@ func testIdleRollerSelection(t *testing.T) {
 	batch := 20
 	stopCh := make(chan struct{})
 	for i := 0; i < batch; i++ {
-		performHandshake(t, 0, "roller_test"+strconv.Itoa(i), "ws://"+managerURL, stopCh)
+		performHandshake(t, 1, "roller_test"+strconv.Itoa(i), "ws://"+managerURL, stopCh)
 	}
 	assert.Equal(t, batch, rollerManager.GetNumberOfIdleRollers())
+	defer close(stopCh)
 
 	var ids = make([]string, 2)
 	dbTx, err := l2db.Beginx()
@@ -157,7 +159,54 @@ func testIdleRollerSelection(t *testing.T) {
 	// verify proof status
 	var (
 		tick     = time.Tick(500 * time.Millisecond)
-		tickStop = time.Tick(10 * 60 * time.Second)
+		tickStop = time.Tick(10 * time.Second)
+	)
+	for len(ids) > 0 {
+		select {
+		case <-tick:
+			status, err := l2db.GetProvingStatusByID(ids[0])
+			if err == nil && status == orm.ProvingTaskVerified {
+				ids = ids[1:]
+			}
+		case <-tickStop:
+			t.Error("failed to check proof status")
+			return
+		}
+	}
+}
+
+func testGracefulRestart(t *testing.T) {
+	// Create db handler and reset db.
+	l2db, err := database.NewOrmFactory(cfg.DBConfig)
+	assert.NoError(t, err)
+	assert.NoError(t, migrate.ResetDB(l2db.GetDB().DB))
+	defer l2db.Close()
+
+	var ids = make([]string, 2)
+	dbTx, err := l2db.Beginx()
+	assert.NoError(t, err)
+	for i := range ids {
+		ID, err := l2db.NewBatchInDBTx(dbTx, &orm.BlockInfo{Number: uint64(i)}, &orm.BlockInfo{Number: uint64(i)}, "0f", 1, 194676)
+		assert.NoError(t, err)
+		ids[i] = ID
+	}
+	assert.NoError(t, dbTx.Commit())
+
+	// create ws connections.
+	batch := 2
+	stopCh := make(chan struct{})
+	for i := 0; i < batch; i++ {
+		performHandshake(t, 3, "roller_test"+strconv.Itoa(i), "ws://"+managerURL, stopCh)
+	}
+	assert.Equal(t, batch, rollerManager.GetNumberOfIdleRollers())
+
+	rollerManager.Stop()
+	rollerManager = setupRollerManager(t, "", cfg.DBConfig)
+
+	// verify proof status
+	var (
+		tick     = time.Tick(500 * time.Millisecond)
+		tickStop = time.Tick(10 * time.Second)
 	)
 	for len(ids) > 0 {
 		select {
@@ -238,10 +287,11 @@ func performHandshake(t *testing.T, proofTime time.Duration, name string, wsURL 
 				}
 				assert.NoError(t, proof.Sign(privkey))
 				ok, err := client.SubmitProof(context.Background(), proof)
-				if err != nil {
-					t.Error(err)
-				}
+				assert.NoError(t, err)
 				assert.Equal(t, true, ok)
+			case err := <-sub.Err():
+				sub, err = client.RegisterAndSubscribe(ctx, taskCh, authMsg)
+				assert.NoError(t, err)
 			case <-stopCh:
 				sub.Unsubscribe()
 				return

@@ -397,8 +397,8 @@ func (m *Manager) StartProofGenerationSession(task *orm.BlockBatch) bool {
 	log.Info("roller is picked", "name", roller.Name, "public_key", roller.PublicKey)
 	// send trace to roller
 	roller.sendTask(task.ID, traces)
-	pk := roller.PublicKey
 
+	pk := roller.PublicKey
 	sessionInfo := &orm.SessionInfo{
 		ID: task.ID,
 		Rollers: map[string]*orm.RollerStatus{
