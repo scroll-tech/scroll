@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/scroll-tech/go-ethereum/crypto"
+	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/sync/errgroup"
 
@@ -58,10 +59,10 @@ func TestApis(t *testing.T) {
 	// Set up the test environment.
 	assert.True(t, assert.NoError(t, setEnv(t)), "failed to setup the test environment.")
 
-	t.Run("TestHandshake", testHandshake)
-	t.Run("TestSeveralConnections", testSeveralConnections)
-	t.Run("TestIdleRollerSelection", testIdleRollerSelection)
-	//t.Run("TestGracefulRestart", testGracefulRestart)
+	//t.Run("TestHandshake", testHandshake)
+	//t.Run("TestSeveralConnections", testSeveralConnections)
+	//t.Run("TestIdleRollerSelection", testIdleRollerSelection)
+	t.Run("TestGracefulRestart", testGracefulRestart)
 
 	// Teardown
 	t.Cleanup(func() {
@@ -196,17 +197,23 @@ func testGracefulRestart(t *testing.T) {
 	batch := 2
 	stopCh := make(chan struct{})
 	for i := 0; i < batch; i++ {
-		performHandshake(t, 3, "roller_test"+strconv.Itoa(i), "ws://"+managerURL, stopCh)
+		performHandshake(t, 5, "roller_test"+strconv.Itoa(i), "ws://"+managerURL, stopCh)
 	}
 	assert.Equal(t, batch, rollerManager.GetNumberOfIdleRollers())
 
+	<-time.After(3 * time.Second)
+
 	rollerManager.Stop()
+	log.Info("rollerManager.Stop()")
+
 	rollerManager = setupRollerManager(t, "", cfg.DBConfig)
+	//l2db, err = database.NewOrmFactory(cfg.DBConfig)
+	//assert.NoError(t, err)
 
 	// verify proof status
 	var (
 		tick     = time.Tick(500 * time.Millisecond)
-		tickStop = time.Tick(10 * time.Second)
+		tickStop = time.Tick(2000 * time.Second)
 	)
 	for len(ids) > 0 {
 		select {
@@ -215,6 +222,7 @@ func testGracefulRestart(t *testing.T) {
 			if err == nil && status == orm.ProvingTaskVerified {
 				ids = ids[1:]
 			}
+			log.Info("error", "erorr", err)
 		case <-tickStop:
 			t.Error("failed to check proof status")
 			close(stopCh)
@@ -227,8 +235,6 @@ func setupRollerManager(t *testing.T, verifierEndpoint string, dbCfg *database.D
 	// Get db handler.
 	db, err := database.NewOrmFactory(dbCfg)
 	assert.True(t, assert.NoError(t, err), "failed to get db handler.")
-	// Reset db.
-	assert.NoError(t, migrate.ResetDB(db.GetDB().DB), "failed to reset db.")
 
 	rollerManager, err := coordinator.New(context.Background(), &coordinator_config.RollerManagerConfig{
 		RollersPerSession: 1,
@@ -274,10 +280,11 @@ func performHandshake(t *testing.T, proofTime time.Duration, name string, wsURL 
 			select {
 			case task := <-taskCh:
 				id := task.ID
+				log.Info("roller get task", "task.ID", task.ID)
+				log.Info("roller get task", "task.ID", task.ID)
+				log.Info("roller get task", "task.ID", task.ID)
 				// sleep several seconds to mock the proof process.
-				if proofTime > 0 {
-					<-time.After(proofTime * time.Second)
-				}
+				<-time.After(proofTime * time.Second)
 				proof := &message.ProofMsg{
 					ProofDetail: &message.ProofDetail{
 						ID:     id,
@@ -290,8 +297,19 @@ func performHandshake(t *testing.T, proofTime time.Duration, name string, wsURL 
 				assert.NoError(t, err)
 				assert.Equal(t, true, ok)
 			case err := <-sub.Err():
-				sub, err = client.RegisterAndSubscribe(ctx, taskCh, authMsg)
-				assert.NoError(t, err)
+				sub.Unsubscribe()
+				log.Error("Subscribe task with scroll failed", "error", err)
+				for {
+					log.Info("retry to connect to coordinator...")
+					sub, err = client.RegisterAndSubscribe(ctx, taskCh, authMsg)
+					if err != nil {
+						log.Error("register to coordinator failed", "error", err)
+						time.Sleep(3)
+					} else {
+						log.Info("re-register to coordinator successfully!")
+						break
+					}
+				}
 			case <-stopCh:
 				sub.Unsubscribe()
 				return

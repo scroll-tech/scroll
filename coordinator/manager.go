@@ -68,6 +68,8 @@ type Manager struct {
 
 	// db interface
 	orm database.OrmFactory
+
+	stopCh chan struct{}
 }
 
 // New returns a new instance of Manager. The instance will be not fully prepared,
@@ -92,17 +94,34 @@ func New(ctx context.Context, cfg *config.RollerManagerConfig, orm database.OrmF
 		failedSessionInfos: make(map[string]*SessionInfo),
 		verifier:           v,
 		orm:                orm,
+		stopCh:             make(chan struct{}),
 	}, nil
 }
 
 // Start the Manager module.
 func (m *Manager) Start() error {
+	log.Info("before check isRunning Coordinator start")
+	log.Info("before check isRunning Coordinator start")
+	log.Info("before check isRunning Coordinator start")
+	log.Info("before check isRunning Coordinator start")
+	log.Info("before check isRunning Coordinator start")
+
 	if m.isRunning() {
 		return nil
 	}
 
+	log.Info("Coordinator start")
+	log.Info("Coordinator start")
+	log.Info("Coordinator start")
+	log.Info("Coordinator start")
+	log.Info("Coordinator start")
+
+	for id, sess := range m.sessions {
+		log.Info("existing sessions", "id", id, "sess", sess)
+	}
+
 	// m.orm may be nil in scroll tests
-	if m.orm != nil {
+	if m.orm == nil {
 		if ids, err := m.orm.GetAssignedBatchIDs(); err != nil {
 			log.Error("failed to get assigned batch ids from db", "error", err)
 		} else if persistedSessions, err := m.orm.GetSessionInfosByIDs(ids); err != nil {
@@ -115,6 +134,7 @@ func (m *Manager) Start() error {
 				}
 				// no lock is required now
 				m.sessions[sess.info.ID] = sess
+				log.Info("load sessions", "sess.info.ID", sess.info.ID, "sess", sess)
 				go m.CollectProofs(sess.info.ID, sess)
 			}
 		}
@@ -131,6 +151,8 @@ func (m *Manager) Stop() {
 	if !m.isRunning() {
 		return
 	}
+
+	close(m.stopCh)
 
 	atomic.StoreInt32(&m.running, 0)
 }
