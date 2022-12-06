@@ -32,9 +32,9 @@ type Config struct {
 
 // VerifierConfig load zk verifier config.
 type VerifierConfig struct {
-	MockMode   bool   `toml:"mock_mode"`
-	ParamsPath string `toml:"params_path"`
-	AggVkPath  string `toml:"agg_vk_path"`
+	MockMode   bool   `json:"mock_mode"`
+	ParamsPath string `json:"params_path"`
+	AggVkPath  string `json:"agg_vk_path"`
 }
 
 // NewConfig returns a new instance of Config.
