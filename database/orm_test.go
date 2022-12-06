@@ -252,6 +252,11 @@ func testOrmBlockbatch(t *testing.T) {
 
 	dbTx, err := factory.Beginx()
 	assert.NoError(t, err)
+
+	numberOfActiveBatches, err := ormBatch.GetNumberOfActiveBatches()
+	assert.NoError(t, err)
+	assert.Equal(t, numberOfActiveBatches, int64(0))
+
 	batchID1, err := ormBatch.NewBatchInDBTx(dbTx,
 		&orm.BlockInfo{Number: blockTrace.Header.Number.Uint64()},
 		&orm.BlockInfo{Number: blockTrace.Header.Number.Uint64() + 1},
@@ -291,6 +296,10 @@ func testOrmBlockbatch(t *testing.T) {
 	assert.Equal(t, int(1), len(batcheIDs))
 	assert.Equal(t, batchID2, batcheIDs[0])
 
+	numberOfActiveBatches, err = ormBatch.GetNumberOfActiveBatches()
+	assert.NoError(t, err)
+	assert.Equal(t, numberOfActiveBatches, int64(2))
+
 	proving_status, err := ormBatch.GetProvingStatusByID(batchID1)
 	assert.NoError(t, err)
 	assert.Equal(t, orm.ProvingTaskUnassigned, proving_status)
@@ -301,6 +310,10 @@ func testOrmBlockbatch(t *testing.T) {
 	proving_status, err = ormBatch.GetProvingStatusByID(batchID1)
 	assert.NoError(t, err)
 	assert.Equal(t, orm.ProvingTaskVerified, proving_status)
+
+	numberOfActiveBatches, err = ormBatch.GetNumberOfActiveBatches()
+	assert.NoError(t, err)
+	assert.Equal(t, numberOfActiveBatches, int64(1))
 
 	rollup_status, err := ormBatch.GetRollupStatus(batchID1)
 	assert.NoError(t, err)

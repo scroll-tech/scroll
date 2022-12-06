@@ -363,3 +363,13 @@ func (o *blockBatchOrm) UpdateFinalizeTxHashAndRollupStatus(ctx context.Context,
 		return err
 	}
 }
+
+func (o *blockBatchOrm) GetNumberOfActiveBatches() (int64, error) {
+	row := o.db.QueryRow(o.db.Rebind("SELECT COUNT(*) FROM block_batch WHERE proving_status NOT IN (?,?,?,?);"), ProvingTaskSkipped, ProvingTaskProved, ProvingTaskVerified, ProvingTaskFailed)
+
+	var number int64
+	if err := row.Scan(&number); err != nil {
+		return 0, err
+	}
+	return number, nil
+}
