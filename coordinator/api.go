@@ -4,8 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"time"
 
+	"github.com/patrickmn/go-cache"
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/scroll-tech/go-ethereum/rpc"
 
@@ -28,14 +28,14 @@ func (m *Manager) RequestToken(authMsg *message.AuthMsg) (string, error) {
 		return "", errors.New("signature verification failed")
 	}
 	pubkey, _ := authMsg.PublicKey()
-	if m.timedmap.Contains(pubkey) {
-		return "", errors.New("token for this roller already exists")
+	if token, ok := m.tokenCache.Get(pubkey); ok {
+		return token.(string), nil
 	}
 	token, err := message.GenerateToken()
 	if err != nil {
 		return "", errors.New("token generation failed")
 	}
-	m.timedmap.Set(pubkey, token, time.Duration(m.cfg.TokenTimeToLive)*time.Second)
+	m.tokenCache.Set(pubkey, token, cache.DefaultExpiration)
 	return token, nil
 }
 
@@ -50,11 +50,14 @@ func (m *Manager) Register(ctx context.Context, authMsg *message.AuthMsg) (*rpc.
 	}
 	pubkey, _ := authMsg.PublicKey()
 
+	m.mu.Lock()
 	if ok, err := m.VerifyToken(*authMsg); !ok {
+		m.mu.Unlock()
 		return nil, err
 	}
 	// roller successfully registered, remove token associated with this roller
-	m.timedmap.Remove(pubkey)
+	m.tokenCache.Delete(pubkey)
+	m.mu.Unlock()
 
 	// create or get the roller message channel
 	taskCh, err := m.register(pubkey, authMsg.Identity)

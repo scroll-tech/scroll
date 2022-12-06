@@ -2,7 +2,6 @@ package coordinator_test
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"strconv"
 	"testing"
@@ -118,8 +117,7 @@ func testFailedHandshake(t *testing.T) {
 	}
 	assert.NoError(t, authMsg.Sign(privkey))
 	taskCh := make(chan *message.TaskMsg, 4)
-	sub, err := client.RegisterAndSubscribe(ctx, taskCh, authMsg)
-	fmt.Println(sub)
+	_, err = client.RegisterAndSubscribe(ctx, taskCh, authMsg)
 	assert.Error(t, err)
 
 	// Try to perform handshake with timeouted token

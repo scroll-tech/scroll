@@ -10,9 +10,9 @@ import (
 	"time"
 
 	cmap "github.com/orcaman/concurrent-map"
+	"github.com/patrickmn/go-cache"
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/scroll-tech/go-ethereum/rpc"
-	"github.com/zekroTJA/timedmap"
 
 	"scroll-tech/common/message"
 	"scroll-tech/database"
@@ -86,7 +86,7 @@ type Manager struct {
 	orm database.OrmFactory
 
 	// Token cache
-	timedmap *timedmap.TimedMap
+	tokenCache *cache.Cache
 }
 
 // New returns a new instance of Manager. The instance will be not fully prepared,
@@ -111,7 +111,7 @@ func New(ctx context.Context, cfg *config.RollerManagerConfig, orm database.OrmF
 		failedSessionInfos: make(map[string]*SessionInfo),
 		verifier:           v,
 		orm:                orm,
-		timedmap:           timedmap.New(1 * time.Hour),
+		tokenCache:         cache.New(time.Duration(cfg.TokenTimeToLive)*time.Second, 1*time.Hour),
 	}, nil
 }
 
@@ -455,7 +455,7 @@ func (m *Manager) addFailedSession(s *session, errMsg string) {
 func (m *Manager) VerifyToken(authMsg message.AuthMsg) (bool, error) {
 	pubkey, _ := authMsg.PublicKey()
 	// GetValue returns nil if value is expired
-	if m.timedmap.GetValue(pubkey) != authMsg.Identity.Token {
+	if token, ok := m.tokenCache.Get(pubkey); !ok || token != authMsg.Identity.Token {
 		return false, errors.New("failed to find corresponding token")
 	}
 	return true, nil
