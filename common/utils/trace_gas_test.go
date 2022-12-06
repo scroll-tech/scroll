@@ -19,7 +19,7 @@ func TestComputetTraceCost(t *testing.T) {
 	blockTrace := &types.BlockTrace{}
 	err = json.Unmarshal(templateBlockTrace, blockTrace)
 	assert.NoError(t, err)
-	var sum uint64 = 0
+	var sum uint64
 	for _, v := range blockTrace.ExecutionResults {
 		for _, sv := range v.StructLogs {
 			sum += sv.GasCost
