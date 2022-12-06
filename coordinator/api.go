@@ -53,8 +53,6 @@ func (m *Manager) Register(ctx context.Context, authMsg *message.AuthMsg) (*rpc.
 				return
 			case <-notifier.Closed():
 				return
-			case <-m.stopCh:
-				return
 			}
 		}
 	}()

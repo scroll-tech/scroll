@@ -15,6 +15,7 @@ import (
 	"scroll-tech/common/docker"
 	"scroll-tech/common/message"
 	"scroll-tech/common/utils"
+
 	"scroll-tech/database"
 	"scroll-tech/database/migrate"
 	"scroll-tech/database/orm"
@@ -59,9 +60,9 @@ func TestApis(t *testing.T) {
 	// Set up the test environment.
 	assert.True(t, assert.NoError(t, setEnv(t)), "failed to setup the test environment.")
 
-	//t.Run("TestHandshake", testHandshake)
-	//t.Run("TestSeveralConnections", testSeveralConnections)
-	//t.Run("TestIdleRollerSelection", testIdleRollerSelection)
+	t.Run("TestHandshake", testHandshake)
+	t.Run("TestSeveralConnections", testSeveralConnections)
+	t.Run("TestIdleRollerSelection", testIdleRollerSelection)
 	t.Run("TestGracefulRestart", testGracefulRestart)
 
 	// Teardown
@@ -80,7 +81,7 @@ func testHandshake(t *testing.T) {
 	defer l2db.Close()
 
 	stopCh := make(chan struct{})
-	performHandshake(t, 1, "roller_test", "ws://"+managerURL, stopCh)
+	performHandshake(t, 1, "roller_test", stopCh)
 
 	assert.Equal(t, 1, rollerManager.GetNumberOfIdleRollers())
 
@@ -102,7 +103,7 @@ func testSeveralConnections(t *testing.T) {
 	for i := 0; i < batch; i++ {
 		idx := i
 		eg.Go(func() error {
-			performHandshake(t, 1, "roller_test"+strconv.Itoa(idx), "ws://"+managerURL, stopCh)
+			performHandshake(t, 1, "roller_test"+strconv.Itoa(idx), stopCh)
 			return nil
 		})
 	}
@@ -142,7 +143,7 @@ func testIdleRollerSelection(t *testing.T) {
 	batch := 20
 	stopCh := make(chan struct{})
 	for i := 0; i < batch; i++ {
-		performHandshake(t, 1, "roller_test"+strconv.Itoa(i), "ws://"+managerURL, stopCh)
+		performHandshake(t, 1, "roller_test"+strconv.Itoa(i), stopCh)
 	}
 	assert.Equal(t, batch, rollerManager.GetNumberOfIdleRollers())
 	defer close(stopCh)
@@ -197,7 +198,7 @@ func testGracefulRestart(t *testing.T) {
 	batch := 2
 	stopCh := make(chan struct{})
 	for i := 0; i < batch; i++ {
-		performHandshake(t, 5, "roller_test"+strconv.Itoa(i), "ws://"+managerURL, stopCh)
+		performHandshake(t, 5, "roller_test"+strconv.Itoa(i), stopCh)
 	}
 	assert.Equal(t, batch, rollerManager.GetNumberOfIdleRollers())
 
@@ -207,8 +208,6 @@ func testGracefulRestart(t *testing.T) {
 	log.Info("rollerManager.Stop()")
 
 	rollerManager = setupRollerManager(t, "", cfg.DBConfig)
-	//l2db, err = database.NewOrmFactory(cfg.DBConfig)
-	//assert.NoError(t, err)
 
 	// verify proof status
 	var (
@@ -248,12 +247,12 @@ func setupRollerManager(t *testing.T, verifierEndpoint string, dbCfg *database.D
 }
 
 // performHandshake sets up a websocket client to connect to the roller manager.
-func performHandshake(t *testing.T, proofTime time.Duration, name string, wsURL string, stopCh chan struct{}) {
+func performHandshake(t *testing.T, proofTime time.Duration, name string, stopCh chan struct{}) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	// create a new ws connection
-	client, err := client2.DialContext(ctx, wsURL)
+	client, err := client2.DialContext(ctx, "ws://"+managerURL)
 	assert.NoError(t, err)
 
 	// create private key
@@ -280,9 +279,6 @@ func performHandshake(t *testing.T, proofTime time.Duration, name string, wsURL 
 			select {
 			case task := <-taskCh:
 				id := task.ID
-				log.Info("roller get task", "task.ID", task.ID)
-				log.Info("roller get task", "task.ID", task.ID)
-				log.Info("roller get task", "task.ID", task.ID)
 				// sleep several seconds to mock the proof process.
 				<-time.After(proofTime * time.Second)
 				proof := &message.ProofMsg{
@@ -304,7 +300,7 @@ func performHandshake(t *testing.T, proofTime time.Duration, name string, wsURL 
 					sub, err = client.RegisterAndSubscribe(ctx, taskCh, authMsg)
 					if err != nil {
 						log.Error("register to coordinator failed", "error", err)
-						time.Sleep(3)
+						<-time.After(3 * time.Second)
 					} else {
 						log.Info("re-register to coordinator successfully!")
 						break

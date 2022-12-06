@@ -13,6 +13,7 @@ import (
 	"github.com/scroll-tech/go-ethereum/rpc"
 
 	"scroll-tech/common/message"
+
 	"scroll-tech/database"
 	"scroll-tech/database/orm"
 
@@ -68,8 +69,6 @@ type Manager struct {
 
 	// db interface
 	orm database.OrmFactory
-
-	stopCh chan struct{}
 }
 
 // New returns a new instance of Manager. The instance will be not fully prepared,
@@ -94,30 +93,13 @@ func New(ctx context.Context, cfg *config.RollerManagerConfig, orm database.OrmF
 		failedSessionInfos: make(map[string]*SessionInfo),
 		verifier:           v,
 		orm:                orm,
-		stopCh:             make(chan struct{}),
 	}, nil
 }
 
 // Start the Manager module.
 func (m *Manager) Start() error {
-	log.Info("before check isRunning Coordinator start")
-	log.Info("before check isRunning Coordinator start")
-	log.Info("before check isRunning Coordinator start")
-	log.Info("before check isRunning Coordinator start")
-	log.Info("before check isRunning Coordinator start")
-
 	if m.isRunning() {
 		return nil
-	}
-
-	log.Info("Coordinator start")
-	log.Info("Coordinator start")
-	log.Info("Coordinator start")
-	log.Info("Coordinator start")
-	log.Info("Coordinator start")
-
-	for id, sess := range m.sessions {
-		log.Info("existing sessions", "id", id, "sess", sess)
 	}
 
 	// m.orm may be nil in scroll tests
@@ -151,8 +133,6 @@ func (m *Manager) Stop() {
 	if !m.isRunning() {
 		return
 	}
-
-	close(m.stopCh)
 
 	atomic.StoreInt32(&m.running, 0)
 }

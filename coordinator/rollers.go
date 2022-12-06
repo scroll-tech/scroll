@@ -11,6 +11,7 @@ import (
 	"github.com/scroll-tech/go-ethereum/log"
 
 	"scroll-tech/common/message"
+
 	"scroll-tech/database/orm"
 )
 
