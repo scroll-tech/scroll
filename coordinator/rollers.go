@@ -69,7 +69,7 @@ func (m *Manager) register(pubkey string, identity *message.Identity) (<-chan *m
 			Name:      identity.Name,
 			Version:   identity.Version,
 			PublicKey: pubkey,
-			TaskIDs:   *TaskIDs,
+			TaskIDs:   *taskIDs,
 			taskChan:  make(chan *message.TaskMsg, 4),
 		}
 		m.rollerPool.Set(pubkey, node)
