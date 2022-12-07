@@ -81,11 +81,10 @@ func testHandshake(t *testing.T) {
 	defer l2db.Close()
 
 	stopCh := make(chan struct{})
+	defer close(stopCh)
 	performHandshake(t, 1, false, "roller_test", stopCh)
 
 	assert.Equal(t, 1, rollerManager.GetNumberOfIdleRollers())
-
-	close(stopCh)
 }
 
 func testSeveralConnections(t *testing.T) {
@@ -142,11 +141,11 @@ func testIdleRollerSelection(t *testing.T) {
 	// create ws connections.
 	batch := 20
 	stopCh := make(chan struct{})
+	defer close(stopCh)
 	for i := 0; i < batch; i++ {
 		performHandshake(t, 1, false, "roller_test"+strconv.Itoa(i), stopCh)
 	}
 	assert.Equal(t, batch, rollerManager.GetNumberOfIdleRollers())
-	defer close(stopCh)
 
 	var ids = make([]string, 2)
 	dbTx, err := l2db.Beginx()
@@ -198,10 +197,10 @@ func testRollerReconnect(t *testing.T) {
 	// create ws connections.
 	batch := 2
 	stopCh := make(chan struct{})
+	defer close(stopCh)
 	for i := 0; i < batch; i++ {
 		performHandshake(t, 5, true, "roller_test"+strconv.Itoa(i), stopCh)
 	}
-	defer close(stopCh)
 
 	// verify proof status
 	var (
@@ -243,10 +242,10 @@ func testGracefulRestart(t *testing.T) {
 	// create ws connections.
 	batch := 2
 	stopCh := make(chan struct{})
+	defer close(stopCh)
 	for i := 0; i < batch; i++ {
 		performHandshake(t, 5, true, "roller_test"+strconv.Itoa(i), stopCh)
 	}
-	defer close(stopCh)
 
 	// wait for task dispatch
 	<-time.After(3 * time.Second)
