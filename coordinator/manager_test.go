@@ -170,7 +170,8 @@ func testIdleRollerSelection(t *testing.T) {
 		select {
 		case <-tick:
 			status, err := l2db.GetProvingStatusByID(ids[0])
-			if err == nil && status == orm.ProvingTaskVerified {
+			assert.NoError(t, err)
+			if status == orm.ProvingTaskVerified {
 				ids = ids[1:]
 			}
 		case <-tickStop:
@@ -208,6 +209,7 @@ func testGracefulRestart(t *testing.T) {
 	// dispatch tasks
 	<-time.After(3 * time.Second)
 
+	handle.Shutdown(context.Background())
 	svr.Stop()
 	rollerManager.Stop()
 
@@ -225,10 +227,10 @@ func testGracefulRestart(t *testing.T) {
 		select {
 		case <-tick:
 			status, err := l2db.GetProvingStatusByID(ids[0])
-			if err == nil && status == orm.ProvingTaskVerified {
+			assert.NoError(t, err)
+			if status == orm.ProvingTaskVerified {
 				ids = ids[1:]
 			}
-			log.Info("error", "erorr", err)
 		case <-tickStop:
 			t.Error("failed to check proof status")
 			close(stopCh)
