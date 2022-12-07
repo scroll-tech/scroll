@@ -14,7 +14,6 @@ const (
 	batchTimeSec      = uint64(5 * 60) // 5min
 	batchGasThreshold = uint64(3_000_000)
 	batchBlocksLimit  = uint64(100)
-	maxActiveBatches  = int64(20)
 )
 
 // TODO:
@@ -24,14 +23,6 @@ const (
 func (w *WatcherClient) tryProposeBatch() error {
 	w.bpMutex.Lock()
 	defer w.bpMutex.Unlock()
-	numberOfActiveBatches, err := w.orm.GetNumberOfActiveBatches()
-	if err != nil {
-		return err
-	}
-	if numberOfActiveBatches > maxActiveBatches {
-		// consider sending error here or not
-		return nil
-	}
 
 	blocks, err := w.orm.GetUnbatchedBlocks(
 		map[string]interface{}{},

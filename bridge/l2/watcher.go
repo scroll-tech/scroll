@@ -125,11 +125,23 @@ func (w *WatcherClient) Stop() {
 
 const blockTracesFetchLimit = uint64(10)
 
+// maxActiveBatches is used to limit and pause fetching new block traces and proposing batches
+const maxActiveBatches = int64(20)
+
 // try fetch missing blocks if inconsistent
 func (w *WatcherClient) tryFetchRunningMissingBlocks(ctx context.Context, backTrackFrom uint64) error {
 	// Get newest block in DB. must have blocks at that time.
 	// Don't use "block_trace" table "trace" column's BlockTrace.Number,
 	// because it might be empty if the corresponding rollup_result is finalized/finalization_skipped
+	numberOfActiveBatches, err := w.orm.GetNumberOfActiveBatches()
+	if err != nil {
+		return err
+	}
+	if numberOfActiveBatches > maxActiveBatches {
+		// consider sending error here or not
+		return nil
+	}
+
 	heightInDB, err := w.orm.GetBlockTracesLatestHeight()
 	if err != nil {
 		return fmt.Errorf("failed to GetBlockTraces in DB: %v", err)
