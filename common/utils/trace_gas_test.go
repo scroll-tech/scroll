@@ -11,8 +11,8 @@ import (
 	"scroll-tech/common/utils"
 )
 
-// TestComputetTraceCost test ComputeTraceGasCost function
-func TestComputetTraceCost(t *testing.T) {
+// TestComputeTraceCost test ComputeTraceGasCost function
+func TestComputeTraceCost(t *testing.T) {
 	templateBlockTrace, err := os.ReadFile("../testdata/blockTrace_03.json")
 	assert.NoError(t, err)
 	// unmarshal blockTrace
