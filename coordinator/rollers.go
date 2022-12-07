@@ -63,8 +63,8 @@ func (m *Manager) reloadRollerAssignedTasks(pubkey string) *cmap.ConcurrentMap {
 
 func (m *Manager) register(pubkey string, identity *message.Identity) (<-chan *message.TaskMsg, error) {
 	node, ok := m.rollerPool.Get(pubkey)
-	TaskIDs := m.reloadRollerAssignedTasks(pubkey)
 	if !ok {
+		TaskIDs := m.reloadRollerAssignedTasks(pubkey)
 		node = &rollerNode{
 			Name:      identity.Name,
 			Version:   identity.Version,
