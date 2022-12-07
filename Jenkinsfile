@@ -82,20 +82,28 @@ pipeline {
             steps {
                sh "docker ps -aq | xargs -r docker stop"
                sh "docker container prune -f"
+               sh "go install github.com/axw/gocov/gocov@latest"
+               sh "go install github.com/AlekSi/gocov-xml@latest"
                catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
                     sh '''
-                        go test -v -race -coverprofile=coverage.txt -covermode=atomic -p 1 scroll-tech/database/...
-                        go test -v -race -coverprofile=coverage.txt -covermode=atomic -p 1 scroll-tech/bridge/...
-                        go test -v -race -coverprofile=coverage.txt -covermode=atomic -p 1 scroll-tech/common/...
-                        go test -v -race -coverprofile=coverage.txt -covermode=atomic -p 1 scroll-tech/coordinator/...
+                        gocov -v -race -covermode=atomic -p 1 scroll-tech/database/... > coverage.db.json
+                        gocov -v -race -covermode=atomic -p 1 scroll-tech/bridge/... > coverage.bridge.json
+                        gocov -v -race -covermode=atomic -p 1 scroll-tech/common/... > coverage.common.json
+                        gocov -v -race -covermode=atomic -p 1 scroll-tech/coordinator/... > coverage.coordinator.json
+                        jq -n '{ Packages: [ inputs.Packages ] | add }' coverage.bridge.json coverage.db.json coverage.coordinator.json coverage.common.json | gocov-xml > coverage.xml
                         cd ..
                     '''
-                    script {
-                        for (i in ['bridge', 'coordinator', 'database']) {
-                            sh "cd $i && go test -v -race -coverprofile=coverage.txt -covermode=atomic \$(go list ./... | grep -v 'database\\|l2\\|l1\\|common\\|coordinator')"
-                        }
-                    }
+                    script { test_result = true }
                }
+            }
+        }
+        stage("PR Coverage to Github") {
+            when { allOf {not { branch 'staging' }; expression { return env.CHANGE_ID != null }} }
+            steps {
+                script {
+                    currentBuild.result = 'SUCCESS'
+                 }
+                step([$class: 'CompareCoverageAction', publishResultAs: 'statusCheck', scmVars: [GIT_URL: env.GIT_URL]])
             }
         }
     }
