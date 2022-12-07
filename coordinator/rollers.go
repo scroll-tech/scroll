@@ -58,7 +58,7 @@ func (m *Manager) reloadRollerAssignedTasks(pubkey string) *cmap.ConcurrentMap {
 			}
 		}
 	}
-	return &TaskIDs
+	return &taskIDs
 }
 
 func (m *Manager) register(pubkey string, identity *message.Identity) (<-chan *message.TaskMsg, error) {
