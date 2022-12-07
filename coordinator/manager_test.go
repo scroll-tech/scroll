@@ -2,6 +2,7 @@ package coordinator_test
 
 import (
 	"context"
+	"net"
 	"net/http"
 	"strconv"
 	"testing"
@@ -9,6 +10,7 @@ import (
 
 	"github.com/scroll-tech/go-ethereum/crypto"
 	"github.com/scroll-tech/go-ethereum/log"
+	gethrpc "github.com/scroll-tech/go-ethereum/rpc"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/sync/errgroup"
 
@@ -35,6 +37,7 @@ var (
 	dbImg         docker.ImgInstance
 	rollerManager *coordinator.Manager
 	handle        *http.Server
+	svr           *gethrpc.Server
 )
 
 func setEnv(t *testing.T) error {
@@ -51,7 +54,7 @@ func setEnv(t *testing.T) error {
 	rollerManager = setupRollerManager(t, "", cfg.DBConfig)
 
 	// start ws service
-	handle, _, err = utils.StartWSEndpoint(managerURL, rollerManager.APIs())
+	handle, svr, _, err = startWSEndpoint(managerURL, rollerManager.APIs())
 	assert.NoError(t, err)
 	return err
 }
@@ -205,7 +208,7 @@ func testGracefulRestart(t *testing.T) {
 	// dispatch tasks
 	<-time.After(3 * time.Second)
 
-	handle.Shutdown(context.Background())
+	svr.Stop()
 	rollerManager.Stop()
 
 	// wait for shutdown
@@ -316,4 +319,14 @@ func performHandshake(t *testing.T, proofTime time.Duration, name string, stopCh
 			}
 		}
 	}()
+}
+
+func startWSEndpoint(endpoint string, apis []gethrpc.API) (*http.Server, *gethrpc.Server, net.Addr, error) {
+	handler, addr, err := utils.StartHTTPEndpoint(endpoint, apis)
+	var srv *gethrpc.Server
+	if err == nil {
+		srv = (handler.Handler).(*gethrpc.Server)
+		handler.Handler = srv.WebsocketHandler(nil)
+	}
+	return handler, srv, addr, err
 }
