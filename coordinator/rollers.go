@@ -54,7 +54,7 @@ func (m *Manager) reloadRollerAssignedTasks(pubkey string) *cmap.ConcurrentMap {
 	for id, sess := range m.sessions {
 		for pk, roller := range sess.info.Rollers {
 			if pk == pubkey && roller.Status == orm.RollerAssigned {
-				TaskIDs.Set(id, struct{}{})
+				taskIDs.Set(id, struct{}{})
 			}
 		}
 	}
