@@ -8,6 +8,7 @@ pipeline {
     }
     tools {
         go 'go-1.18'
+        nodejs "nodejs"
     }
     environment {
         GO111MODULE = 'on'
@@ -82,28 +83,28 @@ pipeline {
             steps {
                sh "docker ps -aq | xargs -r docker stop"
                sh "docker container prune -f"
-               sh "go install github.com/axw/gocov/gocov@latest"
-               sh "go install github.com/AlekSi/gocov-xml@latest"
                catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
-                    sh '''
-                        gocov -v -race -covermode=atomic -p 1 scroll-tech/database/... > coverage.db.json
-                        gocov -v -race -covermode=atomic -p 1 scroll-tech/bridge/... > coverage.bridge.json
-                        gocov -v -race -covermode=atomic -p 1 scroll-tech/common/... > coverage.common.json
-                        gocov -v -race -covermode=atomic -p 1 scroll-tech/coordinator/... > coverage.coordinator.json
-                        jq -n '{ Packages: [ inputs.Packages ] | add }' coverage.bridge.json coverage.db.json coverage.coordinator.json coverage.common.json | gocov-xml > coverage.xml
-                        cd ..
+                    sh '''#!/bin/bash
+                        cd /var/lib/jenkins/workspace/scroll/
+                        export GOPATH=${GOROOT}/bin
+                        # go install golang.org/x/tools/cmd/cover
+                        go install github.com/boumenot/gocover-cobertura@latest
+                        go test -v -race -coverprofile=coverage.db.txt -covermode=atomic -p 1 scroll-tech/database/...
+                        go test -v -race -coverprofile=coverage.bridge.txt -covermode=atomic -p 1 scroll-tech/bridge/...
+                        go test -v -race -coverprofile=coverage.common.txt -covermode=atomic -p 1 scroll-tech/common/...
+                        go test -v -race -coverprofile=coverage.coordinator.txt -covermode=atomic -p 1 scroll-tech/coordinator/...
+                        ${GOROOT}/bin/bin/gocover-cobertura < coverage.bridge.txt > coverage.bridge.xml
+                        ${GOROOT}/bin/bin/gocover-cobertura < coverage.db.txt > coverage.db.xml
+                        ${GOROOT}/bin/bin/gocover-cobertura < coverage.common.txt > coverage.common.xml
+                        ${GOROOT}/bin/bin/gocover-cobertura < coverage.coordinator.txt > coverage.coordinator.xml
                     '''
                     script { test_result = true }
                }
-            }
-        }
-        stage("PR Coverage to Github") {
-            when { allOf {not { branch 'staging' }; expression { return env.CHANGE_ID != null }} }
-            steps {
                 script {
                     currentBuild.result = 'SUCCESS'
                  }
-                step([$class: 'CompareCoverageAction', publishResultAs: 'statusCheck', scmVars: [GIT_URL: env.GIT_URL]])
+                sh "npx cobertura-merge -o cobertura.xml package1=coverage.bridge.xml package2=coverage.db.xml package3=coverage.common.xml package4=coverage.coordinator.xml"
+                step([$class: 'CompareCoverageAction', publishResultAs: 'Comment', scmVars: [GIT_URL: env.GIT_URL]])
             }
         }
     }
