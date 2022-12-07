@@ -2,15 +2,12 @@ package coordinator_test
 
 import (
 	"context"
-	"net"
 	"net/http"
 	"strconv"
 	"testing"
 	"time"
 
 	"github.com/scroll-tech/go-ethereum/crypto"
-	"github.com/scroll-tech/go-ethereum/log"
-	gethrpc "github.com/scroll-tech/go-ethereum/rpc"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/sync/errgroup"
 
@@ -37,7 +34,6 @@ var (
 	dbImg         docker.ImgInstance
 	rollerManager *coordinator.Manager
 	handle        *http.Server
-	svr           *gethrpc.Server
 )
 
 func setEnv(t *testing.T) error {
@@ -54,7 +50,7 @@ func setEnv(t *testing.T) error {
 	rollerManager = setupRollerManager(t, "", cfg.DBConfig)
 
 	// start ws service
-	handle, svr, _, err = startWSEndpoint(managerURL, rollerManager.APIs())
+	handle, _, err = utils.StartWSEndpoint(managerURL, rollerManager.APIs())
 	assert.NoError(t, err)
 	return err
 }
@@ -66,6 +62,7 @@ func TestApis(t *testing.T) {
 	t.Run("TestHandshake", testHandshake)
 	t.Run("TestSeveralConnections", testSeveralConnections)
 	t.Run("TestIdleRollerSelection", testIdleRollerSelection)
+	t.Run("TestRollerReconnect", testRollerReconnect)
 	t.Run("TestGracefulRestart", testGracefulRestart)
 
 	// Teardown
@@ -84,7 +81,7 @@ func testHandshake(t *testing.T) {
 	defer l2db.Close()
 
 	stopCh := make(chan struct{})
-	performHandshake(t, 1, "roller_test", stopCh)
+	performHandshake(t, 1, false, "roller_test", stopCh)
 
 	assert.Equal(t, 1, rollerManager.GetNumberOfIdleRollers())
 
@@ -106,7 +103,7 @@ func testSeveralConnections(t *testing.T) {
 	for i := 0; i < batch; i++ {
 		idx := i
 		eg.Go(func() error {
-			performHandshake(t, 1, "roller_test"+strconv.Itoa(idx), stopCh)
+			performHandshake(t, 1, false, "roller_test"+strconv.Itoa(idx), stopCh)
 			return nil
 		})
 	}
@@ -146,7 +143,7 @@ func testIdleRollerSelection(t *testing.T) {
 	batch := 20
 	stopCh := make(chan struct{})
 	for i := 0; i < batch; i++ {
-		performHandshake(t, 1, "roller_test"+strconv.Itoa(i), stopCh)
+		performHandshake(t, 1, false, "roller_test"+strconv.Itoa(i), stopCh)
 	}
 	assert.Equal(t, batch, rollerManager.GetNumberOfIdleRollers())
 	defer close(stopCh)
@@ -165,6 +162,51 @@ func testIdleRollerSelection(t *testing.T) {
 	var (
 		tick     = time.Tick(500 * time.Millisecond)
 		tickStop = time.Tick(10 * time.Second)
+	)
+	for len(ids) > 0 {
+		select {
+		case <-tick:
+			status, err := l2db.GetProvingStatusByID(ids[0])
+			assert.NoError(t, err)
+			if status == orm.ProvingTaskVerified {
+				ids = ids[1:]
+			}
+		case <-tickStop:
+			t.Error("failed to check proof status")
+			return
+		}
+	}
+}
+
+func testRollerReconnect(t *testing.T) {
+	// Create db handler and reset db.
+	l2db, err := database.NewOrmFactory(cfg.DBConfig)
+	assert.NoError(t, err)
+	assert.NoError(t, migrate.ResetDB(l2db.GetDB().DB))
+	defer l2db.Close()
+
+	var ids = make([]string, 2)
+	dbTx, err := l2db.Beginx()
+	assert.NoError(t, err)
+	for i := range ids {
+		ID, err := l2db.NewBatchInDBTx(dbTx, &orm.BlockInfo{Number: uint64(i)}, &orm.BlockInfo{Number: uint64(i)}, "0f", 1, 194676)
+		assert.NoError(t, err)
+		ids[i] = ID
+	}
+	assert.NoError(t, dbTx.Commit())
+
+	// create ws connections.
+	batch := 2
+	stopCh := make(chan struct{})
+	for i := 0; i < batch; i++ {
+		performHandshake(t, 5, true, "roller_test"+strconv.Itoa(i), stopCh)
+	}
+	defer close(stopCh)
+
+	// verify proof status
+	var (
+		tick     = time.Tick(500 * time.Millisecond)
+		tickStop = time.Tick(15 * time.Second)
 	)
 	for len(ids) > 0 {
 		select {
@@ -202,26 +244,21 @@ func testGracefulRestart(t *testing.T) {
 	batch := 2
 	stopCh := make(chan struct{})
 	for i := 0; i < batch; i++ {
-		performHandshake(t, 10, "roller_test"+strconv.Itoa(i), stopCh)
+		performHandshake(t, 5, true, "roller_test"+strconv.Itoa(i), stopCh)
 	}
-	assert.Equal(t, batch, rollerManager.GetNumberOfIdleRollers())
+	defer close(stopCh)
 
-	// dispatch tasks
+	// wait for task dispatch
 	<-time.After(3 * time.Second)
 
-	handle.Shutdown(context.Background())
-	svr.Stop()
+	// restart coordinator
 	rollerManager.Stop()
-
-	// wait for shutdown
-	<-time.After(3 * time.Second)
-
-	// rollerManager = setupRollerManager(t, "", cfg.DBConfig)
+	rollerManager = setupRollerManager(t, "", cfg.DBConfig)
 
 	// verify proof status
 	var (
 		tick     = time.Tick(500 * time.Millisecond)
-		tickStop = time.Tick(2000 * time.Second)
+		tickStop = time.Tick(15 * time.Second)
 	)
 	for len(ids) > 0 {
 		select {
@@ -233,7 +270,6 @@ func testGracefulRestart(t *testing.T) {
 			}
 		case <-tickStop:
 			t.Error("failed to check proof status")
-			close(stopCh)
 			return
 		}
 	}
@@ -256,7 +292,7 @@ func setupRollerManager(t *testing.T, verifierEndpoint string, dbCfg *database.D
 }
 
 // performHandshake sets up a websocket client to connect to the roller manager.
-func performHandshake(t *testing.T, proofTime time.Duration, name string, stopCh chan struct{}) {
+func performHandshake(t *testing.T, proofTime time.Duration, isReconnect bool, name string, stopCh chan struct{}) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -290,6 +326,14 @@ func performHandshake(t *testing.T, proofTime time.Duration, name string, stopCh
 				id := task.ID
 				// sleep several seconds to mock the proof process.
 				<-time.After(proofTime * time.Second)
+				if isReconnect {
+					sub.Unsubscribe()
+					sub, err = client.RegisterAndSubscribe(context.Background(), taskCh, authMsg)
+					if err != nil {
+						t.Error(err)
+						return
+					}
+				}
 				proof := &message.ProofMsg{
 					ProofDetail: &message.ProofDetail{
 						ID:     id,
@@ -301,34 +345,10 @@ func performHandshake(t *testing.T, proofTime time.Duration, name string, stopCh
 				ok, err := client.SubmitProof(context.Background(), proof)
 				assert.NoError(t, err)
 				assert.Equal(t, true, ok)
-			case err := <-sub.Err():
-				sub.Unsubscribe()
-				log.Error("Subscribe task with scroll failed", "error", err)
-				for {
-					log.Info("retry to connect to coordinator...")
-					sub, err = client.RegisterAndSubscribe(ctx, taskCh, authMsg)
-					if err != nil {
-						log.Error("register to coordinator failed", "error", err)
-						<-time.After(time.Second)
-					} else {
-						log.Info("re-register to coordinator successfully!")
-						break
-					}
-				}
 			case <-stopCh:
 				sub.Unsubscribe()
 				return
 			}
 		}
 	}()
-}
-
-func startWSEndpoint(endpoint string, apis []gethrpc.API) (*http.Server, *gethrpc.Server, net.Addr, error) {
-	handler, addr, err := utils.StartHTTPEndpoint(endpoint, apis)
-	var srv *gethrpc.Server
-	if err == nil {
-		srv = (handler.Handler).(*gethrpc.Server)
-		handler.Handler = srv.WebsocketHandler(nil)
-	}
-	return handler, srv, addr, err
 }
