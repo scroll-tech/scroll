@@ -116,7 +116,7 @@ func (m *Manager) Start() error {
 				}
 				// no lock is required now
 				m.sessions[sess.info.ID] = sess
-				log.Info("Coordinator restart reload sessions", "ID", sess.info.ID, "sess", sess)
+				log.Info("Coordinator restart reload sessions", "ID", sess.info.ID, "sess", sess.info)
 				go m.CollectProofs(sess.info.ID, sess)
 			}
 		}
