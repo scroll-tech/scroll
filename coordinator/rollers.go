@@ -50,7 +50,7 @@ func (r *rollerNode) sendTask(id string, traces []*types.BlockTrace) bool {
 func (m *Manager) reloadRollerAssignedTasks(pubkey string) *cmap.ConcurrentMap {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	TaskIDs := cmap.New()
+	taskIDs := cmap.New()
 	for id, sess := range m.sessions {
 		for pk, roller := range sess.info.Rollers {
 			if pk == pubkey && roller.Status == orm.RollerAssigned {
