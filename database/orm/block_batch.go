@@ -301,6 +301,34 @@ func (o *blockBatchOrm) GetRollupStatus(id string) (RollupStatus, error) {
 	return status, nil
 }
 
+func (o *blockBatchOrm) GetRollupStatusByIDList(ids []string) ([]RollupStatus, error) {
+	if len(ids) == 0 {
+		return make([]RollupStatus, 0), nil
+	}
+
+	query, args, err := sqlx.In("SELECT rollup_status FROM block_batch WHERE id IN (?);", ids)
+	if err != nil {
+		return make([]RollupStatus, 0), err
+	}
+	// sqlx.In returns queries with the `?` bindvar, we can rebind it for our backend
+	query = o.db.Rebind(query)
+
+	rows, err := o.db.Query(query, args...)
+
+	var statuses []RollupStatus
+	for rows.Next() {
+		var status RollupStatus
+		if err = rows.Scan(&status); err != nil {
+			break
+		}
+		statuses = append(statuses, status)
+	}
+	if err != nil {
+		return statuses, err
+	}
+	return statuses, nil
+}
+
 func (o *blockBatchOrm) UpdateRollupStatus(ctx context.Context, id string, status RollupStatus) error {
 	switch status {
 	case RollupCommitted:
