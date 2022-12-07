@@ -103,7 +103,7 @@ func (m *Manager) Start() error {
 	}
 
 	// m.orm may be nil in scroll tests
-	if m.orm == nil {
+	if m.orm != nil {
 		if ids, err := m.orm.GetAssignedBatchIDs(); err != nil {
 			log.Error("failed to get assigned batch ids from db", "error", err)
 		} else if persistedSessions, err := m.orm.GetSessionInfosByIDs(ids); err != nil {

@@ -198,16 +198,20 @@ func testGracefulRestart(t *testing.T) {
 	batch := 2
 	stopCh := make(chan struct{})
 	for i := 0; i < batch; i++ {
-		performHandshake(t, 5, "roller_test"+strconv.Itoa(i), stopCh)
+		performHandshake(t, 10, "roller_test"+strconv.Itoa(i), stopCh)
 	}
 	assert.Equal(t, batch, rollerManager.GetNumberOfIdleRollers())
 
+	// dispatch tasks
 	<-time.After(3 * time.Second)
 
+	handle.Shutdown(context.Background())
 	rollerManager.Stop()
-	log.Info("rollerManager.Stop()")
 
-	rollerManager = setupRollerManager(t, "", cfg.DBConfig)
+	// wait for shutdown
+	<-time.After(3 * time.Second)
+
+	// rollerManager = setupRollerManager(t, "", cfg.DBConfig)
 
 	// verify proof status
 	var (
@@ -300,7 +304,7 @@ func performHandshake(t *testing.T, proofTime time.Duration, name string, stopCh
 					sub, err = client.RegisterAndSubscribe(ctx, taskCh, authMsg)
 					if err != nil {
 						log.Error("register to coordinator failed", "error", err)
-						<-time.After(3 * time.Second)
+						<-time.After(time.Second)
 					} else {
 						log.Info("re-register to coordinator successfully!")
 						break
