@@ -47,8 +47,9 @@ func (r *rollerNode) sendTask(id string, traces []*types.BlockTrace) bool {
 	return true
 }
 
-func (m *Manager) register(pubkey string, identity *message.Identity) (<-chan *message.TaskMsg, error) {
-	node, ok := m.rollerPool.Get(pubkey)
+func (m *Manager) reloadRollerAssignedTasks(pubkey string) *cmap.ConcurrentMap {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	TaskIDs := cmap.New()
 	for id, sess := range m.sessions {
 		for pk, roller := range sess.info.Rollers {
@@ -57,12 +58,18 @@ func (m *Manager) register(pubkey string, identity *message.Identity) (<-chan *m
 			}
 		}
 	}
+	return &TaskIDs
+}
+
+func (m *Manager) register(pubkey string, identity *message.Identity) (<-chan *message.TaskMsg, error) {
+	node, ok := m.rollerPool.Get(pubkey)
+	TaskIDs := m.reloadRollerAssignedTasks(pubkey)
 	if !ok {
 		node = &rollerNode{
 			Name:      identity.Name,
 			Version:   identity.Version,
 			PublicKey: pubkey,
-			TaskIDs:   TaskIDs,
+			TaskIDs:   *TaskIDs,
 			taskChan:  make(chan *message.TaskMsg, 4),
 		}
 		m.rollerPool.Set(pubkey, node)
