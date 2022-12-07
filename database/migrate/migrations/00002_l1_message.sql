@@ -31,6 +31,9 @@ on l1_message (nonce);
 create index l1_message_height_index
     on l1_message (height);
 
+create index l1_message_status_index
+    on l1_message (status);
+
 CREATE OR REPLACE FUNCTION update_timestamp()
 RETURNS TRIGGER AS $$
 BEGIN

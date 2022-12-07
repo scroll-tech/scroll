@@ -35,6 +35,10 @@ create unique index block_batch_id_uindex
     on block_batch (id);
 create unique index block_batch_index_uindex
     on block_batch (index);
+create index block_batch_proving_status_index
+    on block_batch (proving_status);
+create index block_batch_rollup_status_index
+    on block_batch (rollup_status);
 
 -- +goose StatementEnd
 
