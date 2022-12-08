@@ -184,7 +184,6 @@ func (m *Manager) restorePrevSessions() {
 				info:       v,
 				finishChan: make(chan rollerProofStatus, proofAndPkBufferSize),
 			}
-			// no lock is required now
 			m.sessions[sess.info.ID] = sess
 			log.Info("Coordinator restart reload sessions", "ID", sess.info.ID, "sess", sess.info)
 			go m.CollectProofs(sess.info.ID, sess)
