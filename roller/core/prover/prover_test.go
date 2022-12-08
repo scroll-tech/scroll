@@ -31,7 +31,6 @@ type RPCTrace struct {
 func TestFFI(t *testing.T) {
 	as := assert.New(t)
 	cfg := &config.ProverConfig{
-		MockMode:   false,
 		ParamsPath: paramsPath,
 		SeedPath:   seedPath,
 	}
