@@ -257,7 +257,7 @@ func testGracefulRestart(t *testing.T) {
 	roller.close()
 
 	// start new roller manager && ws service
-	newRollerManager := setupRollerManager(t, "", cfg.DBConfig)
+	newRollerManager := setupRollerManager(t, cfg.DBConfig)
 	handle, _, err = utils.StartWSEndpoint(newManagerURL, newRollerManager.APIs())
 	assert.NoError(t, err)
 	defer func() {
