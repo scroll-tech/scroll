@@ -102,25 +102,7 @@ func (m *Manager) Start() error {
 		return nil
 	}
 
-	// m.orm may be nil in scroll tests
-	if m.orm != nil {
-		if ids, err := m.orm.GetAssignedBatchIDs(); err != nil {
-			log.Error("failed to get assigned batch ids from db", "error", err)
-		} else if persistedSessions, err := m.orm.GetSessionInfosByIDs(ids); err != nil {
-			log.Error("failed to recover roller session info from db", "error", err)
-		} else {
-			for _, v := range persistedSessions {
-				sess := &session{
-					info:       v,
-					finishChan: make(chan rollerProofStatus, proofAndPkBufferSize),
-				}
-				// no lock is required now
-				m.sessions[sess.info.ID] = sess
-				log.Info("Coordinator restart reload sessions", "ID", sess.info.ID, "sess", sess.info)
-				go m.CollectProofs(sess.info.ID, sess)
-			}
-		}
-	}
+	m.restorePrevSessions()
 
 	atomic.StoreInt32(&m.running, 1)
 
@@ -180,6 +162,32 @@ func (m *Manager) Loop() {
 				)
 			}
 			return
+		}
+	}
+}
+
+func (m *Manager) restorePrevSessions() {
+	// m.orm may be nil in scroll tests
+	if m.orm == nil {
+		return
+	}
+
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if ids, err := m.orm.GetAssignedBatchIDs(); err != nil {
+		log.Error("failed to get assigned batch ids from db", "error", err)
+	} else if prevSessions, err := m.orm.GetSessionInfosByIDs(ids); err != nil {
+		log.Error("failed to recover roller session info from db", "error", err)
+	} else {
+		for _, v := range prevSessions {
+			sess := &session{
+				info:       v,
+				finishChan: make(chan rollerProofStatus, proofAndPkBufferSize),
+			}
+			// no lock is required now
+			m.sessions[sess.info.ID] = sess
+			log.Info("Coordinator restart reload sessions", "ID", sess.info.ID, "sess", sess.info)
+			go m.CollectProofs(sess.info.ID, sess)
 		}
 	}
 }
