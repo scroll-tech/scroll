@@ -249,7 +249,7 @@ func testGracefulRestart(t *testing.T) {
 	roller.connectToCoordinator(t, managerURL)
 
 	// wait 10 seconds, coordinator restarts before roller submits proof
-	go roller.waitTaskAndSendProof(t, 10, true)
+	go roller.waitTaskAndSendProof(t, 5, true)
 
 	// wait for coordinator to dispatch task
 	<-time.After(3 * time.Second)
@@ -334,8 +334,7 @@ func newMockRoller(t *testing.T, rollerName string) *mockRoller {
 	return &mockRoller{
 		rollerName: rollerName,
 		privKey:    privKey,
-		taskCh:     make(chan *message.TaskMsg, 4),
-		stopCh:     make(chan struct{})}
+		taskCh:     make(chan *message.TaskMsg, 4)}
 }
 
 // connectToCoordinator sets up a websocket client to connect to the roller manager.
