@@ -264,6 +264,11 @@ func testGracefulRestart(t *testing.T) {
 		handle.Shutdown(context.Background())
 	}()
 
+	for i := range ids {
+		_, err = newRollerManager.GetSessionInfo(ids[i])
+		assert.NoError(t, err)
+	}
+
 	roller.connectToCoordinator(t, newManagerURL)
 
 	// verify proof status
