@@ -254,7 +254,7 @@ func testGracefulRestart(t *testing.T) {
 	// wait for coordinator to dispatch task
 	<-time.After(3 * time.Second)
 
-	// coordinator will delet the roller, if the subscription is closed
+	// coordinator will delete the roller, if the subscription is closed
 	roller.close()
 
 	// start new roller manager && ws service
@@ -272,6 +272,7 @@ func testGracefulRestart(t *testing.T) {
 	}
 
 	roller.connectToCoordinator(t, newManagerURL)
+	defer roller.close()
 
 	// verify proof status
 	var (
