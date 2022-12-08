@@ -248,7 +248,7 @@ func testGracefulRestart(t *testing.T) {
 	roller := newMockRoller(t, "roller_test")
 	roller.connectToCoordinator(t, managerURL)
 
-	// wait 10 seconds, coordinator restarts before roller submits proof
+	// wait 5 seconds, coordinator restarts before roller submits proof
 	go roller.waitTaskAndSendProof(t, 5, true)
 
 	// wait for coordinator to dispatch task
@@ -271,7 +271,7 @@ func testGracefulRestart(t *testing.T) {
 		assert.NoError(t, err)
 	}
 
-	// will overwrite the roller client for `submitProof`
+	// will overwrite the roller client for `SubmitProof`
 	roller.connectToCoordinator(t, newManagerURL)
 	defer roller.close()
 
