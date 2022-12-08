@@ -151,7 +151,7 @@ func testIdleRollerSelection(t *testing.T) {
 		rollers[i] = newMockRoller(t, "roller_test"+strconv.Itoa(i))
 		defer rollers[i].close()
 		rollers[i].connectToCoordinator(t, managerURL)
-		rollers[i].waitTaskAndSendProof(t, 1, false)
+		go rollers[i].waitTaskAndSendProof(t, 1, false)
 	}
 	assert.Equal(t, batch, rollerManager.GetNumberOfIdleRollers())
 
@@ -206,7 +206,7 @@ func testRollerReconnect(t *testing.T) {
 	roller := newMockRoller(t, "roller_test")
 	defer roller.close()
 	roller.connectToCoordinator(t, managerURL)
-	roller.waitTaskAndSendProof(t, 1, true)
+	go roller.waitTaskAndSendProof(t, 1, true)
 
 	// verify proof status
 	var (
@@ -249,7 +249,7 @@ func testGracefulRestart(t *testing.T) {
 	roller.connectToCoordinator(t, managerURL)
 
 	// wait 10 seconds, coordinator restarts before roller submits proof
-	roller.waitTaskAndSendProof(t, 10, true)
+	go roller.waitTaskAndSendProof(t, 10, true)
 
 	// wait for coordinator to dispatch task
 	<-time.After(3 * time.Second)
@@ -346,28 +346,26 @@ func (r *mockRoller) connectToCoordinator(t *testing.T, wsURL string) {
 
 // Wait for the proof task, after receiving the proof task, roller submits proof after proofTime secs.
 func (r *mockRoller) waitTaskAndSendProof(t *testing.T, proofTime time.Duration, reconnectBeforeSendProof bool) {
-	go func() {
-		for {
-			task := <-r.taskCh
-			// simulate proof time
-			<-time.After(proofTime * time.Second)
-			if reconnectBeforeSendProof {
-				// simulating the case that the roller first disconnects and then reconnects to the coordinator
-				r.reconnetToCoordinator(t)
-			}
-			proof := &message.ProofMsg{
-				ProofDetail: &message.ProofDetail{
-					ID:     task.ID,
-					Status: message.StatusOk,
-					Proof:  &message.AggProof{},
-				},
-			}
-			assert.NoError(t, proof.Sign(r.privKey))
-			ok, err := r.client.SubmitProof(context.Background(), proof)
-			assert.NoError(t, err)
-			assert.Equal(t, true, ok)
+	for {
+		task := <-r.taskCh
+		// simulate proof time
+		<-time.After(proofTime * time.Second)
+		if reconnectBeforeSendProof {
+			// simulating the case that the roller first disconnects and then reconnects to the coordinator
+			r.reconnetToCoordinator(t)
 		}
-	}()
+		proof := &message.ProofMsg{
+			ProofDetail: &message.ProofDetail{
+				ID:     task.ID,
+				Status: message.StatusOk,
+				Proof:  &message.AggProof{},
+			},
+		}
+		assert.NoError(t, proof.Sign(r.privKey))
+		ok, err := r.client.SubmitProof(context.Background(), proof)
+		assert.NoError(t, err)
+		assert.Equal(t, true, ok)
+	}
 }
 
 func (r *mockRoller) reconnetToCoordinator(t *testing.T) {
