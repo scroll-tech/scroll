@@ -254,7 +254,7 @@ func testGracefulRestart(t *testing.T) {
 	// wait for coordinator to dispatch task
 	<-time.After(3 * time.Second)
 
-	// coordinator will delete the roller, if the subscription is closed
+	// the coordinator will delete the roller if the subscription is closed.
 	roller.close()
 
 	// start new roller manager && ws service
@@ -271,8 +271,14 @@ func testGracefulRestart(t *testing.T) {
 		assert.NoError(t, err)
 	}
 
+	// will overwrite the roller client for `submitProof`
 	roller.connectToCoordinator(t, newManagerURL)
 	defer roller.close()
+
+	// at this point, roller haven't submitted
+	status, err := l2db.GetProvingStatusByID(ids[0])
+	assert.NoError(t, err)
+	assert.Equal(t, orm.ProvingTaskAssigned, status)
 
 	// verify proof status
 	var (
@@ -282,11 +288,14 @@ func testGracefulRestart(t *testing.T) {
 	for len(ids) > 0 {
 		select {
 		case <-tick:
+			// this proves that the roller submits to the new coordinator,
+			// because the roller client for `submitProof` has been overwritten
 			status, err := l2db.GetProvingStatusByID(ids[0])
 			assert.NoError(t, err)
 			if status == orm.ProvingTaskVerified {
 				ids = ids[1:]
 			}
+
 		case <-tickStop:
 			t.Error("failed to check proof status")
 			return
@@ -346,6 +355,9 @@ func (r *mockRoller) connectToCoordinator(t *testing.T, wsURL string) {
 
 	r.sub, err = r.client.RegisterAndSubscribe(context.Background(), r.taskCh, authMsg)
 	assert.NoError(t, err)
+
+	r.stopCh = make(chan struct{})
+
 	go func() {
 		<-r.stopCh
 		r.sub.Unsubscribe()
