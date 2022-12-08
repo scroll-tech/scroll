@@ -352,6 +352,7 @@ func (r *mockRoller) waitTaskAndSendProof(t *testing.T, proofTime time.Duration,
 		<-time.After(proofTime * time.Second)
 		if reconnectBeforeSendProof {
 			// simulating the case that the roller first disconnects and then reconnects to the coordinator
+			// the Subscription and its `Err()` channel will be closed, and the coordinator will `freeRoller()`
 			r.reconnetToCoordinator(t)
 		}
 		proof := &message.ProofMsg{
