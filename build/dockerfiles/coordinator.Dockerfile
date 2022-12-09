@@ -7,7 +7,8 @@ RUN --mount=target=. \
 
 FROM chef as zkp-builder
 COPY --from=planner /recipe.json recipe.json
-RUN cargo chef cook --release --recipe-path recipe.json
+RUN cd common/libzkp/impl && \
+    cargo chef cook --release --recipe-path recipe.json
 
 COPY ./ /src/
 
