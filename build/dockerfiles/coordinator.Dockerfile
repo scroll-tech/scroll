@@ -10,7 +10,7 @@ COPY --from=planner /recipe.json recipe.json
 COPY ./ /src/
 
 RUN cd /src/common/libzkp/impl && \
-    cargo chef cook --release --recipe-path recipe.json
+    cargo chef cook --release --recipe-path ~/recipe.json
 
 RUN cd /src/common/libzkp/impl &&  \
     --mount=target=. \
