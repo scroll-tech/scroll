@@ -41,8 +41,17 @@ pipeline {
                     make -C database db_cli
                     # check docker build
                     make -C bridge docker
+                    catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
+                        echo "bridge docker build failed"
+                    }
                     make -C coordinator docker
+                    catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
+                        echo "coordinator docker build failed"
+                    }
                     make -C database docker
+                    catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
+                        echo "database docker build failed"
+                    }
                     '''
             }
         }
