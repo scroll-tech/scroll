@@ -1,35 +1,38 @@
 package config
 
 import (
+	"encoding/json"
+	"os"
 	"path/filepath"
 
-	"github.com/BurntSushi/toml"
 	"github.com/scroll-tech/go-ethereum/log"
 )
 
 // Config loads roller configuration items.
 type Config struct {
-	RollerName       string        `toml:"roller_name"`
-	KeystorePath     string        `toml:"keystore_path"`
-	KeystorePassword string        `toml:"keystore_password"`
-	CoordinatorURL   string        `toml:"coordinator_url"`
-	Prover           *ProverConfig `toml:"prover"`
-	DBPath           string        `toml:"db_path"`
+	RollerName       string        `json:"roller_name"`
+	KeystorePath     string        `json:"keystore_path"`
+	KeystorePassword string        `json:"keystore_password"`
+	CoordinatorURL   string        `json:"coordinator_url"`
+	Prover           *ProverConfig `json:"prover"`
+	DBPath           string        `json:"db_path"`
 }
 
 // ProverConfig loads zk roller configuration items.
 type ProverConfig struct {
-	MockMode   bool   `toml:"mock_mode"`
-	ParamsPath string `toml:"params_path"`
-	SeedPath   string `toml:"seed_path"`
+	ParamsPath string `json:"params_path"`
+	SeedPath   string `json:"seed_path"`
 }
 
-// InitConfig inits config from file.
-func InitConfig(path string) (*Config, error) {
-	cfg := &Config{}
-	_, err := toml.DecodeFile(path, cfg)
+// NewConfig returns a new instance of Config.
+func NewConfig(file string) (*Config, error) {
+	buf, err := os.ReadFile(filepath.Clean(file))
 	if err != nil {
-		log.Error("init config failed", "error", err)
+		return nil, err
+	}
+
+	cfg := &Config{}
+	if err = json.Unmarshal(buf, cfg); err != nil {
 		return nil, err
 	}
 	if !filepath.IsAbs(cfg.DBPath) {

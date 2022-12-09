@@ -16,15 +16,10 @@ func main() {
 	app.Name = "db_cli"
 	app.Usage = "The Scroll Database CLI"
 	app.Version = version.Version
-	app.Flags = append(app.Flags, commonFlags...)
+	app.Flags = append(app.Flags, utils.CommonFlags...)
 
 	app.Before = func(ctx *cli.Context) error {
-		return utils.Setup(&utils.LogConfig{
-			LogFile:       ctx.String(logFileFlag.Name),
-			LogJSONFormat: ctx.Bool(logJSONFormat.Name),
-			LogDebug:      ctx.Bool(logDebugFlag.Name),
-			Verbosity:     ctx.Int(verbosityFlag.Name),
-		})
+		return utils.LogSetup(ctx)
 	}
 
 	app.Commands = []*cli.Command{
@@ -33,7 +28,7 @@ func main() {
 			Usage:  "Clean and reset database.",
 			Action: resetDB,
 			Flags: []cli.Flag{
-				&configFileFlag,
+				&utils.ConfigFileFlag,
 			},
 		},
 		{
@@ -41,7 +36,7 @@ func main() {
 			Usage:  "Check migration status.",
 			Action: checkDBStatus,
 			Flags: []cli.Flag{
-				&configFileFlag,
+				&utils.ConfigFileFlag,
 			},
 		},
 		{
@@ -49,7 +44,7 @@ func main() {
 			Usage:  "Display the current database version.",
 			Action: dbVersion,
 			Flags: []cli.Flag{
-				&configFileFlag,
+				&utils.ConfigFileFlag,
 			},
 		},
 		{
@@ -57,7 +52,7 @@ func main() {
 			Usage:  "Migrate the database to the latest version.",
 			Action: migrateDB,
 			Flags: []cli.Flag{
-				&configFileFlag,
+				&utils.ConfigFileFlag,
 			},
 		},
 		{
@@ -65,7 +60,7 @@ func main() {
 			Usage:  "Roll back the database to a previous <version>. Rolls back a single migration if no version specified.",
 			Action: rollbackDB,
 			Flags: []cli.Flag{
-				&configFileFlag,
+				&utils.ConfigFileFlag,
 				&cli.IntFlag{
 					Name:  "version",
 					Usage: "Rollback to the specified version.",
