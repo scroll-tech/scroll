@@ -15,7 +15,6 @@ RUN cd common/libzkp/impl && \
 RUN cd common/libzkp/impl &&  \
     cargo build --release &&  \
     cp ./target/release/libzkp.a ../interface/
-RUN cp -r common/libzkp/interface coordinator/verifier/lib
 
 
 # Download Go dependencies
@@ -34,11 +33,11 @@ RUN go mod download -x
 # Build coordinator
 FROM base as builder
 
-COPY --from=zkp-builder / /
+COPY --from=zkp-builder common/libzkp/interface /src/coordinator/verifier/lib
 
 RUN --mount=target=. \
     --mount=type=cache,target=/root/.cache/go-build \
-    cd coordinator && go build -v -p 4 -o /bin/coordinator ./cmd
+    cd /src/coordinator && go build -v -p 4 -o /bin/coordinator ./cmd
 
 # Pull coordinator into a second stage deploy alpine container
 FROM alpine:latest
