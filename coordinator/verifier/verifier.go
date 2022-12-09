@@ -4,7 +4,7 @@ package verifier
 #cgo LDFLAGS: ${SRCDIR}/interface/libzkp.a -lm -ldl
 #cgo gpu LDFLAGS: ${SRCDIR}/interface/libzkp.a -lm -ldl -lgmp -lstdc++ -lprocps -L/usr/local/cuda/lib64/ -lcudart
 #include <stdlib.h>
-#include "./interface/zkp.h"
+#include "./interface/libzkp.h"
 */
 import "C" //nolint:typecheck
 
