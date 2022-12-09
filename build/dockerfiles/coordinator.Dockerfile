@@ -6,17 +6,17 @@ RUN --mount=target=. \
     cargo chef prepare --recipe-path /recipe.json
 
 FROM chef as zkp-builder
-COPY --from=planner /recipe.json recipe.json
-COPY ./ /src/
+COPY --from=planner /recipe.json common/libzkp/impl/recipe.json
+COPY . .
 
-RUN cd /src/common/libzkp/impl && \
-    cargo chef cook --release --recipe-path ~/recipe.json
+RUN cd common/libzkp/impl && \
+    cargo chef cook --release --recipe-path recipe.json
 
-RUN cd /src/common/libzkp/impl &&  \
+RUN cd common/libzkp/impl &&  \
     --mount=target=. \
     cargo build --release &&  \
     cp ./target/release/libzkp.a ../interface/
-RUN cp -r /src/common/libzkp/interface /src/coordinator/verifier/lib
+RUN cp -r common/libzkp/interface coordinator/verifier/lib
 
 
 # Download Go dependencies
