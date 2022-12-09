@@ -85,6 +85,16 @@ func (w *WatcherClient) Start() {
 			panic("must run L2 watcher with DB")
 		}
 
+		lastFetchedBlock, err := w.orm.GetBlockTracesLatestHeight()
+		if err != nil {
+			panic(fmt.Sprintf("failed to GetBlockTracesLatestHeight in DB: %v", err))
+		}
+
+		if lastFetchedBlock < 0 {
+			lastFetchedBlock = 0
+		}
+		lastBlockHeightChangeTime := time.Now()
+
 		// trigger by timer
 		// TODO: make it configurable
 		ticker := time.NewTicker(3 * time.Second)
@@ -99,7 +109,25 @@ func (w *WatcherClient) Start() {
 					log.Error("failed to get_BlockNumber", "err", err)
 					continue
 				}
-				if err := w.tryFetchRunningMissingBlocks(w.ctx, number); err != nil {
+				duration := time.Since(lastBlockHeightChangeTime)
+				var blockToFetch uint64
+				if number > uint64(lastFetchedBlock)+w.confirmations {
+					// latest block height changed
+					blockToFetch = number - w.confirmations
+				} else if duration.Seconds() > 60 {
+					// l2geth didn't produce any blocks more than 1 minute.
+					blockToFetch = number
+				}
+				// fetch at most `blockTracesFetchLimit=10` missing blocks
+				if blockToFetch > uint64(lastFetchedBlock)+blockTracesFetchLimit {
+					blockToFetch = uint64(lastFetchedBlock) + blockTracesFetchLimit
+				}
+				if lastFetchedBlock != int64(blockToFetch) {
+					lastFetchedBlock = int64(blockToFetch)
+					lastBlockHeightChangeTime = time.Now()
+				}
+
+				if err := w.tryFetchRunningMissingBlocks(w.ctx, blockToFetch); err != nil {
 					log.Error("failed to fetchRunningMissingBlocks", "err", err)
 				}
 
@@ -138,11 +166,6 @@ func (w *WatcherClient) tryFetchRunningMissingBlocks(ctx context.Context, backTr
 	backTrackTo := uint64(0)
 	if heightInDB > 0 {
 		backTrackTo = uint64(heightInDB)
-	}
-
-	// note that backTrackFrom >= backTrackTo because we are doing backtracking
-	if backTrackFrom > backTrackTo+blockTracesFetchLimit {
-		backTrackFrom = backTrackTo + blockTracesFetchLimit
 	}
 
 	// start backtracking
