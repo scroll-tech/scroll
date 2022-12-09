@@ -9,11 +9,11 @@ test:
 
 libzkp:
 	cd ../common/libzkp/impl && cargo build --release && cp ./target/release/libzkp.a ../interface/
-	cp -r ../common/libzkp/interface ./verifier/
+	cp -r ../common/libzkp/interface ./verifier/lib
 
 coordinator: ## Builds the Coordinator instance.
 	cd ../common/libzkp/impl && cargo build --release && cp ./target/release/libzkp.a ../interface/
-	cp -r ../common/libzkp/interface ./verifier/
+	cp -r ../common/libzkp/interface ./verifier/lib
 	go build -o $(PWD)/build/bin/coordinator ./cmd
 
 test-verifier:
