@@ -13,7 +13,7 @@ RUN cd common/libzkp/impl && \
     cargo chef cook --release --recipe-path recipe.json
 
 RUN cd common/libzkp/impl &&  \
-    --mount=target=. \
+    --mount=target=~/. \
     cargo build --release &&  \
     cp ./target/release/libzkp.a ../interface/
 RUN cp -r common/libzkp/interface coordinator/verifier/lib
