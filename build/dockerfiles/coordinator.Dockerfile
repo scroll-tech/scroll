@@ -34,11 +34,11 @@ RUN go mod download -x
 # Build coordinator
 FROM base as builder
 
-COPY --from=zkp-builder /src/ /
+COPY --from=zkp-builder / /
 
 RUN --mount=target=. \
     --mount=type=cache,target=/root/.cache/go-build \
-    cd /src/coordinator && go build -v -p 4 -o /bin/coordinator ./cmd
+    cd /coordinator && go build -v -p 4 -o /bin/coordinator ./cmd
 
 # Pull coordinator into a second stage deploy alpine container
 FROM alpine:latest
