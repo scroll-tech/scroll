@@ -30,22 +30,19 @@ pipeline {
             steps { 
                 // start to build project
                 catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
-                sh '''#!/bin/bash
-                    export PATH=/home/ubuntu/go/bin:$PATH
-                    make dev_docker
-                    make -C bridge mock_abi
-                    # check compilation
-                    make -C bridge bridge
-                    make -C coordinator coordinator
-                    make -C database db_cli
-                    # check docker build
-                    make -C bridge docker
-                    echo "bridge docker build failed"
-                    make -C coordinator docker
-                    echo "coordinator docker build failed"
-                    make -C database docker
-                    echo "database docker build failed"
-                    '''
+                    sh '''#!/bin/bash
+                        export PATH=/home/ubuntu/go/bin:$PATH
+                        make dev_docker
+                        make -C bridge mock_abi
+                        # check compilation
+                        make -C bridge bridge
+                        make -C coordinator coordinator
+                        make -C database db_cli
+                        # check docker build
+                        make -C bridge docker
+                        make -C coordinator docker
+                        make -C database docker
+                        '''
                 }
             }
         }
