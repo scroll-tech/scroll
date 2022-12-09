@@ -1,10 +1,10 @@
 package verifier
 
 /*
-#cgo LDFLAGS: ${SRCDIR}/interface/libzkp.a -lm -ldl
-#cgo gpu LDFLAGS: ${SRCDIR}/interface/libzkp.a -lm -ldl -lgmp -lstdc++ -lprocps -L/usr/local/cuda/lib64/ -lcudart
+#cgo LDFLAGS: ${SRCDIR}/lib/libzkp.a -lm -ldl
+#cgo gpu LDFLAGS: ${SRCDIR}/lib/libzkp.a -lm -ldl -lgmp -lstdc++ -lprocps -L/usr/local/cuda/lib64/ -lcudart
 #include <stdlib.h>
-#include "./interface/libzkp.h"
+#include "./lib/libzkp.h"
 */
 import "C" //nolint:typecheck
 
