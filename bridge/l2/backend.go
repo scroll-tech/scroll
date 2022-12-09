@@ -3,7 +3,6 @@ package l2
 import (
 	"context"
 
-	"github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/rpc"
 
@@ -66,9 +65,4 @@ func (l2 *Backend) APIs() []rpc.API {
 			Public:    true,
 		},
 	}
-}
-
-// MockBlockTrace for test case
-func (l2 *Backend) MockBlockTrace(blockTrace *types.BlockTrace) {
-	l2.l2Watcher.Send(blockTrace)
 }
