@@ -1,9 +1,20 @@
 # Build scroll in a stock Go builder container
-FROM scrolltech/go-rust-builder:go-1.17-rust-nightly-2022-08-23 as zkp-builder
+FROM scrolltech/go-rust-builder:go-1.17-rust-nightly-2022-08-23 as chef
+
+FROM chef as planner
+RUN --mount=target=. \
+    cargo chef prepare --recipe-path /recipe.json
+
+FROM chef as zkp-builder
+COPY --from=planner /recipe.json recipe.json
+RUN cargo chef cook --release --recipe-path recipe.json
 
 COPY ./ /src/
 
-RUN cd /src/common/libzkp/impl && cargo build --release && cp ./target/release/libzkp.a ../interface/
+RUN cd /src/common/libzkp/impl &&  \
+    --mount=target=. \
+    cargo build --release &&  \
+    cp ./target/release/libzkp.a ../interface/
 RUN cp -r /src/common/libzkp/interface /src/coordinator/verifier/lib
 
 
