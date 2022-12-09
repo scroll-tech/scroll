@@ -43,10 +43,7 @@ func init() {
 		&utils.VerbosityFlag,
 	}...)
 	app.Before = func(ctx *cli.Context) error {
-		return utils.Setup(&utils.LogConfig{
-			LogFile:   ctx.String(utils.LogFileFlag.Name),
-			Verbosity: ctx.Int(utils.VerbosityFlag.Name),
-		})
+		return utils.LogSetup(ctx)
 	}
 
 	// RunApp the app for integration-test
@@ -71,7 +68,7 @@ func RunRoller() {
 
 func action(ctx *cli.Context) error {
 	// Get config
-	cfg, err := config.InitConfig(ctx.String(cfgFileFlag.Name))
+	cfg, err := config.NewConfig(ctx.String(cfgFileFlag.Name))
 	if err != nil {
 		return err
 	}

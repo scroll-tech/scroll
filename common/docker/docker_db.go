@@ -33,7 +33,7 @@ func NewImgDB(t *testing.T, image, password, dbName string, port int) ImgInstanc
 		dbName:   dbName,
 		port:     port,
 	}
-	imgDB.cmd = NewCmd(t, "", imgDB.prepare()...)
+	imgDB.cmd = NewCmd(t, imgDB.name, imgDB.prepare()...)
 	return imgDB
 }
 

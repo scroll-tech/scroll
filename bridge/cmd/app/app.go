@@ -92,6 +92,8 @@ func action(ctx *cli.Context) error {
 		log.Info("HTTP endpoint opened", "url", fmt.Sprintf("http://%v/", addr))
 	}
 
+	log.Info("Start bridge successfully")
+
 	// Catch CTRL-C to ensure a graceful shutdown.
 	interrupt := make(chan os.Signal, 1)
 	signal.Notify(interrupt, os.Interrupt)

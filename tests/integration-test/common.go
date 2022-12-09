@@ -3,6 +3,7 @@ package integration
 import (
 	"context"
 	"crypto/ecdsa"
+	"crypto/rand"
 	"encoding/json"
 	"fmt"
 	"math/big"
@@ -26,12 +27,16 @@ import (
 	"scroll-tech/database"
 	_ "scroll-tech/database/cmd/app"
 	_ "scroll-tech/roller/cmd/app"
+	rollerConfig "scroll-tech/roller/config"
 )
 
 var (
 	l1gethImg docker.ImgInstance
 	l2gethImg docker.ImgInstance
 	dbImg     docker.ImgInstance
+
+	timestamp int
+	wsPort    int64
 
 	bridgeFile      string
 	dbFile          string
@@ -40,13 +45,21 @@ var (
 )
 
 func setupEnv(t *testing.T) {
+	// Start l1geth l2geth and postgres.
 	l1gethImg = docker.NewTestL1Docker(t)
 	l2gethImg = docker.NewTestL2Docker(t)
 	dbImg = docker.NewTestDBDocker(t, "postgres")
 
+	// Create a random ws port.
+	port, _ := rand.Int(rand.Reader, big.NewInt(2000))
+	wsPort = port.Int64() + 22000
+	timestamp = time.Now().Nanosecond()
+
+	// Load reset and store config into a random file.
 	bridgeFile = mockBridgeConfig(t)
 	dbFile = mockDatabaseConfig(t)
 	coordinatorFile = mockCoordinatorConfig(t)
+	rollerFile = mockRollerConfig(t)
 }
 
 func free(t *testing.T) {
@@ -71,7 +84,7 @@ func runBridgeApp(t *testing.T, args ...string) appAPI {
 }
 
 func runCoordinatorApp(t *testing.T, args ...string) appAPI {
-	args = append(args, "--log.debug", "--config", coordinatorFile)
+	args = append(args, "--log.debug", "--config", coordinatorFile, "--ws", "--ws.port", strconv.Itoa(int(wsPort)))
 	// start process
 	return docker.NewCmd(t, "coordinator-test", args...)
 }
@@ -87,7 +100,7 @@ func runDBCliApp(t *testing.T, option, keyword string) {
 }
 
 func runRollerApp(t *testing.T, args ...string) appAPI {
-	args = append(args, "--log.debug", "--config", "../../roller/config.toml")
+	args = append(args, "--log.debug", "--config", rollerFile)
 	return docker.NewCmd(t, "roller-test", args...)
 }
 
@@ -139,7 +152,7 @@ func mockBridgeConfig(t *testing.T) string {
 	// Store changed bridge config into a temp file.
 	data, err := json.Marshal(cfg)
 	assert.NoError(t, err)
-	file := fmt.Sprintf("/tmp/%d_bridge-config.json", time.Now().Nanosecond())
+	file := fmt.Sprintf("/tmp/%d_bridge-config.json", timestamp)
 	err = os.WriteFile(file, data, 0644)
 	assert.NoError(t, err)
 
@@ -157,7 +170,7 @@ func mockCoordinatorConfig(t *testing.T) string {
 	data, err := json.Marshal(cfg)
 	assert.NoError(t, err)
 
-	file := fmt.Sprintf("/tmp/%d_coordinator-config.json", time.Now().Nanosecond())
+	file := fmt.Sprintf("/tmp/%d_coordinator-config.json", timestamp)
 	err = os.WriteFile(file, data, 0644)
 	assert.NoError(t, err)
 
@@ -173,7 +186,22 @@ func mockDatabaseConfig(t *testing.T) string {
 	data, err := json.Marshal(cfg)
 	assert.NoError(t, err)
 
-	file := fmt.Sprintf("/tmp/%d_db-config.json", time.Now().Nanosecond())
+	file := fmt.Sprintf("/tmp/%d_db-config.json", timestamp)
+	err = os.WriteFile(file, data, 0644)
+	assert.NoError(t, err)
+
+	return file
+}
+
+func mockRollerConfig(t *testing.T) string {
+	cfg, err := rollerConfig.NewConfig("../../roller/config.json")
+	assert.NoError(t, err)
+	cfg.CoordinatorURL = fmt.Sprintf("ws://localhost:%d", wsPort)
+
+	data, err := json.Marshal(cfg)
+	assert.NoError(t, err)
+
+	file := fmt.Sprintf("/tmp/%d_roller-config.json", timestamp)
 	err = os.WriteFile(file, data, 0644)
 	assert.NoError(t, err)
 

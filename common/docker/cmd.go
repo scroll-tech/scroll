@@ -54,7 +54,7 @@ func NewCmd(t *testing.T, name string, args ...string) *Cmd {
 func (tt *Cmd) RunApp(parallel bool) {
 	//tt.mu.Lock()
 	//defer tt.mu.Unlock()
-	tt.Logf("cmd: %v", append([]string{tt.name}, tt.args...))
+	tt.Log("cmd: ", append([]string{tt.name}, tt.args...))
 	tt.cmd = &exec.Cmd{
 		Path:   reexec.Self(),
 		Args:   append([]string{tt.name}, tt.args...),
@@ -133,8 +133,8 @@ func (tt *Cmd) ExpectWithTimeout(parallel bool, timeout time.Duration, keyword s
 	}
 }
 
-func (tt *Cmd) runCmd(args []string) {
-	cmd := exec.Command(args[0], args[1:]...) //nolint:gosec
+func (tt *Cmd) runCmd() {
+	cmd := exec.Command(tt.args[0], tt.args[1:]...) //nolint:gosec
 	cmd.Stdout = tt
 	cmd.Stderr = tt
 	_ = cmd.Run()
@@ -144,18 +144,18 @@ func (tt *Cmd) runCmd(args []string) {
 func (tt *Cmd) RunCmd(parallel bool) {
 	tt.Log("cmd: ", tt.args)
 	if parallel {
-		go tt.runCmd(tt.args)
+		go tt.runCmd()
 	} else {
-		tt.runCmd(tt.args)
+		tt.runCmd()
 	}
 }
 
 func (tt *Cmd) Write(data []byte) (int, error) {
 	out := string(data)
 	if verbose {
-		tt.Logf(out)
+		tt.Logf("%s: %v", tt.name, out)
 	} else if strings.Contains(out, "error") || strings.Contains(out, "warning") {
-		tt.Logf(out)
+		tt.Logf("%s: %v", tt.name, out)
 	}
 	go tt.checkFuncs.IterCb(func(_ string, value interface{}) {
 		check := value.(checkFunc)

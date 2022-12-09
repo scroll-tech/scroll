@@ -36,7 +36,7 @@ func NewImgGeth(t *testing.T, image, volume, ipc string, hPort, wPort int) ImgIn
 		httpPort: hPort,
 		wsPort:   wPort,
 	}
-	imgGeth.cmd = NewCmd(t, "", imgGeth.prepare()...)
+	imgGeth.cmd = NewCmd(t, imgGeth.name, imgGeth.prepare()...)
 	return imgGeth
 }
 
