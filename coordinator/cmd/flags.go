@@ -17,8 +17,6 @@ var (
 		&wsEnabledFlag,
 		&wsListenAddrFlag,
 		&wsPortFlag,
-		// verifier mock
-		&verifierMockFlag,
 	}
 	// httpEnabledFlag enable rpc server.
 	httpEnabledFlag = cli.BoolFlag{
