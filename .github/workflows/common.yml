@@ -24,16 +24,39 @@ jobs:
   check:
     runs-on: ubuntu-latest
     steps:
+    - uses: actions-rs/toolchain@v1
+      with:
+        toolchain: nightly-2022-08-23
+        override: true
+        components: rustfmt, clippy
     - name: Install Go
       uses: actions/setup-go@v2
       with:
         go-version: 1.18.x
     - name: Checkout code
       uses: actions/checkout@v2
+    - name: Cache cargo registry
+      uses: actions/cache@v2
+      with:
+        path: ~/.cargo/registry
+        key: ${{ runner.os }}-roller-cargo-registry-${{ hashFiles('common/libzkp/impl/Cargo.lock') }}
+    - name: Cache cargo index
+      uses: actions/cache@v2
+      with:
+        path: ~/.cargo/git
+        key: ${{ runner.os }}-roller-cargo-index-${{ hashFiles('common/libzkp/impl/Cargo.lock') }}
+    - name: Cache cargo target
+      uses: actions/cache@v2
+      with:
+        path: /home/runner/work/scroll/scroll/common/libzkp/impl/target
+        key: ${{ runner.os }}-roller-cargo-build-target-${{ hashFiles('common/libzkp/impl/Cargo.lock') }}
     - name: Lint
       run: |
         rm -rf $HOME/.cache/golangci-lint 
         make lint
+        cargo fmt --all -- --check
+        cargo clippy --release --features prove_verify -- -D warnings
+
   goimports-lint:
     runs-on: ubuntu-latest
     steps:
