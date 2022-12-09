@@ -43,8 +43,8 @@ pipeline {
                         make -C coordinator docker
                         make -C database docker
                         '''
-                } catch (buildResult: 'FAILURE', stageResult: 'FAILURE') {
-                    echo "docker build failed"
+                } catch (err) {
+                    echo "docker build failed ${err}"
                     currentBuild.result = 'FAILURE'
                 }
             }
