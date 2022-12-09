@@ -25,7 +25,7 @@ pipeline {
                     changeset "bridge/**"
                     changeset "coordinator/**"
                     changeset "common/**"
-                    changeset "database/**"xs
+                    changeset "database/**"
                 }
             }
             steps { 
