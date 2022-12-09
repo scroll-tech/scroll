@@ -9,25 +9,18 @@ import (
 	"github.com/mattn/go-isatty"
 	"github.com/scroll-tech/go-ethereum/cmd/utils"
 	"github.com/scroll-tech/go-ethereum/log"
+	"github.com/urfave/cli/v2"
 )
 
-// LogConfig is for setup log types of the logger
-type LogConfig struct {
-	LogFile       string
-	LogJSONFormat bool
-	LogDebug      bool
-	Verbosity     int
-}
-
-// Setup is for setup logger
-func Setup(cfg *LogConfig) error {
+// LogSetup is for setup logger
+func LogSetup(ctx *cli.Context) error {
 	var ostream log.Handler
-	if logFile := cfg.LogFile; len(logFile) > 0 {
+	if logFile := ctx.String(LogFileFlag.Name); len(logFile) > 0 {
 		fp, err := os.OpenFile(filepath.Clean(logFile), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
 		if err != nil {
 			utils.Fatalf("Failed to open log file", "err", err)
 		}
-		if cfg.LogJSONFormat {
+		if ctx.Bool(LogJSONFormat.Name) {
 			ostream = log.StreamHandler(io.Writer(fp), log.JSONFormat())
 		} else {
 			ostream = log.StreamHandler(io.Writer(fp), log.TerminalFormat(true))
@@ -41,10 +34,10 @@ func Setup(cfg *LogConfig) error {
 		ostream = log.StreamHandler(output, log.TerminalFormat(usecolor))
 	}
 	// show the call file and line number
-	log.PrintOrigins(cfg.LogDebug)
+	log.PrintOrigins(ctx.Bool(LogDebugFlag.Name))
 	glogger := log.NewGlogHandler(ostream)
 	// Set log level
-	glogger.Verbosity(log.Lvl(cfg.Verbosity))
+	glogger.Verbosity(log.Lvl(ctx.Int(VerbosityFlag.Name)))
 	log.Root().SetHandler(glogger)
 	return nil
 }
