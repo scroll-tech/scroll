@@ -421,11 +421,11 @@ func (r *mockRoller) connectToCoordinator(t *testing.T, wsURL string) {
 	}
 	assert.NoError(t, authMsg.Sign(r.privKey))
 
-	token, err := client.RequestToken(context.Background(), authMsg)
+	token, err := r.client.RequestToken(context.Background(), authMsg)
 	assert.NoError(t, err)
 	authMsg.Identity.Token = token
 
-	assert.NoError(t, authMsg.Sign(privkey))
+	assert.NoError(t, authMsg.Sign(r.privKey))
 	r.sub, err = r.client.RegisterAndSubscribe(context.Background(), r.taskCh, authMsg)
 	assert.NoError(t, err)
 
@@ -470,8 +470,12 @@ func (r *mockRoller) reconnetToCoordinator(t *testing.T) {
 		},
 	}
 	assert.NoError(t, authMsg.Sign(r.privKey))
-	r.sub.Unsubscribe()
-	var err error
+
+	token, err := r.client.RequestToken(context.Background(), authMsg)
+	assert.NoError(t, err)
+	authMsg.Identity.Token = token
+
+	assert.NoError(t, authMsg.Sign(r.privKey))
 	r.sub, err = r.client.RegisterAndSubscribe(context.Background(), r.taskCh, authMsg)
 	assert.NoError(t, err)
 }
