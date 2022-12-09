@@ -55,7 +55,7 @@ jobs:
         rm -rf $HOME/.cache/golangci-lint 
         make lint
         cargo fmt --all -- --check
-        cargo clippy --release --features prove_verify -- -D warnings
+        cargo clippy --release -- -D warnings
 
   goimports-lint:
     runs-on: ubuntu-latest

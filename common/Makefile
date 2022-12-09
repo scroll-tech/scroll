@@ -5,3 +5,4 @@ test:
 
 lint: ## Lint the files - used for CI
 	GOBIN=$(PWD)/build/bin go run ../build/lint.go
+	cargo clippy --release -- -D warnings
