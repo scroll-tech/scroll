@@ -1,8 +1,6 @@
 imagePrefix = 'scrolltech'
 credentialDocker = 'dockerhub'
 
-def boolean test_result = false
-
 pipeline {
     agent any
     options {
@@ -31,6 +29,7 @@ pipeline {
             }
             steps { 
                 // start to build project
+                catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
                 sh '''#!/bin/bash
                     export PATH=/home/ubuntu/go/bin:$PATH
                     make dev_docker
@@ -41,18 +40,13 @@ pipeline {
                     make -C database db_cli
                     # check docker build
                     make -C bridge docker
-                    catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
-                        echo "bridge docker build failed"
-                    }
+                    echo "bridge docker build failed"
                     make -C coordinator docker
-                    catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
-                        echo "coordinator docker build failed"
-                    }
+                    echo "coordinator docker build failed"
                     make -C database docker
-                    catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
-                        echo "database docker build failed"
-                    }
+                    echo "database docker build failed"
                     '''
+                }
             }
         }
         stage('Test') {
@@ -83,8 +77,6 @@ pipeline {
                             sh "cd $i && go test -v -race -coverprofile=coverage.txt -covermode=atomic \$(go list ./... | grep -v 'database\\|l2\\|l1\\|common\\|coordinator')"
                         }
                     }
-
-                    script { test_result = true }
                }
             }
         }
