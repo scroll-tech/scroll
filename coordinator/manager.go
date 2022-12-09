@@ -255,30 +255,24 @@ func (m *Manager) handleZkProof(pk string, msg *message.ProofDetail) error {
 		return dbErr
 	}
 
-	if m.verifier != nil {
-		var err error
-		tasks, err := m.orm.GetBlockBatches(map[string]interface{}{"id": msg.ID})
-		if len(tasks) == 0 {
-			if err != nil {
-				log.Error("failed to get tasks", "error", err)
-			}
-			return err
-		}
-
-		success, err = m.verifier.VerifyProof(msg.Proof)
+	var err error
+	tasks, err := m.orm.GetBlockBatches(map[string]interface{}{"id": msg.ID})
+	if len(tasks) == 0 {
 		if err != nil {
-			// record failed session.
-			m.addFailedSession(sess, err.Error())
-			// TODO: this is only a temp workaround for testnet, we should return err in real cases
-			success = false
-			log.Error("Failed to verify zk proof", "proof id", msg.ID, "error", err)
-			// TODO: Roller needs to be slashed if proof is invalid.
-		} else {
-			log.Info("Verify zk proof successfully", "verification result", success, "proof id", msg.ID)
+			log.Error("failed to get tasks", "error", err)
 		}
+		return err
+	}
+
+	success, err = m.verifier.VerifyProof(msg.Proof)
+	if err != nil {
+		// record failed session.
+		m.addFailedSession(sess, err.Error())
+		// TODO: this is only a temp workaround for testnet, we should return err in real cases
+		success = false
+		log.Error("Failed to verify zk proof", "proof id", msg.ID, "error", err)
+		// TODO: Roller needs to be slashed if proof is invalid.
 	} else {
-		success = true
-		log.Info("Verifier disabled, VerifyProof skipped")
 		log.Info("Verify zk proof successfully", "verification result", success, "proof id", msg.ID)
 	}
 
