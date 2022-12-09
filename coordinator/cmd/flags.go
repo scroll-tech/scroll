@@ -4,7 +4,7 @@ import "github.com/urfave/cli/v2"
 
 var (
 	verifierMockFlag = cli.BoolFlag{
-		Name:  "verifier mock mode",
+		Name:  "verifier.mock",
 		Usage: "Mock the verifier",
 		Value: false,
 	}
@@ -17,6 +17,8 @@ var (
 		&wsEnabledFlag,
 		&wsListenAddrFlag,
 		&wsPortFlag,
+		// verifier mock
+		&verifierMockFlag,
 	}
 	// httpEnabledFlag enable rpc server.
 	httpEnabledFlag = cli.BoolFlag{
