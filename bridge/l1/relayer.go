@@ -72,7 +72,7 @@ func NewLayer1Relayer(ctx context.Context, ethClient *ethclient.Client, l1Confir
 // ProcessSavedEvents relays saved un-processed cross-domain transactions to desired blockchain
 func (r *Layer1Relayer) ProcessSavedEvents() {
 	// msgs are sorted by nonce in increasing order
-	msgs, err := r.db.GetL1UnprocessedMessages()
+	msgs, err := r.db.GetL1MessagesByStatus(orm.MsgPending)
 	if err != nil {
 		log.Error("Failed to fetch unprocessed L1 messages", "err", err)
 		return
@@ -108,15 +108,15 @@ func (r *Layer1Relayer) processSavedEvent(msg *orm.L1Message) error {
 		return err
 	}
 
-	hash, err := r.sender.SendTransaction(msg.Layer1Hash, &r.cfg.MessengerContractAddress, big.NewInt(0), data)
+	hash, err := r.sender.SendTransaction(msg.MsgHash, &r.cfg.MessengerContractAddress, big.NewInt(0), data)
 	if err != nil {
 		return err
 	}
-	log.Info("relayMessage to layer2", "layer1 hash", msg.Layer1Hash, "tx hash", hash)
+	log.Info("relayMessage to layer2", "msg hash", msg.MsgHash, "tx hash", hash)
 
-	err = r.db.UpdateLayer1StatusAndLayer2Hash(r.ctx, msg.Layer1Hash, hash.String(), orm.MsgSubmitted)
+	err = r.db.UpdateLayer1StatusAndLayer2Hash(r.ctx, msg.MsgHash, orm.MsgSubmitted, hash.String())
 	if err != nil {
-		log.Error("UpdateLayer1StatusAndLayer2Hash failed", "msg.layer1hash", msg.Layer1Hash, "msg.height", msg.Height, "err", err)
+		log.Error("UpdateLayer1StatusAndLayer2Hash failed", "msg.msgHash", msg.MsgHash, "msg.height", msg.Height, "err", err)
 	}
 	return err
 }
@@ -139,7 +139,7 @@ func (r *Layer1Relayer) Start() {
 					log.Warn("transaction confirmed but failed in layer2", "confirmation", cfm)
 				} else {
 					// @todo handle db error
-					err := r.db.UpdateLayer1StatusAndLayer2Hash(r.ctx, cfm.ID, cfm.TxHash.String(), orm.MsgConfirmed)
+					err := r.db.UpdateLayer1StatusAndLayer2Hash(r.ctx, cfm.ID, orm.MsgConfirmed, cfm.TxHash.String())
 					if err != nil {
 						log.Warn("UpdateLayer1StatusAndLayer2Hash failed", "err", err)
 					}

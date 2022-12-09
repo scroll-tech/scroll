@@ -29,9 +29,6 @@ type Prover struct {
 
 // NewProver inits a Prover object.
 func NewProver(cfg *config.ProverConfig) (*Prover, error) {
-	if cfg.MockMode {
-		return &Prover{cfg: cfg}, nil
-	}
 	paramsPathStr := C.CString(cfg.ParamsPath)
 	seedPathStr := C.CString(cfg.SeedPath)
 	defer func() {
@@ -49,10 +46,6 @@ func (p *Prover) Prove(traces []*types.BlockTrace) (*message.AggProof, error) {
 }
 
 func (p *Prover) prove(traces []*types.BlockTrace) (*message.AggProof, error) {
-	if p.cfg.MockMode {
-		return &message.AggProof{}, nil
-	}
-
 	tracesByt, err := json.Marshal(traces)
 	if err != nil {
 		return nil, err

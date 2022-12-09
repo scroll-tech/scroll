@@ -3,7 +3,6 @@ module scroll-tech/roller
 go 1.18
 
 require (
-	github.com/BurntSushi/toml v1.1.0
 	github.com/docker/docker v20.10.21+incompatible
 	github.com/scroll-tech/go-ethereum v1.10.14-0.20221125025612-4ea77a7577c6
 	github.com/stretchr/testify v1.8.0
