@@ -29,7 +29,7 @@ pipeline {
             }
             steps { 
                 // start to build project
-                catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
+                try {
                     sh '''#!/bin/bash
                         export PATH=/home/ubuntu/go/bin:$PATH
                         make dev_docker
@@ -43,6 +43,9 @@ pipeline {
                         make -C coordinator docker
                         make -C database docker
                         '''
+                } catch (buildResult: 'FAILURE', stageResult: 'FAILURE') {
+                    echo "docker build failed"
+                    currentBuild.result = 'FAILURE'
                 }
             }
         }
