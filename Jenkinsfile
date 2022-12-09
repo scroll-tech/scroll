@@ -25,11 +25,11 @@ pipeline {
                     changeset "bridge/**"
                     changeset "coordinator/**"
                     changeset "common/**"
-                    changeset "database/**"
+                    changeset "database/**"xs
                 }
             }
             steps { 
-                //start to build project
+                // start to build project
                 sh '''#!/bin/bash
                     export PATH=/home/ubuntu/go/bin:$PATH
                     make dev_docker
