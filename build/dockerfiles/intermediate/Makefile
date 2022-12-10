@@ -2,7 +2,11 @@ GO_VERSION := 1.18
 PYTHON_VERSION := 3.10
 RUST_VERSION := nightly-2022-08-23
 
-.PHONY: all go-builder rust-builder rust-alpine-builder go-rust-builder py-runner
+.PHONY: all go-builder rust-builder rust-alpine-builder go-rust-builder full-builder py-runner
+
+full-builder:
+	docker build -t scrolltech/full-builder:latest -f full-builder.Dockerfile ./
+	docker image tag scrolltech/full-builder:latest scrolltech/full-builder:go-$(GO_VERSION)-rust-$(RUST_VERSION)
 
 go-builder:
 	docker build -t scrolltech/go-builder:latest -f go-builder.Dockerfile ./
@@ -24,7 +28,7 @@ py-runner:
 	docker build -t scrolltech/py-runner:latest -f py-runner.Dockerfile ./
 	docker image tag scrolltech/py-runner:latest scrolltech/py-runner:$(PYTHON_VERSION)
 
-all: go-builder rust-builder rust-alpine-builder go-rust-builder py-runner
+all: go-builder rust-builder rust-alpine-builder go-rust-builder full-builder py-runner
 
 publish:
 	docker push scrolltech/go-builder:latest
@@ -35,5 +39,7 @@ publish:
 	docker push scrolltech/rust-alpine-builder:$(RUST_VERSION)
 	docker push scrolltech/go-rust-builder:latest
 	docker push scrolltech/go-rust-builder:go-$(GO_VERSION)-rust-$(RUST_VERSION)
+	docker push scrolltech/full-builder:latest
+	docker push scrolltech/full-builder:go-$(GO_VERSION)-rust-$(RUST_VERSION)
 	docker push scrolltech/py-runner:latest
 	docker push scrolltech/py-runner:$(PYTHON_VERSION)
