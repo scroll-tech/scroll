@@ -13,29 +13,6 @@ import (
 	"scroll-tech/roller/core"
 )
 
-var (
-	// cfgFileFlag load json type config file.
-	cfgFileFlag = cli.StringFlag{
-		Name:  "config",
-		Usage: "TOML configuration file",
-		Value: "./config.toml",
-	}
-
-	// logFileFlag decides where the logger output is sent. If this flag is left
-	// empty, it will log to stdout.
-	logFileFlag = cli.StringFlag{
-		Name:  "logfile",
-		Usage: "Tells the sequencer where to write log entries",
-	}
-
-	// verbosityFlag log level.
-	verbosityFlag = cli.IntFlag{
-		Name:  "verbosity",
-		Usage: "Logging verbosity: 0=silent, 1=error, 2=warn, 3=info, 4=debug, 5=detail",
-		Value: 3,
-	}
-)
-
 func main() {
 	app := cli.NewApp()
 
@@ -43,17 +20,10 @@ func main() {
 	app.Name = "Roller"
 	app.Usage = "The Scroll L2 Roller"
 	app.Version = core.Version
-	app.Flags = append(app.Flags, []cli.Flag{
-		&cfgFileFlag,
-		&logFileFlag,
-		&verbosityFlag,
-	}...)
+	app.Flags = append(app.Flags, utils.CommonFlags...)
 
 	app.Before = func(ctx *cli.Context) error {
-		return utils.Setup(&utils.LogConfig{
-			LogFile:   ctx.String(logFileFlag.Name),
-			Verbosity: ctx.Int(verbosityFlag.Name),
-		})
+		return utils.LogSetup(ctx)
 	}
 
 	if err := app.Run(os.Args); err != nil {
@@ -63,10 +33,11 @@ func main() {
 }
 
 func action(ctx *cli.Context) error {
-	// Get config
-	cfg, err := config.InitConfig(ctx.String(cfgFileFlag.Name))
+	// Load config file.
+	cfgFile := ctx.String(utils.ConfigFileFlag.Name)
+	cfg, err := config.NewConfig(cfgFile)
 	if err != nil {
-		return err
+		log.Crit("failed to load config file", "config file", cfgFile, "error", err)
 	}
 
 	// Create roller
@@ -75,7 +46,7 @@ func action(ctx *cli.Context) error {
 		return err
 	}
 	defer r.Close()
-	log.Info("roller start successfully", "name", cfg.RollerName)
+	log.Info("roller start successfully", "name", cfg.RollerName, "publickey", r.PublicKey(), "version", core.Version)
 
 	return r.Run()
 }

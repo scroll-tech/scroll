@@ -3,6 +3,7 @@
 create table l2_message
 (
     nonce        BIGINT  NOT NULL,
+    msg_hash     VARCHAR NOT NULL,
     height       BIGINT  NOT NULL,
     sender       VARCHAR NOT NULL,
     target       VARCHAR NOT NULL,
@@ -22,8 +23,11 @@ create table l2_message
 comment
 on column l2_message.status is 'undefined, pending, submitted, confirmed';
 
-create unique index l2_message_layer2_hash_uindex
-    on l2_message (layer2_hash);
+create unique index l2_message_hash_uindex
+on l2_message (msg_hash);
+
+create unique index l2_message_nonce_uindex
+on l2_message (nonce);
 
 create index l2_message_height_index
     on l2_message (height);

@@ -3,358 +3,405 @@ package coordinator_test
 import (
 	"context"
 	"crypto/ecdsa"
-	"crypto/elliptic"
-	"crypto/rand"
-	"encoding/binary"
-	"encoding/json"
-	"io"
-	"net"
-	"net/url"
-	"os"
+	"net/http"
 	"strconv"
 	"testing"
 	"time"
 
-	"github.com/ethereum/go-ethereum/crypto/secp256k1"
-	"github.com/gorilla/websocket"
-	"github.com/scroll-tech/go-ethereum/common"
+	"github.com/scroll-tech/go-ethereum"
+	"github.com/scroll-tech/go-ethereum/crypto"
 	"github.com/stretchr/testify/assert"
+	"golang.org/x/sync/errgroup"
 
 	"scroll-tech/common/docker"
 	"scroll-tech/common/message"
+	"scroll-tech/common/utils"
+
 	"scroll-tech/database"
 	"scroll-tech/database/migrate"
 	"scroll-tech/database/orm"
 
 	"scroll-tech/coordinator"
-	"scroll-tech/coordinator/config"
+	client2 "scroll-tech/coordinator/client"
+
+	bridge_config "scroll-tech/bridge/config"
+
+	coordinator_config "scroll-tech/coordinator/config"
 )
 
-const managerAddr = "localhost:8132"
-const managerPort = ":8132"
+const managerURL = "localhost:8132"
+const newManagerURL = "localhost:8133"
 
 var (
-	dbConfig = &database.DBConfig{
-		DriverName: "postgres",
-	}
-	l2gethImg docker.ImgInstance
-	dbImg     docker.ImgInstance
+	cfg           *bridge_config.Config
+	dbImg         docker.ImgInstance
+	rollerManager *coordinator.Manager
+	handle        *http.Server
 )
 
-func setupEnv(t *testing.T) {
-	// initialize l2geth docker image
-	l2gethImg = docker.NewTestL2Docker(t)
-	// initialize db docker image
-	dbImg = docker.NewTestDBDocker(t, "postgres")
-	dbConfig.DSN = dbImg.Endpoint()
+func setEnv(t *testing.T) error {
+	var err error
+	// Load config.
+	cfg, err = bridge_config.NewConfig("../bridge/config.json")
+	assert.NoError(t, err)
+
+	// Create db container.
+	dbImg = docker.NewTestDBDocker(t, cfg.DBConfig.DriverName)
+	cfg.DBConfig.DSN = dbImg.Endpoint()
+
+	// start roller manager
+	rollerManager = setupRollerManager(t, "", cfg.DBConfig)
+
+	// start ws service
+	handle, _, err = utils.StartWSEndpoint(managerURL, rollerManager.APIs())
+	assert.NoError(t, err)
+	return err
 }
 
-func TestFunction(t *testing.T) {
-	// Setup
-	setupEnv(t)
+func TestApis(t *testing.T) {
+	// Set up the test environment.
+	assert.True(t, assert.NoError(t, setEnv(t)), "failed to setup the test environment.")
 
-	t.Run("TestHandshake", func(t *testing.T) {
-		verifierEndpoint := setupMockVerifier(t)
-		defer os.RemoveAll(verifierEndpoint)
+	t.Run("TestHandshake", testHandshake)
+	t.Run("TestSeveralConnections", testSeveralConnections)
+	t.Run("TestIdleRollerSelection", testIdleRollerSelection)
+	t.Run("TestRollerReconnect", testRollerReconnect)
+	t.Run("TestGracefulRestart", testGracefulRestart)
 
-		rollerManager := setupRollerManager(t, verifierEndpoint, nil)
-		defer rollerManager.Stop()
-
-		// Set up client
-		u := url.URL{Scheme: "ws", Host: managerAddr, Path: "/"}
-		c, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
-		assert.NoError(t, err)
-		defer c.Close()
-
-		performHandshake(t, c)
-
-		// Roller manager should send a Websocket over the GetRollerChan
-		select {
-		case <-rollerManager.GetRollerChan():
-			// Test succeeded
-		case <-time.After(coordinator.HandshakeTimeout):
-			t.Fail()
-		}
-	})
-
-	t.Run("TestHandshakeTimeout", func(t *testing.T) {
-		verifierEndpoint := setupMockVerifier(t)
-		defer os.RemoveAll(verifierEndpoint)
-
-		rollerManager := setupRollerManager(t, verifierEndpoint, nil)
-		defer rollerManager.Stop()
-
-		// Set up client
-		u := url.URL{Scheme: "ws", Host: managerAddr, Path: "/"}
-
-		c, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
-		assert.NoError(t, err)
-		defer c.Close()
-
-		// Wait for the handshake timeout to pass
-		<-time.After(coordinator.HandshakeTimeout + 1*time.Second)
-
-		performHandshake(t, c)
-
-		// No websocket should be received
-		select {
-		case <-rollerManager.GetRollerChan():
-			t.Fail()
-		case <-time.After(1 * time.Second):
-			// Test succeeded
-		}
-	})
-
-	t.Run("TestTwoConnections", func(t *testing.T) {
-		verifierEndpoint := setupMockVerifier(t)
-		defer os.RemoveAll(verifierEndpoint)
-
-		rollerManager := setupRollerManager(t, verifierEndpoint, nil)
-		defer rollerManager.Stop()
-
-		// Set up and register 2 clients
-		for i := 0; i < 2; i++ {
-			u := url.URL{Scheme: "ws", Host: managerAddr, Path: "/"}
-
-			c, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
-			assert.NoError(t, err)
-			defer c.Close()
-
-			performHandshake(t, c)
-
-			// Roller manager should send a Websocket over the GetRollerChan
-			select {
-			case <-rollerManager.GetRollerChan():
-				// Test succeeded
-			case <-time.After(coordinator.HandshakeTimeout):
-				t.Fail()
-			}
-		}
-	})
-
-	t.Run("TestTriggerProofGenerationSession", func(t *testing.T) {
-		// Create db handler and reset db.
-		db, err := database.NewOrmFactory(dbConfig)
-		assert.NoError(t, err)
-		assert.NoError(t, migrate.ResetDB(db.GetDB().DB))
-
-		// Test with two clients to make sure traces messages aren't duplicated
-		// to rollers.
-		numClients := uint8(2)
-		verifierEndpoint := setupMockVerifier(t)
-		defer os.RemoveAll(verifierEndpoint)
-
-		rollerManager := setupRollerManager(t, verifierEndpoint, db)
-		defer rollerManager.Stop()
-
-		// Set up and register `numClients` clients
-		conns := make([]*websocket.Conn, numClients)
-		for i := 0; i < int(numClients); i++ {
-			u := url.URL{Scheme: "ws", Host: managerAddr, Path: "/"}
-
-			var conn *websocket.Conn
-			conn, _, err = websocket.DefaultDialer.Dial(u.String(), nil)
-			assert.NoError(t, err)
-			defer conn.Close()
-
-			performHandshake(t, conn)
-
-			conns[i] = conn
-		}
-
-		dbTx, err := db.Beginx()
-		assert.NoError(t, err)
-		_, err = db.NewBatchInDBTx(dbTx, &orm.BlockInfo{Number: uint64(1)}, &orm.BlockInfo{Number: uint64(1)}, "0f", 1, 194676)
-		assert.NoError(t, err)
-		_, err = db.NewBatchInDBTx(dbTx, &orm.BlockInfo{Number: uint64(2)}, &orm.BlockInfo{Number: uint64(2)}, "0e", 1, 194676)
-		assert.NoError(t, err)
-		err = dbTx.Commit()
-		assert.NoError(t, err)
-
-		// Both rollers should now receive a `BlockTraces` message and should send something back.
-		for _, c := range conns {
-			mt, payload, err := c.ReadMessage()
-			assert.NoError(t, err)
-
-			assert.Equal(t, mt, websocket.BinaryMessage)
-
-			msg := &message.Msg{}
-			assert.NoError(t, json.Unmarshal(payload, msg))
-			assert.Equal(t, msg.Type, message.TaskMsgType)
-
-			traces := &message.TaskMsg{}
-			assert.NoError(t, json.Unmarshal(payload, traces))
-
-		}
-	})
-
-	t.Run("TestIdleRollerSelection", func(t *testing.T) {
-		// Create db handler and reset db.
-		db, err := database.NewOrmFactory(dbConfig)
-		assert.NoError(t, err)
-		assert.NoError(t, migrate.ResetDB(db.GetDB().DB))
-
-		// Test with two clients to make sure traces messages aren't duplicated
-		// to rollers.
-		numClients := uint8(2)
-		verifierEndpoint := setupMockVerifier(t)
-		defer os.RemoveAll(verifierEndpoint)
-
-		// Ensure only one roller is picked per session.
-		rollerManager := setupRollerManager(t, verifierEndpoint, db)
-		defer rollerManager.Stop()
-
-		// Set up and register `numClients` clients
-		conns := make([]*websocket.Conn, numClients)
-		for i := 0; i < int(numClients); i++ {
-			u := url.URL{Scheme: "ws", Host: managerAddr, Path: "/"}
-
-			var conn *websocket.Conn
-			conn, _, err = websocket.DefaultDialer.Dial(u.String(), nil)
-			assert.NoError(t, err)
-			conn.SetReadDeadline(time.Now().Add(100 * time.Second))
-
-			performHandshake(t, conn)
-			time.Sleep(1 * time.Second)
-			conns[i] = conn
-		}
-		defer func() {
-			for _, conn := range conns {
-				assert.NoError(t, conn.Close())
-			}
-		}()
-
-		assert.Equal(t, 2, rollerManager.GetNumberOfIdleRollers())
-
-		dbTx, err := db.Beginx()
-		assert.NoError(t, err)
-		_, err = db.NewBatchInDBTx(dbTx, &orm.BlockInfo{Number: uint64(1)}, &orm.BlockInfo{Number: uint64(1)}, "0f", 1, 194676)
-		assert.NoError(t, err)
-		err = dbTx.Commit()
-		assert.NoError(t, err)
-
-		// Sleep for a little bit, so that we can avoid prematurely fetching connections.
-		// Test Second roller and check if we have all rollers busy
-		time.Sleep(3 * time.Second)
-
-		assert.Equal(t, 1, rollerManager.GetNumberOfIdleRollers())
-
-		dbTx, err = db.Beginx()
-		assert.NoError(t, err)
-		_, err = db.NewBatchInDBTx(dbTx, &orm.BlockInfo{Number: uint64(2)}, &orm.BlockInfo{Number: uint64(2)}, "0e", 1, 194676)
-		assert.NoError(t, err)
-		err = dbTx.Commit()
-		assert.NoError(t, err)
-
-		// Sleep for a little bit, so that we can avoid prematurely fetching connections.
-		// Test Second roller and check if we have all rollers busy
-		time.Sleep(3 * time.Second)
-
-		for _, c := range conns {
-			c.ReadMessage()
-		}
-
-		assert.Equal(t, 0, rollerManager.GetNumberOfIdleRollers())
-	})
 	// Teardown
 	t.Cleanup(func() {
-		assert.NoError(t, l2gethImg.Stop())
-		assert.NoError(t, dbImg.Stop())
+		handle.Shutdown(context.Background())
+		rollerManager.Stop()
+		dbImg.Stop()
 	})
 }
 
-func setupRollerManager(t *testing.T, verifierEndpoint string, orm database.OrmFactory) *coordinator.Manager {
-	rollerManager, err := coordinator.New(context.Background(), &config.RollerManagerConfig{
-		Endpoint:          managerPort,
+func testHandshake(t *testing.T) {
+	// Create db handler and reset db.
+	l2db, err := database.NewOrmFactory(cfg.DBConfig)
+	assert.NoError(t, err)
+	assert.NoError(t, migrate.ResetDB(l2db.GetDB().DB))
+	defer l2db.Close()
+
+	roller := newMockRoller(t, "roller_test")
+	defer roller.close()
+	roller.connectToCoordinator(t, managerURL)
+
+	assert.Equal(t, 1, rollerManager.GetNumberOfIdleRollers())
+}
+
+func testSeveralConnections(t *testing.T) {
+	// Create db handler and reset db.
+	l2db, err := database.NewOrmFactory(cfg.DBConfig)
+	assert.NoError(t, err)
+	assert.NoError(t, migrate.ResetDB(l2db.GetDB().DB))
+	defer l2db.Close()
+
+	var (
+		batch   = 100
+		eg      = errgroup.Group{}
+		rollers = make([]*mockRoller, batch)
+	)
+	for i := 0; i < batch; i++ {
+		idx := i
+		eg.Go(func() error {
+			rollers[idx] = newMockRoller(t, "roller_test"+strconv.Itoa(idx))
+			rollers[idx].connectToCoordinator(t, managerURL)
+			return nil
+		})
+	}
+	assert.NoError(t, eg.Wait())
+
+	// check roller's idle connections
+	assert.Equal(t, batch, rollerManager.GetNumberOfIdleRollers())
+
+	// close connection
+	for i := 0; i < batch; i++ {
+		rollers[i].close()
+	}
+
+	var (
+		tick     = time.Tick(time.Second)
+		tickStop = time.Tick(time.Second * 15)
+	)
+	for {
+		select {
+		case <-tick:
+			if rollerManager.GetNumberOfIdleRollers() == 0 {
+				return
+			}
+		case <-tickStop:
+			t.Error("roller connect is blocked")
+			return
+		}
+	}
+}
+
+func testIdleRollerSelection(t *testing.T) {
+	// Create db handler and reset db.
+	l2db, err := database.NewOrmFactory(cfg.DBConfig)
+	assert.NoError(t, err)
+	assert.NoError(t, migrate.ResetDB(l2db.GetDB().DB))
+	defer l2db.Close()
+
+	// create mock rollers.
+	batch := 20
+	rollers := make([]*mockRoller, batch)
+	for i := 0; i < batch; i++ {
+		rollers[i] = newMockRoller(t, "roller_test"+strconv.Itoa(i))
+		defer rollers[i].close()
+		rollers[i].connectToCoordinator(t, managerURL)
+		go rollers[i].waitTaskAndSendProof(t, 1, false)
+	}
+	assert.Equal(t, batch, rollerManager.GetNumberOfIdleRollers())
+
+	var ids = make([]string, 2)
+	dbTx, err := l2db.Beginx()
+	assert.NoError(t, err)
+	for i := range ids {
+		ID, err := l2db.NewBatchInDBTx(dbTx, &orm.BlockInfo{Number: uint64(i)}, &orm.BlockInfo{Number: uint64(i)}, "0f", 1, 194676)
+		assert.NoError(t, err)
+		ids[i] = ID
+	}
+	assert.NoError(t, dbTx.Commit())
+
+	// verify proof status
+	var (
+		tick     = time.Tick(500 * time.Millisecond)
+		tickStop = time.Tick(10 * time.Second)
+	)
+	for len(ids) > 0 {
+		select {
+		case <-tick:
+			status, err := l2db.GetProvingStatusByID(ids[0])
+			assert.NoError(t, err)
+			if status == orm.ProvingTaskVerified {
+				ids = ids[1:]
+			}
+		case <-tickStop:
+			t.Error("failed to check proof status")
+			return
+		}
+	}
+}
+
+func testRollerReconnect(t *testing.T) {
+	// Create db handler and reset db.
+	l2db, err := database.NewOrmFactory(cfg.DBConfig)
+	assert.NoError(t, err)
+	assert.NoError(t, migrate.ResetDB(l2db.GetDB().DB))
+	defer l2db.Close()
+
+	var ids = make([]string, 1)
+	dbTx, err := l2db.Beginx()
+	assert.NoError(t, err)
+	for i := range ids {
+		ID, err := l2db.NewBatchInDBTx(dbTx, &orm.BlockInfo{Number: uint64(i)}, &orm.BlockInfo{Number: uint64(i)}, "0f", 1, 194676)
+		assert.NoError(t, err)
+		ids[i] = ID
+	}
+	assert.NoError(t, dbTx.Commit())
+
+	// create mock roller
+	roller := newMockRoller(t, "roller_test")
+	defer roller.close()
+	roller.connectToCoordinator(t, managerURL)
+	go roller.waitTaskAndSendProof(t, 1, true)
+
+	// verify proof status
+	var (
+		tick     = time.Tick(500 * time.Millisecond)
+		tickStop = time.Tick(15 * time.Second)
+	)
+	for len(ids) > 0 {
+		select {
+		case <-tick:
+			status, err := l2db.GetProvingStatusByID(ids[0])
+			assert.NoError(t, err)
+			if status == orm.ProvingTaskVerified {
+				ids = ids[1:]
+			}
+		case <-tickStop:
+			t.Error("failed to check proof status")
+			return
+		}
+	}
+}
+
+func testGracefulRestart(t *testing.T) {
+	// Create db handler and reset db.
+	l2db, err := database.NewOrmFactory(cfg.DBConfig)
+	assert.NoError(t, err)
+	assert.NoError(t, migrate.ResetDB(l2db.GetDB().DB))
+	defer l2db.Close()
+
+	var ids = make([]string, 1)
+	dbTx, err := l2db.Beginx()
+	assert.NoError(t, err)
+	for i := range ids {
+		ids[i], err = l2db.NewBatchInDBTx(dbTx, &orm.BlockInfo{Number: uint64(i)}, &orm.BlockInfo{Number: uint64(i)}, "0f", 1, 194676)
+		assert.NoError(t, err)
+	}
+	assert.NoError(t, dbTx.Commit())
+
+	// create mock roller
+	roller := newMockRoller(t, "roller_test")
+	roller.connectToCoordinator(t, managerURL)
+
+	// wait 5 seconds, coordinator restarts before roller submits proof
+	go roller.waitTaskAndSendProof(t, 5, true)
+
+	// wait for coordinator to dispatch task
+	<-time.After(3 * time.Second)
+
+	// the coordinator will delete the roller if the subscription is closed.
+	roller.close()
+
+	// start new roller manager && ws service
+	newRollerManager := setupRollerManager(t, "", cfg.DBConfig)
+	handle, _, err = utils.StartWSEndpoint(newManagerURL, newRollerManager.APIs())
+	assert.NoError(t, err)
+	defer func() {
+		newRollerManager.Stop()
+		handle.Shutdown(context.Background())
+	}()
+
+	for i := range ids {
+		_, err = newRollerManager.GetSessionInfo(ids[i])
+		assert.NoError(t, err)
+	}
+
+	// will overwrite the roller client for `SubmitProof`
+	roller.connectToCoordinator(t, newManagerURL)
+	defer roller.close()
+
+	// at this point, roller haven't submitted
+	status, err := l2db.GetProvingStatusByID(ids[0])
+	assert.NoError(t, err)
+	assert.Equal(t, orm.ProvingTaskAssigned, status)
+
+	// verify proof status
+	var (
+		tick     = time.Tick(500 * time.Millisecond)
+		tickStop = time.Tick(15 * time.Second)
+	)
+	for len(ids) > 0 {
+		select {
+		case <-tick:
+			// this proves that the roller submits to the new coordinator,
+			// because the roller client for `submitProof` has been overwritten
+			status, err := l2db.GetProvingStatusByID(ids[0])
+			assert.NoError(t, err)
+			if status == orm.ProvingTaskVerified {
+				ids = ids[1:]
+			}
+
+		case <-tickStop:
+			t.Error("failed to check proof status")
+			return
+		}
+	}
+}
+
+func setupRollerManager(t *testing.T, verifierEndpoint string, dbCfg *database.DBConfig) *coordinator.Manager {
+	// Get db handler.
+	db, err := database.NewOrmFactory(dbCfg)
+	assert.True(t, assert.NoError(t, err), "failed to get db handler.")
+
+	rollerManager, err := coordinator.New(context.Background(), &coordinator_config.RollerManagerConfig{
 		RollersPerSession: 1,
 		VerifierEndpoint:  verifierEndpoint,
 		CollectionTime:    1,
-	}, orm)
+	}, db)
 	assert.NoError(t, err)
-
 	assert.NoError(t, rollerManager.Start())
 
 	return rollerManager
 }
 
-// performHandshake sets up a websocket client to connect to the roller manager.
-func performHandshake(t *testing.T, c *websocket.Conn) {
-	// Try to perform handshake
-	pk, sk := generateKeyPair()
-	authMsg := &message.AuthMessage{
-		Identity: message.Identity{
-			Name:      "testRoller",
+type mockRoller struct {
+	rollerName string
+	privKey    *ecdsa.PrivateKey
+	taskCh     chan *message.TaskMsg
+	sub        ethereum.Subscription
+	client     *client2.Client
+	stopCh     chan struct{}
+}
+
+func newMockRoller(t *testing.T, rollerName string) *mockRoller {
+	privKey, err := crypto.GenerateKey()
+	assert.NoError(t, err)
+	return &mockRoller{
+		rollerName: rollerName,
+		privKey:    privKey,
+		taskCh:     make(chan *message.TaskMsg, 4)}
+}
+
+// connectToCoordinator sets up a websocket client to connect to the roller manager.
+func (r *mockRoller) connectToCoordinator(t *testing.T, wsURL string) {
+	// create a new ws connection
+	var err error
+	r.client, err = client2.Dial("ws://" + wsURL)
+	assert.NoError(t, err)
+
+	authMsg := &message.AuthMsg{
+		Identity: &message.Identity{
+			Name:      r.rollerName,
 			Timestamp: time.Now().UnixNano(),
-			PublicKey: common.Bytes2Hex(pk),
 		},
-		Signature: "",
 	}
+	assert.NoError(t, authMsg.Sign(r.privKey))
 
-	hash, err := authMsg.Identity.Hash()
-	assert.NoError(t, err)
-	sig, err := secp256k1.Sign(hash, sk)
-	assert.NoError(t, err)
-
-	authMsg.Signature = common.Bytes2Hex(sig)
-
-	b, err := json.Marshal(authMsg)
+	r.sub, err = r.client.RegisterAndSubscribe(context.Background(), r.taskCh, authMsg)
 	assert.NoError(t, err)
 
-	msg := &message.Msg{
-		Type:    message.RegisterMsgType,
-		Payload: b,
-	}
-
-	b, err = json.Marshal(msg)
-	assert.NoError(t, err)
-
-	assert.NoError(t, c.WriteMessage(websocket.BinaryMessage, b))
-}
-
-func generateKeyPair() (pubkey, privkey []byte) {
-	key, err := ecdsa.GenerateKey(secp256k1.S256(), rand.Reader)
-	if err != nil {
-		panic(err)
-	}
-	pubkey = elliptic.Marshal(secp256k1.S256(), key.X, key.Y)
-
-	privkey = make([]byte, 32)
-	blob := key.D.Bytes()
-	copy(privkey[32-len(blob):], blob)
-
-	return pubkey, privkey
-}
-
-// setupMockVerifier sets up a mocked verifier for a test case.
-func setupMockVerifier(t *testing.T) string {
-	verifierEndpoint := "/tmp/" + strconv.Itoa(time.Now().Nanosecond()) + ".sock"
-
-	// Create and listen sock file.
-	l, err := net.Listen("unix", verifierEndpoint)
-	assert.NoError(t, err)
+	r.stopCh = make(chan struct{})
 
 	go func() {
-		conn, err := l.Accept()
-		assert.NoError(t, err)
-
-		// Simply read all incoming messages and send a true boolean straight back.
-		for {
-			// Read length
-			buf := make([]byte, 4)
-			_, err = io.ReadFull(conn, buf)
-			assert.NoError(t, err)
-
-			// Read message
-			msgLength := binary.LittleEndian.Uint64(buf)
-			buf = make([]byte, msgLength)
-			_, err = io.ReadFull(conn, buf)
-			assert.NoError(t, err)
-
-			// Return boolean
-			buf = []byte{1}
-			_, err = conn.Write(buf)
-			assert.NoError(t, err)
-		}
+		<-r.stopCh
+		r.sub.Unsubscribe()
 	}()
-	return verifierEndpoint
+}
+
+// Wait for the proof task, after receiving the proof task, roller submits proof after proofTime secs.
+func (r *mockRoller) waitTaskAndSendProof(t *testing.T, proofTime time.Duration, reconnectBeforeSendProof bool) {
+	for {
+		task := <-r.taskCh
+		// simulate proof time
+		<-time.After(proofTime * time.Second)
+		if reconnectBeforeSendProof {
+			// simulating the case that the roller first disconnects and then reconnects to the coordinator
+			// the Subscription and its `Err()` channel will be closed, and the coordinator will `freeRoller()`
+			r.reconnetToCoordinator(t)
+		}
+		proof := &message.ProofMsg{
+			ProofDetail: &message.ProofDetail{
+				ID:     task.ID,
+				Status: message.StatusOk,
+				Proof:  &message.AggProof{},
+			},
+		}
+		assert.NoError(t, proof.Sign(r.privKey))
+		ok, err := r.client.SubmitProof(context.Background(), proof)
+		assert.NoError(t, err)
+		assert.Equal(t, true, ok)
+	}
+}
+
+func (r *mockRoller) reconnetToCoordinator(t *testing.T) {
+	authMsg := &message.AuthMsg{
+		Identity: &message.Identity{
+			Name:      r.rollerName,
+			Timestamp: time.Now().UnixNano(),
+		},
+	}
+	assert.NoError(t, authMsg.Sign(r.privKey))
+	r.sub.Unsubscribe()
+	var err error
+	r.sub, err = r.client.RegisterAndSubscribe(context.Background(), r.taskCh, authMsg)
+	assert.NoError(t, err)
+}
+
+func (r *mockRoller) close() {
+	close(r.stopCh)
 }

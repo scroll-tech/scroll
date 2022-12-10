@@ -24,11 +24,15 @@ const (
 
 	// MsgConfirmed represents the from_layer message status is confirmed
 	MsgConfirmed
+
+	// MsgFailed represents the from_layer message status is failed
+	MsgFailed
 )
 
 // L1Message is structure of stored layer1 bridge message
 type L1Message struct {
 	Nonce      uint64    `json:"nonce" db:"nonce"`
+	MsgHash    string    `json:"msg_hash" db:"msg_hash"`
 	Height     uint64    `json:"height" db:"height"`
 	Sender     string    `json:"sender" db:"sender"`
 	Value      string    `json:"value" db:"value"`
@@ -44,6 +48,7 @@ type L1Message struct {
 // L2Message is structure of stored layer2 bridge message
 type L2Message struct {
 	Nonce      uint64    `json:"nonce" db:"nonce"`
+	MsgHash    string    `json:"msg_hash" db:"msg_hash"`
 	Height     uint64    `json:"height" db:"height"`
 	Sender     string    `json:"sender" db:"sender"`
 	Value      string    `json:"value" db:"value"`
@@ -67,6 +72,32 @@ type BlockInfo struct {
 	BlockTimestamp uint64         `json:"block_timestamp" db:"block_timestamp"`
 }
 
+// RollerProveStatus is the roller prove status of a block batch (session)
+type RollerProveStatus int32
+
+const (
+	// RollerAssigned indicates roller assigned but has not submitted proof
+	RollerAssigned RollerProveStatus = iota
+	// RollerProofValid indicates roller has submitted valid proof
+	RollerProofValid
+	// RollerProofInvalid indicates roller has submitted invalid proof
+	RollerProofInvalid
+)
+
+// RollerStatus is the roller name and roller prove status
+type RollerStatus struct {
+	PublicKey string            `json:"public_key"`
+	Name      string            `json:"name"`
+	Status    RollerProveStatus `json:"status"`
+}
+
+// SessionInfo is assigned rollers info of a block batch (session)
+type SessionInfo struct {
+	ID             string                   `json:"id"`
+	Rollers        map[string]*RollerStatus `json:"rollers"`
+	StartTimestamp int64                    `json:"start_timestamp"`
+}
+
 // BlockTraceOrm block_trace operation interface
 type BlockTraceOrm interface {
 	Exist(number uint64) (bool, error)
@@ -79,6 +110,12 @@ type BlockTraceOrm interface {
 	DeleteTracesByBatchID(batchID string) error
 	InsertBlockTraces(ctx context.Context, blockTraces []*types.BlockTrace) error
 	SetBatchIDForBlocksInDBTx(dbTx *sqlx.Tx, numbers []uint64, batchID string) error
+}
+
+// SessionInfoOrm sessions info operation inte
+type SessionInfoOrm interface {
+	GetSessionInfosByIDs(ids []string) ([]*SessionInfo, error)
+	SetSessionInfo(rollersInfo *SessionInfo) error
 }
 
 // BlockBatchOrm block_batch operation interface
@@ -94,39 +131,39 @@ type BlockBatchOrm interface {
 	GetPendingBatches() ([]string, error)
 	GetCommittedBatches() ([]string, error)
 	GetRollupStatus(id string) (RollupStatus, error)
+	GetRollupStatusByIDList(ids []string) ([]RollupStatus, error)
 	GetLatestFinalizedBatch() (*BlockBatch, error)
 	UpdateRollupStatus(ctx context.Context, id string, status RollupStatus) error
 	UpdateCommitTxHashAndRollupStatus(ctx context.Context, id string, commit_tx_hash string, status RollupStatus) error
 	UpdateFinalizeTxHashAndRollupStatus(ctx context.Context, id string, finalize_tx_hash string, status RollupStatus) error
+	GetAssignedBatchIDs() ([]string, error)
 }
 
 // L1MessageOrm is layer1 message db interface
 type L1MessageOrm interface {
 	GetL1MessageByNonce(nonce uint64) (*L1Message, error)
-	GetL1UnprocessedMessages() ([]*L1Message, error)
+	GetL1MessageByMsgHash(msgHash string) (*L1Message, error)
+	GetL1MessagesByStatus(status MsgStatus) ([]*L1Message, error)
 	GetL1ProcessedNonce() (int64, error)
 	SaveL1Messages(ctx context.Context, messages []*L1Message) error
-	UpdateLayer2Hash(ctx context.Context, layer1Hash string, layer2Hash string) error
-	UpdateLayer1Status(ctx context.Context, layer1Hash string, status MsgStatus) error
-	UpdateLayer1StatusAndLayer2Hash(ctx context.Context, layer1Hash, layer2Hash string, status MsgStatus) error
+	UpdateLayer2Hash(ctx context.Context, msgHash string, layer2Hash string) error
+	UpdateLayer1Status(ctx context.Context, msgHash string, status MsgStatus) error
+	UpdateLayer1StatusAndLayer2Hash(ctx context.Context, msgHash string, status MsgStatus, layer2Hash string) error
 	GetLayer1LatestWatchedHeight() (int64, error)
-	GetL1MessageByLayer1Hash(layer1Hash string) (*L1Message, error)
 }
 
 // L2MessageOrm is layer2 message db interface
 type L2MessageOrm interface {
 	GetL2MessageByNonce(nonce uint64) (*L2Message, error)
+	GetL2MessageByMsgHash(msgHash string) (*L2Message, error)
 	MessageProofExist(nonce uint64) (bool, error)
 	GetMessageProofByNonce(nonce uint64) (string, error)
-	GetL2UnprocessedMessages() ([]*L2Message, error)
+	GetL2MessagesByStatus(status MsgStatus) ([]*L2Message, error)
 	GetL2ProcessedNonce() (int64, error)
 	SaveL2Messages(ctx context.Context, messages []*L2Message) error
-	UpdateLayer1Hash(ctx context.Context, layer2Hash string, layer1Hash string) error
-	UpdateLayer2Status(ctx context.Context, layer2Hash string, status MsgStatus) error
-	GetL2MessageByLayer2Hash(layer2Hash string) (*L2Message, error)
-	UpdateMessageProof(ctx context.Context, layer2Hash, proof string) error
+	UpdateLayer1Hash(ctx context.Context, msgHash string, layer1Hash string) error
+	UpdateLayer2Status(ctx context.Context, msgHash string, status MsgStatus) error
+	UpdateLayer2StatusAndLayer1Hash(ctx context.Context, msgHash string, status MsgStatus, layer1Hash string) error
+	UpdateMessageProof(ctx context.Context, nonce uint64, proof string) error
 	GetLayer2LatestWatchedHeight() (int64, error)
-	GetMessageProofByLayer2Hash(layer2Hash string) (string, error)
-	MessageProofExistByLayer2Hash(layer2Hash string) (bool, error)
-	UpdateLayer2StatusAndLayer1Hash(ctx context.Context, layer2Hash string, layer1Hash string, status MsgStatus) error
 }
