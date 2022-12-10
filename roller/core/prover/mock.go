@@ -1,4 +1,4 @@
-//go:build !prover
+//go:build mock_prover
 
 package prover
 
