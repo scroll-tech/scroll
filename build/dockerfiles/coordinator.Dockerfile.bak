@@ -30,7 +30,7 @@ RUN --mount=target=. \
     cd /coordinator && go build -v -p 4 -o /bin/coordinator ./cmd
 
 # Pull coordinator into a second stage deploy alpine container
-FROM alpine:latest
+FROM ubuntu:20.04
 
 COPY --from=builder /bin/coordinator /bin/
 
