@@ -1,5 +1,5 @@
 # Build scroll in a stock Go builder container
-FROM scrolltech/full-builder:go-1.17-rust-nightly-2022-08-23 as zkp-builder
+FROM scrolltech/go-rust-builder:go-1.17-rust-nightly-2022-08-23 as zkp-builder
 
 COPY ./ /src/
 
@@ -8,7 +8,7 @@ RUN cp -r /src/common/libzkp/interface /src/coordinator/verifier/lib
 
 
 # Download Go dependencies
-FROM scrolltech/full-builder:go-1.18-rust-nightly-2022-08-23 as base
+FROM scrolltech/go-builder:1.18 as base
 
 WORKDIR /src
 COPY go.work* ./
@@ -30,7 +30,7 @@ RUN --mount=target=. \
     cd /coordinator && go build -v -p 4 -o /bin/coordinator ./cmd
 
 # Pull coordinator into a second stage deploy alpine container
-FROM ubuntu:20.04
+FROM alpine:latest
 
 COPY --from=builder /bin/coordinator /bin/
 
