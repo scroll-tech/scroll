@@ -56,26 +56,28 @@ func (tt *Cmd) RunApp(parallel bool) {
 	tt.mu.Lock()
 	defer tt.mu.Unlock()
 	tt.Log("cmd: ", append([]string{tt.name}, tt.args...))
-	tt.cmd = &exec.Cmd{
+	cmd := &exec.Cmd{
 		Path:   reexec.Self(),
 		Args:   append([]string{tt.name}, tt.args...),
 		Stderr: tt,
 		Stdout: tt,
 	}
 	if parallel {
-		go func() { _ = tt.cmd.Run() }()
+		go func() {
+			_ = cmd.Run()
+		}()
 	} else {
-		_ = tt.cmd.Run()
+		_ = cmd.Run()
 	}
+	tt.cmd = cmd
 }
 
 // WaitExit wait util process exit.
 func (tt *Cmd) WaitExit() {
-	tt.mu.Lock()
-	defer tt.mu.Unlock()
-
 	// Send interrupt signal.
+	tt.mu.Lock()
 	_ = tt.cmd.Process.Signal(os.Interrupt)
+	tt.mu.Unlock()
 
 	// Wait all the check funcs are finished or test status is failed.
 	tick := time.NewTicker(time.Millisecond * 500)
@@ -103,8 +105,6 @@ func (tt *Cmd) UnRegistFunc(key string) {
 
 // ExpectWithTimeout wait result during timeout time.
 func (tt *Cmd) ExpectWithTimeout(parallel bool, timeout time.Duration, keyword string) {
-	tt.mu.Lock()
-	defer tt.mu.Unlock()
 	if keyword == "" {
 		return
 	}
