@@ -4,6 +4,10 @@ RUST_VERSION := nightly-2022-08-23
 
 .PHONY: all go-builder rust-builder rust-alpine-builder go-rust-builder py-runner
 
+full-builder:
+	docker build -t scrolltech/full-builder:latest -f full-builder.Dockerfile ./
+	docker image tag scrolltech/full-builder:latest scrolltech/full-builder:go-$(GO_VERSION)-rust-$(RUST_VERSION)
+
 go-builder:
 	docker build -t scrolltech/go-builder:latest -f go-builder.Dockerfile ./
 	docker image tag scrolltech/go-builder:latest scrolltech/go-builder:$(GO_VERSION)
