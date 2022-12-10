@@ -28,10 +28,11 @@ type checkFunc func(buf string)
 type Cmd struct {
 	*testing.T
 
-	mu   sync.Mutex
 	name string
 	args []string
-	cmd  *exec.Cmd
+
+	mu  sync.Mutex
+	cmd *exec.Cmd
 
 	checkFuncs cmap.ConcurrentMap //map[string]checkFunc
 
@@ -52,8 +53,8 @@ func NewCmd(t *testing.T, name string, args ...string) *Cmd {
 // RunApp exec's the current binary using name as argv[0] which will trigger the
 // reexec init function for that name (e.g. "geth-test" in cmd/geth/run_test.go)
 func (tt *Cmd) RunApp(parallel bool) {
-	//tt.mu.Lock()
-	//defer tt.mu.Unlock()
+	tt.mu.Lock()
+	defer tt.mu.Unlock()
 	tt.Log("cmd: ", append([]string{tt.name}, tt.args...))
 	tt.cmd = &exec.Cmd{
 		Path:   reexec.Self(),
@@ -102,6 +103,8 @@ func (tt *Cmd) UnRegistFunc(key string) {
 
 // ExpectWithTimeout wait result during timeout time.
 func (tt *Cmd) ExpectWithTimeout(parallel bool, timeout time.Duration, keyword string) {
+	tt.mu.Lock()
+	defer tt.mu.Unlock()
 	if keyword == "" {
 		return
 	}
