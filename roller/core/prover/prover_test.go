@@ -1,3 +1,5 @@
+//go:build ffi
+
 package prover_test
 
 import (
@@ -27,10 +29,6 @@ type RPCTrace struct {
 }
 
 func TestFFI(t *testing.T) {
-	if os.Getenv("TEST_FFI") != "true" {
-		t.Skip("Skipping testing FFI")
-	}
-
 	as := assert.New(t)
 	cfg := &config.ProverConfig{
 		ParamsPath: paramsPath,

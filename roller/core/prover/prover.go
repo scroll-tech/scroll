@@ -4,10 +4,10 @@
 package prover
 
 /*
-#cgo LDFLAGS: ./core/prover/lib/libprover.a -lm -ldl
-#cgo gpu LDFLAGS: ./core/prover/lib/libprover.a -lm -ldl -lgmp -lstdc++ -lprocps -L/usr/local/cuda/lib64/ -lcudart
+#cgo LDFLAGS: ${SRCDIR}/lib/libzkp.a -lm -ldl
+#cgo gpu LDFLAGS: ${SRCDIR}/lib/libzkp.a -lm -ldl -lgmp -lstdc++ -lprocps -L/usr/local/cuda/lib64/ -lcudart
 #include <stdlib.h>
-#include "./lib/prover.h"
+#include "./lib/libzkp.h"
 */
 import "C" //nolint:typecheck
 
@@ -22,7 +22,7 @@ import (
 	"scroll-tech/roller/config"
 )
 
-// Prover sends block-traces to rust-prover through socket and get back the zk-proof.
+// Prover sends block-traces to rust-prover through ffi and get back the zk-proof.
 type Prover struct {
 	cfg *config.ProverConfig
 }

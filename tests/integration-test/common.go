@@ -163,7 +163,7 @@ func mockCoordinatorConfig(t *testing.T) string {
 	cfg, err := coordinatorConfig.NewConfig("../../coordinator/config.json")
 	assert.NoError(t, err)
 
-	cfg.RollerManagerConfig.VerifierEndpoint = ""
+	cfg.RollerManagerConfig.Verifier.MockMode = true
 	if dbImg != nil {
 		cfg.DBConfig.DSN = dbImg.Endpoint()
 	}
