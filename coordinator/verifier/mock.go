@@ -2,6 +2,12 @@
 
 package verifier
 
+import (
+	"scroll-tech/common/message"
+
+	"scroll-tech/coordinator/config"
+)
+
 // Verifier represents a rust ffi to a halo2 verifier.
 type Verifier struct {
 }

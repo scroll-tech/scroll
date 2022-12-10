@@ -22,12 +22,13 @@ import (
 	bridgeConfig "scroll-tech/bridge/config"
 	"scroll-tech/bridge/sender"
 	"scroll-tech/common/docker"
-	_ "scroll-tech/coordinator/cmd/app"
-	coordinatorConfig "scroll-tech/coordinator/config"
 	"scroll-tech/database"
 	_ "scroll-tech/database/cmd/app"
 	_ "scroll-tech/roller/cmd/app"
 	rollerConfig "scroll-tech/roller/config"
+
+	_ "scroll-tech/coordinator/cmd/app"
+	coordinatorConfig "scroll-tech/coordinator/config"
 )
 
 var (
