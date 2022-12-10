@@ -16,9 +16,9 @@ ENV PATH="/root/.cargo/bin:${PATH}"
 RUN rustup toolchain install nightly-2022-08-23
 
 # Install Go
+RUN rm -rf /usr/local/go
 # RUN curl -O https://dl.google.com/go/go1.17.13.linux-amd64.tar.gz
 RUN curl -O https://dl.google.com/go/go1.18.9.linux-amd64.tar.gz
-# RUN rm -rf /usr/local/go
 # RUN tar -C /usr/local -xzf go1.17.13.linux-amd64.tar.gz
 RUN tar -C /usr/local -xzf go1.18.9.linux-amd64.tar.gz
 
