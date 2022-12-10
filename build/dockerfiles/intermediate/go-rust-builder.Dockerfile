@@ -4,6 +4,9 @@ ARG DEFAULT_RUST_TOOLCHAIN=nightly-2022-08-23
 
 RUN apk add --no-cache gcc musl-dev linux-headers git ca-certificates
 
+# RUN apk add --no-cache libc6-compat
+# RUN apk add --no-cache gcompat
+
 ENV RUSTUP_HOME=/usr/local/rustup \
     CARGO_HOME=/usr/local/cargo \
     PATH=/usr/local/cargo/bin:$PATH \
