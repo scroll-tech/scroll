@@ -13,7 +13,10 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-var verbose bool
+var (
+	verbose bool
+	cmdMu   sync.Mutex
+)
 
 func init() {
 	v := os.Getenv("LOG_DOCKER")
@@ -53,8 +56,6 @@ func NewCmd(t *testing.T, name string, args ...string) *Cmd {
 // RunApp exec's the current binary using name as argv[0] which will trigger the
 // reexec init function for that name (e.g. "geth-test" in cmd/geth/run_test.go)
 func (tt *Cmd) RunApp(parallel bool) {
-	tt.mu.Lock()
-	defer tt.mu.Unlock()
 	tt.Log("cmd: ", append([]string{tt.name}, tt.args...))
 	cmd := &exec.Cmd{
 		Path:   reexec.Self(),
@@ -64,12 +65,18 @@ func (tt *Cmd) RunApp(parallel bool) {
 	}
 	if parallel {
 		go func() {
+			cmdMu.Lock()
 			_ = cmd.Run()
+			cmdMu.Unlock()
 		}()
 	} else {
+		cmdMu.Lock()
 		_ = cmd.Run()
+		cmdMu.Unlock()
 	}
+	tt.mu.Lock()
 	tt.cmd = cmd
+	tt.mu.Unlock()
 }
 
 // WaitExit wait util process exit.
@@ -89,8 +96,8 @@ func (tt *Cmd) WaitExit() {
 // Interrupt send interrupt signal.
 func (tt *Cmd) Interrupt() {
 	tt.mu.Lock()
-	defer tt.mu.Unlock()
 	tt.Err = tt.cmd.Process.Signal(os.Interrupt)
+	tt.mu.Unlock()
 }
 
 // RegistFunc register check func
@@ -140,7 +147,9 @@ func (tt *Cmd) runCmd() {
 	cmd := exec.Command(tt.args[0], tt.args[1:]...) //nolint:gosec
 	cmd.Stdout = tt
 	cmd.Stderr = tt
+	cmdMu.Lock()
 	_ = cmd.Run()
+	cmdMu.Unlock()
 }
 
 // RunCmd parallel running when parallel is true.
