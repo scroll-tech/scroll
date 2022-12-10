@@ -29,7 +29,7 @@ func testBridgeOperation(t *testing.T) {
 	// Start bridge process.
 	bridgeCmd := runBridgeApp(t)
 	bridgeCmd.RunApp(true)
-	bridgeCmd.ExpectWithTimeout(false, time.Second*3, "Start bridge successfully")
+	bridgeCmd.ExpectWithTimeout(false, time.Second*10, "Start bridge successfully")
 
 	// Start coordinator process.
 	coordinatorCmd := runCoordinatorApp(t, "--ws", "--ws.port", "8391")
@@ -40,11 +40,7 @@ func testBridgeOperation(t *testing.T) {
 	rollerCmd := runRollerApp(t)
 	rollerCmd.RunApp(true)
 	rollerCmd.ExpectWithTimeout(false, time.Second*10, "roller start successfully")
-	rollerCmd.ExpectWithTimeout(false, time.Second*3, "register to coordinator successfully!")
-
-	// Send txs in parallel.
-	//newSender := runSender(t, l2gethImg.Endpoint(), common.HexToAddress("0xFe94e28e4092A4Edc906D59b59623544B81b7F80"), nil)
-	//defer newSender.Stop()
+	rollerCmd.ExpectWithTimeout(false, time.Second*10, "register to coordinator successfully!")
 
 	rollerCmd.WaitExit()
 	bridgeCmd.WaitExit()
