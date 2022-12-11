@@ -1,4 +1,4 @@
-# Build scroll in a stock Go builder container
+# Build libzkp dependency
 FROM scrolltech/full-builder:go-1.17-rust-nightly-2022-08-23 as chef
 WORKDIR app
 
@@ -10,6 +10,7 @@ FROM chef as zkp-builder
 COPY ./common/libzkp/impl/rust-toolchain ./
 COPY --from=planner /app/recipe.json recipe.json
 RUN cargo chef cook --release --recipe-path recipe.json
+
 COPY ./common/libzkp/impl .
 RUN cargo build --release
 
