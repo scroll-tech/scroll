@@ -30,6 +30,7 @@ require (
 	github.com/xrash/smetrics v0.0.0-20201216005158-039620a65673 // indirect
 	github.com/yusufpapurcu/wmi v1.2.2 // indirect
 	golang.org/x/crypto v0.0.0-20220829220503-c86fa9a7ed90 // indirect
-	golang.org/x/sys v0.0.0-20220829200755-d48e67d00261 // indirect
+	golang.org/x/sys v0.2.0 // indirect
+	golang.org/x/tools v0.3.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

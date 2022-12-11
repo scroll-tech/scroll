@@ -14,6 +14,8 @@ import (
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/log"
+
+	"scroll-tech/common/utils"
 )
 
 type blockTraceOrm struct {
@@ -165,17 +167,17 @@ func (o *blockTraceOrm) InsertBlockTraces(ctx context.Context, blockTraces []*ty
 			log.Error("failed to marshal blockTrace", "hash", hash, "err", err)
 			return err
 		}
+		gas_cost := utils.ComputeTraceGasCost(trace)
 		traceMaps[i] = map[string]interface{}{
 			"number":          number.String(),
 			"hash":            hash,
 			"parent_hash":     trace.Header.ParentHash.String(),
 			"trace":           string(data),
 			"tx_num":          tx_num,
-			"gas_used":        trace.Header.GasUsed,
+			"gas_used":        gas_cost,
 			"block_timestamp": mtime,
 		}
 	}
-
 	_, err := o.db.NamedExec(`INSERT INTO public.block_trace (number, hash, parent_hash, trace, tx_num, gas_used, block_timestamp) VALUES (:number, :hash, :parent_hash, :trace, :tx_num, :gas_used, :block_timestamp);`, traceMaps)
 	if err != nil {
 		log.Error("failed to insert blockTraces", "err", err)

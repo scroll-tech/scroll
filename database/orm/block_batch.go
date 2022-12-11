@@ -364,3 +364,21 @@ func (o *blockBatchOrm) UpdateFinalizeTxHashAndRollupStatus(ctx context.Context,
 		return err
 	}
 }
+
+func (o *blockBatchOrm) GetAssignedBatchIDs() ([]string, error) {
+	rows, err := o.db.Queryx(`SELECT id FROM block_batch WHERE proving_status IN ($1, $2)`, ProvingTaskAssigned, ProvingTaskProved)
+	if err != nil {
+		return nil, err
+	}
+
+	var ids []string
+	for rows.Next() {
+		var id string
+		if err = rows.Scan(&id); err != nil {
+			break
+		}
+		ids = append(ids, id)
+	}
+
+	return ids, rows.Close()
+}

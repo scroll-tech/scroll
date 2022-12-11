@@ -74,6 +74,32 @@ type BlockInfo struct {
 	BlockTimestamp uint64         `json:"block_timestamp" db:"block_timestamp"`
 }
 
+// RollerProveStatus is the roller prove status of a block batch (session)
+type RollerProveStatus int32
+
+const (
+	// RollerAssigned indicates roller assigned but has not submitted proof
+	RollerAssigned RollerProveStatus = iota
+	// RollerProofValid indicates roller has submitted valid proof
+	RollerProofValid
+	// RollerProofInvalid indicates roller has submitted invalid proof
+	RollerProofInvalid
+)
+
+// RollerStatus is the roller name and roller prove status
+type RollerStatus struct {
+	PublicKey string            `json:"public_key"`
+	Name      string            `json:"name"`
+	Status    RollerProveStatus `json:"status"`
+}
+
+// SessionInfo is assigned rollers info of a block batch (session)
+type SessionInfo struct {
+	ID             string                   `json:"id"`
+	Rollers        map[string]*RollerStatus `json:"rollers"`
+	StartTimestamp int64                    `json:"start_timestamp"`
+}
+
 // BlockTraceOrm block_trace operation interface
 type BlockTraceOrm interface {
 	Exist(number *big.Int) (bool, error)
@@ -86,6 +112,12 @@ type BlockTraceOrm interface {
 	DeleteTracesByBatchID(batchID string) error
 	InsertBlockTraces(ctx context.Context, blockTraces []*types.BlockTrace) error
 	SetBatchIDForBlocksInDBTx(dbTx *sqlx.Tx, numbers []*big.Int, batchID string) error
+}
+
+// SessionInfoOrm sessions info operation inte
+type SessionInfoOrm interface {
+	GetSessionInfosByIDs(ids []string) ([]*SessionInfo, error)
+	SetSessionInfo(rollersInfo *SessionInfo) error
 }
 
 // BlockBatchOrm block_batch operation interface
@@ -106,6 +138,7 @@ type BlockBatchOrm interface {
 	UpdateRollupStatus(ctx context.Context, id string, status RollupStatus) error
 	UpdateCommitTxHashAndRollupStatus(ctx context.Context, id string, commit_tx_hash string, status RollupStatus) error
 	UpdateFinalizeTxHashAndRollupStatus(ctx context.Context, id string, finalize_tx_hash string, status RollupStatus) error
+	GetAssignedBatchIDs() ([]string, error)
 }
 
 // L1MessageOrm is layer1 message db interface

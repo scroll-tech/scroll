@@ -1,6 +1,7 @@
 #![feature(once_cell)]
 
 pub mod prove;
+pub mod verify;
 
 pub(crate) mod utils {
     use std::ffi::{CStr, CString};
