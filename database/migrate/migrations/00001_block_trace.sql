@@ -5,7 +5,7 @@
 -- TODO: why tx_num is bigint?
 create table block_trace
 (
-    number                  NUMERIC(100, 0)         NOT NULL,
+    number                  BIGINT          NOT NULL,
     hash                    VARCHAR         NOT NULL,
     parent_hash             VARCHAR         NOT NULL,
     trace                   JSON            NOT NULL,

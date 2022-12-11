@@ -3,7 +3,6 @@ module scroll-tech/coordinator
 go 1.18
 
 require (
-	github.com/islishude/bigint v1.3.3
 	github.com/orcaman/concurrent-map v1.0.0
 	github.com/scroll-tech/go-ethereum v1.10.14-0.20221125025612-4ea77a7577c6
 	github.com/stretchr/testify v1.8.0

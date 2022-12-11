@@ -5,9 +5,9 @@ create table block_batch
 (
     id                      VARCHAR         NOT NULL,
     index                   BIGINT          NOT NULL,
-    start_block_number      NUMERIC         NOT NULL,
+    start_block_number      BIGINT          NOT NULL,
     start_block_hash        VARCHAR         NOT NULL,
-    end_block_number        NUMERIC         NOT NULL,
+    end_block_number        BIGINT          NOT NULL,
     end_block_hash          VARCHAR         NOT NULL,
     parent_hash             VARCHAR         NOT NULL,
     total_tx_num            BIGINT          NOT NULL,

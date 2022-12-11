@@ -2,6 +2,7 @@ package l2
 
 import (
 	"fmt"
+	"math/big"
 	"time"
 
 	"github.com/scroll-tech/go-ethereum/log"
@@ -83,12 +84,12 @@ func (w *WatcherClient) createBatchForBlocks(blocks []*orm.BlockInfo) error {
 		startBlock     = blocks[0]
 		endBlock       = blocks[len(blocks)-1]
 		txNum, gasUsed uint64
-		blockIDs       = make([]uint64, len(blocks))
+		blockIDs       = make([]*big.Int, len(blocks))
 	)
 	for i, block := range blocks {
 		txNum += block.TxNum
 		gasUsed += block.GasUsed
-		blockIDs[i] = block.Number
+		blockIDs[i] = (*big.Int)(block.Number)
 	}
 
 	batchID, dbTxErr = w.orm.NewBatchInDBTx(dbTx, startBlock, endBlock, startBlock.ParentHash, txNum, gasUsed)

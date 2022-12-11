@@ -8,7 +8,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/islishude/bigint"
 	_ "github.com/lib/pq"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/scroll-tech/go-ethereum/core/types"
@@ -26,7 +25,7 @@ var (
 		{
 			Nonce:      1,
 			MsgHash:    "msg_hash1",
-			Height:     bigint.New(1),
+			Height:     (*orm.BigInt)(big.NewInt(1)),
 			Sender:     "0x596a746661dbed76a84556111c2872249b070e15",
 			Value:      "0x19ece",
 			Fee:        "0x19ece",
@@ -39,7 +38,7 @@ var (
 		{
 			Nonce:      2,
 			MsgHash:    "msg_hash2",
-			Height:     bigint.New(2),
+			Height:     (*orm.BigInt)(big.NewInt(2)),
 			Sender:     "0x596a746661dbed76a84556111c2872249b070e15",
 			Value:      "0x19ece",
 			Fee:        "0x19ece",
@@ -54,7 +53,7 @@ var (
 		{
 			Nonce:      1,
 			MsgHash:    "msg_hash1",
-			Height:     bigint.New(1),
+			Height:     (*orm.BigInt)(big.NewInt(1)),
 			Sender:     "0x596a746661dbed76a84556111c2872249b070e15",
 			Value:      "0x19ece",
 			Fee:        "0x19ece",
@@ -67,7 +66,7 @@ var (
 		{
 			Nonce:      2,
 			MsgHash:    "msg_hash2",
-			Height:     bigint.New(2),
+			Height:     (*orm.BigInt)(big.NewInt(2)),
 			Sender:     "0x596a746661dbed76a84556111c2872249b070e15",
 			Value:      "0x19ece",
 			Fee:        "0x19ece",
@@ -259,8 +258,8 @@ func testOrmBlockBatch(t *testing.T) {
 	dbTx, err := factory.Beginx()
 	assert.NoError(t, err)
 	batchID1, err := ormBatch.NewBatchInDBTx(dbTx,
-		&orm.BlockInfo{Number: bigint.FromBigInt(blockTrace.Header.Number)},
-		&orm.BlockInfo{Number: bigint.FromBigInt(new(big.Int).Add(blockTrace.Header.Number, big.NewInt(1)))},
+		&orm.BlockInfo{Number: (*orm.BigInt)(blockTrace.Header.Number)},
+		&orm.BlockInfo{Number: (*orm.BigInt)(new(big.Int).Add(blockTrace.Header.Number, big.NewInt(1)))},
 		"ff", 1, 194676) // parentHash & totalTxNum & totalL2Gas don't really matter here
 	assert.NoError(t, err)
 	err = ormBlock.SetBatchIDForBlocksInDBTx(dbTx, []*big.Int{
@@ -268,8 +267,8 @@ func testOrmBlockBatch(t *testing.T) {
 		new(big.Int).Add(blockTrace.Header.Number, big.NewInt(1))}, batchID1)
 	assert.NoError(t, err)
 	batchID2, err := ormBatch.NewBatchInDBTx(dbTx,
-		&orm.BlockInfo{Number: bigint.FromBigInt(new(big.Int).Add(blockTrace.Header.Number, big.NewInt(2)))},
-		&orm.BlockInfo{Number: bigint.FromBigInt(new(big.Int).Add(blockTrace.Header.Number, big.NewInt(3)))},
+		&orm.BlockInfo{Number: (*orm.BigInt)(new(big.Int).Add(blockTrace.Header.Number, big.NewInt(2)))},
+		&orm.BlockInfo{Number: (*orm.BigInt)(new(big.Int).Add(blockTrace.Header.Number, big.NewInt(3)))},
 		"ff", 1, 194676) // parentHash & totalTxNum & totalL2Gas don't really matter here
 	assert.NoError(t, err)
 	err = ormBlock.SetBatchIDForBlocksInDBTx(dbTx, []*big.Int{
@@ -330,13 +329,13 @@ func testOrmSessionInfo(t *testing.T) {
 	dbTx, err := factory.Beginx()
 	assert.NoError(t, err)
 	batchID, err := ormBatch.NewBatchInDBTx(dbTx,
-		&orm.BlockInfo{Number: blockTrace.Header.Number.Uint64()},
-		&orm.BlockInfo{Number: blockTrace.Header.Number.Uint64() + 1},
+		&orm.BlockInfo{Number: (*orm.BigInt)(blockTrace.Header.Number)},
+		&orm.BlockInfo{Number: (*orm.BigInt)(new(big.Int).Add(blockTrace.Header.Number, big.NewInt(1)))},
 		"ff", 1, 194676)
 	assert.NoError(t, err)
-	assert.NoError(t, ormBlock.SetBatchIDForBlocksInDBTx(dbTx, []uint64{
-		blockTrace.Header.Number.Uint64(),
-		blockTrace.Header.Number.Uint64() + 1}, batchID))
+	assert.NoError(t, ormBlock.SetBatchIDForBlocksInDBTx(dbTx, []*big.Int{
+		blockTrace.Header.Number,
+		new(big.Int).Add(blockTrace.Header.Number, big.NewInt(1))}, batchID))
 	assert.NoError(t, dbTx.Commit())
 	assert.NoError(t, ormBatch.UpdateProvingStatus(batchID, orm.ProvingTaskAssigned))
 

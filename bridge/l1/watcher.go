@@ -57,10 +57,10 @@ func NewWatcher(ctx context.Context, client *ethclient.Client, startHeight uint6
 	savedHeight, err := db.GetLayer1LatestWatchedHeight()
 	if err != nil {
 		log.Warn("Failed to fetch height from db", "err", err)
-		savedHeight = 0
+		savedHeight = big.NewInt(0)
 	}
-	if savedHeight < int64(startHeight) {
-		savedHeight = int64(startHeight)
+	if savedHeight.Cmp(big.NewInt(int64(startHeight))) < 0 {
+		savedHeight.SetInt64(int64(startHeight))
 	}
 
 	stop := make(chan bool)
@@ -74,7 +74,7 @@ func NewWatcher(ctx context.Context, client *ethclient.Client, startHeight uint6
 		messengerABI:       bridge_abi.L1MessengerMetaABI,
 		rollupAddress:      rollupAddress,
 		rollupABI:          bridge_abi.RollupMetaABI,
-		processedMsgHeight: uint64(savedHeight),
+		processedMsgHeight: savedHeight.Uint64(),
 		stop:               stop,
 	}
 }
@@ -243,7 +243,7 @@ func (w *Watcher) parseBridgeEventLogs(logs []types.Log) ([]*orm.L1Message, []re
 			l1Messages = append(l1Messages, &orm.L1Message{
 				Nonce:      event.MessageNonce.Uint64(),
 				MsgHash:    utils.ComputeMessageHash(event.Target, event.Sender, event.Value, event.Fee, event.Deadline, event.Message, event.MessageNonce).String(),
-				Height:     vLog.BlockNumber,
+				Height:     (*orm.BigInt)(big.NewInt(0).SetUint64((vLog.BlockNumber))),
 				Sender:     event.Sender.String(),
 				Value:      event.Value.String(),
 				Fee:        event.Fee.String(),

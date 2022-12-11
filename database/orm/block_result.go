@@ -9,7 +9,6 @@ import (
 	"math/big"
 	"strings"
 
-	"github.com/islishude/bigint"
 	"github.com/jmoiron/sqlx"
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/core/types"
@@ -31,7 +30,7 @@ func NewBlockTraceOrm(db *sqlx.DB) BlockTraceOrm {
 
 func (o *blockTraceOrm) Exist(number *big.Int) (bool, error) {
 	var res int
-	err := o.db.QueryRow(o.db.Rebind(`SELECT 1 from block_trace where number = ? limit 1;`), bigint.FromBigInt(number)).Scan(&res)
+	err := o.db.QueryRow(o.db.Rebind(`SELECT 1 from block_trace where number = ? limit 1;`), number.Int64()).Scan(&res)
 	if err != nil {
 		if err != sql.ErrNoRows {
 			return false, err
@@ -44,11 +43,11 @@ func (o *blockTraceOrm) Exist(number *big.Int) (bool, error) {
 func (o *blockTraceOrm) GetBlockTracesLatestHeight() (*big.Int, error) {
 	row := o.db.QueryRow("SELECT COALESCE(MAX(number), -1) FROM block_trace;")
 
-	var height bigint.Int = bigint.New(0)
+	var height int64
 	if err := row.Scan(&height); err != nil {
-		return big.NewInt(-1), err
+		return nil, err
 	}
-	return height.ToInt(), nil
+	return big.NewInt(height), nil
 }
 
 func (o *blockTraceOrm) GetBlockTraces(fields map[string]interface{}, args ...string) ([]*types.BlockTrace, error) {
@@ -145,7 +144,7 @@ func (o *blockTraceOrm) GetUnbatchedBlocks(fields map[string]interface{}, args .
 }
 
 func (o *blockTraceOrm) GetHashByNumber(number *big.Int) (*common.Hash, error) {
-	row := o.db.QueryRow(`SELECT hash FROM block_trace WHERE number = $1`, bigint.FromBigInt(number))
+	row := o.db.QueryRow(`SELECT hash FROM block_trace WHERE number = $1`, number.Int64())
 	var hashStr string
 	if err := row.Scan(&hashStr); err != nil {
 		return nil, err
@@ -197,11 +196,11 @@ func (o *blockTraceOrm) DeleteTracesByBatchID(batch_id string) error {
 func (o *blockTraceOrm) SetBatchIDForBlocksInDBTx(dbTx *sqlx.Tx, numbers []*big.Int, batchID string) error {
 	query := "UPDATE block_trace SET batch_id=? WHERE number IN (?)"
 
-	var binumbers []bigint.Int
+	var inumbers []int64
 	for _, number := range numbers {
-		binumbers = append(binumbers, bigint.FromBigInt(number))
+		inumbers = append(inumbers, number.Int64())
 	}
-	qry, args, err := sqlx.In(query, batchID, binumbers)
+	qry, args, err := sqlx.In(query, batchID, inumbers)
 	if err != nil {
 		return err
 	}

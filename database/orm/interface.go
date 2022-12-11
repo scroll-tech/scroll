@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"math/big"
 
-	"github.com/islishude/bigint"
 	"github.com/jmoiron/sqlx"
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/core/types"
@@ -33,39 +32,39 @@ const (
 
 // L1Message is structure of stored layer1 bridge message
 type L1Message struct {
-	Nonce      uint64     `json:"nonce" db:"nonce"`
-	MsgHash    string     `json:"msg_hash" db:"msg_hash"`
-	Height     bigint.Int `json:"height" db:"height"`
-	Sender     string     `json:"sender" db:"sender"`
-	Value      string     `json:"value" db:"value"`
-	Fee        string     `json:"fee" db:"fee"`
-	GasLimit   uint64     `json:"gas_limit" db:"gas_limit"`
-	Deadline   uint64     `json:"deadline" db:"deadline"`
-	Target     string     `json:"target" db:"target"`
-	Calldata   string     `json:"calldata" db:"calldata"`
-	Layer1Hash string     `json:"layer1_hash" db:"layer1_hash"`
-	Status     MsgStatus  `json:"status" db:"status"`
+	Nonce      uint64    `json:"nonce" db:"nonce"`
+	MsgHash    string    `json:"msg_hash" db:"msg_hash"`
+	Height     *BigInt   `json:"height" db:"height"`
+	Sender     string    `json:"sender" db:"sender"`
+	Value      string    `json:"value" db:"value"`
+	Fee        string    `json:"fee" db:"fee"`
+	GasLimit   uint64    `json:"gas_limit" db:"gas_limit"`
+	Deadline   uint64    `json:"deadline" db:"deadline"`
+	Target     string    `json:"target" db:"target"`
+	Calldata   string    `json:"calldata" db:"calldata"`
+	Layer1Hash string    `json:"layer1_hash" db:"layer1_hash"`
+	Status     MsgStatus `json:"status" db:"status"`
 }
 
 // L2Message is structure of stored layer2 bridge message
 type L2Message struct {
-	Nonce      uint64     `json:"nonce" db:"nonce"`
-	MsgHash    string     `json:"msg_hash" db:"msg_hash"`
-	Height     bigint.Int `json:"height" db:"height"`
-	Sender     string     `json:"sender" db:"sender"`
-	Value      string     `json:"value" db:"value"`
-	Fee        string     `json:"fee" db:"fee"`
-	GasLimit   uint64     `json:"gas_limit" db:"gas_limit"`
-	Deadline   uint64     `json:"deadline" db:"deadline"`
-	Target     string     `json:"target" db:"target"`
-	Calldata   string     `json:"calldata" db:"calldata"`
-	Layer2Hash string     `json:"layer2_hash" db:"layer2_hash"`
-	Status     MsgStatus  `json:"status" db:"status"`
+	Nonce      uint64    `json:"nonce" db:"nonce"`
+	MsgHash    string    `json:"msg_hash" db:"msg_hash"`
+	Height     *BigInt   `json:"height" db:"height"`
+	Sender     string    `json:"sender" db:"sender"`
+	Value      string    `json:"value" db:"value"`
+	Fee        string    `json:"fee" db:"fee"`
+	GasLimit   uint64    `json:"gas_limit" db:"gas_limit"`
+	Deadline   uint64    `json:"deadline" db:"deadline"`
+	Target     string    `json:"target" db:"target"`
+	Calldata   string    `json:"calldata" db:"calldata"`
+	Layer2Hash string    `json:"layer2_hash" db:"layer2_hash"`
+	Status     MsgStatus `json:"status" db:"status"`
 }
 
 // BlockInfo is structure of stored `block_trace` without `trace`
 type BlockInfo struct {
-	Number         bigint.Int     `json:"number" db:"number"`
+	Number         *BigInt        `json:"number" db:"number"`
 	Hash           string         `json:"hash" db:"hash"`
 	ParentHash     string         `json:"parent_hash" db:"parent_hash"`
 	BatchID        sql.NullString `json:"batch_id" db:"batch_id"`
@@ -151,7 +150,7 @@ type L1MessageOrm interface {
 	UpdateLayer2Hash(ctx context.Context, msgHash string, layer2Hash string) error
 	UpdateLayer1Status(ctx context.Context, msgHash string, status MsgStatus) error
 	UpdateLayer1StatusAndLayer2Hash(ctx context.Context, msgHash string, status MsgStatus, layer2Hash string) error
-	GetLayer1LatestWatchedHeight() (bigint.Int, error)
+	GetLayer1LatestWatchedHeight() (*big.Int, error)
 }
 
 // L2MessageOrm is layer2 message db interface
@@ -167,5 +166,5 @@ type L2MessageOrm interface {
 	UpdateLayer2Status(ctx context.Context, msgHash string, status MsgStatus) error
 	UpdateLayer2StatusAndLayer1Hash(ctx context.Context, msgHash string, status MsgStatus, layer1Hash string) error
 	UpdateMessageProof(ctx context.Context, nonce uint64, proof string) error
-	GetLayer2LatestWatchedHeight() (bigint.Int, error)
+	GetLayer2LatestWatchedHeight() (*big.Int, error)
 }

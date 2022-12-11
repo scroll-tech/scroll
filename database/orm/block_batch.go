@@ -9,7 +9,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/islishude/bigint"
 	"github.com/jmoiron/sqlx"
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/log"
@@ -81,9 +80,9 @@ type BlockBatch struct {
 	ID                  string         `json:"id" db:"id"`
 	Index               uint64         `json:"index" db:"index"`
 	ParentHash          string         `json:"parent_hash" db:"parent_hash"`
-	StartBlockNumber    bigint.Int     `json:"start_block_number" db:"start_block_number"`
+	StartBlockNumber    *BigInt        `json:"start_block_number" db:"start_block_number"`
 	StartBlockHash      string         `json:"start_block_hash" db:"start_block_hash"`
-	EndBlockNumber      bigint.Int     `json:"end_block_number" db:"end_block_number"`
+	EndBlockNumber      *BigInt        `json:"end_block_number" db:"end_block_number"`
 	EndBlockHash        string         `json:"end_block_hash" db:"end_block_hash"`
 	TotalTxNum          uint64         `json:"total_tx_num" db:"total_tx_num"`
 	TotalL2Gas          uint64         `json:"total_l2_gas" db:"total_l2_gas"`
@@ -209,9 +208,9 @@ func (o *blockBatchOrm) NewBatchInDBTx(dbTx *sqlx.Tx, startBlock *BlockInfo, end
 			"id":                 id,
 			"index":              index,
 			"parent_hash":        parentHash,
-			"start_block_number": startBlock.Number,
+			"start_block_number": (*big.Int)(startBlock.Number).Int64(),
 			"start_block_hash":   startBlock.Hash,
-			"end_block_number":   endBlock.Number,
+			"end_block_number":   (*big.Int)(endBlock.Number).Int64(),
 			"end_block_hash":     endBlock.Hash,
 			"total_tx_num":       totalTxNum,
 			"total_l2_gas":       totalL2Gas,

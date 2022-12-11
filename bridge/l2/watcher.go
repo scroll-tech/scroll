@@ -59,14 +59,14 @@ func NewL2WatcherClient(ctx context.Context, client *ethclient.Client, confirmat
 	savedHeight, err := orm.GetLayer2LatestWatchedHeight()
 	if err != nil {
 		log.Warn("fetch height from db failed", "err", err)
-		savedHeight = 0
+		savedHeight = big.NewInt(0)
 	}
 
 	return &WatcherClient{
 		ctx:                 ctx,
 		Client:              client,
 		orm:                 orm,
-		processedMsgHeight:  uint64(savedHeight),
+		processedMsgHeight:  savedHeight.Uint64(),
 		confirmations:       confirmations,
 		proofGenerationFreq: proofGenFreq,
 		skippedOpcodes:      skippedOpcodes,
@@ -85,7 +85,8 @@ func (w *WatcherClient) Start() {
 			panic("must run L2 watcher with DB")
 		}
 
-		lastFetchedBlock, err := w.orm.GetBlockTracesLatestHeight()
+		lastFetchedBlockBig, err := w.orm.GetBlockTracesLatestHeight()
+		lastFetchedBlock := lastFetchedBlockBig.Int64()
 		if err != nil {
 			panic(fmt.Sprintf("failed to GetBlockTracesLatestHeight in DB: %v", err))
 		}
@@ -159,7 +160,8 @@ func (w *WatcherClient) tryFetchRunningMissingBlocks(ctx context.Context, backTr
 	// Get newest block in DB. must have blocks at that time.
 	// Don't use "block_trace" table "trace" column's BlockTrace.Number,
 	// because it might be empty if the corresponding rollup_result is finalized/finalization_skipped
-	heightInDB, err := w.orm.GetBlockTracesLatestHeight()
+	heightInDBBig, err := w.orm.GetBlockTracesLatestHeight()
+	heightInDB := heightInDBBig.Int64()
 	if err != nil {
 		return fmt.Errorf("failed to GetBlockTraces in DB: %v", err)
 	}
@@ -290,7 +292,7 @@ func (w *WatcherClient) parseBridgeEventLogs(logs []types.Log) ([]*orm.L2Message
 			l2Messages = append(l2Messages, &orm.L2Message{
 				Nonce:      event.MessageNonce.Uint64(),
 				MsgHash:    utils.ComputeMessageHash(event.Target, event.Sender, event.Value, event.Fee, event.Deadline, event.Message, event.MessageNonce).String(),
-				Height:     vLog.BlockNumber,
+				Height:     (*orm.BigInt)(big.NewInt(0).SetUint64(vLog.BlockNumber)),
 				Sender:     event.Sender.String(),
 				Value:      event.Value.String(),
 				Fee:        event.Fee.String(),
