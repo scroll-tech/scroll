@@ -99,7 +99,7 @@ func testMonitorBridgeContract(t *testing.T) {
 	}
 
 	// wait for dealing time
-	<-time.After(9 * time.Second)
+	<-time.After(12 * time.Second)
 
 	var latestHeight uint64
 	latestHeight, err = l2Cli.BlockNumber(context.Background())
@@ -172,7 +172,7 @@ func testFetchMultipleSentMessageInOneBlock(t *testing.T) {
 	}
 
 	// wait for dealing time
-	<-time.After(12 * time.Second)
+	<-time.After(15 * time.Second)
 
 	// check if we successfully stored events
 	height, err := db.GetLayer2LatestWatchedHeight()
