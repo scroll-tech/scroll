@@ -3,9 +3,7 @@ FROM ethereum/client-go as gethbin
 FROM alpine:latest as pre_deploy
 COPY --from=gethbin /usr/local/bin/geth ./gethbin/
 RUN apk update
-RUN apk add --upgrade npm
-RUN apk add --upgrade git
-RUN apk add --upgrade bash
+RUN apk add --upgrade npm git bash
 RUN npm install -g hardhat
 COPY /contracts /contracts
 COPY /common/docker/l1geth/password /l1geth/

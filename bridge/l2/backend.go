@@ -33,7 +33,7 @@ func New(ctx context.Context, cfg *config.L2Config, orm database.OrmFactory) (*B
 		return nil, err
 	}
 
-	l2Watcher := NewL2WatcherClient(ctx, client, cfg.Confirmations, cfg.ContractEventsBlocksFetchLimit, cfg.ProofGenerationFreq, cfg.SkippedOpcodes, cfg.L2MessengerAddress, orm)
+	l2Watcher := NewL2WatcherClient(ctx, client, cfg.Confirmations, cfg.ProofGenerationFreq, cfg.SkippedOpcodes, cfg.L2MessengerAddress, orm)
 
 	return &Backend{
 		cfg:       cfg,

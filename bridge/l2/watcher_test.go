@@ -33,7 +33,7 @@ func testCreateNewWatcherAndStop(t *testing.T) {
 	defer l2db.Close()
 
 	l2cfg := cfg.L2Config
-	rc := l2.NewL2WatcherClient(context.Background(), l2Cli, l2cfg.Confirmations, 100, l2cfg.ProofGenerationFreq, l2cfg.SkippedOpcodes, l2cfg.L2MessengerAddress, l2db)
+	rc := l2.NewL2WatcherClient(context.Background(), l2Cli, l2cfg.Confirmations, l2cfg.ProofGenerationFreq, l2cfg.SkippedOpcodes, l2cfg.L2MessengerAddress, l2db)
 	rc.Start()
 	defer rc.Stop()
 
@@ -99,7 +99,7 @@ func testMonitorBridgeContract(t *testing.T) {
 	}
 
 	// wait for dealing time
-	<-time.After(6 * time.Second)
+	<-time.After(9 * time.Second)
 
 	var latestHeight uint64
 	latestHeight, err = l2Cli.BlockNumber(context.Background())
@@ -172,7 +172,7 @@ func testFetchMultipleSentMessageInOneBlock(t *testing.T) {
 	}
 
 	// wait for dealing time
-	<-time.After(6 * time.Second)
+	<-time.After(12 * time.Second)
 
 	// check if we successfully stored events
 	height, err := db.GetLayer2LatestWatchedHeight()
@@ -199,7 +199,7 @@ func testTraceHasUnsupportedOpcodes(t *testing.T) {
 }
 
 func prepareRelayerClient(l2Cli *ethclient.Client, db database.OrmFactory, contractAddr common.Address) *l2.WatcherClient {
-	return l2.NewL2WatcherClient(context.Background(), l2Cli, 0, 100, 1, map[string]struct{}{}, contractAddr, db)
+	return l2.NewL2WatcherClient(context.Background(), l2Cli, 0, 1, map[string]struct{}{}, contractAddr, db)
 }
 
 func prepareAuth(t *testing.T, l2Cli *ethclient.Client, privateKey *ecdsa.PrivateKey) *bind.TransactOpts {

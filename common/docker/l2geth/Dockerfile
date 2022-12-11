@@ -4,9 +4,7 @@ FROM alpine:latest as pre_deploy
 
 COPY  --from=GethBin /usr/local/bin/geth ./gethbin/
 RUN apk update
-RUN apk add --upgrade npm
-RUN apk add --upgrade git
-RUN apk add --upgrade bash
+RUN apk add --upgrade npm git bash
 RUN mkdir -p /l2geth/keystore
 COPY /common/docker/l2geth/password /l2geth/
 COPY /common/docker/l2geth/genesis.json /l2geth/
