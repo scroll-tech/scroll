@@ -110,7 +110,7 @@ func testMonitorBridgeContract(t *testing.T) {
 	height, err := db.GetLayer2LatestWatchedHeight()
 	assert.NoError(t, err)
 	t.Log("Height in DB is", height)
-	assert.Greater(t, height, int64(previousHeight))
+	assert.Greater(t, height.Cmp(big.NewInt(int64(previousHeight))), 0)
 	msgs, err := db.GetL2MessagesByStatus(orm.MsgPending)
 	assert.NoError(t, err)
 	assert.Equal(t, 2, len(msgs))
@@ -178,7 +178,7 @@ func testFetchMultipleSentMessageInOneBlock(t *testing.T) {
 	height, err := db.GetLayer2LatestWatchedHeight()
 	assert.NoError(t, err)
 	t.Log("LatestHeight is", height)
-	assert.Greater(t, height, int64(previousHeight)) // height must be greater than previousHeight because confirmations is 0
+	assert.Greater(t, height.Cmp(big.NewInt(int64(previousHeight))), 0) // height must be greater than previousHeight because confirmations is 0
 	msgs, err := db.GetL2MessagesByStatus(orm.MsgPending)
 	assert.NoError(t, err)
 	assert.Equal(t, 5, len(msgs))

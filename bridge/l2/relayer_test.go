@@ -174,7 +174,7 @@ func testL2RelayerProcessCommittedBatches(t *testing.T) {
 
 	dbTx, err := db.Beginx()
 	assert.NoError(t, err)
-	batchID, err := db.NewBatchInDBTx(dbTx, &orm.BlockInfo{}, &orm.BlockInfo{}, "0", 1, 194676) // startBlock & endBlock & parentHash & totalTxNum & totalL2Gas don't really matter here
+	batchID, err := db.NewBatchInDBTx(dbTx, &orm.BlockInfo{Number: (*orm.BigInt)(big.NewInt(0))}, &orm.BlockInfo{Number: (*orm.BigInt)(big.NewInt(0))}, "0", 1, 194676) // startBlock & endBlock & parentHash & totalTxNum & totalL2Gas don't really matter here
 	assert.NoError(t, err)
 	err = dbTx.Commit()
 	assert.NoError(t, err)
