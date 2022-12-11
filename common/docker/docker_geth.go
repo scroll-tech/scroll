@@ -29,16 +29,20 @@ type ImgGeth struct {
 	running bool
 	*Cmd
 }
+
+// AddressFile stores l1/l2 contract address
 type AddressFile struct {
 	L2 *L2Contracts
 	L1 *L1Contracts
 }
 
+// Proxy contains proxy address and implementation address
 type Proxy struct {
 	Implementation string `json:"implementation"`
 	Proxy          string `json:"proxy"`
 }
 
+// L1Contracts stores pre-deployed contracts address of scroll_l1geth
 type L1Contracts struct {
 	ProxyAdmin             string `json:"ProxyAdmin"`
 	ZKRollup               Proxy  `json:"ZKRollup"`
@@ -48,6 +52,7 @@ type L1Contracts struct {
 	L1WETHGateway          Proxy  `json:"L1WETHGateway"`
 }
 
+// L2Contracts stores pre-deployed contracts address of scroll_l2geth
 type L2Contracts struct {
 	ProxyAdmin                 string `json:"ProxyAdmin"`
 	WETH                       string `json:"WETH"`

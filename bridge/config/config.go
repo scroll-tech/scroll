@@ -173,6 +173,7 @@ func NewConfig(file string) (*Config, error) {
 	return cfg, nil
 }
 
+// SetDeployedContract covers contract address in config file to actual address in docker.AddressFile
 func SetDeployedContract(addressfile docker.AddressFile, config *Config) {
 	config.L1Config.L1MessengerAddress = common.HexToAddress(addressfile.L1.L1ScrollMessenger.Implementation)
 	config.L1Config.RelayerConfig.MessengerContractAddress = common.HexToAddress(addressfile.L2.L2ScrollMessenger)
