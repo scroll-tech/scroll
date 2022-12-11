@@ -7,6 +7,7 @@ COPY ./common/libzkp/impl/ .
 RUN cargo chef prepare --recipe-path recipe.json
 
 FROM chef as zkp-builder
+COPY ./common/libzkp/impl/rust-toolchain ./
 COPY --from=planner /app/recipe.json recipe.json
 RUN cargo chef cook --release --recipe-path recipe.json
 COPY ./common/libzkp/impl .
@@ -30,9 +31,7 @@ FROM base as builder
 COPY . .
 RUN cp -r ./common/libzkp/interface ./coordinator/verifier/lib
 COPY --from=zkp-builder /app/target/release/libzkp.a ./coordinator/verifier/lib/
-RUN --mount=target=. \
-    --mount=type=cache,target=/root/.cache/go-build \
-    cd ./coordinator && go build -v -p 4 -o /bin/coordinator ./cmd
+RUN cd ./coordinator && go build -v -p 4 -o /bin/coordinator ./cmd
 
 # Pull coordinator into a second stage deploy alpine container
 FROM ubuntu:20.04
