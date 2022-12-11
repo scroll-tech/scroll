@@ -25,10 +25,10 @@ RUN cargo install cargo-chef --locked --version ${CARGO_CHEF_TAG} \
 # Install Go
 RUN rm -rf /usr/local/go
 # for 1.17
-# RUN wget https://dl.google.com/go/go1.17.13.linux-amd64.tar.gz
+# RUN wget https://go.dev/dl/go1.17.13.linux-amd64.tar.gz
 # RUN tar -C /usr/local -xzf go1.17.13.linux-amd64.tar.gz
 # for 1.18
-RUN wget https://dl.google.com/go/go1.18.9.linux-amd64.tar.gz
+RUN wget https://go.dev/dl/go1.18.9.linux-amd64.tar.gz
 RUN tar -C /usr/local -xzf go1.18.9.linux-amd64.tar.gz
 
 ENV PATH="/usr/local/go/bin:${PATH}"
