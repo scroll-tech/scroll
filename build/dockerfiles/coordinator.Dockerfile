@@ -16,7 +16,6 @@ RUN cd common/libzkp/impl &&  \
     cargo build --release &&  \
     cp ./target/release/libzkp.a ../interface/
 
-
 # Download Go dependencies
 FROM scrolltech/full-builder:go-1.18-rust-nightly-2022-08-23 as base
 
