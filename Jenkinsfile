@@ -16,7 +16,7 @@ pipeline {
     }
     stages {
         parallel{
-            stage('Build') {
+            build: {
                 when {
                     anyOf {
                         changeset "Jenkinsfile"
@@ -46,7 +46,7 @@ pipeline {
                         '''
                 }
             }
-            stage('Test') {
+            test: {
                 when {
                     anyOf {
                         changeset "Jenkinsfile"
