@@ -34,6 +34,7 @@ pipeline {
                     export PATH=/home/ubuntu/go/bin:$PATH
                     make dev_docker
                     make -C bridge mock_abi
+                    make -C coordinator libzkp
                     # check compilation
                     make -C bridge bridge
                     make -C coordinator coordinator
