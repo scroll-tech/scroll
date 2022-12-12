@@ -42,7 +42,9 @@ var (
 	bridgeFile      string
 	dbFile          string
 	coordinatorFile string
-	rollerFile      string
+
+	bboltDB    string
+	rollerFile string
 )
 
 func setupEnv(t *testing.T) {
@@ -68,9 +70,12 @@ func free(t *testing.T) {
 	assert.NoError(t, l2gethImg.Stop())
 	assert.NoError(t, dbImg.Stop())
 
+	// Delete temporary files.
 	assert.NoError(t, os.Remove(bridgeFile))
 	assert.NoError(t, os.Remove(dbFile))
 	assert.NoError(t, os.Remove(coordinatorFile))
+	assert.NoError(t, os.Remove(rollerFile))
+	assert.NoError(t, os.Remove(bboltDB))
 }
 
 type appAPI interface {
@@ -198,6 +203,13 @@ func mockRollerConfig(t *testing.T) string {
 	cfg, err := rollerConfig.NewConfig("../../roller/config.json")
 	assert.NoError(t, err)
 	cfg.CoordinatorURL = fmt.Sprintf("ws://localhost:%d", wsPort)
+
+	// Reuse l1geth's keystore file
+	cfg.KeystorePath = "../../common/docker/l1geth/genesis-keystore"
+	cfg.KeystorePassword = "scrolltest"
+
+	bboltDB = fmt.Sprintf("/tmp/%d_bbolt_db", timestamp)
+	cfg.DBPath = bboltDB
 
 	data, err := json.Marshal(cfg)
 	assert.NoError(t, err)

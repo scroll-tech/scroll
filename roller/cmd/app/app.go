@@ -14,34 +14,14 @@ import (
 	"scroll-tech/roller/core"
 )
 
-var (
-	// cfgFileFlag load json type config file.
-	cfgFileFlag = cli.StringFlag{
-		Name:  "config",
-		Usage: "TOML configuration file",
-		Value: "./config.toml",
-	}
-	urlFlag = cli.StringFlag{
-		Name:  "url",
-		Usage: "coordinator ws url",
-		Value: "ws://localhost:9000",
-	}
-
-	app = cli.NewApp()
-)
+var app = cli.NewApp()
 
 func init() {
 	app.Action = action
 	app.Name = "Roller"
 	app.Usage = "The Scroll L2 Roller"
 	app.Version = core.Version
-	app.Flags = append(app.Flags, []cli.Flag{
-		&cfgFileFlag,
-		&urlFlag,
-		&utils.LogFileFlag,
-		&utils.LogDebugFlag,
-		&utils.VerbosityFlag,
-	}...)
+	app.Flags = append(app.Flags, utils.CommonFlags...)
 	app.Before = func(ctx *cli.Context) error {
 		return utils.LogSetup(ctx)
 	}
@@ -67,13 +47,11 @@ func RunRoller() {
 }
 
 func action(ctx *cli.Context) error {
-	// Get config
-	cfg, err := config.NewConfig(ctx.String(cfgFileFlag.Name))
+	// Load config file.
+	cfgFile := ctx.String(utils.ConfigFileFlag.Name)
+	cfg, err := config.NewConfig(cfgFile)
 	if err != nil {
-		return err
-	}
-	if ctx.IsSet(urlFlag.Name) {
-		cfg.CoordinatorURL = ctx.String(urlFlag.Name)
+		log.Crit("failed to load config file", "config file", cfgFile, "error", err)
 	}
 
 	// Create roller

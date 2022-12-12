@@ -1,6 +1,7 @@
 package docker
 
 import (
+	"fmt"
 	"os"
 	"os/exec"
 	"strings"
@@ -125,7 +126,7 @@ func (tt *Cmd) ExpectWithTimeout(parallel bool, timeout time.Duration, keyword s
 		case <-okCh:
 			return
 		case <-time.After(timeout):
-			assert.Failf(tt, "didn't get the desired result before timeout, keyword: %s", keyword)
+			assert.Fail(tt, fmt.Sprintf("didn't get the desired result before timeout, keyword: %s", keyword))
 		}
 	}
 
