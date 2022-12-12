@@ -13,10 +13,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-var (
-	verbose bool
-	cmdMu   sync.Mutex
-)
+var verbose bool
 
 func init() {
 	v := os.Getenv("LOG_DOCKER")
@@ -65,14 +62,10 @@ func (tt *Cmd) RunApp(parallel bool) {
 	}
 	if parallel {
 		go func() {
-			cmdMu.Lock()
 			_ = cmd.Run()
-			cmdMu.Unlock()
 		}()
 	} else {
-		cmdMu.Lock()
 		_ = cmd.Run()
-		cmdMu.Unlock()
 	}
 	tt.mu.Lock()
 	tt.cmd = cmd
@@ -147,9 +140,7 @@ func (tt *Cmd) runCmd() {
 	cmd := exec.Command(tt.args[0], tt.args[1:]...) //nolint:gosec
 	cmd.Stdout = tt
 	cmd.Stderr = tt
-	cmdMu.Lock()
 	_ = cmd.Run()
-	cmdMu.Unlock()
 }
 
 // RunCmd parallel running when parallel is true.
