@@ -1,6 +1,5 @@
 use crate::utils::{c_char_to_str, c_char_to_vec};
 use libc::c_char;
-use log::info;
 use std::fs::File;
 use std::io::Read;
 use zkevm::circuit::{AGG_DEGREE, DEGREE};
