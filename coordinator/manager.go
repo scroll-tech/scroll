@@ -74,6 +74,8 @@ type Manager struct {
 
 	// Token cache
 	tokenCache *cache.Cache
+	// A mutex guarding registration
+	registerMu sync.RWMutex
 }
 
 // New returns a new instance of Manager. The instance will be not fully prepared,
@@ -456,7 +458,7 @@ func (m *Manager) addFailedSession(sess *session, errMsg string) {
 }
 
 // VerifyToken verifies pukey for token and expiration time
-func (m *Manager) VerifyToken(authMsg message.AuthMsg) (bool, error) {
+func (m *Manager) VerifyToken(authMsg *message.AuthMsg) (bool, error) {
 	pubkey, _ := authMsg.PublicKey()
 	// GetValue returns nil if value is expired
 	if token, ok := m.tokenCache.Get(pubkey); !ok || token != authMsg.Identity.Token {

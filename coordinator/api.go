@@ -50,14 +50,15 @@ func (m *Manager) Register(ctx context.Context, authMsg *message.AuthMsg) (*rpc.
 	}
 	pubkey, _ := authMsg.PublicKey()
 
-	m.mu.Lock()
-	if ok, err := m.VerifyToken(*authMsg); !ok {
-		m.mu.Unlock()
+	// Lock here to avoid malicious roller message replay before cleanup of token
+	m.registerMu.Lock()
+	if ok, err := m.VerifyToken(authMsg); !ok {
+		m.registerMu.Unlock()
 		return nil, err
 	}
 	// roller successfully registered, remove token associated with this roller
 	m.tokenCache.Delete(pubkey)
-	m.mu.Unlock()
+	m.registerMu.Unlock()
 
 	// create or get the roller message channel
 	taskCh, err := m.register(pubkey, authMsg.Identity)
