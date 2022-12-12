@@ -21,7 +21,6 @@ pub unsafe extern "C" fn init_verifier(params_path: *const c_char, agg_vk_path: 
     let mut agg_vk = vec![];
     f.read_to_end(&mut agg_vk).unwrap();
 
-    info!("load params");
     let params = load_or_create_params(params_path, *DEGREE).unwrap();
     let agg_params = load_or_create_params(params_path, *AGG_DEGREE).unwrap();
 
@@ -32,13 +31,11 @@ pub unsafe extern "C" fn init_verifier(params_path: *const c_char, agg_vk_path: 
 /// # Safety
 #[no_mangle]
 pub unsafe extern "C" fn verify_agg_proof(proof: *const c_char) -> c_char {
-    info!("start to verify agg-proof");
     let proof_vec = c_char_to_vec(proof);
     let agg_proof = serde_json::from_slice::<AggCircuitProof>(proof_vec.as_slice()).unwrap();
     let verified = VERIFIER
         .unwrap()
         .verify_agg_circuit_proof(agg_proof)
         .is_ok();
-    info!("verify agg-proof result: {}", verified);
     verified as c_char
 }
