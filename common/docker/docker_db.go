@@ -114,7 +114,7 @@ func (i *ImgDB) isOk() bool {
 			return i.id != ""
 		})
 		return i.id != ""
-	case <-time.After(time.Second * 10):
+	case <-time.After(time.Second * 20):
 		return false
 	}
 }

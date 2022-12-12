@@ -8,11 +8,7 @@ import (
 	"testing"
 )
 
-var (
-	verbose bool
-	// Add this lock because of `os/exec` don't support parallel running.
-	cmdMu sync.Mutex
-)
+var verbose bool
 
 func init() {
 	v := os.Getenv("LOG_DOCKER")
@@ -86,7 +82,5 @@ func (t *Cmd) runCmd() {
 	cmd := exec.Command(t.args[0], t.args[1:]...) //nolint:gosec
 	cmd.Stdout = t
 	cmd.Stderr = t
-	cmdMu.Lock()
 	_ = cmd.Run()
-	cmdMu.Unlock()
 }
