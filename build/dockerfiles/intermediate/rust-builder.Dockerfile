@@ -3,7 +3,7 @@ FROM ubuntu:20.04
 RUN apt-get update && ln -fs /usr/share/zoneinfo/America/New_York /etc/localtime
 
 # Install basic packages
-RUN apt-get install build-essential curl git pkg-config -y
+RUN apt-get install build-essential curl wget git pkg-config -y
 
 # Install dev-packages
 RUN apt-get install libclang-dev libssl-dev llvm -y
