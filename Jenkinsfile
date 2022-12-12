@@ -1,8 +1,6 @@
 imagePrefix = 'scrolltech'
 credentialDocker = 'dockerhub'
 
-def boolean test_result = false
-
 pipeline {
     agent any
     options {
@@ -13,6 +11,7 @@ pipeline {
     }
     environment {
         GO111MODULE = 'on'
+        PATH="/home/ubuntu/.cargo/bin:$PATH"
         // LOG_DOCKER = 'true'
     }
     stages {
@@ -29,8 +28,9 @@ pipeline {
                 }
             }
             steps { 
-                //start to build project
+                // start to build project
                 sh '''#!/bin/bash
+                    set -e
                     export PATH=/home/ubuntu/go/bin:$PATH
                     make dev_docker
                     make -C bridge mock_abi
@@ -73,8 +73,6 @@ pipeline {
                             sh "cd $i && go test -v -race -coverprofile=coverage.txt -covermode=atomic \$(go list ./... | grep -v 'database\\|l2\\|l1\\|common\\|coordinator')"
                         }
                     }
-
-                    script { test_result = true }
                }
             }
         }

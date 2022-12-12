@@ -26,16 +26,11 @@ func main() {
 	app.Usage = "The Scroll L2 Coordinator"
 	app.Version = version.Version
 	app.Flags = append(app.Flags, utils.CommonFlags...)
-	app.Flags = append(app.Flags, []cli.Flag{&verifierFlag}...)
 	app.Flags = append(app.Flags, apiFlags...)
+	app.Flags = append(app.Flags, &verifierMockFlag)
 
 	app.Before = func(ctx *cli.Context) error {
-		return utils.Setup(&utils.LogConfig{
-			LogFile:       ctx.String(utils.LogFileFlag.Name),
-			LogJSONFormat: ctx.Bool(utils.LogJSONFormat.Name),
-			LogDebug:      ctx.Bool(utils.LogDebugFlag.Name),
-			Verbosity:     ctx.Int(utils.VerbosityFlag.Name),
-		})
+		return utils.LogSetup(ctx)
 	}
 
 	// Run the coordinator.
@@ -46,8 +41,8 @@ func main() {
 }
 
 func applyConfig(ctx *cli.Context, cfg *config.Config) {
-	if ctx.IsSet(verifierFlag.Name) {
-		cfg.RollerManagerConfig.VerifierEndpoint = ctx.String(verifierFlag.Name)
+	if ctx.IsSet(verifierMockFlag.Name) {
+		cfg.RollerManagerConfig.Verifier = &config.VerifierConfig{MockMode: ctx.Bool(verifierMockFlag.Name)}
 	}
 }
 

@@ -1,49 +1,64 @@
 package verifier
 
+/*
+#cgo LDFLAGS: ${SRCDIR}/lib/libzkp.a -lm -ldl
+#cgo gpu LDFLAGS: ${SRCDIR}/lib/libzkp.a -lm -ldl -lgmp -lstdc++ -lprocps -L/usr/local/cuda/lib64/ -lcudart
+#include <stdlib.h>
+#include "./lib/libzkp.h"
+*/
+import "C" //nolint:typecheck
+
 import (
-	"net"
+	"encoding/json"
+	"unsafe"
+
+	"github.com/scroll-tech/go-ethereum/log"
+
+	"scroll-tech/coordinator/config"
 
 	"scroll-tech/common/message"
 )
 
-// Verifier represents a socket connection to a halo2 verifier.
+// Verifier represents a rust ffi to a halo2 verifier.
 type Verifier struct {
-	conn net.Conn
+	cfg *config.VerifierConfig
 }
 
-// NewVerifier Sets up a connection with the Unix socket at `path`.
-func NewVerifier(path string) (*Verifier, error) {
-	conn, err := net.Dial("unix", path)
-	if err != nil {
-		return nil, err
+// NewVerifier Sets up a rust ffi to call verify.
+func NewVerifier(cfg *config.VerifierConfig) (*Verifier, error) {
+	if cfg.MockMode {
+		return &Verifier{cfg: cfg}, nil
 	}
+	paramsPathStr := C.CString(cfg.ParamsPath)
+	aggVkPathStr := C.CString(cfg.AggVkPath)
+	defer func() {
+		C.free(unsafe.Pointer(paramsPathStr))
+		C.free(unsafe.Pointer(aggVkPathStr))
+	}()
 
-	return &Verifier{
-		conn: conn,
-	}, nil
-}
+	C.init_verifier(paramsPathStr, aggVkPathStr)
 
-// Stop stops the verifier and close the socket connection
-func (v *Verifier) Stop() error {
-	return v.conn.Close()
+	return &Verifier{cfg: cfg}, nil
 }
 
 // VerifyProof Verify a ZkProof by marshaling it and sending it to the Halo2 Verifier.
 func (v *Verifier) VerifyProof(proof *message.AggProof) (bool, error) {
-	buf, err := proof.Marshal()
+	if v.cfg.MockMode {
+		log.Info("Verifier disabled, VerifyProof skipped")
+		return true, nil
+
+	}
+	buf, err := json.Marshal(proof)
 	if err != nil {
 		return false, err
 	}
 
-	if _, err := v.conn.Write(buf); err != nil {
-		return false, err
-	}
+	aggProofStr := C.CString(string(buf))
+	defer func() {
+		C.free(unsafe.Pointer(aggProofStr))
+	}()
 
-	// Read verified byte
-	bs := make([]byte, 1)
-	if _, err := v.conn.Read(bs); err != nil {
-		return false, err
-	}
-
-	return bs[0] != 0, nil
+	log.Info("Start to verify proof ...")
+	verified := C.verify_agg_proof(aggProofStr)
+	return verified != 0, nil
 }

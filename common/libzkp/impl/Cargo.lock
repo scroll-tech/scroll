@@ -2493,20 +2493,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "prover"
-version = "0.1.0"
-dependencies = [
- "libc",
- "log",
- "once_cell",
- "serde",
- "serde_derive",
- "serde_json",
- "types",
- "zkevm",
-]
-
-[[package]]
 name = "quote"
 version = "1.0.21"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3894,4 +3880,19 @@ dependencies = [
  "strum",
  "strum_macros",
  "subtle",
+]
+
+[[package]]
+name = "zkp"
+version = "0.1.0"
+dependencies = [
+ "env_logger",
+ "libc",
+ "log",
+ "once_cell",
+ "serde",
+ "serde_derive",
+ "serde_json",
+ "types",
+ "zkevm",
 ]
