@@ -6,13 +6,32 @@ import (
 	"math/big"
 )
 
-// BigInt is wrapper of big.Int to enable database read/write
-type BigInt big.Int
+// BigInt keep `Big.Int`'s feature and also can include sqlx's `Scanner` and `Value` interface.
+type BigInt struct {
+	big.Int
+}
+
+// NewInt allocates and returns a new BigInt set to x.
+func NewInt(n int64) *BigInt {
+	return &BigInt{
+		Int: *(big.NewInt(n)),
+	}
+}
+
+// SetBigInt set value by big.int field.
+func (b *BigInt) SetBigInt(n *big.Int) {
+	b.Set(n)
+}
+
+// BigInt return origin big.int type.
+func (b *BigInt) BigInt() *big.Int {
+	return &b.Int
+}
 
 // Value implements the driver.Valuer interface
 func (b *BigInt) Value() (driver.Value, error) {
 	if b != nil {
-		return (*big.Int)(b).String(), nil
+		return b.String(), nil
 	}
 	return nil, nil
 }
@@ -25,9 +44,9 @@ func (b *BigInt) Scan(value interface{}) error {
 
 	switch t := value.(type) {
 	case int64:
-		(*big.Int)(b).SetInt64(value.(int64))
+		b.SetInt64(value.(int64))
 	case []uint8:
-		_, ok := (*big.Int)(b).SetString(string(value.([]uint8)), 10)
+		_, ok := b.SetString(string(value.([]uint8)), 10)
 		if !ok {
 			return fmt.Errorf("failed to load value to []uint8: %v", value)
 		}

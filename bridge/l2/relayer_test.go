@@ -22,7 +22,7 @@ var (
 	templateL2Message = []*orm.L2Message{
 		{
 			Nonce:      1,
-			Height:     (*orm.BigInt)(big.NewInt(1)),
+			Height:     orm.NewInt(1),
 			Sender:     "0x596a746661dbed76a84556111c2872249b070e15",
 			Value:      "100",
 			Fee:        "100",
@@ -67,12 +67,12 @@ func testL2RelayerProcessSaveEvents(t *testing.T) {
 	traces := []*types.BlockTrace{
 		{
 			Header: &types.Header{
-				Number: (*big.Int)(templateL2Message[0].Height),
+				Number: templateL2Message[0].Height.BigInt(),
 			},
 		},
 		{
 			Header: &types.Header{
-				Number: big.NewInt(0).Add((*big.Int)(templateL2Message[0].Height), big.NewInt(1)),
+				Number: big.NewInt(0).Add(templateL2Message[0].Height.BigInt(), big.NewInt(1)),
 			},
 		},
 	}
@@ -83,12 +83,10 @@ func testL2RelayerProcessSaveEvents(t *testing.T) {
 	assert.NoError(t, err)
 	batchID, err := db.NewBatchInDBTx(dbTx,
 		&orm.BlockInfo{Number: templateL2Message[0].Height},
-		&orm.BlockInfo{Number: (*orm.BigInt)(big.NewInt(0).Add((*big.Int)(templateL2Message[0].Height), big.NewInt(1)))},
+		&orm.BlockInfo{Number: orm.NewInt(templateL2Message[0].Height.Int64())},
 		"0f", 1, 194676) // parentHash & totalTxNum & totalL2Gas don't really matter here
 	assert.NoError(t, err)
-	err = db.SetBatchIDForBlocksInDBTx(dbTx, []*big.Int{
-		(*big.Int)(templateL2Message[0].Height),
-		big.NewInt(0).Add((*big.Int)(templateL2Message[0].Height), big.NewInt(1))}, batchID)
+	err = db.SetBatchIDForBlocksInDBTx(dbTx, []*big.Int{templateL2Message[0].Height.BigInt(), big.NewInt(templateL2Message[0].Height.Int64() + 1)}, batchID)
 	assert.NoError(t, err)
 	err = dbTx.Commit()
 	assert.NoError(t, err)
@@ -138,8 +136,8 @@ func testL2RelayerProcessPendingBatches(t *testing.T) {
 	dbTx, err := db.Beginx()
 	assert.NoError(t, err)
 	batchID, err := db.NewBatchInDBTx(dbTx,
-		&orm.BlockInfo{Number: (*orm.BigInt)(traces[0].Header.Number)},
-		&orm.BlockInfo{Number: (*orm.BigInt)(traces[1].Header.Number)},
+		&orm.BlockInfo{Number: orm.NewInt(traces[0].Header.Number.Int64())},
+		&orm.BlockInfo{Number: orm.NewInt(traces[1].Header.Number.Int64())},
 		"ff", 1, 194676) // parentHash & totalTxNum & totalL2Gas don't really matter here
 	assert.NoError(t, err)
 	err = db.SetBatchIDForBlocksInDBTx(dbTx, []*big.Int{
@@ -174,7 +172,7 @@ func testL2RelayerProcessCommittedBatches(t *testing.T) {
 
 	dbTx, err := db.Beginx()
 	assert.NoError(t, err)
-	batchID, err := db.NewBatchInDBTx(dbTx, &orm.BlockInfo{Number: (*orm.BigInt)(big.NewInt(0))}, &orm.BlockInfo{Number: (*orm.BigInt)(big.NewInt(0))}, "0", 1, 194676) // startBlock & endBlock & parentHash & totalTxNum & totalL2Gas don't really matter here
+	batchID, err := db.NewBatchInDBTx(dbTx, &orm.BlockInfo{Number: orm.NewInt(0)}, &orm.BlockInfo{Number: orm.NewInt(0)}, "0", 1, 194676) // startBlock & endBlock & parentHash & totalTxNum & totalL2Gas don't really matter here
 	assert.NoError(t, err)
 	err = dbTx.Commit()
 	assert.NoError(t, err)
