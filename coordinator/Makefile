@@ -7,8 +7,20 @@ REPO_ROOT_DIR=./..
 test:
 	go test -v -race -coverprofile=coverage.txt -covermode=atomic -p 1 $(PWD)/...
 
+libzkp:
+	cd ../common/libzkp/impl && cargo build --release && cp ./target/release/libzkp.a ../interface/
+	cp -r ../common/libzkp/interface ./verifier/lib
+
 coordinator: ## Builds the Coordinator instance.
+	cd ../common/libzkp/impl && cargo build --release && cp ./target/release/libzkp.a ../interface/
+	cp -r ../common/libzkp/interface ./verifier/lib
 	go build -o $(PWD)/build/bin/coordinator ./cmd
+
+test-verifier:
+	go test -tags ffi -timeout 0 -v ./verifier
+
+test-gpu-verifier:
+	go test -tags="gpu ffi" -timeout 0 -v ./verifier
 
 lint: ## Lint the files - used for CI
 	GOBIN=$(PWD)/build/bin go run ../build/lint.go

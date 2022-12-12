@@ -88,7 +88,7 @@ func testMonitorBridgeContract(t *testing.T) {
 		t.Fatalf("Call failed")
 	}
 
-	//extra block mined
+	// extra block mined
 	toAddress = common.HexToAddress("0x4592d8f8d7b001e72cb26a73e4fa1806a51ac79d")
 	message = []byte("testbridgecontract")
 	tx, err = instance.SendMessage(auth, toAddress, message, auth.GasPrice)

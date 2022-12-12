@@ -4,10 +4,10 @@
 package prover
 
 /*
-#cgo LDFLAGS: ./core/prover/lib/libprover.a -lm -ldl
-#cgo gpu LDFLAGS: ./core/prover/lib/libprover.a -lm -ldl -lgmp -lstdc++ -lprocps -L/usr/local/cuda/lib64/ -lcudart
+#cgo LDFLAGS: ${SRCDIR}/lib/libzkp.a -lm -ldl
+#cgo gpu LDFLAGS: ${SRCDIR}/lib/libzkp.a -lm -ldl -lgmp -lstdc++ -lprocps -L/usr/local/cuda/lib64/ -lcudart
 #include <stdlib.h>
-#include "./lib/prover.h"
+#include "./lib/libzkp.h"
 */
 import "C" //nolint:typecheck
 
@@ -22,16 +22,13 @@ import (
 	"scroll-tech/roller/config"
 )
 
-// Prover sends block-traces to rust-prover through socket and get back the zk-proof.
+// Prover sends block-traces to rust-prover through ffi and get back the zk-proof.
 type Prover struct {
 	cfg *config.ProverConfig
 }
 
 // NewProver inits a Prover object.
 func NewProver(cfg *config.ProverConfig) (*Prover, error) {
-	if cfg.MockMode {
-		return &Prover{cfg: cfg}, nil
-	}
 	paramsPathStr := C.CString(cfg.ParamsPath)
 	seedPathStr := C.CString(cfg.SeedPath)
 	defer func() {
@@ -49,10 +46,6 @@ func (p *Prover) Prove(traces []*types.BlockTrace) (*message.AggProof, error) {
 }
 
 func (p *Prover) prove(traces []*types.BlockTrace) (*message.AggProof, error) {
-	if p.cfg.MockMode {
-		return &message.AggProof{}, nil
-	}
-
 	tracesByt, err := json.Marshal(traces)
 	if err != nil {
 		return nil, err
