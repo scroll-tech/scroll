@@ -12,6 +12,7 @@ import (
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
 
+	"scroll-tech/common/bigint"
 	"scroll-tech/database"
 	"scroll-tech/database/orm"
 
@@ -46,21 +47,21 @@ type Watcher struct {
 	rollupABI     *abi.ABI
 
 	// The height of the block that the watcher has retrieved event logs
-	processedMsgHeight uint64
+	processedMsgHeight *big.Int
 
 	stop chan bool
 }
 
 // NewWatcher returns a new instance of Watcher. The instance will be not fully prepared,
 // and still needs to be finalized and ran by calling `watcher.Start`.
-func NewWatcher(ctx context.Context, client *ethclient.Client, startHeight uint64, confirmations uint64, messengerAddress common.Address, rollupAddress common.Address, db database.OrmFactory) *Watcher {
+func NewWatcher(ctx context.Context, client *ethclient.Client, startHeight *big.Int, confirmations uint64, messengerAddress common.Address, rollupAddress common.Address, db database.OrmFactory) *Watcher {
 	savedHeight, err := db.GetLayer1LatestWatchedHeight()
 	if err != nil {
 		log.Warn("Failed to fetch height from db", "err", err)
 		savedHeight = big.NewInt(0)
 	}
-	if savedHeight.Cmp(big.NewInt(int64(startHeight))) < 0 {
-		savedHeight.SetInt64(int64(startHeight))
+	if savedHeight.Cmp(startHeight) < 0 {
+		savedHeight.Set(startHeight)
 	}
 
 	stop := make(chan bool)
@@ -74,7 +75,7 @@ func NewWatcher(ctx context.Context, client *ethclient.Client, startHeight uint6
 		messengerABI:       bridge_abi.L1MessengerMetaABI,
 		rollupAddress:      rollupAddress,
 		rollupABI:          bridge_abi.RollupMetaABI,
-		processedMsgHeight: savedHeight.Uint64(),
+		processedMsgHeight: savedHeight,
 		stop:               stop,
 	}
 }
@@ -112,7 +113,7 @@ const contractEventsBlocksFetchLimit = int64(10)
 
 // FetchContractEvent pull latest event logs from given contract address and save in DB
 func (w *Watcher) fetchContractEvent(blockHeight uint64) error {
-	fromBlock := int64(w.processedMsgHeight) + 1
+	fromBlock := w.processedMsgHeight.Int64() + 1
 	toBlock := int64(blockHeight) - int64(w.confirmations)
 
 	if toBlock < fromBlock {
@@ -146,7 +147,7 @@ func (w *Watcher) fetchContractEvent(blockHeight uint64) error {
 		return err
 	}
 	if len(logs) == 0 {
-		w.processedMsgHeight = uint64(toBlock)
+		w.processedMsgHeight.SetInt64(toBlock)
 		return nil
 	}
 	log.Info("Received new L1 messages", "fromBlock", fromBlock, "toBlock", toBlock,
@@ -207,7 +208,7 @@ func (w *Watcher) fetchContractEvent(blockHeight uint64) error {
 
 	err = w.db.SaveL1Messages(w.ctx, sentMessageEvents)
 	if err == nil {
-		w.processedMsgHeight = uint64(toBlock)
+		w.processedMsgHeight.SetInt64(toBlock)
 	}
 	return err
 }
@@ -243,7 +244,7 @@ func (w *Watcher) parseBridgeEventLogs(logs []types.Log) ([]*orm.L1Message, []re
 			l1Messages = append(l1Messages, &orm.L1Message{
 				Nonce:      event.MessageNonce.Uint64(),
 				MsgHash:    utils.ComputeMessageHash(event.Target, event.Sender, event.Value, event.Fee, event.Deadline, event.Message, event.MessageNonce).String(),
-				Height:     (*orm.BigInt)(big.NewInt(0).SetUint64((vLog.BlockNumber))),
+				Height:     bigint.NewUInt(vLog.BlockNumber),
 				Sender:     event.Sender.String(),
 				Value:      event.Value.String(),
 				Fee:        event.Fee.String(),

@@ -89,7 +89,7 @@ func (w *WatcherClient) createBatchForBlocks(blocks []*orm.BlockInfo) error {
 	for i, block := range blocks {
 		txNum += block.TxNum
 		gasUsed += block.GasUsed
-		blockIDs[i] = (*big.Int)(block.Number)
+		blockIDs[i] = block.Number.BigInt()
 	}
 
 	batchID, dbTxErr = w.orm.NewBatchInDBTx(dbTx, startBlock, endBlock, startBlock.ParentHash, txNum, gasUsed)

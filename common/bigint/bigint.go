@@ -1,4 +1,4 @@
-package orm
+package bigint
 
 import (
 	"database/sql/driver"
@@ -11,10 +11,24 @@ type BigInt struct {
 	big.Int
 }
 
-// NewInt allocates and returns a new BigInt set to x.
+// NewInt allocates and returns a new BigInt set to n.
 func NewInt(n int64) *BigInt {
 	return &BigInt{
 		Int: *(big.NewInt(n)),
+	}
+}
+
+// NewUInt allocates and returns a new BigInt set to n of type uint64.
+func NewUInt(n uint64) *BigInt {
+	return &BigInt{
+		Int: *(big.NewInt(0).SetUint64(n)),
+	}
+}
+
+// NewBigInt allocates and returns a new BigInt from big.Int
+func NewBigInt(n *big.Int) *BigInt {
+	return &BigInt{
+		Int: *(big.NewInt(0).Set(n)),
 	}
 }
 
@@ -51,7 +65,7 @@ func (b *BigInt) Scan(value interface{}) error {
 			return fmt.Errorf("failed to load value to []uint8: %v", value)
 		}
 	default:
-		return fmt.Errorf("Could not scan type %T into BigInt", t)
+		return fmt.Errorf("could not scan type %T into BigInt", t)
 	}
 
 	return nil

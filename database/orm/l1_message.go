@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"math/big"
+	"scroll-tech/common/bigint"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/scroll-tech/go-ethereum/log"
@@ -109,7 +110,7 @@ func (m *l1MessageOrm) SaveL1Messages(ctx context.Context, messages []*L1Message
 	_, err := m.db.NamedExec(`INSERT INTO public.l1_message (nonce, msg_hash, height, sender, target, value, fee, gas_limit, deadline, calldata, layer1_hash) VALUES (:nonce, :msg_hash, :height, :sender, :target, :value, :fee, :gas_limit, :deadline, :calldata, :layer1_hash);`, messageMaps)
 	if err != nil {
 		nonces := make([]uint64, 0, len(messages))
-		heights := make([]*BigInt, 0, len(messages))
+		heights := make([]*bigint.BigInt, 0, len(messages))
 		for _, msg := range messages {
 			nonces = append(nonces, msg.Nonce)
 			heights = append(heights, msg.Height)

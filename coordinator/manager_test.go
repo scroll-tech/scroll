@@ -3,7 +3,6 @@ package coordinator_test
 import (
 	"context"
 	"crypto/ecdsa"
-	"math/big"
 	"net/http"
 	"strconv"
 	"testing"
@@ -14,6 +13,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/sync/errgroup"
 
+	"scroll-tech/common/bigint"
 	"scroll-tech/common/docker"
 	"scroll-tech/common/message"
 	"scroll-tech/common/utils"
@@ -159,7 +159,7 @@ func testIdleRollerSelection(t *testing.T) {
 	dbTx, err := l2db.Beginx()
 	assert.NoError(t, err)
 	for i := range ids {
-		ID, err := l2db.NewBatchInDBTx(dbTx, &orm.BlockInfo{Number: (*orm.BigInt)(big.NewInt(0).SetUint64(uint64(i)))}, &orm.BlockInfo{Number: (*orm.BigInt)(big.NewInt(0).SetUint64(uint64(i)))}, "0f", 1, 194676)
+		ID, err := l2db.NewBatchInDBTx(dbTx, &orm.BlockInfo{Number: bigint.NewUInt(uint64(i))}, &orm.BlockInfo{Number: bigint.NewUInt(uint64(i))}, "0f", 1, 194676)
 		assert.NoError(t, err)
 		ids[i] = ID
 	}
@@ -196,7 +196,7 @@ func testRollerReconnect(t *testing.T) {
 	dbTx, err := l2db.Beginx()
 	assert.NoError(t, err)
 	for i := range ids {
-		ID, err := l2db.NewBatchInDBTx(dbTx, &orm.BlockInfo{Number: (*orm.BigInt)(big.NewInt(0).SetUint64(uint64(i)))}, &orm.BlockInfo{Number: (*orm.BigInt)(big.NewInt(0).SetUint64(uint64(i)))}, "0f", 1, 194676)
+		ID, err := l2db.NewBatchInDBTx(dbTx, &orm.BlockInfo{Number: bigint.NewUInt(uint64(i))}, &orm.BlockInfo{Number: bigint.NewUInt(uint64(i))}, "0f", 1, 194676)
 		assert.NoError(t, err)
 		ids[i] = ID
 	}
@@ -239,7 +239,7 @@ func testGracefulRestart(t *testing.T) {
 	dbTx, err := l2db.Beginx()
 	assert.NoError(t, err)
 	for i := range ids {
-		ids[i], err = l2db.NewBatchInDBTx(dbTx, &orm.BlockInfo{Number: (*orm.BigInt)(big.NewInt(0).SetUint64(uint64(i)))}, &orm.BlockInfo{Number: (*orm.BigInt)(big.NewInt(0).SetUint64(uint64(i)))}, "0f", 1, 194676)
+		ids[i], err = l2db.NewBatchInDBTx(dbTx, &orm.BlockInfo{Number: bigint.NewUInt(uint64(i))}, &orm.BlockInfo{Number: bigint.NewUInt(uint64(i))}, "0f", 1, 194676)
 		assert.NoError(t, err)
 	}
 	assert.NoError(t, dbTx.Commit())

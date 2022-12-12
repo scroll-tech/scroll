@@ -119,7 +119,7 @@ func (r *Layer2Relayer) processSavedEvent(msg *orm.L2Message) error {
 		return err
 	}
 
-	if (*big.Int)(batch.EndBlockNumber).Cmp((*big.Int)(msg.Height)) < 0 {
+	if (batch.EndBlockNumber).Cmp(msg.Height.BigInt()) < 0 {
 		// log.Warn("corresponding block not finalized", "status", status)
 		return nil
 	}
@@ -128,7 +128,7 @@ func (r *Layer2Relayer) processSavedEvent(msg *orm.L2Message) error {
 	log.Info("Processing L2 Message", "msg.nonce", msg.Nonce, "msg.height", msg.Height)
 
 	proof := bridge_abi.IL1ScrollMessengerL2MessageProof{
-		BlockHeight: (*big.Int)(msg.Height),
+		BlockHeight: msg.Height.BigInt(),
 		BatchIndex:  big.NewInt(int64(batch.Index)),
 		MerkleProof: make([]byte, 0),
 	}

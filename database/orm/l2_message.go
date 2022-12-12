@@ -119,7 +119,7 @@ func (m *layer2MessageOrm) SaveL2Messages(ctx context.Context, messages []*L2Mes
 		messageMaps[i] = map[string]interface{}{
 			"nonce":       msg.Nonce,
 			"msg_hash":    msg.MsgHash,
-			"height":      (*big.Int)(msg.Height).Int64(),
+			"height":      msg.Height.Int64(),
 			"sender":      msg.Sender,
 			"target":      msg.Target,
 			"value":       msg.Value,
@@ -137,7 +137,7 @@ func (m *layer2MessageOrm) SaveL2Messages(ctx context.Context, messages []*L2Mes
 		heights := make([]*big.Int, 0, len(messages))
 		for _, msg := range messages {
 			nonces = append(nonces, msg.Nonce)
-			heights = append(heights, (*big.Int)(msg.Height))
+			heights = append(heights, msg.Height.BigInt())
 		}
 		log.Error("failed to insert layer2Messages", "nonces", nonces, "heights", heights, "err", err)
 	}

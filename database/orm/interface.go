@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"math/big"
+	"scroll-tech/common/bigint"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/scroll-tech/go-ethereum/common"
@@ -32,39 +33,39 @@ const (
 
 // L1Message is structure of stored layer1 bridge message
 type L1Message struct {
-	Nonce      uint64    `json:"nonce" db:"nonce"`
-	MsgHash    string    `json:"msg_hash" db:"msg_hash"`
-	Height     *BigInt   `json:"height" db:"height"`
-	Sender     string    `json:"sender" db:"sender"`
-	Value      string    `json:"value" db:"value"`
-	Fee        string    `json:"fee" db:"fee"`
-	GasLimit   uint64    `json:"gas_limit" db:"gas_limit"`
-	Deadline   uint64    `json:"deadline" db:"deadline"`
-	Target     string    `json:"target" db:"target"`
-	Calldata   string    `json:"calldata" db:"calldata"`
-	Layer1Hash string    `json:"layer1_hash" db:"layer1_hash"`
-	Status     MsgStatus `json:"status" db:"status"`
+	Nonce      uint64         `json:"nonce" db:"nonce"`
+	MsgHash    string         `json:"msg_hash" db:"msg_hash"`
+	Height     *bigint.BigInt `json:"height" db:"height"`
+	Sender     string         `json:"sender" db:"sender"`
+	Value      string         `json:"value" db:"value"`
+	Fee        string         `json:"fee" db:"fee"`
+	GasLimit   uint64         `json:"gas_limit" db:"gas_limit"`
+	Deadline   uint64         `json:"deadline" db:"deadline"`
+	Target     string         `json:"target" db:"target"`
+	Calldata   string         `json:"calldata" db:"calldata"`
+	Layer1Hash string         `json:"layer1_hash" db:"layer1_hash"`
+	Status     MsgStatus      `json:"status" db:"status"`
 }
 
 // L2Message is structure of stored layer2 bridge message
 type L2Message struct {
-	Nonce      uint64    `json:"nonce" db:"nonce"`
-	MsgHash    string    `json:"msg_hash" db:"msg_hash"`
-	Height     *BigInt   `json:"height" db:"height"`
-	Sender     string    `json:"sender" db:"sender"`
-	Value      string    `json:"value" db:"value"`
-	Fee        string    `json:"fee" db:"fee"`
-	GasLimit   uint64    `json:"gas_limit" db:"gas_limit"`
-	Deadline   uint64    `json:"deadline" db:"deadline"`
-	Target     string    `json:"target" db:"target"`
-	Calldata   string    `json:"calldata" db:"calldata"`
-	Layer2Hash string    `json:"layer2_hash" db:"layer2_hash"`
-	Status     MsgStatus `json:"status" db:"status"`
+	Nonce      uint64         `json:"nonce" db:"nonce"`
+	MsgHash    string         `json:"msg_hash" db:"msg_hash"`
+	Height     *bigint.BigInt `json:"height" db:"height"`
+	Sender     string         `json:"sender" db:"sender"`
+	Value      string         `json:"value" db:"value"`
+	Fee        string         `json:"fee" db:"fee"`
+	GasLimit   uint64         `json:"gas_limit" db:"gas_limit"`
+	Deadline   uint64         `json:"deadline" db:"deadline"`
+	Target     string         `json:"target" db:"target"`
+	Calldata   string         `json:"calldata" db:"calldata"`
+	Layer2Hash string         `json:"layer2_hash" db:"layer2_hash"`
+	Status     MsgStatus      `json:"status" db:"status"`
 }
 
 // BlockInfo is structure of stored `block_trace` without `trace`
 type BlockInfo struct {
-	Number         *BigInt        `json:"number" db:"number"`
+	Number         *bigint.BigInt `json:"number" db:"number"`
 	Hash           string         `json:"hash" db:"hash"`
 	ParentHash     string         `json:"parent_hash" db:"parent_hash"`
 	BatchID        sql.NullString `json:"batch_id" db:"batch_id"`

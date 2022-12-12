@@ -45,7 +45,7 @@ type L1Config struct {
 	// l1 eth node url.
 	Endpoint string `json:"endpoint"`
 	// The start height to sync event from layer 1
-	StartHeight uint64 `json:"start_height"`
+	StartHeight *big.Int `json:"start_height"`
 	// The messenger contract address deployed on layer 1 chain.
 	L1MessengerAddress common.Address `json:"l1_messenger_address,omitempty"`
 	// The relayer config

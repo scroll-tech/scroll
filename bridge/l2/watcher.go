@@ -18,6 +18,7 @@ import (
 
 	bridge_abi "scroll-tech/bridge/abi"
 	"scroll-tech/bridge/utils"
+	"scroll-tech/common/bigint"
 
 	"scroll-tech/database"
 	"scroll-tech/database/orm"
@@ -292,7 +293,7 @@ func (w *WatcherClient) parseBridgeEventLogs(logs []types.Log) ([]*orm.L2Message
 			l2Messages = append(l2Messages, &orm.L2Message{
 				Nonce:      event.MessageNonce.Uint64(),
 				MsgHash:    utils.ComputeMessageHash(event.Target, event.Sender, event.Value, event.Fee, event.Deadline, event.Message, event.MessageNonce).String(),
-				Height:     (*orm.BigInt)(big.NewInt(0).SetUint64(vLog.BlockNumber)),
+				Height:     bigint.NewUInt(vLog.BlockNumber),
 				Sender:     event.Sender.String(),
 				Value:      event.Value.String(),
 				Fee:        event.Fee.String(),
