@@ -30,8 +30,6 @@ pub unsafe extern "C" fn init_verifier(params_path: *const c_char, agg_vk_path: 
 /// # Safety
 #[no_mangle]
 pub unsafe extern "C" fn verify_agg_proof(proof: *const c_char) -> c_char {
-    env_logger::init();
-
     let proof_vec = c_char_to_vec(proof);
     let agg_proof = serde_json::from_slice::<AggCircuitProof>(proof_vec.as_slice()).unwrap();
     let verified = VERIFIER
