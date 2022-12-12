@@ -25,7 +25,7 @@ var (
 		{
 			Nonce:      1,
 			MsgHash:    "msg_hash1",
-			Height:     (*orm.BigInt)(big.NewInt(1)),
+			Height:     orm.NewInt(1),
 			Sender:     "0x596a746661dbed76a84556111c2872249b070e15",
 			Value:      "0x19ece",
 			Fee:        "0x19ece",
@@ -38,7 +38,7 @@ var (
 		{
 			Nonce:      2,
 			MsgHash:    "msg_hash2",
-			Height:     (*orm.BigInt)(big.NewInt(2)),
+			Height:     orm.NewInt(2),
 			Sender:     "0x596a746661dbed76a84556111c2872249b070e15",
 			Value:      "0x19ece",
 			Fee:        "0x19ece",
@@ -53,7 +53,7 @@ var (
 		{
 			Nonce:      1,
 			MsgHash:    "msg_hash1",
-			Height:     (*orm.BigInt)(big.NewInt(1)),
+			Height:     orm.NewInt(1),
 			Sender:     "0x596a746661dbed76a84556111c2872249b070e15",
 			Value:      "0x19ece",
 			Fee:        "0x19ece",
@@ -66,7 +66,7 @@ var (
 		{
 			Nonce:      2,
 			MsgHash:    "msg_hash2",
-			Height:     (*orm.BigInt)(big.NewInt(2)),
+			Height:     orm.NewInt(2),
 			Sender:     "0x596a746661dbed76a84556111c2872249b070e15",
 			Value:      "0x19ece",
 			Fee:        "0x19ece",

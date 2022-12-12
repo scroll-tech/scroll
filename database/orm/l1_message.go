@@ -95,7 +95,7 @@ func (m *l1MessageOrm) SaveL1Messages(ctx context.Context, messages []*L1Message
 		messageMaps[i] = map[string]interface{}{
 			"nonce":       msg.Nonce,
 			"msg_hash":    msg.MsgHash,
-			"height":      (*big.Int)(msg.Height).Int64(),
+			"height":      msg.Height.Int64(),
 			"sender":      msg.Sender,
 			"target":      msg.Target,
 			"value":       msg.Value,
@@ -109,10 +109,10 @@ func (m *l1MessageOrm) SaveL1Messages(ctx context.Context, messages []*L1Message
 	_, err := m.db.NamedExec(`INSERT INTO public.l1_message (nonce, msg_hash, height, sender, target, value, fee, gas_limit, deadline, calldata, layer1_hash) VALUES (:nonce, :msg_hash, :height, :sender, :target, :value, :fee, :gas_limit, :deadline, :calldata, :layer1_hash);`, messageMaps)
 	if err != nil {
 		nonces := make([]uint64, 0, len(messages))
-		heights := make([]*big.Int, 0, len(messages))
+		heights := make([]*BigInt, 0, len(messages))
 		for _, msg := range messages {
 			nonces = append(nonces, msg.Nonce)
-			heights = append(heights, new(big.Int).Set((*big.Int)(msg.Height)))
+			heights = append(heights, msg.Height)
 		}
 		log.Error("failed to insert l1Messages", "nonces", nonces, "heights", heights, "err", err)
 	}
