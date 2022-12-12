@@ -12,6 +12,7 @@ static mut VERIFIER: Option<&Verifier> = None;
 /// # Safety
 #[no_mangle]
 pub unsafe extern "C" fn init_verifier(params_path: *const c_char, agg_vk_path: *const c_char) {
+    dotenv::dotenv().ok();
     env_logger::init();
 
     let params_path = c_char_to_str(params_path);

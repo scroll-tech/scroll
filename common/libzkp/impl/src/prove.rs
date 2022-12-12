@@ -11,6 +11,7 @@ static mut PROVER: OnceCell<Prover> = OnceCell::new();
 /// # Safety
 #[no_mangle]
 pub unsafe extern "C" fn init_prover(params_path: *const c_char, seed_path: *const c_char) {
+    dotenv::dotenv().ok();
     env_logger::init();
 
     let params_path = c_char_to_str(params_path);
