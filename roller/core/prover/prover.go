@@ -58,7 +58,7 @@ func (p *Prover) prove(traces []*types.BlockTrace) (*message.AggProof, error) {
 		C.free(unsafe.Pointer(tracesStr))
 	}()
 
-	log.Info("start to create agg proof ...")
+	log.Info("Start to create agg proof ...")
 	cProof := C.create_agg_proof_multi(tracesStr)
 	log.Info("Finish creating agg proof!")
 
