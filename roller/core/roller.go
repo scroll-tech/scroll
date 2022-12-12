@@ -125,6 +125,17 @@ func (r *Roller) Register() error {
 			Version:   Version,
 		},
 	}
+	// Sign request token message
+	if err := authMsg.Sign(r.priv); err != nil {
+		return fmt.Errorf("sign request token message failed %v", err)
+	}
+
+	token, err := r.client.RequestToken(context.Background(), authMsg)
+	if err != nil {
+		return fmt.Errorf("request token failed %v", err)
+	} else {
+		authMsg.Identity.Token = token
+	}
 
 	// Sign auth message
 	if err := authMsg.Sign(r.priv); err != nil {

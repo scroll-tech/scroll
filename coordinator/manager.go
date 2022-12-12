@@ -2,6 +2,7 @@ package coordinator
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	mathrand "math/rand"
 	"sync"
@@ -9,6 +10,7 @@ import (
 	"time"
 
 	cmap "github.com/orcaman/concurrent-map"
+	"github.com/patrickmn/go-cache"
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/scroll-tech/go-ethereum/rpc"
 
@@ -69,6 +71,11 @@ type Manager struct {
 
 	// db interface
 	orm database.OrmFactory
+
+	// Token cache
+	tokenCache *cache.Cache
+	// A mutex guarding registration
+	registerMu sync.RWMutex
 }
 
 // New returns a new instance of Manager. The instance will be not fully prepared,
@@ -89,6 +96,7 @@ func New(ctx context.Context, cfg *config.RollerManagerConfig, orm database.OrmF
 		failedSessionInfos: make(map[string]*SessionInfo),
 		verifier:           v,
 		orm:                orm,
+		tokenCache:         cache.New(time.Duration(cfg.TokenTimeToLive)*time.Second, 1*time.Hour),
 	}, nil
 }
 
@@ -447,4 +455,14 @@ func (m *Manager) IsRollerIdle(hexPk string) bool {
 
 func (m *Manager) addFailedSession(sess *session, errMsg string) {
 	m.failedSessionInfos[sess.info.ID] = newSessionInfo(sess, orm.ProvingTaskFailed, errMsg, true)
+}
+
+// VerifyToken verifies pukey for token and expiration time
+func (m *Manager) VerifyToken(authMsg *message.AuthMsg) (bool, error) {
+	pubkey, _ := authMsg.PublicKey()
+	// GetValue returns nil if value is expired
+	if token, ok := m.tokenCache.Get(pubkey); !ok || token != authMsg.Identity.Token {
+		return false, errors.New("failed to find corresponding token")
+	}
+	return true, nil
 }
