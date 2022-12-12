@@ -3886,7 +3886,6 @@ dependencies = [
 name = "zkp"
 version = "0.1.0"
 dependencies = [
- "dotenv",
  "env_logger",
  "libc",
  "log",
