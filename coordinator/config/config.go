@@ -22,6 +22,8 @@ type RollerManagerConfig struct {
 	Verifier *VerifierConfig `json:"verifier,omitempty"`
 	// Proof collection time (in minutes).
 	CollectionTime int `json:"collection_time"`
+	// Token time to live (in seconds)
+	TokenTimeToLive int `json:"token_time_to_live"`
 }
 
 // Config load configuration items.

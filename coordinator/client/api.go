@@ -8,6 +8,13 @@ import (
 	"scroll-tech/common/message"
 )
 
+// RequestToken generates token for roller
+func (c *Client) RequestToken(ctx context.Context, authMsg *message.AuthMsg) (string, error) {
+	var token string
+	err := c.client.CallContext(ctx, &token, "roller_requestToken", authMsg)
+	return token, err
+}
+
 // RegisterAndSubscribe subscribe roller and register, verified by sign data.
 func (c *Client) RegisterAndSubscribe(ctx context.Context, taskCh chan *message.TaskMsg, authMsg *message.AuthMsg) (ethereum.Subscription, error) {
 	return c.client.Subscribe(ctx, "roller", taskCh, "register", authMsg)
