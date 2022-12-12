@@ -11,8 +11,9 @@ import (
 	"github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/stretchr/testify/assert"
 
-	"scroll-tech/bridge/l2"
 	"scroll-tech/common/bigint"
+
+	"scroll-tech/bridge/l2"
 
 	"scroll-tech/database"
 	"scroll-tech/database/migrate"
