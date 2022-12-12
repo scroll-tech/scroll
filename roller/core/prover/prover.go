@@ -16,6 +16,7 @@ import (
 	"unsafe"
 
 	"github.com/scroll-tech/go-ethereum/core/types"
+	"github.com/scroll-tech/go-ethereum/log"
 
 	"scroll-tech/common/message"
 
@@ -55,7 +56,11 @@ func (p *Prover) prove(traces []*types.BlockTrace) (*message.AggProof, error) {
 	defer func() {
 		C.free(unsafe.Pointer(tracesStr))
 	}()
+
+	log.Info("Start to create agg proof ...")
 	cProof := C.create_agg_proof_multi(tracesStr)
+	log.Info("Finish creating agg proof!")
+
 	proof := C.GoString(cProof)
 	zkProof := &message.AggProof{}
 	err = json.Unmarshal([]byte(proof), zkProof)
