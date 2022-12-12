@@ -263,18 +263,18 @@ func testOrmBlockBatch(t *testing.T) {
 		&orm.BlockInfo{Number: bigint.NewBigInt(new(big.Int).Add(blockTrace.Header.Number, big.NewInt(1)))},
 		"ff", 1, 194676) // parentHash & totalTxNum & totalL2Gas don't really matter here
 	assert.NoError(t, err)
-	err = ormBlock.SetBatchIDForBlocksInDBTx(dbTx, []*big.Int{
-		blockTrace.Header.Number,
-		new(big.Int).Add(blockTrace.Header.Number, big.NewInt(1))}, batchID1)
+	err = ormBlock.SetBatchIDForBlocksInDBTx(dbTx, []*bigint.BigInt{
+		bigint.NewBigInt(blockTrace.Header.Number),
+		bigint.NewInt(blockTrace.Header.Number.Int64() + 1)}, batchID1)
 	assert.NoError(t, err)
 	batchID2, err := ormBatch.NewBatchInDBTx(dbTx,
 		&orm.BlockInfo{Number: bigint.NewBigInt(new(big.Int).Add(blockTrace.Header.Number, big.NewInt(2)))},
 		&orm.BlockInfo{Number: bigint.NewBigInt(new(big.Int).Add(blockTrace.Header.Number, big.NewInt(3)))},
 		"ff", 1, 194676) // parentHash & totalTxNum & totalL2Gas don't really matter here
 	assert.NoError(t, err)
-	err = ormBlock.SetBatchIDForBlocksInDBTx(dbTx, []*big.Int{
-		new(big.Int).Add(blockTrace.Header.Number, big.NewInt(2)),
-		new(big.Int).Add(blockTrace.Header.Number, big.NewInt(3))}, batchID2)
+	err = ormBlock.SetBatchIDForBlocksInDBTx(dbTx, []*bigint.BigInt{
+		bigint.NewInt(blockTrace.Header.Number.Int64() + 2),
+		bigint.NewInt(blockTrace.Header.Number.Int64() + 3)}, batchID2)
 	assert.NoError(t, err)
 	err = dbTx.Commit()
 	assert.NoError(t, err)
@@ -334,9 +334,9 @@ func testOrmSessionInfo(t *testing.T) {
 		&orm.BlockInfo{Number: bigint.NewBigInt(new(big.Int).Add(blockTrace.Header.Number, big.NewInt(1)))},
 		"ff", 1, 194676)
 	assert.NoError(t, err)
-	assert.NoError(t, ormBlock.SetBatchIDForBlocksInDBTx(dbTx, []*big.Int{
-		blockTrace.Header.Number,
-		new(big.Int).Add(blockTrace.Header.Number, big.NewInt(1))}, batchID))
+	assert.NoError(t, ormBlock.SetBatchIDForBlocksInDBTx(dbTx, []*bigint.BigInt{
+		bigint.NewBigInt(blockTrace.Header.Number),
+		bigint.NewInt(blockTrace.Header.Number.Int64() + 1)}, batchID))
 	assert.NoError(t, dbTx.Commit())
 	assert.NoError(t, ormBatch.UpdateProvingStatus(batchID, orm.ProvingTaskAssigned))
 

@@ -2,11 +2,12 @@ package bigint
 
 import (
 	"database/sql/driver"
+	"errors"
 	"fmt"
 	"math/big"
 )
 
-// BigInt keep `Big.Int`'s feature and also can include sqlx's `Scanner` and `Value` interface.
+// BigInt is a wrapper around `Big.Int` that implements sqlx's `Scanner` and `Value` interfaces.
 type BigInt struct {
 	big.Int
 }
@@ -54,6 +55,7 @@ func (b *BigInt) Value() (driver.Value, error) {
 func (b *BigInt) Scan(value interface{}) error {
 	if value == nil {
 		b = nil
+		return errors.New("could not scan nil value into BigInt")
 	}
 
 	switch t := value.(type) {
@@ -62,7 +64,7 @@ func (b *BigInt) Scan(value interface{}) error {
 	case []uint8:
 		_, ok := b.SetString(string(value.([]uint8)), 10)
 		if !ok {
-			return fmt.Errorf("failed to load value to []uint8: %v", value)
+			return fmt.Errorf("failed to load BigInt value from []uint8: %v", value)
 		}
 	default:
 		return fmt.Errorf("could not scan type %T into BigInt", t)

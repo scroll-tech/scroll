@@ -14,6 +14,7 @@ import (
 	"github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/log"
 
+	"scroll-tech/common/bigint"
 	"scroll-tech/common/utils"
 )
 
@@ -193,14 +194,9 @@ func (o *blockTraceOrm) DeleteTracesByBatchID(batch_id string) error {
 
 // http://jmoiron.github.io/sqlx/#inQueries
 // https://stackoverflow.com/questions/56568799/how-to-update-multiple-rows-using-sqlx
-func (o *blockTraceOrm) SetBatchIDForBlocksInDBTx(dbTx *sqlx.Tx, numbers []*big.Int, batchID string) error {
+func (o *blockTraceOrm) SetBatchIDForBlocksInDBTx(dbTx *sqlx.Tx, numbers []*bigint.BigInt, batchID string) error {
 	query := "UPDATE block_trace SET batch_id=? WHERE number IN (?)"
-
-	var inumbers []int64
-	for _, number := range numbers {
-		inumbers = append(inumbers, number.Int64())
-	}
-	qry, args, err := sqlx.In(query, batchID, inumbers)
+	qry, args, err := sqlx.In(query, batchID, numbers)
 	if err != nil {
 		return err
 	}

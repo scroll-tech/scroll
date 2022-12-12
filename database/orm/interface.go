@@ -111,7 +111,7 @@ type BlockTraceOrm interface {
 	GetHashByNumber(number *big.Int) (*common.Hash, error)
 	DeleteTracesByBatchID(batchID string) error
 	InsertBlockTraces(ctx context.Context, blockTraces []*types.BlockTrace) error
-	SetBatchIDForBlocksInDBTx(dbTx *sqlx.Tx, numbers []*big.Int, batchID string) error
+	SetBatchIDForBlocksInDBTx(dbTx *sqlx.Tx, numbers []*bigint.BigInt, batchID string) error
 }
 
 // SessionInfoOrm sessions info operation inte
