@@ -14,6 +14,7 @@ import (
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/stretchr/testify/assert"
 
+	"scroll-tech/bridge/config"
 	"scroll-tech/bridge/l2"
 	"scroll-tech/bridge/mock_bridge"
 	"scroll-tech/bridge/sender"
@@ -72,7 +73,7 @@ func testMonitorBridgeContract(t *testing.T) {
 	address, err := bind.WaitDeployed(context.Background(), l2Cli, tx)
 	assert.NoError(t, err)
 
-	rc := prepareRelayerClient(l2Cli, db, address)
+	rc := prepareRelayerClient(l2Cli, cfg.L2Config.BatchProposerConfig, db, address)
 	rc.Start()
 	defer rc.Stop()
 
@@ -131,7 +132,7 @@ func testFetchMultipleSentMessageInOneBlock(t *testing.T) {
 	address, err := bind.WaitDeployed(context.Background(), l2Cli, trx)
 	assert.NoError(t, err)
 
-	rc := prepareRelayerClient(l2Cli, db, address)
+	rc := prepareRelayerClient(l2Cli, cfg.L2Config.BatchProposerConfig, db, address)
 	rc.Start()
 	defer rc.Stop()
 
@@ -182,25 +183,8 @@ func testFetchMultipleSentMessageInOneBlock(t *testing.T) {
 	assert.Equal(t, 5, len(msgs))
 }
 
-// func testTraceHasUnsupportedOpcodes(t *testing.T) {
-// 	delegateTrace, err := os.ReadFile("../../common/testdata/blockTrace_delegate.json")
-// 	assert.NoError(t, err)
-
-// 	trace := &types.BlockTrace{}
-// 	assert.NoError(t, json.Unmarshal(delegateTrace, &trace))
-
-// 	assert.Equal(t, true, len(cfg.L2Config.SkippedOpcodes) == 2)
-// 	_, exist := cfg.L2Config.SkippedOpcodes["DELEGATECALL"]
-// 	assert.Equal(t, true, exist)
-
-// 	assert.True(t, l2.TraceHasUnsupportedOpcodes(cfg.L2Config.SkippedOpcodes, trace))
-// }
-
-func prepareRelayerClient(l2Cli *ethclient.Client, db database.OrmFactory, contractAddr common.Address) *l2.WatcherClient {
-	return l2.NewL2WatcherClient(context.Background(), l2Cli, 0,
-		// TODO:
-		1, map[string]struct{}{},
-		contractAddr, db)
+func prepareRelayerClient(l2Cli *ethclient.Client, bpCfg *config.BatchProposerConfig, db database.OrmFactory, contractAddr common.Address) *l2.WatcherClient {
+	return l2.NewL2WatcherClient(context.Background(), l2Cli, 0, bpCfg, contractAddr, db)
 }
 
 func prepareAuth(t *testing.T, l2Cli *ethclient.Client, privateKey *ecdsa.PrivateKey) *bind.TransactOpts {
