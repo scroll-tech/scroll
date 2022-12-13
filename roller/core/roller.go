@@ -18,18 +18,11 @@ import (
 	"scroll-tech/common/message"
 	"scroll-tech/common/utils"
 	"scroll-tech/common/version"
-
 	"scroll-tech/coordinator/client"
 
 	"scroll-tech/roller/config"
 	"scroll-tech/roller/core/prover"
 	"scroll-tech/roller/store"
-)
-
-// ZK_VERSION is commit-id of prover/rust/cargo.lock/common-rs
-var (
-	ZK_VERSION string
-	Version    = fmt.Sprintf("%s-%s", version.Version, ZK_VERSION)
 )
 
 var (
@@ -120,7 +113,7 @@ func (r *Roller) Register() error {
 			Name:      r.cfg.RollerName,
 			Timestamp: time.Now().UnixMilli(),
 			PublicKey: r.PublicKey(),
-			Version:   Version,
+			Version:   version.Version,
 		},
 	}
 	// Sign request token message

@@ -27,22 +27,44 @@ pipeline {
                     changeset "database/**"
                 }
             }
-            steps { 
-                // start to build project
-                sh '''#!/bin/bash
-                    set -e
-                    export PATH=/home/ubuntu/go/bin:$PATH
-                    make dev_docker
-                    make -C bridge mock_abi
-                    # check compilation
-                    make -C bridge bridge
-                    make -C coordinator coordinator
-                    make -C database db_cli
-                    # check docker build
-                    make -C bridge docker
-                    make -C coordinator docker
-                    make -C database docker
-                    '''
+            parallel {
+                stage('Build Prerequisite') {
+                    steps {
+                        sh 'make dev_docker'
+                        sh 'make -C bridge mock_abi'
+                    }
+                }
+                stage('Check Bridge Compilation') {
+                    steps {
+                        sh 'make -C bridge bridge'
+                    }
+                }
+                stage('Check Coordinator Compilation') {
+                    steps {
+                        sh 'export PATH=/home/ubuntu/go/bin:$PATH'
+                        sh 'make -C coordinator coordinator'
+                    }
+                }
+                stage('Check Database Compilation') {
+                    steps {
+                        sh 'make -C database db_cli'
+                    }
+                }
+                stage('Check Bridge Docker Build') {
+                    steps {
+                        sh 'make -C bridge docker'
+                    }
+                }
+                stage('Check Coordinator Docker Build') {
+                    steps {
+                        sh 'make -C coordinator docker'
+                    }
+                }
+                stage('Check Database Docker Build') {
+                    steps {
+                        sh 'make -C database docker'
+                    }
+                }
             }
         }
         stage('Test') {
