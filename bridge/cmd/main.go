@@ -10,6 +10,8 @@ import (
 
 	"scroll-tech/database"
 
+	apollo_config "scroll-tech/common/apollo"
+
 	"scroll-tech/common/utils"
 	"scroll-tech/common/version"
 
@@ -19,6 +21,9 @@ import (
 )
 
 func main() {
+	// Set up Apollo
+	apollo_config.MustInitApollo()
+
 	// Set up Bridge app info.
 	app := cli.NewApp()
 
@@ -32,7 +37,7 @@ func main() {
 	app.Flags = append(app.Flags, l2Flags...)
 
 	app.Before = func(ctx *cli.Context) error {
-		return utils.LogSetup(ctx)
+		return utils.LogSetup(ctx, true)
 	}
 	// Run the sequencer.
 	if err := app.Run(os.Args); err != nil {

@@ -5,6 +5,8 @@ import (
 	"os"
 	"path/filepath"
 
+	apollo_config "scroll-tech/common/apollo"
+
 	"github.com/mattn/go-colorable"
 	"github.com/mattn/go-isatty"
 	"github.com/scroll-tech/go-ethereum/cmd/utils"
@@ -13,7 +15,7 @@ import (
 )
 
 // LogSetup is for setup logger
-func LogSetup(ctx *cli.Context) error {
+func LogSetup(ctx *cli.Context, use_apollo bool) error {
 	var ostream log.Handler
 	if logFile := ctx.String(LogFileFlag.Name); len(logFile) > 0 {
 		fp, err := os.OpenFile(filepath.Clean(logFile), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
@@ -38,6 +40,9 @@ func LogSetup(ctx *cli.Context) error {
 	glogger := log.NewGlogHandler(ostream)
 	// Set log level
 	glogger.Verbosity(log.Lvl(ctx.Int(VerbosityFlag.Name)))
+	if use_apollo {
+		glogger.Verbosity(log.Lvl(apollo_config.AgolloClient.GetIntValue("logVerbosity", ctx.Int(VerbosityFlag.Name))))
+	}
 	log.Root().SetHandler(glogger)
 	return nil
 }

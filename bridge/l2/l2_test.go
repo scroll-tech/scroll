@@ -6,6 +6,7 @@ import (
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/stretchr/testify/assert"
 
+	apollo_config "scroll-tech/common/apollo"
 	"scroll-tech/common/docker"
 
 	"scroll-tech/bridge/config"
@@ -25,6 +26,9 @@ var (
 )
 
 func setupEnv(t *testing.T) (err error) {
+	// Set up Apollo
+	apollo_config.MustInitApollo()
+
 	// Load config.
 	cfg, err = config.NewConfig("../config.json")
 	assert.NoError(t, err)

@@ -19,15 +19,12 @@ import (
 
 	"scroll-tech/common/message"
 
+	apollo_config "scroll-tech/common/apollo"
 	"scroll-tech/database"
 	"scroll-tech/database/orm"
 
 	"scroll-tech/coordinator/config"
 	"scroll-tech/coordinator/verifier"
-)
-
-const (
-	proofAndPkBufferSize = 10
 )
 
 type rollerProofStatus struct {
@@ -93,6 +90,9 @@ func New(ctx context.Context, cfg *config.RollerManagerConfig, orm database.OrmF
 	}
 
 	log.Info("Start coordinator successfully.")
+
+	tokenTimeToLive := apollo_config.AgolloClient.GetIntValue("tokenTimeToLive", 5)
+
 	return &Manager{
 		ctx:                ctx,
 		cfg:                cfg,
@@ -102,7 +102,7 @@ func New(ctx context.Context, cfg *config.RollerManagerConfig, orm database.OrmF
 		verifier:           v,
 		orm:                orm,
 		Client:             client,
-		tokenCache:         cache.New(time.Duration(cfg.TokenTimeToLive)*time.Second, 1*time.Hour),
+		tokenCache:         cache.New(time.Duration(tokenTimeToLive)*time.Second, 1*time.Hour),
 	}, nil
 }
 
@@ -152,7 +152,7 @@ func (m *Manager) Loop() {
 					map[string]interface{}{"proving_status": orm.ProvingTaskUnassigned},
 					fmt.Sprintf(
 						"ORDER BY index %s LIMIT %d;",
-						m.cfg.OrderSession,
+						apollo_config.AgolloClient.GetStringValue("orderSession", "ASC"),
 						m.GetNumberOfIdleRollers(),
 					),
 				); err != nil {
@@ -189,6 +189,7 @@ func (m *Manager) restorePrevSessions() {
 	} else if prevSessions, err := m.orm.GetSessionInfosByIDs(ids); err != nil {
 		log.Error("failed to recover roller session info from db", "error", err)
 	} else {
+		proofAndPkBufferSize := apollo_config.AgolloClient.GetIntValue("proofAndPkBufferSize", 10)
 		for _, v := range prevSessions {
 			sess := &session{
 				info:       v,
@@ -309,7 +310,8 @@ func (m *Manager) handleZkProof(pk string, msg *message.ProofDetail) error {
 
 // CollectProofs collects proofs corresponding to a proof generation session.
 func (m *Manager) CollectProofs(id string, sess *session) {
-	timer := time.NewTimer(time.Duration(m.cfg.CollectionTime) * time.Minute)
+	collectionTime := apollo_config.AgolloClient.GetIntValue("collectionTime", 1)
+	timer := time.NewTimer(time.Duration(collectionTime) * time.Minute)
 
 	for {
 		select {
@@ -441,6 +443,7 @@ func (m *Manager) StartProofGenerationSession(task *orm.BlockBatch) bool {
 	}
 
 	// Create a proof generation session.
+	proofAndPkBufferSize := apollo_config.AgolloClient.GetIntValue("proofAndPkBufferSize", 10)
 	s := &session{
 		info:       sessionInfo,
 		finishChan: make(chan rollerProofStatus, proofAndPkBufferSize),

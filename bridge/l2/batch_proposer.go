@@ -7,34 +7,21 @@ import (
 
 	"github.com/scroll-tech/go-ethereum/log"
 
+	apollo_config "scroll-tech/common/apollo"
 	"scroll-tech/database"
 	"scroll-tech/database/orm"
-
-	"scroll-tech/bridge/config"
 )
 
 type batchProposer struct {
 	mutex sync.Mutex
 
 	orm database.OrmFactory
-
-	batchTimeSec      uint64
-	batchGasThreshold uint64
-	batchBlocksLimit  uint64
-
-	proofGenerationFreq uint64
-	skippedOpcodes      map[string]struct{}
 }
 
-func newBatchProposer(cfg *config.BatchProposerConfig, orm database.OrmFactory) *batchProposer {
+func newBatchProposer(orm database.OrmFactory) *batchProposer {
 	return &batchProposer{
-		mutex:               sync.Mutex{},
-		orm:                 orm,
-		batchTimeSec:        cfg.BatchTimeSec,
-		batchGasThreshold:   cfg.BatchGasThreshold,
-		batchBlocksLimit:    cfg.BatchBlocksLimit,
-		proofGenerationFreq: cfg.ProofGenerationFreq,
-		skippedOpcodes:      cfg.SkippedOpcodes,
+		mutex: sync.Mutex{},
+		orm:   orm,
 	}
 }
 
@@ -42,9 +29,10 @@ func (w *batchProposer) tryProposeBatch() error {
 	w.mutex.Lock()
 	defer w.mutex.Unlock()
 
+	batchBlocksLimit := uint64(apollo_config.AgolloClient.GetIntValue("batchBlocksLimit", 100))
 	blocks, err := w.orm.GetUnbatchedBlocks(
 		map[string]interface{}{},
-		fmt.Sprintf("order by number ASC LIMIT %d", w.batchBlocksLimit),
+		fmt.Sprintf("order by number ASC LIMIT %d", batchBlocksLimit),
 	)
 	if err != nil {
 		return err
@@ -53,7 +41,8 @@ func (w *batchProposer) tryProposeBatch() error {
 		return nil
 	}
 
-	if blocks[0].GasUsed > w.batchGasThreshold {
+	batchGasThreshold := uint64(apollo_config.AgolloClient.GetIntValue("batchGasThreshold", 3_000_000))
+	if blocks[0].GasUsed > batchGasThreshold {
 		log.Warn("gas overflow even for only 1 block", "height", blocks[0].Number, "gas", blocks[0].GasUsed)
 		return w.createBatchForBlocks(blocks[:1])
 	}
@@ -64,7 +53,7 @@ func (w *batchProposer) tryProposeBatch() error {
 	)
 	// add blocks into batch until reach batchGasThreshold
 	for i, block := range blocks {
-		if gasUsed+block.GasUsed > w.batchGasThreshold {
+		if gasUsed+block.GasUsed > batchGasThreshold {
 			blocks = blocks[:i]
 			break
 		}
@@ -74,7 +63,8 @@ func (w *batchProposer) tryProposeBatch() error {
 	// if too few gas gathered, but we don't want to halt, we then check the first block in the batch:
 	// if it's not old enough we will skip proposing the batch,
 	// otherwise we will still propose a batch
-	if length == len(blocks) && blocks[0].BlockTimestamp+w.batchTimeSec > uint64(time.Now().Unix()) {
+	batchTimeSec := uint64(apollo_config.AgolloClient.GetIntValue("batchTimeSec", 5*60))
+	if length == len(blocks) && blocks[0].BlockTimestamp+batchTimeSec > uint64(time.Now().Unix()) {
 		return nil
 	}
 

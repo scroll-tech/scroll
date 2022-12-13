@@ -14,11 +14,16 @@ import (
 
 	"scroll-tech/database"
 
+	apollo_config "scroll-tech/common/apollo"
+
 	"scroll-tech/coordinator"
 	"scroll-tech/coordinator/config"
 )
 
 func main() {
+	// Set up Apollo
+	apollo_config.MustInitApollo()
+
 	// Set up Coordinator app info.
 	app := cli.NewApp()
 
@@ -31,7 +36,7 @@ func main() {
 	app.Flags = append(app.Flags, &verifierMockFlag)
 
 	app.Before = func(ctx *cli.Context) error {
-		return utils.LogSetup(ctx)
+		return utils.LogSetup(ctx, true)
 	}
 
 	// Run the coordinator.

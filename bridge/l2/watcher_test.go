@@ -14,7 +14,6 @@ import (
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/stretchr/testify/assert"
 
-	"scroll-tech/bridge/config"
 	"scroll-tech/bridge/l2"
 	"scroll-tech/bridge/mock_bridge"
 	"scroll-tech/bridge/sender"
@@ -32,12 +31,12 @@ func testCreateNewWatcherAndStop(t *testing.T) {
 	defer l2db.Close()
 
 	l2cfg := cfg.L2Config
-	rc := l2.NewL2WatcherClient(context.Background(), l2Cli, l2cfg.Confirmations, l2cfg.BatchProposerConfig, l2cfg.L2MessengerAddress, l2db)
+	rc := l2.NewL2WatcherClient(context.Background(), l2Cli, false, l2cfg.L2MessengerAddress, l2db)
 	rc.Start()
 	defer rc.Stop()
 
 	l1cfg := cfg.L1Config
-	l1cfg.RelayerConfig.SenderConfig.Confirmations = 0
+	l1cfg.RelayerConfig.SenderConfig.SkipConfirmation = true
 	newSender, err := sender.NewSender(context.Background(), l1cfg.RelayerConfig.SenderConfig, l1cfg.RelayerConfig.MessageSenderPrivateKeys)
 	assert.NoError(t, err)
 
@@ -73,7 +72,7 @@ func testMonitorBridgeContract(t *testing.T) {
 	address, err := bind.WaitDeployed(context.Background(), l2Cli, tx)
 	assert.NoError(t, err)
 
-	rc := prepareRelayerClient(l2Cli, cfg.L2Config.BatchProposerConfig, db, address)
+	rc := prepareRelayerClient(l2Cli, db, address)
 	rc.Start()
 	defer rc.Stop()
 
@@ -132,7 +131,7 @@ func testFetchMultipleSentMessageInOneBlock(t *testing.T) {
 	address, err := bind.WaitDeployed(context.Background(), l2Cli, trx)
 	assert.NoError(t, err)
 
-	rc := prepareRelayerClient(l2Cli, cfg.L2Config.BatchProposerConfig, db, address)
+	rc := prepareRelayerClient(l2Cli, db, address)
 	rc.Start()
 	defer rc.Stop()
 
@@ -183,8 +182,8 @@ func testFetchMultipleSentMessageInOneBlock(t *testing.T) {
 	assert.Equal(t, 5, len(msgs))
 }
 
-func prepareRelayerClient(l2Cli *ethclient.Client, bpCfg *config.BatchProposerConfig, db database.OrmFactory, contractAddr common.Address) *l2.WatcherClient {
-	return l2.NewL2WatcherClient(context.Background(), l2Cli, 0, bpCfg, contractAddr, db)
+func prepareRelayerClient(l2Cli *ethclient.Client, db database.OrmFactory, contractAddr common.Address) *l2.WatcherClient {
+	return l2.NewL2WatcherClient(context.Background(), l2Cli, true, contractAddr, db)
 }
 
 func prepareAuth(t *testing.T, l2Cli *ethclient.Client, privateKey *ecdsa.PrivateKey) *bind.TransactOpts {

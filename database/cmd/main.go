@@ -8,9 +8,14 @@ import (
 
 	"scroll-tech/common/utils"
 	"scroll-tech/common/version"
+
+	apollo_config "scroll-tech/common/apollo"
 )
 
 func main() {
+	// Set up Apollo
+	apollo_config.MustInitApollo()
+
 	// Set up database app info.
 	app := cli.NewApp()
 	app.Name = "db_cli"
@@ -19,7 +24,7 @@ func main() {
 	app.Flags = append(app.Flags, utils.CommonFlags...)
 
 	app.Before = func(ctx *cli.Context) error {
-		return utils.LogSetup(ctx)
+		return utils.LogSetup(ctx, true)
 	}
 
 	app.Commands = []*cli.Command{

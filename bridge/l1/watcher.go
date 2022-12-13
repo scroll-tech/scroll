@@ -15,6 +15,8 @@ import (
 	"scroll-tech/database"
 	"scroll-tech/database/orm"
 
+	apollo_config "scroll-tech/common/apollo"
+
 	bridge_abi "scroll-tech/bridge/abi"
 	"scroll-tech/bridge/utils"
 )
@@ -38,7 +40,6 @@ type Watcher struct {
 	db     database.OrmFactory
 
 	// The number of new blocks to wait for a block to be confirmed
-	confirmations    uint64
 	messengerAddress common.Address
 	messengerABI     *abi.ABI
 
@@ -53,7 +54,7 @@ type Watcher struct {
 
 // NewWatcher returns a new instance of Watcher. The instance will be not fully prepared,
 // and still needs to be finalized and ran by calling `watcher.Start`.
-func NewWatcher(ctx context.Context, client *ethclient.Client, startHeight uint64, confirmations uint64, messengerAddress common.Address, rollupAddress common.Address, db database.OrmFactory) *Watcher {
+func NewWatcher(ctx context.Context, client *ethclient.Client, startHeight uint64, messengerAddress common.Address, rollupAddress common.Address, db database.OrmFactory) *Watcher {
 	savedHeight, err := db.GetLayer1LatestWatchedHeight()
 	if err != nil {
 		log.Warn("Failed to fetch height from db", "err", err)
@@ -69,7 +70,6 @@ func NewWatcher(ctx context.Context, client *ethclient.Client, startHeight uint6
 		ctx:                ctx,
 		client:             client,
 		db:                 db,
-		confirmations:      confirmations,
 		messengerAddress:   messengerAddress,
 		messengerABI:       bridge_abi.L1MessengerMetaABI,
 		rollupAddress:      rollupAddress,
@@ -108,19 +108,19 @@ func (w *Watcher) Stop() {
 	w.stop <- true
 }
 
-const contractEventsBlocksFetchLimit = int64(10)
-
 // FetchContractEvent pull latest event logs from given contract address and save in DB
 func (w *Watcher) fetchContractEvent(blockHeight uint64) error {
 	fromBlock := int64(w.processedMsgHeight) + 1
-	toBlock := int64(blockHeight) - int64(w.confirmations)
+	l1Confirmations := uint64(apollo_config.AgolloClient.GetIntValue("l1Confirmations", 6))
+	toBlock := int64(blockHeight) - int64(l1Confirmations)
 
 	if toBlock < fromBlock {
 		return nil
 	}
 
-	if toBlock > fromBlock+contractEventsBlocksFetchLimit {
-		toBlock = fromBlock + contractEventsBlocksFetchLimit - 1
+	l1ContractEventsBlocksFetchLimit := int64(apollo_config.AgolloClient.GetIntValue("l1ContractEventsBlocksFetchLimit", 10))
+	if toBlock > fromBlock+l1ContractEventsBlocksFetchLimit {
+		toBlock = fromBlock + l1ContractEventsBlocksFetchLimit - 1
 	}
 
 	// warning: uint int conversion...

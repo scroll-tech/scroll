@@ -15,9 +15,6 @@ import (
 func TestConfig(t *testing.T) {
 	cfg, err := config.NewConfig("../config.json")
 	assert.True(t, assert.NoError(t, err), "failed to load config")
-
-	assert.True(t, len(cfg.L2Config.BatchProposerConfig.SkippedOpcodes) > 0)
-
 	assert.True(t, len(cfg.L1Config.RelayerConfig.MessageSenderPrivateKeys) > 0)
 	assert.True(t, len(cfg.L2Config.RelayerConfig.MessageSenderPrivateKeys) > 0)
 	assert.True(t, len(cfg.L2Config.RelayerConfig.RollupSenderPrivateKeys) > 0)

@@ -24,7 +24,7 @@ func main() {
 	app.Flags = append(app.Flags, utils.CommonFlags...)
 
 	app.Before = func(ctx *cli.Context) error {
-		return utils.LogSetup(ctx)
+		return utils.LogSetup(ctx, false)
 	}
 
 	if err := app.Run(os.Args); err != nil {

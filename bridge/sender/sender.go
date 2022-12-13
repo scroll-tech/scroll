@@ -39,16 +39,6 @@ var (
 	ErrNoAvailableAccount = errors.New("sender has no available account to send transaction")
 )
 
-// DefaultSenderConfig The default config
-var DefaultSenderConfig = config.SenderConfig{
-	Endpoint:            "",
-	EscalateBlocks:      3,
-	EscalateMultipleNum: 11,
-	EscalateMultipleDen: 10,
-	MaxGasPrice:         1000_000_000_000, // this is 1000 gwei
-	TxType:              AccessListTxType,
-}
-
 // Confirmation struct used to indicate transaction confirmation details
 type Confirmation struct {
 	ID           string
@@ -95,9 +85,6 @@ type Sender struct {
 // NewSender returns a new instance of transaction sender
 // txConfirmationCh is used to notify confirmed transaction
 func NewSender(ctx context.Context, config *config.SenderConfig, privs []*ecdsa.PrivateKey) (*Sender, error) {
-	if config == nil {
-		config = &DefaultSenderConfig
-	}
 	client, err := ethclient.Dial(config.Endpoint)
 	if err != nil {
 		return nil, err
@@ -109,7 +96,7 @@ func NewSender(ctx context.Context, config *config.SenderConfig, privs []*ecdsa.
 		return nil, err
 	}
 
-	auths, err := newAccountPool(ctx, config.MinBalance, client, privs)
+	auths, err := newAccountPool(ctx, config.GetMinBalance(), client, privs)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create account pool, err: %v", err)
 	}
@@ -313,9 +300,9 @@ func (s *Sender) createAndSendTx(auth *bind.TransactOpts, feeData *FeeData, targ
 }
 
 func (s *Sender) resubmitTransaction(feeData *FeeData, auth *bind.TransactOpts, tx *types.Transaction) (*types.Transaction, error) {
-	escalateMultipleNum := new(big.Int).SetUint64(s.config.EscalateMultipleNum)
-	escalateMultipleDen := new(big.Int).SetUint64(s.config.EscalateMultipleDen)
-	maxGasPrice := new(big.Int).SetUint64(s.config.MaxGasPrice)
+	escalateMultipleNum := new(big.Int).SetUint64(s.config.GetEscalateMultipleNum())
+	escalateMultipleDen := new(big.Int).SetUint64(s.config.GetEscalateMultipleDen())
+	maxGasPrice := new(big.Int).SetUint64(s.config.GetMaxGasPrice())
 
 	switch s.config.TxType {
 	case LegacyTxType, AccessListTxType: // `LegacyTxType`is for ganache mock node
@@ -366,7 +353,7 @@ func (s *Sender) CheckPendingTransaction(header *types.Header) {
 		pending := value.(*PendingTransaction)
 		receipt, err := s.client.TransactionReceipt(s.ctx, pending.tx.Hash())
 		if (err == nil) && (receipt != nil) {
-			if number >= receipt.BlockNumber.Uint64()+s.config.Confirmations {
+			if number >= receipt.BlockNumber.Uint64()+s.config.GetConfirmations() {
 				s.pendingTxs.Delete(key)
 				// send confirm message
 				s.confirmCh <- &Confirmation{
@@ -375,7 +362,7 @@ func (s *Sender) CheckPendingTransaction(header *types.Header) {
 					TxHash:       pending.tx.Hash(),
 				}
 			}
-		} else if s.config.EscalateBlocks+pending.submitAt < number {
+		} else if s.config.GetEscalateBlocks()+pending.submitAt < number {
 			var tx *types.Transaction
 			tx, err := s.resubmitTransaction(pending.feeData, pending.signer, pending.tx)
 			if err != nil {
@@ -426,7 +413,7 @@ func (s *Sender) CheckPendingTransaction(header *types.Header) {
 
 // Loop is the main event loop
 func (s *Sender) loop(ctx context.Context) {
-	checkTick := time.NewTicker(time.Duration(s.config.CheckPendingTime) * time.Second)
+	checkTick := time.NewTicker(time.Duration(s.config.GetCheckPendingTime()) * time.Second)
 	defer checkTick.Stop()
 
 	checkBalanceTicker := time.NewTicker(time.Minute * 10)

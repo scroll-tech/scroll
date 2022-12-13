@@ -7,10 +7,12 @@ import (
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/stretchr/testify/assert"
 
-	"scroll-tech/database/migrate"
-
 	"scroll-tech/bridge/config"
 	"scroll-tech/bridge/l1"
+
+	apollo_config "scroll-tech/common/apollo"
+
+	"scroll-tech/database/migrate"
 
 	"scroll-tech/database"
 
@@ -19,6 +21,9 @@ import (
 
 // TestCreateNewRelayer test create new relayer instance and stop
 func TestCreateNewL1Relayer(t *testing.T) {
+	// Set up Apollo
+	apollo_config.MustInitApollo()
+
 	cfg, err := config.NewConfig("../config.json")
 	assert.NoError(t, err)
 	l1docker := docker.NewTestL1Docker(t)
@@ -39,7 +44,7 @@ func TestCreateNewL1Relayer(t *testing.T) {
 	assert.NoError(t, migrate.ResetDB(db.GetDB().DB))
 	defer db.Close()
 
-	relayer, err := l1.NewLayer1Relayer(context.Background(), client, 1, db, cfg.L2Config.RelayerConfig)
+	relayer, err := l1.NewLayer1Relayer(context.Background(), client, db, cfg.L2Config.RelayerConfig)
 	assert.NoError(t, err)
 	defer relayer.Stop()
 

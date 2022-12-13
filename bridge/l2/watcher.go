@@ -15,13 +15,13 @@ import (
 	"github.com/scroll-tech/go-ethereum/event"
 	"github.com/scroll-tech/go-ethereum/log"
 
+	apollo_config "scroll-tech/common/apollo"
+
 	bridge_abi "scroll-tech/bridge/abi"
 	"scroll-tech/bridge/utils"
 
 	"scroll-tech/database"
 	"scroll-tech/database/orm"
-
-	"scroll-tech/bridge/config"
 )
 
 type relayedMessage struct {
@@ -39,7 +39,7 @@ type WatcherClient struct {
 
 	orm database.OrmFactory
 
-	confirmations    uint64
+	skipConfirmation bool
 	messengerAddress common.Address
 	messengerABI     *abi.ABI
 
@@ -53,7 +53,7 @@ type WatcherClient struct {
 }
 
 // NewL2WatcherClient take a l2geth instance to generate a l2watcherclient instance
-func NewL2WatcherClient(ctx context.Context, client *ethclient.Client, confirmations uint64, bpCfg *config.BatchProposerConfig, messengerAddress common.Address, orm database.OrmFactory) *WatcherClient {
+func NewL2WatcherClient(ctx context.Context, client *ethclient.Client, skipConfirmation bool, messengerAddress common.Address, orm database.OrmFactory) *WatcherClient {
 	savedHeight, err := orm.GetLayer2LatestWatchedHeight()
 	if err != nil {
 		log.Warn("fetch height from db failed", "err", err)
@@ -65,13 +65,21 @@ func NewL2WatcherClient(ctx context.Context, client *ethclient.Client, confirmat
 		Client:             client,
 		orm:                orm,
 		processedMsgHeight: uint64(savedHeight),
-		confirmations:      confirmations,
+		skipConfirmation:   skipConfirmation,
 		messengerAddress:   messengerAddress,
 		messengerABI:       bridge_abi.L2MessengerMetaABI,
 		stopCh:             make(chan struct{}),
 		stopped:            0,
-		batchProposer:      newBatchProposer(bpCfg, orm),
+		batchProposer:      newBatchProposer(orm),
 	}
+}
+
+// GetConfirmations : # of l2 confirmation blocks
+func (w *WatcherClient) GetConfirmations() uint64 {
+	if w.skipConfirmation {
+		return 0
+	}
+	return uint64(apollo_config.AgolloClient.GetIntValue("l2Confirmations", 1))
 }
 
 // Start the Listening process
@@ -107,14 +115,15 @@ func (w *WatcherClient) Start() {
 				}
 				duration := time.Since(lastBlockHeightChangeTime)
 				var blockToFetch uint64
-				if number > uint64(lastFetchedBlock)+w.confirmations {
+				if number > uint64(lastFetchedBlock)+w.GetConfirmations() {
 					// latest block height changed
-					blockToFetch = number - w.confirmations
+					blockToFetch = number - w.GetConfirmations()
 				} else if duration.Seconds() > 60 {
 					// l2geth didn't produce any blocks more than 1 minute.
 					blockToFetch = number
 				}
 				// fetch at most `blockTracesFetchLimit=10` missing blocks
+				blockTracesFetchLimit := uint64(apollo_config.AgolloClient.GetIntValue("blockTracesFetchLimit", 10))
 				if blockToFetch > uint64(lastFetchedBlock)+blockTracesFetchLimit {
 					blockToFetch = uint64(lastFetchedBlock) + blockTracesFetchLimit
 				}
@@ -147,8 +156,6 @@ func (w *WatcherClient) Start() {
 func (w *WatcherClient) Stop() {
 	w.stopCh <- struct{}{}
 }
-
-const blockTracesFetchLimit = uint64(10)
 
 // try fetch missing blocks if inconsistent
 func (w *WatcherClient) tryFetchRunningMissingBlocks(ctx context.Context, backTrackFrom uint64) error {
@@ -186,19 +193,18 @@ func (w *WatcherClient) tryFetchRunningMissingBlocks(ctx context.Context, backTr
 	return nil
 }
 
-const contractEventsBlocksFetchLimit = int64(10)
-
 // FetchContractEvent pull latest event logs from given contract address and save in DB
 func (w *WatcherClient) fetchContractEvent(blockHeight uint64) error {
 	fromBlock := int64(w.processedMsgHeight) + 1
-	toBlock := int64(blockHeight) - int64(w.confirmations)
+	toBlock := int64(blockHeight) - int64(w.GetConfirmations())
 
 	if toBlock < fromBlock {
 		return nil
 	}
 
-	if toBlock > fromBlock+contractEventsBlocksFetchLimit {
-		toBlock = fromBlock + contractEventsBlocksFetchLimit - 1
+	l2ContractEventsBlocksFetchLimit := int64(apollo_config.AgolloClient.GetIntValue("l2ContractEventsBlocksFetchLimit", 10))
+	if toBlock > fromBlock+l2ContractEventsBlocksFetchLimit {
+		toBlock = fromBlock + l2ContractEventsBlocksFetchLimit - 1
 	}
 
 	// warning: uint int conversion...

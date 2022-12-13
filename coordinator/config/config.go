@@ -2,10 +2,8 @@ package config
 
 import (
 	"encoding/json"
-	"errors"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"scroll-tech/common/utils"
 
@@ -14,16 +12,8 @@ import (
 
 // RollerManagerConfig loads sequencer configuration items.
 type RollerManagerConfig struct {
-	// asc or desc (default: asc)
-	OrderSession string `json:"order_session,omitempty"`
-	// The amount of rollers to pick per proof generation session.
-	RollersPerSession uint8 `json:"rollers_per_session"`
 	// Zk verifier config.
 	Verifier *VerifierConfig `json:"verifier,omitempty"`
-	// Proof collection time (in minutes).
-	CollectionTime int `json:"collection_time"`
-	// Token time to live (in seconds)
-	TokenTimeToLive int `json:"token_time_to_live"`
 }
 
 // L2Config loads l2geth configuration items.
@@ -62,13 +52,6 @@ func NewConfig(file string) (*Config, error) {
 	// cover value by env fields
 	cfg.DBConfig.DSN = utils.GetEnvWithDefault("DB_DSN", cfg.DBConfig.DSN)
 	cfg.DBConfig.DriverName = utils.GetEnvWithDefault("DB_DRIVER", cfg.DBConfig.DriverName)
-
-	// Check roller's order session
-	order := strings.ToUpper(cfg.RollerManagerConfig.OrderSession)
-	if len(order) > 0 && !(order == "ASC" || order == "DESC") {
-		return nil, errors.New("roller config's order session is invalid")
-	}
-	cfg.RollerManagerConfig.OrderSession = order
 
 	return cfg, nil
 }

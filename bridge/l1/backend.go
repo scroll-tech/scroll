@@ -26,12 +26,12 @@ func New(ctx context.Context, cfg *config.L1Config, orm database.OrmFactory) (*B
 		return nil, err
 	}
 
-	relayer, err := NewLayer1Relayer(ctx, client, int64(cfg.Confirmations), orm, cfg.RelayerConfig)
+	relayer, err := NewLayer1Relayer(ctx, client, orm, cfg.RelayerConfig)
 	if err != nil {
 		return nil, err
 	}
 
-	watcher := NewWatcher(ctx, client, cfg.StartHeight, cfg.Confirmations, cfg.L1MessengerAddress, cfg.RelayerConfig.RollupContractAddress, orm)
+	watcher := NewWatcher(ctx, client, cfg.StartHeight, cfg.L1MessengerAddress, cfg.RelayerConfig.RollupContractAddress, orm)
 
 	return &Backend{
 		cfg:     cfg,

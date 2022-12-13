@@ -22,10 +22,12 @@ import (
 	"scroll-tech/database/orm"
 
 	"scroll-tech/coordinator"
-	client2 "scroll-tech/coordinator/client"
+
+	apollo_config "scroll-tech/common/apollo"
 
 	bridge_config "scroll-tech/bridge/config"
 
+	client2 "scroll-tech/coordinator/client"
 	coordinator_config "scroll-tech/coordinator/config"
 )
 
@@ -48,6 +50,10 @@ func setEnv(t *testing.T) error {
 	// Create db container.
 	dbImg = docker.NewTestDBDocker(t, cfg.DBConfig.DriverName)
 	cfg.DBConfig.DSN = dbImg.Endpoint()
+
+	// Set up Apollo
+	apollo_config.MustInitApollo()
+
 	// start roller manager
 	rollerManager = setupRollerManager(t, cfg.DBConfig)
 
@@ -376,10 +382,7 @@ func setupRollerManager(t *testing.T, dbCfg *database.DBConfig) *coordinator.Man
 	assert.True(t, assert.NoError(t, err), "failed to get db handler.")
 
 	rollerManager, err := coordinator.New(context.Background(), &coordinator_config.RollerManagerConfig{
-		RollersPerSession: 1,
-		Verifier:          &coordinator_config.VerifierConfig{MockMode: true},
-		CollectionTime:    1,
-		TokenTimeToLive:   5,
+		Verifier: &coordinator_config.VerifierConfig{MockMode: true},
 	}, db, nil)
 	assert.NoError(t, err)
 	assert.NoError(t, rollerManager.Start())
