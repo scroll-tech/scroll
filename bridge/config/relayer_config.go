@@ -56,7 +56,7 @@ func (r *RelayerConfig) UnmarshalJSON(input []byte) error {
 		relayerConfigAlias
 		// The private key of the relayer
 		MessageSenderPrivateKeys []string `json:"message_sender_private_keys"`
-		RollupSenderPrivateKeys  []string `json:"roller_sender_private_keys,omitempty"`
+		RollupSenderPrivateKeys  []string `json:"rollup_sender_private_keys,omitempty"`
 	}
 	if err := json.Unmarshal(input, &jsonConfig); err != nil {
 		return err
