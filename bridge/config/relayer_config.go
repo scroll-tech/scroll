@@ -90,7 +90,7 @@ func (r *RelayerConfig) MarshalJSON() ([]byte, error) {
 		relayerConfigAlias
 		// The private key of the relayer
 		MessageSenderPrivateKeys []string `json:"message_sender_private_keys"`
-		RollupSenderPrivateKeys  []string `json:"roller_sender_private_keys,omitempty"`
+		RollupSenderPrivateKeys  []string `json:"rollup_sender_private_keys,omitempty"`
 	}{relayerConfigAlias(*r), nil, nil}
 
 	// Transfer message sender private keys to hex type.

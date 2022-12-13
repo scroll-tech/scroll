@@ -31,7 +31,7 @@ type BatchProposerConfig struct {
 	// Max number of blocks in a batch
 	BatchBlocksLimit uint64 `json:"batch_blocks_limit"`
 	// Skip generating proof when that opcodes appeared
-	SkippedOpcodes map[string]bool `json:"-"`
+	SkippedOpcodes map[string]struct{} `json:"-"`
 }
 
 // batchProposerConfigAlias RelayerConfig alias name
@@ -48,9 +48,9 @@ func (b *BatchProposerConfig) UnmarshalJSON(input []byte) error {
 	}
 
 	*b = BatchProposerConfig(jsonConfig.batchProposerConfigAlias)
-	b.SkippedOpcodes = make(map[string]bool, len(jsonConfig.SkippedOpcodes))
+	b.SkippedOpcodes = make(map[string]struct{}, len(jsonConfig.SkippedOpcodes))
 	for _, opcode := range jsonConfig.SkippedOpcodes {
-		b.SkippedOpcodes[opcode] = true
+		b.SkippedOpcodes[opcode] = struct{}{}
 	}
 	return nil
 }

@@ -43,7 +43,7 @@
       "message_sender_private_keys": [
         "1212121212121212121212121212121212121212121212121212121212121212"
       ],
-      "roller_sender_private_keys": [
+      "rollup_sender_private_keys": [
         "1212121212121212121212121212121212121212121212121212121212121212"
       ]
     },
@@ -51,7 +51,7 @@
       "proof_generation_freq": 1,
       "batch_gas_threshold": 3000000,
       "batch_time_sec": 300,
-      "batch_block_limit": 100,
+      "batch_blocks_limit": 100,
       "skipped_opcodes": [
         "CREATE2",
         "DELEGATECALL"
