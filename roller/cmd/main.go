@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"scroll-tech/common/version"
 
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/urfave/cli/v2"
@@ -19,7 +20,7 @@ func main() {
 	app.Action = action
 	app.Name = "Roller"
 	app.Usage = "The Scroll L2 Roller"
-	app.Version = core.Version
+	app.Version = version.Version
 	app.Flags = append(app.Flags, utils.CommonFlags...)
 
 	app.Before = func(ctx *cli.Context) error {
@@ -46,7 +47,7 @@ func action(ctx *cli.Context) error {
 		return err
 	}
 	defer r.Close()
-	log.Info("roller start successfully", "name", cfg.RollerName, "publickey", r.PublicKey(), "version", core.Version)
+	log.Info("roller start successfully", "name", cfg.RollerName, "publickey", r.PublicKey(), "version", version.Version)
 
 	return r.Run()
 }
