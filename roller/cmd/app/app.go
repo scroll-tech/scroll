@@ -9,6 +9,7 @@ import (
 	"github.com/urfave/cli/v2"
 
 	"scroll-tech/common/utils"
+	"scroll-tech/common/version"
 
 	"scroll-tech/roller/config"
 	"scroll-tech/roller/core"
@@ -20,7 +21,7 @@ func init() {
 	app.Action = action
 	app.Name = "Roller"
 	app.Usage = "The Scroll L2 Roller"
-	app.Version = core.Version
+	app.Version = version.Version
 	app.Flags = append(app.Flags, utils.CommonFlags...)
 	app.Before = func(ctx *cli.Context) error {
 		return utils.LogSetup(ctx)
