@@ -5,7 +5,7 @@ import (
 	"runtime/debug"
 )
 
-var tag = "prealpha-v6.6"
+var tag = "prealpha-v7.2"
 
 var commit = func() string {
 	if info, ok := debug.ReadBuildInfo(); ok {
@@ -22,5 +22,8 @@ var commit = func() string {
 	return ""
 }()
 
+// ZK_VERSION is commit-id of common/libzkp/impl/cargo.lock/common-rs
+var ZK_VERSION string
+
 // Version denote the version of scroll protocol, including the l2geth, relayer, coordinator, roller, contracts and etc.
-var Version = fmt.Sprintf("%s-%s", tag, commit)
+var Version = fmt.Sprintf("%s-%s-%s", tag, commit, ZK_VERSION)

@@ -8,6 +8,23 @@ import (
 	"github.com/scroll-tech/go-ethereum/common"
 )
 
+const (
+	// SENT_MESSAGE_EVENT_SIGNATURE = keccak256("SentMessage(address,address,uint256,uint256,uint256,bytes,uint256,uint256)")
+	SENT_MESSAGE_EVENT_SIGNATURE = "806b28931bc6fbe6c146babfb83d5c2b47e971edb43b4566f010577a0ee7d9f4"
+
+	// RELAYED_MESSAGE_EVENT_SIGNATURE = keccak256("RelayedMessage(bytes32)")
+	RELAYED_MESSAGE_EVENT_SIGNATURE = "4641df4a962071e12719d8c8c8e5ac7fc4d97b927346a3d7a335b1f7517e133c"
+
+	// FAILED_RELAYED_MESSAGE_EVENT_SIGNATURE = keccak256("FailedRelayedMessage(bytes32)")
+	FAILED_RELAYED_MESSAGE_EVENT_SIGNATURE = "99d0e048484baa1b1540b1367cb128acd7ab2946d1ed91ec10e3c85e4bf51b8f"
+
+	// COMMIT_BATCH_EVENT_SIGNATURE = keccak256("CommitBatch(bytes32,bytes32,uint256,bytes32)")
+	COMMIT_BATCH_EVENT_SIGNATURE = "a26d4bd91c4c2eff3b1bf542129607d782506fc1950acfab1472a20d28c06596"
+
+	// FINALIZED_BATCH_EVENT_SIGNATURE = keccak256("FinalizeBatch(bytes32,bytes32,uint256,bytes32)")
+	FINALIZED_BATCH_EVENT_SIGNATURE = "e20f311a96205960de4d2bb351f7729e5136fa36ae64d7f736c67ddc4ca4cd4b"
+)
+
 var (
 	// RollupMetaABI holds information about a contract's context and available invokable methods.
 	RollupMetaABI *abi.ABI

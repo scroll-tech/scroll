@@ -3,9 +3,7 @@ package l2_test
 import (
 	"context"
 	"crypto/ecdsa"
-	"encoding/json"
 	"math/big"
-	"os"
 	"strconv"
 	"testing"
 	"time"
@@ -22,6 +20,7 @@ import (
 
 	"scroll-tech/database"
 	"scroll-tech/database/migrate"
+	"scroll-tech/database/orm"
 )
 
 func testCreateNewWatcherAndStop(t *testing.T) {
@@ -87,7 +86,7 @@ func testMonitorBridgeContract(t *testing.T) {
 		t.Fatalf("Call failed")
 	}
 
-	//extra block mined
+	// extra block mined
 	toAddress = common.HexToAddress("0x4592d8f8d7b001e72cb26a73e4fa1806a51ac79d")
 	message = []byte("testbridgecontract")
 	tx, err = instance.SendMessage(auth, toAddress, message, auth.GasPrice)
@@ -110,7 +109,7 @@ func testMonitorBridgeContract(t *testing.T) {
 	assert.NoError(t, err)
 	t.Log("Height in DB is", height)
 	assert.Greater(t, height, int64(previousHeight))
-	msgs, err := db.GetL2UnprocessedMessages()
+	msgs, err := db.GetL2MessagesByStatus(orm.MsgPending)
 	assert.NoError(t, err)
 	assert.Equal(t, 2, len(msgs))
 }
@@ -178,7 +177,7 @@ func testFetchMultipleSentMessageInOneBlock(t *testing.T) {
 	assert.NoError(t, err)
 	t.Log("LatestHeight is", height)
 	assert.Greater(t, height, int64(previousHeight)) // height must be greater than previousHeight because confirmations is 0
-	msgs, err := db.GetL2UnprocessedMessages()
+	msgs, err := db.GetL2MessagesByStatus(orm.MsgPending)
 	assert.NoError(t, err)
 	assert.Equal(t, 5, len(msgs))
 }

@@ -22,20 +22,15 @@ func main() {
 	app := cli.NewApp()
 
 	app.Action = action
-	app.Name = "coordinator"
+	app.Name = "Coordinator"
 	app.Usage = "The Scroll L2 Coordinator"
 	app.Version = version.Version
 	app.Flags = append(app.Flags, utils.CommonFlags...)
-	app.Flags = append(app.Flags, []cli.Flag{&verifierFlag}...)
 	app.Flags = append(app.Flags, apiFlags...)
+	app.Flags = append(app.Flags, &verifierMockFlag)
 
 	app.Before = func(ctx *cli.Context) error {
-		return utils.Setup(&utils.LogConfig{
-			LogFile:       ctx.String(utils.LogFileFlag.Name),
-			LogJSONFormat: ctx.Bool(utils.LogJSONFormat.Name),
-			LogDebug:      ctx.Bool(utils.LogDebugFlag.Name),
-			Verbosity:     ctx.Int(utils.VerbosityFlag.Name),
-		})
+		return utils.LogSetup(ctx)
 	}
 
 	// Run the coordinator.
@@ -46,11 +41,8 @@ func main() {
 }
 
 func applyConfig(ctx *cli.Context, cfg *config.Config) {
-	if ctx.IsSet(wsPortFlag.Name) {
-		cfg.RollerManagerConfig.Endpoint = fmt.Sprintf(":%d", ctx.Int(wsPortFlag.Name))
-	}
-	if ctx.IsSet(verifierFlag.Name) {
-		cfg.RollerManagerConfig.VerifierEndpoint = ctx.String(verifierFlag.Name)
+	if ctx.IsSet(verifierMockFlag.Name) {
+		cfg.RollerManagerConfig.Verifier = &config.VerifierConfig{MockMode: ctx.Bool(verifierMockFlag.Name)}
 	}
 }
 
@@ -84,7 +76,7 @@ func action(ctx *cli.Context) error {
 
 	// Start all modules.
 	if err = rollerManager.Start(); err != nil {
-		log.Crit("couldn't start roller manager", "error", err)
+		log.Crit("couldn't start coordinator", "error", err)
 	}
 
 	apis := rollerManager.APIs()

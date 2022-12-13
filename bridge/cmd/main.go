@@ -32,12 +32,7 @@ func main() {
 	app.Flags = append(app.Flags, l2Flags...)
 
 	app.Before = func(ctx *cli.Context) error {
-		return utils.Setup(&utils.LogConfig{
-			LogFile:       ctx.String(utils.LogFileFlag.Name),
-			LogJSONFormat: ctx.Bool(utils.LogJSONFormat.Name),
-			LogDebug:      ctx.Bool(utils.LogDebugFlag.Name),
-			Verbosity:     ctx.Int(utils.VerbosityFlag.Name),
-		})
+		return utils.LogSetup(ctx)
 	}
 	// Run the sequencer.
 	if err := app.Run(os.Args); err != nil {
@@ -47,14 +42,8 @@ func main() {
 }
 
 func applyConfig(ctx *cli.Context, cfg *config.Config) {
-	if ctx.IsSet(l1ChainIDFlag.Name) {
-		cfg.L1Config.ChainID = ctx.Int64(l1ChainIDFlag.Name)
-	}
 	if ctx.IsSet(l1UrlFlag.Name) {
 		cfg.L1Config.Endpoint = ctx.String(l1UrlFlag.Name)
-	}
-	if ctx.IsSet(l2ChainIDFlag.Name) {
-		cfg.L2Config.ChainID = ctx.Int64(l2ChainIDFlag.Name)
 	}
 	if ctx.IsSet(l2UrlFlag.Name) {
 		cfg.L2Config.Endpoint = ctx.String(l2UrlFlag.Name)
