@@ -3,12 +3,12 @@ package main
 import (
 	"fmt"
 	"os"
-	"scroll-tech/common/version"
 
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/urfave/cli/v2"
 
 	"scroll-tech/common/utils"
+	"scroll-tech/common/version"
 
 	"scroll-tech/roller/config"
 	"scroll-tech/roller/core"
