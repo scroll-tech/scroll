@@ -37,7 +37,7 @@ pub unsafe extern "C" fn create_agg_proof(trace_char: *const c_char) -> *const c
             .unwrap();
         serde_json::to_vec(&proof).unwrap()
     });
-    proof_result.map_or(null(), |proof_bytes| vec_to_c_char(proof_bytes))
+    proof_result.map_or(null(), vec_to_c_char)
 }
 
 /// # Safety
@@ -53,5 +53,5 @@ pub unsafe extern "C" fn create_agg_proof_multi(trace_char: *const c_char) -> *c
             .unwrap();
         serde_json::to_vec(&proof).unwrap()
     });
-    proof_result.map_or(null(), |proof_bytes| vec_to_c_char(proof_bytes))
+    proof_result.map_or(null(), vec_to_c_char)
 }
