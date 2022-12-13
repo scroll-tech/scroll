@@ -22,7 +22,7 @@ func main() {
 	app := cli.NewApp()
 
 	app.Action = action
-	app.Name = "coordinator"
+	app.Name = "Coordinator"
 	app.Usage = "The Scroll L2 Coordinator"
 	app.Version = version.Version
 	app.Flags = append(app.Flags, utils.CommonFlags...)
