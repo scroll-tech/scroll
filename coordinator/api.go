@@ -81,7 +81,8 @@ func (m *Manager) Register(ctx context.Context, authMsg *message.AuthMsg) (*rpc.
 			select {
 			case task := <-taskCh:
 				notifier.Notify(rpcSub.ID, task) //nolint
-			case <-rpcSub.Err():
+			case err := <-rpcSub.Err():
+				log.Warn("client stopped the ws connection", "err", err)
 				return
 			case <-notifier.Closed():
 				return
