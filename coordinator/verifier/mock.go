@@ -12,7 +12,7 @@ import (
 type Verifier struct {
 }
 
-// NewVerifier Sets up a rust ffi to call verify.
+// NewVerifier Sets up a mock verifier.
 func NewVerifier(_ *config.VerifierConfig) (*Verifier, error) {
 	return &Verifier{}, nil
 }
