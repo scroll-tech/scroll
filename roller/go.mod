@@ -4,7 +4,6 @@ go 1.18
 
 require (
 	github.com/docker/docker v20.10.21+incompatible
-	github.com/ethereum/go-ethereum v1.10.26
 	github.com/scroll-tech/go-ethereum v1.10.14-0.20221213034543-78c1f57fcfea
 	github.com/stretchr/testify v1.8.0
 	github.com/urfave/cli/v2 v2.10.2
@@ -13,11 +12,10 @@ require (
 
 require (
 	github.com/btcsuite/btcd v0.20.1-beta // indirect
-	github.com/btcsuite/btcd/btcec/v2 v2.2.0 // indirect
 	github.com/cespare/xxhash/v2 v2.1.2 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.2 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
-	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.0.1 // indirect
+	github.com/ethereum/go-ethereum v1.10.26 // indirect
 	github.com/go-stack/stack v1.8.0 // indirect
 	github.com/google/go-cmp v0.5.8 // indirect
 	github.com/iden3/go-iden3-crypto v0.0.13 // indirect
