@@ -8,7 +8,7 @@ import (
 	"scroll-tech/coordinator/config"
 )
 
-// Verifier represents a rust ffi to a halo2 verifier.
+// Verifier represents a mock halo2 verifier.
 type Verifier struct {
 }
 
