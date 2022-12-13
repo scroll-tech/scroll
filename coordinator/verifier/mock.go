@@ -17,7 +17,7 @@ func NewVerifier(_ *config.VerifierConfig) (*Verifier, error) {
 	return &Verifier{}, nil
 }
 
-// VerifyProof Verify a ZkProof by marshaling it and sending it to the Halo2 Verifier.
+// VerifyProof always return true
 func (v *Verifier) VerifyProof(proof *message.AggProof) (bool, error) {
 	return true, nil
 }
