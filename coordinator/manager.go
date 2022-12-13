@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"math/big"
 	mathrand "math/rand"
 	"sync"
 	"sync/atomic"
@@ -12,6 +11,7 @@ import (
 
 	cmap "github.com/orcaman/concurrent-map"
 	"github.com/patrickmn/go-cache"
+	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
@@ -408,7 +408,7 @@ func (m *Manager) StartProofGenerationSession(task *orm.BlockBatch) bool {
 
 	traces := make([]*types.BlockTrace, len(blockInfos))
 	for i, blockInfo := range blockInfos {
-		traces[i], err = m.Client.GetBlockTraceByNumber(m.ctx, big.NewInt(int64(blockInfo.Number)))
+		traces[i], err = m.Client.GetBlockTraceByHash(m.ctx, common.HexToHash(blockInfo.Hash))
 		if err != nil {
 			log.Error(
 				"could not GetBlockTraceByNumber",
