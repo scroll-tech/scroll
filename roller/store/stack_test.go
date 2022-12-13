@@ -1,7 +1,6 @@
 package store
 
 import (
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -14,7 +13,7 @@ import (
 
 func TestStack(t *testing.T) {
 	// Create temp path
-	path, err := ioutil.TempDir("/tmp/", "stack_db_test-")
+	path, err := os.MkdirTemp("/tmp/", "stack_db_test-")
 	assert.NoError(t, err)
 	defer os.RemoveAll(path)
 
