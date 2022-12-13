@@ -11,7 +11,7 @@ import (
 
 // batch-related config
 const (
-	batchTimeSec      = uint64(1) // 5min
+	batchTimeSec      = uint64(5 * 60) // 5min
 	batchGasThreshold = uint64(3_000_000)
 	batchBlocksLimit  = uint64(100)
 )

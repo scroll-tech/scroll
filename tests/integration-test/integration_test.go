@@ -14,14 +14,14 @@ func TestIntegration(t *testing.T) {
 	})
 
 	// test bridge service
-	t.Run("testBridgeOperation", testBridgeOperation)
+	t.Run("testStartProcess", testStartProcess)
 
 	t.Cleanup(func() {
 		free(t)
 	})
 }
 
-func testBridgeOperation(t *testing.T) {
+func testStartProcess(t *testing.T) {
 	// migrate db.
 	runDBCliApp(t, "reset", "successful to reset")
 	runDBCliApp(t, "migrate", "current version:")
