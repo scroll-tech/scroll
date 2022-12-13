@@ -23,7 +23,7 @@ type batchProposer struct {
 	batchBlocksLimit  uint64
 
 	proofGenerationFreq uint64
-	skippedOpcodes      map[string]bool
+	skippedOpcodes      map[string]struct{}
 }
 
 func newBatchProposer(cfg *config.BatchProposerConfig, orm database.OrmFactory) *batchProposer {
