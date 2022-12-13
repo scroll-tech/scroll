@@ -29,7 +29,7 @@ type BatchProposerConfig struct {
 	// Time waited to generate a batch even if gas_threshold not met
 	BatchTimeSec uint64 `json:"batch_time_sec"`
 	// Max number of blocks in a batch
-	BatchBlocksLimit uint64 `json:"batch_block_limit"`
+	BatchBlocksLimit uint64 `json:"batch_blocks_limit"`
 	// Skip generating proof when that opcodes appeared
 	SkippedOpcodes map[string]bool `json:"-"`
 }
