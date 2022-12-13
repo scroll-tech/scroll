@@ -232,7 +232,7 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 			if tx.To != nil {
 				layer2Batch.Blocks[i].Txs[j].Target = *tx.To
 			}
-			layer2Batch.Blocks[i].GasUsed += trace.ExecutionResults[j].Gas
+			layer2Batch.Blocks[i].GasUsed += tx.Gas
 		}
 
 		// for next iteration
@@ -429,12 +429,6 @@ func (r *Layer2Relayer) handleConfirmation(confirmation *sender.Confirmation) {
 			log.Warn("UpdateFinalizeTxHashAndRollupStatus failed", "batch_id", batch_id, "err", err)
 		}
 		delete(r.processingFinalization, confirmation.ID)
-
-		// try to delete block trace
-		err = r.db.DeleteTracesByBatchID(batch_id)
-		if err != nil {
-			log.Warn("DeleteTracesByBatchID failed", "batch_id", batch_id, "err", err)
-		}
 	}
 	log.Info("transaction confirmed in layer1", "type", transactionType, "confirmation", confirmation)
 }

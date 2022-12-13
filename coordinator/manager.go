@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math/big"
 	mathrand "math/rand"
 	"sync"
 	"sync/atomic"
@@ -11,6 +12,8 @@ import (
 
 	cmap "github.com/orcaman/concurrent-map"
 	"github.com/patrickmn/go-cache"
+	"github.com/scroll-tech/go-ethereum/core/types"
+	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/scroll-tech/go-ethereum/rpc"
 
@@ -72,6 +75,9 @@ type Manager struct {
 	// db interface
 	orm database.OrmFactory
 
+	// l2geth client
+	*ethclient.Client
+
 	// Token cache
 	tokenCache *cache.Cache
 	// A mutex guarding registration
@@ -80,14 +86,13 @@ type Manager struct {
 
 // New returns a new instance of Manager. The instance will be not fully prepared,
 // and still needs to be finalized and ran by calling `manager.Start`.
-func New(ctx context.Context, cfg *config.RollerManagerConfig, orm database.OrmFactory) (*Manager, error) {
+func New(ctx context.Context, cfg *config.RollerManagerConfig, orm database.OrmFactory, client *ethclient.Client) (*Manager, error) {
 	v, err := verifier.NewVerifier(cfg.Verifier)
 	if err != nil {
 		return nil, err
 	}
 
 	log.Info("Start coordinator successfully.")
-
 	return &Manager{
 		ctx:                ctx,
 		cfg:                cfg,
@@ -96,6 +101,7 @@ func New(ctx context.Context, cfg *config.RollerManagerConfig, orm database.OrmF
 		failedSessionInfos: make(map[string]*SessionInfo),
 		verifier:           v,
 		orm:                orm,
+		Client:             client,
 		tokenCache:         cache.New(time.Duration(cfg.TokenTimeToLive)*time.Second, 1*time.Hour),
 	}, nil
 }
@@ -390,15 +396,27 @@ func (m *Manager) StartProofGenerationSession(task *orm.BlockBatch) bool {
 			}
 		}
 	}()
-
-	traces, err := m.orm.GetBlockTraces(map[string]interface{}{"batch_id": task.ID})
+	blockInfos, err := m.orm.GetBlockInfos(map[string]interface{}{"batch_id": task.ID})
 	if err != nil {
 		log.Error(
-			"could not GetBlockTraces",
+			"could not GetBlockInfos",
 			"batch_id", task.ID,
 			"error", err,
 		)
 		return false
+	}
+
+	traces := make([]*types.BlockTrace, len(blockInfos))
+	for i, blockInfo := range blockInfos {
+		traces[i], err = m.Client.GetBlockTraceByNumber(m.ctx, big.NewInt(int64(blockInfo.Number)))
+		if err != nil {
+			log.Error(
+				"could not GetBlockTraceByNumber",
+				"number", blockInfo.Number,
+				"error", err,
+			)
+			return false
+		}
 	}
 
 	log.Info("roller is picked", "name", roller.Name, "public_key", roller.PublicKey)

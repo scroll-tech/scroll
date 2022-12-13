@@ -160,12 +160,13 @@ func (o *blockTraceOrm) InsertBlockTraces(ctx context.Context, blockTraces []*ty
 			len(trace.Transactions),
 			trace.Header.Time
 
+		gas_cost := utils.ComputeTraceGasCost(trace)
+		trace.ExecutionResults = make([]*types.ExecutionResult, 0)
 		data, err := json.Marshal(trace)
 		if err != nil {
 			log.Error("failed to marshal blockTrace", "hash", hash, "err", err)
 			return err
 		}
-		gas_cost := utils.ComputeTraceGasCost(trace)
 		traceMaps[i] = map[string]interface{}{
 			"number":          number,
 			"hash":            hash,
