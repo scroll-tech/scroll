@@ -38,10 +38,6 @@ func newBatchProposer(cfg *config.BatchProposerConfig, orm database.OrmFactory) 
 	}
 }
 
-// TODO:
-// + generate batch parallelly
-// + TraceHasUnsupportedOpcodes
-// + proofGenerationFreq
 func (w *batchProposer) tryProposeBatch() error {
 	w.mutex.Lock()
 	defer w.mutex.Unlock()
