@@ -3,6 +3,9 @@ package coordinator_test
 import (
 	"context"
 	"crypto/ecdsa"
+	"crypto/rand"
+	"fmt"
+	"math/big"
 	"net/http"
 	"strconv"
 	"testing"
@@ -29,15 +32,21 @@ import (
 	coordinator_config "scroll-tech/coordinator/config"
 )
 
-const managerURL = "localhost:8132"
-const newManagerURL = "localhost:8133"
-
 var (
 	cfg           *bridge_config.Config
 	dbImg         docker.ImgInstance
 	rollerManager *coordinator.Manager
 	handle        *http.Server
+
+	managerURL    string
+	newManagerURL string
 )
+
+func init() {
+	id, _ := rand.Int(rand.Reader, big.NewInt(2000-1))
+	managerURL = fmt.Sprintf("localhost:%d", 10000+2000+id.Int64())
+	newManagerURL = fmt.Sprintf("localhost:%d", 10000+2000+id.Int64()+1)
+}
 
 func setEnv(t *testing.T) error {
 	var err error
