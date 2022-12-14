@@ -37,8 +37,8 @@ var newManagerURL string
 func init() {
 	i1, _ := rand.Int(rand.Reader, big.NewInt(9998))
 	i2 := i1.Add(i1, big.NewInt(1))
-	managerURL = "localhost:" + strconv.Itoa(i1.Int64())
-	newManagerURL = "localhost:" + strconv.Itoa(i2.Int64())
+	managerURL = "localhost:" + strconv.Itoa(int(i1.Int64()))
+	newManagerURL = "localhost:" + strconv.Itoa(int(i2.Int64()))
 }
 
 var (
