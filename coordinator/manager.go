@@ -412,7 +412,8 @@ func (m *Manager) StartProofGenerationSession(task *orm.BlockBatch) bool {
 		if err != nil {
 			log.Error(
 				"could not GetBlockTraceByNumber",
-				"number", blockInfo.Number,
+				"block number", blockInfo.Number,
+				"block hash", blockInfo.Hash,
 				"error", err,
 			)
 			return false

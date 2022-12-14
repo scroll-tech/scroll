@@ -161,6 +161,7 @@ func (o *blockTraceOrm) InsertBlockTraces(ctx context.Context, blockTraces []*ty
 			trace.Header.Time
 
 		gasCost := utils.ComputeTraceGasCost(trace)
+		// clear the `StructLogs` to reduce storage cost
 		for _, executionResult := range trace.ExecutionResults {
 			executionResult.StructLogs = nil
 		}
