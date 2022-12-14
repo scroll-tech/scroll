@@ -24,12 +24,21 @@ jobs:
   check:
     runs-on: ubuntu-latest
     steps:
+    - uses: actions-rs/toolchain@v1
+      with:
+        toolchain: nightly-2022-08-23
+        override: true
+        components: rustfmt, clippy
     - name: Install Go
       uses: actions/setup-go@v2
       with:
         go-version: 1.18.x
     - name: Checkout code
       uses: actions/checkout@v2
+    - name: Cache cargo
+      uses: Swatinem/rust-cache@v2
+      with:
+        workspaces: "common/libzkp/impl -> target"
     - name: Lint
       run: |
         rm -rf $HOME/.cache/golangci-lint 

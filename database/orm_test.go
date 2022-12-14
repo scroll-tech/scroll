@@ -20,23 +20,10 @@ import (
 )
 
 var (
-	templateRollup = []*orm.RollupResult{
-		{
-			Number:         1,
-			Status:         orm.RollupPending,
-			RollupTxHash:   "Rollup Test Hash",
-			FinalizeTxHash: "",
-		},
-		{
-			Number:         2,
-			Status:         orm.RollupFinalized,
-			RollupTxHash:   "Rollup Test Hash",
-			FinalizeTxHash: "",
-		},
-	}
-	templateLayer1Message = []*orm.Layer1Message{
+	templateL1Message = []*orm.L1Message{
 		{
 			Nonce:      1,
+			MsgHash:    "msg_hash1",
 			Height:     1,
 			Sender:     "0x596a746661dbed76a84556111c2872249b070e15",
 			Value:      "0x19ece",
@@ -49,6 +36,7 @@ var (
 		},
 		{
 			Nonce:      2,
+			MsgHash:    "msg_hash2",
 			Height:     2,
 			Sender:     "0x596a746661dbed76a84556111c2872249b070e15",
 			Value:      "0x19ece",
@@ -60,9 +48,10 @@ var (
 			Layer1Hash: "hash1",
 		},
 	}
-	templateLayer2Message = []*orm.Layer2Message{
+	templateL2Message = []*orm.L2Message{
 		{
 			Nonce:      1,
+			MsgHash:    "msg_hash1",
 			Height:     1,
 			Sender:     "0x596a746661dbed76a84556111c2872249b070e15",
 			Value:      "0x19ece",
@@ -75,6 +64,7 @@ var (
 		},
 		{
 			Nonce:      2,
+			MsgHash:    "msg_hash2",
 			Height:     2,
 			Sender:     "0x596a746661dbed76a84556111c2872249b070e15",
 			Value:      "0x19ece",
@@ -86,14 +76,15 @@ var (
 			Layer2Hash: "hash1",
 		},
 	}
-	blockResult *types.BlockResult
+	blockTrace *types.BlockTrace
 
-	dbConfig  *database.DBConfig
-	dbImg     docker.ImgInstance
-	ormTrace  orm.BlockResultOrm
-	ormLayer1 orm.Layer1MessageOrm
-	ormLayer2 orm.Layer2MessageOrm
-	ormRollup orm.RollupResultOrm
+	dbConfig   *database.DBConfig
+	dbImg      docker.ImgInstance
+	ormBlock   orm.BlockTraceOrm
+	ormLayer1  orm.L1MessageOrm
+	ormLayer2  orm.L2MessageOrm
+	ormBatch   orm.BlockBatchOrm
+	ormSession orm.SessionInfoOrm
 )
 
 func setupEnv(t *testing.T) error {
@@ -109,18 +100,19 @@ func setupEnv(t *testing.T) error {
 	assert.NoError(t, migrate.ResetDB(db.DB))
 
 	// Init several orm handles.
-	ormTrace = orm.NewBlockResultOrm(db)
-	ormLayer1 = orm.NewLayer1MessageOrm(db)
-	ormLayer2 = orm.NewLayer2MessageOrm(db)
-	ormRollup = orm.NewRollupResultOrm(db)
+	ormBlock = orm.NewBlockTraceOrm(db)
+	ormLayer1 = orm.NewL1MessageOrm(db)
+	ormLayer2 = orm.NewL2MessageOrm(db)
+	ormBatch = orm.NewBlockBatchOrm(db)
+	ormSession = orm.NewSessionInfoOrm(db)
 
-	templateBlockResult, err := os.ReadFile("../common/testdata/blockResult_orm.json")
+	templateBlockTrace, err := os.ReadFile("../common/testdata/blockTrace_03.json")
 	if err != nil {
 		return err
 	}
-	// unmarshal blockResult
-	blockResult = &types.BlockResult{}
-	return json.Unmarshal(templateBlockResult, blockResult)
+	// unmarshal blockTrace
+	blockTrace = &types.BlockTrace{}
+	return json.Unmarshal(templateBlockTrace, blockTrace)
 }
 
 // TestOrmFactory run several test cases.
@@ -134,61 +126,59 @@ func TestOrmFactory(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	t.Run("testOrm_BlockResults", testOrmBlockResults)
+	t.Run("testOrmBlockTraces", testOrmBlockTraces)
 
-	t.Run("testOrmLayer1Message", testOrmLayer1Message)
+	t.Run("testOrmL1Message", testOrmL1Message)
 
-	t.Run("testOrmLayer2Message", testOrmLayer2Message)
+	t.Run("testOrmL2Message", testOrmL2Message)
 
-	t.Run("testOrmRollupResult", testOrmRollupResult)
+	t.Run("testOrmBlockBatch", testOrmBlockBatch)
+
+	t.Run("testOrmSessionInfo", testOrmSessionInfo)
 }
 
-func testOrmBlockResults(t *testing.T) {
+func testOrmBlockTraces(t *testing.T) {
 	// Create db handler and reset db.
 	factory, err := database.NewOrmFactory(dbConfig)
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(factory.GetDB().DB))
 
-	res, err := ormTrace.GetBlockResults(map[string]interface{}{})
+	res, err := ormBlock.GetBlockTraces(map[string]interface{}{})
 	assert.NoError(t, err)
 	assert.Equal(t, true, len(res) == 0)
 
+	exist, err := ormBlock.Exist(blockTrace.Header.Number.Uint64())
+	assert.NoError(t, err)
+	assert.Equal(t, false, exist)
+
 	// Insert into db
-	err = ormTrace.InsertBlockResultsWithStatus(context.Background(), []*types.BlockResult{blockResult}, orm.BlockUnassigned)
+	err = ormBlock.InsertBlockTraces(context.Background(), []*types.BlockTrace{blockTrace})
 	assert.NoError(t, err)
 
-	exist, err := ormTrace.Exist(blockResult.BlockTrace.Number.ToInt().Uint64())
+	res2, err := ormBlock.GetUnbatchedBlocks(map[string]interface{}{})
+	assert.NoError(t, err)
+	assert.Equal(t, true, len(res2) == 1)
+
+	exist, err = ormBlock.Exist(blockTrace.Header.Number.Uint64())
 	assert.NoError(t, err)
 	assert.Equal(t, true, exist)
 
-	res, err = ormTrace.GetBlockResults(map[string]interface{}{
-		"hash": blockResult.BlockTrace.Hash.String(),
+	res, err = ormBlock.GetBlockTraces(map[string]interface{}{
+		"hash": blockTrace.Header.Hash().String(),
 	})
 	assert.NoError(t, err)
 	assert.Equal(t, true, len(res) == 1)
 
-	// Compare content
+	// Compare trace
 	data1, err := json.Marshal(res[0])
 	assert.NoError(t, err)
-	data2, err := json.Marshal(blockResult)
+	data2, err := json.Marshal(blockTrace)
 	assert.NoError(t, err)
-	// check content
+	// check trace
 	assert.Equal(t, true, string(data1) == string(data2))
-
-	// Update proof by hash
-	assert.NoError(t, ormTrace.UpdateProofByNumber(context.Background(), blockResult.BlockTrace.Number.ToInt().Uint64(), []byte{1}, []byte{2}, 1200))
-
-	// Update trace and check result.
-	err = ormTrace.UpdateBlockStatus(blockResult.BlockTrace.Number.ToInt().Uint64(), orm.BlockVerified)
-	assert.NoError(t, err)
-	res, err = ormTrace.GetBlockResults(map[string]interface{}{
-		"status": orm.BlockVerified,
-	})
-	assert.NoError(t, err)
-	assert.Equal(t, true, len(res) == 1 && res[0].BlockTrace.Hash.String() == blockResult.BlockTrace.Hash.String())
 }
 
-func testOrmLayer1Message(t *testing.T) {
+func testOrmL1Message(t *testing.T) {
 	// Create db handler and reset db.
 	factory, err := database.NewOrmFactory(dbConfig)
 	assert.NoError(t, err)
@@ -197,16 +187,16 @@ func testOrmLayer1Message(t *testing.T) {
 	expected := "expect hash"
 
 	// Insert into db
-	err = ormLayer1.SaveLayer1Messages(context.Background(), templateLayer1Message)
+	err = ormLayer1.SaveL1Messages(context.Background(), templateL1Message)
 	assert.NoError(t, err)
 
-	err = ormLayer1.UpdateLayer1Status(context.Background(), "hash0", orm.MsgConfirmed)
+	err = ormLayer1.UpdateLayer1Status(context.Background(), "msg_hash1", orm.MsgConfirmed)
 	assert.NoError(t, err)
 
-	err = ormLayer1.UpdateLayer1Status(context.Background(), "hash1", orm.MsgSubmitted)
+	err = ormLayer1.UpdateLayer1Status(context.Background(), "msg_hash2", orm.MsgSubmitted)
 	assert.NoError(t, err)
 
-	err = ormLayer1.UpdateLayer2Hash(context.Background(), "hash1", expected)
+	err = ormLayer1.UpdateLayer2Hash(context.Background(), "msg_hash2", expected)
 	assert.NoError(t, err)
 
 	result, err := ormLayer1.GetL1ProcessedNonce()
@@ -217,12 +207,12 @@ func testOrmLayer1Message(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, int64(2), height)
 
-	msg, err := ormLayer1.GetLayer1MessageByLayer1Hash("hash1")
+	msg, err := ormLayer1.GetL1MessageByMsgHash("msg_hash2")
 	assert.NoError(t, err)
 	assert.Equal(t, orm.MsgSubmitted, msg.Status)
 }
 
-func testOrmLayer2Message(t *testing.T) {
+func testOrmL2Message(t *testing.T) {
 	// Create db handler and reset db.
 	factory, err := database.NewOrmFactory(dbConfig)
 	assert.NoError(t, err)
@@ -231,16 +221,16 @@ func testOrmLayer2Message(t *testing.T) {
 	expected := "expect hash"
 
 	// Insert into db
-	err = ormLayer2.SaveLayer2Messages(context.Background(), templateLayer2Message)
+	err = ormLayer2.SaveL2Messages(context.Background(), templateL2Message)
 	assert.NoError(t, err)
 
-	err = ormLayer2.UpdateLayer2Status(context.Background(), "hash0", orm.MsgConfirmed)
+	err = ormLayer2.UpdateLayer2Status(context.Background(), "msg_hash1", orm.MsgConfirmed)
 	assert.NoError(t, err)
 
-	err = ormLayer2.UpdateLayer2Status(context.Background(), "hash1", orm.MsgSubmitted)
+	err = ormLayer2.UpdateLayer2Status(context.Background(), "msg_hash2", orm.MsgSubmitted)
 	assert.NoError(t, err)
 
-	err = ormLayer2.UpdateLayer1Hash(context.Background(), "hash1", expected)
+	err = ormLayer2.UpdateLayer1Hash(context.Background(), "msg_hash2", expected)
 	assert.NoError(t, err)
 
 	result, err := ormLayer2.GetL2ProcessedNonce()
@@ -251,36 +241,143 @@ func testOrmLayer2Message(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, int64(2), height)
 
-	msg, err := ormLayer2.GetLayer2MessageByLayer2Hash("hash1")
+	msg, err := ormLayer2.GetL2MessageByMsgHash("msg_hash2")
 	assert.NoError(t, err)
 	assert.Equal(t, orm.MsgSubmitted, msg.Status)
+	assert.Equal(t, msg.MsgHash, "msg_hash2")
 }
 
-// testOrmRollupResult test rollup result table functions
-func testOrmRollupResult(t *testing.T) {
+// testOrmBlockBatch test rollup result table functions
+func testOrmBlockBatch(t *testing.T) {
 	// Create db handler and reset db.
 	factory, err := database.NewOrmFactory(dbConfig)
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(factory.GetDB().DB))
 
-	blocks := []uint64{uint64(templateRollup[0].Number), uint64(templateRollup[1].Number)}
-	err = ormRollup.InsertPendingBlocks(context.Background(), blocks)
+	dbTx, err := factory.Beginx()
+	assert.NoError(t, err)
+	batchID1, err := ormBatch.NewBatchInDBTx(dbTx,
+		&orm.BlockInfo{Number: blockTrace.Header.Number.Uint64()},
+		&orm.BlockInfo{Number: blockTrace.Header.Number.Uint64() + 1},
+		"ff", 1, 194676) // parentHash & totalTxNum & totalL2Gas don't really matter here
+	assert.NoError(t, err)
+	err = ormBlock.SetBatchIDForBlocksInDBTx(dbTx, []uint64{
+		blockTrace.Header.Number.Uint64(),
+		blockTrace.Header.Number.Uint64() + 1}, batchID1)
+	assert.NoError(t, err)
+	batchID2, err := ormBatch.NewBatchInDBTx(dbTx,
+		&orm.BlockInfo{Number: blockTrace.Header.Number.Uint64() + 2},
+		&orm.BlockInfo{Number: blockTrace.Header.Number.Uint64() + 3},
+		"ff", 1, 194676) // parentHash & totalTxNum & totalL2Gas don't really matter here
+	assert.NoError(t, err)
+	err = ormBlock.SetBatchIDForBlocksInDBTx(dbTx, []uint64{
+		blockTrace.Header.Number.Uint64() + 2,
+		blockTrace.Header.Number.Uint64() + 3}, batchID2)
+	assert.NoError(t, err)
+	err = dbTx.Commit()
 	assert.NoError(t, err)
 
-	err = ormRollup.UpdateFinalizeTxHash(context.Background(), uint64(templateRollup[0].Number), templateRollup[0].FinalizeTxHash)
+	batches, err := ormBatch.GetBlockBatches(map[string]interface{}{})
+	assert.NoError(t, err)
+	assert.Equal(t, int(2), len(batches))
+
+	batcheIDs, err := ormBatch.GetPendingBatches()
+	assert.NoError(t, err)
+	assert.Equal(t, int(2), len(batcheIDs))
+	assert.Equal(t, batchID1, batcheIDs[0])
+	assert.Equal(t, batchID2, batcheIDs[1])
+
+	err = ormBatch.UpdateCommitTxHashAndRollupStatus(context.Background(), batchID1, "commit_tx_1", orm.RollupCommitted)
 	assert.NoError(t, err)
 
-	err = ormRollup.UpdateRollupStatus(context.Background(), uint64(templateRollup[0].Number), orm.RollupPending)
+	batcheIDs, err = ormBatch.GetPendingBatches()
 	assert.NoError(t, err)
+	assert.Equal(t, int(1), len(batcheIDs))
+	assert.Equal(t, batchID2, batcheIDs[0])
 
-	err = ormRollup.UpdateFinalizeTxHashAndStatus(context.Background(), uint64(templateRollup[1].Number), templateRollup[1].FinalizeTxHash, templateRollup[1].Status)
+	proving_status, err := ormBatch.GetProvingStatusByID(batchID1)
 	assert.NoError(t, err)
+	assert.Equal(t, orm.ProvingTaskUnassigned, proving_status)
+	err = ormBatch.UpdateProofByID(context.Background(), batchID1, []byte{1}, []byte{2}, 1200)
+	assert.NoError(t, err)
+	err = ormBatch.UpdateProvingStatus(batchID1, orm.ProvingTaskVerified)
+	assert.NoError(t, err)
+	proving_status, err = ormBatch.GetProvingStatusByID(batchID1)
+	assert.NoError(t, err)
+	assert.Equal(t, orm.ProvingTaskVerified, proving_status)
 
-	results, err := ormRollup.GetPendingBlocks()
+	rollup_status, err := ormBatch.GetRollupStatus(batchID1)
 	assert.NoError(t, err)
-	assert.Equal(t, len(results), 1)
+	assert.Equal(t, orm.RollupCommitted, rollup_status)
+	err = ormBatch.UpdateFinalizeTxHashAndRollupStatus(context.Background(), batchID1, "finalize_tx_1", orm.RollupFinalized)
+	assert.NoError(t, err)
+	rollup_status, err = ormBatch.GetRollupStatus(batchID1)
+	assert.NoError(t, err)
+	assert.Equal(t, orm.RollupFinalized, rollup_status)
+	result, err := ormBatch.GetLatestFinalizedBatch()
+	assert.NoError(t, err)
+	assert.Equal(t, batchID1, result.ID)
+}
 
-	result, err := ormRollup.GetLatestFinalizedBlock()
+// testOrmSessionInfo test rollup result table functions
+func testOrmSessionInfo(t *testing.T) {
+	// Create db handler and reset db.
+	factory, err := database.NewOrmFactory(dbConfig)
 	assert.NoError(t, err)
-	assert.Equal(t, templateRollup[1].Number, int(result))
+	assert.NoError(t, migrate.ResetDB(factory.GetDB().DB))
+	dbTx, err := factory.Beginx()
+	assert.NoError(t, err)
+	batchID, err := ormBatch.NewBatchInDBTx(dbTx,
+		&orm.BlockInfo{Number: blockTrace.Header.Number.Uint64()},
+		&orm.BlockInfo{Number: blockTrace.Header.Number.Uint64() + 1},
+		"ff", 1, 194676)
+	assert.NoError(t, err)
+	assert.NoError(t, ormBlock.SetBatchIDForBlocksInDBTx(dbTx, []uint64{
+		blockTrace.Header.Number.Uint64(),
+		blockTrace.Header.Number.Uint64() + 1}, batchID))
+	assert.NoError(t, dbTx.Commit())
+	assert.NoError(t, ormBatch.UpdateProvingStatus(batchID, orm.ProvingTaskAssigned))
+
+	// empty
+	ids, err := ormBatch.GetAssignedBatchIDs()
+	assert.NoError(t, err)
+	assert.Equal(t, 1, len(ids))
+	session_infos, err := ormSession.GetSessionInfosByIDs(ids)
+	assert.NoError(t, err)
+	assert.Equal(t, 0, len(session_infos))
+
+	sessionInfo := orm.SessionInfo{
+		ID: batchID,
+		Rollers: map[string]*orm.RollerStatus{
+			"0": {
+				PublicKey: "0",
+				Name:      "roller-0",
+				Status:    orm.RollerAssigned,
+			},
+		},
+		StartTimestamp: time.Now().Unix()}
+
+	// insert
+	assert.NoError(t, ormSession.SetSessionInfo(&sessionInfo))
+	session_infos, err = ormSession.GetSessionInfosByIDs(ids)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, len(session_infos))
+	assert.Equal(t, sessionInfo, *session_infos[0])
+
+	// update
+	sessionInfo.Rollers["0"].Status = orm.RollerProofValid
+	assert.NoError(t, ormSession.SetSessionInfo(&sessionInfo))
+	session_infos, err = ormSession.GetSessionInfosByIDs(ids)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, len(session_infos))
+	assert.Equal(t, sessionInfo, *session_infos[0])
+
+	// delete
+	assert.NoError(t, ormBatch.UpdateProvingStatus(batchID, orm.ProvingTaskVerified))
+	ids, err = ormBatch.GetAssignedBatchIDs()
+	assert.NoError(t, err)
+	assert.Equal(t, 0, len(ids))
+	session_infos, err = ormSession.GetSessionInfosByIDs(ids)
+	assert.NoError(t, err)
+	assert.Equal(t, 0, len(session_infos))
 }

@@ -2,3 +2,7 @@
 assets/params*
 assets/seed
 coverage.txt
+build/bin
+
+# misc
+sftp-config.json

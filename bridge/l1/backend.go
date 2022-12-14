@@ -4,11 +4,9 @@ import (
 	"context"
 
 	"github.com/scroll-tech/go-ethereum/ethclient"
-	"github.com/scroll-tech/go-ethereum/log"
 
-	"scroll-tech/database/orm"
+	"scroll-tech/database"
 
-	bridge_abi "scroll-tech/bridge/abi"
 	"scroll-tech/bridge/config"
 )
 
@@ -18,19 +16,13 @@ type Backend struct {
 	cfg     *config.L1Config
 	watcher *Watcher
 	relayer *Layer1Relayer
-	orm     orm.Layer1MessageOrm
+	orm     database.OrmFactory
 }
 
 // New returns a new instance of Backend.
-func New(ctx context.Context, cfg *config.L1Config, orm orm.Layer1MessageOrm) (*Backend, error) {
+func New(ctx context.Context, cfg *config.L1Config, orm database.OrmFactory) (*Backend, error) {
 	client, err := ethclient.Dial(cfg.Endpoint)
 	if err != nil {
-		return nil, err
-	}
-
-	l1MessengerABI, err := bridge_abi.L1MessengerMetaData.GetAbi()
-	if err != nil {
-		log.Warn("new L1MessengerABI failed", "err", err)
 		return nil, err
 	}
 
@@ -39,7 +31,7 @@ func New(ctx context.Context, cfg *config.L1Config, orm orm.Layer1MessageOrm) (*
 		return nil, err
 	}
 
-	watcher := NewWatcher(ctx, client, cfg.StartHeight, cfg.Confirmations, cfg.L1MessengerAddress, l1MessengerABI, orm)
+	watcher := NewWatcher(ctx, client, cfg.StartHeight, cfg.Confirmations, cfg.L1MessengerAddress, cfg.RelayerConfig.RollupContractAddress, orm)
 
 	return &Backend{
 		cfg:     cfg,

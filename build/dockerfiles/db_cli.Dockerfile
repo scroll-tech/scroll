@@ -1,13 +1,25 @@
-# Build db_cli in a stock Go builder container
-FROM scrolltech/go-builder:1.18 as builder
+# Download Go dependencies
+FROM scrolltech/go-alpine-builder:1.18 as base
 
-COPY ./ /
+WORKDIR /src
+COPY go.work* ./
+COPY ./bridge/go.* ./bridge/
+COPY ./common/go.* ./common/
+COPY ./coordinator/go.* ./coordinator/
+COPY ./database/go.* ./database/
+COPY ./roller/go.* ./roller/
+RUN go mod download -x
 
-RUN cd /database/cmd && go build -v -p 4 -o db_cli
+# Build db_cli
+FROM base as builder
+
+RUN --mount=target=. \
+    --mount=type=cache,target=/root/.cache/go-build \
+    cd /src/database/cmd && go build -v -p 4 -o /bin/db_cli
 
 # Pull db_cli into a second stage deploy alpine container
 FROM alpine:latest
 
-COPY --from=builder /database/cmd/db_cli /bin/
+COPY --from=builder /bin/db_cli /bin/
 
 ENTRYPOINT ["db_cli"]

@@ -5,12 +5,7 @@ IMAGE_VERSION=latest
 REPO_ROOT_DIR=./..
 
 mock_abi:
-	solc --bin mock_bridge/Mock_Bridge.sol -o mock_bridge/ --overwrite
-	solc --abi mock_bridge/Mock_Bridge.sol -o mock_bridge/ --overwrite
-	abigen --bin=mock_bridge/Mock_Bridge.bin \
-			--abi=mock_bridge/Mock_Bridge.abi \
-			--pkg=mock_bridge --out=mock_bridge/Mock_Bridge.go
-	awk '{sub("github.com/ethereum","github.com/scroll-tech")}1' mock_bridge/Mock_Bridge.go > temp && mv temp mock_bridge/Mock_Bridge.go
+	go run github.com/scroll-tech/go-ethereum/cmd/abigen --sol mock_bridge/Mock_Bridge.sol --pkg mock_bridge --out mock_bridge/Mock_Bridge.go
 
 bridge: ## Builds the Bridge instance.
 	go build -o $(PWD)/build/bin/bridge ./cmd
@@ -25,7 +20,7 @@ clean: ## Empty out the bin folder
 	@rm -rf build/bin
 
 docker:
-	docker build -t scrolltech/${IMAGE_NAME}:${IMAGE_VERSION} ${REPO_ROOT_DIR}/ -f ${REPO_ROOT_DIR}/build/dockerfiles/bridge.Dockerfile
+	DOCKER_BUILDKIT=1 docker build -t scrolltech/${IMAGE_NAME}:${IMAGE_VERSION} ${REPO_ROOT_DIR}/ -f ${REPO_ROOT_DIR}/build/dockerfiles/bridge.Dockerfile
 
 docker_push:
 	docker push scrolltech/${IMAGE_NAME}:${IMAGE_VERSION}

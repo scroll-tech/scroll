@@ -14,7 +14,7 @@ lint: ## Lint the files - used for CI
 	GOBIN=$(PWD)/build/bin go run ../build/lint.go
 
 docker:
-	docker build -t scrolltech/${IMAGE_NAME}:${IMAGE_VERSION} ${REPO_ROOT_DIR}/ -f ${REPO_ROOT_DIR}/build/dockerfiles/${IMAGE_NAME}.Dockerfile
+	DOCKER_BUILDKIT=1 docker build -t scrolltech/${IMAGE_NAME}:${IMAGE_VERSION} ${REPO_ROOT_DIR}/ -f ${REPO_ROOT_DIR}/build/dockerfiles/${IMAGE_NAME}.Dockerfile
 
 docker_push:
 	docker push scrolltech/${IMAGE_NAME}:${IMAGE_VERSION}

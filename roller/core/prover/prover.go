@@ -1,10 +1,13 @@
+//go:build !mock_prover
+
+//nolint:typecheck
 package prover
 
 /*
-#cgo LDFLAGS: ./core/prover/lib/libprover.a -lm -ldl
-#cgo gpu LDFLAGS: ./core/prover/lib/libprover.a -lm -ldl -lgmp -lstdc++ -lprocps -L/usr/local/cuda/lib64/ -lcudart
+#cgo LDFLAGS: ${SRCDIR}/lib/libzkp.a -lm -ldl
+#cgo gpu LDFLAGS: ${SRCDIR}/lib/libzkp.a -lm -ldl -lgmp -lstdc++ -lprocps -L/usr/local/cuda/lib64/ -lcudart
 #include <stdlib.h>
-#include "./lib/prover.h"
+#include "./lib/libzkp.h"
 */
 import "C" //nolint:typecheck
 
@@ -13,22 +16,20 @@ import (
 	"unsafe"
 
 	"github.com/scroll-tech/go-ethereum/core/types"
+	"github.com/scroll-tech/go-ethereum/log"
 
 	"scroll-tech/common/message"
 
 	"scroll-tech/roller/config"
 )
 
-// Prover sends block-traces to rust-prover through socket and get back the zk-proof.
+// Prover sends block-traces to rust-prover through ffi and get back the zk-proof.
 type Prover struct {
 	cfg *config.ProverConfig
 }
 
 // NewProver inits a Prover object.
 func NewProver(cfg *config.ProverConfig) (*Prover, error) {
-	if cfg.MockMode {
-		return &Prover{cfg: cfg}, nil
-	}
 	paramsPathStr := C.CString(cfg.ParamsPath)
 	seedPathStr := C.CString(cfg.SeedPath)
 	defer func() {
@@ -41,14 +42,11 @@ func NewProver(cfg *config.ProverConfig) (*Prover, error) {
 }
 
 // Prove call rust ffi to generate proof, if first failed, try again.
-func (p *Prover) Prove(traces *types.BlockResult) (*message.AggProof, error) {
+func (p *Prover) Prove(traces []*types.BlockTrace) (*message.AggProof, error) {
 	return p.prove(traces)
 }
 
-func (p *Prover) prove(traces *types.BlockResult) (*message.AggProof, error) {
-	if p.cfg.MockMode {
-		return &message.AggProof{}, nil
-	}
+func (p *Prover) prove(traces []*types.BlockTrace) (*message.AggProof, error) {
 	tracesByt, err := json.Marshal(traces)
 	if err != nil {
 		return nil, err
@@ -58,7 +56,11 @@ func (p *Prover) prove(traces *types.BlockResult) (*message.AggProof, error) {
 	defer func() {
 		C.free(unsafe.Pointer(tracesStr))
 	}()
-	cProof := C.create_agg_proof(tracesStr)
+
+	log.Info("Start to create agg proof ...")
+	cProof := C.create_agg_proof_multi(tracesStr)
+	log.Info("Finish creating agg proof!")
+
 	proof := C.GoString(cProof)
 	zkProof := &message.AggProof{}
 	err = json.Unmarshal([]byte(proof), zkProof)

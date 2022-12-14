@@ -1,9 +1,14 @@
 {
   "roller_manager_config": {
-    "endpoint": ":9000",
     "rollers_per_session": 1,
     "verifier_endpoint": "/tmp/verifier.sock",
-    "collection_time": 180
+    "collection_time": 180,
+    "token_time_to_live": 60,
+    "verifier": {
+      "mock_mode": true,
+      "params_path": "",
+      "agg_vk_path": ""
+    }
   },
   "db_config": {
     "driver_name": "postgres",

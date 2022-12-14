@@ -21,7 +21,7 @@ import (
 )
 
 // Layer1Relayer is responsible for
-//  1. fetch pending Layer1Message from db
+//  1. fetch pending L1Message from db
 //  2. relay pending message to layer 2 node
 //
 // Actions are triggered by new head from layer 1 geth node.
@@ -31,7 +31,7 @@ type Layer1Relayer struct {
 	client *ethclient.Client
 	sender *sender.Sender
 
-	db  orm.Layer1MessageOrm
+	db  orm.L1MessageOrm
 	cfg *config.RelayerConfig
 
 	// channel used to communicate with transaction sender
@@ -42,7 +42,7 @@ type Layer1Relayer struct {
 }
 
 // NewLayer1Relayer will return a new instance of Layer1RelayerClient
-func NewLayer1Relayer(ctx context.Context, ethClient *ethclient.Client, l1ConfirmNum int64, db orm.Layer1MessageOrm, cfg *config.RelayerConfig) (*Layer1Relayer, error) {
+func NewLayer1Relayer(ctx context.Context, ethClient *ethclient.Client, l1ConfirmNum int64, db orm.L1MessageOrm, cfg *config.RelayerConfig) (*Layer1Relayer, error) {
 	l2MessengerABI, err := bridge_abi.L2MessengerMetaData.GetAbi()
 	if err != nil {
 		log.Warn("new L2MessengerABI failed", "err", err)
@@ -70,7 +70,7 @@ func NewLayer1Relayer(ctx context.Context, ethClient *ethclient.Client, l1Confir
 // ProcessSavedEvents relays saved un-processed cross-domain transactions to desired blockchain
 func (r *Layer1Relayer) ProcessSavedEvents() {
 	// msgs are sorted by nonce in increasing order
-	msgs, err := r.db.GetL1UnprocessedMessages()
+	msgs, err := r.db.GetL1MessagesByStatus(orm.MsgPending)
 	if err != nil {
 		log.Error("Failed to fetch unprocessed L1 messages", "err", err)
 		return
@@ -85,7 +85,7 @@ func (r *Layer1Relayer) ProcessSavedEvents() {
 	}
 }
 
-func (r *Layer1Relayer) processSavedEvent(msg *orm.Layer1Message) error {
+func (r *Layer1Relayer) processSavedEvent(msg *orm.L1Message) error {
 	// @todo add support to relay multiple messages
 	from := common.HexToAddress(msg.Sender)
 	target := common.HexToAddress(msg.Target)
@@ -106,15 +106,15 @@ func (r *Layer1Relayer) processSavedEvent(msg *orm.Layer1Message) error {
 		return err
 	}
 
-	hash, err := r.sender.SendTransaction(msg.Layer1Hash, &r.cfg.MessengerContractAddress, big.NewInt(0), data)
+	hash, err := r.sender.SendTransaction(msg.MsgHash, &r.cfg.MessengerContractAddress, big.NewInt(0), data)
 	if err != nil {
 		return err
 	}
-	log.Info("relayMessage to layer2", "layer1 hash", msg.Layer1Hash, "tx hash", hash)
+	log.Info("relayMessage to layer2", "msg hash", msg.MsgHash, "tx hash", hash)
 
-	err = r.db.UpdateLayer1StatusAndLayer2Hash(r.ctx, msg.Layer1Hash, hash.String(), orm.MsgSubmitted)
+	err = r.db.UpdateLayer1StatusAndLayer2Hash(r.ctx, msg.MsgHash, orm.MsgSubmitted, hash.String())
 	if err != nil {
-		log.Error("UpdateLayer1StatusAndLayer2Hash failed", "msg.layer1hash", msg.Layer1Hash, "msg.height", msg.Height, "err", err)
+		log.Error("UpdateLayer1StatusAndLayer2Hash failed", "msg.msgHash", msg.MsgHash, "msg.height", msg.Height, "err", err)
 	}
 	return err
 }
@@ -132,12 +132,17 @@ func (r *Layer1Relayer) Start() {
 				// number, err := r.client.BlockNumber(r.ctx)
 				// log.Info("receive header", "height", number)
 				r.ProcessSavedEvents()
-			case cfm := <-r.confirmationCh: // @todo handle db error
-				err := r.db.UpdateLayer1StatusAndLayer2Hash(r.ctx, cfm.ID, cfm.TxHash.String(), orm.MsgConfirmed)
-				if err != nil {
-					log.Warn("UpdateLayer1StatusAndLayer2Hash failed", "err", err)
+			case cfm := <-r.confirmationCh:
+				if !cfm.IsSuccessful {
+					log.Warn("transaction confirmed but failed in layer2", "confirmation", cfm)
+				} else {
+					// @todo handle db error
+					err := r.db.UpdateLayer1StatusAndLayer2Hash(r.ctx, cfm.ID, orm.MsgConfirmed, cfm.TxHash.String())
+					if err != nil {
+						log.Warn("UpdateLayer1StatusAndLayer2Hash failed", "err", err)
+					}
+					log.Info("transaction confirmed in layer2", "confirmation", cfm)
 				}
-				log.Info("transaction confirmed in layer2", "confirmation", cfm)
 			case <-r.stopCh:
 				return
 			}
