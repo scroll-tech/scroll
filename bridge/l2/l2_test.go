@@ -71,7 +71,6 @@ func TestFunction(t *testing.T) {
 	t.Run("TestCreateNewWatcherAndStop", testCreateNewWatcherAndStop)
 	t.Run("TestMonitorBridgeContract", testMonitorBridgeContract)
 	t.Run("TestFetchMultipleSentMessageInOneBlock", testFetchMultipleSentMessageInOneBlock)
-	t.Run("TestTraceHasUnsupportedOpcodes", testTraceHasUnsupportedOpcodes)
 
 	// Run l2 relayer test cases.
 	t.Run("TestCreateNewRelayer", testCreateNewRelayer)

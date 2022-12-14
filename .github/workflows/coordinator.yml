@@ -24,6 +24,11 @@ jobs:
   check:
     runs-on: ubuntu-latest
     steps:
+    - uses: actions-rs/toolchain@v1
+      with:
+        toolchain: nightly-2022-08-23
+        override: true
+        components: rustfmt, clippy
     - name: Install Go
       uses: actions/setup-go@v2
       with:
