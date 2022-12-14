@@ -3,6 +3,8 @@ package coordinator_test
 import (
 	"context"
 	"crypto/ecdsa"
+	"crypto/rand"
+	"math/big"
 	"net/http"
 	"strconv"
 	"testing"
@@ -29,8 +31,15 @@ import (
 	coordinator_config "scroll-tech/coordinator/config"
 )
 
-const managerURL = "localhost:8132"
-const newManagerURL = "localhost:8133"
+var managerURL string
+var newManagerURL string
+
+func init() {
+	i1, _ := rand.Int(rand.Reader, big.NewInt(9998))
+	i2 := i1.Add(i1, big.NewInt(1))
+	managerURL = "localhost:" + strconv.Itoa(i1.Int64())
+	newManagerURL = "localhost:" + strconv.Itoa(i2.Int64())
+}
 
 var (
 	cfg           *bridge_config.Config
