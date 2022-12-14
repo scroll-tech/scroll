@@ -96,13 +96,13 @@ pipeline {
                         ${GOROOT}/bin/bin/gocover-cobertura < coverage.db.txt > coverage.db.xml
                         ${GOROOT}/bin/bin/gocover-cobertura < coverage.common.txt > coverage.common.xml
                         ${GOROOT}/bin/bin/gocover-cobertura < coverage.coordinator.txt > coverage.coordinator.xml
+                        npx cobertura-merge -o cobertura.xml package1=coverage.bridge.xml package2=coverage.db.xml package3=coverage.common.xml package4=coverage.coordinator.xml
                     '''
                     script { test_result = true }
                }
                 script {
                     currentBuild.result = 'SUCCESS'
                  }
-                sh "npx cobertura-merge -o cobertura.xml package1=coverage.bridge.xml package2=coverage.db.xml package3=coverage.common.xml package4=coverage.coordinator.xml"
                 step([$class: 'CompareCoverageAction', publishResultAs: 'statusCheck', scmVars: [GIT_URL: env.GIT_URL]])
             }
         }
