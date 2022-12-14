@@ -64,6 +64,9 @@ func action(ctx *cli.Context) error {
 
 	// init l2geth connection
 	client, err := ethclient.Dial(cfg.L2Config.Endpoint)
+	if (err != nil) {
+		log.Crit("failed to init l2geth connection", "err", err);
+	}
 
 	// Initialize all coordinator modules.
 	rollerManager, err := coordinator.New(ctx.Context, cfg.RollerManagerConfig, ormFactory, client)
