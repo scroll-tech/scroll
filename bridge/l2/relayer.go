@@ -424,12 +424,6 @@ func (r *Layer2Relayer) handleConfirmation(confirmation *sender.Confirmation) {
 			log.Warn("UpdateFinalizeTxHashAndRollupStatus failed", "batch_id", batch_id, "err", err)
 		}
 		delete(r.processingFinalization, confirmation.ID)
-
-		// try to delete block trace
-		err = r.db.DeleteTracesByBatchID(batch_id)
-		if err != nil {
-			log.Warn("DeleteTracesByBatchID failed", "batch_id", batch_id, "err", err)
-		}
 	}
 	log.Info("transaction confirmed in layer1", "type", transactionType, "confirmation", confirmation)
 }
