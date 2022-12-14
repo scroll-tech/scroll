@@ -42,7 +42,7 @@ func testCreateNewRelayer(t *testing.T) {
 	assert.NoError(t, migrate.ResetDB(db.GetDB().DB))
 	defer db.Close()
 
-	relayer, err := l2.NewLayer2Relayer(context.Background(), l2Cli, cfg.L2Config.ProofGenerationFreq, cfg.L2Config.SkippedOpcodes, int64(cfg.L2Config.Confirmations), db, cfg.L2Config.RelayerConfig)
+	relayer, err := l2.NewLayer2Relayer(context.Background(), l2Cli, int64(cfg.L2Config.Confirmations), db, cfg.L2Config.RelayerConfig)
 	assert.NoError(t, err)
 	defer relayer.Stop()
 
@@ -57,7 +57,7 @@ func testL2RelayerProcessSaveEvents(t *testing.T) {
 	defer db.Close()
 
 	l2Cfg := cfg.L2Config
-	relayer, err := l2.NewLayer2Relayer(context.Background(), l2Cli, l2Cfg.ProofGenerationFreq, l2Cfg.SkippedOpcodes, int64(l2Cfg.Confirmations), db, l2Cfg.RelayerConfig)
+	relayer, err := l2.NewLayer2Relayer(context.Background(), l2Cli, int64(l2Cfg.Confirmations), db, l2Cfg.RelayerConfig)
 	assert.NoError(t, err)
 	defer relayer.Stop()
 
@@ -111,7 +111,7 @@ func testL2RelayerProcessPendingBatches(t *testing.T) {
 	defer db.Close()
 
 	l2Cfg := cfg.L2Config
-	relayer, err := l2.NewLayer2Relayer(context.Background(), l2Cli, l2Cfg.ProofGenerationFreq, l2Cfg.SkippedOpcodes, int64(l2Cfg.Confirmations), db, l2Cfg.RelayerConfig)
+	relayer, err := l2.NewLayer2Relayer(context.Background(), l2Cli, int64(l2Cfg.Confirmations), db, l2Cfg.RelayerConfig)
 	assert.NoError(t, err)
 	defer relayer.Stop()
 
@@ -168,7 +168,7 @@ func testL2RelayerProcessCommittedBatches(t *testing.T) {
 	defer db.Close()
 
 	l2Cfg := cfg.L2Config
-	relayer, err := l2.NewLayer2Relayer(context.Background(), l2Cli, l2Cfg.ProofGenerationFreq, l2Cfg.SkippedOpcodes, int64(l2Cfg.Confirmations), db, l2Cfg.RelayerConfig)
+	relayer, err := l2.NewLayer2Relayer(context.Background(), l2Cli, int64(l2Cfg.Confirmations), db, l2Cfg.RelayerConfig)
 	assert.NoError(t, err)
 	defer relayer.Stop()
 
