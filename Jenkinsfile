@@ -67,23 +67,6 @@ pipeline {
                 }
             }
         }
-        stage('Clean up environment for testing') {
-            when {
-                anyOf {
-                    changeset "Jenkinsfile"
-                    changeset "build/**"
-                    changeset "go.work**"
-                    changeset "bridge/**"
-                    changeset "coordinator/**"
-                    changeset "common/**"
-                    changeset "database/**"
-                }
-            }
-            steps {
-                sh "docker ps -aq | xargs -r docker stop"
-                sh "docker container prune -f"
-            }
-        }
         stage('Test') {
             when {
                 anyOf {
