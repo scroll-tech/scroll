@@ -24,16 +24,11 @@
   },
   "l2_config": {
     "confirmations": 1,
-    "proof_generation_freq": 1,
-    "skipped_opcodes": [
-      "CREATE2",
-      "DELEGATECALL"
-    ],
     "endpoint": "/var/lib/jenkins/workspace/SequencerPipeline/MyPrivateNetwork/geth.ipc",
     "l2_messenger_address": "0x0000000000000000000000000000000000000000",
     "relayer_config": {
-      "messenger_contract_address": "0x0000000000000000000000000000000000000000",
       "rollup_contract_address": "0x0000000000000000000000000000000000000000",
+      "messenger_contract_address": "0x0000000000000000000000000000000000000000",
       "sender_config": {
         "endpoint": "https://goerli.infura.io/v3/9aa3d95b3bc440fa88ea12eaa4456161",
         "check_pending_time": 10,
@@ -48,8 +43,18 @@
       "message_sender_private_keys": [
         "1212121212121212121212121212121212121212121212121212121212121212"
       ],
-      "roller_sender_private_keys": [
+      "rollup_sender_private_keys": [
         "1212121212121212121212121212121212121212121212121212121212121212"
+      ]
+    },
+    "batch_proposer_config": {
+      "proof_generation_freq": 1,
+      "batch_gas_threshold": 3000000,
+      "batch_time_sec": 300,
+      "batch_blocks_limit": 100,
+      "skipped_opcodes": [
+        "CREATE2",
+        "DELEGATECALL"
       ]
     }
   },
