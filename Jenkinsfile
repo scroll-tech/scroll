@@ -104,7 +104,7 @@ pipeline {
                     currentBuild.result = 'SUCCESS'
                  }
                 sh "npx cobertura-merge -o cobertura.xml package1=coverage.bridge.xml package2=coverage.db.xml package3=coverage.common.xml package4=coverage.coordinator.xml"
-                step([$class: 'CompareCoverageAction', publishResultAs: 'Comment', scmVars: [GIT_URL: env.GIT_URL]])
+                step([$class: 'CompareCoverageAction', publishResultAs: 'statusCheck', scmVars: [GIT_URL: env.GIT_URL]])
             }
         }
     }
