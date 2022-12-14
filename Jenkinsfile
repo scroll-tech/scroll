@@ -87,7 +87,6 @@ pipeline {
                     sh '''#!/bin/bash
                         cd /var/lib/jenkins/workspace/scroll/
                         export GOPATH=${GOROOT}/bin
-                        # go install golang.org/x/tools/cmd/cover
                         go install github.com/boumenot/gocover-cobertura@latest
                         go test -v -race -coverprofile=coverage.db.txt -covermode=atomic -p 1 scroll-tech/database/...
                         go test -v -race -coverprofile=coverage.bridge.txt -covermode=atomic -p 1 scroll-tech/bridge/...
