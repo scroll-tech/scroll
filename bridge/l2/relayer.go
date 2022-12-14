@@ -227,7 +227,7 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 			if tx.To != nil {
 				layer2Batch.Blocks[i].Txs[j].Target = *tx.To
 			}
-			layer2Batch.Blocks[i].GasUsed += tx.Gas
+			layer2Batch.Blocks[i].GasUsed += trace.ExecutionResults[j].Gas
 		}
 
 		// for next iteration

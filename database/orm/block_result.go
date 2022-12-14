@@ -161,7 +161,9 @@ func (o *blockTraceOrm) InsertBlockTraces(ctx context.Context, blockTraces []*ty
 			trace.Header.Time
 
 		gasCost := utils.ComputeTraceGasCost(trace)
-		trace.ExecutionResults = nil
+		for _, executionResult := range trace.ExecutionResults {
+			executionResult.StructLogs = nil
+		}
 		data, err := json.Marshal(trace)
 		if err != nil {
 			log.Error("failed to marshal blockTrace", "hash", hash, "err", err)
