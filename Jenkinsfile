@@ -80,8 +80,6 @@ pipeline {
                 }
             }
             steps {
-               sh "docker ps -aq | xargs -r docker stop"
-               sh "docker container prune -f"
                catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
                     sh '''
                         go test -v -race -coverprofile=coverage.txt -covermode=atomic -p 1 scroll-tech/database/...
