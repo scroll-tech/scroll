@@ -81,9 +81,6 @@ pipeline {
                 }
             }
             steps {
-                sh "echo ${env.GIT_URL}"
-                sh "docker ps -aq | xargs -r docker stop"
-                sh "docker container prune -f"
                 catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
                     sh '''#!/bin/bash
                         cd /var/lib/jenkins/workspace/scroll/
