@@ -98,8 +98,12 @@ pipeline {
                         ${GOROOT}/bin/bin/gocover-cobertura < coverage.common.txt > coverage.common.xml
                         ${GOROOT}/bin/bin/gocover-cobertura < coverage.coordinator.txt > coverage.coordinator.xml
                         npx cobertura-merge -o cobertura.xml package1=coverage.bridge.xml package2=coverage.db.xml package3=coverage.common.xml package4=coverage.coordinator.xml
-                    '''
-                    script { test_result = true }
+                    '''                    
+                    script {
+                        for (i in ['bridge', 'coordinator', 'database']) {
+                            sh "cd $i && go test -v -race -coverprofile=coverage.txt -covermode=atomic \$(go list ./... | grep -v 'database\\|l2\\|l1\\|common\\|coordinator')"
+                        }
+                    }
                }
                 script {
                     currentBuild.result = 'SUCCESS'

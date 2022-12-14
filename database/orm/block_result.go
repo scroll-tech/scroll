@@ -160,19 +160,23 @@ func (o *blockTraceOrm) InsertBlockTraces(ctx context.Context, blockTraces []*ty
 			len(trace.Transactions),
 			trace.Header.Time
 
+		gasCost := utils.ComputeTraceGasCost(trace)
+		// clear the `StructLogs` to reduce storage cost
+		for _, executionResult := range trace.ExecutionResults {
+			executionResult.StructLogs = nil
+		}
 		data, err := json.Marshal(trace)
 		if err != nil {
 			log.Error("failed to marshal blockTrace", "hash", hash, "err", err)
 			return err
 		}
-		gas_cost := utils.ComputeTraceGasCost(trace)
 		traceMaps[i] = map[string]interface{}{
 			"number":          number,
 			"hash":            hash,
 			"parent_hash":     trace.Header.ParentHash.String(),
 			"trace":           string(data),
 			"tx_num":          tx_num,
-			"gas_used":        gas_cost,
+			"gas_used":        gasCost,
 			"block_timestamp": mtime,
 		}
 	}
