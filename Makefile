@@ -12,7 +12,7 @@ lint: ## The code's format and security checks.
 	make -C database lint
 	make -C roller lint
 
-update: ## update dependencies
+update: ## Update dependencies
 	go work sync
 	cd $(PWD)/bridge/ && go get -u github.com/scroll-tech/go-ethereum@staging && go mod tidy
 	cd $(PWD)/common/ && go get -u github.com/scroll-tech/go-ethereum@staging && go mod tidy
