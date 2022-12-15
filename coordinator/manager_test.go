@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/scroll-tech/go-ethereum"
+
 	"github.com/scroll-tech/go-ethereum/crypto"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/sync/errgroup"
@@ -232,7 +233,7 @@ func testIdleRollerSelection(t *testing.T) {
 	rollers := make([]*mockRoller, 20)
 	for i := 0; i < len(rollers); i++ {
 		rollers[i] = newMockRoller(t, "roller_test"+strconv.Itoa(i), wsURL)
-		go rollers[i].waitTaskAndSendProof(t, time.Second, false)
+		go rollers[i].waitTaskAndSendProof(t, time.Second)
 	}
 	defer func() {
 		// close connection
@@ -301,7 +302,7 @@ func testRollerReconnect(t *testing.T) {
 	// create mock roller
 	roller := newMockRoller(t, "roller_test", wsURL)
 	defer roller.close()
-	go roller.waitTaskAndSendProof(t, time.Second, false)
+	go roller.waitTaskAndSendProof(t, time.Second)
 
 	// verify proof status
 	var (
@@ -346,7 +347,7 @@ func testGracefulRestart(t *testing.T) {
 	// create mock roller
 	roller := newMockRoller(t, "roller_test", wsURL)
 	// wait 5 seconds, coordinator restarts before roller submits proof
-	go roller.waitTaskAndSendProof(t, 10*time.Second, false)
+	go roller.waitTaskAndSendProof(t, 10*time.Second)
 
 	// wait for coordinator to dispatch task
 	<-time.After(5 * time.Second)
@@ -376,7 +377,7 @@ func testGracefulRestart(t *testing.T) {
 	}
 
 	// will overwrite the roller client for `SubmitProof`
-	go roller.waitTaskAndSendProof(t, time.Millisecond*500, true)
+	go roller.waitTaskAndSendProof(t, time.Millisecond*500)
 	defer roller.close()
 
 	// verify proof status
@@ -427,13 +428,11 @@ type mockRoller struct {
 	rollerName string
 	privKey    *ecdsa.PrivateKey
 
+	wsURL     string
 	taskCh    chan *message.TaskMsg
 	taskCache sync.Map
 
-	wsURL  string
-	client *client2.Client
-	sub    ethereum.Subscription
-
+	mu     sync.Mutex
 	stopCh chan struct{}
 }
 
@@ -441,24 +440,22 @@ func newMockRoller(t *testing.T, rollerName string, wsURL string) *mockRoller {
 	privKey, err := crypto.GenerateKey()
 	assert.NoError(t, err)
 
-	roller := &mockRoller{
+	return &mockRoller{
 		rollerName: rollerName,
 		privKey:    privKey,
-		taskCh:     make(chan *message.TaskMsg, 4),
 		wsURL:      wsURL,
+		taskCh:     make(chan *message.TaskMsg, 4),
+		stopCh:     make(chan struct{}),
 	}
-
-	roller.connectToCoordinator(t)
-	return roller
 }
 
 // connectToCoordinator sets up a websocket client to connect to the roller manager.
-func (r *mockRoller) connectToCoordinator(t *testing.T) {
-	r.stopCh = make(chan struct{})
-
-	var err error
-	r.client, err = client2.Dial(r.wsURL)
-	assert.NoError(t, err)
+func (r *mockRoller) connectToCoordinator() (*client2.Client, ethereum.Subscription, error) {
+	// Create connection.
+	client, err := client2.Dial(r.wsURL)
+	if err != nil {
+		return nil, nil, err
+	}
 
 	// create a new ws connection
 	authMsg := &message.AuthMsg{
@@ -467,20 +464,21 @@ func (r *mockRoller) connectToCoordinator(t *testing.T) {
 			Timestamp: time.Now().UnixNano(),
 		},
 	}
-	assert.NoError(t, authMsg.Sign(r.privKey))
+	_ = authMsg.Sign(r.privKey)
 
-	token, err := r.client.RequestToken(context.Background(), authMsg)
-	assert.NoError(t, err)
+	token, err := client.RequestToken(context.Background(), authMsg)
+	if err != nil {
+		return nil, nil, err
+	}
 	authMsg.Identity.Token = token
-	assert.NoError(t, authMsg.Sign(r.privKey))
+	_ = authMsg.Sign(r.privKey)
 
-	r.sub, err = r.client.RegisterAndSubscribe(context.Background(), r.taskCh, authMsg)
-	assert.NoError(t, err)
+	sub, err := client.RegisterAndSubscribe(context.Background(), r.taskCh, authMsg)
+	if err != nil {
+		return nil, nil, err
+	}
 
-	go func() {
-		<-r.stopCh
-		r.sub.Unsubscribe()
-	}()
+	return client, sub, nil
 }
 
 func (r *mockRoller) releaseTasks() {
@@ -492,14 +490,23 @@ func (r *mockRoller) releaseTasks() {
 }
 
 // Wait for the proof task, after receiving the proof task, roller submits proof after proofTime secs.
-func (r *mockRoller) waitTaskAndSendProof(t *testing.T, proofTime time.Duration, reconnect bool) {
-	// Release the cached tasks.
-	if reconnect {
-		// simulating the case that the roller first disconnects and then reconnects to the coordinator
-		// the Subscription and its `Err()` channel will be closed, and the coordinator will `freeRoller()`
-		r.connectToCoordinator(t)
+func (r *mockRoller) waitTaskAndSendProof(t *testing.T, proofTime time.Duration) {
+	// simulating the case that the roller first disconnects and then reconnects to the coordinator
+	// the Subscription and its `Err()` channel will be closed, and the coordinator will `freeRoller()`
+	client, sub, err := r.connectToCoordinator()
+	if err != nil {
+		t.Fatal(err)
+		return
 	}
+	defer sub.Unsubscribe()
+
+	// Release cached tasks.
 	r.releaseTasks()
+
+	r.mu.Lock()
+	r.stopCh = make(chan struct{})
+	stopCh := r.stopCh
+	r.mu.Unlock()
 	for {
 		select {
 		case task := <-r.taskCh:
@@ -507,7 +514,7 @@ func (r *mockRoller) waitTaskAndSendProof(t *testing.T, proofTime time.Duration,
 			// simulate proof time
 			select {
 			case <-time.After(proofTime):
-			case <-r.stopCh:
+			case <-stopCh:
 				return
 			}
 			proof := &message.ProofMsg{
@@ -518,15 +525,17 @@ func (r *mockRoller) waitTaskAndSendProof(t *testing.T, proofTime time.Duration,
 				},
 			}
 			assert.NoError(t, proof.Sign(r.privKey))
-			ok, err := r.client.SubmitProof(context.Background(), proof)
+			ok, err := client.SubmitProof(context.Background(), proof)
 			assert.NoError(t, err)
 			assert.Equal(t, true, ok)
-		case <-r.stopCh:
+		case <-stopCh:
 			return
 		}
 	}
 }
 
 func (r *mockRoller) close() {
+	r.mu.Lock()
+	defer r.mu.Unlock()
 	close(r.stopCh)
 }
