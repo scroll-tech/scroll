@@ -19,11 +19,12 @@ import (
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/sync/errgroup"
 
-	"scroll-tech/coordinator"
-	client2 "scroll-tech/coordinator/client"
 	"scroll-tech/database"
 	"scroll-tech/database/migrate"
 	"scroll-tech/database/orm"
+
+	"scroll-tech/coordinator"
+	client2 "scroll-tech/coordinator/client"
 
 	"scroll-tech/common/docker"
 	"scroll-tech/common/message"
@@ -233,7 +234,7 @@ func testIdleRollerSelection(t *testing.T) {
 	rollers := make([]*mockRoller, 20)
 	for i := 0; i < len(rollers); i++ {
 		rollers[i] = newMockRoller(t, "roller_test"+strconv.Itoa(i), wsURL)
-		go rollers[i].waitTaskAndSendProof(t, time.Second)
+		rollers[i].waitTaskAndSendProof(t, time.Second, false)
 	}
 	defer func() {
 		// close connection
@@ -301,8 +302,8 @@ func testRollerReconnect(t *testing.T) {
 
 	// create mock roller
 	roller := newMockRoller(t, "roller_test", wsURL)
+	roller.waitTaskAndSendProof(t, time.Second, false)
 	defer roller.close()
-	go roller.waitTaskAndSendProof(t, time.Second)
 
 	// verify proof status
 	var (
@@ -346,8 +347,8 @@ func testGracefulRestart(t *testing.T) {
 
 	// create mock roller
 	roller := newMockRoller(t, "roller_test", wsURL)
-	// wait 5 seconds, coordinator restarts before roller submits proof
-	go roller.waitTaskAndSendProof(t, 10*time.Second)
+	// wait 10 seconds, coordinator restarts before roller submits proof
+	roller.waitTaskAndSendProof(t, 10*time.Second, false)
 
 	// wait for coordinator to dispatch task
 	<-time.After(5 * time.Second)
@@ -377,7 +378,7 @@ func testGracefulRestart(t *testing.T) {
 	}
 
 	// will overwrite the roller client for `SubmitProof`
-	go roller.waitTaskAndSendProof(t, time.Millisecond*500)
+	roller.waitTaskAndSendProof(t, time.Millisecond*500, true)
 	defer roller.close()
 
 	// verify proof status
@@ -428,11 +429,14 @@ type mockRoller struct {
 	rollerName string
 	privKey    *ecdsa.PrivateKey
 
-	wsURL     string
+	wsURL  string
+	client *client2.Client
+
 	taskCh    chan *message.TaskMsg
 	taskCache sync.Map
 
 	mu     sync.Mutex
+	sub    ethereum.Subscription
 	stopCh chan struct{}
 }
 
@@ -440,13 +444,17 @@ func newMockRoller(t *testing.T, rollerName string, wsURL string) *mockRoller {
 	privKey, err := crypto.GenerateKey()
 	assert.NoError(t, err)
 
-	return &mockRoller{
+	roller := &mockRoller{
 		rollerName: rollerName,
 		privKey:    privKey,
 		wsURL:      wsURL,
 		taskCh:     make(chan *message.TaskMsg, 4),
 		stopCh:     make(chan struct{}),
 	}
+	roller.client, roller.sub, err = roller.connectToCoordinator()
+	assert.NoError(t, err)
+
+	return roller
 }
 
 // connectToCoordinator sets up a websocket client to connect to the roller manager.
@@ -490,23 +498,26 @@ func (r *mockRoller) releaseTasks() {
 }
 
 // Wait for the proof task, after receiving the proof task, roller submits proof after proofTime secs.
-func (r *mockRoller) waitTaskAndSendProof(t *testing.T, proofTime time.Duration) {
+func (r *mockRoller) waitTaskAndSendProof(t *testing.T, proofTime time.Duration, reconnect bool) {
 	// simulating the case that the roller first disconnects and then reconnects to the coordinator
 	// the Subscription and its `Err()` channel will be closed, and the coordinator will `freeRoller()`
-	client, sub, err := r.connectToCoordinator()
-	if err != nil {
-		t.Fatal(err)
-		return
+	if reconnect {
+		var err error
+		r.client, r.sub, err = r.connectToCoordinator()
+		if err != nil {
+			t.Fatal(err)
+			return
+		}
 	}
-	defer sub.Unsubscribe()
 
 	// Release cached tasks.
 	r.releaseTasks()
 
-	r.mu.Lock()
 	r.stopCh = make(chan struct{})
-	stopCh := r.stopCh
-	r.mu.Unlock()
+	go r.loop(t, r.client, proofTime, r.stopCh)
+}
+
+func (r *mockRoller) loop(t *testing.T, client *client2.Client, proofTime time.Duration, stopCh chan struct{}) {
 	for {
 		select {
 		case task := <-r.taskCh:
@@ -538,4 +549,5 @@ func (r *mockRoller) close() {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	close(r.stopCh)
+	r.sub.Unsubscribe()
 }
