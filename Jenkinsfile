@@ -83,19 +83,11 @@ pipeline {
             steps {
                 catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
                     sh '''#!/bin/bash
-                        cd /var/lib/jenkins/workspace/scroll/
-                        export GOPATH=${GOROOT}/bin
-                        go install github.com/boumenot/gocover-cobertura@latest
                         go test -v -race -coverprofile=coverage.db.txt -covermode=atomic -p 1 scroll-tech/database/...
                         go test -v -race -coverprofile=coverage.bridge.txt -covermode=atomic -p 1 scroll-tech/bridge/...
                         go test -v -race -coverprofile=coverage.common.txt -covermode=atomic -p 1 scroll-tech/common/...
                         go test -v -race -coverprofile=coverage.coordinator.txt -covermode=atomic -p 1 scroll-tech/coordinator/...
-                        ${GOROOT}/bin/bin/gocover-cobertura < coverage.bridge.txt > coverage.bridge.xml
-                        ${GOROOT}/bin/bin/gocover-cobertura < coverage.db.txt > coverage.db.xml
-                        ${GOROOT}/bin/bin/gocover-cobertura < coverage.common.txt > coverage.common.xml
-                        ${GOROOT}/bin/bin/gocover-cobertura < coverage.coordinator.txt > coverage.coordinator.xml
-                        npx cobertura-merge -o cobertura.xml package1=coverage.bridge.xml package2=coverage.db.xml package3=coverage.common.xml package4=coverage.coordinator.xml
-                    '''                    
+                        sh build/post-test-report-coverage.sh
                     script {
                         for (i in ['bridge', 'coordinator', 'database']) {
                             sh "cd $i && go test -v -race -coverprofile=coverage.txt -covermode=atomic \$(go list ./... | grep -v 'database\\|l2\\|l1\\|common\\|coordinator')"
