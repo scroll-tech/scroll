@@ -11,6 +11,7 @@ import (
 
 	cmap "github.com/orcaman/concurrent-map"
 	"github.com/patrickmn/go-cache"
+	"github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/scroll-tech/go-ethereum/rpc"
 
@@ -378,7 +379,6 @@ func (m *Manager) StartProofGenerationSession(task *orm.BlockBatch) bool {
 	if roller == nil {
 		return false
 	}
-
 	log.Info("start proof generation session", "id", task.ID)
 
 	var dbErr error
@@ -390,47 +390,52 @@ func (m *Manager) StartProofGenerationSession(task *orm.BlockBatch) bool {
 			}
 		}
 	}()
-
-	traces, err := m.orm.GetBlockTraces(map[string]interface{}{"batch_id": task.ID})
-	if err != nil {
-		log.Error(
-			"could not GetBlockTraces",
-			"batch_id", task.ID,
-			"error", err,
-		)
+	if dbErr = m.orm.UpdateProvingStatus(task.ID, orm.ProvingTaskAssigned); dbErr != nil {
 		return false
 	}
 
+	var traces []*types.BlockTrace
+	traces, dbErr = m.orm.GetBlockTraces(map[string]interface{}{"batch_id": task.ID})
+	if dbErr != nil {
+		log.Error(
+			"could not GetBlockTraces",
+			"batch_id", task.ID,
+			"error", dbErr,
+		)
+		return false
+	}
 	log.Info("roller is picked", "name", roller.Name, "public_key", roller.PublicKey)
+
 	// send trace to roller
-	roller.sendTask(task.ID, traces)
+	if !roller.sendTask(task.ID, traces) {
+		dbErr = fmt.Errorf("send task failed, roller: %s, ID: %s", roller.Name, task.ID)
+		return false
+	}
 
 	pk := roller.PublicKey
-	sessionInfo := &orm.SessionInfo{
-		ID: task.ID,
-		Rollers: map[string]*orm.RollerStatus{
-			pk: {
-				PublicKey: pk,
-				Name:      roller.Name,
-				Status:    orm.RollerAssigned,
-			},
-		},
-		StartTimestamp: time.Now().Unix(),
-	}
-	if err := m.orm.SetSessionInfo(sessionInfo); err != nil {
-		log.Error("db set session info fail", "pk", pk, "error", err)
-	}
-
 	// Create a proof generation session.
 	s := &session{
-		info:       sessionInfo,
+		info: &orm.SessionInfo{
+			ID: task.ID,
+			Rollers: map[string]*orm.RollerStatus{
+				pk: {
+					PublicKey: pk,
+					Name:      roller.Name,
+					Status:    orm.RollerAssigned,
+				},
+			},
+			StartTimestamp: time.Now().Unix(),
+		},
 		finishChan: make(chan rollerProofStatus, proofAndPkBufferSize),
 	}
 	m.mu.Lock()
 	m.sessions[task.ID] = s
 	m.mu.Unlock()
 
-	dbErr = m.orm.UpdateProvingStatus(task.ID, orm.ProvingTaskAssigned)
+	// Store session info.
+	if dbErr = m.orm.SetSessionInfo(s.info); dbErr != nil {
+		log.Error("db set session info fail", "pk", pk, "error", dbErr)
+	}
 	go m.CollectProofs(task.ID, s)
 
 	return true
