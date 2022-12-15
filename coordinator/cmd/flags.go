@@ -3,10 +3,10 @@ package main
 import "github.com/urfave/cli/v2"
 
 var (
-	verifierFlag = cli.StringFlag{
-		Name:  "verifier-socket-file",
-		Usage: "The path of ipc-verifier socket file",
-		Value: "/tmp/verifier.sock",
+	verifierMockFlag = cli.BoolFlag{
+		Name:  "verifier.mock",
+		Usage: "Mock the verifier",
+		Value: false,
 	}
 	apiFlags = []cli.Flag{
 		// http flags

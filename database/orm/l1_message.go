@@ -89,6 +89,10 @@ func (m *l1MessageOrm) GetL1ProcessedNonce() (int64, error) {
 
 // SaveL1Messages batch save a list of layer1 messages
 func (m *l1MessageOrm) SaveL1Messages(ctx context.Context, messages []*L1Message) error {
+	if len(messages) == 0 {
+		return nil
+	}
+
 	messageMaps := make([]map[string]interface{}, len(messages))
 	for i, msg := range messages {
 		messageMaps[i] = map[string]interface{}{

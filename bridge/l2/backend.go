@@ -28,12 +28,12 @@ func New(ctx context.Context, cfg *config.L2Config, orm database.OrmFactory) (*B
 		return nil, err
 	}
 
-	relayer, err := NewLayer2Relayer(ctx, client, cfg.ProofGenerationFreq, cfg.SkippedOpcodes, int64(cfg.Confirmations), orm, cfg.RelayerConfig)
+	relayer, err := NewLayer2Relayer(ctx, client, int64(cfg.Confirmations), orm, cfg.RelayerConfig)
 	if err != nil {
 		return nil, err
 	}
 
-	l2Watcher := NewL2WatcherClient(ctx, client, cfg.Confirmations, cfg.ProofGenerationFreq, cfg.SkippedOpcodes, cfg.L2MessengerAddress, orm)
+	l2Watcher := NewL2WatcherClient(ctx, client, cfg.Confirmations, cfg.BatchProposerConfig, cfg.L2MessengerAddress, orm)
 
 	return &Backend{
 		cfg:       cfg,

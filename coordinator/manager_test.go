@@ -48,9 +48,8 @@ func setEnv(t *testing.T) error {
 	// Create db container.
 	dbImg = docker.NewTestDBDocker(t, cfg.DBConfig.DriverName)
 	cfg.DBConfig.DSN = dbImg.Endpoint()
-
 	// start roller manager
-	rollerManager = setupRollerManager(t, "", cfg.DBConfig)
+	rollerManager = setupRollerManager(t, cfg.DBConfig)
 
 	// start ws service
 	handle, _, err = utils.StartWSEndpoint(managerURL, rollerManager.APIs())
@@ -63,6 +62,7 @@ func TestApis(t *testing.T) {
 	assert.True(t, assert.NoError(t, setEnv(t)), "failed to setup the test environment.")
 
 	t.Run("TestHandshake", testHandshake)
+	t.Run("TestFailedHandshake", testFailedHandshake)
 	t.Run("TestSeveralConnections", testSeveralConnections)
 	t.Run("TestIdleRollerSelection", testIdleRollerSelection)
 	t.Run("TestRollerReconnect", testRollerReconnect)
@@ -88,6 +88,73 @@ func testHandshake(t *testing.T) {
 	roller.connectToCoordinator(t, managerURL)
 
 	assert.Equal(t, 1, rollerManager.GetNumberOfIdleRollers())
+}
+
+func testFailedHandshake(t *testing.T) {
+	// Create db handler and reset db.
+	l2db, err := database.NewOrmFactory(cfg.DBConfig)
+	assert.NoError(t, err)
+	assert.NoError(t, migrate.ResetDB(l2db.GetDB().DB))
+	defer l2db.Close()
+
+	stopCh := make(chan struct{})
+
+	// prepare
+	name := "roller_test"
+	wsURL := "ws://" + managerURL
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// Try to perform handshake without token
+	// create a new ws connection
+	client, err := client2.DialContext(ctx, wsURL)
+	assert.NoError(t, err)
+	// create private key
+	privkey, err := crypto.GenerateKey()
+	assert.NoError(t, err)
+
+	authMsg := &message.AuthMsg{
+		Identity: &message.Identity{
+			Name:      name,
+			Timestamp: time.Now().UnixNano(),
+		},
+	}
+	assert.NoError(t, authMsg.Sign(privkey))
+	taskCh := make(chan *message.TaskMsg, 4)
+	_, err = client.RegisterAndSubscribe(ctx, taskCh, authMsg)
+	assert.Error(t, err)
+
+	// Try to perform handshake with timeouted token
+	// create a new ws connection
+	client, err = client2.DialContext(ctx, wsURL)
+	assert.NoError(t, err)
+	// create private key
+	privkey, err = crypto.GenerateKey()
+	assert.NoError(t, err)
+
+	authMsg = &message.AuthMsg{
+		Identity: &message.Identity{
+			Name:      name,
+			Timestamp: time.Now().UnixNano(),
+		},
+	}
+	assert.NoError(t, authMsg.Sign(privkey))
+	token, err := client.RequestToken(ctx, authMsg)
+	assert.NoError(t, err)
+
+	authMsg.Identity.Token = token
+	assert.NoError(t, authMsg.Sign(privkey))
+
+	tick := time.Tick(6 * time.Second)
+
+	<-tick
+	taskCh = make(chan *message.TaskMsg, 4)
+	_, err = client.RegisterAndSubscribe(ctx, taskCh, authMsg)
+	assert.Error(t, err)
+
+	assert.Equal(t, 0, rollerManager.GetNumberOfIdleRollers())
+
+	close(stopCh)
 }
 
 func testSeveralConnections(t *testing.T) {
@@ -258,7 +325,7 @@ func testGracefulRestart(t *testing.T) {
 	roller.close()
 
 	// start new roller manager && ws service
-	newRollerManager := setupRollerManager(t, "", cfg.DBConfig)
+	newRollerManager := setupRollerManager(t, cfg.DBConfig)
 	handle, _, err = utils.StartWSEndpoint(newManagerURL, newRollerManager.APIs())
 	assert.NoError(t, err)
 	defer func() {
@@ -303,16 +370,17 @@ func testGracefulRestart(t *testing.T) {
 	}
 }
 
-func setupRollerManager(t *testing.T, verifierEndpoint string, dbCfg *database.DBConfig) *coordinator.Manager {
+func setupRollerManager(t *testing.T, dbCfg *database.DBConfig) *coordinator.Manager {
 	// Get db handler.
 	db, err := database.NewOrmFactory(dbCfg)
 	assert.True(t, assert.NoError(t, err), "failed to get db handler.")
 
 	rollerManager, err := coordinator.New(context.Background(), &coordinator_config.RollerManagerConfig{
 		RollersPerSession: 1,
-		VerifierEndpoint:  verifierEndpoint,
+		Verifier:          &coordinator_config.VerifierConfig{MockMode: true},
 		CollectionTime:    1,
-	}, db)
+		TokenTimeToLive:   5,
+	}, db, nil)
 	assert.NoError(t, err)
 	assert.NoError(t, rollerManager.Start())
 
@@ -352,6 +420,11 @@ func (r *mockRoller) connectToCoordinator(t *testing.T, wsURL string) {
 	}
 	assert.NoError(t, authMsg.Sign(r.privKey))
 
+	token, err := r.client.RequestToken(context.Background(), authMsg)
+	assert.NoError(t, err)
+	authMsg.Identity.Token = token
+
+	assert.NoError(t, authMsg.Sign(r.privKey))
 	r.sub, err = r.client.RegisterAndSubscribe(context.Background(), r.taskCh, authMsg)
 	assert.NoError(t, err)
 
@@ -396,8 +469,12 @@ func (r *mockRoller) reconnetToCoordinator(t *testing.T) {
 		},
 	}
 	assert.NoError(t, authMsg.Sign(r.privKey))
-	r.sub.Unsubscribe()
-	var err error
+
+	token, err := r.client.RequestToken(context.Background(), authMsg)
+	assert.NoError(t, err)
+	authMsg.Identity.Token = token
+
+	assert.NoError(t, authMsg.Sign(r.privKey))
 	r.sub, err = r.client.RegisterAndSubscribe(context.Background(), r.taskCh, authMsg)
 	assert.NoError(t, err)
 }

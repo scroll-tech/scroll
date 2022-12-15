@@ -18,16 +18,32 @@ type RollerManagerConfig struct {
 	OrderSession string `json:"order_session,omitempty"`
 	// The amount of rollers to pick per proof generation session.
 	RollersPerSession uint8 `json:"rollers_per_session"`
-	// Unix socket endpoint to which we send proofs to be verified.
-	VerifierEndpoint string `json:"verifier_endpoint,omitempty"`
+	// Zk verifier config.
+	Verifier *VerifierConfig `json:"verifier,omitempty"`
 	// Proof collection time (in minutes).
 	CollectionTime int `json:"collection_time"`
+	// Token time to live (in seconds)
+	TokenTimeToLive int `json:"token_time_to_live"`
+}
+
+// L2Config loads l2geth configuration items.
+type L2Config struct {
+	// l2geth node url.
+	Endpoint string `json:"endpoint"`
 }
 
 // Config load configuration items.
 type Config struct {
 	RollerManagerConfig *RollerManagerConfig `json:"roller_manager_config"`
 	DBConfig            *db_config.DBConfig  `json:"db_config"`
+	L2Config            *L2Config            `json:"l2_config"`
+}
+
+// VerifierConfig load zk verifier config.
+type VerifierConfig struct {
+	MockMode   bool   `json:"mock_mode"`
+	ParamsPath string `json:"params_path"`
+	AggVkPath  string `json:"agg_vk_path"`
 }
 
 // NewConfig returns a new instance of Config.

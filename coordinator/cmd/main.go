@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/signal"
 
+	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/urfave/cli/v2"
 
@@ -22,12 +23,12 @@ func main() {
 	app := cli.NewApp()
 
 	app.Action = action
-	app.Name = "coordinator"
+	app.Name = "Coordinator"
 	app.Usage = "The Scroll L2 Coordinator"
 	app.Version = version.Version
 	app.Flags = append(app.Flags, utils.CommonFlags...)
-	app.Flags = append(app.Flags, []cli.Flag{&verifierFlag}...)
 	app.Flags = append(app.Flags, apiFlags...)
+	app.Flags = append(app.Flags, &verifierMockFlag)
 
 	app.Before = func(ctx *cli.Context) error {
 		return utils.LogSetup(ctx)
@@ -41,8 +42,8 @@ func main() {
 }
 
 func applyConfig(ctx *cli.Context, cfg *config.Config) {
-	if ctx.IsSet(verifierFlag.Name) {
-		cfg.RollerManagerConfig.VerifierEndpoint = ctx.String(verifierFlag.Name)
+	if ctx.IsSet(verifierMockFlag.Name) {
+		cfg.RollerManagerConfig.Verifier = &config.VerifierConfig{MockMode: ctx.Bool(verifierMockFlag.Name)}
 	}
 }
 
@@ -61,8 +62,14 @@ func action(ctx *cli.Context) error {
 		log.Crit("failed to init db connection", "err", err)
 	}
 
+	// init l2geth connection
+	client, err := ethclient.Dial(cfg.L2Config.Endpoint)
+	if err != nil {
+		log.Crit("failed to init l2geth connection", "err", err)
+	}
+
 	// Initialize all coordinator modules.
-	rollerManager, err := coordinator.New(ctx.Context, cfg.RollerManagerConfig, ormFactory)
+	rollerManager, err := coordinator.New(ctx.Context, cfg.RollerManagerConfig, ormFactory, client)
 	if err != nil {
 		return err
 	}

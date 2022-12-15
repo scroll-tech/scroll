@@ -18,7 +18,7 @@ type Config struct {
 	DBPath           string        `json:"db_path"`
 }
 
-// ProverConfig loads zk roller configuration items.
+// ProverConfig load zk prover config.
 type ProverConfig struct {
 	ParamsPath string `json:"params_path"`
 	SeedPath   string `json:"seed_path"`

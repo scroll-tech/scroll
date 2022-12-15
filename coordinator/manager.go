@@ -2,6 +2,7 @@ package coordinator
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	mathrand "math/rand"
 	"sync"
@@ -9,6 +10,10 @@ import (
 	"time"
 
 	cmap "github.com/orcaman/concurrent-map"
+	"github.com/patrickmn/go-cache"
+	"github.com/scroll-tech/go-ethereum/common"
+	"github.com/scroll-tech/go-ethereum/core/types"
+	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/scroll-tech/go-ethereum/rpc"
 
@@ -69,22 +74,25 @@ type Manager struct {
 
 	// db interface
 	orm database.OrmFactory
+
+	// l2geth client
+	*ethclient.Client
+
+	// Token cache
+	tokenCache *cache.Cache
+	// A mutex guarding registration
+	registerMu sync.RWMutex
 }
 
 // New returns a new instance of Manager. The instance will be not fully prepared,
 // and still needs to be finalized and ran by calling `manager.Start`.
-func New(ctx context.Context, cfg *config.RollerManagerConfig, orm database.OrmFactory) (*Manager, error) {
-	var v *verifier.Verifier
-	if cfg.VerifierEndpoint != "" {
-		var err error
-		v, err = verifier.NewVerifier(cfg.VerifierEndpoint)
-		if err != nil {
-			return nil, err
-		}
+func New(ctx context.Context, cfg *config.RollerManagerConfig, orm database.OrmFactory, client *ethclient.Client) (*Manager, error) {
+	v, err := verifier.NewVerifier(cfg.Verifier)
+	if err != nil {
+		return nil, err
 	}
 
 	log.Info("Start coordinator successfully.")
-
 	return &Manager{
 		ctx:                ctx,
 		cfg:                cfg,
@@ -93,6 +101,8 @@ func New(ctx context.Context, cfg *config.RollerManagerConfig, orm database.OrmF
 		failedSessionInfos: make(map[string]*SessionInfo),
 		verifier:           v,
 		orm:                orm,
+		Client:             client,
+		tokenCache:         cache.New(time.Duration(cfg.TokenTimeToLive)*time.Second, 1*time.Hour),
 	}, nil
 }
 
@@ -259,30 +269,24 @@ func (m *Manager) handleZkProof(pk string, msg *message.ProofDetail) error {
 		return dbErr
 	}
 
-	if m.verifier != nil {
-		var err error
-		tasks, err := m.orm.GetBlockBatches(map[string]interface{}{"id": msg.ID})
-		if len(tasks) == 0 {
-			if err != nil {
-				log.Error("failed to get tasks", "error", err)
-			}
-			return err
-		}
-
-		success, err = m.verifier.VerifyProof(msg.Proof)
+	var err error
+	tasks, err := m.orm.GetBlockBatches(map[string]interface{}{"id": msg.ID})
+	if len(tasks) == 0 {
 		if err != nil {
-			// record failed session.
-			m.addFailedSession(sess, err.Error())
-			// TODO: this is only a temp workaround for testnet, we should return err in real cases
-			success = false
-			log.Error("Failed to verify zk proof", "proof id", msg.ID, "error", err)
-			// TODO: Roller needs to be slashed if proof is invalid.
-		} else {
-			log.Info("Verify zk proof successfully", "verification result", success, "proof id", msg.ID)
+			log.Error("failed to get tasks", "error", err)
 		}
+		return err
+	}
+
+	success, err = m.verifier.VerifyProof(msg.Proof)
+	if err != nil {
+		// record failed session.
+		m.addFailedSession(sess, err.Error())
+		// TODO: this is only a temp workaround for testnet, we should return err in real cases
+		success = false
+		log.Error("Failed to verify zk proof", "proof id", msg.ID, "error", err)
+		// TODO: Roller needs to be slashed if proof is invalid.
 	} else {
-		success = true
-		log.Info("Verifier disabled, VerifyProof skipped")
 		log.Info("Verify zk proof successfully", "verification result", success, "proof id", msg.ID)
 	}
 
@@ -392,15 +396,28 @@ func (m *Manager) StartProofGenerationSession(task *orm.BlockBatch) bool {
 			}
 		}
 	}()
-
-	traces, err := m.orm.GetBlockTraces(map[string]interface{}{"batch_id": task.ID})
+	blockInfos, err := m.orm.GetBlockInfos(map[string]interface{}{"batch_id": task.ID})
 	if err != nil {
 		log.Error(
-			"could not GetBlockTraces",
+			"could not GetBlockInfos",
 			"batch_id", task.ID,
 			"error", err,
 		)
 		return false
+	}
+
+	traces := make([]*types.BlockTrace, len(blockInfos))
+	for i, blockInfo := range blockInfos {
+		traces[i], err = m.Client.GetBlockTraceByHash(m.ctx, common.HexToHash(blockInfo.Hash))
+		if err != nil {
+			log.Error(
+				"could not GetBlockTraceByNumber",
+				"block number", blockInfo.Number,
+				"block hash", blockInfo.Hash,
+				"error", err,
+			)
+			return false
+		}
 	}
 
 	log.Info("roller is picked", "name", roller.Name, "public_key", roller.PublicKey)
@@ -457,4 +474,14 @@ func (m *Manager) IsRollerIdle(hexPk string) bool {
 
 func (m *Manager) addFailedSession(sess *session, errMsg string) {
 	m.failedSessionInfos[sess.info.ID] = newSessionInfo(sess, orm.ProvingTaskFailed, errMsg, true)
+}
+
+// VerifyToken verifies pukey for token and expiration time
+func (m *Manager) VerifyToken(authMsg *message.AuthMsg) (bool, error) {
+	pubkey, _ := authMsg.PublicKey()
+	// GetValue returns nil if value is expired
+	if token, ok := m.tokenCache.Get(pubkey); !ok || token != authMsg.Identity.Token {
+		return false, errors.New("failed to find corresponding token")
+	}
+	return true, nil
 }
