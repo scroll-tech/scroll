@@ -16,15 +16,16 @@ import (
 	"github.com/scroll-tech/go-ethereum/crypto"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/sync/errgroup"
-	"scroll-tech/common/docker"
-	"scroll-tech/common/message"
-	"scroll-tech/common/utils"
 
 	"scroll-tech/coordinator"
 	client2 "scroll-tech/coordinator/client"
 	"scroll-tech/database"
 	"scroll-tech/database/migrate"
 	"scroll-tech/database/orm"
+
+	"scroll-tech/common/docker"
+	"scroll-tech/common/message"
+	"scroll-tech/common/utils"
 
 	bridge_config "scroll-tech/bridge/config"
 
