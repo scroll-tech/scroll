@@ -5,6 +5,9 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/scroll-tech/go-ethereum/common"
+
+	"scroll-tech/common/docker"
 	"scroll-tech/common/utils"
 
 	"scroll-tech/database"
