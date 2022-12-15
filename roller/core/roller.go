@@ -145,7 +145,7 @@ func (r *Roller) HandleCoordinator() {
 			return
 		case task := <-r.taskChan:
 			log.Info("Accept BlockTrace from Scroll", "ID", task.ID)
-			err := r.stack.Push(&store.ProvingTask{Task: task, Times: 0})
+			err := r.stack.Push(task)
 			if err != nil {
 				panic(fmt.Sprintf("could not push task(%s) into stack: %v", task.ID, err))
 			}
@@ -195,33 +195,16 @@ func (r *Roller) ProveLoop() (err error) {
 }
 
 func (r *Roller) prove() error {
+	var proofMsg *message.ProofDetail
+
 	task, err := r.stack.Pop()
 	if err != nil {
 		return err
 	}
-
-	var proofMsg *message.ProofDetail
-	if task.Times > 2 {
-		proofMsg = &message.ProofDetail{
-			Status: message.StatusProofError,
-			Error:  "prover has retried several times due to FFI panic",
-			ID:     task.Task.ID,
-			Proof:  &message.AggProof{},
-		}
-
-		_, err = r.signAndSubmitProof(proofMsg)
-		return err
-	}
-
-	err = r.stack.Push(task)
-	if err != nil {
-		return err
-	}
-
-	log.Info("start to prove block", "task-id", task.Task.ID)
+	log.Info("start to prove block", "task-id", task.ID)
 
 	// sort BlockTrace
-	traces := task.Task.Traces
+	traces := task.Traces
 	sort.Slice(traces, func(i, j int) bool {
 		return traces[i].Header.Number.Int64() < traces[j].Header.Number.Int64()
 	})
@@ -230,22 +213,17 @@ func (r *Roller) prove() error {
 		proofMsg = &message.ProofDetail{
 			Status: message.StatusProofError,
 			Error:  err.Error(),
-			ID:     task.Task.ID,
+			ID:     task.ID,
 			Proof:  &message.AggProof{},
 		}
-		log.Error("prove block failed!", "task-id", task.Task.ID)
+		log.Error("prove block failed!", "task-id", task.ID)
 	} else {
-
 		proofMsg = &message.ProofDetail{
 			Status: message.StatusOk,
-			ID:     task.Task.ID,
+			ID:     task.ID,
 			Proof:  proof,
 		}
-		log.Info("prove block successfully!", "task-id", task.Task.ID)
-	}
-	_, err = r.stack.Pop()
-	if err != nil {
-		return err
+		log.Info("prove block successfully!", "task-id", task.ID)
 	}
 
 	ok, err := r.signAndSubmitProof(proofMsg)
