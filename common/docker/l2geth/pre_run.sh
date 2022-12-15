@@ -28,14 +28,14 @@ deploy_bridge_contracts() {
 
     export layer2=l2geth # change to actual network name
     export owner=0x1c5a77d9fa7ef466951b2f01f724bca3a5820b63 # change to actual owner
-    npx hardhat --network $layer2 run scripts/deploy_proxy_admin.ts
+    # npx hardhat --network $layer2 run scripts/deploy_proxy_admin.ts
     npx hardhat --network $layer2 run scripts/deploy_l2_messenger.ts
-    npx hardhat --network $layer2 run scripts/deploy_l2_token_factory.ts
-    env CONTRACT_NAME=L2GatewayRouter npx hardhat run --network $layer2 scripts/deploy_proxy_contract.ts
-    env CONTRACT_NAME=L2StandardERC20Gateway npx hardhat run --network $layer2 scripts/deploy_proxy_contract.ts
-    env CONTRACT_NAME=L2CustomERC20Gateway npx hardhat run --network $layer2 scripts/deploy_proxy_contract.ts
-    env CONTRACT_NAME=L2ERC721Gateway npx hardhat run --network $layer2 scripts/deploy_proxy_contract.ts
-    env CONTRACT_NAME=L2ERC1155Gateway npx hardhat run --network $layer2 scripts/deploy_proxy_contract.ts
+    # npx hardhat --network $layer2 run scripts/deploy_l2_token_factory.ts
+    # env CONTRACT_NAME=L2GatewayRouter npx hardhat run --network $layer2 scripts/deploy_proxy_contract.ts
+    # env CONTRACT_NAME=L2StandardERC20Gateway npx hardhat run --network $layer2 scripts/deploy_proxy_contract.ts
+    # env CONTRACT_NAME=L2CustomERC20Gateway npx hardhat run --network $layer2 scripts/deploy_proxy_contract.ts
+    # env CONTRACT_NAME=L2ERC721Gateway npx hardhat run --network $layer2 scripts/deploy_proxy_contract.ts
+    # env CONTRACT_NAME=L2ERC1155Gateway npx hardhat run --network $layer2 scripts/deploy_proxy_contract.ts
 
     # initialize these need to run seperately, maybe not in docker build stage
     #npx hardhat --network $layer2 run scripts/initialize_l2_erc20_gateway.ts
