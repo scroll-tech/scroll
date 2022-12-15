@@ -15,9 +15,8 @@ import (
 	"scroll-tech/database"
 	"scroll-tech/database/orm"
 
-	apollo_config "scroll-tech/common/apollo"
-
 	bridge_abi "scroll-tech/bridge/abi"
+	"scroll-tech/bridge/config"
 	"scroll-tech/bridge/utils"
 )
 
@@ -111,14 +110,13 @@ func (w *Watcher) Stop() {
 // FetchContractEvent pull latest event logs from given contract address and save in DB
 func (w *Watcher) fetchContractEvent(blockHeight uint64) error {
 	fromBlock := int64(w.processedMsgHeight) + 1
-	l1Confirmations := uint64(apollo_config.AgolloClient.GetIntValue("l1Confirmations", 6))
-	toBlock := int64(blockHeight) - int64(l1Confirmations)
+	toBlock := int64(blockHeight) - int64(config.GetL1Confirmations())
 
 	if toBlock < fromBlock {
 		return nil
 	}
 
-	l1ContractEventsBlocksFetchLimit := int64(apollo_config.AgolloClient.GetIntValue("l1ContractEventsBlocksFetchLimit", 10))
+	l1ContractEventsBlocksFetchLimit := config.GetL1ContractEventsBlocksFetchLimit()
 	if toBlock > fromBlock+l1ContractEventsBlocksFetchLimit {
 		toBlock = fromBlock + l1ContractEventsBlocksFetchLimit - 1
 	}

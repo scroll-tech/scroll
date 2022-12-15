@@ -31,16 +31,16 @@ func MustInitApollo() {
 		log.Crit("MustInitApollo fail", "error: ", err)
 		panic(err)
 	}
-	PrintConfig(AgolloClient)
+	PrintApolloConfig(AgolloClient)
 	log.Info("MustInitApollo success")
 }
 
-// PrintConfig print remote config
-func PrintConfig(client agollo.Client) {
+// PrintApolloConfig print remote config
+func PrintApolloConfig(client agollo.Client) {
 	cache := client.GetDefaultConfigCache()
 	count := 0
 	cache.Range(func(key, value interface{}) bool {
-		log.Info("PrintConfig", "key : ", key, ", value :", value)
+		log.Info("Apollo Config", "key : ", key, ", value :", value)
 		count++
 		return true
 	})

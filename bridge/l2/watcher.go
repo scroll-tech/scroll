@@ -15,9 +15,8 @@ import (
 	"github.com/scroll-tech/go-ethereum/event"
 	"github.com/scroll-tech/go-ethereum/log"
 
-	apollo_config "scroll-tech/common/apollo"
-
 	bridge_abi "scroll-tech/bridge/abi"
+	"scroll-tech/bridge/config"
 	"scroll-tech/bridge/utils"
 
 	"scroll-tech/database"
@@ -76,10 +75,10 @@ func NewL2WatcherClient(ctx context.Context, client *ethclient.Client, skipConfi
 
 // GetConfirmations : # of l2 confirmation blocks
 func (w *WatcherClient) GetConfirmations() uint64 {
-	if w.skipConfirmation {
+	if w.skipConfirmation { // for unit test : omit confirmation.
 		return 0
 	}
-	return uint64(apollo_config.AgolloClient.GetIntValue("l2Confirmations", 1))
+	return config.GetL2Confirmations()
 }
 
 // Start the Listening process
@@ -122,10 +121,10 @@ func (w *WatcherClient) Start() {
 					// l2geth didn't produce any blocks more than 1 minute.
 					blockToFetch = number
 				}
-				// fetch at most `blockTracesFetchLimit=10` missing blocks
-				blockTracesFetchLimit := uint64(apollo_config.AgolloClient.GetIntValue("blockTracesFetchLimit", 10))
-				if blockToFetch > uint64(lastFetchedBlock)+blockTracesFetchLimit {
-					blockToFetch = uint64(lastFetchedBlock) + blockTracesFetchLimit
+				// fetch at most `l2BlockTracesFetchLimit=10` missing blocks
+				l2BlockTracesFetchLimit := config.GetL2BlockTracesFetchLimit()
+				if blockToFetch > uint64(lastFetchedBlock)+l2BlockTracesFetchLimit {
+					blockToFetch = uint64(lastFetchedBlock) + l2BlockTracesFetchLimit
 				}
 				if lastFetchedBlock != int64(blockToFetch) {
 					lastFetchedBlock = int64(blockToFetch)
@@ -202,7 +201,7 @@ func (w *WatcherClient) fetchContractEvent(blockHeight uint64) error {
 		return nil
 	}
 
-	l2ContractEventsBlocksFetchLimit := int64(apollo_config.AgolloClient.GetIntValue("l2ContractEventsBlocksFetchLimit", 10))
+	l2ContractEventsBlocksFetchLimit := config.GetL2ContractEventsBlocksFetchLimit()
 	if toBlock > fromBlock+l2ContractEventsBlocksFetchLimit {
 		toBlock = fromBlock + l2ContractEventsBlocksFetchLimit - 1
 	}

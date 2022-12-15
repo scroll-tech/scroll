@@ -9,12 +9,18 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	apollo_config "scroll-tech/common/apollo"
+
 	"scroll-tech/bridge/config"
 )
 
 func TestConfig(t *testing.T) {
+	// Set up Apollo
+	apollo_config.MustInitApollo()
+
 	cfg, err := config.NewConfig("../config.json")
 	assert.True(t, assert.NoError(t, err), "failed to load config")
+	assert.True(t, len(config.GetSkippedOpcodes()) == 2)
 	assert.True(t, len(cfg.L1Config.RelayerConfig.MessageSenderPrivateKeys) > 0)
 	assert.True(t, len(cfg.L2Config.RelayerConfig.MessageSenderPrivateKeys) > 0)
 	assert.True(t, len(cfg.L2Config.RelayerConfig.RollupSenderPrivateKeys) > 0)

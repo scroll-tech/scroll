@@ -14,6 +14,13 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
+func getLogVerbose(defaultLevel int, use_apollo bool) log.Lvl {
+	if !use_apollo {
+		return log.Lvl(defaultLevel)
+	}
+	return log.Lvl(apollo_config.AgolloClient.GetIntValue("logVerbosity", defaultLevel))
+}
+
 // LogSetup is for setup logger
 func LogSetup(ctx *cli.Context, use_apollo bool) error {
 	var ostream log.Handler
@@ -39,10 +46,7 @@ func LogSetup(ctx *cli.Context, use_apollo bool) error {
 	log.PrintOrigins(ctx.Bool(LogDebugFlag.Name))
 	glogger := log.NewGlogHandler(ostream)
 	// Set log level
-	glogger.Verbosity(log.Lvl(ctx.Int(VerbosityFlag.Name)))
-	if use_apollo {
-		glogger.Verbosity(log.Lvl(apollo_config.AgolloClient.GetIntValue("logVerbosity", ctx.Int(VerbosityFlag.Name))))
-	}
+	glogger.Verbosity(getLogVerbose(ctx.Int(VerbosityFlag.Name), use_apollo))
 	log.Root().SetHandler(glogger)
 	return nil
 }

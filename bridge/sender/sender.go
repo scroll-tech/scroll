@@ -20,7 +20,7 @@ import (
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
 
-	"scroll-tech/bridge/config"
+	bridge_config "scroll-tech/bridge/config"
 )
 
 const (
@@ -66,7 +66,7 @@ type PendingTransaction struct {
 
 // Sender Transaction sender to send transaction to l1/l2 geth
 type Sender struct {
-	config  *config.SenderConfig
+	config  *bridge_config.SenderConfig
 	client  *ethclient.Client // The client to retrieve on chain data or send transaction.
 	chainID *big.Int          // The chain id of the endpoint
 	ctx     context.Context
@@ -84,7 +84,7 @@ type Sender struct {
 
 // NewSender returns a new instance of transaction sender
 // txConfirmationCh is used to notify confirmed transaction
-func NewSender(ctx context.Context, config *config.SenderConfig, privs []*ecdsa.PrivateKey) (*Sender, error) {
+func NewSender(ctx context.Context, config *bridge_config.SenderConfig, privs []*ecdsa.PrivateKey) (*Sender, error) {
 	client, err := ethclient.Dial(config.Endpoint)
 	if err != nil {
 		return nil, err
@@ -96,7 +96,7 @@ func NewSender(ctx context.Context, config *config.SenderConfig, privs []*ecdsa.
 		return nil, err
 	}
 
-	auths, err := newAccountPool(ctx, config.GetMinBalance(), client, privs)
+	auths, err := newAccountPool(ctx, bridge_config.GetMinBalance(), client, privs)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create account pool, err: %v", err)
 	}
@@ -300,9 +300,9 @@ func (s *Sender) createAndSendTx(auth *bind.TransactOpts, feeData *FeeData, targ
 }
 
 func (s *Sender) resubmitTransaction(feeData *FeeData, auth *bind.TransactOpts, tx *types.Transaction) (*types.Transaction, error) {
-	escalateMultipleNum := new(big.Int).SetUint64(s.config.GetEscalateMultipleNum())
-	escalateMultipleDen := new(big.Int).SetUint64(s.config.GetEscalateMultipleDen())
-	maxGasPrice := new(big.Int).SetUint64(s.config.GetMaxGasPrice())
+	escalateMultipleNum := new(big.Int).SetUint64(bridge_config.GetEscalateMultipleNum())
+	escalateMultipleDen := new(big.Int).SetUint64(bridge_config.GetEscalateMultipleDen())
+	maxGasPrice := new(big.Int).SetUint64(bridge_config.GetMaxGasPrice())
 
 	switch s.config.TxType {
 	case LegacyTxType, AccessListTxType: // `LegacyTxType`is for ganache mock node
@@ -362,7 +362,7 @@ func (s *Sender) CheckPendingTransaction(header *types.Header) {
 					TxHash:       pending.tx.Hash(),
 				}
 			}
-		} else if s.config.GetEscalateBlocks()+pending.submitAt < number {
+		} else if bridge_config.GetEscalateBlocks()+pending.submitAt < number {
 			var tx *types.Transaction
 			tx, err := s.resubmitTransaction(pending.feeData, pending.signer, pending.tx)
 			if err != nil {

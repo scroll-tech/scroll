@@ -7,6 +7,7 @@ import (
 
 	"scroll-tech/common/utils"
 
+	apollo_config "scroll-tech/common/apollo"
 	db_config "scroll-tech/database"
 )
 
@@ -54,4 +55,24 @@ func NewConfig(file string) (*Config, error) {
 	cfg.DBConfig.DriverName = utils.GetEnvWithDefault("DB_DRIVER", cfg.DBConfig.DriverName)
 
 	return cfg, nil
+}
+
+// GetOrderSession : get session order, asc or desc (default: asc).
+func GetOrderSession() string {
+	return apollo_config.AgolloClient.GetStringValue("orderSession", "ASC")
+}
+
+// GetCollectionTime : get proof collection time (in minutes).
+func GetCollectionTime() int {
+	return apollo_config.AgolloClient.GetIntValue("collectionTime", 1)
+}
+
+// GetTokenTimeToLive : get token time to live (in seconds).
+func GetTokenTimeToLive() int {
+	return apollo_config.AgolloClient.GetIntValue("tokenTimeToLive", 5)
+}
+
+// GetProofAndPkBufferSize : get proof and pk buffer size.
+func GetProofAndPkBufferSize() int {
+	return apollo_config.AgolloClient.GetIntValue("proofAndPkBufferSize", 10)
 }
