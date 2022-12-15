@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -427,7 +428,7 @@ type mockRoller struct {
 	privKey    *ecdsa.PrivateKey
 
 	taskCh    chan *message.TaskMsg
-	taskCache map[string]*message.TaskMsg
+	taskCache sync.Map
 
 	wsURL  string
 	client *client2.Client
@@ -444,7 +445,6 @@ func newMockRoller(t *testing.T, rollerName string, wsURL string) *mockRoller {
 		rollerName: rollerName,
 		privKey:    privKey,
 		taskCh:     make(chan *message.TaskMsg, 4),
-		taskCache:  make(map[string]*message.TaskMsg),
 		wsURL:      wsURL,
 	}
 
@@ -454,6 +454,8 @@ func newMockRoller(t *testing.T, rollerName string, wsURL string) *mockRoller {
 
 // connectToCoordinator sets up a websocket client to connect to the roller manager.
 func (r *mockRoller) connectToCoordinator(t *testing.T) {
+	r.stopCh = make(chan struct{})
+
 	var err error
 	r.client, err = client2.Dial(r.wsURL)
 	assert.NoError(t, err)
@@ -475,7 +477,6 @@ func (r *mockRoller) connectToCoordinator(t *testing.T) {
 	r.sub, err = r.client.RegisterAndSubscribe(context.Background(), r.taskCh, authMsg)
 	assert.NoError(t, err)
 
-	r.stopCh = make(chan struct{})
 	go func() {
 		<-r.stopCh
 		r.sub.Unsubscribe()
@@ -483,12 +484,11 @@ func (r *mockRoller) connectToCoordinator(t *testing.T) {
 }
 
 func (r *mockRoller) releaseTasks() {
-	for _, task := range r.taskCache {
-		if task != nil {
-			r.taskCh <- task
-		}
-		r.taskCache[task.ID] = nil
-	}
+	r.taskCache.Range(func(key, value any) bool {
+		r.taskCh <- value.(*message.TaskMsg)
+		r.taskCache.Delete(key)
+		return true
+	})
 }
 
 // Wait for the proof task, after receiving the proof task, roller submits proof after proofTime secs.
@@ -503,9 +503,7 @@ func (r *mockRoller) waitTaskAndSendProof(t *testing.T, proofTime time.Duration,
 	for {
 		select {
 		case task := <-r.taskCh:
-			if _, exist := r.taskCache[task.ID]; !exist {
-				r.taskCache[task.ID] = task
-			}
+			r.taskCache.Store(task.ID, task)
 			// simulate proof time
 			select {
 			case <-time.After(proofTime):
