@@ -9,8 +9,8 @@ COPY /contracts /contracts
 COPY /common/docker/l1geth/password /l1geth/
 COPY /common/docker/l1geth/genesis.json /l1geth/
 COPY /common/docker/l1geth/genesis-keystore /l1geth/
-COPY /common/docker/l1geth/pre_run.sh /bin/
-RUN sh /bin/pre_run.sh
+COPY /common/docker/l1geth/delpoy_contracts.sh /bin/
+RUN sh /bin/delpoy_contracts.sh
 
 
 FROM ethereum/client-go

@@ -9,9 +9,9 @@ RUN mkdir -p /l2geth/keystore
 COPY /common/docker/l2geth/password /l2geth/
 COPY /common/docker/l2geth/genesis.json /l2geth/
 COPY /common/docker/l2geth/genesis-keystore /l2geth/
-COPY /common/docker/l2geth/pre_run.sh /bin/
+COPY /common/docker/l2geth/delpoy_contracts.sh /bin/
 COPY /contracts /contracts
-RUN sh /bin/pre_run.sh
+RUN sh /bin/delpoy_contracts.sh
 
 FROM scrolltech/l2geth:prealpha-v4.2
 COPY --from=pre_deploy /geth /geth
