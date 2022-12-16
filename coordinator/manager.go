@@ -379,46 +379,43 @@ func (m *Manager) APIs() []rpc.API {
 }
 
 // StartProofGenerationSession starts a proof generation session
-func (m *Manager) StartProofGenerationSession(task *orm.BlockBatch) bool {
+func (m *Manager) StartProofGenerationSession(task *orm.BlockBatch) (success bool) {
 	roller := m.selectRoller()
 	if roller == nil {
 		return false
 	}
 	log.Info("start proof generation session", "id", task.ID)
 
-	var dbErr error
 	defer func() {
-		if dbErr != nil {
-			log.Error("StartProofGenerationSession", "dbErr", dbErr)
+		if !success {
 			if err := m.orm.UpdateProvingStatus(task.ID, orm.ProvingTaskUnassigned); err != nil {
-				log.Error("fail to reset task_status as Unassigned", "id", task.ID, "dbErr", dbErr, "err", err)
+				log.Error("fail to reset task_status as Unassigned", "id", task.ID, "err", err, "err", err)
 			}
 		}
 	}()
-	if dbErr = m.orm.UpdateProvingStatus(task.ID, orm.ProvingTaskAssigned); dbErr != nil {
+	if err := m.orm.UpdateProvingStatus(task.ID, orm.ProvingTaskAssigned); err != nil {
 		return false
 	}
 
-	var blockInfos []*orm.BlockInfo
-	blockInfos, dbErr = m.orm.GetBlockInfos(map[string]interface{}{"batch_id": task.ID})
-	if dbErr != nil {
+	blockInfos, err := m.orm.GetBlockInfos(map[string]interface{}{"batch_id": task.ID})
+	if err != nil {
 		log.Error(
 			"could not GetBlockInfos",
 			"batch_id", task.ID,
-			"error", dbErr,
+			"error", err,
 		)
 		return false
 	}
 
 	traces := make([]*types.BlockTrace, len(blockInfos))
 	for i, blockInfo := range blockInfos {
-		traces[i], dbErr = m.Client.GetBlockTraceByHash(m.ctx, common.HexToHash(blockInfo.Hash))
-		if dbErr != nil {
+		traces[i], err = m.Client.GetBlockTraceByHash(m.ctx, common.HexToHash(blockInfo.Hash))
+		if err != nil {
 			log.Error(
 				"could not GetBlockTraceByNumber",
 				"block number", blockInfo.Number,
 				"block hash", blockInfo.Hash,
-				"error", dbErr,
+				"error", err,
 			)
 			return false
 		}
@@ -428,7 +425,7 @@ func (m *Manager) StartProofGenerationSession(task *orm.BlockBatch) bool {
 
 	// send trace to roller
 	if !roller.sendTask(task.ID, traces) {
-		dbErr = fmt.Errorf("send task failed, roller: %s, ID: %s", roller.Name, task.ID)
+		err = fmt.Errorf("send task failed, roller: %s, ID: %s", roller.Name, task.ID)
 		return false
 	}
 
@@ -450,8 +447,8 @@ func (m *Manager) StartProofGenerationSession(task *orm.BlockBatch) bool {
 	}
 
 	// Store session info.
-	if dbErr = m.orm.SetSessionInfo(s.info); dbErr != nil {
-		log.Error("db set session info fail", "pk", pk, "error", dbErr)
+	if err = m.orm.SetSessionInfo(s.info); err != nil {
+		log.Error("db set session info fail", "pk", pk, "error", err)
 		return false
 	}
 

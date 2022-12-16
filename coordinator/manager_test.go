@@ -302,6 +302,7 @@ func testRollerReconnect(t *testing.T) {
 
 	// create mock roller
 	roller := newMockRoller(t, "roller_test", wsURL)
+	// TODO: Restart roller alone when received task, can add this test case in integration-test.
 	roller.waitTaskAndSendProof(t, time.Second, false)
 	defer roller.close()
 
@@ -435,7 +436,6 @@ type mockRoller struct {
 	taskCh    chan *message.TaskMsg
 	taskCache sync.Map
 
-	mu     sync.Mutex
 	sub    ethereum.Subscription
 	stopCh chan struct{}
 }
@@ -546,8 +546,6 @@ func (r *mockRoller) loop(t *testing.T, client *client2.Client, proofTime time.D
 }
 
 func (r *mockRoller) close() {
-	r.mu.Lock()
-	defer r.mu.Unlock()
 	close(r.stopCh)
 	r.sub.Unsubscribe()
 }
