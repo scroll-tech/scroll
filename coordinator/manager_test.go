@@ -65,7 +65,8 @@ func TestApis(t *testing.T) {
 	t.Run("TestFailedHandshake", testFailedHandshake)
 	t.Run("TestSeveralConnections", testSeveralConnections)
 	t.Run("TestIdleRollerSelection", testIdleRollerSelection)
-	t.Run("TestRollerReconnect", testRollerReconnect)
+	// TODO: Restart roller alone when received task, can add this test case in integration-test.
+	//t.Run("TestRollerReconnect", testRollerReconnect)
 	t.Run("TestGracefulRestart", testGracefulRestart)
 
 	// Teardown
@@ -259,57 +260,6 @@ func testIdleRollerSelection(t *testing.T) {
 	var (
 		tick     = time.Tick(500 * time.Millisecond)
 		tickStop = time.Tick(10 * time.Second)
-	)
-	for len(ids) > 0 {
-		select {
-		case <-tick:
-			status, err := l2db.GetProvingStatusByID(ids[0])
-			assert.NoError(t, err)
-			if status == orm.ProvingTaskVerified {
-				ids = ids[1:]
-			}
-		case <-tickStop:
-			t.Error("failed to check proof status")
-			return
-		}
-	}
-}
-
-func testRollerReconnect(t *testing.T) {
-	// Create db handler and reset db.
-	l2db, err := database.NewOrmFactory(cfg.DBConfig)
-	assert.NoError(t, err)
-	assert.NoError(t, migrate.ResetDB(l2db.GetDB().DB))
-	defer l2db.Close()
-
-	var ids = make([]string, 1)
-	dbTx, err := l2db.Beginx()
-	assert.NoError(t, err)
-	for i := range ids {
-		ID, err := l2db.NewBatchInDBTx(dbTx, &orm.BlockInfo{Number: uint64(i)}, &orm.BlockInfo{Number: uint64(i)}, "0f", 1, 194676)
-		assert.NoError(t, err)
-		ids[i] = ID
-	}
-	assert.NoError(t, dbTx.Commit())
-
-	// Setup coordinator and ws server.
-	wsURL := "ws://" + randomUrl()
-	rollerManager, handler := setupCoordinator(t, cfg.DBConfig, wsURL)
-	defer func() {
-		handler.Shutdown(context.Background())
-		rollerManager.Stop()
-	}()
-
-	// create mock roller
-	roller := newMockRoller(t, "roller_test", wsURL)
-	// TODO: Restart roller alone when received task, can add this test case in integration-test.
-	roller.waitTaskAndSendProof(t, time.Second, false)
-	defer roller.close()
-
-	// verify proof status
-	var (
-		tick     = time.Tick(500 * time.Millisecond)
-		tickStop = time.Tick(15 * time.Second)
 	)
 	for len(ids) > 0 {
 		select {
