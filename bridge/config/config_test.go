@@ -20,7 +20,12 @@ func TestConfig(t *testing.T) {
 
 	cfg, err := config.NewConfig("../config.json")
 	assert.True(t, assert.NoError(t, err), "failed to load config")
-	assert.True(t, len(config.GetSkippedOpcodes()) == 2)
+	skippedOpcodes := config.GetSkippedOpcodes()
+	assert.True(t, len(skippedOpcodes) == 2)
+	_, ok := skippedOpcodes["CREATE2"]
+	assert.Equal(t, true, ok)
+	_, ok = skippedOpcodes["DELEGATECALL"]
+	assert.Equal(t, true, ok)
 	assert.True(t, len(cfg.L1Config.RelayerConfig.MessageSenderPrivateKeys) > 0)
 	assert.True(t, len(cfg.L2Config.RelayerConfig.MessageSenderPrivateKeys) > 0)
 	assert.True(t, len(cfg.L2Config.RelayerConfig.RollupSenderPrivateKeys) > 0)
