@@ -394,6 +394,7 @@ func (m *Manager) StartProofGenerationSession(task *orm.BlockBatch) (success boo
 		}
 	}()
 	if err := m.orm.UpdateProvingStatus(task.ID, orm.ProvingTaskAssigned); err != nil {
+		log.Error("failed to update task status", "id", task.ID, "err", err)
 		return false
 	}
 
@@ -425,7 +426,7 @@ func (m *Manager) StartProofGenerationSession(task *orm.BlockBatch) (success boo
 
 	// send trace to roller
 	if !roller.sendTask(task.ID, traces) {
-		err = fmt.Errorf("send task failed, roller: %s, ID: %s", roller.Name, task.ID)
+		log.Error("send task failed", "roller name", roller.Name, "id", task.ID)
 		return false
 	}
 
