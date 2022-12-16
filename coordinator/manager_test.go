@@ -380,7 +380,7 @@ func setupRollerManager(t *testing.T, dbCfg *database.DBConfig) *coordinator.Man
 		Verifier:          &coordinator_config.VerifierConfig{MockMode: true},
 		CollectionTime:    1,
 		TokenTimeToLive:   5,
-	}, db)
+	}, db, nil)
 	assert.NoError(t, err)
 	assert.NoError(t, rollerManager.Start())
 
