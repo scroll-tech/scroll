@@ -30,7 +30,7 @@ The amount of seconds needed to wait if we want to drop message.
 ### dropMessage
 
 ```solidity
-function dropMessage(address _from, address _to, uint256 _value, uint256 _fee, uint256 _deadline, uint256 _nonce, bytes _message, uint256 _gasLimit) external nonpayable
+function dropMessage(address, address, uint256, uint256, uint256, uint256, bytes, uint256) external nonpayable
 ```
 
 
@@ -41,14 +41,14 @@ function dropMessage(address _from, address _to, uint256 _value, uint256 _fee, u
 
 | Name | Type | Description |
 |---|---|---|
-| _from | address | undefined |
-| _to | address | undefined |
-| _value | uint256 | undefined |
-| _fee | uint256 | undefined |
-| _deadline | uint256 | undefined |
-| _nonce | uint256 | undefined |
-| _message | bytes | undefined |
-| _gasLimit | uint256 | undefined |
+| _0 | address | undefined |
+| _1 | address | undefined |
+| _2 | uint256 | undefined |
+| _3 | uint256 | undefined |
+| _4 | uint256 | undefined |
+| _5 | uint256 | undefined |
+| _6 | bytes | undefined |
+| _7 | uint256 | undefined |
 
 ### gasOracle
 
@@ -148,6 +148,23 @@ Mapping from relay id to relay status.
 | Name | Type | Description |
 |---|---|---|
 | _0 | bool | undefined |
+
+### messageQueue
+
+```solidity
+function messageQueue() external view returns (contract L1MessageQueue)
+```
+
+The address of L1MessageQueue contract.
+
+
+
+
+#### Returns
+
+| Name | Type | Description |
+|---|---|---|
+| _0 | contract L1MessageQueue | undefined |
 
 ### owner
 

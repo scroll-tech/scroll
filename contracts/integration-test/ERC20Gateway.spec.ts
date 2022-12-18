@@ -17,7 +17,8 @@ import {
   L1WETHGateway,
   L2WETHGateway,
   WETH9,
-  L2ToL1MessagePasser,
+  L2MessageQueue,
+  L1MessageQueue,
 } from "../typechain";
 
 describe("ERC20Gateway", async () => {
@@ -33,7 +34,8 @@ describe("ERC20Gateway", async () => {
   let rollup: ZKRollup;
   let l1Messenger: MockL1ScrollMessenger;
   let l2Messenger: L2ScrollMessenger;
-  let passer: L2ToL1MessagePasser;
+  let l1MessageQueue: L1MessageQueue;
+  let l2MessageQueue: L2MessageQueue;
 
   beforeEach(async () => {
     [deployer, alice, bob, router] = await ethers.getSigners();
@@ -66,14 +68,14 @@ describe("ERC20Gateway", async () => {
     const MockL1ScrollMessenger = await ethers.getContractFactory("MockL1ScrollMessenger", deployer);
     l1Messenger = await MockL1ScrollMessenger.deploy();
     await l1Messenger.initialize(rollup.address);
-    await rollup.updateMessenger(l1Messenger.address);
     await rollup.updateOperator(deployer.address);
 
     // deploy L2ScrollMessenger in layer 2
     const L2ScrollMessenger = await ethers.getContractFactory("L2ScrollMessenger", deployer);
-    l2Messenger = await L2ScrollMessenger.deploy(deployer.address);
+    l2Messenger = await L2ScrollMessenger.deploy(deployer.address, constants.AddressZero);
 
-    passer = await ethers.getContractAt("L2ToL1MessagePasser", await l2Messenger.messagePasser(), deployer);
+    l1MessageQueue = await ethers.getContractAt("L1MessageQueue", await l1Messenger.messageQueue(), deployer);
+    l2MessageQueue = await ethers.getContractAt("L2MessageQueue", await l2Messenger.messageQueue(), deployer);
   });
 
   context("StandardERC20Gateway", async () => {
@@ -144,7 +146,7 @@ describe("ERC20Gateway", async () => {
           await l1Token.connect(alice).approve(l1Gateway.address, amount1);
 
           // 2. do deposit
-          const nonce = await rollup.getQeueuLength();
+          const nonce = await l1MessageQueue.nextMessageIndex();
           const beforeBalanceLayer1 = await l1Token.balanceOf(l1Gateway.address);
           const depositTx = sendToSelf
             ? await l1Gateway
@@ -188,14 +190,18 @@ describe("ERC20Gateway", async () => {
 
           // 3. do relay in layer 2
           const beforeBalanceLayer2 = constants.Zero;
-          const relayTx = await l2Messenger.relayMessage(
+          const relayTx = await l2Messenger.relayMessageWithProof(
             l1Gateway.address,
             l2Gateway.address,
             0,
             0,
             deadline,
             nonce,
-            messageData
+            messageData,
+            {
+              blockHash: constants.HashZero,
+              stateRootProof: "0x",
+            }
           );
           await relayTx.wait();
           const afterBalanceLayer2 = await l2Token.balanceOf(recipient.address);
@@ -218,7 +224,7 @@ describe("ERC20Gateway", async () => {
           await l1Token.connect(alice).approve(l1Gateway.address, amount1);
 
           // 2. do deposit first time
-          const nonce1 = await rollup.getQeueuLength();
+          const nonce1 = await l1MessageQueue.nextMessageIndex();
           let beforeBalanceLayer1 = await l1Token.balanceOf(l1Gateway.address);
           const depositTx1 = sendToSelf
             ? await l1Gateway
@@ -254,14 +260,18 @@ describe("ERC20Gateway", async () => {
 
           // 3. do relay in layer 2 first time
           let beforeBalanceLayer2 = constants.Zero;
-          const relayTx1 = await l2Messenger.relayMessage(
+          const relayTx1 = await l2Messenger.relayMessageWithProof(
             l1Gateway.address,
             l2Gateway.address,
             0,
             0,
             deadline1,
             nonce1,
-            messageData1
+            messageData1,
+            {
+              blockHash: constants.HashZero,
+              stateRootProof: "0x",
+            }
           );
           await relayTx1.wait();
           let afterBalanceLayer2 = await l2Token.balanceOf(recipient.address);
@@ -272,7 +282,7 @@ describe("ERC20Gateway", async () => {
 
           // 5. do deposit second time
           const calldata = "0x000033";
-          const nonce2 = await rollup.getQeueuLength();
+          const nonce2 = await l1MessageQueue.nextMessageIndex();
           beforeBalanceLayer1 = await l1Token.balanceOf(l1Gateway.address);
           const depositTx2 = await l1Gateway
             .connect(alice)
@@ -301,14 +311,18 @@ describe("ERC20Gateway", async () => {
 
           // 3. do relay in layer 2
           beforeBalanceLayer2 = await l2Token.balanceOf(recipient.address);
-          const relayTx2 = await l2Messenger.relayMessage(
+          const relayTx2 = await l2Messenger.relayMessageWithProof(
             l1Gateway.address,
             l2Gateway.address,
             0,
             0,
             deadline2,
             nonce2,
-            messageData2
+            messageData2,
+            {
+              blockHash: constants.HashZero,
+              stateRootProof: "0x",
+            }
           );
           await relayTx2.wait();
           afterBalanceLayer2 = await l2Token.balanceOf(recipient.address);
@@ -359,7 +373,7 @@ describe("ERC20Gateway", async () => {
             [symbol, name, decimals]
           );
           const deadline = (await ethers.provider.getBlock("latest")).timestamp + DROP_DELAY_DURATION;
-          const nonce = await rollup.getQeueuLength();
+          const nonce = await l1MessageQueue.nextMessageIndex();
           const messageData = l2Gateway.interface.encodeFunctionData("finalizeDepositERC20", [
             l1Token.address,
             l2Token.address,
@@ -368,14 +382,18 @@ describe("ERC20Gateway", async () => {
             amount,
             ethers.utils.defaultAbiCoder.encode(["bytes", "bytes"], ["0x", deployData]),
           ]);
-          const relayTx = await l2Messenger.relayMessage(
+          const relayTx = await l2Messenger.relayMessageWithProof(
             l1Gateway.address,
             l2Gateway.address,
             0,
             0,
             deadline,
             nonce,
-            messageData
+            messageData,
+            {
+              blockHash: constants.HashZero,
+              stateRootProof: "0x",
+            }
           );
           await relayTx.wait();
 
@@ -387,7 +405,7 @@ describe("ERC20Gateway", async () => {
           await l2Token.connect(alice).approve(l2Gateway.address, amount);
 
           // 2. withdraw
-          const nonce = await l2Messenger.messageNonce();
+          const nonce = await l2MessageQueue.nextMessageIndex();
           const balanceBefore = await l2Token.balanceOf(alice.address);
           const withdrawTx = sendToSelf
             ? await l2Gateway
@@ -432,7 +450,7 @@ describe("ERC20Gateway", async () => {
           await expect(withdrawTx)
             .to.emit(l2Messenger, "SentMessage")
             .withArgs(l1Gateway.address, l2Gateway.address, 0, 0, deadline, messageData, nonce, layer2GasLimit)
-            .to.emit(passer, "PassMessage")
+            .to.emit(l2MessageQueue, "AppendMessage")
             .withArgs(0, messageHash);
           // should transfer from alice
           expect(balanceBefore.sub(balanceAfter)).to.eq(amount);
@@ -453,7 +471,7 @@ describe("ERC20Gateway", async () => {
                 timestamp: 0,
                 extraData: [],
                 txs: [],
-                messageRoot: await passer.messageRoot(),
+                messageRoot: await l2MessageQueue.messageRoot(),
               },
             ],
           });
@@ -467,7 +485,7 @@ describe("ERC20Gateway", async () => {
             deadline,
             nonce,
             messageData,
-            { batchIndex: 1, blockHash, merkleProof: [] }
+            { blockHash, messageRootProof: [] }
           );
           await relayTx.wait();
           // should emit RelayedMessage
@@ -487,7 +505,7 @@ describe("ERC20Gateway", async () => {
           await l2Token.connect(alice).approve(l2Gateway.address, amount);
 
           // 2. withdraw
-          const nonce = await l2Messenger.messageNonce();
+          const nonce = await l2MessageQueue.nextMessageIndex();
           const withdrawTx = await l2Gateway
             .connect(alice)
             .withdrawERC20AndCall(l2Token.address, recipient.address, amount, calldata, layer2GasLimit);
@@ -520,7 +538,7 @@ describe("ERC20Gateway", async () => {
           await expect(withdrawTx)
             .to.emit(l2Messenger, "SentMessage")
             .withArgs(l1Gateway.address, l2Gateway.address, 0, 0, deadline, messageData, nonce, layer2GasLimit)
-            .to.emit(passer, "PassMessage")
+            .to.emit(l2MessageQueue, "AppendMessage")
             .withArgs(0, messageHash);
 
           // 3. import block to rollup contract
@@ -539,7 +557,7 @@ describe("ERC20Gateway", async () => {
                 timestamp: 0,
                 extraData: [],
                 txs: [],
-                messageRoot: await passer.messageRoot(),
+                messageRoot: await l2MessageQueue.messageRoot(),
               },
             ],
           });
@@ -553,7 +571,7 @@ describe("ERC20Gateway", async () => {
             deadline,
             nonce,
             messageData,
-            { batchIndex: 0, blockHash, merkleProof: [] }
+            { blockHash, messageRootProof: [] }
           );
           await relayTx.wait();
           // should emit RelayedMessage
@@ -637,7 +655,7 @@ describe("ERC20Gateway", async () => {
           await l1WETH.connect(alice).approve(l1Gateway.address, amount);
 
           // 2. do deposit
-          const nonce = await rollup.getQeueuLength();
+          const nonce = await l1MessageQueue.nextMessageIndex();
           const beforeBalanceLayer1 = await ethers.provider.getBalance(l1Messenger.address);
           const depositTx = sendToSelf
             ? await l1Gateway
@@ -675,14 +693,18 @@ describe("ERC20Gateway", async () => {
 
           // 3. do relay in layer 2
           const beforeBalanceLayer2 = await l2WETH.balanceOf(recipient.address);
-          const relayTx = await l2Messenger.relayMessage(
+          const relayTx = await l2Messenger.relayMessageWithProof(
             l1Gateway.address,
             l2Gateway.address,
             amount,
             0,
             deadline,
             nonce,
-            messageData
+            messageData,
+            {
+              blockHash: constants.HashZero,
+              stateRootProof: "0x",
+            }
           );
           await relayTx.wait();
           const afterBalanceLayer2 = await l2WETH.balanceOf(recipient.address);
@@ -703,7 +725,7 @@ describe("ERC20Gateway", async () => {
           await l1WETH.connect(alice).approve(l1Gateway.address, amount);
 
           // 2. do deposit
-          const nonce = await rollup.getQeueuLength();
+          const nonce = await l1MessageQueue.nextMessageIndex();
           const beforeBalanceLayer1 = await ethers.provider.getBalance(l1Messenger.address);
           const depositTx = await l1Gateway
             .connect(alice)
@@ -732,14 +754,18 @@ describe("ERC20Gateway", async () => {
 
           // 3. do relay in layer 2
           const beforeBalanceLayer2 = await l2WETH.balanceOf(recipient.address);
-          const relayTx = await l2Messenger.relayMessage(
+          const relayTx = await l2Messenger.relayMessageWithProof(
             l1Gateway.address,
             l2Gateway.address,
             amount,
             0,
             deadline,
             nonce,
-            messageData
+            messageData,
+            {
+              blockHash: constants.HashZero,
+              stateRootProof: "0x",
+            }
           );
           await relayTx.wait();
           const afterBalanceLayer2 = await l2WETH.balanceOf(recipient.address);
@@ -774,7 +800,7 @@ describe("ERC20Gateway", async () => {
           await l2WETH.connect(alice).approve(l2Gateway.address, amount);
 
           // 2. do withdraw in layer 2
-          const nonce = await l2Messenger.messageNonce();
+          const nonce = await l2MessageQueue.nextMessageIndex();
           const beforeBalanceLayer2 = await ethers.provider.getBalance(l2Messenger.address);
           const withdrawTx = sendToSelf
             ? await l2Gateway
@@ -818,7 +844,7 @@ describe("ERC20Gateway", async () => {
           await expect(withdrawTx)
             .to.emit(l2Messenger, "SentMessage")
             .withArgs(l1Gateway.address, l2Gateway.address, amount, 0, deadline, messageData, nonce, layer2GasLimit)
-            .to.emit(passer, "PassMessage")
+            .to.emit(l2MessageQueue, "AppendMessage")
             .withArgs(0, messageHash);
           // should unwrap transfer to messenger
           expect(afterBalanceLayer2.sub(beforeBalanceLayer2)).to.eq(amount);
@@ -839,7 +865,7 @@ describe("ERC20Gateway", async () => {
                 timestamp: 0,
                 extraData: [],
                 txs: [],
-                messageRoot: await passer.messageRoot(),
+                messageRoot: await l2MessageQueue.messageRoot(),
               },
             ],
           });
@@ -854,7 +880,7 @@ describe("ERC20Gateway", async () => {
             deadline,
             nonce,
             messageData,
-            { batchIndex: 0, blockHash, merkleProof: [] }
+            { blockHash, messageRootProof: [] }
           );
           await relayTx.wait();
           const afterBalanceLayer1 = await l1WETH.balanceOf(recipient.address);
@@ -874,7 +900,7 @@ describe("ERC20Gateway", async () => {
           await l2WETH.connect(alice).approve(l2Gateway.address, amount);
 
           // 2. do withdraw in layer 2
-          const nonce = await l2Messenger.messageNonce();
+          const nonce = await l2MessageQueue.nextMessageIndex();
           const beforeBalanceLayer2 = await ethers.provider.getBalance(l2Messenger.address);
           const withdrawTx = await l2Gateway
             .connect(alice)
@@ -910,7 +936,7 @@ describe("ERC20Gateway", async () => {
           await expect(withdrawTx)
             .to.emit(l2Messenger, "SentMessage")
             .withArgs(l1Gateway.address, l2Gateway.address, amount, 0, deadline, messageData, nonce, layer2GasLimit)
-            .to.emit(passer, "PassMessage")
+            .to.emit(l2MessageQueue, "AppendMessage")
             .withArgs(0, messageHash);
           // should unwrap transfer to messenger
           expect(afterBalanceLayer2.sub(beforeBalanceLayer2)).to.eq(amount);
@@ -931,7 +957,7 @@ describe("ERC20Gateway", async () => {
                 timestamp: 0,
                 extraData: [],
                 txs: [],
-                messageRoot: await passer.messageRoot(),
+                messageRoot: await l2MessageQueue.messageRoot(),
               },
             ],
           });
@@ -946,7 +972,7 @@ describe("ERC20Gateway", async () => {
             deadline,
             nonce,
             messageData,
-            { batchIndex: 0, blockHash, merkleProof: [] }
+            { blockHash, messageRootProof: [] }
           );
           await relayTx.wait();
           const afterBalanceLayer1 = await l1WETH.balanceOf(recipient.address);

@@ -34,8 +34,6 @@ contract L1GatewayRouterTest is DSTestPlus {
     messenger = new L1ScrollMessenger();
     messenger.initialize(address(rollup));
 
-    rollup.updateMessenger(address(messenger));
-
     router = new L1GatewayRouter();
     router.initialize(address(0), address(1), address(messenger));
 

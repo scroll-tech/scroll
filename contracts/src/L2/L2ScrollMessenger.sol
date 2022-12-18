@@ -3,7 +3,8 @@
 pragma solidity ^0.8.0;
 
 import { IL2ScrollMessenger, IScrollMessenger } from "./IL2ScrollMessenger.sol";
-import { L2ToL1MessagePasser } from "./predeploys/L2ToL1MessagePasser.sol";
+import { L2MessageQueue } from "./predeploys/L2MessageQueue.sol";
+import { IL1BlockContainer } from "./predeploys/IL1BlockContainer.sol";
 import { OwnableBase } from "../libraries/common/OwnableBase.sol";
 import { IGasOracle } from "../libraries/oracle/IGasOracle.sol";
 import { ScrollConstants } from "../libraries/ScrollConstants.sol";
@@ -27,20 +28,21 @@ contract L2ScrollMessenger is ScrollMessengerBase, OwnableBase, IL2ScrollMesseng
   /// @notice Mapping from message hash to execution status.
   mapping(bytes32 => bool) public isMessageExecuted;
 
-  /// @notice Message nonce, used to avoid relay attack.
-  uint256 public messageNonce;
-
   /// @notice Contract to store the sent message.
-  L2ToL1MessagePasser public messagePasser;
+  L2MessageQueue public messageQueue;
 
-  constructor(address _owner) {
+  /// @notice The contract contains the list of L1 blocks.
+  IL1BlockContainer public blockContainer;
+
+  constructor(address _owner, address _blockContainer) {
     ScrollMessengerBase._initialize();
     owner = _owner;
 
     // initialize to a nonzero value
     xDomainMessageSender = ScrollConstants.DEFAULT_XDOMAIN_MESSAGE_SENDER;
 
-    messagePasser = new L2ToL1MessagePasser(address(this));
+    messageQueue = new L2MessageQueue(address(this));
+    blockContainer = IL1BlockContainer(_blockContainer);
   }
 
   /**************************************** Mutated Functions ****************************************/
@@ -60,7 +62,7 @@ contract L2ScrollMessenger is ScrollMessengerBase, OwnableBase, IL2ScrollMesseng
     uint256 _minFee = gasOracle == address(0) ? 0 : IGasOracle(gasOracle).estimateMessageFee(msg.sender, _to, _message);
     require(_fee >= _minFee, "fee too small");
 
-    uint256 _nonce = messageNonce;
+    uint256 _nonce = messageQueue.nextMessageIndex();
     uint256 _value;
     unchecked {
       _value = msg.value - _fee;
@@ -68,42 +70,49 @@ contract L2ScrollMessenger is ScrollMessengerBase, OwnableBase, IL2ScrollMesseng
 
     bytes32 _msghash = keccak256(abi.encodePacked(msg.sender, _to, _value, _fee, _deadline, _nonce, _message));
 
-    messagePasser.passMessageToL1(_msghash);
+    messageQueue.appendMessage(_msghash);
 
     emit SentMessage(_to, msg.sender, _value, _fee, _deadline, _message, _nonce, _gasLimit);
-
-    unchecked {
-      messageNonce = _nonce + 1;
-    }
   }
 
   /// @inheritdoc IL2ScrollMessenger
-  function relayMessage(
+  function relayMessageWithProof(
     address _from,
     address _to,
     uint256 _value,
     uint256 _fee,
     uint256 _deadline,
     uint256 _nonce,
-    bytes memory _message
-  ) external override onlyWhitelistedSender(msg.sender) {
-    // @todo it's better to separate whitelist from `relayMessage` and `sendMessage`.
+    bytes memory _message,
+    L1MessageProof calldata _proof
+  ) external override {
     // anti reentrance
-    require(xDomainMessageSender == ScrollConstants.DEFAULT_XDOMAIN_MESSAGE_SENDER, "already in execution");
+    require(xDomainMessageSender == ScrollConstants.DEFAULT_XDOMAIN_MESSAGE_SENDER, "Already in execution");
 
     // solhint-disable-next-line not-rely-on-time
-    require(_deadline >= block.timestamp, "Message expired");
+    // @note disable for now since we may encounter various situation in testnet.
+    // require(_deadline >= block.timestamp, "Message expired");
 
     bytes32 _msghash = keccak256(abi.encodePacked(_from, _to, _value, _fee, _deadline, _nonce, _message));
 
     require(!isMessageExecuted[_msghash], "Message successfully executed");
+
+    {
+      // @note use blockContainer = address(0) to skip verification in hardhat tests
+      IL1BlockContainer _blockContainer = blockContainer;
+      require(
+        address(_blockContainer) == address(0) ||
+          _blockContainer.verifyMessageInclusionStatus(_proof.blockHash, _msghash, _proof.stateRootProof),
+        "Invalid message proof"
+      );
+    }
 
     // @todo check `_to` address to avoid attack.
 
     // @todo take fee and distribute to relayer later.
 
     // @note This usually will never happen, just in case.
-    require(_from != xDomainMessageSender, "invalid message sender");
+    require(_from != xDomainMessageSender, "Invalid message sender");
 
     xDomainMessageSender = _from;
     // solhint-disable-next-line avoid-low-level-calls
@@ -134,6 +143,9 @@ contract L2ScrollMessenger is ScrollMessengerBase, OwnableBase, IL2ScrollMesseng
     bytes memory,
     uint256
   ) external virtual override {
+    // @todo
+    // 1. use blockContainer.verifyMessageExecutionStatus to check whether the message is executed.
+    // 2. use blockContainer.getBlockTimestamp to check the expiration.
     revert("not supported");
   }
 

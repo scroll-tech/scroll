@@ -10,34 +10,6 @@ This contract maintains essential data for zk rollup, including: 1. a list of pe
 
 ## Methods
 
-### appendMessage
-
-```solidity
-function appendMessage(address _sender, address _target, uint256 _value, uint256 _fee, uint256 _deadline, bytes _message, uint256 _gasLimit) external nonpayable returns (uint256)
-```
-
-Append a cross chain message to message queue.
-
-*This function should only be called by L1ScrollMessenger for safety.*
-
-#### Parameters
-
-| Name | Type | Description |
-|---|---|---|
-| _sender | address | The address of message sender in layer 1. |
-| _target | address | The address of message recipient in layer 2. |
-| _value | uint256 | The amount of ether sent to recipient in layer 2. |
-| _fee | uint256 | The amount of ether paid to relayer in layer 2. |
-| _deadline | uint256 | The deadline of the message. |
-| _message | bytes | The content of the message. |
-| _gasLimit | uint256 | Unused, but included for potential forward compatibility considerations. |
-
-#### Returns
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | uint256 | undefined |
-
 ### batches
 
 ```solidity
@@ -145,13 +117,13 @@ Mapping from batch index to finalized batch id.
 |---|---|---|
 | _0 | bytes32 | undefined |
 
-### getMessageHashByIndex
+### getL2MessageRoot
 
 ```solidity
-function getMessageHashByIndex(uint256 _index) external view returns (bytes32)
+function getL2MessageRoot(bytes32 _blockHash) external view returns (bytes32)
 ```
 
-Return the message hash by index.
+Return the merkle root of L2 message tree.
 
 
 
@@ -159,47 +131,13 @@ Return the message hash by index.
 
 | Name | Type | Description |
 |---|---|---|
-| _index | uint256 | The index to query. |
+| _blockHash | bytes32 | undefined |
 
 #### Returns
 
 | Name | Type | Description |
 |---|---|---|
 | _0 | bytes32 | undefined |
-
-### getNextQueueIndex
-
-```solidity
-function getNextQueueIndex() external view returns (uint256)
-```
-
-Return the index of the first queue element not yet executed.
-
-
-
-
-#### Returns
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | uint256 | undefined |
-
-### getQeueuLength
-
-```solidity
-function getQeueuLength() external view returns (uint256)
-```
-
-Return the total number of appended message.
-
-
-
-
-#### Returns
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | uint256 | undefined |
 
 ### importGenesisBlock
 
@@ -232,6 +170,50 @@ function initialize(uint256 _chainId) external nonpayable
 | Name | Type | Description |
 |---|---|---|
 | _chainId | uint256 | undefined |
+
+### isBlockFinalized
+
+```solidity
+function isBlockFinalized(bytes32 _blockHash) external view returns (bool)
+```
+
+Return whether the block is finalized by block hash.
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| _blockHash | bytes32 | undefined |
+
+#### Returns
+
+| Name | Type | Description |
+|---|---|---|
+| _0 | bool | undefined |
+
+### isBlockFinalized
+
+```solidity
+function isBlockFinalized(uint256 _blockHeight) external view returns (bool)
+```
+
+Return whether the block is finalized by block height.
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| _blockHeight | uint256 | undefined |
+
+#### Returns
+
+| Name | Type | Description |
+|---|---|---|
+| _0 | bool | undefined |
 
 ### lastFinalizedBatchID
 
@@ -288,23 +270,6 @@ Return the layer 2 block gas limit.
 | Name | Type | Description |
 |---|---|---|
 | _0 | uint256 | undefined |
-
-### messenger
-
-```solidity
-function messenger() external view returns (address)
-```
-
-The address of L1ScrollMessenger.
-
-
-
-
-#### Returns
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | address | undefined |
 
 ### operator
 
@@ -383,22 +348,6 @@ function transferOwnership(address newOwner) external nonpayable
 |---|---|---|
 | newOwner | address | undefined |
 
-### updateMessenger
-
-```solidity
-function updateMessenger(address _newMessenger) external nonpayable
-```
-
-Update the address of messenger.
-
-*This function can only called by contract owner.*
-
-#### Parameters
-
-| Name | Type | Description |
-|---|---|---|
-| _newMessenger | address | The new messenger address to update. |
-
 ### updateOperator
 
 ```solidity
@@ -414,29 +363,6 @@ Update the address of operator.
 | Name | Type | Description |
 |---|---|---|
 | _newOperator | address | The new operator address to update. |
-
-### verifyMessageStateProof
-
-```solidity
-function verifyMessageStateProof(uint256 _batchIndex, bytes32 _blockHash) external view returns (bytes32)
-```
-
-Verify a state proof for message relay.
-
-*return `bytes32(0)` when verification is failed.*
-
-#### Parameters
-
-| Name | Type | Description |
-|---|---|---|
-| _batchIndex | uint256 | The batch index to query. |
-| _blockHash | bytes32 | The block hash to query. |
-
-#### Returns
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | bytes32 | the merkle root of the corresponding merkle tree. |
 
 
 
@@ -512,23 +438,6 @@ Emitted when a batch is reverted.
 | Name | Type | Description |
 |---|---|---|
 | _batchId `indexed` | bytes32 | undefined |
-
-### UpdateMesssenger
-
-```solidity
-event UpdateMesssenger(address _oldMesssenger, address _newMesssenger)
-```
-
-Emitted when owner updates address of messenger
-
-
-
-#### Parameters
-
-| Name | Type | Description |
-|---|---|---|
-| _oldMesssenger  | address | The address of old messenger contract. |
-| _newMesssenger  | address | The address of new messenger contract. |
 
 ### UpdateOperator
 

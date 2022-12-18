@@ -6,10 +6,8 @@ import { IScrollMessenger } from "../libraries/IScrollMessenger.sol";
 
 interface IL1ScrollMessenger is IScrollMessenger {
   struct L2MessageProof {
-    // @todo add more fields
-    uint256 batchIndex;
     bytes32 blockHash;
-    bytes32[] merkleProof;
+    bytes32[] messageRootProof;
   }
 
   /**************************************** Mutated Functions ****************************************/

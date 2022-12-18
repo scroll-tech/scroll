@@ -3,7 +3,9 @@
 pragma solidity ^0.8.0;
 
 interface IZKRollup {
-  /**************************************** Events ****************************************/
+  /**********
+   * Events *
+   **********/
 
   /// @notice Emitted when a new batch is commited.
   /// @param _batchHash The hash of the batch
@@ -21,9 +23,12 @@ interface IZKRollup {
   /// @param _parentHash The hash of parent batch
   event FinalizeBatch(bytes32 indexed _batchId, bytes32 _batchHash, uint256 _batchIndex, bytes32 _parentHash);
 
+  /***********
+   * Structs *
+   ***********/
+
   /// @dev The transanction struct
   struct Layer2Transaction {
-    address caller;
     uint64 nonce;
     address target;
     uint64 gas;
@@ -58,46 +63,29 @@ interface IZKRollup {
     Layer2BlockHeader[] blocks;
   }
 
-  /**************************************** View Functions ****************************************/
+  /*************************
+   * Public View Functions *
+   *************************/
 
-  /// @notice Return the message hash by index.
-  /// @param _index The index to query.
-  function getMessageHashByIndex(uint256 _index) external view returns (bytes32);
+  /// @notice Return whether the block is finalized by block hash.
+  /// @param blockHash The hash of the block to query.
+  function isBlockFinalized(bytes32 blockHash) external view returns (bool);
 
-  /// @notice Return the index of the first queue element not yet executed.
-  function getNextQueueIndex() external view returns (uint256);
+  /// @notice Return whether the block is finalized by block height.
+  /// @param blockHeight The height of the block to query.
+  function isBlockFinalized(uint256 blockHeight) external view returns (bool);
 
   /// @notice Return the layer 2 block gas limit.
   /// @param _blockNumber The block number to query
   function layer2GasLimit(uint256 _blockNumber) external view returns (uint256);
 
-  /// @notice Verify a state proof for message relay.
-  /// @dev return `bytes32(0)` when verification is failed.
-  /// @param _batchIndex The batch index to query.
-  /// @param _blockHash The block hash to query.
-  /// @return the merkle root of the corresponding merkle tree.
-  function verifyMessageStateProof(uint256 _batchIndex, bytes32 _blockHash) external view returns (bytes32);
+  /// @notice Return the merkle root of L2 message tree.
+  /// @param blockHash The hash of the block to query.
+  function getL2MessageRoot(bytes32 blockHash) external view returns (bytes32);
 
-  /**************************************** Mutated Functions ****************************************/
-
-  /// @notice Append a cross chain message to message queue.
-  /// @dev This function should only be called by L1ScrollMessenger for safety.
-  /// @param _sender The address of message sender in layer 1.
-  /// @param _target The address of message recipient in layer 2.
-  /// @param _value The amount of ether sent to recipient in layer 2.
-  /// @param _fee The amount of ether paid to relayer in layer 2.
-  /// @param _deadline The deadline of the message.
-  /// @param _message The content of the message.
-  /// @param _gasLimit Unused, but included for potential forward compatibility considerations.
-  function appendMessage(
-    address _sender,
-    address _target,
-    uint256 _value,
-    uint256 _fee,
-    uint256 _deadline,
-    bytes memory _message,
-    uint256 _gasLimit
-  ) external returns (uint256);
+  /****************************
+   * Public Mutated Functions *
+   ****************************/
 
   /// @notice commit a batch in layer 1
   /// @dev store in a more compacted form later.

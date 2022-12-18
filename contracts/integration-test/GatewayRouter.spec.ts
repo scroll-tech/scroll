@@ -11,7 +11,8 @@ import {
   L2ScrollMessenger,
   L1GatewayRouter,
   L2GatewayRouter,
-  L2ToL1MessagePasser,
+  L2MessageQueue,
+  L1MessageQueue,
 } from "../typechain";
 
 describe("GatewayRouter", async () => {
@@ -26,7 +27,8 @@ describe("GatewayRouter", async () => {
   let rollup: ZKRollup;
   let l1Messenger: MockL1ScrollMessenger;
   let l2Messenger: L2ScrollMessenger;
-  let passer: L2ToL1MessagePasser;
+  let l1MessageQueue: L1MessageQueue;
+  let l2MessageQueue: L2MessageQueue;
 
   beforeEach(async () => {
     [deployer, alice, bob] = await ethers.getSigners();
@@ -59,14 +61,14 @@ describe("GatewayRouter", async () => {
     const MockL1ScrollMessenger = await ethers.getContractFactory("MockL1ScrollMessenger", deployer);
     l1Messenger = await MockL1ScrollMessenger.deploy();
     await l1Messenger.initialize(rollup.address);
-    await rollup.updateMessenger(l1Messenger.address);
     await rollup.updateOperator(deployer.address);
 
     // deploy L2ScrollMessenger in layer 2
     const L2ScrollMessenger = await ethers.getContractFactory("L2ScrollMessenger", deployer);
-    l2Messenger = await L2ScrollMessenger.deploy(deployer.address);
+    l2Messenger = await L2ScrollMessenger.deploy(deployer.address, constants.AddressZero);
 
-    passer = await ethers.getContractAt("L2ToL1MessagePasser", await l2Messenger.messagePasser(), deployer);
+    l1MessageQueue = await ethers.getContractAt("L1MessageQueue", await l1Messenger.messageQueue(), deployer);
+    l2MessageQueue = await ethers.getContractAt("L2MessageQueue", await l2Messenger.messageQueue(), deployer);
   });
 
   context("WETHGateway", async () => {
@@ -106,7 +108,7 @@ describe("GatewayRouter", async () => {
 
         it("should transfer to layer 2 without data", async () => {
           // 2. do deposit
-          const nonce = await rollup.getQeueuLength();
+          const nonce = await l1MessageQueue.nextMessageIndex();
           const beforeBalanceLayer1 = await ethers.provider.getBalance(l1Messenger.address);
           const depositTx = sendToSelf
             ? await l1Gateway.connect(alice)["depositETH(uint256)"](layer1GasLimit, { value: amount })
@@ -135,14 +137,15 @@ describe("GatewayRouter", async () => {
 
           // 3. do relay in layer 2
           const beforeBalanceLayer2 = await ethers.provider.getBalance(recipient.address);
-          const relayTx = await l2Messenger.relayMessage(
+          const relayTx = await l2Messenger.relayMessageWithProof(
             l1Gateway.address,
             l2Gateway.address,
             amount,
             0,
             deadline,
             nonce,
-            messageData
+            messageData,
+            { blockHash: constants.HashZero, stateRootProof: "0x" }
           );
           await relayTx.wait();
           const afterBalanceLayer2 = await ethers.provider.getBalance(recipient.address);
@@ -171,7 +174,7 @@ describe("GatewayRouter", async () => {
 
         it("should transfer to layer 1 without data", async () => {
           // 2. do withdraw in layer 2
-          const nonce = await l2Messenger.messageNonce();
+          const nonce = await l2MessageQueue.nextMessageIndex();
           const beforeBalanceLayer2 = await ethers.provider.getBalance(l2Messenger.address);
           const withdrawTx = sendToSelf
             ? await l2Gateway.connect(alice)["withdrawETH(uint256)"](layer2GasLimit, { value: amount })
@@ -206,7 +209,7 @@ describe("GatewayRouter", async () => {
           await expect(withdrawTx)
             .to.emit(l2Messenger, "SentMessage")
             .withArgs(l1Gateway.address, l2Gateway.address, amount, 0, deadline, messageData, nonce, layer2GasLimit)
-            .to.emit(passer, "PassMessage")
+            .to.emit(l2MessageQueue, "AppendMessage")
             .withArgs(0, messageHash);
           // should unwrap transfer to messenger
           expect(afterBalanceLayer2.sub(beforeBalanceLayer2)).to.eq(amount);
@@ -227,7 +230,7 @@ describe("GatewayRouter", async () => {
                 timestamp: 0,
                 extraData: [],
                 txs: [],
-                messageRoot: await passer.messageRoot(),
+                messageRoot: await l2MessageQueue.messageRoot(),
               },
             ],
           });
@@ -242,7 +245,7 @@ describe("GatewayRouter", async () => {
             deadline,
             nonce,
             messageData,
-            { batchIndex: 1, blockHash, merkleProof: [] }
+            { blockHash, messageRootProof: [] }
           );
           await relayTx.wait();
           const afterBalanceLayer1 = await ethers.provider.getBalance(recipient.address);

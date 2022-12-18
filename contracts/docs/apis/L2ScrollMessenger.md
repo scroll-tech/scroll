@@ -10,6 +10,23 @@ The `L2ScrollMessenger` contract can: 1. send messages from layer 2 to layer 1; 
 
 ## Methods
 
+### blockContainer
+
+```solidity
+function blockContainer() external view returns (contract IL1BlockContainer)
+```
+
+The contract contains the list of L1 blocks.
+
+
+
+
+#### Returns
+
+| Name | Type | Description |
+|---|---|---|
+| _0 | contract IL1BlockContainer | undefined |
+
 ### dropDelayDuration
 
 ```solidity
@@ -111,27 +128,10 @@ Mapping from relay id to relay status.
 |---|---|---|
 | _0 | bool | undefined |
 
-### messageNonce
+### messageQueue
 
 ```solidity
-function messageNonce() external view returns (uint256)
-```
-
-Message nonce, used to avoid relay attack.
-
-
-
-
-#### Returns
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | uint256 | undefined |
-
-### messagePasser
-
-```solidity
-function messagePasser() external view returns (contract L2ToL1MessagePasser)
+function messageQueue() external view returns (contract L2MessageQueue)
 ```
 
 Contract to store the sent message.
@@ -143,7 +143,7 @@ Contract to store the sent message.
 
 | Name | Type | Description |
 |---|---|---|
-| _0 | contract L2ToL1MessagePasser | undefined |
+| _0 | contract L2MessageQueue | undefined |
 
 ### owner
 
@@ -162,27 +162,28 @@ The address of the current owner.
 |---|---|---|
 | _0 | address | undefined |
 
-### relayMessage
+### relayMessageWithProof
 
 ```solidity
-function relayMessage(address _from, address _to, uint256 _value, uint256 _fee, uint256 _deadline, uint256 _nonce, bytes _message) external nonpayable
+function relayMessageWithProof(address _from, address _to, uint256 _value, uint256 _fee, uint256 _deadline, uint256 _nonce, bytes _message, IL2ScrollMessenger.L1MessageProof _proof) external nonpayable
 ```
 
-execute L1 =&gt; L2 message
 
-*Make sure this is only called by privileged accounts.*
+
+
 
 #### Parameters
 
 | Name | Type | Description |
 |---|---|---|
-| _from | address | The address of the sender of the message. |
-| _to | address | The address of the recipient of the message. |
-| _value | uint256 | The msg.value passed to the message call. |
-| _fee | uint256 | The amount of fee in ETH to charge. |
-| _deadline | uint256 | The deadline of the message. |
-| _nonce | uint256 | The nonce of the message to avoid replay attack. |
-| _message | bytes | The content of the message. |
+| _from | address | undefined |
+| _to | address | undefined |
+| _value | uint256 | undefined |
+| _fee | uint256 | undefined |
+| _deadline | uint256 | undefined |
+| _nonce | uint256 | undefined |
+| _message | bytes | undefined |
+| _proof | IL2ScrollMessenger.L1MessageProof | undefined |
 
 ### renounceOwnership
 

@@ -6,6 +6,7 @@ import { OwnableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/O
 import { PausableUpgradeable } from "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 
 import { IZKRollup } from "./rollup/IZKRollup.sol";
+import { L1MessageQueue } from "./rollup/L1MessageQueue.sol";
 import { IL1ScrollMessenger, IScrollMessenger } from "./IL1ScrollMessenger.sol";
 import { IGasOracle } from "../libraries/oracle/IGasOracle.sol";
 import { ScrollConstants } from "../libraries/ScrollConstants.sol";
@@ -23,7 +24,9 @@ import { ZkTrieVerifier } from "../libraries/verifier/ZkTrieVerifier.sol";
 /// @dev All deposited Ether (including `WETH` deposited throng `L1WETHGateway`) will locked in
 /// this contract.
 contract L1ScrollMessenger is OwnableUpgradeable, PausableUpgradeable, ScrollMessengerBase, IL1ScrollMessenger {
-  /**************************************** Variables ****************************************/
+  /*************
+   * Variables *
+   *************/
 
   /// @notice Mapping from relay id to relay status.
   mapping(bytes32 => bool) public isMessageRelayed;
@@ -37,6 +40,9 @@ contract L1ScrollMessenger is OwnableUpgradeable, PausableUpgradeable, ScrollMes
   /// @notice The address of Rollup contract.
   address public rollup;
 
+  /// @notice The address of L1MessageQueue contract.
+  L1MessageQueue public messageQueue;
+
   /**************************************** Constructor ****************************************/
 
   function initialize(address _rollup) public initializer {
@@ -44,7 +50,9 @@ contract L1ScrollMessenger is OwnableUpgradeable, PausableUpgradeable, ScrollMes
     PausableUpgradeable.__Pausable_init();
     ScrollMessengerBase._initialize();
 
+    messageQueue = new L1MessageQueue(address(this));
     rollup = _rollup;
+
     // initialize to a nonzero value
     xDomainMessageSender = ScrollConstants.DEFAULT_XDOMAIN_MESSAGE_SENDER;
   }
@@ -70,7 +78,9 @@ contract L1ScrollMessenger is OwnableUpgradeable, PausableUpgradeable, ScrollMes
       _value = msg.value - _fee;
     }
 
-    uint256 _nonce = IZKRollup(rollup).appendMessage(msg.sender, _to, _value, _fee, _deadline, _message, _gasLimit);
+    uint256 _nonce = messageQueue.nextMessageIndex();
+    bytes32 _msghash = keccak256(abi.encodePacked(msg.sender, _to, _value, _fee, _deadline, _nonce, _message));
+    messageQueue.appendMessage(_msghash);
 
     emit SentMessage(_to, msg.sender, _value, _fee, _deadline, _message, _nonce, _gasLimit);
   }
@@ -85,8 +95,8 @@ contract L1ScrollMessenger is OwnableUpgradeable, PausableUpgradeable, ScrollMes
     uint256 _nonce,
     bytes memory _message,
     L2MessageProof memory _proof
-  ) external virtual override whenNotPaused onlyWhitelistedSender(msg.sender) {
-    require(xDomainMessageSender == ScrollConstants.DEFAULT_XDOMAIN_MESSAGE_SENDER, "already in execution");
+  ) external virtual override whenNotPaused {
+    require(xDomainMessageSender == ScrollConstants.DEFAULT_XDOMAIN_MESSAGE_SENDER, "Already in execution");
 
     // solhint-disable-next-line not-rely-on-time
     // @note disable for now since we cannot generate proof in time.
@@ -96,17 +106,22 @@ contract L1ScrollMessenger is OwnableUpgradeable, PausableUpgradeable, ScrollMes
 
     require(!isMessageExecuted[_msghash], "Message successfully executed");
 
-    bytes32 _messageRoot = IZKRollup(rollup).verifyMessageStateProof(_proof.batchIndex, _proof.blockHash);
-    require(_messageRoot != bytes32(0), "invalid state proof");
+    require(IZKRollup(rollup).isBlockFinalized(_proof.blockHash), "Block not finalized");
 
-    require(ZkTrieVerifier.verifyMerkleProof(_messageRoot, _msghash, _nonce, _proof.merkleProof), "invalid proof");
+    bytes32 _messageRoot = IZKRollup(rollup).getL2MessageRoot(_proof.blockHash);
+    require(_messageRoot != bytes32(0), "Invalid L2 message root");
+
+    require(
+      ZkTrieVerifier.verifyMerkleProof(_messageRoot, _msghash, _nonce, _proof.messageRootProof),
+      "Invalid message proof"
+    );
 
     // @todo check `_to` address to avoid attack.
 
     // @todo take fee and distribute to relayer later.
 
     // @note This usually will never happen, just in case.
-    require(_from != xDomainMessageSender, "invalid message sender");
+    require(_from != xDomainMessageSender, "Invalid message sender");
 
     xDomainMessageSender = _from;
     // solhint-disable-next-line avoid-low-level-calls
@@ -143,40 +158,16 @@ contract L1ScrollMessenger is OwnableUpgradeable, PausableUpgradeable, ScrollMes
 
   /// @inheritdoc IScrollMessenger
   function dropMessage(
-    address _from,
-    address _to,
-    uint256 _value,
-    uint256 _fee,
-    uint256 _deadline,
-    uint256 _nonce,
-    bytes memory _message,
-    uint256 _gasLimit
+    address,
+    address,
+    uint256,
+    uint256,
+    uint256,
+    uint256,
+    bytes memory,
+    uint256
   ) external override whenNotPaused {
-    // solhint-disable-next-line not-rely-on-time
-    require(block.timestamp > _deadline, "message not expired");
-
-    // @todo The `queueIndex` is acutally updated asynchronously, it's not a good practice to compare directly.
-    address _rollup = rollup; // gas saving
-    uint256 _queueIndex = IZKRollup(_rollup).getNextQueueIndex();
-    require(_queueIndex <= _nonce, "message already executed");
-
-    bytes32 _expectedMessageHash = IZKRollup(_rollup).getMessageHashByIndex(_nonce);
-    bytes32 _messageHash = keccak256(
-      abi.encodePacked(_from, _to, _value, _fee, _deadline, _nonce, _message, _gasLimit)
-    );
-    require(_messageHash == _expectedMessageHash, "message hash mismatched");
-
-    require(!isMessageDropped[_messageHash], "message already dropped");
-    isMessageDropped[_messageHash] = true;
-
-    if (_from.code.length > 0) {
-      // @todo call finalizeDropMessage of `_from`
-    } else {
-      // just do simple ether refund
-      payable(_from).transfer(_value + _fee);
-    }
-
-    emit MessageDropped(_messageHash);
+    // @todo
   }
 
   /**************************************** Restricted Functions ****************************************/

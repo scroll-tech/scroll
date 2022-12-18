@@ -29,7 +29,7 @@ contract MockL1ScrollMessenger is L1ScrollMessenger {
     require(!isMessageExecuted[_msghash], "Message successfully executed");
 
     (, , , , bytes32 _messageRoot) = ZKRollup(rollup).blocks(_proof.blockHash);
-    require(ZkTrieVerifier.verifyMerkleProof(_messageRoot, _msghash, _nonce, _proof.merkleProof), "invalid proof");
+    require(ZkTrieVerifier.verifyMerkleProof(_messageRoot, _msghash, _nonce, _proof.messageRootProof), "invalid proof");
 
     // @note This usually will never happen, just in case.
     require(_from != xDomainMessageSender, "invalid message sender");

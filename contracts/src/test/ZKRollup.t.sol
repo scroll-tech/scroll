@@ -18,7 +18,6 @@ contract ZKRollupTest is DSTestPlus {
     assertEq(address(this), rollup.owner());
     assertEq(rollup.layer2ChainId(), 233);
     assertEq(rollup.operator(), address(0));
-    assertEq(rollup.messenger(), address(0));
 
     hevm.expectRevert("Initializable: contract is already initialized");
     rollup.initialize(555);
@@ -42,36 +41,12 @@ contract ZKRollupTest is DSTestPlus {
     rollup.updateOperator(_operator);
   }
 
-  function testUpdateMessenger(address _messenger) public {
-    if (_messenger == address(0)) return;
-
-    // set by non-owner, should revert
-    hevm.startPrank(address(1));
-    hevm.expectRevert("Ownable: caller is not the owner");
-    rollup.updateMessenger(_messenger);
-    hevm.stopPrank();
-
-    // change to random messenger
-    rollup.updateMessenger(_messenger);
-    assertEq(rollup.messenger(), _messenger);
-
-    // set to same messenger, should revert
-    hevm.expectRevert("change to same messenger");
-    rollup.updateMessenger(_messenger);
-  }
-
   function testImportGenesisBlock(IZKRollup.Layer2BlockHeader memory _genesis) public {
     if (_genesis.blockHash == bytes32(0)) {
       _genesis.blockHash = bytes32(uint256(1));
     }
     _genesis.parentHash = bytes32(0);
     _genesis.blockHeight = 0;
-
-    // set by non-owner, should revert
-    hevm.startPrank(address(1));
-    hevm.expectRevert("Ownable: caller is not the owner");
-    rollup.importGenesisBlock(_genesis);
-    hevm.stopPrank();
 
     // not genesis block, should revert
     _genesis.blockHeight = 1;
