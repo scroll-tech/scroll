@@ -104,7 +104,7 @@ pipeline {
     }
     post {
         success {
-            publishCoverage adapters: [coberturaAdapter(path: 'cobertura.xml', thresholds: [[thresholdTarget: 'Aggregated Report', unhealthyThreshold: 50.0, unstableThreshold: 80.0]])], checksName: '', sourceFileResolver: sourceFiles('NEVER_STORE')
+            publishCoverage adapters: [coberturaReportAdapter(path: 'cobertura.xml', thresholds: [[thresholdTarget: 'Aggregated Report', unhealthyThreshold: 50.0, unstableThreshold: 80.0]])], checksName: '', sourceFileResolver: sourceFiles('NEVER_STORE')
         }
         always { 
             cleanWs() 
