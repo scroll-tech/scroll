@@ -103,10 +103,8 @@ pipeline {
         }
     }
     post {
-        success {
-            publishCoverage adapters: [coberturaReportAdapter(path: 'cobertura.xml', thresholds: [[thresholdTarget: 'Aggregated Report', unhealthyThreshold: 50.0, unstableThreshold: 80.0]])], checksName: '', sourceFileResolver: sourceFiles('NEVER_STORE')
-        }
-        always { 
+        always {
+            publishCoverage adapters: [coberturaReportAdapter(path: 'cobertura.xml', thresholds: [[thresholdTarget: 'Aggregated Report', unhealthyThreshold: 50.0, unstableThreshold: 80.0]])], checksName: '', sourceFileResolver: sourceFiles('NEVER_STORE') 
             cleanWs() 
             slackSend(message: "${JOB_BASE_NAME} ${GIT_COMMIT} #${BUILD_NUMBER} deploy ${currentBuild.result}")
         }
