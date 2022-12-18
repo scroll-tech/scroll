@@ -79,22 +79,45 @@ pipeline {
                     changeset "database/**"
                 }
             }
-            steps {
-               catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
-                    sh '''
-                        go test -v -race -coverprofile=coverage.txt -covermode=atomic -p 1 scroll-tech/database/...
-                        go test -v -race -coverprofile=coverage.txt -covermode=atomic -p 1 scroll-tech/bridge/...
-                        go test -v -race -coverprofile=coverage.txt -covermode=atomic -p 1 scroll-tech/common/...
-                        go test -v -race -coverprofile=coverage.txt -covermode=atomic -p 1 scroll-tech/coordinator/...
-                        cd ..
-                    '''
-                    script {
-                        for (i in ['bridge', 'coordinator', 'database']) {
-                            sh "cd $i && go test -v -race -coverprofile=coverage.txt -covermode=atomic \$(go list ./... | grep -v 'database\\|l2\\|l1\\|common\\|coordinator')"
+            // catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
+                parallel{
+                    stage('Test bridge package') {
+                        steps {
+                            sh 'go test -v -race -coverprofile=coverage.txt -covermode=atomic -p 1 scroll-tech/bridge/...'
                         }
                     }
-               }
-            }
+                    stage('Test common package') {
+                        steps {
+                            sh 'go test -v -race -coverprofile=coverage.txt -covermode=atomic -p 1 scroll-tech/common/...'
+                        }
+                    }
+                    stage('Test coordinator package') {
+                        steps {
+                            sh 'go test -v -race -coverprofile=coverage.txt -covermode=atomic -p 1 scroll-tech/coordinator/...'
+                        }
+                    }
+                    stage('Test database package') {
+                        steps {
+                            sh 'go test -v -race -coverprofile=coverage.txt -covermode=atomic -p 1 scroll-tech/database/...'
+                        }
+                    }
+                    stage('Race test bridge package') {
+                        steps {
+                            sh "cd bridge && go test -v -race -coverprofile=coverage.txt -covermode=atomic \$(go list ./... | grep -v 'database\\|common\\|l1\\|l2\\|coordinator')"
+                        }
+                    }
+                    stage('Race test coordinator package') {
+                        steps {
+                            sh "cd coordinator && go test -v -race -coverprofile=coverage.txt -covermode=atomic \$(go list ./... | grep -v 'database\\|common\\|l1\\|l2\\|coordinator')"
+                        }
+                    }
+                    stage('Race test database package') {
+                        steps {
+                            sh "cd database && go test -v -race -coverprofile=coverage.txt -covermode=atomic \$(go list ./... | grep -v 'database\\|common\\|l1\\|l2\\|coordinator')"
+                        }
+                    }
+                }
+           // }
         }
     }
     post { 
