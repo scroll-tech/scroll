@@ -102,7 +102,8 @@ pipeline {
             }
         }
     }
-    post { 
+    post {
+        publishCoverage adapters: [coberturaAdapter('/var/lib/jenkins/workspace/scroll/cobertura.xml')]
         always { 
             cleanWs() 
             slackSend(message: "${JOB_BASE_NAME} ${GIT_COMMIT} #${BUILD_NUMBER} deploy ${currentBuild.result}")
