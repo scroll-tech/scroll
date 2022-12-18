@@ -28,7 +28,6 @@ func main() {
 	app.Version = version.Version
 	app.Flags = append(app.Flags, utils.CommonFlags...)
 	app.Flags = append(app.Flags, apiFlags...)
-	app.Flags = append(app.Flags, &verifierMockFlag)
 
 	app.Before = func(ctx *cli.Context) error {
 		return utils.LogSetup(ctx)
@@ -41,12 +40,6 @@ func main() {
 	}
 }
 
-func applyConfig(ctx *cli.Context, cfg *config.Config) {
-	if ctx.IsSet(verifierMockFlag.Name) {
-		cfg.RollerManagerConfig.Verifier = &config.VerifierConfig{MockMode: ctx.Bool(verifierMockFlag.Name)}
-	}
-}
-
 func action(ctx *cli.Context) error {
 	// Load config file.
 	cfgFile := ctx.String(utils.ConfigFileFlag.Name)
@@ -54,7 +47,6 @@ func action(ctx *cli.Context) error {
 	if err != nil {
 		log.Crit("failed to load config file", "config file", cfgFile, "error", err)
 	}
-	applyConfig(ctx, cfg)
 
 	// init db connection
 	var ormFactory database.OrmFactory
