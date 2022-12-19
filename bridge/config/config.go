@@ -5,8 +5,6 @@ import (
 	"os"
 	"path/filepath"
 
-	"scroll-tech/common/utils"
-
 	"scroll-tech/database"
 )
 
@@ -29,10 +27,6 @@ func NewConfig(file string) (*Config, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	// cover value by env fields
-	cfg.DBConfig.DSN = utils.GetEnvWithDefault("DB_DSN", cfg.DBConfig.DSN)
-	cfg.DBConfig.DriverName = utils.GetEnvWithDefault("DB_DRIVER", cfg.DBConfig.DriverName)
 
 	return cfg, nil
 }
