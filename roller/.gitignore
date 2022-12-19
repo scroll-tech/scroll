@@ -6,8 +6,7 @@ build/bin/
 # ignore db file
 bbolt_db
 
-# ignore cgo in macOS
-core/prover/lib
+prover/lib
 
 params/
 seed
