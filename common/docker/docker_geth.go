@@ -12,6 +12,8 @@ import (
 	"time"
 
 	"github.com/docker/docker/api/types"
+
+	"scroll-tech/common/utils"
 )
 
 // ImgGeth the geth image manager include l1geth and l2geth.
@@ -67,7 +69,7 @@ type L2Contracts struct {
 
 // NewImgGeth return geth img instance.
 func NewImgGeth(t *testing.T, image, volume, ipc string, hPort, wPort int) ImgInstance {
-	return &ImgGeth{
+	img := &ImgGeth{
 		image:       image,
 		name:        fmt.Sprintf("%s-%d", image, time.Now().Nanosecond()),
 		volume:      volume,
@@ -77,6 +79,8 @@ func NewImgGeth(t *testing.T, image, volume, ipc string, hPort, wPort int) ImgIn
 		Cmd:         NewCmd(t),
 		addressFile: nil,
 	}
+	img.Cmd = NewCmd(t, img.name, img.prepare()...)
+	return img
 }
 
 // Start run image and check if it is running healthily.
@@ -85,7 +89,7 @@ func (i *ImgGeth) Start() error {
 	if id != "" {
 		return fmt.Errorf("container already exist, name: %s", i.name)
 	}
-	i.Cmd.RunCmd(i.prepare(), true)
+	i.Cmd.RunCmd(true)
 	i.running = i.isOk()
 	if !i.running {
 		_ = i.Stop()
@@ -126,9 +130,12 @@ func (i *ImgGeth) isOk() bool {
 
 	select {
 	case <-okCh:
-		i.id = GetContainerID(i.name)
+		utils.TryTimes(3, func() bool {
+			i.id = GetContainerID(i.name)
+			return i.id != ""
+		})
 		return i.id != ""
-	case <-time.NewTimer(time.Second * 10).C:
+	case <-time.After(time.Second * 10):
 		return false
 	}
 }

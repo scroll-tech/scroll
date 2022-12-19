@@ -1,4 +1,4 @@
-package core
+package roller
 
 import (
 	"context"
@@ -18,10 +18,11 @@ import (
 	"scroll-tech/common/message"
 	"scroll-tech/common/utils"
 	"scroll-tech/common/version"
+
 	"scroll-tech/coordinator/client"
 
 	"scroll-tech/roller/config"
-	"scroll-tech/roller/core/prover"
+	"scroll-tech/roller/prover"
 	"scroll-tech/roller/store"
 )
 

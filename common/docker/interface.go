@@ -37,7 +37,7 @@ func GetContainerID(name string) string {
 		Filters: filter,
 	})
 	if len(lst) > 0 {
-		return lst[0].Names[0]
+		return lst[0].ID
 	}
 	return ""
 }
