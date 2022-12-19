@@ -6,6 +6,7 @@ import (
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
 	"github.com/pressly/goose/v3"
+	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 
 	"scroll-tech/common/docker"
@@ -22,11 +23,13 @@ func initEnv(t *testing.T) error {
 	// Start db container.
 	dbImg = docker.NewTestDBDocker(t, "postgres")
 
+	viper.Set("driver_name", "postgres")
+	viper.Set("dsn", dbImg.Endpoint())
+	viper.Set("max_open_num", 200)
+	viper.Set("max_idle_num", 20)
+
 	// Create db orm handler.
-	factory, err := database.NewOrmFactory(&database.DBConfig{
-		DriverName: "postgres",
-		DSN:        dbImg.Endpoint(),
-	})
+	factory, err := database.NewOrmFactory(viper.GetViper())
 	if err != nil {
 		return err
 	}

@@ -12,6 +12,7 @@ import (
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/ethclient"
+	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 
 	"scroll-tech/bridge/config"
@@ -26,19 +27,20 @@ import (
 
 func testCreateNewWatcherAndStop(t *testing.T) {
 	// Create db handler and reset db.
-	l2db, err := database.NewOrmFactory(cfg.DBConfig)
+	l2db, err := database.NewOrmFactory(viper.Sub("db_config"))
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(l2db.GetDB().DB))
 	defer l2db.Close()
 
-	l2cfg := cfg.L2Config
-	rc := l2.NewL2WatcherClient(context.Background(), l2Cli, l2cfg.Confirmations, l2cfg.BatchProposerConfig, l2cfg.L2MessengerAddress, l2db)
+	rc := l2.NewL2WatcherClient(context.Background(), l2Cli, l2db)
 	rc.Start()
 	defer rc.Stop()
 
-	l1cfg := cfg.L1Config
-	l1cfg.RelayerConfig.SenderConfig.Confirmations = 0
-	newSender, err := sender.NewSender(context.Background(), l1cfg.RelayerConfig.SenderConfig, l1cfg.RelayerConfig.MessageSenderPrivateKeys)
+	messageSenderPrivateKeys, err := config.UnmarshalPrivateKeys(viper.GetStringSlice("l2_config.relayer_config.message_sender_private_keys"))
+	assert.NoError(t, err)
+	senderCfg := viper.Sub("l2_config.relayer_config.sender_config")
+	senderCfg.Set("confirmations", 0)
+	newSender, err := sender.NewSender(context.Background(), senderCfg, messageSenderPrivateKeys)
 	assert.NoError(t, err)
 
 	// Create several transactions and commit to block
@@ -57,7 +59,7 @@ func testCreateNewWatcherAndStop(t *testing.T) {
 
 func testMonitorBridgeContract(t *testing.T) {
 	// Create db handler and reset db.
-	db, err := database.NewOrmFactory(cfg.DBConfig)
+	db, err := database.NewOrmFactory(viper.Sub("db_config"))
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(db.GetDB().DB))
 	defer db.Close()
@@ -65,7 +67,9 @@ func testMonitorBridgeContract(t *testing.T) {
 	previousHeight, err := l2Cli.BlockNumber(context.Background())
 	assert.NoError(t, err)
 
-	auth := prepareAuth(t, l2Cli, cfg.L2Config.RelayerConfig.MessageSenderPrivateKeys[0])
+	messageSenderPrivateKeys, err := config.UnmarshalPrivateKeys(viper.GetStringSlice("l2_config.relayer_config.message_sender_private_keys"))
+	assert.NoError(t, err)
+	auth := prepareAuth(t, l2Cli, messageSenderPrivateKeys[0])
 
 	// deploy mock bridge
 	_, tx, instance, err := mock_bridge.DeployMockBridge(auth, l2Cli)
@@ -73,7 +77,9 @@ func testMonitorBridgeContract(t *testing.T) {
 	address, err := bind.WaitDeployed(context.Background(), l2Cli, tx)
 	assert.NoError(t, err)
 
-	rc := prepareRelayerClient(l2Cli, cfg.L2Config.BatchProposerConfig, db, address)
+	// TODO: maybe wrong, toString
+	viper.Set("l2_config.messenger_address", address)
+	rc := prepareRelayerClient(l2Cli, db)
 	rc.Start()
 	defer rc.Stop()
 
@@ -117,7 +123,7 @@ func testMonitorBridgeContract(t *testing.T) {
 
 func testFetchMultipleSentMessageInOneBlock(t *testing.T) {
 	// Create db handler and reset db.
-	db, err := database.NewOrmFactory(cfg.DBConfig)
+	db, err := database.NewOrmFactory(viper.Sub("db_config"))
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(db.GetDB().DB))
 	defer db.Close()
@@ -125,14 +131,18 @@ func testFetchMultipleSentMessageInOneBlock(t *testing.T) {
 	previousHeight, err := l2Cli.BlockNumber(context.Background()) // shallow the global previousHeight
 	assert.NoError(t, err)
 
-	auth := prepareAuth(t, l2Cli, cfg.L2Config.RelayerConfig.MessageSenderPrivateKeys[0])
+	messageSenderPrivateKeys, err := config.UnmarshalPrivateKeys(viper.GetStringSlice("l2_config.relayer_config.message_sender_private_keys"))
+	assert.NoError(t, err)
+	auth := prepareAuth(t, l2Cli, messageSenderPrivateKeys[0])
 
 	_, trx, instance, err := mock_bridge.DeployMockBridge(auth, l2Cli)
 	assert.NoError(t, err)
 	address, err := bind.WaitDeployed(context.Background(), l2Cli, trx)
 	assert.NoError(t, err)
 
-	rc := prepareRelayerClient(l2Cli, cfg.L2Config.BatchProposerConfig, db, address)
+	// TODO: maybe wrong, toString
+	viper.Set("l2_config.messenger_address", address)
+	rc := prepareRelayerClient(l2Cli, db)
 	rc.Start()
 	defer rc.Stop()
 
@@ -183,8 +193,8 @@ func testFetchMultipleSentMessageInOneBlock(t *testing.T) {
 	assert.Equal(t, 5, len(msgs))
 }
 
-func prepareRelayerClient(l2Cli *ethclient.Client, bpCfg *config.BatchProposerConfig, db database.OrmFactory, contractAddr common.Address) *l2.WatcherClient {
-	return l2.NewL2WatcherClient(context.Background(), l2Cli, 0, bpCfg, contractAddr, db)
+func prepareRelayerClient(l2Cli *ethclient.Client, db database.OrmFactory) *l2.WatcherClient {
+	return l2.NewL2WatcherClient(context.Background(), l2Cli, db)
 }
 
 func prepareAuth(t *testing.T, l2Cli *ethclient.Client, privateKey *ecdsa.PrivateKey) *bind.TransactOpts {

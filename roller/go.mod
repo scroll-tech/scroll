@@ -4,7 +4,7 @@ go 1.18
 
 require (
 	github.com/scroll-tech/go-ethereum v1.10.14-0.20221213034543-78c1f57fcfea
-	github.com/stretchr/testify v1.8.0
+	github.com/stretchr/testify v1.8.1
 	github.com/urfave/cli/v2 v2.10.2
 	go.etcd.io/bbolt v1.3.6
 )

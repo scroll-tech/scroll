@@ -6,6 +6,7 @@ import (
 	"os/signal"
 
 	"github.com/scroll-tech/go-ethereum/log"
+	"github.com/spf13/viper"
 	"github.com/urfave/cli/v2"
 
 	"scroll-tech/database"
@@ -13,7 +14,6 @@ import (
 	"scroll-tech/common/utils"
 	"scroll-tech/common/version"
 
-	"scroll-tech/bridge/config"
 	"scroll-tech/bridge/l1"
 	"scroll-tech/bridge/l2"
 )
@@ -40,16 +40,16 @@ func main() {
 }
 
 func action(ctx *cli.Context) error {
-	// Load config file.
-	cfgFile := ctx.String(utils.ConfigFileFlag.Name)
-	cfg, err := config.NewConfig(cfgFile)
-	if err != nil {
-		log.Crit("failed to load config file", "config file", cfgFile, "error", err)
+	// Load config.
+	viper.SetConfigFile(utils.ConfigFileFlag.Name)
+	if err := viper.ReadInConfig(); err != nil {
+		return err
 	}
 
 	// init db connection
 	var ormFactory database.OrmFactory
-	if ormFactory, err = database.NewOrmFactory(cfg.DBConfig); err != nil {
+	var err error
+	if ormFactory, err = database.NewOrmFactory(viper.Sub("db_config")); err != nil {
 		log.Crit("failed to init db connection", "err", err)
 	}
 
@@ -58,11 +58,11 @@ func action(ctx *cli.Context) error {
 		l2Backend *l2.Backend
 	)
 	// @todo change nil to actual client after https://scroll-tech/bridge/pull/40 merged
-	l1Backend, err = l1.New(ctx.Context, cfg.L1Config, ormFactory)
+	l1Backend, err = l1.New(ctx.Context, ormFactory)
 	if err != nil {
 		return err
 	}
-	l2Backend, err = l2.New(ctx.Context, cfg.L2Config, ormFactory)
+	l2Backend, err = l2.New(ctx.Context, ormFactory)
 	if err != nil {
 		return err
 	}

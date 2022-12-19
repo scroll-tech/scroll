@@ -14,6 +14,7 @@ import (
 	cmap "github.com/orcaman/concurrent-map"
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/crypto"
+	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 
 	"scroll-tech/common/docker"
@@ -26,14 +27,11 @@ const TX_BATCH = 50
 
 var (
 	privateKeys []*ecdsa.PrivateKey
-	cfg         *config.Config
 	l2gethImg   docker.ImgInstance
 )
 
 func setupEnv(t *testing.T) {
-	var err error
-	cfg, err = config.NewConfig("../config.json")
-	assert.NoError(t, err)
+	assert.NoError(t, config.NewConfig("../config.json"))
 
 	priv, err := crypto.HexToECDSA("1212121212121212121212121212121212121212121212121212121212121212")
 	assert.NoError(t, err)
@@ -41,7 +39,7 @@ func setupEnv(t *testing.T) {
 	privateKeys = []*ecdsa.PrivateKey{priv}
 
 	l2gethImg = docker.NewTestL2Docker(t)
-	cfg.L1Config.RelayerConfig.SenderConfig.Endpoint = l2gethImg.Endpoint()
+	viper.Set("l1_config.relayer_config.sender_config.endpoint", l2gethImg.Endpoint())
 }
 
 func TestSender(t *testing.T) {
@@ -67,8 +65,8 @@ func testBatchSender(t *testing.T, batchSize int) {
 		privateKeys = append(privateKeys, priv)
 	}
 
-	senderCfg := cfg.L1Config.RelayerConfig.SenderConfig
-	senderCfg.Confirmations = 0
+	senderCfg := viper.Sub("l1_config.relayer_config.sender_config")
+	senderCfg.Set("confirmations", 0)
 	newSender, err := sender.NewSender(context.Background(), senderCfg, privateKeys)
 	if err != nil {
 		t.Fatal(err)

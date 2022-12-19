@@ -12,6 +12,7 @@ import (
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
+	"github.com/spf13/viper"
 
 	"scroll-tech/database"
 	"scroll-tech/database/orm"
@@ -32,8 +33,8 @@ type Layer2Relayer struct {
 	ctx    context.Context
 	client *ethclient.Client
 
-	db  database.OrmFactory
-	cfg *config.RelayerConfig
+	db database.OrmFactory
+	v  *viper.Viper
 
 	messageSender  *sender.Sender
 	messageCh      <-chan *sender.Confirmation
@@ -56,15 +57,27 @@ type Layer2Relayer struct {
 }
 
 // NewLayer2Relayer will return a new instance of Layer2RelayerClient
-func NewLayer2Relayer(ctx context.Context, ethClient *ethclient.Client, l2ConfirmNum int64, db database.OrmFactory, cfg *config.RelayerConfig) (*Layer2Relayer, error) {
+func NewLayer2Relayer(ctx context.Context, ethClient *ethclient.Client, db database.OrmFactory, v *viper.Viper) (*Layer2Relayer, error) {
 	// @todo use different sender for relayer, block commit and proof finalize
-	messageSender, err := sender.NewSender(ctx, cfg.SenderConfig, cfg.MessageSenderPrivateKeys)
+	senderConfig := v.Sub("sender_config")
+	messageSenderPrivateKeys, err := config.UnmarshalPrivateKeys(v.GetStringSlice("message_sender_private_keys"))
+	if err != nil {
+		log.Error("Failed to unmarshal private keys", "err", err)
+		return nil, err
+	}
+	rollupSenderPrivateKeys, err := config.UnmarshalPrivateKeys(v.GetStringSlice("rollup_sender_private_keys"))
+	if err != nil {
+		log.Error("Failed to unmarshal private keys", "err", err)
+		return nil, err
+	}
+
+	messageSender, err := sender.NewSender(ctx, senderConfig, messageSenderPrivateKeys)
 	if err != nil {
 		log.Error("Failed to create messenger sender", "err", err)
 		return nil, err
 	}
 
-	rollupSender, err := sender.NewSender(ctx, cfg.SenderConfig, cfg.RollupSenderPrivateKeys)
+	rollupSender, err := sender.NewSender(ctx, senderConfig, rollupSenderPrivateKeys)
 	if err != nil {
 		log.Error("Failed to create rollup sender", "err", err)
 		return nil, err
@@ -80,7 +93,7 @@ func NewLayer2Relayer(ctx context.Context, ethClient *ethclient.Client, l2Confir
 		rollupSender:           rollupSender,
 		rollupCh:               rollupSender.ConfirmChan(),
 		l1RollupABI:            bridge_abi.RollupMetaABI,
-		cfg:                    cfg,
+		v:                      v,
 		processingMessage:      map[string]string{},
 		processingCommitment:   map[string]string{},
 		processingFinalization: map[string]string{},
@@ -146,7 +159,8 @@ func (r *Layer2Relayer) processSavedEvent(msg *orm.L2Message) error {
 		return err
 	}
 
-	hash, err := r.messageSender.SendTransaction(msg.MsgHash, &r.cfg.MessengerContractAddress, big.NewInt(0), data)
+	messengerContractAddress := common.HexToAddress(r.v.GetString("messenger_contract_address"))
+	hash, err := r.messageSender.SendTransaction(msg.MsgHash, &messengerContractAddress, big.NewInt(0), data)
 	if err != nil {
 		if !errors.Is(err, sender.ErrNoAvailableAccount) {
 			log.Error("Failed to send relayMessageWithProof tx to layer1 ", "msg.height", msg.Height, "msg.MsgHash", msg.MsgHash, "err", err)
@@ -240,7 +254,8 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 		return
 	}
 
-	hash, err := r.rollupSender.SendTransaction(id, &r.cfg.RollupContractAddress, big.NewInt(0), data)
+	rollupContractAddress := common.HexToAddress(viper.GetString("rollup_contract_address"))
+	hash, err := r.rollupSender.SendTransaction(id, &rollupContractAddress, big.NewInt(0), data)
 	if err != nil {
 		if !errors.Is(err, sender.ErrNoAvailableAccount) {
 			log.Error("Failed to send commitBatch tx to layer1 ", "id", id, "index", batch.Index, "err", err)
@@ -332,7 +347,8 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 			return
 		}
 
-		txHash, err := r.rollupSender.SendTransaction(id, &r.cfg.RollupContractAddress, big.NewInt(0), data)
+		rollupContractAddress := common.HexToAddress(viper.GetString("rollup_contract_address"))
+		txHash, err := r.rollupSender.SendTransaction(id, &rollupContractAddress, big.NewInt(0), data)
 		hash := &txHash
 		if err != nil {
 			if !errors.Is(err, sender.ErrNoAvailableAccount) {

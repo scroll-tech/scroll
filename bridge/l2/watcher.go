@@ -14,14 +14,13 @@ import (
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/event"
 	"github.com/scroll-tech/go-ethereum/log"
+	"github.com/spf13/viper"
 
 	bridge_abi "scroll-tech/bridge/abi"
 	"scroll-tech/bridge/utils"
 
 	"scroll-tech/database"
 	"scroll-tech/database/orm"
-
-	"scroll-tech/bridge/config"
 )
 
 type relayedMessage struct {
@@ -53,12 +52,15 @@ type WatcherClient struct {
 }
 
 // NewL2WatcherClient take a l2geth instance to generate a l2watcherclient instance
-func NewL2WatcherClient(ctx context.Context, client *ethclient.Client, confirmations uint64, bpCfg *config.BatchProposerConfig, messengerAddress common.Address, orm database.OrmFactory) *WatcherClient {
+func NewL2WatcherClient(ctx context.Context, client *ethclient.Client, orm database.OrmFactory) *WatcherClient {
 	savedHeight, err := orm.GetLayer2LatestWatchedHeight()
 	if err != nil {
 		log.Warn("fetch height from db failed", "err", err)
 		savedHeight = 0
 	}
+
+	confirmations := uint64(viper.GetInt64("l2_config.confirmations"))
+	messengerAddress := common.HexToAddress(viper.GetString("l2_config.messenger_address"))
 
 	return &WatcherClient{
 		ctx:                ctx,
@@ -70,7 +72,7 @@ func NewL2WatcherClient(ctx context.Context, client *ethclient.Client, confirmat
 		messengerABI:       bridge_abi.L2MessengerMetaABI,
 		stopCh:             make(chan struct{}),
 		stopped:            0,
-		batchProposer:      newBatchProposer(bpCfg, orm),
+		batchProposer:      newBatchProposer(orm),
 	}
 }
 

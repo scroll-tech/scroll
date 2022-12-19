@@ -3,6 +3,7 @@ package database
 import (
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq" //nolint:golint
+	"github.com/spf13/viper"
 
 	"scroll-tech/database/orm"
 )
@@ -29,15 +30,19 @@ type ormFactory struct {
 }
 
 // NewOrmFactory create an ormFactory factory include all ormFactory interface
-func NewOrmFactory(cfg *DBConfig) (OrmFactory, error) {
+func NewOrmFactory(v *viper.Viper) (OrmFactory, error) {
 	// Initialize sql/sqlx
-	db, err := sqlx.Open(cfg.DriverName, cfg.DSN)
+	driverName := v.GetString("driver_name")
+	dsn := v.GetString("dsn")
+	db, err := sqlx.Open(driverName, dsn)
 	if err != nil {
 		return nil, err
 	}
 
-	db.SetMaxIdleConns(cfg.MaxOpenNum)
-	db.SetMaxIdleConns(cfg.MaxIdleNum)
+	maxOpenNum := v.GetInt("max_open_num")
+	maxIdleNum := v.GetInt("max_idle_num")
+	db.SetMaxIdleConns(maxOpenNum)
+	db.SetMaxIdleConns(maxIdleNum)
 	if err = db.Ping(); err != nil {
 		return nil, err
 	}

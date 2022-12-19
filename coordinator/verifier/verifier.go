@@ -13,24 +13,24 @@ import (
 	"unsafe"
 
 	"github.com/scroll-tech/go-ethereum/log"
-
-	"scroll-tech/coordinator/config"
+	"github.com/spf13/viper"
 
 	"scroll-tech/common/message"
 )
 
 // Verifier represents a rust ffi to a halo2 verifier.
 type Verifier struct {
-	cfg *config.VerifierConfig
+	v *viper.Viper
 }
 
 // NewVerifier Sets up a rust ffi to call verify.
-func NewVerifier(cfg *config.VerifierConfig) (*Verifier, error) {
-	if cfg.MockMode {
-		return &Verifier{cfg: cfg}, nil
+func NewVerifier(v *viper.Viper) (*Verifier, error) {
+	mockMode := v.GetBool("mock_mode")
+	if mockMode {
+		return &Verifier{v: v}, nil
 	}
-	paramsPathStr := C.CString(cfg.ParamsPath)
-	aggVkPathStr := C.CString(cfg.AggVkPath)
+	paramsPathStr := C.CString(v.GetString("params_path"))
+	aggVkPathStr := C.CString(v.GetString("agg_vk_path"))
 	defer func() {
 		C.free(unsafe.Pointer(paramsPathStr))
 		C.free(unsafe.Pointer(aggVkPathStr))
@@ -38,12 +38,13 @@ func NewVerifier(cfg *config.VerifierConfig) (*Verifier, error) {
 
 	C.init_verifier(paramsPathStr, aggVkPathStr)
 
-	return &Verifier{cfg: cfg}, nil
+	return &Verifier{v: v}, nil
 }
 
 // VerifyProof Verify a ZkProof by marshaling it and sending it to the Halo2 Verifier.
 func (v *Verifier) VerifyProof(proof *message.AggProof) (bool, error) {
-	if v.cfg.MockMode {
+	mockMode := v.v.GetBool("mock_mode")
+	if mockMode {
 		log.Info("Verifier disabled, VerifyProof skipped")
 		return true, nil
 

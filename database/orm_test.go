@@ -10,6 +10,7 @@ import (
 	_ "github.com/lib/pq"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/scroll-tech/go-ethereum/core/types"
+	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 
 	"scroll-tech/common/docker"
@@ -78,7 +79,6 @@ var (
 	}
 	blockTrace *types.BlockTrace
 
-	dbConfig   *database.DBConfig
 	dbImg      docker.ImgInstance
 	ormBlock   orm.BlockTraceOrm
 	ormLayer1  orm.L1MessageOrm
@@ -89,12 +89,15 @@ var (
 
 func setupEnv(t *testing.T) error {
 	// Init db config and start db container.
-	dbConfig = &database.DBConfig{DriverName: "postgres"}
-	dbImg = docker.NewTestDBDocker(t, dbConfig.DriverName)
-	dbConfig.DSN = dbImg.Endpoint()
+	dbImg = docker.NewTestDBDocker(t, "postgres")
+
+	viper.Set("driver_name", "postgres")
+	viper.Set("dsn", dbImg.Endpoint())
+	viper.Set("max_open_num", 200)
+	viper.Set("max_idle_num", 20)
 
 	// Create db handler and reset db.
-	factory, err := database.NewOrmFactory(dbConfig)
+	factory, err := database.NewOrmFactory(viper.GetViper())
 	assert.NoError(t, err)
 	db := factory.GetDB()
 	assert.NoError(t, migrate.ResetDB(db.DB))
@@ -139,7 +142,7 @@ func TestOrmFactory(t *testing.T) {
 
 func testOrmBlockTraces(t *testing.T) {
 	// Create db handler and reset db.
-	factory, err := database.NewOrmFactory(dbConfig)
+	factory, err := database.NewOrmFactory(viper.GetViper())
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(factory.GetDB().DB))
 
@@ -180,7 +183,7 @@ func testOrmBlockTraces(t *testing.T) {
 
 func testOrmL1Message(t *testing.T) {
 	// Create db handler and reset db.
-	factory, err := database.NewOrmFactory(dbConfig)
+	factory, err := database.NewOrmFactory(viper.GetViper())
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(factory.GetDB().DB))
 
@@ -214,7 +217,7 @@ func testOrmL1Message(t *testing.T) {
 
 func testOrmL2Message(t *testing.T) {
 	// Create db handler and reset db.
-	factory, err := database.NewOrmFactory(dbConfig)
+	factory, err := database.NewOrmFactory(viper.GetViper())
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(factory.GetDB().DB))
 
@@ -250,7 +253,7 @@ func testOrmL2Message(t *testing.T) {
 // testOrmBlockBatch test rollup result table functions
 func testOrmBlockBatch(t *testing.T) {
 	// Create db handler and reset db.
-	factory, err := database.NewOrmFactory(dbConfig)
+	factory, err := database.NewOrmFactory(viper.GetViper())
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(factory.GetDB().DB))
 
@@ -322,7 +325,7 @@ func testOrmBlockBatch(t *testing.T) {
 // testOrmSessionInfo test rollup result table functions
 func testOrmSessionInfo(t *testing.T) {
 	// Create db handler and reset db.
-	factory, err := database.NewOrmFactory(dbConfig)
+	factory, err := database.NewOrmFactory(viper.GetViper())
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(factory.GetDB().DB))
 	dbTx, err := factory.Beginx()

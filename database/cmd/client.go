@@ -3,6 +3,7 @@ package main
 import (
 	"github.com/jmoiron/sqlx"
 	"github.com/scroll-tech/go-ethereum/log"
+	"github.com/spf13/viper"
 	"github.com/urfave/cli/v2"
 
 	"scroll-tech/common/utils"
@@ -12,16 +13,19 @@ import (
 )
 
 func initDB(file string) (*sqlx.DB, error) {
-	dbCfg, err := database.NewConfig(file)
+	viper.SetConfigFile(file)
+	if err := viper.ReadInConfig(); err != nil {
+		return nil, err
+	}
+	viper.SetDefault("max_open_num", 200)
+	viper.SetDefault("max_idle_num", 20)
+	factory, err := database.NewOrmFactory(viper.GetViper())
 	if err != nil {
 		return nil, err
 	}
-	factory, err := database.NewOrmFactory(dbCfg)
-	if err != nil {
-		return nil, err
-	}
-	log.Debug("Got db config from env", "driver name", dbCfg.DriverName, "dsn", dbCfg.DSN)
-
+	driverName := viper.GetString("driver_name")
+	dsn := viper.GetString("dsn")
+	log.Debug("Got db config from env", "driver name", driverName, "dsn", dsn)
 	return factory.GetDB(), nil
 }
 

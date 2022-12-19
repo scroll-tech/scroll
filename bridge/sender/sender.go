@@ -19,6 +19,7 @@ import (
 	"github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
+	"github.com/spf13/viper"
 
 	"scroll-tech/bridge/config"
 )
@@ -38,16 +39,6 @@ var (
 	// ErrNoAvailableAccount indicates no available account error in the account pool.
 	ErrNoAvailableAccount = errors.New("sender has no available account to send transaction")
 )
-
-// DefaultSenderConfig The default config
-var DefaultSenderConfig = config.SenderConfig{
-	Endpoint:            "",
-	EscalateBlocks:      3,
-	EscalateMultipleNum: 11,
-	EscalateMultipleDen: 10,
-	MaxGasPrice:         1000_000_000_000, // this is 1000 gwei
-	TxType:              AccessListTxType,
-}
 
 // Confirmation struct used to indicate transaction confirmation details
 type Confirmation struct {
@@ -76,10 +67,12 @@ type PendingTransaction struct {
 
 // Sender Transaction sender to send transaction to l1/l2 geth
 type Sender struct {
-	config  *config.SenderConfig
 	client  *ethclient.Client // The client to retrieve on chain data or send transaction.
 	chainID *big.Int          // The chain id of the endpoint
 	ctx     context.Context
+
+	// sender config
+	v *viper.Viper
 
 	// account fields.
 	auths *accountPool
@@ -94,11 +87,8 @@ type Sender struct {
 
 // NewSender returns a new instance of transaction sender
 // txConfirmationCh is used to notify confirmed transaction
-func NewSender(ctx context.Context, config *config.SenderConfig, privs []*ecdsa.PrivateKey) (*Sender, error) {
-	if config == nil {
-		config = &DefaultSenderConfig
-	}
-	client, err := ethclient.Dial(config.Endpoint)
+func NewSender(ctx context.Context, v *viper.Viper, privs []*ecdsa.PrivateKey) (*Sender, error) {
+	client, err := ethclient.Dial(v.GetString("endpoint"))
 	if err != nil {
 		return nil, err
 	}
@@ -109,7 +99,12 @@ func NewSender(ctx context.Context, config *config.SenderConfig, privs []*ecdsa.
 		return nil, err
 	}
 
-	auths, err := newAccountPool(ctx, config.MinBalance, client, privs)
+	minBalance, err := config.UnmarshalMinBalance(v.GetString("min_balance"))
+	if err != nil {
+		return nil, err
+	}
+
+	auths, err := newAccountPool(ctx, minBalance, client, privs)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create account pool, err: %v", err)
 	}
@@ -122,9 +117,9 @@ func NewSender(ctx context.Context, config *config.SenderConfig, privs []*ecdsa.
 
 	sender := &Sender{
 		ctx:           ctx,
-		config:        config,
 		client:        client,
 		chainID:       chainID,
+		v:             v,
 		auths:         auths,
 		confirmCh:     make(chan *Confirmation, 128),
 		blockNumber:   header.Number.Uint64(),
@@ -162,7 +157,8 @@ func (s *Sender) getFeeData(auth *bind.TransactOpts, target *common.Address, val
 	}
 	gasLimit = gasLimit * 15 / 10 // 50% extra gas to void out of gas error
 	// @todo change it when Scroll enable EIP1559
-	if s.config.TxType != DynamicFeeTxType {
+	txType := s.v.GetString("tx_type")
+	if txType != DynamicFeeTxType {
 		// estimate gas price
 		var gasPrice *big.Int
 		gasPrice, err = s.client.SuggestGasPrice(s.ctx)
@@ -244,7 +240,8 @@ func (s *Sender) createAndSendTx(auth *bind.TransactOpts, feeData *FeeData, targ
 	}
 
 	// lock here to avoit blocking when call `SuggestGasPrice`
-	switch s.config.TxType {
+	txType := s.v.GetString("tx_type")
+	switch txType {
 	case LegacyTxType:
 		// for ganache mock node
 		txData = &types.LegacyTx{
@@ -313,11 +310,12 @@ func (s *Sender) createAndSendTx(auth *bind.TransactOpts, feeData *FeeData, targ
 }
 
 func (s *Sender) resubmitTransaction(feeData *FeeData, auth *bind.TransactOpts, tx *types.Transaction) (*types.Transaction, error) {
-	escalateMultipleNum := new(big.Int).SetUint64(s.config.EscalateMultipleNum)
-	escalateMultipleDen := new(big.Int).SetUint64(s.config.EscalateMultipleDen)
-	maxGasPrice := new(big.Int).SetUint64(s.config.MaxGasPrice)
+	escalateMultipleNum := new(big.Int).SetUint64(uint64(s.v.GetInt("escalate_multiple_num")))
+	escalateMultipleDen := new(big.Int).SetUint64(uint64(s.v.GetInt("escalate_multiple_den")))
+	maxGasPrice := new(big.Int).SetUint64(uint64(s.v.GetInt("max_gas_price")))
 
-	switch s.config.TxType {
+	txType := s.v.GetString("tx_type")
+	switch txType {
 	case LegacyTxType, AccessListTxType: // `LegacyTxType`is for ganache mock node
 		gasPrice := escalateMultipleNum.Mul(escalateMultipleNum, big.NewInt(feeData.gasPrice.Int64()))
 		gasPrice = gasPrice.Div(gasPrice, escalateMultipleDen)
@@ -365,8 +363,10 @@ func (s *Sender) CheckPendingTransaction(header *types.Header) {
 
 		pending := value.(*PendingTransaction)
 		receipt, err := s.client.TransactionReceipt(s.ctx, pending.tx.Hash())
+		escalateBlocks := uint64(s.v.GetInt("escalate_blocks"))
 		if (err == nil) && (receipt != nil) {
-			if number >= receipt.BlockNumber.Uint64()+s.config.Confirmations {
+			confirmations := uint64(s.v.GetInt("confirmations"))
+			if number >= receipt.BlockNumber.Uint64()+confirmations {
 				s.pendingTxs.Delete(key)
 				// send confirm message
 				s.confirmCh <- &Confirmation{
@@ -375,7 +375,7 @@ func (s *Sender) CheckPendingTransaction(header *types.Header) {
 					TxHash:       pending.tx.Hash(),
 				}
 			}
-		} else if s.config.EscalateBlocks+pending.submitAt < number {
+		} else if escalateBlocks+pending.submitAt < number {
 			var tx *types.Transaction
 			tx, err := s.resubmitTransaction(pending.feeData, pending.signer, pending.tx)
 			if err != nil {
@@ -426,7 +426,8 @@ func (s *Sender) CheckPendingTransaction(header *types.Header) {
 
 // Loop is the main event loop
 func (s *Sender) loop(ctx context.Context) {
-	checkTick := time.NewTicker(time.Duration(s.config.CheckPendingTime) * time.Second)
+	checkPendingTime := uint64(s.v.GetInt("check_pending_time"))
+	checkTick := time.NewTicker(time.Duration(checkPendingTime) * time.Second)
 	defer checkTick.Stop()
 
 	checkBalanceTicker := time.NewTicker(time.Minute * 10)

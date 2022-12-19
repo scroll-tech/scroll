@@ -4,17 +4,13 @@ import (
 	"testing"
 
 	"github.com/scroll-tech/go-ethereum/ethclient"
+	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 
 	"scroll-tech/common/docker"
-
-	"scroll-tech/bridge/config"
 )
 
 var (
-	// config
-	cfg *config.Config
-
 	// docker consider handler.
 	l1gethImg docker.ImgInstance
 	l2gethImg docker.ImgInstance
@@ -26,25 +22,25 @@ var (
 
 func setupEnv(t *testing.T) (err error) {
 	// Load config.
-	cfg, err = config.NewConfig("../config.json")
-	assert.NoError(t, err)
+	viper.SetConfigFile("../config.json")
+	assert.NoError(t, viper.ReadInConfig())
 
 	// Create l1geth container.
 	l1gethImg = docker.NewTestL1Docker(t)
-	cfg.L2Config.RelayerConfig.SenderConfig.Endpoint = l1gethImg.Endpoint()
-	cfg.L1Config.Endpoint = l1gethImg.Endpoint()
+	viper.Set("l2_config.relayer_config.sender_config.endpoint", l1gethImg.Endpoint())
+	viper.Set("l1_config.endpoint", l1gethImg.Endpoint())
 
 	// Create l2geth container.
 	l2gethImg = docker.NewTestL2Docker(t)
-	cfg.L1Config.RelayerConfig.SenderConfig.Endpoint = l2gethImg.Endpoint()
-	cfg.L2Config.Endpoint = l2gethImg.Endpoint()
+	viper.Set("l1_config.relayer_config.sender_config.endpoint", l2gethImg.Endpoint())
+	viper.Set("l2_config.endpoint", l2gethImg.Endpoint())
 
 	// Create db container.
-	dbImg = docker.NewTestDBDocker(t, cfg.DBConfig.DriverName)
-	cfg.DBConfig.DSN = dbImg.Endpoint()
+	driverName := viper.GetString("db_config.driver_name")
+	dbImg = docker.NewTestDBDocker(t, driverName)
 
 	// Create l2geth client.
-	l2Cli, err = ethclient.Dial(cfg.L2Config.Endpoint)
+	l2Cli, err = ethclient.Dial(viper.GetString("l2_config.endpoint"))
 	assert.NoError(t, err)
 
 	return err

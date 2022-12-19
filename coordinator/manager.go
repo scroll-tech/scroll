@@ -16,13 +16,13 @@ import (
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/scroll-tech/go-ethereum/rpc"
+	"github.com/spf13/viper"
 
 	"scroll-tech/common/message"
 
 	"scroll-tech/database"
 	"scroll-tech/database/orm"
 
-	"scroll-tech/coordinator/config"
 	"scroll-tech/coordinator/verifier"
 )
 
@@ -51,9 +51,6 @@ type session struct {
 type Manager struct {
 	// The manager context.
 	ctx context.Context
-
-	// The roller manager configuration.
-	cfg *config.RollerManagerConfig
 
 	// The indicator whether the backend is running or not.
 	running int32
@@ -86,8 +83,8 @@ type Manager struct {
 
 // New returns a new instance of Manager. The instance will be not fully prepared,
 // and still needs to be finalized and ran by calling `manager.Start`.
-func New(ctx context.Context, cfg *config.RollerManagerConfig, orm database.OrmFactory, client *ethclient.Client) (*Manager, error) {
-	v, err := verifier.NewVerifier(cfg.Verifier)
+func New(ctx context.Context, v *viper.Viper, orm database.OrmFactory, client *ethclient.Client) (*Manager, error) {
+	verifier, err := verifier.NewVerifier(viper.Sub("roller_manager_config.verifier"))
 	if err != nil {
 		return nil, err
 	}
@@ -95,14 +92,13 @@ func New(ctx context.Context, cfg *config.RollerManagerConfig, orm database.OrmF
 	log.Info("Start coordinator successfully.")
 	return &Manager{
 		ctx:                ctx,
-		cfg:                cfg,
 		rollerPool:         cmap.New(),
 		sessions:           make(map[string]*session),
 		failedSessionInfos: make(map[string]*SessionInfo),
-		verifier:           v,
+		verifier:           verifier,
 		orm:                orm,
 		Client:             client,
-		tokenCache:         cache.New(time.Duration(cfg.TokenTimeToLive)*time.Second, 1*time.Hour),
+		tokenCache:         cache.New(time.Duration(viper.GetInt("roller_manager_config.token_time_to_live"))*time.Second, 1*time.Hour),
 	}, nil
 }
 
@@ -152,7 +148,7 @@ func (m *Manager) Loop() {
 					map[string]interface{}{"proving_status": orm.ProvingTaskUnassigned},
 					fmt.Sprintf(
 						"ORDER BY index %s LIMIT %d;",
-						m.cfg.OrderSession,
+						viper.GetString("roller_manager_config.order_session"),
 						m.GetNumberOfIdleRollers(),
 					),
 				); err != nil {
@@ -309,7 +305,7 @@ func (m *Manager) handleZkProof(pk string, msg *message.ProofDetail) error {
 
 // CollectProofs collects proofs corresponding to a proof generation session.
 func (m *Manager) CollectProofs(id string, sess *session) {
-	timer := time.NewTimer(time.Duration(m.cfg.CollectionTime) * time.Minute)
+	timer := time.NewTimer(time.Duration(viper.GetInt("roller_manager_config.collection_time")) * time.Minute)
 
 	for {
 		select {

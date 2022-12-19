@@ -10,20 +10,18 @@ import (
 
 	"scroll-tech/common/message"
 
-	"scroll-tech/coordinator/config"
 	"scroll-tech/coordinator/verifier"
 
+	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestFFI(t *testing.T) {
 	as := assert.New(t)
-	cfg := &config.VerifierConfig{
-		MockMode:   false,
-		ParamsPath: "../assets/test_params",
-		AggVkPath:  "../assets/agg_vk",
-	}
-	v, err := verifier.NewVerifier(cfg)
+	viper.Set("mock_mode", false)
+	viper.Set("params_path", "../assets/test_params")
+	viper.Set("agg_vk_path", "../assets/agg_vk")
+	v, err := verifier.NewVerifier(viper.Sub("roller_manager_config.verifier"))
 	as.NoError(err)
 
 	f, err := os.Open("../assets/agg_proof")

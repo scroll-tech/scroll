@@ -11,6 +11,7 @@ import (
 	"github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
+	"github.com/spf13/viper"
 
 	"scroll-tech/database"
 	"scroll-tech/database/orm"
@@ -53,17 +54,21 @@ type Watcher struct {
 
 // NewWatcher returns a new instance of Watcher. The instance will be not fully prepared,
 // and still needs to be finalized and ran by calling `watcher.Start`.
-func NewWatcher(ctx context.Context, client *ethclient.Client, startHeight uint64, confirmations uint64, messengerAddress common.Address, rollupAddress common.Address, db database.OrmFactory) *Watcher {
+func NewWatcher(ctx context.Context, client *ethclient.Client, db database.OrmFactory) *Watcher {
 	savedHeight, err := db.GetLayer1LatestWatchedHeight()
 	if err != nil {
 		log.Warn("Failed to fetch height from db", "err", err)
 		savedHeight = 0
 	}
-	if savedHeight < int64(startHeight) {
-		savedHeight = int64(startHeight)
+	startHeight := viper.GetInt64("l1_config.start_height")
+	if savedHeight < startHeight {
+		savedHeight = startHeight
 	}
 
 	stop := make(chan bool)
+	confirmations := uint64(viper.GetInt64("l1_config.confirmations"))
+	messengerAddress := common.HexToAddress(viper.GetString("l1_config.l1_messenger_address"))
+	rollupAddress := common.HexToAddress(viper.GetString("l1_config.relayer_config.rollup_contract_address"))
 
 	return &Watcher{
 		ctx:                ctx,

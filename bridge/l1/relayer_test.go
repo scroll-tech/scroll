@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/scroll-tech/go-ethereum/ethclient"
+	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 
 	"scroll-tech/database/migrate"
@@ -19,27 +20,28 @@ import (
 
 // TestCreateNewRelayer test create new relayer instance and stop
 func TestCreateNewL1Relayer(t *testing.T) {
-	cfg, err := config.NewConfig("../config.json")
-	assert.NoError(t, err)
+	assert.NoError(t, config.NewConfig("../config.json"))
 	l1docker := docker.NewTestL1Docker(t)
 	defer l1docker.Stop()
-	cfg.L2Config.RelayerConfig.SenderConfig.Endpoint = l1docker.Endpoint()
-	cfg.L1Config.Endpoint = l1docker.Endpoint()
+	viper.Set("l2_config.relayer_config.sender_config.endpoint", l1docker.Endpoint())
+	viper.Set("l1_config.endpoint", l1docker.Endpoint())
 
 	client, err := ethclient.Dial(l1docker.Endpoint())
 	assert.NoError(t, err)
 
-	dbImg := docker.NewTestDBDocker(t, cfg.DBConfig.DriverName)
+	driverName := viper.GetString("db_config.driver_name")
+	dbImg := docker.NewTestDBDocker(t, driverName)
 	defer dbImg.Stop()
-	cfg.DBConfig.DSN = dbImg.Endpoint()
+	viper.Set("db_config.driver_name", driverName)
+	viper.Set("db_config.dsn", dbImg.Endpoint())
 
 	// Create db handler and reset db.
-	db, err := database.NewOrmFactory(cfg.DBConfig)
+	db, err := database.NewOrmFactory(viper.Sub("db_config"))
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(db.GetDB().DB))
 	defer db.Close()
 
-	relayer, err := l1.NewLayer1Relayer(context.Background(), client, 1, db, cfg.L2Config.RelayerConfig)
+	relayer, err := l1.NewLayer1Relayer(context.Background(), client, db, viper.Sub("relayer_config"))
 	assert.NoError(t, err)
 	defer relayer.Stop()
 

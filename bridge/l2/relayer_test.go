@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/scroll-tech/go-ethereum/core/types"
+	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 
 	"scroll-tech/bridge/l2"
@@ -37,12 +38,12 @@ var (
 
 func testCreateNewRelayer(t *testing.T) {
 	// Create db handler and reset db.
-	db, err := database.NewOrmFactory(cfg.DBConfig)
+	db, err := database.NewOrmFactory(viper.Sub("db_config"))
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(db.GetDB().DB))
 	defer db.Close()
 
-	relayer, err := l2.NewLayer2Relayer(context.Background(), l2Cli, int64(cfg.L2Config.Confirmations), db, cfg.L2Config.RelayerConfig)
+	relayer, err := l2.NewLayer2Relayer(context.Background(), l2Cli, db, viper.Sub("l2_config.relayer_config"))
 	assert.NoError(t, err)
 	defer relayer.Stop()
 
@@ -51,13 +52,12 @@ func testCreateNewRelayer(t *testing.T) {
 
 func testL2RelayerProcessSaveEvents(t *testing.T) {
 	// Create db handler and reset db.
-	db, err := database.NewOrmFactory(cfg.DBConfig)
+	db, err := database.NewOrmFactory(viper.Sub("db_config"))
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(db.GetDB().DB))
 	defer db.Close()
 
-	l2Cfg := cfg.L2Config
-	relayer, err := l2.NewLayer2Relayer(context.Background(), l2Cli, int64(l2Cfg.Confirmations), db, l2Cfg.RelayerConfig)
+	relayer, err := l2.NewLayer2Relayer(context.Background(), l2Cli, db, viper.Sub("l2_config.relayer_config"))
 	assert.NoError(t, err)
 	defer relayer.Stop()
 
@@ -105,13 +105,12 @@ func testL2RelayerProcessSaveEvents(t *testing.T) {
 
 func testL2RelayerProcessPendingBatches(t *testing.T) {
 	// Create db handler and reset db.
-	db, err := database.NewOrmFactory(cfg.DBConfig)
+	db, err := database.NewOrmFactory(viper.Sub("db_config"))
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(db.GetDB().DB))
 	defer db.Close()
 
-	l2Cfg := cfg.L2Config
-	relayer, err := l2.NewLayer2Relayer(context.Background(), l2Cli, int64(l2Cfg.Confirmations), db, l2Cfg.RelayerConfig)
+	relayer, err := l2.NewLayer2Relayer(context.Background(), l2Cli, db, viper.Sub("l2_config.relayer_config"))
 	assert.NoError(t, err)
 	defer relayer.Stop()
 
@@ -162,13 +161,12 @@ func testL2RelayerProcessPendingBatches(t *testing.T) {
 
 func testL2RelayerProcessCommittedBatches(t *testing.T) {
 	// Create db handler and reset db.
-	db, err := database.NewOrmFactory(cfg.DBConfig)
+	db, err := database.NewOrmFactory(viper.Sub("db_config"))
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(db.GetDB().DB))
 	defer db.Close()
 
-	l2Cfg := cfg.L2Config
-	relayer, err := l2.NewLayer2Relayer(context.Background(), l2Cli, int64(l2Cfg.Confirmations), db, l2Cfg.RelayerConfig)
+	relayer, err := l2.NewLayer2Relayer(context.Background(), l2Cli, db, viper.Sub("l2_config.relayer_config"))
 	assert.NoError(t, err)
 	defer relayer.Stop()
 

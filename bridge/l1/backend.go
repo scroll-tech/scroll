@@ -4,37 +4,34 @@ import (
 	"context"
 
 	"github.com/scroll-tech/go-ethereum/ethclient"
+	"github.com/spf13/viper"
 
 	"scroll-tech/database"
-
-	"scroll-tech/bridge/config"
 )
 
 // Backend manage the resources and services of L1 backend.
 // The backend should monitor events in layer 1 and relay transactions to layer 2
 type Backend struct {
-	cfg     *config.L1Config
 	watcher *Watcher
 	relayer *Layer1Relayer
 	orm     database.OrmFactory
 }
 
 // New returns a new instance of Backend.
-func New(ctx context.Context, cfg *config.L1Config, orm database.OrmFactory) (*Backend, error) {
-	client, err := ethclient.Dial(cfg.Endpoint)
+func New(ctx context.Context, orm database.OrmFactory) (*Backend, error) {
+	client, err := ethclient.Dial(viper.GetString("db_config.endpoint"))
 	if err != nil {
 		return nil, err
 	}
 
-	relayer, err := NewLayer1Relayer(ctx, client, int64(cfg.Confirmations), orm, cfg.RelayerConfig)
+	relayer, err := NewLayer1Relayer(ctx, client, orm, viper.Sub("relayer_config"))
 	if err != nil {
 		return nil, err
 	}
 
-	watcher := NewWatcher(ctx, client, cfg.StartHeight, cfg.Confirmations, cfg.L1MessengerAddress, cfg.RelayerConfig.RollupContractAddress, orm)
+	watcher := NewWatcher(ctx, client, orm)
 
 	return &Backend{
-		cfg:     cfg,
 		watcher: watcher,
 		relayer: relayer,
 		orm:     orm,

@@ -1,39 +1,38 @@
 package config_test
 
 import (
-	"encoding/json"
-	"fmt"
-	"os"
+	"math/big"
 	"testing"
-	"time"
 
+	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 
 	"scroll-tech/bridge/config"
 )
 
 func TestConfig(t *testing.T) {
-	cfg, err := config.NewConfig("../config.json")
-	assert.True(t, assert.NoError(t, err), "failed to load config")
+	assert.True(t, assert.NoError(t, config.NewConfig("../config.json")), "failed to load config")
 
-	assert.True(t, len(cfg.L2Config.BatchProposerConfig.SkippedOpcodes) > 0)
+	skippedOpcodes := viper.GetStringSlice("l2_config.batch_proposer_config.skipped_opcodes")
+	assert.True(t, len(skippedOpcodes) > 0)
 
-	assert.True(t, len(cfg.L1Config.RelayerConfig.MessageSenderPrivateKeys) > 0)
-	assert.True(t, len(cfg.L2Config.RelayerConfig.MessageSenderPrivateKeys) > 0)
-	assert.True(t, len(cfg.L2Config.RelayerConfig.RollupSenderPrivateKeys) > 0)
-
-	data, err := json.Marshal(cfg)
+	l1MessageSenderPrivateKeys, err := config.UnmarshalPrivateKeys(viper.GetStringSlice("l1_config.relayer_config.message_sender_private_keys"))
 	assert.NoError(t, err)
+	assert.True(t, len(l1MessageSenderPrivateKeys) > 0)
 
-	tmpJosn := fmt.Sprintf("/tmp/%d_bridge_config.json", time.Now().Nanosecond())
-	defer func() { _ = os.Remove(tmpJosn) }()
-
-	assert.NoError(t, os.WriteFile(tmpJosn, data, 0644))
-
-	cfg2, err := config.NewConfig(tmpJosn)
+	l2MessageSenderPrivateKeys, err := config.UnmarshalPrivateKeys(viper.GetStringSlice("l2_config.relayer_config.message_sender_private_keys"))
 	assert.NoError(t, err)
+	assert.True(t, len(l2MessageSenderPrivateKeys) > 0)
 
-	assert.Equal(t, cfg.L1Config, cfg2.L1Config)
-	assert.Equal(t, cfg.L2Config, cfg2.L2Config)
-	assert.Equal(t, cfg.DBConfig, cfg2.DBConfig)
+	rollupSenderPrivateKeys, err := config.UnmarshalPrivateKeys(viper.GetStringSlice("l2_config.relayer_config.rollup_sender_private_keys"))
+	assert.NoError(t, err)
+	assert.True(t, len(rollupSenderPrivateKeys) > 0)
+
+	l1MinBalance, err := config.UnmarshalMinBalance(viper.GetString("l1_config.relayer_config.sender_config.min_balance"))
+	assert.NoError(t, err)
+	assert.True(t, l1MinBalance.Cmp(big.NewInt(0)) > 0)
+
+	l2MinBalance, err := config.UnmarshalMinBalance(viper.GetString("l2_config.relayer_config.sender_config.min_balance"))
+	assert.NoError(t, err)
+	assert.True(t, l2MinBalance.Cmp(big.NewInt(0)) > 0)
 }

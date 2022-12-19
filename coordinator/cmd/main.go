@@ -7,6 +7,7 @@ import (
 
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
+	"github.com/spf13/viper"
 	"github.com/urfave/cli/v2"
 
 	"scroll-tech/common/utils"
@@ -41,27 +42,33 @@ func main() {
 }
 
 func action(ctx *cli.Context) error {
+	// Load config.
+	viper.SetConfigFile("../coordinator/config.json")
+	if err := viper.ReadInConfig(); err != nil {
+		return err
+	}
+
 	// Load config file.
 	cfgFile := ctx.String(utils.ConfigFileFlag.Name)
-	cfg, err := config.NewConfig(cfgFile)
+	err := config.NewConfig(cfgFile)
 	if err != nil {
 		log.Crit("failed to load config file", "config file", cfgFile, "error", err)
 	}
 
-	// init db connection
+	// Init db connection.
 	var ormFactory database.OrmFactory
-	if ormFactory, err = database.NewOrmFactory(cfg.DBConfig); err != nil {
+	if ormFactory, err = database.NewOrmFactory(viper.Sub("db_config")); err != nil {
 		log.Crit("failed to init db connection", "err", err)
 	}
 
-	// init l2geth connection
-	client, err := ethclient.Dial(cfg.L2Config.Endpoint)
+	// Init l2geth connection.
+	client, err := ethclient.Dial(viper.GetString("l2_config.endpoint"))
 	if err != nil {
 		log.Crit("failed to init l2geth connection", "err", err)
 	}
 
 	// Initialize all coordinator modules.
-	rollerManager, err := coordinator.New(ctx.Context, cfg.RollerManagerConfig, ormFactory, client)
+	rollerManager, err := coordinator.New(ctx.Context, viper.GetViper(), ormFactory, client)
 	if err != nil {
 		return err
 	}
