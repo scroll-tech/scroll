@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"strconv"
 	"strings"
@@ -30,6 +29,7 @@ type ImgGeth struct {
 
 	running bool
 	*Cmd
+	t *testing.T
 }
 
 // AddressFile stores l1/l2 contract address
@@ -76,10 +76,10 @@ func NewImgGeth(t *testing.T, image, volume, ipc string, hPort, wPort int) ImgIn
 		ipcPath:     ipc,
 		httpPort:    hPort,
 		wsPort:      wPort,
-		Cmd:         NewCmd(t),
 		addressFile: nil,
+		t:           t,
 	}
-	img.Cmd = NewCmd(t, img.name, img.prepare()...)
+	img.Cmd = NewCmd(img.t, img.name, img.prepare()...)
 	return img
 }
 
@@ -95,7 +95,7 @@ func (i *ImgGeth) Start() error {
 		_ = i.Stop()
 		return fmt.Errorf("failed to start image: %s", i.image)
 	}
-	i.addressFile = i.getDeployments()
+	i.addressFile = i.getDeployments(i.t)
 	return nil
 }
 
@@ -192,43 +192,45 @@ func (i *ImgGeth) GetAddressFile() *AddressFile {
 }
 
 // getDeployments returns pre_deployed contract address
-func (i *ImgGeth) getDeployments() *AddressFile {
+func (i *ImgGeth) getDeployments(t *testing.T) *AddressFile {
 	cmds := []string{"docker", "cp", i.name + ":/deployments/l2geth.json", "."}
+	i.Cmd = NewCmd(t, i.name, cmds...)
 
-	i.Cmd.RunCmd(cmds, false)
-	L2addressFile, err := ioutil.ReadFile("l2geth.json")
+	i.Cmd.RunCmd(false)
+	L2addressFile, err := os.ReadFile("l2geth.json")
 	if err != nil {
-		fmt.Println(err)
+		i.Fatal(err)
 		return nil
 	}
 	var l2data *L2Contracts
 	err = json.Unmarshal(L2addressFile, &l2data)
 	if err != nil {
-		fmt.Println(err)
+		i.Fatal(err)
 		l2data = nil
 	}
 	err = os.Remove("l2geth.json")
 	if err != nil {
-		fmt.Println(err)
+		i.Fatal(err)
 		return nil
 	}
 
 	cmds = []string{"docker", "cp", i.name + ":/deployments/l1geth.json", "."}
-	i.Cmd.RunCmd(cmds, false)
-	L1addressFile, err := ioutil.ReadFile("l1geth.json")
+	i.Cmd = NewCmd(t, i.name, cmds...)
+	i.Cmd.RunCmd(false)
+	L1addressFile, err := os.ReadFile("l1geth.json")
 	if err != nil {
-		fmt.Println(err)
+		i.Fatal(err)
 		return nil
 	}
 	var l1data *L1Contracts
 	err = json.Unmarshal(L1addressFile, &l1data)
 	if err != nil {
-		fmt.Println(err)
+		i.Fatal(err)
 		l1data = nil
 	}
 	err = os.Remove("l1geth.json")
 	if err != nil {
-		fmt.Println(err)
+		i.Fatal(err)
 		return nil
 	}
 
