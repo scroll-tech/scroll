@@ -95,9 +95,6 @@ pipeline {
                         }
                     }
                }
-                script {
-                    currentBuild.result = 'SUCCESS'
-                 }
                 step([$class: 'CompareCoverageAction', publishResultAs: 'statusCheck', scmVars: [GIT_URL: env.GIT_URL]])
             }
         }
