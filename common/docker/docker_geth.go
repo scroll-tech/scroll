@@ -9,6 +9,8 @@ import (
 	"time"
 
 	"github.com/docker/docker/api/types"
+
+	"scroll-tech/common/utils"
 )
 
 // ImgGeth the geth image manager include l1geth and l2geth.
@@ -28,7 +30,7 @@ type ImgGeth struct {
 
 // NewImgGeth return geth img instance.
 func NewImgGeth(t *testing.T, image, volume, ipc string, hPort, wPort int) ImgInstance {
-	imgGeth := &ImgGeth{
+	img := &ImgGeth{
 		image:    image,
 		name:     fmt.Sprintf("%s-%d", image, time.Now().Nanosecond()),
 		volume:   volume,
@@ -36,8 +38,8 @@ func NewImgGeth(t *testing.T, image, volume, ipc string, hPort, wPort int) ImgIn
 		httpPort: hPort,
 		wsPort:   wPort,
 	}
-	imgGeth.cmd = NewCmd(t, imgGeth.name, imgGeth.prepare()...)
-	return imgGeth
+	img.cmd = NewCmd(t, img.name, img.prepare()...)
+	return img
 }
 
 // Start run image and check if it is running healthily.
@@ -86,9 +88,12 @@ func (i *ImgGeth) isOk() bool {
 
 	select {
 	case <-okCh:
-		i.id = GetContainerID(i.name)
+		utils.TryTimes(3, func() bool {
+			i.id = GetContainerID(i.name)
+			return i.id != ""
+		})
 		return i.id != ""
-	case <-time.NewTimer(time.Second * 10).C:
+	case <-time.After(time.Second * 10):
 		return false
 	}
 }

@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"scroll-tech/roller/config"
-	"scroll-tech/roller/core/prover"
+	"scroll-tech/roller/prover"
 )
 
 const (

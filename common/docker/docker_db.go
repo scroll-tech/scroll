@@ -8,6 +8,8 @@ import (
 	"time"
 
 	"github.com/docker/docker/api/types"
+
+	"scroll-tech/common/utils"
 )
 
 // ImgDB the postgres image manager.
@@ -26,15 +28,15 @@ type ImgDB struct {
 
 // NewImgDB return postgres db img instance.
 func NewImgDB(t *testing.T, image, password, dbName string, port int) ImgInstance {
-	imgDB := &ImgDB{
+	img := &ImgDB{
 		image:    image,
 		name:     fmt.Sprintf("%s-%s_%d", image, dbName, port),
 		password: password,
 		dbName:   dbName,
 		port:     port,
 	}
-	imgDB.cmd = NewCmd(t, imgDB.name, imgDB.prepare()...)
-	return imgDB
+	img.cmd = NewCmd(t, img.name, img.prepare()...)
+	return img
 }
 
 // Start postgres db container.
@@ -60,14 +62,13 @@ func (i *ImgDB) Stop() error {
 	i.running = false
 
 	ctx := context.Background()
-	// check if container is running, stop the running container.
-	id := GetContainerID(i.name)
-	if id != "" {
-		timeout := time.Second * 3
-		if err := cli.ContainerStop(ctx, id, &timeout); err != nil {
-			return err
-		}
-		i.id = id
+	// stop the running container.
+	if i.id == "" {
+		i.id = GetContainerID(i.name)
+	}
+	timeout := time.Second * 3
+	if err := cli.ContainerStop(ctx, i.id, &timeout); err != nil {
+		return err
 	}
 	// remove the stopped container.
 	return cli.ContainerRemove(ctx, i.id, types.ContainerRemoveOptions{})
@@ -108,10 +109,12 @@ func (i *ImgDB) isOk() bool {
 
 	select {
 	case <-okCh:
-		time.Sleep(time.Millisecond * 1500)
-		i.id = GetContainerID(i.name)
+		utils.TryTimes(3, func() bool {
+			i.id = GetContainerID(i.name)
+			return i.id != ""
+		})
 		return i.id != ""
-	case <-time.NewTimer(time.Second * 10).C:
+	case <-time.After(time.Second * 20):
 		return false
 	}
 }

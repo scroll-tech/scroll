@@ -53,13 +53,13 @@ func NewCmd(t *testing.T, name string, args ...string) *Cmd {
 
 // RunApp exec's the current binary using name as argv[0] which will trigger the
 // reexec init function for that name (e.g. "geth-test" in cmd/geth/run_test.go)
-func (tt *Cmd) RunApp(parallel bool) {
-	tt.Log("cmd: ", append([]string{tt.name}, tt.args...))
+func (t *Cmd) RunApp(parallel bool) {
+	t.Log("cmd: ", append([]string{t.name}, t.args...))
 	cmd := &exec.Cmd{
 		Path:   reexec.Self(),
-		Args:   append([]string{tt.name}, tt.args...),
-		Stderr: tt,
-		Stdout: tt,
+		Args:   append([]string{t.name}, t.args...),
+		Stderr: t,
+		Stdout: t,
 	}
 	if parallel {
 		go func() {
@@ -68,49 +68,49 @@ func (tt *Cmd) RunApp(parallel bool) {
 	} else {
 		_ = cmd.Run()
 	}
-	tt.mu.Lock()
-	tt.cmd = cmd
-	tt.mu.Unlock()
+	t.mu.Lock()
+	t.cmd = cmd
+	t.mu.Unlock()
 }
 
 // WaitExit wait util process exit.
-func (tt *Cmd) WaitExit() {
+func (t *Cmd) WaitExit() {
 	// Send interrupt signal.
-	tt.mu.Lock()
-	_ = tt.cmd.Process.Signal(os.Interrupt)
-	tt.mu.Unlock()
+	t.mu.Lock()
+	_ = t.cmd.Process.Signal(os.Interrupt)
+	t.mu.Unlock()
 
 	// Wait all the check funcs are finished or test status is failed.
 	tick := time.NewTicker(time.Millisecond * 500)
-	for !(tt.Failed() || tt.checkFuncs.IsEmpty()) {
+	for !(t.Failed() || t.checkFuncs.IsEmpty()) {
 		<-tick.C
 	}
 }
 
 // Interrupt send interrupt signal.
-func (tt *Cmd) Interrupt() {
-	tt.mu.Lock()
-	tt.Err = tt.cmd.Process.Signal(os.Interrupt)
-	tt.mu.Unlock()
+func (t *Cmd) Interrupt() {
+	t.mu.Lock()
+	t.Err = t.cmd.Process.Signal(os.Interrupt)
+	t.mu.Unlock()
 }
 
 // RegistFunc register check func
-func (tt *Cmd) RegistFunc(key string, check checkFunc) {
-	tt.checkFuncs.Set(key, check)
+func (t *Cmd) RegistFunc(key string, check checkFunc) {
+	t.checkFuncs.Set(key, check)
 }
 
 // UnRegistFunc unregister check func
-func (tt *Cmd) UnRegistFunc(key string) {
-	tt.checkFuncs.Pop(key)
+func (t *Cmd) UnRegistFunc(key string) {
+	t.checkFuncs.Pop(key)
 }
 
 // ExpectWithTimeout wait result during timeout time.
-func (tt *Cmd) ExpectWithTimeout(parallel bool, timeout time.Duration, keyword string) {
+func (t *Cmd) ExpectWithTimeout(parallel bool, timeout time.Duration, keyword string) {
 	if keyword == "" {
 		return
 	}
 	okCh := make(chan struct{}, 1)
-	tt.RegistFunc(keyword, func(buf string) {
+	t.RegistFunc(keyword, func(buf string) {
 		if strings.Contains(buf, keyword) {
 			select {
 			case okCh <- struct{}{}:
@@ -121,12 +121,12 @@ func (tt *Cmd) ExpectWithTimeout(parallel bool, timeout time.Duration, keyword s
 	})
 
 	waitResult := func() {
-		defer tt.UnRegistFunc(keyword)
+		defer t.UnRegistFunc(keyword)
 		select {
 		case <-okCh:
 			return
 		case <-time.After(timeout):
-			assert.Fail(tt, fmt.Sprintf("didn't get the desired result before timeout, keyword: %s", keyword))
+			assert.Fail(t, fmt.Sprintf("didn't get the desired result before timeout, keyword: %s", keyword))
 		}
 	}
 
@@ -137,31 +137,31 @@ func (tt *Cmd) ExpectWithTimeout(parallel bool, timeout time.Duration, keyword s
 	}
 }
 
-func (tt *Cmd) runCmd() {
-	cmd := exec.Command(tt.args[0], tt.args[1:]...) //nolint:gosec
-	cmd.Stdout = tt
-	cmd.Stderr = tt
+func (t *Cmd) runCmd() {
+	cmd := exec.Command(t.args[0], t.args[1:]...) //nolint:gosec
+	cmd.Stdout = t
+	cmd.Stderr = t
 	_ = cmd.Run()
 }
 
 // RunCmd parallel running when parallel is true.
-func (tt *Cmd) RunCmd(parallel bool) {
-	tt.Log("cmd: ", tt.args)
+func (t *Cmd) RunCmd(parallel bool) {
+	t.Log("cmd: ", t.args)
 	if parallel {
-		go tt.runCmd()
+		go t.runCmd()
 	} else {
-		tt.runCmd()
+		t.runCmd()
 	}
 }
 
-func (tt *Cmd) Write(data []byte) (int, error) {
+func (t *Cmd) Write(data []byte) (int, error) {
 	out := string(data)
 	if verbose {
-		tt.Logf("%s: %v", tt.name, out)
+		t.Logf("%s: %v", t.name, out)
 	} else if strings.Contains(out, "error") || strings.Contains(out, "warning") {
-		tt.Logf("%s: %v", tt.name, out)
+		t.Logf("%s: %v", t.name, out)
 	}
-	go tt.checkFuncs.IterCb(func(_ string, value interface{}) {
+	go t.checkFuncs.IterCb(func(_ string, value interface{}) {
 		check := value.(checkFunc)
 		check(out)
 	})

@@ -8,11 +8,12 @@ import (
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/urfave/cli/v2"
 
+	"scroll-tech/roller"
+
 	"scroll-tech/common/utils"
 	"scroll-tech/common/version"
 
 	"scroll-tech/roller/config"
-	"scroll-tech/roller/core"
 )
 
 var app = cli.NewApp()
@@ -56,7 +57,7 @@ func action(ctx *cli.Context) error {
 	}
 
 	// Create roller
-	r, err := core.NewRoller(cfg)
+	r, err := roller.NewRoller(cfg)
 	if err != nil {
 		return err
 	}

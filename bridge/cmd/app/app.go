@@ -8,8 +8,9 @@ import (
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/urfave/cli/v2"
 
-	"scroll-tech/common/utils"
 	"scroll-tech/database"
+
+	"scroll-tech/common/utils"
 
 	"scroll-tech/bridge/config"
 	"scroll-tech/bridge/l1"
