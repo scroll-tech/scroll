@@ -1,5 +1,5 @@
 #!/bin/bash
-
+set -uex
 ${GOROOT}/bin/bin/gocover-cobertura < coverage.bridge.txt > coverage.bridge.xml
 ${GOROOT}/bin/bin/gocover-cobertura < coverage.db.txt > coverage.db.xml
 ${GOROOT}/bin/bin/gocover-cobertura < coverage.common.txt > coverage.common.xml
