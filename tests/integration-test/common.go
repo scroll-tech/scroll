@@ -173,6 +173,11 @@ func mockCoordinatorConfig(t *testing.T) string {
 	if dbImg != nil {
 		cfg.DBConfig.DSN = dbImg.Endpoint()
 	}
+
+	if l2gethImg != nil {
+		cfg.L2Config.Endpoint = l2gethImg.Endpoint()
+	}
+
 	data, err := json.Marshal(cfg)
 	assert.NoError(t, err)
 

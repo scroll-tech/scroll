@@ -157,7 +157,7 @@ func (w *WatcherClient) tryFetchRunningMissingBlocks(ctx context.Context, backTr
 	// because it might be empty if the corresponding rollup_result is finalized/finalization_skipped
 	heightInDB, err := w.orm.GetBlockTracesLatestHeight()
 	if err != nil {
-		return fmt.Errorf("failed to GetBlockTraces in DB: %v", err)
+		return fmt.Errorf("failed to GetBlockTracesLatestHeight in DB: %v", err)
 	}
 	backTrackTo := uint64(0)
 	if heightInDB > 0 {
