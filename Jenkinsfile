@@ -13,7 +13,7 @@ pipeline {
     environment {
         GO111MODULE = 'on'
         PATH="/home/ubuntu/.cargo/bin:$PATH"
-        // LOG_DOCKER = 'true'
+        //LOG_DOCKER = 'true'
     }
     stages {
         stage('Build') {
