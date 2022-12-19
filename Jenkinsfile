@@ -13,7 +13,7 @@ pipeline {
     environment {
         GO111MODULE = 'on'
         PATH="/home/ubuntu/.cargo/bin:$PATH"
-        //LOG_DOCKER = 'true'
+        // LOG_DOCKER = 'true'
     }
     stages {
         stage('Build') {
@@ -93,8 +93,10 @@ pipeline {
                         for (i in ['bridge', 'coordinator', 'database']) {
                             sh "cd $i && go test -v -race -coverprofile=coverage.txt -covermode=atomic \$(go list ./... | grep -v 'database\\|l2\\|l1\\|common\\|coordinator')"
                         }
-                        currentBuild.result = 'SUCCESS'
                     }
+                }
+                script {
+                    currentBuild.result = 'SUCCESS'
                 }
                 step([$class: 'CompareCoverageAction', publishResultAs: 'statusCheck', scmVars: [GIT_URL: env.GIT_URL]])
             }
