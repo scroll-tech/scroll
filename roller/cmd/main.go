@@ -10,8 +10,8 @@ import (
 	"scroll-tech/common/utils"
 	"scroll-tech/common/version"
 
+	"scroll-tech/roller"
 	"scroll-tech/roller/config"
-	"scroll-tech/roller/core"
 )
 
 func main() {
@@ -42,7 +42,7 @@ func action(ctx *cli.Context) error {
 	}
 
 	// Create roller
-	r, err := core.NewRoller(cfg)
+	r, err := roller.NewRoller(cfg)
 	if err != nil {
 		return err
 	}
