@@ -4,8 +4,6 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
-
-	"scroll-tech/common/utils"
 )
 
 // DBConfig db config
@@ -30,10 +28,6 @@ func NewConfig(file string) (*DBConfig, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	// cover value by env fields
-	cfg.DSN = utils.GetEnvWithDefault("DB_DSN", cfg.DSN)
-	cfg.DriverName = utils.GetEnvWithDefault("DB_DRIVER", cfg.DriverName)
 
 	return cfg, nil
 }
