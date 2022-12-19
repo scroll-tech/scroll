@@ -10,7 +10,7 @@ import (
 	"github.com/scroll-tech/go-ethereum/log"
 )
 
-//nolint:unused
+// blockTraceIsValid checks if the state and the code of block-trace are valid.
 func blockTraceIsValid(trace *types.BlockTrace) bool {
 	if trace == nil {
 		log.Warn("block trace is empty")
@@ -23,7 +23,6 @@ func blockTraceIsValid(trace *types.BlockTrace) bool {
 	return flag
 }
 
-//nolint:unused
 func structLogResIsValid(txLogs []*types.StructLogRes) bool {
 	res := true
 	for i := 0; i < len(txLogs); i++ {
@@ -50,7 +49,6 @@ func structLogResIsValid(txLogs []*types.StructLogRes) bool {
 	return res
 }
 
-//nolint:unused
 func codeIsValid(txLog *types.StructLogRes, n int) bool {
 	extraData := txLog.ExtraData
 	if extraData == nil {
@@ -63,7 +61,6 @@ func codeIsValid(txLog *types.StructLogRes, n int) bool {
 	return true
 }
 
-//nolint:unused
 func stateIsValid(txLog *types.StructLogRes, n int) bool {
 	extraData := txLog.ExtraData
 	if extraData == nil {
