@@ -3,3 +3,4 @@ docs/
 integration-test/
 l2geth/
 rpc-gateway/
+*target/*
