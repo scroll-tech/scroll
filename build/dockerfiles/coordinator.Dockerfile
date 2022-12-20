@@ -1,5 +1,5 @@
 # Build libzkp dependency
-FROM scrolltech/go-rust-builder:go-1.17-rust-nightly-2022-08-23 as chef
+FROM scrolltech/go-rust-builder:go-1.18-rust-nightly-2022-08-23 as chef
 WORKDIR app
 
 FROM chef as planner
