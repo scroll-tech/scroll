@@ -15,9 +15,9 @@ type echoArgs struct {
 }
 
 type echoResult struct {
-	String string
-	Int    int
-	Args   *echoArgs
+	Name string
+	ID   int
+	Args *echoArgs
 }
 
 func (s *testService) NoArgsRets() {}
@@ -45,7 +45,8 @@ func TestStartHTTPEndpoint(t *testing.T) {
 
 	result := echoResult{}
 	assert.NoError(t, client.Call(&result, "test_echo", "test", 0, &echoArgs{S: "test"}))
-	assert.Equal(t, true, result.String == "test" && result.Int == 0 && result.Args.S == "test")
+	assert.Equal(t, 0, result.ID)
+	assert.Equal(t, "test", result.Name)
 
 	defer client.Close()
 }
@@ -69,7 +70,8 @@ func TestStartWSEndpoint(t *testing.T) {
 
 	result := echoResult{}
 	assert.NoError(t, client.Call(&result, "test_echo", "test", 0, &echoArgs{S: "test"}))
-	assert.Equal(t, true, result.String == "test" && result.Int == 0 && result.Args.S == "test")
+	assert.Equal(t, 0, result.ID)
+	assert.Equal(t, "test", result.Name)
 
 	defer client.Close()
 }
