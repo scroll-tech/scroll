@@ -68,7 +68,7 @@ pipeline {
                 }
             }
         }
-        stage('Test') {
+        stage('Parallel Test') {
             when {
                 anyOf {
                     changeset "Jenkinsfile"
@@ -80,42 +80,60 @@ pipeline {
                     changeset "database/**"
                 }
             }
-                parallel{
-                    stage('Test bridge package') {
-                        steps {
-                            sh 'go test -v -race -coverprofile=coverage.bridge.txt -covermode=atomic -p 1 scroll-tech/bridge/...'
-                        }
+            parallel{
+                stage('Test bridge package') {
+                    steps {
+                        sh 'go test -v -race -coverprofile=coverage.bridge.txt -covermode=atomic -p 1 scroll-tech/bridge/...'
                     }
-                    stage('Test common package') {
-                        steps {
-                            sh 'go test -v -race -coverprofile=coverage.common.txt -covermode=atomic -p 1 scroll-tech/common/...'
-                        }
+                }
+                stage('Test common package') {
+                    steps {
+                        sh 'go test -v -race -coverprofile=coverage.common.txt -covermode=atomic -p 1 scroll-tech/common/...'
                     }
-                    stage('Test coordinator package') {
-                        steps {
-                            sh 'go test -v -race -coverprofile=coverage.coordinator.txt -covermode=atomic -p 1 scroll-tech/coordinator/...'
-                        }
+                }
+                stage('Test coordinator package') {
+                    steps {
+                        sh 'go test -v -race -coverprofile=coverage.coordinator.txt -covermode=atomic -p 1 scroll-tech/coordinator/...'
                     }
-                    stage('Test database package') {
-                        steps {
-                            sh 'go test -v -race -coverprofile=coverage.db.txt -covermode=atomic -p 1 scroll-tech/database/...'
-                        }
+                }
+                stage('Test database package') {
+                    steps {
+                        sh 'go test -v -race -coverprofile=coverage.db.txt -covermode=atomic -p 1 scroll-tech/database/...'
                     }
-                    stage('Race test bridge package') {
-                        steps {
-                            sh "cd bridge && go test -v -race -coverprofile=coverage.txt -covermode=atomic \$(go list ./... | grep -v 'database\\|common\\|l1\\|l2\\|coordinator')"
-                        }
+                }
+                stage('Race test bridge package') {
+                    steps {
+                        sh "cd bridge && go test -v -race -coverprofile=coverage.txt -covermode=atomic \$(go list ./... | grep -v 'database\\|common\\|l1\\|l2\\|coordinator')"
                     }
-                    stage('Race test coordinator package') {
-                        steps {
-                            sh "cd coordinator && go test -v -race -coverprofile=coverage.txt -covermode=atomic \$(go list ./... | grep -v 'database\\|common\\|l1\\|l2\\|coordinator')"
-                        }
+                }
+                stage('Race test coordinator package') {
+                    steps {
+                        sh "cd coordinator && go test -v -race -coverprofile=coverage.txt -covermode=atomic \$(go list ./... | grep -v 'database\\|common\\|l1\\|l2\\|coordinator')"
                     }
-                    stage('Race test database package') {
-                        steps {
-                            sh "cd database && go test -v -race -coverprofile=coverage.txt -covermode=atomic \$(go list ./... | grep -v 'database\\|common\\|l1\\|l2\\|coordinator')"
-                        }
+                }
+                stage('Race test database package') {
+                    steps {
+                        sh "cd database && go test -v -race -coverprofile=coverage.txt -covermode=atomic \$(go list ./... | grep -v 'database\\|common\\|l1\\|l2\\|coordinator')"
                     }
+                }
+            }
+        }
+        stage('Compare Coverage') {
+            when {
+                anyOf {
+                    changeset "Jenkinsfile"
+                    changeset "build/**"
+                    changeset "go.work**"
+                    changeset "bridge/**"
+                    changeset "coordinator/**"
+                    changeset "common/**"
+                    changeset "database/**"
+                }
+            }
+            steps {
+                sh "chmod +x ./build/post-test-report-coverage.sh && ./build/post-test-report-coverage.sh"
+                script {
+                    currentBuild.result = 'SUCCESS'
                 }
                 step([$class: 'CompareCoverageAction', publishResultAs: 'statusCheck', scmVars: [GIT_URL: env.GIT_URL]])
             }
