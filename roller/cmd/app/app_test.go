@@ -10,10 +10,10 @@ import (
 )
 
 func TestRunRoller(t *testing.T) {
-	bridge := cmd.NewCmd(t, "roller-test", "--version")
-	defer bridge.WaitExit()
+	roller := cmd.NewCmd(t, "roller-test", "--version")
+	defer roller.WaitExit()
 
 	// wait result
-	bridge.ExpectWithTimeout(true, time.Second*3, fmt.Sprintf("roller version %s", version.Version))
-	bridge.RunApp(false)
+	roller.ExpectWithTimeout(true, time.Second*3, fmt.Sprintf("roller version %s", version.Version))
+	roller.RunApp(false)
 }

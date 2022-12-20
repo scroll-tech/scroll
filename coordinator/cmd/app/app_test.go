@@ -10,10 +10,10 @@ import (
 )
 
 func TestRunCoordinator(t *testing.T) {
-	bridge := cmd.NewCmd(t, "coordinator-test", "--version")
-	defer bridge.WaitExit()
+	coordinator := cmd.NewCmd(t, "coordinator-test", "--version")
+	defer coordinator.WaitExit()
 
 	// wait result
-	bridge.ExpectWithTimeout(true, time.Second*3, fmt.Sprintf("coordinator version %s", version.Version))
-	bridge.RunApp(false)
+	coordinator.ExpectWithTimeout(true, time.Second*3, fmt.Sprintf("coordinator version %s", version.Version))
+	coordinator.RunApp(false)
 }
