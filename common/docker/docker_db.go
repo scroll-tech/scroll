@@ -9,6 +9,7 @@ import (
 
 	"github.com/docker/docker/api/types"
 
+	"scroll-tech/common/cmd"
 	"scroll-tech/common/utils"
 )
 
@@ -23,7 +24,7 @@ type ImgDB struct {
 	password string
 
 	running bool
-	cmd     *Cmd
+	cmd     *cmd.Cmd
 }
 
 // NewImgDB return postgres db img instance.
@@ -35,7 +36,7 @@ func NewImgDB(t *testing.T, image, password, dbName string, port int) ImgInstanc
 		dbName:   dbName,
 		port:     port,
 	}
-	img.cmd = NewCmd(t, img.name, img.prepare()...)
+	img.cmd = cmd.NewCmd(t, img.name, img.prepare()...)
 	return img
 }
 

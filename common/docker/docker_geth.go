@@ -10,6 +10,7 @@ import (
 
 	"github.com/docker/docker/api/types"
 
+	"scroll-tech/common/cmd"
 	"scroll-tech/common/utils"
 )
 
@@ -25,7 +26,7 @@ type ImgGeth struct {
 	wsPort   int
 
 	running bool
-	cmd     *Cmd
+	cmd     *cmd.Cmd
 }
 
 // NewImgGeth return geth img instance.
@@ -38,7 +39,7 @@ func NewImgGeth(t *testing.T, image, volume, ipc string, hPort, wPort int) ImgIn
 		httpPort: hPort,
 		wsPort:   wPort,
 	}
-	img.cmd = NewCmd(t, img.name, img.prepare()...)
+	img.cmd = cmd.NewCmd(t, img.name, img.prepare()...)
 	return img
 }
 

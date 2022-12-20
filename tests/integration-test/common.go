@@ -28,6 +28,7 @@ import (
 	bridgeConfig "scroll-tech/bridge/config"
 	"scroll-tech/bridge/sender"
 
+	"scroll-tech/common/cmd"
 	"scroll-tech/common/docker"
 
 	_ "scroll-tech/coordinator/cmd/app"
@@ -89,28 +90,28 @@ type appAPI interface {
 
 func runBridgeApp(t *testing.T, args ...string) appAPI {
 	args = append(args, "--log.debug", "--config", bridgeFile)
-	return docker.NewCmd(t, "bridge-test", args...)
+	return cmd.NewCmd(t, "bridge-test", args...)
 }
 
 func runCoordinatorApp(t *testing.T, args ...string) appAPI {
 	args = append(args, "--log.debug", "--config", coordinatorFile, "--ws", "--ws.port", strconv.Itoa(int(wsPort)))
 	// start process
-	return docker.NewCmd(t, "coordinator-test", args...)
+	return cmd.NewCmd(t, "coordinator-test", args...)
 }
 
 func runDBCliApp(t *testing.T, option, keyword string) {
 	args := []string{option, "--config", dbFile}
-	cmd := docker.NewCmd(t, "db_cli-test", args...)
-	defer cmd.WaitExit()
+	app := cmd.NewCmd(t, "db_cli-test", args...)
+	defer app.WaitExit()
 
 	// Wait expect result.
-	cmd.ExpectWithTimeout(true, time.Second*3, keyword)
-	cmd.RunApp(false)
+	app.ExpectWithTimeout(true, time.Second*3, keyword)
+	app.RunApp(false)
 }
 
 func runRollerApp(t *testing.T, args ...string) appAPI {
 	args = append(args, "--log.debug", "--config", rollerFile)
-	return docker.NewCmd(t, "roller-test", args...)
+	return cmd.NewCmd(t, "roller-test", args...)
 }
 
 func runSender(t *testing.T, endpoint string, to common.Address, data []byte) *sender.Sender {
