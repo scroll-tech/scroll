@@ -184,6 +184,8 @@ linters:
     - rowserrcheck
     - durationcheck
     - bidichk
+    - typecheck
+    - unused
   enable-all: false
   disable:
 
