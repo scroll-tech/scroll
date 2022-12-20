@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"math/big"
 	"reflect"
-	"sync"
 	"time"
 
 	"github.com/scroll-tech/go-ethereum"
@@ -23,6 +22,8 @@ import (
 
 	"scroll-tech/database"
 	"scroll-tech/database/orm"
+
+	"scroll-tech/bridge/config"
 )
 
 type relayedMessage struct {
@@ -40,11 +41,9 @@ type WatcherClient struct {
 
 	orm database.OrmFactory
 
-	confirmations       uint64
-	proofGenerationFreq uint64
-	skippedOpcodes      map[string]struct{}
-	messengerAddress    common.Address
-	messengerABI        *abi.ABI
+	confirmations    uint64
+	messengerAddress common.Address
+	messengerABI     *abi.ABI
 
 	// The height of the block that the watcher has retrieved event logs
 	processedMsgHeight uint64
@@ -52,12 +51,11 @@ type WatcherClient struct {
 	stopped uint64
 	stopCh  chan struct{}
 
-	// mutex for batch proposer
-	bpMutex sync.Mutex
+	batchProposer *batchProposer
 }
 
 // NewL2WatcherClient take a l2geth instance to generate a l2watcherclient instance
-func NewL2WatcherClient(ctx context.Context, client *ethclient.Client, confirmations uint64, proofGenFreq uint64, skippedOpcodes map[string]struct{}, messengerAddress common.Address, orm database.OrmFactory) *WatcherClient {
+func NewL2WatcherClient(ctx context.Context, client *ethclient.Client, confirmations uint64, bpCfg *config.BatchProposerConfig, messengerAddress common.Address, orm database.OrmFactory) *WatcherClient {
 	savedHeight, err := orm.GetLayer2LatestWatchedHeight()
 	if err != nil {
 		log.Warn("fetch height from db failed", "err", err)
@@ -65,18 +63,16 @@ func NewL2WatcherClient(ctx context.Context, client *ethclient.Client, confirmat
 	}
 
 	return &WatcherClient{
-		ctx:                 ctx,
-		Client:              client,
-		orm:                 orm,
-		processedMsgHeight:  savedHeight.Uint64(),
-		confirmations:       confirmations,
-		proofGenerationFreq: proofGenFreq,
-		skippedOpcodes:      skippedOpcodes,
-		messengerAddress:    messengerAddress,
-		messengerABI:        bridge_abi.L2MessengerMetaABI,
-		stopCh:              make(chan struct{}),
-		stopped:             0,
-		bpMutex:             sync.Mutex{},
+		ctx:                ctx,
+		Client:             client,
+		orm:                orm,
+		processedMsgHeight: savedHeight.Uint64(),
+		confirmations:      confirmations,
+		messengerAddress:   messengerAddress,
+		messengerABI:       bridge_abi.L2MessengerMetaABI,
+		stopCh:             make(chan struct{}),
+		stopped:            0,
+		batchProposer:      newBatchProposer(bpCfg, orm),
 	}
 }
 
@@ -139,7 +135,7 @@ func (w *WatcherClient) Start() {
 					log.Error("failed to fetchContractEvent", "err", err)
 				}
 
-				if err := w.tryProposeBatch(); err != nil {
+				if err := w.batchProposer.tryProposeBatch(); err != nil {
 					log.Error("failed to tryProposeBatch", "err", err)
 				}
 
@@ -165,7 +161,7 @@ func (w *WatcherClient) tryFetchRunningMissingBlocks(ctx context.Context, backTr
 	heightInDBBig, err := w.orm.GetBlockTracesLatestHeight()
 	heightInDB := heightInDBBig.Int64()
 	if err != nil {
-		return fmt.Errorf("failed to GetBlockTraces in DB: %v", err)
+		return fmt.Errorf("failed to GetBlockTracesLatestHeight in DB: %v", err)
 	}
 	backTrackTo := uint64(0)
 	if heightInDB > 0 {

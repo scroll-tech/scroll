@@ -11,17 +11,17 @@ endif
 
 libzkp:
 	cd ../common/libzkp/impl && cargo build --release && cp ./target/release/libzkp.a ../interface/
-	cp -r ../common/libzkp/interface ./core/prover/lib
+	cp -r ../common/libzkp/interface ./prover/lib
 
 roller: ## Build the Roller instance.
 	cd ../common/libzkp/impl && cargo build --release && cp ./target/release/libzkp.a ../interface/
-	cp -r ../common/libzkp/interface ./core/prover/lib
-	GOBIN=$(PWD)/build/bin go build -ldflags "-X scroll-tech/roller/core.ZK_VERSION=${ZK_VERSION}" -o $(PWD)/build/bin/roller ./cmd
+	cp -r ../common/libzkp/interface ./prover/lib
+	GOBIN=$(PWD)/build/bin go build -ldflags "-X scroll-tech/common/version.ZK_VERSION=${ZK_VERSION}" -o $(PWD)/build/bin/roller ./cmd
 
 gpu-roller: ## Build the GPU Roller instance.
 	cd ../common/libzkp/impl && cargo build --release && cp ./target/release/libzkp.a ../interface/
-	cp -r ../common/libzkp/interface ./core/prover/lib
-	GOBIN=$(PWD)/build/bin go build -ldflags "-X scroll-tech/roller/core.ZK_VERSION=${ZK_VERSION}" -tags gpu -o $(PWD)/build/bin/roller ./cmd
+	cp -r ../common/libzkp/interface ./prover/lib
+	GOBIN=$(PWD)/build/bin go build -ldflags "-X scroll-tech/common/version.ZK_VERSION=${ZK_VERSION}" -tags gpu -o $(PWD)/build/bin/roller ./cmd
 
 mock_roller:
 	GOBIN=$(PWD)/build/bin go build -tags mock_prover -o $(PWD)/build/bin/roller $(PWD)/cmd

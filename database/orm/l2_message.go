@@ -114,6 +114,10 @@ func (m *layer2MessageOrm) GetL2MessagesByStatus(status MsgStatus) ([]*L2Message
 
 // SaveL2Messages batch save a list of layer2 messages
 func (m *layer2MessageOrm) SaveL2Messages(ctx context.Context, messages []*L2Message) error {
+	if len(messages) == 0 {
+		return nil
+	}
+
 	messageMaps := make([]map[string]interface{}, len(messages))
 	for i, msg := range messages {
 		messageMaps[i] = map[string]interface{}{

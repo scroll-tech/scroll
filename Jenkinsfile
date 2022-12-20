@@ -8,6 +8,7 @@ pipeline {
     }
     tools {
         go 'go-1.18'
+        nodejs "nodejs"
     }
     environment {
         GO111MODULE = 'on'
@@ -27,22 +28,44 @@ pipeline {
                     changeset "database/**"
                 }
             }
-            steps { 
-                // start to build project
-                sh '''#!/bin/bash
-                    set -e
-                    export PATH=/home/ubuntu/go/bin:$PATH
-                    make dev_docker
-                    make -C bridge mock_abi
-                    # check compilation
-                    make -C bridge bridge
-                    make -C coordinator coordinator
-                    make -C database db_cli
-                    # check docker build
-                    make -C bridge docker
-                    make -C coordinator docker
-                    make -C database docker
-                    '''
+            parallel {
+                stage('Build Prerequisite') {
+                    steps {
+                        sh 'make dev_docker'
+                        sh 'make -C bridge mock_abi'
+                    }
+                }
+                stage('Check Bridge Compilation') {
+                    steps {
+                        sh 'make -C bridge bridge'
+                    }
+                }
+                stage('Check Coordinator Compilation') {
+                    steps {
+                        sh 'export PATH=/home/ubuntu/go/bin:$PATH'
+                        sh 'make -C coordinator coordinator'
+                    }
+                }
+                stage('Check Database Compilation') {
+                    steps {
+                        sh 'make -C database db_cli'
+                    }
+                }
+                stage('Check Bridge Docker Build') {
+                    steps {
+                        sh 'make -C bridge docker'
+                    }
+                }
+                stage('Check Coordinator Docker Build') {
+                    steps {
+                        sh 'make -C coordinator docker'
+                    }
+                }
+                stage('Check Database Docker Build') {
+                    steps {
+                        sh 'make -C database docker'
+                    }
+                }
             }
         }
         stage('Test') {
@@ -58,27 +81,28 @@ pipeline {
                 }
             }
             steps {
-               sh "docker ps -aq | xargs -r docker stop"
-               sh "docker container prune -f"
-               catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
-                    sh '''
-                        go test -v -race -coverprofile=coverage.txt -covermode=atomic -p 1 scroll-tech/database/...
-                        go test -v -race -coverprofile=coverage.txt -covermode=atomic -p 1 scroll-tech/bridge/...
-                        go test -v -race -coverprofile=coverage.txt -covermode=atomic -p 1 scroll-tech/common/...
-                        go test -v -race -coverprofile=coverage.txt -covermode=atomic -p 1 scroll-tech/coordinator/...
-                        cd ..
-                    '''
+                catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
+                    sh '''#!/bin/bash
+                        go test -v -race -coverprofile=coverage.db.txt -covermode=atomic -p 1 scroll-tech/database/...
+                        go test -v -race -coverprofile=coverage.bridge.txt -covermode=atomic -p 1 scroll-tech/bridge/...
+                        go test -v -race -coverprofile=coverage.common.txt -covermode=atomic -p 1 scroll-tech/common/...
+                        go test -v -race -coverprofile=coverage.coordinator.txt -covermode=atomic -p 1 scroll-tech/coordinator/...
+                        sh build/post-test-report-coverage.sh
+                        '''
                     script {
                         for (i in ['bridge', 'coordinator', 'database']) {
                             sh "cd $i && go test -v -race -coverprofile=coverage.txt -covermode=atomic \$(go list ./... | grep -v 'database\\|l2\\|l1\\|common\\|coordinator')"
                         }
+                        currentBuild.result = 'SUCCESS'
                     }
-               }
+                }
+                step([$class: 'CompareCoverageAction', publishResultAs: 'statusCheck', scmVars: [GIT_URL: env.GIT_URL]])
             }
         }
     }
-    post { 
-        always { 
+    post {
+        always {
+            publishCoverage adapters: [coberturaReportAdapter(path: 'cobertura.xml', thresholds: [[thresholdTarget: 'Aggregated Report']])], checksName: '', sourceFileResolver: sourceFiles('NEVER_STORE') 
             cleanWs() 
             slackSend(message: "${JOB_BASE_NAME} ${GIT_COMMIT} #${BUILD_NUMBER} deploy ${currentBuild.result}")
         }

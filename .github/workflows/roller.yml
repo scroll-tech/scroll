@@ -35,21 +35,10 @@ jobs:
         go-version: 1.18.x
     - name: Checkout code
       uses: actions/checkout@v2
-    - name: Cache cargo registry
-      uses: actions/cache@v2
+    - name: Cache cargo
+      uses: Swatinem/rust-cache@v2
       with:
-        path: ~/.cargo/registry
-        key: ${{ runner.os }}-roller-cargo-registry-${{ hashFiles('common/libzkp/impl/Cargo.lock') }}
-    - name: Cache cargo index
-      uses: actions/cache@v2
-      with:
-        path: ~/.cargo/git
-        key: ${{ runner.os }}-roller-cargo-index-${{ hashFiles('common/libzkp/impl/Cargo.lock') }}
-    - name: Cache cargo target
-      uses: actions/cache@v2
-      with:
-        path: /home/runner/work/scroll/scroll/common/libzkp/impl/target
-        key: ${{ runner.os }}-roller-cargo-build-target-${{ hashFiles('common/libzkp/impl/Cargo.lock') }}
+        workspaces: "common/libzkp/impl -> target"
     - name: Test
       run: |
         make roller

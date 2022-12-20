@@ -3,7 +3,6 @@ package l2
 import (
 	"context"
 
-	"github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/rpc"
 
@@ -28,12 +27,12 @@ func New(ctx context.Context, cfg *config.L2Config, orm database.OrmFactory) (*B
 		return nil, err
 	}
 
-	relayer, err := NewLayer2Relayer(ctx, client, cfg.ProofGenerationFreq, cfg.SkippedOpcodes, int64(cfg.Confirmations), orm, cfg.RelayerConfig)
+	relayer, err := NewLayer2Relayer(ctx, client, int64(cfg.Confirmations), orm, cfg.RelayerConfig)
 	if err != nil {
 		return nil, err
 	}
 
-	l2Watcher := NewL2WatcherClient(ctx, client, cfg.Confirmations, cfg.ProofGenerationFreq, cfg.SkippedOpcodes, cfg.L2MessengerAddress, orm)
+	l2Watcher := NewL2WatcherClient(ctx, client, cfg.Confirmations, cfg.BatchProposerConfig, cfg.L2MessengerAddress, orm)
 
 	return &Backend{
 		cfg:       cfg,
@@ -66,9 +65,4 @@ func (l2 *Backend) APIs() []rpc.API {
 			Public:    true,
 		},
 	}
-}
-
-// MockBlockTrace for test case
-func (l2 *Backend) MockBlockTrace(blockTrace *types.BlockTrace) {
-	l2.l2Watcher.Send(blockTrace)
 }

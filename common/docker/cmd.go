@@ -1,7 +1,6 @@
 package docker
 
 import (
-	"errors"
 	"os"
 	"os/exec"
 	"strings"
@@ -24,25 +23,19 @@ type checkFunc func(buf string)
 type Cmd struct {
 	*testing.T
 
-	checkFuncs sync.Map //map[string]checkFunc
+	name string
+	args []string
 
-	//stdout bytes.Buffer
-	errMsg chan error
+	checkFuncs sync.Map //map[string]checkFunc
 }
 
 // NewCmd create Cmd instance.
-func NewCmd(t *testing.T) *Cmd {
+func NewCmd(t *testing.T, name string, args ...string) *Cmd {
 	cmd := &Cmd{
-		T: t,
-		//stdout:   bytes.Buffer{},
-		errMsg: make(chan error, 2),
+		T:    t,
+		name: name,
+		args: args,
 	}
-	// Handle panic.
-	cmd.RegistFunc("panic", func(buf string) {
-		if strings.Contains(buf, "panic") {
-			cmd.errMsg <- errors.New(buf)
-		}
-	})
 	return cmd
 }
 
@@ -59,26 +52,21 @@ func (t *Cmd) UnRegistFunc(key string) {
 }
 
 // RunCmd parallel running when parallel is true.
-func (t *Cmd) RunCmd(args []string, parallel bool) {
-	t.Log("RunCmd cmd", args)
+func (t *Cmd) RunCmd(parallel bool) {
+	t.Log("cmd: ", t.args)
 	if parallel {
-		go t.runCmd(args)
+		go t.runCmd()
 	} else {
-		t.runCmd(args)
+		t.runCmd()
 	}
-}
-
-// ErrMsg return error output channel
-func (t *Cmd) ErrMsg() <-chan error {
-	return t.errMsg
 }
 
 func (t *Cmd) Write(data []byte) (int, error) {
 	out := string(data)
 	if verbose {
-		t.Logf(out)
+		t.Logf("%s: %v", t.name, out)
 	} else if strings.Contains(out, "error") || strings.Contains(out, "warning") {
-		t.Logf(out)
+		t.Logf("%s: %v", t.name, out)
 	}
 	go func(content string) {
 		t.checkFuncs.Range(func(key, value any) bool {
@@ -90,8 +78,8 @@ func (t *Cmd) Write(data []byte) (int, error) {
 	return len(data), nil
 }
 
-func (t *Cmd) runCmd(args []string) {
-	cmd := exec.Command(args[0], args[1:]...) //nolint:gosec
+func (t *Cmd) runCmd() {
+	cmd := exec.Command(t.args[0], t.args[1:]...) //nolint:gosec
 	cmd.Stdout = t
 	cmd.Stderr = t
 	_ = cmd.Run()
