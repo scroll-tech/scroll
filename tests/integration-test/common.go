@@ -12,9 +12,6 @@ import (
 	"testing"
 	"time"
 
-	"golang.org/x/sync/errgroup"
-
-	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/crypto"
 	"github.com/stretchr/testify/assert"
 
@@ -114,7 +111,7 @@ func runRollerApp(t *testing.T, args ...string) appAPI {
 	return cmd.NewCmd(t, "roller-test", args...)
 }
 
-func runSender(t *testing.T, endpoint string, to common.Address, data []byte) *sender.Sender {
+func runSender(t *testing.T, endpoint string) *sender.Sender {
 	priv, err := crypto.HexToECDSA("1212121212121212121212121212121212121212121212121212121212121212")
 	assert.NoError(t, err)
 	newSender, err := sender.NewSender(context.Background(), &bridgeConfig.SenderConfig{
@@ -127,18 +124,6 @@ func runSender(t *testing.T, endpoint string, to common.Address, data []byte) *s
 		TxType:              "DynamicFeeTx",
 	}, []*ecdsa.PrivateKey{priv})
 	assert.NoError(t, err)
-	eg := errgroup.Group{}
-	for i := 0; i < newSender.NumberOfAccounts(); i++ {
-		idx := i
-		eg.Go(func() error {
-			_, err = newSender.SendTransaction(strconv.Itoa(idx), &to, big.NewInt(1), data)
-			if err == nil {
-				<-newSender.ConfirmChan()
-			}
-			return err
-		})
-	}
-	assert.NoError(t, eg.Wait())
 	return newSender
 }
 
