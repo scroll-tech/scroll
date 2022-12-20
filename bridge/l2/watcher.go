@@ -84,10 +84,10 @@ func (w *WatcherClient) Start() {
 		}
 
 		lastFetchedBlockBig, err := w.orm.GetBlockTracesLatestHeight()
-		lastFetchedBlock := lastFetchedBlockBig.Int64()
 		if err != nil {
 			panic(fmt.Sprintf("failed to GetBlockTracesLatestHeight in DB: %v", err))
 		}
+		lastFetchedBlock := lastFetchedBlockBig.Int64()
 
 		if lastFetchedBlock < 0 {
 			lastFetchedBlock = 0

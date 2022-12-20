@@ -85,7 +85,7 @@ func testL2RelayerProcessSaveEvents(t *testing.T) {
 	assert.NoError(t, err)
 	batchID, err := db.NewBatchInDBTx(dbTx,
 		&orm.BlockInfo{Number: templateL2Message[0].Height},
-		&orm.BlockInfo{Number: bigint.NewInt(templateL2Message[0].Height.Int64())},
+		&orm.BlockInfo{Number: bigint.NewInt(templateL2Message[0].Height.Int64() + 1)},
 		"0f", 1, 194676) // parentHash & totalTxNum & totalL2Gas don't really matter here
 	assert.NoError(t, err)
 	err = db.SetBatchIDForBlocksInDBTx(dbTx, []*bigint.BigInt{templateL2Message[0].Height, bigint.NewInt(templateL2Message[0].Height.Int64() + 1)}, batchID)
