@@ -204,37 +204,10 @@ issues:
 
   # Excluding configuration per-path, per-linter, per-text and per-source
   exclude-rules:
-    # Exclude some linters from running on tests files.
-    - path: _test\.go
-      linters:
-        - gocyclo
-        - errcheck
-        - dupl
-        - gosec
-
-    # Exclude known linters from partially hard-vendored code,
-    # which is impossible to exclude via "nolint" comments.
-    - path: internal/hmac/
-      text: "weak cryptographic primitive"
-      linters:
-        - gosec
-
     # Exclude some staticcheck messages
     - linters:
         - staticcheck
       text: "SA9003:"
-
-    - linters:
-        - golint
-      text: "package comment should be of the form"
-
-    - linters:
-        - golint
-      text: "don't use ALL_CAPS in Go names;"
-
-    - linters:
-        - golint
-      text: "don't use underscores in Go names;"
 
     # Exclude lll issues for long lines with go:generate
     - linters:
