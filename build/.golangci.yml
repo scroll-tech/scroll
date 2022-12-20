@@ -179,6 +179,11 @@ linters:
     - depguard
     - gocyclo
     - unparam
+    - exportloopref
+    - sqlclosecheck
+    - rowserrcheck
+    - durationcheck
+    - bidichk
   enable-all: false
   disable:
 
