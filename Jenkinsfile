@@ -131,7 +131,7 @@ pipeline {
                 }
             }
             steps {
-                sh "chmod +x ./build/post-test-report-coverage.sh && ./build/post-test-report-coverage.sh"
+                sh "./build/post-test-report-coverage.sh"
                 script {
                     currentBuild.result = 'SUCCESS'
                 }
