@@ -17,19 +17,6 @@ import (
 	"scroll-tech/bridge/l2"
 )
 
-func applyConfig(ctx *cli.Context, cfg *config.Config) {
-	if ctx.IsSet(l1UrlFlag.Name) {
-		url := ctx.String(l1UrlFlag.Name)
-		cfg.L1Config.Endpoint = url
-		cfg.L2Config.RelayerConfig.SenderConfig.Endpoint = url
-	}
-	if ctx.IsSet(l2UrlFlag.Name) {
-		url := ctx.String(l2UrlFlag.Name)
-		cfg.L2Config.Endpoint = url
-		cfg.L1Config.RelayerConfig.SenderConfig.Endpoint = url
-	}
-}
-
 func action(ctx *cli.Context) error {
 	// Load config file.
 	cfgFile := ctx.String(utils.ConfigFileFlag.Name)
@@ -37,7 +24,6 @@ func action(ctx *cli.Context) error {
 	if err != nil {
 		log.Crit("failed to load config file", "config file", cfgFile, "error", err)
 	}
-	applyConfig(ctx, cfg)
 
 	// init db connection
 	var ormFactory database.OrmFactory

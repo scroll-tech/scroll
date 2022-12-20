@@ -7,8 +7,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"scroll-tech/common/utils"
-
 	db_config "scroll-tech/database"
 )
 
@@ -58,10 +56,6 @@ func NewConfig(file string) (*Config, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	// cover value by env fields
-	cfg.DBConfig.DSN = utils.GetEnvWithDefault("DB_DSN", cfg.DBConfig.DSN)
-	cfg.DBConfig.DriverName = utils.GetEnvWithDefault("DB_DRIVER", cfg.DBConfig.DriverName)
 
 	// Check roller's order session
 	order := strings.ToUpper(cfg.RollerManagerConfig.OrderSession)
