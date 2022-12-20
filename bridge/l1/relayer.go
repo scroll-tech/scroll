@@ -53,7 +53,7 @@ func NewLayer1Relayer(ctx context.Context, ethClient *ethclient.Client, l1Confir
 	sender, err := sender.NewSender(ctx, cfg.SenderConfig, cfg.MessageSenderPrivateKeys)
 	if err != nil {
 		addr := crypto.PubkeyToAddress(cfg.MessageSenderPrivateKeys[0].PublicKey)
-		log.Error("new sender failed", "address", addr.String(), "err", err)
+		log.Error("new sender failed", "main address", addr.String(), "err", err)
 		return nil, err
 	}
 
