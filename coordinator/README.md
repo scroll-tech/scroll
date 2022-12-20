@@ -9,17 +9,6 @@ make clean
 make coordinator
 ```
 
-## db config
-
-* db settings in config
-
-```bash
-# DB_DSN: db data source name
-export DB_DSN="postgres://admin:123456@localhost/test_db?sslmode=disable"
-# DB_DRIVER: db driver name
-export DB_DRIVER="postgres"
-```
-
 ## Start
 
 * use default ports and config.json

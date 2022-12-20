@@ -8,6 +8,7 @@ pipeline {
     }
     tools {
         go 'go-1.18'
+        nodejs "nodejs"
     }
     environment {
         GO111MODULE = 'on'
@@ -79,26 +80,25 @@ pipeline {
                     changeset "database/**"
                 }
             }
-            // catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
                 parallel{
                     stage('Test bridge package') {
                         steps {
-                            sh 'go test -v -race -coverprofile=coverage.txt -covermode=atomic -p 1 scroll-tech/bridge/...'
+                            sh 'go test -v -race -coverprofile=coverage.bridge.txt -covermode=atomic -p 1 scroll-tech/bridge/...'
                         }
                     }
                     stage('Test common package') {
                         steps {
-                            sh 'go test -v -race -coverprofile=coverage.txt -covermode=atomic -p 1 scroll-tech/common/...'
+                            sh 'go test -v -race -coverprofile=coverage.common.txt -covermode=atomic -p 1 scroll-tech/common/...'
                         }
                     }
                     stage('Test coordinator package') {
                         steps {
-                            sh 'go test -v -race -coverprofile=coverage.txt -covermode=atomic -p 1 scroll-tech/coordinator/...'
+                            sh 'go test -v -race -coverprofile=coverage.coordinator.txt -covermode=atomic -p 1 scroll-tech/coordinator/...'
                         }
                     }
                     stage('Test database package') {
                         steps {
-                            sh 'go test -v -race -coverprofile=coverage.txt -covermode=atomic -p 1 scroll-tech/database/...'
+                            sh 'go test -v -race -coverprofile=coverage.db.txt -covermode=atomic -p 1 scroll-tech/database/...'
                         }
                     }
                     stage('Race test bridge package') {
@@ -117,11 +117,13 @@ pipeline {
                         }
                     }
                 }
-           // }
+                step([$class: 'CompareCoverageAction', publishResultAs: 'statusCheck', scmVars: [GIT_URL: env.GIT_URL]])
+            }
         }
     }
-    post { 
-        always { 
+    post {
+        always {
+            publishCoverage adapters: [coberturaReportAdapter(path: 'cobertura.xml', thresholds: [[thresholdTarget: 'Aggregated Report']])], checksName: '', sourceFileResolver: sourceFiles('NEVER_STORE') 
             cleanWs() 
             slackSend(message: "${JOB_BASE_NAME} ${GIT_COMMIT} #${BUILD_NUMBER} deploy ${currentBuild.result}")
         }
