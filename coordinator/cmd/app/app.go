@@ -50,15 +50,6 @@ func init() {
 	reexec.Init()
 }
 
-// RunCoordinator run coordinator.
-func RunCoordinator() {
-	// RunApp the coordinator.
-	if err := app.Run(os.Args); err != nil {
-		_, _ = fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
-}
-
 func action(ctx *cli.Context) error {
 	// Load config file.
 	cfgFile := ctx.String(utils.ConfigFileFlag.Name)
@@ -140,4 +131,13 @@ func action(ctx *cli.Context) error {
 	<-interrupt
 
 	return nil
+}
+
+// RunCoordinator run coordinator.
+func RunCoordinator() {
+	// RunApp the coordinator.
+	if err := app.Run(os.Args); err != nil {
+		_, _ = fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
 }

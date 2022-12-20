@@ -20,7 +20,7 @@ var app = cli.NewApp()
 
 func init() {
 	app.Action = action
-	app.Name = "Roller"
+	app.Name = "roller"
 	app.Usage = "The Scroll L2 Roller"
 	app.Version = version.Version
 	app.Flags = append(app.Flags, utils.CommonFlags...)
@@ -40,14 +40,6 @@ func init() {
 	reexec.Init()
 }
 
-// RunRoller the roller cmd func.
-func RunRoller() {
-	if err := app.Run(os.Args); err != nil {
-		_, _ = fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
-}
-
 func action(ctx *cli.Context) error {
 	// Load config file.
 	cfgFile := ctx.String(utils.ConfigFileFlag.Name)
@@ -65,4 +57,12 @@ func action(ctx *cli.Context) error {
 	log.Info("roller start successfully", "name", cfg.RollerName)
 
 	return r.Run()
+}
+
+// RunRoller the roller cmd func.
+func RunRoller() {
+	if err := app.Run(os.Args); err != nil {
+		_, _ = fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
 }
