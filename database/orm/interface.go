@@ -9,6 +9,36 @@ import (
 	"github.com/scroll-tech/go-ethereum/core/types"
 )
 
+// L1BlockStatus represents current l1 block processing status
+type L1BlockStatus int
+
+const (
+	// MsgUndefined : undefined l1 block status
+	L1BlockUndefined L1BlockStatus = iota
+
+	// L1BlockPending represents the l1 block status is pending
+	L1BlockPending
+
+	// L1BlockImporting represents the l1 block status is importing
+	L1BlockImporting
+
+	// L1BlockImported represents the l1 block status is imported
+	L1BlockImported
+
+	// L1BlockFailed represents the l1 block status is failed
+	L1BlockFailed
+)
+
+// L1BlockInfo is structure of stored l1 block
+type L1BlockInfo struct {
+	Number      uint64 `json:"number" db:"number"`
+	Hash        string `json:"hash" db:"hash"`
+	HeaderRLP   string `json:"header_rlp" db:"header_rlp"`
+	BlockStatus uint64 `json:"block_status" db:"block_status"`
+
+	ImportTxHash sql.NullString `json:"import_tx_hash" db:"import_tx_hash"`
+}
+
 // MsgStatus represents current layer1 transaction processing status
 type MsgStatus int
 
@@ -59,10 +89,11 @@ type L2Message struct {
 	Calldata   string    `json:"calldata" db:"calldata"`
 	Layer2Hash string    `json:"layer2_hash" db:"layer2_hash"`
 	Status     MsgStatus `json:"status" db:"status"`
+	Proof      string    `json:"proof" db:"proof"`
 }
 
-// BlockInfo is structure of stored `block_trace` without `trace`
-type BlockInfo struct {
+// L2BlockInfo is structure of stored `block_trace` without `trace`
+type L2BlockInfo struct {
 	Number         uint64         `json:"number" db:"number"`
 	Hash           string         `json:"hash" db:"hash"`
 	ParentHash     string         `json:"parent_hash" db:"parent_hash"`
@@ -70,6 +101,7 @@ type BlockInfo struct {
 	TxNum          uint64         `json:"tx_num" db:"tx_num"`
 	GasUsed        uint64         `json:"gas_used" db:"gas_used"`
 	BlockTimestamp uint64         `json:"block_timestamp" db:"block_timestamp"`
+	MessageRoot    sql.NullString `json:"message_root" db:"message_root"`
 }
 
 // RollerProveStatus is the roller prove status of a block batch (session)
@@ -98,18 +130,29 @@ type SessionInfo struct {
 	StartTimestamp int64                    `json:"start_timestamp"`
 }
 
+type L1BlockOrm interface {
+	GetL1BlockInfos(fields map[string]interface{}, args ...string) ([]*L1BlockInfo, error)
+	InsertL1Blocks(ctx context.Context, blocks []*L1BlockInfo) error
+	DeleteHeaderRLPByBlockHash(ctx context.Context, blockHash string) error
+	UpdateImportTxHash(ctx context.Context, blockHash, txHash string) error
+	UpdateL1BlockStatus(ctx context.Context, blockHash string, status L1BlockStatus) error
+	UpdateL1BlockStatusAndImportTxHash(ctx context.Context, blockHash string, status L1BlockStatus, txHash string) error
+	GetLatestL1BlockHeight() (uint64, error)
+}
+
 // BlockTraceOrm block_trace operation interface
 type BlockTraceOrm interface {
 	Exist(number uint64) (bool, error)
 	GetBlockTracesLatestHeight() (int64, error)
 	GetBlockTraces(fields map[string]interface{}, args ...string) ([]*types.BlockTrace, error)
-	GetBlockInfos(fields map[string]interface{}, args ...string) ([]*BlockInfo, error)
+	GetL2BlockInfos(fields map[string]interface{}, args ...string) ([]*L2BlockInfo, error)
 	// add `GetUnbatchedBlocks` because `GetBlockInfos` cannot support query "batch_id is NULL"
-	GetUnbatchedBlocks(fields map[string]interface{}, args ...string) ([]*BlockInfo, error)
+	GetUnbatchedBlocks(fields map[string]interface{}, args ...string) ([]*L2BlockInfo, error)
 	GetHashByNumber(number uint64) (*common.Hash, error)
 	DeleteTracesByBatchID(batchID string) error
 	InsertBlockTraces(ctx context.Context, blockTraces []*types.BlockTrace) error
 	SetBatchIDForBlocksInDBTx(dbTx *sqlx.Tx, numbers []uint64, batchID string) error
+	SetMessageRootForBlocksInDBTx(dbTx *sqlx.Tx, numbers []uint64, messageRoot string) error
 }
 
 // SessionInfoOrm sessions info operation inte
@@ -126,7 +169,7 @@ type BlockBatchOrm interface {
 	UpdateProofByID(ctx context.Context, id string, proof, instance_commitments []byte, proofTimeSec uint64) error
 	UpdateProvingStatus(id string, status ProvingStatus) error
 	ResetProvingStatusFor(before ProvingStatus) error
-	NewBatchInDBTx(dbTx *sqlx.Tx, startBlock *BlockInfo, endBlock *BlockInfo, parentHash string, totalTxNum uint64, gasUsed uint64) (string, error)
+	NewBatchInDBTx(dbTx *sqlx.Tx, startBlock *L2BlockInfo, endBlock *L2BlockInfo, parentHash string, totalTxNum uint64, gasUsed uint64) (string, error)
 	BatchRecordExist(id string) (bool, error)
 	GetPendingBatches() ([]string, error)
 	GetCommittedBatches() ([]string, error)

@@ -12,6 +12,8 @@ type L1Config struct {
 	StartHeight uint64 `json:"start_height"`
 	// The messenger contract address deployed on layer 1 chain.
 	L1MessengerAddress common.Address `json:"l1_messenger_address,omitempty"`
+	// The message queue contract address deployed on layer 1 chain.
+	L1MessageQueueAddress common.Address `json:"l1_message_queue_address,omitempty"`
 	// The relayer config
 	RelayerConfig *RelayerConfig `json:"relayer_config"`
 }

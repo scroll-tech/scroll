@@ -86,8 +86,8 @@ func (o *blockTraceOrm) GetBlockTraces(fields map[string]interface{}, args ...st
 	return traces, rows.Close()
 }
 
-func (o *blockTraceOrm) GetBlockInfos(fields map[string]interface{}, args ...string) ([]*BlockInfo, error) {
-	query := "SELECT number, hash, parent_hash, batch_id, tx_num, gas_used, block_timestamp FROM block_trace WHERE 1 = 1 "
+func (o *blockTraceOrm) GetL2BlockInfos(fields map[string]interface{}, args ...string) ([]*L2BlockInfo, error) {
+	query := "SELECT number, hash, parent_hash, batch_id, tx_num, gas_used, block_timestamp, message_root FROM block_trace WHERE 1 = 1 "
 	for key := range fields {
 		query += fmt.Sprintf("AND %s=:%s ", key, key)
 	}
@@ -99,9 +99,9 @@ func (o *blockTraceOrm) GetBlockInfos(fields map[string]interface{}, args ...str
 		return nil, err
 	}
 
-	var blocks []*BlockInfo
+	var blocks []*L2BlockInfo
 	for rows.Next() {
-		block := &BlockInfo{}
+		block := &L2BlockInfo{}
 		if err = rows.StructScan(block); err != nil {
 			break
 		}
@@ -114,8 +114,8 @@ func (o *blockTraceOrm) GetBlockInfos(fields map[string]interface{}, args ...str
 	return blocks, rows.Close()
 }
 
-func (o *blockTraceOrm) GetUnbatchedBlocks(fields map[string]interface{}, args ...string) ([]*BlockInfo, error) {
-	query := "SELECT number, hash, parent_hash, batch_id, tx_num, gas_used, block_timestamp FROM block_trace WHERE batch_id is NULL "
+func (o *blockTraceOrm) GetUnbatchedBlocks(fields map[string]interface{}, args ...string) ([]*L2BlockInfo, error) {
+	query := "SELECT number, hash, parent_hash, batch_id, tx_num, gas_used, block_timestamp, message_root FROM block_trace WHERE batch_id is NULL "
 	for key := range fields {
 		query += fmt.Sprintf("AND %s=:%s ", key, key)
 	}
@@ -127,9 +127,9 @@ func (o *blockTraceOrm) GetUnbatchedBlocks(fields map[string]interface{}, args .
 		return nil, err
 	}
 
-	var blocks []*BlockInfo
+	var blocks []*L2BlockInfo
 	for rows.Next() {
-		block := &BlockInfo{}
+		block := &L2BlockInfo{}
 		if err = rows.StructScan(block); err != nil {
 			break
 		}
@@ -200,6 +200,23 @@ func (o *blockTraceOrm) SetBatchIDForBlocksInDBTx(dbTx *sqlx.Tx, numbers []uint6
 	query := "UPDATE block_trace SET batch_id=? WHERE number IN (?)"
 
 	qry, args, err := sqlx.In(query, batchID, numbers)
+	if err != nil {
+		return err
+	}
+
+	if _, err := dbTx.Exec(dbTx.Rebind(qry), args...); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// http://jmoiron.github.io/sqlx/#inQueries
+// https://stackoverflow.com/questions/56568799/how-to-update-multiple-rows-using-sqlx
+func (o *blockTraceOrm) SetMessageRootForBlocksInDBTx(dbTx *sqlx.Tx, numbers []uint64, messageRoot string) error {
+	query := "UPDATE block_trace SET message_root=? WHERE number IN (?)"
+
+	qry, args, err := sqlx.In(query, messageRoot, numbers)
 	if err != nil {
 		return err
 	}

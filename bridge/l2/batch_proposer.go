@@ -81,7 +81,7 @@ func (w *batchProposer) tryProposeBatch() error {
 	return w.createBatchForBlocks(blocks)
 }
 
-func (w *batchProposer) createBatchForBlocks(blocks []*orm.BlockInfo) error {
+func (w *batchProposer) createBatchForBlocks(blocks []*orm.L2BlockInfo) error {
 	dbTx, err := w.orm.Beginx()
 	if err != nil {
 		return err

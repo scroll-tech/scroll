@@ -61,6 +61,7 @@ var (
 			Target:     "0x2c73620b223808297ea734d946813f0dd78eb8f7",
 			Calldata:   "testdata",
 			Layer2Hash: "hash0",
+			Proof:      "proof1",
 		},
 		{
 			Nonce:      2,
@@ -74,12 +75,14 @@ var (
 			Target:     "0x2c73620b223808297ea734d946813f0dd78eb8f7",
 			Calldata:   "testdata",
 			Layer2Hash: "hash1",
+			Proof:      "proof2",
 		},
 	}
 	blockTrace *types.BlockTrace
 
 	dbConfig   *database.DBConfig
 	dbImg      docker.ImgInstance
+	ormL1Block orm.L1BlockOrm
 	ormBlock   orm.BlockTraceOrm
 	ormLayer1  orm.L1MessageOrm
 	ormLayer2  orm.L2MessageOrm
@@ -105,6 +108,7 @@ func setupEnv(t *testing.T) error {
 	ormLayer2 = orm.NewL2MessageOrm(db)
 	ormBatch = orm.NewBlockBatchOrm(db)
 	ormSession = orm.NewSessionInfoOrm(db)
+	ormL1Block = orm.NewL1BlockOrm(db)
 
 	templateBlockTrace, err := os.ReadFile("../common/testdata/blockTrace_03.json")
 	if err != nil {
@@ -135,6 +139,103 @@ func TestOrmFactory(t *testing.T) {
 	t.Run("testOrmBlockBatch", testOrmBlockBatch)
 
 	t.Run("testOrmSessionInfo", testOrmSessionInfo)
+
+	t.Run("textOrmL1Block", testOrmL1Block)
+}
+
+func testOrmL1Block(t *testing.T) {
+	// Create db handler and reset db.
+	factory, err := database.NewOrmFactory(dbConfig)
+	assert.NoError(t, err)
+	assert.NoError(t, migrate.ResetDB(factory.GetDB().DB))
+
+	block1 := orm.L1BlockInfo{
+		Number:    1,
+		Hash:      "hash1",
+		HeaderRLP: "233444",
+	}
+	block2 := orm.L1BlockInfo{
+		Number:    2,
+		Hash:      "hash2",
+		HeaderRLP: "23455",
+	}
+
+	// insert to db
+	err = ormL1Block.InsertL1Blocks(context.Background(), []*orm.L1BlockInfo{
+		&block1,
+		&block2,
+	})
+	assert.NoError(t, err)
+
+	// get block 1
+	blocks, err := ormL1Block.GetL1BlockInfos(map[string]interface{}{
+		"hash": "hash1",
+	})
+	assert.NoError(t, err)
+	assert.Equal(t, true, len(blocks) == 1)
+	assert.Equal(t, true, blocks[0].Hash == "hash1")
+	assert.Equal(t, true, blocks[0].Number == 1)
+	assert.Equal(t, true, blocks[0].HeaderRLP == "233444")
+	assert.Equal(t, true, blocks[0].BlockStatus == uint64(orm.L1BlockPending))
+	assert.Equal(t, false, blocks[0].ImportTxHash.Valid)
+
+	// get block 2
+	blocks, err = ormL1Block.GetL1BlockInfos(map[string]interface{}{
+		"hash": "hash2",
+	})
+	assert.NoError(t, err)
+	assert.Equal(t, true, len(blocks) == 1)
+	assert.Equal(t, true, blocks[0].Hash == "hash2")
+	assert.Equal(t, true, blocks[0].Number == 2)
+	assert.Equal(t, true, blocks[0].HeaderRLP == "23455")
+	assert.Equal(t, true, blocks[0].BlockStatus == uint64(orm.L1BlockPending))
+	assert.Equal(t, false, blocks[0].ImportTxHash.Valid)
+
+	// update import tx hash
+	err = ormL1Block.UpdateImportTxHash(context.Background(), "hash1", "tx_hash1")
+	assert.NoError(t, err)
+	blocks, err = ormL1Block.GetL1BlockInfos(map[string]interface{}{
+		"hash": "hash1",
+	})
+	assert.NoError(t, err)
+	assert.Equal(t, true, len(blocks) == 1)
+	assert.Equal(t, true, blocks[0].BlockStatus == uint64(orm.L1BlockPending))
+	assert.Equal(t, true, blocks[0].ImportTxHash.Valid)
+	assert.Equal(t, true, blocks[0].ImportTxHash.String == "tx_hash1")
+
+	// update block status
+	err = ormL1Block.UpdateL1BlockStatus(context.Background(), "hash1", orm.L1BlockImporting)
+	assert.NoError(t, err)
+	blocks, err = ormL1Block.GetL1BlockInfos(map[string]interface{}{
+		"hash": "hash1",
+	})
+	assert.NoError(t, err)
+	assert.Equal(t, true, len(blocks) == 1)
+	assert.Equal(t, true, blocks[0].BlockStatus == uint64(orm.L1BlockImporting))
+	assert.Equal(t, true, blocks[0].ImportTxHash.Valid)
+	assert.Equal(t, true, blocks[0].ImportTxHash.String == "tx_hash1")
+
+	// update import tx hash and block status
+	err = ormL1Block.UpdateL1BlockStatusAndImportTxHash(context.Background(), "hash1", orm.L1BlockImported, "tx_hash2")
+	assert.NoError(t, err)
+	blocks, err = ormL1Block.GetL1BlockInfos(map[string]interface{}{
+		"hash": "hash1",
+	})
+	assert.NoError(t, err)
+	assert.Equal(t, true, len(blocks) == 1)
+	assert.Equal(t, true, blocks[0].BlockStatus == uint64(orm.L1BlockImported))
+	assert.Equal(t, true, blocks[0].ImportTxHash.Valid)
+	assert.Equal(t, true, blocks[0].ImportTxHash.String == "tx_hash2")
+
+	// delete header rlp
+	err = ormL1Block.DeleteHeaderRLPByBlockHash(context.Background(), "hash1")
+	assert.NoError(t, err)
+	blocks, err = ormL1Block.GetL1BlockInfos(map[string]interface{}{
+		"hash": "hash1",
+	})
+	assert.NoError(t, err)
+	assert.Equal(t, true, len(blocks) == 1)
+	assert.Equal(t, true, blocks[0].HeaderRLP == "")
 }
 
 func testOrmBlockTraces(t *testing.T) {
@@ -176,6 +277,22 @@ func testOrmBlockTraces(t *testing.T) {
 	assert.NoError(t, err)
 	// check trace
 	assert.Equal(t, true, string(data1) == string(data2))
+
+	// set message root
+	dbTx, err := factory.Beginx()
+	assert.NoError(t, err)
+	err = ormBlock.SetMessageRootForBlocksInDBTx(dbTx, []uint64{blockTrace.Header.Number.Uint64()}, "233")
+	assert.NoError(t, err)
+	err = dbTx.Commit()
+	assert.NoError(t, err)
+
+	blocks, err := ormBlock.GetL2BlockInfos(map[string]interface{}{
+		"hash": blockTrace.Header.Hash().String(),
+	})
+	assert.NoError(t, err)
+	assert.Equal(t, true, len(blocks) == 1)
+	assert.Equal(t, true, blocks[0].MessageRoot.Valid)
+	assert.Equal(t, true, blocks[0].MessageRoot.String == "233")
 }
 
 func testOrmL1Message(t *testing.T) {
@@ -245,6 +362,7 @@ func testOrmL2Message(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, orm.MsgSubmitted, msg.Status)
 	assert.Equal(t, msg.MsgHash, "msg_hash2")
+	assert.Equal(t, msg.Proof, "proof2")
 }
 
 // testOrmBlockBatch test rollup result table functions
@@ -257,8 +375,8 @@ func testOrmBlockBatch(t *testing.T) {
 	dbTx, err := factory.Beginx()
 	assert.NoError(t, err)
 	batchID1, err := ormBatch.NewBatchInDBTx(dbTx,
-		&orm.BlockInfo{Number: blockTrace.Header.Number.Uint64()},
-		&orm.BlockInfo{Number: blockTrace.Header.Number.Uint64() + 1},
+		&orm.L2BlockInfo{Number: blockTrace.Header.Number.Uint64()},
+		&orm.L2BlockInfo{Number: blockTrace.Header.Number.Uint64() + 1},
 		"ff", 1, 194676) // parentHash & totalTxNum & totalL2Gas don't really matter here
 	assert.NoError(t, err)
 	err = ormBlock.SetBatchIDForBlocksInDBTx(dbTx, []uint64{
@@ -266,8 +384,8 @@ func testOrmBlockBatch(t *testing.T) {
 		blockTrace.Header.Number.Uint64() + 1}, batchID1)
 	assert.NoError(t, err)
 	batchID2, err := ormBatch.NewBatchInDBTx(dbTx,
-		&orm.BlockInfo{Number: blockTrace.Header.Number.Uint64() + 2},
-		&orm.BlockInfo{Number: blockTrace.Header.Number.Uint64() + 3},
+		&orm.L2BlockInfo{Number: blockTrace.Header.Number.Uint64() + 2},
+		&orm.L2BlockInfo{Number: blockTrace.Header.Number.Uint64() + 3},
 		"ff", 1, 194676) // parentHash & totalTxNum & totalL2Gas don't really matter here
 	assert.NoError(t, err)
 	err = ormBlock.SetBatchIDForBlocksInDBTx(dbTx, []uint64{
@@ -328,8 +446,8 @@ func testOrmSessionInfo(t *testing.T) {
 	dbTx, err := factory.Beginx()
 	assert.NoError(t, err)
 	batchID, err := ormBatch.NewBatchInDBTx(dbTx,
-		&orm.BlockInfo{Number: blockTrace.Header.Number.Uint64()},
-		&orm.BlockInfo{Number: blockTrace.Header.Number.Uint64() + 1},
+		&orm.L2BlockInfo{Number: blockTrace.Header.Number.Uint64()},
+		&orm.L2BlockInfo{Number: blockTrace.Header.Number.Uint64() + 1},
 		"ff", 1, 194676)
 	assert.NoError(t, err)
 	assert.NoError(t, ormBlock.SetBatchIDForBlocksInDBTx(dbTx, []uint64{

@@ -76,10 +76,10 @@ func NewLayer2Relayer(ctx context.Context, ethClient *ethclient.Client, l2Confir
 		db:                     db,
 		messageSender:          messageSender,
 		messageCh:              messageSender.ConfirmChan(),
-		l1MessengerABI:         bridge_abi.L1MessengerMetaABI,
+		l1MessengerABI:         bridge_abi.L1MessengerABI,
 		rollupSender:           rollupSender,
 		rollupCh:               rollupSender.ConfirmChan(),
-		l1RollupABI:            bridge_abi.RollupMetaABI,
+		l1RollupABI:            bridge_abi.RollupABI,
 		cfg:                    cfg,
 		processingMessage:      map[string]string{},
 		processingCommitment:   map[string]string{},
@@ -123,9 +123,8 @@ func (r *Layer2Relayer) processSavedEvent(msg *orm.L2Message) error {
 	log.Info("Processing L2 Message", "msg.nonce", msg.Nonce, "msg.height", msg.Height)
 
 	proof := bridge_abi.IL1ScrollMessengerL2MessageProof{
-		BlockHeight: big.NewInt(int64(msg.Height)),
-		BatchIndex:  big.NewInt(int64(batch.Index)),
-		MerkleProof: make([]byte, 0),
+		BlockHash:        common.HexToHash(batch.EndBlockHash),
+		MessageRootProof: make([]common.Hash, 0),
 	}
 	from := common.HexToAddress(msg.Sender)
 	target := common.HexToAddress(msg.Target)
@@ -214,7 +213,6 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 		}
 		for j, tx := range trace.Transactions {
 			layer2Batch.Blocks[i].Txs[j] = bridge_abi.IZKRollupLayer2Transaction{
-				Caller:   tx.From,
 				Nonce:    tx.Nonce,
 				Gas:      tx.Gas,
 				GasPrice: tx.GasPrice.ToInt(),

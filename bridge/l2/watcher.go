@@ -2,6 +2,7 @@ package l2
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math/big"
 	"reflect"
@@ -30,6 +31,12 @@ type relayedMessage struct {
 	isSuccessful bool
 }
 
+type importedBlock struct {
+	blockHeight uint64
+	blockHash   common.Hash
+	txHash      common.Hash
+}
+
 // WatcherClient provide APIs which support others to subscribe to various event from l2geth
 type WatcherClient struct {
 	ctx context.Context
@@ -39,9 +46,18 @@ type WatcherClient struct {
 
 	orm database.OrmFactory
 
-	confirmations    uint64
+	confirmations uint64
+
 	messengerAddress common.Address
 	messengerABI     *abi.ABI
+
+	messageQueueAddress common.Address
+	messageQueueABI     *abi.ABI
+
+	blockContainerAddress common.Address
+	blockContainerABI     *abi.ABI
+
+	withdrawTrie *WithdrawTrie
 
 	// The height of the block that the watcher has retrieved event logs
 	processedMsgHeight uint64
@@ -53,7 +69,7 @@ type WatcherClient struct {
 }
 
 // NewL2WatcherClient take a l2geth instance to generate a l2watcherclient instance
-func NewL2WatcherClient(ctx context.Context, client *ethclient.Client, confirmations uint64, bpCfg *config.BatchProposerConfig, messengerAddress common.Address, orm database.OrmFactory) *WatcherClient {
+func NewL2WatcherClient(ctx context.Context, client *ethclient.Client, confirmations uint64, bpCfg *config.BatchProposerConfig, messengerAddress, messageQueueAddress, blockContainerAddress common.Address, orm database.OrmFactory) *WatcherClient {
 	savedHeight, err := orm.GetLayer2LatestWatchedHeight()
 	if err != nil {
 		log.Warn("fetch height from db failed", "err", err)
@@ -66,11 +82,19 @@ func NewL2WatcherClient(ctx context.Context, client *ethclient.Client, confirmat
 		orm:                orm,
 		processedMsgHeight: uint64(savedHeight),
 		confirmations:      confirmations,
-		messengerAddress:   messengerAddress,
-		messengerABI:       bridge_abi.L2MessengerMetaABI,
-		stopCh:             make(chan struct{}),
-		stopped:            0,
-		batchProposer:      newBatchProposer(bpCfg, orm),
+
+		messengerAddress: messengerAddress,
+		messengerABI:     bridge_abi.L2MessengerABI,
+
+		messageQueueAddress: messageQueueAddress,
+		messageQueueABI:     bridge_abi.L2MessageQueueABI,
+
+		blockContainerAddress: blockContainerAddress,
+		blockContainerABI:     bridge_abi.L1BlockContainerABI,
+
+		stopCh:        make(chan struct{}),
+		stopped:       0,
+		batchProposer: newBatchProposer(bpCfg, orm),
 	}
 }
 
@@ -207,13 +231,17 @@ func (w *WatcherClient) fetchContractEvent(blockHeight uint64) error {
 		ToBlock:   big.NewInt(toBlock),   // inclusive
 		Addresses: []common.Address{
 			w.messengerAddress,
+			w.messageQueueAddress,
+			w.blockContainerAddress,
 		},
 		Topics: make([][]common.Hash, 1),
 	}
-	query.Topics[0] = make([]common.Hash, 3)
-	query.Topics[0][0] = common.HexToHash(bridge_abi.SENT_MESSAGE_EVENT_SIGNATURE)
-	query.Topics[0][1] = common.HexToHash(bridge_abi.RELAYED_MESSAGE_EVENT_SIGNATURE)
-	query.Topics[0][2] = common.HexToHash(bridge_abi.FAILED_RELAYED_MESSAGE_EVENT_SIGNATURE)
+	query.Topics[0] = make([]common.Hash, 5)
+	query.Topics[0][0] = bridge_abi.L2SendMessageEventSignature
+	query.Topics[0][1] = bridge_abi.L2RelayedMessageEventSignature
+	query.Topics[0][2] = bridge_abi.L2FailedRelayedMessageEventSignature
+	query.Topics[0][3] = bridge_abi.L2AppendMessageEventSignature
+	query.Topics[0][4] = bridge_abi.L2ImportBlockEventSignature
 
 	logs, err := w.FilterLogs(w.ctx, query)
 	if err != nil {
@@ -227,10 +255,19 @@ func (w *WatcherClient) fetchContractEvent(blockHeight uint64) error {
 	log.Info("received new L2 messages", "fromBlock", fromBlock, "toBlock", toBlock,
 		"cnt", len(logs))
 
-	sentMessageEvents, relayedMessageEvents, err := w.parseBridgeEventLogs(logs)
+	sentMessageEvents, relayedMessageEvents, importedBlockEvents, err := w.parseBridgeEventLogs(logs)
 	if err != nil {
 		log.Error("failed to parse emitted event log", "err", err)
 		return err
+	}
+
+	// Update imported block first to make sure we don't forget to update importing blocks.
+	for _, block := range importedBlockEvents {
+		err := w.orm.UpdateL1BlockStatusAndImportTxHash(w.ctx, block.blockHash.String(), orm.L1BlockImported, block.txHash.String())
+		if err != nil {
+			log.Error("Failed to update l1 block status and import tx hash", "err", err)
+			return err
+		}
 	}
 
 	// Update relayed message first to make sure we don't forget to update submited message.
@@ -256,15 +293,18 @@ func (w *WatcherClient) fetchContractEvent(blockHeight uint64) error {
 	return err
 }
 
-func (w *WatcherClient) parseBridgeEventLogs(logs []types.Log) ([]*orm.L2Message, []relayedMessage, error) {
+func (w *WatcherClient) parseBridgeEventLogs(logs []types.Log) ([]*orm.L2Message, []relayedMessage, []importedBlock, error) {
 	// Need use contract abi to parse event Log
 	// Can only be tested after we have our contracts set up
 
 	var l2Messages []*orm.L2Message
 	var relayedMessages []relayedMessage
+	var importedBlocks []importedBlock
+	var lastAppendMsgHash common.Hash
+	var lastAppendMsgNonce uint64
 	for _, vLog := range logs {
 		switch vLog.Topics[0] {
-		case common.HexToHash(bridge_abi.SENT_MESSAGE_EVENT_SIGNATURE):
+		case bridge_abi.L2SendMessageEventSignature:
 			event := struct {
 				Target       common.Address
 				Sender       common.Address
@@ -275,17 +315,30 @@ func (w *WatcherClient) parseBridgeEventLogs(logs []types.Log) ([]*orm.L2Message
 				MessageNonce *big.Int // uint256
 				GasLimit     *big.Int // uint256
 			}{}
-
-			err := w.messengerABI.UnpackIntoInterface(&event, "SentMessage", vLog.Data)
+			err := utils.UnpackLog(w.messengerABI, event, "SentMessage", vLog)
 			if err != nil {
 				log.Error("failed to unpack layer2 SentMessage event", "err", err)
-				return l2Messages, relayedMessages, err
+				return l2Messages, relayedMessages, importedBlocks, err
 			}
-			// target is in topics[1]
-			event.Target = common.HexToAddress(vLog.Topics[1].String())
+			computedMsgHash := utils.ComputeMessageHash(
+				event.Target,
+				event.Sender,
+				event.Value,
+				event.Fee,
+				event.Deadline,
+				event.Message,
+				event.MessageNonce,
+			)
+			// they should always match, just double check
+			if event.MessageNonce.Uint64() != lastAppendMsgNonce {
+				return l2Messages, relayedMessages, importedBlocks, errors.New("l2 message nonce mismatch")
+			}
+			if computedMsgHash != lastAppendMsgHash {
+				return l2Messages, relayedMessages, importedBlocks, errors.New("l2 message hash mismatch")
+			}
 			l2Messages = append(l2Messages, &orm.L2Message{
 				Nonce:      event.MessageNonce.Uint64(),
-				MsgHash:    utils.ComputeMessageHash(event.Target, event.Sender, event.Value, event.Fee, event.Deadline, event.Message, event.MessageNonce).String(),
+				MsgHash:    computedMsgHash.String(),
 				Height:     vLog.BlockNumber,
 				Sender:     event.Sender.String(),
 				Value:      event.Value.String(),
@@ -296,32 +349,67 @@ func (w *WatcherClient) parseBridgeEventLogs(logs []types.Log) ([]*orm.L2Message
 				Calldata:   common.Bytes2Hex(event.Message),
 				Layer2Hash: vLog.TxHash.Hex(),
 			})
-		case common.HexToHash(bridge_abi.RELAYED_MESSAGE_EVENT_SIGNATURE):
+		case bridge_abi.L2RelayedMessageEventSignature:
 			event := struct {
 				MsgHash common.Hash
 			}{}
-			// MsgHash is in topics[1]
-			event.MsgHash = common.HexToHash(vLog.Topics[1].String())
+			err := utils.UnpackLog(w.messengerABI, event, "RelayedMessage", vLog)
+			if err != nil {
+				log.Warn("Failed to unpack layer2 RelayedMessage event", "err", err)
+				return l2Messages, relayedMessages, importedBlocks, err
+			}
 			relayedMessages = append(relayedMessages, relayedMessage{
 				msgHash:      event.MsgHash,
 				txHash:       vLog.TxHash,
 				isSuccessful: true,
 			})
-		case common.HexToHash(bridge_abi.FAILED_RELAYED_MESSAGE_EVENT_SIGNATURE):
+		case bridge_abi.L2FailedRelayedMessageEventSignature:
 			event := struct {
 				MsgHash common.Hash
 			}{}
-			// MsgHash is in topics[1]
-			event.MsgHash = common.HexToHash(vLog.Topics[1].String())
+			err := utils.UnpackLog(w.messengerABI, event, "FailedRelayedMessage", vLog)
+			if err != nil {
+				log.Warn("Failed to unpack layer2 FailedRelayedMessage event", "err", err)
+				return l2Messages, relayedMessages, importedBlocks, err
+			}
 			relayedMessages = append(relayedMessages, relayedMessage{
 				msgHash:      event.MsgHash,
 				txHash:       vLog.TxHash,
 				isSuccessful: false,
 			})
+		case bridge_abi.L2ImportBlockEventSignature:
+			event := struct {
+				BlockHash      common.Hash
+				BlockHeight    *big.Int
+				BlockTimestamp *big.Int
+				StateRoot      common.Hash
+			}{}
+			err := utils.UnpackLog(w.blockContainerABI, event, "ImportBlock", vLog)
+			if err != nil {
+				log.Warn("Failed to unpack layer2 ImportBlock event", "err", err)
+				return l2Messages, relayedMessages, importedBlocks, err
+			}
+			importedBlocks = append(importedBlocks, importedBlock{
+				blockHeight: event.BlockHeight.Uint64(),
+				blockHash:   event.BlockHash,
+				txHash:      vLog.TxHash,
+			})
+		case bridge_abi.L2AppendMessageEventSignature:
+			event := struct {
+				Index       *big.Int
+				MessageHash common.Hash
+			}{}
+			err := utils.UnpackLog(w.messageQueueABI, event, "AppendMessage", vLog)
+			if err != nil {
+				log.Warn("Failed to unpack layer2 AppendMessage event", "err", err)
+				return l2Messages, relayedMessages, importedBlocks, err
+			}
+			lastAppendMsgHash = event.MessageHash
+			lastAppendMsgNonce = event.Index.Uint64()
 		default:
 			log.Error("Unknown event", "topic", vLog.Topics[0], "txHash", vLog.TxHash)
 		}
 	}
 
-	return l2Messages, relayedMessages, nil
+	return l2Messages, relayedMessages, importedBlocks, nil
 }

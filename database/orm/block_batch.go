@@ -192,7 +192,7 @@ func (o *blockBatchOrm) ResetProvingStatusFor(before ProvingStatus) error {
 	return err
 }
 
-func (o *blockBatchOrm) NewBatchInDBTx(dbTx *sqlx.Tx, startBlock *BlockInfo, endBlock *BlockInfo, parentHash string, totalTxNum uint64, totalL2Gas uint64) (string, error) {
+func (o *blockBatchOrm) NewBatchInDBTx(dbTx *sqlx.Tx, startBlock *L2BlockInfo, endBlock *L2BlockInfo, parentHash string, totalTxNum uint64, totalL2Gas uint64) (string, error) {
 	row := dbTx.QueryRow("SELECT COALESCE(MAX(index), 0) FROM block_batch;")
 
 	// TODO: use *big.Int for this

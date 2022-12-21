@@ -14,6 +14,8 @@ type L2Config struct {
 	Endpoint string `json:"endpoint"`
 	// The messenger contract address deployed on layer 2 chain.
 	L2MessengerAddress common.Address `json:"l2_messenger_address,omitempty"`
+	// The message queue contract address deployed on layer 2 chain.
+	L2MessageQueueAddress common.Address `json:"l2_message_queue_address,omitempty"`
 	// The relayer config
 	RelayerConfig *RelayerConfig `json:"relayer_config"`
 	// The batch_proposer config

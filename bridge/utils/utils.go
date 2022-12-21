@@ -2,11 +2,14 @@ package utils
 
 import (
 	"bytes"
+	"fmt"
 	"math/big"
 
 	"github.com/iden3/go-iden3-crypto/keccak256"
+	"github.com/scroll-tech/go-ethereum/accounts/abi"
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/common/math"
+	"github.com/scroll-tech/go-ethereum/core/types"
 )
 
 // Keccak2 compute the keccack256 of two concatenations of bytes32
@@ -66,4 +69,42 @@ func BufferToUint256Le(buffer []byte) []*big.Int {
 		buffer256[i] = v
 	}
 	return buffer256
+}
+
+// UnpackLog unpacks a retrieved log into the provided output structure.
+func UnpackLog(c *abi.ABI, out interface{}, event string, log types.Log) error {
+	if log.Topics[0] != c.Events[event].ID {
+		return fmt.Errorf("event signature mismatch")
+	}
+	if len(log.Data) > 0 {
+		if err := c.UnpackIntoInterface(out, event, log.Data); err != nil {
+			return err
+		}
+	}
+	var indexed abi.Arguments
+	for _, arg := range c.Events[event].Inputs {
+		if arg.Indexed {
+			indexed = append(indexed, arg)
+		}
+	}
+	return abi.ParseTopics(out, indexed, log.Topics[1:])
+}
+
+// UnpackLogIntoMap unpacks a retrieved log into the provided map.
+func UnpackLogIntoMap(c *abi.ABI, out map[string]interface{}, event string, log types.Log) error {
+	if log.Topics[0] != c.Events[event].ID {
+		return fmt.Errorf("event signature mismatch")
+	}
+	if len(log.Data) > 0 {
+		if err := c.UnpackIntoMap(out, event, log.Data); err != nil {
+			return err
+		}
+	}
+	var indexed abi.Arguments
+	for _, arg := range c.Events[event].Inputs {
+		if arg.Indexed {
+			indexed = append(indexed, arg)
+		}
+	}
+	return abi.ParseTopicsIntoMap(out, indexed, log.Topics[1:])
 }

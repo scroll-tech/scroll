@@ -40,6 +40,8 @@ type RelayerConfig struct {
 	RollupContractAddress common.Address `json:"rollup_contract_address,omitempty"`
 	// MessengerContractAddress store the scroll messenger contract address.
 	MessengerContractAddress common.Address `json:"messenger_contract_address"`
+	// ContrainerContractAddress store the l1 block container contract address.
+	ContrainerContractAddress common.Address `json:"container_contract_address,omitempty"`
 	// sender config
 	SenderConfig *SenderConfig `json:"sender_config"`
 	// The private key of the relayer
