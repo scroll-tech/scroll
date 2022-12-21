@@ -20,11 +20,13 @@ import (
 )
 
 var (
-	// Set up Bridge app info.
-	app = cli.NewApp()
+	app *cli.App
 )
 
 func init() {
+	// Set up Bridge app info.
+	app = cli.NewApp()
+	
 	app.Action = action
 	app.Name = "bridge"
 	app.Usage = "The Scroll Bridge"
