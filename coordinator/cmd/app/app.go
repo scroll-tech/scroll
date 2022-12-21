@@ -38,7 +38,7 @@ func init() {
 	}
 
 	// Register `coordinator-test` app for integration-test.
-	utils.RegisterInitializer(app, "coordinator-test")
+	utils.RegisterSimulation(app, "coordinator-test")
 }
 
 func action(ctx *cli.Context) error {

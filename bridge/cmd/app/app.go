@@ -38,7 +38,7 @@ func init() {
 	}
 
 	// Register `bridge-test` app for integration-test.
-	utils.RegisterInitializer(app, "bridge-test")
+	utils.RegisterSimulation(app, "bridge-test")
 }
 
 func action(ctx *cli.Context) error {

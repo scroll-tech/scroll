@@ -48,8 +48,8 @@ var (
 	}
 )
 
-// RegisterInitializer register initializer function for integration-test.
-func RegisterInitializer(app *cli.App, name string) {
+// RegisterSimulation register initializer function for integration-test.
+func RegisterSimulation(app *cli.App, name string) {
 	// Run the app for integration-test
 	reexec.Register(name, func() {
 		if err := app.Run(os.Args); err != nil {

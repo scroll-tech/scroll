@@ -82,16 +82,14 @@ func (m *Manager) Register(ctx context.Context, authMsg *message.AuthMsg) (*rpc.
 			case task := <-taskCh:
 				notifier.Notify(rpcSub.ID, task) //nolint
 			case err := <-rpcSub.Err():
-				if err != nil {
-					log.Warn("client stopped the ws connection", "err", err)
-				}
+				log.Warn("client stopped the ws connection", "err", err)
 				return
 			case <-notifier.Closed():
 				return
 			}
 		}
 	}()
-	log.Info("roller register", "name", authMsg.Identity.Name)
+	log.Info("roller register", "name", authMsg.Identity.Name, "version", authMsg.Identity.Version)
 
 	return rpcSub, nil
 }
