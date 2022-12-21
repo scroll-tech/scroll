@@ -199,6 +199,7 @@ func (w *WatcherClient) fetchContractEvent(blockHeight uint64) error {
 	}
 	if len(logs) == 0 {
 		w.processedMsgHeight = uint64(toBlock)
+		log.Info("l2 watcher fetchContractEvent", "w.processedMsgHeight", w.processedMsgHeight)
 		return nil
 	}
 	log.Info("received new L2 messages", "fromBlock", fromBlock, "toBlock", toBlock,
@@ -229,6 +230,7 @@ func (w *WatcherClient) fetchContractEvent(blockHeight uint64) error {
 	err = w.orm.SaveL2Messages(w.ctx, sentMessageEvents)
 	if err == nil {
 		w.processedMsgHeight = uint64(toBlock)
+		log.Info("l2 watcher fetchContractEvent", "w.processedMsgHeight", w.processedMsgHeight)
 	}
 	return err
 }
