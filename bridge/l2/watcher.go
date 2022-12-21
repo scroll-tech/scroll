@@ -95,6 +95,8 @@ func (w *WatcherClient) Start() {
 					log.Error("failed to get_BlockNumber", "err", err)
 					continue
 				}
+				number = number - w.confirmations
+
 				if err := w.tryFetchRunningMissingBlocks(w.ctx, number); err != nil {
 					log.Error("failed to fetchRunningMissingBlocks", "err", err)
 				}
@@ -168,7 +170,7 @@ const contractEventsBlocksFetchLimit = int64(10)
 // FetchContractEvent pull latest event logs from given contract address and save in DB
 func (w *WatcherClient) fetchContractEvent(blockHeight uint64) error {
 	fromBlock := int64(w.processedMsgHeight) + 1
-	toBlock := int64(blockHeight) - int64(w.confirmations)
+	toBlock := int64(blockHeight)
 
 	if toBlock < fromBlock {
 		return nil
