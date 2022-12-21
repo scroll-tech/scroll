@@ -5,7 +5,6 @@ go 1.18
 require (
 	github.com/scroll-tech/go-ethereum v1.10.14-0.20221213034543-78c1f57fcfea
 	github.com/stretchr/testify v1.8.0
-	golang.org/x/sync v0.1.0
 )
 
 require (

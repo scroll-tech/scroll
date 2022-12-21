@@ -7,13 +7,11 @@ import (
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/stretchr/testify/assert"
 
-	"scroll-tech/database/migrate"
-
 	"scroll-tech/database"
+	"scroll-tech/database/migrate"
 )
 
-// testCreateNewRelayer test create new relayer instance and stop
-func testCreateNewL1Relayer(t *testing.T) {
+func testStartWatcher(t *testing.T) {
 	// Create db handler and reset db.
 	db, err := database.NewOrmFactory(cfg.DBConfig)
 	assert.NoError(t, err)
@@ -23,9 +21,9 @@ func testCreateNewL1Relayer(t *testing.T) {
 	client, err := ethclient.Dial(l1gethImg.Endpoint())
 	assert.NoError(t, err)
 
-	relayer, err := NewLayer1Relayer(context.Background(), client, 1, db, cfg.L2Config.RelayerConfig)
-	assert.NoError(t, err)
-	defer relayer.Stop()
+	l1Cfg := cfg.L1Config
 
-	relayer.Start()
+	watcher := NewWatcher(context.Background(), client, l1Cfg.StartHeight, l1Cfg.Confirmations, l1Cfg.L1MessengerAddress, l1Cfg.RelayerConfig.RollupContractAddress, db)
+	watcher.Start()
+	defer watcher.Stop()
 }
