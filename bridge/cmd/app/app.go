@@ -5,7 +5,6 @@ import (
 	"os"
 	"os/signal"
 
-	"github.com/docker/docker/pkg/reexec"
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/urfave/cli/v2"
 
@@ -26,7 +25,7 @@ var (
 func init() {
 	// Set up Bridge app info.
 	app = cli.NewApp()
-	
+
 	app.Action = action
 	app.Name = "bridge"
 	app.Usage = "The Scroll Bridge"
@@ -38,16 +37,8 @@ func init() {
 		return utils.LogSetup(ctx)
 	}
 
-	// Run the app for integration-test
-	reexec.Register("bridge-test", func() {
-		if err := app.Run(os.Args); err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			os.Exit(1)
-		}
-		os.Exit(0)
-	})
-	// check if we have been reexec'd
-	reexec.Init()
+	// Register `bridge-test` app for integration-test.
+	utils.RegisterInitializer(app, "bridge-test")
 }
 
 func action(ctx *cli.Context) error {

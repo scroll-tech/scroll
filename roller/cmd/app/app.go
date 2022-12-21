@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/docker/docker/pkg/reexec"
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/urfave/cli/v2"
 
@@ -16,9 +15,10 @@ import (
 	"scroll-tech/roller/config"
 )
 
-var app = cli.NewApp()
+var app *cli.App
 
 func init() {
+	app = cli.NewApp()
 	app.Action = action
 	app.Name = "roller"
 	app.Usage = "The Scroll L2 Roller"
@@ -28,16 +28,8 @@ func init() {
 		return utils.LogSetup(ctx)
 	}
 
-	// RunApp the app for integration-test
-	reexec.Register("roller-test", func() {
-		if err := app.Run(os.Args); err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			os.Exit(1)
-		}
-		os.Exit(0)
-	})
-	// check if we have been reexec'd
-	reexec.Init()
+	// Register `roller-test` app for integration-test.
+	utils.RegisterInitializer(app, "roller-test")
 }
 
 func action(ctx *cli.Context) error {

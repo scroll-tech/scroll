@@ -1,6 +1,12 @@
 package utils
 
-import "github.com/urfave/cli/v2"
+import (
+	"fmt"
+	"os"
+
+	"github.com/docker/docker/pkg/reexec"
+	"github.com/urfave/cli/v2"
+)
 
 var (
 	// CommonFlags is used for app common flags in different modules
@@ -41,3 +47,19 @@ var (
 		Usage: "Prepends log messages with call-site location (file and line number)",
 	}
 )
+
+// RegisterInitializer register initializer function for integration-test.
+func RegisterInitializer(app *cli.App, name string) {
+	// Run the app for integration-test
+	reexec.Register(name, func() {
+		if err := app.Run(os.Args); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		os.Exit(0)
+	})
+	// check if we have been reexec'd
+	if reexec.Init() {
+		return
+	}
+}

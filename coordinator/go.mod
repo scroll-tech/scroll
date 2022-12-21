@@ -3,7 +3,6 @@ module scroll-tech/coordinator
 go 1.18
 
 require (
-	github.com/docker/docker v20.10.21+incompatible
 	github.com/orcaman/concurrent-map v1.0.0
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/scroll-tech/go-ethereum v1.10.14-0.20221213034543-78c1f57fcfea
@@ -21,7 +20,6 @@ require (
 	github.com/ethereum/go-ethereum v1.10.26 // indirect
 	github.com/go-ole/go-ole v1.2.6 // indirect
 	github.com/go-stack/stack v1.8.0 // indirect
-	github.com/google/go-cmp v0.5.8 // indirect
 	github.com/google/uuid v1.3.0 // indirect
 	github.com/gorilla/websocket v1.5.0 // indirect
 	github.com/iden3/go-iden3-crypto v0.0.13 // indirect
@@ -41,5 +39,4 @@ require (
 	golang.org/x/sys v0.3.0 // indirect
 	gopkg.in/natefinch/npipe.v2 v2.0.0-20160621034901-c1b8fa8bdcce // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	gotest.tools/v3 v3.4.0 // indirect
 )
