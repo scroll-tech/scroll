@@ -50,7 +50,7 @@ func action(ctx *cli.Context) error {
 	r.Start()
 
 	defer r.Stop()
-	log.Info("roller start successfully", "name", cfg.RollerName)
+	log.Info("roller start successfully", "name", cfg.RollerName, "publickey", r.PublicKey(), "version", version.Version)
 
 	// Catch CTRL-C to ensure a graceful shutdown.
 	interrupt := make(chan os.Signal, 1)
