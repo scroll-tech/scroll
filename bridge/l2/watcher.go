@@ -81,16 +81,6 @@ func (w *WatcherClient) Start() {
 			panic("must run L2 watcher with DB")
 		}
 
-		lastFetchedBlock, err := w.orm.GetBlockTracesLatestHeight()
-		if err != nil {
-			panic(fmt.Sprintf("failed to GetBlockTracesLatestHeight in DB: %v", err))
-		}
-
-		if lastFetchedBlock < 0 {
-			lastFetchedBlock = 0
-		}
-		lastBlockHeightChangeTime := time.Now()
-
 		// trigger by timer
 		// TODO: make it configurable
 		ticker := time.NewTicker(3 * time.Second)
@@ -105,25 +95,14 @@ func (w *WatcherClient) Start() {
 					log.Error("failed to get_BlockNumber", "err", err)
 					continue
 				}
-				duration := time.Since(lastBlockHeightChangeTime)
-				var blockToFetch uint64
-				if number > uint64(lastFetchedBlock)+w.confirmations {
-					// latest block height changed
-					blockToFetch = number - w.confirmations
-				} else if duration.Seconds() > 60 {
-					// l2geth didn't produce any blocks more than 1 minute.
-					blockToFetch = number
-				}
-				// fetch at most `blockTracesFetchLimit=10` missing blocks
-				if blockToFetch > uint64(lastFetchedBlock)+blockTracesFetchLimit {
-					blockToFetch = uint64(lastFetchedBlock) + blockTracesFetchLimit
-				}
-				if lastFetchedBlock != int64(blockToFetch) {
-					lastFetchedBlock = int64(blockToFetch)
-					lastBlockHeightChangeTime = time.Now()
+
+				if number >= w.confirmations {
+					number = number - w.confirmations
+				} else {
+					number = 0
 				}
 
-				if err := w.tryFetchRunningMissingBlocks(w.ctx, blockToFetch); err != nil {
+				if err := w.tryFetchRunningMissingBlocks(w.ctx, number); err != nil {
 					log.Error("failed to fetchRunningMissingBlocks", "err", err)
 				}
 
@@ -164,6 +143,11 @@ func (w *WatcherClient) tryFetchRunningMissingBlocks(ctx context.Context, backTr
 		backTrackTo = uint64(heightInDB)
 	}
 
+	// note that backTrackFrom >= backTrackTo because we are doing backtracking
+	if backTrackFrom > backTrackTo+blockTracesFetchLimit {
+		backTrackFrom = backTrackTo + blockTracesFetchLimit
+	}
+
 	// start backtracking
 
 	var traces []*types.BlockTrace
@@ -191,7 +175,7 @@ const contractEventsBlocksFetchLimit = int64(10)
 // FetchContractEvent pull latest event logs from given contract address and save in DB
 func (w *WatcherClient) fetchContractEvent(blockHeight uint64) error {
 	fromBlock := int64(w.processedMsgHeight) + 1
-	toBlock := int64(blockHeight) - int64(w.confirmations)
+	toBlock := int64(blockHeight)
 
 	if toBlock < fromBlock {
 		return nil
@@ -222,6 +206,7 @@ func (w *WatcherClient) fetchContractEvent(blockHeight uint64) error {
 	}
 	if len(logs) == 0 {
 		w.processedMsgHeight = uint64(toBlock)
+		log.Info("l2 watcher fetchContractEvent", "w.processedMsgHeight", w.processedMsgHeight)
 		return nil
 	}
 	log.Info("received new L2 messages", "fromBlock", fromBlock, "toBlock", toBlock,
@@ -252,6 +237,7 @@ func (w *WatcherClient) fetchContractEvent(blockHeight uint64) error {
 	err = w.orm.SaveL2Messages(w.ctx, sentMessageEvents)
 	if err == nil {
 		w.processedMsgHeight = uint64(toBlock)
+		log.Info("l2 watcher fetchContractEvent", "w.processedMsgHeight", w.processedMsgHeight)
 	}
 	return err
 }
