@@ -1,7 +1,6 @@
 assets/
 contracts/
 docs/
-tests/
 l2geth/
 rpc-gateway/
 *target/*

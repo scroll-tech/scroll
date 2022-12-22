@@ -8,8 +8,8 @@ COPY ./common/go.* ./common/
 COPY ./coordinator/go.* ./coordinator/
 COPY ./database/go.* ./database/
 COPY ./roller/go.* ./roller/
-RUN go work edit -dropuse=./tests/integration-test && \
-    go mod download -x
+COPY ./tests/integration-test/go.* ./tests/integration-test/
+RUN go mod download -x
 
 # Build db_cli
 FROM base as builder
