@@ -18,7 +18,7 @@ var (
 func init() {
 	app = cli.NewApp()
 	// Set up database app info.
-	app.Name = "database"
+	app.Name = "db_cli"
 	app.Usage = "The Scroll Database CLI"
 	app.Version = version.Version
 	app.Flags = append(app.Flags, utils.CommonFlags...)
