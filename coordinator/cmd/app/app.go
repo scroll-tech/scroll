@@ -61,7 +61,7 @@ func action(ctx *cli.Context) error {
 	}
 
 	// Initialize all coordinator modules.
-	rollerManager, err := rollers.New(ctx.Context, cfg.RollerManagerConfig, ormFactory, client)
+	rollerManager, err := coordinator.New(ctx.Context, cfg.RollerManagerConfig, ormFactory, client)
 	if err != nil {
 		return err
 	}
