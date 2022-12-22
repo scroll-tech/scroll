@@ -1,5 +1,6 @@
 assets/
 docs/
+tests/
 l2geth/
 rpc-gateway/
 *target/*
