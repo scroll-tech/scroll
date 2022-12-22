@@ -72,7 +72,7 @@ func init() {
 
 // Run run database cmd instance.
 func Run() {
-	// RunApp the sequencer.
+	// RunApp the db_cli.
 	if err := app.Run(os.Args); err != nil {
 		_, _ = fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
