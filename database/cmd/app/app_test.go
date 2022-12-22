@@ -14,6 +14,6 @@ func TestRunDatabase(t *testing.T) {
 	defer bridge.WaitExit()
 
 	// wait result
-	bridge.ExpectWithTimeout(true, time.Second*3, fmt.Sprintf("database version %s", version.Version))
+	bridge.ExpectWithTimeout(true, time.Second*3, fmt.Sprintf("db_cli version %s", version.Version))
 	bridge.RunApp(false)
 }

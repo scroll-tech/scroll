@@ -12,10 +12,10 @@ import (
 )
 
 func TestCmd(t *testing.T) {
-	app := cmd.NewCmd(t, "curTime", "date", "+%Y-%m-%d %H:%M")
+	app := cmd.NewCmd(t, "curTime", "date", "+%Y-%m-%d")
 
 	tm := time.Now()
-	curTime := fmt.Sprintf("%d-%d-%d %d:%d", tm.Year(), tm.Month(), tm.Day(), tm.Hour(), tm.Minute())
+	curTime := fmt.Sprintf("%d-%d-%d", tm.Year(), tm.Month(), tm.Day())
 
 	okCh := make(chan struct{}, 1)
 	app.RegistFunc(curTime, func(buf string) {
