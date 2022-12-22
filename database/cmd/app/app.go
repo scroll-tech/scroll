@@ -70,8 +70,8 @@ func init() {
 	utils.RegisterSimulation(app, "db_cli-test")
 }
 
-// RunDatabase run database cmd instance.
-func RunDatabase() {
+// Run run database cmd instance.
+func Run() {
 	// RunApp the sequencer.
 	if err := app.Run(os.Args); err != nil {
 		_, _ = fmt.Fprintln(os.Stderr, err)
