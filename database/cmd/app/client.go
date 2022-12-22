@@ -32,7 +32,7 @@ func initDB(dbCfg *database.DBConfig) (*sqlx.DB, error) {
 
 // resetDB clean or reset database.
 func resetDB(ctx *cli.Context) error {
-	cfg, err := applyConfig(ctx)
+	cfg, err := getConfig(ctx)
 	if err != nil {
 		return err
 	}
@@ -53,7 +53,7 @@ func resetDB(ctx *cli.Context) error {
 
 // checkDBStatus check db status
 func checkDBStatus(ctx *cli.Context) error {
-	cfg, err := applyConfig(ctx)
+	cfg, err := getConfig(ctx)
 	if err != nil {
 		return err
 	}
@@ -67,7 +67,7 @@ func checkDBStatus(ctx *cli.Context) error {
 
 // dbVersion return the latest version
 func dbVersion(ctx *cli.Context) error {
-	cfg, err := applyConfig(ctx)
+	cfg, err := getConfig(ctx)
 	if err != nil {
 		return err
 	}
@@ -84,7 +84,7 @@ func dbVersion(ctx *cli.Context) error {
 
 // migrateDB migrate db
 func migrateDB(ctx *cli.Context) error {
-	cfg, err := applyConfig(ctx)
+	cfg, err := getConfig(ctx)
 	if err != nil {
 		return err
 	}
@@ -98,7 +98,7 @@ func migrateDB(ctx *cli.Context) error {
 
 // rollbackDB rollback db by version
 func rollbackDB(ctx *cli.Context) error {
-	cfg, err := applyConfig(ctx)
+	cfg, err := getConfig(ctx)
 	if err != nil {
 		return err
 	}
