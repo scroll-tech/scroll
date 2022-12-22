@@ -5,5 +5,5 @@ import (
 )
 
 func main() {
-	app.RunDatabase()
+	app.Run()
 }
