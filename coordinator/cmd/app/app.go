@@ -15,7 +15,7 @@ import (
 	"scroll-tech/common/utils"
 	"scroll-tech/common/version"
 
-	rollers "scroll-tech/coordinator"
+	"scroll-tech/coordinator"
 	"scroll-tech/coordinator/config"
 )
 
