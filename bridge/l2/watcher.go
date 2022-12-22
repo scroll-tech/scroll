@@ -95,7 +95,12 @@ func (w *WatcherClient) Start() {
 					log.Error("failed to get_BlockNumber", "err", err)
 					continue
 				}
-				number = number - w.confirmations
+
+				if number >= w.confirmations {
+					number = number - w.confirmations
+				} else {
+					number = 0
+				}
 
 				if err := w.tryFetchRunningMissingBlocks(w.ctx, number); err != nil {
 					log.Error("failed to fetchRunningMissingBlocks", "err", err)
