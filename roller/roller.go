@@ -92,19 +92,16 @@ func (r *Roller) PublicKey() string {
 	return common.Bytes2Hex(crypto.CompressPubkey(&r.priv.PublicKey))
 }
 
-// Run runs Roller.
-func (r *Roller) Run() error {
+// Start runs Roller.
+func (r *Roller) Start() {
 	log.Info("start to register to coordinator")
 	if err := r.Register(); err != nil {
 		log.Crit("register to coordinator failed", "error", err)
 	}
 	log.Info("register to coordinator successfully!")
-	go func() {
-		r.HandleCoordinator()
-		r.Close()
-	}()
 
-	return r.ProveLoop()
+	go r.HandleCoordinator()
+	go r.ProveLoop()
 }
 
 // Register registers Roller to the coordinator through Websocket.
@@ -175,20 +172,20 @@ func (r *Roller) mustRetryCoordinator() {
 }
 
 // ProveLoop keep popping the block-traces from Stack and sends it to rust-prover for loop.
-func (r *Roller) ProveLoop() (err error) {
+func (r *Roller) ProveLoop() {
 	for {
 		select {
 		case <-r.stopChan:
-			return nil
+			return
 		default:
-			if err = r.prove(); err != nil {
+			if err := r.prove(); err != nil {
 				if errors.Is(err, store.ErrEmpty) {
 					log.Debug("get empty trace", "error", err)
 					time.Sleep(time.Second * 3)
 					continue
 				}
 				if strings.Contains(err.Error(), errNormalClose.Error()) {
-					return nil
+					return
 				}
 				log.Error("prove failed", "error", err)
 			}
@@ -244,8 +241,8 @@ func (r *Roller) signAndSubmitProof(msg *message.ProofDetail) (bool, error) {
 	return r.client.SubmitProof(context.Background(), authZkProof)
 }
 
-// Close closes the websocket connection.
-func (r *Roller) Close() {
+// Stop closes the websocket connection.
+func (r *Roller) Stop() {
 	if atomic.LoadInt64(&r.isClosed) == 1 {
 		return
 	}

@@ -3,6 +3,7 @@ package app
 import (
 	"fmt"
 	"os"
+	"os/signal"
 
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/urfave/cli/v2"
@@ -45,10 +46,20 @@ func action(ctx *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	defer r.Close()
+	// Start roller.
+	r.Start()
+
+	defer r.Stop()
 	log.Info("roller start successfully", "name", cfg.RollerName)
 
-	return r.Run()
+	// Catch CTRL-C to ensure a graceful shutdown.
+	interrupt := make(chan os.Signal, 1)
+	signal.Notify(interrupt, os.Interrupt)
+
+	// Wait until the interrupt signal is received from an OS signal.
+	<-interrupt
+
+	return nil
 }
 
 // RunRoller the roller cmd func.
