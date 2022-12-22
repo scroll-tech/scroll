@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/crypto"
 	"github.com/stretchr/testify/assert"
 )
@@ -23,4 +24,10 @@ func TestAuthMessageSignAndVerify(t *testing.T) {
 	ok, err := authMsg.Verify()
 	assert.NoError(t, err)
 	assert.Equal(t, true, ok)
+
+	// Check public key is ok.
+	pub, err := authMsg.PublicKey()
+	assert.NoError(t, err)
+	pubkey := crypto.CompressPubkey(&privkey.PublicKey)
+	assert.Equal(t, pub, common.Bytes2Hex(pubkey))
 }

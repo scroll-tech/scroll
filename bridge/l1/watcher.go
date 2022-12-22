@@ -5,7 +5,7 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/scroll-tech/go-ethereum"
+	geth "github.com/scroll-tech/go-ethereum"
 	"github.com/scroll-tech/go-ethereum/accounts/abi"
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/core/types"
@@ -124,7 +124,7 @@ func (w *Watcher) fetchContractEvent(blockHeight uint64) error {
 	}
 
 	// warning: uint int conversion...
-	query := ethereum.FilterQuery{
+	query := geth.FilterQuery{
 		FromBlock: big.NewInt(fromBlock), // inclusive
 		ToBlock:   big.NewInt(toBlock),   // inclusive
 		Addresses: []common.Address{
