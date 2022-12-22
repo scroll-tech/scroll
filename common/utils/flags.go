@@ -58,8 +58,5 @@ func RegisterSimulation(app *cli.App, name string) {
 		}
 		os.Exit(0)
 	})
-	// check if we have been reexec'd
-	if reexec.Init() {
-		return
-	}
+	reexec.Init()
 }
