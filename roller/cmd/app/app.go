@@ -62,8 +62,8 @@ func action(ctx *cli.Context) error {
 	return nil
 }
 
-// RunRoller the roller cmd func.
-func RunRoller() {
+// Run the roller cmd func.
+func Run() {
 	if err := app.Run(os.Args); err != nil {
 		_, _ = fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)

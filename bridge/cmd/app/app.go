@@ -115,8 +115,8 @@ func action(ctx *cli.Context) error {
 	return nil
 }
 
-// RunBridge run bridge cmd instance.
-func RunBridge() {
+// Run run bridge cmd instance.
+func Run() {
 	// Run the sequencer.
 	if err := app.Run(os.Args); err != nil {
 		_, _ = fmt.Fprintln(os.Stderr, err)
