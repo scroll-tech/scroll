@@ -11,7 +11,7 @@ import (
 	"scroll-tech/database/migrate"
 )
 
-func applyConfig(ctx *cli.Context) (*database.DBConfig, error) {
+func getConfig(ctx *cli.Context) (*database.DBConfig, error) {
 	file := ctx.String(utils.ConfigFileFlag.Name)
 	dbCfg, err := database.NewConfig(file)
 	if err != nil {
