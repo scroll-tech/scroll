@@ -6,6 +6,7 @@ import (
 	"crypto/rand"
 	"encoding/json"
 	"fmt"
+	"github.com/scroll-tech/go-ethereum/accounts/abi/bind"
 	"math/big"
 	"os"
 	"strconv"
@@ -43,9 +44,12 @@ var (
 	bridgeFile      string
 	dbFile          string
 	coordinatorFile string
+	rollerFile      string
+	bboltDB         string
 
-	bboltDB    string
-	rollerFile string
+	privkey *ecdsa.PrivateKey
+	l1Root  *bind.TransactOpts
+	l2Root  *bind.TransactOpts
 )
 
 func setupEnv(t *testing.T) {
@@ -64,6 +68,14 @@ func setupEnv(t *testing.T) {
 	dbFile = mockDatabaseConfig(t)
 	coordinatorFile = mockCoordinatorConfig(t)
 	rollerFile = mockRollerConfig(t)
+
+	var err error
+	privkey, err = crypto.HexToECDSA("1212121212121212121212121212121212121212121212121212121212121212")
+	assert.NoError(t, err)
+	l1Root, err = bind.NewKeyedTransactorWithChainID(privkey, big.NewInt(52077))
+	assert.NoError(t, err)
+	l2Root, err = bind.NewKeyedTransactorWithChainID(privkey, big.NewInt(53077))
+	assert.NoError(t, err)
 }
 
 func free(t *testing.T) {
@@ -111,10 +123,8 @@ func runRollerApp(t *testing.T, args ...string) appAPI {
 	return cmd.NewCmd(t, "roller-test", args...)
 }
 
-func runSender(t *testing.T, endpoint string) *sender.Sender {
-	priv, err := crypto.HexToECDSA("1212121212121212121212121212121212121212121212121212121212121212")
-	assert.NoError(t, err)
-	newSender, err := sender.NewSender(context.Background(), &bridgeConfig.SenderConfig{
+func newSender(t *testing.T, endpoint string) *sender.Sender {
+	s, err := sender.NewSender(context.Background(), &bridgeConfig.SenderConfig{
 		Endpoint:            endpoint,
 		CheckPendingTime:    3,
 		EscalateBlocks:      100,
@@ -122,9 +132,9 @@ func runSender(t *testing.T, endpoint string) *sender.Sender {
 		EscalateMultipleNum: 11,
 		EscalateMultipleDen: 10,
 		TxType:              "DynamicFeeTx",
-	}, []*ecdsa.PrivateKey{priv})
+	}, []*ecdsa.PrivateKey{privkey})
 	assert.NoError(t, err)
-	return newSender
+	return s
 }
 
 func mockBridgeConfig(t *testing.T) string {
