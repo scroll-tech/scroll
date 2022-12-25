@@ -74,7 +74,7 @@ func (m *Manager) Register(ctx context.Context, authMsg *message.AuthMsg) (*rpc.
 	go func() {
 		defer func() {
 			m.freeRoller(pubkey)
-			log.Info("roller unregister", "name", authMsg.Identity.Name)
+			log.Info("roller unregister", "name", authMsg.Identity.Name, "pubkey", pubkey)
 		}()
 
 		for {
@@ -82,14 +82,14 @@ func (m *Manager) Register(ctx context.Context, authMsg *message.AuthMsg) (*rpc.
 			case task := <-taskCh:
 				notifier.Notify(rpcSub.ID, task) //nolint
 			case err := <-rpcSub.Err():
-				log.Warn("client stopped the ws connection", "err", err)
+				log.Warn("client stopped the ws connection", "name", authMsg.Identity.Name, "pubkey", pubkey, "err", err)
 				return
 			case <-notifier.Closed():
 				return
 			}
 		}
 	}()
-	log.Info("roller register", "name", authMsg.Identity.Name, "version", authMsg.Identity.Version)
+	log.Info("roller register", "name", authMsg.Identity.Name, "pubkey", pubkey, "version", authMsg.Identity.Version)
 
 	return rpcSub, nil
 }
@@ -116,6 +116,6 @@ func (m *Manager) SubmitProof(proof *message.ProofMsg) (bool, error) {
 	}
 	defer m.freeTaskIDForRoller(pubkey, proof.ID)
 
-	log.Info("Received zk proof", "proof id", proof.ID, "result", true)
+	log.Info("received zk proof", "proof id", proof.ID, "roller pk", pubkey)
 	return true, nil
 }
