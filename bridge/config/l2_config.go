@@ -24,6 +24,8 @@ type L2Config struct {
 type BatchProposerConfig struct {
 	// Proof generation frequency, generating proof every k blocks
 	ProofGenerationFreq uint64 `json:"proof_generation_freq"`
+	// Txnum threshold in a batch
+	BatchTxNumThreshold uint64 `json:"batch_tx_num_threshold"`
 	// Gas threshold in a batch
 	BatchGasThreshold uint64 `json:"batch_gas_threshold"`
 	// Time waited to generate a batch even if gas_threshold not met
