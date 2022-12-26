@@ -18,9 +18,10 @@ type batchProposer struct {
 
 	orm database.OrmFactory
 
-	batchTimeSec      uint64
-	batchGasThreshold uint64
-	batchBlocksLimit  uint64
+	batchTimeSec        uint64
+	batchGasThreshold   uint64
+	batchTxNumThreshold uint64
+	batchBlocksLimit    uint64
 
 	proofGenerationFreq uint64
 	skippedOpcodes      map[string]struct{}
@@ -32,6 +33,7 @@ func newBatchProposer(cfg *config.BatchProposerConfig, orm database.OrmFactory) 
 		orm:                 orm,
 		batchTimeSec:        cfg.BatchTimeSec,
 		batchGasThreshold:   cfg.BatchGasThreshold,
+		batchTxNumThreshold: cfg.BatchTxNumThreshold,
 		batchBlocksLimit:    cfg.BatchBlocksLimit,
 		proofGenerationFreq: cfg.ProofGenerationFreq,
 		skippedOpcodes:      cfg.SkippedOpcodes,
@@ -59,16 +61,17 @@ func (w *batchProposer) tryProposeBatch() error {
 	}
 
 	var (
-		length  = len(blocks)
-		gasUsed uint64
+		length         = len(blocks)
+		gasUsed, txNum uint64
 	)
 	// add blocks into batch until reach batchGasThreshold
 	for i, block := range blocks {
-		if gasUsed+block.GasUsed > w.batchGasThreshold {
+		if (gasUsed+block.GasUsed > w.batchGasThreshold) || (txNum+block.TxNum > w.batchTxNumThreshold) {
 			blocks = blocks[:i]
 			break
 		}
 		gasUsed += block.GasUsed
+		txNum += block.TxNum
 	}
 
 	// if too few gas gathered, but we don't want to halt, we then check the first block in the batch:
