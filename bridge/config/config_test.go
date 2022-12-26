@@ -11,7 +11,7 @@ import (
 )
 
 func TestConfig(t *testing.T) {
-	assert.True(t, assert.NoError(t, config.NewConfig("../config.json")), "failed to load config")
+	assert.NoError(t, config.NewConfig("../config.json"))
 
 	skippedOpcodes := viper.GetStringSlice("l2_config.batch_proposer_config.skipped_opcodes")
 	assert.True(t, len(skippedOpcodes) > 0)

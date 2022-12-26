@@ -43,8 +43,7 @@ func main() {
 
 func action(ctx *cli.Context) error {
 	// Load config.
-	viper.SetConfigFile("../coordinator/config.json")
-	if err := viper.ReadInConfig(); err != nil {
+	if err := config.NewConfig("../coordinator/config.json"); err != nil {
 		return err
 	}
 

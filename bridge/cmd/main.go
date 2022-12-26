@@ -14,6 +14,7 @@ import (
 	"scroll-tech/common/utils"
 	"scroll-tech/common/version"
 
+	"scroll-tech/bridge/config"
 	"scroll-tech/bridge/l1"
 	"scroll-tech/bridge/l2"
 )
@@ -41,8 +42,7 @@ func main() {
 
 func action(ctx *cli.Context) error {
 	// Load config.
-	viper.SetConfigFile(utils.ConfigFileFlag.Name)
-	if err := viper.ReadInConfig(); err != nil {
+	if err := config.NewConfig(utils.ConfigFileFlag.Name); err != nil {
 		return err
 	}
 

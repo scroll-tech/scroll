@@ -7,6 +7,7 @@ import (
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 
+	"scroll-tech/bridge/config"
 	"scroll-tech/common/docker"
 )
 
@@ -22,8 +23,7 @@ var (
 
 func setupEnv(t *testing.T) (err error) {
 	// Load config.
-	viper.SetConfigFile("../config.json")
-	assert.NoError(t, viper.ReadInConfig())
+	assert.NoError(t, config.NewConfig("../config.json"))
 
 	// Create l1geth container.
 	l1gethImg = docker.NewTestL1Docker(t)
