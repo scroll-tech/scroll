@@ -152,6 +152,15 @@ func (o *blockTraceOrm) GetHashByNumber(number uint64) (*common.Hash, error) {
 	return &hash, nil
 }
 
+func (o *blockTraceOrm) GetBatchIDByNumber(number uint64) (string, error) {
+	row := o.db.QueryRow(`SELECT batch_id FROM block_trace WHERE number = $1`, number)
+	var idStr string
+	if err := row.Scan(&idStr); err != nil {
+		return "", err
+	}
+	return idStr, nil
+}
+
 func (o *blockTraceOrm) InsertBlockTraces(ctx context.Context, blockTraces []*types.BlockTrace) error {
 	traceMaps := make([]map[string]interface{}, len(blockTraces))
 	for i, trace := range blockTraces {

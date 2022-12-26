@@ -16,6 +16,9 @@ func TestIntegration(t *testing.T) {
 	// test bridge service
 	t.Run("testStartProcess", testStartProcess)
 
+	// test send
+	t.Run("testContracts", testContracts)
+
 	t.Cleanup(func() {
 		free(t)
 	})

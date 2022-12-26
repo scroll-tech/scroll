@@ -1,24 +1,22 @@
 package integration
 
 import (
-	"github.com/scroll-tech/go-ethereum/common"
-	"github.com/stretchr/testify/assert"
+	"context"
 	"math/big"
-	"scroll-tech/database"
-	"scroll-tech/database/migrate"
 	"testing"
 	"time"
+
+	"github.com/scroll-tech/go-ethereum/common"
+	"github.com/scroll-tech/go-ethereum/ethclient"
+	"github.com/stretchr/testify/assert"
+
+	"scroll-tech/database"
+	"scroll-tech/database/orm"
+
+	"scroll-tech/common/utils"
 )
 
-func testNative(t *testing.T) {
-	// Create db handler and reset db.
-	db, err := database.NewOrmFactory(&database.DBConfig{
-		DriverName: "postgres",
-		DSN:        dbImg.Endpoint(),
-	})
-	assert.NoError(t, err)
-	assert.NoError(t, migrate.ResetDB(db.GetDB().DB))
-	defer db.Close()
+func testContracts(t *testing.T) {
 	// migrate db.
 	runDBCliApp(t, "reset", "successful to reset")
 	runDBCliApp(t, "migrate", "current version:")
@@ -41,10 +39,41 @@ func testNative(t *testing.T) {
 	rollerCmd.ExpectWithTimeout(false, time.Second*20, "roller start successfully")
 	defer rollerCmd.WaitExit()
 
+	// test native call.
+	t.Run("testNative", testNative)
+}
+
+func testNative(t *testing.T) {
+	// Create db handler and reset db.
+	db, err := database.NewOrmFactory(&database.DBConfig{
+		DriverName: "postgres",
+		DSN:        dbImg.Endpoint(),
+	})
+	assert.NoError(t, err)
+	defer db.Close()
+
 	// create and send native tx.
 	sender := newSender(t, l2gethImg.Endpoint())
-	to := common.HexToAddress("")
+	to := common.HexToAddress("0x1c5a77d9fa7ef466951b2f01f724bca3a5820b63")
 	_, err = sender.SendTransaction("native_01", &to, big.NewInt(100), nil)
+	assert.NoError(t, err)
+	<-sender.ConfirmChan()
+
+	client, err := ethclient.Dial(l2gethImg.Endpoint())
+	assert.NoError(t, err)
+	number, err := client.BlockNumber(context.Background())
+	assert.NoError(t, err)
+
+	// Wait all the ids were verified.
+	utils.TryTimes(20, func() bool {
+		var (
+			id     string
+			status orm.ProvingStatus
+		)
+		id, err = db.GetBatchIDByNumber(number)
+		status, err = db.GetProvingStatusByID(id)
+		return err == nil && status == orm.ProvingTaskVerified
+	})
 	assert.NoError(t, err)
 }
 

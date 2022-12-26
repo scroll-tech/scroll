@@ -6,12 +6,13 @@ import (
 	"crypto/rand"
 	"encoding/json"
 	"fmt"
-	"github.com/scroll-tech/go-ethereum/accounts/abi/bind"
 	"math/big"
 	"os"
 	"strconv"
 	"testing"
 	"time"
+
+	"github.com/scroll-tech/go-ethereum/accounts/abi/bind"
 
 	"github.com/scroll-tech/go-ethereum/crypto"
 	"github.com/stretchr/testify/assert"
@@ -141,6 +142,8 @@ func mockBridgeConfig(t *testing.T) string {
 	// Load origin bridge config file.
 	cfg, err := bridgeConfig.NewConfig("../../bridge/config.json")
 	assert.NoError(t, err)
+	cfg.L2Config.BatchProposerConfig.BatchTimeSec = 0
+	cfg.L2Config.Confirmations = 0
 
 	if l1gethImg != nil {
 		cfg.L1Config.Endpoint = l1gethImg.Endpoint()
@@ -155,7 +158,7 @@ func mockBridgeConfig(t *testing.T) string {
 	}
 
 	// Store changed bridge config into a temp file.
-	data, err := json.Marshal(cfg)
+	data, err := json.MarshalIndent(cfg, "", "    ")
 	assert.NoError(t, err)
 	file := fmt.Sprintf("/tmp/%d_bridge-config.json", timestamp)
 	err = os.WriteFile(file, data, 0644)
@@ -177,7 +180,7 @@ func mockCoordinatorConfig(t *testing.T) string {
 		cfg.L2Config.Endpoint = l2gethImg.Endpoint()
 	}
 
-	data, err := json.Marshal(cfg)
+	data, err := json.MarshalIndent(cfg, "", "    ")
 	assert.NoError(t, err)
 
 	file := fmt.Sprintf("/tmp/%d_coordinator-config.json", timestamp)
@@ -193,7 +196,7 @@ func mockDatabaseConfig(t *testing.T) string {
 	if dbImg != nil {
 		cfg.DSN = dbImg.Endpoint()
 	}
-	data, err := json.Marshal(cfg)
+	data, err := json.MarshalIndent(cfg, "", "    ")
 	assert.NoError(t, err)
 
 	file := fmt.Sprintf("/tmp/%d_db-config.json", timestamp)
@@ -215,7 +218,7 @@ func mockRollerConfig(t *testing.T) string {
 	bboltDB = fmt.Sprintf("/tmp/%d_bbolt_db", timestamp)
 	cfg.DBPath = bboltDB
 
-	data, err := json.Marshal(cfg)
+	data, err := json.MarshalIndent(cfg, "", "    ")
 	assert.NoError(t, err)
 
 	file := fmt.Sprintf("/tmp/%d_roller-config.json", timestamp)

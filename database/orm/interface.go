@@ -107,6 +107,7 @@ type BlockTraceOrm interface {
 	// add `GetUnbatchedBlocks` because `GetBlockInfos` cannot support query "batch_id is NULL"
 	GetUnbatchedBlocks(fields map[string]interface{}, args ...string) ([]*BlockInfo, error)
 	GetHashByNumber(number uint64) (*common.Hash, error)
+	GetBatchIDByNumber(number uint64) (string, error)
 	DeleteTracesByBatchID(batchID string) error
 	InsertBlockTraces(ctx context.Context, blockTraces []*types.BlockTrace) error
 	SetBatchIDForBlocksInDBTx(dbTx *sqlx.Tx, numbers []uint64, batchID string) error
