@@ -96,11 +96,13 @@ pipeline {
                }
             }
         }
-        stage('Coverage') { 
-            script {
-                currentBuild.result = 'SUCCESS'
+        stage('Coverage') {
+            steps { 
+                script {
+                    currentBuild.result = 'SUCCESS'
+                }
+                step([$class: 'CompareCoverageAction', publishResultAs: 'statusCheck', scmVars: [GIT_URL: env.GIT_URL]])
             }
-            step([$class: 'CompareCoverageAction', publishResultAs: 'statusCheck', scmVars: [GIT_URL: env.GIT_URL]])
         }
     }
     post {
