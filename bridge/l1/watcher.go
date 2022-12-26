@@ -114,104 +114,121 @@ const contractEventsBlocksFetchLimit = int64(30)
 func (w *Watcher) fetchContractEvent(blockHeight uint64) error {
 	fromBlock := int64(w.processedMsgHeight) + 1
 	toBlock := int64(blockHeight) - int64(w.confirmations)
-
 	if toBlock < fromBlock {
 		return nil
 	}
 
-	if toBlock > fromBlock+contractEventsBlocksFetchLimit {
-		toBlock = fromBlock + contractEventsBlocksFetchLimit - 1
+	type group struct {
+		from int64 // inclusive
+		to   int64 // inclusive
+	}
+	groups := []group{}
+	for i := int64(0); i < (toBlock-fromBlock+1)/contractEventsBlocksFetchLimit; i++ {
+		groups = append(groups, group{
+			from: fromBlock + i*contractEventsBlocksFetchLimit,
+			to:   fromBlock + (i+1)*contractEventsBlocksFetchLimit - 1,
+		})
+	}
+	if (toBlock-fromBlock+1)%contractEventsBlocksFetchLimit != 0 {
+		groups = append(groups, group{
+			from: fromBlock + int64(len(groups))*contractEventsBlocksFetchLimit,
+			to:   toBlock,
+		})
 	}
 
-	// warning: uint int conversion...
-	query := geth.FilterQuery{
-		FromBlock: big.NewInt(fromBlock), // inclusive
-		ToBlock:   big.NewInt(toBlock),   // inclusive
-		Addresses: []common.Address{
-			w.messengerAddress,
-			w.rollupAddress,
-		},
-		Topics: make([][]common.Hash, 1),
-	}
-	query.Topics[0] = make([]common.Hash, 5)
-	query.Topics[0][0] = common.HexToHash(bridge_abi.SENT_MESSAGE_EVENT_SIGNATURE)
-	query.Topics[0][1] = common.HexToHash(bridge_abi.RELAYED_MESSAGE_EVENT_SIGNATURE)
-	query.Topics[0][2] = common.HexToHash(bridge_abi.FAILED_RELAYED_MESSAGE_EVENT_SIGNATURE)
-	query.Topics[0][3] = common.HexToHash(bridge_abi.COMMIT_BATCH_EVENT_SIGNATURE)
-	query.Topics[0][4] = common.HexToHash(bridge_abi.FINALIZED_BATCH_EVENT_SIGNATURE)
+	for _, group := range groups {
+		// warning: uint int conversion...
+		query := geth.FilterQuery{
+			FromBlock: big.NewInt(group.from), // inclusive
+			ToBlock:   big.NewInt(group.to),   // inclusive
+			Addresses: []common.Address{
+				w.messengerAddress,
+				w.rollupAddress,
+			},
+			Topics: make([][]common.Hash, 1),
+		}
+		query.Topics[0] = make([]common.Hash, 5)
+		query.Topics[0][0] = common.HexToHash(bridge_abi.SENT_MESSAGE_EVENT_SIGNATURE)
+		query.Topics[0][1] = common.HexToHash(bridge_abi.RELAYED_MESSAGE_EVENT_SIGNATURE)
+		query.Topics[0][2] = common.HexToHash(bridge_abi.FAILED_RELAYED_MESSAGE_EVENT_SIGNATURE)
+		query.Topics[0][3] = common.HexToHash(bridge_abi.COMMIT_BATCH_EVENT_SIGNATURE)
+		query.Topics[0][4] = common.HexToHash(bridge_abi.FINALIZED_BATCH_EVENT_SIGNATURE)
 
-	logs, err := w.client.FilterLogs(w.ctx, query)
-	if err != nil {
-		log.Warn("Failed to get event logs", "err", err)
-		return err
-	}
-	if len(logs) == 0 {
-		w.processedMsgHeight = uint64(toBlock)
-		log.Info("l1 watcher fetchContractEvent", "w.processedMsgHeight", w.processedMsgHeight)
-		return nil
-	}
-	log.Info("Received new L1 messages", "fromBlock", fromBlock, "toBlock", toBlock,
-		"cnt", len(logs))
+		logs, err := w.client.FilterLogs(w.ctx, query)
+		if err != nil {
+			log.Warn("Failed to get event logs", "err", err)
+			return err
+		}
+		if len(logs) == 0 {
+			w.processedMsgHeight = uint64(group.to)
+			log.Info("l1 watcher fetchContractEvent", "w.processedMsgHeight", w.processedMsgHeight)
+			return nil
+		}
+		log.Info("Received new L1 messages", "fromBlock", group.from, "toBlock", group.to,
+			"cnt", len(logs))
 
-	sentMessageEvents, relayedMessageEvents, rollupEvents, err := w.parseBridgeEventLogs(logs)
-	if err != nil {
-		log.Error("Failed to parse emitted events log", "err", err)
-		return err
-	}
+		sentMessageEvents, relayedMessageEvents, rollupEvents, err := w.parseBridgeEventLogs(logs)
+		if err != nil {
+			log.Error("Failed to parse emitted events log", "err", err)
+			return err
+		}
 
-	// use rollup event to update rollup results db status
-	var batchIDs []string
-	for _, event := range rollupEvents {
-		batchIDs = append(batchIDs, event.batchID.String())
-	}
-	statuses, err := w.db.GetRollupStatusByIDList(batchIDs)
-	if err != nil {
-		log.Error("Failed to GetRollupStatusByIDList", "err", err)
-		return err
-	}
-	if len(statuses) != len(batchIDs) {
-		log.Error("RollupStatus.Length mismatch with BatchIDs.Length")
-		return nil
-	}
+		// use rollup event to update rollup results db status
+		var batchIDs []string
+		for _, event := range rollupEvents {
+			batchIDs = append(batchIDs, event.batchID.String())
+		}
+		statuses, err := w.db.GetRollupStatusByIDList(batchIDs)
+		if err != nil {
+			log.Error("Failed to GetRollupStatusByIDList", "err", err)
+			return err
+		}
+		if len(statuses) != len(batchIDs) {
+			log.Error("RollupStatus.Length mismatch with BatchIDs.Length")
+			return nil
+		}
 
-	for index, event := range rollupEvents {
-		batchID := event.batchID.String()
-		status := statuses[index]
-		if event.status != status {
-			if event.status == orm.RollupFinalized {
-				err = w.db.UpdateFinalizeTxHashAndRollupStatus(w.ctx, batchID, event.txHash.String(), event.status)
-			} else if event.status == orm.RollupCommitted {
-				err = w.db.UpdateCommitTxHashAndRollupStatus(w.ctx, batchID, event.txHash.String(), event.status)
+		for index, event := range rollupEvents {
+			batchID := event.batchID.String()
+			status := statuses[index]
+			if event.status != status {
+				if event.status == orm.RollupFinalized {
+					err = w.db.UpdateFinalizeTxHashAndRollupStatus(w.ctx, batchID, event.txHash.String(), event.status)
+				} else if event.status == orm.RollupCommitted {
+					err = w.db.UpdateCommitTxHashAndRollupStatus(w.ctx, batchID, event.txHash.String(), event.status)
+				}
+				if err != nil {
+					log.Error("Failed to update Rollup/Finalize TxHash and Status", "err", err)
+					return err
+				}
+			}
+		}
+
+		// Update relayed message first to make sure we don't forget to update submitted message.
+		// Since, we always start sync from the latest unprocessed message.
+		for _, msg := range relayedMessageEvents {
+			if msg.isSuccessful {
+				// succeed
+				err = w.db.UpdateLayer1StatusAndLayer2Hash(w.ctx, msg.msgHash.String(), orm.MsgConfirmed, msg.txHash.String())
+			} else {
+				// failed
+				err = w.db.UpdateLayer1StatusAndLayer2Hash(w.ctx, msg.msgHash.String(), orm.MsgFailed, msg.txHash.String())
 			}
 			if err != nil {
-				log.Error("Failed to update Rollup/Finalize TxHash and Status", "err", err)
+				log.Error("Failed to update layer1 status and layer2 hash", "err", err)
 				return err
 			}
 		}
-	}
 
-	// Update relayed message first to make sure we don't forget to update submitted message.
-	// Since, we always start sync from the latest unprocessed message.
-	for _, msg := range relayedMessageEvents {
-		if msg.isSuccessful {
-			// succeed
-			err = w.db.UpdateLayer1StatusAndLayer2Hash(w.ctx, msg.msgHash.String(), orm.MsgConfirmed, msg.txHash.String())
-		} else {
-			// failed
-			err = w.db.UpdateLayer1StatusAndLayer2Hash(w.ctx, msg.msgHash.String(), orm.MsgFailed, msg.txHash.String())
-		}
-		if err != nil {
-			log.Error("Failed to update layer1 status and layer2 hash", "err", err)
+		if err = w.db.SaveL1Messages(w.ctx, sentMessageEvents); err != nil {
 			return err
 		}
-	}
 
-	err = w.db.SaveL1Messages(w.ctx, sentMessageEvents)
-	if err == nil {
-		w.processedMsgHeight = uint64(toBlock)
+		w.processedMsgHeight = uint64(group.to)
 		log.Info("l1 watcher fetchContractEvent", "w.processedMsgHeight", w.processedMsgHeight)
 	}
-	return err
+
+	return nil
 }
 
 func (w *Watcher) parseBridgeEventLogs(logs []types.Log) ([]*orm.L1Message, []relayedMessage, []rollupEvent, error) {

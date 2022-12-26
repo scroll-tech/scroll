@@ -191,70 +191,88 @@ const contractEventsBlocksFetchLimit = int64(30)
 func (w *WatcherClient) fetchContractEvent(blockHeight uint64) error {
 	fromBlock := int64(w.processedMsgHeight) + 1
 	toBlock := int64(blockHeight)
-
 	if toBlock < fromBlock {
 		return nil
 	}
 
-	if toBlock > fromBlock+contractEventsBlocksFetchLimit {
-		toBlock = fromBlock + contractEventsBlocksFetchLimit - 1
+	type group struct {
+		from int64 // inclusive
+		to   int64 // inclusive
+	}
+	groups := []group{}
+	for i := int64(0); i < (toBlock-fromBlock+1)/contractEventsBlocksFetchLimit; i++ {
+		groups = append(groups, group{
+			from: fromBlock + i*contractEventsBlocksFetchLimit,
+			to:   fromBlock + (i+1)*contractEventsBlocksFetchLimit - 1,
+		})
+	}
+	if (toBlock-fromBlock+1)%contractEventsBlocksFetchLimit != 0 {
+		groups = append(groups, group{
+			from: fromBlock + int64(len(groups))*contractEventsBlocksFetchLimit,
+			to:   toBlock,
+		})
 	}
 
-	// warning: uint int conversion...
-	query := geth.FilterQuery{
-		FromBlock: big.NewInt(fromBlock), // inclusive
-		ToBlock:   big.NewInt(toBlock),   // inclusive
-		Addresses: []common.Address{
-			w.messengerAddress,
-		},
-		Topics: make([][]common.Hash, 1),
-	}
-	query.Topics[0] = make([]common.Hash, 3)
-	query.Topics[0][0] = common.HexToHash(bridge_abi.SENT_MESSAGE_EVENT_SIGNATURE)
-	query.Topics[0][1] = common.HexToHash(bridge_abi.RELAYED_MESSAGE_EVENT_SIGNATURE)
-	query.Topics[0][2] = common.HexToHash(bridge_abi.FAILED_RELAYED_MESSAGE_EVENT_SIGNATURE)
-
-	logs, err := w.FilterLogs(w.ctx, query)
-	if err != nil {
-		log.Error("failed to get event logs", "err", err)
-		return err
-	}
-	if len(logs) == 0 {
-		w.processedMsgHeight = uint64(toBlock)
-		log.Info("l2 watcher fetchContractEvent", "w.processedMsgHeight", w.processedMsgHeight)
-		return nil
-	}
-	log.Info("received new L2 messages", "fromBlock", fromBlock, "toBlock", toBlock,
-		"cnt", len(logs))
-
-	sentMessageEvents, relayedMessageEvents, err := w.parseBridgeEventLogs(logs)
-	if err != nil {
-		log.Error("failed to parse emitted event log", "err", err)
-		return err
-	}
-
-	// Update relayed message first to make sure we don't forget to update submited message.
-	// Since, we always start sync from the latest unprocessed message.
-	for _, msg := range relayedMessageEvents {
-		if msg.isSuccessful {
-			// succeed
-			err = w.orm.UpdateLayer1StatusAndLayer2Hash(w.ctx, msg.msgHash.String(), orm.MsgConfirmed, msg.txHash.String())
-		} else {
-			// failed
-			err = w.orm.UpdateLayer1StatusAndLayer2Hash(w.ctx, msg.msgHash.String(), orm.MsgFailed, msg.txHash.String())
+	for _, group := range groups {
+		// warning: uint int conversion...
+		query := geth.FilterQuery{
+			FromBlock: big.NewInt(group.from), // inclusive
+			ToBlock:   big.NewInt(group.to),   // inclusive
+			Addresses: []common.Address{
+				w.messengerAddress,
+			},
+			Topics: make([][]common.Hash, 1),
 		}
+		query.Topics[0] = make([]common.Hash, 3)
+		query.Topics[0][0] = common.HexToHash(bridge_abi.SENT_MESSAGE_EVENT_SIGNATURE)
+		query.Topics[0][1] = common.HexToHash(bridge_abi.RELAYED_MESSAGE_EVENT_SIGNATURE)
+		query.Topics[0][2] = common.HexToHash(bridge_abi.FAILED_RELAYED_MESSAGE_EVENT_SIGNATURE)
+
+		logs, err := w.FilterLogs(w.ctx, query)
 		if err != nil {
-			log.Error("Failed to update layer1 status and layer2 hash", "err", err)
+			log.Error("failed to get event logs", "err", err)
 			return err
 		}
-	}
+		if len(logs) == 0 {
+			w.processedMsgHeight = uint64(group.to)
+			log.Info("l2 watcher fetchContractEvent", "w.processedMsgHeight", w.processedMsgHeight)
+			return nil
+		}
+		log.Info("received new L2 messages",
+			"fromBlock", group.from, "toBlock", group.to,
+			"cnt", len(logs))
 
-	err = w.orm.SaveL2Messages(w.ctx, sentMessageEvents)
-	if err == nil {
-		w.processedMsgHeight = uint64(toBlock)
+		sentMessageEvents, relayedMessageEvents, err := w.parseBridgeEventLogs(logs)
+		if err != nil {
+			log.Error("failed to parse emitted event log", "err", err)
+			return err
+		}
+
+		// Update relayed message first to make sure we don't forget to update submited message.
+		// Since, we always start sync from the latest unprocessed message.
+		for _, msg := range relayedMessageEvents {
+			if msg.isSuccessful {
+				// succeed
+				err = w.orm.UpdateLayer1StatusAndLayer2Hash(w.ctx, msg.msgHash.String(), orm.MsgConfirmed, msg.txHash.String())
+			} else {
+				// failed
+				err = w.orm.UpdateLayer1StatusAndLayer2Hash(w.ctx, msg.msgHash.String(), orm.MsgFailed, msg.txHash.String())
+			}
+			if err != nil {
+				log.Error("Failed to update layer1 status and layer2 hash", "err", err)
+				return err
+			}
+		}
+
+		if err = w.orm.SaveL2Messages(w.ctx, sentMessageEvents); err != nil {
+			return err
+		}
+
+		w.processedMsgHeight = uint64(group.to)
 		log.Info("l2 watcher fetchContractEvent", "w.processedMsgHeight", w.processedMsgHeight)
 	}
-	return err
+
+	return nil
 }
 
 func (w *WatcherClient) parseBridgeEventLogs(logs []types.Log) ([]*orm.L2Message, []relayedMessage, error) {
