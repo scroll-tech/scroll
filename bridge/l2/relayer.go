@@ -70,7 +70,6 @@ func NewLayer2Relayer(ctx context.Context, ethClient *ethclient.Client, db datab
 		log.Error("Failed to unmarshal private keys", "err", err)
 		return nil, err
 	}
-
 	messageSender, err := sender.NewSender(ctx, senderConfig, messageSenderPrivateKeys)
 	if err != nil {
 		log.Error("Failed to create messenger sender", "err", err)

@@ -27,12 +27,6 @@ import (
 
 func testCreateNewWatcherAndStop(t *testing.T) {
 	// Create db handler and reset db.
-	viper.Sub("db_config").Debug()
-	viper.Sub("db_config").Debug()
-	viper.Sub("db_config").Debug()
-	viper.Sub("db_config").Debug()
-	viper.Sub("db_config").Debug()
-
 	l2db, err := database.NewOrmFactory(viper.Sub("db_config"))
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(l2db.GetDB().DB))
@@ -44,8 +38,9 @@ func testCreateNewWatcherAndStop(t *testing.T) {
 
 	messageSenderPrivateKeys, err := config.UnmarshalPrivateKeys(viper.GetStringSlice("l2_config.relayer_config.message_sender_private_keys"))
 	assert.NoError(t, err)
+
 	senderCfg := viper.Sub("l2_config.relayer_config.sender_config")
-	senderCfg.Set("confirmations", 0)
+	//senderCfg.Set("confirmations", 0)
 	newSender, err := sender.NewSender(context.Background(), senderCfg, messageSenderPrivateKeys)
 	assert.NoError(t, err)
 
