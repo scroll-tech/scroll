@@ -87,23 +87,21 @@ func NewRoller(cfg *config.Config) (*Roller, error) {
 	}, nil
 }
 
+// PublicKey translate public key to hex and return.
 func (r *Roller) PublicKey() string {
 	return common.Bytes2Hex(crypto.CompressPubkey(&r.priv.PublicKey))
 }
 
-// Run runs Roller.
-func (r *Roller) Run() error {
+// Start runs Roller.
+func (r *Roller) Start() {
 	log.Info("start to register to coordinator")
 	if err := r.Register(); err != nil {
 		log.Crit("register to coordinator failed", "error", err)
 	}
 	log.Info("register to coordinator successfully!")
-	go func() {
-		r.HandleCoordinator()
-		r.Close()
-	}()
 
-	return r.ProveLoop()
+	go r.HandleCoordinator()
+	go r.ProveLoop()
 }
 
 // Register registers Roller to the coordinator through Websocket.
@@ -146,7 +144,7 @@ func (r *Roller) HandleCoordinator() {
 			return
 		case task := <-r.taskChan:
 			log.Info("Accept BlockTrace from Scroll", "ID", task.ID)
-			err := r.stack.Push(task)
+			err := r.stack.Push(&store.ProvingTask{Task: task, Times: 0})
 			if err != nil {
 				panic(fmt.Sprintf("could not push task(%s) into stack: %v", task.ID, err))
 			}
@@ -174,20 +172,20 @@ func (r *Roller) mustRetryCoordinator() {
 }
 
 // ProveLoop keep popping the block-traces from Stack and sends it to rust-prover for loop.
-func (r *Roller) ProveLoop() (err error) {
+func (r *Roller) ProveLoop() {
 	for {
 		select {
 		case <-r.stopChan:
-			return nil
+			return
 		default:
-			if err = r.prove(); err != nil {
+			if err := r.prove(); err != nil {
 				if errors.Is(err, store.ErrEmpty) {
 					log.Debug("get empty trace", "error", err)
 					time.Sleep(time.Second * 3)
 					continue
 				}
 				if strings.Contains(err.Error(), errNormalClose.Error()) {
-					return nil
+					return
 				}
 				log.Error("prove failed", "error", err)
 			}
@@ -196,16 +194,33 @@ func (r *Roller) ProveLoop() (err error) {
 }
 
 func (r *Roller) prove() error {
-	var proofMsg *message.ProofDetail
-
 	task, err := r.stack.Pop()
 	if err != nil {
 		return err
 	}
-	log.Info("start to prove block", "task-id", task.ID)
+
+	var proofMsg *message.ProofDetail
+	if task.Times > 2 {
+		proofMsg = &message.ProofDetail{
+			Status: message.StatusProofError,
+			Error:  "prover has retried several times due to FFI panic",
+			ID:     task.Task.ID,
+			Proof:  &message.AggProof{},
+		}
+
+		_, err = r.signAndSubmitProof(proofMsg)
+		return err
+	}
+
+	err = r.stack.Push(task)
+	if err != nil {
+		return err
+	}
+
+	log.Info("start to prove block", "task-id", task.Task.ID)
 
 	// sort BlockTrace
-	traces := task.Traces
+	traces := task.Task.Traces
 	sort.Slice(traces, func(i, j int) bool {
 		return traces[i].Header.Number.Int64() < traces[j].Header.Number.Int64()
 	})
@@ -214,17 +229,22 @@ func (r *Roller) prove() error {
 		proofMsg = &message.ProofDetail{
 			Status: message.StatusProofError,
 			Error:  err.Error(),
-			ID:     task.ID,
+			ID:     task.Task.ID,
 			Proof:  &message.AggProof{},
 		}
-		log.Error("prove block failed!", "task-id", task.ID)
+		log.Error("prove block failed!", "task-id", task.Task.ID)
 	} else {
+
 		proofMsg = &message.ProofDetail{
 			Status: message.StatusOk,
-			ID:     task.ID,
+			ID:     task.Task.ID,
 			Proof:  proof,
 		}
-		log.Info("prove block successfully!", "task-id", task.ID)
+		log.Info("prove block successfully!", "task-id", task.Task.ID)
+	}
+	_, err = r.stack.Pop()
+	if err != nil {
+		return err
 	}
 
 	ok, err := r.signAndSubmitProof(proofMsg)
@@ -243,8 +263,8 @@ func (r *Roller) signAndSubmitProof(msg *message.ProofDetail) (bool, error) {
 	return r.client.SubmitProof(context.Background(), authZkProof)
 }
 
-// Close closes the websocket connection.
-func (r *Roller) Close() {
+// Stop closes the websocket connection.
+func (r *Roller) Stop() {
 	if atomic.LoadInt64(&r.isClosed) == 1 {
 		return
 	}

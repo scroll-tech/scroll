@@ -1,6 +1,5 @@
 //go:build mock_prover
 
-//nolint:typecheck
 package prover
 
 import (
@@ -23,5 +22,9 @@ func NewProver(cfg *config.ProverConfig) (*Prover, error) {
 
 // Prove call rust ffi to generate proof, if first failed, try again.
 func (p *Prover) Prove(_ []*types.BlockTrace) (*message.AggProof, error) {
-	return &message.AggProof{}, nil
+	return &message.AggProof{
+		Proof:     []byte{},
+		Instance:  []byte{},
+		FinalPair: []byte{},
+	}, nil
 }

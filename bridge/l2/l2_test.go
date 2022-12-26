@@ -1,4 +1,4 @@
-package l2_test
+package l2
 
 import (
 	"testing"
@@ -77,6 +77,8 @@ func TestFunction(t *testing.T) {
 	t.Run("TestL2RelayerProcessSaveEvents", testL2RelayerProcessSaveEvents)
 	t.Run("testL2RelayerProcessPendingBatches", testL2RelayerProcessPendingBatches)
 	t.Run("testL2RelayerProcessCommittedBatches", testL2RelayerProcessCommittedBatches)
+
+	t.Run("testBatchProposer", testBatchProposer)
 
 	t.Cleanup(func() {
 		free(t)

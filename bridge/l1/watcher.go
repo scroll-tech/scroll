@@ -5,7 +5,7 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/scroll-tech/go-ethereum"
+	geth "github.com/scroll-tech/go-ethereum"
 	"github.com/scroll-tech/go-ethereum/accounts/abi"
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/core/types"
@@ -124,7 +124,7 @@ func (w *Watcher) fetchContractEvent(blockHeight uint64) error {
 	}
 
 	// warning: uint int conversion...
-	query := ethereum.FilterQuery{
+	query := geth.FilterQuery{
 		FromBlock: big.NewInt(fromBlock), // inclusive
 		ToBlock:   big.NewInt(toBlock),   // inclusive
 		Addresses: []common.Address{
@@ -147,6 +147,7 @@ func (w *Watcher) fetchContractEvent(blockHeight uint64) error {
 	}
 	if len(logs) == 0 {
 		w.processedMsgHeight = uint64(toBlock)
+		log.Info("l1 watcher fetchContractEvent", "w.processedMsgHeight", w.processedMsgHeight)
 		return nil
 	}
 	log.Info("Received new L1 messages", "fromBlock", fromBlock, "toBlock", toBlock,
@@ -208,6 +209,7 @@ func (w *Watcher) fetchContractEvent(blockHeight uint64) error {
 	err = w.db.SaveL1Messages(w.ctx, sentMessageEvents)
 	if err == nil {
 		w.processedMsgHeight = uint64(toBlock)
+		log.Info("l1 watcher fetchContractEvent", "w.processedMsgHeight", w.processedMsgHeight)
 	}
 	return err
 }
