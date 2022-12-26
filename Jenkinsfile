@@ -94,6 +94,7 @@ pipeline {
                             sh "cd $i && go test -v -race -coverprofile=coverage.txt -covermode=atomic \$(go list ./... | grep -v 'database\\|l2\\|l1\\|common\\|coordinator')"
                         }
                     }
+                    sh "echo ${env.GIT_URL}"
                }
             }
         }
