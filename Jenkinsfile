@@ -8,6 +8,7 @@ pipeline {
     }
     tools {
         go 'go-1.18'
+        nodejs "nodejs"
     }
     environment {
         GO111MODULE = 'on'

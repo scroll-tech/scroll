@@ -112,6 +112,7 @@ func testMonitorBridgeContract(t *testing.T) {
 	msgs, err := db.GetL2MessagesByStatus(orm.MsgPending)
 	assert.NoError(t, err)
 	assert.Equal(t, 2, len(msgs))
+	assert.Equal(t, 2, 1)
 }
 
 func testFetchMultipleSentMessageInOneBlock(t *testing.T) {
