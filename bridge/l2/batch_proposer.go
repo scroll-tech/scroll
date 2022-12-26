@@ -60,6 +60,11 @@ func (w *batchProposer) tryProposeBatch() error {
 		return w.createBatchForBlocks(blocks[:1])
 	}
 
+	if blocks[0].TxNum > w.batchTxNumThreshold {
+		log.Warn("too many txs even for only 1 block", "height", blocks[0].Number, "tx_num", blocks[0].TxNum)
+		return w.createBatchForBlocks(blocks[:1])
+	}
+
 	var (
 		length         = len(blocks)
 		gasUsed, txNum uint64
