@@ -11,9 +11,10 @@ import (
 
 // UnmarshalMinBalance : unmarshal min balance.
 func UnmarshalMinBalance(input string) (*big.Int, error) {
-	minBalance, ok := new(big.Int).SetString(input, 10)
-	if !ok {
-		minBalance.SetString("100000000000000000000", 10)
+	minBalance, failed := new(big.Int).SetString(input, 10)
+	if failed {
+		minBalance, _ = new(big.Int).SetString("100000000000000000000", 10)
+		return minBalance, nil
 	}
 	return minBalance, nil
 }

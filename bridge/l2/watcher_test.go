@@ -27,6 +27,12 @@ import (
 
 func testCreateNewWatcherAndStop(t *testing.T) {
 	// Create db handler and reset db.
+	viper.Sub("db_config").Debug()
+	viper.Sub("db_config").Debug()
+	viper.Sub("db_config").Debug()
+	viper.Sub("db_config").Debug()
+	viper.Sub("db_config").Debug()
+
 	l2db, err := database.NewOrmFactory(viper.Sub("db_config"))
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(l2db.GetDB().DB))

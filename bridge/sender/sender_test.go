@@ -39,7 +39,6 @@ func setupEnv(t *testing.T) {
 	privateKeys = []*ecdsa.PrivateKey{priv}
 
 	l2gethImg = docker.NewTestL2Docker(t)
-	viper.Set("l1_config.relayer_config.sender_config.endpoint", l2gethImg.Endpoint())
 }
 
 func TestSender(t *testing.T) {
@@ -66,6 +65,7 @@ func testBatchSender(t *testing.T, batchSize int) {
 	}
 
 	senderCfg := viper.Sub("l1_config.relayer_config.sender_config")
+	senderCfg.Set("endpoint", l2gethImg.Endpoint())
 	senderCfg.Set("confirmations", 0)
 	newSender, err := sender.NewSender(context.Background(), senderCfg, privateKeys)
 	if err != nil {

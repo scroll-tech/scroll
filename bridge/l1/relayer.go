@@ -50,6 +50,11 @@ func NewLayer1Relayer(ctx context.Context, ethClient *ethclient.Client, db orm.L
 		return nil, err
 	}
 
+	v.Debug()
+	v.Debug()
+	v.Debug()
+	v.Debug()
+	v.Debug()
 	messageSenderPrivateKeys, err := config.UnmarshalPrivateKeys(v.GetStringSlice("message_sender_private_keys"))
 	if err != nil {
 		return nil, err
