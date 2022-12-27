@@ -1,7 +1,6 @@
 package l2
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"math/big"
