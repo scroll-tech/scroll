@@ -5,12 +5,13 @@ import (
 	"crypto/rand"
 	"encoding/json"
 	"fmt"
-	"github.com/scroll-tech/go-ethereum/ethclient"
 	"math/big"
 	"os"
 	"strconv"
 	"testing"
 	"time"
+
+	"github.com/scroll-tech/go-ethereum/ethclient"
 
 	"github.com/scroll-tech/go-ethereum/accounts/abi/bind"
 
@@ -25,6 +26,7 @@ import (
 
 	_ "scroll-tech/bridge/cmd/app"
 	bridgeConfig "scroll-tech/bridge/config"
+
 	"scroll-tech/common/cmd"
 	"scroll-tech/common/docker"
 

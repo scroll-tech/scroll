@@ -2,18 +2,20 @@ package integration
 
 import (
 	"context"
-	"github.com/scroll-tech/go-ethereum/accounts/abi/bind"
-	"github.com/scroll-tech/go-ethereum/crypto"
 	"math/big"
 	"testing"
 	"time"
 
+	"github.com/scroll-tech/go-ethereum/accounts/abi/bind"
+	"github.com/scroll-tech/go-ethereum/crypto"
+
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/stretchr/testify/assert"
 
-	"scroll-tech/common/utils"
 	"scroll-tech/database"
 	"scroll-tech/database/orm"
+
+	"scroll-tech/common/utils"
 )
 
 func testContracts(t *testing.T) {

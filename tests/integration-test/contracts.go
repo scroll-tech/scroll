@@ -14,7 +14,6 @@ import (
 
 	bridgeConfig "scroll-tech/bridge/config"
 	"scroll-tech/bridge/sender"
-	"scroll-tech/common/utils"
 	"scroll-tech/contracts/dao"
 	"scroll-tech/contracts/erc20"
 	"scroll-tech/contracts/greeter"
@@ -24,6 +23,8 @@ import (
 	"scroll-tech/contracts/uniswap/router"
 	"scroll-tech/contracts/uniswap/weth9"
 	"scroll-tech/contracts/vote"
+
+	"scroll-tech/common/utils"
 )
 
 func native(ctx context.Context, to common.Address, value *big.Int) error {
@@ -48,17 +49,13 @@ func newERC20(ctx context.Context, client *ethclient.Client, root, auth *bind.Tr
 	if err != nil {
 		return err
 	}
+	_, _ = bind.WaitMined(ctx, client, tx)
 
 	tx, err = erc20Token.Mint(root, root.From, big.NewInt(1e4))
 	if err != nil {
 		return err
 	}
-
-	// erc20 transfer
-	tx, err = erc20Token.Transfer(root, auth.From, big.NewInt(1000))
-	if err != nil {
-		return err
-	}
+	_, _ = bind.WaitMined(ctx, client, tx)
 
 	for i := 0; i < 10; i++ {
 		// erc20 transfer

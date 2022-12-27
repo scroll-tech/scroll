@@ -6,6 +6,7 @@ import (
 )
 
 var (
+	// Ether equal to 1e18 wei.
 	Ether = big.NewInt(1e18)
 )
 
