@@ -46,6 +46,7 @@ func testBatchProposer(t *testing.T) {
 	proposer := newBatchProposer(&config.BatchProposerConfig{
 		ProofGenerationFreq: 1,
 		BatchGasThreshold:   3000000,
+		BatchTxNumThreshold: 135,
 		BatchTimeSec:        1,
 		BatchBlocksLimit:    100,
 	}, db)

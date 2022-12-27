@@ -127,7 +127,7 @@ func (w *WatcherClient) Stop() {
 	w.stopCh <- struct{}{}
 }
 
-const blockTracesFetchLimit = uint64(10)
+const blockTracesFetchLimit = uint64(50)
 
 // try fetch missing blocks if inconsistent
 func (w *WatcherClient) tryFetchRunningMissingBlocks(ctx context.Context, backTrackFrom uint64) error {
@@ -157,7 +157,7 @@ func (w *WatcherClient) tryFetchRunningMissingBlocks(ctx context.Context, backTr
 		if err2 != nil {
 			return fmt.Errorf("failed to GetBlockResultByHash: %v. number: %v", err2, number)
 		}
-		log.Info("retrieved block trace", "height", trace.Header.Number, "hash", trace.Header.Hash)
+		log.Info("retrieved block trace", "height", trace.Header.Number, "hash", trace.Header.Hash().String())
 
 		traces = append(traces, trace)
 
@@ -170,7 +170,7 @@ func (w *WatcherClient) tryFetchRunningMissingBlocks(ctx context.Context, backTr
 	return nil
 }
 
-const contractEventsBlocksFetchLimit = int64(10)
+const contractEventsBlocksFetchLimit = int64(30)
 
 // FetchContractEvent pull latest event logs from given contract address and save in DB
 func (w *WatcherClient) fetchContractEvent(blockHeight uint64) error {
