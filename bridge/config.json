@@ -27,7 +27,7 @@
     "endpoint": "/var/lib/jenkins/workspace/SequencerPipeline/MyPrivateNetwork/geth.ipc",
     "l2_messenger_address": "0x0000000000000000000000000000000000000000",
     "relayer_config": {
-      "rollup_contract_address": "0x0000000000000000000000000000000000000000",
+      "rollup_contract_address": "0xfffffddd",
       "messenger_contract_address": "0x0000000000000000000000000000000000000000",
       "sender_config": {
         "endpoint": "https://goerli.infura.io/v3/9aa3d95b3bc440fa88ea12eaa4456161",
@@ -37,7 +37,7 @@
         "escalate_multiple_num": 11,
         "escalate_multiple_den": 10,
         "max_gas_price": 10000000000,
-        "tx_type": "DynamicFeeTx",
+        "tx_type": "---------",
         "min_balance": 100000000000000000000
       },
       "message_sender_private_keys": [

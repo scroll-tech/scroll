@@ -49,8 +49,9 @@ func Flush(vp *viper.Viper) {
 		// If don't exist get it.
 		if vip, exist := subs[key]; !exist {
 			subs[key] = root.Sub(key)
+			vip = subs[key]
 		} else if vip != nil {
-			vip.Viper.Set(str[idx+1:], vp.Get(str))
+			vip.Set(str[idx+1:], vp.Get(str))
 		}
 	}
 }

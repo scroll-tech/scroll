@@ -1,10 +1,10 @@
 package viper
 
 import (
-	"strings"
-
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/spf13/viper"
+	"strings"
+	"sync"
 )
 
 var (
@@ -22,8 +22,11 @@ func init() {
 
 type Viper struct {
 	path string
-	*viper.Viper
+
 	subVps map[string]*Viper
+
+	mu sync.RWMutex
+	*viper.Viper
 }
 
 func (v *Viper) Sub(key string) *Viper {
@@ -79,7 +82,9 @@ func (v *Viper) Set(key string, val interface{}) {
 			return
 		}
 	}
+	v.mu.Lock()
 	sub.Viper.Set(key, val)
+	v.mu.Unlock()
 }
 
 // Unmarshal unmarshals the config into a Struct. Make sure that the tags
