@@ -163,7 +163,7 @@ func (w *WatcherClient) tryFetchRunningMissingBlocks(ctx context.Context, backTr
 
 	}
 	if len(traces) > 0 {
-		if err = w.orm.InsertBlockTraces(ctx, traces); err != nil {
+		if err = w.orm.InsertBlockTraces(traces); err != nil {
 			return fmt.Errorf("failed to batch insert BlockTraces: %v", err)
 		}
 	}

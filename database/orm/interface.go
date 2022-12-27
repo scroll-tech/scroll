@@ -108,7 +108,7 @@ type BlockTraceOrm interface {
 	GetUnbatchedBlocks(fields map[string]interface{}, args ...string) ([]*BlockInfo, error)
 	GetHashByNumber(number uint64) (*common.Hash, error)
 	DeleteTracesByBatchID(batchID string) error
-	InsertBlockTraces(ctx context.Context, blockTraces []*types.BlockTrace) error
+	InsertBlockTraces(blockTraces []*types.BlockTrace) error
 	SetBatchIDForBlocksInDBTx(dbTx *sqlx.Tx, numbers []uint64, batchID string) error
 }
 
