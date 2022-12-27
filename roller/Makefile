@@ -13,23 +13,19 @@ libzkp:
 	cd ../common/libzkp/impl && cargo build --release && cp ./target/release/libzkp.a ../interface/
 	cp -r ../common/libzkp/interface ./prover/lib
 
-roller: ## Build the Roller instance.
-	cd ../common/libzkp/impl && cargo build --release && cp ./target/release/libzkp.a ../interface/
-	cp -r ../common/libzkp/interface ./prover/lib
+roller: libzkp ## Build the Roller instance.
 	GOBIN=$(PWD)/build/bin go build -ldflags "-X scroll-tech/common/version.ZK_VERSION=${ZK_VERSION}" -o $(PWD)/build/bin/roller ./cmd
 
-gpu-roller: ## Build the GPU Roller instance.
-	cd ../common/libzkp/impl && cargo build --release && cp ./target/release/libzkp.a ../interface/
-	cp -r ../common/libzkp/interface ./prover/lib
+gpu-roller: libzkp ## Build the GPU Roller instance.
 	GOBIN=$(PWD)/build/bin go build -ldflags "-X scroll-tech/common/version.ZK_VERSION=${ZK_VERSION}" -tags gpu -o $(PWD)/build/bin/roller ./cmd
 
 mock_roller:
 	GOBIN=$(PWD)/build/bin go build -tags mock_prover -o $(PWD)/build/bin/roller $(PWD)/cmd
 
-test-prover:
+test-prover: libzkp
 	go test -tags ffi -timeout 0 -v ./core/prover
 
-test-gpu-prover:
+test-gpu-prover: libzkp
 	go test -tags="gpu ffi" -timeout 0 -v ./core/prover
 
 lastest-zk-version:
