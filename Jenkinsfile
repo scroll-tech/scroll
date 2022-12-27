@@ -26,6 +26,7 @@ pipeline {
                     changeset "coordinator/**"
                     changeset "common/**"
                     changeset "database/**"
+                    changeset "tests/**"
                 }
             }
             parallel {
@@ -78,6 +79,7 @@ pipeline {
                     changeset "coordinator/**"
                     changeset "common/**"
                     changeset "database/**"
+                    changeset "tests/**"
                 }
             }
             steps {
@@ -87,6 +89,7 @@ pipeline {
                         go test -v -race -coverprofile=coverage.bridge.txt -covermode=atomic -p 1 scroll-tech/bridge/...
                         go test -v -race -coverprofile=coverage.common.txt -covermode=atomic -p 1 scroll-tech/common/...
                         go test -v -race -coverprofile=coverage.coordinator.txt -covermode=atomic -p 1 scroll-tech/coordinator/...
+                        go test -v -race -tags="mock_prover mock_verifier" -coverprofile=coverage.integration.txt -covermode=atomic -p 1 scroll-tech/integration-test/...
                         sh build/post-test-report-coverage.sh
                     '''
                     script {
