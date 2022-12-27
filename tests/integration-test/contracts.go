@@ -3,6 +3,7 @@ package integration
 import (
 	"context"
 	"crypto/ecdsa"
+	"fmt"
 	"math"
 	"math/big"
 	"math/rand"
@@ -67,6 +68,7 @@ func newGreeter(ctx context.Context, client *ethclient.Client, root *bind.Transa
 	if err != nil {
 		return err
 	}
+	_, err = bind.WaitMined(ctx, client, tx)
 
 	tx, err = token.SetValue(root, big.NewInt(10))
 	if err != nil {
@@ -79,23 +81,34 @@ func newGreeter(ctx context.Context, client *ethclient.Client, root *bind.Transa
 func newNft(ctx context.Context, client *ethclient.Client, root, auth *bind.TransactOpts) error {
 	_, tx, token, err := nft.DeployERC721Mock(root, client, "ERC721 coin", "ERC721")
 	if err != nil {
-		return err
+		return fmt.Errorf("err from deploy: %v", err)
 	}
+
+	_, err = bind.WaitMined(ctx, client, tx)
 
 	tokenId := big.NewInt(rand.Int63())
 	tx, err = token.Mint(root, root.From, tokenId)
 	if err != nil {
-		return err
+		return fmt.Errorf("err from mint: %v", err)
 	}
+	_, err = bind.WaitMined(ctx, client, tx)
 
 	tx, err = token.TransferFrom(root, root.From, auth.From, tokenId)
 	if err != nil {
-		return err
+		return fmt.Errorf("err from transfer: %v", err)
+	}
+	_, err = bind.WaitMined(ctx, client, tx)
+
+	tokenId = big.NewInt(rand.Int63())
+	tx, err = token.Mint(root, root.From, tokenId)
+	if err != nil {
+		return fmt.Errorf("err from mint: %v", err)
 	}
 
-	tx, err = token.Burn(auth, tokenId)
+	_, err = bind.WaitMined(ctx, client, tx)
+	tx, err = token.Burn(root, tokenId)
 	if err != nil {
-		return err
+		return fmt.Errorf("err from burn: %v", err)
 	}
 	_, err = bind.WaitMined(ctx, client, tx)
 	return err
@@ -107,22 +120,26 @@ func newSushi(ctx context.Context, client *ethclient.Client, root *bind.Transact
 		return err
 	}
 
+	_, err = bind.WaitMined(ctx, client, tx)
 	chefAddr, tx, chefToken, err := sushi.DeployMasterChef(root, client, sushiAddr, root.From, big.NewInt(1), big.NewInt(1), big.NewInt(math.MaxInt))
 	if err != nil {
 		return err
 	}
+	_, err = bind.WaitMined(ctx, client, tx)
 
 	amount := big.NewInt(1e18)
 	tx, err = sushiToken.Mint(root, root.From, amount)
 	if err != nil {
 		return err
 	}
+	_, err = bind.WaitMined(ctx, client, tx)
 
 	allocPoint := utils.Ether
 	tx, err = chefToken.Add(root, allocPoint, sushiAddr, true)
 	if err != nil {
 		return err
 	}
+	_, err = bind.WaitMined(ctx, client, tx)
 
 	pid, err := chefToken.PoolLength(&bind.CallOpts{Pending: true})
 	if err != nil {
@@ -133,23 +150,27 @@ func newSushi(ctx context.Context, client *ethclient.Client, root *bind.Transact
 	if err != nil {
 		return err
 	}
+	_, err = bind.WaitMined(ctx, client, tx)
 
 	tx, err = sushiToken.Approve(root, chefAddr, amount)
 	if err != nil {
 		return err
 	}
+	_, err = bind.WaitMined(ctx, client, tx)
 
 	// deposit amount to chef
 	tx, err = chefToken.Deposit(root, pid, amount)
 	if err != nil {
 		return err
 	}
+	_, err = bind.WaitMined(ctx, client, tx)
 
 	// change sushiToken's owner to masterChef.
 	tx, err = sushiToken.TransferOwnership(root, chefAddr)
 	if err != nil {
 		return err
 	}
+	_, err = bind.WaitMined(ctx, client, tx)
 
 	// withdraw amount from chef
 	tx, err = chefToken.Withdraw(root, pid, amount)
@@ -165,11 +186,13 @@ func newDao(ctx context.Context, client *ethclient.Client, root *bind.TransactOp
 	if err != nil {
 		return err
 	}
+	_, err = bind.WaitMined(ctx, client, tx)
 
 	_, tx, daoToken, err := dao.DeployGovernorMock(root, client, "governor mock", voteAddr, big.NewInt(1), big.NewInt(1), big.NewInt(100))
 	if err != nil {
 		return err
 	}
+	_, err = bind.WaitMined(ctx, client, tx)
 
 	callData := [][]byte{big.NewInt(1).Bytes()}
 	target := common.BigToAddress(big.NewInt(1))
@@ -179,6 +202,7 @@ func newDao(ctx context.Context, client *ethclient.Client, root *bind.TransactOp
 	if err != nil {
 		return err
 	}
+	_, err = bind.WaitMined(ctx, client, tx)
 
 	salt := crypto.Keccak256Hash([]byte(description))
 	tx, err = daoToken.Cancel(root, []common.Address{target}, []*big.Int{value}, callData, salt)
@@ -192,33 +216,40 @@ func newDao(ctx context.Context, client *ethclient.Client, root *bind.TransactOp
 func newUniswapv2(ctx context.Context, client *ethclient.Client, root, auth *bind.TransactOpts) error {
 	wethAddr, tx, wToken, err := weth9.DeployWETH9(root, client)
 	if err != nil {
-		return err
+		return fmt.Errorf("err from deployweth9: %v", err)
 	}
+	_, err = bind.WaitMined(ctx, client, tx)
 
 	// deploy factory
 	fAddr, tx, fToken, err := factory.DeployUniswapV2Factory(root, client, root.From)
 	if err != nil {
-		return err
+		return fmt.Errorf("err from deployuniswapv2Fact: %v", err)
 	}
+	_, err = bind.WaitMined(ctx, client, tx)
 
 	// deploy router
 	rAddr, tx, rToken, err := router.DeployUniswapV2Router02(root, client, fAddr, wethAddr)
 	if err != nil {
-		return err
+		return fmt.Errorf("err from deployuniswapRouter: %v", err)
 	}
+	_, err = bind.WaitMined(ctx, client, tx)
 
 	originVal := big.NewInt(1).Mul(big.NewInt(3e3), utils.Ether)
 	btcAddr, tx, btcToken, err := erc20.DeployERC20Mock(root, client, "BTC coin", "BTC", auth.From, originVal)
 	if err != nil {
-		return err
+		return fmt.Errorf("err from ERC2OMock: %v", err)
 	}
+	_, err = bind.WaitMined(ctx, client, tx)
 
 	// init balance
 	auth.GasPrice = big.NewInt(1108583800)
 	auth.GasLimit = 11529000
 	tx, err = wToken.Deposit(auth)
+	_, err = bind.WaitMined(ctx, client, tx)
 	tx, err = wToken.Approve(auth, rAddr, originVal)
+	_, err = bind.WaitMined(ctx, client, tx)
 	tx, err = btcToken.Approve(auth, rAddr, originVal)
+	_, err = bind.WaitMined(ctx, client, tx)
 	if err != nil {
 		return err
 	}
@@ -228,6 +259,7 @@ func newUniswapv2(ctx context.Context, client *ethclient.Client, root, auth *bin
 	if err != nil {
 		return err
 	}
+	_, err = bind.WaitMined(ctx, client, tx)
 
 	// add liquidity, pool is 1:1
 	liqVal := big.NewInt(1).Mul(big.NewInt(1e3), utils.Ether)
@@ -245,6 +277,7 @@ func newUniswapv2(ctx context.Context, client *ethclient.Client, root, auth *bin
 	if err != nil {
 		return err
 	}
+	_, err = bind.WaitMined(ctx, client, tx)
 
 	header, err := client.HeaderByNumber(ctx, nil)
 	if err != nil {

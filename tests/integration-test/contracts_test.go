@@ -43,6 +43,11 @@ func testContracts(t *testing.T) {
 	// test native call.
 	t.Run("testNative", testNative)
 	t.Run("testERC20", testERC20)
+	t.Run("testNFT", testNFT)
+	t.Run("testGreeter", testGreeter)
+	t.Run("testSuShi", testSuShi)
+	t.Run("testDao", testDao)
+	t.Run("testUniswapV2", testUniswapV2)
 
 	rollerCmd.WaitExit()
 	bridgeCmd.WaitExit()
@@ -117,13 +122,164 @@ func testERC20(t *testing.T) {
 }
 
 func testNFT(t *testing.T) {
+	// Create db handler and reset db.
+	db, err := database.NewOrmFactory(&database.DBConfig{
+		DriverName: "postgres",
+		DSN:        dbImg.Endpoint(),
+	})
+	assert.NoError(t, err)
+	defer db.Close()
+
+	pk, _ := crypto.GenerateKey()
+	auth, _ := bind.NewKeyedTransactorWithChainID(pk, big.NewInt(53077))
+
+	// create new NFT operations.
+	err = newNft(context.Background(), l2Client, l2Root, auth)
+	assert.NoError(t, err)
+
+	// Wait all the ids were verified.
+	number, err := l2Client.BlockNumber(context.Background())
+	assert.NoError(t, err)
+	utils.TryTimes(20, func() bool {
+		var (
+			id     string
+			status orm.ProvingStatus
+		)
+		id, err = db.GetBatchIDByNumber(number)
+		if err != nil {
+			return false
+		}
+		status, err = db.GetProvingStatusByID(id)
+		return err == nil && status == orm.ProvingTaskVerified
+	})
+	assert.NoError(t, err)
 
 }
 
-func testGreeter(t *testing.T) {}
+func testGreeter(t *testing.T) {
+	// Create db handler and reset db.
+	db, err := database.NewOrmFactory(&database.DBConfig{
+		DriverName: "postgres",
+		DSN:        dbImg.Endpoint(),
+	})
+	assert.NoError(t, err)
+	defer db.Close()
 
-func testSuShi(t *testing.T) {}
+	// create new Greeter operations.
+	err = newGreeter(context.Background(), l2Client, l2Root)
+	assert.NoError(t, err)
 
-func testDao(t *testing.T) {}
+	// Wait all the ids were verified.
+	number, err := l2Client.BlockNumber(context.Background())
+	assert.NoError(t, err)
+	utils.TryTimes(20, func() bool {
+		var (
+			id     string
+			status orm.ProvingStatus
+		)
+		id, err = db.GetBatchIDByNumber(number)
+		if err != nil {
+			return false
+		}
+		status, err = db.GetProvingStatusByID(id)
+		return err == nil && status == orm.ProvingTaskVerified
+	})
+	assert.NoError(t, err)
+}
 
-func testUniswapV2(t *testing.T) {}
+func testSuShi(t *testing.T) {
+	// Create db handler and reset db.
+	db, err := database.NewOrmFactory(&database.DBConfig{
+		DriverName: "postgres",
+		DSN:        dbImg.Endpoint(),
+	})
+	assert.NoError(t, err)
+	defer db.Close()
+
+	// create new Sushi operations.
+	err = newSushi(context.Background(), l2Client, l2Root)
+	assert.NoError(t, err)
+
+	// Wait all the ids were verified.
+	number, err := l2Client.BlockNumber(context.Background())
+	assert.NoError(t, err)
+	utils.TryTimes(20, func() bool {
+		var (
+			id     string
+			status orm.ProvingStatus
+		)
+		id, err = db.GetBatchIDByNumber(number)
+		if err != nil {
+			return false
+		}
+		status, err = db.GetProvingStatusByID(id)
+		return err == nil && status == orm.ProvingTaskVerified
+	})
+	assert.NoError(t, err)
+}
+
+func testDao(t *testing.T) {
+	// Create db handler and reset db.
+	db, err := database.NewOrmFactory(&database.DBConfig{
+		DriverName: "postgres",
+		DSN:        dbImg.Endpoint(),
+	})
+	assert.NoError(t, err)
+	defer db.Close()
+
+	// create new Dao operations.
+	err = newDao(context.Background(), l2Client, l2Root)
+	assert.NoError(t, err)
+
+	// Wait all the ids were verified.
+	number, err := l2Client.BlockNumber(context.Background())
+	assert.NoError(t, err)
+	utils.TryTimes(20, func() bool {
+		var (
+			id     string
+			status orm.ProvingStatus
+		)
+		id, err = db.GetBatchIDByNumber(number)
+		if err != nil {
+			return false
+		}
+		status, err = db.GetProvingStatusByID(id)
+		return err == nil && status == orm.ProvingTaskVerified
+	})
+	assert.NoError(t, err)
+}
+
+func testUniswapV2(t *testing.T) {
+	// Create db handler and reset db.
+	db, err := database.NewOrmFactory(&database.DBConfig{
+		DriverName: "postgres",
+		DSN:        dbImg.Endpoint(),
+	})
+	assert.NoError(t, err)
+	defer db.Close()
+
+	pk, _ := crypto.GenerateKey()
+	auth, _ := bind.NewKeyedTransactorWithChainID(pk, big.NewInt(53077))
+
+	// create new uniswap operations.
+	err = newUniswapv2(context.Background(), l2Client, l2Root, auth)
+	assert.NoError(t, err)
+
+	// Wait all the ids were verified.
+	number, err := l2Client.BlockNumber(context.Background())
+	assert.NoError(t, err)
+	utils.TryTimes(20, func() bool {
+		var (
+			id     string
+			status orm.ProvingStatus
+		)
+		id, err = db.GetBatchIDByNumber(number)
+		if err != nil {
+			return false
+		}
+		status, err = db.GetProvingStatusByID(id)
+		return err == nil && status == orm.ProvingTaskVerified
+	})
+	assert.NoError(t, err)
+
+}
