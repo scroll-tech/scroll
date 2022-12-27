@@ -1,11 +1,11 @@
 package integration
 
 import (
-	"context"
 	"crypto/ecdsa"
 	"crypto/rand"
 	"encoding/json"
 	"fmt"
+	"github.com/scroll-tech/go-ethereum/ethclient"
 	"math/big"
 	"os"
 	"strconv"
@@ -25,8 +25,6 @@ import (
 
 	_ "scroll-tech/bridge/cmd/app"
 	bridgeConfig "scroll-tech/bridge/config"
-	"scroll-tech/bridge/sender"
-
 	"scroll-tech/common/cmd"
 	"scroll-tech/common/docker"
 
@@ -39,6 +37,8 @@ var (
 	l2gethImg docker.ImgInstance
 	dbImg     docker.ImgInstance
 
+	l2Client *ethclient.Client
+
 	timestamp int
 	wsPort    int64
 
@@ -49,7 +49,6 @@ var (
 	bboltDB         string
 
 	privkey *ecdsa.PrivateKey
-	l1Root  *bind.TransactOpts
 	l2Root  *bind.TransactOpts
 )
 
@@ -58,6 +57,10 @@ func setupEnv(t *testing.T) {
 	l1gethImg = docker.NewTestL1Docker(t)
 	l2gethImg = docker.NewTestL2Docker(t)
 	dbImg = docker.NewTestDBDocker(t, "postgres")
+
+	var err error
+	l2Client, err = ethclient.Dial(l2gethImg.Endpoint())
+	assert.NoError(t, err)
 
 	// Create a random ws port.
 	port, _ := rand.Int(rand.Reader, big.NewInt(2000))
@@ -70,11 +73,7 @@ func setupEnv(t *testing.T) {
 	coordinatorFile = mockCoordinatorConfig(t)
 	rollerFile = mockRollerConfig(t)
 
-	var err error
-	privkey, err = crypto.HexToECDSA("1212121212121212121212121212121212121212121212121212121212121212")
-	assert.NoError(t, err)
-	l1Root, err = bind.NewKeyedTransactorWithChainID(privkey, big.NewInt(52077))
-	assert.NoError(t, err)
+	privkey, _ = crypto.HexToECDSA("1212121212121212121212121212121212121212121212121212121212121212")
 	l2Root, err = bind.NewKeyedTransactorWithChainID(privkey, big.NewInt(53077))
 	assert.NoError(t, err)
 }
@@ -122,20 +121,6 @@ func runDBCliApp(t *testing.T, option, keyword string) {
 func runRollerApp(t *testing.T, args ...string) appAPI {
 	args = append(args, "--log.debug", "--config", rollerFile)
 	return cmd.NewCmd(t, "roller-test", args...)
-}
-
-func newSender(t *testing.T, endpoint string) *sender.Sender {
-	s, err := sender.NewSender(context.Background(), &bridgeConfig.SenderConfig{
-		Endpoint:            endpoint,
-		CheckPendingTime:    3,
-		EscalateBlocks:      100,
-		Confirmations:       0,
-		EscalateMultipleNum: 11,
-		EscalateMultipleDen: 10,
-		TxType:              "DynamicFeeTx",
-	}, []*ecdsa.PrivateKey{privkey})
-	assert.NoError(t, err)
-	return s
 }
 
 func mockBridgeConfig(t *testing.T) string {
