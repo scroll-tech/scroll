@@ -81,6 +81,26 @@ func (w *WatcherClient) Start() {
 			panic("must run L2 watcher with DB")
 		}
 
+		// catching up at start
+		if number, err := w.BlockNumber(w.ctx); err != nil {
+			log.Error("failed to get_BlockNumber", "err", err)
+		} else {
+			if number >= w.confirmations {
+				number = number - w.confirmations
+			} else {
+				number = 0
+			}
+
+			if err := w.tryFetchRunningMissingBlocks(w.ctx, number); err != nil {
+				log.Error("failed to fetchRunningMissingBlocks", "err", err)
+			}
+
+			// @todo handle error
+			if err := w.fetchContractEvent(number); err != nil {
+				log.Error("failed to fetchContractEvent", "err", err)
+			}
+		}
+
 		// trigger by timer
 		// TODO: make it configurable
 		ticker := time.NewTicker(3 * time.Second)
