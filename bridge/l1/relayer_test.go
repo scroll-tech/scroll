@@ -41,7 +41,7 @@ func TestCreateNewL1Relayer(t *testing.T) {
 	assert.NoError(t, migrate.ResetDB(db.GetDB().DB))
 	defer db.Close()
 
-	relayer, err := l1.NewLayer1Relayer(context.Background(), client, db, viper.Sub("l1_config.relayer_config"))
+	relayer, err := l1.NewLayer1Relayer(context.Background(), client, db, viper.Sub("l2_config.relayer_config"))
 	assert.NoError(t, err)
 	defer relayer.Stop()
 
