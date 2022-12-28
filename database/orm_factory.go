@@ -3,8 +3,8 @@ package database
 import (
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq" //nolint:golint
-	"github.com/spf13/viper"
 
+	"scroll-tech/common/viper"
 	"scroll-tech/database/orm"
 )
 

@@ -6,11 +6,11 @@ import (
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
 	"github.com/pressly/goose/v3"
-	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 
 	"scroll-tech/common/docker"
 
+	"scroll-tech/common/viper"
 	"scroll-tech/database"
 )
 

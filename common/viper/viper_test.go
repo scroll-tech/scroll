@@ -47,7 +47,7 @@ func TestFlush(t *testing.T) {
 
 	l2Sender := Sub("l2_config.relayer_config.sender_config")
 	l2relayer := Sub("l2_config.relayer_config")
-	for i := 0; i < 20; i++ {
+	for i := 0; i < 3; i++ {
 		Flush(origin)
 		t.Log("tx type: ", l2Sender.GetString("tx_type"))
 		t.Log("confirmations: ", l2Sender.GetInt("confirmations"))

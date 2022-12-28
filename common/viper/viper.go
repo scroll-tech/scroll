@@ -1,10 +1,11 @@
 package viper
 
 import (
-	"github.com/scroll-tech/go-ethereum/log"
-	"github.com/spf13/viper"
 	"strings"
 	"sync"
+
+	"github.com/scroll-tech/go-ethereum/log"
+	"github.com/spf13/viper"
 )
 
 var (
@@ -66,8 +67,8 @@ func (v *Viper) Set(key string, val interface{}) {
 		key = key[idx+1:]
 	}
 	sub.mu.Lock()
+	defer sub.mu.Unlock()
 	sub.Viper.Set(key, val)
-	sub.mu.Unlock()
 }
 
 // Unmarshal unmarshals the config into a Struct. Make sure that the tags
