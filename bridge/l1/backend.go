@@ -18,18 +18,18 @@ type Backend struct {
 }
 
 // New returns a new instance of Backend.
-func New(ctx context.Context, orm database.OrmFactory) (*Backend, error) {
-	client, err := ethclient.Dial(viper.Sub("db_config").GetString("endpoint"))
+func New(ctx context.Context, orm database.OrmFactory, v *viper.Viper) (*Backend, error) {
+	client, err := ethclient.Dial(v.GetString("endpoint"))
 	if err != nil {
 		return nil, err
 	}
 
-	relayer, err := NewLayer1Relayer(ctx, client, orm, viper.Sub("l1_config.relayer_config"))
+	relayer, err := NewLayer1Relayer(ctx, client, orm, viper.Sub("relayer_config"))
 	if err != nil {
 		return nil, err
 	}
 
-	watcher := NewWatcher(ctx, client, orm, viper.Sub("l1_config"))
+	watcher := NewWatcher(ctx, client, orm, v)
 
 	return &Backend{
 		watcher: watcher,
