@@ -27,23 +27,26 @@ func testContracts(t *testing.T) {
 	bridgeCmd := runBridgeApp(t)
 	bridgeCmd.RunApp(true)
 	bridgeCmd.ExpectWithTimeout(false, time.Second*10, "Start bridge successfully")
-	defer bridgeCmd.WaitExit()
 
 	// Start coordinator process.
 	coordinatorCmd := runCoordinatorApp(t, "--ws", "--ws.port", "8391")
 	coordinatorCmd.RunApp(true)
 	coordinatorCmd.ExpectWithTimeout(false, time.Second*10, "Start coordinator successfully")
-	defer coordinatorCmd.WaitExit()
 
 	// Start roller process.
 	rollerCmd := runRollerApp(t)
 	rollerCmd.RunApp(true)
 	rollerCmd.ExpectWithTimeout(false, time.Second*20, "roller start successfully")
-	defer rollerCmd.WaitExit()
 
 	// test native call.
 	t.Run("testNative", testNative)
 	t.Run("testERC20", testERC20)
+
+	t.Cleanup(func() {
+		rollerCmd.WaitExit()
+		bridgeCmd.WaitExit()
+		coordinatorCmd.WaitExit()
+	})
 }
 
 func testNative(t *testing.T) {
