@@ -8,12 +8,11 @@ import (
 	"os"
 	"testing"
 
-	"scroll-tech/common/message"
-
-	"scroll-tech/coordinator/verifier"
-
-	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
+
+	"scroll-tech/common/message"
+	"scroll-tech/common/viper"
+	"scroll-tech/coordinator/verifier"
 )
 
 func TestFFI(t *testing.T) {

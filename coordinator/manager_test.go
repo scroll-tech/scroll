@@ -14,8 +14,6 @@ import (
 	"time"
 
 	"github.com/scroll-tech/go-ethereum"
-	"github.com/spf13/viper"
-
 	"github.com/scroll-tech/go-ethereum/crypto"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/sync/errgroup"
@@ -30,6 +28,7 @@ import (
 	"scroll-tech/common/docker"
 	"scroll-tech/common/message"
 	"scroll-tech/common/utils"
+	"scroll-tech/common/viper"
 )
 
 var (
@@ -53,7 +52,7 @@ func setEnv(t *testing.T) {
 	assert.NoError(t, viper.ReadInConfig())
 
 	// Create db container.
-	driverName := viper.GetString("db_config.driver_name")
+	driverName := viper.GetViper().GetString("db_config.driver_name")
 	dbImg = docker.NewTestDBDocker(t, driverName)
 
 	// Set db config.

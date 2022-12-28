@@ -13,9 +13,9 @@ import (
 	"unsafe"
 
 	"github.com/scroll-tech/go-ethereum/log"
-	"github.com/spf13/viper"
 
 	"scroll-tech/common/message"
+	"scroll-tech/common/viper"
 )
 
 // Verifier represents a rust ffi to a halo2 verifier.

@@ -7,11 +7,11 @@ import (
 
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
-	"github.com/spf13/viper"
 	"github.com/urfave/cli/v2"
 
 	"scroll-tech/common/utils"
 	"scroll-tech/common/version"
+	"scroll-tech/common/viper"
 
 	"scroll-tech/database"
 
@@ -61,7 +61,7 @@ func action(ctx *cli.Context) error {
 	}
 
 	// Init l2geth connection.
-	client, err := ethclient.Dial(viper.GetString("l2_config.endpoint"))
+	client, err := ethclient.Dial(viper.GetViper().GetString("l2_config.endpoint"))
 	if err != nil {
 		log.Crit("failed to init l2geth connection", "err", err)
 	}
