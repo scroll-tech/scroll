@@ -40,7 +40,7 @@ func testCreateNewRelayer(t *testing.T) {
 	assert.NoError(t, migrate.ResetDB(db.GetDB().DB))
 	defer db.Close()
 
-	relayer, err := NewLayer2Relayer(context.Background(), l2Cli, int64(cfg.L2Config.Confirmations), db, cfg.L2Config.RelayerConfig)
+	relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, cfg.L2Config.RelayerConfig)
 	assert.NoError(t, err)
 	defer relayer.Stop()
 
@@ -55,7 +55,7 @@ func testL2RelayerProcessSaveEvents(t *testing.T) {
 	defer db.Close()
 
 	l2Cfg := cfg.L2Config
-	relayer, err := NewLayer2Relayer(context.Background(), l2Cli, int64(l2Cfg.Confirmations), db, l2Cfg.RelayerConfig)
+	relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, l2Cfg.RelayerConfig)
 	assert.NoError(t, err)
 	defer relayer.Stop()
 
@@ -74,7 +74,7 @@ func testL2RelayerProcessSaveEvents(t *testing.T) {
 			},
 		},
 	}
-	err = db.InsertBlockTraces(context.Background(), traces)
+	err = db.InsertBlockTraces(traces)
 	assert.NoError(t, err)
 
 	dbTx, err := db.Beginx()
@@ -109,7 +109,7 @@ func testL2RelayerProcessPendingBatches(t *testing.T) {
 	defer db.Close()
 
 	l2Cfg := cfg.L2Config
-	relayer, err := NewLayer2Relayer(context.Background(), l2Cli, int64(l2Cfg.Confirmations), db, l2Cfg.RelayerConfig)
+	relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, l2Cfg.RelayerConfig)
 	assert.NoError(t, err)
 	defer relayer.Stop()
 
@@ -130,7 +130,7 @@ func testL2RelayerProcessPendingBatches(t *testing.T) {
 	assert.NoError(t, err)
 	traces = append(traces, blockTrace)
 
-	err = db.InsertBlockTraces(context.Background(), traces)
+	err = db.InsertBlockTraces(traces)
 	assert.NoError(t, err)
 
 	dbTx, err := db.Beginx()
@@ -166,7 +166,7 @@ func testL2RelayerProcessCommittedBatches(t *testing.T) {
 	defer db.Close()
 
 	l2Cfg := cfg.L2Config
-	relayer, err := NewLayer2Relayer(context.Background(), l2Cli, int64(l2Cfg.Confirmations), db, l2Cfg.RelayerConfig)
+	relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, l2Cfg.RelayerConfig)
 	assert.NoError(t, err)
 	defer relayer.Stop()
 

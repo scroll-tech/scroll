@@ -109,7 +109,7 @@ type BlockTraceOrm interface {
 	GetHashByNumber(number uint64) (*common.Hash, error)
 	GetBatchIDByNumber(number uint64) (string, error)
 	DeleteTracesByBatchID(batchID string) error
-	InsertBlockTraces(ctx context.Context, blockTraces []*types.BlockTrace) error
+	InsertBlockTraces(blockTraces []*types.BlockTrace) error
 	SetBatchIDForBlocksInDBTx(dbTx *sqlx.Tx, numbers []uint64, batchID string) error
 }
 

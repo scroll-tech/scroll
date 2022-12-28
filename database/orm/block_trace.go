@@ -1,7 +1,6 @@
 package orm
 
 import (
-	"context"
 	"database/sql"
 	"encoding/json"
 	"errors"
@@ -161,7 +160,7 @@ func (o *blockTraceOrm) GetBatchIDByNumber(number uint64) (string, error) {
 	return idStr, nil
 }
 
-func (o *blockTraceOrm) InsertBlockTraces(ctx context.Context, blockTraces []*types.BlockTrace) error {
+func (o *blockTraceOrm) InsertBlockTraces(blockTraces []*types.BlockTrace) error {
 	traceMaps := make([]map[string]interface{}, len(blockTraces))
 	for i, trace := range blockTraces {
 		number, hash, tx_num, mtime := trace.Header.Number.Int64(),
