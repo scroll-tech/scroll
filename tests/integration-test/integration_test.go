@@ -25,6 +25,8 @@ func TestIntegration(t *testing.T) {
 }
 
 func testStartProcess(t *testing.T) {
+	// Create configs.
+	mockConfig(t)
 	// migrate db.
 	runDBCliApp(t, "reset", "successful to reset")
 	runDBCliApp(t, "migrate", "current version:")

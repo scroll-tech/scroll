@@ -64,17 +64,6 @@ func setupEnv(t *testing.T) {
 	l2Client, err = ethclient.Dial(l2gethImg.Endpoint())
 	assert.NoError(t, err)
 
-	// Create a random ws port.
-	port, _ := rand.Int(rand.Reader, big.NewInt(2000))
-	wsPort = port.Int64() + 22000
-	timestamp = time.Now().Nanosecond()
-
-	// Load reset and store config into a random file.
-	bridgeFile = mockBridgeConfig(t)
-	dbFile = mockDatabaseConfig(t)
-	coordinatorFile = mockCoordinatorConfig(t)
-	rollerFile = mockRollerConfig(t)
-
 	privkey, _ = crypto.HexToECDSA("1212121212121212121212121212121212121212121212121212121212121212")
 	l2Root, err = bind.NewKeyedTransactorWithChainID(privkey, big.NewInt(53077))
 	assert.NoError(t, err)
@@ -84,13 +73,8 @@ func free(t *testing.T) {
 	assert.NoError(t, l1gethImg.Stop())
 	assert.NoError(t, l2gethImg.Stop())
 	assert.NoError(t, dbImg.Stop())
-
-	// Delete temporary files.
-	assert.NoError(t, os.Remove(bridgeFile))
-	assert.NoError(t, os.Remove(dbFile))
-	assert.NoError(t, os.Remove(coordinatorFile))
-	assert.NoError(t, os.Remove(rollerFile))
-	assert.NoError(t, os.Remove(bboltDB))
+	// Delete configs.
+	freeConfig()
 }
 
 type appAPI interface {
@@ -123,6 +107,29 @@ func runDBCliApp(t *testing.T, option, keyword string) {
 func runRollerApp(t *testing.T, args ...string) appAPI {
 	args = append(args, "--log.debug", "--config", rollerFile)
 	return cmd.NewCmd(t, "roller-test", args...)
+}
+
+func mockConfig(t *testing.T) {
+	freeConfig()
+	// Create a random ws port.
+	port, _ := rand.Int(rand.Reader, big.NewInt(2000))
+	wsPort = port.Int64() + 22000
+	timestamp = time.Now().Nanosecond()
+
+	// Load reset and store config into a random file.
+	bridgeFile = mockBridgeConfig(t)
+	dbFile = mockDatabaseConfig(t)
+	coordinatorFile = mockCoordinatorConfig(t)
+	rollerFile = mockRollerConfig(t)
+}
+
+func freeConfig() {
+	// Delete temporary files.
+	_ = os.Remove(bridgeFile)
+	_ = os.Remove(dbFile)
+	_ = os.Remove(coordinatorFile)
+	_ = os.Remove(rollerFile)
+	_ = os.Remove(bboltDB)
 }
 
 func mockBridgeConfig(t *testing.T) string {
