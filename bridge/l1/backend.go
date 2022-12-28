@@ -19,7 +19,7 @@ type Backend struct {
 
 // New returns a new instance of Backend.
 func New(ctx context.Context, orm database.OrmFactory) (*Backend, error) {
-	client, err := ethclient.Dial(viper.GetViper().GetString("db_config.endpoint"))
+	client, err := ethclient.Dial(viper.Sub("db_config").GetString("endpoint"))
 	if err != nil {
 		return nil, err
 	}
@@ -29,7 +29,7 @@ func New(ctx context.Context, orm database.OrmFactory) (*Backend, error) {
 		return nil, err
 	}
 
-	watcher := NewWatcher(ctx, client, orm)
+	watcher := NewWatcher(ctx, client, orm, viper.Sub("l1_config"))
 
 	return &Backend{
 		watcher: watcher,

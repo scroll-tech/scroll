@@ -36,14 +36,14 @@ func setupEnv(t *testing.T) (err error) {
 	viper.Set("l2_config.endpoint", l2gethImg.Endpoint())
 
 	// Create db container.
-	driverName := viper.GetViper().GetString("db_config.driver_name")
+	driverName := viper.Sub("db_config").GetString("driver_name")
 	dbImg = docker.NewTestDBDocker(t, driverName)
-
-	viper.Set("db_config.driver_name", driverName)
 	viper.Set("db_config.dsn", dbImg.Endpoint())
+	viper.Set("db_config.max_open_num", 200)
+	viper.Set("db_config.max_idle_num", 20)
 
 	// Create l2geth client.
-	l2Cli, err = ethclient.Dial(viper.GetViper().GetString("l2_config.endpoint"))
+	l2Cli, err = ethclient.Dial(viper.Sub("l2_config").GetString("endpoint"))
 	assert.NoError(t, err)
 
 	return err

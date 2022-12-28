@@ -15,35 +15,37 @@ import (
 type batchProposer struct {
 	mutex sync.Mutex
 	orm   database.OrmFactory
+	v     *viper.Viper
 }
 
-func newBatchProposer(orm database.OrmFactory) *batchProposer {
+func newBatchProposer(orm database.OrmFactory, v *viper.Viper) *batchProposer {
 	return &batchProposer{
 		mutex: sync.Mutex{},
 		orm:   orm,
+		v:     v,
 	}
 }
 
 func (w *batchProposer) getBatchTimeSec() uint64 {
-	return uint64(viper.GetViper().GetInt("l2_config.batch_proposer_config.batch_time_sec"))
+	return uint64(w.v.GetInt("batch_time_sec"))
 }
 
 func (w *batchProposer) getBatchBlocksLimit() uint64 {
-	return uint64(viper.GetViper().GetInt("l2_config.batch_proposer_config.batch_block_limit"))
+	return uint64(w.v.GetInt("batch_block_limit"))
 }
 
 func (w *batchProposer) getBatchGasThreshold() uint64 {
-	return uint64(viper.GetViper().GetInt("l2_config.batch_proposer_config.batch_gas_threshold"))
+	return uint64(w.v.GetInt("batch_gas_threshold"))
 }
 
 // nolint:unused
 func (w *batchProposer) getProofGenerationFreq() uint64 {
-	return uint64(viper.GetViper().GetInt("l2_config.batch_proposer_config.proof_generation_freq"))
+	return uint64(w.v.GetInt("proof_generation_freq"))
 }
 
 // nolint:unused
 func (w *batchProposer) getSkippedOpcodes() map[string]struct{} {
-	skippedOpcodesSlice := viper.GetViper().GetStringSlice("l2_config.batch_proposer_config.skipped_opcodes")
+	skippedOpcodesSlice := w.v.GetStringSlice("skipped_opcodes")
 	skippedOpcodes := make(map[string]struct{}, len(skippedOpcodesSlice))
 	for _, opcode := range skippedOpcodesSlice {
 		skippedOpcodes[opcode] = struct{}{}

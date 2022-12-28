@@ -253,7 +253,7 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 		return
 	}
 
-	rollupContractAddress := common.HexToAddress(viper.GetViper().GetString("rollup_contract_address"))
+	rollupContractAddress := common.HexToAddress(r.v.GetString("rollup_contract_address"))
 	hash, err := r.rollupSender.SendTransaction(id, &rollupContractAddress, big.NewInt(0), data)
 	if err != nil {
 		if !errors.Is(err, sender.ErrNoAvailableAccount) {
@@ -346,7 +346,7 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 			return
 		}
 
-		rollupContractAddress := common.HexToAddress(viper.GetViper().GetString("rollup_contract_address"))
+		rollupContractAddress := common.HexToAddress(r.v.GetString("rollup_contract_address"))
 		txHash, err := r.rollupSender.SendTransaction(id, &rollupContractAddress, big.NewInt(0), data)
 		hash := &txHash
 		if err != nil {

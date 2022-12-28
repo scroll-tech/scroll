@@ -32,11 +32,11 @@ func testCreateNewWatcherAndStop(t *testing.T) {
 	assert.NoError(t, migrate.ResetDB(l2db.GetDB().DB))
 	defer l2db.Close()
 
-	rc := l2.NewL2WatcherClient(context.Background(), l2Cli, l2db)
+	rc := l2.NewL2WatcherClient(context.Background(), l2Cli, l2db, viper.Sub("l2_config"))
 	rc.Start()
 	defer rc.Stop()
 
-	messageSenderPrivateKeys, err := config.UnmarshalPrivateKeys(viper.GetViper().GetStringSlice("l2_config.relayer_config.message_sender_private_keys"))
+	messageSenderPrivateKeys, err := config.UnmarshalPrivateKeys(viper.Sub("l2_config.relayer_config").GetStringSlice("message_sender_private_keys"))
 	assert.NoError(t, err)
 
 	senderCfg := viper.Sub("l2_config.relayer_config.sender_config")
@@ -68,7 +68,7 @@ func testMonitorBridgeContract(t *testing.T) {
 	previousHeight, err := l2Cli.BlockNumber(context.Background())
 	assert.NoError(t, err)
 
-	messageSenderPrivateKeys, err := config.UnmarshalPrivateKeys(viper.GetViper().GetStringSlice("l2_config.relayer_config.message_sender_private_keys"))
+	messageSenderPrivateKeys, err := config.UnmarshalPrivateKeys(viper.Sub("l2_config.relayer_config").GetStringSlice("message_sender_private_keys"))
 	assert.NoError(t, err)
 	auth := prepareAuth(t, l2Cli, messageSenderPrivateKeys[0])
 
@@ -80,7 +80,7 @@ func testMonitorBridgeContract(t *testing.T) {
 
 	// TODO: maybe wrong, toString
 	viper.Set("l2_config.messenger_address", address)
-	rc := prepareRelayerClient(l2Cli, db)
+	rc := prepareRelayerClient(l2Cli, db, viper.Sub("l2_config"))
 	rc.Start()
 	defer rc.Stop()
 
@@ -132,7 +132,7 @@ func testFetchMultipleSentMessageInOneBlock(t *testing.T) {
 	previousHeight, err := l2Cli.BlockNumber(context.Background()) // shallow the global previousHeight
 	assert.NoError(t, err)
 
-	messageSenderPrivateKeys, err := config.UnmarshalPrivateKeys(viper.GetViper().GetStringSlice("l2_config.relayer_config.message_sender_private_keys"))
+	messageSenderPrivateKeys, err := config.UnmarshalPrivateKeys(viper.Sub("l2_config.relayer_config").GetStringSlice("message_sender_private_keys"))
 	assert.NoError(t, err)
 	auth := prepareAuth(t, l2Cli, messageSenderPrivateKeys[0])
 
@@ -143,7 +143,7 @@ func testFetchMultipleSentMessageInOneBlock(t *testing.T) {
 
 	// TODO: maybe wrong, toString
 	viper.Set("l2_config.messenger_address", address)
-	rc := prepareRelayerClient(l2Cli, db)
+	rc := prepareRelayerClient(l2Cli, db, viper.Sub("l2_config"))
 	rc.Start()
 	defer rc.Stop()
 
@@ -194,8 +194,8 @@ func testFetchMultipleSentMessageInOneBlock(t *testing.T) {
 	assert.Equal(t, 5, len(msgs))
 }
 
-func prepareRelayerClient(l2Cli *ethclient.Client, db database.OrmFactory) *l2.WatcherClient {
-	return l2.NewL2WatcherClient(context.Background(), l2Cli, db)
+func prepareRelayerClient(l2Cli *ethclient.Client, db database.OrmFactory, v *viper.Viper) *l2.WatcherClient {
+	return l2.NewL2WatcherClient(context.Background(), l2Cli, db, v)
 }
 
 func prepareAuth(t *testing.T, l2Cli *ethclient.Client, privateKey *ecdsa.PrivateKey) *bind.TransactOpts {
