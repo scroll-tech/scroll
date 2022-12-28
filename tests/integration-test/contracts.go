@@ -45,13 +45,7 @@ func native(ctx context.Context, to common.Address, value *big.Int) error {
 }
 
 func newERC20(ctx context.Context, client *ethclient.Client, root, auth *bind.TransactOpts) error {
-	_, tx, erc20Token, err := erc20.DeployERC20Template(root, client, root.From, root.From, "WETH coin", "WETH", 18)
-	if err != nil {
-		return err
-	}
-	_, _ = bind.WaitMined(ctx, client, tx)
-
-	tx, err = erc20Token.Mint(root, root.From, big.NewInt(1e4))
+	_, tx, erc20Token, err := erc20.DeployERC20Mock(root, client, "WETH coin", "WETH", root.From, big.NewInt(1e4))
 	if err != nil {
 		return err
 	}
@@ -213,7 +207,8 @@ func newUniswapv2(ctx context.Context, client *ethclient.Client, root, auth *bin
 		return err
 	}
 
-	btcAddr, tx, btcToken, err := erc20.DeployERC20Template(root, client, auth.From, auth.From, "BTC coin", "BTC", 18)
+	originVal := big.NewInt(1).Mul(big.NewInt(3e3), utils.Ether)
+	btcAddr, tx, btcToken, err := erc20.DeployERC20Mock(root, client, "BTC coin", "BTC", auth.From, originVal)
 	if err != nil {
 		return err
 	}
@@ -221,9 +216,7 @@ func newUniswapv2(ctx context.Context, client *ethclient.Client, root, auth *bin
 	// init balance
 	auth.GasPrice = big.NewInt(1108583800)
 	auth.GasLimit = 11529000
-	originVal := big.NewInt(1).Mul(big.NewInt(3e3), utils.Ether)
 	tx, err = wToken.Deposit(auth)
-	tx, err = btcToken.Mint(auth, auth.From, originVal)
 	tx, err = wToken.Approve(auth, rAddr, originVal)
 	tx, err = btcToken.Approve(auth, rAddr, originVal)
 	if err != nil {

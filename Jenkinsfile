@@ -28,6 +28,11 @@ pipeline {
                 }
             }
             parallel {
+                stage('Build tests/abis') {
+                    steps {
+                        sh 'make -C tests/abis abi'
+                    }
+                }
                 stage('Build Prerequisite') {
                     steps {
                         sh 'make dev_docker'
