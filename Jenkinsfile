@@ -30,9 +30,9 @@ pipeline {
                 }
             }
             parallel {
-                stage('Build tests/abis') {
+                stage('Build tests/contracts') {
                     steps {
-                        sh 'make -C tests/abis abi'
+                        sh 'make -C tests/contracts abi'
                     }
                 }
                 stage('Build Prerequisite') {

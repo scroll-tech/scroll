@@ -6,6 +6,6 @@ use (
 	./coordinator
 	./database
 	./roller
-	./tests/abis
+	./tests/contracts
 	./tests/integration-test
 )
