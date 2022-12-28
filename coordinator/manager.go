@@ -84,7 +84,7 @@ type Manager struct {
 // New returns a new instance of Manager. The instance will be not fully prepared,
 // and still needs to be finalized and ran by calling `manager.Start`.
 func New(ctx context.Context, v *viper.Viper, orm database.OrmFactory, client *ethclient.Client) (*Manager, error) {
-	verifier, err := verifier.NewVerifier(viper.Sub("roller_manager_config.verifier"))
+	verifier, err := verifier.NewVerifier(v.Sub("verifier"))
 	if err != nil {
 		return nil, err
 	}
@@ -98,7 +98,7 @@ func New(ctx context.Context, v *viper.Viper, orm database.OrmFactory, client *e
 		verifier:           verifier,
 		orm:                orm,
 		Client:             client,
-		tokenCache:         cache.New(time.Duration(viper.GetViper().GetInt("roller_manager_config.token_time_to_live"))*time.Second, 1*time.Hour),
+		tokenCache:         cache.New(time.Duration(v.GetInt("token_time_to_live"))*time.Second, 1*time.Hour),
 	}, nil
 }
 
@@ -148,7 +148,7 @@ func (m *Manager) Loop() {
 					map[string]interface{}{"proving_status": orm.ProvingTaskUnassigned},
 					fmt.Sprintf(
 						"ORDER BY index %s LIMIT %d;",
-						viper.GetViper().GetString("roller_manager_config.order_session"),
+						viper.GetViper().GetString("order_session"),
 						m.GetNumberOfIdleRollers(),
 					),
 				); err != nil {
@@ -305,7 +305,7 @@ func (m *Manager) handleZkProof(pk string, msg *message.ProofDetail) error {
 
 // CollectProofs collects proofs corresponding to a proof generation session.
 func (m *Manager) CollectProofs(id string, sess *session) {
-	timer := time.NewTimer(time.Duration(viper.GetViper().GetInt("roller_manager_config.collection_time")) * time.Minute)
+	timer := time.NewTimer(time.Duration(viper.GetViper().GetInt("collection_time")) * time.Minute)
 
 	for {
 		select {

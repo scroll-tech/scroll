@@ -42,11 +42,6 @@ func main() {
 }
 
 func action(ctx *cli.Context) error {
-	// Load config.
-	if err := config.NewConfig("../coordinator/config.json"); err != nil {
-		return err
-	}
-
 	// Load config file.
 	cfgFile := ctx.String(utils.ConfigFileFlag.Name)
 	err := config.NewConfig(cfgFile)
