@@ -54,8 +54,10 @@ func NewCmd(t *testing.T, name string, args ...string) *Cmd {
 // RunApp exec's the current binary using name as argv[0] which will trigger the
 // reexec init function for that name (e.g. "geth-test" in cmd/geth/run_test.go)
 func (t *Cmd) RunApp(parallel bool) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
 	t.Log("cmd: ", append([]string{t.name}, t.args...))
-	cmd := &exec.Cmd{
+	t.cmd = &exec.Cmd{
 		Path:   reexec.Self(),
 		Args:   append([]string{t.name}, t.args...),
 		Stderr: t,
@@ -63,14 +65,11 @@ func (t *Cmd) RunApp(parallel bool) {
 	}
 	if parallel {
 		go func() {
-			_ = cmd.Run()
+			_ = t.cmd.Run()
 		}()
 	} else {
-		_ = cmd.Run()
+		_ = t.cmd.Run()
 	}
-	t.mu.Lock()
-	t.cmd = cmd
-	t.mu.Unlock()
 }
 
 // WaitExit wait util process exit.

@@ -42,11 +42,9 @@ func testContracts(t *testing.T) {
 	t.Run("testNative", testNative)
 	t.Run("testERC20", testERC20)
 
-	t.Cleanup(func() {
-		rollerCmd.WaitExit()
-		bridgeCmd.WaitExit()
-		coordinatorCmd.WaitExit()
-	})
+	rollerCmd.WaitExit()
+	bridgeCmd.WaitExit()
+	coordinatorCmd.WaitExit()
 }
 
 func testNative(t *testing.T) {
