@@ -1,10 +1,1 @@
-./dao/*.go
-./erc20/*.go
-./greeter/*.go
-./nft/*.go
-./sushi/*.go
-./vote/*.go
-./uniswap/factory/*.go
-./uniswap/multicall/*.go
-./uniswap/router/*.go
-./uniswap/weth9/*.go
+*.go
