@@ -1,7 +1,6 @@
 package l2
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"math/big"
@@ -39,7 +38,7 @@ func testBatchProposer(t *testing.T) {
 	err = json.Unmarshal(data, trace3)
 	assert.NoError(t, err)
 	// Insert traces into db.
-	assert.NoError(t, db.InsertBlockTraces(context.Background(), []*types.BlockTrace{trace2, trace3}))
+	assert.NoError(t, db.InsertBlockTraces([]*types.BlockTrace{trace2, trace3}))
 
 	id := utils.ComputeBatchID(trace3.Header.Hash(), trace2.Header.ParentHash, big.NewInt(1))
 
