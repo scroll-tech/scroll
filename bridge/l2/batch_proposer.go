@@ -31,7 +31,7 @@ func (w *batchProposer) getBatchTimeSec() uint64 {
 }
 
 func (w *batchProposer) getBatchBlocksLimit() uint64 {
-	return uint64(w.v.GetInt("batch_block_limit"))
+	return uint64(w.v.GetInt("batch_blocks_limit"))
 }
 
 func (w *batchProposer) getBatchGasThreshold() uint64 {

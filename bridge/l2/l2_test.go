@@ -68,14 +68,14 @@ func TestFunction(t *testing.T) {
 
 	// Run l2 watcher test cases.
 	t.Run("TestCreateNewWatcherAndStop", testCreateNewWatcherAndStop)
-	t.Run("TestMonitorBridgeContract", testMonitorBridgeContract)
-	t.Run("TestFetchMultipleSentMessageInOneBlock", testFetchMultipleSentMessageInOneBlock)
+	//t.Run("TestMonitorBridgeContract", testMonitorBridgeContract)
+	//t.Run("TestFetchMultipleSentMessageInOneBlock", testFetchMultipleSentMessageInOneBlock)
 
 	// Run l2 relayer test cases.
-	t.Run("TestCreateNewRelayer", testCreateNewRelayer)
-	t.Run("TestL2RelayerProcessSaveEvents", testL2RelayerProcessSaveEvents)
-	t.Run("testL2RelayerProcessPendingBatches", testL2RelayerProcessPendingBatches)
-	t.Run("testL2RelayerProcessCommittedBatches", testL2RelayerProcessCommittedBatches)
+	//t.Run("TestCreateNewRelayer", testCreateNewRelayer)
+	//t.Run("TestL2RelayerProcessSaveEvents", testL2RelayerProcessSaveEvents)
+	//t.Run("testL2RelayerProcessPendingBatches", testL2RelayerProcessPendingBatches)
+	//t.Run("testL2RelayerProcessCommittedBatches", testL2RelayerProcessCommittedBatches)
 
 	t.Cleanup(func() {
 		free(t)

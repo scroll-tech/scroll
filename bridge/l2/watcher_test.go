@@ -40,7 +40,7 @@ func testCreateNewWatcherAndStop(t *testing.T) {
 	assert.NoError(t, err)
 
 	senderCfg := viper.Sub("l2_config.relayer_config.sender_config")
-	//senderCfg.Set("confirmations", 0)
+	senderCfg.Set("confirmations", 0)
 	newSender, err := sender.NewSender(context.Background(), senderCfg, messageSenderPrivateKeys)
 	assert.NoError(t, err)
 
@@ -78,8 +78,7 @@ func testMonitorBridgeContract(t *testing.T) {
 	address, err := bind.WaitDeployed(context.Background(), l2Cli, tx)
 	assert.NoError(t, err)
 
-	// TODO: maybe wrong, toString
-	viper.Set("l2_config.messenger_address", address)
+	viper.Set("l2_config.messenger_address", address.String())
 	rc := prepareRelayerClient(l2Cli, db, viper.Sub("l2_config"))
 	rc.Start()
 	defer rc.Stop()
@@ -141,8 +140,7 @@ func testFetchMultipleSentMessageInOneBlock(t *testing.T) {
 	address, err := bind.WaitDeployed(context.Background(), l2Cli, trx)
 	assert.NoError(t, err)
 
-	// TODO: maybe wrong, toString
-	viper.Set("l2_config.messenger_address", address)
+	viper.Set("l2_config.messenger_address", address.String())
 	rc := prepareRelayerClient(l2Cli, db, viper.Sub("l2_config"))
 	rc.Start()
 	defer rc.Stop()
