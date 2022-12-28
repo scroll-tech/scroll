@@ -55,16 +55,18 @@ func setEnv(t *testing.T) {
 	driverName := viper.GetViper().GetString("db_config.driver_name")
 	dbImg = docker.NewTestDBDocker(t, driverName)
 	viper.Set("db_config.dsn", dbImg.Endpoint())
+	viper.Set("db_config.max_open_num", 200)
+	viper.Set("db_config.max_idle_num", 20)
 }
 
 func TestApis(t *testing.T) {
 	// Set up the test environment.
 	setEnv(t)
 
-	//t.Run("TestHandshake", testHandshake)
-	//t.Run("TestFailedHandshake", testFailedHandshake)
-	//t.Run("TestSeveralConnections", testSeveralConnections)
-	//t.Run("TestIdleRollerSelection", testIdleRollerSelection)
+	t.Run("TestHandshake", testHandshake)
+	t.Run("TestFailedHandshake", testFailedHandshake)
+	t.Run("TestSeveralConnections", testSeveralConnections)
+	t.Run("TestIdleRollerSelection", testIdleRollerSelection)
 	// TODO: Restart roller alone when received task, can add this test case in integration-test.
 	//t.Run("TestRollerReconnect", testRollerReconnect)
 	t.Run("TestGracefulRestart", testGracefulRestart)
@@ -319,8 +321,8 @@ func testGracefulRestart(t *testing.T) {
 
 	for i := range ids {
 		info, err := newRollerManager.GetSessionInfo(ids[i])
-		assert.Equal(t, orm.ProvingTaskAssigned.String(), info.Status)
 		assert.NoError(t, err)
+		assert.Equal(t, orm.ProvingTaskAssigned.String(), info.Status)
 
 		// at this point, roller haven't submitted
 		status, err := l2db.GetProvingStatusByID(ids[i])
