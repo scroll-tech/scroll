@@ -101,6 +101,18 @@ pipeline {
             }
         }
         stage('Coverage') {
+            when {
+                anyOf {
+                    changeset "Jenkinsfile"
+                    changeset "build/**"
+                    changeset "go.work**"
+                    changeset "bridge/**"
+                    changeset "coordinator/**"
+                    changeset "common/**"
+                    changeset "database/**"
+                    changeset "tests/**"
+                }
+            }
             steps { 
                 script {
                     currentBuild.result = 'SUCCESS'
