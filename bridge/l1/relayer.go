@@ -12,13 +12,13 @@ import (
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
-	"github.com/spf13/viper"
 
 	"scroll-tech/database/orm"
 
 	bridge_abi "scroll-tech/bridge/abi"
 	"scroll-tech/bridge/config"
 	"scroll-tech/bridge/sender"
+	"scroll-tech/common/viper"
 )
 
 // Layer1Relayer is responsible for

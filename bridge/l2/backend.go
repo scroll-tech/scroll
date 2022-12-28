@@ -5,8 +5,8 @@ import (
 
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/rpc"
-	"github.com/spf13/viper"
 
+	"scroll-tech/common/viper"
 	"scroll-tech/database"
 )
 
@@ -20,7 +20,7 @@ type Backend struct {
 
 // New returns a new instance of Backend.
 func New(ctx context.Context, orm database.OrmFactory) (*Backend, error) {
-	client, err := ethclient.Dial(viper.GetString("l2_config.endpoint"))
+	client, err := ethclient.Dial(viper.GetViper().GetString("l2_config.endpoint"))
 	if err != nil {
 		return nil, err
 	}

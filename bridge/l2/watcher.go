@@ -14,11 +14,11 @@ import (
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/event"
 	"github.com/scroll-tech/go-ethereum/log"
-	"github.com/spf13/viper"
 
 	bridge_abi "scroll-tech/bridge/abi"
 	"scroll-tech/bridge/utils"
 
+	"scroll-tech/common/viper"
 	"scroll-tech/database"
 	"scroll-tech/database/orm"
 )
@@ -59,8 +59,8 @@ func NewL2WatcherClient(ctx context.Context, client *ethclient.Client, orm datab
 		savedHeight = 0
 	}
 
-	confirmations := uint64(viper.GetInt64("l2_config.confirmations"))
-	messengerAddress := common.HexToAddress(viper.GetString("l2_config.messenger_address"))
+	confirmations := uint64(viper.GetViper().GetInt64("l2_config.confirmations"))
+	messengerAddress := common.HexToAddress(viper.GetViper().GetString("l2_config.messenger_address"))
 
 	return &WatcherClient{
 		ctx:                ctx,

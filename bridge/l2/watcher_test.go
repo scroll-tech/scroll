@@ -12,13 +12,13 @@ import (
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/ethclient"
-	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 
 	"scroll-tech/bridge/config"
 	"scroll-tech/bridge/l2"
 	"scroll-tech/bridge/mock_bridge"
 	"scroll-tech/bridge/sender"
+	"scroll-tech/common/viper"
 
 	"scroll-tech/database"
 	"scroll-tech/database/migrate"
@@ -36,7 +36,7 @@ func testCreateNewWatcherAndStop(t *testing.T) {
 	rc.Start()
 	defer rc.Stop()
 
-	messageSenderPrivateKeys, err := config.UnmarshalPrivateKeys(viper.GetStringSlice("l2_config.relayer_config.message_sender_private_keys"))
+	messageSenderPrivateKeys, err := config.UnmarshalPrivateKeys(viper.GetViper().GetStringSlice("l2_config.relayer_config.message_sender_private_keys"))
 	assert.NoError(t, err)
 
 	senderCfg := viper.Sub("l2_config.relayer_config.sender_config")
@@ -68,7 +68,7 @@ func testMonitorBridgeContract(t *testing.T) {
 	previousHeight, err := l2Cli.BlockNumber(context.Background())
 	assert.NoError(t, err)
 
-	messageSenderPrivateKeys, err := config.UnmarshalPrivateKeys(viper.GetStringSlice("l2_config.relayer_config.message_sender_private_keys"))
+	messageSenderPrivateKeys, err := config.UnmarshalPrivateKeys(viper.GetViper().GetStringSlice("l2_config.relayer_config.message_sender_private_keys"))
 	assert.NoError(t, err)
 	auth := prepareAuth(t, l2Cli, messageSenderPrivateKeys[0])
 
@@ -132,7 +132,7 @@ func testFetchMultipleSentMessageInOneBlock(t *testing.T) {
 	previousHeight, err := l2Cli.BlockNumber(context.Background()) // shallow the global previousHeight
 	assert.NoError(t, err)
 
-	messageSenderPrivateKeys, err := config.UnmarshalPrivateKeys(viper.GetStringSlice("l2_config.relayer_config.message_sender_private_keys"))
+	messageSenderPrivateKeys, err := config.UnmarshalPrivateKeys(viper.GetViper().GetStringSlice("l2_config.relayer_config.message_sender_private_keys"))
 	assert.NoError(t, err)
 	auth := prepareAuth(t, l2Cli, messageSenderPrivateKeys[0])
 

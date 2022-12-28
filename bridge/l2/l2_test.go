@@ -4,11 +4,11 @@ import (
 	"testing"
 
 	"github.com/scroll-tech/go-ethereum/ethclient"
-	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 
 	"scroll-tech/bridge/config"
 	"scroll-tech/common/docker"
+	"scroll-tech/common/viper"
 )
 
 var (
@@ -36,14 +36,14 @@ func setupEnv(t *testing.T) (err error) {
 	viper.Set("l2_config.endpoint", l2gethImg.Endpoint())
 
 	// Create db container.
-	driverName := viper.GetString("db_config.driver_name")
+	driverName := viper.GetViper().GetString("db_config.driver_name")
 	dbImg = docker.NewTestDBDocker(t, driverName)
 
 	viper.Set("db_config.driver_name", driverName)
 	viper.Set("db_config.dsn", dbImg.Endpoint())
 
 	// Create l2geth client.
-	l2Cli, err = ethclient.Dial(viper.GetString("l2_config.endpoint"))
+	l2Cli, err = ethclient.Dial(viper.GetViper().GetString("l2_config.endpoint"))
 	assert.NoError(t, err)
 
 	return err

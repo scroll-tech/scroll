@@ -6,13 +6,13 @@ import (
 	"os/signal"
 
 	"github.com/scroll-tech/go-ethereum/log"
-	"github.com/spf13/viper"
 	"github.com/urfave/cli/v2"
 
 	"scroll-tech/database"
 
 	"scroll-tech/common/utils"
 	"scroll-tech/common/version"
+	"scroll-tech/common/viper"
 
 	"scroll-tech/bridge/config"
 	"scroll-tech/bridge/l1"

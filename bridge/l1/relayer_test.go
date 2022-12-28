@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"github.com/scroll-tech/go-ethereum/ethclient"
-	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 
 	"scroll-tech/database/migrate"
@@ -16,6 +15,7 @@ import (
 	"scroll-tech/database"
 
 	"scroll-tech/common/docker"
+	"scroll-tech/common/viper"
 )
 
 // TestCreateNewRelayer test create new relayer instance and stop
@@ -29,7 +29,7 @@ func TestCreateNewL1Relayer(t *testing.T) {
 	client, err := ethclient.Dial(l1docker.Endpoint())
 	assert.NoError(t, err)
 
-	driverName := viper.GetString("db_config.driver_name")
+	driverName := viper.GetViper().GetString("db_config.driver_name")
 	dbImg := docker.NewTestDBDocker(t, driverName)
 	defer dbImg.Stop()
 	viper.Set("db_config.driver_name", driverName)

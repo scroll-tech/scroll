@@ -19,9 +19,9 @@ import (
 	"github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
-	"github.com/spf13/viper"
 
 	"scroll-tech/bridge/config"
+	"scroll-tech/common/viper"
 )
 
 const (

@@ -14,13 +14,13 @@ import (
 	cmap "github.com/orcaman/concurrent-map"
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/crypto"
-	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 
 	"scroll-tech/common/docker"
 
 	"scroll-tech/bridge/config"
 	"scroll-tech/bridge/sender"
+	"scroll-tech/common/viper"
 )
 
 const TX_BATCH = 50

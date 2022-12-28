@@ -9,11 +9,11 @@ import (
 	"time"
 
 	"github.com/scroll-tech/go-ethereum/core/types"
-	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 
 	"scroll-tech/bridge/l2"
 
+	"scroll-tech/common/viper"
 	"scroll-tech/database"
 	"scroll-tech/database/migrate"
 	"scroll-tech/database/orm"

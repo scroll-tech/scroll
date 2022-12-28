@@ -11,13 +11,13 @@ import (
 	"github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
-	"github.com/spf13/viper"
 
 	"scroll-tech/database"
 	"scroll-tech/database/orm"
 
 	bridge_abi "scroll-tech/bridge/abi"
 	"scroll-tech/bridge/utils"
+	"scroll-tech/common/viper"
 )
 
 type relayedMessage struct {
@@ -60,15 +60,15 @@ func NewWatcher(ctx context.Context, client *ethclient.Client, db database.OrmFa
 		log.Warn("Failed to fetch height from db", "err", err)
 		savedHeight = 0
 	}
-	startHeight := viper.GetInt64("l1_config.start_height")
+	startHeight := viper.GetViper().GetInt64("l1_config.start_height")
 	if savedHeight < startHeight {
 		savedHeight = startHeight
 	}
 
 	stop := make(chan bool)
-	confirmations := uint64(viper.GetInt64("l1_config.confirmations"))
-	messengerAddress := common.HexToAddress(viper.GetString("l1_config.l1_messenger_address"))
-	rollupAddress := common.HexToAddress(viper.GetString("l1_config.relayer_config.rollup_contract_address"))
+	confirmations := uint64(viper.GetViper().GetInt64("l1_config.confirmations"))
+	messengerAddress := common.HexToAddress(viper.GetViper().GetString("l1_config.l1_messenger_address"))
+	rollupAddress := common.HexToAddress(viper.GetViper().GetString("l1_config.relayer_config.rollup_contract_address"))
 
 	return &Watcher{
 		ctx:                ctx,

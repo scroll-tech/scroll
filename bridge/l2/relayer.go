@@ -12,7 +12,6 @@ import (
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
-	"github.com/spf13/viper"
 
 	"scroll-tech/database"
 	"scroll-tech/database/orm"
@@ -21,6 +20,7 @@ import (
 	"scroll-tech/bridge/config"
 	"scroll-tech/bridge/sender"
 	"scroll-tech/bridge/utils"
+	"scroll-tech/common/viper"
 )
 
 // Layer2Relayer is responsible for
@@ -253,7 +253,7 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 		return
 	}
 
-	rollupContractAddress := common.HexToAddress(viper.GetString("rollup_contract_address"))
+	rollupContractAddress := common.HexToAddress(viper.GetViper().GetString("rollup_contract_address"))
 	hash, err := r.rollupSender.SendTransaction(id, &rollupContractAddress, big.NewInt(0), data)
 	if err != nil {
 		if !errors.Is(err, sender.ErrNoAvailableAccount) {
@@ -346,7 +346,7 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 			return
 		}
 
-		rollupContractAddress := common.HexToAddress(viper.GetString("rollup_contract_address"))
+		rollupContractAddress := common.HexToAddress(viper.GetViper().GetString("rollup_contract_address"))
 		txHash, err := r.rollupSender.SendTransaction(id, &rollupContractAddress, big.NewInt(0), data)
 		hash := &txHash
 		if err != nil {
