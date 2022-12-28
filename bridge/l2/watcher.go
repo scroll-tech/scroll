@@ -61,7 +61,11 @@ func NewL2WatcherClient(ctx context.Context, client *ethclient.Client, orm datab
 	}
 
 	confirmations := uint64(v.GetInt64("confirmations"))
-	messengerAddress := common.HexToAddress(v.GetString("messenger_address"))
+	messengerAddress := common.HexToAddress(v.GetString("l2_messenger_address"))
+
+	fmt.Println("confirmations:", confirmations)
+	fmt.Println("messengerAddress:", messengerAddress)
+	fmt.Println("messengerABI:", bridge_abi.L2MessengerMetaABI)
 
 	return &WatcherClient{
 		ctx:                ctx,

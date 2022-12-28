@@ -78,7 +78,7 @@ func testMonitorBridgeContract(t *testing.T) {
 	address, err := bind.WaitDeployed(context.Background(), l2Cli, tx)
 	assert.NoError(t, err)
 
-	viper.Set("l2_config.messenger_address", address.String())
+	viper.Set("l2_config.l2_messenger_address", address.String())
 	rc := prepareRelayerClient(l2Cli, db, viper.Sub("l2_config"))
 	rc.Start()
 	defer rc.Stop()
@@ -140,7 +140,7 @@ func testFetchMultipleSentMessageInOneBlock(t *testing.T) {
 	address, err := bind.WaitDeployed(context.Background(), l2Cli, trx)
 	assert.NoError(t, err)
 
-	viper.Set("l2_config.messenger_address", address.String())
+	viper.Set("l2_config.l2_messenger_address", address.String())
 	rc := prepareRelayerClient(l2Cli, db, viper.Sub("l2_config"))
 	rc.Start()
 	defer rc.Stop()
