@@ -8,6 +8,7 @@ import (
 	"math/big"
 	"os"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -54,6 +55,14 @@ var (
 	l2Root  *bind.TransactOpts
 )
 
+type appAPI interface {
+	RunApp(parallel bool)
+	WaitExit()
+	ExpectWithTimeout(parallel bool, timeout time.Duration, keyword string)
+	RegistFunc(key string, check func(buf string))
+	UnRegistFunc(key string)
+}
+
 func setupEnv(t *testing.T) {
 	// Start l1geth l2geth and postgres.
 	l1gethImg = docker.NewTestL1Docker(t)
@@ -67,6 +76,9 @@ func setupEnv(t *testing.T) {
 	privkey, _ = crypto.HexToECDSA("1212121212121212121212121212121212121212121212121212121212121212")
 	l2Root, err = bind.NewKeyedTransactorWithChainID(privkey, big.NewInt(53077))
 	assert.NoError(t, err)
+
+	// Create configs.
+	mockConfig(t)
 }
 
 func free(t *testing.T) {
@@ -75,12 +87,6 @@ func free(t *testing.T) {
 	assert.NoError(t, dbImg.Stop())
 	// Delete configs.
 	freeConfig()
-}
-
-type appAPI interface {
-	RunApp(parallel bool)
-	WaitExit()
-	ExpectWithTimeout(parallel bool, timeout time.Duration, keyword string)
 }
 
 func runBridgeApp(t *testing.T, args ...string) appAPI {
@@ -100,8 +106,25 @@ func runDBCliApp(t *testing.T, option, keyword string) {
 	defer app.WaitExit()
 
 	// Wait expect result.
-	app.ExpectWithTimeout(true, time.Second*3, keyword)
-	app.RunApp(false)
+	okCh := make(chan struct{}, 1)
+	app.RegistFunc(keyword, func(buf string) {
+		if strings.Contains(buf, keyword) {
+			select {
+			case okCh <- struct{}{}:
+			default:
+				return
+			}
+		}
+	})
+	defer app.UnRegistFunc(keyword)
+	app.RunApp(true)
+
+	select {
+	case <-okCh:
+		return
+	case <-time.After(time.Second * 3):
+		assert.Fail(t, fmt.Sprintf("didn't get the desired result before timeout, keyword: %s", keyword))
+	}
 }
 
 func runRollerApp(t *testing.T, args ...string) appAPI {

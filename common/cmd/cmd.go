@@ -23,8 +23,6 @@ func init() {
 	}
 }
 
-type checkFunc func(buf string)
-
 // Cmd struct
 type Cmd struct {
 	*testing.T
@@ -94,7 +92,7 @@ func (t *Cmd) Interrupt() {
 }
 
 // RegistFunc register check func
-func (t *Cmd) RegistFunc(key string, check checkFunc) {
+func (t *Cmd) RegistFunc(key string, check func(buf string)) {
 	t.checkFuncs.Set(key, check)
 }
 
@@ -161,7 +159,7 @@ func (t *Cmd) Write(data []byte) (int, error) {
 		t.Logf("%s: %v", t.name, out)
 	}
 	go t.checkFuncs.IterCb(func(_ string, value interface{}) {
-		check := value.(checkFunc)
+		check := value.(func(buf string))
 		check(out)
 	})
 	return len(data), nil
