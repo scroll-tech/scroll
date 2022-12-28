@@ -12,17 +12,18 @@ import (
 	"github.com/scroll-tech/go-ethereum/crypto"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 
+	"scroll-tech/integration-test/abi/dao"
+	"scroll-tech/integration-test/abi/erc20"
+	"scroll-tech/integration-test/abi/greeter"
+	"scroll-tech/integration-test/abi/nft"
+	"scroll-tech/integration-test/abi/sushi"
+	"scroll-tech/integration-test/abi/uniswap/factory"
+	"scroll-tech/integration-test/abi/uniswap/router"
+	"scroll-tech/integration-test/abi/uniswap/weth9"
+	"scroll-tech/integration-test/abi/vote"
+
 	bridgeConfig "scroll-tech/bridge/config"
 	"scroll-tech/bridge/sender"
-	"scroll-tech/contracts/dao"
-	"scroll-tech/contracts/erc20"
-	"scroll-tech/contracts/greeter"
-	"scroll-tech/contracts/nft"
-	"scroll-tech/contracts/sushi"
-	"scroll-tech/contracts/uniswap/factory"
-	"scroll-tech/contracts/uniswap/router"
-	"scroll-tech/contracts/uniswap/weth9"
-	"scroll-tech/contracts/vote"
 
 	"scroll-tech/common/utils"
 )
@@ -38,7 +39,6 @@ func native(ctx context.Context, to common.Address, value *big.Int) error {
 		EscalateMultipleDen: 10,
 		TxType:              "DynamicFeeTx",
 	}, []*ecdsa.PrivateKey{privkey})
-	//to = common.HexToAddress("0x1c5a77d9fa7ef466951b2f01f724bca3a5820b63")
 	_, err = newSender.SendTransaction("native_01", &to, value, nil)
 	<-newSender.ConfirmChan()
 	return err
