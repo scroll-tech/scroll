@@ -62,7 +62,7 @@ func action(ctx *cli.Context) error {
 	}
 
 	// Initialize all coordinator modules.
-	rollerManager, err := coordinator.New(ctx.Context, viper.GetViper(), ormFactory, client)
+	rollerManager, err := coordinator.New(ctx.Context, viper.Sub("roller_manager_config"), ormFactory, client)
 	if err != nil {
 		return err
 	}

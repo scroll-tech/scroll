@@ -211,7 +211,7 @@ func (m *Manager) handleZkProof(pk string, msg *message.ProofDetail) error {
 	defer m.mu.RUnlock()
 	sess, ok := m.sessions[msg.ID]
 	if !ok {
-		return fmt.Errorf("proof generation session for id %v does not existID", msg.ID)
+		return fmt.Errorf("proof generation session for id %v does not exist", msg.ID)
 	}
 	proofTimeSec := uint64(time.Since(time.Unix(sess.info.StartTimestamp, 0)).Seconds())
 

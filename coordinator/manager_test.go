@@ -64,10 +64,10 @@ func TestApis(t *testing.T) {
 	//t.Run("TestHandshake", testHandshake)
 	//t.Run("TestFailedHandshake", testFailedHandshake)
 	//t.Run("TestSeveralConnections", testSeveralConnections)
-	t.Run("TestIdleRollerSelection", testIdleRollerSelection)
+	//t.Run("TestIdleRollerSelection", testIdleRollerSelection)
 	// TODO: Restart roller alone when received task, can add this test case in integration-test.
 	//t.Run("TestRollerReconnect", testRollerReconnect)
-	//t.Run("TestGracefulRestart", testGracefulRestart)
+	t.Run("TestGracefulRestart", testGracefulRestart)
 
 	// Teardown
 	t.Cleanup(func() {
