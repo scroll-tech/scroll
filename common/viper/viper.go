@@ -54,37 +54,20 @@ func (v *Viper) Sub(key string) *Viper {
 	return sub
 }
 
-func (v *Viper) getSub(key string) *Viper {
-	var (
-		path = v.path
-		sub  = v
-	)
-	for _, s := range strings.Split(key, ".") {
-		path = absolutePath(path, s)
-		if vp := sub.subVps[path]; vp != nil {
-			sub = vp
-		} else {
-			return nil
-		}
-	}
-	return sub
-}
-
 func (v *Viper) Set(key string, val interface{}) {
-	path := v.path
 	var sub = v
-	for _, s := range strings.Split(key, ".") {
-		path = absolutePath(path, s)
-		if vp := sub.subVps[path]; vp != nil {
-			sub = vp
-		} else {
-			log.Error("has no such path", "absolute path", path)
+	if idx := strings.LastIndex(key, "."); idx >= 0 {
+		path := absolutePath(v.path, key[:idx])
+		sub = root.Sub(path)
+		if sub == nil {
+			log.Error("don't exist the sub viper", "path", path)
 			return
 		}
+		key = key[idx+1:]
 	}
-	v.mu.Lock()
+	sub.mu.Lock()
 	sub.Viper.Set(key, val)
-	v.mu.Unlock()
+	sub.mu.Unlock()
 }
 
 // Unmarshal unmarshals the config into a Struct. Make sure that the tags

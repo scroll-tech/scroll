@@ -1,6 +1,7 @@
 package viper
 
 import (
+	"github.com/scroll-tech/go-ethereum/log"
 	"strings"
 
 	"github.com/spf13/viper"
@@ -30,8 +31,11 @@ func Sub(key string) *Viper { return root.Sub(key) }
 func Set(key string, value interface{}) {
 	idx := strings.LastIndex(key, ".")
 	if idx > 0 {
-		sub := root.Sub(key[:idx])
-		sub.Set(key[idx+1:], value)
+		if sub := root.Sub(key[:idx]); sub != nil {
+			sub.Set(key[idx+1:], value)
+		} else {
+			log.Error("don't exist the sub viper", "path", key[:idx])
+		}
 	} else {
 		root.Set(key, value)
 	}
@@ -45,13 +49,13 @@ func Flush(vp *viper.Viper) {
 		if idx < 0 {
 			continue
 		}
-		key := str[:idx]
+		path := str[:idx]
 		// If don't exist get it.
-		if vip, exist := subs[key]; !exist {
-			subs[key] = root.Sub(key)
-			vip = subs[key]
-		} else if vip != nil {
-			vip.Set(str[idx+1:], vp.Get(str))
+		if _, exist := subs[path]; !exist {
+			subs[path] = root.Sub(path)
+		}
+		if subs[path] != nil {
+			subs[path].Set(str[idx+1:], vp.Get(str))
 		}
 	}
 }

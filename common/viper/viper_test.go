@@ -11,27 +11,29 @@ import (
 func TestViper(t *testing.T) {
 	SetConfigFile("../../bridge/config.json")
 	assert.NoError(t, ReadInConfig())
-	vp := GetViper()
-	t.Log(vp.AllKeys())
 
-	sb := vp.Sub("l2_config.relayer_config.sender_config")
-	t.Log(sb.GetInt("check_pending_time"), sb.GetString("tx_type"))
-
-	/*viper.Set("l2_config.relayer_config.sender_config.confirmations", 20)
-	t.Log(sb.GetInt("confirmations"))*/
+	sb := Sub("l2_config.relayer_config.sender_config")
+	assert.Equal(t, 10, sb.GetInt("check_pending_time"))
+	assert.Equal(t, "DynamicFeeTx", sb.GetString("tx_type"))
 
 	sb.Set("confirmations", 20)
-	t.Log(sb.GetInt("confirmations"))
+	assert.Equal(t, 20, sb.GetInt("confirmations"))
 
-	relayer := vp.Sub("l2_config.relayer_config")
-	t.Log(relayer.GetString("rollup_contract_address"))
+	relayer := Sub("l2_config.relayer_config")
+	assert.Equal(t, "0x0000000000000000000000000000000000000000", relayer.GetString("rollup_contract_address"))
+
+	relayer.Set("sender_config.confirmations", 14)
+	assert.Equal(t, 14, sb.GetInt("confirmations"))
+
 	sender := relayer.Sub("sender_config")
-	t.Log(sender.GetInt("confirmations"))
+	assert.Equal(t, 14, sender.GetInt("confirmations"))
+
 	sender.Set("confirmations", 33)
-	t.Log(sender.GetInt("confirmations"))
+	assert.Equal(t, 33, sender.GetInt("confirmations"))
 
 	Set("l2_config.relayer_config.sender_config.confirmations", 15)
-	t.Log(sb.GetInt("confirmations"))
+	assert.Equal(t, 15, sb.GetInt("confirmations"))
+	assert.Equal(t, 15, sender.GetInt("confirmations"))
 }
 
 func TestFlush(t *testing.T) {
