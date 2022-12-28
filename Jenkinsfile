@@ -8,11 +8,12 @@ pipeline {
     }
     tools {
         go 'go-1.18'
+        nodejs "nodejs"
     }
     environment {
         GO111MODULE = 'on'
         PATH="/home/ubuntu/.cargo/bin:$PATH"
-        // LOG_DOCKER = 'true'
+        //LOG_DOCKER = 'true'
     }
     stages {
         stage('Build') {
@@ -25,6 +26,7 @@ pipeline {
                     changeset "coordinator/**"
                     changeset "common/**"
                     changeset "database/**"
+                    changeset "tests/**"
                 }
             }
             parallel {
@@ -77,16 +79,18 @@ pipeline {
                     changeset "coordinator/**"
                     changeset "common/**"
                     changeset "database/**"
+                    changeset "tests/**"
                 }
             }
             steps {
                catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
                     sh '''
-                        go test -v -race -coverprofile=coverage.txt -covermode=atomic -p 1 scroll-tech/database/...
-                        go test -v -race -coverprofile=coverage.txt -covermode=atomic -p 1 scroll-tech/bridge/...
-                        go test -v -race -coverprofile=coverage.txt -covermode=atomic -p 1 scroll-tech/common/...
-                        go test -v -race -coverprofile=coverage.txt -covermode=atomic -p 1 scroll-tech/coordinator/...
-                        cd ..
+                        go test -v -race -coverprofile=coverage.db.txt -covermode=atomic -p 1 scroll-tech/database/...
+                        go test -v -race -coverprofile=coverage.bridge.txt -covermode=atomic -p 1 scroll-tech/bridge/...
+                        go test -v -race -coverprofile=coverage.common.txt -covermode=atomic -p 1 scroll-tech/common/...
+                        go test -v -race -coverprofile=coverage.coordinator.txt -covermode=atomic -p 1 scroll-tech/coordinator/...
+                        go test -v -race -tags="mock_prover mock_verifier" -coverprofile=coverage.integration.txt -covermode=atomic -p 1 scroll-tech/integration-test/...
+                        sh build/post-test-report-coverage.sh
                     '''
                     script {
                         for (i in ['bridge', 'coordinator', 'database']) {
@@ -96,9 +100,18 @@ pipeline {
                }
             }
         }
+        stage('Coverage') {
+            steps { 
+                script {
+                    currentBuild.result = 'SUCCESS'
+                }
+                step([$class: 'CompareCoverageAction', publishResultAs: 'statusCheck', scmVars: [GIT_URL: env.GIT_URL]])
+            }
+        }
     }
     post {
         always {
+            publishCoverage adapters: [coberturaReportAdapter(path: 'cobertura.xml', thresholds: [[thresholdTarget: 'Aggregated Report', unhealthyThreshold: 40.0]])], checksName: '', sourceFileResolver: sourceFiles('NEVER_STORE') 
             cleanWs() 
             slackSend(message: "${JOB_BASE_NAME} ${GIT_COMMIT} #${BUILD_NUMBER} deploy ${currentBuild.result}")
         }

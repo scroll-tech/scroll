@@ -39,8 +39,9 @@ func testStartProcess(t *testing.T) {
 	// Start roller process.
 	rollerCmd := runRollerApp(t)
 	rollerCmd.RunApp(true)
-	rollerCmd.ExpectWithTimeout(false, time.Second*20, "roller start successfully")
-	rollerCmd.ExpectWithTimeout(false, time.Second*10, "register to coordinator successfully!")
+	// rollerCmd.ExpectWithTimeout(false, time.Second*20, "roller start successfully")
+	// rollerCmd.ExpectWithTimeout(false, time.Second*10, "register to coordinator successfully!")
+	rollerCmd.ExpectWithTimeout(false, time.Second*30, "register to coordinator successfully!")
 
 	rollerCmd.WaitExit()
 	bridgeCmd.WaitExit()
