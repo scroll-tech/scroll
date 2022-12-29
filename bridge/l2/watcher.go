@@ -61,7 +61,7 @@ func NewL2WatcherClient(ctx context.Context, client *ethclient.Client, orm datab
 	}
 
 	confirmations := uint64(vp.GetInt64("confirmations"))
-	messengerAddress := common.HexToAddress(vp.GetString("l2_messenger_address"))
+	messengerAddress := vp.GetAddress("l2_messenger_address")
 
 	return &WatcherClient{
 		ctx:                ctx,

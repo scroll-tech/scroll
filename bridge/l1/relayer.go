@@ -106,7 +106,7 @@ func (r *Layer1Relayer) processSavedEvent(msg *orm.L1Message) error {
 		return err
 	}
 
-	messengerContractAddress := common.HexToAddress(r.vp.GetString("messenger_contract_address"))
+	messengerContractAddress := r.vp.GetAddress("messenger_contract_address")
 	hash, err := r.sender.SendTransaction(msg.MsgHash, &messengerContractAddress, big.NewInt(0), data)
 	if err != nil {
 		return err

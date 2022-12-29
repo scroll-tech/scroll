@@ -149,7 +149,7 @@ func (r *Layer2Relayer) processSavedEvent(msg *orm.L2Message) error {
 		return err
 	}
 
-	messengerContractAddress := common.HexToAddress(r.vp.GetString("messenger_contract_address"))
+	messengerContractAddress := r.vp.GetAddress("messenger_contract_address")
 	hash, err := r.messageSender.SendTransaction(msg.MsgHash, &messengerContractAddress, big.NewInt(0), data)
 	if err != nil {
 		if !errors.Is(err, sender.ErrNoAvailableAccount) {
@@ -244,7 +244,7 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 		return
 	}
 
-	rollupContractAddress := common.HexToAddress(r.vp.GetString("rollup_contract_address"))
+	rollupContractAddress := r.vp.GetAddress("rollup_contract_address")
 	hash, err := r.rollupSender.SendTransaction(id, &rollupContractAddress, big.NewInt(0), data)
 	if err != nil {
 		if !errors.Is(err, sender.ErrNoAvailableAccount) {
@@ -337,7 +337,7 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 			return
 		}
 
-		rollupContractAddress := common.HexToAddress(r.vp.GetString("rollup_contract_address"))
+		rollupContractAddress := r.vp.GetAddress("rollup_contract_address")
 		txHash, err := r.rollupSender.SendTransaction(id, &rollupContractAddress, big.NewInt(0), data)
 		hash := &txHash
 		if err != nil {

@@ -4,8 +4,8 @@ import (
 	"crypto/ecdsa"
 	"math/big"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/scroll-tech/go-ethereum/common"
+	"github.com/scroll-tech/go-ethereum/crypto"
 	"github.com/scroll-tech/go-ethereum/log"
 )
 
@@ -63,6 +63,12 @@ func (v *Viper) GetStringSlice(key string) []string {
 	defer v.mu.RUnlock()
 	//fmt.Println("GetStringSlice key: ", key, " value: ", v.vp.GetStringSlice(key))
 	return v.vp.GetStringSlice(key)
+}
+
+func (v *Viper) GetAddress(key string) common.Address {
+	v.mu.RLock()
+	defer v.mu.RUnlock()
+	return common.HexToAddress(v.vp.GetString(key))
 }
 
 func (v *Viper) GetBigInt(key string) *big.Int {

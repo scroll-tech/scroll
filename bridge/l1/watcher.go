@@ -67,8 +67,8 @@ func NewWatcher(ctx context.Context, client *ethclient.Client, db database.OrmFa
 
 	stop := make(chan bool)
 	confirmations := uint64(vp.GetInt64("confirmations"))
-	messengerAddress := common.HexToAddress(vp.GetString("l1_messenger_address"))
-	rollupAddress := common.HexToAddress(vp.Sub("relayer_config").GetString("rollup_contract_address"))
+	messengerAddress := vp.GetAddress("l1_messenger_address")
+	rollupAddress := vp.Sub("relayer_config").GetAddress("rollup_contract_address")
 
 	return &Watcher{
 		ctx:                ctx,
