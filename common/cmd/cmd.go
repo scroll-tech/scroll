@@ -75,16 +75,15 @@ func (t *Cmd) RunApp(parallel bool) {
 
 // WaitExit wait util process exit.
 func (t *Cmd) WaitExit() {
+	// Wait all the check funcs are finished or test status is failed.
+	for !(t.Failed() || t.checkFuncs.IsEmpty()) {
+		<-time.After(time.Millisecond * 500)
+	}
+
 	// Send interrupt signal.
 	t.mu.Lock()
 	_ = t.cmd.Process.Signal(os.Interrupt)
 	t.mu.Unlock()
-
-	// Wait all the check funcs are finished or test status is failed.
-	tick := time.NewTicker(time.Millisecond * 500)
-	for !(t.Failed() || t.checkFuncs.IsEmpty()) {
-		<-tick.C
-	}
 }
 
 // Interrupt send interrupt signal.
