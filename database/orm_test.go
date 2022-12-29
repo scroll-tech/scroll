@@ -85,19 +85,21 @@ var (
 	ormLayer2  orm.L2MessageOrm
 	ormBatch   orm.BlockBatchOrm
 	ormSession orm.SessionInfoOrm
+
+	vp *viper.Viper
 )
 
 func setupEnv(t *testing.T) error {
 	// Init db config and start db container.
 	dbImg = docker.NewTestDBDocker(t, "postgres")
 
-	viper.Set("driver_name", "postgres")
-	viper.Set("dsn", dbImg.Endpoint())
-	viper.Set("max_open_num", 200)
-	viper.Set("max_idle_num", 20)
+	var err error
+	vp, err = viper.NewViper("config.json")
+	assert.NoError(t, err)
+	vp.Set("dsn", dbImg.Endpoint())
 
 	// Create db handler and reset db.
-	factory, err := database.NewOrmFactory(viper.GetViper())
+	factory, err := database.NewOrmFactory(vp)
 	assert.NoError(t, err)
 	db := factory.GetDB()
 	assert.NoError(t, migrate.ResetDB(db.DB))
@@ -142,7 +144,7 @@ func TestOrmFactory(t *testing.T) {
 
 func testOrmBlockTraces(t *testing.T) {
 	// Create db handler and reset db.
-	factory, err := database.NewOrmFactory(viper.GetViper())
+	factory, err := database.NewOrmFactory(vp)
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(factory.GetDB().DB))
 
@@ -183,7 +185,7 @@ func testOrmBlockTraces(t *testing.T) {
 
 func testOrmL1Message(t *testing.T) {
 	// Create db handler and reset db.
-	factory, err := database.NewOrmFactory(viper.GetViper())
+	factory, err := database.NewOrmFactory(vp)
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(factory.GetDB().DB))
 
@@ -217,7 +219,7 @@ func testOrmL1Message(t *testing.T) {
 
 func testOrmL2Message(t *testing.T) {
 	// Create db handler and reset db.
-	factory, err := database.NewOrmFactory(viper.GetViper())
+	factory, err := database.NewOrmFactory(vp)
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(factory.GetDB().DB))
 
@@ -253,7 +255,7 @@ func testOrmL2Message(t *testing.T) {
 // testOrmBlockBatch test rollup result table functions
 func testOrmBlockBatch(t *testing.T) {
 	// Create db handler and reset db.
-	factory, err := database.NewOrmFactory(viper.GetViper())
+	factory, err := database.NewOrmFactory(vp)
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(factory.GetDB().DB))
 
@@ -325,7 +327,7 @@ func testOrmBlockBatch(t *testing.T) {
 // testOrmSessionInfo test rollup result table functions
 func testOrmSessionInfo(t *testing.T) {
 	// Create db handler and reset db.
-	factory, err := database.NewOrmFactory(viper.GetViper())
+	factory, err := database.NewOrmFactory(vp)
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(factory.GetDB().DB))
 	dbTx, err := factory.Beginx()

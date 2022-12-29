@@ -13,15 +13,14 @@ import (
 )
 
 func initDB(file string) (*sqlx.DB, error) {
-	viper.SetConfigFile(file)
-	if err := viper.ReadInConfig(); err != nil {
-		return nil, err
-	}
-	factory, err := database.NewOrmFactory(viper.GetViper())
+	vp, err := viper.NewViper(file)
 	if err != nil {
 		return nil, err
 	}
-	vp := viper.GetViper()
+	factory, err := database.NewOrmFactory(vp)
+	if err != nil {
+		return nil, err
+	}
 	driverName := vp.GetString("driver_name")
 	dsn := vp.GetString("dsn")
 	log.Debug("Got db config from env", "driver name", driverName, "dsn", dsn)

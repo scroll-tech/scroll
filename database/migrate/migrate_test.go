@@ -17,19 +17,21 @@ import (
 var (
 	pgDB  *sqlx.DB
 	dbImg docker.ImgInstance
+
+	vp *viper.Viper
 )
 
 func initEnv(t *testing.T) error {
 	// Start db container.
 	dbImg = docker.NewTestDBDocker(t, "postgres")
 
-	viper.Set("driver_name", "postgres")
-	viper.Set("dsn", dbImg.Endpoint())
-	viper.Set("max_open_num", 200)
-	viper.Set("max_idle_num", 20)
+	var err error
+	vp, err = viper.NewViper("../config.json")
+	assert.NoError(t, err)
+	vp.Set("dsn", dbImg.Endpoint())
 
 	// Create db orm handler.
-	factory, err := database.NewOrmFactory(viper.GetViper())
+	factory, err := database.NewOrmFactory(vp)
 	if err != nil {
 		return err
 	}

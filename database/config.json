@@ -1,4 +1,6 @@
 {
   "dsn": "postgres://postgres:123456@localhost:5444/test?sslmode=disable",
-  "driver_name": "postgres"
+  "driver_name": "postgres",
+  "max_open_num": 200,
+  "max_idle_num": 20
 }
