@@ -14,7 +14,6 @@ import (
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/stretchr/testify/assert"
 
-	"scroll-tech/bridge/config"
 	"scroll-tech/bridge/l2"
 	"scroll-tech/bridge/mock_bridge"
 	"scroll-tech/bridge/sender"
@@ -36,8 +35,7 @@ func testCreateNewWatcherAndStop(t *testing.T) {
 	rc.Start()
 	defer rc.Stop()
 
-	messageSenderPrivateKeys, err := config.UnmarshalPrivateKeys(vp.Sub("l2_config.relayer_config").GetStringSlice("message_sender_private_keys"))
-	assert.NoError(t, err)
+	messageSenderPrivateKeys := vp.Sub("l2_config.relayer_config").GetECDSAKeys("message_sender_private_keys")
 
 	senderCfg := vp.Sub("l1_config.relayer_config.sender_config")
 	senderCfg.Set("confirmations", 0)
@@ -68,8 +66,7 @@ func testMonitorBridgeContract(t *testing.T) {
 	previousHeight, err := l2Cli.BlockNumber(context.Background())
 	assert.NoError(t, err)
 
-	messageSenderPrivateKeys, err := config.UnmarshalPrivateKeys(vp.Sub("l2_config.relayer_config").GetStringSlice("message_sender_private_keys"))
-	assert.NoError(t, err)
+	messageSenderPrivateKeys := vp.Sub("l2_config.relayer_config").GetECDSAKeys("message_sender_private_keys")
 	auth := prepareAuth(t, l2Cli, messageSenderPrivateKeys[0])
 
 	// deploy mock bridge
@@ -132,8 +129,7 @@ func testFetchMultipleSentMessageInOneBlock(t *testing.T) {
 	previousHeight, err := l2Cli.BlockNumber(context.Background()) // shallow the global previousHeight
 	assert.NoError(t, err)
 
-	messageSenderPrivateKeys, err := config.UnmarshalPrivateKeys(vp.Sub("l2_config.relayer_config").GetStringSlice("message_sender_private_keys"))
-	assert.NoError(t, err)
+	messageSenderPrivateKeys := vp.Sub("l2_config.relayer_config").GetECDSAKeys("message_sender_private_keys")
 	auth := prepareAuth(t, l2Cli, messageSenderPrivateKeys[0])
 
 	_, trx, instance, err := mock_bridge.DeployMockBridge(auth, l2Cli)

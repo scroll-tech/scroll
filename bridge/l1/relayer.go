@@ -16,7 +16,6 @@ import (
 	"scroll-tech/database/orm"
 
 	bridge_abi "scroll-tech/bridge/abi"
-	"scroll-tech/bridge/config"
 	"scroll-tech/bridge/sender"
 	"scroll-tech/common/viper"
 )
@@ -49,10 +48,7 @@ func NewLayer1Relayer(ctx context.Context, ethClient *ethclient.Client, db orm.L
 		log.Warn("new L2MessengerABI failed", "err", err)
 		return nil, err
 	}
-	messageSenderPrivateKeys, err := config.UnmarshalPrivateKeys(vp.GetStringSlice("message_sender_private_keys"))
-	if err != nil {
-		return nil, err
-	}
+	messageSenderPrivateKeys := vp.GetECDSAKeys("message_sender_private_keys")
 	sender, err := sender.NewSender(ctx, vp.Sub("sender_config"), messageSenderPrivateKeys)
 	if err != nil {
 		log.Error("new sender failed", "err", err)

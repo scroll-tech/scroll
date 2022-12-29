@@ -20,7 +20,6 @@ import (
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
 
-	"scroll-tech/bridge/config"
 	"scroll-tech/common/viper"
 )
 
@@ -99,10 +98,7 @@ func NewSender(ctx context.Context, vp *viper.Viper, privs []*ecdsa.PrivateKey) 
 		return nil, err
 	}
 
-	minBalance, err := config.UnmarshalMinBalance(vp.GetString("min_balance"))
-	if err != nil {
-		return nil, err
-	}
+	minBalance := vp.GetBigInt("min_balance")
 
 	auths, err := newAccountPool(ctx, minBalance, client, privs)
 	if err != nil {

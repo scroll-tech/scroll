@@ -17,7 +17,6 @@ import (
 	"scroll-tech/database/orm"
 
 	bridge_abi "scroll-tech/bridge/abi"
-	"scroll-tech/bridge/config"
 	"scroll-tech/bridge/sender"
 	"scroll-tech/bridge/utils"
 	"scroll-tech/common/viper"
@@ -60,16 +59,8 @@ type Layer2Relayer struct {
 func NewLayer2Relayer(ctx context.Context, ethClient *ethclient.Client, db database.OrmFactory, vp *viper.Viper) (*Layer2Relayer, error) {
 	// @todo use different sender for relayer, block commit and proof finalize
 	senderConfig := vp.Sub("sender_config")
-	messageSenderPrivateKeys, err := config.UnmarshalPrivateKeys(vp.GetStringSlice("message_sender_private_keys"))
-	if err != nil {
-		log.Error("Failed to unmarshal private keys", "err", err)
-		return nil, err
-	}
-	rollupSenderPrivateKeys, err := config.UnmarshalPrivateKeys(vp.GetStringSlice("rollup_sender_private_keys"))
-	if err != nil {
-		log.Error("Failed to unmarshal private keys", "err", err)
-		return nil, err
-	}
+	messageSenderPrivateKeys := vp.GetECDSAKeys("message_sender_private_keys")
+	rollupSenderPrivateKeys := vp.GetECDSAKeys("rollup_sender_private_keys")
 	messageSender, err := sender.NewSender(ctx, senderConfig, messageSenderPrivateKeys)
 	if err != nil {
 		log.Error("Failed to create messenger sender", "err", err)
