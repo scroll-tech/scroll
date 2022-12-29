@@ -1,6 +1,8 @@
-package main
+package app
 
-import "github.com/urfave/cli/v2"
+import (
+	"github.com/urfave/cli/v2"
+)
 
 var (
 	apiFlags = []cli.Flag{

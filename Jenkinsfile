@@ -101,6 +101,11 @@ pipeline {
                         sh 'go test -v -race -coverprofile=coverage.db.txt -covermode=atomic -p 1 scroll-tech/database/...'
                     }
                 }
+                stage('Integration test') {
+                    steps {
+                        sh "go test -v -race -tags="mock_prover mock_verifier" -coverprofile=coverage.integration.txt -covermode=atomic -p 1 scroll-tech/integration-test/..."
+                    }
+                }
                 stage('Race test bridge package') {
                     steps {
                         sh "cd bridge && go test -v -race -coverprofile=coverage.txt -covermode=atomic \$(go list ./... | grep -v 'database\\|common\\|l1\\|l2\\|coordinator')"
