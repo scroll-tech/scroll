@@ -13,7 +13,7 @@ pipeline {
     environment {
         GO111MODULE = 'on'
         PATH="/home/ubuntu/.cargo/bin:$PATH"
-        //LOG_DOCKER = 'true'
+        // LOG_DOCKER = 'true'
     }
     stages {
         stage('Build') {
@@ -74,7 +74,63 @@ pipeline {
                 }
             }
         }
-        stage('Test') {
+        stage('Parallel Test') {
+            when {
+                anyOf {
+                    changeset "Jenkinsfile"
+                    changeset "build/**"
+                    changeset "go.work**"
+                    changeset "bridge/**"
+                    changeset "coordinator/**"
+                    changeset "common/**"
+                    changeset "database/**"
+                    changeset "tests/**"
+                }
+            }
+            parallel{
+                stage('Test bridge package') {
+                    steps {
+                        sh 'go test -v -race -coverprofile=coverage.bridge.txt -covermode=atomic -p 1 scroll-tech/bridge/...'
+                    }
+                }
+                stage('Test common package') {
+                    steps {
+                        sh 'go test -v -race -coverprofile=coverage.common.txt -covermode=atomic -p 1 scroll-tech/common/...'
+                    }
+                }
+                stage('Test coordinator package') {
+                    steps {
+                        sh 'go test -v -race -coverprofile=coverage.coordinator.txt -covermode=atomic -p 1 scroll-tech/coordinator/...'
+                    }
+                }
+                stage('Test database package') {
+                    steps {
+                        sh 'go test -v -race -coverprofile=coverage.db.txt -covermode=atomic -p 1 scroll-tech/database/...'
+                    }
+                }
+                stage('Integration test') {
+                    steps {
+                        sh 'go test -v -race -tags="mock_prover mock_verifier" -coverprofile=coverage.integration.txt -covermode=atomic -p 1 scroll-tech/integration-test/...'
+                    }
+                }
+                stage('Race test bridge package') {
+                    steps {
+                        sh "cd bridge && go test -v -race -coverprofile=coverage.txt -covermode=atomic \$(go list ./... | grep -v 'database\\|common\\|l1\\|l2\\|coordinator')"
+                    }
+                }
+                stage('Race test coordinator package') {
+                    steps {
+                        sh "cd coordinator && go test -v -race -coverprofile=coverage.txt -covermode=atomic \$(go list ./... | grep -v 'database\\|common\\|l1\\|l2\\|coordinator')"
+                    }
+                }
+                stage('Race test database package') {
+                    steps {
+                        sh "cd database && go test -v -race -coverprofile=coverage.txt -covermode=atomic \$(go list ./... | grep -v 'database\\|common\\|l1\\|l2\\|coordinator')"
+                    }
+                }
+            }
+        }
+        stage('Compare Coverage') {
             when {
                 anyOf {
                     changeset "Jenkinsfile"
@@ -88,37 +144,7 @@ pipeline {
                 }
             }
             steps {
-               catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
-                    sh '''
-                        go test -v -race -coverprofile=coverage.db.txt -covermode=atomic -p 1 scroll-tech/database/...
-                        go test -v -race -coverprofile=coverage.bridge.txt -covermode=atomic -p 1 scroll-tech/bridge/...
-                        go test -v -race -coverprofile=coverage.common.txt -covermode=atomic -p 1 scroll-tech/common/...
-                        go test -v -race -coverprofile=coverage.coordinator.txt -covermode=atomic -p 1 scroll-tech/coordinator/...
-                        go test -v -race -tags="mock_prover mock_verifier" -coverprofile=coverage.integration.txt -covermode=atomic -p 1 scroll-tech/integration-test/...
-                        sh build/post-test-report-coverage.sh
-                    '''
-                    script {
-                        for (i in ['bridge', 'coordinator', 'database']) {
-                            sh "cd $i && go test -v -race -coverprofile=coverage.txt -covermode=atomic \$(go list ./... | grep -v 'database\\|l2\\|l1\\|common\\|coordinator')"
-                        }
-                    }
-               }
-            }
-        }
-        stage('Coverage') {
-            when {
-                anyOf {
-                    changeset "Jenkinsfile"
-                    changeset "build/**"
-                    changeset "go.work**"
-                    changeset "bridge/**"
-                    changeset "coordinator/**"
-                    changeset "common/**"
-                    changeset "database/**"
-                    changeset "tests/**"
-                }
-            }
-            steps { 
+                sh "./build/post-test-report-coverage.sh"
                 script {
                     currentBuild.result = 'SUCCESS'
                 }
