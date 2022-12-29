@@ -14,7 +14,6 @@ import (
 	"scroll-tech/common/version"
 	"scroll-tech/common/viper"
 
-	"scroll-tech/bridge/config"
 	"scroll-tech/bridge/l1"
 	"scroll-tech/bridge/l2"
 )
@@ -42,14 +41,15 @@ func main() {
 
 func action(ctx *cli.Context) error {
 	// Load config.
-	if err := config.NewConfig(utils.ConfigFileFlag.Name); err != nil {
-		return err
+	cfgFile := ctx.String(utils.ConfigFileFlag.Name)
+	vp, err := viper.NewViper(cfgFile)
+	if err != nil {
+		log.Crit("failed to load config file", "config file", cfgFile, "error", err)
 	}
 
 	// init db connection
 	var ormFactory database.OrmFactory
-	var err error
-	if ormFactory, err = database.NewOrmFactory(viper.Sub("db_config")); err != nil {
+	if ormFactory, err = database.NewOrmFactory(vp.Sub("db_config")); err != nil {
 		log.Crit("failed to init db connection", "err", err)
 	}
 
@@ -58,11 +58,11 @@ func action(ctx *cli.Context) error {
 		l2Backend *l2.Backend
 	)
 	// @todo change nil to actual client after https://scroll-tech/bridge/pull/40 merged
-	l1Backend, err = l1.New(ctx.Context, ormFactory, viper.Sub("l1_config"))
+	l1Backend, err = l1.New(ctx.Context, ormFactory, vp.Sub("l1_config"))
 	if err != nil {
 		return err
 	}
-	l2Backend, err = l2.New(ctx.Context, ormFactory, viper.Sub("l2_config"))
+	l2Backend, err = l2.New(ctx.Context, ormFactory, vp.Sub("l2_config"))
 	if err != nil {
 		return err
 	}

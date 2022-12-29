@@ -18,7 +18,6 @@ import (
 
 	"scroll-tech/common/docker"
 
-	"scroll-tech/bridge/config"
 	"scroll-tech/bridge/sender"
 	"scroll-tech/common/viper"
 )
@@ -28,10 +27,14 @@ const TX_BATCH = 50
 var (
 	privateKeys []*ecdsa.PrivateKey
 	l2gethImg   docker.ImgInstance
+	vp          *viper.Viper
 )
 
 func setupEnv(t *testing.T) {
-	assert.NoError(t, config.NewConfig("../config.json"))
+	// Load config.
+	var err error
+	vp, err = viper.NewViper("../config.json")
+	assert.NoError(t, err)
 
 	priv, err := crypto.HexToECDSA("1212121212121212121212121212121212121212121212121212121212121212")
 	assert.NoError(t, err)
@@ -64,7 +67,7 @@ func testBatchSender(t *testing.T, batchSize int) {
 		privateKeys = append(privateKeys, priv)
 	}
 
-	senderCfg := viper.Sub("l1_config.relayer_config.sender_config")
+	senderCfg := vp.Sub("l1_config.relayer_config.sender_config")
 	senderCfg.Set("endpoint", l2gethImg.Endpoint())
 	senderCfg.Set("confirmations", 0)
 	newSender, err := sender.NewSender(context.Background(), senderCfg, privateKeys)

@@ -27,19 +27,19 @@ import (
 
 func testCreateNewWatcherAndStop(t *testing.T) {
 	// Create db handler and reset db.
-	l2db, err := database.NewOrmFactory(viper.Sub("db_config"))
+	l2db, err := database.NewOrmFactory(vp.Sub("db_config"))
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(l2db.GetDB().DB))
 	defer l2db.Close()
 
-	rc := l2.NewL2WatcherClient(context.Background(), l2Cli, l2db, viper.Sub("l2_config"))
+	rc := l2.NewL2WatcherClient(context.Background(), l2Cli, l2db, vp.Sub("l2_config"))
 	rc.Start()
 	defer rc.Stop()
 
-	messageSenderPrivateKeys, err := config.UnmarshalPrivateKeys(viper.Sub("l2_config.relayer_config").GetStringSlice("message_sender_private_keys"))
+	messageSenderPrivateKeys, err := config.UnmarshalPrivateKeys(vp.Sub("l2_config.relayer_config").GetStringSlice("message_sender_private_keys"))
 	assert.NoError(t, err)
 
-	senderCfg := viper.Sub("l2_config.relayer_config.sender_config")
+	senderCfg := vp.Sub("l1_config.relayer_config.sender_config")
 	senderCfg.Set("confirmations", 0)
 	newSender, err := sender.NewSender(context.Background(), senderCfg, messageSenderPrivateKeys)
 	assert.NoError(t, err)
@@ -60,7 +60,7 @@ func testCreateNewWatcherAndStop(t *testing.T) {
 
 func testMonitorBridgeContract(t *testing.T) {
 	// Create db handler and reset db.
-	db, err := database.NewOrmFactory(viper.Sub("db_config"))
+	db, err := database.NewOrmFactory(vp.Sub("db_config"))
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(db.GetDB().DB))
 	defer db.Close()
@@ -68,7 +68,7 @@ func testMonitorBridgeContract(t *testing.T) {
 	previousHeight, err := l2Cli.BlockNumber(context.Background())
 	assert.NoError(t, err)
 
-	messageSenderPrivateKeys, err := config.UnmarshalPrivateKeys(viper.Sub("l2_config.relayer_config").GetStringSlice("message_sender_private_keys"))
+	messageSenderPrivateKeys, err := config.UnmarshalPrivateKeys(vp.Sub("l2_config.relayer_config").GetStringSlice("message_sender_private_keys"))
 	assert.NoError(t, err)
 	auth := prepareAuth(t, l2Cli, messageSenderPrivateKeys[0])
 
@@ -78,8 +78,8 @@ func testMonitorBridgeContract(t *testing.T) {
 	address, err := bind.WaitDeployed(context.Background(), l2Cli, tx)
 	assert.NoError(t, err)
 
-	viper.Set("l2_config.l2_messenger_address", address.String())
-	rc := prepareRelayerClient(l2Cli, db, viper.Sub("l2_config"))
+	vp.Set("l2_config.l2_messenger_address", address.String())
+	rc := prepareRelayerClient(l2Cli, db, vp.Sub("l2_config"))
 	rc.Start()
 	defer rc.Stop()
 
@@ -123,7 +123,7 @@ func testMonitorBridgeContract(t *testing.T) {
 
 func testFetchMultipleSentMessageInOneBlock(t *testing.T) {
 	// Create db handler and reset db.
-	db, err := database.NewOrmFactory(viper.Sub("db_config"))
+	db, err := database.NewOrmFactory(vp.Sub("db_config"))
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(db.GetDB().DB))
 	defer db.Close()
@@ -131,7 +131,7 @@ func testFetchMultipleSentMessageInOneBlock(t *testing.T) {
 	previousHeight, err := l2Cli.BlockNumber(context.Background()) // shallow the global previousHeight
 	assert.NoError(t, err)
 
-	messageSenderPrivateKeys, err := config.UnmarshalPrivateKeys(viper.Sub("l2_config.relayer_config").GetStringSlice("message_sender_private_keys"))
+	messageSenderPrivateKeys, err := config.UnmarshalPrivateKeys(vp.Sub("l2_config.relayer_config").GetStringSlice("message_sender_private_keys"))
 	assert.NoError(t, err)
 	auth := prepareAuth(t, l2Cli, messageSenderPrivateKeys[0])
 
@@ -140,8 +140,8 @@ func testFetchMultipleSentMessageInOneBlock(t *testing.T) {
 	address, err := bind.WaitDeployed(context.Background(), l2Cli, trx)
 	assert.NoError(t, err)
 
-	viper.Set("l2_config.l2_messenger_address", address.String())
-	rc := prepareRelayerClient(l2Cli, db, viper.Sub("l2_config"))
+	vp.Set("l2_config.l2_messenger_address", address.String())
+	rc := prepareRelayerClient(l2Cli, db, vp.Sub("l2_config"))
 	rc.Start()
 	defer rc.Stop()
 
