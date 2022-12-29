@@ -26,40 +26,14 @@ func newBatchProposer(orm database.OrmFactory, v *viper.Viper) *batchProposer {
 	}
 }
 
-func (w *batchProposer) getBatchTimeSec() uint64 {
-	return uint64(w.v.GetInt("batch_time_sec"))
-}
-
-func (w *batchProposer) getBatchBlocksLimit() uint64 {
-	return uint64(w.v.GetInt("batch_blocks_limit"))
-}
-
-func (w *batchProposer) getBatchGasThreshold() uint64 {
-	return uint64(w.v.GetInt("batch_gas_threshold"))
-}
-
-// nolint:unused
-func (w *batchProposer) getProofGenerationFreq() uint64 {
-	return uint64(w.v.GetInt("proof_generation_freq"))
-}
-
-// nolint:unused
-func (w *batchProposer) getSkippedOpcodes() map[string]struct{} {
-	skippedOpcodesSlice := w.v.GetStringSlice("skipped_opcodes")
-	skippedOpcodes := make(map[string]struct{}, len(skippedOpcodesSlice))
-	for _, opcode := range skippedOpcodesSlice {
-		skippedOpcodes[opcode] = struct{}{}
-	}
-	return skippedOpcodes
-}
-
 func (w *batchProposer) tryProposeBatch() error {
 	w.mutex.Lock()
 	defer w.mutex.Unlock()
 
+	batchBlocksLimit := uint64(w.v.GetInt("batch_blocks_limit"))
 	blocks, err := w.orm.GetUnbatchedBlocks(
 		map[string]interface{}{},
-		fmt.Sprintf("order by number ASC LIMIT %d", w.getBatchBlocksLimit()),
+		fmt.Sprintf("order by number ASC LIMIT %d", batchBlocksLimit),
 	)
 	if err != nil {
 		return err
@@ -68,7 +42,8 @@ func (w *batchProposer) tryProposeBatch() error {
 		return nil
 	}
 
-	if blocks[0].GasUsed > w.getBatchGasThreshold() {
+	batchGasThreshold := uint64(w.v.GetInt("batch_gas_threshold"))
+	if blocks[0].GasUsed > batchGasThreshold {
 		log.Warn("gas overflow even for only 1 block", "height", blocks[0].Number, "gas", blocks[0].GasUsed)
 		return w.createBatchForBlocks(blocks[:1])
 	}
@@ -79,7 +54,7 @@ func (w *batchProposer) tryProposeBatch() error {
 	)
 	// add blocks into batch until reach batchGasThreshold
 	for i, block := range blocks {
-		if gasUsed+block.GasUsed > w.getBatchGasThreshold() {
+		if gasUsed+block.GasUsed > batchGasThreshold {
 			blocks = blocks[:i]
 			break
 		}
@@ -89,7 +64,8 @@ func (w *batchProposer) tryProposeBatch() error {
 	// if too few gas gathered, but we don't want to halt, we then check the first block in the batch:
 	// if it's not old enough we will skip proposing the batch,
 	// otherwise we will still propose a batch
-	if length == len(blocks) && blocks[0].BlockTimestamp+w.getBatchTimeSec() > uint64(time.Now().Unix()) {
+	batchTimeSec := uint64(w.v.GetInt("batch_time_sec"))
+	if length == len(blocks) && blocks[0].BlockTimestamp+batchTimeSec > uint64(time.Now().Unix()) {
 		return nil
 	}
 
