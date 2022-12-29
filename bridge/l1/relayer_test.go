@@ -32,7 +32,6 @@ func TestCreateNewL1Relayer(t *testing.T) {
 	driverName := viper.Sub("db_config").GetString("driver_name")
 	dbImg := docker.NewTestDBDocker(t, driverName)
 	defer dbImg.Stop()
-	viper.Set("db_config.driver_name", driverName)
 	viper.Set("db_config.dsn", dbImg.Endpoint())
 
 	// Create db handler and reset db.
