@@ -64,12 +64,12 @@ func TestFlush(t *testing.T) {
 	assert.NoError(t, err)
 
 	l2Sender := vp.Sub("l2_config.relayer_config.sender_config")
-	l2relayer := vp.Sub("l2_config.relayer_config")
+	l2Relayer := vp.Sub("l2_config.relayer_config")
 	for i := 0; i < 3; i++ {
 		vp.Flush(origin)
 		t.Log("tx type: ", l2Sender.GetString("tx_type"))
 		t.Log("confirmations: ", l2Sender.GetInt("confirmations"))
-		t.Log("rollup contract address: ", l2relayer.GetString("rollup_contract_address"))
+		t.Log("rollup contract address: ", l2Relayer.GetString("rollup_contract_address"))
 		<-time.After(time.Second * 3)
 	}
 }
