@@ -20,17 +20,17 @@ import (
 
 // Verifier represents a rust ffi to a halo2 verifier.
 type Verifier struct {
-	v *viper.Viper
+	vp *viper.Viper
 }
 
 // NewVerifier Sets up a rust ffi to call verify.
-func NewVerifier(v *viper.Viper) (*Verifier, error) {
-	mockMode := v.GetBool("mock_mode")
+func NewVerifier(vp *viper.Viper) (*Verifier, error) {
+	mockMode := vp.GetBool("mock_mode")
 	if mockMode {
-		return &Verifier{v: v}, nil
+		return &Verifier{vp: vp}, nil
 	}
-	paramsPathStr := C.CString(v.GetString("params_path"))
-	aggVkPathStr := C.CString(v.GetString("agg_vk_path"))
+	paramsPathStr := C.CString(vp.GetString("params_path"))
+	aggVkPathStr := C.CString(vp.GetString("agg_vk_path"))
 	defer func() {
 		C.free(unsafe.Pointer(paramsPathStr))
 		C.free(unsafe.Pointer(aggVkPathStr))
@@ -38,12 +38,12 @@ func NewVerifier(v *viper.Viper) (*Verifier, error) {
 
 	C.init_verifier(paramsPathStr, aggVkPathStr)
 
-	return &Verifier{v: v}, nil
+	return &Verifier{vp: vp}, nil
 }
 
 // VerifyProof Verify a ZkProof by marshaling it and sending it to the Halo2 Verifier.
 func (v *Verifier) VerifyProof(proof *message.AggProof) (bool, error) {
-	mockMode := v.v.GetBool("mock_mode")
+	mockMode := v.vp.GetBool("mock_mode")
 	if mockMode {
 		log.Info("Verifier disabled, VerifyProof skipped")
 		return true, nil

@@ -37,7 +37,7 @@ type WatcherClient struct {
 	*ethclient.Client
 
 	orm database.OrmFactory
-	v   *viper.Viper
+	vp  *viper.Viper
 
 	confirmations    uint64
 	messengerAddress common.Address
@@ -53,28 +53,28 @@ type WatcherClient struct {
 }
 
 // NewL2WatcherClient take a l2geth instance to generate a l2watcherclient instance
-func NewL2WatcherClient(ctx context.Context, client *ethclient.Client, orm database.OrmFactory, v *viper.Viper) *WatcherClient {
+func NewL2WatcherClient(ctx context.Context, client *ethclient.Client, orm database.OrmFactory, vp *viper.Viper) *WatcherClient {
 	savedHeight, err := orm.GetLayer2LatestWatchedHeight()
 	if err != nil {
 		log.Warn("fetch height from db failed", "err", err)
 		savedHeight = 0
 	}
 
-	confirmations := uint64(v.GetInt64("confirmations"))
-	messengerAddress := common.HexToAddress(v.GetString("l2_messenger_address"))
+	confirmations := uint64(vp.GetInt64("confirmations"))
+	messengerAddress := common.HexToAddress(vp.GetString("l2_messenger_address"))
 
 	return &WatcherClient{
 		ctx:                ctx,
 		Client:             client,
 		orm:                orm,
-		v:                  v,
+		vp:                 vp,
 		processedMsgHeight: uint64(savedHeight),
 		confirmations:      confirmations,
 		messengerAddress:   messengerAddress,
 		messengerABI:       bridge_abi.L2MessengerMetaABI,
 		stopCh:             make(chan struct{}),
 		stopped:            0,
-		batchProposer:      newBatchProposer(orm, v.Sub("batch_proposer_config")),
+		batchProposer:      newBatchProposer(orm, vp.Sub("batch_proposer_config")),
 	}
 }
 

@@ -15,14 +15,14 @@ import (
 type batchProposer struct {
 	mutex sync.Mutex
 	orm   database.OrmFactory
-	v     *viper.Viper
+	vp    *viper.Viper
 }
 
-func newBatchProposer(orm database.OrmFactory, v *viper.Viper) *batchProposer {
+func newBatchProposer(orm database.OrmFactory, vp *viper.Viper) *batchProposer {
 	return &batchProposer{
 		mutex: sync.Mutex{},
 		orm:   orm,
-		v:     v,
+		vp:    vp,
 	}
 }
 
@@ -30,7 +30,7 @@ func (w *batchProposer) tryProposeBatch() error {
 	w.mutex.Lock()
 	defer w.mutex.Unlock()
 
-	batchBlocksLimit := uint64(w.v.GetInt("batch_blocks_limit"))
+	batchBlocksLimit := uint64(w.vp.GetInt("batch_blocks_limit"))
 	blocks, err := w.orm.GetUnbatchedBlocks(
 		map[string]interface{}{},
 		fmt.Sprintf("order by number ASC LIMIT %d", batchBlocksLimit),
@@ -42,7 +42,7 @@ func (w *batchProposer) tryProposeBatch() error {
 		return nil
 	}
 
-	batchGasThreshold := uint64(w.v.GetInt("batch_gas_threshold"))
+	batchGasThreshold := uint64(w.vp.GetInt("batch_gas_threshold"))
 	if blocks[0].GasUsed > batchGasThreshold {
 		log.Warn("gas overflow even for only 1 block", "height", blocks[0].Number, "gas", blocks[0].GasUsed)
 		return w.createBatchForBlocks(blocks[:1])
@@ -64,7 +64,7 @@ func (w *batchProposer) tryProposeBatch() error {
 	// if too few gas gathered, but we don't want to halt, we then check the first block in the batch:
 	// if it's not old enough we will skip proposing the batch,
 	// otherwise we will still propose a batch
-	batchTimeSec := uint64(w.v.GetInt("batch_time_sec"))
+	batchTimeSec := uint64(w.vp.GetInt("batch_time_sec"))
 	if length == len(blocks) && blocks[0].BlockTimestamp+batchTimeSec > uint64(time.Now().Unix()) {
 		return nil
 	}

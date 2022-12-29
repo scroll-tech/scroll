@@ -33,7 +33,7 @@ type Layer1Relayer struct {
 	sender *sender.Sender
 
 	db orm.L1MessageOrm
-	v  *viper.Viper
+	vp *viper.Viper
 
 	// channel used to communicate with transaction sender
 	confirmationCh <-chan *sender.Confirmation
@@ -43,17 +43,17 @@ type Layer1Relayer struct {
 }
 
 // NewLayer1Relayer will return a new instance of Layer1RelayerClient
-func NewLayer1Relayer(ctx context.Context, ethClient *ethclient.Client, db orm.L1MessageOrm, v *viper.Viper) (*Layer1Relayer, error) {
+func NewLayer1Relayer(ctx context.Context, ethClient *ethclient.Client, db orm.L1MessageOrm, vp *viper.Viper) (*Layer1Relayer, error) {
 	l2MessengerABI, err := bridge_abi.L2MessengerMetaData.GetAbi()
 	if err != nil {
 		log.Warn("new L2MessengerABI failed", "err", err)
 		return nil, err
 	}
-	messageSenderPrivateKeys, err := config.UnmarshalPrivateKeys(v.GetStringSlice("message_sender_private_keys"))
+	messageSenderPrivateKeys, err := config.UnmarshalPrivateKeys(vp.GetStringSlice("message_sender_private_keys"))
 	if err != nil {
 		return nil, err
 	}
-	sender, err := sender.NewSender(ctx, v.Sub("sender_config"), messageSenderPrivateKeys)
+	sender, err := sender.NewSender(ctx, vp.Sub("sender_config"), messageSenderPrivateKeys)
 	if err != nil {
 		log.Error("new sender failed", "err", err)
 		return nil, err
@@ -65,7 +65,7 @@ func NewLayer1Relayer(ctx context.Context, ethClient *ethclient.Client, db orm.L
 		sender:         sender,
 		db:             db,
 		l2MessengerABI: l2MessengerABI,
-		v:              v,
+		vp:             vp,
 		stopCh:         make(chan struct{}),
 		confirmationCh: sender.ConfirmChan(),
 	}, nil
@@ -110,7 +110,7 @@ func (r *Layer1Relayer) processSavedEvent(msg *orm.L1Message) error {
 		return err
 	}
 
-	messengerContractAddress := common.HexToAddress(r.v.GetString("messenger_contract_address"))
+	messengerContractAddress := common.HexToAddress(r.vp.GetString("messenger_contract_address"))
 	hash, err := r.sender.SendTransaction(msg.MsgHash, &messengerContractAddress, big.NewInt(0), data)
 	if err != nil {
 		return err

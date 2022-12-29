@@ -72,7 +72,7 @@ type Sender struct {
 	ctx     context.Context
 
 	// sender config
-	v *viper.Viper
+	vp *viper.Viper
 
 	// account fields.
 	auths *accountPool
@@ -87,8 +87,8 @@ type Sender struct {
 
 // NewSender returns a new instance of transaction sender
 // txConfirmationCh is used to notify confirmed transaction
-func NewSender(ctx context.Context, v *viper.Viper, privs []*ecdsa.PrivateKey) (*Sender, error) {
-	client, err := ethclient.Dial(v.GetString("endpoint"))
+func NewSender(ctx context.Context, vp *viper.Viper, privs []*ecdsa.PrivateKey) (*Sender, error) {
+	client, err := ethclient.Dial(vp.GetString("endpoint"))
 	if err != nil {
 		return nil, err
 	}
@@ -99,7 +99,7 @@ func NewSender(ctx context.Context, v *viper.Viper, privs []*ecdsa.PrivateKey) (
 		return nil, err
 	}
 
-	minBalance, err := config.UnmarshalMinBalance(v.GetString("min_balance"))
+	minBalance, err := config.UnmarshalMinBalance(vp.GetString("min_balance"))
 	if err != nil {
 		return nil, err
 	}
@@ -119,7 +119,7 @@ func NewSender(ctx context.Context, v *viper.Viper, privs []*ecdsa.PrivateKey) (
 		ctx:           ctx,
 		client:        client,
 		chainID:       chainID,
-		v:             v,
+		vp:            vp,
 		auths:         auths,
 		confirmCh:     make(chan *Confirmation, 128),
 		blockNumber:   header.Number.Uint64(),
@@ -157,7 +157,7 @@ func (s *Sender) getFeeData(auth *bind.TransactOpts, target *common.Address, val
 	}
 	gasLimit = gasLimit * 15 / 10 // 50% extra gas to void out of gas error
 	// @todo change it when Scroll enable EIP1559
-	txType := s.v.GetString("tx_type")
+	txType := s.vp.GetString("tx_type")
 	if txType != DynamicFeeTxType {
 		// estimate gas price
 		var gasPrice *big.Int
@@ -240,7 +240,7 @@ func (s *Sender) createAndSendTx(auth *bind.TransactOpts, feeData *FeeData, targ
 	}
 
 	// lock here to avoit blocking when call `SuggestGasPrice`
-	txType := s.v.GetString("tx_type")
+	txType := s.vp.GetString("tx_type")
 	switch txType {
 	case LegacyTxType:
 		// for ganache mock node
@@ -310,11 +310,11 @@ func (s *Sender) createAndSendTx(auth *bind.TransactOpts, feeData *FeeData, targ
 }
 
 func (s *Sender) resubmitTransaction(feeData *FeeData, auth *bind.TransactOpts, tx *types.Transaction) (*types.Transaction, error) {
-	escalateMultipleNum := new(big.Int).SetUint64(uint64(s.v.GetInt("escalate_multiple_num")))
-	escalateMultipleDen := new(big.Int).SetUint64(uint64(s.v.GetInt("escalate_multiple_den")))
-	maxGasPrice := new(big.Int).SetUint64(uint64(s.v.GetInt("max_gas_price")))
+	escalateMultipleNum := new(big.Int).SetUint64(uint64(s.vp.GetInt("escalate_multiple_num")))
+	escalateMultipleDen := new(big.Int).SetUint64(uint64(s.vp.GetInt("escalate_multiple_den")))
+	maxGasPrice := new(big.Int).SetUint64(uint64(s.vp.GetInt("max_gas_price")))
 
-	txType := s.v.GetString("tx_type")
+	txType := s.vp.GetString("tx_type")
 	switch txType {
 	case LegacyTxType, AccessListTxType: // `LegacyTxType`is for ganache mock node
 		gasPrice := escalateMultipleNum.Mul(escalateMultipleNum, big.NewInt(feeData.gasPrice.Int64()))
@@ -363,9 +363,9 @@ func (s *Sender) CheckPendingTransaction(header *types.Header) {
 
 		pending := value.(*PendingTransaction)
 		receipt, err := s.client.TransactionReceipt(s.ctx, pending.tx.Hash())
-		escalateBlocks := uint64(s.v.GetInt("escalate_blocks"))
+		escalateBlocks := uint64(s.vp.GetInt("escalate_blocks"))
 		if (err == nil) && (receipt != nil) {
-			confirmations := uint64(s.v.GetInt("confirmations"))
+			confirmations := uint64(s.vp.GetInt("confirmations"))
 			if number >= receipt.BlockNumber.Uint64()+confirmations {
 				s.pendingTxs.Delete(key)
 				// send confirm message
@@ -426,7 +426,7 @@ func (s *Sender) CheckPendingTransaction(header *types.Header) {
 
 // Loop is the main event loop
 func (s *Sender) loop(ctx context.Context) {
-	checkPendingTime := uint64(s.v.GetInt("check_pending_time"))
+	checkPendingTime := uint64(s.vp.GetInt("check_pending_time"))
 	checkTick := time.NewTicker(time.Duration(checkPendingTime) * time.Second)
 	defer checkTick.Stop()
 

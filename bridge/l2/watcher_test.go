@@ -192,8 +192,8 @@ func testFetchMultipleSentMessageInOneBlock(t *testing.T) {
 	assert.Equal(t, 5, len(msgs))
 }
 
-func prepareRelayerClient(l2Cli *ethclient.Client, db database.OrmFactory, v *viper.Viper) *l2.WatcherClient {
-	return l2.NewL2WatcherClient(context.Background(), l2Cli, db, v)
+func prepareRelayerClient(l2Cli *ethclient.Client, db database.OrmFactory, vp *viper.Viper) *l2.WatcherClient {
+	return l2.NewL2WatcherClient(context.Background(), l2Cli, db, vp)
 }
 
 func prepareAuth(t *testing.T, l2Cli *ethclient.Client, privateKey *ecdsa.PrivateKey) *bind.TransactOpts {

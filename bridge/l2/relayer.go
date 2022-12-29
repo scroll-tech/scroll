@@ -34,7 +34,7 @@ type Layer2Relayer struct {
 	client *ethclient.Client
 
 	db database.OrmFactory
-	v  *viper.Viper
+	vp *viper.Viper
 
 	messageSender  *sender.Sender
 	messageCh      <-chan *sender.Confirmation
@@ -57,15 +57,15 @@ type Layer2Relayer struct {
 }
 
 // NewLayer2Relayer will return a new instance of Layer2RelayerClient
-func NewLayer2Relayer(ctx context.Context, ethClient *ethclient.Client, db database.OrmFactory, v *viper.Viper) (*Layer2Relayer, error) {
+func NewLayer2Relayer(ctx context.Context, ethClient *ethclient.Client, db database.OrmFactory, vp *viper.Viper) (*Layer2Relayer, error) {
 	// @todo use different sender for relayer, block commit and proof finalize
-	senderConfig := v.Sub("sender_config")
-	messageSenderPrivateKeys, err := config.UnmarshalPrivateKeys(v.GetStringSlice("message_sender_private_keys"))
+	senderConfig := vp.Sub("sender_config")
+	messageSenderPrivateKeys, err := config.UnmarshalPrivateKeys(vp.GetStringSlice("message_sender_private_keys"))
 	if err != nil {
 		log.Error("Failed to unmarshal private keys", "err", err)
 		return nil, err
 	}
-	rollupSenderPrivateKeys, err := config.UnmarshalPrivateKeys(v.GetStringSlice("rollup_sender_private_keys"))
+	rollupSenderPrivateKeys, err := config.UnmarshalPrivateKeys(vp.GetStringSlice("rollup_sender_private_keys"))
 	if err != nil {
 		log.Error("Failed to unmarshal private keys", "err", err)
 		return nil, err
@@ -92,7 +92,7 @@ func NewLayer2Relayer(ctx context.Context, ethClient *ethclient.Client, db datab
 		rollupSender:           rollupSender,
 		rollupCh:               rollupSender.ConfirmChan(),
 		l1RollupABI:            bridge_abi.RollupMetaABI,
-		v:                      v,
+		vp:                     vp,
 		processingMessage:      map[string]string{},
 		processingCommitment:   map[string]string{},
 		processingFinalization: map[string]string{},
@@ -158,7 +158,7 @@ func (r *Layer2Relayer) processSavedEvent(msg *orm.L2Message) error {
 		return err
 	}
 
-	messengerContractAddress := common.HexToAddress(r.v.GetString("messenger_contract_address"))
+	messengerContractAddress := common.HexToAddress(r.vp.GetString("messenger_contract_address"))
 	hash, err := r.messageSender.SendTransaction(msg.MsgHash, &messengerContractAddress, big.NewInt(0), data)
 	if err != nil {
 		if !errors.Is(err, sender.ErrNoAvailableAccount) {
@@ -253,7 +253,7 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 		return
 	}
 
-	rollupContractAddress := common.HexToAddress(r.v.GetString("rollup_contract_address"))
+	rollupContractAddress := common.HexToAddress(r.vp.GetString("rollup_contract_address"))
 	hash, err := r.rollupSender.SendTransaction(id, &rollupContractAddress, big.NewInt(0), data)
 	if err != nil {
 		if !errors.Is(err, sender.ErrNoAvailableAccount) {
@@ -346,7 +346,7 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 			return
 		}
 
-		rollupContractAddress := common.HexToAddress(r.v.GetString("rollup_contract_address"))
+		rollupContractAddress := common.HexToAddress(r.vp.GetString("rollup_contract_address"))
 		txHash, err := r.rollupSender.SendTransaction(id, &rollupContractAddress, big.NewInt(0), data)
 		hash := &txHash
 		if err != nil {

@@ -45,7 +45,6 @@ type Watcher struct {
 
 	rollupAddress common.Address
 	rollupABI     *abi.ABI
-	v             *viper.Viper
 
 	// The height of the block that the watcher has retrieved event logs
 	processedMsgHeight uint64
@@ -55,26 +54,25 @@ type Watcher struct {
 
 // NewWatcher returns a new instance of Watcher. The instance will be not fully prepared,
 // and still needs to be finalized and ran by calling `watcher.Start`.
-func NewWatcher(ctx context.Context, client *ethclient.Client, db database.OrmFactory, v *viper.Viper) *Watcher {
+func NewWatcher(ctx context.Context, client *ethclient.Client, db database.OrmFactory, vp *viper.Viper) *Watcher {
 	savedHeight, err := db.GetLayer1LatestWatchedHeight()
 	if err != nil {
 		log.Warn("Failed to fetch height from db", "err", err)
 		savedHeight = 0
 	}
-	startHeight := v.GetInt64("start_height")
+	startHeight := vp.GetInt64("start_height")
 	if savedHeight < startHeight {
 		savedHeight = startHeight
 	}
 
 	stop := make(chan bool)
-	confirmations := uint64(v.GetInt64("confirmations"))
-	messengerAddress := common.HexToAddress(v.GetString("l1_messenger_address"))
-	rollupAddress := common.HexToAddress(v.Sub("relayer_config").GetString("rollup_contract_address"))
+	confirmations := uint64(vp.GetInt64("confirmations"))
+	messengerAddress := common.HexToAddress(vp.GetString("l1_messenger_address"))
+	rollupAddress := common.HexToAddress(vp.Sub("relayer_config").GetString("rollup_contract_address"))
 
 	return &Watcher{
 		ctx:                ctx,
 		client:             client,
-		v:                  v,
 		db:                 db,
 		confirmations:      confirmations,
 		messengerAddress:   messengerAddress,
