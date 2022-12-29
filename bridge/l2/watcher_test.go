@@ -79,6 +79,7 @@ func testMonitorBridgeContract(t *testing.T) {
 	assert.NoError(t, err)
 
 	vp.Set("l2_config.l2_messenger_address", address.String())
+	vp.Set("l2_config.confirmations", 0)
 	rc := prepareRelayerClient(l2Cli, db, vp.Sub("l2_config"))
 	rc.Start()
 	defer rc.Stop()
