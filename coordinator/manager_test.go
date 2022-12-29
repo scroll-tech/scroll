@@ -33,6 +33,7 @@ import (
 
 var (
 	dbImg docker.ImgInstance
+	vp    *viper.Viper
 )
 
 func randomURL() string {
@@ -42,21 +43,20 @@ func randomURL() string {
 
 func setEnv(t *testing.T) {
 	// Load config.
-	viper.SetConfigFile("config.json")
-	assert.NoError(t, viper.ReadInConfig())
+	var err error
+	vp, err = viper.NewViper("config.json")
+	assert.NoError(t, err)
 
 	// Set coordinator config.
-	viper.Set("roller_manager_config.rollers_per_session", 1)
-	viper.Set("roller_manager_config.verifier.mock_mode", true)
-	viper.Set("roller_manager_config.collection_time", 1)
-	viper.Set("roller_manager_config.token_time_to_live", 5)
+	vp.Set("roller_manager_config.rollers_per_session", 1)
+	vp.Set("roller_manager_config.verifier.mock_mode", true)
+	vp.Set("roller_manager_config.collection_time", 1)
+	vp.Set("roller_manager_config.token_time_to_live", 5)
 
 	// Create db container.
-	driverName := viper.GetViper().GetString("db_config.driver_name")
+	driverName := vp.GetString("db_config.driver_name")
 	dbImg = docker.NewTestDBDocker(t, driverName)
-	viper.Set("db_config.dsn", dbImg.Endpoint())
-	viper.Set("db_config.max_open_num", 200)
-	viper.Set("db_config.max_idle_num", 20)
+	vp.Set("db_config.dsn", dbImg.Endpoint())
 }
 
 func TestApis(t *testing.T) {
@@ -79,7 +79,7 @@ func TestApis(t *testing.T) {
 
 func testHandshake(t *testing.T) {
 	// Create db handler and reset db.
-	l2db, err := database.NewOrmFactory(viper.Sub("db_config"))
+	l2db, err := database.NewOrmFactory(vp.Sub("db_config"))
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(l2db.GetDB().DB))
 	defer l2db.Close()
@@ -100,7 +100,7 @@ func testHandshake(t *testing.T) {
 
 func testFailedHandshake(t *testing.T) {
 	// Create db handler and reset db.
-	l2db, err := database.NewOrmFactory(viper.Sub("db_config"))
+	l2db, err := database.NewOrmFactory(vp.Sub("db_config"))
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(l2db.GetDB().DB))
 	defer l2db.Close()
@@ -166,7 +166,7 @@ func testFailedHandshake(t *testing.T) {
 
 func testSeveralConnections(t *testing.T) {
 	// Create db handler and reset db.
-	l2db, err := database.NewOrmFactory(viper.Sub("db_config"))
+	l2db, err := database.NewOrmFactory(vp.Sub("db_config"))
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(l2db.GetDB().DB))
 	defer l2db.Close()
@@ -220,7 +220,7 @@ func testSeveralConnections(t *testing.T) {
 
 func testIdleRollerSelection(t *testing.T) {
 	// Create db handler and reset db.
-	l2db, err := database.NewOrmFactory(viper.Sub("db_config"))
+	l2db, err := database.NewOrmFactory(vp.Sub("db_config"))
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(l2db.GetDB().DB))
 	defer l2db.Close()
@@ -280,7 +280,7 @@ func testIdleRollerSelection(t *testing.T) {
 
 func testGracefulRestart(t *testing.T) {
 	// Create db handler and reset db.
-	l2db, err := database.NewOrmFactory(viper.Sub("db_config"))
+	l2db, err := database.NewOrmFactory(vp.Sub("db_config"))
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(l2db.GetDB().DB))
 	defer l2db.Close()
@@ -359,10 +359,10 @@ func testGracefulRestart(t *testing.T) {
 
 func setupCoordinator(t *testing.T, wsURL string) (rollerManager *coordinator.Manager, handler *http.Server) {
 	// Get db handler.
-	db, err := database.NewOrmFactory(viper.Sub("db_config"))
+	db, err := database.NewOrmFactory(vp.Sub("db_config"))
 	assert.True(t, assert.NoError(t, err), "failed to get db handler.")
 
-	rollerManager, err = coordinator.New(context.Background(), viper.Sub("roller_manager_config"), db, nil)
+	rollerManager, err = coordinator.New(context.Background(), vp.Sub("roller_manager_config"), db, nil)
 	assert.NoError(t, err)
 	assert.NoError(t, rollerManager.Start())
 

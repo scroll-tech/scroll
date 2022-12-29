@@ -16,7 +16,6 @@ import (
 	"scroll-tech/database"
 
 	"scroll-tech/coordinator"
-	"scroll-tech/coordinator/config"
 )
 
 func main() {
@@ -44,25 +43,25 @@ func main() {
 func action(ctx *cli.Context) error {
 	// Load config file.
 	cfgFile := ctx.String(utils.ConfigFileFlag.Name)
-	err := config.NewConfig(cfgFile)
+	vp, err := viper.NewViper(cfgFile)
 	if err != nil {
 		log.Crit("failed to load config file", "config file", cfgFile, "error", err)
 	}
 
 	// Init db connection.
 	var ormFactory database.OrmFactory
-	if ormFactory, err = database.NewOrmFactory(viper.Sub("db_config")); err != nil {
+	if ormFactory, err = database.NewOrmFactory(vp.Sub("db_config")); err != nil {
 		log.Crit("failed to init db connection", "err", err)
 	}
 
 	// Init l2geth connection.
-	client, err := ethclient.Dial(viper.Sub("l2_config").GetString("endpoint"))
+	client, err := ethclient.Dial(vp.Sub("l2_config").GetString("endpoint"))
 	if err != nil {
 		log.Crit("failed to init l2geth connection", "err", err)
 	}
 
 	// Initialize all coordinator modules.
-	rollerManager, err := coordinator.New(ctx.Context, viper.Sub("roller_manager_config"), ormFactory, client)
+	rollerManager, err := coordinator.New(ctx.Context, vp.Sub("roller_manager_config"), ormFactory, client)
 	if err != nil {
 		return err
 	}
