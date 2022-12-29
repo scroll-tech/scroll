@@ -151,7 +151,9 @@ func (r *Roller) HandleCoordinator() {
 		case err := <-r.sub.Err():
 			r.sub.Unsubscribe()
 			log.Error("Subscribe task with scroll failed", "error", err)
-			r.mustRetryCoordinator()
+			if atomic.LoadInt64(&r.isClosed) == 0 {
+				r.mustRetryCoordinator()
+			}
 		}
 	}
 }
