@@ -43,22 +43,29 @@ func (w *batchProposer) tryProposeBatch() error {
 	}
 
 	batchGasThreshold := uint64(w.vp.GetInt("batch_gas_threshold"))
+	batchTxNumThreshold := uint64(w.vp.GetInt("batch_tx_num_threshold"))
 	if blocks[0].GasUsed > batchGasThreshold {
 		log.Warn("gas overflow even for only 1 block", "height", blocks[0].Number, "gas", blocks[0].GasUsed)
 		return w.createBatchForBlocks(blocks[:1])
 	}
 
+	if blocks[0].TxNum > batchTxNumThreshold {
+		log.Warn("too many txs even for only 1 block", "height", blocks[0].Number, "tx_num", blocks[0].TxNum)
+		return w.createBatchForBlocks(blocks[:1])
+	}
+
 	var (
-		length  = len(blocks)
-		gasUsed uint64
+		length         = len(blocks)
+		gasUsed, txNum uint64
 	)
 	// add blocks into batch until reach batchGasThreshold
 	for i, block := range blocks {
-		if gasUsed+block.GasUsed > batchGasThreshold {
+		if (gasUsed+block.GasUsed > batchGasThreshold) || (txNum+block.TxNum > batchTxNumThreshold) {
 			blocks = blocks[:i]
 			break
 		}
 		gasUsed += block.GasUsed
+		txNum += block.TxNum
 	}
 
 	// if too few gas gathered, but we don't want to halt, we then check the first block in the batch:

@@ -12,7 +12,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/scroll-tech/go-ethereum"
+	geth "github.com/scroll-tech/go-ethereum"
 	"github.com/scroll-tech/go-ethereum/accounts/abi/bind"
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/common/math"
@@ -147,7 +147,7 @@ func (s *Sender) NumberOfAccounts() int {
 
 func (s *Sender) getFeeData(auth *bind.TransactOpts, target *common.Address, value *big.Int, data []byte) (*FeeData, error) {
 	// estimate gas limit
-	gasLimit, err := s.client.EstimateGas(s.ctx, ethereum.CallMsg{From: auth.From, To: target, Value: value, Data: data})
+	gasLimit, err := s.client.EstimateGas(s.ctx, geth.CallMsg{From: auth.From, To: target, Value: value, Data: data})
 	if err != nil {
 		return nil, err
 	}

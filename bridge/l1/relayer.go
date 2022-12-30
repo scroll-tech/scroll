@@ -10,6 +10,7 @@ import (
 
 	"github.com/scroll-tech/go-ethereum/accounts/abi"
 	"github.com/scroll-tech/go-ethereum/common"
+	"github.com/scroll-tech/go-ethereum/crypto"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
 
@@ -51,7 +52,8 @@ func NewLayer1Relayer(ctx context.Context, ethClient *ethclient.Client, db orm.L
 	messageSenderPrivateKeys := vp.GetECDSAKeys("message_sender_private_keys")
 	sender, err := sender.NewSender(ctx, vp.Sub("sender_config"), messageSenderPrivateKeys)
 	if err != nil {
-		log.Error("new sender failed", "err", err)
+		addr := crypto.PubkeyToAddress(cfg.MessageSenderPrivateKeys[0].PublicKey)
+		log.Error("new sender failed", "main address", addr.String(), "err", err)
 		return nil, err
 	}
 

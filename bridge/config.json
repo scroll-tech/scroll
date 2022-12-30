@@ -50,6 +50,7 @@
     "batch_proposer_config": {
       "proof_generation_freq": 1,
       "batch_gas_threshold": 3000000,
+      "batch_tx_num_threshold": 135,
       "batch_time_sec": 300,
       "batch_blocks_limit": 100,
       "skipped_opcodes": [

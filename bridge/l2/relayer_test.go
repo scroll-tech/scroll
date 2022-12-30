@@ -1,4 +1,4 @@
-package l2_test
+package l2
 
 import (
 	"context"
@@ -10,8 +10,6 @@ import (
 
 	"github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/stretchr/testify/assert"
-
-	"scroll-tech/bridge/l2"
 
 	"scroll-tech/database"
 	"scroll-tech/database/migrate"
@@ -75,7 +73,7 @@ func testL2RelayerProcessSaveEvents(t *testing.T) {
 			},
 		},
 	}
-	err = db.InsertBlockTraces(context.Background(), traces)
+	err = db.InsertBlockTraces(traces)
 	assert.NoError(t, err)
 
 	dbTx, err := db.Beginx()
@@ -130,7 +128,7 @@ func testL2RelayerProcessPendingBatches(t *testing.T) {
 	assert.NoError(t, err)
 	traces = append(traces, blockTrace)
 
-	err = db.InsertBlockTraces(context.Background(), traces)
+	err = db.InsertBlockTraces(traces)
 	assert.NoError(t, err)
 
 	dbTx, err := db.Beginx()

@@ -5,7 +5,6 @@ import (
 
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
-	"github.com/pressly/goose/v3"
 	"github.com/stretchr/testify/assert"
 
 	"scroll-tech/common/docker"
@@ -39,30 +38,57 @@ func initEnv(t *testing.T) error {
 	return nil
 }
 
-func TestMigration(t *testing.T) {
-	defer func() {
-		if dbImg != nil {
-			assert.NoError(t, dbImg.Stop())
-		}
-	}()
+func TestMigrate(t *testing.T) {
 	if err := initEnv(t); err != nil {
 		t.Fatal(err)
 	}
 
-	err := Migrate(pgDB.DB)
+	t.Run("testCurrent", testCurrent)
+	t.Run("testStatus", testStatus)
+	t.Run("testResetDB", testResetDB)
+	t.Run("testMigrate", testMigrate)
+	t.Run("testRollback", testRollback)
+
+	t.Cleanup(func() {
+		if dbImg != nil {
+			assert.NoError(t, dbImg.Stop())
+		}
+	})
+}
+
+func testCurrent(t *testing.T) {
+	cur, err := Current(pgDB.DB)
 	assert.NoError(t, err)
+	assert.Equal(t, 0, int(cur))
+}
 
-	db := pgDB.DB
-	version0, err := goose.GetDBVersion(db)
+func testStatus(t *testing.T) {
+	status := Status(pgDB.DB)
+	assert.NoError(t, status)
+}
+
+func testResetDB(t *testing.T) {
+	assert.NoError(t, ResetDB(pgDB.DB))
+	cur, err := Current(pgDB.DB)
 	assert.NoError(t, err)
-	t.Log("current version is ", version0)
+	assert.Equal(t, 5, int(cur))
+}
 
-	// rollback one version
-	assert.NoError(t, Rollback(db, nil))
-
-	version1, err := Current(db)
+func testMigrate(t *testing.T) {
+	assert.NoError(t, Migrate(pgDB.DB))
+	cur, err := Current(pgDB.DB)
 	assert.NoError(t, err)
+	assert.Equal(t, true, cur > 0)
+}
 
-	// check version expect less than 1
-	assert.Equal(t, version0-1, version1)
+func testRollback(t *testing.T) {
+	version, err := Current(pgDB.DB)
+	assert.NoError(t, err)
+	assert.Equal(t, true, version > 0)
+
+	assert.NoError(t, Rollback(pgDB.DB, nil))
+
+	cur, err := Current(pgDB.DB)
+	assert.NoError(t, err)
+	assert.Equal(t, true, cur+1 == version)
 }

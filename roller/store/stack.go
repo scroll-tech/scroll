@@ -20,6 +20,14 @@ type Stack struct {
 	*bbolt.DB
 }
 
+// ProvingTask is the value in stack.
+// It contains TaskMsg and proved times.
+type ProvingTask struct {
+	Task *message.TaskMsg `json:"task"`
+	// Times is how many times roller proved.
+	Times int `json:"times"`
+}
+
 var bucket = []byte("stack")
 
 // NewStack new a Stack object.
@@ -39,19 +47,19 @@ func NewStack(path string) (*Stack, error) {
 }
 
 // Push appends the proving-task on the top of Stack.
-func (s *Stack) Push(task *message.TaskMsg) error {
+func (s *Stack) Push(task *ProvingTask) error {
 	byt, err := json.Marshal(task)
 	if err != nil {
 		return err
 	}
-	key := []byte(task.ID)
+	key := []byte(task.Task.ID)
 	return s.Update(func(tx *bbolt.Tx) error {
 		return tx.Bucket(bucket).Put(key, byt)
 	})
 }
 
 // Pop pops the proving-task on the top of Stack.
-func (s *Stack) Pop() (*message.TaskMsg, error) {
+func (s *Stack) Pop() (*ProvingTask, error) {
 	var value []byte
 	if err := s.Update(func(tx *bbolt.Tx) error {
 		var key []byte
@@ -66,10 +74,11 @@ func (s *Stack) Pop() (*message.TaskMsg, error) {
 		return nil, ErrEmpty
 	}
 
-	task := &message.TaskMsg{}
+	task := &ProvingTask{}
 	err := json.Unmarshal(value, task)
 	if err != nil {
 		return nil, err
 	}
+	task.Times++
 	return task, nil
 }

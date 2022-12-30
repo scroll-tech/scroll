@@ -1,4 +1,4 @@
-package l2_test
+package l2
 
 import (
 	"context"

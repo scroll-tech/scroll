@@ -1,6 +1,8 @@
 package utils
 
-import "github.com/urfave/cli/v2"
+import (
+	"github.com/urfave/cli/v2"
+)
 
 var (
 	// CommonFlags is used for app common flags in different modules
