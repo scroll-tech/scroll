@@ -4,8 +4,6 @@ package verifier
 
 import (
 	"scroll-tech/common/message"
-
-	"scroll-tech/coordinator/config"
 )
 
 // Verifier represents a mock halo2 verifier.

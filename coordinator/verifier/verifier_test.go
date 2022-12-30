@@ -12,6 +12,7 @@ import (
 
 	"scroll-tech/common/message"
 	"scroll-tech/common/viper"
+
 	"scroll-tech/coordinator/verifier"
 )
 
