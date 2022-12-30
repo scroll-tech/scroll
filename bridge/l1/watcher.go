@@ -15,9 +15,10 @@ import (
 	"scroll-tech/database"
 	"scroll-tech/database/orm"
 
+	"scroll-tech/common/viper"
+
 	bridge_abi "scroll-tech/bridge/abi"
 	"scroll-tech/bridge/utils"
-	"scroll-tech/common/viper"
 )
 
 type relayedMessage struct {

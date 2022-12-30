@@ -40,7 +40,7 @@ func testCreateNewRelayer(t *testing.T) {
 	assert.NoError(t, migrate.ResetDB(db.GetDB().DB))
 	defer db.Close()
 
-	relayer, err := l2.NewLayer2Relayer(context.Background(), l2Cli, db, vp.Sub("l2_config.relayer_config"))
+	relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, vp.Sub("l2_config.relayer_config"))
 	assert.NoError(t, err)
 	defer relayer.Stop()
 
@@ -54,7 +54,7 @@ func testL2RelayerProcessSaveEvents(t *testing.T) {
 	assert.NoError(t, migrate.ResetDB(db.GetDB().DB))
 	defer db.Close()
 
-	relayer, err := l2.NewLayer2Relayer(context.Background(), l2Cli, db, vp.Sub("l2_config.relayer_config"))
+	relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, vp.Sub("l2_config.relayer_config"))
 	assert.NoError(t, err)
 	defer relayer.Stop()
 
@@ -107,7 +107,7 @@ func testL2RelayerProcessPendingBatches(t *testing.T) {
 	assert.NoError(t, migrate.ResetDB(db.GetDB().DB))
 	defer db.Close()
 
-	relayer, err := l2.NewLayer2Relayer(context.Background(), l2Cli, db, vp.Sub("l2_config.relayer_config"))
+	relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, vp.Sub("l2_config.relayer_config"))
 	assert.NoError(t, err)
 	defer relayer.Stop()
 
@@ -163,7 +163,7 @@ func testL2RelayerProcessCommittedBatches(t *testing.T) {
 	assert.NoError(t, migrate.ResetDB(db.GetDB().DB))
 	defer db.Close()
 
-	relayer, err := l2.NewLayer2Relayer(context.Background(), l2Cli, db, vp.Sub("l2_config.relayer_config"))
+	relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, vp.Sub("l2_config.relayer_config"))
 	assert.NoError(t, err)
 	defer relayer.Stop()
 

@@ -14,10 +14,10 @@ import (
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/stretchr/testify/assert"
 
-	"scroll-tech/bridge/l2"
+	"scroll-tech/common/viper"
+
 	"scroll-tech/bridge/mock_bridge"
 	"scroll-tech/bridge/sender"
-	"scroll-tech/common/viper"
 
 	"scroll-tech/database"
 	"scroll-tech/database/migrate"
@@ -31,7 +31,7 @@ func testCreateNewWatcherAndStop(t *testing.T) {
 	assert.NoError(t, migrate.ResetDB(l2db.GetDB().DB))
 	defer l2db.Close()
 
-	rc := l2.NewL2WatcherClient(context.Background(), l2Cli, l2db, vp.Sub("l2_config"))
+	rc := NewL2WatcherClient(context.Background(), l2Cli, l2db, vp.Sub("l2_config"))
 	rc.Start()
 	defer rc.Stop()
 
@@ -189,8 +189,8 @@ func testFetchMultipleSentMessageInOneBlock(t *testing.T) {
 	assert.Equal(t, 5, len(msgs))
 }
 
-func prepareRelayerClient(l2Cli *ethclient.Client, db database.OrmFactory, vp *viper.Viper) *l2.WatcherClient {
-	return l2.NewL2WatcherClient(context.Background(), l2Cli, db, vp)
+func prepareRelayerClient(l2Cli *ethclient.Client, db database.OrmFactory, vp *viper.Viper) *WatcherClient {
+	return NewL2WatcherClient(context.Background(), l2Cli, db, vp)
 }
 
 func prepareAuth(t *testing.T, l2Cli *ethclient.Client, privateKey *ecdsa.PrivateKey) *bind.TransactOpts {

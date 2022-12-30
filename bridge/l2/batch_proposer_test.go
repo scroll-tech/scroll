@@ -13,14 +13,13 @@ import (
 	"scroll-tech/database"
 	"scroll-tech/database/migrate"
 
-	"scroll-tech/bridge/config"
-
 	"scroll-tech/common/utils"
+	"scroll-tech/common/viper"
 )
 
 func testBatchProposer(t *testing.T) {
 	// Create db handler and reset db.
-	db, err := database.NewOrmFactory(cfg.DBConfig)
+	db, err := database.NewOrmFactory(vp.Sub("db_config"))
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(db.GetDB().DB))
 	defer db.Close()
@@ -42,13 +41,13 @@ func testBatchProposer(t *testing.T) {
 
 	id := utils.ComputeBatchID(trace3.Header.Hash(), trace2.Header.ParentHash, big.NewInt(1))
 
-	proposer := newBatchProposer(&config.BatchProposerConfig{
-		ProofGenerationFreq: 1,
-		BatchGasThreshold:   3000000,
-		BatchTxNumThreshold: 135,
-		BatchTimeSec:        1,
-		BatchBlocksLimit:    100,
-	}, db)
+	tmpVP := viper.NewEmptyViper()
+	tmpVP.Set("proof_generation_freq", 1)
+	tmpVP.Set("batch_gas_threshold", 3000000)
+	tmpVP.Set("batch_tx_num_threshold", 135)
+	tmpVP.Set("batch_time_sec", 1)
+	tmpVP.Set("batch_blocks_limit", 100)
+	proposer := newBatchProposer(db, tmpVP)
 	assert.NoError(t, proposer.tryProposeBatch())
 
 	infos, err := db.GetUnbatchedBlocks(map[string]interface{}{},

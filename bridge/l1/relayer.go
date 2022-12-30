@@ -16,9 +16,10 @@ import (
 
 	"scroll-tech/database/orm"
 
+	"scroll-tech/common/viper"
+
 	bridge_abi "scroll-tech/bridge/abi"
 	"scroll-tech/bridge/sender"
-	"scroll-tech/common/viper"
 )
 
 // Layer1Relayer is responsible for
@@ -52,7 +53,8 @@ func NewLayer1Relayer(ctx context.Context, ethClient *ethclient.Client, db orm.L
 	messageSenderPrivateKeys := vp.GetECDSAKeys("message_sender_private_keys")
 	sender, err := sender.NewSender(ctx, vp.Sub("sender_config"), messageSenderPrivateKeys)
 	if err != nil {
-		addr := crypto.PubkeyToAddress(cfg.MessageSenderPrivateKeys[0].PublicKey)
+		pubKey := vp.GetECDSAKeys("message_sender_private_keys")[0].PublicKey
+		addr := crypto.PubkeyToAddress(pubKey)
 		log.Error("new sender failed", "main address", addr.String(), "err", err)
 		return nil, err
 	}

@@ -61,6 +61,8 @@
   },
   "db_config": {
     "driver_name": "postgres",
-    "dsn": "postgres://admin:123456@localhost/test?sslmode=disable"
+    "dsn": "postgres://admin:123456@localhost/test?sslmode=disable",
+    "max_open_num": 200,
+    "max_idle_num": 20
   }
 }

@@ -1,4 +1,4 @@
-package l1
+package l1_test
 
 import (
 	"testing"
@@ -6,13 +6,12 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"scroll-tech/common/docker"
-
-	"scroll-tech/bridge/config"
+	"scroll-tech/common/viper"
 )
 
 var (
 	// config
-	cfg *config.Config
+	vp *viper.Viper
 
 	// docker consider handler.
 	l1gethImg docker.ImgInstance
@@ -23,22 +22,23 @@ var (
 func setupEnv(t *testing.T) {
 	// Load config.
 	var err error
-	cfg, err = config.NewConfig("../config.json")
+	vp, err = viper.NewViper("../config.json", true)
 	assert.NoError(t, err)
 
 	// Create l1geth container.
 	l1gethImg = docker.NewTestL1Docker(t)
-	cfg.L2Config.RelayerConfig.SenderConfig.Endpoint = l1gethImg.Endpoint()
-	cfg.L1Config.Endpoint = l1gethImg.Endpoint()
+	vp.Set("l2_config.relayer_config.sender_config.endpoint", l1gethImg.Endpoint())
+	vp.Set("l1_config.endpoint", l1gethImg.Endpoint())
 
 	// Create l2geth container.
 	l2gethImg = docker.NewTestL2Docker(t)
-	cfg.L1Config.RelayerConfig.SenderConfig.Endpoint = l2gethImg.Endpoint()
-	cfg.L2Config.Endpoint = l2gethImg.Endpoint()
+	vp.Set("l1_config.relayer_config.sender_config.endpoint", l2gethImg.Endpoint())
+	vp.Set("l2_config.endpoint", l2gethImg.Endpoint())
 
 	// Create db container.
-	dbImg = docker.NewTestDBDocker(t, cfg.DBConfig.DriverName)
-	cfg.DBConfig.DSN = dbImg.Endpoint()
+	driverName := vp.Sub("db_config").GetString("driver_name")
+	dbImg = docker.NewTestDBDocker(t, driverName)
+	vp.Set("db_config.dsn", dbImg.Endpoint())
 }
 
 func free(t *testing.T) {

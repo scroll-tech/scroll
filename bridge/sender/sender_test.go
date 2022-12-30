@@ -18,8 +18,9 @@ import (
 
 	"scroll-tech/common/docker"
 
-	"scroll-tech/bridge/sender"
 	"scroll-tech/common/viper"
+
+	"scroll-tech/bridge/sender"
 )
 
 const TX_BATCH = 50

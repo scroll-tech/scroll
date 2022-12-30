@@ -41,8 +41,6 @@ func setupEnv(t *testing.T) (err error) {
 	driverName := vp.Sub("db_config").GetString("driver_name")
 	dbImg = docker.NewTestDBDocker(t, driverName)
 	vp.Set("db_config.dsn", dbImg.Endpoint())
-	vp.Set("db_config.max_open_num", 200)
-	vp.Set("db_config.max_idle_num", 20)
 
 	// Create l2geth client.
 	l2Cli, err = ethclient.Dial(vp.Sub("l2_config").GetString("endpoint"))

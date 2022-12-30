@@ -36,6 +36,17 @@ func NewViper(file string, use_apollo bool) (*Viper, error) {
 	return root, nil
 }
 
+// NewEmptyViper : new a empty viper config instance.
+func NewEmptyViper() *Viper {
+	root := &Viper{
+		// Get the root viper.
+		vp:     viper.New(),
+		subVps: make(map[string]*Viper),
+	}
+	root.root = root
+	return root
+}
+
 // Sub : get a viper sub config.
 func (v *Viper) Sub(key string) *Viper {
 	var (
