@@ -15,21 +15,20 @@ import (
 	"github.com/scroll-tech/go-ethereum/crypto"
 	"github.com/stretchr/testify/assert"
 
-	"scroll-tech/database"
 	_ "scroll-tech/database/cmd/app"
 
 	_ "scroll-tech/roller/cmd/app"
-	rollerConfig "scroll-tech/roller/config"
 
 	_ "scroll-tech/bridge/cmd/app"
-	bridgeConfig "scroll-tech/bridge/config"
 	"scroll-tech/bridge/sender"
 
 	"scroll-tech/common/cmd"
 	"scroll-tech/common/docker"
+	"scroll-tech/common/viper"
 
 	_ "scroll-tech/coordinator/cmd/app"
-	coordinatorConfig "scroll-tech/coordinator/config"
+
+	rollerConfig "scroll-tech/roller/config"
 )
 
 var (
@@ -114,81 +113,71 @@ func runRollerApp(t *testing.T, args ...string) appAPI {
 func runSender(t *testing.T, endpoint string) *sender.Sender {
 	priv, err := crypto.HexToECDSA("1212121212121212121212121212121212121212121212121212121212121212")
 	assert.NoError(t, err)
-	newSender, err := sender.NewSender(context.Background(), &bridgeConfig.SenderConfig{
-		Endpoint:            endpoint,
-		CheckPendingTime:    3,
-		EscalateBlocks:      100,
-		Confirmations:       0,
-		EscalateMultipleNum: 11,
-		EscalateMultipleDen: 10,
-		TxType:              "DynamicFeeTx",
-	}, []*ecdsa.PrivateKey{priv})
+	vp := viper.NewEmptyViper()
+	vp.Set("endpoint", endpoint)
+	vp.Set("check_pending_time", 3)
+	vp.Set("escalate_blocks", 100)
+	vp.Set("confirmations", 0)
+	vp.Set("escalate_multiple_num", 11)
+	vp.Set("escalate_multiple_den", 10)
+	vp.Set("tx_type", "DynamicFeeTx")
+	newSender, err := sender.NewSender(context.Background(), vp, []*ecdsa.PrivateKey{priv})
 	assert.NoError(t, err)
 	return newSender
 }
 
 func mockBridgeConfig(t *testing.T) string {
 	// Load origin bridge config file.
-	cfg, err := bridgeConfig.NewConfig("../../bridge/config.json")
+	vp, err := viper.NewViper("../../bridge/config.json", true)
 	assert.NoError(t, err)
 
 	if l1gethImg != nil {
-		cfg.L1Config.Endpoint = l1gethImg.Endpoint()
-		cfg.L2Config.RelayerConfig.SenderConfig.Endpoint = l1gethImg.Endpoint()
+		vp.Set("l1_config.endpoint", l1gethImg.Endpoint())
+		vp.Set("l2_config.relayer_config.sender_config.endpoint", l1gethImg.Endpoint())
 	}
 	if l2gethImg != nil {
-		cfg.L2Config.Endpoint = l2gethImg.Endpoint()
-		cfg.L1Config.RelayerConfig.SenderConfig.Endpoint = l2gethImg.Endpoint()
+		vp.Set("l2_config.endpoint", l2gethImg.Endpoint())
+		vp.Set("l1_config.relayer_config.sender_config.endpoint", l2gethImg.Endpoint())
 	}
 	if dbImg != nil {
-		cfg.DBConfig.DSN = dbImg.Endpoint()
+		vp.Set("db_config.dsn", dbImg.Endpoint())
 	}
 
 	// Store changed bridge config into a temp file.
-	data, err := json.Marshal(cfg)
-	assert.NoError(t, err)
 	file := fmt.Sprintf("/tmp/%d_bridge-config.json", timestamp)
-	err = os.WriteFile(file, data, 0644)
-	assert.NoError(t, err)
+	assert.NoError(t, vp.WriteConfigAs(file))
 
 	return file
 }
 
 func mockCoordinatorConfig(t *testing.T) string {
-	cfg, err := coordinatorConfig.NewConfig("../../coordinator/config.json")
+	vp, err := viper.NewViper("../../coordinator/config.json", true)
 	assert.NoError(t, err)
 
-	cfg.RollerManagerConfig.Verifier.MockMode = true
+	vp.Set("roller_manager_config.verifier.mock_mode", true)
 	if dbImg != nil {
-		cfg.DBConfig.DSN = dbImg.Endpoint()
+		vp.Set("db_config.dsn", dbImg.Endpoint())
 	}
 
 	if l2gethImg != nil {
-		cfg.L2Config.Endpoint = l2gethImg.Endpoint()
+		vp.Set("l2_config.endpoint", l2gethImg.Endpoint())
 	}
 
-	data, err := json.Marshal(cfg)
-	assert.NoError(t, err)
-
 	file := fmt.Sprintf("/tmp/%d_coordinator-config.json", timestamp)
-	err = os.WriteFile(file, data, 0644)
-	assert.NoError(t, err)
+	assert.NoError(t, vp.WriteConfigAs(file))
 
 	return file
 }
 
 func mockDatabaseConfig(t *testing.T) string {
-	cfg, err := database.NewConfig("../../database/config.json")
+	vp, err := viper.NewViper("../../database/config.json", true)
 	assert.NoError(t, err)
 	if dbImg != nil {
-		cfg.DSN = dbImg.Endpoint()
+		vp.Set("dsn", dbImg.Endpoint())
 	}
-	data, err := json.Marshal(cfg)
-	assert.NoError(t, err)
 
 	file := fmt.Sprintf("/tmp/%d_db-config.json", timestamp)
-	err = os.WriteFile(file, data, 0644)
-	assert.NoError(t, err)
+	assert.NoError(t, vp.WriteConfigAs(file))
 
 	return file
 }

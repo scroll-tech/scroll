@@ -1,7 +1,7 @@
 .idea
 assets/params*
 assets/seed
-coverage.txt
+coverage.*txt
 build/bin
 scroll-apollo*
 

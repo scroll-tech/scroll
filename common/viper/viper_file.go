@@ -24,3 +24,9 @@ func (v *Viper) Flush(vp *viper.Viper) {
 		}
 	}
 }
+
+func (v *Viper) WriteConfigAs(filename string) error {
+	v.mu.RLock()
+	defer v.mu.RUnlock()
+	return v.vp.WriteConfigAs(filename)
+}
