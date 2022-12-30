@@ -25,6 +25,7 @@ func (v *Viper) Flush(vp *viper.Viper) {
 	}
 }
 
+// WriteConfigAs : writes current configuration to a given filename.
 func (v *Viper) WriteConfigAs(filename string) error {
 	v.mu.RLock()
 	defer v.mu.RUnlock()
