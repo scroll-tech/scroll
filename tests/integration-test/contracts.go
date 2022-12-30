@@ -13,8 +13,6 @@ import (
 	"github.com/scroll-tech/go-ethereum/crypto"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 
-	"github.com/scroll-tech/go-ethereum/log"
-
 	"scroll-tech/integration-test/abi/dao"
 	"scroll-tech/integration-test/abi/erc20"
 	"scroll-tech/integration-test/abi/greeter"
@@ -246,8 +244,6 @@ func newUniswapv2(ctx context.Context, client *ethclient.Client, root, auth *bin
 	// init balance
 	auth.GasPrice = big.NewInt(1108583800)
 	auth.GasLimit = 11529000
-	out, _ := client.BalanceAt(ctx, auth.From, nil)
-	log.Warn(fmt.Sprintf("balance at auth: %d", out.Int64()))
 	tx, err = wToken.Deposit(auth)
 	tx, err = wToken.Approve(auth, rAddr, originVal)
 	tx, err = btcToken.Approve(auth, rAddr, originVal)

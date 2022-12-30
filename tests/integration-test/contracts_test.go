@@ -261,6 +261,7 @@ func testUniswapV2(t *testing.T) {
 	pk, _ := crypto.GenerateKey()
 	auth, _ := bind.NewKeyedTransactorWithChainID(pk, big.NewInt(53077))
 
+	// add eth to auth.from
 	err = native(context.Background(), auth.From, big.NewInt(1).Mul(big.NewInt(3e3), utils.Ether))
 	assert.NoError(t, err)
 
