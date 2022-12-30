@@ -5,6 +5,7 @@ import (
 	_ "github.com/lib/pq" //nolint:golint
 
 	"scroll-tech/common/viper"
+
 	"scroll-tech/database/orm"
 )
 

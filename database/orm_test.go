@@ -15,6 +15,7 @@ import (
 	"scroll-tech/common/docker"
 
 	"scroll-tech/common/viper"
+
 	"scroll-tech/database"
 	"scroll-tech/database/migrate"
 	"scroll-tech/database/orm"

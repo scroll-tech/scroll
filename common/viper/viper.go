@@ -8,6 +8,7 @@ import (
 	"github.com/spf13/viper"
 )
 
+// Viper : viper config.
 type Viper struct {
 	path string
 	root *Viper
@@ -18,6 +19,7 @@ type Viper struct {
 	vp *viper.Viper
 }
 
+// NewViper : new a viper config instance.
 func NewViper(file string, use_apollo bool) (*Viper, error) {
 	vp := viper.New()
 	vp.SetConfigFile(file)
@@ -34,6 +36,7 @@ func NewViper(file string, use_apollo bool) (*Viper, error) {
 	return root, nil
 }
 
+// Sub : get a viper sub config.
 func (v *Viper) Sub(key string) *Viper {
 	var (
 		path = v.path
@@ -60,6 +63,7 @@ func (v *Viper) Sub(key string) *Viper {
 	return sub
 }
 
+// Set : set viper config recursively.
 func (v *Viper) Set(key string, val interface{}) {
 	var sub = v
 	if idx := strings.LastIndex(key, "."); idx >= 0 {

@@ -8,6 +8,7 @@ import (
 	"scroll-tech/common/utils"
 
 	"scroll-tech/common/viper"
+
 	"scroll-tech/database"
 	"scroll-tech/database/migrate"
 )
