@@ -471,9 +471,9 @@ github.com/opentracing/opentracing-go v1.0.2/go.mod h1:UkNAQd3GIcIGf0SeVgPpRdFSt
 github.com/opentracing/opentracing-go v1.0.3-0.20180606204148-bd9c31933947/go.mod h1:UkNAQd3GIcIGf0SeVgPpRdFStlNbqXla1AfSYxPUl2o=
 github.com/opentracing/opentracing-go v1.1.0 h1:pWlfV3Bxv7k65HYwkikxat0+s3pV4bsqf19k25Ur8rU=
 github.com/opentracing/opentracing-go v1.1.0/go.mod h1:UkNAQd3GIcIGf0SeVgPpRdFStlNbqXla1AfSYxPUl2o=
-github.com/pascaldekloe/goe v0.0.0-20180627143212-57f6aae5913c/go.mod h1:lzWF7FIEvWOWxwDKqyGYQf6ZUaNfKdP144TG7ZOy1lc=
 github.com/orcaman/concurrent-map v1.0.0 h1:I/2A2XPCb4IuQWcQhBhSwGfiuybl/J0ev9HDbW65HOY=
 github.com/orcaman/concurrent-map v1.0.0/go.mod h1:Lu3tH6HLW3feq74c2GC+jIMS/K2CFcDWnWD9XkenwhI=
+github.com/pascaldekloe/goe v0.0.0-20180627143212-57f6aae5913c/go.mod h1:lzWF7FIEvWOWxwDKqyGYQf6ZUaNfKdP144TG7ZOy1lc=
 github.com/paulbellamy/ratecounter v0.2.0/go.mod h1:Hfx1hDpSGoqxkVVpBi/IlYD7kChlfo5C6hzIHwPqfFE=
 github.com/pelletier/go-toml v1.2.0/go.mod h1:5z9KED0ma1S8pY6P1sdut58dfprrGBbd/94hg7ilaic=
 github.com/pelletier/go-toml v1.9.5 h1:4yBQzkHv+7BHq2PQUZF3Mx0IYxG7LsP222s7Agd3ve8=
@@ -523,8 +523,7 @@ github.com/russross/blackfriday/v2 v2.0.1/go.mod h1:+Rmxgy9KzJVeS9/2gXHxylqXiyQD
 github.com/russross/blackfriday/v2 v2.1.0 h1:JIOH55/0cWyOuilr9/qlrm0BSXldqnqwMsf35Ld67mk=
 github.com/russross/blackfriday/v2 v2.1.0/go.mod h1:+Rmxgy9KzJVeS9/2gXHxylqXiyQDYRxCVz55jmeOWTM=
 github.com/ryanuber/columnize v0.0.0-20160712163229-9b3edd62028f/go.mod h1:sm1tb6uqfes/u+d4ooFouqFdy9/2g9QGwK3SQygK0Ts=
-github.com/scroll-tech/go-ethereum v1.10.14-0.20221213034543-78c1f57fcfea h1:KYlmCH4cDMGxQzaYoSK8+DF53POGpAmnzusAtBWzEjA=
-github.com/scroll-tech/go-ethereum v1.10.14-0.20221213034543-78c1f57fcfea/go.mod h1:jurIpDQ0hqtp9//xxeWzr8X9KMP/+TYn+vz3K1wZrv0=
+github.com/scroll-tech/go-ethereum v1.10.14-0.20221221073256-5ca70bf3a257 h1:FjBC0Ww42WRoiB5EQFxoIEcJqoEUw2twdhN9nGkVCQA=
 github.com/scroll-tech/zktrie v0.3.0/go.mod h1:CuJFlG1/soTJJBAySxCZgTF7oPvd5qF6utHOEciC43Q=
 github.com/scroll-tech/zktrie v0.3.1 h1:HlR+fMBdjXX1/7cUMqpUgGEhGy/3vN1JpwQ0ovg/Ys8=
 github.com/scroll-tech/zktrie v0.3.1/go.mod h1:CuJFlG1/soTJJBAySxCZgTF7oPvd5qF6utHOEciC43Q=
