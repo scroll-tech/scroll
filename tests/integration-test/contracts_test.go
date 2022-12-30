@@ -38,7 +38,7 @@ func testContracts(t *testing.T) {
 	// Start roller process.
 	rollerCmd := runRollerApp(t)
 	rollerCmd.RunApp(true)
-	rollerCmd.ExpectWithTimeout(false, time.Second*30, "roller start successfully")
+	rollerCmd.ExpectWithTimeout(false, time.Second*20, "roller start successfully")
 
 	// test native call.
 	t.Run("testNative", testNative)
@@ -260,6 +260,9 @@ func testUniswapV2(t *testing.T) {
 
 	pk, _ := crypto.GenerateKey()
 	auth, _ := bind.NewKeyedTransactorWithChainID(pk, big.NewInt(53077))
+
+	err = native(context.Background(), auth.From, big.NewInt(1).Mul(big.NewInt(3e3), utils.Ether))
+	assert.NoError(t, err)
 
 	// create new uniswap operations.
 	err = newUniswapv2(context.Background(), l2Client, l2Root, auth)
