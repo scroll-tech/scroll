@@ -19,7 +19,7 @@ import (
 
 // TestCreateNewRelayer test create new relayer instance and stop
 func TestCreateNewL1Relayer(t *testing.T) {
-	vp, err := viper.NewViper("../config.json")
+	vp, err := viper.NewViper("../config.json", true)
 	assert.NoError(t, err)
 	l1docker := docker.NewTestL1Docker(t)
 	defer l1docker.Stop()

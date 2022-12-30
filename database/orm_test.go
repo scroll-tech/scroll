@@ -94,7 +94,7 @@ func setupEnv(t *testing.T) error {
 	dbImg = docker.NewTestDBDocker(t, "postgres")
 
 	var err error
-	vp, err = viper.NewViper("config.json")
+	vp, err = viper.NewViper("config.json", true)
 	assert.NoError(t, err)
 	vp.Set("dsn", dbImg.Endpoint())
 

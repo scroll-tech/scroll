@@ -18,7 +18,7 @@ type Viper struct {
 	vp *viper.Viper
 }
 
-func NewViper(file string) (*Viper, error) {
+func NewViper(file string, use_apollo bool) (*Viper, error) {
 	vp := viper.New()
 	vp.SetConfigFile(file)
 	err := vp.ReadInConfig()

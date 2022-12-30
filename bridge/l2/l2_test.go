@@ -24,7 +24,7 @@ var (
 
 func setupEnv(t *testing.T) (err error) {
 	// Load config.
-	vp, err = viper.NewViper("../config.json")
+	vp, err = viper.NewViper("../config.json", true)
 	assert.NoError(t, err)
 
 	// Create l1geth container.

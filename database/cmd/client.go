@@ -13,7 +13,7 @@ import (
 )
 
 func initDB(file string) (*sqlx.DB, error) {
-	vp, err := viper.NewViper(file)
+	vp, err := viper.NewViper(file, true)
 	if err != nil {
 		return nil, err
 	}

@@ -3,6 +3,7 @@ module scroll-tech/common
 go 1.18
 
 require (
+	github.com/apolloconfig/agollo/v4 v4.3.0
 	github.com/docker/docker v20.10.17+incompatible
 	github.com/jmoiron/sqlx v1.3.5
 	github.com/lib/pq v1.10.6

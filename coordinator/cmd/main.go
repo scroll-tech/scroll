@@ -43,7 +43,7 @@ func main() {
 func action(ctx *cli.Context) error {
 	// Load config file.
 	cfgFile := ctx.String(utils.ConfigFileFlag.Name)
-	vp, err := viper.NewViper(cfgFile)
+	vp, err := viper.NewViper(cfgFile, true)
 	if err != nil {
 		log.Crit("failed to load config file", "config file", cfgFile, "error", err)
 	}
