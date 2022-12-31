@@ -44,7 +44,7 @@ func randomURL() string {
 func setEnv(t *testing.T) {
 	// Load config.
 	var err error
-	vp, err = viper.NewViper("config.json", true)
+	vp, err = viper.NewViper("config.json", "")
 	assert.NoError(t, err)
 
 	// Set coordinator config.

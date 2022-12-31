@@ -128,7 +128,7 @@ func runSender(t *testing.T, endpoint string) *sender.Sender {
 
 func mockBridgeConfig(t *testing.T) string {
 	// Load origin bridge config file.
-	vp, err := viper.NewViper("../../bridge/config.json", true)
+	vp, err := viper.NewViper("../../bridge/config.json", "")
 	assert.NoError(t, err)
 
 	if l1gethImg != nil {
@@ -151,7 +151,7 @@ func mockBridgeConfig(t *testing.T) string {
 }
 
 func mockCoordinatorConfig(t *testing.T) string {
-	vp, err := viper.NewViper("../../coordinator/config.json", true)
+	vp, err := viper.NewViper("../../coordinator/config.json", "")
 	assert.NoError(t, err)
 
 	vp.Set("roller_manager_config.verifier.mock_mode", true)
@@ -170,7 +170,7 @@ func mockCoordinatorConfig(t *testing.T) string {
 }
 
 func mockDatabaseConfig(t *testing.T) string {
-	vp, err := viper.NewViper("../../database/config.json", true)
+	vp, err := viper.NewViper("../../database/config.json", "")
 	assert.NoError(t, err)
 	if dbImg != nil {
 		vp.Set("dsn", dbImg.Endpoint())

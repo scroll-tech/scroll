@@ -14,7 +14,7 @@ import (
 )
 
 func TestViper(t *testing.T) {
-	vp, err := viper.NewViper("../../bridge/config.json", true)
+	vp, err := viper.NewViper("../../bridge/config.json", "")
 	assert.NoError(t, err)
 
 	sb := vp.Sub("l2_config.relayer_config.sender_config")
@@ -65,7 +65,7 @@ func TestApolloFlush(t *testing.T) {
 	assert.NoError(t, origin.ReadConfig(bytes.NewBuffer([]byte(cfgStr))))
 	assert.Equal(t, "apollo", origin.GetString("config_type"))
 
-	vp, err := viper.NewViper("../../bridge/config.json", false)
+	vp, err := viper.NewViper("../../bridge/config.json", "")
 	assert.NoError(t, err)
 	l2Sender := vp.Sub("l2_config.relayer_config.sender_config")
 	l2Relayer := vp.Sub("l2_config.relayer_config")

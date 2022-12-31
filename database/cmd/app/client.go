@@ -15,7 +15,7 @@ import (
 
 func initDB(ctx *cli.Context) (*sqlx.DB, error) {
 	file := ctx.String(utils.ConfigFileFlag.Name)
-	vp, err := viper.NewViper(file, true)
+	vp, err := viper.NewViper(file, "")
 	if err != nil {
 		return nil, err
 	}

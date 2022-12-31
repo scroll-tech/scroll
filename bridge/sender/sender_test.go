@@ -34,7 +34,7 @@ var (
 func setupEnv(t *testing.T) {
 	// Load config.
 	var err error
-	vp, err = viper.NewViper("../config.json", true)
+	vp, err = viper.NewViper("../config.json", "")
 	assert.NoError(t, err)
 
 	priv, err := crypto.HexToECDSA("1212121212121212121212121212121212121212121212121212121212121212")

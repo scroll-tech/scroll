@@ -20,7 +20,7 @@ type Viper struct {
 }
 
 // NewViper : new a viper config instance.
-func NewViper(file string, use_apollo bool) (*Viper, error) {
+func NewViper(file string, cfg string) (*Viper, error) {
 	vp := viper.New()
 	vp.SetConfigFile(file)
 	err := vp.ReadInConfig()
@@ -33,6 +33,12 @@ func NewViper(file string, use_apollo bool) (*Viper, error) {
 		subVps: make(map[string]*Viper),
 	}
 	root.root = root
+
+	if cfg != "" {
+		// use apollo.
+
+	}
+
 	return root, nil
 }
 
