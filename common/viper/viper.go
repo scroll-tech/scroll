@@ -1,11 +1,16 @@
 package viper
 
 import (
+	"bytes"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/spf13/viper"
+	originVP "github.com/spf13/viper"
+
+	config "scroll-tech/common/apollo"
 )
 
 // Viper : viper config.
@@ -20,7 +25,7 @@ type Viper struct {
 }
 
 // NewViper : new a viper config instance.
-func NewViper(file string, cfg string) (*Viper, error) {
+func NewViper(file string, remoteCfg string) (*Viper, error) {
 	vp := viper.New()
 	vp.SetConfigFile(file)
 	err := vp.ReadInConfig()
@@ -34,12 +39,29 @@ func NewViper(file string, cfg string) (*Viper, error) {
 	}
 	root.root = root
 
-	if cfg != "" {
+	if remoteCfg != "" {
 		// use apollo.
-
+		go flushApolloRemoteConfig(remoteCfg, root)
 	}
 
 	return root, nil
+}
+
+func flushApolloRemoteConfig(remoteCfg string, vp *Viper) {
+	agolloClient := config.MustInitApollo()
+
+	for i := 0; i < 3; i++ {
+		origin := originVP.New()
+		origin.SetConfigType("json")
+		cfgStr := agolloClient.GetStringValue(remoteCfg, "")
+		err := origin.ReadConfig(bytes.NewBuffer([]byte(cfgStr)))
+		if err != nil {
+			log.Error("ReadConfig from apollo fail", "err", err)
+			continue
+		}
+		vp.Flush(origin)
+		<-time.After(time.Second * 3)
+	}
 }
 
 // NewEmptyViper : new a empty viper config instance.
