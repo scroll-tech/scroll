@@ -50,7 +50,7 @@ func NewViper(file string, remoteCfg string) (*Viper, error) {
 func flushApolloRemoteConfig(remoteCfg string, vp *Viper) {
 	agolloClient := config.MustInitApollo()
 
-	for i := 0; i < 3; i++ {
+	for {
 		origin := originVP.New()
 		origin.SetConfigType("json")
 		cfgStr := agolloClient.GetStringValue(remoteCfg, "")
