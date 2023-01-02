@@ -23,7 +23,7 @@ var (
 	// ApolloConfigFlag apollo config name.
 	ApolloConfigFlag = cli.StringFlag{
 		Name:  "apollo.config",
-		Usage: "Apollo configuration file name",
+		Usage: "Apollo config name",
 		Value: "",
 	}
 	// VerbosityFlag log level.
