@@ -109,7 +109,7 @@ func (v *Viper) Set(key string, val interface{}) {
 		path := absolutePath(v.path, key[:idx])
 		sub = v.root.Sub(path)
 		if sub == nil {
-			log.Error("don't exist the sub viper", "path", path)
+			log.Error("Invalid path while updating viper configuration", "path", path)
 			return
 		}
 		key = key[idx+1:]
