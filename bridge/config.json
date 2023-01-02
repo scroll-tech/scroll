@@ -6,6 +6,7 @@
     "l1_messenger_address": "0x0000000000000000000000000000000000000000",
     "start_height": 0,
     "relayer_config": {
+      "relayer_loop_time_sec": 3,
       "messenger_contract_address": "0x0000000000000000000000000000000000000000",
       "sender_config": {
         "endpoint": "/var/lib/jenkins/workspace/SequencerPipeline/MyPrivateNetwork/geth.ipc",
@@ -31,6 +32,7 @@
     "endpoint": "/var/lib/jenkins/workspace/SequencerPipeline/MyPrivateNetwork/geth.ipc",
     "l2_messenger_address": "0x0000000000000000000000000000000000000000",
     "relayer_config": {
+      "relayer_loop_time_sec": 3,
       "rollup_contract_address": "0x0000000000000000000000000000000000000000",
       "messenger_contract_address": "0x0000000000000000000000000000000000000000",
       "sender_config": {

@@ -128,7 +128,8 @@ func (r *Layer1Relayer) processSavedEvent(msg *orm.L1Message) error {
 func (r *Layer1Relayer) Start() {
 	go func() {
 		// trigger by timer
-		ticker := time.NewTicker(3 * time.Second)
+		relayerLoopTimeSec := r.vp.GetInt("relayer_loop_time_sec")
+		ticker := time.NewTicker(time.Duration(relayerLoopTimeSec) * time.Second)
 		defer ticker.Stop()
 
 		for {
