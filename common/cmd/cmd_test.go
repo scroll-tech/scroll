@@ -15,7 +15,7 @@ func TestCmd(t *testing.T) {
 	app := cmd.NewCmd(t, "curTime", "date", "+%Y-%m-%d")
 
 	tm := time.Now()
-	curTime := fmt.Sprintf("%d-%d-%d", tm.Year(), tm.Month(), tm.Day())
+	curTime := fmt.Sprintf("%d-%02d-%02d", tm.Year(), tm.Month(), tm.Day())
 
 	okCh := make(chan struct{}, 1)
 	app.RegistFunc(curTime, func(buf string) {
