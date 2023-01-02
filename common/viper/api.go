@@ -13,7 +13,6 @@ import (
 func (v *Viper) Get(key string) interface{} {
 	v.mu.RLock()
 	defer v.mu.RUnlock()
-	//fmt.Println("Get key: ", key, " value: ", v.vp.Get(key))
 	return v.vp.Get(key)
 }
 
@@ -21,7 +20,6 @@ func (v *Viper) Get(key string) interface{} {
 func (v *Viper) GetBool(key string) bool {
 	v.mu.RLock()
 	defer v.mu.RUnlock()
-	//fmt.Println("GetBool key: ", key, " value: ", v.vp.GetBool(key))
 	return v.vp.GetBool(key)
 }
 
@@ -29,7 +27,6 @@ func (v *Viper) GetBool(key string) bool {
 func (v *Viper) GetFloat64(key string) float64 {
 	v.mu.RLock()
 	defer v.mu.RUnlock()
-	//fmt.Println("GetFloat64 key: ", key, " value: ", v.vp.GetFloat64(key))
 	return v.vp.GetFloat64(key)
 }
 
@@ -37,7 +34,6 @@ func (v *Viper) GetFloat64(key string) float64 {
 func (v *Viper) GetInt(key string) int {
 	v.mu.RLock()
 	defer v.mu.RUnlock()
-	//fmt.Println("GetInt key: ", key, " value: ", v.vp.GetInt(key))
 	return v.vp.GetInt(key)
 }
 
@@ -45,7 +41,6 @@ func (v *Viper) GetInt(key string) int {
 func (v *Viper) GetInt64(key string) int64 {
 	v.mu.RLock()
 	defer v.mu.RUnlock()
-	//fmt.Println("GetInt key: ", key, " value: ", v.vp.GetInt64(key))
 	return v.vp.GetInt64(key)
 }
 
@@ -53,7 +48,6 @@ func (v *Viper) GetInt64(key string) int64 {
 func (v *Viper) GetIntSlice(key string) []int {
 	v.mu.RLock()
 	defer v.mu.RUnlock()
-	//fmt.Println("GetIntSlice key: ", key, " value: ", v.vp.GetIntSlice(key))
 	return v.vp.GetIntSlice(key)
 }
 
@@ -61,7 +55,6 @@ func (v *Viper) GetIntSlice(key string) []int {
 func (v *Viper) GetString(key string) string {
 	v.mu.RLock()
 	defer v.mu.RUnlock()
-	//fmt.Println("GetString key: ", key, " value: ", v.vp.GetString(key))
 	return v.vp.GetString(key)
 }
 
@@ -69,22 +62,22 @@ func (v *Viper) GetString(key string) string {
 func (v *Viper) GetStringSlice(key string) []string {
 	v.mu.RLock()
 	defer v.mu.RUnlock()
-	//fmt.Println("GetStringSlice key: ", key, " value: ", v.vp.GetStringSlice(key))
 	return v.vp.GetStringSlice(key)
 }
 
 // GetAddress : Get address type config.
 func (v *Viper) GetAddress(key string) common.Address {
 	v.mu.RLock()
-	defer v.mu.RUnlock()
-	return common.HexToAddress(v.vp.GetString(key))
+	val := v.vp.GetString(key)
+	v.mu.RUnlock()
+	return common.HexToAddress(val)
 }
 
 // GetBigInt : Get big.Int type config.
 func (v *Viper) GetBigInt(key string) *big.Int {
 	v.mu.RLock()
-	defer v.mu.RUnlock()
 	val := v.vp.GetString(key)
+	v.mu.RUnlock()
 	ret, failed := new(big.Int).SetString(val, 10)
 	if !failed {
 		ret, _ = new(big.Int).SetString("100000000000000000000", 10)
@@ -95,8 +88,8 @@ func (v *Viper) GetBigInt(key string) *big.Int {
 // GetECDSAKeys : Get ECDSA keys config.
 func (v *Viper) GetECDSAKeys(key string) []*ecdsa.PrivateKey {
 	v.mu.RLock()
-	defer v.mu.RUnlock()
 	keyLists := v.vp.GetStringSlice(key)
+	v.mu.RUnlock()
 	var privateKeys []*ecdsa.PrivateKey
 	for _, privStr := range keyLists {
 		priv, err := crypto.ToECDSA(common.FromHex(privStr))

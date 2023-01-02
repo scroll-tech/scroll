@@ -308,7 +308,7 @@ func (s *Sender) createAndSendTx(auth *bind.TransactOpts, feeData *FeeData, targ
 func (s *Sender) resubmitTransaction(feeData *FeeData, auth *bind.TransactOpts, tx *types.Transaction) (*types.Transaction, error) {
 	escalateMultipleNum := new(big.Int).SetUint64(uint64(s.vp.GetInt("escalate_multiple_num")))
 	escalateMultipleDen := new(big.Int).SetUint64(uint64(s.vp.GetInt("escalate_multiple_den")))
-	maxGasPrice := new(big.Int).SetUint64(uint64(s.vp.GetInt("max_gas_price")))
+	maxGasPrice := s.vp.GetBigInt("max_gas_price")
 
 	txType := s.vp.GetString("tx_type")
 	switch txType {
