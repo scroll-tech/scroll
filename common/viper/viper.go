@@ -41,13 +41,14 @@ func NewViper(file string, remoteCfg string) (*Viper, error) {
 
 	if remoteCfg != "" {
 		// use apollo.
-		go flushApolloRemoteConfig(remoteCfg, root)
+		log.Info("Apollo remote config", "config name", remoteCfg)
+		go syncApolloRemoteConfig(remoteCfg, root)
 	}
 
 	return root, nil
 }
 
-func flushApolloRemoteConfig(remoteCfg string, vp *Viper) {
+func syncApolloRemoteConfig(remoteCfg string, vp *Viper) {
 	agolloClient := config.MustInitApollo()
 
 	for {
