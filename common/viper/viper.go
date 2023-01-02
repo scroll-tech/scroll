@@ -57,6 +57,7 @@ func flushApolloRemoteConfig(remoteCfg string, vp *Viper) {
 		err := origin.ReadConfig(bytes.NewBuffer([]byte(cfgStr)))
 		if err != nil {
 			log.Error("ReadConfig from apollo fail", "err", err)
+			<-time.After(time.Second * 3)
 			continue
 		}
 		vp.Flush(origin)
