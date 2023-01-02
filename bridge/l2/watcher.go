@@ -131,8 +131,6 @@ func (w *WatcherClient) Stop() {
 	w.stopCh <- struct{}{}
 }
 
-const blockTracesFetchLimit = uint64(50)
-
 // try fetch missing blocks if inconsistent
 func (w *WatcherClient) tryFetchRunningMissingBlocks(ctx context.Context, backTrackFrom uint64) error {
 	// Get newest block in DB. must have blocks at that time.
@@ -148,6 +146,7 @@ func (w *WatcherClient) tryFetchRunningMissingBlocks(ctx context.Context, backTr
 	}
 
 	// note that backTrackFrom >= backTrackTo because we are doing backtracking
+	blockTracesFetchLimit := uint64(w.vp.GetInt64("block_traces_fetch_limit"))
 	if backTrackFrom > backTrackTo+blockTracesFetchLimit {
 		backTrackFrom = backTrackTo + blockTracesFetchLimit
 	}

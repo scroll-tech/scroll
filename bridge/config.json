@@ -26,6 +26,7 @@
   "l2_config": {
     "confirmations": 1,
     "contract_events_blocks_fetch_limit": 30,
+    "block_traces_fetch_limit": 50,
     "endpoint": "/var/lib/jenkins/workspace/SequencerPipeline/MyPrivateNetwork/geth.ipc",
     "l2_messenger_address": "0x0000000000000000000000000000000000000000",
     "relayer_config": {
