@@ -41,7 +41,6 @@ type Watcher struct {
 	vp     *viper.Viper
 
 	// The number of new blocks to wait for a block to be confirmed
-	confirmations    uint64
 	messengerAddress common.Address
 	messengerABI     *abi.ABI
 
@@ -68,7 +67,6 @@ func NewWatcher(ctx context.Context, client *ethclient.Client, db database.OrmFa
 	}
 
 	stop := make(chan bool)
-	confirmations := uint64(vp.GetInt64("confirmations"))
 	messengerAddress := vp.GetAddress("l1_messenger_address")
 	rollupAddress := vp.Sub("relayer_config").GetAddress("rollup_contract_address")
 
@@ -77,7 +75,6 @@ func NewWatcher(ctx context.Context, client *ethclient.Client, db database.OrmFa
 		client:             client,
 		db:                 db,
 		vp:                 vp,
-		confirmations:      confirmations,
 		messengerAddress:   messengerAddress,
 		messengerABI:       bridge_abi.L1MessengerMetaABI,
 		rollupAddress:      rollupAddress,
@@ -119,8 +116,9 @@ func (w *Watcher) Stop() {
 
 // FetchContractEvent pull latest event logs from given contract address and save in DB
 func (w *Watcher) fetchContractEvent(blockHeight uint64) error {
+	confirmations := uint64(w.vp.GetInt64("confirmations"))
 	fromBlock := int64(w.processedMsgHeight) + 1
-	toBlock := int64(blockHeight) - int64(w.confirmations)
+	toBlock := int64(blockHeight) - int64(confirmations)
 
 	if toBlock < fromBlock {
 		return nil

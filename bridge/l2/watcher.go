@@ -39,7 +39,6 @@ type WatcherClient struct {
 	orm database.OrmFactory
 	vp  *viper.Viper
 
-	confirmations    uint64
 	messengerAddress common.Address
 	messengerABI     *abi.ABI
 
@@ -60,7 +59,6 @@ func NewL2WatcherClient(ctx context.Context, client *ethclient.Client, orm datab
 		savedHeight = 0
 	}
 
-	confirmations := uint64(vp.GetInt64("confirmations"))
 	messengerAddress := vp.GetAddress("l2_messenger_address")
 
 	return &WatcherClient{
@@ -69,7 +67,6 @@ func NewL2WatcherClient(ctx context.Context, client *ethclient.Client, orm datab
 		orm:                orm,
 		vp:                 vp,
 		processedMsgHeight: uint64(savedHeight),
-		confirmations:      confirmations,
 		messengerAddress:   messengerAddress,
 		messengerABI:       bridge_abi.L2MessengerMetaABI,
 		stopCh:             make(chan struct{}),
@@ -100,8 +97,9 @@ func (w *WatcherClient) Start() {
 					continue
 				}
 
-				if number >= w.confirmations {
-					number = number - w.confirmations
+				confirmations := uint64(w.vp.GetInt64("confirmations"))
+				if number >= confirmations {
+					number = number - confirmations
 				} else {
 					number = 0
 				}

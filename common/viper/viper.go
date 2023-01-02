@@ -116,8 +116,8 @@ func (v *Viper) Set(key string, val interface{}) {
 		key = key[idx+1:]
 	}
 	sub.mu.Lock()
-	defer sub.mu.Unlock()
 	sub.vp.Set(key, val)
+	sub.mu.Unlock()
 }
 
 // Unmarshal unmarshals the config into a Struct. Make sure that the tags
