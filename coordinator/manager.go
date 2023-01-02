@@ -136,8 +136,9 @@ func (m *Manager) isRunning() bool {
 // Loop keeps the manager running.
 func (m *Manager) Loop() {
 	var (
-		tick  = time.NewTicker(time.Second * 3)
-		tasks []*orm.BlockBatch
+		coordinatorLoopTimeSec = m.vp.GetInt("coordinator_loop_time_sec")
+		tick                   = time.NewTicker(time.Duration(coordinatorLoopTimeSec) * time.Second)
+		tasks                  []*orm.BlockBatch
 	)
 	defer tick.Stop()
 
