@@ -174,8 +174,6 @@ func (w *WatcherClient) tryFetchRunningMissingBlocks(ctx context.Context, backTr
 	return nil
 }
 
-const contractEventsBlocksFetchLimit = int64(30)
-
 // FetchContractEvent pull latest event logs from given contract address and save in DB
 func (w *WatcherClient) fetchContractEvent(blockHeight uint64) error {
 	fromBlock := int64(w.processedMsgHeight) + 1
@@ -185,6 +183,7 @@ func (w *WatcherClient) fetchContractEvent(blockHeight uint64) error {
 		return nil
 	}
 
+	contractEventsBlocksFetchLimit := w.vp.GetInt64("contract_events_blocks_fetch_limit")
 	if toBlock > fromBlock+contractEventsBlocksFetchLimit {
 		toBlock = fromBlock + contractEventsBlocksFetchLimit - 1
 	}
