@@ -368,7 +368,8 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 func (r *Layer2Relayer) Start() {
 	go func() {
 		// trigger by timer
-		ticker := time.NewTicker(time.Second)
+		relayerLoopTimeSec := r.vp.GetInt("relayer_loop_time_sec")
+		ticker := time.NewTicker(time.Duration(relayerLoopTimeSec) * time.Second)
 		defer ticker.Stop()
 
 		for {
