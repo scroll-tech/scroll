@@ -91,7 +91,8 @@ func NewWatcher(ctx context.Context, client *ethclient.Client, db database.OrmFa
 func (w *Watcher) Start() {
 	go func() {
 		// trigger by timer
-		ticker := time.NewTicker(10 * time.Second)
+		watcherTimeSec := w.vp.GetInt("watcher_time_sec")
+		ticker := time.NewTicker(time.Duration(watcherTimeSec) * time.Second)
 		defer ticker.Stop()
 
 		for {

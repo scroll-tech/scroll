@@ -2,6 +2,7 @@
   "l1_config": {
     "confirmations": 6,
     "contract_events_blocks_fetch_limit": 30,
+    "watcher_time_sec": 10,
     "endpoint": "https://goerli.infura.io/v3/9aa3d95b3bc440fa88ea12eaa4456161",
     "l1_messenger_address": "0x0000000000000000000000000000000000000000",
     "start_height": 0,
@@ -28,6 +29,7 @@
   "l2_config": {
     "confirmations": 1,
     "contract_events_blocks_fetch_limit": 30,
+    "watcher_time_sec": 3,
     "block_traces_fetch_limit": 50,
     "endpoint": "/var/lib/jenkins/workspace/SequencerPipeline/MyPrivateNetwork/geth.ipc",
     "l2_messenger_address": "0x0000000000000000000000000000000000000000",

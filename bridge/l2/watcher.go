@@ -86,8 +86,8 @@ func (w *WatcherClient) Start() {
 		}
 
 		// trigger by timer
-		// TODO: make it configurable
-		ticker := time.NewTicker(3 * time.Second)
+		watcherTimeSec := w.vp.GetInt("watcher_time_sec")
+		ticker := time.NewTicker(time.Duration(watcherTimeSec) * time.Second)
 		defer ticker.Stop()
 
 		for {
