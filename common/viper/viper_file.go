@@ -25,6 +25,7 @@ var (
 	}
 )
 
+// Reset : reset viper config.
 func (v *Viper) Reset() {
 	if !v.isRoot {
 		// TODO: only root node can be reset.
@@ -34,6 +35,7 @@ func (v *Viper) Reset() {
 	//v.data = cmap.New()
 }
 
+// SetConfigType : set config type.
 func (v *Viper) SetConfigType(in string) {
 	_, ok := decoders[in]
 	if !ok {
@@ -42,12 +44,14 @@ func (v *Viper) SetConfigType(in string) {
 	v.configType = in
 }
 
+// SetConfigFile : set config file.
 func (v *Viper) SetConfigFile(in string) {
 	if in != "" {
 		v.configFile = in
 	}
 }
 
+// ReadInFile : read config file.
 func (v *Viper) ReadInFile() error {
 	if !v.isRoot {
 		return fmt.Errorf("only root node can call this func")
@@ -66,6 +70,7 @@ func (v *Viper) ReadInFile() error {
 	return nil
 }
 
+// ReadConfig : read config by io reader.
 func (v *Viper) ReadConfig(in io.Reader) error {
 	config := make(map[string]interface{})
 	if err := v.unmarshal(in, config); err != nil {

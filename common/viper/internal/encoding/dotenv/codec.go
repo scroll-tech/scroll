@@ -15,6 +15,7 @@ const keyDelimiter = "_"
 // (commonly called as dotenv format).
 type Codec struct{}
 
+// Encode : marshal dotenv.
 func (Codec) Encode(v map[string]interface{}) ([]byte, error) {
 	flattened := map[string]interface{}{}
 
@@ -40,6 +41,7 @@ func (Codec) Encode(v map[string]interface{}) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
+// Decode : unmarshal dotenv.
 func (Codec) Decode(b []byte, v map[string]interface{}) error {
 	var buf bytes.Buffer
 

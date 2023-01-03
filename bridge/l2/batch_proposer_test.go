@@ -41,7 +41,7 @@ func testBatchProposer(t *testing.T) {
 
 	id := utils.ComputeBatchID(trace3.Header.Hash(), trace2.Header.ParentHash, big.NewInt(1))
 
-	tmpVP := viper.NewEmptyViper()
+	tmpVP := viper.New()
 	tmpVP.Set("proof_generation_freq", 1)
 	tmpVP.Set("batch_gas_threshold", 3000000)
 	tmpVP.Set("batch_tx_num_threshold", 135)

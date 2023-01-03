@@ -59,9 +59,8 @@ func TestViper(t *testing.T) {
 func TestApolloFlush(t *testing.T) {
 	agolloClient := config.MustInitApollo()
 
-	vp := viper.New()
-	vp.SetConfigFile("../../bridge/config.json")
-	assert.NoError(t, vp.ReadInFile())
+	vp, err := viper.NewViper("../../bridge/config.json", "")
+	assert.NoError(t, err)
 	l2Sender := vp.Sub("l2_config.relayer_config.sender_config")
 	l2Relayer := vp.Sub("l2_config.relayer_config")
 

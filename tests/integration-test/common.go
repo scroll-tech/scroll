@@ -113,7 +113,7 @@ func runRollerApp(t *testing.T, args ...string) appAPI {
 func runSender(t *testing.T, endpoint string) *sender.Sender {
 	priv, err := crypto.HexToECDSA("1212121212121212121212121212121212121212121212121212121212121212")
 	assert.NoError(t, err)
-	vp := viper.NewEmptyViper()
+	vp := viper.New()
 	vp.Set("endpoint", endpoint)
 	vp.Set("check_pending_time_sec", 3)
 	vp.Set("escalate_blocks", 100)
