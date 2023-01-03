@@ -185,7 +185,7 @@ func (w *Watcher) fetchContractEvent(blockHeight uint64) error {
 			return err
 		}
 		if len(statuses) != len(batchIDs) {
-			log.Error("RollupStatus.Length mismatch with BatchIDs.Length")
+			log.Error("RollupStatus.Length mismatch with BatchIDs.Length", "RollupStatus.Length", len(statuses), "BatchIDs.Length", len(batchIDs))
 			return nil
 		}
 
