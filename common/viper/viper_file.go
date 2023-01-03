@@ -108,9 +108,10 @@ func (v *Viper) WriteConfigAs(filename string) error {
 	if err := v.marshal(&buf, v.configType); err != nil {
 		return err
 	}
-	return os.WriteFile(filename, buf.Bytes(), 0644)
+	return os.WriteFile(filename, buf.Bytes(), 0600|0044)
 }
 
+// WriteConfig : marshal and write config to io writer.
 func (v *Viper) WriteConfig(out io.Writer) error {
 	return v.marshal(out, v.configType)
 }
@@ -139,7 +140,7 @@ func (v *Viper) unmarshal(in io.Reader) (map[string]interface{}, error) {
 func (v *Viper) marshal(out io.Writer, configType string) error {
 	c := v.export()
 
-	encoder, _ := encoders[configType]
+	encoder := encoders[configType]
 	data, err := encoder.Encode(c)
 	if err != nil {
 		return err
