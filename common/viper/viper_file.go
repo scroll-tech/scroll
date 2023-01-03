@@ -6,6 +6,11 @@ import (
 	"io"
 	"os"
 	"sync"
+	"time"
+
+	"github.com/scroll-tech/go-ethereum/log"
+
+	config "scroll-tech/common/apollo"
 
 	"scroll-tech/common/viper/internal/encoding"
 	"scroll-tech/common/viper/internal/encoding/dotenv"
@@ -15,6 +20,14 @@ import (
 )
 
 var (
+	encoders = map[string]encoding.Encoder{
+		"yaml":   yaml.Codec{},
+		"yml":    yaml.Codec{},
+		"json":   json.Codec{},
+		"toml":   toml.Codec{},
+		"dotenv": dotenv.Codec{},
+		"env":    dotenv.Codec{},
+	}
 	decoders = map[string]encoding.Decoder{
 		"yaml":   yaml.Codec{},
 		"yml":    yaml.Codec{},
@@ -30,7 +43,7 @@ func (v *Viper) Reset() {
 	if !v.isRoot {
 		// TODO: only root node can be reset.
 	}
-	v.configFile = ""
+	v.configType, v.configFile = "", ""
 	v.data = sync.Map{}
 	//v.data = cmap.New()
 }
@@ -46,9 +59,13 @@ func (v *Viper) SetConfigType(in string) {
 
 // SetConfigFile : set config file.
 func (v *Viper) SetConfigFile(in string) {
-	if in != "" {
-		v.configFile = in
+	tp := getConfigType(in)
+	_, ok := decoders[tp]
+	if !ok {
+		// TODO: add warning log.
+		return
 	}
+	v.configFile = in
 }
 
 // ReadInFile : read config file.
@@ -57,12 +74,12 @@ func (v *Viper) ReadInFile() error {
 		return fmt.Errorf("only root node can call this func")
 	}
 
-	config := make(map[string]interface{})
 	data, err := os.ReadFile(v.configFile)
 	if err != nil {
 		return err
 	}
-	if err = v.unmarshal(bytes.NewReader(data), config); err != nil {
+	config, err := v.unmarshal(bytes.NewReader(data))
+	if err != nil {
 		return err
 	}
 
@@ -72,8 +89,8 @@ func (v *Viper) ReadInFile() error {
 
 // ReadConfig : read config by io reader.
 func (v *Viper) ReadConfig(in io.Reader) error {
-	config := make(map[string]interface{})
-	if err := v.unmarshal(in, config); err != nil {
+	config, err := v.unmarshal(in)
+	if err != nil {
 		return err
 	}
 
@@ -81,38 +98,66 @@ func (v *Viper) ReadConfig(in io.Reader) error {
 	return nil
 }
 
-func (v *Viper) unmarshal(in io.Reader, c map[string]interface{}) error {
+// WriteConfigAs : writes current configuration to a given filename.
+func (v *Viper) WriteConfigAs(filename string) error {
+	if !v.isRoot {
+		return fmt.Errorf("sub viper don't support write to file")
+	}
+
 	buf := bytes.Buffer{}
-	if _, err := buf.ReadFrom(in); err != nil {
+	if err := v.marshal(&buf, v.configType); err != nil {
 		return err
 	}
-
-	decoder, ok := decoders[getConfigType(v.configFile, v.configType)]
-	if !ok {
-		return fmt.Errorf("don't support this kind of data")
-	}
-	return decoder.Decode(buf.Bytes(), c)
+	return os.WriteFile(filename, buf.Bytes(), 0644)
 }
 
-func (v *Viper) flush(m map[string]interface{}) {
-	for key, val := range m {
-		switch val.(type) {
-		case map[interface{}]interface{}, map[string]interface{}:
-			vp := v.Sub(key)
-			if vp == nil {
-				vp = &Viper{}
-				v.data.Store(key, vp)
-			}
-			mp, ok := val.(map[string]interface{})
-			if !ok {
-				mp = make(map[string]interface{})
-				for k, v := range val.(map[interface{}]interface{}) {
-					mp[fmt.Sprintf("%v", k)] = v
-				}
-			}
-			vp.flush(mp)
-		default:
-			v.data.Store(key, val)
+func (v *Viper) WriteConfig(out io.Writer) error {
+	return v.marshal(out, v.configType)
+}
+
+func (v *Viper) unmarshal(in io.Reader) (map[string]interface{}, error) {
+	buf := bytes.Buffer{}
+	if _, err := buf.ReadFrom(in); err != nil {
+		return nil, err
+	}
+
+	var decoder encoding.Decoder
+	if v.configType != "" {
+		decoder = decoders[v.configType]
+	} else {
+		var ok bool
+		decoder, ok = decoders[getConfigType(v.configFile)]
+		if !ok {
+			return nil, fmt.Errorf("don't support this kind of data")
 		}
+	}
+
+	c := make(map[string]interface{})
+	return c, decoder.Decode(buf.Bytes(), c)
+}
+
+func (v *Viper) marshal(out io.Writer, configType string) error {
+	c := v.export()
+
+	encoder, _ := encoders[configType]
+	data, err := encoder.Encode(c)
+	if err != nil {
+		return err
+	}
+	_, err = out.Write(data)
+	return err
+}
+
+func syncApolloRemoteConfig(remoteCfg string, vp *Viper) {
+	agolloClient := config.MustInitApollo()
+
+	for {
+		cfgStr := agolloClient.GetStringValue(remoteCfg, "")
+		if err := vp.ReadConfig(bytes.NewReader([]byte(cfgStr))); err != nil {
+			log.Error("config", cfgStr, "err", err)
+			<-time.After(time.Second * 3)
+			continue
+		}
+		<-time.After(time.Second * 3)
 	}
 }

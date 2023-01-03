@@ -1,13 +1,10 @@
 package viper
 
 import (
-	"bytes"
+	"fmt"
 	"sync"
-	"time"
 
 	"github.com/scroll-tech/go-ethereum/log"
-
-	config "scroll-tech/common/apollo"
 )
 
 // Viper : viper config.
@@ -37,6 +34,7 @@ func NewViper(file string, remoteCfg string) (*Viper, error) {
 	}
 
 	if remoteCfg != "" {
+		vp.SetConfigType("json")
 		// use apollo.
 		log.Info("Apollo remote config", "config name", remoteCfg)
 		go syncApolloRemoteConfig(remoteCfg, vp)
@@ -45,24 +43,38 @@ func NewViper(file string, remoteCfg string) (*Viper, error) {
 	return vp, nil
 }
 
-func syncApolloRemoteConfig(remoteCfg string, vp *Viper) {
-	agolloClient := config.MustInitApollo()
-
-	for {
-		config := make(map[string]interface{})
-		cfgStr := agolloClient.GetStringValue(remoteCfg, "")
-		if err := vp.unmarshal(bytes.NewReader([]byte(cfgStr)), config); err != nil {
-			log.Error("Unmarshal apollo config fail", "err", err, "config", cfgStr)
-			<-time.After(time.Second * 3)
-			continue
+func (v *Viper) export() map[string]interface{} {
+	c := make(map[string]interface{})
+	v.data.Range(func(key, value any) bool {
+		if nd, ok := value.(*Viper); ok {
+			c[key.(string)] = nd.export()
+		} else {
+			c[key.(string)] = value
 		}
-		vp.flush(config)
-		<-time.After(time.Second * 3)
-	}
+		return true
+	})
+	return c
 }
 
-// WriteConfigAs : writes current configuration to a given filename.
-// TODO: implement WriteConfigAs
-func (v *Viper) WriteConfigAs(filename string) error {
-	return nil
+func (v *Viper) flush(m map[string]interface{}) {
+	for key, val := range m {
+		switch val.(type) {
+		case map[interface{}]interface{}, map[string]interface{}:
+			vp := v.Sub(key)
+			if vp == nil {
+				vp = &Viper{}
+				v.data.Store(key, vp)
+			}
+			mp, ok := val.(map[string]interface{})
+			if !ok {
+				mp = make(map[string]interface{})
+				for k, v := range val.(map[interface{}]interface{}) {
+					mp[fmt.Sprintf("%v", k)] = v
+				}
+			}
+			vp.flush(mp)
+		default:
+			v.data.Store(key, val)
+		}
+	}
 }

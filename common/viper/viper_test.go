@@ -3,6 +3,7 @@ package viper_test
 import (
 	"bytes"
 	"math/big"
+	"os"
 	"testing"
 	"time"
 
@@ -73,4 +74,30 @@ func TestApolloFlush(t *testing.T) {
 		assert.NoError(t, vp.ReadConfig(bytes.NewReader([]byte(cfgStr))))
 		<-time.After(time.Second * 3)
 	}
+}
+
+func TestLoadConfig(t *testing.T) {
+	vp := viper.New()
+	vp.SetConfigType("json")
+
+	data, err := os.ReadFile("../../bridge/config.json")
+	assert.NoError(t, err)
+	assert.NoError(t, vp.ReadConfig(bytes.NewReader(data)))
+
+	l1 := vp.Sub("l1_config")
+	l1.SetConfigType("json")
+
+	l1Buf := bytes.Buffer{}
+	assert.NoError(t, l1.WriteConfig(&l1Buf))
+	str1 := l1Buf.String()
+
+	l1Tmp := viper.New()
+	l1Tmp.SetConfigType("json")
+	assert.NoError(t, l1Tmp.ReadConfig(&l1Buf))
+
+	l1TmpBuf := bytes.Buffer{}
+	assert.NoError(t, l1Tmp.WriteConfig(&l1TmpBuf))
+
+	str2 := l1TmpBuf.String()
+	assert.Equal(t, str1, str2)
 }
