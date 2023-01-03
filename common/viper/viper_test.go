@@ -5,11 +5,9 @@ import (
 	"math/big"
 	"os"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 
-	config "scroll-tech/common/apollo"
 	"scroll-tech/common/viper"
 )
 
@@ -55,25 +53,6 @@ func TestViper(t *testing.T) {
 
 	l2MinBalance := vp.Sub("l2_config.relayer_config.sender_config").GetBigInt("min_balance")
 	assert.True(t, l2MinBalance.Cmp(big.NewInt(0)) > 0)
-}
-
-func TestApolloFlush(t *testing.T) {
-	agolloClient := config.MustInitApollo()
-
-	vp, err := viper.NewViper("../../bridge/config.json", "")
-	assert.NoError(t, err)
-	l2Sender := vp.Sub("l2_config.relayer_config.sender_config")
-	l2Relayer := vp.Sub("l2_config.relayer_config")
-
-	for i := 0; i < 3; i++ {
-		t.Log("tx type: ", l2Sender.GetString("tx_type"))
-		t.Log("confirmations: ", l2Sender.GetInt("confirmations"))
-		t.Log("rollup contract address: ", l2Relayer.GetString("rollup_contract_address"))
-
-		cfgStr := agolloClient.GetStringValue("bridge_config", "")
-		assert.NoError(t, vp.ReadConfig(bytes.NewReader([]byte(cfgStr))))
-		<-time.After(time.Second * 3)
-	}
 }
 
 func TestLoadConfig(t *testing.T) {
