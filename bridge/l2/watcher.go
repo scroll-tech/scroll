@@ -105,13 +105,11 @@ func (w *WatcherClient) Start() {
 
 				if err := w.tryFetchRunningMissingBlocks(w.ctx, number); err != nil {
 					log.Error("failed to fetchRunningMissingBlocks", "err", err)
-					continue
 				}
 
 				// @todo handle error
 				if err := w.fetchContractEvent(number); err != nil {
 					log.Error("failed to fetchContractEvent", "err", err)
-					continue
 				}
 
 				if err := w.batchProposer.tryProposeBatch(); err != nil {
