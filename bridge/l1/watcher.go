@@ -82,29 +82,23 @@ func NewWatcher(ctx context.Context, client *ethclient.Client, startHeight uint6
 // Start the Watcher module.
 func (w *Watcher) Start() {
 	go func() {
-		// catching up at start
-		if blockNumber, err := w.client.BlockNumber(w.ctx); err != nil {
-			log.Error("Failed to get block number", "err", err)
-		} else if err := w.fetchContractEvent(blockNumber); err != nil {
-			log.Error("Failed to fetch bridge contract", "err", err)
-		}
-
-		// trigger by timer
 		ticker := time.NewTicker(10 * time.Second)
 		defer ticker.Stop()
 
-		for {
+		for ; true; <-ticker.C {
 			select {
-			case <-ticker.C:
+			case <-w.stop:
+				return
+
+			default:
 				blockNumber, err := w.client.BlockNumber(w.ctx)
 				if err != nil {
 					log.Error("Failed to get block number", "err", err)
+					continue
 				}
 				if err := w.fetchContractEvent(blockNumber); err != nil {
 					log.Error("Failed to fetch bridge contract", "err", err)
 				}
-			case <-w.stop:
-				return
 			}
 		}
 	}()
