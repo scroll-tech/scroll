@@ -12,9 +12,8 @@ import (
 )
 
 func TestViper(t *testing.T) {
-	vp := viper.New()
-	vp.SetConfigFile("../../bridge/config.json")
-	assert.NoError(t, vp.ReadInFile())
+	vp, err := viper.NewViper("../../bridge/config.json", "")
+	assert.NoError(t, err)
 
 	sb := vp.Sub("l2_config.relayer_config.sender_config")
 	assert.Equal(t, 10, sb.GetInt("check_pending_time_sec"))

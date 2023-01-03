@@ -49,12 +49,13 @@ func (v *Viper) Reset() {
 }
 
 // SetConfigType : set config type.
-func (v *Viper) SetConfigType(in string) {
-	_, ok := decoders[in]
+func (v *Viper) SetConfigType(tp string) {
+	_, ok := decoders[tp]
 	if !ok {
+		log.Warn("SetConfigType fail, type decoder not found", "type", tp)
 		return
 	}
-	v.configType = in
+	v.configType = tp
 }
 
 // SetConfigFile : set config file.
@@ -62,9 +63,10 @@ func (v *Viper) SetConfigFile(in string) {
 	tp := getConfigType(in)
 	_, ok := decoders[tp]
 	if !ok {
-		// TODO: add warning log.
+		log.Warn("SetConfigFile fail, type decoder not found", "type", tp)
 		return
 	}
+	v.configType = tp
 	v.configFile = in
 }
 
@@ -139,7 +141,6 @@ func (v *Viper) unmarshal(in io.Reader) (map[string]interface{}, error) {
 
 func (v *Viper) marshal(out io.Writer, configType string) error {
 	c := v.export()
-
 	encoder := encoders[configType]
 	data, err := encoder.Encode(c)
 	if err != nil {
