@@ -66,12 +66,10 @@ type PendingTransaction struct {
 
 // Sender Transaction sender to send transaction to l1/l2 geth
 type Sender struct {
+	vp      *viper.Viper
 	client  *ethclient.Client // The client to retrieve on chain data or send transaction.
 	chainID *big.Int          // The chain id of the endpoint
 	ctx     context.Context
-
-	// sender config
-	vp *viper.Viper
 
 	// account fields.
 	auths *accountPool
@@ -98,9 +96,7 @@ func NewSender(ctx context.Context, vp *viper.Viper, privs []*ecdsa.PrivateKey) 
 		return nil, err
 	}
 
-	minBalance := vp.GetBigInt("min_balance")
-
-	auths, err := newAccountPool(ctx, minBalance, client, privs)
+	auths, err := newAccountPool(ctx, vp.GetBigInt("min_balance"), client, privs)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create account pool, err: %v", err)
 	}
@@ -113,9 +109,9 @@ func NewSender(ctx context.Context, vp *viper.Viper, privs []*ecdsa.PrivateKey) 
 
 	sender := &Sender{
 		ctx:           ctx,
+		vp:            vp,
 		client:        client,
 		chainID:       chainID,
-		vp:            vp,
 		auths:         auths,
 		confirmCh:     make(chan *Confirmation, 128),
 		blockNumber:   header.Number.Uint64(),
@@ -153,8 +149,7 @@ func (s *Sender) getFeeData(auth *bind.TransactOpts, target *common.Address, val
 	}
 	gasLimit = gasLimit * 15 / 10 // 50% extra gas to void out of gas error
 	// @todo change it when Scroll enable EIP1559
-	txType := s.vp.GetString("tx_type")
-	if txType != DynamicFeeTxType {
+	if s.vp.GetString("tx_type") != DynamicFeeTxType {
 		// estimate gas price
 		var gasPrice *big.Int
 		gasPrice, err = s.client.SuggestGasPrice(s.ctx)
@@ -236,8 +231,7 @@ func (s *Sender) createAndSendTx(auth *bind.TransactOpts, feeData *FeeData, targ
 	}
 
 	// lock here to avoit blocking when call `SuggestGasPrice`
-	txType := s.vp.GetString("tx_type")
-	switch txType {
+	switch s.vp.GetString("tx_type") {
 	case LegacyTxType:
 		// for ganache mock node
 		txData = &types.LegacyTx{
@@ -310,8 +304,7 @@ func (s *Sender) resubmitTransaction(feeData *FeeData, auth *bind.TransactOpts, 
 	escalateMultipleDen := new(big.Int).SetUint64(uint64(s.vp.GetInt("escalate_multiple_den")))
 	maxGasPrice := s.vp.GetBigInt("max_gas_price")
 
-	txType := s.vp.GetString("tx_type")
-	switch txType {
+	switch s.vp.GetString("tx_type") {
 	case LegacyTxType, AccessListTxType: // `LegacyTxType`is for ganache mock node
 		gasPrice := escalateMultipleNum.Mul(escalateMultipleNum, big.NewInt(feeData.gasPrice.Int64()))
 		gasPrice = gasPrice.Div(gasPrice, escalateMultipleDen)

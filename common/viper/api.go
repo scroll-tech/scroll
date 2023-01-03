@@ -124,7 +124,7 @@ func (v *Viper) GetAddress(key string) common.Address {
 func (v *Viper) GetBigInt(key string) *big.Int {
 	ret, failed := new(big.Int).SetString(v.GetString(key), 10)
 	if !failed {
-		ret, _ = new(big.Int).SetString("100000000000000000000", 10)
+		ret = big.NewInt(0)
 	}
 	return ret
 }

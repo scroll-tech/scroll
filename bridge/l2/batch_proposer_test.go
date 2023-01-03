@@ -47,7 +47,7 @@ func testBatchProposer(t *testing.T) {
 	tmpVP.Set("batch_tx_num_threshold", 135)
 	tmpVP.Set("batch_time_sec", 1)
 	tmpVP.Set("batch_blocks_limit", 100)
-	proposer := newBatchProposer(db, tmpVP)
+	proposer := newBatchProposer(tmpVP, db)
 	assert.NoError(t, proposer.tryProposeBatch())
 
 	infos, err := db.GetUnbatchedBlocks(map[string]interface{}{},

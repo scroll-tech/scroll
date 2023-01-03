@@ -38,8 +38,7 @@ func setupEnv(t *testing.T) (err error) {
 	vp.Set("l2_config.endpoint", l2gethImg.Endpoint())
 
 	// Create db container.
-	driverName := vp.Sub("db_config").GetString("driver_name")
-	dbImg = docker.NewTestDBDocker(t, driverName)
+	dbImg = docker.NewTestDBDocker(t, vp.Sub("db_config").GetString("driver_name"))
 	vp.Set("db_config.dsn", dbImg.Endpoint())
 
 	// Create l2geth client.

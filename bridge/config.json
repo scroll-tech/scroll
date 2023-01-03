@@ -30,7 +30,7 @@
     "confirmations": 1,
     "contract_events_blocks_fetch_limit": 30,
     "watcher_time_sec": 3,
-    "block_traces_fetch_limit": 50,
+    "block_traces_fetch_limit": 10,
     "endpoint": "/var/lib/jenkins/workspace/SequencerPipeline/MyPrivateNetwork/geth.ipc",
     "l2_messenger_address": "0x0000000000000000000000000000000000000000",
     "relayer_config": {

@@ -44,7 +44,8 @@ func init() {
 func action(ctx *cli.Context) error {
 	// Load config file.
 	cfgFile := ctx.String(utils.ConfigFileFlag.Name)
-	vp, err := viper.NewViper(cfgFile, utils.ApolloConfigFlag.Name) // config name: bridge_config
+	remoteCfgName := ctx.String(utils.ApolloConfigFlag.Name) // config name: bridge_config
+	vp, err := viper.NewViper(cfgFile, remoteCfgName)
 	if err != nil {
 		log.Crit("failed to load config file", "config file", cfgFile, "error", err)
 	}
@@ -60,11 +61,11 @@ func action(ctx *cli.Context) error {
 		l2Backend *l2.Backend
 	)
 	// @todo change nil to actual client after https://scroll-tech/bridge/pull/40 merged
-	l1Backend, err = l1.New(ctx.Context, ormFactory, vp.Sub("l1_config"))
+	l1Backend, err = l1.New(ctx.Context, vp.Sub("l1_config"), ormFactory)
 	if err != nil {
 		return err
 	}
-	l2Backend, err = l2.New(ctx.Context, ormFactory, vp.Sub("l2_config"))
+	l2Backend, err = l2.New(ctx.Context, vp.Sub("l2_config"), ormFactory)
 	if err != nil {
 		return err
 	}

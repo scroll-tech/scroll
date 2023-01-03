@@ -4,6 +4,7 @@ assets/seed
 coverage.*txt
 build/bin
 scroll-apollo*
+keystore.json
 
 # misc
 sftp-config.json

@@ -12,8 +12,7 @@ import (
 
 	"scroll-tech/common/utils"
 	"scroll-tech/common/version"
-
-	"scroll-tech/roller/config"
+	"scroll-tech/common/viper"
 )
 
 var app *cli.App
@@ -36,13 +35,13 @@ func init() {
 func action(ctx *cli.Context) error {
 	// Load config file.
 	cfgFile := ctx.String(utils.ConfigFileFlag.Name)
-	cfg, err := config.NewConfig(cfgFile)
+	vp, err := viper.NewViper(cfgFile, "") // no remote config for roller
 	if err != nil {
 		log.Crit("failed to load config file", "config file", cfgFile, "error", err)
 	}
 
 	// Create roller
-	r, err := roller.NewRoller(cfg)
+	r, err := roller.NewRoller(vp)
 	if err != nil {
 		return err
 	}
@@ -50,7 +49,8 @@ func action(ctx *cli.Context) error {
 	r.Start()
 
 	defer r.Stop()
-	log.Info("roller start successfully", "name", cfg.RollerName, "publickey", r.PublicKey(), "version", version.Version)
+	rollerName := vp.GetString("roller_name")
+	log.Info("roller start successfully", "name", rollerName, "publickey", r.PublicKey(), "version", version.Version)
 
 	// Catch CTRL-C to ensure a graceful shutdown.
 	interrupt := make(chan os.Signal, 1)

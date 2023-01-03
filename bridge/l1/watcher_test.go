@@ -23,7 +23,7 @@ func testStartWatcher(t *testing.T) {
 	client, err := ethclient.Dial(l1gethImg.Endpoint())
 	assert.NoError(t, err)
 
-	watcher := l1.NewWatcher(context.Background(), client, db, vp.Sub("l2_config"))
+	watcher := l1.NewWatcher(context.Background(), client, vp.Sub("l1_config"), db)
 	watcher.Start()
 	defer watcher.Stop()
 }

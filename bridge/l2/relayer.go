@@ -3,6 +3,7 @@ package l2
 import (
 	"context"
 	"errors"
+	"fmt"
 	"math/big"
 	"time"
 
@@ -59,16 +60,15 @@ type Layer2Relayer struct {
 // NewLayer2Relayer will return a new instance of Layer2RelayerClient
 func NewLayer2Relayer(ctx context.Context, ethClient *ethclient.Client, db database.OrmFactory, vp *viper.Viper) (*Layer2Relayer, error) {
 	// @todo use different sender for relayer, block commit and proof finalize
-	senderConfig := vp.Sub("sender_config")
 	messageSenderPrivateKeys := vp.GetECDSAKeys("message_sender_private_keys")
 	rollupSenderPrivateKeys := vp.GetECDSAKeys("rollup_sender_private_keys")
-	messageSender, err := sender.NewSender(ctx, senderConfig, messageSenderPrivateKeys)
+	messageSender, err := sender.NewSender(ctx, vp.Sub("sender_config"), messageSenderPrivateKeys)
 	if err != nil {
 		log.Error("Failed to create messenger sender", "err", err)
 		return nil, err
 	}
 
-	rollupSender, err := sender.NewSender(ctx, senderConfig, rollupSenderPrivateKeys)
+	rollupSender, err := sender.NewSender(ctx, vp.Sub("sender_config"), rollupSenderPrivateKeys)
 	if err != nil {
 		log.Error("Failed to create rollup sender", "err", err)
 		return nil, err
@@ -369,6 +369,11 @@ func (r *Layer2Relayer) Start() {
 	go func() {
 		// trigger by timer
 		relayerLoopTimeSec := r.vp.GetInt("relayer_loop_time_sec")
+		fmt.Println("l2 relayer loop time", relayerLoopTimeSec)
+		fmt.Println("l2 relayer loop time", relayerLoopTimeSec)
+		fmt.Println("l2 relayer loop time", relayerLoopTimeSec)
+		fmt.Println("l2 relayer loop time", relayerLoopTimeSec)
+		fmt.Println("l2 relayer loop time", relayerLoopTimeSec)
 		ticker := time.NewTicker(time.Duration(relayerLoopTimeSec) * time.Second)
 		defer ticker.Stop()
 

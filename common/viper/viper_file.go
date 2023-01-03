@@ -155,8 +155,8 @@ func syncApolloRemoteConfig(remoteCfg string, vp *Viper) {
 
 	for {
 		cfgStr := agolloClient.GetStringValue(remoteCfg, "")
-		if err := vp.ReadConfig(bytes.NewReader([]byte(cfgStr))); err != nil {
-			log.Error("config", cfgStr, "err", err)
+		if err := vp.ReadConfig(bytes.NewReader([]byte(cfgStr))); err != nil || cfgStr == "" {
+			log.Error("ReadConfig fail", "config", cfgStr, "err", err)
 			<-time.After(time.Second * 3)
 			continue
 		}

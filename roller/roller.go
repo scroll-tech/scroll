@@ -18,10 +18,10 @@ import (
 	"scroll-tech/common/message"
 	"scroll-tech/common/utils"
 	"scroll-tech/common/version"
+	"scroll-tech/common/viper"
 
 	"scroll-tech/coordinator/client"
 
-	"scroll-tech/roller/config"
 	"scroll-tech/roller/prover"
 	"scroll-tech/roller/store"
 )
@@ -35,7 +35,7 @@ var (
 
 // Roller contains websocket conn to coordinator, Stack, unix-socket to ipc-prover.
 type Roller struct {
-	cfg      *config.Config
+	vp       *viper.Viper
 	client   *client.Client
 	stack    *store.Stack
 	prover   *prover.Prover
@@ -49,36 +49,40 @@ type Roller struct {
 }
 
 // NewRoller new a Roller object.
-func NewRoller(cfg *config.Config) (*Roller, error) {
+func NewRoller(vp *viper.Viper) (*Roller, error) {
 	// load or create wallet
-	priv, err := utils.LoadOrCreateKey(cfg.KeystorePath, cfg.KeystorePassword)
+	keystorePath := vp.GetString("keystore_path")
+	keystorePassword := vp.GetString("keystore_password")
+	priv, err := utils.LoadOrCreateKey(keystorePath, keystorePassword)
 	if err != nil {
 		return nil, err
 	}
 
 	// Get stack db handler
-	stackDb, err := store.NewStack(cfg.DBPath)
+	dbPath := vp.GetString("db_path")
+	stackDB, err := store.NewStack(dbPath)
 	if err != nil {
 		return nil, err
 	}
 
 	// Create prover instance
 	log.Info("init prover")
-	newProver, err := prover.NewProver(cfg.Prover)
+	newProver, err := prover.NewProver(vp.Sub("prover"))
 	if err != nil {
 		return nil, err
 	}
 	log.Info("init prover successfully!")
 
-	rClient, err := client.Dial(cfg.CoordinatorURL)
+	coordinatorURL := vp.GetString("coordinator_url")
+	rClient, err := client.Dial(coordinatorURL)
 	if err != nil {
 		return nil, err
 	}
 
 	return &Roller{
-		cfg:      cfg,
+		vp:       vp,
 		client:   rClient,
-		stack:    stackDb,
+		stack:    stackDB,
 		prover:   newProver,
 		sub:      nil,
 		taskChan: make(chan *message.TaskMsg, 10),
@@ -108,7 +112,7 @@ func (r *Roller) Start() {
 func (r *Roller) Register() error {
 	authMsg := &message.AuthMsg{
 		Identity: &message.Identity{
-			Name:      r.cfg.RollerName,
+			Name:      r.vp.GetString("roller_name"),
 			Timestamp: time.Now().UnixMilli(),
 			PublicKey: r.PublicKey(),
 			Version:   version.Version,
@@ -122,12 +126,12 @@ func (r *Roller) Register() error {
 	token, err := r.client.RequestToken(context.Background(), authMsg)
 	if err != nil {
 		return fmt.Errorf("request token failed %v", err)
-	} else {
-		authMsg.Identity.Token = token
 	}
 
+	authMsg.Identity.Token = token
+
 	// Sign auth message
-	if err := authMsg.Sign(r.priv); err != nil {
+	if err = authMsg.Sign(r.priv); err != nil {
 		return fmt.Errorf("sign auth message failed %v", err)
 	}
 

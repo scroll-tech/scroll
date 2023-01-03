@@ -6,18 +6,17 @@ import (
 	"github.com/scroll-tech/go-ethereum/core/types"
 
 	"scroll-tech/common/message"
-
-	"scroll-tech/roller/config"
+	"scroll-tech/common/viper"
 )
 
 // Prover sends block-traces to rust-prover through socket and get back the zk-proof.
 type Prover struct {
-	cfg *config.ProverConfig
+	vp *viper.Viper
 }
 
 // NewProver inits a Prover object.
-func NewProver(cfg *config.ProverConfig) (*Prover, error) {
-	return &Prover{cfg: cfg}, nil
+func NewProver(vp *viper.Viper) (*Prover, error) {
+	return &Prover{vp: vp}, nil
 }
 
 // Prove call rust ffi to generate proof, if first failed, try again.

@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"crypto/rand"
-	"encoding/json"
 	"fmt"
 	"math/big"
 	"os"
@@ -27,8 +26,6 @@ import (
 	"scroll-tech/common/viper"
 
 	_ "scroll-tech/coordinator/cmd/app"
-
-	rollerConfig "scroll-tech/roller/config"
 )
 
 var (
@@ -183,23 +180,19 @@ func mockDatabaseConfig(t *testing.T) string {
 }
 
 func mockRollerConfig(t *testing.T) string {
-	cfg, err := rollerConfig.NewConfig("../../roller/config.json")
+	vp, err := viper.NewViper("../../roller/config.json", "")
 	assert.NoError(t, err)
-	cfg.CoordinatorURL = fmt.Sprintf("ws://localhost:%d", wsPort)
+	vp.Set("coordinator_url", fmt.Sprintf("ws://localhost:%d", wsPort))
 
 	// Reuse l1geth's keystore file
-	cfg.KeystorePath = "../../common/docker/l1geth/genesis-keystore"
-	cfg.KeystorePassword = "scrolltest"
+	vp.Set("keystorePath", "../../common/docker/l1geth/genesis-keystore")
+	vp.Set("keystorePassword", "scrolltest")
 
-	bboltDB = fmt.Sprintf("/tmp/%d_bbolt_db", timestamp)
-	cfg.DBPath = bboltDB
-
-	data, err := json.Marshal(cfg)
-	assert.NoError(t, err)
+	bboltDB = fmt.Sprintf("/tmp/%d_bbolt_db", timestamp) // abs path
+	vp.Set("db_path", bboltDB)
 
 	file := fmt.Sprintf("/tmp/%d_roller-config.json", timestamp)
-	err = os.WriteFile(file, data, 0644)
-	assert.NoError(t, err)
+	assert.NoError(t, vp.WriteConfigAs(file))
 
 	return file
 }

@@ -19,26 +19,25 @@ import (
 	"github.com/scroll-tech/go-ethereum/log"
 
 	"scroll-tech/common/message"
-
-	"scroll-tech/roller/config"
+	"scroll-tech/common/viper"
 )
 
 // Prover sends block-traces to rust-prover through ffi and get back the zk-proof.
 type Prover struct {
-	cfg *config.ProverConfig
+	vp *viper.Viper
 }
 
 // NewProver inits a Prover object.
-func NewProver(cfg *config.ProverConfig) (*Prover, error) {
-	paramsPathStr := C.CString(cfg.ParamsPath)
-	seedPathStr := C.CString(cfg.SeedPath)
+func NewProver(vp *viper.Viper) (*Prover, error) {
+	paramsPathStr := C.CString(vp.GetString("params_path"))
+	seedPathStr := C.CString(vp.GetString("seed_path"))
 	defer func() {
 		C.free(unsafe.Pointer(paramsPathStr))
 		C.free(unsafe.Pointer(seedPathStr))
 	}()
 	C.init_prover(paramsPathStr, seedPathStr)
 
-	return &Prover{cfg: cfg}, nil
+	return &Prover{vp: vp}, nil
 }
 
 // Prove call rust ffi to generate proof, if first failed, try again.

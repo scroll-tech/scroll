@@ -18,7 +18,7 @@ type batchProposer struct {
 	vp    *viper.Viper
 }
 
-func newBatchProposer(orm database.OrmFactory, vp *viper.Viper) *batchProposer {
+func newBatchProposer(vp *viper.Viper, orm database.OrmFactory) *batchProposer {
 	return &batchProposer{
 		mutex: sync.Mutex{},
 		orm:   orm,
@@ -43,12 +43,12 @@ func (w *batchProposer) tryProposeBatch() error {
 	}
 
 	batchGasThreshold := uint64(w.vp.GetInt("batch_gas_threshold"))
-	batchTxNumThreshold := uint64(w.vp.GetInt("batch_tx_num_threshold"))
 	if blocks[0].GasUsed > batchGasThreshold {
 		log.Warn("gas overflow even for only 1 block", "height", blocks[0].Number, "gas", blocks[0].GasUsed)
 		return w.createBatchForBlocks(blocks[:1])
 	}
 
+	batchTxNumThreshold := uint64(w.vp.GetInt("batch_tx_num_threshold"))
 	if blocks[0].TxNum > batchTxNumThreshold {
 		log.Warn("too many txs even for only 1 block", "height", blocks[0].Number, "tx_num", blocks[0].TxNum)
 		return w.createBatchForBlocks(blocks[:1])

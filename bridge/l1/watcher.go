@@ -55,7 +55,7 @@ type Watcher struct {
 
 // NewWatcher returns a new instance of Watcher. The instance will be not fully prepared,
 // and still needs to be finalized and ran by calling `watcher.Start`.
-func NewWatcher(ctx context.Context, client *ethclient.Client, db database.OrmFactory, vp *viper.Viper) *Watcher {
+func NewWatcher(ctx context.Context, client *ethclient.Client, vp *viper.Viper, db database.OrmFactory) *Watcher {
 	savedHeight, err := db.GetLayer1LatestWatchedHeight()
 	if err != nil {
 		log.Warn("Failed to fetch height from db", "err", err)
@@ -116,9 +116,8 @@ func (w *Watcher) Stop() {
 
 // FetchContractEvent pull latest event logs from given contract address and save in DB
 func (w *Watcher) fetchContractEvent(blockHeight uint64) error {
-	confirmations := uint64(w.vp.GetInt64("confirmations"))
 	fromBlock := int64(w.processedMsgHeight) + 1
-	toBlock := int64(blockHeight) - int64(confirmations)
+	toBlock := int64(blockHeight) - w.vp.GetInt64("confirmations")
 
 	if toBlock < fromBlock {
 		return nil

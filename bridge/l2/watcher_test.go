@@ -14,8 +14,6 @@ import (
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/stretchr/testify/assert"
 
-	"scroll-tech/common/viper"
-
 	"scroll-tech/bridge/mock_bridge"
 	"scroll-tech/bridge/sender"
 
@@ -31,15 +29,13 @@ func testCreateNewWatcherAndStop(t *testing.T) {
 	assert.NoError(t, migrate.ResetDB(l2db.GetDB().DB))
 	defer l2db.Close()
 
-	rc := NewL2WatcherClient(context.Background(), l2Cli, l2db, vp.Sub("l2_config"))
+	rc := NewL2WatcherClient(context.Background(), l2Cli, vp.Sub("l2_config"), l2db)
 	rc.Start()
 	defer rc.Stop()
 
 	messageSenderPrivateKeys := vp.Sub("l2_config.relayer_config").GetECDSAKeys("message_sender_private_keys")
-
-	senderCfg := vp.Sub("l1_config.relayer_config.sender_config")
-	senderCfg.Set("confirmations", 0)
-	newSender, err := sender.NewSender(context.Background(), senderCfg, messageSenderPrivateKeys)
+	vp.Set("l1_config.relayer_config.sender_config.confirmations", 0)
+	newSender, err := sender.NewSender(context.Background(), vp.Sub("l1_config.relayer_config.sender_config"), messageSenderPrivateKeys)
 	assert.NoError(t, err)
 
 	// Create several transactions and commit to block
@@ -75,9 +71,7 @@ func testMonitorBridgeContract(t *testing.T) {
 	address, err := bind.WaitDeployed(context.Background(), l2Cli, tx)
 	assert.NoError(t, err)
 
-	vp.Set("l2_config.l2_messenger_address", address.String())
-	vp.Set("l2_config.confirmations", 0)
-	rc := prepareRelayerClient(l2Cli, db, vp.Sub("l2_config"))
+	rc := prepareRelayerClient(l2Cli, db, address)
 	rc.Start()
 	defer rc.Stop()
 
@@ -137,8 +131,7 @@ func testFetchMultipleSentMessageInOneBlock(t *testing.T) {
 	address, err := bind.WaitDeployed(context.Background(), l2Cli, trx)
 	assert.NoError(t, err)
 
-	vp.Set("l2_config.l2_messenger_address", address.String())
-	rc := prepareRelayerClient(l2Cli, db, vp.Sub("l2_config"))
+	rc := prepareRelayerClient(l2Cli, db, address)
 	rc.Start()
 	defer rc.Stop()
 
@@ -189,8 +182,10 @@ func testFetchMultipleSentMessageInOneBlock(t *testing.T) {
 	assert.Equal(t, 5, len(msgs))
 }
 
-func prepareRelayerClient(l2Cli *ethclient.Client, db database.OrmFactory, vp *viper.Viper) *WatcherClient {
-	return NewL2WatcherClient(context.Background(), l2Cli, db, vp)
+func prepareRelayerClient(l2Cli *ethclient.Client, db database.OrmFactory, contractAddr common.Address) *WatcherClient {
+	vp.Set("l2_config.confirmations", 0)
+	vp.Set("l2_config.l2_messenger_address", contractAddr)
+	return NewL2WatcherClient(context.Background(), l2Cli, vp.Sub("l2_config"), db)
 }
 
 func prepareAuth(t *testing.T, l2Cli *ethclient.Client, privateKey *ecdsa.PrivateKey) *bind.TransactOpts {

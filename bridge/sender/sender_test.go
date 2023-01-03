@@ -27,8 +27,8 @@ const TX_BATCH = 50
 
 var (
 	privateKeys []*ecdsa.PrivateKey
-	l2gethImg   docker.ImgInstance
 	vp          *viper.Viper
+	l2gethImg   docker.ImgInstance
 )
 
 func setupEnv(t *testing.T) {
@@ -43,6 +43,7 @@ func setupEnv(t *testing.T) {
 	privateKeys = []*ecdsa.PrivateKey{priv}
 
 	l2gethImg = docker.NewTestL2Docker(t)
+	vp.Set("l1_config.relayer_config.sender_config.endpoint", l2gethImg.Endpoint())
 }
 
 func TestSender(t *testing.T) {
@@ -69,7 +70,6 @@ func testBatchSender(t *testing.T, batchSize int) {
 	}
 
 	senderCfg := vp.Sub("l1_config.relayer_config.sender_config")
-	senderCfg.Set("endpoint", l2gethImg.Endpoint())
 	senderCfg.Set("confirmations", 0)
 	newSender, err := sender.NewSender(context.Background(), senderCfg, privateKeys)
 	if err != nil {
