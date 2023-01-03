@@ -6,7 +6,6 @@ import (
 	"testing"
 	"time"
 
-	originVP "github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 
 	config "scroll-tech/common/apollo"
@@ -14,8 +13,9 @@ import (
 )
 
 func TestViper(t *testing.T) {
-	vp, err := viper.NewViper("../../bridge/config.json", "")
-	assert.NoError(t, err)
+	vp := viper.New()
+	vp.SetConfigFile("../../bridge/config.json")
+	assert.NoError(t, vp.ReadInFile())
 
 	sb := vp.Sub("l2_config.relayer_config.sender_config")
 	assert.Equal(t, 10, sb.GetInt("check_pending_time_sec"))
@@ -58,22 +58,20 @@ func TestViper(t *testing.T) {
 
 func TestApolloFlush(t *testing.T) {
 	agolloClient := config.MustInitApollo()
-	cfgStr := agolloClient.GetStringValue("bridge_config", "")
 
-	origin := originVP.New()
-	origin.SetConfigType("json")
-	assert.NoError(t, origin.ReadConfig(bytes.NewBuffer([]byte(cfgStr))))
-	assert.Equal(t, "apollo", origin.GetString("config_type"))
-
-	vp, err := viper.NewViper("../../bridge/config.json", "")
-	assert.NoError(t, err)
+	vp := viper.New()
+	vp.SetConfigFile("../../bridge/config.json")
+	assert.NoError(t, vp.ReadInFile())
 	l2Sender := vp.Sub("l2_config.relayer_config.sender_config")
 	l2Relayer := vp.Sub("l2_config.relayer_config")
+
 	for i := 0; i < 3; i++ {
 		t.Log("tx type: ", l2Sender.GetString("tx_type"))
 		t.Log("confirmations: ", l2Sender.GetInt("confirmations"))
 		t.Log("rollup contract address: ", l2Relayer.GetString("rollup_contract_address"))
-		vp.Flush(origin)
+
+		cfgStr := agolloClient.GetStringValue("bridge_config", "")
+		assert.NoError(t, vp.ReadConfig(bytes.NewReader([]byte(cfgStr))))
 		<-time.After(time.Second * 3)
 	}
 }
