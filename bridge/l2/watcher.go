@@ -125,7 +125,7 @@ func (w *WatcherClient) Stop() {
 	w.stopCh <- struct{}{}
 }
 
-const blockTracesFetchLimit = uint64(50)
+const blockTracesFetchLimit = uint64(10)
 
 // try fetch missing blocks if inconsistent
 func (w *WatcherClient) tryFetchRunningMissingBlocks(ctx context.Context, backTrackFrom uint64) error {
@@ -141,29 +141,15 @@ func (w *WatcherClient) tryFetchRunningMissingBlocks(ctx context.Context, backTr
 		backTrackTo = uint64(heightInDB)
 	}
 
-	// note that backTrackFrom >= backTrackTo because we are doing backtracking
-	type group struct {
-		from uint64 // inclusive
-		to   uint64 // exclusive
-	}
-	groups := []group{}
-	for i := uint64(0); i < (backTrackFrom-backTrackTo)/blockTracesFetchLimit; i++ {
-		groups = append(groups, group{
-			to:   backTrackTo + i*blockTracesFetchLimit,
-			from: backTrackTo + (i+1)*blockTracesFetchLimit,
-		})
-	}
-	if (backTrackFrom-backTrackTo)%blockTracesFetchLimit != 0 {
-		groups = append(groups, group{
-			to:   backTrackTo + uint64(len(groups))*blockTracesFetchLimit,
-			from: backTrackFrom,
-		})
-	}
+	for from := backTrackFrom; from > backTrackTo; from -= blockTracesFetchLimit {
+		to := from - blockTracesFetchLimit
 
-	// start backtracking
-	for _, group := range groups {
+		if to < backTrackTo {
+			to = backTrackTo
+		}
+
 		var traces []*types.BlockTrace
-		for number := group.from; number > group.to; number-- {
+		for number := from; number > to; number-- {
 			log.Debug("retrieving block trace", "height", number)
 			trace, err2 := w.GetBlockTraceByNumber(ctx, big.NewInt(int64(number)))
 			if err2 != nil {
@@ -172,14 +158,15 @@ func (w *WatcherClient) tryFetchRunningMissingBlocks(ctx context.Context, backTr
 			log.Info("retrieved block trace", "height", trace.Header.Number, "hash", trace.Header.Hash().String())
 
 			traces = append(traces, trace)
-		}
 
+		}
 		if len(traces) > 0 {
 			if err = w.orm.InsertBlockTraces(traces); err != nil {
 				return fmt.Errorf("failed to batch insert BlockTraces: %v", err)
 			}
 		}
 	}
+
 	return nil
 }
 
@@ -187,35 +174,24 @@ const contractEventsBlocksFetchLimit = int64(30)
 
 // FetchContractEvent pull latest event logs from given contract address and save in DB
 func (w *WatcherClient) fetchContractEvent(blockHeight uint64) error {
+	defer func() {
+		log.Info("l2 watcher fetchContractEvent", "w.processedMsgHeight", w.processedMsgHeight)
+	}()
+
 	fromBlock := int64(w.processedMsgHeight) + 1
 	toBlock := int64(blockHeight)
-	if toBlock < fromBlock {
-		return nil
-	}
 
-	type group struct {
-		from int64 // inclusive
-		to   int64 // inclusive
-	}
-	groups := []group{}
-	for i := int64(0); i < (toBlock-fromBlock+1)/contractEventsBlocksFetchLimit; i++ {
-		groups = append(groups, group{
-			from: fromBlock + i*contractEventsBlocksFetchLimit,
-			to:   fromBlock + (i+1)*contractEventsBlocksFetchLimit - 1,
-		})
-	}
-	if (toBlock-fromBlock+1)%contractEventsBlocksFetchLimit != 0 {
-		groups = append(groups, group{
-			from: fromBlock + int64(len(groups))*contractEventsBlocksFetchLimit,
-			to:   toBlock,
-		})
-	}
+	for from := fromBlock; from <= toBlock; from += contractEventsBlocksFetchLimit {
+		to := from + contractEventsBlocksFetchLimit - 1
 
-	for _, group := range groups {
+		if to > toBlock {
+			to = toBlock
+		}
+
 		// warning: uint int conversion...
 		query := geth.FilterQuery{
-			FromBlock: big.NewInt(group.from), // inclusive
-			ToBlock:   big.NewInt(group.to),   // inclusive
+			FromBlock: big.NewInt(from), // inclusive
+			ToBlock:   big.NewInt(to),   // inclusive
 			Addresses: []common.Address{
 				w.messengerAddress,
 			},
@@ -232,13 +208,10 @@ func (w *WatcherClient) fetchContractEvent(blockHeight uint64) error {
 			return err
 		}
 		if len(logs) == 0 {
-			w.processedMsgHeight = uint64(group.to)
-			log.Info("l2 watcher fetchContractEvent", "w.processedMsgHeight", w.processedMsgHeight)
-			return nil
+			w.processedMsgHeight = uint64(to)
+			continue
 		}
-		log.Info("received new L2 messages",
-			"fromBlock", group.from, "toBlock", group.to,
-			"cnt", len(logs))
+		log.Info("received new L2 messages", "fromBlock", from, "toBlock", to, "cnt", len(logs))
 
 		sentMessageEvents, relayedMessageEvents, err := w.parseBridgeEventLogs(logs)
 		if err != nil {
@@ -266,8 +239,7 @@ func (w *WatcherClient) fetchContractEvent(blockHeight uint64) error {
 			return err
 		}
 
-		w.processedMsgHeight = uint64(group.to)
-		log.Info("l2 watcher fetchContractEvent", "w.processedMsgHeight", w.processedMsgHeight)
+		w.processedMsgHeight = uint64(to)
 	}
 
 	return nil

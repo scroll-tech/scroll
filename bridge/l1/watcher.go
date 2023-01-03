@@ -109,39 +109,28 @@ func (w *Watcher) Stop() {
 	w.stop <- true
 }
 
-const contractEventsBlocksFetchLimit = int64(30)
+const contractEventsBlocksFetchLimit = int64(10)
 
 // FetchContractEvent pull latest event logs from given contract address and save in DB
 func (w *Watcher) fetchContractEvent(blockHeight uint64) error {
+	defer func() {
+		log.Info("l1 watcher fetchContractEvent", "w.processedMsgHeight", w.processedMsgHeight)
+	}()
+
 	fromBlock := int64(w.processedMsgHeight) + 1
 	toBlock := int64(blockHeight) - int64(w.confirmations)
-	if toBlock < fromBlock {
-		return nil
-	}
 
-	type group struct {
-		from int64 // inclusive
-		to   int64 // inclusive
-	}
-	groups := []group{}
-	for i := int64(0); i < (toBlock-fromBlock+1)/contractEventsBlocksFetchLimit; i++ {
-		groups = append(groups, group{
-			from: fromBlock + i*contractEventsBlocksFetchLimit,
-			to:   fromBlock + (i+1)*contractEventsBlocksFetchLimit - 1,
-		})
-	}
-	if (toBlock-fromBlock+1)%contractEventsBlocksFetchLimit != 0 {
-		groups = append(groups, group{
-			from: fromBlock + int64(len(groups))*contractEventsBlocksFetchLimit,
-			to:   toBlock,
-		})
-	}
+	for from := fromBlock; from <= toBlock; from += contractEventsBlocksFetchLimit {
+		to := from + contractEventsBlocksFetchLimit - 1
 
-	for _, group := range groups {
+		if to > toBlock {
+			to = toBlock
+		}
+
 		// warning: uint int conversion...
 		query := geth.FilterQuery{
-			FromBlock: big.NewInt(group.from), // inclusive
-			ToBlock:   big.NewInt(group.to),   // inclusive
+			FromBlock: big.NewInt(from), // inclusive
+			ToBlock:   big.NewInt(to),   // inclusive
 			Addresses: []common.Address{
 				w.messengerAddress,
 				w.rollupAddress,
@@ -161,12 +150,10 @@ func (w *Watcher) fetchContractEvent(blockHeight uint64) error {
 			return err
 		}
 		if len(logs) == 0 {
-			w.processedMsgHeight = uint64(group.to)
-			log.Info("l1 watcher fetchContractEvent", "w.processedMsgHeight", w.processedMsgHeight)
-			return nil
+			w.processedMsgHeight = uint64(to)
+			continue
 		}
-		log.Info("Received new L1 messages", "fromBlock", group.from, "toBlock", group.to,
-			"cnt", len(logs))
+		log.Info("Received new L1 messages", "fromBlock", from, "toBlock", to, "cnt", len(logs))
 
 		sentMessageEvents, relayedMessageEvents, rollupEvents, err := w.parseBridgeEventLogs(logs)
 		if err != nil {
@@ -225,8 +212,7 @@ func (w *Watcher) fetchContractEvent(blockHeight uint64) error {
 			return err
 		}
 
-		w.processedMsgHeight = uint64(group.to)
-		log.Info("l1 watcher fetchContractEvent", "w.processedMsgHeight", w.processedMsgHeight)
+		w.processedMsgHeight = uint64(to)
 	}
 
 	return nil
