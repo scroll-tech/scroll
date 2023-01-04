@@ -51,16 +51,13 @@ type Roller struct {
 // NewRoller new a Roller object.
 func NewRoller(vp *viper.Viper) (*Roller, error) {
 	// load or create wallet
-	keystorePath := vp.GetString("keystore_path")
-	keystorePassword := vp.GetString("keystore_password")
-	priv, err := utils.LoadOrCreateKey(keystorePath, keystorePassword)
+	priv, err := utils.LoadOrCreateKey(vp.GetString("keystore_path"), vp.GetString("keystore_password"))
 	if err != nil {
 		return nil, err
 	}
 
 	// Get stack db handler
-	dbPath := vp.GetString("db_path")
-	stackDB, err := store.NewStack(dbPath)
+	stackDB, err := store.NewStack(vp.GetString("db_path"))
 	if err != nil {
 		return nil, err
 	}
@@ -73,8 +70,7 @@ func NewRoller(vp *viper.Viper) (*Roller, error) {
 	}
 	log.Info("init prover successfully!")
 
-	coordinatorURL := vp.GetString("coordinator_url")
-	rClient, err := client.Dial(coordinatorURL)
+	rClient, err := client.Dial(vp.GetString("coordinator_url"))
 	if err != nil {
 		return nil, err
 	}
@@ -127,7 +123,6 @@ func (r *Roller) Register() error {
 	if err != nil {
 		return fmt.Errorf("request token failed %v", err)
 	}
-
 	authMsg.Identity.Token = token
 
 	// Sign auth message

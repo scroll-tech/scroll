@@ -33,17 +33,13 @@ type ormFactory struct {
 // NewOrmFactory create an ormFactory factory include all ormFactory interface
 func NewOrmFactory(vp *viper.Viper) (OrmFactory, error) {
 	// Initialize sql/sqlx
-	driverName := vp.GetString("driver_name")
-	dsn := vp.GetString("dsn")
-	db, err := sqlx.Open(driverName, dsn)
+	db, err := sqlx.Open(vp.GetString("driver_name"), vp.GetString("dsn"))
 	if err != nil {
 		return nil, err
 	}
 
-	maxOpenNum := vp.GetInt("max_open_num")
-	maxIdleNum := vp.GetInt("max_idle_num")
-	db.SetMaxIdleConns(maxOpenNum)
-	db.SetMaxIdleConns(maxIdleNum)
+	db.SetMaxIdleConns(vp.GetInt("max_open_num"))
+	db.SetMaxIdleConns(vp.GetInt("max_idle_num"))
 	if err = db.Ping(); err != nil {
 		return nil, err
 	}

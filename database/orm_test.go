@@ -80,14 +80,13 @@ var (
 	}
 	blockTrace *types.BlockTrace
 
+	vp         *viper.Viper
 	dbImg      docker.ImgInstance
 	ormBlock   orm.BlockTraceOrm
 	ormLayer1  orm.L1MessageOrm
 	ormLayer2  orm.L2MessageOrm
 	ormBatch   orm.BlockBatchOrm
 	ormSession orm.SessionInfoOrm
-
-	vp *viper.Viper
 )
 
 func setupEnv(t *testing.T) error {
