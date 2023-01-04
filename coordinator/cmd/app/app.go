@@ -70,7 +70,7 @@ func action(ctx *cli.Context) error {
 		rollerManager.Stop()
 		err = ormFactory.Close()
 		if err != nil {
-			log.Error("can not close ormFactory", err)
+			log.Error("can not close ormFactory", "error", err)
 		}
 	}()
 
