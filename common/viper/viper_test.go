@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"math/big"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 
@@ -15,7 +16,7 @@ func TestViper(t *testing.T) {
 	assert.NoError(t, err)
 
 	sb := vp.Sub("l2_config.relayer_config.sender_config")
-	assert.Equal(t, 10, sb.GetInt("check_pending_time_sec"))
+	assert.Equal(t, 10*time.Minute, sb.GetDuration("check_balance_time_min"))
 	assert.Equal(t, "DynamicFeeTx", sb.GetString("tx_type"))
 
 	sb.Set("confirmations", 20)

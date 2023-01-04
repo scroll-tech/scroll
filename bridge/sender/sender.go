@@ -415,12 +415,10 @@ func (s *Sender) CheckPendingTransaction(header *types.Header) {
 
 // Loop is the main event loop
 func (s *Sender) loop(ctx context.Context) {
-	checkPendingTimeSec := s.vp.GetInt("check_pending_time_sec")
-	checkTick := time.NewTicker(time.Duration(checkPendingTimeSec) * time.Second)
+	checkTick := time.NewTicker(s.vp.GetDuration("check_pending_time_sec"))
 	defer checkTick.Stop()
 
-	checkBalanceTimeMin := s.vp.GetInt("check_balance_time_min")
-	checkBalanceTicker := time.NewTicker(time.Duration(checkBalanceTimeMin) * time.Minute)
+	checkBalanceTicker := time.NewTicker(s.vp.GetDuration("check_balance_time_min"))
 	defer checkBalanceTicker.Stop()
 
 	for {

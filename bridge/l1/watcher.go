@@ -88,8 +88,8 @@ func NewWatcher(ctx context.Context, client *ethclient.Client, vp *viper.Viper, 
 func (w *Watcher) Start() {
 	go func() {
 		// trigger by timer
-		watcherTimeSec := w.vp.GetInt("watcher_time_sec")
-		ticker := time.NewTicker(time.Duration(watcherTimeSec) * time.Second)
+		watcherTimeSec := w.vp.GetDuration("watcher_time_sec")
+		ticker := time.NewTicker(watcherTimeSec)
 		defer ticker.Stop()
 
 		for ; true; <-ticker.C {

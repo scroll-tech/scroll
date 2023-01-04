@@ -112,7 +112,7 @@ func runSender(t *testing.T, endpoint string) *sender.Sender {
 	assert.NoError(t, err)
 	vp := viper.New()
 	vp.Set("endpoint", endpoint)
-	vp.Set("check_pending_time_sec", 3)
+	vp.Set("check_pending_time_sec", "3s")
 	vp.Set("escalate_blocks", 100)
 	vp.Set("confirmations", 0)
 	vp.Set("escalate_multiple_num", 11)
