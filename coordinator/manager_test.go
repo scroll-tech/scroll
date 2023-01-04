@@ -32,8 +32,8 @@ import (
 )
 
 var (
-	dbImg docker.ImgInstance
 	vp    *viper.Viper
+	dbImg docker.ImgInstance
 )
 
 func randomURL() string {
@@ -41,27 +41,21 @@ func randomURL() string {
 	return fmt.Sprintf("localhost:%d", 10000+2000+id.Int64())
 }
 
-func setEnv(t *testing.T) {
+func setEnv(t *testing.T) (err error) {
 	// Load config.
-	var err error
 	vp, err = viper.NewViper("config.json", "")
 	assert.NoError(t, err)
 
-	// Set coordinator config.
-	vp.Set("roller_manager_config.rollers_per_session", 1)
-	vp.Set("roller_manager_config.verifier.mock_mode", true)
-	vp.Set("roller_manager_config.collection_time", 1)
-	vp.Set("roller_manager_config.token_time_to_live", 5)
-
 	// Create db container.
-	driverName := vp.GetString("db_config.driver_name")
-	dbImg = docker.NewTestDBDocker(t, driverName)
+	dbImg = docker.NewTestDBDocker(t, vp.GetString("db_config.driver_name"))
 	vp.Set("db_config.dsn", dbImg.Endpoint())
+
+	return
 }
 
 func TestApis(t *testing.T) {
 	// Set up the test environment.
-	setEnv(t)
+	assert.True(t, assert.NoError(t, setEnv(t)), "failed to setup the test environment.")
 
 	t.Run("TestHandshake", testHandshake)
 	t.Run("TestFailedHandshake", testFailedHandshake)
@@ -361,6 +355,12 @@ func setupCoordinator(t *testing.T, wsURL string) (rollerManager *coordinator.Ma
 	// Get db handler.
 	db, err := database.NewOrmFactory(vp.Sub("db_config"))
 	assert.True(t, assert.NoError(t, err), "failed to get db handler.")
+
+	// Set coordinator config.
+	vp.Set("roller_manager_config.rollers_per_session", 1)
+	vp.Set("roller_manager_config.verifier.mock_mode", true)
+	vp.Set("roller_manager_config.collection_time", 1)
+	vp.Set("roller_manager_config.token_time_to_live", 5)
 
 	rollerManager, err = coordinator.New(context.Background(), vp.Sub("roller_manager_config"), db, nil)
 	assert.NoError(t, err)
