@@ -136,34 +136,42 @@ func (w *WatcherClient) tryFetchRunningMissingBlocks(ctx context.Context, backTr
 	if err != nil {
 		return fmt.Errorf("failed to GetBlockTracesLatestHeight in DB: %v", err)
 	}
-	backTrackTo := uint64(0)
+
+	var backTrackTo uint64
 	if heightInDB > 0 {
 		backTrackTo = uint64(heightInDB)
 	}
-
-	for from := backTrackFrom; from > backTrackTo; from -= blockTracesFetchLimit {
-		to := from - blockTracesFetchLimit
-
-		if to < backTrackTo {
-			to = backTrackTo
+	for ; (backTrackFrom-backTrackTo)/blockTracesFetchLimit > 0; backTrackFrom -= blockTracesFetchLimit {
+		to := backTrackFrom - blockTracesFetchLimit
+		if err = w.insertBlockTraces(ctx, backTrackFrom, to); err != nil {
+			return err
 		}
+	}
 
-		var traces []*types.BlockTrace
-		for number := from; number > to; number-- {
-			log.Debug("retrieving block trace", "height", number)
-			trace, err2 := w.GetBlockTraceByNumber(ctx, big.NewInt(int64(number)))
-			if err2 != nil {
-				return fmt.Errorf("failed to GetBlockResultByHash: %v. number: %v", err2, number)
-			}
-			log.Info("retrieved block trace", "height", trace.Header.Number, "hash", trace.Header.Hash().String())
+	if backTrackFrom > backTrackTo {
+		return w.insertBlockTraces(ctx, backTrackFrom, backTrackTo)
+	}
 
-			traces = append(traces, trace)
+	return nil
+}
 
+func (w *WatcherClient) insertBlockTraces(ctx context.Context, from, to uint64) error {
+	var traces []*types.BlockTrace
+
+	for number := from; number > to; number-- {
+		log.Debug("retrieving block trace", "height", number)
+		trace, err2 := w.GetBlockTraceByNumber(ctx, big.NewInt(int64(number)))
+		if err2 != nil {
+			return fmt.Errorf("failed to GetBlockResultByHash: %v. number: %v", err2, number)
 		}
-		if len(traces) > 0 {
-			if err = w.orm.InsertBlockTraces(traces); err != nil {
-				return fmt.Errorf("failed to batch insert BlockTraces: %v", err)
-			}
+		log.Info("retrieved block trace", "height", trace.Header.Number, "hash", trace.Header.Hash().String())
+
+		traces = append(traces, trace)
+
+	}
+	if len(traces) > 0 {
+		if err := w.orm.InsertBlockTraces(traces); err != nil {
+			return fmt.Errorf("failed to batch insert BlockTraces: %v", err)
 		}
 	}
 
