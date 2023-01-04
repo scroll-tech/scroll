@@ -55,7 +55,7 @@ func (w *batchProposer) tryProposeBatch() error {
 		length         = len(blocks)
 		gasUsed, txNum uint64
 	)
-	// add blocks into batch until reach batchGasThreshold
+	// add blocks into batch until reach batch_gas_threshold
 	for i, block := range blocks {
 		if (gasUsed+block.GasUsed > w.vp.GetUint64("batch_gas_threshold")) || (txNum+block.TxNum > w.vp.GetUint64("batch_tx_num_threshold")) {
 			blocks = blocks[:i]
