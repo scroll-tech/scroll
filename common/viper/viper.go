@@ -38,7 +38,7 @@ func NewViper(file string, remoteCfg string) (*Viper, error) {
 	}
 
 	if remoteCfg != "" {
-		// use apollo.
+		// use apollo: remote config should have the same config type as the local config.
 		log.Info("Apollo remote config", "config name", remoteCfg)
 		go syncApolloRemoteConfig(remoteCfg, vp)
 	}
