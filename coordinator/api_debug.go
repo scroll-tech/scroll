@@ -9,7 +9,7 @@ import (
 
 // RollerDebugAPI roller api interface in order go get debug message.
 type RollerDebugAPI interface {
-	// ListRollers returns all live rollers.
+	// ListRollers returns all live rollers
 	ListRollers() ([]*RollerInfo, error)
 	// GetSessionInfo returns the session information given the session id.
 	GetSessionInfo(sessionID string) (*SessionInfo, error)
