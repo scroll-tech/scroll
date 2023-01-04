@@ -48,7 +48,7 @@ type Watcher struct {
 	rollupABI     *abi.ABI
 
 	// The height of the block that the watcher has retrieved event logs
-	processedMsgHeight uint64
+	processedMsgHeight int64
 
 	stop chan bool
 }
@@ -79,7 +79,7 @@ func NewWatcher(ctx context.Context, client *ethclient.Client, vp *viper.Viper, 
 		messengerABI:       bridge_abi.L1MessengerMetaABI,
 		rollupAddress:      rollupAddress,
 		rollupABI:          bridge_abi.RollupMetaABI,
-		processedMsgHeight: uint64(savedHeight),
+		processedMsgHeight: savedHeight,
 		stop:               stop,
 	}
 }
@@ -122,7 +122,7 @@ func (w *Watcher) fetchContractEvent(blockHeight uint64) error {
 		log.Info("l1 watcher fetchContractEvent", "w.processedMsgHeight", w.processedMsgHeight)
 	}()
 
-	fromBlock := int64(w.processedMsgHeight) + 1
+	fromBlock := w.processedMsgHeight + 1
 	toBlock := int64(blockHeight) - w.vp.GetInt64("confirmations")
 
 	contractEventsBlocksFetchLimit := w.vp.GetInt64("contract_events_blocks_fetch_limit")
@@ -156,7 +156,7 @@ func (w *Watcher) fetchContractEvent(blockHeight uint64) error {
 			return err
 		}
 		if len(logs) == 0 {
-			w.processedMsgHeight = uint64(to)
+			w.processedMsgHeight = to
 			continue
 		}
 		log.Info("Received new L1 messages", "fromBlock", from, "toBlock", to, "cnt", len(logs))
@@ -218,7 +218,7 @@ func (w *Watcher) fetchContractEvent(blockHeight uint64) error {
 			return err
 		}
 
-		w.processedMsgHeight = uint64(to)
+		w.processedMsgHeight = to
 	}
 
 	return nil
