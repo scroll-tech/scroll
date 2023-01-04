@@ -1,4 +1,4 @@
-package main
+package app
 
 import (
 	"github.com/jmoiron/sqlx"
@@ -11,11 +11,16 @@ import (
 	"scroll-tech/database/migrate"
 )
 
-func initDB(file string) (*sqlx.DB, error) {
+func getConfig(ctx *cli.Context) (*database.DBConfig, error) {
+	file := ctx.String(utils.ConfigFileFlag.Name)
 	dbCfg, err := database.NewConfig(file)
 	if err != nil {
 		return nil, err
 	}
+	return dbCfg, nil
+}
+
+func initDB(dbCfg *database.DBConfig) (*sqlx.DB, error) {
 	factory, err := database.NewOrmFactory(dbCfg)
 	if err != nil {
 		return nil, err
@@ -27,7 +32,11 @@ func initDB(file string) (*sqlx.DB, error) {
 
 // resetDB clean or reset database.
 func resetDB(ctx *cli.Context) error {
-	db, err := initDB(ctx.String(utils.ConfigFileFlag.Name))
+	cfg, err := getConfig(ctx)
+	if err != nil {
+		return err
+	}
+	db, err := initDB(cfg)
 	if err != nil {
 		return err
 	}
@@ -44,7 +53,11 @@ func resetDB(ctx *cli.Context) error {
 
 // checkDBStatus check db status
 func checkDBStatus(ctx *cli.Context) error {
-	db, err := initDB(ctx.String(utils.ConfigFileFlag.Name))
+	cfg, err := getConfig(ctx)
+	if err != nil {
+		return err
+	}
+	db, err := initDB(cfg)
 	if err != nil {
 		return err
 	}
@@ -54,7 +67,11 @@ func checkDBStatus(ctx *cli.Context) error {
 
 // dbVersion return the latest version
 func dbVersion(ctx *cli.Context) error {
-	db, err := initDB(ctx.String(utils.ConfigFileFlag.Name))
+	cfg, err := getConfig(ctx)
+	if err != nil {
+		return err
+	}
+	db, err := initDB(cfg)
 	if err != nil {
 		return err
 	}
@@ -67,7 +84,11 @@ func dbVersion(ctx *cli.Context) error {
 
 // migrateDB migrate db
 func migrateDB(ctx *cli.Context) error {
-	db, err := initDB(ctx.String(utils.ConfigFileFlag.Name))
+	cfg, err := getConfig(ctx)
+	if err != nil {
+		return err
+	}
+	db, err := initDB(cfg)
 	if err != nil {
 		return err
 	}
@@ -77,7 +98,11 @@ func migrateDB(ctx *cli.Context) error {
 
 // rollbackDB rollback db by version
 func rollbackDB(ctx *cli.Context) error {
-	db, err := initDB(ctx.String(utils.ConfigFileFlag.Name))
+	cfg, err := getConfig(ctx)
+	if err != nil {
+		return err
+	}
+	db, err := initDB(cfg)
 	if err != nil {
 		return err
 	}

@@ -1,6 +1,8 @@
-package main
+package app
 
-import "github.com/urfave/cli/v2"
+import (
+	"github.com/urfave/cli/v2"
+)
 
 var (
 	apiFlags = []cli.Flag{
@@ -25,23 +27,5 @@ var (
 		Name:  "http.port",
 		Usage: "HTTP-RPC server listening port",
 		Value: 8290,
-	}
-
-	l1Flags = []cli.Flag{
-		&l1UrlFlag,
-	}
-	l1UrlFlag = cli.StringFlag{
-		Name:  "l1.endpoint",
-		Usage: "The endpoint connect to l1chain node",
-		Value: "https://goerli.infura.io/v3/9aa3d95b3bc440fa88ea12eaa4456161",
-	}
-
-	l2Flags = []cli.Flag{
-		&l2UrlFlag,
-	}
-	l2UrlFlag = cli.StringFlag{
-		Name:  "l2.endpoint",
-		Usage: "The endpoint connect to l2chain node",
-		Value: "/var/lib/jenkins/workspace/SequencerPipeline/MyPrivateNetwork/geth.ipc",
 	}
 )

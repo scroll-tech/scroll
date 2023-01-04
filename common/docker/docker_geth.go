@@ -12,6 +12,7 @@ import (
 
 	"github.com/docker/docker/api/types"
 
+	"scroll-tech/common/cmd"
 	"scroll-tech/common/utils"
 )
 
@@ -28,7 +29,7 @@ type ImgGeth struct {
 	addressFile *AddressFile
 
 	running bool
-	*Cmd
+	cmd     *cmd.Cmd
 	t *testing.T
 }
 
@@ -79,7 +80,7 @@ func NewImgGeth(t *testing.T, image, volume, ipc string, hPort, wPort int) ImgIn
 		addressFile: nil,
 		t:           t,
 	}
-	img.Cmd = NewCmd(img.t, img.name, img.prepare()...)
+	img.cmd = cmd.NewCmd(t, img.name, img.prepare()...)
 	return img
 }
 
@@ -89,7 +90,7 @@ func (i *ImgGeth) Start() error {
 	if id != "" {
 		return fmt.Errorf("container already exist, name: %s", i.name)
 	}
-	i.Cmd.RunCmd(true)
+	i.cmd.RunCmd(true)
 	i.running = i.isOk()
 	if !i.running {
 		_ = i.Stop()
@@ -117,7 +118,7 @@ func (i *ImgGeth) Endpoint() string {
 func (i *ImgGeth) isOk() bool {
 	keyword := "WebSocket enabled"
 	okCh := make(chan struct{}, 1)
-	i.RegistFunc(keyword, func(buf string) {
+	i.cmd.RegistFunc(keyword, func(buf string) {
 		if strings.Contains(buf, keyword) {
 			select {
 			case okCh <- struct{}{}:
@@ -126,7 +127,7 @@ func (i *ImgGeth) isOk() bool {
 			}
 		}
 	})
-	defer i.UnRegistFunc(keyword)
+	defer i.cmd.UnRegistFunc(keyword)
 
 	select {
 	case <-okCh:
