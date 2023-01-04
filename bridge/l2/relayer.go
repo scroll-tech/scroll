@@ -3,7 +3,6 @@ package l2
 import (
 	"context"
 	"errors"
-	"fmt"
 	"math/big"
 	"time"
 
@@ -369,11 +368,6 @@ func (r *Layer2Relayer) Start() {
 	go func() {
 		// trigger by timer
 		relayerLoopTimeSec := r.vp.GetInt("relayer_loop_time_sec")
-		fmt.Println("l2 relayer loop time", relayerLoopTimeSec)
-		fmt.Println("l2 relayer loop time", relayerLoopTimeSec)
-		fmt.Println("l2 relayer loop time", relayerLoopTimeSec)
-		fmt.Println("l2 relayer loop time", relayerLoopTimeSec)
-		fmt.Println("l2 relayer loop time", relayerLoopTimeSec)
 		ticker := time.NewTicker(time.Duration(relayerLoopTimeSec) * time.Second)
 		defer ticker.Stop()
 

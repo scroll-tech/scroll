@@ -1,10 +1,14 @@
 package viper
 
 import (
+	"bytes"
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/scroll-tech/go-ethereum/log"
+
+	config "scroll-tech/common/apollo"
 )
 
 // Viper : viper config.
@@ -75,5 +79,24 @@ func (v *Viper) flush(m map[string]interface{}) {
 		default:
 			v.data.Store(key, val)
 		}
+	}
+}
+
+func syncApolloRemoteConfig(remoteCfg string, vp *Viper) {
+	agolloClient := config.MustInitApollo()
+
+	for {
+		cfgStr := agolloClient.GetStringValue(remoteCfg, "invalid")
+		if cfgStr == "invalid" {
+			log.Error("GetStringValue fail", "remoteCfg", remoteCfg)
+			<-time.After(time.Second * 10)
+			continue
+		}
+		if err := vp.ReadConfig(bytes.NewReader([]byte(cfgStr))); err != nil {
+			log.Error("ReadConfig fail", "remoteCfg", remoteCfg, "config", cfgStr, "err", err)
+			<-time.After(time.Second * 10)
+			continue
+		}
+		<-time.After(time.Second * 10)
 	}
 }

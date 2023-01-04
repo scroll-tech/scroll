@@ -7,11 +7,8 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
-	"time"
 
 	"github.com/scroll-tech/go-ethereum/log"
-
-	config "scroll-tech/common/apollo"
 
 	"scroll-tech/common/viper/internal/encoding"
 	"scroll-tech/common/viper/internal/encoding/dotenv"
@@ -46,7 +43,6 @@ func (v *Viper) Reset() {
 	}
 	v.configType, v.configFile = "", ""
 	v.data = sync.Map{}
-	//v.data = cmap.New()
 }
 
 // SetConfigType : set config type.
@@ -157,18 +153,4 @@ func (v *Viper) marshal(out io.Writer, configType string) error {
 	}
 	_, err = out.Write(data)
 	return err
-}
-
-func syncApolloRemoteConfig(remoteCfg string, vp *Viper) {
-	agolloClient := config.MustInitApollo()
-
-	for {
-		cfgStr := agolloClient.GetStringValue(remoteCfg, "")
-		if err := vp.ReadConfig(bytes.NewReader([]byte(cfgStr))); err != nil || cfgStr == "" {
-			log.Error("ReadConfig fail", "config", cfgStr, "err", err)
-			<-time.After(time.Second * 3)
-			continue
-		}
-		<-time.After(time.Second * 3)
-	}
 }
