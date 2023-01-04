@@ -18,10 +18,12 @@ import (
 
 func TestFFI(t *testing.T) {
 	as := assert.New(t)
-	viper.Set("mock_mode", false)
-	viper.Set("params_path", "../assets/test_params")
-	viper.Set("agg_vk_path", "../assets/agg_vk")
-	v, err := verifier.NewVerifier(viper.Sub("roller_manager_config.verifier"))
+
+	vp := viper.New()
+	vp.Set("mock_mode", false)
+	vp.Set("params_path", "../assets/test_params")
+	vp.Set("agg_vk_path", "../assets/agg_vk")
+	v, err := verifier.NewVerifier(vp)
 	as.NoError(err)
 
 	f, err := os.Open("../assets/agg_proof")
