@@ -52,10 +52,11 @@ type Manager struct {
 	// The manager context.
 	ctx context.Context
 
+	// The roller manager configuration.
+	vp *viper.Viper
+
 	// The indicator whether the backend is running or not.
 	running int32
-
-	vp *viper.Viper
 
 	// A mutex guarding the boolean below.
 	mu sync.RWMutex
@@ -94,12 +95,12 @@ func New(ctx context.Context, vp *viper.Viper, orm database.OrmFactory, client *
 	log.Info("Start coordinator successfully.")
 	return &Manager{
 		ctx:                ctx,
+		vp:                 vp,
 		rollerPool:         cmap.New(),
 		sessions:           make(map[string]*session),
 		failedSessionInfos: make(map[string]*SessionInfo),
 		verifier:           verifier,
 		orm:                orm,
-		vp:                 vp,
 		Client:             client,
 		tokenCache:         cache.New(time.Duration(vp.GetInt("token_time_to_live"))*time.Second, 1*time.Hour),
 	}, nil
