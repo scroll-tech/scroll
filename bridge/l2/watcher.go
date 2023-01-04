@@ -100,7 +100,7 @@ func (w *WatcherClient) Start() {
 					continue
 				}
 
-				confirmations := uint64(w.vp.GetInt64("confirmations"))
+				confirmations := w.vp.GetUint64("confirmations")
 				if number >= confirmations {
 					number = number - confirmations
 				} else {
@@ -143,7 +143,7 @@ func (w *WatcherClient) tryFetchRunningMissingBlocks(ctx context.Context, backTr
 		backTrackTo = uint64(heightInDB)
 	}
 
-	blockTracesFetchLimit := uint64(w.vp.GetInt64("block_traces_fetch_limit"))
+	blockTracesFetchLimit := w.vp.GetUint64("block_traces_fetch_limit")
 	for from := backTrackFrom; from > backTrackTo; from -= blockTracesFetchLimit {
 		to := from - blockTracesFetchLimit
 
