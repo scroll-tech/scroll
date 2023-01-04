@@ -10,7 +10,6 @@ import (
 
 	"github.com/scroll-tech/go-ethereum/accounts/abi"
 	"github.com/scroll-tech/go-ethereum/common"
-	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
 
 	"scroll-tech/database"
@@ -29,8 +28,7 @@ import (
 // Actions are triggered by new head from layer 1 geth node.
 // @todo It's better to be triggered by watcher.
 type Layer2Relayer struct {
-	ctx    context.Context
-	client *ethclient.Client
+	ctx context.Context
 
 	db  database.OrmFactory
 	cfg *config.RelayerConfig
@@ -56,7 +54,7 @@ type Layer2Relayer struct {
 }
 
 // NewLayer2Relayer will return a new instance of Layer2RelayerClient
-func NewLayer2Relayer(ctx context.Context, ethClient *ethclient.Client, db database.OrmFactory, cfg *config.RelayerConfig) (*Layer2Relayer, error) {
+func NewLayer2Relayer(ctx context.Context, db database.OrmFactory, cfg *config.RelayerConfig) (*Layer2Relayer, error) {
 	// @todo use different sender for relayer, block commit and proof finalize
 	messageSender, err := sender.NewSender(ctx, cfg.SenderConfig, cfg.MessageSenderPrivateKeys)
 	if err != nil {
@@ -72,7 +70,6 @@ func NewLayer2Relayer(ctx context.Context, ethClient *ethclient.Client, db datab
 
 	return &Layer2Relayer{
 		ctx:                    ctx,
-		client:                 ethClient,
 		db:                     db,
 		messageSender:          messageSender,
 		messageCh:              messageSender.ConfirmChan(),
@@ -240,7 +237,8 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 		return
 	}
 
-	hash, err := r.rollupSender.SendTransaction(id, &r.cfg.RollupContractAddress, big.NewInt(0), data)
+	// add suffix `-commit` to avoid duplication with finalize tx in unit tests
+	hash, err := r.rollupSender.SendTransaction(id+"-commit", &r.cfg.RollupContractAddress, big.NewInt(0), data)
 	if err != nil {
 		if !errors.Is(err, sender.ErrNoAvailableAccount) {
 			log.Error("Failed to send commitBatch tx to layer1 ", "id", id, "index", batch.Index, "err", err)
@@ -332,7 +330,8 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 			return
 		}
 
-		txHash, err := r.rollupSender.SendTransaction(id, &r.cfg.RollupContractAddress, big.NewInt(0), data)
+		// add suffix `-finalize` to avoid duplication with commit tx in unit tests
+		txHash, err := r.rollupSender.SendTransaction(id+"-finalize", &r.cfg.RollupContractAddress, big.NewInt(0), data)
 		hash := &txHash
 		if err != nil {
 			if !errors.Is(err, sender.ErrNoAvailableAccount) {
