@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"sync"
 	"time"
 
@@ -68,6 +69,14 @@ func (v *Viper) SetConfigFile(in string) {
 	}
 	v.configType = tp
 	v.configFile = in
+}
+
+func getConfigType(file string) string {
+	ext := filepath.Ext(file)
+	if len(ext) > 1 {
+		return ext[1:]
+	}
+	return ""
 }
 
 // ReadInFile : read config file.

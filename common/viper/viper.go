@@ -34,7 +34,6 @@ func NewViper(file string, remoteCfg string) (*Viper, error) {
 	}
 
 	if remoteCfg != "" {
-		vp.SetConfigType("json")
 		// use apollo.
 		log.Info("Apollo remote config", "config name", remoteCfg)
 		go syncApolloRemoteConfig(remoteCfg, vp)
