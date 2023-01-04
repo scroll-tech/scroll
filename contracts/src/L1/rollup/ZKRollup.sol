@@ -90,6 +90,24 @@ contract ZKRollup is OwnableUpgradeable, IZKRollup {
   /**************************************** View Functions ****************************************/
 
   /// @inheritdoc IZKRollup
+  function isBlockFinalized(bytes32 _blockHash) external view returns (bool) {
+    // block not commited
+    if (blocks[_blockHash].transactionRoot == bytes32(0)) return false;
+
+    uint256 _batchIndex = blocks[_blockHash].batchIndex;
+    bytes32 _batchId = finalizedBatches[_batchIndex];
+    return _batchId != bytes32(0);
+  }
+
+  /// @inheritdoc IZKRollup
+  function isBlockFinalized(uint256 _blockHeight) external view returns (bool) {
+    bytes32 _batchID = lastFinalizedBatchID;
+    bytes32 _batchHash = batches[_batchID].batchHash;
+    uint256 _maxHeight = blocks[_batchHash].blockHeight;
+    return _blockHeight <= _maxHeight;
+  }
+
+  /// @inheritdoc IZKRollup
   function getMessageHashByIndex(uint256 _index) external view returns (bytes32) {
     return messageQueue[_index];
   }
