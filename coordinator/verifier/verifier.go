@@ -27,8 +27,7 @@ type Verifier struct {
 
 // NewVerifier Sets up a rust ffi to call verify.
 func NewVerifier(vp *viper.Viper) (*Verifier, error) {
-	mockMode := vp.GetBool("mock_mode")
-	if mockMode {
+	if vp.GetBool("mock_mode") {
 		return &Verifier{vp: vp}, nil
 	}
 	paramsPathStr := C.CString(vp.GetString("params_path"))
@@ -45,8 +44,7 @@ func NewVerifier(vp *viper.Viper) (*Verifier, error) {
 
 // VerifyProof Verify a ZkProof by marshaling it and sending it to the Halo2 Verifier.
 func (v *Verifier) VerifyProof(proof *message.AggProof) (bool, error) {
-	mockMode := v.vp.GetBool("mock_mode")
-	if mockMode {
+	if v.vp.GetBool("mock_mode") {
 		log.Info("Verifier disabled, VerifyProof skipped")
 		return true, nil
 
