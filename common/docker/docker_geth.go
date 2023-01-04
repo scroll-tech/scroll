@@ -30,7 +30,7 @@ type ImgGeth struct {
 
 	running bool
 	cmd     *cmd.Cmd
-	t *testing.T
+	t       *testing.T
 }
 
 // AddressFile stores l1/l2 contract address
@@ -194,44 +194,42 @@ func (i *ImgGeth) GetAddressFile() *AddressFile {
 
 // getDeployments returns pre_deployed contract address
 func (i *ImgGeth) getDeployments(t *testing.T) *AddressFile {
-	cmds := []string{"docker", "cp", i.name + ":/deployments/l2geth.json", "."}
-	i.Cmd = NewCmd(t, i.name, cmds...)
+	i.cmd = cmd.NewCmd(t, "docker", "cp", i.name+":/deployments/l2geth.json", ".")
 
-	i.Cmd.RunCmd(false)
+	i.cmd.RunCmd(false)
 	L2addressFile, err := os.ReadFile("l2geth.json")
 	if err != nil {
-		i.Fatal(err)
+		t.Fatal(err)
 		return nil
 	}
 	var l2data *L2Contracts
 	err = json.Unmarshal(L2addressFile, &l2data)
 	if err != nil {
-		i.Fatal(err)
+		t.Fatal(err)
 		l2data = nil
 	}
 	err = os.Remove("l2geth.json")
 	if err != nil {
-		i.Fatal(err)
+		t.Fatal(err)
 		return nil
 	}
 
-	cmds = []string{"docker", "cp", i.name + ":/deployments/l1geth.json", "."}
-	i.Cmd = NewCmd(t, i.name, cmds...)
-	i.Cmd.RunCmd(false)
+	i.cmd = cmd.NewCmd(t, "docker", "cp", i.name+":/deployments/l1geth.json", ".")
+	i.cmd.RunCmd(false)
 	L1addressFile, err := os.ReadFile("l1geth.json")
 	if err != nil {
-		i.Fatal(err)
+		t.Fatal(err)
 		return nil
 	}
 	var l1data *L1Contracts
 	err = json.Unmarshal(L1addressFile, &l1data)
 	if err != nil {
-		i.Fatal(err)
+		t.Fatal(err)
 		l1data = nil
 	}
 	err = os.Remove("l1geth.json")
 	if err != nil {
-		i.Fatal(err)
+		t.Fatal(err)
 		return nil
 	}
 
