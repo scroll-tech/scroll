@@ -354,7 +354,7 @@ func (s *Sender) CheckPendingTransaction(header *types.Header) {
 		receipt, err := s.client.TransactionReceipt(s.ctx, pending.tx.Hash())
 		escalateBlocks := uint64(s.vp.GetInt("escalate_blocks"))
 		if (err == nil) && (receipt != nil) {
-			confirmations := uint64(s.vp.GetInt("confirmations"))
+			confirmations := s.vp.GetUint64("confirmations")
 			if number >= receipt.BlockNumber.Uint64()+confirmations {
 				s.pendingTxs.Delete(key)
 				// send confirm message
