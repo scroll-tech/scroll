@@ -91,10 +91,9 @@ var (
 
 func setupEnv(t *testing.T) error {
 	// Init db config and start db container.
-	var err error
-	vp, err = viper.NewViper("config.json", "")
-	assert.NoError(t, err)
 	dbImg = docker.NewTestDBDocker(t, "postgres")
+	vp = viper.New()
+	vp.Set("driver_name", "postgres")
 	vp.Set("dsn", dbImg.Endpoint())
 
 	// Create db handler and reset db.
