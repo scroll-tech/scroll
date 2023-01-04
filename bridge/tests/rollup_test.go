@@ -3,12 +3,13 @@ package tests
 import (
 	"context"
 	"math/big"
-	"scroll-tech/bridge/l1"
-	"scroll-tech/bridge/l2"
 	"scroll-tech/database"
 	"scroll-tech/database/migrate"
 	"scroll-tech/database/orm"
 	"testing"
+
+	"scroll-tech/bridge/l1"
+	"scroll-tech/bridge/l2"
 
 	"github.com/scroll-tech/go-ethereum/accounts/abi/bind"
 	"github.com/scroll-tech/go-ethereum/common"

@@ -4,10 +4,11 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"math/big"
-	"scroll-tech/bridge/config"
-	"scroll-tech/bridge/mock_bridge"
 	"scroll-tech/common/docker"
 	"testing"
+
+	"scroll-tech/bridge/config"
+	"scroll-tech/bridge/mock_bridge"
 
 	"github.com/scroll-tech/go-ethereum/accounts/abi/bind"
 	"github.com/scroll-tech/go-ethereum/common"
