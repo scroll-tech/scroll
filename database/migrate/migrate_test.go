@@ -23,11 +23,10 @@ var (
 
 func initEnv(t *testing.T) error {
 	// Start db container.
-	dbImg = docker.NewTestDBDocker(t, "postgres")
-
 	var err error
 	vp, err = viper.NewViper("../config.json", "")
 	assert.NoError(t, err)
+	dbImg = docker.NewTestDBDocker(t, "postgres")
 	vp.Set("dsn", dbImg.Endpoint())
 
 	// Create db orm handler.
