@@ -37,8 +37,8 @@ func TestViper(t *testing.T) {
 	assert.Equal(t, 15, sb.GetInt("confirmations"))
 	assert.Equal(t, 15, sender.GetInt("confirmations"))
 
-	assert.True(t, len(relayer.GetECDSAKeys("message_sender_private_keys")) > 0)
-	assert.True(t, sender.GetBigInt("min_balance").Cmp(big.NewInt(0)) > 0)
+	assert.True(t, len(relayer.GetECDSAKeys("message_sender_private_keys")) == 1)
+	assert.True(t, sender.GetBigInt("max_gas_price").Cmp(big.NewInt(10000000000)) == 0)
 }
 
 func TestLoadConfig(t *testing.T) {
