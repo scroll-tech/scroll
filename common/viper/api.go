@@ -130,11 +130,10 @@ func (v *Viper) GetBigInt(key string) *big.Int {
 }
 
 // GetECDSAKeys : Get ECDSA keys config.
-func (v *Viper) GetECDSAKeys(key string) []*ecdsa.PrivateKey {
-	keyLists := v.GetStringSlice(key)
-	var privateKeys []*ecdsa.PrivateKey
-	for _, privStr := range keyLists {
-		priv, err := crypto.ToECDSA(common.FromHex(privStr))
+func (v *Viper) GetECDSAKeys(key string) (privateKeys []*ecdsa.PrivateKey) {
+	keys := v.GetStringSlice(key)
+	for _, key := range keys {
+		priv, err := crypto.ToECDSA(common.FromHex(key))
 		if err != nil {
 			log.Error("incorrect private_key_list format", "err", err)
 			return nil
