@@ -23,9 +23,8 @@ func initDB(ctx *cli.Context) (*sqlx.DB, error) {
 	if err != nil {
 		return nil, err
 	}
-	driverName := vp.GetString("driver_name")
-	dsn := vp.GetString("dsn")
-	log.Debug("Got db config from env", "driver name", driverName, "dsn", dsn)
+	log.Debug("Got db config from env", "driver name", vp.GetString("driver_name"), "dsn", vp.GetString("dsn"))
+
 	return factory.GetDB(), nil
 }
 

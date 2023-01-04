@@ -18,7 +18,6 @@ import (
 
 func TestFFI(t *testing.T) {
 	as := assert.New(t)
-
 	vp := viper.New()
 	vp.Set("mock_mode", false)
 	vp.Set("params_path", "../assets/test_params")
