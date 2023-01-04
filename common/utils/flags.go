@@ -8,7 +8,7 @@ var (
 	// CommonFlags is used for app common flags in different modules
 	CommonFlags = []cli.Flag{
 		&ConfigFileFlag,
-		&ApolloConfigFlag,
+		&ApolloConfigNameFlag,
 		&VerbosityFlag,
 		&LogFileFlag,
 		&LogJSONFormat,
@@ -20,8 +20,8 @@ var (
 		Usage: "JSON configuration file",
 		Value: "./config.json",
 	}
-	// ApolloConfigFlag apollo config name.
-	ApolloConfigFlag = cli.StringFlag{
+	// ApolloConfigNameFlag apollo config name.
+	ApolloConfigNameFlag = cli.StringFlag{
 		Name:  "apollo.config",
 		Usage: "Apollo config name",
 		Value: "",
