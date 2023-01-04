@@ -11,6 +11,9 @@ import (
 )
 
 var (
+	// config
+	vp *viper.Viper
+
 	// docker consider handler.
 	l1gethImg docker.ImgInstance
 	l2gethImg docker.ImgInstance
@@ -18,8 +21,6 @@ var (
 
 	// l2geth client
 	l2Cli *ethclient.Client
-
-	vp *viper.Viper
 )
 
 func setupEnv(t *testing.T) (err error) {

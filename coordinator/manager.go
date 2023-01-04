@@ -102,7 +102,7 @@ func New(ctx context.Context, vp *viper.Viper, orm database.OrmFactory, client *
 		verifier:           verifier,
 		orm:                orm,
 		Client:             client,
-		tokenCache:         cache.New(time.Duration(vp.GetInt("token_time_to_live"))*time.Second, 1*time.Hour),
+		tokenCache:         cache.New(vp.GetDuration("token_time_to_live"), 1*time.Hour),
 	}, nil
 }
 
@@ -137,9 +137,8 @@ func (m *Manager) isRunning() bool {
 // Loop keeps the manager running.
 func (m *Manager) Loop() {
 	var (
-		coordinatorLoopTimeSec = m.vp.GetInt("coordinator_loop_time_sec")
-		tick                   = time.NewTicker(time.Duration(coordinatorLoopTimeSec) * time.Second)
-		tasks                  []*orm.BlockBatch
+		tick  = time.NewTicker(m.vp.GetDuration("coordinator_loop_time_sec"))
+		tasks []*orm.BlockBatch
 	)
 	defer tick.Stop()
 
@@ -310,7 +309,7 @@ func (m *Manager) handleZkProof(pk string, msg *message.ProofDetail) error {
 
 // CollectProofs collects proofs corresponding to a proof generation session.
 func (m *Manager) CollectProofs(id string, sess *session) {
-	timer := time.NewTimer(time.Duration(m.vp.GetInt("collection_time")) * time.Minute)
+	timer := time.NewTimer(m.vp.GetDuration("collection_time_min"))
 
 	for {
 		select {

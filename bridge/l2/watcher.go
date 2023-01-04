@@ -59,15 +59,13 @@ func NewL2WatcherClient(ctx context.Context, client *ethclient.Client, vp *viper
 		savedHeight = 0
 	}
 
-	messengerAddress := vp.GetAddress("l2_messenger_address")
-
 	return &WatcherClient{
 		ctx:                ctx,
 		Client:             client,
 		orm:                orm,
 		processedMsgHeight: savedHeight,
 		vp:                 vp,
-		messengerAddress:   messengerAddress,
+		messengerAddress:   vp.GetAddress("l2_messenger_address"),
 		messengerABI:       bridge_abi.L2MessengerMetaABI,
 		stopCh:             make(chan struct{}),
 		stopped:            0,
@@ -83,8 +81,7 @@ func (w *WatcherClient) Start() {
 		}
 
 		// trigger by timer
-		watcherTimeSec := w.vp.GetDuration("watcher_time_sec")
-		ticker := time.NewTicker(watcherTimeSec)
+		ticker := time.NewTicker(w.vp.GetDuration("watcher_time_sec"))
 		defer ticker.Stop()
 
 		for ; true; <-ticker.C {

@@ -67,17 +67,15 @@ func NewWatcher(ctx context.Context, client *ethclient.Client, vp *viper.Viper, 
 	}
 
 	stop := make(chan bool)
-	messengerAddress := vp.GetAddress("l1_messenger_address")
-	rollupAddress := vp.Sub("relayer_config").GetAddress("rollup_contract_address")
 
 	return &Watcher{
 		ctx:                ctx,
 		client:             client,
 		db:                 db,
 		vp:                 vp,
-		messengerAddress:   messengerAddress,
+		messengerAddress:   vp.GetAddress("l1_messenger_address"),
 		messengerABI:       bridge_abi.L1MessengerMetaABI,
-		rollupAddress:      rollupAddress,
+		rollupAddress:      vp.Sub("relayer_config").GetAddress("rollup_contract_address"),
 		rollupABI:          bridge_abi.RollupMetaABI,
 		processedMsgHeight: savedHeight,
 		stop:               stop,
@@ -88,8 +86,7 @@ func NewWatcher(ctx context.Context, client *ethclient.Client, vp *viper.Viper, 
 func (w *Watcher) Start() {
 	go func() {
 		// trigger by timer
-		watcherTimeSec := w.vp.GetDuration("watcher_time_sec")
-		ticker := time.NewTicker(watcherTimeSec)
+		ticker := time.NewTicker(w.vp.GetDuration("watcher_time_sec"))
 		defer ticker.Stop()
 
 		for ; true; <-ticker.C {

@@ -359,8 +359,8 @@ func setupCoordinator(t *testing.T, wsURL string) (rollerManager *coordinator.Ma
 	// Set coordinator config.
 	vp.Set("roller_manager_config.rollers_per_session", 1)
 	vp.Set("roller_manager_config.verifier.mock_mode", true)
-	vp.Set("roller_manager_config.collection_time", 1)
-	vp.Set("roller_manager_config.token_time_to_live", 5)
+	vp.Set("roller_manager_config.collection_time_min", "1m")
+	vp.Set("roller_manager_config.token_time_to_live", "5s")
 
 	rollerManager, err = coordinator.New(context.Background(), vp.Sub("roller_manager_config"), db, nil)
 	assert.NoError(t, err)

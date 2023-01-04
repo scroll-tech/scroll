@@ -352,7 +352,7 @@ func (s *Sender) CheckPendingTransaction(header *types.Header) {
 
 		pending := value.(*PendingTransaction)
 		receipt, err := s.client.TransactionReceipt(s.ctx, pending.tx.Hash())
-		escalateBlocks := uint64(s.vp.GetInt("escalate_blocks"))
+		escalateBlocks := s.vp.GetUint64("escalate_blocks")
 		if (err == nil) && (receipt != nil) {
 			confirmations := s.vp.GetUint64("confirmations")
 			if number >= receipt.BlockNumber.Uint64()+confirmations {
