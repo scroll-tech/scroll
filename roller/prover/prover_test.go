@@ -12,6 +12,7 @@ import (
 	"github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/stretchr/testify/assert"
 
+	"scroll-tech/common/viper"
 	"scroll-tech/roller/prover"
 )
 
@@ -29,11 +30,10 @@ type RPCTrace struct {
 
 func TestFFI(t *testing.T) {
 	as := assert.New(t)
-	cfg := &config.ProverConfig{
-		ParamsPath: paramsPath,
-		SeedPath:   seedPath,
-	}
-	prover, err := prover.NewProver(cfg)
+	vp := viper.New()
+	vp.Set("params_path", paramsPath)
+	vp.Set("seed_path", seedPath)
+	prover, err := prover.NewProver(vp)
 	as.NoError(err)
 
 	files, err := os.ReadDir(tracesPath)
