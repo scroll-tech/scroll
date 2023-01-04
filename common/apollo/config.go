@@ -9,7 +9,7 @@ import (
 	"github.com/apolloconfig/agollo/v4/env/config"
 )
 
-// MustInitApollo init apollo client
+// MustInitApollo init apollo client.
 func MustInitApollo() agollo.Client {
 	agollo.SetLogger(&DefaultLogger{})
 	c := &config.AppConfig{
@@ -34,46 +34,44 @@ func MustInitApollo() agollo.Client {
 
 func printApolloConfig(client agollo.Client) {
 	cache := client.GetDefaultConfigCache()
-	count := 0
 	cache.Range(func(key, value interface{}) bool {
 		log.Info("Apollo Config", "key : ", key, ", value : ", value)
-		count++
 		return true
 	})
 }
 
-// DefaultLogger is the logger of agollo
+// DefaultLogger is the logger of agollo.
 type DefaultLogger struct {
 }
 
-// Debugf is the Debugf logger of agollo
+// Debugf is the Debugf logger of agollo.
 func (logger *DefaultLogger) Debugf(format string, params ...interface{}) {
 	fmt.Printf(format+"\n", params...)
 }
 
-// Infof is the Infof logger of agollo
+// Infof is the Infof logger of agollo.
 func (logger *DefaultLogger) Infof(format string, params ...interface{}) {
 	fmt.Printf(format+"\n", params...)
 }
 
-// Warnf is the Warnf logger of agollo
+// Warnf is the Warnf logger of agollo.
 func (logger *DefaultLogger) Warnf(format string, params ...interface{}) {
 	fmt.Printf(format+"\n", params...)
 }
 
-// Errorf is the Errorf logger of agollo
+// Errorf is the Errorf logger of agollo.
 func (logger *DefaultLogger) Errorf(format string, params ...interface{}) {
 	fmt.Printf(format+"\n", params...)
 }
 
-// Debug is the Debug logger of agollo
+// Debug is the Debug logger of agollo.
 func (logger *DefaultLogger) Debug(v ...interface{}) {}
 
-// Info is the Info logger of agollo
+// Info is the Info logger of agollo.
 func (logger *DefaultLogger) Info(v ...interface{}) {}
 
-// Warn is the Warn logger of agollo
+// Warn is the Warn logger of agollo.
 func (logger *DefaultLogger) Warn(v ...interface{}) {}
 
-// Error is the Error logger of agollo
+// Error is the Error logger of agollo.
 func (logger *DefaultLogger) Error(v ...interface{}) {}
