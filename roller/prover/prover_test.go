@@ -13,6 +13,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"scroll-tech/common/viper"
+
 	"scroll-tech/roller/prover"
 )
 
