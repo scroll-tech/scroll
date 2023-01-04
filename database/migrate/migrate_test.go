@@ -17,16 +17,13 @@ import (
 var (
 	pgDB  *sqlx.DB
 	dbImg docker.ImgInstance
-
-	vp *viper.Viper
 )
 
 func initEnv(t *testing.T) error {
 	// Start db container.
-	var err error
-	vp, err = viper.NewViper("../config.json", "")
-	assert.NoError(t, err)
 	dbImg = docker.NewTestDBDocker(t, "postgres")
+	vp := viper.New()
+	vp.Set("driver_name", "postgres")
 	vp.Set("dsn", dbImg.Endpoint())
 
 	// Create db orm handler.
