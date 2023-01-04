@@ -13,7 +13,6 @@ import "C" //nolint:typecheck
 
 import (
 	"encoding/json"
-	"errors"
 	"unsafe"
 
 	"github.com/scroll-tech/go-ethereum/core/types"
@@ -23,8 +22,6 @@ import (
 
 	"scroll-tech/roller/config"
 )
-
-var ErrZkProvePanic = errors.New("generate the proof panic")
 
 // Prover sends block-traces to rust-prover through ffi and get back the zk-proof.
 type Prover struct {
@@ -62,9 +59,6 @@ func (p *Prover) prove(traces []*types.BlockTrace) (*message.AggProof, error) {
 
 	log.Info("Start to create agg proof ...")
 	cProof := C.create_agg_proof_multi(tracesStr)
-	if cProof == nil {
-		return nil, ErrZkProvePanic
-	}
 	log.Info("Finish creating agg proof!")
 
 	proof := C.GoString(cProof)

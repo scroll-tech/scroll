@@ -6,4 +6,5 @@ use (
 	./coordinator
 	./database
 	./roller
+	./tests/integration-test
 )
