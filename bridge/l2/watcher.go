@@ -139,7 +139,7 @@ func (w *WatcherClient) tryFetchRunningMissingBlocks(ctx context.Context, blockH
 
 	// Can't get trace from genesis block, so the default start number is 1.
 	var from = uint64(1)
-	if heightInDB > 1 {
+	if heightInDB > 0 {
 		from = uint64(heightInDB) + 1
 	}
 
