@@ -139,7 +139,7 @@ func (w *WatcherClient) tryFetchRunningMissingBlocks(ctx context.Context, blockH
 
 	var from = uint64(1)
 	if heightInDB > 1 {
-		from = uint64(heightInDB)
+		from = uint64(heightInDB) + 1
 	}
 
 	for ; from <= blockHeight; from += blockTracesFetchLimit {
