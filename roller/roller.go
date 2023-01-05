@@ -122,12 +122,11 @@ func (r *Roller) Register() error {
 	token, err := r.client.RequestToken(context.Background(), authMsg)
 	if err != nil {
 		return fmt.Errorf("request token failed %v", err)
-	} else {
-		authMsg.Identity.Token = token
 	}
+	authMsg.Identity.Token = token
 
 	// Sign auth message
-	if err := authMsg.Sign(r.priv); err != nil {
+	if err = authMsg.Sign(r.priv); err != nil {
 		return fmt.Errorf("sign auth message failed %v", err)
 	}
 
@@ -244,15 +243,16 @@ func (r *Roller) prove() error {
 		}
 		log.Info("prove block successfully!", "task-id", task.Task.ID)
 	}
-	_, err = r.stack.Pop()
-	if err != nil {
-		return err
-	}
 
 	ok, err := r.signAndSubmitProof(proofMsg)
 	if !ok {
 		log.Error("submit proof to coordinator failed", "task ID", proofMsg.ID)
 	}
+
+	if err != nil && strings.Contains(err.Error(), "websocket") {
+		return err
+	}
+	_, err = r.stack.Pop()
 	return err
 }
 
