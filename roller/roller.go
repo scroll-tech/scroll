@@ -244,14 +244,14 @@ func (r *Roller) prove() error {
 		log.Info("prove block successfully!", "task-id", task.Task.ID)
 	}
 
-	ok, err := r.signAndSubmitProof(proofMsg)
+	ok, serr := r.signAndSubmitProof(proofMsg)
 	if !ok {
 		log.Error("submit proof to coordinator failed", "task ID", proofMsg.ID)
 	}
 
 	// if submit proof failed due to reasons except for proof failure,
 	// the roller does not need to Pop the current task.
-	if err != nil && proofMsg.Status != message.StatusProofError {
+	if serr != nil {
 		return err
 	}
 	_, err = r.stack.Pop()
@@ -264,7 +264,16 @@ func (r *Roller) signAndSubmitProof(msg *message.ProofDetail) (bool, error) {
 		return false, err
 	}
 
-	return r.client.SubmitProof(context.Background(), authZkProof)
+	ok, err := r.client.SubmitProof(context.Background(), authZkProof)
+	for err != nil {
+		log.Error("client sends proof to scroll failed, retrying...", "taskID", msg.ID)
+		ok, err = r.client.SubmitProof(context.Background(), authZkProof)
+		if err == nil {
+			return ok, nil
+		}
+		time.Sleep(10 * time.Second)
+	}
+	return ok, nil
 }
 
 // Stop closes the websocket connection.
