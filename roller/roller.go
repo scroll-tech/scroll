@@ -249,6 +249,8 @@ func (r *Roller) prove() error {
 		log.Error("submit proof to coordinator failed", "task ID", proofMsg.ID)
 	}
 
+	// if submit proof failed due to reasons except for proof failure,
+	// the roller does not need to Pop the current task.
 	if err != nil && proofMsg.Status != message.StatusProofError {
 		return err
 	}
