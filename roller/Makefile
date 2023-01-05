@@ -23,10 +23,10 @@ mock_roller:
 	GOBIN=$(PWD)/build/bin go build -tags mock_prover -o $(PWD)/build/bin/roller $(PWD)/cmd
 
 test-prover: libzkp
-	go test -tags ffi -timeout 0 -v ./core/prover
+	go test -tags ffi -timeout 0 -v ./prover
 
 test-gpu-prover: libzkp
-	go test -tags="gpu ffi" -timeout 0 -v ./core/prover
+	go test -tags="gpu ffi" -timeout 0 -v ./prover
 
 lastest-zk-version:
 	curl -sL https://api.github.com/repos/scroll-tech/common-rs/commits | jq -r ".[0].sha"
