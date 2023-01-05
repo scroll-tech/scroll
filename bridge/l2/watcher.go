@@ -128,7 +128,7 @@ func (w *WatcherClient) Stop() {
 const blockTracesFetchLimit = uint64(10)
 
 // try fetch missing blocks if inconsistent
-func (w *WatcherClient) tryFetchRunningMissingBlocks(ctx context.Context, backTrackFrom uint64) error {
+func (w *WatcherClient) tryFetchRunningMissingBlocks(ctx context.Context, blockHeight uint64) error {
 	// Get newest block in DB. must have blocks at that time.
 	// Don't use "block_trace" table "trace" column's BlockTrace.Number,
 	// because it might be empty if the corresponding rollup_result is finalized/finalization_skipped
@@ -137,19 +137,22 @@ func (w *WatcherClient) tryFetchRunningMissingBlocks(ctx context.Context, backTr
 		return fmt.Errorf("failed to GetBlockTracesLatestHeight in DB: %v", err)
 	}
 
-	var backTrackTo uint64
-	if heightInDB > 0 {
-		backTrackTo = uint64(heightInDB)
-	}
-	for ; (backTrackFrom-backTrackTo)/blockTracesFetchLimit > 0; backTrackFrom -= blockTracesFetchLimit {
-		to := backTrackFrom - blockTracesFetchLimit
-		if err = w.insertBlockTraces(ctx, backTrackFrom, to); err != nil {
-			return err
-		}
+	var from = uint64(1)
+	if heightInDB > 1 {
+		from = uint64(heightInDB)
 	}
 
-	if backTrackFrom > backTrackTo {
-		return w.insertBlockTraces(ctx, backTrackFrom, backTrackTo)
+	for ; from <= blockHeight; from += blockTracesFetchLimit {
+		to := from + blockTracesFetchLimit - 1
+
+		if to > blockHeight {
+			to = blockHeight
+		}
+
+		// Get block traces and insert into db.
+		if err = w.insertBlockTraces(ctx, from, to); err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -158,7 +161,7 @@ func (w *WatcherClient) tryFetchRunningMissingBlocks(ctx context.Context, backTr
 func (w *WatcherClient) insertBlockTraces(ctx context.Context, from, to uint64) error {
 	var traces []*types.BlockTrace
 
-	for number := from; number > to; number-- {
+	for number := from; number <= to; number++ {
 		log.Debug("retrieving block trace", "height", number)
 		trace, err2 := w.GetBlockTraceByNumber(ctx, big.NewInt(int64(number)))
 		if err2 != nil {
