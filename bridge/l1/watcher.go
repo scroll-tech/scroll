@@ -181,7 +181,7 @@ func (w *Watcher) FetchContractEvent(blockHeight uint64) error {
 			batchID := event.batchID.String()
 			status := statuses[index]
 			// only update when db status is before event status
-			if event.status > status || status == orm.RollupFinalizationSkipped {
+			if event.status > status {
 				if event.status == orm.RollupFinalized {
 					err = w.db.UpdateFinalizeTxHashAndRollupStatus(w.ctx, batchID, event.txHash.String(), event.status)
 				} else if event.status == orm.RollupCommitted {
