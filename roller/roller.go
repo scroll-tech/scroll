@@ -266,7 +266,7 @@ func (r *Roller) signAndSubmitProof(msg *message.ProofDetail) (bool, error) {
 
 SEND:
 	ok, err := r.client.SubmitProof(context.Background(), authZkProof)
-	if err != nil {
+	if _, isZKErr := err.(client.ZkProofError); isZKErr {
 		log.Error("Client sends proof to scroll failed, retrying...", "taskID", msg.ID)
 		time.Sleep(10 * time.Second)
 		goto SEND

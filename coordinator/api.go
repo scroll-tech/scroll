@@ -10,6 +10,7 @@ import (
 	"github.com/scroll-tech/go-ethereum/rpc"
 
 	"scroll-tech/common/message"
+	"scroll-tech/coordinator/client"
 )
 
 // RollerAPI for rollers inorder to register and submit proof
@@ -101,18 +102,18 @@ func (m *Manager) SubmitProof(proof *message.ProofMsg) (bool, error) {
 		if err != nil {
 			log.Error("failed to verify proof message", "error", err)
 		}
-		return false, errors.New("auth signature verify fail")
+		return false, client.ZkProofError(errors.New("auth signature verify fail"))
 	}
 
 	pubkey, _ := proof.PublicKey()
 	// Only allow registered pub-key.
 	if !m.existTaskIDForRoller(pubkey, proof.ID) {
-		return false, fmt.Errorf("the roller or session id doesn't exist, pubkey: %s, ID: %s", pubkey, proof.ID)
+		return false, client.ZkProofError(fmt.Errorf("the roller or session id doesn't exist, pubkey: %s, ID: %s", pubkey, proof.ID))
 	}
 
 	err := m.handleZkProof(pubkey, proof.ProofDetail)
 	if err != nil {
-		return false, err
+		return false, client.ZkProofError(err)
 	}
 	defer m.freeTaskIDForRoller(pubkey, proof.ID)
 

@@ -45,6 +45,9 @@ func (c *Client) RegisterAndSubscribe(ctx context.Context, taskCh chan *message.
 	return c.client.Subscribe(ctx, "roller", taskCh, "register", authMsg)
 }
 
+// ZkProofError wrappers errors from verify proof failures.
+type ZkProofError error
+
 // SubmitProof get proof from roller.
 func (c *Client) SubmitProof(ctx context.Context, proof *message.ProofMsg) (bool, error) {
 	var ok bool
