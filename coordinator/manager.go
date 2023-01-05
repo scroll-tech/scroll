@@ -9,7 +9,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/davecgh/go-spew/spew"
 	cmap "github.com/orcaman/concurrent-map"
 	"github.com/patrickmn/go-cache"
 	"github.com/scroll-tech/go-ethereum/common"
@@ -198,7 +197,9 @@ func (m *Manager) restorePrevSessions() {
 			m.sessions[sess.info.ID] = sess
 
 			log.Info("Coordinator restart reload sessions", "session start time", time.Unix(sess.info.StartTimestamp, 0))
-			spew.Dump(sess.info)
+			for _, roller := range sess.info.Rollers {
+				log.Info("Roller info", "session id", sess.info.ID, "roller name", roller.Name, "public key", roller.PublicKey, "proof status", roller.Status)
+			}
 
 			go m.CollectProofs(sess.info.ID, sess)
 		}
