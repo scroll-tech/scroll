@@ -267,11 +267,9 @@ func (r *Roller) signAndSubmitProof(msg *message.ProofDetail) (bool, error) {
 SEND:
 	ok, err := r.client.SubmitProof(context.Background(), authZkProof)
 	if err != nil {
-		if _, isNetErr := err.(client.NetworkError); isNetErr {
-			log.Error("Client sends proof to scroll failed, retrying...", "taskID", msg.ID)
-			time.Sleep(10 * time.Second)
-			goto SEND
-		}
+		log.Error("Client sends proof to scroll failed, retrying...", "taskID", msg.ID)
+		time.Sleep(10 * time.Second)
+		goto SEND
 	}
 	return ok, err
 }
