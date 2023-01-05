@@ -264,16 +264,16 @@ func (r *Roller) signAndSubmitProof(msg *message.ProofDetail) (bool, error) {
 		return false, err
 	}
 
+SEND:
 	ok, err := r.client.SubmitProof(context.Background(), authZkProof)
-	for err != nil {
-		log.Error("client sends proof to scroll failed, retrying...", "taskID", msg.ID)
-		ok, err = r.client.SubmitProof(context.Background(), authZkProof)
-		if err == nil {
-			return ok, nil
+	if err != nil {
+		if _, isNetErr := err.(client.NetworkError); isNetErr {
+			log.Error("Client sends proof to scroll failed, retrying...", "taskID", msg.ID)
+			time.Sleep(10 * time.Second)
+			goto SEND
 		}
-		time.Sleep(10 * time.Second)
 	}
-	return ok, nil
+	return ok, err
 }
 
 // Stop closes the websocket connection.

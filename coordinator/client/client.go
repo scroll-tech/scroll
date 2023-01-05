@@ -45,8 +45,11 @@ func (c *Client) RegisterAndSubscribe(ctx context.Context, taskCh chan *message.
 	return c.client.Subscribe(ctx, "roller", taskCh, "register", authMsg)
 }
 
+type NetworkError error
+
 // SubmitProof get proof from roller.
 func (c *Client) SubmitProof(ctx context.Context, proof *message.ProofMsg) (bool, error) {
 	var ok bool
-	return ok, c.client.CallContext(ctx, &ok, "roller_submitProof", proof)
+	err := c.client.CallContext(ctx, &ok, "roller_submitProof", proof)
+	return ok, NetworkError(err)
 }
