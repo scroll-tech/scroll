@@ -137,6 +137,7 @@ func (w *WatcherClient) tryFetchRunningMissingBlocks(ctx context.Context, blockH
 		return fmt.Errorf("failed to GetBlockTracesLatestHeight in DB: %v", err)
 	}
 
+	// Can't get trace from genesis block, so the default start number is 1.
 	var from = uint64(1)
 	if heightInDB > 1 {
 		from = uint64(heightInDB) + 1
