@@ -129,8 +129,8 @@ func (w *Watcher) FetchContractEvent(blockHeight uint64) error {
 
 		// warning: uint int conversion...
 		query := geth.FilterQuery{
-			FromBlock: big.NewInt(from),   // inclusive
-			ToBlock:   big.NewInt(to + 1), // inclusive
+			FromBlock: big.NewInt(from), // inclusive
+			ToBlock:   big.NewInt(to),   // inclusive
 			Addresses: []common.Address{
 				w.messengerAddress,
 				w.rollupAddress,
