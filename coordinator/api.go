@@ -10,6 +10,7 @@ import (
 	"github.com/scroll-tech/go-ethereum/rpc"
 
 	"scroll-tech/common/message"
+
 	"scroll-tech/coordinator/client"
 )
 
