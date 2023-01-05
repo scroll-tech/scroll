@@ -249,7 +249,7 @@ func (r *Roller) prove() error {
 		log.Error("submit proof to coordinator failed", "task ID", proofMsg.ID)
 	}
 
-	if err != nil && strings.Contains(err.Error(), "websocket") {
+	if err != nil && proofMsg.Status != message.StatusProofError {
 		return err
 	}
 	_, err = r.stack.Pop()
