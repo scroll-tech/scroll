@@ -18,9 +18,9 @@ import (
 )
 
 const (
-	paramsPath = "../../assets/test_params"
-	seedPath   = "../../assets/test_seed"
-	tracesPath = "../../assets/traces"
+	paramsPath = "../assets/test_params"
+	seedPath   = "../assets/test_seed"
+	tracesPath = "../assets/traces"
 )
 
 type RPCTrace struct {
