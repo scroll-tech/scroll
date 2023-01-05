@@ -3,6 +3,7 @@ module scroll-tech/coordinator
 go 1.18
 
 require (
+	github.com/davecgh/go-spew v1.1.1
 	github.com/orcaman/concurrent-map v1.0.0
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/scroll-tech/go-ethereum v1.10.14-0.20221221073256-5ca70bf3a257
@@ -15,7 +16,6 @@ require (
 	github.com/btcsuite/btcd v0.20.1-beta // indirect
 	github.com/cespare/xxhash/v2 v2.1.2 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.2 // indirect
-	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/deckarep/golang-set v1.8.0 // indirect
 	github.com/ethereum/go-ethereum v1.10.26 // indirect
 	github.com/go-ole/go-ole v1.2.6 // indirect
