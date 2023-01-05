@@ -59,6 +59,14 @@ interface IZKRollup {
 
   /**************************************** View Functions ****************************************/
 
+  /// @notice Return whether the block is finalized by block hash.
+  /// @param blockHash The hash of the block to query.
+  function isBlockFinalized(bytes32 blockHash) external view returns (bool);
+
+  /// @notice Return whether the block is finalized by block height.
+  /// @param blockHeight The height of the block to query.
+  function isBlockFinalized(uint256 blockHeight) external view returns (bool);
+
   /// @notice Return the message hash by index.
   /// @param _index The index to query.
   function getMessageHashByIndex(uint256 _index) external view returns (bytes32);
