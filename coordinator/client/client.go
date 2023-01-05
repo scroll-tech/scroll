@@ -45,6 +45,7 @@ func (c *Client) RegisterAndSubscribe(ctx context.Context, taskCh chan *message.
 	return c.client.Subscribe(ctx, "roller", taskCh, "register", authMsg)
 }
 
+// NetworkError wrappers errors from websocket.
 type NetworkError error
 
 // SubmitProof get proof from roller.
