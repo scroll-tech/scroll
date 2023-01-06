@@ -237,22 +237,23 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 		return
 	}
 
+	txID := id + "-commit"
 	// add suffix `-commit` to avoid duplication with finalize tx in unit tests
-	hash, err := r.rollupSender.SendTransaction(id+"-commit", &r.cfg.RollupContractAddress, big.NewInt(0), data)
+	hash, err := r.rollupSender.SendTransaction(txID, &r.cfg.RollupContractAddress, big.NewInt(0), data)
 	if err != nil {
 		if !errors.Is(err, sender.ErrNoAvailableAccount) {
 			log.Error("Failed to send commitBatch tx to layer1 ", "id", id, "index", batch.Index, "err", err)
 		}
 		return
 	}
-	log.Info("commitBatch in layer1", "id", id, "index", batch.Index, "hash", hash)
+	log.Info("commitBatch in layer1", "batchID", id, "index", batch.Index, "hash", hash)
 
 	// record and sync with db, @todo handle db error
 	err = r.db.UpdateCommitTxHashAndRollupStatus(r.ctx, id, hash.String(), orm.RollupCommitting)
 	if err != nil {
 		log.Error("UpdateCommitTxHashAndRollupStatus failed", "id", id, "index", batch.Index, "err", err)
 	}
-	r.processingCommitment[id] = id
+	r.processingCommitment[txID] = id
 }
 
 // ProcessCommittedBatches submit proof to layer 1 rollup contract
@@ -330,8 +331,9 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 			return
 		}
 
+		txID := id + "-finalize"
 		// add suffix `-finalize` to avoid duplication with commit tx in unit tests
-		txHash, err := r.rollupSender.SendTransaction(id+"-finalize", &r.cfg.RollupContractAddress, big.NewInt(0), data)
+		txHash, err := r.rollupSender.SendTransaction(txID, &r.cfg.RollupContractAddress, big.NewInt(0), data)
 		hash := &txHash
 		if err != nil {
 			if !errors.Is(err, sender.ErrNoAvailableAccount) {
@@ -339,15 +341,15 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 			}
 			return
 		}
-		log.Info("finalizeBatchWithProof in layer1", "id", id, "hash", hash)
+		log.Info("finalizeBatchWithProof in layer1", "batchID", id, "hash", hash)
 
 		// record and sync with db, @todo handle db error
 		err = r.db.UpdateFinalizeTxHashAndRollupStatus(r.ctx, id, hash.String(), orm.RollupFinalizing)
 		if err != nil {
-			log.Warn("UpdateFinalizeTxHashAndRollupStatus failed", "id", id, "err", err)
+			log.Warn("UpdateFinalizeTxHashAndRollupStatus failed", "batchID", id, "err", err)
 		}
 		success = true
-		r.processingFinalization[id] = id
+		r.processingFinalization[txID] = id
 
 	default:
 		log.Error("encounter unreachable case in ProcessCommittedBatches",
