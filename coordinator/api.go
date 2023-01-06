@@ -101,18 +101,18 @@ func (m *Manager) SubmitProof(proof *message.ProofMsg) (bool, error) {
 		if err != nil {
 			log.Error("failed to verify proof message", "error", err)
 		}
-		return false, message.ServiceError(message.ErrSignInvalid)
+		return false, errors.New("auth signature verify fail")
 	}
 
 	pubkey, _ := proof.PublicKey()
 	// Only allow registered pub-key.
 	if !m.existTaskIDForRoller(pubkey, proof.ID) {
-		return false, message.ServiceError(fmt.Errorf("the roller or session id doesn't exist, pubkey: %s, ID: %s", pubkey, proof.ID))
+		return false, fmt.Errorf("the roller or session id doesn't exist, pubkey: %s, ID: %s", pubkey, proof.ID)
 	}
 
 	err := m.handleZkProof(pubkey, proof.ProofDetail)
 	if err != nil {
-		return false, message.ServiceError(err)
+		return false, err
 	}
 	defer m.freeTaskIDForRoller(pubkey, proof.ID)
 

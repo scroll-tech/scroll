@@ -42,8 +42,9 @@ type Roller struct {
 	taskChan chan *message.TaskMsg
 	sub      ethereum.Subscription
 
-	isClosed int64
-	stopChan chan struct{}
+	isDisconnected int64
+	isClosed       int64
+	stopChan       chan struct{}
 
 	priv *ecdsa.PrivateKey
 }
@@ -158,6 +159,8 @@ func (r *Roller) HandleCoordinator() {
 }
 
 func (r *Roller) mustRetryCoordinator() {
+	atomic.StoreInt64(&r.isDisconnected, 1)
+	defer atomic.StoreInt64(&r.isDisconnected, 0)
 	for {
 		log.Info("retry to connect to coordinator...")
 		err := r.Register()
@@ -243,18 +246,15 @@ func (r *Roller) prove() error {
 		}
 		log.Info("prove block successfully!", "task-id", task.Task.ID)
 	}
+	_, err = r.stack.Pop()
+	if err != nil {
+		return err
+	}
 
-	ok, serr := r.signAndSubmitProof(proofMsg)
+	ok, err := r.signAndSubmitProof(proofMsg)
 	if !ok {
 		log.Error("submit proof to coordinator failed", "task ID", proofMsg.ID)
 	}
-
-	// if submit proof failed due to reasons except for proof failure,
-	// the roller does not need to Pop the current task.
-	if serr != nil {
-		return serr
-	}
-	_, err = r.stack.Pop()
 	return err
 }
 
@@ -264,13 +264,12 @@ func (r *Roller) signAndSubmitProof(msg *message.ProofDetail) (bool, error) {
 		return false, err
 	}
 
-SEND:
-	ok, err := r.client.SubmitProof(context.Background(), authZkProof)
-	if _, isZKErr := err.(message.ServiceError); !isZKErr { // If err is network Error(not service Error), retry it.
-		log.Error("Client sends proof to scroll failed, retrying...", "taskID", msg.ID)
-		time.Sleep(10 * time.Second)
-		goto SEND
+	// When the roller is disconnected from the coordinator,
+	// sleep until the roller reconnects to the coordinator.
+	for atomic.LoadInt64(&r.isDisconnected) == 0 {
+		time.Sleep(time.Second)
 	}
+	ok, err := r.client.SubmitProof(context.Background(), authZkProof)
 	return ok, err
 }
 
