@@ -252,11 +252,11 @@ func (r *Roller) prove() error {
 		}
 	}()
 
-	ok, err := r.signAndSubmitProof(proofMsg)
+	ok, serr := r.signAndSubmitProof(proofMsg)
 	if !ok {
 		log.Error("submit proof to coordinator failed", "task ID", proofMsg.ID)
 	}
-	return err
+	return serr
 }
 
 func (r *Roller) signAndSubmitProof(msg *message.ProofDetail) (bool, error) {
