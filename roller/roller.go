@@ -218,7 +218,8 @@ func (r *Roller) prove() error {
 
 		log.Info("start to prove block", "task-id", task.Task.ID)
 
-		// If FFI panic during Prove, the roller will restart and re-enter prove() function.
+		// If FFI panic during Prove, the roller will restart and re-enter prove() function,
+		// the proof will not be submitted.
 		var proof *message.AggProof
 		proof, err = r.prover.Prove(traces)
 		if err != nil {
@@ -238,6 +239,8 @@ func (r *Roller) prove() error {
 			log.Info("prove block successfully!", "task-id", task.Task.ID)
 		}
 	} else {
+		// when the roller has more than 3 times panic,
+		// it will omit to prove the task, submit StatusProofError and then Pop the task.
 		proofMsg = &message.ProofDetail{
 			Status: message.StatusProofError,
 			Error:  "zk proving panic",
