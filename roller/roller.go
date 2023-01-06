@@ -205,7 +205,7 @@ func (r *Roller) prove() error {
 
 	proofMsg := &message.ProofDetail{
 		Status: message.StatusProofError,
-		Error:  "prover has retried several times due to FFI panic",
+		Error:  "zk proving panic",
 		ID:     task.Task.ID,
 		Proof:  &message.AggProof{},
 	}
