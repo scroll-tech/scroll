@@ -15,7 +15,9 @@ type L1Config struct {
 	// The start height to sync event from layer 1
 	StartHeight *big.Int `json:"start_height"`
 	// The messenger contract address deployed on layer 1 chain.
-	L1MessengerAddress common.Address `json:"l1_messenger_address,omitempty"`
+	L1MessengerAddress common.Address `json:"l1_messenger_address"`
+	// The rollup contract address deployed on layer 1 chain.
+	RollupContractAddress common.Address `json:"rollup_contract_address"`
 	// The relayer config
 	RelayerConfig *RelayerConfig `json:"relayer_config"`
 }

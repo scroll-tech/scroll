@@ -329,6 +329,24 @@ func (o *blockBatchOrm) GetRollupStatusByIDList(ids []string) ([]RollupStatus, e
 	return statuses, nil
 }
 
+func (o *blockBatchOrm) GetCommitTxHash(id string) (sql.NullString, error) {
+	row := o.db.QueryRow(`SELECT commit_tx_hash FROM block_batch WHERE id = $1`, id)
+	var hash sql.NullString
+	if err := row.Scan(&hash); err != nil {
+		return sql.NullString{}, err
+	}
+	return hash, nil
+}
+
+func (o *blockBatchOrm) GetFinalizeTxHash(id string) (sql.NullString, error) {
+	row := o.db.QueryRow(`SELECT finalize_tx_hash FROM block_batch WHERE id = $1`, id)
+	var hash sql.NullString
+	if err := row.Scan(&hash); err != nil {
+		return sql.NullString{}, err
+	}
+	return hash, nil
+}
+
 func (o *blockBatchOrm) UpdateRollupStatus(ctx context.Context, id string, status RollupStatus) error {
 	switch status {
 	case RollupCommitted:
