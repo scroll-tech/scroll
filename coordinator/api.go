@@ -10,8 +10,6 @@ import (
 	"github.com/scroll-tech/go-ethereum/rpc"
 
 	"scroll-tech/common/message"
-
-	"scroll-tech/coordinator/client"
 )
 
 // RollerAPI for rollers inorder to register and submit proof
@@ -96,6 +94,9 @@ func (m *Manager) Register(ctx context.Context, authMsg *message.AuthMsg) (*rpc.
 	return rpcSub, nil
 }
 
+// ZkProofError wrappers errors from verify proof failures.
+type ZkProofError error
+
 // SubmitProof roller pull proof
 func (m *Manager) SubmitProof(proof *message.ProofMsg) (bool, error) {
 	// Verify the signature
@@ -103,18 +104,18 @@ func (m *Manager) SubmitProof(proof *message.ProofMsg) (bool, error) {
 		if err != nil {
 			log.Error("failed to verify proof message", "error", err)
 		}
-		return false, client.ZkProofError(errors.New("auth signature verify fail"))
+		return false, ZkProofError(errors.New("auth signature verify fail"))
 	}
 
 	pubkey, _ := proof.PublicKey()
 	// Only allow registered pub-key.
 	if !m.existTaskIDForRoller(pubkey, proof.ID) {
-		return false, client.ZkProofError(fmt.Errorf("the roller or session id doesn't exist, pubkey: %s, ID: %s", pubkey, proof.ID))
+		return false, ZkProofError(fmt.Errorf("the roller or session id doesn't exist, pubkey: %s, ID: %s", pubkey, proof.ID))
 	}
 
 	err := m.handleZkProof(pubkey, proof.ProofDetail)
 	if err != nil {
-		return false, client.ZkProofError(err)
+		return false, ZkProofError(err)
 	}
 	defer m.freeTaskIDForRoller(pubkey, proof.ID)
 

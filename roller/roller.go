@@ -19,6 +19,7 @@ import (
 	"scroll-tech/common/utils"
 	"scroll-tech/common/version"
 
+	"scroll-tech/coordinator"
 	"scroll-tech/coordinator/client"
 
 	"scroll-tech/roller/config"
@@ -266,7 +267,7 @@ func (r *Roller) signAndSubmitProof(msg *message.ProofDetail) (bool, error) {
 
 SEND:
 	ok, err := r.client.SubmitProof(context.Background(), authZkProof)
-	if _, isZKErr := err.(client.ZkProofError); isZKErr {
+	if _, isZKErr := err.(coordinator.ZkProofError); isZKErr {
 		log.Error("Client sends proof to scroll failed, retrying...", "taskID", msg.ID)
 		time.Sleep(10 * time.Second)
 		goto SEND
