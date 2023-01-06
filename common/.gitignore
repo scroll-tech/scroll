@@ -2,3 +2,4 @@
 .idea
 libzkp/impl/target
 libzkp/interface/*.a
+bytecode/abi
