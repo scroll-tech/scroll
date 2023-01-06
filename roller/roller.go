@@ -252,7 +252,7 @@ func (r *Roller) prove() error {
 	// if submit proof failed due to reasons except for proof failure,
 	// the roller does not need to Pop the current task.
 	if serr != nil {
-		return err
+		return serr
 	}
 	_, err = r.stack.Pop()
 	return err
