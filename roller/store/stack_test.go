@@ -57,7 +57,13 @@ func TestStack(t *testing.T) {
 	err = s.Push(pop)
 	assert.NoError(t, err)
 
+	peek, err := s.Peek()
+	assert.NoError(t, err)
 	pop2, err := s.Pop()
 	assert.NoError(t, err)
-	assert.Equal(t, 2, pop2.Times)
+	assert.Equal(t, peek, pop2)
+
+	s.AddProofTimes(pop2)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, pop2.Times)
 }

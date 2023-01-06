@@ -58,6 +58,29 @@ func (s *Stack) Push(task *ProvingTask) error {
 	})
 }
 
+// Peek return the top element of the Stack.
+func (s *Stack) Peek() (*ProvingTask, error) {
+	var value []byte
+	if err := s.View(func(tx *bbolt.Tx) error {
+		bu := tx.Bucket(bucket)
+		c := bu.Cursor()
+		_, value = c.Last()
+		return nil
+	}); err != nil {
+		return nil, err
+	}
+	if len(value) == 0 {
+		return nil, ErrEmpty
+	}
+
+	traces := &ProvingTask{}
+	err := json.Unmarshal(value, traces)
+	if err != nil {
+		return nil, err
+	}
+	return traces, nil
+}
+
 // Pop pops the proving-task on the top of Stack.
 func (s *Stack) Pop() (*ProvingTask, error) {
 	var value []byte
@@ -79,6 +102,21 @@ func (s *Stack) Pop() (*ProvingTask, error) {
 	if err != nil {
 		return nil, err
 	}
-	task.Times++
 	return task, nil
+}
+
+// AddProofTimes adds the roller prove times of the proving task.
+func (s *Stack) AddProofTimes(task *ProvingTask) error {
+	task.Times++
+	byt, err := json.Marshal(task)
+	if err != nil {
+		return err
+	}
+	key := []byte(task.Task.ID)
+	return s.Update(func(tx *bbolt.Tx) error {
+		bu := tx.Bucket(bucket)
+		c := bu.Cursor()
+		key, _ = c.Last()
+		return bu.Put(key, byt)
+	})
 }

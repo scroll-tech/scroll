@@ -198,58 +198,59 @@ func (r *Roller) ProveLoop() {
 }
 
 func (r *Roller) prove() error {
-	task, err := r.stack.Pop()
+	task, err := r.stack.Peek()
 	if err != nil {
 		return err
 	}
 
-	var proofMsg *message.ProofDetail
-	if task.Times > 2 {
-		proofMsg = &message.ProofDetail{
-			Status: message.StatusProofError,
-			Error:  "prover has retried several times due to FFI panic",
-			ID:     task.Task.ID,
-			Proof:  &message.AggProof{},
+	proofMsg := &message.ProofDetail{
+		Status: message.StatusProofError,
+		Error:  "prover has retried several times due to FFI panic",
+		ID:     task.Task.ID,
+		Proof:  &message.AggProof{},
+	}
+
+	// If roller proof times <= 2, try to proof the task.
+	if task.Times <= 2 {
+		if err = r.stack.AddProofTimes(task); err != nil {
+			return err
 		}
 
-		_, err = r.signAndSubmitProof(proofMsg)
-		return err
-	}
+		// Sort BlockTraces by header number.
+		traces := task.Task.Traces
+		sort.Slice(traces, func(i, j int) bool {
+			return traces[i].Header.Number.Int64() < traces[j].Header.Number.Int64()
+		})
 
-	err = r.stack.Push(task)
-	if err != nil {
-		return err
-	}
+		log.Info("start to prove block", "task-id", task.Task.ID)
 
-	log.Info("start to prove block", "task-id", task.Task.ID)
-
-	// sort BlockTrace
-	traces := task.Task.Traces
-	sort.Slice(traces, func(i, j int) bool {
-		return traces[i].Header.Number.Int64() < traces[j].Header.Number.Int64()
-	})
-	proof, err := r.prover.Prove(traces)
-	if err != nil {
-		proofMsg = &message.ProofDetail{
-			Status: message.StatusProofError,
-			Error:  err.Error(),
-			ID:     task.Task.ID,
-			Proof:  &message.AggProof{},
+		// If FFI panic during Prove, the roller will restart and re-enter prove() function.
+		var proof *message.AggProof
+		proof, err = r.prover.Prove(traces)
+		if err != nil {
+			proofMsg = &message.ProofDetail{
+				Status: message.StatusProofError,
+				Error:  err.Error(),
+				ID:     task.Task.ID,
+				Proof:  &message.AggProof{},
+			}
+			log.Error("prove block failed!", "task-id", task.Task.ID)
+		} else {
+			proofMsg = &message.ProofDetail{
+				Status: message.StatusOk,
+				ID:     task.Task.ID,
+				Proof:  proof,
+			}
+			log.Info("prove block successfully!", "task-id", task.Task.ID)
 		}
-		log.Error("prove block failed!", "task-id", task.Task.ID)
-	} else {
+	}
 
-		proofMsg = &message.ProofDetail{
-			Status: message.StatusOk,
-			ID:     task.Task.ID,
-			Proof:  proof,
+	defer func() {
+		_, err = r.stack.Pop()
+		if err != nil {
+			log.Error("roller stack pop failed!", "err", err)
 		}
-		log.Info("prove block successfully!", "task-id", task.Task.ID)
-	}
-	_, err = r.stack.Pop()
-	if err != nil {
-		return err
-	}
+	}()
 
 	ok, err := r.signAndSubmitProof(proofMsg)
 	if !ok {
