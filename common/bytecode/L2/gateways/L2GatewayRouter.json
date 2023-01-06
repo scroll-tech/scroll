@@ -1,0 +1,612 @@
+{
+  "contracts": {
+    "L2GatewayRouter.sol:L2GatewayRouter": {
+      "abi": [
+        {
+          "anonymous": false,
+          "inputs": [
+            {
+              "indexed": true,
+              "internalType": "address",
+              "name": "_l1Token",
+              "type": "address"
+            },
+            {
+              "indexed": true,
+              "internalType": "address",
+              "name": "_l2Token",
+              "type": "address"
+            },
+            {
+              "indexed": true,
+              "internalType": "address",
+              "name": "_from",
+              "type": "address"
+            },
+            {
+              "indexed": false,
+              "internalType": "address",
+              "name": "_to",
+              "type": "address"
+            },
+            {
+              "indexed": false,
+              "internalType": "uint256",
+              "name": "_amount",
+              "type": "uint256"
+            },
+            {
+              "indexed": false,
+              "internalType": "bytes",
+              "name": "_data",
+              "type": "bytes"
+            }
+          ],
+          "name": "FinalizeDepositERC20",
+          "type": "event"
+        },
+        {
+          "anonymous": false,
+          "inputs": [
+            {
+              "indexed": true,
+              "internalType": "address",
+              "name": "_from",
+              "type": "address"
+            },
+            {
+              "indexed": true,
+              "internalType": "address",
+              "name": "_to",
+              "type": "address"
+            },
+            {
+              "indexed": false,
+              "internalType": "uint256",
+              "name": "_amount",
+              "type": "uint256"
+            },
+            {
+              "indexed": false,
+              "internalType": "bytes",
+              "name": "_data",
+              "type": "bytes"
+            }
+          ],
+          "name": "FinalizeDepositETH",
+          "type": "event"
+        },
+        {
+          "anonymous": false,
+          "inputs": [
+            {
+              "indexed": true,
+              "internalType": "address",
+              "name": "previousOwner",
+              "type": "address"
+            },
+            {
+              "indexed": true,
+              "internalType": "address",
+              "name": "newOwner",
+              "type": "address"
+            }
+          ],
+          "name": "OwnershipTransferred",
+          "type": "event"
+        },
+        {
+          "anonymous": false,
+          "inputs": [
+            {
+              "indexed": true,
+              "internalType": "address",
+              "name": "_defaultERC20Gateway",
+              "type": "address"
+            }
+          ],
+          "name": "SetDefaultERC20Gateway",
+          "type": "event"
+        },
+        {
+          "anonymous": false,
+          "inputs": [
+            {
+              "indexed": true,
+              "internalType": "address",
+              "name": "_token",
+              "type": "address"
+            },
+            {
+              "indexed": true,
+              "internalType": "address",
+              "name": "_gateway",
+              "type": "address"
+            }
+          ],
+          "name": "SetERC20Gateway",
+          "type": "event"
+        },
+        {
+          "anonymous": false,
+          "inputs": [
+            {
+              "indexed": true,
+              "internalType": "address",
+              "name": "_l1Token",
+              "type": "address"
+            },
+            {
+              "indexed": true,
+              "internalType": "address",
+              "name": "_l2Token",
+              "type": "address"
+            },
+            {
+              "indexed": true,
+              "internalType": "address",
+              "name": "_from",
+              "type": "address"
+            },
+            {
+              "indexed": false,
+              "internalType": "address",
+              "name": "_to",
+              "type": "address"
+            },
+            {
+              "indexed": false,
+              "internalType": "uint256",
+              "name": "_amount",
+              "type": "uint256"
+            },
+            {
+              "indexed": false,
+              "internalType": "bytes",
+              "name": "_data",
+              "type": "bytes"
+            }
+          ],
+          "name": "WithdrawERC20",
+          "type": "event"
+        },
+        {
+          "anonymous": false,
+          "inputs": [
+            {
+              "indexed": true,
+              "internalType": "address",
+              "name": "_from",
+              "type": "address"
+            },
+            {
+              "indexed": true,
+              "internalType": "address",
+              "name": "_to",
+              "type": "address"
+            },
+            {
+              "indexed": false,
+              "internalType": "uint256",
+              "name": "_amount",
+              "type": "uint256"
+            },
+            {
+              "indexed": false,
+              "internalType": "bytes",
+              "name": "_data",
+              "type": "bytes"
+            }
+          ],
+          "name": "WithdrawETH",
+          "type": "event"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "address",
+              "name": "",
+              "type": "address"
+            }
+          ],
+          "name": "ERC20Gateway",
+          "outputs": [
+            {
+              "internalType": "address",
+              "name": "",
+              "type": "address"
+            }
+          ],
+          "stateMutability": "view",
+          "type": "function"
+        },
+        {
+          "inputs": [],
+          "name": "counterpart",
+          "outputs": [
+            {
+              "internalType": "address",
+              "name": "",
+              "type": "address"
+            }
+          ],
+          "stateMutability": "view",
+          "type": "function"
+        },
+        {
+          "inputs": [],
+          "name": "defaultERC20Gateway",
+          "outputs": [
+            {
+              "internalType": "address",
+              "name": "",
+              "type": "address"
+            }
+          ],
+          "stateMutability": "view",
+          "type": "function"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "address",
+              "name": "",
+              "type": "address"
+            },
+            {
+              "internalType": "address",
+              "name": "",
+              "type": "address"
+            },
+            {
+              "internalType": "address",
+              "name": "",
+              "type": "address"
+            },
+            {
+              "internalType": "address",
+              "name": "",
+              "type": "address"
+            },
+            {
+              "internalType": "uint256",
+              "name": "",
+              "type": "uint256"
+            },
+            {
+              "internalType": "bytes",
+              "name": "",
+              "type": "bytes"
+            }
+          ],
+          "name": "finalizeDepositERC20",
+          "outputs": [],
+          "stateMutability": "payable",
+          "type": "function"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "address",
+              "name": "_from",
+              "type": "address"
+            },
+            {
+              "internalType": "address",
+              "name": "_to",
+              "type": "address"
+            },
+            {
+              "internalType": "uint256",
+              "name": "_amount",
+              "type": "uint256"
+            },
+            {
+              "internalType": "bytes",
+              "name": "_data",
+              "type": "bytes"
+            }
+          ],
+          "name": "finalizeDepositETH",
+          "outputs": [],
+          "stateMutability": "payable",
+          "type": "function"
+        },
+        {
+          "inputs": [],
+          "name": "finalizeDropMessage",
+          "outputs": [],
+          "stateMutability": "payable",
+          "type": "function"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "address",
+              "name": "_token",
+              "type": "address"
+            }
+          ],
+          "name": "getERC20Gateway",
+          "outputs": [
+            {
+              "internalType": "address",
+              "name": "",
+              "type": "address"
+            }
+          ],
+          "stateMutability": "view",
+          "type": "function"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "address",
+              "name": "_l2Address",
+              "type": "address"
+            }
+          ],
+          "name": "getL1ERC20Address",
+          "outputs": [
+            {
+              "internalType": "address",
+              "name": "",
+              "type": "address"
+            }
+          ],
+          "stateMutability": "view",
+          "type": "function"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "address",
+              "name": "",
+              "type": "address"
+            }
+          ],
+          "name": "getL2ERC20Address",
+          "outputs": [
+            {
+              "internalType": "address",
+              "name": "",
+              "type": "address"
+            }
+          ],
+          "stateMutability": "pure",
+          "type": "function"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "address",
+              "name": "_defaultERC20Gateway",
+              "type": "address"
+            },
+            {
+              "internalType": "address",
+              "name": "_counterpart",
+              "type": "address"
+            },
+            {
+              "internalType": "address",
+              "name": "_messenger",
+              "type": "address"
+            }
+          ],
+          "name": "initialize",
+          "outputs": [],
+          "stateMutability": "nonpayable",
+          "type": "function"
+        },
+        {
+          "inputs": [],
+          "name": "messenger",
+          "outputs": [
+            {
+              "internalType": "address",
+              "name": "",
+              "type": "address"
+            }
+          ],
+          "stateMutability": "view",
+          "type": "function"
+        },
+        {
+          "inputs": [],
+          "name": "owner",
+          "outputs": [
+            {
+              "internalType": "address",
+              "name": "",
+              "type": "address"
+            }
+          ],
+          "stateMutability": "view",
+          "type": "function"
+        },
+        {
+          "inputs": [],
+          "name": "renounceOwnership",
+          "outputs": [],
+          "stateMutability": "nonpayable",
+          "type": "function"
+        },
+        {
+          "inputs": [],
+          "name": "router",
+          "outputs": [
+            {
+              "internalType": "address",
+              "name": "",
+              "type": "address"
+            }
+          ],
+          "stateMutability": "view",
+          "type": "function"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "address",
+              "name": "_defaultERC20Gateway",
+              "type": "address"
+            }
+          ],
+          "name": "setDefaultERC20Gateway",
+          "outputs": [],
+          "stateMutability": "nonpayable",
+          "type": "function"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "address[]",
+              "name": "_tokens",
+              "type": "address[]"
+            },
+            {
+              "internalType": "address[]",
+              "name": "_gateways",
+              "type": "address[]"
+            }
+          ],
+          "name": "setERC20Gateway",
+          "outputs": [],
+          "stateMutability": "nonpayable",
+          "type": "function"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "address",
+              "name": "newOwner",
+              "type": "address"
+            }
+          ],
+          "name": "transferOwnership",
+          "outputs": [],
+          "stateMutability": "nonpayable",
+          "type": "function"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "address",
+              "name": "_token",
+              "type": "address"
+            },
+            {
+              "internalType": "uint256",
+              "name": "_amount",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "_gasLimit",
+              "type": "uint256"
+            }
+          ],
+          "name": "withdrawERC20",
+          "outputs": [],
+          "stateMutability": "payable",
+          "type": "function"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "address",
+              "name": "_token",
+              "type": "address"
+            },
+            {
+              "internalType": "address",
+              "name": "_to",
+              "type": "address"
+            },
+            {
+              "internalType": "uint256",
+              "name": "_amount",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "_gasLimit",
+              "type": "uint256"
+            }
+          ],
+          "name": "withdrawERC20",
+          "outputs": [],
+          "stateMutability": "payable",
+          "type": "function"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "address",
+              "name": "_token",
+              "type": "address"
+            },
+            {
+              "internalType": "address",
+              "name": "_to",
+              "type": "address"
+            },
+            {
+              "internalType": "uint256",
+              "name": "_amount",
+              "type": "uint256"
+            },
+            {
+              "internalType": "bytes",
+              "name": "_data",
+              "type": "bytes"
+            },
+            {
+              "internalType": "uint256",
+              "name": "_gasLimit",
+              "type": "uint256"
+            }
+          ],
+          "name": "withdrawERC20AndCall",
+          "outputs": [],
+          "stateMutability": "payable",
+          "type": "function"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "address",
+              "name": "_to",
+              "type": "address"
+            },
+            {
+              "internalType": "uint256",
+              "name": "_gasLimit",
+              "type": "uint256"
+            }
+          ],
+          "name": "withdrawETH",
+          "outputs": [],
+          "stateMutability": "payable",
+          "type": "function"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "uint256",
+              "name": "_gasLimit",
+              "type": "uint256"
+            }
+          ],
+          "name": "withdrawETH",
+          "outputs": [],
+          "stateMutability": "payable",
+          "type": "function"
+        }
+      ],
+      "bin": "608060405234801561001057600080fd5b50611772806100206000396000f3fe6080604052600436106101355760003560e01c80637885ef01116100ab578063c0c53b8b1161006f578063c0c53b8b146102fb578063c676ad291461031b578063ce8c3e061461033b578063f14210a61461035b578063f2fde38b1461036e578063f887ea401461038e57600080fd5b80637885ef011461028f578063797594b0146102975780638431f5c1146102b75780638da5cb5b146102ca578063a93a4af9146102e857600080fd5b8063575361b6116100fd578063575361b6146101de5780635dfd5b9a146101f1578063635c8637146102115780636c07ea4314610231578063705b05b814610244578063715018a61461027a57600080fd5b8063232e87481461013a5780633cb747bf1461014f57806343c667411461018b5780634782f779146101ab57806354bbd59c146101be575b600080fd5b61014d6101483660046110cd565b6103ae565b005b34801561015b57600080fd5b5060675461016f906001600160a01b031681565b6040516001600160a01b03909116815260200160405180910390f35b34801561019757600080fd5b5061016f6101a6366004611140565b6105fc565b61014d6101b936600461115d565b610632565b3480156101ca57600080fd5b5061016f6101d9366004611140565b6107fe565b61014d6101ec3660046111d0565b610894565b3480156101fd57600080fd5b5061014d61020c366004611140565b6109e0565b34801561021d57600080fd5b5061014d61022c366004611325565b610a54565b61014d61023f366004611389565b610bd2565b34801561025057600080fd5b5061016f61025f366004611140565b606a602052600090815260409020546001600160a01b031681565b34801561028657600080fd5b5061014d610c0c565b61014d610c42565b3480156102a357600080fd5b5060655461016f906001600160a01b031681565b61014d6102c53660046113be565b610c96565b3480156102d657600080fd5b506033546001600160a01b031661016f565b61014d6102f6366004611456565b610cd7565b34801561030757600080fd5b5061014d61031636600461149c565b610cea565b34801561032757600080fd5b5061016f610336366004611140565b610de4565b34801561034757600080fd5b5060695461016f906001600160a01b031681565b61014d6103693660046114e7565b610e1d565b34801561037a57600080fd5b5061014d610389366004611140565b610e2a565b34801561039a57600080fd5b5060665461016f906001600160a01b031681565b6067546001600160a01b03163381146104085760405162461bcd60e51b81526020600482015260176024820152761bdb9b1e481b595cdcd95b99d95c8818d85b8818d85b1b604a1b60448201526064015b60405180910390fd5b806001600160a01b0316636e296e456040518163ffffffff1660e01b8152600401602060405180830381865afa158015610446573d6000803e3d6000fd5b505050506040513d601f19601f8201168201806040525081019061046a9190611500565b6065546001600160a01b039081169116146104c75760405162461bcd60e51b815260206004820152601760248201527f6f6e6c792063616c6c20627920636f6e7465727061727400000000000000000060448201526064016103ff565b83341461050b5760405162461bcd60e51b81526020600482015260126024820152710dae6ce5cecc2d8eaca40dad2e6dac2e8c6d60731b60448201526064016103ff565b6000856001600160a01b03168560405160006040518083038185875af1925050503d8060008114610558576040519150601f19603f3d011682016040523d82523d6000602084013e61055d565b606091505b50509050806105a45760405162461bcd60e51b8152602060048201526013602482015272115512081d1c985b9cd9995c8819985a5b1959606a1b60448201526064016103ff565b856001600160a01b0316876001600160a01b03167f9e86c356e14e24e26e3ce769bf8b87de38e0faa0ed0ca946fa09659aa606bd2d8787876040516105eb9392919061151d565b60405180910390a350505050505050565b6001600160a01b038082166000908152606a60205260408120549091168061062c57506069546001600160a01b03165b92915050565b6002606854036106845760405162461bcd60e51b815260206004820152601f60248201527f5265656e7472616e637947756172643a207265656e7472616e742063616c6c0060448201526064016103ff565b6002606855346106ca5760405162461bcd60e51b81526020600482015260116024820152700eed2e8d0c8e4c2ee40f4cae4de40cae8d607b1b60448201526064016103ff565b60408051600080825260208201909252638eaac8a360e01b906106f69033908690349060448101611599565b60408051601f198184030181529181526020820180516001600160e01b03166001600160e01b031990941693909317909252606754606554925163b2267a7b60e01b81529193506001600160a01b039081169263b2267a7b923492610766921690600090879089906004016115d6565b6000604051808303818588803b15801561077f57600080fd5b505af1158015610793573d6000803e3d6000fd5b5050505050826001600160a01b0316336001600160a01b03167fd8ed6eaa9a7a8980d7901e911fde6686810b989d3082182d1d3a3df6306ce20e346040516107ec91815260406020820181905260009082015260600190565b60405180910390a35050600160685550565b60008061080a836105fc565b90506001600160a01b0381166108235750600092915050565b60405163152ef56760e21b81526001600160a01b0384811660048301528216906354bbd59c90602401602060405180830381865afa158015610869573d6000803e3d6000fd5b505050506040513d601f19601f8201168201806040525081019061088d9190611500565b9392505050565b6002606854036108e65760405162461bcd60e51b815260206004820152601f60248201527f5265656e7472616e637947756172643a207265656e7472616e742063616c6c0060448201526064016103ff565b600260685560006108f6866105fc565b90506001600160a01b0381166109455760405162461bcd60e51b81526020600482015260146024820152736e6f206761746577617920617661696c61626c6560601b60448201526064016103ff565b6000338460405160200161095a92919061160e565b60408051601f1981840301815290829052632ba9b0db60e11b825291506001600160a01b0383169063575361b69034906109a0908b908b908b9088908b9060040161163a565b6000604051808303818588803b1580156109b957600080fd5b505af11580156109cd573d6000803e3d6000fd5b5050600160685550505050505050505050565b6033546001600160a01b03163314610a0a5760405162461bcd60e51b81526004016103ff9061167f565b606980546001600160a01b0319166001600160a01b0383169081179091556040517f08338857eef8e29b906267c37965aff1fdcdb2c18d0f7b52de3b2eb71474d35c90600090a250565b6033546001600160a01b03163314610a7e5760405162461bcd60e51b81526004016103ff9061167f565b8051825114610ac15760405162461bcd60e51b815260206004820152600f60248201526e0d8cadccee8d040dad2e6dac2e8c6d608b1b60448201526064016103ff565b60005b8251811015610bcd57818181518110610adf57610adf6116b4565b6020026020010151606a6000858481518110610afd57610afd6116b4565b60200260200101516001600160a01b03166001600160a01b0316815260200190815260200160002060006101000a8154816001600160a01b0302191690836001600160a01b03160217905550818181518110610b5b57610b5b6116b4565b60200260200101516001600160a01b0316838281518110610b7e57610b7e6116b4565b60200260200101516001600160a01b03167f5b0c89ecf574aa07194121c4f4dd1cfbaaf37d303c22522c9498a0aaf678668d60405160405180910390a380610bc5816116ca565b915050610ac4565b505050565b610bcd83338460005b6040519080825280601f01601f191660200182016040528015610c05576020820181803683370190505b5085610894565b6033546001600160a01b03163314610c365760405162461bcd60e51b81526004016103ff9061167f565b610c406000610ebe565b565b6067546001600160a01b03163314610c405760405162461bcd60e51b81526020600482015260176024820152761bdb9b1e481b595cdcd95b99d95c8818d85b8818d85b1b604a1b60448201526064016103ff565b60405162461bcd60e51b81526020600482015260166024820152751cda1bdd5b19081b995d995c8818994818d85b1b195960521b60448201526064016103ff565b610ce48484846000610bdb565b50505050565b600054610100900460ff16610d055760005460ff1615610d09565b303b155b610d6c5760405162461bcd60e51b815260206004820152602e60248201527f496e697469616c697a61626c653a20636f6e747261637420697320616c72656160448201526d191e481a5b9a5d1a585b1a5e995960921b60648201526084016103ff565b600054610100900460ff16158015610d8e576000805461ffff19166101011790555b610d96610f10565b610da283600084610f3f565b6001600160a01b03841615610dcd57606980546001600160a01b0319166001600160a01b0386161790555b8015610ce4576000805461ff001916905550505050565b60405162461bcd60e51b815260206004820152600b60248201526a1d5b9cdd5c1c1bdc9d195960aa1b60448201526000906064016103ff565b610e273382610632565b50565b6033546001600160a01b03163314610e545760405162461bcd60e51b81526004016103ff9061167f565b6001600160a01b038116610eb95760405162461bcd60e51b815260206004820152602660248201527f4f776e61626c653a206e6577206f776e657220697320746865207a65726f206160448201526564647265737360d01b60648201526084016103ff565b610e27815b603380546001600160a01b038381166001600160a01b0319831681179093556040519116919082907f8be0079c531659141344cd1fd0a4f28419497f9722a3daafe3b4186f6b6457e090600090a35050565b600054610100900460ff16610f375760405162461bcd60e51b81526004016103ff906116f1565b610c4061103f565b6001600160a01b038316610f955760405162461bcd60e51b815260206004820152601860248201527f7a65726f20636f756e746572706172742061646472657373000000000000000060448201526064016103ff565b6001600160a01b038116610fe45760405162461bcd60e51b81526020600482015260166024820152757a65726f206d657373656e676572206164647265737360501b60448201526064016103ff565b606580546001600160a01b038086166001600160a01b03199283161790925560678054848416921691909117905582161561103557606680546001600160a01b0319166001600160a01b0384161790555b5050600160685550565b600054610100900460ff166110665760405162461bcd60e51b81526004016103ff906116f1565b610c4033610ebe565b6001600160a01b0381168114610e2757600080fd5b60008083601f84011261109657600080fd5b50813567ffffffffffffffff8111156110ae57600080fd5b6020830191508360208285010111156110c657600080fd5b9250929050565b6000806000806000608086880312156110e557600080fd5b85356110f08161106f565b945060208601356111008161106f565b935060408601359250606086013567ffffffffffffffff81111561112357600080fd5b61112f88828901611084565b969995985093965092949392505050565b60006020828403121561115257600080fd5b813561088d8161106f565b6000806040838503121561117057600080fd5b823561117b8161106f565b946020939093013593505050565b634e487b7160e01b600052604160045260246000fd5b604051601f8201601f1916810167ffffffffffffffff811182821017156111c8576111c8611189565b604052919050565b600080600080600060a086880312156111e857600080fd5b85356111f38161106f565b94506020868101356112048161106f565b945060408701359350606087013567ffffffffffffffff8082111561122857600080fd5b818901915089601f83011261123c57600080fd5b81358181111561124e5761124e611189565b611260601f8201601f1916850161119f565b91508082528a8482850101111561127657600080fd5b808484018584013760009082019093019290925250949793965091946080013592915050565b600082601f8301126112ad57600080fd5b8135602067ffffffffffffffff8211156112c9576112c9611189565b8160051b6112d882820161119f565b92835284810182019282810190878511156112f257600080fd5b83870192505b8483101561131a57823561130b8161106f565b825291830191908301906112f8565b979650505050505050565b6000806040838503121561133857600080fd5b823567ffffffffffffffff8082111561135057600080fd5b61135c8683870161129c565b9350602085013591508082111561137257600080fd5b5061137f8582860161129c565b9150509250929050565b60008060006060848603121561139e57600080fd5b83356113a98161106f565b95602085013595506040909401359392505050565b600080600080600080600060c0888a0312156113d957600080fd5b87356113e48161106f565b965060208801356113f48161106f565b955060408801356114048161106f565b945060608801356114148161106f565b93506080880135925060a088013567ffffffffffffffff81111561143757600080fd5b6114438a828b01611084565b989b979a50959850939692959293505050565b6000806000806080858703121561146c57600080fd5b84356114778161106f565b935060208501356114878161106f565b93969395505050506040820135916060013590565b6000806000606084860312156114b157600080fd5b83356114bc8161106f565b925060208401356114cc8161106f565b915060408401356114dc8161106f565b809150509250925092565b6000602082840312156114f957600080fd5b5035919050565b60006020828403121561151257600080fd5b815161088d8161106f565b83815260406020820152816040820152818360608301376000818301606090810191909152601f909201601f1916010192915050565b6000815180845260005b818110156115795760208185018101518683018201520161155d565b506000602082860101526020601f19601f83011685010191505092915050565b6001600160a01b03858116825284166020820152604081018390526080606082018190526000906115cc90830184611553565b9695505050505050565b60018060a01b03851681528360208201526080604082015260006115fd6080830185611553565b905082606083015295945050505050565b6001600160a01b038316815260406020820181905260009061163290830184611553565b949350505050565b6001600160a01b038681168252851660208201526040810184905260a06060820181905260009061166d90830185611553565b90508260808301529695505050505050565b6020808252818101527f4f776e61626c653a2063616c6c6572206973206e6f7420746865206f776e6572604082015260600190565b634e487b7160e01b600052603260045260246000fd5b6000600182016116ea57634e487b7160e01b600052601160045260246000fd5b5060010190565b6020808252602b908201527f496e697469616c697a61626c653a20636f6e7472616374206973206e6f74206960408201526a6e697469616c697a696e6760a81b60608201526080019056fea2646970667358221220a005ca5f8fad851ce4e0b7ebc87dcb63b48b1d9661900599f19dc1a19fbb35e464736f6c63430008110033"
+    }
+  },
+  "version": "0.8.17+commit.8df45f5f.Darwin.appleclang"
+}
