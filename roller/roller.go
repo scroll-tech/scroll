@@ -203,13 +203,7 @@ func (r *Roller) prove() error {
 		return err
 	}
 
-	proofMsg := &message.ProofDetail{
-		Status: message.StatusProofError,
-		Error:  "zk proving panic",
-		ID:     task.Task.ID,
-		Proof:  &message.AggProof{},
-	}
-
+	var proofMsg *message.ProofDetail
 	// If roller proof times <= 2, try to proof the task.
 	if task.Times <= 2 {
 		if err = r.stack.UpdateTimes(task, task.Times+1); err != nil {
@@ -242,6 +236,13 @@ func (r *Roller) prove() error {
 				Proof:  proof,
 			}
 			log.Info("prove block successfully!", "task-id", task.Task.ID)
+		}
+	} else {
+		proofMsg = &message.ProofDetail{
+			Status: message.StatusProofError,
+			Error:  "zk proving panic",
+			ID:     task.Task.ID,
+			Proof:  &message.AggProof{},
 		}
 	}
 
