@@ -204,8 +204,8 @@ func (r *Roller) prove() error {
 	}
 
 	var proofMsg *message.ProofDetail
-	// If roller proof times <= 2, try to proof the task.
 	if task.Times <= 2 {
+		// If panic times <= 2, try to proof the task.
 		if err = r.stack.UpdateTimes(task, task.Times+1); err != nil {
 			return err
 		}
