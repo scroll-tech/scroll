@@ -7,5 +7,6 @@ import "errors"
 type ServiceError error
 
 var (
+	// ErrSignInvalid means verify signature failed.
 	ErrSignInvalid = errors.New("auth signature verify fail")
 )
