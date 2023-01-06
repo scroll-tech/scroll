@@ -1380,7 +1380,7 @@ dependencies = [
 [[package]]
 name = "halo2-mpt-circuits"
 version = "0.1.0"
-source = "git+https://github.com/scroll-tech/mpt-circuit.git?branch=scroll-dev-0902#faf3cd05da632c33bd4b751915a7252a9a18993a"
+source = "git+https://github.com/scroll-tech/mpt-circuit.git?branch=scroll-dev-0902#b0ffab97316f9cf4b9e65aba398a047a8d6424a1"
 dependencies = [
  "bitvec 0.22.3",
  "ff 0.11.1",
@@ -1451,7 +1451,7 @@ dependencies = [
 [[package]]
 name = "halo2_proofs"
 version = "0.2.0"
-source = "git+https://github.com/scroll-tech/halo2.git?branch=scroll-dev-0902#88f6fdae4037034dab3d7406f671d446adecf04d"
+source = "git+https://github.com/scroll-tech/halo2.git?branch=scroll-dev-0902#6f18f38e82d302cd8b6ce8809b59c32350b019a3"
 dependencies = [
  "blake2b_simd",
  "cfg-if 0.1.10",
@@ -2397,7 +2397,7 @@ dependencies = [
 [[package]]
 name = "poseidon"
 version = "0.2.0"
-source = "git+https://github.com/appliedzkp/poseidon.git#0b9965fbcd9e03559088b8f68489592286bc55e0"
+source = "git+https://github.com/appliedzkp/poseidon.git#5d29df01a95e3df6334080d28e983407f56b5da3"
 dependencies = [
  "group",
  "halo2curves 0.2.1 (git+https://github.com/privacy-scaling-explorations/halo2curves?tag=0.3.0)",
@@ -2407,7 +2407,7 @@ dependencies = [
 [[package]]
 name = "poseidon"
 version = "0.2.0"
-source = "git+https://github.com/privacy-scaling-explorations/poseidon.git#0b9965fbcd9e03559088b8f68489592286bc55e0"
+source = "git+https://github.com/privacy-scaling-explorations/poseidon.git#5d29df01a95e3df6334080d28e983407f56b5da3"
 dependencies = [
  "group",
  "halo2curves 0.2.1 (git+https://github.com/privacy-scaling-explorations/halo2curves?tag=0.3.0)",
