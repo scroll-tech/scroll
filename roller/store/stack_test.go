@@ -63,7 +63,7 @@ func TestStack(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, peek, pop2)
 
-	s.AddProofTimes(pop2)
+	s.UpdateTimes(pop2, 1)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, pop2.Times)
 }

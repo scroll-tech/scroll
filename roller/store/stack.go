@@ -105,9 +105,9 @@ func (s *Stack) Pop() (*ProvingTask, error) {
 	return task, nil
 }
 
-// AddProofTimes adds the roller prove times of the proving task.
-func (s *Stack) AddProofTimes(task *ProvingTask) error {
-	task.Times++
+// UpdateTimes udpates the roller prove times of the proving task.
+func (s *Stack) UpdateTimes(task *ProvingTask, udpateTimes int) error {
+	task.Times = udpateTimes
 	byt, err := json.Marshal(task)
 	if err != nil {
 		return err

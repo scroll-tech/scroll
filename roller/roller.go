@@ -212,7 +212,7 @@ func (r *Roller) prove() error {
 
 	// If roller proof times <= 2, try to proof the task.
 	if task.Times <= 2 {
-		if err = r.stack.AddProofTimes(task); err != nil {
+		if err = r.stack.UpdateTimes(task, task.Times+1); err != nil {
 			return err
 		}
 
