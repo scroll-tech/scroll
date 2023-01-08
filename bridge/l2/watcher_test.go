@@ -67,7 +67,7 @@ func testMonitorBridgeContract(t *testing.T) {
 	auth := prepareAuth(t, l2Cli, cfg.L2Config.RelayerConfig.MessageSenderPrivateKeys[0])
 
 	// deploy mock bridge
-	_, tx, instance, err := mock_bridge.DeployMockBridge(auth, l2Cli)
+	_, tx, instance, err := mock_bridge.DeployMockBridgeL2(auth, l2Cli)
 	assert.NoError(t, err)
 	address, err := bind.WaitDeployed(context.Background(), l2Cli, tx)
 	assert.NoError(t, err)
@@ -79,7 +79,10 @@ func testMonitorBridgeContract(t *testing.T) {
 	// Call mock_bridge instance sendMessage to trigger emit events
 	toAddress := common.HexToAddress("0x4592d8f8d7b001e72cb26a73e4fa1806a51ac79d")
 	message := []byte("testbridgecontract")
-	tx, err = instance.SendMessage(auth, toAddress, message, auth.GasPrice)
+	fee := big.NewInt(0)
+	gasLimit := big.NewInt(1)
+
+	tx, err = instance.SendMessage(auth, toAddress, fee, message, gasLimit)
 	assert.NoError(t, err)
 	receipt, err := bind.WaitMined(context.Background(), l2Cli, tx)
 	if receipt.Status != types.ReceiptStatusSuccessful || err != nil {
@@ -89,7 +92,7 @@ func testMonitorBridgeContract(t *testing.T) {
 	// extra block mined
 	toAddress = common.HexToAddress("0x4592d8f8d7b001e72cb26a73e4fa1806a51ac79d")
 	message = []byte("testbridgecontract")
-	tx, err = instance.SendMessage(auth, toAddress, message, auth.GasPrice)
+	tx, err = instance.SendMessage(auth, toAddress, fee, message, gasLimit)
 	assert.NoError(t, err)
 	receipt, err = bind.WaitMined(context.Background(), l2Cli, tx)
 	if receipt.Status != types.ReceiptStatusSuccessful || err != nil {
@@ -126,7 +129,7 @@ func testFetchMultipleSentMessageInOneBlock(t *testing.T) {
 
 	auth := prepareAuth(t, l2Cli, cfg.L2Config.RelayerConfig.MessageSenderPrivateKeys[0])
 
-	_, trx, instance, err := mock_bridge.DeployMockBridge(auth, l2Cli)
+	_, trx, instance, err := mock_bridge.DeployMockBridgeL2(auth, l2Cli)
 	assert.NoError(t, err)
 	address, err := bind.WaitDeployed(context.Background(), l2Cli, trx)
 	assert.NoError(t, err)
@@ -146,7 +149,9 @@ func testFetchMultipleSentMessageInOneBlock(t *testing.T) {
 		auth.Nonce = big.NewInt(int64(nonce))
 		toAddress := common.HexToAddress("0x4592d8f8d7b001e72cb26a73e4fa1806a51ac79d")
 		message := []byte("testbridgecontract")
-		tx, err = instance.SendMessage(auth, toAddress, message, auth.GasPrice)
+		fee := big.NewInt(0)
+		gasLimit := big.NewInt(1)
+		tx, err = instance.SendMessage(auth, toAddress, fee, message, gasLimit)
 		assert.NoError(t, err)
 	}
 
@@ -162,7 +167,9 @@ func testFetchMultipleSentMessageInOneBlock(t *testing.T) {
 	auth.Nonce = big.NewInt(int64(nonce))
 	toAddress := common.HexToAddress("0x4592d8f8d7b001e72cb26a73e4fa1806a51ac79d")
 	message := []byte("testbridgecontract")
-	tx, err = instance.SendMessage(auth, toAddress, message, auth.GasPrice)
+	fee := big.NewInt(0)
+	gasLimit := big.NewInt(1)
+	tx, err = instance.SendMessage(auth, toAddress, fee, message, gasLimit)
 	assert.NoError(t, err)
 	receipt, err = bind.WaitMined(context.Background(), l2Cli, tx)
 	if receipt.Status != types.ReceiptStatusSuccessful || err != nil {
