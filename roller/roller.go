@@ -270,12 +270,11 @@ func (r *Roller) signAndSubmitProof(msg *message.ProofDetail) (bool, error) {
 	}
 
 	// When the roller is disconnected from the coordinator,
-	// sleep until the roller reconnects to the coordinator.
-	for atomic.LoadInt64(&r.isDisconnected) == 0 {
+	// wait until the roller reconnects to the coordinator.
+	for atomic.LoadInt64(&r.isDisconnected) == 1 {
 		time.Sleep(retryWait)
 	}
-	ok, err := r.client.SubmitProof(context.Background(), authZkProof)
-	return ok, err
+	return r.client.SubmitProof(context.Background(), authZkProof)
 }
 
 // Stop closes the websocket connection.
