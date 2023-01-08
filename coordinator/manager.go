@@ -198,7 +198,7 @@ func (m *Manager) restorePrevSessions() {
 
 			log.Info("Coordinator restart reload sessions", "session start time", time.Unix(sess.info.StartTimestamp, 0))
 			for _, roller := range sess.info.Rollers {
-				log.Info("Roller info", "session id", sess.info.ID, "roller name", roller.Name, "public key", roller.PublicKey, "proof status", roller.Status)
+				log.Info("restore roller info for session", "session id", sess.info.ID, "roller name", roller.Name, "public key", roller.PublicKey, "proof status", roller.Status)
 			}
 
 			go m.CollectProofs(sess.info.ID, sess)
