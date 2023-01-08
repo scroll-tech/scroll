@@ -5,7 +5,7 @@ import (
 	"runtime/debug"
 )
 
-var tag = "prealpha-v9.2"
+var tag = "prealpha-v9.1"
 
 var commit = func() string {
 	if info, ok := debug.ReadBuildInfo(); ok {
