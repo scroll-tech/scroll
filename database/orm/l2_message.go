@@ -7,6 +7,7 @@ import (
 	"fmt"
 
 	"github.com/jmoiron/sqlx"
+	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/log"
 )
 
@@ -44,16 +45,16 @@ func (m *layer2MessageOrm) GetL2MessageByMsgHash(msgHash string) (*L2Message, er
 }
 
 // GetMessageProofByNonce fetch message by nonce
-func (m *layer2MessageOrm) GetMessageProofByNonce(nonce uint64) (string, error) {
+func (m *layer2MessageOrm) GetMessageProofByNonce(nonce uint64) ([]byte, error) {
 	row := m.db.QueryRow(`SELECT proof FROM l2_message WHERE nonce = $1`, nonce)
 	var proof sql.NullString
 	if err := row.Scan(&proof); err != nil {
-		return "", err
+		return make([]byte, 0), err
 	}
 	if proof.Valid {
-		return proof.String, nil
+		return common.Hex2Bytes(proof.String), nil
 	}
-	return "", nil
+	return make([]byte, 0), nil
 }
 
 // MessageProofExist fetch message by nonce
@@ -148,6 +149,43 @@ func (m *layer2MessageOrm) SaveL2Messages(ctx context.Context, messages []*L2Mes
 	return err
 }
 
+// SaveL2MessagesInDbTx batch save a list of layer2 messages
+func (m *layer2MessageOrm) SaveL2MessagesInDbTx(ctx context.Context, dbTx *sqlx.Tx, messages []*L2Message) error {
+	if len(messages) == 0 {
+		return nil
+	}
+
+	messageMaps := make([]map[string]interface{}, len(messages))
+	for i, msg := range messages {
+		messageMaps[i] = map[string]interface{}{
+			"nonce":       msg.Nonce,
+			"msg_hash":    msg.MsgHash,
+			"height":      msg.Height,
+			"sender":      msg.Sender,
+			"target":      msg.Target,
+			"value":       msg.Value,
+			"fee":         msg.Fee,
+			"gas_limit":   msg.GasLimit,
+			"deadline":    msg.Deadline,
+			"calldata":    msg.Calldata,
+			"layer2_hash": msg.Layer2Hash,
+			"proof":       msg.Proof,
+		}
+	}
+
+	_, err := dbTx.NamedExec(`INSERT INTO public.l2_message (nonce, msg_hash, height, sender, target, value, fee, gas_limit, deadline, calldata, layer2_hash, proof) VALUES (:nonce, :msg_hash, :height, :sender, :target, :value, :fee, :gas_limit, :deadline, :calldata, :layer2_hash, :proof);`, messageMaps)
+	if err != nil {
+		nonces := make([]uint64, 0, len(messages))
+		heights := make([]uint64, 0, len(messages))
+		for _, msg := range messages {
+			nonces = append(nonces, msg.Nonce)
+			heights = append(heights, msg.Height)
+		}
+		log.Error("failed to insert layer2Messages", "nonces", nonces, "heights", heights, "err", err)
+	}
+	return err
+}
+
 // UpdateLayer1Hash update corresponding layer1 hash, given message hash
 func (m *layer2MessageOrm) UpdateLayer1Hash(ctx context.Context, msgHash, layer1Hash string) error {
 	if _, err := m.db.ExecContext(ctx, m.db.Rebind("update l2_message set layer1_hash = ? where msg_hash = ?;"), layer1Hash, msgHash); err != nil {
@@ -198,4 +236,17 @@ func (m *layer2MessageOrm) GetLayer2LatestWatchedHeight() (int64, error) {
 		return -1, fmt.Errorf("could not get height due to database return negative")
 	}
 	return height, nil
+}
+
+// GetLayer2LatestMessageNonce returns latest message nonce stored in the table
+func (m *layer2MessageOrm) GetLayer2LatestMessageNonce() (int64, error) {
+	// @note It's not correct, since we may don't have message in some blocks.
+	// But it will only be called at start, some redundancy is acceptable.
+	row := m.db.QueryRow("SELECT COALESCE(MAX(nonce), -1) FROM layer2_message;")
+
+	var nonce int64
+	if err := row.Scan(&nonce); err != nil {
+		return -1, err
+	}
+	return nonce, nil
 }

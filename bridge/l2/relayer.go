@@ -10,7 +10,6 @@ import (
 
 	"github.com/scroll-tech/go-ethereum/accounts/abi"
 	"github.com/scroll-tech/go-ethereum/common"
-	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
 
 	"scroll-tech/database"
@@ -29,8 +28,7 @@ import (
 // Actions are triggered by new head from layer 1 geth node.
 // @todo It's better to be triggered by watcher.
 type Layer2Relayer struct {
-	ctx    context.Context
-	client *ethclient.Client
+	ctx context.Context
 
 	db  database.OrmFactory
 	cfg *config.RelayerConfig
@@ -56,7 +54,7 @@ type Layer2Relayer struct {
 }
 
 // NewLayer2Relayer will return a new instance of Layer2RelayerClient
-func NewLayer2Relayer(ctx context.Context, ethClient *ethclient.Client, l2ConfirmNum int64, db database.OrmFactory, cfg *config.RelayerConfig) (*Layer2Relayer, error) {
+func NewLayer2Relayer(ctx context.Context, db database.OrmFactory, cfg *config.RelayerConfig) (*Layer2Relayer, error) {
 	// @todo use different sender for relayer, block commit and proof finalize
 	messageSender, err := sender.NewSender(ctx, cfg.SenderConfig, cfg.MessageSenderPrivateKeys)
 	if err != nil {
@@ -72,7 +70,6 @@ func NewLayer2Relayer(ctx context.Context, ethClient *ethclient.Client, l2Confir
 
 	return &Layer2Relayer{
 		ctx:                    ctx,
-		client:                 ethClient,
 		db:                     db,
 		messageSender:          messageSender,
 		messageCh:              messageSender.ConfirmChan(),
@@ -238,21 +235,23 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 		return
 	}
 
-	hash, err := r.rollupSender.SendTransaction(id, &r.cfg.RollupContractAddress, big.NewInt(0), data)
+	txID := id + "-commit"
+	// add suffix `-commit` to avoid duplication with finalize tx in unit tests
+	hash, err := r.rollupSender.SendTransaction(txID, &r.cfg.RollupContractAddress, big.NewInt(0), data)
 	if err != nil {
 		if !errors.Is(err, sender.ErrNoAvailableAccount) {
 			log.Error("Failed to send commitBatch tx to layer1 ", "id", id, "index", batch.Index, "err", err)
 		}
 		return
 	}
-	log.Info("commitBatch in layer1", "id", id, "index", batch.Index, "hash", hash)
+	log.Info("commitBatch in layer1", "batchID", id, "index", batch.Index, "hash", hash)
 
 	// record and sync with db, @todo handle db error
 	err = r.db.UpdateCommitTxHashAndRollupStatus(r.ctx, id, hash.String(), orm.RollupCommitting)
 	if err != nil {
 		log.Error("UpdateCommitTxHashAndRollupStatus failed", "id", id, "index", batch.Index, "err", err)
 	}
-	r.processingCommitment[id] = id
+	r.processingCommitment[txID] = id
 }
 
 // ProcessCommittedBatches submit proof to layer 1 rollup contract
@@ -330,7 +329,9 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 			return
 		}
 
-		txHash, err := r.rollupSender.SendTransaction(id, &r.cfg.RollupContractAddress, big.NewInt(0), data)
+		txID := id + "-finalize"
+		// add suffix `-finalize` to avoid duplication with commit tx in unit tests
+		txHash, err := r.rollupSender.SendTransaction(txID, &r.cfg.RollupContractAddress, big.NewInt(0), data)
 		hash := &txHash
 		if err != nil {
 			if !errors.Is(err, sender.ErrNoAvailableAccount) {
@@ -338,15 +339,15 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 			}
 			return
 		}
-		log.Info("finalizeBatchWithProof in layer1", "id", id, "hash", hash)
+		log.Info("finalizeBatchWithProof in layer1", "batchID", id, "hash", hash)
 
 		// record and sync with db, @todo handle db error
 		err = r.db.UpdateFinalizeTxHashAndRollupStatus(r.ctx, id, hash.String(), orm.RollupFinalizing)
 		if err != nil {
-			log.Warn("UpdateFinalizeTxHashAndRollupStatus failed", "id", id, "err", err)
+			log.Warn("UpdateFinalizeTxHashAndRollupStatus failed", "batchID", id, "err", err)
 		}
 		success = true
-		r.processingFinalization[id] = id
+		r.processingFinalization[txID] = id
 
 	default:
 		log.Error("encounter unreachable case in ProcessCommittedBatches",

@@ -9,6 +9,9 @@ import (
 	"time"
 
 	"github.com/docker/docker/api/types"
+
+	"scroll-tech/common/cmd"
+	"scroll-tech/common/utils"
 )
 
 // ImgGeth the geth image manager include l1geth and l2geth.
@@ -23,20 +26,21 @@ type ImgGeth struct {
 	wsPort   int
 
 	running bool
-	*Cmd
+	cmd     *cmd.Cmd
 }
 
 // NewImgGeth return geth img instance.
 func NewImgGeth(t *testing.T, image, volume, ipc string, hPort, wPort int) ImgInstance {
-	return &ImgGeth{
+	img := &ImgGeth{
 		image:    image,
 		name:     fmt.Sprintf("%s-%d", image, time.Now().Nanosecond()),
 		volume:   volume,
 		ipcPath:  ipc,
 		httpPort: hPort,
 		wsPort:   wPort,
-		Cmd:      NewCmd(t),
 	}
+	img.cmd = cmd.NewCmd(t, img.name, img.prepare()...)
+	return img
 }
 
 // Start run image and check if it is running healthily.
@@ -45,7 +49,7 @@ func (i *ImgGeth) Start() error {
 	if id != "" {
 		return fmt.Errorf("container already exist, name: %s", i.name)
 	}
-	i.Cmd.RunCmd(i.prepare(), true)
+	i.cmd.RunCmd(true)
 	i.running = i.isOk()
 	if !i.running {
 		_ = i.Stop()
@@ -72,7 +76,7 @@ func (i *ImgGeth) Endpoint() string {
 func (i *ImgGeth) isOk() bool {
 	keyword := "WebSocket enabled"
 	okCh := make(chan struct{}, 1)
-	i.RegistFunc(keyword, func(buf string) {
+	i.cmd.RegistFunc(keyword, func(buf string) {
 		if strings.Contains(buf, keyword) {
 			select {
 			case okCh <- struct{}{}:
@@ -81,13 +85,16 @@ func (i *ImgGeth) isOk() bool {
 			}
 		}
 	})
-	defer i.UnRegistFunc(keyword)
+	defer i.cmd.UnRegistFunc(keyword)
 
 	select {
 	case <-okCh:
-		i.id = GetContainerID(i.name)
+		utils.TryTimes(3, func() bool {
+			i.id = GetContainerID(i.name)
+			return i.id != ""
+		})
 		return i.id != ""
-	case <-time.NewTimer(time.Second * 10).C:
+	case <-time.After(time.Second * 10):
 		return false
 	}
 }

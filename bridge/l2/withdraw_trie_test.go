@@ -1,9 +1,11 @@
 package l2_test
 
 import (
+	"math/big"
 	"testing"
 
 	"github.com/scroll-tech/go-ethereum/common"
+	"github.com/stretchr/testify/assert"
 
 	"scroll-tech/bridge/l2"
 	"scroll-tech/bridge/utils"
@@ -101,4 +103,111 @@ func TestRecoverBranchFromProof(t *testing.T) {
 			t.Fatalf("Invalid branch, want %s, got %s", branches[i].Hex(), t_branches[i].Hex())
 		}
 	}
+}
+
+func TestWithdrawTrieOneByOne(t *testing.T) {
+	for initial := 0; initial < 128; initial++ {
+		withdrawTrie := l2.NewWithdrawTrie()
+		var hashes []common.Hash
+		for i := 0; i < initial; i++ {
+			hash := common.BigToHash(big.NewInt(int64(i + 1)))
+			hashes = append(hashes, hash)
+			withdrawTrie.AppendMessages([]common.Hash{
+				hash,
+			})
+		}
+
+		for i := initial; i < 128; i++ {
+			hash := common.BigToHash(big.NewInt(int64(i + 1)))
+			hashes = append(hashes, hash)
+			expectedRoot := computeMerkleRoot(hashes)
+			proofBytes := withdrawTrie.AppendMessages([]common.Hash{
+				hash,
+			})
+			assert.Equal(t, withdrawTrie.NextMessageNonce, uint64(i+1))
+			assert.Equal(t, expectedRoot.String(), withdrawTrie.MessageRoot().String())
+			proof := l2.DecodeBytesToMerkleProof(proofBytes[0])
+			verifiedRoot := verifyMerkleProof(uint64(i), hash, proof)
+			assert.Equal(t, expectedRoot.String(), verifiedRoot.String())
+		}
+	}
+}
+
+func TestWithdrawTrieMultiple(t *testing.T) {
+	var expectedRoots []common.Hash
+
+	{
+		var hashes []common.Hash
+		for i := 0; i < 128; i++ {
+			hash := common.BigToHash(big.NewInt(int64(i + 1)))
+			hashes = append(hashes, hash)
+			expectedRoots = append(expectedRoots, computeMerkleRoot(hashes))
+		}
+	}
+
+	for initial := 0; initial < 100; initial++ {
+		var hashes []common.Hash
+		for i := 0; i < initial; i++ {
+			hash := common.BigToHash(big.NewInt(int64(i + 1)))
+			hashes = append(hashes, hash)
+		}
+
+		for finish := initial; finish < 100; finish++ {
+			withdrawTrie := l2.NewWithdrawTrie()
+			withdrawTrie.AppendMessages(hashes)
+
+			var newHashes []common.Hash
+			for i := initial; i <= finish; i++ {
+				hash := common.BigToHash(big.NewInt(int64(i + 1)))
+				newHashes = append(newHashes, hash)
+			}
+			proofBytes := withdrawTrie.AppendMessages(newHashes)
+			assert.Equal(t, withdrawTrie.NextMessageNonce, uint64(finish+1))
+			assert.Equal(t, expectedRoots[finish].String(), withdrawTrie.MessageRoot().String())
+
+			for i := initial; i <= finish; i++ {
+				hash := common.BigToHash(big.NewInt(int64(i + 1)))
+				proof := l2.DecodeBytesToMerkleProof(proofBytes[i-initial])
+				verifiedRoot := verifyMerkleProof(uint64(i), hash, proof)
+				assert.Equal(t, expectedRoots[finish].String(), verifiedRoot.String())
+			}
+		}
+	}
+}
+
+func verifyMerkleProof(index uint64, leaf common.Hash, proof []common.Hash) common.Hash {
+	root := leaf
+	for _, h := range proof {
+		if index%2 == 0 {
+			root = utils.Keccak2(root, h)
+		} else {
+			root = utils.Keccak2(h, root)
+		}
+		index >>= 1
+	}
+	return root
+}
+
+func computeMerkleRoot(hashes []common.Hash) common.Hash {
+	if len(hashes) == 0 {
+		return common.Hash{}
+	}
+
+	zeroHash := common.Hash{}
+	for {
+		if len(hashes) == 1 {
+			break
+		}
+		var newHashes []common.Hash
+		for i := 0; i < len(hashes); i += 2 {
+			if i+1 < len(hashes) {
+				newHashes = append(newHashes, utils.Keccak2(hashes[i], hashes[i+1]))
+			} else {
+				newHashes = append(newHashes, utils.Keccak2(hashes[i], zeroHash))
+			}
+		}
+		hashes = newHashes
+		zeroHash = utils.Keccak2(zeroHash, zeroHash)
+	}
+	return hashes[0]
 }

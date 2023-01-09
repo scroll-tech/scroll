@@ -253,7 +253,7 @@ func testOrmBlockTraces(t *testing.T) {
 	assert.Equal(t, false, exist)
 
 	// Insert into db
-	err = ormBlock.InsertBlockTraces(context.Background(), []*types.BlockTrace{blockTrace})
+	err = ormBlock.InsertBlockTraces([]*types.BlockTrace{blockTrace})
 	assert.NoError(t, err)
 
 	res2, err := ormBlock.GetUnbatchedBlocks(map[string]interface{}{})

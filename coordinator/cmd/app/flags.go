@@ -1,13 +1,8 @@
-package main
+package app
 
 import "github.com/urfave/cli/v2"
 
 var (
-	verifierMockFlag = cli.BoolFlag{
-		Name:  "verifier.mock",
-		Usage: "Mock the verifier",
-		Value: false,
-	}
 	apiFlags = []cli.Flag{
 		// http flags
 		&httpEnabledFlag,

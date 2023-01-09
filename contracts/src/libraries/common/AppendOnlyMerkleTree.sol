@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 
 abstract contract AppendOnlyMerkleTree {
   /// @dev The maximum height of the withdraw merkle tree.
-  uint256 private constant MAX_TREE_HEIGHT = 64;
+  uint256 private constant MAX_TREE_HEIGHT = 40;
 
   /// @notice The merkle root of the current merkle tree.
   /// @dev This is actual equal to `branches[n]`.

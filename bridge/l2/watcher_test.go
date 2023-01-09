@@ -1,4 +1,4 @@
-package l2_test
+package l2
 
 import (
 	"context"
@@ -15,7 +15,6 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"scroll-tech/bridge/config"
-	"scroll-tech/bridge/l2"
 	"scroll-tech/bridge/mock_bridge"
 	"scroll-tech/bridge/sender"
 
@@ -32,7 +31,8 @@ func testCreateNewWatcherAndStop(t *testing.T) {
 	defer l2db.Close()
 
 	l2cfg := cfg.L2Config
-	rc := l2.NewL2WatcherClient(context.Background(), l2Cli, l2cfg.Confirmations, l2cfg.BatchProposerConfig, l2cfg.L2MessengerAddress, l2db)
+	rc, err := NewL2WatcherClient(context.Background(), l2Cli, l2cfg.Confirmations, l2cfg.BatchProposerConfig, l2cfg.L2MessengerAddress, l2cfg.L2MessageQueueAddress, l2cfg.L2BlockContainerAddress, l2db)
+	assert.NoError(t, err)
 	rc.Start()
 	defer rc.Stop()
 
@@ -68,19 +68,23 @@ func testMonitorBridgeContract(t *testing.T) {
 	auth := prepareAuth(t, l2Cli, cfg.L2Config.RelayerConfig.MessageSenderPrivateKeys[0])
 
 	// deploy mock bridge
-	_, tx, instance, err := mock_bridge.DeployMockBridge(auth, l2Cli)
+	_, tx, instance, err := mock_bridge.DeployMockBridgeL2(auth, l2Cli)
 	assert.NoError(t, err)
 	address, err := bind.WaitDeployed(context.Background(), l2Cli, tx)
 	assert.NoError(t, err)
 
-	rc := prepareRelayerClient(l2Cli, cfg.L2Config.BatchProposerConfig, db, address)
+	rc, err := prepareRelayerClient(l2Cli, cfg.L2Config.BatchProposerConfig, db, address)
+	assert.NoError(t, err)
 	rc.Start()
 	defer rc.Stop()
 
 	// Call mock_bridge instance sendMessage to trigger emit events
 	toAddress := common.HexToAddress("0x4592d8f8d7b001e72cb26a73e4fa1806a51ac79d")
 	message := []byte("testbridgecontract")
-	tx, err = instance.SendMessage(auth, toAddress, message, auth.GasPrice)
+	fee := big.NewInt(0)
+	gasLimit := big.NewInt(1)
+
+	tx, err = instance.SendMessage(auth, toAddress, fee, message, gasLimit)
 	assert.NoError(t, err)
 	receipt, err := bind.WaitMined(context.Background(), l2Cli, tx)
 	if receipt.Status != types.ReceiptStatusSuccessful || err != nil {
@@ -90,7 +94,7 @@ func testMonitorBridgeContract(t *testing.T) {
 	// extra block mined
 	toAddress = common.HexToAddress("0x4592d8f8d7b001e72cb26a73e4fa1806a51ac79d")
 	message = []byte("testbridgecontract")
-	tx, err = instance.SendMessage(auth, toAddress, message, auth.GasPrice)
+	tx, err = instance.SendMessage(auth, toAddress, fee, message, gasLimit)
 	assert.NoError(t, err)
 	receipt, err = bind.WaitMined(context.Background(), l2Cli, tx)
 	if receipt.Status != types.ReceiptStatusSuccessful || err != nil {
@@ -127,12 +131,13 @@ func testFetchMultipleSentMessageInOneBlock(t *testing.T) {
 
 	auth := prepareAuth(t, l2Cli, cfg.L2Config.RelayerConfig.MessageSenderPrivateKeys[0])
 
-	_, trx, instance, err := mock_bridge.DeployMockBridge(auth, l2Cli)
+	_, trx, instance, err := mock_bridge.DeployMockBridgeL2(auth, l2Cli)
 	assert.NoError(t, err)
 	address, err := bind.WaitDeployed(context.Background(), l2Cli, trx)
 	assert.NoError(t, err)
 
-	rc := prepareRelayerClient(l2Cli, cfg.L2Config.BatchProposerConfig, db, address)
+	rc, err := prepareRelayerClient(l2Cli, cfg.L2Config.BatchProposerConfig, db, address)
+	assert.NoError(t, err)
 	rc.Start()
 	defer rc.Stop()
 
@@ -147,7 +152,9 @@ func testFetchMultipleSentMessageInOneBlock(t *testing.T) {
 		auth.Nonce = big.NewInt(int64(nonce))
 		toAddress := common.HexToAddress("0x4592d8f8d7b001e72cb26a73e4fa1806a51ac79d")
 		message := []byte("testbridgecontract")
-		tx, err = instance.SendMessage(auth, toAddress, message, auth.GasPrice)
+		fee := big.NewInt(0)
+		gasLimit := big.NewInt(1)
+		tx, err = instance.SendMessage(auth, toAddress, fee, message, gasLimit)
 		assert.NoError(t, err)
 	}
 
@@ -163,7 +170,9 @@ func testFetchMultipleSentMessageInOneBlock(t *testing.T) {
 	auth.Nonce = big.NewInt(int64(nonce))
 	toAddress := common.HexToAddress("0x4592d8f8d7b001e72cb26a73e4fa1806a51ac79d")
 	message := []byte("testbridgecontract")
-	tx, err = instance.SendMessage(auth, toAddress, message, auth.GasPrice)
+	fee := big.NewInt(0)
+	gasLimit := big.NewInt(1)
+	tx, err = instance.SendMessage(auth, toAddress, fee, message, gasLimit)
 	assert.NoError(t, err)
 	receipt, err = bind.WaitMined(context.Background(), l2Cli, tx)
 	if receipt.Status != types.ReceiptStatusSuccessful || err != nil {
@@ -183,8 +192,8 @@ func testFetchMultipleSentMessageInOneBlock(t *testing.T) {
 	assert.Equal(t, 5, len(msgs))
 }
 
-func prepareRelayerClient(l2Cli *ethclient.Client, bpCfg *config.BatchProposerConfig, db database.OrmFactory, contractAddr common.Address) *l2.WatcherClient {
-	return l2.NewL2WatcherClient(context.Background(), l2Cli, 0, bpCfg, contractAddr, db)
+func prepareRelayerClient(l2Cli *ethclient.Client, bpCfg *config.BatchProposerConfig, db database.OrmFactory, contractAddr common.Address) (*WatcherClient, error) {
+	return NewL2WatcherClient(context.Background(), l2Cli, 0, bpCfg, contractAddr, contractAddr, contractAddr, db)
 }
 
 func prepareAuth(t *testing.T, l2Cli *ethclient.Client, privateKey *ecdsa.PrivateKey) *bind.TransactOpts {

@@ -13,13 +13,13 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"scroll-tech/roller/config"
-	"scroll-tech/roller/core/prover"
+	"scroll-tech/roller/prover"
 )
 
 const (
-	paramsPath = "../../assets/test_params"
-	seedPath   = "../../assets/test_seed"
-	tracesPath = "../../assets/traces"
+	paramsPath = "../assets/test_params"
+	seedPath   = "../assets/test_seed"
+	tracesPath = "../assets/traces"
 )
 
 type RPCTrace struct {
@@ -42,9 +42,13 @@ func TestFFI(t *testing.T) {
 
 	traces := make([]*types.BlockTrace, 0)
 	for _, file := range files {
-		f, err := os.Open(filepath.Join(tracesPath, file.Name()))
+		var (
+			f   *os.File
+			byt []byte
+		)
+		f, err = os.Open(filepath.Join(tracesPath, file.Name()))
 		as.NoError(err)
-		byt, err := io.ReadAll(f)
+		byt, err = io.ReadAll(f)
 		as.NoError(err)
 		rpcTrace := &RPCTrace{}
 		as.NoError(json.Unmarshal(byt, rpcTrace))

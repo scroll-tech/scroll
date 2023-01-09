@@ -3,6 +3,7 @@ package orm
 import (
 	"context"
 	"database/sql"
+	"fmt"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/scroll-tech/go-ethereum/common"
@@ -116,6 +117,19 @@ const (
 	RollerProofInvalid
 )
 
+func (s RollerProveStatus) String() string {
+	switch s {
+	case RollerAssigned:
+		return "RollerAssigned"
+	case RollerProofValid:
+		return "RollerProofValid"
+	case RollerProofInvalid:
+		return "RollerProofInvalid"
+	default:
+		return fmt.Sprintf("Bad Value: %d", int32(s))
+	}
+}
+
 // RollerStatus is the roller name and roller prove status
 type RollerStatus struct {
 	PublicKey string            `json:"public_key"`
@@ -150,7 +164,7 @@ type BlockTraceOrm interface {
 	GetUnbatchedBlocks(fields map[string]interface{}, args ...string) ([]*L2BlockInfo, error)
 	GetHashByNumber(number uint64) (*common.Hash, error)
 	DeleteTracesByBatchID(batchID string) error
-	InsertBlockTraces(ctx context.Context, blockTraces []*types.BlockTrace) error
+	InsertBlockTraces(blockTraces []*types.BlockTrace) error
 	SetBatchIDForBlocksInDBTx(dbTx *sqlx.Tx, numbers []uint64, batchID string) error
 	SetMessageRootForBlocksInDBTx(dbTx *sqlx.Tx, numbers []uint64, messageRoot string) error
 }
@@ -175,6 +189,8 @@ type BlockBatchOrm interface {
 	GetCommittedBatches() ([]string, error)
 	GetRollupStatus(id string) (RollupStatus, error)
 	GetRollupStatusByIDList(ids []string) ([]RollupStatus, error)
+	GetCommitTxHash(id string) (sql.NullString, error)
+	GetFinalizeTxHash(id string) (sql.NullString, error)
 	GetLatestFinalizedBatch() (*BlockBatch, error)
 	UpdateRollupStatus(ctx context.Context, id string, status RollupStatus) error
 	UpdateCommitTxHashAndRollupStatus(ctx context.Context, id string, commit_tx_hash string, status RollupStatus) error
@@ -200,10 +216,12 @@ type L2MessageOrm interface {
 	GetL2MessageByNonce(nonce uint64) (*L2Message, error)
 	GetL2MessageByMsgHash(msgHash string) (*L2Message, error)
 	MessageProofExist(nonce uint64) (bool, error)
-	GetMessageProofByNonce(nonce uint64) (string, error)
+	GetMessageProofByNonce(nonce uint64) ([]byte, error)
 	GetL2MessagesByStatus(status MsgStatus) ([]*L2Message, error)
 	GetL2ProcessedNonce() (int64, error)
+	GetLayer2LatestMessageNonce() (int64, error)
 	SaveL2Messages(ctx context.Context, messages []*L2Message) error
+	SaveL2MessagesInDbTx(ctx context.Context, dbTx *sqlx.Tx, messages []*L2Message) error
 	UpdateLayer1Hash(ctx context.Context, msgHash string, layer1Hash string) error
 	UpdateLayer2Status(ctx context.Context, msgHash string, status MsgStatus) error
 	UpdateLayer2StatusAndLayer1Hash(ctx context.Context, msgHash string, status MsgStatus, layer1Hash string) error

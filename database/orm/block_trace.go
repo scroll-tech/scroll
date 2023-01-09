@@ -1,7 +1,6 @@
 package orm
 
 import (
-	"context"
 	"database/sql"
 	"encoding/json"
 	"errors"
@@ -115,7 +114,7 @@ func (o *blockTraceOrm) GetL2BlockInfos(fields map[string]interface{}, args ...s
 }
 
 func (o *blockTraceOrm) GetUnbatchedBlocks(fields map[string]interface{}, args ...string) ([]*L2BlockInfo, error) {
-	query := "SELECT number, hash, parent_hash, batch_id, tx_num, gas_used, block_timestamp, message_root FROM block_trace WHERE batch_id is NULL "
+	query := "SELECT number, hash, parent_hash, batch_id, tx_num, gas_used, block_timestamp, message_root FROM block_trace WHERE batch_id is NULL AND message_root is not NULL"
 	for key := range fields {
 		query += fmt.Sprintf("AND %s=:%s ", key, key)
 	}
@@ -152,7 +151,7 @@ func (o *blockTraceOrm) GetHashByNumber(number uint64) (*common.Hash, error) {
 	return &hash, nil
 }
 
-func (o *blockTraceOrm) InsertBlockTraces(ctx context.Context, blockTraces []*types.BlockTrace) error {
+func (o *blockTraceOrm) InsertBlockTraces(blockTraces []*types.BlockTrace) error {
 	traceMaps := make([]map[string]interface{}, len(blockTraces))
 	for i, trace := range blockTraces {
 		number, hash, tx_num, mtime := trace.Header.Number.Int64(),

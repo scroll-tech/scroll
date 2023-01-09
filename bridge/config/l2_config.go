@@ -13,9 +13,11 @@ type L2Config struct {
 	// l2geth node url.
 	Endpoint string `json:"endpoint"`
 	// The messenger contract address deployed on layer 2 chain.
-	L2MessengerAddress common.Address `json:"l2_messenger_address,omitempty"`
+	L2MessengerAddress common.Address `json:"l2_messenger_address"`
 	// The message queue contract address deployed on layer 2 chain.
-	L2MessageQueueAddress common.Address `json:"l2_message_queue_address,omitempty"`
+	L2MessageQueueAddress common.Address `json:"l2_message_queue_address"`
+	// The block container contract address deployed on layer 2 chain.
+	L2BlockContainerAddress common.Address `json:"l2_block_container_address"`
 	// The relayer config
 	RelayerConfig *RelayerConfig `json:"relayer_config"`
 	// The batch_proposer config
@@ -26,6 +28,8 @@ type L2Config struct {
 type BatchProposerConfig struct {
 	// Proof generation frequency, generating proof every k blocks
 	ProofGenerationFreq uint64 `json:"proof_generation_freq"`
+	// Txnum threshold in a batch
+	BatchTxNumThreshold uint64 `json:"batch_tx_num_threshold"`
 	// Gas threshold in a batch
 	BatchGasThreshold uint64 `json:"batch_gas_threshold"`
 	// Time waited to generate a batch even if gas_threshold not met

@@ -1,75 +1,130 @@
 package l2
 
 import (
-	"context"
-	"errors"
-
 	"github.com/scroll-tech/go-ethereum/common"
-	"github.com/scroll-tech/go-ethereum/log"
 
 	"scroll-tech/bridge/utils"
-	"scroll-tech/database"
 )
+
+const MAX_HEIGHT = 40
 
 // WithdrawTrie is an append only merkle trie
 type WithdrawTrie struct {
 	// used to rebuild the merkle tree
-	nextMessageNonce uint64
+	NextMessageNonce uint64
 
-	messageRoot common.Hash
+	height int // current height of withdraw trie
 
 	branches []common.Hash
 	zeroes   []common.Hash
-
-	ctx context.Context
-	orm database.OrmFactory
 }
 
 // NewWithdrawTrie will return a new instance of WithdrawTrie
-func NewWithdrawTrie(ctx context.Context, orm database.OrmFactory) *WithdrawTrie {
-	zeroes := make([]common.Hash, 64)
-	branches := make([]common.Hash, 64)
+func NewWithdrawTrie() *WithdrawTrie {
+	zeroes := make([]common.Hash, MAX_HEIGHT)
+	branches := make([]common.Hash, MAX_HEIGHT)
 
 	zeroes[0] = common.Hash{}
-	for i := 1; i < 64; i++ {
+	for i := 1; i < MAX_HEIGHT; i++ {
 		zeroes[i] = utils.Keccak2(zeroes[i-1], zeroes[i-1])
 	}
 
-	for i := 0; i < 64; i++ {
+	for i := 0; i < MAX_HEIGHT; i++ {
 		branches[i] = common.Hash{}
 	}
 
 	return &WithdrawTrie{
 		zeroes:           zeroes,
 		branches:         branches,
-		nextMessageNonce: 0,
-		ctx:              ctx,
-		orm:              orm,
+		height:           -1,
+		NextMessageNonce: 0,
 	}
 }
 
-// initialize will initialize the merkle trie with rightest leaf node
-func (w *WithdrawTrie) initialize(currentMessageNonce uint64, msgHash common.Hash, proof_bytes []byte) {
+// Initialize will initialize the merkle trie with rightest leaf node
+func (w *WithdrawTrie) Initialize(currentMessageNonce uint64, msgHash common.Hash, proof_bytes []byte) {
 	proof := DecodeBytesToMerkleProof(proof_bytes)
 	branches := RecoverBranchFromProof(proof, currentMessageNonce, msgHash)
+
+	w.height = len(proof)
 	w.branches = branches
-	w.nextMessageNonce = currentMessageNonce + 1
+	w.NextMessageNonce = currentMessageNonce + 1
 }
 
-// appendMessage will append a new message as the rightest leaf node
-func (w *WithdrawTrie) appendMessage(msgNonce uint64, msgHash common.Hash) error {
-	if w.nextMessageNonce != msgNonce {
-		return errors.New("message nonce mismtach")
+// AppendMessages append a list of new messages as the rightest leaf node.
+func (w *WithdrawTrie) AppendMessages(hashes []common.Hash) [][]byte {
+	length := len(hashes)
+	if length == 0 {
+		return make([][]byte, 0)
 	}
-	proof := UpdateBranchWithNewMessage(w.zeroes, w.branches, w.nextMessageNonce, msgHash)
-	proof_bytes := EncodeMerkleProofToBytes(proof)
-	err := w.orm.UpdateMessageProof(w.ctx, msgNonce, common.Bytes2Hex(proof_bytes))
-	if err != nil {
-		log.Error("Failed to update message proof in db", "err", err)
-		return err
+
+	cache := make([]map[uint64]common.Hash, MAX_HEIGHT)
+	for h := 0; h < MAX_HEIGHT; h++ {
+		cache[h] = make(map[uint64]common.Hash)
 	}
-	w.nextMessageNonce++
-	return nil
+
+	// cache all branches will be used later.
+	if w.NextMessageNonce != 0 {
+		index := w.NextMessageNonce
+		for h := 0; h <= w.height; h++ {
+			if index%2 == 1 {
+				// right child, `w.branches[h]` is the corresponding left child
+				// the index of left child should be `index ^ 1`.
+				cache[h][index^1] = w.branches[h]
+			}
+			index >>= 1
+		}
+	}
+	// cache all new leaves
+	for i := 0; i < length; i++ {
+		cache[0][w.NextMessageNonce+uint64(i)] = hashes[i]
+	}
+
+	// build withdraw trie with new hashes
+	minIndex := w.NextMessageNonce
+	maxIndex := w.NextMessageNonce + uint64(length) - 1
+	for h := 0; maxIndex > 0; h++ {
+		if minIndex%2 == 1 {
+			minIndex -= 1
+		}
+		if maxIndex%2 == 0 {
+			cache[h][maxIndex^1] = w.zeroes[h]
+		}
+		for i := minIndex; i <= maxIndex; i += 2 {
+			cache[h+1][i>>1] = utils.Keccak2(cache[h][i], cache[h][i^1])
+		}
+		minIndex >>= 1
+		maxIndex >>= 1
+	}
+
+	// update branches using hashes one by one
+	for i := 0; i < length; i++ {
+		proof := UpdateBranchWithNewMessage(w.zeroes, w.branches, w.NextMessageNonce, hashes[i])
+		w.NextMessageNonce += 1
+		w.height = len(proof)
+	}
+
+	proofs := make([][]byte, length)
+	// retrieve merkle proof from cache
+	for i := 0; i < length; i++ {
+		index := w.NextMessageNonce + uint64(i) - uint64(length)
+		var merkleProof []common.Hash
+		for h := 0; h < w.height; h++ {
+			merkleProof = append(merkleProof, cache[h][index^1])
+			index >>= 1
+		}
+		proofs[i] = EncodeMerkleProofToBytes(merkleProof)
+	}
+
+	return proofs
+}
+
+// MessageRoot return the current root hash of withdraw trie.
+func (w *WithdrawTrie) MessageRoot() common.Hash {
+	if w.height == -1 {
+		return common.Hash{}
+	}
+	return w.branches[w.height]
 }
 
 // DecodeBytesToMerkleProof transfer byte array to bytes32 array. The caller should make sure the length is matched.

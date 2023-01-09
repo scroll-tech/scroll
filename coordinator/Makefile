@@ -5,9 +5,9 @@ IMAGE_VERSION=latest
 REPO_ROOT_DIR=./..
 
 ifeq (4.3,$(firstword $(sort $(MAKE_VERSION) 4.3)))
-	ZK_VERSION=$(shell grep -m 1 "common-rs" ../common/libzkp/impl/Cargo.lock | cut -d "#" -f2 | cut -c-7)
+	ZK_VERSION=$(shell grep -m 1 "scroll-zkevm" ../common/libzkp/impl/Cargo.lock | cut -d "#" -f2 | cut -c-7)
 else
-	ZK_VERSION=$(shell grep -m 1 "common-rs" ../common/libzkp/impl/Cargo.lock | cut -d "\#" -f2 | cut -c-7)
+	ZK_VERSION=$(shell grep -m 1 "scroll-zkevm" ../common/libzkp/impl/Cargo.lock | cut -d "\#" -f2 | cut -c-7)
 endif
 
 test:
@@ -17,15 +17,13 @@ libzkp:
 	cd ../common/libzkp/impl && cargo build --release && cp ./target/release/libzkp.a ../interface/
 	cp -r ../common/libzkp/interface ./verifier/lib
 
-coordinator: ## Builds the Coordinator instance.
-	cd ../common/libzkp/impl && cargo build --release && cp ./target/release/libzkp.a ../interface/
-	cp -r ../common/libzkp/interface ./verifier/lib
+coordinator: libzkp ## Builds the Coordinator instance.
 	go build -ldflags "-X scroll-tech/common/version.ZK_VERSION=${ZK_VERSION}" -o $(PWD)/build/bin/coordinator ./cmd
 
-test-verifier:
+test-verifier: libzkp
 	go test -tags ffi -timeout 0 -v ./verifier
 
-test-gpu-verifier:
+test-gpu-verifier: libzkp
 	go test -tags="gpu ffi" -timeout 0 -v ./verifier
 
 lint: ## Lint the files - used for CI
