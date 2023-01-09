@@ -151,8 +151,8 @@ func (w *WatcherClient) tryFetchRunningMissingBlocks(ctx context.Context, blockH
 		}
 
 		// Get block traces and insert into db.
-		if err = w.getAndInsertBlockTraces(ctx, from, to); err != nil {
-			log.Error("fail to getAndInsertBlockTraces", "from", from, "to", to)
+		if err = w.getAndStoreBlockTraces(ctx, from, to); err != nil {
+			log.Error("fail to getAndStoreBlockTraces", "from", from, "to", to)
 			return err
 		}
 	}
@@ -160,7 +160,7 @@ func (w *WatcherClient) tryFetchRunningMissingBlocks(ctx context.Context, blockH
 	return nil
 }
 
-func (w *WatcherClient) getAndInsertBlockTraces(ctx context.Context, from, to uint64) error {
+func (w *WatcherClient) getAndStoreBlockTraces(ctx context.Context, from, to uint64) error {
 	var traces []*types.BlockTrace
 
 	for number := from; number <= to; number++ {
