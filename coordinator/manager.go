@@ -316,8 +316,8 @@ func (m *Manager) handleZkProof(pk string, msg *message.ProofDetail) error {
 func (m *Manager) CollectProofs(id string, sess *session) {
 	select {
 	case <-time.After(time.Duration(m.cfg.CollectionTime) * time.Minute):
+		m.mu.Lock()
 		defer func() {
-			m.mu.Lock()
 			delete(m.sessions, id)
 			m.mu.Unlock()
 		}()
