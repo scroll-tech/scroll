@@ -40,7 +40,7 @@ var (
 	dbImg docker.ImgInstance
 )
 
-func randomUrl() string {
+func randomURL() string {
 	id, _ := rand.Int(rand.Reader, big.NewInt(2000-1))
 	return fmt.Sprintf("localhost:%d", 10000+2000+id.Int64())
 }
@@ -83,7 +83,7 @@ func testHandshake(t *testing.T) {
 	defer l2db.Close()
 
 	// Setup coordinator and ws server.
-	wsURL := "ws://" + randomUrl()
+	wsURL := "ws://" + randomURL()
 	rollerManager, handler := setupCoordinator(t, cfg.DBConfig, wsURL)
 	defer func() {
 		handler.Shutdown(context.Background())
@@ -104,7 +104,7 @@ func testFailedHandshake(t *testing.T) {
 	defer l2db.Close()
 
 	// Setup coordinator and ws server.
-	wsURL := "ws://" + randomUrl()
+	wsURL := "ws://" + randomURL()
 	rollerManager, handler := setupCoordinator(t, cfg.DBConfig, wsURL)
 	defer func() {
 		handler.Shutdown(context.Background())
@@ -170,7 +170,7 @@ func testSeveralConnections(t *testing.T) {
 	defer l2db.Close()
 
 	// Setup coordinator and ws server.
-	wsURL := "ws://" + randomUrl()
+	wsURL := "ws://" + randomURL()
 	rollerManager, handler := setupCoordinator(t, cfg.DBConfig, wsURL)
 	defer func() {
 		handler.Shutdown(context.Background())
@@ -224,7 +224,7 @@ func testIdleRollerSelection(t *testing.T) {
 	defer l2db.Close()
 
 	// Setup coordinator and ws server.
-	wsURL := "ws://" + randomUrl()
+	wsURL := "ws://" + randomURL()
 	rollerManager, handler := setupCoordinator(t, cfg.DBConfig, wsURL)
 	defer func() {
 		handler.Shutdown(context.Background())
@@ -293,7 +293,7 @@ func testGracefulRestart(t *testing.T) {
 	assert.NoError(t, dbTx.Commit())
 
 	// Setup coordinator and ws server.
-	wsURL := "ws://" + randomUrl()
+	wsURL := "ws://" + randomURL()
 	rollerManager, handler := setupCoordinator(t, cfg.DBConfig, wsURL)
 
 	// create mock roller
