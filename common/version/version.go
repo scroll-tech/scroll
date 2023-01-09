@@ -22,7 +22,7 @@ var commit = func() string {
 	return ""
 }()
 
-// ZK_VERSION is commit-id of common/libzkp/impl/cargo.lock/common-rs
+// ZK_VERSION is commit-id of common/libzkp/impl/cargo.lock/scroll-zkevm
 var ZK_VERSION string
 
 // Version denote the version of scroll protocol, including the l2geth, relayer, coordinator, roller, contracts and etc.
