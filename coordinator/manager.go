@@ -227,14 +227,19 @@ func (m *Manager) handleZkProof(pk string, msg *message.ProofDetail) error {
 	// Ensure this roller is eligible to participate in the session.
 	roller, ok := sess.info.Rollers[pk]
 	if !ok {
-		return fmt.Errorf("roller %s is not eligible to partake in proof session %v", pk, msg.ID)
+		return fmt.Errorf("roller %s (%s) is not eligible to partake in proof session %v", roller.Name, roller.PublicKey, msg.ID)
 	}
 	if roller.Status == orm.RollerProofValid {
 		// In order to prevent DoS attacks, it is forbidden to repeatedly submit valid proofs.
 		// TODO: Defend invalid proof resubmissions by one of the following two methods:
 		// (i) slash the roller for each submission of invalid proof
 		// (ii) set the maximum failure retry times
-		log.Warn("roller has already submitted valid proof in proof session", "roller", pk, "proof id", msg.ID)
+		log.Warn(
+			"roller has already submitted valid proof in proof session",
+			"roller name", roller.Name,
+			"roller pk", roller.PublicKey,
+			"proof id", msg.ID,
+		)
 		return nil
 	}
 	log.Info(

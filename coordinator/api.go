@@ -116,6 +116,5 @@ func (m *Manager) SubmitProof(proof *message.ProofMsg) (bool, error) {
 	}
 	defer m.freeTaskIDForRoller(pubkey, proof.ID)
 
-	log.Info("received zk proof", "proof id", proof.ID, "roller pk", pubkey)
 	return true, nil
 }
