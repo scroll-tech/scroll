@@ -472,7 +472,7 @@ func (m *Manager) StartProofGenerationSession(task *orm.BlockBatch) (success boo
 
 	// Store session info.
 	if err = m.orm.SetSessionInfo(s.info); err != nil {
-		log.Error("db set session info fail", "roller name ", roller.Name, "public_key", pk, "error", err)
+		log.Error("db set session info fail", "roller name", roller.Name, "public_key", pk, "error", err)
 		return false
 	}
 
