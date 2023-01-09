@@ -127,7 +127,7 @@ func (w *WatcherClient) Stop() {
 }
 
 // try fetch missing blocks if inconsistent
-func (w *WatcherClient) tryFetchRunningMissingBlocks(ctx context.Context, backTrackFrom uint64) error {
+func (w *WatcherClient) tryFetchRunningMissingBlocks(ctx context.Context, blockHeight uint64) error {
 	// Get newest block in DB. must have blocks at that time.
 	// Don't use "block_trace" table "trace" column's BlockTrace.Number,
 	// because it might be empty if the corresponding rollup_result is finalized/finalization_skipped
@@ -135,35 +135,47 @@ func (w *WatcherClient) tryFetchRunningMissingBlocks(ctx context.Context, backTr
 	if err != nil {
 		return fmt.Errorf("failed to GetBlockTracesLatestHeight in DB: %v", err)
 	}
-	backTrackTo := uint64(0)
+
+	// Can't get trace from genesis block, so the default start number is 1.
+	var from = uint64(1)
 	if heightInDB > 0 {
-		backTrackTo = uint64(heightInDB)
+		from = uint64(heightInDB) + 1
 	}
 
 	blockTracesFetchLimit := w.vp.GetUint64("block_traces_fetch_limit")
-	for from := backTrackFrom; from > backTrackTo; from -= blockTracesFetchLimit {
-		to := from - blockTracesFetchLimit
+	for ; from <= blockHeight; from += blockTracesFetchLimit {
+		to := from + blockTracesFetchLimit - 1
 
-		if to < backTrackTo {
-			to = backTrackTo
+		if to > blockHeight {
+			to = blockHeight
 		}
 
-		var traces []*types.BlockTrace
-		for number := from; number > to; number-- {
-			log.Debug("retrieving block trace", "height", number)
-			trace, err2 := w.GetBlockTraceByNumber(ctx, big.NewInt(int64(number)))
-			if err2 != nil {
-				return fmt.Errorf("failed to GetBlockResultByHash: %v. number: %v", err2, number)
-			}
-			log.Info("retrieved block trace", "height", trace.Header.Number, "hash", trace.Header.Hash().String())
-
-			traces = append(traces, trace)
-
+		// Get block traces and insert into db.
+		if err = w.insertBlockTraces(ctx, from, to); err != nil {
+			return err
 		}
-		if len(traces) > 0 {
-			if err = w.orm.InsertBlockTraces(traces); err != nil {
-				return fmt.Errorf("failed to batch insert BlockTraces: %v", err)
-			}
+	}
+
+	return nil
+}
+
+func (w *WatcherClient) insertBlockTraces(ctx context.Context, from, to uint64) error {
+	var traces []*types.BlockTrace
+
+	for number := from; number <= to; number++ {
+		log.Debug("retrieving block trace", "height", number)
+		trace, err2 := w.GetBlockTraceByNumber(ctx, big.NewInt(int64(number)))
+		if err2 != nil {
+			return fmt.Errorf("failed to GetBlockResultByHash: %v. number: %v", err2, number)
+		}
+		log.Info("retrieved block trace", "height", trace.Header.Number, "hash", trace.Header.Hash().String())
+
+		traces = append(traces, trace)
+
+	}
+	if len(traces) > 0 {
+		if err := w.orm.InsertBlockTraces(traces); err != nil {
+			return fmt.Errorf("failed to batch insert BlockTraces: %v", err)
 		}
 	}
 

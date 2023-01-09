@@ -3,6 +3,7 @@ package orm
 import (
 	"context"
 	"database/sql"
+	"fmt"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/scroll-tech/go-ethereum/common"
@@ -84,6 +85,19 @@ const (
 	RollerProofInvalid
 )
 
+func (s RollerProveStatus) String() string {
+	switch s {
+	case RollerAssigned:
+		return "RollerAssigned"
+	case RollerProofValid:
+		return "RollerProofValid"
+	case RollerProofInvalid:
+		return "RollerProofInvalid"
+	default:
+		return fmt.Sprintf("Bad Value: %d", int32(s))
+	}
+}
+
 // RollerStatus is the roller name and roller prove status
 type RollerStatus struct {
 	PublicKey string            `json:"public_key"`
@@ -132,6 +146,8 @@ type BlockBatchOrm interface {
 	GetCommittedBatches() ([]string, error)
 	GetRollupStatus(id string) (RollupStatus, error)
 	GetRollupStatusByIDList(ids []string) ([]RollupStatus, error)
+	GetCommitTxHash(id string) (sql.NullString, error)
+	GetFinalizeTxHash(id string) (sql.NullString, error)
 	GetLatestFinalizedBatch() (*BlockBatch, error)
 	UpdateRollupStatus(ctx context.Context, id string, status RollupStatus) error
 	UpdateCommitTxHashAndRollupStatus(ctx context.Context, id string, commit_tx_hash string, status RollupStatus) error

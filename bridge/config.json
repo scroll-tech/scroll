@@ -5,6 +5,7 @@
     "watcher_time_sec": "10s",
     "endpoint": "https://goerli.infura.io/v3/9aa3d95b3bc440fa88ea12eaa4456161",
     "l1_messenger_address": "0x0000000000000000000000000000000000000000",
+    "rollup_contract_address": "0x0000000000000000000000000000000000000000",
     "start_height": 0,
     "relayer_config": {
       "relayer_loop_time_sec": "3s",

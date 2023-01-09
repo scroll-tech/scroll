@@ -195,7 +195,12 @@ func (m *Manager) restorePrevSessions() {
 				finishChan: make(chan rollerProofStatus, proofAndPkBufferSize),
 			}
 			m.sessions[sess.info.ID] = sess
-			log.Info("Coordinator restart reload sessions", "ID", sess.info.ID, "sess", sess.info)
+
+			log.Info("Coordinator restart reload sessions", "session start time", time.Unix(sess.info.StartTimestamp, 0))
+			for _, roller := range sess.info.Rollers {
+				log.Info("restore roller info for session", "session id", sess.info.ID, "roller name", roller.Name, "public key", roller.PublicKey, "proof status", roller.Status)
+			}
+
 			go m.CollectProofs(sess.info.ID, sess)
 		}
 	}

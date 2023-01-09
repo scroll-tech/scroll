@@ -100,7 +100,7 @@ func (w *Watcher) Start() {
 					log.Error("Failed to get block number", "err", err)
 					continue
 				}
-				if err := w.fetchContractEvent(blockNumber); err != nil {
+				if err := w.FetchContractEvent(blockNumber); err != nil {
 					log.Error("Failed to fetch bridge contract", "err", err)
 				}
 			}
@@ -114,7 +114,7 @@ func (w *Watcher) Stop() {
 }
 
 // FetchContractEvent pull latest event logs from given contract address and save in DB
-func (w *Watcher) fetchContractEvent(blockHeight uint64) error {
+func (w *Watcher) FetchContractEvent(blockHeight uint64) error {
 	defer func() {
 		log.Info("l1 watcher fetchContractEvent", "w.processedMsgHeight", w.processedMsgHeight)
 	}()
@@ -156,13 +156,14 @@ func (w *Watcher) fetchContractEvent(blockHeight uint64) error {
 			w.processedMsgHeight = to
 			continue
 		}
-		log.Info("Received new L1 messages", "fromBlock", from, "toBlock", to, "cnt", len(logs))
+		log.Info("Received new L1 events", "fromBlock", from, "toBlock", to, "cnt", len(logs))
 
 		sentMessageEvents, relayedMessageEvents, rollupEvents, err := w.parseBridgeEventLogs(logs)
 		if err != nil {
 			log.Error("Failed to parse emitted events log", "err", err)
 			return err
 		}
+		log.Info("L1 events types", "SentMessageCount", len(sentMessageEvents), "RelayedMessageCount", len(relayedMessageEvents), "RollupEventCount", len(rollupEvents))
 
 		// use rollup event to update rollup results db status
 		var batchIDs []string
@@ -182,7 +183,8 @@ func (w *Watcher) fetchContractEvent(blockHeight uint64) error {
 		for index, event := range rollupEvents {
 			batchID := event.batchID.String()
 			status := statuses[index]
-			if event.status != status {
+			// only update when db status is before event status
+			if event.status > status {
 				if event.status == orm.RollupFinalized {
 					err = w.db.UpdateFinalizeTxHashAndRollupStatus(w.ctx, batchID, event.txHash.String(), event.status)
 				} else if event.status == orm.RollupCommitted {

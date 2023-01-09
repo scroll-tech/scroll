@@ -25,7 +25,7 @@ func New(ctx context.Context, vp *viper.Viper, orm database.OrmFactory) (*Backen
 		return nil, err
 	}
 
-	relayer, err := NewLayer2Relayer(ctx, client, orm, vp.Sub("relayer_config"))
+	relayer, err := NewLayer2Relayer(ctx, orm, vp.Sub("relayer_config"))
 	if err != nil {
 		return nil, err
 	}

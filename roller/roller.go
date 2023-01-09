@@ -42,8 +42,9 @@ type Roller struct {
 	taskChan chan *message.TaskMsg
 	sub      ethereum.Subscription
 
-	isClosed int64
-	stopChan chan struct{}
+	isDisconnected int64
+	isClosed       int64
+	stopChan       chan struct{}
 
 	priv *ecdsa.PrivateKey
 }
@@ -158,6 +159,8 @@ func (r *Roller) HandleCoordinator() {
 }
 
 func (r *Roller) mustRetryCoordinator() {
+	atomic.StoreInt64(&r.isDisconnected, 1)
+	defer atomic.StoreInt64(&r.isDisconnected, 0)
 	for {
 		log.Info("retry to connect to coordinator...")
 		err := r.Register()
@@ -195,64 +198,69 @@ func (r *Roller) ProveLoop() {
 }
 
 func (r *Roller) prove() error {
-	task, err := r.stack.Pop()
+	task, err := r.stack.Peek()
 	if err != nil {
 		return err
 	}
 
 	var proofMsg *message.ProofDetail
-	if task.Times > 2 {
-		proofMsg = &message.ProofDetail{
-			Status: message.StatusProofError,
-			Error:  "prover has retried several times due to FFI panic",
-			ID:     task.Task.ID,
-			Proof:  &message.AggProof{},
+	if task.Times <= 2 {
+		// If panic times <= 2, try to proof the task.
+		if err = r.stack.UpdateTimes(task, task.Times+1); err != nil {
+			return err
 		}
 
-		_, err = r.signAndSubmitProof(proofMsg)
-		return err
-	}
+		// Sort BlockTraces by header number.
+		traces := task.Task.Traces
+		sort.Slice(traces, func(i, j int) bool {
+			return traces[i].Header.Number.Int64() < traces[j].Header.Number.Int64()
+		})
 
-	err = r.stack.Push(task)
-	if err != nil {
-		return err
-	}
+		log.Info("start to prove block", "task-id", task.Task.ID)
 
-	log.Info("start to prove block", "task-id", task.Task.ID)
-
-	// sort BlockTrace
-	traces := task.Task.Traces
-	sort.Slice(traces, func(i, j int) bool {
-		return traces[i].Header.Number.Int64() < traces[j].Header.Number.Int64()
-	})
-	proof, err := r.prover.Prove(traces)
-	if err != nil {
-		proofMsg = &message.ProofDetail{
-			Status: message.StatusProofError,
-			Error:  err.Error(),
-			ID:     task.Task.ID,
-			Proof:  &message.AggProof{},
+		// If FFI panic during Prove, the roller will restart and re-enter prove() function,
+		// the proof will not be submitted.
+		var proof *message.AggProof
+		proof, err = r.prover.Prove(traces)
+		if err != nil {
+			proofMsg = &message.ProofDetail{
+				Status: message.StatusProofError,
+				Error:  err.Error(),
+				ID:     task.Task.ID,
+				Proof:  &message.AggProof{},
+			}
+			log.Error("prove block failed!", "task-id", task.Task.ID)
+		} else {
+			proofMsg = &message.ProofDetail{
+				Status: message.StatusOk,
+				ID:     task.Task.ID,
+				Proof:  proof,
+			}
+			log.Info("prove block successfully!", "task-id", task.Task.ID)
 		}
-		log.Error("prove block failed!", "task-id", task.Task.ID)
 	} else {
-
+		// when the roller has more than 3 times panic,
+		// it will omit to prove the task, submit StatusProofError and then Pop the task.
 		proofMsg = &message.ProofDetail{
-			Status: message.StatusOk,
+			Status: message.StatusProofError,
+			Error:  "zk proving panic",
 			ID:     task.Task.ID,
-			Proof:  proof,
+			Proof:  &message.AggProof{},
 		}
-		log.Info("prove block successfully!", "task-id", task.Task.ID)
-	}
-	_, err = r.stack.Pop()
-	if err != nil {
-		return err
 	}
 
-	ok, err := r.signAndSubmitProof(proofMsg)
+	defer func() {
+		_, err = r.stack.Pop()
+		if err != nil {
+			log.Error("roller stack pop failed!", "err", err)
+		}
+	}()
+
+	ok, serr := r.signAndSubmitProof(proofMsg)
 	if !ok {
 		log.Error("submit proof to coordinator failed", "task ID", proofMsg.ID)
 	}
-	return err
+	return serr
 }
 
 func (r *Roller) signAndSubmitProof(msg *message.ProofDetail) (bool, error) {
@@ -261,6 +269,11 @@ func (r *Roller) signAndSubmitProof(msg *message.ProofDetail) (bool, error) {
 		return false, err
 	}
 
+	// When the roller is disconnected from the coordinator,
+	// wait until the roller reconnects to the coordinator.
+	for atomic.LoadInt64(&r.isDisconnected) == 1 {
+		time.Sleep(retryWait)
+	}
 	return r.client.SubmitProof(context.Background(), authZkProof)
 }
 
