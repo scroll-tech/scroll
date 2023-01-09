@@ -232,6 +232,50 @@ function initialize(uint256 _chainId) external nonpayable
 |---|---|---|
 | _chainId | uint256 | undefined |
 
+### isBlockFinalized
+
+```solidity
+function isBlockFinalized(bytes32 _blockHash) external view returns (bool)
+```
+
+Return whether the block is finalized by block hash.
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| _blockHash | bytes32 | undefined |
+
+#### Returns
+
+| Name | Type | Description |
+|---|---|---|
+| _0 | bool | undefined |
+
+### isBlockFinalized
+
+```solidity
+function isBlockFinalized(uint256 _blockHeight) external view returns (bool)
+```
+
+Return whether the block is finalized by block height.
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| _blockHeight | uint256 | undefined |
+
+#### Returns
+
+| Name | Type | Description |
+|---|---|---|
+| _0 | bool | undefined |
+
 ### lastFinalizedBatchID
 
 ```solidity
