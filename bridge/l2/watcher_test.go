@@ -33,7 +33,7 @@ func testCreateNewWatcherAndStop(t *testing.T) {
 	rc.Start()
 	defer rc.Stop()
 
-	messageSenderPrivateKeys := vp.Sub("l2_config.relayer_config").GetECDSAKeys("message_sender_private_keys")
+	messageSenderPrivateKeys := vp.Sub("l1_config.relayer_config").GetECDSAKeys("message_sender_private_keys")
 	vp.Set("l1_config.relayer_config.sender_config.confirmations", 0)
 	newSender, err := sender.NewSender(context.Background(), vp.Sub("l1_config.relayer_config.sender_config"), messageSenderPrivateKeys)
 	assert.NoError(t, err)

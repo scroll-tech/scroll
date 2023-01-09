@@ -5,9 +5,9 @@ import (
 	"crypto/ecdsa"
 	"math/big"
 	"scroll-tech/common/docker"
+	"scroll-tech/common/viper"
 	"testing"
 
-	"scroll-tech/bridge/config"
 	"scroll-tech/bridge/mock_bridge"
 
 	"github.com/scroll-tech/go-ethereum/accounts/abi/bind"
@@ -20,7 +20,7 @@ import (
 
 var (
 	// config
-	cfg *config.Config
+	vp *viper.Viper
 
 	// private key
 	privateKey *ecdsa.PrivateKey
@@ -53,37 +53,38 @@ var (
 
 func setupEnv(t *testing.T) {
 	var err error
-	privateKey, err = crypto.ToECDSA(common.FromHex("1212121212121212121212121212121212121212121212121212121212121212"))
+	privateKeyStr := "1212121212121212121212121212121212121212121212121212121212121212"
+	privateKey, err = crypto.ToECDSA(common.FromHex(privateKeyStr))
 	assert.NoError(t, err)
 
 	// Load config.
-	cfg, err = config.NewConfig("../config.json")
+	vp, err = viper.NewViper("../config.json", "")
 	assert.NoError(t, err)
-	cfg.L1Config.Confirmations = 0
-	cfg.L1Config.RelayerConfig.MessageSenderPrivateKeys = []*ecdsa.PrivateKey{privateKey}
-	cfg.L1Config.RelayerConfig.RollupSenderPrivateKeys = []*ecdsa.PrivateKey{privateKey}
-	cfg.L2Config.Confirmations = 0
-	cfg.L2Config.RelayerConfig.MessageSenderPrivateKeys = []*ecdsa.PrivateKey{privateKey}
-	cfg.L2Config.RelayerConfig.RollupSenderPrivateKeys = []*ecdsa.PrivateKey{privateKey}
+	vp.Set("l1_config.confirmations", 0)
+	vp.Set("l1_config.relayer_config.message_sender_private_keys", []string{privateKeyStr})
+	vp.Set("l1_config.relayer_config.rollup_sender_private_keys", []string{privateKeyStr})
+	vp.Set("l2_config.confirmations", 0)
+	vp.Set("l2_config.relayer_config.message_sender_private_keys", []string{privateKeyStr})
+	vp.Set("l2_config.relayer_config.rollup_sender_private_keys", []string{privateKeyStr})
 
 	// Create l1geth container.
 	l1gethImg = docker.NewTestL1Docker(t)
-	cfg.L2Config.RelayerConfig.SenderConfig.Endpoint = l1gethImg.Endpoint()
-	cfg.L1Config.Endpoint = l1gethImg.Endpoint()
+	vp.Set("l2_config.relayer_config.sender_config.endpoint", l1gethImg.Endpoint())
+	vp.Set("l1_config.endpoint", l1gethImg.Endpoint())
 
 	// Create l2geth container.
 	l2gethImg = docker.NewTestL2Docker(t)
-	cfg.L1Config.RelayerConfig.SenderConfig.Endpoint = l2gethImg.Endpoint()
-	cfg.L2Config.Endpoint = l2gethImg.Endpoint()
+	vp.Set("l1_config.relayer_config.sender_config.endpoint", l2gethImg.Endpoint())
+	vp.Set("l2_config.endpoint", l2gethImg.Endpoint())
 
 	// Create db container.
-	dbImg = docker.NewTestDBDocker(t, cfg.DBConfig.DriverName)
-	cfg.DBConfig.DSN = dbImg.Endpoint()
+	dbImg = docker.NewTestDBDocker(t, vp.GetString("db_config.driver_name"))
+	vp.Set("db_config.dsn", dbImg.Endpoint())
 
 	// Create l1geth and l2geth client.
-	l1Client, err = ethclient.Dial(cfg.L1Config.Endpoint)
+	l1Client, err = ethclient.Dial(vp.GetString("l1_config.endpoint"))
 	assert.NoError(t, err)
-	l2Client, err = ethclient.Dial(cfg.L2Config.Endpoint)
+	l2Client, err = ethclient.Dial(vp.GetString("l2_config.endpoint"))
 	assert.NoError(t, err)
 
 	// Create l1 and l2 auth
@@ -125,13 +126,13 @@ func prepareContracts(t *testing.T) {
 	l2MessengerAddress, err = bind.WaitDeployed(context.Background(), l2Client, tx)
 	assert.NoError(t, err)
 
-	cfg.L1Config.L1MessengerAddress = l1MessengerAddress
-	cfg.L1Config.RollupContractAddress = l1RollupAddress
-	cfg.L1Config.RelayerConfig.MessengerContractAddress = l2MessengerAddress
+	vp.Set("l1_config.l1_messenger_address", l1MessengerAddress)
+	vp.Set("l1_config.rollup_contract_address", l1RollupAddress)
+	vp.Set("l1_config.relayer_config.messenger_contract_address", l2MessengerAddress)
 
-	cfg.L2Config.L2MessengerAddress = l2MessengerAddress
-	cfg.L2Config.RelayerConfig.MessengerContractAddress = l1MessengerAddress
-	cfg.L2Config.RelayerConfig.RollupContractAddress = l1RollupAddress
+	vp.Set("l2_config.l2_messenger_address", l2MessengerAddress)
+	vp.Set("l2_config.relayer_config.messenger_contract_address", l1MessengerAddress)
+	vp.Set("l2_config.relayer_config.rollup_contract_address", l1RollupAddress)
 }
 
 func prepareAuth(t *testing.T, client *ethclient.Client, privateKey *ecdsa.PrivateKey) *bind.TransactOpts {

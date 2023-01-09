@@ -19,7 +19,7 @@ import (
 
 func testCommitBatchAndFinalizeBatch(t *testing.T) {
 	// Create db handler and reset db.
-	db, err := database.NewOrmFactory(cfg.DBConfig)
+	db, err := database.NewOrmFactory(vp.Sub("db_config"))
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(db.GetDB().DB))
 	defer db.Close()
@@ -27,14 +27,14 @@ func testCommitBatchAndFinalizeBatch(t *testing.T) {
 	prepareContracts(t)
 
 	// Create L2Relayer
-	l2Cfg := cfg.L2Config
-	l2Relayer, err := l2.NewLayer2Relayer(context.Background(), db, l2Cfg.RelayerConfig)
+	l2Relayer, err := l2.NewLayer2Relayer(context.Background(), db, vp.Sub("l2_config.relayer_config"))
 	assert.NoError(t, err)
 	defer l2Relayer.Stop()
 
 	// Create L1Watcher
-	l1Cfg := cfg.L1Config
-	l1Watcher := l1.NewWatcher(context.Background(), l1Client, 0, 0, l1Cfg.L1MessengerAddress, l1Cfg.RollupContractAddress, db)
+	vp.Set("l1_config.confirmations", 0)
+	vp.Set("l1_config.start_height", 0)
+	l1Watcher := l1.NewWatcher(context.Background(), l1Client, vp.Sub("l1_config"), db)
 
 	// add some blocks to db
 	var traces []*types.BlockTrace
