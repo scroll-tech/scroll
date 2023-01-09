@@ -3,6 +3,7 @@ package orm
 import (
 	"context"
 	"database/sql"
+	"fmt"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/scroll-tech/go-ethereum/common"
@@ -83,6 +84,19 @@ const (
 	// RollerProofInvalid indicates roller has submitted invalid proof
 	RollerProofInvalid
 )
+
+func (s RollerProveStatus) String() string {
+	switch s {
+	case RollerAssigned:
+		return "RollerAssigned"
+	case RollerProofValid:
+		return "RollerProofValid"
+	case RollerProofInvalid:
+		return "RollerProofInvalid"
+	default:
+		return fmt.Sprintf("Bad Value: %d", int32(s))
+	}
+}
 
 // RollerStatus is the roller name and roller prove status
 type RollerStatus struct {
