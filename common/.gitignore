@@ -3,5 +3,3 @@
 libzkp/impl/target
 libzkp/interface/*.a
 bytecode/abi
-bytecode/L1/*.go
-bytecode/L2/*.go
