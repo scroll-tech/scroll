@@ -37,7 +37,7 @@ func testStartProcess(t *testing.T) {
 	bridgeCmd.RunApp(true)
 
 	// Start coordinator process.
-	coordinatorCmd := runCoordinatorApp(t, "--ws", "--ws.port", "8391")
+	coordinatorCmd := runCoordinatorApp(t)
 	coordinatorCmd.ExpectWithTimeout(true, time.Second*10, "Start coordinator successfully")
 	coordinatorCmd.RunApp(true)
 
