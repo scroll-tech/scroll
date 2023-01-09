@@ -126,7 +126,7 @@ func NewSender(ctx context.Context, config *config.SenderConfig, privs []*ecdsa.
 		config:        config,
 		client:        client,
 		chainID:       chainID,
-		numAccounts:   len(privs),
+		NumAccounts:   len(privs),
 		auths:         auths,
 		confirmCh:     make(chan *Confirmation, 128),
 		blockNumber:   header.Number.Uint64(),
