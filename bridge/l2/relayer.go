@@ -90,7 +90,6 @@ func NewLayer2Relayer(ctx context.Context, db database.OrmFactory, cfg *config.R
 // ProcessSavedEvents relays saved un-processed cross-domain transactions to desired blockchain
 func (r *Layer2Relayer) ProcessSavedEvents() {
 	batch, err := r.db.GetLatestFinalizedBatch()
-
 	if err != nil {
 		log.Error("GetLatestFinalizedBatch failed", "err", err)
 		return
@@ -105,7 +104,7 @@ func (r *Layer2Relayer) ProcessSavedEvents() {
 	}
 
 	// process messages in batches
-	batch_size := r.messageSender.NumAccounts
+	batch_size := r.messageSender.NumberOfAccounts()
 
 	for from := 0; from < len(msgs); from += batch_size {
 		to := from + batch_size

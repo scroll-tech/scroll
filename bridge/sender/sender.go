@@ -76,11 +76,10 @@ type PendingTransaction struct {
 
 // Sender Transaction sender to send transaction to l1/l2 geth
 type Sender struct {
-	config      *config.SenderConfig
-	client      *ethclient.Client // The client to retrieve on chain data or send transaction.
-	chainID     *big.Int          // The chain id of the endpoint
-	ctx         context.Context
-	NumAccounts int
+	config  *config.SenderConfig
+	client  *ethclient.Client // The client to retrieve on chain data or send transaction.
+	chainID *big.Int          // The chain id of the endpoint
+	ctx     context.Context
 
 	// account fields.
 	auths *accountPool
@@ -126,7 +125,6 @@ func NewSender(ctx context.Context, config *config.SenderConfig, privs []*ecdsa.
 		config:        config,
 		client:        client,
 		chainID:       chainID,
-		NumAccounts:   len(privs),
 		auths:         auths,
 		confirmCh:     make(chan *Confirmation, 128),
 		blockNumber:   header.Number.Uint64(),
@@ -153,7 +151,7 @@ func (s *Sender) ConfirmChan() <-chan *Confirmation {
 
 // NumberOfAccounts return the count of accounts.
 func (s *Sender) NumberOfAccounts() int {
-	return len(s.auths.accounts)
+	return s.auths.numAccounts
 }
 
 func (s *Sender) getFeeData(auth *bind.TransactOpts, target *common.Address, value *big.Int, data []byte) (*FeeData, error) {
