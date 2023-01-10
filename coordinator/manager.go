@@ -225,17 +225,29 @@ func (m *Manager) handleZkProof(pk string, msg *message.ProofDetail) error {
 	proofTimeSec := uint64(time.Since(time.Unix(sess.info.StartTimestamp, 0)).Seconds())
 
 	// Ensure this roller is eligible to participate in the session.
-	if roller, ok := sess.info.Rollers[pk]; !ok {
-		return fmt.Errorf("roller %s is not eligible to partake in proof session %v", pk, msg.ID)
-	} else if roller.Status == orm.RollerProofValid {
+	roller, ok := sess.info.Rollers[pk]
+	if !ok {
+		return fmt.Errorf("roller %s (%s) is not eligible to partake in proof session %v", roller.Name, roller.PublicKey, msg.ID)
+	}
+	if roller.Status == orm.RollerProofValid {
 		// In order to prevent DoS attacks, it is forbidden to repeatedly submit valid proofs.
 		// TODO: Defend invalid proof resubmissions by one of the following two methods:
 		// (i) slash the roller for each submission of invalid proof
 		// (ii) set the maximum failure retry times
-		log.Warn("roller has already submitted valid proof in proof session", "roller", pk, "proof id", msg.ID)
+		log.Warn(
+			"roller has already submitted valid proof in proof session",
+			"roller name", roller.Name,
+			"roller pk", roller.PublicKey,
+			"proof id", msg.ID,
+		)
 		return nil
 	}
-	log.Info("Received zk proof", "proof id", msg.ID)
+	log.Info(
+		"handling zk proof",
+		"proof id", msg.ID,
+		"roller name", roller.Name,
+		"roller pk", roller.PublicKey,
+	)
 
 	defer func() {
 		// TODO: maybe we should use db tx for the whole process?
@@ -255,7 +267,13 @@ func (m *Manager) handleZkProof(pk string, msg *message.ProofDetail) error {
 	}()
 
 	if msg.Status != message.StatusOk {
-		log.Error("Roller failed to generate proof", "msg.ID", msg.ID, "error", msg.Error)
+		log.Error(
+			"Roller failed to generate proof",
+			"msg.ID", msg.ID,
+			"roller name", roller.Name,
+			"roller pk", roller.PublicKey,
+			"error", msg.Error,
+		)
 		if dbErr = m.orm.UpdateProvingStatus(msg.ID, orm.ProvingTaskFailed); dbErr != nil {
 			log.Error("failed to update task status as failed", "error", dbErr)
 		}
@@ -422,11 +440,11 @@ func (m *Manager) StartProofGenerationSession(task *orm.BlockBatch) (success boo
 		}
 	}
 
-	log.Info("roller is picked", "name", roller.Name, "public_key", roller.PublicKey)
+	log.Info("roller is picked", "session id", task.ID, "name", roller.Name, "public_key", roller.PublicKey)
 
 	// send trace to roller
 	if !roller.sendTask(task.ID, traces) {
-		log.Error("send task failed", "roller name", roller.Name, "id", task.ID)
+		log.Error("send task failed", "roller name", roller.Name, "public_key", roller.PublicKey, "id", task.ID)
 		return false
 	}
 
@@ -449,7 +467,7 @@ func (m *Manager) StartProofGenerationSession(task *orm.BlockBatch) (success boo
 
 	// Store session info.
 	if err = m.orm.SetSessionInfo(s.info); err != nil {
-		log.Error("db set session info fail", "pk", pk, "error", err)
+		log.Error("db set session info fail", "roller name", roller.Name, "public_key", pk, "error", err)
 		return false
 	}
 
