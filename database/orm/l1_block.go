@@ -103,11 +103,20 @@ func (l *l1BlockOrm) UpdateL1BlockStatusAndImportTxHash(ctx context.Context, blo
 }
 
 func (l *l1BlockOrm) GetLatestL1BlockHeight() (uint64, error) {
-	row := l.db.QueryRow("SELECT COALESCE(MAX(height), 0) FROM l1_block;")
+	row := l.db.QueryRow("SELECT COALESCE(MAX(number), 0) FROM l1_block;")
 
 	var height uint64
 	if err := row.Scan(&height); err != nil {
 		return 0, err
 	}
 	return height, nil
+}
+
+func (l *l1BlockOrm) GetLatestImportedL1Block() (*L1BlockInfo, error) {
+	row := l.db.QueryRowx(`SELECT * FROM l1_block WHERE block_status = $1 ORDER BY index DESC;`, L1BlockImported)
+	block := &L1BlockInfo{}
+	if err := row.StructScan(block); err != nil {
+		return nil, err
+	}
+	return block, nil
 }

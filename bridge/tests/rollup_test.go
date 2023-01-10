@@ -34,7 +34,7 @@ func testCommitBatchAndFinalizeBatch(t *testing.T) {
 
 	// Create L1Watcher
 	l1Cfg := cfg.L1Config
-	l1Watcher, err := l1.NewWatcher(context.Background(), l1Client, 0, 0, l1Cfg.L1MessengerAddress, l1Cfg.L1MessageQueueAddress, l1Cfg.RollupContractAddress, db)
+	l1Watcher, err := l1.NewWatcher(context.Background(), l1gethClient, l1ethClient, 0, 0, l1Cfg.L1MessengerAddress, l1Cfg.L1MessageQueueAddress, l1Cfg.RollupContractAddress, db)
 	assert.NoError(t, err)
 
 	// add some blocks to db
@@ -87,9 +87,9 @@ func testCommitBatchAndFinalizeBatch(t *testing.T) {
 	commitTxHash, err := db.GetCommitTxHash(batchID)
 	assert.NoError(t, err)
 	assert.Equal(t, true, commitTxHash.Valid)
-	commitTx, _, err := l1Client.TransactionByHash(context.Background(), common.HexToHash(commitTxHash.String))
+	commitTx, _, err := l1ethClient.TransactionByHash(context.Background(), common.HexToHash(commitTxHash.String))
 	assert.NoError(t, err)
-	commitTxReceipt, err := bind.WaitMined(context.Background(), l1Client, commitTx)
+	commitTxReceipt, err := bind.WaitMined(context.Background(), l1ethClient, commitTx)
 	assert.NoError(t, err)
 	assert.Equal(t, len(commitTxReceipt.Logs), 1)
 
@@ -117,9 +117,9 @@ func testCommitBatchAndFinalizeBatch(t *testing.T) {
 	finalizeTxHash, err := db.GetFinalizeTxHash(batchID)
 	assert.NoError(t, err)
 	assert.Equal(t, true, finalizeTxHash.Valid)
-	finalizeTx, _, err := l1Client.TransactionByHash(context.Background(), common.HexToHash(finalizeTxHash.String))
+	finalizeTx, _, err := l1ethClient.TransactionByHash(context.Background(), common.HexToHash(finalizeTxHash.String))
 	assert.NoError(t, err)
-	finalizeTxReceipt, err := bind.WaitMined(context.Background(), l1Client, finalizeTx)
+	finalizeTxReceipt, err := bind.WaitMined(context.Background(), l1ethClient, finalizeTx)
 	assert.NoError(t, err)
 	assert.Equal(t, len(finalizeTxReceipt.Logs), 1)
 

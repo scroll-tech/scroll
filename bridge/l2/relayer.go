@@ -133,12 +133,11 @@ func (r *Layer2Relayer) ProcessSavedEvents() {
 }
 
 func (r *Layer2Relayer) processSavedEvent(msg *orm.L2Message, batch *orm.BlockBatch) error {
-	// @todo fetch merkle proof from l2geth
 	log.Info("Processing L2 Message", "msg.nonce", msg.Nonce, "msg.height", msg.Height)
 
 	proof := bridge_abi.IL1ScrollMessengerL2MessageProof{
 		BlockHash:        common.HexToHash(batch.EndBlockHash),
-		MessageRootProof: make([]common.Hash, 0),
+		MessageRootProof: DecodeBytesToMerkleProof(common.Hex2Bytes(msg.Proof)),
 	}
 	from := common.HexToAddress(msg.Sender)
 	target := common.HexToAddress(msg.Target)

@@ -62,18 +62,20 @@ const (
 
 // L1Message is structure of stored layer1 bridge message
 type L1Message struct {
-	Nonce      uint64    `json:"nonce" db:"nonce"`
-	MsgHash    string    `json:"msg_hash" db:"msg_hash"`
-	Height     uint64    `json:"height" db:"height"`
-	Sender     string    `json:"sender" db:"sender"`
-	Value      string    `json:"value" db:"value"`
-	Fee        string    `json:"fee" db:"fee"`
-	GasLimit   uint64    `json:"gas_limit" db:"gas_limit"`
-	Deadline   uint64    `json:"deadline" db:"deadline"`
-	Target     string    `json:"target" db:"target"`
-	Calldata   string    `json:"calldata" db:"calldata"`
-	Layer1Hash string    `json:"layer1_hash" db:"layer1_hash"`
-	Status     MsgStatus `json:"status" db:"status"`
+	Nonce        uint64    `json:"nonce" db:"nonce"`
+	MsgHash      string    `json:"msg_hash" db:"msg_hash"`
+	Height       uint64    `json:"height" db:"height"`
+	Sender       string    `json:"sender" db:"sender"`
+	Value        string    `json:"value" db:"value"`
+	Fee          string    `json:"fee" db:"fee"`
+	GasLimit     uint64    `json:"gas_limit" db:"gas_limit"`
+	Deadline     uint64    `json:"deadline" db:"deadline"`
+	Target       string    `json:"target" db:"target"`
+	Calldata     string    `json:"calldata" db:"calldata"`
+	Layer1Hash   string    `json:"layer1_hash" db:"layer1_hash"`
+	ProofHeight  uint64    `json:"proof_height" db:"proof_height"`
+	MessageProof string    `json:"message_proof" db:"message_proof"`
+	Status       MsgStatus `json:"status" db:"status"`
 }
 
 // L2Message is structure of stored layer2 bridge message
@@ -152,6 +154,7 @@ type L1BlockOrm interface {
 	UpdateL1BlockStatus(ctx context.Context, blockHash string, status L1BlockStatus) error
 	UpdateL1BlockStatusAndImportTxHash(ctx context.Context, blockHash string, status L1BlockStatus, txHash string) error
 	GetLatestL1BlockHeight() (uint64, error)
+	GetLatestImportedL1Block() (*L1BlockInfo, error)
 }
 
 // BlockTraceOrm block_trace operation interface
@@ -203,8 +206,10 @@ type L1MessageOrm interface {
 	GetL1MessageByNonce(nonce uint64) (*L1Message, error)
 	GetL1MessageByMsgHash(msgHash string) (*L1Message, error)
 	GetL1MessagesByStatus(status MsgStatus) ([]*L1Message, error)
+	GetL1MessagesByStatusUpToProofHeight(status MsgStatus, height uint64) ([]*L1Message, error)
 	GetL1ProcessedNonce() (int64, error)
 	SaveL1Messages(ctx context.Context, messages []*L1Message) error
+	SaveL1MessagesInDbTx(ctx context.Context, dbTx *sqlx.Tx, messages []*L1Message) error
 	UpdateLayer2Hash(ctx context.Context, msgHash string, layer2Hash string) error
 	UpdateLayer1Status(ctx context.Context, msgHash string, status MsgStatus) error
 	UpdateLayer1StatusAndLayer2Hash(ctx context.Context, msgHash string, status MsgStatus, layer2Hash string) error

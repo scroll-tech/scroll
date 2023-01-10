@@ -258,6 +258,25 @@ func testOrmBlockTraces(t *testing.T) {
 
 	res2, err := ormBlock.GetUnbatchedBlocks(map[string]interface{}{})
 	assert.NoError(t, err)
+	assert.Equal(t, true, len(res2) == 0)
+
+	blocks, err := ormBlock.GetL2BlockInfos(map[string]interface{}{
+		"hash": blockTrace.Header.Hash().String(),
+	})
+	assert.NoError(t, err)
+	assert.Equal(t, true, len(blocks) == 1)
+	assert.Equal(t, false, blocks[0].MessageRoot.Valid)
+
+	// set message root
+	dbTx, err := factory.Beginx()
+	assert.NoError(t, err)
+	err = ormBlock.SetMessageRootForBlocksInDBTx(dbTx, []uint64{blockTrace.Header.Number.Uint64()}, "123")
+	assert.NoError(t, err)
+	err = dbTx.Commit()
+	assert.NoError(t, err)
+
+	res2, err = ormBlock.GetUnbatchedBlocks(map[string]interface{}{})
+	assert.NoError(t, err)
 	assert.Equal(t, true, len(res2) == 1)
 
 	exist, err = ormBlock.Exist(blockTrace.Header.Number.Uint64())
@@ -279,14 +298,14 @@ func testOrmBlockTraces(t *testing.T) {
 	assert.Equal(t, true, string(data1) == string(data2))
 
 	// set message root
-	dbTx, err := factory.Beginx()
+	dbTx, err = factory.Beginx()
 	assert.NoError(t, err)
 	err = ormBlock.SetMessageRootForBlocksInDBTx(dbTx, []uint64{blockTrace.Header.Number.Uint64()}, "233")
 	assert.NoError(t, err)
 	err = dbTx.Commit()
 	assert.NoError(t, err)
 
-	blocks, err := ormBlock.GetL2BlockInfos(map[string]interface{}{
+	blocks, err = ormBlock.GetL2BlockInfos(map[string]interface{}{
 		"hash": blockTrace.Header.Hash().String(),
 	})
 	assert.NoError(t, err)

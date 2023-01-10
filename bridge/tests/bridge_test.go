@@ -15,6 +15,8 @@ import (
 	"github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/crypto"
 	"github.com/scroll-tech/go-ethereum/ethclient"
+	"github.com/scroll-tech/go-ethereum/ethclient/gethclient"
+	"github.com/scroll-tech/go-ethereum/rpc"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -31,8 +33,10 @@ var (
 	dbImg     docker.ImgInstance
 
 	// clients
-	l1Client *ethclient.Client
-	l2Client *ethclient.Client
+	l1ethClient  *ethclient.Client
+	l2ethClient  *ethclient.Client
+	l1gethClient *gethclient.Client
+	l2gethClient *gethclient.Client
 
 	// auth
 	l1Auth *bind.TransactOpts
@@ -81,14 +85,19 @@ func setupEnv(t *testing.T) {
 	cfg.DBConfig.DSN = dbImg.Endpoint()
 
 	// Create l1geth and l2geth client.
-	l1Client, err = ethclient.Dial(cfg.L1Config.Endpoint)
+	l1rawClient, err := rpc.DialContext(context.Background(), cfg.L1Config.Endpoint)
 	assert.NoError(t, err)
-	l2Client, err = ethclient.Dial(cfg.L2Config.Endpoint)
+	l1ethClient = ethclient.NewClient(l1rawClient)
+	l1gethClient = gethclient.New(l1rawClient)
+
+	l2rawClient, err := rpc.DialContext(context.Background(), cfg.L2Config.Endpoint)
 	assert.NoError(t, err)
+	l2ethClient = ethclient.NewClient(l2rawClient)
+	l2gethClient = gethclient.New(l2rawClient)
 
 	// Create l1 and l2 auth
-	l1Auth = prepareAuth(t, l1Client, privateKey)
-	l2Auth = prepareAuth(t, l2Client, privateKey)
+	l1Auth = prepareAuth(t, l1ethClient, privateKey)
+	l2Auth = prepareAuth(t, l2ethClient, privateKey)
 }
 
 func free(t *testing.T) {
@@ -108,21 +117,21 @@ func prepareContracts(t *testing.T) {
 	var tx *types.Transaction
 
 	// L1 messenger contract
-	_, tx, l1MessengerInstance, err = mock_bridge.DeployMockBridgeL1(l1Auth, l1Client)
+	_, tx, l1MessengerInstance, err = mock_bridge.DeployMockBridgeL1(l1Auth, l1ethClient)
 	assert.NoError(t, err)
-	l1MessengerAddress, err = bind.WaitDeployed(context.Background(), l1Client, tx)
+	l1MessengerAddress, err = bind.WaitDeployed(context.Background(), l1ethClient, tx)
 	assert.NoError(t, err)
 
 	// L1 rollup contract
-	_, tx, l1RollupInstance, err = mock_bridge.DeployMockBridgeL1(l1Auth, l1Client)
+	_, tx, l1RollupInstance, err = mock_bridge.DeployMockBridgeL1(l1Auth, l1ethClient)
 	assert.NoError(t, err)
-	l1RollupAddress, err = bind.WaitDeployed(context.Background(), l1Client, tx)
+	l1RollupAddress, err = bind.WaitDeployed(context.Background(), l1ethClient, tx)
 	assert.NoError(t, err)
 
 	// L2 messenger contract
-	_, tx, l2MessengerInstance, err = mock_bridge.DeployMockBridgeL2(l2Auth, l2Client)
+	_, tx, l2MessengerInstance, err = mock_bridge.DeployMockBridgeL2(l2Auth, l2ethClient)
 	assert.NoError(t, err)
-	l2MessengerAddress, err = bind.WaitDeployed(context.Background(), l2Client, tx)
+	l2MessengerAddress, err = bind.WaitDeployed(context.Background(), l2ethClient, tx)
 	assert.NoError(t, err)
 
 	cfg.L1Config.L1MessengerAddress = l1MessengerAddress

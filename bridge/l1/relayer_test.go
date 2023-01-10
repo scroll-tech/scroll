@@ -4,7 +4,10 @@ import (
 	"context"
 	"testing"
 
+	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/ethclient"
+	"github.com/scroll-tech/go-ethereum/ethclient/gethclient"
+	"github.com/scroll-tech/go-ethereum/rpc"
 	"github.com/stretchr/testify/assert"
 
 	"scroll-tech/database/migrate"
@@ -20,10 +23,12 @@ func testCreateNewL1Relayer(t *testing.T) {
 	assert.NoError(t, migrate.ResetDB(db.GetDB().DB))
 	defer db.Close()
 
-	client, err := ethclient.Dial(l1gethImg.Endpoint())
+	rawClient, err := rpc.DialContext(context.Background(), l1gethImg.Endpoint())
 	assert.NoError(t, err)
+	gethClient := gethclient.New(rawClient)
+	ethClient := ethclient.NewClient(rawClient)
 
-	relayer, err := NewLayer1Relayer(context.Background(), client, 1, db, cfg.L2Config.RelayerConfig)
+	relayer, err := NewLayer1Relayer(context.Background(), gethClient, ethClient, 1, common.Address{}, db, cfg.L2Config.RelayerConfig)
 	assert.NoError(t, err)
 	defer relayer.Stop()
 

@@ -4,6 +4,8 @@ import (
 	"context"
 
 	"github.com/scroll-tech/go-ethereum/ethclient"
+	"github.com/scroll-tech/go-ethereum/ethclient/gethclient"
+	"github.com/scroll-tech/go-ethereum/rpc"
 
 	"scroll-tech/database"
 
@@ -21,17 +23,20 @@ type Backend struct {
 
 // New returns a new instance of Backend.
 func New(ctx context.Context, cfg *config.L1Config, orm database.OrmFactory) (*Backend, error) {
-	client, err := ethclient.Dial(cfg.Endpoint)
+	rawClient, err := rpc.DialContext(ctx, cfg.Endpoint)
 	if err != nil {
 		return nil, err
 	}
 
-	relayer, err := NewLayer1Relayer(ctx, client, int64(cfg.Confirmations), orm, cfg.RelayerConfig)
+	gethClient := gethclient.New(rawClient)
+	ethClient := ethclient.NewClient(rawClient)
+
+	relayer, err := NewLayer1Relayer(ctx, gethClient, ethClient, int64(cfg.Confirmations), cfg.L1MessageQueueAddress, orm, cfg.RelayerConfig)
 	if err != nil {
 		return nil, err
 	}
 
-	watcher, err := NewWatcher(ctx, client, cfg.StartHeight, cfg.Confirmations, cfg.L1MessengerAddress, cfg.L1MessageQueueAddress, cfg.RollupContractAddress, orm)
+	watcher, err := NewWatcher(ctx, gethClient, ethClient, cfg.StartHeight, cfg.Confirmations, cfg.L1MessengerAddress, cfg.L1MessageQueueAddress, cfg.RollupContractAddress, orm)
 	if err != nil {
 		return nil, err
 	}

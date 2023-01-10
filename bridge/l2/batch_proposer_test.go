@@ -40,6 +40,14 @@ func testBatchProposer(t *testing.T) {
 	// Insert traces into db.
 	assert.NoError(t, db.InsertBlockTraces([]*types.BlockTrace{trace2, trace3}))
 
+	// update message root
+	dbTx, err := db.Beginx()
+	assert.NoError(t, err)
+	err = db.SetMessageRootForBlocksInDBTx(dbTx, []uint64{trace2.Header.Number.Uint64(), trace3.Header.Number.Uint64()}, "xx")
+	assert.NoError(t, err)
+	err = dbTx.Commit()
+	assert.NoError(t, err)
+
 	id := utils.ComputeBatchID(trace3.Header.Hash(), trace2.Header.ParentHash, big.NewInt(1))
 
 	proposer := newBatchProposer(&config.BatchProposerConfig{

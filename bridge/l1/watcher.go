@@ -6,11 +6,13 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/jmoiron/sqlx"
 	geth "github.com/scroll-tech/go-ethereum"
 	"github.com/scroll-tech/go-ethereum/accounts/abi"
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/ethclient"
+	"github.com/scroll-tech/go-ethereum/ethclient/gethclient"
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/scroll-tech/go-ethereum/rlp"
 
@@ -35,9 +37,12 @@ type rollupEvent struct {
 
 // Watcher will listen for smart contract events from Eth L1.
 type Watcher struct {
-	ctx    context.Context
-	client *ethclient.Client
-	db     database.OrmFactory
+	ctx context.Context
+
+	gethClient *gethclient.Client
+	ethClient  *ethclient.Client
+
+	db database.OrmFactory
 
 	// The number of new blocks to wait for a block to be confirmed
 	confirmations uint64
@@ -61,7 +66,7 @@ type Watcher struct {
 
 // NewWatcher returns a new instance of Watcher. The instance will be not fully prepared,
 // and still needs to be finalized and ran by calling `watcher.Start`.
-func NewWatcher(ctx context.Context, client *ethclient.Client, startHeight uint64, confirmations uint64, messengerAddress common.Address, messageQueueAddress common.Address, rollupAddress common.Address, db database.OrmFactory) (*Watcher, error) {
+func NewWatcher(ctx context.Context, gethClient *gethclient.Client, ethClient *ethclient.Client, startHeight uint64, confirmations uint64, messengerAddress common.Address, messageQueueAddress common.Address, rollupAddress common.Address, db database.OrmFactory) (*Watcher, error) {
 	savedMsgHeight, err := db.GetLayer1LatestWatchedHeight()
 	if err != nil {
 		log.Warn("Failed to fetch L1 watched message height from db", "err", err)
@@ -82,8 +87,11 @@ func NewWatcher(ctx context.Context, client *ethclient.Client, startHeight uint6
 	stop := make(chan bool)
 
 	return &Watcher{
-		ctx:           ctx,
-		client:        client,
+		ctx: ctx,
+
+		gethClient: gethClient,
+		ethClient:  ethClient,
+
 		db:            db,
 		confirmations: confirmations,
 
@@ -115,7 +123,7 @@ func (w *Watcher) Start() {
 				return
 
 			default:
-				blockNumber, err := w.client.BlockNumber(w.ctx)
+				blockNumber, err := w.ethClient.BlockNumber(w.ctx)
 				if err != nil {
 					log.Error("Failed to get block number", "err", err)
 					continue
@@ -156,7 +164,7 @@ func (w *Watcher) fetchBlockHeader(blockHeight uint64) error {
 	height := fromBlock
 	for ; height <= toBlock; height++ {
 		var block *types.Block
-		block, err = w.client.BlockByNumber(w.ctx, big.NewInt(height))
+		block, err = w.ethClient.BlockByNumber(w.ctx, big.NewInt(height))
 		if err != nil {
 			log.Warn("Failed to get block", "height", height, "err", err)
 			break
@@ -198,6 +206,16 @@ func (w *Watcher) FetchContractEvent(blockHeight uint64) error {
 		log.Info("l1 watcher fetchContractEvent", "w.processedMsgHeight", w.processedMsgHeight)
 	}()
 
+	var dbTx *sqlx.Tx
+	var dbTxErr error
+	defer func() {
+		if dbTxErr != nil {
+			if err := dbTx.Rollback(); err != nil {
+				log.Error("dbTx.Rollback()", "err", err)
+			}
+		}
+	}()
+
 	fromBlock := int64(w.processedMsgHeight) + 1
 	toBlock := int64(blockHeight) - int64(w.confirmations)
 
@@ -220,14 +238,14 @@ func (w *Watcher) FetchContractEvent(blockHeight uint64) error {
 			Topics: make([][]common.Hash, 1),
 		}
 		query.Topics[0] = make([]common.Hash, 6)
-		query.Topics[0][0] = bridge_abi.L1SendMessageEventSignature
+		query.Topics[0][0] = bridge_abi.L1SentMessageEventSignature
 		query.Topics[0][1] = bridge_abi.L1RelayedMessageEventSignature
 		query.Topics[0][2] = bridge_abi.L1FailedRelayedMessageEventSignature
 		query.Topics[0][3] = bridge_abi.L1CommitBatchEventSignature
 		query.Topics[0][4] = bridge_abi.L1FinalizeBatchEventSignature
 		query.Topics[0][5] = bridge_abi.L1AppendMessageEventSignature
 
-		logs, err := w.client.FilterLogs(w.ctx, query)
+		logs, err := w.ethClient.FilterLogs(w.ctx, query)
 		if err != nil {
 			log.Warn("Failed to get event logs", "err", err)
 			return err
@@ -293,8 +311,37 @@ func (w *Watcher) FetchContractEvent(blockHeight uint64) error {
 			}
 		}
 
-		if err = w.db.SaveL1Messages(w.ctx, sentMessageEvents); err != nil {
+		// group messages by height
+		dbTx, err = w.db.Beginx()
+		if err != nil {
 			return err
+		}
+		for i := 0; i < len(sentMessageEvents); {
+			j := i
+			var messages []*orm.L1Message
+			for ; j < len(sentMessageEvents) && sentMessageEvents[i].Height == sentMessageEvents[j].Height; j++ {
+				messages = append(messages, sentMessageEvents[j])
+			}
+			i = j
+			err = w.fillMessageProof(messages)
+			if err != nil {
+				log.Error("Failed to fillMessageProof", "err", err)
+				// make sure we will rollback
+				dbTxErr = err
+				return err
+			}
+
+			dbTxErr = w.db.SaveL1MessagesInDbTx(w.ctx, dbTx, messages)
+			if dbTxErr != nil {
+				log.Error("SaveL1MessagesInDbTx failed", "error", dbTxErr)
+				return dbTxErr
+			}
+		}
+
+		dbTxErr = dbTx.Commit()
+		if dbTxErr != nil {
+			log.Error("dbTx.Commit failed", "error", dbTxErr)
+			return dbTxErr
 		}
 
 		w.processedMsgHeight = uint64(to)
@@ -313,25 +360,16 @@ func (w *Watcher) parseBridgeEventLogs(logs []types.Log) ([]*orm.L1Message, []re
 	var lastAppendMsgHash common.Hash
 	for _, vLog := range logs {
 		switch vLog.Topics[0] {
-		case bridge_abi.L1SendMessageEventSignature:
-			event := struct {
-				Target       common.Address
-				Sender       common.Address
-				Value        *big.Int // uint256
-				Fee          *big.Int // uint256
-				Deadline     *big.Int // uint256
-				Message      []byte
-				MessageNonce *big.Int // uint256
-				GasLimit     *big.Int // uint256
-			}{}
-			err := utils.UnpackLog(w.messengerABI, event, "SentMessage", vLog)
+		case bridge_abi.L1SentMessageEventSignature:
+			event := bridge_abi.L1SentMessageEvent{}
+			err := utils.UnpackLog(w.messengerABI, &event, "SentMessage", vLog)
 			if err != nil {
 				log.Warn("Failed to unpack layer1 SentMessage event", "err", err)
 				return l1Messages, relayedMessages, rollupEvents, err
 			}
 			computedMsgHash := utils.ComputeMessageHash(
-				event.Target,
 				event.Sender,
+				event.Target,
 				event.Value,
 				event.Fee,
 				event.Deadline,
@@ -357,10 +395,8 @@ func (w *Watcher) parseBridgeEventLogs(logs []types.Log) ([]*orm.L1Message, []re
 				Layer1Hash: vLog.TxHash.Hex(),
 			})
 		case bridge_abi.L1RelayedMessageEventSignature:
-			event := struct {
-				MsgHash common.Hash
-			}{}
-			err := utils.UnpackLog(w.messengerABI, event, "RelayedMessage", vLog)
+			event := bridge_abi.L1RelayedMessageEvent{}
+			err := utils.UnpackLog(w.messengerABI, &event, "RelayedMessage", vLog)
 			if err != nil {
 				log.Warn("Failed to unpack layer1 RelayedMessage event", "err", err)
 				return l1Messages, relayedMessages, rollupEvents, err
@@ -371,10 +407,8 @@ func (w *Watcher) parseBridgeEventLogs(logs []types.Log) ([]*orm.L1Message, []re
 				isSuccessful: true,
 			})
 		case bridge_abi.L1FailedRelayedMessageEventSignature:
-			event := struct {
-				MsgHash common.Hash
-			}{}
-			err := utils.UnpackLog(w.messengerABI, event, "FailedRelayedMessage", vLog)
+			event := bridge_abi.L1FailedRelayedMessageEvent{}
+			err := utils.UnpackLog(w.messengerABI, &event, "FailedRelayedMessage", vLog)
 			if err != nil {
 				log.Warn("Failed to unpack layer1 FailedRelayedMessage event", "err", err)
 				return l1Messages, relayedMessages, rollupEvents, err
@@ -385,46 +419,34 @@ func (w *Watcher) parseBridgeEventLogs(logs []types.Log) ([]*orm.L1Message, []re
 				isSuccessful: false,
 			})
 		case bridge_abi.L1CommitBatchEventSignature:
-			event := struct {
-				BatchID    common.Hash
-				BatchHash  common.Hash
-				BatchIndex *big.Int
-				ParentHash common.Hash
-			}{}
-			err := utils.UnpackLog(w.rollupABI, event, "CommitBatch", vLog)
+			event := bridge_abi.L1CommitBatchEvent{}
+			err := utils.UnpackLog(w.rollupABI, &event, "CommitBatch", vLog)
 			if err != nil {
 				log.Warn("Failed to unpack layer1 CommitBatch event", "err", err)
 				return l1Messages, relayedMessages, rollupEvents, err
 			}
 
 			rollupEvents = append(rollupEvents, rollupEvent{
-				batchID: event.BatchID,
+				batchID: event.BatchId,
 				txHash:  vLog.TxHash,
 				status:  orm.RollupCommitted,
 			})
 		case bridge_abi.L1FinalizeBatchEventSignature:
-			event := struct {
-				BatchID    common.Hash
-				BatchHash  common.Hash
-				BatchIndex *big.Int
-				ParentHash common.Hash
-			}{}
-			err := utils.UnpackLog(w.rollupABI, event, "FinalizeBatch", vLog)
+			event := bridge_abi.L1FinalizeBatchEvent{}
+			err := utils.UnpackLog(w.rollupABI, &event, "FinalizeBatch", vLog)
 			if err != nil {
 				log.Warn("Failed to unpack layer1 FinalizeBatch event", "err", err)
 				return l1Messages, relayedMessages, rollupEvents, err
 			}
 
 			rollupEvents = append(rollupEvents, rollupEvent{
-				batchID: event.BatchID,
+				batchID: event.BatchId,
 				txHash:  vLog.TxHash,
 				status:  orm.RollupFinalized,
 			})
 		case bridge_abi.L1AppendMessageEventSignature:
-			event := struct {
-				MsgHash common.Hash
-			}{}
-			err := utils.UnpackLog(w.messageQueueABI, event, "AppendMessage", vLog)
+			event := bridge_abi.L1AppendMessageEvent{}
+			err := utils.UnpackLog(w.messageQueueABI, &event, "AppendMessage", vLog)
 			if err != nil {
 				log.Warn("Failed to unpack layer1 AppendMessage event", "err", err)
 				return l1Messages, relayedMessages, rollupEvents, err
@@ -436,4 +458,26 @@ func (w *Watcher) parseBridgeEventLogs(logs []types.Log) ([]*orm.L1Message, []re
 	}
 
 	return l1Messages, relayedMessages, rollupEvents, nil
+}
+
+// fetchMessageProof will fetch storage proof for msgs.
+// caller should make sure the height of all msgs are the same.
+func (w *Watcher) fillMessageProof(msgs []*orm.L1Message) error {
+	var hashes []common.Hash
+	for _, msg := range msgs {
+		hashes = append(hashes, common.HexToHash(msg.MsgHash))
+	}
+
+	height := msgs[0].Height
+	proofs, err := utils.GetL1MessageProof(w.gethClient, w.messageQueueAddress, hashes, height)
+	if err != nil {
+		return err
+	}
+
+	for i := 0; i < len(msgs); i++ {
+		msgs[i].ProofHeight = height
+		msgs[i].MessageProof = common.Bytes2Hex(proofs[i])
+	}
+
+	return nil
 }

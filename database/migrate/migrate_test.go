@@ -66,7 +66,7 @@ func testResetDB(t *testing.T) {
 	assert.NoError(t, ResetDB(pgDB.DB))
 	cur, err := Current(pgDB.DB)
 	assert.NoError(t, err)
-	assert.Equal(t, 5, int(cur))
+	assert.Equal(t, 7, int(cur))
 }
 
 func testMigrate(t *testing.T) {

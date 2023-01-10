@@ -23,8 +23,8 @@ var (
 	// L2MessageQueueABI holds information about L2MessageQueue contract's context and available invokable methods.
 	L2MessageQueueABI *abi.ABI
 
-	// L1SendMessageEventSignature = keccak256("SentMessage(address,address,uint256,uint256,uint256,bytes,uint256,uint256)")
-	L1SendMessageEventSignature common.Hash
+	// L1SentMessageEventSignature = keccak256("SentMessage(address,address,uint256,uint256,uint256,bytes,uint256,uint256)")
+	L1SentMessageEventSignature common.Hash
 	// L1RelayedMessageEventSignature = keccak256("RelayedMessage(bytes32)")
 	L1RelayedMessageEventSignature common.Hash
 	// L1FailedRelayedMessageEventSignature = keccak256("FailedRelayedMessage(bytes32)")
@@ -38,8 +38,8 @@ var (
 	// L1AppendMessageEventSignature = keccak256("AppendMessage(bytes32)")
 	L1AppendMessageEventSignature common.Hash
 
-	// L2SendMessageEventSignature = keccak256("SentMessage(address,address,uint256,uint256,uint256,bytes,uint256,uint256)")
-	L2SendMessageEventSignature common.Hash
+	// L2SentMessageEventSignature = keccak256("SentMessage(address,address,uint256,uint256,uint256,bytes,uint256,uint256)")
+	L2SentMessageEventSignature common.Hash
 	// L2RelayedMessageEventSignature = keccak256("RelayedMessage(bytes32)")
 	L2RelayedMessageEventSignature common.Hash
 	// L2FailedRelayedMessageEventSignature = keccak256("FailedRelayedMessage(bytes32)")
@@ -61,7 +61,7 @@ func init() {
 	L1BlockContainerABI, _ = L1BlockContainerMetaData.GetAbi()
 	L2MessageQueueABI, _ = L2MessageQueueMetaData.GetAbi()
 
-	L1SendMessageEventSignature = L1MessengerABI.Events["SentMessage"].ID
+	L1SentMessageEventSignature = L1MessengerABI.Events["SentMessage"].ID
 	L1RelayedMessageEventSignature = L1MessengerABI.Events["RelayedMessage"].ID
 	L1FailedRelayedMessageEventSignature = L1MessengerABI.Events["FailedRelayedMessage"].ID
 
@@ -70,7 +70,7 @@ func init() {
 
 	L1AppendMessageEventSignature = L1MessageQueueABI.Events["AppendMessage"].ID
 
-	L2SendMessageEventSignature = L2MessengerABI.Events["SentMessage"].ID
+	L2SentMessageEventSignature = L2MessengerABI.Events["SentMessage"].ID
 	L2RelayedMessageEventSignature = L2MessengerABI.Events["RelayedMessage"].ID
 	L2FailedRelayedMessageEventSignature = L2MessengerABI.Events["FailedRelayedMessage"].ID
 
@@ -160,4 +160,98 @@ type IZKRollupLayer2Transaction struct {
 	R        *big.Int
 	S        *big.Int
 	V        uint64
+}
+
+// L1AppendMessageEvent represents a AppendMessage event raised by the L1MessageQueue contract.
+type L1AppendMessageEvent struct {
+	MsgHash common.Hash
+}
+
+// L1CommitBatchEvent represents a CommitBatch event raised by the ZKRollup contract.
+type L1CommitBatchEvent struct {
+	BatchId    common.Hash
+	BatchHash  common.Hash
+	BatchIndex *big.Int
+	ParentHash common.Hash
+}
+
+// L1FinalizeBatchEvent represents a FinalizeBatch event raised by the ZKRollup contract.
+type L1FinalizeBatchEvent struct {
+	BatchId    common.Hash
+	BatchHash  common.Hash
+	BatchIndex *big.Int
+	ParentHash common.Hash
+}
+
+// L1RevertBatchEvent represents a RevertBatch event raised by the ZKRollup contract.
+type L1RevertBatchEvent struct {
+	BatchId common.Hash
+}
+
+// L1SentMessageEvent represents a SentMessage event raised by the L1ScrollMessenger contract.
+type L1SentMessageEvent struct {
+	Target       common.Address
+	Sender       common.Address
+	Value        *big.Int
+	Fee          *big.Int
+	Deadline     *big.Int
+	Message      []byte
+	MessageNonce *big.Int
+	GasLimit     *big.Int
+}
+
+// L1FailedRelayedMessageEvent represents a FailedRelayedMessage event raised by the L1ScrollMessenger contract.
+type L1FailedRelayedMessageEvent struct {
+	MsgHash common.Hash
+}
+
+// L1MessageDroppedEvent represents a MessageDropped event raised by the L1ScrollMessenger contract.
+type L1MessageDroppedEvent struct {
+	MsgHash common.Hash
+}
+
+// L1RelayedMessageEvent represents a RelayedMessage event raised by the L1ScrollMessenger contract.
+type L1RelayedMessageEvent struct {
+	MsgHash common.Hash
+}
+
+// L2AppendMessageEvent represents a AppendMessage event raised by the L2MessageQueue contract.
+type L2AppendMessageEvent struct {
+	Index       *big.Int
+	MessageHash common.Hash
+}
+
+// L2ImportBlockEvent represents a ImportBlock event raised by the L1BlockContainer contract.
+type L2ImportBlockEvent struct {
+	BlockHash      common.Hash
+	BlockHeight    *big.Int
+	BlockTimestamp *big.Int
+	StateRoot      common.Hash
+}
+
+// L2SentMessageEvent represents a SentMessage event raised by the L2ScrollMessenger contract.
+type L2SentMessageEvent struct {
+	Target       common.Address
+	Sender       common.Address
+	Value        *big.Int
+	Fee          *big.Int
+	Deadline     *big.Int
+	Message      []byte
+	MessageNonce *big.Int
+	GasLimit     *big.Int
+}
+
+// L2FailedRelayedMessageEvent represents a FailedRelayedMessage event raised by the L2ScrollMessenger contract.
+type L2FailedRelayedMessageEvent struct {
+	MsgHash common.Hash
+}
+
+// L2MessageDroppedEvent represents a MessageDropped event raised by the L2ScrollMessenger contract.
+type L2MessageDroppedEvent struct {
+	MsgHash common.Hash
+}
+
+// L2RelayedMessageEvent represents a RelayedMessage event raised by the L2ScrollMessenger contract.
+type L2RelayedMessageEvent struct {
+	MsgHash common.Hash
 }

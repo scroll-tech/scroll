@@ -266,7 +266,7 @@ func (m *layer2MessageOrm) GetLayer2LatestWatchedHeight() (int64, error) {
 func (m *layer2MessageOrm) GetLayer2LatestMessageNonce() (int64, error) {
 	// @note It's not correct, since we may don't have message in some blocks.
 	// But it will only be called at start, some redundancy is acceptable.
-	row := m.db.QueryRow("SELECT COALESCE(MAX(nonce), -1) FROM layer2_message;")
+	row := m.db.QueryRow("SELECT COALESCE(MAX(nonce), -1) FROM l2_message;")
 
 	var nonce int64
 	if err := row.Scan(&nonce); err != nil {

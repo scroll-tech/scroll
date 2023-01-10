@@ -24,7 +24,7 @@ func NewL1MessageOrm(db *sqlx.DB) L1MessageOrm {
 func (m *l1MessageOrm) GetL1MessageByMsgHash(msgHash string) (*L1Message, error) {
 	msg := L1Message{}
 
-	row := m.db.QueryRowx(`SELECT nonce, msg_hash, height, sender, target, value, fee, gas_limit, deadline, calldata, layer1_hash, status FROM l1_message WHERE msg_hash = $1`, msgHash)
+	row := m.db.QueryRowx(`SELECT nonce, msg_hash, height, sender, target, value, fee, gas_limit, deadline, calldata, layer1_hash, proof_height, message_proof, status FROM l1_message WHERE msg_hash = $1`, msgHash)
 
 	if err := row.StructScan(&msg); err != nil {
 		return nil, err
@@ -36,7 +36,7 @@ func (m *l1MessageOrm) GetL1MessageByMsgHash(msgHash string) (*L1Message, error)
 func (m *l1MessageOrm) GetL1MessageByNonce(nonce uint64) (*L1Message, error) {
 	msg := L1Message{}
 
-	row := m.db.QueryRowx(`SELECT nonce, msg_hash, height, sender, target, value, fee, gas_limit, deadline, calldata, layer1_hash, status FROM l1_message WHERE nonce = $1`, nonce)
+	row := m.db.QueryRowx(`SELECT nonce, msg_hash, height, sender, target, value, fee, gas_limit, deadline, calldata, layer1_hash, proof_height, message_proof, status FROM l1_message WHERE nonce = $1`, nonce)
 
 	if err := row.StructScan(&msg); err != nil {
 		return nil, err
@@ -46,7 +46,7 @@ func (m *l1MessageOrm) GetL1MessageByNonce(nonce uint64) (*L1Message, error) {
 
 // GetL1MessagesByStatus fetch list of unprocessed messages given msg status
 func (m *l1MessageOrm) GetL1MessagesByStatus(status MsgStatus) ([]*L1Message, error) {
-	rows, err := m.db.Queryx(`SELECT nonce, msg_hash, height, sender, target, value, fee, gas_limit, deadline, calldata, layer1_hash, status FROM l1_message WHERE status = $1 ORDER BY nonce ASC;`, status)
+	rows, err := m.db.Queryx(`SELECT nonce, msg_hash, height, sender, target, value, fee, gas_limit, deadline, calldata, layer1_hash, proof_height, message_proof, status FROM l1_message WHERE status = $1 ORDER BY nonce ASC;`, status)
 	if err != nil {
 		return nil, err
 	}
@@ -61,6 +61,30 @@ func (m *l1MessageOrm) GetL1MessagesByStatus(status MsgStatus) ([]*L1Message, er
 	}
 	if len(msgs) == 0 || errors.Is(err, sql.ErrNoRows) {
 		// log.Warn("no unprocessed layer1 messages in db", "err", err)
+	} else if err != nil {
+		return nil, err
+	}
+
+	return msgs, rows.Close()
+}
+
+// GetL1MessagesByStatusUpToHeight fetch list of messages given msg status and an upper limit on proof_height
+func (m *l1MessageOrm) GetL1MessagesByStatusUpToProofHeight(status MsgStatus, height uint64) ([]*L1Message, error) {
+	rows, err := m.db.Queryx(`SELECT nonce, msg_hash, height, sender, target, value, fee, gas_limit, deadline, calldata, layer1_hash, proof_height, message_proof, status FROM l1_message WHERE status = $1 AND proof_height <= $2 ORDER BY nonce ASC;`, status, height)
+	if err != nil {
+		return nil, err
+	}
+
+	var msgs []*L1Message
+	for rows.Next() {
+		msg := &L1Message{}
+		if err = rows.StructScan(&msg); err != nil {
+			break
+		}
+		msgs = append(msgs, msg)
+	}
+	if len(msgs) == 0 || errors.Is(err, sql.ErrNoRows) {
+		// log.Warn("no unprocessed layer2 messages in db", "err", err)
 	} else if err != nil {
 		return nil, err
 	}
@@ -96,20 +120,60 @@ func (m *l1MessageOrm) SaveL1Messages(ctx context.Context, messages []*L1Message
 	messageMaps := make([]map[string]interface{}, len(messages))
 	for i, msg := range messages {
 		messageMaps[i] = map[string]interface{}{
-			"nonce":       msg.Nonce,
-			"msg_hash":    msg.MsgHash,
-			"height":      msg.Height,
-			"sender":      msg.Sender,
-			"target":      msg.Target,
-			"value":       msg.Value,
-			"fee":         msg.Fee,
-			"gas_limit":   msg.GasLimit,
-			"deadline":    msg.Deadline,
-			"calldata":    msg.Calldata,
-			"layer1_hash": msg.Layer1Hash,
+			"nonce":         msg.Nonce,
+			"msg_hash":      msg.MsgHash,
+			"height":        msg.Height,
+			"sender":        msg.Sender,
+			"target":        msg.Target,
+			"value":         msg.Value,
+			"fee":           msg.Fee,
+			"gas_limit":     msg.GasLimit,
+			"deadline":      msg.Deadline,
+			"calldata":      msg.Calldata,
+			"layer1_hash":   msg.Layer1Hash,
+			"proof_height":  msg.ProofHeight,
+			"message_proof": msg.MessageProof,
 		}
 	}
-	_, err := m.db.NamedExec(`INSERT INTO public.l1_message (nonce, msg_hash, height, sender, target, value, fee, gas_limit, deadline, calldata, layer1_hash) VALUES (:nonce, :msg_hash, :height, :sender, :target, :value, :fee, :gas_limit, :deadline, :calldata, :layer1_hash);`, messageMaps)
+	_, err := m.db.NamedExec(`INSERT INTO public.l1_message (nonce, msg_hash, height, sender, target, value, fee, gas_limit, deadline, calldata, layer1_hash, proof_height, message_proof) VALUES (:nonce, :msg_hash, :height, :sender, :target, :value, :fee, :gas_limit, :deadline, :calldata, :layer1_hash, :proof_height, :message_proof);`, messageMaps)
+	if err != nil {
+		nonces := make([]uint64, 0, len(messages))
+		heights := make([]uint64, 0, len(messages))
+		for _, msg := range messages {
+			nonces = append(nonces, msg.Nonce)
+			heights = append(heights, msg.Height)
+		}
+		log.Error("failed to insert l1Messages", "nonces", nonces, "heights", heights, "err", err)
+	}
+	return err
+}
+
+// SaveL1MessagesInDbTx batch save a list of layer2 messages
+func (m *l1MessageOrm) SaveL1MessagesInDbTx(ctx context.Context, dbTx *sqlx.Tx, messages []*L1Message) error {
+	if len(messages) == 0 {
+		return nil
+	}
+
+	messageMaps := make([]map[string]interface{}, len(messages))
+	for i, msg := range messages {
+		messageMaps[i] = map[string]interface{}{
+			"nonce":         msg.Nonce,
+			"msg_hash":      msg.MsgHash,
+			"height":        msg.Height,
+			"sender":        msg.Sender,
+			"target":        msg.Target,
+			"value":         msg.Value,
+			"fee":           msg.Fee,
+			"gas_limit":     msg.GasLimit,
+			"deadline":      msg.Deadline,
+			"calldata":      msg.Calldata,
+			"layer1_hash":   msg.Layer1Hash,
+			"proof_height":  msg.ProofHeight,
+			"message_proof": msg.MessageProof,
+		}
+	}
+
+	_, err := dbTx.NamedExec(`INSERT INTO public.l1_message (nonce, msg_hash, height, sender, target, value, fee, gas_limit, deadline, calldata, layer1_hash, proof_height, message_proof) VALUES (:nonce, :msg_hash, :height, :sender, :target, :value, :fee, :gas_limit, :deadline, :calldata, :layer1_hash, :proof_height, :message_proof);`, messageMaps)
 	if err != nil {
 		nonces := make([]uint64, 0, len(messages))
 		heights := make([]uint64, 0, len(messages))

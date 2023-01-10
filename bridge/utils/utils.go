@@ -2,6 +2,7 @@ package utils
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"math/big"
 
@@ -10,6 +11,7 @@ import (
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/common/math"
 	"github.com/scroll-tech/go-ethereum/core/types"
+	"github.com/scroll-tech/go-ethereum/ethclient/gethclient"
 )
 
 // Keccak2 compute the keccack256 of two concatenations of bytes32
@@ -23,8 +25,8 @@ func encodePacked(input ...[]byte) []byte {
 
 // ComputeMessageHash compute the message hash
 func ComputeMessageHash(
-	target common.Address,
 	sender common.Address,
+	target common.Address,
 	value *big.Int,
 	fee *big.Int,
 	deadline *big.Int,
@@ -32,8 +34,8 @@ func ComputeMessageHash(
 	messageNonce *big.Int,
 ) common.Hash {
 	packed := encodePacked(
-		target.Bytes(),
 		sender.Bytes(),
+		target.Bytes(),
 		math.U256Bytes(value),
 		math.U256Bytes(fee),
 		math.U256Bytes(deadline),
@@ -107,4 +109,40 @@ func UnpackLogIntoMap(c *abi.ABI, out map[string]interface{}, event string, log 
 		}
 	}
 	return abi.ParseTopicsIntoMap(out, indexed, log.Topics[1:])
+}
+
+// GetStorageProof will fetch storage proof from geth client
+func GetL1MessageProof(client *gethclient.Client, account common.Address, hashes []common.Hash, height uint64) ([][]byte, error) {
+	slot := common.HexToHash("0x0000000000000000000000000000000000000000000000000000000000000000")
+	var keys []string
+	for _, hash := range hashes {
+		keys = append(keys, Keccak2(hash, slot).String())
+	}
+	results, err := client.GetProof(context.Background(), account, keys, big.NewInt(int64(height)))
+	if err != nil {
+		return make([][]byte, 0), err
+	}
+
+	accountProof := results.AccountProof
+	var proofs [][]byte
+	for i := 0; i < len(hashes); i++ {
+		var proof []byte
+		proof = append(proof, big.NewInt(int64(len(accountProof))).Bytes()...)
+		for _, item := range results.AccountProof {
+			// remove 0x prefix
+			proof = append(proof, common.Hex2Bytes(item[2:])...)
+		}
+
+		// the storage proof should have the same order with `hashes`
+		storageProof := results.StorageProof[i]
+		proof = append(proof, big.NewInt(int64(len(storageProof.Proof))).Bytes()...)
+		for _, item := range storageProof.Proof {
+			// remove 0x prefix
+			proof = append(proof, common.Hex2Bytes(item[2:])...)
+		}
+
+		proofs = append(proofs, proof)
+	}
+
+	return proofs, nil
 }

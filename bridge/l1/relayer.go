@@ -12,7 +12,9 @@ import (
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/crypto"
 	"github.com/scroll-tech/go-ethereum/ethclient"
+	"github.com/scroll-tech/go-ethereum/ethclient/gethclient"
 	"github.com/scroll-tech/go-ethereum/log"
+	"golang.org/x/sync/errgroup"
 
 	"scroll-tech/database"
 	"scroll-tech/database/orm"
@@ -20,6 +22,7 @@ import (
 	bridge_abi "scroll-tech/bridge/abi"
 	"scroll-tech/bridge/config"
 	"scroll-tech/bridge/sender"
+	"scroll-tech/bridge/utils"
 )
 
 // Layer1Relayer is responsible for
@@ -29,8 +32,10 @@ import (
 // Actions are triggered by new head from layer 1 geth node.
 // @todo It's better to be triggered by watcher.
 type Layer1Relayer struct {
-	ctx    context.Context
-	client *ethclient.Client
+	ctx context.Context
+
+	gethClient *gethclient.Client
+	ethClient  *ethclient.Client
 
 	// sender and channel used for relay message
 	relaySender         *sender.Sender
@@ -39,6 +44,8 @@ type Layer1Relayer struct {
 	// sender and channel used for import blocks
 	importSender         *sender.Sender
 	importConfirmationCh <-chan *sender.Confirmation
+
+	l1MessageQueueAddress common.Address
 
 	db  database.OrmFactory
 	cfg *config.RelayerConfig
@@ -50,7 +57,7 @@ type Layer1Relayer struct {
 }
 
 // NewLayer1Relayer will return a new instance of Layer1RelayerClient
-func NewLayer1Relayer(ctx context.Context, ethClient *ethclient.Client, l1ConfirmNum int64, db database.OrmFactory, cfg *config.RelayerConfig) (*Layer1Relayer, error) {
+func NewLayer1Relayer(ctx context.Context, gethClient *gethclient.Client, ethClient *ethclient.Client, l1ConfirmNum int64, l1MessageQueueAddress common.Address, db database.OrmFactory, cfg *config.RelayerConfig) (*Layer1Relayer, error) {
 	relaySender, err := sender.NewSender(ctx, cfg.SenderConfig, cfg.MessageSenderPrivateKeys)
 	if err != nil {
 		log.Error("new relayer sender failed", "err", err)
@@ -68,14 +75,18 @@ func NewLayer1Relayer(ctx context.Context, ethClient *ethclient.Client, l1Confir
 	}
 
 	return &Layer1Relayer{
-		ctx:    ctx,
-		client: ethClient,
+		ctx: ctx,
+
+		gethClient: gethClient,
+		ethClient:  ethClient,
 
 		relaySender:         relaySender,
 		relayConfirmationCh: relaySender.ConfirmChan(),
 
 		importSender:         importSender,
 		importConfirmationCh: importSender.ConfirmChan(),
+
+		l1MessageQueueAddress: l1MessageQueueAddress,
 
 		db:  db,
 		cfg: cfg,
@@ -89,39 +100,93 @@ func NewLayer1Relayer(ctx context.Context, ethClient *ethclient.Client, l1Confir
 
 // ProcessSavedEvents relays saved un-processed cross-domain transactions to desired blockchain
 func (r *Layer1Relayer) ProcessSavedEvents() {
+	block, err := r.db.GetLatestImportedL1Block()
+	if err != nil {
+		log.Error("GetLatestImportedL1Block failed", "err", err)
+		return
+	}
+
 	// msgs are sorted by nonce in increasing order
-	msgs, err := r.db.GetL1MessagesByStatus(orm.MsgPending)
+	msgs, err := r.db.GetL1MessagesByStatusUpToProofHeight(orm.MsgPending, block.Number)
 	if err != nil {
 		log.Error("Failed to fetch unprocessed L1 messages", "err", err)
 		return
 	}
-	for _, msg := range msgs {
-		if err = r.processSavedEvent(msg); err != nil {
+
+	// process messages in batches
+	batch_size := r.relaySender.NumberOfAccounts()
+	for from := 0; from < len(msgs); from += batch_size {
+		to := from + batch_size
+		if to > len(msgs) {
+			to = len(msgs)
+		}
+
+		var g errgroup.Group
+
+		for i := from; i < to; i++ {
+			msg := msgs[i]
+
+			g.Go(func() error {
+				return r.processSavedEvent(msg, block)
+			})
+		}
+
+		if err := g.Wait(); err != nil {
 			if !errors.Is(err, sender.ErrNoAvailableAccount) {
-				log.Error("failed to process event", "err", err)
+				log.Error("failed to process l1 saved event", "err", err)
 			}
 			return
 		}
 	}
 }
 
-func (r *Layer1Relayer) processSavedEvent(msg *orm.L1Message) error {
+func (r *Layer1Relayer) processSavedEvent(msg *orm.L1Message, block *orm.L1BlockInfo) error {
 	// @todo add support to relay multiple messages
 	from := common.HexToAddress(msg.Sender)
 	target := common.HexToAddress(msg.Target)
 	value, ok := big.NewInt(0).SetString(msg.Value, 10)
 	if !ok {
 		// @todo maybe panic?
-		log.Error("Failed to parse message value", "msg.nonce", msg.Nonce, "msg.height", msg.Height)
+		log.Error("Failed to parse message value", "nonce", msg.Nonce, "height", msg.Height, "value", msg.Value)
 		// TODO: need to skip this message by changing its status to MsgError
 	}
+
+	if len(msg.MessageProof) == 0 {
+		// empty proof, we need to fetch storage proof from client
+		hash := common.HexToHash(msg.MsgHash)
+		proofs, err := utils.GetL1MessageProof(r.gethClient, r.l1MessageQueueAddress, []common.Hash{hash}, block.Number)
+		if err != nil {
+			log.Error("Failed to GetL1MessageProof", "msg.hash", msg.MsgHash, "height", block.Number, "err", err)
+			return err
+		}
+		msg.MessageProof = common.Bytes2Hex(proofs[0])
+		msg.ProofHeight = block.Number
+	}
+
+	blocks, err := r.db.GetL1BlockInfos(map[string]interface{}{
+		"number": msg.ProofHeight,
+	})
+	if err != nil {
+		log.Error("Failed to GetL1BlockInfos from db", "proof_height", msg.ProofHeight, "err", err)
+		return err
+	}
+	if len(blocks) != 1 {
+		log.Error("Block not exist", "height", msg.ProofHeight)
+		return errors.New("block not exist")
+	}
+
+	proof := bridge_abi.IL2ScrollMessengerL1MessageProof{
+		BlockHash:      common.HexToHash(blocks[0].Hash),
+		StateRootProof: common.Hex2Bytes(msg.MessageProof),
+	}
+
 	fee, _ := big.NewInt(0).SetString(msg.Fee, 10)
 	deadline := big.NewInt(int64(msg.Deadline))
 	msgNonce := big.NewInt(int64(msg.Nonce))
 	calldata := common.Hex2Bytes(msg.Calldata)
-	data, err := r.l2MessengerABI.Pack("relayMessage", from, target, value, fee, deadline, msgNonce, calldata)
+	data, err := r.l2MessengerABI.Pack("relayMessageWithProof", from, target, value, fee, deadline, msgNonce, calldata, proof)
 	if err != nil {
-		log.Error("Failed to pack relayMessage", "msg.nonce", msg.Nonce, "msg.height", msg.Height, "err", err)
+		log.Error("Failed to pack relayMessageWithProof", "msg.nonce", msg.Nonce, "msg.height", msg.Height, "err", err)
 		// TODO: need to skip this message by changing its status to MsgError
 		return err
 	}

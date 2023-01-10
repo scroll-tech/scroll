@@ -276,7 +276,7 @@ func (w *WatcherClient) fetchContractEvent(blockHeight uint64) error {
 			Topics: make([][]common.Hash, 1),
 		}
 		query.Topics[0] = make([]common.Hash, 5)
-		query.Topics[0][0] = bridge_abi.L2SendMessageEventSignature
+		query.Topics[0][0] = bridge_abi.L2SentMessageEventSignature
 		query.Topics[0][1] = bridge_abi.L2RelayedMessageEventSignature
 		query.Topics[0][2] = bridge_abi.L2FailedRelayedMessageEventSignature
 		query.Topics[0][3] = bridge_abi.L2AppendMessageEventSignature
@@ -388,25 +388,16 @@ func (w *WatcherClient) parseBridgeEventLogs(logs []types.Log) ([]*orm.L2Message
 	var lastAppendMsgNonce uint64
 	for _, vLog := range logs {
 		switch vLog.Topics[0] {
-		case bridge_abi.L2SendMessageEventSignature:
-			event := struct {
-				Target       common.Address
-				Sender       common.Address
-				Value        *big.Int // uint256
-				Fee          *big.Int // uint256
-				Deadline     *big.Int // uint256
-				Message      []byte
-				MessageNonce *big.Int // uint256
-				GasLimit     *big.Int // uint256
-			}{}
-			err := utils.UnpackLog(w.messengerABI, event, "SentMessage", vLog)
+		case bridge_abi.L2SentMessageEventSignature:
+			event := bridge_abi.L2SentMessageEvent{}
+			err := utils.UnpackLog(w.messengerABI, &event, "SentMessage", vLog)
 			if err != nil {
 				log.Error("failed to unpack layer2 SentMessage event", "err", err)
 				return l2Messages, relayedMessages, importedBlocks, err
 			}
 			computedMsgHash := utils.ComputeMessageHash(
-				event.Target,
 				event.Sender,
+				event.Target,
 				event.Value,
 				event.Fee,
 				event.Deadline,
@@ -434,10 +425,8 @@ func (w *WatcherClient) parseBridgeEventLogs(logs []types.Log) ([]*orm.L2Message
 				Layer2Hash: vLog.TxHash.Hex(),
 			})
 		case bridge_abi.L2RelayedMessageEventSignature:
-			event := struct {
-				MsgHash common.Hash
-			}{}
-			err := utils.UnpackLog(w.messengerABI, event, "RelayedMessage", vLog)
+			event := bridge_abi.L2RelayedMessageEvent{}
+			err := utils.UnpackLog(w.messengerABI, &event, "RelayedMessage", vLog)
 			if err != nil {
 				log.Warn("Failed to unpack layer2 RelayedMessage event", "err", err)
 				return l2Messages, relayedMessages, importedBlocks, err
@@ -448,10 +437,8 @@ func (w *WatcherClient) parseBridgeEventLogs(logs []types.Log) ([]*orm.L2Message
 				isSuccessful: true,
 			})
 		case bridge_abi.L2FailedRelayedMessageEventSignature:
-			event := struct {
-				MsgHash common.Hash
-			}{}
-			err := utils.UnpackLog(w.messengerABI, event, "FailedRelayedMessage", vLog)
+			event := bridge_abi.L2FailedRelayedMessageEvent{}
+			err := utils.UnpackLog(w.messengerABI, &event, "FailedRelayedMessage", vLog)
 			if err != nil {
 				log.Warn("Failed to unpack layer2 FailedRelayedMessage event", "err", err)
 				return l2Messages, relayedMessages, importedBlocks, err
@@ -462,13 +449,8 @@ func (w *WatcherClient) parseBridgeEventLogs(logs []types.Log) ([]*orm.L2Message
 				isSuccessful: false,
 			})
 		case bridge_abi.L2ImportBlockEventSignature:
-			event := struct {
-				BlockHash      common.Hash
-				BlockHeight    *big.Int
-				BlockTimestamp *big.Int
-				StateRoot      common.Hash
-			}{}
-			err := utils.UnpackLog(w.blockContainerABI, event, "ImportBlock", vLog)
+			event := bridge_abi.L2ImportBlockEvent{}
+			err := utils.UnpackLog(w.blockContainerABI, &event, "ImportBlock", vLog)
 			if err != nil {
 				log.Warn("Failed to unpack layer2 ImportBlock event", "err", err)
 				return l2Messages, relayedMessages, importedBlocks, err
@@ -479,11 +461,8 @@ func (w *WatcherClient) parseBridgeEventLogs(logs []types.Log) ([]*orm.L2Message
 				txHash:      vLog.TxHash,
 			})
 		case bridge_abi.L2AppendMessageEventSignature:
-			event := struct {
-				Index       *big.Int
-				MessageHash common.Hash
-			}{}
-			err := utils.UnpackLog(w.messageQueueABI, event, "AppendMessage", vLog)
+			event := bridge_abi.L2AppendMessageEvent{}
+			err := utils.UnpackLog(w.messageQueueABI, &event, "AppendMessage", vLog)
 			if err != nil {
 				log.Warn("Failed to unpack layer2 AppendMessage event", "err", err)
 				return l2Messages, relayedMessages, importedBlocks, err
