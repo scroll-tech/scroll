@@ -29,15 +29,15 @@ pipeline {
                     // Use a scripted pipeline.
                     script {
                             stage('Push image') {
-                                sh "echo ${$env.TAG_NAME}"
+                                sh "echo ${$TAG_NAME}"
                                 sh "docker login --username=${dockerUser} --password=${dockerPassword}"
                                 sh '''
                                 make -C bridge docker
                                 make -C coordinator docker
-                                docker tag scrolltech/bridge:${$env.TAG_NAME}
-                                docker tag scrolltech/coordinator:${$env.TAG_NAME}
-                                docker push scrolltech/bridge:${$env.TAG_NAME}
-                                docker push scrolltech/coordinator:${$env.TAG_NAME}
+                                docker tag scrolltech/bridge:${$TAG_NAME}
+                                docker tag scrolltech/coordinator:${$TAG_NAME}
+                                docker push scrolltech/bridge:${$TAG_NAME}
+                                docker push scrolltech/coordinator:${$TAG_NAME}
                                 '''
                             }                              
                     }
@@ -48,7 +48,7 @@ pipeline {
     post {
         always {
             cleanWs() 
-            slackSend(message: "${JOB_BASE_NAME} ${GIT_COMMIT} #${env.TAG_NAME} Tag build ${currentBuild.result}")
+            slackSend(message: "${JOB_BASE_NAME} ${GIT_COMMIT} #${TAG_NAME} Tag build ${currentBuild.result}")
         }
     }
 }
