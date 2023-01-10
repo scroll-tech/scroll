@@ -111,6 +111,30 @@ func (m *layer2MessageOrm) GetL2MessagesByStatus(status MsgStatus) ([]*L2Message
 	return msgs, rows.Close()
 }
 
+// GetL2MessagesByStatusUpToHeight fetch list of messages given msg status and an upper limit on height
+func (m *layer2MessageOrm) GetL2MessagesByStatusUpToHeight(status MsgStatus, height uint64) ([]*L2Message, error) {
+	rows, err := m.db.Queryx(`SELECT nonce, msg_hash, height, sender, target, value, fee, gas_limit, deadline, calldata, layer2_hash FROM l2_message WHERE status = $1 AND height <= $2 ORDER BY nonce ASC;`, status, height)
+	if err != nil {
+		return nil, err
+	}
+
+	var msgs []*L2Message
+	for rows.Next() {
+		msg := &L2Message{}
+		if err = rows.StructScan(&msg); err != nil {
+			break
+		}
+		msgs = append(msgs, msg)
+	}
+	if len(msgs) == 0 || errors.Is(err, sql.ErrNoRows) {
+		// log.Warn("no unprocessed layer2 messages in db", "err", err)
+	} else if err != nil {
+		return nil, err
+	}
+
+	return msgs, rows.Close()
+}
+
 // SaveL2Messages batch save a list of layer2 messages
 func (m *layer2MessageOrm) SaveL2Messages(ctx context.Context, messages []*L2Message) error {
 	if len(messages) == 0 {
