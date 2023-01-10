@@ -34,8 +34,8 @@ pipeline {
                                 sh '''
                                 make -C bridge docker
                                 make -C coordinator docker
-                                docker tag scrolltech/bridge:latest scrolltech/bridge:${BUILD_TAG}
-                                docker tag scrolltech/coordinator:latest scrolltech/coordinator:${BUILD_TAG}
+                                docker tag scrolltech/bridge:${BUILD_TAG}
+                                docker tag scrolltech/coordinator:${BUILD_TAG}
                                 docker push scrolltech/bridge:${BUILD_TAG}
                                 docker push scrolltech/coordinator:${BUILD_TAG}
                                 '''
@@ -48,7 +48,7 @@ pipeline {
     post {
         always {
             cleanWs() 
-            slackSend(message: "${JOB_BASE_NAME} ${GIT_COMMIT} #${BUILD_NUMBER} Tag build ${currentBuild.result}")
+            slackSend(message: "${JOB_BASE_NAME} ${GIT_COMMIT} #${BUILD_TAG} Tag build ${currentBuild.result}")
         }
     }
 }
