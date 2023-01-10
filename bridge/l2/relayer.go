@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"math/big"
+	"runtime"
 	"sync"
 	"time"
 
@@ -88,7 +89,8 @@ func NewLayer2Relayer(ctx context.Context, db database.OrmFactory, cfg *config.R
 }
 
 // ProcessSavedEvents relays saved un-processed cross-domain transactions to desired blockchain
-func (r *Layer2Relayer) ProcessSavedEvents() {
+func (r *Layer2Relayer) ProcessSavedEvents(wg *sync.WaitGroup) {
+	defer wg.Done()
 	batch, err := r.db.GetLatestFinalizedBatch()
 	if err != nil {
 		log.Error("GetLatestFinalizedBatch failed", "err", err)
@@ -104,25 +106,18 @@ func (r *Layer2Relayer) ProcessSavedEvents() {
 	}
 
 	// process messages in batches
-	batch_size := r.messageSender.NumberOfAccounts()
-
-	for from := 0; from < len(msgs); from += batch_size {
-		to := from + batch_size
-
-		if to > len(msgs) {
-			to = len(msgs)
+	batch_size := (runtime.GOMAXPROCS(0) + 1) / 2 //r.messageSender.NumberOfAccounts()
+	for size := 0; len(msgs) > 0; msgs = msgs[size:] {
+		if size = len(msgs); size > batch_size {
+			size = batch_size
 		}
-
 		var g errgroup.Group
-
-		for i := from; i < to; i++ {
-			msg := msgs[i]
-
+		for _, msg := range msgs[:size] {
+			msg := msg
 			g.Go(func() error {
-				return r.processSavedEvent(msg, batch)
+				return r.processSavedEvent(msg, batch.Index)
 			})
 		}
-
 		if err := g.Wait(); err != nil {
 			if !errors.Is(err, sender.ErrNoAvailableAccount) {
 				log.Error("failed to process l2 saved event", "err", err)
@@ -132,13 +127,13 @@ func (r *Layer2Relayer) ProcessSavedEvents() {
 	}
 }
 
-func (r *Layer2Relayer) processSavedEvent(msg *orm.L2Message, batch *orm.BlockBatch) error {
+func (r *Layer2Relayer) processSavedEvent(msg *orm.L2Message, index uint64) error {
 	// @todo fetch merkle proof from l2geth
 	log.Info("Processing L2 Message", "msg.nonce", msg.Nonce, "msg.height", msg.Height)
 
 	proof := bridge_abi.IL1ScrollMessengerL2MessageProof{
 		BlockHeight: big.NewInt(int64(msg.Height)),
-		BatchIndex:  big.NewInt(int64(batch.Index)),
+		BatchIndex:  big.NewInt(0).SetUint64(index),
 		MerkleProof: make([]byte, 0),
 	}
 	from := common.HexToAddress(msg.Sender)
@@ -181,7 +176,8 @@ func (r *Layer2Relayer) processSavedEvent(msg *orm.L2Message, batch *orm.BlockBa
 }
 
 // ProcessPendingBatches submit batch data to layer 1 rollup contract
-func (r *Layer2Relayer) ProcessPendingBatches() {
+func (r *Layer2Relayer) ProcessPendingBatches(wg *sync.WaitGroup) {
+	defer wg.Done()
 	// batches are sorted by batch index in increasing order
 	batchesInDB, err := r.db.GetPendingBatches()
 	if err != nil {
@@ -274,7 +270,8 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 }
 
 // ProcessCommittedBatches submit proof to layer 1 rollup contract
-func (r *Layer2Relayer) ProcessCommittedBatches() {
+func (r *Layer2Relayer) ProcessCommittedBatches(wg *sync.WaitGroup) {
+	defer wg.Done()
 	// batches are sorted by batch index in increasing order
 	batches, err := r.db.GetCommittedBatches()
 	if err != nil {
@@ -385,26 +382,12 @@ func (r *Layer2Relayer) Start() {
 		for {
 			select {
 			case <-ticker.C:
-				var wg sync.WaitGroup
+				var wg = sync.WaitGroup{}
 				wg.Add(3)
-
-				go func() {
-					defer wg.Done()
-					r.ProcessSavedEvents()
-				}()
-
-				go func() {
-					defer wg.Done()
-					r.ProcessPendingBatches()
-				}()
-
-				go func() {
-					defer wg.Done()
-					r.ProcessCommittedBatches()
-				}()
-
+				go r.ProcessSavedEvents(&wg)
+				go r.ProcessPendingBatches(&wg)
+				go r.ProcessCommittedBatches(&wg)
 				wg.Wait()
-
 			case confirmation := <-r.messageCh:
 				r.handleConfirmation(confirmation)
 			case confirmation := <-r.rollupCh:
