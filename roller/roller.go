@@ -256,11 +256,17 @@ func (r *Roller) prove() error {
 		}
 	}()
 
-	ok, serr := r.signAndSubmitProof(proofMsg)
-	if !ok {
-		log.Error("submit proof to coordinator failed", "task ID", proofMsg.ID)
+	// The roller retries signAndSubmitProof several times.
+	for i := 0; i < 3; i++ {
+		ok, serr := r.signAndSubmitProof(proofMsg)
+		if !ok {
+			log.Error("submit proof to coordinator failed", "task ID", proofMsg.ID, "serr", serr)
+		}
+		if serr == nil {
+			break
+		}
 	}
-	return serr
+	return nil
 }
 
 func (r *Roller) signAndSubmitProof(msg *message.ProofDetail) (bool, error) {
