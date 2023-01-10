@@ -151,7 +151,7 @@ func (s *Sender) ConfirmChan() <-chan *Confirmation {
 
 // NumberOfAccounts return the count of accounts.
 func (s *Sender) NumberOfAccounts() int {
-	return len(s.auths.accounts)
+	return s.auths.numAccounts
 }
 
 func (s *Sender) getFeeData(auth *bind.TransactOpts, target *common.Address, value *big.Int, data []byte) (*FeeData, error) {
