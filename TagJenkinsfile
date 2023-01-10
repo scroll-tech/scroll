@@ -34,7 +34,7 @@ pipeline {
                 DOCKER_CREDENTIALS = credentials('dockerhub')
             }
            steps {
-                if (TAGNAME == "Tag"){
+                if (TAGNAME == ""){
                     return;
                 }
                withCredentials([usernamePassword(credentialsId: "${credentialDocker}", passwordVariable: 'dockerPassword', usernameVariable: 'dockerUser')]) {
