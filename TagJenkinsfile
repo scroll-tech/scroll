@@ -34,13 +34,13 @@ pipeline {
                 DOCKER_CREDENTIALS = credentials('dockerhub')
             }
            steps {
-                if (TAGNAME == ""){
-                    return;
-                }
                withCredentials([usernamePassword(credentialsId: "${credentialDocker}", passwordVariable: 'dockerPassword', usernameVariable: 'dockerUser')]) {
                     // Use a scripted pipeline.
                     script {
                             stage('Push image') {
+                                if (TAGNAME == ""){
+                                    return;
+                                }
                                 sh "docker login --username=${dockerUser} --password=${dockerPassword}"
                                 sh '''
                                 make -C bridge docker
