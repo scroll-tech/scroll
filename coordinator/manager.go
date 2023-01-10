@@ -201,7 +201,7 @@ func (m *Manager) restorePrevSessions() {
 				log.Info("restore roller info for session", "session id", sess.info.ID, "roller name", roller.Name, "public key", roller.PublicKey, "proof status", roller.Status)
 			}
 
-			go m.CollectProofs(sess.info.ID, sess)
+			go m.CollectProofs(sess)
 		}
 	}
 }
@@ -313,7 +313,7 @@ func (m *Manager) handleZkProof(pk string, msg *message.ProofDetail) error {
 }
 
 // CollectProofs collects proofs corresponding to a proof generation session.
-func (m *Manager) CollectProofs(id string, sess *session) {
+func (m *Manager) CollectProofs(sess *session) {
 	timer := time.NewTimer(time.Duration(m.cfg.CollectionTime) * time.Minute)
 
 	for {
@@ -323,7 +323,7 @@ func (m *Manager) CollectProofs(id string, sess *session) {
 
 			// Ensure proper clean-up of resources.
 			defer func() {
-				delete(m.sessions, id)
+				delete(m.sessions, sess.info.ID)
 				m.mu.Unlock()
 			}()
 
@@ -340,13 +340,13 @@ func (m *Manager) CollectProofs(id string, sess *session) {
 				// record failed session.
 				errMsg := "proof generation session ended without receiving any valid proofs"
 				m.addFailedSession(sess, errMsg)
-				log.Warn(errMsg, "session id", id)
+				log.Warn(errMsg, "session id", sess.info.ID)
 				// Set status as skipped.
 				// Note that this is only a workaround for testnet here.
 				// TODO: In real cases we should reset to orm.ProvingTaskUnassigned
 				// so as to re-distribute the task in the future
-				if err := m.orm.UpdateProvingStatus(id, orm.ProvingTaskFailed); err != nil {
-					log.Error("fail to reset task_status as Unassigned", "id", id, "err", err)
+				if err := m.orm.UpdateProvingStatus(sess.info.ID, orm.ProvingTaskFailed); err != nil {
+					log.Error("fail to reset task_status as Unassigned", "id", sess.info.ID, "err", err)
 				}
 				return
 			}
@@ -461,7 +461,7 @@ func (m *Manager) StartProofGenerationSession(task *orm.BlockBatch) (success boo
 	m.mu.Lock()
 	m.sessions[task.ID] = s
 	m.mu.Unlock()
-	go m.CollectProofs(task.ID, s)
+	go m.CollectProofs(s)
 
 	return true
 }
