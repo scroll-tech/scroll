@@ -14,6 +14,7 @@ import (
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/log"
 	"golang.org/x/sync/errgroup"
+	"modernc.org/mathutil"
 
 	"scroll-tech/database"
 	"scroll-tech/database/orm"
@@ -106,7 +107,7 @@ func (r *Layer2Relayer) ProcessSavedEvents(wg *sync.WaitGroup) {
 	}
 
 	// process messages in batches
-	batch_size := (runtime.GOMAXPROCS(0) + 1) / 2 //r.messageSender.NumberOfAccounts()
+	batch_size := mathutil.Min((runtime.GOMAXPROCS(0)+1)/2, r.messageSender.NumberOfAccounts())
 	for size := 0; len(msgs) > 0; msgs = msgs[size:] {
 		if size = len(msgs); size > batch_size {
 			size = batch_size
