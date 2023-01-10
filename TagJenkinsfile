@@ -34,6 +34,9 @@ pipeline {
                 DOCKER_CREDENTIALS = credentials('dockerhub')
             }
            steps {
+                if (TAGNAME == "Tag"){
+                    return;
+                }
                withCredentials([usernamePassword(credentialsId: "${credentialDocker}", passwordVariable: 'dockerPassword', usernameVariable: 'dockerUser')]) {
                     // Use a scripted pipeline.
                     script {
@@ -42,10 +45,10 @@ pipeline {
                                 sh '''
                                 make -C bridge docker
                                 make -C coordinator docker
-                                docker tag scrolltech/bridge:latest scrolltech/bridge:${$TAGNAME}
-                                docker tag scrolltech/coordinator:latest scrolltech/coordinator:${$TAGNAME}
-                                docker push scrolltech/bridge:${$TAGNAME}
-                                docker push scrolltech/coordinator:${$TAGNAME}
+                                docker tag scrolltech/bridge:latest scrolltech/bridge:${TAGNAME}
+                                docker tag scrolltech/coordinator:latest scrolltech/coordinator:${TAGNAME}
+                                docker push scrolltech/bridge:${TAGNAME}
+                                docker push scrolltech/coordinator:${TAGNAME}
                                 '''
                             }                              
                     }
