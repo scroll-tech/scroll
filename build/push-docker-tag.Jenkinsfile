@@ -16,6 +16,15 @@ pipeline {
         // LOG_DOCKER = 'true'
     }
     stages {
+        stage('Tag') {
+            steps {
+                script {
+                    TAGNAME = sh(returnStdout: true, script: 'git tag -l --points-at HEAD')
+                    sh "echo ${TAGNAME}"
+                    // ... 
+                }
+            }
+        }
         stage('Build') {
             environment {
                 // Extract the username and password of our credentials into "DOCKER_CREDENTIALS_USR" and "DOCKER_CREDENTIALS_PSW".
@@ -29,16 +38,16 @@ pipeline {
                     // Use a scripted pipeline.
                     script {
                             stage('Push image') {
-                                sh "echo ${BUILD_TAG}"
+                                if (TAGNAME == ""){
+                                    return;
+                                }
                                 sh "docker login --username=${dockerUser} --password=${dockerPassword}"
-                                sh '''
-                                make -C bridge docker
-                                make -C coordinator docker
-                                docker tag scrolltech/bridge:latest scrolltech/bridge:${BUILD_TAG}
-                                docker tag scrolltech/coordinator:latest scrolltech/coordinator:${BUILD_TAG}
-                                docker push scrolltech/bridge:${BUILD_TAG}
-                                docker push scrolltech/coordinator:${BUILD_TAG}
-                                '''
+                                sh "make -C bridge docker"
+                                sh "make -C coordinator docker"
+                                sh "docker tag scrolltech/bridge:latest scrolltech/bridge:${TAGNAME}"
+                                sh "docker tag scrolltech/coordinator:latest scrolltech/coordinator:${TAGNAME}"
+                                sh "docker push scrolltech/bridge:${TAGNAME}"
+                                sh "docker push scrolltech/coordinator:${TAGNAME}"
                             }                              
                     }
                }
@@ -48,7 +57,7 @@ pipeline {
     post {
         always {
             cleanWs() 
-            slackSend(message: "${JOB_BASE_NAME} ${GIT_COMMIT} #${BUILD_NUMBER} Tag build ${currentBuild.result}")
+            slackSend(message: "${JOB_BASE_NAME} ${GIT_COMMIT} #${TAGNAME} Tag build ${currentBuild.result}")
         }
     }
 }
