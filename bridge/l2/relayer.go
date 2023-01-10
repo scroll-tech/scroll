@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"math/big"
+	"sync"
 	"time"
 
 	// not sure if this will make problems when relay with l1geth
@@ -11,6 +12,7 @@ import (
 	"github.com/scroll-tech/go-ethereum/accounts/abi"
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/log"
+	"golang.org/x/sync/errgroup"
 
 	"scroll-tech/database"
 	"scroll-tech/database/orm"
@@ -87,14 +89,41 @@ func NewLayer2Relayer(ctx context.Context, db database.OrmFactory, cfg *config.R
 
 // ProcessSavedEvents relays saved un-processed cross-domain transactions to desired blockchain
 func (r *Layer2Relayer) ProcessSavedEvents() {
+	batch, err := r.db.GetLatestFinalizedBatch()
+	if err != nil {
+		log.Error("GetLatestFinalizedBatch failed", "err", err)
+		return
+	}
+
 	// msgs are sorted by nonce in increasing order
-	msgs, err := r.db.GetL2MessagesByStatus(orm.MsgPending)
+	msgs, err := r.db.GetL2MessagesByStatusUpToHeight(orm.MsgPending, batch.EndBlockNumber)
+
 	if err != nil {
 		log.Error("Failed to fetch unprocessed L2 messages", "err", err)
 		return
 	}
-	for _, msg := range msgs {
-		if err := r.processSavedEvent(msg); err != nil {
+
+	// process messages in batches
+	batch_size := r.messageSender.NumberOfAccounts()
+
+	for from := 0; from < len(msgs); from += batch_size {
+		to := from + batch_size
+
+		if to > len(msgs) {
+			to = len(msgs)
+		}
+
+		var g errgroup.Group
+
+		for i := from; i < to; i++ {
+			msg := msgs[i]
+
+			g.Go(func() error {
+				return r.processSavedEvent(msg, batch)
+			})
+		}
+
+		if err := g.Wait(); err != nil {
 			if !errors.Is(err, sender.ErrNoAvailableAccount) {
 				log.Error("failed to process l2 saved event", "err", err)
 			}
@@ -103,19 +132,7 @@ func (r *Layer2Relayer) ProcessSavedEvents() {
 	}
 }
 
-func (r *Layer2Relayer) processSavedEvent(msg *orm.L2Message) error {
-	// @todo add support to relay multiple messages
-	batch, err := r.db.GetLatestFinalizedBatch()
-	if err != nil {
-		log.Error("GetLatestFinalizedBatch failed", "err", err)
-		return err
-	}
-
-	if batch.EndBlockNumber < msg.Height {
-		// log.Warn("corresponding block not finalized", "status", status)
-		return nil
-	}
-
+func (r *Layer2Relayer) processSavedEvent(msg *orm.L2Message, batch *orm.BlockBatch) error {
 	// @todo fetch merkle proof from l2geth
 	log.Info("Processing L2 Message", "msg.nonce", msg.Nonce, "msg.height", msg.Height)
 
@@ -366,9 +383,26 @@ func (r *Layer2Relayer) Start() {
 		for {
 			select {
 			case <-ticker.C:
-				r.ProcessSavedEvents()
-				r.ProcessPendingBatches()
-				r.ProcessCommittedBatches()
+				var wg sync.WaitGroup
+				wg.Add(3)
+
+				go func() {
+					defer wg.Done()
+					r.ProcessSavedEvents()
+				}()
+
+				go func() {
+					defer wg.Done()
+					r.ProcessPendingBatches()
+				}()
+
+				go func() {
+					defer wg.Done()
+					r.ProcessCommittedBatches()
+				}()
+
+				wg.Wait()
+
 			case confirmation := <-r.messageCh:
 				r.handleConfirmation(confirmation)
 			case confirmation := <-r.rollupCh:

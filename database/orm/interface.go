@@ -218,6 +218,7 @@ type L2MessageOrm interface {
 	MessageProofExist(nonce uint64) (bool, error)
 	GetMessageProofByNonce(nonce uint64) ([]byte, error)
 	GetL2MessagesByStatus(status MsgStatus) ([]*L2Message, error)
+	GetL2MessagesByStatusUpToHeight(status MsgStatus, height uint64) ([]*L2Message, error)
 	GetL2ProcessedNonce() (int64, error)
 	GetLayer2LatestMessageNonce() (int64, error)
 	SaveL2Messages(ctx context.Context, messages []*L2Message) error
