@@ -54,7 +54,6 @@ contract InitializeL1BridgeContracts is Script {
 
         // initialize ZKRollup
         ZKRollup(L1_ZK_ROLLUP_PROXY_ADDR).initialize(CHAIN_ID_L2);
-        ZKRollup(L1_ZK_ROLLUP_PROXY_ADDR).updateMessenger(L1_SCROLL_MESSENGER_PROXY_ADDR);
         ZKRollup(L1_ZK_ROLLUP_PROXY_ADDR).updateOperator(L1_ROLLUP_OPERATOR_ADDR);
 
         // initialize L1ScrollMessenger

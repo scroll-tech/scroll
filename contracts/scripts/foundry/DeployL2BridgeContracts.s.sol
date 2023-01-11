@@ -7,6 +7,7 @@ import { console} from "forge-std/console.sol";
 import { ProxyAdmin } from "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 import { TransparentUpgradeableProxy } from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 
+import { L1BlockContainer } from "../../src/L2/predeploys/L1BlockContainer.sol";
 import { L2CustomERC20Gateway } from "../../src/L2/gateways/L2CustomERC20Gateway.sol";
 import { L2ERC1155Gateway } from "../../src/L2/gateways/L2ERC1155Gateway.sol";
 import { L2ERC721Gateway } from "../../src/L2/gateways/L2ERC721Gateway.sol";
@@ -19,6 +20,7 @@ import { ScrollStandardERC20Factory } from "../../src/libraries/token/ScrollStan
 contract DeployL2BridgeContracts is Script {
     uint256 L2_DEPLOYER_PRIVATE_KEY = vm.envUint("L2_DEPLOYER_PRIVATE_KEY");
     ProxyAdmin proxyAdmin;
+    L2ScrollMessenger l2ScrollMessenger;
 
     function run() external {
         vm.startBroadcast(L2_DEPLOYER_PRIVATE_KEY);
@@ -31,13 +33,14 @@ contract DeployL2BridgeContracts is Script {
         deployL2CustomERC20Gateway();
         deployL2ERC721Gateway();
         deployL2ERC1155Gateway();
+        deployL1BlockContainer();
 
         vm.stopBroadcast();
     }
 
     function deployL2ScrollMessenger() internal {
         address owner = vm.addr(L2_DEPLOYER_PRIVATE_KEY);
-        L2ScrollMessenger l2ScrollMessenger = new L2ScrollMessenger(owner);
+        l2ScrollMessenger = new L2ScrollMessenger(owner);
 
         logAddress("L2_SCROLL_MESSENGER_ADDR", address(l2ScrollMessenger));
     }
@@ -94,6 +97,14 @@ contract DeployL2BridgeContracts is Script {
 
         logAddress("L2_ERC1155_GATEWAY_IMPLEMENTATION_ADDR", address(impl));
         logAddress("L2_ERC1155_GATEWAY_PROXY_ADDR", address(proxy));
+    }
+
+    function deployL1BlockContainer() internal {
+        L1BlockContainer impl = new L1BlockContainer(address(l2ScrollMessenger.messageQueue()), address(l2ScrollMessenger));
+        TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(address(impl), address(proxyAdmin), new bytes(0));
+
+        logAddress("L1_BLOCK_CONTAINER_IMPLEMENTATION_ADDR", address(impl));
+        logAddress("L1_BLOCK_CONTAINER_PROXY_ADDR", address(proxy));
     }
 
     function logAddress(string memory name, address addr) internal {

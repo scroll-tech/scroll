@@ -34,7 +34,7 @@ contract L2ScrollMessenger is ScrollMessengerBase, OwnableBase, IL2ScrollMesseng
   /// @notice The contract contains the list of L1 blocks.
   IL1BlockContainer public blockContainer;
 
-  constructor(address _owner, address _blockContainer) {
+  constructor(address _owner) {
     ScrollMessengerBase._initialize();
     owner = _owner;
 
@@ -42,6 +42,11 @@ contract L2ScrollMessenger is ScrollMessengerBase, OwnableBase, IL2ScrollMesseng
     xDomainMessageSender = ScrollConstants.DEFAULT_XDOMAIN_MESSAGE_SENDER;
 
     messageQueue = new L2MessageQueue(address(this));
+  }
+
+  function setBlockContainer(address _blockContainer) external {
+    require(address(blockContainer) == address(0), "already set");
+
     blockContainer = IL1BlockContainer(_blockContainer);
   }
 

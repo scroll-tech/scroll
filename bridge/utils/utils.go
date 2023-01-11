@@ -111,7 +111,7 @@ func UnpackLogIntoMap(c *abi.ABI, out map[string]interface{}, event string, log 
 	return abi.ParseTopicsIntoMap(out, indexed, log.Topics[1:])
 }
 
-// GetStorageProof will fetch storage proof from geth client
+// GetL1MessageProof will fetch storage proof from geth client
 func GetL1MessageProof(client *gethclient.Client, account common.Address, hashes []common.Hash, height uint64) ([][]byte, error) {
 	slot := common.HexToHash("0x0000000000000000000000000000000000000000000000000000000000000000")
 	var keys []string

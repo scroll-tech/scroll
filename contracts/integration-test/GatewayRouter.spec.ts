@@ -65,7 +65,7 @@ describe("GatewayRouter", async () => {
 
     // deploy L2ScrollMessenger in layer 2
     const L2ScrollMessenger = await ethers.getContractFactory("L2ScrollMessenger", deployer);
-    l2Messenger = await L2ScrollMessenger.deploy(deployer.address, constants.AddressZero);
+    l2Messenger = await L2ScrollMessenger.deploy(deployer.address);
 
     l1MessageQueue = await ethers.getContractAt("L1MessageQueue", await l1Messenger.messageQueue(), deployer);
     l2MessageQueue = await ethers.getContractAt("L2MessageQueue", await l2Messenger.messageQueue(), deployer);

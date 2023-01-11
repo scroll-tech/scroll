@@ -215,6 +215,22 @@ Send cross chain message (L1 =&gt; L2 or L2 =&gt; L1)
 | _message | bytes | The content of the message. |
 | _gasLimit | uint256 | Unused, but included for potential forward compatibility considerations. |
 
+### setBlockContainer
+
+```solidity
+function setBlockContainer(address _blockContainer) external nonpayable
+```
+
+
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| _blockContainer | address | undefined |
+
 ### transferOwnership
 
 ```solidity

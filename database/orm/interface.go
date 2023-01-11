@@ -14,7 +14,7 @@ import (
 type L1BlockStatus int
 
 const (
-	// MsgUndefined : undefined l1 block status
+	// L1BlockUndefined : undefined l1 block status
 	L1BlockUndefined L1BlockStatus = iota
 
 	// L1BlockPending represents the l1 block status is pending
@@ -146,6 +146,7 @@ type SessionInfo struct {
 	StartTimestamp int64                    `json:"start_timestamp"`
 }
 
+// L1BlockOrm l1_block operation interface
 type L1BlockOrm interface {
 	GetL1BlockInfos(fields map[string]interface{}, args ...string) ([]*L1BlockInfo, error)
 	InsertL1Blocks(ctx context.Context, blocks []*L1BlockInfo) error

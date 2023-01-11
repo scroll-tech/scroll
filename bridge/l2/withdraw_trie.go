@@ -6,6 +6,7 @@ import (
 	"scroll-tech/bridge/utils"
 )
 
+// MAX_HEIGHT is the maixium possible height of withdraw trie
 const MAX_HEIGHT = 40
 
 // WithdrawTrie is an append only merkle trie
@@ -85,7 +86,7 @@ func (w *WithdrawTrie) AppendMessages(hashes []common.Hash) [][]byte {
 	maxIndex := w.NextMessageNonce + uint64(length) - 1
 	for h := 0; maxIndex > 0; h++ {
 		if minIndex%2 == 1 {
-			minIndex -= 1
+			minIndex--
 		}
 		if maxIndex%2 == 0 {
 			cache[h][maxIndex^1] = w.zeroes[h]
@@ -100,7 +101,7 @@ func (w *WithdrawTrie) AppendMessages(hashes []common.Hash) [][]byte {
 	// update branches using hashes one by one
 	for i := 0; i < length; i++ {
 		proof := UpdateBranchWithNewMessage(w.zeroes, w.branches, w.NextMessageNonce, hashes[i])
-		w.NextMessageNonce += 1
+		w.NextMessageNonce++
 		w.height = len(proof)
 	}
 

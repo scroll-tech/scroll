@@ -3,10 +3,12 @@ pragma solidity ^0.8.10;
 
 import { Script } from "forge-std/Script.sol";
 
+import { L1BlockContainer } from "../../src/L2/predeploys/L1BlockContainer.sol";
 import { L2CustomERC20Gateway } from "../../src/L2/gateways/L2CustomERC20Gateway.sol";
 import { L2ERC1155Gateway } from "../../src/L2/gateways/L2ERC1155Gateway.sol";
 import { L2ERC721Gateway } from "../../src/L2/gateways/L2ERC721Gateway.sol";
 import { L2GatewayRouter } from "../../src/L2/gateways/L2GatewayRouter.sol";
+import { L2ScrollMessenger } from "../../src/L2/L2ScrollMessenger.sol";
 import { L2StandardERC20Gateway } from "../../src/L2/gateways/L2StandardERC20Gateway.sol";
 import { ScrollStandardERC20Factory } from "../../src/libraries/token/ScrollStandardERC20Factory.sol";
 
@@ -19,6 +21,7 @@ contract InitializeL2BridgeContracts is Script {
     address L1_ERC721_GATEWAY_PROXY_ADDR = vm.envAddress("L1_ERC721_GATEWAY_PROXY_ADDR");
     address L1_ERC1155_GATEWAY_PROXY_ADDR = vm.envAddress("L1_ERC1155_GATEWAY_PROXY_ADDR");
 
+    address L1_BLOCK_CONTAINER_PROXY_ADDR = vm.envAddress("L1_BLOCK_CONTAINER_PROXY_ADDR");
     address L2_SCROLL_MESSENGER_ADDR = vm.envAddress("L2_SCROLL_MESSENGER_ADDR");
     address L2_STANDARD_ERC20_GATEWAY_PROXY_ADDR = vm.envAddress("L2_STANDARD_ERC20_GATEWAY_PROXY_ADDR");
     address L2_GATEWAY_ROUTER_PROXY_ADDR = vm.envAddress("L2_GATEWAY_ROUTER_PROXY_ADDR");
@@ -29,6 +32,11 @@ contract InitializeL2BridgeContracts is Script {
 
     function run() external {
         vm.startBroadcast(deployerPrivateKey);
+
+        // set block container for l2 scroll messenger
+        L2ScrollMessenger(payable(L2_SCROLL_MESSENGER_ADDR)).setBlockContainer(L1_BLOCK_CONTAINER_PROXY_ADDR);
+
+        // @todo initialize L1BlockContainer
 
         // initialize L2StandardERC20Gateway
         L2StandardERC20Gateway(L2_STANDARD_ERC20_GATEWAY_PROXY_ADDR).initialize(

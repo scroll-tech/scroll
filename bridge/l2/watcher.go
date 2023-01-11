@@ -302,7 +302,7 @@ func (w *WatcherClient) fetchContractEvent(blockHeight uint64) error {
 
 		// Update imported block first to make sure we don't forget to update importing blocks.
 		for _, block := range importedBlockEvents {
-			err := w.orm.UpdateL1BlockStatusAndImportTxHash(w.ctx, block.blockHash.String(), orm.L1BlockImported, block.txHash.String())
+			err = w.orm.UpdateL1BlockStatusAndImportTxHash(w.ctx, block.blockHash.String(), orm.L1BlockImported, block.txHash.String())
 			if err != nil {
 				log.Error("Failed to update l1 block status and import tx hash", "err", err)
 				return err

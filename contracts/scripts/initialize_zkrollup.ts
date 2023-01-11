@@ -24,15 +24,6 @@ async function main() {
     console.log(`✅ Done, gas used: ${receipt.gasUsed}`);
   }
 
-  const L1ScrollMessengerAddress = addressFile.get("L1ScrollMessenger.proxy");
-  // if ((await ZKRollup.messenger()) === constants.AddressZero) {
-  {
-    const tx = await ZKRollup.updateMessenger(L1ScrollMessengerAddress);
-    console.log("updateMessenger ZKRollup, hash:", tx.hash);
-    const receipt = await tx.wait();
-    console.log(`✅ Done, gas used: ${receipt.gasUsed}`);
-  }
-
   const L1RollupOperatorAddress = process.env.L1_ROLLUP_OPERATOR_ADDR!;
   // if ((await ZKRollup.operator()) === constants.AddressZero) 
   {

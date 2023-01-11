@@ -9,16 +9,16 @@ import (
 )
 
 var (
-	// RollupMetaABI holds information about ZKRollup contracts' context and available invokable methods.
+	// RollupABI holds information about ZKRollup contracts' context and available invokable methods.
 	RollupABI *abi.ABI
-	// L1MessengerMetaABI holds information about L1ScrollMessenger contract's context and available invokable methods.
+	// L1MessengerABI holds information about L1ScrollMessenger contract's context and available invokable methods.
 	L1MessengerABI *abi.ABI
 	// L1MessageQueueABI holds information about L1MessageQueue contract's context and available invokable methods.
 	L1MessageQueueABI *abi.ABI
 
-	// L2MessengerMetaABI holds information about L2ScrollMessenger contract's context and available invokable methods.
+	// L2MessengerABI holds information about L2ScrollMessenger contract's context and available invokable methods.
 	L2MessengerABI *abi.ABI
-	// L1BlockContainerMetaABI holds information about L1BlockContainer contract's context and available invokable methods.
+	// L1BlockContainerABI holds information about L1BlockContainer contract's context and available invokable methods.
 	L1BlockContainerABI *abi.ABI
 	// L2MessageQueueABI holds information about L2MessageQueue contract's context and available invokable methods.
 	L2MessageQueueABI *abi.ABI
@@ -169,7 +169,7 @@ type L1AppendMessageEvent struct {
 
 // L1CommitBatchEvent represents a CommitBatch event raised by the ZKRollup contract.
 type L1CommitBatchEvent struct {
-	BatchId    common.Hash
+	BatchId    common.Hash //nolint:all
 	BatchHash  common.Hash
 	BatchIndex *big.Int
 	ParentHash common.Hash
@@ -177,7 +177,7 @@ type L1CommitBatchEvent struct {
 
 // L1FinalizeBatchEvent represents a FinalizeBatch event raised by the ZKRollup contract.
 type L1FinalizeBatchEvent struct {
-	BatchId    common.Hash
+	BatchId    common.Hash //nolint:all
 	BatchHash  common.Hash
 	BatchIndex *big.Int
 	ParentHash common.Hash
@@ -185,7 +185,7 @@ type L1FinalizeBatchEvent struct {
 
 // L1RevertBatchEvent represents a RevertBatch event raised by the ZKRollup contract.
 type L1RevertBatchEvent struct {
-	BatchId common.Hash
+	BatchId common.Hash //nolint:all
 }
 
 // L1SentMessageEvent represents a SentMessage event raised by the L1ScrollMessenger contract.
