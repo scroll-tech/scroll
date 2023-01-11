@@ -392,8 +392,12 @@ func (m *Manager) APIs() []rpc.API {
 
 // StartProofGenerationSession starts a proof generation session
 func (m *Manager) StartProofGenerationSession(task *orm.BlockBatch) (success bool) {
-	log.Info("start proof generation session", "id", task.ID)
+	if m.GetNumberOfIdleRollers() == 0 {
+		log.Info("no idle roller when starting proof generation session", "id", task.ID)
+		return false
+	}
 
+	log.Info("start proof generation session", "id", task.ID)
 	defer func() {
 		if !success {
 			if err := m.orm.UpdateProvingStatus(task.ID, orm.ProvingTaskUnassigned); err != nil {
@@ -401,10 +405,6 @@ func (m *Manager) StartProofGenerationSession(task *orm.BlockBatch) (success boo
 			}
 		}
 	}()
-	if err := m.orm.UpdateProvingStatus(task.ID, orm.ProvingTaskAssigned); err != nil {
-		log.Error("failed to update task status", "id", task.ID, "err", err)
-		return false
-	}
 
 	// Get block traces.
 	blockInfos, err := m.orm.GetBlockInfos(map[string]interface{}{"batch_id": task.ID})
@@ -447,6 +447,13 @@ func (m *Manager) StartProofGenerationSession(task *orm.BlockBatch) (success boo
 	}
 	// No roller assigned.
 	if len(rollers) == 0 {
+		log.Error("no roller assigned", "id", task.ID)
+		return false
+	}
+
+	// Update session proving status as assigned.
+	if err := m.orm.UpdateProvingStatus(task.ID, orm.ProvingTaskAssigned); err != nil {
+		log.Error("failed to update task status", "id", task.ID, "err", err)
 		return false
 	}
 
