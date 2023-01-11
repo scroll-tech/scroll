@@ -311,11 +311,13 @@ func (m *Manager) handleZkProof(pk string, msg *message.ProofDetail) error {
 		log.Info("Verify zk proof successfully", "verification result", success, "proof id", msg.ID)
 	}
 
-	var status orm.ProvingStatus
 	if success {
-		status = orm.ProvingTaskVerified
-		if dbErr = m.orm.UpdateProvingStatus(msg.ID, status); dbErr != nil {
-			log.Error("failed to update proving_status", "msg.ID", msg.ID, "status", status, "error", dbErr)
+		if dbErr = m.orm.UpdateProvingStatus(msg.ID, orm.ProvingTaskVerified); dbErr != nil {
+			log.Error(
+				"failed to update proving_status",
+				"msg.ID", msg.ID,
+				"status", orm.ProvingTaskVerified,
+				"error", dbErr)
 		}
 		return dbErr
 	}
