@@ -15,5 +15,5 @@ func TestRunCoordinator(t *testing.T) {
 
 	// wait result
 	coordinator.ExpectWithTimeout(true, time.Second*3, fmt.Sprintf("coordinator version %s", version.Version))
-	coordinator.RunApp(false)
+	coordinator.RunApp(nil)
 }
