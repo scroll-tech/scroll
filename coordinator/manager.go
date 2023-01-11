@@ -437,17 +437,17 @@ func (m *Manager) StartProofGenerationSession(task *orm.BlockBatch) (success boo
 		if roller == nil {
 			break
 		}
-		log.Info("roller is picked", "session id", task.ID, "name", roller.Name, "public_key", roller.PublicKey)
+		log.Info("roller is picked", "session id", task.ID, "name", roller.Name, "public key", roller.PublicKey)
 		// send trace to roller
 		if !roller.sendTask(task.ID, traces) {
-			log.Error("send task failed", "roller name", roller.Name, "public_key", roller.PublicKey, "id", task.ID)
+			log.Error("send task failed", "roller name", roller.Name, "public key", roller.PublicKey, "id", task.ID)
 			continue
 		}
 		rollers[roller.PublicKey] = &orm.RollerStatus{PublicKey: roller.PublicKey, Name: roller.Name, Status: orm.RollerAssigned}
 	}
 	// No roller assigned.
 	if len(rollers) == 0 {
-		log.Error("no roller assigned", "id", task.ID)
+		log.Error("no roller assigned", "id", task.ID, "number of idle rollers", m.GetNumberOfIdleRollers())
 		return false
 	}
 
