@@ -1,8 +1,11 @@
 package database
 
 import (
+	"github.com/go-redis/redis/v8"
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq" //nolint:golint
+	"scroll-tech/database/cache"
+	"time"
 
 	"scroll-tech/database/orm"
 )
@@ -14,6 +17,7 @@ type OrmFactory interface {
 	orm.L1MessageOrm
 	orm.L2MessageOrm
 	orm.SessionInfoOrm
+	cache.CacheOrm
 	GetDB() *sqlx.DB
 	Beginx() (*sqlx.Tx, error)
 	Close() error
@@ -26,6 +30,8 @@ type ormFactory struct {
 	orm.L2MessageOrm
 	orm.SessionInfoOrm
 	*sqlx.DB
+	// cache interface.
+	cache.CacheOrm
 }
 
 // NewOrmFactory create an ormFactory factory include all ormFactory interface
@@ -42,12 +48,24 @@ func NewOrmFactory(cfg *DBConfig) (OrmFactory, error) {
 		return nil, err
 	}
 
+	var (
+		rcache cache.CacheOrm
+		rCfg   = cfg.RedisConfig
+	)
+	if rCfg != nil {
+		rcache = cache.NewRedisClient(&redis.Options{
+			Addr:     rCfg.Addr,
+			Password: rCfg.Password,
+		}, time.Minute)
+	}
+
 	return &ormFactory{
-		BlockTraceOrm:  orm.NewBlockTraceOrm(db),
+		BlockTraceOrm:  orm.NewBlockTraceOrm(db, rcache),
 		BlockBatchOrm:  orm.NewBlockBatchOrm(db),
 		L1MessageOrm:   orm.NewL1MessageOrm(db),
 		L2MessageOrm:   orm.NewL2MessageOrm(db),
 		SessionInfoOrm: orm.NewSessionInfoOrm(db),
+		CacheOrm:       rcache,
 		DB:             db,
 	}, nil
 }

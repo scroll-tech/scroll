@@ -61,7 +61,7 @@ func (l2 *Backend) APIs() []rpc.API {
 		{
 			Namespace: "l2",
 			Version:   "1.0",
-			Service:   WatcherAPI(l2.l2Watcher),
+			Service:   WatcherAPI(l2.orm),
 			Public:    true,
 		},
 	}

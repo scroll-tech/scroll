@@ -3,6 +3,7 @@ package database_test
 import (
 	"context"
 	"encoding/json"
+	"github.com/go-redis/redis/v8"
 	"os"
 	"testing"
 	"time"
@@ -100,7 +101,7 @@ func setupEnv(t *testing.T) error {
 	assert.NoError(t, migrate.ResetDB(db.DB))
 
 	// Init several orm handles.
-	ormBlock = orm.NewBlockTraceOrm(db)
+	ormBlock = orm.NewBlockTraceOrm(db, nil)
 	ormLayer1 = orm.NewL1MessageOrm(db)
 	ormLayer2 = orm.NewL2MessageOrm(db)
 	ormBatch = orm.NewBlockBatchOrm(db)
@@ -380,4 +381,15 @@ func testOrmSessionInfo(t *testing.T) {
 	session_infos, err = ormSession.GetSessionInfosByIDs(ids)
 	assert.NoError(t, err)
 	assert.Equal(t, 0, len(session_infos))
+}
+
+func TestRedis(t *testing.T) {
+	rdb := redis.NewClient(&redis.Options{
+		Addr: "localhost:6379",
+	})
+	key := "blockTrace"
+	rdb.HSet(context.Background(), key, "haha", "hehe")
+	val, err := rdb.HGet(context.Background(), key, "haha").Result()
+	assert.NoError(t, err)
+	t.Log(val)
 }

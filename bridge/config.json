@@ -62,6 +62,10 @@
   },
   "db_config": {
     "driver_name": "postgres",
-    "dsn": "postgres://admin:123456@localhost/test?sslmode=disable"
+    "dsn": "postgres://admin:123456@localhost/test?sslmode=disable",
+    "redis_config": {
+      "addr": "localhost:6379",
+      "password": ""
+    }
   }
 }

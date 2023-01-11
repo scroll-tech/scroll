@@ -187,7 +187,6 @@ func (w *WatcherClient) getAndStoreBlockTraces(ctx context.Context, from, to uin
 		log.Info("retrieved block trace", "height", trace.Header.Number, "hash", trace.Header.Hash().String())
 
 		traces = append(traces, trace)
-
 	}
 	if len(traces) > 0 {
 		if err := w.orm.InsertBlockTraces(traces); err != nil {

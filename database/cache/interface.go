@@ -1,4 +1,4 @@
-package l2
+package cache
 
 import (
 	"context"
@@ -8,8 +8,8 @@ import (
 	"github.com/scroll-tech/go-ethereum/core/types"
 )
 
-// WatcherAPI watcher api service
-type WatcherAPI interface {
-	GetBlockTraceByHash(ctx context.Context, blockHash common.Hash) (*types.BlockTrace, error)
+type CacheOrm interface {
 	GetBlockTraceByNumber(ctx context.Context, number *big.Int) (*types.BlockTrace, error)
+	GetBlockTraceByHash(ctx context.Context, hash common.Hash) (*types.BlockTrace, error)
+	SetBlockTrace(ctx context.Context, trace *types.BlockTrace) error
 }
