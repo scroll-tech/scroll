@@ -55,6 +55,7 @@ func (t *Cmd) Interrupt() {
 	t.mu.Unlock()
 }
 
+// WaitResult return true when get the keyword during timeout.
 func (t *Cmd) WaitResult(timeout time.Duration, keyword string) bool {
 	if keyword == "" {
 		return false
