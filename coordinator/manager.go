@@ -432,7 +432,7 @@ func (m *Manager) StartProofGenerationSession(task *orm.BlockBatch) (success boo
 			return false
 		}
 	}
-  
+
 	// Dispatch task to rollers.
 	rollers := make(map[string]*orm.RollerStatus)
 	for i := 0; i < int(m.cfg.RollersPerSession); i++ {
