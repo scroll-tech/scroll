@@ -28,8 +28,7 @@ func testStartProcess(t *testing.T) {
 
 	// Start bridge process.
 	bridgeCmd := runBridgeApp(t)
-	bridgeCmd.ExpectWithTimeout(true, time.Second*20, "Start bridge successfully")
-	bridgeCmd.RunApp(true)
+	bridgeCmd.RunApp(func() bool { return bridgeCmd.WaitResult(time.Second*20, "Start bridge successfully") })
 
 	// Start coordinator process.
 	coordinatorCmd := runCoordinatorApp(t, "--ws", "--ws.port", "8391")
