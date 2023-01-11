@@ -4,7 +4,6 @@ import (
 	"crypto/ecdsa"
 	"crypto/rand"
 	"encoding/hex"
-	"encoding/json"
 	"fmt"
 
 	"github.com/scroll-tech/go-ethereum/common"
@@ -22,17 +21,6 @@ const (
 	// StatusProofError means generate proof failed
 	StatusProofError
 )
-
-func (r RespStatus) String() string {
-	switch r {
-	case StatusOk:
-		return "Success"
-	case StatusProofError:
-		return "Fail"
-	default:
-		return "Unknown Status"
-	}
-}
 
 // AuthMsg is the first message exchanged from the Roller to the Sequencer.
 // It effectively acts as a registration, and makes the Roller identification
@@ -127,12 +115,10 @@ func (a *AuthMsg) PublicKey() (string, error) {
 // Hash returns the hash of the auth message, which should be the message used
 // to construct the Signature.
 func (i *Identity) Hash() ([]byte, error) {
-	bs, err := json.Marshal(i)
-	if err != nil {
-		return nil, err
-	}
+	msg := fmt.Sprintf("name=%s&timestamp=%d&public_key=%s&version=%s&token=%s",
+		i.Name, i.Timestamp, i.PublicKey, i.Version, i.Token)
 
-	hash := crypto.Keccak256Hash(bs)
+	hash := crypto.Keccak256Hash([]byte(msg))
 	return hash[:], nil
 }
 
@@ -217,14 +203,11 @@ type ProofDetail struct {
 // Hash return proofMsg content hash.
 func (z *ProofDetail) Hash() ([]byte, error) {
 	proof := z.Proof
-	proofAndErr := fmt.Sprintf("proof=%s&instance=%s&final_pair=%s&vk=%s",
-		proof.Proof, proof.Instance, proof.FinalPair, proof.Vk)
-
+	msg := fmt.Sprintf("id=%s&status=%d&proof=%s&instance=%s&final_pair=%s&vk=%s",
+		z.ID, z.Status, proof.Proof, proof.Instance, proof.FinalPair, proof.Vk)
 	if z.Error != "" {
-		proofAndErr = fmt.Sprintf("%s&Error=%s", proofAndErr, z.Error)
+		msg = fmt.Sprintf("%s&error=%s", msg, z.Error)
 	}
-
-	msg := fmt.Sprintf("ID=%s&Status=%s&%s", z.ID, z.Status, proofAndErr)
 
 	hash := crypto.Keccak256Hash([]byte(msg))
 	return hash[:], nil
