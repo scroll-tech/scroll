@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/common/hexutil"
@@ -21,6 +22,17 @@ const (
 	// StatusProofError means generate proof failed
 	StatusProofError
 )
+
+func (r RespStatus) String() string {
+	switch r {
+	case StatusOk:
+		return "Success"
+	case StatusProofError:
+		return "Fail"
+	default:
+		return "Unknown Status"
+	}
+}
 
 // AuthMsg is the first message exchanged from the Roller to the Sequencer.
 // It effectively acts as a registration, and makes the Roller identification
@@ -204,12 +216,17 @@ type ProofDetail struct {
 
 // Hash return proofMsg content hash.
 func (z *ProofDetail) Hash() ([]byte, error) {
-	bs, err := json.Marshal(z)
-	if err != nil {
-		return nil, err
+	proof := z.Proof
+	proofAndErr := fmt.Sprintf("proof=%s&instance=%s&final_pair=%s&vk=%s",
+		proof.Proof, proof.Instance, proof.FinalPair, proof.Vk)
+
+	if z.Error != "" {
+		proofAndErr = fmt.Sprintf("%s&Error=%s", proofAndErr, z.Error)
 	}
 
-	hash := crypto.Keccak256Hash(bs)
+	msg := fmt.Sprintf("ID=%s&Status=%s&%s", z.ID, z.Status, proofAndErr)
+
+	hash := crypto.Keccak256Hash([]byte(msg))
 	return hash[:], nil
 }
 
