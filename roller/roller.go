@@ -276,7 +276,7 @@ func (r *Roller) signAndSubmitProof(msg *message.ProofDetail) {
 		if serr == nil {
 			return
 		}
-		log.Error("submit proof to coordinator error", "task ID", msg.ID, "serr", serr)
+		log.Error("submit proof to coordinator error", "task ID", msg.ID, "error", serr)
 	}
 }
 
