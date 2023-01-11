@@ -440,11 +440,11 @@ func (m *Manager) StartProofGenerationSession(task *orm.BlockBatch) (success boo
 		}
 	}
 
-	log.Info("roller is picked", "session id", task.ID, "name", roller.Name, "public_key", roller.PublicKey)
+	log.Info("roller is picked", "session id", task.ID, "name", roller.Name, "public key", roller.PublicKey)
 
 	// send trace to roller
 	if !roller.sendTask(task.ID, traces) {
-		log.Error("send task failed", "roller name", roller.Name, "public_key", roller.PublicKey, "id", task.ID)
+		log.Error("send task failed", "roller name", roller.Name, "public key", roller.PublicKey, "id", task.ID)
 		return false
 	}
 
@@ -467,7 +467,7 @@ func (m *Manager) StartProofGenerationSession(task *orm.BlockBatch) (success boo
 
 	// Store session info.
 	if err = m.orm.SetSessionInfo(s.info); err != nil {
-		log.Error("db set session info fail", "roller name", roller.Name, "public_key", pk, "error", err)
+		log.Error("db set session info fail", "roller name", roller.Name, "public key", pk, "error", err)
 		return false
 	}
 
