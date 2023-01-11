@@ -16,9 +16,10 @@ import (
 type accountPool struct {
 	client *ethclient.Client
 
-	minBalance *big.Int
-	accounts   map[common.Address]*bind.TransactOpts
-	accsCh     chan *bind.TransactOpts
+	minBalance  *big.Int
+	accounts    map[common.Address]*bind.TransactOpts
+	numAccounts int
+	accsCh      chan *bind.TransactOpts
 }
 
 // newAccounts creates an accountPool instance.
@@ -28,10 +29,11 @@ func newAccountPool(ctx context.Context, minBalance *big.Int, client *ethclient.
 		minBalance.SetString("100000000000000000000", 10)
 	}
 	accs := &accountPool{
-		client:     client,
-		minBalance: minBalance,
-		accounts:   make(map[common.Address]*bind.TransactOpts, len(privs)),
-		accsCh:     make(chan *bind.TransactOpts, len(privs)+2),
+		client:      client,
+		minBalance:  minBalance,
+		accounts:    make(map[common.Address]*bind.TransactOpts, len(privs)),
+		numAccounts: len(privs),
+		accsCh:      make(chan *bind.TransactOpts, len(privs)+2),
 	}
 
 	// get chainID from client

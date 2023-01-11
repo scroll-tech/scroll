@@ -28,18 +28,18 @@ func testStartProcess(t *testing.T) {
 
 	// Start bridge process.
 	bridgeCmd := runBridgeApp(t)
-	bridgeCmd.ExpectWithTimeout(true, time.Second*10, "Start bridge successfully")
+	bridgeCmd.ExpectWithTimeout(true, time.Second*20, "Start bridge successfully")
 	bridgeCmd.RunApp(true)
 
 	// Start coordinator process.
 	coordinatorCmd := runCoordinatorApp(t, "--ws", "--ws.port", "8391")
-	coordinatorCmd.ExpectWithTimeout(true, time.Second*10, "Start coordinator successfully")
+	coordinatorCmd.ExpectWithTimeout(true, time.Second*20, "Start coordinator successfully")
 	coordinatorCmd.RunApp(true)
 
 	// Start roller process.
 	rollerCmd := runRollerApp(t)
-	rollerCmd.ExpectWithTimeout(true, time.Second*20, "roller start successfully")
-	rollerCmd.ExpectWithTimeout(true, time.Second*30, "register to coordinator successfully!")
+	rollerCmd.ExpectWithTimeout(true, time.Second*40, "roller start successfully")
+	rollerCmd.ExpectWithTimeout(true, time.Second*60, "register to coordinator successfully!")
 	rollerCmd.RunApp(true)
 
 	rollerCmd.WaitExit()

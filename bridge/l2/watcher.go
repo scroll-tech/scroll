@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math/big"
 	"reflect"
+	"sync"
 	"time"
 
 	geth "github.com/scroll-tech/go-ethereum"
@@ -105,18 +106,32 @@ func (w *WatcherClient) Start() {
 					number = 0
 				}
 
-				if err := w.tryFetchRunningMissingBlocks(w.ctx, number); err != nil {
-					log.Error("failed to fetchRunningMissingBlocks", "err", err)
-				}
+				var wg sync.WaitGroup
+				wg.Add(3)
 
-				// @todo handle error
-				if err := w.fetchContractEvent(number); err != nil {
-					log.Error("failed to fetchContractEvent", "err", err)
-				}
+				go func() {
+					defer wg.Done()
+					if err := w.tryFetchRunningMissingBlocks(w.ctx, number); err != nil {
+						log.Error("failed to fetchRunningMissingBlocks", "err", err)
+					}
+				}()
 
-				if err := w.batchProposer.tryProposeBatch(); err != nil {
-					log.Error("failed to tryProposeBatch", "err", err)
-				}
+				go func() {
+					defer wg.Done()
+					// @todo handle error
+					if err := w.fetchContractEvent(number); err != nil {
+						log.Error("failed to fetchContractEvent", "err", err)
+					}
+				}()
+
+				go func() {
+					defer wg.Done()
+					if err := w.batchProposer.tryProposeBatch(); err != nil {
+						log.Error("failed to tryProposeBatch", "err", err)
+					}
+				}()
+
+				wg.Wait()
 			}
 		}
 	}()
@@ -154,7 +169,8 @@ func (w *WatcherClient) tryFetchRunningMissingBlocks(ctx context.Context, blockH
 		}
 
 		// Get block traces and insert into db.
-		if err = w.insertBlockTraces(ctx, from, to); err != nil {
+		if err = w.getAndStoreBlockTraces(ctx, from, to); err != nil {
+			log.Error("fail to getAndStoreBlockTraces", "from", from, "to", to)
 			return err
 		}
 	}
@@ -162,7 +178,7 @@ func (w *WatcherClient) tryFetchRunningMissingBlocks(ctx context.Context, blockH
 	return nil
 }
 
-func (w *WatcherClient) insertBlockTraces(ctx context.Context, from, to uint64) error {
+func (w *WatcherClient) getAndStoreBlockTraces(ctx context.Context, from, to uint64) error {
 	var traces []*types.BlockTrace
 
 	for number := from; number <= to; number++ {
