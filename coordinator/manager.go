@@ -333,7 +333,7 @@ func (m *Manager) handleZkProof(pk string, msg *message.ProofDetail) error {
 // CollectProofs collects proofs corresponding to a proof generation session.
 func (m *Manager) CollectProofs(sess *session) {
 	select {
-	case <-time.After(m.vp.GetDuration("collection_time_min"))):
+	case <-time.After(m.vp.GetDuration("collection_time_min")):
 		m.mu.Lock()
 		defer func() {
 			delete(m.sessions, sess.info.ID)
