@@ -153,8 +153,6 @@ func (w *WatcherClient) tryFetchRunningMissingBlocks(ctx context.Context, wg *sy
 			return
 		}
 	}
-
-	return
 }
 
 func (w *WatcherClient) getAndStoreBlockTraces(ctx context.Context, from, to uint64) error {
@@ -251,7 +249,6 @@ func (w *WatcherClient) fetchContractEvent(wg *sync.WaitGroup, blockHeight uint6
 	}
 
 	log.Info("l2 watcher fetchContractEvent", "w.processedMsgHeight", w.processedMsgHeight)
-	return
 }
 
 func (w *WatcherClient) parseBridgeEventLogs(logs []types.Log) ([]*orm.L2Message, []relayedMessage, error) {
