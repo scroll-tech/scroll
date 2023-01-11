@@ -393,7 +393,7 @@ func (m *Manager) APIs() []rpc.API {
 // StartProofGenerationSession starts a proof generation session
 func (m *Manager) StartProofGenerationSession(task *orm.BlockBatch) (success bool) {
 	if m.GetNumberOfIdleRollers() == 0 {
-		log.Info("no idle roller when starting proof generation session", "id", task.ID)
+		log.Warn("no idle roller when starting proof generation session", "id", task.ID)
 		return false
 	}
 
