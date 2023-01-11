@@ -332,55 +332,50 @@ func (m *Manager) handleZkProof(pk string, msg *message.ProofDetail) error {
 
 // CollectProofs collects proofs corresponding to a proof generation session.
 func (m *Manager) CollectProofs(sess *session) {
-	timer := time.NewTimer(time.Duration(m.cfg.CollectionTime) * time.Minute)
-
-	for {
-		select {
-		case <-timer.C:
-			m.mu.Lock()
-
-			// Ensure proper clean-up of resources.
-			defer func() {
-				delete(m.sessions, sess.info.ID)
-				m.mu.Unlock()
-			}()
-
-			// Pick a random winner.
-			// First, round up the keys that actually sent in a valid proof.
-			var participatingRollers []string
-			for pk, roller := range sess.info.Rollers {
-				if roller.Status == orm.RollerProofValid {
-					participatingRollers = append(participatingRollers, pk)
-				}
-			}
-			// Ensure we got at least one proof before selecting a winner.
-			if len(participatingRollers) == 0 {
-				// record failed session.
-				errMsg := "proof generation session ended without receiving any valid proofs"
-				m.addFailedSession(sess, errMsg)
-				log.Warn(errMsg, "session id", sess.info.ID)
-				// Set status as skipped.
-				// Note that this is only a workaround for testnet here.
-				// TODO: In real cases we should reset to orm.ProvingTaskUnassigned
-				// so as to re-distribute the task in the future
-				if err := m.orm.UpdateProvingStatus(sess.info.ID, orm.ProvingTaskFailed); err != nil {
-					log.Error("fail to reset task_status as Unassigned", "id", sess.info.ID, "err", err)
-				}
-				return
-			}
-
-			// Now, select a random index for this slice.
-			randIndex := mathrand.Intn(len(participatingRollers))
-			_ = participatingRollers[randIndex]
-			// TODO: reward winner
-			return
-		case ret := <-sess.finishChan:
-			m.mu.Lock()
-			sess.info.Rollers[ret.pk].Status = ret.status
+	select {
+	case <-time.After(time.Duration(m.cfg.CollectionTime) * time.Minute):
+		m.mu.Lock()
+		defer func() {
+			delete(m.sessions, sess.info.ID)
 			m.mu.Unlock()
-			if err := m.orm.SetSessionInfo(sess.info); err != nil {
-				log.Error("db set session info fail", "pk", ret.pk, "error", err)
+		}()
+
+		// Pick a random winner.
+		// First, round up the keys that actually sent in a valid proof.
+		var participatingRollers []string
+		for pk, roller := range sess.info.Rollers {
+			if roller.Status == orm.RollerProofValid {
+				participatingRollers = append(participatingRollers, pk)
 			}
+		}
+		// Ensure we got at least one proof before selecting a winner.
+		if len(participatingRollers) == 0 {
+			// record failed session.
+			errMsg := "proof generation session ended without receiving any valid proofs"
+			m.addFailedSession(sess, errMsg)
+			log.Warn(errMsg, "session id", sess.info.ID)
+			// Set status as skipped.
+			// Note that this is only a workaround for testnet here.
+			// TODO: In real cases we should reset to orm.ProvingTaskUnassigned
+			// so as to re-distribute the task in the future
+			if err := m.orm.UpdateProvingStatus(sess.info.ID, orm.ProvingTaskFailed); err != nil {
+				log.Error("fail to reset task_status as Unassigned", "id", sess.info.ID, "err", err)
+			}
+			return
+		}
+
+		// Now, select a random index for this slice.
+		randIndex := mathrand.Intn(len(participatingRollers))
+		_ = participatingRollers[randIndex]
+		// TODO: reward winner
+		return
+
+	case ret := <-sess.finishChan:
+		m.mu.Lock()
+		sess.info.Rollers[ret.pk].Status = ret.status
+		m.mu.Unlock()
+		if err := m.orm.SetSessionInfo(sess.info); err != nil {
+			log.Error("db set session info fail", "pk", ret.pk, "error", err)
 		}
 	}
 }
@@ -445,11 +440,11 @@ func (m *Manager) StartProofGenerationSession(task *orm.BlockBatch) (success boo
 		}
 	}
 
-	log.Info("roller is picked", "session id", task.ID, "name", roller.Name, "public_key", roller.PublicKey)
+	log.Info("roller is picked", "session id", task.ID, "name", roller.Name, "public key", roller.PublicKey)
 
 	// send trace to roller
 	if !roller.sendTask(task.ID, traces) {
-		log.Error("send task failed", "roller name", roller.Name, "public_key", roller.PublicKey, "id", task.ID)
+		log.Error("send task failed", "roller name", roller.Name, "public key", roller.PublicKey, "id", task.ID)
 		return false
 	}
 
@@ -472,7 +467,7 @@ func (m *Manager) StartProofGenerationSession(task *orm.BlockBatch) (success boo
 
 	// Store session info.
 	if err = m.orm.SetSessionInfo(s.info); err != nil {
-		log.Error("db set session info fail", "roller name", roller.Name, "public_key", pk, "error", err)
+		log.Error("db set session info fail", "roller name", roller.Name, "public key", pk, "error", err)
 		return false
 	}
 
