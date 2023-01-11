@@ -41,7 +41,7 @@ func (r *rollerNode) sendTask(id string, traces []*types.BlockTrace) bool {
 	}:
 		r.TaskIDs.Set(id, struct{}{})
 	default:
-		log.Warn("roller channel is full", "roller name", r.Name, "public_key", r.PublicKey)
+		log.Warn("roller channel is full", "roller name", r.Name, "public key", r.PublicKey)
 		return false
 	}
 	return true
@@ -77,7 +77,7 @@ func (m *Manager) register(pubkey string, identity *message.Identity) (<-chan *m
 	roller := node.(*rollerNode)
 	// avoid reconnection too frequently.
 	if time.Since(roller.registerTime) < 60 {
-		log.Warn("roller reconnect too frequently", "roller_name", identity.Name, "public_key", pubkey)
+		log.Warn("roller reconnect too frequently", "roller_name", identity.Name, "public key", pubkey)
 		return nil, fmt.Errorf("roller reconnect too frequently")
 	}
 	// update register time and status
