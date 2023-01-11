@@ -80,7 +80,8 @@ func free(t *testing.T) {
 }
 
 type appAPI interface {
-	RunApp(parallel bool)
+	WaitResult(timeout time.Duration, keyword string) bool
+	RunApp(waitResult func() bool)
 	WaitExit()
 	ExpectWithTimeout(parallel bool, timeout time.Duration, keyword string)
 }
@@ -103,7 +104,7 @@ func runDBCliApp(t *testing.T, option, keyword string) {
 
 	// Wait expect result.
 	app.ExpectWithTimeout(true, time.Second*3, keyword)
-	app.RunApp(false)
+	app.RunApp(nil)
 }
 
 func runRollerApp(t *testing.T, args ...string) appAPI {
