@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math/big"
 	"reflect"
+	"sync"
 	"time"
 
 	geth "github.com/scroll-tech/go-ethereum"
@@ -104,18 +105,32 @@ func (w *WatcherClient) Start() {
 					number = 0
 				}
 
-				if err := w.tryFetchRunningMissingBlocks(w.ctx, number); err != nil {
-					log.Error("failed to fetchRunningMissingBlocks", "err", err)
-				}
+				var wg sync.WaitGroup
+				wg.Add(3)
 
-				// @todo handle error
-				if err := w.fetchContractEvent(number); err != nil {
-					log.Error("failed to fetchContractEvent", "err", err)
-				}
+				go func() {
+					defer wg.Done()
+					if err := w.tryFetchRunningMissingBlocks(w.ctx, number); err != nil {
+						log.Error("failed to fetchRunningMissingBlocks", "err", err)
+					}
+				}()
 
-				if err := w.batchProposer.tryProposeBatch(); err != nil {
-					log.Error("failed to tryProposeBatch", "err", err)
-				}
+				go func() {
+					defer wg.Done()
+					// @todo handle error
+					if err := w.fetchContractEvent(number); err != nil {
+						log.Error("failed to fetchContractEvent", "err", err)
+					}
+				}()
+
+				go func() {
+					defer wg.Done()
+					if err := w.batchProposer.tryProposeBatch(); err != nil {
+						log.Error("failed to tryProposeBatch", "err", err)
+					}
+				}()
+
+				wg.Wait()
 			}
 		}
 	}()
