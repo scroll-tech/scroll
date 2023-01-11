@@ -4,9 +4,9 @@ IMAGE_NAME=go-roller
 IMAGE_VERSION=latest
 
 ifeq (4.3,$(firstword $(sort $(MAKE_VERSION) 4.3)))
-	ZK_VERSION=$(shell grep -m 1 "common-rs" ../common/libzkp/impl/Cargo.lock | cut -d "#" -f2 | cut -c-7)
+	ZK_VERSION=$(shell grep -m 1 "scroll-zkevm" ../common/libzkp/impl/Cargo.lock | cut -d "#" -f2 | cut -c-7)
 else
-	ZK_VERSION=$(shell grep -m 1 "common-rs" ../common/libzkp/impl/Cargo.lock | cut -d "\#" -f2 | cut -c-7)
+	ZK_VERSION=$(shell grep -m 1 "scroll-zkevm" ../common/libzkp/impl/Cargo.lock | cut -d "\#" -f2 | cut -c-7)
 endif
 
 libzkp:
@@ -29,7 +29,7 @@ test-gpu-prover: libzkp
 	go test -tags="gpu ffi" -timeout 0 -v ./prover
 
 lastest-zk-version:
-	curl -sL https://api.github.com/repos/scroll-tech/common-rs/commits | jq -r ".[0].sha"
+	curl -sL https://api.github.com/repos/scroll-tech/scroll-zkevm/commits | jq -r ".[0].sha"
 
 lint: ## Lint the files - used for CI
 	GOBIN=$(PWD)/build/bin go run ../build/lint.go

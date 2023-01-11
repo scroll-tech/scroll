@@ -3,6 +3,7 @@ package orm
 import (
 	"context"
 	"database/sql"
+	"fmt"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/scroll-tech/go-ethereum/common"
@@ -84,6 +85,19 @@ const (
 	RollerProofInvalid
 )
 
+func (s RollerProveStatus) String() string {
+	switch s {
+	case RollerAssigned:
+		return "RollerAssigned"
+	case RollerProofValid:
+		return "RollerProofValid"
+	case RollerProofInvalid:
+		return "RollerProofInvalid"
+	default:
+		return fmt.Sprintf("Bad Value: %d", int32(s))
+	}
+}
+
 // RollerStatus is the roller name and roller prove status
 type RollerStatus struct {
 	PublicKey string            `json:"public_key"`
@@ -161,6 +175,7 @@ type L2MessageOrm interface {
 	MessageProofExist(nonce uint64) (bool, error)
 	GetMessageProofByNonce(nonce uint64) (string, error)
 	GetL2MessagesByStatus(status MsgStatus) ([]*L2Message, error)
+	GetL2MessagesByStatusUpToHeight(status MsgStatus, height uint64) ([]*L2Message, error)
 	GetL2ProcessedNonce() (int64, error)
 	SaveL2Messages(ctx context.Context, messages []*L2Message) error
 	UpdateLayer1Hash(ctx context.Context, msgHash string, layer1Hash string) error
