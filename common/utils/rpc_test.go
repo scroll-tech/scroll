@@ -36,7 +36,7 @@ func TestStartHTTPEndpoint(t *testing.T) {
 		},
 	})
 	assert.NoError(t, err)
-	defer handler.Shutdown(context.Background())
+	defer handler.Shutdown(context.Background()) //nolint:errcheck
 
 	client, err := rpc.Dial("http://" + endpoint)
 	assert.NoError(t, err)
@@ -61,7 +61,7 @@ func TestStartWSEndpoint(t *testing.T) {
 		},
 	})
 	assert.NoError(t, err)
-	defer handler.Shutdown(context.Background())
+	defer handler.Shutdown(context.Background()) //nolint:errcheck
 
 	client, err := rpc.Dial("ws://" + endpoint)
 	assert.NoError(t, err)

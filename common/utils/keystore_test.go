@@ -29,5 +29,5 @@ func TestLoadOrCreateKey(t *testing.T) {
 	// load keystore
 	_, err = LoadOrCreateKey(ksPath, "pwd")
 	assert.NoError(t, err)
-	os.RemoveAll(keyDir)
+	os.RemoveAll(keyDir) //nolint:errcheck
 }

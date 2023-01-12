@@ -23,7 +23,7 @@ var commit = func() string {
 }()
 
 // ZK_VERSION is commit-id of common/libzkp/impl/cargo.lock/scroll-zkevm
-var ZK_VERSION string
+var ZK_VERSION string //nolint:golint
 
 // Version denote the version of scroll protocol, including the l2geth, relayer, coordinator, roller, contracts and etc.
 var Version = fmt.Sprintf("%s-%s-%s", tag, commit, ZK_VERSION)

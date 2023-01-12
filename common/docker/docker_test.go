@@ -23,7 +23,7 @@ func testL1Geth(t *testing.T) {
 	defer cancel()
 
 	img := NewTestL1Docker(t)
-	defer img.Stop()
+	defer img.Stop() //nolint:errcheck
 
 	client, err := ethclient.Dial(img.Endpoint())
 	assert.NoError(t, err)
@@ -38,7 +38,7 @@ func testL2Geth(t *testing.T) {
 	defer cancel()
 
 	img := NewTestL2Docker(t)
-	defer img.Stop()
+	defer img.Stop() //nolint:errcheck
 
 	client, err := ethclient.Dial(img.Endpoint())
 	assert.NoError(t, err)
@@ -51,7 +51,7 @@ func testL2Geth(t *testing.T) {
 func testDB(t *testing.T) {
 	driverName := "postgres"
 	dbImg := NewTestDBDocker(t, driverName)
-	defer dbImg.Stop()
+	defer dbImg.Stop() //nolint:errcheck
 
 	db, err := sqlx.Open(driverName, dbImg.Endpoint())
 	assert.NoError(t, err)
