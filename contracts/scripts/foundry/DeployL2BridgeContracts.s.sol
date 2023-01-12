@@ -13,17 +13,22 @@ import { L2ERC721Gateway } from "../../src/L2/gateways/L2ERC721Gateway.sol";
 import { L2GatewayRouter } from "../../src/L2/gateways/L2GatewayRouter.sol";
 import { L2ScrollMessenger } from "../../src/L2/L2ScrollMessenger.sol";
 import { L2StandardERC20Gateway } from "../../src/L2/gateways/L2StandardERC20Gateway.sol";
+import { L2TxFeeVault } from "../../src/L2/predeploys/L2TxFeeVault.sol";
 import { ScrollStandardERC20 } from "../../src/libraries/token/ScrollStandardERC20.sol";
 import { ScrollStandardERC20Factory } from "../../src/libraries/token/ScrollStandardERC20Factory.sol";
 
 contract DeployL2BridgeContracts is Script {
     uint256 L2_DEPLOYER_PRIVATE_KEY = vm.envUint("L2_DEPLOYER_PRIVATE_KEY");
+    address L1_TX_FEE_RECIPIENT_ADDR = vm.envAddress("L1_TX_FEE_RECIPIENT_ADDR");
+
+    L2ScrollMessenger messenger;
     ProxyAdmin proxyAdmin;
 
     function run() external {
         vm.startBroadcast(L2_DEPLOYER_PRIVATE_KEY);
 
         deployL2ScrollMessenger();
+        deployTxFeeVault();
         deployProxyAdmin();
         deployL2StandardERC20Gateway();
         deployL2GatewayRouter();
@@ -37,9 +42,15 @@ contract DeployL2BridgeContracts is Script {
 
     function deployL2ScrollMessenger() internal {
         address owner = vm.addr(L2_DEPLOYER_PRIVATE_KEY);
-        L2ScrollMessenger l2ScrollMessenger = new L2ScrollMessenger(owner);
+        messenger = new L2ScrollMessenger(owner);
 
-        logAddress("L2_SCROLL_MESSENGER_ADDR", address(l2ScrollMessenger));
+        logAddress("L2_SCROLL_MESSENGER_ADDR", address(messenger));
+    }
+
+    function deployTxFeeVault() internal {
+        L2TxFeeVault feeVault = new L2TxFeeVault(address(messenger), L1_TX_FEE_RECIPIENT_ADDR);
+
+        logAddress("L2_TX_FEE_VAULT", address(feeVault));
     }
 
     function deployProxyAdmin() internal {
