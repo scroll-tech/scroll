@@ -85,13 +85,16 @@ abstract contract FeeVault {
    * @notice Triggers a withdrawal of funds to the L1 fee wallet.
    */
   function withdraw() external {
+    uint256 value = address(this).balance;
+
     require(
-      address(this).balance >= MIN_WITHDRAWAL_AMOUNT,
+      value >= MIN_WITHDRAWAL_AMOUNT,
       "FeeVault: withdrawal amount must be greater than minimum withdrawal amount"
     );
 
-    uint256 value = address(this).balance;
-    totalProcessed += value;
+    unchecked {
+      totalProcessed += value;
+    }
 
     emit Withdrawal(value, RECIPIENT, msg.sender);
 
