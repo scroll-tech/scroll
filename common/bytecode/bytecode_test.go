@@ -55,7 +55,7 @@ func getGenssis(file string) (*core.Genesis, error) {
 	return &genesis, nil
 }
 
-func setSenesis(file string, genesis *core.Genesis) error {
+func setGenesis(file string, genesis *core.Genesis) error {
 	data, err := json.MarshalIndent(&genesis, "", "    ")
 	if err != nil {
 		return err
@@ -105,7 +105,7 @@ func TestDeployL2(t *testing.T) {
 	t.Run("testERC20", func(t *testing.T) {
 		testERC20(t, &genesis.Alloc)
 	})
-	assert.NoError(t, setSenesis(file, genesis))
+	assert.NoError(t, setGenesis(file, genesis))
 
 	t.Cleanup(func() {
 		_ = l2gethImg.Stop()
