@@ -400,10 +400,10 @@ func (m *Manager) StartProofGenerationSession(task *orm.BlockBatch) (success boo
 	}()
 
 	// Get block traces.
-	blockInfos, err := m.orm.GetBlockInfos(map[string]interface{}{"batch_id": task.ID})
+	blockInfos, err := m.orm.GetL2BlockInfos(map[string]interface{}{"batch_id": task.ID})
 	if err != nil {
 		log.Error(
-			"could not GetBlockInfos",
+			"could not GetL2BlockInfos",
 			"batch_id", task.ID,
 			"error", err,
 		)

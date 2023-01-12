@@ -250,7 +250,7 @@ func testIdleRollerSelection(t *testing.T) {
 	dbTx, err := l2db.Beginx()
 	assert.NoError(t, err)
 	for i := range ids {
-		ID, err := l2db.NewBatchInDBTx(dbTx, &orm.BlockInfo{Number: uint64(i)}, &orm.BlockInfo{Number: uint64(i)}, "0f", 1, 194676)
+		ID, err := l2db.NewBatchInDBTx(dbTx, &orm.L2BlockInfo{Number: uint64(i)}, &orm.L2BlockInfo{Number: uint64(i)}, "0f", 1, 194676)
 		assert.NoError(t, err)
 		ids[i] = ID
 	}
@@ -287,7 +287,7 @@ func testGracefulRestart(t *testing.T) {
 	dbTx, err := l2db.Beginx()
 	assert.NoError(t, err)
 	for i := range ids {
-		ids[i], err = l2db.NewBatchInDBTx(dbTx, &orm.BlockInfo{Number: uint64(i)}, &orm.BlockInfo{Number: uint64(i)}, "0f", 1, 194676)
+		ids[i], err = l2db.NewBatchInDBTx(dbTx, &orm.L2BlockInfo{Number: uint64(i)}, &orm.L2BlockInfo{Number: uint64(i)}, "0f", 1, 194676)
 		assert.NoError(t, err)
 	}
 	assert.NoError(t, dbTx.Commit())
