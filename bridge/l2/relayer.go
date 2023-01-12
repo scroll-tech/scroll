@@ -4,14 +4,15 @@ import (
 	"context"
 	"errors"
 	"math/big"
+	"sync"
 	"time"
 
 	// not sure if this will make problems when relay with l1geth
 
 	"github.com/scroll-tech/go-ethereum/accounts/abi"
 	"github.com/scroll-tech/go-ethereum/common"
-	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
+	"golang.org/x/sync/errgroup"
 
 	"scroll-tech/database"
 	"scroll-tech/database/orm"
@@ -29,8 +30,7 @@ import (
 // Actions are triggered by new head from layer 1 geth node.
 // @todo It's better to be triggered by watcher.
 type Layer2Relayer struct {
-	ctx    context.Context
-	client *ethclient.Client
+	ctx context.Context
 
 	db  database.OrmFactory
 	cfg *config.RelayerConfig
@@ -56,7 +56,7 @@ type Layer2Relayer struct {
 }
 
 // NewLayer2Relayer will return a new instance of Layer2RelayerClient
-func NewLayer2Relayer(ctx context.Context, ethClient *ethclient.Client, db database.OrmFactory, cfg *config.RelayerConfig) (*Layer2Relayer, error) {
+func NewLayer2Relayer(ctx context.Context, db database.OrmFactory, cfg *config.RelayerConfig) (*Layer2Relayer, error) {
 	// @todo use different sender for relayer, block commit and proof finalize
 	messageSender, err := sender.NewSender(ctx, cfg.SenderConfig, cfg.MessageSenderPrivateKeys)
 	if err != nil {
@@ -72,7 +72,6 @@ func NewLayer2Relayer(ctx context.Context, ethClient *ethclient.Client, db datab
 
 	return &Layer2Relayer{
 		ctx:                    ctx,
-		client:                 ethClient,
 		db:                     db,
 		messageSender:          messageSender,
 		messageCh:              messageSender.ConfirmChan(),
@@ -90,14 +89,41 @@ func NewLayer2Relayer(ctx context.Context, ethClient *ethclient.Client, db datab
 
 // ProcessSavedEvents relays saved un-processed cross-domain transactions to desired blockchain
 func (r *Layer2Relayer) ProcessSavedEvents() {
+	batch, err := r.db.GetLatestFinalizedBatch()
+	if err != nil {
+		log.Error("GetLatestFinalizedBatch failed", "err", err)
+		return
+	}
+
 	// msgs are sorted by nonce in increasing order
-	msgs, err := r.db.GetL2MessagesByStatus(orm.MsgPending)
+	msgs, err := r.db.GetL2MessagesByStatusUpToHeight(orm.MsgPending, batch.EndBlockNumber)
+
 	if err != nil {
 		log.Error("Failed to fetch unprocessed L2 messages", "err", err)
 		return
 	}
-	for _, msg := range msgs {
-		if err := r.processSavedEvent(msg); err != nil {
+
+	// process messages in batches
+	batch_size := r.messageSender.NumberOfAccounts()
+
+	for from := 0; from < len(msgs); from += batch_size {
+		to := from + batch_size
+
+		if to > len(msgs) {
+			to = len(msgs)
+		}
+
+		var g errgroup.Group
+
+		for i := from; i < to; i++ {
+			msg := msgs[i]
+
+			g.Go(func() error {
+				return r.processSavedEvent(msg, batch)
+			})
+		}
+
+		if err := g.Wait(); err != nil {
 			if !errors.Is(err, sender.ErrNoAvailableAccount) {
 				log.Error("failed to process l2 saved event", "err", err)
 			}
@@ -106,19 +132,7 @@ func (r *Layer2Relayer) ProcessSavedEvents() {
 	}
 }
 
-func (r *Layer2Relayer) processSavedEvent(msg *orm.L2Message) error {
-	// @todo add support to relay multiple messages
-	batch, err := r.db.GetLatestFinalizedBatch()
-	if err != nil {
-		log.Error("GetLatestFinalizedBatch failed", "err", err)
-		return err
-	}
-
-	if batch.EndBlockNumber < msg.Height {
-		// log.Warn("corresponding block not finalized", "status", status)
-		return nil
-	}
-
+func (r *Layer2Relayer) processSavedEvent(msg *orm.L2Message, batch *orm.BlockBatch) error {
 	// @todo fetch merkle proof from l2geth
 	log.Info("Processing L2 Message", "msg.nonce", msg.Nonce, "msg.height", msg.Height)
 
@@ -240,21 +254,23 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 		return
 	}
 
-	hash, err := r.rollupSender.SendTransaction(id, &r.cfg.RollupContractAddress, big.NewInt(0), data)
+	txID := id + "-commit"
+	// add suffix `-commit` to avoid duplication with finalize tx in unit tests
+	hash, err := r.rollupSender.SendTransaction(txID, &r.cfg.RollupContractAddress, big.NewInt(0), data)
 	if err != nil {
 		if !errors.Is(err, sender.ErrNoAvailableAccount) {
 			log.Error("Failed to send commitBatch tx to layer1 ", "id", id, "index", batch.Index, "err", err)
 		}
 		return
 	}
-	log.Info("commitBatch in layer1", "id", id, "index", batch.Index, "hash", hash)
+	log.Info("commitBatch in layer1", "batchID", id, "index", batch.Index, "hash", hash)
 
 	// record and sync with db, @todo handle db error
 	err = r.db.UpdateCommitTxHashAndRollupStatus(r.ctx, id, hash.String(), orm.RollupCommitting)
 	if err != nil {
 		log.Error("UpdateCommitTxHashAndRollupStatus failed", "id", id, "index", batch.Index, "err", err)
 	}
-	r.processingCommitment[id] = id
+	r.processingCommitment[txID] = id
 }
 
 // ProcessCommittedBatches submit proof to layer 1 rollup contract
@@ -332,7 +348,9 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 			return
 		}
 
-		txHash, err := r.rollupSender.SendTransaction(id, &r.cfg.RollupContractAddress, big.NewInt(0), data)
+		txID := id + "-finalize"
+		// add suffix `-finalize` to avoid duplication with commit tx in unit tests
+		txHash, err := r.rollupSender.SendTransaction(txID, &r.cfg.RollupContractAddress, big.NewInt(0), data)
 		hash := &txHash
 		if err != nil {
 			if !errors.Is(err, sender.ErrNoAvailableAccount) {
@@ -340,15 +358,15 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 			}
 			return
 		}
-		log.Info("finalizeBatchWithProof in layer1", "id", id, "hash", hash)
+		log.Info("finalizeBatchWithProof in layer1", "batchID", id, "hash", hash)
 
 		// record and sync with db, @todo handle db error
 		err = r.db.UpdateFinalizeTxHashAndRollupStatus(r.ctx, id, hash.String(), orm.RollupFinalizing)
 		if err != nil {
-			log.Warn("UpdateFinalizeTxHashAndRollupStatus failed", "id", id, "err", err)
+			log.Warn("UpdateFinalizeTxHashAndRollupStatus failed", "batchID", id, "err", err)
 		}
 		success = true
-		r.processingFinalization[id] = id
+		r.processingFinalization[txID] = id
 
 	default:
 		log.Error("encounter unreachable case in ProcessCommittedBatches",
@@ -367,9 +385,26 @@ func (r *Layer2Relayer) Start() {
 		for {
 			select {
 			case <-ticker.C:
-				r.ProcessSavedEvents()
-				r.ProcessPendingBatches()
-				r.ProcessCommittedBatches()
+				var wg sync.WaitGroup
+				wg.Add(3)
+
+				go func() {
+					defer wg.Done()
+					r.ProcessSavedEvents()
+				}()
+
+				go func() {
+					defer wg.Done()
+					r.ProcessPendingBatches()
+				}()
+
+				go func() {
+					defer wg.Done()
+					r.ProcessCommittedBatches()
+				}()
+
+				wg.Wait()
+
 			case confirmation := <-r.messageCh:
 				r.handleConfirmation(confirmation)
 			case confirmation := <-r.rollupCh:
