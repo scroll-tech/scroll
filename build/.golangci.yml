@@ -204,6 +204,12 @@ issues:
 
   # Excluding configuration per-path, per-linter, per-text and per-source
   exclude-rules:
+    # Exclude some linters from running on tests files.
+    - path: _test\.go
+      linters:
+        - errcheck
+        - gosec
+
     # Exclude some staticcheck messages
     - linters:
         - staticcheck
