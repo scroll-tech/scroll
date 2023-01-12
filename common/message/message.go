@@ -4,12 +4,12 @@ import (
 	"crypto/ecdsa"
 	"crypto/rand"
 	"encoding/hex"
-	"encoding/json"
 
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/common/hexutil"
 	"github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/crypto"
+	"github.com/scroll-tech/go-ethereum/rlp"
 )
 
 // RespStatus represents status code from roller to scroll
@@ -115,12 +115,11 @@ func (a *AuthMsg) PublicKey() (string, error) {
 // Hash returns the hash of the auth message, which should be the message used
 // to construct the Signature.
 func (i *Identity) Hash() ([]byte, error) {
-	bs, err := json.Marshal(i)
+	byt, err := rlp.EncodeToBytes(i)
 	if err != nil {
 		return nil, err
 	}
-
-	hash := crypto.Keccak256Hash(bs)
+	hash := crypto.Keccak256Hash(byt)
 	return hash[:], nil
 }
 
@@ -204,12 +203,12 @@ type ProofDetail struct {
 
 // Hash return proofMsg content hash.
 func (z *ProofDetail) Hash() ([]byte, error) {
-	bs, err := json.Marshal(z)
+	byt, err := rlp.EncodeToBytes(z)
 	if err != nil {
 		return nil, err
 	}
 
-	hash := crypto.Keccak256Hash(bs)
+	hash := crypto.Keccak256Hash(byt)
 	return hash[:], nil
 }
 
