@@ -37,7 +37,7 @@ type Identity struct {
 	// Roller name
 	Name string `json:"name"`
 	// Time of message creation
-	Timestamp uint64 `json:"timestamp"`
+	Timestamp int64 `json:"timestamp"`
 	// Roller public key
 	PublicKey string `json:"publicKey"`
 	// Version is common.Version+ZkVersion. Use the following to check the latest ZkVersion version.
