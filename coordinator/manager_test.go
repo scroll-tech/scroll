@@ -318,6 +318,10 @@ func testGracefulRestart(t *testing.T) {
 	}()
 
 	for i := range ids {
+		info, err := newRollerManager.GetSessionInfo(ids[i])
+		assert.Equal(t, orm.ProvingTaskAssigned.String(), info.Status)
+		assert.NoError(t, err)
+
 		// at this point, roller haven't submitted
 		status, err := l2db.GetProvingStatusByID(ids[i])
 		assert.NoError(t, err)
