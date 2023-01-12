@@ -4,12 +4,12 @@ import (
 	"crypto/ecdsa"
 	"crypto/rand"
 	"encoding/hex"
-	"fmt"
 
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/common/hexutil"
 	"github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/crypto"
+	"github.com/scroll-tech/go-ethereum/rlp"
 )
 
 // RespStatus represents status code from roller to scroll
@@ -115,10 +115,11 @@ func (a *AuthMsg) PublicKey() (string, error) {
 // Hash returns the hash of the auth message, which should be the message used
 // to construct the Signature.
 func (i *Identity) Hash() ([]byte, error) {
-	msg := fmt.Sprintf("name=%s&timestamp=%d&public_key=%s&version=%s&token=%s",
-		i.Name, i.Timestamp, i.PublicKey, i.Version, i.Token)
-
-	hash := crypto.Keccak256Hash([]byte(msg))
+	byt, err := rlp.EncodeToBytes(i)
+	if err != nil {
+		return nil, err
+	}
+	hash := crypto.Keccak256Hash(byt)
 	return hash[:], nil
 }
 
@@ -202,14 +203,12 @@ type ProofDetail struct {
 
 // Hash return proofMsg content hash.
 func (z *ProofDetail) Hash() ([]byte, error) {
-	proof := z.Proof
-	msg := fmt.Sprintf("id=%s&status=%d&proof=%s&instance=%s&final_pair=%s&vk=%s",
-		z.ID, z.Status, proof.Proof, proof.Instance, proof.FinalPair, proof.Vk)
-	if z.Error != "" {
-		msg = fmt.Sprintf("%s&error=%s", msg, z.Error)
+	byt, err := rlp.EncodeToBytes(z)
+	if err != nil {
+		return nil, err
 	}
 
-	hash := crypto.Keccak256Hash([]byte(msg))
+	hash := crypto.Keccak256Hash(byt)
 	return hash[:], nil
 }
 
