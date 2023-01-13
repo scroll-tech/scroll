@@ -163,7 +163,7 @@ func (o *blockTraceOrm) GetBatchIDByNumber(number uint64) (string, error) {
 func (o *blockTraceOrm) InsertBlockTraces(blockTraces []*types.BlockTrace) error {
 	traceMaps := make([]map[string]interface{}, len(blockTraces))
 	for i, trace := range blockTraces {
-		number, hash, tx_num, mtime := trace.Header.Number.Int64(),
+		number, hash, txNum, mtime := trace.Header.Number.Int64(),
 			trace.Header.Hash().String(),
 			len(trace.Transactions),
 			trace.Header.Time
@@ -183,7 +183,7 @@ func (o *blockTraceOrm) InsertBlockTraces(blockTraces []*types.BlockTrace) error
 			"hash":            hash,
 			"parent_hash":     trace.Header.ParentHash.String(),
 			"trace":           string(data),
-			"tx_num":          tx_num,
+			"tx_num":          txNum,
 			"gas_used":        gasCost,
 			"block_timestamp": mtime,
 		}
@@ -195,8 +195,8 @@ func (o *blockTraceOrm) InsertBlockTraces(blockTraces []*types.BlockTrace) error
 	return err
 }
 
-func (o *blockTraceOrm) DeleteTracesByBatchID(batch_id string) error {
-	if _, err := o.db.Exec(o.db.Rebind("update block_trace set trace = ? where batch_id = ?;"), "{}", batch_id); err != nil {
+func (o *blockTraceOrm) DeleteTracesByBatchID(batchID string) error {
+	if _, err := o.db.Exec(o.db.Rebind("update block_trace set trace = ? where batchID = ?;"), "{}", batchID); err != nil {
 		return err
 	}
 	return nil

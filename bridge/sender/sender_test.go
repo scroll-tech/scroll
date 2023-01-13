@@ -22,7 +22,7 @@ import (
 	"scroll-tech/bridge/sender"
 )
 
-const TX_BATCH = 50
+const TxBatch = 50
 
 var (
 	privateKeys []*ecdsa.PrivateKey
@@ -84,7 +84,7 @@ func testBatchSender(t *testing.T, batchSize int) {
 	for idx := 0; idx < newSender.NumberOfAccounts(); idx++ {
 		index := idx
 		eg.Go(func() error {
-			for i := 0; i < TX_BATCH; i++ {
+			for i := 0; i < TxBatch; i++ {
 				toAddr := common.HexToAddress("0x4592d8f8d7b001e72cb26a73e4fa1806a51ac79d")
 				id := strconv.Itoa(i + index*1000)
 				_, err := newSender.SendTransaction(id, &toAddr, big.NewInt(1), nil)
@@ -103,7 +103,7 @@ func testBatchSender(t *testing.T, batchSize int) {
 	if err := eg.Wait(); err != nil {
 		t.Error(err)
 	}
-	t.Logf("successful send batch txs, batch size: %d, total count: %d", newSender.NumberOfAccounts(), TX_BATCH*newSender.NumberOfAccounts())
+	t.Logf("successful send batch txs, batch size: %d, total count: %d", newSender.NumberOfAccounts(), TxBatch*newSender.NumberOfAccounts())
 
 	// avoid 10 mins cause testcase panic
 	after := time.After(80 * time.Second)
