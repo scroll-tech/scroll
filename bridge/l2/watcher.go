@@ -117,7 +117,7 @@ func (w *WatcherClient) Start() {
 				go func() {
 					defer wg.Done()
 					// @todo handle error
-					if err := w.fetchContractEvent(number); err != nil {
+					if err := w.FetchContractEvent(number); err != nil {
 						log.Error("failed to fetchContractEvent", "err", err)
 					}
 				}()
@@ -201,7 +201,7 @@ func (w *WatcherClient) getAndStoreBlockTraces(ctx context.Context, from, to uin
 const contractEventsBlocksFetchLimit = int64(10)
 
 // FetchContractEvent pull latest event logs from given contract address and save in DB
-func (w *WatcherClient) fetchContractEvent(blockHeight uint64) error {
+func (w *WatcherClient) FetchContractEvent(blockHeight uint64) error {
 	defer func() {
 		log.Info("l2 watcher fetchContractEvent", "w.processedMsgHeight", w.processedMsgHeight)
 	}()
@@ -302,7 +302,7 @@ func (w *WatcherClient) parseBridgeEventLogs(logs []types.Log) ([]*orm.L2Message
 			event.Target = common.HexToAddress(vLog.Topics[1].String())
 			l2Messages = append(l2Messages, &orm.L2Message{
 				Nonce:      event.MessageNonce.Uint64(),
-				MsgHash:    utils.ComputeMessageHash(event.Target, event.Sender, event.Value, event.Fee, event.Deadline, event.Message, event.MessageNonce).String(),
+				MsgHash:    utils.ComputeMessageHash(event.Sender, event.Target, event.Value, event.Fee, event.Deadline, event.Message, event.MessageNonce).String(),
 				Height:     vLog.BlockNumber,
 				Sender:     event.Sender.String(),
 				Value:      event.Value.String(),

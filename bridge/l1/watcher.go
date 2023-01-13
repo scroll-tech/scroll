@@ -199,10 +199,10 @@ func (w *Watcher) FetchContractEvent(blockHeight uint64) error {
 		for _, msg := range relayedMessageEvents {
 			if msg.isSuccessful {
 				// succeed
-				err = w.db.UpdateLayer1StatusAndLayer2Hash(w.ctx, msg.msgHash.String(), orm.MsgConfirmed, msg.txHash.String())
+				err = w.db.UpdateLayer2StatusAndLayer1Hash(w.ctx, msg.msgHash.String(), orm.MsgConfirmed, msg.txHash.String())
 			} else {
 				// failed
-				err = w.db.UpdateLayer1StatusAndLayer2Hash(w.ctx, msg.msgHash.String(), orm.MsgFailed, msg.txHash.String())
+				err = w.db.UpdateLayer2StatusAndLayer1Hash(w.ctx, msg.msgHash.String(), orm.MsgFailed, msg.txHash.String())
 			}
 			if err != nil {
 				log.Error("Failed to update layer1 status and layer2 hash", "err", err)
@@ -250,7 +250,7 @@ func (w *Watcher) parseBridgeEventLogs(logs []types.Log) ([]*orm.L1Message, []re
 			event.Target = common.HexToAddress(vLog.Topics[1].String())
 			l1Messages = append(l1Messages, &orm.L1Message{
 				Nonce:      event.MessageNonce.Uint64(),
-				MsgHash:    utils.ComputeMessageHash(event.Target, event.Sender, event.Value, event.Fee, event.Deadline, event.Message, event.MessageNonce).String(),
+				MsgHash:    utils.ComputeMessageHash(event.Sender, event.Target, event.Value, event.Fee, event.Deadline, event.Message, event.MessageNonce).String(),
 				Height:     vLog.BlockNumber,
 				Sender:     event.Sender.String(),
 				Value:      event.Value.String(),

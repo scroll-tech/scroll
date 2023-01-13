@@ -104,10 +104,10 @@ func (r *Layer2Relayer) ProcessSavedEvents() {
 	}
 
 	// process messages in batches
-	batch_size := r.messageSender.NumberOfAccounts()
+	batchSize := r.messageSender.NumberOfAccounts()
 
-	for from := 0; from < len(msgs); from += batch_size {
-		to := from + batch_size
+	for from := 0; from < len(msgs); from += batchSize {
+		to := from + batchSize
 
 		if to > len(msgs) {
 			to = len(msgs)
@@ -440,23 +440,23 @@ func (r *Layer2Relayer) handleConfirmation(confirmation *sender.Confirmation) {
 	}
 
 	// check whether it is block commitment transaction
-	if batch_id, ok := r.processingCommitment[confirmation.ID]; ok {
+	if batchID, ok := r.processingCommitment[confirmation.ID]; ok {
 		transactionType = "BatchCommitment"
 		// @todo handle db error
-		err := r.db.UpdateCommitTxHashAndRollupStatus(r.ctx, batch_id, confirmation.TxHash.String(), orm.RollupCommitted)
+		err := r.db.UpdateCommitTxHashAndRollupStatus(r.ctx, batchID, confirmation.TxHash.String(), orm.RollupCommitted)
 		if err != nil {
-			log.Warn("UpdateCommitTxHashAndRollupStatus failed", "batch_id", batch_id, "err", err)
+			log.Warn("UpdateCommitTxHashAndRollupStatus failed", "batch_id", batchID, "err", err)
 		}
 		delete(r.processingCommitment, confirmation.ID)
 	}
 
 	// check whether it is proof finalization transaction
-	if batch_id, ok := r.processingFinalization[confirmation.ID]; ok {
+	if batchID, ok := r.processingFinalization[confirmation.ID]; ok {
 		transactionType = "ProofFinalization"
 		// @todo handle db error
-		err := r.db.UpdateFinalizeTxHashAndRollupStatus(r.ctx, batch_id, confirmation.TxHash.String(), orm.RollupFinalized)
+		err := r.db.UpdateFinalizeTxHashAndRollupStatus(r.ctx, batchID, confirmation.TxHash.String(), orm.RollupFinalized)
 		if err != nil {
-			log.Warn("UpdateFinalizeTxHashAndRollupStatus failed", "batch_id", batch_id, "err", err)
+			log.Warn("UpdateFinalizeTxHashAndRollupStatus failed", "batch_id", batchID, "err", err)
 		}
 		delete(r.processingFinalization, confirmation.ID)
 	}
