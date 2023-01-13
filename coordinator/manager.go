@@ -65,6 +65,9 @@ type Manager struct {
 	// A map containing proof failed or verify failed proof.
 	rollerPool cmap.ConcurrentMap
 
+	// TODO: once put into use, should add to graceful restart.
+	failedSessionInfos map[string]*SessionInfo
+
 	// A direct connection to the Halo2 verifier, used to verify
 	// incoming proofs.
 	verifier *verifier.Verifier
@@ -91,14 +94,15 @@ func New(ctx context.Context, cfg *config.RollerManagerConfig, orm database.OrmF
 
 	log.Info("Start coordinator successfully.")
 	return &Manager{
-		ctx:        ctx,
-		cfg:        cfg,
-		rollerPool: cmap.New(),
-		sessions:   make(map[string]*session),
-		verifier:   v,
-		orm:        orm,
-		Client:     client,
-		tokenCache: cache.New(time.Duration(cfg.TokenTimeToLive)*time.Second, 1*time.Hour),
+		ctx:                ctx,
+		cfg:                cfg,
+		rollerPool:         cmap.New(),
+		sessions:           make(map[string]*session),
+		failedSessionInfos: make(map[string]*SessionInfo),
+		verifier:           v,
+		orm:                orm,
+		Client:             client,
+		tokenCache:         cache.New(time.Duration(cfg.TokenTimeToLive)*time.Second, 1*time.Hour),
 	}, nil
 }
 
@@ -275,9 +279,6 @@ func (m *Manager) handleZkProof(pk string, msg *message.ProofDetail) error {
 			"roller pk", roller.PublicKey,
 			"error", msg.Error,
 		)
-		if dbErr = m.orm.UpdateProvingStatus(msg.ID, orm.ProvingTaskFailed); dbErr != nil {
-			log.Error("failed to update task status as failed", "error", dbErr)
-		}
 		return nil
 	}
 
@@ -345,6 +346,7 @@ func (m *Manager) CollectProofs(sess *session) {
 		if len(participatingRollers) == 0 {
 			// record failed session.
 			errMsg := "proof generation session ended without receiving any valid proofs"
+			m.addFailedSession(sess, errMsg)
 			log.Warn(errMsg, "session id", sess.info.ID)
 			// Set status as skipped.
 			// Note that this is only a workaround for testnet here.
@@ -379,6 +381,11 @@ func (m *Manager) APIs() []rpc.API {
 			Namespace: "roller",
 			Service:   RollerAPI(m),
 			Public:    true,
+		},
+		{
+			Namespace: "debug",
+			Public:    true,
+			Service:   RollerDebugAPI(m),
 		},
 	}
 }
@@ -497,6 +504,10 @@ func (m *Manager) IsRollerIdle(hexPk string) bool {
 	}
 
 	return true
+}
+
+func (m *Manager) addFailedSession(sess *session, errMsg string) {
+	m.failedSessionInfos[sess.info.ID] = newSessionInfo(sess, orm.ProvingTaskFailed, errMsg, true)
 }
 
 // VerifyToken verifies pukey for token and expiration time
