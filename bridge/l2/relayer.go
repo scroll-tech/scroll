@@ -200,7 +200,7 @@ func (r *Layer2Relayer) ProcessPendingBatches(wg *sync.WaitGroup) {
 
 	traces, err := r.db.GetBlockTraces(map[string]interface{}{"batch_id": id}, "ORDER BY number ASC")
 	if err != nil || len(traces) == 0 {
-		log.Error("Failed to GetBlockTraces", "batchID", id, "err", err)
+		log.Error("Failed to GetBlockTraces", "batch_id", id, "err", err)
 		return
 	}
 
@@ -260,7 +260,7 @@ func (r *Layer2Relayer) ProcessPendingBatches(wg *sync.WaitGroup) {
 		}
 		return
 	}
-	log.Info("commitBatch in layer1", "batchID", id, "index", batch.Index, "hash", hash)
+	log.Info("commitBatch in layer1", "batch_id", id, "index", batch.Index, "hash", hash)
 
 	// record and sync with db, @todo handle db error
 	err = r.db.UpdateCommitTxHashAndRollupStatus(r.ctx, id, hash.String(), orm.RollupCommitting)
@@ -356,12 +356,12 @@ func (r *Layer2Relayer) ProcessCommittedBatches(wg *sync.WaitGroup) {
 			}
 			return
 		}
-		log.Info("finalizeBatchWithProof in layer1", "batchID", id, "hash", hash)
+		log.Info("finalizeBatchWithProof in layer1", "batch_id", id, "hash", hash)
 
 		// record and sync with db, @todo handle db error
 		err = r.db.UpdateFinalizeTxHashAndRollupStatus(r.ctx, id, hash.String(), orm.RollupFinalizing)
 		if err != nil {
-			log.Warn("UpdateFinalizeTxHashAndRollupStatus failed", "batchID", id, "err", err)
+			log.Warn("UpdateFinalizeTxHashAndRollupStatus failed", "batch_id", id, "err", err)
 		}
 		success = true
 		r.processingFinalization[txID] = id
@@ -429,7 +429,7 @@ func (r *Layer2Relayer) handleConfirmation(confirmation *sender.Confirmation) {
 		// @todo handle db error
 		err := r.db.UpdateCommitTxHashAndRollupStatus(r.ctx, batchID, confirmation.TxHash.String(), orm.RollupCommitted)
 		if err != nil {
-			log.Warn("UpdateCommitTxHashAndRollupStatus failed", "batchID", batchID, "err", err)
+			log.Warn("UpdateCommitTxHashAndRollupStatus failed", "batch_id", batchID, "err", err)
 		}
 		delete(r.processingCommitment, confirmation.ID)
 	}
@@ -440,7 +440,7 @@ func (r *Layer2Relayer) handleConfirmation(confirmation *sender.Confirmation) {
 		// @todo handle db error
 		err := r.db.UpdateFinalizeTxHashAndRollupStatus(r.ctx, batchID, confirmation.TxHash.String(), orm.RollupFinalized)
 		if err != nil {
-			log.Warn("UpdateFinalizeTxHashAndRollupStatus failed", "batchID", batchID, "err", err)
+			log.Warn("UpdateFinalizeTxHashAndRollupStatus failed", "batch_id", batchID, "err", err)
 		}
 		delete(r.processingFinalization, confirmation.ID)
 	}
