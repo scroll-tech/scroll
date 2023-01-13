@@ -3,7 +3,6 @@ package l1
 import (
 	"context"
 	"math/big"
-	"sync/atomic"
 	"time"
 
 	geth "github.com/scroll-tech/go-ethereum"
@@ -114,12 +113,11 @@ const contractEventsBlocksFetchLimit = int64(10)
 
 // FetchContractEvent pull latest event logs from given contract address and save in DB
 func (w *Watcher) FetchContractEvent(blockHeight uint64) error {
-	processedMsgHeight := atomic.LoadUint64(&w.processedMsgHeight)
 	defer func() {
-		log.Info("l1 watcher fetchContractEvent", "processedMsgHeight", processedMsgHeight)
+		log.Info("l1 watcher fetchContractEvent", "w.processedMsgHeight", w.processedMsgHeight)
 	}()
 
-	fromBlock := int64(processedMsgHeight) + 1
+	fromBlock := int64(w.processedMsgHeight) + 1
 	toBlock := int64(blockHeight) - int64(w.confirmations)
 
 	for from := fromBlock; from <= toBlock; from += contractEventsBlocksFetchLimit {
@@ -152,7 +150,7 @@ func (w *Watcher) FetchContractEvent(blockHeight uint64) error {
 			return err
 		}
 		if len(logs) == 0 {
-			atomic.StoreUint64(&w.processedMsgHeight, uint64(to))
+			w.processedMsgHeight = uint64(to)
 			continue
 		}
 		log.Info("Received new L1 events", "fromBlock", from, "toBlock", to, "cnt", len(logs))
@@ -216,7 +214,7 @@ func (w *Watcher) FetchContractEvent(blockHeight uint64) error {
 			return err
 		}
 
-		atomic.StoreUint64(&w.processedMsgHeight, uint64(to))
+		w.processedMsgHeight = uint64(to)
 	}
 
 	return nil
