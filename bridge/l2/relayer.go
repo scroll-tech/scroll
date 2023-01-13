@@ -193,12 +193,12 @@ func (r *Layer2Relayer) ProcessPendingBatches(wg *sync.WaitGroup) {
 
 	batches, err := r.db.GetBlockBatches(map[string]interface{}{"id": id})
 	if err != nil || len(batches) == 0 {
-		log.Error("Failed to GetBlockBatches", "batchID", id, "err", err)
+		log.Error("Failed to GetBlockBatches", "batch_id", id, "err", err)
 		return
 	}
 	batch := batches[0]
 
-	traces, err := r.db.GetBlockTraces(map[string]interface{}{"batchID": id}, "ORDER BY number ASC")
+	traces, err := r.db.GetBlockTraces(map[string]interface{}{"batch_id": id}, "ORDER BY number ASC")
 	if err != nil || len(traces) == 0 {
 		log.Error("Failed to GetBlockTraces", "batchID", id, "err", err)
 		return
