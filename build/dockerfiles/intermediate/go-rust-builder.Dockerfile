@@ -3,10 +3,13 @@ FROM ubuntu:20.04
 RUN apt-get update && ln -fs /usr/share/zoneinfo/America/New_York /etc/localtime
 
 # Install basic packages
-RUN apt-get install build-essential curl wget git pkg-config -y
+RUN apt-get install build-essential git pkg-config -y
 
 # Install dev-packages
 RUN apt-get install libclang-dev libssl-dev llvm -y
+
+# Install misc packages
+RUN apt-get install curl wget libdigest-sha-perl -y
 
 # Install Rust
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
