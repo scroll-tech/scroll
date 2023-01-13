@@ -137,7 +137,7 @@ type BlockBatchOrm interface {
 	GetBlockBatches(fields map[string]interface{}, args ...string) ([]*BlockBatch, error)
 	GetProvingStatusByID(id string) (ProvingStatus, error)
 	GetVerifiedProofAndInstanceByID(id string) ([]byte, []byte, error)
-	UpdateProofByID(ctx context.Context, id string, proof, instance_commitments []byte, proofTimeSec uint64) error
+	UpdateProofByID(ctx context.Context, id string, proof, instanceCommitments []byte, proofTimeSec uint64) error
 	UpdateProvingStatus(id string, status ProvingStatus) error
 	ResetProvingStatusFor(before ProvingStatus) error
 	NewBatchInDBTx(dbTx *sqlx.Tx, startBlock *BlockInfo, endBlock *BlockInfo, parentHash string, totalTxNum uint64, gasUsed uint64) (string, error)
@@ -148,8 +148,8 @@ type BlockBatchOrm interface {
 	GetRollupStatusByIDList(ids []string) ([]RollupStatus, error)
 	GetLatestFinalizedBatch() (*BlockBatch, error)
 	UpdateRollupStatus(ctx context.Context, id string, status RollupStatus) error
-	UpdateCommitTxHashAndRollupStatus(ctx context.Context, id string, commit_tx_hash string, status RollupStatus) error
-	UpdateFinalizeTxHashAndRollupStatus(ctx context.Context, id string, finalize_tx_hash string, status RollupStatus) error
+	UpdateCommitTxHashAndRollupStatus(ctx context.Context, id string, commitTxHash string, status RollupStatus) error
+	UpdateFinalizeTxHashAndRollupStatus(ctx context.Context, id string, finalizeTxHash string, status RollupStatus) error
 	GetAssignedBatchIDs() ([]string, error)
 
 	GetCommitTxHash(id string) (sql.NullString, error)   // for unit tests only

@@ -223,8 +223,8 @@ func (m *layer2MessageOrm) GetLayer2LatestWatchedHeight() (int64, error) {
 	return height, nil
 }
 
-func (o *layer2MessageOrm) GetRelayL2MessageTxHash(nonce uint64) (sql.NullString, error) {
-	row := o.db.QueryRow(`SELECT layer1_hash FROM l2_message WHERE nonce = $1`, nonce)
+func (m *layer2MessageOrm) GetRelayL2MessageTxHash(nonce uint64) (sql.NullString, error) {
+	row := m.db.QueryRow(`SELECT layer1_hash FROM l2_message WHERE nonce = $1`, nonce)
 	var hash sql.NullString
 	if err := row.Scan(&hash); err != nil {
 		return sql.NullString{}, err

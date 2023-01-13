@@ -226,9 +226,9 @@ func (w *WatcherClient) FetchContractEvent(blockHeight uint64) error {
 			Topics: make([][]common.Hash, 1),
 		}
 		query.Topics[0] = make([]common.Hash, 3)
-		query.Topics[0][0] = common.HexToHash(bridge_abi.SENT_MESSAGE_EVENT_SIGNATURE)
-		query.Topics[0][1] = common.HexToHash(bridge_abi.RELAYED_MESSAGE_EVENT_SIGNATURE)
-		query.Topics[0][2] = common.HexToHash(bridge_abi.FAILED_RELAYED_MESSAGE_EVENT_SIGNATURE)
+		query.Topics[0][0] = common.HexToHash(bridge_abi.SentMessageEventSignature)
+		query.Topics[0][1] = common.HexToHash(bridge_abi.RelayedMessageEventSignature)
+		query.Topics[0][2] = common.HexToHash(bridge_abi.FailedRelayedMessageEventSignature)
 
 		logs, err := w.FilterLogs(w.ctx, query)
 		if err != nil {
@@ -281,7 +281,7 @@ func (w *WatcherClient) parseBridgeEventLogs(logs []types.Log) ([]*orm.L2Message
 	var relayedMessages []relayedMessage
 	for _, vLog := range logs {
 		switch vLog.Topics[0] {
-		case common.HexToHash(bridge_abi.SENT_MESSAGE_EVENT_SIGNATURE):
+		case common.HexToHash(bridge_abi.SentMessageEventSignature):
 			event := struct {
 				Target       common.Address
 				Sender       common.Address
@@ -313,7 +313,7 @@ func (w *WatcherClient) parseBridgeEventLogs(logs []types.Log) ([]*orm.L2Message
 				Calldata:   common.Bytes2Hex(event.Message),
 				Layer2Hash: vLog.TxHash.Hex(),
 			})
-		case common.HexToHash(bridge_abi.RELAYED_MESSAGE_EVENT_SIGNATURE):
+		case common.HexToHash(bridge_abi.RelayedMessageEventSignature):
 			event := struct {
 				MsgHash common.Hash
 			}{}
@@ -324,7 +324,7 @@ func (w *WatcherClient) parseBridgeEventLogs(logs []types.Log) ([]*orm.L2Message
 				txHash:       vLog.TxHash,
 				isSuccessful: true,
 			})
-		case common.HexToHash(bridge_abi.FAILED_RELAYED_MESSAGE_EVENT_SIGNATURE):
+		case common.HexToHash(bridge_abi.FailedRelayedMessageEventSignature):
 			event := struct {
 				MsgHash common.Hash
 			}{}
