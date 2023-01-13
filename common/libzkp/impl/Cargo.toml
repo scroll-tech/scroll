@@ -8,8 +8,8 @@ edition = "2021"
 crate-type = ["staticlib"]
 
 [dependencies]
-zkevm = { git = "https://github.com/scroll-tech/scroll-zkevm" }
-types = { git = "https://github.com/scroll-tech/scroll-zkevm" }
+zkevm = { git = "https://github.com/scroll-tech/scroll-zkevm", rev="cfe8b4e" }
+types = { git = "https://github.com/scroll-tech/scroll-zkevm", rev="cfe8b4e" }
 
 log = "0.4"
 env_logger = "0.9.0"
