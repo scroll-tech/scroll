@@ -56,7 +56,8 @@ var (
 )
 
 type appAPI interface {
-	RunApp(parallel bool)
+	WaitResult(timeout time.Duration, keyword string) bool
+	RunApp(waitResult func() bool)
 	WaitExit()
 	ExpectWithTimeout(parallel bool, timeout time.Duration, keyword string)
 	RegistFunc(key string, check func(buf string))
@@ -117,7 +118,7 @@ func runDBCliApp(t *testing.T, option, keyword string) {
 		}
 	})
 	defer app.UnRegistFunc(keyword)
-	app.RunApp(true)
+	app.RunApp(nil)
 
 	select {
 	case <-okCh:
