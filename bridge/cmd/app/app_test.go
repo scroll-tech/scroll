@@ -15,5 +15,5 @@ func TestRunBridge(t *testing.T) {
 
 	// wait result
 	bridge.ExpectWithTimeout(true, time.Second*3, fmt.Sprintf("bridge version %s", version.Version))
-	bridge.RunApp(false)
+	bridge.RunApp(nil)
 }

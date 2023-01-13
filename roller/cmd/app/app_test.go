@@ -15,5 +15,5 @@ func TestRunRoller(t *testing.T) {
 
 	// wait result
 	roller.ExpectWithTimeout(true, time.Second*3, fmt.Sprintf("roller version %s", version.Version))
-	roller.RunApp(false)
+	roller.RunApp(nil)
 }
