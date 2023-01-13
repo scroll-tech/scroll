@@ -43,16 +43,16 @@ type Layer2Relayer struct {
 	rollupCh     <-chan *sender.Confirmation
 	l1RollupABI  *abi.ABI
 
-	// a list of processing message.
-	// key: confirmation ID, value: layer2 hash
+	// A list of processing message.
+	// key(string): confirmation ID, value(string): layer2 hash.
 	processingMessage sync.Map
 
-	// a list of processing batch commitment.
-	// key: confirmation ID, value: batch id
+	// A list of processing batch commitment.
+	// key(string): confirmation ID, value(string): batch id.
 	processingCommitment sync.Map
 
-	// a list of processing batch finalization.
-	// key: confirmation ID, value: batch id
+	// A list of processing batch finalization.
+	// key(string): confirmation ID, value(string): batch id.
 	processingFinalization sync.Map
 
 	stopCh chan struct{}
