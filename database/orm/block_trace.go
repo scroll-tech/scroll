@@ -5,13 +5,16 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"math/big"
+	"strings"
+
 	"github.com/jmoiron/sqlx"
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/log"
+
 	"scroll-tech/common/utils"
 	"scroll-tech/database/cache"
-	"strings"
 )
 
 type blockTraceOrm struct {
@@ -52,7 +55,7 @@ func (o *blockTraceOrm) GetBlockTracesLatestHeight() (int64, error) {
 }
 
 func (o *blockTraceOrm) GetBlockTraces(fields map[string]interface{}, args ...string) ([]*types.BlockTrace, error) {
-	query := "SELECT hash FROM block_trace WHERE 1 = 1 "
+	query := "SELECT hash,number FROM block_trace WHERE 1 = 1 "
 	for key := range fields {
 		query += fmt.Sprintf("AND %s=:%s ", key, key)
 	}
@@ -69,12 +72,15 @@ func (o *blockTraceOrm) GetBlockTraces(fields map[string]interface{}, args ...st
 		rdb    = o.rdb
 	)
 	for rows.Next() {
-		var hash common.Hash
-		if err = rows.Scan(&hash); err != nil {
+		var (
+			hash   common.Hash
+			number uint64
+		)
+		if err = rows.Scan(&hash, &number); err != nil {
 			break
 		}
 
-		trace, err := rdb.GetBlockTraceByHash(context.Background(), hash)
+		trace, err := rdb.GetBlockTrace(context.Background(), big.NewInt(0).SetUint64(number), hash)
 		if err != nil {
 			return nil, err
 		}
