@@ -3,6 +3,7 @@
   "driver_name": "postgres",
   "redis_config": {
     "addr": "localhost:6379",
-    "password": ""
+    "password": "",
+    "trace_expire_sec": 60
   }
 }

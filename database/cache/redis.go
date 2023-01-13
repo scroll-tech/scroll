@@ -3,12 +3,13 @@ package cache
 import (
 	"context"
 	"encoding/json"
-	"github.com/scroll-tech/go-ethereum/common"
 	"math/big"
 	"time"
 
-	"github.com/go-redis/redis/v8"
+	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/core/types"
+
+	"github.com/go-redis/redis/v8"
 )
 
 // RedisClient handle redis client and some expires.

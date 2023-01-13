@@ -3,10 +3,11 @@ package database_test
 import (
 	"context"
 	"encoding/json"
-	"github.com/go-redis/redis/v8"
 	"os"
 	"testing"
 	"time"
+
+	"github.com/go-redis/redis/v8"
 
 	_ "github.com/lib/pq"
 	_ "github.com/mattn/go-sqlite3"

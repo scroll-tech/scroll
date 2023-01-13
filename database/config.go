@@ -8,8 +8,9 @@ import (
 
 // RedisConfig redis cache config.
 type RedisConfig struct {
-	Addr     string `json:"addr"`
-	Password string `json:"password,omitempty"`
+	Addr           string `json:"addr"`
+	Password       string `json:"password,omitempty"`
+	TraceExpireSec int64  `json:"trace_expire_sec"`
 }
 
 // DBConfig db config
@@ -22,7 +23,7 @@ type DBConfig struct {
 	MaxIdleNum int `json:"maxIdleNum" default:"20"`
 
 	// Redis config
-	RedisConfig *RedisConfig `json:"redis_config,omitempty"`
+	RedisConfig *RedisConfig `json:"redis_config"`
 }
 
 // NewConfig returns a new instance of Config.

@@ -1,12 +1,12 @@
 package database
 
 import (
+	"time"
+
 	"github.com/go-redis/redis/v8"
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq" //nolint:golint
 	"scroll-tech/database/cache"
-	"time"
-
 	"scroll-tech/database/orm"
 )
 
@@ -48,16 +48,11 @@ func NewOrmFactory(cfg *DBConfig) (OrmFactory, error) {
 		return nil, err
 	}
 
-	var (
-		rcache cache.CacheOrm
-		rCfg   = cfg.RedisConfig
-	)
-	if rCfg != nil {
-		rcache = cache.NewRedisClient(&redis.Options{
-			Addr:     rCfg.Addr,
-			Password: rCfg.Password,
-		}, time.Minute)
-	}
+	// Create redis client.
+	rcache := cache.NewRedisClient(&redis.Options{
+		Addr:     cfg.RedisConfig.Addr,
+		Password: cfg.RedisConfig.Password,
+	}, time.Duration(cfg.RedisConfig.TraceExpireSec)*time.Second)
 
 	return &ormFactory{
 		BlockTraceOrm:  orm.NewBlockTraceOrm(db, rcache),
