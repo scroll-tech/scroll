@@ -27,18 +27,15 @@ func testContracts(t *testing.T) {
 
 	// Start bridge process.
 	bridgeCmd := runBridgeApp(t)
-	bridgeCmd.RunApp(true)
-	bridgeCmd.ExpectWithTimeout(false, time.Second*10, "Start bridge successfully")
+	bridgeCmd.RunApp(func() bool { return bridgeCmd.WaitResult(time.Second*10, "Start bridge successfully") })
 
 	// Start coordinator process.
 	coordinatorCmd := runCoordinatorApp(t)
-	coordinatorCmd.RunApp(true)
-	coordinatorCmd.ExpectWithTimeout(false, time.Second*10, "Start coordinator successfully")
+	coordinatorCmd.RunApp(func() bool { return coordinatorCmd.WaitResult(time.Second*10, "Start coordinator successfully") })
 
 	// Start roller process.
 	rollerCmd := runRollerApp(t)
-	rollerCmd.RunApp(true)
-	rollerCmd.ExpectWithTimeout(false, time.Second*20, "roller start successfully")
+	rollerCmd.RunApp(func() bool { return rollerCmd.WaitResult(time.Second*20, "roller start successfully") })
 
 	// test native call.
 	t.Run("testNative", testNative)
