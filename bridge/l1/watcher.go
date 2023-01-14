@@ -142,7 +142,7 @@ func (w *Watcher) FetchContractEvent(blockHeight uint64) error {
 		query.Topics[0][1] = common.HexToHash(bridge_abi.RelayedMessageEventSignature)
 		query.Topics[0][2] = common.HexToHash(bridge_abi.FailedRelayedMessageEventSignature)
 		query.Topics[0][3] = common.HexToHash(bridge_abi.CommitBatchEventSignature)
-		query.Topics[0][4] = common.HexToHash(bridge_abi.FinalizeBatchEventSignature)
+		query.Topics[0][4] = common.HexToHash(bridge_abi.FinalizedBatchEventSignature)
 
 		logs, err := w.client.FilterLogs(w.ctx, query)
 		if err != nil {
@@ -303,7 +303,7 @@ func (w *Watcher) parseBridgeEventLogs(logs []types.Log) ([]*orm.L1Message, []re
 				txHash:  vLog.TxHash,
 				status:  orm.RollupCommitted,
 			})
-		case common.HexToHash(bridge_abi.FinalizeBatchEventSignature):
+		case common.HexToHash(bridge_abi.FinalizedBatchEventSignature):
 			event := struct {
 				BatchID    common.Hash
 				BatchHash  common.Hash

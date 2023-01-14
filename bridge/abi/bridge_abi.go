@@ -21,8 +21,8 @@ const (
 	// CommitBatchEventSignature = keccak256("CommitBatch(bytes32,bytes32,uint256,bytes32)")
 	CommitBatchEventSignature = "a26d4bd91c4c2eff3b1bf542129607d782506fc1950acfab1472a20d28c06596"
 
-	// FinalizeBatchEventSignature = keccak256("FinalizeBatch(bytes32,bytes32,uint256,bytes32)")
-	FinalizeBatchEventSignature = "e20f311a96205960de4d2bb351f7729e5136fa36ae64d7f736c67ddc4ca4cd4b"
+	// FinalizedBatchEventSignature = keccak256("FinalizeBatch(bytes32,bytes32,uint256,bytes32)")
+	FinalizedBatchEventSignature = "e20f311a96205960de4d2bb351f7729e5136fa36ae64d7f736c67ddc4ca4cd4b"
 )
 
 var (
