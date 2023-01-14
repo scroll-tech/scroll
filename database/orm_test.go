@@ -295,25 +295,25 @@ func testOrmBlockBatch(t *testing.T) {
 	assert.Equal(t, int(1), len(batcheIDs))
 	assert.Equal(t, batchID2, batcheIDs[0])
 
-	proving_status, err := ormBatch.GetProvingStatusByID(batchID1)
+	provingStatus, err := ormBatch.GetProvingStatusByID(batchID1)
 	assert.NoError(t, err)
-	assert.Equal(t, orm.ProvingTaskUnassigned, proving_status)
+	assert.Equal(t, orm.ProvingTaskUnassigned, provingStatus)
 	err = ormBatch.UpdateProofByID(context.Background(), batchID1, []byte{1}, []byte{2}, 1200)
 	assert.NoError(t, err)
 	err = ormBatch.UpdateProvingStatus(batchID1, orm.ProvingTaskVerified)
 	assert.NoError(t, err)
-	proving_status, err = ormBatch.GetProvingStatusByID(batchID1)
+	provingStatus, err = ormBatch.GetProvingStatusByID(batchID1)
 	assert.NoError(t, err)
-	assert.Equal(t, orm.ProvingTaskVerified, proving_status)
+	assert.Equal(t, orm.ProvingTaskVerified, provingStatus)
 
-	rollup_status, err := ormBatch.GetRollupStatus(batchID1)
+	rollupStatus, err := ormBatch.GetRollupStatus(batchID1)
 	assert.NoError(t, err)
-	assert.Equal(t, orm.RollupCommitted, rollup_status)
+	assert.Equal(t, orm.RollupCommitted, rollupStatus)
 	err = ormBatch.UpdateFinalizeTxHashAndRollupStatus(context.Background(), batchID1, "finalize_tx_1", orm.RollupFinalized)
 	assert.NoError(t, err)
-	rollup_status, err = ormBatch.GetRollupStatus(batchID1)
+	rollupStatus, err = ormBatch.GetRollupStatus(batchID1)
 	assert.NoError(t, err)
-	assert.Equal(t, orm.RollupFinalized, rollup_status)
+	assert.Equal(t, orm.RollupFinalized, rollupStatus)
 	result, err := ormBatch.GetLatestFinalizedBatch()
 	assert.NoError(t, err)
 	assert.Equal(t, batchID1, result.ID)
@@ -342,9 +342,9 @@ func testOrmSessionInfo(t *testing.T) {
 	ids, err := ormBatch.GetAssignedBatchIDs()
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(ids))
-	session_infos, err := ormSession.GetSessionInfosByIDs(ids)
+	sessionInfos, err := ormSession.GetSessionInfosByIDs(ids)
 	assert.NoError(t, err)
-	assert.Equal(t, 0, len(session_infos))
+	assert.Equal(t, 0, len(sessionInfos))
 
 	sessionInfo := orm.SessionInfo{
 		ID: batchID,
@@ -359,25 +359,25 @@ func testOrmSessionInfo(t *testing.T) {
 
 	// insert
 	assert.NoError(t, ormSession.SetSessionInfo(&sessionInfo))
-	session_infos, err = ormSession.GetSessionInfosByIDs(ids)
+	sessionInfos, err = ormSession.GetSessionInfosByIDs(ids)
 	assert.NoError(t, err)
-	assert.Equal(t, 1, len(session_infos))
-	assert.Equal(t, sessionInfo, *session_infos[0])
+	assert.Equal(t, 1, len(sessionInfos))
+	assert.Equal(t, sessionInfo, *sessionInfos[0])
 
 	// update
 	sessionInfo.Rollers["0"].Status = orm.RollerProofValid
 	assert.NoError(t, ormSession.SetSessionInfo(&sessionInfo))
-	session_infos, err = ormSession.GetSessionInfosByIDs(ids)
+	sessionInfos, err = ormSession.GetSessionInfosByIDs(ids)
 	assert.NoError(t, err)
-	assert.Equal(t, 1, len(session_infos))
-	assert.Equal(t, sessionInfo, *session_infos[0])
+	assert.Equal(t, 1, len(sessionInfos))
+	assert.Equal(t, sessionInfo, *sessionInfos[0])
 
 	// delete
 	assert.NoError(t, ormBatch.UpdateProvingStatus(batchID, orm.ProvingTaskVerified))
 	ids, err = ormBatch.GetAssignedBatchIDs()
 	assert.NoError(t, err)
 	assert.Equal(t, 0, len(ids))
-	session_infos, err = ormSession.GetSessionInfosByIDs(ids)
+	sessionInfos, err = ormSession.GetSessionInfosByIDs(ids)
 	assert.NoError(t, err)
-	assert.Equal(t, 0, len(session_infos))
+	assert.Equal(t, 0, len(sessionInfos))
 }
