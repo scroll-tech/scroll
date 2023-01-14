@@ -452,7 +452,7 @@ func (m *Manager) StartProofGenerationSession(task *orm.BlockBatch) (success boo
 	}
 
 	// Update session proving status as assigned.
-	if err := m.orm.UpdateProvingStatus(task.ID, orm.ProvingTaskAssigned); err != nil {
+	if err = m.orm.UpdateProvingStatus(task.ID, orm.ProvingTaskAssigned); err != nil {
 		log.Error("failed to update task status", "id", task.ID, "err", err)
 		return false
 	}

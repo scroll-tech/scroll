@@ -3,7 +3,7 @@ module scroll-tech/roller
 go 1.18
 
 require (
-	github.com/scroll-tech/go-ethereum v1.10.14-0.20221221073256-5ca70bf3a257
+	github.com/scroll-tech/go-ethereum v1.10.14-0.20230112091133-2891916a0f81
 	github.com/stretchr/testify v1.8.0
 	github.com/urfave/cli/v2 v2.10.2
 	go.etcd.io/bbolt v1.3.6
@@ -25,7 +25,7 @@ require (
 	github.com/shirou/gopsutil v3.21.11+incompatible // indirect
 	github.com/xrash/smetrics v0.0.0-20201216005158-039620a65673 // indirect
 	github.com/yusufpapurcu/wmi v1.2.2 // indirect
-	golang.org/x/crypto v0.4.0 // indirect
-	golang.org/x/sys v0.3.0 // indirect
+	golang.org/x/crypto v0.5.0 // indirect
+	golang.org/x/sys v0.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
