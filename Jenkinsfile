@@ -32,6 +32,8 @@ pipeline {
             steps {
                 sh 'make dev_docker'
                 sh 'make -C bridge mock_abi'
+                sh 'export PATH=/home/ubuntu/go/bin:$PATH'
+                sh 'make -C coordinator libzkp'
             }
         }
         stage('Parallel Test') {
