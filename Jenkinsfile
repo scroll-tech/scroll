@@ -16,7 +16,7 @@ pipeline {
         // LOG_DOCKER = 'true'
     }
     stages {
-        stage('Build') {
+        stage('Build Prerequisite') {
             when {
                 anyOf {
                     changeset "Jenkinsfile"
@@ -29,13 +29,26 @@ pipeline {
                     changeset "tests/**"
                 }
             }
-            parallel {
-                stage('Build Prerequisite') {
-                    steps {
-                        sh 'make dev_docker'
-                        sh 'make -C bridge mock_abi'
-                    }
+            steps {
+                sh 'make dev_docker'
+                sh 'make -C bridge mock_abi'
+            }
+        }
+        stage('Parallel Test') {
+            when {
+                anyOf {
+                    changeset "Jenkinsfile"
+                    changeset "build/**"
+                    changeset "go.work**"
+                    changeset "bridge/**"
+                    changeset "coordinator/**"
+                    changeset "common/**"
+                    changeset "database/**"
+                    changeset "tests/**"
                 }
+            }
+            parallel{
+                // check compilations
                 stage('Check Bridge Compilation') {
                     steps {
                         sh 'make -C bridge bridge'
@@ -67,22 +80,8 @@ pipeline {
                         sh 'make -C database docker'
                     }
                 }
-            }
-        }
-        stage('Parallel Test') {
-            when {
-                anyOf {
-                    changeset "Jenkinsfile"
-                    changeset "build/**"
-                    changeset "go.work**"
-                    changeset "bridge/**"
-                    changeset "coordinator/**"
-                    changeset "common/**"
-                    changeset "database/**"
-                    changeset "tests/**"
-                }
-            }
-            parallel{
+
+                // test packages/integration
                 stage('Test bridge package') {
                     steps {
                         sh 'go test -v -race -coverprofile=coverage.bridge.txt -covermode=atomic -p 1 scroll-tech/bridge/...'
@@ -108,6 +107,8 @@ pipeline {
                         sh 'go test -v -race -tags="mock_prover mock_verifier" -coverprofile=coverage.integration.txt -covermode=atomic -p 1 scroll-tech/integration-test/...'
                     }
                 }
+
+                // race test packages
                 stage('Race test bridge package') {
                     steps {
                         sh "cd bridge && go test -v -race -coverprofile=coverage.txt -covermode=atomic \$(go list ./... | grep -v 'database\\|common\\|l1\\|l2\\|coordinator')"
