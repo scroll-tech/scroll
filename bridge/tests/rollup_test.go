@@ -6,6 +6,7 @@ import (
 	"scroll-tech/database"
 	"scroll-tech/database/migrate"
 	"scroll-tech/database/orm"
+	"sync"
 	"testing"
 
 	"scroll-tech/bridge/l1"
@@ -78,8 +79,12 @@ func testCommitBatchAndFinalizeBatch(t *testing.T) {
 	err = dbTx.Commit()
 	assert.NoError(t, err)
 
+	var wg = sync.WaitGroup{}
+	wg.Add(1)
 	// process pending batch and check status
-	l2Relayer.ProcessPendingBatches()
+	l2Relayer.ProcessPendingBatches(&wg)
+	wg.Wait()
+
 	status, err := db.GetRollupStatus(batchID)
 	assert.NoError(t, err)
 	assert.Equal(t, orm.RollupCommitting, status)
@@ -108,8 +113,11 @@ func testCommitBatchAndFinalizeBatch(t *testing.T) {
 	err = db.UpdateProvingStatus(batchID, orm.ProvingTaskVerified)
 	assert.NoError(t, err)
 
+	wg.Add(1)
 	// process committed batch and check status
-	l2Relayer.ProcessCommittedBatches()
+	l2Relayer.ProcessCommittedBatches(&wg)
+	wg.Wait()
+
 	status, err = db.GetRollupStatus(batchID)
 	assert.NoError(t, err)
 	assert.Equal(t, orm.RollupFinalizing, status)
