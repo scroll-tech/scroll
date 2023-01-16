@@ -126,8 +126,7 @@ func testFailedHandshake(t *testing.T) {
 
 	authMsg := &message.AuthMsg{
 		Identity: &message.Identity{
-			Name:      name,
-			Timestamp: uint32(time.Now().Unix()),
+			Name: name,
 		},
 	}
 	assert.NoError(t, authMsg.Sign(privkey))
@@ -144,8 +143,7 @@ func testFailedHandshake(t *testing.T) {
 
 	authMsg = &message.AuthMsg{
 		Identity: &message.Identity{
-			Name:      name,
-			Timestamp: uint32(time.Now().Unix()),
+			Name: name,
 		},
 	}
 	assert.NoError(t, authMsg.Sign(privkey))
@@ -418,8 +416,7 @@ func (r *mockRoller) connectToCoordinator() (*client2.Client, ethereum.Subscript
 	// create a new ws connection
 	authMsg := &message.AuthMsg{
 		Identity: &message.Identity{
-			Name:      r.rollerName,
-			Timestamp: uint32(time.Now().Unix()),
+			Name: r.rollerName,
 		},
 	}
 	_ = authMsg.Sign(r.privKey)

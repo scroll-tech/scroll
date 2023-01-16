@@ -2,7 +2,6 @@ package message
 
 import (
 	"testing"
-	"time"
 
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/crypto"
@@ -15,8 +14,7 @@ func TestAuthMessageSignAndVerify(t *testing.T) {
 
 	authMsg := &AuthMsg{
 		Identity: &Identity{
-			Name:      "testRoller",
-			Timestamp: uint32(time.Now().Unix()),
+			Name: "testRoller",
 		},
 	}
 	assert.NoError(t, authMsg.Sign(privkey))
