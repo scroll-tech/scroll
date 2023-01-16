@@ -146,13 +146,14 @@ type BlockBatchOrm interface {
 	GetCommittedBatches() ([]string, error)
 	GetRollupStatus(id string) (RollupStatus, error)
 	GetRollupStatusByIDList(ids []string) ([]RollupStatus, error)
-	GetCommitTxHash(id string) (sql.NullString, error)
-	GetFinalizeTxHash(id string) (sql.NullString, error)
 	GetLatestFinalizedBatch() (*BlockBatch, error)
 	UpdateRollupStatus(ctx context.Context, id string, status RollupStatus) error
 	UpdateCommitTxHashAndRollupStatus(ctx context.Context, id string, commitTxHash string, status RollupStatus) error
 	UpdateFinalizeTxHashAndRollupStatus(ctx context.Context, id string, finalizeTxHash string, status RollupStatus) error
 	GetAssignedBatchIDs() ([]string, error)
+
+	GetCommitTxHash(id string) (sql.NullString, error)   // for unit tests only
+	GetFinalizeTxHash(id string) (sql.NullString, error) // for unit tests only
 }
 
 // L1MessageOrm is layer1 message db interface
@@ -166,6 +167,8 @@ type L1MessageOrm interface {
 	UpdateLayer1Status(ctx context.Context, msgHash string, status MsgStatus) error
 	UpdateLayer1StatusAndLayer2Hash(ctx context.Context, msgHash string, status MsgStatus, layer2Hash string) error
 	GetLayer1LatestWatchedHeight() (int64, error)
+
+	GetRelayL1MessageTxHash(nonce uint64) (sql.NullString, error) // for unit tests only
 }
 
 // L2MessageOrm is layer2 message db interface
@@ -183,4 +186,6 @@ type L2MessageOrm interface {
 	UpdateLayer2StatusAndLayer1Hash(ctx context.Context, msgHash string, status MsgStatus, layer1Hash string) error
 	UpdateMessageProof(ctx context.Context, nonce uint64, proof string) error
 	GetLayer2LatestWatchedHeight() (int64, error)
+
+	GetRelayL2MessageTxHash(nonce uint64) (sql.NullString, error) // for unit tests only
 }
