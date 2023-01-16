@@ -19,11 +19,15 @@ type RedisClient struct {
 }
 
 // NewRedisClient create a redis client and become CacheOrm interface.
-func NewRedisClient(option *redis.Options, traceExpire time.Duration) CacheOrm {
-	return &RedisClient{
-		Client:      redis.NewClient(option),
-		traceExpire: traceExpire,
+func NewRedisClient(url string, traceExpire time.Duration) (CacheOrm, error) {
+	op, err := redis.ParseURL(url)
+	if err != nil {
+		return nil, err
 	}
+	return &RedisClient{
+		Client:      redis.NewClient(op),
+		traceExpire: traceExpire,
+	}, nil
 }
 
 // SetBlockTrace Set trace to redis.

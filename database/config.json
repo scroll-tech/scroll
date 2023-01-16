@@ -2,8 +2,7 @@
   "dsn": "postgres://postgres:123456@localhost:5444/test?sslmode=disable",
   "driver_name": "postgres",
   "redis_config": {
-    "addr": "localhost:6379",
-    "password": "",
+    "redis_url": "redis://default:@localhost:6379/0",
     "trace_expire_sec": 60
   }
 }

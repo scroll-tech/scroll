@@ -8,8 +8,7 @@ import (
 
 // RedisConfig redis cache config.
 type RedisConfig struct {
-	Addr           string `json:"addr"`
-	Password       string `json:"password,omitempty"`
+	RedisURL       string `json:"redis_url"`
 	TraceExpireSec int64  `json:"trace_expire_sec"`
 }
 
