@@ -13,18 +13,24 @@ import (
 )
 
 var (
-	pgDB  *sqlx.DB
-	dbImg docker.ImgInstance
+	pgDB     *sqlx.DB
+	dbImg    docker.ImgInstance
+	redisImg docker.ImgInstance
 )
 
 func initEnv(t *testing.T) error {
 	// Start db container.
 	dbImg = docker.NewTestDBDocker(t, "postgres")
+	redisImg = docker.NewTestRedisDocker(t)
 
 	// Create db orm handler.
 	factory, err := database.NewOrmFactory(&database.DBConfig{
 		DriverName: "postgres",
 		DSN:        dbImg.Endpoint(),
+		RedisConfig: &database.RedisConfig{
+			TraceExpireSec: 30,
+			RedisURL:       redisImg.Endpoint(),
+		},
 	})
 	if err != nil {
 		return err
@@ -47,6 +53,9 @@ func TestMigrate(t *testing.T) {
 	t.Cleanup(func() {
 		if dbImg != nil {
 			assert.NoError(t, dbImg.Stop())
+		}
+		if redisImg != nil {
+			assert.NoError(t, redisImg.Stop())
 		}
 	})
 }
