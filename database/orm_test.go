@@ -7,8 +7,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-redis/redis/v8"
-
 	_ "github.com/lib/pq"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/scroll-tech/go-ethereum/core/types"
@@ -392,15 +390,4 @@ func testOrmSessionInfo(t *testing.T) {
 	sessionInfos, err = ormSession.GetSessionInfosByIDs(ids)
 	assert.NoError(t, err)
 	assert.Equal(t, 0, len(sessionInfos))
-}
-
-func TestRedis(t *testing.T) {
-	rdb := redis.NewClient(&redis.Options{
-		Addr: "localhost:6379",
-	})
-	key := "blockTrace"
-	rdb.HSet(context.Background(), key, "haha", "hehe")
-	val, err := rdb.HGet(context.Background(), key, "haha").Result()
-	assert.NoError(t, err)
-	t.Log(val)
 }
