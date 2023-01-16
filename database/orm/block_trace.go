@@ -191,8 +191,8 @@ func (o *blockTraceOrm) InsertBlockTraces(blockTraces []*types.BlockTrace) error
 	return err
 }
 
-func (o *blockTraceOrm) DeleteTracesByBatchID(batch_id string) error {
-	if _, err := o.db.Exec(o.db.Rebind("update block_trace set trace = ? where batch_id = ?;"), "{}", batch_id); err != nil {
+func (o *blockTraceOrm) DeleteTracesByBatchID(batchID string) error {
+	if _, err := o.db.Exec(o.db.Rebind("update block_trace set trace = ? where batch_id = ?;"), "{}", batchID); err != nil {
 		return err
 	}
 	return nil

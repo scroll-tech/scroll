@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"math/big"
+	"runtime"
 	"sync"
 	"time"
 
@@ -13,6 +14,7 @@ import (
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/log"
 	"golang.org/x/sync/errgroup"
+	"modernc.org/mathutil"
 
 	"scroll-tech/database"
 	"scroll-tech/database/orm"
@@ -43,14 +45,17 @@ type Layer2Relayer struct {
 	rollupCh     <-chan *sender.Confirmation
 	l1RollupABI  *abi.ABI
 
-	// a list of processing message, indexed by layer2 hash
-	processingMessage map[string]string
+	// A list of processing message.
+	// key(string): confirmation ID, value(string): layer2 hash.
+	processingMessage sync.Map
 
-	// a list of processing batch commitment, indexed by batch id
-	processingCommitment map[string]string
+	// A list of processing batch commitment.
+	// key(string): confirmation ID, value(string): batch id.
+	processingCommitment sync.Map
 
-	// a list of processing batch finalization, indexed by batch id
-	processingFinalization map[string]string
+	// A list of processing batch finalization.
+	// key(string): confirmation ID, value(string): batch id.
+	processingFinalization sync.Map
 
 	stopCh chan struct{}
 }
@@ -80,15 +85,16 @@ func NewLayer2Relayer(ctx context.Context, db database.OrmFactory, cfg *config.R
 		rollupCh:               rollupSender.ConfirmChan(),
 		l1RollupABI:            bridge_abi.RollupMetaABI,
 		cfg:                    cfg,
-		processingMessage:      map[string]string{},
-		processingCommitment:   map[string]string{},
-		processingFinalization: map[string]string{},
+		processingMessage:      sync.Map{},
+		processingCommitment:   sync.Map{},
+		processingFinalization: sync.Map{},
 		stopCh:                 make(chan struct{}),
 	}, nil
 }
 
 // ProcessSavedEvents relays saved un-processed cross-domain transactions to desired blockchain
-func (r *Layer2Relayer) ProcessSavedEvents() {
+func (r *Layer2Relayer) ProcessSavedEvents(wg *sync.WaitGroup) {
+	defer wg.Done()
 	batch, err := r.db.GetLatestFinalizedBatch()
 	if err != nil {
 		log.Error("GetLatestFinalizedBatch failed", "err", err)
@@ -104,25 +110,18 @@ func (r *Layer2Relayer) ProcessSavedEvents() {
 	}
 
 	// process messages in batches
-	batch_size := r.messageSender.NumberOfAccounts()
-
-	for from := 0; from < len(msgs); from += batch_size {
-		to := from + batch_size
-
-		if to > len(msgs) {
-			to = len(msgs)
+	batchSize := mathutil.Min((runtime.GOMAXPROCS(0)+1)/2, r.messageSender.NumberOfAccounts())
+	for size := 0; len(msgs) > 0; msgs = msgs[size:] {
+		if size = len(msgs); size > batchSize {
+			size = batchSize
 		}
-
 		var g errgroup.Group
-
-		for i := from; i < to; i++ {
-			msg := msgs[i]
-
+		for _, msg := range msgs[:size] {
+			msg := msg
 			g.Go(func() error {
-				return r.processSavedEvent(msg, batch)
+				return r.processSavedEvent(msg, batch.Index)
 			})
 		}
-
 		if err := g.Wait(); err != nil {
 			if !errors.Is(err, sender.ErrNoAvailableAccount) {
 				log.Error("failed to process l2 saved event", "err", err)
@@ -132,13 +131,13 @@ func (r *Layer2Relayer) ProcessSavedEvents() {
 	}
 }
 
-func (r *Layer2Relayer) processSavedEvent(msg *orm.L2Message, batch *orm.BlockBatch) error {
+func (r *Layer2Relayer) processSavedEvent(msg *orm.L2Message, index uint64) error {
 	// @todo fetch merkle proof from l2geth
 	log.Info("Processing L2 Message", "msg.nonce", msg.Nonce, "msg.height", msg.Height)
 
 	proof := bridge_abi.IL1ScrollMessengerL2MessageProof{
 		BlockHeight: big.NewInt(int64(msg.Height)),
-		BatchIndex:  big.NewInt(int64(batch.Index)),
+		BatchIndex:  big.NewInt(0).SetUint64(index),
 		MerkleProof: make([]byte, 0),
 	}
 	from := common.HexToAddress(msg.Sender)
@@ -176,12 +175,13 @@ func (r *Layer2Relayer) processSavedEvent(msg *orm.L2Message, batch *orm.BlockBa
 		log.Error("UpdateLayer2StatusAndLayer1Hash failed", "msgHash", msg.MsgHash, "err", err)
 		return err
 	}
-	r.processingMessage[msg.MsgHash] = msg.MsgHash
+	r.processingMessage.Store(msg.MsgHash, msg.MsgHash)
 	return nil
 }
 
 // ProcessPendingBatches submit batch data to layer 1 rollup contract
-func (r *Layer2Relayer) ProcessPendingBatches() {
+func (r *Layer2Relayer) ProcessPendingBatches(wg *sync.WaitGroup) {
+	defer wg.Done()
 	// batches are sorted by batch index in increasing order
 	batchesInDB, err := r.db.GetPendingBatches()
 	if err != nil {
@@ -263,18 +263,19 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 		}
 		return
 	}
-	log.Info("commitBatch in layer1", "batchID", id, "index", batch.Index, "hash", hash)
+	log.Info("commitBatch in layer1", "batch_id", id, "index", batch.Index, "hash", hash)
 
 	// record and sync with db, @todo handle db error
 	err = r.db.UpdateCommitTxHashAndRollupStatus(r.ctx, id, hash.String(), orm.RollupCommitting)
 	if err != nil {
 		log.Error("UpdateCommitTxHashAndRollupStatus failed", "id", id, "index", batch.Index, "err", err)
 	}
-	r.processingCommitment[txID] = id
+	r.processingCommitment.Store(txID, id)
 }
 
 // ProcessCommittedBatches submit proof to layer 1 rollup contract
-func (r *Layer2Relayer) ProcessCommittedBatches() {
+func (r *Layer2Relayer) ProcessCommittedBatches(wg *sync.WaitGroup) {
+	defer wg.Done()
 	// batches are sorted by batch index in increasing order
 	batches, err := r.db.GetCommittedBatches()
 	if err != nil {
@@ -358,15 +359,15 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 			}
 			return
 		}
-		log.Info("finalizeBatchWithProof in layer1", "batchID", id, "hash", hash)
+		log.Info("finalizeBatchWithProof in layer1", "batch_id", id, "hash", hash)
 
 		// record and sync with db, @todo handle db error
 		err = r.db.UpdateFinalizeTxHashAndRollupStatus(r.ctx, id, hash.String(), orm.RollupFinalizing)
 		if err != nil {
-			log.Warn("UpdateFinalizeTxHashAndRollupStatus failed", "batchID", id, "err", err)
+			log.Warn("UpdateFinalizeTxHashAndRollupStatus failed", "batch_id", id, "err", err)
 		}
 		success = true
-		r.processingFinalization[txID] = id
+		r.processingFinalization.Store(txID, id)
 
 	default:
 		log.Error("encounter unreachable case in ProcessCommittedBatches",
@@ -385,26 +386,12 @@ func (r *Layer2Relayer) Start() {
 		for {
 			select {
 			case <-ticker.C:
-				var wg sync.WaitGroup
+				var wg = sync.WaitGroup{}
 				wg.Add(3)
-
-				go func() {
-					defer wg.Done()
-					r.ProcessSavedEvents()
-				}()
-
-				go func() {
-					defer wg.Done()
-					r.ProcessPendingBatches()
-				}()
-
-				go func() {
-					defer wg.Done()
-					r.ProcessCommittedBatches()
-				}()
-
+				go r.ProcessSavedEvents(&wg)
+				go r.ProcessPendingBatches(&wg)
+				go r.ProcessCommittedBatches(&wg)
 				wg.Wait()
-
 			case confirmation := <-r.messageCh:
 				r.handleConfirmation(confirmation)
 			case confirmation := <-r.rollupCh:
@@ -429,36 +416,36 @@ func (r *Layer2Relayer) handleConfirmation(confirmation *sender.Confirmation) {
 
 	transactionType := "Unknown"
 	// check whether it is message relay transaction
-	if msgHash, ok := r.processingMessage[confirmation.ID]; ok {
+	if msgHash, ok := r.processingMessage.Load(confirmation.ID); ok {
 		transactionType = "MessageRelay"
 		// @todo handle db error
-		err := r.db.UpdateLayer2StatusAndLayer1Hash(r.ctx, msgHash, orm.MsgConfirmed, confirmation.TxHash.String())
+		err := r.db.UpdateLayer2StatusAndLayer1Hash(r.ctx, msgHash.(string), orm.MsgConfirmed, confirmation.TxHash.String())
 		if err != nil {
-			log.Warn("UpdateLayer2StatusAndLayer1Hash failed", "msgHash", msgHash, "err", err)
+			log.Warn("UpdateLayer2StatusAndLayer1Hash failed", "msgHash", msgHash.(string), "err", err)
 		}
-		delete(r.processingMessage, confirmation.ID)
+		r.processingMessage.Delete(confirmation.ID)
 	}
 
 	// check whether it is block commitment transaction
-	if batch_id, ok := r.processingCommitment[confirmation.ID]; ok {
+	if batchID, ok := r.processingCommitment.Load(confirmation.ID); ok {
 		transactionType = "BatchCommitment"
 		// @todo handle db error
-		err := r.db.UpdateCommitTxHashAndRollupStatus(r.ctx, batch_id, confirmation.TxHash.String(), orm.RollupCommitted)
+		err := r.db.UpdateCommitTxHashAndRollupStatus(r.ctx, batchID.(string), confirmation.TxHash.String(), orm.RollupCommitted)
 		if err != nil {
-			log.Warn("UpdateCommitTxHashAndRollupStatus failed", "batch_id", batch_id, "err", err)
+			log.Warn("UpdateCommitTxHashAndRollupStatus failed", "batch_id", batchID.(string), "err", err)
 		}
-		delete(r.processingCommitment, confirmation.ID)
+		r.processingCommitment.Delete(confirmation.ID)
 	}
 
 	// check whether it is proof finalization transaction
-	if batch_id, ok := r.processingFinalization[confirmation.ID]; ok {
+	if batchID, ok := r.processingFinalization.Load(confirmation.ID); ok {
 		transactionType = "ProofFinalization"
 		// @todo handle db error
-		err := r.db.UpdateFinalizeTxHashAndRollupStatus(r.ctx, batch_id, confirmation.TxHash.String(), orm.RollupFinalized)
+		err := r.db.UpdateFinalizeTxHashAndRollupStatus(r.ctx, batchID.(string), confirmation.TxHash.String(), orm.RollupFinalized)
 		if err != nil {
-			log.Warn("UpdateFinalizeTxHashAndRollupStatus failed", "batch_id", batch_id, "err", err)
+			log.Warn("UpdateFinalizeTxHashAndRollupStatus failed", "batch_id", batchID.(string), "err", err)
 		}
-		delete(r.processingFinalization, confirmation.ID)
+		r.processingFinalization.Delete(confirmation.ID)
 	}
 	log.Info("transaction confirmed in layer1", "type", transactionType, "confirmation", confirmation)
 }

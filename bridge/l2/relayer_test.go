@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"math/big"
 	"os"
+	"sync"
 	"testing"
 	"time"
 
@@ -94,7 +95,10 @@ func testL2RelayerProcessSaveEvents(t *testing.T) {
 	err = db.UpdateRollupStatus(context.Background(), batchID, orm.RollupFinalized)
 	assert.NoError(t, err)
 
-	relayer.ProcessSavedEvents()
+	var wg = sync.WaitGroup{}
+	wg.Add(1)
+	relayer.ProcessSavedEvents(&wg)
+	wg.Wait()
 
 	msg, err := db.GetL2MessageByNonce(templateL2Message[0].Nonce)
 	assert.NoError(t, err)
@@ -150,7 +154,10 @@ func testL2RelayerProcessPendingBatches(t *testing.T) {
 	// err = db.UpdateRollupStatus(context.Background(), batchID, orm.RollupPending)
 	// assert.NoError(t, err)
 
-	relayer.ProcessPendingBatches()
+	var wg = sync.WaitGroup{}
+	wg.Add(1)
+	relayer.ProcessPendingBatches(&wg)
+	wg.Wait()
 
 	// Check if Rollup Result is changed successfully
 	status, err := db.GetRollupStatus(batchID)
@@ -187,7 +194,10 @@ func testL2RelayerProcessCommittedBatches(t *testing.T) {
 	err = db.UpdateProvingStatus(batchID, orm.ProvingTaskVerified)
 	assert.NoError(t, err)
 
-	relayer.ProcessCommittedBatches()
+	var wg = sync.WaitGroup{}
+	wg.Add(1)
+	relayer.ProcessCommittedBatches(&wg)
+	wg.Wait()
 
 	status, err := db.GetRollupStatus(batchID)
 	assert.NoError(t, err)
