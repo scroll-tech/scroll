@@ -15,6 +15,7 @@ import (
 
 	"scroll-tech/bridge/config"
 	"scroll-tech/bridge/mock_bridge"
+
 	"scroll-tech/common/docker"
 )
 

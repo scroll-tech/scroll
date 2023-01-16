@@ -13,8 +13,9 @@ import (
 	"github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/log"
 
-	"scroll-tech/common/utils"
 	"scroll-tech/database/cache"
+
+	"scroll-tech/common/utils"
 )
 
 type blockTraceOrm struct {
