@@ -24,7 +24,7 @@ func (w *WatcherClient) GetBlockTraceByHash(ctx context.Context, blockHash commo
 	}
 	// If trace don't exist in cache, get it return and write into cache.
 	if len(traces) == 0 {
-		rdb := w.orm.(cache.CacheOrm)
+		rdb := w.orm.(cache.Cache)
 		trace, err := w.Client.GetBlockTraceByHash(ctx, blockHash)
 		if err != nil {
 			return nil, err
@@ -42,7 +42,7 @@ func (w *WatcherClient) GetBlockTraceByNumber(ctx context.Context, number *big.I
 	}
 	// If trace don't exist in cache, get it return and write into cache.
 	if len(traces) == 0 {
-		rdb := w.orm.(cache.CacheOrm)
+		rdb := w.orm.(cache.Cache)
 		trace, err := w.Client.GetBlockTraceByNumber(ctx, number)
 		if err != nil {
 			return nil, err

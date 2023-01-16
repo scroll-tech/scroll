@@ -36,8 +36,10 @@ import (
 )
 
 var (
-	cfg   *bridge_config.Config
-	dbImg docker.ImgInstance
+	dbImg    docker.ImgInstance
+	redisImg docker.ImgInstance
+
+	cfg *bridge_config.Config
 )
 
 func randomURL() string {
@@ -54,7 +56,20 @@ func setEnv(t *testing.T) (err error) {
 	dbImg = docker.NewTestDBDocker(t, cfg.DBConfig.DriverName)
 	cfg.DBConfig.DSN = dbImg.Endpoint()
 
+	// Create redis container.
+	redisImg = docker.NewTestRedisDocker(t)
+	cfg.DBConfig.RedisConfig.RedisURL = redisImg.Endpoint()
+
 	return
+}
+
+func free(t *testing.T) {
+	if dbImg != nil {
+		assert.NoError(t, dbImg.Stop())
+	}
+	if redisImg != nil {
+		assert.NoError(t, redisImg.Stop())
+	}
 }
 
 func TestApis(t *testing.T) {
@@ -71,7 +86,7 @@ func TestApis(t *testing.T) {
 
 	// Teardown
 	t.Cleanup(func() {
-		dbImg.Stop()
+		free(t)
 	})
 }
 
@@ -365,7 +380,7 @@ func setupCoordinator(t *testing.T, dbCfg *database.DBConfig, wsURL string) (rol
 		Verifier:          &coordinator_config.VerifierConfig{MockMode: true},
 		CollectionTime:    1,
 		TokenTimeToLive:   5,
-	}, db, nil)
+	}, db)
 	assert.NoError(t, err)
 	assert.NoError(t, rollerManager.Start())
 

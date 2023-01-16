@@ -82,6 +82,7 @@ var (
 
 	dbConfig   *database.DBConfig
 	dbImg      docker.ImgInstance
+	redisImg   docker.ImgInstance
 	ormBlock   orm.BlockTraceOrm
 	ormLayer1  orm.L1MessageOrm
 	ormLayer2  orm.L2MessageOrm
@@ -91,9 +92,13 @@ var (
 
 func setupEnv(t *testing.T) error {
 	// Init db config and start db container.
-	dbConfig = &database.DBConfig{DriverName: "postgres"}
+	dbConfig = &database.DBConfig{DriverName: "postgres", RedisConfig: &database.RedisConfig{
+		TraceExpireSec: 30,
+	}}
 	dbImg = docker.NewTestDBDocker(t, dbConfig.DriverName)
 	dbConfig.DSN = dbImg.Endpoint()
+	redisImg = docker.NewTestRedisDocker(t)
+	dbConfig.RedisConfig.RedisURL = redisImg.Endpoint()
 
 	// Create db handler and reset db.
 	factory, err := database.NewOrmFactory(dbConfig)
@@ -102,7 +107,7 @@ func setupEnv(t *testing.T) error {
 	assert.NoError(t, migrate.ResetDB(db.DB))
 
 	// Init several orm handles.
-	ormBlock = orm.NewBlockTraceOrm(db, nil)
+	ormBlock = orm.NewBlockTraceOrm(db, factory)
 	ormLayer1 = orm.NewL1MessageOrm(db)
 	ormLayer2 = orm.NewL2MessageOrm(db)
 	ormBatch = orm.NewBlockBatchOrm(db)
@@ -117,16 +122,21 @@ func setupEnv(t *testing.T) error {
 	return json.Unmarshal(templateBlockTrace, blockTrace)
 }
 
+func free(t *testing.T) {
+	if dbImg != nil {
+		assert.NoError(t, dbImg.Stop())
+	}
+	if redisImg != nil {
+		assert.NoError(t, redisImg.Stop())
+	}
+}
+
 // TestOrmFactory run several test cases.
 func TestOrmFactory(t *testing.T) {
-	defer func() {
-		if dbImg != nil {
-			assert.NoError(t, dbImg.Stop())
-		}
-	}()
 	if err := setupEnv(t); err != nil {
 		t.Fatal(err)
 	}
+	defer free(t)
 
 	t.Run("testOrmBlockTraces", testOrmBlockTraces)
 

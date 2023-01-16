@@ -14,6 +14,7 @@ import (
 	"scroll-tech/common/utils"
 )
 
+// ImgRedis the redis image.
 type ImgRedis struct {
 	image string
 	name  string

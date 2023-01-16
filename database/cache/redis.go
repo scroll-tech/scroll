@@ -18,8 +18,8 @@ type RedisClient struct {
 	traceExpire time.Duration
 }
 
-// NewRedisClient create a redis client and become CacheOrm interface.
-func NewRedisClient(url string, traceExpire time.Duration) (CacheOrm, error) {
+// NewRedisClient create a redis client and become Cache interface.
+func NewRedisClient(url string, traceExpire time.Duration) (Cache, error) {
 	op, err := redis.ParseURL(url)
 	if err != nil {
 		return nil, err

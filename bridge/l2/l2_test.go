@@ -19,6 +19,7 @@ var (
 	l1gethImg docker.ImgInstance
 	l2gethImg docker.ImgInstance
 	dbImg     docker.ImgInstance
+	redisImg  docker.ImgInstance
 
 	// l2geth client
 	l2Cli *ethclient.Client
@@ -43,6 +44,10 @@ func setupEnv(t *testing.T) (err error) {
 	dbImg = docker.NewTestDBDocker(t, cfg.DBConfig.DriverName)
 	cfg.DBConfig.DSN = dbImg.Endpoint()
 
+	// Create redis container.
+	redisImg = docker.NewTestRedisDocker(t)
+	cfg.DBConfig.RedisConfig.RedisURL = redisImg.Endpoint()
+
 	// Create l2geth client.
 	l2Cli, err = ethclient.Dial(cfg.L2Config.Endpoint)
 	assert.NoError(t, err)
@@ -59,6 +64,9 @@ func free(t *testing.T) {
 	}
 	if l2gethImg != nil {
 		assert.NoError(t, l2gethImg.Stop())
+	}
+	if redisImg != nil {
+		assert.NoError(t, redisImg.Stop())
 	}
 }
 

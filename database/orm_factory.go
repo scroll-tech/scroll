@@ -17,7 +17,7 @@ type OrmFactory interface {
 	orm.L1MessageOrm
 	orm.L2MessageOrm
 	orm.SessionInfoOrm
-	cache.CacheOrm
+	cache.Cache
 	GetDB() *sqlx.DB
 	Beginx() (*sqlx.Tx, error)
 	Close() error
@@ -31,7 +31,7 @@ type ormFactory struct {
 	orm.SessionInfoOrm
 	*sqlx.DB
 	// cache interface.
-	cache.CacheOrm
+	cache.Cache
 }
 
 // NewOrmFactory create an ormFactory factory include all ormFactory interface
@@ -60,7 +60,7 @@ func NewOrmFactory(cfg *DBConfig) (OrmFactory, error) {
 		L1MessageOrm:   orm.NewL1MessageOrm(db),
 		L2MessageOrm:   orm.NewL2MessageOrm(db),
 		SessionInfoOrm: orm.NewSessionInfoOrm(db),
-		CacheOrm:       cacheOrm,
+		Cache:          cacheOrm,
 		DB:             db,
 	}, nil
 }

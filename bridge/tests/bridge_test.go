@@ -4,11 +4,7 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"math/big"
-	"scroll-tech/common/docker"
 	"testing"
-
-	"scroll-tech/bridge/config"
-	"scroll-tech/bridge/mock_bridge"
 
 	"github.com/scroll-tech/go-ethereum/accounts/abi/bind"
 	"github.com/scroll-tech/go-ethereum/common"
@@ -16,6 +12,10 @@ import (
 	"github.com/scroll-tech/go-ethereum/crypto"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/stretchr/testify/assert"
+
+	"scroll-tech/bridge/config"
+	"scroll-tech/bridge/mock_bridge"
+	"scroll-tech/common/docker"
 )
 
 var (
@@ -29,6 +29,7 @@ var (
 	l1gethImg docker.ImgInstance
 	l2gethImg docker.ImgInstance
 	dbImg     docker.ImgInstance
+	redisImg  docker.ImgInstance
 
 	// clients
 	l1Client *ethclient.Client
@@ -80,6 +81,9 @@ func setupEnv(t *testing.T) {
 	dbImg = docker.NewTestDBDocker(t, cfg.DBConfig.DriverName)
 	cfg.DBConfig.DSN = dbImg.Endpoint()
 
+	redisImg = docker.NewTestRedisDocker(t)
+	cfg.DBConfig.RedisConfig.RedisURL = redisImg.Endpoint()
+
 	// Create l1geth and l2geth client.
 	l1Client, err = ethclient.Dial(cfg.L1Config.Endpoint)
 	assert.NoError(t, err)
@@ -100,6 +104,9 @@ func free(t *testing.T) {
 	}
 	if l2gethImg != nil {
 		assert.NoError(t, l2gethImg.Stop())
+	}
+	if redisImg != nil {
+		assert.NoError(t, redisImg.Stop())
 	}
 }
 

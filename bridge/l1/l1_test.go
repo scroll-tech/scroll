@@ -18,6 +18,7 @@ var (
 	l1gethImg docker.ImgInstance
 	l2gethImg docker.ImgInstance
 	dbImg     docker.ImgInstance
+	redisImg  docker.ImgInstance
 )
 
 func setupEnv(t *testing.T) {
@@ -39,6 +40,10 @@ func setupEnv(t *testing.T) {
 	// Create db container.
 	dbImg = docker.NewTestDBDocker(t, cfg.DBConfig.DriverName)
 	cfg.DBConfig.DSN = dbImg.Endpoint()
+
+	// Create redis container.
+	redisImg = docker.NewTestRedisDocker(t)
+	cfg.DBConfig.RedisConfig.RedisURL = redisImg.Endpoint()
 }
 
 func free(t *testing.T) {
@@ -50,6 +55,9 @@ func free(t *testing.T) {
 	}
 	if l2gethImg != nil {
 		assert.NoError(t, l2gethImg.Stop())
+	}
+	if redisImg != nil {
+		assert.NoError(t, redisImg.Stop())
 	}
 }
 

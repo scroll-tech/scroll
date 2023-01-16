@@ -79,6 +79,7 @@ func NewTestDBDocker(t *testing.T, driverName string) ImgInstance {
 	return imgDB
 }
 
+// NewTestRedisDocker starts and run redis docker.
 func NewTestRedisDocker(t *testing.T) ImgInstance {
 	id, _ := rand.Int(rand.Reader, big.NewInt(2000))
 	imgRedis := NewImgRedis(t, "redis", rsStartPort+int(id.Int64()))
