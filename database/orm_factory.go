@@ -3,11 +3,12 @@ package database
 import (
 	"time"
 
+	"scroll-tech/database/cache"
+	"scroll-tech/database/orm"
+
 	"github.com/go-redis/redis/v8"
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq" //nolint:golint
-	"scroll-tech/database/cache"
-	"scroll-tech/database/orm"
 )
 
 // OrmFactory include all ormFactory interface

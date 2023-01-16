@@ -73,6 +73,7 @@ func (o *blockTraceOrm) GetBlockTraces(fields map[string]interface{}, args ...st
 	)
 	for rows.Next() {
 		var (
+			trace  *types.BlockTrace
 			hash   common.Hash
 			number uint64
 		)
@@ -80,7 +81,7 @@ func (o *blockTraceOrm) GetBlockTraces(fields map[string]interface{}, args ...st
 			break
 		}
 
-		trace, err := rdb.GetBlockTrace(context.Background(), big.NewInt(0).SetUint64(number), hash)
+		trace, err = rdb.GetBlockTrace(context.Background(), big.NewInt(0).SetUint64(number), hash)
 		if err != nil {
 			return nil, err
 		}
