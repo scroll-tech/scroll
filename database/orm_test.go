@@ -105,11 +105,11 @@ func setupEnv(t *testing.T) error {
 	assert.NoError(t, migrate.ResetDB(db.DB))
 
 	// Init several orm handles.
-	ormBlock = orm.NewBlockTraceOrm(db, factory)
-	ormLayer1 = orm.NewL1MessageOrm(db)
-	ormLayer2 = orm.NewL2MessageOrm(db)
-	ormBatch = orm.NewBlockBatchOrm(db)
-	ormSession = orm.NewSessionInfoOrm(db)
+	ormBlock = orm.BlockTraceOrm(factory)
+	ormLayer1 = orm.L1MessageOrm(factory)
+	ormLayer2 = orm.L2MessageOrm(factory)
+	ormBatch = orm.BlockBatchOrm(factory)
+	ormSession = orm.SessionInfoOrm(factory)
 
 	templateBlockTrace, err := os.ReadFile("../common/testdata/blockTrace_03.json")
 	if err != nil {
