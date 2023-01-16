@@ -304,7 +304,7 @@ github.com/rogpeppe/go-internal v1.8.1 h1:geMPLpDpQOgVyCg5z5GoRwLHepNdb71NXb67XF
 github.com/rogpeppe/go-internal v1.8.1/go.mod h1:JeRgkft04UBgHMgCIwADu4Pn6Mtm5d4nPKWu0nJ5d+o=
 github.com/rs/cors v1.7.0/go.mod h1:gFx+x8UowdsKA9AchylcLynDq+nNFfI8FkUZdN/jGCU=
 github.com/russross/blackfriday/v2 v2.0.1/go.mod h1:+Rmxgy9KzJVeS9/2gXHxylqXiyQDYRxCVz55jmeOWTM=
-github.com/scroll-tech/go-ethereum v1.10.14-0.20230112091133-2891916a0f81 h1:Gm18RZ9WTR2Dupumr60E2m1Noe+l9/lITt6iRyxxZoc=
+github.com/scroll-tech/go-ethereum v1.10.14-0.20230113082126-cdaea939622e h1:TAqAeQiQI6b+TRyqyQ6qhizqY35LhqYe8lWhG0nNRGw=
 github.com/scroll-tech/zktrie v0.3.0/go.mod h1:CuJFlG1/soTJJBAySxCZgTF7oPvd5qF6utHOEciC43Q=
 github.com/segmentio/kafka-go v0.1.0/go.mod h1:X6itGqS9L4jDletMsxZ7Dz+JFWxM6JHfPOCvTvk+EJo=
 github.com/segmentio/kafka-go v0.2.0/go.mod h1:X6itGqS9L4jDletMsxZ7Dz+JFWxM6JHfPOCvTvk+EJo=
