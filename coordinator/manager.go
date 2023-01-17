@@ -381,12 +381,6 @@ func (m *Manager) CollectProofs(sess *session) {
 func (m *Manager) isSessionFailed(info *orm.SessionInfo) bool {
 	for _, roller := range info.Rollers {
 		if roller.Status != orm.RollerProofInvalid {
-			log.Info(
-				"roller is still proving or has submitted valid proof",
-				"session id", info.ID,
-				"roller name", roller.Name,
-				"public key", roller.PublicKey,
-				"proof status", roller.Status)
 			return false
 		}
 	}
