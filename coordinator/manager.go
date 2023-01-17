@@ -368,7 +368,7 @@ func (m *Manager) CollectProofs(sess *session) {
 		sess.info.Rollers[ret.pk].Status = ret.status
 		m.mu.Unlock()
 		if m.isSessionFailed(sess.info) {
-			if err := m.orm.UpdateProvingStatus(ret.id, orm.ProvingTaskVerified); err != nil {
+			if err := m.orm.UpdateProvingStatus(ret.id, orm.ProvingTaskFailed); err != nil {
 				log.Error(
 					"failed to update proving_status",
 					"msg.ID", ret.id,
