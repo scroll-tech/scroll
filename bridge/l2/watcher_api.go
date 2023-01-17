@@ -7,9 +7,9 @@ import (
 
 // WatcherAPI watcher api service
 type WatcherAPI interface {
-	GetBatchByID(ctx context.Context, id string) ([]*types.BlockTrace, error)
+	GetTracesByBatchIndex(ctx context.Context, id string) ([]*types.BlockTrace, error)
 }
 
-func (w *WatcherClient) GetBatchByID(ctx context.Context, id string) ([]*types.BlockTrace, error) {
+func (w *WatcherClient) GetTracesByBatchIndex(ctx context.Context, id string) ([]*types.BlockTrace, error) {
 	return w.orm.GetBlockTraces(map[string]interface{}{"batch_id": id})
 }
