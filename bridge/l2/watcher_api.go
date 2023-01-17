@@ -8,7 +8,7 @@ import (
 
 // WatcherAPI watcher api service
 type WatcherAPI interface {
-	GetTracesByBatchIndex(ctx context.Context, id string) ([]*types.BlockTrace, error)
+	GetTracesByBatchIndex(ctx context.Context, index int64) ([]*types.BlockTrace, error)
 }
 
 // GetTracesByBatchIndex get traces by batch_id.

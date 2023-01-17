@@ -4,9 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"os"
-	"scroll-tech/database/cache"
 	"testing"
 	"time"
+
+	"scroll-tech/database/cache"
 
 	_ "github.com/lib/pq"
 	_ "github.com/mattn/go-sqlite3"

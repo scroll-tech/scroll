@@ -12,10 +12,6 @@ import (
 	"github.com/go-redis/redis/v8"
 )
 
-const (
-	TraceExpire = time.Second * 60
-)
-
 // RedisConfig redis cache config.
 type RedisConfig struct {
 	RedisURL    string           `json:"url"`
@@ -35,7 +31,7 @@ func NewRedisClient(redisConfig *RedisConfig) (Cache, error) {
 		return nil, err
 	}
 
-	var traceExpire = TraceExpire
+	var traceExpire = time.Second * 60
 	if val, exist := redisConfig.Expirations["trace"]; exist {
 		traceExpire = time.Duration(val) * time.Second
 	}

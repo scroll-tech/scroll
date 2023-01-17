@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"math/big"
 	"os"
-	"scroll-tech/database/cache"
 	"strconv"
 	"testing"
 	"time"
@@ -17,6 +16,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"scroll-tech/database"
+	"scroll-tech/database/cache"
 	_ "scroll-tech/database/cmd/app"
 
 	_ "scroll-tech/roller/cmd/app"
