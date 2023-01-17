@@ -1,4 +1,8 @@
 {
-  "dsn": "postgres://postgres:123456@localhost:5444/test?sslmode=disable",
-  "driver_name": "postgres"
+  "db_config": {
+    "persistence": {
+      "driver_name": "postgres",
+      "dsn": "postgres://admin:123456@localhost/test?sslmode=disable"
+    }
+  }
 }

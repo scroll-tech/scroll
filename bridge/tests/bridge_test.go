@@ -79,11 +79,11 @@ func setupEnv(t *testing.T) {
 	cfg.L2Config.Endpoint = l2gethImg.Endpoint()
 
 	// Create db container.
-	dbImg = docker.NewTestDBDocker(t, cfg.DBConfig.DriverName)
-	cfg.DBConfig.DSN = dbImg.Endpoint()
+	dbImg = docker.NewTestDBDocker(t, cfg.DBConfig.PGConfig.DriverName)
+	cfg.DBConfig.PGConfig.DSN = dbImg.Endpoint()
 
 	redisImg = docker.NewTestRedisDocker(t)
-	cfg.RedisConfig.RedisURL = redisImg.Endpoint()
+	cfg.DBConfig.RedisConfig.RedisURL = redisImg.Endpoint()
 
 	// Create l1geth and l2geth client.
 	l1Client, err = ethclient.Dial(cfg.L1Config.Endpoint)

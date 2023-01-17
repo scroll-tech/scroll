@@ -79,15 +79,14 @@ var (
 	}
 	blockTrace *types.BlockTrace
 
-	dbConfig    *database.DBConfig
-	redisConfig *cache.RedisConfig
-	dbImg       docker.ImgInstance
-	redisImg    docker.ImgInstance
-	ormBlock    orm.BlockTraceOrm
-	ormLayer1   orm.L1MessageOrm
-	ormLayer2   orm.L2MessageOrm
-	ormBatch    orm.BlockBatchOrm
-	ormSession  orm.SessionInfoOrm
+	dbConfig   *database.DBConfig
+	dbImg      docker.ImgInstance
+	redisImg   docker.ImgInstance
+	ormBlock   orm.BlockTraceOrm
+	ormLayer1  orm.L1MessageOrm
+	ormLayer2  orm.L2MessageOrm
+	ormBatch   orm.BlockBatchOrm
+	ormSession orm.SessionInfoOrm
 )
 
 func setupEnv(t *testing.T) error {
@@ -141,7 +140,7 @@ func TestOrmFactory(t *testing.T) {
 	if err := setupEnv(t); err != nil {
 		t.Fatal(err)
 	}
-	defer free(t)
+	defer freeDB(t)
 
 	t.Run("testOrmBlockTraces", testOrmBlockTraces)
 

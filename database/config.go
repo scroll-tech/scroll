@@ -8,6 +8,7 @@ import (
 	"scroll-tech/database/cache"
 )
 
+// PGConfig postgres db config.
 type PGConfig struct {
 	// data source name
 	DSN        string `json:"dsn"`
