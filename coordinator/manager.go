@@ -402,7 +402,7 @@ func (m *Manager) StartProofGenerationSession(task *orm.BlockBatch) (success boo
 	// Get traces by batch id.
 	traces, err := m.orm.GetBlockTraces(map[string]interface{}{"batch_id": task.ID})
 	if err != nil {
-		log.Error("failed to get block traces, batch_id: %d", task.ID)
+		log.Error("failed to get block traces", "batch_id", task.ID, "error", err)
 		return false
 	}
 
