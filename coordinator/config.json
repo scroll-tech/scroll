@@ -10,7 +10,7 @@
       "agg_vk_path": ""
     }
   },
-  "db_config": {
+  "db": {
     "persistence": {
       "driver_name": "postgres",
       "dsn": "postgres://admin:123456@localhost/test?sslmode=disable"

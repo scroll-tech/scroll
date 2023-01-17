@@ -53,8 +53,8 @@ func setEnv(t *testing.T) (err error) {
 	assert.NoError(t, err)
 
 	// Create db container.
-	dbImg = docker.NewTestDBDocker(t, cfg.DBConfig.PGConfig.DriverName)
-	cfg.DBConfig.PGConfig.DSN = dbImg.Endpoint()
+	dbImg = docker.NewTestDBDocker(t, cfg.DBConfig.DB.DriverName)
+	cfg.DBConfig.DB.DSN = dbImg.Endpoint()
 
 	// Create redis container.
 	redisImg = docker.NewTestRedisDocker(t)

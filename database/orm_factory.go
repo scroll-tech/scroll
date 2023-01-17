@@ -34,7 +34,7 @@ type ormFactory struct {
 
 // NewOrmFactory create an ormFactory factory include all ormFactory interface
 func NewOrmFactory(cfg *DBConfig) (OrmFactory, error) {
-	pCfg, rCfg := cfg.PGConfig, cfg.RedisConfig
+	pCfg, rCfg := cfg.DB, cfg.RedisConfig
 	// Initialize sql/sqlx
 	db, err := sqlx.Open(pCfg.DriverName, pCfg.DSN)
 	if err != nil {

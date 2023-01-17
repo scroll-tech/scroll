@@ -83,8 +83,8 @@ func setupEnv(t *testing.T) {
 	cfg.L2Config.Endpoint = l2gethImg.Endpoint()
 
 	// Create db container.
-	dbImg = docker.NewTestDBDocker(t, cfg.DBConfig.PGConfig.DriverName)
-	cfg.DBConfig.PGConfig.DSN = dbImg.Endpoint()
+	dbImg = docker.NewTestDBDocker(t, cfg.DBConfig.DB.DriverName)
+	cfg.DBConfig.DB.DSN = dbImg.Endpoint()
 
 	redisImg = docker.NewTestRedisDocker(t)
 	cfg.DBConfig.RedisConfig.RedisURL = redisImg.Endpoint()

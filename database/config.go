@@ -20,7 +20,7 @@ type PGConfig struct {
 
 // DBConfig db config
 type DBConfig struct {
-	PGConfig    *PGConfig          `json:"persistence"`
+	DB          *PGConfig          `json:"persistence"`
 	RedisConfig *cache.RedisConfig `json:"redis,omitempty"`
 }
 

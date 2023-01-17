@@ -13,7 +13,7 @@ type WatcherAPI interface {
 
 // GetTracesByBatchIndex get traces by batch_id.
 func (w *WatcherClient) GetTracesByBatchIndex(ctx context.Context, index int64) ([]*types.BlockTrace, error) {
-	id, err := w.orm.GetIDByIndex(index)
+	id, err := w.orm.GetBatchIDByIndex(index)
 	if err != nil {
 		return nil, err
 	}

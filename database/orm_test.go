@@ -95,7 +95,7 @@ func setupEnv(t *testing.T) error {
 	dbImg = docker.NewTestDBDocker(t, "postgres")
 	redisImg = docker.NewTestRedisDocker(t)
 	dbConfig = &database.DBConfig{
-		PGConfig: &database.PGConfig{
+		DB: &database.PGConfig{
 			DriverName: "postgres",
 			DSN:        dbImg.Endpoint(),
 		},

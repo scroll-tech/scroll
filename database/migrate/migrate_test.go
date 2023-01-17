@@ -26,7 +26,7 @@ func initEnv(t *testing.T) error {
 
 	// Create db orm handler.
 	factory, err := database.NewOrmFactory(&database.DBConfig{
-		PGConfig: &database.PGConfig{
+		DB: &database.PGConfig{
 			DriverName: "postgres",
 			DSN:        dbImg.Endpoint(),
 		},

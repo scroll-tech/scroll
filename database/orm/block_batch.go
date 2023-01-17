@@ -114,7 +114,8 @@ func NewBlockBatchOrm(db *sqlx.DB, cache cache.Cache) BlockBatchOrm {
 	return &blockBatchOrm{db: db, cache: cache}
 }
 
-func (o *blockBatchOrm) GetIDByIndex(index int64) (string, error) {
+// GetBatchIDByIndex get batch id by index.
+func (o *blockBatchOrm) GetBatchIDByIndex(index int64) (string, error) {
 	row := o.db.QueryRowx(`SELECT id FROM public.block_batch WHERE index = $1;`, index)
 	var id string
 	if err := row.Scan(&id); err != nil {
