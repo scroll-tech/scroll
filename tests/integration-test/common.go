@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"math/big"
 	"os"
+	"scroll-tech/database/cache"
 	"strconv"
 	"testing"
 	"time"
@@ -145,7 +146,7 @@ func mockBridgeConfig(t *testing.T) string {
 		cfg.L1Config.RelayerConfig.SenderConfig.Endpoint = l2gethImg.Endpoint()
 	}
 	if dbImg != nil {
-		cfg.DBConfig.DSN = dbImg.Endpoint()
+		cfg.DBConfig.PGConfig.DSN = dbImg.Endpoint()
 	}
 	if redisImg != nil {
 		cfg.DBConfig.RedisConfig.RedisURL = redisImg.Endpoint()
@@ -167,7 +168,7 @@ func mockCoordinatorConfig(t *testing.T) string {
 
 	cfg.RollerManagerConfig.Verifier.MockMode = true
 	if dbImg != nil {
-		cfg.DBConfig.DSN = dbImg.Endpoint()
+		cfg.DBConfig.PGConfig.DSN = dbImg.Endpoint()
 	}
 	if redisImg != nil {
 		cfg.DBConfig.RedisConfig.RedisURL = redisImg.Endpoint()
@@ -187,10 +188,13 @@ func mockDatabaseConfig(t *testing.T) string {
 	cfg, err := database.NewConfig("../../database/config.json")
 	assert.NoError(t, err)
 	if dbImg != nil {
-		cfg.DSN = dbImg.Endpoint()
+		cfg.PGConfig.DSN = dbImg.Endpoint()
 	}
 	if redisImg != nil {
-		cfg.RedisConfig.RedisURL = redisImg.Endpoint()
+		cfg.RedisConfig = &cache.RedisConfig{
+			RedisURL:    redisImg.Endpoint(),
+			Expirations: map[string]int64{"trace": 60},
+		}
 	}
 
 	data, err := json.Marshal(cfg)
