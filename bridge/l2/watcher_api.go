@@ -2,6 +2,7 @@ package l2
 
 import (
 	"context"
+
 	"github.com/scroll-tech/go-ethereum/core/types"
 )
 
@@ -10,6 +11,7 @@ type WatcherAPI interface {
 	GetTracesByBatchIndex(ctx context.Context, id string) ([]*types.BlockTrace, error)
 }
 
+// GetTracesByBatchIndex get traces by batch_id.
 func (w *WatcherClient) GetTracesByBatchIndex(ctx context.Context, id string) ([]*types.BlockTrace, error) {
 	return w.orm.GetBlockTraces(map[string]interface{}{"batch_id": id})
 }

@@ -4,15 +4,17 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"scroll-tech/database/cache"
 
 	"scroll-tech/database"
 )
 
 // Config load configuration items.
 type Config struct {
-	L1Config *L1Config          `json:"l1_config"`
-	L2Config *L2Config          `json:"l2_config"`
-	DBConfig *database.DBConfig `json:"db_config"`
+	L1Config    *L1Config          `json:"l1_config"`
+	L2Config    *L2Config          `json:"l2_config"`
+	DBConfig    *database.DBConfig `json:"db_config"`
+	RedisConfig *cache.RedisConfig `json:"redis_config"`
 }
 
 // NewConfig returns a new instance of Config.

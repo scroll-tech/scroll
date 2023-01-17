@@ -46,7 +46,7 @@ func setupEnv(t *testing.T) (err error) {
 
 	// Create redis container.
 	redisImg = docker.NewTestRedisDocker(t)
-	cfg.DBConfig.RedisConfig.RedisURL = redisImg.Endpoint()
+	cfg.RedisConfig.RedisURL = redisImg.Endpoint()
 
 	// Create l2geth client.
 	l2Cli, err = ethclient.Dial(cfg.L2Config.Endpoint)

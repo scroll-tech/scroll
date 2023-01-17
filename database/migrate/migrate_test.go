@@ -10,6 +10,7 @@ import (
 	"scroll-tech/common/docker"
 
 	"scroll-tech/database"
+	"scroll-tech/database/cache"
 )
 
 var (
@@ -27,10 +28,9 @@ func initEnv(t *testing.T) error {
 	factory, err := database.NewOrmFactory(&database.DBConfig{
 		DriverName: "postgres",
 		DSN:        dbImg.Endpoint(),
-		RedisConfig: &database.RedisConfig{
-			TraceExpireSec: 30,
-			RedisURL:       redisImg.Endpoint(),
-		},
+	}, &cache.RedisConfig{
+		TraceExpireSec: 30,
+		RedisURL:       redisImg.Endpoint(),
 	})
 	if err != nil {
 		return err

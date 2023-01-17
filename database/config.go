@@ -6,12 +6,6 @@ import (
 	"path/filepath"
 )
 
-// RedisConfig redis cache config.
-type RedisConfig struct {
-	RedisURL       string `json:"redis_url"`
-	TraceExpireSec int64  `json:"trace_expire_sec"`
-}
-
 // DBConfig db config
 type DBConfig struct {
 	// data source name
@@ -20,9 +14,6 @@ type DBConfig struct {
 
 	MaxOpenNum int `json:"maxOpenNum" default:"200"`
 	MaxIdleNum int `json:"maxIdleNum" default:"20"`
-
-	// Redis config
-	RedisConfig *RedisConfig `json:"redis_config"`
 }
 
 // NewConfig returns a new instance of Config.

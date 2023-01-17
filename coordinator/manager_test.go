@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"math/big"
 	"net/http"
+	"scroll-tech/database/cache"
 	"strconv"
 	"strings"
 	"sync"
@@ -58,7 +59,7 @@ func setEnv(t *testing.T) (err error) {
 
 	// Create redis container.
 	redisImg = docker.NewTestRedisDocker(t)
-	cfg.DBConfig.RedisConfig.RedisURL = redisImg.Endpoint()
+	cfg.RedisConfig.RedisURL = redisImg.Endpoint()
 
 	return
 }
@@ -92,14 +93,14 @@ func TestApis(t *testing.T) {
 
 func testHandshake(t *testing.T) {
 	// Create db handler and reset db.
-	l2db, err := database.NewOrmFactory(cfg.DBConfig)
+	l2db, err := database.NewOrmFactory(cfg.DBConfig, cfg.RedisConfig)
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(l2db.GetDB().DB))
 	defer l2db.Close()
 
 	// Setup coordinator and ws server.
 	wsURL := "ws://" + randomURL()
-	rollerManager, handler := setupCoordinator(t, cfg.DBConfig, wsURL)
+	rollerManager, handler := setupCoordinator(t, wsURL, cfg.DBConfig, cfg.RedisConfig)
 	defer func() {
 		handler.Shutdown(context.Background())
 		rollerManager.Stop()
@@ -113,14 +114,14 @@ func testHandshake(t *testing.T) {
 
 func testFailedHandshake(t *testing.T) {
 	// Create db handler and reset db.
-	l2db, err := database.NewOrmFactory(cfg.DBConfig)
+	l2db, err := database.NewOrmFactory(cfg.DBConfig, cfg.RedisConfig)
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(l2db.GetDB().DB))
 	defer l2db.Close()
 
 	// Setup coordinator and ws server.
 	wsURL := "ws://" + randomURL()
-	rollerManager, handler := setupCoordinator(t, cfg.DBConfig, wsURL)
+	rollerManager, handler := setupCoordinator(t, wsURL, cfg.DBConfig, cfg.RedisConfig)
 	defer func() {
 		handler.Shutdown(context.Background())
 		rollerManager.Stop()
@@ -179,14 +180,14 @@ func testFailedHandshake(t *testing.T) {
 
 func testSeveralConnections(t *testing.T) {
 	// Create db handler and reset db.
-	l2db, err := database.NewOrmFactory(cfg.DBConfig)
+	l2db, err := database.NewOrmFactory(cfg.DBConfig, cfg.RedisConfig)
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(l2db.GetDB().DB))
 	defer l2db.Close()
 
 	// Setup coordinator and ws server.
 	wsURL := "ws://" + randomURL()
-	rollerManager, handler := setupCoordinator(t, cfg.DBConfig, wsURL)
+	rollerManager, handler := setupCoordinator(t, wsURL, cfg.DBConfig, cfg.RedisConfig)
 	defer func() {
 		handler.Shutdown(context.Background())
 		rollerManager.Stop()
@@ -233,14 +234,14 @@ func testSeveralConnections(t *testing.T) {
 
 func testIdleRollerSelection(t *testing.T) {
 	// Create db handler and reset db.
-	l2db, err := database.NewOrmFactory(cfg.DBConfig)
+	l2db, err := database.NewOrmFactory(cfg.DBConfig, cfg.RedisConfig)
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(l2db.GetDB().DB))
 	defer l2db.Close()
 
 	// Setup coordinator and ws server.
 	wsURL := "ws://" + randomURL()
-	rollerManager, handler := setupCoordinator(t, cfg.DBConfig, wsURL)
+	rollerManager, handler := setupCoordinator(t, wsURL, cfg.DBConfig, cfg.RedisConfig)
 	defer func() {
 		handler.Shutdown(context.Background())
 		rollerManager.Stop()
@@ -293,7 +294,7 @@ func testIdleRollerSelection(t *testing.T) {
 
 func testGracefulRestart(t *testing.T) {
 	// Create db handler and reset db.
-	l2db, err := database.NewOrmFactory(cfg.DBConfig)
+	l2db, err := database.NewOrmFactory(cfg.DBConfig, cfg.RedisConfig)
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(l2db.GetDB().DB))
 	defer l2db.Close()
@@ -309,7 +310,7 @@ func testGracefulRestart(t *testing.T) {
 
 	// Setup coordinator and ws server.
 	wsURL := "ws://" + randomURL()
-	rollerManager, handler := setupCoordinator(t, cfg.DBConfig, wsURL)
+	rollerManager, handler := setupCoordinator(t, wsURL, cfg.DBConfig, cfg.RedisConfig)
 
 	// create mock roller
 	roller := newMockRoller(t, "roller_test", wsURL)
@@ -326,7 +327,7 @@ func testGracefulRestart(t *testing.T) {
 	rollerManager.Stop()
 
 	// Setup new coordinator and ws server.
-	newRollerManager, newHandler := setupCoordinator(t, cfg.DBConfig, wsURL)
+	newRollerManager, newHandler := setupCoordinator(t, wsURL, cfg.DBConfig, cfg.RedisConfig)
 	defer func() {
 		newHandler.Shutdown(context.Background())
 		newRollerManager.Stop()
@@ -370,9 +371,9 @@ func testGracefulRestart(t *testing.T) {
 	}
 }
 
-func setupCoordinator(t *testing.T, dbCfg *database.DBConfig, wsURL string) (rollerManager *coordinator.Manager, handler *http.Server) {
+func setupCoordinator(t *testing.T, wsURL string, dbCfg *database.DBConfig, redisConfig *cache.RedisConfig) (rollerManager *coordinator.Manager, handler *http.Server) {
 	// Get db handler.
-	db, err := database.NewOrmFactory(dbCfg)
+	db, err := database.NewOrmFactory(dbCfg, redisConfig)
 	assert.True(t, assert.NoError(t, err), "failed to get db handler.")
 
 	rollerManager, err = coordinator.New(context.Background(), &coordinator_config.RollerManagerConfig{

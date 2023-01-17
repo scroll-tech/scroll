@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"scroll-tech/database/cache"
 	"strings"
 
 	db_config "scroll-tech/database"
@@ -28,6 +29,7 @@ type RollerManagerConfig struct {
 type Config struct {
 	RollerManagerConfig *RollerManagerConfig `json:"roller_manager_config"`
 	DBConfig            *db_config.DBConfig  `json:"db_config"`
+	RedisConfig         *cache.RedisConfig   `json:"redis_config"`
 }
 
 // VerifierConfig load zk verifier config.

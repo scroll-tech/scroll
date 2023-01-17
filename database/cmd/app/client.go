@@ -21,7 +21,7 @@ func getConfig(ctx *cli.Context) (*database.DBConfig, error) {
 }
 
 func initDB(dbCfg *database.DBConfig) (*sqlx.DB, error) {
-	factory, err := database.NewOrmFactory(dbCfg)
+	factory, err := database.NewOrmFactory(dbCfg, nil)
 	if err != nil {
 		return nil, err
 	}

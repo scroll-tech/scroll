@@ -25,7 +25,7 @@ import (
 
 func testCreateNewWatcherAndStop(t *testing.T) {
 	// Create db handler and reset db.
-	l2db, err := database.NewOrmFactory(cfg.DBConfig)
+	l2db, err := database.NewOrmFactory(cfg.DBConfig, cfg.RedisConfig)
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(l2db.GetDB().DB))
 	defer l2db.Close()
@@ -56,7 +56,7 @@ func testCreateNewWatcherAndStop(t *testing.T) {
 
 func testMonitorBridgeContract(t *testing.T) {
 	// Create db handler and reset db.
-	db, err := database.NewOrmFactory(cfg.DBConfig)
+	db, err := database.NewOrmFactory(cfg.DBConfig, cfg.RedisConfig)
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(db.GetDB().DB))
 	defer db.Close()
@@ -119,7 +119,7 @@ func testMonitorBridgeContract(t *testing.T) {
 
 func testFetchMultipleSentMessageInOneBlock(t *testing.T) {
 	// Create db handler and reset db.
-	db, err := database.NewOrmFactory(cfg.DBConfig)
+	db, err := database.NewOrmFactory(cfg.DBConfig, cfg.RedisConfig)
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(db.GetDB().DB))
 	defer db.Close()

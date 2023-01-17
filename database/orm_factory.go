@@ -1,13 +1,11 @@
 package database
 
 import (
-	"time"
+	"github.com/jmoiron/sqlx"
+	_ "github.com/lib/pq" //nolint:golint
 
 	"scroll-tech/database/cache"
 	"scroll-tech/database/orm"
-
-	"github.com/jmoiron/sqlx"
-	_ "github.com/lib/pq" //nolint:golint
 )
 
 // OrmFactory include all ormFactory interface
@@ -35,7 +33,7 @@ type ormFactory struct {
 }
 
 // NewOrmFactory create an ormFactory factory include all ormFactory interface
-func NewOrmFactory(cfg *DBConfig) (OrmFactory, error) {
+func NewOrmFactory(cfg *DBConfig, redisConfig *cache.RedisConfig) (OrmFactory, error) {
 	// Initialize sql/sqlx
 	db, err := sqlx.Open(cfg.DriverName, cfg.DSN)
 	if err != nil {
@@ -49,17 +47,20 @@ func NewOrmFactory(cfg *DBConfig) (OrmFactory, error) {
 	}
 
 	// Create redis client.
-	cacheOrm, err := cache.NewRedisClient(cfg.RedisConfig.RedisURL, time.Duration(cfg.RedisConfig.TraceExpireSec)*time.Second)
-	if err != nil {
-		return nil, err
+	var cacheOrm cache.Cache
+	if redisConfig != nil {
+		cacheOrm, err = cache.NewRedisClient(redisConfig)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return &ormFactory{
 		BlockTraceOrm:  orm.NewBlockTraceOrm(db, cacheOrm),
-		BlockBatchOrm:  orm.NewBlockBatchOrm(db),
-		L1MessageOrm:   orm.NewL1MessageOrm(db),
-		L2MessageOrm:   orm.NewL2MessageOrm(db),
-		SessionInfoOrm: orm.NewSessionInfoOrm(db),
+		BlockBatchOrm:  orm.NewBlockBatchOrm(db, cacheOrm),
+		L1MessageOrm:   orm.NewL1MessageOrm(db, cacheOrm),
+		L2MessageOrm:   orm.NewL2MessageOrm(db, cacheOrm),
+		SessionInfoOrm: orm.NewSessionInfoOrm(db, cacheOrm),
 		Cache:          cacheOrm,
 		DB:             db,
 	}, nil

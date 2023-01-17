@@ -36,7 +36,7 @@ var (
 
 func testCreateNewRelayer(t *testing.T) {
 	// Create db handler and reset db.
-	db, err := database.NewOrmFactory(cfg.DBConfig)
+	db, err := database.NewOrmFactory(cfg.DBConfig, cfg.RedisConfig)
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(db.GetDB().DB))
 	defer db.Close()
@@ -50,7 +50,7 @@ func testCreateNewRelayer(t *testing.T) {
 
 func testL2RelayerProcessSaveEvents(t *testing.T) {
 	// Create db handler and reset db.
-	db, err := database.NewOrmFactory(cfg.DBConfig)
+	db, err := database.NewOrmFactory(cfg.DBConfig, cfg.RedisConfig)
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(db.GetDB().DB))
 	defer db.Close()
@@ -107,7 +107,7 @@ func testL2RelayerProcessSaveEvents(t *testing.T) {
 
 func testL2RelayerProcessPendingBatches(t *testing.T) {
 	// Create db handler and reset db.
-	db, err := database.NewOrmFactory(cfg.DBConfig)
+	db, err := database.NewOrmFactory(cfg.DBConfig, cfg.RedisConfig)
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(db.GetDB().DB))
 	defer db.Close()
@@ -167,7 +167,7 @@ func testL2RelayerProcessPendingBatches(t *testing.T) {
 
 func testL2RelayerProcessCommittedBatches(t *testing.T) {
 	// Create db handler and reset db.
-	db, err := database.NewOrmFactory(cfg.DBConfig)
+	db, err := database.NewOrmFactory(cfg.DBConfig, cfg.RedisConfig)
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(db.GetDB().DB))
 	defer db.Close()

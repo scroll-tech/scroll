@@ -4,17 +4,20 @@ import (
 	"encoding/json"
 
 	"github.com/jmoiron/sqlx"
+
+	"scroll-tech/database/cache"
 )
 
 type sessionInfoOrm struct {
-	db *sqlx.DB
+	db    *sqlx.DB
+	cache cache.Cache
 }
 
 var _ SessionInfoOrm = (*sessionInfoOrm)(nil)
 
 // NewSessionInfoOrm create an sessionInfoOrm instance
-func NewSessionInfoOrm(db *sqlx.DB) SessionInfoOrm {
-	return &sessionInfoOrm{db: db}
+func NewSessionInfoOrm(db *sqlx.DB, cache cache.Cache) SessionInfoOrm {
+	return &sessionInfoOrm{db: db, cache: cache}
 }
 
 func (o *sessionInfoOrm) GetSessionInfosByIDs(ids []string) ([]*SessionInfo, error) {

@@ -14,6 +14,8 @@ import (
 	"github.com/scroll-tech/go-ethereum/log"
 
 	"scroll-tech/common/utils"
+
+	"scroll-tech/database/cache"
 )
 
 // ProvingStatus block_batch proving_status (unassigned, assigned, proved, verified, submitted)
@@ -101,14 +103,15 @@ type BlockBatch struct {
 }
 
 type blockBatchOrm struct {
-	db *sqlx.DB
+	db    *sqlx.DB
+	cache cache.Cache
 }
 
 var _ BlockBatchOrm = (*blockBatchOrm)(nil)
 
 // NewBlockBatchOrm create an blockBatchOrm instance
-func NewBlockBatchOrm(db *sqlx.DB) BlockBatchOrm {
-	return &blockBatchOrm{db: db}
+func NewBlockBatchOrm(db *sqlx.DB, cache cache.Cache) BlockBatchOrm {
+	return &blockBatchOrm{db: db, cache: cache}
 }
 
 func (o *blockBatchOrm) GetBlockBatches(fields map[string]interface{}, args ...string) ([]*BlockBatch, error) {

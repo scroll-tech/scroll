@@ -19,17 +19,17 @@ import (
 )
 
 type blockTraceOrm struct {
-	db  *sqlx.DB
-	rdb cache.Cache
+	db    *sqlx.DB
+	cache cache.Cache
 }
 
 var _ BlockTraceOrm = (*blockTraceOrm)(nil)
 
 // NewBlockTraceOrm create an blockTraceOrm instance
-func NewBlockTraceOrm(db *sqlx.DB, rdb cache.Cache) BlockTraceOrm {
+func NewBlockTraceOrm(db *sqlx.DB, cache cache.Cache) BlockTraceOrm {
 	return &blockTraceOrm{
-		db:  db,
-		rdb: rdb,
+		db:    db,
+		cache: cache,
 	}
 }
 
@@ -70,7 +70,7 @@ func (o *blockTraceOrm) GetBlockTraces(fields map[string]interface{}, args ...st
 
 	var (
 		traces []*types.BlockTrace
-		rdb    = o.rdb
+		rdb    = o.cache
 	)
 	for rows.Next() {
 		var (
@@ -163,7 +163,7 @@ func (o *blockTraceOrm) GetHashByNumber(number uint64) (*common.Hash, error) {
 
 func (o *blockTraceOrm) InsertBlockTraces(blockTraces []*types.BlockTrace) error {
 	traceMaps := make([]map[string]interface{}, len(blockTraces))
-	rdb := o.rdb
+	rdb := o.cache
 	for i, trace := range blockTraces {
 		number, hash, txNum, mtime := trace.Header.Number.Int64(),
 			trace.Header.Hash().String(),

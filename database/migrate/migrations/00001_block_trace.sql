@@ -8,7 +8,6 @@ create table block_trace
     number          BIGINT  NOT NULL,
     hash            VARCHAR NOT NULL,
     parent_hash     VARCHAR NOT NULL,
-    trace           JSON,
     batch_id        VARCHAR DEFAULT NULL,
     tx_num          INTEGER NOT NULL,
     gas_used        BIGINT  NOT NULL,

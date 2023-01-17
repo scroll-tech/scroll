@@ -12,6 +12,12 @@ import (
 	"github.com/go-redis/redis/v8"
 )
 
+// RedisConfig redis cache config.
+type RedisConfig struct {
+	RedisURL       string `json:"redis_url"`
+	TraceExpireSec int64  `json:"trace_expire_sec"`
+}
+
 // RedisClient handle redis client and some expires.
 type RedisClient struct {
 	*redis.Client
@@ -19,14 +25,14 @@ type RedisClient struct {
 }
 
 // NewRedisClient create a redis client and become Cache interface.
-func NewRedisClient(url string, traceExpire time.Duration) (Cache, error) {
-	op, err := redis.ParseURL(url)
+func NewRedisClient(redisConfig *RedisConfig) (Cache, error) {
+	op, err := redis.ParseURL(redisConfig.RedisURL)
 	if err != nil {
 		return nil, err
 	}
 	return &RedisClient{
 		Client:      redis.NewClient(op),
-		traceExpire: traceExpire,
+		traceExpire: time.Duration(redisConfig.TraceExpireSec) * time.Second,
 	}, nil
 }
 
