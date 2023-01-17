@@ -99,7 +99,7 @@ func testHandshake(t *testing.T) {
 
 	// Setup coordinator and ws server.
 	wsURL := "ws://" + randomURL()
-	rollerManager, handler := setupCoordinator(t, wsURL, cfg.DBConfig)
+	rollerManager, handler := setupCoordinator(t, cfg.DBConfig, wsURL)
 	defer func() {
 		handler.Shutdown(context.Background())
 		rollerManager.Stop()
@@ -120,7 +120,7 @@ func testFailedHandshake(t *testing.T) {
 
 	// Setup coordinator and ws server.
 	wsURL := "ws://" + randomURL()
-	rollerManager, handler := setupCoordinator(t, wsURL, cfg.DBConfig)
+	rollerManager, handler := setupCoordinator(t, cfg.DBConfig, wsURL)
 	defer func() {
 		handler.Shutdown(context.Background())
 		rollerManager.Stop()
@@ -186,7 +186,7 @@ func testSeveralConnections(t *testing.T) {
 
 	// Setup coordinator and ws server.
 	wsURL := "ws://" + randomURL()
-	rollerManager, handler := setupCoordinator(t, wsURL, cfg.DBConfig)
+	rollerManager, handler := setupCoordinator(t, cfg.DBConfig, wsURL)
 	defer func() {
 		handler.Shutdown(context.Background())
 		rollerManager.Stop()
@@ -240,7 +240,7 @@ func testIdleRollerSelection(t *testing.T) {
 
 	// Setup coordinator and ws server.
 	wsURL := "ws://" + randomURL()
-	rollerManager, handler := setupCoordinator(t, wsURL, cfg.DBConfig)
+	rollerManager, handler := setupCoordinator(t, cfg.DBConfig, wsURL)
 	defer func() {
 		handler.Shutdown(context.Background())
 		rollerManager.Stop()
@@ -309,7 +309,7 @@ func testGracefulRestart(t *testing.T) {
 
 	// Setup coordinator and ws server.
 	wsURL := "ws://" + randomURL()
-	rollerManager, handler := setupCoordinator(t, wsURL, cfg.DBConfig)
+	rollerManager, handler := setupCoordinator(t, cfg.DBConfig, wsURL)
 
 	// create mock roller
 	roller := newMockRoller(t, "roller_test", wsURL)
@@ -326,7 +326,7 @@ func testGracefulRestart(t *testing.T) {
 	rollerManager.Stop()
 
 	// Setup new coordinator and ws server.
-	newRollerManager, newHandler := setupCoordinator(t, wsURL, cfg.DBConfig)
+	newRollerManager, newHandler := setupCoordinator(t, cfg.DBConfig, wsURL)
 	defer func() {
 		newHandler.Shutdown(context.Background())
 		newRollerManager.Stop()
@@ -370,7 +370,7 @@ func testGracefulRestart(t *testing.T) {
 	}
 }
 
-func setupCoordinator(t *testing.T, wsURL string, dbCfg *database.DBConfig) (rollerManager *coordinator.Manager, handler *http.Server) {
+func setupCoordinator(t *testing.T, dbCfg *database.DBConfig, wsURL string) (rollerManager *coordinator.Manager, handler *http.Server) {
 	// Get db handler.
 	db, err := database.NewOrmFactory(dbCfg)
 	assert.True(t, assert.NoError(t, err), "failed to get db handler.")
