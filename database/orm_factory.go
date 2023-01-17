@@ -33,23 +33,24 @@ type ormFactory struct {
 }
 
 // NewOrmFactory create an ormFactory factory include all ormFactory interface
-func NewOrmFactory(cfg *DBConfig, redisConfig *cache.RedisConfig) (OrmFactory, error) {
+func NewOrmFactory(cfg *DBConfig) (OrmFactory, error) {
+	pCfg, rCfg := cfg.PGConfig, cfg.RedisConfig
 	// Initialize sql/sqlx
-	db, err := sqlx.Open(cfg.DriverName, cfg.DSN)
+	db, err := sqlx.Open(pCfg.DriverName, pCfg.DSN)
 	if err != nil {
 		return nil, err
 	}
 
-	db.SetMaxIdleConns(cfg.MaxOpenNum)
-	db.SetMaxIdleConns(cfg.MaxIdleNum)
+	db.SetMaxIdleConns(pCfg.MaxOpenNum)
+	db.SetMaxIdleConns(pCfg.MaxIdleNum)
 	if err = db.Ping(); err != nil {
 		return nil, err
 	}
 
 	// Create redis client.
 	var cacheOrm cache.Cache
-	if redisConfig != nil {
-		cacheOrm, err = cache.NewRedisClient(redisConfig)
+	if rCfg != nil {
+		cacheOrm, err = cache.NewRedisClient(rCfg)
 		if err != nil {
 			return nil, err
 		}

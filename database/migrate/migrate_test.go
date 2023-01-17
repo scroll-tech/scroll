@@ -26,11 +26,14 @@ func initEnv(t *testing.T) error {
 
 	// Create db orm handler.
 	factory, err := database.NewOrmFactory(&database.DBConfig{
-		DriverName: "postgres",
-		DSN:        dbImg.Endpoint(),
-	}, &cache.RedisConfig{
-		TraceExpireSec: 30,
-		RedisURL:       redisImg.Endpoint(),
+		PGConfig: &database.PGConfig{
+			DriverName: "postgres",
+			DSN:        dbImg.Endpoint(),
+		},
+		RedisConfig: &cache.RedisConfig{
+			TraceExpireSec: 30,
+			RedisURL:       redisImg.Endpoint(),
+		},
 	})
 	if err != nil {
 		return err

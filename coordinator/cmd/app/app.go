@@ -49,7 +49,7 @@ func action(ctx *cli.Context) error {
 
 	// init db connection
 	var ormFactory database.OrmFactory
-	if ormFactory, err = database.NewOrmFactory(cfg.DBConfig, cfg.RedisConfig); err != nil {
+	if ormFactory, err = database.NewOrmFactory(cfg.DBConfig); err != nil {
 		log.Crit("failed to init db connection", "err", err)
 	}
 

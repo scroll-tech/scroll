@@ -61,11 +61,15 @@
     }
   },
   "db_config": {
-    "driver_name": "postgres",
-    "dsn": "postgres://admin:123456@localhost/test?sslmode=disable"
-  },
-  "redis_config": {
-    "redis_url": "redis://default:@localhost:6379/0",
-    "trace_expire_sec": 60
+    "persistence": {
+      "driver_name": "postgres",
+      "dsn": "postgres://admin:123456@localhost/test?sslmode=disable"
+    },
+    "redis": {
+      "url": "redis://default:@localhost:6379/0",
+      "expirations": {
+        "trace": 60
+      }
+    }
   }
 }
