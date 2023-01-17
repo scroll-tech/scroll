@@ -31,8 +31,8 @@ func initEnv(t *testing.T) error {
 			DSN:        dbImg.Endpoint(),
 		},
 		RedisConfig: &cache.RedisConfig{
-			TraceExpireSec: 30,
-			RedisURL:       redisImg.Endpoint(),
+			Expirations: map[string]int64{"trace": 30},
+			RedisURL:    redisImg.Endpoint(),
 		},
 	})
 	if err != nil {
