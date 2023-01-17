@@ -127,7 +127,7 @@ func testFailedHandshake(t *testing.T) {
 	authMsg := &message.AuthMsg{
 		Identity: &message.Identity{
 			Name:      name,
-			Timestamp: time.Now().UnixNano(),
+			Timestamp: uint32(time.Now().Unix()),
 		},
 	}
 	assert.NoError(t, authMsg.Sign(privkey))
@@ -145,7 +145,7 @@ func testFailedHandshake(t *testing.T) {
 	authMsg = &message.AuthMsg{
 		Identity: &message.Identity{
 			Name:      name,
-			Timestamp: time.Now().UnixNano(),
+			Timestamp: uint32(time.Now().Unix()),
 		},
 	}
 	assert.NoError(t, authMsg.Sign(privkey))
@@ -318,6 +318,10 @@ func testGracefulRestart(t *testing.T) {
 	}()
 
 	for i := range ids {
+		info, err := newRollerManager.GetSessionInfo(ids[i])
+		assert.Equal(t, orm.ProvingTaskAssigned.String(), info.Status)
+		assert.NoError(t, err)
+
 		// at this point, roller haven't submitted
 		status, err := l2db.GetProvingStatusByID(ids[i])
 		assert.NoError(t, err)
@@ -415,7 +419,7 @@ func (r *mockRoller) connectToCoordinator() (*client2.Client, ethereum.Subscript
 	authMsg := &message.AuthMsg{
 		Identity: &message.Identity{
 			Name:      r.rollerName,
-			Timestamp: time.Now().UnixNano(),
+			Timestamp: uint32(time.Now().Unix()),
 		},
 	}
 	_ = authMsg.Sign(r.privKey)

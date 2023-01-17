@@ -114,9 +114,9 @@ func (r *Layer1Relayer) ProcessSavedEvents() {
 	}
 
 	// process messages in batches
-	batch_size := r.relaySender.NumberOfAccounts()
-	for from := 0; from < len(msgs); from += batch_size {
-		to := from + batch_size
+	batchSize := r.relaySender.NumberOfAccounts()
+	for from := 0; from < len(msgs); from += batchSize {
+		to := from + batchSize
 		if to > len(msgs) {
 			to = len(msgs)
 		}

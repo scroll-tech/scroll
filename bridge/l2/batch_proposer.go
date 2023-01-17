@@ -40,7 +40,8 @@ func newBatchProposer(cfg *config.BatchProposerConfig, orm database.OrmFactory) 
 	}
 }
 
-func (w *batchProposer) tryProposeBatch() error {
+func (w *batchProposer) tryProposeBatch(wg *sync.WaitGroup) {
+	defer wg.Done()
 	w.mutex.Lock()
 	defer w.mutex.Unlock()
 
@@ -49,20 +50,27 @@ func (w *batchProposer) tryProposeBatch() error {
 		fmt.Sprintf("order by number ASC LIMIT %d", w.batchBlocksLimit),
 	)
 	if err != nil {
-		return err
+		log.Error("failed to get unbatched blocks", "err", err)
+		return
 	}
 	if len(blocks) == 0 {
-		return nil
+		return
 	}
 
 	if blocks[0].GasUsed > w.batchGasThreshold {
 		log.Warn("gas overflow even for only 1 block", "height", blocks[0].Number, "gas", blocks[0].GasUsed)
-		return w.createBatchForBlocks(blocks[:1])
+		if err = w.createBatchForBlocks(blocks[:1]); err != nil {
+			log.Error("failed to create batch", "number", blocks[0].Number, "err", err)
+		}
+		return
 	}
 
 	if blocks[0].TxNum > w.batchTxNumThreshold {
 		log.Warn("too many txs even for only 1 block", "height", blocks[0].Number, "tx_num", blocks[0].TxNum)
-		return w.createBatchForBlocks(blocks[:1])
+		if err = w.createBatchForBlocks(blocks[:1]); err != nil {
+			log.Error("failed to create batch", "number", blocks[0].Number, "err", err)
+		}
+		return
 	}
 
 	var (
@@ -83,10 +91,12 @@ func (w *batchProposer) tryProposeBatch() error {
 	// if it's not old enough we will skip proposing the batch,
 	// otherwise we will still propose a batch
 	if length == len(blocks) && blocks[0].BlockTimestamp+w.batchTimeSec > uint64(time.Now().Unix()) {
-		return nil
+		return
 	}
 
-	return w.createBatchForBlocks(blocks)
+	if err = w.createBatchForBlocks(blocks); err != nil {
+		log.Error("failed to create batch", "from", blocks[0].Number, "to", blocks[len(blocks)-1].Number, "err", err)
+	}
 }
 
 func (w *batchProposer) createBatchForBlocks(blocks []*orm.L2BlockInfo) error {

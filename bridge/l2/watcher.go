@@ -92,16 +92,16 @@ func NewL2WatcherClient(ctx context.Context, client *ethclient.Client, confirmat
 			return nil, err
 		}
 		// fetch and rebuild from message db
-		proof_bytes, err := orm.GetMessageProofByNonce(uint64(currentMessageNonce))
+		proofBytes, err := orm.GetMessageProofByNonce(uint64(currentMessageNonce))
 		if err != nil {
 			log.Warn("fetch message proof from db failed", "err", err)
 			return nil, err
 		}
-		if len(proof_bytes)%32 != 0 {
-			log.Warn("proof string has wrong length", "length", len(proof_bytes))
+		if len(proofBytes)%32 != 0 {
+			log.Warn("proof string has wrong length", "length", len(proofBytes))
 			return nil, errors.New("proof string with wrong length")
 		}
-		withdrawTrie.Initialize(uint64(currentMessageNonce), common.HexToHash(msg.MsgHash), proof_bytes)
+		withdrawTrie.Initialize(uint64(currentMessageNonce), common.HexToHash(msg.MsgHash), proofBytes)
 	}
 
 	return &WatcherClient{
@@ -159,29 +159,9 @@ func (w *WatcherClient) Start() {
 
 				var wg sync.WaitGroup
 				wg.Add(3)
-
-				go func() {
-					defer wg.Done()
-					if err := w.tryFetchRunningMissingBlocks(w.ctx, number); err != nil {
-						log.Error("failed to fetchRunningMissingBlocks", "err", err)
-					}
-				}()
-
-				go func() {
-					defer wg.Done()
-					// @todo handle error
-					if err := w.fetchContractEvent(number); err != nil {
-						log.Error("failed to fetchContractEvent", "err", err)
-					}
-				}()
-
-				go func() {
-					defer wg.Done()
-					if err := w.batchProposer.tryProposeBatch(); err != nil {
-						log.Error("failed to tryProposeBatch", "err", err)
-					}
-				}()
-
+				go w.tryFetchRunningMissingBlocks(w.ctx, &wg, number)
+				go w.FetchContractEvent(&wg, number)
+				go w.batchProposer.tryProposeBatch(&wg)
 				wg.Wait()
 			}
 		}
@@ -196,13 +176,15 @@ func (w *WatcherClient) Stop() {
 const blockTracesFetchLimit = uint64(10)
 
 // try fetch missing blocks if inconsistent
-func (w *WatcherClient) tryFetchRunningMissingBlocks(ctx context.Context, blockHeight uint64) error {
+func (w *WatcherClient) tryFetchRunningMissingBlocks(ctx context.Context, wg *sync.WaitGroup, blockHeight uint64) {
+	defer wg.Done()
 	// Get newest block in DB. must have blocks at that time.
 	// Don't use "block_trace" table "trace" column's BlockTrace.Number,
 	// because it might be empty if the corresponding rollup_result is finalized/finalization_skipped
 	heightInDB, err := w.orm.GetBlockTracesLatestHeight()
 	if err != nil {
-		return fmt.Errorf("failed to GetBlockTracesLatestHeight in DB: %v", err)
+		log.Error("failed to GetBlockTracesLatestHeight", "err", err)
+		return
 	}
 
 	// Can't get trace from genesis block, so the default start number is 1.
@@ -220,12 +202,10 @@ func (w *WatcherClient) tryFetchRunningMissingBlocks(ctx context.Context, blockH
 
 		// Get block traces and insert into db.
 		if err = w.getAndStoreBlockTraces(ctx, from, to); err != nil {
-			log.Error("fail to getAndStoreBlockTraces", "from", from, "to", to)
-			return err
+			log.Error("fail to getAndStoreBlockTraces", "from", from, "to", to, "err", err)
+			return
 		}
 	}
-
-	return nil
 }
 
 func (w *WatcherClient) getAndStoreBlockTraces(ctx context.Context, from, to uint64) error {
@@ -254,7 +234,8 @@ func (w *WatcherClient) getAndStoreBlockTraces(ctx context.Context, from, to uin
 const contractEventsBlocksFetchLimit = int64(10)
 
 // FetchContractEvent pull latest event logs from given contract address and save in DB
-func (w *WatcherClient) fetchContractEvent(blockHeight uint64) error {
+func (w *WatcherClient) FetchContractEvent(wg *sync.WaitGroup, blockHeight uint64) {
+	defer wg.Done()
 	defer func() {
 		log.Info("l2 watcher fetchContractEvent", "w.processedMsgHeight", w.processedMsgHeight)
 	}()
@@ -300,11 +281,11 @@ func (w *WatcherClient) fetchContractEvent(blockHeight uint64) error {
 		logs, err := w.FilterLogs(w.ctx, query)
 		if err != nil {
 			log.Error("failed to get event logs", "err", err)
-			return err
+			return
 		}
 		if len(logs) == 0 {
 			w.processedMsgHeight = uint64(toBlock)
-			return nil
+			return
 		}
 		log.Info("received new L2 messages", "fromBlock", fromBlock, "toBlock", toBlock,
 			"cnt", len(logs))
@@ -312,7 +293,7 @@ func (w *WatcherClient) fetchContractEvent(blockHeight uint64) error {
 		sentMessageEvents, relayedMessageEvents, importedBlockEvents, err := w.parseBridgeEventLogs(logs)
 		if err != nil {
 			log.Error("failed to parse emitted event log", "err", err)
-			return err
+			return
 		}
 
 		// Update imported block first to make sure we don't forget to update importing blocks.
@@ -320,7 +301,7 @@ func (w *WatcherClient) fetchContractEvent(blockHeight uint64) error {
 			err = w.orm.UpdateL1BlockStatusAndImportTxHash(w.ctx, block.blockHash.String(), orm.L1BlockImported, block.txHash.String())
 			if err != nil {
 				log.Error("Failed to update l1 block status and import tx hash", "err", err)
-				return err
+				return
 			}
 		}
 
@@ -336,13 +317,13 @@ func (w *WatcherClient) fetchContractEvent(blockHeight uint64) error {
 			}
 			if err != nil {
 				log.Error("Failed to update layer1 status and layer2 hash", "err", err)
-				return err
+				return
 			}
 		}
 
 		dbTx, err = w.orm.Beginx()
 		if err != nil {
-			return err
+			return
 		}
 
 		// group sentMessageEvents by block height
@@ -354,7 +335,7 @@ func (w *WatcherClient) fetchContractEvent(blockHeight uint64) error {
 			for ; index < len(sentMessageEvents) && sentMessageEvents[index].Height == uint64(height); index++ {
 				if nonce != sentMessageEvents[index].Nonce {
 					log.Error("nonce mismatch", "expected", nonce, "found", sentMessageEvents[index].Nonce)
-					return errors.New("event msg.nonce mismatch with local nonce")
+					return
 				}
 				hashes = append(hashes, common.HexToHash(sentMessageEvents[index].MsgHash))
 				msgs = append(msgs, sentMessageEvents[index])
@@ -362,34 +343,32 @@ func (w *WatcherClient) fetchContractEvent(blockHeight uint64) error {
 			}
 			proofBytes := w.withdrawTrie.AppendMessages(hashes)
 			for i := 0; i < len(hashes); i++ {
-				msgs[i].MsgHash = common.Bytes2Hex(proofBytes[i])
+				msgs[i].Proof = common.Bytes2Hex(proofBytes[i])
 			}
 
 			// save message root in block
 			dbTxErr = w.orm.SetMessageRootForBlocksInDBTx(dbTx, []uint64{uint64(height)}, w.withdrawTrie.MessageRoot().String())
 			if dbTxErr != nil {
 				log.Error("SetBatchIDForBlocksInDBTx failed", "error", dbTxErr)
-				return dbTxErr
+				return
 			}
 
 			// save l2 messages
 			dbTxErr = w.orm.SaveL2MessagesInDbTx(w.ctx, dbTx, msgs)
 			if dbTxErr != nil {
 				log.Error("SaveL2MessagesInDbTx failed", "error", dbTxErr)
-				return dbTxErr
+				return
 			}
 		}
 
 		dbTxErr = dbTx.Commit()
 		if dbTxErr != nil {
 			log.Error("dbTx.Commit failed", "error", dbTxErr)
-			return dbTxErr
+			return
 		}
 
 		w.processedMsgHeight = uint64(to)
 	}
-
-	return nil
 }
 
 func (w *WatcherClient) parseBridgeEventLogs(logs []types.Log) ([]*orm.L2Message, []relayedMessage, []importedBlock, error) {

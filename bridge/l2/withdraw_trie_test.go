@@ -73,34 +73,34 @@ func TestRecoverBranchFromProof(t *testing.T) {
 	}
 
 	proof := l2.UpdateBranchWithNewMessage(zeroes, branches, 0, common.HexToHash("0x0000000000000000000000000000000000000000000000000000000000000001"))
-	t_branches := l2.RecoverBranchFromProof(proof, 0, common.HexToHash("0x0000000000000000000000000000000000000000000000000000000000000001"))
+	tmpBranches := l2.RecoverBranchFromProof(proof, 0, common.HexToHash("0x0000000000000000000000000000000000000000000000000000000000000001"))
 	for i := 0; i < 64; i++ {
-		if t_branches[i] != branches[i] {
-			t.Fatalf("Invalid branch, want %s, got %s", branches[i].Hex(), t_branches[i].Hex())
+		if tmpBranches[i] != branches[i] {
+			t.Fatalf("Invalid branch, want %s, got %s", branches[i].Hex(), tmpBranches[i].Hex())
 		}
 	}
 
 	proof = l2.UpdateBranchWithNewMessage(zeroes, branches, 1, common.HexToHash("0x0000000000000000000000000000000000000000000000000000000000000002"))
-	t_branches = l2.RecoverBranchFromProof(proof, 1, common.HexToHash("0x0000000000000000000000000000000000000000000000000000000000000002"))
+	tmpBranches = l2.RecoverBranchFromProof(proof, 1, common.HexToHash("0x0000000000000000000000000000000000000000000000000000000000000002"))
 	for i := 0; i < 64; i++ {
-		if t_branches[i] != branches[i] {
-			t.Fatalf("Invalid branch, want %s, got %s", branches[i].Hex(), t_branches[i].Hex())
+		if tmpBranches[i] != branches[i] {
+			t.Fatalf("Invalid branch, want %s, got %s", branches[i].Hex(), tmpBranches[i].Hex())
 		}
 	}
 
 	proof = l2.UpdateBranchWithNewMessage(zeroes, branches, 2, common.HexToHash("0x0000000000000000000000000000000000000000000000000000000000000003"))
-	t_branches = l2.RecoverBranchFromProof(proof, 2, common.HexToHash("0x0000000000000000000000000000000000000000000000000000000000000003"))
+	tmpBranches = l2.RecoverBranchFromProof(proof, 2, common.HexToHash("0x0000000000000000000000000000000000000000000000000000000000000003"))
 	for i := 0; i < 64; i++ {
-		if t_branches[i] != branches[i] {
-			t.Fatalf("Invalid branch, want %s, got %s", branches[i].Hex(), t_branches[i].Hex())
+		if tmpBranches[i] != branches[i] {
+			t.Fatalf("Invalid branch, want %s, got %s", branches[i].Hex(), tmpBranches[i].Hex())
 		}
 	}
 
 	proof = l2.UpdateBranchWithNewMessage(zeroes, branches, 3, common.HexToHash("0x0000000000000000000000000000000000000000000000000000000000000004"))
-	t_branches = l2.RecoverBranchFromProof(proof, 3, common.HexToHash("0x0000000000000000000000000000000000000000000000000000000000000004"))
+	tmpBranches = l2.RecoverBranchFromProof(proof, 3, common.HexToHash("0x0000000000000000000000000000000000000000000000000000000000000004"))
 	for i := 0; i < 64; i++ {
-		if t_branches[i] != branches[i] {
-			t.Fatalf("Invalid branch, want %s, got %s", branches[i].Hex(), t_branches[i].Hex())
+		if tmpBranches[i] != branches[i] {
+			t.Fatalf("Invalid branch, want %s, got %s", branches[i].Hex(), tmpBranches[i].Hex())
 		}
 	}
 }

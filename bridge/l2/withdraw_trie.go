@@ -6,8 +6,8 @@ import (
 	"scroll-tech/bridge/utils"
 )
 
-// MAX_HEIGHT is the maixium possible height of withdraw trie
-const MAX_HEIGHT = 40
+// MaxHeight is the maixium possible height of withdraw trie
+const MaxHeight = 40
 
 // WithdrawTrie is an append only merkle trie
 type WithdrawTrie struct {
@@ -22,15 +22,15 @@ type WithdrawTrie struct {
 
 // NewWithdrawTrie will return a new instance of WithdrawTrie
 func NewWithdrawTrie() *WithdrawTrie {
-	zeroes := make([]common.Hash, MAX_HEIGHT)
-	branches := make([]common.Hash, MAX_HEIGHT)
+	zeroes := make([]common.Hash, MaxHeight)
+	branches := make([]common.Hash, MaxHeight)
 
 	zeroes[0] = common.Hash{}
-	for i := 1; i < MAX_HEIGHT; i++ {
+	for i := 1; i < MaxHeight; i++ {
 		zeroes[i] = utils.Keccak2(zeroes[i-1], zeroes[i-1])
 	}
 
-	for i := 0; i < MAX_HEIGHT; i++ {
+	for i := 0; i < MaxHeight; i++ {
 		branches[i] = common.Hash{}
 	}
 
@@ -43,8 +43,8 @@ func NewWithdrawTrie() *WithdrawTrie {
 }
 
 // Initialize will initialize the merkle trie with rightest leaf node
-func (w *WithdrawTrie) Initialize(currentMessageNonce uint64, msgHash common.Hash, proof_bytes []byte) {
-	proof := DecodeBytesToMerkleProof(proof_bytes)
+func (w *WithdrawTrie) Initialize(currentMessageNonce uint64, msgHash common.Hash, proofBytes []byte) {
+	proof := DecodeBytesToMerkleProof(proofBytes)
 	branches := RecoverBranchFromProof(proof, currentMessageNonce, msgHash)
 
 	w.height = len(proof)
@@ -59,8 +59,8 @@ func (w *WithdrawTrie) AppendMessages(hashes []common.Hash) [][]byte {
 		return make([][]byte, 0)
 	}
 
-	cache := make([]map[uint64]common.Hash, MAX_HEIGHT)
-	for h := 0; h < MAX_HEIGHT; h++ {
+	cache := make([]map[uint64]common.Hash, MaxHeight)
+	for h := 0; h < MaxHeight; h++ {
 		cache[h] = make(map[uint64]common.Hash)
 	}
 
@@ -129,21 +129,21 @@ func (w *WithdrawTrie) MessageRoot() common.Hash {
 }
 
 // DecodeBytesToMerkleProof transfer byte array to bytes32 array. The caller should make sure the length is matched.
-func DecodeBytesToMerkleProof(proof_bytes []byte) []common.Hash {
-	proof := make([]common.Hash, len(proof_bytes)/32)
-	for i := 0; i < len(proof_bytes); i += 32 {
-		proof[i/32] = common.BytesToHash(proof_bytes[i : i+32])
+func DecodeBytesToMerkleProof(proofBytes []byte) []common.Hash {
+	proof := make([]common.Hash, len(proofBytes)/32)
+	for i := 0; i < len(proofBytes); i += 32 {
+		proof[i/32] = common.BytesToHash(proofBytes[i : i+32])
 	}
 	return proof
 }
 
 // EncodeMerkleProofToBytes transfer byte32 array to byte array by concatenation.
 func EncodeMerkleProofToBytes(proof []common.Hash) []byte {
-	var proof_bytes []byte
+	var proofBytes []byte
 	for i := 0; i < len(proof); i++ {
-		proof_bytes = append(proof_bytes, proof[i][:]...)
+		proofBytes = append(proofBytes, proof[i][:]...)
 	}
-	return proof_bytes
+	return proofBytes
 }
 
 // UpdateBranchWithNewMessage update the branches to latest with new message and return the merkle proof for the message.
