@@ -151,7 +151,7 @@ type BlockBatchOrm interface {
 	UpdateCommitTxHashAndRollupStatus(ctx context.Context, id string, commitTxHash string, status RollupStatus) error
 	UpdateFinalizeTxHashAndRollupStatus(ctx context.Context, id string, finalizeTxHash string, status RollupStatus) error
 	GetAssignedBatchIDs() ([]string, error)
-	UpdateSkippedBatches()
+	UpdateSkippedBatches() error
 
 	GetCommitTxHash(id string) (sql.NullString, error)   // for unit tests only
 	GetFinalizeTxHash(id string) (sql.NullString, error) // for unit tests only
