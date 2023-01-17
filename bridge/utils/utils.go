@@ -20,8 +20,8 @@ func encodePacked(input ...[]byte) []byte {
 
 // ComputeMessageHash compute the message hash
 func ComputeMessageHash(
-	target common.Address,
 	sender common.Address,
+	target common.Address,
 	value *big.Int,
 	fee *big.Int,
 	deadline *big.Int,
@@ -29,8 +29,8 @@ func ComputeMessageHash(
 	messageNonce *big.Int,
 ) common.Hash {
 	packed := encodePacked(
-		target.Bytes(),
 		sender.Bytes(),
+		target.Bytes(),
 		math.U256Bytes(value),
 		math.U256Bytes(fee),
 		math.U256Bytes(deadline),

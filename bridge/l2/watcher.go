@@ -107,7 +107,7 @@ func (w *WatcherClient) Start() {
 				var wg sync.WaitGroup
 				wg.Add(3)
 				go w.tryFetchRunningMissingBlocks(w.ctx, &wg, number)
-				go w.fetchContractEvent(&wg, number)
+				go w.FetchContractEvent(&wg, number)
 				go w.batchProposer.tryProposeBatch(&wg)
 				wg.Wait()
 			}
@@ -180,7 +180,7 @@ func (w *WatcherClient) getAndStoreBlockTraces(ctx context.Context, from, to uin
 const contractEventsBlocksFetchLimit = int64(10)
 
 // FetchContractEvent pull latest event logs from given contract address and save in DB
-func (w *WatcherClient) fetchContractEvent(wg *sync.WaitGroup, blockHeight uint64) {
+func (w *WatcherClient) FetchContractEvent(wg *sync.WaitGroup, blockHeight uint64) {
 	defer wg.Done()
 	defer func() {
 		log.Info("l2 watcher fetchContractEvent", "w.processedMsgHeight", w.processedMsgHeight)
@@ -281,7 +281,7 @@ func (w *WatcherClient) parseBridgeEventLogs(logs []types.Log) ([]*orm.L2Message
 			event.Target = common.HexToAddress(vLog.Topics[1].String())
 			l2Messages = append(l2Messages, &orm.L2Message{
 				Nonce:      event.MessageNonce.Uint64(),
-				MsgHash:    utils.ComputeMessageHash(event.Target, event.Sender, event.Value, event.Fee, event.Deadline, event.Message, event.MessageNonce).String(),
+				MsgHash:    utils.ComputeMessageHash(event.Sender, event.Target, event.Value, event.Fee, event.Deadline, event.Message, event.MessageNonce).String(),
 				Height:     vLog.BlockNumber,
 				Sender:     event.Sender.String(),
 				Value:      event.Value.String(),

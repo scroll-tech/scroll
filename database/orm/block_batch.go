@@ -308,7 +308,7 @@ func (o *blockBatchOrm) GetRollupStatusByIDList(ids []string) ([]RollupStatus, e
 		return make([]RollupStatus, 0), nil
 	}
 
-	query, args, err := sqlx.In("SELECT rollup_status FROM block_batch WHERE id IN (?);", ids)
+	query, args, err := sqlx.In("SELECT id, rollup_status FROM block_batch WHERE id IN (?);", ids)
 	if err != nil {
 		return make([]RollupStatus, 0), err
 	}
@@ -317,17 +317,24 @@ func (o *blockBatchOrm) GetRollupStatusByIDList(ids []string) ([]RollupStatus, e
 
 	rows, err := o.db.Query(query, args...)
 
-	var statuses []RollupStatus
+	statusMap := make(map[string]RollupStatus)
 	for rows.Next() {
+		var id string
 		var status RollupStatus
-		if err = rows.Scan(&status); err != nil {
+		if err = rows.Scan(&id, &status); err != nil {
 			break
 		}
-		statuses = append(statuses, status)
+		statusMap[id] = status
 	}
+	var statuses []RollupStatus
 	if err != nil {
 		return statuses, err
 	}
+
+	for _, id := range ids {
+		statuses = append(statuses, statusMap[id])
+	}
+
 	return statuses, nil
 }
 

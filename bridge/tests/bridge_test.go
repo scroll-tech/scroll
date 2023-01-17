@@ -57,16 +57,20 @@ func setupEnv(t *testing.T) {
 	var err error
 	privateKey, err = crypto.ToECDSA(common.FromHex("1212121212121212121212121212121212121212121212121212121212121212"))
 	assert.NoError(t, err)
+	messagePrivateKey, err := crypto.ToECDSA(common.FromHex("1212121212121212121212121212121212121212121212121212121212121213"))
+	assert.NoError(t, err)
+	rollupPrivateKey, err := crypto.ToECDSA(common.FromHex("1212121212121212121212121212121212121212121212121212121212121214"))
+	assert.NoError(t, err)
 
 	// Load config.
 	cfg, err = config.NewConfig("../config.json")
 	assert.NoError(t, err)
 	cfg.L1Config.Confirmations = 0
-	cfg.L1Config.RelayerConfig.MessageSenderPrivateKeys = []*ecdsa.PrivateKey{privateKey}
-	cfg.L1Config.RelayerConfig.RollupSenderPrivateKeys = []*ecdsa.PrivateKey{privateKey}
+	cfg.L1Config.RelayerConfig.MessageSenderPrivateKeys = []*ecdsa.PrivateKey{messagePrivateKey}
+	cfg.L1Config.RelayerConfig.RollupSenderPrivateKeys = []*ecdsa.PrivateKey{rollupPrivateKey}
 	cfg.L2Config.Confirmations = 0
-	cfg.L2Config.RelayerConfig.MessageSenderPrivateKeys = []*ecdsa.PrivateKey{privateKey}
-	cfg.L2Config.RelayerConfig.RollupSenderPrivateKeys = []*ecdsa.PrivateKey{privateKey}
+	cfg.L2Config.RelayerConfig.MessageSenderPrivateKeys = []*ecdsa.PrivateKey{messagePrivateKey}
+	cfg.L2Config.RelayerConfig.RollupSenderPrivateKeys = []*ecdsa.PrivateKey{rollupPrivateKey}
 
 	// Create l1geth container.
 	l1gethImg = docker.NewTestL1Docker(t)
@@ -94,6 +98,47 @@ func setupEnv(t *testing.T) {
 	// Create l1 and l2 auth
 	l1Auth = prepareAuth(t, l1Client, privateKey)
 	l2Auth = prepareAuth(t, l2Client, privateKey)
+
+	// send some balance to message and rollup sender
+	transferEther(t, l1Auth, l1Client, messagePrivateKey)
+	transferEther(t, l1Auth, l1Client, rollupPrivateKey)
+	transferEther(t, l2Auth, l2Client, messagePrivateKey)
+	transferEther(t, l2Auth, l2Client, rollupPrivateKey)
+}
+
+func transferEther(t *testing.T, auth *bind.TransactOpts, client *ethclient.Client, privateKey *ecdsa.PrivateKey) {
+	targetAddress := crypto.PubkeyToAddress(privateKey.PublicKey)
+
+	gasPrice, err := client.SuggestGasPrice(context.Background())
+	assert.NoError(t, err)
+	gasPrice.Mul(gasPrice, big.NewInt(2))
+
+	// Get pending nonce
+	nonce, err := client.PendingNonceAt(context.Background(), auth.From)
+	assert.NoError(t, err)
+
+	// 200 ether should be enough
+	value, ok := big.NewInt(0).SetString("0xad78ebc5ac6200000", 0)
+	assert.Equal(t, ok, true)
+
+	tx := types.NewTx(&types.LegacyTx{
+		Nonce:    nonce,
+		To:       &targetAddress,
+		Value:    value,
+		Gas:      500000,
+		GasPrice: gasPrice,
+	})
+	signedTx, err := auth.Signer(auth.From, tx)
+	assert.NoError(t, err)
+
+	err = client.SendTransaction(context.Background(), signedTx)
+	assert.NoError(t, err)
+
+	receipt, err := bind.WaitMined(context.Background(), client, signedTx)
+	assert.NoError(t, err)
+	if receipt.Status != types.ReceiptStatusSuccessful {
+		t.Fatalf("Call failed")
+	}
 }
 
 func free(t *testing.T) {
@@ -157,6 +202,9 @@ func TestFunction(t *testing.T) {
 
 	// l1 rollup and watch rollup events
 	t.Run("TestCommitBatchAndFinalizeBatch", testCommitBatchAndFinalizeBatch)
+
+	// l2 message
+	t.Run("testRelayL2MessageSucceed", testRelayL2MessageSucceed)
 
 	t.Cleanup(func() {
 		free(t)
