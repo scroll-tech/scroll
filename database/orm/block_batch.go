@@ -406,3 +406,8 @@ func (o *blockBatchOrm) GetAssignedBatchIDs() ([]string, error) {
 
 	return ids, rows.Close()
 }
+
+func (o *blockBatchOrm) UpdateSkippedBatches() error {
+	_, err := o.db.Exec(o.db.Rebind("update block_batch set rollup_status = ? where proving_status = ? and rollup_status >= ?;"), RollupFinalizationSkipped, ProvingTaskSkipped, RollupCommitted)
+	return err
+}

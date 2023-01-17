@@ -282,6 +282,10 @@ func (r *Layer2Relayer) ProcessPendingBatches(wg *sync.WaitGroup) {
 // ProcessCommittedBatches submit proof to layer 1 rollup contract
 func (r *Layer2Relayer) ProcessCommittedBatches(wg *sync.WaitGroup) {
 	defer wg.Done()
+
+	// set skipped batches in a single db operation
+	r.db.UpdateSkippedBatches()
+
 	// batches are sorted by batch index in increasing order
 	batches, err := r.db.GetCommittedBatches(1)
 	if err != nil {
@@ -311,6 +315,8 @@ func (r *Layer2Relayer) ProcessCommittedBatches(wg *sync.WaitGroup) {
 		return
 
 	case orm.ProvingTaskFailed, orm.ProvingTaskSkipped:
+		// note: this is covered by UpdateSkippedBatches, but we keep it for completeness's sake
+
 		if err = r.db.UpdateRollupStatus(r.ctx, id, orm.RollupFinalizationSkipped); err != nil {
 			log.Warn("UpdateRollupStatus failed", "id", id, "err", err)
 		}
