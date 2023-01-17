@@ -122,7 +122,7 @@ func setupEnv(t *testing.T) error {
 	return json.Unmarshal(templateBlockTrace, blockTrace)
 }
 
-func free(t *testing.T) {
+func freeDB(t *testing.T) {
 	if dbImg != nil {
 		assert.NoError(t, dbImg.Stop())
 	}
