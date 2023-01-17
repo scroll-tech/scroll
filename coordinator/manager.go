@@ -369,10 +369,7 @@ func (m *Manager) CollectProofs(sess *session) {
 		m.mu.Unlock()
 		if m.isSessionFailed(sess.info) {
 			if err := m.orm.UpdateProvingStatus(ret.id, orm.ProvingTaskFailed); err != nil {
-				log.Error(
-					"failed to update proving_status as failed",
-					"msg.ID", ret.id,
-					"error", err)
+				log.Error("failed to update proving_status as failed", "msg.ID", ret.id, "error", err)
 			}
 		}
 		if err := m.orm.SetSessionInfo(sess.info); err != nil {
