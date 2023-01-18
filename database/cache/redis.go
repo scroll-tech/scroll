@@ -3,7 +3,6 @@ package cache
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"math/big"
 	"time"
 
@@ -74,7 +73,6 @@ func (r *RedisClient) SetBlockTrace(ctx context.Context, trace *types.BlockTrace
 // GetBlockTrace get block trace by number, hash.
 func (r *RedisClient) GetBlockTrace(ctx context.Context, number *big.Int, hash common.Hash) (*types.BlockTrace, error) {
 	// Get trace content.
-	fmt.Println(number.String(), hash.String())
 	data, err := r.HGet(ctx, number.String(), hash.String()).Bytes()
 	if err != nil {
 		return nil, err
