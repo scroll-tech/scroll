@@ -3,11 +3,11 @@ package database
 import (
 	"fmt"
 
-	"scroll-tech/database/cache"
-	"scroll-tech/database/orm"
-
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq" //nolint:golint
+
+	"scroll-tech/database/cache"
+	"scroll-tech/database/orm"
 )
 
 // OrmFactory include all ormFactory interface
@@ -36,7 +36,7 @@ type ormFactory struct {
 
 // NewOrmFactory create an ormFactory factory include all ormFactory interface
 func NewOrmFactory(cfg *DBConfig) (OrmFactory, error) {
-	pCfg, rCfg := cfg.DB, cfg.RedisConfig
+	pCfg, rCfg := cfg.DB, cfg.Redis
 	if rCfg == nil {
 		return nil, fmt.Errorf("redis config is empty")
 	}

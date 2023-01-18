@@ -148,7 +148,7 @@ func mockBridgeConfig(t *testing.T) string {
 		cfg.DBConfig.DB.DSN = dbImg.Endpoint()
 	}
 	if redisImg != nil {
-		cfg.DBConfig.RedisConfig.RedisURL = redisImg.Endpoint()
+		cfg.DBConfig.Redis.RedisURL = redisImg.Endpoint()
 	}
 
 	// Store changed bridge config into a temp file.
@@ -170,7 +170,7 @@ func mockCoordinatorConfig(t *testing.T) string {
 		cfg.DBConfig.DB.DSN = dbImg.Endpoint()
 	}
 	if redisImg != nil {
-		cfg.DBConfig.RedisConfig.RedisURL = redisImg.Endpoint()
+		cfg.DBConfig.Redis.RedisURL = redisImg.Endpoint()
 	}
 
 	data, err := json.Marshal(cfg)
@@ -190,7 +190,7 @@ func mockDatabaseConfig(t *testing.T) string {
 		cfg.DB.DSN = dbImg.Endpoint()
 	}
 	if redisImg != nil {
-		cfg.RedisConfig.RedisURL = redisImg.Endpoint()
+		cfg.Redis.RedisURL = redisImg.Endpoint()
 	}
 
 	data, err := json.Marshal(cfg)

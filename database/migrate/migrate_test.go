@@ -30,7 +30,7 @@ func initEnv(t *testing.T) error {
 			DriverName: "postgres",
 			DSN:        dbImg.Endpoint(),
 		},
-		RedisConfig: &cache.RedisConfig{
+		Redis: &cache.RedisConfig{
 			Expirations: map[string]int64{"trace": 30},
 			RedisURL:    redisImg.Endpoint(),
 		},

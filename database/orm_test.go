@@ -99,7 +99,7 @@ func setupEnv(t *testing.T) error {
 			DriverName: "postgres",
 			DSN:        dbImg.Endpoint(),
 		},
-		RedisConfig: &cache.RedisConfig{
+		Redis: &cache.RedisConfig{
 			RedisURL:    redisImg.Endpoint(),
 			Expirations: map[string]int64{"trace": 30},
 		},

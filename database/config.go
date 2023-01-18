@@ -20,8 +20,8 @@ type PGConfig struct {
 
 // DBConfig db config
 type DBConfig struct {
-	DB          *PGConfig          `json:"persistence"`
-	RedisConfig *cache.RedisConfig `json:"redis,omitempty"`
+	DB    *PGConfig          `json:"persistence"`
+	Redis *cache.RedisConfig `json:"redis,omitempty"`
 }
 
 // NewConfig returns a new instance of Config.
