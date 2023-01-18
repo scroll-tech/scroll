@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"math/big"
 	"net/http"
+	"reflect"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -61,6 +63,7 @@ func TestApis(t *testing.T) {
 	// Set up the test environment.
 	assert.True(t, assert.NoError(t, setEnv(t)), "failed to setup the test environment.")
 
+	t.Run("TestListRollers", testListRollers)
 	t.Run("TestHandshake", testHandshake)
 	t.Run("TestFailedHandshake", testFailedHandshake)
 	t.Run("TestSeveralConnections", testSeveralConnections)
@@ -74,6 +77,53 @@ func TestApis(t *testing.T) {
 	t.Cleanup(func() {
 		dbImg.Stop()
 	})
+}
+
+func testListRollers(t *testing.T) {
+	// Create db handler and reset db.
+	l2db, err := database.NewOrmFactory(cfg.DBConfig)
+	assert.NoError(t, err)
+	assert.NoError(t, migrate.ResetDB(l2db.GetDB().DB))
+	defer l2db.Close()
+
+	// Setup coordinator and ws server.
+	wsURL := "ws://" + randomURL()
+	rollerManager, handler := setupCoordinator(t, cfg.DBConfig, wsURL)
+	defer func() {
+		handler.Shutdown(context.Background())
+		rollerManager.Stop()
+	}()
+
+	var names = []string{
+		"roller_test_1",
+		"roller_test_2",
+		"roller_test_3",
+	}
+
+	roller1 := newMockRoller(t, names[0], wsURL)
+	roller2 := newMockRoller(t, names[1], wsURL)
+	roller3 := newMockRoller(t, names[2], wsURL)
+	defer func() {
+		roller1.close()
+		roller2.close()
+		roller3.close()
+	}()
+
+	// new client to test api_debug
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	client, err := client2.DialContext(ctx, wsURL)
+	assert.NoError(t, err)
+
+	// test ListRollers API
+	rollers, err := client.ListRollers(ctx)
+	assert.NoError(t, err)
+	var rollersName []string
+	for _, roller := range rollers {
+		rollersName = append(rollersName, roller.Name)
+	}
+	sort.Strings(rollersName)
+	assert.True(t, reflect.DeepEqual(names, rollersName))
 }
 
 func testHandshake(t *testing.T) {
