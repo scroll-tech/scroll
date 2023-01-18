@@ -2,6 +2,7 @@ package client
 
 import (
 	"context"
+	"scroll-tech/coordinator/types"
 
 	"github.com/scroll-tech/go-ethereum"
 	"github.com/scroll-tech/go-ethereum/rpc"
@@ -49,4 +50,18 @@ func (c *Client) RegisterAndSubscribe(ctx context.Context, taskCh chan *message.
 func (c *Client) SubmitProof(ctx context.Context, proof *message.ProofMsg) (bool, error) {
 	var ok bool
 	return ok, c.client.CallContext(ctx, &ok, "roller_submitProof", proof)
+}
+
+// ------ debug API ----------
+
+// ListRollers returns all live rollers
+func (c *Client) ListRollers(ctx context.Context) ([]*types.RollerInfo, error) {
+	var results []*types.RollerInfo
+	return results, c.client.CallContext(ctx, &results, "debug_listRollers")
+}
+
+// GetSessionInfo returns the session information given the session id.
+func (c *Client) GetSessionInfo(ctx context.Context, sessionID string) (*types.SessionInfo, error) {
+	var info types.SessionInfo
+	return &info, c.client.CallContext(ctx, &info, "debug_getSessionInfo", sessionID)
 }

@@ -23,6 +23,7 @@ import (
 	"scroll-tech/database/orm"
 
 	"scroll-tech/coordinator/config"
+	ctypes "scroll-tech/coordinator/types"
 	"scroll-tech/coordinator/verifier"
 )
 
@@ -66,7 +67,7 @@ type Manager struct {
 	rollerPool cmap.ConcurrentMap
 
 	// TODO: once put into use, should add to graceful restart.
-	failedSessionInfos map[string]*SessionInfo
+	failedSessionInfos map[string]*ctypes.SessionInfo
 
 	// A direct connection to the Halo2 verifier, used to verify
 	// incoming proofs.
@@ -98,7 +99,7 @@ func New(ctx context.Context, cfg *config.RollerManagerConfig, orm database.OrmF
 		cfg:                cfg,
 		rollerPool:         cmap.New(),
 		sessions:           make(map[string]*session),
-		failedSessionInfos: make(map[string]*SessionInfo),
+		failedSessionInfos: make(map[string]*ctypes.SessionInfo),
 		verifier:           v,
 		orm:                orm,
 		Client:             client,
