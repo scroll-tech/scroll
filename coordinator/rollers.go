@@ -107,18 +107,18 @@ func (m *Manager) freeTaskIDForRoller(pk string, id string) {
 
 // GetNumberOfIdleRollers return the count of idle rollers.
 func (m *Manager) GetNumberOfIdleRollers() int {
-	var pubkeys []string
+	var count int
 	for i, pk := range m.rollerPool.Keys() {
 		if val, ok := m.rollerPool.Get(pk); ok {
 			r := val.(*rollerNode)
 			if r.TaskIDs.Count() == 0 {
-				pubkeys = append(pubkeys, pk)
+				count++
 			}
 		} else {
 			log.Error("rollerPool Get fail", "pk", pk, "idx", i, "pk len", len(pubkeys))
 		}
 	}
-	return len(pubkeys)
+	return count
 }
 
 func (m *Manager) selectRoller() *rollerNode {
