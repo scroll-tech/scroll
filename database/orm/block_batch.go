@@ -260,7 +260,7 @@ func (o *blockBatchOrm) GetPendingBatches(limit uint64) ([]string, error) {
 }
 
 func (o *blockBatchOrm) GetLatestFinalizedBatch() (*BlockBatch, error) {
-	row := o.db.QueryRowx(`SELECT * FROM block_batch WHERE rollup_status = $1 OR rollup_status = $2 ORDER BY index DESC;`, RollupFinalized, RollupFinalizationSkipped)
+	row := o.db.QueryRowx(`select * from block_batch where index = (select max(index) from block_batch where rollup_status = ?);`, RollupFinalized)
 	batch := &BlockBatch{}
 	if err := row.StructScan(batch); err != nil {
 		return nil, err
@@ -407,7 +407,18 @@ func (o *blockBatchOrm) GetAssignedBatchIDs() ([]string, error) {
 	return ids, rows.Close()
 }
 
-func (o *blockBatchOrm) UpdateSkippedBatches() error {
-	_, err := o.db.Exec(o.db.Rebind("update block_batch set rollup_status = ? where (proving_status = ? or proving_status = ?) and rollup_status = ?;"), RollupFinalizationSkipped, ProvingTaskSkipped, ProvingTaskFailed, RollupCommitted)
-	return err
+func (o *blockBatchOrm) UpdateSkippedBatches() (int64, error) {
+	res, err := o.db.Exec(o.db.Rebind("update block_batch set rollup_status = ? where (proving_status = ? or proving_status = ?) and rollup_status = ?;"), RollupFinalizationSkipped, ProvingTaskSkipped, ProvingTaskFailed, RollupCommitted)
+
+	if err != nil {
+		return 0, err
+	}
+
+	count, err := res.RowsAffected()
+
+	if err != nil {
+		return 0, err
+	}
+
+	return count, nil
 }
