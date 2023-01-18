@@ -65,7 +65,6 @@ type Manager struct {
 	// A map containing proof failed or verify failed proof.
 	rollerPool cmap.ConcurrentMap
 
-	// TODO: once put into use, should add to graceful restart.
 	failedSessionInfos map[string]*SessionInfo
 
 	// A direct connection to the Halo2 verifier, used to verify
@@ -373,10 +372,24 @@ func (m *Manager) CollectProofs(sess *session) {
 		m.mu.Lock()
 		sess.info.Rollers[ret.pk].Status = ret.status
 		m.mu.Unlock()
+		if m.isSessionFailed(sess.info) {
+			if err := m.orm.UpdateProvingStatus(ret.id, orm.ProvingTaskFailed); err != nil {
+				log.Error("failed to update proving_status as failed", "msg.ID", ret.id, "error", err)
+			}
+		}
 		if err := m.orm.SetSessionInfo(sess.info); err != nil {
 			log.Error("db set session info fail", "pk", ret.pk, "error", err)
 		}
 	}
+}
+
+func (m *Manager) isSessionFailed(info *orm.SessionInfo) bool {
+	for _, roller := range info.Rollers {
+		if roller.Status != orm.RollerProofInvalid {
+			return false
+		}
+	}
+	return true
 }
 
 // APIs collect API services.
@@ -440,6 +453,7 @@ func (m *Manager) StartProofGenerationSession(task *orm.BlockBatch) (success boo
 	for i := 0; i < int(m.cfg.RollersPerSession); i++ {
 		roller := m.selectRoller()
 		if roller == nil {
+			log.Info("selectRoller returns nil")
 			break
 		}
 		log.Info("roller is picked", "session id", task.ID, "name", roller.Name, "public key", roller.PublicKey)
