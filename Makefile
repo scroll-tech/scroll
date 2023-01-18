@@ -1,33 +1,41 @@
-.PHONY: check update dev_docker clean
+.PHONY: lint docker clean roller mock_roller
 
-help: ## Display this help message
-	@grep -h \
-		-E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
-		awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
+IMAGE_NAME=go-roller
+IMAGE_VERSION=latest
 
-lint: ## The code's format and security checks.
-	make -C bridge lint
-	make -C common lint
-	make -C coordinator lint
-	make -C database lint
-	make -C roller lint
+ifeq (4.3,$(firstword $(sort $(MAKE_VERSION) 4.3)))
+	ZK_VERSION=$(shell grep -m 1 "scroll-zkevm" ../common/libzkp/impl/Cargo.lock | cut -d "#" -f2 | cut -c-7)
+else
+	ZK_VERSION=$(shell grep -m 1 "scroll-zkevm" ../common/libzkp/impl/Cargo.lock | cut -d "\#" -f2 | cut -c-7)
+endif
 
-update: ## update dependencies
-	go work sync
-	cd $(PWD)/bridge/ && go get -u github.com/scroll-tech/go-ethereum@staging && go mod tidy
-	cd $(PWD)/common/ && go get -u github.com/scroll-tech/go-ethereum@staging && go mod tidy
-	cd $(PWD)/coordinator/ && go get -u github.com/scroll-tech/go-ethereum@staging && go mod tidy
-	cd $(PWD)/database/ && go get -u github.com/scroll-tech/go-ethereum@staging && go mod tidy
-	cd $(PWD)/roller/ && go get -u github.com/scroll-tech/go-ethereum@staging && go mod tidy
-	goimports -local $(PWD)/bridge/ -w .
-	goimports -local $(PWD)/common/ -w .
-	goimports -local $(PWD)/coordinator/ -w .
-	goimports -local $(PWD)/database/ -w .
-	goimports -local $(PWD)/roller/ -w .
+libzkp:
+	cd ../common/libzkp/impl && cargo build --release && cp ./target/release/libzkp.a ../interface/
+	rm -rf ./prover/lib && cp -r ../common/libzkp/interface ./prover/lib
 
-dev_docker: ## build docker images for development/testing usages
-	docker build -t scroll_l1geth ./common/docker/l1geth/
-	docker build -t scroll_l2geth ./common/docker/l2geth/
+roller: libzkp ## Build the Roller instance.
+	GOBIN=$(PWD)/build/bin go build -ldflags "-X scroll-tech/common/version.ZkVersion=${ZK_VERSION}" -o $(PWD)/build/bin/roller ./cmd
+
+gpu-roller: libzkp ## Build the GPU Roller instance.
+	GOBIN=$(PWD)/build/bin go build -ldflags "-X scroll-tech/common/version.ZkVersion=${ZK_VERSION}" -tags gpu -o $(PWD)/build/bin/roller ./cmd
+
+mock_roller:
+	GOBIN=$(PWD)/build/bin go build -tags mock_prover -o $(PWD)/build/bin/roller $(PWD)/cmd
+
+test-prover: libzkp
+	go test -tags ffi -timeout 0 -v ./prover
+
+test-gpu-prover: libzkp
+	go test -tags="gpu ffi" -timeout 0 -v ./prover
+
+lastest-zk-version:
+	curl -sL https://api.github.com/repos/scroll-tech/scroll-zkevm/commits | jq -r ".[0].sha"
+
+lint: ## Lint the files - used for CI
+	GOBIN=$(PWD)/build/bin go run ../build/lint.go
 
 clean: ## Empty out the bin folder
 	@rm -rf build/bin
+
+# docker:
+# 	docker build -t scrolltech/${IMAGE_NAME}:${IMAGE_VERSION} ../ -f ./Dockerfile
