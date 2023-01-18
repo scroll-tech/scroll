@@ -331,6 +331,7 @@ func (m *Manager) CollectProofs(sess *session) {
 		m.mu.Lock()
 		// Ensure proper clean-up of resources.
 		defer func() {
+			// TODO: remove the clean-up, rollers report healthy status.
 			for pk := range sess.info.Rollers {
 				m.freeTaskIDForRoller(pk, sess.info.ID)
 			}
