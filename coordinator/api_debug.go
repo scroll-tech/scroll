@@ -2,8 +2,9 @@ package coordinator
 
 import (
 	"fmt"
-	"scroll-tech/coordinator/types"
 	"time"
+
+	"scroll-tech/coordinator/types"
 
 	"scroll-tech/database/orm"
 )

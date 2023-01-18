@@ -2,6 +2,7 @@ package client
 
 import (
 	"context"
+
 	"scroll-tech/coordinator/types"
 
 	"github.com/scroll-tech/go-ethereum"
