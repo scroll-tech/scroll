@@ -11,7 +11,7 @@ endif
 
 libzkp:
 	cd ../common/libzkp/impl && cargo build --release && cp ./target/release/libzkp.a ../interface/
-	cp -r ../common/libzkp/interface ./prover/lib
+	rm -rf ./prover/lib && cp -r ../common/libzkp/interface ./prover/lib
 
 roller: libzkp ## Build the Roller instance.
 	GOBIN=$(PWD)/build/bin go build -ldflags "-X scroll-tech/common/version.ZkVersion=${ZK_VERSION}" -o $(PWD)/build/bin/roller ./cmd
