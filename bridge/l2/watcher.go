@@ -54,14 +54,14 @@ type WatcherClient struct {
 }
 
 // NewL2WatcherClient take a l2geth instance to generate a l2watcherclient instance
-func NewL2WatcherClient(ctx context.Context, client *ethclient.Client, confirmations uint64, bpCfg *config.BatchProposerConfig, messengerAddress common.Address, orm database.OrmFactory) *WatcherClient {
+func NewL2WatcherClient(ctx context.Context, client *ethclient.Client, confirmations uint64, bpCfg *config.BatchProposerConfig, messengerAddress common.Address, orm database.OrmFactory) (*WatcherClient, error) {
 	savedHeight, err := orm.GetLayer2LatestWatchedHeight()
 	if err != nil {
 		log.Warn("fetch height from db failed", "err", err)
 		savedHeight = 0
 	}
 
-	return &WatcherClient{
+	watcher := &WatcherClient{
 		ctx:                ctx,
 		Client:             client,
 		orm:                orm,
@@ -73,6 +73,13 @@ func NewL2WatcherClient(ctx context.Context, client *ethclient.Client, confirmat
 		stopped:            0,
 		batchProposer:      newBatchProposer(bpCfg, orm),
 	}
+	// Init cache, if traces in cache expired reset it.
+	if err = watcher.initCache(time.Second * 10); err != nil {
+		log.Error("failed to init cache in l2 watcher")
+		return nil, err
+	}
+
+	return watcher, nil
 }
 
 // Start the Listening process

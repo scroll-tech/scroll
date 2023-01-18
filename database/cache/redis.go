@@ -41,8 +41,13 @@ func NewRedisClient(redisConfig *RedisConfig) (Cache, error) {
 	}, nil
 }
 
+// ExistTrace check the trace is exist or not.
+func (r *RedisClient) ExistTrace(ctx context.Context, number *big.Int) (bool, error) {
+	return r.Get(ctx, number.String()).Bool()
+}
+
 // SetBlockTrace Set trace to redis.
-func (r *RedisClient) SetBlockTrace(ctx context.Context, trace *types.BlockTrace) error {
+func (r *RedisClient) SetBlockTrace(ctx context.Context, trace *types.BlockTrace) (setErr error) {
 	hash, number := trace.Header.Hash().String(), trace.Header.Number.String()
 
 	// If exist the trace or return error, interrupt and return.
@@ -50,10 +55,17 @@ func (r *RedisClient) SetBlockTrace(ctx context.Context, trace *types.BlockTrace
 		return err
 	}
 	// Set trace expire time.
-	r.Expire(ctx, number, r.traceExpire)
-	data, err := json.Marshal(trace)
-	if err != nil {
-		return err
+	defer func() {
+		if setErr == nil {
+			r.Expire(ctx, number, r.traceExpire)
+			r.Set(ctx, number, hash, r.traceExpire)
+		}
+	}()
+
+	var data []byte
+	data, setErr = json.Marshal(trace)
+	if setErr != nil {
+		return setErr
 	}
 	return r.HSet(ctx, number, hash, data).Err()
 }

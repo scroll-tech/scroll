@@ -38,7 +38,8 @@ func testRelayL2MessageSucceed(t *testing.T) {
 	defer l2Relayer.Stop()
 
 	// Create L2Watcher
-	l2Watcher := l2.NewL2WatcherClient(context.Background(), l2Client, 0, l2Cfg.BatchProposerConfig, l2Cfg.L2MessengerAddress, db)
+	l2Watcher, err := l2.NewL2WatcherClient(context.Background(), l2Client, 0, l2Cfg.BatchProposerConfig, l2Cfg.L2MessengerAddress, db)
+	assert.NoError(t, err)
 
 	// Create L1Watcher
 	l1Cfg := cfg.L1Config

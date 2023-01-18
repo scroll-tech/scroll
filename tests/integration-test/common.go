@@ -16,7 +16,6 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"scroll-tech/database"
-	"scroll-tech/database/cache"
 	_ "scroll-tech/database/cmd/app"
 
 	_ "scroll-tech/roller/cmd/app"
@@ -191,10 +190,7 @@ func mockDatabaseConfig(t *testing.T) string {
 		cfg.DB.DSN = dbImg.Endpoint()
 	}
 	if redisImg != nil {
-		cfg.RedisConfig = &cache.RedisConfig{
-			RedisURL:    redisImg.Endpoint(),
-			Expirations: map[string]int64{"trace": 60},
-		}
+		cfg.RedisConfig.RedisURL = redisImg.Endpoint()
 	}
 
 	data, err := json.Marshal(cfg)
