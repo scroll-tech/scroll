@@ -7,8 +7,6 @@ import (
 	"testing"
 	"time"
 
-	"scroll-tech/database/cache"
-
 	_ "github.com/lib/pq"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/scroll-tech/go-ethereum/core/types"
@@ -17,6 +15,7 @@ import (
 	"scroll-tech/common/docker"
 
 	"scroll-tech/database"
+	"scroll-tech/database/cache"
 	"scroll-tech/database/migrate"
 	"scroll-tech/database/orm"
 )
