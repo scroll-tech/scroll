@@ -15,7 +15,7 @@ test:
 
 libzkp:
 	cd ../common/libzkp/impl && cargo build --release && cp ./target/release/libzkp.a ../interface/
-	cp -r ../common/libzkp/interface ./verifier/lib
+	rm -rf ./verifier/lib && cp -r ../common/libzkp/interface ./verifier/lib
 
 coordinator: libzkp ## Builds the Coordinator instance.
 	go build -ldflags "-X scroll-tech/common/version.ZkVersion=${ZK_VERSION}" -o $(PWD)/build/bin/coordinator ./cmd
