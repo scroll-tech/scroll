@@ -143,8 +143,8 @@ type BlockBatchOrm interface {
 	ResetProvingStatusFor(before ProvingStatus) error
 	NewBatchInDBTx(dbTx *sqlx.Tx, startBlock *BlockInfo, endBlock *BlockInfo, parentHash string, totalTxNum uint64, gasUsed uint64) (string, error)
 	BatchRecordExist(id string) (bool, error)
-	GetPendingBatches() ([]string, error)
-	GetCommittedBatches() ([]string, error)
+	GetPendingBatches(limit uint64) ([]string, error)
+	GetCommittedBatches(limit uint64) ([]string, error)
 	GetRollupStatus(id string) (RollupStatus, error)
 	GetRollupStatusByIDList(ids []string) ([]RollupStatus, error)
 	GetLatestFinalizedBatch() (*BlockBatch, error)
@@ -178,8 +178,7 @@ type L2MessageOrm interface {
 	GetL2MessageByMsgHash(msgHash string) (*L2Message, error)
 	MessageProofExist(nonce uint64) (bool, error)
 	GetMessageProofByNonce(nonce uint64) (string, error)
-	GetL2MessagesByStatus(status MsgStatus) ([]*L2Message, error)
-	GetL2MessagesByStatusUpToHeight(status MsgStatus, height uint64) ([]*L2Message, error)
+	GetL2Messages(fields map[string]interface{}, args ...string) ([]*L2Message, error)
 	GetL2ProcessedNonce() (int64, error)
 	SaveL2Messages(ctx context.Context, messages []*L2Message) error
 	UpdateLayer1Hash(ctx context.Context, msgHash string, layer1Hash string) error

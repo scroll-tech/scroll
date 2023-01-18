@@ -249,8 +249,8 @@ func (o *blockBatchOrm) BatchRecordExist(id string) (bool, error) {
 	return true, nil
 }
 
-func (o *blockBatchOrm) GetPendingBatches() ([]string, error) {
-	rows, err := o.db.Queryx(`SELECT id FROM block_batch WHERE rollup_status = $1 ORDER BY index ASC`, RollupPending)
+func (o *blockBatchOrm) GetPendingBatches(limit uint64) ([]string, error) {
+	rows, err := o.db.Queryx(`SELECT id FROM block_batch WHERE rollup_status = $1 ORDER BY index ASC LIMIT $2`, RollupPending, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -281,8 +281,8 @@ func (o *blockBatchOrm) GetLatestFinalizedBatch() (*BlockBatch, error) {
 	return batch, nil
 }
 
-func (o *blockBatchOrm) GetCommittedBatches() ([]string, error) {
-	rows, err := o.db.Queryx(`SELECT id FROM block_batch WHERE rollup_status = $1 ORDER BY index ASC`, RollupCommitted)
+func (o *blockBatchOrm) GetCommittedBatches(limit uint64) ([]string, error) {
+	rows, err := o.db.Queryx(`SELECT id FROM block_batch WHERE rollup_status = $1 ORDER BY index ASC LIMIT $2`, RollupCommitted, limit)
 	if err != nil {
 		return nil, err
 	}
