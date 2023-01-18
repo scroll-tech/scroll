@@ -3,6 +3,7 @@ package cache
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"math/big"
 	"time"
 
@@ -43,7 +44,8 @@ func NewRedisClient(redisConfig *RedisConfig) (Cache, error) {
 
 // ExistTrace check the trace is exist or not.
 func (r *RedisClient) ExistTrace(ctx context.Context, number *big.Int) (bool, error) {
-	return r.Get(ctx, number.String()).Bool()
+	keys, err := r.HKeys(ctx, number.String()).Result()
+	return len(keys) != 0, err
 }
 
 // SetBlockTrace Set trace to redis.
@@ -58,7 +60,6 @@ func (r *RedisClient) SetBlockTrace(ctx context.Context, trace *types.BlockTrace
 	defer func() {
 		if setErr == nil {
 			r.Expire(ctx, number, r.traceExpire)
-			r.Set(ctx, number, hash, r.traceExpire)
 		}
 	}()
 
@@ -73,6 +74,7 @@ func (r *RedisClient) SetBlockTrace(ctx context.Context, trace *types.BlockTrace
 // GetBlockTrace get block trace by number, hash.
 func (r *RedisClient) GetBlockTrace(ctx context.Context, number *big.Int, hash common.Hash) (*types.BlockTrace, error) {
 	// Get trace content.
+	fmt.Println(number.String(), hash.String())
 	data, err := r.HGet(ctx, number.String(), hash.String()).Bytes()
 	if err != nil {
 		return nil, err

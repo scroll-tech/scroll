@@ -6,14 +6,14 @@
 -- TODO: trace content is stored in cache, this field is empty and can be removed later.
 create table block_trace
 (
-    number          BIGINT  NOT NULL,
-    hash            VARCHAR NOT NULL,
-    parent_hash     VARCHAR NOT NULL,
-    trace           JSON    NOT NULL,
-    batch_id        VARCHAR DEFAULT NULL,
-    tx_num          INTEGER NOT NULL,
-    gas_used        BIGINT  NOT NULL,
-    block_timestamp NUMERIC NOT NULL
+    number                  BIGINT          NOT NULL,
+    hash                    VARCHAR         NOT NULL,
+    parent_hash             VARCHAR         NOT NULL,
+    trace                   JSON            NOT NULL,
+    batch_id                VARCHAR         DEFAULT NULL,
+    tx_num                  INTEGER         NOT NULL,
+    gas_used                BIGINT          NOT NULL,
+    block_timestamp         NUMERIC         NOT NULL
 );
 
 create unique index block_trace_hash_uindex

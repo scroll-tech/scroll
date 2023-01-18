@@ -172,9 +172,11 @@ func (o *blockTraceOrm) InsertBlockTraces(blockTraces []*types.BlockTrace) error
 
 		gasCost := utils.ComputeTraceGasCost(trace)
 		traceMaps[i] = map[string]interface{}{
-			"number":          number,
-			"hash":            hash,
-			"parent_hash":     trace.Header.ParentHash.String(),
+			"number":      number,
+			"hash":        hash,
+			"parent_hash": trace.Header.ParentHash.String(),
+			// Empty json
+			"trace":           "{}",
 			"tx_num":          txNum,
 			"gas_used":        gasCost,
 			"block_timestamp": mtime,
@@ -186,7 +188,7 @@ func (o *blockTraceOrm) InsertBlockTraces(blockTraces []*types.BlockTrace) error
 			}
 		}
 	}
-	_, err := o.db.NamedExec(`INSERT INTO public.block_trace (number, hash, parent_hash, tx_num, gas_used, block_timestamp) VALUES (:number, :hash, :parent_hash, :tx_num, :gas_used, :block_timestamp);`, traceMaps)
+	_, err := o.db.NamedExec(`INSERT INTO public.block_trace (number, hash, parent_hash, trace, tx_num, gas_used, block_timestamp) VALUES (:number, :hash, :parent_hash, :trace, :tx_num, :gas_used, :block_timestamp);`, traceMaps)
 	if err != nil {
 		log.Error("failed to insert blockTraces", "err", err)
 	}

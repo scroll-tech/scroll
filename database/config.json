@@ -6,7 +6,7 @@
   "redis": {
     "url": "redis://default:@localhost:6379/0",
     "expirations": {
-      "trace": 60
+      "trace": 3600
     }
   }
 }
