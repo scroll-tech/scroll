@@ -3,6 +3,7 @@ package l2
 import (
 	"context"
 	"errors"
+	"fmt"
 	"math/big"
 	"runtime"
 	"sync"
@@ -92,6 +93,8 @@ func NewLayer2Relayer(ctx context.Context, db database.OrmFactory, cfg *config.R
 	}, nil
 }
 
+const processMsgLimit = 100
+
 // ProcessSavedEvents relays saved un-processed cross-domain transactions to desired blockchain
 func (r *Layer2Relayer) ProcessSavedEvents(wg *sync.WaitGroup) {
 	defer wg.Done()
@@ -102,7 +105,10 @@ func (r *Layer2Relayer) ProcessSavedEvents(wg *sync.WaitGroup) {
 	}
 
 	// msgs are sorted by nonce in increasing order
-	msgs, err := r.db.GetL2MessagesByStatusUpToHeight(orm.MsgPending, batch.EndBlockNumber)
+	msgs, err := r.db.GetL2Messages(
+		map[string]interface{}{"status": orm.MsgPending},
+		fmt.Sprintf("AND height<=%d ORDER BY nonce ASC LIMIT %d", batch.EndBlockNumber, processMsgLimit),
+	)
 
 	if err != nil {
 		log.Error("Failed to fetch unprocessed L2 messages", "err", err)
@@ -183,7 +189,7 @@ func (r *Layer2Relayer) processSavedEvent(msg *orm.L2Message, index uint64) erro
 func (r *Layer2Relayer) ProcessPendingBatches(wg *sync.WaitGroup) {
 	defer wg.Done()
 	// batches are sorted by batch index in increasing order
-	batchesInDB, err := r.db.GetPendingBatches()
+	batchesInDB, err := r.db.GetPendingBatches(1)
 	if err != nil {
 		log.Error("Failed to fetch pending L2 batches", "err", err)
 		return
@@ -277,7 +283,7 @@ func (r *Layer2Relayer) ProcessPendingBatches(wg *sync.WaitGroup) {
 func (r *Layer2Relayer) ProcessCommittedBatches(wg *sync.WaitGroup) {
 	defer wg.Done()
 	// batches are sorted by batch index in increasing order
-	batches, err := r.db.GetCommittedBatches()
+	batches, err := r.db.GetCommittedBatches(1)
 	if err != nil {
 		log.Error("Failed to fetch committed L2 batches", "err", err)
 		return
