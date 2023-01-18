@@ -74,7 +74,7 @@ func NewL2WatcherClient(ctx context.Context, client *ethclient.Client, confirmat
 		batchProposer:      newBatchProposer(bpCfg, orm),
 	}
 	// Init cache, if traces in cache expired reset it.
-	if err = watcher.initCache(time.Second * 10); err != nil {
+	if err = watcher.initCache(ctx); err != nil {
 		log.Error("failed to init cache in l2 watcher")
 		return nil, err
 	}

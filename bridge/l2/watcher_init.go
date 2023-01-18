@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"math/big"
 	"runtime"
-	"time"
 
 	"github.com/scroll-tech/go-ethereum/log"
 	"golang.org/x/sync/errgroup"
@@ -14,14 +13,12 @@ import (
 	"scroll-tech/database/orm"
 )
 
-func (w *WatcherClient) initCache(timeout time.Duration) error {
+func (w *WatcherClient) initCache(ctx context.Context) error {
 	var (
 		// Use at most half of the system threads.
 		parallel = (runtime.GOMAXPROCS(0) + 1) / 2
 		db       = w.orm
 	)
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-	defer cancel()
 
 	// Fill unsigned block traces.
 	for {
