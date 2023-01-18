@@ -1380,7 +1380,7 @@ dependencies = [
 [[package]]
 name = "halo2-mpt-circuits"
 version = "0.1.0"
-source = "git+https://github.com/scroll-tech/mpt-circuit.git?branch=scroll-dev-0902#b0ffab97316f9cf4b9e65aba398a047a8d6424a1"
+source = "git+https://github.com/scroll-tech/mpt-circuit.git?branch=scroll-dev-0920-fix#d6bd0f291d41c4585e783d2d94a77fd80e1ba47e"
 dependencies = [
  "bitvec 0.22.3",
  "ff 0.11.1",
@@ -1451,7 +1451,7 @@ dependencies = [
 [[package]]
 name = "halo2_proofs"
 version = "0.2.0"
-source = "git+https://github.com/scroll-tech/halo2.git?branch=scroll-dev-0902#6f18f38e82d302cd8b6ce8809b59c32350b019a3"
+source = "git+https://github.com/scroll-tech/halo2.git?branch=scroll-dev-0902#6b8c8a07da9fbf5d5878831e35360b8c5e6d89a3"
 dependencies = [
  "blake2b_simd",
  "cfg-if 0.1.10",
@@ -2397,7 +2397,7 @@ dependencies = [
 [[package]]
 name = "poseidon"
 version = "0.2.0"
-source = "git+https://github.com/appliedzkp/poseidon.git#5d29df01a95e3df6334080d28e983407f56b5da3"
+source = "git+https://github.com/appliedzkp/poseidon.git#0b9965fbcd9e03559088b8f68489592286bc55e0"
 dependencies = [
  "group",
  "halo2curves 0.2.1 (git+https://github.com/privacy-scaling-explorations/halo2curves?tag=0.3.0)",
@@ -2407,7 +2407,7 @@ dependencies = [
 [[package]]
 name = "poseidon"
 version = "0.2.0"
-source = "git+https://github.com/privacy-scaling-explorations/poseidon.git#5d29df01a95e3df6334080d28e983407f56b5da3"
+source = "git+https://github.com/privacy-scaling-explorations/poseidon.git#0b9965fbcd9e03559088b8f68489592286bc55e0"
 dependencies = [
  "group",
  "halo2curves 0.2.1 (git+https://github.com/privacy-scaling-explorations/halo2curves?tag=0.3.0)",
@@ -3389,7 +3389,7 @@ checksum = "dcf81ac59edc17cc8697ff311e8f5ef2d99fcbd9817b34cec66f90b6c3dfd987"
 [[package]]
 name = "types"
 version = "0.1.0"
-source = "git+https://github.com/scroll-tech/scroll-zkevm#51b9b022fcdb45c505ea351f9dca8f2cfbec4d86"
+source = "git+https://github.com/scroll-tech/scroll-zkevm?branch=fix/mpt_limit#cfe8b4e959d6e09b3a45b58e45589ae62988a729"
 dependencies = [
  "base64 0.13.0",
  "blake2",
@@ -3816,7 +3816,7 @@ checksum = "c394b5bd0c6f669e7275d9c20aa90ae064cb22e75a1cad54e1b34088034b149f"
 [[package]]
 name = "zkevm"
 version = "0.1.0"
-source = "git+https://github.com/scroll-tech/scroll-zkevm#51b9b022fcdb45c505ea351f9dca8f2cfbec4d86"
+source = "git+https://github.com/scroll-tech/scroll-zkevm?branch=fix/mpt_limit#cfe8b4e959d6e09b3a45b58e45589ae62988a729"
 dependencies = [
  "anyhow",
  "blake2",

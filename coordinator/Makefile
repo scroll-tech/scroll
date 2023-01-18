@@ -15,10 +15,10 @@ test:
 
 libzkp:
 	cd ../common/libzkp/impl && cargo build --release && cp ./target/release/libzkp.a ../interface/
-	cp -r ../common/libzkp/interface ./verifier/lib
+	rm -rf ./verifier/lib && cp -r ../common/libzkp/interface ./verifier/lib
 
 coordinator: libzkp ## Builds the Coordinator instance.
-	go build -ldflags "-X scroll-tech/common/version.ZK_VERSION=${ZK_VERSION}" -o $(PWD)/build/bin/coordinator ./cmd
+	go build -ldflags "-X scroll-tech/common/version.ZkVersion=${ZK_VERSION}" -o $(PWD)/build/bin/coordinator ./cmd
 
 test-verifier: libzkp
 	go test -tags ffi -timeout 0 -v ./verifier

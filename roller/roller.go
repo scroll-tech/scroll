@@ -5,8 +5,8 @@ import (
 	"crypto/ecdsa"
 	"errors"
 	"fmt"
+	"math"
 	"sort"
-	"strings"
 	"sync/atomic"
 	"time"
 
@@ -29,8 +29,6 @@ import (
 var (
 	// retry connecting to coordinator
 	retryWait = time.Second * 10
-	// net normal close
-	errNormalClose = errors.New("use of closed network connection")
 )
 
 // Roller contains websocket conn to coordinator, Stack, unix-socket to ipc-prover.
@@ -107,10 +105,16 @@ func (r *Roller) Start() {
 
 // Register registers Roller to the coordinator through Websocket.
 func (r *Roller) Register() error {
+	timestamp := time.Now().Unix()
+
+	if timestamp < 0 || timestamp > math.MaxUint32 {
+		panic("Expected current time to be between the years 1970 and 2106")
+	}
+
 	authMsg := &message.AuthMsg{
 		Identity: &message.Identity{
 			Name:      r.cfg.RollerName,
-			Timestamp: time.Now().UnixMilli(),
+			Timestamp: uint32(timestamp),
 			PublicKey: r.PublicKey(),
 			Version:   version.Version,
 		},
@@ -188,9 +192,6 @@ func (r *Roller) ProveLoop() {
 					time.Sleep(time.Second * 3)
 					continue
 				}
-				if strings.Contains(err.Error(), errNormalClose.Error()) {
-					return
-				}
 				log.Error("prove failed", "error", err)
 			}
 		}
@@ -256,25 +257,34 @@ func (r *Roller) prove() error {
 		}
 	}()
 
-	ok, serr := r.signAndSubmitProof(proofMsg)
-	if !ok {
-		log.Error("submit proof to coordinator failed", "task ID", proofMsg.ID)
-	}
-	return serr
+	r.signAndSubmitProof(proofMsg)
+	return nil
 }
 
-func (r *Roller) signAndSubmitProof(msg *message.ProofDetail) (bool, error) {
+func (r *Roller) signAndSubmitProof(msg *message.ProofDetail) {
 	authZkProof := &message.ProofMsg{ProofDetail: msg}
 	if err := authZkProof.Sign(r.priv); err != nil {
-		return false, err
+		log.Error("sign proof error", "err", err)
+		return
 	}
 
-	// When the roller is disconnected from the coordinator,
-	// wait until the roller reconnects to the coordinator.
-	for atomic.LoadInt64(&r.isDisconnected) == 1 {
-		time.Sleep(retryWait)
+	// Retry SubmitProof several times.
+	for i := 0; i < 3; i++ {
+		// When the roller is disconnected from the coordinator,
+		// wait until the roller reconnects to the coordinator.
+		for atomic.LoadInt64(&r.isDisconnected) == 1 {
+			time.Sleep(retryWait)
+		}
+		ok, serr := r.client.SubmitProof(context.Background(), authZkProof)
+		if !ok {
+			log.Error("submit proof to coordinator failed", "task ID", msg.ID)
+			return
+		}
+		if serr == nil {
+			return
+		}
+		log.Error("submit proof to coordinator error", "task ID", msg.ID, "error", serr)
 	}
-	return r.client.SubmitProof(context.Background(), authZkProof)
 }
 
 // Stop closes the websocket connection.

@@ -16,7 +16,7 @@ func TestAuthMessageSignAndVerify(t *testing.T) {
 	authMsg := &AuthMsg{
 		Identity: &Identity{
 			Name:      "testRoller",
-			Timestamp: time.Now().UnixNano(),
+			Timestamp: uint32(time.Now().Unix()),
 		},
 	}
 	assert.NoError(t, authMsg.Sign(privkey))

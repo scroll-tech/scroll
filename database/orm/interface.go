@@ -118,7 +118,7 @@ type BlockTraceOrm interface {
 	GetBlockTracesLatestHeight() (int64, error)
 	GetBlockTraces(fields map[string]interface{}, args ...string) ([]*types.BlockTrace, error)
 	GetBlockInfos(fields map[string]interface{}, args ...string) ([]*BlockInfo, error)
-	// add `GetUnbatchedBlocks` because `GetBlockInfos` cannot support query "batch_id is NULL"
+	// GetUnbatchedBlocks add `GetUnbatchedBlocks` because `GetBlockInfos` cannot support query "batch_id is NULL"
 	GetUnbatchedBlocks(fields map[string]interface{}, args ...string) ([]*BlockInfo, error)
 	GetHashByNumber(number uint64) (*common.Hash, error)
 	DeleteTracesByBatchID(batchID string) error
@@ -137,22 +137,23 @@ type BlockBatchOrm interface {
 	GetBlockBatches(fields map[string]interface{}, args ...string) ([]*BlockBatch, error)
 	GetProvingStatusByID(id string) (ProvingStatus, error)
 	GetVerifiedProofAndInstanceByID(id string) ([]byte, []byte, error)
-	UpdateProofByID(ctx context.Context, id string, proof, instance_commitments []byte, proofTimeSec uint64) error
+	UpdateProofByID(ctx context.Context, id string, proof, instanceCommitments []byte, proofTimeSec uint64) error
 	UpdateProvingStatus(id string, status ProvingStatus) error
 	ResetProvingStatusFor(before ProvingStatus) error
 	NewBatchInDBTx(dbTx *sqlx.Tx, startBlock *BlockInfo, endBlock *BlockInfo, parentHash string, totalTxNum uint64, gasUsed uint64) (string, error)
 	BatchRecordExist(id string) (bool, error)
-	GetPendingBatches() ([]string, error)
-	GetCommittedBatches() ([]string, error)
+	GetPendingBatches(limit uint64) ([]string, error)
+	GetCommittedBatches(limit uint64) ([]string, error)
 	GetRollupStatus(id string) (RollupStatus, error)
 	GetRollupStatusByIDList(ids []string) ([]RollupStatus, error)
-	GetCommitTxHash(id string) (sql.NullString, error)
-	GetFinalizeTxHash(id string) (sql.NullString, error)
 	GetLatestFinalizedBatch() (*BlockBatch, error)
 	UpdateRollupStatus(ctx context.Context, id string, status RollupStatus) error
-	UpdateCommitTxHashAndRollupStatus(ctx context.Context, id string, commit_tx_hash string, status RollupStatus) error
-	UpdateFinalizeTxHashAndRollupStatus(ctx context.Context, id string, finalize_tx_hash string, status RollupStatus) error
+	UpdateCommitTxHashAndRollupStatus(ctx context.Context, id string, commitTxHash string, status RollupStatus) error
+	UpdateFinalizeTxHashAndRollupStatus(ctx context.Context, id string, finalizeTxHash string, status RollupStatus) error
 	GetAssignedBatchIDs() ([]string, error)
+
+	GetCommitTxHash(id string) (sql.NullString, error)   // for unit tests only
+	GetFinalizeTxHash(id string) (sql.NullString, error) // for unit tests only
 }
 
 // L1MessageOrm is layer1 message db interface
@@ -166,6 +167,8 @@ type L1MessageOrm interface {
 	UpdateLayer1Status(ctx context.Context, msgHash string, status MsgStatus) error
 	UpdateLayer1StatusAndLayer2Hash(ctx context.Context, msgHash string, status MsgStatus, layer2Hash string) error
 	GetLayer1LatestWatchedHeight() (int64, error)
+
+	GetRelayL1MessageTxHash(nonce uint64) (sql.NullString, error) // for unit tests only
 }
 
 // L2MessageOrm is layer2 message db interface
@@ -174,7 +177,7 @@ type L2MessageOrm interface {
 	GetL2MessageByMsgHash(msgHash string) (*L2Message, error)
 	MessageProofExist(nonce uint64) (bool, error)
 	GetMessageProofByNonce(nonce uint64) (string, error)
-	GetL2MessagesByStatus(status MsgStatus) ([]*L2Message, error)
+	GetL2Messages(fields map[string]interface{}, args ...string) ([]*L2Message, error)
 	GetL2ProcessedNonce() (int64, error)
 	SaveL2Messages(ctx context.Context, messages []*L2Message) error
 	UpdateLayer1Hash(ctx context.Context, msgHash string, layer1Hash string) error
@@ -182,4 +185,6 @@ type L2MessageOrm interface {
 	UpdateLayer2StatusAndLayer1Hash(ctx context.Context, msgHash string, status MsgStatus, layer1Hash string) error
 	UpdateMessageProof(ctx context.Context, nonce uint64, proof string) error
 	GetLayer2LatestWatchedHeight() (int64, error)
+
+	GetRelayL2MessageTxHash(nonce uint64) (sql.NullString, error) // for unit tests only
 }

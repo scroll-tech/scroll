@@ -159,11 +159,11 @@ func (o *blockBatchOrm) GetVerifiedProofAndInstanceByID(id string) ([]byte, []by
 	return proof, instance, nil
 }
 
-func (o *blockBatchOrm) UpdateProofByID(ctx context.Context, id string, proof, instance_commitments []byte, proofTimeSec uint64) error {
+func (o *blockBatchOrm) UpdateProofByID(ctx context.Context, id string, proof, instanceCommitments []byte, proofTimeSec uint64) error {
 	db := o.db
 	if _, err := db.ExecContext(ctx,
 		db.Rebind(`UPDATE block_batch set proof = ?, instance_commitments = ?, proof_time_sec = ? where id = ?;`),
-		proof, instance_commitments, proofTimeSec, id,
+		proof, instanceCommitments, proofTimeSec, id,
 	); err != nil {
 		log.Error("failed to update proof", "err", err)
 	}
@@ -236,8 +236,8 @@ func (o *blockBatchOrm) BatchRecordExist(id string) (bool, error) {
 	return true, nil
 }
 
-func (o *blockBatchOrm) GetPendingBatches() ([]string, error) {
-	rows, err := o.db.Queryx(`SELECT id FROM block_batch WHERE rollup_status = $1 ORDER BY index ASC`, RollupPending)
+func (o *blockBatchOrm) GetPendingBatches(limit uint64) ([]string, error) {
+	rows, err := o.db.Queryx(`SELECT id FROM block_batch WHERE rollup_status = $1 ORDER BY index ASC LIMIT $2`, RollupPending, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -268,8 +268,8 @@ func (o *blockBatchOrm) GetLatestFinalizedBatch() (*BlockBatch, error) {
 	return batch, nil
 }
 
-func (o *blockBatchOrm) GetCommittedBatches() ([]string, error) {
-	rows, err := o.db.Queryx(`SELECT id FROM block_batch WHERE rollup_status = $1 ORDER BY index ASC`, RollupCommitted)
+func (o *blockBatchOrm) GetCommittedBatches(limit uint64) ([]string, error) {
+	rows, err := o.db.Queryx(`SELECT id FROM block_batch WHERE rollup_status = $1 ORDER BY index ASC LIMIT $2`, RollupCommitted, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -305,7 +305,7 @@ func (o *blockBatchOrm) GetRollupStatusByIDList(ids []string) ([]RollupStatus, e
 		return make([]RollupStatus, 0), nil
 	}
 
-	query, args, err := sqlx.In("SELECT rollup_status FROM block_batch WHERE id IN (?);", ids)
+	query, args, err := sqlx.In("SELECT id, rollup_status FROM block_batch WHERE id IN (?);", ids)
 	if err != nil {
 		return make([]RollupStatus, 0), err
 	}
@@ -314,17 +314,24 @@ func (o *blockBatchOrm) GetRollupStatusByIDList(ids []string) ([]RollupStatus, e
 
 	rows, err := o.db.Query(query, args...)
 
-	var statuses []RollupStatus
+	statusMap := make(map[string]RollupStatus)
 	for rows.Next() {
+		var id string
 		var status RollupStatus
-		if err = rows.Scan(&status); err != nil {
+		if err = rows.Scan(&id, &status); err != nil {
 			break
 		}
-		statuses = append(statuses, status)
+		statusMap[id] = status
 	}
+	var statuses []RollupStatus
 	if err != nil {
 		return statuses, err
 	}
+
+	for _, id := range ids {
+		statuses = append(statuses, statusMap[id])
+	}
+
 	return statuses, nil
 }
 
@@ -360,24 +367,24 @@ func (o *blockBatchOrm) UpdateRollupStatus(ctx context.Context, id string, statu
 	}
 }
 
-func (o *blockBatchOrm) UpdateCommitTxHashAndRollupStatus(ctx context.Context, id string, commit_tx_hash string, status RollupStatus) error {
+func (o *blockBatchOrm) UpdateCommitTxHashAndRollupStatus(ctx context.Context, id string, commitTxHash string, status RollupStatus) error {
 	switch status {
 	case RollupCommitted:
-		_, err := o.db.Exec(o.db.Rebind("update block_batch set commit_tx_hash = ?, rollup_status = ?, committed_at = ? where id = ?;"), commit_tx_hash, status, time.Now(), id)
+		_, err := o.db.Exec(o.db.Rebind("update block_batch set commit_tx_hash = ?, rollup_status = ?, committed_at = ? where id = ?;"), commitTxHash, status, time.Now(), id)
 		return err
 	default:
-		_, err := o.db.Exec(o.db.Rebind("update block_batch set commit_tx_hash = ?, rollup_status = ? where id = ?;"), commit_tx_hash, status, id)
+		_, err := o.db.Exec(o.db.Rebind("update block_batch set commit_tx_hash = ?, rollup_status = ? where id = ?;"), commitTxHash, status, id)
 		return err
 	}
 }
 
-func (o *blockBatchOrm) UpdateFinalizeTxHashAndRollupStatus(ctx context.Context, id string, finalize_tx_hash string, status RollupStatus) error {
+func (o *blockBatchOrm) UpdateFinalizeTxHashAndRollupStatus(ctx context.Context, id string, finalizeTxHash string, status RollupStatus) error {
 	switch status {
 	case RollupFinalized:
-		_, err := o.db.Exec(o.db.Rebind("update block_batch set finalize_tx_hash = ?, rollup_status = ?, finalized_at = ? where id = ?;"), finalize_tx_hash, status, time.Now(), id)
+		_, err := o.db.Exec(o.db.Rebind("update block_batch set finalize_tx_hash = ?, rollup_status = ?, finalized_at = ? where id = ?;"), finalizeTxHash, status, time.Now(), id)
 		return err
 	default:
-		_, err := o.db.Exec(o.db.Rebind("update block_batch set finalize_tx_hash = ?, rollup_status = ? where id = ?;"), finalize_tx_hash, status, id)
+		_, err := o.db.Exec(o.db.Rebind("update block_batch set finalize_tx_hash = ?, rollup_status = ? where id = ?;"), finalizeTxHash, status, id)
 		return err
 	}
 }
