@@ -106,7 +106,6 @@ func testListRollers(t *testing.T) {
 	defer func() {
 		roller1.close()
 		roller2.close()
-		roller3.close()
 	}()
 
 	// new client to test api_debug
@@ -124,6 +123,17 @@ func testListRollers(t *testing.T) {
 	}
 	sort.Strings(rollersName)
 	assert.True(t, reflect.DeepEqual(names, rollersName))
+
+	// test ListRollers if one roller closed.
+	roller3.close()
+	rollers, err = client.ListRollers(ctx)
+	assert.NoError(t, err)
+	var newRollersName []string
+	for _, roller := range rollers {
+		newRollersName = append(newRollersName, roller.Name)
+	}
+	sort.Strings(newRollersName)
+	assert.True(t, reflect.DeepEqual(names[:2], newRollersName))
 }
 
 func testHandshake(t *testing.T) {
