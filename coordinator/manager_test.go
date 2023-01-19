@@ -89,7 +89,7 @@ func testListRollers(t *testing.T) {
 
 	// Setup coordinator and ws server.
 	wsURL := "ws://" + randomURL()
-	rollerManager, handler := setupCoordinator(t, cfg.DBConfig, wsURL)
+	rollerManager, handler := setupCoordinator(t, cfg.DBConfig, 1, wsURL)
 	defer func() {
 		handler.Shutdown(context.Background())
 		rollerManager.Stop()
