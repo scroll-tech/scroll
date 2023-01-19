@@ -96,8 +96,7 @@ func NewLayer2Relayer(ctx context.Context, db database.OrmFactory, cfg *config.R
 const processMsgLimit = 100
 
 // ProcessSavedEvents relays saved un-processed cross-domain transactions to desired blockchain
-func (r *Layer2Relayer) ProcessSavedEvents(wg *sync.WaitGroup) {
-	defer wg.Done()
+func (r *Layer2Relayer) ProcessSavedEvents() {
 	batch, err := r.db.GetLatestFinalizedBatch()
 	if err != nil {
 		log.Error("GetLatestFinalizedBatch failed", "err", err)
@@ -186,8 +185,7 @@ func (r *Layer2Relayer) processSavedEvent(msg *orm.L2Message, index uint64) erro
 }
 
 // ProcessPendingBatches submit batch data to layer 1 rollup contract
-func (r *Layer2Relayer) ProcessPendingBatches(wg *sync.WaitGroup) {
-	defer wg.Done()
+func (r *Layer2Relayer) ProcessPendingBatches() {
 	// batches are sorted by batch index in increasing order
 	batchesInDB, err := r.db.GetPendingBatches(1)
 	if err != nil {
@@ -280,9 +278,7 @@ func (r *Layer2Relayer) ProcessPendingBatches(wg *sync.WaitGroup) {
 }
 
 // ProcessCommittedBatches submit proof to layer 1 rollup contract
-func (r *Layer2Relayer) ProcessCommittedBatches(wg *sync.WaitGroup) {
-	defer wg.Done()
-
+func (r *Layer2Relayer) ProcessCommittedBatches() {
 	// set skipped batches in a single db operation
 	if count, err := r.db.UpdateSkippedBatches(); err != nil {
 		log.Error("UpdateSkippedBatches failed", "err", err)
@@ -395,28 +391,42 @@ func (r *Layer2Relayer) ProcessCommittedBatches(wg *sync.WaitGroup) {
 
 // Start the relayer process
 func (r *Layer2Relayer) Start() {
-	go func() {
-		// trigger by timer
+	loop := func(ctx context.Context, f func()) {
 		ticker := time.NewTicker(time.Second)
 		defer ticker.Stop()
 
 		for {
 			select {
-			case <-ticker.C:
-				var wg = sync.WaitGroup{}
-				wg.Add(3)
-				go r.ProcessSavedEvents(&wg)
-				go r.ProcessPendingBatches(&wg)
-				go r.ProcessCommittedBatches(&wg)
-				wg.Wait()
-			case confirmation := <-r.messageCh:
-				r.handleConfirmation(confirmation)
-			case confirmation := <-r.rollupCh:
-				r.handleConfirmation(confirmation)
-			case <-r.stopCh:
+			case <-ctx.Done():
 				return
+			case <-ticker.C:
+				f()
 			}
 		}
+	}
+
+	go func() {
+		ctx, cancel := context.WithCancel(r.ctx)
+
+		go loop(ctx, func() { r.ProcessSavedEvents() })
+		go loop(ctx, func() { r.ProcessPendingBatches() })
+		go loop(ctx, func() { r.ProcessCommittedBatches() })
+
+		go func(ctx context.Context) {
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case confirmation := <-r.messageCh:
+					r.handleConfirmation(confirmation)
+				case confirmation := <-r.rollupCh:
+					r.handleConfirmation(confirmation)
+				}
+			}
+		}(ctx)
+
+		<-r.stopCh
+		cancel()
 	}()
 }
 
