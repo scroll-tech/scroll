@@ -331,6 +331,10 @@ func (m *Manager) CollectProofs(sess *session) {
 		case <-time.After(time.Duration(m.cfg.CollectionTime) * time.Minute):
 			m.mu.Lock()
 			defer func() {
+				// TODO: remove the clean-up, rollers report healthy status.
+				for pk := range sess.info.Rollers {
+					m.freeTaskIDForRoller(pk, sess.info.ID)
+				}
 				delete(m.sessions, sess.info.ID)
 				m.mu.Unlock()
 			}()
