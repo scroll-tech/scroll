@@ -236,7 +236,8 @@ func testValidProof(t *testing.T) {
 	rollers := make([]*mockRoller, 3)
 	for i := 0; i < len(rollers); i++ {
 		rollers[i] = newMockRoller(t, "roller_test"+strconv.Itoa(i), wsURL)
-		rollers[i].waitTaskAndSendProof(t, time.Second, false, i == 0) // only roller 0 submit valid proof.
+		// only roller 0 submits valid proof.
+		rollers[i].waitTaskAndSendProof(t, time.Second, false, i == 0)
 	}
 	defer func() {
 		// close connection
