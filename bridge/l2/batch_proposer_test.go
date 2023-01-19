@@ -52,7 +52,7 @@ func testBatchProposer(t *testing.T) {
 	}, db)
 	var wg sync.WaitGroup
 	wg.Add(1)
-	proposer.tryProposeBatch(&wg)
+	proposer.tryProposeBatch()
 	wg.Wait()
 
 	infos, err := db.GetUnbatchedBlocks(map[string]interface{}{},
