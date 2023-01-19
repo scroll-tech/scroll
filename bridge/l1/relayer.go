@@ -72,15 +72,20 @@ func NewLayer1Relayer(ctx context.Context, ethClient *ethclient.Client, l1Confir
 // ProcessSavedEvents relays saved un-processed cross-domain transactions to desired blockchain
 func (r *Layer1Relayer) ProcessSavedEvents() {
 	// msgs are sorted by nonce in increasing order
-	msgs, err := r.db.GetL1MessagesByStatus(orm.MsgPending)
+	msgs, err := r.db.GetL1MessagesByStatus(orm.MsgPending, 100)
 	if err != nil {
 		log.Error("Failed to fetch unprocessed L1 messages", "err", err)
 		return
 	}
+
+	if len(msgs) > 0 {
+		log.Info("Processing L1 messages", "count", len(msgs))
+	}
+
 	for _, msg := range msgs {
 		if err = r.processSavedEvent(msg); err != nil {
 			if !errors.Is(err, sender.ErrNoAvailableAccount) {
-				log.Error("failed to process event", "err", err)
+				log.Error("failed to process event", "msg.msgHash", msg.MsgHash, "err", err)
 			}
 			return
 		}
@@ -109,6 +114,9 @@ func (r *Layer1Relayer) processSavedEvent(msg *orm.L1Message) error {
 	}
 
 	hash, err := r.sender.SendTransaction(msg.MsgHash, &r.cfg.MessengerContractAddress, big.NewInt(0), data)
+	if err != nil && err.Error() == "execution reverted: Message expired" {
+		return r.db.UpdateLayer1Status(r.ctx, msg.MsgHash, orm.MsgExpired)
+	}
 	if err != nil {
 		return err
 	}

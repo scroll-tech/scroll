@@ -28,6 +28,9 @@ const (
 
 	// MsgFailed represents the from_layer message status is failed
 	MsgFailed
+
+	// MsgExpired represents the from_layer message status is expired
+	MsgExpired
 )
 
 // L1Message is structure of stored layer1 bridge message
@@ -161,7 +164,7 @@ type BlockBatchOrm interface {
 type L1MessageOrm interface {
 	GetL1MessageByNonce(nonce uint64) (*L1Message, error)
 	GetL1MessageByMsgHash(msgHash string) (*L1Message, error)
-	GetL1MessagesByStatus(status MsgStatus) ([]*L1Message, error)
+	GetL1MessagesByStatus(status MsgStatus, limit uint64) ([]*L1Message, error)
 	GetL1ProcessedNonce() (int64, error)
 	SaveL1Messages(ctx context.Context, messages []*L1Message) error
 	UpdateLayer2Hash(ctx context.Context, msgHash string, layer2Hash string) error
