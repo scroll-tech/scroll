@@ -284,9 +284,11 @@ func (r *Layer2Relayer) ProcessCommittedBatches(wg *sync.WaitGroup) {
 	defer wg.Done()
 
 	// set skipped batches in a single db operation
-	if err := r.db.UpdateSkippedBatches(); err != nil {
+	if count, err := r.db.UpdateSkippedBatches(); err != nil {
 		log.Error("UpdateSkippedBatches failed", "err", err)
 		// continue anyway
+	} else if count > 0 {
+		log.Info("Skipping batches", "count", count)
 	}
 
 	// batches are sorted by batch index in increasing order
