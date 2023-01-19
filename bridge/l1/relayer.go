@@ -72,11 +72,12 @@ func NewLayer1Relayer(ctx context.Context, ethClient *ethclient.Client, l1Confir
 // ProcessSavedEvents relays saved un-processed cross-domain transactions to desired blockchain
 func (r *Layer1Relayer) ProcessSavedEvents() {
 	// msgs are sorted by nonce in increasing order
-	msgs, err := r.db.GetL1MessagesByStatus(orm.MsgPending)
+	msgs, err := r.db.GetL1MessagesByStatus(orm.MsgPending, 100)
 	if err != nil {
 		log.Error("Failed to fetch unprocessed L1 messages", "err", err)
 		return
 	}
+
 	for _, msg := range msgs {
 		if err = r.processSavedEvent(msg); err != nil {
 			if !errors.Is(err, sender.ErrNoAvailableAccount) {
