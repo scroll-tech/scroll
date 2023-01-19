@@ -67,6 +67,7 @@ func TestApis(t *testing.T) {
 	t.Run("TestHandshake", testHandshake)
 	t.Run("TestFailedHandshake", testFailedHandshake)
 	t.Run("TestSeveralConnections", testSeveralConnections)
+	t.Run("TestValidProof", testValidProof)
 	t.Run("TestInvalidProof", testInvalidProof)
 	t.Run("TestIdleRollerSelection", testIdleRollerSelection)
 	// TODO: Restart roller alone when received task, can add this test case in integration-test.
@@ -145,7 +146,7 @@ func testHandshake(t *testing.T) {
 
 	// Setup coordinator and ws server.
 	wsURL := "ws://" + randomURL()
-	rollerManager, handler := setupCoordinator(t, cfg.DBConfig, wsURL)
+	rollerManager, handler := setupCoordinator(t, cfg.DBConfig, 1, wsURL)
 	defer func() {
 		handler.Shutdown(context.Background())
 		rollerManager.Stop()
@@ -166,7 +167,7 @@ func testFailedHandshake(t *testing.T) {
 
 	// Setup coordinator and ws server.
 	wsURL := "ws://" + randomURL()
-	rollerManager, handler := setupCoordinator(t, cfg.DBConfig, wsURL)
+	rollerManager, handler := setupCoordinator(t, cfg.DBConfig, 1, wsURL)
 	defer func() {
 		handler.Shutdown(context.Background())
 		rollerManager.Stop()
@@ -232,7 +233,7 @@ func testSeveralConnections(t *testing.T) {
 
 	// Setup coordinator and ws server.
 	wsURL := "ws://" + randomURL()
-	rollerManager, handler := setupCoordinator(t, cfg.DBConfig, wsURL)
+	rollerManager, handler := setupCoordinator(t, cfg.DBConfig, 1, wsURL)
 	defer func() {
 		handler.Shutdown(context.Background())
 		rollerManager.Stop()
@@ -276,6 +277,65 @@ func testSeveralConnections(t *testing.T) {
 		}
 	}
 }
+func testValidProof(t *testing.T) {
+	// Create db handler and reset db.
+	l2db, err := database.NewOrmFactory(cfg.DBConfig)
+	assert.NoError(t, err)
+	assert.NoError(t, migrate.ResetDB(l2db.GetDB().DB))
+	defer l2db.Close()
+
+	// Setup coordinator and ws server.
+	wsURL := "ws://" + randomURL()
+	rollerManager, handler := setupCoordinator(t, cfg.DBConfig, 3, wsURL)
+	defer func() {
+		handler.Shutdown(context.Background())
+		rollerManager.Stop()
+	}()
+
+	// create mock rollers.
+	rollers := make([]*mockRoller, 3)
+	for i := 0; i < len(rollers); i++ {
+		rollers[i] = newMockRoller(t, "roller_test"+strconv.Itoa(i), wsURL)
+		// only roller 0 submits valid proof.
+		rollers[i].waitTaskAndSendProof(t, time.Second, false, i == 0)
+	}
+	defer func() {
+		// close connection
+		for _, roller := range rollers {
+			roller.close()
+		}
+	}()
+	assert.Equal(t, 3, rollerManager.GetNumberOfIdleRollers())
+
+	var ids = make([]string, 1)
+	dbTx, err := l2db.Beginx()
+	assert.NoError(t, err)
+	for i := range ids {
+		ID, err := l2db.NewBatchInDBTx(dbTx, &orm.BlockInfo{Number: uint64(i)}, &orm.BlockInfo{Number: uint64(i)}, "0f", 1, 194676)
+		assert.NoError(t, err)
+		ids[i] = ID
+	}
+	assert.NoError(t, dbTx.Commit())
+
+	// verify proof status
+	var (
+		tick     = time.Tick(500 * time.Millisecond)
+		tickStop = time.Tick(10 * time.Second)
+	)
+	for len(ids) > 0 {
+		select {
+		case <-tick:
+			status, err := l2db.GetProvingStatusByID(ids[0])
+			assert.NoError(t, err)
+			if status == orm.ProvingTaskVerified {
+				ids = ids[1:]
+			}
+		case <-tickStop:
+			t.Error("failed to check proof status")
+			return
+		}
+	}
+}
 
 func testInvalidProof(t *testing.T) {
 	// Create db handler and reset db.
@@ -286,18 +346,25 @@ func testInvalidProof(t *testing.T) {
 
 	// Setup coordinator and ws server.
 	wsURL := "ws://" + randomURL()
-	rollerManager, handler := setupCoordinator(t, cfg.DBConfig, wsURL)
+	rollerManager, handler := setupCoordinator(t, cfg.DBConfig, 3, wsURL)
 	defer func() {
 		handler.Shutdown(context.Background())
 		rollerManager.Stop()
 	}()
 
 	// create mock rollers.
-	roller := newMockRoller(t, "roller_test", wsURL)
-	roller.waitTaskAndSendProof(t, time.Second, false, false)
-	defer roller.close()
-
-	assert.Equal(t, 1, rollerManager.GetNumberOfIdleRollers())
+	rollers := make([]*mockRoller, 3)
+	for i := 0; i < len(rollers); i++ {
+		rollers[i] = newMockRoller(t, "roller_test"+strconv.Itoa(i), wsURL)
+		rollers[i].waitTaskAndSendProof(t, time.Second, false, false)
+	}
+	defer func() {
+		// close connection
+		for _, roller := range rollers {
+			roller.close()
+		}
+	}()
+	assert.Equal(t, 3, rollerManager.GetNumberOfIdleRollers())
 
 	var ids = make([]string, 1)
 	dbTx, err := l2db.Beginx()
@@ -338,7 +405,7 @@ func testIdleRollerSelection(t *testing.T) {
 
 	// Setup coordinator and ws server.
 	wsURL := "ws://" + randomURL()
-	rollerManager, handler := setupCoordinator(t, cfg.DBConfig, wsURL)
+	rollerManager, handler := setupCoordinator(t, cfg.DBConfig, 1, wsURL)
 	defer func() {
 		handler.Shutdown(context.Background())
 		rollerManager.Stop()
@@ -407,7 +474,7 @@ func testGracefulRestart(t *testing.T) {
 
 	// Setup coordinator and ws server.
 	wsURL := "ws://" + randomURL()
-	rollerManager, handler := setupCoordinator(t, cfg.DBConfig, wsURL)
+	rollerManager, handler := setupCoordinator(t, cfg.DBConfig, 1, wsURL)
 
 	// create mock roller
 	roller := newMockRoller(t, "roller_test", wsURL)
@@ -424,7 +491,7 @@ func testGracefulRestart(t *testing.T) {
 	rollerManager.Stop()
 
 	// Setup new coordinator and ws server.
-	newRollerManager, newHandler := setupCoordinator(t, cfg.DBConfig, wsURL)
+	newRollerManager, newHandler := setupCoordinator(t, cfg.DBConfig, 1, wsURL)
 	defer func() {
 		newHandler.Shutdown(context.Background())
 		newRollerManager.Stop()
@@ -468,13 +535,13 @@ func testGracefulRestart(t *testing.T) {
 	}
 }
 
-func setupCoordinator(t *testing.T, dbCfg *database.DBConfig, wsURL string) (rollerManager *coordinator.Manager, handler *http.Server) {
+func setupCoordinator(t *testing.T, dbCfg *database.DBConfig, rollersPerSession uint8, wsURL string) (rollerManager *coordinator.Manager, handler *http.Server) {
 	// Get db handler.
 	db, err := database.NewOrmFactory(dbCfg)
 	assert.True(t, assert.NoError(t, err), "failed to get db handler.")
 
 	rollerManager, err = coordinator.New(context.Background(), &coordinator_config.RollerManagerConfig{
-		RollersPerSession: 1,
+		RollersPerSession: rollersPerSession,
 		Verifier:          &coordinator_config.VerifierConfig{MockMode: true},
 		CollectionTime:    1,
 		TokenTimeToLive:   5,
