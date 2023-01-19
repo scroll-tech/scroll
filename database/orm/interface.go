@@ -28,6 +28,9 @@ const (
 
 	// MsgFailed represents the from_layer message status is failed
 	MsgFailed
+
+	// MsgExpired represents the from_layer message status is expired
+	MsgExpired
 )
 
 // L1Message is structure of stored layer1 bridge message
