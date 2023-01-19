@@ -3,12 +3,12 @@ package client
 import (
 	"context"
 
-	"scroll-tech/coordinator/types"
-
 	"github.com/scroll-tech/go-ethereum"
 	"github.com/scroll-tech/go-ethereum/rpc"
 
 	"scroll-tech/common/message"
+
+	"scroll-tech/coordinator/types"
 )
 
 // Client defines typed wrappers for the Ethereum RPC API.
