@@ -84,7 +84,7 @@ func (w *WatcherClient) Start() {
 		ctx, cancel := context.WithCancel(w.ctx)
 
 		// trace fetcher loop
-		go func() {
+		go func(ctx context.Context) {
 			ticker := time.NewTicker(3 * time.Second)
 			defer ticker.Stop()
 
@@ -110,10 +110,10 @@ func (w *WatcherClient) Start() {
 					w.tryFetchRunningMissingBlocks(ctx, number)
 				}
 			}
-		}()
+		}(ctx)
 
 		// event fetcher loop
-		go func() {
+		go func(ctx context.Context) {
 			ticker := time.NewTicker(3 * time.Second)
 			defer ticker.Stop()
 
@@ -139,10 +139,10 @@ func (w *WatcherClient) Start() {
 					w.FetchContractEvent(number)
 				}
 			}
-		}()
+		}(ctx)
 
 		// batch proposer loop
-		go func() {
+		go func(ctx context.Context) {
 			ticker := time.NewTicker(3 * time.Second)
 			defer ticker.Stop()
 
@@ -155,7 +155,7 @@ func (w *WatcherClient) Start() {
 					w.batchProposer.tryProposeBatch()
 				}
 			}
-		}()
+		}(ctx)
 
 		<-w.stopCh
 		cancel()
