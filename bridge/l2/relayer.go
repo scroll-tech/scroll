@@ -170,6 +170,9 @@ func (r *Layer2Relayer) processSavedEvent(msg *orm.L2Message, index uint64) erro
 	if err != nil && err.Error() == "execution reverted: Message expired" {
 		return r.db.UpdateLayer2Status(r.ctx, msg.MsgHash, orm.MsgExpired)
 	}
+	if err != nil && err.Error() == "execution reverted: Message successfully executed" {
+		return r.db.UpdateLayer2Status(r.ctx, msg.MsgHash, orm.MsgConfirmed)
+	}
 	if err != nil {
 		if !errors.Is(err, sender.ErrNoAvailableAccount) {
 			log.Error("Failed to send relayMessageWithProof tx to layer1 ", "msg.height", msg.Height, "msg.MsgHash", msg.MsgHash, "err", err)
