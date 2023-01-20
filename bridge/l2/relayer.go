@@ -166,6 +166,9 @@ func (r *Layer2Relayer) processSavedEvent(msg *orm.L2Message, index uint64) erro
 	}
 
 	hash, err := r.messageSender.SendTransaction(msg.MsgHash, &r.cfg.MessengerContractAddress, big.NewInt(0), data)
+	if err != nil && err.Error() == "execution reverted: Message expired" {
+		return r.db.UpdateLayer2Status(r.ctx, msg.MsgHash, orm.MsgExpired)
+	}
 	if err != nil {
 		if !errors.Is(err, sender.ErrNoAvailableAccount) {
 			log.Error("Failed to send relayMessageWithProof tx to layer1 ", "msg.height", msg.Height, "msg.MsgHash", msg.MsgHash, "err", err)
@@ -282,6 +285,15 @@ func (r *Layer2Relayer) ProcessPendingBatches(wg *sync.WaitGroup) {
 // ProcessCommittedBatches submit proof to layer 1 rollup contract
 func (r *Layer2Relayer) ProcessCommittedBatches(wg *sync.WaitGroup) {
 	defer wg.Done()
+
+	// set skipped batches in a single db operation
+	if count, err := r.db.UpdateSkippedBatches(); err != nil {
+		log.Error("UpdateSkippedBatches failed", "err", err)
+		// continue anyway
+	} else if count > 0 {
+		log.Info("Skipping batches", "count", count)
+	}
+
 	// batches are sorted by batch index in increasing order
 	batches, err := r.db.GetCommittedBatches(1)
 	if err != nil {
@@ -311,6 +323,8 @@ func (r *Layer2Relayer) ProcessCommittedBatches(wg *sync.WaitGroup) {
 		return
 
 	case orm.ProvingTaskFailed, orm.ProvingTaskSkipped:
+		// note: this is covered by UpdateSkippedBatches, but we keep it for completeness's sake
+
 		if err = r.db.UpdateRollupStatus(r.ctx, id, orm.RollupFinalizationSkipped); err != nil {
 			log.Warn("UpdateRollupStatus failed", "id", id, "err", err)
 		}

@@ -27,7 +27,7 @@ func testRelayL2MessageSucceed(t *testing.T) {
 	defer db.Close()
 
 	var wg sync.WaitGroup
-	wg.Add(4)
+	wg.Add(3)
 
 	prepareContracts(t)
 
@@ -57,7 +57,7 @@ func testRelayL2MessageSucceed(t *testing.T) {
 	}
 
 	// l2 watch process events
-	l2Watcher.FetchContractEvent(&wg, sendReceipt.BlockNumber.Uint64())
+	l2Watcher.FetchContractEvent(sendReceipt.BlockNumber.Uint64())
 
 	// check db status
 	msg, err := db.GetL2MessageByNonce(nonce.Uint64())
