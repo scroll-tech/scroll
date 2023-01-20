@@ -8,8 +8,8 @@ import (
 	"scroll-tech/database/cache"
 )
 
-// PGConfig postgres db config.
-type PGConfig struct {
+// PersistenceConfig persistence db config.
+type PersistenceConfig struct {
 	// data source name
 	DSN        string `json:"dsn"`
 	DriverName string `json:"driver_name"`
