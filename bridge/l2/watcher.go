@@ -15,9 +15,10 @@ import (
 	"github.com/scroll-tech/go-ethereum/event"
 	"github.com/scroll-tech/go-ethereum/log"
 
+	"scroll-tech/common/metrics"
+
 	bridge_abi "scroll-tech/bridge/abi"
 	"scroll-tech/bridge/utils"
-	"scroll-tech/common/metrics"
 
 	"scroll-tech/database"
 	"scroll-tech/database/orm"

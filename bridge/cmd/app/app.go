@@ -52,7 +52,7 @@ func action(ctx *cli.Context) error {
 	}
 
 	// Start metrics server.
-	if err := metrics.Serve(context.Background(), ctx); err != nil {
+	if err = metrics.Serve(context.Background(), ctx); err != nil {
 		log.Error("start metrics server error", "error", err)
 		return err
 	}
