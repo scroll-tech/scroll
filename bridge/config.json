@@ -60,7 +60,7 @@
       ]
     }
   },
-  "db": {
+  "db_config": {
     "persistence": {
       "driver_name": "postgres",
       "dsn": "postgres://admin:123456@localhost/test?sslmode=disable"

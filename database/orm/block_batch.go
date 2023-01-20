@@ -228,8 +228,8 @@ func (o *blockBatchOrm) NewBatchInDBTx(dbTx *sqlx.Tx, startBlock *BlockInfo, end
 			"total_tx_num":       totalTxNum,
 			"total_l2_gas":       totalL2Gas,
 			"created_at":         time.Now(),
-			// "proving_status":     ProvingTaskUnassigned, // actually no need, because we have default value in DB schema
-			// "rollup_status":      RollupPending,         // actually no need, because we have default value in DB schema
+			// "proving_status":     ProvingTaskUnassigned, // actually no need, because we have default value in Persistence schema
+			// "rollup_status":      RollupPending,         // actually no need, because we have default value in Persistence schema
 		}); err != nil {
 		return "", err
 	}

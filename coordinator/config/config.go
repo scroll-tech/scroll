@@ -27,7 +27,7 @@ type RollerManagerConfig struct {
 // Config load configuration items.
 type Config struct {
 	RollerManagerConfig *RollerManagerConfig `json:"roller_manager_config"`
-	DBConfig            *db_config.DBConfig  `json:"db"`
+	DBConfig            *db_config.DBConfig  `json:"db_config"`
 }
 
 // VerifierConfig load zk verifier config.

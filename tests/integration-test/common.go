@@ -145,7 +145,7 @@ func mockBridgeConfig(t *testing.T) string {
 		cfg.L1Config.RelayerConfig.SenderConfig.Endpoint = l2gethImg.Endpoint()
 	}
 	if dbImg != nil {
-		cfg.DBConfig.DB.DSN = dbImg.Endpoint()
+		cfg.DBConfig.Persistence.DSN = dbImg.Endpoint()
 	}
 	if redisImg != nil {
 		cfg.DBConfig.Redis.RedisURL = redisImg.Endpoint()
@@ -167,7 +167,7 @@ func mockCoordinatorConfig(t *testing.T) string {
 
 	cfg.RollerManagerConfig.Verifier.MockMode = true
 	if dbImg != nil {
-		cfg.DBConfig.DB.DSN = dbImg.Endpoint()
+		cfg.DBConfig.Persistence.DSN = dbImg.Endpoint()
 	}
 	if redisImg != nil {
 		cfg.DBConfig.Redis.RedisURL = redisImg.Endpoint()
@@ -187,7 +187,7 @@ func mockDatabaseConfig(t *testing.T) string {
 	cfg, err := database.NewConfig("../../database/config.json")
 	assert.NoError(t, err)
 	if dbImg != nil {
-		cfg.DB.DSN = dbImg.Endpoint()
+		cfg.Persistence.DSN = dbImg.Endpoint()
 	}
 	if redisImg != nil {
 		cfg.Redis.RedisURL = redisImg.Endpoint()

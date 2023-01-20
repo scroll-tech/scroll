@@ -41,8 +41,8 @@ func setupEnv(t *testing.T) (err error) {
 	cfg.L2Config.Endpoint = l2gethImg.Endpoint()
 
 	// Create db container.
-	dbImg = docker.NewTestDBDocker(t, cfg.DBConfig.DB.DriverName)
-	cfg.DBConfig.DB.DSN = dbImg.Endpoint()
+	dbImg = docker.NewTestDBDocker(t, cfg.DBConfig.Persistence.DriverName)
+	cfg.DBConfig.Persistence.DSN = dbImg.Endpoint()
 
 	// Create redis container.
 	redisImg = docker.NewTestRedisDocker(t)

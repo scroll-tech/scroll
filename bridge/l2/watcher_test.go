@@ -112,7 +112,7 @@ func testMonitorBridgeContract(t *testing.T) {
 	// check if we successfully stored events
 	height, err := db.GetLayer2LatestWatchedHeight()
 	assert.NoError(t, err)
-	t.Log("Height in DB is", height)
+	t.Log("Height in Persistence is", height)
 	assert.Greater(t, height, int64(previousHeight))
 	msgs, err := db.GetL2Messages(map[string]interface{}{"status": orm.MsgPending})
 	assert.NoError(t, err)

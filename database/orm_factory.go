@@ -36,7 +36,7 @@ type ormFactory struct {
 
 // NewOrmFactory create an ormFactory factory include all ormFactory interface
 func NewOrmFactory(cfg *DBConfig) (OrmFactory, error) {
-	pCfg, rCfg := cfg.DB, cfg.Redis
+	pCfg, rCfg := cfg.Persistence, cfg.Redis
 	if rCfg == nil {
 		return nil, fmt.Errorf("redis config is empty")
 	}

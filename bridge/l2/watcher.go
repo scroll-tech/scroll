@@ -85,7 +85,7 @@ func NewL2WatcherClient(ctx context.Context, client *ethclient.Client, confirmat
 func (w *WatcherClient) Start() {
 	go func() {
 		if reflect.ValueOf(w.orm).IsNil() {
-			panic("must run L2 watcher with DB")
+			panic("must run L2 watcher with Persistence")
 		}
 
 		ctx, cancel := context.WithCancel(w.ctx)
@@ -178,7 +178,7 @@ const blockTracesFetchLimit = uint64(10)
 
 // try fetch missing blocks if inconsistent
 func (w *WatcherClient) tryFetchRunningMissingBlocks(ctx context.Context, blockHeight uint64) {
-	// Get newest block in DB. must have blocks at that time.
+	// Get newest block in Persistence. must have blocks at that time.
 	// Don't use "block_trace" table "trace" column's BlockTrace.Number,
 	// because it might be empty if the corresponding rollup_result is finalized/finalization_skipped
 	heightInDB, err := w.orm.GetBlockTracesLatestHeight()
@@ -232,7 +232,7 @@ func (w *WatcherClient) getAndStoreBlockTraces(ctx context.Context, from, to uin
 
 const contractEventsBlocksFetchLimit = int64(10)
 
-// FetchContractEvent pull latest event logs from given contract address and save in DB
+// FetchContractEvent pull latest event logs from given contract address and save in Persistence
 func (w *WatcherClient) FetchContractEvent(blockHeight uint64) {
 	defer func() {
 		log.Info("l2 watcher fetchContractEvent", "w.processedMsgHeight", w.processedMsgHeight)
