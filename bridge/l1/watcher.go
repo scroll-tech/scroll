@@ -12,6 +12,7 @@ import (
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
 
+	"scroll-tech/common/metrics"
 	"scroll-tech/database"
 	"scroll-tech/database/orm"
 
@@ -114,6 +115,7 @@ const contractEventsBlocksFetchLimit = int64(10)
 // FetchContractEvent pull latest event logs from given contract address and save in DB
 func (w *Watcher) FetchContractEvent(blockHeight uint64) error {
 	defer func() {
+		metrics.BridgeL1ProcessedMsgHeightGauge.Update(int64(w.processedMsgHeight))
 		log.Info("l1 watcher fetchContractEvent", "w.processedMsgHeight", w.processedMsgHeight)
 	}()
 

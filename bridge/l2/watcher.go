@@ -17,6 +17,7 @@ import (
 
 	bridge_abi "scroll-tech/bridge/abi"
 	"scroll-tech/bridge/utils"
+	"scroll-tech/common/metrics"
 
 	"scroll-tech/database"
 	"scroll-tech/database/orm"
@@ -229,6 +230,7 @@ const contractEventsBlocksFetchLimit = int64(10)
 // FetchContractEvent pull latest event logs from given contract address and save in DB
 func (w *WatcherClient) FetchContractEvent(blockHeight uint64) {
 	defer func() {
+		metrics.BridgeL2ProcessedMsgHeightGauge.Update(int64(w.processedMsgHeight))
 		log.Info("l2 watcher fetchContractEvent", "w.processedMsgHeight", w.processedMsgHeight)
 	}()
 

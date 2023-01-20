@@ -1,0 +1,55 @@
+package metrics
+
+import (
+	"context"
+	"net"
+	"net/http"
+	"strconv"
+
+	"github.com/ethereum/go-ethereum/log"
+	"github.com/ethereum/go-ethereum/metrics"
+	"github.com/ethereum/go-ethereum/metrics/prometheus"
+	"github.com/scroll-tech/go-ethereum/rpc"
+	"github.com/urfave/cli/v2"
+
+	"scroll-tech/common/utils"
+)
+
+// Metrics
+var (
+	// Driver
+	BridgeL1ProcessedMsgHeightGauge = metrics.NewRegisteredGauge("bridge/l1/processed/msg/height", nil)
+	BridgeL2ProcessedMsgHeightGauge = metrics.NewRegisteredGauge("bridge/l2/processed/msg/height", nil)
+)
+
+// Serve starts the metrics server on the given address, will be closed when the given
+// context is canceled.
+func Serve(ctx context.Context, c *cli.Context) error {
+	if !c.Bool(utils.MetricsEnabled.Name) {
+		return nil
+	}
+
+	address := net.JoinHostPort(
+		c.String(utils.MetricsAddr.Name),
+		strconv.Itoa(c.Int(utils.MetricsPort.Name)),
+	)
+
+	server := &http.Server{
+		Addr:         address,
+		Handler:      prometheus.Handler(metrics.DefaultRegistry),
+		ReadTimeout:  rpc.DefaultHTTPTimeouts.ReadTimeout,
+		WriteTimeout: rpc.DefaultHTTPTimeouts.WriteTimeout,
+		IdleTimeout:  rpc.DefaultHTTPTimeouts.IdleTimeout,
+	}
+
+	go func() {
+		<-ctx.Done()
+		if err := server.Close(); err != nil {
+			log.Error("Failed to close metrics server", "error", err)
+		}
+	}()
+
+	log.Info("Starting metrics server", "address", address)
+
+	return server.ListenAndServe()
+}

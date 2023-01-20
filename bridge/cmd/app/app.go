@@ -1,6 +1,7 @@
 package app
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/signal"
@@ -10,6 +11,7 @@ import (
 
 	"scroll-tech/database"
 
+	"scroll-tech/common/metrics"
 	"scroll-tech/common/utils"
 	"scroll-tech/common/version"
 
@@ -47,6 +49,12 @@ func action(ctx *cli.Context) error {
 	cfg, err := config.NewConfig(cfgFile)
 	if err != nil {
 		log.Crit("failed to load config file", "config file", cfgFile, "error", err)
+	}
+
+	// Start metrics server.
+	if err := metrics.Serve(context.Background(), ctx); err != nil {
+		log.Error("start metrics server error", "error", err)
+		return err
 	}
 
 	// init db connection
