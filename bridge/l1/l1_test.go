@@ -37,8 +37,8 @@ func setupEnv(t *testing.T) {
 	cfg.L2Config.Endpoint = l2gethImg.Endpoint()
 
 	// Create db container.
-	dbImg = docker.NewTestDBDocker(t, cfg.DBConfig.DB.DriverName)
-	cfg.DBConfig.DB.DSN = dbImg.Endpoint()
+	dbImg = docker.NewTestDBDocker(t, cfg.DBConfig.Persistence.DriverName)
+	cfg.DBConfig.Persistence.DSN = dbImg.Endpoint()
 }
 
 func free(t *testing.T) {
