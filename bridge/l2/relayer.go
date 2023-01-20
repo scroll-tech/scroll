@@ -107,7 +107,8 @@ func (r *Layer2Relayer) ProcessSavedEvents(wg *sync.WaitGroup) {
 	// msgs are sorted by nonce in increasing order
 	msgs, err := r.db.GetL2Messages(
 		map[string]interface{}{"status": orm.MsgPending},
-		fmt.Sprintf("AND height<=%d ORDER BY nonce ASC LIMIT %d", batch.EndBlockNumber, processMsgLimit),
+		fmt.Sprintf("AND height<=%d", batch.EndBlockNumber),
+		fmt.Sprintf("ORDER BY nonce ASC LIMIT %d", processMsgLimit),
 	)
 
 	if err != nil {
