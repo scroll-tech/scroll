@@ -220,6 +220,9 @@ func (m *Manager) restorePrevSessions() {
 
 // TryVerify verifies a proof for batch received form roller if previous verification had interrupted
 func (m *Manager) tryVerify(batch *orm.BlockBatch) {
+	if batch.ProvingStatus != orm.ProvingTaskProved {
+		return
+	}
 	proof := &message.AggProof{
 		Proof:     batch.Proof,
 		Instance:  batch.InstanceCommitments,
