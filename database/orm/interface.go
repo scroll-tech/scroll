@@ -140,7 +140,7 @@ type BlockBatchOrm interface {
 	GetBlockBatches(fields map[string]interface{}, args ...string) ([]*BlockBatch, error)
 	GetProvingStatusByID(id string) (ProvingStatus, error)
 	GetVerifiedProofAndInstanceByID(id string) ([]byte, []byte, error)
-	UpdateProofByID(ctx context.Context, id string, proof, instanceCommitments []byte, proofTimeSec uint64) error
+	UpdateProofByID(ctx context.Context, id string, proof, instanceCommitments, finalPair, vk []byte, proofTimeSec uint64) error
 	UpdateProvingStatus(id string, status ProvingStatus) error
 	ResetProvingStatusFor(before ProvingStatus) error
 	NewBatchInDBTx(dbTx *sqlx.Tx, startBlock *BlockInfo, endBlock *BlockInfo, parentHash string, totalTxNum uint64, gasUsed uint64) (string, error)

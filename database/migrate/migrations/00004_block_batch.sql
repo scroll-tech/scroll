@@ -15,6 +15,8 @@ create table block_batch
     proving_status          INTEGER         DEFAULT 1,
     proof                   BYTEA           DEFAULT NULL,
     instance_commitments    BYTEA           DEFAULT NULL,
+    final_pair              BYTEA           DEFAULT NULL,
+    vk                      BYTEA           DEFAULT NULL,
     proof_time_sec          INTEGER         DEFAULT 0,
     rollup_status           INTEGER         DEFAULT 1,
     commit_tx_hash          VARCHAR         DEFAULT NULL,

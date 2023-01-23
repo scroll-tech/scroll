@@ -298,7 +298,7 @@ func testOrmBlockBatch(t *testing.T) {
 	provingStatus, err := ormBatch.GetProvingStatusByID(batchID1)
 	assert.NoError(t, err)
 	assert.Equal(t, orm.ProvingTaskUnassigned, provingStatus)
-	err = ormBatch.UpdateProofByID(context.Background(), batchID1, []byte{1}, []byte{2}, 1200)
+	err = ormBatch.UpdateProofByID(context.Background(), batchID1, []byte{1}, []byte{2}, []byte{3}, []byte{4}, 1200)
 	assert.NoError(t, err)
 	err = ormBatch.UpdateProvingStatus(batchID1, orm.ProvingTaskVerified)
 	assert.NoError(t, err)

@@ -89,6 +89,8 @@ type BlockBatch struct {
 	ProvingStatus       ProvingStatus  `json:"proving_status" db:"proving_status"`
 	Proof               []byte         `json:"proof" db:"proof"`
 	InstanceCommitments []byte         `json:"instance_commitments" db:"instance_commitments"`
+	FinalPair           []byte         `json:"final_pair" db:"final_pair"`
+	Vk                  []byte         `json:"vk" db:"vk"`
 	ProofTimeSec        uint64         `json:"proof_time_sec" db:"proof_time_sec"`
 	RollupStatus        RollupStatus   `json:"rollup_status" db:"rollup_status"`
 	CommitTxHash        sql.NullString `json:"commit_tx_hash" db:"commit_tx_hash"`
@@ -159,11 +161,11 @@ func (o *blockBatchOrm) GetVerifiedProofAndInstanceByID(id string) ([]byte, []by
 	return proof, instance, nil
 }
 
-func (o *blockBatchOrm) UpdateProofByID(ctx context.Context, id string, proof, instanceCommitments []byte, proofTimeSec uint64) error {
+func (o *blockBatchOrm) UpdateProofByID(ctx context.Context, id string, proof, instanceCommitments, finalPair, vk []byte, proofTimeSec uint64) error {
 	db := o.db
 	if _, err := db.ExecContext(ctx,
-		db.Rebind(`UPDATE block_batch set proof = ?, instance_commitments = ?, proof_time_sec = ? where id = ?;`),
-		proof, instanceCommitments, proofTimeSec, id,
+		db.Rebind(`UPDATE block_batch set proof = ?, instance_commitments = ?, final_pair = ?, vk = ?, proof_time_sec = ? where id = ?;`),
+		proof, instanceCommitments, finalPair, vk, proofTimeSec, id,
 	); err != nil {
 		log.Error("failed to update proof", "err", err)
 	}

@@ -206,6 +206,41 @@ func (m *Manager) restorePrevSessions() {
 			}
 
 			go m.CollectProofs(sess)
+
+			id := sess.info.ID
+			batches, err := m.orm.GetBlockBatches(map[string]interface{}{"id": id})
+			if err != nil || len(batches) == 0 {
+				log.Error("Failed to GetBlockBatches", "batch_id", id, "err", err)
+				continue
+			}
+			m.tryVerify(batches[0])
+		}
+	}
+}
+
+// TryVerify verifies a proof for batch received form roller if previous verification had interrupted
+func (m *Manager) tryVerify(batch *orm.BlockBatch) {
+	proof := &message.AggProof{
+		Proof:     batch.Proof,
+		Instance:  batch.InstanceCommitments,
+		FinalPair: batch.FinalPair,
+		Vk:        batch.Vk,
+	}
+	success, err := m.verifier.VerifyProof(proof)
+	if err != nil {
+		success = false
+		log.Error("Failed to verify zk proof", "proof id", batch.ID, "error", err)
+	} else {
+		log.Info("Verify zk proof successfully", "verification result", success, "proof id", batch.ID)
+	}
+
+	if success {
+		if dbErr := m.orm.UpdateProvingStatus(batch.ID, orm.ProvingTaskVerified); dbErr != nil {
+			log.Error(
+				"failed to update proving_status",
+				"msg.ID", batch.ID,
+				"status", orm.ProvingTaskVerified,
+				"error", dbErr)
 		}
 	}
 }
@@ -282,7 +317,7 @@ func (m *Manager) handleZkProof(pk string, msg *message.ProofDetail) error {
 	}
 
 	// store proof content
-	if dbErr = m.orm.UpdateProofByID(m.ctx, msg.ID, msg.Proof.Proof, msg.Proof.FinalPair, proofTimeSec); dbErr != nil {
+	if dbErr = m.orm.UpdateProofByID(m.ctx, msg.ID, msg.Proof.Proof, msg.Proof.Instance, msg.Proof.FinalPair, msg.Proof.Vk, proofTimeSec); dbErr != nil {
 		log.Error("failed to store proof into db", "error", dbErr)
 		return dbErr
 	}

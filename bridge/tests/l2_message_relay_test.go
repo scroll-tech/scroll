@@ -105,7 +105,9 @@ func testRelayL2MessageSucceed(t *testing.T) {
 	// add dummy proof
 	tProof := []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31}
 	tInstanceCommitments := []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31}
-	err = db.UpdateProofByID(context.Background(), batchID, tProof, tInstanceCommitments, 100)
+	finalPair := []byte{0, 1}
+	vk := []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31}
+	err = db.UpdateProofByID(context.Background(), batchID, tProof, tInstanceCommitments, finalPair, vk, 100)
 	assert.NoError(t, err)
 	err = db.UpdateProvingStatus(batchID, orm.ProvingTaskVerified)
 	assert.NoError(t, err)
