@@ -3,6 +3,7 @@ package l2
 import (
 	"context"
 	"errors"
+	"fmt"
 	"math/big"
 	"runtime"
 	"sync"
@@ -92,6 +93,8 @@ func NewLayer2Relayer(ctx context.Context, db database.OrmFactory, cfg *config.R
 	}, nil
 }
 
+const processMsgLimit = 100
+
 // ProcessSavedEvents relays saved un-processed cross-domain transactions to desired blockchain
 func (r *Layer2Relayer) ProcessSavedEvents(wg *sync.WaitGroup) {
 	defer wg.Done()
@@ -102,7 +105,11 @@ func (r *Layer2Relayer) ProcessSavedEvents(wg *sync.WaitGroup) {
 	}
 
 	// msgs are sorted by nonce in increasing order
-	msgs, err := r.db.GetL2MessagesByStatusUpToHeight(orm.MsgPending, batch.EndBlockNumber)
+	msgs, err := r.db.GetL2Messages(
+		map[string]interface{}{"status": orm.MsgPending},
+		fmt.Sprintf("AND height<=%d", batch.EndBlockNumber),
+		fmt.Sprintf("ORDER BY nonce ASC LIMIT %d", processMsgLimit),
+	)
 
 	if err != nil {
 		log.Error("Failed to fetch unprocessed L2 messages", "err", err)
@@ -160,6 +167,12 @@ func (r *Layer2Relayer) processSavedEvent(msg *orm.L2Message, index uint64) erro
 	}
 
 	hash, err := r.messageSender.SendTransaction(msg.MsgHash, &r.cfg.MessengerContractAddress, big.NewInt(0), data)
+	if err != nil && err.Error() == "execution reverted: Message expired" {
+		return r.db.UpdateLayer2Status(r.ctx, msg.MsgHash, orm.MsgExpired)
+	}
+	if err != nil && err.Error() == "execution reverted: Message successfully executed" {
+		return r.db.UpdateLayer2Status(r.ctx, msg.MsgHash, orm.MsgConfirmed)
+	}
 	if err != nil {
 		if !errors.Is(err, sender.ErrNoAvailableAccount) {
 			log.Error("Failed to send relayMessageWithProof tx to layer1 ", "msg.height", msg.Height, "msg.MsgHash", msg.MsgHash, "err", err)
@@ -183,7 +196,7 @@ func (r *Layer2Relayer) processSavedEvent(msg *orm.L2Message, index uint64) erro
 func (r *Layer2Relayer) ProcessPendingBatches(wg *sync.WaitGroup) {
 	defer wg.Done()
 	// batches are sorted by batch index in increasing order
-	batchesInDB, err := r.db.GetPendingBatches()
+	batchesInDB, err := r.db.GetPendingBatches(1)
 	if err != nil {
 		log.Error("Failed to fetch pending L2 batches", "err", err)
 		return
@@ -276,8 +289,17 @@ func (r *Layer2Relayer) ProcessPendingBatches(wg *sync.WaitGroup) {
 // ProcessCommittedBatches submit proof to layer 1 rollup contract
 func (r *Layer2Relayer) ProcessCommittedBatches(wg *sync.WaitGroup) {
 	defer wg.Done()
+
+	// set skipped batches in a single db operation
+	if count, err := r.db.UpdateSkippedBatches(); err != nil {
+		log.Error("UpdateSkippedBatches failed", "err", err)
+		// continue anyway
+	} else if count > 0 {
+		log.Info("Skipping batches", "count", count)
+	}
+
 	// batches are sorted by batch index in increasing order
-	batches, err := r.db.GetCommittedBatches()
+	batches, err := r.db.GetCommittedBatches(1)
 	if err != nil {
 		log.Error("Failed to fetch committed L2 batches", "err", err)
 		return
@@ -305,6 +327,8 @@ func (r *Layer2Relayer) ProcessCommittedBatches(wg *sync.WaitGroup) {
 		return
 
 	case orm.ProvingTaskFailed, orm.ProvingTaskSkipped:
+		// note: this is covered by UpdateSkippedBatches, but we keep it for completeness's sake
+
 		if err = r.db.UpdateRollupStatus(r.ctx, id, orm.RollupFinalizationSkipped); err != nil {
 			log.Warn("UpdateRollupStatus failed", "id", id, "err", err)
 		}

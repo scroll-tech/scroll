@@ -7,6 +7,7 @@ import (
 	"scroll-tech/bridge/utils"
 
 	"github.com/scroll-tech/go-ethereum/common"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestKeccak2(t *testing.T) {
@@ -28,15 +29,13 @@ func TestKeccak2(t *testing.T) {
 
 func TestComputeMessageHash(t *testing.T) {
 	hash := utils.ComputeMessageHash(
-		common.HexToAddress("0xdafea492d9c6733ae3d56b7ed1adb60692c98bc5"),
-		common.HexToAddress("0xeafea492d9c6733ae3d56b7ed1adb60692c98bf7"),
-		big.NewInt(1),
-		big.NewInt(2),
-		big.NewInt(1234567),
-		common.Hex2Bytes("0011223344"),
-		big.NewInt(3),
+		common.HexToAddress("0xd7227113b92e537aeda220d5a2f201b836e5879d"),
+		common.HexToAddress("0x47c02b023b6787ef4e503df42bbb1a94f451a1c0"),
+		big.NewInt(5000000000000000),
+		big.NewInt(0),
+		big.NewInt(1674204924),
+		common.Hex2Bytes("8eaac8a30000000000000000000000007138b17fc82d7e954b3bd2f98d8166d03e5e569b0000000000000000000000007138b17fc82d7e954b3bd2f98d8166d03e5e569b0000000000000000000000000000000000000000000000000011c37937e0800000000000000000000000000000000000000000000000000000000000000000800000000000000000000000000000000000000000000000000000000000000000"),
+		big.NewInt(30706),
 	)
-	if hash != common.HexToHash("0x58c9a5abfd2a558bb6a6fd5192b36fe9325d98763bafd3a51a1ea28a5d0b990b") {
-		t.Fatalf("Invalid ComputeMessageHash, want %s, got %s", "0x58c9a5abfd2a558bb6a6fd5192b36fe9325d98763bafd3a51a1ea28a5d0b990b", hash.Hex())
-	}
+	assert.Equal(t, hash.String(), "0x920e59f62ca89a0f481d44961c55d299dd20c575693692d61fdf3ca579d8edf3")
 }

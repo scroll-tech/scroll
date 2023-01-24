@@ -281,7 +281,7 @@ func testOrmBlockBatch(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, int(2), len(batches))
 
-	batcheIDs, err := ormBatch.GetPendingBatches()
+	batcheIDs, err := ormBatch.GetPendingBatches(10)
 	assert.NoError(t, err)
 	assert.Equal(t, int(2), len(batcheIDs))
 	assert.Equal(t, batchID1, batcheIDs[0])
@@ -290,7 +290,7 @@ func testOrmBlockBatch(t *testing.T) {
 	err = ormBatch.UpdateCommitTxHashAndRollupStatus(context.Background(), batchID1, "commit_tx_1", orm.RollupCommitted)
 	assert.NoError(t, err)
 
-	batcheIDs, err = ormBatch.GetPendingBatches()
+	batcheIDs, err = ormBatch.GetPendingBatches(10)
 	assert.NoError(t, err)
 	assert.Equal(t, int(1), len(batcheIDs))
 	assert.Equal(t, batchID2, batcheIDs[0])
@@ -317,6 +317,24 @@ func testOrmBlockBatch(t *testing.T) {
 	result, err := ormBatch.GetLatestFinalizedBatch()
 	assert.NoError(t, err)
 	assert.Equal(t, batchID1, result.ID)
+
+	status1, err := ormBatch.GetRollupStatus(batchID1)
+	assert.NoError(t, err)
+	status2, err := ormBatch.GetRollupStatus(batchID2)
+	assert.NoError(t, err)
+	assert.NotEqual(t, status1, status2)
+	statues, err := ormBatch.GetRollupStatusByIDList([]string{batchID1, batchID2, batchID1, batchID2})
+	assert.NoError(t, err)
+	assert.Equal(t, statues[0], status1)
+	assert.Equal(t, statues[1], status2)
+	assert.Equal(t, statues[2], status1)
+	assert.Equal(t, statues[3], status2)
+	statues, err = ormBatch.GetRollupStatusByIDList([]string{batchID2, batchID1, batchID2, batchID1})
+	assert.NoError(t, err)
+	assert.Equal(t, statues[0], status2)
+	assert.Equal(t, statues[1], status1)
+	assert.Equal(t, statues[2], status2)
+	assert.Equal(t, statues[3], status1)
 }
 
 // testOrmSessionInfo test rollup result table functions

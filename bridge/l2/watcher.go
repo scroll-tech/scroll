@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"math/big"
 	"reflect"
-	"sync"
 	"time"
 
 	geth "github.com/scroll-tech/go-ethereum"
@@ -82,36 +81,84 @@ func (w *WatcherClient) Start() {
 			panic("must run L2 watcher with DB")
 		}
 
-		ticker := time.NewTicker(3 * time.Second)
-		defer ticker.Stop()
+		ctx, cancel := context.WithCancel(w.ctx)
 
-		for ; true; <-ticker.C {
-			select {
-			case <-w.stopCh:
-				return
+		// trace fetcher loop
+		go func(ctx context.Context) {
+			ticker := time.NewTicker(3 * time.Second)
+			defer ticker.Stop()
 
-			default:
-				// get current height
-				number, err := w.BlockNumber(w.ctx)
-				if err != nil {
-					log.Error("failed to get_BlockNumber", "err", err)
-					continue
+			for {
+				select {
+				case <-ctx.Done():
+					return
+
+				case <-ticker.C:
+					// get current height
+					number, err := w.BlockNumber(ctx)
+					if err != nil {
+						log.Error("failed to get_BlockNumber", "err", err)
+						continue
+					}
+
+					if number >= w.confirmations {
+						number = number - w.confirmations
+					} else {
+						number = 0
+					}
+
+					w.tryFetchRunningMissingBlocks(ctx, number)
 				}
-
-				if number >= w.confirmations {
-					number = number - w.confirmations
-				} else {
-					number = 0
-				}
-
-				var wg sync.WaitGroup
-				wg.Add(3)
-				go w.tryFetchRunningMissingBlocks(w.ctx, &wg, number)
-				go w.fetchContractEvent(&wg, number)
-				go w.batchProposer.tryProposeBatch(&wg)
-				wg.Wait()
 			}
-		}
+		}(ctx)
+
+		// event fetcher loop
+		go func(ctx context.Context) {
+			ticker := time.NewTicker(3 * time.Second)
+			defer ticker.Stop()
+
+			for {
+				select {
+				case <-ctx.Done():
+					return
+
+				case <-ticker.C:
+					// get current height
+					number, err := w.BlockNumber(ctx)
+					if err != nil {
+						log.Error("failed to get_BlockNumber", "err", err)
+						continue
+					}
+
+					if number >= w.confirmations {
+						number = number - w.confirmations
+					} else {
+						number = 0
+					}
+
+					w.FetchContractEvent(number)
+				}
+			}
+		}(ctx)
+
+		// batch proposer loop
+		go func(ctx context.Context) {
+			ticker := time.NewTicker(3 * time.Second)
+			defer ticker.Stop()
+
+			for {
+				select {
+				case <-ctx.Done():
+					return
+
+				case <-ticker.C:
+					w.batchProposer.tryProposeBatch()
+				}
+			}
+		}(ctx)
+
+		<-w.stopCh
+		cancel()
 	}()
 }
 
@@ -123,8 +170,7 @@ func (w *WatcherClient) Stop() {
 const blockTracesFetchLimit = uint64(10)
 
 // try fetch missing blocks if inconsistent
-func (w *WatcherClient) tryFetchRunningMissingBlocks(ctx context.Context, wg *sync.WaitGroup, blockHeight uint64) {
-	defer wg.Done()
+func (w *WatcherClient) tryFetchRunningMissingBlocks(ctx context.Context, blockHeight uint64) {
 	// Get newest block in DB. must have blocks at that time.
 	// Don't use "block_trace" table "trace" column's BlockTrace.Number,
 	// because it might be empty if the corresponding rollup_result is finalized/finalization_skipped
@@ -181,8 +227,7 @@ func (w *WatcherClient) getAndStoreBlockTraces(ctx context.Context, from, to uin
 const contractEventsBlocksFetchLimit = int64(10)
 
 // FetchContractEvent pull latest event logs from given contract address and save in DB
-func (w *WatcherClient) fetchContractEvent(wg *sync.WaitGroup, blockHeight uint64) {
-	defer wg.Done()
+func (w *WatcherClient) FetchContractEvent(blockHeight uint64) {
 	defer func() {
 		log.Info("l2 watcher fetchContractEvent", "w.processedMsgHeight", w.processedMsgHeight)
 	}()
@@ -282,7 +327,7 @@ func (w *WatcherClient) parseBridgeEventLogs(logs []types.Log) ([]*orm.L2Message
 			event.Target = common.HexToAddress(vLog.Topics[1].String())
 			l2Messages = append(l2Messages, &orm.L2Message{
 				Nonce:      event.MessageNonce.Uint64(),
-				MsgHash:    utils.ComputeMessageHash(event.Target, event.Sender, event.Value, event.Fee, event.Deadline, event.Message, event.MessageNonce).String(),
+				MsgHash:    utils.ComputeMessageHash(event.Sender, event.Target, event.Value, event.Fee, event.Deadline, event.Message, event.MessageNonce).String(),
 				Height:     vLog.BlockNumber,
 				Sender:     event.Sender.String(),
 				Value:      event.Value.String(),
