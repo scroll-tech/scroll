@@ -87,7 +87,7 @@ func testBatchSender(t *testing.T, batchSize int) {
 			for i := 0; i < TXBatch; i++ {
 				toAddr := common.HexToAddress("0x4592d8f8d7b001e72cb26a73e4fa1806a51ac79d")
 				id := strconv.Itoa(i + index*1000)
-				_, err := newSender.SendTransaction(id, &toAddr, big.NewInt(1), nil)
+				_, err := newSender.SendTransaction(id, &toAddr, big.NewInt(1), nil, 0)
 				if errors.Is(err, sender.ErrNoAvailableAccount) {
 					<-time.After(time.Second)
 					continue

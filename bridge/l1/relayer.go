@@ -113,7 +113,7 @@ func (r *Layer1Relayer) processSavedEvent(msg *orm.L1Message) error {
 		return err
 	}
 
-	hash, err := r.sender.SendTransaction(msg.MsgHash, &r.cfg.MessengerContractAddress, big.NewInt(0), data)
+	hash, err := r.sender.SendTransaction(msg.MsgHash, &r.cfg.MessengerContractAddress, big.NewInt(0), data, 0)
 	if err != nil && err.Error() == "execution reverted: Message expired" {
 		return r.db.UpdateLayer1Status(r.ctx, msg.MsgHash, orm.MsgExpired)
 	}

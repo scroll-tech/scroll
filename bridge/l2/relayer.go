@@ -166,7 +166,7 @@ func (r *Layer2Relayer) processSavedEvent(msg *orm.L2Message, index uint64) erro
 		return err
 	}
 
-	hash, err := r.messageSender.SendTransaction(msg.MsgHash, &r.cfg.MessengerContractAddress, big.NewInt(0), data)
+	hash, err := r.messageSender.SendTransaction(msg.MsgHash, &r.cfg.MessengerContractAddress, big.NewInt(0), data, 0)
 	if err != nil && err.Error() == "execution reverted: Message expired" {
 		return r.db.UpdateLayer2Status(r.ctx, msg.MsgHash, orm.MsgExpired)
 	}
@@ -269,7 +269,26 @@ func (r *Layer2Relayer) ProcessPendingBatches(wg *sync.WaitGroup) {
 
 	txID := id + "-commit"
 	// add suffix `-commit` to avoid duplication with finalize tx in unit tests
-	hash, err := r.rollupSender.SendTransaction(txID, &r.cfg.RollupContractAddress, big.NewInt(0), data)
+	hash, err := r.rollupSender.SendTransaction(txID, &r.cfg.RollupContractAddress, big.NewInt(0), data, 0)
+
+	if err != nil && err.Error() == "execution reverted: Parent batch hasn't been committed" {
+
+		// check parent is committing
+		batches, err = r.db.GetBlockBatches(map[string]interface{}{"end_block_hash": layer2Batch.ParentHash})
+		if err != nil || len(batches) == 0 {
+			log.Error("Failed to get parent batch from db", "batch_id", id, "parent_hash", layer2Batch.ParentHash, "err", err)
+			return
+		}
+		parentBatch := batches[0]
+
+		if parentBatch.RollupStatus >= orm.RollupCommitting {
+			// retry with manual gas estimation
+			gasLimit := estimateCommitBatchGas(len(data), len(layer2Batch.Blocks))
+			hash, err = r.rollupSender.SendTransaction(txID, &r.cfg.RollupContractAddress, big.NewInt(0), data, gasLimit)
+			log.Debug("commitBatch tx resent with manual gas estimation ", "id", id, "index", batch.Index, "hash", hash, "err", err)
+		}
+	}
+
 	if err != nil {
 		if !errors.Is(err, sender.ErrNoAvailableAccount) {
 			log.Error("Failed to send commitBatch tx to layer1 ", "id", id, "index", batch.Index, "err", err)
@@ -375,7 +394,7 @@ func (r *Layer2Relayer) ProcessCommittedBatches(wg *sync.WaitGroup) {
 
 		txID := id + "-finalize"
 		// add suffix `-finalize` to avoid duplication with commit tx in unit tests
-		txHash, err := r.rollupSender.SendTransaction(txID, &r.cfg.RollupContractAddress, big.NewInt(0), data)
+		txHash, err := r.rollupSender.SendTransaction(txID, &r.cfg.RollupContractAddress, big.NewInt(0), data, 0)
 		hash := &txHash
 		if err != nil {
 			if !errors.Is(err, sender.ErrNoAvailableAccount) {
@@ -472,4 +491,13 @@ func (r *Layer2Relayer) handleConfirmation(confirmation *sender.Confirmation) {
 		r.processingFinalization.Delete(confirmation.ID)
 	}
 	log.Info("transaction confirmed in layer1", "type", transactionType, "confirmation", confirmation)
+}
+
+func estimateCommitBatchGas(callDataLength int, numBlocks int) uint64 {
+	gasLimit := uint64(0)
+	gasLimit += 16 * uint64(callDataLength)   // calldata cost
+	gasLimit += 4*2100 + 3*22100              // fixed cost per batch
+	gasLimit += 4 * 22100 * uint64(numBlocks) // cost per block in batch
+	gasLimit = gasLimit * 12 / 10             // apply multiplier
+	return gasLimit
 }

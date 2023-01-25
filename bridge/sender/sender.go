@@ -154,18 +154,21 @@ func (s *Sender) NumberOfAccounts() int {
 	return len(s.auths.accounts)
 }
 
-func (s *Sender) getFeeData(auth *bind.TransactOpts, target *common.Address, value *big.Int, data []byte) (*FeeData, error) {
-	// estimate gas limit
-	gasLimit, err := s.client.EstimateGas(s.ctx, geth.CallMsg{From: auth.From, To: target, Value: value, Data: data})
-	if err != nil {
-		return nil, err
+func (s *Sender) getFeeData(auth *bind.TransactOpts, target *common.Address, value *big.Int, data []byte, gasLimit uint64) (*FeeData, error) {
+	if gasLimit == 0 {
+		// estimate gas limit
+		var err error
+		gasLimit, err = s.client.EstimateGas(s.ctx, geth.CallMsg{From: auth.From, To: target, Value: value, Data: data})
+		if err != nil {
+			return nil, err
+		}
+		gasLimit = gasLimit * 15 / 10 // 50% extra gas to void out of gas error
 	}
-	gasLimit = gasLimit * 15 / 10 // 50% extra gas to void out of gas error
+
 	// @todo change it when Scroll enable EIP1559
 	if s.config.TxType != DynamicFeeTxType {
 		// estimate gas price
-		var gasPrice *big.Int
-		gasPrice, err = s.client.SuggestGasPrice(s.ctx)
+		gasPrice, err := s.client.SuggestGasPrice(s.ctx)
 		if err != nil {
 			return nil, err
 		}
@@ -189,7 +192,7 @@ func (s *Sender) getFeeData(auth *bind.TransactOpts, target *common.Address, val
 }
 
 // SendTransaction send a signed L2tL1 transaction.
-func (s *Sender) SendTransaction(ID string, target *common.Address, value *big.Int, data []byte) (hash common.Hash, err error) {
+func (s *Sender) SendTransaction(ID string, target *common.Address, value *big.Int, data []byte, gasLimit uint64) (hash common.Hash, err error) {
 	// We occupy the ID, in case some other threads call with the same ID in the same time
 	if _, loaded := s.pendingTxs.LoadOrStore(ID, nil); loaded {
 		return common.Hash{}, fmt.Errorf("has the repeat tx ID, ID: %s", ID)
@@ -213,9 +216,10 @@ func (s *Sender) SendTransaction(ID string, target *common.Address, value *big.I
 		tx      *types.Transaction
 	)
 	// estimate gas fee
-	if feeData, err = s.getFeeData(auth, target, value, data); err != nil {
+	if feeData, err = s.getFeeData(auth, target, value, data, gasLimit); err != nil {
 		return
 	}
+
 	if tx, err = s.createAndSendTx(auth, feeData, target, value, data, nil); err == nil {
 		// add pending transaction to queue
 		pending := &PendingTransaction{
