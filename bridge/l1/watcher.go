@@ -93,7 +93,9 @@ func (w *Watcher) Start() {
 				return
 
 			default:
+				log.Info("Querying block number")
 				blockNumber, err := w.client.BlockNumber(w.ctx)
+				log.Info("Got block number ", "blockNumber", blockNumber)
 				if err != nil {
 					log.Error("Failed to get block number", "err", err)
 					continue
