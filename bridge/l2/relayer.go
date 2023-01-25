@@ -285,7 +285,7 @@ func (r *Layer2Relayer) ProcessPendingBatches(wg *sync.WaitGroup) {
 			// retry with manual gas estimation
 			gasLimit := estimateCommitBatchGas(len(data), len(layer2Batch.Blocks))
 			hash, err = r.rollupSender.SendTransaction(txID, &r.cfg.RollupContractAddress, big.NewInt(0), data, gasLimit)
-			log.Info("commitBatch tx resent with manual gas estimation ", "id", id, "index", batch.Index, "hash", hash, "err", err)
+			log.Info("commitBatch tx resent with manual gas estimation ", "id", id, "index", batch.Index, "gasLimit", gasLimit, "hash", hash.String(), "err", err)
 		}
 	}
 
