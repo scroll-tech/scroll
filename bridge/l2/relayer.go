@@ -274,9 +274,9 @@ func (r *Layer2Relayer) ProcessPendingBatches(wg *sync.WaitGroup) {
 	if err != nil && err.Error() == "execution reverted: Parent batch hasn't been committed" {
 
 		// check parent is committing
-		batches, err = r.db.GetBlockBatches(map[string]interface{}{"end_block_hash": layer2Batch.ParentHash})
+		batches, err = r.db.GetBlockBatches(map[string]interface{}{"end_block_hash": batch.ParentHash})
 		if err != nil || len(batches) == 0 {
-			log.Error("Failed to get parent batch from db", "batch_id", id, "parent_hash", layer2Batch.ParentHash, "err", err)
+			log.Error("Failed to get parent batch from db", "batch_id", id, "parent_hash", batch.ParentHash, "err", err)
 			return
 		}
 		parentBatch := batches[0]
