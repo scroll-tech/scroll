@@ -76,6 +76,8 @@ func NewL2WatcherClient(ctx context.Context, client *ethclient.Client, confirmat
 
 // Start the Listening process
 func (w *WatcherClient) Start() {
+	log.Info("Starting l2/watcher")
+
 	go func() {
 		if reflect.ValueOf(w.orm).IsNil() {
 			panic("must run L2 watcher with DB")

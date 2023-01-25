@@ -421,6 +421,8 @@ func (r *Layer2Relayer) ProcessCommittedBatches(wg *sync.WaitGroup) {
 
 // Start the relayer process
 func (r *Layer2Relayer) Start() {
+	log.Info("Starting l2/relayer")
+
 	go func() {
 		// trigger by timer
 		ticker := time.NewTicker(time.Second)

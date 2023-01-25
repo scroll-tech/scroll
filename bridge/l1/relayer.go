@@ -134,6 +134,8 @@ func (r *Layer1Relayer) processSavedEvent(msg *orm.L1Message) error {
 
 // Start the relayer process
 func (r *Layer1Relayer) Start() {
+	log.Info("Starting l1/relayer")
+
 	go func() {
 		// trigger by timer
 		ticker := time.NewTicker(3 * time.Second)

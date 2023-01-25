@@ -81,6 +81,8 @@ func NewWatcher(ctx context.Context, client *ethclient.Client, startHeight uint6
 
 // Start the Watcher module.
 func (w *Watcher) Start() {
+	log.Info("Starting l1/watcher")
+
 	go func() {
 		ticker := time.NewTicker(10 * time.Second)
 		defer ticker.Stop()
