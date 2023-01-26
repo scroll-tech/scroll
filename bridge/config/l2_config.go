@@ -2,6 +2,7 @@ package config
 
 import (
 	"encoding/json"
+
 	"scroll-tech/common/utils"
 
 	"github.com/scroll-tech/go-ethereum/common"

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/big"
+
 	"scroll-tech/common/utils"
 
 	"github.com/scroll-tech/go-ethereum/common"

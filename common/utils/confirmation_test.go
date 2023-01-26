@@ -4,9 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"math/big"
-	"scroll-tech/common/utils"
 	"strings"
 	"testing"
+
+	"scroll-tech/common/utils"
 
 	"github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/stretchr/testify/assert"

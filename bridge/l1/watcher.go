@@ -12,9 +12,10 @@ import (
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
 
-	"scroll-tech/common/utils"
 	"scroll-tech/database"
 	"scroll-tech/database/orm"
+
+	"scroll-tech/common/utils"
 
 	bridge_abi "scroll-tech/bridge/abi"
 	bridge_utils "scroll-tech/bridge/utils"
