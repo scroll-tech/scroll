@@ -504,14 +504,26 @@ func testVerifyProvedBatchesOnStartup(t *testing.T) {
 	<-time.After(5 * time.Second)
 	// the coordinator will delete the roller if the subscription is closed.
 	roller.close()
-
 	// Close rollerManager and ws handler.
 	handler.Shutdown(context.Background())
 	rollerManager.Stop()
 
 	// Setup new coordinator and ws server.
 	newRollerManager, newHandler := setupCoordinator(t, cfg.DBConfig, 1, wsURL, false)
-	// Wait for coordinator verify task
+	
+	// verify that task is proved
+	for i := range ids {
+		info, err := newRollerManager.GetSessionInfo(ids[i])
+		assert.Equal(t, orm.ProvingTaskAssigned.String(), info.Status)
+		assert.NoError(t, err)
+
+		// at this point, roller haven't submitted
+		status, err := l2db.GetProvingStatusByID(ids[i])
+		assert.NoError(t, err)
+		assert.Equal(t, orm.ProvingTaskProved, status)
+	}
+
+	// Wait for coordinator to verify task
 	<-time.After(6 * time.Second)
 	defer func() {
 		newHandler.Shutdown(context.Background())
