@@ -14,19 +14,31 @@ import (
 
 var pattern = regexp.MustCompile(`^number=(\d{1,3})$`)
 
+// ConfirmationType defines the type of confirmation logic used by the watcher or the relayer.
 type ConfirmationType int
 
 const (
+	// Use the "finalized" Ethereum tag for confirmation.
 	Finalized ConfirmationType = iota
+
+	// Safe use the "safe" Ethereum tag for confirmation.
 	Safe
+
+	// Wait for a certain number of blocks before considering a block confirmed.
 	Number
 )
 
+// ConfirmationParams defines the confirmation configuration parameters used by the watcher or the relayer.
 type ConfirmationParams struct {
-	Type   ConfirmationType
-	Number uint64 // only used with Number type
+	// Type shows whether we confirm by specific block tags or by block number.
+	Type ConfirmationType
+
+	// Number specifies the number of blocks after which a block is considered confirmed.
+	// This field can only be used when Type is set to Number.
+	Number uint64
 }
 
+// UnmarshalJSON implements custom JSON decoding from JSON string to ConfirmationParams.
 func (c *ConfirmationParams) UnmarshalJSON(input []byte) error {
 	var raw string
 
@@ -36,11 +48,6 @@ func (c *ConfirmationParams) UnmarshalJSON(input []byte) error {
 
 	if raw == "finalized" {
 		c.Type = Finalized
-		return nil
-	}
-
-	if raw == "safe" {
-		c.Type = Safe
 		return nil
 	}
 
@@ -64,6 +71,7 @@ func (c *ConfirmationParams) UnmarshalJSON(input []byte) error {
 	return nil
 }
 
+// UnmarshalJSON implements custom JSON encoding from ConfirmationParams to JSON string.
 func (c *ConfirmationParams) MarshalJSON() ([]byte, error) {
 	var raw string
 
@@ -84,12 +92,14 @@ func (c *ConfirmationParams) MarshalJSON() ([]byte, error) {
 	return json.Marshal(&raw)
 }
 
-type EthClient interface {
+type ethClient interface {
 	BlockNumber(ctx context.Context) (uint64, error)
 	HeaderByNumber(ctx context.Context, number *big.Int) (*types.Header, error)
 }
 
-func GetLatestConfirmedBlockNumber(ctx context.Context, client EthClient, confirmations ConfirmationParams) (uint64, error) {
+// GetLatestConfirmedBlockNumber queries the RPC provider and returns the latest
+// confirmed block number according to the provided confirmation parameters.
+func GetLatestConfirmedBlockNumber(ctx context.Context, client ethClient, confirmations ConfirmationParams) (uint64, error) {
 	switch confirmations.Type {
 	case Finalized:
 	case Safe:
@@ -115,9 +125,9 @@ func GetLatestConfirmedBlockNumber(ctx context.Context, client EthClient, confir
 
 		if number >= confirmations.Number {
 			return number - confirmations.Number, nil
-		} else {
-			return 0, nil
 		}
+
+		return 0, nil
 
 	default:
 		return 0, errors.New("invalid confirmation configuration")
