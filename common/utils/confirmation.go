@@ -18,13 +18,13 @@ var pattern = regexp.MustCompile(`^number=(\d{1,3})$`)
 type ConfirmationType int
 
 const (
-	// Use the "finalized" Ethereum tag for confirmation.
+	// Finalized confirmation means that we consider a block confirmed based on the "finalized" Ethereum tag.
 	Finalized ConfirmationType = iota
 
-	// Safe use the "safe" Ethereum tag for confirmation.
+	// Safe confirmation means that we consider a block confirmed based on the "safe" Ethereum tag.
 	Safe
 
-	// Wait for a certain number of blocks before considering a block confirmed.
+	// Number confirmation means that we consider a block confirmed after waiting for a certain number of blocks.
 	Number
 )
 
@@ -71,7 +71,7 @@ func (c *ConfirmationParams) UnmarshalJSON(input []byte) error {
 	return nil
 }
 
-// UnmarshalJSON implements custom JSON encoding from ConfirmationParams to JSON string.
+// MarshalJSON implements custom JSON encoding from ConfirmationParams to JSON string.
 func (c *ConfirmationParams) MarshalJSON() ([]byte, error) {
 	var raw string
 
