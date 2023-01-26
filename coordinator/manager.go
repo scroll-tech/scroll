@@ -356,6 +356,7 @@ func (m *Manager) handleZkProof(pk string, msg *message.ProofDetail) error {
 				"status", orm.ProvingTaskVerified,
 				"error", dbErr)
 		}
+		fmt.Println("proving status set to verified", msg.ID)
 		return dbErr
 	}
 	return nil

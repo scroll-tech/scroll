@@ -87,7 +87,7 @@ func testHandshake(t *testing.T) {
 
 	// Setup coordinator and ws server.
 	wsURL := "ws://" + randomURL()
-	rollerManager, handler := setupCoordinator(t, cfg.DBConfig, 1, wsURL, false)
+	rollerManager, handler := setupCoordinator(t, cfg.DBConfig, 1, wsURL)
 	defer func() {
 		handler.Shutdown(context.Background())
 		rollerManager.Stop()
@@ -108,7 +108,7 @@ func testFailedHandshake(t *testing.T) {
 
 	// Setup coordinator and ws server.
 	wsURL := "ws://" + randomURL()
-	rollerManager, handler := setupCoordinator(t, cfg.DBConfig, 1, wsURL, false)
+	rollerManager, handler := setupCoordinator(t, cfg.DBConfig, 1, wsURL)
 	defer func() {
 		handler.Shutdown(context.Background())
 		rollerManager.Stop()
@@ -174,7 +174,7 @@ func testSeveralConnections(t *testing.T) {
 
 	// Setup coordinator and ws server.
 	wsURL := "ws://" + randomURL()
-	rollerManager, handler := setupCoordinator(t, cfg.DBConfig, 1, wsURL, false)
+	rollerManager, handler := setupCoordinator(t, cfg.DBConfig, 1, wsURL)
 	defer func() {
 		handler.Shutdown(context.Background())
 		rollerManager.Stop()
@@ -227,7 +227,7 @@ func testValidProof(t *testing.T) {
 
 	// Setup coordinator and ws server.
 	wsURL := "ws://" + randomURL()
-	rollerManager, handler := setupCoordinator(t, cfg.DBConfig, 3, wsURL, false)
+	rollerManager, handler := setupCoordinator(t, cfg.DBConfig, 3, wsURL)
 	defer func() {
 		handler.Shutdown(context.Background())
 		rollerManager.Stop()
@@ -287,7 +287,7 @@ func testInvalidProof(t *testing.T) {
 
 	// Setup coordinator and ws server.
 	wsURL := "ws://" + randomURL()
-	rollerManager, handler := setupCoordinator(t, cfg.DBConfig, 3, wsURL, false)
+	rollerManager, handler := setupCoordinator(t, cfg.DBConfig, 3, wsURL)
 	defer func() {
 		handler.Shutdown(context.Background())
 		rollerManager.Stop()
@@ -346,7 +346,7 @@ func testIdleRollerSelection(t *testing.T) {
 
 	// Setup coordinator and ws server.
 	wsURL := "ws://" + randomURL()
-	rollerManager, handler := setupCoordinator(t, cfg.DBConfig, 1, wsURL, false)
+	rollerManager, handler := setupCoordinator(t, cfg.DBConfig, 1, wsURL)
 	defer func() {
 		handler.Shutdown(context.Background())
 		rollerManager.Stop()
@@ -415,7 +415,7 @@ func testGracefulRestart(t *testing.T) {
 
 	// Setup coordinator and ws server.
 	wsURL := "ws://" + randomURL()
-	rollerManager, handler := setupCoordinator(t, cfg.DBConfig, 1, wsURL, false)
+	rollerManager, handler := setupCoordinator(t, cfg.DBConfig, 1, wsURL)
 
 	// create mock roller
 	roller := newMockRoller(t, "roller_test", wsURL)
@@ -432,7 +432,7 @@ func testGracefulRestart(t *testing.T) {
 	rollerManager.Stop()
 
 	// Setup new coordinator and ws server.
-	newRollerManager, newHandler := setupCoordinator(t, cfg.DBConfig, 1, wsURL, false)
+	newRollerManager, newHandler := setupCoordinator(t, cfg.DBConfig, 1, wsURL)
 	defer func() {
 		newHandler.Shutdown(context.Background())
 		newRollerManager.Stop()
@@ -494,13 +494,13 @@ func testVerifyProvedBatchesOnStartup(t *testing.T) {
 
 	// Setup coordinator and ws server.
 	wsURL := "ws://" + randomURL()
-	rollerManager, handler := setupCoordinator(t, cfg.DBConfig, 1, wsURL, true)
+	rollerManager, handler := setupCoordinator(t, cfg.DBConfig, 1, wsURL)
 
 	// create mock roller
 	roller := newMockRoller(t, "roller_test", wsURL)
 	roller.waitTaskAndSendProof(t, 500*time.Millisecond, false, true)
 
-	// wait for coordinator to receive proof
+	// wait for coordinator to dispatch task
 	<-time.After(5 * time.Second)
 	// the coordinator will delete the roller if the subscription is closed.
 	roller.close()
@@ -508,23 +508,12 @@ func testVerifyProvedBatchesOnStartup(t *testing.T) {
 	handler.Shutdown(context.Background())
 	rollerManager.Stop()
 
+	// assume that previous manager didn't verify task
+	err = l2db.UpdateProvingStatus(ids[0], orm.ProvingTaskProved)
+	assert.NoError(t, err)
+
 	// Setup new coordinator and ws server.
-	newRollerManager, newHandler := setupCoordinator(t, cfg.DBConfig, 1, wsURL, false)
-	
-	// verify that task is proved
-	for i := range ids {
-		info, err := newRollerManager.GetSessionInfo(ids[i])
-		assert.Equal(t, orm.ProvingTaskAssigned.String(), info.Status)
-		assert.NoError(t, err)
-
-		// at this point, roller haven't submitted
-		status, err := l2db.GetProvingStatusByID(ids[i])
-		assert.NoError(t, err)
-		assert.Equal(t, orm.ProvingTaskProved, status)
-	}
-
-	// Wait for coordinator to verify task
-	<-time.After(6 * time.Second)
+	newRollerManager, newHandler := setupCoordinator(t, cfg.DBConfig, 1, wsURL)
 	defer func() {
 		newHandler.Shutdown(context.Background())
 		newRollerManager.Stop()
@@ -543,14 +532,14 @@ func testVerifyProvedBatchesOnStartup(t *testing.T) {
 	}
 }
 
-func setupCoordinator(t *testing.T, dbCfg *database.DBConfig, rollersPerSession uint8, wsURL string, longMockMode bool) (rollerManager *coordinator.Manager, handler *http.Server) {
+func setupCoordinator(t *testing.T, dbCfg *database.DBConfig, rollersPerSession uint8, wsURL string) (rollerManager *coordinator.Manager, handler *http.Server) {
 	// Get db handler.
 	db, err := database.NewOrmFactory(dbCfg)
 	assert.True(t, assert.NoError(t, err), "failed to get db handler.")
 
 	rollerManager, err = coordinator.New(context.Background(), &coordinator_config.RollerManagerConfig{
 		RollersPerSession: rollersPerSession,
-		Verifier:          &coordinator_config.VerifierConfig{MockMode: true, LongMockMode: longMockMode},
+		Verifier:          &coordinator_config.VerifierConfig{MockMode: true},
 		CollectionTime:    1,
 		TokenTimeToLive:   5,
 	}, db, nil)

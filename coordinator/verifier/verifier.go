@@ -12,7 +12,6 @@ import "C" //nolint:typecheck
 
 import (
 	"encoding/json"
-	"time"
 	"unsafe"
 
 	"github.com/scroll-tech/go-ethereum/log"
@@ -47,9 +46,6 @@ func NewVerifier(cfg *config.VerifierConfig) (*Verifier, error) {
 // VerifyProof Verify a ZkProof by marshaling it and sending it to the Halo2 Verifier.
 func (v *Verifier) VerifyProof(proof *message.AggProof) (bool, error) {
 	if v.cfg.MockMode {
-		if v.cfg.LongMockMode {
-			<-time.After(10 * time.Second)
-		}
 		log.Info("Verifier disabled, VerifyProof skipped")
 		return true, nil
 
@@ -67,4 +63,5 @@ func (v *Verifier) VerifyProof(proof *message.AggProof) (bool, error) {
 	log.Info("Start to verify proof ...")
 	verified := C.verify_agg_proof(aggProofStr)
 	return verified != 0, nil
+	return true, nil
 }
