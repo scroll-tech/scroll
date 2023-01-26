@@ -14,10 +14,11 @@ import (
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/stretchr/testify/assert"
 
+	"scroll-tech/common/utils"
+
 	"scroll-tech/bridge/config"
 	"scroll-tech/bridge/mock_bridge"
 	"scroll-tech/bridge/sender"
-	"scroll-tech/common/utils"
 
 	"scroll-tech/database"
 	"scroll-tech/database/migrate"
