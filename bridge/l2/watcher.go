@@ -7,6 +7,8 @@ import (
 	"reflect"
 	"time"
 
+	"scroll-tech/common/utils"
+
 	geth "github.com/scroll-tech/go-ethereum"
 	"github.com/scroll-tech/go-ethereum/accounts/abi"
 	"github.com/scroll-tech/go-ethereum/common"
@@ -16,7 +18,7 @@ import (
 	"github.com/scroll-tech/go-ethereum/log"
 
 	bridge_abi "scroll-tech/bridge/abi"
-	"scroll-tech/bridge/utils"
+	bridge_utils "scroll-tech/bridge/utils"
 
 	"scroll-tech/database"
 	"scroll-tech/database/orm"
@@ -39,7 +41,7 @@ type WatcherClient struct {
 
 	orm database.OrmFactory
 
-	confirmations    uint64
+	confirmations    utils.ConfirmationParams
 	messengerAddress common.Address
 	messengerABI     *abi.ABI
 
@@ -53,7 +55,7 @@ type WatcherClient struct {
 }
 
 // NewL2WatcherClient take a l2geth instance to generate a l2watcherclient instance
-func NewL2WatcherClient(ctx context.Context, client *ethclient.Client, confirmations uint64, bpCfg *config.BatchProposerConfig, messengerAddress common.Address, orm database.OrmFactory) *WatcherClient {
+func NewL2WatcherClient(ctx context.Context, client *ethclient.Client, confirmations utils.ConfirmationParams, bpCfg *config.BatchProposerConfig, messengerAddress common.Address, orm database.OrmFactory) *WatcherClient {
 	savedHeight, err := orm.GetLayer2LatestWatchedHeight()
 	if err != nil {
 		log.Warn("fetch height from db failed", "err", err)
@@ -94,17 +96,10 @@ func (w *WatcherClient) Start() {
 					return
 
 				case <-ticker.C:
-					// get current height
-					number, err := w.BlockNumber(ctx)
+					number, err := utils.GetLatestConfirmedBlockNumber(ctx, w.Client, w.confirmations)
 					if err != nil {
-						log.Error("failed to get_BlockNumber", "err", err)
+						log.Error("failed to get block number", "err", err)
 						continue
-					}
-
-					if number >= w.confirmations {
-						number = number - w.confirmations
-					} else {
-						number = 0
 					}
 
 					w.tryFetchRunningMissingBlocks(ctx, number)
@@ -123,17 +118,10 @@ func (w *WatcherClient) Start() {
 					return
 
 				case <-ticker.C:
-					// get current height
-					number, err := w.BlockNumber(ctx)
+					number, err := utils.GetLatestConfirmedBlockNumber(ctx, w.Client, w.confirmations)
 					if err != nil {
-						log.Error("failed to get_BlockNumber", "err", err)
+						log.Error("failed to get block number", "err", err)
 						continue
-					}
-
-					if number >= w.confirmations {
-						number = number - w.confirmations
-					} else {
-						number = 0
 					}
 
 					w.FetchContractEvent(number)
@@ -327,7 +315,7 @@ func (w *WatcherClient) parseBridgeEventLogs(logs []types.Log) ([]*orm.L2Message
 			event.Target = common.HexToAddress(vLog.Topics[1].String())
 			l2Messages = append(l2Messages, &orm.L2Message{
 				Nonce:      event.MessageNonce.Uint64(),
-				MsgHash:    utils.ComputeMessageHash(event.Sender, event.Target, event.Value, event.Fee, event.Deadline, event.Message, event.MessageNonce).String(),
+				MsgHash:    bridge_utils.ComputeMessageHash(event.Sender, event.Target, event.Value, event.Fee, event.Deadline, event.Message, event.MessageNonce).String(),
 				Height:     vLog.BlockNumber,
 				Sender:     event.Sender.String(),
 				Value:      event.Value.String(),

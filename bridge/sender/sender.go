@@ -21,6 +21,7 @@ import (
 	"github.com/scroll-tech/go-ethereum/log"
 
 	"scroll-tech/bridge/config"
+	"scroll-tech/common/utils"
 )
 
 const (
@@ -353,10 +354,11 @@ func (s *Sender) resubmitTransaction(feeData *FeeData, auth *bind.TransactOpts, 
 }
 
 // CheckPendingTransaction Check pending transaction given number of blocks to wait before confirmation.
-func (s *Sender) CheckPendingTransaction(header *types.Header) {
+func (s *Sender) CheckPendingTransaction(header *types.Header, confirmed uint64) {
 	number := header.Number.Uint64()
 	atomic.StoreUint64(&s.blockNumber, number)
 	atomic.StoreUint64(&s.baseFeePerGas, header.BaseFee.Uint64())
+
 	s.pendingTxs.Range(func(key, value interface{}) bool {
 		// ignore empty id, since we use empty id to occupy pending task
 		if value == nil || reflect.ValueOf(value).IsNil() {
@@ -366,7 +368,7 @@ func (s *Sender) CheckPendingTransaction(header *types.Header) {
 		pending := value.(*PendingTransaction)
 		receipt, err := s.client.TransactionReceipt(s.ctx, pending.tx.Hash())
 		if (err == nil) && (receipt != nil) {
-			if number >= receipt.BlockNumber.Uint64()+s.config.Confirmations {
+			if receipt.BlockNumber.Uint64() <= confirmed {
 				s.pendingTxs.Delete(key)
 				// send confirm message
 				s.confirmCh <- &Confirmation{
@@ -440,7 +442,14 @@ func (s *Sender) loop(ctx context.Context) {
 				log.Error("failed to get latest head", "err", err)
 				continue
 			}
-			s.CheckPendingTransaction(header)
+
+			confirmed, err := utils.GetLatestConfirmedBlockNumber(s.ctx, s.client, s.config.Confirmations)
+			if err != nil {
+				log.Error("failed to get latest confirmed block number", "err", err)
+				continue
+			}
+
+			s.CheckPendingTransaction(header, confirmed)
 		case <-checkBalanceTicker.C:
 			// Check and set balance.
 			_ = s.auths.checkAndSetBalances(ctx)

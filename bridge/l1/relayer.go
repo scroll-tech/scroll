@@ -14,6 +14,7 @@ import (
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
 
+	"scroll-tech/common/utils"
 	"scroll-tech/database/orm"
 
 	bridge_abi "scroll-tech/bridge/abi"
@@ -43,7 +44,7 @@ type Layer1Relayer struct {
 }
 
 // NewLayer1Relayer will return a new instance of Layer1RelayerClient
-func NewLayer1Relayer(ctx context.Context, ethClient *ethclient.Client, l1ConfirmNum int64, db orm.L1MessageOrm, cfg *config.RelayerConfig) (*Layer1Relayer, error) {
+func NewLayer1Relayer(ctx context.Context, ethClient *ethclient.Client, l1ConfirmNum utils.ConfirmationParams, db orm.L1MessageOrm, cfg *config.RelayerConfig) (*Layer1Relayer, error) {
 	l2MessengerABI, err := bridge_abi.L2MessengerMetaData.GetAbi()
 	if err != nil {
 		log.Warn("new L2MessengerABI failed", "err", err)

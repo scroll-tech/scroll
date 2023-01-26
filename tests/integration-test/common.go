@@ -27,6 +27,7 @@ import (
 
 	"scroll-tech/common/cmd"
 	"scroll-tech/common/docker"
+	"scroll-tech/common/utils"
 
 	_ "scroll-tech/coordinator/cmd/app"
 	coordinatorConfig "scroll-tech/coordinator/config"
@@ -119,7 +120,7 @@ func runSender(t *testing.T, endpoint string) *sender.Sender {
 		Endpoint:            endpoint,
 		CheckPendingTime:    3,
 		EscalateBlocks:      100,
-		Confirmations:       0,
+		Confirmations:       utils.ConfirmationParams{Type: utils.Number, Number: 0},
 		EscalateMultipleNum: 11,
 		EscalateMultipleDen: 10,
 		TxType:              "DynamicFeeTx",

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/big"
+	"scroll-tech/common/utils"
 
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/crypto"
@@ -19,7 +20,7 @@ type SenderConfig struct {
 	// The number of blocks to wait to escalate increase gas price of the transaction.
 	EscalateBlocks uint64 `json:"escalate_blocks"`
 	// The gap number between a block be confirmed and the latest block.
-	Confirmations uint64 `json:"confirmations"`
+	Confirmations utils.ConfirmationParams `json:"confirmations"`
 	// The numerator of gas price escalate multiple.
 	EscalateMultipleNum uint64 `json:"escalate_multiple_num"`
 	// The denominator of gas price escalate multiple.

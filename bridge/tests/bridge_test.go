@@ -5,6 +5,7 @@ import (
 	"crypto/ecdsa"
 	"math/big"
 	"scroll-tech/common/docker"
+	"scroll-tech/common/utils"
 	"testing"
 
 	"scroll-tech/bridge/config"
@@ -63,10 +64,10 @@ func setupEnv(t *testing.T) {
 	// Load config.
 	cfg, err = config.NewConfig("../config.json")
 	assert.NoError(t, err)
-	cfg.L1Config.Confirmations = 0
+	cfg.L1Config.Confirmations = utils.ConfirmationParams{Type: utils.Number, Number: 0}
 	cfg.L1Config.RelayerConfig.MessageSenderPrivateKeys = []*ecdsa.PrivateKey{messagePrivateKey}
 	cfg.L1Config.RelayerConfig.RollupSenderPrivateKeys = []*ecdsa.PrivateKey{rollupPrivateKey}
-	cfg.L2Config.Confirmations = 0
+	cfg.L2Config.Confirmations = utils.ConfirmationParams{Type: utils.Number, Number: 0}
 	cfg.L2Config.RelayerConfig.MessageSenderPrivateKeys = []*ecdsa.PrivateKey{messagePrivateKey}
 	cfg.L2Config.RelayerConfig.RollupSenderPrivateKeys = []*ecdsa.PrivateKey{rollupPrivateKey}
 

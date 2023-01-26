@@ -26,7 +26,7 @@ func New(ctx context.Context, cfg *config.L1Config, orm database.OrmFactory) (*B
 		return nil, err
 	}
 
-	relayer, err := NewLayer1Relayer(ctx, client, int64(cfg.Confirmations), orm, cfg.RelayerConfig)
+	relayer, err := NewLayer1Relayer(ctx, client, cfg.Confirmations, orm, cfg.RelayerConfig)
 	if err != nil {
 		return nil, err
 	}

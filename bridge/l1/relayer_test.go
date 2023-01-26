@@ -7,6 +7,7 @@ import (
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/stretchr/testify/assert"
 
+	"scroll-tech/common/utils"
 	"scroll-tech/database/migrate"
 
 	"scroll-tech/database"
@@ -23,7 +24,8 @@ func testCreateNewL1Relayer(t *testing.T) {
 	client, err := ethclient.Dial(l1gethImg.Endpoint())
 	assert.NoError(t, err)
 
-	relayer, err := NewLayer1Relayer(context.Background(), client, 1, db, cfg.L2Config.RelayerConfig)
+	confirmations := utils.ConfirmationParams{Type: utils.Number, Number: 1}
+	relayer, err := NewLayer1Relayer(context.Background(), client, confirmations, db, cfg.L2Config.RelayerConfig)
 	assert.NoError(t, err)
 	defer relayer.Stop()
 

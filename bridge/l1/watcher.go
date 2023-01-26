@@ -12,11 +12,12 @@ import (
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
 
+	"scroll-tech/common/utils"
 	"scroll-tech/database"
 	"scroll-tech/database/orm"
 
 	bridge_abi "scroll-tech/bridge/abi"
-	"scroll-tech/bridge/utils"
+	bridge_utils "scroll-tech/bridge/utils"
 )
 
 type relayedMessage struct {
@@ -38,7 +39,7 @@ type Watcher struct {
 	db     database.OrmFactory
 
 	// The number of new blocks to wait for a block to be confirmed
-	confirmations    uint64
+	confirmations    utils.ConfirmationParams
 	messengerAddress common.Address
 	messengerABI     *abi.ABI
 
@@ -53,7 +54,7 @@ type Watcher struct {
 
 // NewWatcher returns a new instance of Watcher. The instance will be not fully prepared,
 // and still needs to be finalized and ran by calling `watcher.Start`.
-func NewWatcher(ctx context.Context, client *ethclient.Client, startHeight uint64, confirmations uint64, messengerAddress common.Address, rollupAddress common.Address, db database.OrmFactory) *Watcher {
+func NewWatcher(ctx context.Context, client *ethclient.Client, startHeight uint64, confirmations utils.ConfirmationParams, messengerAddress common.Address, rollupAddress common.Address, db database.OrmFactory) *Watcher {
 	savedHeight, err := db.GetLayer1LatestWatchedHeight()
 	if err != nil {
 		log.Warn("Failed to fetch height from db", "err", err)
@@ -91,12 +92,13 @@ func (w *Watcher) Start() {
 				return
 
 			default:
-				blockNumber, err := w.client.BlockNumber(w.ctx)
+				number, err := utils.GetLatestConfirmedBlockNumber(w.ctx, w.client, w.confirmations)
 				if err != nil {
-					log.Error("Failed to get block number", "err", err)
+					log.Error("failed to get block number", "err", err)
 					continue
 				}
-				if err := w.FetchContractEvent(blockNumber); err != nil {
+
+				if err := w.FetchContractEvent(number); err != nil {
 					log.Error("Failed to fetch bridge contract", "err", err)
 				}
 			}
@@ -118,7 +120,7 @@ func (w *Watcher) FetchContractEvent(blockHeight uint64) error {
 	}()
 
 	fromBlock := int64(w.processedMsgHeight) + 1
-	toBlock := int64(blockHeight) - int64(w.confirmations)
+	toBlock := int64(blockHeight)
 
 	for from := fromBlock; from <= toBlock; from += contractEventsBlocksFetchLimit {
 		to := from + contractEventsBlocksFetchLimit - 1
@@ -250,7 +252,7 @@ func (w *Watcher) parseBridgeEventLogs(logs []types.Log) ([]*orm.L1Message, []re
 			event.Target = common.HexToAddress(vLog.Topics[1].String())
 			l1Messages = append(l1Messages, &orm.L1Message{
 				Nonce:      event.MessageNonce.Uint64(),
-				MsgHash:    utils.ComputeMessageHash(event.Sender, event.Target, event.Value, event.Fee, event.Deadline, event.Message, event.MessageNonce).String(),
+				MsgHash:    bridge_utils.ComputeMessageHash(event.Sender, event.Target, event.Value, event.Fee, event.Deadline, event.Message, event.MessageNonce).String(),
 				Height:     vLog.BlockNumber,
 				Sender:     event.Sender.String(),
 				Value:      event.Value.String(),

@@ -35,7 +35,7 @@ func testCommitBatchAndFinalizeBatch(t *testing.T) {
 
 	// Create L1Watcher
 	l1Cfg := cfg.L1Config
-	l1Watcher := l1.NewWatcher(context.Background(), l1Client, 0, 0, l1Cfg.L1MessengerAddress, l1Cfg.RollupContractAddress, db)
+	l1Watcher := l1.NewWatcher(context.Background(), l1Client, 0, l1Cfg.Confirmations, l1Cfg.L1MessengerAddress, l1Cfg.RollupContractAddress, db)
 
 	// add some blocks to db
 	var traces []*types.BlockTrace
