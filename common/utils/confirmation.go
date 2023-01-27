@@ -3,13 +3,13 @@ package utils
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"math/big"
 	"regexp"
 	"strconv"
 
 	"github.com/scroll-tech/go-ethereum/core/types"
+	"github.com/scroll-tech/go-ethereum/rpc"
 )
 
 var pattern = regexp.MustCompile(`^number=(\d{1,3})$`)
@@ -58,12 +58,12 @@ func (c *ConfirmationParams) UnmarshalJSON(input []byte) error {
 
 	matches := pattern.FindStringSubmatch(raw)
 	if len(matches) != 2 {
-		return errors.New("invalid configuration value for 'confirmations'")
+		return fmt.Errorf("invalid configuration value for confirmations: %v", raw)
 	}
 
 	number, err := strconv.Atoi(matches[1])
 	if err != nil {
-		return errors.New("invalid configuration value for 'confirmations'")
+		return fmt.Errorf("invalid configuration value for confirmations: %v", raw)
 	}
 
 	c.Type = Number
@@ -86,7 +86,7 @@ func (c *ConfirmationParams) MarshalJSON() ([]byte, error) {
 		raw = fmt.Sprintf("number=%d", c.Number)
 
 	default:
-		return nil, errors.New("invalid configuration value for 'confirmations'")
+		return nil, fmt.Errorf("unable to marshal unknown confirmation type: %v", c.Type)
 	}
 
 	return json.Marshal(&raw)
@@ -101,10 +101,16 @@ type ethClient interface {
 // confirmed block number according to the provided confirmation parameters.
 func GetLatestConfirmedBlockNumber(ctx context.Context, client ethClient, confirmations ConfirmationParams) (uint64, error) {
 	switch confirmations.Type {
+	// use eth_getBlockByNumber and a tag
 	case Finalized:
 	case Safe:
-		// TODO: chain to "finalized" or "safe"
-		tag := big.NewInt(0)
+		var tag *big.Int
+
+		if confirmations.Type == Finalized {
+			tag = big.NewInt(int64(rpc.FinalizedBlockNumber))
+		} else {
+			tag = big.NewInt(int64(rpc.SafeBlockNumber))
+		}
 
 		header, err := client.HeaderByNumber(ctx, tag)
 		if err != nil {
@@ -112,11 +118,12 @@ func GetLatestConfirmedBlockNumber(ctx context.Context, client ethClient, confir
 		}
 
 		if !header.Number.IsUint64() {
-			return 0, errors.New("received invalid block number")
+			return 0, fmt.Errorf("received invalid block number: %v", header.Number)
 		}
 
 		return header.Number.Uint64(), nil
 
+	// use eth_blockNumber
 	case Number:
 		number, err := client.BlockNumber(ctx)
 		if err != nil {
@@ -130,7 +137,7 @@ func GetLatestConfirmedBlockNumber(ctx context.Context, client ethClient, confir
 		return 0, nil
 
 	default:
-		return 0, errors.New("invalid confirmation configuration")
+		return 0, fmt.Errorf("unknown confirmation type: %v", confirmations.Type)
 	}
 
 	return 0, nil
