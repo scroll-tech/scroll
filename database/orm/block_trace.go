@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"math/big"
 	"strings"
 
 	"github.com/jmoiron/sqlx"
@@ -56,7 +55,7 @@ func (o *blockTraceOrm) GetBlockTracesLatestHeight() (int64, error) {
 }
 
 func (o *blockTraceOrm) GetBlockTraces(fields map[string]interface{}, args ...string) ([]*types.BlockTrace, error) {
-	query := "SELECT hash,number FROM block_trace WHERE 1 = 1 "
+	query := "SELECT hash FROM block_trace WHERE 1 = 1 "
 	for key := range fields {
 		query += fmt.Sprintf("AND %s=:%s ", key, key)
 	}
@@ -74,15 +73,14 @@ func (o *blockTraceOrm) GetBlockTraces(fields map[string]interface{}, args ...st
 	)
 	for rows.Next() {
 		var (
-			trace  *types.BlockTrace
-			hash   string
-			number uint64
+			trace *types.BlockTrace
+			hash  string
 		)
-		if err = rows.Scan(&hash, &number); err != nil {
+		if err = rows.Scan(&hash); err != nil {
 			break
 		}
 
-		trace, err = rdb.GetBlockTrace(context.Background(), big.NewInt(0).SetUint64(number), common.HexToHash(hash))
+		trace, err = rdb.GetBlockTrace(context.Background(), common.HexToHash(hash))
 		if err != nil {
 			return nil, err
 		}

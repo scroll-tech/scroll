@@ -43,16 +43,17 @@ func NewRedisClient(redisConfig *RedisConfig) (Cache, error) {
 
 // ExistTrace check the trace is exist or not.
 func (r *RedisClient) ExistTrace(ctx context.Context, number *big.Int) (bool, error) {
-	keys, err := r.HKeys(ctx, number.String()).Result()
-	return len(keys) != 0, err
+	n, err := r.Exists(ctx, number.String()).Result()
+	return err == nil && n > 0, err
 }
 
 // SetBlockTrace Set trace to redis.
 func (r *RedisClient) SetBlockTrace(ctx context.Context, trace *types.BlockTrace) (setErr error) {
 	hash, number := trace.Header.Hash().String(), trace.Header.Number.String()
 
-	// If exist the trace or return error, interrupt and return.
-	if exist, err := r.HExists(ctx, number, hash).Result(); err != nil || exist {
+	// If return error or the trace is exist return this function.
+	n, err := r.Exists(ctx, hash).Result()
+	if err != nil || n > 0 {
 		return err
 	}
 	// Set trace expire time.
@@ -67,13 +68,13 @@ func (r *RedisClient) SetBlockTrace(ctx context.Context, trace *types.BlockTrace
 	if setErr != nil {
 		return setErr
 	}
-	return r.HSet(ctx, number, hash, data).Err()
+	return r.Set(ctx, hash, data, r.traceExpire).Err()
 }
 
 // GetBlockTrace get block trace by number, hash.
-func (r *RedisClient) GetBlockTrace(ctx context.Context, number *big.Int, hash common.Hash) (*types.BlockTrace, error) {
+func (r *RedisClient) GetBlockTrace(ctx context.Context, hash common.Hash) (*types.BlockTrace, error) {
 	// Get trace content.
-	data, err := r.HGet(ctx, number.String(), hash.String()).Bytes()
+	data, err := r.Get(ctx, hash.String()).Bytes()
 	if err != nil {
 		return nil, err
 	}
