@@ -59,7 +59,7 @@ func (r *RedisClient) SetBlockTrace(ctx context.Context, trace *types.BlockTrace
 	// Set trace expire time.
 	defer func() {
 		if setErr == nil {
-			r.Expire(ctx, number, r.traceExpire)
+			r.Set(ctx, number, hash, r.traceExpire)
 		}
 	}()
 
