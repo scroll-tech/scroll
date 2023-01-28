@@ -231,7 +231,6 @@ const contractEventsBlocksFetchLimit = int64(10)
 // FetchContractEvent pull latest event logs from given contract address and save in DB
 func (w *WatcherClient) FetchContractEvent(blockHeight uint64) {
 	defer func() {
-		metrics.BridgeL2ProcessedMsgHeightGauge.Update(int64(w.processedMsgHeight))
 		log.Info("l2 watcher fetchContractEvent", "w.processedMsgHeight", w.processedMsgHeight)
 	}()
 
@@ -266,6 +265,7 @@ func (w *WatcherClient) FetchContractEvent(blockHeight uint64) {
 		}
 		if len(logs) == 0 {
 			w.processedMsgHeight = uint64(to)
+			metrics.BridgeL2MsgSyncHeightGauge.Update(to)
 			continue
 		}
 		log.Info("received new L2 messages", "fromBlock", from, "toBlock", to, "cnt", len(logs))
@@ -298,6 +298,7 @@ func (w *WatcherClient) FetchContractEvent(blockHeight uint64) {
 		}
 
 		w.processedMsgHeight = uint64(to)
+		metrics.BridgeL2MsgSyncHeightGauge.Update(to)
 	}
 }
 

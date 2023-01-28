@@ -6,10 +6,11 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/ethereum/go-ethereum/log"
-	"github.com/ethereum/go-ethereum/metrics"
-	"github.com/ethereum/go-ethereum/metrics/prometheus"
+	"github.com/scroll-tech/go-ethereum/log"
+	"github.com/scroll-tech/go-ethereum/metrics"
+	"github.com/scroll-tech/go-ethereum/metrics/prometheus"
 	"github.com/scroll-tech/go-ethereum/rpc"
+
 	"github.com/urfave/cli/v2"
 
 	"scroll-tech/common/utils"
@@ -18,8 +19,8 @@ import (
 // Metrics
 var (
 	// Driver
-	BridgeL1ProcessedMsgHeightGauge = metrics.NewRegisteredGauge("bridge/l1/processed/msg/height", nil)
-	BridgeL2ProcessedMsgHeightGauge = metrics.NewRegisteredGauge("bridge/l2/processed/msg/height", nil)
+	BridgeL1MsgSyncHeightGauge = metrics.NewRegisteredGauge("bridge/l1/msg/sync/height", nil)
+	BridgeL2MsgSyncHeightGauge = metrics.NewRegisteredGauge("bridge/l2/msg/sync/height", nil)
 )
 
 // Serve starts the metrics server on the given address, will be closed when the given
