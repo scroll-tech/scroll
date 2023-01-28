@@ -52,12 +52,9 @@ func action(ctx *cli.Context) error {
 	}
 
 	// Start metrics server.
-	if err = metrics.Serve(context.Background(), ctx); err != nil {
-		log.Error("start metrics server error", "error", err)
-		return err
-	}
+	metrics.Serve(context.Background(), ctx)
 
-	// init db connection
+	// Init db connection.
 	var ormFactory database.OrmFactory
 	if ormFactory, err = database.NewOrmFactory(cfg.DBConfig); err != nil {
 		log.Crit("failed to init db connection", "err", err)

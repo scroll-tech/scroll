@@ -1,8 +1,13 @@
 package integration
 
 import (
+	"io/ioutil"
+	"net/http"
+	"strings"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestIntegration(t *testing.T) {
@@ -15,6 +20,9 @@ func TestIntegration(t *testing.T) {
 
 	// test bridge service
 	t.Run("testStartProcess", testStartProcess)
+
+	// test monitor metrics
+	t.Run("testMonitorMetrics", testMonitorMetrics)
 
 	t.Cleanup(func() {
 		free(t)
@@ -42,4 +50,25 @@ func testStartProcess(t *testing.T) {
 	rollerCmd.WaitExit()
 	bridgeCmd.WaitExit()
 	coordinatorCmd.WaitExit()
+}
+
+func testMonitorMetrics(t *testing.T) {
+	// migrate db.
+	runDBCliApp(t, "reset", "successful to reset")
+	runDBCliApp(t, "migrate", "current version:")
+
+	// Start bridge process with metrics server.
+	bridgeCmd := runBridgeApp(t, "--metrics", "--metrics.addr", "127.0.0.1", "--metrics.port", "6060")
+	bridgeCmd.RunApp(func() bool { return bridgeCmd.WaitResult(time.Second*20, "Start bridge successfully") })
+
+	resp, err := http.Get("http://127.0.0.1:6060")
+	assert.NoError(t, err)
+	defer resp.Body.Close()
+	body, err := ioutil.ReadAll(resp.Body)
+	assert.NoError(t, err)
+	bodyStr := string(body)
+	assert.Equal(t, 200, resp.StatusCode)
+	assert.Equal(t, true, strings.Contains(bodyStr, "bridge_l1_msg_sync_height"))
+	assert.Equal(t, true, strings.Contains(bodyStr, "bridge_l2_msg_sync_height"))
+	bridgeCmd.WaitExit()
 }

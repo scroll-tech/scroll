@@ -25,9 +25,9 @@ var (
 
 // Serve starts the metrics server on the given address, will be closed when the given
 // context is canceled.
-func Serve(ctx context.Context, c *cli.Context) error {
+func Serve(ctx context.Context, c *cli.Context) {
 	if !c.Bool(utils.MetricsEnabled.Name) {
-		return nil
+		return
 	}
 
 	address := net.JoinHostPort(
@@ -52,5 +52,9 @@ func Serve(ctx context.Context, c *cli.Context) error {
 
 	log.Info("Starting metrics server", "address", address)
 
-	return server.ListenAndServe()
+	go func() {
+		if err := server.ListenAndServe(); err != nil {
+			log.Error("start metrics server error", "error", err)
+		}
+	}()
 }
