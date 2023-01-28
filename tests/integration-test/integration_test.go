@@ -61,6 +61,7 @@ func testMonitorMetrics(t *testing.T) {
 	bridgeCmd := runBridgeApp(t, "--metrics", "--metrics.addr", "127.0.0.1", "--metrics.port", "6060")
 	bridgeCmd.RunApp(func() bool { return bridgeCmd.WaitResult(time.Second*20, "Start bridge successfully") })
 
+	// Get monitor metrics.
 	resp, err := http.Get("http://127.0.0.1:6060")
 	assert.NoError(t, err)
 	defer resp.Body.Close()
@@ -70,5 +71,6 @@ func testMonitorMetrics(t *testing.T) {
 	assert.Equal(t, 200, resp.StatusCode)
 	assert.Equal(t, true, strings.Contains(bodyStr, "bridge_l1_msg_sync_height"))
 	assert.Equal(t, true, strings.Contains(bodyStr, "bridge_l2_msg_sync_height"))
+
 	bridgeCmd.WaitExit()
 }
