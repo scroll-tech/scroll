@@ -17,22 +17,22 @@ import (
 )
 
 const (
-	ParamsPath = "./assets/test_params"
-	AggVkPath  = "./assets/agg_vk"
-	ProofPath  = "./assets/agg_proof"
+	paramsPath = "./assets/test_params"
+	aggVkPath  = "./assets/agg_vk"
+	proofPath  = "./assets/agg_proof"
 )
 
 func TestFFI(t *testing.T) {
 	as := assert.New(t)
 	cfg := &config.VerifierConfig{
 		MockMode:   false,
-		ParamsPath: ParamsPath,
-		AggVkPath:  AggVkPath,
+		ParamsPath: paramsPath,
+		AggVkPath:  aggVkPath,
 	}
 	v, err := verifier.NewVerifier(cfg)
 	as.NoError(err)
 
-	f, err := os.Open(ProofPath)
+	f, err := os.Open(proofPath)
 	as.NoError(err)
 	byt, err := io.ReadAll(f)
 	as.NoError(err)
