@@ -17,9 +17,10 @@ import (
 )
 
 const (
-	paramsPath = "../assets/test_params"
-	seedPath   = "../assets/test_seed"
-	tracesPath = "../assets/traces"
+	paramsPath    = "../assets/test_params"
+	seedPath      = "../assets/test_seed"
+	tracesPath    = "../assets/traces"
+	proofDumpPath = "agg_proof"
 )
 
 func TestFFI(t *testing.T) {
@@ -53,9 +54,10 @@ func TestFFI(t *testing.T) {
 	t.Log("prove success")
 
 	// dump the proof
+	os.RemoveAll(proofDumpPath)
 	proofByt, err := json.Marshal(proof)
 	as.NoError(err)
-	proofFile, err := os.Create("agg_proof")
+	proofFile, err := os.Create(proofDumpPath)
 	as.NoError(err)
 	_, err = proofFile.Write(proofByt)
 	as.NoError(err)
