@@ -87,7 +87,7 @@ func setupEnv(t *testing.T) {
 	cfg.DBConfig.Persistence.DSN = dbImg.Endpoint()
 
 	redisImg = docker.NewTestRedisDocker(t)
-	cfg.DBConfig.Redis.RedisURL = redisImg.Endpoint()
+	cfg.DBConfig.Redis.URL = redisImg.Endpoint()
 
 	// Create l1geth and l2geth client.
 	l1Client, err = ethclient.Dial(cfg.L1Config.Endpoint)

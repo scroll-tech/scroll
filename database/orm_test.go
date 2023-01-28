@@ -99,7 +99,7 @@ func setupEnv(t *testing.T) error {
 			DSN:        dbImg.Endpoint(),
 		},
 		Redis: &cache.RedisConfig{
-			RedisURL:    redisImg.Endpoint(),
+			URL:         redisImg.Endpoint(),
 			Expirations: map[string]int64{"trace": 30},
 		},
 	}

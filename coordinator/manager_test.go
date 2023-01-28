@@ -58,7 +58,7 @@ func setEnv(t *testing.T) (err error) {
 
 	// Create redis container.
 	redisImg = docker.NewTestRedisDocker(t)
-	cfg.DBConfig.Redis.RedisURL = redisImg.Endpoint()
+	cfg.DBConfig.Redis.URL = redisImg.Endpoint()
 
 	return
 }

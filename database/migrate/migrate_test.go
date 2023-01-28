@@ -32,7 +32,7 @@ func initEnv(t *testing.T) error {
 		},
 		Redis: &cache.RedisConfig{
 			Expirations: map[string]int64{"trace": 30},
-			RedisURL:    redisImg.Endpoint(),
+			URL:         redisImg.Endpoint(),
 		},
 	})
 	if err != nil {
