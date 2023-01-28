@@ -38,7 +38,7 @@ func (w *WatcherClient) initCache(ctx context.Context) error {
 		for _, batch := range batches {
 			batch := batch
 			eg.Go(func() error {
-				return w.fillTraceInCache(ctx, batch.StartBlockNumber, batch.EndBlockNumber)
+				return w.fillTraceByNumber(ctx, batch.StartBlockNumber, batch.EndBlockNumber)
 			})
 		}
 		if err = eg.Wait(); err != nil {
@@ -51,32 +51,49 @@ func (w *WatcherClient) initCache(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	prevSessions, err := db.GetSessionInfosByIDs(ids)
+	for _, id := range ids {
+		err = w.fillTraceByID(ctx, id)
+		if err != nil {
+			log.Error("failed to fill traces by id", "id", id, "err", err)
+			return err
+		}
+	}
+
+	// Fill pending block traces into cache.
+	for {
+		ids, err = w.orm.GetPendingBatches(uint64(parallel))
+		if err != nil {
+			log.Error("failed to get pending batch ids", "err", err)
+			return err
+		}
+		if len(ids) == 0 {
+			return nil
+		}
+		for _, id := range ids {
+			err = w.fillTraceByID(ctx, id)
+			if err != nil {
+				log.Error("failed to fill traces by id", "id", id, "err", err)
+				return err
+			}
+		}
+	}
+}
+
+// fillTraceByID Fill block traces by batch id.
+func (w *WatcherClient) fillTraceByID(ctx context.Context, id string) error {
+	batches, err := w.orm.GetBlockBatches(map[string]interface{}{"id": id})
+	if err != nil || len(batches) == 0 {
+		return err
+	}
+	batch := batches[0]
+	err = w.fillTraceByNumber(ctx, batch.StartBlockNumber, batch.EndBlockNumber)
 	if err != nil {
 		return err
 	}
-	for _, v := range prevSessions {
-		id := v.ID
-		batches, err := db.GetBlockBatches(map[string]interface{}{"id": id})
-		if err != nil {
-			log.Error("Failed to GetBlockBatches", "batch_id", id, "err", err)
-			return err
-		}
-		if len(batches) == 0 {
-			break
-		}
-		batch := batches[0]
-		err = w.fillTraceInCache(ctx, batch.StartBlockNumber, batch.EndBlockNumber)
-		if err != nil {
-			log.Error("failed to fill batch block traces into cache", "start number", batch.StartBlockNumber, "end number", batch.EndBlockNumber, "err", err)
-			return err
-		}
-	}
-
 	return nil
 }
 
-func (w *WatcherClient) fillTraceInCache(ctx context.Context, start, end uint64) error {
+func (w *WatcherClient) fillTraceByNumber(ctx context.Context, start, end uint64) error {
 	var (
 		rdb    = w.orm.(cache.Cache)
 		client = w.Client
