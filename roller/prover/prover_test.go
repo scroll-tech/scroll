@@ -46,7 +46,7 @@ func TestFFI(t *testing.T) {
 		as.NoError(err)
 		trace := &types.BlockTrace{}
 		as.NoError(json.Unmarshal(byt, trace))
-		traces = append(traces, trace.Result)
+		traces = append(traces, trace)
 	}
 	_, err = prover.Prove(traces)
 	as.NoError(err)
