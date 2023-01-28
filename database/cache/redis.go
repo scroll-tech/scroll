@@ -14,7 +14,7 @@ import (
 
 // RedisConfig redis cache config.
 type RedisConfig struct {
-	RedisURL    string           `json:"url"`
+	URL         string           `json:"url"`
 	Expirations map[string]int64 `json:"expirations,omitempty"`
 }
 
@@ -26,7 +26,7 @@ type RedisClient struct {
 
 // NewRedisClient create a redis client and become Cache interface.
 func NewRedisClient(redisConfig *RedisConfig) (Cache, error) {
-	op, err := redis.ParseURL(redisConfig.RedisURL)
+	op, err := redis.ParseURL(redisConfig.URL)
 	if err != nil {
 		return nil, err
 	}

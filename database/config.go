@@ -21,7 +21,7 @@ type PersistenceConfig struct {
 // DBConfig db config
 type DBConfig struct {
 	Persistence *PersistenceConfig `json:"persistence"`
-	Redis       *cache.RedisConfig `json:"redis,omitempty"`
+	Redis       *cache.RedisConfig `json:"redis"`
 }
 
 // NewConfig returns a new instance of Config.

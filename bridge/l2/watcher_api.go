@@ -8,11 +8,11 @@ import (
 
 // WatcherAPI watcher api service
 type WatcherAPI interface {
-	GetTracesByBatchIndex(ctx context.Context, index int64) ([]*types.BlockTrace, error)
+	GetTracesByBatchIndex(ctx context.Context, index uint64) ([]*types.BlockTrace, error)
 }
 
 // GetTracesByBatchIndex get traces by batch_id.
-func (w *WatcherClient) GetTracesByBatchIndex(ctx context.Context, index int64) ([]*types.BlockTrace, error) {
+func (w *WatcherClient) GetTracesByBatchIndex(ctx context.Context, index uint64) ([]*types.BlockTrace, error) {
 	id, err := w.orm.GetBatchIDByIndex(index)
 	if err != nil {
 		return nil, err
