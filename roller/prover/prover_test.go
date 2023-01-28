@@ -48,7 +48,15 @@ func TestFFI(t *testing.T) {
 		as.NoError(json.Unmarshal(byt, trace))
 		traces = append(traces, trace)
 	}
-	_, err = prover.Prove(traces)
+	proof, err := prover.Prove(traces)
 	as.NoError(err)
 	t.Log("prove success")
+
+	// dump the proof
+	proofByt, err := json.Marshal(proof)
+	as.NoError(err)
+	proofFile, err := os.Create("agg_proof")
+	as.NoError(err)
+	_, err = proofFile.Write(proofByt)
+	as.NoError(err)
 }
