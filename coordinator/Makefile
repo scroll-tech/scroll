@@ -14,7 +14,7 @@ test:
 	go test -v -race -coverprofile=coverage.txt -covermode=atomic -p 1 $(PWD)/...
 
 libzkp:
-	cd ../common/libzkp/impl && cargo build --release && cp ./target/release/libzkp.a ../interface/
+	cd ../common/libzkp/impl && cargo build --release && cp ./target/release/libzkp.so ../interface/
 	rm -rf ./verifier/lib && cp -r ../common/libzkp/interface ./verifier/lib
 
 coordinator: libzkp ## Builds the Coordinator instance.
