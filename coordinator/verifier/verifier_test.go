@@ -20,8 +20,8 @@ func TestFFI(t *testing.T) {
 	as := assert.New(t)
 	cfg := &config.VerifierConfig{
 		MockMode:   false,
-		ParamsPath: "../assets/test_params",
-		AggVkPath:  "../assets/agg_vk",
+		ParamsPath: "./assets/test_params",
+		AggVkPath:  "./assets/agg_vk",
 	}
 	v, err := verifier.NewVerifier(cfg)
 	as.NoError(err)
