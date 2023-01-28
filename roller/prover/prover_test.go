@@ -22,12 +22,6 @@ const (
 	tracesPath = "../assets/traces"
 )
 
-type RPCTrace struct {
-	Jsonrpc string            `json:"jsonrpc"`
-	ID      int64             `json:"id"`
-	Result  *types.BlockTrace `json:"result"`
-}
-
 func TestFFI(t *testing.T) {
 	as := assert.New(t)
 	cfg := &config.ProverConfig{
@@ -50,9 +44,9 @@ func TestFFI(t *testing.T) {
 		as.NoError(err)
 		byt, err = io.ReadAll(f)
 		as.NoError(err)
-		rpcTrace := &RPCTrace{}
-		as.NoError(json.Unmarshal(byt, rpcTrace))
-		traces = append(traces, rpcTrace.Result)
+		trace := &types.BlockTrace{}
+		as.NoError(json.Unmarshal(byt, trace))
+		traces = append(traces, trace.Result)
 	}
 	_, err = prover.Prove(traces)
 	as.NoError(err)
