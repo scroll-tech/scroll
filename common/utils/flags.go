@@ -12,6 +12,7 @@ var (
 		&LogFileFlag,
 		&LogJSONFormat,
 		&LogDebugFlag,
+		&MetricsEnabled,
 		&MetricsAddr,
 		&MetricsPort,
 	}
@@ -45,7 +46,7 @@ var (
 		Usage: "Prepends log messages with call-site location (file and line number)",
 	}
 	// MetricsEnabled enable metrics collection and reporting
-	MetricsEnabled = &cli.BoolFlag{
+	MetricsEnabled = cli.BoolFlag{
 		Name:     "metrics",
 		Usage:    "Enable metrics collection and reporting",
 		Category: "METRICS",
