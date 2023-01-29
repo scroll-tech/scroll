@@ -42,7 +42,7 @@ func (r *ImgRedis) Start() error {
 	if id != "" {
 		return fmt.Errorf("container already exist, name: %s", r.name)
 	}
-	// Wait expect keyword.
+	// Add check status function.
 	keyword := "Ready to accept connections"
 	okCh := make(chan struct{}, 1)
 	r.cmd.RegistFunc(keyword, func(buf string) {
@@ -59,7 +59,7 @@ func (r *ImgRedis) Start() error {
 	// Start redis.
 	r.cmd.RunCmd(true)
 
-	// Wait result.
+	// Wait result of keyword.
 	select {
 	case <-okCh:
 		utils.TryTimes(3, func() bool {
