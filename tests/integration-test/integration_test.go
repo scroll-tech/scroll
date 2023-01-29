@@ -1,7 +1,9 @@
 package integration
 
 import (
+	"crypto/rand"
 	"io/ioutil"
+	"math/big"
 	"net/http"
 	"strings"
 	"testing"
@@ -58,11 +60,12 @@ func testMonitorMetrics(t *testing.T) {
 	runDBCliApp(t, "migrate", "current version:")
 
 	// Start bridge process with metrics server.
-	bridgeCmd := runBridgeApp(t, "--metrics", "--metrics.addr", "127.0.0.1", "--metrics.port", "6060")
+	port, _ := rand.Int(rand.Reader, big.NewInt(2000))
+	bridgeCmd := runBridgeApp(t, "--metrics", "--metrics.addr", "localhost", "--metrics.port", port.String())
 	bridgeCmd.RunApp(func() bool { return bridgeCmd.WaitResult(time.Second*20, "Start bridge successfully") })
 
 	// Get monitor metrics.
-	resp, err := http.Get("http://127.0.0.1:6060")
+	resp, err := http.Get("http://localhost:" + port.String())
 	assert.NoError(t, err)
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
