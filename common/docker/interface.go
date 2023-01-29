@@ -33,6 +33,8 @@ func GetContainerID(name string) string {
 	filter := filters.NewArgs()
 	filter.Add("name", name)
 	lst, _ := cli.ContainerList(context.Background(), types.ContainerListOptions{
+		Latest:  true,
+		Limit:   1,
 		Filters: filter,
 	})
 	if len(lst) > 0 {
