@@ -62,14 +62,13 @@ func (r *ImgRedis) Start() error {
 	// Wait result of keyword.
 	select {
 	case <-okCh:
-		utils.TryTimes(10, func() bool {
+		utils.TryTimes(3, func() bool {
 			r.id = GetContainerID(r.name)
 			return r.id != ""
 		})
 	case <-time.After(time.Second * 10):
 	}
 
-	r.cmd.Log("redis message", "name", r.name, "id", r.id)
 	// Set redis status.
 	r.running = r.id != ""
 	if !r.running {
