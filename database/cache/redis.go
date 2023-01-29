@@ -9,7 +9,7 @@ import (
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/core/types"
 
-	"github.com/go-redis/redis/v8"
+	"github.com/redis/go-redis/v9"
 )
 
 // RedisConfig redis cache config.
@@ -20,13 +20,13 @@ type RedisConfig struct {
 
 // RedisClient handle redis client and some expires.
 type RedisClient struct {
-	*redis.Client
+	*redis.ClusterClient
 	traceExpire time.Duration
 }
 
 // NewRedisClient create a redis client and become Cache interface.
 func NewRedisClient(redisConfig *RedisConfig) (Cache, error) {
-	op, err := redis.ParseURL(redisConfig.URL)
+	op, err := redis.ParseClusterURL(redisConfig.URL)
 	if err != nil {
 		return nil, err
 	}
@@ -36,8 +36,8 @@ func NewRedisClient(redisConfig *RedisConfig) (Cache, error) {
 		traceExpire = time.Duration(val) * time.Second
 	}
 	return &RedisClient{
-		Client:      redis.NewClient(op),
-		traceExpire: traceExpire,
+		ClusterClient: redis.NewClusterClient(op),
+		traceExpire:   traceExpire,
 	}, nil
 }
 
