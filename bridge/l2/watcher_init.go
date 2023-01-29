@@ -77,6 +77,8 @@ func (w *WatcherClient) initCache(ctx context.Context) error {
 			}
 		}
 	}
+
+	log.Info("initCache done")
 }
 
 // fillTraceByID Fill block traces by batch id.
