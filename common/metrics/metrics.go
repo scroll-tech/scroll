@@ -16,13 +16,6 @@ import (
 	"scroll-tech/common/utils"
 )
 
-// Metrics
-var (
-	// Driver
-	BridgeL1MsgSyncHeightGauge = metrics.NewRegisteredGauge("bridge/l1/msg/sync/height", nil)
-	BridgeL2MsgSyncHeightGauge = metrics.NewRegisteredGauge("bridge/l2/msg/sync/height", nil)
-)
-
 // Serve starts the metrics server on the given address, will be closed when the given
 // context is canceled.
 func Serve(ctx context.Context, c *cli.Context) {
