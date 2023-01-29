@@ -3,11 +3,11 @@ module scroll-tech/database
 go 1.18
 
 require (
-	github.com/go-redis/redis/v8 v8.11.5
 	github.com/jmoiron/sqlx v1.3.5
 	github.com/lib/pq v1.10.6
 	github.com/mattn/go-sqlite3 v1.14.14
 	github.com/pressly/goose/v3 v3.7.0
+	github.com/redis/go-redis/v9 v9.0.0-rc.4
 	github.com/scroll-tech/go-ethereum v1.10.14-0.20230113082126-cdaea939622e
 	github.com/stretchr/testify v1.8.1
 	github.com/urfave/cli/v2 v2.10.2
@@ -24,7 +24,6 @@ require (
 	github.com/iden3/go-iden3-crypto v0.0.13 // indirect
 	github.com/kr/pretty v0.3.0 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
-	github.com/redis/go-redis/v9 v9.0.0-rc.4 // indirect
 	github.com/rogpeppe/go-internal v1.8.1 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/scroll-tech/zktrie v0.3.1 // indirect
