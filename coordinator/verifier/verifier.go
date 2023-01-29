@@ -63,5 +63,4 @@ func (v *Verifier) VerifyProof(proof *message.AggProof) (bool, error) {
 	log.Info("Start to verify proof ...")
 	verified := C.verify_agg_proof(aggProofStr)
 	return verified != 0, nil
-	return true, nil
 }
