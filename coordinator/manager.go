@@ -213,38 +213,65 @@ func (m *Manager) restorePrevSessions() {
 				log.Error("Failed to GetBlockBatches", "batch_id", id, "err", err)
 				continue
 			}
-			m.tryVerify(batches[0])
+			for i := range batches {
+				go m.tryVerify(sess, batches[i])
+			}
 		}
 	}
 }
 
-// TryVerify verifies a proof for batch received form roller if previous verification had interrupted
-func (m *Manager) tryVerify(batch *orm.BlockBatch) {
+// TryVerify verifies a proof whose verification was previously interrupted by a crash or restart
+func (m *Manager) tryVerify(sess *session, batch *orm.BlockBatch) {
 	if batch.ProvingStatus != orm.ProvingTaskProved {
 		return
 	}
+	var success bool
+	var dbErr error
+
 	proof := &message.AggProof{
 		Proof:     batch.Proof,
 		Instance:  batch.InstanceCommitments,
 		FinalPair: batch.FinalPair,
 		Vk:        batch.Vk,
 	}
+	defer func() {
+		if dbErr != nil {
+			if err := m.orm.UpdateProvingStatus(batch.ID, orm.ProvingTaskUnassigned); err != nil {
+				log.Error("fail to reset task status as Unassigned", "msg.ID", batch.ID)
+			}
+		}
+		// set proof status
+		status := orm.RollerProofInvalid
+		if success && dbErr == nil {
+			status = orm.RollerProofValid
+		}
+
+		// TODO: chnge this
+		// Currently we have only one roller per session, so the following will work
+		var pk string
+		for _, roller := range sess.info.Rollers {
+			pk = roller.PublicKey
+		}
+
+		// notify the session that the roller finishes the proving process
+		sess.finishChan <- rollerProofStatus{batch.ID, pk, status}
+	}()
+
 	success, err := m.verifier.VerifyProof(proof)
 	if err != nil {
 		success = false
 		log.Error("Failed to verify zk proof", "proof id", batch.ID, "error", err)
+		return
 	} else {
-		log.Info("Verify zk proof successfully", "verification result", success, "proof id", batch.ID)
+		success = true
+		log.Info("Verify zk proof successfully", "verification result", true, "proof id", batch.ID)
 	}
-
-	if success {
-		if dbErr := m.orm.UpdateProvingStatus(batch.ID, orm.ProvingTaskVerified); dbErr != nil {
-			log.Error(
-				"failed to update proving_status",
-				"msg.ID", batch.ID,
-				"status", orm.ProvingTaskVerified,
-				"error", dbErr)
-		}
+	if dbErr = m.orm.UpdateProvingStatus(batch.ID, orm.ProvingTaskVerified); dbErr != nil {
+		log.Error(
+			"failed to update proving_status",
+			"msg.ID", batch.ID,
+			"status", orm.ProvingTaskVerified,
+			"error", dbErr)
 	}
 }
 

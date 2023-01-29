@@ -508,9 +508,11 @@ func testVerifyProvedBatchesOnStartup(t *testing.T) {
 	handler.Shutdown(context.Background())
 	rollerManager.Stop()
 
-	// assume that previous manager didn't verify task
-	err = l2db.UpdateProvingStatus(ids[0], orm.ProvingTaskProved)
-	assert.NoError(t, err)
+	// roller submitted a proof, but assume that previous manager didn't verify task
+	for i := range ids {
+		err = l2db.UpdateProvingStatus(ids[i], orm.ProvingTaskProved)
+		assert.NoError(t, err)
+	}
 
 	// Setup new coordinator and ws server.
 	newRollerManager, newHandler := setupCoordinator(t, cfg.DBConfig, 1, wsURL)
@@ -519,13 +521,15 @@ func testVerifyProvedBatchesOnStartup(t *testing.T) {
 		newRollerManager.Stop()
 	}()
 
+	// wait for coordinator to verify task
+	<-time.After(2 * time.Second)
+
 	// verify that task is verified
 	for i := range ids {
 		info, err := newRollerManager.GetSessionInfo(ids[i])
 		assert.Equal(t, orm.ProvingTaskAssigned.String(), info.Status)
 		assert.NoError(t, err)
 
-		// at this point, roller haven't submitted
 		status, err := l2db.GetProvingStatusByID(ids[i])
 		assert.NoError(t, err)
 		assert.Equal(t, orm.ProvingTaskVerified, status)
