@@ -5,7 +5,7 @@ go 1.18
 require (
 	github.com/iden3/go-iden3-crypto v0.0.13
 	github.com/orcaman/concurrent-map v1.0.0
-	github.com/scroll-tech/go-ethereum v1.10.14-0.20230112091133-2891916a0f81
+	github.com/scroll-tech/go-ethereum v1.10.14-0.20230113082126-cdaea939622e
 	github.com/stretchr/testify v1.8.0
 	github.com/urfave/cli/v2 v2.10.2
 	golang.org/x/sync v0.1.0
@@ -14,7 +14,7 @@ require (
 
 require (
 	github.com/btcsuite/btcd v0.20.1-beta // indirect
-	github.com/cespare/xxhash/v2 v2.1.2 // indirect
+	github.com/cespare/xxhash/v2 v2.2.0 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.2 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/deckarep/golang-set v1.8.0 // indirect

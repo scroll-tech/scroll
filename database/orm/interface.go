@@ -137,6 +137,7 @@ type SessionInfoOrm interface {
 
 // BlockBatchOrm block_batch operation interface
 type BlockBatchOrm interface {
+	GetBatchIDByIndex(index uint64) (string, error)
 	GetBlockBatches(fields map[string]interface{}, args ...string) ([]*BlockBatch, error)
 	GetProvingStatusByID(id string) (ProvingStatus, error)
 	GetVerifiedProofAndInstanceByID(id string) ([]byte, []byte, error)
