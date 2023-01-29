@@ -21,7 +21,7 @@ import (
 )
 
 var (
-	BridgeL1MsgSyncHeightGauge = metrics.NewRegisteredGauge("bridge/l1/msg/sync/height", nil)
+	bridgeL1MsgSyncHeightGauge = metrics.NewRegisteredGauge("bridge/l1/msg/sync/height", nil)
 )
 
 type relayedMessage struct {
@@ -156,7 +156,7 @@ func (w *Watcher) FetchContractEvent(blockHeight uint64) error {
 		}
 		if len(logs) == 0 {
 			w.processedMsgHeight = uint64(to)
-			BridgeL1MsgSyncHeightGauge.Update(to)
+			bridgeL1MsgSyncHeightGauge.Update(to)
 			continue
 		}
 		log.Info("Received new L1 events", "fromBlock", from, "toBlock", to, "cnt", len(logs))
@@ -221,7 +221,7 @@ func (w *Watcher) FetchContractEvent(blockHeight uint64) error {
 		}
 
 		w.processedMsgHeight = uint64(to)
-		BridgeL1MsgSyncHeightGauge.Update(to)
+		bridgeL1MsgSyncHeightGauge.Update(to)
 	}
 
 	return nil
