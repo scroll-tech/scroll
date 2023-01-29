@@ -6,6 +6,7 @@ import (
 	"math/big"
 	"testing"
 
+	"github.com/go-redis/redis/v8"
 	"github.com/jmoiron/sqlx"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/stretchr/testify/assert"
@@ -17,6 +18,7 @@ var (
 	l1StartPort = 10000
 	l2StartPort = 20000
 	dbStartPort = 30000
+	rsStartPort = 40000
 )
 
 // NewTestL1Docker starts and returns l1geth docker
@@ -75,4 +77,25 @@ func NewTestDBDocker(t *testing.T, driverName string) ImgInstance {
 	})
 
 	return imgDB
+}
+
+// NewTestRedisDocker starts and run redis docker.
+func NewTestRedisDocker(t *testing.T) ImgInstance {
+	id, _ := rand.Int(rand.Reader, big.NewInt(2000))
+	imgRedis := NewImgRedis(t, "redis", rsStartPort+int(id.Int64()))
+	assert.NoError(t, imgRedis.Start())
+
+	op, err := redis.ParseURL(imgRedis.Endpoint())
+	assert.NoError(t, err)
+	if t.Failed() {
+		return nil
+	}
+
+	rdb := redis.NewClient(op)
+	utils.TryTimes(3, func() bool {
+		err = rdb.Ping(context.Background()).Err()
+		return err == nil
+	})
+
+	return imgRedis
 }

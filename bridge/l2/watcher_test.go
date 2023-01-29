@@ -31,7 +31,8 @@ func testCreateNewWatcherAndStop(t *testing.T) {
 	defer l2db.Close()
 
 	l2cfg := cfg.L2Config
-	rc := NewL2WatcherClient(context.Background(), l2Cli, l2cfg.Confirmations, l2cfg.BatchProposerConfig, l2cfg.L2MessengerAddress, l2db)
+	rc, err := NewL2WatcherClient(context.Background(), l2Cli, l2cfg.Confirmations, l2cfg.BatchProposerConfig, l2cfg.L2MessengerAddress, l2db)
+	assert.NoError(t, err)
 	rc.Start()
 	defer rc.Stop()
 
@@ -72,7 +73,8 @@ func testMonitorBridgeContract(t *testing.T) {
 	address, err := bind.WaitDeployed(context.Background(), l2Cli, tx)
 	assert.NoError(t, err)
 
-	rc := prepareRelayerClient(l2Cli, cfg.L2Config.BatchProposerConfig, db, address)
+	rc, err := prepareRelayerClient(l2Cli, cfg.L2Config.BatchProposerConfig, db, address)
+	assert.NoError(t, err)
 	rc.Start()
 	defer rc.Stop()
 
@@ -110,7 +112,7 @@ func testMonitorBridgeContract(t *testing.T) {
 	// check if we successfully stored events
 	height, err := db.GetLayer2LatestWatchedHeight()
 	assert.NoError(t, err)
-	t.Log("Height in DB is", height)
+	t.Log("Height in Persistence is", height)
 	assert.Greater(t, height, int64(previousHeight))
 	msgs, err := db.GetL2Messages(map[string]interface{}{"status": orm.MsgPending})
 	assert.NoError(t, err)
@@ -134,7 +136,8 @@ func testFetchMultipleSentMessageInOneBlock(t *testing.T) {
 	address, err := bind.WaitDeployed(context.Background(), l2Cli, trx)
 	assert.NoError(t, err)
 
-	rc := prepareRelayerClient(l2Cli, cfg.L2Config.BatchProposerConfig, db, address)
+	rc, err := prepareRelayerClient(l2Cli, cfg.L2Config.BatchProposerConfig, db, address)
+	assert.NoError(t, err)
 	rc.Start()
 	defer rc.Stop()
 
@@ -189,7 +192,7 @@ func testFetchMultipleSentMessageInOneBlock(t *testing.T) {
 	assert.Equal(t, 5, len(msgs))
 }
 
-func prepareRelayerClient(l2Cli *ethclient.Client, bpCfg *config.BatchProposerConfig, db database.OrmFactory, contractAddr common.Address) *WatcherClient {
+func prepareRelayerClient(l2Cli *ethclient.Client, bpCfg *config.BatchProposerConfig, db database.OrmFactory, contractAddr common.Address) (*WatcherClient, error) {
 	return NewL2WatcherClient(context.Background(), l2Cli, 0, bpCfg, contractAddr, db)
 }
 
