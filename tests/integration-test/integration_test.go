@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"math/big"
 	"net/http"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -61,11 +62,12 @@ func testMonitorMetrics(t *testing.T) {
 
 	// Start bridge process with metrics server.
 	port, _ := rand.Int(rand.Reader, big.NewInt(2000))
-	bridgeCmd := runBridgeApp(t, "--metrics", "--metrics.addr", "localhost", "--metrics.port", port.String())
+	svrPort := strconv.FormatInt(port.Int64()+50000, 10)
+	bridgeCmd := runBridgeApp(t, "--metrics", "--metrics.addr", "localhost", "--metrics.port", svrPort)
 	bridgeCmd.RunApp(func() bool { return bridgeCmd.WaitResult(time.Second*20, "Start bridge successfully") })
 
 	// Get monitor metrics.
-	resp, err := http.Get("http://localhost:" + port.String())
+	resp, err := http.Get("http://localhost:" + svrPort)
 	assert.NoError(t, err)
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
