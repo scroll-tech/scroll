@@ -69,6 +69,7 @@ func (r *ImgRedis) Start() error {
 	case <-time.After(time.Second * 10):
 	}
 
+	r.cmd.Log("redis message", "name", r.name, "id", r.id)
 	// Set redis status.
 	r.running = r.id != ""
 	if !r.running {
