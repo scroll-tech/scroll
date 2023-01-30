@@ -39,6 +39,7 @@ func NewRedisClientWrapper(redisConfig *RedisConfig) (Cache, error) {
 		traceExpire = time.Duration(val) * time.Second
 	}
 
+	log.Info("1111111111111111111111")
 	log.Info("NewRedisClientWrapper", "redisConfig.Mode", redisConfig.Mode)
 	log.Info("NewRedisClientWrapper", "redisConfig.URL", redisConfig.URL)
 
