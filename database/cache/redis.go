@@ -6,10 +6,10 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/redis/go-redis/v9"
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/core/types"
-
-	"github.com/redis/go-redis/v9"
+	"github.com/scroll-tech/go-ethereum/log"
 )
 
 // RedisConfig redis cache config.
