@@ -17,7 +17,7 @@ import (
 func TestRedisCache(t *testing.T) {
 	redisImg := docker.NewTestRedisDocker(t)
 	defer redisImg.Stop()
-	rdb, err := cache.NewRedisClient(&cache.RedisConfig{
+	rdb, err := cache.NewRedisClientWrapper(&cache.RedisConfig{
 		URL: redisImg.Endpoint(),
 		Expirations: map[string]int64{
 			"trace": 3600,
