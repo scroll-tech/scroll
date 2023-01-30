@@ -19,20 +19,21 @@ type RedisConfig struct {
 	Expirations map[string]int64 `json:"expirations,omitempty"`
 }
 
-// RedisClient handle redis client and some expires.
-type RedisClient struct {
-	client      redisClientWrapper
+// RedisClientWrapper handle redis client and some expires.
+type RedisClientWrapper struct {
+	client      redisClient
 	traceExpire time.Duration
 }
 
-type redisClientWrapper interface {
+// redisClient wrap around single-redis-node / redis-cluster
+type redisClient interface {
 	Exists(context.Context, ...string) *redis.IntCmd
 	Set(context.Context, string, interface{}, time.Duration) *redis.StatusCmd
 	Get(context.Context, string) *redis.StringCmd
 }
 
-// NewRedisClient create a redis client and become Cache interface.
-func NewRedisClient(redisConfig *RedisConfig) (Cache, error) {
+// NewRedisClientWrapper create a redis client and become Cache interface.
+func NewRedisClientWrapper(redisConfig *RedisConfig) (Cache, error) {
 	var traceExpire = time.Second * 60
 	if val, exist := redisConfig.Expirations["trace"]; exist {
 		traceExpire = time.Duration(val) * time.Second
@@ -43,7 +44,7 @@ func NewRedisClient(redisConfig *RedisConfig) (Cache, error) {
 		if err != nil {
 			return nil, err
 		}
-		return &RedisClient{
+		return &RedisClientWrapper{
 			client:      redis.NewClusterClient(op),
 			traceExpire: traceExpire,
 		}, nil
@@ -52,7 +53,7 @@ func NewRedisClient(redisConfig *RedisConfig) (Cache, error) {
 		if err != nil {
 			return nil, err
 		}
-		return &RedisClient{
+		return &RedisClientWrapper{
 			client:      redis.NewClient(op),
 			traceExpire: traceExpire,
 		}, nil
@@ -60,13 +61,13 @@ func NewRedisClient(redisConfig *RedisConfig) (Cache, error) {
 }
 
 // ExistTrace check the trace is exist or not.
-func (r *RedisClient) ExistTrace(ctx context.Context, number *big.Int) (bool, error) {
+func (r *RedisClientWrapper) ExistTrace(ctx context.Context, number *big.Int) (bool, error) {
 	n, err := r.client.Exists(ctx, number.String()).Result()
 	return err == nil && n > 0, err
 }
 
 // SetBlockTrace Set trace to redis.
-func (r *RedisClient) SetBlockTrace(ctx context.Context, trace *types.BlockTrace) (setErr error) {
+func (r *RedisClientWrapper) SetBlockTrace(ctx context.Context, trace *types.BlockTrace) (setErr error) {
 	hash, number := trace.Header.Hash().String(), trace.Header.Number.String()
 
 	// If return error or the trace is exist return this function.
@@ -90,7 +91,7 @@ func (r *RedisClient) SetBlockTrace(ctx context.Context, trace *types.BlockTrace
 }
 
 // GetBlockTrace get block trace by number, hash.
-func (r *RedisClient) GetBlockTrace(ctx context.Context, hash common.Hash) (*types.BlockTrace, error) {
+func (r *RedisClientWrapper) GetBlockTrace(ctx context.Context, hash common.Hash) (*types.BlockTrace, error) {
 	// Get trace content.
 	data, err := r.client.Get(ctx, hash.String()).Bytes()
 	if err != nil {

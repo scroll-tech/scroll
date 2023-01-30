@@ -53,7 +53,7 @@ func NewOrmFactory(cfg *DBConfig) (OrmFactory, error) {
 	}
 
 	// Create redis client.
-	cacheOrm, err := cache.NewRedisClient(rCfg)
+	cacheOrm, err := cache.NewRedisClientWrapper(rCfg)
 	if err != nil {
 		return nil, err
 	}
