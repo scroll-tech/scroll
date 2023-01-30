@@ -43,7 +43,7 @@ func NewRedisClientWrapper(redisConfig *RedisConfig) (Cache, error) {
 	log.Info("NewRedisClientWrapper", "redisConfig.URL", redisConfig.URL)
 
 	if redisConfig.Mode == "cluster" {
-		op, err := redis.ParseClusterURL(redisConfig.URL)
+		op, err := redis.ParseClusterURL("rediss://clustercfg.staging-redis.hep2j1.memorydb.us-west-2.amazonaws.com:6379/0")
 		if err != nil {
 			return nil, err
 		}
