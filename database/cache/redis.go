@@ -21,7 +21,7 @@ type RedisConfig struct {
 
 // RedisClientWrapper handle redis client and some expires.
 type RedisClientWrapper struct {
-	client      *redis.ClusterClient
+	client      redisClient
 	traceExpire time.Duration
 }
 
@@ -39,31 +39,29 @@ func NewRedisClientWrapper(redisConfig *RedisConfig) (Cache, error) {
 		traceExpire = time.Duration(val) * time.Second
 	}
 
-	log.Info("222222222222222222222")
+	log.Info("1111111111111111111111")
 	log.Info("NewRedisClientWrapper", "redisConfig.Mode", redisConfig.Mode)
 	log.Info("NewRedisClientWrapper", "redisConfig.URL", redisConfig.URL)
 
-	// if redisConfig.Mode == "cluster" {
+	if redisConfig.Mode == "cluster" {
+		op, err := redis.ParseClusterURL("rediss://clustercfg.staging-redis.hep2j1.memorydb.us-west-2.amazonaws.com:6379/0")
+		if err != nil {
+			return nil, err
+		}
+		return &RedisClientWrapper{
+			client:      redis.NewClusterClient(op),
+			traceExpire: traceExpire,
+		}, nil
+	}
 
-	op, err := redis.ParseClusterURL("rediss://clustercfg.staging-redis.hep2j1.memorydb.us-west-2.amazonaws.com:6379/0")
+	op, err := redis.ParseURL(redisConfig.URL)
 	if err != nil {
 		return nil, err
 	}
 	return &RedisClientWrapper{
-		client:      redis.NewClusterClient(op),
+		client:      redis.NewClient(op),
 		traceExpire: traceExpire,
 	}, nil
-
-	// }
-
-	// op, err := redis.ParseURL(redisConfig.URL)
-	// if err != nil {
-	// 	return nil, err
-	// }
-	// return &RedisClientWrapper{
-	// 	client:      redis.NewClient(op),
-	// 	traceExpire: traceExpire,
-	// }, nil
 }
 
 // ExistTrace check the trace is exist or not.
