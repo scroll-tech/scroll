@@ -40,6 +40,7 @@ func NewRedisClientWrapper(redisConfig *RedisConfig) (Cache, error) {
 	}
 
 	log.Info("NewRedisClientWrapper", "redisConfig.Mode", redisConfig.Mode)
+	log.Info("NewRedisClientWrapper", "redisConfig.URL", redisConfig.URL)
 
 	if redisConfig.Mode == "cluster" {
 		op, err := redis.ParseClusterURL(redisConfig.URL)
