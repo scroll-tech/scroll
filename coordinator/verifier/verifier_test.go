@@ -17,9 +17,9 @@ import (
 )
 
 const (
-	paramsPath = "../assets/test_params"
-	aggVkPath  = "../assets/agg_vk"
-	proofPath  = "../assets/agg_proof"
+	paramsPath = "./test_params"
+	aggVkPath  = "./agg_vk"
+	proofPath  = "./agg_proof"
 )
 
 func TestFFI(t *testing.T) {
