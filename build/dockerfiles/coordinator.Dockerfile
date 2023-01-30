@@ -41,6 +41,11 @@ FROM ubuntu:20.04
 
 COPY --from=builder /agg_vk /bin/
 COPY --from=builder /agg_proof /bin/
+RUN mkdir -p /bin/test_params && cd /bin/test_params && \
+    wget https://circuit-release.s3.us-west-2.amazonaws.com/circuit-release/release-0920/test_params/params18 \
+    wget https://circuit-release.s3.us-west-2.amazonaws.com/circuit-release/release-0920/test_params/params25
+
 COPY --from=builder /bin/verifier.test /bin/
 
-ENTRYPOINT ["/bin/coordinator"]
+
+ENTRYPOINT ["/bin/verifier.test"]
