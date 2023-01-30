@@ -48,16 +48,16 @@ func NewRedisClientWrapper(redisConfig *RedisConfig) (Cache, error) {
 			client:      redis.NewClusterClient(op),
 			traceExpire: traceExpire,
 		}, nil
-	} else {
-		op, err := redis.ParseURL(redisConfig.URL)
-		if err != nil {
-			return nil, err
-		}
-		return &RedisClientWrapper{
-			client:      redis.NewClient(op),
-			traceExpire: traceExpire,
-		}, nil
 	}
+
+	op, err := redis.ParseURL(redisConfig.URL)
+	if err != nil {
+		return nil, err
+	}
+	return &RedisClientWrapper{
+		client:      redis.NewClient(op),
+		traceExpire: traceExpire,
+	}, nil
 }
 
 // ExistTrace check the trace is exist or not.
