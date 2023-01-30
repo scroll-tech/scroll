@@ -40,8 +40,9 @@ RUN cd ./coordinator && go test -c verifier/verifier_test.go && mv verifier.test
 FROM ubuntu:20.04
 
 COPY ./coordinator/assets /bin/
-
+RUN mkdir -p /bin/lib
 COPY --from=builder /bin/verifier.test /bin/
+COPY --from=builder ./coordinator/verifier/lib /bin/lib
 
 
 ENTRYPOINT ["/bin/verifier.test"]
