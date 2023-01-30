@@ -39,6 +39,8 @@ func NewRedisClientWrapper(redisConfig *RedisConfig) (Cache, error) {
 		traceExpire = time.Duration(val) * time.Second
 	}
 
+	log.Info("NewRedisClientWrapper", "redisConfig.Mode", redisConfig.Mode)
+
 	if redisConfig.Mode == "cluster" {
 		op, err := redis.ParseClusterURL(redisConfig.URL)
 		if err != nil {
