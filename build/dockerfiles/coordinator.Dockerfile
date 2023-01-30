@@ -34,16 +34,12 @@ COPY . .
 RUN cp -r ./common/libzkp/interface ./coordinator/verifier/lib
 COPY --from=zkp-builder /app/target/release/libzkp.so ./coordinator/verifier/lib/
 # RUN cd ./coordinator && go build -v -p 4 -o /bin/coordinator ./cmd
-RUN cd ./coordinator && go test -c verifier/verifier_test.go && mv verifier.test /bin/ && mv assets/agg_* /
+RUN cd ./coordinator && go test -c verifier/verifier_test.go && mv verifier.test /bin/
 
 # Pull coordinator into a second stage deploy alpine container
 FROM ubuntu:20.04
 
-COPY --from=builder /agg_vk /bin/
-COPY --from=builder /agg_proof /bin/
-RUN mkdir -p /bin/test_params && cd /bin/test_params && \
-    wget https://circuit-release.s3.us-west-2.amazonaws.com/circuit-release/release-0920/test_params/params18 \
-    wget https://circuit-release.s3.us-west-2.amazonaws.com/circuit-release/release-0920/test_params/params25
+COPY ./coordinator/assets /bin/
 
 COPY --from=builder /bin/verifier.test /bin/
 
