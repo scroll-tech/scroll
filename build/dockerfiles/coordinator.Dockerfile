@@ -39,8 +39,10 @@ RUN cd ./coordinator && go build -v -p 4 -o /bin/trydylib ./trydy && mv verifier
 # Pull coordinator into a second stage deploy alpine container
 FROM ubuntu:20.04
 
-COPY ./coordinator/assets /bin/
-RUN mkdir -p /src/coordinator/verifier/lib
+RUN mkdir -p /src/coordinator/verifier/lib && mkdir -p /test_params
+COPY --from=builder /src/coordinator/trydy/agg_vk  /
+COPY --from=builder /src/coordinator/trydy/agg_proof /
+COPY --from=builder /src/coordinator/trydy/test_params /test_params
 COPY --from=builder /bin/trydylib /bin/
 COPY --from=builder /bin/lib /src/coordinator/verifier/lib
 

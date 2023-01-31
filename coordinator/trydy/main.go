@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"scroll-tech/common/message"
 	"scroll-tech/coordinator/config"
 	"scroll-tech/coordinator/verifier"
@@ -22,6 +23,16 @@ func main() {
 		ParamsPath: paramsPath,
 		AggVkPath:  aggVkPath,
 	}
+
+	pwd, _ := os.Getwd()
+	fns, err := filepath.Glob(filepath.Join(pwd, "*"))
+	if err != nil {
+		panic(err)
+	}
+	for _, fn := range fns {
+		fmt.Println(fn)
+	}
+
 	v, err := verifier.NewVerifier(cfg)
 	if err != nil {
 		panic(err)
