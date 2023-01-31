@@ -15,7 +15,6 @@ import (
 	"scroll-tech/common/docker"
 
 	"scroll-tech/database"
-	"scroll-tech/database/cache"
 	"scroll-tech/database/migrate"
 	"scroll-tech/database/orm"
 )
@@ -81,7 +80,6 @@ var (
 
 	dbConfig   *database.DBConfig
 	dbImg      docker.ImgInstance
-	redisImg   docker.ImgInstance
 	ormBlock   orm.BlockTraceOrm
 	ormLayer1  orm.L1MessageOrm
 	ormLayer2  orm.L2MessageOrm
@@ -91,18 +89,9 @@ var (
 
 func setupEnv(t *testing.T) error {
 	// Init db config and start db container.
-	dbImg = docker.NewTestDBDocker(t, "postgres")
-	redisImg = docker.NewTestRedisDocker(t)
-	dbConfig = &database.DBConfig{
-		Persistence: &database.PersistenceConfig{
-			DriverName: "postgres",
-			DSN:        dbImg.Endpoint(),
-		},
-		Redis: &cache.RedisConfig{
-			URL:         redisImg.Endpoint(),
-			Expirations: map[string]int64{"trace": 30},
-		},
-	}
+	dbConfig = &database.DBConfig{DriverName: "postgres"}
+	dbImg = docker.NewTestDBDocker(t, dbConfig.DriverName)
+	dbConfig.DSN = dbImg.Endpoint()
 
 	// Create db handler and reset db.
 	factory, err := database.NewOrmFactory(dbConfig)
@@ -111,11 +100,11 @@ func setupEnv(t *testing.T) error {
 	assert.NoError(t, migrate.ResetDB(db.DB))
 
 	// Init several orm handles.
-	ormBlock = orm.BlockTraceOrm(factory)
-	ormLayer1 = orm.L1MessageOrm(factory)
-	ormLayer2 = orm.L2MessageOrm(factory)
-	ormBatch = orm.BlockBatchOrm(factory)
-	ormSession = orm.SessionInfoOrm(factory)
+	ormBlock = orm.NewBlockTraceOrm(db)
+	ormLayer1 = orm.NewL1MessageOrm(db)
+	ormLayer2 = orm.NewL2MessageOrm(db)
+	ormBatch = orm.NewBlockBatchOrm(db)
+	ormSession = orm.NewSessionInfoOrm(db)
 
 	templateBlockTrace, err := os.ReadFile("../common/testdata/blockTrace_03.json")
 	if err != nil {
@@ -126,21 +115,16 @@ func setupEnv(t *testing.T) error {
 	return json.Unmarshal(templateBlockTrace, blockTrace)
 }
 
-func freeDB(t *testing.T) {
-	if dbImg != nil {
-		assert.NoError(t, dbImg.Stop())
-	}
-	if redisImg != nil {
-		assert.NoError(t, redisImg.Stop())
-	}
-}
-
 // TestOrmFactory run several test cases.
 func TestOrmFactory(t *testing.T) {
+	defer func() {
+		if dbImg != nil {
+			assert.NoError(t, dbImg.Stop())
+		}
+	}()
 	if err := setupEnv(t); err != nil {
 		t.Fatal(err)
 	}
-	defer freeDB(t)
 
 	t.Run("testOrmBlockTraces", testOrmBlockTraces)
 

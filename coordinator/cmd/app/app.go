@@ -5,6 +5,8 @@ import (
 	"os"
 	"os/signal"
 
+	"github.com/scroll-tech/go-ethereum/ethclient"
+
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/urfave/cli/v2"
 
@@ -53,8 +55,13 @@ func action(ctx *cli.Context) error {
 		log.Crit("failed to init db connection", "err", err)
 	}
 
+	client, err := ethclient.Dial(cfg.L2Config.Endpoint)
+	if err != nil {
+		return err
+	}
+
 	// Initialize all coordinator modules.
-	rollerManager, err := coordinator.New(ctx.Context, cfg.RollerManagerConfig, ormFactory)
+	rollerManager, err := coordinator.New(ctx.Context, cfg.RollerManagerConfig, ormFactory, client)
 	if err != nil {
 		return err
 	}

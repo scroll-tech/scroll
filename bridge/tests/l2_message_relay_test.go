@@ -3,12 +3,11 @@ package tests
 import (
 	"context"
 	"math/big"
-	"sync"
-	"testing"
-
 	"scroll-tech/database"
 	"scroll-tech/database/migrate"
 	"scroll-tech/database/orm"
+	"sync"
+	"testing"
 
 	"scroll-tech/bridge/l1"
 	"scroll-tech/bridge/l2"
@@ -38,8 +37,7 @@ func testRelayL2MessageSucceed(t *testing.T) {
 	defer l2Relayer.Stop()
 
 	// Create L2Watcher
-	l2Watcher, err := l2.NewL2WatcherClient(context.Background(), l2Client, 0, l2Cfg.BatchProposerConfig, l2Cfg.L2MessengerAddress, db)
-	assert.NoError(t, err)
+	l2Watcher := l2.NewL2WatcherClient(context.Background(), l2Client, 0, l2Cfg.BatchProposerConfig, l2Cfg.L2MessengerAddress, db)
 
 	// Create L1Watcher
 	l1Cfg := cfg.L1Config

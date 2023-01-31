@@ -111,7 +111,7 @@ func (w *Watcher) Stop() {
 
 const contractEventsBlocksFetchLimit = int64(10)
 
-// FetchContractEvent pull latest event logs from given contract address and save in Persistence
+// FetchContractEvent pull latest event logs from given contract address and save in DB
 func (w *Watcher) FetchContractEvent(blockHeight uint64) error {
 	defer func() {
 		log.Info("l1 watcher fetchContractEvent", "w.processedMsgHeight", w.processedMsgHeight)

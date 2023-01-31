@@ -16,7 +16,6 @@ func TestDocker(t *testing.T) {
 	t.Run("testL1Geth", testL1Geth)
 	t.Run("testL2Geth", testL2Geth)
 	t.Run("testDB", testDB)
-	t.Run("testRedis", testRedis)
 }
 
 func testL1Geth(t *testing.T) {
@@ -57,9 +56,4 @@ func testDB(t *testing.T) {
 	db, err := sqlx.Open(driverName, dbImg.Endpoint())
 	assert.NoError(t, err)
 	assert.NoError(t, db.Ping())
-}
-
-func testRedis(t *testing.T) {
-	redisImg := NewTestRedisDocker(t)
-	defer redisImg.Stop()
 }
