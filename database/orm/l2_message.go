@@ -9,20 +9,17 @@ import (
 
 	"github.com/jmoiron/sqlx"
 	"github.com/scroll-tech/go-ethereum/log"
-
-	"scroll-tech/database/cache"
 )
 
 type layer2MessageOrm struct {
-	db    *sqlx.DB
-	cache cache.Cache
+	db *sqlx.DB
 }
 
 var _ L2MessageOrm = (*layer2MessageOrm)(nil)
 
 // NewL2MessageOrm create an L2MessageOrm instance
-func NewL2MessageOrm(db *sqlx.DB, cache cache.Cache) L2MessageOrm {
-	return &layer2MessageOrm{db: db, cache: cache}
+func NewL2MessageOrm(db *sqlx.DB) L2MessageOrm {
+	return &layer2MessageOrm{db: db}
 }
 
 // GetL2MessageByNonce fetch message by nonce

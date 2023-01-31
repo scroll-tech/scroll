@@ -3,7 +3,7 @@ module scroll-tech/roller
 go 1.18
 
 require (
-	github.com/scroll-tech/go-ethereum v1.10.14-0.20230113082126-cdaea939622e
+	github.com/scroll-tech/go-ethereum v1.10.14-0.20230112091133-2891916a0f81
 	github.com/stretchr/testify v1.8.0
 	github.com/urfave/cli/v2 v2.10.2
 	go.etcd.io/bbolt v1.3.6
@@ -11,7 +11,7 @@ require (
 
 require (
 	github.com/btcsuite/btcd v0.20.1-beta // indirect
-	github.com/cespare/xxhash/v2 v2.2.0 // indirect
+	github.com/cespare/xxhash/v2 v2.1.2 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.2 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/ethereum/go-ethereum v1.10.26 // indirect

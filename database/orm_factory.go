@@ -1,12 +1,9 @@
 package database
 
 import (
-	"fmt"
-
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq" //nolint:golint
 
-	"scroll-tech/database/cache"
 	"scroll-tech/database/orm"
 )
 
@@ -17,7 +14,6 @@ type OrmFactory interface {
 	orm.L1MessageOrm
 	orm.L2MessageOrm
 	orm.SessionInfoOrm
-	cache.Cache
 	GetDB() *sqlx.DB
 	Beginx() (*sqlx.Tx, error)
 	Close() error
@@ -30,41 +26,28 @@ type ormFactory struct {
 	orm.L2MessageOrm
 	orm.SessionInfoOrm
 	*sqlx.DB
-	// cache interface.
-	cache.Cache
 }
 
 // NewOrmFactory create an ormFactory factory include all ormFactory interface
 func NewOrmFactory(cfg *DBConfig) (OrmFactory, error) {
-	pCfg, rCfg := cfg.Persistence, cfg.Redis
-	if rCfg == nil {
-		return nil, fmt.Errorf("redis config is empty")
-	}
 	// Initialize sql/sqlx
-	db, err := sqlx.Open(pCfg.DriverName, pCfg.DSN)
+	db, err := sqlx.Open(cfg.DriverName, cfg.DSN)
 	if err != nil {
 		return nil, err
 	}
 
-	db.SetMaxIdleConns(pCfg.MaxOpenNum)
-	db.SetMaxIdleConns(pCfg.MaxIdleNum)
+	db.SetMaxIdleConns(cfg.MaxOpenNum)
+	db.SetMaxIdleConns(cfg.MaxIdleNum)
 	if err = db.Ping(); err != nil {
 		return nil, err
 	}
 
-	// Create redis client.
-	cacheOrm, err := cache.NewRedisClient(rCfg)
-	if err != nil {
-		return nil, err
-	}
-
 	return &ormFactory{
-		BlockTraceOrm:  orm.NewBlockTraceOrm(db, cacheOrm),
-		BlockBatchOrm:  orm.NewBlockBatchOrm(db, cacheOrm),
-		L1MessageOrm:   orm.NewL1MessageOrm(db, cacheOrm),
-		L2MessageOrm:   orm.NewL2MessageOrm(db, cacheOrm),
-		SessionInfoOrm: orm.NewSessionInfoOrm(db, cacheOrm),
-		Cache:          cacheOrm,
+		BlockTraceOrm:  orm.NewBlockTraceOrm(db),
+		BlockBatchOrm:  orm.NewBlockBatchOrm(db),
+		L1MessageOrm:   orm.NewL1MessageOrm(db),
+		L2MessageOrm:   orm.NewL2MessageOrm(db),
+		SessionInfoOrm: orm.NewSessionInfoOrm(db),
 		DB:             db,
 	}, nil
 }

@@ -59,14 +59,14 @@ type WatcherClient struct {
 }
 
 // NewL2WatcherClient take a l2geth instance to generate a l2watcherclient instance
-func NewL2WatcherClient(ctx context.Context, client *ethclient.Client, confirmations uint64, bpCfg *config.BatchProposerConfig, messengerAddress common.Address, orm database.OrmFactory) (*WatcherClient, error) {
+func NewL2WatcherClient(ctx context.Context, client *ethclient.Client, confirmations uint64, bpCfg *config.BatchProposerConfig, messengerAddress common.Address, orm database.OrmFactory) *WatcherClient {
 	savedHeight, err := orm.GetLayer2LatestWatchedHeight()
 	if err != nil {
 		log.Warn("fetch height from db failed", "err", err)
 		savedHeight = 0
 	}
 
-	watcher := &WatcherClient{
+	return &WatcherClient{
 		ctx:                ctx,
 		Client:             client,
 		orm:                orm,
@@ -78,20 +78,13 @@ func NewL2WatcherClient(ctx context.Context, client *ethclient.Client, confirmat
 		stopped:            0,
 		batchProposer:      newBatchProposer(bpCfg, orm),
 	}
-	// Init cache, if traces in cache expired reset it.
-	if err = watcher.initCache(ctx); err != nil {
-		log.Error("failed to init cache in l2 watcher")
-		return nil, err
-	}
-
-	return watcher, nil
 }
 
 // Start the Listening process
 func (w *WatcherClient) Start() {
 	go func() {
 		if reflect.ValueOf(w.orm).IsNil() {
-			panic("must run L2 watcher with Persistence")
+			panic("must run L2 watcher with DB")
 		}
 
 		ctx, cancel := context.WithCancel(w.ctx)
@@ -184,7 +177,7 @@ const blockTracesFetchLimit = uint64(10)
 
 // try fetch missing blocks if inconsistent
 func (w *WatcherClient) tryFetchRunningMissingBlocks(ctx context.Context, blockHeight uint64) {
-	// Get newest block in Persistence. must have blocks at that time.
+	// Get newest block in DB. must have blocks at that time.
 	// Don't use "block_trace" table "trace" column's BlockTrace.Number,
 	// because it might be empty if the corresponding rollup_result is finalized/finalization_skipped
 	heightInDB, err := w.orm.GetBlockTracesLatestHeight()
@@ -226,6 +219,7 @@ func (w *WatcherClient) getAndStoreBlockTraces(ctx context.Context, from, to uin
 		log.Info("retrieved block trace", "height", trace.Header.Number, "hash", trace.Header.Hash().String())
 
 		traces = append(traces, trace)
+
 	}
 	if len(traces) > 0 {
 		if err := w.orm.InsertBlockTraces(traces); err != nil {
@@ -238,7 +232,7 @@ func (w *WatcherClient) getAndStoreBlockTraces(ctx context.Context, from, to uin
 
 const contractEventsBlocksFetchLimit = int64(10)
 
-// FetchContractEvent pull latest event logs from given contract address and save in Persistence
+// FetchContractEvent pull latest event logs from given contract address and save in DB
 func (w *WatcherClient) FetchContractEvent(blockHeight uint64) {
 	defer func() {
 		log.Info("l2 watcher fetchContractEvent", "w.processedMsgHeight", w.processedMsgHeight)

@@ -36,7 +36,6 @@ var (
 	l1gethImg docker.ImgInstance
 	l2gethImg docker.ImgInstance
 	dbImg     docker.ImgInstance
-	redisImg  docker.ImgInstance
 
 	timestamp int
 	wsPort    int64
@@ -54,7 +53,6 @@ func setupEnv(t *testing.T) {
 	l1gethImg = docker.NewTestL1Docker(t)
 	l2gethImg = docker.NewTestL2Docker(t)
 	dbImg = docker.NewTestDBDocker(t, "postgres")
-	redisImg = docker.NewTestRedisDocker(t)
 
 	// Create a random ws port.
 	port, _ := rand.Int(rand.Reader, big.NewInt(2000))
@@ -72,7 +70,6 @@ func free(t *testing.T) {
 	assert.NoError(t, l1gethImg.Stop())
 	assert.NoError(t, l2gethImg.Stop())
 	assert.NoError(t, dbImg.Stop())
-	assert.NoError(t, redisImg.Stop())
 
 	// Delete temporary files.
 	assert.NoError(t, os.Remove(bridgeFile))
@@ -145,10 +142,7 @@ func mockBridgeConfig(t *testing.T) string {
 		cfg.L1Config.RelayerConfig.SenderConfig.Endpoint = l2gethImg.Endpoint()
 	}
 	if dbImg != nil {
-		cfg.DBConfig.Persistence.DSN = dbImg.Endpoint()
-	}
-	if redisImg != nil {
-		cfg.DBConfig.Redis.URL = redisImg.Endpoint()
+		cfg.DBConfig.DSN = dbImg.Endpoint()
 	}
 
 	// Store changed bridge config into a temp file.
@@ -167,10 +161,11 @@ func mockCoordinatorConfig(t *testing.T) string {
 
 	cfg.RollerManagerConfig.Verifier.MockMode = true
 	if dbImg != nil {
-		cfg.DBConfig.Persistence.DSN = dbImg.Endpoint()
+		cfg.DBConfig.DSN = dbImg.Endpoint()
 	}
-	if redisImg != nil {
-		cfg.DBConfig.Redis.URL = redisImg.Endpoint()
+
+	if l2gethImg != nil {
+		cfg.L2Config.Endpoint = l2gethImg.Endpoint()
 	}
 
 	data, err := json.Marshal(cfg)
@@ -187,12 +182,8 @@ func mockDatabaseConfig(t *testing.T) string {
 	cfg, err := database.NewConfig("../../database/config.json")
 	assert.NoError(t, err)
 	if dbImg != nil {
-		cfg.Persistence.DSN = dbImg.Endpoint()
+		cfg.DSN = dbImg.Endpoint()
 	}
-	if redisImg != nil {
-		cfg.Redis.URL = redisImg.Endpoint()
-	}
-
 	data, err := json.Marshal(cfg)
 	assert.NoError(t, err)
 

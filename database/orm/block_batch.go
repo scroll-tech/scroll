@@ -14,8 +14,6 @@ import (
 	"github.com/scroll-tech/go-ethereum/log"
 
 	"scroll-tech/common/utils"
-
-	"scroll-tech/database/cache"
 )
 
 // ProvingStatus block_batch proving_status (unassigned, assigned, proved, verified, submitted)
@@ -103,25 +101,14 @@ type BlockBatch struct {
 }
 
 type blockBatchOrm struct {
-	db    *sqlx.DB
-	cache cache.Cache
+	db *sqlx.DB
 }
 
 var _ BlockBatchOrm = (*blockBatchOrm)(nil)
 
 // NewBlockBatchOrm create an blockBatchOrm instance
-func NewBlockBatchOrm(db *sqlx.DB, cache cache.Cache) BlockBatchOrm {
-	return &blockBatchOrm{db: db, cache: cache}
-}
-
-// GetBatchIDByIndex get batch id by index.
-func (o *blockBatchOrm) GetBatchIDByIndex(index uint64) (string, error) {
-	row := o.db.QueryRowx(`SELECT id FROM public.block_batch WHERE index = $1;`, index)
-	var id string
-	if err := row.Scan(&id); err != nil {
-		return "", err
-	}
-	return id, nil
+func NewBlockBatchOrm(db *sqlx.DB) BlockBatchOrm {
+	return &blockBatchOrm{db: db}
 }
 
 func (o *blockBatchOrm) GetBlockBatches(fields map[string]interface{}, args ...string) ([]*BlockBatch, error) {
@@ -228,8 +215,8 @@ func (o *blockBatchOrm) NewBatchInDBTx(dbTx *sqlx.Tx, startBlock *BlockInfo, end
 			"total_tx_num":       totalTxNum,
 			"total_l2_gas":       totalL2Gas,
 			"created_at":         time.Now(),
-			// "proving_status":     ProvingTaskUnassigned, // actually no need, because we have default value in Persistence schema
-			// "rollup_status":      RollupPending,         // actually no need, because we have default value in Persistence schema
+			// "proving_status":     ProvingTaskUnassigned, // actually no need, because we have default value in DB schema
+			// "rollup_status":      RollupPending,         // actually no need, because we have default value in DB schema
 		}); err != nil {
 		return "", err
 	}

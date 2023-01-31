@@ -3,7 +3,6 @@
 
 -- TODO: use foreign key for batch_id?
 -- TODO: why tx_num is bigint?
--- TODO: trace content is stored in cache, this field is empty and can be removed later.
 create table block_trace
 (
     number                  BIGINT          NOT NULL,

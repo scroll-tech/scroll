@@ -20,9 +20,8 @@ func getConfig(ctx *cli.Context) (*database.DBConfig, error) {
 	return dbCfg, nil
 }
 
-func initDB(cfg *database.DBConfig) (*sqlx.DB, error) {
-	dbCfg := cfg.Persistence
-	factory, err := database.NewOrmFactory(cfg)
+func initDB(dbCfg *database.DBConfig) (*sqlx.DB, error) {
+	factory, err := database.NewOrmFactory(dbCfg)
 	if err != nil {
 		return nil, err
 	}

@@ -36,10 +36,8 @@ import (
 )
 
 var (
-	dbImg    docker.ImgInstance
-	redisImg docker.ImgInstance
-
-	cfg *bridge_config.Config
+	cfg   *bridge_config.Config
+	dbImg docker.ImgInstance
 )
 
 func randomURL() string {
@@ -53,23 +51,10 @@ func setEnv(t *testing.T) (err error) {
 	assert.NoError(t, err)
 
 	// Create db container.
-	dbImg = docker.NewTestDBDocker(t, cfg.DBConfig.Persistence.DriverName)
-	cfg.DBConfig.Persistence.DSN = dbImg.Endpoint()
-
-	// Create redis container.
-	redisImg = docker.NewTestRedisDocker(t)
-	cfg.DBConfig.Redis.URL = redisImg.Endpoint()
+	dbImg = docker.NewTestDBDocker(t, cfg.DBConfig.DriverName)
+	cfg.DBConfig.DSN = dbImg.Endpoint()
 
 	return
-}
-
-func free(t *testing.T) {
-	if dbImg != nil {
-		assert.NoError(t, dbImg.Stop())
-	}
-	if redisImg != nil {
-		assert.NoError(t, redisImg.Stop())
-	}
 }
 
 func TestApis(t *testing.T) {
@@ -88,7 +73,7 @@ func TestApis(t *testing.T) {
 
 	// Teardown
 	t.Cleanup(func() {
-		free(t)
+		dbImg.Stop()
 	})
 }
 
@@ -500,7 +485,7 @@ func setupCoordinator(t *testing.T, dbCfg *database.DBConfig, rollersPerSession 
 		Verifier:          &coordinator_config.VerifierConfig{MockMode: true},
 		CollectionTime:    1,
 		TokenTimeToLive:   5,
-	}, db)
+	}, db, nil)
 	assert.NoError(t, err)
 	assert.NoError(t, rollerManager.Start())
 
