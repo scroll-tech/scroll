@@ -4,6 +4,7 @@
     "dsn": "postgres://admin:123456@localhost/test?sslmode=disable"
   },
   "redis": {
+    "openTLS": false,
     "url": "redis://default:@localhost:6379/0",
     "expirations": {
       "trace": 3600
