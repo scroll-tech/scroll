@@ -42,35 +42,8 @@ func (r *ImgRedis) Start() error {
 	if id != "" {
 		return fmt.Errorf("container already exist, name: %s", r.name)
 	}
-	// Add check status function.
-	keyword := "Ready to accept connections"
-	okCh := make(chan struct{}, 1)
-	r.cmd.RegistFunc(keyword, func(buf string) {
-		if strings.Contains(buf, keyword) {
-			select {
-			case okCh <- struct{}{}:
-			default:
-				return
-			}
-		}
-	})
-	defer r.cmd.UnRegistFunc(keyword)
-
-	// Start redis.
 	r.cmd.RunCmd(true)
-
-	// Wait result of keyword.
-	select {
-	case <-okCh:
-		utils.TryTimes(3, func() bool {
-			r.id = GetContainerID(r.name)
-			return r.id != ""
-		})
-	case <-time.After(time.Second * 10):
-	}
-
-	// Set redis status.
-	r.running = r.id != ""
+	r.running = r.isOk()
 	if !r.running {
 		_ = r.Stop()
 		return fmt.Errorf("failed to start image: %s", r.image)
@@ -117,4 +90,31 @@ func (r *ImgRedis) prepare() []string {
 		ports = append(ports, []string{"-p", strconv.Itoa(r.port) + ":6379"}...)
 	}
 	return append(append(cmds, ports...), r.image)
+}
+
+func (r *ImgRedis) isOk() bool {
+	keyword := "Ready to accept connections"
+	okCh := make(chan struct{}, 1)
+	r.cmd.RegistFunc(keyword, func(buf string) {
+		if strings.Contains(buf, keyword) {
+			select {
+			case okCh <- struct{}{}:
+			default:
+				return
+			}
+		}
+	})
+	defer r.cmd.UnRegistFunc(keyword)
+
+	// Wait result.
+	select {
+	case <-okCh:
+		utils.TryTimes(3, func() bool {
+			r.id = GetContainerID(r.name)
+			return r.id != ""
+		})
+		return r.id != ""
+	case <-time.After(time.Second * 10):
+		return false
+	}
 }
