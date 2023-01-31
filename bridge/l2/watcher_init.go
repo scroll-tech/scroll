@@ -67,7 +67,6 @@ func (w *WatcherClient) initCache(ctx context.Context) error {
 			return err
 		}
 		if len(ids) == 0 {
-			log.Info("L2 WatcherClient initCache done")
 			return nil
 		}
 		for _, id := range ids {

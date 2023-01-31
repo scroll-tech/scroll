@@ -9,76 +9,57 @@ import (
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/core/types"
 
-	"github.com/redis/go-redis/v9"
+	"github.com/go-redis/redis/v8"
 )
 
 // RedisConfig redis cache config.
 type RedisConfig struct {
 	URL         string           `json:"url"`
-	Mode        string           `json:"mode,omitempty"`
 	Expirations map[string]int64 `json:"expirations,omitempty"`
 }
 
-// RedisClientWrapper handle redis client and some expires.
-type RedisClientWrapper struct {
-	client      redisClient
+// RedisClient handle redis client and some expires.
+type RedisClient struct {
+	*redis.Client
 	traceExpire time.Duration
 }
 
-// redisClient wrap around single-redis-node / redis-cluster
-type redisClient interface {
-	Exists(context.Context, ...string) *redis.IntCmd
-	Set(context.Context, string, interface{}, time.Duration) *redis.StatusCmd
-	Get(context.Context, string) *redis.StringCmd
-}
-
-// NewRedisClientWrapper create a redis client and become Cache interface.
-func NewRedisClientWrapper(redisConfig *RedisConfig) (Cache, error) {
-	var traceExpire = time.Second * 60
-	if val, exist := redisConfig.Expirations["trace"]; exist {
-		traceExpire = time.Duration(val) * time.Second
-	}
-
-	if redisConfig.Mode == "cluster" {
-		op, err := redis.ParseClusterURL(redisConfig.URL)
-		if err != nil {
-			return nil, err
-		}
-		return &RedisClientWrapper{
-			client:      redis.NewClusterClient(op),
-			traceExpire: traceExpire,
-		}, nil
-	}
-
+// NewRedisClient create a redis client and become Cache interface.
+func NewRedisClient(redisConfig *RedisConfig) (Cache, error) {
 	op, err := redis.ParseURL(redisConfig.URL)
 	if err != nil {
 		return nil, err
 	}
-	return &RedisClientWrapper{
-		client:      redis.NewClient(op),
+
+	var traceExpire = time.Second * 60
+	if val, exist := redisConfig.Expirations["trace"]; exist {
+		traceExpire = time.Duration(val) * time.Second
+	}
+	return &RedisClient{
+		Client:      redis.NewClient(op),
 		traceExpire: traceExpire,
 	}, nil
 }
 
 // ExistTrace check the trace is exist or not.
-func (r *RedisClientWrapper) ExistTrace(ctx context.Context, number *big.Int) (bool, error) {
-	n, err := r.client.Exists(ctx, number.String()).Result()
+func (r *RedisClient) ExistTrace(ctx context.Context, number *big.Int) (bool, error) {
+	n, err := r.Exists(ctx, number.String()).Result()
 	return err == nil && n > 0, err
 }
 
 // SetBlockTrace Set trace to redis.
-func (r *RedisClientWrapper) SetBlockTrace(ctx context.Context, trace *types.BlockTrace) (setErr error) {
+func (r *RedisClient) SetBlockTrace(ctx context.Context, trace *types.BlockTrace) (setErr error) {
 	hash, number := trace.Header.Hash().String(), trace.Header.Number.String()
 
 	// If return error or the trace is exist return this function.
-	n, err := r.client.Exists(ctx, hash).Result()
+	n, err := r.Exists(ctx, hash).Result()
 	if err != nil || n > 0 {
 		return err
 	}
 	// Set trace expire time.
 	defer func() {
 		if setErr == nil {
-			r.client.Set(ctx, number, hash, r.traceExpire)
+			r.Set(ctx, number, hash, r.traceExpire)
 		}
 	}()
 
@@ -87,13 +68,13 @@ func (r *RedisClientWrapper) SetBlockTrace(ctx context.Context, trace *types.Blo
 	if setErr != nil {
 		return setErr
 	}
-	return r.client.Set(ctx, hash, data, r.traceExpire).Err()
+	return r.Set(ctx, hash, data, r.traceExpire).Err()
 }
 
 // GetBlockTrace get block trace by number, hash.
-func (r *RedisClientWrapper) GetBlockTrace(ctx context.Context, hash common.Hash) (*types.BlockTrace, error) {
+func (r *RedisClient) GetBlockTrace(ctx context.Context, hash common.Hash) (*types.BlockTrace, error) {
 	// Get trace content.
-	data, err := r.client.Get(ctx, hash.String()).Bytes()
+	data, err := r.Get(ctx, hash.String()).Bytes()
 	if err != nil {
 		return nil, err
 	}
