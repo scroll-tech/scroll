@@ -5,7 +5,7 @@ import (
 	"runtime/debug"
 )
 
-var tag = "prealpha-v12.2"
+var tag = "prealpha-v12.1_redis-test"
 
 var commit = func() string {
 	if info, ok := debug.ReadBuildInfo(); ok {
