@@ -33,7 +33,7 @@ FROM base as builder
 COPY . .
 RUN cp -r ./common/libzkp/interface ./coordinator/verifier/lib
 COPY --from=zkp-builder /app/target/release/libzkp.so ./coordinator/verifier/lib/
-RUN cd ./coordinator && go build -v -p 4 -o /bin/coordinator ./cmd && && mv verifier/lib /bin/
+RUN cd ./coordinator && go build -v -p 4 -o /bin/coordinator ./cmd && mv verifier/lib /bin/
 
 # Pull coordinator into a second stage deploy alpine container
 FROM ubuntu:20.04
