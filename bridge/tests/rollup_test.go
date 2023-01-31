@@ -3,12 +3,11 @@ package tests
 import (
 	"context"
 	"math/big"
-	"sync"
-	"testing"
-
 	"scroll-tech/database"
 	"scroll-tech/database/migrate"
 	"scroll-tech/database/orm"
+	"sync"
+	"testing"
 
 	"scroll-tech/bridge/l1"
 	"scroll-tech/bridge/l2"

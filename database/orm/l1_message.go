@@ -7,20 +7,17 @@ import (
 
 	"github.com/jmoiron/sqlx"
 	"github.com/scroll-tech/go-ethereum/log"
-
-	"scroll-tech/database/cache"
 )
 
 type l1MessageOrm struct {
-	db    *sqlx.DB
-	cache cache.Cache
+	db *sqlx.DB
 }
 
 var _ L1MessageOrm = (*l1MessageOrm)(nil)
 
 // NewL1MessageOrm create an L1MessageOrm instance
-func NewL1MessageOrm(db *sqlx.DB, cache cache.Cache) L1MessageOrm {
-	return &l1MessageOrm{db: db, cache: cache}
+func NewL1MessageOrm(db *sqlx.DB) L1MessageOrm {
+	return &l1MessageOrm{db: db}
 }
 
 // GetL1MessageByMsgHash fetch message by nonce

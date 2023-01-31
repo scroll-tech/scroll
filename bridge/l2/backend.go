@@ -32,10 +32,7 @@ func New(ctx context.Context, cfg *config.L2Config, orm database.OrmFactory) (*B
 		return nil, err
 	}
 
-	l2Watcher, err := NewL2WatcherClient(ctx, client, cfg.Confirmations, cfg.BatchProposerConfig, cfg.L2MessengerAddress, orm)
-	if err != nil {
-		return nil, err
-	}
+	l2Watcher := NewL2WatcherClient(ctx, client, cfg.Confirmations, cfg.BatchProposerConfig, cfg.L2MessengerAddress, orm)
 
 	return &Backend{
 		cfg:       cfg,
