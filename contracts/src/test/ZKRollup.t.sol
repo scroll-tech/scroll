@@ -255,4 +255,50 @@ contract ZKRollupTest is DSTestPlus {
       assertEq(rollup.finalizedBatches(1), bytes32(0));
     }
   }
+
+  function testForceBatchFinalization() public {
+    // not owner
+    hevm.startPrank(address(1));
+    hevm.expectRevert("Ownable: caller is not the owner");
+    rollup.forceBatchFinalization(bytes32(0));
+    hevm.stopPrank();
+
+    IZKRollup.Layer2BlockHeader memory _header;
+
+    // import fake genesis
+    _header.blockHash = bytes32(uint256(1));
+    rollup.importGenesisBlock(_header);
+
+    // No such batch
+    hevm.expectRevert("No such batch");
+    rollup.forceBatchFinalization(bytes32(0));
+
+    // Batch already verified
+    bytes32 _batchId = keccak256(abi.encode(_header.blockHash, bytes32(0), 0));
+    hevm.expectRevert("Batch already verified");
+    rollup.forceBatchFinalization(_batchId);
+
+    // import fake batch
+    _header.blockHeight = 1;
+    _header.parentHash = bytes32(uint256(1));
+    _header.blockHash = bytes32(uint256(2));
+    IZKRollup.Layer2Batch memory _batch;
+    _batch.blocks = new IZKRollup.Layer2BlockHeader[](1);
+    _batch.blocks[0] = _header;
+    _batch.batchIndex = 1;
+    _batch.parentHash = _header.parentHash;
+    rollup.updateOperator(address(1));
+    hevm.startPrank(address(1));
+    rollup.commitBatch(_batch);
+    hevm.stopPrank();
+
+    // force finalize
+    _batchId = keccak256(abi.encode(_header.blockHash, _header.parentHash, 1));
+    bool verified;
+    (, , , verified) = rollup.batches(_batchId);
+    assertBoolEq(verified, false);
+    rollup.forceBatchFinalization(_batchId);
+    (, , , verified) = rollup.batches(_batchId);
+    assertBoolEq(verified, true);
+  }
 }

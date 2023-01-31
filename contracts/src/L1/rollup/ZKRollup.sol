@@ -300,6 +300,20 @@ contract ZKRollup is OwnableUpgradeable, IZKRollup {
 
   /**************************************** Restricted Functions ****************************************/
 
+  /// @notice Explicit finalize batch by owner.
+  /// @dev This is temporary workaround to skip batch proving in some situations. 
+  ///      And it will be removed on mainnet launch.
+  /// @param _batchId The id of batch to finalize.
+  function forceBatchFinalization(bytes32 _batchId) external onlyOwner {
+    Layer2BatchStored storage _batch = batches[_batchId];
+    require(_batch.batchHash != bytes32(0), "No such batch");
+    require(!_batch.verified, "Batch already verified");
+
+    _batch.verified = true;
+
+    emit FinalizeBatch(_batchId, _batch.batchHash, _batch.batchIndex, _batch.parentHash);
+  }
+
   /// @notice Update the address of operator.
   /// @dev This function can only called by contract owner.
   /// @param _newOperator The new operator address to update.
