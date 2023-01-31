@@ -14,6 +14,7 @@ require (
 )
 
 require (
+	github.com/VictoriaMetrics/fastcache v1.12.0 // indirect
 	github.com/btcsuite/btcd v0.20.1-beta // indirect
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.2 // indirect
@@ -21,6 +22,7 @@ require (
 	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
 	github.com/ethereum/go-ethereum v1.10.26 // indirect
 	github.com/go-stack/stack v1.8.0 // indirect
+	github.com/golang/snappy v0.0.4 // indirect
 	github.com/iden3/go-iden3-crypto v0.0.13 // indirect
 	github.com/kr/pretty v0.3.0 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect

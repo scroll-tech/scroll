@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/stretchr/testify/assert"
@@ -38,4 +39,8 @@ func TestRedisCache(t *testing.T) {
 	exist, err := rdb.ExistTrace(context.Background(), trace.Header.Number)
 	assert.NoError(t, err)
 	assert.Equal(t, true, exist)
+}
+
+func TestNewRedisClientWrapper(t *testing.T) {
+	t.Log(time.Now().Unix())
 }
