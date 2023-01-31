@@ -2,6 +2,7 @@ package cache
 
 import (
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"math/big"
 	"time"
@@ -39,11 +40,13 @@ func NewRedisClientWrapper(redisConfig *RedisConfig) (Cache, error) {
 		traceExpire = time.Duration(val) * time.Second
 	}
 
+	tlsConfig := &tls.Config{InsecureSkipVerify: true}
 	if redisConfig.Mode == "cluster" {
 		op, err := redis.ParseClusterURL(redisConfig.URL)
 		if err != nil {
 			return nil, err
 		}
+		op.TLSConfig = tlsConfig
 		return &RedisClientWrapper{
 			client:      redis.NewClusterClient(op),
 			traceExpire: traceExpire,
@@ -54,6 +57,7 @@ func NewRedisClientWrapper(redisConfig *RedisConfig) (Cache, error) {
 	if err != nil {
 		return nil, err
 	}
+	op.TLSConfig = tlsConfig
 	return &RedisClientWrapper{
 		client:      redis.NewClient(op),
 		traceExpire: traceExpire,
