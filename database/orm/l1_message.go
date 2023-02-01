@@ -47,8 +47,8 @@ func (m *l1MessageOrm) GetL1MessageByNonce(nonce uint64) (*L1Message, error) {
 }
 
 // GetL1MessagesByStatus fetch list of unprocessed messages given msg status
-func (m *l1MessageOrm) GetL1MessagesByStatus(status MsgStatus) ([]*L1Message, error) {
-	rows, err := m.db.Queryx(`SELECT nonce, msg_hash, height, sender, target, value, fee, gas_limit, deadline, calldata, layer1_hash, status FROM l1_message WHERE status = $1 ORDER BY nonce ASC;`, status)
+func (m *l1MessageOrm) GetL1MessagesByStatus(status MsgStatus, limit uint64) ([]*L1Message, error) {
+	rows, err := m.db.Queryx(`SELECT nonce, msg_hash, height, sender, target, value, fee, gas_limit, deadline, calldata, layer1_hash, status FROM l1_message WHERE status = $1 ORDER BY nonce ASC LIMIT $2;`, status, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -168,4 +168,13 @@ func (m *l1MessageOrm) GetLayer1LatestWatchedHeight() (*big.Int, error) {
 		return big.NewInt(height.Int64), nil
 	}
 	return big.NewInt(-1), nil
+}
+
+func (m *l1MessageOrm) GetRelayL1MessageTxHash(nonce uint64) (sql.NullString, error) {
+	row := m.db.QueryRow(`SELECT layer2_hash FROM l1_message WHERE nonce = $1`, nonce)
+	var hash sql.NullString
+	if err := row.Scan(&hash); err != nil {
+		return sql.NullString{}, err
+	}
+	return hash, nil
 }

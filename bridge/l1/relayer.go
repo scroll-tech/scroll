@@ -11,7 +11,6 @@ import (
 	"github.com/scroll-tech/go-ethereum/accounts/abi"
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/crypto"
-	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
 
 	"scroll-tech/database/orm"
@@ -29,7 +28,6 @@ import (
 // @todo It's better to be triggered by watcher.
 type Layer1Relayer struct {
 	ctx    context.Context
-	client *ethclient.Client
 	sender *sender.Sender
 
 	db  orm.L1MessageOrm
@@ -43,7 +41,7 @@ type Layer1Relayer struct {
 }
 
 // NewLayer1Relayer will return a new instance of Layer1RelayerClient
-func NewLayer1Relayer(ctx context.Context, ethClient *ethclient.Client, l1ConfirmNum int64, db orm.L1MessageOrm, cfg *config.RelayerConfig) (*Layer1Relayer, error) {
+func NewLayer1Relayer(ctx context.Context, l1ConfirmNum int64, db orm.L1MessageOrm, cfg *config.RelayerConfig) (*Layer1Relayer, error) {
 	l2MessengerABI, err := bridge_abi.L2MessengerMetaData.GetAbi()
 	if err != nil {
 		log.Warn("new L2MessengerABI failed", "err", err)
@@ -59,7 +57,6 @@ func NewLayer1Relayer(ctx context.Context, ethClient *ethclient.Client, l1Confir
 
 	return &Layer1Relayer{
 		ctx:            ctx,
-		client:         ethClient,
 		sender:         sender,
 		db:             db,
 		l2MessengerABI: l2MessengerABI,
@@ -72,15 +69,20 @@ func NewLayer1Relayer(ctx context.Context, ethClient *ethclient.Client, l1Confir
 // ProcessSavedEvents relays saved un-processed cross-domain transactions to desired blockchain
 func (r *Layer1Relayer) ProcessSavedEvents() {
 	// msgs are sorted by nonce in increasing order
-	msgs, err := r.db.GetL1MessagesByStatus(orm.MsgPending)
+	msgs, err := r.db.GetL1MessagesByStatus(orm.MsgPending, 100)
 	if err != nil {
 		log.Error("Failed to fetch unprocessed L1 messages", "err", err)
 		return
 	}
+
+	if len(msgs) > 0 {
+		log.Info("Processing L1 messages", "count", len(msgs))
+	}
+
 	for _, msg := range msgs {
 		if err = r.processSavedEvent(msg); err != nil {
 			if !errors.Is(err, sender.ErrNoAvailableAccount) {
-				log.Error("failed to process event", "err", err)
+				log.Error("failed to process event", "msg.msgHash", msg.MsgHash, "err", err)
 			}
 			return
 		}
@@ -109,6 +111,12 @@ func (r *Layer1Relayer) processSavedEvent(msg *orm.L1Message) error {
 	}
 
 	hash, err := r.sender.SendTransaction(msg.MsgHash, &r.cfg.MessengerContractAddress, big.NewInt(0), data)
+	if err != nil && err.Error() == "execution reverted: Message expired" {
+		return r.db.UpdateLayer1Status(r.ctx, msg.MsgHash, orm.MsgExpired)
+	}
+	if err != nil && err.Error() == "execution reverted: Message successfully executed" {
+		return r.db.UpdateLayer1Status(r.ctx, msg.MsgHash, orm.MsgConfirmed)
+	}
 	if err != nil {
 		return err
 	}

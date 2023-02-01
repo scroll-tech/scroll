@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"math/big"
 	"reflect"
-	"sync"
 	"time"
 
 	geth "github.com/scroll-tech/go-ethereum"
@@ -15,6 +14,7 @@ import (
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/event"
 	"github.com/scroll-tech/go-ethereum/log"
+	"github.com/scroll-tech/go-ethereum/metrics"
 
 	"scroll-tech/common/bigint"
 
@@ -25,6 +25,11 @@ import (
 	"scroll-tech/database/orm"
 
 	"scroll-tech/bridge/config"
+)
+
+// Metrics
+var (
+	bridgeL2MsgSyncHeightGauge = metrics.NewRegisteredGauge("bridge/l2/msg/sync/height", nil)
 )
 
 type relayedMessage struct {
@@ -84,56 +89,84 @@ func (w *WatcherClient) Start() {
 			panic("must run L2 watcher with DB")
 		}
 
-		ticker := time.NewTicker(3 * time.Second)
-		defer ticker.Stop()
+		ctx, cancel := context.WithCancel(w.ctx)
 
-		for ; true; <-ticker.C {
-			select {
-			case <-w.stopCh:
-				return
+		// trace fetcher loop
+		go func(ctx context.Context) {
+			ticker := time.NewTicker(3 * time.Second)
+			defer ticker.Stop()
 
-			default:
-				// get current height
-				number, err := w.BlockNumber(w.ctx)
-				if err != nil {
-					log.Error("failed to get_BlockNumber", "err", err)
-					continue
+			for {
+				select {
+				case <-ctx.Done():
+					return
+
+				case <-ticker.C:
+					// get current height
+					number, err := w.BlockNumber(ctx)
+					if err != nil {
+						log.Error("failed to get_BlockNumber", "err", err)
+						continue
+					}
+
+					if number >= w.confirmations {
+						number = number - w.confirmations
+					} else {
+						number = 0
+					}
+
+					w.tryFetchRunningMissingBlocks(ctx, number)
 				}
-
-				if number >= w.confirmations {
-					number = number - w.confirmations
-				} else {
-					number = 0
-				}
-
-				var wg sync.WaitGroup
-				wg.Add(3)
-
-				go func() {
-					defer wg.Done()
-					if err := w.tryFetchRunningMissingBlocks(w.ctx, number); err != nil {
-						log.Error("failed to fetchRunningMissingBlocks", "err", err)
-					}
-				}()
-
-				go func() {
-					defer wg.Done()
-					// @todo handle error
-					if err := w.fetchContractEvent(number); err != nil {
-						log.Error("failed to fetchContractEvent", "err", err)
-					}
-				}()
-
-				go func() {
-					defer wg.Done()
-					if err := w.batchProposer.tryProposeBatch(); err != nil {
-						log.Error("failed to tryProposeBatch", "err", err)
-					}
-				}()
-
-				wg.Wait()
 			}
-		}
+		}(ctx)
+
+		// event fetcher loop
+		go func(ctx context.Context) {
+			ticker := time.NewTicker(3 * time.Second)
+			defer ticker.Stop()
+
+			for {
+				select {
+				case <-ctx.Done():
+					return
+
+				case <-ticker.C:
+					// get current height
+					number, err := w.BlockNumber(ctx)
+					if err != nil {
+						log.Error("failed to get_BlockNumber", "err", err)
+						continue
+					}
+
+					if number >= w.confirmations {
+						number = number - w.confirmations
+					} else {
+						number = 0
+					}
+
+					w.FetchContractEvent(number)
+				}
+			}
+		}(ctx)
+
+		// batch proposer loop
+		go func(ctx context.Context) {
+			ticker := time.NewTicker(3 * time.Second)
+			defer ticker.Stop()
+
+			for {
+				select {
+				case <-ctx.Done():
+					return
+
+				case <-ticker.C:
+					w.batchProposer.tryProposeBatch()
+				}
+			}
+		}(ctx)
+
+		<-w.stopCh
+		cancel()
 	}()
 }
 
@@ -145,14 +178,15 @@ func (w *WatcherClient) Stop() {
 const blockTracesFetchLimit = uint64(10)
 
 // try fetch missing blocks if inconsistent
-func (w *WatcherClient) tryFetchRunningMissingBlocks(ctx context.Context, blockHeight uint64) error {
+func (w *WatcherClient) tryFetchRunningMissingBlocks(ctx context.Context, blockHeight uint64) {
 	// Get newest block in DB. must have blocks at that time.
 	// Don't use "block_trace" table "trace" column's BlockTrace.Number,
 	// because it might be empty if the corresponding rollup_result is finalized/finalization_skipped
 	heightInDBBig, err := w.orm.GetBlockTracesLatestHeight()
 	heightInDB := heightInDBBig.Int64()
 	if err != nil {
-		return fmt.Errorf("failed to GetBlockTracesLatestHeight in DB: %v", err)
+		log.Error("failed to GetBlockTracesLatestHeight", "err", err)
+		return
 	}
 
 	// Can't get trace from genesis block, so the default start number is 1.
@@ -170,12 +204,10 @@ func (w *WatcherClient) tryFetchRunningMissingBlocks(ctx context.Context, blockH
 
 		// Get block traces and insert into db.
 		if err = w.getAndStoreBlockTraces(ctx, from, to); err != nil {
-			log.Error("fail to getAndStoreBlockTraces", "from", from, "to", to)
-			return err
+			log.Error("fail to getAndStoreBlockTraces", "from", from, "to", to, "err", err)
+			return
 		}
 	}
-
-	return nil
 }
 
 func (w *WatcherClient) getAndStoreBlockTraces(ctx context.Context, from, to uint64) error {
@@ -204,7 +236,7 @@ func (w *WatcherClient) getAndStoreBlockTraces(ctx context.Context, from, to uin
 const contractEventsBlocksFetchLimit = int64(10)
 
 // FetchContractEvent pull latest event logs from given contract address and save in DB
-func (w *WatcherClient) fetchContractEvent(blockHeight uint64) error {
+func (w *WatcherClient) FetchContractEvent(blockHeight uint64) {
 	defer func() {
 		log.Info("l2 watcher fetchContractEvent", "w.processedMsgHeight", w.processedMsgHeight)
 	}()
@@ -229,17 +261,18 @@ func (w *WatcherClient) fetchContractEvent(blockHeight uint64) error {
 			Topics: make([][]common.Hash, 1),
 		}
 		query.Topics[0] = make([]common.Hash, 3)
-		query.Topics[0][0] = common.HexToHash(bridge_abi.SENT_MESSAGE_EVENT_SIGNATURE)
-		query.Topics[0][1] = common.HexToHash(bridge_abi.RELAYED_MESSAGE_EVENT_SIGNATURE)
-		query.Topics[0][2] = common.HexToHash(bridge_abi.FAILED_RELAYED_MESSAGE_EVENT_SIGNATURE)
+		query.Topics[0][0] = common.HexToHash(bridge_abi.SentMessageEventSignature)
+		query.Topics[0][1] = common.HexToHash(bridge_abi.RelayedMessageEventSignature)
+		query.Topics[0][2] = common.HexToHash(bridge_abi.FailedRelayedMessageEventSignature)
 
 		logs, err := w.FilterLogs(w.ctx, query)
 		if err != nil {
 			log.Error("failed to get event logs", "err", err)
-			return err
+			return
 		}
 		if len(logs) == 0 {
 			w.processedMsgHeight = uint64(to)
+			bridgeL2MsgSyncHeightGauge.Update(to)
 			continue
 		}
 		log.Info("received new L2 messages", "fromBlock", from, "toBlock", to, "cnt", len(logs))
@@ -247,7 +280,7 @@ func (w *WatcherClient) fetchContractEvent(blockHeight uint64) error {
 		sentMessageEvents, relayedMessageEvents, err := w.parseBridgeEventLogs(logs)
 		if err != nil {
 			log.Error("failed to parse emitted event log", "err", err)
-			return err
+			return
 		}
 
 		// Update relayed message first to make sure we don't forget to update submited message.
@@ -262,18 +295,18 @@ func (w *WatcherClient) fetchContractEvent(blockHeight uint64) error {
 			}
 			if err != nil {
 				log.Error("Failed to update layer1 status and layer2 hash", "err", err)
-				return err
+				return
 			}
 		}
 
 		if err = w.orm.SaveL2Messages(w.ctx, sentMessageEvents); err != nil {
-			return err
+			log.Error("failed to save l2 messages", "err", err)
+			return
 		}
 
 		w.processedMsgHeight = uint64(to)
+		bridgeL2MsgSyncHeightGauge.Update(to)
 	}
-
-	return nil
 }
 
 func (w *WatcherClient) parseBridgeEventLogs(logs []types.Log) ([]*orm.L2Message, []relayedMessage, error) {
@@ -284,7 +317,7 @@ func (w *WatcherClient) parseBridgeEventLogs(logs []types.Log) ([]*orm.L2Message
 	var relayedMessages []relayedMessage
 	for _, vLog := range logs {
 		switch vLog.Topics[0] {
-		case common.HexToHash(bridge_abi.SENT_MESSAGE_EVENT_SIGNATURE):
+		case common.HexToHash(bridge_abi.SentMessageEventSignature):
 			event := struct {
 				Target       common.Address
 				Sender       common.Address
@@ -305,7 +338,7 @@ func (w *WatcherClient) parseBridgeEventLogs(logs []types.Log) ([]*orm.L2Message
 			event.Target = common.HexToAddress(vLog.Topics[1].String())
 			l2Messages = append(l2Messages, &orm.L2Message{
 				Nonce:      event.MessageNonce.Uint64(),
-				MsgHash:    utils.ComputeMessageHash(event.Target, event.Sender, event.Value, event.Fee, event.Deadline, event.Message, event.MessageNonce).String(),
+				MsgHash:    utils.ComputeMessageHash(event.Sender, event.Target, event.Value, event.Fee, event.Deadline, event.Message, event.MessageNonce).String(),
 				Height:     bigint.NewUInt(vLog.BlockNumber),
 				Sender:     event.Sender.String(),
 				Value:      event.Value.String(),
@@ -316,7 +349,7 @@ func (w *WatcherClient) parseBridgeEventLogs(logs []types.Log) ([]*orm.L2Message
 				Calldata:   common.Bytes2Hex(event.Message),
 				Layer2Hash: vLog.TxHash.Hex(),
 			})
-		case common.HexToHash(bridge_abi.RELAYED_MESSAGE_EVENT_SIGNATURE):
+		case common.HexToHash(bridge_abi.RelayedMessageEventSignature):
 			event := struct {
 				MsgHash common.Hash
 			}{}
@@ -327,7 +360,7 @@ func (w *WatcherClient) parseBridgeEventLogs(logs []types.Log) ([]*orm.L2Message
 				txHash:       vLog.TxHash,
 				isSuccessful: true,
 			})
-		case common.HexToHash(bridge_abi.FAILED_RELAYED_MESSAGE_EVENT_SIGNATURE):
+		case common.HexToHash(bridge_abi.FailedRelayedMessageEventSignature):
 			event := struct {
 				MsgHash common.Hash
 			}{}

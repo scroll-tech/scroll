@@ -17,18 +17,6 @@ pipeline {
     }
     stages {
         stage('Build') {
-            when {
-                anyOf {
-                    changeset "Jenkinsfile"
-                    changeset "build/**"
-                    changeset "go.work**"
-                    changeset "bridge/**"
-                    changeset "coordinator/**"
-                    changeset "common/**"
-                    changeset "database/**"
-                    changeset "tests/**"
-                }
-            }
             parallel {
                 stage('Build Prerequisite') {
                     steps {
@@ -70,18 +58,6 @@ pipeline {
             }
         }
         stage('Parallel Test') {
-            when {
-                anyOf {
-                    changeset "Jenkinsfile"
-                    changeset "build/**"
-                    changeset "go.work**"
-                    changeset "bridge/**"
-                    changeset "coordinator/**"
-                    changeset "common/**"
-                    changeset "database/**"
-                    changeset "tests/**"
-                }
-            }
             parallel{
                 stage('Test bridge package') {
                     steps {
@@ -126,24 +102,12 @@ pipeline {
             }
         }
         stage('Compare Coverage') {
-            when {
-                anyOf {
-                    changeset "Jenkinsfile"
-                    changeset "build/**"
-                    changeset "go.work**"
-                    changeset "bridge/**"
-                    changeset "coordinator/**"
-                    changeset "common/**"
-                    changeset "database/**"
-                    changeset "tests/**"
-                }
-            }
             steps {
                 sh "./build/post-test-report-coverage.sh"
                 script {
                     currentBuild.result = 'SUCCESS'
                 }
-                step([$class: 'CompareCoverageAction', publishResultAs: 'statusCheck', scmVars: [GIT_URL: env.GIT_URL]])
+                step([$class: 'CompareCoverageAction', publishResultAs: 'Comment', scmVars: [GIT_URL: env.GIT_URL]])
             }
         }
     }

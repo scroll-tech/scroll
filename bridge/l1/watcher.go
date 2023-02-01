@@ -11,6 +11,7 @@ import (
 	"github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
+	"github.com/scroll-tech/go-ethereum/metrics"
 
 	"scroll-tech/common/bigint"
 	"scroll-tech/database"
@@ -18,6 +19,10 @@ import (
 
 	bridge_abi "scroll-tech/bridge/abi"
 	"scroll-tech/bridge/utils"
+)
+
+var (
+	bridgeL1MsgSyncHeightGauge = metrics.NewRegisteredGauge("bridge/l1/msg/sync/height", nil)
 )
 
 type relayedMessage struct {
@@ -139,11 +144,11 @@ func (w *Watcher) FetchContractEvent(blockHeight uint64) error {
 			Topics: make([][]common.Hash, 1),
 		}
 		query.Topics[0] = make([]common.Hash, 5)
-		query.Topics[0][0] = common.HexToHash(bridge_abi.SENT_MESSAGE_EVENT_SIGNATURE)
-		query.Topics[0][1] = common.HexToHash(bridge_abi.RELAYED_MESSAGE_EVENT_SIGNATURE)
-		query.Topics[0][2] = common.HexToHash(bridge_abi.FAILED_RELAYED_MESSAGE_EVENT_SIGNATURE)
-		query.Topics[0][3] = common.HexToHash(bridge_abi.COMMIT_BATCH_EVENT_SIGNATURE)
-		query.Topics[0][4] = common.HexToHash(bridge_abi.FINALIZED_BATCH_EVENT_SIGNATURE)
+		query.Topics[0][0] = common.HexToHash(bridge_abi.SentMessageEventSignature)
+		query.Topics[0][1] = common.HexToHash(bridge_abi.RelayedMessageEventSignature)
+		query.Topics[0][2] = common.HexToHash(bridge_abi.FailedRelayedMessageEventSignature)
+		query.Topics[0][3] = common.HexToHash(bridge_abi.CommitBatchEventSignature)
+		query.Topics[0][4] = common.HexToHash(bridge_abi.FinalizedBatchEventSignature)
 
 		logs, err := w.client.FilterLogs(w.ctx, query)
 		if err != nil {
@@ -152,6 +157,7 @@ func (w *Watcher) FetchContractEvent(blockHeight uint64) error {
 		}
 		if len(logs) == 0 {
 			w.processedMsgHeight.SetInt64(to)
+			bridgeL1MsgSyncHeightGauge.Update(to)
 			continue
 		}
 		log.Info("Received new L1 events", "fromBlock", from, "toBlock", to, "cnt", len(logs))
@@ -200,10 +206,10 @@ func (w *Watcher) FetchContractEvent(blockHeight uint64) error {
 		for _, msg := range relayedMessageEvents {
 			if msg.isSuccessful {
 				// succeed
-				err = w.db.UpdateLayer1StatusAndLayer2Hash(w.ctx, msg.msgHash.String(), orm.MsgConfirmed, msg.txHash.String())
+				err = w.db.UpdateLayer2StatusAndLayer1Hash(w.ctx, msg.msgHash.String(), orm.MsgConfirmed, msg.txHash.String())
 			} else {
 				// failed
-				err = w.db.UpdateLayer1StatusAndLayer2Hash(w.ctx, msg.msgHash.String(), orm.MsgFailed, msg.txHash.String())
+				err = w.db.UpdateLayer2StatusAndLayer1Hash(w.ctx, msg.msgHash.String(), orm.MsgFailed, msg.txHash.String())
 			}
 			if err != nil {
 				log.Error("Failed to update layer1 status and layer2 hash", "err", err)
@@ -216,6 +222,7 @@ func (w *Watcher) FetchContractEvent(blockHeight uint64) error {
 		}
 
 		w.processedMsgHeight.SetInt64(to)
+		bridgeL1MsgSyncHeightGauge.Update(to)
 	}
 
 	return nil
@@ -230,7 +237,7 @@ func (w *Watcher) parseBridgeEventLogs(logs []types.Log) ([]*orm.L1Message, []re
 	var rollupEvents []rollupEvent
 	for _, vLog := range logs {
 		switch vLog.Topics[0] {
-		case common.HexToHash(bridge_abi.SENT_MESSAGE_EVENT_SIGNATURE):
+		case common.HexToHash(bridge_abi.SentMessageEventSignature):
 			event := struct {
 				Target       common.Address
 				Sender       common.Address
@@ -251,7 +258,7 @@ func (w *Watcher) parseBridgeEventLogs(logs []types.Log) ([]*orm.L1Message, []re
 			event.Target = common.HexToAddress(vLog.Topics[1].String())
 			l1Messages = append(l1Messages, &orm.L1Message{
 				Nonce:      event.MessageNonce.Uint64(),
-				MsgHash:    utils.ComputeMessageHash(event.Target, event.Sender, event.Value, event.Fee, event.Deadline, event.Message, event.MessageNonce).String(),
+				MsgHash:    utils.ComputeMessageHash(event.Sender, event.Target, event.Value, event.Fee, event.Deadline, event.Message, event.MessageNonce).String(),
 				Height:     bigint.NewUInt(vLog.BlockNumber),
 				Sender:     event.Sender.String(),
 				Value:      event.Value.String(),
@@ -262,7 +269,7 @@ func (w *Watcher) parseBridgeEventLogs(logs []types.Log) ([]*orm.L1Message, []re
 				Calldata:   common.Bytes2Hex(event.Message),
 				Layer1Hash: vLog.TxHash.Hex(),
 			})
-		case common.HexToHash(bridge_abi.RELAYED_MESSAGE_EVENT_SIGNATURE):
+		case common.HexToHash(bridge_abi.RelayedMessageEventSignature):
 			event := struct {
 				MsgHash common.Hash
 			}{}
@@ -273,7 +280,7 @@ func (w *Watcher) parseBridgeEventLogs(logs []types.Log) ([]*orm.L1Message, []re
 				txHash:       vLog.TxHash,
 				isSuccessful: true,
 			})
-		case common.HexToHash(bridge_abi.FAILED_RELAYED_MESSAGE_EVENT_SIGNATURE):
+		case common.HexToHash(bridge_abi.FailedRelayedMessageEventSignature):
 			event := struct {
 				MsgHash common.Hash
 			}{}
@@ -284,7 +291,7 @@ func (w *Watcher) parseBridgeEventLogs(logs []types.Log) ([]*orm.L1Message, []re
 				txHash:       vLog.TxHash,
 				isSuccessful: false,
 			})
-		case common.HexToHash(bridge_abi.COMMIT_BATCH_EVENT_SIGNATURE):
+		case common.HexToHash(bridge_abi.CommitBatchEventSignature):
 			event := struct {
 				BatchID    common.Hash
 				BatchHash  common.Hash
@@ -304,7 +311,7 @@ func (w *Watcher) parseBridgeEventLogs(logs []types.Log) ([]*orm.L1Message, []re
 				txHash:  vLog.TxHash,
 				status:  orm.RollupCommitted,
 			})
-		case common.HexToHash(bridge_abi.FINALIZED_BATCH_EVENT_SIGNATURE):
+		case common.HexToHash(bridge_abi.FinalizedBatchEventSignature):
 			event := struct {
 				BatchID    common.Hash
 				BatchHash  common.Hash
