@@ -219,7 +219,7 @@ func testL2RelayerSkipBatches(t *testing.T) {
 	createBatch := func(rollupStatus orm.RollupStatus, provingStatus orm.ProvingStatus) string {
 		dbTx, err := db.Beginx()
 		assert.NoError(t, err)
-		batchID, err := db.NewBatchInDBTx(dbTx, &orm.BlockInfo{}, &orm.BlockInfo{}, "0", 1, 194676) // startBlock & endBlock & parentHash & totalTxNum & totalL2Gas don't really matter here
+		batchID, err := db.NewBatchInDBTx(dbTx, &orm.BlockInfo{Number: bigint.NewInt(0)}, &orm.BlockInfo{Number: bigint.NewInt(0)}, "0", 1, 194676) // startBlock & endBlock & parentHash & totalTxNum & totalL2Gas don't really matter here
 		assert.NoError(t, err)
 		err = dbTx.Commit()
 		assert.NoError(t, err)
