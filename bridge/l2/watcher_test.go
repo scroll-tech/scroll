@@ -12,6 +12,7 @@ import (
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/ethclient"
+	"github.com/scroll-tech/go-ethereum/rpc"
 	"github.com/stretchr/testify/assert"
 
 	"scroll-tech/bridge/config"
@@ -36,7 +37,7 @@ func testCreateNewWatcherAndStop(t *testing.T) {
 	defer rc.Stop()
 
 	l1cfg := cfg.L1Config
-	l1cfg.RelayerConfig.SenderConfig.Confirmations = 0
+	l1cfg.RelayerConfig.SenderConfig.Confirmations = rpc.LatestBlockNumber
 	newSender, err := sender.NewSender(context.Background(), l1cfg.RelayerConfig.SenderConfig, l1cfg.RelayerConfig.MessageSenderPrivateKeys)
 	assert.NoError(t, err)
 
@@ -190,7 +191,8 @@ func testFetchMultipleSentMessageInOneBlock(t *testing.T) {
 }
 
 func prepareRelayerClient(l2Cli *ethclient.Client, bpCfg *config.BatchProposerConfig, db database.OrmFactory, contractAddr common.Address) *WatcherClient {
-	return NewL2WatcherClient(context.Background(), l2Cli, 0, bpCfg, contractAddr, db)
+	confirmations := rpc.LatestBlockNumber
+	return NewL2WatcherClient(context.Background(), l2Cli, confirmations, bpCfg, contractAddr, db)
 }
 
 func prepareAuth(t *testing.T, l2Cli *ethclient.Client, privateKey *ecdsa.PrivateKey) *bind.TransactOpts {

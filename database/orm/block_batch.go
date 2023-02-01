@@ -193,7 +193,7 @@ func (o *blockBatchOrm) ResetProvingStatusFor(before ProvingStatus) error {
 }
 
 func (o *blockBatchOrm) NewBatchInDBTx(dbTx *sqlx.Tx, startBlock *BlockInfo, endBlock *BlockInfo, parentHash string, totalTxNum uint64, totalL2Gas uint64) (string, error) {
-	row := dbTx.QueryRow("SELECT COALESCE(MAX(index), 0) FROM block_batch;")
+	row := dbTx.QueryRow("SELECT COALESCE(MAX(index), -1) FROM block_batch;")
 
 	// TODO: use *big.Int for this
 	var index int64
@@ -405,6 +405,15 @@ func (o *blockBatchOrm) GetAssignedBatchIDs() ([]string, error) {
 	}
 
 	return ids, rows.Close()
+}
+
+func (o *blockBatchOrm) GetBatchCount() (int64, error) {
+	row := o.db.QueryRow(`select count(*) from block_batch`)
+	var count int64
+	if err := row.Scan(&count); err != nil {
+		return -1, err
+	}
+	return count, nil
 }
 
 func (o *blockBatchOrm) UpdateSkippedBatches() (int64, error) {

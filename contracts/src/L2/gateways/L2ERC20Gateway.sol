@@ -7,6 +7,10 @@ import { IL2ERC20Gateway } from "./IL2ERC20Gateway.sol";
 // solhint-disable no-empty-blocks
 
 abstract contract L2ERC20Gateway is IL2ERC20Gateway {
+  /****************************
+   * Public Mutated Functions *
+   ****************************/
+
   /// @inheritdoc IL2ERC20Gateway
   function withdrawERC20(
     address _token,
@@ -36,6 +40,10 @@ abstract contract L2ERC20Gateway is IL2ERC20Gateway {
   ) external payable override {
     _withdraw(_token, _to, _amount, _data, _gasLimit);
   }
+
+  /**********************
+   * Internal Functions *
+   **********************/
 
   function _withdraw(
     address _token,

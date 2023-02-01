@@ -3,13 +3,15 @@ package config
 import (
 	"encoding/json"
 
+	"github.com/scroll-tech/go-ethereum/rpc"
+
 	"github.com/scroll-tech/go-ethereum/common"
 )
 
 // L2Config loads l2geth configuration items.
 type L2Config struct {
 	// Confirmations block height confirmations number.
-	Confirmations uint64 `json:"confirmations"`
+	Confirmations rpc.BlockNumber `json:"confirmations"`
 	// l2geth node url.
 	Endpoint string `json:"endpoint"`
 	// The messenger contract address deployed on layer 2 chain.

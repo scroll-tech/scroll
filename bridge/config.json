@@ -1,6 +1,6 @@
 {
   "l1_config": {
-    "confirmations": 6,
+    "confirmations": "0x6",
     "endpoint": "https://goerli.infura.io/v3/9aa3d95b3bc440fa88ea12eaa4456161",
     "l1_messenger_address": "0x0000000000000000000000000000000000000000",
     "rollup_contract_address": "0x0000000000000000000000000000000000000000",
@@ -11,11 +11,11 @@
         "endpoint": "/var/lib/jenkins/workspace/SequencerPipeline/MyPrivateNetwork/geth.ipc",
         "check_pending_time": 3,
         "escalate_blocks": 100,
-        "confirmations": 1,
+        "confirmations": "0x1",
         "escalate_multiple_num": 11,
         "escalate_multiple_den": 10,
         "max_gas_price": 10000000000,
-        "tx_type": "AccessListTx",
+        "tx_type": "LegacyTx",
         "min_balance": 100000000000000000000
       },
       "message_sender_private_keys": [
@@ -24,7 +24,7 @@
     }
   },
   "l2_config": {
-    "confirmations": 1,
+    "confirmations": "0x1",
     "endpoint": "/var/lib/jenkins/workspace/SequencerPipeline/MyPrivateNetwork/geth.ipc",
     "l2_messenger_address": "0x0000000000000000000000000000000000000000",
     "relayer_config": {
@@ -34,11 +34,11 @@
         "endpoint": "https://goerli.infura.io/v3/9aa3d95b3bc440fa88ea12eaa4456161",
         "check_pending_time": 10,
         "escalate_blocks": 100,
-        "confirmations": 6,
+        "confirmations": "0x6",
         "escalate_multiple_num": 11,
         "escalate_multiple_den": 10,
         "max_gas_price": 10000000000,
-        "tx_type": "DynamicFeeTx",
+        "tx_type": "LegacyTx",
         "min_balance": 100000000000000000000
       },
       "message_sender_private_keys": [

@@ -31,19 +31,8 @@ contract MockScrollMessenger is IScrollMessenger {
 
   function sendMessage(
     address _to,
-    uint256 _fee,
-    bytes memory _message,
-    uint256 _gasLimit
-  ) external payable override {}
-
-  function dropMessage(
-    address _from,
-    address _to,
     uint256 _value,
-    uint256 _fee,
-    uint256 _deadline,
-    uint256 _nonce,
     bytes memory _message,
     uint256 _gasLimit
-  ) external override {}
+  ) external payable {}
 }

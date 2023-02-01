@@ -1,6 +1,7 @@
 package coordinator_test
 
 import (
+	"compress/flate"
 	"context"
 	"crypto/ecdsa"
 	"crypto/rand"
@@ -550,7 +551,7 @@ func setupCoordinator(t *testing.T, dbCfg *database.DBConfig, rollersPerSession 
 	assert.NoError(t, rollerManager.Start())
 
 	// start ws service
-	handler, _, err = utils.StartWSEndpoint(strings.Split(wsURL, "//")[1], rollerManager.APIs())
+	handler, _, err = utils.StartWSEndpoint(strings.Split(wsURL, "//")[1], rollerManager.APIs(), flate.NoCompression)
 	assert.NoError(t, err)
 
 	return rollerManager, handler

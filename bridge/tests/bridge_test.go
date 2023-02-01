@@ -4,18 +4,20 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"math/big"
-	"scroll-tech/common/docker"
 	"testing"
-
-	"scroll-tech/bridge/config"
-	"scroll-tech/bridge/mock_bridge"
 
 	"github.com/scroll-tech/go-ethereum/accounts/abi/bind"
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/crypto"
 	"github.com/scroll-tech/go-ethereum/ethclient"
+	"github.com/scroll-tech/go-ethereum/rpc"
 	"github.com/stretchr/testify/assert"
+
+	"scroll-tech/bridge/config"
+	"scroll-tech/bridge/mock_bridge"
+
+	"scroll-tech/common/docker"
 )
 
 var (
@@ -63,10 +65,10 @@ func setupEnv(t *testing.T) {
 	// Load config.
 	cfg, err = config.NewConfig("../config.json")
 	assert.NoError(t, err)
-	cfg.L1Config.Confirmations = 0
+	cfg.L1Config.Confirmations = rpc.LatestBlockNumber
 	cfg.L1Config.RelayerConfig.MessageSenderPrivateKeys = []*ecdsa.PrivateKey{messagePrivateKey}
 	cfg.L1Config.RelayerConfig.RollupSenderPrivateKeys = []*ecdsa.PrivateKey{rollupPrivateKey}
-	cfg.L2Config.Confirmations = 0
+	cfg.L2Config.Confirmations = rpc.LatestBlockNumber
 	cfg.L2Config.RelayerConfig.MessageSenderPrivateKeys = []*ecdsa.PrivateKey{messagePrivateKey}
 	cfg.L2Config.RelayerConfig.RollupSenderPrivateKeys = []*ecdsa.PrivateKey{rollupPrivateKey}
 

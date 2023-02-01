@@ -44,7 +44,7 @@ pub unsafe extern "C" fn create_agg_proof_multi(trace_char: *const c_char) -> *c
     let proof = PROVER
         .get_mut()
         .unwrap()
-        .create_agg_circuit_proof_multi(traces.as_slice())
+        .create_agg_circuit_proof_batch(traces.as_slice())
         .unwrap();
     let proof_bytes = serde_json::to_vec(&proof).unwrap();
     vec_to_c_char(proof_bytes)

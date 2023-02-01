@@ -14,6 +14,8 @@ import (
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/event"
 	"github.com/scroll-tech/go-ethereum/log"
+	"github.com/scroll-tech/go-ethereum/metrics"
+	"github.com/scroll-tech/go-ethereum/rpc"
 
 	bridge_abi "scroll-tech/bridge/abi"
 	"scroll-tech/bridge/utils"
@@ -22,6 +24,11 @@ import (
 	"scroll-tech/database/orm"
 
 	"scroll-tech/bridge/config"
+)
+
+// Metrics
+var (
+	bridgeL2MsgSyncHeightGauge = metrics.NewRegisteredGauge("bridge/l2/msg/sync/height", nil)
 )
 
 type relayedMessage struct {
@@ -39,7 +46,7 @@ type WatcherClient struct {
 
 	orm database.OrmFactory
 
-	confirmations    uint64
+	confirmations    rpc.BlockNumber
 	messengerAddress common.Address
 	messengerABI     *abi.ABI
 
@@ -53,14 +60,14 @@ type WatcherClient struct {
 }
 
 // NewL2WatcherClient take a l2geth instance to generate a l2watcherclient instance
-func NewL2WatcherClient(ctx context.Context, client *ethclient.Client, confirmations uint64, bpCfg *config.BatchProposerConfig, messengerAddress common.Address, orm database.OrmFactory) *WatcherClient {
+func NewL2WatcherClient(ctx context.Context, client *ethclient.Client, confirmations rpc.BlockNumber, bpCfg *config.BatchProposerConfig, messengerAddress common.Address, orm database.OrmFactory) *WatcherClient {
 	savedHeight, err := orm.GetLayer2LatestWatchedHeight()
 	if err != nil {
 		log.Warn("fetch height from db failed", "err", err)
 		savedHeight = 0
 	}
 
-	return &WatcherClient{
+	w := WatcherClient{
 		ctx:                ctx,
 		Client:             client,
 		orm:                orm,
@@ -72,6 +79,75 @@ func NewL2WatcherClient(ctx context.Context, client *ethclient.Client, confirmat
 		stopped:            0,
 		batchProposer:      newBatchProposer(bpCfg, orm),
 	}
+
+	// Initialize genesis before we do anything else
+	if err := w.initializeGenesis(); err != nil {
+		panic(fmt.Sprintf("failed to initialize L2 genesis batch, err: %v", err))
+	}
+
+	return &w
+}
+
+func (w *WatcherClient) initializeGenesis() error {
+	if count, err := w.orm.GetBatchCount(); err != nil {
+		return fmt.Errorf("failed to get batch count: %v", err)
+	} else if count > 0 {
+		log.Info("genesis already imported")
+		return nil
+	}
+
+	genesis, err := w.HeaderByNumber(w.ctx, big.NewInt(0))
+	if err != nil {
+		return fmt.Errorf("failed to retrieve L2 genesis header: %v", err)
+	}
+
+	// EIP1559 is disabled so the RPC won't return baseFeePerGas. However, l2geth
+	// still uses BaseFee when calculating the block hash. If we keep it as <nil>
+	// here the genesis hash will not match.
+	genesis.BaseFee = big.NewInt(0)
+
+	log.Info("retrieved L2 genesis header", "hash", genesis.Hash().String())
+
+	trace := &types.BlockTrace{
+		Coinbase:         nil,
+		Header:           genesis,
+		Transactions:     []*types.TransactionData{},
+		StorageTrace:     nil,
+		ExecutionResults: []*types.ExecutionResult{},
+		MPTWitness:       nil,
+	}
+
+	if err := w.orm.InsertBlockTraces([]*types.BlockTrace{trace}); err != nil {
+		return fmt.Errorf("failed to insert block traces: %v", err)
+	}
+
+	blocks, err := w.orm.GetUnbatchedBlocks(map[string]interface{}{})
+	if err != nil {
+		return err
+	}
+
+	if len(blocks) != 1 {
+		return fmt.Errorf("unexpected number of unbatched blocks in db, expected: 1, actual: %v", len(blocks))
+	}
+
+	batchID, err := w.batchProposer.createBatchForBlocks(blocks)
+	if err != nil {
+		return fmt.Errorf("failed to create batch: %v", err)
+	}
+
+	err = w.orm.UpdateProvingStatus(batchID, orm.ProvingTaskProved)
+	if err != nil {
+		return fmt.Errorf("failed to update genesis batch proving status: %v", err)
+	}
+
+	err = w.orm.UpdateRollupStatus(w.ctx, batchID, orm.RollupFinalized)
+	if err != nil {
+		return fmt.Errorf("failed to update genesis batch rollup status: %v", err)
+	}
+
+	log.Info("successfully imported genesis batch")
+
+	return nil
 }
 
 // Start the Listening process
@@ -94,17 +170,10 @@ func (w *WatcherClient) Start() {
 					return
 
 				case <-ticker.C:
-					// get current height
-					number, err := w.BlockNumber(ctx)
+					number, err := utils.GetLatestConfirmedBlockNumber(ctx, w.Client, w.confirmations)
 					if err != nil {
-						log.Error("failed to get_BlockNumber", "err", err)
+						log.Error("failed to get block number", "err", err)
 						continue
-					}
-
-					if number >= w.confirmations {
-						number = number - w.confirmations
-					} else {
-						number = 0
 					}
 
 					w.tryFetchRunningMissingBlocks(ctx, number)
@@ -123,17 +192,10 @@ func (w *WatcherClient) Start() {
 					return
 
 				case <-ticker.C:
-					// get current height
-					number, err := w.BlockNumber(ctx)
+					number, err := utils.GetLatestConfirmedBlockNumber(ctx, w.Client, w.confirmations)
 					if err != nil {
-						log.Error("failed to get_BlockNumber", "err", err)
+						log.Error("failed to get block number", "err", err)
 						continue
-					}
-
-					if number >= w.confirmations {
-						number = number - w.confirmations
-					} else {
-						number = 0
 					}
 
 					w.FetchContractEvent(number)
@@ -263,6 +325,7 @@ func (w *WatcherClient) FetchContractEvent(blockHeight uint64) {
 		}
 		if len(logs) == 0 {
 			w.processedMsgHeight = uint64(to)
+			bridgeL2MsgSyncHeightGauge.Update(to)
 			continue
 		}
 		log.Info("received new L2 messages", "fromBlock", from, "toBlock", to, "cnt", len(logs))
@@ -295,6 +358,7 @@ func (w *WatcherClient) FetchContractEvent(blockHeight uint64) {
 		}
 
 		w.processedMsgHeight = uint64(to)
+		bridgeL2MsgSyncHeightGauge.Update(to)
 	}
 }
 

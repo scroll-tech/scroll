@@ -38,10 +38,14 @@ func StartHTTPEndpoint(endpoint string, apis []rpc.API) (*http.Server, net.Addr,
 }
 
 // StartWSEndpoint starts the WS RPC endpoint.
-func StartWSEndpoint(endpoint string, apis []rpc.API) (*http.Server, net.Addr, error) {
+func StartWSEndpoint(endpoint string, apis []rpc.API, compressionLevel int) (*http.Server, net.Addr, error) {
 	handler, addr, err := StartHTTPEndpoint(endpoint, apis)
 	if err == nil {
 		srv := (handler.Handler).(*rpc.Server)
+		err = srv.SetCompressionLevel(compressionLevel)
+		if err != nil {
+			log.Error("failed to set ws compression level", "compression level", compressionLevel, "err", err)
+		}
 		handler.Handler = srv.WebsocketHandler(nil)
 	}
 	return handler, addr, err

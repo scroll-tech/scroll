@@ -3,19 +3,20 @@ package tests
 import (
 	"context"
 	"math/big"
-	"scroll-tech/database"
-	"scroll-tech/database/migrate"
-	"scroll-tech/database/orm"
-	"sync"
 	"testing"
-
-	"scroll-tech/bridge/l1"
-	"scroll-tech/bridge/l2"
 
 	"github.com/scroll-tech/go-ethereum/accounts/abi/bind"
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/core/types"
+	"github.com/scroll-tech/go-ethereum/rpc"
 	"github.com/stretchr/testify/assert"
+
+	"scroll-tech/database"
+	"scroll-tech/database/migrate"
+	"scroll-tech/database/orm"
+
+	"scroll-tech/bridge/l1"
+	"scroll-tech/bridge/l2"
 )
 
 func testRelayL2MessageSucceed(t *testing.T) {
@@ -24,9 +25,6 @@ func testRelayL2MessageSucceed(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(db.GetDB().DB))
 	defer db.Close()
-
-	var wg sync.WaitGroup
-	wg.Add(3)
 
 	prepareContracts(t)
 
@@ -37,11 +35,12 @@ func testRelayL2MessageSucceed(t *testing.T) {
 	defer l2Relayer.Stop()
 
 	// Create L2Watcher
-	l2Watcher := l2.NewL2WatcherClient(context.Background(), l2Client, 0, l2Cfg.BatchProposerConfig, l2Cfg.L2MessengerAddress, db)
+	confirmations := rpc.LatestBlockNumber
+	l2Watcher := l2.NewL2WatcherClient(context.Background(), l2Client, confirmations, l2Cfg.BatchProposerConfig, l2Cfg.L2MessengerAddress, db)
 
 	// Create L1Watcher
 	l1Cfg := cfg.L1Config
-	l1Watcher := l1.NewWatcher(context.Background(), l1Client, 0, 0, l1Cfg.L1MessengerAddress, l1Cfg.RollupContractAddress, db)
+	l1Watcher := l1.NewWatcher(context.Background(), l1Client, 0, confirmations, l1Cfg.L1MessengerAddress, l1Cfg.RollupContractAddress, db)
 
 	// send message through l2 messenger contract
 	nonce, err := l2MessengerInstance.MessageNonce(&bind.CallOpts{})
@@ -111,7 +110,7 @@ func testRelayL2MessageSucceed(t *testing.T) {
 	assert.NoError(t, err)
 
 	// process pending batch and check status
-	l2Relayer.ProcessPendingBatches(&wg)
+	l2Relayer.ProcessPendingBatches()
 	status, err := db.GetRollupStatus(batchID)
 	assert.NoError(t, err)
 	assert.Equal(t, orm.RollupCommitting, status)
@@ -132,7 +131,7 @@ func testRelayL2MessageSucceed(t *testing.T) {
 	assert.Equal(t, orm.RollupCommitted, status)
 
 	// process committed batch and check status
-	l2Relayer.ProcessCommittedBatches(&wg)
+	l2Relayer.ProcessCommittedBatches()
 	status, err = db.GetRollupStatus(batchID)
 	assert.NoError(t, err)
 	assert.Equal(t, orm.RollupFinalizing, status)
@@ -153,7 +152,7 @@ func testRelayL2MessageSucceed(t *testing.T) {
 	assert.Equal(t, orm.RollupFinalized, status)
 
 	// process l2 messages
-	l2Relayer.ProcessSavedEvents(&wg)
+	l2Relayer.ProcessSavedEvents()
 	msg, err = db.GetL2MessageByNonce(nonce.Uint64())
 	assert.NoError(t, err)
 	assert.Equal(t, msg.Status, orm.MsgSubmitted)
