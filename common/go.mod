@@ -9,8 +9,8 @@ require (
 	github.com/mattn/go-colorable v0.1.8
 	github.com/mattn/go-isatty v0.0.14
 	github.com/orcaman/concurrent-map v1.0.0
-	github.com/scroll-tech/go-ethereum v1.10.14-0.20230112091133-2891916a0f81
-	github.com/stretchr/testify v1.8.0
+	github.com/scroll-tech/go-ethereum v1.10.14-0.20230127005331-08ba436d8bb3
+	github.com/stretchr/testify v1.8.1
 	github.com/urfave/cli/v2 v2.10.2
 )
 
@@ -67,7 +67,7 @@ require (
 	github.com/rogpeppe/go-internal v1.8.1 // indirect
 	github.com/rs/cors v1.7.0 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
-	github.com/scroll-tech/zktrie v0.3.1 // indirect
+	github.com/scroll-tech/zktrie v0.4.1 // indirect
 	github.com/shirou/gopsutil v3.21.11+incompatible // indirect
 	github.com/sirupsen/logrus v1.9.0 // indirect
 	github.com/status-im/keycard-go v0.0.0-20190316090335-8537d3370df4 // indirect

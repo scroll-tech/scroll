@@ -15,8 +15,7 @@ import (
 	"scroll-tech/common/version"
 
 	"scroll-tech/bridge/config"
-	"scroll-tech/bridge/l1"
-	"scroll-tech/bridge/l2"
+	eventwatcher "scroll-tech/bridge/multibin/event-watcher"
 )
 
 var (
@@ -63,11 +62,11 @@ func action(ctx *cli.Context) error {
 		log.Crit("failed to connect l1 geth", "config file", cfgFile, "error", err)
 	}
 	var (
-		l1watcher *l1.Watcher
-		l2watcher *l2.WatcherClient
+		l1watcher *eventwatcher.L1EventWatcher
+		l2watcher *eventwatcher.L2EventWatcher
 	)
-	l1watcher = l1.NewWatcher(ctx.Context, l1client, cfg.L1Config.StartHeight, cfg.L1Config.Confirmations, cfg.L1Config.L1MessengerAddress, cfg.L1Config.RollupContractAddress, ormFactory)
-	l2watcher, err = l2.NewL2WatcherClient(ctx.Context, l2client, cfg.L2Config.Confirmations, cfg.L2Config.BatchProposerConfig, cfg.L2Config.L2MessengerAddress, ormFactory)
+	l1watcher = eventwatcher.NewL1EventWatcher(ctx.Context, l1client, cfg.L1Config, ormFactory)
+	l2watcher, err = eventwatcher.NewL2EventWatcher(ctx.Context, l2client, cfg.L2Config, ormFactory)
 	if err != nil {
 		return err
 	}

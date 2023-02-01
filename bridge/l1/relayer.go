@@ -66,6 +66,11 @@ func NewLayer1Relayer(ctx context.Context, l1ConfirmNum int64, db orm.L1MessageO
 	}, nil
 }
 
+// GetConfirmCh returns the confirmation channel
+func (r *Layer1Relayer) GetConfirmCh() <-chan *sender.Confirmation {
+	return r.confirmationCh
+}
+
 // ProcessSavedEvents relays saved un-processed cross-domain transactions to desired blockchain
 func (r *Layer1Relayer) ProcessSavedEvents() {
 	// msgs are sorted by nonce in increasing order

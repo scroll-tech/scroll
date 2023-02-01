@@ -5,8 +5,8 @@ go 1.18
 require (
 	github.com/orcaman/concurrent-map v1.0.0
 	github.com/patrickmn/go-cache v2.1.0+incompatible
-	github.com/scroll-tech/go-ethereum v1.10.14-0.20230112091133-2891916a0f81
-	github.com/stretchr/testify v1.8.0
+	github.com/scroll-tech/go-ethereum v1.10.14-0.20230127005331-08ba436d8bb3
+	github.com/stretchr/testify v1.8.1
 	github.com/urfave/cli/v2 v2.10.2
 	golang.org/x/sync v0.1.0
 )
@@ -29,7 +29,7 @@ require (
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/rogpeppe/go-internal v1.8.1 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
-	github.com/scroll-tech/zktrie v0.3.1 // indirect
+	github.com/scroll-tech/zktrie v0.4.1 // indirect
 	github.com/shirou/gopsutil v3.21.11+incompatible // indirect
 	github.com/tklauser/go-sysconf v0.3.10 // indirect
 	github.com/tklauser/numcpus v0.4.0 // indirect

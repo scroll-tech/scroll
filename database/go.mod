@@ -7,8 +7,9 @@ require (
 	github.com/lib/pq v1.10.6
 	github.com/mattn/go-sqlite3 v1.14.14
 	github.com/pressly/goose/v3 v3.7.0
-	github.com/scroll-tech/go-ethereum v1.10.14-0.20230112091133-2891916a0f81
-	github.com/stretchr/testify v1.8.0
+	github.com/redis/go-redis/v9 v9.0.0-rc.4
+	github.com/scroll-tech/go-ethereum v1.10.14-0.20230127005331-08ba436d8bb3
+	github.com/stretchr/testify v1.8.1
 	github.com/urfave/cli/v2 v2.10.2
 )
 
@@ -24,7 +25,7 @@ require (
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/rogpeppe/go-internal v1.8.1 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
-	github.com/scroll-tech/zktrie v0.3.1 // indirect
+	github.com/scroll-tech/zktrie v0.4.1 // indirect
 	github.com/shirou/gopsutil v3.21.11+incompatible // indirect
 	github.com/xrash/smetrics v0.0.0-20201216005158-039620a65673 // indirect
 	github.com/yusufpapurcu/wmi v1.2.2 // indirect

@@ -3,8 +3,8 @@ module scroll-tech/integration-test
 go 1.18
 
 require (
-	github.com/scroll-tech/go-ethereum v1.10.14-0.20221221073256-5ca70bf3a257
-	github.com/stretchr/testify v1.8.0
+	github.com/scroll-tech/go-ethereum v1.10.14-0.20230127005331-08ba436d8bb3
+	github.com/stretchr/testify v1.8.1
 )
 
 require (

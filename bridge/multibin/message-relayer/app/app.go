@@ -5,7 +5,6 @@ import (
 	"os"
 	"os/signal"
 
-	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/urfave/cli/v2"
 
@@ -15,8 +14,7 @@ import (
 	"scroll-tech/common/version"
 
 	"scroll-tech/bridge/config"
-	"scroll-tech/bridge/l1"
-	"scroll-tech/bridge/l2"
+	messagerelayer "scroll-tech/bridge/multibin/message-relayer"
 )
 
 var (
@@ -54,30 +52,21 @@ func action(ctx *cli.Context) error {
 		log.Crit("failed to init db connection", "err", err)
 	}
 
-	l1client, err := ethclient.Dial(cfg.L1Config.Endpoint)
-	if err != nil {
-		log.Crit("failed to connect l1 geth", "config file", cfgFile, "error", err)
-	}
-
-	l2client, err := ethclient.Dial(cfg.L1Config.Endpoint)
-	if err != nil {
-		log.Crit("failed to connect l1 geth", "config file", cfgFile, "error", err)
-	}
 	var (
-		l1relayer *l1.Layer1Relayer
-		l2relayer *l2.Layer2Relayer
+		l1relayer *messagerelayer.L1MsgRelayer
+		l2relayer *messagerelayer.L2MsgRelayer
 	)
-	l1watcher, err = l1.NewLayer1Relayer(ctx.Context, l1client, int64(cfg.L1Config.Confirmations), ormFactory, cfg.L1Config.RelayerConfig)
+	l1relayer, err = messagerelayer.NewL1MsgRelayer(ctx.Context, int64(cfg.L1Config.Confirmations), ormFactory, cfg.L1Config.RelayerConfig)
 	if err != nil {
 		log.Crit("failed to create new l1 relayer", "config file", cfgFile, "error", err)
 	}
-	l2watcher, err = l2.NewLayer2Relayer(ctx.Context, ormFactory, cfg.L2Config.RelayerConfig)
+	l2relayer, err = messagerelayer.NewL2MsgRelayer(ctx.Context, ormFactory, cfg.L2Config.RelayerConfig)
 	if err != nil {
 		log.Crit("failed to creatw new l2 relayer", "config file", cfgFile, "error", err)
 	}
 	defer func() {
-		l1watcher.Stop()
-		l2watcher.Stop()
+		l1relayer.Stop()
+		l2relayer.Stop()
 		err = ormFactory.Close()
 		if err != nil {
 			log.Error("can not close ormFactory", "error", err)
@@ -85,8 +74,8 @@ func action(ctx *cli.Context) error {
 	}()
 
 	// Start all modules.
-	l1watcher.Start()
-	l2watcher.Start()
+	l1relayer.Start()
+	l2relayer.Start()
 	log.Info("Start event-watcher successfully")
 
 	// Catch CTRL-C to ensure a graceful shutdown.

@@ -93,6 +93,11 @@ func NewLayer2Relayer(ctx context.Context, db database.OrmFactory, cfg *config.R
 	}, nil
 }
 
+// GetMsgConfirmCh returns the messageCh in layer2Relayer
+func (r *Layer2Relayer) GetMsgConfirmCh() <-chan *sender.Confirmation {
+	return r.messageCh
+}
+
 const processMsgLimit = 100
 
 // ProcessSavedEvents relays saved un-processed cross-domain transactions to desired blockchain
@@ -417,9 +422,9 @@ func (r *Layer2Relayer) Start() {
 				go r.ProcessCommittedBatches(&wg)
 				wg.Wait()
 			case confirmation := <-r.messageCh:
-				r.handleConfirmation(confirmation)
+				r.HandleConfirmation(confirmation)
 			case confirmation := <-r.rollupCh:
-				r.handleConfirmation(confirmation)
+				r.HandleConfirmation(confirmation)
 			case <-r.stopCh:
 				return
 			}
@@ -432,7 +437,8 @@ func (r *Layer2Relayer) Stop() {
 	close(r.stopCh)
 }
 
-func (r *Layer2Relayer) handleConfirmation(confirmation *sender.Confirmation) {
+// HandleConfirmation process received confirmation result
+func (r *Layer2Relayer) HandleConfirmation(confirmation *sender.Confirmation) {
 	if !confirmation.IsSuccessful {
 		log.Warn("transaction confirmed but failed in layer1", "confirmation", confirmation)
 		return
