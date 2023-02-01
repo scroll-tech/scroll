@@ -70,6 +70,9 @@ contract ZKRollup is Version, OwnableUpgradeable, IZKRollup {
   /// @notice Mapping from batch index to finalized batch id.
   mapping(uint256 => bytes32) public finalizedBatches;
 
+  /// @notice The address of EnforcedTransactionQueue.
+  address public enforcedTransactionQueue;
+
   /**********************
    * Function Modifiers *
    **********************/
@@ -84,10 +87,11 @@ contract ZKRollup is Version, OwnableUpgradeable, IZKRollup {
    * Constructor *
    ***************/
 
-  function initialize(uint256 _chainId) public initializer {
+  function initialize(uint256 _chainId, address _enforcedTransactionQueue) public initializer {
     OwnableUpgradeable.__Ownable_init();
 
     layer2ChainId = _chainId;
+    enforcedTransactionQueue = _enforcedTransactionQueue;
   }
 
   /*************************
@@ -190,6 +194,7 @@ contract ZKRollup is Version, OwnableUpgradeable, IZKRollup {
       Layer2BlockHeader memory _block = _batch.blocks[i];
       Layer2BlockStored storage _blockStored = blocks[_block.blockHash];
       _blockStored.parentHash = _block.parentHash;
+      // @todo check the status of EnforcedTransactionQueue
       _blockStored.transactionRoot = _computeTransactionRoot(_block.txs);
       _blockStored.blockHeight = _block.blockHeight;
       _blockStored.batchIndex = _batch.batchIndex;
