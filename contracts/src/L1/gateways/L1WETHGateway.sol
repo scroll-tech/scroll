@@ -10,6 +10,7 @@ import { L1ERC20Gateway, IL1ERC20Gateway } from "./L1ERC20Gateway.sol";
 import { IL1ScrollMessenger } from "../IL1ScrollMessenger.sol";
 import { IWETH } from "../../interfaces/IWETH.sol";
 import { IL2ERC20Gateway } from "../../L2/gateways/IL2ERC20Gateway.sol";
+import { Version } from "../../libraries/common/Version.sol";
 import { ScrollGatewayBase, IScrollGateway } from "../../libraries/gateway/ScrollGatewayBase.sol";
 
 /// @title L1WETHGateway
@@ -19,7 +20,7 @@ import { ScrollGatewayBase, IScrollGateway } from "../../libraries/gateway/Scrol
 /// as Ether and then the Ether will be sent to the `L1ScrollMessenger` contract.
 /// On finalizing withdraw, the Ether will be transfered from `L1ScrollMessenger`, then
 /// wrapped as WETH and finally transfer to recipient.
-contract L1WETHGateway is Initializable, ScrollGatewayBase, L1ERC20Gateway {
+contract L1WETHGateway is Version, Initializable, ScrollGatewayBase, L1ERC20Gateway {
   using SafeERC20 for IERC20;
 
   /**************************************** Variables ****************************************/

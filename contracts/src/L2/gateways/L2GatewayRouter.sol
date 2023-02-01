@@ -8,6 +8,7 @@ import { IL2GatewayRouter } from "./IL2GatewayRouter.sol";
 import { IL2ERC20Gateway } from "./IL2ERC20Gateway.sol";
 import { IL2ScrollMessenger } from "../IL2ScrollMessenger.sol";
 import { IL1GatewayRouter } from "../../L1/gateways/IL1GatewayRouter.sol";
+import { Version } from "../../libraries/common/Version.sol";
 import { IScrollGateway } from "../../libraries/gateway/IScrollGateway.sol";
 import { ScrollGatewayBase } from "../../libraries/gateway/ScrollGatewayBase.sol";
 import { IScrollStandardERC20 } from "../../libraries/token/IScrollStandardERC20.sol";
@@ -17,7 +18,7 @@ import { IScrollStandardERC20 } from "../../libraries/token/IScrollStandardERC20
 /// All deposited tokens are routed to corresponding gateways.
 /// @dev One can also use this contract to query L1/L2 token address mapping.
 /// In the future, ERC-721 and ERC-1155 tokens will be added to the router too.
-contract L2GatewayRouter is OwnableUpgradeable, ScrollGatewayBase, IL2GatewayRouter {
+contract L2GatewayRouter is Version, OwnableUpgradeable, ScrollGatewayBase, IL2GatewayRouter {
   /**************************************** Events ****************************************/
 
   event SetDefaultERC20Gateway(address indexed _defaultERC20Gateway);

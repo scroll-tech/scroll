@@ -364,6 +364,23 @@ Update the address of operator.
 |---|---|---|
 | _newOperator | address | The new operator address to update. |
 
+### version
+
+```solidity
+function version() external view returns (string)
+```
+
+the current contract version.
+
+
+
+
+#### Returns
+
+| Name | Type | Description |
+|---|---|---|
+| _0 | string | undefined |
+
 
 
 ## Events

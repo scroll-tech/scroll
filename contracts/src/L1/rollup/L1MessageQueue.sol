@@ -2,12 +2,13 @@
 
 pragma solidity ^0.8.0;
 
+import { Version } from "../../libraries/common/Version.sol";
 import { IL1MessageQueue } from "./IL1MessageQueue.sol";
 
 /// @title L1MessageQueue
 /// @notice This contract will hold all L1 to L2 messages.
 /// Each appended message is assigned with a unique and increasing `uint256` index denoting the message nonce.
-contract L1MessageQueue is IL1MessageQueue {
+contract L1MessageQueue is Version, IL1MessageQueue {
   /*************
    * Constants *
    *************/

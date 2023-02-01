@@ -6,6 +6,7 @@ import { IL2ScrollMessenger, IScrollMessenger } from "./IL2ScrollMessenger.sol";
 import { L2MessageQueue } from "./predeploys/L2MessageQueue.sol";
 import { IL1BlockContainer } from "./predeploys/IL1BlockContainer.sol";
 import { OwnableBase } from "../libraries/common/OwnableBase.sol";
+import { Version } from "../libraries/common/Version.sol";
 import { IGasOracle } from "../libraries/oracle/IGasOracle.sol";
 import { ScrollConstants } from "../libraries/ScrollConstants.sol";
 import { ScrollMessengerBase } from "../libraries/ScrollMessengerBase.sol";
@@ -19,7 +20,7 @@ import { ScrollMessengerBase } from "../libraries/ScrollMessengerBase.sol";
 ///
 /// @dev It should be a predeployed contract in layer 2 and should hold infinite amount
 /// of Ether (Specifically, `uint256(-1)`), which can be initialized in Genesis Block.
-contract L2ScrollMessenger is ScrollMessengerBase, OwnableBase, IL2ScrollMessenger {
+contract L2ScrollMessenger is Version, ScrollMessengerBase, OwnableBase, IL2ScrollMessenger {
   /**************************************** Variables ****************************************/
 
   /// @notice Mapping from relay id to relay status.
@@ -36,7 +37,7 @@ contract L2ScrollMessenger is ScrollMessengerBase, OwnableBase, IL2ScrollMesseng
 
   constructor(address _owner) {
     ScrollMessengerBase._initialize();
-    owner = _owner;
+    _transferOwnership(_owner);
 
     // initialize to a nonzero value
     xDomainMessageSender = ScrollConstants.DEFAULT_XDOMAIN_MESSAGE_SENDER;

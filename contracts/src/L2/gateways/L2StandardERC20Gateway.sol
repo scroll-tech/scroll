@@ -10,6 +10,7 @@ import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 import { IL2ERC20Gateway, L2ERC20Gateway } from "./L2ERC20Gateway.sol";
 import { IL2ScrollMessenger } from "../IL2ScrollMessenger.sol";
 import { IL1ERC20Gateway } from "../../L1/gateways/IL1ERC20Gateway.sol";
+import { Version } from "../../libraries/common/Version.sol";
 import { IScrollStandardERC20 } from "../../libraries/token/IScrollStandardERC20.sol";
 import { ScrollStandardERC20 } from "../../libraries/token/ScrollStandardERC20.sol";
 import { IScrollStandardERC20Factory } from "../../libraries/token/IScrollStandardERC20Factory.sol";
@@ -21,7 +22,7 @@ import { ScrollGatewayBase, IScrollGateway } from "../../libraries/gateway/Scrol
 /// @dev The withdrawn ERC20 tokens will be burned directly. On finalizing deposit, the corresponding
 /// token will be minted and transfered to the recipient. Any ERC20 that requires non-standard functionality
 /// should use a separate gateway.
-contract L2StandardERC20Gateway is Initializable, ScrollGatewayBase, L2ERC20Gateway {
+contract L2StandardERC20Gateway is Version, Initializable, ScrollGatewayBase, L2ERC20Gateway {
   using SafeERC20 for IERC20;
   using Address for address;
 

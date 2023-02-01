@@ -3,10 +3,11 @@
 pragma solidity ^0.8.0;
 
 import { IL2ERC20Gateway } from "./IL2ERC20Gateway.sol";
+import { Version } from "../../libraries/common/Version.sol";
 
 // solhint-disable no-empty-blocks
 
-abstract contract L2ERC20Gateway is IL2ERC20Gateway {
+abstract contract L2ERC20Gateway is Version, IL2ERC20Gateway {
   /// @inheritdoc IL2ERC20Gateway
   function withdrawERC20(
     address _token,

@@ -129,6 +129,7 @@ describe("L1BlockContainer", async () => {
           test.parentHash,
           test.blockHeight - 1,
           test.blockTimestamp - 1,
+          test.baseFee,
           test.stateRoot
         );
         const Whitelist = await ethers.getContractFactory("Whitelist", deployer);
@@ -144,6 +145,7 @@ describe("L1BlockContainer", async () => {
           test.parentHash,
           test.blockHeight - 1,
           test.blockTimestamp - 1,
+          test.baseFee,
           test.stateRoot
         );
         const headerRLP = encodeHeader(test);
@@ -158,6 +160,7 @@ describe("L1BlockContainer", async () => {
           test.parentHash,
           test.blockHeight - 1,
           test.blockTimestamp - 1,
+          test.baseFee,
           test.stateRoot
         );
         const headerRLP = encodeHeader(test);
@@ -172,6 +175,7 @@ describe("L1BlockContainer", async () => {
           constants.HashZero,
           test.blockHeight - 1,
           test.blockTimestamp - 1,
+          test.baseFee,
           test.stateRoot
         );
         const headerRLP = encodeHeader(test);
@@ -184,6 +188,7 @@ describe("L1BlockContainer", async () => {
           test.parentHash,
           test.blockHeight,
           test.blockTimestamp - 1,
+          test.baseFee,
           test.stateRoot
         );
         const headerRLP = encodeHeader(test);
@@ -196,6 +201,7 @@ describe("L1BlockContainer", async () => {
           test.parentHash,
           test.blockHeight - 1,
           test.blockTimestamp + 1,
+          test.baseFee,
           test.stateRoot
         );
         const headerRLP = encodeHeader(test);
@@ -210,16 +216,20 @@ describe("L1BlockContainer", async () => {
           test.parentHash,
           test.blockHeight - 1,
           test.blockTimestamp - 1,
+          test.baseFee,
           test.stateRoot
         );
         expect(await container.latestBlockHash()).to.eq(test.parentHash);
         const headerRLP = encodeHeader(test);
         await expect(container.importBlockHeader(test.hash, headerRLP, "0x"))
           .to.emit(container, "ImportBlock")
-          .withArgs(test.hash, test.blockHeight, test.blockTimestamp, test.stateRoot);
+          .withArgs(test.hash, test.blockHeight, test.blockTimestamp, test.baseFee, test.stateRoot);
         expect(await container.getStateRoot(test.hash)).to.eq(test.stateRoot);
         expect(await container.getBlockTimestamp(test.hash)).to.eq(test.blockTimestamp);
         expect(await container.latestBlockHash()).to.eq(test.hash);
+        expect(await container.latestBaseFee()).to.eq(test.baseFee);
+        expect(await container.latestBlockNumber()).to.eq(test.blockHeight);
+        expect(await container.latestBlockTimestamp()).to.eq(test.blockTimestamp);
       });
     });
   }
@@ -238,7 +248,14 @@ describe("L1BlockContainer", async () => {
       await container.deployed();
 
       const block = await ethers.provider.getBlock("latest");
-      await container.initialize(deployer.address, block.hash, block.number, block.timestamp, block.hash);
+      await container.initialize(
+        deployer.address,
+        block.hash,
+        block.number,
+        block.timestamp,
+        block.baseFeePerGas!,
+        block.hash
+      );
     });
 
     it("should revert, when block not imported", async () => {

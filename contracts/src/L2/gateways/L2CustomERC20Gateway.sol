@@ -8,6 +8,7 @@ import { IERC20Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC
 import { IL2ERC20Gateway, L2ERC20Gateway } from "./L2ERC20Gateway.sol";
 import { IL2ScrollMessenger } from "../IL2ScrollMessenger.sol";
 import { IL1ERC20Gateway } from "../../L1/gateways/IL1ERC20Gateway.sol";
+import { Version } from "../../libraries/common/Version.sol";
 import { ScrollGatewayBase, IScrollGateway } from "../../libraries/gateway/ScrollGatewayBase.sol";
 import { IScrollStandardERC20 } from "../../libraries/token/IScrollStandardERC20.sol";
 
@@ -16,7 +17,7 @@ import { IScrollStandardERC20 } from "../../libraries/token/IScrollStandardERC20
 /// finalize deposit the tokens from layer 1.
 /// @dev The withdrawn tokens tokens will be burned directly. On finalizing deposit, the corresponding
 /// tokens will be minted and transfered to the recipient.
-contract L2CustomERC20Gateway is OwnableUpgradeable, ScrollGatewayBase, L2ERC20Gateway {
+contract L2CustomERC20Gateway is Version, OwnableUpgradeable, ScrollGatewayBase, L2ERC20Gateway {
   /**************************************** Events ****************************************/
 
   /// @notice Emitted when token mapping for ERC20 token is updated.

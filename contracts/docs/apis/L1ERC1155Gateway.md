@@ -366,6 +366,23 @@ Update layer 2 to layer 2 token mapping.
 | _l1Token | address | The address of corresponding ERC1155 token in layer 2. |
 | _l2Token | address | undefined |
 
+### version
+
+```solidity
+function version() external view returns (string)
+```
+
+the current contract version.
+
+
+
+
+#### Returns
+
+| Name | Type | Description |
+|---|---|---|
+| _0 | string | undefined |
+
 
 
 ## Events

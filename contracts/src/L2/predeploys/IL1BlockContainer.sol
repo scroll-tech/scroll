@@ -11,26 +11,25 @@ interface IL1BlockContainer {
   /// @param blockHash The hash of the imported block.
   /// @param blockHeight The height of the imported block.
   /// @param blockTimestamp The timestamp of the imported block.
+  /// @param baseFee The base fee of the imported block.
   /// @param stateRoot The state root of the imported block.
-  event ImportBlock(bytes32 indexed blockHash, uint256 blockHeight, uint256 blockTimestamp, bytes32 stateRoot);
-
-  /***********
-   * Structs *
-   ***********/
-
-  /// @dev Compiler will pack this into single `uint256`.
-  struct BlockMetadata {
-    // The block height.
-    uint64 height;
-    // The block timestamp.
-    uint64 timestamp;
-    // The reserved field.
-    uint128 reserved;
-  }
+  event ImportBlock(bytes32 indexed blockHash, uint256 blockHeight, uint256 blockTimestamp, uint256 baseFee, bytes32 stateRoot);
 
   /*************************
    * Public View Functions *
    *************************/
+
+  /// @notice Return the latest imported block hash
+  function latestBlockHash() external view returns (bytes32);
+
+  /// @notice Return the latest imported L1 base fee
+  function latestBaseFee() external view returns (uint256);
+
+  /// @notice Return the latest imported block number
+  function latestBlockNumber() external view returns (uint256);
+
+  /// @notice Return the latest imported block timestamp
+  function latestBlockTimestamp() external view returns (uint256);
 
   /// @notice Check whether the message is included in the corresponding L1 block.
   /// @param blockHash The block hash where the message should in.

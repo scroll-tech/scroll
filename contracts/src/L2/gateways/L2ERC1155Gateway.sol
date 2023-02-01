@@ -9,6 +9,7 @@ import { ERC1155HolderUpgradeable } from "@openzeppelin/contracts-upgradeable/to
 import { IL2ERC1155Gateway } from "./IL2ERC1155Gateway.sol";
 import { IL2ScrollMessenger } from "../IL2ScrollMessenger.sol";
 import { IL1ERC1155Gateway } from "../../L1/gateways/IL1ERC1155Gateway.sol";
+import { Version } from "../../libraries/common/Version.sol";
 import { ScrollGatewayBase, IScrollGateway } from "../../libraries/gateway/ScrollGatewayBase.sol";
 import { IScrollERC1155 } from "../../libraries/token/IScrollERC1155.sol";
 
@@ -20,7 +21,7 @@ import { IScrollERC1155 } from "../../libraries/token/IScrollERC1155.sol";
 ///
 /// This will be changed if we have more specific scenarios.
 // @todo Current implementation doesn't support calling from `L2GatewayRouter`.
-contract L2ERC1155Gateway is OwnableUpgradeable, ERC1155HolderUpgradeable, ScrollGatewayBase, IL2ERC1155Gateway {
+contract L2ERC1155Gateway is Version, OwnableUpgradeable, ERC1155HolderUpgradeable, ScrollGatewayBase, IL2ERC1155Gateway {
   /**************************************** Events ****************************************/
 
   /// @notice Emitted when token mapping for ERC1155 token is updated.

@@ -11,6 +11,7 @@ import { L1ERC20Gateway, IL1ERC20Gateway } from "./L1ERC20Gateway.sol";
 import { IL1ScrollMessenger } from "../IL1ScrollMessenger.sol";
 import { IERC20Metadata } from "../../interfaces/IERC20Metadata.sol";
 import { IL2ERC20Gateway } from "../../L2/gateways/IL2ERC20Gateway.sol";
+import { Version } from "../../libraries/common/Version.sol";
 import { ScrollGatewayBase, IScrollGateway } from "../../libraries/gateway/ScrollGatewayBase.sol";
 
 /// @title L1StandardERC20Gateway
@@ -19,7 +20,7 @@ import { ScrollGatewayBase, IScrollGateway } from "../../libraries/gateway/Scrol
 /// @dev The deposited ERC20 tokens are held in this gateway. On finalizing withdraw, the corresponding
 /// token will be transfer to the recipient directly. Any ERC20 that requires non-standard functionality
 /// should use a separate gateway.
-contract L1StandardERC20Gateway is Initializable, ScrollGatewayBase, L1ERC20Gateway {
+contract L1StandardERC20Gateway is Version, Initializable, ScrollGatewayBase, L1ERC20Gateway {
   using SafeERC20 for IERC20;
 
   /**************************************** Variables ****************************************/

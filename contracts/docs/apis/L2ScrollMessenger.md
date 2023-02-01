@@ -295,6 +295,23 @@ Update whitelist contract.
 |---|---|---|
 | _newWhitelist | address | The address of new whitelist contract. |
 
+### version
+
+```solidity
+function version() external view returns (string)
+```
+
+the current contract version.
+
+
+
+
+#### Returns
+
+| Name | Type | Description |
+|---|---|---|
+| _0 | string | undefined |
+
 ### whitelist
 
 ```solidity

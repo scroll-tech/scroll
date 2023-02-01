@@ -9,6 +9,7 @@ import { SafeERC20Upgradeable } from "@openzeppelin/contracts-upgradeable/token/
 import { IL1ERC20Gateway, L1ERC20Gateway } from "./L1ERC20Gateway.sol";
 import { IL1ScrollMessenger } from "../IL1ScrollMessenger.sol";
 import { IL2ERC20Gateway } from "../../L2/gateways/IL2ERC20Gateway.sol";
+import { Version } from "../../libraries/common/Version.sol";
 import { ScrollGatewayBase, IScrollGateway } from "../../libraries/gateway/ScrollGatewayBase.sol";
 
 /// @title L1CustomERC20Gateway
@@ -16,7 +17,7 @@ import { ScrollGatewayBase, IScrollGateway } from "../../libraries/gateway/Scrol
 /// finalize withdraw the tokens from layer 2.
 /// @dev The deposited tokens are held in this gateway. On finalizing withdraw, the corresponding
 /// tokens will be transfer to the recipient directly.
-contract L1CustomERC20Gateway is OwnableUpgradeable, ScrollGatewayBase, L1ERC20Gateway {
+contract L1CustomERC20Gateway is Version, OwnableUpgradeable, ScrollGatewayBase, L1ERC20Gateway {
   using SafeERC20Upgradeable for IERC20Upgradeable;
 
   /**************************************** Events ****************************************/

@@ -3,6 +3,7 @@
 pragma solidity ^0.8.0;
 
 import { AppendOnlyMerkleTree } from "../../libraries/common/AppendOnlyMerkleTree.sol";
+import { Version } from "../../libraries/common/Version.sol";
 
 /// @title L2MessageQueue
 /// @notice The original idea is from Optimism, see [OVM_L2ToL1MessagePasser](https://github.com/ethereum-optimism/optimism/blob/develop/packages/contracts/contracts/L2/predeploys/OVM_L2ToL1MessagePasser.sol).
@@ -10,7 +11,7 @@ import { AppendOnlyMerkleTree } from "../../libraries/common/AppendOnlyMerkleTre
 /// of a message on L2. The L1 Cross Domain Messenger performs this proof in its
 /// _verifyStorageProof function, which verifies the existence of the transaction hash in this
 /// contract's `sentMessages` mapping.
-contract L2MessageQueue is AppendOnlyMerkleTree {
+contract L2MessageQueue is Version, AppendOnlyMerkleTree {
   /// @notice Emitted when a new message is added to the merkle tree.
   /// @param index The index of the corresponding message.
   /// @param messageHash The hash of the corresponding message.

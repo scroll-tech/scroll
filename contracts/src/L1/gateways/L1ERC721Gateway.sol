@@ -9,6 +9,7 @@ import { ERC721HolderUpgradeable } from "@openzeppelin/contracts-upgradeable/tok
 import { IL1ERC721Gateway } from "./IL1ERC721Gateway.sol";
 import { IL1ScrollMessenger } from "../IL1ScrollMessenger.sol";
 import { IL2ERC721Gateway } from "../../L2/gateways/IL2ERC721Gateway.sol";
+import { Version } from "../../libraries/common/Version.sol";
 import { ScrollGatewayBase, IScrollGateway } from "../../libraries/gateway/ScrollGatewayBase.sol";
 
 /// @title L1ERC721Gateway
@@ -19,7 +20,7 @@ import { ScrollGatewayBase, IScrollGateway } from "../../libraries/gateway/Scrol
 ///
 /// This will be changed if we have more specific scenarios.
 // @todo Current implementation doesn't support calling from `L1GatewayRouter`.
-contract L1ERC721Gateway is OwnableUpgradeable, ERC721HolderUpgradeable, ScrollGatewayBase, IL1ERC721Gateway {
+contract L1ERC721Gateway is Version, OwnableUpgradeable, ERC721HolderUpgradeable, ScrollGatewayBase, IL1ERC721Gateway {
   /**************************************** Events ****************************************/
 
   /// @notice Emitted when token mapping for ERC721 token is updated.

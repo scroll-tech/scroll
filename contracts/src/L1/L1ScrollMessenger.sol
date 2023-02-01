@@ -8,6 +8,7 @@ import { PausableUpgradeable } from "@openzeppelin/contracts-upgradeable/securit
 import { IZKRollup } from "./rollup/IZKRollup.sol";
 import { L1MessageQueue } from "./rollup/L1MessageQueue.sol";
 import { IL1ScrollMessenger, IScrollMessenger } from "./IL1ScrollMessenger.sol";
+import { Version } from "../libraries/common/Version.sol";
 import { IGasOracle } from "../libraries/oracle/IGasOracle.sol";
 import { ScrollConstants } from "../libraries/ScrollConstants.sol";
 import { ScrollMessengerBase } from "../libraries/ScrollMessengerBase.sol";
@@ -23,7 +24,7 @@ import { ZkTrieVerifier } from "../libraries/verifier/ZkTrieVerifier.sol";
 ///
 /// @dev All deposited Ether (including `WETH` deposited throng `L1WETHGateway`) will locked in
 /// this contract.
-contract L1ScrollMessenger is OwnableUpgradeable, PausableUpgradeable, ScrollMessengerBase, IL1ScrollMessenger {
+contract L1ScrollMessenger is Version, OwnableUpgradeable, PausableUpgradeable, ScrollMessengerBase, IL1ScrollMessenger {
   /*************
    * Variables *
    *************/

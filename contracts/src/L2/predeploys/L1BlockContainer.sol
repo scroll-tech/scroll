@@ -8,11 +8,12 @@ import { IL1BlockContainer } from "./IL1BlockContainer.sol";
 
 import { OwnableBase } from "../../libraries/common/OwnableBase.sol";
 import { IWhitelist } from "../../libraries/common/IWhitelist.sol";
+import { Version } from "../../libraries/common/Version.sol";
 import { PatriciaMerkleTrieVerifier } from "../../libraries/verifier/PatriciaMerkleTrieVerifier.sol";
 
 /// @title L1BlockContainer
 /// @notice This contract will maintain the list of blocks proposed in L1.
-contract L1BlockContainer is Initializable, OwnableBase, IL1BlockContainer {
+contract L1BlockContainer is Version, Initializable, OwnableBase, IL1BlockContainer {
   /**********
    * Events *
    **********/
@@ -32,6 +33,20 @@ contract L1BlockContainer is Initializable, OwnableBase, IL1BlockContainer {
   /// @notice The address of L1ScrollMessenger contract.
   address public immutable messenger;
 
+  /***********
+   * Structs *
+   ***********/
+
+  /// @dev Compiler will pack this into single `uint256`.
+  struct BlockMetadata {
+    // The block height.
+    uint64 height;
+    // The block timestamp.
+    uint64 timestamp;
+    // The base fee in the block.
+    uint128 baseFee;
+  }
+
   /*************
    * Variables *
    *************/
@@ -41,8 +56,8 @@ contract L1BlockContainer is Initializable, OwnableBase, IL1BlockContainer {
 
   // @todo change to ring buffer to save gas usage.
 
-  /// @notice The hash of last imported block.
-  bytes32 public latestBlockHash;
+  /// @inheritdoc IL1BlockContainer
+  bytes32 public override latestBlockHash;
 
   /// @notice Mapping from block hash to corresponding state root.
   mapping(bytes32 => bytes32) public stateRoot;
@@ -65,20 +80,36 @@ contract L1BlockContainer is Initializable, OwnableBase, IL1BlockContainer {
     bytes32 _startBlockHash,
     uint64 _startBlockHeight,
     uint64 _startBlockTimestamp,
+    uint128 _startBlockBaseFee,
     bytes32 _startStateRoot
   ) public initializer {
-    owner = _owner;
+    _transferOwnership(_owner);
 
     latestBlockHash = _startBlockHash;
     stateRoot[_startBlockHash] = _startStateRoot;
-    metadata[_startBlockHash] = BlockMetadata(_startBlockHeight, _startBlockTimestamp, 0);
+    metadata[_startBlockHash] = BlockMetadata(_startBlockHeight, _startBlockTimestamp, _startBlockBaseFee);
 
-    emit ImportBlock(_startBlockHash, _startBlockHeight, _startBlockTimestamp, _startStateRoot);
+    emit ImportBlock(_startBlockHash, _startBlockHeight, _startBlockTimestamp, _startBlockBaseFee, _startStateRoot);
   }
 
   /*************************
    * Public View Functions *
    *************************/
+
+  /// @inheritdoc IL1BlockContainer
+  function latestBaseFee() external override view returns (uint256) {
+    return metadata[latestBlockHash].baseFee;
+  }
+
+  /// @inheritdoc IL1BlockContainer
+  function latestBlockNumber() external override view returns (uint256) {
+    return metadata[latestBlockHash].height;
+  }
+
+  /// @inheritdoc IL1BlockContainer
+  function latestBlockTimestamp() external override view returns (uint256) {
+    return metadata[latestBlockHash].timestamp;
+  }
 
   /// @inheritdoc IL1BlockContainer
   function verifyMessageInclusionStatus(
@@ -181,6 +212,7 @@ contract L1BlockContainer is Initializable, OwnableBase, IL1BlockContainer {
     bytes32 _stateRoot;
     uint64 _height;
     uint64 _timestamp;
+    uint128 _baseFee;
 
     assembly {
       // reverts with error `msg`.
@@ -304,6 +336,8 @@ contract L1BlockContainer is Initializable, OwnableBase, IL1BlockContainer {
       _height := mload(add(memPtr, 0x100))
       // load block timestamp, 12-th entry
       _timestamp := mload(add(memPtr, 0x160))
+      // load base fee, 16-th entry
+      _baseFee := mload(add(memPtr, 0x1e0))
     }
     require(stateRoot[_parentHash] != bytes32(0), "Parent not imported");
     BlockMetadata memory _parentMetadata = metadata[_parentHash];
@@ -312,9 +346,9 @@ contract L1BlockContainer is Initializable, OwnableBase, IL1BlockContainer {
 
     latestBlockHash = _blockHash;
     stateRoot[_blockHash] = _stateRoot;
-    metadata[_blockHash] = BlockMetadata(_height, _timestamp, 0);
+    metadata[_blockHash] = BlockMetadata(_height, _timestamp, _baseFee);
 
-    emit ImportBlock(_blockHash, _height, _timestamp, _stateRoot);
+    emit ImportBlock(_blockHash, _height, _timestamp, _baseFee, _stateRoot);
   }
 
   /************************
