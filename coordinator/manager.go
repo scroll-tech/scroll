@@ -263,8 +263,7 @@ func (m *Manager) tryVerify(sess *session, batch *orm.BlockBatch) {
 		log.Error("Failed to verify zk proof", "proof id", batch.ID, "error", err)
 		return
 	} else {
-		success = true
-		log.Info("Verify zk proof successfully", "verification result", true, "proof id", batch.ID)
+		log.Info("Verify zk proof successfully", "verification result", success, "proof id", batch.ID)
 	}
 	if dbErr = m.orm.UpdateProvingStatus(batch.ID, orm.ProvingTaskVerified); dbErr != nil {
 		log.Error(
