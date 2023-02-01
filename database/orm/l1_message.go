@@ -45,8 +45,8 @@ func (m *l1MessageOrm) GetL1MessageByNonce(nonce uint64) (*L1Message, error) {
 }
 
 // GetL1MessagesByStatus fetch list of unprocessed messages given msg status
-func (m *l1MessageOrm) GetL1MessagesByStatus(status MsgStatus) ([]*L1Message, error) {
-	rows, err := m.db.Queryx(`SELECT nonce, msg_hash, height, sender, target, value, fee, gas_limit, deadline, calldata, layer1_hash, proof_height, message_proof, status FROM l1_message WHERE status = $1 ORDER BY nonce ASC;`, status)
+func (m *l1MessageOrm) GetL1MessagesByStatus(status MsgStatus, limit uint64) ([]*L1Message, error) {
+	rows, err := m.db.Queryx(`SELECT nonce, msg_hash, height, sender, target, value, fee, gas_limit, deadline, calldata, layer1_hash, proof_height, message_proof, status FROM l1_message WHERE status = $1 ORDER BY nonce ASC LIMIT $2;`, status, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -69,8 +69,8 @@ func (m *l1MessageOrm) GetL1MessagesByStatus(status MsgStatus) ([]*L1Message, er
 }
 
 // GetL1MessagesByStatusUpToHeight fetch list of messages given msg status and an upper limit on proof_height
-func (m *l1MessageOrm) GetL1MessagesByStatusUpToProofHeight(status MsgStatus, height uint64) ([]*L1Message, error) {
-	rows, err := m.db.Queryx(`SELECT nonce, msg_hash, height, sender, target, value, fee, gas_limit, deadline, calldata, layer1_hash, proof_height, message_proof, status FROM l1_message WHERE status = $1 AND proof_height <= $2 ORDER BY nonce ASC;`, status, height)
+func (m *l1MessageOrm) GetL1MessagesByStatusUpToProofHeight(status MsgStatus, height uint64, limit uint64) ([]*L1Message, error) {
+	rows, err := m.db.Queryx(`SELECT nonce, msg_hash, height, sender, target, value, fee, gas_limit, deadline, calldata, layer1_hash, proof_height, message_proof, status FROM l1_message WHERE status = $1 AND proof_height <= $2 ORDER BY nonce ASC LIMIT $2;;`, status, height, limit)
 	if err != nil {
 		return nil, err
 	}

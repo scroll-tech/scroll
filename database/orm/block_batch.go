@@ -236,8 +236,8 @@ func (o *blockBatchOrm) BatchRecordExist(id string) (bool, error) {
 	return true, nil
 }
 
-func (o *blockBatchOrm) GetPendingBatches() ([]string, error) {
-	rows, err := o.db.Queryx(`SELECT id FROM block_batch WHERE rollup_status = $1 ORDER BY index ASC`, RollupPending)
+func (o *blockBatchOrm) GetPendingBatches(limit uint64) ([]string, error) {
+	rows, err := o.db.Queryx(`SELECT id FROM block_batch WHERE rollup_status = $1 ORDER BY index ASC LIMIT $2`, RollupPending, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -260,7 +260,7 @@ func (o *blockBatchOrm) GetPendingBatches() ([]string, error) {
 }
 
 func (o *blockBatchOrm) GetLatestFinalizedBatch() (*BlockBatch, error) {
-	row := o.db.QueryRowx(`SELECT * FROM block_batch WHERE rollup_status = $1 OR rollup_status = $2 ORDER BY index DESC;`, RollupFinalized, RollupFinalizationSkipped)
+	row := o.db.QueryRowx(`select * from block_batch where index = (select max(index) from block_batch where rollup_status = $1);`, RollupFinalized)
 	batch := &BlockBatch{}
 	if err := row.StructScan(batch); err != nil {
 		return nil, err
@@ -268,8 +268,8 @@ func (o *blockBatchOrm) GetLatestFinalizedBatch() (*BlockBatch, error) {
 	return batch, nil
 }
 
-func (o *blockBatchOrm) GetCommittedBatches() ([]string, error) {
-	rows, err := o.db.Queryx(`SELECT id FROM block_batch WHERE rollup_status = $1 ORDER BY index ASC`, RollupCommitted)
+func (o *blockBatchOrm) GetCommittedBatches(limit uint64) ([]string, error) {
+	rows, err := o.db.Queryx(`SELECT id FROM block_batch WHERE rollup_status = $1 ORDER BY index ASC LIMIT $2`, RollupCommitted, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -405,4 +405,18 @@ func (o *blockBatchOrm) GetAssignedBatchIDs() ([]string, error) {
 	}
 
 	return ids, rows.Close()
+}
+
+func (o *blockBatchOrm) UpdateSkippedBatches() (int64, error) {
+	res, err := o.db.Exec(o.db.Rebind("update block_batch set rollup_status = ? where (proving_status = ? or proving_status = ?) and rollup_status = ?;"), RollupFinalizationSkipped, ProvingTaskSkipped, ProvingTaskFailed, RollupCommitted)
+	if err != nil {
+		return 0, err
+	}
+
+	count, err := res.RowsAffected()
+	if err != nil {
+		return 0, err
+	}
+
+	return count, nil
 }

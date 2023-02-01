@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"math/big"
 	"reflect"
-	"sync"
 	"time"
 
 	"github.com/jmoiron/sqlx"
@@ -17,6 +16,7 @@ import (
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/event"
 	"github.com/scroll-tech/go-ethereum/log"
+	"github.com/scroll-tech/go-ethereum/metrics"
 
 	bridge_abi "scroll-tech/bridge/abi"
 	"scroll-tech/bridge/utils"
@@ -25,6 +25,11 @@ import (
 	"scroll-tech/database/orm"
 
 	"scroll-tech/bridge/config"
+)
+
+// Metrics
+var (
+	bridgeL2MsgSyncHeightGauge = metrics.NewRegisteredGauge("bridge/l2/msg/sync/height", nil)
 )
 
 type relayedMessage struct {
@@ -135,36 +140,84 @@ func (w *WatcherClient) Start() {
 			panic("must run L2 watcher with DB")
 		}
 
-		ticker := time.NewTicker(3 * time.Second)
-		defer ticker.Stop()
+		ctx, cancel := context.WithCancel(w.ctx)
 
-		for ; true; <-ticker.C {
-			select {
-			case <-w.stopCh:
-				return
+		// trace fetcher loop
+		go func(ctx context.Context) {
+			ticker := time.NewTicker(3 * time.Second)
+			defer ticker.Stop()
 
-			default:
-				// get current height
-				number, err := w.BlockNumber(w.ctx)
-				if err != nil {
-					log.Error("failed to get_BlockNumber", "err", err)
-					continue
+			for {
+				select {
+				case <-ctx.Done():
+					return
+
+				case <-ticker.C:
+					// get current height
+					number, err := w.BlockNumber(ctx)
+					if err != nil {
+						log.Error("failed to get_BlockNumber", "err", err)
+						continue
+					}
+
+					if number >= w.confirmations {
+						number = number - w.confirmations
+					} else {
+						number = 0
+					}
+
+					w.tryFetchRunningMissingBlocks(ctx, number)
 				}
-
-				if number >= w.confirmations {
-					number = number - w.confirmations
-				} else {
-					number = 0
-				}
-
-				var wg sync.WaitGroup
-				wg.Add(3)
-				go w.tryFetchRunningMissingBlocks(w.ctx, &wg, number)
-				go w.FetchContractEvent(&wg, number)
-				go w.batchProposer.tryProposeBatch(&wg)
-				wg.Wait()
 			}
-		}
+		}(ctx)
+
+		// event fetcher loop
+		go func(ctx context.Context) {
+			ticker := time.NewTicker(3 * time.Second)
+			defer ticker.Stop()
+
+			for {
+				select {
+				case <-ctx.Done():
+					return
+
+				case <-ticker.C:
+					// get current height
+					number, err := w.BlockNumber(ctx)
+					if err != nil {
+						log.Error("failed to get_BlockNumber", "err", err)
+						continue
+					}
+
+					if number >= w.confirmations {
+						number = number - w.confirmations
+					} else {
+						number = 0
+					}
+
+					w.FetchContractEvent(number)
+				}
+			}
+		}(ctx)
+
+		// batch proposer loop
+		go func(ctx context.Context) {
+			ticker := time.NewTicker(3 * time.Second)
+			defer ticker.Stop()
+
+			for {
+				select {
+				case <-ctx.Done():
+					return
+
+				case <-ticker.C:
+					w.batchProposer.tryProposeBatch()
+				}
+			}
+		}(ctx)
+
+		<-w.stopCh
+		cancel()
 	}()
 }
 
@@ -176,8 +229,7 @@ func (w *WatcherClient) Stop() {
 const blockTracesFetchLimit = uint64(10)
 
 // try fetch missing blocks if inconsistent
-func (w *WatcherClient) tryFetchRunningMissingBlocks(ctx context.Context, wg *sync.WaitGroup, blockHeight uint64) {
-	defer wg.Done()
+func (w *WatcherClient) tryFetchRunningMissingBlocks(ctx context.Context, blockHeight uint64) {
 	// Get newest block in DB. must have blocks at that time.
 	// Don't use "block_trace" table "trace" column's BlockTrace.Number,
 	// because it might be empty if the corresponding rollup_result is finalized/finalization_skipped
@@ -234,8 +286,7 @@ func (w *WatcherClient) getAndStoreBlockTraces(ctx context.Context, from, to uin
 const contractEventsBlocksFetchLimit = int64(10)
 
 // FetchContractEvent pull latest event logs from given contract address and save in DB
-func (w *WatcherClient) FetchContractEvent(wg *sync.WaitGroup, blockHeight uint64) {
-	defer wg.Done()
+func (w *WatcherClient) FetchContractEvent(blockHeight uint64) {
 	defer func() {
 		log.Info("l2 watcher fetchContractEvent", "w.processedMsgHeight", w.processedMsgHeight)
 	}()
@@ -284,10 +335,11 @@ func (w *WatcherClient) FetchContractEvent(wg *sync.WaitGroup, blockHeight uint6
 			return
 		}
 		if len(logs) == 0 {
-			w.processedMsgHeight = uint64(toBlock)
-			return
+			w.processedMsgHeight = uint64(to)
+			bridgeL2MsgSyncHeightGauge.Update(to)
+			continue
 		}
-		log.Info("received new L2 messages", "fromBlock", fromBlock, "toBlock", toBlock,
+		log.Info("received new L2 messages", "fromBlock", from, "toBlock", to,
 			"cnt", len(logs))
 
 		sentMessageEvents, relayedMessageEvents, importedBlockEvents, err := w.parseBridgeEventLogs(logs)
@@ -368,6 +420,7 @@ func (w *WatcherClient) FetchContractEvent(wg *sync.WaitGroup, blockHeight uint6
 		}
 
 		w.processedMsgHeight = uint64(to)
+		bridgeL2MsgSyncHeightGauge.Update(to)
 	}
 }
 

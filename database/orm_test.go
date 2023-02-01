@@ -418,7 +418,7 @@ func testOrmBlockBatch(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, int(2), len(batches))
 
-	batcheIDs, err := ormBatch.GetPendingBatches()
+	batcheIDs, err := ormBatch.GetPendingBatches(10)
 	assert.NoError(t, err)
 	assert.Equal(t, int(2), len(batcheIDs))
 	assert.Equal(t, batchID1, batcheIDs[0])
@@ -427,7 +427,7 @@ func testOrmBlockBatch(t *testing.T) {
 	err = ormBatch.UpdateCommitTxHashAndRollupStatus(context.Background(), batchID1, "commit_tx_1", orm.RollupCommitted)
 	assert.NoError(t, err)
 
-	batcheIDs, err = ormBatch.GetPendingBatches()
+	batcheIDs, err = ormBatch.GetPendingBatches(10)
 	assert.NoError(t, err)
 	assert.Equal(t, int(1), len(batcheIDs))
 	assert.Equal(t, batchID2, batcheIDs[0])

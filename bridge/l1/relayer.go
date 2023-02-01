@@ -14,7 +14,6 @@ import (
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/ethclient/gethclient"
 	"github.com/scroll-tech/go-ethereum/log"
-	"golang.org/x/sync/errgroup"
 
 	"scroll-tech/database"
 	"scroll-tech/database/orm"
@@ -107,33 +106,20 @@ func (r *Layer1Relayer) ProcessSavedEvents() {
 	}
 
 	// msgs are sorted by nonce in increasing order
-	msgs, err := r.db.GetL1MessagesByStatusUpToProofHeight(orm.MsgPending, block.Number)
+	msgs, err := r.db.GetL1MessagesByStatusUpToProofHeight(orm.MsgPending, block.Number, 100)
 	if err != nil {
 		log.Error("Failed to fetch unprocessed L1 messages", "err", err)
 		return
 	}
 
-	// process messages in batches
-	batchSize := r.relaySender.NumberOfAccounts()
-	for from := 0; from < len(msgs); from += batchSize {
-		to := from + batchSize
-		if to > len(msgs) {
-			to = len(msgs)
-		}
+	if len(msgs) > 0 {
+		log.Info("Processing L1 messages", "count", len(msgs))
+	}
 
-		var g errgroup.Group
-
-		for i := from; i < to; i++ {
-			msg := msgs[i]
-
-			g.Go(func() error {
-				return r.processSavedEvent(msg, block)
-			})
-		}
-
-		if err := g.Wait(); err != nil {
+	for _, msg := range msgs {
+		if err = r.processSavedEvent(msg, block); err != nil {
 			if !errors.Is(err, sender.ErrNoAvailableAccount) {
-				log.Error("failed to process l1 saved event", "err", err)
+				log.Error("failed to process event", "msg.msgHash", msg.MsgHash, "err", err)
 			}
 			return
 		}
@@ -192,6 +178,12 @@ func (r *Layer1Relayer) processSavedEvent(msg *orm.L1Message, block *orm.L1Block
 	}
 
 	hash, err := r.relaySender.SendTransaction(msg.MsgHash, &r.cfg.MessengerContractAddress, big.NewInt(0), data)
+	if err != nil && err.Error() == "execution reverted: Message expired" {
+		return r.db.UpdateLayer1Status(r.ctx, msg.MsgHash, orm.MsgExpired)
+	}
+	if err != nil && err.Error() == "execution reverted: Message successfully executed" {
+		return r.db.UpdateLayer1Status(r.ctx, msg.MsgHash, orm.MsgConfirmed)
+	}
 	if err != nil {
 		return err
 	}

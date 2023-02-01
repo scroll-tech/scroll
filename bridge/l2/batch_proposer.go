@@ -40,8 +40,7 @@ func newBatchProposer(cfg *config.BatchProposerConfig, orm database.OrmFactory) 
 	}
 }
 
-func (w *batchProposer) tryProposeBatch(wg *sync.WaitGroup) {
-	defer wg.Done()
+func (w *batchProposer) tryProposeBatch() {
 	w.mutex.Lock()
 	defer w.mutex.Unlock()
 

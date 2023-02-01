@@ -203,3 +203,71 @@ func testL2RelayerProcessCommittedBatches(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, orm.RollupFinalizing, status)
 }
+
+func testL2RelayerSkipBatches(t *testing.T) {
+	// Create db handler and reset db.
+	db, err := database.NewOrmFactory(cfg.DBConfig)
+	assert.NoError(t, err)
+	assert.NoError(t, migrate.ResetDB(db.GetDB().DB))
+	defer db.Close()
+
+	l2Cfg := cfg.L2Config
+	relayer, err := NewLayer2Relayer(context.Background(), db, l2Cfg.RelayerConfig)
+	assert.NoError(t, err)
+	defer relayer.Stop()
+
+	createBatch := func(rollupStatus orm.RollupStatus, provingStatus orm.ProvingStatus) string {
+		dbTx, err := db.Beginx()
+		assert.NoError(t, err)
+		batchID, err := db.NewBatchInDBTx(dbTx, &orm.BlockInfo{}, &orm.BlockInfo{}, "0", 1, 194676) // startBlock & endBlock & parentHash & totalTxNum & totalL2Gas don't really matter here
+		assert.NoError(t, err)
+		err = dbTx.Commit()
+		assert.NoError(t, err)
+
+		err = db.UpdateRollupStatus(context.Background(), batchID, rollupStatus)
+		assert.NoError(t, err)
+
+		tProof := []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31}
+		tInstanceCommitments := []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31}
+		err = db.UpdateProofByID(context.Background(), batchID, tProof, tInstanceCommitments, 100)
+		assert.NoError(t, err)
+		err = db.UpdateProvingStatus(batchID, provingStatus)
+		assert.NoError(t, err)
+
+		return batchID
+	}
+
+	skipped := []string{
+		createBatch(orm.RollupCommitted, orm.ProvingTaskSkipped),
+		createBatch(orm.RollupCommitted, orm.ProvingTaskFailed),
+	}
+
+	notSkipped := []string{
+		createBatch(orm.RollupPending, orm.ProvingTaskSkipped),
+		createBatch(orm.RollupCommitting, orm.ProvingTaskSkipped),
+		createBatch(orm.RollupFinalizing, orm.ProvingTaskSkipped),
+		createBatch(orm.RollupFinalized, orm.ProvingTaskSkipped),
+		createBatch(orm.RollupPending, orm.ProvingTaskFailed),
+		createBatch(orm.RollupCommitting, orm.ProvingTaskFailed),
+		createBatch(orm.RollupFinalizing, orm.ProvingTaskFailed),
+		createBatch(orm.RollupFinalized, orm.ProvingTaskFailed),
+		createBatch(orm.RollupCommitted, orm.ProvingTaskVerified),
+	}
+
+	var wg = sync.WaitGroup{}
+	wg.Add(1)
+	relayer.ProcessCommittedBatches(&wg)
+	wg.Wait()
+
+	for _, id := range skipped {
+		status, err := db.GetRollupStatus(id)
+		assert.NoError(t, err)
+		assert.Equal(t, orm.RollupFinalizationSkipped, status)
+	}
+
+	for _, id := range notSkipped {
+		status, err := db.GetRollupStatus(id)
+		assert.NoError(t, err)
+		assert.NotEqual(t, orm.RollupFinalizationSkipped, status)
+	}
+}

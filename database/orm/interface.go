@@ -58,6 +58,9 @@ const (
 
 	// MsgFailed represents the from_layer message status is failed
 	MsgFailed
+
+	// MsgExpired represents the from_layer message status is expired
+	MsgExpired
 )
 
 // L1Message is structure of stored layer1 bridge message
@@ -189,8 +192,8 @@ type BlockBatchOrm interface {
 	ResetProvingStatusFor(before ProvingStatus) error
 	NewBatchInDBTx(dbTx *sqlx.Tx, startBlock *L2BlockInfo, endBlock *L2BlockInfo, parentHash string, totalTxNum uint64, gasUsed uint64) (string, error)
 	BatchRecordExist(id string) (bool, error)
-	GetPendingBatches() ([]string, error)
-	GetCommittedBatches() ([]string, error)
+	GetPendingBatches(limit uint64) ([]string, error)
+	GetCommittedBatches(limit uint64) ([]string, error)
 	GetRollupStatus(id string) (RollupStatus, error)
 	GetRollupStatusByIDList(ids []string) ([]RollupStatus, error)
 	GetLatestFinalizedBatch() (*BlockBatch, error)
@@ -198,6 +201,7 @@ type BlockBatchOrm interface {
 	UpdateCommitTxHashAndRollupStatus(ctx context.Context, id string, commitTxHash string, status RollupStatus) error
 	UpdateFinalizeTxHashAndRollupStatus(ctx context.Context, id string, finalizeTxHash string, status RollupStatus) error
 	GetAssignedBatchIDs() ([]string, error)
+	UpdateSkippedBatches() (int64, error)
 
 	GetCommitTxHash(id string) (sql.NullString, error)   // for unit tests only
 	GetFinalizeTxHash(id string) (sql.NullString, error) // for unit tests only
@@ -207,8 +211,8 @@ type BlockBatchOrm interface {
 type L1MessageOrm interface {
 	GetL1MessageByNonce(nonce uint64) (*L1Message, error)
 	GetL1MessageByMsgHash(msgHash string) (*L1Message, error)
-	GetL1MessagesByStatus(status MsgStatus) ([]*L1Message, error)
-	GetL1MessagesByStatusUpToProofHeight(status MsgStatus, height uint64) ([]*L1Message, error)
+	GetL1MessagesByStatusUpToProofHeight(status MsgStatus, height uint64, limit uint64) ([]*L1Message, error)
+	GetL1MessagesByStatus(status MsgStatus, limit uint64) ([]*L1Message, error)
 	GetL1ProcessedNonce() (int64, error)
 	SaveL1Messages(ctx context.Context, messages []*L1Message) error
 	SaveL1MessagesInDbTx(ctx context.Context, dbTx *sqlx.Tx, messages []*L1Message) error
@@ -226,8 +230,7 @@ type L2MessageOrm interface {
 	GetL2MessageByMsgHash(msgHash string) (*L2Message, error)
 	MessageProofExist(nonce uint64) (bool, error)
 	GetMessageProofByNonce(nonce uint64) ([]byte, error)
-	GetL2MessagesByStatus(status MsgStatus) ([]*L2Message, error)
-	GetL2MessagesByStatusUpToHeight(status MsgStatus, height uint64) ([]*L2Message, error)
+	GetL2Messages(fields map[string]interface{}, args ...string) ([]*L2Message, error)
 	GetL2ProcessedNonce() (int64, error)
 	GetLayer2LatestMessageNonce() (int64, error)
 	SaveL2Messages(ctx context.Context, messages []*L2Message) error

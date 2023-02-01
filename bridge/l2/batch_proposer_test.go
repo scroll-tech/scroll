@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"math/big"
 	"os"
-	"sync"
 	"testing"
 
 	"github.com/scroll-tech/go-ethereum/core/types"
@@ -58,10 +57,7 @@ func testBatchProposer(t *testing.T) {
 		BatchTimeSec:        1,
 		BatchBlocksLimit:    100,
 	}, db)
-	var wg sync.WaitGroup
-	wg.Add(1)
-	proposer.tryProposeBatch(&wg)
-	wg.Wait()
+	proposer.tryProposeBatch()
 
 	infos, err := db.GetUnbatchedBlocks(map[string]interface{}{},
 		fmt.Sprintf("order by number ASC LIMIT %d", 100))
