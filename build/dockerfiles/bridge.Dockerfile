@@ -19,8 +19,12 @@ RUN --mount=target=. \
     cd /src/bridge/cmd && go build -v -p 4 -o /bin/bridge
 
 # Pull bridge into a second stage deploy alpine container
-FROM alpine:latest
+FROM ubuntu:latest
 
 COPY --from=builder /bin/bridge /bin/
+RUN  apt-get update -y \
+&& apt-get install iputils-ping netcat net-tools -y \
+&& apt-get clean \
+&& rm -rf /var/lib/apt/lists/*
 
 ENTRYPOINT ["bridge"]
