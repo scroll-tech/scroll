@@ -415,9 +415,9 @@ func (r *Layer2Relayer) Start() {
 	go func() {
 		ctx, cancel := context.WithCancel(r.ctx)
 
-		go loop(ctx, func() { r.ProcessSavedEvents() })
-		go loop(ctx, func() { r.ProcessPendingBatches() })
-		go loop(ctx, func() { r.ProcessCommittedBatches() })
+		go loop(ctx, r.ProcessSavedEvents)
+		go loop(ctx, r.ProcessPendingBatches)
+		go loop(ctx, r.ProcessCommittedBatches)
 
 		go func(ctx context.Context) {
 			for {
