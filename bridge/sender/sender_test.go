@@ -111,7 +111,7 @@ func testBatchSender(t *testing.T, batchSize int) {
 		select {
 		case cmsg := <-confirmCh:
 			assert.Equal(t, true, cmsg.IsSuccessful)
-			_, exist := idCache.Pop(cmsg.TxID)
+			_, exist := idCache.Pop(cmsg.ID)
 			assert.Equal(t, true, exist)
 			// Receive all confirmed txs.
 			if idCache.Count() == 0 {

@@ -430,23 +430,23 @@ func (r *Layer2Relayer) handleConfirmation(cfm *sender.Confirmation) {
 	case r.messageSender.SenderID:
 		transactionType = "MessageRelay"
 		// @todo handle db error
-		err := r.db.UpdateLayer2StatusAndLayer1Hash(r.ctx, cfm.TxID, orm.MsgConfirmed, cfm.TxHash.String())
+		err := r.db.UpdateLayer2StatusAndLayer1Hash(r.ctx, cfm.ID, orm.MsgConfirmed, cfm.TxHash.String())
 		if err != nil {
-			log.Warn("UpdateLayer2StatusAndLayer1Hash failed", "msgHash", cfm.TxID, "err", err)
+			log.Warn("UpdateLayer2StatusAndLayer1Hash failed", "msgHash", cfm.ID, "err", err)
 		}
 	case r.commitSender.SenderID:
 		transactionType = "BatchCommitment"
 		// @todo handle db error
-		err := r.db.UpdateCommitTxHashAndRollupStatus(r.ctx, cfm.TxID, cfm.TxHash.String(), orm.RollupCommitted)
+		err := r.db.UpdateCommitTxHashAndRollupStatus(r.ctx, cfm.ID, cfm.TxHash.String(), orm.RollupCommitted)
 		if err != nil {
-			log.Warn("UpdateCommitTxHashAndRollupStatus failed", "batch_id", cfm.TxID, "err", err)
+			log.Warn("UpdateCommitTxHashAndRollupStatus failed", "batch_id", cfm.ID, "err", err)
 		}
 	case r.finalizeSender.SenderID:
 		transactionType = "ProofFinalization"
 		// @todo handle db error
-		err := r.db.UpdateFinalizeTxHashAndRollupStatus(r.ctx, cfm.TxID, cfm.TxHash.String(), orm.RollupFinalized)
+		err := r.db.UpdateFinalizeTxHashAndRollupStatus(r.ctx, cfm.ID, cfm.TxHash.String(), orm.RollupFinalized)
 		if err != nil {
-			log.Warn("UpdateFinalizeTxHashAndRollupStatus failed", "batch_id", cfm.TxID, "err", err)
+			log.Warn("UpdateFinalizeTxHashAndRollupStatus failed", "batch_id", cfm.ID, "err", err)
 		}
 	}
 	log.Info("transaction confirmed in layer1", "type", transactionType, "cfm", cfm)

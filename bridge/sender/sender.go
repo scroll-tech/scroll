@@ -45,7 +45,7 @@ var (
 type Confirmation struct {
 	// Aim to differ other sender instance.
 	SenderID     int64
-	TxID         string
+	ID           string
 	IsSuccessful bool
 	TxHash       common.Hash
 }
@@ -201,14 +201,14 @@ func (s *Sender) getFeeData(auth *bind.TransactOpts, target *common.Address, val
 
 // SendTransaction send a signed L2tL1 transaction.
 func (s *Sender) SendTransaction(ID string, target *common.Address, value *big.Int, data []byte) (hash common.Hash, err error) {
-	// We occupy the TxID, in case some other threads call with the same ID in the same time
+	// We occupy the ID, in case some other threads call with the same ID in the same time
 	if _, loaded := s.pendingTxs.LoadOrStore(ID, nil); loaded {
 		return common.Hash{}, fmt.Errorf("has the repeat tx ID, ID: %s", ID)
 	}
 	// get
 	auth := s.auths.getAccount()
 	if auth == nil {
-		s.pendingTxs.Delete(ID) // release the TxID on failure
+		s.pendingTxs.Delete(ID) // release the ID on failure
 		return common.Hash{}, ErrNoAvailableAccount
 	}
 
@@ -382,7 +382,7 @@ func (s *Sender) CheckPendingTransaction(header *types.Header) {
 				// send confirm message
 				s.confirmCh <- &Confirmation{
 					SenderID:     s.SenderID,
-					TxID:         pending.id,
+					ID:           pending.id,
 					IsSuccessful: receipt.Status == types.ReceiptStatusSuccessful,
 					TxHash:       pending.tx.Hash(),
 				}
@@ -417,7 +417,7 @@ func (s *Sender) CheckPendingTransaction(header *types.Header) {
 						// send confirm message
 						s.confirmCh <- &Confirmation{
 							SenderID:     s.SenderID,
-							TxID:         pending.id,
+							ID:           pending.id,
 							IsSuccessful: receipt.Status == types.ReceiptStatusSuccessful,
 							TxHash:       pending.tx.Hash(),
 						}

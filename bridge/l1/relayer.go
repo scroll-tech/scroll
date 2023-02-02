@@ -147,7 +147,7 @@ func (r *Layer1Relayer) Start() {
 					log.Warn("transaction confirmed but failed in layer2", "confirmation", cfm)
 				} else {
 					// @todo handle db error
-					err := r.db.UpdateLayer1StatusAndLayer2Hash(r.ctx, cfm.TxID, orm.MsgConfirmed, cfm.TxHash.String())
+					err := r.db.UpdateLayer1StatusAndLayer2Hash(r.ctx, cfm.ID, orm.MsgConfirmed, cfm.TxHash.String())
 					if err != nil {
 						log.Warn("UpdateLayer1StatusAndLayer2Hash failed", "err", err)
 					}
