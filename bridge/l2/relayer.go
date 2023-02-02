@@ -106,7 +106,8 @@ func (r *Layer2Relayer) ProcessSavedEvents() {
 	// msgs are sorted by nonce in increasing order
 	msgs, err := r.db.GetL2Messages(
 		map[string]interface{}{"status": orm.MsgPending},
-		fmt.Sprintf("AND height<=%d ORDER BY nonce ASC LIMIT %d", batch.EndBlockNumber, processMsgLimit),
+		fmt.Sprintf("AND height<=%d", batch.EndBlockNumber),
+		fmt.Sprintf("ORDER BY nonce ASC LIMIT %d", processMsgLimit),
 	)
 
 	if err != nil {
@@ -167,6 +168,9 @@ func (r *Layer2Relayer) processSavedEvent(msg *orm.L2Message, index uint64) erro
 	hash, err := r.messageSender.SendTransaction(msg.MsgHash, &r.cfg.MessengerContractAddress, big.NewInt(0), data)
 	if err != nil && err.Error() == "execution reverted: Message expired" {
 		return r.db.UpdateLayer2Status(r.ctx, msg.MsgHash, orm.MsgExpired)
+	}
+	if err != nil && err.Error() == "execution reverted: Message successfully executed" {
+		return r.db.UpdateLayer2Status(r.ctx, msg.MsgHash, orm.MsgConfirmed)
 	}
 	if err != nil {
 		if !errors.Is(err, sender.ErrNoAvailableAccount) {
