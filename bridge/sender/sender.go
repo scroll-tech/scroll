@@ -201,9 +201,9 @@ func (s *Sender) getFeeData(auth *bind.TransactOpts, target *common.Address, val
 
 // SendTransaction send a signed L2tL1 transaction.
 func (s *Sender) SendTransaction(ID string, target *common.Address, value *big.Int, data []byte) (hash common.Hash, err error) {
-	// We occupy the TxID, in case some other threads call with the same TxID in the same time
+	// We occupy the TxID, in case some other threads call with the same ID in the same time
 	if _, loaded := s.pendingTxs.LoadOrStore(ID, nil); loaded {
-		return common.Hash{}, fmt.Errorf("has the repeat tx TxID, TxID: %s", ID)
+		return common.Hash{}, fmt.Errorf("has the repeat tx ID, ID: %s", ID)
 	}
 	// get
 	auth := s.auths.getAccount()
@@ -215,7 +215,7 @@ func (s *Sender) SendTransaction(ID string, target *common.Address, value *big.I
 	defer s.auths.releaseAccount(auth)
 	defer func() {
 		if err != nil {
-			s.pendingTxs.Delete(ID) // release the TxID on failure
+			s.pendingTxs.Delete(ID) // release the ID on failure
 		}
 	}()
 
