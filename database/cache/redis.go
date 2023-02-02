@@ -46,7 +46,7 @@ func NewRedisClientWrapper(redisConfig *RedisConfig) (Cache, error) {
 		if err != nil {
 			return nil, err
 		}
-		op.TLSConfig = &tls.Config{InsecureSkipVerify: redisConfig.SkipTLSVerify}
+		op.TLSConfig = &tls.Config{InsecureSkipVerify: redisConfig.SkipTLSVerify} // #nosec G402
 		return &RedisClientWrapper{
 			client:      redis.NewClusterClient(op),
 			traceExpire: traceExpire,
@@ -57,7 +57,7 @@ func NewRedisClientWrapper(redisConfig *RedisConfig) (Cache, error) {
 	if err != nil {
 		return nil, err
 	}
-	op.TLSConfig = &tls.Config{InsecureSkipVerify: redisConfig.SkipTLSVerify}
+	op.TLSConfig = &tls.Config{InsecureSkipVerify: redisConfig.SkipTLSVerify} // #nosec G402
 	return &RedisClientWrapper{
 		client:      redis.NewClient(op),
 		traceExpire: traceExpire,
