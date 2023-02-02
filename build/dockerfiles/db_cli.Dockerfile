@@ -1,5 +1,5 @@
 # Download Go dependencies
-FROM scrolltech/go-alpine-builder:1.18 as base
+FROM scrolltech/go-rust-builder:go-1.18-rust-nightly-2022-08-23 as base
 
 WORKDIR /src
 COPY go.work* ./
@@ -18,8 +18,8 @@ RUN --mount=target=. \
     --mount=type=cache,target=/root/.cache/go-build \
     cd /src/database/cmd && go build -v -p 4 -o /bin/db_cli
 
-# Pull db_cli into a second stage deploy alpine container
-FROM alpine:latest
+# Pull db_cli into a second stage deploy container
+FROM ubuntu:20.04
 
 COPY --from=builder /bin/db_cli /bin/
 

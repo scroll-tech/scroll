@@ -15,10 +15,10 @@ import (
 
 // RedisConfig redis cache config.
 type RedisConfig struct {
-	URL         string           `json:"url"`
-	Mode        string           `json:"mode,omitempty"`
-	OpenTLS     bool             `json:"openTLS,omitempty"`
-	Expirations map[string]int64 `json:"expirations,omitempty"`
+	URL           string           `json:"url"`
+	Mode          string           `json:"mode,omitempty"`
+	SkipTLSVerify bool             `json:"skip_tls_verify,omitempty"`
+	Expirations   map[string]int64 `json:"expirations,omitempty"`
 }
 
 // RedisClientWrapper handle redis client and some expires.
@@ -41,16 +41,12 @@ func NewRedisClientWrapper(redisConfig *RedisConfig) (Cache, error) {
 		traceExpire = time.Duration(val) * time.Second
 	}
 
-	var tlsCfg *tls.Config
-	if redisConfig.OpenTLS {
-		tlsCfg = &tls.Config{InsecureSkipVerify: true}
-	}
 	if redisConfig.Mode == "cluster" {
 		op, err := redis.ParseClusterURL(redisConfig.URL)
 		if err != nil {
 			return nil, err
 		}
-		op.TLSConfig = tlsCfg
+		op.TLSConfig = &tls.Config{InsecureSkipVerify: redisConfig.SkipTLSVerify}
 		return &RedisClientWrapper{
 			client:      redis.NewClusterClient(op),
 			traceExpire: traceExpire,
@@ -61,7 +57,7 @@ func NewRedisClientWrapper(redisConfig *RedisConfig) (Cache, error) {
 	if err != nil {
 		return nil, err
 	}
-	op.TLSConfig = tlsCfg
+	op.TLSConfig = &tls.Config{InsecureSkipVerify: redisConfig.SkipTLSVerify}
 	return &RedisClientWrapper{
 		client:      redis.NewClient(op),
 		traceExpire: traceExpire,
