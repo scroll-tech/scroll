@@ -37,21 +37,15 @@ const (
 var (
 	// ErrNoAvailableAccount indicates no available account error in the account pool.
 	ErrNoAvailableAccount = errors.New("sender has no available account to send transaction")
-)
 
-// DefaultSenderConfig The default config
-var DefaultSenderConfig = config.SenderConfig{
-	Endpoint:            "",
-	EscalateBlocks:      3,
-	EscalateMultipleNum: 11,
-	EscalateMultipleDen: 10,
-	MaxGasPrice:         1000_000_000_000, // this is 1000 gwei
-	TxType:              AccessListTxType,
-}
+	uniqSender = sync.Map{}
+)
 
 // Confirmation struct used to indicate transaction confirmation details
 type Confirmation struct {
-	ID           string
+	// Aim to differ other sender instance.
+	SenderID     int64
+	TxID         string
 	IsSuccessful bool
 	TxHash       common.Hash
 }
@@ -76,10 +70,12 @@ type PendingTransaction struct {
 
 // Sender Transaction sender to send transaction to l1/l2 geth
 type Sender struct {
-	config  *config.SenderConfig
-	client  *ethclient.Client // The client to retrieve on chain data or send transaction.
-	chainID *big.Int          // The chain id of the endpoint
-	ctx     context.Context
+	// Mark it's the unique sender instance.
+	SenderID int64
+	config   *config.SenderConfig
+	client   *ethclient.Client // The client to retrieve on chain data or send transaction.
+	chainID  *big.Int          // The chain id of the endpoint
+	ctx      context.Context
 
 	// account fields.
 	auths *accountPool
@@ -95,9 +91,19 @@ type Sender struct {
 // NewSender returns a new instance of transaction sender
 // txConfirmationCh is used to notify confirmed transaction
 func NewSender(ctx context.Context, config *config.SenderConfig, privs []*ecdsa.PrivateKey) (*Sender, error) {
+	// Avoid empty config.
 	if config == nil {
-		config = &DefaultSenderConfig
+		return nil, errors.New("create sender failed due to empty config")
 	}
+
+	// Check and mark senderID.
+	senderID := time.Now().UnixNano()
+	if _, ok := uniqSender.Load(senderID); ok {
+		return nil, fmt.Errorf("repeated sender id, senderID: %d", senderID)
+	} else {
+		uniqSender.Store(senderID, nil)
+	}
+
 	client, err := ethclient.Dial(config.Endpoint)
 	if err != nil {
 		return nil, err
@@ -122,6 +128,7 @@ func NewSender(ctx context.Context, config *config.SenderConfig, privs []*ecdsa.
 
 	sender := &Sender{
 		ctx:           ctx,
+		SenderID:      senderID,
 		config:        config,
 		client:        client,
 		chainID:       chainID,
@@ -194,21 +201,21 @@ func (s *Sender) getFeeData(auth *bind.TransactOpts, target *common.Address, val
 
 // SendTransaction send a signed L2tL1 transaction.
 func (s *Sender) SendTransaction(ID string, target *common.Address, value *big.Int, data []byte) (hash common.Hash, err error) {
-	// We occupy the ID, in case some other threads call with the same ID in the same time
+	// We occupy the TxID, in case some other threads call with the same TxID in the same time
 	if _, loaded := s.pendingTxs.LoadOrStore(ID, nil); loaded {
-		return common.Hash{}, fmt.Errorf("has the repeat tx ID, ID: %s", ID)
+		return common.Hash{}, fmt.Errorf("has the repeat tx TxID, TxID: %s", ID)
 	}
 	// get
 	auth := s.auths.getAccount()
 	if auth == nil {
-		s.pendingTxs.Delete(ID) // release the ID on failure
+		s.pendingTxs.Delete(ID) // release the TxID on failure
 		return common.Hash{}, ErrNoAvailableAccount
 	}
 
 	defer s.auths.releaseAccount(auth)
 	defer func() {
 		if err != nil {
-			s.pendingTxs.Delete(ID) // release the ID on failure
+			s.pendingTxs.Delete(ID) // release the TxID on failure
 		}
 	}()
 
@@ -374,7 +381,8 @@ func (s *Sender) CheckPendingTransaction(header *types.Header) {
 				s.pendingTxs.Delete(key)
 				// send confirm message
 				s.confirmCh <- &Confirmation{
-					ID:           pending.id,
+					SenderID:     s.SenderID,
+					TxID:         pending.id,
 					IsSuccessful: receipt.Status == types.ReceiptStatusSuccessful,
 					TxHash:       pending.tx.Hash(),
 				}
@@ -408,7 +416,8 @@ func (s *Sender) CheckPendingTransaction(header *types.Header) {
 					if (err == nil) && (receipt != nil) {
 						// send confirm message
 						s.confirmCh <- &Confirmation{
-							ID:           pending.id,
+							SenderID:     s.SenderID,
+							TxID:         pending.id,
 							IsSuccessful: receipt.Status == types.ReceiptStatusSuccessful,
 							TxHash:       pending.tx.Hash(),
 						}
