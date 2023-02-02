@@ -22,6 +22,5 @@ RUN --mount=target=. \
 FROM ubuntu:20.04
 
 COPY --from=builder /bin/bridge /bin/
-RUN apk --no-cache add ca-certificates
 
 ENTRYPOINT ["bridge"]
