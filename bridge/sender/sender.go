@@ -100,9 +100,8 @@ func NewSender(ctx context.Context, config *config.SenderConfig, privs []*ecdsa.
 	senderID := time.Now().UnixNano()
 	if _, ok := uniqSender.Load(senderID); ok {
 		return nil, fmt.Errorf("repeated sender id, senderID: %d", senderID)
-	} else {
-		uniqSender.Store(senderID, nil)
 	}
+	uniqSender.Store(senderID, nil)
 
 	client, err := ethclient.Dial(config.Endpoint)
 	if err != nil {
