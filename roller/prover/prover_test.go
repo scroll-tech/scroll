@@ -17,16 +17,11 @@ import (
 )
 
 const (
-	paramsPath = "../assets/test_params"
-	seedPath   = "../assets/test_seed"
-	tracesPath = "../assets/traces"
+	paramsPath    = "../assets/test_params"
+	seedPath      = "../assets/test_seed"
+	tracesPath    = "../assets/traces"
+	proofDumpPath = "agg_proof"
 )
-
-type RPCTrace struct {
-	Jsonrpc string            `json:"jsonrpc"`
-	ID      int64             `json:"id"`
-	Result  *types.BlockTrace `json:"result"`
-}
 
 func TestFFI(t *testing.T) {
 	as := assert.New(t)
@@ -50,11 +45,20 @@ func TestFFI(t *testing.T) {
 		as.NoError(err)
 		byt, err = io.ReadAll(f)
 		as.NoError(err)
-		rpcTrace := &RPCTrace{}
-		as.NoError(json.Unmarshal(byt, rpcTrace))
-		traces = append(traces, rpcTrace.Result)
+		trace := &types.BlockTrace{}
+		as.NoError(json.Unmarshal(byt, trace))
+		traces = append(traces, trace)
 	}
-	_, err = prover.Prove(traces)
+	proof, err := prover.Prove(traces)
 	as.NoError(err)
 	t.Log("prove success")
+
+	// dump the proof
+	os.RemoveAll(proofDumpPath)
+	proofByt, err := json.Marshal(proof)
+	as.NoError(err)
+	proofFile, err := os.Create(proofDumpPath)
+	as.NoError(err)
+	_, err = proofFile.Write(proofByt)
+	as.NoError(err)
 }
