@@ -106,10 +106,10 @@ func (r *ImgRedis) Endpoint() string {
 	if r.port != 0 {
 		port = r.port
 	}
-	return fmt.Sprintf("redis://default:redistest@localhost:%d/0", port)
+	return fmt.Sprintf("redis://default:@localhost:%d/0", port)
 }
 
-// docker run --name redis-xxx -p randomport:6379 --requirepass "redistest" redis
+// docker run --name redis-xxx -p randomport:6379 redis
 func (r *ImgRedis) prepare() []string {
 	cmds := []string{"docker", "run", "--name", r.name}
 	var ports []string
