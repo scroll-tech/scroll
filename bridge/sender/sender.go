@@ -128,7 +128,7 @@ func NewSender(ctx context.Context, config *config.SenderConfig, privs []*ecdsa.
 		auths:         auths,
 		confirmCh:     make(chan *Confirmation, 128),
 		blockNumber:   header.Number.Uint64(),
-		baseFeePerGas: header.BaseFee.Uint64(),
+		baseFeePerGas: 0, // the l2geth would not return "baseFeePerGas", set it to zero.
 		pendingTxs:    sync.Map{},
 		stopCh:        make(chan struct{}),
 	}
