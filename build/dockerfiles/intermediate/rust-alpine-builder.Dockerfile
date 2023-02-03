@@ -1,7 +1,7 @@
 ARG ALPINE_VERSION=3.15
 FROM alpine:${ALPINE_VERSION}
 ARG CARGO_CHEF_TAG=0.1.41
-ARG DEFAULT_RUST_TOOLCHAIN=nightly-2022-08-23
+ARG DEFAULT_RUST_TOOLCHAIN=nightly-2022-12-10
 
 RUN apk add --no-cache \
         ca-certificates \

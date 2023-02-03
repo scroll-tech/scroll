@@ -14,7 +14,7 @@ ENV PATH="/root/.cargo/bin:${PATH}"
 ENV CARGO_HOME=/root/.cargo
 
 # Add Toolchain
-RUN rustup toolchain install nightly-2022-08-23
+RUN rustup toolchain install nightly-2022-12-10
 
 # TODO: make this ARG
 ENV CARGO_CHEF_TAG=0.1.41

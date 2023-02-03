@@ -1,6 +1,6 @@
 GO_VERSION := 1.18
 PYTHON_VERSION := 3.10
-RUST_VERSION := nightly-2022-08-23
+RUST_VERSION := nightly-2022-12-10
 
 .PHONY: all go-alpine-builder rust-builder rust-alpine-builder go-rust-alpine-builder go-rust-builder py-runner
 
