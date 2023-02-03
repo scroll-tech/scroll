@@ -32,6 +32,7 @@ contract DeployL2BridgeContracts is Script {
         deployL2CustomERC20Gateway();
         deployL2ERC721Gateway();
         deployL2ERC1155Gateway();
+        deployL2Whitelist();
 
         vm.stopBroadcast();
     }
