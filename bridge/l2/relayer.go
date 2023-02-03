@@ -39,24 +39,10 @@ type Layer2Relayer struct {
 	cfg *config.RelayerConfig
 
 	messageSender  *sender.Sender
-	messageCh      <-chan *sender.Confirmation
 	l1MessengerABI *abi.ABI
 
 	rollupSender *sender.Sender
-	rollupCh     <-chan *sender.Confirmation
 	l1RollupABI  *abi.ABI
-
-	// A list of processing message.
-	// key(string): confirmation ID, value(string): layer2 hash.
-	processingMessage sync.Map
-
-	// A list of processing batch commitment.
-	// key(string): confirmation ID, value(string): batch id.
-	processingCommitment sync.Map
-
-	// A list of processing batch finalization.
-	// key(string): confirmation ID, value(string): batch id.
-	processingFinalization sync.Map
 
 	stopCh chan struct{}
 }
@@ -77,19 +63,14 @@ func NewLayer2Relayer(ctx context.Context, db database.OrmFactory, cfg *config.R
 	}
 
 	return &Layer2Relayer{
-		ctx:                    ctx,
-		db:                     db,
-		messageSender:          messageSender,
-		messageCh:              messageSender.ConfirmChan(),
-		l1MessengerABI:         bridge_abi.L1MessengerMetaABI,
-		rollupSender:           rollupSender,
-		rollupCh:               rollupSender.ConfirmChan(),
-		l1RollupABI:            bridge_abi.RollupMetaABI,
-		cfg:                    cfg,
-		processingMessage:      sync.Map{},
-		processingCommitment:   sync.Map{},
-		processingFinalization: sync.Map{},
-		stopCh:                 make(chan struct{}),
+		ctx:            ctx,
+		db:             db,
+		messageSender:  messageSender,
+		l1MessengerABI: bridge_abi.L1MessengerMetaABI,
+		rollupSender:   rollupSender,
+		l1RollupABI:    bridge_abi.RollupMetaABI,
+		cfg:            cfg,
+		stopCh:         make(chan struct{}),
 	}, nil
 }
 
@@ -166,7 +147,7 @@ func (r *Layer2Relayer) processSavedEvent(msg *orm.L2Message, index uint64) erro
 		return err
 	}
 
-	hash, err := r.messageSender.SendTransaction(msg.MsgHash, &r.cfg.MessengerContractAddress, big.NewInt(0), data)
+	hash, err := r.messageSender.SendTransaction(&confirmMsg{TxType: "MessageRelay", ID: msg.MsgHash}, &r.cfg.MessengerContractAddress, big.NewInt(0), data)
 	if err != nil && err.Error() == "execution reverted: Message expired" {
 		return r.db.UpdateLayer2Status(r.ctx, msg.MsgHash, orm.MsgExpired)
 	}
@@ -188,7 +169,6 @@ func (r *Layer2Relayer) processSavedEvent(msg *orm.L2Message, index uint64) erro
 		log.Error("UpdateLayer2StatusAndLayer1Hash failed", "msgHash", msg.MsgHash, "err", err)
 		return err
 	}
-	r.processingMessage.Store(msg.MsgHash, msg.MsgHash)
 	return nil
 }
 
@@ -267,9 +247,8 @@ func (r *Layer2Relayer) ProcessPendingBatches(wg *sync.WaitGroup) {
 		return
 	}
 
-	txID := id + "-commit"
 	// add suffix `-commit` to avoid duplication with finalize tx in unit tests
-	hash, err := r.rollupSender.SendTransaction(txID, &r.cfg.RollupContractAddress, big.NewInt(0), data)
+	hash, err := r.rollupSender.SendTransaction(&confirmMsg{TxType: "BatchCommitment", ID: id}, &r.cfg.RollupContractAddress, big.NewInt(0), data)
 	if err != nil {
 		if !errors.Is(err, sender.ErrNoAvailableAccount) {
 			log.Error("Failed to send commitBatch tx to layer1 ", "id", id, "index", batch.Index, "err", err)
@@ -283,7 +262,6 @@ func (r *Layer2Relayer) ProcessPendingBatches(wg *sync.WaitGroup) {
 	if err != nil {
 		log.Error("UpdateCommitTxHashAndRollupStatus failed", "id", id, "index", batch.Index, "err", err)
 	}
-	r.processingCommitment.Store(txID, id)
 }
 
 // ProcessCommittedBatches submit proof to layer 1 rollup contract
@@ -373,9 +351,8 @@ func (r *Layer2Relayer) ProcessCommittedBatches(wg *sync.WaitGroup) {
 			return
 		}
 
-		txID := id + "-finalize"
 		// add suffix `-finalize` to avoid duplication with commit tx in unit tests
-		txHash, err := r.rollupSender.SendTransaction(txID, &r.cfg.RollupContractAddress, big.NewInt(0), data)
+		txHash, err := r.rollupSender.SendTransaction(&confirmMsg{TxType: "ProofFinalization", ID: id}, &r.cfg.RollupContractAddress, big.NewInt(0), data)
 		hash := &txHash
 		if err != nil {
 			if !errors.Is(err, sender.ErrNoAvailableAccount) {
@@ -391,7 +368,6 @@ func (r *Layer2Relayer) ProcessCommittedBatches(wg *sync.WaitGroup) {
 			log.Warn("UpdateFinalizeTxHashAndRollupStatus failed", "batch_id", id, "err", err)
 		}
 		success = true
-		r.processingFinalization.Store(txID, id)
 
 	default:
 		log.Error("encounter unreachable case in ProcessCommittedBatches",
@@ -416,9 +392,9 @@ func (r *Layer2Relayer) Start() {
 				go r.ProcessPendingBatches(&wg)
 				go r.ProcessCommittedBatches(&wg)
 				wg.Wait()
-			case confirmation := <-r.messageCh:
+			case confirmation := <-r.messageSender.ConfirmChan():
 				r.handleConfirmation(confirmation)
-			case confirmation := <-r.rollupCh:
+			case confirmation := <-r.rollupSender.ConfirmChan():
 				r.handleConfirmation(confirmation)
 			case <-r.stopCh:
 				return
@@ -432,44 +408,35 @@ func (r *Layer2Relayer) Stop() {
 	close(r.stopCh)
 }
 
+type confirmMsg struct {
+	TxType string
+	ID     string
+}
+
 func (r *Layer2Relayer) handleConfirmation(confirmation *sender.Confirmation) {
 	if !confirmation.IsSuccessful {
 		log.Warn("transaction confirmed but failed in layer1", "confirmation", confirmation)
 		return
 	}
-
-	transactionType := "Unknown"
-	// check whether it is message relay transaction
-	if msgHash, ok := r.processingMessage.Load(confirmation.ID); ok {
-		transactionType = "MessageRelay"
-		// @todo handle db error
-		err := r.db.UpdateLayer2StatusAndLayer1Hash(r.ctx, msgHash.(string), orm.MsgConfirmed, confirmation.TxHash.String())
+	msg, _ := confirmation.Msg.(*confirmMsg)
+	transactionType := msg.TxType
+	switch transactionType {
+	case "MessageRelay":
+		err := r.db.UpdateLayer2StatusAndLayer1Hash(r.ctx, msg.ID, orm.MsgConfirmed, confirmation.TxHash.String())
 		if err != nil {
-			log.Warn("UpdateLayer2StatusAndLayer1Hash failed", "msgHash", msgHash.(string), "err", err)
+			log.Warn("UpdateLayer2StatusAndLayer1Hash failed", "msgHash", msg.ID, "err", err)
 		}
-		r.processingMessage.Delete(confirmation.ID)
-	}
-
-	// check whether it is block commitment transaction
-	if batchID, ok := r.processingCommitment.Load(confirmation.ID); ok {
-		transactionType = "BatchCommitment"
-		// @todo handle db error
-		err := r.db.UpdateCommitTxHashAndRollupStatus(r.ctx, batchID.(string), confirmation.TxHash.String(), orm.RollupCommitted)
+	case "BatchCommitment":
+		err := r.db.UpdateCommitTxHashAndRollupStatus(r.ctx, msg.ID, confirmation.TxHash.String(), orm.RollupCommitted)
 		if err != nil {
-			log.Warn("UpdateCommitTxHashAndRollupStatus failed", "batch_id", batchID.(string), "err", err)
+			log.Warn("UpdateCommitTxHashAndRollupStatus failed", "batch_id", msg.ID, "err", err)
 		}
-		r.processingCommitment.Delete(confirmation.ID)
-	}
-
-	// check whether it is proof finalization transaction
-	if batchID, ok := r.processingFinalization.Load(confirmation.ID); ok {
-		transactionType = "ProofFinalization"
+	case "ProofFinalization":
 		// @todo handle db error
-		err := r.db.UpdateFinalizeTxHashAndRollupStatus(r.ctx, batchID.(string), confirmation.TxHash.String(), orm.RollupFinalized)
+		err := r.db.UpdateFinalizeTxHashAndRollupStatus(r.ctx, msg.ID, confirmation.TxHash.String(), orm.RollupFinalized)
 		if err != nil {
-			log.Warn("UpdateFinalizeTxHashAndRollupStatus failed", "batch_id", batchID.(string), "err", err)
+			log.Warn("UpdateFinalizeTxHashAndRollupStatus failed", "batch_id", msg.ID, "err", err)
 		}
-		r.processingFinalization.Delete(confirmation.ID)
 	}
 	log.Info("transaction confirmed in layer1", "type", transactionType, "confirmation", confirmation)
 }

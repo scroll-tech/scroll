@@ -48,6 +48,7 @@ func TestSender(t *testing.T) {
 	// Setup
 	setupEnv(t)
 
+	t.Run("testSenderMsg", testSenderMsg)
 	t.Run("test 1 account sender", func(t *testing.T) { testBatchSender(t, 1) })
 	t.Run("test 3 account sender", func(t *testing.T) { testBatchSender(t, 3) })
 	t.Run("test 8 account sender", func(t *testing.T) { testBatchSender(t, 8) })
@@ -56,6 +57,27 @@ func TestSender(t *testing.T) {
 	t.Cleanup(func() {
 		assert.NoError(t, l2gethImg.Stop())
 	})
+}
+
+type confirmMsg struct {
+	TxType string
+	ID     string
+}
+
+func testSenderMsg(t *testing.T) {
+	newSender, err := sender.NewSender(context.Background(), cfg.L1Config.RelayerConfig.SenderConfig, privateKeys)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	toAddr := common.HexToAddress("0x4592d8f8d7b001e72cb26a73e4fa1806a51ac79d")
+
+	msg0 := &confirmMsg{ID: "1", TxType: "1"}
+	_, err = newSender.SendTransaction(msg0, &toAddr, nil, nil)
+	assert.NoError(t, err)
+
+	_, err = newSender.SendTransaction(msg0, &toAddr, nil, nil)
+	assert.Error(t, err)
 }
 
 func testBatchSender(t *testing.T, batchSize int) {
@@ -111,7 +133,7 @@ func testBatchSender(t *testing.T, batchSize int) {
 		select {
 		case cmsg := <-confirmCh:
 			assert.Equal(t, true, cmsg.IsSuccessful)
-			_, exist := idCache.Pop(cmsg.ID)
+			_, exist := idCache.Pop(cmsg.Msg.(string))
 			assert.Equal(t, true, exist)
 			// Receive all confirmed txs.
 			if idCache.Count() == 0 {

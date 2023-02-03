@@ -27,14 +27,12 @@ import (
 // Actions are triggered by new head from layer 1 geth node.
 // @todo It's better to be triggered by watcher.
 type Layer1Relayer struct {
-	ctx    context.Context
-	sender *sender.Sender
+	ctx context.Context
 
 	db  orm.L1MessageOrm
 	cfg *config.RelayerConfig
 
-	// channel used to communicate with transaction sender
-	confirmationCh <-chan *sender.Confirmation
+	sender         *sender.Sender
 	l2MessengerABI *abi.ABI
 
 	stopCh chan struct{}
@@ -62,7 +60,6 @@ func NewLayer1Relayer(ctx context.Context, l1ConfirmNum int64, db orm.L1MessageO
 		l2MessengerABI: l2MessengerABI,
 		cfg:            cfg,
 		stopCh:         make(chan struct{}),
-		confirmationCh: sender.ConfirmChan(),
 	}, nil
 }
 
@@ -142,12 +139,12 @@ func (r *Layer1Relayer) Start() {
 				// number, err := r.client.BlockNumber(r.ctx)
 				// log.Info("receive header", "height", number)
 				r.ProcessSavedEvents()
-			case cfm := <-r.confirmationCh:
+			case cfm := <-r.sender.ConfirmChan():
 				if !cfm.IsSuccessful {
 					log.Warn("transaction confirmed but failed in layer2", "confirmation", cfm)
 				} else {
 					// @todo handle db error
-					err := r.db.UpdateLayer1StatusAndLayer2Hash(r.ctx, cfm.ID, orm.MsgConfirmed, cfm.TxHash.String())
+					err := r.db.UpdateLayer1StatusAndLayer2Hash(r.ctx, cfm.Msg.(string), orm.MsgConfirmed, cfm.TxHash.String())
 					if err != nil {
 						log.Warn("UpdateLayer1StatusAndLayer2Hash failed", "err", err)
 					}

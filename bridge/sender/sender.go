@@ -51,7 +51,7 @@ var DefaultSenderConfig = config.SenderConfig{
 
 // Confirmation struct used to indicate transaction confirmation details
 type Confirmation struct {
-	ID           string
+	Msg          interface{}
 	IsSuccessful bool
 	TxHash       common.Hash
 }
@@ -68,7 +68,7 @@ type FeeData struct {
 // PendingTransaction submitted but pending transactions
 type PendingTransaction struct {
 	submitAt uint64
-	id       string
+	msg      interface{}
 	feeData  *FeeData
 	signer   *bind.TransactOpts
 	tx       *types.Transaction
@@ -193,22 +193,22 @@ func (s *Sender) getFeeData(auth *bind.TransactOpts, target *common.Address, val
 }
 
 // SendTransaction send a signed L2tL1 transaction.
-func (s *Sender) SendTransaction(ID string, target *common.Address, value *big.Int, data []byte) (hash common.Hash, err error) {
+func (s *Sender) SendTransaction(msg interface{}, target *common.Address, value *big.Int, data []byte) (hash common.Hash, err error) {
 	// We occupy the ID, in case some other threads call with the same ID in the same time
-	if _, loaded := s.pendingTxs.LoadOrStore(ID, nil); loaded {
-		return common.Hash{}, fmt.Errorf("has the repeat tx ID, ID: %s", ID)
+	if _, loaded := s.pendingTxs.LoadOrStore(msg, nil); loaded {
+		return common.Hash{}, fmt.Errorf("has the repeat tx confirmMsg, confirmMsg: %s", msg)
 	}
 	// get
 	auth := s.auths.getAccount()
 	if auth == nil {
-		s.pendingTxs.Delete(ID) // release the ID on failure
+		s.pendingTxs.Delete(msg) // release the ID on failure
 		return common.Hash{}, ErrNoAvailableAccount
 	}
 
 	defer s.auths.releaseAccount(auth)
 	defer func() {
 		if err != nil {
-			s.pendingTxs.Delete(ID) // release the ID on failure
+			s.pendingTxs.Delete(msg) // release the ID on failure
 		}
 	}()
 
@@ -224,12 +224,12 @@ func (s *Sender) SendTransaction(ID string, target *common.Address, value *big.I
 		// add pending transaction to queue
 		pending := &PendingTransaction{
 			tx:       tx,
-			id:       ID,
+			msg:      msg,
 			signer:   auth,
 			submitAt: atomic.LoadUint64(&s.blockNumber),
 			feeData:  feeData,
 		}
-		s.pendingTxs.Store(ID, pending)
+		s.pendingTxs.Store(msg, pending)
 		return tx.Hash(), nil
 	}
 
@@ -256,7 +256,7 @@ func (s *Sender) createAndSendTx(auth *bind.TransactOpts, feeData *FeeData, targ
 			GasPrice: feeData.gasPrice,
 			Gas:      feeData.gasLimit,
 			To:       target,
-			Value:    new(big.Int).Set(value),
+			Value:    value,
 			Data:     common.CopyBytes(data),
 			V:        new(big.Int),
 			R:        new(big.Int),
@@ -269,7 +269,7 @@ func (s *Sender) createAndSendTx(auth *bind.TransactOpts, feeData *FeeData, targ
 			GasPrice:   feeData.gasPrice,
 			Gas:        feeData.gasLimit,
 			To:         target,
-			Value:      new(big.Int).Set(value),
+			Value:      value,
 			Data:       common.CopyBytes(data),
 			AccessList: make(types.AccessList, 0),
 			V:          new(big.Int),
@@ -283,7 +283,7 @@ func (s *Sender) createAndSendTx(auth *bind.TransactOpts, feeData *FeeData, targ
 			Data:       common.CopyBytes(data),
 			Gas:        feeData.gasLimit,
 			AccessList: make(types.AccessList, 0),
-			Value:      new(big.Int).Set(value),
+			Value:      value,
 			ChainID:    s.chainID,
 			GasTipCap:  feeData.gasTipCap,
 			GasFeeCap:  feeData.gasFeeCap,
@@ -374,7 +374,7 @@ func (s *Sender) CheckPendingTransaction(header *types.Header) {
 				s.pendingTxs.Delete(key)
 				// send confirm message
 				s.confirmCh <- &Confirmation{
-					ID:           pending.id,
+					Msg:          pending.msg,
 					IsSuccessful: receipt.Status == types.ReceiptStatusSuccessful,
 					TxHash:       pending.tx.Hash(),
 				}
@@ -408,7 +408,7 @@ func (s *Sender) CheckPendingTransaction(header *types.Header) {
 					if (err == nil) && (receipt != nil) {
 						// send confirm message
 						s.confirmCh <- &Confirmation{
-							ID:           pending.id,
+							Msg:          pending.msg,
 							IsSuccessful: receipt.Status == types.ReceiptStatusSuccessful,
 							TxHash:       pending.tx.Hash(),
 						}
