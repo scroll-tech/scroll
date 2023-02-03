@@ -7,9 +7,12 @@ edition = "2021"
 [lib]
 crate-type = ["dylib"]
 
+[patch."https://github.com/privacy-scaling-explorations/halo2.git"]
+halo2_proofs = { git = "https://github.com/scroll-tech/halo2.git", branch = "scroll-dev-1220"  }
+
 [dependencies]
-zkevm = { git = "https://github.com/scroll-tech/scroll-zkevm", branch="fix/mpt_limit" }
-types = { git = "https://github.com/scroll-tech/scroll-zkevm", branch="fix/mpt_limit" }
+zkevm = { git = "https://github.com/scroll-tech/scroll-zkevm", branch="scroll-dev-1220" }
+types = { git = "https://github.com/scroll-tech/scroll-zkevm", branch="scroll-dev-1220" }
 
 log = "0.4"
 env_logger = "0.9.0"
