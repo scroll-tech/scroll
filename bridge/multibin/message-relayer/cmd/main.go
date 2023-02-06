@@ -1,4 +1,4 @@
-package cmd
+package main
 
 import "scroll-tech/bridge/multibin/message-relayer/app"
 

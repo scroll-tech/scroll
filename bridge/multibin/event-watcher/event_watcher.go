@@ -44,10 +44,10 @@ func NewL2EventWatcher(ctx context.Context, client *ethclient.Client, cfg *confi
 
 // NewL1EventWatcher creates a new instance of L1EventWatcher
 func NewL1EventWatcher(ctx context.Context, client *ethclient.Client, cfg *config.L1Config, db database.OrmFactory) *L1EventWatcher {
-	wathcer := l1.NewWatcher(ctx, client, cfg.StartHeight, cfg.Confirmations, cfg.L1MessengerAddress, cfg.RollupContractAddress, db)
+	watcher := l1.NewWatcher(ctx, client, cfg.StartHeight, cfg.Confirmations, cfg.L1MessengerAddress, cfg.RollupContractAddress, db)
 	return &L1EventWatcher{
 		ctx:     ctx,
-		watcher: wathcer,
+		watcher: watcher,
 		client:  client,
 		stop:    make(chan struct{}),
 	}
