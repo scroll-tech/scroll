@@ -62,7 +62,7 @@ func action(ctx *cli.Context) error {
 	}
 	l2relayer, err = messagerelayer.NewL2MsgRelayer(ctx.Context, ormFactory, cfg.L2Config.RelayerConfig)
 	if err != nil {
-		log.Crit("failed to creatw new l2 relayer", "config file", cfgFile, "error", err)
+		log.Crit("failed to create new l2 relayer", "config file", cfgFile, "error", err)
 	}
 	defer func() {
 		l1relayer.Stop()
@@ -76,7 +76,7 @@ func action(ctx *cli.Context) error {
 	// Start all modules.
 	l1relayer.Start()
 	l2relayer.Start()
-	log.Info("Start event-watcher successfully")
+	log.Info("Start message_relayer successfully")
 
 	// Catch CTRL-C to ensure a graceful shutdown.
 	interrupt := make(chan os.Signal, 1)
@@ -88,9 +88,8 @@ func action(ctx *cli.Context) error {
 	return nil
 }
 
-// Run run bridge cmd instance.
+// Run run message_relayer cmd instance.
 func Run() {
-	// Run the bridge.
 	if err := app.Run(os.Args); err != nil {
 		_, _ = fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)

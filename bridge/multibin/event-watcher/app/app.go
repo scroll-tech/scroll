@@ -57,9 +57,9 @@ func action(ctx *cli.Context) error {
 		log.Crit("failed to connect l1 geth", "config file", cfgFile, "error", err)
 	}
 
-	l2client, err := ethclient.Dial(cfg.L1Config.Endpoint)
+	l2client, err := ethclient.Dial(cfg.L2Config.Endpoint)
 	if err != nil {
-		log.Crit("failed to connect l1 geth", "config file", cfgFile, "error", err)
+		log.Crit("failed to connect l2 geth", "config file", cfgFile, "error", err)
 	}
 	var (
 		l1watcher *eventwatcher.L1EventWatcher
@@ -94,9 +94,8 @@ func action(ctx *cli.Context) error {
 	return nil
 }
 
-// Run run bridge cmd instance.
+// Run run event watcher cmd instance.
 func Run() {
-	// Run the bridge.
 	if err := app.Run(os.Args); err != nil {
 		_, _ = fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
