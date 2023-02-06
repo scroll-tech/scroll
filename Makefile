@@ -19,11 +19,11 @@ update: ## update dependencies
 	cd $(PWD)/coordinator/ && go get -u github.com/scroll-tech/go-ethereum@staging && go mod tidy
 	cd $(PWD)/database/ && go get -u github.com/scroll-tech/go-ethereum@staging && go mod tidy
 	cd $(PWD)/roller/ && go get -u github.com/scroll-tech/go-ethereum@staging && go mod tidy
-	/Users/chuhanjinwork/go/bin/goimports -local $(PWD)/bridge/ -w .
-	/Users/chuhanjinwork/go/bin/goimports -local $(PWD)/common/ -w .
-	/Users/chuhanjinwork/go/bin/goimports -local $(PWD)/coordinator/ -w .
-	/Users/chuhanjinwork/go/bin/goimports -local $(PWD)/database/ -w .
-	/Users/chuhanjinwork/go/bin/goimports -local $(PWD)/roller/ -w .
+	goimports -local $(PWD)/bridge/ -w .
+	goimports -local $(PWD)/common/ -w .
+	goimports -local $(PWD)/coordinator/ -w .
+	goimports -local $(PWD)/database/ -w .
+	goimports -local $(PWD)/roller/ -w .
 
 dev_docker: ## build docker images for development/testing usages
 	docker build -t scroll_l1geth ./common/docker/l1geth/

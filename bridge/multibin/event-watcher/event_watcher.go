@@ -32,10 +32,7 @@ type L2EventWatcher struct {
 
 // NewL2EventWatcher creates a new instance of L2EventWatcher
 func NewL2EventWatcher(ctx context.Context, client *ethclient.Client, cfg *config.L2Config, db database.OrmFactory) (*L2EventWatcher, error) {
-	watcher, err := l2.NewL2WatcherClient(ctx, client, cfg.Confirmations, cfg.BatchProposerConfig, cfg.RelayerConfig.MessengerContractAddress, db)
-	if err != nil {
-		return nil, err
-	}
+	watcher := l2.NewL2WatcherClient(ctx, client, cfg.Confirmations, cfg.BatchProposerConfig, cfg.RelayerConfig.MessengerContractAddress, db)
 	return &L2EventWatcher{
 		ctx:           ctx,
 		watcher:       watcher,
