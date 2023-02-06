@@ -6,11 +6,13 @@ import { Initializable } from "@openzeppelin/contracts/proxy/utils/Initializable
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-import { L1ERC20Gateway, IL1ERC20Gateway } from "./L1ERC20Gateway.sol";
-import { IL1ScrollMessenger } from "../IL1ScrollMessenger.sol";
 import { IWETH } from "../../interfaces/IWETH.sol";
 import { IL2ERC20Gateway } from "../../L2/gateways/IL2ERC20Gateway.sol";
-import { ScrollGatewayBase, IScrollGateway } from "../../libraries/gateway/ScrollGatewayBase.sol";
+import { IL1ScrollMessenger } from "../IL1ScrollMessenger.sol";
+import { IL1ERC20Gateway } from "./IL1ERC20Gateway.sol";
+
+import { ScrollGatewayBase } from "../../libraries/gateway/ScrollGatewayBase.sol";
+import { L1ERC20Gateway } from "./L1ERC20Gateway.sol";
 
 /// @title L1WETHGateway
 /// @notice The `L1WETHGateway` contract is used to deposit `WETH` token in layer 1 and
@@ -87,11 +89,6 @@ contract L1WETHGateway is Initializable, ScrollGatewayBase, L1ERC20Gateway {
     emit FinalizeWithdrawERC20(_l1Token, _l2Token, _from, _to, _amount, _data);
   }
 
-  /// @inheritdoc IScrollGateway
-  function finalizeDropMessage() external payable virtual override onlyMessenger {
-    // @todo should refund token back to sender.
-  }
-
   /**************************************** Internal Functions ****************************************/
 
   /// @inheritdoc L1ERC20Gateway
@@ -128,12 +125,7 @@ contract L1WETHGateway is Initializable, ScrollGatewayBase, L1ERC20Gateway {
     );
 
     // 4. Send message to L1ScrollMessenger.
-    IL1ScrollMessenger(messenger).sendMessage{ value: _amount + msg.value }(
-      counterpart,
-      msg.value,
-      _message,
-      _gasLimit
-    );
+    IL1ScrollMessenger(messenger).sendMessage{ value: _amount + msg.value }(counterpart, _amount, _message, _gasLimit);
 
     emit DepositERC20(_token, _l2WETH, _from, _to, _amount, _data);
   }

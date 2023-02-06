@@ -6,10 +6,11 @@ import { OwnableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/O
 import { IERC1155Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC1155/IERC1155Upgradeable.sol";
 import { ERC1155HolderUpgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC1155/utils/ERC1155HolderUpgradeable.sol";
 
-import { IL1ERC1155Gateway } from "./IL1ERC1155Gateway.sol";
-import { IL1ScrollMessenger } from "../IL1ScrollMessenger.sol";
 import { IL2ERC1155Gateway } from "../../L2/gateways/IL2ERC1155Gateway.sol";
-import { ScrollGatewayBase, IScrollGateway } from "../../libraries/gateway/ScrollGatewayBase.sol";
+import { IL1ScrollMessenger } from "../IL1ScrollMessenger.sol";
+import { IL1ERC1155Gateway } from "./IL1ERC1155Gateway.sol";
+
+import { ScrollGatewayBase } from "../../libraries/gateway/ScrollGatewayBase.sol";
 
 /// @title L1ERC1155Gateway
 /// @notice The `L1ERC1155Gateway` is used to deposit ERC1155 compatible NFT in layer 1 and
@@ -20,27 +21,37 @@ import { ScrollGatewayBase, IScrollGateway } from "../../libraries/gateway/Scrol
 /// This will be changed if we have more specific scenarios.
 // @todo Current implementation doesn't support calling from `L1GatewayRouter`.
 contract L1ERC1155Gateway is OwnableUpgradeable, ERC1155HolderUpgradeable, ScrollGatewayBase, IL1ERC1155Gateway {
-  /**************************************** Events ****************************************/
+  /**********
+   * Events *
+   **********/
 
   /// @notice Emitted when token mapping for ERC1155 token is updated.
   /// @param _l1Token The address of ERC1155 token in layer 1.
   /// @param _l1Token The address of corresponding ERC1155 token in layer 2.
   event UpdateTokenMapping(address _l1Token, address _l2Token);
 
-  /**************************************** Variables ****************************************/
+  /*************
+   * Variables *
+   *************/
 
   /// @notice Mapping from l1 token address to l2 token address for ERC1155 NFT.
-  // solhint-disable-next-line var-name-mixedcase
   mapping(address => address) public tokenMapping;
 
-  /**************************************** Constructor ****************************************/
+  /***************
+   * Constructor *
+   ***************/
 
+  /// @notice Initialize the storage of L1ERC1155Gateway.
+  /// @param _counterpart The address of L2ERC1155Gateway in L2.
+  /// @param _messenger The address of L1ScrollMessenger.
   function initialize(address _counterpart, address _messenger) external initializer {
     OwnableUpgradeable.__Ownable_init();
     ScrollGatewayBase._initialize(_counterpart, address(0), _messenger);
   }
 
-  /**************************************** Mutate Funtions ****************************************/
+  /****************************
+   * Public Mutated Functions *
+   ****************************/
 
   /// @inheritdoc IL1ERC1155Gateway
   function depositERC1155(
@@ -112,12 +123,9 @@ contract L1ERC1155Gateway is OwnableUpgradeable, ERC1155HolderUpgradeable, Scrol
     emit FinalizeBatchWithdrawERC1155(_l1Token, _l2Token, _from, _to, _tokenIds, _amounts);
   }
 
-  /// @inheritdoc IScrollGateway
-  function finalizeDropMessage() external payable {
-    // @todo finish the logic later
-  }
-
-  /**************************************** Restricted Funtions ****************************************/
+  /************************
+   * Restricted Functions *
+   ************************/
 
   /// @notice Update layer 2 to layer 2 token mapping.
   /// @param _l1Token The address of ERC1155 token in layer 1.
@@ -130,7 +138,9 @@ contract L1ERC1155Gateway is OwnableUpgradeable, ERC1155HolderUpgradeable, Scrol
     emit UpdateTokenMapping(_l1Token, _l2Token);
   }
 
-  /**************************************** Internal Funtions ****************************************/
+  /**********************
+   * Internal Functions *
+   **********************/
 
   /// @dev Internal function to deposit ERC1155 NFT to layer 2.
   /// @param _token The address of ERC1155 NFT in layer 1.
@@ -165,7 +175,7 @@ contract L1ERC1155Gateway is OwnableUpgradeable, ERC1155HolderUpgradeable, Scrol
     );
 
     // 3. Send message to L1ScrollMessenger.
-    IL1ScrollMessenger(messenger).sendMessage(counterpart, msg.value, _message, _gasLimit);
+    IL1ScrollMessenger(messenger).sendMessage{ value: msg.value }(counterpart, 0, _message, _gasLimit);
 
     emit DepositERC1155(_token, _l2Token, msg.sender, _to, _tokenId, _amount);
   }
@@ -208,7 +218,7 @@ contract L1ERC1155Gateway is OwnableUpgradeable, ERC1155HolderUpgradeable, Scrol
     );
 
     // 3. Send message to L1ScrollMessenger.
-    IL1ScrollMessenger(messenger).sendMessage{ value: msg.value }(counterpart, msg.value, _message, _gasLimit);
+    IL1ScrollMessenger(messenger).sendMessage{ value: msg.value }(counterpart, 0, _message, _gasLimit);
 
     emit BatchDepositERC1155(_token, _l2Token, msg.sender, _to, _tokenIds, _amounts);
   }

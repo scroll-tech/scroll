@@ -7,6 +7,10 @@ import { IL1ERC20Gateway } from "./IL1ERC20Gateway.sol";
 // solhint-disable no-empty-blocks
 
 abstract contract L1ERC20Gateway is IL1ERC20Gateway {
+  /****************************
+   * Public Mutated Functions *
+   ****************************/
+
   /// @inheritdoc IL1ERC20Gateway
   function depositERC20(
     address _token,
@@ -36,6 +40,10 @@ abstract contract L1ERC20Gateway is IL1ERC20Gateway {
   ) external payable override {
     _deposit(_token, _to, _amount, _data, _gasLimit);
   }
+
+  /**********************
+   * Internal Functions *
+   **********************/
 
   /// @dev Internal function to do all the deposit operations.
   ///

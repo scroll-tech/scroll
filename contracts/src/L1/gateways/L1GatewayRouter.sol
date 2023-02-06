@@ -4,11 +4,13 @@ pragma solidity ^0.8.0;
 
 import { OwnableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
-import { IL1GatewayRouter } from "./IL1GatewayRouter.sol";
-import { IL1ERC20Gateway } from "./IL1ERC20Gateway.sol";
-import { IL1ScrollMessenger } from "../IL1ScrollMessenger.sol";
 import { IL2GatewayRouter } from "../../L2/gateways/IL2GatewayRouter.sol";
 import { IScrollGateway } from "../../libraries/gateway/IScrollGateway.sol";
+import { IL1ScrollMessenger } from "../IL1ScrollMessenger.sol";
+import { IL1ETHGateway } from "./IL1ETHGateway.sol";
+import { IL1ERC20Gateway } from "./IL1ERC20Gateway.sol";
+import { IL1GatewayRouter } from "./IL1GatewayRouter.sol";
+
 import { ScrollGatewayBase } from "../../libraries/gateway/ScrollGatewayBase.sol";
 
 /// @title L1GatewayRouter
@@ -17,24 +19,50 @@ import { ScrollGatewayBase } from "../../libraries/gateway/ScrollGatewayBase.sol
 /// @dev One can also use this contract to query L1/L2 token address mapping.
 /// In the future, ERC-721 and ERC-1155 tokens will be added to the router too.
 contract L1GatewayRouter is OwnableUpgradeable, ScrollGatewayBase, IL1GatewayRouter {
-  /**************************************** Events ****************************************/
+  /**********
+   * Events *
+   **********/
 
-  event SetDefaultERC20Gateway(address indexed _defaultERC20Gateway);
-  event SetERC20Gateway(address indexed _token, address indexed _gateway);
+  /// @notice Emitted when the address of ETH Gateway is updated.
+  /// @param ethGateway The address of new ETH Gateway.
+  event SetETHGateway(address indexed ethGateway);
 
-  /**************************************** Variables ****************************************/
+  /// @notice Emitted when the address of default ERC20 Gateway is updated.
+  /// @param defaultERC20Gateway The address of new default ERC20 Gateway.
+  event SetDefaultERC20Gateway(address indexed defaultERC20Gateway);
+
+  /// @notice Emitted when the `gateway` for `token` is updated.
+  /// @param token The address of token updated.
+  /// @param gateway The corresponding address of gateway updated.
+  event SetERC20Gateway(address indexed token, address indexed gateway);
+
+  /*************
+   * Variables *
+   *************/
+
+  /// @notice The address of L1ETHGateway.
+  address public ethGateway;
 
   /// @notice The addess of default ERC20 gateway, normally the L1StandardERC20Gateway contract.
   address public defaultERC20Gateway;
+
   /// @notice Mapping from ERC20 token address to corresponding L1ERC20Gateway.
   // solhint-disable-next-line var-name-mixedcase
   mapping(address => address) public ERC20Gateway;
 
   // @todo: add ERC721/ERC1155 Gateway mapping.
 
-  /**************************************** Constructor ****************************************/
+  /***************
+   * Constructor *
+   ***************/
 
+  /// @notice Initialize the storage of L1GatewayRouter.
+  /// @param _ethGateway The address of L1ETHGateway contract.
+  /// @param _defaultERC20Gateway The address of default ERC20 Gateway contract.
+  /// @param _counterpart The address of L2GatewayRouter in L2.
+  /// @param _messenger The address of L1ScrollMessenger.
   function initialize(
+    address _ethGateway,
     address _defaultERC20Gateway,
     address _counterpart,
     address _messenger
@@ -45,10 +73,19 @@ contract L1GatewayRouter is OwnableUpgradeable, ScrollGatewayBase, IL1GatewayRou
     // it can be zero during initialization
     if (_defaultERC20Gateway != address(0)) {
       defaultERC20Gateway = _defaultERC20Gateway;
+      emit SetDefaultERC20Gateway(_defaultERC20Gateway);
+    }
+
+    // it can be zero during initialization
+    if (_ethGateway != address(0)) {
+      ethGateway = _ethGateway;
+      emit SetETHGateway(_ethGateway);
     }
   }
 
-  /**************************************** View Functions ****************************************/
+  /*************************
+   * Public View Functions *
+   *************************/
 
   /// @inheritdoc IL1ERC20Gateway
   function getL2ERC20Address(address _l1Address) external view override returns (address) {
@@ -70,7 +107,9 @@ contract L1GatewayRouter is OwnableUpgradeable, ScrollGatewayBase, IL1GatewayRou
     return _gateway;
   }
 
-  /**************************************** Mutate Functions ****************************************/
+  /************************************************
+   * Public Mutated Functions from L1ERC20Gateway *
+   ************************************************/
 
   /// @inheritdoc IL1ERC20Gateway
   function depositERC20(
@@ -108,47 +147,6 @@ contract L1GatewayRouter is OwnableUpgradeable, ScrollGatewayBase, IL1GatewayRou
     IL1ERC20Gateway(_gateway).depositERC20AndCall{ value: msg.value }(_token, _to, _amount, _routerData, _gasLimit);
   }
 
-  /// @inheritdoc IL1GatewayRouter
-  function depositETH(uint256 _gasLimit) external payable override {
-    depositETH(msg.sender, _gasLimit);
-  }
-
-  /// @inheritdoc IL1GatewayRouter
-  function depositETH(address _to, uint256 _gasLimit) public payable override nonReentrant {
-    require(msg.value > 0, "deposit zero eth");
-
-    bytes memory _message = abi.encodeWithSelector(
-      IL2GatewayRouter.finalizeDepositETH.selector,
-      msg.sender,
-      _to,
-      msg.value,
-      new bytes(0)
-    );
-    IL1ScrollMessenger(messenger).sendMessage{ value: msg.value }(counterpart, 0, _message, _gasLimit);
-
-    emit DepositETH(msg.sender, _to, msg.value, "");
-  }
-
-  /// @inheritdoc IL1GatewayRouter
-  function finalizeWithdrawETH(
-    address _from,
-    address _to,
-    uint256 _amount,
-    bytes calldata _data
-  ) external payable override onlyCallByCounterpart {
-    require(msg.value == _amount, "msg.value mismatch");
-
-    // @note can possible trigger reentrant call to this contract or messenger,
-    // but it seems not a big problem.
-    // solhint-disable-next-line avoid-low-level-calls
-    (bool _success, ) = _to.call{ value: _amount }("");
-    require(_success, "ETH transfer failed");
-
-    // @todo farward _data to `_to` in near future.
-
-    emit FinalizeWithdrawETH(_from, _to, _amount, _data);
-  }
-
   /// @inheritdoc IL1ERC20Gateway
   function finalizeWithdrawERC20(
     address,
@@ -161,12 +159,62 @@ contract L1GatewayRouter is OwnableUpgradeable, ScrollGatewayBase, IL1GatewayRou
     revert("should never be called");
   }
 
-  /// @inheritdoc IScrollGateway
-  function finalizeDropMessage() external payable virtual override onlyMessenger {
-    // @todo should refund ETH back to sender.
+  /**********************************************
+   * Public Mutated Functions from L1ETHGateway *
+   **********************************************/
+
+  /// @inheritdoc IL1ETHGateway
+  function depositETH(uint256 _amount, uint256 _gasLimit) external payable override {
+    depositETHAndCall(msg.sender, _amount, new bytes(0), _gasLimit);
   }
 
-  /**************************************** Restricted Functions ****************************************/
+  /// @inheritdoc IL1ETHGateway
+  function depositETH(
+    address _to,
+    uint256 _amount,
+    uint256 _gasLimit
+  ) external payable override {
+    depositETHAndCall(_to, _amount, new bytes(0), _gasLimit);
+  }
+
+  /// @inheritdoc IL1ETHGateway
+  function depositETHAndCall(
+    address _to,
+    uint256 _amount,
+    bytes memory _data,
+    uint256 _gasLimit
+  ) public payable override nonReentrant {
+    address _gateway = ethGateway;
+    require(_gateway != address(0), "eth gateway available");
+
+    // encode msg.sender with _data
+    bytes memory _routerData = abi.encode(msg.sender, _data);
+
+    IL1ETHGateway(_gateway).depositETHAndCall{ value: msg.value }(_to, _amount, _routerData, _gasLimit);
+  }
+
+  /// @inheritdoc IL1ETHGateway
+  function finalizeWithdrawETH(
+    address,
+    address,
+    uint256,
+    bytes calldata
+  ) external payable virtual override {
+    revert("should never be called");
+  }
+
+  /************************
+   * Restricted Functions *
+   ************************/
+
+  /// @notice Update the address of ETH gateway contract.
+  /// @dev This function should only be called by contract owner.
+  /// @param _ethGateway The address to update.
+  function setETHGateway(address _ethGateway) external onlyOwner {
+    ethGateway = _ethGateway;
+
+    emit SetETHGateway(_ethGateway);
+  }
 
   /// @notice Update the address of default ERC20 gateway contract.
   /// @dev This function should only be called by contract owner.
