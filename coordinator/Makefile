@@ -10,6 +10,8 @@ else
 	ZK_VERSION=$(shell grep -m 1 "scroll-zkevm" ../common/libzkp/impl/Cargo.lock | cut -d "\#" -f2 | cut -c-7)
 endif
 
+ZKTRIE_PATH = $(shell find ../common|grep libzktrie.so)
+
 test:
 	go test -v -race -coverprofile=coverage.txt -covermode=atomic -p 1 $(PWD)/...
 
@@ -17,7 +19,7 @@ libzkp:
 	cd ../common/libzkp/impl && cargo build --release && cp ./target/release/libzkp.so ../interface/
 	rm -rf ./verifier/lib && cp -r ../common/libzkp/interface ./verifier/lib
 	export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:./verifier/lib
-	cp $(shell find ../common|grep libzktrie.so) ./verifier/lib/libzktrie.so
+	cp ${ZKTRIE_PATH} ./verifier/lib/libzktrie.so
 
 coordinator: libzkp ## Builds the Coordinator instance.
 	go build -ldflags "-X scroll-tech/common/version.ZkVersion=${ZK_VERSION}" -o $(PWD)/build/bin/coordinator ./cmd
