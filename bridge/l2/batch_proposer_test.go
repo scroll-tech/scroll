@@ -49,7 +49,7 @@ func testBatchProposer(t *testing.T) {
 		BatchTimeSec:        1,
 		BatchBlocksLimit:    100,
 	}, db)
-	proposer.tryProposeBatch()
+	proposer.TryProposeBatch()
 
 	infos, err := db.GetUnbatchedBlocks(map[string]interface{}{},
 		fmt.Sprintf("order by number ASC LIMIT %d", 100))

@@ -55,7 +55,7 @@ type WatcherClient struct {
 	stopped uint64
 	stopCh  chan struct{}
 
-	batchProposer *batchProposer
+	batchProposer *BatchProposer
 }
 
 // NewL2WatcherClient take a l2geth instance to generate a l2watcherclient instance
@@ -113,7 +113,7 @@ func (w *WatcherClient) Start() {
 						number = 0
 					}
 
-					w.tryFetchRunningMissingBlocks(ctx, number)
+					w.TryFetchRunningMissingBlocks(ctx, number)
 				}
 			}
 		}(ctx)
@@ -158,7 +158,7 @@ func (w *WatcherClient) Start() {
 					return
 
 				case <-ticker.C:
-					w.batchProposer.tryProposeBatch()
+					w.batchProposer.TryProposeBatch()
 				}
 			}
 		}(ctx)
@@ -176,7 +176,8 @@ func (w *WatcherClient) Stop() {
 const blockTracesFetchLimit = uint64(10)
 
 // try fetch missing blocks if inconsistent
-func (w *WatcherClient) tryFetchRunningMissingBlocks(ctx context.Context, blockHeight uint64) {
+// TryFetchRunningMissingBlocks fetches the block traces from counterpart blockchain.(eg l1->l2, l2->l1)
+func (w *WatcherClient) TryFetchRunningMissingBlocks(ctx context.Context, blockHeight uint64) {
 	// Get newest block in DB. must have blocks at that time.
 	// Don't use "block_trace" table "trace" column's BlockTrace.Number,
 	// because it might be empty if the corresponding rollup_result is finalized/finalization_skipped
@@ -231,6 +232,11 @@ func (w *WatcherClient) getAndStoreBlockTraces(ctx context.Context, from, to uin
 }
 
 const contractEventsBlocksFetchLimit = int64(10)
+
+// GetBatchProposer returns the batchProposer in watcher client
+func (w *WatcherClient) GetBatchProposer() *BatchProposer {
+	return w.batchProposer
+}
 
 // FetchContractEvent pull latest event logs from given contract address and save in DB
 func (w *WatcherClient) FetchContractEvent(blockHeight uint64) {

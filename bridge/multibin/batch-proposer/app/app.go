@@ -15,7 +15,7 @@ import (
 	"scroll-tech/common/version"
 
 	"scroll-tech/bridge/config"
-	eventwatcher "scroll-tech/bridge/multibin/event-watcher"
+	batchproposer "scroll-tech/bridge/multibin/batch-proposer"
 )
 
 var (
@@ -27,8 +27,8 @@ func init() {
 	app = cli.NewApp()
 
 	app.Action = action
-	app.Name = "event-watcher"
-	app.Usage = "The Scroll Event Watcher"
+	app.Name = "rollup-relayer"
+	app.Usage = "The Scroll Rollup Relayer"
 	app.Version = version.Version
 	app.Flags = append(app.Flags, utils.CommonFlags...)
 	app.Commands = []*cli.Command{}
@@ -52,27 +52,17 @@ func action(ctx *cli.Context) error {
 		log.Crit("failed to init db connection", "err", err)
 	}
 
-	l1client, err := ethclient.Dial(cfg.L1Config.Endpoint)
-	if err != nil {
-		log.Crit("failed to connect l1 geth", "config file", cfgFile, "error", err)
-	}
-
 	l2client, err := ethclient.Dial(cfg.L1Config.Endpoint)
 	if err != nil {
-		log.Crit("failed to connect l1 geth", "config file", cfgFile, "error", err)
+		log.Crit("failed to connect l2 geth", "config file", cfgFile, "error", err)
 	}
-	var (
-		l1watcher *eventwatcher.L1EventWatcher
-		l2watcher *eventwatcher.L2EventWatcher
-	)
-	l1watcher = eventwatcher.NewL1EventWatcher(ctx.Context, l1client, cfg.L1Config, ormFactory)
-	l2watcher, err = eventwatcher.NewL2EventWatcher(ctx.Context, l2client, cfg.L2Config, ormFactory)
+
+	batchProposer, err := batchproposer.NewL2BatchPropser(ctx.Context, l2client, cfg.L2Config, ormFactory)
 	if err != nil {
 		return err
 	}
 	defer func() {
-		l1watcher.Stop()
-		l2watcher.Stop()
+		batchProposer.Stop()
 		err = ormFactory.Close()
 		if err != nil {
 			log.Error("can not close ormFactory", "error", err)
@@ -80,9 +70,8 @@ func action(ctx *cli.Context) error {
 	}()
 
 	// Start all modules.
-	l1watcher.Start()
-	l2watcher.Start()
-	log.Info("Start event-watcher successfully")
+	batchProposer.Start()
+	log.Info("Start batch_proposer successfully")
 
 	// Catch CTRL-C to ensure a graceful shutdown.
 	interrupt := make(chan os.Signal, 1)
@@ -94,9 +83,8 @@ func action(ctx *cli.Context) error {
 	return nil
 }
 
-// Run run bridge cmd instance.
+// Run run batch_proposer cmd instance.
 func Run() {
-	// Run the bridge.
 	if err := app.Run(os.Args); err != nil {
 		_, _ = fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
