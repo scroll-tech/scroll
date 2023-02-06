@@ -125,8 +125,7 @@ func NewSender(ctx context.Context, config *config.SenderConfig, privs []*ecdsa.
 		if header.BaseFee != nil {
 			baseFeePerGas = header.BaseFee.Uint64()
 		} else {
-			log.Error("DynamicFeeTxType not supported, header.BaseFee nil")
-			return nil, err
+			return nil, errors.New("DynamicFeeTxType not supported, header.BaseFee nil")
 		}
 	}
 
