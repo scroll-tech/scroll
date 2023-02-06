@@ -2,7 +2,7 @@ FROM golang:1.18-alpine
 ARG CARGO_CHEF_TAG=0.1.41
 ARG DEFAULT_RUST_TOOLCHAIN=nightly-2022-12-10
 
-RUN apk add --no-cache gcc musl-dev linux-headers git ca-certificates
+RUN apk add --no-cache gcc musl-dev linux-headers git ca-certificates openssl-dev
 
 # RUN apk add --no-cache libc6-compat
 # RUN apk add --no-cache gcompat

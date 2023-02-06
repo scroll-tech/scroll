@@ -5,6 +5,7 @@ ARG DEFAULT_RUST_TOOLCHAIN=nightly-2022-12-10
 
 RUN apk add --no-cache \
         ca-certificates \
+        openssl-dev \
         gcc \
         git \
         musl-dev
