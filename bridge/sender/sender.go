@@ -110,6 +110,15 @@ func NewSender(ctx context.Context, config *config.SenderConfig, privs []*ecdsa.
 		return nil, err
 	}
 
+	var baseFeePerGas uint64
+	if config.TxType == DynamicFeeTxType {
+		if header.BaseFee != nil {
+			baseFeePerGas = header.BaseFee.Uint64()
+		} else {
+			return nil, errors.New("DynamicFeeTxType not supported, header.BaseFee nil")
+		}
+	}
+
 	sender := &Sender{
 		ctx:           ctx,
 		config:        config,
@@ -118,7 +127,7 @@ func NewSender(ctx context.Context, config *config.SenderConfig, privs []*ecdsa.
 		auths:         auths,
 		confirmCh:     make(chan *Confirmation, 128),
 		blockNumber:   header.Number.Uint64(),
-		baseFeePerGas: header.BaseFee.Uint64(),
+		baseFeePerGas: baseFeePerGas,
 		pendingTxs:    sync.Map{},
 		stopCh:        make(chan struct{}),
 	}
@@ -346,7 +355,13 @@ func (s *Sender) resubmitTransaction(feeData *FeeData, auth *bind.TransactOpts, 
 func (s *Sender) CheckPendingTransaction(header *types.Header) {
 	number := header.Number.Uint64()
 	atomic.StoreUint64(&s.blockNumber, number)
-	atomic.StoreUint64(&s.baseFeePerGas, header.BaseFee.Uint64())
+	if s.config.TxType == DynamicFeeTxType {
+		if header.BaseFee != nil {
+			atomic.StoreUint64(&s.baseFeePerGas, header.BaseFee.Uint64())
+		} else {
+			log.Error("DynamicFeeTxType not supported, header.BaseFee nil")
+		}
+	}
 	s.pendingTxs.Range(func(key, value interface{}) bool {
 		// ignore empty id, since we use empty id to occupy pending task
 		if value == nil || reflect.ValueOf(value).IsNil() {
