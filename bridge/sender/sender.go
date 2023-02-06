@@ -156,10 +156,6 @@ func (s *Sender) getFeeData(auth *bind.TransactOpts, target *common.Address, val
 		// estimate gas price
 		var gasPrice *big.Int
 		gasPrice, err = s.client.SuggestGasPrice(s.ctx)
-
-		gasPrice = gasPrice.Mul(gasPrice, big.NewInt(15))
-		gasPrice = gasPrice.Div(gasPrice, big.NewInt(10))
-
 		if err != nil {
 			return nil, err
 		}
