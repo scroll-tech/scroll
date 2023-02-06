@@ -33,9 +33,9 @@ dev_docker: ## build docker images for development/testing usages
 
 test_zkp: ## Test zkp prove and verify, roller/prover generates the proof and coordinator/verifier verifies it
 	mkdir test_params
-	wget https://circuit-release.s3.us-west-2.amazonaws.com/circuit-release/$ZKP_VERSION/test_params/params18 -O ./test_params/params18
-	wget https://circuit-release.s3.us-west-2.amazonaws.com/circuit-release/$ZKP_VERSION/test_params/params25 -O ./test_params/params25
-	wget https://circuit-release.s3.us-west-2.amazonaws.com/circuit-release/$ZKP_VERSION/test_seed -O test_seed
+	wget https://circuit-release.s3.us-west-2.amazonaws.com/circuit-release/${ZKP_VERSION}/test_params/params18 -O ./test_params/params18
+	wget https://circuit-release.s3.us-west-2.amazonaws.com/circuit-release/${ZKP_VERSION}/test_params/params25 -O ./test_params/params25
+	wget https://circuit-release.s3.us-west-2.amazonaws.com/circuit-release/${ZKP_VERSION}/test_seed -O test_seed
 	rm -rf ./roller/assets/test_params && mv test_params ./roller/assets/ && mv test_seed ./roller/assets/
 	cd ./roller && make test-gpu-prover
 	rm -rf ./coordinator/assets/test_params && mv ./roller/assets/test_params ./coordinator/assets/
