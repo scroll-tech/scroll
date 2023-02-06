@@ -32,7 +32,7 @@ dev_docker: ## build docker images for development/testing usages
 	docker build -t scroll_l2geth ./common/docker/l2geth/
 
 test_zkp: ## Test zkp prove and verify, roller/prover generates the proof and coordinator/verifier verifies it
-	mkdir test_params
+	mkdir -p test_params
 	wget https://circuit-release.s3.us-west-2.amazonaws.com/circuit-release/${ZKP_VERSION}/test_params/params18 -O ./test_params/params18
 	wget https://circuit-release.s3.us-west-2.amazonaws.com/circuit-release/${ZKP_VERSION}/test_params/params25 -O ./test_params/params25
 	wget https://circuit-release.s3.us-west-2.amazonaws.com/circuit-release/${ZKP_VERSION}/test_seed -O test_seed
