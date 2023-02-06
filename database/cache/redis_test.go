@@ -3,12 +3,14 @@ package cache_test
 import (
 	"context"
 	"encoding/json"
+	"os"
+	"testing"
+
 	"github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/stretchr/testify/assert"
-	"os"
+
 	"scroll-tech/common/docker"
 	"scroll-tech/database/cache"
-	"testing"
 )
 
 func TestRedisCache(t *testing.T) {
