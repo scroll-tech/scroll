@@ -109,7 +109,7 @@ func (l2r *L2MsgRelayer) Start() {
 			case <-ticker.C:
 				var wg = sync.WaitGroup{}
 				wg.Add(1)
-				l2r.relayer.ProcessSavedEvents(&wg)
+				go l2r.relayer.ProcessSavedEvents(&wg)
 				wg.Wait()
 			case confirmation := <-l2r.msgConfirmCh:
 				l2r.relayer.HandleConfirmation(confirmation)
