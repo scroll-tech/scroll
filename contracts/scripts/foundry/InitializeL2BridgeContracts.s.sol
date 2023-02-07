@@ -3,11 +3,13 @@ pragma solidity ^0.8.10;
 
 import { Script } from "forge-std/Script.sol";
 
+import { L2ScrollMessenger } from "../../src/L2/L2ScrollMessenger.sol";
 import { L2CustomERC20Gateway } from "../../src/L2/gateways/L2CustomERC20Gateway.sol";
 import { L2ERC1155Gateway } from "../../src/L2/gateways/L2ERC1155Gateway.sol";
 import { L2ERC721Gateway } from "../../src/L2/gateways/L2ERC721Gateway.sol";
 import { L2GatewayRouter } from "../../src/L2/gateways/L2GatewayRouter.sol";
 import { L2StandardERC20Gateway } from "../../src/L2/gateways/L2StandardERC20Gateway.sol";
+import { Whitelist } from "../../src/L2/predeploys/Whitelist.sol";
 import { ScrollStandardERC20Factory } from "../../src/libraries/token/ScrollStandardERC20Factory.sol";
 
 contract InitializeL2BridgeContracts is Script {
@@ -26,6 +28,7 @@ contract InitializeL2BridgeContracts is Script {
     address L2_CUSTOM_ERC20_GATEWAY_PROXY_ADDR = vm.envAddress("L2_CUSTOM_ERC20_GATEWAY_PROXY_ADDR");
     address L2_ERC721_GATEWAY_PROXY_ADDR = vm.envAddress("L2_ERC721_GATEWAY_PROXY_ADDR");
     address L2_ERC1155_GATEWAY_PROXY_ADDR = vm.envAddress("L2_ERC1155_GATEWAY_PROXY_ADDR");
+    address L2_WHITELIST_ADDR = vm.envAddress("L2_WHITELIST_ADDR");
 
     function run() external {
         vm.startBroadcast(deployerPrivateKey);
@@ -68,6 +71,20 @@ contract InitializeL2BridgeContracts is Script {
             L1_ERC721_GATEWAY_PROXY_ADDR,
             L2_SCROLL_MESSENGER_ADDR
         );
+
+        // whitelist contracts which can call sendMessage
+        {
+            address[] memory gateways = new address[](5);
+            gateways[0] = L2_STANDARD_ERC20_GATEWAY_PROXY_ADDR;
+            gateways[1] = L2_GATEWAY_ROUTER_PROXY_ADDR;
+            gateways[2] = L2_CUSTOM_ERC20_GATEWAY_PROXY_ADDR;
+            gateways[3] = L2_ERC1155_GATEWAY_PROXY_ADDR;
+            gateways[4] = L2_ERC721_GATEWAY_PROXY_ADDR;
+            Whitelist(L2_WHITELIST_ADDR).updateWhitelistStatus(gateways, true);
+        }
+
+        // update whitelist contract for messenger
+        L2ScrollMessenger(payable(L2_SCROLL_MESSENGER_ADDR)).updateWhitelist(L2_WHITELIST_ADDR);
 
         vm.stopBroadcast();
     }
