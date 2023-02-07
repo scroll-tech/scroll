@@ -1,6 +1,6 @@
 .PHONY: lint docker clean coordinator
 
-export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:./verifier/lib
+export LD_LIBRARY_PATH := $LD_LIBRARY_PATH:./verifier/lib
 
 IMAGE_NAME=coordinator
 IMAGE_VERSION=latest
