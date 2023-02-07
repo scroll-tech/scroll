@@ -9,11 +9,11 @@ else
 	ZK_VERSION=$(shell grep -m 1 "scroll-zkevm" ../common/libzkp/impl/Cargo.lock | cut -d "\#" -f2 | cut -c-7)
 endif
 
-libzkp:export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:./prover/lib
 libzkp:
 	cd ../common/libzkp/impl && cargo build --release && cp ./target/release/libzkp.so ../interface/
 	rm -rf ./prover/lib && cp -r ../common/libzkp/interface ./prover/lib
 	find ../common | grep libzktrie.so | xargs -i cp {} ./prover/lib/
+	export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:./prover/lib
 
 roller: libzkp ## Build the Roller instance.
 	GOBIN=$(PWD)/build/bin go build -ldflags "-X scroll-tech/common/version.ZkVersion=${ZK_VERSION}" -o $(PWD)/build/bin/roller ./cmd
