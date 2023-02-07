@@ -3,124 +3,108 @@
 pragma solidity ^0.8.0;
 
 interface IZKRollup {
-  /**************************************** Events ****************************************/
+  /**********
+   * Events *
+   **********/
 
   /// @notice Emitted when a new batch is commited.
-  /// @param _batchHash The hash of the batch
-  /// @param _batchIndex The index of the batch
-  /// @param _parentHash The hash of parent batch
-  event CommitBatch(bytes32 indexed _batchId, bytes32 _batchHash, uint256 _batchIndex, bytes32 _parentHash);
+  /// @param batchHash The hash of the batch
+  event CommitBatch(bytes32 indexed batchHash);
 
   /// @notice Emitted when a batch is reverted.
-  /// @param _batchId The identification of the batch.
-  event RevertBatch(bytes32 indexed _batchId);
+  /// @param batchHash The identification of the batch.
+  event RevertBatch(bytes32 indexed batchHash);
 
   /// @notice Emitted when a batch is finalized.
-  /// @param _batchHash The hash of the batch
-  /// @param _batchIndex The index of the batch
-  /// @param _parentHash The hash of parent batch
-  event FinalizeBatch(bytes32 indexed _batchId, bytes32 _batchHash, uint256 _batchIndex, bytes32 _parentHash);
+  /// @param batchHash The hash of the batch
+  event FinalizeBatch(bytes32 indexed batchHash);
 
-  /// @dev The transanction struct
-  struct Layer2Transaction {
-    address caller;
-    uint64 nonce;
-    address target;
-    uint64 gas;
-    uint256 gasPrice;
-    uint256 value;
-    bytes data;
-    // signature
-    uint256 r;
-    uint256 s;
-    uint64 v;
-  }
+  /***********
+   * Structs *
+   ***********/
 
-  /// @dev The block header struct
-  struct Layer2BlockHeader {
+  struct BlockContext {
+    // The hash of this block.
     bytes32 blockHash;
+    // The parent hash of this block.
     bytes32 parentHash;
-    uint256 baseFee;
-    bytes32 stateRoot;
-    uint64 blockHeight;
-    uint64 gasUsed;
+    // The height of this block.
+    uint64 blockNumber;
+    // The timestamp of this block.
     uint64 timestamp;
-    bytes extraData;
-    Layer2Transaction[] txs;
+    // The base fee of this block.
+    // Currently, it is not used, because we disable EIP-1559.
+    // We keep it for future proof.
+    uint256 baseFee;
+    // The gas limit of this block.
+    uint64 gasLimit;
+    // The number of transactions in this block, both L1 & L2 txs.
+    uint16 numTransactions;
+    // The number of l1 messages in this block.
+    uint16 numL1Messages;
   }
 
-  /// @dev The batch struct, the batch hash is always the last block hash of `blocks`.
-  struct Layer2Batch {
+  struct Batch {
+    // The list of blocks in this batch
+    BlockContext[] blocks; // MAX_NUM_BLOCKS = 100, about 5 min
+    // The state root of previous batch.
+    // The first batch will use 0x0 for prevStateRoot
+    bytes32 prevStateRoot;
+    // The state root of the last block in this batch.
+    bytes32 currStateRoot;
+    // The withdraw trie root of the last block in this batch.
+    bytes32 withdrawTrieRoot;
+    // The index of the batch.
     uint64 batchIndex;
-    // The hash of the last block in the parent batch
-    bytes32 parentHash;
-    Layer2BlockHeader[] blocks;
+    // Concatenated raw data of RLP encoded L2 txs
+    bytes l2Transactions;
   }
 
-  /**************************************** View Functions ****************************************/
+  /*************************
+   * Public View Functions *
+   *************************/
 
-  /// @notice Return whether the block is finalized by block hash.
-  /// @param blockHash The hash of the block to query.
-  function isBlockFinalized(bytes32 blockHash) external view returns (bool);
+  /// @notice Return whether the batch is finalized by batch hash.
+  /// @param batchHash The hash of the batch to query.
+  function isBatchFinalized(bytes32 batchHash) external view returns (bool);
 
-  /// @notice Return whether the block is finalized by block height.
-  /// @param blockHeight The height of the block to query.
-  function isBlockFinalized(uint256 blockHeight) external view returns (bool);
-
-  /// @notice Return the message hash by index.
-  /// @param _index The index to query.
-  function getMessageHashByIndex(uint256 _index) external view returns (bytes32);
-
-  /// @notice Return the index of the first queue element not yet executed.
-  function getNextQueueIndex() external view returns (uint256);
+  /// @notice Return whether the batch is finalized by batch index.
+  /// @param batchIndex The index of the batch to query.
+  function isBatchFinalized(uint256 batchIndex) external view returns (bool);
 
   /// @notice Return the layer 2 block gas limit.
-  /// @param _blockNumber The block number to query
-  function layer2GasLimit(uint256 _blockNumber) external view returns (uint256);
+  /// @param blockNumber The block number to query
+  function layer2GasLimit(uint256 blockNumber) external view returns (uint256);
 
-  /// @notice Verify a state proof for message relay.
-  /// @dev add more fields.
-  function verifyMessageStateProof(uint256 _batchIndex, uint256 _blockHeight) external view returns (bool);
+  /// @notice Return the merkle root of L2 message tree.
+  /// @param batchHash The hash of the batch to query.
+  function getL2MessageRoot(bytes32 batchHash) external view returns (bytes32);
 
-  /**************************************** Mutated Functions ****************************************/
-
-  /// @notice Append a cross chain message to message queue.
-  /// @dev This function should only be called by L1ScrollMessenger for safety.
-  /// @param _sender The address of message sender in layer 1.
-  /// @param _target The address of message recipient in layer 2.
-  /// @param _value The amount of ether sent to recipient in layer 2.
-  /// @param _fee The amount of ether paid to relayer in layer 2.
-  /// @param _deadline The deadline of the message.
-  /// @param _message The content of the message.
-  /// @param _gasLimit Unused, but included for potential forward compatibility considerations.
-  function appendMessage(
-    address _sender,
-    address _target,
-    uint256 _value,
-    uint256 _fee,
-    uint256 _deadline,
-    bytes memory _message,
-    uint256 _gasLimit
-  ) external returns (uint256);
+  /****************************
+   * Public Mutated Functions *
+   ****************************/
 
   /// @notice commit a batch in layer 1
-  /// @dev store in a more compacted form later.
-  /// @param _batch The layer2 batch to commit.
-  function commitBatch(Layer2Batch memory _batch) external;
+  /// @param batch The layer2 batch to commit.
+  function commitBatch(Batch memory batch) external;
+
+  /// @notice commit a list of batches in layer 1
+  /// @param batches The list of layer2 batches to commit.
+  function commitBatches(Batch[] memory batches) external;
 
   /// @notice revert a pending batch.
   /// @dev one can only revert unfinalized batches.
-  /// @param _batchId The identification of the batch.
-  function revertBatch(bytes32 _batchId) external;
+  /// @param batchId The identification of the batch.
+  function revertBatch(bytes32 batchId) external;
 
   /// @notice finalize commited batch in layer 1
   /// @dev will add more parameters if needed.
-  /// @param _batchId The identification of the commited batch.
-  /// @param _proof The corresponding proof of the commited batch.
-  /// @param _instances Instance used to verify, generated from batch.
+  /// @param batchId The identification of the commited batch.
+  /// @param proof The corresponding proof of the commited batch.
+  /// @param instances Instance used to verify, generated from batch.
   function finalizeBatchWithProof(
-    bytes32 _batchId,
-    uint256[] memory _proof,
-    uint256[] memory _instances
+    bytes32 batchId,
+    uint256[] memory proof,
+    uint256[] memory instances
   ) external;
 }

@@ -5,54 +5,62 @@ pragma solidity ^0.8.0;
 import { IScrollMessenger } from "../libraries/IScrollMessenger.sol";
 
 interface IL1ScrollMessenger is IScrollMessenger {
+  /***********
+   * Structs *
+   ***********/
+
   struct L2MessageProof {
-    // @todo add more fields
     uint256 batchIndex;
-    uint256 blockHeight;
     bytes merkleProof;
   }
 
-  /**************************************** Mutated Functions ****************************************/
+  /****************************
+   * Public Mutated Functions *
+   ****************************/
 
-  /// @notice execute L2 => L1 message
-  /// @param _from The address of the sender of the message.
-  /// @param _to The address of the recipient of the message.
-  /// @param _value The msg.value passed to the message call.
-  /// @param _fee The amount of fee in ETH to charge.
-  /// @param _deadline The deadline of the message.
-  /// @param _nonce The nonce of the message to avoid replay attack.
-  /// @param _message The content of the message.
-  /// @param _proof The proof used to verify the correctness of the transaction.
+  /// @notice Send cross chain message from L1 to L2.
+  /// @param target The address of account who recieve the message.
+  /// @param value The amount of ether passed when call target contract.
+  /// @param message The content of the message.
+  /// @param gasLimit Gas limit required to complete the message relay on L2.
+  function sendMessage(
+    address target,
+    uint256 value,
+    bytes calldata message,
+    uint256 gasLimit
+  ) external payable;
+
+  /// @notice Relay a L2 => L1 message with message proof.
+  /// @param from The address of the sender of the message.
+  /// @param to The address of the recipient of the message.
+  /// @param value The msg.value passed to the message call.
+  /// @param nonce The nonce of the message to avoid replay attack.
+  /// @param message The content of the message.
+  /// @param proof The proof used to verify the correctness of the transaction.
   function relayMessageWithProof(
-    address _from,
-    address _to,
-    uint256 _value,
-    uint256 _fee,
-    uint256 _deadline,
-    uint256 _nonce,
-    bytes memory _message,
-    L2MessageProof memory _proof
+    address from,
+    address to,
+    uint256 value,
+    uint256 nonce,
+    bytes memory message,
+    L2MessageProof memory proof
   ) external;
 
   /// @notice Replay an exsisting message.
-  /// @param _from The address of the sender of the message.
-  /// @param _to The address of the recipient of the message.
-  /// @param _value The msg.value passed to the message call.
-  /// @param _fee The amount of fee in ETH to charge.
-  /// @param _deadline The deadline of the message.
-  /// @param _message The content of the message.
-  /// @param _queueIndex CTC Queue index for the message to replay.
-  /// @param _oldGasLimit Original gas limit used to send the message.
-  /// @param _newGasLimit New gas limit to be used for this message.
+  /// @param from The address of the sender of the message.
+  /// @param to The address of the recipient of the message.
+  /// @param value The msg.value passed to the message call.
+  /// @param message The content of the message.
+  /// @param queueIndex The queue index for the message to replay.
+  /// @param oldGasLimit Original gas limit used to send the message.
+  /// @param newGasLimit New gas limit to be used for this message.
   function replayMessage(
-    address _from,
-    address _to,
-    uint256 _value,
-    uint256 _fee,
-    uint256 _deadline,
-    bytes memory _message,
-    uint256 _queueIndex,
-    uint32 _oldGasLimit,
-    uint32 _newGasLimit
+    address from,
+    address to,
+    uint256 value,
+    bytes memory message,
+    uint256 queueIndex,
+    uint32 oldGasLimit,
+    uint32 newGasLimit
   ) external;
 }

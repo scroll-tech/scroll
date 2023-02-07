@@ -104,17 +104,6 @@ Complete ERC721 deposit from layer 1 to layer 2 and send NFT to recipient&#39;s 
 | _to | address | The address of recipient in layer 2 to receive the token. |
 | _tokenId | uint256 | The token id to withdraw. |
 
-### finalizeDropMessage
-
-```solidity
-function finalizeDropMessage() external payable
-```
-
-
-
-
-
-
 ### initialize
 
 ```solidity
@@ -138,7 +127,7 @@ function initialize(address _counterpart, address _messenger) external nonpayabl
 function messenger() external view returns (address)
 ```
 
-The address of L1ScrollMessenger/L2ScrollMessenger contract.
+The address of corresponding L1ScrollMessenger/L2ScrollMessenger contract.
 
 
 

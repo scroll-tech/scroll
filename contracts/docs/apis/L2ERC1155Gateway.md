@@ -108,17 +108,6 @@ function finalizeDepositERC1155(address _l1Token, address _l2Token, address _fro
 | _tokenId | uint256 | undefined |
 | _amount | uint256 | undefined |
 
-### finalizeDropMessage
-
-```solidity
-function finalizeDropMessage() external payable
-```
-
-
-
-
-
-
 ### initialize
 
 ```solidity
@@ -142,7 +131,7 @@ function initialize(address _counterpart, address _messenger) external nonpayabl
 function messenger() external view returns (address)
 ```
 
-The address of L1ScrollMessenger/L2ScrollMessenger contract.
+The address of corresponding L1ScrollMessenger/L2ScrollMessenger contract.
 
 
 

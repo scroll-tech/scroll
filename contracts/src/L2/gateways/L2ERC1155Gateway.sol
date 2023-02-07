@@ -113,11 +113,6 @@ contract L2ERC1155Gateway is OwnableUpgradeable, ERC1155HolderUpgradeable, Scrol
     emit FinalizeBatchDepositERC1155(_l1Token, _l2Token, _from, _to, _tokenIds, _amounts);
   }
 
-  /// @inheritdoc IScrollGateway
-  function finalizeDropMessage() external payable {
-    // @todo finish the logic later
-  }
-
   /**************************************** Restricted Funtions ****************************************/
 
   /// @notice Update layer 2 to layer 1 token mapping.

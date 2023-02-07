@@ -17,184 +17,219 @@ import { RollupVerifier } from "../../libraries/verifier/RollupVerifier.sol";
 ///
 /// @dev the message queue is not used yet, the offline relayer only use events in `L1ScrollMessenger`.
 contract ZKRollup is OwnableUpgradeable, IZKRollup {
-  /**************************************** Events ****************************************/
+  /**********
+   * Events *
+   **********/
 
-  /// @notice Emitted when owner updates address of operator
-  /// @param _oldOperator The address of old operator.
-  /// @param _newOperator The address of new operator.
-  event UpdateOperator(address _oldOperator, address _newOperator);
+  /// @notice Emitted when owner updates the status of sequencer.
+  /// @param account The address of account updated.
+  /// @param status The status of the account updated.
+  event UpdateSequencer(address account, bool status);
 
-  /// @notice Emitted when owner updates address of messenger
-  /// @param _oldMesssenger The address of old messenger contract.
-  /// @param _newMesssenger The address of new messenger contract.
-  event UpdateMesssenger(address _oldMesssenger, address _newMesssenger);
+  /*************
+   * Constants *
+   *************/
 
-  /**************************************** Variables ****************************************/
-
-  struct Layer2BlockStored {
-    bytes32 parentHash;
-    bytes32 transactionRoot;
-    uint64 blockHeight;
-    uint64 batchIndex;
-  }
-
-  struct Layer2BatchStored {
-    bytes32 batchHash;
-    bytes32 parentHash;
-    uint64 batchIndex;
-    bool verified;
-  }
+  /// @dev The maximum number of blocks in on batch.
+  uint256 private constant MAX_NUM_BLOCKS_IN_BATCH = 100;
 
   /// @notice The chain id of the corresponding layer 2 chain.
-  uint256 public layer2ChainId;
+  uint256 public immutable layer2ChainId;
 
-  /// @notice The address of L1ScrollMessenger.
-  address public messenger;
+  /***********
+   * Structs *
+   ***********/
 
-  /// @notice The address of operator.
-  address public operator;
+  // subject to change
+  struct BatchStored {
+    // The state root of previous batch.
+    // The first batch will use 0x0 for prevStateRoot
+    bytes32 prevStateRoot;
+    // The state root of the last block in this batch.
+    bytes32 currStateRoot;
+    // The withdraw trie root of the last block in this batch.
+    bytes32 withdrawTrieRoot;
+    // The hash of public input.
+    bytes32 publicInputHash;
+    // The index of the batch.
+    uint64 batchIndex;
+    // The timestamp of the last block in this batch.
+    uint64 timestamp;
+    // The number of transactions in this batch, both L1 & L2 txs.
+    uint64 numTransactions;
+    // The number of l1 messages in this batch.
+    uint64 numL1Messages;
+    // Whether the batch is finalized.
+    bool finalized;
+    // do we need to store the parent hash of this batch?
+  }
 
-  /// @dev The index of the first queue element not yet executed.
-  /// The operator should change this variable when new block is commited.
-  uint256 private nextQueueIndex;
+  /*************
+   * Variables *
+   *************/
 
-  /// @dev The list of appended message hash.
-  bytes32[] private messageQueue;
+  /// @notice Whether an account is a sequencer.
+  mapping(address => bool) public isSequencer;
 
-  /// @notice The latest finalized batch id.
-  bytes32 public lastFinalizedBatchID;
-
-  /// @notice Mapping from block hash to block struct.
-  mapping(bytes32 => Layer2BlockStored) public blocks;
+  /// @notice The latest finalized batch hash.
+  bytes32 public lastFinalizedBatchHash;
 
   /// @notice Mapping from batch id to batch struct.
-  mapping(bytes32 => Layer2BatchStored) public batches;
+  mapping(bytes32 => BatchStored) public batches;
 
-  /// @notice Mapping from batch index to finalized batch id.
+  /// @notice Mapping from batch index to finalized batch hash.
   mapping(uint256 => bytes32) public finalizedBatches;
 
-  modifier OnlyOperator() {
+  /**********************
+   * Function Modifiers *
+   **********************/
+
+  modifier OnlySequencer() {
     // @todo In the decentralize mode, it should be only called by a list of validator.
-    require(msg.sender == operator, "caller not operator");
+    require(isSequencer[msg.sender], "caller not sequencer");
     _;
   }
 
-  /**************************************** Constructor ****************************************/
+  /***************
+   * Constructor *
+   ***************/
 
-  function initialize(uint256 _chainId) public initializer {
-    OwnableUpgradeable.__Ownable_init();
-
+  constructor(uint256 _chainId) {
     layer2ChainId = _chainId;
   }
 
-  /**************************************** View Functions ****************************************/
+  function initialize() public initializer {
+    OwnableUpgradeable.__Ownable_init();
+  }
+
+  /*************************
+   * Public View Functions *
+   *************************/
 
   /// @inheritdoc IZKRollup
-  function isBlockFinalized(bytes32 _blockHash) external view returns (bool) {
-    // block not commited
-    if (blocks[_blockHash].transactionRoot == bytes32(0)) return false;
-
-    uint256 _batchIndex = blocks[_blockHash].batchIndex;
-    bytes32 _batchId = finalizedBatches[_batchIndex];
-    return _batchId != bytes32(0);
+  function isBatchFinalized(bytes32 _batchHash) external view override returns (bool) {
+    return batches[_batchHash].finalized;
   }
 
   /// @inheritdoc IZKRollup
-  function isBlockFinalized(uint256 _blockHeight) external view returns (bool) {
-    bytes32 _batchID = lastFinalizedBatchID;
-    bytes32 _batchHash = batches[_batchID].batchHash;
-    uint256 _maxHeight = blocks[_batchHash].blockHeight;
-    return _blockHeight <= _maxHeight;
+  function isBatchFinalized(uint256 _batchIndex) external view override returns (bool) {
+    return finalizedBatches[_batchIndex] != bytes32(0);
   }
 
   /// @inheritdoc IZKRollup
-  function getMessageHashByIndex(uint256 _index) external view returns (bytes32) {
-    return messageQueue[_index];
-  }
-
-  /// @inheritdoc IZKRollup
-  function getNextQueueIndex() external view returns (uint256) {
-    return nextQueueIndex;
-  }
-
-  /// @notice Return the total number of appended message.
-  function getQeueuLength() external view returns (uint256) {
-    return messageQueue.length;
-  }
-
-  /// @inheritdoc IZKRollup
-  function layer2GasLimit(uint256) public view virtual returns (uint256) {
+  function layer2GasLimit(uint256) public view virtual override returns (uint256) {
     // hardcode for now
     return 30000000;
   }
 
   /// @inheritdoc IZKRollup
-  function verifyMessageStateProof(uint256 _batchIndex, uint256 _blockHeight) external view returns (bool) {
-    bytes32 _batchId = finalizedBatches[_batchIndex];
-    // check if batch is verified
-    if (_batchId == bytes32(0)) return false;
+  function getL2MessageRoot(bytes32 _batchHash) external view override returns (bytes32) {
+    return batches[_batchHash].withdrawTrieRoot;
+  }
 
-    uint256 _maxBlockHeightInBatch = blocks[batches[_batchId].batchHash].blockHeight;
-    // check block height is in batch range.
-    if (_maxBlockHeightInBatch == 0) return _blockHeight == 0;
-    else {
-      uint256 _minBlockHeightInBatch = blocks[batches[_batchId].parentHash].blockHeight + 1;
-      return _minBlockHeightInBatch <= _blockHeight && _blockHeight <= _maxBlockHeightInBatch;
+  /****************************
+   * Public Mutated Functions *
+   ****************************/
+
+  /// @notice Import layer 2 genesis block
+  function importGenesisBatch(Batch memory _genesisBatch) external {
+    require(lastFinalizedBatchHash == bytes32(0), "Genesis batch imported");
+    require(_genesisBatch.blocks.length == 1, "Not exact one block in genesis");
+
+    BlockContext memory _genesisBlock = _genesisBatch.blocks[0];
+
+    require(_genesisBlock.blockHash != bytes32(0), "Block hash is zero");
+    require(_genesisBlock.blockNumber == 0, "Block is not genesis");
+    require(_genesisBlock.parentHash == bytes32(0), "Parent hash not empty");
+    require(_genesisBlock.parentHash == bytes32(0), "Parent hash not empty");
+
+    bytes32 _batchHash = _commitBatch(_genesisBatch);
+
+    lastFinalizedBatchHash = _batchHash;
+    finalizedBatches[0] = _batchHash;
+    batches[_batchHash].finalized = true;
+
+    emit FinalizeBatch(_batchHash);
+  }
+
+  /// @inheritdoc IZKRollup
+  function commitBatch(Batch memory _batch) public override OnlySequencer {
+    _commitBatch(_batch);
+  }
+
+  /// @inheritdoc IZKRollup
+  function commitBatches(Batch[] memory _batches) public override OnlySequencer {
+    for (uint256 i = 0; i < _batches.length; i++) {
+      _commitBatch(_batches[i]);
     }
   }
 
-  /**************************************** Mutated Functions ****************************************/
-
   /// @inheritdoc IZKRollup
-  function appendMessage(
-    address _sender,
-    address _target,
-    uint256 _value,
-    uint256 _fee,
-    uint256 _deadline,
-    bytes memory _message,
-    uint256 _gasLimit
-  ) external override returns (uint256) {
-    // currently make only messenger to call
-    require(msg.sender == messenger, "caller not messenger");
-    uint256 _nonce = messageQueue.length;
+  function revertBatch(bytes32 _batchHash) external override OnlySequencer {
+    BatchStored storage _batch = batches[_batchHash];
 
-    // @todo may change it later
-    bytes32 _messageHash = keccak256(
-      abi.encodePacked(_sender, _target, _value, _fee, _deadline, _nonce, _message, _gasLimit)
-    );
-    messageQueue.push(_messageHash);
+    require(_batch.publicInputHash != bytes32(0), "No such batch");
+    require(!_batch.finalized, "Unable to revert verified batch");
 
-    return _nonce;
-  }
+    // delete commited batch
+    delete batches[_batchHash];
 
-  /// @notice Import layer 2 genesis block
-  function importGenesisBlock(Layer2BlockHeader memory _genesis) external onlyOwner {
-    require(lastFinalizedBatchID == bytes32(0), "Genesis block imported");
-    require(_genesis.blockHash != bytes32(0), "Block hash is zero");
-    require(_genesis.blockHeight == 0, "Block is not genesis");
-    require(_genesis.parentHash == bytes32(0), "Parent hash not empty");
-
-    require(_verifyBlockHash(_genesis), "Block hash verification failed");
-
-    Layer2BlockStored storage _block = blocks[_genesis.blockHash];
-    _block.transactionRoot = _computeTransactionRoot(_genesis.txs);
-
-    bytes32 _batchId = _computeBatchId(_genesis.blockHash, bytes32(0), 0);
-    Layer2BatchStored storage _batch = batches[_batchId];
-
-    _batch.batchHash = _genesis.blockHash;
-    _batch.verified = true;
-
-    lastFinalizedBatchID = _batchId;
-    finalizedBatches[0] = _batchId;
-
-    emit CommitBatch(_batchId, _genesis.blockHash, 0, bytes32(0));
-    emit FinalizeBatch(_batchId, _genesis.blockHash, 0, bytes32(0));
+    emit RevertBatch(_batchHash);
   }
 
   /// @inheritdoc IZKRollup
-  function commitBatch(Layer2Batch memory _batch) external override OnlyOperator {
+  function finalizeBatchWithProof(
+    bytes32 _batchHash,
+    uint256[] memory _proof,
+    uint256[] memory _instances
+  ) external override OnlySequencer {
+    BatchStored storage _batch = batches[_batchHash];
+    require(_batch.publicInputHash != bytes32(0), "No such batch");
+    require(!_batch.finalized, "Batch already verified");
+
+    // @note skip parent check for now, since we may not prove blocks in order.
+    // bytes32 _parentHash = _block.header.parentHash;
+    // require(lastFinalizedBlockHash == _parentHash, "parent not latest finalized");
+    // this check below is not needed, just incase
+    // require(blocks[_parentHash].verified, "parent not verified");
+
+    // @todo add verification logic
+    RollupVerifier.verify(_proof, _instances);
+
+    uint256 _batchIndex = _batch.batchIndex;
+    finalizedBatches[_batchIndex] = _batchHash;
+    _batch.finalized = true;
+
+    BatchStored storage _finalizedBatch = batches[lastFinalizedBatchHash];
+    if (_batchIndex > _finalizedBatch.batchIndex) {
+      lastFinalizedBatchHash = _batchHash;
+    }
+
+    emit FinalizeBatch(_batchHash);
+  }
+
+  /************************
+   * Restricted Functions *
+   ************************/
+
+  /// @notice Update the status of sequencer.
+  /// @dev This function can only called by contract owner.
+  /// @param _account The address of account to update.
+  /// @param _status The status of the account to update.
+  function updateSequencer(address _account, bool _status) external onlyOwner {
+    isSequencer[_account] = _status;
+
+    emit UpdateSequencer(_account, _status);
+  }
+
+  /**********************
+   * Internal Functions *
+   **********************/
+
+  /// @dev Internal function to commit a batch.
+  /// @param _batch The batch to commit.
+  function _commitBatch(Batch memory _batch) internal returns (bytes32) {
+    /*
     // check whether the batch is empty
     require(_batch.blocks.length > 0, "Batch is empty");
 
@@ -241,94 +276,7 @@ contract ZKRollup is OwnableUpgradeable, IZKRollup {
     _batchStored.batchIndex = _batch.batchIndex;
 
     emit CommitBatch(_batchId, _batchHash, _batch.batchIndex, _batch.parentHash);
-  }
-
-  /// @inheritdoc IZKRollup
-  function revertBatch(bytes32 _batchId) external override OnlyOperator {
-    Layer2BatchStored storage _batch = batches[_batchId];
-
-    require(_batch.batchHash != bytes32(0), "No such batch");
-    require(!_batch.verified, "Unable to revert verified batch");
-
-    bytes32 _blockHash = _batch.batchHash;
-    bytes32 _parentHash = _batch.parentHash;
-
-    // delete commited blocks
-    while (_blockHash != _parentHash) {
-      bytes32 _nextBlockHash = blocks[_blockHash].parentHash;
-      delete blocks[_blockHash];
-
-      _blockHash = _nextBlockHash;
-    }
-
-    // delete commited batch
-    delete batches[_batchId];
-
-    emit RevertBatch(_batchId);
-  }
-
-  /// @inheritdoc IZKRollup
-  function finalizeBatchWithProof(
-    bytes32 _batchId,
-    uint256[] memory _proof,
-    uint256[] memory _instances
-  ) external override OnlyOperator {
-    Layer2BatchStored storage _batch = batches[_batchId];
-    require(_batch.batchHash != bytes32(0), "No such batch");
-    require(!_batch.verified, "Batch already verified");
-
-    // @note skip parent check for now, since we may not prove blocks in order.
-    // bytes32 _parentHash = _block.header.parentHash;
-    // require(lastFinalizedBlockHash == _parentHash, "parent not latest finalized");
-    // this check below is not needed, just incase
-    // require(blocks[_parentHash].verified, "parent not verified");
-
-    // @todo add verification logic
-    RollupVerifier.verify(_proof, _instances);
-
-    uint256 _batchIndex = _batch.batchIndex;
-    finalizedBatches[_batchIndex] = _batchId;
-    _batch.verified = true;
-
-    Layer2BatchStored storage _finalizedBatch = batches[lastFinalizedBatchID];
-    if (_batchIndex > _finalizedBatch.batchIndex) {
-      lastFinalizedBatchID = _batchId;
-    }
-
-    emit FinalizeBatch(_batchId, _batch.batchHash, _batchIndex, _batch.parentHash);
-  }
-
-  /**************************************** Restricted Functions ****************************************/
-
-  /// @notice Update the address of operator.
-  /// @dev This function can only called by contract owner.
-  /// @param _newOperator The new operator address to update.
-  function updateOperator(address _newOperator) external onlyOwner {
-    address _oldOperator = operator;
-    require(_oldOperator != _newOperator, "change to same operator");
-
-    operator = _newOperator;
-
-    emit UpdateOperator(_oldOperator, _newOperator);
-  }
-
-  /// @notice Update the address of messenger.
-  /// @dev This function can only called by contract owner.
-  /// @param _newMessenger The new messenger address to update.
-  function updateMessenger(address _newMessenger) external onlyOwner {
-    address _oldMessenger = messenger;
-    require(_oldMessenger != _newMessenger, "change to same messenger");
-
-    messenger = _newMessenger;
-
-    emit UpdateMesssenger(_oldMessenger, _newMessenger);
-  }
-
-  /**************************************** Internal Functions ****************************************/
-
-  function _verifyBlockHash(Layer2BlockHeader memory) internal pure returns (bool) {
-    // @todo finish logic after more discussions
-    return true;
+    */
   }
 
   /// @dev Internal function to compute a unique batch id for mapping.
@@ -342,30 +290,5 @@ contract ZKRollup is OwnableUpgradeable, IZKRollup {
     uint256 _batchIndex
   ) internal pure returns (bytes32) {
     return keccak256(abi.encode(_batchHash, _parentHash, _batchIndex));
-  }
-
-  /// @dev Internal function to compute transaction root.
-  /// @param _txn The list of transactions in the block.
-  /// @return Return the hash of transaction root.
-  function _computeTransactionRoot(Layer2Transaction[] memory _txn) internal pure returns (bytes32) {
-    bytes32[] memory _hashes = new bytes32[](_txn.length);
-    for (uint256 i = 0; i < _txn.length; i++) {
-      // @todo use rlp
-      _hashes[i] = keccak256(
-        abi.encode(
-          _txn[i].caller,
-          _txn[i].nonce,
-          _txn[i].target,
-          _txn[i].gas,
-          _txn[i].gasPrice,
-          _txn[i].value,
-          _txn[i].data,
-          _txn[i].r,
-          _txn[i].s,
-          _txn[i].v
-        )
-      );
-    }
-    return keccak256(abi.encode(_hashes));
   }
 }

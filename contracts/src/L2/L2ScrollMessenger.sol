@@ -2,8 +2,11 @@
 
 pragma solidity ^0.8.0;
 
+import { PausableUpgradeable } from "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
+
 import { IL2ScrollMessenger, IScrollMessenger } from "./IL2ScrollMessenger.sol";
-import { L2ToL1MessagePasser } from "./predeploys/L2ToL1MessagePasser.sol";
+import { L2MessageQueue } from "./predeploys/L2MessageQueue.sol";
+import { IL1BlockContainer } from "./predeploys/IL1BlockContainer.sol";
 import { OwnableBase } from "../libraries/common/OwnableBase.sol";
 import { IGasOracle } from "../libraries/oracle/IGasOracle.sol";
 import { ScrollConstants } from "../libraries/ScrollConstants.sol";
@@ -18,7 +21,12 @@ import { ScrollMessengerBase } from "../libraries/ScrollMessengerBase.sol";
 ///
 /// @dev It should be a predeployed contract in layer 2 and should hold infinite amount
 /// of Ether (Specifically, `uint256(-1)`), which can be initialized in Genesis Block.
-contract L2ScrollMessenger is ScrollMessengerBase, OwnableBase, IL2ScrollMessenger {
+contract L2ScrollMessenger is ScrollMessengerBase, PausableUpgradeable, IL2ScrollMessenger {
+  address public immutable messageQueue;
+
+  /// @notice The contract contains the list of L1 blocks.
+  address public immutable blockContainer;
+
   /**************************************** Variables ****************************************/
 
   /// @notice Mapping from relay id to relay status.
@@ -27,54 +35,38 @@ contract L2ScrollMessenger is ScrollMessengerBase, OwnableBase, IL2ScrollMesseng
   /// @notice Mapping from message hash to execution status.
   mapping(bytes32 => bool) public isMessageExecuted;
 
-  /// @notice Message nonce, used to avoid relay attack.
-  uint256 public messageNonce;
+  constructor(address _blockContainer, address _messageQueue) {
+    blockContainer = _blockContainer;
+    messageQueue = _messageQueue;
+  }
 
-  /// @notice Contract to store the sent message.
-  L2ToL1MessagePasser public messagePasser;
-
-  constructor(address _owner) {
+  function initialize() external initializer {
+    PausableUpgradeable.__Pausable_init();
     ScrollMessengerBase._initialize();
-    owner = _owner;
 
     // initialize to a nonzero value
     xDomainMessageSender = ScrollConstants.DEFAULT_XDOMAIN_MESSAGE_SENDER;
-
-    messagePasser = new L2ToL1MessagePasser(address(this));
   }
 
   /**************************************** Mutated Functions ****************************************/
 
-  /// @inheritdoc IScrollMessenger
+  /// @inheritdoc IL2ScrollMessenger
   function sendMessage(
     address _to,
-    uint256 _fee,
+    uint256 _value,
     bytes memory _message,
-    uint256 _gasLimit
-  ) external payable override onlyWhitelistedSender(msg.sender) {
-    require(msg.value >= _fee, "cannot pay fee");
+    uint256
+  ) external payable override whenNotPaused {
+    require(msg.value >= _value, "value not enough");
 
-    // solhint-disable-next-line not-rely-on-time
-    uint256 _deadline = block.timestamp + dropDelayDuration;
-    // compute fee by GasOracle contract.
-    uint256 _minFee = gasOracle == address(0) ? 0 : IGasOracle(gasOracle).estimateMessageFee(msg.sender, _to, _message);
-    require(_fee >= _minFee, "fee too small");
+    // @todo deduct fee
 
-    uint256 _nonce = messageNonce;
-    uint256 _value;
-    unchecked {
-      _value = msg.value - _fee;
-    }
+    uint256 _nonce = L2MessageQueue(messageQueue).nextMessageIndex();
+    bytes32 _xDomainCalldataHash = keccak256(_encodeXDomainCalldata(msg.sender, _to, _message, _nonce));
 
-    bytes32 _msghash = keccak256(abi.encodePacked(msg.sender, _to, _value, _fee, _deadline, _nonce, _message));
+    L2MessageQueue(messageQueue).appendMessage(_xDomainCalldataHash);
 
-    messagePasser.passMessageToL1(_msghash);
-
-    emit SentMessage(_to, msg.sender, _value, _fee, _deadline, _message, _nonce, _gasLimit);
-
-    unchecked {
-      messageNonce = _nonce + 1;
-    }
+    emit SentMessage(msg.sender, _to, _value, _message, _nonce);
   }
 
   /// @inheritdoc IL2ScrollMessenger
@@ -82,29 +74,28 @@ contract L2ScrollMessenger is ScrollMessengerBase, OwnableBase, IL2ScrollMesseng
     address _from,
     address _to,
     uint256 _value,
-    uint256 _fee,
-    uint256 _deadline,
     uint256 _nonce,
     bytes memory _message
-  ) external override {
+  ) external override whenNotPaused onlyWhitelistedSender(msg.sender) {
     // anti reentrance
-    require(xDomainMessageSender == ScrollConstants.DEFAULT_XDOMAIN_MESSAGE_SENDER, "already in execution");
+    require(xDomainMessageSender == ScrollConstants.DEFAULT_XDOMAIN_MESSAGE_SENDER, "Already in execution");
 
-    // @todo only privileged accounts can call
+    // @todo address unalis to check sender is L1ScrollMessenger
 
     // solhint-disable-next-line not-rely-on-time
-    require(_deadline >= block.timestamp, "Message expired");
+    // @note disable for now since we may encounter various situation in testnet.
+    // require(_deadline >= block.timestamp, "Message expired");
 
-    bytes32 _msghash = keccak256(abi.encodePacked(_from, _to, _value, _fee, _deadline, _nonce, _message));
+    bytes32 _xDomainCalldataHash = keccak256(_encodeXDomainCalldata(_from, _to, _message, _nonce));
 
-    require(!isMessageExecuted[_msghash], "Message successfully executed");
+    require(!isMessageExecuted[_xDomainCalldataHash], "Message successfully executed");
 
     // @todo check `_to` address to avoid attack.
 
     // @todo take fee and distribute to relayer later.
 
     // @note This usually will never happen, just in case.
-    require(_from != xDomainMessageSender, "invalid message sender");
+    require(_from != xDomainMessageSender, "Invalid message sender");
 
     xDomainMessageSender = _from;
     // solhint-disable-next-line avoid-low-level-calls
@@ -113,60 +104,36 @@ contract L2ScrollMessenger is ScrollMessengerBase, OwnableBase, IL2ScrollMesseng
     xDomainMessageSender = ScrollConstants.DEFAULT_XDOMAIN_MESSAGE_SENDER;
 
     if (success) {
-      isMessageExecuted[_msghash] = true;
-      emit RelayedMessage(_msghash);
+      isMessageExecuted[_xDomainCalldataHash] = true;
+      emit RelayedMessage(_xDomainCalldataHash);
     } else {
-      emit FailedRelayedMessage(_msghash);
+      emit FailedRelayedMessage(_xDomainCalldataHash);
     }
 
-    bytes32 _relayId = keccak256(abi.encodePacked(_msghash, msg.sender, block.number));
+    bytes32 _relayId = keccak256(abi.encodePacked(_xDomainCalldataHash, msg.sender, block.number));
 
     isMessageRelayed[_relayId] = true;
   }
 
-  /// @inheritdoc IScrollMessenger
-  function dropMessage(
-    address,
-    address,
-    uint256,
-    uint256,
-    uint256,
-    uint256,
-    bytes memory,
-    uint256
-  ) external virtual override {
-    revert("not supported");
+  /// @inheritdoc IL2ScrollMessenger
+  function relayMessageWithProof(
+    address _from,
+    address _to,
+    uint256 _value,
+    uint256 _nonce,
+    bytes memory _message,
+    L1MessageProof calldata _proof
+  ) external override whenNotPaused {
+    // @todo
   }
 
-  /**************************************** Restricted Functions ****************************************/
+  /************************
+   * Restricted Functions *
+   ************************/
 
-  /// @notice Update whitelist contract.
+  /// @notice Pause the contract
   /// @dev This function can only called by contract owner.
-  /// @param _newWhitelist The address of new whitelist contract.
-  function updateWhitelist(address _newWhitelist) external onlyOwner {
-    address _oldWhitelist = whitelist;
-
-    whitelist = _newWhitelist;
-    emit UpdateWhitelist(_oldWhitelist, _newWhitelist);
-  }
-
-  /// @notice Update the address of gas oracle.
-  /// @dev This function can only called by contract owner.
-  /// @param _newGasOracle The address to update.
-  function updateGasOracle(address _newGasOracle) external onlyOwner {
-    address _oldGasOracle = gasOracle;
-    gasOracle = _newGasOracle;
-
-    emit UpdateGasOracle(_oldGasOracle, _newGasOracle);
-  }
-
-  /// @notice Update the drop delay duration.
-  /// @dev This function can only called by contract owner.
-  /// @param _newDuration The new delay duration to update.
-  function updateDropDelayDuration(uint256 _newDuration) external onlyOwner {
-    uint256 _oldDuration = dropDelayDuration;
-    dropDelayDuration = _newDuration;
-
-    emit UpdateDropDelayDuration(_oldDuration, _newDuration);
+  function pause() external onlyOwner {
+    _pause();
   }
 }

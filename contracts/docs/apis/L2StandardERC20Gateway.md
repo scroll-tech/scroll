@@ -48,17 +48,6 @@ Complete a deposit from L1 to L2 and send fund to recipient&#39;s account in L2.
 | _amount | uint256 | The amount of the token to deposit. |
 | _data | bytes | Optional data to forward to recipient&#39;s account. |
 
-### finalizeDropMessage
-
-```solidity
-function finalizeDropMessage() external payable
-```
-
-
-
-
-
-
 ### getL1ERC20Address
 
 ```solidity
@@ -128,7 +117,7 @@ function initialize(address _counterpart, address _router, address _messenger, a
 function messenger() external view returns (address)
 ```
 
-The address of L1ScrollMessenger/L2ScrollMessenger contract.
+The address of corresponding L1ScrollMessenger/L2ScrollMessenger contract.
 
 
 

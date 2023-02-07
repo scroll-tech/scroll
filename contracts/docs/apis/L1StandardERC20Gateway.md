@@ -84,17 +84,6 @@ Deposit some token to a recipient&#39;s account on L2 and call.
 | _data | bytes | Optional data to forward to recipient&#39;s account. |
 | _gasLimit | uint256 | Gas limit required to complete the deposit on L2. |
 
-### finalizeDropMessage
-
-```solidity
-function finalizeDropMessage() external payable
-```
-
-
-
-
-
-
 ### finalizeWithdrawERC20
 
 ```solidity
@@ -144,7 +133,7 @@ Return the corresponding l2 token address given l1 token address.
 function initialize(address _counterpart, address _router, address _messenger, address _l2TokenImplementation, address _l2TokenFactory) external nonpayable
 ```
 
-
+Initialize the storage of L1StandardERC20Gateway.
 
 
 
@@ -152,11 +141,11 @@ function initialize(address _counterpart, address _router, address _messenger, a
 
 | Name | Type | Description |
 |---|---|---|
-| _counterpart | address | undefined |
-| _router | address | undefined |
-| _messenger | address | undefined |
-| _l2TokenImplementation | address | undefined |
-| _l2TokenFactory | address | undefined |
+| _counterpart | address | The address of L2StandardERC20Gateway in L2. |
+| _router | address | The address of L1GatewayRouter. |
+| _messenger | address | The address of L1ScrollMessenger. |
+| _l2TokenImplementation | address | The address of ScrollStandardERC20 implementation in L2. |
+| _l2TokenFactory | address | The address of ScrollStandardERC20Factory contract in L2. |
 
 ### l2TokenFactory
 
@@ -198,7 +187,7 @@ The address of ScrollStandardERC20 implementation in L2.
 function messenger() external view returns (address)
 ```
 
-The address of L1ScrollMessenger/L2ScrollMessenger contract.
+The address of corresponding L1ScrollMessenger/L2ScrollMessenger contract.
 
 
 

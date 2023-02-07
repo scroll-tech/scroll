@@ -10,53 +10,13 @@ The `L1ScrollMessenger` contract can: 1. send messages from layer 1 to layer 2; 
 
 ## Methods
 
-### dropDelayDuration
+### feeVault
 
 ```solidity
-function dropDelayDuration() external view returns (uint256)
+function feeVault() external view returns (address)
 ```
 
-The amount of seconds needed to wait if we want to drop message.
-
-
-
-
-#### Returns
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | uint256 | undefined |
-
-### dropMessage
-
-```solidity
-function dropMessage(address _from, address _to, uint256 _value, uint256 _fee, uint256 _deadline, uint256 _nonce, bytes _message, uint256 _gasLimit) external nonpayable
-```
-
-
-
-
-
-#### Parameters
-
-| Name | Type | Description |
-|---|---|---|
-| _from | address | undefined |
-| _to | address | undefined |
-| _value | uint256 | undefined |
-| _fee | uint256 | undefined |
-| _deadline | uint256 | undefined |
-| _nonce | uint256 | undefined |
-| _message | bytes | undefined |
-| _gasLimit | uint256 | undefined |
-
-### gasOracle
-
-```solidity
-function gasOracle() external view returns (address)
-```
-
-The gas oracle used to estimate transaction fee on layer 2.
+The address of fee vault, collecting cross domain messaging fee.
 
 
 
@@ -70,10 +30,10 @@ The gas oracle used to estimate transaction fee on layer 2.
 ### initialize
 
 ```solidity
-function initialize(address _rollup) external nonpayable
+function initialize(address _l2ScrollMessenger, address _feeVault, address _rollup, address _messageQueue) external nonpayable
 ```
 
-
+Initialize the storage of L1ScrollMessenger.
 
 
 
@@ -81,29 +41,10 @@ function initialize(address _rollup) external nonpayable
 
 | Name | Type | Description |
 |---|---|---|
-| _rollup | address | undefined |
-
-### isMessageDropped
-
-```solidity
-function isMessageDropped(bytes32) external view returns (bool)
-```
-
-Mapping from message hash to drop status.
-
-
-
-#### Parameters
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | bytes32 | undefined |
-
-#### Returns
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | bool | undefined |
+| _l2ScrollMessenger | address | The address of L2ScrollMessenger contract in L2. |
+| _feeVault | address | The address of fee vault, which will be used to collect relayer fee. |
+| _rollup | address | The address of ZKRollup contract. |
+| _messageQueue | address | The address of L1MessageQueue contract. |
 
 ### isMessageExecuted
 
@@ -148,6 +89,62 @@ Mapping from relay id to relay status.
 | Name | Type | Description |
 |---|---|---|
 | _0 | bool | undefined |
+
+### isMessageSent
+
+```solidity
+function isMessageSent(bytes32) external view returns (bool)
+```
+
+Mapping from message hash to sent status.
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| _0 | bytes32 | undefined |
+
+#### Returns
+
+| Name | Type | Description |
+|---|---|---|
+| _0 | bool | undefined |
+
+### l2ScrollMessenger
+
+```solidity
+function l2ScrollMessenger() external view returns (address)
+```
+
+The address of L2ScrollMessenger contract in L2.
+
+
+
+
+#### Returns
+
+| Name | Type | Description |
+|---|---|---|
+| _0 | address | undefined |
+
+### messageQueue
+
+```solidity
+function messageQueue() external view returns (address)
+```
+
+The address of L1MessageQueue contract.
+
+
+
+
+#### Returns
+
+| Name | Type | Description |
+|---|---|---|
+| _0 | address | undefined |
 
 ### owner
 
@@ -197,7 +194,7 @@ function paused() external view returns (bool)
 ### relayMessageWithProof
 
 ```solidity
-function relayMessageWithProof(address _from, address _to, uint256 _value, uint256 _fee, uint256 _deadline, uint256 _nonce, bytes _message, IL1ScrollMessenger.L2MessageProof _proof) external nonpayable
+function relayMessageWithProof(address _from, address _to, uint256 _value, uint256 _nonce, bytes _message, IL1ScrollMessenger.L2MessageProof _proof) external nonpayable
 ```
 
 
@@ -211,8 +208,6 @@ function relayMessageWithProof(address _from, address _to, uint256 _value, uint2
 | _from | address | undefined |
 | _to | address | undefined |
 | _value | uint256 | undefined |
-| _fee | uint256 | undefined |
-| _deadline | uint256 | undefined |
 | _nonce | uint256 | undefined |
 | _message | bytes | undefined |
 | _proof | IL1ScrollMessenger.L2MessageProof | undefined |
@@ -231,7 +226,7 @@ function renounceOwnership() external nonpayable
 ### replayMessage
 
 ```solidity
-function replayMessage(address _from, address _to, uint256 _value, uint256 _fee, uint256 _deadline, bytes _message, uint256 _queueIndex, uint32 _oldGasLimit, uint32 _newGasLimit) external nonpayable
+function replayMessage(address _from, address _to, uint256 _value, bytes _message, uint256 _queueIndex, uint32 _oldGasLimit, uint32 _newGasLimit) external nonpayable
 ```
 
 Replay an exsisting message.
@@ -242,15 +237,13 @@ Replay an exsisting message.
 
 | Name | Type | Description |
 |---|---|---|
-| _from | address | The address of the sender of the message. |
-| _to | address | The address of the recipient of the message. |
-| _value | uint256 | The msg.value passed to the message call. |
-| _fee | uint256 | The amount of fee in ETH to charge. |
-| _deadline | uint256 | The deadline of the message. |
-| _message | bytes | The content of the message. |
-| _queueIndex | uint256 | CTC Queue index for the message to replay. |
-| _oldGasLimit | uint32 | Original gas limit used to send the message. |
-| _newGasLimit | uint32 | New gas limit to be used for this message. |
+| _from | address | undefined |
+| _to | address | undefined |
+| _value | uint256 | undefined |
+| _message | bytes | undefined |
+| _queueIndex | uint256 | undefined |
+| _oldGasLimit | uint32 | undefined |
+| _newGasLimit | uint32 | undefined |
 
 ### rollup
 
@@ -272,21 +265,21 @@ The address of Rollup contract.
 ### sendMessage
 
 ```solidity
-function sendMessage(address _to, uint256 _fee, bytes _message, uint256 _gasLimit) external payable
+function sendMessage(address _to, uint256 _value, bytes _message, uint256 _gasLimit) external payable
 ```
 
-Send cross chain message (L1 =&gt; L2 or L2 =&gt; L1)
+Send cross chain message from L1 to L2.
 
-*Currently, only privileged accounts can call this function for safty. And adding an extra `_fee` variable make it more easy to upgrade to decentralized version.*
+
 
 #### Parameters
 
 | Name | Type | Description |
 |---|---|---|
-| _to | address | The address of account who recieve the message. |
-| _fee | uint256 | The amount of fee in Ether the caller would like to pay to the relayer. |
-| _message | bytes | The content of the message. |
-| _gasLimit | uint256 | Unused, but included for potential forward compatibility considerations. |
+| _to | address | undefined |
+| _value | uint256 | undefined |
+| _message | bytes | undefined |
+| _gasLimit | uint256 | undefined |
 
 ### transferOwnership
 
@@ -303,38 +296,6 @@ function transferOwnership(address newOwner) external nonpayable
 | Name | Type | Description |
 |---|---|---|
 | newOwner | address | undefined |
-
-### updateDropDelayDuration
-
-```solidity
-function updateDropDelayDuration(uint256 _newDuration) external nonpayable
-```
-
-Update the drop delay duration.
-
-*This function can only called by contract owner.*
-
-#### Parameters
-
-| Name | Type | Description |
-|---|---|---|
-| _newDuration | uint256 | The new delay duration to update. |
-
-### updateGasOracle
-
-```solidity
-function updateGasOracle(address _newGasOracle) external nonpayable
-```
-
-Update the address of gas oracle.
-
-*This function can only called by contract owner.*
-
-#### Parameters
-
-| Name | Type | Description |
-|---|---|---|
-| _newGasOracle | address | The address to update. |
 
 ### updateWhitelist
 
@@ -474,10 +435,10 @@ event RelayedMessage(bytes32 indexed msgHash)
 ### SentMessage
 
 ```solidity
-event SentMessage(address indexed target, address sender, uint256 value, uint256 fee, uint256 deadline, bytes message, uint256 messageNonce, uint256 gasLimit)
+event SentMessage(address indexed sender, address indexed target, uint256 value, bytes message, uint256 messageNonce)
 ```
 
-
+Emitted when a cross domain message is sent
 
 
 
@@ -485,14 +446,11 @@ event SentMessage(address indexed target, address sender, uint256 value, uint256
 
 | Name | Type | Description |
 |---|---|---|
+| sender `indexed` | address | undefined |
 | target `indexed` | address | undefined |
-| sender  | address | undefined |
 | value  | uint256 | undefined |
-| fee  | uint256 | undefined |
-| deadline  | uint256 | undefined |
 | message  | bytes | undefined |
 | messageNonce  | uint256 | undefined |
-| gasLimit  | uint256 | undefined |
 
 ### Unpaused
 
@@ -509,40 +467,6 @@ event Unpaused(address account)
 | Name | Type | Description |
 |---|---|---|
 | account  | address | undefined |
-
-### UpdateDropDelayDuration
-
-```solidity
-event UpdateDropDelayDuration(uint256 _oldDuration, uint256 _newDuration)
-```
-
-Emitted when owner updates drop delay duration
-
-
-
-#### Parameters
-
-| Name | Type | Description |
-|---|---|---|
-| _oldDuration  | uint256 | undefined |
-| _newDuration  | uint256 | undefined |
-
-### UpdateGasOracle
-
-```solidity
-event UpdateGasOracle(address _oldGasOracle, address _newGasOracle)
-```
-
-Emitted when owner updates gas oracle contract.
-
-
-
-#### Parameters
-
-| Name | Type | Description |
-|---|---|---|
-| _oldGasOracle  | address | undefined |
-| _newGasOracle  | address | undefined |
 
 ### UpdateWhitelist
 

@@ -121,17 +121,6 @@ Complete ERC721 batch withdraw from layer 2 to layer 1 and send NFT to recipient
 | _to | address | The address of recipient in layer 1 to receive the token. |
 | _tokenIds | uint256[] | The list of token ids to withdraw. |
 
-### finalizeDropMessage
-
-```solidity
-function finalizeDropMessage() external payable
-```
-
-
-
-
-
-
 ### finalizeWithdrawERC721
 
 ```solidity
@@ -158,7 +147,7 @@ Complete ERC721 withdraw from layer 2 to layer 1 and send NFT to recipient&#39;s
 function initialize(address _counterpart, address _messenger) external nonpayable
 ```
 
-
+Initialize the storage of L1ERC721Gateway.
 
 
 
@@ -166,8 +155,8 @@ function initialize(address _counterpart, address _messenger) external nonpayabl
 
 | Name | Type | Description |
 |---|---|---|
-| _counterpart | address | undefined |
-| _messenger | address | undefined |
+| _counterpart | address | The address of L2ERC721Gateway in L2. |
+| _messenger | address | The address of L1ScrollMessenger. |
 
 ### messenger
 
@@ -175,7 +164,7 @@ function initialize(address _counterpart, address _messenger) external nonpayabl
 function messenger() external view returns (address)
 ```
 
-The address of L1ScrollMessenger/L2ScrollMessenger contract.
+The address of corresponding L1ScrollMessenger/L2ScrollMessenger contract.
 
 
 

@@ -109,11 +109,6 @@ contract L2ERC721Gateway is OwnableUpgradeable, ERC721HolderUpgradeable, ScrollG
     emit FinalizeBatchDepositERC721(_l1Token, _l2Token, _from, _to, _tokenIds);
   }
 
-  /// @inheritdoc IScrollGateway
-  function finalizeDropMessage() external payable {
-    // @todo finish the logic later
-  }
-
   /**************************************** Restricted Funtions ****************************************/
 
   /// @notice Update layer 2 to layer 1 token mapping.

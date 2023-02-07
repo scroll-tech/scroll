@@ -10,38 +10,10 @@ This contract maintains essential data for zk rollup, including: 1. a list of pe
 
 ## Methods
 
-### appendMessage
-
-```solidity
-function appendMessage(address _sender, address _target, uint256 _value, uint256 _fee, uint256 _deadline, bytes _message, uint256 _gasLimit) external nonpayable returns (uint256)
-```
-
-Append a cross chain message to message queue.
-
-*This function should only be called by L1ScrollMessenger for safety.*
-
-#### Parameters
-
-| Name | Type | Description |
-|---|---|---|
-| _sender | address | The address of message sender in layer 1. |
-| _target | address | The address of message recipient in layer 2. |
-| _value | uint256 | The amount of ether sent to recipient in layer 2. |
-| _fee | uint256 | The amount of ether paid to relayer in layer 2. |
-| _deadline | uint256 | The deadline of the message. |
-| _message | bytes | The content of the message. |
-| _gasLimit | uint256 | Unused, but included for potential forward compatibility considerations. |
-
-#### Returns
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | uint256 | undefined |
-
 ### batches
 
 ```solidity
-function batches(bytes32) external view returns (bytes32 batchHash, bytes32 parentHash, uint64 batchIndex, bool verified)
+function batches(bytes32) external view returns (bytes32 prevStateRoot, bytes32 currStateRoot, bytes32 withdrawTrieRoot, bytes32 publicInputHash, uint64 batchIndex, uint64 timestamp, uint64 numTransactions, uint64 numL1Messages, bool finalized)
 ```
 
 Mapping from batch id to batch struct.
@@ -58,40 +30,20 @@ Mapping from batch id to batch struct.
 
 | Name | Type | Description |
 |---|---|---|
-| batchHash | bytes32 | undefined |
-| parentHash | bytes32 | undefined |
+| prevStateRoot | bytes32 | undefined |
+| currStateRoot | bytes32 | undefined |
+| withdrawTrieRoot | bytes32 | undefined |
+| publicInputHash | bytes32 | undefined |
 | batchIndex | uint64 | undefined |
-| verified | bool | undefined |
-
-### blocks
-
-```solidity
-function blocks(bytes32) external view returns (bytes32 parentHash, bytes32 transactionRoot, uint64 blockHeight, uint64 batchIndex)
-```
-
-Mapping from block hash to block struct.
-
-
-
-#### Parameters
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | bytes32 | undefined |
-
-#### Returns
-
-| Name | Type | Description |
-|---|---|---|
-| parentHash | bytes32 | undefined |
-| transactionRoot | bytes32 | undefined |
-| blockHeight | uint64 | undefined |
-| batchIndex | uint64 | undefined |
+| timestamp | uint64 | undefined |
+| numTransactions | uint64 | undefined |
+| numL1Messages | uint64 | undefined |
+| finalized | bool | undefined |
 
 ### commitBatch
 
 ```solidity
-function commitBatch(IZKRollup.Layer2Batch _batch) external nonpayable
+function commitBatch(IZKRollup.Batch _batch) external nonpayable
 ```
 
 
@@ -102,12 +54,28 @@ function commitBatch(IZKRollup.Layer2Batch _batch) external nonpayable
 
 | Name | Type | Description |
 |---|---|---|
-| _batch | IZKRollup.Layer2Batch | undefined |
+| _batch | IZKRollup.Batch | undefined |
+
+### commitBatches
+
+```solidity
+function commitBatches(IZKRollup.Batch[] _batches) external nonpayable
+```
+
+
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| _batches | IZKRollup.Batch[] | undefined |
 
 ### finalizeBatchWithProof
 
 ```solidity
-function finalizeBatchWithProof(bytes32 _batchId, uint256[] _proof, uint256[] _instances) external nonpayable
+function finalizeBatchWithProof(bytes32 _batchHash, uint256[] _proof, uint256[] _instances) external nonpayable
 ```
 
 finalize commited batch in layer 1
@@ -118,9 +86,9 @@ finalize commited batch in layer 1
 
 | Name | Type | Description |
 |---|---|---|
-| _batchId | bytes32 | The identification of the commited batch. |
-| _proof | uint256[] | The corresponding proof of the commited batch. |
-| _instances | uint256[] | Instance used to verify, generated from batch. |
+| _batchHash | bytes32 | undefined |
+| _proof | uint256[] | undefined |
+| _instances | uint256[] | undefined |
 
 ### finalizedBatches
 
@@ -128,7 +96,7 @@ finalize commited batch in layer 1
 function finalizedBatches(uint256) external view returns (bytes32)
 ```
 
-Mapping from batch index to finalized batch id.
+Mapping from batch index to finalized batch hash.
 
 
 
@@ -144,13 +112,13 @@ Mapping from batch index to finalized batch id.
 |---|---|---|
 | _0 | bytes32 | undefined |
 
-### getMessageHashByIndex
+### getL2MessageRoot
 
 ```solidity
-function getMessageHashByIndex(uint256 _index) external view returns (bytes32)
+function getL2MessageRoot(bytes32 _batchHash) external view returns (bytes32)
 ```
 
-Return the message hash by index.
+Return the merkle root of L2 message tree.
 
 
 
@@ -158,7 +126,7 @@ Return the message hash by index.
 
 | Name | Type | Description |
 |---|---|---|
-| _index | uint256 | The index to query. |
+| _batchHash | bytes32 | undefined |
 
 #### Returns
 
@@ -166,44 +134,10 @@ Return the message hash by index.
 |---|---|---|
 | _0 | bytes32 | undefined |
 
-### getNextQueueIndex
+### importGenesisBatch
 
 ```solidity
-function getNextQueueIndex() external view returns (uint256)
-```
-
-Return the index of the first queue element not yet executed.
-
-
-
-
-#### Returns
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | uint256 | undefined |
-
-### getQeueuLength
-
-```solidity
-function getQeueuLength() external view returns (uint256)
-```
-
-Return the total number of appended message.
-
-
-
-
-#### Returns
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | uint256 | undefined |
-
-### importGenesisBlock
-
-```solidity
-function importGenesisBlock(IZKRollup.Layer2BlockHeader _genesis) external nonpayable
+function importGenesisBatch(IZKRollup.Batch _genesisBatch) external nonpayable
 ```
 
 
@@ -214,31 +148,26 @@ function importGenesisBlock(IZKRollup.Layer2BlockHeader _genesis) external nonpa
 
 | Name | Type | Description |
 |---|---|---|
-| _genesis | IZKRollup.Layer2BlockHeader | undefined |
+| _genesisBatch | IZKRollup.Batch | undefined |
 
 ### initialize
 
 ```solidity
-function initialize(uint256 _chainId) external nonpayable
+function initialize() external nonpayable
 ```
 
 
 
 
 
-#### Parameters
 
-| Name | Type | Description |
-|---|---|---|
-| _chainId | uint256 | undefined |
-
-### isBlockFinalized
+### isBatchFinalized
 
 ```solidity
-function isBlockFinalized(bytes32 _blockHash) external view returns (bool)
+function isBatchFinalized(uint256 _batchIndex) external view returns (bool)
 ```
 
-Return whether the block is finalized by block hash.
+Return whether the batch is finalized by batch index.
 
 
 
@@ -246,7 +175,7 @@ Return whether the block is finalized by block hash.
 
 | Name | Type | Description |
 |---|---|---|
-| _blockHash | bytes32 | undefined |
+| _batchIndex | uint256 | undefined |
 
 #### Returns
 
@@ -254,13 +183,13 @@ Return whether the block is finalized by block hash.
 |---|---|---|
 | _0 | bool | undefined |
 
-### isBlockFinalized
+### isBatchFinalized
 
 ```solidity
-function isBlockFinalized(uint256 _blockHeight) external view returns (bool)
+function isBatchFinalized(bytes32 _batchHash) external view returns (bool)
 ```
 
-Return whether the block is finalized by block height.
+Return whether the batch is finalized by batch hash.
 
 
 
@@ -268,7 +197,7 @@ Return whether the block is finalized by block height.
 
 | Name | Type | Description |
 |---|---|---|
-| _blockHeight | uint256 | undefined |
+| _batchHash | bytes32 | undefined |
 
 #### Returns
 
@@ -276,13 +205,35 @@ Return whether the block is finalized by block height.
 |---|---|---|
 | _0 | bool | undefined |
 
-### lastFinalizedBatchID
+### isSequencer
 
 ```solidity
-function lastFinalizedBatchID() external view returns (bytes32)
+function isSequencer(address) external view returns (bool)
 ```
 
-The latest finalized batch id.
+Whether an account is a sequencer.
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| _0 | address | undefined |
+
+#### Returns
+
+| Name | Type | Description |
+|---|---|---|
+| _0 | bool | undefined |
+
+### lastFinalizedBatchHash
+
+```solidity
+function lastFinalizedBatchHash() external view returns (bytes32)
+```
+
+The latest finalized batch hash.
 
 
 
@@ -332,40 +283,6 @@ Return the layer 2 block gas limit.
 |---|---|---|
 | _0 | uint256 | undefined |
 
-### messenger
-
-```solidity
-function messenger() external view returns (address)
-```
-
-The address of L1ScrollMessenger.
-
-
-
-
-#### Returns
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | address | undefined |
-
-### operator
-
-```solidity
-function operator() external view returns (address)
-```
-
-The address of operator.
-
-
-
-
-#### Returns
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | address | undefined |
-
 ### owner
 
 ```solidity
@@ -397,7 +314,7 @@ function renounceOwnership() external nonpayable
 ### revertBatch
 
 ```solidity
-function revertBatch(bytes32 _batchId) external nonpayable
+function revertBatch(bytes32 _batchHash) external nonpayable
 ```
 
 revert a pending batch.
@@ -408,7 +325,7 @@ revert a pending batch.
 
 | Name | Type | Description |
 |---|---|---|
-| _batchId | bytes32 | The identification of the batch. |
+| _batchHash | bytes32 | undefined |
 
 ### transferOwnership
 
@@ -426,13 +343,13 @@ function transferOwnership(address newOwner) external nonpayable
 |---|---|---|
 | newOwner | address | undefined |
 
-### updateMessenger
+### updateSequencer
 
 ```solidity
-function updateMessenger(address _newMessenger) external nonpayable
+function updateSequencer(address _account, bool _status) external nonpayable
 ```
 
-Update the address of messenger.
+Update the status of sequencer.
 
 *This function can only called by contract owner.*
 
@@ -440,46 +357,8 @@ Update the address of messenger.
 
 | Name | Type | Description |
 |---|---|---|
-| _newMessenger | address | The new messenger address to update. |
-
-### updateOperator
-
-```solidity
-function updateOperator(address _newOperator) external nonpayable
-```
-
-Update the address of operator.
-
-*This function can only called by contract owner.*
-
-#### Parameters
-
-| Name | Type | Description |
-|---|---|---|
-| _newOperator | address | The new operator address to update. |
-
-### verifyMessageStateProof
-
-```solidity
-function verifyMessageStateProof(uint256 _batchIndex, uint256 _blockHeight) external view returns (bool)
-```
-
-Verify a state proof for message relay.
-
-*add more fields.*
-
-#### Parameters
-
-| Name | Type | Description |
-|---|---|---|
-| _batchIndex | uint256 | undefined |
-| _blockHeight | uint256 | undefined |
-
-#### Returns
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | bool | undefined |
+| _account | address | The address of account to update. |
+| _status | bool | The status of the account to update. |
 
 
 
@@ -488,7 +367,7 @@ Verify a state proof for message relay.
 ### CommitBatch
 
 ```solidity
-event CommitBatch(bytes32 indexed _batchId, bytes32 _batchHash, uint256 _batchIndex, bytes32 _parentHash)
+event CommitBatch(bytes32 indexed batchHash)
 ```
 
 Emitted when a new batch is commited.
@@ -499,15 +378,12 @@ Emitted when a new batch is commited.
 
 | Name | Type | Description |
 |---|---|---|
-| _batchId `indexed` | bytes32 | undefined |
-| _batchHash  | bytes32 | undefined |
-| _batchIndex  | uint256 | undefined |
-| _parentHash  | bytes32 | undefined |
+| batchHash `indexed` | bytes32 | undefined |
 
 ### FinalizeBatch
 
 ```solidity
-event FinalizeBatch(bytes32 indexed _batchId, bytes32 _batchHash, uint256 _batchIndex, bytes32 _parentHash)
+event FinalizeBatch(bytes32 indexed batchHash)
 ```
 
 Emitted when a batch is finalized.
@@ -518,10 +394,7 @@ Emitted when a batch is finalized.
 
 | Name | Type | Description |
 |---|---|---|
-| _batchId `indexed` | bytes32 | undefined |
-| _batchHash  | bytes32 | undefined |
-| _batchIndex  | uint256 | undefined |
-| _parentHash  | bytes32 | undefined |
+| batchHash `indexed` | bytes32 | undefined |
 
 ### OwnershipTransferred
 
@@ -543,7 +416,7 @@ event OwnershipTransferred(address indexed previousOwner, address indexed newOwn
 ### RevertBatch
 
 ```solidity
-event RevertBatch(bytes32 indexed _batchId)
+event RevertBatch(bytes32 indexed batchHash)
 ```
 
 Emitted when a batch is reverted.
@@ -554,15 +427,15 @@ Emitted when a batch is reverted.
 
 | Name | Type | Description |
 |---|---|---|
-| _batchId `indexed` | bytes32 | undefined |
+| batchHash `indexed` | bytes32 | undefined |
 
-### UpdateMesssenger
+### UpdateSequencer
 
 ```solidity
-event UpdateMesssenger(address _oldMesssenger, address _newMesssenger)
+event UpdateSequencer(address account, bool status)
 ```
 
-Emitted when owner updates address of messenger
+Emitted when owner updates the status of sequencer.
 
 
 
@@ -570,25 +443,8 @@ Emitted when owner updates address of messenger
 
 | Name | Type | Description |
 |---|---|---|
-| _oldMesssenger  | address | The address of old messenger contract. |
-| _newMesssenger  | address | The address of new messenger contract. |
-
-### UpdateOperator
-
-```solidity
-event UpdateOperator(address _oldOperator, address _newOperator)
-```
-
-Emitted when owner updates address of operator
-
-
-
-#### Parameters
-
-| Name | Type | Description |
-|---|---|---|
-| _oldOperator  | address | The address of old operator. |
-| _newOperator  | address | The address of new operator. |
+| account  | address | The address of account updated. |
+| status  | bool | The status of the account updated. |
 
 
 

@@ -91,11 +91,6 @@ contract L2WETHGateway is Initializable, ScrollGatewayBase, L2ERC20Gateway {
     emit FinalizeDepositERC20(_l1Token, _l2Token, _from, _to, _amount, _data);
   }
 
-  /// @inheritdoc IScrollGateway
-  function finalizeDropMessage() external payable virtual onlyMessenger {
-    // @todo should refund token back to sender.
-  }
-
   /**************************************** Internal Functions ****************************************/
 
   /// @inheritdoc L2ERC20Gateway
@@ -134,7 +129,7 @@ contract L2WETHGateway is Initializable, ScrollGatewayBase, L2ERC20Gateway {
     // 4. Send message to L1ScrollMessenger.
     IL2ScrollMessenger(messenger).sendMessage{ value: _amount + msg.value }(
       counterpart,
-      msg.value,
+      _amount,
       _message,
       _gasLimit
     );

@@ -101,17 +101,6 @@ Deposit some token to a recipient&#39;s account on L2 and call.
 | _data | bytes | Optional data to forward to recipient&#39;s account. |
 | _gasLimit | uint256 | Gas limit required to complete the deposit on L2. |
 
-### finalizeDropMessage
-
-```solidity
-function finalizeDropMessage() external payable
-```
-
-
-
-
-
-
 ### finalizeWithdrawERC20
 
 ```solidity
@@ -198,7 +187,7 @@ The address of L2 WETH address.
 function messenger() external view returns (address)
 ```
 
-The address of L1ScrollMessenger/L2ScrollMessenger contract.
+The address of corresponding L1ScrollMessenger/L2ScrollMessenger contract.
 
 
 

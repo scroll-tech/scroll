@@ -126,17 +126,6 @@ Complete ERC1155 batch withdraw from layer 2 to layer 1 and send fund to recipie
 | _tokenIds | uint256[] | The list of token ids to withdraw. |
 | _amounts | uint256[] | The list of corresponding number of token to withdraw. |
 
-### finalizeDropMessage
-
-```solidity
-function finalizeDropMessage() external payable
-```
-
-
-
-
-
-
 ### finalizeWithdrawERC1155
 
 ```solidity
@@ -164,7 +153,7 @@ Complete ERC1155 withdraw from layer 2 to layer 1 and send fund to recipient&#39
 function initialize(address _counterpart, address _messenger) external nonpayable
 ```
 
-
+Initialize the storage of L1ERC1155Gateway.
 
 
 
@@ -172,8 +161,8 @@ function initialize(address _counterpart, address _messenger) external nonpayabl
 
 | Name | Type | Description |
 |---|---|---|
-| _counterpart | address | undefined |
-| _messenger | address | undefined |
+| _counterpart | address | The address of L2ERC1155Gateway in L2. |
+| _messenger | address | The address of L1ScrollMessenger. |
 
 ### messenger
 
@@ -181,7 +170,7 @@ function initialize(address _counterpart, address _messenger) external nonpayabl
 function messenger() external view returns (address)
 ```
 
-The address of L1ScrollMessenger/L2ScrollMessenger contract.
+The address of corresponding L1ScrollMessenger/L2ScrollMessenger contract.
 
 
 

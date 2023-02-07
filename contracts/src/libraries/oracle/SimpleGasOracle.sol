@@ -49,7 +49,8 @@ contract SimpleGasOracle is OwnableUpgradeable, IGasOracle {
   function estimateMessageFee(
     address _sender,
     address,
-    bytes memory _message
+    bytes memory _message,
+    uint256
   ) external view override returns (uint256) {
     FeeConfig memory _feeConfig;
     if (hasCustomConfig[_sender]) {

@@ -75,11 +75,6 @@ contract L2CustomERC20Gateway is OwnableUpgradeable, ScrollGatewayBase, L2ERC20G
     emit FinalizeDepositERC20(_l1Token, _l2Token, _from, _to, _amount, _data);
   }
 
-  /// @inheritdoc IScrollGateway
-  function finalizeDropMessage() external payable {
-    // @todo finish the logic later
-  }
-
   /**************************************** Restricted Functions ****************************************/
 
   /// @notice Update layer 2 to layer 1 token mapping.
@@ -129,7 +124,7 @@ contract L2CustomERC20Gateway is OwnableUpgradeable, ScrollGatewayBase, L2ERC20G
     );
 
     // 4. send message to L2ScrollMessenger
-    IL2ScrollMessenger(messenger).sendMessage{ value: msg.value }(counterpart, msg.value, _message, _gasLimit);
+    IL2ScrollMessenger(messenger).sendMessage{ value: msg.value }(counterpart, 0, _message, _gasLimit);
 
     emit WithdrawERC20(_l1Token, _token, _from, _to, _amount, _data);
   }
