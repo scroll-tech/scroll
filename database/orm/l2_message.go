@@ -90,7 +90,7 @@ func (m *layer2MessageOrm) GetL2ProcessedNonce() (int64, error) {
 
 // GetL2MessagesByStatus fetch list of messages given msg status
 func (m *layer2MessageOrm) GetL2Messages(fields map[string]interface{}, args ...string) ([]*L2Message, error) {
-	query := "SELECT nonce, msg_hash, height, sender, target, value, fee, gas_limit, deadline, calldata, layer2_hash FROM l2_message WHERE 1 = 1 "
+	query := "SELECT nonce, msg_hash, height, sender, target, value, fee, gas_limit, deadline, calldata, layer2_hash, layer1_hash FROM l2_message WHERE 1 = 1 "
 	for key := range fields {
 		query += fmt.Sprintf("AND %s=:%s ", key, key)
 	}

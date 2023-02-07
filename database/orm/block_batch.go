@@ -236,6 +236,29 @@ func (o *blockBatchOrm) BatchRecordExist(id string) (bool, error) {
 	return true, nil
 }
 
+func (o *blockBatchOrm) GetBatchesByRollupStatus(status RollupStatus, limit uint64) ([]string, error) {
+	rows, err := o.db.Queryx(`SELECT id FROM block_batch WHERE rollup_status = $1 ORDER BY index ASC LIMIT $2`, status, limit)
+	if err != nil {
+		return nil, err
+	}
+
+	var ids []string
+	for rows.Next() {
+		var id string
+		if err = rows.Scan(&id); err != nil {
+			break
+		}
+		ids = append(ids, id)
+	}
+	if len(ids) == 0 || errors.Is(err, sql.ErrNoRows) {
+		// log.Warn("no pending batches in db", "err", err)
+	} else if err != nil {
+		return nil, err
+	}
+
+	return ids, rows.Close()
+}
+
 func (o *blockBatchOrm) GetPendingBatches(limit uint64) ([]string, error) {
 	rows, err := o.db.Queryx(`SELECT id FROM block_batch WHERE rollup_status = $1 ORDER BY index ASC LIMIT $2`, RollupPending, limit)
 	if err != nil {

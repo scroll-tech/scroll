@@ -29,7 +29,8 @@ type SenderConfig struct {
 	// The transaction type to use: LegacyTx, AccessListTx, DynamicFeeTx
 	TxType string `json:"tx_type"`
 	// The min balance set for check and set balance for sender's accounts.
-	MinBalance *big.Int `json:"min_balance,omitempty"`
+	MinBalance   *big.Int `json:"min_balance,omitempty"`
+	PendingLimit int64    `json:"pending_limit,omitempty"`
 }
 
 // RelayerConfig loads relayer configuration items.

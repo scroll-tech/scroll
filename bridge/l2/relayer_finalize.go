@@ -1,0 +1,176 @@
+package l2
+
+import (
+	"errors"
+	"math/big"
+	"sync"
+
+	"github.com/scroll-tech/go-ethereum/common"
+	"github.com/scroll-tech/go-ethereum/log"
+
+	bridge_abi "scroll-tech/bridge/abi"
+	"scroll-tech/bridge/sender"
+	"scroll-tech/bridge/utils"
+
+	"scroll-tech/database/orm"
+)
+
+func (r *Layer2Relayer) finalizeInit() error {
+	var batch = 10
+	ids, err := r.db.GetBatchesByRollupStatus(orm.RollupFinalizing, uint64(batch))
+	if err != nil || len(ids) == 0 {
+		return err
+	}
+
+	for _, id := range ids {
+		txStr, err := r.db.GetFinalizeTxHash(id)
+		if err != nil {
+			log.Error("failed to get commit_tx_hash from block_batch", "err", err)
+			continue
+		}
+
+		data, err := r.finalizedPack(id)
+		if err != nil {
+			log.Error("failed to pack commit data", "err", err)
+			continue
+		}
+
+		txID := id + "-finalize"
+		err = r.rollupSender.LoadOrSendTx(
+			common.HexToHash(txStr.String),
+			txID,
+			&r.cfg.RollupContractAddress,
+			big.NewInt(0),
+			data,
+		)
+		if err != nil {
+			log.Error("failed to load or send finalized tx", "batch id", id, "err", err)
+		} else {
+			r.processingFinalization.Store(txID, id)
+		}
+	}
+	return nil
+}
+
+func (r *Layer2Relayer) finalizedPack(id string) ([]byte, error) {
+	proofBuffer, instanceBuffer, err := r.db.GetVerifiedProofAndInstanceByID(id)
+	if err != nil {
+		log.Warn("fetch get proof by id failed", "id", id, "err", err)
+		return nil, err
+	}
+	if proofBuffer == nil || instanceBuffer == nil {
+		log.Warn("proof or instance not ready", "id", id)
+		return nil, err
+	}
+	if len(proofBuffer)%32 != 0 {
+		log.Error("proof buffer has wrong length", "id", id, "length", len(proofBuffer))
+		return nil, err
+	}
+	if len(instanceBuffer)%32 != 0 {
+		log.Warn("instance buffer has wrong length", "id", id, "length", len(instanceBuffer))
+		return nil, err
+	}
+
+	proof := utils.BufferToUint256Le(proofBuffer)
+	instance := utils.BufferToUint256Le(instanceBuffer)
+	data, err := bridge_abi.RollupMetaABI.Pack("finalizeBatchWithProof", common.HexToHash(id), proof, instance)
+	if err != nil {
+		log.Error("Pack finalizeBatchWithProof failed", "err", err)
+		return nil, err
+	}
+	return data, nil
+}
+
+// ProcessCommittedBatches submit proof to layer 1 rollup contract
+func (r *Layer2Relayer) ProcessCommittedBatches(wg *sync.WaitGroup) {
+	defer wg.Done()
+
+	// set skipped batches in a single db operation
+	if count, err := r.db.UpdateSkippedBatches(); err != nil {
+		log.Error("UpdateSkippedBatches failed", "err", err)
+		// continue anyway
+	} else if count > 0 {
+		log.Info("Skipping batches", "count", count)
+	}
+
+	// batches are sorted by batch index in increasing order
+	batches, err := r.db.GetCommittedBatches(1)
+	if err != nil {
+		log.Error("Failed to fetch committed L2 batches", "err", err)
+		return
+	}
+	if len(batches) == 0 {
+		return
+	}
+	id := batches[0]
+	// @todo add support to relay multiple batches
+
+	status, err := r.db.GetProvingStatusByID(id)
+	if err != nil {
+		log.Error("GetProvingStatusByID failed", "id", id, "err", err)
+		return
+	}
+
+	switch status {
+	case orm.ProvingTaskUnassigned, orm.ProvingTaskAssigned:
+		// The proof for this block is not ready yet.
+		return
+
+	case orm.ProvingTaskProved:
+		// It's an intermediate state. The roller manager received the proof but has not verified
+		// the proof yet. We don't roll up the proof until it's verified.
+		return
+
+	case orm.ProvingTaskFailed, orm.ProvingTaskSkipped:
+		// note: this is covered by UpdateSkippedBatches, but we keep it for completeness's sake
+
+		if err = r.db.UpdateRollupStatus(r.ctx, id, orm.RollupFinalizationSkipped); err != nil {
+			log.Warn("UpdateRollupStatus failed", "id", id, "err", err)
+		}
+
+	case orm.ProvingTaskVerified:
+		log.Info("Start to roll up zk proof", "id", id)
+		success := false
+
+		defer func() {
+			// TODO: need to revisit this and have a more fine-grained error handling
+			if !success {
+				log.Info("Failed to upload the proof, change rollup status to FinalizationSkipped", "id", id)
+				if err = r.db.UpdateRollupStatus(r.ctx, id, orm.RollupFinalizationSkipped); err != nil {
+					log.Warn("UpdateRollupStatus failed", "id", id, "err", err)
+				}
+			}
+		}()
+
+		// Pack finalize data.
+		data, err := r.finalizedPack(id)
+		if err != nil {
+			return
+		}
+
+		txID := id + "-finalize"
+		// add suffix `-finalize` to avoid duplication with commit tx in unit tests
+		txHash, err := r.rollupSender.SendTransaction(txID, &r.cfg.RollupContractAddress, big.NewInt(0), data)
+		hash := &txHash
+		if err != nil {
+			if !errors.Is(err, sender.ErrNoAvailableAccount) {
+				log.Error("finalizeBatchWithProof in layer1 failed", "id", id, "err", err)
+			}
+			return
+		}
+		log.Info("finalizeBatchWithProof in layer1", "batch_id", id, "hash", hash)
+
+		// record and sync with db, @todo handle db error
+		err = r.db.UpdateFinalizeTxHashAndRollupStatus(r.ctx, id, hash.String(), orm.RollupFinalizing)
+		if err != nil {
+			log.Warn("UpdateFinalizeTxHashAndRollupStatus failed", "batch_id", id, "err", err)
+		}
+		success = true
+		r.processingFinalization.Store(txID, id)
+
+	default:
+		log.Error("encounter unreachable case in ProcessCommittedBatches",
+			"block_status", status,
+		)
+	}
+}

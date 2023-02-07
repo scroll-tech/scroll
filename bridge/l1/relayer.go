@@ -55,7 +55,7 @@ func NewLayer1Relayer(ctx context.Context, l1ConfirmNum int64, db orm.L1MessageO
 		return nil, err
 	}
 
-	return &Layer1Relayer{
+	layer1 := &Layer1Relayer{
 		ctx:            ctx,
 		sender:         sender,
 		db:             db,
@@ -63,7 +63,40 @@ func NewLayer1Relayer(ctx context.Context, l1ConfirmNum int64, db orm.L1MessageO
 		cfg:            cfg,
 		stopCh:         make(chan struct{}),
 		confirmationCh: sender.ConfirmChan(),
-	}, nil
+	}
+
+	if err = layer1.messageInit(); err != nil {
+		log.Error("failed to init layer1 submitted tx", "err", err)
+		return nil, err
+	}
+
+	return layer1, nil
+}
+
+func (r *Layer1Relayer) messageInit() error {
+	batch := 100
+	// msgs are sorted by nonce in increasing order
+	msgs, err := r.db.GetL1MessagesByStatus(orm.MsgSubmitted, uint64(batch))
+	if err != nil || len(msgs) == 0 {
+		return err
+	}
+	for _, msg := range msgs {
+		data, err := r.messagePack(msg)
+		if err != nil {
+			continue
+		}
+		err = r.sender.LoadOrSendTx(
+			common.HexToHash(msg.Layer2Hash),
+			msg.MsgHash,
+			&r.cfg.MessengerContractAddress,
+			big.NewInt(0),
+			data,
+		)
+		if err != nil {
+			log.Error("failed to load or send l1 submitted tx", "msg hash", msg.MsgHash, "err", err)
+		}
+	}
+	return nil
 }
 
 // ProcessSavedEvents relays saved un-processed cross-domain transactions to desired blockchain
@@ -89,7 +122,7 @@ func (r *Layer1Relayer) ProcessSavedEvents() {
 	}
 }
 
-func (r *Layer1Relayer) processSavedEvent(msg *orm.L1Message) error {
+func (r *Layer1Relayer) messagePack(msg *orm.L1Message) ([]byte, error) {
 	// @todo add support to relay multiple messages
 	from := common.HexToAddress(msg.Sender)
 	target := common.HexToAddress(msg.Target)
@@ -107,9 +140,16 @@ func (r *Layer1Relayer) processSavedEvent(msg *orm.L1Message) error {
 	if err != nil {
 		log.Error("Failed to pack relayMessage", "msg.nonce", msg.Nonce, "msg.height", msg.Height, "err", err)
 		// TODO: need to skip this message by changing its status to MsgError
+		return nil, err
+	}
+	return data, nil
+}
+
+func (r *Layer1Relayer) processSavedEvent(msg *orm.L1Message) error {
+	data, err := r.messagePack(msg)
+	if err != nil {
 		return err
 	}
-
 	hash, err := r.sender.SendTransaction(msg.MsgHash, &r.cfg.MessengerContractAddress, big.NewInt(0), data)
 	if err != nil && err.Error() == "execution reverted: Message expired" {
 		return r.db.UpdateLayer1Status(r.ctx, msg.MsgHash, orm.MsgExpired)

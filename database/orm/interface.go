@@ -46,6 +46,7 @@ type L1Message struct {
 	Target     string    `json:"target" db:"target"`
 	Calldata   string    `json:"calldata" db:"calldata"`
 	Layer1Hash string    `json:"layer1_hash" db:"layer1_hash"`
+	Layer2Hash string    `json:"layer2_hash" db:"layer2_hash"`
 	Status     MsgStatus `json:"status" db:"status"`
 }
 
@@ -62,6 +63,7 @@ type L2Message struct {
 	Target     string    `json:"target" db:"target"`
 	Calldata   string    `json:"calldata" db:"calldata"`
 	Layer2Hash string    `json:"layer2_hash" db:"layer2_hash"`
+	Layer1Hash string    `json:"layer1_hash" db:"layer1_hash"`
 	Status     MsgStatus `json:"status" db:"status"`
 }
 
@@ -145,6 +147,7 @@ type BlockBatchOrm interface {
 	ResetProvingStatusFor(before ProvingStatus) error
 	NewBatchInDBTx(dbTx *sqlx.Tx, startBlock *BlockInfo, endBlock *BlockInfo, parentHash string, totalTxNum uint64, gasUsed uint64) (string, error)
 	BatchRecordExist(id string) (bool, error)
+	GetBatchesByRollupStatus(status RollupStatus, limit uint64) ([]string, error)
 	GetPendingBatches(limit uint64) ([]string, error)
 	GetCommittedBatches(limit uint64) ([]string, error)
 	GetRollupStatus(id string) (RollupStatus, error)

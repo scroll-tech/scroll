@@ -4,8 +4,9 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"math/big"
-	"scroll-tech/common/docker"
 	"testing"
+
+	"scroll-tech/common/docker"
 
 	"scroll-tech/bridge/config"
 	"scroll-tech/bridge/mock_bridge"
