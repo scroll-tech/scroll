@@ -13,10 +13,10 @@ endif
 test:
 	go test -v -race -coverprofile=coverage.txt -covermode=atomic -p 1 $(PWD)/...
 
+libzkp:export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:./verifier/lib
 libzkp:
 	cd ../common/libzkp/impl && cargo build --release && cp ./target/release/libzkp.so ../interface/
 	rm -rf ./verifier/lib && cp -r ../common/libzkp/interface ./verifier/lib
-	export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:./verifier/lib
 	find ../common | grep libzktrie.so | xargs -i cp {} ./verifier/lib/
 
 coordinator: libzkp ## Builds the Coordinator instance.
