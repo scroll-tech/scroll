@@ -1,5 +1,7 @@
 .PHONY: lint docker clean coordinator
 
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:./verifier/lib
+
 IMAGE_NAME=coordinator
 IMAGE_VERSION=latest
 REPO_ROOT_DIR=./..
@@ -17,7 +19,6 @@ libzkp:
 	cd ../common/libzkp/impl && cargo build --release && cp ./target/release/libzkp.so ../interface/
 	rm -rf ./verifier/lib && cp -r ../common/libzkp/interface ./verifier/lib
 	find ../common | grep libzktrie.so | xargs -i cp {} ./verifier/lib/
-	export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:./verifier/lib
 
 coordinator: libzkp ## Builds the Coordinator instance.
 	go build -ldflags "-X scroll-tech/common/version.ZkVersion=${ZK_VERSION}" -o $(PWD)/build/bin/coordinator ./cmd

@@ -1,5 +1,7 @@
 .PHONY: lint docker clean roller mock_roller
 
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:./prover/lib
+
 IMAGE_NAME=go-roller
 IMAGE_VERSION=latest
 
@@ -13,7 +15,6 @@ libzkp:
 	cd ../common/libzkp/impl && cargo build --release && cp ./target/release/libzkp.so ../interface/
 	rm -rf ./prover/lib && cp -r ../common/libzkp/interface ./prover/lib
 	find ../common | grep libzktrie.so | xargs -i cp {} ./prover/lib/
-	export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:./prover/lib
 
 roller: libzkp ## Build the Roller instance.
 	GOBIN=$(PWD)/build/bin go build -ldflags "-X scroll-tech/common/version.ZkVersion=${ZK_VERSION}" -o $(PWD)/build/bin/roller ./cmd
