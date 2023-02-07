@@ -15,7 +15,7 @@ import (
 	"scroll-tech/common/version"
 
 	"scroll-tech/bridge/config"
-	eventwatcher "scroll-tech/bridge/multibin/event-watcher"
+	eventwatcher "scroll-tech/bridge/multibin/event_watcher"
 )
 
 var (

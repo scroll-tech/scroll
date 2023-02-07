@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/signal"
 
+	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/urfave/cli/v2"
 
@@ -14,7 +15,7 @@ import (
 	"scroll-tech/common/version"
 
 	"scroll-tech/bridge/config"
-	messagerelayer "scroll-tech/bridge/multibin/message-relayer"
+	batchproposer "scroll-tech/bridge/multibin/batch_proposer"
 )
 
 var (
@@ -26,9 +27,8 @@ func init() {
 	app = cli.NewApp()
 
 	app.Action = action
-	app.Name = "message-replayer"
-	app.Usage = "The Scroll Message Relayer"
-	app.Description = "Message Relayer contains two main service: 1) relay l1 message to l2. 2) relay l2 message to l1."
+	app.Name = "rollup-relayer"
+	app.Usage = "The Scroll Rollup Relayer"
 	app.Version = version.Version
 	app.Flags = append(app.Flags, utils.CommonFlags...)
 	app.Commands = []*cli.Command{}
@@ -52,21 +52,17 @@ func action(ctx *cli.Context) error {
 		log.Crit("failed to init db connection", "err", err)
 	}
 
-	var (
-		l1relayer *messagerelayer.L1MsgRelayer
-		l2relayer *messagerelayer.L2MsgRelayer
-	)
-	l1relayer, err = messagerelayer.NewL1MsgRelayer(ctx.Context, int64(cfg.L1Config.Confirmations), ormFactory, cfg.L1Config.RelayerConfig)
+	l2client, err := ethclient.Dial(cfg.L1Config.Endpoint)
 	if err != nil {
-		log.Crit("failed to create new l1 relayer", "config file", cfgFile, "error", err)
+		log.Crit("failed to connect l2 geth", "config file", cfgFile, "error", err)
 	}
-	l2relayer, err = messagerelayer.NewL2MsgRelayer(ctx.Context, ormFactory, cfg.L2Config.RelayerConfig)
+
+	batchProposer, err := batchproposer.NewL2BatchPropser(ctx.Context, l2client, cfg.L2Config, ormFactory)
 	if err != nil {
-		log.Crit("failed to create new l2 relayer", "config file", cfgFile, "error", err)
+		return err
 	}
 	defer func() {
-		l1relayer.Stop()
-		l2relayer.Stop()
+		batchProposer.Stop()
 		err = ormFactory.Close()
 		if err != nil {
 			log.Error("can not close ormFactory", "error", err)
@@ -74,9 +70,8 @@ func action(ctx *cli.Context) error {
 	}()
 
 	// Start all modules.
-	l1relayer.Start()
-	l2relayer.Start()
-	log.Info("Start message_relayer successfully")
+	batchProposer.Start()
+	log.Info("Start batch_proposer successfully")
 
 	// Catch CTRL-C to ensure a graceful shutdown.
 	interrupt := make(chan os.Signal, 1)
@@ -88,7 +83,7 @@ func action(ctx *cli.Context) error {
 	return nil
 }
 
-// Run run message_relayer cmd instance.
+// Run run batch_proposer cmd instance.
 func Run() {
 	if err := app.Run(os.Args); err != nil {
 		_, _ = fmt.Fprintln(os.Stderr, err)

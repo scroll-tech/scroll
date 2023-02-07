@@ -5,7 +5,6 @@ import (
 	"os"
 	"os/signal"
 
-	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/urfave/cli/v2"
 
@@ -15,7 +14,7 @@ import (
 	"scroll-tech/common/version"
 
 	"scroll-tech/bridge/config"
-	batchproposer "scroll-tech/bridge/multibin/batch-proposer"
+	rolluprelayer "scroll-tech/bridge/multibin/rollup_relayer"
 )
 
 var (
@@ -52,17 +51,12 @@ func action(ctx *cli.Context) error {
 		log.Crit("failed to init db connection", "err", err)
 	}
 
-	l2client, err := ethclient.Dial(cfg.L1Config.Endpoint)
-	if err != nil {
-		log.Crit("failed to connect l2 geth", "config file", cfgFile, "error", err)
-	}
-
-	batchProposer, err := batchproposer.NewL2BatchPropser(ctx.Context, l2client, cfg.L2Config, ormFactory)
+	rollupRelayer, err := rolluprelayer.NewL2RollupRelayer(ctx.Context, cfg.L2Config.RelayerConfig, ormFactory)
 	if err != nil {
 		return err
 	}
 	defer func() {
-		batchProposer.Stop()
+		rollupRelayer.Stop()
 		err = ormFactory.Close()
 		if err != nil {
 			log.Error("can not close ormFactory", "error", err)
@@ -70,8 +64,8 @@ func action(ctx *cli.Context) error {
 	}()
 
 	// Start all modules.
-	batchProposer.Start()
-	log.Info("Start batch_proposer successfully")
+	rollupRelayer.Start()
+	log.Info("Start rollup_relayer successfully")
 
 	// Catch CTRL-C to ensure a graceful shutdown.
 	interrupt := make(chan os.Signal, 1)
@@ -83,7 +77,7 @@ func action(ctx *cli.Context) error {
 	return nil
 }
 
-// Run run batch_proposer cmd instance.
+// Run run rollup relayer cmd instance.
 func Run() {
 	if err := app.Run(os.Args); err != nil {
 		_, _ = fmt.Fprintln(os.Stderr, err)
