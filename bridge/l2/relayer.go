@@ -14,6 +14,7 @@ import (
 	"github.com/scroll-tech/go-ethereum/accounts/abi"
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/log"
+	"github.com/scroll-tech/go-ethereum/metrics"
 	"golang.org/x/sync/errgroup"
 	"modernc.org/mathutil"
 
@@ -24,6 +25,16 @@ import (
 	"scroll-tech/bridge/config"
 	"scroll-tech/bridge/sender"
 	"scroll-tech/bridge/utils"
+)
+
+var (
+	bridgeL2RelayedMsgsCounter            = metrics.NewRegisteredCounter("bridge/l2/relayed/msgs", nil)
+	bridgeL2CommittedMsgsCounter          = metrics.NewRegisteredCounter("bridge/l2/committed/msgs", nil)
+	bridgeL2FinalizedMsgsCounter          = metrics.NewRegisteredCounter("bridge/l2/finalized/msgs", nil)
+	bridgeL2ConfirmedRelayedMsgsCounter   = metrics.NewRegisteredCounter("bridge/l2/confirmed/relayed/msgs", nil)
+	bridgeL2ConfirmedCommittedMsgsCounter = metrics.NewRegisteredCounter("bridge/l2/confirmed/committed/msgs", nil)
+	bridgeL2ConfirmedFinalizedMsgsCounter = metrics.NewRegisteredCounter("bridge/l2/confirmed/finalized/msgs", nil)
+	bridgeL2SkippedBatchesCounter         = metrics.NewRegisteredCounter("bridge/l2/skipped/batches", nil)
 )
 
 // Layer2Relayer is responsible for
@@ -166,6 +177,7 @@ func (r *Layer2Relayer) processSavedEvent(msg *orm.L2Message, index uint64) erro
 		return err
 	}
 
+	bridgeL2RelayedMsgsCounter.Inc(1)
 	hash, err := r.messageSender.SendTransaction(msg.MsgHash, &r.cfg.MessengerContractAddress, big.NewInt(0), data)
 	if err != nil && err.Error() == "execution reverted: Message expired" {
 		return r.db.UpdateLayer2Status(r.ctx, msg.MsgHash, orm.MsgExpired)
@@ -267,6 +279,7 @@ func (r *Layer2Relayer) ProcessPendingBatches(wg *sync.WaitGroup) {
 		return
 	}
 
+	bridgeL2CommittedMsgsCounter.Inc(1)
 	txID := id + "-commit"
 	// add suffix `-commit` to avoid duplication with finalize tx in unit tests
 	hash, err := r.rollupSender.SendTransaction(txID, &r.cfg.RollupContractAddress, big.NewInt(0), data)
@@ -295,6 +308,7 @@ func (r *Layer2Relayer) ProcessCommittedBatches(wg *sync.WaitGroup) {
 		log.Error("UpdateSkippedBatches failed", "err", err)
 		// continue anyway
 	} else if count > 0 {
+		bridgeL2SkippedBatchesCounter.Inc(count)
 		log.Info("Skipping batches", "count", count)
 	}
 
@@ -373,6 +387,7 @@ func (r *Layer2Relayer) ProcessCommittedBatches(wg *sync.WaitGroup) {
 			return
 		}
 
+		bridgeL2FinalizedMsgsCounter.Inc(1)
 		txID := id + "-finalize"
 		// add suffix `-finalize` to avoid duplication with commit tx in unit tests
 		txHash, err := r.rollupSender.SendTransaction(txID, &r.cfg.RollupContractAddress, big.NewInt(0), data)
@@ -441,6 +456,7 @@ func (r *Layer2Relayer) handleConfirmation(confirmation *sender.Confirmation) {
 	transactionType := "Unknown"
 	// check whether it is message relay transaction
 	if msgHash, ok := r.processingMessage.Load(confirmation.ID); ok {
+		bridgeL2ConfirmedRelayedMsgsCounter.Inc(1)
 		transactionType = "MessageRelay"
 		// @todo handle db error
 		err := r.db.UpdateLayer2StatusAndLayer1Hash(r.ctx, msgHash.(string), orm.MsgConfirmed, confirmation.TxHash.String())
@@ -452,6 +468,7 @@ func (r *Layer2Relayer) handleConfirmation(confirmation *sender.Confirmation) {
 
 	// check whether it is block commitment transaction
 	if batchID, ok := r.processingCommitment.Load(confirmation.ID); ok {
+		bridgeL2ConfirmedCommittedMsgsCounter.Inc(1)
 		transactionType = "BatchCommitment"
 		// @todo handle db error
 		err := r.db.UpdateCommitTxHashAndRollupStatus(r.ctx, batchID.(string), confirmation.TxHash.String(), orm.RollupCommitted)
@@ -463,6 +480,7 @@ func (r *Layer2Relayer) handleConfirmation(confirmation *sender.Confirmation) {
 
 	// check whether it is proof finalization transaction
 	if batchID, ok := r.processingFinalization.Load(confirmation.ID); ok {
+		bridgeL2ConfirmedFinalizedMsgsCounter.Inc(1)
 		transactionType = "ProofFinalization"
 		// @todo handle db error
 		err := r.db.UpdateFinalizeTxHashAndRollupStatus(r.ctx, batchID.(string), confirmation.TxHash.String(), orm.RollupFinalized)

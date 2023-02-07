@@ -17,17 +17,18 @@ import (
 	"github.com/scroll-tech/go-ethereum/metrics"
 
 	bridge_abi "scroll-tech/bridge/abi"
+	"scroll-tech/bridge/config"
 	"scroll-tech/bridge/utils"
 
 	"scroll-tech/database"
 	"scroll-tech/database/orm"
-
-	"scroll-tech/bridge/config"
 )
 
 // Metrics
 var (
-	bridgeL2MsgSyncHeightGauge = metrics.NewRegisteredGauge("bridge/l2/msg/sync/height", nil)
+	bridgeL2MsgSyncHeightGauge      = metrics.NewRegisteredGauge("bridge/l2/msg/sync/height", nil)
+	bridgeL2MsgSentEventsCounter    = metrics.NewRegisteredCounter("bridge/l2/msg/sent/events", nil)
+	bridgeL2MsgRelayedEventsCounter = metrics.NewRegisteredCounter("bridge/l2/msg/relayed/events", nil)
 )
 
 type relayedMessage struct {
@@ -279,6 +280,8 @@ func (w *WatcherClient) FetchContractEvent(blockHeight uint64) {
 			log.Error("failed to parse emitted event log", "err", err)
 			return
 		}
+		bridgeL2MsgSentEventsCounter.Inc(int64(len(sentMessageEvents)))
+		bridgeL2MsgRelayedEventsCounter.Inc(int64(len(relayedMessageEvents)))
 
 		// Update relayed message first to make sure we don't forget to update submited message.
 		// Since, we always start sync from the latest unprocessed message.

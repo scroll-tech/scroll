@@ -12,12 +12,18 @@ import (
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/crypto"
 	"github.com/scroll-tech/go-ethereum/log"
+	"github.com/scroll-tech/go-ethereum/metrics"
 
 	"scroll-tech/database/orm"
 
 	bridge_abi "scroll-tech/bridge/abi"
 	"scroll-tech/bridge/config"
 	"scroll-tech/bridge/sender"
+)
+
+var (
+	bridgeL1MsgRelayedMsgsCounter       = metrics.NewRegisteredCounter("bridge/l1/relayed/msgs", nil)
+	bridgeL1ConfirmedRelayedMsgsCounter = metrics.NewRegisteredCounter("bridge/l1/confirmed/relayed/msgs", nil)
 )
 
 // Layer1Relayer is responsible for
@@ -110,6 +116,7 @@ func (r *Layer1Relayer) processSavedEvent(msg *orm.L1Message) error {
 		return err
 	}
 
+	bridgeL1MsgRelayedMsgsCounter.Inc(1)
 	hash, err := r.sender.SendTransaction(msg.MsgHash, &r.cfg.MessengerContractAddress, big.NewInt(0), data)
 	if err != nil && err.Error() == "execution reverted: Message expired" {
 		return r.db.UpdateLayer1Status(r.ctx, msg.MsgHash, orm.MsgExpired)
@@ -143,6 +150,7 @@ func (r *Layer1Relayer) Start() {
 				// log.Info("receive header", "height", number)
 				r.ProcessSavedEvents()
 			case cfm := <-r.confirmationCh:
+				bridgeL1ConfirmedRelayedMsgsCounter.Inc(1)
 				if !cfm.IsSuccessful {
 					log.Warn("transaction confirmed but failed in layer2", "confirmation", cfm)
 				} else {
