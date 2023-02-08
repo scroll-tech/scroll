@@ -14,10 +14,10 @@ bridge: ## Builds the Bridge instance.
 test:
 	go test -v -race -coverprofile=coverage.txt -covermode=atomic -p 1 $(PWD)/...
 
-lint: ## Lint the files - used for CI
+lint: ## Lint the files - used for CI.
 	GOBIN=$(PWD)/build/bin go run ../build/lint.go
 
-clean: ## Empty out the bin folder
+clean: ## Empty out the bin folder.
 	@rm -rf build/bin
 
 docker:
