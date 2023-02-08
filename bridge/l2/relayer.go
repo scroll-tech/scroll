@@ -28,13 +28,13 @@ import (
 )
 
 var (
-	bridgeL2RelayedMsgsCounter            = metrics.NewRegisteredCounter("bridge/l2/relayed/msgs", nil)
-	bridgeL2CommittedMsgsCounter          = metrics.NewRegisteredCounter("bridge/l2/committed/msgs", nil)
-	bridgeL2FinalizedMsgsCounter          = metrics.NewRegisteredCounter("bridge/l2/finalized/msgs", nil)
-	bridgeL2ConfirmedRelayedMsgsCounter   = metrics.NewRegisteredCounter("bridge/l2/confirmed/relayed/msgs", nil)
-	bridgeL2ConfirmedCommittedMsgsCounter = metrics.NewRegisteredCounter("bridge/l2/confirmed/committed/msgs", nil)
-	bridgeL2ConfirmedFinalizedMsgsCounter = metrics.NewRegisteredCounter("bridge/l2/confirmed/finalized/msgs", nil)
-	bridgeL2SkippedBatchesCounter         = metrics.NewRegisteredCounter("bridge/l2/skipped/batches", nil)
+	bridgeL2MsgsRelayedTotalCounter            = metrics.NewRegisteredCounter("bridge/l2/msgs/relayed/total", nil)
+	bridgeL2MsgsCommittedTotalCounter          = metrics.NewRegisteredCounter("bridge/l2/msgs/committed/total", nil)
+	bridgeL2MsgsFinalizedTotalCounter          = metrics.NewRegisteredCounter("bridge/l2/msgs/finalized/total", nil)
+	bridgeL2MsgsRelayedConfirmedTotalCounter   = metrics.NewRegisteredCounter("bridge/l2/msgs/relayed/confirmed/total", nil)
+	bridgeL2MsgsCommittedConfirmedTotalCounter = metrics.NewRegisteredCounter("bridge/l2/msgs/committed/confirmed/total", nil)
+	bridgeL2MsgsFinalizedConfirmedTotalCounter = metrics.NewRegisteredCounter("bridge/l2/msgs/finalized/confirmed/total", nil)
+	bridgeL2BatchesSkippedTotalCounter         = metrics.NewRegisteredCounter("bridge/l2/batches/skipped/total", nil)
 )
 
 // Layer2Relayer is responsible for
@@ -176,7 +176,7 @@ func (r *Layer2Relayer) processSavedEvent(msg *orm.L2Message, index uint64) erro
 		return err
 	}
 
-	bridgeL2RelayedMsgsCounter.Inc(1)
+	bridgeL2MsgsRelayedTotalCounter.Inc(1)
 	hash, err := r.messageSender.SendTransaction(msg.MsgHash, &r.cfg.MessengerContractAddress, big.NewInt(0), data)
 	if err != nil && err.Error() == "execution reverted: Message expired" {
 		return r.db.UpdateLayer2Status(r.ctx, msg.MsgHash, orm.MsgExpired)
@@ -286,7 +286,7 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 		}
 		return
 	}
-	bridgeL2CommittedMsgsCounter.Inc(1)
+	bridgeL2MsgsCommittedTotalCounter.Inc(1)
 	log.Info("commitBatch in layer1", "batch_id", id, "index", batch.Index, "hash", hash)
 
 	// record and sync with db, @todo handle db error
@@ -304,7 +304,7 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 		log.Error("UpdateSkippedBatches failed", "err", err)
 		// continue anyway
 	} else if count > 0 {
-		bridgeL2SkippedBatchesCounter.Inc(count)
+		bridgeL2BatchesSkippedTotalCounter.Inc(count)
 		log.Info("Skipping batches", "count", count)
 	}
 
@@ -393,7 +393,7 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 			}
 			return
 		}
-		bridgeL2FinalizedMsgsCounter.Inc(1)
+		bridgeL2MsgsFinalizedTotalCounter.Inc(1)
 		log.Info("finalizeBatchWithProof in layer1", "batch_id", id, "hash", hash)
 
 		// record and sync with db, @todo handle db error
@@ -466,37 +466,37 @@ func (r *Layer2Relayer) handleConfirmation(confirmation *sender.Confirmation) {
 	transactionType := "Unknown"
 	// check whether it is message relay transaction
 	if msgHash, ok := r.processingMessage.Load(confirmation.ID); ok {
-		bridgeL2ConfirmedRelayedMsgsCounter.Inc(1)
 		transactionType = "MessageRelay"
 		// @todo handle db error
 		err := r.db.UpdateLayer2StatusAndLayer1Hash(r.ctx, msgHash.(string), orm.MsgConfirmed, confirmation.TxHash.String())
 		if err != nil {
 			log.Warn("UpdateLayer2StatusAndLayer1Hash failed", "msgHash", msgHash.(string), "err", err)
 		}
+		bridgeL2MsgsRelayedConfirmedTotalCounter.Inc(1)
 		r.processingMessage.Delete(confirmation.ID)
 	}
 
 	// check whether it is block commitment transaction
 	if batchID, ok := r.processingCommitment.Load(confirmation.ID); ok {
-		bridgeL2ConfirmedCommittedMsgsCounter.Inc(1)
 		transactionType = "BatchCommitment"
 		// @todo handle db error
 		err := r.db.UpdateCommitTxHashAndRollupStatus(r.ctx, batchID.(string), confirmation.TxHash.String(), orm.RollupCommitted)
 		if err != nil {
 			log.Warn("UpdateCommitTxHashAndRollupStatus failed", "batch_id", batchID.(string), "err", err)
 		}
+		bridgeL2MsgsCommittedConfirmedTotalCounter.Inc(1)
 		r.processingCommitment.Delete(confirmation.ID)
 	}
 
 	// check whether it is proof finalization transaction
 	if batchID, ok := r.processingFinalization.Load(confirmation.ID); ok {
-		bridgeL2ConfirmedFinalizedMsgsCounter.Inc(1)
 		transactionType = "ProofFinalization"
 		// @todo handle db error
 		err := r.db.UpdateFinalizeTxHashAndRollupStatus(r.ctx, batchID.(string), confirmation.TxHash.String(), orm.RollupFinalized)
 		if err != nil {
 			log.Warn("UpdateFinalizeTxHashAndRollupStatus failed", "batch_id", batchID.(string), "err", err)
 		}
+		bridgeL2MsgsFinalizedConfirmedTotalCounter.Inc(1)
 		r.processingFinalization.Delete(confirmation.ID)
 	}
 	log.Info("transaction confirmed in layer1", "type", transactionType, "confirmation", confirmation)

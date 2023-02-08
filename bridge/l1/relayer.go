@@ -22,8 +22,8 @@ import (
 )
 
 var (
-	bridgeL1MsgsRelayedTotalCounter     = metrics.NewRegisteredCounter("bridge/l1/msgs/relayed/total", nil)
-	bridgeL1MsgsRelayedConfirmedCounter = metrics.NewRegisteredCounter("bridge/l1/msgs/relayed/confirmed", nil)
+	bridgeL1MsgsRelayedTotalCounter          = metrics.NewRegisteredCounter("bridge/l1/msgs/relayed/total", nil)
+	bridgeL1MsgsRelayedConfirmedTotalCounter = metrics.NewRegisteredCounter("bridge/l1/msgs/relayed/confirmed/total", nil)
 )
 
 // Layer1Relayer is responsible for
@@ -150,7 +150,7 @@ func (r *Layer1Relayer) Start() {
 				// log.Info("receive header", "height", number)
 				r.ProcessSavedEvents()
 			case cfm := <-r.confirmationCh:
-				bridgeL1MsgsRelayedConfirmedCounter.Inc(1)
+				bridgeL1MsgsRelayedConfirmedTotalCounter.Inc(1)
 				if !cfm.IsSuccessful {
 					log.Warn("transaction confirmed but failed in layer2", "confirmation", cfm)
 				} else {

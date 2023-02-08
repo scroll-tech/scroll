@@ -21,11 +21,11 @@ import (
 )
 
 var (
-	bridgeL1MsgSyncHeightGauge = metrics.NewRegisteredGauge("bridge/l1/msg/sync/height", nil)
+	bridgeL1MsgsSyncHeightGauge = metrics.NewRegisteredGauge("bridge/l1/msgs/sync/height", nil)
 
-	bridgeL1MsgSentEventsCounter    = metrics.NewRegisteredCounter("bridge/l1/msg/sent/events", nil)
-	bridgeL1MsgRelayedEventsCounter = metrics.NewRegisteredCounter("bridge/l1/msg/relayed/events", nil)
-	bridgeL1RollupEventsCounter     = metrics.NewRegisteredCounter("bridge/l1/rollup/events", nil)
+	bridgeL1MsgsSentEventsTotalCounter    = metrics.NewRegisteredCounter("bridge/l1/msgs/sent/events/total", nil)
+	bridgeL1MsgsRelayedEventsTotalCounter = metrics.NewRegisteredCounter("bridge/l1/msgs/relayed/events/total", nil)
+	bridgeL1RollupEventsTotalCounter      = metrics.NewRegisteredCounter("bridge/l1/rollup/events/total", nil)
 )
 
 type relayedMessage struct {
@@ -160,7 +160,7 @@ func (w *Watcher) FetchContractEvent(blockHeight uint64) error {
 		}
 		if len(logs) == 0 {
 			w.processedMsgHeight = uint64(to)
-			bridgeL1MsgSyncHeightGauge.Update(to)
+			bridgeL1MsgsSyncHeightGauge.Update(to)
 			continue
 		}
 		log.Info("Received new L1 events", "fromBlock", from, "toBlock", to, "cnt", len(logs))
@@ -173,9 +173,9 @@ func (w *Watcher) FetchContractEvent(blockHeight uint64) error {
 		sentMessageCount := int64(len(sentMessageEvents))
 		relayedMessageCount := int64(len(relayedMessageEvents))
 		rollupEventCount := int64(len(rollupEvents))
-		bridgeL1MsgSentEventsCounter.Inc(sentMessageCount)
-		bridgeL1MsgRelayedEventsCounter.Inc(relayedMessageCount)
-		bridgeL1RollupEventsCounter.Inc(rollupEventCount)
+		bridgeL1MsgsSentEventsTotalCounter.Inc(sentMessageCount)
+		bridgeL1MsgsRelayedEventsTotalCounter.Inc(relayedMessageCount)
+		bridgeL1RollupEventsTotalCounter.Inc(rollupEventCount)
 		log.Info("L1 events types", "SentMessageCount", sentMessageCount, "RelayedMessageCount", relayedMessageCount, "RollupEventCount", rollupEventCount)
 
 		// use rollup event to update rollup results db status
@@ -231,7 +231,7 @@ func (w *Watcher) FetchContractEvent(blockHeight uint64) error {
 		}
 
 		w.processedMsgHeight = uint64(to)
-		bridgeL1MsgSyncHeightGauge.Update(to)
+		bridgeL1MsgsSyncHeightGauge.Update(to)
 	}
 
 	return nil

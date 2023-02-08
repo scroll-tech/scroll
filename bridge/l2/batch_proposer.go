@@ -15,11 +15,11 @@ import (
 )
 
 var (
-	bridgeL2GasOverThresholdCounter = metrics.NewRegisteredCounter("bridge/l2/gas/over/threshold", nil)
-	bridgeL2TxsOverThresholdCounter = metrics.NewRegisteredCounter("bridge/l2/txs/over/threshold", nil)
-	bridgeL2BatchesCounter          = metrics.NewRegisteredCounter("bridge/l2/batches", nil)
-	bridgeL2TxsCounter              = metrics.NewRegisteredCounter("bridge/l2/txs", nil)
-	bridgeL2GasCounter              = metrics.NewRegisteredCounter("bridge/l2/gas", nil)
+	bridgeL2GasOverThresholdTotalCounter = metrics.NewRegisteredCounter("bridge/l2/gas/over/threshold/total", nil)
+	bridgeL2GasCreatedTotalCounter       = metrics.NewRegisteredCounter("bridge/l2/gas/created/total", nil)
+	bridgeL2TxsOverThresholdTotalCounter = metrics.NewRegisteredCounter("bridge/l2/txs/over/threshold/total", nil)
+	bridgeL2TxsCreatedTotalCounter       = metrics.NewRegisteredCounter("bridge/l2/txs/created/total", nil)
+	bridgeL2BatchesCreatedTotalCounter   = metrics.NewRegisteredCounter("bridge/l2/batches/created/total", nil)
 )
 
 type batchProposer struct {
@@ -66,22 +66,22 @@ func (w *batchProposer) tryProposeBatch() {
 	}
 
 	if blocks[0].GasUsed > w.batchGasThreshold {
-		bridgeL2GasOverThresholdCounter.Inc(1)
+		bridgeL2GasOverThresholdTotalCounter.Inc(1)
 		log.Warn("gas overflow even for only 1 block", "height", blocks[0].Number, "gas", blocks[0].GasUsed)
 		if err = w.createBatchForBlocks(blocks[:1]); err != nil {
 			log.Error("failed to create batch", "number", blocks[0].Number, "err", err)
 		}
-		bridgeL2BatchesCounter.Inc(1)
+		bridgeL2BatchesCreatedTotalCounter.Inc(1)
 		return
 	}
 
 	if blocks[0].TxNum > w.batchTxNumThreshold {
-		bridgeL2TxsOverThresholdCounter.Inc(1)
+		bridgeL2TxsOverThresholdTotalCounter.Inc(1)
 		log.Warn("too many txs even for only 1 block", "height", blocks[0].Number, "tx_num", blocks[0].TxNum)
 		if err = w.createBatchForBlocks(blocks[:1]); err != nil {
 			log.Error("failed to create batch", "number", blocks[0].Number, "err", err)
 		}
-		bridgeL2BatchesCounter.Inc(1)
+		bridgeL2BatchesCreatedTotalCounter.Inc(1)
 		return
 	}
 
@@ -109,7 +109,7 @@ func (w *batchProposer) tryProposeBatch() {
 	if err = w.createBatchForBlocks(blocks); err != nil {
 		log.Error("failed to create batch", "from", blocks[0].Number, "to", blocks[len(blocks)-1].Number, "err", err)
 	}
-	bridgeL2BatchesCounter.Inc(1)
+	bridgeL2BatchesCreatedTotalCounter.Inc(1)
 }
 
 func (w *batchProposer) createBatchForBlocks(blocks []*orm.BlockInfo) error {
@@ -140,8 +140,8 @@ func (w *batchProposer) createBatchForBlocks(blocks []*orm.BlockInfo) error {
 		blockIDs[i] = block.Number
 	}
 
-	bridgeL2TxsCounter.Inc(int64(txNum))
-	bridgeL2GasCounter.Inc(int64(gasUsed))
+	bridgeL2TxsCreatedTotalCounter.Inc(int64(txNum))
+	bridgeL2GasCreatedTotalCounter.Inc(int64(gasUsed))
 
 	batchID, dbTxErr = w.orm.NewBatchInDBTx(dbTx, startBlock, endBlock, startBlock.ParentHash, txNum, gasUsed)
 	if dbTxErr != nil {

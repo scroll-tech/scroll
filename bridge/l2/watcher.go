@@ -29,10 +29,10 @@ var (
 	bridgeL2MsgSyncHeightGauge      = metrics.NewRegisteredGauge("bridge/l2/msg/sync/height", nil)
 	bridgeL2TraceFetchedHeightGauge = metrics.NewRegisteredGauge("bridge/l2/trace/fetched/height", nil)
 
-	bridgeL2MsgSentEventsCounter    = metrics.NewRegisteredCounter("bridge/l2/msg/sent/events", nil)
-	bridgeL2MsgRelayedEventsCounter = metrics.NewRegisteredCounter("bridge/l2/msg/relayed/events", nil)
-	bridgeL2TraceGasCounter         = metrics.NewRegisteredCounter("bridge/l2/trace/gas", nil)
-	bridgeL2TraceSizeCounter        = metrics.NewRegisteredCounter("bridge/l2/trace/size", nil)
+	bridgeL2MsgSentEventsTotalCounter    = metrics.NewRegisteredCounter("bridge/l2/msg/sent/events/total", nil)
+	bridgeL2MsgRelayedEventsTotalCounter = metrics.NewRegisteredCounter("bridge/l2/msg/relayed/events/total", nil)
+	bridgeL2TraceGasTotalCounter         = metrics.NewRegisteredCounter("bridge/l2/trace/gas/total", nil)
+	bridgeL2TraceSizeTotalCounter        = metrics.NewRegisteredCounter("bridge/l2/trace/size/total", nil)
 )
 
 type relayedMessage struct {
@@ -223,8 +223,8 @@ func (w *WatcherClient) getAndStoreBlockTraces(ctx context.Context, from, to uin
 			return fmt.Errorf("failed to GetBlockResultByHash: %v. number: %v", err2, number)
 		}
 		log.Info("retrieved block trace", "height", trace.Header.Number, "hash", trace.Header.Hash().String())
-		bridgeL2TraceGasCounter.Inc(int64(trace.Header.GasUsed))
-		bridgeL2TraceSizeCounter.Inc(int64(trace.Header.Size()))
+		bridgeL2TraceGasTotalCounter.Inc(int64(trace.Header.GasUsed))
+		bridgeL2TraceSizeTotalCounter.Inc(int64(trace.Header.Size()))
 		traces = append(traces, trace)
 
 	}
@@ -286,8 +286,8 @@ func (w *WatcherClient) FetchContractEvent(blockHeight uint64) {
 			log.Error("failed to parse emitted event log", "err", err)
 			return
 		}
-		bridgeL2MsgSentEventsCounter.Inc(int64(len(sentMessageEvents)))
-		bridgeL2MsgRelayedEventsCounter.Inc(int64(len(relayedMessageEvents)))
+		bridgeL2MsgSentEventsTotalCounter.Inc(int64(len(sentMessageEvents)))
+		bridgeL2MsgRelayedEventsTotalCounter.Inc(int64(len(relayedMessageEvents)))
 
 		// Update relayed message first to make sure we don't forget to update submited message.
 		// Since, we always start sync from the latest unprocessed message.
