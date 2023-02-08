@@ -28,7 +28,10 @@ import (
 )
 
 var (
-	coordinatorFailedSessions = metrics.NewRegisteredCounter("coordinator/failed/sessions", nil)
+	coordinatorFailedSessionsCounter  = metrics.NewRegisteredCounter("coordinator/failed/sessions", nil)
+	coordinatorFailedProofsCounter    = metrics.NewRegisteredCounter("coordinator/failed/proofs", nil)
+	coordinatorProvedBatchesCounter   = metrics.NewRegisteredGauge("coordinator/proved/batch", nil)
+	coordinatorVerifiedBatchesCounter = metrics.NewRegisteredGauge("coordinator/verified/batch", nil)
 )
 
 const (
@@ -271,6 +274,10 @@ func (m *Manager) handleZkProof(pk string, msg *message.ProofDetail) error {
 		if success && dbErr == nil {
 			status = orm.RollerProofValid
 		}
+		coordinatorVerifiedBatchesCounter.Inc(1)
+		if status == orm.RollerProofInvalid {
+			coordinatorFailedProofsCounter.Inc(1)
+		}
 		// notify the session that the roller finishes the proving process
 		sess.finishChan <- rollerProofStatus{msg.ID, pk, status}
 	}()
@@ -295,6 +302,7 @@ func (m *Manager) handleZkProof(pk string, msg *message.ProofDetail) error {
 		log.Error("failed to update task status as proved", "error", dbErr)
 		return dbErr
 	}
+	coordinatorProvedBatchesCounter.Inc(1)
 
 	var err error
 	tasks, err := m.orm.GetBlockBatches(map[string]interface{}{"id": msg.ID})
@@ -354,7 +362,7 @@ func (m *Manager) CollectProofs(sess *session) {
 			// Ensure we got at least one proof before selecting a winner.
 			if len(participatingRollers) == 0 {
 				// record failed session.
-				coordinatorFailedSessions.Inc(1)
+				coordinatorFailedSessionsCounter.Inc(1)
 				errMsg := "proof generation session ended without receiving any valid proofs"
 				m.addFailedSession(sess, errMsg)
 				log.Warn(errMsg, "session id", sess.info.ID)
