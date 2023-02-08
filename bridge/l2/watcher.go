@@ -27,8 +27,12 @@ import (
 // Metrics
 var (
 	bridgeL2MsgSyncHeightGauge      = metrics.NewRegisteredGauge("bridge/l2/msg/sync/height", nil)
+	bridgeL2TraceFetchedHeightGauge = metrics.NewRegisteredGauge("bridge/l2/trace/fetched/height", nil)
+
 	bridgeL2MsgSentEventsCounter    = metrics.NewRegisteredCounter("bridge/l2/msg/sent/events", nil)
 	bridgeL2MsgRelayedEventsCounter = metrics.NewRegisteredCounter("bridge/l2/msg/relayed/events", nil)
+	bridgeL2TraceGasCounter         = metrics.NewRegisteredCounter("bridge/l2/trace/gas", nil)
+	bridgeL2TraceSizeCounter        = metrics.NewRegisteredCounter("bridge/l2/trace/size", nil)
 )
 
 type relayedMessage struct {
@@ -205,6 +209,7 @@ func (w *WatcherClient) tryFetchRunningMissingBlocks(ctx context.Context, blockH
 			log.Error("fail to getAndStoreBlockTraces", "from", from, "to", to, "err", err)
 			return
 		}
+		bridgeL2TraceFetchedHeightGauge.Update(int64(to))
 	}
 }
 
@@ -218,7 +223,8 @@ func (w *WatcherClient) getAndStoreBlockTraces(ctx context.Context, from, to uin
 			return fmt.Errorf("failed to GetBlockResultByHash: %v. number: %v", err2, number)
 		}
 		log.Info("retrieved block trace", "height", trace.Header.Number, "hash", trace.Header.Hash().String())
-
+		bridgeL2TraceGasCounter.Inc(int64(trace.Header.GasUsed))
+		bridgeL2TraceSizeCounter.Inc(int64(trace.Header.Size()))
 		traces = append(traces, trace)
 
 	}

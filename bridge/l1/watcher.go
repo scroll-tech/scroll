@@ -21,7 +21,8 @@ import (
 )
 
 var (
-	bridgeL1MsgSyncHeightGauge      = metrics.NewRegisteredGauge("bridge/l1/msg/sync/height", nil)
+	bridgeL1MsgSyncHeightGauge = metrics.NewRegisteredGauge("bridge/l1/msg/sync/height", nil)
+
 	bridgeL1MsgSentEventsCounter    = metrics.NewRegisteredCounter("bridge/l1/msg/sent/events", nil)
 	bridgeL1MsgRelayedEventsCounter = metrics.NewRegisteredCounter("bridge/l1/msg/relayed/events", nil)
 	bridgeL1RollupEventsCounter     = metrics.NewRegisteredCounter("bridge/l1/rollup/events", nil)
