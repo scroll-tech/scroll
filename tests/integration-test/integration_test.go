@@ -80,8 +80,8 @@ func testMonitorMetrics(t *testing.T) {
 	assert.NoError(t, err)
 	bodyStr := string(body)
 	assert.Equal(t, 200, resp.StatusCode)
-	assert.Equal(t, true, strings.Contains(bodyStr, "bridge_l1_msg_sync_height"))
-	assert.Equal(t, true, strings.Contains(bodyStr, "bridge_l2_msg_sync_height"))
+	assert.Equal(t, true, strings.Contains(bodyStr, "bridge_l1_msgs_sync_height"))
+	assert.Equal(t, true, strings.Contains(bodyStr, "bridge_l2_msgs_sync_height"))
 
 	// Get coordinator monitor metrics.
 	resp, err = http.Get("http://localhost:" + svrPort2)
