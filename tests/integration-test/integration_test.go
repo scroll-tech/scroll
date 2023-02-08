@@ -91,8 +91,8 @@ func testMonitorMetrics(t *testing.T) {
 	assert.NoError(t, err)
 	bodyStr = string(body)
 	assert.Equal(t, 200, resp.StatusCode)
-	assert.Equal(t, true, strings.Contains(bodyStr, "coordinator_failed_sessions"))
-	assert.Equal(t, true, strings.Contains(bodyStr, "coordinator_roller_disconnects"))
+	assert.Equal(t, true, strings.Contains(bodyStr, "coordinator_sessions_timeout_total"))
+	assert.Equal(t, true, strings.Contains(bodyStr, "coordinator_rollers_disconnects_total"))
 
 	// Exit.
 	bridgeCmd.WaitExit()

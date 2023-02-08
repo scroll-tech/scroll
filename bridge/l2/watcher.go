@@ -26,13 +26,13 @@ import (
 
 // Metrics
 var (
-	bridgeL2MsgSyncHeightGauge      = metrics.NewRegisteredGauge("bridge/l2/msg/sync/height", nil)
-	bridgeL2TraceFetchedHeightGauge = metrics.NewRegisteredGauge("bridge/l2/trace/fetched/height", nil)
+	bridgeL2MsgsSyncHeightGauge      = metrics.NewRegisteredGauge("bridge/l2/msgs/sync/height", nil)
+	bridgeL2TracesFetchedHeightGauge = metrics.NewRegisteredGauge("bridge/l2/traces/fetched/height", nil)
 
-	bridgeL2MsgSentEventsTotalCounter    = metrics.NewRegisteredCounter("bridge/l2/msg/sent/events/total", nil)
-	bridgeL2MsgRelayedEventsTotalCounter = metrics.NewRegisteredCounter("bridge/l2/msg/relayed/events/total", nil)
-	bridgeL2TraceGasTotalCounter         = metrics.NewRegisteredCounter("bridge/l2/trace/gas/total", nil)
-	bridgeL2TraceSizeTotalCounter        = metrics.NewRegisteredCounter("bridge/l2/trace/size/total", nil)
+	bridgeL2MsgsSentEventsTotalCounter    = metrics.NewRegisteredCounter("bridge/l2/msgs/sent/events/total", nil)
+	bridgeL2MsgsRelayedEventsTotalCounter = metrics.NewRegisteredCounter("bridge/l2/msgs/relayed/events/total", nil)
+	bridgeL2TracesGasTotalCounter         = metrics.NewRegisteredCounter("bridge/l2/traces/gas/total", nil)
+	bridgeL2TracesSizeTotalCounter        = metrics.NewRegisteredCounter("bridge/l2/traces/size/total", nil)
 )
 
 type relayedMessage struct {
@@ -209,7 +209,7 @@ func (w *WatcherClient) tryFetchRunningMissingBlocks(ctx context.Context, blockH
 			log.Error("fail to getAndStoreBlockTraces", "from", from, "to", to, "err", err)
 			return
 		}
-		bridgeL2TraceFetchedHeightGauge.Update(int64(to))
+		bridgeL2TracesFetchedHeightGauge.Update(int64(to))
 	}
 }
 
@@ -223,8 +223,8 @@ func (w *WatcherClient) getAndStoreBlockTraces(ctx context.Context, from, to uin
 			return fmt.Errorf("failed to GetBlockResultByHash: %v. number: %v", err2, number)
 		}
 		log.Info("retrieved block trace", "height", trace.Header.Number, "hash", trace.Header.Hash().String())
-		bridgeL2TraceGasTotalCounter.Inc(int64(trace.Header.GasUsed))
-		bridgeL2TraceSizeTotalCounter.Inc(int64(trace.Header.Size()))
+		bridgeL2TracesGasTotalCounter.Inc(int64(trace.Header.GasUsed))
+		bridgeL2TracesSizeTotalCounter.Inc(int64(trace.Header.Size()))
 		traces = append(traces, trace)
 
 	}
@@ -276,7 +276,7 @@ func (w *WatcherClient) FetchContractEvent(blockHeight uint64) {
 		}
 		if len(logs) == 0 {
 			w.processedMsgHeight = uint64(to)
-			bridgeL2MsgSyncHeightGauge.Update(to)
+			bridgeL2MsgsSyncHeightGauge.Update(to)
 			continue
 		}
 		log.Info("received new L2 messages", "fromBlock", from, "toBlock", to, "cnt", len(logs))
@@ -286,8 +286,8 @@ func (w *WatcherClient) FetchContractEvent(blockHeight uint64) {
 			log.Error("failed to parse emitted event log", "err", err)
 			return
 		}
-		bridgeL2MsgSentEventsTotalCounter.Inc(int64(len(sentMessageEvents)))
-		bridgeL2MsgRelayedEventsTotalCounter.Inc(int64(len(relayedMessageEvents)))
+		bridgeL2MsgsSentEventsTotalCounter.Inc(int64(len(sentMessageEvents)))
+		bridgeL2MsgsRelayedEventsTotalCounter.Inc(int64(len(relayedMessageEvents)))
 
 		// Update relayed message first to make sure we don't forget to update submited message.
 		// Since, we always start sync from the latest unprocessed message.
@@ -311,7 +311,7 @@ func (w *WatcherClient) FetchContractEvent(blockHeight uint64) {
 		}
 
 		w.processedMsgHeight = uint64(to)
-		bridgeL2MsgSyncHeightGauge.Update(to)
+		bridgeL2MsgsSyncHeightGauge.Update(to)
 	}
 }
 
