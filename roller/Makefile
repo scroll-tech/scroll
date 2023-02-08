@@ -1,8 +1,5 @@
 .PHONY: lint docker clean roller mock_roller
 
-# LD_LIBRARY_PATH=$LD_LIBRARY_PATH:./prover/lib
-# export LD_LIBRARY_PATH
-
 IMAGE_NAME=go-roller
 IMAGE_VERSION=latest
 
