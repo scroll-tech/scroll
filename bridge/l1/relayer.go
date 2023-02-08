@@ -65,7 +65,7 @@ func NewLayer1Relayer(ctx context.Context, l1ConfirmNum int64, db orm.L1MessageO
 		confirmationCh: sender.ConfirmChan(),
 	}
 
-	if err = layer1.messageInit(); err != nil {
+	if err = layer1.checkSubmittedMessages(); err != nil {
 		log.Error("failed to init layer1 submitted tx", "err", err)
 		return nil, err
 	}
@@ -73,7 +73,7 @@ func NewLayer1Relayer(ctx context.Context, l1ConfirmNum int64, db orm.L1MessageO
 	return layer1, nil
 }
 
-func (r *Layer1Relayer) messageInit() error {
+func (r *Layer1Relayer) checkSubmittedMessages() error {
 	batch := 100
 	// msgs are sorted by nonce in increasing order
 	msgs, err := r.db.GetL1MessagesByStatus(orm.MsgSubmitted, uint64(batch))
@@ -81,7 +81,7 @@ func (r *Layer1Relayer) messageInit() error {
 		return err
 	}
 	for _, msg := range msgs {
-		data, err := r.messagePack(msg)
+		data, err := r.packMessage(msg)
 		if err != nil {
 			continue
 		}
@@ -122,7 +122,7 @@ func (r *Layer1Relayer) ProcessSavedEvents() {
 	}
 }
 
-func (r *Layer1Relayer) messagePack(msg *orm.L1Message) ([]byte, error) {
+func (r *Layer1Relayer) packMessage(msg *orm.L1Message) ([]byte, error) {
 	// @todo add support to relay multiple messages
 	from := common.HexToAddress(msg.Sender)
 	target := common.HexToAddress(msg.Target)
@@ -146,7 +146,7 @@ func (r *Layer1Relayer) messagePack(msg *orm.L1Message) ([]byte, error) {
 }
 
 func (r *Layer1Relayer) processSavedEvent(msg *orm.L1Message) error {
-	data, err := r.messagePack(msg)
+	data, err := r.packMessage(msg)
 	if err != nil {
 		return err
 	}
