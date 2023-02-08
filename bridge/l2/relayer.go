@@ -98,28 +98,42 @@ func NewLayer2Relayer(ctx context.Context, db database.OrmFactory, cfg *config.R
 
 // Start the relayer process
 func (r *Layer2Relayer) Start() {
-	go func() {
-		// trigger by timer
+	loop := func(ctx context.Context, f func()) {
 		ticker := time.NewTicker(time.Second)
 		defer ticker.Stop()
 
 		for {
 			select {
-			case <-ticker.C:
-				var wg = sync.WaitGroup{}
-				wg.Add(3)
-				go r.ProcessSavedEvents(&wg)
-				go r.ProcessPendingBatches(&wg)
-				go r.ProcessCommittedBatches(&wg)
-				wg.Wait()
-			case confirmation := <-r.messageCh:
-				r.handleConfirmation(confirmation)
-			case confirmation := <-r.rollupCh:
-				r.handleConfirmation(confirmation)
-			case <-r.stopCh:
+			case <-ctx.Done():
 				return
+			case <-ticker.C:
+				f()
 			}
 		}
+	}
+
+	go func() {
+		ctx, cancel := context.WithCancel(r.ctx)
+
+		go loop(ctx, r.ProcessSavedEvents)
+		go loop(ctx, r.ProcessPendingBatches)
+		go loop(ctx, r.ProcessCommittedBatches)
+
+		go func(ctx context.Context) {
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case confirmation := <-r.messageCh:
+					r.handleConfirmation(confirmation)
+				case confirmation := <-r.rollupCh:
+					r.handleConfirmation(confirmation)
+				}
+			}
+		}(ctx)
+
+		<-r.stopCh
+		cancel()
 	}()
 }
 
