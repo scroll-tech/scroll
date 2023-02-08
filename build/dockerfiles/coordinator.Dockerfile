@@ -39,7 +39,7 @@ RUN cd ./coordinator && go build -v -p 4 -o /bin/coordinator ./cmd && mv verifie
 
 # Pull coordinator into a second stage deploy alpine container
 FROM ubuntu:20.04
-ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:./prover/lib
+ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/src/coordinator/verifier/lib
 RUN mkdir -p /src/coordinator/verifier/lib
 COPY --from=builder /bin/lib /src/coordinator/verifier/lib
 COPY --from=builder /bin/coordinator /bin/
