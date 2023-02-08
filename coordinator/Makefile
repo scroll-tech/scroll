@@ -17,7 +17,7 @@ test:
 	go test -v -race -coverprofile=coverage.txt -covermode=atomic -p 1 $(PWD)/...
 
 libzkp:
-	cd ../common/libzkp/impl && cargo build --release && cp ./target/release/libzkp.so ../interface/
+	cd ../common/libzkp/impl && cargo build --release && cp ./target/release/libzkp.a ../interface/
 	rm -rf ./verifier/lib && cp -r ../common/libzkp/interface ./verifier/lib
 	find ../common | grep libzktrie.so | xargs -i cp {} ./verifier/lib/
 
