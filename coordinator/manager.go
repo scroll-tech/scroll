@@ -30,8 +30,8 @@ import (
 var (
 	coordinatorFailedSessionsCounter  = metrics.NewRegisteredCounter("coordinator/failed/sessions", nil)
 	coordinatorFailedProofsCounter    = metrics.NewRegisteredCounter("coordinator/failed/proofs", nil)
-	coordinatorProvedBatchesCounter   = metrics.NewRegisteredGauge("coordinator/proved/batch", nil)
-	coordinatorVerifiedBatchesCounter = metrics.NewRegisteredGauge("coordinator/verified/batch", nil)
+	coordinatorProvedBatchesCounter   = metrics.NewRegisteredCounter("coordinator/proved/batch", nil)
+	coordinatorVerifiedBatchesCounter = metrics.NewRegisteredCounter("coordinator/verified/batch", nil)
 )
 
 const (
