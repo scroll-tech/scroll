@@ -13,7 +13,7 @@ RUN cargo chef cook --release --recipe-path recipe.json
 
 COPY ./common/libzkp/impl .
 RUN cargo build --release
-RUN zktrie_path=`find ./ |grep libzktrie.so` && cp $zktrie_path /app/target/release/libzktrie.so
+RUN find ./ | grep libzktrie.so | xargs -i cp {} /app/target/release/
 
 
 # Download Go dependencies
