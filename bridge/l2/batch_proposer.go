@@ -6,11 +6,20 @@ import (
 	"time"
 
 	"github.com/scroll-tech/go-ethereum/log"
+	"github.com/scroll-tech/go-ethereum/metrics"
 
 	"scroll-tech/database"
 	"scroll-tech/database/orm"
 
 	"scroll-tech/bridge/config"
+)
+
+var (
+	bridgeL2GasOverThresholdCounter = metrics.NewRegisteredCounter("bridge/l2/gas/over/threshold", nil)
+	bridgeL2TxsOverThresholdCounter = metrics.NewRegisteredCounter("bridge/l2/txs/over/threshold", nil)
+	bridgeL2BatchCounter            = metrics.NewRegisteredCounter("bridge/l2/batch", nil)
+	bridgeL2TxsCounter              = metrics.NewRegisteredCounter("bridge/l2/txs", nil)
+	bridgeL2GasCounter              = metrics.NewRegisteredCounter("bridge/l2/gas", nil)
 )
 
 type batchProposer struct {
@@ -57,6 +66,7 @@ func (w *batchProposer) tryProposeBatch() {
 	}
 
 	if blocks[0].GasUsed > w.batchGasThreshold {
+		bridgeL2GasOverThresholdCounter.Inc(1)
 		log.Warn("gas overflow even for only 1 block", "height", blocks[0].Number, "gas", blocks[0].GasUsed)
 		if err = w.createBatchForBlocks(blocks[:1]); err != nil {
 			log.Error("failed to create batch", "number", blocks[0].Number, "err", err)
@@ -65,6 +75,7 @@ func (w *batchProposer) tryProposeBatch() {
 	}
 
 	if blocks[0].TxNum > w.batchTxNumThreshold {
+		bridgeL2TxsOverThresholdCounter.Inc(1)
 		log.Warn("too many txs even for only 1 block", "height", blocks[0].Number, "tx_num", blocks[0].TxNum)
 		if err = w.createBatchForBlocks(blocks[:1]); err != nil {
 			log.Error("failed to create batch", "number", blocks[0].Number, "err", err)
@@ -93,6 +104,7 @@ func (w *batchProposer) tryProposeBatch() {
 		return
 	}
 
+	bridgeL2BatchCounter.Inc(1)
 	if err = w.createBatchForBlocks(blocks); err != nil {
 		log.Error("failed to create batch", "from", blocks[0].Number, "to", blocks[len(blocks)-1].Number, "err", err)
 	}
@@ -125,6 +137,9 @@ func (w *batchProposer) createBatchForBlocks(blocks []*orm.BlockInfo) error {
 		gasUsed += block.GasUsed
 		blockIDs[i] = block.Number
 	}
+
+	bridgeL2TxsCounter.Inc(int64(txNum))
+	bridgeL2GasCounter.Inc(int64(gasUsed))
 
 	batchID, dbTxErr = w.orm.NewBatchInDBTx(dbTx, startBlock, endBlock, startBlock.ParentHash, txNum, gasUsed)
 	if dbTxErr != nil {
