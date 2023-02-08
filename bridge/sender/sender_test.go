@@ -70,7 +70,7 @@ func testBatchSender(t *testing.T, batchSize int) {
 	}
 
 	senderCfg := cfg.L1Config.RelayerConfig.SenderConfig
-	senderCfg.Confirmations = utils.ConfirmationParams{Type: utils.Number, Number: 0}
+	senderCfg.Confirmations = utils.ConfirmationParams{Type: utils.BlockNumberConfirmation, Number: 0}
 	newSender, err := sender.NewSender(context.Background(), senderCfg, privateKeys)
 	if err != nil {
 		t.Fatal(err)

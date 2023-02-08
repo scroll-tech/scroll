@@ -121,7 +121,7 @@ func runSender(t *testing.T, endpoint string) *sender.Sender {
 		Endpoint:            endpoint,
 		CheckPendingTime:    3,
 		EscalateBlocks:      100,
-		Confirmations:       utils.ConfirmationParams{Type: utils.Number, Number: 0},
+		Confirmations:       utils.ConfirmationParams{Type: utils.BlockNumberConfirmation, Number: 0},
 		EscalateMultipleNum: 11,
 		EscalateMultipleDen: 10,
 		TxType:              "LegacyTx",

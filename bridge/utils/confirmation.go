@@ -18,14 +18,14 @@ var pattern = regexp.MustCompile(`^number=(\d{1,3})$`)
 type ConfirmationType int
 
 const (
-	// Finalized confirmation means that we consider a block confirmed based on the "finalized" Ethereum tag.
-	Finalized ConfirmationType = iota
+	// FinalizedTagConfirmation means that we consider a block confirmed based on the "finalized" Ethereum tag.
+	FinalizedTagConfirmation ConfirmationType = iota
 
-	// Safe confirmation means that we consider a block confirmed based on the "safe" Ethereum tag.
-	Safe
+	// SafeTagConfirmation means that we consider a block confirmed based on the "safe" Ethereum tag.
+	SafeTagConfirmation
 
-	// Number confirmation means that we consider a block confirmed after waiting for a certain number of blocks.
-	Number
+	// BlockNumberConfirmation means that we consider a block confirmed after waiting for a certain number of blocks.
+	BlockNumberConfirmation
 )
 
 // ConfirmationParams defines the confirmation configuration parameters used by the watcher or the relayer.
@@ -47,12 +47,12 @@ func (c *ConfirmationParams) UnmarshalJSON(input []byte) error {
 	}
 
 	if raw == "finalized" {
-		c.Type = Finalized
+		c.Type = FinalizedTagConfirmation
 		return nil
 	}
 
 	if raw == "safe" {
-		c.Type = Safe
+		c.Type = SafeTagConfirmation
 		return nil
 	}
 
@@ -66,7 +66,7 @@ func (c *ConfirmationParams) UnmarshalJSON(input []byte) error {
 		return fmt.Errorf("invalid configuration value for confirmations: %v", raw)
 	}
 
-	c.Type = Number
+	c.Type = BlockNumberConfirmation
 	c.Number = uint64(number)
 	return nil
 }
@@ -76,13 +76,13 @@ func (c *ConfirmationParams) MarshalJSON() ([]byte, error) {
 	var raw string
 
 	switch c.Type {
-	case Finalized:
+	case FinalizedTagConfirmation:
 		raw = "finalized"
 
-	case Safe:
+	case SafeTagConfirmation:
 		raw = "safe"
 
-	case Number:
+	case BlockNumberConfirmation:
 		raw = fmt.Sprintf("number=%d", c.Number)
 
 	default:
@@ -102,11 +102,11 @@ type ethClient interface {
 func GetLatestConfirmedBlockNumber(ctx context.Context, client ethClient, confirmations ConfirmationParams) (uint64, error) {
 	switch confirmations.Type {
 	// use eth_getBlockByNumber and a tag
-	case Finalized:
-	case Safe:
+	case FinalizedTagConfirmation:
+	case SafeTagConfirmation:
 		var tag *big.Int
 
-		if confirmations.Type == Finalized {
+		if confirmations.Type == FinalizedTagConfirmation {
 			tag = big.NewInt(int64(rpc.FinalizedBlockNumber))
 		} else {
 			tag = big.NewInt(int64(rpc.SafeBlockNumber))
@@ -124,7 +124,7 @@ func GetLatestConfirmedBlockNumber(ctx context.Context, client ethClient, confir
 		return header.Number.Uint64(), nil
 
 	// use eth_blockNumber
-	case Number:
+	case BlockNumberConfirmation:
 		number, err := client.BlockNumber(ctx)
 		if err != nil {
 			return 0, err

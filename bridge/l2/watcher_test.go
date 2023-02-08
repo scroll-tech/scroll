@@ -38,7 +38,7 @@ func testCreateNewWatcherAndStop(t *testing.T) {
 	defer rc.Stop()
 
 	l1cfg := cfg.L1Config
-	l1cfg.RelayerConfig.SenderConfig.Confirmations = utils.ConfirmationParams{Type: utils.Number, Number: 0}
+	l1cfg.RelayerConfig.SenderConfig.Confirmations = utils.ConfirmationParams{Type: utils.BlockNumberConfirmation, Number: 0}
 	newSender, err := sender.NewSender(context.Background(), l1cfg.RelayerConfig.SenderConfig, l1cfg.RelayerConfig.MessageSenderPrivateKeys)
 	assert.NoError(t, err)
 
@@ -192,7 +192,7 @@ func testFetchMultipleSentMessageInOneBlock(t *testing.T) {
 }
 
 func prepareRelayerClient(l2Cli *ethclient.Client, bpCfg *config.BatchProposerConfig, db database.OrmFactory, contractAddr common.Address) *WatcherClient {
-	confirmations := utils.ConfirmationParams{Type: utils.Number, Number: 0}
+	confirmations := utils.ConfirmationParams{Type: utils.BlockNumberConfirmation, Number: 0}
 	return NewL2WatcherClient(context.Background(), l2Cli, confirmations, bpCfg, contractAddr, db)
 }
 

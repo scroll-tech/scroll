@@ -20,26 +20,26 @@ func TestUnmarshalJSON(t *testing.T) {
 	decoder.DisallowUnknownFields()
 	err := decoder.Decode(&params)
 	assert.Nil(t, err)
-	assert.Equal(t, utils.Finalized, params.Type)
+	assert.Equal(t, utils.FinalizedTagConfirmation, params.Type)
 
 	decoder = json.NewDecoder(strings.NewReader(`"safe"`))
 	decoder.DisallowUnknownFields()
 	err = decoder.Decode(&params)
 	assert.Nil(t, err)
-	assert.Equal(t, utils.Safe, params.Type)
+	assert.Equal(t, utils.SafeTagConfirmation, params.Type)
 
 	decoder = json.NewDecoder(strings.NewReader(`"number=6"`))
 	decoder.DisallowUnknownFields()
 	err = decoder.Decode(&params)
 	assert.Nil(t, err)
-	assert.Equal(t, utils.Number, params.Type)
+	assert.Equal(t, utils.BlockNumberConfirmation, params.Type)
 	assert.Equal(t, uint64(6), params.Number)
 
 	decoder = json.NewDecoder(strings.NewReader(`"number=999"`))
 	decoder.DisallowUnknownFields()
 	err = decoder.Decode(&params)
 	assert.Nil(t, err)
-	assert.Equal(t, utils.Number, params.Type)
+	assert.Equal(t, utils.BlockNumberConfirmation, params.Type)
 	assert.Equal(t, uint64(999), params.Number)
 
 	decoder = json.NewDecoder(strings.NewReader(`"number=1000"`))
@@ -59,15 +59,15 @@ func TestUnmarshalJSON(t *testing.T) {
 }
 
 func TestMarshalJSON(t *testing.T) {
-	bytes, err := json.Marshal(&utils.ConfirmationParams{Type: utils.Finalized, Number: 6})
+	bytes, err := json.Marshal(&utils.ConfirmationParams{Type: utils.FinalizedTagConfirmation, Number: 6})
 	assert.Nil(t, err)
 	assert.Equal(t, `"finalized"`, string(bytes))
 
-	bytes, err = json.Marshal(&utils.ConfirmationParams{Type: utils.Safe, Number: 6})
+	bytes, err = json.Marshal(&utils.ConfirmationParams{Type: utils.SafeTagConfirmation, Number: 6})
 	assert.Nil(t, err)
 	assert.Equal(t, `"safe"`, string(bytes))
 
-	bytes, err = json.Marshal(&utils.ConfirmationParams{Type: utils.Number, Number: 6})
+	bytes, err = json.Marshal(&utils.ConfirmationParams{Type: utils.BlockNumberConfirmation, Number: 6})
 	assert.Nil(t, err)
 	assert.Equal(t, `"number=6"`, string(bytes))
 }
@@ -89,12 +89,12 @@ func TestGetLatestConfirmedBlockNumber(t *testing.T) {
 	client := MockEthClient{}
 
 	client.val = 5
-	confirmed, err := utils.GetLatestConfirmedBlockNumber(ctx, &client, utils.ConfirmationParams{Type: utils.Number, Number: 6})
+	confirmed, err := utils.GetLatestConfirmedBlockNumber(ctx, &client, utils.ConfirmationParams{Type: utils.BlockNumberConfirmation, Number: 6})
 	assert.Nil(t, err)
 	assert.Equal(t, uint64(0), confirmed)
 
 	client.val = 7
-	confirmed, err = utils.GetLatestConfirmedBlockNumber(ctx, &client, utils.ConfirmationParams{Type: utils.Number, Number: 6})
+	confirmed, err = utils.GetLatestConfirmedBlockNumber(ctx, &client, utils.ConfirmationParams{Type: utils.BlockNumberConfirmation, Number: 6})
 	assert.Nil(t, err)
 	assert.Equal(t, uint64(1), confirmed)
 }
