@@ -15,6 +15,7 @@ import (
 	"github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
+	"github.com/scroll-tech/go-ethereum/metrics"
 	"github.com/scroll-tech/go-ethereum/rpc"
 
 	"scroll-tech/common/message"
@@ -24,6 +25,10 @@ import (
 
 	"scroll-tech/coordinator/config"
 	"scroll-tech/coordinator/verifier"
+)
+
+var (
+	coordinatorFailedSessions = metrics.NewRegisteredCounter("coordinator/failed/sessions", nil)
 )
 
 const (
@@ -349,6 +354,7 @@ func (m *Manager) CollectProofs(sess *session) {
 			// Ensure we got at least one proof before selecting a winner.
 			if len(participatingRollers) == 0 {
 				// record failed session.
+				coordinatorFailedSessions.Inc(1)
 				errMsg := "proof generation session ended without receiving any valid proofs"
 				m.addFailedSession(sess, errMsg)
 				log.Warn(errMsg, "session id", sess.info.ID)
