@@ -21,7 +21,7 @@ import (
 
 const processMsgLimit = 100
 
-func (r *Layer2Relayer) messageInit() error {
+func (r *Layer2Relayer) checkSubmittedMessages() error {
 	batch, err := r.db.GetLatestFinalizedBatch()
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return err
