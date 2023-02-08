@@ -274,10 +274,6 @@ func (m *Manager) handleZkProof(pk string, msg *message.ProofDetail) error {
 		if success && dbErr == nil {
 			status = orm.RollerProofValid
 		}
-		coordinatorVerifiedBatchesCounter.Inc(1)
-		if status == orm.RollerProofInvalid {
-			coordinatorFailedProofsCounter.Inc(1)
-		}
 		// notify the session that the roller finishes the proving process
 		sess.finishChan <- rollerProofStatus{msg.ID, pk, status}
 	}()
@@ -323,8 +319,10 @@ func (m *Manager) handleZkProof(pk string, msg *message.ProofDetail) error {
 				"status", orm.ProvingTaskVerified,
 				"error", dbErr)
 		}
+		coordinatorVerifiedBatchesCounter.Inc(1)
 		return dbErr
 	}
+	coordinatorFailedProofsCounter.Inc(1)
 	return nil
 }
 
