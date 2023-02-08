@@ -28,10 +28,10 @@ import (
 )
 
 var (
-	coordinatorFailedSessionsCounter  = metrics.NewRegisteredCounter("coordinator/failed/sessions", nil)
-	coordinatorFailedProofsCounter    = metrics.NewRegisteredCounter("coordinator/failed/proofs", nil)
-	coordinatorProvedBatchesCounter   = metrics.NewRegisteredCounter("coordinator/proved/batch", nil)
-	coordinatorVerifiedBatchesCounter = metrics.NewRegisteredCounter("coordinator/verified/batch", nil)
+	coordinatorSessionsTimeoutTotalCounter      = metrics.NewRegisteredCounter("coordinator/sessions/timeout/total", nil)
+	coordinatorProofsReceivedTotalCounter       = metrics.NewRegisteredCounter("coordinator/proofs/received/total", nil)
+	coordinatorProofsVerifiedTotalCounter       = metrics.NewRegisteredCounter("coordinator/proofs/verified/total", nil)
+	coordinatorProofsVerifiedFailedTotalCounter = metrics.NewRegisteredCounter("coordinator/proofs/verified/failed/total", nil)
 )
 
 const (
@@ -298,7 +298,7 @@ func (m *Manager) handleZkProof(pk string, msg *message.ProofDetail) error {
 		log.Error("failed to update task status as proved", "error", dbErr)
 		return dbErr
 	}
-	coordinatorProvedBatchesCounter.Inc(1)
+	coordinatorProofsReceivedTotalCounter.Inc(1)
 
 	var err error
 	success, err = m.verifier.VerifyProof(msg.Proof)
@@ -319,10 +319,10 @@ func (m *Manager) handleZkProof(pk string, msg *message.ProofDetail) error {
 				"status", orm.ProvingTaskVerified,
 				"error", dbErr)
 		}
-		coordinatorVerifiedBatchesCounter.Inc(1)
+		coordinatorProofsVerifiedTotalCounter.Inc(1)
 		return dbErr
 	}
-	coordinatorFailedProofsCounter.Inc(1)
+	coordinatorProofsVerifiedFailedTotalCounter.Inc(1)
 	return nil
 }
 
@@ -352,7 +352,7 @@ func (m *Manager) CollectProofs(sess *session) {
 			// Ensure we got at least one proof before selecting a winner.
 			if len(participatingRollers) == 0 {
 				// record failed session.
-				coordinatorFailedSessionsCounter.Inc(1)
+				coordinatorSessionsTimeoutTotalCounter.Inc(1)
 				errMsg := "proof generation session ended without receiving any valid proofs"
 				m.addFailedSession(sess, errMsg)
 				log.Warn(errMsg, "session id", sess.info.ID)

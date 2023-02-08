@@ -14,7 +14,7 @@ import (
 )
 
 var (
-	coordinatorRollerDisconnectsCounter = metrics.NewRegisteredCounter("coordinator/roller/disconnects", nil)
+	coordinatorRollersDisconnectsTotalCounter = metrics.NewRegisteredCounter("coordinator/rollers/disconnects/total", nil)
 )
 
 // RollerAPI for rollers inorder to register and submit proof
@@ -87,7 +87,7 @@ func (m *Manager) Register(ctx context.Context, authMsg *message.AuthMsg) (*rpc.
 			case task := <-taskCh:
 				notifier.Notify(rpcSub.ID, task) //nolint
 			case err := <-rpcSub.Err():
-				coordinatorRollerDisconnectsCounter.Inc(1)
+				coordinatorRollersDisconnectsTotalCounter.Inc(1)
 				log.Warn("client stopped the ws connection", "name", authMsg.Identity.Name, "pubkey", pubkey, "err", err)
 				return
 			case <-notifier.Closed():
