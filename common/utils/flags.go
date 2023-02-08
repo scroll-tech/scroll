@@ -12,6 +12,9 @@ var (
 		&LogFileFlag,
 		&LogJSONFormat,
 		&LogDebugFlag,
+		&MetricsEnabled,
+		&MetricsAddr,
+		&MetricsPort,
 	}
 	// ConfigFileFlag load json type config file.
 	ConfigFileFlag = cli.StringFlag{
@@ -41,5 +44,26 @@ var (
 	LogDebugFlag = cli.BoolFlag{
 		Name:  "log.debug",
 		Usage: "Prepends log messages with call-site location (file and line number)",
+	}
+	// MetricsEnabled enable metrics collection and reporting
+	MetricsEnabled = cli.BoolFlag{
+		Name:     "metrics",
+		Usage:    "Enable metrics collection and reporting",
+		Category: "METRICS",
+		Value:    false,
+	}
+	// MetricsAddr is listening address of Metrics reporting server
+	MetricsAddr = cli.StringFlag{
+		Name:     "metrics.addr",
+		Usage:    "Metrics reporting server listening address",
+		Category: "METRICS",
+		Value:    "0.0.0.0",
+	}
+	// MetricsPort is listening port of Metrics reporting server
+	MetricsPort = cli.IntFlag{
+		Name:     "metrics.port",
+		Usage:    "Metrics reporting server listening port",
+		Category: "METRICS",
+		Value:    6060,
 	}
 )

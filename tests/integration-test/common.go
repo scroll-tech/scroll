@@ -123,7 +123,7 @@ func runSender(t *testing.T, endpoint string) *sender.Sender {
 		Confirmations:       utils.ConfirmationParams{Type: utils.Number, Number: 0},
 		EscalateMultipleNum: 11,
 		EscalateMultipleDen: 10,
-		TxType:              "DynamicFeeTx",
+		TxType:              "LegacyTx",
 	}, []*ecdsa.PrivateKey{priv})
 	assert.NoError(t, err)
 	return newSender

@@ -11,6 +11,7 @@ import (
 	"github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
+	"github.com/scroll-tech/go-ethereum/metrics"
 
 	"scroll-tech/database"
 	"scroll-tech/database/orm"
@@ -19,6 +20,10 @@ import (
 
 	bridge_abi "scroll-tech/bridge/abi"
 	bridge_utils "scroll-tech/bridge/utils"
+)
+
+var (
+	bridgeL1MsgSyncHeightGauge = metrics.NewRegisteredGauge("bridge/l1/msg/sync/height", nil)
 )
 
 type relayedMessage struct {
@@ -154,6 +159,7 @@ func (w *Watcher) FetchContractEvent(blockHeight uint64) error {
 		}
 		if len(logs) == 0 {
 			w.processedMsgHeight = uint64(to)
+			bridgeL1MsgSyncHeightGauge.Update(to)
 			continue
 		}
 		log.Info("Received new L1 events", "fromBlock", from, "toBlock", to, "cnt", len(logs))
@@ -218,6 +224,7 @@ func (w *Watcher) FetchContractEvent(blockHeight uint64) error {
 		}
 
 		w.processedMsgHeight = uint64(to)
+		bridgeL1MsgSyncHeightGauge.Update(to)
 	}
 
 	return nil

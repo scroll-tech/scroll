@@ -13,6 +13,7 @@ import { L2ERC721Gateway } from "../../src/L2/gateways/L2ERC721Gateway.sol";
 import { L2GatewayRouter } from "../../src/L2/gateways/L2GatewayRouter.sol";
 import { L2ScrollMessenger } from "../../src/L2/L2ScrollMessenger.sol";
 import { L2StandardERC20Gateway } from "../../src/L2/gateways/L2StandardERC20Gateway.sol";
+import { Whitelist } from "../../src/L2/predeploys/Whitelist.sol";
 import { ScrollStandardERC20 } from "../../src/libraries/token/ScrollStandardERC20.sol";
 import { ScrollStandardERC20Factory } from "../../src/libraries/token/ScrollStandardERC20Factory.sol";
 
@@ -31,6 +32,7 @@ contract DeployL2BridgeContracts is Script {
         deployL2CustomERC20Gateway();
         deployL2ERC721Gateway();
         deployL2ERC1155Gateway();
+        deployL2Whitelist();
 
         vm.stopBroadcast();
     }
@@ -94,6 +96,13 @@ contract DeployL2BridgeContracts is Script {
 
         logAddress("L2_ERC1155_GATEWAY_IMPLEMENTATION_ADDR", address(impl));
         logAddress("L2_ERC1155_GATEWAY_PROXY_ADDR", address(proxy));
+    }
+
+    function deployL2Whitelist() internal {
+        address owner = vm.addr(L2_DEPLOYER_PRIVATE_KEY);
+        Whitelist whitelist = new Whitelist(owner);
+
+        logAddress("L2_WHITELIST_ADDR", address(whitelist));
     }
 
     function logAddress(string memory name, address addr) internal {

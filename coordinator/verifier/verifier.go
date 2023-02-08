@@ -3,8 +3,8 @@
 package verifier
 
 /*
-#cgo LDFLAGS: ${SRCDIR}/lib/libzkp.a -lm -ldl
-#cgo gpu LDFLAGS: ${SRCDIR}/lib/libzkp.a -lm -ldl -lgmp -lstdc++ -lprocps -L/usr/local/cuda/lib64/ -lcudart
+#cgo LDFLAGS: ${SRCDIR}/lib/libzkp.so -lm -ldl
+#cgo gpu LDFLAGS: ${SRCDIR}/lib/libzkp.so -lm -ldl -lgmp -lstdc++ -lprocps -L/usr/local/cuda/lib64/ -lcudart
 #include <stdlib.h>
 #include "./lib/libzkp.h"
 */
