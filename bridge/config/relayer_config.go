@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"math/big"
 
-	"scroll-tech/common/utils"
+	"scroll-tech/bridge/utils"
 
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/crypto"

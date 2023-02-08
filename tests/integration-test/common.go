@@ -27,7 +27,8 @@ import (
 
 	"scroll-tech/common/cmd"
 	"scroll-tech/common/docker"
-	"scroll-tech/common/utils"
+
+	"scroll-tech/bridge/utils"
 
 	_ "scroll-tech/coordinator/cmd/app"
 	coordinatorConfig "scroll-tech/coordinator/config"

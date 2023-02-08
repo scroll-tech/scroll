@@ -8,7 +8,7 @@ import (
 	"scroll-tech/database/orm"
 	"testing"
 
-	"scroll-tech/common/utils"
+	"scroll-tech/bridge/utils"
 
 	"scroll-tech/bridge/l1"
 	"scroll-tech/bridge/l2"

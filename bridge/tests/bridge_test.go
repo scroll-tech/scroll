@@ -7,7 +7,8 @@ import (
 	"testing"
 
 	"scroll-tech/common/docker"
-	"scroll-tech/common/utils"
+
+	"scroll-tech/bridge/utils"
 
 	"scroll-tech/bridge/config"
 	"scroll-tech/bridge/mock_bridge"

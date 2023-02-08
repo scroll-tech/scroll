@@ -20,7 +20,7 @@ import (
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
 
-	"scroll-tech/common/utils"
+	"scroll-tech/bridge/utils"
 
 	"scroll-tech/bridge/config"
 )

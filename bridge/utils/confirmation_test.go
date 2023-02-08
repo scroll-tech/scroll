@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"scroll-tech/common/utils"
+	"scroll-tech/bridge/utils"
 
 	"github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/stretchr/testify/assert"

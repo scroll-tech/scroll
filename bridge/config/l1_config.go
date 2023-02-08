@@ -1,7 +1,7 @@
 package config
 
 import (
-	"scroll-tech/common/utils"
+	"scroll-tech/bridge/utils"
 
 	"github.com/scroll-tech/go-ethereum/common"
 )

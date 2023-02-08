@@ -16,10 +16,8 @@ import (
 	"scroll-tech/database"
 	"scroll-tech/database/orm"
 
-	"scroll-tech/common/utils"
-
 	bridge_abi "scroll-tech/bridge/abi"
-	bridge_utils "scroll-tech/bridge/utils"
+	"scroll-tech/bridge/utils"
 )
 
 var (
@@ -260,7 +258,7 @@ func (w *Watcher) parseBridgeEventLogs(logs []types.Log) ([]*orm.L1Message, []re
 			event.Target = common.HexToAddress(vLog.Topics[1].String())
 			l1Messages = append(l1Messages, &orm.L1Message{
 				Nonce:      event.MessageNonce.Uint64(),
-				MsgHash:    bridge_utils.ComputeMessageHash(event.Sender, event.Target, event.Value, event.Fee, event.Deadline, event.Message, event.MessageNonce).String(),
+				MsgHash:    utils.ComputeMessageHash(event.Sender, event.Target, event.Value, event.Fee, event.Deadline, event.Message, event.MessageNonce).String(),
 				Height:     vLog.BlockNumber,
 				Sender:     event.Sender.String(),
 				Value:      event.Value.String(),

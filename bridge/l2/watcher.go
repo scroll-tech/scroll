@@ -7,8 +7,6 @@ import (
 	"reflect"
 	"time"
 
-	"scroll-tech/common/utils"
-
 	geth "github.com/scroll-tech/go-ethereum"
 	"github.com/scroll-tech/go-ethereum/accounts/abi"
 	"github.com/scroll-tech/go-ethereum/common"
@@ -19,7 +17,7 @@ import (
 	"github.com/scroll-tech/go-ethereum/metrics"
 
 	bridge_abi "scroll-tech/bridge/abi"
-	bridge_utils "scroll-tech/bridge/utils"
+	"scroll-tech/bridge/utils"
 
 	"scroll-tech/database"
 	"scroll-tech/database/orm"
@@ -323,7 +321,7 @@ func (w *WatcherClient) parseBridgeEventLogs(logs []types.Log) ([]*orm.L2Message
 			event.Target = common.HexToAddress(vLog.Topics[1].String())
 			l2Messages = append(l2Messages, &orm.L2Message{
 				Nonce:      event.MessageNonce.Uint64(),
-				MsgHash:    bridge_utils.ComputeMessageHash(event.Sender, event.Target, event.Value, event.Fee, event.Deadline, event.Message, event.MessageNonce).String(),
+				MsgHash:    utils.ComputeMessageHash(event.Sender, event.Target, event.Value, event.Fee, event.Deadline, event.Message, event.MessageNonce).String(),
 				Height:     vLog.BlockNumber,
 				Sender:     event.Sender.String(),
 				Value:      event.Value.String(),
