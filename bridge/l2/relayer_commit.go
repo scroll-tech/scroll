@@ -3,7 +3,6 @@ package l2
 import (
 	"errors"
 	"math/big"
-	"sync"
 
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/log"
@@ -114,8 +113,7 @@ func (r *Layer2Relayer) packCommitBatch(id string) (*orm.BlockBatch, []byte, err
 }
 
 // ProcessPendingBatches submit batch data to layer 1 rollup contract
-func (r *Layer2Relayer) ProcessPendingBatches(wg *sync.WaitGroup) {
-	defer wg.Done()
+func (r *Layer2Relayer) ProcessPendingBatches() {
 	// batches are sorted by batch index in increasing order
 	batchesInDB, err := r.db.GetPendingBatches(1)
 	if err != nil {

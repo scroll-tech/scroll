@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"math/big"
 	"runtime"
-	"sync"
 
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/log"
@@ -62,8 +61,7 @@ func (r *Layer2Relayer) checkSubmittedMessages() error {
 }
 
 // ProcessSavedEvents relays saved un-processed cross-domain transactions to desired blockchain
-func (r *Layer2Relayer) ProcessSavedEvents(wg *sync.WaitGroup) {
-	defer wg.Done()
+func (r *Layer2Relayer) ProcessSavedEvents() {
 	batch, err := r.db.GetLatestFinalizedBatch()
 	if err != nil {
 		log.Error("GetLatestFinalizedBatch failed", "err", err)

@@ -3,7 +3,6 @@ package l2
 import (
 	"errors"
 	"math/big"
-	"sync"
 
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/log"
@@ -82,9 +81,7 @@ func (r *Layer2Relayer) packFinalizeBatch(id string) ([]byte, error) {
 }
 
 // ProcessCommittedBatches submit proof to layer 1 rollup contract
-func (r *Layer2Relayer) ProcessCommittedBatches(wg *sync.WaitGroup) {
-	defer wg.Done()
-
+func (r *Layer2Relayer) ProcessCommittedBatches() {
 	// set skipped batches in a single db operation
 	if count, err := r.db.UpdateSkippedBatches(); err != nil {
 		log.Error("UpdateSkippedBatches failed", "err", err)
