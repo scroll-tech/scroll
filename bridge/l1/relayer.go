@@ -22,8 +22,8 @@ import (
 )
 
 var (
-	bridgeL1MsgRelayedMsgsCounter       = metrics.NewRegisteredCounter("bridge/l1/relayed/msgs", nil)
-	bridgeL1ConfirmedRelayedMsgsCounter = metrics.NewRegisteredCounter("bridge/l1/confirmed/relayed/msgs", nil)
+	bridgeL1MsgsRelayedTotalCounter     = metrics.NewRegisteredCounter("bridge/l1/msgs/relayed/total", nil)
+	bridgeL1MsgsRelayedConfirmedCounter = metrics.NewRegisteredCounter("bridge/l1/msgs/relayed/confirmed", nil)
 )
 
 // Layer1Relayer is responsible for
@@ -116,7 +116,6 @@ func (r *Layer1Relayer) processSavedEvent(msg *orm.L1Message) error {
 		return err
 	}
 
-	bridgeL1MsgRelayedMsgsCounter.Inc(1)
 	hash, err := r.sender.SendTransaction(msg.MsgHash, &r.cfg.MessengerContractAddress, big.NewInt(0), data)
 	if err != nil && err.Error() == "execution reverted: Message expired" {
 		return r.db.UpdateLayer1Status(r.ctx, msg.MsgHash, orm.MsgExpired)
@@ -127,6 +126,7 @@ func (r *Layer1Relayer) processSavedEvent(msg *orm.L1Message) error {
 	if err != nil {
 		return err
 	}
+	bridgeL1MsgsRelayedTotalCounter.Inc(1)
 	log.Info("relayMessage to layer2", "msg hash", msg.MsgHash, "tx hash", hash)
 
 	err = r.db.UpdateLayer1StatusAndLayer2Hash(r.ctx, msg.MsgHash, orm.MsgSubmitted, hash.String())
@@ -150,7 +150,7 @@ func (r *Layer1Relayer) Start() {
 				// log.Info("receive header", "height", number)
 				r.ProcessSavedEvents()
 			case cfm := <-r.confirmationCh:
-				bridgeL1ConfirmedRelayedMsgsCounter.Inc(1)
+				bridgeL1MsgsRelayedConfirmedCounter.Inc(1)
 				if !cfm.IsSuccessful {
 					log.Warn("transaction confirmed but failed in layer2", "confirmation", cfm)
 				} else {
