@@ -363,8 +363,9 @@ func (s *Sender) resubmitTransaction(feeData *FeeData, auth *bind.TransactOpts, 
 	return s.createAndSendTx(auth, feeData, tx.To(), tx.Value(), tx.Data(), &nonce)
 }
 
-// CheckPendingTransaction Check pending transaction given number of blocks to wait before confirmation.
-func (s *Sender) CheckPendingTransaction(header *types.Header, confirmed uint64) {
+// checkPendingTransaction checks the confirmation status of pending transactions against the latest confirmed block number.
+// If a transaction hasn't been confirmed after a certain number of blocks, it will be resubmitted with an increased gas price.
+func (s *Sender) checkPendingTransaction(header *types.Header, confirmed uint64) {
 	number := header.Number.Uint64()
 	atomic.StoreUint64(&s.blockNumber, number)
 
@@ -466,7 +467,7 @@ func (s *Sender) loop(ctx context.Context) {
 				continue
 			}
 
-			s.CheckPendingTransaction(header, confirmed)
+			s.checkPendingTransaction(header, confirmed)
 		case <-checkBalanceTicker.C:
 			// Check and set balance.
 			_ = s.auths.checkAndSetBalances(ctx)
