@@ -7,12 +7,13 @@ import (
 
 	"github.com/scroll-tech/go-ethereum/log"
 
+	"scroll-tech/database"
+	"scroll-tech/database/orm"
+
 	"scroll-tech/bridge/config"
 	"scroll-tech/bridge/l1"
 	"scroll-tech/bridge/l2"
 	"scroll-tech/bridge/sender"
-	"scroll-tech/database"
-	"scroll-tech/database/orm"
 )
 
 // L1MsgRelayer wraps l1 relayer for message-relayer bin
