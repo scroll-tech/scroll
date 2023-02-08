@@ -7,10 +7,11 @@ import (
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
 
+	"scroll-tech/database"
+
 	"scroll-tech/bridge/config"
 	"scroll-tech/bridge/l1"
 	"scroll-tech/bridge/l2"
-	"scroll-tech/database"
 )
 
 // L1EventWatcher is sturct to wrap l1.watcher
