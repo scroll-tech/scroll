@@ -14,7 +14,7 @@ import (
 	"scroll-tech/database/orm"
 )
 
-func (r *Layer2Relayer) commitInit() error {
+func (r *Layer2Relayer) checkCommittingBatches() error {
 	ids, err := r.db.GetBatchesByRollupStatus(orm.RollupCommitting, 10)
 	if err != nil || len(ids) == 0 {
 		return err
@@ -27,7 +27,7 @@ func (r *Layer2Relayer) commitInit() error {
 			continue
 		}
 
-		_, data, err := r.committedPack(id)
+		_, data, err := r.packCommitBatch(id)
 		if err != nil {
 			log.Error("failed to load or send committed tx", "batch id", id, "err", err)
 			continue
@@ -50,7 +50,7 @@ func (r *Layer2Relayer) commitInit() error {
 	return nil
 }
 
-func (r *Layer2Relayer) committedPack(id string) (*orm.BlockBatch, []byte, error) {
+func (r *Layer2Relayer) packCommitBatch(id string) (*orm.BlockBatch, []byte, error) {
 	batches, err := r.db.GetBlockBatches(map[string]interface{}{"id": id})
 	if err != nil || len(batches) == 0 {
 		log.Error("Failed to GetBlockBatches", "batch_id", id, "err", err)
@@ -128,7 +128,7 @@ func (r *Layer2Relayer) ProcessPendingBatches(wg *sync.WaitGroup) {
 	id := batchesInDB[0]
 	// @todo add support to relay multiple batches
 
-	batch, data, err := r.committedPack(id)
+	batch, data, err := r.packCommitBatch(id)
 	if err != nil {
 		return
 	}

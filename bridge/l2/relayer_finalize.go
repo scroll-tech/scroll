@@ -15,7 +15,7 @@ import (
 	"scroll-tech/database/orm"
 )
 
-func (r *Layer2Relayer) finalizeInit() error {
+func (r *Layer2Relayer) checkFinalizingBatches() error {
 	var batch = 10
 	ids, err := r.db.GetBatchesByRollupStatus(orm.RollupFinalizing, uint64(batch))
 	if err != nil || len(ids) == 0 {
@@ -25,13 +25,13 @@ func (r *Layer2Relayer) finalizeInit() error {
 	for _, id := range ids {
 		txStr, err := r.db.GetFinalizeTxHash(id)
 		if err != nil {
-			log.Error("failed to get commit_tx_hash from block_batch", "err", err)
+			log.Error("failed to get finalize_tx_hash from block_batch", "err", err)
 			continue
 		}
 
-		data, err := r.finalizedPack(id)
+		data, err := r.packFinalizeBatch(id)
 		if err != nil {
-			log.Error("failed to pack commit data", "err", err)
+			log.Error("failed to pack finalize data", "err", err)
 			continue
 		}
 
@@ -52,7 +52,7 @@ func (r *Layer2Relayer) finalizeInit() error {
 	return nil
 }
 
-func (r *Layer2Relayer) finalizedPack(id string) ([]byte, error) {
+func (r *Layer2Relayer) packFinalizeBatch(id string) ([]byte, error) {
 	proofBuffer, instanceBuffer, err := r.db.GetVerifiedProofAndInstanceByID(id)
 	if err != nil {
 		log.Warn("fetch get proof by id failed", "id", id, "err", err)
@@ -143,7 +143,7 @@ func (r *Layer2Relayer) ProcessCommittedBatches(wg *sync.WaitGroup) {
 		}()
 
 		// Pack finalize data.
-		data, err := r.finalizedPack(id)
+		data, err := r.packFinalizeBatch(id)
 		if err != nil {
 			return
 		}

@@ -266,7 +266,6 @@ func (s *Sender) getTxAndSender(txHash common.Hash) (*types.Transaction, uint64,
 	}
 
 	if isPending {
-		fmt.Println("--------------", isPending)
 		return tx, s.blockNumber, sender, nil
 	}
 
@@ -278,8 +277,8 @@ func (s *Sender) getTxAndSender(txHash common.Hash) (*types.Transaction, uint64,
 }
 
 // LoadOrSendTx If the tx already exist in chain load it or resend it.
-func (s *Sender) LoadOrSendTx(txHash common.Hash, ID string, target *common.Address, value *big.Int, data []byte) error {
-	tx, number, sender, err := s.getTxAndSender(txHash)
+func (s *Sender) LoadOrSendTx(destTxHash common.Hash, ID string, target *common.Address, value *big.Int, data []byte) error {
+	tx, blockNumber, sender, err := s.getTxAndSender(destTxHash)
 	// If this tx already exist load it to the pending.
 	if err == nil && tx != nil {
 		auth := s.auths.accounts[sender]
@@ -298,8 +297,8 @@ func (s *Sender) LoadOrSendTx(txHash common.Hash, ID string, target *common.Addr
 			tx:     tx,
 			id:     ID,
 			signer: auth,
-			// Record the transaction's block number.
-			submitAt: number,
+			// Record the transaction's block blockNumber.
+			submitAt: blockNumber,
 			feeData:  feeData,
 		})
 		return nil

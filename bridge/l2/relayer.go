@@ -78,17 +78,17 @@ func NewLayer2Relayer(ctx context.Context, db database.OrmFactory, cfg *config.R
 		stopCh:                 make(chan struct{}),
 	}
 
-	if err = layer2.messageInit(); err != nil {
+	if err = layer2.checkSubmittedMessages(); err != nil {
 		log.Error("failed to init layer2 submitted tx", "err", err)
 		return nil, err
 	}
 
-	if err = layer2.commitInit(); err != nil {
+	if err = layer2.checkCommittingBatches(); err != nil {
 		log.Error("failed to init layer2 committed tx", "err", err)
 		return nil, err
 	}
 
-	if err = layer2.finalizeInit(); err != nil {
+	if err = layer2.checkFinalizingBatches(); err != nil {
 		log.Error("failed to init layer2 finalized tx", "err", err)
 		return nil, err
 	}
