@@ -277,7 +277,6 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 		return
 	}
 
-	bridgeL2CommittedMsgsCounter.Inc(1)
 	txID := id + "-commit"
 	// add suffix `-commit` to avoid duplication with finalize tx in unit tests
 	hash, err := r.rollupSender.SendTransaction(txID, &r.cfg.RollupContractAddress, big.NewInt(0), data)
@@ -287,6 +286,7 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 		}
 		return
 	}
+	bridgeL2CommittedMsgsCounter.Inc(1)
 	log.Info("commitBatch in layer1", "batch_id", id, "index", batch.Index, "hash", hash)
 
 	// record and sync with db, @todo handle db error
@@ -383,7 +383,6 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 			return
 		}
 
-		bridgeL2FinalizedMsgsCounter.Inc(1)
 		txID := id + "-finalize"
 		// add suffix `-finalize` to avoid duplication with commit tx in unit tests
 		txHash, err := r.rollupSender.SendTransaction(txID, &r.cfg.RollupContractAddress, big.NewInt(0), data)
@@ -394,6 +393,7 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 			}
 			return
 		}
+		bridgeL2FinalizedMsgsCounter.Inc(1)
 		log.Info("finalizeBatchWithProof in layer1", "batch_id", id, "hash", hash)
 
 		// record and sync with db, @todo handle db error
