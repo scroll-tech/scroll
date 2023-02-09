@@ -29,10 +29,12 @@ func (r *Layer2Relayer) checkSubmittedMessages() error {
 		return nil
 	}
 
+	blockNumber := batch.EndBlockNumber
+BEGIN:
 	// msgs are sorted by nonce in increasing order
 	msgs, err := r.db.GetL2Messages(
 		map[string]interface{}{"status": orm.MsgSubmitted},
-		fmt.Sprintf("AND height<=%d", batch.EndBlockNumber),
+		fmt.Sprintf("AND height<=%d", blockNumber),
 		fmt.Sprintf("ORDER BY height DESC LIMIT %d", r.messageSender.PendingLimit()),
 	)
 	if err != nil || len(msgs) == 0 {
@@ -40,10 +42,18 @@ func (r *Layer2Relayer) checkSubmittedMessages() error {
 	}
 
 	for _, msg := range msgs {
+		// TODO: messageSender can't receive txs any more, sleep a while or just return?
+		if r.messageSender.IsFull() {
+			log.Error("layer2 message tx sender is full")
+			return nil
+		}
+
+		blockNumber = mathutil.MinUint64(blockNumber, msg.Height)
 		data, err := r.messagePack(msg, batch.Index)
 		if err != nil {
 			continue
 		}
+
 		err = r.messageSender.LoadOrSendTx(
 			common.HexToHash(msg.Layer1Hash),
 			msg.MsgHash,
@@ -57,7 +67,7 @@ func (r *Layer2Relayer) checkSubmittedMessages() error {
 			r.processingMessage.Store(msg.MsgHash, msg.MsgHash)
 		}
 	}
-	return nil
+	goto BEGIN
 }
 
 // ProcessSavedEvents relays saved un-processed cross-domain transactions to desired blockchain

@@ -2,10 +2,13 @@ package l2
 
 import (
 	"errors"
+	"fmt"
+	"math"
 	"math/big"
 
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/log"
+	"modernc.org/mathutil"
 
 	bridge_abi "scroll-tech/bridge/abi"
 	"scroll-tech/bridge/sender"
@@ -15,13 +18,30 @@ import (
 )
 
 func (r *Layer2Relayer) checkFinalizingBatches() error {
-	var batch = 10
-	ids, err := r.db.GetBatchesByRollupStatus(orm.RollupFinalizing, uint64(batch))
-	if err != nil || len(ids) == 0 {
+	var (
+		batch              = 10
+		blockNumber uint64 = math.MaxUint64
+	)
+BEGIN:
+	batches, err := r.db.GetBlockBatches(
+		map[string]interface{}{"rollup_status": orm.RollupFinalizing},
+		fmt.Sprintf("AND end_block_number <= %d", blockNumber),
+		fmt.Sprintf("ORDER BY end_block_number DESC LIMIT %d", batch),
+	)
+	if err != nil || len(batches) == 0 {
 		return err
 	}
 
-	for _, id := range ids {
+	for _, batch := range batches {
+		// TODO: messageSender can't receive txs any more, sleep a while or just return?
+		if r.rollupSender.IsFull() {
+			log.Error("layer2 finalized tx sender is full")
+			return nil
+		}
+
+		id := batch.ID
+		blockNumber = mathutil.MinUint64(blockNumber, batch.EndBlockNumber)
+
 		txStr, err := r.db.GetFinalizeTxHash(id)
 		if err != nil {
 			log.Error("failed to get finalize_tx_hash from block_batch", "err", err)
@@ -48,7 +68,7 @@ func (r *Layer2Relayer) checkFinalizingBatches() error {
 			r.processingFinalization.Store(txID, id)
 		}
 	}
-	return nil
+	goto BEGIN
 }
 
 func (r *Layer2Relayer) packFinalizeBatch(id string) ([]byte, error) {

@@ -169,6 +169,7 @@ type L1MessageOrm interface {
 	GetL1MessageByMsgHash(msgHash string) (*L1Message, error)
 	GetL1MessagesByStatus(status MsgStatus, limit uint64) ([]*L1Message, error)
 	GetL1ProcessedNonce() (int64, error)
+	GetL1Messages(fields map[string]interface{}, args ...string) ([]*L1Message, error)
 	SaveL1Messages(ctx context.Context, messages []*L1Message) error
 	UpdateLayer2Hash(ctx context.Context, msgHash string, layer2Hash string) error
 	UpdateLayer1Status(ctx context.Context, msgHash string, status MsgStatus) error

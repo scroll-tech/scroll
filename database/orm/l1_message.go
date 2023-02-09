@@ -4,6 +4,8 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
+	"strings"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/scroll-tech/go-ethereum/log"
@@ -85,6 +87,37 @@ func (m *l1MessageOrm) GetL1ProcessedNonce() (int64, error) {
 		return nonce.Int64, nil
 	}
 	return -1, nil
+}
+
+// GetL1Messages get l1 messages by k-v map and args.
+func (m *l1MessageOrm) GetL1Messages(fields map[string]interface{}, args ...string) ([]*L1Message, error) {
+	query := "SELECT nonce, msg_hash, height, sender, target, value, fee, gas_limit, deadline, calldata, layer1_hash, layer2_hash, status FROM l2_message WHERE 1 = 1 "
+	for key := range fields {
+		query += fmt.Sprintf("AND %s=:%s ", key, key)
+	}
+	query = strings.Join(append([]string{query}, args...), " ")
+
+	db := m.db
+	rows, err := db.NamedQuery(db.Rebind(query), fields)
+	if err != nil {
+		return nil, err
+	}
+
+	var msgs []*L1Message
+	for rows.Next() {
+		msg := &L1Message{}
+		if err = rows.StructScan(&msg); err != nil {
+			break
+		}
+		msgs = append(msgs, msg)
+	}
+	if len(msgs) == 0 || errors.Is(err, sql.ErrNoRows) {
+		// log.Warn("no unprocessed layer2 messages in db", "err", err)
+	} else if err != nil {
+		return nil, err
+	}
+
+	return msgs, rows.Close()
 }
 
 // SaveL1Messages batch save a list of layer1 messages

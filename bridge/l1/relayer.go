@@ -3,15 +3,16 @@ package l1
 import (
 	"context"
 	"errors"
+	"fmt"
 	"math/big"
 	"time"
 
-	// not sure if this will make problems when relay with l1geth
-
 	"github.com/scroll-tech/go-ethereum/accounts/abi"
 	"github.com/scroll-tech/go-ethereum/common"
+	"github.com/scroll-tech/go-ethereum/common/math"
 	"github.com/scroll-tech/go-ethereum/crypto"
 	"github.com/scroll-tech/go-ethereum/log"
+	"modernc.org/mathutil"
 
 	"scroll-tech/database/orm"
 
@@ -74,13 +75,26 @@ func NewLayer1Relayer(ctx context.Context, l1ConfirmNum int64, db orm.L1MessageO
 }
 
 func (r *Layer1Relayer) checkSubmittedMessages() error {
-	batch := 100
-	// msgs are sorted by nonce in increasing order
-	msgs, err := r.db.GetL1MessagesByStatus(orm.MsgSubmitted, uint64(batch))
+	var blockNumber uint64 = math.MaxUint64
+BEGIN:
+	msgs, err := r.db.GetL1Messages(
+		map[string]interface{}{"status": orm.MsgSubmitted},
+		fmt.Sprintf("AND height<=%d", blockNumber),
+		fmt.Sprintf("ORDER BY height DESC LIMIT %d", 100),
+	)
 	if err != nil || len(msgs) == 0 {
 		return err
 	}
+
 	for _, msg := range msgs {
+		// TODO: messageSender can't receive txs any more, sleep a while or just return?
+		if r.sender.IsFull() {
+			log.Error("layer1 submitted tx sender is full")
+			return nil
+		}
+
+		blockNumber = mathutil.MinUint64(blockNumber, msg.Height)
+
 		data, err := r.packMessage(msg)
 		if err != nil {
 			continue
@@ -96,7 +110,7 @@ func (r *Layer1Relayer) checkSubmittedMessages() error {
 			log.Error("failed to load or send l1 submitted tx", "msg hash", msg.MsgHash, "err", err)
 		}
 	}
-	return nil
+	goto BEGIN
 }
 
 // ProcessSavedEvents relays saved un-processed cross-domain transactions to desired blockchain

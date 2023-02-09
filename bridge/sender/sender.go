@@ -203,10 +203,15 @@ func (s *Sender) getFeeData(auth *bind.TransactOpts, target *common.Address, val
 	}, nil
 }
 
+// IsFull If pendingTxs pool is full return true.
+func (s *Sender) IsFull() bool {
+	return atomic.LoadInt64(&s.pendingNum) == s.config.PendingLimit
+}
+
 // SendTransaction send a signed L2tL1 transaction.
 func (s *Sender) SendTransaction(ID string, target *common.Address, value *big.Int, data []byte) (hash common.Hash, err error) {
-	if count := atomic.LoadInt64(&s.pendingNum); count == s.config.PendingLimit {
-		return common.Hash{}, fmt.Errorf("pending txs is full, pending size: %d", count)
+	if s.IsFull() {
+		return common.Hash{}, fmt.Errorf("pending txs is full, pending size: %d", s.config.PendingLimit)
 	}
 	// We occupy the ID, in case some other threads call with the same ID in the same time
 	if _, loaded := s.pendingTxs.LoadOrStore(ID, nil); loaded {
