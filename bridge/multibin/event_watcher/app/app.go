@@ -66,10 +66,7 @@ func action(ctx *cli.Context) error {
 		l2watcher *eventwatcher.L2EventWatcher
 	)
 	l1watcher = eventwatcher.NewL1EventWatcher(ctx.Context, l1client, cfg.L1Config, ormFactory)
-	l2watcher, err = eventwatcher.NewL2EventWatcher(ctx.Context, l2client, cfg.L2Config, ormFactory)
-	if err != nil {
-		return err
-	}
+	l2watcher = eventwatcher.NewL2EventWatcher(ctx.Context, l2client, cfg.L2Config, ormFactory)
 	defer func() {
 		l1watcher.Stop()
 		l2watcher.Stop()

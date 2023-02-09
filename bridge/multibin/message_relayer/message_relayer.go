@@ -2,7 +2,6 @@ package messagerelayer
 
 import (
 	"context"
-	"sync"
 	"time"
 
 	"github.com/scroll-tech/go-ethereum/log"
@@ -21,7 +20,7 @@ type L1MsgRelayer struct {
 	ctx       context.Context
 	relayer   *l1.Layer1Relayer
 	confirmCh <-chan *sender.Confirmation
-	stop      chan struct{}
+	stopCh    chan struct{}
 	db        orm.L1MessageOrm
 }
 
@@ -30,7 +29,7 @@ type L2MsgRelayer struct {
 	ctx          context.Context
 	relayer      *l2.Layer2Relayer
 	msgConfirmCh <-chan *sender.Confirmation
-	stop         chan struct{}
+	stopCh       chan struct{}
 	db           orm.L2MessageOrm
 }
 
@@ -45,7 +44,7 @@ func NewL2MsgRelayer(ctx context.Context, db database.OrmFactory, cfg *config.Re
 		relayer:      msgRelayer,
 		msgConfirmCh: msgRelayer.GetMsgConfirmCh(),
 		db:           db,
-		stop:         make(chan struct{}),
+		stopCh:       make(chan struct{}),
 	}, nil
 }
 
@@ -59,7 +58,7 @@ func NewL1MsgRelayer(ctx context.Context, l1ConfirmNum int64, db orm.L1MessageOr
 		ctx:       ctx,
 		relayer:   msgRelayer,
 		confirmCh: msgRelayer.GetConfirmCh(),
-		stop:      make(chan struct{}),
+		stopCh:    make(chan struct{}),
 		db:        db,
 	}, nil
 }
@@ -86,7 +85,7 @@ func (l1r *L1MsgRelayer) Start() {
 					}
 					log.Info("transaction confirmed in layer2", "confirmation", cfm)
 				}
-			case <-l1r.stop:
+			case <-l1r.stopCh:
 				return
 			}
 		}
@@ -95,7 +94,7 @@ func (l1r *L1MsgRelayer) Start() {
 
 // Stop sends signal to stop chan
 func (l1r *L1MsgRelayer) Stop() {
-	l1r.stop <- struct{}{}
+	close(l1r.stopCh)
 }
 
 // Start runs go routine to process saved events on L2
@@ -108,13 +107,10 @@ func (l2r *L2MsgRelayer) Start() {
 		for {
 			select {
 			case <-ticker.C:
-				var wg = sync.WaitGroup{}
-				wg.Add(1)
-				go l2r.relayer.ProcessSavedEvents(&wg)
-				wg.Wait()
+				l2r.relayer.ProcessSavedEvents()
 			case confirmation := <-l2r.msgConfirmCh:
 				l2r.relayer.HandleConfirmation(confirmation)
-			case <-l2r.stop:
+			case <-l2r.stopCh:
 				return
 			}
 		}
@@ -123,5 +119,5 @@ func (l2r *L2MsgRelayer) Start() {
 
 // Stop sends signal to stop chan
 func (l2r *L2MsgRelayer) Stop() {
-	l2r.stop <- struct{}{}
+	close(l2r.stopCh)
 }

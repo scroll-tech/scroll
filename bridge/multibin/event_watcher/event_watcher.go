@@ -19,7 +19,7 @@ type L1EventWatcher struct {
 	ctx     context.Context
 	watcher *l1.Watcher
 	client  *ethclient.Client
-	stop    chan struct{}
+	stopCh  chan struct{}
 }
 
 // L2EventWatcher is struct to wrap l2.watcher
@@ -28,19 +28,19 @@ type L2EventWatcher struct {
 	watcher       *l2.WatcherClient
 	client        *ethclient.Client
 	confirmations uint64
-	stop          chan struct{}
+	stopCh        chan struct{}
 }
 
 // NewL2EventWatcher creates a new instance of L2EventWatcher
-func NewL2EventWatcher(ctx context.Context, client *ethclient.Client, cfg *config.L2Config, db database.OrmFactory) (*L2EventWatcher, error) {
+func NewL2EventWatcher(ctx context.Context, client *ethclient.Client, cfg *config.L2Config, db database.OrmFactory) *L2EventWatcher {
 	watcher := l2.NewL2WatcherClient(ctx, client, cfg.Confirmations, cfg.BatchProposerConfig, cfg.RelayerConfig.MessengerContractAddress, db)
 	return &L2EventWatcher{
 		ctx:           ctx,
 		watcher:       watcher,
 		client:        client,
 		confirmations: cfg.Confirmations,
-		stop:          make(chan struct{}),
-	}, nil
+		stopCh:        make(chan struct{}),
+	}
 }
 
 // NewL1EventWatcher creates a new instance of L1EventWatcher
@@ -50,7 +50,7 @@ func NewL1EventWatcher(ctx context.Context, client *ethclient.Client, cfg *confi
 		ctx:     ctx,
 		watcher: watcher,
 		client:  client,
-		stop:    make(chan struct{}),
+		stopCh:  make(chan struct{}),
 	}
 }
 
@@ -62,7 +62,7 @@ func (l1w *L1EventWatcher) Start() {
 
 		for ; true; <-ticker.C {
 			select {
-			case <-l1w.stop:
+			case <-l1w.stopCh:
 				return
 
 			default:
@@ -81,7 +81,7 @@ func (l1w *L1EventWatcher) Start() {
 
 // Stop sends the stop signal to stop chan
 func (l1w *L1EventWatcher) Stop() {
-	l1w.stop <- struct{}{}
+	close(l1w.stopCh)
 }
 
 // Start runs go routine to fetch contract events on L2
@@ -93,7 +93,7 @@ func (l2w *L2EventWatcher) Start() {
 
 		for {
 			select {
-			case <-l2w.stop:
+			case <-l2w.stopCh:
 				return
 
 			case <-ticker.C:
@@ -118,5 +118,5 @@ func (l2w *L2EventWatcher) Start() {
 
 // Stop sends the stop signal to stop chan
 func (l2w *L2EventWatcher) Stop() {
-	l2w.stop <- struct{}{}
+	close(l2w.stopCh)
 }
