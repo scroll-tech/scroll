@@ -62,7 +62,7 @@ func (r *ImgRedis) Start() error {
 	// Wait result of keyword.
 	select {
 	case <-okCh:
-		utils.TryTimes(3, func() bool {
+		utils.TryTimes(10, func() bool {
 			r.id = GetContainerID(r.name)
 			return r.id != ""
 		})
