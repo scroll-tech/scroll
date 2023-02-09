@@ -68,7 +68,7 @@ func NewLayer1Relayer(ctx context.Context, l1ConfirmNum int64, db orm.L1MessageO
 
 // GetConfirmCh returns the confirmation channel
 func (r *Layer1Relayer) GetConfirmCh() <-chan *sender.Confirmation {
-	return r.confirmationCh
+	return r.sender.ConfirmChan()
 }
 
 // ProcessSavedEvents relays saved un-processed cross-domain transactions to desired blockchain
