@@ -13,9 +13,10 @@ import "C" //nolint:typecheck
 
 import (
 	"encoding/json"
+	"os"
+	"path/filepath"
 	"unsafe"
 
-	"github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/log"
 
 	"scroll-tech/common/message"
@@ -38,19 +39,37 @@ func NewProver(cfg *config.ProverConfig) (*Prover, error) {
 	}()
 	C.init_prover(paramsPathStr, seedPathStr)
 
+	if cfg.DumpDir != "" {
+		err := os.MkdirAll(cfg.DumpDir, os.ModePerm)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	return &Prover{cfg: cfg}, nil
 }
 
 // Prove call rust ffi to generate proof, if first failed, try again.
-func (p *Prover) Prove(traces []*types.BlockTrace) (*message.AggProof, error) {
-	return p.prove(traces)
-}
-
-func (p *Prover) prove(traces []*types.BlockTrace) (*message.AggProof, error) {
-	tracesByt, err := json.Marshal(traces)
+func (p *Prover) Prove(task *message.TaskMsg) (*message.AggProof, error) {
+	tracesByt, err := json.Marshal(task.Traces)
 	if err != nil {
 		return nil, err
 	}
+
+	proofByt := p.prove(tracesByt)
+
+	// dump proof
+	err = p.dumpProof(task.ID, proofByt)
+	if err != nil {
+		log.Error("dump proof failed", "task-id", task.ID, "error", err)
+	}
+
+	zkProof := &message.AggProof{}
+	return zkProof, json.Unmarshal(proofByt, zkProof)
+}
+
+// Call cgo to generate proof.
+func (p *Prover) prove(tracesByt []byte) []byte {
 	tracesStr := C.CString(string(tracesByt))
 
 	defer func() {
@@ -62,7 +81,18 @@ func (p *Prover) prove(traces []*types.BlockTrace) (*message.AggProof, error) {
 	log.Info("Finish creating agg proof!")
 
 	proof := C.GoString(cProof)
-	zkProof := &message.AggProof{}
-	err = json.Unmarshal([]byte(proof), zkProof)
-	return zkProof, err
+	return []byte(proof)
+}
+
+func (p *Prover) dumpProof(id string, proofByt []byte) error {
+	if p.cfg.DumpDir == "" {
+		return nil
+	}
+	path := filepath.Join(p.cfg.DumpDir, id)
+	f, err := os.Create(path)
+	if err != nil {
+		return err
+	}
+	_, err = f.Write(proofByt)
+	return err
 }
