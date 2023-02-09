@@ -32,7 +32,7 @@ BEGIN:
 	for batch := batches[0]; len(batches) > 0; { //nolint:staticcheck
 		// If pending txs pool is full, wait a while and retry.
 		if r.rollupSender.IsFull() {
-			log.Error("layer2 committed tx sender is full")
+			log.Warn("layer2 committed tx sender is full")
 			time.Sleep(time.Millisecond * 500)
 			continue
 		}
