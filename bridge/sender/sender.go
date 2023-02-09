@@ -259,7 +259,7 @@ func (s *Sender) SendTransaction(ID string, target *common.Address, value *big.I
 	return
 }
 
-func (s *Sender) getTxAndSender(txHash common.Hash) (*types.Transaction, uint64, common.Address, error) {
+func (s *Sender) getTxAndAddr(txHash common.Hash) (*types.Transaction, uint64, common.Address, error) {
 	tx, isPending, err := s.client.TransactionByHash(s.ctx, txHash)
 	if err != nil {
 		return nil, 0, common.Address{}, err
@@ -283,10 +283,10 @@ func (s *Sender) getTxAndSender(txHash common.Hash) (*types.Transaction, uint64,
 
 // LoadOrSendTx If the tx already exist in chain load it or resend it.
 func (s *Sender) LoadOrSendTx(destTxHash common.Hash, ID string, target *common.Address, value *big.Int, data []byte) error {
-	tx, blockNumber, sender, err := s.getTxAndSender(destTxHash)
+	tx, blockNumber, from, err := s.getTxAndAddr(destTxHash)
 	// If this tx already exist load it to the pending.
 	if err == nil && tx != nil {
-		auth := s.auths.accounts[sender]
+		auth := s.auths.accounts[from]
 		var feeData *FeeData
 		feeData, err = s.getFeeData(auth, target, value, data)
 		if err != nil {
