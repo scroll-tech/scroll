@@ -2,7 +2,6 @@ package rolluprelayer
 
 import (
 	"context"
-	"sync"
 	"time"
 
 	"scroll-tech/bridge/config"
@@ -17,7 +16,7 @@ type L2RollupRelayer struct {
 	ctx      context.Context
 	relayer  *l2.Layer2Relayer
 	rollupCh <-chan *sender.Confirmation
-	stop     chan struct{}
+	stopCh   chan struct{}
 	db       orm.L2MessageOrm
 }
 
@@ -32,28 +31,41 @@ func NewL2RollupRelayer(ctx context.Context, cfg *config.RelayerConfig, db datab
 		relayer:  msgRelayer,
 		rollupCh: msgRelayer.GetRollupCh(),
 		db:       db,
-		stop:     make(chan struct{}),
+		stopCh:   make(chan struct{}),
 	}, nil
 }
 
 // Start process
 func (r *L2RollupRelayer) Start() {
-	go func() {
-		// trigger by timer
+	loop := func(ctx context.Context, f func()) {
 		ticker := time.NewTicker(time.Second)
 		defer ticker.Stop()
 
 		for {
 			select {
+			case <-ctx.Done():
+				return
 			case <-ticker.C:
-				var wg = sync.WaitGroup{}
-				wg.Add(2)
-				go r.relayer.ProcessPendingBatches(&wg)
-				go r.relayer.ProcessCommittedBatches(&wg)
-				wg.Wait()
+				f()
+			}
+		}
+	}
+	go func() {
+		ctx, cancel := context.WithCancel(r.ctx)
+		// trigger by timer
+		ticker := time.NewTicker(time.Second)
+		defer cancel()
+
+		for {
+			select {
+			case <-ticker.C:
+				// To do: Refactoring this
+				go loop(ctx, r.relayer.ProcessPendingBatches)
+				go loop(ctx, r.relayer.ProcessCommittedBatches)
 			case confirmation := <-r.rollupCh:
 				r.relayer.HandleConfirmation(confirmation)
-			case <-r.stop:
+			case <-r.stopCh:
+				ticker.Stop()
 				return
 			}
 		}
@@ -62,5 +74,5 @@ func (r *L2RollupRelayer) Start() {
 
 // Stop sends the stop signal to stop chan
 func (r *L2RollupRelayer) Stop() {
-	r.stop <- struct{}{}
+	close(r.stopCh)
 }

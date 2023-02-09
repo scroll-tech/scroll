@@ -19,7 +19,7 @@ type L2BatchPropser struct {
 	client        *ethclient.Client
 	confirmations uint64
 	batchProposer *l2.BatchProposer
-	stop          chan struct{}
+	stopCh        chan struct{}
 }
 
 // NewL2BatchPropser creates a new instance of L2BatchPropser
@@ -31,12 +31,13 @@ func NewL2BatchPropser(ctx context.Context, client *ethclient.Client, cfg *confi
 		client:        client,
 		confirmations: cfg.Confirmations,
 		batchProposer: watcher.GetBatchProposer(),
-		stop:          make(chan struct{}),
+		stopCh:        make(chan struct{}),
 	}, nil
 }
 
 // Start runs go routine to fetch contract events on L2
 func (b *L2BatchPropser) Start() {
+	// Todo: Refactoring this process
 	go func() {
 		ctx, cancel := context.WithCancel(b.ctx)
 		// trace fetcher loop
@@ -84,7 +85,7 @@ func (b *L2BatchPropser) Start() {
 			}
 		}(ctx)
 
-		<-b.stop
+		<-b.stopCh
 		cancel()
 
 	}()
@@ -92,5 +93,5 @@ func (b *L2BatchPropser) Start() {
 
 // Stop sends the stop signal to stop chan
 func (b *L2BatchPropser) Stop() {
-	b.stop <- struct{}{}
+	close(b.stopCh)
 }
