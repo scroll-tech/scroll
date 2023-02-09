@@ -25,7 +25,7 @@ contract L2WETHGatewayTest is DSTestPlus {
 
     messenger = new MockScrollMessenger();
     router = new L2GatewayRouter();
-    router.initialize(address(0), address(1), address(messenger));
+    // router.initialize(address(0), address(1), address(messenger));
 
     counterpart = new L1WETHGateway();
     gateway = new L2WETHGateway();

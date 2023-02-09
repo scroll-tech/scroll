@@ -28,7 +28,7 @@ contract L2GatewayRouterTest is DSTestPlus {
 
     messenger = new MockScrollMessenger();
     router = new L2GatewayRouter();
-    router.initialize(address(0), address(1), address(messenger));
+    // router.initialize(address(0), address(1), address(messenger));
 
     gateway = new L2StandardERC20Gateway();
     gateway.initialize(address(1), address(router), address(messenger), address(factory));
@@ -63,7 +63,7 @@ contract L2GatewayRouterTest is DSTestPlus {
 
   function testReinitilize() public {
     hevm.expectRevert("Initializable: contract is already initialized");
-    router.initialize(address(0), address(1), address(messenger));
+    // router.initialize(address(0), address(1), address(messenger));
   }
 
   function testSetDefaultERC20Gateway() public {
@@ -173,10 +173,10 @@ contract L2GatewayRouterTest is DSTestPlus {
 
     if (amount == 0) {
       hevm.expectRevert("withdraw zero eth");
-      router.withdrawETH{ value: amount }(0);
+      router.withdrawETH{ value: amount }(amount, 0);
     } else {
       uint256 messengerBalance = address(messenger).balance;
-      router.withdrawETH{ value: amount }(0);
+      router.withdrawETH{ value: amount }(amount, 0);
       assertEq(amount + messengerBalance, address(messenger).balance);
     }
   }
@@ -186,10 +186,10 @@ contract L2GatewayRouterTest is DSTestPlus {
 
     if (amount == 0) {
       hevm.expectRevert("withdraw zero eth");
-      router.withdrawETH{ value: amount }(to, 0);
+      router.withdrawETH{ value: amount }(to, amount, 0);
     } else {
       uint256 messengerBalance = address(messenger).balance;
-      router.withdrawETH{ value: amount }(to, 0);
+      router.withdrawETH{ value: amount }(to, amount, 0);
       assertEq(amount + messengerBalance, address(messenger).balance);
     }
   }

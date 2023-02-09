@@ -19,6 +19,7 @@ contract InitializeL2BridgeContracts is Script {
     address L1_ERC721_GATEWAY_PROXY_ADDR = vm.envAddress("L1_ERC721_GATEWAY_PROXY_ADDR");
     address L1_ERC1155_GATEWAY_PROXY_ADDR = vm.envAddress("L1_ERC1155_GATEWAY_PROXY_ADDR");
 
+    address L2_ETH_GATEWAY_PROXY_ADDR = vm.envAddress("L2_ETH_GATEWAY_PROXY_ADDR");
     address L2_SCROLL_MESSENGER_ADDR = vm.envAddress("L2_SCROLL_MESSENGER_ADDR");
     address L2_STANDARD_ERC20_GATEWAY_PROXY_ADDR = vm.envAddress("L2_STANDARD_ERC20_GATEWAY_PROXY_ADDR");
     address L2_GATEWAY_ROUTER_PROXY_ADDR = vm.envAddress("L2_GATEWAY_ROUTER_PROXY_ADDR");
@@ -40,6 +41,7 @@ contract InitializeL2BridgeContracts is Script {
 
         // initialize L2GatewayRouter
         L2GatewayRouter(L2_GATEWAY_ROUTER_PROXY_ADDR).initialize(
+            L2_ETH_GATEWAY_PROXY_ADDR,
             L2_STANDARD_ERC20_GATEWAY_PROXY_ADDR,
             L1_GATEWAY_ROUTER_PROXY_ADDR,
             L2_SCROLL_MESSENGER_ADDR

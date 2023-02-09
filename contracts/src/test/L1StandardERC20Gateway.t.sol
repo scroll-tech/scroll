@@ -35,7 +35,7 @@ contract L1StandardERC20GatewayTest is DSTestPlus {
 
     messenger = new MockScrollMessenger();
     router = new L1GatewayRouter();
-    router.initialize(address(0), address(1), address(messenger));
+    // router.initialize(address(0), address(1), address(messenger));
 
     counterpart = new L2StandardERC20Gateway();
     gateway = new L1StandardERC20Gateway();

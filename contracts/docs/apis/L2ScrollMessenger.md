@@ -27,16 +27,56 @@ The contract contains the list of L1 blocks.
 |---|---|---|
 | _0 | address | undefined |
 
+### counterpart
+
+```solidity
+function counterpart() external view returns (address)
+```
+
+The address of L1ScrollMessenger contract in L1.
+
+
+
+
+#### Returns
+
+| Name | Type | Description |
+|---|---|---|
+| _0 | address | undefined |
+
+### feeVault
+
+```solidity
+function feeVault() external view returns (address)
+```
+
+The address of fee vault, collecting cross domain messaging fee.
+
+
+
+
+#### Returns
+
+| Name | Type | Description |
+|---|---|---|
+| _0 | address | undefined |
+
 ### initialize
 
 ```solidity
-function initialize() external nonpayable
+function initialize(address _counterpart, address _feeVault) external nonpayable
 ```
 
 
 
 
 
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| _counterpart | address | undefined |
+| _feeVault | address | undefined |
 
 ### isMessageExecuted
 
@@ -82,13 +122,35 @@ Mapping from relay id to relay status.
 |---|---|---|
 | _0 | bool | undefined |
 
+### isMessageSent
+
+```solidity
+function isMessageSent(bytes32) external view returns (bool)
+```
+
+Mapping from message hash to sent status.
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| _0 | bytes32 | undefined |
+
+#### Returns
+
+| Name | Type | Description |
+|---|---|---|
+| _0 | bool | undefined |
+
 ### messageQueue
 
 ```solidity
 function messageQueue() external view returns (address)
 ```
 
-
+The address of L2MessageQueue.
 
 
 
@@ -158,11 +220,11 @@ execute L1 =&gt; L2 message
 
 | Name | Type | Description |
 |---|---|---|
-| _from | address | The address of the sender of the message. |
-| _to | address | The address of the recipient of the message. |
-| _value | uint256 | The msg.value passed to the message call. |
-| _nonce | uint256 | The nonce of the message to avoid replay attack. |
-| _message | bytes | The content of the message. |
+| _from | address | undefined |
+| _to | address | undefined |
+| _value | uint256 | undefined |
+| _nonce | uint256 | undefined |
+| _message | bytes | undefined |
 
 ### relayMessageWithProof
 
@@ -246,6 +308,54 @@ Update whitelist contract.
 | Name | Type | Description |
 |---|---|---|
 | _newWhitelist | address | The address of new whitelist contract. |
+
+### verifyMessageExecutionStatus
+
+```solidity
+function verifyMessageExecutionStatus(bytes32 _blockHash, bytes32 _msgHash, bytes _proof) external view returns (bool)
+```
+
+Check whether the message is executed in the corresponding L1 block.
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| _blockHash | bytes32 | The block hash where the message should in. |
+| _msgHash | bytes32 | The hash of the message to check. |
+| _proof | bytes | The encoded storage proof from eth_getProof. |
+
+#### Returns
+
+| Name | Type | Description |
+|---|---|---|
+| _0 | bool | bool Return true is the message is executed in L1, otherwise return false. |
+
+### verifyMessageInclusionStatus
+
+```solidity
+function verifyMessageInclusionStatus(bytes32 _blockHash, bytes32 _msgHash, bytes _proof) external view returns (bool)
+```
+
+Check whether the l1 message is included in the corresponding L1 block.
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| _blockHash | bytes32 | The block hash where the message should in. |
+| _msgHash | bytes32 | The hash of the message to check. |
+| _proof | bytes | The encoded storage proof from eth_getProof. |
+
+#### Returns
+
+| Name | Type | Description |
+|---|---|---|
+| _0 | bool | bool Return true is the message is included in L1, otherwise return false. |
 
 ### whitelist
 

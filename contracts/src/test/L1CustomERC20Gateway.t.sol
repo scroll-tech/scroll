@@ -5,13 +5,15 @@ pragma solidity ^0.8.0;
 import { DSTestPlus } from "solmate/test/utils/DSTestPlus.sol";
 import { MockERC20 } from "solmate/test/utils/mocks/MockERC20.sol";
 
-import { L1GatewayRouter } from "../L1/gateways/L1GatewayRouter.sol";
 import { L1CustomERC20Gateway } from "../L1/gateways/L1CustomERC20Gateway.sol";
+import { L1ETHGateway } from "../L1/gateways/L1ETHGateway.sol";
+import { L1GatewayRouter } from "../L1/gateways/L1GatewayRouter.sol";
 import { L2CustomERC20Gateway } from "../L2/gateways/L2CustomERC20Gateway.sol";
 import { MockScrollMessenger } from "./mocks/MockScrollMessenger.sol";
 
 contract L1CustomERC20GatewayTest is DSTestPlus {
   MockScrollMessenger private messenger;
+  L1ETHGateway private ethGateway;
   L1CustomERC20Gateway private gateway;
   L2CustomERC20Gateway private counterpart;
   L1GatewayRouter private router;
@@ -24,9 +26,10 @@ contract L1CustomERC20GatewayTest is DSTestPlus {
 
     counterpart = new L2CustomERC20Gateway();
     gateway = new L1CustomERC20Gateway();
+    ethGateway = new L1ETHGateway();
 
     gateway.initialize(address(counterpart), address(router), address(messenger));
-    router.initialize(address(gateway), address(1), address(messenger));
+    router.initialize(address(ethGateway), address(gateway), address(1), address(messenger));
 
     token = new MockERC20("Mock", "M", 18);
     token.mint(address(this), type(uint256).max);

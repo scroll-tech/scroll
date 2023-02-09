@@ -17,14 +17,12 @@ contract L2MessageQueue is AppendOnlyMerkleTree {
   event AppendMessage(uint256 index, bytes32 messageHash);
 
   /// @notice The address of L2ScrollMessenger contract.
-  address public immutable messenger;
+  address public messenger;
 
-  /// @notice Mapping from message hash to sent messages.
-  mapping(bytes32 => bool) public sentMessages;
+  function initialize(address _messenger) external {
+    require(messenger == address(0), "already initialized");
 
-  constructor(address _messenger) {
     messenger = _messenger;
-
     _initializeMerkleTree();
   }
 
@@ -32,10 +30,6 @@ contract L2MessageQueue is AppendOnlyMerkleTree {
   /// @param _messageHash The hash of the new added message.
   function appendMessage(bytes32 _messageHash) external returns (bytes32) {
     require(msg.sender == messenger, "only messenger");
-
-    require(!sentMessages[_messageHash], "duplicated message");
-
-    sentMessages[_messageHash] = true;
 
     (uint256 _currentNonce, bytes32 _currentRoot) = _appendMessageHash(_messageHash);
 

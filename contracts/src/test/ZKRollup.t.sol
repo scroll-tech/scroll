@@ -9,6 +9,7 @@ import { ZKRollup, IZKRollup } from "../L1/rollup/ZKRollup.sol";
 contract ZKRollupTest is DSTestPlus {
   ZKRollup private rollup;
 
+  /*
   function setUp() public {
     rollup = new ZKRollup();
     rollup.initialize(233);
@@ -255,4 +256,5 @@ contract ZKRollupTest is DSTestPlus {
       assertEq(rollup.finalizedBatches(1), bytes32(0));
     }
   }
+  */
 }

@@ -32,8 +32,8 @@ contract L1MessageQueue is OwnableUpgradeable, IL1MessageQueue {
   /// @notice The address of GasOracle contract.
   address public gasOracle;
 
-  /// @inheritdoc IL1MessageQueue
-  bytes32[] public override getCrossDomainMessage;
+  /// @notice The list of queued cross domain messages.
+  bytes32[] public messageQueue;
 
   /***************
    * Constructor *
@@ -52,7 +52,12 @@ contract L1MessageQueue is OwnableUpgradeable, IL1MessageQueue {
 
   /// @inheritdoc IL1MessageQueue
   function nextCrossDomainMessageIndex() external view returns (uint256) {
-    return getCrossDomainMessage.length;
+    return messageQueue.length;
+  }
+
+  /// @inheritdoc IL1MessageQueue
+  function getCrossDomainMessage(uint256 _queueIndex) external view returns (bytes32) {
+    return messageQueue[_queueIndex];
   }
 
   /// @inheritdoc IL1MessageQueue
@@ -83,12 +88,12 @@ contract L1MessageQueue is OwnableUpgradeable, IL1MessageQueue {
     address _sender = AddressAliasHelper.applyL1ToL2Alias(msg.sender);
 
     // @todo Change it to rlp encoding later.
-    bytes32 _hash = keccak256(abi.encode(_sender, _target, _gasLimit, _data));
+    bytes32 _hash = keccak256(abi.encode(_sender, _target, 0, _gasLimit, _data));
 
-    uint256 _queueIndex = getCrossDomainMessage.length;
+    uint256 _queueIndex = messageQueue.length;
     emit QueueTransaction(_sender, _target, 0, _gasLimit, _data, _queueIndex);
 
-    getCrossDomainMessage.push(_hash);
+    messageQueue.push(_hash);
   }
 
   /// @inheritdoc IL1MessageQueue

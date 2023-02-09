@@ -17,7 +17,11 @@ contract InitializeL1BridgeContracts is Script {
     uint256 CHAIN_ID_L2 = vm.envUint("CHAIN_ID_L2");
     address L1_ROLLUP_OPERATOR_ADDR = vm.envAddress("L1_ROLLUP_OPERATOR_ADDR");
 
+    address L1_FEE_VAULT_ADDR = vm.envAddress("L1_FEE_VAULT_ADDR");
+
     address L1_ZK_ROLLUP_PROXY_ADDR = vm.envAddress("L1_ZK_ROLLUP_PROXY_ADDR");
+    address L1_MESSAGE_QUEUE_PROXY_ADDR = vm.envAddress("L1_MESSAGE_QUEUE_PROXY_ADDR");
+    address L1_ETH_GATEWAY_PROXY_ADDR = vm.envAddress("L1_ETH_GATEWAY_PROXY_ADDR");
     address L1_STANDARD_ERC20_GATEWAY_PROXY_ADDR = vm.envAddress("L1_STANDARD_ERC20_GATEWAY_PROXY_ADDR");
     address L1_GATEWAY_ROUTER_PROXY_ADDR = vm.envAddress("L1_GATEWAY_ROUTER_PROXY_ADDR");
     address L1_SCROLL_MESSENGER_PROXY_ADDR = vm.envAddress("L1_SCROLL_MESSENGER_PROXY_ADDR");
@@ -25,6 +29,7 @@ contract InitializeL1BridgeContracts is Script {
     address L1_ERC721_GATEWAY_PROXY_ADDR = vm.envAddress("L1_ERC721_GATEWAY_PROXY_ADDR");
     address L1_ERC1155_GATEWAY_PROXY_ADDR = vm.envAddress("L1_ERC1155_GATEWAY_PROXY_ADDR");
 
+    address L2_SCROLL_MESSENGER_PROXY_ADDR = vm.envAddress("L2_SCROLL_MESSENGER_PROXY_ADDR");
     address L2_STANDARD_ERC20_GATEWAY_PROXY_ADDR = vm.envAddress("L2_STANDARD_ERC20_GATEWAY_PROXY_ADDR");
     address L2_GATEWAY_ROUTER_PROXY_ADDR = vm.envAddress("L2_GATEWAY_ROUTER_PROXY_ADDR");
     address L2_SCROLL_STANDARD_ERC20_ADDR = vm.envAddress("L2_SCROLL_STANDARD_ERC20_ADDR");
@@ -47,19 +52,22 @@ contract InitializeL1BridgeContracts is Script {
 
         // initialize L1GatewayRouter
         L1GatewayRouter(L1_GATEWAY_ROUTER_PROXY_ADDR).initialize(
+            L1_ETH_GATEWAY_PROXY_ADDR,
             L1_STANDARD_ERC20_GATEWAY_PROXY_ADDR,
             L2_GATEWAY_ROUTER_PROXY_ADDR,
             L1_SCROLL_MESSENGER_PROXY_ADDR
         );
 
         // initialize ZKRollup
-        ZKRollup(L1_ZK_ROLLUP_PROXY_ADDR).initialize(CHAIN_ID_L2);
-        ZKRollup(L1_ZK_ROLLUP_PROXY_ADDR).updateMessenger(L1_SCROLL_MESSENGER_PROXY_ADDR);
-        ZKRollup(L1_ZK_ROLLUP_PROXY_ADDR).updateOperator(L1_ROLLUP_OPERATOR_ADDR);
+        ZKRollup(L1_ZK_ROLLUP_PROXY_ADDR).initialize();
+        ZKRollup(L1_ZK_ROLLUP_PROXY_ADDR).updateSequencer(L1_ROLLUP_OPERATOR_ADDR, true);
 
         // initialize L1ScrollMessenger
         L1ScrollMessenger(payable(L1_SCROLL_MESSENGER_PROXY_ADDR)).initialize(
-            L1_ZK_ROLLUP_PROXY_ADDR
+            L2_SCROLL_MESSENGER_PROXY_ADDR,
+            L1_FEE_VAULT_ADDR,
+            L1_ZK_ROLLUP_PROXY_ADDR,
+            L1_MESSAGE_QUEUE_PROXY_ADDR
         );
 
         // initialize L1CustomERC20Gateway

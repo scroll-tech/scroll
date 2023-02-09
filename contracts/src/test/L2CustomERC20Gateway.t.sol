@@ -25,7 +25,7 @@ contract L2CustomERC20GatewayTest is DSTestPlus {
     gateway = new L2CustomERC20Gateway();
 
     gateway.initialize(address(counterpart), address(router), address(messenger));
-    router.initialize(address(gateway), address(1), address(messenger));
+    // router.initialize(address(gateway), address(1), address(messenger));
 
     // deploy l2 token
     token = new MockERC20("L2", "L2", 18);

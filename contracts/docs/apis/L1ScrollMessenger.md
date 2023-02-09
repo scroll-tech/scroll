@@ -10,6 +10,23 @@ The `L1ScrollMessenger` contract can: 1. send messages from layer 1 to layer 2; 
 
 ## Methods
 
+### counterpart
+
+```solidity
+function counterpart() external view returns (address)
+```
+
+The address of L2ScrollMessenger contract in L2.
+
+
+
+
+#### Returns
+
+| Name | Type | Description |
+|---|---|---|
+| _0 | address | undefined |
+
 ### feeVault
 
 ```solidity
@@ -30,7 +47,7 @@ The address of fee vault, collecting cross domain messaging fee.
 ### initialize
 
 ```solidity
-function initialize(address _l2ScrollMessenger, address _feeVault, address _rollup, address _messageQueue) external nonpayable
+function initialize(address _counterpart, address _feeVault, address _rollup, address _messageQueue) external nonpayable
 ```
 
 Initialize the storage of L1ScrollMessenger.
@@ -41,7 +58,7 @@ Initialize the storage of L1ScrollMessenger.
 
 | Name | Type | Description |
 |---|---|---|
-| _l2ScrollMessenger | address | The address of L2ScrollMessenger contract in L2. |
+| _counterpart | address | The address of L2ScrollMessenger contract in L2. |
 | _feeVault | address | The address of fee vault, which will be used to collect relayer fee. |
 | _rollup | address | The address of ZKRollup contract. |
 | _messageQueue | address | The address of L1MessageQueue contract. |
@@ -111,23 +128,6 @@ Mapping from message hash to sent status.
 | Name | Type | Description |
 |---|---|---|
 | _0 | bool | undefined |
-
-### l2ScrollMessenger
-
-```solidity
-function l2ScrollMessenger() external view returns (address)
-```
-
-The address of L2ScrollMessenger contract in L2.
-
-
-
-
-#### Returns
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | address | undefined |
 
 ### messageQueue
 

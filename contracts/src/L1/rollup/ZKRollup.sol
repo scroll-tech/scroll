@@ -30,8 +30,11 @@ contract ZKRollup is OwnableUpgradeable, IZKRollup {
    * Constants *
    *************/
 
-  /// @dev The maximum number of blocks in on batch.
-  uint256 private constant MAX_NUM_BLOCKS_IN_BATCH = 100;
+  /// @dev The maximum number of transaction in on batch.
+  uint256 private constant MAX_NUM_TX_IN_BATCH = 100;
+
+  /// @dev The hash used for padding public inputs.
+  bytes32 private constant PADDED_TX_HASH = bytes32(0);
 
   /// @notice The chain id of the corresponding layer 2 chain.
   uint256 public immutable layer2ChainId;
@@ -141,7 +144,6 @@ contract ZKRollup is OwnableUpgradeable, IZKRollup {
     require(_genesisBlock.blockHash != bytes32(0), "Block hash is zero");
     require(_genesisBlock.blockNumber == 0, "Block is not genesis");
     require(_genesisBlock.parentHash == bytes32(0), "Parent hash not empty");
-    require(_genesisBlock.parentHash == bytes32(0), "Parent hash not empty");
 
     bytes32 _batchHash = _commitBatch(_genesisBatch);
 
@@ -229,54 +231,134 @@ contract ZKRollup is OwnableUpgradeable, IZKRollup {
   /// @dev Internal function to commit a batch.
   /// @param _batch The batch to commit.
   function _commitBatch(Batch memory _batch) internal returns (bytes32) {
-    /*
     // check whether the batch is empty
     require(_batch.blocks.length > 0, "Batch is empty");
 
-    bytes32 _batchHash = _batch.blocks[_batch.blocks.length - 1].blockHash;
-    bytes32 _batchId = _computeBatchId(_batchHash, _batch.parentHash, _batch.batchIndex);
-    Layer2BatchStored storage _batchStored = batches[_batchId];
+    uint256 publicInputsStartPtr;
+    uint256 publicInputsStartOffset;
+    uint256 publicInputsSize;
+    // append prevStateRoot, currStateRoot and withdrawTrieRoot to public inputs
+    {
+      bytes32 prevStateRoot = _batch.prevStateRoot;
+      bytes32 currStateRoot = _batch.currStateRoot;
+      bytes32 withdrawTrieRoot = _batch.withdrawTrieRoot;
+      // number of bytes in public inputs: 32 * 3 + 124 * blocks + 32 * MAX_NUM_TXS
+      publicInputsSize = 32 * 3 + _batch.blocks.length * 124 + 32 * MAX_NUM_TX_IN_BATCH;
+      assembly {
+        publicInputsStartPtr := mload(0x40)
+        publicInputsStartOffset := publicInputsStartPtr
+        mstore(0x40, add(publicInputsStartPtr, publicInputsSize))
 
-    // check whether the batch is commited before
-    require(_batchStored.batchHash == bytes32(0), "Batch has been committed before");
-
-    // make sure the parent batch is commited before
-    Layer2BlockStored storage _parentBlock = blocks[_batch.parentHash];
-    require(_parentBlock.transactionRoot != bytes32(0), "Parent batch hasn't been committed");
-    require(_parentBlock.batchIndex + 1 == _batch.batchIndex, "Batch index and parent batch index mismatch");
-
-    // check whether the blocks are correct.
-    unchecked {
-      uint256 _expectedBlockHeight = _parentBlock.blockHeight + 1;
-      bytes32 _expectedParentHash = _batch.parentHash;
-      for (uint256 i = 0; i < _batch.blocks.length; i++) {
-        Layer2BlockHeader memory _block = _batch.blocks[i];
-        require(_verifyBlockHash(_block), "Block hash verification failed");
-        require(_block.parentHash == _expectedParentHash, "Block parent hash mismatch");
-        require(_block.blockHeight == _expectedBlockHeight, "Block height mismatch");
-        require(blocks[_block.blockHash].transactionRoot == bytes32(0), "Block has been commited before");
-
-        _expectedBlockHeight += 1;
-        _expectedParentHash = _block.blockHash;
+        mstore(publicInputsStartOffset, prevStateRoot)
+        publicInputsStartOffset := add(publicInputsStartOffset, 0x20)
+        mstore(publicInputsStartOffset, currStateRoot)
+        publicInputsStartOffset := add(publicInputsStartOffset, 0x20)
+        mstore(publicInputsStartOffset, withdrawTrieRoot)
+        publicInputsStartOffset := add(publicInputsStartOffset, 0x20)
       }
     }
 
-    // do block commit
+    uint256 numTransactionsInBatch;
+    uint256 numL1MessagesInBatch;
+    BlockContext memory _block;
+    // append block information to public inputs.
     for (uint256 i = 0; i < _batch.blocks.length; i++) {
-      Layer2BlockHeader memory _block = _batch.blocks[i];
-      Layer2BlockStored storage _blockStored = blocks[_block.blockHash];
-      _blockStored.parentHash = _block.parentHash;
-      _blockStored.transactionRoot = _computeTransactionRoot(_block.txs);
-      _blockStored.blockHeight = _block.blockHeight;
-      _blockStored.batchIndex = _batch.batchIndex;
+      // validate blocks
+      // @todo also check first block against previous batch.
+      {
+        BlockContext memory _currentBlock = _batch.blocks[i];
+        if (i > 0) {
+          require(_block.blockHash == _currentBlock.parentHash, "Parent hash mismatch");
+          require(_block.blockNumber + 1 == _currentBlock.blockNumber, "Block number mismatch");
+        }
+        _block = _currentBlock;
+      }
+
+      // append blockHash and parentHash to public inputs
+      {
+        bytes32 blockHash = _block.blockHash;
+        bytes32 parentHash = _block.parentHash;
+        assembly {
+          mstore(publicInputsStartOffset, blockHash)
+          publicInputsStartOffset := add(publicInputsStartOffset, 0x20)
+          mstore(publicInputsStartOffset, parentHash)
+          publicInputsStartOffset := add(publicInputsStartOffset, 0x20)
+        }
+      }
+      // append blockNumber and blockTimestamp to public inputs
+      {
+        uint256 blockNumber = _block.blockNumber;
+        uint256 blockTimestamp = _block.timestamp;
+        assembly {
+          mstore(publicInputsStartOffset, shl(192, blockNumber))
+          publicInputsStartOffset := add(publicInputsStartOffset, 0x8)
+          mstore(publicInputsStartOffset, shl(192, blockTimestamp))
+          publicInputsStartOffset := add(publicInputsStartOffset, 0x8)
+        }
+      }
+      // append baseFee to public inputs
+      {
+        uint256 baseFee = _block.baseFee;
+        assembly {
+          mstore(publicInputsStartOffset, baseFee)
+          publicInputsStartOffset := add(publicInputsStartOffset, 0x20)
+        }
+      }
+      uint256 numTransactionsInBlock = _block.numTransactions;
+      uint256 numL1MessagesInBlock = _block.numL1Messages;
+      // gasLimit, numTransactions and numL1Messages to public inputs
+      {
+        uint256 gasLimit = _block.gasLimit;
+        assembly {
+          mstore(publicInputsStartOffset, shl(192, gasLimit))
+          publicInputsStartOffset := add(publicInputsStartOffset, 0x8)
+          mstore(publicInputsStartOffset, shl(240, numTransactionsInBlock))
+          publicInputsStartOffset := add(publicInputsStartOffset, 0x2)
+          mstore(publicInputsStartOffset, shl(240, numL1MessagesInBlock))
+          publicInputsStartOffset := add(publicInputsStartOffset, 0x2)
+        }
+      }
+
+      unchecked {
+        numTransactionsInBatch += numTransactionsInBlock;
+        numL1MessagesInBatch += numL1MessagesInBlock;
+      }
     }
 
-    _batchStored.batchHash = _batchHash;
-    _batchStored.parentHash = _batch.parentHash;
-    _batchStored.batchIndex = _batch.batchIndex;
+    require(numTransactionsInBatch <= MAX_NUM_TX_IN_BATCH, "Too many transactions in batch");
 
-    emit CommitBatch(_batchId, _batchHash, _batch.batchIndex, _batch.parentHash);
-    */
+    // @todo append transaction information to public inputs.
+    // @note it is complicated while dealing rlp encoding, ignore it for now.
+    bytes32 txHashPadding = PADDED_TX_HASH;
+    for (uint256 i = 0; i < numTransactionsInBatch; i++) {
+      assembly {
+        mstore(publicInputsStartOffset, txHashPadding)
+        publicInputsStartOffset := add(publicInputsStartOffset, 0x20)
+      }
+    }
+
+    // compute batch hash
+    bytes32 publicInputHash;
+    assembly {
+      publicInputHash := keccak256(publicInputsStartPtr, publicInputsSize)
+    }
+
+    // @todo maybe add parent batch check later.
+
+    BatchStored storage _batchInStorage = batches[publicInputHash];
+    require(_batchInStorage.publicInputHash == bytes32(0), "Batch already commited");
+    _batchInStorage.prevStateRoot = _batch.prevStateRoot;
+    _batchInStorage.currStateRoot = _batch.currStateRoot;
+    _batchInStorage.withdrawTrieRoot = _batch.withdrawTrieRoot;
+    _batchInStorage.publicInputHash = publicInputHash;
+    _batchInStorage.batchIndex = _batch.batchIndex;
+    _batchInStorage.timestamp = _block.timestamp;
+    _batchInStorage.numTransactions = uint64(numTransactionsInBatch);
+    _batchInStorage.numL1Messages = uint64(numL1MessagesInBatch);
+
+    emit CommitBatch(publicInputHash);
+
+    return publicInputHash;
   }
 
   /// @dev Internal function to compute a unique batch id for mapping.

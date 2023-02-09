@@ -94,7 +94,7 @@ contract L1ETHGateway is Initializable, ScrollGatewayBase, IL1ETHGateway {
     bytes memory _data,
     uint256 _gasLimit
   ) internal nonReentrant {
-    require(_amount > 0, "deposit zero amount");
+    require(_amount > 0, "deposit zero eth");
 
     // 1. Extract real sender if this call is from L1GatewayRouter.
     address _from = msg.sender;

@@ -18,6 +18,11 @@ import { ScrollStandardERC20Factory } from "../../src/libraries/token/ScrollStan
 
 contract DeployL2BridgeContracts is Script {
     uint256 L2_DEPLOYER_PRIVATE_KEY = vm.envUint("L2_DEPLOYER_PRIVATE_KEY");
+    
+    address L2_MESSAGE_QUEUE_ADDR = vm.envAddress("L2_MESSAGE_QUEUE_ADDR");
+
+    address L1_BLOCK_CONTAINER_ADDR = vm.envAddress("L1_BLOCK_CONTAINER_ADDR");
+
     ProxyAdmin proxyAdmin;
 
     function run() external {
@@ -36,8 +41,7 @@ contract DeployL2BridgeContracts is Script {
     }
 
     function deployL2ScrollMessenger() internal {
-        address owner = vm.addr(L2_DEPLOYER_PRIVATE_KEY);
-        L2ScrollMessenger l2ScrollMessenger = new L2ScrollMessenger(owner);
+        L2ScrollMessenger l2ScrollMessenger = new L2ScrollMessenger(L1_BLOCK_CONTAINER_ADDR, L2_MESSAGE_QUEUE_ADDR);
 
         logAddress("L2_SCROLL_MESSENGER_ADDR", address(l2ScrollMessenger));
     }

@@ -38,7 +38,7 @@ contract L1ScrollMessenger is PausableUpgradeable, ScrollMessengerBase, IL1Scrol
   mapping(bytes32 => bool) public isMessageExecuted;
 
   /// @notice The address of L2ScrollMessenger contract in L2.
-  address public l2ScrollMessenger;
+  address public counterpart;
 
   /// @notice The address of fee vault, collecting cross domain messaging fee.
   address public feeVault;
@@ -54,12 +54,12 @@ contract L1ScrollMessenger is PausableUpgradeable, ScrollMessengerBase, IL1Scrol
    ***************/
 
   /// @notice Initialize the storage of L1ScrollMessenger.
-  /// @param _l2ScrollMessenger The address of L2ScrollMessenger contract in L2.
+  /// @param _counterpart The address of L2ScrollMessenger contract in L2.
   /// @param _feeVault The address of fee vault, which will be used to collect relayer fee.
   /// @param _rollup The address of ZKRollup contract.
   /// @param _messageQueue The address of L1MessageQueue contract.
   function initialize(
-    address _l2ScrollMessenger,
+    address _counterpart,
     address _feeVault,
     address _rollup,
     address _messageQueue
@@ -67,7 +67,7 @@ contract L1ScrollMessenger is PausableUpgradeable, ScrollMessengerBase, IL1Scrol
     PausableUpgradeable.__Pausable_init();
     ScrollMessengerBase._initialize();
 
-    l2ScrollMessenger = _l2ScrollMessenger;
+    counterpart = _counterpart;
     feeVault = _feeVault;
     rollup = _rollup;
     messageQueue = _messageQueue;
@@ -88,16 +88,16 @@ contract L1ScrollMessenger is PausableUpgradeable, ScrollMessengerBase, IL1Scrol
     uint256 _gasLimit
   ) external payable override whenNotPaused {
     address _messageQueue = messageQueue; // gas saving
-    address _l2ScrollMessenger = l2ScrollMessenger; // gas saving
+    address _counterpart = counterpart; // gas saving
 
     // compute the actual cross domain message calldata.
     uint256 _messageNonce = IL1MessageQueue(_messageQueue).nextCrossDomainMessageIndex();
-    bytes memory _xDomainCalldata = _encodeXDomainCalldata(msg.sender, _to, _message, _messageNonce);
+    bytes memory _xDomainCalldata = _encodeXDomainCalldata(msg.sender, _to, _value, _messageNonce, _message);
 
     // compute and deduct the messaging fee to fee vault.
     uint256 _fee = IL1MessageQueue(_messageQueue).estimateCrossDomainMessageFee(
       address(this),
-      _l2ScrollMessenger,
+      _counterpart,
       _xDomainCalldata,
       _gasLimit
     );
@@ -105,12 +105,12 @@ contract L1ScrollMessenger is PausableUpgradeable, ScrollMessengerBase, IL1Scrol
       require(msg.value >= _fee + _value, "insufficient msg.value");
     }
     if (_fee > 0) {
-      (bool _success, ) = feeVault.call{ value: _value }("");
+      (bool _success, ) = feeVault.call{ value: _fee }("");
       require(_success, "failed to deduct fee");
     }
 
     // append message to L2MessageQueue
-    IL1MessageQueue(_messageQueue).appendCrossDomainMessage(_l2ScrollMessenger, _gasLimit, _xDomainCalldata);
+    IL1MessageQueue(_messageQueue).appendCrossDomainMessage(_counterpart, _gasLimit, _xDomainCalldata);
 
     // record the message hash for future use.
     bytes32 _xDomainCalldataHash = keccak256(_xDomainCalldata);
@@ -130,11 +130,18 @@ contract L1ScrollMessenger is PausableUpgradeable, ScrollMessengerBase, IL1Scrol
   ) external override whenNotPaused onlyWhitelistedSender(msg.sender) {
     require(xDomainMessageSender == ScrollConstants.DEFAULT_XDOMAIN_MESSAGE_SENDER, "already in execution");
 
-    bytes32 _xDomainCalldataHash = keccak256(_encodeXDomainCalldata(_from, _to, _message, _nonce));
+    bytes32 _xDomainCalldataHash = keccak256(_encodeXDomainCalldata(_from, _to, _value, _nonce, _message));
     require(!isMessageExecuted[_xDomainCalldataHash], "Message successfully executed");
 
-    require(IZKRollup(rollup).isBatchFinalized(_proof.batchIndex), "invalid state proof");
-    require(ZkTrieVerifier.verifyMerkleProof(_proof.merkleProof), "invalid proof");
+    {
+      address _rollup = rollup;
+      require(IZKRollup(_rollup).isBatchFinalized(_proof.batchHash), "Batch not finalized");
+      bytes32 _messageRoot = IZKRollup(_rollup).getL2MessageRoot(_proof.batchHash);
+      require(
+        ZkTrieVerifier.verifyMerkleProof(_messageRoot, _xDomainCalldataHash, _nonce, _proof.merkleProof),
+        "invalid proof"
+      );
+    }
 
     // @note This usually will never happen, just in case.
     require(_from != xDomainMessageSender, "invalid message sender");

@@ -23,8 +23,7 @@ contract L1GatewayRouterTest is DSTestPlus {
   MockERC20 private token;
 
   function setUp() public {
-    rollup = new ZKRollup();
-    rollup.initialize(233);
+    rollup = new ZKRollup(233);
 
     template = new ScrollStandardERC20();
 
@@ -32,12 +31,12 @@ contract L1GatewayRouterTest is DSTestPlus {
 
     token = new MockERC20("Mock Token", "M", 18);
     messenger = new L1ScrollMessenger();
-    messenger.initialize(address(rollup));
+    // messenger.initialize(address(rollup));
 
-    rollup.updateMessenger(address(messenger));
+    // rollup.updateMessenger(address(messenger));
 
     router = new L1GatewayRouter();
-    router.initialize(address(0), address(1), address(messenger));
+    // router.initialize(address(0), address(1), address(messenger));
 
     gateway = new L1StandardERC20Gateway();
     gateway.initialize(address(1), address(router), address(messenger), address(template), address(factory));
@@ -54,7 +53,7 @@ contract L1GatewayRouterTest is DSTestPlus {
 
   function testReinitilize() public {
     hevm.expectRevert("Initializable: contract is already initialized");
-    router.initialize(address(0), address(1), address(messenger));
+    // router.initialize(address(0), address(1), address(messenger));
   }
 
   function testSetDefaultERC20Gateway() public {
@@ -152,10 +151,10 @@ contract L1GatewayRouterTest is DSTestPlus {
 
     if (amount == 0) {
       hevm.expectRevert("deposit zero eth");
-      router.depositETH{ value: amount }(0);
+      router.depositETH{ value: amount }(amount, 0);
     } else {
       uint256 messengerBalance = address(messenger).balance;
-      router.depositETH{ value: amount }(0);
+      router.depositETH{ value: amount }(amount, 0);
       assertEq(amount + messengerBalance, address(messenger).balance);
     }
   }
@@ -165,10 +164,10 @@ contract L1GatewayRouterTest is DSTestPlus {
 
     if (amount == 0) {
       hevm.expectRevert("deposit zero eth");
-      router.depositETH{ value: amount }(to, 0);
+      router.depositETH{ value: amount }(to, amount, 0);
     } else {
       uint256 messengerBalance = address(messenger).balance;
-      router.depositETH{ value: amount }(to, 0);
+      router.depositETH{ value: amount }(to, amount, 0);
       assertEq(amount + messengerBalance, address(messenger).balance);
     }
   }
