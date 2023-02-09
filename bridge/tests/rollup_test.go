@@ -3,8 +3,12 @@ package tests
 import (
 	"context"
 	"math/big"
-	"sync"
 	"testing"
+
+	"github.com/scroll-tech/go-ethereum/accounts/abi/bind"
+	"github.com/scroll-tech/go-ethereum/common"
+	"github.com/scroll-tech/go-ethereum/core/types"
+	"github.com/stretchr/testify/assert"
 
 	"scroll-tech/database"
 	"scroll-tech/database/migrate"
@@ -12,11 +16,6 @@ import (
 
 	"scroll-tech/bridge/l1"
 	"scroll-tech/bridge/l2"
-
-	"github.com/scroll-tech/go-ethereum/accounts/abi/bind"
-	"github.com/scroll-tech/go-ethereum/common"
-	"github.com/scroll-tech/go-ethereum/core/types"
-	"github.com/stretchr/testify/assert"
 )
 
 func testCommitBatchAndFinalizeBatch(t *testing.T) {
@@ -80,11 +79,8 @@ func testCommitBatchAndFinalizeBatch(t *testing.T) {
 	err = dbTx.Commit()
 	assert.NoError(t, err)
 
-	var wg = sync.WaitGroup{}
-	wg.Add(1)
 	// process pending batch and check status
-	l2Relayer.ProcessPendingBatches(&wg)
-	wg.Wait()
+	l2Relayer.ProcessPendingBatches()
 
 	status, err := db.GetRollupStatus(batchID)
 	assert.NoError(t, err)
@@ -113,10 +109,8 @@ func testCommitBatchAndFinalizeBatch(t *testing.T) {
 	err = db.UpdateProvingStatus(batchID, orm.ProvingTaskVerified)
 	assert.NoError(t, err)
 
-	wg.Add(1)
 	// process committed batch and check status
-	l2Relayer.ProcessCommittedBatches(&wg)
-	wg.Wait()
+	l2Relayer.ProcessCommittedBatches()
 
 	status, err = db.GetRollupStatus(batchID)
 	assert.NoError(t, err)
