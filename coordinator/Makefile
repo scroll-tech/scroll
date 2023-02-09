@@ -35,5 +35,8 @@ clean: ## Empty out the bin folder
 docker:
 	DOCKER_BUILDKIT=1 docker build -t scrolltech/${IMAGE_NAME}:${IMAGE_VERSION} ${REPO_ROOT_DIR}/ -f ${REPO_ROOT_DIR}/build/dockerfiles/coordinator.Dockerfile
 
+docker_clean:
+	DOCKER_BUILDKIT=1 docker build --no-cache -t scrolltech/${IMAGE_NAME}:${IMAGE_VERSION} ${REPO_ROOT_DIR}/ -f ${REPO_ROOT_DIR}/build/dockerfiles/coordinator.Dockerfile
+
 docker_push:
 	docker push scrolltech/${IMAGE_NAME}:${IMAGE_VERSION}

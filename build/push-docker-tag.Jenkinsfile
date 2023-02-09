@@ -42,8 +42,8 @@ pipeline {
                                     return;
                                 }
                                 sh "docker login --username=${dockerUser} --password=${dockerPassword}"
-                                sh "make -C bridge docker"
-                                sh "make -C coordinator docker"
+                                sh "make -C bridge docker_clean"
+                                sh "make -C coordinator docker_clean"
                                 sh "docker tag scrolltech/bridge:latest scrolltech/bridge:${TAGNAME}"
                                 sh "docker tag scrolltech/coordinator:latest scrolltech/coordinator:${TAGNAME}"
                                 sh "docker push scrolltech/bridge:${TAGNAME}"
