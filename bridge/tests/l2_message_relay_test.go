@@ -8,6 +8,8 @@ import (
 	"scroll-tech/database/orm"
 	"testing"
 
+	"scroll-tech/bridge/utils"
+
 	"scroll-tech/bridge/l1"
 	"scroll-tech/bridge/l2"
 
@@ -33,11 +35,12 @@ func testRelayL2MessageSucceed(t *testing.T) {
 	defer l2Relayer.Stop()
 
 	// Create L2Watcher
-	l2Watcher := l2.NewL2WatcherClient(context.Background(), l2Client, 0, l2Cfg.BatchProposerConfig, l2Cfg.L2MessengerAddress, db)
+	confirmations := utils.ConfirmationParams{Type: utils.BlockNumberConfirmation, Number: 0}
+	l2Watcher := l2.NewL2WatcherClient(context.Background(), l2Client, confirmations, l2Cfg.BatchProposerConfig, l2Cfg.L2MessengerAddress, db)
 
 	// Create L1Watcher
 	l1Cfg := cfg.L1Config
-	l1Watcher := l1.NewWatcher(context.Background(), l1Client, 0, 0, l1Cfg.L1MessengerAddress, l1Cfg.RollupContractAddress, db)
+	l1Watcher := l1.NewWatcher(context.Background(), l1Client, 0, confirmations, l1Cfg.L1MessengerAddress, l1Cfg.RollupContractAddress, db)
 
 	// send message through l2 messenger contract
 	nonce, err := l2MessengerInstance.MessageNonce(&bind.CallOpts{})
