@@ -26,7 +26,7 @@ func init() {
 	app = cli.NewApp()
 
 	app.Action = action
-	app.Name = "message-replayer"
+	app.Name = "message-relayer"
 	app.Usage = "The Scroll Message Relayer"
 	app.Description = "Message Relayer contains two main service: 1) relay l1 message to l2. 2) relay l2 message to l1."
 	app.Version = version.Version
