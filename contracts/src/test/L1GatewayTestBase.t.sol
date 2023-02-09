@@ -25,6 +25,7 @@ abstract contract L1GatewayTestBase is DSTestPlus {
   // from L1ScrollMessenger
   event SentMessage(address indexed sender, address indexed target, uint256 value, bytes message, uint256 messageNonce);
   event RelayedMessage(bytes32 indexed messageHash);
+  event FailedRelayedMessage(bytes32 indexed messageHash);
 
   L1ScrollMessenger internal l1Messenger;
   L1MessageQueue internal messageQueue;

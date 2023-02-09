@@ -223,6 +223,57 @@ contract L1ETHGatewayTest is L1GatewayTestBase {
     }
   }
 
+  function testFinalizeWithdrawETHFailed(
+    address sender,
+    address recipient,
+    uint256 amount,
+    bytes memory dataToCall
+  ) public {
+    amount = bound(amount, 1, address(this).balance / 2);
+
+    // deposit some ETH to L1ScrollMessenger
+    gateway.depositETH{ value: amount }(amount, 0);
+
+    // do finalize withdraw eth
+    bytes memory message = abi.encodeWithSelector(
+      IL1ETHGateway.finalizeWithdrawETH.selector,
+      sender,
+      recipient,
+      amount,
+      dataToCall
+    );
+    bytes memory xDomainCalldata = abi.encodeWithSignature(
+      "relayMessage(address,address,uint256,uint256,bytes)",
+      address(uint160(address(conterpartGateway)) + 1),
+      address(gateway),
+      amount,
+      0,
+      message
+    );
+
+    prepareL2MessageRoot(keccak256(xDomainCalldata));
+
+    IL1ScrollMessenger.L2MessageProof memory proof;
+    proof.batchHash = rollup.lastFinalizedBatchHash();
+
+    // revert when caller is not messenger
+    hevm.expectRevert("only messenger can call");
+    gateway.finalizeWithdrawETH(sender, recipient, amount, dataToCall);
+
+    // conterpart is not L2ETHGateway
+    // emit FailedRelayedMessage from L1ScrollMessenger
+    hevm.expectEmit(true, false, false, true);
+    emit FailedRelayedMessage(keccak256(xDomainCalldata));
+    l1Messenger.relayMessageWithProof(
+      address(uint160(address(conterpartGateway)) + 1),
+      address(gateway),
+      amount,
+      0,
+      message,
+      proof
+    );
+  }
+
   function testFinalizeWithdrawETH(
     address sender,
     address recipient,
@@ -245,6 +296,7 @@ contract L1ETHGatewayTest is L1GatewayTestBase {
     // deposit some ETH to L1ScrollMessenger
     gateway.depositETH{ value: amount }(amount, 0);
 
+    // do finalize withdraw eth
     bytes memory message = abi.encodeWithSelector(
       IL1ETHGateway.finalizeWithdrawETH.selector,
       sender,

@@ -45,7 +45,7 @@ type WatcherClient struct {
 
 	orm database.OrmFactory
 
-	confirmations    uint64
+	confirmations    utils.ConfirmationParams
 	messengerAddress common.Address
 	messengerABI     *abi.ABI
 
@@ -59,7 +59,7 @@ type WatcherClient struct {
 }
 
 // NewL2WatcherClient take a l2geth instance to generate a l2watcherclient instance
-func NewL2WatcherClient(ctx context.Context, client *ethclient.Client, confirmations uint64, bpCfg *config.BatchProposerConfig, messengerAddress common.Address, orm database.OrmFactory) *WatcherClient {
+func NewL2WatcherClient(ctx context.Context, client *ethclient.Client, confirmations utils.ConfirmationParams, bpCfg *config.BatchProposerConfig, messengerAddress common.Address, orm database.OrmFactory) *WatcherClient {
 	savedHeight, err := orm.GetLayer2LatestWatchedHeight()
 	if err != nil {
 		log.Warn("fetch height from db failed", "err", err)
@@ -100,17 +100,10 @@ func (w *WatcherClient) Start() {
 					return
 
 				case <-ticker.C:
-					// get current height
-					number, err := w.BlockNumber(ctx)
+					number, err := utils.GetLatestConfirmedBlockNumber(ctx, w.Client, w.confirmations)
 					if err != nil {
-						log.Error("failed to get_BlockNumber", "err", err)
+						log.Error("failed to get block number", "err", err)
 						continue
-					}
-
-					if number >= w.confirmations {
-						number = number - w.confirmations
-					} else {
-						number = 0
 					}
 
 					w.tryFetchRunningMissingBlocks(ctx, number)
@@ -129,17 +122,10 @@ func (w *WatcherClient) Start() {
 					return
 
 				case <-ticker.C:
-					// get current height
-					number, err := w.BlockNumber(ctx)
+					number, err := utils.GetLatestConfirmedBlockNumber(ctx, w.Client, w.confirmations)
 					if err != nil {
-						log.Error("failed to get_BlockNumber", "err", err)
+						log.Error("failed to get block number", "err", err)
 						continue
-					}
-
-					if number >= w.confirmations {
-						number = number - w.confirmations
-					} else {
-						number = 0
 					}
 
 					w.FetchContractEvent(number)
