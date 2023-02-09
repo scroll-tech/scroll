@@ -95,12 +95,12 @@ func NewLayer2Relayer(ctx context.Context, db database.OrmFactory, cfg *config.R
 
 // GetRollupCh
 func (r *Layer2Relayer) GetRollupCh() <-chan *sender.Confirmation {
-	return r.rollupCh
+	return r.rollupSender.ConfirmChan()
 }
 
 // GetMsgConfirmCh returns the messageCh in layer2Relayer
 func (r *Layer2Relayer) GetMsgConfirmCh() <-chan *sender.Confirmation {
-	return r.messageCh
+	return r.messageSender.ConfirmChan()
 }
 
 const processMsgLimit = 100
