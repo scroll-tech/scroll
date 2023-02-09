@@ -58,7 +58,7 @@ type FeeData struct {
 // PendingTransaction submitted but pending transactions
 type PendingTransaction struct {
 	submitAt uint64
-	msg      interface{}
+	txMeta      interface{}
 	feeData  *FeeData
 	signer   *bind.TransactOpts
 	tx       *types.Transaction
