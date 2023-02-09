@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math/big"
 	"runtime"
+	"time"
 
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/log"
@@ -34,19 +35,21 @@ BEGIN:
 	// msgs are sorted by nonce in increasing order
 	msgs, err := r.db.GetL2Messages(
 		map[string]interface{}{"status": orm.MsgSubmitted},
-		fmt.Sprintf("AND height<=%d", blockNumber),
+		fmt.Sprintf("AND height < %d", blockNumber),
 		fmt.Sprintf("ORDER BY height DESC LIMIT %d", r.messageSender.PendingLimit()),
 	)
 	if err != nil || len(msgs) == 0 {
 		return err
 	}
 
-	for _, msg := range msgs {
-		// TODO: messageSender can't receive txs any more, sleep a while or just return?
+	for msg := msgs[0]; len(msgs) > 0; {
+		// If pending txs pool is full, wait a while and retry.
 		if r.messageSender.IsFull() {
 			log.Error("layer2 message tx sender is full")
-			return nil
+			time.Sleep(time.Millisecond * 500)
+			continue
 		}
+		msg, msgs = msgs[0], msgs[1:]
 
 		blockNumber = mathutil.MinUint64(blockNumber, msg.Height)
 		data, err := r.messagePack(msg, batch.Index)

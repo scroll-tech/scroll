@@ -93,7 +93,7 @@ func (m *l1MessageOrm) GetL1ProcessedNonce() (int64, error) {
 func (m *l1MessageOrm) GetL1Messages(fields map[string]interface{}, args ...string) ([]*L1Message, error) {
 	query := "SELECT nonce, msg_hash, height, sender, target, value, fee, gas_limit, deadline, calldata, layer1_hash, layer2_hash, status FROM l2_message WHERE 1 = 1 "
 	for key := range fields {
-		query += fmt.Sprintf("AND %s=:%s ", key, key)
+		query += fmt.Sprintf(" AND %s=:%s ", key, key)
 	}
 	query = strings.Join(append([]string{query}, args...), " ")
 

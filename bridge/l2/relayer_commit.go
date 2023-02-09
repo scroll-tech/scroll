@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"time"
 
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/common/math"
@@ -21,19 +22,21 @@ func (r *Layer2Relayer) checkCommittingBatches() error {
 BEGIN:
 	batches, err := r.db.GetBlockBatches(
 		map[string]interface{}{"rollup_status": orm.RollupCommitting},
-		fmt.Sprintf("AND end_block_number <= %d", blockNumber),
+		fmt.Sprintf("AND end_block_number < %d", blockNumber),
 		fmt.Sprintf("ORDER BY end_block_number DESC LIMIT %d", 10),
 	)
 	if err != nil || len(batches) == 0 {
 		return err
 	}
 
-	for _, batch := range batches {
-		// TODO: messageSender can't receive txs any more, sleep a while or just return?
+	for batch := batches[0]; len(batches) > 0; {
+		// If pending txs pool is full, wait a while and retry.
 		if r.rollupSender.IsFull() {
 			log.Error("layer2 committed tx sender is full")
-			return nil
+			time.Sleep(time.Millisecond * 500)
+			continue
 		}
+		batch, batches = batches[0], batches[1:]
 
 		id := batch.ID
 		blockNumber = mathutil.MinUint64(blockNumber, batch.EndBlockNumber)

@@ -79,19 +79,21 @@ func (r *Layer1Relayer) checkSubmittedMessages() error {
 BEGIN:
 	msgs, err := r.db.GetL1Messages(
 		map[string]interface{}{"status": orm.MsgSubmitted},
-		fmt.Sprintf("AND height<=%d", blockNumber),
+		fmt.Sprintf("AND height < %d", blockNumber),
 		fmt.Sprintf("ORDER BY height DESC LIMIT %d", 100),
 	)
 	if err != nil || len(msgs) == 0 {
 		return err
 	}
 
-	for _, msg := range msgs {
-		// TODO: messageSender can't receive txs any more, sleep a while or just return?
+	for msg := msgs[0]; len(msgs) > 0; {
+		// If pending txs pool is full, wait a while and retry.
 		if r.sender.IsFull() {
-			log.Error("layer1 submitted tx sender is full")
-			return nil
+			log.Warn("layer1 submitted tx sender is full")
+			time.Sleep(time.Millisecond * 500)
+			continue
 		}
+		msg, msgs = msgs[0], msgs[1:]
 
 		blockNumber = mathutil.MinUint64(blockNumber, msg.Height)
 
