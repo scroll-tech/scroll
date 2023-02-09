@@ -19,7 +19,7 @@ func testCreateNewL1Relayer(t *testing.T) {
 	assert.NoError(t, migrate.ResetDB(db.GetDB().DB))
 	defer db.Close()
 
-	relayer, err := NewLayer1Relayer(context.Background(), 1, db, cfg.L2Config.RelayerConfig)
+	relayer, err := NewLayer1Relayer(context.Background(), db, cfg.L2Config.RelayerConfig)
 	assert.NoError(t, err)
 	defer relayer.Stop()
 
