@@ -292,14 +292,6 @@ func (m *Manager) handleZkProof(pk string, msg *message.ProofDetail) error {
 	}
 
 	var err error
-	tasks, err := m.orm.GetBlockBatches(map[string]interface{}{"id": msg.ID})
-	if len(tasks) == 0 {
-		if err != nil {
-			log.Error("failed to get tasks", "error", err)
-		}
-		return err
-	}
-
 	success, err = m.verifier.VerifyProof(msg.Proof)
 	if err != nil {
 		// TODO: this is only a temp workaround for testnet, we should return err in real cases

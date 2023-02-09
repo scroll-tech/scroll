@@ -41,7 +41,7 @@ var (
 
 // Confirmation struct used to indicate transaction confirmation details
 type Confirmation struct {
-	Msg          interface{}
+	TxMeta       interface{}
 	IsSuccessful bool
 	TxHash       common.Hash
 }
@@ -58,7 +58,7 @@ type FeeData struct {
 // PendingTransaction submitted but pending transactions
 type PendingTransaction struct {
 	submitAt uint64
-	txMeta      interface{}
+	txMeta   interface{}
 	feeData  *FeeData
 	signer   *bind.TransactOpts
 	tx       *types.Transaction
@@ -219,7 +219,7 @@ func (s *Sender) SendTransaction(msg interface{}, target *common.Address, value 
 		// add pending transaction to queue
 		pending := &PendingTransaction{
 			tx:       tx,
-			msg:      msg,
+			txMeta:   msg,
 			signer:   auth,
 			submitAt: atomic.LoadUint64(&s.blockNumber),
 			feeData:  feeData,
@@ -375,7 +375,7 @@ func (s *Sender) CheckPendingTransaction(header *types.Header) {
 				s.pendingTxs.Delete(key)
 				// send confirm message
 				s.confirmCh <- &Confirmation{
-					Msg:          pending.msg,
+					TxMeta:       pending.txMeta,
 					IsSuccessful: receipt.Status == types.ReceiptStatusSuccessful,
 					TxHash:       pending.tx.Hash(),
 				}
@@ -409,7 +409,7 @@ func (s *Sender) CheckPendingTransaction(header *types.Header) {
 					if (err == nil) && (receipt != nil) {
 						// send confirm message
 						s.confirmCh <- &Confirmation{
-							Msg:          pending.msg,
+							TxMeta:       pending.txMeta,
 							IsSuccessful: receipt.Status == types.ReceiptStatusSuccessful,
 							TxHash:       pending.tx.Hash(),
 						}

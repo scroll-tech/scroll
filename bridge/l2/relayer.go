@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"math/big"
 	"runtime"
-	"sync"
 	"time"
 
 	// not sure if this will make problems when relay with l1geth
@@ -380,18 +379,7 @@ func (r *Layer2Relayer) Start() {
 
 		for {
 			select {
-			case <-ticker.C:
-				var wg = sync.WaitGroup{}
-				wg.Add(3)
-				go r.ProcessSavedEvents(&wg)
-				go r.ProcessPendingBatches(&wg)
-				go r.ProcessCommittedBatches(&wg)
-				wg.Wait()
-			case confirmation := <-r.messageSender.ConfirmChan():
-				r.handleConfirmation(confirmation)
-			case confirmation := <-r.rollupSender.ConfirmChan():
-				r.handleConfirmation(confirmation)
-			case <-r.stopCh:
+			case <-ctx.Done():
 				return
 			case <-ticker.C:
 				f()
@@ -411,9 +399,9 @@ func (r *Layer2Relayer) Start() {
 				select {
 				case <-ctx.Done():
 					return
-				case confirmation := <-r.messageCh:
+				case confirmation := <-r.messageSender.ConfirmChan():
 					r.handleConfirmation(confirmation)
-				case confirmation := <-r.rollupCh:
+				case confirmation := <-r.messageSender.ConfirmChan():
 					r.handleConfirmation(confirmation)
 				}
 			}
@@ -439,24 +427,24 @@ func (r *Layer2Relayer) handleConfirmation(confirmation *sender.Confirmation) {
 		log.Warn("transaction confirmed but failed in layer1", "confirmation", confirmation)
 		return
 	}
-	msg, _ := confirmation.Msg.(*confirmMsg)
-	transactionType := msg.TxType
+	txMeta, _ := confirmation.TxMeta.(*confirmMsg)
+	transactionType := txMeta.TxType
 	switch transactionType {
 	case "MessageRelay":
-		err := r.db.UpdateLayer2StatusAndLayer1Hash(r.ctx, msg.ID, orm.MsgConfirmed, confirmation.TxHash.String())
+		err := r.db.UpdateLayer2StatusAndLayer1Hash(r.ctx, txMeta.ID, orm.MsgConfirmed, confirmation.TxHash.String())
 		if err != nil {
-			log.Warn("UpdateLayer2StatusAndLayer1Hash failed", "msgHash", msg.ID, "err", err)
+			log.Warn("UpdateLayer2StatusAndLayer1Hash failed", "msgHash", txMeta.ID, "err", err)
 		}
 	case "BatchCommitment":
-		err := r.db.UpdateCommitTxHashAndRollupStatus(r.ctx, msg.ID, confirmation.TxHash.String(), orm.RollupCommitted)
+		err := r.db.UpdateCommitTxHashAndRollupStatus(r.ctx, txMeta.ID, confirmation.TxHash.String(), orm.RollupCommitted)
 		if err != nil {
-			log.Warn("UpdateCommitTxHashAndRollupStatus failed", "batch_id", msg.ID, "err", err)
+			log.Warn("UpdateCommitTxHashAndRollupStatus failed", "batch_id", txMeta.ID, "err", err)
 		}
 	case "ProofFinalization":
 		// @todo handle db error
-		err := r.db.UpdateFinalizeTxHashAndRollupStatus(r.ctx, msg.ID, confirmation.TxHash.String(), orm.RollupFinalized)
+		err := r.db.UpdateFinalizeTxHashAndRollupStatus(r.ctx, txMeta.ID, confirmation.TxHash.String(), orm.RollupFinalized)
 		if err != nil {
-			log.Warn("UpdateFinalizeTxHashAndRollupStatus failed", "batch_id", msg.ID, "err", err)
+			log.Warn("UpdateFinalizeTxHashAndRollupStatus failed", "batch_id", txMeta.ID, "err", err)
 		}
 	}
 	log.Info("transaction confirmed in layer1", "type", transactionType, "confirmation", confirmation)
