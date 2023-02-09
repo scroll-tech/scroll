@@ -13,7 +13,8 @@ import (
 	"scroll-tech/bridge/config"
 )
 
-type batchProposer struct {
+// BatchProposer is a type to create and deal with batch block saving process
+type BatchProposer struct {
 	mutex sync.Mutex
 
 	orm database.OrmFactory
@@ -27,8 +28,8 @@ type batchProposer struct {
 	skippedOpcodes      map[string]struct{}
 }
 
-func newBatchProposer(cfg *config.BatchProposerConfig, orm database.OrmFactory) *batchProposer {
-	return &batchProposer{
+func newBatchProposer(cfg *config.BatchProposerConfig, orm database.OrmFactory) *BatchProposer {
+	return &BatchProposer{
 		mutex:               sync.Mutex{},
 		orm:                 orm,
 		batchTimeSec:        cfg.BatchTimeSec,
@@ -40,7 +41,8 @@ func newBatchProposer(cfg *config.BatchProposerConfig, orm database.OrmFactory) 
 	}
 }
 
-func (w *batchProposer) tryProposeBatch() {
+// TryProposeBatch tries update batched blocks into db
+func (w *BatchProposer) TryProposeBatch() {
 	w.mutex.Lock()
 	defer w.mutex.Unlock()
 
@@ -98,7 +100,7 @@ func (w *batchProposer) tryProposeBatch() {
 	}
 }
 
-func (w *batchProposer) createBatchForBlocks(blocks []*orm.BlockInfo) error {
+func (w *BatchProposer) createBatchForBlocks(blocks []*orm.BlockInfo) error {
 	dbTx, err := w.orm.Beginx()
 	if err != nil {
 		return err

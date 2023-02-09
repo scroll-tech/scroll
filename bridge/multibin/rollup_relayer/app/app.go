@@ -14,7 +14,7 @@ import (
 	"scroll-tech/common/version"
 
 	"scroll-tech/bridge/config"
-	messagerelayer "scroll-tech/bridge/multibin/message-relayer"
+	rolluprelayer "scroll-tech/bridge/multibin/rollup_relayer"
 )
 
 var (
@@ -26,9 +26,8 @@ func init() {
 	app = cli.NewApp()
 
 	app.Action = action
-	app.Name = "message-relayer"
-	app.Usage = "The Scroll Message Relayer"
-	app.Description = "Message Relayer contains two main service: 1) relay l1 message to l2. 2) relay l2 message to l1."
+	app.Name = "rollup-relayer"
+	app.Usage = "The Scroll Rollup Relayer"
 	app.Version = version.Version
 	app.Flags = append(app.Flags, utils.CommonFlags...)
 	app.Commands = []*cli.Command{}
@@ -52,21 +51,12 @@ func action(ctx *cli.Context) error {
 		log.Crit("failed to init db connection", "err", err)
 	}
 
-	var (
-		l1relayer *messagerelayer.L1MsgRelayer
-		l2relayer *messagerelayer.L2MsgRelayer
-	)
-	l1relayer, err = messagerelayer.NewL1MsgRelayer(ctx.Context, int64(cfg.L1Config.Confirmations), ormFactory, cfg.L1Config.RelayerConfig)
+	rollupRelayer, err := rolluprelayer.NewL2RollupRelayer(ctx.Context, cfg.L2Config.RelayerConfig, ormFactory)
 	if err != nil {
-		log.Crit("failed to create new l1 relayer", "config file", cfgFile, "error", err)
-	}
-	l2relayer, err = messagerelayer.NewL2MsgRelayer(ctx.Context, ormFactory, cfg.L2Config.RelayerConfig)
-	if err != nil {
-		log.Crit("failed to create new l2 relayer", "config file", cfgFile, "error", err)
+		return err
 	}
 	defer func() {
-		l1relayer.Stop()
-		l2relayer.Stop()
+		rollupRelayer.Stop()
 		err = ormFactory.Close()
 		if err != nil {
 			log.Error("can not close ormFactory", "error", err)
@@ -74,9 +64,8 @@ func action(ctx *cli.Context) error {
 	}()
 
 	// Start all modules.
-	l1relayer.Start()
-	l2relayer.Start()
-	log.Info("Start message_relayer successfully")
+	rollupRelayer.Start()
+	log.Info("Start rollup_relayer successfully")
 
 	// Catch CTRL-C to ensure a graceful shutdown.
 	interrupt := make(chan os.Signal, 1)
@@ -88,7 +77,7 @@ func action(ctx *cli.Context) error {
 	return nil
 }
 
-// Run run message_relayer cmd instance.
+// Run run rollup relayer cmd instance.
 func Run() {
 	if err := app.Run(os.Args); err != nil {
 		_, _ = fmt.Fprintln(os.Stderr, err)
