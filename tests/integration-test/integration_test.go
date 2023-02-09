@@ -61,7 +61,7 @@ func testMonitorMetrics(t *testing.T) {
 	runDBCliApp(t, "migrate", "current version:")
 
 	// Start bridge process with metrics server.
-	port, _ := rand.Int(rand.Reader, big.NewInt(2000))
+	port, _ := rand.Int(rand.Reader, big.NewInt(10000))
 	svrPort := strconv.FormatInt(port.Int64()+50000, 10)
 	bridgeCmd := runBridgeApp(t, "--metrics", "--metrics.addr", "localhost", "--metrics.port", svrPort)
 	bridgeCmd.RunApp(func() bool { return bridgeCmd.WaitResult(time.Second*20, "Start bridge successfully") })
