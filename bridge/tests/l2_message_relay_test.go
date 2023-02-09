@@ -6,7 +6,6 @@ import (
 	"scroll-tech/database"
 	"scroll-tech/database/migrate"
 	"scroll-tech/database/orm"
-	"sync"
 	"testing"
 
 	"scroll-tech/bridge/l1"
@@ -24,9 +23,6 @@ func testRelayL2MessageSucceed(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(db.GetDB().DB))
 	defer db.Close()
-
-	var wg sync.WaitGroup
-	wg.Add(3)
 
 	prepareContracts(t)
 
@@ -111,7 +107,7 @@ func testRelayL2MessageSucceed(t *testing.T) {
 	assert.NoError(t, err)
 
 	// process pending batch and check status
-	l2Relayer.ProcessPendingBatches(&wg)
+	l2Relayer.ProcessPendingBatches()
 	status, err := db.GetRollupStatus(batchID)
 	assert.NoError(t, err)
 	assert.Equal(t, orm.RollupCommitting, status)
@@ -132,7 +128,7 @@ func testRelayL2MessageSucceed(t *testing.T) {
 	assert.Equal(t, orm.RollupCommitted, status)
 
 	// process committed batch and check status
-	l2Relayer.ProcessCommittedBatches(&wg)
+	l2Relayer.ProcessCommittedBatches()
 	status, err = db.GetRollupStatus(batchID)
 	assert.NoError(t, err)
 	assert.Equal(t, orm.RollupFinalizing, status)
@@ -153,7 +149,7 @@ func testRelayL2MessageSucceed(t *testing.T) {
 	assert.Equal(t, orm.RollupFinalized, status)
 
 	// process l2 messages
-	l2Relayer.ProcessSavedEvents(&wg)
+	l2Relayer.ProcessSavedEvents()
 	msg, err = db.GetL2MessageByNonce(nonce.Uint64())
 	assert.NoError(t, err)
 	assert.Equal(t, msg.Status, orm.MsgSubmitted)
