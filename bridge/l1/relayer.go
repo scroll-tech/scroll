@@ -86,7 +86,7 @@ BEGIN:
 		return err
 	}
 
-	for msg := msgs[0]; len(msgs) > 0; {
+	for msg := msgs[0]; len(msgs) > 0; { //nolint:staticcheck
 		// If pending txs pool is full, wait a while and retry.
 		if r.sender.IsFull() {
 			log.Warn("layer1 submitted tx sender is full")

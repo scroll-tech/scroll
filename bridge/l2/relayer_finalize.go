@@ -33,7 +33,7 @@ BEGIN:
 		return err
 	}
 
-	for batch := batches[0]; len(batches) > 0; {
+	for batch := batches[0]; len(batches) > 0; { //nolint:staticcheck
 		// If pending txs pool is full, wait a while and retry.
 		if r.rollupSender.IsFull() {
 			log.Warn("layer2 finalized tx sender is full")
