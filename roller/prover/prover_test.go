@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"scroll-tech/common/message"
 	"testing"
 
 	"github.com/scroll-tech/go-ethereum/core/types"
@@ -49,7 +50,8 @@ func TestFFI(t *testing.T) {
 		as.NoError(json.Unmarshal(byt, trace))
 		traces = append(traces, trace)
 	}
-	proof, err := prover.Prove(traces)
+	task := &message.TaskMsg{ID: "test", Traces: traces}
+	proof, err := prover.Prove(task)
 	as.NoError(err)
 	t.Log("prove success")
 
