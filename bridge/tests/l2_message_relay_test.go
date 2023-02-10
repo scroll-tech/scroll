@@ -3,20 +3,20 @@ package tests
 import (
 	"context"
 	"math/big"
-	"scroll-tech/database"
-	"scroll-tech/database/migrate"
-	"scroll-tech/database/orm"
 	"testing"
-
-	"scroll-tech/bridge/utils"
-
-	"scroll-tech/bridge/l1"
-	"scroll-tech/bridge/l2"
 
 	"github.com/scroll-tech/go-ethereum/accounts/abi/bind"
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/core/types"
+	"github.com/scroll-tech/go-ethereum/rpc"
 	"github.com/stretchr/testify/assert"
+
+	"scroll-tech/database"
+	"scroll-tech/database/migrate"
+	"scroll-tech/database/orm"
+
+	"scroll-tech/bridge/l1"
+	"scroll-tech/bridge/l2"
 )
 
 func testRelayL2MessageSucceed(t *testing.T) {
@@ -35,7 +35,7 @@ func testRelayL2MessageSucceed(t *testing.T) {
 	defer l2Relayer.Stop()
 
 	// Create L2Watcher
-	confirmations := utils.ConfirmationParams{Type: utils.BlockNumberConfirmation, Number: 0}
+	confirmations := rpc.LatestBlockNumber
 	l2Watcher := l2.NewL2WatcherClient(context.Background(), l2Client, confirmations, l2Cfg.BatchProposerConfig, l2Cfg.L2MessengerAddress, db)
 
 	// Create L1Watcher
