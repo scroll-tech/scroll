@@ -161,7 +161,6 @@ func (w *WatcherClient) Stop() {
 
 const blockTracesFetchLimit = uint64(10)
 
-// try fetch missing blocks if inconsistent
 // TryFetchRunningMissingBlocks fetches the block traces from counterpart blockchain.(eg l1->l2, l2->l1)
 func (w *WatcherClient) TryFetchRunningMissingBlocks(ctx context.Context, blockHeight uint64) {
 	// Get newest block in DB. must have blocks at that time.

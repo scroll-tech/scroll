@@ -93,7 +93,7 @@ func NewLayer2Relayer(ctx context.Context, db database.OrmFactory, cfg *config.R
 	}, nil
 }
 
-// GetRollupCh
+// GetRollupCh return the rollupCh in layer2Relayer
 func (r *Layer2Relayer) GetRollupCh() <-chan *sender.Confirmation {
 	return r.rollupSender.ConfirmChan()
 }
