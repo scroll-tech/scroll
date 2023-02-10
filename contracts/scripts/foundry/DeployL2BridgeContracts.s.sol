@@ -21,6 +21,16 @@ contract DeployL2BridgeContracts is Script {
     uint256 L2_DEPLOYER_PRIVATE_KEY = vm.envUint("L2_DEPLOYER_PRIVATE_KEY");
     ProxyAdmin proxyAdmin;
 
+    address L2_SCROLL_MESSENGER_PREDEPLOY_ADDR = vm.envOr("L2_SCROLL_MESSENGER_PREDEPLOY_ADDR", address(0));
+    address L2_PROXY_ADMIN_PREDEPLOY_ADDR = vm.envOr("L2_PROXY_ADMIN_PREDEPLOY_ADDR", address(0));
+    address L2_STANDARD_ERC20_GATEWAY_PROXY_PREDEPLOY_ADDR = vm.envOr("L2_STANDARD_ERC20_GATEWAY_PROXY_PREDEPLOY_ADDR", address(0));
+    address L2_GATEWAY_ROUTER_PROXY_PREDEPLOY_ADDR = vm.envOr("L2_GATEWAY_ROUTER_PROXY_PREDEPLOY_ADDR", address(0));
+    address L2_SCROLL_STANDARD_ERC20_FACTORY_PREDEPLOY_ADDR = vm.envOr("L2_SCROLL_STANDARD_ERC20_FACTORY_PREDEPLOY_ADDR", address(0));
+    address L2_CUSTOM_ERC20_GATEWAY_PROXY_PREDEPLOY_ADDR = vm.envOr("L2_CUSTOM_ERC20_GATEWAY_PROXY_PREDEPLOY_ADDR", address(0));
+    address L2_ERC721_GATEWAY_PROXY_PREDEPLOY_ADDR = vm.envOr("L2_ERC721_GATEWAY_PROXY_PREDEPLOY_ADDR", address(0));
+    address L2_ERC1155_GATEWAY_PROXY_PREDEPLOY_ADDR = vm.envOr("L2_ERC1155_GATEWAY_PROXY_PREDEPLOY_ADDR", address(0));
+    address L2_WHITELIST_PREDEPLOY_ADDR = vm.envOr("L2_WHITELIST_PREDEPLOY_ADDR", address(0));
+
     function run() external {
         vm.startBroadcast(L2_DEPLOYER_PRIVATE_KEY);
 
@@ -38,6 +48,11 @@ contract DeployL2BridgeContracts is Script {
     }
 
     function deployL2ScrollMessenger() internal {
+        if (L2_SCROLL_MESSENGER_PREDEPLOY_ADDR != address(0)) {
+            logAddress("L2_SCROLL_MESSENGER_ADDR", address(L2_SCROLL_MESSENGER_PREDEPLOY_ADDR));
+            return;
+        }
+
         address owner = vm.addr(L2_DEPLOYER_PRIVATE_KEY);
         L2ScrollMessenger l2ScrollMessenger = new L2ScrollMessenger(owner);
 
@@ -45,12 +60,22 @@ contract DeployL2BridgeContracts is Script {
     }
 
     function deployProxyAdmin() internal {
+        if (L2_PROXY_ADMIN_PREDEPLOY_ADDR != address(0)) {
+            logAddress("L2_PROXY_ADMIN_ADDR", address(L2_PROXY_ADMIN_PREDEPLOY_ADDR));
+            return;
+        }
+
         proxyAdmin = new ProxyAdmin();
 
         logAddress("L2_PROXY_ADMIN_ADDR", address(proxyAdmin));
     }
 
     function deployL2StandardERC20Gateway() internal {
+        if (L2_STANDARD_ERC20_GATEWAY_PROXY_PREDEPLOY_ADDR != address(0)) {
+            logAddress("L2_STANDARD_ERC20_GATEWAY_PROXY_ADDR", address(L2_STANDARD_ERC20_GATEWAY_PROXY_PREDEPLOY_ADDR));
+            return;
+        }
+
         L2StandardERC20Gateway impl = new L2StandardERC20Gateway();
         TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(address(impl), address(proxyAdmin), new bytes(0));
 
@@ -59,6 +84,11 @@ contract DeployL2BridgeContracts is Script {
     }
 
     function deployL2GatewayRouter() internal {
+        if (L2_GATEWAY_ROUTER_PROXY_PREDEPLOY_ADDR != address(0)) {
+            logAddress("L2_GATEWAY_ROUTER_PROXY_ADDR", address(L2_GATEWAY_ROUTER_PROXY_PREDEPLOY_ADDR));
+            return;
+        }
+
         L2GatewayRouter impl = new L2GatewayRouter();
         TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(address(impl), address(proxyAdmin), new bytes(0));
 
@@ -67,6 +97,11 @@ contract DeployL2BridgeContracts is Script {
     }
 
     function deployScrollStandardERC20Factory() internal {
+        if (L2_SCROLL_STANDARD_ERC20_FACTORY_PREDEPLOY_ADDR != address(0)) {
+            logAddress("L2_SCROLL_STANDARD_ERC20_FACTORY_ADDR", address(L2_SCROLL_STANDARD_ERC20_FACTORY_PREDEPLOY_ADDR));
+            return;
+        }
+
         ScrollStandardERC20 tokenImpl = new ScrollStandardERC20();
         ScrollStandardERC20Factory scrollStandardERC20Factory = new ScrollStandardERC20Factory(address(tokenImpl));
 
@@ -75,6 +110,11 @@ contract DeployL2BridgeContracts is Script {
     }
 
     function deployL2CustomERC20Gateway() internal {
+        if (L2_CUSTOM_ERC20_GATEWAY_PROXY_PREDEPLOY_ADDR != address(0)) {
+            logAddress("L2_CUSTOM_ERC20_GATEWAY_PROXY_ADDR", address(L2_CUSTOM_ERC20_GATEWAY_PROXY_PREDEPLOY_ADDR));
+            return;
+        }
+
         L2CustomERC20Gateway impl = new L2CustomERC20Gateway();
         TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(address(impl), address(proxyAdmin), new bytes(0));
 
@@ -83,6 +123,11 @@ contract DeployL2BridgeContracts is Script {
     }
 
     function deployL2ERC721Gateway() internal {
+        if (L2_ERC721_GATEWAY_PROXY_PREDEPLOY_ADDR != address(0)) {
+            logAddress("L2_ERC721_GATEWAY_PROXY_ADDR", address(L2_ERC721_GATEWAY_PROXY_PREDEPLOY_ADDR));
+            return;
+        }
+
         L2ERC721Gateway impl = new L2ERC721Gateway();
         TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(address(impl), address(proxyAdmin), new bytes(0));
 
@@ -91,6 +136,11 @@ contract DeployL2BridgeContracts is Script {
     }
 
     function deployL2ERC1155Gateway() internal {
+        if (L2_ERC1155_GATEWAY_PROXY_PREDEPLOY_ADDR != address(0)) {
+            logAddress("L2_ERC1155_GATEWAY_PROXY_ADDR", address(L2_ERC1155_GATEWAY_PROXY_PREDEPLOY_ADDR));
+            return;
+        }
+
         L2ERC1155Gateway impl = new L2ERC1155Gateway();
         TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(address(impl), address(proxyAdmin), new bytes(0));
 
@@ -99,6 +149,11 @@ contract DeployL2BridgeContracts is Script {
     }
 
     function deployL2Whitelist() internal {
+        if (L2_WHITELIST_PREDEPLOY_ADDR != address(0)) {
+            logAddress("L2_WHITELIST_ADDR", address(L2_WHITELIST_PREDEPLOY_ADDR));
+            return;
+        }
+
         address owner = vm.addr(L2_DEPLOYER_PRIVATE_KEY);
         Whitelist whitelist = new Whitelist(owner);
 
