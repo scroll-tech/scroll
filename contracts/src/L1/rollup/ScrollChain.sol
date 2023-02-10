@@ -49,7 +49,7 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
     // The first batch will use 0x0 for prevStateRoot
     bytes32 prevStateRoot;
     // The state root of the last block in this batch.
-    bytes32 currStateRoot;
+    bytes32 newStateRoot;
     // The withdraw trie root of the last block in this batch.
     bytes32 withdrawTrieRoot;
     // The hash of public input.
@@ -237,10 +237,10 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
     uint256 publicInputsStartPtr;
     uint256 publicInputsStartOffset;
     uint256 publicInputsSize;
-    // append prevStateRoot, currStateRoot and withdrawTrieRoot to public inputs
+    // append prevStateRoot, newStateRoot and withdrawTrieRoot to public inputs
     {
       bytes32 prevStateRoot = _batch.prevStateRoot;
-      bytes32 currStateRoot = _batch.currStateRoot;
+      bytes32 newStateRoot = _batch.newStateRoot;
       bytes32 withdrawTrieRoot = _batch.withdrawTrieRoot;
       // number of bytes in public inputs: 32 * 3 + 124 * blocks + 32 * MAX_NUM_TXS
       publicInputsSize = 32 * 3 + _batch.blocks.length * 124 + 32 * MAX_NUM_TX_IN_BATCH;
@@ -251,7 +251,7 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
 
         mstore(publicInputsStartOffset, prevStateRoot)
         publicInputsStartOffset := add(publicInputsStartOffset, 0x20)
-        mstore(publicInputsStartOffset, currStateRoot)
+        mstore(publicInputsStartOffset, newStateRoot)
         publicInputsStartOffset := add(publicInputsStartOffset, 0x20)
         mstore(publicInputsStartOffset, withdrawTrieRoot)
         publicInputsStartOffset := add(publicInputsStartOffset, 0x20)
@@ -348,7 +348,7 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
     BatchStored storage _batchInStorage = batches[publicInputHash];
     require(_batchInStorage.publicInputHash == bytes32(0), "Batch already commited");
     _batchInStorage.prevStateRoot = _batch.prevStateRoot;
-    _batchInStorage.currStateRoot = _batch.currStateRoot;
+    _batchInStorage.newStateRoot = _batch.newStateRoot;
     _batchInStorage.withdrawTrieRoot = _batch.withdrawTrieRoot;
     _batchInStorage.publicInputHash = publicInputHash;
     _batchInStorage.batchIndex = _batch.batchIndex;

@@ -107,7 +107,7 @@ contract L1ScrollMessenger is PausableUpgradeable, ScrollMessengerBase, IL1Scrol
       require(_success, "failed to deduct fee");
     }
 
-    // append message to L2MessageQueue
+    // append message to L1MessageQueue
     IL1MessageQueue(_messageQueue).appendCrossDomainMessage(_counterpart, _gasLimit, _xDomainCalldata);
 
     // record the message hash for future use.
