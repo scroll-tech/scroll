@@ -50,7 +50,7 @@ func NewL2MsgRelayer(ctx context.Context, db database.OrmFactory, cfg *config.Re
 
 // NewL1MsgRelayer creates a new instance of L1MsgRelayer
 func NewL1MsgRelayer(ctx context.Context, l1ConfirmNum int64, db orm.L1MessageOrm, cfg *config.RelayerConfig) (*L1MsgRelayer, error) {
-	msgRelayer, err := l1.NewLayer1Relayer(ctx, l1ConfirmNum, db, cfg)
+	msgRelayer, err := l1.NewLayer1Relayer(ctx, db, cfg)
 	if err != nil {
 		return nil, err
 	}

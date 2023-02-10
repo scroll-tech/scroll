@@ -9,6 +9,7 @@ import (
 
 	"scroll-tech/bridge/config"
 	"scroll-tech/bridge/l2"
+	"scroll-tech/bridge/utils"
 	"scroll-tech/database"
 )
 
@@ -17,7 +18,7 @@ type L2BatchPropser struct {
 	ctx           context.Context
 	watcher       *l2.WatcherClient
 	client        *ethclient.Client
-	confirmations uint64
+	confirmations utils.ConfirmationParams
 	batchProposer *l2.BatchProposer
 	stopCh        chan struct{}
 }
@@ -51,19 +52,11 @@ func (b *L2BatchPropser) Start() {
 					return
 
 				case <-ticker.C:
-					// get current height
-					number, err := b.client.BlockNumber(ctx)
+					number, err := utils.GetLatestConfirmedBlockNumber(ctx, b.client, b.confirmations)
 					if err != nil {
-						log.Error("failed to get_BlockNumber", "err", err)
+						log.Error("failed to get block number", "err", err)
 						continue
 					}
-
-					if number >= b.confirmations {
-						number = number - b.confirmations
-					} else {
-						number = 0
-					}
-
 					b.watcher.TryFetchRunningMissingBlocks(ctx, number)
 				}
 			}

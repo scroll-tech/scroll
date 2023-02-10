@@ -56,7 +56,7 @@ func action(ctx *cli.Context) error {
 		l1relayer *messagerelayer.L1MsgRelayer
 		l2relayer *messagerelayer.L2MsgRelayer
 	)
-	l1relayer, err = messagerelayer.NewL1MsgRelayer(ctx.Context, int64(cfg.L1Config.Confirmations), ormFactory, cfg.L1Config.RelayerConfig)
+	l1relayer, err = messagerelayer.NewL1MsgRelayer(ctx.Context, int64(cfg.L1Config.Confirmations.Number), ormFactory, cfg.L1Config.RelayerConfig)
 	if err != nil {
 		log.Crit("failed to create new l1 relayer", "config file", cfgFile, "error", err)
 	}

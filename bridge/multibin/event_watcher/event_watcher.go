@@ -38,7 +38,7 @@ func NewL2EventWatcher(ctx context.Context, client *ethclient.Client, cfg *confi
 		ctx:           ctx,
 		watcher:       watcher,
 		client:        client,
-		confirmations: cfg.Confirmations,
+		confirmations: cfg.Confirmations.Number,
 		stopCh:        make(chan struct{}),
 	}
 }
