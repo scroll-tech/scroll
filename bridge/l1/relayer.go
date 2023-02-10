@@ -89,7 +89,7 @@ BEGIN:
 	for msg := msgs[0]; len(msgs) > 0; { //nolint:staticcheck
 		// If pending txs pool is full, wait a while and retry.
 		if r.sender.IsFull() {
-			log.Warn("layer1 submitted tx sender is full")
+			log.Warn("layer1 sender pending tx reaches pending limit")
 			time.Sleep(time.Millisecond * 500)
 			continue
 		}
