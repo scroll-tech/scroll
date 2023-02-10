@@ -45,17 +45,17 @@ abstract contract FeeVault {
   /**
    * @notice Minimum balance before a withdrawal can be triggered.
    */
-  uint256 public immutable MIN_WITHDRAWAL_AMOUNT;
+  uint256 public MIN_WITHDRAWAL_AMOUNT;
 
   /**
    * @notice Scroll L2 messenger address.
    */
-  address public immutable MESSENGER;
+  address public MESSENGER;
 
   /**
    * @notice Wallet that will receive the fees on L1.
    */
-  address public immutable RECIPIENT;
+  address public RECIPIENT;
 
   /**
    * @notice Total amount of wei processed by the contract.
