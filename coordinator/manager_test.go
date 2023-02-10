@@ -490,7 +490,7 @@ func setupCoordinator(t *testing.T, dbCfg *database.DBConfig, rollersPerSession 
 	assert.NoError(t, rollerManager.Start())
 
 	// start ws service
-	handler, _, err = utils.StartWSEndpoint(strings.Split(wsURL, "//")[1], rollerManager.APIs())
+	handler, _, err = utils.StartWSEndpoint(strings.Split(wsURL, "//")[1], rollerManager.APIs(), 0)
 	assert.NoError(t, err)
 
 	return rollerManager, handler

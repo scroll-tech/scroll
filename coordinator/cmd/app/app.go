@@ -103,7 +103,7 @@ func action(ctx *cli.Context) error {
 				"%s:%d",
 				ctx.String(wsListenAddrFlag.Name),
 				ctx.Int(wsPortFlag.Name)),
-			apis)
+			apis, cfg.RollerManagerConfig.CompressionLevel)
 		if err != nil {
 			log.Crit("Could not start WS api", "error", err)
 		}

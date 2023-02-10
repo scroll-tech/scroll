@@ -59,7 +59,7 @@ func TestStartWSEndpoint(t *testing.T) {
 			Namespace: "test",
 			Service:   new(testService),
 		},
-	})
+	}, 0)
 	assert.NoError(t, err)
 	defer handler.Shutdown(context.Background())
 
