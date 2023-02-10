@@ -20,14 +20,14 @@ import (
 
 func (r *Layer2Relayer) checkFinalizingBatches() error {
 	var (
-		batchLimit              = 10
+		batchLimit         = 10
 		blockNumber uint64 = math.MaxUint64
 	)
 BEGIN:
 	batches, err := r.db.GetBlockBatches(
 		map[string]interface{}{"rollup_status": orm.RollupFinalizing},
 		fmt.Sprintf("AND end_block_number < %d", blockNumber),
-		fmt.Sprintf("ORDER BY end_block_number DESC LIMIT %d", batch),
+		fmt.Sprintf("ORDER BY end_block_number DESC LIMIT %d", batchLimit),
 	)
 	if err != nil || len(batches) == 0 {
 		return err
