@@ -4,10 +4,11 @@ import (
 	"context"
 	"time"
 
-	"scroll-tech/bridge/config"
-	"scroll-tech/bridge/l2"
 	"scroll-tech/database"
 	"scroll-tech/database/orm"
+
+	"scroll-tech/bridge/config"
+	"scroll-tech/bridge/l2"
 )
 
 // L2RollupRelayer is struct to wrap l2.relayer to transmit rollup msg

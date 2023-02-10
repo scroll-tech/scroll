@@ -7,10 +7,11 @@ import (
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
 
+	"scroll-tech/database"
+
 	"scroll-tech/bridge/config"
 	"scroll-tech/bridge/l2"
 	"scroll-tech/bridge/utils"
-	"scroll-tech/database"
 )
 
 // L2BatchPropser is struct to wrap l2.watcher
