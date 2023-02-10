@@ -52,7 +52,7 @@ BEGIN:
 		msg, msgs = msgs[0], msgs[1:]
 
 		blockNumber = mathutil.MinUint64(blockNumber, msg.Height)
-		data, err := r.messagePack(msg, batch.Index)
+		data, err := r.packRelayMessage(msg, batch.Index)
 		if err != nil {
 			continue
 		}
@@ -116,7 +116,7 @@ func (r *Layer2Relayer) ProcessSavedEvents() {
 }
 
 func (r *Layer2Relayer) processSavedEvent(msg *orm.L2Message, index uint64) error {
-	data, err := r.messagePack(msg, index)
+	data, err := r.packRelayMessage(msg, index)
 	if err != nil {
 		return err
 	}
@@ -147,7 +147,7 @@ func (r *Layer2Relayer) processSavedEvent(msg *orm.L2Message, index uint64) erro
 	return nil
 }
 
-func (r *Layer2Relayer) messagePack(msg *orm.L2Message, index uint64) ([]byte, error) {
+func (r *Layer2Relayer) packRelayMessage(msg *orm.L2Message, index uint64) ([]byte, error) {
 	// @todo fetch merkle proof from l2geth
 	log.Info("Processing L2 Message", "msg.nonce", msg.Nonce, "msg.height", msg.Height)
 
