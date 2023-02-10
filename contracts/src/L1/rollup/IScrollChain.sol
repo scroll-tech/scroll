@@ -51,7 +51,7 @@ interface IScrollChain {
     // The first batch will use 0x0 for prevStateRoot
     bytes32 prevStateRoot;
     // The state root of the last block in this batch.
-    bytes32 currStateRoot;
+    bytes32 newStateRoot;
     // The withdraw trie root of the last block in this batch.
     bytes32 withdrawTrieRoot;
     // The index of the batch.
