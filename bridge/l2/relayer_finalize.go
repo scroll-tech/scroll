@@ -20,7 +20,7 @@ import (
 
 func (r *Layer2Relayer) checkFinalizingBatches() error {
 	var (
-		batch              = 10
+		batchLimit              = 10
 		blockNumber uint64 = math.MaxUint64
 	)
 BEGIN:
