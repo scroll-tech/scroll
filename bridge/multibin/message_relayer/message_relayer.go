@@ -74,7 +74,7 @@ func (l1r *L1MsgRelayer) Start() {
 			select {
 			case <-ticker.C:
 				l1r.relayer.ProcessSavedEvents()
-			case cfm := <-l1r.confirmCh:
+			case cfm := <-l1r.relayer.GetConfirmCh():
 				if !cfm.IsSuccessful {
 					log.Warn("transaction confirmed but failed in layer2", "confirmation", cfm)
 				} else {
@@ -108,7 +108,7 @@ func (l2r *L2MsgRelayer) Start() {
 			select {
 			case <-ticker.C:
 				l2r.relayer.ProcessSavedEvents()
-			case confirmation := <-l2r.msgConfirmCh:
+			case confirmation := <-l2r.relayer.GetMsgConfirmCh():
 				l2r.relayer.HandleConfirmation(confirmation)
 			case <-l2r.stopCh:
 				return

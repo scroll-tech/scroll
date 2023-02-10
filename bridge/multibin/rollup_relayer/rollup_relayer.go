@@ -6,18 +6,16 @@ import (
 
 	"scroll-tech/bridge/config"
 	"scroll-tech/bridge/l2"
-	"scroll-tech/bridge/sender"
 	"scroll-tech/database"
 	"scroll-tech/database/orm"
 )
 
 // L2RollupRelayer is struct to wrap l2.relayer to transmit rollup msg
 type L2RollupRelayer struct {
-	ctx      context.Context
-	relayer  *l2.Layer2Relayer
-	rollupCh <-chan *sender.Confirmation
-	stopCh   chan struct{}
-	db       orm.L2MessageOrm
+	ctx     context.Context
+	relayer *l2.Layer2Relayer
+	stopCh  chan struct{}
+	db      orm.L2MessageOrm
 }
 
 // NewL2RollupRelayer creates a new instance of L2RollupRelayer
@@ -27,11 +25,10 @@ func NewL2RollupRelayer(ctx context.Context, cfg *config.RelayerConfig, db datab
 		return nil, err
 	}
 	return &L2RollupRelayer{
-		ctx:      ctx,
-		relayer:  msgRelayer,
-		rollupCh: msgRelayer.GetRollupCh(),
-		db:       db,
-		stopCh:   make(chan struct{}),
+		ctx:     ctx,
+		relayer: msgRelayer,
+		db:      db,
+		stopCh:  make(chan struct{}),
 	}, nil
 }
 
@@ -62,7 +59,7 @@ func (r *L2RollupRelayer) Start() {
 				// To do: Refactoring this
 				go loop(ctx, r.relayer.ProcessPendingBatches)
 				go loop(ctx, r.relayer.ProcessCommittedBatches)
-			case confirmation := <-r.rollupCh:
+			case confirmation := <-r.relayer.GetRollupCh():
 				r.relayer.HandleConfirmation(confirmation)
 			case <-r.stopCh:
 				ticker.Stop()
