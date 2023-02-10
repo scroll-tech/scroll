@@ -35,7 +35,7 @@ contract L1ETHGatewayTest is L1GatewayTestBase {
 
     // Initialize L1 contracts
     gateway.initialize(address(counterpartGateway), address(router), address(l1Messenger));
-    router.initialize(address(gateway), address(0), address(router), address(l1Messenger));
+    router.initialize(address(gateway), address(0));
   }
 
   function testInitialized() public {

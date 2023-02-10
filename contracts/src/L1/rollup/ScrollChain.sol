@@ -24,7 +24,7 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
   /// @notice Emitted when owner updates the status of sequencer.
   /// @param account The address of account updated.
   /// @param status The status of the account updated.
-  event UpdateSequencer(address account, bool status);
+  event UpdateSequencer(address indexed account, bool status);
 
   /*************
    * Constants *
@@ -138,6 +138,7 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
   function importGenesisBatch(Batch memory _genesisBatch) external {
     require(lastFinalizedBatchHash == bytes32(0), "Genesis batch imported");
     require(_genesisBatch.blocks.length == 1, "Not exact one block in genesis");
+    require(_genesisBatch.prevStateRoot == bytes32(0), "Nonzero prevStateRoot");
 
     BlockContext memory _genesisBlock = _genesisBatch.blocks[0];
 
@@ -343,9 +344,12 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
       publicInputHash := keccak256(publicInputsStartPtr, publicInputsSize)
     }
 
-    // @todo maybe add parent batch check later.
+    // @todo maybe use publicInputHash as batchHash later.
+    bytes32 _batchHash = _computeBatchId(_block.blockHash, _batch.blocks[0].parentHash, _batch.batchIndex);
 
-    BatchStored storage _batchInStorage = batches[publicInputHash];
+    BatchStored storage _batchInStorage = batches[_batchHash];
+
+    // @todo maybe add parent batch check later.
     require(_batchInStorage.publicInputHash == bytes32(0), "Batch already commited");
     _batchInStorage.prevStateRoot = _batch.prevStateRoot;
     _batchInStorage.newStateRoot = _batch.newStateRoot;
@@ -356,21 +360,21 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
     _batchInStorage.numTransactions = uint64(numTransactionsInBatch);
     _batchInStorage.numL1Messages = uint64(numL1MessagesInBatch);
 
-    emit CommitBatch(publicInputHash);
+    emit CommitBatch(_batchHash);
 
-    return publicInputHash;
+    return _batchHash;
   }
 
   /// @dev Internal function to compute a unique batch id for mapping.
-  /// @param _batchHash The hash of the batch.
-  /// @param _parentHash The hash of the batch.
+  /// @param _lastBlockHash The block hash of the last block in the batch.
+  /// @param _parentHash The parent block hash of the first block the batch.
   /// @param _batchIndex The index of the batch.
   /// @return Return the computed batch id.
   function _computeBatchId(
-    bytes32 _batchHash,
+    bytes32 _lastBlockHash,
     bytes32 _parentHash,
     uint256 _batchIndex
   ) internal pure returns (bytes32) {
-    return keccak256(abi.encode(_batchHash, _parentHash, _batchIndex));
+    return keccak256(abi.encode(_lastBlockHash, _parentHash, _batchIndex));
   }
 }

@@ -11,14 +11,12 @@ import { IL1ETHGateway } from "./IL1ETHGateway.sol";
 import { IL1ERC20Gateway } from "./IL1ERC20Gateway.sol";
 import { IL1GatewayRouter } from "./IL1GatewayRouter.sol";
 
-import { ScrollGatewayBase } from "../../libraries/gateway/ScrollGatewayBase.sol";
-
 /// @title L1GatewayRouter
 /// @notice The `L1GatewayRouter` is the main entry for depositing Ether and ERC20 tokens.
 /// All deposited tokens are routed to corresponding gateways.
 /// @dev One can also use this contract to query L1/L2 token address mapping.
 /// In the future, ERC-721 and ERC-1155 tokens will be added to the router too.
-contract L1GatewayRouter is OwnableUpgradeable, ScrollGatewayBase, IL1GatewayRouter {
+contract L1GatewayRouter is OwnableUpgradeable, IL1GatewayRouter {
   /**********
    * Events *
    **********/
@@ -59,16 +57,8 @@ contract L1GatewayRouter is OwnableUpgradeable, ScrollGatewayBase, IL1GatewayRou
   /// @notice Initialize the storage of L1GatewayRouter.
   /// @param _ethGateway The address of L1ETHGateway contract.
   /// @param _defaultERC20Gateway The address of default ERC20 Gateway contract.
-  /// @param _counterpart The address of L2GatewayRouter in L2.
-  /// @param _messenger The address of L1ScrollMessenger.
-  function initialize(
-    address _ethGateway,
-    address _defaultERC20Gateway,
-    address _counterpart,
-    address _messenger
-  ) external initializer {
+  function initialize(address _ethGateway, address _defaultERC20Gateway) external initializer {
     OwnableUpgradeable.__Ownable_init();
-    ScrollGatewayBase._initialize(_counterpart, address(0), _messenger);
 
     // it can be zero during initialization
     if (_defaultERC20Gateway != address(0)) {
@@ -137,7 +127,7 @@ contract L1GatewayRouter is OwnableUpgradeable, ScrollGatewayBase, IL1GatewayRou
     uint256 _amount,
     bytes memory _data,
     uint256 _gasLimit
-  ) public payable override nonReentrant {
+  ) public payable override {
     address _gateway = getERC20Gateway(_token);
     require(_gateway != address(0), "no gateway available");
 
@@ -183,7 +173,7 @@ contract L1GatewayRouter is OwnableUpgradeable, ScrollGatewayBase, IL1GatewayRou
     uint256 _amount,
     bytes memory _data,
     uint256 _gasLimit
-  ) public payable override nonReentrant {
+  ) public payable override {
     address _gateway = ethGateway;
     require(_gateway != address(0), "eth gateway available");
 

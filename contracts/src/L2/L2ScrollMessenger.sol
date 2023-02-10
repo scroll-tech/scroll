@@ -22,6 +22,14 @@ import { ScrollMessengerBase } from "../libraries/ScrollMessengerBase.sol";
 /// @dev It should be a predeployed contract in layer 2 and should hold infinite amount
 /// of Ether (Specifically, `uint256(-1)`), which can be initialized in Genesis Block.
 contract L2ScrollMessenger is ScrollMessengerBase, PausableUpgradeable, IL2ScrollMessenger {
+  /**********
+   * Events *
+   **********/
+
+  /// @notice Emitted when the maximum number of times each message can fail in L2 is updated.
+  /// @param maxFailedExecutionTimes The new maximum number of times each message can fail in L2.
+  event UpdateMaxFailedExecutionTimes(uint256 maxFailedExecutionTimes);
+
   /*************
    * Constants *
    *************/
@@ -44,6 +52,12 @@ contract L2ScrollMessenger is ScrollMessengerBase, PausableUpgradeable, IL2Scrol
 
   /// @notice Mapping from message hash to execution status.
   mapping(bytes32 => bool) public isMessageExecuted;
+
+  /// @notice Mapping from message hash to the number of failed times.
+  mapping(bytes32 => uint256) public messageFailedTimes;
+
+  /// @notice The maximum number of times each message can fail in L2.
+  uint256 public maxFailedExecutionTimes;
 
   /// @notice The address of L1ScrollMessenger contract in L1.
   address public counterpart;
@@ -198,7 +212,7 @@ contract L2ScrollMessenger is ScrollMessengerBase, PausableUpgradeable, IL2Scrol
   }
 
   /// @inheritdoc IL2ScrollMessenger
-  function relayMessageWithProof(
+  function retryMessageWithProof(
     address _from,
     address _to,
     uint256 _value,
@@ -212,6 +226,7 @@ contract L2ScrollMessenger is ScrollMessengerBase, PausableUpgradeable, IL2Scrol
     // check message status
     bytes32 _xDomainCalldataHash = keccak256(_encodeXDomainCalldata(_from, _to, _value, _nonce, _message));
     require(!isMessageExecuted[_xDomainCalldataHash], "Message successfully executed");
+    require(messageFailedTimes[_xDomainCalldataHash] > 0, "Message not relayed before");
 
     require(
       verifyMessageInclusionStatus(_proof.blockHash, _xDomainCalldataHash, _proof.stateRootProof),
@@ -231,6 +246,12 @@ contract L2ScrollMessenger is ScrollMessengerBase, PausableUpgradeable, IL2Scrol
     _pause();
   }
 
+  function updateMaxFailedExecutionTimes(uint256 _maxFailedExecutionTimes) external onlyOwner {
+    maxFailedExecutionTimes = _maxFailedExecutionTimes;
+
+    emit UpdateMaxFailedExecutionTimes(_maxFailedExecutionTimes);
+  }
+
   /**********************
    * Internal Functions *
    **********************/
@@ -243,8 +264,6 @@ contract L2ScrollMessenger is ScrollMessengerBase, PausableUpgradeable, IL2Scrol
     bytes32 _xDomainCalldataHash
   ) internal {
     // @todo check `_to` address to avoid attack.
-
-    // @todo take fee and distribute to relayer later.
 
     // @note This usually will never happen, just in case.
     require(_from != xDomainMessageSender, "Invalid message sender");
@@ -259,6 +278,11 @@ contract L2ScrollMessenger is ScrollMessengerBase, PausableUpgradeable, IL2Scrol
       isMessageExecuted[_xDomainCalldataHash] = true;
       emit RelayedMessage(_xDomainCalldataHash);
     } else {
+      unchecked {
+        uint256 _failedTimes = messageFailedTimes[_xDomainCalldataHash] + 1;
+        require(_failedTimes <= maxFailedExecutionTimes, "Exceed maximum failure");
+        messageFailedTimes[_xDomainCalldataHash] = _failedTimes;
+      }
       emit FailedRelayedMessage(_xDomainCalldataHash);
     }
   }

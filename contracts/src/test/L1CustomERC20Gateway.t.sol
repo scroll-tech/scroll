@@ -55,7 +55,7 @@ contract L1CustomERC20GatewayTest is L1GatewayTestBase {
 
     // Initialize L1 contracts
     gateway.initialize(address(counterpartGateway), address(router), address(l1Messenger));
-    router.initialize(address(0), address(gateway), address(router), address(l1Messenger));
+    router.initialize(address(0), address(gateway));
 
     // Prepare token balances
     l1Token.mint(address(this), type(uint128).max);
@@ -364,7 +364,7 @@ contract L1CustomERC20GatewayTest is L1GatewayTestBase {
         emit SentMessage(address(gateway), address(counterpartGateway), 0, message, 0);
       }
 
-      // emit DepositERC20 from L1WETHGateway
+      // emit DepositERC20 from L1CustomERC20Gateway
       hevm.expectEmit(true, true, true, true);
       emit DepositERC20(address(l1Token), address(l2Token), address(this), address(this), amount, new bytes(0));
 
@@ -441,7 +441,7 @@ contract L1CustomERC20GatewayTest is L1GatewayTestBase {
         emit SentMessage(address(gateway), address(counterpartGateway), 0, message, 0);
       }
 
-      // emit DepositERC20 from L1WETHGateway
+      // emit DepositERC20 from L1CustomERC20Gateway
       hevm.expectEmit(true, true, true, true);
       emit DepositERC20(address(l1Token), address(l2Token), address(this), recipient, amount, new bytes(0));
 
@@ -519,7 +519,7 @@ contract L1CustomERC20GatewayTest is L1GatewayTestBase {
         emit SentMessage(address(gateway), address(counterpartGateway), 0, message, 0);
       }
 
-      // emit DepositERC20 from L1WETHGateway
+      // emit DepositERC20 from L1CustomERC20Gateway
       hevm.expectEmit(true, true, true, true);
       emit DepositERC20(address(l1Token), address(l2Token), address(this), recipient, amount, dataToCall);
 

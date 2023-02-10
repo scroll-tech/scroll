@@ -586,7 +586,7 @@ contract L1ERC721GatewayTest is L1GatewayTestBase {
       emit SentMessage(address(gateway), address(counterpartGateway), 0, message, 0);
     }
 
-    // emit FinalizeWithdrawERC721 from L1WETHGateway
+    // emit FinalizeWithdrawERC721 from L1ERC721Gateway
     hevm.expectEmit(true, true, true, true);
     emit DepositERC721(address(l1Token), address(l2Token), address(this), address(this), tokenId);
 
@@ -647,7 +647,7 @@ contract L1ERC721GatewayTest is L1GatewayTestBase {
       emit SentMessage(address(gateway), address(counterpartGateway), 0, message, 0);
     }
 
-    // emit FinalizeWithdrawERC721 from L1WETHGateway
+    // emit FinalizeWithdrawERC721 from L1ERC721Gateway
     hevm.expectEmit(true, true, true, true);
     emit DepositERC721(address(l1Token), address(l2Token), address(this), recipient, tokenId);
 
@@ -715,7 +715,7 @@ contract L1ERC721GatewayTest is L1GatewayTestBase {
       emit SentMessage(address(gateway), address(counterpartGateway), 0, message, 0);
     }
 
-    // emit FinalizeWithdrawERC721 from L1WETHGateway
+    // emit FinalizeWithdrawERC721 from L1ERC721Gateway
     hevm.expectEmit(true, true, true, true);
     emit BatchDepositERC721(address(l1Token), address(l2Token), address(this), address(this), _tokenIds);
 
@@ -788,7 +788,7 @@ contract L1ERC721GatewayTest is L1GatewayTestBase {
       emit SentMessage(address(gateway), address(counterpartGateway), 0, message, 0);
     }
 
-    // emit FinalizeWithdrawERC721 from L1WETHGateway
+    // emit FinalizeWithdrawERC721 from L1ERC721Gateway
     hevm.expectEmit(true, true, true, true);
     emit BatchDepositERC721(address(l1Token), address(l2Token), address(this), recipient, _tokenIds);
 

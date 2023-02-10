@@ -56,7 +56,7 @@ contract L1WETHGatewayTest is L1GatewayTestBase {
 
     // Initialize L1 contracts
     gateway.initialize(address(counterpartGateway), address(router), address(l1Messenger));
-    router.initialize(address(0), address(gateway), address(router), address(l1Messenger));
+    router.initialize(address(0), address(gateway));
 
     // Prepare token balances
     l1weth.deposit{ value: address(this).balance / 2 }();

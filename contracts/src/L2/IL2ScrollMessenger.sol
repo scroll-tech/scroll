@@ -52,7 +52,7 @@ interface IL2ScrollMessenger is IScrollMessenger {
   /// @param nonce The nonce of the message to avoid replay attack.
   /// @param message The content of the message.
   /// @param proof The message proof.
-  function relayMessageWithProof(
+  function retryMessageWithProof(
     address from,
     address to,
     uint256 value,

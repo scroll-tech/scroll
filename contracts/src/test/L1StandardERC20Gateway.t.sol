@@ -74,7 +74,7 @@ contract L1StandardERC20GatewayTest is L1GatewayTestBase {
       address(template),
       address(factory)
     );
-    router.initialize(address(0), address(gateway), address(router), address(l1Messenger));
+    router.initialize(address(0), address(gateway));
 
     // Prepare token balances
     l2Token = MockERC20(gateway.getL2ERC20Address(address(l1Token)));

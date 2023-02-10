@@ -59,7 +59,7 @@ contract L1ERC1155Gateway is OwnableUpgradeable, ERC1155HolderUpgradeable, Scrol
     uint256 _tokenId,
     uint256 _amount,
     uint256 _gasLimit
-  ) external override {
+  ) external payable override {
     _depositERC1155(_token, msg.sender, _tokenId, _amount, _gasLimit);
   }
 
@@ -70,7 +70,7 @@ contract L1ERC1155Gateway is OwnableUpgradeable, ERC1155HolderUpgradeable, Scrol
     uint256 _tokenId,
     uint256 _amount,
     uint256 _gasLimit
-  ) external override {
+  ) external payable override {
     _depositERC1155(_token, _to, _tokenId, _amount, _gasLimit);
   }
 
@@ -80,7 +80,7 @@ contract L1ERC1155Gateway is OwnableUpgradeable, ERC1155HolderUpgradeable, Scrol
     uint256[] calldata _tokenIds,
     uint256[] calldata _amounts,
     uint256 _gasLimit
-  ) external override {
+  ) external payable override {
     _batchDepositERC1155(_token, msg.sender, _tokenIds, _amounts, _gasLimit);
   }
 
@@ -91,7 +91,7 @@ contract L1ERC1155Gateway is OwnableUpgradeable, ERC1155HolderUpgradeable, Scrol
     uint256[] calldata _tokenIds,
     uint256[] calldata _amounts,
     uint256 _gasLimit
-  ) external override {
+  ) external payable override {
     _batchDepositERC1155(_token, _to, _tokenIds, _amounts, _gasLimit);
   }
 
@@ -104,6 +104,8 @@ contract L1ERC1155Gateway is OwnableUpgradeable, ERC1155HolderUpgradeable, Scrol
     uint256 _tokenId,
     uint256 _amount
   ) external override nonReentrant onlyCallByCounterpart {
+    require(_l2Token == tokenMapping[_l1Token], "l2 token mismatch");
+
     IERC1155Upgradeable(_l1Token).safeTransferFrom(address(this), _to, _tokenId, _amount, "");
 
     emit FinalizeWithdrawERC1155(_l1Token, _l2Token, _from, _to, _tokenId, _amount);
@@ -118,6 +120,8 @@ contract L1ERC1155Gateway is OwnableUpgradeable, ERC1155HolderUpgradeable, Scrol
     uint256[] calldata _tokenIds,
     uint256[] calldata _amounts
   ) external override nonReentrant onlyCallByCounterpart {
+    require(_l2Token == tokenMapping[_l1Token], "l2 token mismatch");
+
     IERC1155Upgradeable(_l1Token).safeBatchTransferFrom(address(this), _to, _tokenIds, _amounts, "");
 
     emit FinalizeBatchWithdrawERC1155(_l1Token, _l2Token, _from, _to, _tokenIds, _amounts);
