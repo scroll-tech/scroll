@@ -5,7 +5,7 @@ go 1.18
 require (
 	github.com/iden3/go-iden3-crypto v0.0.13
 	github.com/orcaman/concurrent-map v1.0.0
-	github.com/scroll-tech/go-ethereum v1.10.14-0.20230210022535-98eb664f23dc
+	github.com/scroll-tech/go-ethereum v1.10.14-0.20230210091139-8224bc8b9ca5
 	github.com/stretchr/testify v1.8.0
 	github.com/urfave/cli/v2 v2.10.2
 	golang.org/x/sync v0.1.0

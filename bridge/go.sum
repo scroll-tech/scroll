@@ -352,6 +352,8 @@ github.com/russross/blackfriday/v2 v2.1.0 h1:JIOH55/0cWyOuilr9/qlrm0BSXldqnqwMsf
 github.com/russross/blackfriday/v2 v2.1.0/go.mod h1:+Rmxgy9KzJVeS9/2gXHxylqXiyQDYRxCVz55jmeOWTM=
 github.com/scroll-tech/go-ethereum v1.10.14-0.20230210022535-98eb664f23dc h1:MZXYqhvqwRxUixMtzGxgdhRkuQbDrkmHY7KZVyRzMpE=
 github.com/scroll-tech/go-ethereum v1.10.14-0.20230210022535-98eb664f23dc/go.mod h1:OH4ZTAz6RM1IL0xcQ1zM6+Iy9s2vtcYqqwcEQdfHV7g=
+github.com/scroll-tech/go-ethereum v1.10.14-0.20230210091139-8224bc8b9ca5 h1:CvkJOFK7Zapepx6Dwyc+86dZWWypXhSP4RFJmv6EJDk=
+github.com/scroll-tech/go-ethereum v1.10.14-0.20230210091139-8224bc8b9ca5/go.mod h1:OH4ZTAz6RM1IL0xcQ1zM6+Iy9s2vtcYqqwcEQdfHV7g=
 github.com/scroll-tech/zktrie v0.4.3 h1:RyhusIu8F8u5ITmzqZjkAwlL6jdC9TK9i6tfuJoZcpk=
 github.com/scroll-tech/zktrie v0.4.3/go.mod h1:XvNo7vAk8yxNyTjBDj5WIiFzYW4bx/gJ78+NK6Zn6Uk=
 github.com/segmentio/kafka-go v0.1.0/go.mod h1:X6itGqS9L4jDletMsxZ7Dz+JFWxM6JHfPOCvTvk+EJo=
