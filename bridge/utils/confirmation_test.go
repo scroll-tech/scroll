@@ -3,10 +3,11 @@ package utils_test
 import (
 	"context"
 	"encoding/json"
-	"github.com/scroll-tech/go-ethereum/common/math"
-	"github.com/scroll-tech/go-ethereum/rpc"
 	"math/big"
 	"testing"
+
+	"github.com/scroll-tech/go-ethereum/common/math"
+	"github.com/scroll-tech/go-ethereum/rpc"
 
 	"scroll-tech/bridge/utils"
 
