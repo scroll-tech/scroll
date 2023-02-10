@@ -58,7 +58,7 @@ contract L1ERC721Gateway is OwnableUpgradeable, ERC721HolderUpgradeable, ScrollG
     address _token,
     uint256 _tokenId,
     uint256 _gasLimit
-  ) external override {
+  ) external payable override {
     _depositERC721(_token, msg.sender, _tokenId, _gasLimit);
   }
 
@@ -68,7 +68,7 @@ contract L1ERC721Gateway is OwnableUpgradeable, ERC721HolderUpgradeable, ScrollG
     address _to,
     uint256 _tokenId,
     uint256 _gasLimit
-  ) external override {
+  ) external payable override {
     _depositERC721(_token, _to, _tokenId, _gasLimit);
   }
 
@@ -77,7 +77,7 @@ contract L1ERC721Gateway is OwnableUpgradeable, ERC721HolderUpgradeable, ScrollG
     address _token,
     uint256[] calldata _tokenIds,
     uint256 _gasLimit
-  ) external override {
+  ) external payable override {
     _batchDepositERC721(_token, msg.sender, _tokenIds, _gasLimit);
   }
 
@@ -87,7 +87,7 @@ contract L1ERC721Gateway is OwnableUpgradeable, ERC721HolderUpgradeable, ScrollG
     address _to,
     uint256[] calldata _tokenIds,
     uint256 _gasLimit
-  ) external override {
+  ) external payable override {
     _batchDepositERC721(_token, _to, _tokenIds, _gasLimit);
   }
 
@@ -99,6 +99,8 @@ contract L1ERC721Gateway is OwnableUpgradeable, ERC721HolderUpgradeable, ScrollG
     address _to,
     uint256 _tokenId
   ) external override nonReentrant onlyCallByCounterpart {
+    require(_l2Token == tokenMapping[_l1Token], "l2 token mismatch");
+
     IERC721Upgradeable(_l1Token).safeTransferFrom(address(this), _to, _tokenId);
 
     emit FinalizeWithdrawERC721(_l1Token, _l2Token, _from, _to, _tokenId);
@@ -112,6 +114,8 @@ contract L1ERC721Gateway is OwnableUpgradeable, ERC721HolderUpgradeable, ScrollG
     address _to,
     uint256[] calldata _tokenIds
   ) external override nonReentrant onlyCallByCounterpart {
+    require(_l2Token == tokenMapping[_l1Token], "l2 token mismatch");
+
     for (uint256 i = 0; i < _tokenIds.length; i++) {
       IERC721Upgradeable(_l1Token).safeTransferFrom(address(this), _to, _tokenIds[i]);
     }

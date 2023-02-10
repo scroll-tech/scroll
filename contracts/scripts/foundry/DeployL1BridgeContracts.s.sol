@@ -14,7 +14,7 @@ import { L1GatewayRouter } from "../../src/L1/gateways/L1GatewayRouter.sol";
 import { L1ScrollMessenger } from "../../src/L1/L1ScrollMessenger.sol";
 import { L1StandardERC20Gateway } from "../../src/L1/gateways/L1StandardERC20Gateway.sol";
 import { RollupVerifier } from "../../src/libraries/verifier/RollupVerifier.sol";
-import { ZKRollup } from "../../src/L1/rollup/ZKRollup.sol";
+import { ScrollChain } from "../../src/L1/rollup/ScrollChain.sol";
 
 contract DeployL1BridgeContracts is Script {
     uint256 L1_DEPLOYER_PRIVATE_KEY = vm.envUint("L1_DEPLOYER_PRIVATE_KEY");
@@ -29,7 +29,7 @@ contract DeployL1BridgeContracts is Script {
         // note: the RollupVerifier library is deployed implicitly
 
         deployProxyAdmin();
-        deployZKRollup();
+        deployScrollChain();
         deployL1StandardERC20Gateway();
         deployL1GatewayRouter();
         deployL1ScrollMessenger();
@@ -46,8 +46,8 @@ contract DeployL1BridgeContracts is Script {
         logAddress("L1_PROXY_ADMIN_ADDR", address(proxyAdmin));
     }
 
-    function deployZKRollup() internal {
-        ZKRollup impl = new ZKRollup(CHAIN_ID_L2);
+    function deployScrollChain() internal {
+        ScrollChain impl = new ScrollChain(CHAIN_ID_L2);
         TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(address(impl), address(proxyAdmin), new bytes(0));
 
         logAddress("L1_ZK_ROLLUP_IMPLEMENTATION_ADDR", address(impl));

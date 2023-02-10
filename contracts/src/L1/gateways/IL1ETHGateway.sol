@@ -2,10 +2,6 @@
 
 pragma solidity ^0.8.0;
 
-import { IL1ERC20Gateway } from "./IL1ERC20Gateway.sol";
-
-import { IScrollGateway } from "../../libraries/gateway/IScrollGateway.sol";
-
 interface IL1ETHGateway {
   /**********
    * Events *

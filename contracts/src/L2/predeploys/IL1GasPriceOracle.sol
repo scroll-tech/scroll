@@ -19,12 +19,6 @@ interface IL1GasPriceOracle {
    * Public View Functions *
    *************************/
 
-  /// @notice Return the current L2 base fee.
-  function baseFee() external view returns (uint256);
-
-  /// @notice Return the current L2 gas price (base fee).
-  function gasPrice() external view returns (uint256);
-
   /// @notice Return the current l1 fee overhead.
   function overhead() external view returns (uint256);
 

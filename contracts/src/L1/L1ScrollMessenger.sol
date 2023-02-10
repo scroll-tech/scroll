@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 
 import { PausableUpgradeable } from "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 
-import { IZKRollup } from "./rollup/IZKRollup.sol";
+import { IScrollChain } from "./rollup/IScrollChain.sol";
 import { IL1MessageQueue } from "./rollup/IL1MessageQueue.sol";
 import { IL1ScrollMessenger, IScrollMessenger } from "./IL1ScrollMessenger.sol";
 import { ScrollConstants } from "../libraries/ScrollConstants.sol";
@@ -56,7 +56,7 @@ contract L1ScrollMessenger is PausableUpgradeable, ScrollMessengerBase, IL1Scrol
   /// @notice Initialize the storage of L1ScrollMessenger.
   /// @param _counterpart The address of L2ScrollMessenger contract in L2.
   /// @param _feeVault The address of fee vault, which will be used to collect relayer fee.
-  /// @param _rollup The address of ZKRollup contract.
+  /// @param _rollup The address of ScrollChain contract.
   /// @param _messageQueue The address of L1MessageQueue contract.
   function initialize(
     address _counterpart,
@@ -101,9 +101,7 @@ contract L1ScrollMessenger is PausableUpgradeable, ScrollMessengerBase, IL1Scrol
       _xDomainCalldata,
       _gasLimit
     );
-    unchecked {
-      require(msg.value >= _fee + _value, "insufficient msg.value");
-    }
+    require(msg.value >= _fee + _value, "insufficient msg.value");
     if (_fee > 0) {
       (bool _success, ) = feeVault.call{ value: _fee }("");
       require(_success, "failed to deduct fee");
@@ -135,8 +133,8 @@ contract L1ScrollMessenger is PausableUpgradeable, ScrollMessengerBase, IL1Scrol
 
     {
       address _rollup = rollup;
-      require(IZKRollup(_rollup).isBatchFinalized(_proof.batchHash), "Batch not finalized");
-      bytes32 _messageRoot = IZKRollup(_rollup).getL2MessageRoot(_proof.batchHash);
+      require(IScrollChain(_rollup).isBatchFinalized(_proof.batchHash), "Batch not finalized");
+      bytes32 _messageRoot = IScrollChain(_rollup).getL2MessageRoot(_proof.batchHash);
       require(
         ZkTrieVerifier.verifyMerkleProof(_messageRoot, _xDomainCalldataHash, _nonce, _proof.merkleProof),
         "invalid proof"

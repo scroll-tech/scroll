@@ -24,48 +24,55 @@ import { L1ERC20Gateway } from "./L1ERC20Gateway.sol";
 contract L1WETHGateway is Initializable, ScrollGatewayBase, L1ERC20Gateway {
   using SafeERC20 for IERC20;
 
-  /**************************************** Variables ****************************************/
+  /*************
+   * Constants *
+   *************/
 
   /// @notice The address of L2 WETH address.
-  // @todo It should be predeployed in L2 and make it a constant.
-  address public l2WETH;
+  address public immutable l2WETH;
 
   /// @notice The address of L1 WETH address.
   // solhint-disable-next-line var-name-mixedcase
-  address public WETH;
+  address public immutable WETH;
 
-  /**************************************** Constructor ****************************************/
+  /***************
+   * Constructor *
+   ***************/
 
+  constructor(address _WETH, address _l2WETH) {
+    WETH = _WETH;
+    l2WETH = _l2WETH;
+  }
+
+  /// @notice Initialize the storage of L1WETHGateway.
+  /// @param _counterpart The address of L2ETHGateway in L2.
+  /// @param _router The address of L1GatewayRouter.
+  /// @param _messenger The address of L1ScrollMessenger.
   function initialize(
     address _counterpart,
     address _router,
-    address _messenger,
-    // solhint-disable-next-line var-name-mixedcase
-    address _WETH,
-    address _l2WETH
+    address _messenger
   ) external initializer {
     require(_router != address(0), "zero router address");
     ScrollGatewayBase._initialize(_counterpart, _router, _messenger);
-
-    require(_WETH != address(0), "zero WETH address");
-    require(_l2WETH != address(0), "zero L2WETH address");
-
-    WETH = _WETH;
-    l2WETH = _l2WETH;
   }
 
   receive() external payable {
     require(msg.sender == WETH, "only WETH");
   }
 
-  /**************************************** View Functions ****************************************/
+  /*************************
+   * Public View Functions *
+   *************************/
 
   /// @inheritdoc IL1ERC20Gateway
   function getL2ERC20Address(address) public view override returns (address) {
     return l2WETH;
   }
 
-  /**************************************** Mutate Functions ****************************************/
+  /****************************
+   * Public Mutated Functions *
+   ****************************/
 
   /// @inheritdoc IL1ERC20Gateway
   function finalizeWithdrawERC20(
@@ -79,7 +86,6 @@ contract L1WETHGateway is Initializable, ScrollGatewayBase, L1ERC20Gateway {
     require(_l1Token == WETH, "l1 token not WETH");
     require(_l2Token == l2WETH, "l2 token not WETH");
     require(_amount == msg.value, "msg.value mismatch");
-    // @todo: withdraw
 
     IWETH(_l1Token).deposit{ value: _amount }();
     IERC20(_l1Token).safeTransfer(_to, _amount);
@@ -89,7 +95,9 @@ contract L1WETHGateway is Initializable, ScrollGatewayBase, L1ERC20Gateway {
     emit FinalizeWithdrawERC20(_l1Token, _l2Token, _from, _to, _amount, _data);
   }
 
-  /**************************************** Internal Functions ****************************************/
+  /**********************
+   * Internal Functions *
+   **********************/
 
   /// @inheritdoc L1ERC20Gateway
   function _deposit(
@@ -113,7 +121,6 @@ contract L1WETHGateway is Initializable, ScrollGatewayBase, L1ERC20Gateway {
     IWETH(_token).withdraw(_amount);
 
     // 3. Generate message passed to L2StandardERC20Gateway.
-    address _l2WETH = l2WETH;
     bytes memory _message = abi.encodeWithSelector(
       IL2ERC20Gateway.finalizeDepositERC20.selector,
       _token,
@@ -127,6 +134,6 @@ contract L1WETHGateway is Initializable, ScrollGatewayBase, L1ERC20Gateway {
     // 4. Send message to L1ScrollMessenger.
     IL1ScrollMessenger(messenger).sendMessage{ value: _amount + msg.value }(counterpart, _amount, _message, _gasLimit);
 
-    emit DepositERC20(_token, _l2WETH, _from, _to, _amount, _data);
+    emit DepositERC20(_token, l2WETH, _from, _to, _amount, _data);
   }
 }

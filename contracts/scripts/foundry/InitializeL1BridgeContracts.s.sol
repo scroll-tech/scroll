@@ -9,7 +9,7 @@ import { L1ERC721Gateway } from "../../src/L1/gateways/L1ERC721Gateway.sol";
 import { L1GatewayRouter } from "../../src/L1/gateways/L1GatewayRouter.sol";
 import { L1ScrollMessenger } from "../../src/L1/L1ScrollMessenger.sol";
 import { L1StandardERC20Gateway } from "../../src/L1/gateways/L1StandardERC20Gateway.sol";
-import { ZKRollup } from "../../src/L1/rollup/ZKRollup.sol";
+import { ScrollChain } from "../../src/L1/rollup/ScrollChain.sol";
 
 contract InitializeL1BridgeContracts is Script {
     uint256 L1_DEPLOYER_PRIVATE_KEY = vm.envUint("L1_DEPLOYER_PRIVATE_KEY");
@@ -58,9 +58,9 @@ contract InitializeL1BridgeContracts is Script {
             L1_SCROLL_MESSENGER_PROXY_ADDR
         );
 
-        // initialize ZKRollup
-        ZKRollup(L1_ZK_ROLLUP_PROXY_ADDR).initialize();
-        ZKRollup(L1_ZK_ROLLUP_PROXY_ADDR).updateSequencer(L1_ROLLUP_OPERATOR_ADDR, true);
+        // initialize ScrollChain
+        ScrollChain(L1_ZK_ROLLUP_PROXY_ADDR).initialize();
+        ScrollChain(L1_ZK_ROLLUP_PROXY_ADDR).updateSequencer(L1_ROLLUP_OPERATOR_ADDR, true);
 
         // initialize L1ScrollMessenger
         L1ScrollMessenger(payable(L1_SCROLL_MESSENGER_PROXY_ADDR)).initialize(

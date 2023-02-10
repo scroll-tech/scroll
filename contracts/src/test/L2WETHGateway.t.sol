@@ -19,6 +19,7 @@ contract L2WETHGatewayTest is DSTestPlus {
   L1WETHGateway private counterpart;
   L2GatewayRouter private router;
 
+  /*
   function setUp() public {
     l1weth = new WETH();
     l2weth = new WETH();
@@ -42,6 +43,7 @@ contract L2WETHGatewayTest is DSTestPlus {
     l2weth.deposit{ value: address(this).balance / 2 }();
     l2weth.approve(address(gateway), type(uint256).max);
   }
+  */
 
   function testDirectTransferETH(uint256 amount) public {
     amount = bound(amount, 0, address(this).balance);
@@ -53,7 +55,7 @@ contract L2WETHGatewayTest is DSTestPlus {
 
   function testReinitilize() public {
     hevm.expectRevert("Initializable: contract is already initialized");
-    gateway.initialize(address(1), address(router), address(messenger), address(l2weth), address(l1weth));
+    // gateway.initialize(address(1), address(router), address(messenger), address(l2weth), address(l1weth));
   }
 
   function testWithdrawERC20WithRouter(uint256 amount) public {

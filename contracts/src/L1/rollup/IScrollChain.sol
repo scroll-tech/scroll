@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.0;
 
-interface IZKRollup {
+interface IScrollChain {
   /**********
    * Events *
    **********/

@@ -4,14 +4,14 @@ pragma solidity ^0.8.0;
 
 import { DSTestPlus } from "solmate/test/utils/DSTestPlus.sol";
 
-import { ZKRollup, IZKRollup } from "../L1/rollup/ZKRollup.sol";
+import { ScrollChain, IScrollChain } from "../L1/rollup/ScrollChain.sol";
 
-contract ZKRollupTest is DSTestPlus {
-  ZKRollup private rollup;
+contract ScrollChainTest is DSTestPlus {
+  ScrollChain private rollup;
 
   /*
   function setUp() public {
-    rollup = new ZKRollup();
+    rollup = new ScrollChain();
     rollup.initialize(233);
   }
 
@@ -61,7 +61,7 @@ contract ZKRollupTest is DSTestPlus {
     rollup.updateMessenger(_messenger);
   }
 
-  function testImportGenesisBlock(IZKRollup.Layer2BlockHeader memory _genesis) public {
+  function testImportGenesisBlock(IScrollChain.Layer2BlockHeader memory _genesis) public {
     if (_genesis.blockHash == bytes32(0)) {
       _genesis.blockHash = bytes32(uint256(1));
     }
@@ -123,8 +123,8 @@ contract ZKRollupTest is DSTestPlus {
   function testCommitBatchFailed() public {
     rollup.updateOperator(address(1));
 
-    IZKRollup.Layer2BlockHeader memory _header;
-    IZKRollup.Layer2Batch memory _batch;
+    IScrollChain.Layer2BlockHeader memory _header;
+    IScrollChain.Layer2Batch memory _batch;
 
     // not operator call, should revert
     hevm.expectRevert("caller not operator");
@@ -141,7 +141,7 @@ contract ZKRollupTest is DSTestPlus {
 
     // block submitted, should revert
     _header.blockHash = bytes32(uint256(1));
-    _batch.blocks = new IZKRollup.Layer2BlockHeader[](1);
+    _batch.blocks = new IScrollChain.Layer2BlockHeader[](1);
     _batch.blocks[0] = _header;
     _batch.batchIndex = 0;
     _batch.parentHash = bytes32(0);
@@ -150,7 +150,7 @@ contract ZKRollupTest is DSTestPlus {
 
     // no parent batch, should revert
     _header.blockHash = bytes32(uint256(2));
-    _batch.blocks = new IZKRollup.Layer2BlockHeader[](1);
+    _batch.blocks = new IScrollChain.Layer2BlockHeader[](1);
     _batch.blocks[0] = _header;
     _batch.batchIndex = 0;
     _batch.parentHash = bytes32(0);
@@ -159,7 +159,7 @@ contract ZKRollupTest is DSTestPlus {
 
     // Batch index and parent batch index mismatch
     _header.blockHash = bytes32(uint256(2));
-    _batch.blocks = new IZKRollup.Layer2BlockHeader[](1);
+    _batch.blocks = new IScrollChain.Layer2BlockHeader[](1);
     _batch.blocks[0] = _header;
     _batch.batchIndex = 2;
     _batch.parentHash = bytes32(uint256(1));
@@ -169,7 +169,7 @@ contract ZKRollupTest is DSTestPlus {
     // BLock parent hash mismatch
     _header.blockHash = bytes32(uint256(2));
     _header.parentHash = bytes32(0);
-    _batch.blocks = new IZKRollup.Layer2BlockHeader[](1);
+    _batch.blocks = new IScrollChain.Layer2BlockHeader[](1);
     _batch.blocks[0] = _header;
     _batch.batchIndex = 1;
     _batch.parentHash = bytes32(uint256(1));
@@ -180,7 +180,7 @@ contract ZKRollupTest is DSTestPlus {
     _header.blockHash = bytes32(uint256(2));
     _header.parentHash = bytes32(uint256(1));
     _header.blockHeight = 2;
-    _batch.blocks = new IZKRollup.Layer2BlockHeader[](1);
+    _batch.blocks = new IScrollChain.Layer2BlockHeader[](1);
     _batch.blocks[0] = _header;
     _batch.batchIndex = 1;
     _batch.parentHash = bytes32(uint256(1));
@@ -190,7 +190,7 @@ contract ZKRollupTest is DSTestPlus {
     _header.blockHash = bytes32(uint256(2));
     _header.parentHash = bytes32(uint256(1));
     _header.blockHeight = 0;
-    _batch.blocks = new IZKRollup.Layer2BlockHeader[](1);
+    _batch.blocks = new IScrollChain.Layer2BlockHeader[](1);
     _batch.blocks[0] = _header;
     _batch.batchIndex = 1;
     _batch.parentHash = bytes32(uint256(1));
@@ -201,7 +201,7 @@ contract ZKRollupTest is DSTestPlus {
     _header.blockHash = bytes32(uint256(1));
     _header.parentHash = bytes32(uint256(1));
     _header.blockHeight = 1;
-    _batch.blocks = new IZKRollup.Layer2BlockHeader[](1);
+    _batch.blocks = new IScrollChain.Layer2BlockHeader[](1);
     _batch.blocks[0] = _header;
     _batch.batchIndex = 1;
     _batch.parentHash = bytes32(uint256(1));
@@ -211,7 +211,7 @@ contract ZKRollupTest is DSTestPlus {
     hevm.stopPrank();
   }
 
-  function testCommitBatch(IZKRollup.Layer2BlockHeader memory _header) public {
+  function testCommitBatch(IScrollChain.Layer2BlockHeader memory _header) public {
     if (_header.parentHash == bytes32(0)) {
       _header.parentHash = bytes32(uint256(1));
     }
@@ -221,13 +221,13 @@ contract ZKRollupTest is DSTestPlus {
     rollup.updateOperator(address(1));
 
     // import fake genesis
-    IZKRollup.Layer2BlockHeader memory _genesis;
+    IScrollChain.Layer2BlockHeader memory _genesis;
     _genesis.blockHash = _header.parentHash;
     rollup.importGenesisBlock(_genesis);
     _header.blockHeight = 1;
 
-    IZKRollup.Layer2Batch memory _batch;
-    _batch.blocks = new IZKRollup.Layer2BlockHeader[](1);
+    IScrollChain.Layer2Batch memory _batch;
+    _batch.blocks = new IScrollChain.Layer2BlockHeader[](1);
     _batch.blocks[0] = _header;
     _batch.batchIndex = 1;
     _batch.parentHash = _header.parentHash;

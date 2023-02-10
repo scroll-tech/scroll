@@ -31,7 +31,7 @@ contract MockScrollMessenger is IScrollMessenger {
 
   function sendMessage(
     address _to,
-    uint256 _fee,
+    uint256 _value,
     bytes memory _message,
     uint256 _gasLimit
   ) external {}

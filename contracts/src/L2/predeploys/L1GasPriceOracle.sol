@@ -50,16 +50,6 @@ contract L1GasPriceOracle is OwnableBase, IL1GasPriceOracle {
    * Public View Functions *
    *************************/
 
-  /// @inheritdoc IL1GasPriceOracle
-  function baseFee() external view override returns (uint256) {
-    return block.basefee;
-  }
-
-  /// @inheritdoc IL1GasPriceOracle
-  function gasPrice() external view override returns (uint256) {
-    return block.basefee;
-  }
-
   /// @notice Return the latest known l1 base fee.
   function l1BaseFee() public view override returns (uint256) {
     return IL1BlockContainer(blockContainer).latestBaseFee();

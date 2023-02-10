@@ -8,7 +8,7 @@ import { MockERC20 } from "solmate/test/utils/mocks/MockERC20.sol";
 import { L1GatewayRouter } from "../L1/gateways/L1GatewayRouter.sol";
 import { L1StandardERC20Gateway } from "../L1/gateways/L1StandardERC20Gateway.sol";
 import { L1ScrollMessenger } from "../L1/L1ScrollMessenger.sol";
-import { ZKRollup } from "../L1/rollup/ZKRollup.sol";
+import { ScrollChain } from "../L1/rollup/ScrollChain.sol";
 import { ScrollStandardERC20 } from "../libraries/token/ScrollStandardERC20.sol";
 import { ScrollStandardERC20Factory } from "../libraries/token/ScrollStandardERC20Factory.sol";
 
@@ -16,14 +16,14 @@ contract L1GatewayRouterTest is DSTestPlus {
   ScrollStandardERC20 private template;
   ScrollStandardERC20Factory private factory;
 
-  ZKRollup private rollup;
+  ScrollChain private rollup;
   L1ScrollMessenger private messenger;
   L1StandardERC20Gateway private gateway;
   L1GatewayRouter private router;
   MockERC20 private token;
 
   function setUp() public {
-    rollup = new ZKRollup(233);
+    rollup = new ScrollChain(233);
 
     template = new ScrollStandardERC20();
 
