@@ -6,13 +6,13 @@ import (
 	"math/big"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/scroll-tech/go-ethereum/common/math"
+	"github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/rpc"
 
 	"scroll-tech/bridge/utils"
-
-	"github.com/scroll-tech/go-ethereum/core/types"
-	"github.com/stretchr/testify/assert"
 )
 
 var (
