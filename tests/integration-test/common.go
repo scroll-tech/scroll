@@ -28,6 +28,8 @@ import (
 	"scroll-tech/common/cmd"
 	"scroll-tech/common/docker"
 
+	"scroll-tech/bridge/utils"
+
 	_ "scroll-tech/coordinator/cmd/app"
 	coordinatorConfig "scroll-tech/coordinator/config"
 )
@@ -119,10 +121,10 @@ func runSender(t *testing.T, endpoint string) *sender.Sender {
 		Endpoint:            endpoint,
 		CheckPendingTime:    3,
 		EscalateBlocks:      100,
-		Confirmations:       0,
+		Confirmations:       utils.ConfirmationParams{Type: utils.BlockNumberConfirmation, Number: 0},
 		EscalateMultipleNum: 11,
 		EscalateMultipleDen: 10,
-		TxType:              "DynamicFeeTx",
+		TxType:              "LegacyTx",
 	}, []*ecdsa.PrivateKey{priv})
 	assert.NoError(t, err)
 	return newSender

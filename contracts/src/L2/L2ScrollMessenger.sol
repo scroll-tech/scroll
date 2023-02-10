@@ -86,11 +86,9 @@ contract L2ScrollMessenger is ScrollMessengerBase, OwnableBase, IL2ScrollMesseng
     uint256 _deadline,
     uint256 _nonce,
     bytes memory _message
-  ) external override {
+  ) external override onlyWhitelistedSender(msg.sender) {
     // anti reentrance
     require(xDomainMessageSender == ScrollConstants.DEFAULT_XDOMAIN_MESSAGE_SENDER, "already in execution");
-
-    // @todo only privileged accounts can call
 
     // solhint-disable-next-line not-rely-on-time
     require(_deadline >= block.timestamp, "Message expired");

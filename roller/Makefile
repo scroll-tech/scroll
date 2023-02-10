@@ -10,7 +10,7 @@ else
 endif
 
 libzkp:
-	cd ../common/libzkp/impl && cargo build --release && cp ./target/release/libzkp.a ../interface/
+	cd ../common/libzkp/impl && cargo build --release && cp ./target/release/libzkp.so ../interface/
 	rm -rf ./prover/lib && cp -r ../common/libzkp/interface ./prover/lib
 
 roller: libzkp ## Build the Roller instance.

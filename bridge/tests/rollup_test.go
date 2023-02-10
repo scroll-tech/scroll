@@ -6,7 +6,6 @@ import (
 	"scroll-tech/database"
 	"scroll-tech/database/migrate"
 	"scroll-tech/database/orm"
-	"sync"
 	"testing"
 
 	"scroll-tech/bridge/l1"
@@ -35,7 +34,7 @@ func testCommitBatchAndFinalizeBatch(t *testing.T) {
 
 	// Create L1Watcher
 	l1Cfg := cfg.L1Config
-	l1Watcher := l1.NewWatcher(context.Background(), l1Client, 0, 0, l1Cfg.L1MessengerAddress, l1Cfg.RollupContractAddress, db)
+	l1Watcher := l1.NewWatcher(context.Background(), l1Client, 0, l1Cfg.Confirmations, l1Cfg.L1MessengerAddress, l1Cfg.RollupContractAddress, db)
 
 	// add some blocks to db
 	var traces []*types.BlockTrace
@@ -79,11 +78,8 @@ func testCommitBatchAndFinalizeBatch(t *testing.T) {
 	err = dbTx.Commit()
 	assert.NoError(t, err)
 
-	var wg = sync.WaitGroup{}
-	wg.Add(1)
 	// process pending batch and check status
-	l2Relayer.ProcessPendingBatches(&wg)
-	wg.Wait()
+	l2Relayer.ProcessPendingBatches()
 
 	status, err := db.GetRollupStatus(batchID)
 	assert.NoError(t, err)
@@ -112,10 +108,8 @@ func testCommitBatchAndFinalizeBatch(t *testing.T) {
 	err = db.UpdateProvingStatus(batchID, orm.ProvingTaskVerified)
 	assert.NoError(t, err)
 
-	wg.Add(1)
 	// process committed batch and check status
-	l2Relayer.ProcessCommittedBatches(&wg)
-	wg.Wait()
+	l2Relayer.ProcessCommittedBatches()
 
 	status, err = db.GetRollupStatus(batchID)
 	assert.NoError(t, err)
