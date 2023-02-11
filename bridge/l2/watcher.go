@@ -33,6 +33,9 @@ var (
 	bridgeL2MsgsRelayedEventsTotalCounter = metrics.NewRegisteredCounter("bridge/l2/msgs/relayed/events/total", nil)
 	bridgeL2TracesGasTotalCounter         = metrics.NewRegisteredCounter("bridge/l2/traces/gas/total", nil)
 	bridgeL2TracesSizeTotalCounter        = metrics.NewRegisteredCounter("bridge/l2/traces/size/total", nil)
+
+	bridgeL2TracesGasMeter  = metrics.NewRegisteredMeter("bridge/l2/traces/gas", nil)
+	bridgeL2TracesSizeMeter = metrics.NewRegisteredMeter("bridge/l2/traces/size", nil)
 )
 
 type relayedMessage struct {
@@ -209,8 +212,11 @@ func (w *WatcherClient) getAndStoreBlockTraces(ctx context.Context, from, to uin
 			return fmt.Errorf("failed to GetBlockResultByHash: %v. number: %v", err2, number)
 		}
 		log.Info("retrieved block trace", "height", trace.Header.Number, "hash", trace.Header.Hash().String())
+
 		bridgeL2TracesGasTotalCounter.Inc(int64(trace.Header.GasUsed))
 		bridgeL2TracesSizeTotalCounter.Inc(int64(trace.Header.Size()))
+		bridgeL2TracesGasMeter.Mark(int64(trace.Header.GasUsed))
+		bridgeL2TracesGasMeter.Mark(int64(trace.Header.Size()))
 		traces = append(traces, trace)
 
 	}
