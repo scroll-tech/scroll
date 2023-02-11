@@ -420,3 +420,12 @@ func (o *blockBatchOrm) UpdateSkippedBatches() (int64, error) {
 
 	return count, nil
 }
+
+func (o *blockBatchOrm) GetBatchIndexByBatchID(id string) (uint64, error) {
+	row := o.db.QueryRowx(`select index from block_batch where id = $1;`, id)
+	var index uint64
+	if err := row.Scan(&index); err != nil {
+		return 0, err
+	}
+	return index, nil
+}
