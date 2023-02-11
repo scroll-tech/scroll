@@ -25,7 +25,7 @@ var (
 
 	bridgeL1MsgsSentEventsTotalCounter    = metrics.NewRegisteredCounter("bridge/l1/msgs/sent/events/total", nil)
 	bridgeL1MsgsRelayedEventsTotalCounter = metrics.NewRegisteredCounter("bridge/l1/msgs/relayed/events/total", nil)
-	bridgeL1RollupEventsTotalCounter      = metrics.NewRegisteredCounter("bridge/l1/rollup/events/total", nil)
+	bridgeL1MsgsRollupEventsTotalCounter  = metrics.NewRegisteredCounter("bridge/l1/msgs/rollup/events/total", nil)
 )
 
 type relayedMessage struct {
@@ -176,7 +176,7 @@ func (w *Watcher) FetchContractEvent(blockHeight uint64) error {
 		rollupEventCount := int64(len(rollupEvents))
 		bridgeL1MsgsSentEventsTotalCounter.Inc(sentMessageCount)
 		bridgeL1MsgsRelayedEventsTotalCounter.Inc(relayedMessageCount)
-		bridgeL1RollupEventsTotalCounter.Inc(rollupEventCount)
+		bridgeL1MsgsRollupEventsTotalCounter.Inc(rollupEventCount)
 		log.Info("L1 events types", "SentMessageCount", sentMessageCount, "RelayedMessageCount", relayedMessageCount, "RollupEventCount", rollupEventCount)
 
 		// use rollup event to update rollup results db status
