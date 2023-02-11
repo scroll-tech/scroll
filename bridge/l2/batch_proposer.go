@@ -16,10 +16,12 @@ import (
 
 var (
 	bridgeL2BatchesGasOverThresholdTotalCounter = metrics.NewRegisteredCounter("bridge/l2/batches/gas/over/threshold/total", nil)
-	bridgeL2BatchesGasCreatedTotalCounter       = metrics.NewRegisteredCounter("bridge/l2/batches/gas/created/total", nil)
 	bridgeL2BatchesTxsOverThresholdTotalCounter = metrics.NewRegisteredCounter("bridge/l2/batches/txs/over/threshold/total", nil)
-	bridgeL2BatchesTxsCreatedTotalCounter       = metrics.NewRegisteredCounter("bridge/l2/batches/txs/created/total", nil)
 	bridgeL2BatchesCreatedTotalCounter          = metrics.NewRegisteredCounter("bridge/l2/batches/created/total", nil)
+
+	bridgeL2BatchesBlocksCreatedRateMeter = metrics.NewRegisteredMeter("bridge/l2/batches/blocks/created/rate", nil)
+	bridgeL2BatchesTxsCreatedRateMeter    = metrics.NewRegisteredMeter("bridge/l2/batches/txs/created/rate", nil)
+	bridgeL2BatchesGasCreatedRateMeter    = metrics.NewRegisteredMeter("bridge/l2/batches/gas/created/rate", nil)
 )
 
 type batchProposer struct {
@@ -140,9 +142,6 @@ func (w *batchProposer) createBatchForBlocks(blocks []*orm.BlockInfo) error {
 		blockIDs[i] = block.Number
 	}
 
-	bridgeL2BatchesTxsCreatedTotalCounter.Inc(int64(txNum))
-	bridgeL2BatchesGasCreatedTotalCounter.Inc(int64(gasUsed))
-
 	batchID, dbTxErr = w.orm.NewBatchInDBTx(dbTx, startBlock, endBlock, startBlock.ParentHash, txNum, gasUsed)
 	if dbTxErr != nil {
 		return dbTxErr
@@ -153,5 +152,10 @@ func (w *batchProposer) createBatchForBlocks(blocks []*orm.BlockInfo) error {
 	}
 
 	dbTxErr = dbTx.Commit()
+	if dbTxErr == nil {
+		bridgeL2BatchesTxsCreatedRateMeter.Mark(int64(txNum))
+		bridgeL2BatchesGasCreatedRateMeter.Mark(int64(gasUsed))
+		bridgeL2BatchesBlocksCreatedRateMeter.Mark(int64(len(blocks)))
+	}
 	return dbTxErr
 }
