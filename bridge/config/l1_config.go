@@ -1,11 +1,15 @@
 package config
 
-import "github.com/scroll-tech/go-ethereum/common"
+import (
+	"scroll-tech/bridge/utils"
+
+	"github.com/scroll-tech/go-ethereum/common"
+)
 
 // L1Config loads l1eth configuration items.
 type L1Config struct {
 	// Confirmations block height confirmations number.
-	Confirmations uint64 `json:"confirmations"`
+	Confirmations utils.ConfirmationParams `json:"confirmations"`
 	// l1 eth node url.
 	Endpoint string `json:"endpoint"`
 	// The start height to sync event from layer 1

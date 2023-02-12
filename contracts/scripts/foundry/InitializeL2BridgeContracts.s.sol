@@ -22,6 +22,7 @@ contract InitializeL2BridgeContracts is Script {
     address L1_ERC1155_GATEWAY_PROXY_ADDR = vm.envAddress("L1_ERC1155_GATEWAY_PROXY_ADDR");
 
     address L2_SCROLL_MESSENGER_ADDR = vm.envAddress("L2_SCROLL_MESSENGER_ADDR");
+    address L2_TX_FEE_VAULT_ADDR = vm.envAddress("L2_TX_FEE_VAULT_ADDR");
     address L2_STANDARD_ERC20_GATEWAY_PROXY_ADDR = vm.envAddress("L2_STANDARD_ERC20_GATEWAY_PROXY_ADDR");
     address L2_GATEWAY_ROUTER_PROXY_ADDR = vm.envAddress("L2_GATEWAY_ROUTER_PROXY_ADDR");
     address L2_SCROLL_STANDARD_ERC20_FACTORY_ADDR = vm.envAddress("L2_SCROLL_STANDARD_ERC20_FACTORY_ADDR");
@@ -74,12 +75,13 @@ contract InitializeL2BridgeContracts is Script {
 
         // whitelist contracts which can call sendMessage
         {
-            address[] memory gateways = new address[](5);
+            address[] memory gateways = new address[](6);
             gateways[0] = L2_STANDARD_ERC20_GATEWAY_PROXY_ADDR;
             gateways[1] = L2_GATEWAY_ROUTER_PROXY_ADDR;
             gateways[2] = L2_CUSTOM_ERC20_GATEWAY_PROXY_ADDR;
             gateways[3] = L2_ERC1155_GATEWAY_PROXY_ADDR;
             gateways[4] = L2_ERC721_GATEWAY_PROXY_ADDR;
+            gateways[5] = L2_TX_FEE_VAULT_ADDR;
             Whitelist(L2_WHITELIST_ADDR).updateWhitelistStatus(gateways, true);
         }
 
