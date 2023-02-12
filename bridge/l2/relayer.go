@@ -434,9 +434,9 @@ func (r *Layer2Relayer) Start() {
 				select {
 				case <-ctx.Done():
 					return
-				case confirmation := <-r.messageSender.ConfirmChan():
+				case confirmation := <-r.GetMsgConfirmCh():
 					r.HandleConfirmation(confirmation)
-				case confirmation := <-r.rollupSender.ConfirmChan():
+				case confirmation := <-r.GetRollupCh():
 					r.HandleConfirmation(confirmation)
 				}
 			}
