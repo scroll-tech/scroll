@@ -62,7 +62,7 @@ func TestSender(t *testing.T) {
 
 func testLoadOrSendTx(t *testing.T) {
 	senderCfg := cfg.L1Config.RelayerConfig.SenderConfig
-	senderCfg.Confirmations = utils.ConfirmationParams{Type: utils.BlockNumberConfirmation, Number: 0}
+	senderCfg.Confirmations = 0
 	newSender, err := sender.NewSender(context.Background(), senderCfg, privateKeys)
 	if err != nil {
 		t.Fatal(err)
