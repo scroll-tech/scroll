@@ -190,22 +190,22 @@ func (s *Sender) getFeeData(auth *bind.TransactOpts, target *common.Address, val
 }
 
 // SendTransaction send a signed L2tL1 transaction.
-func (s *Sender) SendTransaction(msg interface{}, target *common.Address, value *big.Int, data []byte) (hash common.Hash, err error) {
+func (s *Sender) SendTransaction(txMeta interface{}, target *common.Address, value *big.Int, data []byte) (hash common.Hash, err error) {
 	// We occupy the ID, in case some other threads call with the same ID in the same time
-	if _, loaded := s.pendingTxs.LoadOrStore(msg, nil); loaded {
-		return common.Hash{}, fmt.Errorf("attempted to send duplicate transaction, msg: %v", msg)
+	if _, loaded := s.pendingTxs.LoadOrStore(txMeta, nil); loaded {
+		return common.Hash{}, fmt.Errorf("attempted to send duplicate transaction, txMeta: %v", txMeta)
 	}
 	// get
 	auth := s.auths.getAccount()
 	if auth == nil {
-		s.pendingTxs.Delete(msg) // release the ID on failure
+		s.pendingTxs.Delete(txMeta) // release the ID on failure
 		return common.Hash{}, ErrNoAvailableAccount
 	}
 
 	defer s.auths.releaseAccount(auth)
 	defer func() {
 		if err != nil {
-			s.pendingTxs.Delete(msg) // release the ID on failure
+			s.pendingTxs.Delete(txMeta) // release the ID on failure
 		}
 	}()
 
@@ -221,12 +221,12 @@ func (s *Sender) SendTransaction(msg interface{}, target *common.Address, value 
 		// add pending transaction to queue
 		pending := &PendingTransaction{
 			tx:       tx,
-			txMeta:   msg,
+			txMeta:   txMeta,
 			signer:   auth,
 			submitAt: atomic.LoadUint64(&s.blockNumber),
 			feeData:  feeData,
 		}
-		s.pendingTxs.Store(msg, pending)
+		s.pendingTxs.Store(txMeta, pending)
 		return tx.Hash(), nil
 	}
 

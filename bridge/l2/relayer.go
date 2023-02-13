@@ -347,7 +347,7 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 		}
 
 		// add suffix `-finalize` to avoid duplication with commit tx in unit tests
-		txHash, err := r.rollupSender.SendTransaction(&confirmMsg{TxType: "ProofFinalization", ID: id}, &r.cfg.RollupContractAddress, big.NewInt(0), data)
+		txHash, err := r.rollupSender.SendTransaction(&confirmMsg{TxType: "BatchFinalization", ID: id}, &r.cfg.RollupContractAddress, big.NewInt(0), data)
 		hash := &txHash
 		if err != nil {
 			if !errors.Is(err, sender.ErrNoAvailableAccount) {
@@ -440,7 +440,7 @@ func (r *Layer2Relayer) handleConfirmation(confirmation *sender.Confirmation) {
 		if err != nil {
 			log.Warn("UpdateCommitTxHashAndRollupStatus failed", "batch_id", txMeta.ID, "err", err)
 		}
-	case "ProofFinalization":
+	case "BatchFinalization":
 		// @todo handle db error
 		err := r.db.UpdateFinalizeTxHashAndRollupStatus(r.ctx, txMeta.ID, confirmation.TxHash.String(), orm.RollupFinalized)
 		if err != nil {
