@@ -14,11 +14,10 @@ import (
 	cmap "github.com/orcaman/concurrent-map"
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/crypto"
+	"github.com/scroll-tech/go-ethereum/rpc"
 	"github.com/stretchr/testify/assert"
 
 	"scroll-tech/common/docker"
-
-	"scroll-tech/bridge/utils"
 
 	"scroll-tech/bridge/config"
 	"scroll-tech/bridge/sender"
@@ -92,7 +91,7 @@ func testBatchSender(t *testing.T, batchSize int) {
 	}
 
 	senderCfg := cfg.L1Config.RelayerConfig.SenderConfig
-	senderCfg.Confirmations = utils.ConfirmationParams{Type: utils.BlockNumberConfirmation, Number: 0}
+	senderCfg.Confirmations = rpc.LatestBlockNumber
 	newSender, err := sender.NewSender(context.Background(), senderCfg, privateKeys)
 	if err != nil {
 		t.Fatal(err)
