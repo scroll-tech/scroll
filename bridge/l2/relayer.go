@@ -401,7 +401,7 @@ func (r *Layer2Relayer) Start() {
 					return
 				case confirmation := <-r.messageSender.ConfirmChan():
 					r.handleConfirmation(confirmation)
-				case confirmation := <-r.messageSender.ConfirmChan():
+				case confirmation := <-r.rollupSender.ConfirmChan():
 					r.handleConfirmation(confirmation)
 				}
 			}
