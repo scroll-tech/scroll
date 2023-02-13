@@ -13,15 +13,20 @@ import { L2ERC721Gateway } from "../../src/L2/gateways/L2ERC721Gateway.sol";
 import { L2GatewayRouter } from "../../src/L2/gateways/L2GatewayRouter.sol";
 import { L2ScrollMessenger } from "../../src/L2/L2ScrollMessenger.sol";
 import { L2StandardERC20Gateway } from "../../src/L2/gateways/L2StandardERC20Gateway.sol";
+import { L2TxFeeVault } from "../../src/L2/predeploys/L2TxFeeVault.sol";
 import { Whitelist } from "../../src/L2/predeploys/Whitelist.sol";
 import { ScrollStandardERC20 } from "../../src/libraries/token/ScrollStandardERC20.sol";
 import { ScrollStandardERC20Factory } from "../../src/libraries/token/ScrollStandardERC20Factory.sol";
 
 contract DeployL2BridgeContracts is Script {
     uint256 L2_DEPLOYER_PRIVATE_KEY = vm.envUint("L2_DEPLOYER_PRIVATE_KEY");
+    address L1_TX_FEE_RECIPIENT_ADDR = vm.envAddress("L1_TX_FEE_RECIPIENT_ADDR");
+
+    L2ScrollMessenger messenger;
     ProxyAdmin proxyAdmin;
 
     address L2_SCROLL_MESSENGER_PREDEPLOY_ADDR = vm.envOr("L2_SCROLL_MESSENGER_PREDEPLOY_ADDR", address(0));
+    address L2_TX_FEE_VAULT_PREDEPLOY_ADDR = vm.envOr("L2_TX_FEE_VAULT_PREDEPLOY_ADDR", address(0));
     address L2_PROXY_ADMIN_PREDEPLOY_ADDR = vm.envOr("L2_PROXY_ADMIN_PREDEPLOY_ADDR", address(0));
     address L2_STANDARD_ERC20_GATEWAY_PROXY_PREDEPLOY_ADDR = vm.envOr("L2_STANDARD_ERC20_GATEWAY_PROXY_PREDEPLOY_ADDR", address(0));
     address L2_GATEWAY_ROUTER_PROXY_PREDEPLOY_ADDR = vm.envOr("L2_GATEWAY_ROUTER_PROXY_PREDEPLOY_ADDR", address(0));
@@ -35,6 +40,7 @@ contract DeployL2BridgeContracts is Script {
         vm.startBroadcast(L2_DEPLOYER_PRIVATE_KEY);
 
         deployL2ScrollMessenger();
+        deployTxFeeVault();
         deployProxyAdmin();
         deployL2StandardERC20Gateway();
         deployL2GatewayRouter();
@@ -54,9 +60,20 @@ contract DeployL2BridgeContracts is Script {
         }
 
         address owner = vm.addr(L2_DEPLOYER_PRIVATE_KEY);
-        L2ScrollMessenger l2ScrollMessenger = new L2ScrollMessenger(owner);
+        messenger = new L2ScrollMessenger(owner);
 
-        logAddress("L2_SCROLL_MESSENGER_ADDR", address(l2ScrollMessenger));
+        logAddress("L2_SCROLL_MESSENGER_ADDR", address(messenger));
+    }
+
+    function deployTxFeeVault() internal {
+        if (L2_TX_FEE_VAULT_PREDEPLOY_ADDR != address(0)) {
+            logAddress("L2_TX_FEE_VAULT_ADDR", address(L2_TX_FEE_VAULT_PREDEPLOY_ADDR));
+            return;
+        }
+
+        L2TxFeeVault feeVault = new L2TxFeeVault(address(messenger), L1_TX_FEE_RECIPIENT_ADDR);
+
+        logAddress("L2_TX_FEE_VAULT_ADDR", address(feeVault));
     }
 
     function deployProxyAdmin() internal {
