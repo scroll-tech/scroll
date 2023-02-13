@@ -193,7 +193,7 @@ func (s *Sender) getFeeData(auth *bind.TransactOpts, target *common.Address, val
 func (s *Sender) SendTransaction(msg interface{}, target *common.Address, value *big.Int, data []byte) (hash common.Hash, err error) {
 	// We occupy the ID, in case some other threads call with the same ID in the same time
 	if _, loaded := s.pendingTxs.LoadOrStore(msg, nil); loaded {
-		return common.Hash{}, fmt.Errorf("has the repeat tx confirmMsg, confirmMsg: %s", msg)
+		return common.Hash{}, fmt.Errorf("attempted to send duplicate transaction, msg: %v", msg)
 	}
 	// get
 	auth := s.auths.getAccount()
