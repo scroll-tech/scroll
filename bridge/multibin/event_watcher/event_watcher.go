@@ -6,12 +6,14 @@ import (
 
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
+	"github.com/scroll-tech/go-ethereum/rpc"
 
 	"scroll-tech/database"
 
 	"scroll-tech/bridge/config"
 	"scroll-tech/bridge/l1"
 	"scroll-tech/bridge/l2"
+	"scroll-tech/bridge/utils"
 )
 
 // L1EventWatcher is sturct to wrap l1.watcher
@@ -27,7 +29,7 @@ type L2EventWatcher struct {
 	ctx           context.Context
 	watcher       *l2.WatcherClient
 	client        *ethclient.Client
-	confirmations uint64
+	confirmations rpc.BlockNumber
 	stopCh        chan struct{}
 }
 
@@ -38,7 +40,7 @@ func NewL2EventWatcher(ctx context.Context, client *ethclient.Client, cfg *confi
 		ctx:           ctx,
 		watcher:       watcher,
 		client:        client,
-		confirmations: cfg.Confirmations.Number,
+		confirmations: cfg.Confirmations,
 		stopCh:        make(chan struct{}),
 	}
 }
@@ -97,17 +99,10 @@ func (l2w *L2EventWatcher) Start() {
 				return
 
 			case <-ticker.C:
-				// get current height
-				number, err := l2w.client.BlockNumber(l2w.ctx)
+				number, err := utils.GetLatestConfirmedBlockNumber(l2w.ctx, l2w.client, l2w.confirmations)
 				if err != nil {
-					log.Error("failed to get_BlockNumber", "err", err)
+					log.Error("failed to get block number", "err", err)
 					continue
-				}
-
-				if number >= l2w.confirmations {
-					number = number - l2w.confirmations
-				} else {
-					number = 0
 				}
 
 				l2w.watcher.FetchContractEvent(number)

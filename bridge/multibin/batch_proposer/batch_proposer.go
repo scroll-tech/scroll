@@ -6,6 +6,7 @@ import (
 
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
+	"github.com/scroll-tech/go-ethereum/rpc"
 
 	"scroll-tech/database"
 
@@ -19,7 +20,7 @@ type L2BatchPropser struct {
 	ctx           context.Context
 	watcher       *l2.WatcherClient
 	client        *ethclient.Client
-	confirmations utils.ConfirmationParams
+	confirmations rpc.BlockNumber
 	batchProposer *l2.BatchProposer
 	stopCh        chan struct{}
 }
