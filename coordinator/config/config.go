@@ -12,6 +12,7 @@ import (
 
 // RollerManagerConfig loads sequencer configuration items.
 type RollerManagerConfig struct {
+	CompressionLevel int `json:"compression_level,omitempty"`
 	// asc or desc (default: asc)
 	OrderSession string `json:"order_session,omitempty"`
 	// The amount of rollers to pick per proof generation session.
