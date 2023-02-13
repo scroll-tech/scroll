@@ -15,6 +15,7 @@ import (
 	"github.com/scroll-tech/go-ethereum/event"
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/scroll-tech/go-ethereum/metrics"
+	"github.com/scroll-tech/go-ethereum/rpc"
 
 	bridge_abi "scroll-tech/bridge/abi"
 	"scroll-tech/bridge/utils"
@@ -45,7 +46,7 @@ type WatcherClient struct {
 
 	orm database.OrmFactory
 
-	confirmations    utils.ConfirmationParams
+	confirmations    rpc.BlockNumber
 	messengerAddress common.Address
 	messengerABI     *abi.ABI
 
@@ -59,7 +60,7 @@ type WatcherClient struct {
 }
 
 // NewL2WatcherClient take a l2geth instance to generate a l2watcherclient instance
-func NewL2WatcherClient(ctx context.Context, client *ethclient.Client, confirmations utils.ConfirmationParams, bpCfg *config.BatchProposerConfig, messengerAddress common.Address, orm database.OrmFactory) *WatcherClient {
+func NewL2WatcherClient(ctx context.Context, client *ethclient.Client, confirmations rpc.BlockNumber, bpCfg *config.BatchProposerConfig, messengerAddress common.Address, orm database.OrmFactory) *WatcherClient {
 	savedHeight, err := orm.GetLayer2LatestWatchedHeight()
 	if err != nil {
 		log.Warn("fetch height from db failed", "err", err)

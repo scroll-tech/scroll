@@ -6,10 +6,9 @@ import (
 	"fmt"
 	"math/big"
 
-	"scroll-tech/bridge/utils"
-
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/crypto"
+	"github.com/scroll-tech/go-ethereum/rpc"
 )
 
 // SenderConfig The config for transaction sender
@@ -21,7 +20,7 @@ type SenderConfig struct {
 	// The number of blocks to wait to escalate increase gas price of the transaction.
 	EscalateBlocks uint64 `json:"escalate_blocks"`
 	// The gap number between a block be confirmed and the latest block.
-	Confirmations utils.ConfirmationParams `json:"confirmations"`
+	Confirmations rpc.BlockNumber `json:"confirmations"`
 	// The numerator of gas price escalate multiple.
 	EscalateMultipleNum uint64 `json:"escalate_multiple_num"`
 	// The denominator of gas price escalate multiple.
