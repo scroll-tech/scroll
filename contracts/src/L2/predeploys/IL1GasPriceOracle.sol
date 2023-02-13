@@ -15,6 +15,10 @@ interface IL1GasPriceOracle {
   /// @param scalar The current fee scalar updated.
   event ScalarUpdated(uint256 scalar);
 
+  /// @notice Emitted when current l1 base fee is updated.
+  /// @param l1BaseFee The current l1 base fee updated.
+  event L1BaseFeeUpdated(uint256 l1BaseFee);
+
   /*************************
    * Public View Functions *
    *************************/

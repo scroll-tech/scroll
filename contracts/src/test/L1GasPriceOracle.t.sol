@@ -14,11 +14,9 @@ contract L1GasPriceOracleTest is DSTestPlus {
   uint256 private constant MAX_SCALE = 1000 * PRECISION;
 
   L1GasPriceOracle private oracle;
-  L1BlockContainer private container;
 
   function setUp() public {
-    container = new L1BlockContainer(address(0));
-    oracle = new L1GasPriceOracle(address(this), address(container));
+    oracle = new L1GasPriceOracle(address(this));
   }
 
   function testSetOverhead(uint256 _overhead) external {
@@ -59,6 +57,21 @@ contract L1GasPriceOracleTest is DSTestPlus {
     assertEq(oracle.scalar(), _scalar);
   }
 
+  function testSetL1BaseFee(uint256 _baseFee) external {
+    _baseFee = bound(_baseFee, 0, 1e9 * 20000); // max 20k gwei
+
+    // call by non-owner, should revert
+    hevm.startPrank(address(1));
+    hevm.expectRevert("caller is not the owner");
+    oracle.setL1BaseFee(_baseFee);
+    hevm.stopPrank();
+
+    // call by owner, should succeed
+    assertEq(oracle.l1BaseFee(), 0);
+    oracle.setL1BaseFee(_baseFee);
+    assertEq(oracle.l1BaseFee(), _baseFee);
+  }
+
   function testGetL1GasUsed(uint256 _overhead, bytes memory _data) external {
     _overhead = bound(_overhead, 0, MAX_OVERHEAD);
 
@@ -85,7 +98,7 @@ contract L1GasPriceOracleTest is DSTestPlus {
 
     oracle.setOverhead(_overhead);
     oracle.setScalar(_scalar);
-    container.initialize(bytes32(0), 0, 0, uint128(_baseFee), bytes32(0));
+    oracle.setL1BaseFee(_baseFee);
 
     uint256 _gasUsed = _overhead + 68 * 16;
     for (uint256 i = 0; i < _data.length; i++) {

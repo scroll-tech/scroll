@@ -23,12 +23,12 @@ contract L1GasPriceOracle is OwnableBase, IL1GasPriceOracle {
   ///      x1000 should be enough.
   uint256 private constant MAX_SCALE = 1000 * PRECISION;
 
-  /// @notice The address of L1BlockContainer contract.
-  address public immutable blockContainer;
-
   /*************
    * Variables *
    *************/
+
+  /// @inheritdoc IL1GasPriceOracle
+  uint256 public l1BaseFee;
 
   /// @inheritdoc IL1GasPriceOracle
   uint256 public override overhead;
@@ -40,28 +40,19 @@ contract L1GasPriceOracle is OwnableBase, IL1GasPriceOracle {
    * Constructor *
    ***************/
 
-  constructor(address _owner, address _blockContainer) {
+  constructor(address _owner) {
     _transferOwnership(_owner);
-
-    blockContainer = _blockContainer;
   }
 
   /*************************
    * Public View Functions *
    *************************/
 
-  /// @notice Return the latest known l1 base fee.
-  function l1BaseFee() public view override returns (uint256) {
-    return IL1BlockContainer(blockContainer).latestBaseFee();
-  }
-
   /// @inheritdoc IL1GasPriceOracle
   function getL1Fee(bytes memory _data) external view override returns (uint256) {
-    unchecked {
-      uint256 _l1GasUsed = getL1GasUsed(_data);
-      uint256 _l1Fee = _l1GasUsed * l1BaseFee();
-      return (_l1Fee * scalar) / PRECISION;
-    }
+    uint256 _l1GasUsed = getL1GasUsed(_data);
+    uint256 _l1Fee = _l1GasUsed * l1BaseFee;
+    return (_l1Fee * scalar) / PRECISION;
   }
 
   /// @inheritdoc IL1GasPriceOracle
@@ -103,5 +94,12 @@ contract L1GasPriceOracle is OwnableBase, IL1GasPriceOracle {
 
     scalar = _scalar;
     emit ScalarUpdated(_scalar);
+  }
+
+  /// Allows the owner to modify the l1 base fee.
+  /// @param _l1BaseFee New l1 base fee.
+  function setL1BaseFee(uint256 _l1BaseFee) external onlyOwner {
+    l1BaseFee = _l1BaseFee;
+    emit L1BaseFeeUpdated(_l1BaseFee);
   }
 }

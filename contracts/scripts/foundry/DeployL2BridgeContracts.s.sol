@@ -63,11 +63,8 @@ contract DeployL2BridgeContracts is Script {
             logAddress("L2_SCROLL_MESSENGER_ADDR", address(L2_SCROLL_MESSENGER_PREDEPLOY_ADDR));
             return;
         }
-
-        L2ScrollMessenger l2ScrollMessenger = new L2ScrollMessenger(L1_BLOCK_CONTAINER_ADDR, L2_MESSAGE_QUEUE_ADDR);
     
-        address owner = vm.addr(L2_DEPLOYER_PRIVATE_KEY);
-        messenger = new L2ScrollMessenger(owner);
+        messenger = new L2ScrollMessenger(L1_BLOCK_CONTAINER_ADDR, L2_MESSAGE_QUEUE_ADDR);
 
         logAddress("L2_SCROLL_MESSENGER_ADDR", address(messenger));
     }
