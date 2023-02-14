@@ -1,5 +1,6 @@
 {
   "roller_manager_config": {
+    "compression_level": 9,
     "rollers_per_session": 1,
     "collection_time": 180,
     "token_time_to_live": 60,
