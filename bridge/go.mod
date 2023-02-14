@@ -5,7 +5,7 @@ go 1.18
 require (
 	github.com/iden3/go-iden3-crypto v0.0.13
 	github.com/orcaman/concurrent-map v1.0.0
-	github.com/scroll-tech/go-ethereum v1.10.14-0.20230210091139-8224bc8b9ca5
+	github.com/scroll-tech/go-ethereum v1.10.14-0.20230210093343-bb26fa3e391d
 	github.com/stretchr/testify v1.8.0
 	github.com/urfave/cli/v2 v2.10.2
 	golang.org/x/sync v0.1.0
@@ -38,8 +38,8 @@ require (
 	github.com/tklauser/numcpus v0.4.0 // indirect
 	github.com/xrash/smetrics v0.0.0-20201216005158-039620a65673 // indirect
 	github.com/yusufpapurcu/wmi v1.2.2 // indirect
-	golang.org/x/crypto v0.5.0 // indirect
-	golang.org/x/sys v0.4.0 // indirect
+	golang.org/x/crypto v0.6.0 // indirect
+	golang.org/x/sys v0.5.0 // indirect
 	gopkg.in/natefinch/npipe.v2 v2.0.0-20160621034901-c1b8fa8bdcce // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
