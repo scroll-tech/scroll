@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/scroll-tech/go-ethereum/crypto"
+	"github.com/scroll-tech/go-ethereum/rpc"
 	"github.com/stretchr/testify/assert"
 
 	"scroll-tech/database"
@@ -27,8 +28,6 @@ import (
 
 	"scroll-tech/common/cmd"
 	"scroll-tech/common/docker"
-
-	"scroll-tech/bridge/utils"
 
 	_ "scroll-tech/coordinator/cmd/app"
 	coordinatorConfig "scroll-tech/coordinator/config"
@@ -124,7 +123,7 @@ func runSender(t *testing.T, endpoint string) *sender.Sender {
 		Endpoint:            endpoint,
 		CheckPendingTime:    3,
 		EscalateBlocks:      100,
-		Confirmations:       utils.ConfirmationParams{Type: utils.BlockNumberConfirmation, Number: 0},
+		Confirmations:       rpc.LatestBlockNumber,
 		EscalateMultipleNum: 11,
 		EscalateMultipleDen: 10,
 		TxType:              "LegacyTx",

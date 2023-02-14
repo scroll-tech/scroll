@@ -12,6 +12,7 @@ import (
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/scroll-tech/go-ethereum/metrics"
+	"github.com/scroll-tech/go-ethereum/rpc"
 
 	"scroll-tech/database"
 	"scroll-tech/database/orm"
@@ -43,7 +44,7 @@ type Watcher struct {
 	db     database.OrmFactory
 
 	// The number of new blocks to wait for a block to be confirmed
-	confirmations    utils.ConfirmationParams
+	confirmations    rpc.BlockNumber
 	messengerAddress common.Address
 	messengerABI     *abi.ABI
 
@@ -58,7 +59,7 @@ type Watcher struct {
 
 // NewWatcher returns a new instance of Watcher. The instance will be not fully prepared,
 // and still needs to be finalized and ran by calling `watcher.Start`.
-func NewWatcher(ctx context.Context, client *ethclient.Client, startHeight uint64, confirmations utils.ConfirmationParams, messengerAddress common.Address, rollupAddress common.Address, db database.OrmFactory) *Watcher {
+func NewWatcher(ctx context.Context, client *ethclient.Client, startHeight uint64, confirmations rpc.BlockNumber, messengerAddress common.Address, rollupAddress common.Address, db database.OrmFactory) *Watcher {
 	savedHeight, err := db.GetLayer1LatestWatchedHeight()
 	if err != nil {
 		log.Warn("Failed to fetch height from db", "err", err)

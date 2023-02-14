@@ -8,6 +8,7 @@ import (
 	"github.com/scroll-tech/go-ethereum/accounts/abi/bind"
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/core/types"
+	"github.com/scroll-tech/go-ethereum/rpc"
 	"github.com/stretchr/testify/assert"
 
 	"scroll-tech/database"
@@ -16,7 +17,6 @@ import (
 
 	"scroll-tech/bridge/l1"
 	"scroll-tech/bridge/l2"
-	"scroll-tech/bridge/utils"
 )
 
 func testRelayL2MessageSucceed(t *testing.T) {
@@ -35,7 +35,7 @@ func testRelayL2MessageSucceed(t *testing.T) {
 	defer l2Relayer.Stop()
 
 	// Create L2Watcher
-	confirmations := utils.ConfirmationParams{Type: utils.BlockNumberConfirmation, Number: 0}
+	confirmations := rpc.LatestBlockNumber
 	l2Watcher, err := l2.NewL2WatcherClient(context.Background(), l2Client, confirmations, l2Cfg.BatchProposerConfig, l2Cfg.L2MessengerAddress, db)
 	assert.NoError(t, err)
 
