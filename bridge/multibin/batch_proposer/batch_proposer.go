@@ -17,76 +17,49 @@ import (
 
 // L2BatchPropser is struct to wrap l2.watcher
 type L2BatchPropser struct {
-	ctx           context.Context
+	ctx    context.Context
+	cancel context.CancelFunc
+
 	watcher       *l2.WatcherClient
 	client        *ethclient.Client
 	confirmations rpc.BlockNumber
 	batchProposer *l2.BatchProposer
-	stopCh        chan struct{}
 }
 
 // NewL2BatchPropser creates a new instance of L2BatchPropser
 func NewL2BatchProposer(ctx context.Context, client *ethclient.Client, cfg *config.L2Config, db database.OrmFactory) (*L2BatchPropser, error) {
+	subCtx, cancel := context.WithCancel(ctx)
 	watcher := l2.NewL2WatcherClient(ctx, client, cfg.Confirmations, cfg.BatchProposerConfig, cfg.RelayerConfig.MessengerContractAddress, db)
 	return &L2BatchPropser{
-		ctx:           ctx,
+		ctx:           subCtx,
+		cancel:        cancel,
 		watcher:       watcher,
 		client:        client,
 		confirmations: cfg.Confirmations,
 		batchProposer: watcher.GetBatchProposer(),
-		stopCh:        make(chan struct{}),
 	}, nil
 }
 
 // Start runs go routine to fetch contract events on L2
 func (b *L2BatchPropser) Start() {
 	// Todo: Refactoring this process
-	go func() {
-		ctx, cancel := context.WithCancel(b.ctx)
-		// trace fetcher loop
-		go func(ctx context.Context) {
-			ticker := time.NewTicker(3 * time.Second)
-			defer ticker.Stop()
+	go utils.Loop(b.ctx, time.NewTicker(3*time.Second), func(ctx context.Context) {
+		number, err := utils.GetLatestConfirmedBlockNumber(ctx, b.client, b.confirmations)
+		if err != nil {
+			log.Error("failed to get block number", "err", err)
+			return
+		}
+		b.watcher.TryFetchRunningMissingBlocks(ctx, number)
+	})
 
-			for {
-				select {
-				case <-ctx.Done():
-					return
-
-				case <-ticker.C:
-					number, err := utils.GetLatestConfirmedBlockNumber(ctx, b.client, b.confirmations)
-					if err != nil {
-						log.Error("failed to get block number", "err", err)
-						continue
-					}
-					b.watcher.TryFetchRunningMissingBlocks(ctx, number)
-				}
-			}
-		}(ctx)
-
-		// batch proposer loop
-		go func(ctx context.Context) {
-			ticker := time.NewTicker(3 * time.Second)
-			defer ticker.Stop()
-
-			for {
-				select {
-				case <-ctx.Done():
-					return
-
-				case <-ticker.C:
-					b.batchProposer.TryProposeBatch()
-				}
-			}
-		}(ctx)
-
-		<-b.stopCh
-		cancel()
-
-	}()
+	// batch proposer loop
+	go utils.Loop(b.ctx, time.NewTicker(3*time.Second), b.batchProposer.TryProposeBatch)
 }
 
 // Stop sends the stop signal to stop chan
 func (b *L2BatchPropser) Stop() {
-	close(b.stopCh)
+	if b.cancel != nil {
+		b.cancel()
+		b.cancel = nil
+	}
 }

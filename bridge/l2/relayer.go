@@ -105,7 +105,7 @@ func (r *Layer2Relayer) GetMsgConfirmCh() <-chan *sender.Confirmation {
 const processMsgLimit = 100
 
 // ProcessSavedEvents relays saved un-processed cross-domain transactions to desired blockchain
-func (r *Layer2Relayer) ProcessSavedEvents() {
+func (r *Layer2Relayer) ProcessSavedEvents(ctx context.Context) {
 	batch, err := r.db.GetLatestFinalizedBatch()
 	if err != nil {
 		log.Error("GetLatestFinalizedBatch failed", "err", err)

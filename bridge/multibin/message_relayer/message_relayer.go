@@ -17,19 +17,21 @@ import (
 
 // L1MsgRelayer wraps l1 relayer for message-relayer bin
 type L1MsgRelayer struct {
-	ctx       context.Context
+	ctx    context.Context
+	cancel context.CancelFunc
+
 	relayer   *l1.Layer1Relayer
 	confirmCh <-chan *sender.Confirmation
-	stopCh    chan struct{}
 	db        orm.L1MessageOrm
 }
 
 // L2MsgRelayer wraps l2 relayer for message-relayer bin
 type L2MsgRelayer struct {
-	ctx          context.Context
+	ctx    context.Context
+	cancel context.CancelFunc
+
 	relayer      *l2.Layer2Relayer
 	msgConfirmCh <-chan *sender.Confirmation
-	stopCh       chan struct{}
 	db           orm.L2MessageOrm
 }
 
@@ -39,12 +41,13 @@ func NewL2MsgRelayer(ctx context.Context, db database.OrmFactory, cfg *config.Re
 	if err != nil {
 		return nil, err
 	}
+	subCtx, cancel := context.WithCancel(ctx)
 	return &L2MsgRelayer{
-		ctx:          ctx,
+		ctx:          subCtx,
+		cancel:       cancel,
 		relayer:      msgRelayer,
 		msgConfirmCh: msgRelayer.GetMsgConfirmCh(),
 		db:           db,
-		stopCh:       make(chan struct{}),
 	}, nil
 }
 
@@ -54,11 +57,12 @@ func NewL1MsgRelayer(ctx context.Context, l1ConfirmNum int64, db orm.L1MessageOr
 	if err != nil {
 		return nil, err
 	}
+	subCtx, cancel := context.WithCancel(ctx)
 	return &L1MsgRelayer{
-		ctx:       ctx,
+		ctx:       subCtx,
+		cancel:    cancel,
 		relayer:   msgRelayer,
 		confirmCh: msgRelayer.GetConfirmCh(),
-		stopCh:    make(chan struct{}),
 		db:        db,
 	}, nil
 }
@@ -73,7 +77,7 @@ func (l1r *L1MsgRelayer) Start() {
 		for {
 			select {
 			case <-ticker.C:
-				l1r.relayer.ProcessSavedEvents()
+				l1r.relayer.ProcessSavedEvents(l1r.ctx)
 			case cfm := <-l1r.relayer.GetConfirmCh():
 				if !cfm.IsSuccessful {
 					log.Warn("transaction confirmed but failed in layer2", "confirmation", cfm)
@@ -85,8 +89,6 @@ func (l1r *L1MsgRelayer) Start() {
 					}
 					log.Info("transaction confirmed in layer2", "confirmation", cfm)
 				}
-			case <-l1r.stopCh:
-				return
 			}
 		}
 	}()
@@ -94,7 +96,10 @@ func (l1r *L1MsgRelayer) Start() {
 
 // Stop sends signal to stop chan
 func (l1r *L1MsgRelayer) Stop() {
-	close(l1r.stopCh)
+	if l1r.cancel != nil {
+		l1r.cancel()
+		l1r.cancel = nil
+	}
 }
 
 // Start runs go routine to process saved events on L2
@@ -107,10 +112,10 @@ func (l2r *L2MsgRelayer) Start() {
 		for {
 			select {
 			case <-ticker.C:
-				l2r.relayer.ProcessSavedEvents()
+				l2r.relayer.ProcessSavedEvents(l2r.ctx)
 			case confirmation := <-l2r.relayer.GetMsgConfirmCh():
 				l2r.relayer.HandleConfirmation(confirmation)
-			case <-l2r.stopCh:
+			case <-l2r.ctx.Done():
 				return
 			}
 		}
@@ -119,5 +124,8 @@ func (l2r *L2MsgRelayer) Start() {
 
 // Stop sends signal to stop chan
 func (l2r *L2MsgRelayer) Stop() {
-	close(l2r.stopCh)
+	if l2r.cancel != nil {
+		l2r.cancel()
+		l2r.cancel = nil
+	}
 }
