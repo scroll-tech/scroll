@@ -36,15 +36,15 @@ interface IL1ScrollMessenger is IScrollMessenger {
   /// @param from The address of the sender of the message.
   /// @param to The address of the recipient of the message.
   /// @param value The msg.value passed to the message call.
-  /// @param nonce The nonce of the message to avoid replay attack.
   /// @param message The content of the message.
+  /// @param nonce The nonce of the message to avoid replay attack.
   /// @param proof The proof used to verify the correctness of the transaction.
   function relayMessageWithProof(
     address from,
     address to,
     uint256 value,
-    uint256 nonce,
     bytes memory message,
+    uint256 nonce,
     L2MessageProof memory proof
   ) external;
 

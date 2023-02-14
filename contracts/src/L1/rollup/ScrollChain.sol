@@ -31,7 +31,7 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
    *************/
 
   /// @dev The maximum number of transaction in on batch.
-  uint256 private constant MAX_NUM_TX_IN_BATCH = 100;
+  uint256 private constant MAX_NUM_TX_IN_BATCH = 25;
 
   /// @dev The hash used for padding public inputs.
   bytes32 private constant PADDED_TX_HASH = bytes32(0);
@@ -117,12 +117,6 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
   /// @inheritdoc IScrollChain
   function isBatchFinalized(uint256 _batchIndex) external view override returns (bool) {
     return finalizedBatches[_batchIndex] != bytes32(0);
-  }
-
-  /// @inheritdoc IScrollChain
-  function layer2GasLimit(uint256) public view virtual override returns (uint256) {
-    // hardcode for now
-    return 30000000;
   }
 
   /// @inheritdoc IScrollChain

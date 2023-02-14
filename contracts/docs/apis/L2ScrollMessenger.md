@@ -33,7 +33,7 @@ The contract contains the list of L1 blocks.
 function counterpart() external view returns (address)
 ```
 
-The address of L1ScrollMessenger contract in L1.
+The address of counterpart ScrollMessenger contract in L1/L2.
 
 
 
@@ -78,13 +78,13 @@ function initialize(address _counterpart, address _feeVault) external nonpayable
 | _counterpart | address | undefined |
 | _feeVault | address | undefined |
 
-### isMessageExecuted
+### isL1MessageExecuted
 
 ```solidity
-function isMessageExecuted(bytes32) external view returns (bool)
+function isL1MessageExecuted(bytes32) external view returns (bool)
 ```
 
-Mapping from message hash to execution status.
+Mapping from message hash to a boolean value indicating if the message has been successfully executed.
 
 
 
@@ -100,32 +100,10 @@ Mapping from message hash to execution status.
 |---|---|---|
 | _0 | bool | undefined |
 
-### isMessageRelayed
+### isL2MessageSent
 
 ```solidity
-function isMessageRelayed(bytes32) external view returns (bool)
-```
-
-Mapping from relay id to relay status.
-
-
-
-#### Parameters
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | bytes32 | undefined |
-
-#### Returns
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | bool | undefined |
-
-### isMessageSent
-
-```solidity
-function isMessageSent(bytes32) external view returns (bool)
+function isL2MessageSent(bytes32) external view returns (bool)
 ```
 
 Mapping from message hash to sent status.
@@ -143,6 +121,45 @@ Mapping from message hash to sent status.
 | Name | Type | Description |
 |---|---|---|
 | _0 | bool | undefined |
+
+### l1MessageFailedTimes
+
+```solidity
+function l1MessageFailedTimes(bytes32) external view returns (uint256)
+```
+
+Mapping from message hash to the number of failed times.
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| _0 | bytes32 | undefined |
+
+#### Returns
+
+| Name | Type | Description |
+|---|---|---|
+| _0 | uint256 | undefined |
+
+### maxFailedExecutionTimes
+
+```solidity
+function maxFailedExecutionTimes() external view returns (uint256)
+```
+
+The maximum number of times each message can fail in L2.
+
+
+
+
+#### Returns
+
+| Name | Type | Description |
+|---|---|---|
+| _0 | uint256 | undefined |
 
 ### messageQueue
 
@@ -209,7 +226,7 @@ function paused() external view returns (bool)
 ### relayMessage
 
 ```solidity
-function relayMessage(address _from, address _to, uint256 _value, uint256 _nonce, bytes _message) external nonpayable
+function relayMessage(address _from, address _to, uint256 _value, bytes _message, uint256 _nonce) external nonpayable
 ```
 
 execute L1 =&gt; L2 message
@@ -223,13 +240,24 @@ execute L1 =&gt; L2 message
 | _from | address | undefined |
 | _to | address | undefined |
 | _value | uint256 | undefined |
-| _nonce | uint256 | undefined |
 | _message | bytes | undefined |
+| _nonce | uint256 | undefined |
 
-### relayMessageWithProof
+### renounceOwnership
 
 ```solidity
-function relayMessageWithProof(address _from, address _to, uint256 _value, uint256 _nonce, bytes _message, IL2ScrollMessenger.L1MessageProof _proof) external nonpayable
+function renounceOwnership() external nonpayable
+```
+
+
+
+*Leaves the contract without owner. It will not be possible to call `onlyOwner` functions anymore. Can only be called by the current owner. NOTE: Renouncing ownership will leave the contract without an owner, thereby removing any functionality that is only available to the owner.*
+
+
+### retryMessageWithProof
+
+```solidity
+function retryMessageWithProof(address _from, address _to, uint256 _value, bytes _message, uint256 _nonce, IL2ScrollMessenger.L1MessageProof _proof) external nonpayable
 ```
 
 
@@ -243,25 +271,14 @@ function relayMessageWithProof(address _from, address _to, uint256 _value, uint2
 | _from | address | undefined |
 | _to | address | undefined |
 | _value | uint256 | undefined |
-| _nonce | uint256 | undefined |
 | _message | bytes | undefined |
+| _nonce | uint256 | undefined |
 | _proof | IL2ScrollMessenger.L1MessageProof | undefined |
-
-### renounceOwnership
-
-```solidity
-function renounceOwnership() external nonpayable
-```
-
-
-
-*Leaves the contract without owner. It will not be possible to call `onlyOwner` functions anymore. Can only be called by the current owner. NOTE: Renouncing ownership will leave the contract without an owner, thereby removing any functionality that is only available to the owner.*
-
 
 ### sendMessage
 
 ```solidity
-function sendMessage(address _to, uint256 _value, bytes _message, uint256) external payable
+function sendMessage(address _to, uint256 _value, bytes _message, uint256 _gasLimit) external payable
 ```
 
 Send cross chain message from L1 to L2.
@@ -275,7 +292,7 @@ Send cross chain message from L1 to L2.
 | _to | address | undefined |
 | _value | uint256 | undefined |
 | _message | bytes | undefined |
-| _3 | uint256 | undefined |
+| _gasLimit | uint256 | undefined |
 
 ### transferOwnership
 
@@ -292,6 +309,22 @@ function transferOwnership(address newOwner) external nonpayable
 | Name | Type | Description |
 |---|---|---|
 | newOwner | address | undefined |
+
+### updateMaxFailedExecutionTimes
+
+```solidity
+function updateMaxFailedExecutionTimes(uint256 _maxFailedExecutionTimes) external nonpayable
+```
+
+
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| _maxFailedExecutionTimes | uint256 | undefined |
 
 ### updateWhitelist
 
@@ -398,10 +431,10 @@ See {IScrollMessenger-xDomainMessageSender}
 ### FailedRelayedMessage
 
 ```solidity
-event FailedRelayedMessage(bytes32 indexed msgHash)
+event FailedRelayedMessage(bytes32 indexed messageHash)
 ```
 
-
+Emitted when a cross domain message is failed to relay.
 
 
 
@@ -409,23 +442,7 @@ event FailedRelayedMessage(bytes32 indexed msgHash)
 
 | Name | Type | Description |
 |---|---|---|
-| msgHash `indexed` | bytes32 | undefined |
-
-### MessageDropped
-
-```solidity
-event MessageDropped(bytes32 indexed msgHash)
-```
-
-
-
-
-
-#### Parameters
-
-| Name | Type | Description |
-|---|---|---|
-| msgHash `indexed` | bytes32 | undefined |
+| messageHash `indexed` | bytes32 | undefined |
 
 ### OwnershipTransferred
 
@@ -463,10 +480,10 @@ event Paused(address account)
 ### RelayedMessage
 
 ```solidity
-event RelayedMessage(bytes32 indexed msgHash)
+event RelayedMessage(bytes32 indexed messageHash)
 ```
 
-
+Emitted when a cross domain message is relayed successfully.
 
 
 
@@ -474,7 +491,7 @@ event RelayedMessage(bytes32 indexed msgHash)
 
 | Name | Type | Description |
 |---|---|---|
-| msgHash `indexed` | bytes32 | undefined |
+| messageHash `indexed` | bytes32 | undefined |
 
 ### SentMessage
 
@@ -482,7 +499,7 @@ event RelayedMessage(bytes32 indexed msgHash)
 event SentMessage(address indexed sender, address indexed target, uint256 value, bytes message, uint256 messageNonce)
 ```
 
-Emitted when a cross domain message is sent
+Emitted when a cross domain message is sent.
 
 
 
@@ -511,6 +528,22 @@ event Unpaused(address account)
 | Name | Type | Description |
 |---|---|---|
 | account  | address | undefined |
+
+### UpdateMaxFailedExecutionTimes
+
+```solidity
+event UpdateMaxFailedExecutionTimes(uint256 maxFailedExecutionTimes)
+```
+
+Emitted when the maximum number of times each message can fail in L2 is updated.
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| maxFailedExecutionTimes  | uint256 | The new maximum number of times each message can fail in L2. |
 
 ### UpdateWhitelist
 

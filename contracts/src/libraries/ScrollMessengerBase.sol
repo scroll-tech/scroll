@@ -28,6 +28,12 @@ abstract contract ScrollMessengerBase is OwnableUpgradeable, IScrollMessenger {
   /// @notice The whitelist contract to track the sender who can call `sendMessage` in ScrollMessenger.
   address public whitelist;
 
+  /// @notice The address of counterpart ScrollMessenger contract in L1/L2.
+  address public counterpart;
+
+  /// @notice The address of fee vault, collecting cross domain messaging fee.
+  address public feeVault;
+
   /**********************
    * Function Modifiers *
    **********************/
@@ -42,11 +48,14 @@ abstract contract ScrollMessengerBase is OwnableUpgradeable, IScrollMessenger {
    * Constructor *
    ***************/
 
-  function _initialize() internal {
+  function _initialize(address _counterpart, address _feeVault) internal {
     OwnableUpgradeable.__Ownable_init();
 
     // initialize to a nonzero value
     xDomainMessageSender = ScrollConstants.DEFAULT_XDOMAIN_MESSAGE_SENDER;
+
+    counterpart = _counterpart;
+    feeVault = _feeVault;
   }
 
   // allow others to send ether to messenger
@@ -74,24 +83,24 @@ abstract contract ScrollMessengerBase is OwnableUpgradeable, IScrollMessenger {
   /// @param _sender Message sender address.
   /// @param _target Target contract address.
   /// @param _value The amount of ETH pass to the target.
-  /// @param _messageNonce Nonce for the provided message.
   /// @param _message Message to send to the target.
+  /// @param _messageNonce Nonce for the provided message.
   /// @return ABI encoded cross domain calldata.
   function _encodeXDomainCalldata(
     address _sender,
     address _target,
     uint256 _value,
-    uint256 _messageNonce,
-    bytes memory _message
+    bytes memory _message,
+    uint256 _messageNonce
   ) internal pure returns (bytes memory) {
     return
       abi.encodeWithSignature(
-        "relayMessage(address,address,uint256,uint256,bytes)",
+        "relayMessage(address,address,uint256,bytes,uint256)",
         _sender,
         _target,
         _value,
-        _messageNonce,
-        _message
+        _message,
+        _messageNonce
       );
   }
 }

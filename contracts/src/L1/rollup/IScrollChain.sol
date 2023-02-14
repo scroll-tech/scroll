@@ -72,10 +72,6 @@ interface IScrollChain {
   /// @param batchIndex The index of the batch to query.
   function isBatchFinalized(uint256 batchIndex) external view returns (bool);
 
-  /// @notice Return the layer 2 block gas limit.
-  /// @param blockNumber The block number to query
-  function layer2GasLimit(uint256 blockNumber) external view returns (uint256);
-
   /// @notice Return the merkle root of L2 message tree.
   /// @param batchHash The hash of the batch to query.
   function getL2MessageRoot(bytes32 batchHash) external view returns (bytes32);

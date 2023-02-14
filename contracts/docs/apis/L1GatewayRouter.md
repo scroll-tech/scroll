@@ -32,23 +32,6 @@ Mapping from ERC20 token address to corresponding L1ERC20Gateway.
 |---|---|---|
 | _0 | address | undefined |
 
-### counterpart
-
-```solidity
-function counterpart() external view returns (address)
-```
-
-The address of corresponding L1/L2 Gateway contract.
-
-
-
-
-#### Returns
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | address | undefined |
-
 ### defaultERC20Gateway
 
 ```solidity
@@ -281,7 +264,7 @@ Return the corresponding l2 token address given l1 token address.
 ### initialize
 
 ```solidity
-function initialize(address _ethGateway, address _defaultERC20Gateway, address _counterpart, address _messenger) external nonpayable
+function initialize(address _ethGateway, address _defaultERC20Gateway) external nonpayable
 ```
 
 Initialize the storage of L1GatewayRouter.
@@ -294,25 +277,6 @@ Initialize the storage of L1GatewayRouter.
 |---|---|---|
 | _ethGateway | address | The address of L1ETHGateway contract. |
 | _defaultERC20Gateway | address | The address of default ERC20 Gateway contract. |
-| _counterpart | address | The address of L2GatewayRouter in L2. |
-| _messenger | address | The address of L1ScrollMessenger. |
-
-### messenger
-
-```solidity
-function messenger() external view returns (address)
-```
-
-The address of corresponding L1ScrollMessenger/L2ScrollMessenger contract.
-
-
-
-
-#### Returns
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | address | undefined |
 
 ### owner
 
@@ -341,23 +305,6 @@ function renounceOwnership() external nonpayable
 
 *Leaves the contract without owner. It will not be possible to call `onlyOwner` functions anymore. Can only be called by the current owner. NOTE: Renouncing ownership will leave the contract without an owner, thereby removing any functionality that is only available to the owner.*
 
-
-### router
-
-```solidity
-function router() external view returns (address)
-```
-
-The address of L1GatewayRouter/L2GatewayRouter contract.
-
-
-
-
-#### Returns
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | address | undefined |
 
 ### setDefaultERC20Gateway
 
@@ -431,10 +378,10 @@ function transferOwnership(address newOwner) external nonpayable
 ### DepositERC20
 
 ```solidity
-event DepositERC20(address indexed _l1Token, address indexed _l2Token, address indexed _from, address _to, uint256 _amount, bytes _data)
+event DepositERC20(address indexed l1Token, address indexed l2Token, address indexed from, address to, uint256 amount, bytes data)
 ```
 
-
+Emitted when someone deposit ERC20 token from L1 to L2.
 
 
 
@@ -442,12 +389,12 @@ event DepositERC20(address indexed _l1Token, address indexed _l2Token, address i
 
 | Name | Type | Description |
 |---|---|---|
-| _l1Token `indexed` | address | undefined |
-| _l2Token `indexed` | address | undefined |
-| _from `indexed` | address | undefined |
-| _to  | address | undefined |
-| _amount  | uint256 | undefined |
-| _data  | bytes | undefined |
+| l1Token `indexed` | address | undefined |
+| l2Token `indexed` | address | undefined |
+| from `indexed` | address | undefined |
+| to  | address | undefined |
+| amount  | uint256 | undefined |
+| data  | bytes | undefined |
 
 ### DepositETH
 
@@ -471,10 +418,10 @@ Emitted when someone deposit ETH from L1 to L2.
 ### FinalizeWithdrawERC20
 
 ```solidity
-event FinalizeWithdrawERC20(address indexed _l1Token, address indexed _l2Token, address indexed _from, address _to, uint256 _amount, bytes _data)
+event FinalizeWithdrawERC20(address indexed l1Token, address indexed l2Token, address indexed from, address to, uint256 amount, bytes data)
 ```
 
-
+Emitted when ERC20 token is withdrawn from L2 to L1 and transfer to recipient.
 
 
 
@@ -482,12 +429,12 @@ event FinalizeWithdrawERC20(address indexed _l1Token, address indexed _l2Token, 
 
 | Name | Type | Description |
 |---|---|---|
-| _l1Token `indexed` | address | undefined |
-| _l2Token `indexed` | address | undefined |
-| _from `indexed` | address | undefined |
-| _to  | address | undefined |
-| _amount  | uint256 | undefined |
-| _data  | bytes | undefined |
+| l1Token `indexed` | address | undefined |
+| l2Token `indexed` | address | undefined |
+| from `indexed` | address | undefined |
+| to  | address | undefined |
+| amount  | uint256 | undefined |
+| data  | bytes | undefined |
 
 ### FinalizeWithdrawETH
 

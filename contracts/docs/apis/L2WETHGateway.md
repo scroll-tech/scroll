@@ -112,7 +112,7 @@ Return the corresponding l2 token address given l1 token address.
 ### initialize
 
 ```solidity
-function initialize(address _counterpart, address _router, address _messenger, address _WETH, address _l1WETH) external nonpayable
+function initialize(address _counterpart, address _router, address _messenger) external nonpayable
 ```
 
 
@@ -126,8 +126,6 @@ function initialize(address _counterpart, address _router, address _messenger, a
 | _counterpart | address | undefined |
 | _router | address | undefined |
 | _messenger | address | undefined |
-| _WETH | address | undefined |
-| _l1WETH | address | undefined |
 
 ### l1WETH
 

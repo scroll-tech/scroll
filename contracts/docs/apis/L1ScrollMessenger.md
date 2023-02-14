@@ -16,7 +16,7 @@ The `L1ScrollMessenger` contract can: 1. send messages from layer 1 to layer 2; 
 function counterpart() external view returns (address)
 ```
 
-The address of L2ScrollMessenger contract in L2.
+The address of counterpart ScrollMessenger contract in L1/L2.
 
 
 
@@ -60,35 +60,13 @@ Initialize the storage of L1ScrollMessenger.
 |---|---|---|
 | _counterpart | address | The address of L2ScrollMessenger contract in L2. |
 | _feeVault | address | The address of fee vault, which will be used to collect relayer fee. |
-| _rollup | address | The address of ZKRollup contract. |
+| _rollup | address | The address of ScrollChain contract. |
 | _messageQueue | address | The address of L1MessageQueue contract. |
 
-### isMessageExecuted
+### isL1MessageRelayed
 
 ```solidity
-function isMessageExecuted(bytes32) external view returns (bool)
-```
-
-Mapping from message hash to execution status.
-
-
-
-#### Parameters
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | bytes32 | undefined |
-
-#### Returns
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | bool | undefined |
-
-### isMessageRelayed
-
-```solidity
-function isMessageRelayed(bytes32) external view returns (bool)
+function isL1MessageRelayed(bytes32) external view returns (bool)
 ```
 
 Mapping from relay id to relay status.
@@ -107,13 +85,35 @@ Mapping from relay id to relay status.
 |---|---|---|
 | _0 | bool | undefined |
 
-### isMessageSent
+### isL1MessageSent
 
 ```solidity
-function isMessageSent(bytes32) external view returns (bool)
+function isL1MessageSent(bytes32) external view returns (bool)
 ```
 
 Mapping from message hash to sent status.
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| _0 | bytes32 | undefined |
+
+#### Returns
+
+| Name | Type | Description |
+|---|---|---|
+| _0 | bool | undefined |
+
+### isL2MessageExecuted
+
+```solidity
+function isL2MessageExecuted(bytes32) external view returns (bool)
+```
+
+Mapping from message hash to a boolean value indicating if the message has been successfully executed.
 
 
 
@@ -194,7 +194,7 @@ function paused() external view returns (bool)
 ### relayMessageWithProof
 
 ```solidity
-function relayMessageWithProof(address _from, address _to, uint256 _value, uint256 _nonce, bytes _message, IL1ScrollMessenger.L2MessageProof _proof) external nonpayable
+function relayMessageWithProof(address _from, address _to, uint256 _value, bytes _message, uint256 _nonce, IL1ScrollMessenger.L2MessageProof _proof) external nonpayable
 ```
 
 
@@ -208,8 +208,8 @@ function relayMessageWithProof(address _from, address _to, uint256 _value, uint2
 | _from | address | undefined |
 | _to | address | undefined |
 | _value | uint256 | undefined |
-| _nonce | uint256 | undefined |
 | _message | bytes | undefined |
+| _nonce | uint256 | undefined |
 | _proof | IL1ScrollMessenger.L2MessageProof | undefined |
 
 ### renounceOwnership
@@ -354,10 +354,10 @@ See {IScrollMessenger-xDomainMessageSender}
 ### FailedRelayedMessage
 
 ```solidity
-event FailedRelayedMessage(bytes32 indexed msgHash)
+event FailedRelayedMessage(bytes32 indexed messageHash)
 ```
 
-
+Emitted when a cross domain message is failed to relay.
 
 
 
@@ -365,23 +365,7 @@ event FailedRelayedMessage(bytes32 indexed msgHash)
 
 | Name | Type | Description |
 |---|---|---|
-| msgHash `indexed` | bytes32 | undefined |
-
-### MessageDropped
-
-```solidity
-event MessageDropped(bytes32 indexed msgHash)
-```
-
-
-
-
-
-#### Parameters
-
-| Name | Type | Description |
-|---|---|---|
-| msgHash `indexed` | bytes32 | undefined |
+| messageHash `indexed` | bytes32 | undefined |
 
 ### OwnershipTransferred
 
@@ -419,10 +403,10 @@ event Paused(address account)
 ### RelayedMessage
 
 ```solidity
-event RelayedMessage(bytes32 indexed msgHash)
+event RelayedMessage(bytes32 indexed messageHash)
 ```
 
-
+Emitted when a cross domain message is relayed successfully.
 
 
 
@@ -430,7 +414,7 @@ event RelayedMessage(bytes32 indexed msgHash)
 
 | Name | Type | Description |
 |---|---|---|
-| msgHash `indexed` | bytes32 | undefined |
+| messageHash `indexed` | bytes32 | undefined |
 
 ### SentMessage
 
@@ -438,7 +422,7 @@ event RelayedMessage(bytes32 indexed msgHash)
 event SentMessage(address indexed sender, address indexed target, uint256 value, bytes message, uint256 messageNonce)
 ```
 
-Emitted when a cross domain message is sent
+Emitted when a cross domain message is sent.
 
 
 

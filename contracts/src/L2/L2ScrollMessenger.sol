@@ -34,6 +34,8 @@ contract L2ScrollMessenger is ScrollMessengerBase, PausableUpgradeable, IL2Scrol
    * Constants *
    *************/
 
+  uint256 private constant MIN_GAS_LIMIT = 21000;
+
   /// @notice The address of L2MessageQueue.
   address public immutable messageQueue;
 
@@ -44,26 +46,17 @@ contract L2ScrollMessenger is ScrollMessengerBase, PausableUpgradeable, IL2Scrol
    * Variables *
    *************/
 
-  /// @notice Mapping from relay id to relay status.
-  mapping(bytes32 => bool) public isMessageRelayed;
+  /// @notice Mapping from L2 message hash to sent status.
+  mapping(bytes32 => bool) public isL2MessageSent;
 
-  /// @notice Mapping from message hash to sent status.
-  mapping(bytes32 => bool) public isMessageSent;
+  /// @notice Mapping from L1 message hash to a boolean value indicating if the message has been successfully executed.
+  mapping(bytes32 => bool) public isL1MessageExecuted;
 
-  /// @notice Mapping from message hash to execution status.
-  mapping(bytes32 => bool) public isMessageExecuted;
+  /// @notice Mapping from L1 message hash to the number of failed times.
+  mapping(bytes32 => uint256) public l1MessageFailedTimes;
 
-  /// @notice Mapping from message hash to the number of failed times.
-  mapping(bytes32 => uint256) public messageFailedTimes;
-
-  /// @notice The maximum number of times each message can fail in L2.
+  /// @notice The maximum number of times each L1 message can fail in L2.
   uint256 public maxFailedExecutionTimes;
-
-  /// @notice The address of L1ScrollMessenger contract in L1.
-  address public counterpart;
-
-  /// @notice The address of fee vault, collecting cross domain messaging fee.
-  address public feeVault;
 
   /***************
    * Constructor *
@@ -76,10 +69,9 @@ contract L2ScrollMessenger is ScrollMessengerBase, PausableUpgradeable, IL2Scrol
 
   function initialize(address _counterpart, address _feeVault) external initializer {
     PausableUpgradeable.__Pausable_init();
-    ScrollMessengerBase._initialize();
+    ScrollMessengerBase._initialize(_counterpart, _feeVault);
 
-    counterpart = _counterpart;
-    feeVault = _feeVault;
+    maxFailedExecutionTimes = 3;
 
     // initialize to a nonzero value
     xDomainMessageSender = ScrollConstants.DEFAULT_XDOMAIN_MESSAGE_SENDER;
@@ -104,10 +96,10 @@ contract L2ScrollMessenger is ScrollMessengerBase, PausableUpgradeable, IL2Scrol
 
     // @todo fix the actual slot later.
     bytes32 _storageKey;
-    // `mapping(bytes32 => bool) public isMessageSent` is the 104-nd slot of contract `L1ScrollMessenger`.
+    // `mapping(bytes32 => bool) public isL1MessageSent` is the 105-nd slot of contract `L1ScrollMessenger`.
     assembly {
       mstore(0x00, _msgHash)
-      mstore(0x20, 103)
+      mstore(0x20, 105)
       _storageKey := keccak256(0x00, 0x40)
     }
 
@@ -136,10 +128,10 @@ contract L2ScrollMessenger is ScrollMessengerBase, PausableUpgradeable, IL2Scrol
 
     // @todo fix the actual slot later.
     bytes32 _storageKey;
-    // `mapping(bytes32 => bool) public isMessageExecuted` is the 105-th slot of contract `L1ScrollMessenger`.
+    // `mapping(bytes32 => bool) public isL2MessageExecuted` is the 106-th slot of contract `L1ScrollMessenger`.
     assembly {
       mstore(0x00, _msgHash)
-      mstore(0x20, 104)
+      mstore(0x20, 106)
       _storageKey := keccak256(0x00, 0x40)
     }
 
@@ -162,21 +154,23 @@ contract L2ScrollMessenger is ScrollMessengerBase, PausableUpgradeable, IL2Scrol
     address _to,
     uint256 _value,
     bytes memory _message,
-    uint256
+    uint256 _gasLimit
   ) external payable override whenNotPaused {
-    require(msg.value >= _value, "value not enough");
+    require(_gasLimit >= MIN_GAS_LIMIT, "gas limit too small");
 
-    // @todo it's better to charge a minimum fee or relay the fee to L1 to relayer.
-    if (msg.value > _value) {
+    // compute and deduct the messaging fee to fee vault.
+    uint256 _fee = _gasLimit * IL1BlockContainer(blockContainer).latestBaseFee();
+    require(msg.value >= _value + _fee, "insufficient msg.value");
+    if (_fee > 0) {
       (bool _success, ) = feeVault.call{ value: msg.value - _value }("");
       require(_success, "failed to deduct fee");
     }
 
     uint256 _nonce = L2MessageQueue(messageQueue).nextMessageIndex();
-    bytes32 _xDomainCalldataHash = keccak256(_encodeXDomainCalldata(msg.sender, _to, _value, _nonce, _message));
+    bytes32 _xDomainCalldataHash = keccak256(_encodeXDomainCalldata(msg.sender, _to, _value, _message, _nonce));
 
-    require(!isMessageSent[_xDomainCalldataHash], "duplicated message");
-    isMessageSent[_xDomainCalldataHash] = true;
+    require(!isL2MessageSent[_xDomainCalldataHash], "duplicated message");
+    isL2MessageSent[_xDomainCalldataHash] = true;
 
     L2MessageQueue(messageQueue).appendMessage(_xDomainCalldataHash);
 
@@ -188,27 +182,19 @@ contract L2ScrollMessenger is ScrollMessengerBase, PausableUpgradeable, IL2Scrol
     address _from,
     address _to,
     uint256 _value,
-    uint256 _nonce,
-    bytes memory _message
+    bytes memory _message,
+    uint256 _nonce
   ) external override whenNotPaused onlyWhitelistedSender(msg.sender) {
     // anti reentrance
     require(xDomainMessageSender == ScrollConstants.DEFAULT_XDOMAIN_MESSAGE_SENDER, "Already in execution");
 
     // @todo address unalis to check sender is L1ScrollMessenger
 
-    // solhint-disable-next-line not-rely-on-time
-    // @note disable for now since we may encounter various situation in testnet.
-    // require(_deadline >= block.timestamp, "Message expired");
+    bytes32 _xDomainCalldataHash = keccak256(_encodeXDomainCalldata(_from, _to, _value, _message, _nonce));
 
-    bytes32 _xDomainCalldataHash = keccak256(_encodeXDomainCalldata(_from, _to, _value, _nonce, _message));
-
-    require(!isMessageExecuted[_xDomainCalldataHash], "Message successfully executed");
+    require(!isL1MessageExecuted[_xDomainCalldataHash], "Message successfully executed");
 
     _executeMessage(_from, _to, _value, _message, _xDomainCalldataHash);
-
-    bytes32 _relayId = keccak256(abi.encodePacked(_xDomainCalldataHash, msg.sender, block.number));
-
-    isMessageRelayed[_relayId] = true;
   }
 
   /// @inheritdoc IL2ScrollMessenger
@@ -216,17 +202,17 @@ contract L2ScrollMessenger is ScrollMessengerBase, PausableUpgradeable, IL2Scrol
     address _from,
     address _to,
     uint256 _value,
-    uint256 _nonce,
     bytes memory _message,
+    uint256 _nonce,
     L1MessageProof calldata _proof
   ) external override whenNotPaused {
     // anti reentrance
     require(xDomainMessageSender == ScrollConstants.DEFAULT_XDOMAIN_MESSAGE_SENDER, "Already in execution");
 
     // check message status
-    bytes32 _xDomainCalldataHash = keccak256(_encodeXDomainCalldata(_from, _to, _value, _nonce, _message));
-    require(!isMessageExecuted[_xDomainCalldataHash], "Message successfully executed");
-    require(messageFailedTimes[_xDomainCalldataHash] > 0, "Message not relayed before");
+    bytes32 _xDomainCalldataHash = keccak256(_encodeXDomainCalldata(_from, _to, _value, _message, _nonce));
+    require(!isL1MessageExecuted[_xDomainCalldataHash], "Message successfully executed");
+    require(l1MessageFailedTimes[_xDomainCalldataHash] > 0, "Message not relayed before");
 
     require(
       verifyMessageInclusionStatus(_proof.blockHash, _xDomainCalldataHash, _proof.stateRootProof),
@@ -275,13 +261,13 @@ contract L2ScrollMessenger is ScrollMessengerBase, PausableUpgradeable, IL2Scrol
     xDomainMessageSender = ScrollConstants.DEFAULT_XDOMAIN_MESSAGE_SENDER;
 
     if (success) {
-      isMessageExecuted[_xDomainCalldataHash] = true;
+      isL1MessageExecuted[_xDomainCalldataHash] = true;
       emit RelayedMessage(_xDomainCalldataHash);
     } else {
       unchecked {
-        uint256 _failedTimes = messageFailedTimes[_xDomainCalldataHash] + 1;
+        uint256 _failedTimes = l1MessageFailedTimes[_xDomainCalldataHash] + 1;
         require(_failedTimes <= maxFailedExecutionTimes, "Exceed maximum failure");
-        messageFailedTimes[_xDomainCalldataHash] = _failedTimes;
+        l1MessageFailedTimes[_xDomainCalldataHash] = _failedTimes;
       }
       emit FailedRelayedMessage(_xDomainCalldataHash);
     }

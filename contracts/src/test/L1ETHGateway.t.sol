@@ -154,12 +154,12 @@ contract L1ETHGatewayTest is L1GatewayTestBase {
       dataToCall
     );
     bytes memory xDomainCalldata = abi.encodeWithSignature(
-      "relayMessage(address,address,uint256,uint256,bytes)",
+      "relayMessage(address,address,uint256,bytes,uint256)",
       address(uint160(address(counterpartGateway)) + 1),
       address(gateway),
       amount,
-      0,
-      message
+      message,
+      0
     );
 
     prepareL2MessageRoot(keccak256(xDomainCalldata));
@@ -174,16 +174,18 @@ contract L1ETHGatewayTest is L1GatewayTestBase {
 
     uint256 messengerBalance = address(l1Messenger).balance;
     uint256 recipientBalance = recipient.balance;
+    assertBoolEq(false, l1Messenger.isL2MessageExecuted(keccak256(xDomainCalldata)));
     l1Messenger.relayMessageWithProof(
       address(uint160(address(counterpartGateway)) + 1),
       address(gateway),
       amount,
-      0,
       message,
+      0,
       proof
     );
     assertEq(messengerBalance, address(l1Messenger).balance);
     assertEq(recipientBalance, recipient.balance);
+    assertBoolEq(false, l1Messenger.isL2MessageExecuted(keccak256(xDomainCalldata)));
   }
 
   function testFinalizeWithdrawETH(
@@ -192,16 +194,12 @@ contract L1ETHGatewayTest is L1GatewayTestBase {
     uint256 amount,
     bytes memory dataToCall
   ) public {
-    // blacklist some addresses
-    hevm.assume(recipient != address(l1Messenger));
-    hevm.assume(recipient != address(messageQueue));
-    hevm.assume(recipient != address(gasOracle));
-    hevm.assume(recipient != address(rollup));
-    hevm.assume(recipient != address(feeVault));
-    hevm.assume(recipient != address(l2Messenger));
-    hevm.assume(recipient != address(gateway));
-    hevm.assume(recipient != address(router));
-    hevm.assume(recipient != address(counterpartGateway));
+    uint256 size;
+    assembly {
+      size := extcodesize(recipient)
+    }
+    hevm.assume(size == 0);
+    hevm.assume(recipient != address(0));
 
     amount = bound(amount, 1, address(this).balance / 2);
 
@@ -217,12 +215,12 @@ contract L1ETHGatewayTest is L1GatewayTestBase {
       dataToCall
     );
     bytes memory xDomainCalldata = abi.encodeWithSignature(
-      "relayMessage(address,address,uint256,uint256,bytes)",
+      "relayMessage(address,address,uint256,bytes,uint256)",
       address(counterpartGateway),
       address(gateway),
       amount,
-      0,
-      message
+      message,
+      0
     );
 
     prepareL2MessageRoot(keccak256(xDomainCalldata));
@@ -244,9 +242,11 @@ contract L1ETHGatewayTest is L1GatewayTestBase {
 
     uint256 messengerBalance = address(l1Messenger).balance;
     uint256 recipientBalance = recipient.balance;
-    l1Messenger.relayMessageWithProof(address(counterpartGateway), address(gateway), amount, 0, message, proof);
+    assertBoolEq(false, l1Messenger.isL2MessageExecuted(keccak256(xDomainCalldata)));
+    l1Messenger.relayMessageWithProof(address(counterpartGateway), address(gateway), amount, message, 0, proof);
     assertEq(messengerBalance - amount, address(l1Messenger).balance);
     assertEq(recipientBalance + amount, recipient.balance);
+    assertBoolEq(true, l1Messenger.isL2MessageExecuted(keccak256(xDomainCalldata)));
   }
 
   function _depositETH(
@@ -270,12 +270,12 @@ contract L1ETHGatewayTest is L1GatewayTestBase {
       new bytes(0)
     );
     bytes memory xDomainCalldata = abi.encodeWithSignature(
-      "relayMessage(address,address,uint256,uint256,bytes)",
+      "relayMessage(address,address,uint256,bytes,uint256)",
       address(gateway),
       address(counterpartGateway),
       amount,
-      0,
-      message
+      message,
+      0
     );
 
     if (amount == 0) {
@@ -305,6 +305,7 @@ contract L1ETHGatewayTest is L1GatewayTestBase {
 
       uint256 messengerBalance = address(l1Messenger).balance;
       uint256 feeVaultBalance = address(feeVault).balance;
+      assertBoolEq(false, l1Messenger.isL1MessageSent(keccak256(xDomainCalldata)));
       if (useRouter) {
         router.depositETH{ value: amount + feeToPay }(amount, gasLimit);
       } else {
@@ -312,6 +313,7 @@ contract L1ETHGatewayTest is L1GatewayTestBase {
       }
       assertEq(amount + messengerBalance, address(l1Messenger).balance);
       assertEq(feeToPay + feeVaultBalance, address(feeVault).balance);
+      assertBoolEq(true, l1Messenger.isL1MessageSent(keccak256(xDomainCalldata)));
     }
   }
 
@@ -337,12 +339,12 @@ contract L1ETHGatewayTest is L1GatewayTestBase {
       new bytes(0)
     );
     bytes memory xDomainCalldata = abi.encodeWithSignature(
-      "relayMessage(address,address,uint256,uint256,bytes)",
+      "relayMessage(address,address,uint256,bytes,uint256)",
       address(gateway),
       address(counterpartGateway),
       amount,
-      0,
-      message
+      message,
+      0
     );
 
     if (amount == 0) {
@@ -372,6 +374,7 @@ contract L1ETHGatewayTest is L1GatewayTestBase {
 
       uint256 messengerBalance = address(l1Messenger).balance;
       uint256 feeVaultBalance = address(feeVault).balance;
+      assertBoolEq(false, l1Messenger.isL1MessageSent(keccak256(xDomainCalldata)));
       if (useRouter) {
         router.depositETH{ value: amount + feeToPay }(recipient, amount, gasLimit);
       } else {
@@ -379,6 +382,7 @@ contract L1ETHGatewayTest is L1GatewayTestBase {
       }
       assertEq(amount + messengerBalance, address(l1Messenger).balance);
       assertEq(feeToPay + feeVaultBalance, address(feeVault).balance);
+      assertBoolEq(true, l1Messenger.isL1MessageSent(keccak256(xDomainCalldata)));
     }
   }
 
@@ -405,12 +409,12 @@ contract L1ETHGatewayTest is L1GatewayTestBase {
       dataToCall
     );
     bytes memory xDomainCalldata = abi.encodeWithSignature(
-      "relayMessage(address,address,uint256,uint256,bytes)",
+      "relayMessage(address,address,uint256,bytes,uint256)",
       address(gateway),
       address(counterpartGateway),
       amount,
-      0,
-      message
+      message,
+      0
     );
 
     if (amount == 0) {
@@ -440,6 +444,7 @@ contract L1ETHGatewayTest is L1GatewayTestBase {
 
       uint256 messengerBalance = address(l1Messenger).balance;
       uint256 feeVaultBalance = address(feeVault).balance;
+      assertBoolEq(false, l1Messenger.isL1MessageSent(keccak256(xDomainCalldata)));
       if (useRouter) {
         router.depositETHAndCall{ value: amount + feeToPay }(recipient, amount, dataToCall, gasLimit);
       } else {
@@ -447,6 +452,7 @@ contract L1ETHGatewayTest is L1GatewayTestBase {
       }
       assertEq(amount + messengerBalance, address(l1Messenger).balance);
       assertEq(feeToPay + feeVaultBalance, address(feeVault).balance);
+      assertBoolEq(true, l1Messenger.isL1MessageSent(keccak256(xDomainCalldata)));
     }
   }
 }

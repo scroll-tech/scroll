@@ -13,7 +13,7 @@ The `L1ERC721Gateway` is used to deposit ERC721 compatible NFT in layer 1 and fi
 ### batchDepositERC721
 
 ```solidity
-function batchDepositERC721(address _token, address _to, uint256[] _tokenIds, uint256 _gasLimit) external nonpayable
+function batchDepositERC721(address _token, address _to, uint256[] _tokenIds, uint256 _gasLimit) external payable
 ```
 
 Deposit a list of some ERC721 NFT to a recipient&#39;s account on layer 2.
@@ -32,7 +32,7 @@ Deposit a list of some ERC721 NFT to a recipient&#39;s account on layer 2.
 ### batchDepositERC721
 
 ```solidity
-function batchDepositERC721(address _token, uint256[] _tokenIds, uint256 _gasLimit) external nonpayable
+function batchDepositERC721(address _token, uint256[] _tokenIds, uint256 _gasLimit) external payable
 ```
 
 Deposit a list of some ERC721 NFT to caller&#39;s account on layer 2.
@@ -67,7 +67,7 @@ The address of corresponding L1/L2 Gateway contract.
 ### depositERC721
 
 ```solidity
-function depositERC721(address _token, address _to, uint256 _tokenId, uint256 _gasLimit) external nonpayable
+function depositERC721(address _token, address _to, uint256 _tokenId, uint256 _gasLimit) external payable
 ```
 
 Deposit some ERC721 NFT to a recipient&#39;s account on layer 2.
@@ -86,7 +86,7 @@ Deposit some ERC721 NFT to a recipient&#39;s account on layer 2.
 ### depositERC721
 
 ```solidity
-function depositERC721(address _token, uint256 _tokenId, uint256 _gasLimit) external nonpayable
+function depositERC721(address _token, uint256 _tokenId, uint256 _gasLimit) external payable
 ```
 
 Deposit some ERC721 NFT to caller&#39;s account on layer 2.

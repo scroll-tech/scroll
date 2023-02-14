@@ -222,10 +222,10 @@ The address of L1GatewayRouter/L2GatewayRouter contract.
 ### DepositERC20
 
 ```solidity
-event DepositERC20(address indexed _l1Token, address indexed _l2Token, address indexed _from, address _to, uint256 _amount, bytes _data)
+event DepositERC20(address indexed l1Token, address indexed l2Token, address indexed from, address to, uint256 amount, bytes data)
 ```
 
-
+Emitted when someone deposit ERC20 token from L1 to L2.
 
 
 
@@ -233,20 +233,20 @@ event DepositERC20(address indexed _l1Token, address indexed _l2Token, address i
 
 | Name | Type | Description |
 |---|---|---|
-| _l1Token `indexed` | address | undefined |
-| _l2Token `indexed` | address | undefined |
-| _from `indexed` | address | undefined |
-| _to  | address | undefined |
-| _amount  | uint256 | undefined |
-| _data  | bytes | undefined |
+| l1Token `indexed` | address | undefined |
+| l2Token `indexed` | address | undefined |
+| from `indexed` | address | undefined |
+| to  | address | undefined |
+| amount  | uint256 | undefined |
+| data  | bytes | undefined |
 
 ### FinalizeWithdrawERC20
 
 ```solidity
-event FinalizeWithdrawERC20(address indexed _l1Token, address indexed _l2Token, address indexed _from, address _to, uint256 _amount, bytes _data)
+event FinalizeWithdrawERC20(address indexed l1Token, address indexed l2Token, address indexed from, address to, uint256 amount, bytes data)
 ```
 
-
+Emitted when ERC20 token is withdrawn from L2 to L1 and transfer to recipient.
 
 
 
@@ -254,12 +254,12 @@ event FinalizeWithdrawERC20(address indexed _l1Token, address indexed _l2Token, 
 
 | Name | Type | Description |
 |---|---|---|
-| _l1Token `indexed` | address | undefined |
-| _l2Token `indexed` | address | undefined |
-| _from `indexed` | address | undefined |
-| _to  | address | undefined |
-| _amount  | uint256 | undefined |
-| _data  | bytes | undefined |
+| l1Token `indexed` | address | undefined |
+| l2Token `indexed` | address | undefined |
+| from `indexed` | address | undefined |
+| to  | address | undefined |
+| amount  | uint256 | undefined |
+| data  | bytes | undefined |
 
 
 

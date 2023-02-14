@@ -29,19 +29,13 @@ contract L1ScrollMessenger is PausableUpgradeable, ScrollMessengerBase, IL1Scrol
    *************/
 
   /// @notice Mapping from relay id to relay status.
-  mapping(bytes32 => bool) public isMessageRelayed;
+  mapping(bytes32 => bool) public isL1MessageRelayed;
 
-  /// @notice Mapping from message hash to sent status.
-  mapping(bytes32 => bool) public isMessageSent;
+  /// @notice Mapping from L1 message hash to sent status.
+  mapping(bytes32 => bool) public isL1MessageSent;
 
-  /// @notice Mapping from message hash to execution status.
-  mapping(bytes32 => bool) public isMessageExecuted;
-
-  /// @notice The address of L2ScrollMessenger contract in L2.
-  address public counterpart;
-
-  /// @notice The address of fee vault, collecting cross domain messaging fee.
-  address public feeVault;
+  /// @notice Mapping from L2 message hash to a boolean value indicating if the message has been successfully executed.
+  mapping(bytes32 => bool) public isL2MessageExecuted;
 
   /// @notice The address of Rollup contract.
   address public rollup;
@@ -65,10 +59,8 @@ contract L1ScrollMessenger is PausableUpgradeable, ScrollMessengerBase, IL1Scrol
     address _messageQueue
   ) public initializer {
     PausableUpgradeable.__Pausable_init();
-    ScrollMessengerBase._initialize();
+    ScrollMessengerBase._initialize(_counterpart, _feeVault);
 
-    counterpart = _counterpart;
-    feeVault = _feeVault;
     rollup = _rollup;
     messageQueue = _messageQueue;
 
@@ -92,7 +84,7 @@ contract L1ScrollMessenger is PausableUpgradeable, ScrollMessengerBase, IL1Scrol
 
     // compute the actual cross domain message calldata.
     uint256 _messageNonce = IL1MessageQueue(_messageQueue).nextCrossDomainMessageIndex();
-    bytes memory _xDomainCalldata = _encodeXDomainCalldata(msg.sender, _to, _value, _messageNonce, _message);
+    bytes memory _xDomainCalldata = _encodeXDomainCalldata(msg.sender, _to, _value, _message, _messageNonce);
 
     // compute and deduct the messaging fee to fee vault.
     uint256 _fee = IL1MessageQueue(_messageQueue).estimateCrossDomainMessageFee(
@@ -112,7 +104,7 @@ contract L1ScrollMessenger is PausableUpgradeable, ScrollMessengerBase, IL1Scrol
 
     // record the message hash for future use.
     bytes32 _xDomainCalldataHash = keccak256(_xDomainCalldata);
-    isMessageSent[_xDomainCalldataHash] = true;
+    isL1MessageSent[_xDomainCalldataHash] = true;
 
     emit SentMessage(msg.sender, _to, _value, _message, _messageNonce);
   }
@@ -122,14 +114,14 @@ contract L1ScrollMessenger is PausableUpgradeable, ScrollMessengerBase, IL1Scrol
     address _from,
     address _to,
     uint256 _value,
-    uint256 _nonce,
     bytes memory _message,
+    uint256 _nonce,
     L2MessageProof memory _proof
   ) external override whenNotPaused onlyWhitelistedSender(msg.sender) {
     require(xDomainMessageSender == ScrollConstants.DEFAULT_XDOMAIN_MESSAGE_SENDER, "already in execution");
 
-    bytes32 _xDomainCalldataHash = keccak256(_encodeXDomainCalldata(_from, _to, _value, _nonce, _message));
-    require(!isMessageExecuted[_xDomainCalldataHash], "Message successfully executed");
+    bytes32 _xDomainCalldataHash = keccak256(_encodeXDomainCalldata(_from, _to, _value, _message, _nonce));
+    require(!isL2MessageExecuted[_xDomainCalldataHash], "Message successfully executed");
 
     {
       address _rollup = rollup;
@@ -150,14 +142,14 @@ contract L1ScrollMessenger is PausableUpgradeable, ScrollMessengerBase, IL1Scrol
     xDomainMessageSender = ScrollConstants.DEFAULT_XDOMAIN_MESSAGE_SENDER;
 
     if (success) {
-      isMessageExecuted[_xDomainCalldataHash] = true;
+      isL2MessageExecuted[_xDomainCalldataHash] = true;
       emit RelayedMessage(_xDomainCalldataHash);
     } else {
       emit FailedRelayedMessage(_xDomainCalldataHash);
     }
 
     bytes32 _relayId = keccak256(abi.encodePacked(_xDomainCalldataHash, msg.sender, block.number));
-    isMessageRelayed[_relayId] = true;
+    isL1MessageRelayed[_relayId] = true;
   }
 
   /// @inheritdoc IL1ScrollMessenger

@@ -35,29 +35,29 @@ interface IL2ScrollMessenger is IScrollMessenger {
   /// @param from The address of the sender of the message.
   /// @param to The address of the recipient of the message.
   /// @param value The msg.value passed to the message call.
-  /// @param nonce The nonce of the message to avoid replay attack.
   /// @param message The content of the message.
+  /// @param nonce The nonce of the message to avoid replay attack.
   function relayMessage(
     address from,
     address to,
     uint256 value,
-    uint256 nonce,
-    bytes calldata message
+    bytes calldata message,
+    uint256 nonce
   ) external;
 
   /// @notice execute L1 => L2 message with proof
   /// @param from The address of the sender of the message.
   /// @param to The address of the recipient of the message.
   /// @param value The msg.value passed to the message call.
-  /// @param nonce The nonce of the message to avoid replay attack.
   /// @param message The content of the message.
+  /// @param nonce The nonce of the message to avoid replay attack.
   /// @param proof The message proof.
   function retryMessageWithProof(
     address from,
     address to,
     uint256 value,
-    uint256 nonce,
     bytes calldata message,
+    uint256 nonce,
     L1MessageProof calldata proof
   ) external;
 }

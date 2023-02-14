@@ -213,12 +213,12 @@ contract L1CustomERC20GatewayTest is L1GatewayTestBase {
       dataToCall
     );
     bytes memory xDomainCalldata = abi.encodeWithSignature(
-      "relayMessage(address,address,uint256,uint256,bytes)",
+      "relayMessage(address,address,uint256,bytes,uint256)",
       address(uint160(address(counterpartGateway)) + 1),
       address(gateway),
       0,
-      0,
-      message
+      message,
+      0
     );
 
     prepareL2MessageRoot(keccak256(xDomainCalldata));
@@ -233,16 +233,18 @@ contract L1CustomERC20GatewayTest is L1GatewayTestBase {
 
     uint256 gatewayBalance = l1Token.balanceOf(address(gateway));
     uint256 recipientBalance = l1Token.balanceOf(recipient);
+    assertBoolEq(false, l1Messenger.isL2MessageExecuted(keccak256(xDomainCalldata)));
     l1Messenger.relayMessageWithProof(
       address(uint160(address(counterpartGateway)) + 1),
       address(gateway),
       0,
-      0,
       message,
+      0,
       proof
     );
     assertEq(gatewayBalance, l1Token.balanceOf(address(gateway)));
     assertEq(recipientBalance, l1Token.balanceOf(recipient));
+    assertBoolEq(false, l1Messenger.isL2MessageExecuted(keccak256(xDomainCalldata)));
   }
 
   function testFinalizeWithdrawERC20(
@@ -272,12 +274,12 @@ contract L1CustomERC20GatewayTest is L1GatewayTestBase {
       dataToCall
     );
     bytes memory xDomainCalldata = abi.encodeWithSignature(
-      "relayMessage(address,address,uint256,uint256,bytes)",
+      "relayMessage(address,address,uint256,bytes,uint256)",
       address(counterpartGateway),
       address(gateway),
       0,
-      0,
-      message
+      message,
+      0
     );
 
     prepareL2MessageRoot(keccak256(xDomainCalldata));
@@ -299,9 +301,11 @@ contract L1CustomERC20GatewayTest is L1GatewayTestBase {
 
     uint256 gatewayBalance = l1Token.balanceOf(address(gateway));
     uint256 recipientBalance = l1Token.balanceOf(recipient);
-    l1Messenger.relayMessageWithProof(address(counterpartGateway), address(gateway), 0, 0, message, proof);
+    assertBoolEq(false, l1Messenger.isL2MessageExecuted(keccak256(xDomainCalldata)));
+    l1Messenger.relayMessageWithProof(address(counterpartGateway), address(gateway), 0, message, 0, proof);
     assertEq(gatewayBalance - amount, l1Token.balanceOf(address(gateway)));
     assertEq(recipientBalance + amount, l1Token.balanceOf(recipient));
+    assertBoolEq(true, l1Messenger.isL2MessageExecuted(keccak256(xDomainCalldata)));
   }
 
   function _depositERC20(
@@ -327,12 +331,12 @@ contract L1CustomERC20GatewayTest is L1GatewayTestBase {
       new bytes(0)
     );
     bytes memory xDomainCalldata = abi.encodeWithSignature(
-      "relayMessage(address,address,uint256,uint256,bytes)",
+      "relayMessage(address,address,uint256,bytes,uint256)",
       address(gateway),
       address(counterpartGateway),
       0,
-      0,
-      message
+      message,
+      0
     );
 
     hevm.expectRevert("no corresponding l2 token");
@@ -370,6 +374,7 @@ contract L1CustomERC20GatewayTest is L1GatewayTestBase {
 
       uint256 gatewayBalance = l1Token.balanceOf(address(gateway));
       uint256 feeVaultBalance = address(feeVault).balance;
+      assertBoolEq(false, l1Messenger.isL1MessageSent(keccak256(xDomainCalldata)));
       if (useRouter) {
         router.depositERC20{ value: feeToPay }(address(l1Token), amount, gasLimit);
       } else {
@@ -377,6 +382,7 @@ contract L1CustomERC20GatewayTest is L1GatewayTestBase {
       }
       assertEq(amount + gatewayBalance, l1Token.balanceOf(address(gateway)));
       assertEq(feeToPay + feeVaultBalance, address(feeVault).balance);
+      assertBoolEq(true, l1Messenger.isL1MessageSent(keccak256(xDomainCalldata)));
     }
   }
 
@@ -404,12 +410,12 @@ contract L1CustomERC20GatewayTest is L1GatewayTestBase {
       new bytes(0)
     );
     bytes memory xDomainCalldata = abi.encodeWithSignature(
-      "relayMessage(address,address,uint256,uint256,bytes)",
+      "relayMessage(address,address,uint256,bytes,uint256)",
       address(gateway),
       address(counterpartGateway),
       0,
-      0,
-      message
+      message,
+      0
     );
 
     hevm.expectRevert("no corresponding l2 token");
@@ -447,6 +453,7 @@ contract L1CustomERC20GatewayTest is L1GatewayTestBase {
 
       uint256 gatewayBalance = l1Token.balanceOf(address(gateway));
       uint256 feeVaultBalance = address(feeVault).balance;
+      assertBoolEq(false, l1Messenger.isL1MessageSent(keccak256(xDomainCalldata)));
       if (useRouter) {
         router.depositERC20{ value: feeToPay }(address(l1Token), recipient, amount, gasLimit);
       } else {
@@ -454,6 +461,7 @@ contract L1CustomERC20GatewayTest is L1GatewayTestBase {
       }
       assertEq(amount + gatewayBalance, l1Token.balanceOf(address(gateway)));
       assertEq(feeToPay + feeVaultBalance, address(feeVault).balance);
+      assertBoolEq(true, l1Messenger.isL1MessageSent(keccak256(xDomainCalldata)));
     }
   }
 
@@ -482,12 +490,12 @@ contract L1CustomERC20GatewayTest is L1GatewayTestBase {
       dataToCall
     );
     bytes memory xDomainCalldata = abi.encodeWithSignature(
-      "relayMessage(address,address,uint256,uint256,bytes)",
+      "relayMessage(address,address,uint256,bytes,uint256)",
       address(gateway),
       address(counterpartGateway),
       0,
-      0,
-      message
+      message,
+      0
     );
 
     hevm.expectRevert("no corresponding l2 token");
@@ -525,6 +533,7 @@ contract L1CustomERC20GatewayTest is L1GatewayTestBase {
 
       uint256 gatewayBalance = l1Token.balanceOf(address(gateway));
       uint256 feeVaultBalance = address(feeVault).balance;
+      assertBoolEq(false, l1Messenger.isL1MessageSent(keccak256(xDomainCalldata)));
       if (useRouter) {
         router.depositERC20AndCall{ value: feeToPay }(address(l1Token), recipient, amount, dataToCall, gasLimit);
       } else {
@@ -532,6 +541,7 @@ contract L1CustomERC20GatewayTest is L1GatewayTestBase {
       }
       assertEq(amount + gatewayBalance, l1Token.balanceOf(address(gateway)));
       assertEq(feeToPay + feeVaultBalance, address(feeVault).balance);
+      assertBoolEq(true, l1Messenger.isL1MessageSent(keccak256(xDomainCalldata)));
     }
   }
 }
