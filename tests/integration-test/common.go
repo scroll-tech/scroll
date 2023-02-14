@@ -19,12 +19,10 @@ import (
 	"scroll-tech/database"
 	_ "scroll-tech/database/cmd/app"
 
-	_ "scroll-tech/roller/cmd/app"
-	rollerConfig "scroll-tech/roller/config"
-
-	_ "scroll-tech/bridge/cmd/app"
 	bridgeConfig "scroll-tech/bridge/config"
 	"scroll-tech/bridge/sender"
+	_ "scroll-tech/roller/cmd/app"
+	rollerConfig "scroll-tech/roller/config"
 
 	"scroll-tech/common/cmd"
 	"scroll-tech/common/docker"

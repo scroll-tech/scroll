@@ -30,8 +30,6 @@ func testCommitBatchAndFinalizeBatch(t *testing.T) {
 	l2Cfg := cfg.L2Config
 	l2Relayer, err := l2.NewLayer2Relayer(context.Background(), db, l2Cfg.RelayerConfig)
 	assert.NoError(t, err)
-	defer l2Relayer.Stop()
-
 	// Create L1Watcher
 	l1Cfg := cfg.L1Config
 	l1Watcher := l1.NewWatcher(context.Background(), l1Client, 0, l1Cfg.Confirmations, l1Cfg.L1MessengerAddress, l1Cfg.RollupContractAddress, db)

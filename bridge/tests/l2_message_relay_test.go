@@ -32,7 +32,6 @@ func testRelayL2MessageSucceed(t *testing.T) {
 	l2Cfg := cfg.L2Config
 	l2Relayer, err := l2.NewLayer2Relayer(context.Background(), db, l2Cfg.RelayerConfig)
 	assert.NoError(t, err)
-	defer l2Relayer.Stop()
 
 	// Create L2Watcher
 	confirmations := rpc.LatestBlockNumber
