@@ -7,7 +7,6 @@ import (
 	"math/big"
 	"runtime"
 	"sync"
-	"time"
 
 	// not sure if this will make problems when relay with l1geth
 
@@ -404,52 +403,6 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 			"block_status", status,
 		)
 	}
-}
-
-// Start the relayer process
-func (r *Layer2Relayer) Start() {
-	loop := func(ctx context.Context, f func()) {
-		ticker := time.NewTicker(time.Second)
-		defer ticker.Stop()
-
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case <-ticker.C:
-				f()
-			}
-		}
-	}
-
-	go func() {
-		ctx, cancel := context.WithCancel(r.ctx)
-
-		go loop(ctx, r.ProcessSavedEvents)
-		go loop(ctx, r.ProcessPendingBatches)
-		go loop(ctx, r.ProcessCommittedBatches)
-
-		go func(ctx context.Context) {
-			for {
-				select {
-				case <-ctx.Done():
-					return
-				case confirmation := <-r.GetMsgConfirmCh():
-					r.HandleConfirmation(confirmation)
-				case confirmation := <-r.GetRollupCh():
-					r.HandleConfirmation(confirmation)
-				}
-			}
-		}(ctx)
-
-		<-r.stopCh
-		cancel()
-	}()
-}
-
-// Stop the relayer module, for a graceful shutdown.
-func (r *Layer2Relayer) Stop() {
-	close(r.stopCh)
 }
 
 // HandleConfirmation process received confirmation result

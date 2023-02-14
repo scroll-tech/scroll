@@ -26,7 +26,7 @@ type L2BatchPropser struct {
 }
 
 // NewL2BatchPropser creates a new instance of L2BatchPropser
-func NewL2BatchPropser(ctx context.Context, client *ethclient.Client, cfg *config.L2Config, db database.OrmFactory) (*L2BatchPropser, error) {
+func NewL2BatchProposer(ctx context.Context, client *ethclient.Client, cfg *config.L2Config, db database.OrmFactory) (*L2BatchPropser, error) {
 	watcher := l2.NewL2WatcherClient(ctx, client, cfg.Confirmations, cfg.BatchProposerConfig, cfg.RelayerConfig.MessengerContractAddress, db)
 	return &L2BatchPropser{
 		ctx:           ctx,

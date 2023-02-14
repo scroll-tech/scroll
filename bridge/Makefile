@@ -1,6 +1,5 @@
 .PHONY: lint docker clean bridge
 
-IMAGE_NAME=bridge
 IMAGE_VERSION=latest
 REPO_ROOT_DIR=./..
 
@@ -36,7 +35,7 @@ clean: ## Empty out the bin folder.
 	@rm -rf build/bin
 
 docker:
-	DOCKER_BUILDKIT=1 docker build -t scrolltech/${IMAGE_NAME}:${IMAGE_VERSION} ${REPO_ROOT_DIR}/ -f ${REPO_ROOT_DIR}/build/dockerfiles/bridge.Dockerfile
-
-docker_push:
-	docker push scrolltech/${IMAGE_NAME}:${IMAGE_VERSION}
+	DOCKER_BUILDKIT=1 docker build -t scrolltech/batch_proposer:${IMAGE_VERSION} ${REPO_ROOT_DIR}/ -f ${REPO_ROOT_DIR}/build/dockerfiles/batch_proposer.Dockerfile
+	DOCKER_BUILDKIT=1 docker build -t scrolltech/event_watcher:${IMAGE_VERSION} ${REPO_ROOT_DIR}/ -f ${REPO_ROOT_DIR}/build/dockerfiles/event_watcher.Dockerfile
+	DOCKER_BUILDKIT=1 docker build -t scrolltech/rollup_relayer:${IMAGE_VERSION} ${REPO_ROOT_DIR}/ -f ${REPO_ROOT_DIR}/build/dockerfiles/rollup_relayer.Dockerfile
+	DOCKER_BUILDKIT=1 docker build -t scrolltech/message_relayer${IMAGE_VERSION} ${REPO_ROOT_DIR}/ -f ${REPO_ROOT_DIR}/build/dockerfiles/message_relayer.Dockerfile

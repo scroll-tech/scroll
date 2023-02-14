@@ -57,7 +57,7 @@ func action(ctx *cli.Context) error {
 		log.Crit("failed to connect l2 geth", "config file", cfgFile, "error", err)
 	}
 
-	batchProposer, err := batchproposer.NewL2BatchPropser(ctx.Context, l2client, cfg.L2Config, ormFactory)
+	batchProposer, err := batchproposer.NewL2BatchProposer(ctx.Context, l2client, cfg.L2Config, ormFactory)
 	if err != nil {
 		return err
 	}

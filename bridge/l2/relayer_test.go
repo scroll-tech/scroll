@@ -33,20 +33,6 @@ var (
 	}
 )
 
-func testCreateNewRelayer(t *testing.T) {
-	// Create db handler and reset db.
-	db, err := database.NewOrmFactory(cfg.DBConfig)
-	assert.NoError(t, err)
-	assert.NoError(t, migrate.ResetDB(db.GetDB().DB))
-	defer db.Close()
-
-	relayer, err := NewLayer2Relayer(context.Background(), db, cfg.L2Config.RelayerConfig)
-	assert.NoError(t, err)
-	defer relayer.Stop()
-
-	relayer.Start()
-}
-
 func testL2RelayerProcessSaveEvents(t *testing.T) {
 	// Create db handler and reset db.
 	db, err := database.NewOrmFactory(cfg.DBConfig)
@@ -57,7 +43,6 @@ func testL2RelayerProcessSaveEvents(t *testing.T) {
 	l2Cfg := cfg.L2Config
 	relayer, err := NewLayer2Relayer(context.Background(), db, l2Cfg.RelayerConfig)
 	assert.NoError(t, err)
-	defer relayer.Stop()
 
 	err = db.SaveL2Messages(context.Background(), templateL2Message)
 	assert.NoError(t, err)
@@ -111,7 +96,6 @@ func testL2RelayerProcessPendingBatches(t *testing.T) {
 	l2Cfg := cfg.L2Config
 	relayer, err := NewLayer2Relayer(context.Background(), db, l2Cfg.RelayerConfig)
 	assert.NoError(t, err)
-	defer relayer.Stop()
 
 	// this blockresult has number of 0x4, need to change it to match the testcase
 	// In this testcase scenario, db will store two blocks with height 0x4 and 0x3
@@ -168,7 +152,6 @@ func testL2RelayerProcessCommittedBatches(t *testing.T) {
 	l2Cfg := cfg.L2Config
 	relayer, err := NewLayer2Relayer(context.Background(), db, l2Cfg.RelayerConfig)
 	assert.NoError(t, err)
-	defer relayer.Stop()
 
 	dbTx, err := db.Beginx()
 	assert.NoError(t, err)
@@ -204,7 +187,6 @@ func testL2RelayerSkipBatches(t *testing.T) {
 	l2Cfg := cfg.L2Config
 	relayer, err := NewLayer2Relayer(context.Background(), db, l2Cfg.RelayerConfig)
 	assert.NoError(t, err)
-	defer relayer.Stop()
 
 	createBatch := func(rollupStatus orm.RollupStatus, provingStatus orm.ProvingStatus) string {
 		dbTx, err := db.Beginx()

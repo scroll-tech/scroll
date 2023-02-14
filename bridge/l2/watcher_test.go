@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"math/big"
-	"strconv"
 	"testing"
 	"time"
 
@@ -17,43 +16,11 @@ import (
 
 	"scroll-tech/bridge/config"
 	"scroll-tech/bridge/mock_bridge"
-	"scroll-tech/bridge/sender"
 
 	"scroll-tech/database"
 	"scroll-tech/database/migrate"
 	"scroll-tech/database/orm"
 )
-
-func testCreateNewWatcherAndStop(t *testing.T) {
-	// Create db handler and reset db.
-	l2db, err := database.NewOrmFactory(cfg.DBConfig)
-	assert.NoError(t, err)
-	assert.NoError(t, migrate.ResetDB(l2db.GetDB().DB))
-	defer l2db.Close()
-
-	l2cfg := cfg.L2Config
-	rc := NewL2WatcherClient(context.Background(), l2Cli, l2cfg.Confirmations, l2cfg.BatchProposerConfig, l2cfg.L2MessengerAddress, l2db)
-	rc.Start()
-	defer rc.Stop()
-
-	l1cfg := cfg.L1Config
-	l1cfg.RelayerConfig.SenderConfig.Confirmations = rpc.LatestBlockNumber
-	newSender, err := sender.NewSender(context.Background(), l1cfg.RelayerConfig.SenderConfig, l1cfg.RelayerConfig.MessageSenderPrivateKeys)
-	assert.NoError(t, err)
-
-	// Create several transactions and commit to block
-	numTransactions := 3
-	toAddress := common.HexToAddress("0x4592d8f8d7b001e72cb26a73e4fa1806a51ac79d")
-	for i := 0; i < numTransactions; i++ {
-		_, err = newSender.SendTransaction(strconv.Itoa(1000+i), &toAddress, big.NewInt(1000000000), nil)
-		assert.NoError(t, err)
-		<-newSender.ConfirmChan()
-	}
-
-	blockNum, err := l2Cli.BlockNumber(context.Background())
-	assert.NoError(t, err)
-	assert.GreaterOrEqual(t, blockNum, uint64(numTransactions))
-}
 
 func testMonitorBridgeContract(t *testing.T) {
 	// Create db handler and reset db.
@@ -73,9 +40,7 @@ func testMonitorBridgeContract(t *testing.T) {
 	address, err := bind.WaitDeployed(context.Background(), l2Cli, tx)
 	assert.NoError(t, err)
 
-	rc := prepareRelayerClient(l2Cli, cfg.L2Config.BatchProposerConfig, db, address)
-	rc.Start()
-	defer rc.Stop()
+	rc := prepareWatcherClient(l2Cli, cfg.L2Config.BatchProposerConfig, db, address)
 
 	// Call mock_bridge instance sendMessage to trigger emit events
 	toAddress := common.HexToAddress("0x4592d8f8d7b001e72cb26a73e4fa1806a51ac79d")
@@ -99,6 +64,8 @@ func testMonitorBridgeContract(t *testing.T) {
 	if receipt.Status != types.ReceiptStatusSuccessful || err != nil {
 		t.Fatalf("Call failed")
 	}
+
+	rc.FetchContractEvent(receipt.BlockNumber.Uint64())
 
 	// wait for dealing time
 	<-time.After(6 * time.Second)
@@ -135,10 +102,7 @@ func testFetchMultipleSentMessageInOneBlock(t *testing.T) {
 	address, err := bind.WaitDeployed(context.Background(), l2Cli, trx)
 	assert.NoError(t, err)
 
-	rc := prepareRelayerClient(l2Cli, cfg.L2Config.BatchProposerConfig, db, address)
-	rc.Start()
-	defer rc.Stop()
-
+	rc := prepareWatcherClient(l2Cli, cfg.L2Config.BatchProposerConfig, db, address)
 	// Call mock_bridge instance sendMessage to trigger emit events multiple times
 	numTransactions := 4
 	var tx *types.Transaction
@@ -177,6 +141,7 @@ func testFetchMultipleSentMessageInOneBlock(t *testing.T) {
 		t.Fatalf("Call failed")
 	}
 
+	rc.FetchContractEvent(receipt.BlockNumber.Uint64())
 	// wait for dealing time
 	<-time.After(6 * time.Second)
 
@@ -190,7 +155,7 @@ func testFetchMultipleSentMessageInOneBlock(t *testing.T) {
 	assert.Equal(t, 5, len(msgs))
 }
 
-func prepareRelayerClient(l2Cli *ethclient.Client, bpCfg *config.BatchProposerConfig, db database.OrmFactory, contractAddr common.Address) *WatcherClient {
+func prepareWatcherClient(l2Cli *ethclient.Client, bpCfg *config.BatchProposerConfig, db database.OrmFactory, contractAddr common.Address) *WatcherClient {
 	confirmations := rpc.LatestBlockNumber
 	return NewL2WatcherClient(context.Background(), l2Cli, confirmations, bpCfg, contractAddr, db)
 }

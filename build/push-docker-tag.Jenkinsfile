@@ -44,9 +44,15 @@ pipeline {
                                 sh "docker login --username=${dockerUser} --password=${dockerPassword}"
                                 sh "make -C bridge docker"
                                 sh "make -C coordinator docker"
-                                sh "docker tag scrolltech/bridge:latest scrolltech/bridge:${TAGNAME}"
+                                sh "docker tag scrolltech/event_wathcher:latest scrolltech/event_wathcher:${TAGNAME}"
+                                sh "docker tag scrolltech/message_relayer:latest scrolltech/message_relayer:${TAGNAME}"
+                                sh "docker tag scrolltech/rollup_relayer:latest scrolltech/rollup_relayer:${TAGNAME}"
+                                sh "docker tag scrolltech/batch_proposer:latest scrolltech/batch_proposer:${TAGNAME}"
                                 sh "docker tag scrolltech/coordinator:latest scrolltech/coordinator:${TAGNAME}"
-                                sh "docker push scrolltech/bridge:${TAGNAME}"
+                                sh "docker push scrolltech/event_wathcher:${TAGNAME}"
+                                sh "docker push scrolltech/message_relayer:${TAGNAME}"
+                                sh "docker push scrolltech/batch_proposer:${TAGNAME}"
+                                sh "docker push scrolltech/rollup_relayer:${TAGNAME}"
                                 sh "docker push scrolltech/coordinator:${TAGNAME}"
                             }                              
                     }

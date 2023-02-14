@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 	"math/big"
-	"reflect"
-	"time"
 
 	geth "github.com/scroll-tech/go-ethereum"
 	"github.com/scroll-tech/go-ethereum/accounts/abi"
@@ -79,85 +77,6 @@ func NewL2WatcherClient(ctx context.Context, client *ethclient.Client, confirmat
 		stopped:            0,
 		batchProposer:      newBatchProposer(bpCfg, orm),
 	}
-}
-
-// Start the Listening process
-func (w *WatcherClient) Start() {
-	go func() {
-		if reflect.ValueOf(w.orm).IsNil() {
-			panic("must run L2 watcher with DB")
-		}
-
-		ctx, cancel := context.WithCancel(w.ctx)
-
-		// trace fetcher loop
-		go func(ctx context.Context) {
-			ticker := time.NewTicker(3 * time.Second)
-			defer ticker.Stop()
-
-			for {
-				select {
-				case <-ctx.Done():
-					return
-
-				case <-ticker.C:
-					number, err := utils.GetLatestConfirmedBlockNumber(ctx, w.Client, w.confirmations)
-					if err != nil {
-						log.Error("failed to get block number", "err", err)
-						continue
-					}
-
-					w.TryFetchRunningMissingBlocks(ctx, number)
-				}
-			}
-		}(ctx)
-
-		// event fetcher loop
-		go func(ctx context.Context) {
-			ticker := time.NewTicker(3 * time.Second)
-			defer ticker.Stop()
-
-			for {
-				select {
-				case <-ctx.Done():
-					return
-
-				case <-ticker.C:
-					number, err := utils.GetLatestConfirmedBlockNumber(ctx, w.Client, w.confirmations)
-					if err != nil {
-						log.Error("failed to get block number", "err", err)
-						continue
-					}
-
-					w.FetchContractEvent(number)
-				}
-			}
-		}(ctx)
-
-		// batch proposer loop
-		go func(ctx context.Context) {
-			ticker := time.NewTicker(3 * time.Second)
-			defer ticker.Stop()
-
-			for {
-				select {
-				case <-ctx.Done():
-					return
-
-				case <-ticker.C:
-					w.batchProposer.TryProposeBatch()
-				}
-			}
-		}(ctx)
-
-		<-w.stopCh
-		cancel()
-	}()
-}
-
-// Stop the Watcher module, for a graceful shutdown.
-func (w *WatcherClient) Stop() {
-	w.stopCh <- struct{}{}
 }
 
 const blockTracesFetchLimit = uint64(10)
