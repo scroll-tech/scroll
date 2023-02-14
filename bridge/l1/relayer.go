@@ -138,7 +138,7 @@ func (r *Layer1Relayer) ProcessSavedEvents() {
 	}
 }
 
-func (r *Layer1Relayer) packMessage(msg *orm.L1Message) ([]byte, error) {
+func (r *Layer1Relayer) packRelayMessage(msg *orm.L1Message) ([]byte, error) {
 	// @todo add support to relay multiple messages
 	from := common.HexToAddress(msg.Sender)
 	target := common.HexToAddress(msg.Target)
