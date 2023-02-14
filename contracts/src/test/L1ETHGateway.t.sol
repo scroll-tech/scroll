@@ -2,8 +2,6 @@
 
 pragma solidity ^0.8.0;
 
-import { MockERC20 } from "solmate/test/utils/mocks/MockERC20.sol";
-
 import { L1GatewayRouter } from "../L1/gateways/L1GatewayRouter.sol";
 import { IL1ETHGateway, L1ETHGateway } from "../L1/gateways/L1ETHGateway.sol";
 import { IL1ScrollMessenger } from "../L1/IL1ScrollMessenger.sol";

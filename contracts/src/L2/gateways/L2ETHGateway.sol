@@ -68,8 +68,6 @@ contract L2ETHGateway is Initializable, ScrollGatewayBase, IL2ETHGateway {
     uint256 _amount,
     bytes calldata _data
   ) external payable override onlyCallByCounterpart {
-    require(msg.value == _amount, "msg.value mismatch");
-
     // solhint-disable-next-line avoid-low-level-calls
     (bool _success, ) = _to.call{ value: _amount }("");
     require(_success, "ETH transfer failed");
@@ -79,7 +77,9 @@ contract L2ETHGateway is Initializable, ScrollGatewayBase, IL2ETHGateway {
     emit FinalizeDepositETH(_from, _to, _amount, _data);
   }
 
-  /**************************************** Internal Functions ****************************************/
+  /**********************
+   * Internal Functions *
+   **********************/
 
   function _withdraw(
     address _to,
@@ -103,5 +103,7 @@ contract L2ETHGateway is Initializable, ScrollGatewayBase, IL2ETHGateway {
       _data
     );
     IL2ScrollMessenger(messenger).sendMessage{ value: msg.value }(counterpart, _amount, _message, _gasLimit);
+
+    emit WithdrawETH(_from, _to, _amount, _data);
   }
 }

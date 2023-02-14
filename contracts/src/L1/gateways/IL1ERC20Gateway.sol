@@ -12,7 +12,7 @@ interface IL1ERC20Gateway {
   /// @param l2Token The address of the token in L2.
   /// @param from The address of sender in L2.
   /// @param to The address of recipient in L1.
-  /// @param amount The amount of ETH withdrawn from L2 to L1.
+  /// @param amount The amount of token withdrawn from L2 to L1.
   /// @param data The optional calldata passed to recipient in L1.
   event FinalizeWithdrawERC20(
     address indexed l1Token,
@@ -28,7 +28,7 @@ interface IL1ERC20Gateway {
   /// @param l2Token The address of the token in L2.
   /// @param from The address of sender in L1.
   /// @param to The address of recipient in L2.
-  /// @param amount The amount of ETH will be deposited from L1 to L2.
+  /// @param amount The amount of token will be deposited from L1 to L2.
   /// @param data The optional calldata passed to recipient in L2.
   event DepositERC20(
     address indexed l1Token,

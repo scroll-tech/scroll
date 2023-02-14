@@ -84,7 +84,7 @@ function initialize(address _counterpart, address _feeVault) external nonpayable
 function isL1MessageExecuted(bytes32) external view returns (bool)
 ```
 
-Mapping from message hash to a boolean value indicating if the message has been successfully executed.
+Mapping from L1 message hash to a boolean value indicating if the message has been successfully executed.
 
 
 
@@ -106,7 +106,7 @@ Mapping from message hash to a boolean value indicating if the message has been 
 function isL2MessageSent(bytes32) external view returns (bool)
 ```
 
-Mapping from message hash to sent status.
+Mapping from L2 message hash to sent status.
 
 
 
@@ -128,7 +128,7 @@ Mapping from message hash to sent status.
 function l1MessageFailedTimes(bytes32) external view returns (uint256)
 ```
 
-Mapping from message hash to the number of failed times.
+Mapping from L1 message hash to the number of failed times.
 
 
 
@@ -150,7 +150,7 @@ Mapping from message hash to the number of failed times.
 function maxFailedExecutionTimes() external view returns (uint256)
 ```
 
-The maximum number of times each message can fail in L2.
+The maximum number of times each L1 message can fail in L2.
 
 
 
@@ -281,7 +281,7 @@ function retryMessageWithProof(address _from, address _to, uint256 _value, bytes
 function sendMessage(address _to, uint256 _value, bytes _message, uint256 _gasLimit) external payable
 ```
 
-Send cross chain message from L1 to L2.
+Send cross chain message from L2 to L1.
 
 
 
@@ -309,6 +309,22 @@ function transferOwnership(address newOwner) external nonpayable
 | Name | Type | Description |
 |---|---|---|
 | newOwner | address | undefined |
+
+### updateFeeVault
+
+```solidity
+function updateFeeVault(address _newFeeVault) external nonpayable
+```
+
+Update fee vault contract.
+
+*This function can only called by contract owner.*
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| _newFeeVault | address | The address of new fee vault contract. |
 
 ### updateMaxFailedExecutionTimes
 
@@ -496,7 +512,7 @@ Emitted when a cross domain message is relayed successfully.
 ### SentMessage
 
 ```solidity
-event SentMessage(address indexed sender, address indexed target, uint256 value, bytes message, uint256 messageNonce)
+event SentMessage(address indexed sender, address indexed target, uint256 value, bytes message, uint256 messageNonce, uint256 gasLimit)
 ```
 
 Emitted when a cross domain message is sent.
@@ -512,6 +528,7 @@ Emitted when a cross domain message is sent.
 | value  | uint256 | undefined |
 | message  | bytes | undefined |
 | messageNonce  | uint256 | undefined |
+| gasLimit  | uint256 | undefined |
 
 ### Unpaused
 
@@ -528,6 +545,23 @@ event Unpaused(address account)
 | Name | Type | Description |
 |---|---|---|
 | account  | address | undefined |
+
+### UpdateFeeVault
+
+```solidity
+event UpdateFeeVault(address _oldFeeVault, address _newFeeVault)
+```
+
+Emitted when owner updates fee vault contract.
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| _oldFeeVault  | address | undefined |
+| _newFeeVault  | address | undefined |
 
 ### UpdateMaxFailedExecutionTimes
 

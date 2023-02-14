@@ -46,9 +46,7 @@ contract InitializeL2BridgeContracts is Script {
         // initialize L2GatewayRouter
         L2GatewayRouter(L2_GATEWAY_ROUTER_PROXY_ADDR).initialize(
             L2_ETH_GATEWAY_PROXY_ADDR,
-            L2_STANDARD_ERC20_GATEWAY_PROXY_ADDR,
-            L1_GATEWAY_ROUTER_PROXY_ADDR,
-            L2_SCROLL_MESSENGER_ADDR
+            L2_STANDARD_ERC20_GATEWAY_PROXY_ADDR
         );
 
         // initialize ScrollStandardERC20Factory

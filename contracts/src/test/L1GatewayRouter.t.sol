@@ -2,14 +2,11 @@
 
 pragma solidity ^0.8.0;
 
-import { DSTestPlus } from "solmate/test/utils/DSTestPlus.sol";
 import { MockERC20 } from "solmate/test/utils/mocks/MockERC20.sol";
 
 import { L1ETHGateway } from "../L1/gateways/L1ETHGateway.sol";
 import { L1GatewayRouter } from "../L1/gateways/L1GatewayRouter.sol";
 import { L1StandardERC20Gateway } from "../L1/gateways/L1StandardERC20Gateway.sol";
-import { L1ScrollMessenger } from "../L1/L1ScrollMessenger.sol";
-import { ScrollChain } from "../L1/rollup/ScrollChain.sol";
 import { L2ETHGateway } from "../L2/gateways/L2ETHGateway.sol";
 import { L2StandardERC20Gateway } from "../L2/gateways/L2StandardERC20Gateway.sol";
 import { ScrollStandardERC20 } from "../libraries/token/ScrollStandardERC20.sol";
@@ -87,18 +84,18 @@ contract L1GatewayRouterTest is L1GatewayTestBase {
     // set by non-owner, should revert
     hevm.startPrank(address(1));
     hevm.expectRevert("Ownable: caller is not the owner");
-    router.setDefaultERC20Gateway(address(l2StandardERC20Gateway));
+    router.setDefaultERC20Gateway(address(l1StandardERC20Gateway));
     hevm.stopPrank();
 
     // set by owner, should succeed
     hevm.expectEmit(true, false, false, true);
-    emit SetDefaultERC20Gateway(address(l2StandardERC20Gateway));
+    emit SetDefaultERC20Gateway(address(l1StandardERC20Gateway));
 
     assertEq(address(0), router.getERC20Gateway(address(l1Token)));
     assertEq(address(0), router.defaultERC20Gateway());
-    router.setDefaultERC20Gateway(address(l2StandardERC20Gateway));
-    assertEq(address(l2StandardERC20Gateway), router.getERC20Gateway(address(l1Token)));
-    assertEq(address(l2StandardERC20Gateway), router.defaultERC20Gateway());
+    router.setDefaultERC20Gateway(address(l1StandardERC20Gateway));
+    assertEq(address(l1StandardERC20Gateway), router.getERC20Gateway(address(l1Token)));
+    assertEq(address(l1StandardERC20Gateway), router.defaultERC20Gateway());
   }
 
   function testSetERC20Gateway() public {
@@ -116,14 +113,14 @@ contract L1GatewayRouterTest is L1GatewayTestBase {
     address[] memory _tokens = new address[](1);
     address[] memory _gateways = new address[](1);
     _tokens[0] = address(l1Token);
-    _gateways[0] = address(l2StandardERC20Gateway);
+    _gateways[0] = address(l1StandardERC20Gateway);
 
     hevm.expectEmit(true, true, false, true);
-    emit SetERC20Gateway(address(l1Token), address(l2StandardERC20Gateway));
+    emit SetERC20Gateway(address(l1Token), address(l1StandardERC20Gateway));
 
     assertEq(address(0), router.getERC20Gateway(address(l1Token)));
     router.setERC20Gateway(_tokens, _gateways);
-    assertEq(address(l2StandardERC20Gateway), router.getERC20Gateway(address(l1Token)));
+    assertEq(address(l1StandardERC20Gateway), router.getERC20Gateway(address(l1Token)));
   }
 
   function testFinalizeWithdrawERC20() public {

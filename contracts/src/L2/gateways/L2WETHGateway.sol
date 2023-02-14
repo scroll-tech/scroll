@@ -22,7 +22,9 @@ import { ScrollGatewayBase, IScrollGateway } from "../../libraries/gateway/Scrol
 contract L2WETHGateway is Initializable, ScrollGatewayBase, L2ERC20Gateway {
   using SafeERC20 for IERC20;
 
-  /**************************************** Variables ****************************************/
+  /*************
+   * Constants *
+   *************/
 
   /// @notice The address of L1 WETH address.
   address public immutable l1WETH;
@@ -32,7 +34,9 @@ contract L2WETHGateway is Initializable, ScrollGatewayBase, L2ERC20Gateway {
   // solhint-disable-next-line var-name-mixedcase
   address public immutable WETH;
 
-  /**************************************** Constructor ****************************************/
+  /***************
+   * Constructor *
+   ***************/
 
   constructor(address _WETH, address _l1WETH) {
     WETH = _WETH;
@@ -52,7 +56,9 @@ contract L2WETHGateway is Initializable, ScrollGatewayBase, L2ERC20Gateway {
     require(msg.sender == WETH, "only WETH");
   }
 
-  /**************************************** View Functions ****************************************/
+  /*************************
+   * Public View Functions *
+   *************************/
 
   /// @inheritdoc IL2ERC20Gateway
   function getL1ERC20Address(address) external view override returns (address) {
@@ -64,7 +70,9 @@ contract L2WETHGateway is Initializable, ScrollGatewayBase, L2ERC20Gateway {
     return WETH;
   }
 
-  /**************************************** Mutate Functions ****************************************/
+  /****************************
+   * Public Mutated Functions *
+   ****************************/
 
   /// @inheritdoc IL2ERC20Gateway
   function finalizeDepositERC20(
@@ -87,7 +95,9 @@ contract L2WETHGateway is Initializable, ScrollGatewayBase, L2ERC20Gateway {
     emit FinalizeDepositERC20(_l1Token, _l2Token, _from, _to, _amount, _data);
   }
 
-  /**************************************** Internal Functions ****************************************/
+  /**********************
+   * Internal Functions *
+   **********************/
 
   /// @inheritdoc L2ERC20Gateway
   function _withdraw(

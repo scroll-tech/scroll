@@ -10,7 +10,6 @@ import { IL2ERC20Gateway } from "./IL2ERC20Gateway.sol";
 import { IL2ScrollMessenger } from "../IL2ScrollMessenger.sol";
 import { IL1ETHGateway } from "../../L1/gateways/IL1ETHGateway.sol";
 import { IScrollGateway } from "../../libraries/gateway/IScrollGateway.sol";
-import { ScrollGatewayBase } from "../../libraries/gateway/ScrollGatewayBase.sol";
 import { IScrollStandardERC20 } from "../../libraries/token/IScrollStandardERC20.sol";
 
 /// @title L2GatewayRouter
@@ -18,17 +17,27 @@ import { IScrollStandardERC20 } from "../../libraries/token/IScrollStandardERC20
 /// All deposited tokens are routed to corresponding gateways.
 /// @dev One can also use this contract to query L1/L2 token address mapping.
 /// In the future, ERC-721 and ERC-1155 tokens will be added to the router too.
-contract L2GatewayRouter is OwnableUpgradeable, ScrollGatewayBase, IL2GatewayRouter {
-  /**************************************** Events ****************************************/
+contract L2GatewayRouter is OwnableUpgradeable, IL2GatewayRouter {
+  /**********
+   * Events *
+   **********/
 
   /// @notice Emitted when the address of ETH Gateway is updated.
   /// @param ethGateway The address of new ETH Gateway.
   event SetETHGateway(address indexed ethGateway);
 
-  event SetDefaultERC20Gateway(address indexed _defaultERC20Gateway);
-  event SetERC20Gateway(address indexed _token, address indexed _gateway);
+  /// @notice Emitted when the address of default ERC20 Gateway is updated.
+  /// @param defaultERC20Gateway The address of new default ERC20 Gateway.
+  event SetDefaultERC20Gateway(address indexed defaultERC20Gateway);
 
-  /**************************************** Variables ****************************************/
+  /// @notice Emitted when the `gateway` for `token` is updated.
+  /// @param token The address of token updated.
+  /// @param gateway The corresponding address of gateway updated.
+  event SetERC20Gateway(address indexed token, address indexed gateway);
+
+  /*************
+   * Variables *
+   *************/
 
   /// @notice The address of L2ETHGateway.
   address public ethGateway;
@@ -42,17 +51,14 @@ contract L2GatewayRouter is OwnableUpgradeable, ScrollGatewayBase, IL2GatewayRou
 
   // @todo: add ERC721/ERC1155 Gateway mapping.
 
-  /**************************************** Constructor ****************************************/
+  /***************
+   * Constructor *
+   ***************/
 
-  function initialize(
-    address _ethGateway,
-    address _defaultERC20Gateway,
-    address _counterpart,
-    address _messenger
-  ) external initializer {
+  function initialize(address _ethGateway, address _defaultERC20Gateway) external initializer {
     OwnableUpgradeable.__Ownable_init();
-    ScrollGatewayBase._initialize(_counterpart, address(0), _messenger);
 
+    // it can be zero during initialization
     if (_defaultERC20Gateway != address(0)) {
       defaultERC20Gateway = _defaultERC20Gateway;
     }
@@ -64,7 +70,9 @@ contract L2GatewayRouter is OwnableUpgradeable, ScrollGatewayBase, IL2GatewayRou
     }
   }
 
-  /**************************************** View Functions ****************************************/
+  /*************************
+   * Public View Functions *
+   *************************/
 
   /// @inheritdoc IL2ERC20Gateway
   function getL2ERC20Address(address) external pure override returns (address) {
@@ -91,7 +99,9 @@ contract L2GatewayRouter is OwnableUpgradeable, ScrollGatewayBase, IL2GatewayRou
     return _gateway;
   }
 
-  /**************************************** Mutate Functions ****************************************/
+  /****************************
+   * Public Mutated Functions *
+   ****************************/
 
   /// @inheritdoc IL2ERC20Gateway
   function withdrawERC20(
@@ -119,7 +129,7 @@ contract L2GatewayRouter is OwnableUpgradeable, ScrollGatewayBase, IL2GatewayRou
     uint256 _amount,
     bytes memory _data,
     uint256 _gasLimit
-  ) public payable override nonReentrant {
+  ) public payable override {
     address _gateway = getERC20Gateway(_token);
     require(_gateway != address(0), "no gateway available");
 
@@ -149,7 +159,7 @@ contract L2GatewayRouter is OwnableUpgradeable, ScrollGatewayBase, IL2GatewayRou
     uint256 _amount,
     bytes memory _data,
     uint256 _gasLimit
-  ) public payable override nonReentrant {
+  ) public payable override {
     address _gateway = ethGateway;
     require(_gateway != address(0), "eth gateway available");
 

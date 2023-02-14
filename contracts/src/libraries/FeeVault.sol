@@ -98,11 +98,12 @@ abstract contract FeeVault {
 
     emit Withdrawal(value, RECIPIENT, msg.sender);
 
+    // no fee provided
     IL2ScrollMessenger(MESSENGER).sendMessage{ value: value }(
       RECIPIENT,
-      0, // no fee provided
+      value,
       bytes(""), // no message (simple eth transfer)
-      0 // _gasLimit is not used for eth transfers
+      0 // _gasLimit can be zero for fee vault.
     );
   }
 }

@@ -156,7 +156,10 @@ contract L2ScrollMessenger is ScrollMessengerBase, PausableUpgradeable, IL2Scrol
     bytes memory _message,
     uint256 _gasLimit
   ) external payable override whenNotPaused {
-    require(_gasLimit >= MIN_GAS_LIMIT, "gas limit too small");
+    // by pass fee vault relay
+    if (feeVault != msg.sender) {
+      require(_gasLimit >= MIN_GAS_LIMIT, "gas limit too small");
+    }
 
     // compute and deduct the messaging fee to fee vault.
     uint256 _fee = _gasLimit * IL1BlockContainer(blockContainer).latestBaseFee();

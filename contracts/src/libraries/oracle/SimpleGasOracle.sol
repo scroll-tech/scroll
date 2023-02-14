@@ -8,7 +8,9 @@ import "./IGasOracle.sol";
 
 /// @title Simple Gas Oracle
 contract SimpleGasOracle is OwnableUpgradeable, IGasOracle {
-  /**************************************** Events ****************************************/
+  /**********
+   * Events *
+   **********/
 
   /// @notice Emitted when owner update default FeeConfig.
   /// @param _baseFees The amount base fee to pay.
@@ -21,7 +23,9 @@ contract SimpleGasOracle is OwnableUpgradeable, IGasOracle {
   /// @param _feesPerByte The amount fee to pay per message byte.
   event UpdateCustomFeeConfig(address indexed _sender, uint256 _baseFees, uint256 _feesPerByte);
 
-  /**************************************** Variables ****************************************/
+  /*************
+   * Variables *
+   *************/
 
   struct FeeConfig {
     uint128 baseFees;
@@ -37,15 +41,19 @@ contract SimpleGasOracle is OwnableUpgradeable, IGasOracle {
   /// @notice Whether the sender should user custom FeeConfig.
   mapping(address => bool) public hasCustomConfig;
 
-  /**************************************** Constructors ****************************************/
+  /***************
+   * Constructor *
+   ***************/
 
   function initialize() external initializer {
     OwnableUpgradeable.__Ownable_init();
   }
 
-  /**************************************** View Functions ****************************************/
+  /*************************
+   * Public View Functions *
+   *************************/
 
-  /// @notice See {IGasOracle-estimateMessageFee}
+  /// @inheritdoc IGasOracle
   function estimateMessageFee(
     address _sender,
     address,
@@ -64,7 +72,9 @@ contract SimpleGasOracle is OwnableUpgradeable, IGasOracle {
     }
   }
 
-  /**************************************** Restricted Functions ****************************************/
+  /************************
+   * Restricted Functions *
+   ************************/
 
   /// @notice Update default fee config.
   /// @param _baseFees The amount of baseFees to update.

@@ -91,7 +91,7 @@ Mapping from relay id to relay status.
 function isL1MessageSent(bytes32) external view returns (bool)
 ```
 
-Mapping from message hash to sent status.
+Mapping from L1 message hash to sent status.
 
 
 
@@ -113,7 +113,7 @@ Mapping from message hash to sent status.
 function isL2MessageExecuted(bytes32) external view returns (bool)
 ```
 
-Mapping from message hash to a boolean value indicating if the message has been successfully executed.
+Mapping from L2 message hash to a boolean value indicating if the message has been successfully executed.
 
 
 
@@ -297,6 +297,22 @@ function transferOwnership(address newOwner) external nonpayable
 |---|---|---|
 | newOwner | address | undefined |
 
+### updateFeeVault
+
+```solidity
+function updateFeeVault(address _newFeeVault) external nonpayable
+```
+
+Update fee vault contract.
+
+*This function can only called by contract owner.*
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| _newFeeVault | address | The address of new fee vault contract. |
+
 ### updateWhitelist
 
 ```solidity
@@ -451,6 +467,23 @@ event Unpaused(address account)
 | Name | Type | Description |
 |---|---|---|
 | account  | address | undefined |
+
+### UpdateFeeVault
+
+```solidity
+event UpdateFeeVault(address _oldFeeVault, address _newFeeVault)
+```
+
+Emitted when owner updates fee vault contract.
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| _oldFeeVault  | address | undefined |
+| _newFeeVault  | address | undefined |
 
 ### UpdateWhitelist
 

@@ -34,5 +34,5 @@ contract MockScrollMessenger is IScrollMessenger {
     uint256 _value,
     bytes memory _message,
     uint256 _gasLimit
-  ) external {}
+  ) external payable {}
 }

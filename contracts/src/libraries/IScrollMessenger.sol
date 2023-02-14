@@ -15,7 +15,9 @@ interface IScrollMessenger {
   /// @param messageHash The hash of the message.
   event FailedRelayedMessage(bytes32 indexed messageHash);
 
-  /**************************************** View Functions ****************************************/
+  /*************************
+   * Public View Functions *
+   *************************/
 
   /// @notice Return the sender of a cross domain message.
   function xDomainMessageSender() external view returns (address);
