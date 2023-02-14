@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/scroll-tech/go-ethereum/common"
-	"github.com/scroll-tech/go-ethereum/common/math"
 	"github.com/scroll-tech/go-ethereum/log"
 	"modernc.org/mathutil"
 
@@ -18,12 +17,12 @@ import (
 )
 
 func (r *Layer2Relayer) checkCommittingBatches() error {
-	var blockNumber uint64 = math.MaxUint64
+	var blockNumber uint64
 BEGIN:
 	batches, err := r.db.GetBlockBatches(
 		map[string]interface{}{"rollup_status": orm.RollupCommitting},
-		fmt.Sprintf("AND end_block_number < %d", blockNumber),
-		fmt.Sprintf("ORDER BY end_block_number DESC LIMIT %d", 10),
+		fmt.Sprintf("AND end_block_number > %d", blockNumber),
+		fmt.Sprintf("ORDER BY end_block_number ASC LIMIT %d", 10),
 	)
 	if err != nil || len(batches) == 0 {
 		return err
@@ -39,7 +38,7 @@ BEGIN:
 		batch, batches = batches[0], batches[1:]
 
 		id := batch.ID
-		blockNumber = mathutil.MinUint64(blockNumber, batch.EndBlockNumber)
+		blockNumber = mathutil.MaxUint64(blockNumber, batch.EndBlockNumber)
 
 		txStr, err := r.db.GetCommitTxHash(id)
 		if err != nil {

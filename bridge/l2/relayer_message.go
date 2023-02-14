@@ -30,47 +30,51 @@ func (r *Layer2Relayer) checkSubmittedMessages() error {
 		return nil
 	}
 
-	blockNumber := batch.EndBlockNumber
-BEGIN:
-	// msgs are sorted by nonce in increasing order
-	msgs, err := r.db.GetL2Messages(
-		map[string]interface{}{"status": orm.MsgSubmitted},
-		fmt.Sprintf("AND height < %d", blockNumber),
-		fmt.Sprintf("ORDER BY height DESC LIMIT %d", r.messageSender.PendingLimit()),
-	)
-	if err != nil || len(msgs) == 0 {
-		return err
-	}
-
-	for msg := msgs[0]; len(msgs) > 0; { //nolint:staticcheck
-		// If pending txs pool is full, wait a while and retry.
-		if r.messageSender.IsFull() {
-			log.Warn("layer2 message tx sender is full")
-			time.Sleep(time.Millisecond * 500)
-			continue
+	var batchLimit uint64 = 10
+	for start, end := batch.StartBlockNumber, batch.StartBlockNumber; start <= batch.EndBlockNumber; start = end + 1 {
+		if end += batchLimit; end > batch.EndBlockNumber {
+			end = batch.EndBlockNumber
 		}
-		msg, msgs = msgs[0], msgs[1:]
-
-		blockNumber = mathutil.MinUint64(blockNumber, msg.Height)
-		data, err := r.packRelayMessage(msg, batch.Index)
-		if err != nil {
-			continue
-		}
-
-		err = r.messageSender.LoadOrSendTx(
-			common.HexToHash(msg.Layer1Hash),
-			msg.MsgHash,
-			&r.cfg.MessengerContractAddress,
-			big.NewInt(0),
-			data,
+		// msgs are sorted by nonce in increasing order
+		msgs, err := r.db.GetL2Messages(
+			map[string]interface{}{"status": orm.MsgSubmitted},
+			fmt.Sprintf("AND height >= %d AND height <= %d", start, end),
+			"ORDER BY height ASC",
 		)
-		if err != nil {
-			log.Error("failed to load or send l2 submitted tx", "batch id", batch.ID, "msg hash", msg.MsgHash, "err", err)
-		} else {
-			r.processingMessage.Store(msg.MsgHash, msg.MsgHash)
+		if err != nil || len(msgs) == 0 {
+			return err
+		}
+
+		for msg := msgs[0]; len(msgs) > 0; { //nolint:staticcheck
+			// If pending txs pool is full, wait a while and retry.
+			if r.messageSender.IsFull() {
+				log.Warn("layer2 message tx sender is full")
+				time.Sleep(time.Millisecond * 500)
+				continue
+			}
+			msg, msgs = msgs[0], msgs[1:]
+
+			data, err := r.packRelayMessage(msg, batch.Index)
+			if err != nil {
+				continue
+			}
+
+			err = r.messageSender.LoadOrSendTx(
+				common.HexToHash(msg.Layer1Hash),
+				msg.MsgHash,
+				&r.cfg.MessengerContractAddress,
+				big.NewInt(0),
+				data,
+			)
+			if err != nil {
+				log.Error("failed to load or send l2 submitted tx", "batch id", batch.ID, "msg hash", msg.MsgHash, "err", err)
+			} else {
+				r.processingMessage.Store(msg.MsgHash, msg.MsgHash)
+			}
 		}
 	}
-	goto BEGIN
+
+	return nil
 }
 
 // ProcessSavedEvents relays saved un-processed cross-domain transactions to desired blockchain

@@ -9,7 +9,6 @@ import (
 
 	"github.com/scroll-tech/go-ethereum/accounts/abi"
 	"github.com/scroll-tech/go-ethereum/common"
-	"github.com/scroll-tech/go-ethereum/common/math"
 	"github.com/scroll-tech/go-ethereum/crypto"
 	"github.com/scroll-tech/go-ethereum/log"
 	"modernc.org/mathutil"
@@ -75,12 +74,12 @@ func NewLayer1Relayer(ctx context.Context, db orm.L1MessageOrm, cfg *config.Rela
 }
 
 func (r *Layer1Relayer) checkSubmittedMessages() error {
-	var blockNumber uint64 = math.MaxUint64
+	var blockNumber uint64
 BEGIN:
 	msgs, err := r.db.GetL1Messages(
 		map[string]interface{}{"status": orm.MsgSubmitted},
-		fmt.Sprintf("AND height < %d", blockNumber),
-		fmt.Sprintf("ORDER BY height DESC LIMIT %d", 100),
+		fmt.Sprintf("AND height > %d", blockNumber),
+		fmt.Sprintf("ORDER BY height ASC LIMIT %d", 100),
 	)
 	if err != nil || len(msgs) == 0 {
 		return err
@@ -95,9 +94,9 @@ BEGIN:
 		}
 		msg, msgs = msgs[0], msgs[1:]
 
-		blockNumber = mathutil.MinUint64(blockNumber, msg.Height)
+		blockNumber = mathutil.MaxUint64(blockNumber, msg.Height)
 
-		data, err := r.packMessage(msg)
+		data, err := r.packRelayMessage(msg)
 		if err != nil {
 			continue
 		}
@@ -162,7 +161,7 @@ func (r *Layer1Relayer) packRelayMessage(msg *orm.L1Message) ([]byte, error) {
 }
 
 func (r *Layer1Relayer) processSavedEvent(msg *orm.L1Message) error {
-	data, err := r.packMessage(msg)
+	data, err := r.packRelayMessage(msg)
 	if err != nil {
 		return err
 	}
