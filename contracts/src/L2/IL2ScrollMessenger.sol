@@ -5,6 +5,26 @@ pragma solidity ^0.8.0;
 import { IScrollMessenger } from "../libraries/IScrollMessenger.sol";
 
 interface IL2ScrollMessenger is IScrollMessenger {
+  /**********
+   * Events *
+   **********/
+
+  /// @notice Emitted when a cross domain message is sent.
+  /// @param sender The address of the sender who initiates the message.
+  /// @param target The address of target contract to call.
+  /// @param value The amount of value passed to the target contract.
+  /// @param message The calldata passed to the target contract.
+  /// @param messageNonce The nonce of the message.
+  /// @param gasLimit The optional gas limit passed to L1.
+  event SentMessage(
+    address indexed sender,
+    address indexed target,
+    uint256 value,
+    bytes message,
+    uint256 messageNonce,
+    uint256 gasLimit
+  );
+
   /***********
    * Structs *
    ***********/
@@ -18,11 +38,11 @@ interface IL2ScrollMessenger is IScrollMessenger {
    * Public Mutated Functions *
    ****************************/
 
-  /// @notice Send cross chain message from L1 to L2.
+  /// @notice Send cross chain message from L2 to L1.
   /// @param target The address of account who recieve the message.
   /// @param value The amount of ether passed when call target contract.
   /// @param message The content of the message.
-  /// @param gasLimit Gas limit required to complete the message relay on L2.
+  /// @param gasLimit Gas limit required to complete the message relay on L1.
   function sendMessage(
     address target,
     uint256 value,

@@ -174,7 +174,7 @@ contract L2ScrollMessenger is ScrollMessengerBase, PausableUpgradeable, IL2Scrol
 
     L2MessageQueue(messageQueue).appendMessage(_xDomainCalldataHash);
 
-    emit SentMessage(msg.sender, _to, _value, _message, _nonce);
+    emit SentMessage(msg.sender, _to, _value, _message, _nonce, _gasLimit);
   }
 
   /// @inheritdoc IL2ScrollMessenger

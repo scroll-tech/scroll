@@ -18,6 +18,11 @@ abstract contract ScrollMessengerBase is OwnableUpgradeable, IScrollMessenger {
   /// @param _newWhitelist The address of new whitelist contract.
   event UpdateWhitelist(address _oldWhitelist, address _newWhitelist);
 
+  /// @notice Emitted when owner updates fee vault contract.
+  /// @param _oldFeeVault The address of old fee vault contract.
+  /// @param _newFeeVault The address of new fee vault contract.
+  event UpdateFeeVault(address _oldFeeVault, address _newFeeVault);
+
   /*************
    * Variables *
    *************/
@@ -73,6 +78,16 @@ abstract contract ScrollMessengerBase is OwnableUpgradeable, IScrollMessenger {
 
     whitelist = _newWhitelist;
     emit UpdateWhitelist(_oldWhitelist, _newWhitelist);
+  }
+
+  /// @notice Update fee vault contract.
+  /// @dev This function can only called by contract owner.
+  /// @param _newFeeVault The address of new fee vault contract.
+  function updateFeeVault(address _newFeeVault) external onlyOwner {
+    address _oldFeeVault = whitelist;
+
+    feeVault = _newFeeVault;
+    emit UpdateFeeVault(_oldFeeVault, _newFeeVault);
   }
 
   /**********************
