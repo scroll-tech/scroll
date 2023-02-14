@@ -7,14 +7,15 @@ import (
 
 	"github.com/patrickmn/go-cache"
 	"github.com/scroll-tech/go-ethereum/log"
-	"github.com/scroll-tech/go-ethereum/metrics"
+	geth_metrics "github.com/scroll-tech/go-ethereum/metrics"
 	"github.com/scroll-tech/go-ethereum/rpc"
 
 	"scroll-tech/common/message"
+	"scroll-tech/common/metrics"
 )
 
 var (
-	coordinatorRollersDisconnectsTotalCounter = metrics.NewRegisteredCounter("coordinator/rollers/disconnects/total", nil)
+	coordinatorRollersDisconnectsTotalCounter = geth_metrics.NewRegisteredCounter("coordinator/rollers/disconnects/total", metrics.ScrollRegistry)
 )
 
 // RollerAPI for rollers inorder to register and submit proof

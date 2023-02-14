@@ -17,6 +17,7 @@ import (
 )
 
 var (
+	// ScrollRegistry is used for scroll metrics.
 	ScrollRegistry = metrics.NewRegistry()
 )
 

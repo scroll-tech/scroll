@@ -14,12 +14,13 @@ import (
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/event"
 	"github.com/scroll-tech/go-ethereum/log"
-	"github.com/scroll-tech/go-ethereum/metrics"
+	geth_metrics "github.com/scroll-tech/go-ethereum/metrics"
 	"github.com/scroll-tech/go-ethereum/rpc"
 
 	bridge_abi "scroll-tech/bridge/abi"
 	"scroll-tech/bridge/config"
 	"scroll-tech/bridge/utils"
+	"scroll-tech/common/metrics"
 
 	"scroll-tech/database"
 	"scroll-tech/database/orm"
@@ -27,14 +28,14 @@ import (
 
 // Metrics
 var (
-	bridgeL2MsgsSyncHeightGauge      = metrics.NewRegisteredGauge("bridge/l2/msgs/sync/height", nil)
-	bridgeL2TracesFetchedHeightGauge = metrics.NewRegisteredGauge("bridge/l2/traces/fetched/height", nil)
+	bridgeL2MsgsSyncHeightGauge      = geth_metrics.NewRegisteredGauge("bridge/l2/msgs/sync/height", metrics.ScrollRegistry)
+	bridgeL2TracesFetchedHeightGauge = geth_metrics.NewRegisteredGauge("bridge/l2/traces/fetched/height", metrics.ScrollRegistry)
 
-	bridgeL2MsgsSentEventsTotalCounter    = metrics.NewRegisteredCounter("bridge/l2/msgs/sent/events/total", nil)
-	bridgeL2MsgsRelayedEventsTotalCounter = metrics.NewRegisteredCounter("bridge/l2/msgs/relayed/events/total", nil)
+	bridgeL2MsgsSentEventsTotalCounter    = geth_metrics.NewRegisteredCounter("bridge/l2/msgs/sent/events/total", metrics.ScrollRegistry)
+	bridgeL2MsgsRelayedEventsTotalCounter = geth_metrics.NewRegisteredCounter("bridge/l2/msgs/relayed/events/total", metrics.ScrollRegistry)
 
-	bridgeL2TracesGasRateMeter  = metrics.NewRegisteredMeter("bridge/l2/traces/gas/rate", nil)
-	bridgeL2TracesSizeRateMeter = metrics.NewRegisteredMeter("bridge/l2/traces/size/rate", nil)
+	bridgeL2TracesGasRateMeter  = geth_metrics.NewRegisteredMeter("bridge/l2/traces/gas/rate", metrics.ScrollRegistry)
+	bridgeL2TracesSizeRateMeter = geth_metrics.NewRegisteredMeter("bridge/l2/traces/size/rate", metrics.ScrollRegistry)
 )
 
 type relayedMessage struct {

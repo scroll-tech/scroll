@@ -11,9 +11,10 @@ import (
 	"github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
-	"github.com/scroll-tech/go-ethereum/metrics"
+	geth_metrics "github.com/scroll-tech/go-ethereum/metrics"
 	"github.com/scroll-tech/go-ethereum/rpc"
 
+	"scroll-tech/common/metrics"
 	"scroll-tech/database"
 	"scroll-tech/database/orm"
 
@@ -22,11 +23,11 @@ import (
 )
 
 var (
-	bridgeL1MsgsSyncHeightGauge = metrics.NewRegisteredGauge("bridge/l1/msgs/sync/height", nil)
+	bridgeL1MsgsSyncHeightGauge = geth_metrics.NewRegisteredGauge("bridge/l1/msgs/sync/height", metrics.ScrollRegistry)
 
-	bridgeL1MsgsSentEventsTotalCounter    = metrics.NewRegisteredCounter("bridge/l1/msgs/sent/events/total", nil)
-	bridgeL1MsgsRelayedEventsTotalCounter = metrics.NewRegisteredCounter("bridge/l1/msgs/relayed/events/total", nil)
-	bridgeL1MsgsRollupEventsTotalCounter  = metrics.NewRegisteredCounter("bridge/l1/msgs/rollup/events/total", nil)
+	bridgeL1MsgsSentEventsTotalCounter    = geth_metrics.NewRegisteredCounter("bridge/l1/msgs/sent/events/total", metrics.ScrollRegistry)
+	bridgeL1MsgsRelayedEventsTotalCounter = geth_metrics.NewRegisteredCounter("bridge/l1/msgs/relayed/events/total", metrics.ScrollRegistry)
+	bridgeL1MsgsRollupEventsTotalCounter  = geth_metrics.NewRegisteredCounter("bridge/l1/msgs/rollup/events/total", metrics.ScrollRegistry)
 )
 
 type relayedMessage struct {

@@ -14,10 +14,11 @@ import (
 	"github.com/scroll-tech/go-ethereum/accounts/abi"
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/log"
-	"github.com/scroll-tech/go-ethereum/metrics"
+	geth_metrics "github.com/scroll-tech/go-ethereum/metrics"
 	"golang.org/x/sync/errgroup"
 	"modernc.org/mathutil"
 
+	"scroll-tech/common/metrics"
 	"scroll-tech/database"
 	"scroll-tech/database/orm"
 
@@ -28,13 +29,13 @@ import (
 )
 
 var (
-	bridgeL2MsgsRelayedTotalCounter            = metrics.NewRegisteredCounter("bridge/l2/msgs/relayed/total", nil)
-	bridgeL2MsgsCommittedTotalCounter          = metrics.NewRegisteredCounter("bridge/l2/msgs/committed/total", nil)
-	bridgeL2MsgsFinalizedTotalCounter          = metrics.NewRegisteredCounter("bridge/l2/msgs/finalized/total", nil)
-	bridgeL2MsgsRelayedConfirmedTotalCounter   = metrics.NewRegisteredCounter("bridge/l2/msgs/relayed/confirmed/total", nil)
-	bridgeL2MsgsCommittedConfirmedTotalCounter = metrics.NewRegisteredCounter("bridge/l2/msgs/committed/confirmed/total", nil)
-	bridgeL2MsgsFinalizedConfirmedTotalCounter = metrics.NewRegisteredCounter("bridge/l2/msgs/finalized/confirmed/total", nil)
-	bridgeL2BatchesSkippedTotalCounter         = metrics.NewRegisteredCounter("bridge/l2/batches/skipped/total", nil)
+	bridgeL2MsgsRelayedTotalCounter            = geth_metrics.NewRegisteredCounter("bridge/l2/msgs/relayed/total", metrics.ScrollRegistry)
+	bridgeL2MsgsCommittedTotalCounter          = geth_metrics.NewRegisteredCounter("bridge/l2/msgs/committed/total", metrics.ScrollRegistry)
+	bridgeL2MsgsFinalizedTotalCounter          = geth_metrics.NewRegisteredCounter("bridge/l2/msgs/finalized/total", metrics.ScrollRegistry)
+	bridgeL2MsgsRelayedConfirmedTotalCounter   = geth_metrics.NewRegisteredCounter("bridge/l2/msgs/relayed/confirmed/total", metrics.ScrollRegistry)
+	bridgeL2MsgsCommittedConfirmedTotalCounter = geth_metrics.NewRegisteredCounter("bridge/l2/msgs/committed/confirmed/total", metrics.ScrollRegistry)
+	bridgeL2MsgsFinalizedConfirmedTotalCounter = geth_metrics.NewRegisteredCounter("bridge/l2/msgs/finalized/confirmed/total", metrics.ScrollRegistry)
+	bridgeL2BatchesSkippedTotalCounter         = geth_metrics.NewRegisteredCounter("bridge/l2/batches/skipped/total", metrics.ScrollRegistry)
 )
 
 // Layer2Relayer is responsible for

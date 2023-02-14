@@ -12,18 +12,20 @@ import (
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/crypto"
 	"github.com/scroll-tech/go-ethereum/log"
-	"github.com/scroll-tech/go-ethereum/metrics"
+	geth_metrics "github.com/scroll-tech/go-ethereum/metrics"
 
 	"scroll-tech/database/orm"
 
 	bridge_abi "scroll-tech/bridge/abi"
 	"scroll-tech/bridge/config"
 	"scroll-tech/bridge/sender"
+
+	"scroll-tech/common/metrics"
 )
 
 var (
-	bridgeL1MsgsRelayedTotalCounter          = metrics.NewRegisteredCounter("bridge/l1/msgs/relayed/total", nil)
-	bridgeL1MsgsRelayedConfirmedTotalCounter = metrics.NewRegisteredCounter("bridge/l1/msgs/relayed/confirmed/total", nil)
+	bridgeL1MsgsRelayedTotalCounter          = geth_metrics.NewRegisteredCounter("bridge/l1/msgs/relayed/total", metrics.ScrollRegistry)
+	bridgeL1MsgsRelayedConfirmedTotalCounter = geth_metrics.NewRegisteredCounter("bridge/l1/msgs/relayed/confirmed/total", metrics.ScrollRegistry)
 )
 
 // Layer1Relayer is responsible for

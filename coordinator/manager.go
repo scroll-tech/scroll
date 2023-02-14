@@ -15,10 +15,11 @@ import (
 	"github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
-	"github.com/scroll-tech/go-ethereum/metrics"
+	geth_metrics "github.com/scroll-tech/go-ethereum/metrics"
 	"github.com/scroll-tech/go-ethereum/rpc"
 
 	"scroll-tech/common/message"
+	"scroll-tech/common/metrics"
 
 	"scroll-tech/database"
 	"scroll-tech/database/orm"
@@ -28,13 +29,13 @@ import (
 )
 
 var (
-	coordinatorProofsReceivedHeightGauge = metrics.NewRegisteredGauge("coordinator/proofs/received/height", nil)
-	coordinatorProofsVerifiedHeightGauge = metrics.NewRegisteredGauge("coordinator/proofs/verified/height", nil)
+	coordinatorProofsReceivedHeightGauge = geth_metrics.NewRegisteredGauge("coordinator/proofs/received/height", metrics.ScrollRegistry)
+	coordinatorProofsVerifiedHeightGauge = geth_metrics.NewRegisteredGauge("coordinator/proofs/verified/height", metrics.ScrollRegistry)
 
-	coordinatorSessionsTimeoutTotalCounter      = metrics.NewRegisteredCounter("coordinator/sessions/timeout/total", nil)
-	coordinatorProofsReceivedTotalCounter       = metrics.NewRegisteredCounter("coordinator/proofs/received/total", nil)
-	coordinatorProofsVerifiedTotalCounter       = metrics.NewRegisteredCounter("coordinator/proofs/verified/total", nil)
-	coordinatorProofsVerifiedFailedTotalCounter = metrics.NewRegisteredCounter("coordinator/proofs/verified/failed/total", nil)
+	coordinatorSessionsTimeoutTotalCounter      = geth_metrics.NewRegisteredCounter("coordinator/sessions/timeout/total", metrics.ScrollRegistry)
+	coordinatorProofsReceivedTotalCounter       = geth_metrics.NewRegisteredCounter("coordinator/proofs/received/total", metrics.ScrollRegistry)
+	coordinatorProofsVerifiedTotalCounter       = geth_metrics.NewRegisteredCounter("coordinator/proofs/verified/total", metrics.ScrollRegistry)
+	coordinatorProofsVerifiedFailedTotalCounter = geth_metrics.NewRegisteredCounter("coordinator/proofs/verified/failed/total", metrics.ScrollRegistry)
 )
 
 const (

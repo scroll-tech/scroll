@@ -6,22 +6,24 @@ import (
 	"time"
 
 	"github.com/scroll-tech/go-ethereum/log"
-	"github.com/scroll-tech/go-ethereum/metrics"
+	geth_metrics "github.com/scroll-tech/go-ethereum/metrics"
 
 	"scroll-tech/database"
 	"scroll-tech/database/orm"
 
 	"scroll-tech/bridge/config"
+
+	"scroll-tech/common/metrics"
 )
 
 var (
-	bridgeL2BatchesGasOverThresholdTotalCounter = metrics.NewRegisteredCounter("bridge/l2/batches/gas/over/threshold/total", nil)
-	bridgeL2BatchesTxsOverThresholdTotalCounter = metrics.NewRegisteredCounter("bridge/l2/batches/txs/over/threshold/total", nil)
-	bridgeL2BatchesCreatedTotalCounter          = metrics.NewRegisteredCounter("bridge/l2/batches/created/total", nil)
+	bridgeL2BatchesGasOverThresholdTotalCounter = geth_metrics.NewRegisteredCounter("bridge/l2/batches/gas/over/threshold/total", metrics.ScrollRegistry)
+	bridgeL2BatchesTxsOverThresholdTotalCounter = geth_metrics.NewRegisteredCounter("bridge/l2/batches/txs/over/threshold/total", metrics.ScrollRegistry)
+	bridgeL2BatchesCreatedTotalCounter          = geth_metrics.NewRegisteredCounter("bridge/l2/batches/created/total", metrics.ScrollRegistry)
 
-	bridgeL2BatchesBlocksCreatedRateMeter = metrics.NewRegisteredMeter("bridge/l2/batches/blocks/created/rate", nil)
-	bridgeL2BatchesTxsCreatedRateMeter    = metrics.NewRegisteredMeter("bridge/l2/batches/txs/created/rate", nil)
-	bridgeL2BatchesGasCreatedRateMeter    = metrics.NewRegisteredMeter("bridge/l2/batches/gas/created/rate", nil)
+	bridgeL2BatchesBlocksCreatedRateMeter = geth_metrics.NewRegisteredMeter("bridge/l2/batches/blocks/created/rate", metrics.ScrollRegistry)
+	bridgeL2BatchesTxsCreatedRateMeter    = geth_metrics.NewRegisteredMeter("bridge/l2/batches/txs/created/rate", metrics.ScrollRegistry)
+	bridgeL2BatchesGasCreatedRateMeter    = geth_metrics.NewRegisteredMeter("bridge/l2/batches/gas/created/rate", metrics.ScrollRegistry)
 )
 
 type batchProposer struct {
