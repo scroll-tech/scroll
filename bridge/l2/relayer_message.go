@@ -31,7 +31,7 @@ func (r *Layer2Relayer) checkSubmittedMessages() error {
 	}
 
 	var batchLimit uint64 = 10
-	for start, end := batch.StartBlockNumber, batch.StartBlockNumber; start <= batch.EndBlockNumber; start = end + 1 {
+	for start, end := batch.StartBlockNumber, batch.StartBlockNumber; end < batch.EndBlockNumber; start = end + 1 {
 		if end += batchLimit; end > batch.EndBlockNumber {
 			end = batch.EndBlockNumber
 		}
