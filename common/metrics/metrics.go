@@ -16,6 +16,10 @@ import (
 	"scroll-tech/common/utils"
 )
 
+var (
+	ScrollRegistry = metrics.NewRegistry()
+)
+
 // Serve starts the metrics server on the given address, will be closed when the given
 // context is canceled.
 func Serve(ctx context.Context, c *cli.Context) {
@@ -30,7 +34,7 @@ func Serve(ctx context.Context, c *cli.Context) {
 
 	server := &http.Server{
 		Addr:         address,
-		Handler:      prometheus.Handler(metrics.DefaultRegistry),
+		Handler:      prometheus.Handler(ScrollRegistry),
 		ReadTimeout:  rpc.DefaultHTTPTimeouts.ReadTimeout,
 		WriteTimeout: rpc.DefaultHTTPTimeouts.WriteTimeout,
 		IdleTimeout:  rpc.DefaultHTTPTimeouts.IdleTimeout,
