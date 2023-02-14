@@ -17,10 +17,11 @@ import (
 	geth_metrics "github.com/scroll-tech/go-ethereum/metrics"
 	"github.com/scroll-tech/go-ethereum/rpc"
 
+	"scroll-tech/common/metrics"
+
 	bridge_abi "scroll-tech/bridge/abi"
 	"scroll-tech/bridge/config"
 	"scroll-tech/bridge/utils"
-	"scroll-tech/common/metrics"
 
 	"scroll-tech/database"
 	"scroll-tech/database/orm"
