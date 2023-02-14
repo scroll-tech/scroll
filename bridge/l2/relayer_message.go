@@ -39,7 +39,7 @@ func (r *Layer2Relayer) checkSubmittedMessages() error {
 		msgs, err := r.db.GetL2Messages(
 			map[string]interface{}{"status": orm.MsgSubmitted},
 			fmt.Sprintf("AND height >= %d AND height <= %d", start, end),
-			"ORDER BY height ASC",
+			"ORDER BY nonce ASC",
 		)
 		if err != nil || len(msgs) == 0 {
 			return err
