@@ -70,7 +70,7 @@ func BufferToUint256Le(buffer []byte) []*big.Int {
 	return buffer256
 }
 
-// Loop Run the f func with context periodically.
+// LoopWithContext Run the f func with context periodically.
 func LoopWithContext(ctx context.Context, tick *time.Ticker, f func(ctx context.Context)) {
 	defer tick.Stop()
 	for ; ; <-tick.C {
