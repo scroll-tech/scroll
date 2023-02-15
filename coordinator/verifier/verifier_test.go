@@ -4,6 +4,7 @@ package verifier_test
 
 import (
 	"encoding/json"
+	"flag"
 	"io"
 	"os"
 	"testing"
