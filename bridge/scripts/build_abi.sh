@@ -14,16 +14,20 @@ else
   mkdir -p contracts
 fi
 
-abi_name=("IL1GatewayRouter" "IL2GatewayRouter" "IL1ScrollMessenger" "IL2ScrollMessenger" "ZKRollup")
-pkg_name=("l1_gateway" "l2_gateway" "l1_messenger" "l2_messenger" "rollup")
-gen_name=("L1GatewayRouter" "L2GatewayRouter" "L1ScrollMessenger" "L2ScrollMessenger" "ZKRollup")
+abi_name=("IL1GatewayRouter" "IL2GatewayRouter" "IL1ScrollMessenger" "IL2ScrollMessenger" "IScrollChain")
+pkg_name=("l1_gateway" "l2_gateway" "l1_messenger" "l2_messenger" "scrollchain")
+gen_name=("L1GatewayRouter" "L2GatewayRouter" "L1ScrollMessenger" "L2ScrollMessenger" "IScrollChain")
 
 for i in "${!abi_name[@]}"; do
-  abi="bridge/abi/${abi_name[$i]}.json"
-  pkg="${pkg_name[$i]}"
+  mkdir -p tmp
+  abi="tmp/${abi_name[$i]}.json"
+  cat ../contracts/artifacts/src/${abi_name[$i]}.sol/${abi_name[$i]}.json | jq '.abi' > $abi
+  pkg="${pkg_name[$i]}_abi"
   out="contracts/${pkg}/${gen_name[$i]}.go"
   echo "generating ${out} from ${abi}"
   mkdir -p contracts/$pkg
   abigen --abi=$abi --pkg=$pkg --out=$out
   awk '{sub("github.com/ethereum","github.com/scroll-tech")}1' $out > temp && mv temp $out
 done
+
+rm -rf tmp
