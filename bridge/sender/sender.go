@@ -3,6 +3,7 @@ package sender
 import (
 	"context"
 	"crypto/ecdsa"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math/big"
@@ -40,6 +41,12 @@ var (
 	// ErrNoAvailableAccount indicates no available account error in the account pool.
 	ErrNoAvailableAccount = errors.New("sender has no available account to send transaction")
 )
+
+// TxMeta is prepared if one sender instance be used in two more places.
+type TxMeta struct {
+	TxType string
+	ID     string
+}
 
 // Confirmation struct used to indicate transaction confirmation details
 type Confirmation struct {
@@ -189,23 +196,47 @@ func (s *Sender) getFeeData(auth *bind.TransactOpts, target *common.Address, val
 	}, nil
 }
 
+func marshalTxMeta(msg interface{}) string {
+	switch msg.(type) {
+	case nil:
+		return ""
+	case string:
+		return msg.(string)
+	case *TxMeta:
+		meta := msg.(*TxMeta)
+		if meta.ID == "" || meta.TxType == "" {
+			return ""
+		}
+		data, _ := json.Marshal(msg)
+		return string(data)
+	default:
+		data, _ := json.Marshal(msg)
+		return string(data)
+	}
+}
+
 // SendTransaction send a signed L2tL1 transaction.
 func (s *Sender) SendTransaction(txMeta interface{}, target *common.Address, value *big.Int, data []byte) (hash common.Hash, err error) {
+	// Use marshal message as id, in order avoid repeat txMetas.
+	var metaId string
+	if metaId = marshalTxMeta(txMeta); metaId == "" {
+		return common.Hash{}, fmt.Errorf("empty txMeta is not allowed")
+	}
 	// We occupy the ID, in case some other threads call with the same ID in the same time
-	if _, loaded := s.pendingTxs.LoadOrStore(txMeta, nil); loaded {
+	if _, loaded := s.pendingTxs.LoadOrStore(metaId, nil); loaded {
 		return common.Hash{}, fmt.Errorf("attempted to send duplicate transaction, txMeta: %v", txMeta)
 	}
 	// get
 	auth := s.auths.getAccount()
 	if auth == nil {
-		s.pendingTxs.Delete(txMeta) // release the ID on failure
+		s.pendingTxs.Delete(metaId) // release the ID on failure
 		return common.Hash{}, ErrNoAvailableAccount
 	}
 
 	defer s.auths.releaseAccount(auth)
 	defer func() {
 		if err != nil {
-			s.pendingTxs.Delete(txMeta) // release the ID on failure
+			s.pendingTxs.Delete(metaId) // release the ID on failure
 		}
 	}()
 
@@ -226,7 +257,7 @@ func (s *Sender) SendTransaction(txMeta interface{}, target *common.Address, val
 			submitAt: atomic.LoadUint64(&s.blockNumber),
 			feeData:  feeData,
 		}
-		s.pendingTxs.Store(txMeta, pending)
+		s.pendingTxs.Store(metaId, pending)
 		return tx.Hash(), nil
 	}
 

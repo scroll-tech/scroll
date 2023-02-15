@@ -145,7 +145,7 @@ func (r *Layer2Relayer) processSavedEvent(msg *orm.L2Message, index uint64) erro
 		return err
 	}
 
-	hash, err := r.messageSender.SendTransaction(&confirmMsg{TxType: "MessageRelay", ID: msg.MsgHash}, &r.cfg.MessengerContractAddress, big.NewInt(0), data)
+	hash, err := r.messageSender.SendTransaction(&sender.TxMeta{TxType: "MessageRelay", ID: msg.MsgHash}, &r.cfg.MessengerContractAddress, big.NewInt(0), data)
 	if err != nil && err.Error() == "execution reverted: Message expired" {
 		return r.db.UpdateLayer2Status(r.ctx, msg.MsgHash, orm.MsgExpired)
 	}
@@ -245,7 +245,7 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 	}
 
 	// add suffix `-commit` to avoid duplication with finalize tx in unit tests
-	hash, err := r.rollupSender.SendTransaction(&confirmMsg{TxType: "BatchCommitment", ID: id}, &r.cfg.RollupContractAddress, big.NewInt(0), data)
+	hash, err := r.rollupSender.SendTransaction(&sender.TxMeta{TxType: "BatchCommitment", ID: id}, &r.cfg.RollupContractAddress, big.NewInt(0), data)
 	if err != nil {
 		if !errors.Is(err, sender.ErrNoAvailableAccount) {
 			log.Error("Failed to send commitBatch tx to layer1 ", "id", id, "index", batch.Index, "err", err)
@@ -347,7 +347,7 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 		}
 
 		// add suffix `-finalize` to avoid duplication with commit tx in unit tests
-		txHash, err := r.rollupSender.SendTransaction(&confirmMsg{TxType: "BatchFinalization", ID: id}, &r.cfg.RollupContractAddress, big.NewInt(0), data)
+		txHash, err := r.rollupSender.SendTransaction(&sender.TxMeta{TxType: "BatchFinalization", ID: id}, &r.cfg.RollupContractAddress, big.NewInt(0), data)
 		hash := &txHash
 		if err != nil {
 			if !errors.Is(err, sender.ErrNoAvailableAccount) {
@@ -417,19 +417,13 @@ func (r *Layer2Relayer) Stop() {
 	close(r.stopCh)
 }
 
-type confirmMsg struct {
-	TxType string
-	ID     string
-}
-
 func (r *Layer2Relayer) handleConfirmation(confirmation *sender.Confirmation) {
 	if !confirmation.IsSuccessful {
 		log.Warn("transaction confirmed but failed in layer1", "confirmation", confirmation)
 		return
 	}
-	txMeta, _ := confirmation.TxMeta.(*confirmMsg)
-	transactionType := txMeta.TxType
-	switch transactionType {
+	txMeta, _ := confirmation.TxMeta.(*sender.TxMeta)
+	switch txMeta.TxType {
 	case "MessageRelay":
 		err := r.db.UpdateLayer2StatusAndLayer1Hash(r.ctx, txMeta.ID, orm.MsgConfirmed, confirmation.TxHash.String())
 		if err != nil {
@@ -447,5 +441,5 @@ func (r *Layer2Relayer) handleConfirmation(confirmation *sender.Confirmation) {
 			log.Warn("UpdateFinalizeTxHashAndRollupStatus failed", "batch_id", txMeta.ID, "err", err)
 		}
 	}
-	log.Info("transaction confirmed in layer1", "type", transactionType, "confirmation", confirmation)
+	log.Info("transaction confirmed in layer1", "type", txMeta.TxType, "confirmation", confirmation)
 }

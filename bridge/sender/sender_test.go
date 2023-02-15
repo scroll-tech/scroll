@@ -60,12 +60,18 @@ func TestSender(t *testing.T) {
 	})
 }
 
-type confirmMsg struct {
-	TxType string
-	ID     string
-}
-
 func testSenderMsg(t *testing.T) {
+	var tests = []struct {
+		txMeta interface{}
+		isFail bool
+	}{
+		{1, false},
+		{nil, true},
+		{"", true},
+		{&sender.TxMeta{}, true},
+		{&sender.TxMeta{TxType: "", ID: "1"}, true},
+		{&sender.TxMeta{TxType: "1", ID: ""}, true},
+	}
 	newSender, err := sender.NewSender(context.Background(), cfg.L1Config.RelayerConfig.SenderConfig, privateKeys)
 	if err != nil {
 		t.Fatal(err)
@@ -73,12 +79,17 @@ func testSenderMsg(t *testing.T) {
 
 	toAddr := common.HexToAddress("0x4592d8f8d7b001e72cb26a73e4fa1806a51ac79d")
 
-	msg0 := &confirmMsg{ID: "1", TxType: "1"}
-	_, err = newSender.SendTransaction(msg0, &toAddr, nil, nil)
-	assert.NoError(t, err)
-
-	_, err = newSender.SendTransaction(msg0, &toAddr, nil, nil)
-	assert.Error(t, err)
+	for i, test := range tests {
+		_, err = newSender.SendTransaction(test.txMeta, &toAddr, nil, nil)
+		if test.isFail && err == nil {
+			t.Errorf("Test %d should fail", i)
+			continue
+		}
+		if !test.isFail && err != nil {
+			t.Errorf("Test %d should pass but got err: %v", i, err)
+			continue
+		}
+	}
 }
 
 func testBatchSender(t *testing.T, batchSize int) {
@@ -100,9 +111,8 @@ func testBatchSender(t *testing.T, batchSize int) {
 
 	// send transactions
 	var (
-		eg        errgroup.Group
-		idCache   = cmap.New()
-		confirmCh = newSender.ConfirmChan()
+		eg      errgroup.Group
+		idCache = cmap.New()
 	)
 	for idx := 0; idx < newSender.NumberOfAccounts(); idx++ {
 		index := idx
@@ -132,7 +142,7 @@ func testBatchSender(t *testing.T, batchSize int) {
 	after := time.After(80 * time.Second)
 	for {
 		select {
-		case cmsg := <-confirmCh:
+		case cmsg := <-newSender.ConfirmChan():
 			assert.Equal(t, true, cmsg.IsSuccessful)
 			_, exist := idCache.Pop(cmsg.TxMeta.(string))
 			assert.Equal(t, true, exist)
