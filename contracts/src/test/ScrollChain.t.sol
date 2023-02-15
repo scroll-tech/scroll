@@ -4,7 +4,10 @@ pragma solidity ^0.8.0;
 
 import { DSTestPlus } from "solmate/test/utils/DSTestPlus.sol";
 
+import { L1MessageQueue } from "../L1/rollup/L1MessageQueue.sol";
 import { ScrollChain, IScrollChain } from "../L1/rollup/ScrollChain.sol";
+
+import { MockScrollChain } from "./mocks/MockScrollChain.sol";
 
 contract ScrollChainTest is DSTestPlus {
   // from ScrollChain
@@ -14,10 +17,16 @@ contract ScrollChainTest is DSTestPlus {
   event FinalizeBatch(bytes32 indexed batchHash);
 
   ScrollChain private rollup;
+  L1MessageQueue internal messageQueue;
+  MockScrollChain internal chain;
 
   function setUp() public {
-    rollup = new ScrollChain(233);
-    rollup.initialize();
+    messageQueue = new L1MessageQueue();
+    rollup = new ScrollChain(233, 4, 0xb5baa665b2664c3bfed7eb46e00ebc110ecf2ebd257854a9bf2b9dbc9b2c08f6);
+
+    rollup.initialize(address(messageQueue));
+
+    chain = new MockScrollChain();
   }
 
   function testInitialized() public {
@@ -25,7 +34,34 @@ contract ScrollChainTest is DSTestPlus {
     assertEq(rollup.layer2ChainId(), 233);
 
     hevm.expectRevert("Initializable: contract is already initialized");
-    rollup.initialize();
+    rollup.initialize(address(messageQueue));
+  }
+
+  function testPublicInputHash() public {
+    IScrollChain.Batch memory batch;
+    batch.prevStateRoot = bytes32(0x000000000000000000000000000000000000000000000000000000000000cafe);
+    batch.newStateRoot = bytes32(0);
+    batch.withdrawTrieRoot = bytes32(0);
+    batch
+      .l2Transactions = hex"0000007402f8710582fd14808506e38dccc9825208944d496ccc28058b1d74b7a19541663e21154f9c848801561db11e24a43380c080a0d890606d7a35b2ab0f9b866d62c092d5b163f3e6a55537ae1485aac08c3f8ff7a023997be2d32f53e146b160fff0ba81e81dbb4491c865ab174d15c5b3d28c41ae";
+
+    batch.blocks = new IScrollChain.BlockContext[](1);
+    batch.blocks[0].blockHash = bytes32(0);
+    batch.blocks[0].parentHash = bytes32(0);
+    batch.blocks[0].blockNumber = 51966;
+    batch.blocks[0].timestamp = 123456789;
+    batch.blocks[0].baseFee = 0;
+    batch.blocks[0].gasLimit = 10000000000000000;
+    batch.blocks[0].numTransactions = 1;
+    batch.blocks[0].numL1Messages = 0;
+
+    (bytes32 hash, , , ) = chain.computePublicInputHash(0, batch);
+    assertEq(hash, bytes32(0xa9f2ca3175794f91226a410ba1e60fff07a405c957562675c4149b77e659d805));
+
+    batch
+      .l2Transactions = hex"00000064f8628001830f424094000000000000000000000000000000000000bbbb8080820a97a064e07cd8f939e2117724bdcbadc80dda421381cbc2a1f4e0d093d9cc5c5cf68ea03e264227f80852d88743cd9e43998f2746b619180366a87e4531debf9c3fa5dc";
+    (hash, , , ) = chain.computePublicInputHash(0, batch);
+    assertEq(hash, bytes32(0x398cb22bbfa1665c1b342b813267538a4c933d7f92d8bd9184aba0dd1122987b));
   }
 
   function testUpdateSequencer(address _sequencer) public {
@@ -98,9 +134,8 @@ contract ScrollChainTest is DSTestPlus {
     _genesisBatch.blocks[0].parentHash = bytes32(0);
 
     // import correctly
-    /* @todo(linxi): fix this
     assertEq(rollup.finalizedBatches(0), bytes32(0));
-    bytes32 _batchHash = keccak256(abi.encode(_genesisBatch.blocks[0].blockHash, bytes32(0), 0));
+    (bytes32 _batchHash, , , ) = chain.computePublicInputHash(0, _genesisBatch);
 
     hevm.expectEmit(true, false, false, true);
     emit CommitBatch(_batchHash);
@@ -113,14 +148,14 @@ contract ScrollChainTest is DSTestPlus {
       (
         bytes32 currStateRoot,
         bytes32 withdrawTrieRoot,
-        uint64 batchIndex,
         bytes32 parentBatchHash,
+        uint64 batchIndex,
         uint64 timestamp,
         ,
         ,
         bool finalized
       ) = rollup.batches(_batchHash);
-      assertEq(currStateRoot, bytes32(0));
+      assertEq(currStateRoot, bytes32(uint256(2)));
       assertEq(withdrawTrieRoot, bytes32(0));
       assertEq(batchIndex, 0);
       assertEq(parentBatchHash, 0);
@@ -131,6 +166,5 @@ contract ScrollChainTest is DSTestPlus {
     // genesis block imported
     hevm.expectRevert("Genesis batch imported");
     rollup.importGenesisBatch(_genesisBatch);
-    */
   }
 }

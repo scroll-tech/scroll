@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 
 import { OwnableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
+import { IL1MessageQueue } from "./IL1MessageQueue.sol";
 import { IScrollChain } from "./IScrollChain.sol";
 import { RollupVerifier } from "../../libraries/verifier/RollupVerifier.sol";
 
@@ -31,10 +32,10 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
    *************/
 
   /// @dev The maximum number of transaction in on batch.
-  uint256 private constant MAX_NUM_TX_IN_BATCH = 25;
+  uint256 public immutable maxNumTxInBatch;
 
   /// @dev The hash used for padding public inputs.
-  bytes32 private constant PADDED_TX_HASH = bytes32(0);
+  bytes32 public immutable paddingTxHash;
 
   /// @notice The chain id of the corresponding layer 2 chain.
   uint256 public immutable layer2ChainId;
@@ -49,10 +50,10 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
     bytes32 newStateRoot;
     // The withdraw trie root of the last block in this batch.
     bytes32 withdrawTrieRoot;
-    // The index of the batch.
-    uint64 batchIndex;
     // The parent batch hash.
     bytes32 parentBatchHash;
+    // The index of the batch.
+    uint64 batchIndex;
     // The timestamp of the last block in this batch.
     uint64 timestamp;
     // The number of transactions in this batch, both L1 & L2 txs.
@@ -66,6 +67,9 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
   /*************
    * Variables *
    *************/
+
+  /// @notice The address of L1MessageQueue.
+  address public messageQueue;
 
   /// @notice Whether an account is a sequencer.
   mapping(address => bool) public isSequencer;
@@ -93,12 +97,20 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
    * Constructor *
    ***************/
 
-  constructor(uint256 _chainId) {
+  constructor(
+    uint256 _chainId,
+    uint256 _maxNumTxInBatch,
+    bytes32 _paddingTxHash
+  ) {
     layer2ChainId = _chainId;
+    maxNumTxInBatch = _maxNumTxInBatch;
+    paddingTxHash = _paddingTxHash;
   }
 
-  function initialize() public initializer {
+  function initialize(address _messageQueue) public initializer {
     OwnableUpgradeable.__Ownable_init();
+
+    messageQueue = _messageQueue;
   }
 
   /*************************
@@ -109,7 +121,7 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
   function isBatchFinalized(bytes32 _batchHash) external view override returns (bool) {
     BatchStored storage _batch = batches[_batchHash];
     if (_batch.newStateRoot == bytes32(0)) {
-        return false;
+      return false;
     }
     return batches[lastFinalizedBatchHash].batchIndex >= _batch.batchIndex;
   }
@@ -224,46 +236,78 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
     // check whether the batch is empty
     require(_batch.blocks.length > 0, "Batch is empty");
 
-    uint64 prevTotalL1Messages;
+    uint64 accTotalL1Messages;
     if (!_isGenesis) {
-        BatchStored storage _parentBatch = batches[_batch.parentBatchHash];
-        require(_parentBatch.newStateRoot != bytes32(0), "Parent batch is not committed");
-        prevTotalL1Messages = _parentBatch.totalL1Messages;
+      BatchStored storage _parentBatch = batches[_batch.parentBatchHash];
+      require(_parentBatch.newStateRoot != bytes32(0), "Parent batch is not committed");
+      accTotalL1Messages = _parentBatch.totalL1Messages;
     }
 
-    uint256 publicInputsStartPtr;
-    uint256 publicInputsStartOffset;
-    uint256 publicInputsSize;
-    // append prevStateRoot, newStateRoot and withdrawTrieRoot to public inputs
-    {
-      bytes32 prevStateRoot = _batch.prevStateRoot;
-      bytes32 newStateRoot = _batch.newStateRoot;
-      bytes32 withdrawTrieRoot = _batch.withdrawTrieRoot;
-      // number of bytes in public inputs: 32 * 3 + 124 * blocks + 32 * MAX_NUM_TXS
-      publicInputsSize = 32 * 3 + _batch.blocks.length * 124 + 32 * MAX_NUM_TX_IN_BATCH;
-      assembly {
-        publicInputsStartPtr := mload(0x40)
-        publicInputsStartOffset := publicInputsStartPtr
-        mstore(0x40, add(publicInputsStartPtr, publicInputsSize))
+    bytes32 publicInputHash;
+    uint64 numTransactionsInBatch;
+    uint64 lastBlockTimestamp;
+    (publicInputHash, numTransactionsInBatch, accTotalL1Messages, lastBlockTimestamp) = _computePublicInputHash(
+      accTotalL1Messages,
+      _batch
+    );
 
-        mstore(publicInputsStartOffset, prevStateRoot)
-        publicInputsStartOffset := add(publicInputsStartOffset, 0x20)
-        mstore(publicInputsStartOffset, newStateRoot)
-        publicInputsStartOffset := add(publicInputsStartOffset, 0x20)
-        mstore(publicInputsStartOffset, withdrawTrieRoot)
-        publicInputsStartOffset := add(publicInputsStartOffset, 0x20)
+    BatchStored storage _batchInStorage = batches[publicInputHash];
+
+    // @todo maybe add parent batch check later.
+    require(_batchInStorage.newStateRoot == bytes32(0), "Batch already commited");
+    _batchInStorage.newStateRoot = _batch.newStateRoot;
+    _batchInStorage.withdrawTrieRoot = _batch.withdrawTrieRoot;
+    _batchInStorage.batchIndex = _batch.batchIndex;
+    _batchInStorage.parentBatchHash = _batch.parentBatchHash;
+    _batchInStorage.timestamp = lastBlockTimestamp;
+    _batchInStorage.numTransactions = numTransactionsInBatch;
+    _batchInStorage.totalL1Messages = accTotalL1Messages;
+
+    emit CommitBatch(publicInputHash);
+
+    return publicInputHash;
+  }
+
+  /// @dev Internal function to compute the public input hash.
+  /// @param accTotalL1Messages The number of total L1 messages in previous batch.
+  /// @param batch The batch to compute.
+  function _computePublicInputHash(uint64 accTotalL1Messages, Batch memory batch)
+    internal
+    view
+    returns (
+      bytes32,
+      uint64,
+      uint64,
+      uint64
+    )
+  {
+    uint256 publicInputsPtr;
+    // 1. append prevStateRoot, newStateRoot and withdrawTrieRoot to public inputs
+    {
+      bytes32 prevStateRoot = batch.prevStateRoot;
+      bytes32 newStateRoot = batch.newStateRoot;
+      bytes32 withdrawTrieRoot = batch.withdrawTrieRoot;
+      // number of bytes in public inputs: 32 * 3 + 124 * blocks + 32 * MAX_NUM_TXS
+      uint256 publicInputsSize = 32 * 3 + batch.blocks.length * 124 + 32 * maxNumTxInBatch;
+      assembly {
+        publicInputsPtr := mload(0x40)
+        mstore(0x40, add(publicInputsPtr, publicInputsSize))
+        mstore(publicInputsPtr, prevStateRoot)
+        publicInputsPtr := add(publicInputsPtr, 0x20)
+        mstore(publicInputsPtr, newStateRoot)
+        publicInputsPtr := add(publicInputsPtr, 0x20)
+        mstore(publicInputsPtr, withdrawTrieRoot)
+        publicInputsPtr := add(publicInputsPtr, 0x20)
       }
     }
 
-    uint256 numTransactionsInBatch;
-    uint256 numL1MessagesInBatch;
+    uint64 numTransactionsInBatch;
     BlockContext memory _block;
-    // append block information to public inputs.
-    for (uint256 i = 0; i < _batch.blocks.length; i++) {
-      // validate blocks
-      // @todo also check first block against previous batch.
+    // 2. append block information to public inputs.
+    for (uint256 i = 0; i < batch.blocks.length; i++) {
+      // validate blocks, we won't check first block against previous batch.
       {
-        BlockContext memory _currentBlock = _batch.blocks[i];
+        BlockContext memory _currentBlock = batch.blocks[i];
         if (i > 0) {
           require(_block.blockHash == _currentBlock.parentHash, "Parent hash mismatch");
           require(_block.blockNumber + 1 == _currentBlock.blockNumber, "Block number mismatch");
@@ -276,10 +320,10 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
         bytes32 blockHash = _block.blockHash;
         bytes32 parentHash = _block.parentHash;
         assembly {
-          mstore(publicInputsStartOffset, blockHash)
-          publicInputsStartOffset := add(publicInputsStartOffset, 0x20)
-          mstore(publicInputsStartOffset, parentHash)
-          publicInputsStartOffset := add(publicInputsStartOffset, 0x20)
+          mstore(publicInputsPtr, blockHash)
+          publicInputsPtr := add(publicInputsPtr, 0x20)
+          mstore(publicInputsPtr, parentHash)
+          publicInputsPtr := add(publicInputsPtr, 0x20)
         }
       }
       // append blockNumber and blockTimestamp to public inputs
@@ -287,73 +331,93 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
         uint256 blockNumber = _block.blockNumber;
         uint256 blockTimestamp = _block.timestamp;
         assembly {
-          mstore(publicInputsStartOffset, shl(192, blockNumber))
-          publicInputsStartOffset := add(publicInputsStartOffset, 0x8)
-          mstore(publicInputsStartOffset, shl(192, blockTimestamp))
-          publicInputsStartOffset := add(publicInputsStartOffset, 0x8)
+          mstore(publicInputsPtr, shl(192, blockNumber))
+          publicInputsPtr := add(publicInputsPtr, 0x8)
+          mstore(publicInputsPtr, shl(192, blockTimestamp))
+          publicInputsPtr := add(publicInputsPtr, 0x8)
         }
       }
       // append baseFee to public inputs
       {
         uint256 baseFee = _block.baseFee;
         assembly {
-          mstore(publicInputsStartOffset, baseFee)
-          publicInputsStartOffset := add(publicInputsStartOffset, 0x20)
+          mstore(publicInputsPtr, baseFee)
+          publicInputsPtr := add(publicInputsPtr, 0x20)
         }
       }
-      uint256 numTransactionsInBlock = _block.numTransactions;
-      uint256 numL1MessagesInBlock = _block.numL1Messages;
+      uint64 numTransactionsInBlock = _block.numTransactions;
       // gasLimit, numTransactions and numL1Messages to public inputs
       {
         uint256 gasLimit = _block.gasLimit;
+        uint256 numL1MessagesInBlock = _block.numL1Messages;
         assembly {
-          mstore(publicInputsStartOffset, shl(192, gasLimit))
-          publicInputsStartOffset := add(publicInputsStartOffset, 0x8)
-          mstore(publicInputsStartOffset, shl(240, numTransactionsInBlock))
-          publicInputsStartOffset := add(publicInputsStartOffset, 0x2)
-          mstore(publicInputsStartOffset, shl(240, numL1MessagesInBlock))
-          publicInputsStartOffset := add(publicInputsStartOffset, 0x2)
+          mstore(publicInputsPtr, shl(192, gasLimit))
+          publicInputsPtr := add(publicInputsPtr, 0x8)
+          mstore(publicInputsPtr, shl(240, numTransactionsInBlock))
+          publicInputsPtr := add(publicInputsPtr, 0x2)
+          mstore(publicInputsPtr, shl(240, numL1MessagesInBlock))
+          publicInputsPtr := add(publicInputsPtr, 0x2)
         }
       }
-
-      unchecked {
-        numTransactionsInBatch += numTransactionsInBlock;
-        numL1MessagesInBatch += numL1MessagesInBlock;
-      }
+      numTransactionsInBatch += numTransactionsInBlock;
     }
+    require(numTransactionsInBatch <= maxNumTxInBatch, "Too many transactions in batch");
 
-    require(numTransactionsInBatch <= MAX_NUM_TX_IN_BATCH, "Too many transactions in batch");
-
-    // @todo append transaction information to public inputs.
-    // @note it is complicated while dealing rlp encoding, ignore it for now.
-    bytes32 txHashPadding = PADDED_TX_HASH;
-    for (uint256 i = 0; i < numTransactionsInBatch; i++) {
+    // 3. append transaction hash to public inputs.
+    address _messageQueue = messageQueue;
+    uint256 _l2TxnPtr;
+    {
+      bytes memory l2Transactions = batch.l2Transactions;
       assembly {
-        mstore(publicInputsStartOffset, txHashPadding)
-        publicInputsStartOffset := add(publicInputsStartOffset, 0x20)
+        _l2TxnPtr := add(l2Transactions, 0x20)
+      }
+    }
+    for (uint256 i = 0; i < batch.blocks.length; i++) {
+      uint256 numL1MessagesInBlock = batch.blocks[i].numL1Messages;
+      while (numL1MessagesInBlock > 0) {
+        bytes32 hash = IL1MessageQueue(_messageQueue).getCrossDomainMessage(uint64(accTotalL1Messages));
+        assembly {
+          mstore(publicInputsPtr, hash)
+          publicInputsPtr := add(publicInputsPtr, 0x20)
+        }
+        unchecked {
+          accTotalL1Messages += 1;
+          numL1MessagesInBlock -= 1;
+        }
+      }
+      numL1MessagesInBlock = batch.blocks[i].numL1Messages;
+      uint256 numTransactionsInBlock = batch.blocks[i].numTransactions;
+      for (uint256 j = numL1MessagesInBlock; j < numTransactionsInBlock; ++j) {
+        bytes32 hash;
+        assembly {
+          let txPayloadLength := shr(224, mload(_l2TxnPtr))
+          _l2TxnPtr := add(_l2TxnPtr, 4)
+          _l2TxnPtr := add(_l2TxnPtr, txPayloadLength)
+          hash := keccak256(sub(_l2TxnPtr, txPayloadLength), txPayloadLength)
+          mstore(publicInputsPtr, hash)
+          publicInputsPtr := add(publicInputsPtr, 0x20)
+        }
       }
     }
 
-    // compute batch hash
-    bytes32 publicInputHash;
-    assembly {
-      publicInputHash := keccak256(publicInputsStartPtr, publicInputsSize)
+    // 4. append padding transaction to public inputs.
+    bytes32 txHashPadding = paddingTxHash;
+    for (uint256 i = numTransactionsInBatch; i < maxNumTxInBatch; i++) {
+      assembly {
+        mstore(publicInputsPtr, txHashPadding)
+        publicInputsPtr := add(publicInputsPtr, 0x20)
+      }
     }
 
-    BatchStored storage _batchInStorage = batches[publicInputHash];
+    // 5. compute public input hash
+    bytes32 publicInputHash;
+    {
+      uint256 publicInputsSize = 32 * 3 + batch.blocks.length * 124 + 32 * maxNumTxInBatch;
+      assembly {
+        publicInputHash := keccak256(sub(publicInputsPtr, publicInputsSize), publicInputsSize)
+      }
+    }
 
-    // @todo maybe add parent batch check later.
-    require(_batchInStorage.newStateRoot == bytes32(0), "Batch already commited");
-    _batchInStorage.newStateRoot = _batch.newStateRoot;
-    _batchInStorage.withdrawTrieRoot = _batch.withdrawTrieRoot;
-    _batchInStorage.batchIndex = _batch.batchIndex;
-    _batchInStorage.parentBatchHash = _batch.parentBatchHash;
-    _batchInStorage.timestamp = _block.timestamp;
-    _batchInStorage.numTransactions = uint64(numTransactionsInBatch);
-    _batchInStorage.totalL1Messages = prevTotalL1Messages + uint64(numL1MessagesInBatch);
-
-    emit CommitBatch(publicInputHash);
-
-    return publicInputHash;
+    return (publicInputHash, numTransactionsInBatch, accTotalL1Messages, _block.timestamp);
   }
 }

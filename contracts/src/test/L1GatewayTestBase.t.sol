@@ -42,7 +42,7 @@ abstract contract L1GatewayTestBase is DSTestPlus {
     l1Messenger = new L1ScrollMessenger();
     messageQueue = new L1MessageQueue();
     gasOracle = new L2GasPriceOracle();
-    rollup = new ScrollChain(1233);
+    rollup = new ScrollChain(1233, 25, bytes32(0));
 
     // Deploy L2 contracts
     l2Messenger = new L2ScrollMessenger(address(0), address(0));
@@ -51,7 +51,7 @@ abstract contract L1GatewayTestBase is DSTestPlus {
     l1Messenger.initialize(address(l2Messenger), feeVault, address(rollup), address(messageQueue));
     messageQueue.initialize(address(l1Messenger), address(gasOracle));
     gasOracle.initialize();
-    rollup.initialize();
+    rollup.initialize(address(messageQueue));
   }
 
   function prepareL2MessageRoot(bytes32 messageHash) internal {

@@ -57,7 +57,7 @@ contract InitializeL1BridgeContracts is Script {
     );
 
     // initialize ScrollChain
-    ScrollChain(L1_ZK_ROLLUP_PROXY_ADDR).initialize();
+    ScrollChain(L1_ZK_ROLLUP_PROXY_ADDR).initialize(L1_MESSAGE_QUEUE_PROXY_ADDR);
     ScrollChain(L1_ZK_ROLLUP_PROXY_ADDR).updateSequencer(L1_ROLLUP_OPERATOR_ADDR, true);
 
     // initialize L1ScrollMessenger
