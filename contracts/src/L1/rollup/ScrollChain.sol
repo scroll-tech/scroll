@@ -356,17 +356,4 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
 
     return publicInputHash;
   }
-
-  /// @dev Internal function to compute a unique batch id for mapping.
-  /// @param _lastBlockHash The block hash of the last block in the batch.
-  /// @param _parentHash The parent block hash of the first block the batch.
-  /// @param _batchIndex The index of the batch.
-  /// @return Return the computed batch id.
-  function _computeBatchId(
-    bytes32 _lastBlockHash,
-    bytes32 _parentHash,
-    uint256 _batchIndex
-  ) internal pure returns (bytes32) {
-    return keccak256(abi.encode(_lastBlockHash, _parentHash, _batchIndex));
-  }
 }
