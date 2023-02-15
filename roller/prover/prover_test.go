@@ -4,10 +4,12 @@ package prover_test
 
 import (
 	"encoding/json"
+	"flag"
 	"io"
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/stretchr/testify/assert"
@@ -22,6 +24,8 @@ const (
 	tracesPath    = "../assets/traces"
 	proofDumpPath = "agg_proof"
 )
+
+var times = flag.Int("times", 1, "proving times")
 
 func TestFFI(t *testing.T) {
 	as := assert.New(t)
@@ -49,9 +53,13 @@ func TestFFI(t *testing.T) {
 		as.NoError(json.Unmarshal(byt, trace))
 		traces = append(traces, trace)
 	}
-	proof, err := prover.Prove(traces)
-	as.NoError(err)
-	t.Log("prove success")
+
+	for i := 0; i < times; i++ {
+		now := time.Now()
+		proof, err := prover.Prove(traces)
+		as.NoError(err)
+		t.Logf("%d: prove success! cost %d sec", i, time.Since(now).Seconds())
+	}
 
 	// dump the proof
 	os.RemoveAll(proofDumpPath)

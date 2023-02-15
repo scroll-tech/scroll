@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"testing"
+	"time"
 
 	"scroll-tech/common/message"
 
@@ -21,6 +22,8 @@ const (
 	aggVkPath  = "../assets/agg_vk"
 	proofPath  = "../assets/agg_proof"
 )
+
+var times = flag.Int("times", 1, "verifying times")
 
 func TestFFI(t *testing.T) {
 	as := assert.New(t)
@@ -39,7 +42,12 @@ func TestFFI(t *testing.T) {
 	aggProof := &message.AggProof{}
 	as.NoError(json.Unmarshal(byt, aggProof))
 
-	ok, err := v.VerifyProof(aggProof)
-	as.NoError(err)
-	as.True(ok)
+	for i := 0; i < times; i++ {
+		now := time.Now()
+		ok, err := v.VerifyProof(aggProof)
+		as.NoError(err)
+		as.True(ok)
+		t.Logf("%d: verify success! cost %d sec", i, time.Since(now).Seconds())
+	}
+
 }
