@@ -255,7 +255,7 @@ func (w *Watcher) parseBridgeEventLogs(logs []types.Log) ([]*orm.L1Message, []re
 			// target is in topics[1]
 			event.Target = common.HexToAddress(vLog.Topics[1].String())
 			l1Messages = append(l1Messages, &orm.L1Message{
-				Nonce:      event.MessageNonce.Uint64(),
+				Nonce: event.MessageNonce.Uint64(),
 				// MsgHash:    utils.ComputeMessageHash(event.Sender, event.Target, event.Value, event.Fee, event.Deadline, event.Message, event.MessageNonce).String(),
 				// MsgHash: // todo: use encodeXDomainData from contracts,
 				Height:     vLog.BlockNumber,
