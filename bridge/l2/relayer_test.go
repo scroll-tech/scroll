@@ -6,7 +6,6 @@ import (
 	"math/big"
 	"os"
 	"testing"
-	"time"
 
 	"github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/stretchr/testify/assert"
@@ -23,9 +22,6 @@ var (
 			Height:     1,
 			Sender:     "0x596a746661dbed76a84556111c2872249b070e15",
 			Value:      "100",
-			Fee:        "100",
-			GasLimit:   11529940,
-			Deadline:   uint64(time.Now().Unix()),
 			Target:     "0x2c73620b223808297ea734d946813f0dd78eb8f7",
 			Calldata:   "testdata",
 			Layer2Hash: "hash0",

@@ -24,7 +24,7 @@ func NewL1MessageOrm(db *sqlx.DB) L1MessageOrm {
 func (m *l1MessageOrm) GetL1MessageByMsgHash(msgHash string) (*L1Message, error) {
 	msg := L1Message{}
 
-	row := m.db.QueryRowx(`SELECT nonce, msg_hash, height, sender, target, value, fee, gas_limit, deadline, calldata, layer1_hash, status FROM l1_message WHERE msg_hash = $1`, msgHash)
+	row := m.db.QueryRowx(`SELECT nonce, msg_hash, height, sender, target, value, calldata, layer1_hash, status FROM l1_message WHERE msg_hash = $1`, msgHash)
 
 	if err := row.StructScan(&msg); err != nil {
 		return nil, err
@@ -36,7 +36,7 @@ func (m *l1MessageOrm) GetL1MessageByMsgHash(msgHash string) (*L1Message, error)
 func (m *l1MessageOrm) GetL1MessageByNonce(nonce uint64) (*L1Message, error) {
 	msg := L1Message{}
 
-	row := m.db.QueryRowx(`SELECT nonce, msg_hash, height, sender, target, value, fee, gas_limit, deadline, calldata, layer1_hash, status FROM l1_message WHERE nonce = $1`, nonce)
+	row := m.db.QueryRowx(`SELECT nonce, msg_hash, height, sender, target, value, calldata, layer1_hash, status FROM l1_message WHERE nonce = $1`, nonce)
 
 	if err := row.StructScan(&msg); err != nil {
 		return nil, err
@@ -46,7 +46,7 @@ func (m *l1MessageOrm) GetL1MessageByNonce(nonce uint64) (*L1Message, error) {
 
 // GetL1MessagesByStatus fetch list of unprocessed messages given msg status
 func (m *l1MessageOrm) GetL1MessagesByStatus(status MsgStatus, limit uint64) ([]*L1Message, error) {
-	rows, err := m.db.Queryx(`SELECT nonce, msg_hash, height, sender, target, value, fee, gas_limit, deadline, calldata, layer1_hash, status FROM l1_message WHERE status = $1 ORDER BY nonce ASC LIMIT $2;`, status, limit)
+	rows, err := m.db.Queryx(`SELECT nonce, msg_hash, height, sender, target, value, calldata, layer1_hash, status FROM l1_message WHERE status = $1 ORDER BY nonce ASC LIMIT $2;`, status, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -102,14 +102,11 @@ func (m *l1MessageOrm) SaveL1Messages(ctx context.Context, messages []*L1Message
 			"sender":      msg.Sender,
 			"target":      msg.Target,
 			"value":       msg.Value,
-			"fee":         msg.Fee,
-			"gas_limit":   msg.GasLimit,
-			"deadline":    msg.Deadline,
 			"calldata":    msg.Calldata,
 			"layer1_hash": msg.Layer1Hash,
 		}
 	}
-	_, err := m.db.NamedExec(`INSERT INTO public.l1_message (nonce, msg_hash, height, sender, target, value, fee, gas_limit, deadline, calldata, layer1_hash) VALUES (:nonce, :msg_hash, :height, :sender, :target, :value, :fee, :gas_limit, :deadline, :calldata, :layer1_hash);`, messageMaps)
+	_, err := m.db.NamedExec(`INSERT INTO public.l1_message (nonce, msg_hash, height, sender, target, value, calldata, layer1_hash) VALUES (:nonce, :msg_hash, :height, :sender, :target, :value, :calldata, :layer1_hash);`, messageMaps)
 	if err != nil {
 		nonces := make([]uint64, 0, len(messages))
 		heights := make([]uint64, 0, len(messages))

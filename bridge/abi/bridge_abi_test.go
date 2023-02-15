@@ -16,7 +16,7 @@ func TestPackRelayMessageWithProof(t *testing.T) {
 	assert.NoError(err)
 
 	proof := bridge_abi.IL1ScrollMessengerL2MessageProof{
-		BatchHash: common.Hash{},
+		BatchHash:   common.Hash{},
 		MerkleProof: make([]byte, 0),
 	}
 	_, err = l1MessengerABI.Pack("relayMessageWithProof", common.Address{}, common.Address{}, big.NewInt(0), big.NewInt(0), make([]byte, 0), proof)
@@ -30,23 +30,23 @@ func TestPackCommitBatch(t *testing.T) {
 	assert.NoError(err)
 
 	header := bridge_abi.IScrollChainBlockContext{
-		BlockHash:   common.Hash{},
-		ParentHash:  common.Hash{},
-		BlockNumber: 0,
-		Timestamp:  0,
-		BaseFee:   big.NewInt(0),
-		GasLimit: 0,
+		BlockHash:       common.Hash{},
+		ParentHash:      common.Hash{},
+		BlockNumber:     0,
+		Timestamp:       0,
+		BaseFee:         big.NewInt(0),
+		GasLimit:        0,
 		NumTransactions: 0,
-		NumL1Messages: 0,
+		NumL1Messages:   0,
 	}
 
 	batch := bridge_abi.IScrollChainBatch{
-		Blocks: []bridge_abi.IScrollChainBlockContext{header},
-		PrevStateRoot: common.Hash{},
-		NewStateRoot: common.Hash{},
+		Blocks:           []bridge_abi.IScrollChainBlockContext{header},
+		PrevStateRoot:    common.Hash{},
+		NewStateRoot:     common.Hash{},
 		WithdrawTrieRoot: common.Hash{},
-		BatchIndex: 0,
-		L2Transactions:  make([]byte, 0),
+		BatchIndex:       0,
+		L2Transactions:   make([]byte, 0),
 	}
 
 	_, err = scrollchainABI.Pack("commitBatch", batch)

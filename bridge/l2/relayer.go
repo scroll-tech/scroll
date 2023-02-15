@@ -125,7 +125,7 @@ func (r *Layer2Relayer) ProcessSavedEvents() {
 		for _, msg := range msgs[:size] {
 			msg := msg
 			g.Go(func() error {
-				return r.processSavedEvent(msg, batch.Index)
+				return r.processSavedEvent(msg)
 			})
 		}
 		if err := g.Wait(); err != nil {
@@ -137,13 +137,13 @@ func (r *Layer2Relayer) ProcessSavedEvents() {
 	}
 }
 
-func (r *Layer2Relayer) processSavedEvent(msg *orm.L2Message, index uint64) error {
+func (r *Layer2Relayer) processSavedEvent(msg *orm.L2Message) error {
 	// @todo fetch merkle proof from l2geth
 	log.Info("Processing L2 Message", "msg.nonce", msg.Nonce, "msg.height", msg.Height)
 
 	// TODO: finalize hashing method, build proof
 	proof := bridge_abi.IL1ScrollMessengerL2MessageProof{
-		BatchHash:  common.Hash{},
+		BatchHash:   common.Hash{},
 		MerkleProof: make([]byte, 0),
 	}
 	from := common.HexToAddress(msg.Sender)
@@ -154,11 +154,9 @@ func (r *Layer2Relayer) processSavedEvent(msg *orm.L2Message, index uint64) erro
 		log.Error("Failed to parse message value", "msg.nonce", msg.Nonce, "msg.height", msg.Height)
 		// TODO: need to skip this message by changing its status to MsgError
 	}
-	fee, _ := big.NewInt(0).SetString(msg.Fee, 10)
-	deadline := big.NewInt(int64(msg.Deadline))
 	msgNonce := big.NewInt(int64(msg.Nonce))
 	calldata := common.Hex2Bytes(msg.Calldata)
-	data, err := r.l1MessengerABI.Pack("relayMessageWithProof", from, target, value, fee, deadline, msgNonce, calldata, proof)
+	data, err := r.l1MessengerABI.Pack("relayMessageWithProof", from, target, value, msgNonce, calldata, proof)
 	if err != nil {
 		log.Error("Failed to pack relayMessageWithProof", "msg.nonce", msg.Nonce, "err", err)
 		// TODO: need to skip this message by changing its status to MsgError
@@ -219,7 +217,7 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 	}
 
 	layer2Batch := &bridge_abi.IScrollChainBatch{
-		Blocks:     make([]bridge_abi.IScrollChainBlockContext, len(traces)),
+		Blocks: make([]bridge_abi.IScrollChainBlockContext, len(traces)),
 		// PrevStateRoot: ,
 		// NewStateRoot: ,
 		// WithdrawTrieRoot: ,
@@ -230,19 +228,19 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 	parentHash := common.HexToHash(batch.ParentHash)
 	for i, trace := range traces {
 		layer2Batch.Blocks[i] = bridge_abi.IScrollChainBlockContext{
-			BlockHash:   trace.Header.Hash(),
-			ParentHash:  parentHash,
-			BlockNumber: trace.Header.Number.Uint64(),
-			Timestamp:   trace.Header.Time,
-			BaseFee:     trace.Header.BaseFee,
-			GasLimit:   trace.Header.GasLimit,
+			BlockHash:       trace.Header.Hash(),
+			ParentHash:      parentHash,
+			BlockNumber:     trace.Header.Number.Uint64(),
+			Timestamp:       trace.Header.Time,
+			BaseFee:         trace.Header.BaseFee,
+			GasLimit:        trace.Header.GasLimit,
 			NumTransactions: uint16(len(trace.Transactions)),
 			// TODO NumL1Messages:  ,
 		}
 		// initialize an empty byte array
 		// L2Transactions := make([]byte, 0)
 		// for j, tx := range trace.Transactions {
-			// append to L2Transactions
+		// append to L2Transactions
 		// }
 
 		// for next iteration
