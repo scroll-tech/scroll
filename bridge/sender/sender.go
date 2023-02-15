@@ -196,6 +196,7 @@ func (s *Sender) getFeeData(auth *bind.TransactOpts, target *common.Address, val
 	}, nil
 }
 
+// marshal txMeta if it's not empty.
 func marshalTxMeta(msg interface{}) string {
 	switch msg.(type) {
 	case nil:
@@ -207,12 +208,9 @@ func marshalTxMeta(msg interface{}) string {
 		if meta.ID == "" || meta.TxType == "" {
 			return ""
 		}
-		data, _ := json.Marshal(msg)
-		return string(data)
-	default:
-		data, _ := json.Marshal(msg)
-		return string(data)
 	}
+	data, _ := json.Marshal(msg)
+	return string(data)
 }
 
 // SendTransaction send a signed L2tL1 transaction.
