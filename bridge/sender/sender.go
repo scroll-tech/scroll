@@ -197,44 +197,43 @@ func (s *Sender) getFeeData(auth *bind.TransactOpts, target *common.Address, val
 }
 
 // marshal txMeta if it's not empty.
-func marshalTxMeta(msg interface{}) string {
-	switch msg.(type) {
+func marshalTxMeta(val interface{}) string {
+	switch msg := val.(type) {
 	case nil:
 		return ""
 	case string:
-		return msg.(string)
+		return msg
 	case *TxMeta:
-		meta := msg.(*TxMeta)
-		if meta.ID == "" || meta.TxType == "" {
+		if msg.ID == "" || msg.TxType == "" {
 			return ""
 		}
 	}
-	data, _ := json.Marshal(msg)
+	data, _ := json.Marshal(val)
 	return string(data)
 }
 
 // SendTransaction send a signed L2tL1 transaction.
 func (s *Sender) SendTransaction(txMeta interface{}, target *common.Address, value *big.Int, data []byte) (hash common.Hash, err error) {
 	// Use marshal message as id, in order avoid repeat txMetas.
-	var metaId string
-	if metaId = marshalTxMeta(txMeta); metaId == "" {
+	var metaID string
+	if metaID = marshalTxMeta(txMeta); metaID == "" {
 		return common.Hash{}, fmt.Errorf("empty txMeta is not allowed")
 	}
 	// We occupy the ID, in case some other threads call with the same ID in the same time
-	if _, loaded := s.pendingTxs.LoadOrStore(metaId, nil); loaded {
+	if _, loaded := s.pendingTxs.LoadOrStore(metaID, nil); loaded {
 		return common.Hash{}, fmt.Errorf("attempted to send duplicate transaction, txMeta: %v", txMeta)
 	}
 	// get
 	auth := s.auths.getAccount()
 	if auth == nil {
-		s.pendingTxs.Delete(metaId) // release the ID on failure
+		s.pendingTxs.Delete(metaID) // release the ID on failure
 		return common.Hash{}, ErrNoAvailableAccount
 	}
 
 	defer s.auths.releaseAccount(auth)
 	defer func() {
 		if err != nil {
-			s.pendingTxs.Delete(metaId) // release the ID on failure
+			s.pendingTxs.Delete(metaID) // release the ID on failure
 		}
 	}()
 
@@ -255,7 +254,7 @@ func (s *Sender) SendTransaction(txMeta interface{}, target *common.Address, val
 			submitAt: atomic.LoadUint64(&s.blockNumber),
 			feeData:  feeData,
 		}
-		s.pendingTxs.Store(metaId, pending)
+		s.pendingTxs.Store(metaID, pending)
 		return tx.Hash(), nil
 	}
 
