@@ -332,6 +332,7 @@ contract L1StandardERC20GatewayTest is L1GatewayTestBase {
   ) public {
     // blacklist some addresses
     hevm.assume(recipient != address(0));
+    hevm.assume(recipient != address(gateway));
 
     amount = bound(amount, 1, l1Token.balanceOf(address(this)));
 

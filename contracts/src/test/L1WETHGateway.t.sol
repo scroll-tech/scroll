@@ -224,6 +224,7 @@ contract L1WETHGatewayTest is L1GatewayTestBase {
   ) public {
     // blacklist some addresses
     hevm.assume(recipient != address(0));
+    hevm.assume(recipient != address(gateway));
 
     amount = bound(amount, 1, l1weth.balanceOf(address(this)));
 
