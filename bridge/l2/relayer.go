@@ -84,7 +84,7 @@ func NewLayer2Relayer(ctx context.Context, db database.OrmFactory, cfg *config.R
 		l1MessengerABI:         bridge_abi.L1MessengerMetaABI,
 		rollupSender:           rollupSender,
 		rollupCh:               rollupSender.ConfirmChan(),
-		l1RollupABI:            bridge_abi.RollupMetaABI,
+		l1RollupABI:            bridge_abi.ScrollchainMetaABI,
 		cfg:                    cfg,
 		processingMessage:      sync.Map{},
 		processingCommitment:   sync.Map{},
@@ -141,9 +141,9 @@ func (r *Layer2Relayer) processSavedEvent(msg *orm.L2Message, index uint64) erro
 	// @todo fetch merkle proof from l2geth
 	log.Info("Processing L2 Message", "msg.nonce", msg.Nonce, "msg.height", msg.Height)
 
+	// TODO: finalize hashing method, build proof
 	proof := bridge_abi.IL1ScrollMessengerL2MessageProof{
-		BlockHeight: big.NewInt(int64(msg.Height)),
-		BatchIndex:  big.NewInt(0).SetUint64(index),
+		BatchHash:  common.Hash{},
 		MerkleProof: make([]byte, 0),
 	}
 	from := common.HexToAddress(msg.Sender)
@@ -218,42 +218,32 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 		return
 	}
 
-	layer2Batch := &bridge_abi.IZKRollupLayer2Batch{
+	layer2Batch := &bridge_abi.IScrollChainBatch{
+		Blocks:     make([]bridge_abi.IScrollChainBlockContext, len(traces)),
+		// PrevStateRoot: ,
+		// NewStateRoot: ,
+		// WithdrawTrieRoot: ,
 		BatchIndex: batch.Index,
-		ParentHash: common.HexToHash(batch.ParentHash),
-		Blocks:     make([]bridge_abi.IZKRollupLayer2BlockHeader, len(traces)),
+		// L2Transactions: ,
 	}
 
 	parentHash := common.HexToHash(batch.ParentHash)
 	for i, trace := range traces {
-		layer2Batch.Blocks[i] = bridge_abi.IZKRollupLayer2BlockHeader{
+		layer2Batch.Blocks[i] = bridge_abi.IScrollChainBlockContext{
 			BlockHash:   trace.Header.Hash(),
 			ParentHash:  parentHash,
-			BaseFee:     trace.Header.BaseFee,
-			StateRoot:   trace.StorageTrace.RootAfter,
-			BlockHeight: trace.Header.Number.Uint64(),
-			GasUsed:     0,
+			BlockNumber: trace.Header.Number.Uint64(),
 			Timestamp:   trace.Header.Time,
-			ExtraData:   make([]byte, 0),
-			Txs:         make([]bridge_abi.IZKRollupLayer2Transaction, len(trace.Transactions)),
+			BaseFee:     trace.Header.BaseFee,
+			GasLimit:   trace.Header.GasLimit,
+			NumTransactions: uint16(len(trace.Transactions)),
+			// TODO NumL1Messages:  ,
 		}
-		for j, tx := range trace.Transactions {
-			layer2Batch.Blocks[i].Txs[j] = bridge_abi.IZKRollupLayer2Transaction{
-				Caller:   tx.From,
-				Nonce:    tx.Nonce,
-				Gas:      tx.Gas,
-				GasPrice: tx.GasPrice.ToInt(),
-				Value:    tx.Value.ToInt(),
-				Data:     common.Hex2Bytes(tx.Data),
-				R:        tx.R.ToInt(),
-				S:        tx.S.ToInt(),
-				V:        tx.V.ToInt().Uint64(),
-			}
-			if tx.To != nil {
-				layer2Batch.Blocks[i].Txs[j].Target = *tx.To
-			}
-			layer2Batch.Blocks[i].GasUsed += trace.ExecutionResults[j].Gas
-		}
+		// initialize an empty byte array
+		// L2Transactions := make([]byte, 0)
+		// for j, tx := range trace.Transactions {
+			// append to L2Transactions
+		// }
 
 		// for next iteration
 		parentHash = layer2Batch.Blocks[i].BlockHash

@@ -40,9 +40,6 @@ type L1Message struct {
 	Height     uint64    `json:"height" db:"height"`
 	Sender     string    `json:"sender" db:"sender"`
 	Value      string    `json:"value" db:"value"`
-	Fee        string    `json:"fee" db:"fee"`
-	GasLimit   uint64    `json:"gas_limit" db:"gas_limit"`
-	Deadline   uint64    `json:"deadline" db:"deadline"`
 	Target     string    `json:"target" db:"target"`
 	Calldata   string    `json:"calldata" db:"calldata"`
 	Layer1Hash string    `json:"layer1_hash" db:"layer1_hash"`
