@@ -91,7 +91,7 @@ contract L1MessageQueue is OwnableUpgradeable, IL1MessageQueue {
     bytes32 _hash = keccak256(abi.encode(_sender, _target, 0, _gasLimit, _data));
 
     uint256 _queueIndex = messageQueue.length;
-    emit QueueTransaction(_sender, _target, 0, _gasLimit, _data, _queueIndex);
+    emit QueueTransaction(_sender, _target, 0, _queueIndex, _gasLimit, _data);
 
     messageQueue.push(_hash);
   }

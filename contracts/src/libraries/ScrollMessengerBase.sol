@@ -98,24 +98,24 @@ abstract contract ScrollMessengerBase is OwnableUpgradeable, IScrollMessenger {
   /// @param _sender Message sender address.
   /// @param _target Target contract address.
   /// @param _value The amount of ETH pass to the target.
-  /// @param _message Message to send to the target.
   /// @param _messageNonce Nonce for the provided message.
+  /// @param _message Message to send to the target.
   /// @return ABI encoded cross domain calldata.
   function _encodeXDomainCalldata(
     address _sender,
     address _target,
     uint256 _value,
-    bytes memory _message,
-    uint256 _messageNonce
+    uint256 _messageNonce,
+    bytes memory _message
   ) internal pure returns (bytes memory) {
     return
       abi.encodeWithSignature(
-        "relayMessage(address,address,uint256,bytes,uint256)",
+        "relayMessage(address,address,uint256,uint256,bytes)",
         _sender,
         _target,
         _value,
-        _message,
-        _messageNonce
+        _messageNonce,
+        _message
       );
   }
 }

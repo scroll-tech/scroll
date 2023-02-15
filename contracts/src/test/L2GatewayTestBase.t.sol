@@ -19,9 +19,9 @@ abstract contract L2GatewayTestBase is DSTestPlus {
     address indexed sender,
     address indexed target,
     uint256 value,
-    bytes message,
     uint256 messageNonce,
-    uint256 gasLimit
+    uint256 gasLimit,
+    bytes message
   );
   event RelayedMessage(bytes32 indexed messageHash);
   event FailedRelayedMessage(bytes32 indexed messageHash);

@@ -11,10 +11,17 @@ interface IL1MessageQueue {
   /// @param sender The address of account who initiates the transaction.
   /// @param target The address of account who will recieve the transaction.
   /// @param value The value passed with the transaction.
+  /// @param queueIndex The index of this transaction in the queue.
   /// @param gasLimit Gas limit required to complete the message relay on L2.
   /// @param data The calldata of the transaction.
-  /// @param queueIndex The index of this transaction in the queue.
-  event QueueTransaction(address indexed sender, address indexed target, uint256 value, uint256 gasLimit, bytes data, uint256 queueIndex);
+  event QueueTransaction(
+    address indexed sender,
+    address indexed target,
+    uint256 value,
+    uint256 queueIndex,
+    uint256 gasLimit,
+    bytes data
+  );
 
   /*************************
    * Public View Functions *

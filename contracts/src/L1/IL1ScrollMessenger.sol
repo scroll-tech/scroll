@@ -13,9 +13,9 @@ interface IL1ScrollMessenger is IScrollMessenger {
   /// @param sender The address of the sender who initiates the message.
   /// @param target The address of target contract to call.
   /// @param value The amount of value passed to the target contract.
-  /// @param message The calldata passed to the target contract.
   /// @param messageNonce The nonce of the message.
-  event SentMessage(address indexed sender, address indexed target, uint256 value, bytes message, uint256 messageNonce);
+  /// @param message The calldata passed to the target contract.
+  event SentMessage(address indexed sender, address indexed target, uint256 value, uint256 messageNonce, bytes message);
 
   /***********
    * Structs *
@@ -48,15 +48,15 @@ interface IL1ScrollMessenger is IScrollMessenger {
   /// @param from The address of the sender of the message.
   /// @param to The address of the recipient of the message.
   /// @param value The msg.value passed to the message call.
-  /// @param message The content of the message.
   /// @param nonce The nonce of the message to avoid replay attack.
+  /// @param message The content of the message.
   /// @param proof The proof used to verify the correctness of the transaction.
   function relayMessageWithProof(
     address from,
     address to,
     uint256 value,
-    bytes memory message,
     uint256 nonce,
+    bytes memory message,
     L2MessageProof memory proof
   ) external;
 
@@ -64,16 +64,16 @@ interface IL1ScrollMessenger is IScrollMessenger {
   /// @param from The address of the sender of the message.
   /// @param to The address of the recipient of the message.
   /// @param value The msg.value passed to the message call.
-  /// @param message The content of the message.
   /// @param queueIndex The queue index for the message to replay.
+  /// @param message The content of the message.
   /// @param oldGasLimit Original gas limit used to send the message.
   /// @param newGasLimit New gas limit to be used for this message.
   function replayMessage(
     address from,
     address to,
     uint256 value,
-    bytes memory message,
     uint256 queueIndex,
+    bytes memory message,
     uint32 oldGasLimit,
     uint32 newGasLimit
   ) external;

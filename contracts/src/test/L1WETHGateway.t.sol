@@ -241,12 +241,12 @@ contract L1WETHGatewayTest is L1GatewayTestBase {
       dataToCall
     );
     bytes memory xDomainCalldata = abi.encodeWithSignature(
-      "relayMessage(address,address,uint256,bytes,uint256)",
+      "relayMessage(address,address,uint256,uint256,bytes)",
       address(uint160(address(counterpartGateway)) + 1),
       address(gateway),
       amount,
-      message,
-      0
+      0,
+      message
     );
 
     prepareL2MessageRoot(keccak256(xDomainCalldata));
@@ -266,8 +266,8 @@ contract L1WETHGatewayTest is L1GatewayTestBase {
       address(uint160(address(counterpartGateway)) + 1),
       address(gateway),
       amount,
-      message,
       0,
+      message,
       proof
     );
     assertEq(messengerBalance, address(l1Messenger).balance);
@@ -300,12 +300,12 @@ contract L1WETHGatewayTest is L1GatewayTestBase {
       dataToCall
     );
     bytes memory xDomainCalldata = abi.encodeWithSignature(
-      "relayMessage(address,address,uint256,bytes,uint256)",
+      "relayMessage(address,address,uint256,uint256,bytes)",
       address(counterpartGateway),
       address(gateway),
       amount,
-      message,
-      0
+      0,
+      message
     );
 
     prepareL2MessageRoot(keccak256(xDomainCalldata));
@@ -328,7 +328,7 @@ contract L1WETHGatewayTest is L1GatewayTestBase {
     uint256 messengerBalance = address(l1Messenger).balance;
     uint256 recipientBalance = l1weth.balanceOf(recipient);
     assertBoolEq(false, l1Messenger.isL2MessageExecuted(keccak256(xDomainCalldata)));
-    l1Messenger.relayMessageWithProof(address(counterpartGateway), address(gateway), amount, message, 0, proof);
+    l1Messenger.relayMessageWithProof(address(counterpartGateway), address(gateway), amount, 0, message, proof);
     assertEq(messengerBalance - amount, address(l1Messenger).balance);
     assertEq(recipientBalance + amount, l1weth.balanceOf(recipient));
     assertBoolEq(true, l1Messenger.isL2MessageExecuted(keccak256(xDomainCalldata)));
@@ -357,12 +357,12 @@ contract L1WETHGatewayTest is L1GatewayTestBase {
       new bytes(0)
     );
     bytes memory xDomainCalldata = abi.encodeWithSignature(
-      "relayMessage(address,address,uint256,bytes,uint256)",
+      "relayMessage(address,address,uint256,uint256,bytes)",
       address(gateway),
       address(counterpartGateway),
       amount,
-      message,
-      0
+      0,
+      message
     );
 
     if (amount == 0) {
@@ -381,13 +381,13 @@ contract L1WETHGatewayTest is L1GatewayTestBase {
       {
         hevm.expectEmit(true, true, false, true);
         address sender = AddressAliasHelper.applyL1ToL2Alias(address(l1Messenger));
-        emit QueueTransaction(sender, address(l2Messenger), 0, gasLimit, xDomainCalldata, 0);
+        emit QueueTransaction(sender, address(l2Messenger), 0, 0, gasLimit, xDomainCalldata);
       }
 
       // emit SentMessage from L1ScrollMessenger
       {
         hevm.expectEmit(true, true, false, true);
-        emit SentMessage(address(gateway), address(counterpartGateway), amount, message, 0);
+        emit SentMessage(address(gateway), address(counterpartGateway), amount, 0, message);
       }
 
       // emit DepositERC20 from L1WETHGateway
@@ -432,12 +432,12 @@ contract L1WETHGatewayTest is L1GatewayTestBase {
       new bytes(0)
     );
     bytes memory xDomainCalldata = abi.encodeWithSignature(
-      "relayMessage(address,address,uint256,bytes,uint256)",
+      "relayMessage(address,address,uint256,uint256,bytes)",
       address(gateway),
       address(counterpartGateway),
       amount,
-      message,
-      0
+      0,
+      message
     );
 
     if (amount == 0) {
@@ -456,13 +456,13 @@ contract L1WETHGatewayTest is L1GatewayTestBase {
       {
         hevm.expectEmit(true, true, false, true);
         address sender = AddressAliasHelper.applyL1ToL2Alias(address(l1Messenger));
-        emit QueueTransaction(sender, address(l2Messenger), 0, gasLimit, xDomainCalldata, 0);
+        emit QueueTransaction(sender, address(l2Messenger), 0, 0, gasLimit, xDomainCalldata);
       }
 
       // emit SentMessage from L1ScrollMessenger
       {
         hevm.expectEmit(true, true, false, true);
-        emit SentMessage(address(gateway), address(counterpartGateway), amount, message, 0);
+        emit SentMessage(address(gateway), address(counterpartGateway), amount, 0, message);
       }
 
       // emit DepositERC20 from L1WETHGateway
@@ -508,12 +508,12 @@ contract L1WETHGatewayTest is L1GatewayTestBase {
       dataToCall
     );
     bytes memory xDomainCalldata = abi.encodeWithSignature(
-      "relayMessage(address,address,uint256,bytes,uint256)",
+      "relayMessage(address,address,uint256,uint256,bytes)",
       address(gateway),
       address(counterpartGateway),
       amount,
-      message,
-      0
+      0,
+      message
     );
 
     if (amount == 0) {
@@ -532,13 +532,13 @@ contract L1WETHGatewayTest is L1GatewayTestBase {
       {
         hevm.expectEmit(true, true, false, true);
         address sender = AddressAliasHelper.applyL1ToL2Alias(address(l1Messenger));
-        emit QueueTransaction(sender, address(l2Messenger), 0, gasLimit, xDomainCalldata, 0);
+        emit QueueTransaction(sender, address(l2Messenger), 0, 0, gasLimit, xDomainCalldata);
       }
 
       // emit SentMessage from L1ScrollMessenger
       {
         hevm.expectEmit(true, true, false, true);
-        emit SentMessage(address(gateway), address(counterpartGateway), amount, message, 0);
+        emit SentMessage(address(gateway), address(counterpartGateway), amount, 0, message);
       }
 
       // emit DepositERC20 from L1WETHGateway

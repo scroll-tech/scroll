@@ -150,12 +150,12 @@ contract L2ETHGatewayTest is L2GatewayTestBase {
       dataToCall
     );
     bytes memory xDomainCalldata = abi.encodeWithSignature(
-      "relayMessage(address,address,uint256,bytes,uint256)",
+      "relayMessage(address,address,uint256,uint256,bytes)",
       address(uint160(address(counterpartGateway)) + 1),
       address(gateway),
       amount,
-      message,
-      0
+      0,
+      message
     );
 
     // conterpart is not L1ETHGateway
@@ -166,7 +166,7 @@ contract L2ETHGatewayTest is L2GatewayTestBase {
     uint256 messengerBalance = address(l2Messenger).balance;
     uint256 recipientBalance = recipient.balance;
     assertBoolEq(false, l2Messenger.isL1MessageExecuted(keccak256(xDomainCalldata)));
-    l2Messenger.relayMessage(address(uint160(address(counterpartGateway)) + 1), address(gateway), amount, message, 0);
+    l2Messenger.relayMessage(address(uint160(address(counterpartGateway)) + 1), address(gateway), amount, 0, message);
     assertEq(messengerBalance, address(l2Messenger).balance);
     assertEq(recipientBalance, recipient.balance);
     assertBoolEq(false, l2Messenger.isL1MessageExecuted(keccak256(xDomainCalldata)));
@@ -199,12 +199,12 @@ contract L2ETHGatewayTest is L2GatewayTestBase {
       dataToCall
     );
     bytes memory xDomainCalldata = abi.encodeWithSignature(
-      "relayMessage(address,address,uint256,bytes,uint256)",
+      "relayMessage(address,address,uint256,uint256,bytes)",
       address(counterpartGateway),
       address(gateway),
       amount,
-      message,
-      0
+      0,
+      message
     );
 
     // emit FinalizeDepositETH from L2ETHGateway
@@ -222,7 +222,7 @@ contract L2ETHGatewayTest is L2GatewayTestBase {
     uint256 messengerBalance = address(l2Messenger).balance;
     uint256 recipientBalance = recipient.balance;
     assertBoolEq(false, l2Messenger.isL1MessageExecuted(keccak256(xDomainCalldata)));
-    l2Messenger.relayMessage(address(counterpartGateway), address(gateway), amount, message, 0);
+    l2Messenger.relayMessage(address(counterpartGateway), address(gateway), amount, 0, message);
     assertEq(messengerBalance - amount, address(l2Messenger).balance);
     assertEq(recipientBalance + amount, recipient.balance);
     assertBoolEq(true, l2Messenger.isL1MessageExecuted(keccak256(xDomainCalldata)));
@@ -249,12 +249,12 @@ contract L2ETHGatewayTest is L2GatewayTestBase {
       new bytes(0)
     );
     bytes memory xDomainCalldata = abi.encodeWithSignature(
-      "relayMessage(address,address,uint256,bytes,uint256)",
+      "relayMessage(address,address,uint256,uint256,bytes)",
       address(gateway),
       address(counterpartGateway),
       amount,
-      message,
-      0
+      0,
+      message
     );
 
     if (amount == 0) {
@@ -274,7 +274,7 @@ contract L2ETHGatewayTest is L2GatewayTestBase {
       // emit SentMessage from L2ScrollMessenger
       {
         hevm.expectEmit(true, true, false, true);
-        emit SentMessage(address(gateway), address(counterpartGateway), amount, message, 0, gasLimit);
+        emit SentMessage(address(gateway), address(counterpartGateway), amount, 0, gasLimit, message);
       }
 
       // emit WithdrawETH from L2ETHGateway
@@ -317,12 +317,12 @@ contract L2ETHGatewayTest is L2GatewayTestBase {
       new bytes(0)
     );
     bytes memory xDomainCalldata = abi.encodeWithSignature(
-      "relayMessage(address,address,uint256,bytes,uint256)",
+      "relayMessage(address,address,uint256,uint256,bytes)",
       address(gateway),
       address(counterpartGateway),
       amount,
-      message,
-      0
+      0,
+      message
     );
 
     if (amount == 0) {
@@ -342,7 +342,7 @@ contract L2ETHGatewayTest is L2GatewayTestBase {
       // emit SentMessage from L2ScrollMessenger
       {
         hevm.expectEmit(true, true, false, true);
-        emit SentMessage(address(gateway), address(counterpartGateway), amount, message, 0, gasLimit);
+        emit SentMessage(address(gateway), address(counterpartGateway), amount, 0, gasLimit, message);
       }
 
       // emit WithdrawETH from L2ETHGateway
@@ -386,12 +386,12 @@ contract L2ETHGatewayTest is L2GatewayTestBase {
       dataToCall
     );
     bytes memory xDomainCalldata = abi.encodeWithSignature(
-      "relayMessage(address,address,uint256,bytes,uint256)",
+      "relayMessage(address,address,uint256,uint256,bytes)",
       address(gateway),
       address(counterpartGateway),
       amount,
-      message,
-      0
+      0,
+      message
     );
 
     if (amount == 0) {
@@ -411,7 +411,7 @@ contract L2ETHGatewayTest is L2GatewayTestBase {
       // emit SentMessage from L2ScrollMessenger
       {
         hevm.expectEmit(true, true, false, true);
-        emit SentMessage(address(gateway), address(counterpartGateway), amount, message, 0, gasLimit);
+        emit SentMessage(address(gateway), address(counterpartGateway), amount, 0, gasLimit, message);
       }
 
       // emit WithdrawETH from L2ETHGateway

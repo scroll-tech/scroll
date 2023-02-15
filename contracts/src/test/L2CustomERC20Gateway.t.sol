@@ -207,12 +207,12 @@ contract L2CustomERC20GatewayTest is L2GatewayTestBase {
       dataToCall
     );
     bytes memory xDomainCalldata = abi.encodeWithSignature(
-      "relayMessage(address,address,uint256,bytes,uint256)",
+      "relayMessage(address,address,uint256,uint256,bytes)",
       address(uint160(address(counterpartGateway)) + 1),
       address(gateway),
       0,
-      message,
-      0
+      0,
+      message
     );
 
     // conterpart is not L1CustomERC20Gateway
@@ -223,7 +223,7 @@ contract L2CustomERC20GatewayTest is L2GatewayTestBase {
     uint256 gatewayBalance = l2Token.balanceOf(address(gateway));
     uint256 recipientBalance = l2Token.balanceOf(recipient);
     assertBoolEq(false, l2Messenger.isL1MessageExecuted(keccak256(xDomainCalldata)));
-    l2Messenger.relayMessage(address(uint160(address(counterpartGateway)) + 1), address(gateway), 0, message, 0);
+    l2Messenger.relayMessage(address(uint160(address(counterpartGateway)) + 1), address(gateway), 0, 0, message);
     assertEq(gatewayBalance, l2Token.balanceOf(address(gateway)));
     assertEq(recipientBalance, l2Token.balanceOf(recipient));
     assertBoolEq(false, l2Messenger.isL1MessageExecuted(keccak256(xDomainCalldata)));
@@ -253,12 +253,12 @@ contract L2CustomERC20GatewayTest is L2GatewayTestBase {
       dataToCall
     );
     bytes memory xDomainCalldata = abi.encodeWithSignature(
-      "relayMessage(address,address,uint256,bytes,uint256)",
+      "relayMessage(address,address,uint256,uint256,bytes)",
       address(counterpartGateway),
       address(gateway),
       0,
-      message,
-      0
+      0,
+      message
     );
 
     // emit FinalizeDepositERC20 from L2CustomERC20Gateway
@@ -276,7 +276,7 @@ contract L2CustomERC20GatewayTest is L2GatewayTestBase {
     uint256 gatewayBalance = l2Token.balanceOf(address(gateway));
     uint256 recipientBalance = l2Token.balanceOf(recipient);
     assertBoolEq(false, l2Messenger.isL1MessageExecuted(keccak256(xDomainCalldata)));
-    l2Messenger.relayMessage(address(counterpartGateway), address(gateway), 0, message, 0);
+    l2Messenger.relayMessage(address(counterpartGateway), address(gateway), 0, 0, message);
     assertEq(gatewayBalance, l2Token.balanceOf(address(gateway)));
     assertEq(recipientBalance + amount, l2Token.balanceOf(recipient));
     assertBoolEq(true, l2Messenger.isL1MessageExecuted(keccak256(xDomainCalldata)));
@@ -305,12 +305,12 @@ contract L2CustomERC20GatewayTest is L2GatewayTestBase {
       new bytes(0)
     );
     bytes memory xDomainCalldata = abi.encodeWithSignature(
-      "relayMessage(address,address,uint256,bytes,uint256)",
+      "relayMessage(address,address,uint256,uint256,bytes)",
       address(gateway),
       address(counterpartGateway),
       0,
-      message,
-      0
+      0,
+      message
     );
 
     hevm.expectRevert("no corresponding l1 token");
@@ -338,7 +338,7 @@ contract L2CustomERC20GatewayTest is L2GatewayTestBase {
       // emit SentMessage from L2ScrollMessenger
       {
         hevm.expectEmit(true, true, false, true);
-        emit SentMessage(address(gateway), address(counterpartGateway), 0, message, 0, gasLimit);
+        emit SentMessage(address(gateway), address(counterpartGateway), 0, 0, gasLimit, message);
       }
 
       // emit WithdrawERC20 from L2CustomERC20Gateway
@@ -383,12 +383,12 @@ contract L2CustomERC20GatewayTest is L2GatewayTestBase {
       new bytes(0)
     );
     bytes memory xDomainCalldata = abi.encodeWithSignature(
-      "relayMessage(address,address,uint256,bytes,uint256)",
+      "relayMessage(address,address,uint256,uint256,bytes)",
       address(gateway),
       address(counterpartGateway),
       0,
-      message,
-      0
+      0,
+      message
     );
 
     hevm.expectRevert("no corresponding l1 token");
@@ -416,7 +416,7 @@ contract L2CustomERC20GatewayTest is L2GatewayTestBase {
       // emit SentMessage from L2ScrollMessenger
       {
         hevm.expectEmit(true, true, false, true);
-        emit SentMessage(address(gateway), address(counterpartGateway), 0, message, 0, gasLimit);
+        emit SentMessage(address(gateway), address(counterpartGateway), 0, 0, gasLimit, message);
       }
 
       // emit WithdrawERC20 from L2CustomERC20Gateway
@@ -462,12 +462,12 @@ contract L2CustomERC20GatewayTest is L2GatewayTestBase {
       dataToCall
     );
     bytes memory xDomainCalldata = abi.encodeWithSignature(
-      "relayMessage(address,address,uint256,bytes,uint256)",
+      "relayMessage(address,address,uint256,uint256,bytes)",
       address(gateway),
       address(counterpartGateway),
       0,
-      message,
-      0
+      0,
+      message
     );
 
     hevm.expectRevert("no corresponding l1 token");
@@ -495,7 +495,7 @@ contract L2CustomERC20GatewayTest is L2GatewayTestBase {
       // emit SentMessage from L2ScrollMessenger
       {
         hevm.expectEmit(true, true, false, true);
-        emit SentMessage(address(gateway), address(counterpartGateway), 0, message, 0, gasLimit);
+        emit SentMessage(address(gateway), address(counterpartGateway), 0, 0, gasLimit, message);
       }
 
       // emit WithdrawERC20 from L2CustomERC20Gateway

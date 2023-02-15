@@ -52,10 +52,10 @@ contract L2ScrollMessenger is ScrollMessengerBase, PausableUpgradeable, IL2Scrol
   /// @notice Mapping from L1 message hash to a boolean value indicating if the message has been successfully executed.
   mapping(bytes32 => bool) public isL1MessageExecuted;
 
-  /// @notice Mapping from L1 message hash to the number of failed times.
+  /// @notice Mapping from L1 message hash to the number of failure times.
   mapping(bytes32 => uint256) public l1MessageFailedTimes;
 
-  /// @notice The maximum number of times each L1 message can fail in L2.
+  /// @notice The maximum number of times each L1 message can fail on L2.
   uint256 public maxFailedExecutionTimes;
 
   /***************
@@ -92,7 +92,7 @@ contract L2ScrollMessenger is ScrollMessengerBase, PausableUpgradeable, IL2Scrol
     bytes calldata _proof
   ) public view returns (bool) {
     bytes32 _expectedStateRoot = IL1BlockContainer(blockContainer).getStateRoot(_blockHash);
-    require(_expectedStateRoot != bytes32(0), "Block not imported");
+    require(_expectedStateRoot != bytes32(0), "Block is not imported");
 
     // @todo fix the actual slot later.
     bytes32 _storageKey;
@@ -108,7 +108,7 @@ contract L2ScrollMessenger is ScrollMessengerBase, PausableUpgradeable, IL2Scrol
       _storageKey,
       _proof
     );
-    require(_computedStateRoot == _expectedStateRoot, "State root mismatch");
+    require(_computedStateRoot == _expectedStateRoot, "State roots mismatch");
 
     return uint256(_storageValue) == 1;
   }
@@ -163,21 +163,21 @@ contract L2ScrollMessenger is ScrollMessengerBase, PausableUpgradeable, IL2Scrol
 
     // compute and deduct the messaging fee to fee vault.
     uint256 _fee = _gasLimit * IL1BlockContainer(blockContainer).latestBaseFee();
-    require(msg.value >= _value + _fee, "insufficient msg.value");
+    require(msg.value >= _value + _fee, "Insufficient msg.value");
     if (_fee > 0) {
       (bool _success, ) = feeVault.call{ value: msg.value - _value }("");
-      require(_success, "failed to deduct fee");
+      require(_success, "Failed to deduct the fee");
     }
 
     uint256 _nonce = L2MessageQueue(messageQueue).nextMessageIndex();
-    bytes32 _xDomainCalldataHash = keccak256(_encodeXDomainCalldata(msg.sender, _to, _value, _message, _nonce));
+    bytes32 _xDomainCalldataHash = keccak256(_encodeXDomainCalldata(msg.sender, _to, _value, _nonce, _message));
 
-    require(!isL2MessageSent[_xDomainCalldataHash], "duplicated message");
+    require(!isL2MessageSent[_xDomainCalldataHash], "Duplicated message");
     isL2MessageSent[_xDomainCalldataHash] = true;
 
     L2MessageQueue(messageQueue).appendMessage(_xDomainCalldataHash);
 
-    emit SentMessage(msg.sender, _to, _value, _message, _nonce, _gasLimit);
+    emit SentMessage(msg.sender, _to, _value, _nonce, _gasLimit, _message);
   }
 
   /// @inheritdoc IL2ScrollMessenger
@@ -185,17 +185,17 @@ contract L2ScrollMessenger is ScrollMessengerBase, PausableUpgradeable, IL2Scrol
     address _from,
     address _to,
     uint256 _value,
-    bytes memory _message,
-    uint256 _nonce
+    uint256 _nonce,
+    bytes memory _message
   ) external override whenNotPaused onlyWhitelistedSender(msg.sender) {
     // anti reentrance
-    require(xDomainMessageSender == ScrollConstants.DEFAULT_XDOMAIN_MESSAGE_SENDER, "Already in execution");
+    require(xDomainMessageSender == ScrollConstants.DEFAULT_XDOMAIN_MESSAGE_SENDER, "Message is already in execution");
 
     // @todo address unalis to check sender is L1ScrollMessenger
 
-    bytes32 _xDomainCalldataHash = keccak256(_encodeXDomainCalldata(_from, _to, _value, _message, _nonce));
+    bytes32 _xDomainCalldataHash = keccak256(_encodeXDomainCalldata(_from, _to, _value, _nonce, _message));
 
-    require(!isL1MessageExecuted[_xDomainCalldataHash], "Message successfully executed");
+    require(!isL1MessageExecuted[_xDomainCalldataHash], "Message was already successfully executed");
 
     _executeMessage(_from, _to, _value, _message, _xDomainCalldataHash);
   }
@@ -205,15 +205,15 @@ contract L2ScrollMessenger is ScrollMessengerBase, PausableUpgradeable, IL2Scrol
     address _from,
     address _to,
     uint256 _value,
-    bytes memory _message,
     uint256 _nonce,
+    bytes memory _message,
     L1MessageProof calldata _proof
   ) external override whenNotPaused {
     // anti reentrance
     require(xDomainMessageSender == ScrollConstants.DEFAULT_XDOMAIN_MESSAGE_SENDER, "Already in execution");
 
     // check message status
-    bytes32 _xDomainCalldataHash = keccak256(_encodeXDomainCalldata(_from, _to, _value, _message, _nonce));
+    bytes32 _xDomainCalldataHash = keccak256(_encodeXDomainCalldata(_from, _to, _value, _nonce, _message));
     require(!isL1MessageExecuted[_xDomainCalldataHash], "Message successfully executed");
     require(l1MessageFailedTimes[_xDomainCalldataHash] > 0, "Message not relayed before");
 
@@ -269,7 +269,7 @@ contract L2ScrollMessenger is ScrollMessengerBase, PausableUpgradeable, IL2Scrol
     } else {
       unchecked {
         uint256 _failedTimes = l1MessageFailedTimes[_xDomainCalldataHash] + 1;
-        require(_failedTimes <= maxFailedExecutionTimes, "Exceed maximum failure");
+        require(_failedTimes <= maxFailedExecutionTimes, "Exceed maximum failure times");
         l1MessageFailedTimes[_xDomainCalldataHash] = _failedTimes;
       }
       emit FailedRelayedMessage(_xDomainCalldataHash);

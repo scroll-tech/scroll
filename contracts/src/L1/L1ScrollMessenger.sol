@@ -84,7 +84,7 @@ contract L1ScrollMessenger is PausableUpgradeable, ScrollMessengerBase, IL1Scrol
 
     // compute the actual cross domain message calldata.
     uint256 _messageNonce = IL1MessageQueue(_messageQueue).nextCrossDomainMessageIndex();
-    bytes memory _xDomainCalldata = _encodeXDomainCalldata(msg.sender, _to, _value, _message, _messageNonce);
+    bytes memory _xDomainCalldata = _encodeXDomainCalldata(msg.sender, _to, _value, _messageNonce, _message);
 
     // compute and deduct the messaging fee to fee vault.
     uint256 _fee = IL1MessageQueue(_messageQueue).estimateCrossDomainMessageFee(
@@ -93,10 +93,10 @@ contract L1ScrollMessenger is PausableUpgradeable, ScrollMessengerBase, IL1Scrol
       _xDomainCalldata,
       _gasLimit
     );
-    require(msg.value >= _fee + _value, "insufficient msg.value");
+    require(msg.value >= _fee + _value, "Insufficient msg.value");
     if (_fee > 0) {
       (bool _success, ) = feeVault.call{ value: _fee }("");
-      require(_success, "failed to deduct fee");
+      require(_success, "Failed to deduct the fee");
     }
 
     // append message to L1MessageQueue
@@ -106,7 +106,7 @@ contract L1ScrollMessenger is PausableUpgradeable, ScrollMessengerBase, IL1Scrol
     bytes32 _xDomainCalldataHash = keccak256(_xDomainCalldata);
     isL1MessageSent[_xDomainCalldataHash] = true;
 
-    emit SentMessage(msg.sender, _to, _value, _message, _messageNonce);
+    emit SentMessage(msg.sender, _to, _value, _messageNonce, _message);
   }
 
   /// @inheritdoc IL1ScrollMessenger
@@ -114,27 +114,27 @@ contract L1ScrollMessenger is PausableUpgradeable, ScrollMessengerBase, IL1Scrol
     address _from,
     address _to,
     uint256 _value,
-    bytes memory _message,
     uint256 _nonce,
+    bytes memory _message,
     L2MessageProof memory _proof
   ) external override whenNotPaused onlyWhitelistedSender(msg.sender) {
-    require(xDomainMessageSender == ScrollConstants.DEFAULT_XDOMAIN_MESSAGE_SENDER, "already in execution");
+    require(xDomainMessageSender == ScrollConstants.DEFAULT_XDOMAIN_MESSAGE_SENDER, "Message is already in execution");
 
-    bytes32 _xDomainCalldataHash = keccak256(_encodeXDomainCalldata(_from, _to, _value, _message, _nonce));
-    require(!isL2MessageExecuted[_xDomainCalldataHash], "Message successfully executed");
+    bytes32 _xDomainCalldataHash = keccak256(_encodeXDomainCalldata(_from, _to, _value, _nonce, _message));
+    require(!isL2MessageExecuted[_xDomainCalldataHash], "Message was already successfully executed");
 
     {
       address _rollup = rollup;
-      require(IScrollChain(_rollup).isBatchFinalized(_proof.batchHash), "Batch not finalized");
+      require(IScrollChain(_rollup).isBatchFinalized(_proof.batchHash), "Batch is not finalized");
       bytes32 _messageRoot = IScrollChain(_rollup).getL2MessageRoot(_proof.batchHash);
       require(
         ZkTrieVerifier.verifyMerkleProof(_messageRoot, _xDomainCalldataHash, _nonce, _proof.merkleProof),
-        "invalid proof"
+        "Invalid proof"
       );
     }
 
     // @note This usually will never happen, just in case.
-    require(_from != xDomainMessageSender, "invalid message sender");
+    require(_from != xDomainMessageSender, "Invalid message sender");
 
     xDomainMessageSender = _from;
     (bool success, ) = _to.call{ value: _value }(_message);
@@ -157,8 +157,8 @@ contract L1ScrollMessenger is PausableUpgradeable, ScrollMessengerBase, IL1Scrol
     address _from,
     address _to,
     uint256 _value,
-    bytes memory _message,
     uint256 _queueIndex,
+    bytes memory _message,
     uint32 _oldGasLimit,
     uint32 _newGasLimit
   ) external override whenNotPaused {

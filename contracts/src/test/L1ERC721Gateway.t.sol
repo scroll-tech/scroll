@@ -212,12 +212,12 @@ contract L1ERC721GatewayTest is L1GatewayTestBase {
       tokenId
     );
     bytes memory xDomainCalldata = abi.encodeWithSignature(
-      "relayMessage(address,address,uint256,bytes,uint256)",
+      "relayMessage(address,address,uint256,uint256,bytes)",
       address(uint160(address(counterpartGateway)) + 1),
       address(gateway),
       0,
-      message,
-      0
+      0,
+      message
     );
 
     prepareL2MessageRoot(keccak256(xDomainCalldata));
@@ -238,8 +238,8 @@ contract L1ERC721GatewayTest is L1GatewayTestBase {
       address(uint160(address(counterpartGateway)) + 1),
       address(gateway),
       0,
-      message,
       0,
+      message,
       proof
     );
     assertEq(address(gateway), l1Token.ownerOf(tokenId));
@@ -275,12 +275,12 @@ contract L1ERC721GatewayTest is L1GatewayTestBase {
       tokenId
     );
     bytes memory xDomainCalldata = abi.encodeWithSignature(
-      "relayMessage(address,address,uint256,bytes,uint256)",
+      "relayMessage(address,address,uint256,uint256,bytes)",
       address(counterpartGateway),
       address(gateway),
       0,
-      message,
-      0
+      0,
+      message
     );
 
     prepareL2MessageRoot(keccak256(xDomainCalldata));
@@ -304,7 +304,7 @@ contract L1ERC721GatewayTest is L1GatewayTestBase {
     uint256 gatewayBalance = l1Token.balanceOf(address(gateway));
     uint256 recipientBalance = l1Token.balanceOf(recipient);
     assertBoolEq(false, l1Messenger.isL2MessageExecuted(keccak256(xDomainCalldata)));
-    l1Messenger.relayMessageWithProof(address(counterpartGateway), address(gateway), 0, message, 0, proof);
+    l1Messenger.relayMessageWithProof(address(counterpartGateway), address(gateway), 0, 0, message, proof);
     assertEq(recipient, l1Token.ownerOf(tokenId));
     assertEq(gatewayBalance - 1, l1Token.balanceOf(address(gateway)));
     assertEq(recipientBalance + 1, l1Token.balanceOf(recipient));
@@ -386,12 +386,12 @@ contract L1ERC721GatewayTest is L1GatewayTestBase {
       _tokenIds
     );
     bytes memory xDomainCalldata = abi.encodeWithSignature(
-      "relayMessage(address,address,uint256,bytes,uint256)",
+      "relayMessage(address,address,uint256,uint256,bytes)",
       address(uint160(address(counterpartGateway)) + 1),
       address(gateway),
       0,
-      message,
-      0
+      0,
+      message
     );
 
     prepareL2MessageRoot(keccak256(xDomainCalldata));
@@ -414,8 +414,8 @@ contract L1ERC721GatewayTest is L1GatewayTestBase {
       address(uint160(address(counterpartGateway)) + 1),
       address(gateway),
       0,
-      message,
       0,
+      message,
       proof
     );
     for (uint256 i = 0; i < tokenCount; i++) {
@@ -457,12 +457,12 @@ contract L1ERC721GatewayTest is L1GatewayTestBase {
       _tokenIds
     );
     bytes memory xDomainCalldata = abi.encodeWithSignature(
-      "relayMessage(address,address,uint256,bytes,uint256)",
+      "relayMessage(address,address,uint256,uint256,bytes)",
       address(counterpartGateway),
       address(gateway),
       0,
-      message,
-      0
+      0,
+      message
     );
 
     prepareL2MessageRoot(keccak256(xDomainCalldata));
@@ -488,7 +488,7 @@ contract L1ERC721GatewayTest is L1GatewayTestBase {
     uint256 gatewayBalance = l1Token.balanceOf(address(gateway));
     uint256 recipientBalance = l1Token.balanceOf(recipient);
     assertBoolEq(false, l1Messenger.isL2MessageExecuted(keccak256(xDomainCalldata)));
-    l1Messenger.relayMessageWithProof(address(counterpartGateway), address(gateway), 0, message, 0, proof);
+    l1Messenger.relayMessageWithProof(address(counterpartGateway), address(gateway), 0, 0, message, proof);
     for (uint256 i = 0; i < tokenCount; i++) {
       assertEq(recipient, l1Token.ownerOf(_tokenIds[i]));
     }
@@ -571,12 +571,12 @@ contract L1ERC721GatewayTest is L1GatewayTestBase {
       tokenId
     );
     bytes memory xDomainCalldata = abi.encodeWithSignature(
-      "relayMessage(address,address,uint256,bytes,uint256)",
+      "relayMessage(address,address,uint256,uint256,bytes)",
       address(gateway),
       address(counterpartGateway),
       0,
-      message,
-      0
+      0,
+      message
     );
 
     gateway.updateTokenMapping(address(l1Token), address(l2Token));
@@ -585,13 +585,13 @@ contract L1ERC721GatewayTest is L1GatewayTestBase {
     {
       hevm.expectEmit(true, true, false, true);
       address sender = AddressAliasHelper.applyL1ToL2Alias(address(l1Messenger));
-      emit QueueTransaction(sender, address(l2Messenger), 0, gasLimit, xDomainCalldata, 0);
+      emit QueueTransaction(sender, address(l2Messenger), 0, 0, gasLimit, xDomainCalldata);
     }
 
     // emit SentMessage from L1ScrollMessenger
     {
       hevm.expectEmit(true, true, false, true);
-      emit SentMessage(address(gateway), address(counterpartGateway), 0, message, 0);
+      emit SentMessage(address(gateway), address(counterpartGateway), 0, 0, message);
     }
 
     // emit FinalizeWithdrawERC721 from L1ERC721Gateway
@@ -634,12 +634,12 @@ contract L1ERC721GatewayTest is L1GatewayTestBase {
       tokenId
     );
     bytes memory xDomainCalldata = abi.encodeWithSignature(
-      "relayMessage(address,address,uint256,bytes,uint256)",
+      "relayMessage(address,address,uint256,uint256,bytes)",
       address(gateway),
       address(counterpartGateway),
       0,
-      message,
-      0
+      0,
+      message
     );
 
     gateway.updateTokenMapping(address(l1Token), address(l2Token));
@@ -648,13 +648,13 @@ contract L1ERC721GatewayTest is L1GatewayTestBase {
     {
       hevm.expectEmit(true, true, false, true);
       address sender = AddressAliasHelper.applyL1ToL2Alias(address(l1Messenger));
-      emit QueueTransaction(sender, address(l2Messenger), 0, gasLimit, xDomainCalldata, 0);
+      emit QueueTransaction(sender, address(l2Messenger), 0, 0, gasLimit, xDomainCalldata);
     }
 
     // emit SentMessage from L1ScrollMessenger
     {
       hevm.expectEmit(true, true, false, true);
-      emit SentMessage(address(gateway), address(counterpartGateway), 0, message, 0);
+      emit SentMessage(address(gateway), address(counterpartGateway), 0, 0, message);
     }
 
     // emit FinalizeWithdrawERC721 from L1ERC721Gateway
@@ -704,12 +704,12 @@ contract L1ERC721GatewayTest is L1GatewayTestBase {
       _tokenIds
     );
     bytes memory xDomainCalldata = abi.encodeWithSignature(
-      "relayMessage(address,address,uint256,bytes,uint256)",
+      "relayMessage(address,address,uint256,uint256,bytes)",
       address(gateway),
       address(counterpartGateway),
       0,
-      message,
-      0
+      0,
+      message
     );
 
     gateway.updateTokenMapping(address(l1Token), address(l2Token));
@@ -718,13 +718,13 @@ contract L1ERC721GatewayTest is L1GatewayTestBase {
     {
       hevm.expectEmit(true, true, false, true);
       address sender = AddressAliasHelper.applyL1ToL2Alias(address(l1Messenger));
-      emit QueueTransaction(sender, address(l2Messenger), 0, gasLimit, xDomainCalldata, 0);
+      emit QueueTransaction(sender, address(l2Messenger), 0, 0, gasLimit, xDomainCalldata);
     }
 
     // emit SentMessage from L1ScrollMessenger
     {
       hevm.expectEmit(true, true, false, true);
-      emit SentMessage(address(gateway), address(counterpartGateway), 0, message, 0);
+      emit SentMessage(address(gateway), address(counterpartGateway), 0, 0, message);
     }
 
     // emit FinalizeWithdrawERC721 from L1ERC721Gateway
@@ -779,12 +779,12 @@ contract L1ERC721GatewayTest is L1GatewayTestBase {
       _tokenIds
     );
     bytes memory xDomainCalldata = abi.encodeWithSignature(
-      "relayMessage(address,address,uint256,bytes,uint256)",
+      "relayMessage(address,address,uint256,uint256,bytes)",
       address(gateway),
       address(counterpartGateway),
       0,
-      message,
-      0
+      0,
+      message
     );
 
     gateway.updateTokenMapping(address(l1Token), address(l2Token));
@@ -793,13 +793,13 @@ contract L1ERC721GatewayTest is L1GatewayTestBase {
     {
       hevm.expectEmit(true, true, false, true);
       address sender = AddressAliasHelper.applyL1ToL2Alias(address(l1Messenger));
-      emit QueueTransaction(sender, address(l2Messenger), 0, gasLimit, xDomainCalldata, 0);
+      emit QueueTransaction(sender, address(l2Messenger), 0, 0, gasLimit, xDomainCalldata);
     }
 
     // emit SentMessage from L1ScrollMessenger
     {
       hevm.expectEmit(true, true, false, true);
-      emit SentMessage(address(gateway), address(counterpartGateway), 0, message, 0);
+      emit SentMessage(address(gateway), address(counterpartGateway), 0, 0, message);
     }
 
     // emit FinalizeWithdrawERC721 from L1ERC721Gateway
