@@ -9,11 +9,13 @@ import (
 
 	"scroll-tech/bridge/config"
 	"scroll-tech/bridge/l2"
+	"scroll-tech/bridge/utils"
 )
 
 // L2RollupRelayer is struct to wrap l2.relayer to transmit rollup msg
 type L2RollupRelayer struct {
 	ctx     context.Context
+	cancel  context.CancelFunc
 	relayer *l2.Layer2Relayer
 	stopCh  chan struct{}
 	db      orm.L2MessageOrm
@@ -25,8 +27,10 @@ func NewL2RollupRelayer(ctx context.Context, cfg *config.RelayerConfig, db datab
 	if err != nil {
 		return nil, err
 	}
+	subCtx, cancel := context.WithCancel(ctx)
 	return &L2RollupRelayer{
-		ctx:     ctx,
+		ctx:     subCtx,
+		cancel:  cancel,
 		relayer: msgRelayer,
 		db:      db,
 		stopCh:  make(chan struct{}),
@@ -35,35 +39,23 @@ func NewL2RollupRelayer(ctx context.Context, cfg *config.RelayerConfig, db datab
 
 // Start process
 func (r *L2RollupRelayer) Start() {
-	loop := func(ctx context.Context, f func()) {
-		ticker := time.NewTicker(time.Second)
-		defer ticker.Stop()
-
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case <-ticker.C:
-				f()
-			}
-		}
-	}
 	go func() {
 		ctx, cancel := context.WithCancel(r.ctx)
 		// trigger by timer
-		ticker := time.NewTicker(time.Second)
+		tk_pending := time.NewTicker(time.Second)
+		tk_commit := time.NewTicker(time.Second)
 		defer cancel()
+
+		go utils.Loop(ctx, tk_pending, r.relayer.ProcessPendingBatches)
+		go utils.Loop(ctx, tk_commit, r.relayer.ProcessCommittedBatches)
 
 		for {
 			select {
-			case <-ticker.C:
-				// To do: Refactoring this
-				go loop(ctx, r.relayer.ProcessPendingBatches)
-				go loop(ctx, r.relayer.ProcessCommittedBatches)
 			case confirmation := <-r.relayer.GetRollupCh():
 				r.relayer.HandleConfirmation(confirmation)
-			case <-r.stopCh:
-				ticker.Stop()
+			case <-r.ctx.Done():
+				tk_pending.Stop()
+				tk_commit.Stop()
 				return
 			}
 		}
@@ -72,5 +64,8 @@ func (r *L2RollupRelayer) Start() {
 
 // Stop sends the stop signal to stop chan
 func (r *L2RollupRelayer) Stop() {
-	close(r.stopCh)
+	if r.cancel != nil {
+		r.cancel()
+		r.cancel = nil
+	}
 }

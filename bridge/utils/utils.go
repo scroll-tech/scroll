@@ -2,7 +2,9 @@ package utils
 
 import (
 	"bytes"
+	"context"
 	"math/big"
+	"time"
 
 	"github.com/iden3/go-iden3-crypto/keccak256"
 	"github.com/scroll-tech/go-ethereum/common"
@@ -66,4 +68,30 @@ func BufferToUint256Le(buffer []byte) []*big.Int {
 		buffer256[i] = v
 	}
 	return buffer256
+}
+
+// LoopWithContext Run the f func with context periodically.
+func LoopWithContext(ctx context.Context, tick *time.Ticker, f func(ctx context.Context)) {
+	defer tick.Stop()
+	for ; ; <-tick.C {
+		select {
+		case <-ctx.Done():
+			return
+		default:
+			f(ctx)
+		}
+	}
+}
+
+// Loop Run the f func periodically.
+func Loop(ctx context.Context, tick *time.Ticker, f func()) {
+	defer tick.Stop()
+	for ; ; <-tick.C {
+		select {
+		case <-ctx.Done():
+			return
+		default:
+			f()
+		}
+	}
 }

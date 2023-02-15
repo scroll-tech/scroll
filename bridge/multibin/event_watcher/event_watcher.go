@@ -18,15 +18,18 @@ import (
 
 // L1EventWatcher is sturct to wrap l1.watcher
 type L1EventWatcher struct {
-	ctx     context.Context
+	ctx    context.Context
+	cancel context.CancelFunc
+
 	watcher *l1.Watcher
 	client  *ethclient.Client
-	stopCh  chan struct{}
 }
 
 // L2EventWatcher is struct to wrap l2.watcher
 type L2EventWatcher struct {
-	ctx           context.Context
+	ctx    context.Context
+	cancel context.CancelFunc
+
 	watcher       *l2.WatcherClient
 	client        *ethclient.Client
 	confirmations rpc.BlockNumber
@@ -35,9 +38,11 @@ type L2EventWatcher struct {
 
 // NewL2EventWatcher creates a new instance of L2EventWatcher
 func NewL2EventWatcher(ctx context.Context, client *ethclient.Client, cfg *config.L2Config, db database.OrmFactory) *L2EventWatcher {
+	subCtx, cancel := context.WithCancel(ctx)
 	watcher := l2.NewL2WatcherClient(ctx, client, cfg.Confirmations, cfg.BatchProposerConfig, cfg.RelayerConfig.MessengerContractAddress, db)
 	return &L2EventWatcher{
-		ctx:           ctx,
+		ctx:           subCtx,
+		cancel:        cancel,
 		watcher:       watcher,
 		client:        client,
 		confirmations: cfg.Confirmations,
@@ -47,71 +52,56 @@ func NewL2EventWatcher(ctx context.Context, client *ethclient.Client, cfg *confi
 
 // NewL1EventWatcher creates a new instance of L1EventWatcher
 func NewL1EventWatcher(ctx context.Context, client *ethclient.Client, cfg *config.L1Config, db database.OrmFactory) *L1EventWatcher {
+	subCtx, cancel := context.WithCancel(ctx)
 	watcher := l1.NewWatcher(ctx, client, cfg.StartHeight, cfg.Confirmations, cfg.L1MessengerAddress, cfg.RollupContractAddress, db)
 	return &L1EventWatcher{
-		ctx:     ctx,
+		ctx:     subCtx,
+		cancel:  cancel,
 		watcher: watcher,
 		client:  client,
-		stopCh:  make(chan struct{}),
 	}
 }
 
 // Start runs go routine to fetch contract events on L1
 func (l1w *L1EventWatcher) Start() {
-	go func() {
-		ticker := time.NewTicker(10 * time.Second)
-		defer ticker.Stop()
-
-		for ; true; <-ticker.C {
-			select {
-			case <-l1w.stopCh:
-				return
-
-			default:
-				blockNumber, err := l1w.client.BlockNumber(l1w.ctx)
-				if err != nil {
-					log.Error("Failed to get block number", "err", err)
-					continue
-				}
-				if err := l1w.watcher.FetchContractEvent(blockNumber); err != nil {
-					log.Error("Failed to fetch bridge contract", "err", err)
-				}
-			}
+	go utils.LoopWithContext(l1w.ctx, time.NewTicker(10*time.Second), func(ctx context.Context) {
+		blockNumber, err := l1w.client.BlockNumber(ctx)
+		if err != nil {
+			log.Error("Failed to get block number", "err", err)
+			return
 		}
-	}()
+		if err := l1w.watcher.FetchContractEvent(blockNumber); err != nil {
+			log.Error("Failed to fetch bridge contract", "err", err)
+		}
+	})
 }
 
 // Stop sends the stop signal to stop chan
 func (l1w *L1EventWatcher) Stop() {
-	close(l1w.stopCh)
+	if l1w.cancel != nil {
+		l1w.cancel()
+		l1w.cancel = nil
+	}
 }
 
 // Start runs go routine to fetch contract events on L2
 func (l2w *L2EventWatcher) Start() {
 	// event fetcher loop
-	go func() {
-		ticker := time.NewTicker(3 * time.Second)
-		defer ticker.Stop()
-
-		for {
-			select {
-			case <-l2w.stopCh:
-				return
-
-			case <-ticker.C:
-				number, err := utils.GetLatestConfirmedBlockNumber(l2w.ctx, l2w.client, l2w.confirmations)
-				if err != nil {
-					log.Error("failed to get block number", "err", err)
-					continue
-				}
-
-				l2w.watcher.FetchContractEvent(number)
-			}
+	go utils.LoopWithContext(l2w.ctx, time.NewTicker(3*time.Second), func(ctx context.Context) {
+		number, err := utils.GetLatestConfirmedBlockNumber(ctx, l2w.client, l2w.confirmations)
+		if err != nil {
+			log.Error("failed to get block number", "err", err)
+			return
 		}
-	}()
+
+		l2w.watcher.FetchContractEvent(number)
+	})
 }
 
 // Stop sends the stop signal to stop chan
 func (l2w *L2EventWatcher) Stop() {
-	close(l2w.stopCh)
+	if l2w.cancel != nil {
+		l2w.cancel()
+		l2w.cancel = nil
+	}
 }
