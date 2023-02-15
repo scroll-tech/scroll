@@ -10,90 +10,72 @@ contract MockBridgeL1 {
     address indexed target,
     address sender,
     uint256 value,
-    uint256 fee,
-    uint256 deadline,
-    bytes message,
     uint256 messageNonce,
-    uint256 gasLimit
+    bytes message
   );
 
-  event MessageDropped(bytes32 indexed msgHash);
-
-  event RelayedMessage(bytes32 indexed msgHash);
-
-  event FailedRelayedMessage(bytes32 indexed msgHash);
+  event RelayedMessage(bytes32 indexed messageHash);
 
   /************************
    * Events from ZKRollup *
    ************************/
 
   /// @notice Emitted when a new batch is commited.
-  /// @param _batchHash The hash of the batch
-  /// @param _batchIndex The index of the batch
-  /// @param _parentHash The hash of parent batch
-  event CommitBatch(bytes32 indexed _batchId, bytes32 _batchHash, uint256 _batchIndex, bytes32 _parentHash);
+  /// @param batchHash The hash of the batch
+  event CommitBatch(bytes32 indexed batchHash);
 
   /// @notice Emitted when a batch is reverted.
-  /// @param _batchId The identification of the batch.
-  event RevertBatch(bytes32 indexed _batchId);
+  /// @param batchHash The hash of the batch
+  event RevertBatch(bytes32 indexed batchHash);
 
   /// @notice Emitted when a batch is finalized.
-  /// @param _batchHash The hash of the batch
-  /// @param _batchIndex The index of the batch
-  /// @param _parentHash The hash of parent batch
-  event FinalizeBatch(bytes32 indexed _batchId, bytes32 _batchHash, uint256 _batchIndex, bytes32 _parentHash);
+  /// @param batchHash The hash of the batch
+  event FinalizeBatch(bytes32 indexed batchHash);
 
   /***********
    * Structs *
    ***********/
 
-  struct L2MessageProof {
-    uint256 batchIndex;
-    uint256 blockHeight;
-    bytes merkleProof;
-  }
-
-  /// @dev The transanction struct
-  struct Layer2Transaction {
-    address caller;
-    uint64 nonce;
-    address target;
-    uint64 gas;
-    uint256 gasPrice;
-    uint256 value;
-    bytes data;
-    // signature
-    uint256 r;
-    uint256 s;
-    uint64 v;
-  }
-
-  /// @dev The block header struct
-  struct Layer2BlockHeader {
+  struct BlockContext {
+    // The hash of this block.
     bytes32 blockHash;
+    // The parent hash of this block.
     bytes32 parentHash;
-    uint256 baseFee;
-    bytes32 stateRoot;
-    uint64 blockHeight;
-    uint64 gasUsed;
+    // The height of this block.
+    uint64 blockNumber;
+    // The timestamp of this block.
     uint64 timestamp;
-    bytes extraData;
-    Layer2Transaction[] txs;
+    // The base fee of this block.
+    // Currently, it is not used, because we disable EIP-1559.
+    // We keep it for future proof.
+    uint256 baseFee;
+    // The gas limit of this block.
+    uint64 gasLimit;
+    // The number of transactions in this block, both L1 & L2 txs.
+    uint16 numTransactions;
+    // The number of l1 messages in this block.
+    uint16 numL1Messages;
   }
 
-  /// @dev The batch struct, the batch hash is always the last block hash of `blocks`.
-  struct Layer2Batch {
+  struct Batch {
+    // The list of blocks in this batch
+    BlockContext[] blocks; // MAX_NUM_BLOCKS = 100, about 5 min
+    // The state root of previous batch.
+    // The first batch will use 0x0 for prevStateRoot
+    bytes32 prevStateRoot;
+    // The state root of the last block in this batch.
+    bytes32 newStateRoot;
+    // The withdraw trie root of the last block in this batch.
+    bytes32 withdrawTrieRoot;
+    // The index of the batch.
     uint64 batchIndex;
-    // The hash of the last block in the parent batch
-    bytes32 parentHash;
-    Layer2BlockHeader[] blocks;
+    // Concatenated raw data of RLP encoded L2 txs
+    bytes l2Transactions;
   }
 
-  struct Layer2BatchStored {
+  struct L2MessageProof {
     bytes32 batchHash;
-    bytes32 parentHash;
-    uint64 batchIndex;
-    bool verified;
+    bytes merkleProof;
   }
 
   /*************
@@ -103,27 +85,17 @@ contract MockBridgeL1 {
   /// @notice Message nonce, used to avoid relay attack.
   uint256 public messageNonce;
 
-  /// @notice Mapping from batch id to batch struct.
-  mapping(bytes32 => Layer2BatchStored) public batches;
-
   /************************************
    * Functions from L1ScrollMessenger *
    ************************************/
 
   function sendMessage(
-    address _to,
-    uint256 _fee,
-    bytes memory _message,
-    uint256 _gasLimit
+    address target,
+    uint256 value,
+    bytes calldata message,
+    uint256 gasLimit
   ) external payable {
-    // solhint-disable-next-line not-rely-on-time
-    uint256 _deadline = block.timestamp + 1 days;
-    uint256 _value;
-    unchecked {
-      _value = msg.value - _fee;
-    }
-    uint256 _nonce = messageNonce;
-    emit SentMessage(_to, msg.sender, _value, _fee, _deadline, _message, _nonce, _gasLimit);
+    emit SentMessage(msg.sender, target, value, messageNonce, message);
     messageNonce += 1;
   }
 
@@ -131,13 +103,11 @@ contract MockBridgeL1 {
     address _from,
     address _to,
     uint256 _value,
-    uint256 _fee,
-    uint256 _deadline,
     uint256 _nonce,
     bytes memory _message,
     L2MessageProof memory
   ) external {
-    bytes32 _msghash = keccak256(abi.encodePacked(_from, _to, _value, _fee, _deadline, _nonce, _message));
+    bytes32 _msghash = keccak256(abi.encodePacked(_from, _to, _value, _nonce, _message));
     emit RelayedMessage(_msghash);
   }
 
@@ -145,43 +115,30 @@ contract MockBridgeL1 {
    * Functions from ZKRollup *
    ***************************/
 
-  function commitBatch(Layer2Batch memory _batch) external {
-    bytes32 _batchHash = _batch.blocks[_batch.blocks.length - 1].blockHash;
-    bytes32 _batchId = _computeBatchId(_batchHash, _batch.parentHash, _batch.batchIndex);
+  function commitBatch(Batch memory _batch) external {
+    _commitBatch(_batch);
+  }
 
-    Layer2BatchStored storage _batchStored = batches[_batchId];
-    _batchStored.batchHash = _batchHash;
-    _batchStored.parentHash = _batch.parentHash;
-    _batchStored.batchIndex = _batch.batchIndex;
-
-    emit CommitBatch(_batchId, _batchHash, _batch.batchIndex, _batch.parentHash);
+  function commitBatches(Batch[] memory _batches) external {
+    for (uint256 i = 0; i < _batches.length; i++) {
+      _commitBatch(_batches[i]);
+    }
   }
   
-  function revertBatch(bytes32 _batchId) external {
-    emit RevertBatch(_batchId);
+  function revertBatch(bytes32 _batchHash) external {
+    emit RevertBatch(_batchHash);
   }
 
   function finalizeBatchWithProof(
-    bytes32 _batchId,
-    uint256[] memory,
-    uint256[] memory
+    bytes32 _batchHash,
+    uint256[] memory _proof,
+    uint256[] memory _instances
   ) external {
-    Layer2BatchStored storage _batch = batches[_batchId];
-    uint256 _batchIndex = _batch.batchIndex;
-
-    emit FinalizeBatch(_batchId, _batch.batchHash, _batchIndex, _batch.parentHash);
+    emit FinalizeBatch(_batchHash);
   }
 
-  /// @dev Internal function to compute a unique batch id for mapping.
-  /// @param _batchHash The hash of the batch.
-  /// @param _parentHash The hash of the batch.
-  /// @param _batchIndex The index of the batch.
-  /// @return Return the computed batch id.
-  function _computeBatchId(
-    bytes32 _batchHash,
-    bytes32 _parentHash,
-    uint256 _batchIndex
-  ) internal pure returns (bytes32) {
-    return keccak256(abi.encode(_batchHash, _parentHash, _batchIndex));
+  function _commitBatch(Batch memory _batch) internal {
+    bytes32 _batchHash = _batch.blocks[_batch.blocks.length - 1].blockHash;
+    emit CommitBatch(_batchHash);
   }
 }
