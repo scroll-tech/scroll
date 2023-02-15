@@ -99,11 +99,9 @@ func (r *Layer1Relayer) processSavedEvent(msg *orm.L1Message) error {
 		log.Error("Failed to parse message value", "msg.nonce", msg.Nonce, "msg.height", msg.Height)
 		// TODO: need to skip this message by changing its status to MsgError
 	}
-	fee, _ := big.NewInt(0).SetString(msg.Fee, 10)
-	deadline := big.NewInt(int64(msg.Deadline))
 	msgNonce := big.NewInt(int64(msg.Nonce))
 	calldata := common.Hex2Bytes(msg.Calldata)
-	data, err := r.l2MessengerABI.Pack("relayMessage", from, target, value, fee, deadline, msgNonce, calldata)
+	data, err := r.l2MessengerABI.Pack("relayMessage", from, target, value, msgNonce, calldata)
 	if err != nil {
 		log.Error("Failed to pack relayMessage", "msg.nonce", msg.Nonce, "msg.height", msg.Height, "err", err)
 		// TODO: need to skip this message by changing its status to MsgError
