@@ -64,7 +64,7 @@ func NewL1EventWatcher(ctx context.Context, client *ethclient.Client, cfg *confi
 
 // Start runs go routine to fetch contract events on L1
 func (l1w *L1EventWatcher) Start() {
-	go utils.Loop(l1w.ctx, time.NewTicker(10*time.Second), func(ctx context.Context) {
+	go utils.LoopWithContext(l1w.ctx, time.NewTicker(10*time.Second), func(ctx context.Context) {
 		blockNumber, err := l1w.client.BlockNumber(ctx)
 		if err != nil {
 			log.Error("Failed to get block number", "err", err)
@@ -87,7 +87,7 @@ func (l1w *L1EventWatcher) Stop() {
 // Start runs go routine to fetch contract events on L2
 func (l2w *L2EventWatcher) Start() {
 	// event fetcher loop
-	go utils.Loop(l2w.ctx, time.NewTicker(3*time.Second), func(ctx context.Context) {
+	go utils.LoopWithContext(l2w.ctx, time.NewTicker(3*time.Second), func(ctx context.Context) {
 		number, err := utils.GetLatestConfirmedBlockNumber(ctx, l2w.client, l2w.confirmations)
 		if err != nil {
 			log.Error("failed to get block number", "err", err)

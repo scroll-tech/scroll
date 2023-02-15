@@ -70,8 +70,8 @@ func BufferToUint256Le(buffer []byte) []*big.Int {
 	return buffer256
 }
 
-// Loop Run the f func periodically.
-func Loop(ctx context.Context, tick *time.Ticker, f func(ctx context.Context)) {
+// Loop Run the f func with context periodically.
+func LoopWithContext(ctx context.Context, tick *time.Ticker, f func(ctx context.Context)) {
 	defer tick.Stop()
 	for ; ; <-tick.C {
 		select {
@@ -79,6 +79,19 @@ func Loop(ctx context.Context, tick *time.Ticker, f func(ctx context.Context)) {
 			return
 		default:
 			f(ctx)
+		}
+	}
+}
+
+// Loop Run the f func periodically.
+func Loop(ctx context.Context, tick *time.Ticker, f func()) {
+	defer tick.Stop()
+	for ; ; <-tick.C {
+		select {
+		case <-ctx.Done():
+			return
+		default:
+			f()
 		}
 	}
 }

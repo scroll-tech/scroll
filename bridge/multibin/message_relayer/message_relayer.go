@@ -13,6 +13,7 @@ import (
 	"scroll-tech/bridge/l1"
 	"scroll-tech/bridge/l2"
 	"scroll-tech/bridge/sender"
+	"scroll-tech/bridge/utils"
 )
 
 // L1MsgRelayer wraps l1 relayer for message-relayer bin
@@ -72,12 +73,10 @@ func (l1r *L1MsgRelayer) Start() {
 	go func() {
 		// trigger by timer
 		ticker := time.NewTicker(3 * time.Second)
-		defer ticker.Stop()
+		go utils.Loop(l1r.ctx, ticker, l1r.relayer.ProcessSavedEvents)
 
 		for {
 			select {
-			case <-ticker.C:
-				l1r.relayer.ProcessSavedEvents(l1r.ctx)
 			case cfm := <-l1r.relayer.GetConfirmCh():
 				if !cfm.IsSuccessful {
 					log.Warn("transaction confirmed but failed in layer2", "confirmation", cfm)
@@ -89,6 +88,9 @@ func (l1r *L1MsgRelayer) Start() {
 					}
 					log.Info("transaction confirmed in layer2", "confirmation", cfm)
 				}
+			case <-l1r.ctx.Done():
+				ticker.Stop()
+				return
 			}
 		}
 	}()
@@ -107,15 +109,13 @@ func (l2r *L2MsgRelayer) Start() {
 	go func() {
 		// trigger by timer
 		ticker := time.NewTicker(time.Second)
-		defer ticker.Stop()
-
+		go utils.Loop(l2r.ctx, ticker, l2r.relayer.ProcessSavedEvents)
 		for {
 			select {
-			case <-ticker.C:
-				l2r.relayer.ProcessSavedEvents(l2r.ctx)
 			case confirmation := <-l2r.relayer.GetMsgConfirmCh():
 				l2r.relayer.HandleConfirmation(confirmation)
 			case <-l2r.ctx.Done():
+				ticker.Stop()
 				return
 			}
 		}

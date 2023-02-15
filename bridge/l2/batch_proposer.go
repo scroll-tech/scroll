@@ -1,7 +1,6 @@
 package l2
 
 import (
-	"context"
 	"fmt"
 	"sync"
 	"time"
@@ -43,7 +42,7 @@ func newBatchProposer(cfg *config.BatchProposerConfig, orm database.OrmFactory) 
 }
 
 // TryProposeBatch tries update batched blocks into db
-func (w *BatchProposer) TryProposeBatch(ctx context.Context) {
+func (w *BatchProposer) TryProposeBatch() {
 	w.mutex.Lock()
 	defer w.mutex.Unlock()
 

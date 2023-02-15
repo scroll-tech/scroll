@@ -72,7 +72,7 @@ func (r *Layer1Relayer) GetConfirmCh() <-chan *sender.Confirmation {
 }
 
 // ProcessSavedEvents relays saved un-processed cross-domain transactions to desired blockchain
-func (r *Layer1Relayer) ProcessSavedEvents(ctx context.Context) {
+func (r *Layer1Relayer) ProcessSavedEvents() {
 	// msgs are sorted by nonce in increasing order
 	msgs, err := r.db.GetL1MessagesByStatus(orm.MsgPending, 100)
 	if err != nil {
@@ -146,7 +146,7 @@ func (r *Layer1Relayer) Start() {
 			case <-ticker.C:
 				// number, err := r.client.BlockNumber(r.ctx)
 				// log.Info("receive header", "height", number)
-				r.ProcessSavedEvents(r.ctx)
+				r.ProcessSavedEvents()
 			case cfm := <-r.confirmationCh:
 				if !cfm.IsSuccessful {
 					log.Warn("transaction confirmed but failed in layer2", "confirmation", cfm)

@@ -43,7 +43,7 @@ func NewL2BatchProposer(ctx context.Context, client *ethclient.Client, cfg *conf
 // Start runs go routine to fetch contract events on L2
 func (b *L2BatchPropser) Start() {
 	// Todo: Refactoring this process
-	go utils.Loop(b.ctx, time.NewTicker(3*time.Second), func(ctx context.Context) {
+	go utils.LoopWithContext(b.ctx, time.NewTicker(3*time.Second), func(ctx context.Context) {
 		number, err := utils.GetLatestConfirmedBlockNumber(ctx, b.client, b.confirmations)
 		if err != nil {
 			log.Error("failed to get block number", "err", err)
