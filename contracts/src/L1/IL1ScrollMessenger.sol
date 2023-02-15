@@ -22,7 +22,7 @@ interface IL1ScrollMessenger is IScrollMessenger {
    ***********/
 
   struct L2MessageProof {
-    // The hash of batch where the message belongs to.
+    // The hash of the batch where the message belongs to.
     bytes32 batchHash;
     // Concatenation of merkle proof for withdraw merkle trie.
     bytes merkleProof;

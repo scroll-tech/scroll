@@ -56,6 +56,8 @@ interface IScrollChain {
     bytes32 withdrawTrieRoot;
     // The index of the batch.
     uint64 batchIndex;
+    // The parent batch hash.
+    bytes32 parentBatchHash;
     // Concatenated raw data of RLP encoded L2 txs
     bytes l2Transactions;
   }
@@ -67,10 +69,6 @@ interface IScrollChain {
   /// @notice Return whether the batch is finalized by batch hash.
   /// @param batchHash The hash of the batch to query.
   function isBatchFinalized(bytes32 batchHash) external view returns (bool);
-
-  /// @notice Return whether the batch is finalized by batch index.
-  /// @param batchIndex The index of the batch to query.
-  function isBatchFinalized(uint256 batchIndex) external view returns (bool);
 
   /// @notice Return the merkle root of L2 message tree.
   /// @param batchHash The hash of the batch to query.

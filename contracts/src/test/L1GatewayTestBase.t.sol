@@ -57,6 +57,7 @@ abstract contract L1GatewayTestBase is DSTestPlus {
   function prepareL2MessageRoot(bytes32 messageHash) internal {
     IScrollChain.Batch memory _genesisBatch;
     _genesisBatch.blocks = new IScrollChain.BlockContext[](1);
+    _genesisBatch.newStateRoot = bytes32(uint256(2));
     _genesisBatch.withdrawTrieRoot = messageHash;
     _genesisBatch.blocks[0].blockHash = bytes32(uint256(1));
 

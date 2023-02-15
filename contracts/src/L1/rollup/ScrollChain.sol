@@ -45,26 +45,22 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
 
   // subject to change
   struct BatchStored {
-    // The state root of previous batch.
-    // The first batch will use 0x0 for prevStateRoot
-    bytes32 prevStateRoot;
     // The state root of the last block in this batch.
     bytes32 newStateRoot;
     // The withdraw trie root of the last block in this batch.
     bytes32 withdrawTrieRoot;
-    // The hash of public input.
-    bytes32 publicInputHash;
     // The index of the batch.
     uint64 batchIndex;
+    // The parent batch hash.
+    bytes32 parentBatchHash;
     // The timestamp of the last block in this batch.
     uint64 timestamp;
     // The number of transactions in this batch, both L1 & L2 txs.
     uint64 numTransactions;
-    // The number of l1 messages in this batch.
-    uint64 numL1Messages;
+    // The total number of L1 messages included after this batch.
+    uint64 totalL1Messages;
     // Whether the batch is finalized.
     bool finalized;
-    // do we need to store the parent hash of this batch?
   }
 
   /*************
@@ -111,12 +107,11 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
 
   /// @inheritdoc IScrollChain
   function isBatchFinalized(bytes32 _batchHash) external view override returns (bool) {
-    return batches[_batchHash].finalized;
-  }
-
-  /// @inheritdoc IScrollChain
-  function isBatchFinalized(uint256 _batchIndex) external view override returns (bool) {
-    return finalizedBatches[_batchIndex] != bytes32(0);
+    BatchStored storage _batch = batches[_batchHash];
+    if (_batch.newStateRoot == bytes32(0)) {
+        return false;
+    }
+    return batches[lastFinalizedBatchHash].batchIndex >= _batch.batchIndex;
   }
 
   /// @inheritdoc IScrollChain
@@ -140,7 +135,7 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
     require(_genesisBlock.blockNumber == 0, "Block is not genesis");
     require(_genesisBlock.parentHash == bytes32(0), "Parent hash not empty");
 
-    bytes32 _batchHash = _commitBatch(_genesisBatch);
+    bytes32 _batchHash = _commitBatch(_genesisBatch, true);
 
     lastFinalizedBatchHash = _batchHash;
     finalizedBatches[0] = _batchHash;
@@ -151,13 +146,13 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
 
   /// @inheritdoc IScrollChain
   function commitBatch(Batch memory _batch) public override OnlySequencer {
-    _commitBatch(_batch);
+    _commitBatch(_batch, false);
   }
 
   /// @inheritdoc IScrollChain
   function commitBatches(Batch[] memory _batches) public override OnlySequencer {
     for (uint256 i = 0; i < _batches.length; i++) {
-      _commitBatch(_batches[i]);
+      _commitBatch(_batches[i], false);
     }
   }
 
@@ -165,10 +160,10 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
   function revertBatch(bytes32 _batchHash) external override OnlySequencer {
     BatchStored storage _batch = batches[_batchHash];
 
-    require(_batch.publicInputHash != bytes32(0), "No such batch");
-    require(!_batch.finalized, "Unable to revert verified batch");
+    require(_batch.newStateRoot != bytes32(0), "No such batch");
+    require(!_batch.finalized, "Unable to revert finalized batch");
 
-    // delete commited batch
+    // delete committed batch
     delete batches[_batchHash];
 
     emit RevertBatch(_batchHash);
@@ -181,8 +176,8 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
     uint256[] memory _instances
   ) external override OnlySequencer {
     BatchStored storage _batch = batches[_batchHash];
-    require(_batch.publicInputHash != bytes32(0), "No such batch");
-    require(!_batch.finalized, "Batch already verified");
+    require(_batch.newStateRoot != bytes32(0), "No such batch");
+    require(!_batch.finalized, "Batch is already finalized");
 
     // @note skip parent check for now, since we may not prove blocks in order.
     // bytes32 _parentHash = _block.header.parentHash;
@@ -225,9 +220,16 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
 
   /// @dev Internal function to commit a batch.
   /// @param _batch The batch to commit.
-  function _commitBatch(Batch memory _batch) internal returns (bytes32) {
+  function _commitBatch(Batch memory _batch, bool _isGenesis) internal returns (bytes32) {
     // check whether the batch is empty
     require(_batch.blocks.length > 0, "Batch is empty");
+
+    uint64 prevTotalL1Messages;
+    if (!_isGenesis) {
+        BatchStored storage _parentBatch = batches[_batch.parentBatchHash];
+        require(_parentBatch.newStateRoot != bytes32(0), "Parent batch is not committed");
+        prevTotalL1Messages = _parentBatch.totalL1Messages;
+    }
 
     uint256 publicInputsStartPtr;
     uint256 publicInputsStartOffset;
@@ -338,25 +340,21 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
       publicInputHash := keccak256(publicInputsStartPtr, publicInputsSize)
     }
 
-    // @todo maybe use publicInputHash as batchHash later.
-    bytes32 _batchHash = _computeBatchId(_block.blockHash, _batch.blocks[0].parentHash, _batch.batchIndex);
-
-    BatchStored storage _batchInStorage = batches[_batchHash];
+    BatchStored storage _batchInStorage = batches[publicInputHash];
 
     // @todo maybe add parent batch check later.
-    require(_batchInStorage.publicInputHash == bytes32(0), "Batch already commited");
-    _batchInStorage.prevStateRoot = _batch.prevStateRoot;
+    require(_batchInStorage.newStateRoot == bytes32(0), "Batch already commited");
     _batchInStorage.newStateRoot = _batch.newStateRoot;
     _batchInStorage.withdrawTrieRoot = _batch.withdrawTrieRoot;
-    _batchInStorage.publicInputHash = publicInputHash;
     _batchInStorage.batchIndex = _batch.batchIndex;
+    _batchInStorage.parentBatchHash = _batch.parentBatchHash;
     _batchInStorage.timestamp = _block.timestamp;
     _batchInStorage.numTransactions = uint64(numTransactionsInBatch);
-    _batchInStorage.numL1Messages = uint64(numL1MessagesInBatch);
+    _batchInStorage.totalL1Messages = prevTotalL1Messages + uint64(numL1MessagesInBatch);
 
-    emit CommitBatch(_batchHash);
+    emit CommitBatch(publicInputHash);
 
-    return _batchHash;
+    return publicInputHash;
   }
 
   /// @dev Internal function to compute a unique batch id for mapping.
