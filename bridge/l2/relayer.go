@@ -56,6 +56,10 @@ type Layer2Relayer struct {
 	// key(string): confirmation ID, value(string): batch id.
 	processingCommitment sync.Map
 
+	// A list of processing batches commitment.
+	// key(string): confirmation ID, value([]string): batch ids.
+	processingBatchesCommitment sync.Map
+
 	// A list of processing batch finalization.
 	// key(string): confirmation ID, value(string): batch id.
 	processingFinalization sync.Map
@@ -79,19 +83,20 @@ func NewLayer2Relayer(ctx context.Context, db database.OrmFactory, cfg *config.R
 	}
 
 	return &Layer2Relayer{
-		ctx:                    ctx,
-		db:                     db,
-		messageSender:          messageSender,
-		messageCh:              messageSender.ConfirmChan(),
-		l1MessengerABI:         bridge_abi.L1MessengerMetaABI,
-		rollupSender:           rollupSender,
-		rollupCh:               rollupSender.ConfirmChan(),
-		l1RollupABI:            bridge_abi.ScrollchainMetaABI,
-		cfg:                    cfg,
-		processingMessage:      sync.Map{},
-		processingCommitment:   sync.Map{},
-		processingFinalization: sync.Map{},
-		stopCh:                 make(chan struct{}),
+		ctx:                         ctx,
+		db:                          db,
+		messageSender:               messageSender,
+		messageCh:                   messageSender.ConfirmChan(),
+		l1MessengerABI:              bridge_abi.L1MessengerMetaABI,
+		rollupSender:                rollupSender,
+		rollupCh:                    rollupSender.ConfirmChan(),
+		l1RollupABI:                 bridge_abi.ScrollchainMetaABI,
+		cfg:                         cfg,
+		processingMessage:           sync.Map{},
+		processingCommitment:        sync.Map{},
+		processingBatchesCommitment: sync.Map{},
+		processingFinalization:      sync.Map{},
+		stopCh:                      make(chan struct{}),
 	}, nil
 }
 
@@ -275,10 +280,14 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 }
 
 // SendCommitTx sends commitBatches tx to L1.
-func (r *Layer2Relayer) SendCommitTx(layer2Batches []*bridge_abi.IScrollChainBatch) error {
+func (r *Layer2Relayer) SendCommitTx(batchHashes []string, layer2Batches []*bridge_abi.IScrollChainBatch) error {
 	if len(layer2Batches) == 0 {
 		log.Error("empty layer2Batches")
 		return nil
+	}
+	if len(batchHashes) != len(layer2Batches) {
+		log.Error("length mismatch", "len(batchHashes)", len(batchHashes), "len(layer2Batches)", len(layer2Batches))
+		return errors.New("length mismatch")
 	}
 	data, err := r.l1RollupABI.Pack("commitBatches", layer2Batches)
 	if err != nil {
@@ -309,6 +318,15 @@ func (r *Layer2Relayer) SendCommitTx(layer2Batches []*bridge_abi.IScrollChainBat
 	for _, batch := range layer2Batches {
 		log.Error("Batch Info", "index", batch.BatchIndex)
 	}
+	// record and sync with db, @todo handle db error
+	for idx, batch := range layer2Batches {
+		id := batchHashes[idx]
+		err = r.db.UpdateCommitTxHashAndRollupStatus(r.ctx, id, hash.String(), orm.RollupCommitting)
+		if err != nil {
+			log.Error("UpdateCommitTxHashAndRollupStatus failed", "id", id, "index", batch.BatchIndex, "err", err)
+		}
+	}
+	r.processingBatchesCommitment.Store(txID, batchHashes)
 	return nil
 }
 
@@ -497,6 +515,19 @@ func (r *Layer2Relayer) handleConfirmation(confirmation *sender.Confirmation) {
 			log.Warn("UpdateCommitTxHashAndRollupStatus failed", "batch_id", batchID.(string), "err", err)
 		}
 		r.processingCommitment.Delete(confirmation.ID)
+	}
+
+	// check whether it is block commitment transaction
+	if batchIDs, ok := r.processingBatchesCommitment.Load(confirmation.ID); ok {
+		transactionType = "BatchesCommitment"
+		for _, id := range batchIDs.([]string) {
+			// @todo handle db error
+			err := r.db.UpdateCommitTxHashAndRollupStatus(r.ctx, id, confirmation.TxHash.String(), orm.RollupCommitted)
+			if err != nil {
+				log.Warn("UpdateCommitTxHashAndRollupStatus failed", "batch_id", id, "err", err)
+			}
+		}
+		r.processingBatchesCommitment.Delete(confirmation.ID)
 	}
 
 	// check whether it is proof finalization transaction
