@@ -22,8 +22,8 @@ const processMsgLimit = 100
 
 func (r *Layer2Relayer) checkSubmittedMessages() error {
 	var (
-		nonce    uint64 = -1
-		msgLimit        = 100
+		nonce    uint64
+		msgLimit = 100
 	)
 BEGIN:
 	// msgs are sorted by nonce in increasing order
