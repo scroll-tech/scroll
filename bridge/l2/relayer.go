@@ -221,6 +221,11 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 		realBatchIDs = append(realBatchIDs, id)
 	}
 
+	if len(layer2Batches) == 0 {
+		log.Error("empty layer2Batches")
+		return
+	}
+
 	data, err := r.l1RollupABI.Pack("commitBatches", layer2Batches)
 	if err != nil {
 		log.Error("Failed to pack commitBatches", "err", err)
