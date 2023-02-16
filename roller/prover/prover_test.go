@@ -54,7 +54,7 @@ func TestFFI(t *testing.T) {
 		traces = append(traces, trace)
 	}
 
-	for i := 0; i < times; i++ {
+	for i := 0; i < *times; i++ {
 		now := time.Now()
 		proof, err := prover.Prove(traces)
 		as.NoError(err)
