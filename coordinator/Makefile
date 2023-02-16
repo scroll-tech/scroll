@@ -27,7 +27,7 @@ test-gpu-verifier: libzkp
 	go test -tags="gpu ffi" -timeout 0 -v ./verifier
 
 twice-verify: libzkp
-	go test -tags="gpu ffi" -timeout 0 -v ./verifier --times=2
+	go test -tags="gpu ffi" -timeout 0 -v ./verifier -times=2
 
 lint: ## Lint the files - used for CI
 	GOBIN=$(PWD)/build/bin go run ../build/lint.go
