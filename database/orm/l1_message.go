@@ -24,7 +24,7 @@ func NewL1MessageOrm(db *sqlx.DB) L1MessageOrm {
 func (m *l1MessageOrm) GetL1MessageByMsgHash(msgHash string) (*L1Message, error) {
 	msg := L1Message{}
 
-	row := m.db.QueryRowx(`SELECT nonce, msg_hash, height, sender, target, value, calldata, layer1_hash, status FROM l1_message WHERE msg_hash = $1`, msgHash)
+	row := m.db.QueryRowx(`SELECT queueIndex, msg_hash, height, sender, target, value, gas_limit, calldata, layer1_hash, status FROM l1_message WHERE msg_hash = $1`, msgHash)
 
 	if err := row.StructScan(&msg); err != nil {
 		return nil, err
@@ -95,26 +95,28 @@ func (m *l1MessageOrm) SaveL1Messages(ctx context.Context, messages []*L1Message
 
 	messageMaps := make([]map[string]interface{}, len(messages))
 	for i, msg := range messages {
+		
 		messageMaps[i] = map[string]interface{}{
-			"nonce":       msg.Nonce,
+			"queueIndex":  msg.QueueIndex,
 			"msg_hash":    msg.MsgHash,
 			"height":      msg.Height,
 			"sender":      msg.Sender,
 			"target":      msg.Target,
 			"value":       msg.Value,
+			"gas_limit":   msg.GasLimit,
 			"calldata":    msg.Calldata,
 			"layer1_hash": msg.Layer1Hash,
 		}
 	}
-	_, err := m.db.NamedExec(`INSERT INTO public.l1_message (nonce, msg_hash, height, sender, target, value, calldata, layer1_hash) VALUES (:nonce, :msg_hash, :height, :sender, :target, :value, :calldata, :layer1_hash);`, messageMaps)
+	_, err := m.db.NamedExec(`INSERT INTO public.l1_message (queueIndex, msg_hash, height, sender, target, value, gas_limit, calldata, layer1_hash) VALUES (:queueIndex, :msg_hash, :height, :sender, :target, :value, :gas_limit, :calldata, :layer1_hash);`, messageMaps)
 	if err != nil {
-		nonces := make([]uint64, 0, len(messages))
+		queueIndices := make([]uint64, 0, len(messages))
 		heights := make([]uint64, 0, len(messages))
 		for _, msg := range messages {
-			nonces = append(nonces, msg.Nonce)
+			queueIndices = append(queueIndices, msg.QueueIndex)
 			heights = append(heights, msg.Height)
 		}
-		log.Error("failed to insert l1Messages", "nonces", nonces, "heights", heights, "err", err)
+		log.Error("failed to insert l1Messages", "queueIndices", queueIndices, "heights", heights, "err", err)
 	}
 	return err
 }

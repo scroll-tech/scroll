@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# generates go bindings from contracts, to paste into abi/bridge_abi.go
+# compile artifacts in /contracts folder with `forge build`` first 
+
 # Only run if it is ran from repository root.
 if [[ ! -d "cmd" ]]
 then
@@ -14,9 +17,9 @@ else
   mkdir -p contracts
 fi
 
-abi_name=("IL1GatewayRouter" "IL2GatewayRouter" "IL1ScrollMessenger" "IL2ScrollMessenger" "IScrollChain")
-pkg_name=("l1_gateway" "l2_gateway" "l1_messenger" "l2_messenger" "scrollchain")
-gen_name=("L1GatewayRouter" "L2GatewayRouter" "L1ScrollMessenger" "L2ScrollMessenger" "IScrollChain")
+abi_name=("IL1GatewayRouter" "IL2GatewayRouter" "IL1ScrollMessenger" "IL2ScrollMessenger" "IScrollChain" "L1MessageQueue")
+pkg_name=("l1_gateway" "l2_gateway" "l1_messenger" "l2_messenger" "scrollchain" "l1_message_queue")
+gen_name=("L1GatewayRouter" "L2GatewayRouter" "L1ScrollMessenger" "L2ScrollMessenger" "IScrollChain" "L1MessageQueue")
 
 for i in "${!abi_name[@]}"; do
   mkdir -p tmp

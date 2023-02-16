@@ -11,6 +11,9 @@ const (
 	// SentMessageEventSignature = keccak256("SentMessage(address,address,uint256,uint256,bytes)")
 	SentMessageEventSignature = "a395567463d794dc2242d64f377d05c82aa84814b1e0624da7803db0c788bd87"
 
+	// QueueTransactionEventSignature = keccak256("QueueTransaction(address,address,uint256,uint256,uint256,bytes)"
+	QueueTransactionEventSignature = "bdcc7517f8fe3db6506dfd910942d0bbecaf3d6a506dadea65b0d988e75b9439"
+
 	// RelayedMessageEventSignature = keccak256("RelayedMessage(bytes32)")
 	RelayedMessageEventSignature = "4641df4a962071e12719d8c8c8e5ac7fc4d97b927346a3d7a335b1f7517e133c"
 

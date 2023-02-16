@@ -145,7 +145,7 @@ func (w *Watcher) FetchContractEvent(blockHeight uint64) error {
 			Topics: make([][]common.Hash, 1),
 		}
 		query.Topics[0] = make([]common.Hash, 5)
-		query.Topics[0][0] = common.HexToHash(bridge_abi.SentMessageEventSignature)
+		query.Topics[0][0] = common.HexToHash(bridge_abi.QueueTransactionEventSignature)
 		query.Topics[0][1] = common.HexToHash(bridge_abi.RelayedMessageEventSignature)
 		query.Topics[0][2] = common.HexToHash(bridge_abi.FailedRelayedMessageEventSignature)
 		query.Topics[0][3] = common.HexToHash(bridge_abi.CommitBatchEventSignature)
@@ -238,31 +238,34 @@ func (w *Watcher) parseBridgeEventLogs(logs []types.Log) ([]*orm.L1Message, []re
 	var rollupEvents []rollupEvent
 	for _, vLog := range logs {
 		switch vLog.Topics[0] {
-		case common.HexToHash(bridge_abi.SentMessageEventSignature):
+
+		case common.HexToHash(bridge_abi.QueueTransactionEventSignature):
 			event := struct {
-				Sender       common.Address
-				Target       common.Address
-				Value        *big.Int // uint256
-				MessageNonce *big.Int // uint256
-				Message      []byte
+				Sender     common.Address
+				Target     common.Address
+				Value      *big.Int // uint256
+				QueueIndex *big.Int // uint256
+				GasLimit   *big.Int // uint256
+				Data       []byte
 			}{}
 
-			err := w.messengerABI.UnpackIntoInterface(&event, "SentMessage", vLog.Data)
+			err := w.messengerABI.UnpackIntoInterface(&event, "QueueTransaction", vLog.Data)
 			if err != nil {
-				log.Warn("Failed to unpack layer1 SentMessage event", "err", err)
+				log.Warn("Failed to unpack layer1 QueueTransaction event", "err", err)
 				return l1Messages, relayedMessages, rollupEvents, err
 			}
 			// target is in topics[1]
 			event.Target = common.HexToAddress(vLog.Topics[1].String())
 			l1Messages = append(l1Messages, &orm.L1Message{
-				Nonce: event.MessageNonce.Uint64(),
+				QueueIndex: event.QueueIndex.Uint64(),
 				// MsgHash:    utils.ComputeMessageHash(event.Sender, event.Target, event.Value, event.Fee, event.Deadline, event.Message, event.MessageNonce).String(),
 				// MsgHash: // todo: use encodeXDomainData from contracts,
 				Height:     vLog.BlockNumber,
 				Sender:     event.Sender.String(),
 				Value:      event.Value.String(),
 				Target:     event.Target.String(),
-				Calldata:   common.Bytes2Hex(event.Message),
+				Calldata:   common.Bytes2Hex(event.Data),
+				GasLimit:   event.GasLimit.Uint64(),
 				Layer1Hash: vLog.TxHash.Hex(),
 			})
 		case common.HexToHash(bridge_abi.RelayedMessageEventSignature):
