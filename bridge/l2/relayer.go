@@ -462,7 +462,7 @@ func (r *Layer2Relayer) Start() {
 		ctx, cancel := context.WithCancel(r.ctx)
 
 		go loop(ctx, r.ProcessSavedEvents)
-		go loop(ctx, r.ProcessPendingBatches)
+		//go loop(ctx, r.ProcessPendingBatches)
 		go loop(ctx, r.ProcessCommittedBatches)
 
 		go func(ctx context.Context) {
