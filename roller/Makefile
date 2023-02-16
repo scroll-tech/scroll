@@ -25,10 +25,13 @@ mock_roller:
 test-prover: libzkp
 	go test -tags ffi -timeout 0 -v ./prover
 
+twice-prove: libzkp
+	go test -tags ffi -timeout 0 -v ./prover -times=2
+
 test-gpu-prover: libzkp
 	go test -tags="gpu ffi" -timeout 0 -v ./prover
 
-twice-prove: libzkp
+twice-gpu-prove: libzkp
 	go test -tags="gpu ffi" -timeout 0 -v ./prover -times=2
 
 lastest-zk-version:

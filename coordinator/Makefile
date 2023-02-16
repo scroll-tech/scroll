@@ -23,10 +23,13 @@ coordinator: libzkp ## Builds the Coordinator instance.
 test-verifier: libzkp
 	go test -tags ffi -timeout 0 -v ./verifier
 
+twice-verify: libzkp
+	go test -tags ffi -timeout 0 -v ./verifier -times=2
+
 test-gpu-verifier: libzkp
 	go test -tags="gpu ffi" -timeout 0 -v ./verifier
 
-twice-verify: libzkp
+twice-gpu-verify: libzkp
 	go test -tags="gpu ffi" -timeout 0 -v ./verifier -times=2
 
 lint: ## Lint the files - used for CI
