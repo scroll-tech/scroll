@@ -194,7 +194,7 @@ function paused() external view returns (bool)
 ### relayMessageWithProof
 
 ```solidity
-function relayMessageWithProof(address _from, address _to, uint256 _value, bytes _message, uint256 _nonce, IL1ScrollMessenger.L2MessageProof _proof) external nonpayable
+function relayMessageWithProof(address _from, address _to, uint256 _value, uint256 _nonce, bytes _message, IL1ScrollMessenger.L2MessageProof _proof) external nonpayable
 ```
 
 
@@ -208,8 +208,8 @@ function relayMessageWithProof(address _from, address _to, uint256 _value, bytes
 | _from | address | undefined |
 | _to | address | undefined |
 | _value | uint256 | undefined |
-| _message | bytes | undefined |
 | _nonce | uint256 | undefined |
+| _message | bytes | undefined |
 | _proof | IL1ScrollMessenger.L2MessageProof | undefined |
 
 ### renounceOwnership
@@ -226,7 +226,7 @@ function renounceOwnership() external nonpayable
 ### replayMessage
 
 ```solidity
-function replayMessage(address _from, address _to, uint256 _value, bytes _message, uint256 _queueIndex, uint32 _oldGasLimit, uint32 _newGasLimit) external nonpayable
+function replayMessage(address _from, address _to, uint256 _value, uint256 _queueIndex, bytes _message, uint32 _oldGasLimit, uint32 _newGasLimit) external nonpayable
 ```
 
 Replay an exsisting message.
@@ -240,8 +240,8 @@ Replay an exsisting message.
 | _from | address | undefined |
 | _to | address | undefined |
 | _value | uint256 | undefined |
-| _message | bytes | undefined |
 | _queueIndex | uint256 | undefined |
+| _message | bytes | undefined |
 | _oldGasLimit | uint32 | undefined |
 | _newGasLimit | uint32 | undefined |
 
@@ -435,7 +435,7 @@ Emitted when a cross domain message is relayed successfully.
 ### SentMessage
 
 ```solidity
-event SentMessage(address indexed sender, address indexed target, uint256 value, bytes message, uint256 messageNonce)
+event SentMessage(address indexed sender, address indexed target, uint256 value, uint256 messageNonce, bytes message)
 ```
 
 Emitted when a cross domain message is sent.
@@ -449,8 +449,8 @@ Emitted when a cross domain message is sent.
 | sender `indexed` | address | undefined |
 | target `indexed` | address | undefined |
 | value  | uint256 | undefined |
-| message  | bytes | undefined |
 | messageNonce  | uint256 | undefined |
+| message  | bytes | undefined |
 
 ### Unpaused
 

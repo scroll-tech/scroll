@@ -128,7 +128,7 @@ Mapping from L2 message hash to sent status.
 function l1MessageFailedTimes(bytes32) external view returns (uint256)
 ```
 
-Mapping from L1 message hash to the number of failed times.
+Mapping from L1 message hash to the number of failure times.
 
 
 
@@ -150,7 +150,7 @@ Mapping from L1 message hash to the number of failed times.
 function maxFailedExecutionTimes() external view returns (uint256)
 ```
 
-The maximum number of times each L1 message can fail in L2.
+The maximum number of times each L1 message can fail on L2.
 
 
 
@@ -226,7 +226,7 @@ function paused() external view returns (bool)
 ### relayMessage
 
 ```solidity
-function relayMessage(address _from, address _to, uint256 _value, bytes _message, uint256 _nonce) external nonpayable
+function relayMessage(address _from, address _to, uint256 _value, uint256 _nonce, bytes _message) external nonpayable
 ```
 
 execute L1 =&gt; L2 message
@@ -240,8 +240,8 @@ execute L1 =&gt; L2 message
 | _from | address | undefined |
 | _to | address | undefined |
 | _value | uint256 | undefined |
-| _message | bytes | undefined |
 | _nonce | uint256 | undefined |
+| _message | bytes | undefined |
 
 ### renounceOwnership
 
@@ -257,7 +257,7 @@ function renounceOwnership() external nonpayable
 ### retryMessageWithProof
 
 ```solidity
-function retryMessageWithProof(address _from, address _to, uint256 _value, bytes _message, uint256 _nonce, IL2ScrollMessenger.L1MessageProof _proof) external nonpayable
+function retryMessageWithProof(address _from, address _to, uint256 _value, uint256 _nonce, bytes _message, IL2ScrollMessenger.L1MessageProof _proof) external nonpayable
 ```
 
 
@@ -271,8 +271,8 @@ function retryMessageWithProof(address _from, address _to, uint256 _value, bytes
 | _from | address | undefined |
 | _to | address | undefined |
 | _value | uint256 | undefined |
-| _message | bytes | undefined |
 | _nonce | uint256 | undefined |
+| _message | bytes | undefined |
 | _proof | IL2ScrollMessenger.L1MessageProof | undefined |
 
 ### sendMessage
@@ -512,7 +512,7 @@ Emitted when a cross domain message is relayed successfully.
 ### SentMessage
 
 ```solidity
-event SentMessage(address indexed sender, address indexed target, uint256 value, bytes message, uint256 messageNonce, uint256 gasLimit)
+event SentMessage(address indexed sender, address indexed target, uint256 value, uint256 messageNonce, uint256 gasLimit, bytes message)
 ```
 
 Emitted when a cross domain message is sent.
@@ -526,9 +526,9 @@ Emitted when a cross domain message is sent.
 | sender `indexed` | address | undefined |
 | target `indexed` | address | undefined |
 | value  | uint256 | undefined |
-| message  | bytes | undefined |
 | messageNonce  | uint256 | undefined |
 | gasLimit  | uint256 | undefined |
+| message  | bytes | undefined |
 
 ### Unpaused
 

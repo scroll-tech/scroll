@@ -66,7 +66,7 @@ contract L1BlockContainer is OwnableBase, IL1BlockContainer {
     uint64 _startBlockTimestamp,
     uint128 _startBlockBaseFee,
     bytes32 _startStateRoot
-  ) public {
+  ) external {
     require(latestBlockHash == bytes32(0), "already initialized");
 
     latestBlockHash = _startBlockHash;
@@ -288,10 +288,10 @@ contract L1BlockContainer is OwnableBase, IL1BlockContainer {
   /// @notice Update whitelist contract.
   /// @dev This function can only called by contract owner.
   /// @param _newWhitelist The address of new whitelist contract.
-  function updateWhitelist(IWhitelist _newWhitelist) external onlyOwner {
+  function updateWhitelist(address _newWhitelist) external onlyOwner {
     address _oldWhitelist = address(whitelist);
 
-    whitelist = _newWhitelist;
-    emit UpdateWhitelist(_oldWhitelist, address(_newWhitelist));
+    whitelist = IWhitelist(_newWhitelist);
+    emit UpdateWhitelist(_oldWhitelist, _newWhitelist);
   }
 }

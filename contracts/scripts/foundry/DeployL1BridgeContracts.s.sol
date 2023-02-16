@@ -10,10 +10,14 @@ import { TransparentUpgradeableProxy } from "@openzeppelin/contracts/proxy/trans
 import { L1CustomERC20Gateway } from "../../src/L1/gateways/L1CustomERC20Gateway.sol";
 import { L1ERC1155Gateway } from "../../src/L1/gateways/L1ERC1155Gateway.sol";
 import { L1ERC721Gateway } from "../../src/L1/gateways/L1ERC721Gateway.sol";
+import { L1ETHGateway } from "../../src/L1/gateways/L1ETHGateway.sol";
 import { L1GatewayRouter } from "../../src/L1/gateways/L1GatewayRouter.sol";
 import { L1ScrollMessenger } from "../../src/L1/L1ScrollMessenger.sol";
 import { L1StandardERC20Gateway } from "../../src/L1/gateways/L1StandardERC20Gateway.sol";
+import { L1WETHGateway } from "../../src/L1/gateways/L1WETHGateway.sol";
 import { RollupVerifier } from "../../src/libraries/verifier/RollupVerifier.sol";
+import { L1MessageQueue } from "../../src/L1/rollup/L1MessageQueue.sol";
+import { L2GasPriceOracle } from "../../src/L1/rollup/L2GasPriceOracle.sol";
 import { ScrollChain } from "../../src/L1/rollup/ScrollChain.sol";
 
 contract DeployL1BridgeContracts is Script {
@@ -21,10 +25,13 @@ contract DeployL1BridgeContracts is Script {
 
   uint256 CHAIN_ID_L2 = vm.envUint("CHAIN_ID_L2");
 
-  uint256 MAX_TX_IN_ONE_BATCH = vm.envOr("CHAIN_ID_L2", uint256(25));
+  uint256 MAX_TX_IN_ONE_BATCH = vm.envOr("MAX_TX_IN_ONE_BATCH", uint256(25));
 
   bytes32 PADDING_TX_HASH =
-    vm.envOr("CHAIN_ID_L2", bytes32(0xb5baa665b2664c3bfed7eb46e00ebc110ecf2ebd257854a9bf2b9dbc9b2c08f6));
+    vm.envOr("PADDING_TX_HASH", bytes32(0xb5baa665b2664c3bfed7eb46e00ebc110ecf2ebd257854a9bf2b9dbc9b2c08f6));
+
+  address L1_WETH_ADDR = vm.envAddress("L1_WETH_ADDR");
+  address L2_WETH_ADDR = vm.envAddress("L2_WETH_ADDR");
 
   ProxyAdmin proxyAdmin;
 
@@ -34,7 +41,11 @@ contract DeployL1BridgeContracts is Script {
     // note: the RollupVerifier library is deployed implicitly
 
     deployProxyAdmin();
+    deployL1MessageQueue();
+    deployL2GasPriceOracle();
     deployScrollChain();
+    deployL1ETHGateway();
+    deployL1WETHGateway();
     deployL1StandardERC20Gateway();
     deployL1GatewayRouter();
     deployL1ScrollMessenger();
@@ -63,6 +74,28 @@ contract DeployL1BridgeContracts is Script {
     logAddress("L1_ZK_ROLLUP_PROXY_ADDR", address(proxy));
   }
 
+  function deployL1MessageQueue() internal {
+    L1MessageQueue impl = new L1MessageQueue();
+    TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(
+      address(impl),
+      address(proxyAdmin),
+      new bytes(0)
+    );
+    logAddress("L1_MESSAGE_QUEUE_IMPLEMENTATION_ADDR", address(impl));
+    logAddress("L1_MESSAGE_QUEUE_PROXY_ADDR", address(proxy));
+  }
+
+  function deployL2GasPriceOracle() internal {
+    L2GasPriceOracle impl = new L2GasPriceOracle();
+    TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(
+      address(impl),
+      address(proxyAdmin),
+      new bytes(0)
+    );
+    logAddress("L2_GAS_ORACLE_IMPLEMENTATION_ADDR", address(impl));
+    logAddress("L2_GAS_ORACLE_PROXY_ADDR", address(proxy));
+  }
+
   function deployL1StandardERC20Gateway() internal {
     L1StandardERC20Gateway impl = new L1StandardERC20Gateway();
     TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(
@@ -73,6 +106,30 @@ contract DeployL1BridgeContracts is Script {
 
     logAddress("L1_STANDARD_ERC20_GATEWAY_IMPLEMENTATION_ADDR", address(impl));
     logAddress("L1_STANDARD_ERC20_GATEWAY_PROXY_ADDR", address(proxy));
+  }
+
+  function deployL1ETHGateway() internal {
+    L1ETHGateway impl = new L1ETHGateway();
+    TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(
+      address(impl),
+      address(proxyAdmin),
+      new bytes(0)
+    );
+
+    logAddress("L1_ETH_GATEWAY_IMPLEMENTATION_ADDR", address(impl));
+    logAddress("L1_ETH_GATEWAY_PROXY_ADDR", address(proxy));
+  }
+
+  function deployL1WETHGateway() internal {
+    L1WETHGateway impl = new L1WETHGateway(L1_WETH_ADDR, L2_WETH_ADDR);
+    TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(
+      address(impl),
+      address(proxyAdmin),
+      new bytes(0)
+    );
+
+    logAddress("L1_WETH_GATEWAY_IMPLEMENTATION_ADDR", address(impl));
+    logAddress("L1_WETH_GATEWAY_PROXY_ADDR", address(proxy));
   }
 
   function deployL1GatewayRouter() internal {
@@ -135,7 +192,7 @@ contract DeployL1BridgeContracts is Script {
     logAddress("L1_ERC1155_GATEWAY_PROXY_ADDR", address(proxy));
   }
 
-  function logAddress(string memory name, address addr) internal {
+  function logAddress(string memory name, address addr) internal view {
     console.log(string(abi.encodePacked(name, "=", vm.toString(address(addr)))));
   }
 }

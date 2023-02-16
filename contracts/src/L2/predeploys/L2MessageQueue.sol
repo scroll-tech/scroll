@@ -3,6 +3,7 @@
 pragma solidity ^0.8.0;
 
 import { AppendOnlyMerkleTree } from "../../libraries/common/AppendOnlyMerkleTree.sol";
+import { OwnableBase } from "../../libraries/common/OwnableBase.sol";
 
 /// @title L2MessageQueue
 /// @notice The original idea is from Optimism, see [OVM_L2ToL1MessagePasser](https://github.com/ethereum-optimism/optimism/blob/develop/packages/contracts/contracts/L2/predeploys/OVM_L2ToL1MessagePasser.sol).
@@ -10,7 +11,7 @@ import { AppendOnlyMerkleTree } from "../../libraries/common/AppendOnlyMerkleTre
 /// of a message on L2. The L1 Cross Domain Messenger performs this proof in its
 /// _verifyStorageProof function, which verifies the existence of the transaction hash in this
 /// contract's `sentMessages` mapping.
-contract L2MessageQueue is AppendOnlyMerkleTree {
+contract L2MessageQueue is AppendOnlyMerkleTree, OwnableBase {
   /// @notice Emitted when a new message is added to the merkle tree.
   /// @param index The index of the corresponding message.
   /// @param messageHash The hash of the corresponding message.
@@ -19,10 +20,11 @@ contract L2MessageQueue is AppendOnlyMerkleTree {
   /// @notice The address of L2ScrollMessenger contract.
   address public messenger;
 
-  function initialize(address _messenger) external {
-    require(messenger == address(0), "already initialized");
+  constructor(address _owner) {
+    _transferOwnership(_owner);
+  }
 
-    messenger = _messenger;
+  function initialize() external {
     _initializeMerkleTree();
   }
 
@@ -37,5 +39,14 @@ contract L2MessageQueue is AppendOnlyMerkleTree {
     emit AppendMessage(_currentNonce, _messageHash);
 
     return _currentRoot;
+  }
+
+  /// @notice Update the address of messenger.
+  /// @dev You are not allowed to update messenger when there are some messages appended.
+  /// @param _messenger The address of messenger to update.
+  function updateMessenger(address _messenger) external onlyOwner {
+    require(nextMessageIndex == 0, "cannot update messenger");
+
+    messenger = _messenger;
   }
 }
