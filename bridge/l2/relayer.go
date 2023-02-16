@@ -208,13 +208,13 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 	var realBatchIDs []string
 	for _, id := range batchesInDB {
 		var layer2Batch *bridge_abi.IScrollChainBatch
-		layer2Batch, err = r.getLayer2BatchByBatchID(id)
+		layer2Batch, err = r.createLayer2BatchByBatchID(id)
 		if err != nil {
-			log.Error("getLayer2BatchByBatchID failed", "error", err)
+			log.Error("createLayer2BatchByBatchID failed", "error", err)
 			continue
 		}
 		if layer2Batch == nil {
-			log.Error("getLayer2BatchByBatchID empty layer2Batch")
+			log.Error("createLayer2BatchByBatchID empty layer2Batch")
 			continue
 		}
 		layer2Batches = append(layer2Batches, layer2Batch)
@@ -261,7 +261,7 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 	r.processingCommitment.Store(txID, realBatchIDs)
 }
 
-func (r *Layer2Relayer) getLayer2BatchByBatchID(id string) (*bridge_abi.IScrollChainBatch, error) {
+func (r *Layer2Relayer) createLayer2BatchByBatchID(id string) (*bridge_abi.IScrollChainBatch, error) {
 	batches, err := r.db.GetBlockBatches(map[string]interface{}{"id": id})
 	if err != nil || len(batches) == 0 {
 		log.Error("Failed to GetBlockBatches", "batch_id", id, "err", err)
