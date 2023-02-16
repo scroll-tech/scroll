@@ -58,7 +58,7 @@ func TestFFI(t *testing.T) {
 		now := time.Now()
 		proof, err := prover.Prove(traces)
 		as.NoError(err)
-		t.Logf("%d: prove success! cost %d sec", i, time.Since(now).Seconds())
+		t.Logf("%d: prove success! cost %f sec", i, time.Since(now).Seconds())
 	}
 
 	// dump the proof
