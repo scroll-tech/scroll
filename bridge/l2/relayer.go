@@ -234,9 +234,7 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 	for _, id := range batchesInDB {
 		bytes = append(bytes, []byte(id))
 	}
-	txIDhash := crypto.Keccak256Hash(bytes...)
-	txID := txIDhash.String() + "-commitBatches"
-	// add suffix `-commit` to avoid duplication with finalize tx in unit tests
+	txID := crypto.Keccak256Hash(bytes...).String()
 	hash, err := r.rollupSender.SendTransaction(txID, &r.cfg.RollupContractAddress, big.NewInt(0), data)
 	if err != nil {
 		if !errors.Is(err, sender.ErrNoAvailableAccount) {
