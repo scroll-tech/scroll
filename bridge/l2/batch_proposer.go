@@ -132,14 +132,14 @@ func (w *batchProposer) createBatchForBlocks(blocks []*orm.BlockInfo) error {
 	w.batchContextBuffer = append(w.batchContextBuffer, batchContext)
 	w.batchHashBuffer = append(w.batchHashBuffer, batchHash)
 	if len(w.batchContextBuffer) > commitBatchesLimit {
-		err := w.relayer.SendCommitTx(w.batchHashBuffer, w.batchContextBuffer)
+		err := w.relayer.SendCommitTx(w.batchHashBuffer[0:commitBatchesLimit], w.batchContextBuffer[0:commitBatchesLimit])
 		if err != nil {
 			log.Error("SendCommitTx failed", "error", err)
 			return err
 		}
 		// clear buffer
-		w.batchContextBuffer = w.batchContextBuffer[:0]
-		w.batchHashBuffer = w.batchHashBuffer[:0]
+		w.batchContextBuffer = w.batchContextBuffer[commitBatchesLimit:]
+		w.batchHashBuffer = w.batchHashBuffer[commitBatchesLimit:]
 	}
 	return nil
 }
