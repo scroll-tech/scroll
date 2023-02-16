@@ -303,7 +303,6 @@ func (r *Layer2Relayer) SendCommitTx(batchHashes []string, layer2Batches []*brid
 		binary.AppendUvarint(bytes, batch.BatchIndex)
 	}
 	txID := crypto.Keccak256Hash(bytes).String()
-	// TODO(colin): retry several times.
 	hash, err := r.rollupSender.SendTransaction(txID, &r.cfg.RollupContractAddress, big.NewInt(0), data)
 	if err != nil {
 		if !errors.Is(err, sender.ErrNoAvailableAccount) {
