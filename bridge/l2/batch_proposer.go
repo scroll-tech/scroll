@@ -13,6 +13,7 @@ import (
 	"scroll-tech/database/orm"
 
 	abi "scroll-tech/bridge/abi"
+	bridge_abi "scroll-tech/bridge/abi"
 	"scroll-tech/bridge/config"
 )
 
@@ -123,9 +124,9 @@ func (w *batchProposer) createBatchForBlocks(blocks []*orm.BlockInfo) error {
 		return err
 	}
 
-	batchHash, err := w.updateBlocksInfoInDB(blocks)
+	batchHash, err := w.getBatchHash(blocks)
 	if err != nil {
-		log.Error("updateBlocksInfoInDB failed", "error", err)
+		log.Error("getBatchHash failed", "error", err)
 		return err
 	}
 
@@ -137,17 +138,23 @@ func (w *batchProposer) createBatchForBlocks(blocks []*orm.BlockInfo) error {
 			log.Error("SendCommitTx failed", "error", err)
 			return err
 		}
-		// clear buffer
+		// set batch ID.
+		for i := 0; i < commitBatchesLimit; i++ {
+			if err := w.updateBlocksInfoInDB(w.batchHashBuffer[i], w.batchContextBuffer[i]); err != nil {
+				log.Error("updateBlocksInfoInDB failed", "hash", w.batchHashBuffer[i], "error", err)
+			}
+		}
+		// clear buffer.
 		w.batchContextBuffer = w.batchContextBuffer[commitBatchesLimit:]
 		w.batchHashBuffer = w.batchHashBuffer[commitBatchesLimit:]
 	}
 	return nil
 }
 
-func (w *batchProposer) updateBlocksInfoInDB(blocks []*orm.BlockInfo) (string, error) {
+func (w *batchProposer) updateBlocksInfoInDB(batchHashes string, layer2Batches *bridge_abi.IScrollChainBatch) error {
 	dbTx, err := w.orm.Beginx()
 	if err != nil {
-		return "", err
+		return err
 	}
 
 	var dbTxErr error
@@ -160,29 +167,24 @@ func (w *batchProposer) updateBlocksInfoInDB(blocks []*orm.BlockInfo) (string, e
 	}()
 
 	var (
-		batchID        string
-		startBlock     = blocks[0]
-		endBlock       = blocks[len(blocks)-1]
-		txNum, gasUsed uint64
-		blockIDs       = make([]uint64, len(blocks))
+		batchID  string
+		blockIDs = make([]uint64, len(layer2Batches.Blocks))
 	)
-	for i, block := range blocks {
-		txNum += block.TxNum
-		gasUsed += block.GasUsed
-		blockIDs[i] = block.Number
-	}
-
-	batchID, dbTxErr = w.orm.NewBatchInDBTx(dbTx, startBlock, endBlock, startBlock.ParentHash, txNum, gasUsed)
-	if dbTxErr != nil {
-		return "", dbTxErr
+	for i, block := range layer2Batches.Blocks {
+		blockIDs[i] = block.BlockNumber
 	}
 
 	if dbTxErr = w.orm.SetBatchIDForBlocksInDBTx(dbTx, blockIDs, batchID); dbTxErr != nil {
-		return "", dbTxErr
+		return dbTxErr
 	}
 
 	dbTxErr = dbTx.Commit()
-	return batchID, dbTxErr
+	return dbTxErr
+}
+
+func (w *batchProposer) getBatchHash(blocks []*orm.BlockInfo) (string, error) {
+	// todo
+	return "bash_hash_ph", nil
 }
 
 func (w *batchProposer) createBridgeBatchData(blocks []*orm.BlockInfo) (*abi.IScrollChainBatch, error) {
