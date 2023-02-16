@@ -95,7 +95,7 @@ func (m *l1MessageOrm) SaveL1Messages(ctx context.Context, messages []*L1Message
 
 	messageMaps := make([]map[string]interface{}, len(messages))
 	for i, msg := range messages {
-		
+
 		messageMaps[i] = map[string]interface{}{
 			"queueIndex":  msg.QueueIndex,
 			"msg_hash":    msg.MsgHash,

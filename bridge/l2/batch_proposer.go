@@ -142,6 +142,7 @@ func (w *batchProposer) createBatchForBlocks(blocks []*orm.BlockInfo) error {
 		for i := 0; i < commitBatchesLimit; i++ {
 			if err := w.updateBlocksInfoInDB(w.batchHashBuffer[i], w.batchContextBuffer[i]); err != nil {
 				log.Error("updateBlocksInfoInDB failed", "hash", w.batchHashBuffer[i], "error", err)
+				// todo: how to handle db error here.
 			}
 		}
 		// clear buffer.
@@ -151,7 +152,7 @@ func (w *batchProposer) createBatchForBlocks(blocks []*orm.BlockInfo) error {
 	return nil
 }
 
-func (w *batchProposer) updateBlocksInfoInDB(batchHashes string, layer2Batches *bridge_abi.IScrollChainBatch) error {
+func (w *batchProposer) updateBlocksInfoInDB(batchHash string, layer2Batch *bridge_abi.IScrollChainBatch) error {
 	dbTx, err := w.orm.Beginx()
 	if err != nil {
 		return err
@@ -166,15 +167,12 @@ func (w *batchProposer) updateBlocksInfoInDB(batchHashes string, layer2Batches *
 		}
 	}()
 
-	var (
-		batchID  string
-		blockIDs = make([]uint64, len(layer2Batches.Blocks))
-	)
-	for i, block := range layer2Batches.Blocks {
+	var blockIDs = make([]uint64, len(layer2Batch.Blocks))
+	for i, block := range layer2Batch.Blocks {
 		blockIDs[i] = block.BlockNumber
 	}
 
-	if dbTxErr = w.orm.SetBatchIDForBlocksInDBTx(dbTx, blockIDs, batchID); dbTxErr != nil {
+	if dbTxErr = w.orm.SetBatchIDForBlocksInDBTx(dbTx, blockIDs, batchHash); dbTxErr != nil {
 		return dbTxErr
 	}
 
@@ -183,7 +181,7 @@ func (w *batchProposer) updateBlocksInfoInDB(batchHashes string, layer2Batches *
 }
 
 func (w *batchProposer) getBatchHash(blocks []*orm.BlockInfo) (string, error) {
-	// todo
+	// todo: calculate batch hash, or together in createBridgeBatchData?
 	return "bash_hash_ph", nil
 }
 

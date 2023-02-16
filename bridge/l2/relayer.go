@@ -12,9 +12,9 @@ import (
 
 	// not sure if this will make problems when relay with l1geth
 
-	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/scroll-tech/go-ethereum/accounts/abi"
 	"github.com/scroll-tech/go-ethereum/common"
+	"github.com/scroll-tech/go-ethereum/crypto"
 	"github.com/scroll-tech/go-ethereum/log"
 	"golang.org/x/sync/errgroup"
 	"modernc.org/mathutil"

@@ -22,7 +22,7 @@ import (
 var (
 	templateL1Message = []*orm.L1Message{
 		{
-			QueueIndex:      1,
+			QueueIndex: 1,
 			MsgHash:    "msg_hash1",
 			Height:     1,
 			Sender:     "0x596a746661dbed76a84556111c2872249b070e15",
@@ -33,7 +33,7 @@ var (
 			Layer1Hash: "hash0",
 		},
 		{
-			QueueIndex:      2,
+			QueueIndex: 2,
 			MsgHash:    "msg_hash2",
 			Height:     2,
 			Sender:     "0x596a746661dbed76a84556111c2872249b070e15",
