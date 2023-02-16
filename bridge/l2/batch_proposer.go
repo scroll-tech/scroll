@@ -125,7 +125,7 @@ func (w *batchProposer) createBatchForBlocks(blocks []*orm.BlockInfo) error {
 
 	batchHash, err := w.updateBlocksInfoInDB(blocks)
 	if err != nil {
-		log.Error("updateOrm failed", "error", err)
+		log.Error("updateBlocksInfoInDB failed", "error", err)
 		return err
 	}
 
@@ -134,7 +134,7 @@ func (w *batchProposer) createBatchForBlocks(blocks []*orm.BlockInfo) error {
 	if len(w.batchContextBuffer) > commitBatchesLimit {
 		err := w.relayer.SendCommitTx(w.batchHashBuffer, w.batchContextBuffer)
 		if err != nil {
-			log.Error("createBridgeBatchData failed", "error", err)
+			log.Error("SendCommitTx failed", "error", err)
 			return err
 		}
 		// clear buffer
