@@ -48,7 +48,7 @@ func TestFFI(t *testing.T) {
 		ok, err := v.VerifyProof(aggProof)
 		as.NoError(err)
 		as.True(ok)
-		t.Logf("%d: verify success! cost %f sec", i, time.Since(now).Seconds())
+		t.Logf("%d: verify success! cost %f sec", i+1, time.Since(now).Seconds())
 	}
 
 }
