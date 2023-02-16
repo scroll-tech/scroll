@@ -8,6 +8,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"scroll-tech/common/message"
 	"testing"
 	"time"
 
@@ -54,9 +55,10 @@ func TestFFI(t *testing.T) {
 		traces = append(traces, trace)
 	}
 
+	var proof *message.AggProof
 	for i := 0; i < *times; i++ {
 		now := time.Now()
-		proof, err := prover.Prove(traces)
+		proof, err = prover.Prove(traces)
 		as.NoError(err)
 		t.Logf("%d: prove success! cost %f sec", i, time.Since(now).Seconds())
 	}
