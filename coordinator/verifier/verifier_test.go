@@ -43,7 +43,7 @@ func TestFFI(t *testing.T) {
 	aggProof := &message.AggProof{}
 	as.NoError(json.Unmarshal(byt, aggProof))
 
-	for i := 0; i < times; i++ {
+	for i := 0; i < *times; i++ {
 		now := time.Now()
 		ok, err := v.VerifyProof(aggProof)
 		as.NoError(err)
