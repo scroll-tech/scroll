@@ -29,7 +29,7 @@ test-gpu-prover: libzkp
 	go test -tags="gpu ffi" -timeout 0 -v ./prover
 
 twice-prove: libzkp
-	go test -tags="gpu ffi" -timeout 0 -v ./prover --times=2
+	go test -tags="gpu ffi" -timeout 0 -v ./prover -times=2
 
 lastest-zk-version:
 	curl -sL https://api.github.com/repos/scroll-tech/scroll-zkevm/commits | jq -r ".[0].sha"
