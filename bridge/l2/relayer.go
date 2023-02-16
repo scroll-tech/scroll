@@ -11,6 +11,7 @@ import (
 
 	// not sure if this will make problems when relay with l1geth
 
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/scroll-tech/go-ethereum/accounts/abi"
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/log"
@@ -189,10 +190,12 @@ func (r *Layer2Relayer) processSavedEvent(msg *orm.L2Message) error {
 	return nil
 }
 
+const commitBatchesLimit = 20
+
 // ProcessPendingBatches submit batch data to layer 1 rollup contract
 func (r *Layer2Relayer) ProcessPendingBatches() {
 	// batches are sorted by batch index in increasing order
-	batchesInDB, err := r.db.GetPendingBatches(1)
+	batchesInDB, err := r.db.GetPendingBatches(commitBatchesLimit)
 	if err != nil {
 		log.Error("Failed to fetch pending L2 batches", "err", err)
 		return
@@ -200,20 +203,78 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 	if len(batchesInDB) == 0 {
 		return
 	}
-	id := batchesInDB[0]
-	// @todo add support to relay multiple batches
 
+	var layer2Batches []*bridge_abi.IScrollChainBatch
+	var realBatchIDs []string
+	for _, id := range batchesInDB {
+		var layer2Batch *bridge_abi.IScrollChainBatch
+		layer2Batch, err = r.getLayer2BatchByBatchID(id)
+		if err != nil {
+			log.Error("getLayer2BatchByBatchID failed", "error", err)
+			continue
+		}
+		if layer2Batch == nil {
+			log.Error("getLayer2BatchByBatchID empty layer2Batch")
+			continue
+		}
+		layer2Batches = append(layer2Batches, layer2Batch)
+		realBatchIDs = append(realBatchIDs, id)
+	}
+
+	data, err := r.l1RollupABI.Pack("commitBatches", layer2Batches)
+	if err != nil {
+		log.Error("Failed to pack commitBatches", "err", err)
+		for idx, batch := range layer2Batches {
+			log.Error("Batch Info", "id", realBatchIDs[idx], "index", batch.BatchIndex)
+		}
+		return
+	}
+
+	var bytes [][]byte
+	for _, id := range batchesInDB {
+		bytes = append(bytes, []byte(id))
+	}
+	txIDhash := crypto.Keccak256Hash(bytes...)
+	txID := txIDhash.String() + "-commitBatches"
+	// add suffix `-commit` to avoid duplication with finalize tx in unit tests
+	hash, err := r.rollupSender.SendTransaction(txID, &r.cfg.RollupContractAddress, big.NewInt(0), data)
+	if err != nil {
+		if !errors.Is(err, sender.ErrNoAvailableAccount) {
+			log.Error("Failed to send commitBatches tx to layer1 ", "err", err)
+			for idx, batch := range layer2Batches {
+				log.Error("Batch Info", "id", realBatchIDs[idx], "index", batch.BatchIndex)
+			}
+		}
+		return
+	}
+	log.Info("commitBatches in layer1", "hash", hash)
+	for idx, batch := range layer2Batches {
+		log.Error("Batch Info", "batch_id", realBatchIDs[idx], "index", batch.BatchIndex)
+	}
+
+	// record and sync with db, @todo handle db error
+	for idx, batch := range layer2Batches {
+		id := realBatchIDs[idx]
+		err = r.db.UpdateCommitTxHashAndRollupStatus(r.ctx, id, hash.String(), orm.RollupCommitting)
+		if err != nil {
+			log.Error("UpdateCommitTxHashAndRollupStatus failed", "id", id, "index", batch.BatchIndex, "err", err)
+		}
+	}
+	r.processingCommitment.Store(txID, realBatchIDs)
+}
+
+func (r *Layer2Relayer) getLayer2BatchByBatchID(id string) (*bridge_abi.IScrollChainBatch, error) {
 	batches, err := r.db.GetBlockBatches(map[string]interface{}{"id": id})
 	if err != nil || len(batches) == 0 {
 		log.Error("Failed to GetBlockBatches", "batch_id", id, "err", err)
-		return
+		return nil, err
 	}
 	batch := batches[0]
 
 	traces, err := r.db.GetBlockTraces(map[string]interface{}{"batch_id": id}, "ORDER BY number ASC")
 	if err != nil || len(traces) == 0 {
 		log.Error("Failed to GetBlockTraces", "batch_id", id, "err", err)
-		return
+		return nil, err
 	}
 
 	layer2Batch := &bridge_abi.IScrollChainBatch{
@@ -246,30 +307,7 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 		// for next iteration
 		parentHash = layer2Batch.Blocks[i].BlockHash
 	}
-
-	data, err := r.l1RollupABI.Pack("commitBatch", layer2Batch)
-	if err != nil {
-		log.Error("Failed to pack commitBatch", "id", id, "index", batch.Index, "err", err)
-		return
-	}
-
-	txID := id + "-commit"
-	// add suffix `-commit` to avoid duplication with finalize tx in unit tests
-	hash, err := r.rollupSender.SendTransaction(txID, &r.cfg.RollupContractAddress, big.NewInt(0), data)
-	if err != nil {
-		if !errors.Is(err, sender.ErrNoAvailableAccount) {
-			log.Error("Failed to send commitBatch tx to layer1 ", "id", id, "index", batch.Index, "err", err)
-		}
-		return
-	}
-	log.Info("commitBatch in layer1", "batch_id", id, "index", batch.Index, "hash", hash)
-
-	// record and sync with db, @todo handle db error
-	err = r.db.UpdateCommitTxHashAndRollupStatus(r.ctx, id, hash.String(), orm.RollupCommitting)
-	if err != nil {
-		log.Error("UpdateCommitTxHashAndRollupStatus failed", "id", id, "index", batch.Index, "err", err)
-	}
-	r.processingCommitment.Store(txID, id)
+	return layer2Batch, nil
 }
 
 // ProcessCommittedBatches submit proof to layer 1 rollup contract
@@ -449,12 +487,14 @@ func (r *Layer2Relayer) handleConfirmation(confirmation *sender.Confirmation) {
 	}
 
 	// check whether it is block commitment transaction
-	if batchID, ok := r.processingCommitment.Load(confirmation.ID); ok {
-		transactionType = "BatchCommitment"
-		// @todo handle db error
-		err := r.db.UpdateCommitTxHashAndRollupStatus(r.ctx, batchID.(string), confirmation.TxHash.String(), orm.RollupCommitted)
-		if err != nil {
-			log.Warn("UpdateCommitTxHashAndRollupStatus failed", "batch_id", batchID.(string), "err", err)
+	if batchIDs, ok := r.processingCommitment.Load(confirmation.ID); ok {
+		transactionType = "BatchesCommitment"
+		for _, id := range batchIDs.([]string) {
+			// @todo handle db error
+			err := r.db.UpdateCommitTxHashAndRollupStatus(r.ctx, id, confirmation.TxHash.String(), orm.RollupCommitted)
+			if err != nil {
+				log.Warn("UpdateCommitTxHashAndRollupStatus failed", "batch_id", id, "err", err)
+			}
 		}
 		r.processingCommitment.Delete(confirmation.ID)
 	}
