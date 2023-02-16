@@ -32,7 +32,7 @@ func testCreateNewWatcherAndStop(t *testing.T) {
 	defer l2db.Close()
 
 	l2cfg := cfg.L2Config
-	rc := NewL2WatcherClient(context.Background(), l2Cli, l2cfg.Confirmations, l2cfg.BatchProposerConfig, l2cfg.L2MessengerAddress, l2db)
+	rc := NewL2WatcherClient(context.Background(), l2Cli, l2cfg.Confirmations, l2cfg.BatchProposerConfig, l2cfg.L2MessengerAddress, nil, l2db)
 	rc.Start()
 	defer rc.Stop()
 
@@ -192,7 +192,7 @@ func testFetchMultipleSentMessageInOneBlock(t *testing.T) {
 
 func prepareRelayerClient(l2Cli *ethclient.Client, bpCfg *config.BatchProposerConfig, db database.OrmFactory, contractAddr common.Address) *WatcherClient {
 	confirmations := rpc.LatestBlockNumber
-	return NewL2WatcherClient(context.Background(), l2Cli, confirmations, bpCfg, contractAddr, db)
+	return NewL2WatcherClient(context.Background(), l2Cli, confirmations, bpCfg, contractAddr, nil, db)
 }
 
 func prepareAuth(t *testing.T, l2Cli *ethclient.Client, privateKey *ecdsa.PrivateKey) *bind.TransactOpts {

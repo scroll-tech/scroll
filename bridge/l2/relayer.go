@@ -2,6 +2,7 @@ package l2
 
 import (
 	"context"
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"math/big"
@@ -11,6 +12,7 @@ import (
 
 	// not sure if this will make problems when relay with l1geth
 
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/scroll-tech/go-ethereum/accounts/abi"
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/log"
@@ -203,7 +205,7 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 	id := batchesInDB[0]
 	// @todo add support to relay multiple batches
 
-	batches, err := r.db.GetBlockBatches(map[string]interface{}{"id": id})
+	batches, err := r.db.GetBlockBatches(map[string]interface{}{"hash": id})
 	if err != nil || len(batches) == 0 {
 		log.Error("Failed to GetBlockBatches", "batch_id", id, "err", err)
 		return
@@ -270,6 +272,44 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 		log.Error("UpdateCommitTxHashAndRollupStatus failed", "id", id, "index", batch.Index, "err", err)
 	}
 	r.processingCommitment.Store(txID, id)
+}
+
+// SendCommitTx sends commitBatches tx to L1.
+func (r *Layer2Relayer) SendCommitTx(layer2Batches []*bridge_abi.IScrollChainBatch) error {
+	if len(layer2Batches) == 0 {
+		log.Error("empty layer2Batches")
+		return nil
+	}
+	data, err := r.l1RollupABI.Pack("commitBatches", layer2Batches)
+	if err != nil {
+		log.Error("Failed to pack commitBatches", "err", err)
+		for _, batch := range layer2Batches {
+			log.Error("Batch Info", "index", batch.BatchIndex)
+		}
+		return err
+	}
+
+	var bytes []byte
+	for _, batch := range layer2Batches {
+		binary.AppendUvarint(bytes, batch.BatchIndex)
+	}
+	txID := crypto.Keccak256Hash(bytes).String()
+	// TODO(colin): retry several times.
+	hash, err := r.rollupSender.SendTransaction(txID, &r.cfg.RollupContractAddress, big.NewInt(0), data)
+	if err != nil {
+		if !errors.Is(err, sender.ErrNoAvailableAccount) {
+			log.Error("Failed to send commitBatches tx to layer1 ", "err", err)
+			for _, batch := range layer2Batches {
+				log.Error("Batch Info", "index", batch.BatchIndex)
+			}
+		}
+		return err
+	}
+	log.Info("commitBatches in layer1", "hash", hash)
+	for _, batch := range layer2Batches {
+		log.Error("Batch Info", "index", batch.BatchIndex)
+	}
+	return nil
 }
 
 // ProcessCommittedBatches submit proof to layer 1 rollup contract

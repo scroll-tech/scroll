@@ -306,7 +306,7 @@ func testOrmBlockBatch(t *testing.T) {
 	assert.Equal(t, orm.RollupFinalized, rollupStatus)
 	result, err := ormBatch.GetLatestFinalizedBatch()
 	assert.NoError(t, err)
-	assert.Equal(t, batchID1, result.ID)
+	assert.Equal(t, batchID1, result.Hash)
 
 	status1, err := ormBatch.GetRollupStatus(batchID1)
 	assert.NoError(t, err)

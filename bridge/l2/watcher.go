@@ -60,7 +60,7 @@ type WatcherClient struct {
 }
 
 // NewL2WatcherClient take a l2geth instance to generate a l2watcherclient instance
-func NewL2WatcherClient(ctx context.Context, client *ethclient.Client, confirmations rpc.BlockNumber, bpCfg *config.BatchProposerConfig, messengerAddress common.Address, orm database.OrmFactory) *WatcherClient {
+func NewL2WatcherClient(ctx context.Context, client *ethclient.Client, confirmations rpc.BlockNumber, bpCfg *config.BatchProposerConfig, messengerAddress common.Address, relayer *Layer2Relayer, orm database.OrmFactory) *WatcherClient {
 	savedHeight, err := orm.GetLayer2LatestWatchedHeight()
 	if err != nil {
 		log.Warn("fetch height from db failed", "err", err)
@@ -77,7 +77,7 @@ func NewL2WatcherClient(ctx context.Context, client *ethclient.Client, confirmat
 		messengerABI:       bridge_abi.L2MessengerMetaABI,
 		stopCh:             make(chan struct{}),
 		stopped:            0,
-		batchProposer:      newBatchProposer(bpCfg, orm),
+		batchProposer:      newBatchProposer(bpCfg, relayer, orm),
 	}
 }
 

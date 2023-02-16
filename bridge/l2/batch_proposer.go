@@ -16,10 +16,12 @@ import (
 	"scroll-tech/bridge/config"
 )
 
-type batchMetaData struct {
-	index  uint64
-	blocks []*orm.BlockInfo
-}
+const commitBatchesLimit = 20
+
+//type batchMetaData struct {
+//	index  uint64
+//	blocks []*orm.BlockInfo
+//}
 
 type batchProposer struct {
 	mutex sync.Mutex
@@ -33,11 +35,11 @@ type batchProposer struct {
 
 	proofGenerationFreq uint64
 	skippedOpcodes      map[string]struct{}
-	// TODO(colin)
-	// []batchcontext
+	layer2BatchesBuffer []*abi.IScrollChainBatch
+	relayer             *Layer2Relayer
 }
 
-func newBatchProposer(cfg *config.BatchProposerConfig, orm database.OrmFactory) *batchProposer {
+func newBatchProposer(cfg *config.BatchProposerConfig, relayer *Layer2Relayer, orm database.OrmFactory) *batchProposer {
 	return &batchProposer{
 		mutex:               sync.Mutex{},
 		orm:                 orm,
@@ -47,7 +49,9 @@ func newBatchProposer(cfg *config.BatchProposerConfig, orm database.OrmFactory) 
 		batchBlocksLimit:    cfg.BatchBlocksLimit,
 		proofGenerationFreq: cfg.ProofGenerationFreq,
 		skippedOpcodes:      cfg.SkippedOpcodes,
+		relayer:             relayer,
 	}
+
 	// TODO(colin)
 	// graceful restart
 	// process unsubmitted batches
@@ -112,60 +116,28 @@ func (w *batchProposer) tryProposeBatch() {
 }
 
 func (w *batchProposer) createBatchForBlocks(blocks []*orm.BlockInfo) error {
-	var (
-		batchID        string
-		startBlock     = blocks[0]
-		endBlock       = blocks[len(blocks)-1]
-		txNum, gasUsed uint64
-		blockIDs       = make([]uint64, len(blocks))
-	)
-
-	// batchContext, err := createBridgeBatchData(blocks)
-
-	for i, block := range blocks {
-		txNum += block.TxNum
-		gasUsed += block.GasUsed
-		blockIDs[i] = block.Number
-	}
-
-	dbTx, err := w.orm.Beginx()
+	layer2Batch, err := w.createBridgeBatchData(blocks)
 	if err != nil {
+		log.Error("createBridgeBatchData failed", "error", err)
 		return err
 	}
-
-	var dbTxErr error
-	defer func() {
-		if dbTxErr != nil {
-			if err := dbTx.Rollback(); err != nil {
-				log.Error("dbTx.Rollback()", "err", err)
-			}
+	w.layer2BatchesBuffer = append(w.layer2BatchesBuffer, layer2Batch)
+	if len(w.layer2BatchesBuffer) > commitBatchesLimit {
+		err := w.relayer.SendCommitTx(w.layer2BatchesBuffer)
+		if err != nil {
+			log.Error("createBridgeBatchData failed", "error", err)
+			return err
 		}
-	}()
-
-	batchID, dbTxErr = w.orm.NewBatchInDBTx(dbTx, startBlock, endBlock, startBlock.ParentHash, txNum, gasUsed)
-	if dbTxErr != nil {
-		return dbTxErr
+		// clear layer2BatchesBuffer
+		w.layer2BatchesBuffer = w.layer2BatchesBuffer[:0]
 	}
-
-	if dbTxErr = w.orm.SetBatchIDForBlocksInDBTx(dbTx, blockIDs, batchID); dbTxErr != nil {
-		return dbTxErr
-	}
-
-	dbTxErr = dbTx.Commit()
-
-	// TODO(@colin)
-	// append to in-memory array []abi.IScrollChainBatch
-	// check if the total num of bytes > threshold
-	// call relayer.sendCommitTx(calldata []byte)
-	// TODO(@colin): add sendCommitTx api in the relayer
-
-	return dbTxErr
+	return nil
 }
 
-func (p *batchProposer) createBridgeBatchData(blocks []*orm.BlockInfo) (*abi.IScrollChainBatch, error) {
+func (w *batchProposer) createBridgeBatchData(blocks []*orm.BlockInfo) (*abi.IScrollChainBatch, error) {
 	var err error
 
-	lastBatch, dbErr := p.orm.GetLatestBatch()
+	lastBatch, dbErr := w.orm.GetLatestBatch()
 	if dbErr != nil {
 		// We should not receive sql.ErrNoRows error. The DB should have the batch entry that contains the genesis block.
 		return nil, dbErr
@@ -177,27 +149,27 @@ func (p *batchProposer) createBridgeBatchData(blocks []*orm.BlockInfo) (*abi.ISc
 	batchContext.BatchIndex = lastBatch.Index + 1
 
 	// set PrevStateRoot
-	batchContext.PrevStateRoot, err = NewByte32FromString(lastBatch.StateRoot)
+	batchContext.PrevStateRoot, err = newByte32FromString(lastBatch.StateRoot)
 	if err != nil {
 		log.Error("Corrupted StateRoot in the batch db", "hash", lastBatch.Hash, "index", lastBatch.Index)
 		return nil, errors.New("Corrupted data in batch db")
 	}
 
 	// set ParentHash
-	batchContext.ParentBatchHash, err = NewByte32FromString(lastBatch.Hash)
+	batchContext.ParentBatchHash, err = newByte32FromString(lastBatch.Hash)
 	if err != nil {
 		log.Error("Corrupted Hash in the batch db", "hash", lastBatch.Hash, "index", lastBatch.Index)
 		return nil, errors.New("Corrupted data in batch db")
 	}
 
 	batchContext.Blocks = make([]abi.IScrollChainBlockContext, len(blocks))
-	for i, block := range blocks {
-		// blockContext, err = p.createBlockContext(block)
-		// batchContext.Blocks[i] = *blockContext
-		// if dbErr != nil {
-		// 	return nil, dbErr
-		// }
-	}
+	//for i, block := range blocks {
+	// blockContext, err = p.createBlockContext(block)
+	// batchContext.Blocks[i] = *blockContext
+	// if dbErr != nil {
+	// 	return nil, dbErr
+	// }
+	//}
 	return batchContext, nil
 }
 
@@ -205,7 +177,7 @@ func (p *batchProposer) createBridgeBatchData(blocks []*orm.BlockInfo) (*abi.ISc
 
 // }
 
-func NewByte32FromBytes(b []byte) [32]byte {
+func newByte32FromBytes(b []byte) [32]byte {
 	var byte32 [32]byte
 
 	if len(b) > 32 {
@@ -216,11 +188,11 @@ func NewByte32FromBytes(b []byte) [32]byte {
 	return byte32
 }
 
-func NewByte32FromString(s string) ([32]byte, error) {
+func newByte32FromString(s string) ([32]byte, error) {
 	bi, ok := new(big.Int).SetString(s, 10)
 	if !ok || len(bi.Bytes()) > 32 {
 		var empty [32]byte
 		return empty, errors.New("Cannot parse byte32 from string")
 	}
-	return NewByte32FromBytes(bi.Bytes()), nil
+	return newByte32FromBytes(bi.Bytes()), nil
 }

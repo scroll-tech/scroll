@@ -48,7 +48,7 @@ func testBatchProposer(t *testing.T) {
 		BatchTxNumThreshold: 135,
 		BatchTimeSec:        1,
 		BatchBlocksLimit:    100,
-	}, db)
+	}, nil, db)
 	proposer.tryProposeBatch()
 
 	infos, err := db.GetUnbatchedBlocks(map[string]interface{}{},

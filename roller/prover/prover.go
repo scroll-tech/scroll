@@ -1,6 +1,5 @@
 //go:build !mock_prover
 
-//nolint:typecheck
 package prover
 
 /*

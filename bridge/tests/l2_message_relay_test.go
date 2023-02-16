@@ -36,7 +36,7 @@ func testRelayL2MessageSucceed(t *testing.T) {
 
 	// Create L2Watcher
 	confirmations := rpc.LatestBlockNumber
-	l2Watcher := l2.NewL2WatcherClient(context.Background(), l2Client, confirmations, l2Cfg.BatchProposerConfig, l2Cfg.L2MessengerAddress, db)
+	l2Watcher := l2.NewL2WatcherClient(context.Background(), l2Client, confirmations, l2Cfg.BatchProposerConfig, l2Cfg.L2MessengerAddress, nil, db)
 
 	// Create L1Watcher
 	l1Cfg := cfg.L1Config
