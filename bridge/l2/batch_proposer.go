@@ -128,11 +128,11 @@ func (w *batchProposer) createBatchForBlocks(blocks []*orm.BlockInfo) (string, e
 
 	batchID, dbTxErr = w.orm.NewBatchInDBTx(dbTx, startBlock, endBlock, startBlock.ParentHash, txNum, gasUsed)
 	if dbTxErr != nil {
-		return batchID, dbTxErr
+		return "", dbTxErr
 	}
 
 	if dbTxErr = w.orm.SetBatchIDForBlocksInDBTx(dbTx, blockIDs, batchID); dbTxErr != nil {
-		return batchID, dbTxErr
+		return "", dbTxErr
 	}
 
 	dbTxErr = dbTx.Commit()

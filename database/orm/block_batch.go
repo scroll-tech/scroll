@@ -407,7 +407,7 @@ func (o *blockBatchOrm) GetAssignedBatchIDs() ([]string, error) {
 	return ids, rows.Close()
 }
 
-func (o *blockBatchOrm) GetCountBatches() (int64, error) {
+func (o *blockBatchOrm) GetBatchCount() (int64, error) {
 	row := o.db.QueryRow(`select count(*) from block_batch`)
 	var count int64
 	if err := row.Scan(&count); err != nil {
