@@ -3,7 +3,7 @@ use libc::c_char;
 use std::cell::OnceCell;
 use types::eth::BlockTrace;
 use zkevm::circuit::AGG_DEGREE;
-use zkevm::utils::{load_or_create_params, load_or_create_seed};
+use zkevm::utils::{load_params, load_seed};
 use zkevm::{circuit::DEGREE, prover::Prover};
 
 static mut PROVER: OnceCell<Prover> = OnceCell::new();
@@ -15,9 +15,9 @@ pub unsafe extern "C" fn init_prover(params_path: *const c_char, seed_path: *con
 
     let params_path = c_char_to_str(params_path);
     let seed_path = c_char_to_str(seed_path);
-    let params = load_or_create_params(params_path, *DEGREE).unwrap();
-    let agg_params = load_or_create_params(params_path, *AGG_DEGREE).unwrap();
-    let seed = load_or_create_seed(seed_path).unwrap();
+    let params = load_params(params_path, *DEGREE).unwrap();
+    let agg_params = load_params(params_path, *AGG_DEGREE).unwrap();
+    let seed = load_seed(seed_path).unwrap();
     let p = Prover::from_params_and_seed(params, agg_params, seed);
     PROVER.set(p).unwrap();
 }
