@@ -79,6 +79,7 @@ type IScrollChainBatch struct {
 	NewStateRoot     [32]byte
 	WithdrawTrieRoot [32]byte
 	BatchIndex       uint64
+	ParentBatchHash  [32]byte
 	L2Transactions   []byte
 }
 

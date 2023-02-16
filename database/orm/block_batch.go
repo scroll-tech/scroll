@@ -77,13 +77,14 @@ const (
 
 // BlockBatch is structure of stored block_batch
 type BlockBatch struct {
-	ID                  string         `json:"id" db:"id"`
+	Hash                string         `json:"hash" db:"hash"`
 	Index               uint64         `json:"index" db:"index"`
 	ParentHash          string         `json:"parent_hash" db:"parent_hash"`
 	StartBlockNumber    uint64         `json:"start_block_number" db:"start_block_number"`
 	StartBlockHash      string         `json:"start_block_hash" db:"start_block_hash"`
 	EndBlockNumber      uint64         `json:"end_block_number" db:"end_block_number"`
 	EndBlockHash        string         `json:"end_block_hash" db:"end_block_hash"`
+	StateRoot           string         `json:"state_root", db:"state_root"`
 	TotalTxNum          uint64         `json:"total_tx_num" db:"total_tx_num"`
 	TotalL2Gas          uint64         `json:"total_l2_gas" db:"total_l2_gas"`
 	ProvingStatus       ProvingStatus  `json:"proving_status" db:"proving_status"`
@@ -257,6 +258,24 @@ func (o *blockBatchOrm) GetPendingBatches(limit uint64) ([]string, error) {
 	}
 
 	return ids, rows.Close()
+}
+
+func (o *blockBatchOrm) GetLatestBatch() (*BlockBatch, error) {
+	row := o.db.QueryRowx(`select * from block_batch where index = (select max(index) from block_batch);`)
+	batch := &BlockBatch{}
+	if err := row.StructScan(batch); err != nil {
+		return nil, err
+	}
+	return batch, nil
+}
+
+func (o *blockBatchOrm) GetLatestCommittedBatch() (*BlockBatch, error) {
+	row := o.db.QueryRowx(`select * from block_batch where index = (select max(index) from block_batch where rollup_status = $1);`, RollupCommitted)
+	batch := &BlockBatch{}
+	if err := row.StructScan(batch); err != nil {
+		return nil, err
+	}
+	return batch, nil
 }
 
 func (o *blockBatchOrm) GetLatestFinalizedBatch() (*BlockBatch, error) {

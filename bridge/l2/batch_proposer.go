@@ -1,7 +1,9 @@
 package l2
 
 import (
+	"errors"
 	"fmt"
+	"math/big"
 	"sync"
 	"time"
 
@@ -10,8 +12,14 @@ import (
 	"scroll-tech/database"
 	"scroll-tech/database/orm"
 
+	abi "scroll-tech/bridge/abi"
 	"scroll-tech/bridge/config"
 )
+
+type batchMetaData struct {
+	index  uint64
+	blocks []*orm.BlockInfo
+}
 
 type batchProposer struct {
 	mutex sync.Mutex
@@ -25,6 +33,8 @@ type batchProposer struct {
 
 	proofGenerationFreq uint64
 	skippedOpcodes      map[string]struct{}
+	// TODO(colin)
+	// []batchcontext
 }
 
 func newBatchProposer(cfg *config.BatchProposerConfig, orm database.OrmFactory) *batchProposer {
@@ -38,6 +48,9 @@ func newBatchProposer(cfg *config.BatchProposerConfig, orm database.OrmFactory) 
 		proofGenerationFreq: cfg.ProofGenerationFreq,
 		skippedOpcodes:      cfg.SkippedOpcodes,
 	}
+	// TODO(colin)
+	// graceful restart
+	// process unsubmitted batches
 }
 
 func (w *batchProposer) tryProposeBatch() {
@@ -99,6 +112,22 @@ func (w *batchProposer) tryProposeBatch() {
 }
 
 func (w *batchProposer) createBatchForBlocks(blocks []*orm.BlockInfo) error {
+	var (
+		batchID        string
+		startBlock     = blocks[0]
+		endBlock       = blocks[len(blocks)-1]
+		txNum, gasUsed uint64
+		blockIDs       = make([]uint64, len(blocks))
+	)
+
+	// batchContext, err := createBridgeBatchData(blocks)
+
+	for i, block := range blocks {
+		txNum += block.TxNum
+		gasUsed += block.GasUsed
+		blockIDs[i] = block.Number
+	}
+
 	dbTx, err := w.orm.Beginx()
 	if err != nil {
 		return err
@@ -113,19 +142,6 @@ func (w *batchProposer) createBatchForBlocks(blocks []*orm.BlockInfo) error {
 		}
 	}()
 
-	var (
-		batchID        string
-		startBlock     = blocks[0]
-		endBlock       = blocks[len(blocks)-1]
-		txNum, gasUsed uint64
-		blockIDs       = make([]uint64, len(blocks))
-	)
-	for i, block := range blocks {
-		txNum += block.TxNum
-		gasUsed += block.GasUsed
-		blockIDs[i] = block.Number
-	}
-
 	batchID, dbTxErr = w.orm.NewBatchInDBTx(dbTx, startBlock, endBlock, startBlock.ParentHash, txNum, gasUsed)
 	if dbTxErr != nil {
 		return dbTxErr
@@ -136,5 +152,75 @@ func (w *batchProposer) createBatchForBlocks(blocks []*orm.BlockInfo) error {
 	}
 
 	dbTxErr = dbTx.Commit()
+
+	// TODO(@colin)
+	// append to in-memory array []abi.IScrollChainBatch
+	// check if the total num of bytes > threshold
+	// call relayer.sendCommitTx(calldata []byte)
+	// TODO(@colin): add sendCommitTx api in the relayer
+
 	return dbTxErr
+}
+
+func (p *batchProposer) createBridgeBatchData(blocks []*orm.BlockInfo) (*abi.IScrollChainBatch, error) {
+	var err error
+
+	lastBatch, dbErr := p.orm.GetLatestBatch()
+	if dbErr != nil {
+		// We should not receive sql.ErrNoRows error. The DB should have the batch entry that contains the genesis block.
+		return nil, dbErr
+	}
+
+	batchContext := new(abi.IScrollChainBatch)
+
+	// set BatchIndex
+	batchContext.BatchIndex = lastBatch.Index + 1
+
+	// set PrevStateRoot
+	batchContext.PrevStateRoot, err = NewByte32FromString(lastBatch.StateRoot)
+	if err != nil {
+		log.Error("Corrupted StateRoot in the batch db", "hash", lastBatch.Hash, "index", lastBatch.Index)
+		return nil, errors.New("Corrupted data in batch db")
+	}
+
+	// set ParentHash
+	batchContext.ParentBatchHash, err = NewByte32FromString(lastBatch.Hash)
+	if err != nil {
+		log.Error("Corrupted Hash in the batch db", "hash", lastBatch.Hash, "index", lastBatch.Index)
+		return nil, errors.New("Corrupted data in batch db")
+	}
+
+	batchContext.Blocks = make([]abi.IScrollChainBlockContext, len(blocks))
+	for i, block := range blocks {
+		// blockContext, err = p.createBlockContext(block)
+		// batchContext.Blocks[i] = *blockContext
+		// if dbErr != nil {
+		// 	return nil, dbErr
+		// }
+	}
+	return batchContext, nil
+}
+
+// func (p *batchProposer) createBlockContext(block *orm.BlockInfo) (*abi.IScrollChainBlockContext, error) {
+
+// }
+
+func NewByte32FromBytes(b []byte) [32]byte {
+	var byte32 [32]byte
+
+	if len(b) > 32 {
+		b = b[len(b)-32:]
+	}
+
+	copy(byte32[32-len(b):], b)
+	return byte32
+}
+
+func NewByte32FromString(s string) ([32]byte, error) {
+	bi, ok := new(big.Int).SetString(s, 10)
+	if !ok || len(bi.Bytes()) > 32 {
+		var empty [32]byte
+		return empty, errors.New("Cannot parse byte32 from string")
+	}
+	return NewByte32FromBytes(bi.Bytes()), nil
 }
