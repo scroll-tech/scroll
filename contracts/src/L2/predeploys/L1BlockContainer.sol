@@ -66,7 +66,7 @@ contract L1BlockContainer is OwnableBase, IL1BlockContainer {
     uint64 _startBlockTimestamp,
     uint128 _startBlockBaseFee,
     bytes32 _startStateRoot
-  ) external {
+  ) external onlyOwner {
     require(latestBlockHash == bytes32(0), "already initialized");
 
     latestBlockHash = _startBlockHash;
