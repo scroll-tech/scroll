@@ -320,7 +320,7 @@ func (r *Layer2Relayer) SendCommitTx(batchData []*types.BatchData) error {
 	// record and sync with db, @todo handle db error
 	batchHashes := make([]string, len(batchData))
 	for i, batch := range batchData {
-		batchHashes[i] = batch.Hash(44, common.Hash{}).Hex() // todo: add real param
+		batchHashes[i] = batch.Hash().Hex()
 		err = r.db.UpdateCommitTxHashAndRollupStatus(r.ctx, batchHashes[i], hash.String(), types.RollupCommitting)
 		if err != nil {
 			log.Error("UpdateCommitTxHashAndRollupStatus failed", "id", batchHashes[i], "index", batch.Batch.BatchIndex, "err", err)

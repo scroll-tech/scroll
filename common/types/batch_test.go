@@ -4,9 +4,10 @@ import (
 	"math/big"
 	"testing"
 
+	"gotest.tools/assert"
+
 	"github.com/scroll-tech/go-ethereum/common"
 	geth_types "github.com/scroll-tech/go-ethereum/core/types"
-	"gotest.tools/assert"
 
 	abi "scroll-tech/bridge/abi"
 )
