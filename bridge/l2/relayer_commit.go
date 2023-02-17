@@ -17,12 +17,12 @@ import (
 )
 
 func (r *Layer2Relayer) checkCommittingBatches() error {
-	var blockNumber uint64
+	var batchIndex uint64
 BEGIN:
 	batches, err := r.db.GetBlockBatches(
 		map[string]interface{}{"rollup_status": orm.RollupCommitting},
-		fmt.Sprintf("AND end_block_number > %d", blockNumber),
-		fmt.Sprintf("ORDER BY end_block_number ASC LIMIT %d", 10),
+		fmt.Sprintf("AND index > %d", batchIndex),
+		fmt.Sprintf("ORDER BY index ASC LIMIT %d", 10),
 	)
 	if err != nil || len(batches) == 0 {
 		return err
@@ -38,7 +38,7 @@ BEGIN:
 		batch, batches = batches[0], batches[1:]
 
 		id := batch.ID
-		blockNumber = mathutil.MaxUint64(blockNumber, batch.EndBlockNumber)
+		batchIndex = mathutil.MaxUint64(batchIndex, batch.Index)
 
 		txStr, err := r.db.GetCommitTxHash(id)
 		if err != nil {

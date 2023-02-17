@@ -21,16 +21,13 @@ import (
 const processMsgLimit = 100
 
 func (r *Layer2Relayer) checkSubmittedMessages() error {
-	var (
-		nonce    uint64
-		msgLimit = 100
-	)
+	var nonce uint64
 BEGIN:
 	// msgs are sorted by nonce in increasing order
 	msgs, err := r.db.GetL2Messages(
 		map[string]interface{}{"status": orm.MsgSubmitted},
 		fmt.Sprintf("AND nonce > %d", nonce),
-		fmt.Sprintf("ORDER BY nonce ASC LIMIT %d", msgLimit),
+		fmt.Sprintf("ORDER BY nonce ASC LIMIT %d", processMsgLimit),
 	)
 	if err != nil || len(msgs) == 0 {
 		return err
