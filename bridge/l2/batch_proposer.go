@@ -12,10 +12,9 @@ import (
 	"scroll-tech/common/types"
 	"scroll-tech/database"
 
+	bridgeabi "scroll-tech/bridge/abi"
 	"scroll-tech/bridge/config"
 )
-
-const commitBatchesLimit = 20
 
 type batchProposer struct {
 	mutex sync.Mutex
@@ -112,17 +111,26 @@ func (p *batchProposer) tryProposeBatch() {
 }
 
 func (p *batchProposer) trySendBatches() {
-	if len(p.batchDataBuffer) > commitBatchesLimit {
-		// err := p.relayer.SendCommitTx(p.batchDataBuffer[0:commitBatchesLimit], p.batchDataBuffer[0:commitBatchesLimit])
-		// if err != nil {
-		// 	log.Error("SendCommitTx failed", "error", err)
-		// 	return err
-		// }
-
+	if p.getCalldataByteLen(p.batchDataBuffer) > bridgeabi.CalldataLengthThreshHold {
+		for i := 0; i < 10; i++ {
+			err := p.relayer.SendCommitTx(p.batchDataBuffer)
+			if err != nil { // retry
+				log.Error("SendCommitTx failed", "error", err)
+				time.Sleep(time.Millisecond * 500)
+			} else {
+				break
+			}
+		}
 		// clear buffer.
-		p.batchDataBuffer = p.batchDataBuffer[commitBatchesLimit:]
-		//w.batchHashBuffer = w.batchHashBuffer[commitBatchesLimit:]
+		p.batchDataBuffer = p.batchDataBuffer[:0]
 	}
+}
+
+func (p *batchProposer) getCalldataByteLen(batchData []*types.BatchData) (callDataByteLen uint64) {
+	for _, batch := range batchData {
+		callDataByteLen += bridgeabi.GetBatchCalldataLength(&batch.Batch)
+	}
+	return
 }
 
 func (p *batchProposer) createBatchForBlocks(blocks []*types.BlockInfo) error {
@@ -133,14 +141,11 @@ func (p *batchProposer) createBatchForBlocks(blocks []*types.BlockInfo) error {
 	}
 
 	if err := p.addBatchInfoToDB(batchData); err != nil {
-		log.Error("addBatchInfoToDB failed", "BatchHash", batchData.Hash(44, common.HexToHash("0")), "error", err) // todo: add real param
+		log.Error("addBatchInfoToDB failed", "BatchHash", batchData.Hash(44, common.Hash{}), "error", err) // todo: add real param
 		return err
 	}
 
 	p.batchDataBuffer = append(p.batchDataBuffer, batchData)
-
-	//p.addBatchInfoToDB(batchData)
-
 	return nil
 }
 
@@ -169,7 +174,7 @@ func (p *batchProposer) addBatchInfoToDB(batchData *types.BatchData) error {
 	}
 
 	// todo: add real param.
-	if dbTxErr = p.orm.SetBatchIDForBlocksInDBTx(dbTx, blockIDs, batchData.Hash(44, common.HexToHash("0")).Hex()); dbTxErr != nil {
+	if dbTxErr = p.orm.SetBatchIDForBlocksInDBTx(dbTx, blockIDs, batchData.Hash(44, common.Hash{}).Hex()); dbTxErr != nil {
 		return dbTxErr
 	}
 

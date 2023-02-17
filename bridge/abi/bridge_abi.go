@@ -97,3 +97,11 @@ type IScrollChainBlockContext struct {
 	NumTransactions uint16
 	NumL1Messages   uint16
 }
+
+// CalldataLengthThreshHold is the threshold to send batches commit.
+const CalldataLengthThreshHold = 6666
+
+// GetBatchCalldataLength gets the calldata bytelen of IScrollChainBatch.
+func GetBatchCalldataLength(batch *IScrollChainBatch) uint64 {
+	return uint64(32*5 + len(batch.L2Transactions) + len(batch.Blocks)*8*32)
+}
