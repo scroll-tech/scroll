@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"math/big"
 	"strings"
 	"time"
 
@@ -13,94 +12,8 @@ import (
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/log"
 
-	"scroll-tech/common/utils"
+	"scroll-tech/common/types"
 )
-
-// ProvingStatus block_batch proving_status (unassigned, assigned, proved, verified, submitted)
-type ProvingStatus int
-
-const (
-	// ProvingStatusUndefined : undefined proving_task status
-	ProvingStatusUndefined ProvingStatus = iota
-	// ProvingTaskUnassigned : proving_task is not assigned to be proved
-	ProvingTaskUnassigned
-	// ProvingTaskSkipped : proving_task is skipped for proof generation
-	ProvingTaskSkipped
-	// ProvingTaskAssigned : proving_task is assigned to be proved
-	ProvingTaskAssigned
-	// ProvingTaskProved : proof has been returned by prover
-	ProvingTaskProved
-	// ProvingTaskVerified : proof is valid
-	ProvingTaskVerified
-	// ProvingTaskFailed : fail to generate proof
-	ProvingTaskFailed
-)
-
-func (ps ProvingStatus) String() string {
-	switch ps {
-	case ProvingTaskUnassigned:
-		return "unassigned"
-	case ProvingTaskSkipped:
-		return "skipped"
-	case ProvingTaskAssigned:
-		return "assigned"
-	case ProvingTaskProved:
-		return "proved"
-	case ProvingTaskVerified:
-		return "verified"
-	case ProvingTaskFailed:
-		return "failed"
-	default:
-		return "undefined"
-	}
-}
-
-// RollupStatus block_batch rollup_status (pending, committing, committed, finalizing, finalized)
-type RollupStatus int
-
-const (
-	// RollupUndefined : undefined rollup status
-	RollupUndefined RollupStatus = iota
-	// RollupPending : batch is pending to rollup to layer1
-	RollupPending
-	// RollupCommitting : rollup transaction is submitted to layer1
-	RollupCommitting
-	// RollupCommitted : rollup transaction is confirmed to layer1
-	RollupCommitted
-	// RollupFinalizing : finalize transaction is submitted to layer1
-	RollupFinalizing
-	// RollupFinalized : finalize transaction is confirmed to layer1
-	RollupFinalized
-	// RollupFinalizationSkipped : batch finalization is skipped
-	RollupFinalizationSkipped
-)
-
-// BlockBatch is structure of stored block_batch
-type BlockBatch struct {
-	Hash                string         `json:"hash" db:"hash"`
-	Index               uint64         `json:"index" db:"index"`
-	ParentHash          string         `json:"parent_hash" db:"parent_hash"`
-	StartBlockNumber    uint64         `json:"start_block_number" db:"start_block_number"`
-	StartBlockHash      string         `json:"start_block_hash" db:"start_block_hash"`
-	EndBlockNumber      uint64         `json:"end_block_number" db:"end_block_number"`
-	EndBlockHash        string         `json:"end_block_hash" db:"end_block_hash"`
-	StateRoot           string         `json:"state_root" db:"state_root"`
-	TotalTxNum          uint64         `json:"total_tx_num" db:"total_tx_num"`
-	TotalL1TxNum        uint64         `json:"total_l1_tx_num" db:"total_l1_tx_num"`
-	TotalL2Gas          uint64         `json:"total_l2_gas" db:"total_l2_gas"`
-	ProvingStatus       ProvingStatus  `json:"proving_status" db:"proving_status"`
-	Proof               []byte         `json:"proof" db:"proof"`
-	InstanceCommitments []byte         `json:"instance_commitments" db:"instance_commitments"`
-	ProofTimeSec        uint64         `json:"proof_time_sec" db:"proof_time_sec"`
-	RollupStatus        RollupStatus   `json:"rollup_status" db:"rollup_status"`
-	CommitTxHash        sql.NullString `json:"commit_tx_hash" db:"commit_tx_hash"`
-	FinalizeTxHash      sql.NullString `json:"finalize_tx_hash" db:"finalize_tx_hash"`
-	CreatedAt           *time.Time     `json:"created_at" db:"created_at"`
-	ProverAssignedAt    *time.Time     `json:"prover_assigned_at" db:"prover_assigned_at"`
-	ProvedAt            *time.Time     `json:"proved_at" db:"proved_at"`
-	CommittedAt         *time.Time     `json:"committed_at" db:"committed_at"`
-	FinalizedAt         *time.Time     `json:"finalized_at" db:"finalized_at"`
-}
 
 type blockBatchOrm struct {
 	db *sqlx.DB
@@ -113,7 +26,7 @@ func NewBlockBatchOrm(db *sqlx.DB) BlockBatchOrm {
 	return &blockBatchOrm{db: db}
 }
 
-func (o *blockBatchOrm) GetBlockBatches(fields map[string]interface{}, args ...string) ([]*BlockBatch, error) {
+func (o *blockBatchOrm) GetBlockBatches(fields map[string]interface{}, args ...string) ([]*types.BlockBatch, error) {
 	query := "SELECT * FROM block_batch WHERE 1 = 1 "
 	for key := range fields {
 		query += fmt.Sprintf("AND %s=:%s ", key, key)
@@ -126,9 +39,9 @@ func (o *blockBatchOrm) GetBlockBatches(fields map[string]interface{}, args ...s
 		return nil, err
 	}
 
-	var batches []*BlockBatch
+	var batches []*types.BlockBatch
 	for rows.Next() {
-		batch := &BlockBatch{}
+		batch := &types.BlockBatch{}
 		if err = rows.StructScan(batch); err != nil {
 			break
 		}
@@ -141,11 +54,11 @@ func (o *blockBatchOrm) GetBlockBatches(fields map[string]interface{}, args ...s
 	return batches, rows.Close()
 }
 
-func (o *blockBatchOrm) GetProvingStatusByID(hash string) (ProvingStatus, error) {
+func (o *blockBatchOrm) GetProvingStatusByID(hash string) (types.ProvingStatus, error) {
 	row := o.db.QueryRow(`SELECT proving_status FROM block_batch WHERE hash = $1`, hash)
-	var status ProvingStatus
+	var status types.ProvingStatus
 	if err := row.Scan(&status); err != nil {
-		return ProvingStatusUndefined, err
+		return types.ProvingStatusUndefined, err
 	}
 	return status, nil
 }
@@ -153,7 +66,7 @@ func (o *blockBatchOrm) GetProvingStatusByID(hash string) (ProvingStatus, error)
 func (o *blockBatchOrm) GetVerifiedProofAndInstanceByID(hash string) ([]byte, []byte, error) {
 	var proof []byte
 	var instance []byte
-	row := o.db.QueryRow(`SELECT proof, instance_commitments FROM block_batch WHERE hash = $1 and proving_status = $2`, hash, ProvingTaskVerified)
+	row := o.db.QueryRow(`SELECT proof, instance_commitments FROM block_batch WHERE hash = $1 and proving_status = $2`, hash, types.ProvingTaskVerified)
 
 	if err := row.Scan(&proof, &instance); err != nil {
 		return nil, nil, err
@@ -172,15 +85,15 @@ func (o *blockBatchOrm) UpdateProofByID(ctx context.Context, hash string, proof,
 	return nil
 }
 
-func (o *blockBatchOrm) UpdateProvingStatus(hash string, status ProvingStatus) error {
+func (o *blockBatchOrm) UpdateProvingStatus(hash string, status types.ProvingStatus) error {
 	switch status {
-	case ProvingTaskAssigned:
+	case types.ProvingTaskAssigned:
 		_, err := o.db.Exec(o.db.Rebind("update block_batch set proving_status = ?, prover_assigned_at = ? where hash = ?;"), status, time.Now(), hash)
 		return err
-	case ProvingTaskUnassigned:
+	case types.ProvingTaskUnassigned:
 		_, err := o.db.Exec(o.db.Rebind("update block_batch set proving_status = ?, prover_assigned_at = null where hash = ?;"), status, hash)
 		return err
-	case ProvingTaskProved, ProvingTaskVerified:
+	case types.ProvingTaskProved, types.ProvingTaskVerified:
 		_, err := o.db.Exec(o.db.Rebind("update block_batch set proving_status = ?, proved_at = ? where hash = ?;"), status, time.Now(), hash)
 		return err
 	default:
@@ -189,43 +102,45 @@ func (o *blockBatchOrm) UpdateProvingStatus(hash string, status ProvingStatus) e
 	}
 }
 
-func (o *blockBatchOrm) ResetProvingStatusFor(before ProvingStatus) error {
-	_, err := o.db.Exec(o.db.Rebind("update block_batch set proving_status = ? where proving_status = ?;"), ProvingTaskUnassigned, before)
+func (o *blockBatchOrm) ResetProvingStatusFor(before types.ProvingStatus) error {
+	_, err := o.db.Exec(o.db.Rebind("update block_batch set proving_status = ? where proving_status = ?;"), types.ProvingTaskUnassigned, before)
 	return err
 }
 
-func (o *blockBatchOrm) NewBatchInDBTx(dbTx *sqlx.Tx, startBlock *BlockInfo, endBlock *BlockInfo, parentHash string, totalTxNum uint64, totalL2Gas uint64) (string, error) {
-	row := dbTx.QueryRow("SELECT COALESCE(MAX(index), 0) FROM block_batch;")
+// func (o *blockBatchOrm) NewBatchInDBTx(dbTx *sqlx.Tx, startBlock *BlockInfo, endBlock *BlockInfo, parentHash string, totalTxNum uint64, totalL2Gas uint64) (string, error) {
+func (o *blockBatchOrm) NewBatchInDBTx(dbTx *sqlx.Tx, batchData *types.BatchData) error {
+	// row := dbTx.QueryRow("SELECT COALESCE(MAX(index), 0) FROM block_batch;")
 
 	// TODO: use *big.Int for this
-	var index int64
-	if err := row.Scan(&index); err != nil {
-		return "", err
-	}
+	// var index int64
+	// if err := row.Scan(&index); err != nil {
+	// 	return "", err
+	// }
+	numBlocks := len(batchData.Batch.Blocks)
 
-	index++
-	hash := utils.ComputeBatchID(common.HexToHash(endBlock.Hash), common.HexToHash(parentHash), big.NewInt(index))
+	// index++
+	//hash := utils.ComputeBatchID(common.HexToHash(endBlock.Hash), common.HexToHash(parentHash), big.NewInt(index))
 	if _, err := dbTx.NamedExec(`INSERT INTO public.block_batch (hash, index, parent_hash, start_block_number, start_block_hash, end_block_number, end_block_hash, total_tx_num, total_l2_gas, state_root, total_l1_tx_num) VALUES (:hash, :index, :parent_hash, :start_block_number, :start_block_hash, :end_block_number, :end_block_hash, :total_tx_num, :total_l2_gas, :state_root, :total_l1_tx_num)`,
 		map[string]interface{}{
-			"hash":               hash,
-			"index":              index,
-			"parent_hash":        parentHash,
-			"start_block_number": startBlock.Number,
-			"start_block_hash":   startBlock.Hash,
-			"end_block_number":   endBlock.Number,
-			"end_block_hash":     endBlock.Hash,
-			"total_tx_num":       totalTxNum,
-			"total_l2_gas":       totalL2Gas,
-			"state_root":         "state_root_ph", // TODO: add state_root
-			"total_l1_tx_num":    0,               // TODO: add total_l1_tx_num
+			"hash":               batchData.Hash().Hex(),
+			"index":              batchData.Batch.BatchIndex,
+			"parent_hash":        common.Hash(batchData.Batch.ParentBatchHash).Hex(),
+			"start_block_number": batchData.Batch.Blocks[0].BlockNumber,
+			"start_block_hash":   common.Hash(batchData.Batch.Blocks[0].BlockHash).Hex(),
+			"end_block_number":   batchData.Batch.Blocks[numBlocks-1].BlockNumber,
+			"end_block_hash":     common.Hash(batchData.Batch.Blocks[numBlocks-1].BlockHash).Hex(),
+			"total_tx_num":       batchData.TotalTxNum,
+			"total_l1_tx_num":    batchData.TotalL1TxNum,
+			"total_l2_gas":       batchData.TotalL2Gas,
+			"state_root":         common.Hash(batchData.Batch.NewStateRoot).Hex(),
 			"created_at":         time.Now(),
 			// "proving_status":     ProvingTaskUnassigned, // actually no need, because we have default value in DB schema
 			// "rollup_status":      RollupPending,         // actually no need, because we have default value in DB schema
 		}); err != nil {
-		return "", err
+		return err
 	}
 
-	return hash, nil
+	return nil
 }
 
 func (o *blockBatchOrm) BatchRecordExist(hash string) (bool, error) {
@@ -241,7 +156,7 @@ func (o *blockBatchOrm) BatchRecordExist(hash string) (bool, error) {
 }
 
 func (o *blockBatchOrm) GetPendingBatches(limit uint64) ([]string, error) {
-	rows, err := o.db.Queryx(`SELECT hash FROM block_batch WHERE rollup_status = $1 ORDER BY index ASC LIMIT $2`, RollupPending, limit)
+	rows, err := o.db.Queryx(`SELECT hash FROM block_batch WHERE rollup_status = $1 ORDER BY index ASC LIMIT $2`, types.RollupPending, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -263,27 +178,27 @@ func (o *blockBatchOrm) GetPendingBatches(limit uint64) ([]string, error) {
 	return hashes, rows.Close()
 }
 
-func (o *blockBatchOrm) GetLatestBatch() (*BlockBatch, error) {
+func (o *blockBatchOrm) GetLatestBatch() (*types.BlockBatch, error) {
 	row := o.db.QueryRowx(`select * from block_batch where index = (select max(index) from block_batch);`)
-	batch := &BlockBatch{}
+	batch := &types.BlockBatch{}
 	if err := row.StructScan(batch); err != nil {
 		return nil, err
 	}
 	return batch, nil
 }
 
-func (o *blockBatchOrm) GetLatestCommittedBatch() (*BlockBatch, error) {
-	row := o.db.QueryRowx(`select * from block_batch where index = (select max(index) from block_batch where rollup_status = $1);`, RollupCommitted)
-	batch := &BlockBatch{}
+func (o *blockBatchOrm) GetLatestCommittedBatch() (*types.BlockBatch, error) {
+	row := o.db.QueryRowx(`select * from block_batch where index = (select max(index) from block_batch where rollup_status = $1);`, types.RollupCommitted)
+	batch := &types.BlockBatch{}
 	if err := row.StructScan(batch); err != nil {
 		return nil, err
 	}
 	return batch, nil
 }
 
-func (o *blockBatchOrm) GetLatestFinalizedBatch() (*BlockBatch, error) {
-	row := o.db.QueryRowx(`select * from block_batch where index = (select max(index) from block_batch where rollup_status = $1);`, RollupFinalized)
-	batch := &BlockBatch{}
+func (o *blockBatchOrm) GetLatestFinalizedBatch() (*types.BlockBatch, error) {
+	row := o.db.QueryRowx(`select * from block_batch where index = (select max(index) from block_batch where rollup_status = $1);`, types.RollupFinalized)
+	batch := &types.BlockBatch{}
 	if err := row.StructScan(batch); err != nil {
 		return nil, err
 	}
@@ -291,7 +206,7 @@ func (o *blockBatchOrm) GetLatestFinalizedBatch() (*BlockBatch, error) {
 }
 
 func (o *blockBatchOrm) GetCommittedBatches(limit uint64) ([]string, error) {
-	rows, err := o.db.Queryx(`SELECT hash FROM block_batch WHERE rollup_status = $1 ORDER BY index ASC LIMIT $2`, RollupCommitted, limit)
+	rows, err := o.db.Queryx(`SELECT hash FROM block_batch WHERE rollup_status = $1 ORDER BY index ASC LIMIT $2`, types.RollupCommitted, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -313,39 +228,39 @@ func (o *blockBatchOrm) GetCommittedBatches(limit uint64) ([]string, error) {
 	return hashes, rows.Close()
 }
 
-func (o *blockBatchOrm) GetRollupStatus(hash string) (RollupStatus, error) {
+func (o *blockBatchOrm) GetRollupStatus(hash string) (types.RollupStatus, error) {
 	row := o.db.QueryRow(`SELECT rollup_status FROM block_batch WHERE hash = $1`, hash)
-	var status RollupStatus
+	var status types.RollupStatus
 	if err := row.Scan(&status); err != nil {
-		return RollupUndefined, err
+		return types.RollupUndefined, err
 	}
 	return status, nil
 }
 
-func (o *blockBatchOrm) GetRollupStatusByIDList(hashes []string) ([]RollupStatus, error) {
+func (o *blockBatchOrm) GetRollupStatusByIDList(hashes []string) ([]types.RollupStatus, error) {
 	if len(hashes) == 0 {
-		return make([]RollupStatus, 0), nil
+		return make([]types.RollupStatus, 0), nil
 	}
 
 	query, args, err := sqlx.In("SELECT hash, rollup_status FROM block_batch WHERE hash IN (?);", hashes)
 	if err != nil {
-		return make([]RollupStatus, 0), err
+		return make([]types.RollupStatus, 0), err
 	}
 	// sqlx.In returns queries with the `?` bindvar, we can rebind it for our backend
 	query = o.db.Rebind(query)
 
 	rows, err := o.db.Query(query, args...)
 
-	statusMap := make(map[string]RollupStatus)
+	statusMap := make(map[string]types.RollupStatus)
 	for rows.Next() {
 		var hash string
-		var status RollupStatus
+		var status types.RollupStatus
 		if err = rows.Scan(&hash, &status); err != nil {
 			break
 		}
 		statusMap[hash] = status
 	}
-	var statuses []RollupStatus
+	var statuses []types.RollupStatus
 	if err != nil {
 		return statuses, err
 	}
@@ -375,12 +290,12 @@ func (o *blockBatchOrm) GetFinalizeTxHash(hash string) (sql.NullString, error) {
 	return finalizeTxHash, nil
 }
 
-func (o *blockBatchOrm) UpdateRollupStatus(ctx context.Context, hash string, status RollupStatus) error {
+func (o *blockBatchOrm) UpdateRollupStatus(ctx context.Context, hash string, status types.RollupStatus) error {
 	switch status {
-	case RollupCommitted:
+	case types.RollupCommitted:
 		_, err := o.db.Exec(o.db.Rebind("update block_batch set rollup_status = ?, committed_at = ? where hash = ?;"), status, time.Now(), hash)
 		return err
-	case RollupFinalized:
+	case types.RollupFinalized:
 		_, err := o.db.Exec(o.db.Rebind("update block_batch set rollup_status = ?, finalized_at = ? where hash = ?;"), status, time.Now(), hash)
 		return err
 	default:
@@ -389,9 +304,9 @@ func (o *blockBatchOrm) UpdateRollupStatus(ctx context.Context, hash string, sta
 	}
 }
 
-func (o *blockBatchOrm) UpdateCommitTxHashAndRollupStatus(ctx context.Context, hash string, commitTxHash string, status RollupStatus) error {
+func (o *blockBatchOrm) UpdateCommitTxHashAndRollupStatus(ctx context.Context, hash string, commitTxHash string, status types.RollupStatus) error {
 	switch status {
-	case RollupCommitted:
+	case types.RollupCommitted:
 		_, err := o.db.Exec(o.db.Rebind("update block_batch set commit_tx_hash = ?, rollup_status = ?, committed_at = ? where hash = ?;"), commitTxHash, status, time.Now(), hash)
 		return err
 	default:
@@ -400,9 +315,9 @@ func (o *blockBatchOrm) UpdateCommitTxHashAndRollupStatus(ctx context.Context, h
 	}
 }
 
-func (o *blockBatchOrm) UpdateFinalizeTxHashAndRollupStatus(ctx context.Context, hash string, finalizeTxHash string, status RollupStatus) error {
+func (o *blockBatchOrm) UpdateFinalizeTxHashAndRollupStatus(ctx context.Context, hash string, finalizeTxHash string, status types.RollupStatus) error {
 	switch status {
-	case RollupFinalized:
+	case types.RollupFinalized:
 		_, err := o.db.Exec(o.db.Rebind("update block_batch set finalize_tx_hash = ?, rollup_status = ?, finalized_at = ? where hash = ?;"), finalizeTxHash, status, time.Now(), hash)
 		return err
 	default:
@@ -412,7 +327,7 @@ func (o *blockBatchOrm) UpdateFinalizeTxHashAndRollupStatus(ctx context.Context,
 }
 
 func (o *blockBatchOrm) GetAssignedBatchIDs() ([]string, error) {
-	rows, err := o.db.Queryx(`SELECT hash FROM block_batch WHERE proving_status IN ($1, $2)`, ProvingTaskAssigned, ProvingTaskProved)
+	rows, err := o.db.Queryx(`SELECT hash FROM block_batch WHERE proving_status IN ($1, $2)`, types.ProvingTaskAssigned, types.ProvingTaskProved)
 	if err != nil {
 		return nil, err
 	}
@@ -430,7 +345,7 @@ func (o *blockBatchOrm) GetAssignedBatchIDs() ([]string, error) {
 }
 
 func (o *blockBatchOrm) UpdateSkippedBatches() (int64, error) {
-	res, err := o.db.Exec(o.db.Rebind("update block_batch set rollup_status = ? where (proving_status = ? or proving_status = ?) and rollup_status = ?;"), RollupFinalizationSkipped, ProvingTaskSkipped, ProvingTaskFailed, RollupCommitted)
+	res, err := o.db.Exec(o.db.Rebind("update block_batch set rollup_status = ? where (proving_status = ? or proving_status = ?) and rollup_status = ?;"), types.RollupFinalizationSkipped, types.ProvingTaskSkipped, types.ProvingTaskFailed, types.RollupCommitted)
 	if err != nil {
 		return 0, err
 	}

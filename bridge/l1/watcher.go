@@ -8,14 +8,15 @@ import (
 	geth "github.com/scroll-tech/go-ethereum"
 	"github.com/scroll-tech/go-ethereum/accounts/abi"
 	"github.com/scroll-tech/go-ethereum/common"
-	"github.com/scroll-tech/go-ethereum/core/types"
+	geth_types "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/scroll-tech/go-ethereum/metrics"
 	"github.com/scroll-tech/go-ethereum/rpc"
 
+	"scroll-tech/common/types"
+
 	"scroll-tech/database"
-	"scroll-tech/database/orm"
 
 	bridge_abi "scroll-tech/bridge/abi"
 	"scroll-tech/bridge/utils"
@@ -34,7 +35,7 @@ type relayedMessage struct {
 type rollupEvent struct {
 	batchID common.Hash
 	txHash  common.Hash
-	status  orm.RollupStatus
+	status  types.RollupStatus
 }
 
 // Watcher will listen for smart contract events from Eth L1.
@@ -190,9 +191,9 @@ func (w *Watcher) FetchContractEvent(blockHeight uint64) error {
 			status := statuses[index]
 			// only update when db status is before event status
 			if event.status > status {
-				if event.status == orm.RollupFinalized {
+				if event.status == types.RollupFinalized {
 					err = w.db.UpdateFinalizeTxHashAndRollupStatus(w.ctx, batchID, event.txHash.String(), event.status)
-				} else if event.status == orm.RollupCommitted {
+				} else if event.status == types.RollupCommitted {
 					err = w.db.UpdateCommitTxHashAndRollupStatus(w.ctx, batchID, event.txHash.String(), event.status)
 				}
 				if err != nil {
@@ -207,10 +208,10 @@ func (w *Watcher) FetchContractEvent(blockHeight uint64) error {
 		for _, msg := range relayedMessageEvents {
 			if msg.isSuccessful {
 				// succeed
-				err = w.db.UpdateLayer2StatusAndLayer1Hash(w.ctx, msg.msgHash.String(), orm.MsgConfirmed, msg.txHash.String())
+				err = w.db.UpdateLayer2StatusAndLayer1Hash(w.ctx, msg.msgHash.String(), types.MsgConfirmed, msg.txHash.String())
 			} else {
 				// failed
-				err = w.db.UpdateLayer2StatusAndLayer1Hash(w.ctx, msg.msgHash.String(), orm.MsgFailed, msg.txHash.String())
+				err = w.db.UpdateLayer2StatusAndLayer1Hash(w.ctx, msg.msgHash.String(), types.MsgFailed, msg.txHash.String())
 			}
 			if err != nil {
 				log.Error("Failed to update layer1 status and layer2 hash", "err", err)
@@ -229,11 +230,11 @@ func (w *Watcher) FetchContractEvent(blockHeight uint64) error {
 	return nil
 }
 
-func (w *Watcher) parseBridgeEventLogs(logs []types.Log) ([]*orm.L1Message, []relayedMessage, []rollupEvent, error) {
+func (w *Watcher) parseBridgeEventLogs(logs []geth_types.Log) ([]*types.L1Message, []relayedMessage, []rollupEvent, error) {
 	// Need use contract abi to parse event Log
 	// Can only be tested after we have our contracts set up
 
-	var l1Messages []*orm.L1Message
+	var l1Messages []*types.L1Message
 	var relayedMessages []relayedMessage
 	var rollupEvents []rollupEvent
 	for _, vLog := range logs {
@@ -256,7 +257,7 @@ func (w *Watcher) parseBridgeEventLogs(logs []types.Log) ([]*orm.L1Message, []re
 			}
 			// target is in topics[1]
 			event.Target = common.HexToAddress(vLog.Topics[1].String())
-			l1Messages = append(l1Messages, &orm.L1Message{
+			l1Messages = append(l1Messages, &types.L1Message{
 				QueueIndex: event.QueueIndex.Uint64(),
 				// MsgHash:    utils.ComputeMessageHash(event.Sender, event.Target, event.Value, event.Fee, event.Deadline, event.Message, event.MessageNonce).String(),
 				// MsgHash: // todo: use encodeXDomainData from contracts,
@@ -308,7 +309,7 @@ func (w *Watcher) parseBridgeEventLogs(logs []types.Log) ([]*orm.L1Message, []re
 			rollupEvents = append(rollupEvents, rollupEvent{
 				batchID: event.BatchID,
 				txHash:  vLog.TxHash,
-				status:  orm.RollupCommitted,
+				status:  types.RollupCommitted,
 			})
 		case common.HexToHash(bridge_abi.FinalizedBatchEventSignature):
 			event := struct {
@@ -328,7 +329,7 @@ func (w *Watcher) parseBridgeEventLogs(logs []types.Log) ([]*orm.L1Message, []re
 			rollupEvents = append(rollupEvents, rollupEvent{
 				batchID: event.BatchID,
 				txHash:  vLog.TxHash,
-				status:  orm.RollupFinalized,
+				status:  types.RollupFinalized,
 			})
 		default:
 			log.Error("Unknown event", "topic", vLog.Topics[0], "txHash", vLog.TxHash)

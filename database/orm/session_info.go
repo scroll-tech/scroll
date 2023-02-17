@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 
 	"github.com/jmoiron/sqlx"
+
+	"scroll-tech/common/types"
 )
 
 type sessionInfoOrm struct {
@@ -17,7 +19,7 @@ func NewSessionInfoOrm(db *sqlx.DB) SessionInfoOrm {
 	return &sessionInfoOrm{db: db}
 }
 
-func (o *sessionInfoOrm) GetSessionInfosByIDs(ids []string) ([]*SessionInfo, error) {
+func (o *sessionInfoOrm) GetSessionInfosByIDs(ids []string) ([]*types.SessionInfo, error) {
 	if len(ids) == 0 {
 		return nil, nil
 	}
@@ -29,13 +31,13 @@ func (o *sessionInfoOrm) GetSessionInfosByIDs(ids []string) ([]*SessionInfo, err
 	if err != nil {
 		return nil, err
 	}
-	var sessionInfos []*SessionInfo
+	var sessionInfos []*types.SessionInfo
 	for rows.Next() {
 		var infoBytes []byte
 		if err := rows.Scan(&infoBytes); err != nil {
 			return nil, err
 		}
-		sessionInfo := &SessionInfo{}
+		sessionInfo := &types.SessionInfo{}
 		if err := json.Unmarshal(infoBytes, sessionInfo); err != nil {
 			return nil, err
 		}
@@ -44,7 +46,7 @@ func (o *sessionInfoOrm) GetSessionInfosByIDs(ids []string) ([]*SessionInfo, err
 	return sessionInfos, nil
 }
 
-func (o *sessionInfoOrm) SetSessionInfo(rollersInfo *SessionInfo) error {
+func (o *sessionInfoOrm) SetSessionInfo(rollersInfo *types.SessionInfo) error {
 	infoBytes, err := json.Marshal(rollersInfo)
 	if err != nil {
 		return err

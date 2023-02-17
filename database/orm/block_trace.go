@@ -9,9 +9,10 @@ import (
 
 	"github.com/jmoiron/sqlx"
 	"github.com/scroll-tech/go-ethereum/common"
-	"github.com/scroll-tech/go-ethereum/core/types"
+	eth_types "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/log"
 
+	"scroll-tech/common/types"
 	"scroll-tech/common/utils"
 )
 
@@ -48,7 +49,7 @@ func (o *blockTraceOrm) GetBlockTracesLatestHeight() (int64, error) {
 	return height, nil
 }
 
-func (o *blockTraceOrm) GetBlockTraces(fields map[string]interface{}, args ...string) ([]*types.BlockTrace, error) {
+func (o *blockTraceOrm) GetBlockTraces(fields map[string]interface{}, args ...string) ([]*eth_types.BlockTrace, error) {
 	type Result struct {
 		Trace string
 	}
@@ -65,13 +66,13 @@ func (o *blockTraceOrm) GetBlockTraces(fields map[string]interface{}, args ...st
 		return nil, err
 	}
 
-	var traces []*types.BlockTrace
+	var traces []*eth_types.BlockTrace
 	for rows.Next() {
 		result := &Result{}
 		if err = rows.StructScan(result); err != nil {
 			break
 		}
-		trace := types.BlockTrace{}
+		trace := eth_types.BlockTrace{}
 		err = json.Unmarshal([]byte(result.Trace), &trace)
 		if err != nil {
 			break
@@ -85,7 +86,7 @@ func (o *blockTraceOrm) GetBlockTraces(fields map[string]interface{}, args ...st
 	return traces, rows.Close()
 }
 
-func (o *blockTraceOrm) GetBlockInfos(fields map[string]interface{}, args ...string) ([]*BlockInfo, error) {
+func (o *blockTraceOrm) GetBlockInfos(fields map[string]interface{}, args ...string) ([]*types.BlockInfo, error) {
 	query := "SELECT number, hash, parent_hash, batch_id, tx_num, gas_used, block_timestamp FROM block_trace WHERE 1 = 1 "
 	for key := range fields {
 		query += fmt.Sprintf("AND %s=:%s ", key, key)
@@ -98,9 +99,9 @@ func (o *blockTraceOrm) GetBlockInfos(fields map[string]interface{}, args ...str
 		return nil, err
 	}
 
-	var blocks []*BlockInfo
+	var blocks []*types.BlockInfo
 	for rows.Next() {
-		block := &BlockInfo{}
+		block := &types.BlockInfo{}
 		if err = rows.StructScan(block); err != nil {
 			break
 		}
@@ -113,7 +114,7 @@ func (o *blockTraceOrm) GetBlockInfos(fields map[string]interface{}, args ...str
 	return blocks, rows.Close()
 }
 
-func (o *blockTraceOrm) GetUnbatchedBlocks(fields map[string]interface{}, args ...string) ([]*BlockInfo, error) {
+func (o *blockTraceOrm) GetUnbatchedBlocks(fields map[string]interface{}, args ...string) ([]*types.BlockInfo, error) {
 	query := "SELECT number, hash, parent_hash, batch_id, tx_num, gas_used, block_timestamp FROM block_trace WHERE batch_id is NULL "
 	for key := range fields {
 		query += fmt.Sprintf("AND %s=:%s ", key, key)
@@ -126,9 +127,9 @@ func (o *blockTraceOrm) GetUnbatchedBlocks(fields map[string]interface{}, args .
 		return nil, err
 	}
 
-	var blocks []*BlockInfo
+	var blocks []*types.BlockInfo
 	for rows.Next() {
-		block := &BlockInfo{}
+		block := &types.BlockInfo{}
 		if err = rows.StructScan(block); err != nil {
 			break
 		}
@@ -151,7 +152,7 @@ func (o *blockTraceOrm) GetHashByNumber(number uint64) (*common.Hash, error) {
 	return &hash, nil
 }
 
-func (o *blockTraceOrm) InsertBlockTraces(blockTraces []*types.BlockTrace) error {
+func (o *blockTraceOrm) InsertBlockTraces(blockTraces []*eth_types.BlockTrace) error {
 	traceMaps := make([]map[string]interface{}, len(blockTraces))
 	for i, trace := range blockTraces {
 		number, hash, txNum, mtime := trace.Header.Number.Int64(),

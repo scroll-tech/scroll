@@ -7,6 +7,8 @@ import (
 
 	"github.com/jmoiron/sqlx"
 	"github.com/scroll-tech/go-ethereum/log"
+
+	"scroll-tech/common/types"
 )
 
 type l1MessageOrm struct {
@@ -21,8 +23,8 @@ func NewL1MessageOrm(db *sqlx.DB) L1MessageOrm {
 }
 
 // GetL1MessageByMsgHash fetch message by nonce
-func (m *l1MessageOrm) GetL1MessageByMsgHash(msgHash string) (*L1Message, error) {
-	msg := L1Message{}
+func (m *l1MessageOrm) GetL1MessageByMsgHash(msgHash string) (*types.L1Message, error) {
+	msg := types.L1Message{}
 
 	row := m.db.QueryRowx(`SELECT queueIndex, msg_hash, height, sender, target, value, gas_limit, calldata, layer1_hash, status FROM l1_message WHERE msg_hash = $1`, msgHash)
 
@@ -33,8 +35,8 @@ func (m *l1MessageOrm) GetL1MessageByMsgHash(msgHash string) (*L1Message, error)
 }
 
 // GetL1MessageByNonce fetch message by nonce
-func (m *l1MessageOrm) GetL1MessageByNonce(nonce uint64) (*L1Message, error) {
-	msg := L1Message{}
+func (m *l1MessageOrm) GetL1MessageByNonce(nonce uint64) (*types.L1Message, error) {
+	msg := types.L1Message{}
 
 	row := m.db.QueryRowx(`SELECT nonce, msg_hash, height, sender, target, value, calldata, layer1_hash, status FROM l1_message WHERE nonce = $1`, nonce)
 
@@ -45,15 +47,15 @@ func (m *l1MessageOrm) GetL1MessageByNonce(nonce uint64) (*L1Message, error) {
 }
 
 // GetL1MessagesByStatus fetch list of unprocessed messages given msg status
-func (m *l1MessageOrm) GetL1MessagesByStatus(status MsgStatus, limit uint64) ([]*L1Message, error) {
+func (m *l1MessageOrm) GetL1MessagesByStatus(status types.MsgStatus, limit uint64) ([]*types.L1Message, error) {
 	rows, err := m.db.Queryx(`SELECT nonce, msg_hash, height, sender, target, value, calldata, layer1_hash, status FROM l1_message WHERE status = $1 ORDER BY nonce ASC LIMIT $2;`, status, limit)
 	if err != nil {
 		return nil, err
 	}
 
-	var msgs []*L1Message
+	var msgs []*types.L1Message
 	for rows.Next() {
-		msg := &L1Message{}
+		msg := &types.L1Message{}
 		if err = rows.StructScan(&msg); err != nil {
 			break
 		}
@@ -70,7 +72,7 @@ func (m *l1MessageOrm) GetL1MessagesByStatus(status MsgStatus, limit uint64) ([]
 
 // GetL1ProcessedNonce fetch latest processed message nonce
 func (m *l1MessageOrm) GetL1ProcessedNonce() (int64, error) {
-	row := m.db.QueryRow(`SELECT MAX(nonce) FROM l1_message WHERE status = $1;`, MsgConfirmed)
+	row := m.db.QueryRow(`SELECT MAX(nonce) FROM l1_message WHERE status = $1;`, types.MsgConfirmed)
 
 	var nonce sql.NullInt64
 	if err := row.Scan(&nonce); err != nil {
@@ -88,7 +90,7 @@ func (m *l1MessageOrm) GetL1ProcessedNonce() (int64, error) {
 }
 
 // SaveL1Messages batch save a list of layer1 messages
-func (m *l1MessageOrm) SaveL1Messages(ctx context.Context, messages []*L1Message) error {
+func (m *l1MessageOrm) SaveL1Messages(ctx context.Context, messages []*types.L1Message) error {
 	if len(messages) == 0 {
 		return nil
 	}
@@ -131,7 +133,7 @@ func (m *l1MessageOrm) UpdateLayer2Hash(ctx context.Context, msgHash, layer2Hash
 }
 
 // UpdateLayer1Status updates message stauts, given message hash
-func (m *l1MessageOrm) UpdateLayer1Status(ctx context.Context, msgHash string, status MsgStatus) error {
+func (m *l1MessageOrm) UpdateLayer1Status(ctx context.Context, msgHash string, status types.MsgStatus) error {
 	if _, err := m.db.ExecContext(ctx, m.db.Rebind("update l1_message set status = ? where msg_hash = ?;"), status, msgHash); err != nil {
 		return err
 	}
@@ -140,7 +142,7 @@ func (m *l1MessageOrm) UpdateLayer1Status(ctx context.Context, msgHash string, s
 }
 
 // UpdateLayer1StatusAndLayer2Hash updates message status and layer2 transaction hash, given message hash
-func (m *l1MessageOrm) UpdateLayer1StatusAndLayer2Hash(ctx context.Context, msgHash string, status MsgStatus, layer2Hash string) error {
+func (m *l1MessageOrm) UpdateLayer1StatusAndLayer2Hash(ctx context.Context, msgHash string, status types.MsgStatus, layer2Hash string) error {
 	if _, err := m.db.ExecContext(ctx, m.db.Rebind("update l1_message set status = ?, layer2_hash = ? where msg_hash = ?;"), status, layer2Hash, msgHash); err != nil {
 		return err
 	}

@@ -10,7 +10,7 @@ import (
 	geth "github.com/scroll-tech/go-ethereum"
 	"github.com/scroll-tech/go-ethereum/accounts/abi"
 	"github.com/scroll-tech/go-ethereum/common"
-	"github.com/scroll-tech/go-ethereum/core/types"
+	geth_types "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/event"
 	"github.com/scroll-tech/go-ethereum/log"
@@ -20,8 +20,9 @@ import (
 	bridge_abi "scroll-tech/bridge/abi"
 	"scroll-tech/bridge/utils"
 
+	"scroll-tech/common/types"
+
 	"scroll-tech/database"
-	"scroll-tech/database/orm"
 
 	"scroll-tech/bridge/config"
 )
@@ -195,7 +196,7 @@ func (w *WatcherClient) tryFetchRunningMissingBlocks(ctx context.Context, blockH
 }
 
 func (w *WatcherClient) getAndStoreBlockTraces(ctx context.Context, from, to uint64) error {
-	var traces []*types.BlockTrace
+	var traces []*geth_types.BlockTrace
 
 	for number := from; number <= to; number++ {
 		log.Debug("retrieving block trace", "height", number)
@@ -272,10 +273,10 @@ func (w *WatcherClient) FetchContractEvent(blockHeight uint64) {
 		for _, msg := range relayedMessageEvents {
 			if msg.isSuccessful {
 				// succeed
-				err = w.orm.UpdateLayer1StatusAndLayer2Hash(w.ctx, msg.msgHash.String(), orm.MsgConfirmed, msg.txHash.String())
+				err = w.orm.UpdateLayer1StatusAndLayer2Hash(w.ctx, msg.msgHash.String(), types.MsgConfirmed, msg.txHash.String())
 			} else {
 				// failed
-				err = w.orm.UpdateLayer1StatusAndLayer2Hash(w.ctx, msg.msgHash.String(), orm.MsgFailed, msg.txHash.String())
+				err = w.orm.UpdateLayer1StatusAndLayer2Hash(w.ctx, msg.msgHash.String(), types.MsgFailed, msg.txHash.String())
 			}
 			if err != nil {
 				log.Error("Failed to update layer1 status and layer2 hash", "err", err)
@@ -293,11 +294,11 @@ func (w *WatcherClient) FetchContractEvent(blockHeight uint64) {
 	}
 }
 
-func (w *WatcherClient) parseBridgeEventLogs(logs []types.Log) ([]*orm.L2Message, []relayedMessage, error) {
+func (w *WatcherClient) parseBridgeEventLogs(logs []geth_types.Log) ([]*types.L2Message, []relayedMessage, error) {
 	// Need use contract abi to parse event Log
 	// Can only be tested after we have our contracts set up
 
-	var l2Messages []*orm.L2Message
+	var l2Messages []*types.L2Message
 	var relayedMessages []relayedMessage
 	for _, vLog := range logs {
 		switch vLog.Topics[0] {
@@ -317,7 +318,7 @@ func (w *WatcherClient) parseBridgeEventLogs(logs []types.Log) ([]*orm.L2Message
 			}
 			// target is in topics[1]
 			event.Target = common.HexToAddress(vLog.Topics[1].String())
-			l2Messages = append(l2Messages, &orm.L2Message{
+			l2Messages = append(l2Messages, &types.L2Message{
 				Nonce: event.MessageNonce.Uint64(),
 				// MsgHash:    utils.ComputeMessageHash(event.Sender, event.Target, event.Value, event.Fee, event.Deadline, event.Message, event.MessageNonce).String(),
 				// MsgHash: // todo: use encodeXDomainData from contracts,

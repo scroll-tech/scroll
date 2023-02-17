@@ -19,8 +19,8 @@ import (
 	"golang.org/x/sync/errgroup"
 	"modernc.org/mathutil"
 
+	"scroll-tech/common/types"
 	"scroll-tech/database"
-	"scroll-tech/database/orm"
 
 	bridge_abi "scroll-tech/bridge/abi"
 	"scroll-tech/bridge/config"
@@ -112,7 +112,7 @@ func (r *Layer2Relayer) ProcessSavedEvents() {
 
 	// msgs are sorted by nonce in increasing order
 	msgs, err := r.db.GetL2Messages(
-		map[string]interface{}{"status": orm.MsgPending},
+		map[string]interface{}{"status": types.MsgPending},
 		fmt.Sprintf("AND height<=%d", batch.EndBlockNumber),
 		fmt.Sprintf("ORDER BY nonce ASC LIMIT %d", processMsgLimit),
 	)
@@ -144,7 +144,7 @@ func (r *Layer2Relayer) ProcessSavedEvents() {
 	}
 }
 
-func (r *Layer2Relayer) processSavedEvent(msg *orm.L2Message) error {
+func (r *Layer2Relayer) processSavedEvent(msg *types.L2Message) error {
 	// @todo fetch merkle proof from l2geth
 	log.Info("Processing L2 Message", "msg.nonce", msg.Nonce, "msg.height", msg.Height)
 
@@ -172,10 +172,10 @@ func (r *Layer2Relayer) processSavedEvent(msg *orm.L2Message) error {
 
 	hash, err := r.messageSender.SendTransaction(msg.MsgHash, &r.cfg.MessengerContractAddress, big.NewInt(0), data)
 	if err != nil && err.Error() == "execution reverted: Message expired" {
-		return r.db.UpdateLayer2Status(r.ctx, msg.MsgHash, orm.MsgExpired)
+		return r.db.UpdateLayer2Status(r.ctx, msg.MsgHash, types.MsgExpired)
 	}
 	if err != nil && err.Error() == "execution reverted: Message successfully executed" {
-		return r.db.UpdateLayer2Status(r.ctx, msg.MsgHash, orm.MsgConfirmed)
+		return r.db.UpdateLayer2Status(r.ctx, msg.MsgHash, types.MsgConfirmed)
 	}
 	if err != nil {
 		if !errors.Is(err, sender.ErrNoAvailableAccount) {
@@ -187,7 +187,7 @@ func (r *Layer2Relayer) processSavedEvent(msg *orm.L2Message) error {
 
 	// save status in db
 	// @todo handle db error
-	err = r.db.UpdateLayer2StatusAndLayer1Hash(r.ctx, msg.MsgHash, orm.MsgSubmitted, hash.String())
+	err = r.db.UpdateLayer2StatusAndLayer1Hash(r.ctx, msg.MsgHash, types.MsgSubmitted, hash.String())
 	if err != nil {
 		log.Error("UpdateLayer2StatusAndLayer1Hash failed", "msgHash", msg.MsgHash, "err", err)
 		return err
@@ -272,7 +272,7 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 	log.Info("commitBatch in layer1", "batch_id", id, "index", batch.Index, "hash", hash)
 
 	// record and sync with db, @todo handle db error
-	err = r.db.UpdateCommitTxHashAndRollupStatus(r.ctx, id, hash.String(), orm.RollupCommitting)
+	err = r.db.UpdateCommitTxHashAndRollupStatus(r.ctx, id, hash.String(), types.RollupCommitting)
 	if err != nil {
 		log.Error("UpdateCommitTxHashAndRollupStatus failed", "id", id, "index", batch.Index, "err", err)
 	}
@@ -320,7 +320,7 @@ func (r *Layer2Relayer) SendCommitTx(batchHashes []string, layer2Batches []*brid
 	// record and sync with db, @todo handle db error
 	for idx, batch := range layer2Batches {
 		id := batchHashes[idx]
-		err = r.db.UpdateCommitTxHashAndRollupStatus(r.ctx, id, hash.String(), orm.RollupCommitting)
+		err = r.db.UpdateCommitTxHashAndRollupStatus(r.ctx, id, hash.String(), types.RollupCommitting)
 		if err != nil {
 			log.Error("UpdateCommitTxHashAndRollupStatus failed", "id", id, "index", batch.BatchIndex, "err", err)
 		}
@@ -358,23 +358,23 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 	}
 
 	switch status {
-	case orm.ProvingTaskUnassigned, orm.ProvingTaskAssigned:
+	case types.ProvingTaskUnassigned, types.ProvingTaskAssigned:
 		// The proof for this block is not ready yet.
 		return
 
-	case orm.ProvingTaskProved:
+	case types.ProvingTaskProved:
 		// It's an intermediate state. The roller manager received the proof but has not verified
 		// the proof yet. We don't roll up the proof until it's verified.
 		return
 
-	case orm.ProvingTaskFailed, orm.ProvingTaskSkipped:
+	case types.ProvingTaskFailed, types.ProvingTaskSkipped:
 		// note: this is covered by UpdateSkippedBatches, but we keep it for completeness's sake
 
-		if err = r.db.UpdateRollupStatus(r.ctx, id, orm.RollupFinalizationSkipped); err != nil {
+		if err = r.db.UpdateRollupStatus(r.ctx, id, types.RollupFinalizationSkipped); err != nil {
 			log.Warn("UpdateRollupStatus failed", "id", id, "err", err)
 		}
 
-	case orm.ProvingTaskVerified:
+	case types.ProvingTaskVerified:
 		log.Info("Start to roll up zk proof", "id", id)
 		success := false
 
@@ -382,7 +382,7 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 			// TODO: need to revisit this and have a more fine-grained error handling
 			if !success {
 				log.Info("Failed to upload the proof, change rollup status to FinalizationSkipped", "id", id)
-				if err = r.db.UpdateRollupStatus(r.ctx, id, orm.RollupFinalizationSkipped); err != nil {
+				if err = r.db.UpdateRollupStatus(r.ctx, id, types.RollupFinalizationSkipped); err != nil {
 					log.Warn("UpdateRollupStatus failed", "id", id, "err", err)
 				}
 			}
@@ -427,7 +427,7 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 		log.Info("finalizeBatchWithProof in layer1", "batch_id", id, "hash", hash)
 
 		// record and sync with db, @todo handle db error
-		err = r.db.UpdateFinalizeTxHashAndRollupStatus(r.ctx, id, hash.String(), orm.RollupFinalizing)
+		err = r.db.UpdateFinalizeTxHashAndRollupStatus(r.ctx, id, hash.String(), types.RollupFinalizing)
 		if err != nil {
 			log.Warn("UpdateFinalizeTxHashAndRollupStatus failed", "batch_id", id, "err", err)
 		}
@@ -498,7 +498,7 @@ func (r *Layer2Relayer) handleConfirmation(confirmation *sender.Confirmation) {
 	if msgHash, ok := r.processingMessage.Load(confirmation.ID); ok {
 		transactionType = "MessageRelay"
 		// @todo handle db error
-		err := r.db.UpdateLayer2StatusAndLayer1Hash(r.ctx, msgHash.(string), orm.MsgConfirmed, confirmation.TxHash.String())
+		err := r.db.UpdateLayer2StatusAndLayer1Hash(r.ctx, msgHash.(string), types.MsgConfirmed, confirmation.TxHash.String())
 		if err != nil {
 			log.Warn("UpdateLayer2StatusAndLayer1Hash failed", "msgHash", msgHash.(string), "err", err)
 		}
@@ -509,7 +509,7 @@ func (r *Layer2Relayer) handleConfirmation(confirmation *sender.Confirmation) {
 	if batchID, ok := r.processingCommitment.Load(confirmation.ID); ok {
 		transactionType = "BatchCommitment"
 		// @todo handle db error
-		err := r.db.UpdateCommitTxHashAndRollupStatus(r.ctx, batchID.(string), confirmation.TxHash.String(), orm.RollupCommitted)
+		err := r.db.UpdateCommitTxHashAndRollupStatus(r.ctx, batchID.(string), confirmation.TxHash.String(), types.RollupCommitted)
 		if err != nil {
 			log.Warn("UpdateCommitTxHashAndRollupStatus failed", "batch_id", batchID.(string), "err", err)
 		}
@@ -521,7 +521,7 @@ func (r *Layer2Relayer) handleConfirmation(confirmation *sender.Confirmation) {
 		transactionType = "BatchesCommitment"
 		for _, id := range batchIDs.([]string) {
 			// @todo handle db error
-			err := r.db.UpdateCommitTxHashAndRollupStatus(r.ctx, id, confirmation.TxHash.String(), orm.RollupCommitted)
+			err := r.db.UpdateCommitTxHashAndRollupStatus(r.ctx, id, confirmation.TxHash.String(), types.RollupCommitted)
 			if err != nil {
 				log.Warn("UpdateCommitTxHashAndRollupStatus failed", "batch_id", id, "err", err)
 			}
@@ -533,7 +533,7 @@ func (r *Layer2Relayer) handleConfirmation(confirmation *sender.Confirmation) {
 	if batchID, ok := r.processingFinalization.Load(confirmation.ID); ok {
 		transactionType = "ProofFinalization"
 		// @todo handle db error
-		err := r.db.UpdateFinalizeTxHashAndRollupStatus(r.ctx, batchID.(string), confirmation.TxHash.String(), orm.RollupFinalized)
+		err := r.db.UpdateFinalizeTxHashAndRollupStatus(r.ctx, batchID.(string), confirmation.TxHash.String(), types.RollupFinalized)
 		if err != nil {
 			log.Warn("UpdateFinalizeTxHashAndRollupStatus failed", "batch_id", batchID.(string), "err", err)
 		}
