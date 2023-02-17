@@ -2,18 +2,14 @@ package l2
 
 import (
 	"context"
-	"crypto/ecdsa"
 	"math/big"
 	"strconv"
 	"testing"
 
-	"github.com/scroll-tech/go-ethereum/accounts/abi/bind"
 	"github.com/scroll-tech/go-ethereum/common"
-	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/rpc"
 	"github.com/stretchr/testify/assert"
 
-	"scroll-tech/bridge/config"
 	"scroll-tech/bridge/sender"
 
 	"scroll-tech/database"
@@ -190,11 +186,14 @@ func testFetchMultipleSentMessageInOneBlock(t *testing.T) {
 }
 */
 
+/*
 func prepareRelayerClient(l2Cli *ethclient.Client, bpCfg *config.BatchProposerConfig, db database.OrmFactory, contractAddr common.Address) *WatcherClient {
 	confirmations := rpc.LatestBlockNumber
 	return NewL2WatcherClient(context.Background(), l2Cli, confirmations, bpCfg, contractAddr, nil, db)
 }
+*/
 
+/*
 func prepareAuth(t *testing.T, l2Cli *ethclient.Client, privateKey *ecdsa.PrivateKey) *bind.TransactOpts {
 	auth, err := bind.NewKeyedTransactorWithChainID(privateKey, big.NewInt(53077))
 	assert.NoError(t, err)
@@ -204,3 +203,4 @@ func prepareAuth(t *testing.T, l2Cli *ethclient.Client, privateKey *ecdsa.Privat
 	assert.NoError(t, err)
 	return auth
 }
+*/

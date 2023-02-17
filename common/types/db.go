@@ -1,4 +1,4 @@
-// This file defines the table schema data structure used in the database tables
+// Package types defines the table schema data structure used in the database tables
 package types
 
 import (
