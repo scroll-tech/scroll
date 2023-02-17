@@ -12,8 +12,6 @@ import (
 	abi "scroll-tech/bridge/abi"
 )
 
-const MaxTxNum = 44
-
 type BatchData struct {
 	Batch        abi.IScrollChainBatch
 	TxHashes     []common.Hash
@@ -25,7 +23,7 @@ type BatchData struct {
 	hash *common.Hash
 }
 
-func (b *BatchData) Hash() *common.Hash {
+func (b *BatchData) Hash(maxTxNum int, paddingTxHash common.Hash) *common.Hash {
 	if b.hash != nil {
 		return b.hash
 	}
@@ -53,7 +51,7 @@ func (b *BatchData) Hash() *common.Hash {
 		baseFee := newByte32FromBytes(block.BaseFee.Bytes())
 		hasher.Write(baseFee[:])
 		// write GasLimit
-		binary.BigEndian.PutUint64(buf, block.Timestamp)
+		binary.BigEndian.PutUint64(buf, block.GasLimit)
 		hasher.Write(buf)
 		// write NumTransactions
 		binary.BigEndian.PutUint16(buf[:2], block.NumTransactions)
@@ -69,9 +67,8 @@ func (b *BatchData) Hash() *common.Hash {
 	}
 
 	// 4. append empty tx hash up to MaxTxNum
-	zeroHash := make([]byte, 32)
-	for i := len(b.TxHashes); i < MaxTxNum; i++ {
-		hasher.Write(zeroHash)
+	for i := len(b.TxHashes); i < maxTxNum; i++ {
+		hasher.Write(paddingTxHash[:])
 	}
 
 	b.hash = new(common.Hash)

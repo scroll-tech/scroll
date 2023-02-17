@@ -42,10 +42,7 @@ func MockBatchData() *BatchData {
 	batchData := new(BatchData)
 	batch := &batchData.Batch
 	batch.PrevStateRoot = common.HexToHash("0x000000000000000000000000000000000000000000000000000000000000cafe")
-	batch.L2Transactions, err = hex.DecodeString("0000007402f8710582fd14808506e38dccc9825208944d496ccc28058b1d74b7a19541663e21154f9c848801561db11e24a43380c080a0d890606d7a35b2ab0f9b866d62c092d5b163f3e6a55537ae1485aac08c3f8ff7a023997be2d32f53e146b160fff0ba81e81dbb4491c865ab174d15c5b3d28c41ae")
-	if err != nil {
-		panic("invalid hex string")
-	}
+	batch.L2Transactions = common.Hex2Bytes("0000007402f8710582fd14808506e38dccc9825208944d496ccc28058b1d74b7a19541663e21154f9c848801561db11e24a43380c080a0d890606d7a35b2ab0f9b866d62c092d5b163f3e6a55537ae1485aac08c3f8ff7a023997be2d32f53e146b160fff0ba81e81dbb4491c865ab174d15c5b3d28c41ae")
 
 	block := abi.IScrollChainBlockContext{
 		BlockNumber:     51966,
@@ -53,7 +50,7 @@ func MockBatchData() *BatchData {
 		BaseFee:         new(big.Int).SetUint64(0),
 		GasLimit:        10000000000000000,
 		NumTransactions: 1,
-		NumL1Messages:   1,
+		NumL1Messages:   0,
 	}
 	batch.Blocks = append(batch.Blocks, block)
 	batchData.TxHashes = append(batchData.TxHashes, tx.Hash())
@@ -63,6 +60,6 @@ func MockBatchData() *BatchData {
 
 func TestBatchHash(t *testing.T) {
 	batchData := MockBatchData()
-	t.Logf("% x\n", batchData.Hash())
-	assert.Equal(t, 1, "aaa")
+	hash := batchData.Hash(4, common.HexToHash("0xb5baa665b2664c3bfed7eb46e00ebc110ecf2ebd257854a9bf2b9dbc9b2c08f6"))
+	assert.Equal(t, *hash, common.HexToHash("0xa9f2ca3175794f91226a410ba1e60fff07a405c957562675c4149b77e659d805"))
 }
