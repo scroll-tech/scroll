@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"scroll-tech/common/types"
-	"scroll-tech/database/orm"
 )
 
 // RollerDebugAPI roller api interface in order go get debug message.
@@ -91,7 +90,7 @@ func (m *Manager) GetSessionInfo(sessionID string) (*SessionInfo, error) {
 		return info, nil
 	}
 	if s, ok := m.sessions[sessionID]; ok {
-		return newSessionInfo(s, orm.ProvingTaskAssigned, "", false), nil
+		return newSessionInfo(s, types.ProvingTaskAssigned, "", false), nil
 	}
 	return nil, fmt.Errorf("no such session, sessionID: %s", sessionID)
 }

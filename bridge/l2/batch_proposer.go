@@ -5,6 +5,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/scroll-tech/go-ethereum/common"
 	eth_types "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/log"
 
@@ -132,8 +133,8 @@ func (p *batchProposer) createBatchForBlocks(blocks []*types.BlockInfo) error {
 	}
 
 	if err := p.addBatchInfoToDB(batchData); err != nil {
-		log.Error("addBatchInfoToDB failed", "BatchHash", batchData.Hash(), "error", err)
-		// // todo: how to handle db error here.
+		log.Error("addBatchInfoToDB failed", "BatchHash", batchData.Hash(44, common.HexToHash("0")), "error", err) // todo: add real param
+		return err
 	}
 
 	p.batchDataBuffer = append(p.batchDataBuffer, batchData)
@@ -167,7 +168,8 @@ func (p *batchProposer) addBatchInfoToDB(batchData *types.BatchData) error {
 		blockIDs[i] = block.BlockNumber
 	}
 
-	if dbTxErr = p.orm.SetBatchIDForBlocksInDBTx(dbTx, blockIDs, batchData.Hash().Hex()); dbTxErr != nil {
+	// todo: add real param.
+	if dbTxErr = p.orm.SetBatchIDForBlocksInDBTx(dbTx, blockIDs, batchData.Hash(44, common.HexToHash("0")).Hex()); dbTxErr != nil {
 		return dbTxErr
 	}
 

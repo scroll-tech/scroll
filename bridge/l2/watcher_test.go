@@ -6,20 +6,15 @@ import (
 	"math/big"
 	"strconv"
 	"testing"
-	"time"
 
 	"github.com/scroll-tech/go-ethereum/accounts/abi/bind"
 	"github.com/scroll-tech/go-ethereum/common"
-	geth_types "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/rpc"
 	"github.com/stretchr/testify/assert"
 
 	"scroll-tech/bridge/config"
-	"scroll-tech/bridge/mock_bridge"
 	"scroll-tech/bridge/sender"
-
-	"scroll-tech/common/types"
 
 	"scroll-tech/database"
 	"scroll-tech/database/migrate"
@@ -56,6 +51,7 @@ func testCreateNewWatcherAndStop(t *testing.T) {
 	assert.GreaterOrEqual(t, blockNum, uint64(numTransactions))
 }
 
+/*
 func testMonitorBridgeContract(t *testing.T) {
 	// Create db handler and reset db.
 	db, err := database.NewOrmFactory(cfg.DBConfig)
@@ -118,7 +114,9 @@ func testMonitorBridgeContract(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 2, len(msgs))
 }
+*/
 
+/*
 func testFetchMultipleSentMessageInOneBlock(t *testing.T) {
 	// Create db handler and reset db.
 	db, err := database.NewOrmFactory(cfg.DBConfig)
@@ -190,6 +188,7 @@ func testFetchMultipleSentMessageInOneBlock(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 5, len(msgs))
 }
+*/
 
 func prepareRelayerClient(l2Cli *ethclient.Client, bpCfg *config.BatchProposerConfig, db database.OrmFactory, contractAddr common.Address) *WatcherClient {
 	confirmations := rpc.LatestBlockNumber

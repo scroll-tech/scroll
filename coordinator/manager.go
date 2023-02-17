@@ -21,7 +21,6 @@ import (
 	"scroll-tech/common/types"
 
 	"scroll-tech/database"
-	"scroll-tech/database/orm"
 
 	"scroll-tech/coordinator/config"
 	"scroll-tech/coordinator/verifier"
@@ -138,7 +137,7 @@ func (m *Manager) isRunning() bool {
 func (m *Manager) Loop() {
 	var (
 		tick  = time.NewTicker(time.Second * 3)
-		tasks []*orm.BlockBatch
+		tasks []*types.BlockBatch
 	)
 	defer tick.Stop()
 
@@ -149,7 +148,7 @@ func (m *Manager) Loop() {
 				var err error
 				// TODO: add cache
 				if tasks, err = m.orm.GetBlockBatches(
-					map[string]interface{}{"proving_status": orm.ProvingTaskUnassigned},
+					map[string]interface{}{"proving_status": types.ProvingTaskUnassigned},
 					fmt.Sprintf(
 						"ORDER BY index %s LIMIT %d;",
 						m.cfg.OrderSession,
@@ -234,7 +233,7 @@ func (m *Manager) handleZkProof(pk string, msg *message.ProofDetail) error {
 	if !ok {
 		return fmt.Errorf("roller %s (%s) is not eligible to partake in proof session %v", roller.Name, roller.PublicKey, msg.ID)
 	}
-	if roller.Status == orm.RollerProofValid {
+	if roller.Status == types.RollerProofValid {
 		// In order to prevent DoS attacks, it is forbidden to repeatedly submit valid proofs.
 		// TODO: Defend invalid proof resubmissions by one of the following two methods:
 		// (i) slash the roller for each submission of invalid proof
@@ -258,14 +257,14 @@ func (m *Manager) handleZkProof(pk string, msg *message.ProofDetail) error {
 		// TODO: maybe we should use db tx for the whole process?
 		// Roll back current proof's status.
 		if dbErr != nil {
-			if err := m.orm.UpdateProvingStatus(msg.ID, orm.ProvingTaskUnassigned); err != nil {
+			if err := m.orm.UpdateProvingStatus(msg.ID, types.ProvingTaskUnassigned); err != nil {
 				log.Error("fail to reset task status as Unassigned", "msg.ID", msg.ID)
 			}
 		}
 		// set proof status
-		status := orm.RollerProofInvalid
+		status := types.RollerProofInvalid
 		if success && dbErr == nil {
-			status = orm.RollerProofValid
+			status = types.RollerProofValid
 		}
 		// notify the session that the roller finishes the proving process
 		sess.finishChan <- rollerProofStatus{msg.ID, pk, status}
@@ -287,7 +286,7 @@ func (m *Manager) handleZkProof(pk string, msg *message.ProofDetail) error {
 		log.Error("failed to store proof into db", "error", dbErr)
 		return dbErr
 	}
-	if dbErr = m.orm.UpdateProvingStatus(msg.ID, orm.ProvingTaskProved); dbErr != nil {
+	if dbErr = m.orm.UpdateProvingStatus(msg.ID, types.ProvingTaskProved); dbErr != nil {
 		log.Error("failed to update task status as proved", "error", dbErr)
 		return dbErr
 	}
@@ -312,11 +311,11 @@ func (m *Manager) handleZkProof(pk string, msg *message.ProofDetail) error {
 	}
 
 	if success {
-		if dbErr = m.orm.UpdateProvingStatus(msg.ID, orm.ProvingTaskVerified); dbErr != nil {
+		if dbErr = m.orm.UpdateProvingStatus(msg.ID, types.ProvingTaskVerified); dbErr != nil {
 			log.Error(
 				"failed to update proving_status",
 				"msg.ID", msg.ID,
-				"status", orm.ProvingTaskVerified,
+				"status", types.ProvingTaskVerified,
 				"error", dbErr)
 		}
 		return dbErr
@@ -343,7 +342,7 @@ func (m *Manager) CollectProofs(sess *session) {
 			// First, round up the keys that actually sent in a valid proof.
 			var participatingRollers []string
 			for pk, roller := range sess.info.Rollers {
-				if roller.Status == orm.RollerProofValid {
+				if roller.Status == types.RollerProofValid {
 					participatingRollers = append(participatingRollers, pk)
 				}
 			}
@@ -357,7 +356,7 @@ func (m *Manager) CollectProofs(sess *session) {
 				// Note that this is only a workaround for testnet here.
 				// TODO: In real cases we should reset to orm.ProvingTaskUnassigned
 				// so as to re-distribute the task in the future
-				if err := m.orm.UpdateProvingStatus(sess.info.ID, orm.ProvingTaskFailed); err != nil {
+				if err := m.orm.UpdateProvingStatus(sess.info.ID, types.ProvingTaskFailed); err != nil {
 					log.Error("fail to reset task_status as Unassigned", "id", sess.info.ID, "err", err)
 				}
 				return
@@ -373,7 +372,7 @@ func (m *Manager) CollectProofs(sess *session) {
 			m.mu.Lock()
 			sess.info.Rollers[ret.pk].Status = ret.status
 			if m.isSessionFailed(sess.info) {
-				if err := m.orm.UpdateProvingStatus(ret.id, orm.ProvingTaskFailed); err != nil {
+				if err := m.orm.UpdateProvingStatus(ret.id, types.ProvingTaskFailed); err != nil {
 					log.Error("failed to update proving_status as failed", "msg.ID", ret.id, "error", err)
 				}
 			}
@@ -385,9 +384,9 @@ func (m *Manager) CollectProofs(sess *session) {
 	}
 }
 
-func (m *Manager) isSessionFailed(info *orm.SessionInfo) bool {
+func (m *Manager) isSessionFailed(info *types.SessionInfo) bool {
 	for _, roller := range info.Rollers {
-		if roller.Status != orm.RollerProofInvalid {
+		if roller.Status != types.RollerProofInvalid {
 			return false
 		}
 	}
@@ -411,7 +410,7 @@ func (m *Manager) APIs() []rpc.API {
 }
 
 // StartProofGenerationSession starts a proof generation session
-func (m *Manager) StartProofGenerationSession(task *orm.BlockBatch) (success bool) {
+func (m *Manager) StartProofGenerationSession(task *types.BlockBatch) (success bool) {
 	if m.GetNumberOfIdleRollers() == 0 {
 		log.Warn("no idle roller when starting proof generation session", "id", task.Hash)
 		return false
@@ -420,7 +419,7 @@ func (m *Manager) StartProofGenerationSession(task *orm.BlockBatch) (success boo
 	log.Info("start proof generation session", "id", task.Hash)
 	defer func() {
 		if !success {
-			if err := m.orm.UpdateProvingStatus(task.Hash, orm.ProvingTaskUnassigned); err != nil {
+			if err := m.orm.UpdateProvingStatus(task.Hash, types.ProvingTaskUnassigned); err != nil {
 				log.Error("fail to reset task_status as Unassigned", "id", task.Hash, "err", err)
 			}
 		}
@@ -451,7 +450,7 @@ func (m *Manager) StartProofGenerationSession(task *orm.BlockBatch) (success boo
 	}
 
 	// Dispatch task to rollers.
-	rollers := make(map[string]*orm.RollerStatus)
+	rollers := make(map[string]*types.RollerStatus)
 	for i := 0; i < int(m.cfg.RollersPerSession); i++ {
 		roller := m.selectRoller()
 		if roller == nil {
@@ -464,7 +463,7 @@ func (m *Manager) StartProofGenerationSession(task *orm.BlockBatch) (success boo
 			log.Error("send task failed", "roller name", roller.Name, "public key", roller.PublicKey, "id", task.Hash)
 			continue
 		}
-		rollers[roller.PublicKey] = &orm.RollerStatus{PublicKey: roller.PublicKey, Name: roller.Name, Status: orm.RollerAssigned}
+		rollers[roller.PublicKey] = &types.RollerStatus{PublicKey: roller.PublicKey, Name: roller.Name, Status: types.RollerAssigned}
 	}
 	// No roller assigned.
 	if len(rollers) == 0 {
@@ -473,14 +472,14 @@ func (m *Manager) StartProofGenerationSession(task *orm.BlockBatch) (success boo
 	}
 
 	// Update session proving status as assigned.
-	if err = m.orm.UpdateProvingStatus(task.Hash, orm.ProvingTaskAssigned); err != nil {
+	if err = m.orm.UpdateProvingStatus(task.Hash, types.ProvingTaskAssigned); err != nil {
 		log.Error("failed to update task status", "id", task.Hash, "err", err)
 		return false
 	}
 
 	// Create a proof generation session.
 	sess := &session{
-		info: &orm.SessionInfo{
+		info: &types.SessionInfo{
 			ID:             task.Hash,
 			Rollers:        rollers,
 			StartTimestamp: time.Now().Unix(),
@@ -518,7 +517,7 @@ func (m *Manager) IsRollerIdle(hexPk string) bool {
 	// timeout. So a busy roller could be marked as idle in a finished session.
 	for _, sess := range m.sessions {
 		for pk, roller := range sess.info.Rollers {
-			if pk == hexPk && roller.Status == orm.RollerAssigned {
+			if pk == hexPk && roller.Status == types.RollerAssigned {
 				return false
 			}
 		}
@@ -528,7 +527,7 @@ func (m *Manager) IsRollerIdle(hexPk string) bool {
 }
 
 func (m *Manager) addFailedSession(sess *session, errMsg string) {
-	m.failedSessionInfos[sess.info.ID] = newSessionInfo(sess, orm.ProvingTaskFailed, errMsg, true)
+	m.failedSessionInfos[sess.info.ID] = newSessionInfo(sess, types.ProvingTaskFailed, errMsg, true)
 }
 
 // VerifyToken verifies pukey for token and expiration time

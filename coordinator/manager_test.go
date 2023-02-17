@@ -10,7 +10,6 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
-	"sync"
 	"testing"
 	"time"
 
@@ -330,7 +329,7 @@ func testInvalidProof(t *testing.T) {
 		case <-tick:
 			status, err := l2db.GetProvingStatusByID(ids[0])
 			assert.NoError(t, err)
-			if status == orm.ProvingTaskFailed {
+			if status == types.ProvingTaskFailed {
 				ids = ids[1:]
 			}
 		case <-tickStop:
@@ -447,13 +446,13 @@ func testGracefulRestart(t *testing.T) {
 
 	for i := range ids {
 		info, err := newRollerManager.GetSessionInfo(ids[i])
-		assert.Equal(t, orm.ProvingTaskAssigned.String(), info.Status)
+		assert.Equal(t, types.ProvingTaskAssigned.String(), info.Status)
 		assert.NoError(t, err)
 
 		// at this point, roller haven't submitted
 		status, err := l2db.GetProvingStatusByID(ids[i])
 		assert.NoError(t, err)
-		assert.Equal(t, orm.ProvingTaskAssigned, status)
+		assert.Equal(t, types.ProvingTaskAssigned, status)
 	}
 
 	// will overwrite the roller client for `SubmitProof`
@@ -512,8 +511,8 @@ type mockRoller struct {
 	wsURL  string
 	client *client2.Client
 
-	taskCh    chan *message.TaskMsg
-	taskCache sync.Map
+	taskCh chan *message.TaskMsg
+	//taskCache sync.Map
 
 	sub    ethereum.Subscription
 	stopCh chan struct{}
@@ -568,6 +567,7 @@ func (r *mockRoller) connectToCoordinator() (*client2.Client, ethereum.Subscript
 	return client, sub, nil
 }
 
+/*
 func (r *mockRoller) releaseTasks() {
 	r.taskCache.Range(func(key, value any) bool {
 		r.taskCh <- value.(*message.TaskMsg)
@@ -626,6 +626,7 @@ func (r *mockRoller) loop(t *testing.T, client *client2.Client, proofTime time.D
 		}
 	}
 }
+*/
 
 func (r *mockRoller) close() {
 	close(r.stopCh)
