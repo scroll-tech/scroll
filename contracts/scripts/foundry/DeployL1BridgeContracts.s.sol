@@ -92,8 +92,8 @@ contract DeployL1BridgeContracts is Script {
       address(proxyAdmin),
       new bytes(0)
     );
-    logAddress("L2_GAS_ORACLE_IMPLEMENTATION_ADDR", address(impl));
-    logAddress("L2_GAS_ORACLE_PROXY_ADDR", address(proxy));
+    logAddress("L2_GAS_PRICE_ORACLE_IMPLEMENTATION_ADDR", address(impl));
+    logAddress("L2_GAS_PRICE_ORACLE_PROXY_ADDR", address(proxy));
   }
 
   function deployL1StandardERC20Gateway() internal {
