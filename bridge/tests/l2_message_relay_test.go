@@ -7,10 +7,11 @@ import (
 
 	"github.com/scroll-tech/go-ethereum/accounts/abi/bind"
 	"github.com/scroll-tech/go-ethereum/common"
-	"github.com/scroll-tech/go-ethereum/core/types"
+	geth_types "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/rpc"
 	"github.com/stretchr/testify/assert"
 
+	"scroll-tech/common/types"
 	"scroll-tech/database"
 	"scroll-tech/database/migrate"
 	"scroll-tech/database/orm"
@@ -49,7 +50,7 @@ func testRelayL2MessageSucceed(t *testing.T) {
 	assert.NoError(t, err)
 	sendReceipt, err := bind.WaitMined(context.Background(), l2Client, sendTx)
 	assert.NoError(t, err)
-	if sendReceipt.Status != types.ReceiptStatusSuccessful || err != nil {
+	if sendReceipt.Status != geth_types.ReceiptStatusSuccessful || err != nil {
 		t.Fatalf("Call failed")
 	}
 
@@ -59,20 +60,20 @@ func testRelayL2MessageSucceed(t *testing.T) {
 	// check db status
 	msg, err := db.GetL2MessageByNonce(nonce.Uint64())
 	assert.NoError(t, err)
-	assert.Equal(t, msg.Status, orm.MsgPending)
+	assert.Equal(t, msg.Status, types.MsgPending)
 	assert.Equal(t, msg.Sender, l2Auth.From.String())
 	assert.Equal(t, msg.Target, l1Auth.From.String())
 
 	// add fake blocks
-	traces := []*types.BlockTrace{
+	traces := []*geth_types.BlockTrace{
 		{
-			Header: &types.Header{
+			Header: &geth_types.Header{
 				Number:     sendReceipt.BlockNumber,
 				ParentHash: common.Hash{},
 				Difficulty: big.NewInt(0),
 				BaseFee:    big.NewInt(0),
 			},
-			StorageTrace: &types.StorageTrace{},
+			StorageTrace: &geth_types.StorageTrace{},
 		},
 	}
 	err = db.InsertBlockTraces(traces)
@@ -106,14 +107,14 @@ func testRelayL2MessageSucceed(t *testing.T) {
 	tInstanceCommitments := []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31}
 	err = db.UpdateProofByID(context.Background(), batchID, tProof, tInstanceCommitments, 100)
 	assert.NoError(t, err)
-	err = db.UpdateProvingStatus(batchID, orm.ProvingTaskVerified)
+	err = db.UpdateProvingStatus(batchID, types.ProvingTaskVerified)
 	assert.NoError(t, err)
 
 	// process pending batch and check status
 	l2Relayer.ProcessPendingBatches()
 	status, err := db.GetRollupStatus(batchID)
 	assert.NoError(t, err)
-	assert.Equal(t, orm.RollupCommitting, status)
+	assert.Equal(t, types.RollupCommitting, status)
 	commitTxHash, err := db.GetCommitTxHash(batchID)
 	assert.NoError(t, err)
 	assert.Equal(t, true, commitTxHash.Valid)
@@ -128,13 +129,13 @@ func testRelayL2MessageSucceed(t *testing.T) {
 	assert.NoError(t, err)
 	status, err = db.GetRollupStatus(batchID)
 	assert.NoError(t, err)
-	assert.Equal(t, orm.RollupCommitted, status)
+	assert.Equal(t, types.RollupCommitted, status)
 
 	// process committed batch and check status
 	l2Relayer.ProcessCommittedBatches()
 	status, err = db.GetRollupStatus(batchID)
 	assert.NoError(t, err)
-	assert.Equal(t, orm.RollupFinalizing, status)
+	assert.Equal(t, types.RollupFinalizing, status)
 	finalizeTxHash, err := db.GetFinalizeTxHash(batchID)
 	assert.NoError(t, err)
 	assert.Equal(t, true, finalizeTxHash.Valid)
@@ -149,13 +150,13 @@ func testRelayL2MessageSucceed(t *testing.T) {
 	assert.NoError(t, err)
 	status, err = db.GetRollupStatus(batchID)
 	assert.NoError(t, err)
-	assert.Equal(t, orm.RollupFinalized, status)
+	assert.Equal(t, types.RollupFinalized, status)
 
 	// process l2 messages
 	l2Relayer.ProcessSavedEvents()
 	msg, err = db.GetL2MessageByNonce(nonce.Uint64())
 	assert.NoError(t, err)
-	assert.Equal(t, msg.Status, orm.MsgSubmitted)
+	assert.Equal(t, msg.Status, types.MsgSubmitted)
 	relayTxHash, err := db.GetRelayL2MessageTxHash(nonce.Uint64())
 	assert.NoError(t, err)
 	assert.Equal(t, true, relayTxHash.Valid)
@@ -170,5 +171,5 @@ func testRelayL2MessageSucceed(t *testing.T) {
 	assert.NoError(t, err)
 	msg, err = db.GetL2MessageByNonce(nonce.Uint64())
 	assert.NoError(t, err)
-	assert.Equal(t, msg.Status, orm.MsgConfirmed)
+	assert.Equal(t, msg.Status, types.MsgConfirmed)
 }
