@@ -122,7 +122,7 @@ func (o *blockBatchOrm) NewBatchInDBTx(dbTx *sqlx.Tx, batchData *types.BatchData
 	//hash := utils.ComputeBatchID(common.HexToHash(endBlock.Hash), common.HexToHash(parentHash), big.NewInt(index))
 	if _, err := dbTx.NamedExec(`INSERT INTO public.block_batch (hash, index, parent_hash, start_block_number, start_block_hash, end_block_number, end_block_hash, total_tx_num, total_l2_gas, state_root, total_l1_tx_num) VALUES (:hash, :index, :parent_hash, :start_block_number, :start_block_hash, :end_block_number, :end_block_hash, :total_tx_num, :total_l2_gas, :state_root, :total_l1_tx_num)`,
 		map[string]interface{}{
-			"hash":               batchData.Hash(44, common.HexToHash("0")).Hex(), // todo: add real param.
+			"hash":               batchData.Hash(44, common.Hash{}).Hex(), // todo: add real param.
 			"index":              batchData.Batch.BatchIndex,
 			"parent_hash":        common.Hash(batchData.Batch.ParentBatchHash).Hex(),
 			"start_block_number": batchData.Batch.Blocks[0].BlockNumber,

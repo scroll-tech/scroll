@@ -2,6 +2,7 @@ package l2
 
 import (
 	"fmt"
+	"math"
 	"sync"
 	"time"
 
@@ -33,7 +34,7 @@ type batchProposer struct {
 }
 
 func newBatchProposer(cfg *config.BatchProposerConfig, relayer *Layer2Relayer, orm database.OrmFactory) *batchProposer {
-	return &batchProposer{
+	p := &batchProposer{
 		mutex:               sync.Mutex{},
 		orm:                 orm,
 		batchTimeSec:        cfg.BatchTimeSec,
@@ -45,9 +46,38 @@ func newBatchProposer(cfg *config.BatchProposerConfig, relayer *Layer2Relayer, o
 		relayer:             relayer,
 	}
 
-	// TODO(colin)
-	// graceful restart
-	// process unsubmitted batches
+	// for graceful restart.
+	p.recoverBatchDataBuffer()
+
+	return p
+}
+
+func (p *batchProposer) recoverBatchDataBuffer() {
+	// batches are sorted by batch index in increasing order
+	batchesInDB, err := p.orm.GetPendingBatches(math.MaxInt32)
+	if err != nil {
+		log.Crit("Failed to fetch pending L2 batches", "err", err)
+	}
+
+	log.Info("Load pending batches into batchDataBuffer")
+	var blocks []*types.BlockInfo
+	for _, batchHash := range batchesInDB {
+		blockInfos, err := p.orm.GetBlockInfos(map[string]interface{}{"batch_id": batchHash})
+		if err != nil {
+			log.Error(
+				"could not GetBlockInfos",
+				"batch_id", batchHash,
+				"error", err,
+			)
+			continue
+		}
+		blocks = append(blocks, blockInfos...)
+	}
+
+	for len(blocks) > 0 {
+		consumeNum := p.createBatch(blocks)
+		blocks = blocks[consumeNum:]
+	}
 }
 
 func (p *batchProposer) tryProposeBatch() {
@@ -62,24 +92,46 @@ func (p *batchProposer) tryProposeBatch() {
 		log.Error("failed to get unbatched blocks", "err", err)
 		return
 	}
+
+	p.createBatch(blocks)
+	p.trySendBatches()
+}
+
+func (p *batchProposer) trySendBatches() {
+	if p.getCalldataByteLength(p.batchDataBuffer) > bridgeabi.CalldataLengthThreshhold {
+		for i := 0; i < 10; i++ {
+			err := p.relayer.SendCommitTx(p.batchDataBuffer)
+			if err != nil { // retry
+				log.Error("SendCommitTx failed", "error", err)
+				time.Sleep(time.Millisecond * 500)
+			} else {
+				break
+			}
+		}
+		// clear buffer.
+		p.batchDataBuffer = p.batchDataBuffer[:0]
+	}
+}
+
+func (p *batchProposer) createBatch(blocks []*types.BlockInfo) uint64 {
 	if len(blocks) == 0 {
-		return
+		return 0
 	}
 
 	if blocks[0].GasUsed > p.batchGasThreshold {
 		log.Warn("gas overflow even for only 1 block", "height", blocks[0].Number, "gas", blocks[0].GasUsed)
-		if err = p.createBatchForBlocks(blocks[:1]); err != nil {
+		if err := p.createBatchForBlocks(blocks[:1]); err != nil {
 			log.Error("failed to create batch", "number", blocks[0].Number, "err", err)
 		}
-		return
+		return 1
 	}
 
 	if blocks[0].TxNum > p.batchTxNumThreshold {
 		log.Warn("too many txs even for only 1 block", "height", blocks[0].Number, "tx_num", blocks[0].TxNum)
-		if err = p.createBatchForBlocks(blocks[:1]); err != nil {
+		if err := p.createBatchForBlocks(blocks[:1]); err != nil {
 			log.Error("failed to create batch", "number", blocks[0].Number, "err", err)
 		}
-		return
+		return 1
 	}
 
 	var (
@@ -100,37 +152,13 @@ func (p *batchProposer) tryProposeBatch() {
 	// if it's not old enough we will skip proposing the batch,
 	// otherwise we will still propose a batch
 	if length == len(blocks) && blocks[0].BlockTimestamp+p.batchTimeSec > uint64(time.Now().Unix()) {
-		return
+		return uint64(len(blocks))
 	}
 
-	if err = p.createBatchForBlocks(blocks); err != nil {
+	if err := p.createBatchForBlocks(blocks); err != nil {
 		log.Error("failed to create batch", "from", blocks[0].Number, "to", blocks[len(blocks)-1].Number, "err", err)
 	}
-
-	p.trySendBatches()
-}
-
-func (p *batchProposer) trySendBatches() {
-	if p.getCalldataByteLen(p.batchDataBuffer) > bridgeabi.CalldataLengthThreshHold {
-		for i := 0; i < 10; i++ {
-			err := p.relayer.SendCommitTx(p.batchDataBuffer)
-			if err != nil { // retry
-				log.Error("SendCommitTx failed", "error", err)
-				time.Sleep(time.Millisecond * 500)
-			} else {
-				break
-			}
-		}
-		// clear buffer.
-		p.batchDataBuffer = p.batchDataBuffer[:0]
-	}
-}
-
-func (p *batchProposer) getCalldataByteLen(batchData []*types.BatchData) (callDataByteLen uint64) {
-	for _, batch := range batchData {
-		callDataByteLen += bridgeabi.GetBatchCalldataLength(&batch.Batch)
-	}
-	return
+	return uint64(len(blocks))
 }
 
 func (p *batchProposer) createBatchForBlocks(blocks []*types.BlockInfo) error {
@@ -202,4 +230,11 @@ func (p *batchProposer) createBatchData(blocks []*types.BlockInfo) (*types.Batch
 	}
 
 	return types.NewBatchData(lastBatch, traces), nil
+}
+
+func (p *batchProposer) getCalldataByteLength(batchData []*types.BatchData) (callDataByteLength uint64) {
+	for _, batch := range batchData {
+		callDataByteLength += bridgeabi.GetBatchCalldataLength(&batch.Batch)
+	}
+	return
 }
