@@ -60,17 +60,17 @@ type BlockBatchOrm interface {
 
 // L1MessageOrm is layer1 message db interface
 type L1MessageOrm interface {
-	GetL1MessageByNonce(nonce uint64) (*types.L1Message, error)
+	GetL1MessageByQueueIndex(queueIndex uint64) (*types.L1Message, error)
 	GetL1MessageByMsgHash(msgHash string) (*types.L1Message, error)
 	GetL1MessagesByStatus(status types.MsgStatus, limit uint64) ([]*types.L1Message, error)
-	GetL1ProcessedNonce() (int64, error)
+	GetL1ProcessedQueueIndex() (int64, error)
 	SaveL1Messages(ctx context.Context, messages []*types.L1Message) error
 	UpdateLayer2Hash(ctx context.Context, msgHash string, layer2Hash string) error
 	UpdateLayer1Status(ctx context.Context, msgHash string, status types.MsgStatus) error
 	UpdateLayer1StatusAndLayer2Hash(ctx context.Context, msgHash string, status types.MsgStatus, layer2Hash string) error
 	GetLayer1LatestWatchedHeight() (int64, error)
 
-	GetRelayL1MessageTxHash(nonce uint64) (sql.NullString, error) // for unit tests only
+	GetRelayL1MessageTxHash(queueIndex uint64) (sql.NullString, error) // for unit tests only
 }
 
 // L2MessageOrm is layer2 message db interface

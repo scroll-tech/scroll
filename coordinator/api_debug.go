@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	"scroll-tech/common/types"
 	"scroll-tech/database/orm"
 )
 
@@ -63,7 +64,7 @@ func (m *Manager) ListRollers() ([]*RollerInfo, error) {
 	return res, nil
 }
 
-func newSessionInfo(sess *session, status orm.ProvingStatus, errMsg string, finished bool) *SessionInfo {
+func newSessionInfo(sess *session, status types.ProvingStatus, errMsg string, finished bool) *SessionInfo {
 	now := time.Now()
 	var nameList []string
 	for pk := range sess.info.Rollers {

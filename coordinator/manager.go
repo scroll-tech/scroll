@@ -12,12 +12,13 @@ import (
 	cmap "github.com/orcaman/concurrent-map"
 	"github.com/patrickmn/go-cache"
 	"github.com/scroll-tech/go-ethereum/common"
-	"github.com/scroll-tech/go-ethereum/core/types"
+	geth_types "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/scroll-tech/go-ethereum/rpc"
 
 	"scroll-tech/common/message"
+	"scroll-tech/common/types"
 
 	"scroll-tech/database"
 	"scroll-tech/database/orm"
@@ -33,12 +34,12 @@ const (
 type rollerProofStatus struct {
 	id     string
 	pk     string
-	status orm.RollerProveStatus
+	status types.RollerProveStatus
 }
 
 // Contains all the information on an ongoing proof generation session.
 type session struct {
-	info *orm.SessionInfo
+	info *types.SessionInfo
 	// finish channel is used to pass the public key of the rollers who finished proving process.
 	finishChan chan rollerProofStatus
 }
@@ -435,7 +436,7 @@ func (m *Manager) StartProofGenerationSession(task *orm.BlockBatch) (success boo
 		)
 		return false
 	}
-	traces := make([]*types.BlockTrace, len(blockInfos))
+	traces := make([]*geth_types.BlockTrace, len(blockInfos))
 	for i, blockInfo := range blockInfos {
 		traces[i], err = m.Client.GetBlockTraceByHash(m.ctx, common.HexToHash(blockInfo.Hash))
 		if err != nil {

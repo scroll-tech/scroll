@@ -50,13 +50,13 @@ func newBatchProposer(cfg *config.BatchProposerConfig, relayer *Layer2Relayer, o
 	// process unsubmitted batches
 }
 
-func (w *batchProposer) tryProposeBatch() {
-	w.mutex.Lock()
-	defer w.mutex.Unlock()
+func (p *batchProposer) tryProposeBatch() {
+	p.mutex.Lock()
+	defer p.mutex.Unlock()
 
-	blocks, err := w.orm.GetUnbatchedBlocks(
+	blocks, err := p.orm.GetUnbatchedBlocks(
 		map[string]interface{}{},
-		fmt.Sprintf("order by number ASC LIMIT %d", w.batchBlocksLimit),
+		fmt.Sprintf("order by number ASC LIMIT %d", p.batchBlocksLimit),
 	)
 	if err != nil {
 		log.Error("failed to get unbatched blocks", "err", err)
@@ -66,17 +66,17 @@ func (w *batchProposer) tryProposeBatch() {
 		return
 	}
 
-	if blocks[0].GasUsed > w.batchGasThreshold {
+	if blocks[0].GasUsed > p.batchGasThreshold {
 		log.Warn("gas overflow even for only 1 block", "height", blocks[0].Number, "gas", blocks[0].GasUsed)
-		if err = w.createBatchForBlocks(blocks[:1]); err != nil {
+		if err = p.createBatchForBlocks(blocks[:1]); err != nil {
 			log.Error("failed to create batch", "number", blocks[0].Number, "err", err)
 		}
 		return
 	}
 
-	if blocks[0].TxNum > w.batchTxNumThreshold {
+	if blocks[0].TxNum > p.batchTxNumThreshold {
 		log.Warn("too many txs even for only 1 block", "height", blocks[0].Number, "tx_num", blocks[0].TxNum)
-		if err = w.createBatchForBlocks(blocks[:1]); err != nil {
+		if err = p.createBatchForBlocks(blocks[:1]); err != nil {
 			log.Error("failed to create batch", "number", blocks[0].Number, "err", err)
 		}
 		return
@@ -88,7 +88,7 @@ func (w *batchProposer) tryProposeBatch() {
 	)
 	// add blocks into batch until reach batchGasThreshold
 	for i, block := range blocks {
-		if (gasUsed+block.GasUsed > w.batchGasThreshold) || (txNum+block.TxNum > w.batchTxNumThreshold) {
+		if (gasUsed+block.GasUsed > p.batchGasThreshold) || (txNum+block.TxNum > p.batchTxNumThreshold) {
 			blocks = blocks[:i]
 			break
 		}
@@ -99,15 +99,15 @@ func (w *batchProposer) tryProposeBatch() {
 	// if too few gas gathered, but we don't want to halt, we then check the first block in the batch:
 	// if it's not old enough we will skip proposing the batch,
 	// otherwise we will still propose a batch
-	if length == len(blocks) && blocks[0].BlockTimestamp+w.batchTimeSec > uint64(time.Now().Unix()) {
+	if length == len(blocks) && blocks[0].BlockTimestamp+p.batchTimeSec > uint64(time.Now().Unix()) {
 		return
 	}
 
-	if err = w.createBatchForBlocks(blocks); err != nil {
+	if err = p.createBatchForBlocks(blocks); err != nil {
 		log.Error("failed to create batch", "from", blocks[0].Number, "to", blocks[len(blocks)-1].Number, "err", err)
 	}
 
-	w.trySendBatches()
+	p.trySendBatches()
 }
 
 func (p *batchProposer) trySendBatches() {

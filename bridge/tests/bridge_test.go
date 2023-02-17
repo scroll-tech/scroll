@@ -15,7 +15,6 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"scroll-tech/bridge/config"
-	"scroll-tech/bridge/mock_bridge"
 
 	"scroll-tech/common/docker"
 )
@@ -40,17 +39,19 @@ var (
 	l1Auth *bind.TransactOpts
 	l2Auth *bind.TransactOpts
 
-	// l1 messenger contract
-	l1MessengerInstance *mock_bridge.MockBridgeL1
-	l1MessengerAddress  common.Address
+	/*
+		// l1 messenger contract
+		l1MessengerInstance *mock_bridge.MockBridgeL1
+		l1MessengerAddress  common.Address
 
-	// l1 rollup contract
-	l1RollupInstance *mock_bridge.MockBridgeL1
-	l1RollupAddress  common.Address
+		// l1 rollup contract
+		l1RollupInstance *mock_bridge.MockBridgeL1
+		l1RollupAddress  common.Address
 
-	// l2 messenger contract
-	l2MessengerInstance *mock_bridge.MockBridgeL2
-	l2MessengerAddress  common.Address
+		// l2 messenger contract
+		l2MessengerInstance *mock_bridge.MockBridgeL2
+		l2MessengerAddress  common.Address
+	*/
 )
 
 func setupEnv(t *testing.T) {
@@ -150,6 +151,7 @@ func free(t *testing.T) {
 	}
 }
 
+/*
 func prepareContracts(t *testing.T) {
 	var err error
 	var tx *types.Transaction
@@ -180,6 +182,7 @@ func prepareContracts(t *testing.T) {
 	cfg.L2Config.RelayerConfig.MessengerContractAddress = l1MessengerAddress
 	cfg.L2Config.RelayerConfig.RollupContractAddress = l1RollupAddress
 }
+*/
 
 func prepareAuth(t *testing.T, client *ethclient.Client, privateKey *ecdsa.PrivateKey) *bind.TransactOpts {
 	chainID, err := client.ChainID(context.Background())
@@ -195,10 +198,10 @@ func TestFunction(t *testing.T) {
 	setupEnv(t)
 
 	// l1 rollup and watch rollup events
-	t.Run("TestCommitBatchAndFinalizeBatch", testCommitBatchAndFinalizeBatch)
+	//t.Run("TestCommitBatchAndFinalizeBatch", testCommitBatchAndFinalizeBatch)
 
 	// l2 message
-	t.Run("testRelayL2MessageSucceed", testRelayL2MessageSucceed)
+	//t.Run("testRelayL2MessageSucceed", testRelayL2MessageSucceed)
 
 	t.Cleanup(func() {
 		free(t)

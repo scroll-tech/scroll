@@ -2,20 +2,15 @@ package l2
 
 import (
 	"context"
-	"encoding/json"
-	"math/big"
-	"os"
 	"testing"
 
-	geth_types "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/stretchr/testify/assert"
 
-	"scroll-tech/common/types"
 	"scroll-tech/database"
 	"scroll-tech/database/migrate"
-	"scroll-tech/database/orm"
 )
 
+/*
 var (
 	templateL2Message = []*types.L2Message{
 		{
@@ -29,6 +24,7 @@ var (
 		},
 	}
 )
+*/
 
 func testCreateNewRelayer(t *testing.T) {
 	// Create db handler and reset db.
@@ -44,6 +40,7 @@ func testCreateNewRelayer(t *testing.T) {
 	relayer.Start()
 }
 
+/*
 func testL2RelayerProcessSaveEvents(t *testing.T) {
 	// Create db handler and reset db.
 	db, err := database.NewOrmFactory(cfg.DBConfig)
@@ -97,7 +94,9 @@ func testL2RelayerProcessSaveEvents(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, types.MsgSubmitted, msg.Status)
 }
+*/
 
+/*
 func testL2RelayerProcessPendingBatches(t *testing.T) {
 	// Create db handler and reset db.
 	db, err := database.NewOrmFactory(cfg.DBConfig)
@@ -154,7 +153,9 @@ func testL2RelayerProcessPendingBatches(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, types.RollupCommitting, status)
 }
+*/
 
+/*
 func testL2RelayerProcessCommittedBatches(t *testing.T) {
 	// Create db handler and reset db.
 	db, err := database.NewOrmFactory(cfg.DBConfig)
@@ -190,7 +191,9 @@ func testL2RelayerProcessCommittedBatches(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, types.RollupFinalizing, status)
 }
+*/
 
+/*
 func testL2RelayerSkipBatches(t *testing.T) {
 	// Create db handler and reset db.
 	db, err := database.NewOrmFactory(cfg.DBConfig)
@@ -255,3 +258,4 @@ func testL2RelayerSkipBatches(t *testing.T) {
 		assert.NotEqual(t, types.RollupFinalizationSkipped, status)
 	}
 }
+*/

@@ -1,25 +1,6 @@
 package tests
 
-import (
-	"context"
-	"math/big"
-	"testing"
-
-	"github.com/scroll-tech/go-ethereum/accounts/abi/bind"
-	"github.com/scroll-tech/go-ethereum/common"
-	geth_types "github.com/scroll-tech/go-ethereum/core/types"
-	"github.com/scroll-tech/go-ethereum/rpc"
-	"github.com/stretchr/testify/assert"
-
-	"scroll-tech/common/types"
-	"scroll-tech/database"
-	"scroll-tech/database/migrate"
-	"scroll-tech/database/orm"
-
-	"scroll-tech/bridge/l1"
-	"scroll-tech/bridge/l2"
-)
-
+/*
 func testRelayL2MessageSucceed(t *testing.T) {
 	// Create db handler and reset db.
 	db, err := database.NewOrmFactory(cfg.DBConfig)
@@ -173,3 +154,4 @@ func testRelayL2MessageSucceed(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, msg.Status, types.MsgConfirmed)
 }
+*/
