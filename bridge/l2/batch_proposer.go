@@ -101,8 +101,9 @@ func (p *batchProposer) trySendBatches() {
 	if p.getCalldataByteLength(p.batchDataBuffer) > bridgeabi.CalldataLengthThreshhold {
 		for i := 0; i < 10; i++ {
 			err := p.relayer.SendCommitTx(p.batchDataBuffer)
-			if err != nil { // retry
+			if err != nil {
 				log.Error("SendCommitTx failed", "error", err)
+				// retry after sleep.
 				time.Sleep(time.Millisecond * 500)
 			} else {
 				break
@@ -152,6 +153,7 @@ func (p *batchProposer) createBatch(blocks []*types.BlockInfo) uint64 {
 	// if it's not old enough we will skip proposing the batch,
 	// otherwise we will still propose a batch
 	if length == len(blocks) && blocks[0].BlockTimestamp+p.batchTimeSec > uint64(time.Now().Unix()) {
+		// will not enter here when in graceful restart.
 		return uint64(len(blocks))
 	}
 
