@@ -150,6 +150,11 @@ func NewSender(ctx context.Context, config *config.SenderConfig, privs []*ecdsa.
 	return sender, nil
 }
 
+// PendingCount return the current pending txs num.
+func (s *Sender) PendingCount() int64 {
+	return atomic.LoadInt64(&s.pendingNum)
+}
+
 // PendingLimit return the maximum pendingTxs can handle.
 func (s *Sender) PendingLimit() int64 {
 	return s.config.PendingLimit

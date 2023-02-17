@@ -13,6 +13,8 @@ import (
 	"github.com/scroll-tech/go-ethereum/log"
 	"modernc.org/mathutil"
 
+	"scroll-tech/common/utils"
+
 	"scroll-tech/database/orm"
 
 	bridge_abi "scroll-tech/bridge/abi"
@@ -65,12 +67,46 @@ func NewLayer1Relayer(ctx context.Context, db orm.L1MessageOrm, cfg *config.Rela
 		confirmationCh: sender.ConfirmChan(),
 	}
 
-	if err = layer1.checkSubmittedMessages(); err != nil {
-		log.Error("failed to init layer1 submitted tx", "err", err)
+	// Deal with broken transactions.
+	if err = layer1.prepare(ctx); err != nil {
 		return nil, err
 	}
 
 	return layer1, nil
+}
+
+// prepare to run check logic and until it's finished.
+func (r *Layer1Relayer) prepare(ctx context.Context) error {
+	go func(ctx context.Context) {
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case cfm := <-r.confirmationCh:
+				if !cfm.IsSuccessful {
+					log.Warn("transaction confirmed but failed in layer2", "confirmation", cfm)
+				} else {
+					// @todo handle db error
+					err := r.db.UpdateLayer1StatusAndLayer2Hash(r.ctx, cfm.ID, orm.MsgConfirmed, cfm.TxHash.String())
+					if err != nil {
+						log.Warn("UpdateLayer1StatusAndLayer2Hash failed", "err", err)
+					}
+					log.Info("transaction confirmed in layer2", "confirmation", cfm)
+				}
+			}
+		}
+	}(ctx)
+
+	if err := r.checkSubmittedMessages(); err != nil {
+		log.Error("failed to init layer1 submitted tx", "err", err)
+		return err
+	}
+
+	// Wait forever util sender is empty.
+	utils.TryTimes(-1, func() bool {
+		return r.sender.PendingCount() == 0
+	})
+	return nil
 }
 
 func (r *Layer1Relayer) checkSubmittedMessages() error {

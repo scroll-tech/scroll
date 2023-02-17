@@ -9,6 +9,8 @@ import (
 
 	"github.com/scroll-tech/go-ethereum/log"
 
+	"scroll-tech/common/utils"
+
 	"scroll-tech/database"
 	"scroll-tech/database/orm"
 
@@ -78,22 +80,49 @@ func NewLayer2Relayer(ctx context.Context, db database.OrmFactory, cfg *config.R
 		stopCh:                 make(chan struct{}),
 	}
 
-	if err = layer2.checkSubmittedMessages(); err != nil {
-		log.Error("failed to init layer2 submitted tx", "err", err)
-		return nil, err
-	}
-
-	if err = layer2.checkCommittingBatches(); err != nil {
-		log.Error("failed to init layer2 committed tx", "err", err)
-		return nil, err
-	}
-
-	if err = layer2.checkFinalizingBatches(); err != nil {
-		log.Error("failed to init layer2 finalized tx", "err", err)
+	// Deal with broken transactions.
+	if err = layer2.prepare(ctx); err != nil {
 		return nil, err
 	}
 
 	return layer2, nil
+}
+
+// prepare to run check logic and until it's finished.
+func (r *Layer2Relayer) prepare(ctx context.Context) error {
+	go func(ctx context.Context) {
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case confirmation := <-r.messageCh:
+				r.handleConfirmation(confirmation)
+			case confirmation := <-r.rollupCh:
+				r.handleConfirmation(confirmation)
+			}
+		}
+	}(ctx)
+
+	if err := r.checkSubmittedMessages(); err != nil {
+		log.Error("failed to init layer2 submitted tx", "err", err)
+		return err
+	}
+
+	if err := r.checkCommittingBatches(); err != nil {
+		log.Error("failed to init layer2 committed tx", "err", err)
+		return err
+	}
+
+	if err := r.checkFinalizingBatches(); err != nil {
+		log.Error("failed to init layer2 finalized tx", "err", err)
+		return err
+	}
+
+	// Wait forever until message sender and roller sender are empty.
+	utils.TryTimes(-1, func() bool {
+		return r.messageSender.PendingCount() == 0 && r.rollupSender.PendingCount() == 0
+	})
+	return nil
 }
 
 // Start the relayer process
