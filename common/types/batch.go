@@ -12,6 +12,15 @@ import (
 	abi "scroll-tech/bridge/abi"
 )
 
+type PublicInputHashConfig struct {
+	MaxTxNum      int
+	PaddingTxHash common.Hash
+}
+
+const defaultMaxTxNum = 44
+
+var defaultPaddingTxHash = [32]byte{}
+
 // BatchData contains info of batch to be committed.
 type BatchData struct {
 	Batch        abi.IScrollChainBatch
@@ -21,11 +30,12 @@ type BatchData struct {
 	TotalL2Gas   uint64
 
 	// cache for the BatchHash
-	hash *common.Hash
+	hash  *common.Hash
+	piCfg *PublicInputHashConfig
 }
 
 // Hash calculates hash of batches.
-func (b *BatchData) Hash(maxTxNum int, paddingTxHash common.Hash) *common.Hash {
+func (b *BatchData) Hash() *common.Hash {
 	if b.hash != nil {
 		return b.hash
 	}
@@ -69,6 +79,12 @@ func (b *BatchData) Hash(maxTxNum int, paddingTxHash common.Hash) *common.Hash {
 	}
 
 	// 4. append empty tx hash up to MaxTxNum
+	maxTxNum := defaultMaxTxNum
+	paddingTxHash := common.Hash(defaultPaddingTxHash)
+	if b.piCfg != nil {
+		maxTxNum = b.piCfg.MaxTxNum
+		paddingTxHash = b.piCfg.PaddingTxHash
+	}
 	for i := len(b.TxHashes); i < maxTxNum; i++ {
 		_, _ = hasher.Write(paddingTxHash[:])
 	}
