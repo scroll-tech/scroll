@@ -300,7 +300,7 @@ func (r *Layer2Relayer) SendCommitTx(batchData []*types.BatchData) error {
 
 	var bytes []byte
 	for _, batch := range commitBatches {
-		binary.AppendUvarint(bytes, batch.BatchIndex)
+		binary.BigEndian.PutUint64(bytes, batch.BatchIndex)
 	}
 	txID := crypto.Keccak256Hash(bytes).String()
 	hash, err := r.rollupSender.SendTransaction(txID, &r.cfg.RollupContractAddress, big.NewInt(0), data)
