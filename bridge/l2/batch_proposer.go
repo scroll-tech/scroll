@@ -57,7 +57,9 @@ func (p *batchProposer) recoverBatchDataBuffer() {
 	if err != nil {
 		log.Crit("Failed to fetch pending L2 batches", "err", err)
 	}
-
+	if len(batchesInDB) == 0 {
+		return
+	}
 	log.Info("Load pending batches into batchDataBuffer")
 	var blocks []*types.BlockInfo
 	for _, batchHash := range batchesInDB {
