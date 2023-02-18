@@ -9,7 +9,7 @@ import { IL1MessageQueue } from "./rollup/IL1MessageQueue.sol";
 import { IL1ScrollMessenger, IScrollMessenger } from "./IL1ScrollMessenger.sol";
 import { ScrollConstants } from "../libraries/ScrollConstants.sol";
 import { ScrollMessengerBase } from "../libraries/ScrollMessengerBase.sol";
-import { ZkTrieVerifier } from "../libraries/verifier/ZkTrieVerifier.sol";
+import { WithdrawTrieVerifier } from "../libraries/verifier/WithdrawTrieVerifier.sol";
 
 // solhint-disable avoid-low-level-calls
 
@@ -128,7 +128,7 @@ contract L1ScrollMessenger is PausableUpgradeable, ScrollMessengerBase, IL1Scrol
       require(IScrollChain(_rollup).isBatchFinalized(_proof.batchHash), "Batch is not finalized");
       bytes32 _messageRoot = IScrollChain(_rollup).getL2MessageRoot(_proof.batchHash);
       require(
-        ZkTrieVerifier.verifyMerkleProof(_messageRoot, _xDomainCalldataHash, _nonce, _proof.merkleProof),
+        WithdrawTrieVerifier.verifyMerkleProof(_messageRoot, _xDomainCalldataHash, _nonce, _proof.merkleProof),
         "Invalid proof"
       );
     }
