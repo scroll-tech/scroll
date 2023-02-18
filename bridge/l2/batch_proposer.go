@@ -61,11 +61,11 @@ func (p *batchProposer) recoverBatchDataBuffer() {
 	log.Info("Load pending batches into batchDataBuffer")
 	var blocks []*types.BlockInfo
 	for _, batchHash := range batchesInDB {
-		blockInfos, err := p.orm.GetBlockInfos(map[string]interface{}{"batch_id": batchHash})
+		blockInfos, err := p.orm.GetBlockInfos(map[string]interface{}{"batch_hash": batchHash})
 		if err != nil {
 			log.Error(
 				"could not GetBlockInfos",
-				"batch_id", batchHash,
+				"batch_hash", batchHash,
 				"error", err,
 			)
 			continue
@@ -202,7 +202,7 @@ func (p *batchProposer) addBatchInfoToDB(batchData *types.BatchData) error {
 		blockIDs[i] = block.BlockNumber
 	}
 
-	if dbTxErr = p.orm.SetBatchIDForBlocksInDBTx(dbTx, blockIDs, batchData.Hash().Hex()); dbTxErr != nil {
+	if dbTxErr = p.orm.SetBatchHashForBlocksInDBTx(dbTx, blockIDs, batchData.Hash().Hex()); dbTxErr != nil {
 		return dbTxErr
 	}
 

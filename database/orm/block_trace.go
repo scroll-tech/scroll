@@ -87,7 +87,7 @@ func (o *blockTraceOrm) GetBlockTraces(fields map[string]interface{}, args ...st
 }
 
 func (o *blockTraceOrm) GetBlockInfos(fields map[string]interface{}, args ...string) ([]*types.BlockInfo, error) {
-	query := "SELECT number, hash, parent_hash, batch_id, tx_num, gas_used, block_timestamp FROM block_trace WHERE 1 = 1 "
+	query := "SELECT number, hash, parent_hash, batch_hash, tx_num, gas_used, block_timestamp FROM block_trace WHERE 1 = 1 "
 	for key := range fields {
 		query += fmt.Sprintf("AND %s=:%s ", key, key)
 	}
@@ -115,7 +115,7 @@ func (o *blockTraceOrm) GetBlockInfos(fields map[string]interface{}, args ...str
 }
 
 func (o *blockTraceOrm) GetUnbatchedBlocks(fields map[string]interface{}, args ...string) ([]*types.BlockInfo, error) {
-	query := "SELECT number, hash, parent_hash, batch_id, tx_num, gas_used, block_timestamp FROM block_trace WHERE batch_id is NULL "
+	query := "SELECT number, hash, parent_hash, batch_hash, tx_num, gas_used, block_timestamp FROM block_trace WHERE batch_hash is NULL "
 	for key := range fields {
 		query += fmt.Sprintf("AND %s=:%s ", key, key)
 	}
@@ -187,8 +187,8 @@ func (o *blockTraceOrm) InsertBlockTraces(blockTraces []*eth_types.BlockTrace) e
 	return err
 }
 
-func (o *blockTraceOrm) DeleteTracesByBatchID(batchID string) error {
-	if _, err := o.db.Exec(o.db.Rebind("update block_trace set trace = ? where batch_id = ?;"), "{}", batchID); err != nil {
+func (o *blockTraceOrm) DeleteTracesByBatchHash(batchHash string) error {
+	if _, err := o.db.Exec(o.db.Rebind("update block_trace set trace = ? where batch_hash = ?;"), "{}", batchHash); err != nil {
 		return err
 	}
 	return nil
@@ -196,10 +196,10 @@ func (o *blockTraceOrm) DeleteTracesByBatchID(batchID string) error {
 
 // http://jmoiron.github.io/sqlx/#inQueries
 // https://stackoverflow.com/questions/56568799/how-to-update-multiple-rows-using-sqlx
-func (o *blockTraceOrm) SetBatchIDForBlocksInDBTx(dbTx *sqlx.Tx, numbers []uint64, batchID string) error {
-	query := "UPDATE block_trace SET batch_id=? WHERE number IN (?)"
+func (o *blockTraceOrm) SetBatchHashForBlocksInDBTx(dbTx *sqlx.Tx, numbers []uint64, batchHash string) error {
+	query := "UPDATE block_trace SET batch_hash=? WHERE number IN (?)"
 
-	qry, args, err := sqlx.In(query, batchID, numbers)
+	qry, args, err := sqlx.In(query, batchHash, numbers)
 	if err != nil {
 		return err
 	}

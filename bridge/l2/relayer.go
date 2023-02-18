@@ -53,15 +53,15 @@ type Layer2Relayer struct {
 	processingMessage sync.Map
 
 	// A list of processing batch commitment.
-	// key(string): confirmation ID, value(string): batch id.
+	// key(string): confirmation ID, value(string): batch hash.
 	processingCommitment sync.Map
 
 	// A list of processing batches commitment.
-	// key(string): confirmation ID, value([]string): batch ids.
+	// key(string): confirmation ID, value([]string): batch hashes.
 	processingBatchesCommitment sync.Map
 
 	// A list of processing batch finalization.
-	// key(string): confirmation ID, value(string): batch id.
+	// key(string): confirmation ID, value(string): batch hash.
 	processingFinalization sync.Map
 
 	stopCh chan struct{}
@@ -212,14 +212,14 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 
 	batches, err := r.db.GetBlockBatches(map[string]interface{}{"hash": id})
 	if err != nil || len(batches) == 0 {
-		log.Error("Failed to GetBlockBatches", "batch_id", id, "err", err)
+		log.Error("Failed to GetBlockBatches", "batch_hash", id, "err", err)
 		return
 	}
 	batch := batches[0]
 
-	traces, err := r.db.GetBlockTraces(map[string]interface{}{"batch_id": id}, "ORDER BY number ASC")
+	traces, err := r.db.GetBlockTraces(map[string]interface{}{"batch_hash": id}, "ORDER BY number ASC")
 	if err != nil || len(traces) == 0 {
-		log.Error("Failed to GetBlockTraces", "batch_id", id, "err", err)
+		log.Error("Failed to GetBlockTraces", "batch_hash", id, "err", err)
 		return
 	}
 
@@ -269,7 +269,7 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 		}
 		return
 	}
-	log.Info("commitBatch in layer1", "batch_id", id, "index", batch.Index, "hash", hash)
+	log.Info("commitBatch in layer1", "batch_hash", id, "index", batch.Index, "hash", hash)
 
 	// record and sync with db, @todo handle db error
 	err = r.db.UpdateCommitTxHashAndRollupStatus(r.ctx, id, hash.String(), types.RollupCommitting)
@@ -425,12 +425,12 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 			}
 			return
 		}
-		log.Info("finalizeBatchWithProof in layer1", "batch_id", id, "hash", hash)
+		log.Info("finalizeBatchWithProof in layer1", "batch_hash", id, "tx_hash", hash)
 
 		// record and sync with db, @todo handle db error
 		err = r.db.UpdateFinalizeTxHashAndRollupStatus(r.ctx, id, hash.String(), types.RollupFinalizing)
 		if err != nil {
-			log.Warn("UpdateFinalizeTxHashAndRollupStatus failed", "batch_id", id, "err", err)
+			log.Warn("UpdateFinalizeTxHashAndRollupStatus failed", "batch_hash", id, "err", err)
 		}
 		success = true
 		r.processingFinalization.Store(txID, id)
@@ -507,36 +507,36 @@ func (r *Layer2Relayer) handleConfirmation(confirmation *sender.Confirmation) {
 	}
 
 	// check whether it is block commitment transaction
-	if batchID, ok := r.processingCommitment.Load(confirmation.ID); ok {
+	if batchHash, ok := r.processingCommitment.Load(confirmation.ID); ok {
 		transactionType = "BatchCommitment"
 		// @todo handle db error
-		err := r.db.UpdateCommitTxHashAndRollupStatus(r.ctx, batchID.(string), confirmation.TxHash.String(), types.RollupCommitted)
+		err := r.db.UpdateCommitTxHashAndRollupStatus(r.ctx, batchHash.(string), confirmation.TxHash.String(), types.RollupCommitted)
 		if err != nil {
-			log.Warn("UpdateCommitTxHashAndRollupStatus failed", "batch_id", batchID.(string), "err", err)
+			log.Warn("UpdateCommitTxHashAndRollupStatus failed", "batch_hash", batchHash.(string), "err", err)
 		}
 		r.processingCommitment.Delete(confirmation.ID)
 	}
 
 	// check whether it is block commitment transaction
-	if batchIDs, ok := r.processingBatchesCommitment.Load(confirmation.ID); ok {
+	if batchBatches, ok := r.processingBatchesCommitment.Load(confirmation.ID); ok {
 		transactionType = "BatchesCommitment"
-		for _, id := range batchIDs.([]string) {
+		for _, batchHash := range batchBatches.([]string) {
 			// @todo handle db error
-			err := r.db.UpdateCommitTxHashAndRollupStatus(r.ctx, id, confirmation.TxHash.String(), types.RollupCommitted)
+			err := r.db.UpdateCommitTxHashAndRollupStatus(r.ctx, batchHash, confirmation.TxHash.String(), types.RollupCommitted)
 			if err != nil {
-				log.Warn("UpdateCommitTxHashAndRollupStatus failed", "batch_id", id, "err", err)
+				log.Warn("UpdateCommitTxHashAndRollupStatus failed", "batch_hash", batchHash, "err", err)
 			}
 		}
 		r.processingBatchesCommitment.Delete(confirmation.ID)
 	}
 
 	// check whether it is proof finalization transaction
-	if batchID, ok := r.processingFinalization.Load(confirmation.ID); ok {
+	if batchHash, ok := r.processingFinalization.Load(confirmation.ID); ok {
 		transactionType = "ProofFinalization"
 		// @todo handle db error
-		err := r.db.UpdateFinalizeTxHashAndRollupStatus(r.ctx, batchID.(string), confirmation.TxHash.String(), types.RollupFinalized)
+		err := r.db.UpdateFinalizeTxHashAndRollupStatus(r.ctx, batchHash.(string), confirmation.TxHash.String(), types.RollupFinalized)
 		if err != nil {
-			log.Warn("UpdateFinalizeTxHashAndRollupStatus failed", "batch_id", batchID.(string), "err", err)
+			log.Warn("UpdateFinalizeTxHashAndRollupStatus failed", "batch_hash", batchHash.(string), "err", err)
 		}
 		r.processingFinalization.Delete(confirmation.ID)
 	}

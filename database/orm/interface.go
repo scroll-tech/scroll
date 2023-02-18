@@ -17,12 +17,12 @@ type BlockTraceOrm interface {
 	GetBlockTracesLatestHeight() (int64, error)
 	GetBlockTraces(fields map[string]interface{}, args ...string) ([]*eth_types.BlockTrace, error)
 	GetBlockInfos(fields map[string]interface{}, args ...string) ([]*types.BlockInfo, error)
-	// GetUnbatchedBlocks add `GetUnbatchedBlocks` because `GetBlockInfos` cannot support query "batch_id is NULL"
+	// GetUnbatchedBlocks add `GetUnbatchedBlocks` because `GetBlockInfos` cannot support query "batch_hash is NULL"
 	GetUnbatchedBlocks(fields map[string]interface{}, args ...string) ([]*types.BlockInfo, error)
 	GetHashByNumber(number uint64) (*common.Hash, error)
-	DeleteTracesByBatchID(batchID string) error
+	DeleteTracesByBatchHash(batchHash string) error
 	InsertBlockTraces(blockTraces []*eth_types.BlockTrace) error
-	SetBatchIDForBlocksInDBTx(dbTx *sqlx.Tx, numbers []uint64, batchID string) error
+	SetBatchHashForBlocksInDBTx(dbTx *sqlx.Tx, numbers []uint64, batchHash string) error
 }
 
 // SessionInfoOrm sessions info operation inte
@@ -51,7 +51,7 @@ type BlockBatchOrm interface {
 	UpdateRollupStatus(ctx context.Context, id string, status types.RollupStatus) error
 	UpdateCommitTxHashAndRollupStatus(ctx context.Context, id string, commitTxHash string, status types.RollupStatus) error
 	UpdateFinalizeTxHashAndRollupStatus(ctx context.Context, id string, finalizeTxHash string, status types.RollupStatus) error
-	GetAssignedBatchIDs() ([]string, error)
+	GetAssignedBatchHashes() ([]string, error)
 	UpdateSkippedBatches() (int64, error)
 
 	GetCommitTxHash(id string) (sql.NullString, error)   // for unit tests only

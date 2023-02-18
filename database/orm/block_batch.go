@@ -109,17 +109,7 @@ func (o *blockBatchOrm) ResetProvingStatusFor(before types.ProvingStatus) error 
 
 // func (o *blockBatchOrm) NewBatchInDBTx(dbTx *sqlx.Tx, startBlock *BlockInfo, endBlock *BlockInfo, parentHash string, totalTxNum uint64, totalL2Gas uint64) (string, error) {
 func (o *blockBatchOrm) NewBatchInDBTx(dbTx *sqlx.Tx, batchData *types.BatchData) error {
-	// row := dbTx.QueryRow("SELECT COALESCE(MAX(index), 0) FROM block_batch;")
-
-	// TODO: use *big.Int for this
-	// var index int64
-	// if err := row.Scan(&index); err != nil {
-	// 	return "", err
-	// }
 	numBlocks := len(batchData.Batch.Blocks)
-
-	// index++
-	//hash := utils.ComputeBatchID(common.HexToHash(endBlock.Hash), common.HexToHash(parentHash), big.NewInt(index))
 	if _, err := dbTx.NamedExec(`INSERT INTO public.block_batch (hash, index, parent_hash, start_block_number, start_block_hash, end_block_number, end_block_hash, total_tx_num, total_l2_gas, state_root, total_l1_tx_num) VALUES (:hash, :index, :parent_hash, :start_block_number, :start_block_hash, :end_block_number, :end_block_hash, :total_tx_num, :total_l2_gas, :state_root, :total_l1_tx_num)`,
 		map[string]interface{}{
 			"hash":               batchData.Hash().Hex(),
@@ -326,7 +316,7 @@ func (o *blockBatchOrm) UpdateFinalizeTxHashAndRollupStatus(ctx context.Context,
 	}
 }
 
-func (o *blockBatchOrm) GetAssignedBatchIDs() ([]string, error) {
+func (o *blockBatchOrm) GetAssignedBatchHashes() ([]string, error) {
 	rows, err := o.db.Queryx(`SELECT hash FROM block_batch WHERE proving_status IN ($1, $2)`, types.ProvingTaskAssigned, types.ProvingTaskProved)
 	if err != nil {
 		return nil, err

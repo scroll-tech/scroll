@@ -62,7 +62,7 @@ type BlockInfo struct {
 	Number         uint64         `json:"number" db:"number"`
 	Hash           string         `json:"hash" db:"hash"`
 	ParentHash     string         `json:"parent_hash" db:"parent_hash"`
-	BatchID        sql.NullString `json:"batch_id" db:"batch_id"`
+	BatchHash      sql.NullString `json:"batch_hash" db:"batch_hash"`
 	TxNum          uint64         `json:"tx_num" db:"tx_num"`
 	GasUsed        uint64         `json:"gas_used" db:"gas_used"`
 	BlockTimestamp uint64         `json:"block_timestamp" db:"block_timestamp"`

@@ -183,7 +183,7 @@ func (m *Manager) restorePrevSessions() {
 
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	if ids, err := m.orm.GetAssignedBatchIDs(); err != nil {
+	if ids, err := m.orm.GetAssignedBatchHashes(); err != nil {
 		log.Error("failed to get assigned batch ids from db", "error", err)
 	} else if prevSessions, err := m.orm.GetSessionInfosByIDs(ids); err != nil {
 		log.Error("failed to recover roller session info from db", "error", err)
@@ -426,11 +426,11 @@ func (m *Manager) StartProofGenerationSession(task *types.BlockBatch) (success b
 	}()
 
 	// Get block traces.
-	blockInfos, err := m.orm.GetBlockInfos(map[string]interface{}{"batch_id": task.Hash})
+	blockInfos, err := m.orm.GetBlockInfos(map[string]interface{}{"batch_hash": task.Hash})
 	if err != nil {
 		log.Error(
 			"could not GetBlockInfos",
-			"batch_id", task.Hash,
+			"batch_hash", task.Hash,
 			"error", err,
 		)
 		return false

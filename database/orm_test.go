@@ -3,14 +3,19 @@ package database_test
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"math/big"
 	"os"
 	"testing"
+	"time"
 
 	_ "github.com/lib/pq"
 	_ "github.com/mattn/go-sqlite3"
+	"github.com/scroll-tech/go-ethereum/common"
 	geth_types "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/stretchr/testify/assert"
 
+	abi "scroll-tech/bridge/abi"
 	"scroll-tech/common/docker"
 	"scroll-tech/common/types"
 
@@ -67,6 +72,8 @@ var (
 		},
 	}
 	blockTrace *geth_types.BlockTrace
+	batchData1 *types.BatchData
+	batchData2 *types.BatchData
 
 	dbConfig   *database.DBConfig
 	dbImg      docker.ImgInstance
@@ -96,13 +103,54 @@ func setupEnv(t *testing.T) error {
 	ormBatch = orm.NewBlockBatchOrm(db)
 	ormSession = orm.NewSessionInfoOrm(db)
 
-	templateBlockTrace, err := os.ReadFile("../common/testdata/blockTrace_03.json")
+	templateBlockTrace, err := os.ReadFile("../common/testdata/blockTrace_02.json")
 	if err != nil {
 		return err
 	}
 	// unmarshal blockTrace
 	blockTrace = &geth_types.BlockTrace{}
-	return json.Unmarshal(templateBlockTrace, blockTrace)
+	if err = json.Unmarshal(templateBlockTrace, blockTrace); err != nil {
+		return err
+	}
+
+	parentBatch := &types.BlockBatch{
+		Index: 1,
+		Hash:  "0x0000000000000000000000000000000000000000",
+	}
+	batchData1 = types.NewBatchData(parentBatch, []*geth_types.BlockTrace{blockTrace})
+
+	templateBlockTrace, err = os.ReadFile("../common/testdata/blockTrace_03.json")
+	if err != nil {
+		return err
+	}
+	// unmarshal blockTrace
+	blockTrace2 := &geth_types.BlockTrace{}
+	if err = json.Unmarshal(templateBlockTrace, blockTrace2); err != nil {
+		return err
+	}
+	parentBatch2 := &types.BlockBatch{
+		Index: batchData1.Batch.BatchIndex,
+		Hash:  batchData1.Hash().Hex(),
+	}
+	batchData2 = types.NewBatchData(parentBatch2, []*geth_types.BlockTrace{blockTrace2})
+
+	// insert a fake empty block to batchData2
+	fakeBlockContext := abi.IScrollChainBlockContext{
+		BlockHash:       common.HexToHash("0x000000000000000000000000000000000000000000000000000000000000dead"),
+		ParentHash:      batchData2.Batch.Blocks[0].BlockHash,
+		BlockNumber:     batchData2.Batch.Blocks[0].BlockNumber + 1,
+		BaseFee:         new(big.Int).SetUint64(0),
+		Timestamp:       123456789,
+		GasLimit:        10000000000000000,
+		NumTransactions: 0,
+		NumL1Messages:   0,
+	}
+	batchData2.Batch.Blocks = append(batchData2.Batch.Blocks, fakeBlockContext)
+	batchData2.Batch.NewStateRoot = common.HexToHash("0x000000000000000000000000000000000000000000000000000000000000cafe")
+
+	fmt.Printf("batchhash1 = %x\n", batchData1.Hash())
+	fmt.Printf("batchhash2 = %x\n", batchData2.Hash())
+	return nil
 }
 
 // TestOrmFactory run several test cases.
@@ -122,9 +170,9 @@ func TestOrmFactory(t *testing.T) {
 
 	t.Run("testOrmL2Message", testOrmL2Message)
 
-	//t.Run("testOrmBlockBatch", testOrmBlockBatch)
+	t.Run("testOrmBlockBatch", testOrmBlockBatch)
 
-	//t.Run("testOrmSessionInfo", testOrmSessionInfo)
+	t.Run("testOrmSessionInfo", testOrmSessionInfo)
 }
 
 func testOrmBlockTraces(t *testing.T) {
@@ -237,7 +285,6 @@ func testOrmL2Message(t *testing.T) {
 	assert.Equal(t, msg.MsgHash, "msg_hash2")
 }
 
-/*
 // testOrmBlockBatch test rollup result table functions
 func testOrmBlockBatch(t *testing.T) {
 	// Create db handler and reset db.
@@ -247,23 +294,19 @@ func testOrmBlockBatch(t *testing.T) {
 
 	dbTx, err := factory.Beginx()
 	assert.NoError(t, err)
-	batchID1, err := ormBatch.NewBatchInDBTx(dbTx,
-		&types.BlockInfo{Number: blockTrace.Header.Number.Uint64()},
-		&types.BlockInfo{Number: blockTrace.Header.Number.Uint64() + 1},
-		"ff", 1, 194676) // parentHash & totalTxNum & totalL2Gas don't really matter here
+	err = ormBatch.NewBatchInDBTx(dbTx, batchData1)
 	assert.NoError(t, err)
-	err = ormBlock.SetBatchIDForBlocksInDBTx(dbTx, []uint64{
-		blockTrace.Header.Number.Uint64(),
-		blockTrace.Header.Number.Uint64() + 1}, batchID1)
+	batchHash1 := batchData1.Hash().Hex()
+	err = ormBlock.SetBatchHashForBlocksInDBTx(dbTx, []uint64{
+		batchData1.Batch.Blocks[0].BlockNumber,
+		batchData1.Batch.Blocks[0].BlockNumber}, batchHash1)
 	assert.NoError(t, err)
-	batchID2, err := ormBatch.NewBatchInDBTx(dbTx,
-		&types.BlockInfo{Number: blockTrace.Header.Number.Uint64() + 2},
-		&types.BlockInfo{Number: blockTrace.Header.Number.Uint64() + 3},
-		"ff", 1, 194676) // parentHash & totalTxNum & totalL2Gas don't really matter here
+	err = ormBatch.NewBatchInDBTx(dbTx, batchData2)
 	assert.NoError(t, err)
-	err = ormBlock.SetBatchIDForBlocksInDBTx(dbTx, []uint64{
-		blockTrace.Header.Number.Uint64() + 2,
-		blockTrace.Header.Number.Uint64() + 3}, batchID2)
+	batchHash2 := batchData2.Hash().Hex()
+	err = ormBlock.SetBatchHashForBlocksInDBTx(dbTx, []uint64{
+		batchData2.Batch.Blocks[0].BlockNumber,
+		batchData2.Batch.Blocks[1].BlockNumber}, batchHash2)
 	assert.NoError(t, err)
 	err = dbTx.Commit()
 	assert.NoError(t, err)
@@ -272,55 +315,55 @@ func testOrmBlockBatch(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, int(2), len(batches))
 
-	batcheIDs, err := ormBatch.GetPendingBatches(10)
+	batcheHashes, err := ormBatch.GetPendingBatches(10)
 	assert.NoError(t, err)
-	assert.Equal(t, int(2), len(batcheIDs))
-	assert.Equal(t, batchID1, batcheIDs[0])
-	assert.Equal(t, batchID2, batcheIDs[1])
+	assert.Equal(t, int(2), len(batcheHashes))
+	assert.Equal(t, batchHash1, batcheHashes[0])
+	assert.Equal(t, batchHash2, batcheHashes[1])
 
-	err = ormBatch.UpdateCommitTxHashAndRollupStatus(context.Background(), batchID1, "commit_tx_1", types.RollupCommitted)
+	err = ormBatch.UpdateCommitTxHashAndRollupStatus(context.Background(), batchHash1, "commit_tx_1", types.RollupCommitted)
 	assert.NoError(t, err)
 
-	batcheIDs, err = ormBatch.GetPendingBatches(10)
+	batcheHashes, err = ormBatch.GetPendingBatches(10)
 	assert.NoError(t, err)
-	assert.Equal(t, int(1), len(batcheIDs))
-	assert.Equal(t, batchID2, batcheIDs[0])
+	assert.Equal(t, int(1), len(batcheHashes))
+	assert.Equal(t, batchHash2, batcheHashes[0])
 
-	provingStatus, err := ormBatch.GetProvingStatusByID(batchID1)
+	provingStatus, err := ormBatch.GetProvingStatusByID(batchHash1)
 	assert.NoError(t, err)
 	assert.Equal(t, types.ProvingTaskUnassigned, provingStatus)
-	err = ormBatch.UpdateProofByID(context.Background(), batchID1, []byte{1}, []byte{2}, 1200)
+	err = ormBatch.UpdateProofByID(context.Background(), batchHash1, []byte{1}, []byte{2}, 1200)
 	assert.NoError(t, err)
-	err = ormBatch.UpdateProvingStatus(batchID1, types.ProvingTaskVerified)
+	err = ormBatch.UpdateProvingStatus(batchHash1, types.ProvingTaskVerified)
 	assert.NoError(t, err)
-	provingStatus, err = ormBatch.GetProvingStatusByID(batchID1)
+	provingStatus, err = ormBatch.GetProvingStatusByID(batchHash1)
 	assert.NoError(t, err)
 	assert.Equal(t, types.ProvingTaskVerified, provingStatus)
 
-	rollupStatus, err := ormBatch.GetRollupStatus(batchID1)
+	rollupStatus, err := ormBatch.GetRollupStatus(batchHash1)
 	assert.NoError(t, err)
 	assert.Equal(t, types.RollupCommitted, rollupStatus)
-	err = ormBatch.UpdateFinalizeTxHashAndRollupStatus(context.Background(), batchID1, "finalize_tx_1", types.RollupFinalized)
+	err = ormBatch.UpdateFinalizeTxHashAndRollupStatus(context.Background(), batchHash1, "finalize_tx_1", types.RollupFinalized)
 	assert.NoError(t, err)
-	rollupStatus, err = ormBatch.GetRollupStatus(batchID1)
+	rollupStatus, err = ormBatch.GetRollupStatus(batchHash1)
 	assert.NoError(t, err)
 	assert.Equal(t, types.RollupFinalized, rollupStatus)
 	result, err := ormBatch.GetLatestFinalizedBatch()
 	assert.NoError(t, err)
-	assert.Equal(t, batchID1, result.Hash)
+	assert.Equal(t, batchHash1, result.Hash)
 
-	status1, err := ormBatch.GetRollupStatus(batchID1)
+	status1, err := ormBatch.GetRollupStatus(batchHash1)
 	assert.NoError(t, err)
-	status2, err := ormBatch.GetRollupStatus(batchID2)
+	status2, err := ormBatch.GetRollupStatus(batchHash2)
 	assert.NoError(t, err)
 	assert.NotEqual(t, status1, status2)
-	statues, err := ormBatch.GetRollupStatusByIDList([]string{batchID1, batchID2, batchID1, batchID2})
+	statues, err := ormBatch.GetRollupStatusByIDList([]string{batchHash1, batchHash2, batchHash1, batchHash2})
 	assert.NoError(t, err)
 	assert.Equal(t, statues[0], status1)
 	assert.Equal(t, statues[1], status2)
 	assert.Equal(t, statues[2], status1)
 	assert.Equal(t, statues[3], status2)
-	statues, err = ormBatch.GetRollupStatusByIDList([]string{batchID2, batchID1, batchID2, batchID1})
+	statues, err = ormBatch.GetRollupStatusByIDList([]string{batchHash2, batchHash1, batchHash2, batchHash1})
 	assert.NoError(t, err)
 	assert.Equal(t, statues[0], status2)
 	assert.Equal(t, statues[1], status1)
@@ -336,19 +379,17 @@ func testOrmSessionInfo(t *testing.T) {
 	assert.NoError(t, migrate.ResetDB(factory.GetDB().DB))
 	dbTx, err := factory.Beginx()
 	assert.NoError(t, err)
-	batchID, err := ormBatch.NewBatchInDBTx(dbTx,
-		&types.BlockInfo{Number: blockTrace.Header.Number.Uint64()},
-		&types.BlockInfo{Number: blockTrace.Header.Number.Uint64() + 1},
-		"ff", 1, 194676)
+	err = ormBatch.NewBatchInDBTx(dbTx, batchData1)
+	batchHash := batchData1.Hash().Hex()
 	assert.NoError(t, err)
-	assert.NoError(t, ormBlock.SetBatchIDForBlocksInDBTx(dbTx, []uint64{
-		blockTrace.Header.Number.Uint64(),
-		blockTrace.Header.Number.Uint64() + 1}, batchID))
+	assert.NoError(t, ormBlock.SetBatchHashForBlocksInDBTx(dbTx, []uint64{
+		batchData1.Batch.Blocks[0].BlockNumber,
+		batchData1.Batch.Blocks[0].BlockNumber}, batchHash))
 	assert.NoError(t, dbTx.Commit())
-	assert.NoError(t, ormBatch.UpdateProvingStatus(batchID, types.ProvingTaskAssigned))
+	assert.NoError(t, ormBatch.UpdateProvingStatus(batchHash, types.ProvingTaskAssigned))
 
 	// empty
-	ids, err := ormBatch.GetAssignedBatchIDs()
+	ids, err := ormBatch.GetAssignedBatchHashes()
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(ids))
 	sessionInfos, err := ormSession.GetSessionInfosByIDs(ids)
@@ -356,7 +397,7 @@ func testOrmSessionInfo(t *testing.T) {
 	assert.Equal(t, 0, len(sessionInfos))
 
 	sessionInfo := types.SessionInfo{
-		ID: batchID,
+		ID: batchHash,
 		Rollers: map[string]*types.RollerStatus{
 			"0": {
 				PublicKey: "0",
@@ -382,12 +423,11 @@ func testOrmSessionInfo(t *testing.T) {
 	assert.Equal(t, sessionInfo, *sessionInfos[0])
 
 	// delete
-	assert.NoError(t, ormBatch.UpdateProvingStatus(batchID, types.ProvingTaskVerified))
-	ids, err = ormBatch.GetAssignedBatchIDs()
+	assert.NoError(t, ormBatch.UpdateProvingStatus(batchHash, types.ProvingTaskVerified))
+	ids, err = ormBatch.GetAssignedBatchHashes()
 	assert.NoError(t, err)
 	assert.Equal(t, 0, len(ids))
 	sessionInfos, err = ormSession.GetSessionInfosByIDs(ids)
 	assert.NoError(t, err)
 	assert.Equal(t, 0, len(sessionInfos))
 }
-*/
