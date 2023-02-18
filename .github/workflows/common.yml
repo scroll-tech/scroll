@@ -26,7 +26,7 @@ jobs:
     steps:
     - uses: actions-rs/toolchain@v1
       with:
-        toolchain: nightly-2022-08-23
+        toolchain: nightly-2022-12-10
         override: true
         components: rustfmt, clippy
     - name: Install Go
