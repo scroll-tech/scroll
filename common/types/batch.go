@@ -12,6 +12,7 @@ import (
 	abi "scroll-tech/bridge/abi"
 )
 
+// PublicInputHashConfig is the input config of batch hash.
 type PublicInputHashConfig struct {
 	MaxTxNum      int
 	PaddingTxHash common.Hash
