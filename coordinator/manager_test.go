@@ -42,8 +42,7 @@ var (
 	cfg   *bridge_config.Config
 	dbImg docker.ImgInstance
 
-	blockTrace *geth_types.BlockTrace
-	batchData  *types.BatchData
+	batchData *types.BatchData
 )
 
 func randomURL() string {
@@ -65,7 +64,7 @@ func setEnv(t *testing.T) (err error) {
 		return err
 	}
 	// unmarshal blockTrace
-	blockTrace = &geth_types.BlockTrace{}
+	blockTrace := &geth_types.BlockTrace{}
 	if err = json.Unmarshal(templateBlockTrace, blockTrace); err != nil {
 		return err
 	}

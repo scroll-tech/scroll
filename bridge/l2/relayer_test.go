@@ -2,15 +2,21 @@ package l2
 
 import (
 	"context"
+	"encoding/json"
+	"math/big"
+	"os"
+	"strconv"
 	"testing"
 
+	"github.com/scroll-tech/go-ethereum/common"
+	geth_types "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/stretchr/testify/assert"
 
+	"scroll-tech/common/types"
 	"scroll-tech/database"
 	"scroll-tech/database/migrate"
 )
 
-/*
 var (
 	templateL2Message = []*types.L2Message{
 		{
@@ -24,7 +30,6 @@ var (
 		},
 	}
 )
-*/
 
 func testCreateNewRelayer(t *testing.T) {
 	// Create db handler and reset db.
@@ -40,7 +45,6 @@ func testCreateNewRelayer(t *testing.T) {
 	relayer.Start()
 }
 
-/*
 func testL2RelayerProcessSaveEvents(t *testing.T) {
 	// Create db handler and reset db.
 	db, err := database.NewOrmFactory(cfg.DBConfig)
@@ -73,19 +77,16 @@ func testL2RelayerProcessSaveEvents(t *testing.T) {
 
 	dbTx, err := db.Beginx()
 	assert.NoError(t, err)
-	batchID, err := db.NewBatchInDBTx(dbTx,
-		&orm.BlockInfo{Number: templateL2Message[0].Height},
-		&orm.BlockInfo{Number: templateL2Message[0].Height + 1},
-		"0f", 1, 194676) // parentHash & totalTxNum & totalL2Gas don't really matter here
-	assert.NoError(t, err)
-	err = db.SetBatchIDForBlocksInDBTx(dbTx, []uint64{
-		templateL2Message[0].Height,
-		templateL2Message[0].Height + 1}, batchID)
+	assert.NoError(t, db.NewBatchInDBTx(dbTx, batchData1))
+	batchHash := batchData1.Hash().Hex()
+	err = db.SetBatchHashForBlocksInDBTx(dbTx, []uint64{
+		batchData1.Batch.Blocks[0].BlockNumber,
+		batchData1.Batch.Blocks[0].BlockNumber}, batchHash)
 	assert.NoError(t, err)
 	err = dbTx.Commit()
 	assert.NoError(t, err)
 
-	err = db.UpdateRollupStatus(context.Background(), batchID, types.RollupFinalized)
+	err = db.UpdateRollupStatus(context.Background(), batchHash, types.RollupFinalized)
 	assert.NoError(t, err)
 
 	relayer.ProcessSavedEvents()
@@ -94,9 +95,7 @@ func testL2RelayerProcessSaveEvents(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, types.MsgSubmitted, msg.Status)
 }
-*/
 
-/*
 func testL2RelayerProcessPendingBatches(t *testing.T) {
 	// Create db handler and reset db.
 	db, err := database.NewOrmFactory(cfg.DBConfig)
@@ -131,31 +130,26 @@ func testL2RelayerProcessPendingBatches(t *testing.T) {
 
 	dbTx, err := db.Beginx()
 	assert.NoError(t, err)
-	batchID, err := db.NewBatchInDBTx(dbTx,
-		&orm.BlockInfo{Number: traces[0].Header.Number.Uint64()},
-		&orm.BlockInfo{Number: traces[1].Header.Number.Uint64()},
-		"ff", 1, 194676) // parentHash & totalTxNum & totalL2Gas don't really matter here
-	assert.NoError(t, err)
-	err = db.SetBatchIDForBlocksInDBTx(dbTx, []uint64{
-		traces[0].Header.Number.Uint64(),
-		traces[1].Header.Number.Uint64()}, batchID)
+	assert.NoError(t, db.NewBatchInDBTx(dbTx, batchData1))
+	batchHash := batchData1.Hash().Hex()
+	err = db.SetBatchHashForBlocksInDBTx(dbTx, []uint64{
+		batchData1.Batch.Blocks[0].BlockNumber,
+		batchData1.Batch.Blocks[0].BlockNumber}, batchHash)
 	assert.NoError(t, err)
 	err = dbTx.Commit()
 	assert.NoError(t, err)
 
-	// err = db.UpdateRollupStatus(context.Background(), batchID, orm.RollupPending)
-	// assert.NoError(t, err)
+	err = db.UpdateRollupStatus(context.Background(), batchHash, types.RollupPending)
+	assert.NoError(t, err)
 
 	relayer.ProcessPendingBatches()
 
 	// Check if Rollup Result is changed successfully
-	status, err := db.GetRollupStatus(batchID)
+	status, err := db.GetRollupStatus(batchHash)
 	assert.NoError(t, err)
 	assert.Equal(t, types.RollupCommitting, status)
 }
-*/
 
-/*
 func testL2RelayerProcessCommittedBatches(t *testing.T) {
 	// Create db handler and reset db.
 	db, err := database.NewOrmFactory(cfg.DBConfig)
@@ -170,30 +164,28 @@ func testL2RelayerProcessCommittedBatches(t *testing.T) {
 
 	dbTx, err := db.Beginx()
 	assert.NoError(t, err)
-	batchID, err := db.NewBatchInDBTx(dbTx, &orm.BlockInfo{}, &types.BlockInfo{}, "0", 1, 194676) // startBlock & endBlock & parentHash & totalTxNum & totalL2Gas don't really matter here
-	assert.NoError(t, err)
+	assert.NoError(t, db.NewBatchInDBTx(dbTx, batchData1))
+	batchHash := batchData1.Hash().Hex()
 	err = dbTx.Commit()
 	assert.NoError(t, err)
 
-	err = db.UpdateRollupStatus(context.Background(), batchID, types.RollupCommitted)
+	err = db.UpdateRollupStatus(context.Background(), batchHash, types.RollupCommitted)
 	assert.NoError(t, err)
 
 	tProof := []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31}
 	tInstanceCommitments := []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31}
-	err = db.UpdateProofByID(context.Background(), batchID, tProof, tInstanceCommitments, 100)
+	err = db.UpdateProofByID(context.Background(), batchHash, tProof, tInstanceCommitments, 100)
 	assert.NoError(t, err)
-	err = db.UpdateProvingStatus(batchID, types.ProvingTaskVerified)
+	err = db.UpdateProvingStatus(batchHash, types.ProvingTaskVerified)
 	assert.NoError(t, err)
 
 	relayer.ProcessCommittedBatches()
 
-	status, err := db.GetRollupStatus(batchID)
+	status, err := db.GetRollupStatus(batchHash)
 	assert.NoError(t, err)
 	assert.Equal(t, types.RollupFinalizing, status)
 }
-*/
 
-/*
 func testL2RelayerSkipBatches(t *testing.T) {
 	// Create db handler and reset db.
 	db, err := database.NewOrmFactory(cfg.DBConfig)
@@ -206,42 +198,43 @@ func testL2RelayerSkipBatches(t *testing.T) {
 	assert.NoError(t, err)
 	defer relayer.Stop()
 
-	createBatch := func(rollupStatus types.RollupStatus, provingStatus types.ProvingStatus) string {
+	createBatch := func(rollupStatus types.RollupStatus, provingStatus types.ProvingStatus, index uint64) string {
 		dbTx, err := db.Beginx()
 		assert.NoError(t, err)
-		batchID, err := db.NewBatchInDBTx(dbTx, &orm.BlockInfo{}, &orm.BlockInfo{}, "0", 1, 194676) // startBlock & endBlock & parentHash & totalTxNum & totalL2Gas don't really matter here
-		assert.NoError(t, err)
+		batchData := genBatchData(t, index)
+		assert.NoError(t, db.NewBatchInDBTx(dbTx, batchData))
+		batchHash := batchData.Hash().Hex()
 		err = dbTx.Commit()
 		assert.NoError(t, err)
 
-		err = db.UpdateRollupStatus(context.Background(), batchID, rollupStatus)
+		err = db.UpdateRollupStatus(context.Background(), batchHash, rollupStatus)
 		assert.NoError(t, err)
 
 		tProof := []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31}
 		tInstanceCommitments := []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31}
-		err = db.UpdateProofByID(context.Background(), batchID, tProof, tInstanceCommitments, 100)
+		err = db.UpdateProofByID(context.Background(), batchHash, tProof, tInstanceCommitments, 100)
 		assert.NoError(t, err)
-		err = db.UpdateProvingStatus(batchID, provingStatus)
+		err = db.UpdateProvingStatus(batchHash, provingStatus)
 		assert.NoError(t, err)
 
-		return batchID
+		return batchHash
 	}
 
 	skipped := []string{
-		createBatch(types.RollupCommitted, types.ProvingTaskSkipped),
-		createBatch(types.RollupCommitted, types.ProvingTaskFailed),
+		createBatch(types.RollupCommitted, types.ProvingTaskSkipped, 1),
+		createBatch(types.RollupCommitted, types.ProvingTaskFailed, 2),
 	}
 
 	notSkipped := []string{
-		createBatch(types.RollupPending, types.ProvingTaskSkipped),
-		createBatch(types.RollupCommitting, types.ProvingTaskSkipped),
-		createBatch(types.RollupFinalizing, types.ProvingTaskSkipped),
-		createBatch(types.RollupFinalized, types.ProvingTaskSkipped),
-		createBatch(types.RollupPending, types.ProvingTaskFailed),
-		createBatch(types.RollupCommitting, types.ProvingTaskFailed),
-		createBatch(types.RollupFinalizing, types.ProvingTaskFailed),
-		createBatch(types.RollupFinalized, types.ProvingTaskFailed),
-		createBatch(types.RollupCommitted, types.ProvingTaskVerified),
+		createBatch(types.RollupPending, types.ProvingTaskSkipped, 3),
+		createBatch(types.RollupCommitting, types.ProvingTaskSkipped, 4),
+		createBatch(types.RollupFinalizing, types.ProvingTaskSkipped, 5),
+		createBatch(types.RollupFinalized, types.ProvingTaskSkipped, 6),
+		createBatch(types.RollupPending, types.ProvingTaskFailed, 7),
+		createBatch(types.RollupCommitting, types.ProvingTaskFailed, 8),
+		createBatch(types.RollupFinalizing, types.ProvingTaskFailed, 9),
+		createBatch(types.RollupFinalized, types.ProvingTaskFailed, 10),
+		createBatch(types.RollupCommitted, types.ProvingTaskVerified, 11),
 	}
 
 	relayer.ProcessCommittedBatches()
@@ -258,4 +251,18 @@ func testL2RelayerSkipBatches(t *testing.T) {
 		assert.NotEqual(t, types.RollupFinalizationSkipped, status)
 	}
 }
-*/
+
+func genBatchData(t *testing.T, index uint64) *types.BatchData {
+	templateBlockTrace, err := os.ReadFile("../../common/testdata/blockTrace_02.json")
+	assert.NoError(t, err)
+	// unmarshal blockTrace
+	blockTrace := &geth_types.BlockTrace{}
+	err = json.Unmarshal(templateBlockTrace, blockTrace)
+	assert.NoError(t, err)
+	blockTrace.Header.ParentHash = common.HexToHash("0x" + strconv.FormatUint(index+1, 16))
+	parentBatch := &types.BlockBatch{
+		Index: index,
+		Hash:  "0x0000000000000000000000000000000000000000",
+	}
+	return types.NewBatchData(parentBatch, []*geth_types.BlockTrace{blockTrace})
+}

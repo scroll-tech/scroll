@@ -1,13 +1,21 @@
 package l2
 
 import (
+	"encoding/json"
+	"fmt"
+	"math/big"
+	"os"
 	"testing"
 
+	"github.com/scroll-tech/go-ethereum/common"
+	geth_types "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/stretchr/testify/assert"
 
 	"scroll-tech/common/docker"
+	"scroll-tech/common/types"
 
+	abi "scroll-tech/bridge/abi"
 	"scroll-tech/bridge/config"
 )
 
@@ -22,6 +30,10 @@ var (
 
 	// l2geth client
 	l2Cli *ethclient.Client
+
+	// batch data
+	batchData1 *types.BatchData
+	batchData2 *types.BatchData
 )
 
 func setupEnv(t *testing.T) (err error) {
@@ -46,6 +58,54 @@ func setupEnv(t *testing.T) (err error) {
 	// Create l2geth client.
 	l2Cli, err = ethclient.Dial(cfg.L2Config.Endpoint)
 	assert.NoError(t, err)
+
+	templateBlockTrace, err := os.ReadFile("../../common/testdata/blockTrace_02.json")
+	if err != nil {
+		return err
+	}
+	// unmarshal blockTrace
+	blockTrace := &geth_types.BlockTrace{}
+	if err = json.Unmarshal(templateBlockTrace, blockTrace); err != nil {
+		return err
+	}
+
+	parentBatch := &types.BlockBatch{
+		Index: 1,
+		Hash:  "0x0000000000000000000000000000000000000000",
+	}
+	batchData1 = types.NewBatchData(parentBatch, []*geth_types.BlockTrace{blockTrace})
+
+	templateBlockTrace, err = os.ReadFile("../../common/testdata/blockTrace_03.json")
+	if err != nil {
+		return err
+	}
+	// unmarshal blockTrace
+	blockTrace2 := &geth_types.BlockTrace{}
+	if err = json.Unmarshal(templateBlockTrace, blockTrace2); err != nil {
+		return err
+	}
+	parentBatch2 := &types.BlockBatch{
+		Index: batchData1.Batch.BatchIndex,
+		Hash:  batchData1.Hash().Hex(),
+	}
+	batchData2 = types.NewBatchData(parentBatch2, []*geth_types.BlockTrace{blockTrace2})
+
+	// insert a fake empty block to batchData2
+	fakeBlockContext := abi.IScrollChainBlockContext{
+		BlockHash:       common.HexToHash("0x000000000000000000000000000000000000000000000000000000000000dead"),
+		ParentHash:      batchData2.Batch.Blocks[0].BlockHash,
+		BlockNumber:     batchData2.Batch.Blocks[0].BlockNumber + 1,
+		BaseFee:         new(big.Int).SetUint64(0),
+		Timestamp:       123456789,
+		GasLimit:        10000000000000000,
+		NumTransactions: 0,
+		NumL1Messages:   0,
+	}
+	batchData2.Batch.Blocks = append(batchData2.Batch.Blocks, fakeBlockContext)
+	batchData2.Batch.NewStateRoot = common.HexToHash("0x000000000000000000000000000000000000000000000000000000000000cafe")
+
+	fmt.Printf("batchhash1 = %x\n", batchData1.Hash())
+	fmt.Printf("batchhash2 = %x\n", batchData2.Hash())
 
 	return err
 }
@@ -74,12 +134,12 @@ func TestFunction(t *testing.T) {
 
 	// Run l2 relayer test cases.
 	t.Run("TestCreateNewRelayer", testCreateNewRelayer)
-	//t.Run("TestL2RelayerProcessSaveEvents", testL2RelayerProcessSaveEvents)
-	//t.Run("testL2RelayerProcessPendingBatches", testL2RelayerProcessPendingBatches)
-	//t.Run("testL2RelayerProcessCommittedBatches", testL2RelayerProcessCommittedBatches)
-	//t.Run("testL2RelayerSkipBatches", testL2RelayerSkipBatches)
+	t.Run("TestL2RelayerProcessSaveEvents", testL2RelayerProcessSaveEvents)
+	t.Run("TestL2RelayerProcessPendingBatches", testL2RelayerProcessPendingBatches)
+	t.Run("TestL2RelayerProcessCommittedBatches", testL2RelayerProcessCommittedBatches)
+	t.Run("TestL2RelayerSkipBatches", testL2RelayerSkipBatches)
 
-	//t.Run("testBatchProposer", testBatchProposer)
+	//t.Run("TestBatchProposer", testBatchProposer)
 
 	t.Cleanup(func() {
 		free(t)
