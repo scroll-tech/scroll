@@ -5,16 +5,19 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"crypto/rand"
+	"encoding/json"
 	"fmt"
 	"math/big"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
-	"github.com/scroll-tech/go-ethereum"
-
+	"github.com/ethereum/go-ethereum"
+	geth_types "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/crypto"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/sync/errgroup"
@@ -27,6 +30,7 @@ import (
 
 	"scroll-tech/common/docker"
 	"scroll-tech/common/message"
+	"scroll-tech/common/types"
 	"scroll-tech/common/utils"
 
 	bridge_config "scroll-tech/bridge/config"
@@ -37,6 +41,9 @@ import (
 var (
 	cfg   *bridge_config.Config
 	dbImg docker.ImgInstance
+
+	blockTrace *geth_types.BlockTrace
+	batchData  *types.BatchData
 )
 
 func randomURL() string {
@@ -53,6 +60,22 @@ func setEnv(t *testing.T) (err error) {
 	dbImg = docker.NewTestDBDocker(t, cfg.DBConfig.DriverName)
 	cfg.DBConfig.DSN = dbImg.Endpoint()
 
+	templateBlockTrace, err := os.ReadFile("../common/testdata/blockTrace_02.json")
+	if err != nil {
+		return err
+	}
+	// unmarshal blockTrace
+	blockTrace = &geth_types.BlockTrace{}
+	if err = json.Unmarshal(templateBlockTrace, blockTrace); err != nil {
+		return err
+	}
+
+	parentBatch := &types.BlockBatch{
+		Index: 1,
+		Hash:  "0x0000000000000000000000000000000000000000",
+	}
+	batchData = types.NewBatchData(parentBatch, []*geth_types.BlockTrace{blockTrace})
+
 	return
 }
 
@@ -63,12 +86,12 @@ func TestApis(t *testing.T) {
 	t.Run("TestHandshake", testHandshake)
 	t.Run("TestFailedHandshake", testFailedHandshake)
 	t.Run("TestSeveralConnections", testSeveralConnections)
-	//t.Run("TestValidProof", testValidProof)
-	//t.Run("TestInvalidProof", testInvalidProof)
-	//t.Run("TestIdleRollerSelection", testIdleRollerSelection)
+	t.Run("TestValidProof", testValidProof)
+	t.Run("TestInvalidProof", testInvalidProof)
+	t.Run("TestIdleRollerSelection", testIdleRollerSelection)
 	// TODO: Restart roller alone when received task, can add this test case in integration-test.
 	//t.Run("TestRollerReconnect", testRollerReconnect)
-	//t.Run("TestGracefulRestart", testGracefulRestart)
+	t.Run("TestGracefulRestart", testGracefulRestart)
 
 	// Teardown
 	t.Cleanup(func() {
@@ -217,7 +240,6 @@ func testSeveralConnections(t *testing.T) {
 	}
 }
 
-/*
 func testValidProof(t *testing.T) {
 	// Create db handler and reset db.
 	l2db, err := database.NewOrmFactory(cfg.DBConfig)
@@ -252,9 +274,8 @@ func testValidProof(t *testing.T) {
 	dbTx, err := l2db.Beginx()
 	assert.NoError(t, err)
 	for i := range ids {
-		ID, err := l2db.NewBatchInDBTx(dbTx, &orm.BlockInfo{Number: uint64(i)}, &orm.BlockInfo{Number: uint64(i)}, "0f", 1, 194676)
-		assert.NoError(t, err)
-		ids[i] = ID
+		assert.NoError(t, l2db.NewBatchInDBTx(dbTx, batchData))
+		ids[i] = batchData.Hash().Hex()
 	}
 	assert.NoError(t, dbTx.Commit())
 
@@ -268,7 +289,7 @@ func testValidProof(t *testing.T) {
 		case <-tick:
 			status, err := l2db.GetProvingStatusByID(ids[0])
 			assert.NoError(t, err)
-			if status == orm.ProvingTaskVerified {
+			if status == types.ProvingTaskVerified {
 				ids = ids[1:]
 			}
 		case <-tickStop:
@@ -277,9 +298,7 @@ func testValidProof(t *testing.T) {
 		}
 	}
 }
-*/
 
-/*
 func testInvalidProof(t *testing.T) {
 	// Create db handler and reset db.
 	l2db, err := database.NewOrmFactory(cfg.DBConfig)
@@ -313,9 +332,8 @@ func testInvalidProof(t *testing.T) {
 	dbTx, err := l2db.Beginx()
 	assert.NoError(t, err)
 	for i := range ids {
-		ID, err := l2db.NewBatchInDBTx(dbTx, &orm.BlockInfo{Number: uint64(i)}, &orm.BlockInfo{Number: uint64(i)}, "0f", 1, 194676)
-		assert.NoError(t, err)
-		ids[i] = ID
+		assert.NoError(t, l2db.NewBatchInDBTx(dbTx, batchData))
+		ids[i] = batchData.Hash().Hex()
 	}
 	assert.NoError(t, dbTx.Commit())
 
@@ -338,9 +356,7 @@ func testInvalidProof(t *testing.T) {
 		}
 	}
 }
-*/
 
-/*
 func testIdleRollerSelection(t *testing.T) {
 	// Create db handler and reset db.
 	l2db, err := database.NewOrmFactory(cfg.DBConfig)
@@ -371,13 +387,12 @@ func testIdleRollerSelection(t *testing.T) {
 
 	assert.Equal(t, len(rollers), rollerManager.GetNumberOfIdleRollers())
 
-	var ids = make([]string, 2)
+	var ids = make([]string, 1)
 	dbTx, err := l2db.Beginx()
 	assert.NoError(t, err)
 	for i := range ids {
-		ID, err := l2db.NewBatchInDBTx(dbTx, &orm.BlockInfo{Number: uint64(i)}, &orm.BlockInfo{Number: uint64(i)}, "0f", 1, 194676)
-		assert.NoError(t, err)
-		ids[i] = ID
+		assert.NoError(t, l2db.NewBatchInDBTx(dbTx, batchData))
+		ids[i] = batchData.Hash().Hex()
 	}
 	assert.NoError(t, dbTx.Commit())
 
@@ -391,7 +406,7 @@ func testIdleRollerSelection(t *testing.T) {
 		case <-tick:
 			status, err := l2db.GetProvingStatusByID(ids[0])
 			assert.NoError(t, err)
-			if status == orm.ProvingTaskVerified {
+			if status == types.ProvingTaskVerified {
 				ids = ids[1:]
 			}
 		case <-tickStop:
@@ -400,9 +415,7 @@ func testIdleRollerSelection(t *testing.T) {
 		}
 	}
 }
-*/
 
-/*
 func testGracefulRestart(t *testing.T) {
 	// Create db handler and reset db.
 	l2db, err := database.NewOrmFactory(cfg.DBConfig)
@@ -414,8 +427,8 @@ func testGracefulRestart(t *testing.T) {
 	dbTx, err := l2db.Beginx()
 	assert.NoError(t, err)
 	for i := range ids {
-		ids[i], err = l2db.NewBatchInDBTx(dbTx, &orm.BlockInfo{Number: uint64(i)}, &orm.BlockInfo{Number: uint64(i)}, "0f", 1, 194676)
-		assert.NoError(t, err)
+		assert.NoError(t, l2db.NewBatchInDBTx(dbTx, batchData))
+		ids[i] = batchData.Hash().Hex()
 	}
 	assert.NoError(t, dbTx.Commit())
 
@@ -471,7 +484,7 @@ func testGracefulRestart(t *testing.T) {
 			// because the roller client for `submitProof` has been overwritten
 			status, err := l2db.GetProvingStatusByID(ids[0])
 			assert.NoError(t, err)
-			if status == orm.ProvingTaskVerified {
+			if status == types.ProvingTaskVerified {
 				ids = ids[1:]
 			}
 
@@ -481,7 +494,6 @@ func testGracefulRestart(t *testing.T) {
 		}
 	}
 }
-*/
 
 func setupCoordinator(t *testing.T, dbCfg *database.DBConfig, rollersPerSession uint8, wsURL string) (rollerManager *coordinator.Manager, handler *http.Server) {
 	// Get db handler.
@@ -511,8 +523,8 @@ type mockRoller struct {
 	wsURL  string
 	client *client2.Client
 
-	taskCh chan *message.TaskMsg
-	//taskCache sync.Map
+	taskCh    chan *message.TaskMsg
+	taskCache sync.Map
 
 	sub    ethereum.Subscription
 	stopCh chan struct{}
@@ -567,7 +579,6 @@ func (r *mockRoller) connectToCoordinator() (*client2.Client, ethereum.Subscript
 	return client, sub, nil
 }
 
-/*
 func (r *mockRoller) releaseTasks() {
 	r.taskCache.Range(func(key, value any) bool {
 		r.taskCh <- value.(*message.TaskMsg)
@@ -626,7 +637,6 @@ func (r *mockRoller) loop(t *testing.T, client *client2.Client, proofTime time.D
 		}
 	}
 }
-*/
 
 func (r *mockRoller) close() {
 	close(r.stopCh)
