@@ -62,6 +62,11 @@ func testMonitorBridgeContract(t *testing.T) {
 	assert.NoError(t, migrate.ResetDB(db.GetDB().DB))
 	defer db.Close()
 
+	l2cfg := cfg.L2Config
+	wc := NewL2WatcherClient(context.Background(), l2Cli, l2cfg.Confirmations, l2cfg.BatchProposerConfig, l2cfg.L2MessengerAddress, nil, db)
+	wc.Start()
+	defer wc.Stop()
+
 	previousHeight, err := l2Cli.BlockNumber(context.Background())
 	assert.NoError(t, err)
 
@@ -118,7 +123,6 @@ func testMonitorBridgeContract(t *testing.T) {
 	assert.Equal(t, 2, len(msgs))
 }
 
-/*
 func testFetchMultipleSentMessageInOneBlock(t *testing.T) {
 	// Create db handler and reset db.
 	db, err := database.NewOrmFactory(cfg.DBConfig)
@@ -190,7 +194,6 @@ func testFetchMultipleSentMessageInOneBlock(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 5, len(msgs))
 }
-*/
 
 func prepareRelayerClient(l2Cli *ethclient.Client, bpCfg *config.BatchProposerConfig, db database.OrmFactory, contractAddr common.Address) *WatcherClient {
 	confirmations := rpc.LatestBlockNumber

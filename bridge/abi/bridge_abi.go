@@ -8,8 +8,8 @@ import (
 )
 
 const (
-	// SentMessageEventSignature = keccak256("SentMessage(address,address,uint256,uint256,bytes)")
-	SentMessageEventSignature = "a395567463d794dc2242d64f377d05c82aa84814b1e0624da7803db0c788bd87"
+	// SentMessageEventSignature = keccak256("SentMessage(address,address,uint256,uint256,uint256,bytes)")
+	SentMessageEventSignature = "104371f3b442861a2a7b82a070afbbaab748bb13757bf47769e170e37809ec1e"
 
 	// QueueTransactionEventSignature = keccak256("QueueTransaction(address,address,uint256,uint256,uint256,bytes)"
 	QueueTransactionEventSignature = "bdcc7517f8fe3db6506dfd910942d0bbecaf3d6a506dadea65b0d988e75b9439"

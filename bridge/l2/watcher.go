@@ -308,7 +308,7 @@ func (w *WatcherClient) FetchContractEvent(blockHeight uint64) {
 			},
 			Topics: make([][]common.Hash, 1),
 		}
-		query.Topics[0] = make([]common.Hash, 3)
+		query.Topics[0] = make([]common.Hash, 4)
 		query.Topics[0][0] = common.HexToHash(bridge_abi.SentMessageEventSignature)
 		query.Topics[0][1] = common.HexToHash(bridge_abi.RelayedMessageEventSignature)
 		query.Topics[0][2] = common.HexToHash(bridge_abi.FailedRelayedMessageEventSignature)
@@ -371,6 +371,7 @@ func (w *WatcherClient) parseBridgeEventLogs(logs []geth_types.Log) ([]*types.L2
 				Target       common.Address
 				Value        *big.Int // uint256
 				MessageNonce *big.Int // uint256
+				GasLimit     *big.Int // uint256
 				Message      []byte
 			}{}
 
@@ -382,8 +383,8 @@ func (w *WatcherClient) parseBridgeEventLogs(logs []geth_types.Log) ([]*types.L2
 			// target is in topics[1]
 			event.Target = common.HexToAddress(vLog.Topics[1].String())
 			l2Messages = append(l2Messages, &types.L2Message{
-				Nonce: event.MessageNonce.Uint64(),
-				// MsgHash:    utils.ComputeMessageHash(event.Sender, event.Target, event.Value, event.Fee, event.Deadline, event.Message, event.MessageNonce).String(),
+				Nonce:   event.MessageNonce.Uint64(),
+				MsgHash: utils.ComputeMessageHash(event.Sender, event.Target, event.Value, event.MessageNonce, event.GasLimit, event.Message).String(),
 				// MsgHash: // todo: use encodeXDomainData from contracts,
 				Height:     vLog.BlockNumber,
 				Sender:     event.Sender.String(),
