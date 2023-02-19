@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.0;
 
-library ZkTrieVerifier {
+library WithdrawTrieVerifier {
   function verifyMerkleProof(
     bytes32 _root,
     bytes32 _hash,
