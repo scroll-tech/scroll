@@ -21,6 +21,8 @@ create table block_batch
     rollup_status           INTEGER         DEFAULT 1,
     commit_tx_hash          VARCHAR         DEFAULT NULL,
     finalize_tx_hash        VARCHAR         DEFAULT NULL,
+    oracle_status           INTEGER         DEFAULT 1,
+    oracle_tx_hash          VARCHAR         DEFAULT NULL,
     created_at              TIMESTAMP(0)    NOT NULL DEFAULT CURRENT_TIMESTAMP,
     prover_assigned_at      TIMESTAMP(0)    DEFAULT NULL,
     proved_at               TIMESTAMP(0)    DEFAULT NULL,
@@ -32,6 +34,8 @@ comment
 on column block_batch.proving_status is 'undefined, unassigned, skipped, assigned, proved, verified, failed';
 comment
 on column block_batch.rollup_status is 'undefined, pending, committing, committed, finalizing, finalized, finalization_skipped';
+comment
+on column block_batch.oracle_status is 'undefined, pending, importing, imported, failed';
 
 create unique index block_batch_hash_uindex
     on block_batch (hash);

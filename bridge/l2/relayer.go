@@ -15,6 +15,7 @@ import (
 	"github.com/scroll-tech/go-ethereum/accounts/abi"
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/crypto"
+	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
 	"golang.org/x/sync/errgroup"
 	"modernc.org/mathutil"
@@ -37,6 +38,8 @@ import (
 type Layer2Relayer struct {
 	ctx context.Context
 
+	l2Client *ethclient.Client
+
 	db  database.OrmFactory
 	cfg *config.RelayerConfig
 
@@ -47,6 +50,10 @@ type Layer2Relayer struct {
 	rollupSender *sender.Sender
 	rollupCh     <-chan *sender.Confirmation
 	l1RollupABI  *abi.ABI
+
+	gasOracleSender *sender.Sender
+	gasOracleCh     <-chan *sender.Confirmation
+	l2GasOracleABI  *abi.ABI
 
 	// A list of processing message.
 	// key(string): confirmation ID, value(string): layer2 hash.
@@ -68,7 +75,7 @@ type Layer2Relayer struct {
 }
 
 // NewLayer2Relayer will return a new instance of Layer2RelayerClient
-func NewLayer2Relayer(ctx context.Context, db database.OrmFactory, cfg *config.RelayerConfig) (*Layer2Relayer, error) {
+func NewLayer2Relayer(ctx context.Context, l2Client *ethclient.Client, db database.OrmFactory, cfg *config.RelayerConfig) (*Layer2Relayer, error) {
 	// @todo use different sender for relayer, block commit and proof finalize
 	messageSender, err := sender.NewSender(ctx, cfg.SenderConfig, cfg.MessageSenderPrivateKeys)
 	if err != nil {
@@ -82,15 +89,30 @@ func NewLayer2Relayer(ctx context.Context, db database.OrmFactory, cfg *config.R
 		return nil, err
 	}
 
+	gasOracleSender, err := sender.NewSender(ctx, cfg.SenderConfig, cfg.GasOracleSenderPrivateKeys)
+	if err != nil {
+		log.Error("Failed to create gas oracle sender", "err", err)
+		return nil, err
+	}
+
 	return &Layer2Relayer{
-		ctx:                         ctx,
-		db:                          db,
-		messageSender:               messageSender,
-		messageCh:                   messageSender.ConfirmChan(),
-		l1MessengerABI:              bridge_abi.L1MessengerMetaABI,
-		rollupSender:                rollupSender,
-		rollupCh:                    rollupSender.ConfirmChan(),
-		l1RollupABI:                 bridge_abi.ScrollchainMetaABI,
+		ctx: ctx,
+		db:  db,
+
+		l2Client: l2Client,
+
+		messageSender:  messageSender,
+		messageCh:      messageSender.ConfirmChan(),
+		l1MessengerABI: bridge_abi.L1ScrollMessengerABI,
+
+		rollupSender: rollupSender,
+		rollupCh:     rollupSender.ConfirmChan(),
+		l1RollupABI:  bridge_abi.ScrollchainABI,
+
+		gasOracleSender: gasOracleSender,
+		gasOracleCh:     gasOracleSender.ConfirmChan(),
+		l2GasOracleABI:  bridge_abi.L2GasPriceOracleABI,
+
 		cfg:                         cfg,
 		processingMessage:           sync.Map{},
 		processingCommitment:        sync.Map{},
@@ -279,6 +301,43 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 	r.processingCommitment.Store(txID, id)
 }
 
+// ProcessGasPriceOracle imports gas price to layer1
+func (r *Layer2Relayer) ProcessGasPriceOracle() {
+	batch, err := r.db.GetLatestBatch()
+	if err != nil {
+		log.Error("Failed to GetLatestBatch", "err", err)
+		return
+	}
+
+	if batch.OracleStatus == types.GasOraclePending {
+		suggestGasPrice, err := r.l2Client.SuggestGasPrice(r.ctx)
+		if err != nil {
+			log.Error("Failed to fetch SuggestGasPrice from l2geth", "err", err)
+			return
+		}
+
+		data, err := r.l2GasOracleABI.Pack("setL2BaseFee", suggestGasPrice)
+		if err != nil {
+			log.Error("Failed to pack setL2BaseFee", "batch.Hash", batch.Hash, "block.BaseFee", suggestGasPrice.Uint64(), "err", err)
+			return
+		}
+
+		hash, err := r.gasOracleSender.SendTransaction(batch.Hash, &r.cfg.GasPriceOracleContractAddress, big.NewInt(0), data)
+		if err != nil {
+			if !errors.Is(err, sender.ErrNoAvailableAccount) {
+				log.Error("Failed to send setL2BaseFee tx to layer2 ", "batch.Hash", batch.Hash, "err", err)
+			}
+			return
+		}
+
+		err = r.db.UpdateL2GasOracleStatusAndOracleTxHash(r.ctx, batch.Hash, types.GasOracleImporting, hash.String())
+		if err != nil {
+			log.Error("UpdateGasOracleStatusAndOracleTxHash failed", "batch.Hash", batch.Hash, "err", err)
+			return
+		}
+	}
+}
+
 // SendCommitTx sends commitBatches tx to L1.
 func (r *Layer2Relayer) SendCommitTx(batchData []*types.BatchData) error {
 	if len(batchData) == 0 {
@@ -464,6 +523,7 @@ func (r *Layer2Relayer) Start() {
 		go loop(ctx, r.ProcessSavedEvents)
 		//go loop(ctx, r.ProcessPendingBatches)
 		go loop(ctx, r.ProcessCommittedBatches)
+		go loop(ctx, r.ProcessGasPriceOracle)
 
 		go func(ctx context.Context) {
 			for {
@@ -474,6 +534,22 @@ func (r *Layer2Relayer) Start() {
 					r.handleConfirmation(confirmation)
 				case confirmation := <-r.rollupCh:
 					r.handleConfirmation(confirmation)
+				case cfm := <-r.gasOracleCh:
+					if !cfm.IsSuccessful {
+						// @discuss: maybe make it pending again?
+						err := r.db.UpdateL2GasOracleStatusAndOracleTxHash(r.ctx, cfm.ID, types.GasOracleFailed, cfm.TxHash.String())
+						if err != nil {
+							log.Warn("UpdateL2GasOracleStatusAndOracleTxHash failed", "err", err)
+						}
+						log.Warn("transaction confirmed but failed in layer1", "confirmation", cfm)
+					} else {
+						// @todo handle db error
+						err := r.db.UpdateL2GasOracleStatusAndOracleTxHash(r.ctx, cfm.ID, types.GasOracleImported, cfm.TxHash.String())
+						if err != nil {
+							log.Warn("UpdateL2GasOracleStatusAndOracleTxHash failed", "err", err)
+						}
+						log.Info("transaction confirmed in layer1", "confirmation", cfm)
+					}
 				}
 			}
 		}(ctx)

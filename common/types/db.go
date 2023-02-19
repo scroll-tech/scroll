@@ -7,6 +7,60 @@ import (
 	"time"
 )
 
+// L1BlockStatus represents current l1 block processing status
+type L1BlockStatus int
+
+// GasOracleStatus represents current gas oracle processing status
+type GasOracleStatus int
+
+const (
+	// L1BlockUndefined : undefined l1 block status
+	L1BlockUndefined L1BlockStatus = iota
+
+	// L1BlockPending represents the l1 block status is pending
+	L1BlockPending
+
+	// L1BlockImporting represents the l1 block status is importing
+	L1BlockImporting
+
+	// L1BlockImported represents the l1 block status is imported
+	L1BlockImported
+
+	// L1BlockFailed represents the l1 block status is failed
+	L1BlockFailed
+)
+
+const (
+	// GasOracleUndefined : undefined gas oracle status
+	GasOracleUndefined GasOracleStatus = iota
+
+	// GasOraclePending represents the gas oracle status is pending
+	GasOraclePending
+
+	// GasOracleImporting represents the gas oracle status is importing
+	GasOracleImporting
+
+	// GasOracleImported represents the gas oracle status is imported
+	GasOracleImported
+
+	// GasOracleFailed represents the gas oracle status is failed
+	GasOracleFailed
+)
+
+// L1BlockInfo is structure of stored l1 block
+type L1BlockInfo struct {
+	Number    uint64 `json:"number" db:"number"`
+	Hash      string `json:"hash" db:"hash"`
+	HeaderRLP string `json:"header_rlp" db:"header_rlp"`
+	BaseFee   uint64 `json:"base_fee" db:"base_fee"`
+
+	BlockStatus     L1BlockStatus   `json:"block_status" db:"block_status"`
+	GasOracleStatus GasOracleStatus `json:"oracle_status" db:"oracle_status"`
+
+	ImportTxHash sql.NullString `json:"import_tx_hash" db:"import_tx_hash"`
+	OracleTxHash sql.NullString `json:"oracle_tx_hash" db:"oracle_tx_hash"`
+}
+
 // MsgStatus represents current layer1 transaction processing status
 type MsgStatus int
 
@@ -168,27 +222,29 @@ const (
 
 // BlockBatch is structure of stored block_batch
 type BlockBatch struct {
-	Hash                string         `json:"hash" db:"hash"`
-	Index               uint64         `json:"index" db:"index"`
-	ParentHash          string         `json:"parent_hash" db:"parent_hash"`
-	StartBlockNumber    uint64         `json:"start_block_number" db:"start_block_number"`
-	StartBlockHash      string         `json:"start_block_hash" db:"start_block_hash"`
-	EndBlockNumber      uint64         `json:"end_block_number" db:"end_block_number"`
-	EndBlockHash        string         `json:"end_block_hash" db:"end_block_hash"`
-	StateRoot           string         `json:"state_root" db:"state_root"`
-	TotalTxNum          uint64         `json:"total_tx_num" db:"total_tx_num"`
-	TotalL1TxNum        uint64         `json:"total_l1_tx_num" db:"total_l1_tx_num"`
-	TotalL2Gas          uint64         `json:"total_l2_gas" db:"total_l2_gas"`
-	ProvingStatus       ProvingStatus  `json:"proving_status" db:"proving_status"`
-	Proof               []byte         `json:"proof" db:"proof"`
-	InstanceCommitments []byte         `json:"instance_commitments" db:"instance_commitments"`
-	ProofTimeSec        uint64         `json:"proof_time_sec" db:"proof_time_sec"`
-	RollupStatus        RollupStatus   `json:"rollup_status" db:"rollup_status"`
-	CommitTxHash        sql.NullString `json:"commit_tx_hash" db:"commit_tx_hash"`
-	FinalizeTxHash      sql.NullString `json:"finalize_tx_hash" db:"finalize_tx_hash"`
-	CreatedAt           *time.Time     `json:"created_at" db:"created_at"`
-	ProverAssignedAt    *time.Time     `json:"prover_assigned_at" db:"prover_assigned_at"`
-	ProvedAt            *time.Time     `json:"proved_at" db:"proved_at"`
-	CommittedAt         *time.Time     `json:"committed_at" db:"committed_at"`
-	FinalizedAt         *time.Time     `json:"finalized_at" db:"finalized_at"`
+	Hash                string          `json:"hash" db:"hash"`
+	Index               uint64          `json:"index" db:"index"`
+	ParentHash          string          `json:"parent_hash" db:"parent_hash"`
+	StartBlockNumber    uint64          `json:"start_block_number" db:"start_block_number"`
+	StartBlockHash      string          `json:"start_block_hash" db:"start_block_hash"`
+	EndBlockNumber      uint64          `json:"end_block_number" db:"end_block_number"`
+	EndBlockHash        string          `json:"end_block_hash" db:"end_block_hash"`
+	StateRoot           string          `json:"state_root" db:"state_root"`
+	TotalTxNum          uint64          `json:"total_tx_num" db:"total_tx_num"`
+	TotalL1TxNum        uint64          `json:"total_l1_tx_num" db:"total_l1_tx_num"`
+	TotalL2Gas          uint64          `json:"total_l2_gas" db:"total_l2_gas"`
+	ProvingStatus       ProvingStatus   `json:"proving_status" db:"proving_status"`
+	Proof               []byte          `json:"proof" db:"proof"`
+	InstanceCommitments []byte          `json:"instance_commitments" db:"instance_commitments"`
+	ProofTimeSec        uint64          `json:"proof_time_sec" db:"proof_time_sec"`
+	RollupStatus        RollupStatus    `json:"rollup_status" db:"rollup_status"`
+	OracleStatus        GasOracleStatus `json:"oracle_status" db:"oracle_status"`
+	CommitTxHash        sql.NullString  `json:"commit_tx_hash" db:"commit_tx_hash"`
+	FinalizeTxHash      sql.NullString  `json:"finalize_tx_hash" db:"finalize_tx_hash"`
+	OracleTxHash        sql.NullString  `json:"oracle_tx_hash" db:"oracle_tx_hash"`
+	CreatedAt           *time.Time      `json:"created_at" db:"created_at"`
+	ProverAssignedAt    *time.Time      `json:"prover_assigned_at" db:"prover_assigned_at"`
+	ProvedAt            *time.Time      `json:"proved_at" db:"proved_at"`
+	CommittedAt         *time.Time      `json:"committed_at" db:"committed_at"`
+	FinalizedAt         *time.Time      `json:"finalized_at" db:"finalized_at"`
 }

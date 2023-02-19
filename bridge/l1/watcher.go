@@ -54,6 +54,8 @@ type Watcher struct {
 
 	// The height of the block that the watcher has retrieved event logs
 	processedMsgHeight uint64
+	// The height of the block that the watcher has retrieved header rlp
+	processedBlockHeight uint64
 
 	stop chan bool
 }
@@ -70,19 +72,29 @@ func NewWatcher(ctx context.Context, client *ethclient.Client, startHeight uint6
 		savedHeight = int64(startHeight)
 	}
 
+	savedL1BlockHeight, err := db.GetLatestL1BlockHeight()
+	if err != nil {
+		log.Warn("Failed to fetch latest L1 block height from db", "err", err)
+		savedL1BlockHeight = 0
+	}
+	if savedL1BlockHeight < startHeight {
+		savedL1BlockHeight = startHeight
+	}
+
 	stop := make(chan bool)
 
 	return &Watcher{
-		ctx:                ctx,
-		client:             client,
-		db:                 db,
-		confirmations:      confirmations,
-		messengerAddress:   messengerAddress,
-		messengerABI:       bridge_abi.L1MessengerMetaABI,
-		scrollchainAddress: scrollchainAddress,
-		scrollchainABI:     bridge_abi.ScrollchainMetaABI,
-		processedMsgHeight: uint64(savedHeight),
-		stop:               stop,
+		ctx:                  ctx,
+		client:               client,
+		db:                   db,
+		confirmations:        confirmations,
+		messengerAddress:     messengerAddress,
+		messengerABI:         bridge_abi.L1ScrollMessengerABI,
+		scrollchainAddress:   scrollchainAddress,
+		scrollchainABI:       bridge_abi.ScrollchainABI,
+		processedMsgHeight:   uint64(savedHeight),
+		processedBlockHeight: savedL1BlockHeight,
+		stop:                 stop,
 	}
 }
 
@@ -104,6 +116,10 @@ func (w *Watcher) Start() {
 					continue
 				}
 
+				if err := w.fetchBlockHeader(number); err != nil {
+					log.Error("Failed to fetch L1 block header", "lastest", number, "err", err)
+				}
+
 				if err := w.FetchContractEvent(number); err != nil {
 					log.Error("Failed to fetch bridge contract", "err", err)
 				}
@@ -118,6 +134,62 @@ func (w *Watcher) Stop() {
 }
 
 const contractEventsBlocksFetchLimit = int64(10)
+
+// fetchBlockHeader pull latest L1 blocks and save in DB
+func (w *Watcher) fetchBlockHeader(blockHeight uint64) error {
+	fromBlock := int64(w.processedBlockHeight) + 1
+	toBlock := int64(blockHeight) - int64(w.confirmations)
+	if toBlock < fromBlock {
+		return nil
+	}
+	if toBlock > fromBlock+contractEventsBlocksFetchLimit {
+		toBlock = fromBlock + contractEventsBlocksFetchLimit - 1
+	}
+
+	var blocks []*types.L1BlockInfo
+	var err error
+	height := fromBlock
+	for ; height <= toBlock; height++ {
+		var block *geth_types.Block
+		block, err = w.client.BlockByNumber(w.ctx, big.NewInt(height))
+		if err != nil {
+			log.Warn("Failed to get block", "height", height, "err", err)
+			break
+		}
+		/*
+			var headerRLPBytes []byte
+			headerRLPBytes, err = rlp.EncodeToBytes(block.Header())
+			if err != nil {
+				log.Warn("Failed to rlp encode header", "height", height, "err", err)
+				break
+			}
+		*/
+		blocks = append(blocks, &types.L1BlockInfo{
+			Number: uint64(height),
+			Hash:   block.Hash().String(),
+			// no need to import l1 blocks now
+			// HeaderRLP:       common.Bytes2Hex(headerRLPBytes),
+			BaseFee: block.BaseFee().Uint64(),
+		})
+	}
+
+	// failed at first block, return with the error
+	if height == fromBlock {
+		return err
+	}
+	toBlock = height - 1
+
+	// insert succeed blocks
+	err = w.db.InsertL1Blocks(w.ctx, blocks)
+	if err != nil {
+		log.Warn("Failed to insert L1 block to db", "fromBlock", fromBlock, "toBlock", toBlock, "err", err)
+		return err
+	}
+
+	// update processed height
+	w.processedBlockHeight = uint64(toBlock)
+	return nil
+}
 
 // FetchContractEvent pull latest event logs from given contract address and save in DB
 func (w *Watcher) FetchContractEvent(blockHeight uint64) error {

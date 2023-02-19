@@ -41,11 +41,14 @@ type RelayerConfig struct {
 	RollupContractAddress common.Address `json:"rollup_contract_address,omitempty"`
 	// MessengerContractAddress store the scroll messenger contract address.
 	MessengerContractAddress common.Address `json:"messenger_contract_address"`
+	// GasPriceOracleContractAddress store the scroll messenger contract address.
+	GasPriceOracleContractAddress common.Address `json:"gas_proce_oracle_contract_address"`
 	// sender config
 	SenderConfig *SenderConfig `json:"sender_config"`
 	// The private key of the relayer
-	MessageSenderPrivateKeys []*ecdsa.PrivateKey `json:"-"`
-	RollupSenderPrivateKeys  []*ecdsa.PrivateKey `json:"-"`
+	MessageSenderPrivateKeys   []*ecdsa.PrivateKey `json:"-"`
+	GasOracleSenderPrivateKeys []*ecdsa.PrivateKey `json:"-"`
+	RollupSenderPrivateKeys    []*ecdsa.PrivateKey `json:"-"`
 }
 
 // relayerConfigAlias RelayerConfig alias name
@@ -56,8 +59,9 @@ func (r *RelayerConfig) UnmarshalJSON(input []byte) error {
 	var jsonConfig struct {
 		relayerConfigAlias
 		// The private key of the relayer
-		MessageSenderPrivateKeys []string `json:"message_sender_private_keys"`
-		RollupSenderPrivateKeys  []string `json:"rollup_sender_private_keys,omitempty"`
+		MessageSenderPrivateKeys   []string `json:"message_sender_private_keys"`
+		GasOracleSenderPrivateKeys []string `json:"gas_oracle_sender_private_keys"`
+		RollupSenderPrivateKeys    []string `json:"rollup_sender_private_keys,omitempty"`
 	}
 	if err := json.Unmarshal(input, &jsonConfig); err != nil {
 		return err
@@ -71,6 +75,16 @@ func (r *RelayerConfig) UnmarshalJSON(input []byte) error {
 			return fmt.Errorf("incorrect private_key_list format, err: %v", err)
 		}
 		r.MessageSenderPrivateKeys = append(r.MessageSenderPrivateKeys, priv)
+	}
+
+	// Get gas oracle private key list.
+	*r = RelayerConfig(jsonConfig.relayerConfigAlias)
+	for _, privStr := range jsonConfig.GasOracleSenderPrivateKeys {
+		priv, err := crypto.ToECDSA(common.FromHex(privStr))
+		if err != nil {
+			return fmt.Errorf("incorrect private_key_list format, err: %v", err)
+		}
+		r.GasOracleSenderPrivateKeys = append(r.GasOracleSenderPrivateKeys, priv)
 	}
 
 	// Get rollup private key

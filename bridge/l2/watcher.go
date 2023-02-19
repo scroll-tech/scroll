@@ -75,7 +75,7 @@ func NewL2WatcherClient(ctx context.Context, client *ethclient.Client, confirmat
 		processedMsgHeight: uint64(savedHeight),
 		confirmations:      confirmations,
 		messengerAddress:   messengerAddress,
-		messengerABI:       bridge_abi.L2MessengerMetaABI,
+		messengerABI:       bridge_abi.L2ScrollMessengerABI,
 		stopCh:             make(chan struct{}),
 		stopped:            0,
 		batchProposer:      newBatchProposer(bpCfg, relayer, orm),

@@ -12,7 +12,7 @@ import (
 
 func TestPackRelayMessageWithProof(t *testing.T) {
 	assert := assert.New(t)
-	l1MessengerABI, err := bridge_abi.L1MessengerMetaData.GetAbi()
+	l1MessengerABI, err := bridge_abi.L1ScrollMessengerMetaData.GetAbi()
 	assert.NoError(err)
 
 	proof := bridge_abi.IL1ScrollMessengerL2MessageProof{
@@ -73,9 +73,20 @@ func TestPackFinalizeBatchWithProof(t *testing.T) {
 func TestPackRelayMessage(t *testing.T) {
 	assert := assert.New(t)
 
-	l2MessengerABI, err := bridge_abi.L2MessengerMetaData.GetAbi()
+	l2MessengerABI, err := bridge_abi.L2ScrollMessengerMetaData.GetAbi()
 	assert.NoError(err)
 
 	_, err = l2MessengerABI.Pack("relayMessage", common.Address{}, common.Address{}, big.NewInt(0), big.NewInt(0), make([]byte, 0))
+	assert.NoError(err)
+}
+
+func TestPackSetL1BaseFee(t *testing.T) {
+	assert := assert.New(t)
+
+	l1GasOracleABI, err := bridge_abi.L1GasPriceOracleMetaData.GetAbi()
+	assert.NoError(err)
+
+	baseFee := big.NewInt(2333)
+	_, err = l1GasOracleABI.Pack("setL1BaseFee", baseFee)
 	assert.NoError(err)
 }

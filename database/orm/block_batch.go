@@ -356,3 +356,27 @@ func (o *blockBatchOrm) UpdateSkippedBatches() (int64, error) {
 
 	return count, nil
 }
+
+func (o *blockBatchOrm) UpdateL2OracleTxHash(ctx context.Context, id, txHash string) error {
+	if _, err := o.db.ExecContext(ctx, o.db.Rebind("update block_batch set oracle_tx_hash = ? where hash = ?;"), txHash, id); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (o *blockBatchOrm) UpdateL2GasOracleStatus(ctx context.Context, id string, status types.GasOracleStatus) error {
+	if _, err := o.db.ExecContext(ctx, o.db.Rebind("update block_batch set oracle_status = ? where hash = ?;"), status, id); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (o *blockBatchOrm) UpdateL2GasOracleStatusAndOracleTxHash(ctx context.Context, id string, status types.GasOracleStatus, txHash string) error {
+	if _, err := o.db.ExecContext(ctx, o.db.Rebind("update block_batch set oracle_status = ?, oracle_tx_hash = ? where hash = ?;"), status, txHash, id); err != nil {
+		return err
+	}
+
+	return nil
+}

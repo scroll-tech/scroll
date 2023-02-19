@@ -11,6 +11,21 @@ import (
 	eth_types "github.com/scroll-tech/go-ethereum/core/types"
 )
 
+// L1BlockOrm l1_block operation interface
+type L1BlockOrm interface {
+	GetL1BlockInfos(fields map[string]interface{}, args ...string) ([]*types.L1BlockInfo, error)
+	InsertL1Blocks(ctx context.Context, blocks []*types.L1BlockInfo) error
+	DeleteHeaderRLPByBlockHash(ctx context.Context, blockHash string) error
+	UpdateImportTxHash(ctx context.Context, blockHash, txHash string) error
+	UpdateL1BlockStatus(ctx context.Context, blockHash string, status types.L1BlockStatus) error
+	UpdateL1BlockStatusAndImportTxHash(ctx context.Context, blockHash string, status types.L1BlockStatus, txHash string) error
+	UpdateL1OracleTxHash(ctx context.Context, blockHash, txHash string) error
+	UpdateL1GasOracleStatus(ctx context.Context, blockHash string, status types.GasOracleStatus) error
+	UpdateL1GasOracleStatusAndOracleTxHash(ctx context.Context, blockHash string, status types.GasOracleStatus, txHash string) error
+	GetLatestL1BlockHeight() (uint64, error)
+	GetLatestImportedL1Block() (*types.L1BlockInfo, error)
+}
+
 // BlockTraceOrm block_trace operation interface
 type BlockTraceOrm interface {
 	Exist(number uint64) (bool, error)
@@ -54,6 +69,10 @@ type BlockBatchOrm interface {
 	GetAssignedBatchHashes() ([]string, error)
 	UpdateSkippedBatches() (int64, error)
 	GetBatchCount() (int64, error)
+
+	UpdateL2OracleTxHash(ctx context.Context, id, txHash string) error
+	UpdateL2GasOracleStatus(ctx context.Context, id string, status types.GasOracleStatus) error
+	UpdateL2GasOracleStatusAndOracleTxHash(ctx context.Context, id string, status types.GasOracleStatus, txHash string) error
 
 	GetCommitTxHash(id string) (sql.NullString, error)   // for unit tests only
 	GetFinalizeTxHash(id string) (sql.NullString, error) // for unit tests only
