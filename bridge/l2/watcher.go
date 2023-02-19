@@ -109,39 +109,33 @@ func (w *WatcherClient) initializeGenesis() error {
 
 	log.Info("retrieved L2 genesis header", "hash", genesis.Hash().String())
 
-	trace := &types.BlockTrace{
+	blockTrace := &geth_types.BlockTrace{
 		Coinbase:         nil,
 		Header:           genesis,
-		Transactions:     []*types.TransactionData{},
+		Transactions:     []*geth_types.TransactionData{},
 		StorageTrace:     nil,
-		ExecutionResults: []*types.ExecutionResult{},
+		ExecutionResults: []*geth_types.ExecutionResult{},
 		MPTWitness:       nil,
 	}
 
-	if err := w.orm.InsertBlockTraces([]*types.BlockTrace{trace}); err != nil {
-		return fmt.Errorf("failed to insert block traces: %v", err)
-	}
+	batchData := types.NewGenesisBatchData([]*geth_types.BlockTrace{blockTrace})
 
-	blocks, err := w.orm.GetUnbatchedBlocks(map[string]interface{}{})
-	if err != nil {
+	if err = w.batchProposer.addBatchInfoToDB(batchData); err != nil {
+		log.Error("failed to add batch info to DB", "BatchHash", batchData.Hash(), "error", err)
 		return err
 	}
 
-	if len(blocks) != 1 {
-		return fmt.Errorf("unexpected number of unbatched blocks in db, expected: 1, actual: %v", len(blocks))
-	}
-
-	batchID, err := w.batchProposer.createBatchForBlocks(blocks)
+	batchHash := batchData.Hash().Hex()
 	if err != nil {
-		return fmt.Errorf("failed to create batch: %v", err)
+		return fmt.Errorf("failed to create batch data: %v", err)
 	}
 
-	err = w.orm.UpdateProvingStatus(batchID, orm.ProvingTaskProved)
+	err = w.orm.UpdateProvingStatus(batchHash, types.ProvingTaskProved)
 	if err != nil {
 		return fmt.Errorf("failed to update genesis batch proving status: %v", err)
 	}
 
-	err = w.orm.UpdateRollupStatus(w.ctx, batchID, orm.RollupFinalized)
+	err = w.orm.UpdateRollupStatus(w.ctx, batchHash, types.RollupFinalized)
 	if err != nil {
 		return fmt.Errorf("failed to update genesis batch rollup status: %v", err)
 	}
