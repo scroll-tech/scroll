@@ -23,7 +23,7 @@ func testBatchProposer(t *testing.T) {
 	// Insert traces into db.
 	assert.NoError(t, db.InsertBlockTraces([]*types.BlockTrace{trace2, trace3}))
 
-	id := utils.ComputeBatchID(trace3.Header.Hash(), trace2.Header.ParentHash, big.NewInt(1))
+	id := utils.ComputeBatchID(trace3.Header.Hash(), trace2.Header.ParentHash, big.NewInt(0))
 
 	proposer := newBatchProposer(&config.BatchProposerConfig{
 		ProofGenerationFreq: 1,

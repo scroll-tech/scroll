@@ -68,7 +68,7 @@ func NewL2WatcherClient(ctx context.Context, client *ethclient.Client, confirmat
 		savedHeight = 0
 	}
 
-	return &WatcherClient{
+	w := WatcherClient{
 		ctx:                ctx,
 		Client:             client,
 		orm:                orm,
@@ -80,6 +80,75 @@ func NewL2WatcherClient(ctx context.Context, client *ethclient.Client, confirmat
 		stopped:            0,
 		batchProposer:      newBatchProposer(bpCfg, relayer, orm),
 	}
+
+	// Initialize genesis before we do anything else
+	if err := w.initializeGenesis(); err != nil {
+		panic(fmt.Sprintf("failed to initialize L2 genesis batch, err: %v", err))
+	}
+
+	return &w
+}
+
+func (w *WatcherClient) initializeGenesis() error {
+	if count, err := w.orm.GetBatchCount(); err != nil {
+		return fmt.Errorf("failed to get batch count: %v", err)
+	} else if count > 0 {
+		log.Info("genesis already imported")
+		return nil
+	}
+
+	genesis, err := w.HeaderByNumber(w.ctx, big.NewInt(0))
+	if err != nil {
+		return fmt.Errorf("failed to retrieve L2 genesis header: %v", err)
+	}
+
+	// EIP1559 is disabled so the RPC won't return baseFeePerGas. However, l2geth
+	// still uses BaseFee when calculating the block hash. If we keep it as <nil>
+	// here the genesis hash will not match.
+	genesis.BaseFee = big.NewInt(0)
+
+	log.Info("retrieved L2 genesis header", "hash", genesis.Hash().String())
+
+	trace := &types.BlockTrace{
+		Coinbase:         nil,
+		Header:           genesis,
+		Transactions:     []*types.TransactionData{},
+		StorageTrace:     nil,
+		ExecutionResults: []*types.ExecutionResult{},
+		MPTWitness:       nil,
+	}
+
+	if err := w.orm.InsertBlockTraces([]*types.BlockTrace{trace}); err != nil {
+		return fmt.Errorf("failed to insert block traces: %v", err)
+	}
+
+	blocks, err := w.orm.GetUnbatchedBlocks(map[string]interface{}{})
+	if err != nil {
+		return err
+	}
+
+	if len(blocks) != 1 {
+		return fmt.Errorf("unexpected number of unbatched blocks in db, expected: 1, actual: %v", len(blocks))
+	}
+
+	batchID, err := w.batchProposer.createBatchForBlocks(blocks)
+	if err != nil {
+		return fmt.Errorf("failed to create batch: %v", err)
+	}
+
+	err = w.orm.UpdateProvingStatus(batchID, orm.ProvingTaskProved)
+	if err != nil {
+		return fmt.Errorf("failed to update genesis batch proving status: %v", err)
+	}
+
+	err = w.orm.UpdateRollupStatus(w.ctx, batchID, orm.RollupFinalized)
+	if err != nil {
+		return fmt.Errorf("failed to update genesis batch rollup status: %v", err)
+	}
+
+	log.Info("successfully imported genesis batch")
+
+	return nil
 }
 
 // Start the Listening process

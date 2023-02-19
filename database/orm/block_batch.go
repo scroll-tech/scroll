@@ -334,6 +334,15 @@ func (o *blockBatchOrm) GetAssignedBatchHashes() ([]string, error) {
 	return ids, rows.Close()
 }
 
+func (o *blockBatchOrm) GetBatchCount() (int64, error) {
+	row := o.db.QueryRow(`select count(*) from block_batch`)
+	var count int64
+	if err := row.Scan(&count); err != nil {
+		return -1, err
+	}
+	return count, nil
+}
+
 func (o *blockBatchOrm) UpdateSkippedBatches() (int64, error) {
 	res, err := o.db.Exec(o.db.Rebind("update block_batch set rollup_status = ? where (proving_status = ? or proving_status = ?) and rollup_status = ?;"), types.RollupFinalizationSkipped, types.ProvingTaskSkipped, types.ProvingTaskFailed, types.RollupCommitted)
 	if err != nil {
