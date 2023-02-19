@@ -3,11 +3,21 @@
 pragma solidity ^0.8.0;
 
 import { OwnableBase } from "../../libraries/common/OwnableBase.sol";
+import { IWhitelist } from "../../libraries/common/IWhitelist.sol";
 
 import { IL1BlockContainer } from "./IL1BlockContainer.sol";
 import { IL1GasPriceOracle } from "./IL1GasPriceOracle.sol";
 
 contract L1GasPriceOracle is OwnableBase, IL1GasPriceOracle {
+  /**********
+   * Events *
+   **********/
+
+  /// @notice Emitted when owner updates whitelist contract.
+  /// @param _oldWhitelist The address of old whitelist contract.
+  /// @param _newWhitelist The address of new whitelist contract.
+  event UpdateWhitelist(address _oldWhitelist, address _newWhitelist);
+
   /*************
    * Constants *
    *************/
@@ -35,6 +45,9 @@ contract L1GasPriceOracle is OwnableBase, IL1GasPriceOracle {
 
   /// @inheritdoc IL1GasPriceOracle
   uint256 public override scalar;
+
+  /// @notice The address of whitelist contract.
+  IWhitelist public whitelist;
 
   /***************
    * Constructor *
@@ -74,6 +87,20 @@ contract L1GasPriceOracle is OwnableBase, IL1GasPriceOracle {
     }
   }
 
+  /****************************
+   * Public Mutated Functions *
+   ****************************/
+
+  /// @notice Allows the owner to modify the l1 base fee.
+  /// @param _l1BaseFee New l1 base fee.
+  function setL1BaseFee(uint256 _l1BaseFee) external {
+    require(whitelist.isSenderAllowed(msg.sender), "Not whitelisted sender");
+
+    l1BaseFee = _l1BaseFee;
+
+    emit L1BaseFeeUpdated(_l1BaseFee);
+  }
+
   /************************
    * Restricted Functions *
    ************************/
@@ -96,10 +123,13 @@ contract L1GasPriceOracle is OwnableBase, IL1GasPriceOracle {
     emit ScalarUpdated(_scalar);
   }
 
-  /// Allows the owner to modify the l1 base fee.
-  /// @param _l1BaseFee New l1 base fee.
-  function setL1BaseFee(uint256 _l1BaseFee) external onlyOwner {
-    l1BaseFee = _l1BaseFee;
-    emit L1BaseFeeUpdated(_l1BaseFee);
+  /// @notice Update whitelist contract.
+  /// @dev This function can only called by contract owner.
+  /// @param _newWhitelist The address of new whitelist contract.
+  function updateWhitelist(address _newWhitelist) external onlyOwner {
+    address _oldWhitelist = address(whitelist);
+
+    whitelist = IWhitelist(_newWhitelist);
+    emit UpdateWhitelist(_oldWhitelist, _newWhitelist);
   }
 }

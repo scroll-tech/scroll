@@ -294,7 +294,7 @@ contract L1ETHGatewayTest is L1GatewayTestBase {
       // emit SentMessage from L1ScrollMessenger
       {
         hevm.expectEmit(true, true, false, true);
-        emit SentMessage(address(gateway), address(counterpartGateway), amount, 0, message);
+        emit SentMessage(address(gateway), address(counterpartGateway), amount, 0, gasLimit, message);
       }
 
       // emit DepositETH from L1ETHGateway
@@ -363,7 +363,7 @@ contract L1ETHGatewayTest is L1GatewayTestBase {
       // emit SentMessage from L1ScrollMessenger
       {
         hevm.expectEmit(true, true, false, true);
-        emit SentMessage(address(gateway), address(counterpartGateway), amount, 0, message);
+        emit SentMessage(address(gateway), address(counterpartGateway), amount, 0, gasLimit, message);
       }
 
       // emit DepositETH from L1ETHGateway
@@ -433,7 +433,7 @@ contract L1ETHGatewayTest is L1GatewayTestBase {
       // emit SentMessage from L1ScrollMessenger
       {
         hevm.expectEmit(true, true, false, true);
-        emit SentMessage(address(gateway), address(counterpartGateway), amount, 0, message);
+        emit SentMessage(address(gateway), address(counterpartGateway), amount, 0, gasLimit, message);
       }
 
       // emit DepositETH from L1ETHGateway

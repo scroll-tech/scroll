@@ -268,7 +268,7 @@ The address of Rollup contract.
 function sendMessage(address _to, uint256 _value, bytes _message, uint256 _gasLimit) external payable
 ```
 
-Send cross chain message from L1 to L2.
+Send cross chain message from L1 to L2 or L2 to L1.
 
 
 
@@ -435,7 +435,7 @@ Emitted when a cross domain message is relayed successfully.
 ### SentMessage
 
 ```solidity
-event SentMessage(address indexed sender, address indexed target, uint256 value, uint256 messageNonce, bytes message)
+event SentMessage(address indexed sender, address indexed target, uint256 value, uint256 messageNonce, uint256 gasLimit, bytes message)
 ```
 
 Emitted when a cross domain message is sent.
@@ -450,6 +450,7 @@ Emitted when a cross domain message is sent.
 | target `indexed` | address | undefined |
 | value  | uint256 | undefined |
 | messageNonce  | uint256 | undefined |
+| gasLimit  | uint256 | undefined |
 | message  | bytes | undefined |
 
 ### Unpaused

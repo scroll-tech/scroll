@@ -118,7 +118,7 @@ contract L1BlockContainer is OwnableBase, IL1BlockContainer {
     // @todo remove this when ETH 2.0 signature verification is ready.
     {
       IWhitelist _whitelist = whitelist;
-      require(address(_whitelist) == address(0) || _whitelist.isSenderAllowed(msg.sender), "Not whitelist sender");
+      require(address(_whitelist) == address(0) || _whitelist.isSenderAllowed(msg.sender), "Not whitelisted sender");
     }
 
     // The encoding order in block header is

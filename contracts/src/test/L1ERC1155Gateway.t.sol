@@ -639,7 +639,7 @@ contract L1ERC1155GatewayTest is L1GatewayTestBase, ERC1155TokenReceiver {
       // emit SentMessage from L1ScrollMessenger
       {
         hevm.expectEmit(true, true, false, true);
-        emit SentMessage(address(gateway), address(counterpartGateway), 0, 0, message);
+        emit SentMessage(address(gateway), address(counterpartGateway), 0, 0, gasLimit, message);
       }
 
       // emit FinalizeWithdrawERC1155 from L1ERC1155Gateway
@@ -707,7 +707,7 @@ contract L1ERC1155GatewayTest is L1GatewayTestBase, ERC1155TokenReceiver {
       // emit SentMessage from L1ScrollMessenger
       {
         hevm.expectEmit(true, true, false, true);
-        emit SentMessage(address(gateway), address(counterpartGateway), 0, 0, message);
+        emit SentMessage(address(gateway), address(counterpartGateway), 0, 0, gasLimit, message);
       }
 
       // emit FinalizeWithdrawERC1155 from L1ERC1155Gateway
@@ -787,7 +787,7 @@ contract L1ERC1155GatewayTest is L1GatewayTestBase, ERC1155TokenReceiver {
     // emit SentMessage from L1ScrollMessenger
     {
       hevm.expectEmit(true, true, false, true);
-      emit SentMessage(address(gateway), address(counterpartGateway), 0, 0, message);
+      emit SentMessage(address(gateway), address(counterpartGateway), 0, 0, gasLimit, message);
     }
 
     // emit FinalizeWithdrawERC1155 from L1ERC1155Gateway
@@ -872,7 +872,7 @@ contract L1ERC1155GatewayTest is L1GatewayTestBase, ERC1155TokenReceiver {
     // emit SentMessage from L1ScrollMessenger
     {
       hevm.expectEmit(true, true, false, true);
-      emit SentMessage(address(gateway), address(counterpartGateway), 0, 0, message);
+      emit SentMessage(address(gateway), address(counterpartGateway), 0, 0, gasLimit, message);
     }
 
     // emit FinalizeWithdrawERC1155 from L1ERC1155Gateway

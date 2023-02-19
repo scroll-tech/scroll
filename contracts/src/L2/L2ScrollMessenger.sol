@@ -7,9 +7,11 @@ import { PausableUpgradeable } from "@openzeppelin/contracts-upgradeable/securit
 import { IL2ScrollMessenger } from "./IL2ScrollMessenger.sol";
 import { L2MessageQueue } from "./predeploys/L2MessageQueue.sol";
 import { IL1BlockContainer } from "./predeploys/IL1BlockContainer.sol";
+import { IL1GasPriceOracle } from "./predeploys/IL1GasPriceOracle.sol";
 
 import { PatriciaMerkleTrieVerifier } from "../libraries/verifier/PatriciaMerkleTrieVerifier.sol";
 import { ScrollConstants } from "../libraries/ScrollConstants.sol";
+import { IScrollMessenger } from "../libraries/IScrollMessenger.sol";
 import { ScrollMessengerBase } from "../libraries/ScrollMessengerBase.sol";
 
 /// @title L2ScrollMessenger
@@ -36,11 +38,14 @@ contract L2ScrollMessenger is ScrollMessengerBase, PausableUpgradeable, IL2Scrol
 
   uint256 private constant MIN_GAS_LIMIT = 21000;
 
-  /// @notice The address of L2MessageQueue.
-  address public immutable messageQueue;
-
   /// @notice The contract contains the list of L1 blocks.
   address public immutable blockContainer;
+
+  /// @notice The address of L2MessageQueue.
+  address public immutable gasOracle;
+
+  /// @notice The address of L2MessageQueue.
+  address public immutable messageQueue;
 
   /*************
    * Variables *
@@ -62,8 +67,13 @@ contract L2ScrollMessenger is ScrollMessengerBase, PausableUpgradeable, IL2Scrol
    * Constructor *
    ***************/
 
-  constructor(address _blockContainer, address _messageQueue) {
+  constructor(
+    address _blockContainer,
+    address _gasOracle,
+    address _messageQueue
+  ) {
     blockContainer = _blockContainer;
+    gasOracle = _gasOracle;
     messageQueue = _messageQueue;
   }
 
@@ -149,7 +159,7 @@ contract L2ScrollMessenger is ScrollMessengerBase, PausableUpgradeable, IL2Scrol
    * Public Mutated Functions *
    ****************************/
 
-  /// @inheritdoc IL2ScrollMessenger
+  /// @inheritdoc IScrollMessenger
   function sendMessage(
     address _to,
     uint256 _value,
@@ -162,7 +172,7 @@ contract L2ScrollMessenger is ScrollMessengerBase, PausableUpgradeable, IL2Scrol
     }
 
     // compute and deduct the messaging fee to fee vault.
-    uint256 _fee = _gasLimit * IL1BlockContainer(blockContainer).latestBaseFee();
+    uint256 _fee = _gasLimit * IL1GasPriceOracle(gasOracle).l1BaseFee();
     require(msg.value >= _value + _fee, "Insufficient msg.value");
     if (_fee > 0) {
       (bool _success, ) = feeVault.call{ value: msg.value - _value }("");

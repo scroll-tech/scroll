@@ -19,6 +19,7 @@ import { RollupVerifier } from "../../src/libraries/verifier/RollupVerifier.sol"
 import { L1MessageQueue } from "../../src/L1/rollup/L1MessageQueue.sol";
 import { L2GasPriceOracle } from "../../src/L1/rollup/L2GasPriceOracle.sol";
 import { ScrollChain } from "../../src/L1/rollup/ScrollChain.sol";
+import { Whitelist } from "../../src/L2/predeploys/Whitelist.sol";
 
 contract DeployL1BridgeContracts is Script {
   uint256 L1_DEPLOYER_PRIVATE_KEY = vm.envUint("L1_DEPLOYER_PRIVATE_KEY");
@@ -41,6 +42,7 @@ contract DeployL1BridgeContracts is Script {
     // note: the RollupVerifier library is deployed implicitly
 
     deployProxyAdmin();
+    deployL1Whitelist();
     deployL1MessageQueue();
     deployL2GasPriceOracle();
     deployScrollChain();
@@ -60,6 +62,13 @@ contract DeployL1BridgeContracts is Script {
     proxyAdmin = new ProxyAdmin();
 
     logAddress("L1_PROXY_ADMIN_ADDR", address(proxyAdmin));
+  }
+
+  function deployL1Whitelist() internal {
+    address owner = vm.addr(L1_DEPLOYER_PRIVATE_KEY);
+    Whitelist whitelist = new Whitelist(owner);
+
+    logAddress("L1_WHITELIST_ADDR", address(whitelist));
   }
 
   function deployScrollChain() internal {

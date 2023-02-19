@@ -14,6 +14,7 @@ import { L2WETHGateway } from "../../src/L2/gateways/L2WETHGateway.sol";
 import { L2MessageQueue } from "../../src/L2/predeploys/L2MessageQueue.sol";
 import { L2TxFeeVault } from "../../src/L2/predeploys/L2TxFeeVault.sol";
 import { L1BlockContainer } from "../../src/L2/predeploys/L1BlockContainer.sol";
+import { L1GasPriceOracle } from "../../src/L2/predeploys/L1GasPriceOracle.sol";
 import { Whitelist } from "../../src/L2/predeploys/Whitelist.sol";
 import { ScrollStandardERC20Factory } from "../../src/libraries/token/ScrollStandardERC20Factory.sol";
 
@@ -31,6 +32,7 @@ contract InitializeL2BridgeContracts is Script {
 
   address L2_TX_FEE_VAULT_ADDR = vm.envAddress("L2_TX_FEE_VAULT_ADDR");
   address L1_BLOCK_CONTAINER_ADDR = vm.envAddress("L1_BLOCK_CONTAINER_ADDR");
+  address L1_GAS_PRICE_ORACLE_ADDR = vm.envAddress("L1_GAS_PRICE_ORACLE_ADDR");
   address L2_WHITELIST_ADDR = vm.envAddress("L2_WHITELIST_ADDR");
   address L2_MESSAGE_QUEUE_ADDR = vm.envAddress("L2_MESSAGE_QUEUE_ADDR");
 
@@ -56,6 +58,9 @@ contract InitializeL2BridgeContracts is Script {
 
     // initialize L1BlockContainer
     L1BlockContainer(L1_BLOCK_CONTAINER_ADDR).updateWhitelist(L2_WHITELIST_ADDR);
+
+    // initialize L1GasPriceOracle
+    L1GasPriceOracle(L1_GAS_PRICE_ORACLE_ADDR).updateWhitelist(L2_WHITELIST_ADDR);
 
     // initialize L2ScrollMessenger
     L2ScrollMessenger(payable(L2_SCROLL_MESSENGER_PROXY_ADDR)).initialize(

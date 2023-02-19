@@ -23,6 +23,7 @@ contract InitializeL1BridgeContracts is Script {
 
   address L1_FEE_VAULT_ADDR = vm.envAddress("L1_FEE_VAULT_ADDR");
 
+  address L1_WHITELIST_ADDR = vm.envAddress("L1_WHITELIST_ADDR");
   address L1_ZK_ROLLUP_PROXY_ADDR = vm.envAddress("L1_ZK_ROLLUP_PROXY_ADDR");
   address L1_MESSAGE_QUEUE_PROXY_ADDR = vm.envAddress("L1_MESSAGE_QUEUE_PROXY_ADDR");
   address L2_GAS_PRICE_ORACLE_PROXY_ADDR = vm.envAddress("L2_GAS_PRICE_ORACLE_PROXY_ADDR");
@@ -55,6 +56,7 @@ contract InitializeL1BridgeContracts is Script {
 
     // initialize L2GasPriceOracle
     L2GasPriceOracle(L2_GAS_PRICE_ORACLE_PROXY_ADDR).initialize();
+    L2GasPriceOracle(L2_GAS_PRICE_ORACLE_PROXY_ADDR).updateWhitelist(L1_WHITELIST_ADDR);
 
     // initialize L1MessageQueue
     L1MessageQueue(L1_MESSAGE_QUEUE_PROXY_ADDR).initialize(
@@ -69,6 +71,7 @@ contract InitializeL1BridgeContracts is Script {
       L1_ZK_ROLLUP_PROXY_ADDR,
       L1_MESSAGE_QUEUE_PROXY_ADDR
     );
+    L1ScrollMessenger(payable(L1_SCROLL_MESSENGER_PROXY_ADDR)).updateWhitelist(L1_WHITELIST_ADDR);
 
     // initialize L1GatewayRouter
     L1GatewayRouter(L1_GATEWAY_ROUTER_PROXY_ADDR).initialize(
