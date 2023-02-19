@@ -7,6 +7,7 @@ import { DSTestPlus } from "solmate/test/utils/DSTestPlus.sol";
 import { IL1BlockContainer, L1BlockContainer } from "../L2/predeploys/L1BlockContainer.sol";
 import { IL1GasPriceOracle, L1GasPriceOracle } from "../L2/predeploys/L1GasPriceOracle.sol";
 import { L2MessageQueue } from "../L2/predeploys/L2MessageQueue.sol";
+import { Whitelist } from "../L2/predeploys/Whitelist.sol";
 import { L1ScrollMessenger } from "../L1/L1ScrollMessenger.sol";
 import { L2ScrollMessenger } from "../L2/L2ScrollMessenger.sol";
 
@@ -29,6 +30,7 @@ abstract contract L2GatewayTestBase is DSTestPlus {
   L1ScrollMessenger internal l1Messenger;
 
   address internal feeVault;
+  Whitelist private whitelist;
 
   L2ScrollMessenger internal l2Messenger;
   L1BlockContainer internal l1BlockContainer;
@@ -42,18 +44,24 @@ abstract contract L2GatewayTestBase is DSTestPlus {
     l1Messenger = new L1ScrollMessenger();
 
     // Deploy L2 contracts
+    whitelist = new Whitelist(address(this));
     l1BlockContainer = new L1BlockContainer(address(this));
     l2MessageQueue = new L2MessageQueue(address(this));
-    l2Messenger = new L2ScrollMessenger(address(l1BlockContainer), address(l2MessageQueue));
     l1GasOracle = new L1GasPriceOracle(address(this));
+    l2Messenger = new L2ScrollMessenger(address(l1BlockContainer), address(l1GasOracle), address(l2MessageQueue));
 
     // Initialize L2 contracts
     l2Messenger.initialize(address(l1Messenger), feeVault);
     l2MessageQueue.initialize();
     l2MessageQueue.updateMessenger(address(l2Messenger));
+    l1GasOracle.updateWhitelist(address(whitelist));
+
+    address[] memory _accounts = new address[](1);
+    _accounts[0] = address(this);
+    whitelist.updateWhitelistStatus(_accounts, true);
   }
 
   function setL1BaseFee(uint256 baseFee) internal {
-    l1BlockContainer.initialize(bytes32(0), 0, 0, uint128(baseFee), bytes32(0));
+    l1GasOracle.setL1BaseFee(baseFee);
   }
 }

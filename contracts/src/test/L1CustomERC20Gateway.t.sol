@@ -366,7 +366,7 @@ contract L1CustomERC20GatewayTest is L1GatewayTestBase {
       // emit SentMessage from L1ScrollMessenger
       {
         hevm.expectEmit(true, true, false, true);
-        emit SentMessage(address(gateway), address(counterpartGateway), 0, 0, message);
+        emit SentMessage(address(gateway), address(counterpartGateway), 0, 0, gasLimit, message);
       }
 
       // emit DepositERC20 from L1CustomERC20Gateway
@@ -445,7 +445,7 @@ contract L1CustomERC20GatewayTest is L1GatewayTestBase {
       // emit SentMessage from L1ScrollMessenger
       {
         hevm.expectEmit(true, true, false, true);
-        emit SentMessage(address(gateway), address(counterpartGateway), 0, 0, message);
+        emit SentMessage(address(gateway), address(counterpartGateway), 0, 0, gasLimit, message);
       }
 
       // emit DepositERC20 from L1CustomERC20Gateway
@@ -525,7 +525,7 @@ contract L1CustomERC20GatewayTest is L1GatewayTestBase {
       // emit SentMessage from L1ScrollMessenger
       {
         hevm.expectEmit(true, true, false, true);
-        emit SentMessage(address(gateway), address(counterpartGateway), 0, 0, message);
+        emit SentMessage(address(gateway), address(counterpartGateway), 0, 0, gasLimit, message);
       }
 
       // emit DepositERC20 from L1CustomERC20Gateway

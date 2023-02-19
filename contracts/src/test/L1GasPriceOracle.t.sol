@@ -3,10 +3,10 @@
 pragma solidity ^0.8.0;
 
 import { DSTestPlus } from "solmate/test/utils/DSTestPlus.sol";
-import { WETH } from "solmate/tokens/WETH.sol";
 
 import { L1BlockContainer } from "../L2/predeploys/L1BlockContainer.sol";
 import { L1GasPriceOracle } from "../L2/predeploys/L1GasPriceOracle.sol";
+import { Whitelist } from "../L2/predeploys/Whitelist.sol";
 
 contract L1GasPriceOracleTest is DSTestPlus {
   uint256 private constant PRECISION = 1e9;
@@ -14,9 +14,16 @@ contract L1GasPriceOracleTest is DSTestPlus {
   uint256 private constant MAX_SCALE = 1000 * PRECISION;
 
   L1GasPriceOracle private oracle;
+  Whitelist private whitelist;
 
   function setUp() public {
+    whitelist = new Whitelist(address(this));
     oracle = new L1GasPriceOracle(address(this));
+    oracle.updateWhitelist(address(whitelist));
+
+    address[] memory _accounts = new address[](1);
+    _accounts[0] = address(this);
+    whitelist.updateWhitelistStatus(_accounts, true);
   }
 
   function testSetOverhead(uint256 _overhead) external {
@@ -57,12 +64,27 @@ contract L1GasPriceOracleTest is DSTestPlus {
     assertEq(oracle.scalar(), _scalar);
   }
 
+  function testUpdateWhitelist(address _newWhitelist) external {
+    hevm.assume(_newWhitelist != address(whitelist));
+
+    // call by non-owner, should revert
+    hevm.startPrank(address(1));
+    hevm.expectRevert("caller is not the owner");
+    oracle.updateWhitelist(_newWhitelist);
+    hevm.stopPrank();
+
+    // call by owner, should succeed
+    assertEq(address(oracle.whitelist()), address(whitelist));
+    oracle.updateWhitelist(_newWhitelist);
+    assertEq(address(oracle.whitelist()), _newWhitelist);
+  }
+
   function testSetL1BaseFee(uint256 _baseFee) external {
     _baseFee = bound(_baseFee, 0, 1e9 * 20000); // max 20k gwei
 
     // call by non-owner, should revert
     hevm.startPrank(address(1));
-    hevm.expectRevert("caller is not the owner");
+    hevm.expectRevert("Not whitelisted sender");
     oracle.setL1BaseFee(_baseFee);
     hevm.stopPrank();
 

@@ -61,6 +61,23 @@ The address of fee vault, collecting cross domain messaging fee.
 |---|---|---|
 | _0 | address | undefined |
 
+### gasOracle
+
+```solidity
+function gasOracle() external view returns (address)
+```
+
+The address of L2MessageQueue.
+
+
+
+
+#### Returns
+
+| Name | Type | Description |
+|---|---|---|
+| _0 | address | undefined |
+
 ### initialize
 
 ```solidity
@@ -281,7 +298,7 @@ function retryMessageWithProof(address _from, address _to, uint256 _value, uint2
 function sendMessage(address _to, uint256 _value, bytes _message, uint256 _gasLimit) external payable
 ```
 
-Send cross chain message from L2 to L1.
+Send cross chain message from L1 to L2 or L2 to L1.
 
 
 

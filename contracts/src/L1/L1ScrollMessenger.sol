@@ -6,8 +6,9 @@ import { PausableUpgradeable } from "@openzeppelin/contracts-upgradeable/securit
 
 import { IScrollChain } from "./rollup/IScrollChain.sol";
 import { IL1MessageQueue } from "./rollup/IL1MessageQueue.sol";
-import { IL1ScrollMessenger, IScrollMessenger } from "./IL1ScrollMessenger.sol";
+import { IL1ScrollMessenger } from "./IL1ScrollMessenger.sol";
 import { ScrollConstants } from "../libraries/ScrollConstants.sol";
+import { IScrollMessenger } from "../libraries/IScrollMessenger.sol";
 import { ScrollMessengerBase } from "../libraries/ScrollMessengerBase.sol";
 import { WithdrawTrieVerifier } from "../libraries/verifier/WithdrawTrieVerifier.sol";
 
@@ -72,7 +73,7 @@ contract L1ScrollMessenger is PausableUpgradeable, ScrollMessengerBase, IL1Scrol
    * Public Mutated Functions *
    ****************************/
 
-  /// @inheritdoc IL1ScrollMessenger
+  /// @inheritdoc IScrollMessenger
   function sendMessage(
     address _to,
     uint256 _value,
@@ -106,7 +107,7 @@ contract L1ScrollMessenger is PausableUpgradeable, ScrollMessengerBase, IL1Scrol
     bytes32 _xDomainCalldataHash = keccak256(_xDomainCalldata);
     isL1MessageSent[_xDomainCalldataHash] = true;
 
-    emit SentMessage(msg.sender, _to, _value, _messageNonce, _message);
+    emit SentMessage(msg.sender, _to, _value, _messageNonce, _gasLimit, _message);
   }
 
   /// @inheritdoc IL1ScrollMessenger

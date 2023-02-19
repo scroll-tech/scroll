@@ -591,7 +591,7 @@ contract L1ERC721GatewayTest is L1GatewayTestBase {
     // emit SentMessage from L1ScrollMessenger
     {
       hevm.expectEmit(true, true, false, true);
-      emit SentMessage(address(gateway), address(counterpartGateway), 0, 0, message);
+      emit SentMessage(address(gateway), address(counterpartGateway), 0, 0, gasLimit, message);
     }
 
     // emit FinalizeWithdrawERC721 from L1ERC721Gateway
@@ -654,7 +654,7 @@ contract L1ERC721GatewayTest is L1GatewayTestBase {
     // emit SentMessage from L1ScrollMessenger
     {
       hevm.expectEmit(true, true, false, true);
-      emit SentMessage(address(gateway), address(counterpartGateway), 0, 0, message);
+      emit SentMessage(address(gateway), address(counterpartGateway), 0, 0, gasLimit, message);
     }
 
     // emit FinalizeWithdrawERC721 from L1ERC721Gateway
@@ -724,7 +724,7 @@ contract L1ERC721GatewayTest is L1GatewayTestBase {
     // emit SentMessage from L1ScrollMessenger
     {
       hevm.expectEmit(true, true, false, true);
-      emit SentMessage(address(gateway), address(counterpartGateway), 0, 0, message);
+      emit SentMessage(address(gateway), address(counterpartGateway), 0, 0, gasLimit, message);
     }
 
     // emit FinalizeWithdrawERC721 from L1ERC721Gateway
@@ -799,7 +799,7 @@ contract L1ERC721GatewayTest is L1GatewayTestBase {
     // emit SentMessage from L1ScrollMessenger
     {
       hevm.expectEmit(true, true, false, true);
-      emit SentMessage(address(gateway), address(counterpartGateway), 0, 0, message);
+      emit SentMessage(address(gateway), address(counterpartGateway), 0, 0, gasLimit, message);
     }
 
     // emit FinalizeWithdrawERC721 from L1ERC721Gateway

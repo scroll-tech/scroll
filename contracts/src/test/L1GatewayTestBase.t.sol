@@ -7,6 +7,7 @@ import { DSTestPlus } from "solmate/test/utils/DSTestPlus.sol";
 import { L1MessageQueue } from "../L1/rollup/L1MessageQueue.sol";
 import { L2GasPriceOracle } from "../L1/rollup/L2GasPriceOracle.sol";
 import { ScrollChain, IScrollChain } from "../L1/rollup/ScrollChain.sol";
+import { Whitelist } from "../L2/predeploys/Whitelist.sol";
 import { L1ScrollMessenger } from "../L1/L1ScrollMessenger.sol";
 import { L2ScrollMessenger } from "../L2/L2ScrollMessenger.sol";
 
@@ -22,7 +23,14 @@ abstract contract L1GatewayTestBase is DSTestPlus {
   );
 
   // from L1ScrollMessenger
-  event SentMessage(address indexed sender, address indexed target, uint256 value, uint256 messageNonce, bytes message);
+  event SentMessage(
+    address indexed sender,
+    address indexed target,
+    uint256 value,
+    uint256 messageNonce,
+    uint256 gasLimit,
+    bytes message
+  );
   event RelayedMessage(bytes32 indexed messageHash);
   event FailedRelayedMessage(bytes32 indexed messageHash);
 
@@ -32,6 +40,7 @@ abstract contract L1GatewayTestBase is DSTestPlus {
   ScrollChain internal rollup;
 
   address internal feeVault;
+  Whitelist private whitelist;
 
   L2ScrollMessenger internal l2Messenger;
 
@@ -43,15 +52,21 @@ abstract contract L1GatewayTestBase is DSTestPlus {
     messageQueue = new L1MessageQueue();
     gasOracle = new L2GasPriceOracle();
     rollup = new ScrollChain(1233, 25, bytes32(0));
+    whitelist = new Whitelist(address(this));
 
     // Deploy L2 contracts
-    l2Messenger = new L2ScrollMessenger(address(0), address(0));
+    l2Messenger = new L2ScrollMessenger(address(0), address(0), address(0));
 
     // Initialize L1 contracts
     l1Messenger.initialize(address(l2Messenger), feeVault, address(rollup), address(messageQueue));
     messageQueue.initialize(address(l1Messenger), address(gasOracle));
     gasOracle.initialize();
+    gasOracle.updateWhitelist(address(whitelist));
     rollup.initialize(address(messageQueue));
+
+    address[] memory _accounts = new address[](1);
+    _accounts[0] = address(this);
+    whitelist.updateWhitelistStatus(_accounts, true);
   }
 
   function prepareL2MessageRoot(bytes32 messageHash) internal {
