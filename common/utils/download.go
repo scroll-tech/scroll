@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"github.com/scroll-tech/go-ethereum/log"
 	"io"
 	"net/http"
 	"os"
@@ -50,6 +51,7 @@ func PathExists(path string) (bool, error) {
 }
 
 func download(path, url string) error {
+	log.Info("Download from %s ......", url)
 	// download file
 	resp, err := http.Get(url)
 	if err != nil {

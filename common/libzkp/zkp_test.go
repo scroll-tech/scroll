@@ -24,7 +24,6 @@ const (
 	vkPath         = "./assets/agg_vk"
 
 	tracesDir = "./assets/traces"
-	proofPath = "./assets/agg_proof"
 )
 
 var (
@@ -32,6 +31,8 @@ var (
 	aggParamsUrl = filepath.Join(s3Url, setupVersion, "params26")
 	seedUrl      = filepath.Join(s3Url, setupVersion, "test_seed")
 	vkUrl        = filepath.Join(s3Url, circuitVersion, "verify_circuit.vkey")
+
+	tracesUrl = "https://raw.githubusercontent.com/scroll-tech/scroll-zkevm/main/zkevm/tests/traces/erc20/single.json"
 
 	pvrCfg = &ProverConfig{
 		ParamsPath: paramsDir,
@@ -80,20 +81,28 @@ func TestFFI(t *testing.T) {
 		traces = append(traces, trace)
 	}
 
+	var proof *message.AggProof
+
 	// test prove
 	pvr, err := NewProver(pvrCfg)
 	as.NoError(err)
-	var proof *message.AggProof
 	for i := 0; i < *times; i++ {
 		now := time.Now()
 		proof, err = pvr.Prove(traces)
 		as.NoError(err)
-		t.Logf("%d: prove success! cost %f sec", i+1, time.Since(now).Seconds())
+		t.Logf("%d: prove successfully! cost %f sec", i+1, time.Since(now).Seconds())
 	}
 
 	// test verify
 	vfr, err := NewVerifier(vfrCfg)
 	as.NoError(err)
+	for i := 0; i < *times; i++ {
+		now := time.Now()
+		ok, err := vfr.VerifyProof(proof)
+		as.NoError(err)
+		as.True(ok)
+		t.Logf("%d: verify successfully! cost %f sec", i+1, time.Since(now).Seconds())
+	}
 
 	// clean files.
 	os.RemoveAll(paramsDir)
