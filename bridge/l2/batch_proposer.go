@@ -140,7 +140,7 @@ func (p *batchProposer) tryCommitBatches() {
 			if index == 0 {
 				log.Warn("The calldata size of the batch is larger than the threshold", "batch_hash", p.batchDataBuffer[index].Hash().Hex(), "calldata_size", calldataByteLen)
 			} else {
-				index -= 1
+				index--
 			}
 			break
 		}
@@ -207,8 +207,7 @@ func (p *batchProposer) proposeBatch(blocks []*types.BlockInfo) uint64 {
 	// if it's not old enough we will skip proposing the batch,
 	// otherwise we will still propose a batch
 	if length == len(blocks) && blocks[0].BlockTimestamp+p.batchTimeSec > uint64(time.Now().Unix()) {
-		// will not enter here when in graceful restart.
-		return uint64(len(blocks))
+		return 0
 	}
 
 	if err := p.createBatchForBlocks(blocks); err != nil {
