@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"scroll-tech/common/libzkp"
 	"sort"
 	"sync/atomic"
 	"time"
@@ -22,7 +23,6 @@ import (
 	"scroll-tech/coordinator/client"
 
 	"scroll-tech/roller/config"
-	"scroll-tech/roller/prover"
 	"scroll-tech/roller/store"
 )
 
@@ -36,7 +36,7 @@ type Roller struct {
 	cfg      *config.Config
 	client   *client.Client
 	stack    *store.Stack
-	prover   *prover.Prover
+	prover   *libzkp.Prover
 	taskChan chan *message.TaskMsg
 	sub      ethereum.Subscription
 
@@ -63,7 +63,7 @@ func NewRoller(cfg *config.Config) (*Roller, error) {
 
 	// Create prover instance
 	log.Info("init prover")
-	newProver, err := prover.NewProver(cfg.Prover)
+	newProver, err := libzkp.NewProver(cfg.Prover)
 	if err != nil {
 		return nil, err
 	}

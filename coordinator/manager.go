@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	mathrand "math/rand"
+	"scroll-tech/common/libzkp"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -23,7 +24,6 @@ import (
 	"scroll-tech/database/orm"
 
 	"scroll-tech/coordinator/config"
-	"scroll-tech/coordinator/verifier"
 )
 
 const (
@@ -69,7 +69,7 @@ type Manager struct {
 
 	// A direct connection to the Halo2 verifier, used to verify
 	// incoming proofs.
-	verifier *verifier.Verifier
+	verifier *libzkp.Verifier
 
 	// db interface
 	orm database.OrmFactory
@@ -86,7 +86,7 @@ type Manager struct {
 // New returns a new instance of Manager. The instance will be not fully prepared,
 // and still needs to be finalized and ran by calling `manager.Start`.
 func New(ctx context.Context, cfg *config.RollerManagerConfig, orm database.OrmFactory, client *ethclient.Client) (*Manager, error) {
-	v, err := verifier.NewVerifier(cfg.Verifier)
+	v, err := libzkp.NewVerifier(cfg.Verifier)
 	if err != nil {
 		return nil, err
 	}

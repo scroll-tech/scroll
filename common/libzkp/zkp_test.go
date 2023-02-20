@@ -3,6 +3,7 @@
 package libzkp
 
 import (
+	"flag"
 	"github.com/stretchr/testify/assert"
 	"os"
 	"path/filepath"
@@ -46,6 +47,7 @@ var (
 )
 
 func prepare(as *assert.Assertions) {
+	flag.Parse()
 	var err error
 	os.MkdirAll(paramsDir, os.ModePerm)
 	_, err = utils.DownloadToDir(paramsDir, paramsUrl)
