@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"scroll-tech/common/libzkp"
 	"strings"
 
 	db_config "scroll-tech/database"
@@ -18,7 +19,7 @@ type RollerManagerConfig struct {
 	// The amount of rollers to pick per proof generation session.
 	RollersPerSession uint8 `json:"rollers_per_session"`
 	// Zk verifier config.
-	Verifier *VerifierConfig `json:"verifier,omitempty"`
+	Verifier *libzkp.VerifierConfig `json:"verifier,omitempty"`
 	// Proof collection time (in minutes).
 	CollectionTime int `json:"collection_time"`
 	// Token time to live (in seconds)
@@ -36,13 +37,6 @@ type Config struct {
 	RollerManagerConfig *RollerManagerConfig `json:"roller_manager_config"`
 	DBConfig            *db_config.DBConfig  `json:"db_config"`
 	L2Config            *L2Config            `json:"l2_config"`
-}
-
-// VerifierConfig load zk verifier config.
-type VerifierConfig struct {
-	MockMode   bool   `json:"mock_mode"`
-	ParamsPath string `json:"params_path"`
-	AggVkPath  string `json:"agg_vk_path"`
 }
 
 // NewConfig returns a new instance of Config.
