@@ -2,59 +2,80 @@
 
 pragma solidity ^0.8.0;
 
-import { DSTestPlus } from "solmate/test/utils/DSTestPlus.sol";
 import { MockERC20 } from "solmate/test/utils/mocks/MockERC20.sol";
 
+import { L1ETHGateway } from "../L1/gateways/L1ETHGateway.sol";
 import { L1GatewayRouter } from "../L1/gateways/L1GatewayRouter.sol";
 import { L1StandardERC20Gateway } from "../L1/gateways/L1StandardERC20Gateway.sol";
-import { L1ScrollMessenger } from "../L1/L1ScrollMessenger.sol";
-import { ZKRollup } from "../L1/rollup/ZKRollup.sol";
+import { L2ETHGateway } from "../L2/gateways/L2ETHGateway.sol";
+import { L2StandardERC20Gateway } from "../L2/gateways/L2StandardERC20Gateway.sol";
 import { ScrollStandardERC20 } from "../libraries/token/ScrollStandardERC20.sol";
 import { ScrollStandardERC20Factory } from "../libraries/token/ScrollStandardERC20Factory.sol";
 
-contract L1GatewayRouterTest is DSTestPlus {
+import { L1GatewayTestBase } from "./L1GatewayTestBase.t.sol";
+
+contract L1GatewayRouterTest is L1GatewayTestBase {
+  // from L1GatewayRouter
+  event SetETHGateway(address indexed ethGateway);
+  event SetDefaultERC20Gateway(address indexed defaultERC20Gateway);
+  event SetERC20Gateway(address indexed token, address indexed gateway);
+
   ScrollStandardERC20 private template;
   ScrollStandardERC20Factory private factory;
 
-  ZKRollup private rollup;
-  L1ScrollMessenger private messenger;
-  L1StandardERC20Gateway private gateway;
+  L1StandardERC20Gateway private l1StandardERC20Gateway;
+  L2StandardERC20Gateway private l2StandardERC20Gateway;
+
+  L1ETHGateway private l1ETHGateway;
+  L2ETHGateway private l2ETHGateway;
+
   L1GatewayRouter private router;
-  MockERC20 private token;
+  MockERC20 private l1Token;
 
   function setUp() public {
-    rollup = new ZKRollup();
-    rollup.initialize(233);
+    setUpBase();
 
+    // Deploy tokens
+    l1Token = new MockERC20("Mock", "M", 18);
+
+    // Deploy L1 contracts
+    l1StandardERC20Gateway = new L1StandardERC20Gateway();
+    l1ETHGateway = new L1ETHGateway();
+    router = new L1GatewayRouter();
+
+    // Deploy L2 contracts
+    l2StandardERC20Gateway = new L2StandardERC20Gateway();
+    l2ETHGateway = new L2ETHGateway();
     template = new ScrollStandardERC20();
-
     factory = new ScrollStandardERC20Factory(address(template));
 
-    token = new MockERC20("Mock Token", "M", 18);
-    messenger = new L1ScrollMessenger();
-    messenger.initialize(address(rollup));
-
-    rollup.updateMessenger(address(messenger));
-
-    router = new L1GatewayRouter();
-    router.initialize(address(0), address(1), address(messenger));
-
-    gateway = new L1StandardERC20Gateway();
-    gateway.initialize(address(1), address(router), address(messenger), address(template), address(factory));
-
-    router.setDefaultERC20Gateway(address(gateway));
-
-    token.mint(address(this), type(uint256).max);
-    token.approve(address(gateway), type(uint256).max);
+    // Initialize L1 contracts
+    l1StandardERC20Gateway.initialize(
+      address(l2StandardERC20Gateway),
+      address(router),
+      address(l1Messenger),
+      address(template),
+      address(factory)
+    );
+    l1ETHGateway.initialize(address(l2ETHGateway), address(router), address(l1Messenger));
+    router.initialize(address(l1ETHGateway), address(l1StandardERC20Gateway));
   }
 
   function testOwnership() public {
     assertEq(address(this), router.owner());
   }
 
-  function testReinitilize() public {
+  function testInitialized() public {
+    assertEq(address(l1ETHGateway), router.ethGateway());
+    assertEq(address(l1StandardERC20Gateway), router.defaultERC20Gateway());
+    assertEq(
+      factory.computeL2TokenAddress(address(l2StandardERC20Gateway), address(l1Token)),
+      router.getL2ERC20Address(address(l1Token))
+    );
+    assertEq(address(l1StandardERC20Gateway), router.getERC20Gateway(address(l1Token)));
+
     hevm.expectRevert("Initializable: contract is already initialized");
-    router.initialize(address(0), address(1), address(messenger));
+    router.initialize(address(l1ETHGateway), address(l1StandardERC20Gateway));
   }
 
   function testSetDefaultERC20Gateway() public {
@@ -63,15 +84,18 @@ contract L1GatewayRouterTest is DSTestPlus {
     // set by non-owner, should revert
     hevm.startPrank(address(1));
     hevm.expectRevert("Ownable: caller is not the owner");
-    router.setDefaultERC20Gateway(address(gateway));
+    router.setDefaultERC20Gateway(address(l1StandardERC20Gateway));
     hevm.stopPrank();
 
     // set by owner, should succeed
-    assertEq(address(0), router.getERC20Gateway(address(token)));
+    hevm.expectEmit(true, false, false, true);
+    emit SetDefaultERC20Gateway(address(l1StandardERC20Gateway));
+
+    assertEq(address(0), router.getERC20Gateway(address(l1Token)));
     assertEq(address(0), router.defaultERC20Gateway());
-    router.setDefaultERC20Gateway(address(gateway));
-    assertEq(address(gateway), router.defaultERC20Gateway());
-    assertEq(address(gateway), router.getERC20Gateway(address(token)));
+    router.setDefaultERC20Gateway(address(l1StandardERC20Gateway));
+    assertEq(address(l1StandardERC20Gateway), router.getERC20Gateway(address(l1Token)));
+    assertEq(address(l1StandardERC20Gateway), router.defaultERC20Gateway());
   }
 
   function testSetERC20Gateway() public {
@@ -88,93 +112,24 @@ contract L1GatewayRouterTest is DSTestPlus {
     // set by owner, should succeed
     address[] memory _tokens = new address[](1);
     address[] memory _gateways = new address[](1);
-    _tokens[0] = address(token);
-    _gateways[0] = address(gateway);
-    assertEq(address(0), router.getERC20Gateway(address(token)));
+    _tokens[0] = address(l1Token);
+    _gateways[0] = address(l1StandardERC20Gateway);
+
+    hevm.expectEmit(true, true, false, true);
+    emit SetERC20Gateway(address(l1Token), address(l1StandardERC20Gateway));
+
+    assertEq(address(0), router.getERC20Gateway(address(l1Token)));
     router.setERC20Gateway(_tokens, _gateways);
-    assertEq(address(gateway), router.getERC20Gateway(address(token)));
-  }
-
-  function testDepositERC20WhenNoGateway() public {
-    router.setDefaultERC20Gateway(address(0));
-
-    hevm.expectRevert("no gateway available");
-    router.depositERC20(address(token), 1, 0);
-
-    hevm.expectRevert("no gateway available");
-    router.depositERC20(address(token), address(this), 1, 0);
-
-    hevm.expectRevert("no gateway available");
-    router.depositERC20AndCall(address(token), address(this), 1, "", 0);
-  }
-
-  function testDepositERC20ZeroAmount() public {
-    hevm.expectRevert("deposit zero amount");
-    router.depositERC20(address(token), 0, 0);
-
-    hevm.expectRevert("deposit zero amount");
-    router.depositERC20(address(token), address(this), 0, 0);
-
-    hevm.expectRevert("deposit zero amount");
-    router.depositERC20AndCall(address(token), address(this), 0, "", 0);
-  }
-
-  function testDepositERC20(uint256 amount) public {
-    if (amount == 0) amount = 1;
-
-    uint256 gatewayBalance = token.balanceOf(address(gateway));
-    router.depositERC20(address(token), amount, 0);
-    assertEq(amount + gatewayBalance, token.balanceOf(address(gateway)));
-  }
-
-  function testDepositERC20(uint256 amount, address to) public {
-    if (amount == 0) amount = 1;
-
-    uint256 gatewayBalance = token.balanceOf(address(gateway));
-    router.depositERC20(address(token), to, amount, 0);
-    assertEq(amount + gatewayBalance, token.balanceOf(address(gateway)));
-  }
-
-  function testDepositERC20AndCall(
-    uint256 amount,
-    address to,
-    bytes calldata data
-  ) public {
-    if (amount == 0) amount = 1;
-
-    uint256 gatewayBalance = token.balanceOf(address(gateway));
-    router.depositERC20AndCall(address(token), to, amount, data, 0);
-    assertEq(amount + gatewayBalance, token.balanceOf(address(gateway)));
-  }
-
-  function testDepositETH(uint256 amount) public {
-    amount = bound(amount, 0, address(this).balance);
-
-    if (amount == 0) {
-      hevm.expectRevert("deposit zero eth");
-      router.depositETH{ value: amount }(0);
-    } else {
-      uint256 messengerBalance = address(messenger).balance;
-      router.depositETH{ value: amount }(0);
-      assertEq(amount + messengerBalance, address(messenger).balance);
-    }
-  }
-
-  function testDepositETH(uint256 amount, address to) public {
-    amount = bound(amount, 0, address(this).balance);
-
-    if (amount == 0) {
-      hevm.expectRevert("deposit zero eth");
-      router.depositETH{ value: amount }(to, 0);
-    } else {
-      uint256 messengerBalance = address(messenger).balance;
-      router.depositETH{ value: amount }(to, 0);
-      assertEq(amount + messengerBalance, address(messenger).balance);
-    }
+    assertEq(address(l1StandardERC20Gateway), router.getERC20Gateway(address(l1Token)));
   }
 
   function testFinalizeWithdrawERC20() public {
     hevm.expectRevert("should never be called");
     router.finalizeWithdrawERC20(address(0), address(0), address(0), address(0), 0, "");
+  }
+
+  function testFinalizeWithdrawETH() public {
+    hevm.expectRevert("should never be called");
+    router.finalizeWithdrawETH(address(0), address(0), 0, "");
   }
 }

@@ -25,7 +25,9 @@ contract L2StandardERC20Gateway is Initializable, ScrollGatewayBase, L2ERC20Gate
   using SafeERC20 for IERC20;
   using Address for address;
 
-  /**************************************** Variables ****************************************/
+  /*************
+   * Variables *
+   *************/
 
   /// @notice Mapping from l2 token address to l1 token address.
   mapping(address => address) private tokenMapping;
@@ -33,7 +35,9 @@ contract L2StandardERC20Gateway is Initializable, ScrollGatewayBase, L2ERC20Gate
   /// @notice The address of ScrollStandardERC20Factory.
   address public tokenFactory;
 
-  /**************************************** Constructor ****************************************/
+  /***************
+   * Constructor *
+   ***************/
 
   function initialize(
     address _counterpart,
@@ -48,7 +52,9 @@ contract L2StandardERC20Gateway is Initializable, ScrollGatewayBase, L2ERC20Gate
     tokenFactory = _tokenFactory;
   }
 
-  /**************************************** View Functions ****************************************/
+  /*************************
+   * Public View Functions *
+   *************************/
 
   /// @inheritdoc IL2ERC20Gateway
   function getL1ERC20Address(address _l2Token) external view override returns (address) {
@@ -60,7 +66,9 @@ contract L2StandardERC20Gateway is Initializable, ScrollGatewayBase, L2ERC20Gate
     return IScrollStandardERC20Factory(tokenFactory).computeL2TokenAddress(address(this), _l1Token);
   }
 
-  /**************************************** Mutate Functions ****************************************/
+  /****************************
+   * Public Mutated Functions *
+   ****************************/
 
   /// @inheritdoc IL2ERC20Gateway
   function finalizeDepositERC20(
@@ -104,12 +112,9 @@ contract L2StandardERC20Gateway is Initializable, ScrollGatewayBase, L2ERC20Gate
     emit FinalizeDepositERC20(_l1Token, _l2Token, _from, _to, _amount, _callData);
   }
 
-  /// @inheritdoc IScrollGateway
-  function finalizeDropMessage() external payable virtual onlyMessenger {
-    // @todo should refund token back to sender.
-  }
-
-  /**************************************** Internal Functions ****************************************/
+  /**********************
+   * Internal Functions *
+   **********************/
 
   /// @inheritdoc L2ERC20Gateway
   function _withdraw(
@@ -145,7 +150,7 @@ contract L2StandardERC20Gateway is Initializable, ScrollGatewayBase, L2ERC20Gate
     );
 
     // 4. send message to L2ScrollMessenger
-    IL2ScrollMessenger(messenger).sendMessage{ value: msg.value }(counterpart, msg.value, _message, _gasLimit);
+    IL2ScrollMessenger(messenger).sendMessage{ value: msg.value }(counterpart, 0, _message, _gasLimit);
 
     emit WithdrawERC20(_l1Token, _token, _from, _to, _amount, _data);
   }

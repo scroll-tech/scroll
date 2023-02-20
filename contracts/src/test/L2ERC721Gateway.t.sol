@@ -2,7 +2,6 @@
 
 pragma solidity ^0.8.0;
 
-import { console2 } from "forge-std/console2.sol";
 import { DSTestPlus } from "solmate/test/utils/DSTestPlus.sol";
 import { MockERC721 } from "solmate/test/utils/mocks/MockERC721.sol";
 
