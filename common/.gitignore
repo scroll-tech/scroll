@@ -1,4 +1,4 @@
 /build/bin
 .idea
-libzkp/impl/target
-libzkp/interface/*.a
+libzkp/assets
+libzkp/lib/*.a
