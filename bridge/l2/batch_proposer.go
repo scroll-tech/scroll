@@ -21,10 +21,11 @@ type batchProposer struct {
 
 	orm database.OrmFactory
 
-	batchTimeSec        uint64
-	batchGasThreshold   uint64
-	batchTxNumThreshold uint64
-	batchBlocksLimit    uint64
+	batchTimeSec            uint64
+	batchGasThreshold       uint64
+	batchTxNumThreshold     uint64
+	batchBlocksLimit        uint64
+	commitCalldataSizeLimit uint64
 
 	proofGenerationFreq uint64
 	skippedOpcodes      map[string]struct{}
@@ -34,15 +35,16 @@ type batchProposer struct {
 
 func newBatchProposer(cfg *config.BatchProposerConfig, relayer *Layer2Relayer, orm database.OrmFactory) *batchProposer {
 	p := &batchProposer{
-		mutex:               sync.Mutex{},
-		orm:                 orm,
-		batchTimeSec:        cfg.BatchTimeSec,
-		batchGasThreshold:   cfg.BatchGasThreshold,
-		batchTxNumThreshold: cfg.BatchTxNumThreshold,
-		batchBlocksLimit:    cfg.BatchBlocksLimit,
-		proofGenerationFreq: cfg.ProofGenerationFreq,
-		skippedOpcodes:      cfg.SkippedOpcodes,
-		relayer:             relayer,
+		mutex:                   sync.Mutex{},
+		orm:                     orm,
+		batchTimeSec:            cfg.BatchTimeSec,
+		batchGasThreshold:       cfg.BatchGasThreshold,
+		batchTxNumThreshold:     cfg.BatchTxNumThreshold,
+		batchBlocksLimit:        cfg.BatchBlocksLimit,
+		commitCalldataSizeLimit: cfg.CommitTxCalldataSizeLimit,
+		proofGenerationFreq:     cfg.ProofGenerationFreq,
+		skippedOpcodes:          cfg.SkippedOpcodes,
+		relayer:                 relayer,
 	}
 
 	// for graceful restart.
@@ -61,24 +63,51 @@ func (p *batchProposer) recoverBatchDataBuffer() {
 		return
 	}
 	log.Info("Load pending batches into batchDataBuffer")
-	var blocks []*types.BlockInfo
-	for _, batchHash := range batchesInDB {
-		blockInfos, err := p.orm.GetBlockInfos(map[string]interface{}{"batch_hash": batchHash})
-		if err != nil {
-			log.Error(
-				"could not GetBlockInfos",
-				"batch_hash", batchHash,
-				"error", err,
-			)
-			continue
+
+	// helper function to cache and get BlockBatch from DB
+	var blockBatchCache map[string]*types.BlockBatch
+	getBlockBatch := func(batchHash string) (*types.BlockBatch, error) {
+		if blockBatch, ok := blockBatchCache[batchHash]; ok {
+			return blockBatch, nil
 		}
-		blocks = append(blocks, blockInfos...)
+		blockBatches, err := p.orm.GetBlockBatches(map[string]interface{}{"hash": batchHash})
+		if err != nil {
+			return nil, err
+		}
+		blockBatchCache[batchHash] = blockBatches[0]
+		return blockBatches[0], nil
 	}
 
-	for len(blocks) > 0 {
-		consumeNum := p.createBatch(blocks)
-		blocks = blocks[consumeNum:]
+	// recover the in-memory batchData from DB
+	for _, batchHash := range batchesInDB {
+		blockBatch, err := getBlockBatch(batchHash)
+		if err != nil {
+			log.Error("could not get BlockBatch", "batch_hash", batchHash, "error", err)
+			continue
+		}
+
+		parentBatch, err := getBlockBatch(blockBatch.ParentHash)
+		if err != nil {
+			log.Error("could not get parent BlockBatch", "batch_hash", batchHash, "error", err)
+			continue
+		}
+
+		blockInfos, err := p.orm.GetBlockInfos(map[string]interface{}{"batch_hash": batchHash})
+		if err != nil {
+			log.Error("could not GetBlockInfos", "batch_hash", batchHash, "error", err)
+			continue
+		}
+
+		batchData, err := p.generateBatchData(parentBatch, blockInfos)
+		if err != nil {
+			continue
+		}
+
+		p.batchDataBuffer = append(p.batchDataBuffer, batchData)
 	}
+
+	// try to commit the leftover pending batches
+	p.tryCommitBatches()
 }
 
 func (p *batchProposer) tryProposeBatch() {
@@ -94,28 +123,52 @@ func (p *batchProposer) tryProposeBatch() {
 		return
 	}
 
-	p.createBatch(blocks)
-	p.trySendBatches()
-}
-
-func (p *batchProposer) trySendBatches() {
-	if p.getCalldataByteLength(p.batchDataBuffer) > bridgeabi.CalldataLengthThreshhold {
-		for i := 0; i < 10; i++ {
-			err := p.relayer.SendCommitTx(p.batchDataBuffer)
-			if err != nil {
-				log.Error("SendCommitTx failed", "error", err)
-				// retry after sleep.
-				time.Sleep(time.Millisecond * 500)
-			} else {
-				break
-			}
-		}
-		// clear buffer.
-		p.batchDataBuffer = p.batchDataBuffer[:0]
+	if numBlocks := p.proposeBatch(blocks); numBlocks > 0 {
+		p.tryCommitBatches()
 	}
 }
 
-func (p *batchProposer) createBatch(blocks []*types.BlockInfo) uint64 {
+func (p *batchProposer) tryCommitBatches() {
+	// estimate the calldata length to determine whether to commit the pending batches
+	index := 0
+	commit := false
+	calldataByteLen := uint64(0)
+	for ; index < len(p.batchDataBuffer); index++ {
+		calldataByteLen += bridgeabi.GetBatchCalldataLength(&p.batchDataBuffer[index].Batch)
+		if calldataByteLen > p.commitCalldataSizeLimit {
+			commit = true
+			if index == 0 {
+				log.Warn("The calldata size of the batch is larger than the threshold", "batch_hash", p.batchDataBuffer[index].Hash().Hex(), "calldata_size", calldataByteLen)
+			} else {
+				index -= 1
+			}
+			break
+		}
+	}
+	if !commit {
+		return
+	}
+
+	// try sending commit tx for batchDataBuffer[0:index]
+	succeed := false
+	for retry := 0; retry < 5; retry++ {
+		err := p.relayer.SendCommitTx(p.batchDataBuffer[:index])
+		if err != nil {
+			log.Error("SendCommitTx failed", "error", err)
+			// retry after sleep.
+			time.Sleep(time.Millisecond * 500)
+		} else {
+			succeed = true
+			break
+		}
+	}
+	if succeed {
+		// clear buffer.
+		p.batchDataBuffer = p.batchDataBuffer[index+1:]
+	}
+}
+
+func (p *batchProposer) proposeBatch(blocks []*types.BlockInfo) uint64 {
 	if len(blocks) == 0 {
 		return 0
 	}
@@ -165,7 +218,13 @@ func (p *batchProposer) createBatch(blocks []*types.BlockInfo) uint64 {
 }
 
 func (p *batchProposer) createBatchForBlocks(blocks []*types.BlockInfo) error {
-	batchData, err := p.createBatchData(blocks)
+	lastBatch, err := p.orm.GetLatestBatch()
+	if err != nil {
+		// We should not receive sql.ErrNoRows error. The DB should have the batch entry that contains the genesis block.
+		return err
+	}
+
+	batchData, err := p.generateBatchData(lastBatch, blocks)
 	if err != nil {
 		log.Error("createBatchData failed", "error", err)
 		return err
@@ -212,15 +271,7 @@ func (p *batchProposer) addBatchInfoToDB(batchData *types.BatchData) error {
 	return dbTxErr
 }
 
-func (p *batchProposer) createBatchData(blocks []*types.BlockInfo) (*types.BatchData, error) {
-	var err error
-
-	lastBatch, err := p.orm.GetLatestBatch()
-	if err != nil {
-		// We should not receive sql.ErrNoRows error. The DB should have the batch entry that contains the genesis block.
-		return nil, err
-	}
-
+func (p *batchProposer) generateBatchData(parentBatch *types.BlockBatch, blocks []*types.BlockInfo) (*types.BatchData, error) {
 	var traces []*eth_types.BlockTrace
 	for _, block := range blocks {
 		trs, err := p.orm.GetBlockTraces(map[string]interface{}{"hash": block.Hash})
@@ -231,12 +282,5 @@ func (p *batchProposer) createBatchData(blocks []*types.BlockInfo) (*types.Batch
 		traces = append(traces, trs[0])
 	}
 
-	return types.NewBatchData(lastBatch, traces), nil
-}
-
-func (p *batchProposer) getCalldataByteLength(batchData []*types.BatchData) (callDataByteLength uint64) {
-	for _, batch := range batchData {
-		callDataByteLength += bridgeabi.GetBatchCalldataLength(&batch.Batch)
-	}
-	return
+	return types.NewBatchData(parentBatch, traces), nil
 }
