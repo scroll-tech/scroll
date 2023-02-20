@@ -91,9 +91,8 @@ contract L1GasPriceOracle is OwnableBase, IL1GasPriceOracle {
    * Public Mutated Functions *
    ****************************/
 
-  /// @notice Allows the owner to modify the l1 base fee.
-  /// @param _l1BaseFee New l1 base fee.
-  function setL1BaseFee(uint256 _l1BaseFee) external {
+  /// @inheritdoc IL1GasPriceOracle
+  function setL1BaseFee(uint256 _l1BaseFee) external override {
     require(whitelist.isSenderAllowed(msg.sender), "Not whitelisted sender");
 
     l1BaseFee = _l1BaseFee;

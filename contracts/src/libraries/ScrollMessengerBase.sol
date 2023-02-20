@@ -5,8 +5,8 @@ pragma solidity ^0.8.0;
 import { OwnableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
 import { IWhitelist } from "./common/IWhitelist.sol";
+import { ScrollConstants } from "./constants/ScrollConstants.sol";
 import { IScrollMessenger } from "./IScrollMessenger.sol";
-import { ScrollConstants } from "./ScrollConstants.sol";
 
 abstract contract ScrollMessengerBase is OwnableUpgradeable, IScrollMessenger {
   /**********

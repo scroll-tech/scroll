@@ -134,7 +134,9 @@ describe("L1BlockContainer", async () => {
         const whitelist = await Whitelist.deploy(deployer.address);
         await container.updateWhitelist(whitelist.address);
 
-        await expect(container.importBlockHeader(constants.HashZero, [], [])).to.revertedWith("Not whitelist sender");
+        await expect(container.importBlockHeader(constants.HashZero, [], false)).to.revertedWith(
+          "Not whitelisted sender"
+        );
       });
 
       it("should revert, when block hash mismatch", async () => {
@@ -146,7 +148,7 @@ describe("L1BlockContainer", async () => {
           test.stateRoot
         );
         const headerRLP = encodeHeader(test);
-        await expect(container.importBlockHeader(test.parentHash, headerRLP, "0x")).to.revertedWith(
+        await expect(container.importBlockHeader(test.parentHash, headerRLP, false)).to.revertedWith(
           "Block hash mismatch"
         );
       });
@@ -160,7 +162,7 @@ describe("L1BlockContainer", async () => {
           test.stateRoot
         );
         const headerRLP = encodeHeader(test);
-        await expect(container.importBlockHeader(test.hash, concat([headerRLP, "0x00"]), "0x")).to.revertedWith(
+        await expect(container.importBlockHeader(test.hash, concat([headerRLP, "0x00"]), false)).to.revertedWith(
           "Header RLP length mismatch"
         );
       });
@@ -174,7 +176,7 @@ describe("L1BlockContainer", async () => {
           test.stateRoot
         );
         const headerRLP = encodeHeader(test);
-        await expect(container.importBlockHeader(test.hash, headerRLP, "0x")).to.revertedWith("Parent not imported");
+        await expect(container.importBlockHeader(test.hash, headerRLP, false)).to.revertedWith("Parent not imported");
       });
 
       it("should revert, when block height mismatch", async () => {
@@ -186,7 +188,7 @@ describe("L1BlockContainer", async () => {
           test.stateRoot
         );
         const headerRLP = encodeHeader(test);
-        await expect(container.importBlockHeader(test.hash, headerRLP, "0x")).to.revertedWith("Block height mismatch");
+        await expect(container.importBlockHeader(test.hash, headerRLP, false)).to.revertedWith("Block height mismatch");
       });
 
       it("should revert, when parent block has larger timestamp", async () => {
@@ -198,7 +200,7 @@ describe("L1BlockContainer", async () => {
           test.stateRoot
         );
         const headerRLP = encodeHeader(test);
-        await expect(container.importBlockHeader(test.hash, headerRLP, "0x")).to.revertedWith(
+        await expect(container.importBlockHeader(test.hash, headerRLP, false)).to.revertedWith(
           "Parent block has larger timestamp"
         );
       });
@@ -213,7 +215,7 @@ describe("L1BlockContainer", async () => {
         );
         expect(await container.latestBlockHash()).to.eq(test.parentHash);
         const headerRLP = encodeHeader(test);
-        await expect(container.importBlockHeader(test.hash, headerRLP, "0x"))
+        await expect(container.importBlockHeader(test.hash, headerRLP, false))
           .to.emit(container, "ImportBlock")
           .withArgs(test.hash, test.blockHeight, test.blockTimestamp, test.baseFee, test.stateRoot);
         expect(await container.getStateRoot(test.hash)).to.eq(test.stateRoot);

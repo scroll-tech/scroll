@@ -7,7 +7,7 @@ import { PausableUpgradeable } from "@openzeppelin/contracts-upgradeable/securit
 import { IScrollChain } from "./rollup/IScrollChain.sol";
 import { IL1MessageQueue } from "./rollup/IL1MessageQueue.sol";
 import { IL1ScrollMessenger } from "./IL1ScrollMessenger.sol";
-import { ScrollConstants } from "../libraries/ScrollConstants.sol";
+import { ScrollConstants } from "../libraries/constants/ScrollConstants.sol";
 import { IScrollMessenger } from "../libraries/IScrollMessenger.sol";
 import { ScrollMessengerBase } from "../libraries/ScrollMessengerBase.sol";
 import { WithdrawTrieVerifier } from "../libraries/verifier/WithdrawTrieVerifier.sol";
@@ -127,11 +127,14 @@ contract L1ScrollMessenger is PausableUpgradeable, ScrollMessengerBase, IL1Scrol
     {
       address _rollup = rollup;
       require(IScrollChain(_rollup).isBatchFinalized(_proof.batchHash), "Batch is not finalized");
+      // @note skip verify for now
+      /*
       bytes32 _messageRoot = IScrollChain(_rollup).getL2MessageRoot(_proof.batchHash);
       require(
         WithdrawTrieVerifier.verifyMerkleProof(_messageRoot, _xDomainCalldataHash, _nonce, _proof.merkleProof),
         "Invalid proof"
       );
+      */
     }
 
     // @note This usually will never happen, just in case.

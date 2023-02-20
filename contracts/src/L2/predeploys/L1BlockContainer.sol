@@ -3,9 +3,11 @@
 pragma solidity ^0.8.0;
 
 import { IL1BlockContainer } from "./IL1BlockContainer.sol";
+import { IL1GasPriceOracle } from "./IL1GasPriceOracle.sol";
 
 import { OwnableBase } from "../../libraries/common/OwnableBase.sol";
 import { IWhitelist } from "../../libraries/common/IWhitelist.sol";
+import { ScrollPredeploy } from "../../libraries/constants/ScrollPredeploy.sol";
 
 /// @title L1BlockContainer
 /// @notice This contract will maintain the list of blocks proposed in L1.
@@ -113,7 +115,7 @@ contract L1BlockContainer is OwnableBase, IL1BlockContainer {
   function importBlockHeader(
     bytes32 _blockHash,
     bytes calldata _blockHeaderRLP,
-    bytes calldata
+    bool _updateGasPriceOracle
   ) external {
     // @todo remove this when ETH 2.0 signature verification is ready.
     {
@@ -279,6 +281,10 @@ contract L1BlockContainer is OwnableBase, IL1BlockContainer {
     metadata[_blockHash] = BlockMetadata(_height, _timestamp, _baseFee);
 
     emit ImportBlock(_blockHash, _height, _timestamp, _baseFee, _stateRoot);
+
+    if (_updateGasPriceOracle) {
+      IL1GasPriceOracle(ScrollPredeploy.L1_GAS_PRICE_ORACLE).setL1BaseFee(_baseFee);
+    }
   }
 
   /************************

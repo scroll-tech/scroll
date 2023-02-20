@@ -10,7 +10,7 @@ import { IL1BlockContainer } from "./predeploys/IL1BlockContainer.sol";
 import { IL1GasPriceOracle } from "./predeploys/IL1GasPriceOracle.sol";
 
 import { PatriciaMerkleTrieVerifier } from "../libraries/verifier/PatriciaMerkleTrieVerifier.sol";
-import { ScrollConstants } from "../libraries/ScrollConstants.sol";
+import { ScrollConstants } from "../libraries/constants/ScrollConstants.sol";
 import { IScrollMessenger } from "../libraries/IScrollMessenger.sol";
 import { ScrollMessengerBase } from "../libraries/ScrollMessengerBase.sol";
 
