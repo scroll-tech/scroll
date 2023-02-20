@@ -9,19 +9,20 @@ import (
 )
 
 // DownloadToDir downloads the file and store it into dir, will do nothing if file exists.
-func DownloadToDir(dir, url string) error {
+// Return the downloaded file path.
+func DownloadToDir(dir, url string) (string, error) {
 	fileName := filepath.Base(url)
 	path := filepath.Join(dir, fileName)
 
 	exists, err := PathExists(path)
 	if err != nil {
-		return err
+		return "", err
 	}
 	if exists {
-		return nil
+		return path, nil
 	}
 
-	return download(path, url)
+	return path, download(path, url)
 }
 
 // DownloadFile downloads file and save in the given path.

@@ -3,14 +3,12 @@
 package libzkp
 
 import (
-	"encoding/json"
-	"github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/stretchr/testify/assert"
-	"io"
 	"os"
 	"path/filepath"
 	"scroll-tech/common/utils"
 	"testing"
+	"time"
 )
 
 const (
@@ -23,7 +21,8 @@ const (
 	circuitVersion = "release-0215"
 	vkPath         = "./assets/agg_vk"
 
-	tracesDir = "./assets/traces"
+	tracePath = "./assets/trace.json"
+	traceUrl  = "https://github.com/scroll-tech/scroll-zkevm/blob/goerli-0215/zkevm/tests/traces/erc20/single.json"
 )
 
 var (
@@ -31,8 +30,6 @@ var (
 	aggParamsUrl = filepath.Join(s3Url, setupVersion, "params26")
 	seedUrl      = filepath.Join(s3Url, setupVersion, "test_seed")
 	vkUrl        = filepath.Join(s3Url, circuitVersion, "verify_circuit.vkey")
-
-	tracesUrl = "https://raw.githubusercontent.com/scroll-tech/scroll-zkevm/main/zkevm/tests/traces/erc20/single.json"
 
 	pvrCfg = &ProverConfig{
 		ParamsPath: paramsDir,
@@ -48,41 +45,27 @@ var (
 	times = flag.Int("times", 1, "prove and verify times")
 )
 
-func TestFFI(t *testing.T) {
-	as := assert.New(t)
-
+func prepare(as *assert.Assertions) {
 	var err error
-	// prepare files
 	os.MkdirAll(paramsDir, os.ModePerm)
-	err = utils.DownloadToDir(paramsDir, paramsUrl)
+	_, err = utils.DownloadToDir(paramsDir, paramsUrl)
 	as.NoError(err)
-	err = utils.DownloadToDir(paramsDir, aggParamsUrl)
+	_, err = utils.DownloadToDir(paramsDir, aggParamsUrl)
 	as.NoError(err)
 	err = utils.DownloadFile(seedPath, seedUrl)
 	as.NoError(err)
 	err = utils.DownloadFile(vkPath, vkUrl)
 	as.NoError(err)
-
-	files, err := os.ReadDir(tracesDir)
+	err = utils.DownloadFile(tracePath, traceUrl)
 	as.NoError(err)
+}
 
-	traces := make([]*types.BlockTrace, 0)
-	for _, file := range files {
-		var (
-			f   *os.File
-			byt []byte
-		)
-		f, err = os.Open(filepath.Join(tracesDir, file.Name()))
-		as.NoError(err)
-		byt, err = io.ReadAll(f)
-		as.NoError(err)
-		trace := &types.BlockTrace{}
-		as.NoError(json.Unmarshal(byt, trace))
-		traces = append(traces, trace)
-	}
+func TestZkp(t *testing.T) {
+	as := assert.New(t)
+
+	prepare(as)
 
 	var proof *message.AggProof
-
 	// test prove
 	pvr, err := NewProver(pvrCfg)
 	as.NoError(err)
@@ -103,8 +86,4 @@ func TestFFI(t *testing.T) {
 		as.True(ok)
 		t.Logf("%d: verify successfully! cost %f sec", i+1, time.Since(now).Seconds())
 	}
-
-	// clean files.
-	os.RemoveAll(paramsDir)
-	os.RemoveAll(seedPath)
 }
