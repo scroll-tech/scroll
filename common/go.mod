@@ -12,6 +12,7 @@ require (
 	github.com/scroll-tech/go-ethereum v1.10.14-0.20230216021847-8a78c736a5e1
 	github.com/stretchr/testify v1.8.0
 	github.com/urfave/cli/v2 v2.17.2-0.20221006022127-8f469abc00aa
+	gotest.tools v2.2.0+incompatible
 )
 
 require (
