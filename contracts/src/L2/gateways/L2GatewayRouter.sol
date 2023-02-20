@@ -18,23 +18,6 @@ import { IScrollStandardERC20 } from "../../libraries/token/IScrollStandardERC20
 /// @dev One can also use this contract to query L1/L2 token address mapping.
 /// In the future, ERC-721 and ERC-1155 tokens will be added to the router too.
 contract L2GatewayRouter is OwnableUpgradeable, IL2GatewayRouter {
-  /**********
-   * Events *
-   **********/
-
-  /// @notice Emitted when the address of ETH Gateway is updated.
-  /// @param ethGateway The address of new ETH Gateway.
-  event SetETHGateway(address indexed ethGateway);
-
-  /// @notice Emitted when the address of default ERC20 Gateway is updated.
-  /// @param defaultERC20Gateway The address of new default ERC20 Gateway.
-  event SetDefaultERC20Gateway(address indexed defaultERC20Gateway);
-
-  /// @notice Emitted when the `gateway` for `token` is updated.
-  /// @param token The address of token updated.
-  /// @param gateway The corresponding address of gateway updated.
-  event SetERC20Gateway(address indexed token, address indexed gateway);
-
   /*************
    * Variables *
    *************/
