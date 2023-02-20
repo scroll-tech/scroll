@@ -10,7 +10,7 @@ import (
 
 	"github.com/scroll-tech/go-ethereum/accounts/abi/bind"
 	"github.com/scroll-tech/go-ethereum/common"
-	"github.com/scroll-tech/go-ethereum/core/types"
+	geth_types "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/rpc"
 	"github.com/stretchr/testify/assert"
@@ -18,10 +18,10 @@ import (
 	"scroll-tech/bridge/config"
 	"scroll-tech/bridge/mock_bridge"
 	"scroll-tech/bridge/sender"
+	"scroll-tech/common/types"
 
 	"scroll-tech/database"
 	"scroll-tech/database/migrate"
-	"scroll-tech/database/orm"
 )
 
 func testCreateNewWatcherAndStop(t *testing.T) {
@@ -32,7 +32,7 @@ func testCreateNewWatcherAndStop(t *testing.T) {
 	defer l2db.Close()
 
 	l2cfg := cfg.L2Config
-	rc := NewL2WatcherClient(context.Background(), l2Cli, l2cfg.Confirmations, l2cfg.BatchProposerConfig, l2cfg.L2MessengerAddress, l2db)
+	rc := NewL2WatcherClient(context.Background(), l2Cli, l2cfg.Confirmations, l2cfg.BatchProposerConfig, l2cfg.L2MessengerAddress, nil, l2db)
 	rc.Start()
 	defer rc.Stop()
 
@@ -62,6 +62,11 @@ func testMonitorBridgeContract(t *testing.T) {
 	assert.NoError(t, migrate.ResetDB(db.GetDB().DB))
 	defer db.Close()
 
+	l2cfg := cfg.L2Config
+	wc := NewL2WatcherClient(context.Background(), l2Cli, l2cfg.Confirmations, l2cfg.BatchProposerConfig, l2cfg.L2MessengerAddress, nil, db)
+	wc.Start()
+	defer wc.Stop()
+
 	previousHeight, err := l2Cli.BlockNumber(context.Background())
 	assert.NoError(t, err)
 
@@ -86,7 +91,7 @@ func testMonitorBridgeContract(t *testing.T) {
 	tx, err = instance.SendMessage(auth, toAddress, fee, message, gasLimit)
 	assert.NoError(t, err)
 	receipt, err := bind.WaitMined(context.Background(), l2Cli, tx)
-	if receipt.Status != types.ReceiptStatusSuccessful || err != nil {
+	if receipt.Status != geth_types.ReceiptStatusSuccessful || err != nil {
 		t.Fatalf("Call failed")
 	}
 
@@ -96,7 +101,7 @@ func testMonitorBridgeContract(t *testing.T) {
 	tx, err = instance.SendMessage(auth, toAddress, fee, message, gasLimit)
 	assert.NoError(t, err)
 	receipt, err = bind.WaitMined(context.Background(), l2Cli, tx)
-	if receipt.Status != types.ReceiptStatusSuccessful || err != nil {
+	if receipt.Status != geth_types.ReceiptStatusSuccessful || err != nil {
 		t.Fatalf("Call failed")
 	}
 
@@ -113,7 +118,7 @@ func testMonitorBridgeContract(t *testing.T) {
 	assert.NoError(t, err)
 	t.Log("Height in DB is", height)
 	assert.Greater(t, height, int64(previousHeight))
-	msgs, err := db.GetL2Messages(map[string]interface{}{"status": orm.MsgPending})
+	msgs, err := db.GetL2Messages(map[string]interface{}{"status": types.MsgPending})
 	assert.NoError(t, err)
 	assert.Equal(t, 2, len(msgs))
 }
@@ -141,7 +146,7 @@ func testFetchMultipleSentMessageInOneBlock(t *testing.T) {
 
 	// Call mock_bridge instance sendMessage to trigger emit events multiple times
 	numTransactions := 4
-	var tx *types.Transaction
+	var tx *geth_types.Transaction
 
 	for i := 0; i < numTransactions; i++ {
 		addr := common.HexToAddress("0x1c5a77d9fa7ef466951b2f01f724bca3a5820b63")
@@ -157,7 +162,7 @@ func testFetchMultipleSentMessageInOneBlock(t *testing.T) {
 	}
 
 	receipt, err := bind.WaitMined(context.Background(), l2Cli, tx)
-	if receipt.Status != types.ReceiptStatusSuccessful || err != nil {
+	if receipt.Status != geth_types.ReceiptStatusSuccessful || err != nil {
 		t.Fatalf("Call failed")
 	}
 
@@ -173,7 +178,7 @@ func testFetchMultipleSentMessageInOneBlock(t *testing.T) {
 	tx, err = instance.SendMessage(auth, toAddress, fee, message, gasLimit)
 	assert.NoError(t, err)
 	receipt, err = bind.WaitMined(context.Background(), l2Cli, tx)
-	if receipt.Status != types.ReceiptStatusSuccessful || err != nil {
+	if receipt.Status != geth_types.ReceiptStatusSuccessful || err != nil {
 		t.Fatalf("Call failed")
 	}
 
@@ -185,14 +190,14 @@ func testFetchMultipleSentMessageInOneBlock(t *testing.T) {
 	assert.NoError(t, err)
 	t.Log("LatestHeight is", height)
 	assert.Greater(t, height, int64(previousHeight)) // height must be greater than previousHeight because confirmations is 0
-	msgs, err := db.GetL2Messages(map[string]interface{}{"status": orm.MsgPending})
+	msgs, err := db.GetL2Messages(map[string]interface{}{"status": types.MsgPending})
 	assert.NoError(t, err)
 	assert.Equal(t, 5, len(msgs))
 }
 
 func prepareRelayerClient(l2Cli *ethclient.Client, bpCfg *config.BatchProposerConfig, db database.OrmFactory, contractAddr common.Address) *WatcherClient {
 	confirmations := rpc.LatestBlockNumber
-	return NewL2WatcherClient(context.Background(), l2Cli, confirmations, bpCfg, contractAddr, db)
+	return NewL2WatcherClient(context.Background(), l2Cli, confirmations, bpCfg, contractAddr, nil, db)
 }
 
 func prepareAuth(t *testing.T, l2Cli *ethclient.Client, privateKey *ecdsa.PrivateKey) *bind.TransactOpts {

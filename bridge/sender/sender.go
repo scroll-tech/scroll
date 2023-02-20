@@ -41,16 +41,6 @@ var (
 	ErrNoAvailableAccount = errors.New("sender has no available account to send transaction")
 )
 
-// DefaultSenderConfig The default config
-var DefaultSenderConfig = config.SenderConfig{
-	Endpoint:            "",
-	EscalateBlocks:      3,
-	EscalateMultipleNum: 11,
-	EscalateMultipleDen: 10,
-	MaxGasPrice:         1000_000_000_000, // this is 1000 gwei
-	TxType:              AccessListTxType,
-}
-
 // Confirmation struct used to indicate transaction confirmation details
 type Confirmation struct {
 	ID           string
@@ -97,9 +87,6 @@ type Sender struct {
 // NewSender returns a new instance of transaction sender
 // txConfirmationCh is used to notify confirmed transaction
 func NewSender(ctx context.Context, config *config.SenderConfig, privs []*ecdsa.PrivateKey) (*Sender, error) {
-	if config == nil {
-		config = &DefaultSenderConfig
-	}
 	client, err := ethclient.Dial(config.Endpoint)
 	if err != nil {
 		return nil, err

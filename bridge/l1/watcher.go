@@ -8,14 +8,15 @@ import (
 	geth "github.com/scroll-tech/go-ethereum"
 	"github.com/scroll-tech/go-ethereum/accounts/abi"
 	"github.com/scroll-tech/go-ethereum/common"
-	"github.com/scroll-tech/go-ethereum/core/types"
+	geth_types "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/scroll-tech/go-ethereum/metrics"
 	"github.com/scroll-tech/go-ethereum/rpc"
 
+	"scroll-tech/common/types"
+
 	"scroll-tech/database"
-	"scroll-tech/database/orm"
 
 	bridge_abi "scroll-tech/bridge/abi"
 	"scroll-tech/bridge/utils"
@@ -34,7 +35,7 @@ type relayedMessage struct {
 type rollupEvent struct {
 	batchID common.Hash
 	txHash  common.Hash
-	status  orm.RollupStatus
+	status  types.RollupStatus
 }
 
 // Watcher will listen for smart contract events from Eth L1.
@@ -48,18 +49,20 @@ type Watcher struct {
 	messengerAddress common.Address
 	messengerABI     *abi.ABI
 
-	rollupAddress common.Address
-	rollupABI     *abi.ABI
+	scrollchainAddress common.Address
+	scrollchainABI     *abi.ABI
 
 	// The height of the block that the watcher has retrieved event logs
 	processedMsgHeight uint64
+	// The height of the block that the watcher has retrieved header rlp
+	processedBlockHeight uint64
 
 	stop chan bool
 }
 
 // NewWatcher returns a new instance of Watcher. The instance will be not fully prepared,
 // and still needs to be finalized and ran by calling `watcher.Start`.
-func NewWatcher(ctx context.Context, client *ethclient.Client, startHeight uint64, confirmations rpc.BlockNumber, messengerAddress common.Address, rollupAddress common.Address, db database.OrmFactory) *Watcher {
+func NewWatcher(ctx context.Context, client *ethclient.Client, startHeight uint64, confirmations rpc.BlockNumber, messengerAddress common.Address, scrollchainAddress common.Address, db database.OrmFactory) *Watcher {
 	savedHeight, err := db.GetLayer1LatestWatchedHeight()
 	if err != nil {
 		log.Warn("Failed to fetch height from db", "err", err)
@@ -69,19 +72,29 @@ func NewWatcher(ctx context.Context, client *ethclient.Client, startHeight uint6
 		savedHeight = int64(startHeight)
 	}
 
+	savedL1BlockHeight, err := db.GetLatestL1BlockHeight()
+	if err != nil {
+		log.Warn("Failed to fetch latest L1 block height from db", "err", err)
+		savedL1BlockHeight = 0
+	}
+	if savedL1BlockHeight < startHeight {
+		savedL1BlockHeight = startHeight
+	}
+
 	stop := make(chan bool)
 
 	return &Watcher{
-		ctx:                ctx,
-		client:             client,
-		db:                 db,
-		confirmations:      confirmations,
-		messengerAddress:   messengerAddress,
-		messengerABI:       bridge_abi.L1MessengerMetaABI,
-		rollupAddress:      rollupAddress,
-		rollupABI:          bridge_abi.RollupMetaABI,
-		processedMsgHeight: uint64(savedHeight),
-		stop:               stop,
+		ctx:                  ctx,
+		client:               client,
+		db:                   db,
+		confirmations:        confirmations,
+		messengerAddress:     messengerAddress,
+		messengerABI:         bridge_abi.L1ScrollMessengerABI,
+		scrollchainAddress:   scrollchainAddress,
+		scrollchainABI:       bridge_abi.ScrollchainABI,
+		processedMsgHeight:   uint64(savedHeight),
+		processedBlockHeight: savedL1BlockHeight,
+		stop:                 stop,
 	}
 }
 
@@ -103,6 +116,10 @@ func (w *Watcher) Start() {
 					continue
 				}
 
+				if err := w.fetchBlockHeader(number); err != nil {
+					log.Error("Failed to fetch L1 block header", "lastest", number, "err", err)
+				}
+
 				if err := w.FetchContractEvent(number); err != nil {
 					log.Error("Failed to fetch bridge contract", "err", err)
 				}
@@ -117,6 +134,62 @@ func (w *Watcher) Stop() {
 }
 
 const contractEventsBlocksFetchLimit = int64(10)
+
+// fetchBlockHeader pull latest L1 blocks and save in DB
+func (w *Watcher) fetchBlockHeader(blockHeight uint64) error {
+	fromBlock := int64(w.processedBlockHeight) + 1
+	toBlock := int64(blockHeight) - int64(w.confirmations)
+	if toBlock < fromBlock {
+		return nil
+	}
+	if toBlock > fromBlock+contractEventsBlocksFetchLimit {
+		toBlock = fromBlock + contractEventsBlocksFetchLimit - 1
+	}
+
+	var blocks []*types.L1BlockInfo
+	var err error
+	height := fromBlock
+	for ; height <= toBlock; height++ {
+		var block *geth_types.Block
+		block, err = w.client.BlockByNumber(w.ctx, big.NewInt(height))
+		if err != nil {
+			log.Warn("Failed to get block", "height", height, "err", err)
+			break
+		}
+		/*
+			var headerRLPBytes []byte
+			headerRLPBytes, err = rlp.EncodeToBytes(block.Header())
+			if err != nil {
+				log.Warn("Failed to rlp encode header", "height", height, "err", err)
+				break
+			}
+		*/
+		blocks = append(blocks, &types.L1BlockInfo{
+			Number: uint64(height),
+			Hash:   block.Hash().String(),
+			// no need to import l1 blocks now
+			// HeaderRLP:       common.Bytes2Hex(headerRLPBytes),
+			BaseFee: block.BaseFee().Uint64(),
+		})
+	}
+
+	// failed at first block, return with the error
+	if height == fromBlock {
+		return err
+	}
+	toBlock = height - 1
+
+	// insert succeed blocks
+	err = w.db.InsertL1Blocks(w.ctx, blocks)
+	if err != nil {
+		log.Warn("Failed to insert L1 block to db", "fromBlock", fromBlock, "toBlock", toBlock, "err", err)
+		return err
+	}
+
+	// update processed height
+	w.processedBlockHeight = uint64(toBlock)
+	return nil
+}
 
 // FetchContractEvent pull latest event logs from given contract address and save in DB
 func (w *Watcher) FetchContractEvent(blockHeight uint64) error {
@@ -140,12 +213,12 @@ func (w *Watcher) FetchContractEvent(blockHeight uint64) error {
 			ToBlock:   big.NewInt(to),   // inclusive
 			Addresses: []common.Address{
 				w.messengerAddress,
-				w.rollupAddress,
+				w.scrollchainAddress,
 			},
 			Topics: make([][]common.Hash, 1),
 		}
 		query.Topics[0] = make([]common.Hash, 5)
-		query.Topics[0][0] = common.HexToHash(bridge_abi.SentMessageEventSignature)
+		query.Topics[0][0] = common.HexToHash(bridge_abi.QueueTransactionEventSignature)
 		query.Topics[0][1] = common.HexToHash(bridge_abi.RelayedMessageEventSignature)
 		query.Topics[0][2] = common.HexToHash(bridge_abi.FailedRelayedMessageEventSignature)
 		query.Topics[0][3] = common.HexToHash(bridge_abi.CommitBatchEventSignature)
@@ -190,9 +263,9 @@ func (w *Watcher) FetchContractEvent(blockHeight uint64) error {
 			status := statuses[index]
 			// only update when db status is before event status
 			if event.status > status {
-				if event.status == orm.RollupFinalized {
+				if event.status == types.RollupFinalized {
 					err = w.db.UpdateFinalizeTxHashAndRollupStatus(w.ctx, batchID, event.txHash.String(), event.status)
-				} else if event.status == orm.RollupCommitted {
+				} else if event.status == types.RollupCommitted {
 					err = w.db.UpdateCommitTxHashAndRollupStatus(w.ctx, batchID, event.txHash.String(), event.status)
 				}
 				if err != nil {
@@ -207,10 +280,10 @@ func (w *Watcher) FetchContractEvent(blockHeight uint64) error {
 		for _, msg := range relayedMessageEvents {
 			if msg.isSuccessful {
 				// succeed
-				err = w.db.UpdateLayer2StatusAndLayer1Hash(w.ctx, msg.msgHash.String(), orm.MsgConfirmed, msg.txHash.String())
+				err = w.db.UpdateLayer2StatusAndLayer1Hash(w.ctx, msg.msgHash.String(), types.MsgConfirmed, msg.txHash.String())
 			} else {
 				// failed
-				err = w.db.UpdateLayer2StatusAndLayer1Hash(w.ctx, msg.msgHash.String(), orm.MsgFailed, msg.txHash.String())
+				err = w.db.UpdateLayer2StatusAndLayer1Hash(w.ctx, msg.msgHash.String(), types.MsgFailed, msg.txHash.String())
 			}
 			if err != nil {
 				log.Error("Failed to update layer1 status and layer2 hash", "err", err)
@@ -229,45 +302,43 @@ func (w *Watcher) FetchContractEvent(blockHeight uint64) error {
 	return nil
 }
 
-func (w *Watcher) parseBridgeEventLogs(logs []types.Log) ([]*orm.L1Message, []relayedMessage, []rollupEvent, error) {
+func (w *Watcher) parseBridgeEventLogs(logs []geth_types.Log) ([]*types.L1Message, []relayedMessage, []rollupEvent, error) {
 	// Need use contract abi to parse event Log
 	// Can only be tested after we have our contracts set up
 
-	var l1Messages []*orm.L1Message
+	var l1Messages []*types.L1Message
 	var relayedMessages []relayedMessage
 	var rollupEvents []rollupEvent
 	for _, vLog := range logs {
 		switch vLog.Topics[0] {
-		case common.HexToHash(bridge_abi.SentMessageEventSignature):
+
+		case common.HexToHash(bridge_abi.QueueTransactionEventSignature):
 			event := struct {
-				Target       common.Address
-				Sender       common.Address
-				Value        *big.Int // uint256
-				Fee          *big.Int // uint256
-				Deadline     *big.Int // uint256
-				Message      []byte
-				MessageNonce *big.Int // uint256
-				GasLimit     *big.Int // uint256
+				Sender     common.Address
+				Target     common.Address
+				Value      *big.Int // uint256
+				QueueIndex *big.Int // uint256
+				GasLimit   *big.Int // uint256
+				Data       []byte
 			}{}
 
-			err := w.messengerABI.UnpackIntoInterface(&event, "SentMessage", vLog.Data)
+			err := w.messengerABI.UnpackIntoInterface(&event, "QueueTransaction", vLog.Data)
 			if err != nil {
-				log.Warn("Failed to unpack layer1 SentMessage event", "err", err)
+				log.Warn("Failed to unpack layer1 QueueTransaction event", "err", err)
 				return l1Messages, relayedMessages, rollupEvents, err
 			}
 			// target is in topics[1]
 			event.Target = common.HexToAddress(vLog.Topics[1].String())
-			l1Messages = append(l1Messages, &orm.L1Message{
-				Nonce:      event.MessageNonce.Uint64(),
-				MsgHash:    utils.ComputeMessageHash(event.Sender, event.Target, event.Value, event.Fee, event.Deadline, event.Message, event.MessageNonce).String(),
+			l1Messages = append(l1Messages, &types.L1Message{
+				QueueIndex: event.QueueIndex.Uint64(),
+				// MsgHash:    utils.ComputeMessageHash(event.Sender, event.Target, event.Value, event.Fee, event.Deadline, event.Message, event.MessageNonce).String(),
+				// MsgHash: // todo: use encodeXDomainData from contracts,
 				Height:     vLog.BlockNumber,
 				Sender:     event.Sender.String(),
 				Value:      event.Value.String(),
-				Fee:        event.Fee.String(),
-				GasLimit:   event.GasLimit.Uint64(),
-				Deadline:   event.Deadline.Uint64(),
 				Target:     event.Target.String(),
-				Calldata:   common.Bytes2Hex(event.Message),
+				Calldata:   common.Bytes2Hex(event.Data),
+				GasLimit:   event.GasLimit.Uint64(),
 				Layer1Hash: vLog.TxHash.Hex(),
 			})
 		case common.HexToHash(bridge_abi.RelayedMessageEventSignature):
@@ -301,7 +372,7 @@ func (w *Watcher) parseBridgeEventLogs(logs []types.Log) ([]*orm.L1Message, []re
 			}{}
 			// BatchID is in topics[1]
 			event.BatchID = common.HexToHash(vLog.Topics[1].String())
-			err := w.rollupABI.UnpackIntoInterface(&event, "CommitBatch", vLog.Data)
+			err := w.scrollchainABI.UnpackIntoInterface(&event, "CommitBatch", vLog.Data)
 			if err != nil {
 				log.Warn("Failed to unpack layer1 CommitBatch event", "err", err)
 				return l1Messages, relayedMessages, rollupEvents, err
@@ -310,7 +381,7 @@ func (w *Watcher) parseBridgeEventLogs(logs []types.Log) ([]*orm.L1Message, []re
 			rollupEvents = append(rollupEvents, rollupEvent{
 				batchID: event.BatchID,
 				txHash:  vLog.TxHash,
-				status:  orm.RollupCommitted,
+				status:  types.RollupCommitted,
 			})
 		case common.HexToHash(bridge_abi.FinalizedBatchEventSignature):
 			event := struct {
@@ -321,7 +392,7 @@ func (w *Watcher) parseBridgeEventLogs(logs []types.Log) ([]*orm.L1Message, []re
 			}{}
 			// BatchID is in topics[1]
 			event.BatchID = common.HexToHash(vLog.Topics[1].String())
-			err := w.rollupABI.UnpackIntoInterface(&event, "FinalizeBatch", vLog.Data)
+			err := w.scrollchainABI.UnpackIntoInterface(&event, "FinalizeBatch", vLog.Data)
 			if err != nil {
 				log.Warn("Failed to unpack layer1 FinalizeBatch event", "err", err)
 				return l1Messages, relayedMessages, rollupEvents, err
@@ -330,7 +401,7 @@ func (w *Watcher) parseBridgeEventLogs(logs []types.Log) ([]*orm.L1Message, []re
 			rollupEvents = append(rollupEvents, rollupEvent{
 				batchID: event.BatchID,
 				txHash:  vLog.TxHash,
-				status:  orm.RollupFinalized,
+				status:  types.RollupFinalized,
 			})
 		default:
 			log.Error("Unknown event", "topic", vLog.Topics[0], "txHash", vLog.TxHash)

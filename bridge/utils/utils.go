@@ -23,18 +23,16 @@ func ComputeMessageHash(
 	sender common.Address,
 	target common.Address,
 	value *big.Int,
-	fee *big.Int,
-	deadline *big.Int,
-	message []byte,
 	messageNonce *big.Int,
+	gasLimit *big.Int,
+	message []byte,
 ) common.Hash {
 	packed := encodePacked(
 		sender.Bytes(),
 		target.Bytes(),
 		math.U256Bytes(value),
-		math.U256Bytes(fee),
-		math.U256Bytes(deadline),
 		math.U256Bytes(messageNonce),
+		math.U256Bytes(gasLimit),
 		message,
 	)
 	return common.BytesToHash(keccak256.Hash(packed))

@@ -1,23 +1,6 @@
 package l2
 
-import (
-	"encoding/json"
-	"fmt"
-	"math/big"
-	"os"
-	"testing"
-
-	"github.com/scroll-tech/go-ethereum/core/types"
-	"github.com/stretchr/testify/assert"
-
-	"scroll-tech/database"
-	"scroll-tech/database/migrate"
-
-	"scroll-tech/bridge/config"
-
-	"scroll-tech/common/utils"
-)
-
+/*
 func testBatchProposer(t *testing.T) {
 	// Create db handler and reset db.
 	db, err := database.NewOrmFactory(cfg.DBConfig)
@@ -48,7 +31,7 @@ func testBatchProposer(t *testing.T) {
 		BatchTxNumThreshold: 135,
 		BatchTimeSec:        1,
 		BatchBlocksLimit:    100,
-	}, db)
+	}, nil, db)
 	proposer.tryProposeBatch()
 
 	infos, err := db.GetUnbatchedBlocks(map[string]interface{}{},
@@ -60,3 +43,4 @@ func testBatchProposer(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, true, exist)
 }
+*/

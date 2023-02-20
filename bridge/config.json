@@ -7,6 +7,7 @@
     "start_height": 0,
     "relayer_config": {
       "messenger_contract_address": "0x0000000000000000000000000000000000000000",
+      "gas_price_oracle_address": "0x0000000000000000000000000000000000000000",
       "sender_config": {
         "endpoint": "/var/lib/jenkins/workspace/SequencerPipeline/MyPrivateNetwork/geth.ipc",
         "check_pending_time": 3,
@@ -20,6 +21,9 @@
       },
       "message_sender_private_keys": [
         "1212121212121212121212121212121212121212121212121212121212121212"
+      ],
+      "gas_oracle_sender_private_keys": [
+        "1212121212121212121212121212121212121212121212121212121212121212"
       ]
     }
   },
@@ -30,6 +34,7 @@
     "relayer_config": {
       "rollup_contract_address": "0x0000000000000000000000000000000000000000",
       "messenger_contract_address": "0x0000000000000000000000000000000000000000",
+      "gas_price_oracle_address": "0x0000000000000000000000000000000000000000",
       "sender_config": {
         "endpoint": "https://goerli.infura.io/v3/9aa3d95b3bc440fa88ea12eaa4456161",
         "check_pending_time": 10,
@@ -42,6 +47,9 @@
         "min_balance": 100000000000000000000
       },
       "message_sender_private_keys": [
+        "1212121212121212121212121212121212121212121212121212121212121212"
+      ],
+      "gas_oracle_sender_private_keys": [
         "1212121212121212121212121212121212121212121212121212121212121212"
       ],
       "rollup_sender_private_keys": [
