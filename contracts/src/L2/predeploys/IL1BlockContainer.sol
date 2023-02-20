@@ -54,10 +54,10 @@ interface IL1BlockContainer {
   /// @notice Import L1 block header to this contract.
   /// @param blockHash The hash of block.
   /// @param blockHeaderRLP The RLP encoding of L1 block.
-  /// @param signature The ETH 2.0 signatures for the block header.
+  /// @param updateGasPriceOracle Whether to update gas price oracle.
   function importBlockHeader(
     bytes32 blockHash,
     bytes calldata blockHeaderRLP,
-    bytes calldata signature
+    bool updateGasPriceOracle
   ) external;
 }
