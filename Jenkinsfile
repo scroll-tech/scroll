@@ -13,6 +13,8 @@ pipeline {
     environment {
         GO111MODULE = 'on'
         PATH="/home/ubuntu/.cargo/bin:$PATH"
+        LD_LIBRARY_PATH="$LD_LIBRARY_PATH:./coordinator/verifier/lib"
+        CHAIN_ID='534353'
         // LOG_DOCKER = 'true'
     }
     stages {

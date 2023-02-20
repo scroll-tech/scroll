@@ -58,7 +58,7 @@ func (w *batchProposer) tryProposeBatch() {
 
 	if blocks[0].GasUsed > w.batchGasThreshold {
 		log.Warn("gas overflow even for only 1 block", "height", blocks[0].Number, "gas", blocks[0].GasUsed)
-		if err = w.createBatchForBlocks(blocks[:1]); err != nil {
+		if _, err = w.createBatchForBlocks(blocks[:1]); err != nil {
 			log.Error("failed to create batch", "number", blocks[0].Number, "err", err)
 		}
 		return
@@ -66,7 +66,7 @@ func (w *batchProposer) tryProposeBatch() {
 
 	if blocks[0].TxNum > w.batchTxNumThreshold {
 		log.Warn("too many txs even for only 1 block", "height", blocks[0].Number, "tx_num", blocks[0].TxNum)
-		if err = w.createBatchForBlocks(blocks[:1]); err != nil {
+		if _, err = w.createBatchForBlocks(blocks[:1]); err != nil {
 			log.Error("failed to create batch", "number", blocks[0].Number, "err", err)
 		}
 		return
@@ -93,15 +93,15 @@ func (w *batchProposer) tryProposeBatch() {
 		return
 	}
 
-	if err = w.createBatchForBlocks(blocks); err != nil {
+	if _, err = w.createBatchForBlocks(blocks); err != nil {
 		log.Error("failed to create batch", "from", blocks[0].Number, "to", blocks[len(blocks)-1].Number, "err", err)
 	}
 }
 
-func (w *batchProposer) createBatchForBlocks(blocks []*orm.BlockInfo) error {
+func (w *batchProposer) createBatchForBlocks(blocks []*orm.BlockInfo) (string, error) {
 	dbTx, err := w.orm.Beginx()
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	var dbTxErr error
@@ -128,13 +128,13 @@ func (w *batchProposer) createBatchForBlocks(blocks []*orm.BlockInfo) error {
 
 	batchID, dbTxErr = w.orm.NewBatchInDBTx(dbTx, startBlock, endBlock, startBlock.ParentHash, txNum, gasUsed)
 	if dbTxErr != nil {
-		return dbTxErr
+		return "", dbTxErr
 	}
 
 	if dbTxErr = w.orm.SetBatchIDForBlocksInDBTx(dbTx, blockIDs, batchID); dbTxErr != nil {
-		return dbTxErr
+		return "", dbTxErr
 	}
 
 	dbTxErr = dbTx.Commit()
-	return dbTxErr
+	return batchID, dbTxErr
 }
