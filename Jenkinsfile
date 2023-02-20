@@ -31,12 +31,12 @@ pipeline {
                         sh 'make -C bridge bridge'
                     }
                 }
-                //stage('Check Coordinator Compilation') {
-                //    steps {
-                //        sh 'export PATH=/home/ubuntu/go/bin:$PATH'
-                //        sh 'make -C coordinator coordinator'
-                //    }
-                //}
+                stage('Check Coordinator Compilation') {
+                    steps {
+                        sh 'export PATH=/home/ubuntu/go/bin:$PATH'
+                        sh 'make -C coordinator coordinator'
+                    }
+                }
                 stage('Check Database Compilation') {
                     steps {
                         sh 'make -C database db_cli'
