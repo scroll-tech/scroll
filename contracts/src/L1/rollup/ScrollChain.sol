@@ -236,12 +236,9 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
     // check whether the batch is empty
     require(_batch.blocks.length > 0, "Batch is empty");
 
-    uint64 accTotalL1Messages;
-    if (!_isGenesis) {
-      BatchStored storage _parentBatch = batches[_batch.parentBatchHash];
-      require(_parentBatch.newStateRoot != bytes32(0), "Parent batch is not committed");
-      accTotalL1Messages = _parentBatch.totalL1Messages;
-    }
+    BatchStored storage _parentBatch = batches[_batch.parentBatchHash];
+    require(_parentBatch.newStateRoot == _batch.prevStateRoot, "prevStateRoot is different from newStateRoot in the parent batch");
+    uint64 accTotalL1Messages = _parentBatch.totalL1Messages;
 
     bytes32 publicInputHash;
     uint64 numTransactionsInBatch;
@@ -253,7 +250,6 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
 
     BatchStored storage _batchInStorage = batches[publicInputHash];
 
-    // @todo maybe add parent batch check later.
     require(_batchInStorage.newStateRoot == bytes32(0), "Batch already commited");
     _batchInStorage.newStateRoot = _batch.newStateRoot;
     _batchInStorage.withdrawTrieRoot = _batch.withdrawTrieRoot;
