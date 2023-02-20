@@ -468,7 +468,7 @@ Emitted when the address of default ERC20 Gateway is updated.
 
 | Name | Type | Description |
 |---|---|---|
-| defaultERC20Gateway `indexed` | address | The address of new default ERC20 Gateway. |
+| defaultERC20Gateway `indexed` | address | undefined |
 
 ### SetERC20Gateway
 
@@ -484,8 +484,8 @@ Emitted when the `gateway` for `token` is updated.
 
 | Name | Type | Description |
 |---|---|---|
-| token `indexed` | address | The address of token updated. |
-| gateway `indexed` | address | The corresponding address of gateway updated. |
+| token `indexed` | address | undefined |
+| gateway `indexed` | address | undefined |
 
 ### SetETHGateway
 
@@ -501,7 +501,7 @@ Emitted when the address of ETH Gateway is updated.
 
 | Name | Type | Description |
 |---|---|---|
-| ethGateway `indexed` | address | The address of new ETH Gateway. |
+| ethGateway `indexed` | address | undefined |
 
 ### WithdrawERC20
 
