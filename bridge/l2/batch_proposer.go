@@ -150,20 +150,12 @@ func (p *batchProposer) tryCommitBatches() {
 	}
 
 	// try sending commit tx for batchDataBuffer[0:index]
-	succeed := false
-	for retry := 0; retry < 5; retry++ {
-		err := p.relayer.SendCommitTx(p.batchDataBuffer[:index])
-		if err != nil {
-			log.Error("SendCommitTx failed", "error", err)
-			// retry after sleep.
-			time.Sleep(time.Millisecond * 500)
-		} else {
-			succeed = true
-			break
-		}
-	}
-	if succeed {
-		// clear buffer.
+	err := p.relayer.SendCommitTx(p.batchDataBuffer[:index])
+	if err != nil {
+		// leave the retry to the next ticker
+		log.Error("SendCommitTx failed", "error", err)
+	} else {
+		// pop the processed batches from the buffer
 		p.batchDataBuffer = p.batchDataBuffer[index+1:]
 	}
 }

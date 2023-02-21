@@ -2,7 +2,6 @@ package l2
 
 import (
 	"context"
-	"encoding/binary"
 	"errors"
 	"fmt"
 	"math/big"
@@ -341,49 +340,47 @@ func (r *Layer2Relayer) ProcessGasPriceOracle() {
 // SendCommitTx sends commitBatches tx to L1.
 func (r *Layer2Relayer) SendCommitTx(batchData []*types.BatchData) error {
 	if len(batchData) == 0 {
-		log.Error("empty layer2Batches")
+		log.Error("SendCommitTx receives empty batch")
 		return nil
 	}
+
+	// pack calldata
 	commitBatches := make([]*bridge_abi.IScrollChainBatch, len(batchData))
 	for i, batch := range batchData {
 		commitBatches[i] = &batch.Batch
 	}
-	data, err := r.l1RollupABI.Pack("commitBatches", commitBatches)
+	calldata, err := r.l1RollupABI.Pack("commitBatches", commitBatches)
 	if err != nil {
-		log.Error("Failed to pack commitBatches", "err", err)
-		for _, batch := range commitBatches {
-			log.Error("Batch Info", "index", batch.BatchIndex)
-		}
+		log.Error("Failed to pack commitBatches",
+				  "error", err,
+				  "start_batch_index", commitBatches[0].BatchIndex,
+				  "end_batch_index", commitBatches[len(commitBatches)-1].BatchIndex)
 		return err
 	}
 
-	buf := make([]byte, 8)
-	hasher := crypto.NewKeccakState()
-	for _, batch := range commitBatches {
-		binary.BigEndian.PutUint64(buf, batch.BatchIndex)
-		_, _ = hasher.Write(buf)
+	// generate a unique txID and send transaction
+	var bytes []byte
+	for _, batch := range batchData {
+		bytes = append(bytes, batch.Hash().Bytes()...)
 	}
-	txID := new(common.Hash)
-	_, _ = hasher.Read(txID[:])
-	hash, err := r.rollupSender.SendTransaction(txID.String(), &r.cfg.RollupContractAddress, big.NewInt(0), data)
+	txID := crypto.Keccak256Hash(bytes).String()
+	txHash, err := r.rollupSender.SendTransaction(txID, &r.cfg.RollupContractAddress, big.NewInt(0), calldata)
 	if err != nil {
 		if !errors.Is(err, sender.ErrNoAvailableAccount) {
 			log.Error("Failed to send commitBatches tx to layer1 ", "err", err)
-			for _, batch := range commitBatches {
-				log.Error("Batch Info", "index", batch.BatchIndex)
-			}
 		}
 		return err
 	}
-	log.Info("commitBatches in layer1", "hash", hash)
-	for _, batch := range commitBatches {
-		log.Error("Batch Info", "index", batch.BatchIndex)
-	}
+	log.Info("Sent the commitBatches tx to layer1",
+			 "hash", txHash,
+			 "start_batch_index", commitBatches[0].BatchIndex,
+			 "end_batch_index", commitBatches[len(commitBatches)-1].BatchIndex)
+
 	// record and sync with db, @todo handle db error
 	batchHashes := make([]string, len(batchData))
 	for i, batch := range batchData {
 		batchHashes[i] = batch.Hash().Hex()
-		err = r.db.UpdateCommitTxHashAndRollupStatus(r.ctx, batchHashes[i], hash.String(), types.RollupCommitting)
+		err = r.db.UpdateCommitTxHashAndRollupStatus(r.ctx, batchHashes[i], txHash.String(), types.RollupCommitting)
 		if err != nil {
 			log.Error("UpdateCommitTxHashAndRollupStatus failed", "id", batchHashes[i], "index", batch.Batch.BatchIndex, "err", err)
 		}
