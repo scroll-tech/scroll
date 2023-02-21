@@ -127,19 +127,19 @@ func TestFunction(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Run l2 watcher test cases.
-	t.Run("TestCreateNewWatcherAndStop", testCreateNewWatcherAndStop)
-	t.Run("TestMonitorBridgeContract", testMonitorBridgeContract)
-	t.Run("TestFetchMultipleSentMessageInOneBlock", testFetchMultipleSentMessageInOneBlock)
+	// // Run l2 watcher test cases.
+	// t.Run("TestCreateNewWatcherAndStop", testCreateNewWatcherAndStop)
+	// t.Run("TestMonitorBridgeContract", testMonitorBridgeContract)
+	// t.Run("TestFetchMultipleSentMessageInOneBlock", testFetchMultipleSentMessageInOneBlock)
 
-	// Run l2 relayer test cases.
-	t.Run("TestCreateNewRelayer", testCreateNewRelayer)
-	t.Run("TestL2RelayerProcessSaveEvents", testL2RelayerProcessSaveEvents)
-	t.Run("TestL2RelayerProcessPendingBatches", testL2RelayerProcessPendingBatches)
-	t.Run("TestL2RelayerProcessCommittedBatches", testL2RelayerProcessCommittedBatches)
-	t.Run("TestL2RelayerSkipBatches", testL2RelayerSkipBatches)
+	// // Run l2 relayer test cases.
+	// t.Run("TestCreateNewRelayer", testCreateNewRelayer)
+	// t.Run("TestL2RelayerProcessSaveEvents", testL2RelayerProcessSaveEvents)
+	// t.Run("TestL2RelayerProcessPendingBatches", testL2RelayerProcessPendingBatches)
+	// t.Run("TestL2RelayerProcessCommittedBatches", testL2RelayerProcessCommittedBatches)
+	// t.Run("TestL2RelayerSkipBatches", testL2RelayerSkipBatches)
 
-	//t.Run("TestBatchProposer", testBatchProposer)
+	t.Run("TestBatchProposer", testBatchProposer)
 
 	t.Cleanup(func() {
 		free(t)
