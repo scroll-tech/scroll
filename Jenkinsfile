@@ -32,10 +32,10 @@ pipeline {
                     }
                 }
                 stage('Check Coordinator Compilation') {
-                   steps {
-                       sh 'export PATH=/home/ubuntu/go/bin:$PATH'
-                       sh 'make -C coordinator coordinator'
-                   }
+                    steps {
+                        sh 'export PATH=/home/ubuntu/go/bin:$PATH'
+                        sh 'make -C coordinator coordinator'
+                    }
                 }
                 stage('Check Database Compilation') {
                     steps {
