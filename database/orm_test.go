@@ -388,10 +388,10 @@ func testOrmSessionInfo(t *testing.T) {
 	assert.NoError(t, ormBatch.UpdateProvingStatus(batchHash, types.ProvingTaskAssigned))
 
 	// empty
-	ids, err := ormBatch.GetAssignedBatchHashes()
+	hashes, err := ormBatch.GetAssignedBatchHashes()
 	assert.NoError(t, err)
-	assert.Equal(t, 1, len(ids))
-	sessionInfos, err := ormSession.GetSessionInfosByIDs(ids)
+	assert.Equal(t, 1, len(hashes))
+	sessionInfos, err := ormSession.GetSessionInfosByHashes(hashes)
 	assert.NoError(t, err)
 	assert.Equal(t, 0, len(sessionInfos))
 
@@ -408,7 +408,7 @@ func testOrmSessionInfo(t *testing.T) {
 
 	// insert
 	assert.NoError(t, ormSession.SetSessionInfo(&sessionInfo))
-	sessionInfos, err = ormSession.GetSessionInfosByIDs(ids)
+	sessionInfos, err = ormSession.GetSessionInfosByHashes(hashes)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(sessionInfos))
 	assert.Equal(t, sessionInfo, *sessionInfos[0])
@@ -416,17 +416,17 @@ func testOrmSessionInfo(t *testing.T) {
 	// update
 	sessionInfo.Rollers["0"].Status = types.RollerProofValid
 	assert.NoError(t, ormSession.SetSessionInfo(&sessionInfo))
-	sessionInfos, err = ormSession.GetSessionInfosByIDs(ids)
+	sessionInfos, err = ormSession.GetSessionInfosByHashes(hashes)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(sessionInfos))
 	assert.Equal(t, sessionInfo, *sessionInfos[0])
 
 	// delete
 	assert.NoError(t, ormBatch.UpdateProvingStatus(batchHash, types.ProvingTaskVerified))
-	ids, err = ormBatch.GetAssignedBatchHashes()
+	hashes, err = ormBatch.GetAssignedBatchHashes()
 	assert.NoError(t, err)
-	assert.Equal(t, 0, len(ids))
-	sessionInfos, err = ormSession.GetSessionInfosByIDs(ids)
+	assert.Equal(t, 0, len(hashes))
+	sessionInfos, err = ormSession.GetSessionInfosByHashes(hashes)
 	assert.NoError(t, err)
 	assert.Equal(t, 0, len(sessionInfos))
 }

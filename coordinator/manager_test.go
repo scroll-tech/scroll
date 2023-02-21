@@ -269,12 +269,12 @@ func testValidProof(t *testing.T) {
 	}()
 	assert.Equal(t, 3, rollerManager.GetNumberOfIdleRollers())
 
-	var ids = make([]string, 1)
+	var hashes = make([]string, 1)
 	dbTx, err := l2db.Beginx()
 	assert.NoError(t, err)
-	for i := range ids {
+	for i := range hashes {
 		assert.NoError(t, l2db.NewBatchInDBTx(dbTx, batchData))
-		ids[i] = batchData.Hash().Hex()
+		hashes[i] = batchData.Hash().Hex()
 	}
 	assert.NoError(t, dbTx.Commit())
 
@@ -283,13 +283,13 @@ func testValidProof(t *testing.T) {
 		tick     = time.Tick(500 * time.Millisecond)
 		tickStop = time.Tick(10 * time.Second)
 	)
-	for len(ids) > 0 {
+	for len(hashes) > 0 {
 		select {
 		case <-tick:
-			status, err := l2db.GetProvingStatusByHash(ids[0])
+			status, err := l2db.GetProvingStatusByHash(hashes[0])
 			assert.NoError(t, err)
 			if status == types.ProvingTaskVerified {
-				ids = ids[1:]
+				hashes = hashes[1:]
 			}
 		case <-tickStop:
 			t.Error("failed to check proof status")
@@ -327,12 +327,12 @@ func testInvalidProof(t *testing.T) {
 	}()
 	assert.Equal(t, 3, rollerManager.GetNumberOfIdleRollers())
 
-	var ids = make([]string, 1)
+	var hashes = make([]string, 1)
 	dbTx, err := l2db.Beginx()
 	assert.NoError(t, err)
-	for i := range ids {
+	for i := range hashes {
 		assert.NoError(t, l2db.NewBatchInDBTx(dbTx, batchData))
-		ids[i] = batchData.Hash().Hex()
+		hashes[i] = batchData.Hash().Hex()
 	}
 	assert.NoError(t, dbTx.Commit())
 
@@ -341,13 +341,13 @@ func testInvalidProof(t *testing.T) {
 		tick     = time.Tick(500 * time.Millisecond)
 		tickStop = time.Tick(10 * time.Second)
 	)
-	for len(ids) > 0 {
+	for len(hashes) > 0 {
 		select {
 		case <-tick:
-			status, err := l2db.GetProvingStatusByHash(ids[0])
+			status, err := l2db.GetProvingStatusByHash(hashes[0])
 			assert.NoError(t, err)
 			if status == types.ProvingTaskFailed {
-				ids = ids[1:]
+				hashes = hashes[1:]
 			}
 		case <-tickStop:
 			t.Error("failed to check proof status")
@@ -386,12 +386,12 @@ func testIdleRollerSelection(t *testing.T) {
 
 	assert.Equal(t, len(rollers), rollerManager.GetNumberOfIdleRollers())
 
-	var ids = make([]string, 1)
+	var hashes = make([]string, 1)
 	dbTx, err := l2db.Beginx()
 	assert.NoError(t, err)
-	for i := range ids {
+	for i := range hashes {
 		assert.NoError(t, l2db.NewBatchInDBTx(dbTx, batchData))
-		ids[i] = batchData.Hash().Hex()
+		hashes[i] = batchData.Hash().Hex()
 	}
 	assert.NoError(t, dbTx.Commit())
 
@@ -400,13 +400,13 @@ func testIdleRollerSelection(t *testing.T) {
 		tick     = time.Tick(500 * time.Millisecond)
 		tickStop = time.Tick(10 * time.Second)
 	)
-	for len(ids) > 0 {
+	for len(hashes) > 0 {
 		select {
 		case <-tick:
-			status, err := l2db.GetProvingStatusByHash(ids[0])
+			status, err := l2db.GetProvingStatusByHash(hashes[0])
 			assert.NoError(t, err)
 			if status == types.ProvingTaskVerified {
-				ids = ids[1:]
+				hashes = hashes[1:]
 			}
 		case <-tickStop:
 			t.Error("failed to check proof status")
@@ -422,12 +422,12 @@ func testGracefulRestart(t *testing.T) {
 	assert.NoError(t, migrate.ResetDB(l2db.GetDB().DB))
 	defer l2db.Close()
 
-	var ids = make([]string, 1)
+	var hashes = make([]string, 1)
 	dbTx, err := l2db.Beginx()
 	assert.NoError(t, err)
-	for i := range ids {
+	for i := range hashes {
 		assert.NoError(t, l2db.NewBatchInDBTx(dbTx, batchData))
-		ids[i] = batchData.Hash().Hex()
+		hashes[i] = batchData.Hash().Hex()
 	}
 	assert.NoError(t, dbTx.Commit())
 
@@ -456,13 +456,13 @@ func testGracefulRestart(t *testing.T) {
 		newRollerManager.Stop()
 	}()
 
-	for i := range ids {
-		info, err := newRollerManager.GetSessionInfo(ids[i])
+	for i := range hashes {
+		info, err := newRollerManager.GetSessionInfo(hashes[i])
 		assert.Equal(t, types.ProvingTaskAssigned.String(), info.Status)
 		assert.NoError(t, err)
 
 		// at this point, roller haven't submitted
-		status, err := l2db.GetProvingStatusByHash(ids[i])
+		status, err := l2db.GetProvingStatusByHash(hashes[i])
 		assert.NoError(t, err)
 		assert.Equal(t, types.ProvingTaskAssigned, status)
 	}
@@ -476,15 +476,15 @@ func testGracefulRestart(t *testing.T) {
 		tick     = time.Tick(500 * time.Millisecond)
 		tickStop = time.Tick(15 * time.Second)
 	)
-	for len(ids) > 0 {
+	for len(hashes) > 0 {
 		select {
 		case <-tick:
 			// this proves that the roller submits to the new coordinator,
 			// because the roller client for `submitProof` has been overwritten
-			status, err := l2db.GetProvingStatusByHash(ids[0])
+			status, err := l2db.GetProvingStatusByHash(hashes[0])
 			assert.NoError(t, err)
 			if status == types.ProvingTaskVerified {
-				ids = ids[1:]
+				hashes = hashes[1:]
 			}
 
 		case <-tickStop:

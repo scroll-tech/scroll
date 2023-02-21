@@ -42,7 +42,7 @@ type BlockTraceOrm interface {
 
 // SessionInfoOrm sessions info operation inte
 type SessionInfoOrm interface {
-	GetSessionInfosByIDs(ids []string) ([]*types.SessionInfo, error)
+	GetSessionInfosByHashes(hashes []string) ([]*types.SessionInfo, error)
 	SetSessionInfo(rollersInfo *types.SessionInfo) error
 }
 
@@ -59,7 +59,7 @@ type BlockBatchOrm interface {
 	GetPendingBatches(limit uint64) ([]string, error)
 	GetCommittedBatches(limit uint64) ([]string, error)
 	GetRollupStatus(hash string) (types.RollupStatus, error)
-	GetRollupStatusByHashList(ids []string) ([]types.RollupStatus, error)
+	GetRollupStatusByHashList(hashes []string) ([]types.RollupStatus, error)
 	GetLatestBatch() (*types.BlockBatch, error)
 	GetLatestCommittedBatch() (*types.BlockBatch, error)
 	GetLatestFinalizedBatch() (*types.BlockBatch, error)

@@ -183,9 +183,9 @@ func (m *Manager) restorePrevSessions() {
 
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	if ids, err := m.orm.GetAssignedBatchHashes(); err != nil {
-		log.Error("failed to get assigned batch ids from db", "error", err)
-	} else if prevSessions, err := m.orm.GetSessionInfosByIDs(ids); err != nil {
+	if hashes, err := m.orm.GetAssignedBatchHashes(); err != nil {
+		log.Error("failed to get assigned batch hashes from db", "error", err)
+	} else if prevSessions, err := m.orm.GetSessionInfosByHashes(hashes); err != nil {
 		log.Error("failed to recover roller session info from db", "error", err)
 	} else {
 		for _, v := range prevSessions {

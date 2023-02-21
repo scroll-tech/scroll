@@ -19,11 +19,11 @@ func NewSessionInfoOrm(db *sqlx.DB) SessionInfoOrm {
 	return &sessionInfoOrm{db: db}
 }
 
-func (o *sessionInfoOrm) GetSessionInfosByIDs(ids []string) ([]*types.SessionInfo, error) {
-	if len(ids) == 0 {
+func (o *sessionInfoOrm) GetSessionInfosByHashes(hashes []string) ([]*types.SessionInfo, error) {
+	if len(hashes) == 0 {
 		return nil, nil
 	}
-	query, args, err := sqlx.In("SELECT rollers_info FROM session_info WHERE id IN (?);", ids)
+	query, args, err := sqlx.In("SELECT rollers_info FROM session_info WHERE hash IN (?);", hashes)
 	if err != nil {
 		return nil, err
 	}
@@ -51,7 +51,7 @@ func (o *sessionInfoOrm) SetSessionInfo(rollersInfo *types.SessionInfo) error {
 	if err != nil {
 		return err
 	}
-	sqlStr := "INSERT INTO session_info (id, rollers_info) VALUES ($1, $2) ON CONFLICT (id) DO UPDATE SET rollers_info = EXCLUDED.rollers_info;"
+	sqlStr := "INSERT INTO session_info (hash, rollers_info) VALUES ($1, $2) ON CONFLICT (hash) DO UPDATE SET rollers_info = EXCLUDED.rollers_info;"
 	_, err = o.db.Exec(sqlStr, rollersInfo.ID, infoBytes)
 	return err
 }
