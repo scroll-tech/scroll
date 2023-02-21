@@ -15,6 +15,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"scroll-tech/bridge/config"
+	"scroll-tech/bridge/mock_bridge"
 
 	"scroll-tech/common/docker"
 )
@@ -39,19 +40,17 @@ var (
 	l1Auth *bind.TransactOpts
 	l2Auth *bind.TransactOpts
 
-	/*
-		// l1 messenger contract
-		l1MessengerInstance *mock_bridge.MockBridgeL1
-		l1MessengerAddress  common.Address
+	// l1 messenger contract
+	l1MessengerInstance *mock_bridge.MockBridgeL1
+	l1MessengerAddress  common.Address
 
-		// l1 rollup contract
-		l1RollupInstance *mock_bridge.MockBridgeL1
-		l1RollupAddress  common.Address
+	// l1 rollup contract
+	scrollChainInstance *mock_bridge.MockBridgeL1
+	scrollChainAddress  common.Address
 
-		// l2 messenger contract
-		l2MessengerInstance *mock_bridge.MockBridgeL2
-		l2MessengerAddress  common.Address
-	*/
+	// l2 messenger contract
+	l2MessengerInstance *mock_bridge.MockBridgeL2
+	l2MessengerAddress  common.Address
 )
 
 func setupEnv(t *testing.T) {
@@ -62,6 +61,8 @@ func setupEnv(t *testing.T) {
 	assert.NoError(t, err)
 	rollupPrivateKey, err := crypto.ToECDSA(common.FromHex("1212121212121212121212121212121212121212121212121212121212121214"))
 	assert.NoError(t, err)
+	gasOraclePrivateKey, err := crypto.ToECDSA(common.FromHex("1212121212121212121212121212121212121212121212121212121212121215"))
+	assert.NoError(t, err)
 
 	// Load config.
 	cfg, err = config.NewConfig("../config.json")
@@ -69,9 +70,11 @@ func setupEnv(t *testing.T) {
 	cfg.L1Config.Confirmations = rpc.LatestBlockNumber
 	cfg.L1Config.RelayerConfig.MessageSenderPrivateKeys = []*ecdsa.PrivateKey{messagePrivateKey}
 	cfg.L1Config.RelayerConfig.RollupSenderPrivateKeys = []*ecdsa.PrivateKey{rollupPrivateKey}
+	cfg.L1Config.RelayerConfig.GasOracleSenderPrivateKeys = []*ecdsa.PrivateKey{gasOraclePrivateKey}
 	cfg.L2Config.Confirmations = rpc.LatestBlockNumber
 	cfg.L2Config.RelayerConfig.MessageSenderPrivateKeys = []*ecdsa.PrivateKey{messagePrivateKey}
 	cfg.L2Config.RelayerConfig.RollupSenderPrivateKeys = []*ecdsa.PrivateKey{rollupPrivateKey}
+	cfg.L2Config.RelayerConfig.GasOracleSenderPrivateKeys = []*ecdsa.PrivateKey{gasOraclePrivateKey}
 
 	// Create l1geth container.
 	l1gethImg = docker.NewTestL1Docker(t)
@@ -100,8 +103,10 @@ func setupEnv(t *testing.T) {
 	// send some balance to message and rollup sender
 	transferEther(t, l1Auth, l1Client, messagePrivateKey)
 	transferEther(t, l1Auth, l1Client, rollupPrivateKey)
+	transferEther(t, l1Auth, l1Client, gasOraclePrivateKey)
 	transferEther(t, l2Auth, l2Client, messagePrivateKey)
 	transferEther(t, l2Auth, l2Client, rollupPrivateKey)
+	transferEther(t, l2Auth, l2Client, gasOraclePrivateKey)
 }
 
 func transferEther(t *testing.T, auth *bind.TransactOpts, client *ethclient.Client, privateKey *ecdsa.PrivateKey) {
@@ -151,7 +156,6 @@ func free(t *testing.T) {
 	}
 }
 
-/*
 func prepareContracts(t *testing.T) {
 	var err error
 	var tx *types.Transaction
@@ -162,10 +166,10 @@ func prepareContracts(t *testing.T) {
 	l1MessengerAddress, err = bind.WaitDeployed(context.Background(), l1Client, tx)
 	assert.NoError(t, err)
 
-	// L1 rollup contract
-	_, tx, l1RollupInstance, err = mock_bridge.DeployMockBridgeL1(l1Auth, l1Client)
+	// L1 ScrolChain contract
+	_, tx, scrollChainInstance, err = mock_bridge.DeployMockBridgeL1(l1Auth, l1Client)
 	assert.NoError(t, err)
-	l1RollupAddress, err = bind.WaitDeployed(context.Background(), l1Client, tx)
+	scrollChainAddress, err = bind.WaitDeployed(context.Background(), l1Client, tx)
 	assert.NoError(t, err)
 
 	// L2 messenger contract
@@ -175,14 +179,15 @@ func prepareContracts(t *testing.T) {
 	assert.NoError(t, err)
 
 	cfg.L1Config.L1MessengerAddress = l1MessengerAddress
-	cfg.L1Config.RollupContractAddress = l1RollupAddress
+	cfg.L1Config.RollupContractAddress = scrollChainAddress
 	cfg.L1Config.RelayerConfig.MessengerContractAddress = l2MessengerAddress
+	cfg.L1Config.RelayerConfig.GasPriceOracleContractAddress = l1MessengerAddress
 
 	cfg.L2Config.L2MessengerAddress = l2MessengerAddress
 	cfg.L2Config.RelayerConfig.MessengerContractAddress = l1MessengerAddress
-	cfg.L2Config.RelayerConfig.RollupContractAddress = l1RollupAddress
+	cfg.L2Config.RelayerConfig.RollupContractAddress = scrollChainAddress
+	cfg.L2Config.RelayerConfig.GasPriceOracleContractAddress = l2MessengerAddress
 }
-*/
 
 func prepareAuth(t *testing.T, client *ethclient.Client, privateKey *ecdsa.PrivateKey) *bind.TransactOpts {
 	chainID, err := client.ChainID(context.Background())
