@@ -259,14 +259,14 @@ func (w *Watcher) FetchContractEvent(blockHeight uint64) error {
 		}
 
 		for index, event := range rollupEvents {
-			batchID := event.batchHash.String()
+			batchHash := event.batchHash.String()
 			status := statuses[index]
 			// only update when db status is before event status
 			if event.status > status {
 				if event.status == types.RollupFinalized {
-					err = w.db.UpdateFinalizeTxHashAndRollupStatus(w.ctx, batchID, event.txHash.String(), event.status)
+					err = w.db.UpdateFinalizeTxHashAndRollupStatus(w.ctx, batchHash, event.txHash.String(), event.status)
 				} else if event.status == types.RollupCommitted {
-					err = w.db.UpdateCommitTxHashAndRollupStatus(w.ctx, batchID, event.txHash.String(), event.status)
+					err = w.db.UpdateCommitTxHashAndRollupStatus(w.ctx, batchHash, event.txHash.String(), event.status)
 				}
 				if err != nil {
 					log.Error("Failed to update Rollup/Finalize TxHash and Status", "err", err)
@@ -367,7 +367,7 @@ func (w *Watcher) parseBridgeEventLogs(logs []geth_types.Log) ([]*types.L1Messag
 			event := struct {
 				BatchHash common.Hash
 			}{}
-			// BatchID is in topics[1]
+			// BatchHash is in topics[1]
 			event.BatchHash = common.HexToHash(vLog.Topics[1].String())
 			err := w.scrollchainABI.UnpackIntoInterface(&event, "CommitBatch", vLog.Data)
 			if err != nil {
