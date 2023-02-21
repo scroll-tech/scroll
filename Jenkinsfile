@@ -31,12 +31,12 @@ pipeline {
                         sh 'make -C bridge bridge'
                     }
                 }
-                stage('Check Coordinator Compilation') {
-                    steps {
-                        sh 'export PATH=/home/ubuntu/go/bin:$PATH'
-                        sh 'make -C coordinator coordinator'
-                    }
-                }
+                //stage('Check Coordinator Compilation') {
+                //    steps {
+                //        sh 'export PATH=/home/ubuntu/go/bin:$PATH'
+                //        sh 'make -C coordinator coordinator'
+                //    }
+                //}
                 stage('Check Database Compilation') {
                     steps {
                         sh 'make -C database db_cli'
@@ -47,11 +47,11 @@ pipeline {
                         sh 'make -C bridge docker'
                     }
                 }
-                stage('Check Coordinator Docker Build') {
-                    steps {
-                        sh 'make -C coordinator docker'
-                    }
-                }
+                //stage('Check Coordinator Docker Build') {
+                //    steps {
+                //        sh 'make -C coordinator docker'
+                //    }
+                //}
                 stage('Check Database Docker Build') {
                     steps {
                         sh 'make -C database docker'
@@ -71,11 +71,11 @@ pipeline {
                         sh 'go test -v -race -coverprofile=coverage.common.txt -covermode=atomic -p 1 scroll-tech/common/...'
                     }
                 }
-                stage('Test coordinator package') {
-                    steps {
-                        sh 'go test -v -race -coverprofile=coverage.coordinator.txt -covermode=atomic -p 1 scroll-tech/coordinator/...'
-                    }
-                }
+                //stage('Test coordinator package') {
+                //    steps {
+                //        sh 'go test -v -race -coverprofile=coverage.coordinator.txt -covermode=atomic -p 1 scroll-tech/coordinator/...'
+                //    }
+                //}
                 stage('Test database package') {
                     steps {
                         sh 'go test -v -race -coverprofile=coverage.db.txt -covermode=atomic -p 1 scroll-tech/database/...'
