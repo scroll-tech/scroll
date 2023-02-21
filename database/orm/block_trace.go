@@ -9,7 +9,7 @@ import (
 
 	"github.com/jmoiron/sqlx"
 	"github.com/scroll-tech/go-ethereum/common"
-	eth_types "github.com/scroll-tech/go-ethereum/core/types"
+	geth_types "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/log"
 
 	"scroll-tech/common/types"
@@ -49,7 +49,7 @@ func (o *blockTraceOrm) GetBlockTracesLatestHeight() (int64, error) {
 	return height, nil
 }
 
-func (o *blockTraceOrm) GetBlockTraces(fields map[string]interface{}, args ...string) ([]*eth_types.BlockTrace, error) {
+func (o *blockTraceOrm) GetBlockTraces(fields map[string]interface{}, args ...string) ([]*geth_types.BlockTrace, error) {
 	type Result struct {
 		Trace string
 	}
@@ -66,13 +66,13 @@ func (o *blockTraceOrm) GetBlockTraces(fields map[string]interface{}, args ...st
 		return nil, err
 	}
 
-	var traces []*eth_types.BlockTrace
+	var traces []*geth_types.BlockTrace
 	for rows.Next() {
 		result := &Result{}
 		if err = rows.StructScan(result); err != nil {
 			break
 		}
-		trace := eth_types.BlockTrace{}
+		trace := geth_types.BlockTrace{}
 		err = json.Unmarshal([]byte(result.Trace), &trace)
 		if err != nil {
 			break
@@ -152,7 +152,7 @@ func (o *blockTraceOrm) GetHashByNumber(number uint64) (*common.Hash, error) {
 	return &hash, nil
 }
 
-func (o *blockTraceOrm) InsertBlockTraces(blockTraces []*eth_types.BlockTrace) error {
+func (o *blockTraceOrm) InsertBlockTraces(blockTraces []*geth_types.BlockTrace) error {
 	traceMaps := make([]map[string]interface{}, len(blockTraces))
 	for i, trace := range blockTraces {
 		number, hash, txNum, mtime := trace.Header.Number.Int64(),

@@ -48,9 +48,9 @@ pipeline {
                     }
                 }
                 stage('Check Coordinator Docker Build') {
-                   steps {
-                       sh 'make -C coordinator docker'
-                   }
+                    steps {
+                        sh 'make -C coordinator docker'
+                    }
                 }
                 stage('Check Database Docker Build') {
                     steps {
@@ -71,11 +71,11 @@ pipeline {
                         sh 'go test -v -race -coverprofile=coverage.common.txt -covermode=atomic -p 1 scroll-tech/common/...'
                     }
                 }
-                //stage('Test coordinator package') {
-                //    steps {
-                //        sh 'go test -v -race -coverprofile=coverage.coordinator.txt -covermode=atomic -p 1 scroll-tech/coordinator/...'
-                //    }
-                //}
+                stage('Test coordinator package') {
+                    steps {
+                        sh 'go test -v -race -coverprofile=coverage.coordinator.txt -covermode=atomic -p 1 scroll-tech/coordinator/...'
+                    }
+                }
                 stage('Test database package') {
                     steps {
                         sh 'go test -v -race -coverprofile=coverage.db.txt -covermode=atomic -p 1 scroll-tech/database/...'
@@ -91,11 +91,11 @@ pipeline {
                         sh "cd bridge && go test -v -race -coverprofile=coverage.txt -covermode=atomic \$(go list ./... | grep -v 'database\\|common\\|l1\\|l2\\|coordinator')"
                     }
                 }
-                //stage('Race test coordinator package') {
-                //    steps {
-                //        sh "cd coordinator && go test -v -race -coverprofile=coverage.txt -covermode=atomic \$(go list ./... | grep -v 'database\\|common\\|l1\\|l2\\|coordinator')"
-                //    }
-                //}
+                stage('Race test coordinator package') {
+                    steps {
+                        sh "cd coordinator && go test -v -race -coverprofile=coverage.txt -covermode=atomic \$(go list ./... | grep -v 'database\\|common\\|l1\\|l2\\|coordinator')"
+                    }
+                }
                 stage('Race test database package') {
                     steps {
                         sh "cd database && go test -v -race -coverprofile=coverage.txt -covermode=atomic \$(go list ./... | grep -v 'database\\|common\\|l1\\|l2\\|coordinator')"

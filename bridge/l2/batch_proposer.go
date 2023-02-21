@@ -59,23 +59,23 @@ func newBatchProposer(cfg *config.BatchProposerConfig, relayer *Layer2Relayer, o
 
 func (p *batchProposer) recoverBatchDataBuffer() {
 	// batches are sorted by batch index in increasing order
-	batchesInDB, err := p.orm.GetPendingBatches(math.MaxInt32)
+	batchHashes, err := p.orm.GetPendingBatches(math.MaxInt32)
 	if err != nil {
 		log.Crit("Failed to fetch pending L2 batches", "err", err)
 	}
-	if len(batchesInDB) == 0 {
+	if len(batchHashes) == 0 {
 		return
 	}
 	log.Info("Load pending batches into batchDataBuffer")
 
 	// helper function to cache and get BlockBatch from DB
-	var blockBatchCache map[string]*types.BlockBatch
+	blockBatchCache := make(map[string]*types.BlockBatch)
 	getBlockBatch := func(batchHash string) (*types.BlockBatch, error) {
 		if blockBatch, ok := blockBatchCache[batchHash]; ok {
 			return blockBatch, nil
 		}
 		blockBatches, err := p.orm.GetBlockBatches(map[string]interface{}{"hash": batchHash})
-		if err != nil {
+		if err != nil || len(blockBatches) == 0 {
 			return nil, err
 		}
 		blockBatchCache[batchHash] = blockBatches[0]
@@ -83,7 +83,7 @@ func (p *batchProposer) recoverBatchDataBuffer() {
 	}
 
 	// recover the in-memory batchData from DB
-	for _, batchHash := range batchesInDB {
+	for _, batchHash := range batchHashes {
 		blockBatch, err := getBlockBatch(batchHash)
 		if err != nil {
 			log.Error("could not get BlockBatch", "batch_hash", batchHash, "error", err)
@@ -154,7 +154,7 @@ func (p *batchProposer) tryCommitBatches() {
 	}
 
 	// try sending commit tx for batchDataBuffer[0:index]
-	err := p.relayer.SendCommitTx(p.batchDataBuffer[:index])
+	err := p.relayer.SendCommitTx(p.batchDataBuffer[:index+1])
 	if err != nil {
 		// leave the retry to the next ticker
 		log.Error("SendCommitTx failed", "error", err)
@@ -276,6 +276,5 @@ func (p *batchProposer) generateBatchData(parentBatch *types.BlockBatch, blocks 
 		}
 		traces = append(traces, trs[0])
 	}
-
 	return types.NewBatchData(parentBatch, traces, p.piCfg), nil
 }

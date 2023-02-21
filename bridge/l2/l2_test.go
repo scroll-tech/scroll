@@ -31,6 +31,10 @@ var (
 	// l2geth client
 	l2Cli *ethclient.Client
 
+	// block trace
+	blockTrace1 *geth_types.BlockTrace
+	blockTrace2 *geth_types.BlockTrace
+
 	// batch data
 	batchData1 *types.BatchData
 	batchData2 *types.BatchData
@@ -59,29 +63,29 @@ func setupEnv(t *testing.T) (err error) {
 	l2Cli, err = ethclient.Dial(cfg.L2Config.Endpoint)
 	assert.NoError(t, err)
 
-	templateBlockTrace, err := os.ReadFile("../../common/testdata/blockTrace_02.json")
+	templateBlockTrace1, err := os.ReadFile("../../common/testdata/blockTrace_02.json")
 	if err != nil {
 		return err
 	}
 	// unmarshal blockTrace
-	blockTrace := &geth_types.BlockTrace{}
-	if err = json.Unmarshal(templateBlockTrace, blockTrace); err != nil {
+	blockTrace1 = &geth_types.BlockTrace{}
+	if err = json.Unmarshal(templateBlockTrace1, blockTrace1); err != nil {
 		return err
 	}
 
-	parentBatch := &types.BlockBatch{
+	parentBatch1 := &types.BlockBatch{
 		Index: 1,
 		Hash:  "0x0000000000000000000000000000000000000000",
 	}
-	batchData1 = types.NewBatchData(parentBatch, []*geth_types.BlockTrace{blockTrace}, nil)
+	batchData1 = types.NewBatchData(parentBatch1, []*geth_types.BlockTrace{blockTrace1}, nil)
 
-	templateBlockTrace, err = os.ReadFile("../../common/testdata/blockTrace_03.json")
+	templateBlockTrace2, err := os.ReadFile("../../common/testdata/blockTrace_03.json")
 	if err != nil {
 		return err
 	}
 	// unmarshal blockTrace
-	blockTrace2 := &geth_types.BlockTrace{}
-	if err = json.Unmarshal(templateBlockTrace, blockTrace2); err != nil {
+	blockTrace2 = &geth_types.BlockTrace{}
+	if err = json.Unmarshal(templateBlockTrace2, blockTrace2); err != nil {
 		return err
 	}
 	parentBatch2 := &types.BlockBatch{
@@ -138,7 +142,9 @@ func TestFunction(t *testing.T) {
 	t.Run("TestL2RelayerProcessCommittedBatches", testL2RelayerProcessCommittedBatches)
 	t.Run("TestL2RelayerSkipBatches", testL2RelayerSkipBatches)
 
-	t.Run("TestBatchProposer", testBatchProposer)
+	// Run batch proposer test cases.
+	t.Run("TestBatchProposerProposeBatch", testBatchProposerProposeBatch)
+	//t.Run("TestBatchProposerGracefulRestart", testBatchProposerGracefulRestart)
 
 	t.Cleanup(func() {
 		free(t)

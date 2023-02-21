@@ -299,14 +299,12 @@ func testOrmBlockBatch(t *testing.T) {
 	assert.NoError(t, err)
 	batchHash1 := batchData1.Hash().Hex()
 	err = ormBlock.SetBatchHashForBlocksInDBTx(dbTx, []uint64{
-		batchData1.Batch.Blocks[0].BlockNumber,
 		batchData1.Batch.Blocks[0].BlockNumber}, batchHash1)
 	assert.NoError(t, err)
 	err = ormBatch.NewBatchInDBTx(dbTx, batchData2)
 	assert.NoError(t, err)
 	batchHash2 := batchData2.Hash().Hex()
 	err = ormBlock.SetBatchHashForBlocksInDBTx(dbTx, []uint64{
-		batchData2.Batch.Blocks[0].BlockNumber,
 		batchData2.Batch.Blocks[1].BlockNumber}, batchHash2)
 	assert.NoError(t, err)
 	err = dbTx.Commit()
@@ -384,7 +382,6 @@ func testOrmSessionInfo(t *testing.T) {
 	batchHash := batchData1.Hash().Hex()
 	assert.NoError(t, err)
 	assert.NoError(t, ormBlock.SetBatchHashForBlocksInDBTx(dbTx, []uint64{
-		batchData1.Batch.Blocks[0].BlockNumber,
 		batchData1.Batch.Blocks[0].BlockNumber}, batchHash))
 	assert.NoError(t, dbTx.Commit())
 	assert.NoError(t, ormBatch.UpdateProvingStatus(batchHash, types.ProvingTaskAssigned))

@@ -80,12 +80,9 @@ func testL2RelayerProcessSaveEvents(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NoError(t, db.NewBatchInDBTx(dbTx, batchData1))
 	batchHash := batchData1.Hash().Hex()
-	err = db.SetBatchHashForBlocksInDBTx(dbTx, []uint64{
-		batchData1.Batch.Blocks[0].BlockNumber,
-		batchData1.Batch.Blocks[0].BlockNumber}, batchHash)
-	assert.NoError(t, err)
-	err = dbTx.Commit()
-	assert.NoError(t, err)
+	assert.NoError(t, db.SetBatchHashForBlocksInDBTx(dbTx, []uint64{
+		batchData1.Batch.Blocks[0].BlockNumber}, batchHash))
+	assert.NoError(t, dbTx.Commit())
 
 	err = db.UpdateRollupStatus(context.Background(), batchHash, types.RollupFinalized)
 	assert.NoError(t, err)

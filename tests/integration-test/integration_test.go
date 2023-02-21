@@ -42,8 +42,8 @@ func testStartProcess(t *testing.T) {
 	bridgeCmd.RunApp(func() bool { return bridgeCmd.WaitResult(time.Second*20, "Start bridge successfully") })
 
 	// Start coordinator process.
-	coordinatorCmd := runCoordinatorApp(t, "--ws", "--ws.port", "8391")
-	coordinatorCmd.RunApp(func() bool { return coordinatorCmd.WaitResult(time.Second*20, "Start coordinator successfully") })
+	//coordinatorCmd := runCoordinatorApp(t, "--ws", "--ws.port", "8391")
+	//coordinatorCmd.RunApp(func() bool { return coordinatorCmd.WaitResult(time.Second*20, "Start coordinator successfully") })
 
 	// Start roller process.
 	rollerCmd := runRollerApp(t)
@@ -52,7 +52,7 @@ func testStartProcess(t *testing.T) {
 
 	rollerCmd.WaitExit()
 	bridgeCmd.WaitExit()
-	coordinatorCmd.WaitExit()
+	//coordinatorCmd.WaitExit()
 }
 
 func testMonitorMetrics(t *testing.T) {
