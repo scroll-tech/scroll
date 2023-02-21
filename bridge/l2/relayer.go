@@ -290,7 +290,7 @@ func (r *Layer2Relayer) SendCommitTx(batchData []*types.BatchData) error {
 		return err
 	}
 	log.Info("Sent the commitBatches tx to layer1",
-		"hash", txHash,
+		"tx_hash", txHash.Hex(),
 		"start_batch_index", commitBatches[0].BatchIndex,
 		"end_batch_index", commitBatches[len(commitBatches)-1].BatchIndex)
 
