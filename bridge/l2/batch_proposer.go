@@ -105,10 +105,10 @@ func (p *batchProposer) recoverBatchDataBuffer() {
 			log.Error("could not GetBlockInfos", "batch_hash", batchHash, "error", err)
 			continue
 		}
-		if len(blockInfos) != int(blockBatch.EndBlockNumber - blockBatch.StartBlockNumber + 1) {
+		if len(blockInfos) != int(blockBatch.EndBlockNumber-blockBatch.StartBlockNumber+1) {
 			log.Error("the number of block info retrieved from DB mistmatches the batch info in the DB",
-					  "len(blockInfos)", len(blockInfos),
-					  "expected", blockBatch.EndBlockNumber - blockBatch.StartBlockNumber + 1)
+				"len(blockInfos)", len(blockInfos),
+				"expected", blockBatch.EndBlockNumber-blockBatch.StartBlockNumber+1)
 			continue
 		}
 
@@ -118,8 +118,8 @@ func (p *batchProposer) recoverBatchDataBuffer() {
 		}
 		if batchData.Hash().Hex() != batchHash {
 			log.Error("the hash from recovered batch data mismatches the DB entry",
-					  "recovered_batch_hash", batchData.Hash().Hex(),
-					  "expected", batchHash)
+				"recovered_batch_hash", batchData.Hash().Hex(),
+				"expected", batchHash)
 			continue
 		}
 
@@ -171,7 +171,7 @@ func (p *batchProposer) tryCommitBatches() {
 
 	// Send commit tx for batchDataBuffer[0:index]
 	log.Info("Commit batches", "start_index", p.batchDataBuffer[0].Batch.BatchIndex,
-			 "end_index", p.batchDataBuffer[index-1].Batch.BatchIndex)
+		"end_index", p.batchDataBuffer[index-1].Batch.BatchIndex)
 	err := p.relayer.SendCommitTx(p.batchDataBuffer[:index])
 	if err != nil {
 		// leave the retry to the next ticker
