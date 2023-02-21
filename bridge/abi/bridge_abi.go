@@ -23,6 +23,9 @@ const (
 	// CommitBatchEventSignature = keccak256("CommitBatch(bytes32)")
 	CommitBatchEventSignature = "2cdc615c74452778c0fb6184735e014c13aad2b62774fe0b09bd1dcc2cc14a62"
 
+	// CommitBatchesEventSignature = keccak256("CommitBatches(bytes32)")
+	CommitBatchesEventSignature = "188adc06d38d0173d973ad47531a02ad89cd941508eab21b3d41f3bb41bf9eb9"
+
 	// FinalizedBatchEventSignature = keccak256("FinalizeBatch(bytes32)")
 	FinalizedBatchEventSignature = "6be443154c959a7a1645b4392b6fa97d8e8ab6e8fd853d7085e8867083737d79"
 )

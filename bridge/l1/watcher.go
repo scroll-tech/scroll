@@ -222,7 +222,8 @@ func (w *Watcher) FetchContractEvent(blockHeight uint64) error {
 		query.Topics[0][1] = common.HexToHash(bridge_abi.RelayedMessageEventSignature)
 		query.Topics[0][2] = common.HexToHash(bridge_abi.FailedRelayedMessageEventSignature)
 		query.Topics[0][3] = common.HexToHash(bridge_abi.CommitBatchEventSignature)
-		query.Topics[0][4] = common.HexToHash(bridge_abi.FinalizedBatchEventSignature)
+		query.Topics[0][4] = common.HexToHash(bridge_abi.CommitBatchesEventSignature)
+		query.Topics[0][5] = common.HexToHash(bridge_abi.FinalizedBatchEventSignature)
 
 		logs, err := w.client.FilterLogs(w.ctx, query)
 		if err != nil {
@@ -365,10 +366,8 @@ func (w *Watcher) parseBridgeEventLogs(logs []geth_types.Log) ([]*types.L1Messag
 			})
 		case common.HexToHash(bridge_abi.CommitBatchEventSignature):
 			event := struct {
-				BatchID    common.Hash
-				BatchHash  common.Hash
-				BatchIndex *big.Int
-				ParentHash common.Hash
+				BatchID   common.Hash
+				BatchHash common.Hash
 			}{}
 			// BatchID is in topics[1]
 			event.BatchID = common.HexToHash(vLog.Topics[1].String())
@@ -383,12 +382,28 @@ func (w *Watcher) parseBridgeEventLogs(logs []geth_types.Log) ([]*types.L1Messag
 				txHash:  vLog.TxHash,
 				status:  types.RollupCommitted,
 			})
+		case common.HexToHash(bridge_abi.CommitBatchesEventSignature):
+			event := struct {
+				BatchID   common.Hash
+				BatchHash common.Hash
+			}{}
+			// BatchID is in topics[1]
+			event.BatchID = common.HexToHash(vLog.Topics[1].String())
+			err := w.scrollchainABI.UnpackIntoInterface(&event, "CommitBatches", vLog.Data)
+			if err != nil {
+				log.Warn("Failed to unpack layer1 CommitBatches event", "err", err)
+				return l1Messages, relayedMessages, rollupEvents, err
+			}
+
+			rollupEvents = append(rollupEvents, rollupEvent{
+				batchID: event.BatchID,
+				txHash:  vLog.TxHash,
+				status:  types.RollupCommitted,
+			})
 		case common.HexToHash(bridge_abi.FinalizedBatchEventSignature):
 			event := struct {
-				BatchID    common.Hash
-				BatchHash  common.Hash
-				BatchIndex *big.Int
-				ParentHash common.Hash
+				BatchID   common.Hash
+				BatchHash common.Hash
 			}{}
 			// BatchID is in topics[1]
 			event.BatchID = common.HexToHash(vLog.Topics[1].String())

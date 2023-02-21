@@ -352,9 +352,9 @@ func (r *Layer2Relayer) SendCommitTx(batchData []*types.BatchData) error {
 	calldata, err := r.l1RollupABI.Pack("commitBatches", commitBatches)
 	if err != nil {
 		log.Error("Failed to pack commitBatches",
-				  "error", err,
-				  "start_batch_index", commitBatches[0].BatchIndex,
-				  "end_batch_index", commitBatches[len(commitBatches)-1].BatchIndex)
+			"error", err,
+			"start_batch_index", commitBatches[0].BatchIndex,
+			"end_batch_index", commitBatches[len(commitBatches)-1].BatchIndex)
 		return err
 	}
 
@@ -372,9 +372,9 @@ func (r *Layer2Relayer) SendCommitTx(batchData []*types.BatchData) error {
 		return err
 	}
 	log.Info("Sent the commitBatches tx to layer1",
-			 "hash", txHash,
-			 "start_batch_index", commitBatches[0].BatchIndex,
-			 "end_batch_index", commitBatches[len(commitBatches)-1].BatchIndex)
+		"hash", txHash,
+		"start_batch_index", commitBatches[0].BatchIndex,
+		"end_batch_index", commitBatches[len(commitBatches)-1].BatchIndex)
 
 	// record and sync with db, @todo handle db error
 	batchHashes := make([]string, len(batchData))
