@@ -2,7 +2,7 @@
 pragma solidity ^0.8.10;
 
 import { Script } from "forge-std/Script.sol";
-import { console} from "forge-std/console.sol";
+import { console } from "forge-std/console.sol";
 
 import { ProxyAdmin } from "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 import { TransparentUpgradeableProxy } from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
@@ -10,174 +10,237 @@ import { TransparentUpgradeableProxy } from "@openzeppelin/contracts/proxy/trans
 import { L2CustomERC20Gateway } from "../../src/L2/gateways/L2CustomERC20Gateway.sol";
 import { L2ERC1155Gateway } from "../../src/L2/gateways/L2ERC1155Gateway.sol";
 import { L2ERC721Gateway } from "../../src/L2/gateways/L2ERC721Gateway.sol";
+import { L2ETHGateway } from "../../src/L2/gateways/L2ETHGateway.sol";
 import { L2GatewayRouter } from "../../src/L2/gateways/L2GatewayRouter.sol";
 import { L2ScrollMessenger } from "../../src/L2/L2ScrollMessenger.sol";
 import { L2StandardERC20Gateway } from "../../src/L2/gateways/L2StandardERC20Gateway.sol";
+import { L2WETHGateway } from "../../src/L2/gateways/L2WETHGateway.sol";
+import { L1BlockContainer } from "../../src/L2/predeploys/L1BlockContainer.sol";
+import { L1GasPriceOracle } from "../../src/L2/predeploys/L1GasPriceOracle.sol";
+import { L2MessageQueue } from "../../src/L2/predeploys/L2MessageQueue.sol";
 import { L2TxFeeVault } from "../../src/L2/predeploys/L2TxFeeVault.sol";
 import { Whitelist } from "../../src/L2/predeploys/Whitelist.sol";
 import { ScrollStandardERC20 } from "../../src/libraries/token/ScrollStandardERC20.sol";
 import { ScrollStandardERC20Factory } from "../../src/libraries/token/ScrollStandardERC20Factory.sol";
 
 contract DeployL2BridgeContracts is Script {
-    uint256 L2_DEPLOYER_PRIVATE_KEY = vm.envUint("L2_DEPLOYER_PRIVATE_KEY");
-    address L1_TX_FEE_RECIPIENT_ADDR = vm.envAddress("L1_TX_FEE_RECIPIENT_ADDR");
+  uint256 L2_DEPLOYER_PRIVATE_KEY = vm.envUint("L2_DEPLOYER_PRIVATE_KEY");
 
-    L2ScrollMessenger messenger;
-    ProxyAdmin proxyAdmin;
+  address L1_TX_FEE_RECIPIENT_ADDR = vm.envAddress("L1_TX_FEE_RECIPIENT_ADDR");
+  address L1_WETH_ADDR = vm.envAddress("L1_WETH_ADDR");
+  address L2_WETH_ADDR = vm.envAddress("L2_WETH_ADDR");
 
-    address L2_SCROLL_MESSENGER_PREDEPLOY_ADDR = vm.envOr("L2_SCROLL_MESSENGER_PREDEPLOY_ADDR", address(0));
-    address L2_TX_FEE_VAULT_PREDEPLOY_ADDR = vm.envOr("L2_TX_FEE_VAULT_PREDEPLOY_ADDR", address(0));
-    address L2_PROXY_ADMIN_PREDEPLOY_ADDR = vm.envOr("L2_PROXY_ADMIN_PREDEPLOY_ADDR", address(0));
-    address L2_STANDARD_ERC20_GATEWAY_PROXY_PREDEPLOY_ADDR = vm.envOr("L2_STANDARD_ERC20_GATEWAY_PROXY_PREDEPLOY_ADDR", address(0));
-    address L2_GATEWAY_ROUTER_PROXY_PREDEPLOY_ADDR = vm.envOr("L2_GATEWAY_ROUTER_PROXY_PREDEPLOY_ADDR", address(0));
-    address L2_SCROLL_STANDARD_ERC20_FACTORY_PREDEPLOY_ADDR = vm.envOr("L2_SCROLL_STANDARD_ERC20_FACTORY_PREDEPLOY_ADDR", address(0));
-    address L2_CUSTOM_ERC20_GATEWAY_PROXY_PREDEPLOY_ADDR = vm.envOr("L2_CUSTOM_ERC20_GATEWAY_PROXY_PREDEPLOY_ADDR", address(0));
-    address L2_ERC721_GATEWAY_PROXY_PREDEPLOY_ADDR = vm.envOr("L2_ERC721_GATEWAY_PROXY_PREDEPLOY_ADDR", address(0));
-    address L2_ERC1155_GATEWAY_PROXY_PREDEPLOY_ADDR = vm.envOr("L2_ERC1155_GATEWAY_PROXY_PREDEPLOY_ADDR", address(0));
-    address L2_WHITELIST_PREDEPLOY_ADDR = vm.envOr("L2_WHITELIST_PREDEPLOY_ADDR", address(0));
+  L1GasPriceOracle oracle;
+  L1BlockContainer container;
+  L2MessageQueue queue;
+  ProxyAdmin proxyAdmin;
 
-    function run() external {
-        vm.startBroadcast(L2_DEPLOYER_PRIVATE_KEY);
+  // predeploy contracts
+  address L1_BLOCK_CONTAINER_PREDEPLOY_ADDR = vm.envOr("L1_BLOCK_CONTAINER_PREDEPLOY_ADDR", address(0));
+  address L1_GAS_PRICE_ORACLE_PREDEPLOY_ADDR = vm.envOr("L1_GAS_PRICE_ORACLE_PREDEPLOY_ADDR", address(0));
+  address L2_MESSAGE_QUEUE_PREDEPLOY_ADDR = vm.envOr("L2_MESSAGE_QUEUE_PREDEPLOY_ADDR", address(0));
+  address L2_TX_FEE_VAULT_PREDEPLOY_ADDR = vm.envOr("L2_TX_FEE_VAULT_PREDEPLOY_ADDR", address(0));
+  address L2_WHITELIST_PREDEPLOY_ADDR = vm.envOr("L2_WHITELIST_PREDEPLOY_ADDR", address(0));
 
-        deployL2ScrollMessenger();
-        deployTxFeeVault();
-        deployProxyAdmin();
-        deployL2StandardERC20Gateway();
-        deployL2GatewayRouter();
-        deployScrollStandardERC20Factory();
-        deployL2CustomERC20Gateway();
-        deployL2ERC721Gateway();
-        deployL2ERC1155Gateway();
-        deployL2Whitelist();
+  function run() external {
+    vm.startBroadcast(L2_DEPLOYER_PRIVATE_KEY);
 
-        vm.stopBroadcast();
+    // predeploys
+    deployL1GasPriceOracle();
+    deployL1BlockContainer();
+    deployL2MessageQueue();
+    deployTxFeeVault();
+    deployL2Whitelist();
+
+    // upgradable
+    deployProxyAdmin();
+    deployL2ScrollMessenger();
+    deployL2ETHGateway();
+    deployL2WETHGateway();
+    deployL2StandardERC20Gateway();
+    deployL2GatewayRouter();
+    deployScrollStandardERC20Factory();
+    deployL2CustomERC20Gateway();
+    deployL2ERC721Gateway();
+    deployL2ERC1155Gateway();
+
+    vm.stopBroadcast();
+  }
+
+  function deployL1GasPriceOracle() internal {
+    if (L1_GAS_PRICE_ORACLE_PREDEPLOY_ADDR != address(0)) {
+      oracle = L1GasPriceOracle(L1_GAS_PRICE_ORACLE_PREDEPLOY_ADDR);
+      logAddress("L1_GAS_PRICE_ORACLE_ADDR", address(L1_GAS_PRICE_ORACLE_PREDEPLOY_ADDR));
+      return;
     }
 
-    function deployL2ScrollMessenger() internal {
-        if (L2_SCROLL_MESSENGER_PREDEPLOY_ADDR != address(0)) {
-            logAddress("L2_SCROLL_MESSENGER_ADDR", address(L2_SCROLL_MESSENGER_PREDEPLOY_ADDR));
-            return;
-        }
+    address owner = vm.addr(L2_DEPLOYER_PRIVATE_KEY);
+    oracle = new L1GasPriceOracle(owner);
 
-        address owner = vm.addr(L2_DEPLOYER_PRIVATE_KEY);
-        messenger = new L2ScrollMessenger(owner);
+    logAddress("L1_GAS_PRICE_ORACLE_ADDR", address(oracle));
+  }
 
-        logAddress("L2_SCROLL_MESSENGER_ADDR", address(messenger));
+  function deployL1BlockContainer() internal {
+    if (L1_BLOCK_CONTAINER_PREDEPLOY_ADDR != address(0)) {
+      container = L1BlockContainer(L1_BLOCK_CONTAINER_PREDEPLOY_ADDR);
+      logAddress("L1_BLOCK_CONTAINER_ADDR", address(L1_BLOCK_CONTAINER_PREDEPLOY_ADDR));
+      return;
     }
 
-    function deployTxFeeVault() internal {
-        if (L2_TX_FEE_VAULT_PREDEPLOY_ADDR != address(0)) {
-            logAddress("L2_TX_FEE_VAULT_ADDR", address(L2_TX_FEE_VAULT_PREDEPLOY_ADDR));
-            return;
-        }
+    address owner = vm.addr(L2_DEPLOYER_PRIVATE_KEY);
+    container = new L1BlockContainer(owner);
 
-        L2TxFeeVault feeVault = new L2TxFeeVault(address(messenger), L1_TX_FEE_RECIPIENT_ADDR);
+    logAddress("L1_BLOCK_CONTAINER_ADDR", address(container));
+  }
 
-        logAddress("L2_TX_FEE_VAULT_ADDR", address(feeVault));
+  function deployL2MessageQueue() internal {
+    if (L2_MESSAGE_QUEUE_PREDEPLOY_ADDR != address(0)) {
+      queue = L2MessageQueue(L2_MESSAGE_QUEUE_PREDEPLOY_ADDR);
+      logAddress("L2_MESSAGE_QUEUE_ADDR", address(L2_MESSAGE_QUEUE_PREDEPLOY_ADDR));
+      return;
     }
 
-    function deployProxyAdmin() internal {
-        if (L2_PROXY_ADMIN_PREDEPLOY_ADDR != address(0)) {
-            logAddress("L2_PROXY_ADMIN_ADDR", address(L2_PROXY_ADMIN_PREDEPLOY_ADDR));
-            return;
-        }
+    address owner = vm.addr(L2_DEPLOYER_PRIVATE_KEY);
+    queue = new L2MessageQueue(owner);
 
-        proxyAdmin = new ProxyAdmin();
+    logAddress("L2_MESSAGE_QUEUE_ADDR", address(queue));
+  }
 
-        logAddress("L2_PROXY_ADMIN_ADDR", address(proxyAdmin));
+  function deployTxFeeVault() internal {
+    if (L2_TX_FEE_VAULT_PREDEPLOY_ADDR != address(0)) {
+      logAddress("L2_TX_FEE_VAULT_ADDR", address(L2_TX_FEE_VAULT_PREDEPLOY_ADDR));
+      return;
     }
 
-    function deployL2StandardERC20Gateway() internal {
-        if (L2_STANDARD_ERC20_GATEWAY_PROXY_PREDEPLOY_ADDR != address(0)) {
-            logAddress("L2_STANDARD_ERC20_GATEWAY_PROXY_ADDR", address(L2_STANDARD_ERC20_GATEWAY_PROXY_PREDEPLOY_ADDR));
-            return;
-        }
+    address owner = vm.addr(L2_DEPLOYER_PRIVATE_KEY);
+    L2TxFeeVault feeVault = new L2TxFeeVault(address(owner), L1_TX_FEE_RECIPIENT_ADDR);
 
-        L2StandardERC20Gateway impl = new L2StandardERC20Gateway();
-        TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(address(impl), address(proxyAdmin), new bytes(0));
+    logAddress("L2_TX_FEE_VAULT_ADDR", address(feeVault));
+  }
 
-        logAddress("L2_STANDARD_ERC20_GATEWAY_IMPLEMENTATION_ADDR", address(impl));
-        logAddress("L2_STANDARD_ERC20_GATEWAY_PROXY_ADDR", address(proxy));
+  function deployL2Whitelist() internal {
+    if (L2_WHITELIST_PREDEPLOY_ADDR != address(0)) {
+      logAddress("L2_WHITELIST_ADDR", address(L2_WHITELIST_PREDEPLOY_ADDR));
+      return;
     }
 
-    function deployL2GatewayRouter() internal {
-        if (L2_GATEWAY_ROUTER_PROXY_PREDEPLOY_ADDR != address(0)) {
-            logAddress("L2_GATEWAY_ROUTER_PROXY_ADDR", address(L2_GATEWAY_ROUTER_PROXY_PREDEPLOY_ADDR));
-            return;
-        }
+    address owner = vm.addr(L2_DEPLOYER_PRIVATE_KEY);
+    Whitelist whitelist = new Whitelist(owner);
 
-        L2GatewayRouter impl = new L2GatewayRouter();
-        TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(address(impl), address(proxyAdmin), new bytes(0));
+    logAddress("L2_WHITELIST_ADDR", address(whitelist));
+  }
 
-        logAddress("L2_GATEWAY_ROUTER_IMPLEMENTATION_ADDR", address(impl));
-        logAddress("L2_GATEWAY_ROUTER_PROXY_ADDR", address(proxy));
-    }
+  function deployProxyAdmin() internal {
+    proxyAdmin = new ProxyAdmin();
 
-    function deployScrollStandardERC20Factory() internal {
-        if (L2_SCROLL_STANDARD_ERC20_FACTORY_PREDEPLOY_ADDR != address(0)) {
-            logAddress("L2_SCROLL_STANDARD_ERC20_FACTORY_ADDR", address(L2_SCROLL_STANDARD_ERC20_FACTORY_PREDEPLOY_ADDR));
-            return;
-        }
+    logAddress("L2_PROXY_ADMIN_ADDR", address(proxyAdmin));
+  }
 
-        ScrollStandardERC20 tokenImpl = new ScrollStandardERC20();
-        ScrollStandardERC20Factory scrollStandardERC20Factory = new ScrollStandardERC20Factory(address(tokenImpl));
+  function deployL2ScrollMessenger() internal {
+    L2ScrollMessenger impl = new L2ScrollMessenger(address(container), address(oracle), address(queue));
+    TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(
+      address(impl),
+      address(proxyAdmin),
+      new bytes(0)
+    );
 
-        logAddress("L2_SCROLL_STANDARD_ERC20_ADDR", address(tokenImpl));
-        logAddress("L2_SCROLL_STANDARD_ERC20_FACTORY_ADDR", address(scrollStandardERC20Factory));
-    }
+    logAddress("L2_SCROLL_MESSENGER_IMPLEMENTATION_ADDR", address(impl));
+    logAddress("L2_SCROLL_MESSENGER_PROXY_ADDR", address(proxy));
+  }
 
-    function deployL2CustomERC20Gateway() internal {
-        if (L2_CUSTOM_ERC20_GATEWAY_PROXY_PREDEPLOY_ADDR != address(0)) {
-            logAddress("L2_CUSTOM_ERC20_GATEWAY_PROXY_ADDR", address(L2_CUSTOM_ERC20_GATEWAY_PROXY_PREDEPLOY_ADDR));
-            return;
-        }
+  function deployL2StandardERC20Gateway() internal {
+    L2StandardERC20Gateway impl = new L2StandardERC20Gateway();
+    TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(
+      address(impl),
+      address(proxyAdmin),
+      new bytes(0)
+    );
 
-        L2CustomERC20Gateway impl = new L2CustomERC20Gateway();
-        TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(address(impl), address(proxyAdmin), new bytes(0));
+    logAddress("L2_STANDARD_ERC20_GATEWAY_IMPLEMENTATION_ADDR", address(impl));
+    logAddress("L2_STANDARD_ERC20_GATEWAY_PROXY_ADDR", address(proxy));
+  }
 
-        logAddress("L2_CUSTOM_ERC20_GATEWAY_IMPLEMENTATION_ADDR", address(impl));
-        logAddress("L2_CUSTOM_ERC20_GATEWAY_PROXY_ADDR", address(proxy));
-    }
+  function deployL2ETHGateway() internal {
+    L2ETHGateway impl = new L2ETHGateway();
+    TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(
+      address(impl),
+      address(proxyAdmin),
+      new bytes(0)
+    );
 
-    function deployL2ERC721Gateway() internal {
-        if (L2_ERC721_GATEWAY_PROXY_PREDEPLOY_ADDR != address(0)) {
-            logAddress("L2_ERC721_GATEWAY_PROXY_ADDR", address(L2_ERC721_GATEWAY_PROXY_PREDEPLOY_ADDR));
-            return;
-        }
+    logAddress("L2_ETH_GATEWAY_IMPLEMENTATION_ADDR", address(impl));
+    logAddress("L2_ETH_GATEWAY_PROXY_ADDR", address(proxy));
+  }
 
-        L2ERC721Gateway impl = new L2ERC721Gateway();
-        TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(address(impl), address(proxyAdmin), new bytes(0));
+  function deployL2WETHGateway() internal {
+    L2WETHGateway impl = new L2WETHGateway(L2_WETH_ADDR, L1_WETH_ADDR);
+    TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(
+      address(impl),
+      address(proxyAdmin),
+      new bytes(0)
+    );
 
-        logAddress("L2_ERC721_GATEWAY_IMPLEMENTATION_ADDR", address(impl));
-        logAddress("L2_ERC721_GATEWAY_PROXY_ADDR", address(proxy));
-    }
+    logAddress("L2_WETH_GATEWAY_IMPLEMENTATION_ADDR", address(impl));
+    logAddress("L2_WETH_GATEWAY_PROXY_ADDR", address(proxy));
+  }
 
-    function deployL2ERC1155Gateway() internal {
-        if (L2_ERC1155_GATEWAY_PROXY_PREDEPLOY_ADDR != address(0)) {
-            logAddress("L2_ERC1155_GATEWAY_PROXY_ADDR", address(L2_ERC1155_GATEWAY_PROXY_PREDEPLOY_ADDR));
-            return;
-        }
+  function deployL2GatewayRouter() internal {
+    L2GatewayRouter impl = new L2GatewayRouter();
+    TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(
+      address(impl),
+      address(proxyAdmin),
+      new bytes(0)
+    );
 
-        L2ERC1155Gateway impl = new L2ERC1155Gateway();
-        TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(address(impl), address(proxyAdmin), new bytes(0));
+    logAddress("L2_GATEWAY_ROUTER_IMPLEMENTATION_ADDR", address(impl));
+    logAddress("L2_GATEWAY_ROUTER_PROXY_ADDR", address(proxy));
+  }
 
-        logAddress("L2_ERC1155_GATEWAY_IMPLEMENTATION_ADDR", address(impl));
-        logAddress("L2_ERC1155_GATEWAY_PROXY_ADDR", address(proxy));
-    }
+  function deployScrollStandardERC20Factory() internal {
+    ScrollStandardERC20 tokenImpl = new ScrollStandardERC20();
+    ScrollStandardERC20Factory scrollStandardERC20Factory = new ScrollStandardERC20Factory(address(tokenImpl));
 
-    function deployL2Whitelist() internal {
-        if (L2_WHITELIST_PREDEPLOY_ADDR != address(0)) {
-            logAddress("L2_WHITELIST_ADDR", address(L2_WHITELIST_PREDEPLOY_ADDR));
-            return;
-        }
+    logAddress("L2_SCROLL_STANDARD_ERC20_ADDR", address(tokenImpl));
+    logAddress("L2_SCROLL_STANDARD_ERC20_FACTORY_ADDR", address(scrollStandardERC20Factory));
+  }
 
-        address owner = vm.addr(L2_DEPLOYER_PRIVATE_KEY);
-        Whitelist whitelist = new Whitelist(owner);
+  function deployL2CustomERC20Gateway() internal {
+    L2CustomERC20Gateway impl = new L2CustomERC20Gateway();
+    TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(
+      address(impl),
+      address(proxyAdmin),
+      new bytes(0)
+    );
 
-        logAddress("L2_WHITELIST_ADDR", address(whitelist));
-    }
+    logAddress("L2_CUSTOM_ERC20_GATEWAY_IMPLEMENTATION_ADDR", address(impl));
+    logAddress("L2_CUSTOM_ERC20_GATEWAY_PROXY_ADDR", address(proxy));
+  }
 
-    function logAddress(string memory name, address addr) internal {
-        console.log(string(abi.encodePacked(name, "=", vm.toString(address(addr)))));
-    }
+  function deployL2ERC721Gateway() internal {
+    L2ERC721Gateway impl = new L2ERC721Gateway();
+    TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(
+      address(impl),
+      address(proxyAdmin),
+      new bytes(0)
+    );
+
+    logAddress("L2_ERC721_GATEWAY_IMPLEMENTATION_ADDR", address(impl));
+    logAddress("L2_ERC721_GATEWAY_PROXY_ADDR", address(proxy));
+  }
+
+  function deployL2ERC1155Gateway() internal {
+    L2ERC1155Gateway impl = new L2ERC1155Gateway();
+    TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(
+      address(impl),
+      address(proxyAdmin),
+      new bytes(0)
+    );
+
+    logAddress("L2_ERC1155_GATEWAY_IMPLEMENTATION_ADDR", address(impl));
+    logAddress("L2_ERC1155_GATEWAY_PROXY_ADDR", address(proxy));
+  }
+
+  function logAddress(string memory name, address addr) internal view {
+    console.log(string(abi.encodePacked(name, "=", vm.toString(address(addr)))));
+  }
 }

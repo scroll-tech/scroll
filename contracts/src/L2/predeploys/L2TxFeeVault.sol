@@ -8,7 +8,7 @@ import { FeeVault } from "../../libraries/FeeVault.sol";
 /// @notice The `L2TxFeeVault` contract collects all L2 transaction fees and allows withdrawing these fees to a predefined L1 address.
 /// The minimum withdrawal amount is 10 ether.
 contract L2TxFeeVault is FeeVault {
-  /// @param _messenger The address of L2ScrollMessenger.
+  /// @param _owner The owner of the contract.
   /// @param _recipient The fee recipient address on L1.
-  constructor(address _messenger, address _recipient) FeeVault(_messenger, _recipient, 10 ether) {}
+  constructor(address _owner, address _recipient) FeeVault(_owner, _recipient, 10 ether) {}
 }
