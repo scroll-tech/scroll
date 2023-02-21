@@ -112,11 +112,6 @@ func (w *WatcherClient) initializeGenesis() error {
 		return fmt.Errorf("failed to retrieve L2 genesis header: %v", err)
 	}
 
-	// EIP1559 is disabled so the RPC won't return baseFeePerGas. However, l2geth
-	// still uses BaseFee when calculating the block hash. If we keep it as <nil>
-	// here the genesis hash will not match.
-	genesis.BaseFee = big.NewInt(0)
-
 	log.Info("retrieved L2 genesis header", "hash", genesis.Hash().String())
 
 	blockTrace := &geth_types.BlockTrace{
@@ -136,17 +131,12 @@ func (w *WatcherClient) initializeGenesis() error {
 	}
 
 	batchHash := batchData.Hash().Hex()
-	if err != nil {
-		return fmt.Errorf("failed to create batch data: %v", err)
-	}
 
-	err = w.orm.UpdateProvingStatus(batchHash, types.ProvingTaskProved)
-	if err != nil {
+	if err = w.orm.UpdateProvingStatus(batchHash, types.ProvingTaskProved); err != nil {
 		return fmt.Errorf("failed to update genesis batch proving status: %v", err)
 	}
 
-	err = w.orm.UpdateRollupStatus(w.ctx, batchHash, types.RollupFinalized)
-	if err != nil {
+	if err = w.orm.UpdateRollupStatus(w.ctx, batchHash, types.RollupFinalized); err != nil {
 		return fmt.Errorf("failed to update genesis batch rollup status: %v", err)
 	}
 
@@ -346,14 +336,14 @@ func (w *WatcherClient) FetchContractEvent(blockHeight uint64) {
 		// Update relayed message first to make sure we don't forget to update submited message.
 		// Since, we always start sync from the latest unprocessed message.
 		for _, msg := range relayedMessageEvents {
+			var msgStatus types.MsgStatus
 			if msg.isSuccessful {
 				// succeed
-				err = w.orm.UpdateLayer1StatusAndLayer2Hash(w.ctx, msg.msgHash.String(), types.MsgConfirmed, msg.txHash.String())
+				msgStatus = types.MsgConfirmed
 			} else {
-				// failed
-				err = w.orm.UpdateLayer1StatusAndLayer2Hash(w.ctx, msg.msgHash.String(), types.MsgFailed, msg.txHash.String())
+				msgStatus = types.MsgFailed
 			}
-			if err != nil {
+			if err = w.orm.UpdateLayer1StatusAndLayer2Hash(w.ctx, msg.msgHash.String(), msgStatus, msg.txHash.String()); err != nil {
 				log.Error("Failed to update layer1 status and layer2 hash", "err", err)
 				return
 			}
@@ -395,12 +385,17 @@ func (w *WatcherClient) parseBridgeEventLogs(logs []geth_types.Log) ([]*types.L2
 				event.Message,
 			)
 
-			// they should always match, just double check
+			// `AppendMessage` event is always emitted before `SentMessage` event
+			// So they should always match, just double check
 			if event.MessageNonce.Uint64() != lastAppendMsgNonce {
-				return l2Messages, relayedMessages, errors.New("l2 message nonce mismatch")
+				errMsg := fmt.Sprintf("l2 message nonces mismatch: AppendMessage.nonce=%v, SentMessage.nonce=%v, tx_hash=%v",
+									  lastAppendMsgNonce, event.MessageNonce.Uint64(), vLog.TxHash.Hex())
+				return l2Messages, relayedMessages, errors.New(errMsg)
 			}
 			if computedMsgHash != lastAppendMsgHash {
-				return l2Messages, relayedMessages, errors.New("l2 message hash mismatch")
+				errMsg := fmt.Sprintf("l2 message hashes mismatch: AppendMessage.msg_hash=%v, SentMessage.msg_hash=%v, tx_hash=%v",
+									  lastAppendMsgHash.Hex(), computedMsgHash.Hex(), vLog.TxHash.Hex())
+				return l2Messages, relayedMessages, errors.New(errMsg)
 			}
 
 			l2Messages = append(l2Messages, &types.L2Message{

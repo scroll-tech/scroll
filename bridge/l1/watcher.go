@@ -149,7 +149,7 @@ const contractEventsBlocksFetchLimit = int64(10)
 // FetchBlockHeader pull latest L1 blocks and save in DB
 func (w *Watcher) FetchBlockHeader(blockHeight uint64) error {
 	fromBlock := int64(w.processedBlockHeight) + 1
-	toBlock := int64(blockHeight) - int64(w.confirmations)
+	toBlock := int64(blockHeight)
 	if toBlock < fromBlock {
 		return nil
 	}
@@ -161,8 +161,8 @@ func (w *Watcher) FetchBlockHeader(blockHeight uint64) error {
 	var err error
 	height := fromBlock
 	for ; height <= toBlock; height++ {
-		var block *geth_types.Block
-		block, err = w.client.BlockByNumber(w.ctx, big.NewInt(height))
+		var block *geth_types.Header
+		block, err = w.client.HeaderByNumber(w.ctx, big.NewInt(height))
 		if err != nil {
 			log.Warn("Failed to get block", "height", height, "err", err)
 			break
@@ -170,7 +170,7 @@ func (w *Watcher) FetchBlockHeader(blockHeight uint64) error {
 		blocks = append(blocks, &types.L1BlockInfo{
 			Number:  uint64(height),
 			Hash:    block.Hash().String(),
-			BaseFee: block.BaseFee().Uint64(),
+			BaseFee: block.BaseFee.Uint64(),
 		})
 	}
 
