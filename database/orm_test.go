@@ -305,6 +305,7 @@ func testOrmBlockBatch(t *testing.T) {
 	assert.NoError(t, err)
 	batchHash2 := batchData2.Hash().Hex()
 	err = ormBlock.SetBatchHashForBlocksInDBTx(dbTx, []uint64{
+		batchData2.Batch.Blocks[0].BlockNumber,
 		batchData2.Batch.Blocks[1].BlockNumber}, batchHash2)
 	assert.NoError(t, err)
 	err = dbTx.Commit()

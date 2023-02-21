@@ -3,11 +3,9 @@ package l2
 import (
 	"encoding/json"
 	"fmt"
-	"math/big"
 	"os"
 	"testing"
 
-	"github.com/scroll-tech/go-ethereum/common"
 	geth_types "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/stretchr/testify/assert"
@@ -15,7 +13,6 @@ import (
 	"scroll-tech/common/docker"
 	"scroll-tech/common/types"
 
-	abi "scroll-tech/bridge/abi"
 	"scroll-tech/bridge/config"
 )
 
@@ -94,20 +91,6 @@ func setupEnv(t *testing.T) (err error) {
 	}
 	batchData2 = types.NewBatchData(parentBatch2, []*geth_types.BlockTrace{blockTrace2}, nil)
 
-	// insert a fake empty block to batchData2
-	fakeBlockContext := abi.IScrollChainBlockContext{
-		BlockHash:       common.HexToHash("0x000000000000000000000000000000000000000000000000000000000000dead"),
-		ParentHash:      batchData2.Batch.Blocks[0].BlockHash,
-		BlockNumber:     batchData2.Batch.Blocks[0].BlockNumber + 1,
-		BaseFee:         new(big.Int).SetUint64(0),
-		Timestamp:       123456789,
-		GasLimit:        10000000000000000,
-		NumTransactions: 0,
-		NumL1Messages:   0,
-	}
-	batchData2.Batch.Blocks = append(batchData2.Batch.Blocks, fakeBlockContext)
-	batchData2.Batch.NewStateRoot = common.HexToHash("0x000000000000000000000000000000000000000000000000000000000000cafe")
-
 	fmt.Printf("batchhash1 = %x\n", batchData1.Hash())
 	fmt.Printf("batchhash2 = %x\n", batchData2.Hash())
 
@@ -144,7 +127,7 @@ func TestFunction(t *testing.T) {
 
 	// Run batch proposer test cases.
 	t.Run("TestBatchProposerProposeBatch", testBatchProposerProposeBatch)
-	//t.Run("TestBatchProposerGracefulRestart", testBatchProposerGracefulRestart)
+	t.Run("TestBatchProposerGracefulRestart", testBatchProposerGracefulRestart)
 
 	t.Cleanup(func() {
 		free(t)
