@@ -140,9 +140,8 @@ func (p *batchProposer) tryProposeBatch() {
 		return
 	}
 
-	if numBlocks := p.proposeBatch(blocks); numBlocks > 0 {
-		p.tryCommitBatches()
-	}
+	p.proposeBatch(blocks)
+	p.tryCommitBatches()
 }
 
 func (p *batchProposer) tryCommitBatches() {
@@ -182,9 +181,9 @@ func (p *batchProposer) tryCommitBatches() {
 	}
 }
 
-func (p *batchProposer) proposeBatch(blocks []*types.BlockInfo) uint64 {
+func (p *batchProposer) proposeBatch(blocks []*types.BlockInfo) {
 	if len(blocks) == 0 {
-		return 0
+		return
 	}
 
 	if blocks[0].GasUsed > p.batchGasThreshold {
@@ -192,7 +191,7 @@ func (p *batchProposer) proposeBatch(blocks []*types.BlockInfo) uint64 {
 		if err := p.createBatchForBlocks(blocks[:1]); err != nil {
 			log.Error("failed to create batch", "number", blocks[0].Number, "err", err)
 		}
-		return 1
+		return
 	}
 
 	if blocks[0].TxNum > p.batchTxNumThreshold {
@@ -200,7 +199,7 @@ func (p *batchProposer) proposeBatch(blocks []*types.BlockInfo) uint64 {
 		if err := p.createBatchForBlocks(blocks[:1]); err != nil {
 			log.Error("failed to create batch", "number", blocks[0].Number, "err", err)
 		}
-		return 1
+		return
 	}
 
 	var (
@@ -221,13 +220,12 @@ func (p *batchProposer) proposeBatch(blocks []*types.BlockInfo) uint64 {
 	// if it's not old enough we will skip proposing the batch,
 	// otherwise we will still propose a batch
 	if length == len(blocks) && blocks[0].BlockTimestamp+p.batchTimeSec > uint64(time.Now().Unix()) {
-		return 0
+		return
 	}
 
 	if err := p.createBatchForBlocks(blocks); err != nil {
 		log.Error("failed to create batch", "from", blocks[0].Number, "to", blocks[len(blocks)-1].Number, "err", err)
 	}
-	return uint64(len(blocks))
 }
 
 func (p *batchProposer) createBatchForBlocks(blocks []*types.BlockInfo) error {
