@@ -146,7 +146,7 @@ func (w *Watcher) Stop() {
 
 const contractEventsBlocksFetchLimit = int64(10)
 
-// fetchBlockHeader pull latest L1 blocks and save in DB
+// FetchBlockHeader pull latest L1 blocks and save in DB
 func (w *Watcher) FetchBlockHeader(blockHeight uint64) error {
 	fromBlock := int64(w.processedBlockHeight) + 1
 	toBlock := int64(blockHeight) - int64(w.confirmations)

@@ -171,7 +171,7 @@ type L1RevertBatchEvent struct {
 	BatchHash common.Hash
 }
 
-// L1QueueTransaction represents a QueueTransaction event raised by the L1MessageQueue contract.
+// L1QueueTransactionEvent represents a QueueTransaction event raised by the L1MessageQueue contract.
 type L1QueueTransactionEvent struct {
 	Sender     common.Address
 	Target     common.Address
@@ -207,7 +207,7 @@ type L2AppendMessageEvent struct {
 	MessageHash common.Hash
 }
 
-// L2ImportBlock represents a ImportBlock event raised by the L1BlockContainer contract.
+// L2ImportBlockEvent represents a ImportBlock event raised by the L1BlockContainer contract.
 type L2ImportBlockEvent struct {
 	BlockHash      common.Hash
 	BlockHeight    *big.Int

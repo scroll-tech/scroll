@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/jmoiron/sqlx"
-	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/log"
 
 	"scroll-tech/common/types"
@@ -114,15 +113,15 @@ func (o *blockBatchOrm) NewBatchInDBTx(dbTx *sqlx.Tx, batchData *types.BatchData
 		map[string]interface{}{
 			"hash":               batchData.Hash().Hex(),
 			"index":              batchData.Batch.BatchIndex,
-			"parent_hash":        common.Hash(batchData.Batch.ParentBatchHash).Hex(),
+			"parent_hash":        batchData.Batch.ParentBatchHash.Hex(),
 			"start_block_number": batchData.Batch.Blocks[0].BlockNumber,
-			"start_block_hash":   common.Hash(batchData.Batch.Blocks[0].BlockHash).Hex(),
+			"start_block_hash":   batchData.Batch.Blocks[0].BlockHash.Hex(),
 			"end_block_number":   batchData.Batch.Blocks[numBlocks-1].BlockNumber,
-			"end_block_hash":     common.Hash(batchData.Batch.Blocks[numBlocks-1].BlockHash).Hex(),
+			"end_block_hash":     batchData.Batch.Blocks[numBlocks-1].BlockHash.Hex(),
 			"total_tx_num":       batchData.TotalTxNum,
 			"total_l1_tx_num":    batchData.TotalL1TxNum,
 			"total_l2_gas":       batchData.TotalL2Gas,
-			"state_root":         common.Hash(batchData.Batch.NewStateRoot).Hex(),
+			"state_root":         batchData.Batch.NewStateRoot.Hex(),
 			"created_at":         time.Now(),
 			// "proving_status":     ProvingTaskUnassigned, // actually no need, because we have default value in DB schema
 			// "rollup_status":      RollupPending,         // actually no need, because we have default value in DB schema

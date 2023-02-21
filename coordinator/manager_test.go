@@ -16,7 +16,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ethereum/go-ethereum"
+	"github.com/scroll-tech/go-ethereum"
 	geth_types "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/crypto"
 	"github.com/stretchr/testify/assert"
@@ -73,7 +73,7 @@ func setEnv(t *testing.T) (err error) {
 		Index: 1,
 		Hash:  "0x0000000000000000000000000000000000000000",
 	}
-	batchData = types.NewBatchData(parentBatch, []*geth_types.BlockTrace{blockTrace})
+	batchData = types.NewBatchData(parentBatch, []*geth_types.BlockTrace{blockTrace}, nil)
 
 	return
 }

@@ -9,9 +9,11 @@ import (
 	geth_types "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/stretchr/testify/assert"
 
+	"scroll-tech/common/types"
+
 	"scroll-tech/bridge/l1"
 	"scroll-tech/bridge/l2"
-	"scroll-tech/common/types"
+
 	"scroll-tech/database"
 	"scroll-tech/database/migrate"
 )

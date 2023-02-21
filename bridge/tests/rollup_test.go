@@ -3,16 +3,19 @@ package tests
 import (
 	"context"
 	"math/big"
-	"scroll-tech/bridge/l1"
 	"testing"
+
+	"scroll-tech/bridge/l1"
 
 	"github.com/scroll-tech/go-ethereum/accounts/abi/bind"
 	"github.com/scroll-tech/go-ethereum/common"
 	geth_types "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/stretchr/testify/assert"
 
-	"scroll-tech/bridge/l2"
 	"scroll-tech/common/types"
+
+	"scroll-tech/bridge/l2"
+
 	"scroll-tech/database"
 	"scroll-tech/database/migrate"
 )

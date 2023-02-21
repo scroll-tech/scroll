@@ -13,6 +13,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"scroll-tech/common/types"
+
 	"scroll-tech/database"
 	"scroll-tech/database/migrate"
 )

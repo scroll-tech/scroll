@@ -48,41 +48,41 @@ func (b *BatchData) Hash() *common.Hash {
 	hasher := crypto.NewKeccakState()
 
 	// 1. hash PrevStateRoot, NewStateRoot, WithdrawTrieRoot
-	hasher.Write(b.Batch.PrevStateRoot[:])
-	hasher.Write(b.Batch.NewStateRoot[:])
-	hasher.Write(b.Batch.WithdrawTrieRoot[:])
+	_, _ = hasher.Write(b.Batch.PrevStateRoot[:])
+	_, _ = hasher.Write(b.Batch.NewStateRoot[:])
+	_, _ = hasher.Write(b.Batch.WithdrawTrieRoot[:])
 
 	// 2. hash all block contexts
 	for _, block := range b.Batch.Blocks {
 		// write BlockHash & ParentHash
-		hasher.Write(block.BlockHash[:])
-		hasher.Write(block.ParentHash[:])
+		_, _ = hasher.Write(block.BlockHash[:])
+		_, _ = hasher.Write(block.ParentHash[:])
 		// write BlockNumber
 		binary.BigEndian.PutUint64(buf, block.BlockNumber)
-		hasher.Write(buf)
+		_, _ = hasher.Write(buf)
 		// write Timestamp
 		binary.BigEndian.PutUint64(buf, block.Timestamp)
-		hasher.Write(buf)
+		_, _ = hasher.Write(buf)
 		// write BaseFee
 		var baseFee [32]byte
 		if block.BaseFee != nil {
 			baseFee = newByte32FromBytes(block.BaseFee.Bytes())
 		}
-		hasher.Write(baseFee[:])
+		_, _ = hasher.Write(baseFee[:])
 		// write GasLimit
 		binary.BigEndian.PutUint64(buf, block.GasLimit)
-		hasher.Write(buf)
+		_, _ = hasher.Write(buf)
 		// write NumTransactions
 		binary.BigEndian.PutUint16(buf[:2], block.NumTransactions)
-		hasher.Write(buf[:2])
+		_, _ = hasher.Write(buf[:2])
 		// write NumL1Messages
 		binary.BigEndian.PutUint16(buf[:2], block.NumL1Messages)
-		hasher.Write(buf[:2])
+		_, _ = hasher.Write(buf[:2])
 	}
 
 	// 3. add all tx hashes
 	for _, txHash := range b.TxHashes {
-		hasher.Write(txHash[:])
+		_, _ = hasher.Write(txHash[:])
 	}
 
 	// 4. append empty tx hash up to MaxTxNum
@@ -93,11 +93,11 @@ func (b *BatchData) Hash() *common.Hash {
 		paddingTxHash = b.piCfg.PaddingTxHash
 	}
 	for i := len(b.TxHashes); i < maxTxNum; i++ {
-		hasher.Write(paddingTxHash[:])
+		_, _ = hasher.Write(paddingTxHash[:])
 	}
 
 	b.hash = new(common.Hash)
-	hasher.Read(b.hash[:])
+	_, _ = hasher.Read(b.hash[:])
 
 	return b.hash
 }
@@ -157,8 +157,8 @@ func NewBatchData(parentBatch *BlockBatch, blockTraces []*types.BlockTrace, piCf
 			rlpTxData := rlpBuf.Bytes()
 			var txLen [4]byte
 			binary.BigEndian.PutUint32(txLen[:], uint32(len(rlpTxData)))
-			batchTxDataWriter.Write(txLen[:])
-			batchTxDataWriter.Write(rlpTxData)
+			_, _ = batchTxDataWriter.Write(txLen[:])
+			_, _ = batchTxDataWriter.Write(rlpTxData)
 			batchData.TxHashes = append(batchData.TxHashes, tx.Hash())
 		}
 
