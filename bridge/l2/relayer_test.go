@@ -118,7 +118,7 @@ func testL2RelayerProcessCommittedBatches(t *testing.T) {
 
 	tProof := []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31}
 	tInstanceCommitments := []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31}
-	err = db.UpdateProofByID(context.Background(), batchHash, tProof, tInstanceCommitments, 100)
+	err = db.UpdateProofByHash(context.Background(), batchHash, tProof, tInstanceCommitments, 100)
 	assert.NoError(t, err)
 	err = db.UpdateProvingStatus(batchHash, types.ProvingTaskVerified)
 	assert.NoError(t, err)
@@ -156,7 +156,7 @@ func testL2RelayerSkipBatches(t *testing.T) {
 
 		tProof := []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31}
 		tInstanceCommitments := []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31}
-		err = db.UpdateProofByID(context.Background(), batchHash, tProof, tInstanceCommitments, 100)
+		err = db.UpdateProofByHash(context.Background(), batchHash, tProof, tInstanceCommitments, 100)
 		assert.NoError(t, err)
 		err = db.UpdateProvingStatus(batchHash, provingStatus)
 		assert.NoError(t, err)

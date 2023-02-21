@@ -49,33 +49,33 @@ type SessionInfoOrm interface {
 // BlockBatchOrm block_batch operation interface
 type BlockBatchOrm interface {
 	GetBlockBatches(fields map[string]interface{}, args ...string) ([]*types.BlockBatch, error)
-	GetProvingStatusByID(id string) (types.ProvingStatus, error)
-	GetVerifiedProofAndInstanceByID(id string) ([]byte, []byte, error)
-	UpdateProofByID(ctx context.Context, id string, proof, instanceCommitments []byte, proofTimeSec uint64) error
-	UpdateProvingStatus(id string, status types.ProvingStatus) error
+	GetProvingStatusByHash(hash string) (types.ProvingStatus, error)
+	GetVerifiedProofAndInstanceByHash(hash string) ([]byte, []byte, error)
+	UpdateProofByHash(ctx context.Context, hash string, proof, instanceCommitments []byte, proofTimeSec uint64) error
+	UpdateProvingStatus(hash string, status types.ProvingStatus) error
 	ResetProvingStatusFor(before types.ProvingStatus) error
 	NewBatchInDBTx(dbTx *sqlx.Tx, batchData *types.BatchData) error
-	BatchRecordExist(id string) (bool, error)
+	BatchRecordExist(hash string) (bool, error)
 	GetPendingBatches(limit uint64) ([]string, error)
 	GetCommittedBatches(limit uint64) ([]string, error)
-	GetRollupStatus(id string) (types.RollupStatus, error)
-	GetRollupStatusByIDList(ids []string) ([]types.RollupStatus, error)
+	GetRollupStatus(hash string) (types.RollupStatus, error)
+	GetRollupStatusByHashList(ids []string) ([]types.RollupStatus, error)
 	GetLatestBatch() (*types.BlockBatch, error)
 	GetLatestCommittedBatch() (*types.BlockBatch, error)
 	GetLatestFinalizedBatch() (*types.BlockBatch, error)
-	UpdateRollupStatus(ctx context.Context, id string, status types.RollupStatus) error
-	UpdateCommitTxHashAndRollupStatus(ctx context.Context, id string, commitTxHash string, status types.RollupStatus) error
-	UpdateFinalizeTxHashAndRollupStatus(ctx context.Context, id string, finalizeTxHash string, status types.RollupStatus) error
+	UpdateRollupStatus(ctx context.Context, hash string, status types.RollupStatus) error
+	UpdateCommitTxHashAndRollupStatus(ctx context.Context, hash string, commitTxHash string, status types.RollupStatus) error
+	UpdateFinalizeTxHashAndRollupStatus(ctx context.Context, hash string, finalizeTxHash string, status types.RollupStatus) error
 	GetAssignedBatchHashes() ([]string, error)
 	UpdateSkippedBatches() (int64, error)
 	GetBatchCount() (int64, error)
 
-	UpdateL2OracleTxHash(ctx context.Context, id, txHash string) error
-	UpdateL2GasOracleStatus(ctx context.Context, id string, status types.GasOracleStatus) error
-	UpdateL2GasOracleStatusAndOracleTxHash(ctx context.Context, id string, status types.GasOracleStatus, txHash string) error
+	UpdateL2OracleTxHash(ctx context.Context, hash, txHash string) error
+	UpdateL2GasOracleStatus(ctx context.Context, hash string, status types.GasOracleStatus) error
+	UpdateL2GasOracleStatusAndOracleTxHash(ctx context.Context, hash string, status types.GasOracleStatus, txHash string) error
 
-	GetCommitTxHash(id string) (sql.NullString, error)   // for unit tests only
-	GetFinalizeTxHash(id string) (sql.NullString, error) // for unit tests only
+	GetCommitTxHash(hash string) (sql.NullString, error)   // for unit tests only
+	GetFinalizeTxHash(hash string) (sql.NullString, error) // for unit tests only
 }
 
 // L1MessageOrm is layer1 message db interface

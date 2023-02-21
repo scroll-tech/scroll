@@ -282,7 +282,7 @@ func (m *Manager) handleZkProof(pk string, msg *message.ProofDetail) error {
 	}
 
 	// store proof content
-	if dbErr = m.orm.UpdateProofByID(m.ctx, msg.ID, msg.Proof.Proof, msg.Proof.FinalPair, proofTimeSec); dbErr != nil {
+	if dbErr = m.orm.UpdateProofByHash(m.ctx, msg.ID, msg.Proof.Proof, msg.Proof.FinalPair, proofTimeSec); dbErr != nil {
 		log.Error("failed to store proof into db", "error", dbErr)
 		return dbErr
 	}

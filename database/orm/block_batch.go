@@ -53,7 +53,7 @@ func (o *blockBatchOrm) GetBlockBatches(fields map[string]interface{}, args ...s
 	return batches, rows.Close()
 }
 
-func (o *blockBatchOrm) GetProvingStatusByID(hash string) (types.ProvingStatus, error) {
+func (o *blockBatchOrm) GetProvingStatusByHash(hash string) (types.ProvingStatus, error) {
 	row := o.db.QueryRow(`SELECT proving_status FROM block_batch WHERE hash = $1`, hash)
 	var status types.ProvingStatus
 	if err := row.Scan(&status); err != nil {
@@ -62,7 +62,7 @@ func (o *blockBatchOrm) GetProvingStatusByID(hash string) (types.ProvingStatus, 
 	return status, nil
 }
 
-func (o *blockBatchOrm) GetVerifiedProofAndInstanceByID(hash string) ([]byte, []byte, error) {
+func (o *blockBatchOrm) GetVerifiedProofAndInstanceByHash(hash string) ([]byte, []byte, error) {
 	var proof []byte
 	var instance []byte
 	row := o.db.QueryRow(`SELECT proof, instance_commitments FROM block_batch WHERE hash = $1 and proving_status = $2`, hash, types.ProvingTaskVerified)
@@ -73,7 +73,7 @@ func (o *blockBatchOrm) GetVerifiedProofAndInstanceByID(hash string) ([]byte, []
 	return proof, instance, nil
 }
 
-func (o *blockBatchOrm) UpdateProofByID(ctx context.Context, hash string, proof, instanceCommitments []byte, proofTimeSec uint64) error {
+func (o *blockBatchOrm) UpdateProofByHash(ctx context.Context, hash string, proof, instanceCommitments []byte, proofTimeSec uint64) error {
 	db := o.db
 	if _, err := db.ExecContext(ctx,
 		db.Rebind(`UPDATE block_batch set proof = ?, instance_commitments = ?, proof_time_sec = ? where hash = ?;`),
@@ -226,7 +226,7 @@ func (o *blockBatchOrm) GetRollupStatus(hash string) (types.RollupStatus, error)
 	return status, nil
 }
 
-func (o *blockBatchOrm) GetRollupStatusByIDList(hashes []string) ([]types.RollupStatus, error) {
+func (o *blockBatchOrm) GetRollupStatusByHashList(hashes []string) ([]types.RollupStatus, error) {
 	if len(hashes) == 0 {
 		return make([]types.RollupStatus, 0), nil
 	}
@@ -321,16 +321,16 @@ func (o *blockBatchOrm) GetAssignedBatchHashes() ([]string, error) {
 		return nil, err
 	}
 
-	var ids []string
+	var hashes []string
 	for rows.Next() {
 		var hash string
 		if err = rows.Scan(&hash); err != nil {
 			break
 		}
-		ids = append(ids, hash)
+		hashes = append(hashes, hash)
 	}
 
-	return ids, rows.Close()
+	return hashes, rows.Close()
 }
 
 func (o *blockBatchOrm) GetBatchCount() (int64, error) {
@@ -356,24 +356,24 @@ func (o *blockBatchOrm) UpdateSkippedBatches() (int64, error) {
 	return count, nil
 }
 
-func (o *blockBatchOrm) UpdateL2OracleTxHash(ctx context.Context, id, txHash string) error {
-	if _, err := o.db.ExecContext(ctx, o.db.Rebind("update block_batch set oracle_tx_hash = ? where hash = ?;"), txHash, id); err != nil {
+func (o *blockBatchOrm) UpdateL2OracleTxHash(ctx context.Context, hash, txHash string) error {
+	if _, err := o.db.ExecContext(ctx, o.db.Rebind("update block_batch set oracle_tx_hash = ? where hash = ?;"), txHash, hash); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func (o *blockBatchOrm) UpdateL2GasOracleStatus(ctx context.Context, id string, status types.GasOracleStatus) error {
-	if _, err := o.db.ExecContext(ctx, o.db.Rebind("update block_batch set oracle_status = ? where hash = ?;"), status, id); err != nil {
+func (o *blockBatchOrm) UpdateL2GasOracleStatus(ctx context.Context, hash string, status types.GasOracleStatus) error {
+	if _, err := o.db.ExecContext(ctx, o.db.Rebind("update block_batch set oracle_status = ? where hash = ?;"), status, hash); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func (o *blockBatchOrm) UpdateL2GasOracleStatusAndOracleTxHash(ctx context.Context, id string, status types.GasOracleStatus, txHash string) error {
-	if _, err := o.db.ExecContext(ctx, o.db.Rebind("update block_batch set oracle_status = ?, oracle_tx_hash = ? where hash = ?;"), status, txHash, id); err != nil {
+func (o *blockBatchOrm) UpdateL2GasOracleStatusAndOracleTxHash(ctx context.Context, hash string, status types.GasOracleStatus, txHash string) error {
+	if _, err := o.db.ExecContext(ctx, o.db.Rebind("update block_batch set oracle_status = ?, oracle_tx_hash = ? where hash = ?;"), status, txHash, hash); err != nil {
 		return err
 	}
 

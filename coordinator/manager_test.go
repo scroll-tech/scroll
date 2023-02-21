@@ -286,7 +286,7 @@ func testValidProof(t *testing.T) {
 	for len(ids) > 0 {
 		select {
 		case <-tick:
-			status, err := l2db.GetProvingStatusByID(ids[0])
+			status, err := l2db.GetProvingStatusByHash(ids[0])
 			assert.NoError(t, err)
 			if status == types.ProvingTaskVerified {
 				ids = ids[1:]
@@ -344,7 +344,7 @@ func testInvalidProof(t *testing.T) {
 	for len(ids) > 0 {
 		select {
 		case <-tick:
-			status, err := l2db.GetProvingStatusByID(ids[0])
+			status, err := l2db.GetProvingStatusByHash(ids[0])
 			assert.NoError(t, err)
 			if status == types.ProvingTaskFailed {
 				ids = ids[1:]
@@ -403,7 +403,7 @@ func testIdleRollerSelection(t *testing.T) {
 	for len(ids) > 0 {
 		select {
 		case <-tick:
-			status, err := l2db.GetProvingStatusByID(ids[0])
+			status, err := l2db.GetProvingStatusByHash(ids[0])
 			assert.NoError(t, err)
 			if status == types.ProvingTaskVerified {
 				ids = ids[1:]
@@ -462,7 +462,7 @@ func testGracefulRestart(t *testing.T) {
 		assert.NoError(t, err)
 
 		// at this point, roller haven't submitted
-		status, err := l2db.GetProvingStatusByID(ids[i])
+		status, err := l2db.GetProvingStatusByHash(ids[i])
 		assert.NoError(t, err)
 		assert.Equal(t, types.ProvingTaskAssigned, status)
 	}
@@ -481,7 +481,7 @@ func testGracefulRestart(t *testing.T) {
 		case <-tick:
 			// this proves that the roller submits to the new coordinator,
 			// because the roller client for `submitProof` has been overwritten
-			status, err := l2db.GetProvingStatusByID(ids[0])
+			status, err := l2db.GetProvingStatusByHash(ids[0])
 			assert.NoError(t, err)
 			if status == types.ProvingTaskVerified {
 				ids = ids[1:]

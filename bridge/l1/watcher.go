@@ -260,9 +260,9 @@ func (w *Watcher) FetchContractEvent(blockHeight uint64) error {
 		for _, event := range rollupEvents {
 			batchHashes = append(batchHashes, event.batchHash.String())
 		}
-		statuses, err := w.db.GetRollupStatusByIDList(batchHashes)
+		statuses, err := w.db.GetRollupStatusByHashList(batchHashes)
 		if err != nil {
-			log.Error("Failed to GetRollupStatusByIDList", "err", err)
+			log.Error("Failed to GetRollupStatusByHashList", "err", err)
 			return err
 		}
 		if len(statuses) != len(batchHashes) {

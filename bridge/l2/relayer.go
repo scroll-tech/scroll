@@ -300,7 +300,7 @@ func (r *Layer2Relayer) SendCommitTx(batchData []*types.BatchData) error {
 		batchHashes[i] = batch.Hash().Hex()
 		err = r.db.UpdateCommitTxHashAndRollupStatus(r.ctx, batchHashes[i], txHash.String(), types.RollupCommitting)
 		if err != nil {
-			log.Error("UpdateCommitTxHashAndRollupStatus failed", "id", batchHashes[i], "index", batch.Batch.BatchIndex, "err", err)
+			log.Error("UpdateCommitTxHashAndRollupStatus failed", "hash", batchHashes[i], "index", batch.Batch.BatchIndex, "err", err)
 		}
 	}
 	r.processingBatchesCommitment.Store(txID, batchHashes)
@@ -326,12 +326,12 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 	if len(batches) == 0 {
 		return
 	}
-	id := batches[0]
+	hash := batches[0]
 	// @todo add support to relay multiple batches
 
-	status, err := r.db.GetProvingStatusByID(id)
+	status, err := r.db.GetProvingStatusByHash(hash)
 	if err != nil {
-		log.Error("GetProvingStatusByID failed", "id", id, "err", err)
+		log.Error("GetProvingStatusByHash failed", "hash", hash, "err", err)
 		return
 	}
 
@@ -348,69 +348,69 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 	case types.ProvingTaskFailed, types.ProvingTaskSkipped:
 		// note: this is covered by UpdateSkippedBatches, but we keep it for completeness's sake
 
-		if err = r.db.UpdateRollupStatus(r.ctx, id, types.RollupFinalizationSkipped); err != nil {
-			log.Warn("UpdateRollupStatus failed", "id", id, "err", err)
+		if err = r.db.UpdateRollupStatus(r.ctx, hash, types.RollupFinalizationSkipped); err != nil {
+			log.Warn("UpdateRollupStatus failed", "hash", hash, "err", err)
 		}
 
 	case types.ProvingTaskVerified:
-		log.Info("Start to roll up zk proof", "id", id)
+		log.Info("Start to roll up zk proof", "hash", hash)
 		success := false
 
 		defer func() {
 			// TODO: need to revisit this and have a more fine-grained error handling
 			if !success {
-				log.Info("Failed to upload the proof, change rollup status to FinalizationSkipped", "id", id)
-				if err = r.db.UpdateRollupStatus(r.ctx, id, types.RollupFinalizationSkipped); err != nil {
-					log.Warn("UpdateRollupStatus failed", "id", id, "err", err)
+				log.Info("Failed to upload the proof, change rollup status to FinalizationSkipped", "hash", hash)
+				if err = r.db.UpdateRollupStatus(r.ctx, hash, types.RollupFinalizationSkipped); err != nil {
+					log.Warn("UpdateRollupStatus failed", "hash", hash, "err", err)
 				}
 			}
 		}()
 
-		proofBuffer, instanceBuffer, err := r.db.GetVerifiedProofAndInstanceByID(id)
+		proofBuffer, instanceBuffer, err := r.db.GetVerifiedProofAndInstanceByHash(hash)
 		if err != nil {
-			log.Warn("fetch get proof by id failed", "id", id, "err", err)
+			log.Warn("fetch get proof by hash failed", "hash", hash, "err", err)
 			return
 		}
 		if proofBuffer == nil || instanceBuffer == nil {
-			log.Warn("proof or instance not ready", "id", id)
+			log.Warn("proof or instance not ready", "hash", hash)
 			return
 		}
 		if len(proofBuffer)%32 != 0 {
-			log.Error("proof buffer has wrong length", "id", id, "length", len(proofBuffer))
+			log.Error("proof buffer has wrong length", "hash", hash, "length", len(proofBuffer))
 			return
 		}
 		if len(instanceBuffer)%32 != 0 {
-			log.Warn("instance buffer has wrong length", "id", id, "length", len(instanceBuffer))
+			log.Warn("instance buffer has wrong length", "hash", hash, "length", len(instanceBuffer))
 			return
 		}
 
 		proof := utils.BufferToUint256Le(proofBuffer)
 		instance := utils.BufferToUint256Le(instanceBuffer)
-		data, err := r.l1RollupABI.Pack("finalizeBatchWithProof", common.HexToHash(id), proof, instance)
+		data, err := r.l1RollupABI.Pack("finalizeBatchWithProof", common.HexToHash(hash), proof, instance)
 		if err != nil {
 			log.Error("Pack finalizeBatchWithProof failed", "err", err)
 			return
 		}
 
-		txID := id + "-finalize"
+		txID := hash + "-finalize"
 		// add suffix `-finalize` to avoid duplication with commit tx in unit tests
 		txHash, err := r.rollupSender.SendTransaction(txID, &r.cfg.RollupContractAddress, big.NewInt(0), data)
-		hash := &txHash
+		finalizeTxHash := &txHash
 		if err != nil {
 			if !errors.Is(err, sender.ErrNoAvailableAccount) {
-				log.Error("finalizeBatchWithProof in layer1 failed", "id", id, "err", err)
+				log.Error("finalizeBatchWithProof in layer1 failed", "hash", hash, "err", err)
 			}
 			return
 		}
-		log.Info("finalizeBatchWithProof in layer1", "batch_hash", id, "tx_hash", hash)
+		log.Info("finalizeBatchWithProof in layer1", "batch_hash", hash, "tx_hash", hash)
 
 		// record and sync with db, @todo handle db error
-		err = r.db.UpdateFinalizeTxHashAndRollupStatus(r.ctx, id, hash.String(), types.RollupFinalizing)
+		err = r.db.UpdateFinalizeTxHashAndRollupStatus(r.ctx, hash, finalizeTxHash.String(), types.RollupFinalizing)
 		if err != nil {
-			log.Warn("UpdateFinalizeTxHashAndRollupStatus failed", "batch_hash", id, "err", err)
+			log.Warn("UpdateFinalizeTxHashAndRollupStatus failed", "batch_hash", hash, "err", err)
 		}
 		success = true
-		r.processingFinalization.Store(txID, id)
+		r.processingFinalization.Store(txID, hash)
 
 	default:
 		log.Error("encounter unreachable case in ProcessCommittedBatches",
