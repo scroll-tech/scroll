@@ -7,7 +7,6 @@ import (
 
 	"github.com/scroll-tech/go-ethereum/common"
 	geth_types "github.com/scroll-tech/go-ethereum/core/types"
-	"github.com/scroll-tech/go-ethereum/rpc"
 	"github.com/stretchr/testify/assert"
 
 	"scroll-tech/bridge/l1"
@@ -34,12 +33,13 @@ func testImportL1GasPrice(t *testing.T) {
 	defer l1Relayer.Stop()
 
 	// Create L1Watcher
-	confirmations := rpc.LatestBlockNumber
-	l1Watcher := l1.NewWatcher(context.Background(), l1Client, 0, confirmations, l1Cfg.L1MessengerAddress, l1Cfg.L1MessageQueueAddress, l1Cfg.ScrollChainContractAddress, db)
+	startHeight, err := l1Client.BlockNumber(context.Background())
+	assert.NoError(t, err)
+	l1Watcher := l1.NewWatcher(context.Background(), l1Client, startHeight-1, 0, l1Cfg.L1MessengerAddress, l1Cfg.L1MessageQueueAddress, l1Cfg.ScrollChainContractAddress, db)
 
 	// fetch new blocks
 	number, err := l1Client.BlockNumber(context.Background())
-	assert.Greater(t, number, uint64(0))
+	assert.Greater(t, number, startHeight-1)
 	assert.NoError(t, err)
 	err = l1Watcher.FetchBlockHeader(number)
 	assert.NoError(t, err)
