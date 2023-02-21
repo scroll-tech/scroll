@@ -67,7 +67,11 @@
       "skipped_opcodes": [
         "CREATE2",
         "DELEGATECALL"
-      ]
+      ],
+      "public_input_config": {
+        "max_tx_num": 4,
+        "padding_tx_hash": "0xb5baa665b2664c3bfed7eb46e00ebc110ecf2ebd257854a9bf2b9dbc9b2c08f6"
+      }
     }
   },
   "db_config": {

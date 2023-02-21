@@ -73,7 +73,7 @@ func setupEnv(t *testing.T) (err error) {
 		Index: 1,
 		Hash:  "0x0000000000000000000000000000000000000000",
 	}
-	batchData1 = types.NewBatchData(parentBatch, []*geth_types.BlockTrace{blockTrace})
+	batchData1 = types.NewBatchData(parentBatch, []*geth_types.BlockTrace{blockTrace}, nil)
 
 	templateBlockTrace, err = os.ReadFile("../../common/testdata/blockTrace_03.json")
 	if err != nil {
@@ -88,7 +88,7 @@ func setupEnv(t *testing.T) (err error) {
 		Index: batchData1.Batch.BatchIndex,
 		Hash:  batchData1.Hash().Hex(),
 	}
-	batchData2 = types.NewBatchData(parentBatch2, []*geth_types.BlockTrace{blockTrace2})
+	batchData2 = types.NewBatchData(parentBatch2, []*geth_types.BlockTrace{blockTrace2}, nil)
 
 	// insert a fake empty block to batchData2
 	fakeBlockContext := abi.IScrollChainBlockContext{
@@ -135,7 +135,6 @@ func TestFunction(t *testing.T) {
 	// Run l2 relayer test cases.
 	t.Run("TestCreateNewRelayer", testCreateNewRelayer)
 	t.Run("TestL2RelayerProcessSaveEvents", testL2RelayerProcessSaveEvents)
-	t.Run("TestL2RelayerProcessPendingBatches", testL2RelayerProcessPendingBatches)
 	t.Run("TestL2RelayerProcessCommittedBatches", testL2RelayerProcessCommittedBatches)
 	t.Run("TestL2RelayerSkipBatches", testL2RelayerSkipBatches)
 

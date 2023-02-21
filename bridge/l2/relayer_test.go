@@ -96,60 +96,6 @@ func testL2RelayerProcessSaveEvents(t *testing.T) {
 	assert.Equal(t, types.MsgSubmitted, msg.Status)
 }
 
-func testL2RelayerProcessPendingBatches(t *testing.T) {
-	// Create db handler and reset db.
-	db, err := database.NewOrmFactory(cfg.DBConfig)
-	assert.NoError(t, err)
-	assert.NoError(t, migrate.ResetDB(db.GetDB().DB))
-	defer db.Close()
-
-	l2Cfg := cfg.L2Config
-	relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, l2Cfg.RelayerConfig)
-	assert.NoError(t, err)
-	defer relayer.Stop()
-
-	// this blockresult has number of 0x4, need to change it to match the testcase
-	// In this testcase scenario, db will store two blocks with height 0x4 and 0x3
-	var traces []*geth_types.BlockTrace
-
-	templateBlockTrace, err := os.ReadFile("../../common/testdata/blockTrace_02.json")
-	assert.NoError(t, err)
-	blockTrace := &geth_types.BlockTrace{}
-	err = json.Unmarshal(templateBlockTrace, blockTrace)
-	assert.NoError(t, err)
-	traces = append(traces, blockTrace)
-	templateBlockTrace, err = os.ReadFile("../../common/testdata/blockTrace_03.json")
-	assert.NoError(t, err)
-	blockTrace = &geth_types.BlockTrace{}
-	err = json.Unmarshal(templateBlockTrace, blockTrace)
-	assert.NoError(t, err)
-	traces = append(traces, blockTrace)
-
-	err = db.InsertBlockTraces(traces)
-	assert.NoError(t, err)
-
-	dbTx, err := db.Beginx()
-	assert.NoError(t, err)
-	assert.NoError(t, db.NewBatchInDBTx(dbTx, batchData1))
-	batchHash := batchData1.Hash().Hex()
-	err = db.SetBatchHashForBlocksInDBTx(dbTx, []uint64{
-		batchData1.Batch.Blocks[0].BlockNumber,
-		batchData1.Batch.Blocks[0].BlockNumber}, batchHash)
-	assert.NoError(t, err)
-	err = dbTx.Commit()
-	assert.NoError(t, err)
-
-	err = db.UpdateRollupStatus(context.Background(), batchHash, types.RollupPending)
-	assert.NoError(t, err)
-
-	relayer.ProcessPendingBatches()
-
-	// Check if Rollup Result is changed successfully
-	status, err := db.GetRollupStatus(batchHash)
-	assert.NoError(t, err)
-	assert.Equal(t, types.RollupCommitting, status)
-}
-
 func testL2RelayerProcessCommittedBatches(t *testing.T) {
 	// Create db handler and reset db.
 	db, err := database.NewOrmFactory(cfg.DBConfig)
@@ -264,5 +210,5 @@ func genBatchData(t *testing.T, index uint64) *types.BatchData {
 		Index: index,
 		Hash:  "0x0000000000000000000000000000000000000000",
 	}
-	return types.NewBatchData(parentBatch, []*geth_types.BlockTrace{blockTrace})
+	return types.NewBatchData(parentBatch, []*geth_types.BlockTrace{blockTrace}, nil)
 }

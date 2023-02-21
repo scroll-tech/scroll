@@ -217,89 +217,6 @@ func (r *Layer2Relayer) processSavedEvent(msg *types.L2Message) error {
 	return nil
 }
 
-// ProcessPendingBatches submit batch data to layer 1 rollup contract
-func (r *Layer2Relayer) ProcessPendingBatches() {
-	// batches are sorted by batch index in increasing order
-	batchesInDB, err := r.db.GetPendingBatches(1)
-	if err != nil {
-		log.Error("Failed to fetch pending L2 batches", "err", err)
-		return
-	}
-	if len(batchesInDB) == 0 {
-		return
-	}
-	id := batchesInDB[0]
-	// @todo add support to relay multiple batches
-
-	batches, err := r.db.GetBlockBatches(map[string]interface{}{"hash": id})
-	if err != nil || len(batches) == 0 {
-		log.Error("Failed to GetBlockBatches", "batch_hash", id, "err", err)
-		return
-	}
-	batch := batches[0]
-
-	traces, err := r.db.GetBlockTraces(map[string]interface{}{"batch_hash": id}, "ORDER BY number ASC")
-	if err != nil || len(traces) == 0 {
-		log.Error("Failed to GetBlockTraces", "batch_hash", id, "err", err)
-		return
-	}
-
-	layer2Batch := &bridge_abi.IScrollChainBatch{
-		Blocks: make([]bridge_abi.IScrollChainBlockContext, len(traces)),
-		// PrevStateRoot: ,
-		// NewStateRoot: ,
-		// WithdrawTrieRoot: ,
-		BatchIndex: batch.Index,
-		// L2Transactions: ,
-	}
-
-	parentHash := common.HexToHash(batch.ParentHash)
-	for i, trace := range traces {
-		layer2Batch.Blocks[i] = bridge_abi.IScrollChainBlockContext{
-			BlockHash:       trace.Header.Hash(),
-			ParentHash:      parentHash,
-			BlockNumber:     trace.Header.Number.Uint64(),
-			Timestamp:       trace.Header.Time,
-			BaseFee:         trace.Header.BaseFee,
-			GasLimit:        trace.Header.GasLimit,
-			NumTransactions: uint16(len(trace.Transactions)),
-			// TODO NumL1Messages:  ,
-		}
-		// initialize an empty byte array
-		// L2Transactions := make([]byte, 0)
-		// for j, tx := range trace.Transactions {
-		// append to L2Transactions
-		// }
-
-		// for next iteration
-		parentHash = layer2Batch.Blocks[i].BlockHash
-	}
-
-	data, err := r.l1RollupABI.Pack("commitBatch", layer2Batch)
-	if err != nil {
-		log.Error("Failed to pack commitBatch", "id", id, "index", batch.Index, "err", err)
-		return
-	}
-
-	txID := id + "-commit"
-	// add suffix `-commit` to avoid duplication with finalize tx in unit tests
-	hash, err := r.rollupSender.SendTransaction(txID, &r.cfg.RollupContractAddress, big.NewInt(0), data)
-	if err != nil {
-		if !errors.Is(err, sender.ErrNoAvailableAccount) {
-			log.Error("Failed to send commitBatch tx to layer1 ", "id", id, "index", batch.Index, "err", err)
-		}
-		return
-	}
-	log.Info("commitBatch in layer1", "batch_hash", id, "index", batch.Index, "hash", hash)
-
-	// record and sync with db, @todo handle db error
-	err = r.db.UpdateCommitTxHashAndRollupStatus(r.ctx, id, hash.String(), types.RollupCommitting)
-	if err != nil {
-		log.Error("UpdateCommitTxHashAndRollupStatus failed", "id", id, "index", batch.Index, "err", err)
-	}
-	r.processingCommitment.Store(txID, id)
-}
-
 // ProcessGasPriceOracle imports gas price to layer1
 func (r *Layer2Relayer) ProcessGasPriceOracle() {
 	batch, err := r.db.GetLatestBatch()
@@ -345,9 +262,9 @@ func (r *Layer2Relayer) SendCommitTx(batchData []*types.BatchData) error {
 	}
 
 	// pack calldata
-	commitBatches := make([]*bridge_abi.IScrollChainBatch, len(batchData))
+	commitBatches := make([]bridge_abi.IScrollChainBatch, len(batchData))
 	for i, batch := range batchData {
-		commitBatches[i] = &batch.Batch
+		commitBatches[i] = batch.Batch
 	}
 	calldata, err := r.l1RollupABI.Pack("commitBatches", commitBatches)
 	if err != nil {

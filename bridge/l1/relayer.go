@@ -103,25 +103,9 @@ func (r *Layer1Relayer) ProcessSavedEvents() {
 }
 
 func (r *Layer1Relayer) processSavedEvent(msg *types.L1Message) error {
-	// @todo add support to relay multiple messages
-	from := common.HexToAddress(msg.Sender)
-	target := common.HexToAddress(msg.Target)
-	value, ok := big.NewInt(0).SetString(msg.Value, 10)
-	if !ok {
-		// @todo maybe panic?
-		log.Error("Failed to parse message value", "msg.queueIndex", msg.QueueIndex, "msg.height", msg.Height)
-		// TODO: need to skip this message by changing its status to MsgError
-	}
-	msgNonce := big.NewInt(int64(msg.QueueIndex))
 	calldata := common.Hex2Bytes(msg.Calldata)
-	data, err := r.l2MessengerABI.Pack("relayMessage", from, target, value, msgNonce, calldata)
-	if err != nil {
-		log.Error("Failed to pack relayMessage", "msg.queueIndex", msg.QueueIndex, "msg.height", msg.Height, "err", err)
-		// TODO: need to skip this message by changing its status to MsgError
-		return err
-	}
 
-	hash, err := r.messageSender.SendTransaction(msg.MsgHash, &r.cfg.MessengerContractAddress, big.NewInt(0), data)
+	hash, err := r.messageSender.SendTransaction(msg.MsgHash, &r.cfg.MessengerContractAddress, big.NewInt(0), calldata)
 	if err != nil && err.Error() == "execution reverted: Message expired" {
 		return r.db.UpdateLayer1Status(r.ctx, msg.MsgHash, types.MsgExpired)
 	}

@@ -15,8 +15,8 @@ import (
 
 // PublicInputHashConfig is the configuration of how to compute the public input hash.
 type PublicInputHashConfig struct {
-	MaxTxNum      int
-	PaddingTxHash common.Hash
+	MaxTxNum      int         `json:"max_tx_num"`
+	PaddingTxHash common.Hash `json:"padding_tx_hash"`
 }
 
 const defaultMaxTxNum = 44
@@ -32,7 +32,7 @@ type BatchData struct {
 	TotalL2Gas   uint64
 
 	// cache for the BatchHash
-	hash  *common.Hash
+	hash *common.Hash
 	// The config to compute the public input hash, or the block hash.
 	// If it is nil, the hash calculation will use `defaultMaxTxNum` and `defaultPaddingTxHash`.
 	piCfg *PublicInputHashConfig
@@ -104,7 +104,7 @@ func (b *BatchData) Hash() *common.Hash {
 
 // NewBatchData creates a BatchData given the parent batch information and the traces of the blocks
 // included in this batch
-func NewBatchData(parentBatch *BlockBatch, blockTraces []*types.BlockTrace) *BatchData {
+func NewBatchData(parentBatch *BlockBatch, blockTraces []*types.BlockTrace, piCfg *PublicInputHashConfig) *BatchData {
 	batchData := new(BatchData)
 	batch := &batchData.Batch
 
@@ -175,6 +175,7 @@ func NewBatchData(parentBatch *BlockBatch, blockTraces []*types.BlockTrace) *Bat
 	}
 
 	batch.L2Transactions = batchTxDataBuf.Bytes()
+	batchData.piCfg = piCfg
 
 	return batchData
 }

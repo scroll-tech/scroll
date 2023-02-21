@@ -179,11 +179,13 @@ func prepareContracts(t *testing.T) {
 	assert.NoError(t, err)
 
 	cfg.L1Config.L1MessengerAddress = l1MessengerAddress
-	cfg.L1Config.RollupContractAddress = scrollChainAddress
+	cfg.L1Config.L1MessageQueueAddress = l1MessengerAddress
+	cfg.L1Config.ScrollChainContractAddress = scrollChainAddress
 	cfg.L1Config.RelayerConfig.MessengerContractAddress = l2MessengerAddress
 	cfg.L1Config.RelayerConfig.GasPriceOracleContractAddress = l1MessengerAddress
 
 	cfg.L2Config.L2MessengerAddress = l2MessengerAddress
+	cfg.L2Config.L2MessageQueueAddress = l2MessengerAddress
 	cfg.L2Config.RelayerConfig.MessengerContractAddress = l1MessengerAddress
 	cfg.L2Config.RelayerConfig.RollupContractAddress = scrollChainAddress
 	cfg.L2Config.RelayerConfig.GasPriceOracleContractAddress = l2MessengerAddress
@@ -203,7 +205,7 @@ func TestFunction(t *testing.T) {
 	setupEnv(t)
 
 	// l1 rollup and watch rollup events
-	//t.Run("TestCommitBatchAndFinalizeBatch", testCommitBatchAndFinalizeBatch)
+	t.Run("TestCommitBatchAndFinalizeBatch", testCommitBatchAndFinalizeBatch)
 
 	// l2 message
 	//t.Run("testRelayL2MessageSucceed", testRelayL2MessageSucceed)

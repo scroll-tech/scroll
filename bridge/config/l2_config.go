@@ -2,6 +2,7 @@ package config
 
 import (
 	"encoding/json"
+	"scroll-tech/common/types"
 
 	"github.com/scroll-tech/go-ethereum/rpc"
 
@@ -40,6 +41,8 @@ type BatchProposerConfig struct {
 	CommitTxCalldataSizeLimit uint64 `json:"commit_tx_calldata_size_limit"`
 	// Skip generating proof when that opcodes appeared
 	SkippedOpcodes map[string]struct{} `json:"-"`
+	// The public input hash config
+	PublicInputConfig *types.PublicInputHashConfig `json:"public_input_config"`
 }
 
 // batchProposerConfigAlias RelayerConfig alias name

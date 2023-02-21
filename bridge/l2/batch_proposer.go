@@ -31,6 +31,8 @@ type batchProposer struct {
 	skippedOpcodes      map[string]struct{}
 	batchDataBuffer     []*types.BatchData
 	relayer             *Layer2Relayer
+
+	piCfg *types.PublicInputHashConfig
 }
 
 func newBatchProposer(cfg *config.BatchProposerConfig, relayer *Layer2Relayer, orm database.OrmFactory) *batchProposer {
@@ -44,6 +46,7 @@ func newBatchProposer(cfg *config.BatchProposerConfig, relayer *Layer2Relayer, o
 		commitCalldataSizeLimit: cfg.CommitTxCalldataSizeLimit,
 		proofGenerationFreq:     cfg.ProofGenerationFreq,
 		skippedOpcodes:          cfg.SkippedOpcodes,
+		piCfg:                   cfg.PublicInputConfig,
 		relayer:                 relayer,
 	}
 
@@ -273,5 +276,5 @@ func (p *batchProposer) generateBatchData(parentBatch *types.BlockBatch, blocks 
 		traces = append(traces, trs[0])
 	}
 
-	return types.NewBatchData(parentBatch, traces), nil
+	return types.NewBatchData(parentBatch, traces, p.piCfg), nil
 }
