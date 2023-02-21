@@ -238,5 +238,5 @@ type L2RelayedMessageEvent struct {
 
 // GetBatchCalldataLength gets the calldata bytelen of IScrollChainBatch.
 func GetBatchCalldataLength(batch *IScrollChainBatch) uint64 {
-	return uint64(32*3 + len(batch.Blocks)*124 + len(batch.L2Transactions))
+	return uint64(5*32 + len(batch.L2Transactions) + len(batch.Blocks)*8*32)
 }
