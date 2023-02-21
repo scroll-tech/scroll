@@ -357,12 +357,15 @@ func (r *Layer2Relayer) SendCommitTx(batchData []*types.BatchData) error {
 		return err
 	}
 
-	var bytes []byte
+	buf := make([]byte, 8)
+	hasher := crypto.NewKeccakState()
 	for _, batch := range commitBatches {
-		binary.BigEndian.PutUint64(bytes, batch.BatchIndex)
+		binary.BigEndian.PutUint64(buf, batch.BatchIndex)
+		_, _ = hasher.Write(buf)
 	}
-	txID := crypto.Keccak256Hash(bytes).String()
-	hash, err := r.rollupSender.SendTransaction(txID, &r.cfg.RollupContractAddress, big.NewInt(0), data)
+	txID := new(common.Hash)
+	_, _ = hasher.Read(txID[:])
+	hash, err := r.rollupSender.SendTransaction(txID.String(), &r.cfg.RollupContractAddress, big.NewInt(0), data)
 	if err != nil {
 		if !errors.Is(err, sender.ErrNoAvailableAccount) {
 			log.Error("Failed to send commitBatches tx to layer1 ", "err", err)
