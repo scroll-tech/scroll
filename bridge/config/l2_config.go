@@ -38,7 +38,7 @@ type BatchProposerConfig struct {
 	BatchTimeSec uint64 `json:"batch_time_sec"`
 	// Max number of blocks in a batch
 	BatchBlocksLimit uint64 `json:"batch_blocks_limit"`
-	// Commit tx calldata size limit, target to cap the gas use of commit tx at 2M gas
+	// Commit tx calldata size limit in bytes, target to cap the gas use of commit tx at 2M gas
 	CommitTxCalldataSizeLimit uint64 `json:"commit_tx_calldata_size_limit"`
 	// Skip generating proof when that opcodes appeared
 	SkippedOpcodes map[string]struct{} `json:"-"`

@@ -61,16 +61,14 @@
     "batch_proposer_config": {
       "proof_generation_freq": 1,
       "batch_gas_threshold": 3000000,
-      "batch_tx_num_threshold": 135,
+      "batch_tx_num_threshold": 44,
       "batch_time_sec": 300,
       "batch_blocks_limit": 100,
-      "skipped_opcodes": [
-        "CREATE2",
-        "DELEGATECALL"
-      ],
+      "commit_tx_calldata_size_limit": 200000,
+      "skipped_opcodes": [],
       "public_input_config": {
-        "max_tx_num": 4,
-        "padding_tx_hash": "0xb5baa665b2664c3bfed7eb46e00ebc110ecf2ebd257854a9bf2b9dbc9b2c08f6"
+        "max_tx_num": 44,
+        "padding_tx_hash": "0x0000000000000000000000000000000000000000000000000000000000000000"
       }
     }
   },
