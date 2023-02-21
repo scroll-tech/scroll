@@ -118,7 +118,7 @@ func (w *WatcherClient) initializeGenesis() error {
 		MPTWitness:       nil,
 	}
 
-	batchData := types.NewGenesisBatchData([]*geth_types.BlockTrace{blockTrace})
+	batchData := types.NewGenesisBatchData(blockTrace)
 
 	if err = w.batchProposer.addBatchInfoToDB(batchData); err != nil {
 		log.Error("failed to add batch info to DB", "BatchHash", batchData.Hash(), "error", err)

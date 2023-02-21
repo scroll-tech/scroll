@@ -13,7 +13,7 @@ import (
 	abi "scroll-tech/bridge/abi"
 )
 
-// PublicInputHashConfig is the input config of batch hash.
+// PublicInputHashConfig is the configuration of how to compute the public input hash.
 type PublicInputHashConfig struct {
 	MaxTxNum      int
 	PaddingTxHash common.Hash
@@ -33,10 +33,12 @@ type BatchData struct {
 
 	// cache for the BatchHash
 	hash  *common.Hash
+	// The config to compute the public input hash, or the block hash.
+	// If it is nil, the hash calculation will use `defaultMaxTxNum` and `defaultPaddingTxHash`.
 	piCfg *PublicInputHashConfig
 }
 
-// Hash calculates hash of batches.
+// Hash calculates the hash of this batch.
 func (b *BatchData) Hash() *common.Hash {
 	if b.hash != nil {
 		return b.hash
@@ -100,7 +102,8 @@ func (b *BatchData) Hash() *common.Hash {
 	return b.hash
 }
 
-// NewBatchData generates batches to committed based on parentBatch and blockTraces.
+// NewBatchData creates a BatchData given the parent batch information and the traces of the blocks
+// included in this batch
 func NewBatchData(parentBatch *BlockBatch, blockTraces []*types.BlockTrace) *BatchData {
 	batchData := new(BatchData)
 	batch := &batchData.Batch
@@ -176,66 +179,34 @@ func NewBatchData(parentBatch *BlockBatch, blockTraces []*types.BlockTrace) *Bat
 	return batchData
 }
 
-// NewGenesisBatchData generates batches to committed based on parentBatch and blockTraces.
-func NewGenesisBatchData(blockTraces []*types.BlockTrace) *BatchData {
+// NewGenesisBatchData generates the batch that contains the genesis block.
+func NewGenesisBatchData(genesisBlockTrace *types.BlockTrace) *BatchData {
+	header := genesisBlockTrace.Header
+	if header.Number.Uint64() != 0 {
+		panic("invalid genesis block trace: block number is not 0")
+	}
+
 	batchData := new(BatchData)
 	batch := &batchData.Batch
 
-	// set BatchIndex, ParentBatchHash
-	batch.BatchIndex = 1
-	batch.Blocks = make([]abi.IScrollChainBlockContext, len(blockTraces))
+	// fill in batch information
+	batch.BatchIndex = 0
+	batch.Blocks = make([]abi.IScrollChainBlockContext, 1)
+	batch.NewStateRoot = header.Root
+	// PrevStateRoot, WithdrawTrieRoot, ParentBatchHash should all be 0
+	// L2Transactions should be empty
 
-	var batchTxDataBuf bytes.Buffer
-	batchTxDataWriter := bufio.NewWriter(&batchTxDataBuf)
-
-	for i, trace := range blockTraces {
-		batchData.TotalTxNum += uint64(len(trace.Transactions))
-		batchData.TotalL2Gas += trace.Header.GasUsed
-
-		batch.Blocks[i] = abi.IScrollChainBlockContext{
-			BlockHash:       trace.Header.Hash(),
-			ParentHash:      trace.Header.ParentHash,
-			BlockNumber:     trace.Header.Number.Uint64(),
-			Timestamp:       trace.Header.Time,
-			BaseFee:         trace.Header.BaseFee,
-			GasLimit:        trace.Header.GasLimit,
-			NumTransactions: uint16(len(trace.Transactions)),
-			NumL1Messages:   0, // TODO: currently use 0, will re-enable after we use l2geth to include L1 messages
-		}
-
-		// fill in RLP-encoded transactions
-		for _, txData := range trace.Transactions {
-			// right now we only support legacy tx
-			tx := types.NewTx(&types.LegacyTx{
-				Nonce:    txData.Nonce,
-				To:       txData.To,
-				Value:    txData.Value.ToInt(),
-				Gas:      txData.Gas,
-				GasPrice: txData.GasPrice.ToInt(),
-				Data:     []byte(txData.Data),
-				V:        txData.V.ToInt(),
-				R:        txData.R.ToInt(),
-				S:        txData.S.ToInt(),
-			})
-			var rlpBuf bytes.Buffer
-			writer := bufio.NewWriter(&rlpBuf)
-			_ = tx.EncodeRLP(writer)
-			rlpTxData := rlpBuf.Bytes()
-			var txLen [4]byte
-			binary.BigEndian.PutUint32(txLen[:], uint32(len(rlpTxData)))
-			batchTxDataWriter.Write(txLen[:])
-			batchTxDataWriter.Write(rlpTxData)
-			batchData.TxHashes = append(batchData.TxHashes, tx.Hash())
-		}
-
-		// set NewStateRoot & WithdrawTrieRoot from the last block
-		if i == len(blockTraces)-1 {
-			batch.NewStateRoot = trace.Header.Root
-			batch.WithdrawTrieRoot = trace.WithdrawTrieRoot
-		}
+	// fill in block context
+	batch.Blocks[0] = abi.IScrollChainBlockContext{
+		BlockHash:       header.Hash(),
+		ParentHash:      header.ParentHash,
+		BlockNumber:     header.Number.Uint64(),
+		Timestamp:       header.Time,
+		BaseFee:         header.BaseFee,
+		GasLimit:        header.GasLimit,
+		NumTransactions: 0,
+		NumL1Messages:   0,
 	}
-
-	batch.L2Transactions = batchTxDataBuf.Bytes()
 
 	return batchData
 }
