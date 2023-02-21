@@ -6,19 +6,19 @@ require (
 	github.com/docker/docker v20.10.21+incompatible
 	github.com/jmoiron/sqlx v1.3.5
 	github.com/lib/pq v1.10.6
-	github.com/mattn/go-colorable v0.1.8
-	github.com/mattn/go-isatty v0.0.14
+	github.com/mattn/go-colorable v0.1.13
+	github.com/mattn/go-isatty v0.0.16
 	github.com/orcaman/concurrent-map v1.0.0
-	github.com/scroll-tech/go-ethereum v1.10.14-0.20230210093343-bb26fa3e391d
+	github.com/scroll-tech/go-ethereum v1.10.14-0.20230220082843-ec9254b0b1c6
 	github.com/stretchr/testify v1.8.0
-	github.com/urfave/cli/v2 v2.10.2
+	github.com/urfave/cli/v2 v2.17.2-0.20221006022127-8f469abc00aa
 )
 
 require (
 	github.com/Microsoft/go-winio v0.6.0 // indirect
 	github.com/VictoriaMetrics/fastcache v1.6.0 // indirect
 	github.com/btcsuite/btcd v0.20.1-beta // indirect
-	github.com/cespare/xxhash/v2 v2.1.2 // indirect
+	github.com/cespare/xxhash/v2 v2.2.0 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.2 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/deckarep/golang-set v1.8.0 // indirect
@@ -27,11 +27,11 @@ require (
 	github.com/docker/go-connections v0.4.0 // indirect
 	github.com/docker/go-units v0.5.0 // indirect
 	github.com/edsrzf/mmap-go v1.0.0 // indirect
-	github.com/ethereum/go-ethereum v1.10.26 // indirect
+	github.com/ethereum/go-ethereum v1.11.1 // indirect
 	github.com/fjl/memsize v0.0.0-20190710130421-bcb5799ab5e5 // indirect
 	github.com/gballet/go-libpcsclite v0.0.0-20190607065134-2772fd86a8ff // indirect
 	github.com/go-ole/go-ole v1.2.6 // indirect
-	github.com/go-stack/stack v1.8.0 // indirect
+	github.com/go-stack/stack v1.8.1 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/google/go-cmp v0.5.8 // indirect
@@ -48,7 +48,6 @@ require (
 	github.com/influxdata/influxdb-client-go/v2 v2.4.0 // indirect
 	github.com/influxdata/line-protocol v0.0.0-20210311194329-9aa0e372d097 // indirect
 	github.com/jackpal/go-nat-pmp v1.0.2 // indirect
-	github.com/kr/pretty v0.3.0 // indirect
 	github.com/mattn/go-runewidth v0.0.9 // indirect
 	github.com/mattn/go-sqlite3 v1.14.14 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
@@ -64,17 +63,16 @@ require (
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/prometheus/tsdb v0.7.1 // indirect
 	github.com/rjeczalik/notify v0.9.1 // indirect
-	github.com/rogpeppe/go-internal v1.8.1 // indirect
 	github.com/rs/cors v1.7.0 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
-	github.com/scroll-tech/zktrie v0.4.3 // indirect
+	github.com/scroll-tech/zktrie v0.5.0 // indirect
 	github.com/shirou/gopsutil v3.21.11+incompatible // indirect
 	github.com/sirupsen/logrus v1.9.0 // indirect
-	github.com/status-im/keycard-go v0.0.0-20190316090335-8537d3370df4 // indirect
+	github.com/status-im/keycard-go v0.2.0 // indirect
 	github.com/syndtr/goleveldb v1.0.1-0.20210819022825-2ae1ddf74ef7 // indirect
 	github.com/tklauser/go-sysconf v0.3.10 // indirect
 	github.com/tklauser/numcpus v0.4.0 // indirect
-	github.com/tyler-smith/go-bip39 v1.0.1-0.20181017060643-dbb3b84ba2ef // indirect
+	github.com/tyler-smith/go-bip39 v1.1.0 // indirect
 	github.com/xrash/smetrics v0.0.0-20201216005158-039620a65673 // indirect
 	github.com/yusufpapurcu/wmi v1.2.2 // indirect
 	golang.org/x/crypto v0.6.0 // indirect
@@ -83,7 +81,7 @@ require (
 	golang.org/x/sync v0.1.0 // indirect
 	golang.org/x/sys v0.5.0 // indirect
 	golang.org/x/text v0.7.0 // indirect
-	golang.org/x/time v0.0.0-20210220033141-f8bda1e9f3ba // indirect
+	golang.org/x/time v0.0.0-20220922220347-f3bd1da661af // indirect
 	golang.org/x/tools v0.3.0 // indirect
 	gopkg.in/natefinch/npipe.v2 v2.0.0-20160621034901-c1b8fa8bdcce // indirect
 	gopkg.in/urfave/cli.v1 v1.20.0 // indirect
