@@ -32,8 +32,6 @@ func New(ctx context.Context, cfg *config.L2Config, orm database.OrmFactory) (*B
 		return nil, err
 	}
 
-	// Note: initialize watcher before relayer to keep DB consistent.
-	// Otherwise, there will be a race condition between watcher.initializeGenesis and relayer.ProcessPendingBatches.
 	l2Watcher := NewL2WatcherClient(ctx, client, cfg.Confirmations, cfg.BatchProposerConfig, cfg.L2MessengerAddress, cfg.L2MessageQueueAddress, relayer, orm)
 
 	return &Backend{

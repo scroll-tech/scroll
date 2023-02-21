@@ -138,7 +138,7 @@ func TestFunction(t *testing.T) {
 	t.Run("TestL2RelayerProcessCommittedBatches", testL2RelayerProcessCommittedBatches)
 	t.Run("TestL2RelayerSkipBatches", testL2RelayerSkipBatches)
 
-	//t.Run("TestBatchProposer", testBatchProposer)
+	t.Run("TestBatchProposer", testBatchProposer)
 
 	t.Cleanup(func() {
 		free(t)
