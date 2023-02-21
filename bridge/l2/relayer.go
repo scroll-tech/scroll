@@ -106,7 +106,7 @@ func NewLayer2Relayer(ctx context.Context, l2Client *ethclient.Client, db databa
 
 		rollupSender: rollupSender,
 		rollupCh:     rollupSender.ConfirmChan(),
-		l1RollupABI:  bridge_abi.ScrollchainABI,
+		l1RollupABI:  bridge_abi.ScrollChainABI,
 
 		gasOracleSender: gasOracleSender,
 		gasOracleCh:     gasOracleSender.ConfirmChan(),

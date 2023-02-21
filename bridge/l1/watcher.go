@@ -16,6 +16,8 @@ import (
 
 	"scroll-tech/common/types"
 
+	"github.com/iden3/go-iden3-crypto/keccak256"
+
 	"scroll-tech/database"
 
 	bridge_abi "scroll-tech/bridge/abi"
@@ -45,12 +47,16 @@ type Watcher struct {
 	db     database.OrmFactory
 
 	// The number of new blocks to wait for a block to be confirmed
-	confirmations    rpc.BlockNumber
+	confirmations rpc.BlockNumber
+
 	messengerAddress common.Address
 	messengerABI     *abi.ABI
 
-	scrollchainAddress common.Address
-	scrollchainABI     *abi.ABI
+	messageQueueAddress common.Address
+	messageQueueABI     *abi.ABI
+
+	scrollChainAddress common.Address
+	scrollChainABI     *abi.ABI
 
 	// The height of the block that the watcher has retrieved event logs
 	processedMsgHeight uint64
@@ -62,7 +68,7 @@ type Watcher struct {
 
 // NewWatcher returns a new instance of Watcher. The instance will be not fully prepared,
 // and still needs to be finalized and ran by calling `watcher.Start`.
-func NewWatcher(ctx context.Context, client *ethclient.Client, startHeight uint64, confirmations rpc.BlockNumber, messengerAddress common.Address, scrollchainAddress common.Address, db database.OrmFactory) *Watcher {
+func NewWatcher(ctx context.Context, client *ethclient.Client, startHeight uint64, confirmations rpc.BlockNumber, messengerAddress, messageQueueAddress, scrollChainAddress common.Address, db database.OrmFactory) *Watcher {
 	savedHeight, err := db.GetLayer1LatestWatchedHeight()
 	if err != nil {
 		log.Warn("Failed to fetch height from db", "err", err)
@@ -84,14 +90,20 @@ func NewWatcher(ctx context.Context, client *ethclient.Client, startHeight uint6
 	stop := make(chan bool)
 
 	return &Watcher{
-		ctx:                  ctx,
-		client:               client,
-		db:                   db,
-		confirmations:        confirmations,
-		messengerAddress:     messengerAddress,
-		messengerABI:         bridge_abi.L1ScrollMessengerABI,
-		scrollchainAddress:   scrollchainAddress,
-		scrollchainABI:       bridge_abi.ScrollchainABI,
+		ctx:           ctx,
+		client:        client,
+		db:            db,
+		confirmations: confirmations,
+
+		messengerAddress: messengerAddress,
+		messengerABI:     bridge_abi.L1ScrollMessengerABI,
+
+		messageQueueAddress: messageQueueAddress,
+		messageQueueABI:     bridge_abi.L1MessageQueueABI,
+
+		scrollChainAddress: scrollChainAddress,
+		scrollChainABI:     bridge_abi.ScrollChainABI,
+
 		processedMsgHeight:   uint64(savedHeight),
 		processedBlockHeight: savedL1BlockHeight,
 		stop:                 stop,
@@ -213,16 +225,17 @@ func (w *Watcher) FetchContractEvent(blockHeight uint64) error {
 			ToBlock:   big.NewInt(to),   // inclusive
 			Addresses: []common.Address{
 				w.messengerAddress,
-				w.scrollchainAddress,
+				w.scrollChainAddress,
+				w.messageQueueAddress,
 			},
 			Topics: make([][]common.Hash, 1),
 		}
 		query.Topics[0] = make([]common.Hash, 5)
-		query.Topics[0][0] = common.HexToHash(bridge_abi.QueueTransactionEventSignature)
-		query.Topics[0][1] = common.HexToHash(bridge_abi.RelayedMessageEventSignature)
-		query.Topics[0][2] = common.HexToHash(bridge_abi.FailedRelayedMessageEventSignature)
-		query.Topics[0][3] = common.HexToHash(bridge_abi.CommitBatchEventSignature)
-		query.Topics[0][4] = common.HexToHash(bridge_abi.FinalizedBatchEventSignature)
+		query.Topics[0][0] = bridge_abi.L1QueueTransactionEventSignature
+		query.Topics[0][1] = bridge_abi.L1RelayedMessageEventSignature
+		query.Topics[0][2] = bridge_abi.L1FailedRelayedMessageEventSignature
+		query.Topics[0][3] = bridge_abi.L1CommitBatchEventSignature
+		query.Topics[0][4] = bridge_abi.L1FinalizeBatchEventSignature
 
 		logs, err := w.client.FilterLogs(w.ctx, query)
 		if err != nil {
@@ -311,28 +324,19 @@ func (w *Watcher) parseBridgeEventLogs(logs []geth_types.Log) ([]*types.L1Messag
 	var rollupEvents []rollupEvent
 	for _, vLog := range logs {
 		switch vLog.Topics[0] {
-
-		case common.HexToHash(bridge_abi.QueueTransactionEventSignature):
-			event := struct {
-				Sender     common.Address
-				Target     common.Address
-				Value      *big.Int // uint256
-				QueueIndex *big.Int // uint256
-				GasLimit   *big.Int // uint256
-				Data       []byte
-			}{}
-
-			err := w.messengerABI.UnpackIntoInterface(&event, "QueueTransaction", vLog.Data)
+		case bridge_abi.L1QueueTransactionEventSignature:
+			event := bridge_abi.L1QueueTransactionEvent{}
+			err := utils.UnpackLog(w.messageQueueABI, &event, "QueueTransaction", vLog)
 			if err != nil {
 				log.Warn("Failed to unpack layer1 QueueTransaction event", "err", err)
 				return l1Messages, relayedMessages, rollupEvents, err
 			}
-			// target is in topics[1]
-			event.Target = common.HexToAddress(vLog.Topics[1].String())
+
+			msgHash := common.BytesToHash(keccak256.Hash(event.Data))
+
 			l1Messages = append(l1Messages, &types.L1Message{
 				QueueIndex: event.QueueIndex.Uint64(),
-				MsgHash:    utils.ComputeMessageHash(event.Sender, event.Target, event.Value, event.QueueIndex, event.GasLimit, event.Data).String(),
-				// MsgHash: // todo: use encodeXDomainData from contracts,
+				MsgHash:    msgHash.String(),
 				Height:     vLog.BlockNumber,
 				Sender:     event.Sender.String(),
 				Value:      event.Value.String(),
@@ -341,35 +345,35 @@ func (w *Watcher) parseBridgeEventLogs(logs []geth_types.Log) ([]*types.L1Messag
 				GasLimit:   event.GasLimit.Uint64(),
 				Layer1Hash: vLog.TxHash.Hex(),
 			})
-		case common.HexToHash(bridge_abi.RelayedMessageEventSignature):
-			event := struct {
-				MsgHash common.Hash
-			}{}
-			// MsgHash is in topics[1]
-			event.MsgHash = common.HexToHash(vLog.Topics[1].String())
+		case bridge_abi.L1RelayedMessageEventSignature:
+			event := bridge_abi.L1RelayedMessageEvent{}
+			err := utils.UnpackLog(w.messengerABI, &event, "RelayedMessage", vLog)
+			if err != nil {
+				log.Warn("Failed to unpack layer1 RelayedMessage event", "err", err)
+				return l1Messages, relayedMessages, rollupEvents, err
+			}
+
 			relayedMessages = append(relayedMessages, relayedMessage{
 				msgHash:      event.MsgHash,
 				txHash:       vLog.TxHash,
 				isSuccessful: true,
 			})
-		case common.HexToHash(bridge_abi.FailedRelayedMessageEventSignature):
-			event := struct {
-				MsgHash common.Hash
-			}{}
-			// MsgHash is in topics[1]
-			event.MsgHash = common.HexToHash(vLog.Topics[1].String())
+		case bridge_abi.L1FailedRelayedMessageEventSignature:
+			event := bridge_abi.L1FailedRelayedMessageEvent{}
+			err := utils.UnpackLog(w.messengerABI, &event, "FailedRelayedMessage", vLog)
+			if err != nil {
+				log.Warn("Failed to unpack layer1 FailedRelayedMessage event", "err", err)
+				return l1Messages, relayedMessages, rollupEvents, err
+			}
+
 			relayedMessages = append(relayedMessages, relayedMessage{
 				msgHash:      event.MsgHash,
 				txHash:       vLog.TxHash,
 				isSuccessful: false,
 			})
-		case common.HexToHash(bridge_abi.CommitBatchEventSignature):
-			event := struct {
-				BatchHash common.Hash
-			}{}
-			// BatchHash is in topics[1]
-			event.BatchHash = common.HexToHash(vLog.Topics[1].String())
-			err := w.scrollchainABI.UnpackIntoInterface(&event, "CommitBatch", vLog.Data)
+		case bridge_abi.L1CommitBatchEventSignature:
+			event := bridge_abi.L1CommitBatchEvent{}
+			err := utils.UnpackLog(w.scrollChainABI, &event, "CommitBatch", vLog)
 			if err != nil {
 				log.Warn("Failed to unpack layer1 CommitBatch event", "err", err)
 				return l1Messages, relayedMessages, rollupEvents, err
@@ -380,13 +384,9 @@ func (w *Watcher) parseBridgeEventLogs(logs []geth_types.Log) ([]*types.L1Messag
 				txHash:    vLog.TxHash,
 				status:    types.RollupCommitted,
 			})
-		case common.HexToHash(bridge_abi.FinalizedBatchEventSignature):
-			event := struct {
-				BatchHash common.Hash
-			}{}
-			// BatchHash is in topics[1]
-			event.BatchHash = common.HexToHash(vLog.Topics[1].String())
-			err := w.scrollchainABI.UnpackIntoInterface(&event, "FinalizeBatch", vLog.Data)
+		case bridge_abi.L1FinalizeBatchEventSignature:
+			event := bridge_abi.L1FinalizeBatchEvent{}
+			err := utils.UnpackLog(w.scrollChainABI, &event, "FinalizeBatch", vLog)
 			if err != nil {
 				log.Warn("Failed to unpack layer1 FinalizeBatch event", "err", err)
 				return l1Messages, relayedMessages, rollupEvents, err
