@@ -1,7 +1,9 @@
 .PHONY: lint docker clean libzkp
 
-zkp:
+ZKEVM_VERSION=3.0
 
+zkp:
+	# wget https://github.com/scroll-tech/scroll-zkevm/archive/refs/tags/${ZKEVM_VERSION}.zip
 
 test-zkp: zkp
 	go test -tags ffi -timeout 0 -v

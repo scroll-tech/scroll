@@ -83,7 +83,7 @@ pipeline {
                 }
                 stage('Integration test') {
                     steps {
-                        sh 'go test -v -race -tags="mock_prover mock_verifier" -coverprofile=coverage.integration.txt -covermode=atomic -p 1 scroll-tech/integration-test/...'
+                        sh 'go test -v -race -tags mock -coverprofile=coverage.integration.txt -covermode=atomic -p 1 scroll-tech/integration-test/...'
                     }
                 }
                 stage('Race test bridge package') {
