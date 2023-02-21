@@ -9,14 +9,13 @@ import (
 	"github.com/scroll-tech/go-ethereum/accounts/abi"
 	"github.com/scroll-tech/go-ethereum/common"
 	geth_types "github.com/scroll-tech/go-ethereum/core/types"
+	"github.com/scroll-tech/go-ethereum/crypto"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/scroll-tech/go-ethereum/metrics"
 	"github.com/scroll-tech/go-ethereum/rpc"
 
 	"scroll-tech/common/types"
-
-	"github.com/iden3/go-iden3-crypto/keccak256"
 
 	"scroll-tech/database"
 
@@ -332,7 +331,7 @@ func (w *Watcher) parseBridgeEventLogs(logs []geth_types.Log) ([]*types.L1Messag
 				return l1Messages, relayedMessages, rollupEvents, err
 			}
 
-			msgHash := common.BytesToHash(keccak256.Hash(event.Data))
+			msgHash := common.BytesToHash(crypto.Keccak256(event.Data))
 
 			l1Messages = append(l1Messages, &types.L1Message{
 				QueueIndex: event.QueueIndex.Uint64(),
