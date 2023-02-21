@@ -14,7 +14,7 @@ import (
 // RunApp exec's the current binary using name as argv[0] which will trigger the
 // reexec init function for that name (e.g. "geth-test" in cmd/geth/run_test.go)
 func (t *Cmd) RunApp(waitResult func() bool) {
-	t.Log("cmd: ", append([]string{t.name}, t.args...))
+	fmt.Println("cmd: ", append([]string{t.name}, t.args...))
 	cmd := &exec.Cmd{
 		Path:   reexec.Self(),
 		Args:   append([]string{t.name}, t.args...),
@@ -45,6 +45,7 @@ func (t *Cmd) WaitExit() {
 	// Send interrupt signal.
 	t.mu.Lock()
 	_ = t.cmd.Process.Signal(os.Interrupt)
+	_, _ = t.cmd.Process.Wait()
 	t.mu.Unlock()
 }
 

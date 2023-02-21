@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"fmt"
 	"os"
 	"os/exec"
 	"strings"
@@ -66,7 +67,7 @@ func (t *Cmd) runCmd() {
 
 // RunCmd parallel running when parallel is true.
 func (t *Cmd) RunCmd(parallel bool) {
-	t.Log("cmd: ", t.args)
+	fmt.Println("cmd: ", t.args)
 	if parallel {
 		go t.runCmd()
 	} else {
@@ -77,9 +78,9 @@ func (t *Cmd) RunCmd(parallel bool) {
 func (t *Cmd) Write(data []byte) (int, error) {
 	out := string(data)
 	if verbose {
-		t.Logf("%s: %v", t.name, out)
+		fmt.Printf("%s: %v", t.name, out)
 	} else if strings.Contains(out, "error") || strings.Contains(out, "warning") {
-		t.Logf("%s: %v", t.name, out)
+		fmt.Printf("%s: %v", t.name, out)
 	}
 	go t.checkFuncs.IterCb(func(_ string, value interface{}) {
 		check := value.(checkFunc)
