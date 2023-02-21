@@ -5,8 +5,6 @@ import (
 	"math/big"
 	"testing"
 
-	"scroll-tech/bridge/l1"
-
 	"github.com/scroll-tech/go-ethereum/accounts/abi/bind"
 	"github.com/scroll-tech/go-ethereum/common"
 	geth_types "github.com/scroll-tech/go-ethereum/core/types"
@@ -14,6 +12,7 @@ import (
 
 	"scroll-tech/common/types"
 
+	"scroll-tech/bridge/l1"
 	"scroll-tech/bridge/l2"
 
 	"scroll-tech/database"

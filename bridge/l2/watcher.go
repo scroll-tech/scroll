@@ -394,6 +394,7 @@ func (w *WatcherClient) parseBridgeEventLogs(logs []geth_types.Log) ([]*types.L2
 				event.MessageNonce,
 				event.Message,
 			)
+
 			// they should always match, just double check
 			if event.MessageNonce.Uint64() != lastAppendMsgNonce {
 				return l2Messages, relayedMessages, errors.New("l2 message nonce mismatch")

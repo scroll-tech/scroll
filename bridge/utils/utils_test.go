@@ -1,11 +1,13 @@
 package utils_test
 
 import (
+	"math/big"
 	"testing"
 
 	"scroll-tech/bridge/utils"
 
 	"github.com/scroll-tech/go-ethereum/common"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestKeccak2(t *testing.T) {
@@ -25,17 +27,13 @@ func TestKeccak2(t *testing.T) {
 	}
 }
 
-/*
 func TestComputeMessageHash(t *testing.T) {
 	hash := utils.ComputeMessageHash(
-		common.HexToAddress("0xd7227113b92e537aeda220d5a2f201b836e5879d"),
-		common.HexToAddress("0x47c02b023b6787ef4e503df42bbb1a94f451a1c0"),
-		big.NewInt(5000000000000000),
+		common.HexToAddress("0x1C5A77d9FA7eF466951B2F01F724BCa3A5820b63"),
+		common.HexToAddress("0x4592D8f8D7B001e72Cb26A73e4Fa1806a51aC79d"),
 		big.NewInt(0),
-		big.NewInt(1674204924),
-		common.Hex2Bytes("8eaac8a30000000000000000000000007138b17fc82d7e954b3bd2f98d8166d03e5e569b0000000000000000000000007138b17fc82d7e954b3bd2f98d8166d03e5e569b0000000000000000000000000000000000000000000000000011c37937e0800000000000000000000000000000000000000000000000000000000000000000800000000000000000000000000000000000000000000000000000000000000000"),
-		big.NewInt(30706),
+		big.NewInt(1),
+		[]byte("testbridgecontract"),
 	)
-	assert.Equal(t, hash.String(), "0x920e59f62ca89a0f481d44961c55d299dd20c575693692d61fdf3ca579d8edf3")
+	assert.Equal(t, "0xda253c04595a49017bb54b1b46088c69752b5ad2f0c47971ac76b8b25abec202", hash.String())
 }
-*/
