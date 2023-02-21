@@ -33,9 +33,9 @@ type relayedMessage struct {
 }
 
 type rollupEvent struct {
-	batchID common.Hash
-	txHash  common.Hash
-	status  types.RollupStatus
+	batchHash common.Hash
+	txHash    common.Hash
+	status    types.RollupStatus
 }
 
 // Watcher will listen for smart contract events from Eth L1.
@@ -222,8 +222,7 @@ func (w *Watcher) FetchContractEvent(blockHeight uint64) error {
 		query.Topics[0][1] = common.HexToHash(bridge_abi.RelayedMessageEventSignature)
 		query.Topics[0][2] = common.HexToHash(bridge_abi.FailedRelayedMessageEventSignature)
 		query.Topics[0][3] = common.HexToHash(bridge_abi.CommitBatchEventSignature)
-		query.Topics[0][4] = common.HexToHash(bridge_abi.CommitBatchesEventSignature)
-		query.Topics[0][5] = common.HexToHash(bridge_abi.FinalizedBatchEventSignature)
+		query.Topics[0][4] = common.HexToHash(bridge_abi.FinalizedBatchEventSignature)
 
 		logs, err := w.client.FilterLogs(w.ctx, query)
 		if err != nil {
@@ -245,22 +244,22 @@ func (w *Watcher) FetchContractEvent(blockHeight uint64) error {
 		log.Info("L1 events types", "SentMessageCount", len(sentMessageEvents), "RelayedMessageCount", len(relayedMessageEvents), "RollupEventCount", len(rollupEvents))
 
 		// use rollup event to update rollup results db status
-		var batchIDs []string
+		var batchHashes []string
 		for _, event := range rollupEvents {
-			batchIDs = append(batchIDs, event.batchID.String())
+			batchHashes = append(batchHashes, event.batchHash.String())
 		}
-		statuses, err := w.db.GetRollupStatusByIDList(batchIDs)
+		statuses, err := w.db.GetRollupStatusByIDList(batchHashes)
 		if err != nil {
 			log.Error("Failed to GetRollupStatusByIDList", "err", err)
 			return err
 		}
-		if len(statuses) != len(batchIDs) {
-			log.Error("RollupStatus.Length mismatch with BatchIDs.Length", "RollupStatus.Length", len(statuses), "BatchIDs.Length", len(batchIDs))
+		if len(statuses) != len(batchHashes) {
+			log.Error("RollupStatus.Length mismatch with batchHashes.Length", "RollupStatus.Length", len(statuses), "batchHashes.Length", len(batchHashes))
 			return nil
 		}
 
 		for index, event := range rollupEvents {
-			batchID := event.batchID.String()
+			batchID := event.batchHash.String()
 			status := statuses[index]
 			// only update when db status is before event status
 			if event.status > status {
@@ -366,11 +365,10 @@ func (w *Watcher) parseBridgeEventLogs(logs []geth_types.Log) ([]*types.L1Messag
 			})
 		case common.HexToHash(bridge_abi.CommitBatchEventSignature):
 			event := struct {
-				BatchID   common.Hash
 				BatchHash common.Hash
 			}{}
 			// BatchID is in topics[1]
-			event.BatchID = common.HexToHash(vLog.Topics[1].String())
+			event.BatchHash = common.HexToHash(vLog.Topics[1].String())
 			err := w.scrollchainABI.UnpackIntoInterface(&event, "CommitBatch", vLog.Data)
 			if err != nil {
 				log.Warn("Failed to unpack layer1 CommitBatch event", "err", err)
@@ -378,35 +376,16 @@ func (w *Watcher) parseBridgeEventLogs(logs []geth_types.Log) ([]*types.L1Messag
 			}
 
 			rollupEvents = append(rollupEvents, rollupEvent{
-				batchID: event.BatchID,
-				txHash:  vLog.TxHash,
-				status:  types.RollupCommitted,
-			})
-		case common.HexToHash(bridge_abi.CommitBatchesEventSignature):
-			event := struct {
-				BatchID   common.Hash
-				BatchHash common.Hash
-			}{}
-			// BatchID is in topics[1]
-			event.BatchID = common.HexToHash(vLog.Topics[1].String())
-			err := w.scrollchainABI.UnpackIntoInterface(&event, "CommitBatches", vLog.Data)
-			if err != nil {
-				log.Warn("Failed to unpack layer1 CommitBatches event", "err", err)
-				return l1Messages, relayedMessages, rollupEvents, err
-			}
-
-			rollupEvents = append(rollupEvents, rollupEvent{
-				batchID: event.BatchID,
-				txHash:  vLog.TxHash,
-				status:  types.RollupCommitted,
+				batchHash: event.BatchHash,
+				txHash:    vLog.TxHash,
+				status:    types.RollupCommitted,
 			})
 		case common.HexToHash(bridge_abi.FinalizedBatchEventSignature):
 			event := struct {
-				BatchID   common.Hash
 				BatchHash common.Hash
 			}{}
-			// BatchID is in topics[1]
-			event.BatchID = common.HexToHash(vLog.Topics[1].String())
+			// BatchHash is in topics[1]
+			event.BatchHash = common.HexToHash(vLog.Topics[1].String())
 			err := w.scrollchainABI.UnpackIntoInterface(&event, "FinalizeBatch", vLog.Data)
 			if err != nil {
 				log.Warn("Failed to unpack layer1 FinalizeBatch event", "err", err)
@@ -414,9 +393,9 @@ func (w *Watcher) parseBridgeEventLogs(logs []geth_types.Log) ([]*types.L1Messag
 			}
 
 			rollupEvents = append(rollupEvents, rollupEvent{
-				batchID: event.BatchID,
-				txHash:  vLog.TxHash,
-				status:  types.RollupFinalized,
+				batchHash: event.BatchHash,
+				txHash:    vLog.TxHash,
+				status:    types.RollupFinalized,
 			})
 		default:
 			log.Error("Unknown event", "topic", vLog.Topics[0], "txHash", vLog.TxHash)
