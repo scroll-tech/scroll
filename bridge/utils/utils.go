@@ -3,17 +3,18 @@ package utils
 import (
 	"fmt"
 	"math/big"
-	bridgeabi "scroll-tech/bridge/abi"
 
-	"github.com/iden3/go-iden3-crypto/keccak256"
 	"github.com/scroll-tech/go-ethereum/accounts/abi"
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/core/types"
+	"github.com/scroll-tech/go-ethereum/crypto"
+
+	bridgeabi "scroll-tech/bridge/abi"
 )
 
 // Keccak2 compute the keccack256 of two concatenations of bytes32
 func Keccak2(a common.Hash, b common.Hash) common.Hash {
-	return common.BytesToHash(keccak256.Hash(append(a.Bytes()[:], b.Bytes()[:]...)))
+	return common.BytesToHash(crypto.Keccak256(append(a.Bytes()[:], b.Bytes()[:]...)))
 }
 
 // ComputeMessageHash compute the message hash
@@ -25,7 +26,7 @@ func ComputeMessageHash(
 	message []byte,
 ) common.Hash {
 	data, _ := bridgeabi.L2ScrollMessengerABI.Pack("relayMessage", sender, target, value, messageNonce, message)
-	return common.BytesToHash(keccak256.Hash(data))
+	return common.BytesToHash(crypto.Keccak256(data))
 }
 
 // BufferToUint256Be convert bytes array to uint256 array assuming big-endian

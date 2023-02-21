@@ -2,11 +2,12 @@ package config
 
 import (
 	"encoding/json"
-	"scroll-tech/common/types"
 
 	"github.com/scroll-tech/go-ethereum/rpc"
 
 	"github.com/scroll-tech/go-ethereum/common"
+
+	"scroll-tech/common/types"
 )
 
 // L2Config loads l2geth configuration items.

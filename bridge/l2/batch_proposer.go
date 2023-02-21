@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	eth_types "github.com/scroll-tech/go-ethereum/core/types"
+	geth_types "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/log"
 
 	"scroll-tech/common/types"
@@ -266,7 +266,7 @@ func (p *batchProposer) addBatchInfoToDB(batchData *types.BatchData) error {
 }
 
 func (p *batchProposer) generateBatchData(parentBatch *types.BlockBatch, blocks []*types.BlockInfo) (*types.BatchData, error) {
-	var traces []*eth_types.BlockTrace
+	var traces []*geth_types.BlockTrace
 	for _, block := range blocks {
 		trs, err := p.orm.GetBlockTraces(map[string]interface{}{"hash": block.Hash})
 		if err != nil || len(trs) != 1 {

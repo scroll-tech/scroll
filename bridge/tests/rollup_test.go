@@ -4,16 +4,17 @@ import (
 	"context"
 	"math/big"
 	"scroll-tech/bridge/l1"
-	"scroll-tech/bridge/l2"
-	"scroll-tech/common/types"
-	"scroll-tech/database"
-	"scroll-tech/database/migrate"
 	"testing"
 
 	"github.com/scroll-tech/go-ethereum/accounts/abi/bind"
 	"github.com/scroll-tech/go-ethereum/common"
-	eth_types "github.com/scroll-tech/go-ethereum/core/types"
+	geth_types "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/stretchr/testify/assert"
+
+	"scroll-tech/bridge/l2"
+	"scroll-tech/common/types"
+	"scroll-tech/database"
+	"scroll-tech/database/migrate"
 )
 
 func testCommitBatchAndFinalizeBatch(t *testing.T) {
@@ -36,18 +37,18 @@ func testCommitBatchAndFinalizeBatch(t *testing.T) {
 	l1Watcher := l1.NewWatcher(context.Background(), l1Client, 0, l1Cfg.Confirmations, l1Cfg.L1MessengerAddress, l1Cfg.L1MessageQueueAddress, l1Cfg.ScrollChainContractAddress, db)
 
 	// add some blocks to db
-	var traces []*eth_types.BlockTrace
+	var traces []*geth_types.BlockTrace
 	var parentHash common.Hash
 	for i := 1; i <= 10; i++ {
-		header := eth_types.Header{
+		header := geth_types.Header{
 			Number:     big.NewInt(int64(i)),
 			ParentHash: parentHash,
 			Difficulty: big.NewInt(0),
 			BaseFee:    big.NewInt(0),
 		}
-		traces = append(traces, &eth_types.BlockTrace{
+		traces = append(traces, &geth_types.BlockTrace{
 			Header:       &header,
-			StorageTrace: &eth_types.StorageTrace{},
+			StorageTrace: &geth_types.StorageTrace{},
 		})
 		parentHash = header.Hash()
 	}
@@ -58,7 +59,7 @@ func testCommitBatchAndFinalizeBatch(t *testing.T) {
 		Index: 0,
 		Hash:  "0x0000000000000000000000000000000000000000",
 	}
-	batchData := types.NewBatchData(parentBatch, []*eth_types.BlockTrace{
+	batchData := types.NewBatchData(parentBatch, []*geth_types.BlockTrace{
 		traces[0],
 		traces[1],
 	}, cfg.L2Config.BatchProposerConfig.PublicInputConfig)
