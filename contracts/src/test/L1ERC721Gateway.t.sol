@@ -2,44 +2,92 @@
 
 pragma solidity ^0.8.0;
 
-import { console2 } from "forge-std/console2.sol";
-import { DSTestPlus } from "solmate/test/utils/DSTestPlus.sol";
 import { MockERC721 } from "solmate/test/utils/mocks/MockERC721.sol";
 
-import { L1ERC721Gateway } from "../L1/gateways/L1ERC721Gateway.sol";
-import { L2ERC721Gateway } from "../L2/gateways/L2ERC721Gateway.sol";
+import { IL1ERC721Gateway, L1ERC721Gateway } from "../L1/gateways/L1ERC721Gateway.sol";
+import { IL1ScrollMessenger } from "../L1/IL1ScrollMessenger.sol";
+import { IL2ERC721Gateway, L2ERC721Gateway } from "../L2/gateways/L2ERC721Gateway.sol";
+import { AddressAliasHelper } from "../libraries/common/AddressAliasHelper.sol";
+
+import { L1GatewayTestBase } from "./L1GatewayTestBase.t.sol";
 import { MockScrollMessenger } from "./mocks/MockScrollMessenger.sol";
 import { MockERC721Recipient } from "./mocks/MockERC721Recipient.sol";
 
-contract L1ERC721GatewayTest is DSTestPlus {
+contract L1ERC721GatewayTest is L1GatewayTestBase {
+  // from L1ERC721Gateway
+  event FinalizeWithdrawERC721(
+    address indexed _l1Token,
+    address indexed _l2Token,
+    address indexed _from,
+    address _to,
+    uint256 _tokenId
+  );
+  event FinalizeBatchWithdrawERC721(
+    address indexed _l1Token,
+    address indexed _l2Token,
+    address indexed _from,
+    address _to,
+    uint256[] _tokenIds
+  );
+  event DepositERC721(
+    address indexed _l1Token,
+    address indexed _l2Token,
+    address indexed _from,
+    address _to,
+    uint256 _tokenId
+  );
+  event BatchDepositERC721(
+    address indexed _l1Token,
+    address indexed _l2Token,
+    address indexed _from,
+    address _to,
+    uint256[] _tokenIds
+  );
+
   uint256 private constant TOKEN_COUNT = 100;
 
-  MockScrollMessenger private messenger;
-  L2ERC721Gateway private counterpart;
   L1ERC721Gateway private gateway;
 
-  MockERC721 private token;
+  L2ERC721Gateway private counterpartGateway;
+
+  MockERC721 private l1Token;
+  MockERC721 private l2Token;
   MockERC721Recipient private mockRecipient;
 
   function setUp() public {
-    messenger = new MockScrollMessenger();
+    setUpBase();
 
-    counterpart = new L2ERC721Gateway();
+    // Deploy tokens
+    l1Token = new MockERC721("Mock L1", "ML1");
+    l2Token = new MockERC721("Mock L2", "ML1");
+
+    // Deploy L1 contracts
     gateway = new L1ERC721Gateway();
-    gateway.initialize(address(counterpart), address(messenger));
 
-    token = new MockERC721("Mock", "M");
+    // Deploy L2 contracts
+    counterpartGateway = new L2ERC721Gateway();
+
+    // Initialize L1 contracts
+    gateway.initialize(address(counterpartGateway), address(l1Messenger));
+
+    // Prepare token balances
     for (uint256 i = 0; i < TOKEN_COUNT; i++) {
-      token.mint(address(this), i);
+      l1Token.mint(address(this), i);
     }
-    token.setApprovalForAll(address(gateway), true);
+    l1Token.setApprovalForAll(address(gateway), true);
 
     mockRecipient = new MockERC721Recipient();
   }
 
-  function testReinitilize() public {
+  function testInitialized() public {
+    assertEq(address(counterpartGateway), gateway.counterpart());
+    assertEq(address(0), gateway.router());
+    assertEq(address(l1Messenger), gateway.messenger());
+
+    assertEq(address(0), gateway.tokenMapping(address(l1Token)));
+
     hevm.expectRevert("Initializable: contract is already initialized");
-    gateway.initialize(address(1), address(messenger));
+    gateway.initialize(address(1), address(l1Messenger));
   }
 
   function testUpdateTokenMappingFailed(address token1) public {
@@ -55,264 +103,426 @@ contract L1ERC721GatewayTest is DSTestPlus {
   }
 
   function testUpdateTokenMappingSuccess(address token1, address token2) public {
-    if (token2 == address(0)) token2 = address(1);
+    hevm.assume(token2 != address(0));
 
     assertEq(gateway.tokenMapping(token1), address(0));
     gateway.updateTokenMapping(token1, token2);
     assertEq(gateway.tokenMapping(token1), token2);
   }
 
-  /// @dev failed to deposit erc721
-  function testDepositERC721WithGatewayFailed(address to) public {
-    // token not support
-    hevm.expectRevert("token not supported");
-    if (to == address(0)) {
-      gateway.depositERC721(address(token), 0, 0);
-    } else {
-      gateway.depositERC721(address(token), to, 0, 0);
-    }
+  function testDepositERC721(
+    uint256 tokenId,
+    uint256 gasLimit,
+    uint256 feePerGas
+  ) public {
+    _testDepositERC721(tokenId, gasLimit, feePerGas);
   }
 
-  /// @dev deposit erc721 without recipient
-  function testDepositERC721WithGatewaySuccess(uint256 tokenId) public {
-    tokenId = bound(tokenId, 0, TOKEN_COUNT - 1);
-    gateway.updateTokenMapping(address(token), address(token));
-
-    gateway.depositERC721(address(token), tokenId, 0);
-    assertEq(token.ownerOf(tokenId), address(gateway));
-    assertEq(token.balanceOf(address(gateway)), 1);
-
-    // @todo check event
+  function testDepositERC721WithRecipient(
+    uint256 tokenId,
+    address to,
+    uint256 gasLimit,
+    uint256 feePerGas
+  ) public {
+    _testDepositERC721WithRecipient(tokenId, to, gasLimit, feePerGas);
   }
 
-  /// @dev deposit erc721 with recipient
-  function testDepositERC721WithGatewaySuccess(uint256 tokenId, address to) public {
-    tokenId = bound(tokenId, 0, TOKEN_COUNT - 1);
-    gateway.updateTokenMapping(address(token), address(token));
-
-    gateway.depositERC721(address(token), to, tokenId, 0);
-    assertEq(token.ownerOf(tokenId), address(gateway));
-    assertEq(token.balanceOf(address(gateway)), 1);
-
-    // @todo check event
-  }
-
-  /// @dev failed to batch deposit erc721
-  function testBatchDepositERC721WithGatewayFailed(address to) public {
-    // token not support
-    hevm.expectRevert("token not supported");
-    if (to == address(0)) {
-      gateway.batchDepositERC721(address(token), new uint256[](1), 0);
-    } else {
-      gateway.batchDepositERC721(address(token), to, new uint256[](1), 0);
-    }
-
-    // no token to deposit
-    hevm.expectRevert("no token to deposit");
-    if (to == address(0)) {
-      gateway.batchDepositERC721(address(token), new uint256[](0), 0);
-    } else {
-      gateway.batchDepositERC721(address(token), to, new uint256[](0), 0);
-    }
-  }
-
-  /// @dev batch deposit erc721 without recipient
-  function testBatchDepositERC721WithGatewaySuccess(uint256 count) public {
-    count = bound(count, 1, TOKEN_COUNT);
-    gateway.updateTokenMapping(address(token), address(token));
-
-    uint256[] memory _tokenIds = new uint256[](count);
-    for (uint256 i = 0; i < count; i++) {
-      _tokenIds[i] = i;
-    }
-
-    gateway.batchDepositERC721(address(token), _tokenIds, 0);
-    for (uint256 i = 0; i < count; i++) {
-      assertEq(token.ownerOf(i), address(gateway));
-    }
-    assertEq(token.balanceOf(address(gateway)), count);
-
-    // @todo check event
+  function testBatchDepositERC721WithGatewaySuccess(
+    uint256 tokenCount,
+    uint256 gasLimit,
+    uint256 feePerGas
+  ) public {
+    _testBatchDepositERC721(tokenCount, gasLimit, feePerGas);
   }
 
   /// @dev batch deposit erc721 with recipient
-  function testBatchDepositERC721WithGatewaySuccess(uint256 count, address to) public {
-    count = bound(count, 1, TOKEN_COUNT);
-    gateway.updateTokenMapping(address(token), address(token));
-
-    uint256[] memory _tokenIds = new uint256[](count);
-    for (uint256 i = 0; i < count; i++) {
-      _tokenIds[i] = i;
-    }
-
-    gateway.batchDepositERC721(address(token), to, _tokenIds, 0);
-    for (uint256 i = 0; i < count; i++) {
-      assertEq(token.ownerOf(i), address(gateway));
-    }
-    assertEq(token.balanceOf(address(gateway)), count);
-
-    // @todo check event
+  function testBatchDepositERC721WithGatewaySuccess(
+    uint256 tokenCount,
+    address recipient,
+    uint256 gasLimit,
+    uint256 feePerGas
+  ) public {
+    _testBatchDepositERC721WithRecipient(tokenCount, recipient, gasLimit, feePerGas);
   }
 
-  /// @dev failed to finalize withdraw erc721
-  function testFinalizeWithdrawERC721Failed() public {
-    // should revert, called by non-messenger
-    hevm.expectRevert("only messenger can call");
-    gateway.finalizeWithdrawERC721(address(0), address(0), address(0), address(0), 0);
-
-    // should revert, called by messenger, xDomainMessageSender not set
-    hevm.expectRevert("only call by conterpart");
-    messenger.callTarget(
-      address(gateway),
-      abi.encodeWithSelector(
-        L1ERC721Gateway.finalizeWithdrawERC721.selector,
-        address(0),
-        address(0),
-        address(0),
-        address(0),
-        0
-      )
-    );
-
-    // should revert, called by messenger, xDomainMessageSender set wrong
-    messenger.setXDomainMessageSender(address(2));
-    hevm.expectRevert("only call by conterpart");
-    messenger.callTarget(
-      address(gateway),
-      abi.encodeWithSelector(
-        L1ERC721Gateway.finalizeWithdrawERC721.selector,
-        address(0),
-        address(0),
-        address(0),
-        address(0),
-        0
-      )
-    );
-  }
-
-  /// @dev finalize withdraw erc721
-  function testFinalizeWithdrawERC721(
-    address from,
-    address to,
+  function testFinalizeWithdrawERC721FailedMocking(
+    address sender,
+    address recipient,
     uint256 tokenId
   ) public {
-    if (to == address(0) || to.code.length > 0) to = address(1);
-
-    // deposit first
-    gateway.updateTokenMapping(address(token), address(token));
     tokenId = bound(tokenId, 0, TOKEN_COUNT - 1);
-    gateway.depositERC721(address(token), tokenId, 0);
 
-    // then withdraw
-    messenger.setXDomainMessageSender(address(counterpart));
-    messenger.callTarget(
+    // revert when caller is not messenger
+    hevm.expectRevert("only messenger can call");
+    gateway.finalizeWithdrawERC721(address(l1Token), address(l2Token), sender, recipient, tokenId);
+
+    MockScrollMessenger mockMessenger = new MockScrollMessenger();
+    gateway = new L1ERC721Gateway();
+    gateway.initialize(address(counterpartGateway), address(mockMessenger));
+
+    // only call by conterpart
+    hevm.expectRevert("only call by conterpart");
+    mockMessenger.callTarget(
       address(gateway),
       abi.encodeWithSelector(
-        L1ERC721Gateway.finalizeWithdrawERC721.selector,
-        address(token),
-        address(token),
-        from,
-        to,
+        gateway.finalizeWithdrawERC721.selector,
+        address(l1Token),
+        address(l2Token),
+        sender,
+        recipient,
         tokenId
       )
     );
-    assertEq(token.balanceOf(to), 1);
-    assertEq(token.ownerOf(tokenId), to);
-  }
 
-  /// @dev failed to finalize batch withdraw erc721
-  function testFinalizeBatchWithdrawERC721Failed() public {
-    // should revert, called by non-messenger
-    hevm.expectRevert("only messenger can call");
-    gateway.finalizeBatchWithdrawERC721(address(0), address(0), address(0), address(0), new uint256[](0));
+    mockMessenger.setXDomainMessageSender(address(counterpartGateway));
 
-    // should revert, called by messenger, xDomainMessageSender not set
-    hevm.expectRevert("only call by conterpart");
-    messenger.callTarget(
+    // msg.value mismatch
+    hevm.expectRevert("l2 token mismatch");
+    mockMessenger.callTarget(
       address(gateway),
       abi.encodeWithSelector(
-        L1ERC721Gateway.finalizeBatchWithdrawERC721.selector,
-        address(0),
-        address(0),
-        address(0),
-        address(0),
-        new uint256[](0)
-      )
-    );
-
-    // should revert, called by messenger, xDomainMessageSender set wrong
-    messenger.setXDomainMessageSender(address(2));
-    hevm.expectRevert("only call by conterpart");
-    messenger.callTarget(
-      address(gateway),
-      abi.encodeWithSelector(
-        L1ERC721Gateway.finalizeBatchWithdrawERC721.selector,
-        address(0),
-        address(0),
-        address(0),
-        address(0),
-        new uint256[](0)
+        gateway.finalizeWithdrawERC721.selector,
+        address(l1Token),
+        address(l2Token),
+        sender,
+        recipient,
+        tokenId
       )
     );
   }
 
-  /// @dev finalize batch withdraw erc721
-  function testFinalizeBatchWithdrawERC721(
-    address from,
-    address to,
-    uint256 count
+  function testFinalizeWithdrawERC721Failed(
+    address sender,
+    address recipient,
+    uint256 tokenId
   ) public {
-    if (to == address(0) || to.code.length > 0) to = address(1);
-    gateway.updateTokenMapping(address(token), address(token));
+    hevm.assume(recipient != address(0));
+    tokenId = bound(tokenId, 0, TOKEN_COUNT - 1);
 
-    // deposit first
-    count = bound(count, 1, TOKEN_COUNT);
-    uint256[] memory _tokenIds = new uint256[](count);
-    for (uint256 i = 0; i < count; i++) {
+    gateway.updateTokenMapping(address(l1Token), address(l2Token));
+    gateway.depositERC721(address(l1Token), tokenId, 0);
+
+    // do finalize withdraw token
+    bytes memory message = abi.encodeWithSelector(
+      IL1ERC721Gateway.finalizeWithdrawERC721.selector,
+      address(l1Token),
+      address(l2Token),
+      sender,
+      recipient,
+      tokenId
+    );
+    bytes memory xDomainCalldata = abi.encodeWithSignature(
+      "relayMessage(address,address,uint256,uint256,bytes)",
+      address(uint160(address(counterpartGateway)) + 1),
+      address(gateway),
+      0,
+      0,
+      message
+    );
+
+    prepareL2MessageRoot(keccak256(xDomainCalldata));
+
+    IL1ScrollMessenger.L2MessageProof memory proof;
+    proof.batchHash = rollup.lastFinalizedBatchHash();
+
+    // conterpart is not L2WETHGateway
+    // emit FailedRelayedMessage from L1ScrollMessenger
+    hevm.expectEmit(true, false, false, true);
+    emit FailedRelayedMessage(keccak256(xDomainCalldata));
+
+    assertEq(address(gateway), l1Token.ownerOf(tokenId));
+    uint256 gatewayBalance = l1Token.balanceOf(address(gateway));
+    uint256 recipientBalance = l1Token.balanceOf(recipient);
+    assertBoolEq(false, l1Messenger.isL2MessageExecuted(keccak256(xDomainCalldata)));
+    l1Messenger.relayMessageWithProof(
+      address(uint160(address(counterpartGateway)) + 1),
+      address(gateway),
+      0,
+      0,
+      message,
+      proof
+    );
+    assertEq(address(gateway), l1Token.ownerOf(tokenId));
+    assertEq(gatewayBalance, l1Token.balanceOf(address(gateway)));
+    assertEq(recipientBalance, l1Token.balanceOf(recipient));
+    assertBoolEq(false, l1Messenger.isL2MessageExecuted(keccak256(xDomainCalldata)));
+  }
+
+  function testFinalizeWithdrawERC721(
+    address sender,
+    address recipient,
+    uint256 tokenId
+  ) public {
+    uint256 size;
+    assembly {
+      size := extcodesize(recipient)
+    }
+    hevm.assume(size == 0);
+    hevm.assume(recipient != address(0));
+
+    tokenId = bound(tokenId, 0, TOKEN_COUNT - 1);
+
+    gateway.updateTokenMapping(address(l1Token), address(l2Token));
+    gateway.depositERC721(address(l1Token), tokenId, 0);
+
+    // do finalize withdraw token
+    bytes memory message = abi.encodeWithSelector(
+      IL1ERC721Gateway.finalizeWithdrawERC721.selector,
+      address(l1Token),
+      address(l2Token),
+      sender,
+      recipient,
+      tokenId
+    );
+    bytes memory xDomainCalldata = abi.encodeWithSignature(
+      "relayMessage(address,address,uint256,uint256,bytes)",
+      address(counterpartGateway),
+      address(gateway),
+      0,
+      0,
+      message
+    );
+
+    prepareL2MessageRoot(keccak256(xDomainCalldata));
+
+    IL1ScrollMessenger.L2MessageProof memory proof;
+    proof.batchHash = rollup.lastFinalizedBatchHash();
+
+    // emit FinalizeWithdrawERC721 from L1ERC721Gateway
+    {
+      hevm.expectEmit(true, true, true, true);
+      emit FinalizeWithdrawERC721(address(l1Token), address(l2Token), sender, recipient, tokenId);
+    }
+
+    // emit RelayedMessage from L1ScrollMessenger
+    {
+      hevm.expectEmit(true, false, false, true);
+      emit RelayedMessage(keccak256(xDomainCalldata));
+    }
+
+    assertEq(address(gateway), l1Token.ownerOf(tokenId));
+    uint256 gatewayBalance = l1Token.balanceOf(address(gateway));
+    uint256 recipientBalance = l1Token.balanceOf(recipient);
+    assertBoolEq(false, l1Messenger.isL2MessageExecuted(keccak256(xDomainCalldata)));
+    l1Messenger.relayMessageWithProof(address(counterpartGateway), address(gateway), 0, 0, message, proof);
+    assertEq(recipient, l1Token.ownerOf(tokenId));
+    assertEq(gatewayBalance - 1, l1Token.balanceOf(address(gateway)));
+    assertEq(recipientBalance + 1, l1Token.balanceOf(recipient));
+    assertBoolEq(true, l1Messenger.isL2MessageExecuted(keccak256(xDomainCalldata)));
+  }
+
+  function testFinalizeBatchWithdrawERC721FailedMocking(
+    address sender,
+    address recipient,
+    uint256 tokenCount
+  ) public {
+    tokenCount = bound(tokenCount, 1, TOKEN_COUNT);
+    uint256[] memory _tokenIds = new uint256[](tokenCount);
+    for (uint256 i = 0; i < tokenCount; i++) {
       _tokenIds[i] = i;
     }
-    gateway.batchDepositERC721(address(token), _tokenIds, 0);
 
-    // then withdraw
-    messenger.setXDomainMessageSender(address(counterpart));
-    messenger.callTarget(
+    // revert when caller is not messenger
+    hevm.expectRevert("only messenger can call");
+    gateway.finalizeBatchWithdrawERC721(address(l1Token), address(l2Token), sender, recipient, _tokenIds);
+
+    MockScrollMessenger mockMessenger = new MockScrollMessenger();
+    gateway = new L1ERC721Gateway();
+    gateway.initialize(address(counterpartGateway), address(mockMessenger));
+
+    // only call by conterpart
+    hevm.expectRevert("only call by conterpart");
+    mockMessenger.callTarget(
       address(gateway),
       abi.encodeWithSelector(
-        L1ERC721Gateway.finalizeBatchWithdrawERC721.selector,
-        address(token),
-        address(token),
-        from,
-        to,
+        gateway.finalizeBatchWithdrawERC721.selector,
+        address(l1Token),
+        address(l2Token),
+        sender,
+        recipient,
         _tokenIds
       )
     );
-    assertEq(token.balanceOf(to), count);
-    for (uint256 i = 0; i < count; i++) {
-      assertEq(token.ownerOf(i), to);
-    }
+
+    mockMessenger.setXDomainMessageSender(address(counterpartGateway));
+
+    // msg.value mismatch
+    hevm.expectRevert("l2 token mismatch");
+    mockMessenger.callTarget(
+      address(gateway),
+      abi.encodeWithSelector(
+        gateway.finalizeBatchWithdrawERC721.selector,
+        address(l1Token),
+        address(l2Token),
+        sender,
+        recipient,
+        _tokenIds
+      )
+    );
   }
 
-  /// @dev should detect reentrance
+  function testFinalizeBatchWithdrawERC721Failed(
+    address sender,
+    address recipient,
+    uint256 tokenCount
+  ) public {
+    hevm.assume(recipient != address(0));
+    tokenCount = bound(tokenCount, 1, TOKEN_COUNT);
+    uint256[] memory _tokenIds = new uint256[](tokenCount);
+    for (uint256 i = 0; i < tokenCount; i++) {
+      _tokenIds[i] = i;
+    }
+
+    gateway.updateTokenMapping(address(l1Token), address(l2Token));
+    gateway.batchDepositERC721(address(l1Token), _tokenIds, 0);
+
+    // do finalize withdraw token
+    bytes memory message = abi.encodeWithSelector(
+      IL1ERC721Gateway.finalizeBatchWithdrawERC721.selector,
+      address(l1Token),
+      address(l2Token),
+      sender,
+      recipient,
+      _tokenIds
+    );
+    bytes memory xDomainCalldata = abi.encodeWithSignature(
+      "relayMessage(address,address,uint256,uint256,bytes)",
+      address(uint160(address(counterpartGateway)) + 1),
+      address(gateway),
+      0,
+      0,
+      message
+    );
+
+    prepareL2MessageRoot(keccak256(xDomainCalldata));
+
+    IL1ScrollMessenger.L2MessageProof memory proof;
+    proof.batchHash = rollup.lastFinalizedBatchHash();
+
+    // conterpart is not L2WETHGateway
+    // emit FailedRelayedMessage from L1ScrollMessenger
+    hevm.expectEmit(true, false, false, true);
+    emit FailedRelayedMessage(keccak256(xDomainCalldata));
+
+    for (uint256 i = 0; i < tokenCount; i++) {
+      assertEq(address(gateway), l1Token.ownerOf(_tokenIds[i]));
+    }
+    uint256 gatewayBalance = l1Token.balanceOf(address(gateway));
+    uint256 recipientBalance = l1Token.balanceOf(recipient);
+    assertBoolEq(false, l1Messenger.isL2MessageExecuted(keccak256(xDomainCalldata)));
+    l1Messenger.relayMessageWithProof(
+      address(uint160(address(counterpartGateway)) + 1),
+      address(gateway),
+      0,
+      0,
+      message,
+      proof
+    );
+    for (uint256 i = 0; i < tokenCount; i++) {
+      assertEq(address(gateway), l1Token.ownerOf(_tokenIds[i]));
+    }
+    assertEq(gatewayBalance, l1Token.balanceOf(address(gateway)));
+    assertEq(recipientBalance, l1Token.balanceOf(recipient));
+    assertBoolEq(false, l1Messenger.isL2MessageExecuted(keccak256(xDomainCalldata)));
+  }
+
+  function testFinalizeBatchWithdrawERC721(
+    address sender,
+    address recipient,
+    uint256 tokenCount
+  ) public {
+    uint256 size;
+    assembly {
+      size := extcodesize(recipient)
+    }
+    hevm.assume(size == 0);
+    hevm.assume(recipient != address(0));
+
+    tokenCount = bound(tokenCount, 1, TOKEN_COUNT);
+    uint256[] memory _tokenIds = new uint256[](tokenCount);
+    for (uint256 i = 0; i < tokenCount; i++) {
+      _tokenIds[i] = i;
+    }
+
+    gateway.updateTokenMapping(address(l1Token), address(l2Token));
+    gateway.batchDepositERC721(address(l1Token), _tokenIds, 0);
+
+    // do finalize withdraw token
+    bytes memory message = abi.encodeWithSelector(
+      IL1ERC721Gateway.finalizeBatchWithdrawERC721.selector,
+      address(l1Token),
+      address(l2Token),
+      sender,
+      recipient,
+      _tokenIds
+    );
+    bytes memory xDomainCalldata = abi.encodeWithSignature(
+      "relayMessage(address,address,uint256,uint256,bytes)",
+      address(counterpartGateway),
+      address(gateway),
+      0,
+      0,
+      message
+    );
+
+    prepareL2MessageRoot(keccak256(xDomainCalldata));
+
+    IL1ScrollMessenger.L2MessageProof memory proof;
+    proof.batchHash = rollup.lastFinalizedBatchHash();
+
+    // emit FinalizeBatchWithdrawERC721 from L1ERC721Gateway
+    {
+      hevm.expectEmit(true, true, true, true);
+      emit FinalizeBatchWithdrawERC721(address(l1Token), address(l2Token), sender, recipient, _tokenIds);
+    }
+
+    // emit RelayedMessage from L1ScrollMessenger
+    {
+      hevm.expectEmit(true, false, false, true);
+      emit RelayedMessage(keccak256(xDomainCalldata));
+    }
+
+    for (uint256 i = 0; i < tokenCount; i++) {
+      assertEq(address(gateway), l1Token.ownerOf(_tokenIds[i]));
+    }
+    uint256 gatewayBalance = l1Token.balanceOf(address(gateway));
+    uint256 recipientBalance = l1Token.balanceOf(recipient);
+    assertBoolEq(false, l1Messenger.isL2MessageExecuted(keccak256(xDomainCalldata)));
+    l1Messenger.relayMessageWithProof(address(counterpartGateway), address(gateway), 0, 0, message, proof);
+    for (uint256 i = 0; i < tokenCount; i++) {
+      assertEq(recipient, l1Token.ownerOf(_tokenIds[i]));
+    }
+    assertEq(gatewayBalance - tokenCount, l1Token.balanceOf(address(gateway)));
+    assertEq(recipientBalance + tokenCount, l1Token.balanceOf(recipient));
+    assertBoolEq(true, l1Messenger.isL2MessageExecuted(keccak256(xDomainCalldata)));
+  }
+
   function testReentranceWhenFinalizeWithdraw(address from, uint256 tokenId) public {
-    // deposit first
-    gateway.updateTokenMapping(address(token), address(token));
     tokenId = bound(tokenId, 0, TOKEN_COUNT - 1);
-    gateway.depositERC721(address(token), tokenId, 0);
+
+    MockScrollMessenger mockMessenger = new MockScrollMessenger();
+    gateway = new L1ERC721Gateway();
+    gateway.initialize(address(counterpartGateway), address(mockMessenger));
+    l1Token.setApprovalForAll(address(gateway), true);
+
+    // deposit first
+    gateway.updateTokenMapping(address(l1Token), address(l2Token));
+    gateway.depositERC721(address(l1Token), tokenId, 0);
 
     mockRecipient.setCall(
       address(gateway),
       0,
-      abi.encodeWithSignature("depositERC721(address,uint256,uint256)", address(token), tokenId, 0)
+      abi.encodeWithSignature("depositERC721(address,uint256,uint256)", address(l1Token), tokenId, 0)
     );
     // finalize withdraw
-    messenger.setXDomainMessageSender(address(counterpart));
+    mockMessenger.setXDomainMessageSender(address(counterpartGateway));
     hevm.expectRevert("ReentrancyGuard: reentrant call");
-    messenger.callTarget(
+    mockMessenger.callTarget(
       address(gateway),
       abi.encodeWithSelector(
         L1ERC721Gateway.finalizeWithdrawERC721.selector,
-        address(token),
-        address(token),
+        address(l1Token),
+        address(l2Token),
         from,
         address(mockRecipient),
         tokenId
@@ -320,20 +530,294 @@ contract L1ERC721GatewayTest is DSTestPlus {
     );
 
     // finalize batch withdraw
-    messenger.setXDomainMessageSender(address(counterpart));
+    mockMessenger.setXDomainMessageSender(address(counterpartGateway));
     hevm.expectRevert("ReentrancyGuard: reentrant call");
     uint256[] memory tokenIds = new uint256[](1);
     tokenIds[0] = tokenId;
-    messenger.callTarget(
+    mockMessenger.callTarget(
       address(gateway),
       abi.encodeWithSelector(
         L1ERC721Gateway.finalizeBatchWithdrawERC721.selector,
-        address(token),
-        address(token),
+        address(l1Token),
+        address(l2Token),
         from,
         address(mockRecipient),
         tokenIds
       )
     );
+  }
+
+  function _testDepositERC721(
+    uint256 tokenId,
+    uint256 gasLimit,
+    uint256 feePerGas
+  ) internal {
+    tokenId = bound(tokenId, 0, TOKEN_COUNT - 1);
+    gasLimit = bound(gasLimit, 0, 1000000);
+    feePerGas = bound(feePerGas, 0, 1000);
+
+    gasOracle.setL2BaseFee(feePerGas);
+    uint256 feeToPay = feePerGas * gasLimit;
+
+    hevm.expectRevert("token not supported");
+    gateway.depositERC721(address(l1Token), tokenId, gasLimit);
+
+    bytes memory message = abi.encodeWithSelector(
+      IL2ERC721Gateway.finalizeDepositERC721.selector,
+      address(l1Token),
+      address(l2Token),
+      address(this),
+      address(this),
+      tokenId
+    );
+    bytes memory xDomainCalldata = abi.encodeWithSignature(
+      "relayMessage(address,address,uint256,uint256,bytes)",
+      address(gateway),
+      address(counterpartGateway),
+      0,
+      0,
+      message
+    );
+
+    gateway.updateTokenMapping(address(l1Token), address(l2Token));
+
+    // emit QueueTransaction from L1MessageQueue
+    {
+      hevm.expectEmit(true, true, false, true);
+      address sender = AddressAliasHelper.applyL1ToL2Alias(address(l1Messenger));
+      emit QueueTransaction(sender, address(l2Messenger), 0, 0, gasLimit, xDomainCalldata);
+    }
+
+    // emit SentMessage from L1ScrollMessenger
+    {
+      hevm.expectEmit(true, true, false, true);
+      emit SentMessage(address(gateway), address(counterpartGateway), 0, 0, gasLimit, message);
+    }
+
+    // emit FinalizeWithdrawERC721 from L1ERC721Gateway
+    hevm.expectEmit(true, true, true, true);
+    emit DepositERC721(address(l1Token), address(l2Token), address(this), address(this), tokenId);
+
+    assertEq(l1Token.ownerOf(tokenId), address(this));
+    uint256 gatewayBalance = l1Token.balanceOf(address(gateway));
+    uint256 feeVaultBalance = address(feeVault).balance;
+    assertBoolEq(false, l1Messenger.isL1MessageSent(keccak256(xDomainCalldata)));
+    gateway.depositERC721{ value: feeToPay }(address(l1Token), tokenId, gasLimit);
+    assertEq(address(gateway), l1Token.ownerOf(tokenId));
+    assertEq(1 + gatewayBalance, l1Token.balanceOf(address(gateway)));
+    assertEq(feeToPay + feeVaultBalance, address(feeVault).balance);
+    assertBoolEq(true, l1Messenger.isL1MessageSent(keccak256(xDomainCalldata)));
+  }
+
+  function _testDepositERC721WithRecipient(
+    uint256 tokenId,
+    address recipient,
+    uint256 gasLimit,
+    uint256 feePerGas
+  ) internal {
+    tokenId = bound(tokenId, 0, TOKEN_COUNT - 1);
+    gasLimit = bound(gasLimit, 0, 1000000);
+    feePerGas = bound(feePerGas, 0, 1000);
+
+    gasOracle.setL2BaseFee(feePerGas);
+    uint256 feeToPay = feePerGas * gasLimit;
+
+    hevm.expectRevert("token not supported");
+    gateway.depositERC721(address(l1Token), tokenId, gasLimit);
+
+    bytes memory message = abi.encodeWithSelector(
+      IL2ERC721Gateway.finalizeDepositERC721.selector,
+      address(l1Token),
+      address(l2Token),
+      address(this),
+      recipient,
+      tokenId
+    );
+    bytes memory xDomainCalldata = abi.encodeWithSignature(
+      "relayMessage(address,address,uint256,uint256,bytes)",
+      address(gateway),
+      address(counterpartGateway),
+      0,
+      0,
+      message
+    );
+
+    gateway.updateTokenMapping(address(l1Token), address(l2Token));
+
+    // emit QueueTransaction from L1MessageQueue
+    {
+      hevm.expectEmit(true, true, false, true);
+      address sender = AddressAliasHelper.applyL1ToL2Alias(address(l1Messenger));
+      emit QueueTransaction(sender, address(l2Messenger), 0, 0, gasLimit, xDomainCalldata);
+    }
+
+    // emit SentMessage from L1ScrollMessenger
+    {
+      hevm.expectEmit(true, true, false, true);
+      emit SentMessage(address(gateway), address(counterpartGateway), 0, 0, gasLimit, message);
+    }
+
+    // emit FinalizeWithdrawERC721 from L1ERC721Gateway
+    hevm.expectEmit(true, true, true, true);
+    emit DepositERC721(address(l1Token), address(l2Token), address(this), recipient, tokenId);
+
+    assertEq(l1Token.ownerOf(tokenId), address(this));
+    uint256 gatewayBalance = l1Token.balanceOf(address(gateway));
+    uint256 feeVaultBalance = address(feeVault).balance;
+    assertBoolEq(false, l1Messenger.isL1MessageSent(keccak256(xDomainCalldata)));
+    gateway.depositERC721{ value: feeToPay }(address(l1Token), recipient, tokenId, gasLimit);
+    assertEq(address(gateway), l1Token.ownerOf(tokenId));
+    assertEq(1 + gatewayBalance, l1Token.balanceOf(address(gateway)));
+    assertEq(feeToPay + feeVaultBalance, address(feeVault).balance);
+    assertBoolEq(true, l1Messenger.isL1MessageSent(keccak256(xDomainCalldata)));
+  }
+
+  function _testBatchDepositERC721(
+    uint256 tokenCount,
+    uint256 gasLimit,
+    uint256 feePerGas
+  ) internal {
+    tokenCount = bound(tokenCount, 1, TOKEN_COUNT);
+    gasLimit = bound(gasLimit, 0, 1000000);
+    feePerGas = bound(feePerGas, 0, 1000);
+
+    gasOracle.setL2BaseFee(feePerGas);
+    uint256 feeToPay = feePerGas * gasLimit;
+
+    uint256[] memory _tokenIds = new uint256[](tokenCount);
+    for (uint256 i = 0; i < tokenCount; i++) {
+      _tokenIds[i] = i;
+    }
+
+    hevm.expectRevert("no token to deposit");
+    gateway.batchDepositERC721(address(l1Token), new uint256[](0), gasLimit);
+
+    hevm.expectRevert("token not supported");
+    gateway.batchDepositERC721(address(l1Token), _tokenIds, gasLimit);
+
+    bytes memory message = abi.encodeWithSelector(
+      IL2ERC721Gateway.finalizeBatchDepositERC721.selector,
+      address(l1Token),
+      address(l2Token),
+      address(this),
+      address(this),
+      _tokenIds
+    );
+    bytes memory xDomainCalldata = abi.encodeWithSignature(
+      "relayMessage(address,address,uint256,uint256,bytes)",
+      address(gateway),
+      address(counterpartGateway),
+      0,
+      0,
+      message
+    );
+
+    gateway.updateTokenMapping(address(l1Token), address(l2Token));
+
+    // emit QueueTransaction from L1MessageQueue
+    {
+      hevm.expectEmit(true, true, false, true);
+      address sender = AddressAliasHelper.applyL1ToL2Alias(address(l1Messenger));
+      emit QueueTransaction(sender, address(l2Messenger), 0, 0, gasLimit, xDomainCalldata);
+    }
+
+    // emit SentMessage from L1ScrollMessenger
+    {
+      hevm.expectEmit(true, true, false, true);
+      emit SentMessage(address(gateway), address(counterpartGateway), 0, 0, gasLimit, message);
+    }
+
+    // emit FinalizeWithdrawERC721 from L1ERC721Gateway
+    hevm.expectEmit(true, true, true, true);
+    emit BatchDepositERC721(address(l1Token), address(l2Token), address(this), address(this), _tokenIds);
+
+    for (uint256 i = 0; i < tokenCount; i++) {
+      assertEq(l1Token.ownerOf(i), address(this));
+    }
+    uint256 gatewayBalance = l1Token.balanceOf(address(gateway));
+    uint256 feeVaultBalance = address(feeVault).balance;
+    assertBoolEq(false, l1Messenger.isL1MessageSent(keccak256(xDomainCalldata)));
+    gateway.batchDepositERC721{ value: feeToPay }(address(l1Token), _tokenIds, gasLimit);
+    for (uint256 i = 0; i < tokenCount; i++) {
+      assertEq(l1Token.ownerOf(i), address(gateway));
+    }
+    assertEq(tokenCount + gatewayBalance, l1Token.balanceOf(address(gateway)));
+    assertEq(feeToPay + feeVaultBalance, address(feeVault).balance);
+    assertBoolEq(true, l1Messenger.isL1MessageSent(keccak256(xDomainCalldata)));
+  }
+
+  function _testBatchDepositERC721WithRecipient(
+    uint256 tokenCount,
+    address recipient,
+    uint256 gasLimit,
+    uint256 feePerGas
+  ) internal {
+    tokenCount = bound(tokenCount, 1, TOKEN_COUNT);
+    gasLimit = bound(gasLimit, 0, 1000000);
+    feePerGas = bound(feePerGas, 0, 1000);
+
+    gasOracle.setL2BaseFee(feePerGas);
+    uint256 feeToPay = feePerGas * gasLimit;
+
+    uint256[] memory _tokenIds = new uint256[](tokenCount);
+    for (uint256 i = 0; i < tokenCount; i++) {
+      _tokenIds[i] = i;
+    }
+
+    hevm.expectRevert("no token to deposit");
+    gateway.batchDepositERC721(address(l1Token), recipient, new uint256[](0), gasLimit);
+
+    hevm.expectRevert("token not supported");
+    gateway.batchDepositERC721(address(l1Token), recipient, _tokenIds, gasLimit);
+
+    bytes memory message = abi.encodeWithSelector(
+      IL2ERC721Gateway.finalizeBatchDepositERC721.selector,
+      address(l1Token),
+      address(l2Token),
+      address(this),
+      recipient,
+      _tokenIds
+    );
+    bytes memory xDomainCalldata = abi.encodeWithSignature(
+      "relayMessage(address,address,uint256,uint256,bytes)",
+      address(gateway),
+      address(counterpartGateway),
+      0,
+      0,
+      message
+    );
+
+    gateway.updateTokenMapping(address(l1Token), address(l2Token));
+
+    // emit QueueTransaction from L1MessageQueue
+    {
+      hevm.expectEmit(true, true, false, true);
+      address sender = AddressAliasHelper.applyL1ToL2Alias(address(l1Messenger));
+      emit QueueTransaction(sender, address(l2Messenger), 0, 0, gasLimit, xDomainCalldata);
+    }
+
+    // emit SentMessage from L1ScrollMessenger
+    {
+      hevm.expectEmit(true, true, false, true);
+      emit SentMessage(address(gateway), address(counterpartGateway), 0, 0, gasLimit, message);
+    }
+
+    // emit FinalizeWithdrawERC721 from L1ERC721Gateway
+    hevm.expectEmit(true, true, true, true);
+    emit BatchDepositERC721(address(l1Token), address(l2Token), address(this), recipient, _tokenIds);
+
+    for (uint256 i = 0; i < tokenCount; i++) {
+      assertEq(l1Token.ownerOf(i), address(this));
+    }
+    uint256 gatewayBalance = l1Token.balanceOf(address(gateway));
+    uint256 feeVaultBalance = address(feeVault).balance;
+    assertBoolEq(false, l1Messenger.isL1MessageSent(keccak256(xDomainCalldata)));
+    gateway.batchDepositERC721{ value: feeToPay }(address(l1Token), recipient, _tokenIds, gasLimit);
+    for (uint256 i = 0; i < tokenCount; i++) {
+      assertEq(l1Token.ownerOf(i), address(gateway));
+    }
+    assertEq(tokenCount + gatewayBalance, l1Token.balanceOf(address(gateway)));
+    assertEq(feeToPay + feeVaultBalance, address(feeVault).balance);
+    assertBoolEq(true, l1Messenger.isL1MessageSent(keccak256(xDomainCalldata)));
   }
 }
