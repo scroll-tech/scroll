@@ -167,19 +167,9 @@ func (w *Watcher) FetchBlockHeader(blockHeight uint64) error {
 			log.Warn("Failed to get block", "height", height, "err", err)
 			break
 		}
-		/*
-			var headerRLPBytes []byte
-			headerRLPBytes, err = rlp.EncodeToBytes(block.Header())
-			if err != nil {
-				log.Warn("Failed to rlp encode header", "height", height, "err", err)
-				break
-			}
-		*/
 		blocks = append(blocks, &types.L1BlockInfo{
-			Number: uint64(height),
-			Hash:   block.Hash().String(),
-			// no need to import l1 blocks now
-			// HeaderRLP:       common.Bytes2Hex(headerRLPBytes),
+			Number:  uint64(height),
+			Hash:    block.Hash().String(),
 			BaseFee: block.BaseFee().Uint64(),
 		})
 	}
