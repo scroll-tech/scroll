@@ -1,6 +1,5 @@
 package l2
 
-/*
 func testBatchProposer(t *testing.T) {
 	// Create db handler and reset db.
 	db, err := database.NewOrmFactory(cfg.DBConfig)
@@ -43,4 +42,3 @@ func testBatchProposer(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, true, exist)
 }
-*/
