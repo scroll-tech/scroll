@@ -331,7 +331,7 @@ func (w *Watcher) parseBridgeEventLogs(logs []geth_types.Log) ([]*types.L1Messag
 			event.Target = common.HexToAddress(vLog.Topics[1].String())
 			l1Messages = append(l1Messages, &types.L1Message{
 				QueueIndex: event.QueueIndex.Uint64(),
-				// MsgHash:    utils.ComputeMessageHash(event.Sender, event.Target, event.Value, event.Fee, event.Deadline, event.Message, event.MessageNonce).String(),
+				MsgHash:    utils.ComputeMessageHash(event.Sender, event.Target, event.Value, event.QueueIndex, event.GasLimit, event.Data).String(),
 				// MsgHash: // todo: use encodeXDomainData from contracts,
 				Height:     vLog.BlockNumber,
 				Sender:     event.Sender.String(),

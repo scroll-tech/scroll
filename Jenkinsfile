@@ -47,11 +47,11 @@ pipeline {
                         sh 'make -C bridge docker'
                     }
                 }
-                //stage('Check Coordinator Docker Build') {
-                //    steps {
-                //        sh 'make -C coordinator docker'
-                //    }
-                //}
+                stage('Check Coordinator Docker Build') {
+                    steps {
+                        sh 'make -C coordinator docker'
+                    }
+                }
                 stage('Check Database Docker Build') {
                     steps {
                         sh 'make -C database docker'
