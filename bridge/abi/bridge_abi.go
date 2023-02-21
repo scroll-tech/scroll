@@ -193,12 +193,12 @@ type L1SentMessageEvent struct {
 
 // L1FailedRelayedMessageEvent represents a FailedRelayedMessage event raised by the L1ScrollMessenger contract.
 type L1FailedRelayedMessageEvent struct {
-	MsgHash common.Hash
+	MessageHash common.Hash
 }
 
 // L1RelayedMessageEvent represents a RelayedMessage event raised by the L1ScrollMessenger contract.
 type L1RelayedMessageEvent struct {
-	MsgHash common.Hash
+	MessageHash common.Hash
 }
 
 // L2AppendMessageEvent represents a AppendMessage event raised by the L2MessageQueue contract.
@@ -228,12 +228,12 @@ type L2SentMessageEvent struct {
 
 // L2FailedRelayedMessageEvent represents a FailedRelayedMessage event raised by the L2ScrollMessenger contract.
 type L2FailedRelayedMessageEvent struct {
-	MsgHash common.Hash
+	MessageHash common.Hash
 }
 
 // L2RelayedMessageEvent represents a RelayedMessage event raised by the L2ScrollMessenger contract.
 type L2RelayedMessageEvent struct {
-	MsgHash common.Hash
+	MessageHash common.Hash
 }
 
 // GetBatchCalldataLength gets the calldata bytelen of IScrollChainBatch.

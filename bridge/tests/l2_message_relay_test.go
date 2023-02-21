@@ -1,6 +1,22 @@
 package tests
 
-/*
+import (
+	"context"
+	"math/big"
+	"scroll-tech/bridge/l1"
+	"scroll-tech/bridge/l2"
+	"scroll-tech/common/types"
+	"scroll-tech/database"
+	"scroll-tech/database/migrate"
+	"testing"
+
+	"github.com/scroll-tech/go-ethereum/accounts/abi/bind"
+	"github.com/scroll-tech/go-ethereum/common"
+	eth_types "github.com/scroll-tech/go-ethereum/core/types"
+	"github.com/scroll-tech/go-ethereum/rpc"
+	"github.com/stretchr/testify/assert"
+)
+
 func testRelayL2MessageSucceed(t *testing.T) {
 	// Create db handler and reset db.
 	db, err := database.NewOrmFactory(cfg.DBConfig)
@@ -12,17 +28,17 @@ func testRelayL2MessageSucceed(t *testing.T) {
 
 	// Create L2Relayer
 	l2Cfg := cfg.L2Config
-	l2Relayer, err := l2.NewLayer2Relayer(context.Background(), db, l2Cfg.RelayerConfig)
+	l2Relayer, err := l2.NewLayer2Relayer(context.Background(), l2Client, db, l2Cfg.RelayerConfig)
 	assert.NoError(t, err)
 	defer l2Relayer.Stop()
 
 	// Create L2Watcher
 	confirmations := rpc.LatestBlockNumber
-	l2Watcher := l2.NewL2WatcherClient(context.Background(), l2Client, confirmations, l2Cfg.BatchProposerConfig, l2Cfg.L2MessengerAddress, nil, db)
+	l2Watcher := l2.NewL2WatcherClient(context.Background(), l2Client, confirmations, l2Cfg.BatchProposerConfig, l2Cfg.L2MessengerAddress, l2Cfg.L2MessageQueueAddress, nil, db)
 
 	// Create L1Watcher
 	l1Cfg := cfg.L1Config
-	l1Watcher := l1.NewWatcher(context.Background(), l1Client, 0, confirmations, l1Cfg.L1MessengerAddress, l1Cfg.RollupContractAddress, db)
+	l1Watcher := l1.NewWatcher(context.Background(), l1Client, 0, confirmations, l1Cfg.L1MessengerAddress, l1Cfg.L1MessageQueueAddress, l1Cfg.ScrollChainContractAddress, db)
 
 	// send message through l2 messenger contract
 	nonce, err := l2MessengerInstance.MessageNonce(&bind.CallOpts{})
@@ -31,7 +47,7 @@ func testRelayL2MessageSucceed(t *testing.T) {
 	assert.NoError(t, err)
 	sendReceipt, err := bind.WaitMined(context.Background(), l2Client, sendTx)
 	assert.NoError(t, err)
-	if sendReceipt.Status != geth_types.ReceiptStatusSuccessful || err != nil {
+	if sendReceipt.Status != eth_types.ReceiptStatusSuccessful || err != nil {
 		t.Fatalf("Call failed")
 	}
 
@@ -46,57 +62,50 @@ func testRelayL2MessageSucceed(t *testing.T) {
 	assert.Equal(t, msg.Target, l1Auth.From.String())
 
 	// add fake blocks
-	traces := []*geth_types.BlockTrace{
+	traces := []*eth_types.BlockTrace{
 		{
-			Header: &geth_types.Header{
+			Header: &eth_types.Header{
 				Number:     sendReceipt.BlockNumber,
 				ParentHash: common.Hash{},
 				Difficulty: big.NewInt(0),
 				BaseFee:    big.NewInt(0),
 			},
-			StorageTrace: &geth_types.StorageTrace{},
+			StorageTrace: &eth_types.StorageTrace{},
 		},
 	}
 	err = db.InsertBlockTraces(traces)
 	assert.NoError(t, err)
 
+	parentBatch := &types.BlockBatch{
+		Index: 0,
+		Hash:  "0x0000000000000000000000000000000000000000",
+	}
+	batchData := types.NewBatchData(parentBatch, []*eth_types.BlockTrace{
+		traces[0],
+	}, cfg.L2Config.BatchProposerConfig.PublicInputConfig)
+	batchHash := batchData.Hash().String()
+
 	// add fake batch
 	dbTx, err := db.Beginx()
 	assert.NoError(t, err)
-	batchID, err := db.NewBatchInDBTx(dbTx,
-		&orm.BlockInfo{
-			Number:     traces[0].Header.Number.Uint64(),
-			Hash:       traces[0].Header.Hash().String(),
-			ParentHash: traces[0].Header.ParentHash.String(),
-		},
-		&orm.BlockInfo{
-			Number:     traces[0].Header.Number.Uint64(),
-			Hash:       traces[0].Header.Hash().String(),
-			ParentHash: traces[0].Header.ParentHash.String(),
-		},
-		traces[0].Header.ParentHash.String(), 1, 194676)
+	err = db.NewBatchInDBTx(dbTx, batchData)
 	assert.NoError(t, err)
-	err = db.SetBatchIDForBlocksInDBTx(dbTx, []uint64{
-		traces[0].Header.Number.Uint64(),
-		traces[0].Header.Number.Uint64()}, batchID)
-	assert.NoError(t, err)
-	err = dbTx.Commit()
-	assert.NoError(t, err)
+	assert.NoError(t, dbTx.Commit())
 
 	// add dummy proof
 	tProof := []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31}
 	tInstanceCommitments := []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31}
-	err = db.UpdateProofByID(context.Background(), batchID, tProof, tInstanceCommitments, 100)
+	err = db.UpdateProofByID(context.Background(), batchHash, tProof, tInstanceCommitments, 100)
 	assert.NoError(t, err)
-	err = db.UpdateProvingStatus(batchID, types.ProvingTaskVerified)
+	err = db.UpdateProvingStatus(batchHash, types.ProvingTaskVerified)
 	assert.NoError(t, err)
 
 	// process pending batch and check status
-	l2Relayer.ProcessPendingBatches()
-	status, err := db.GetRollupStatus(batchID)
+	l2Relayer.SendCommitTx([]*types.BatchData{batchData})
+	status, err := db.GetRollupStatus(batchHash)
 	assert.NoError(t, err)
 	assert.Equal(t, types.RollupCommitting, status)
-	commitTxHash, err := db.GetCommitTxHash(batchID)
+	commitTxHash, err := db.GetCommitTxHash(batchHash)
 	assert.NoError(t, err)
 	assert.Equal(t, true, commitTxHash.Valid)
 	commitTx, _, err := l1Client.TransactionByHash(context.Background(), common.HexToHash(commitTxHash.String))
@@ -108,16 +117,16 @@ func testRelayL2MessageSucceed(t *testing.T) {
 	// fetch CommitBatch rollup events
 	err = l1Watcher.FetchContractEvent(commitTxReceipt.BlockNumber.Uint64())
 	assert.NoError(t, err)
-	status, err = db.GetRollupStatus(batchID)
+	status, err = db.GetRollupStatus(batchHash)
 	assert.NoError(t, err)
 	assert.Equal(t, types.RollupCommitted, status)
 
 	// process committed batch and check status
 	l2Relayer.ProcessCommittedBatches()
-	status, err = db.GetRollupStatus(batchID)
+	status, err = db.GetRollupStatus(batchHash)
 	assert.NoError(t, err)
 	assert.Equal(t, types.RollupFinalizing, status)
-	finalizeTxHash, err := db.GetFinalizeTxHash(batchID)
+	finalizeTxHash, err := db.GetFinalizeTxHash(batchHash)
 	assert.NoError(t, err)
 	assert.Equal(t, true, finalizeTxHash.Valid)
 	finalizeTx, _, err := l1Client.TransactionByHash(context.Background(), common.HexToHash(finalizeTxHash.String))
@@ -129,7 +138,7 @@ func testRelayL2MessageSucceed(t *testing.T) {
 	// fetch FinalizeBatch events
 	err = l1Watcher.FetchContractEvent(finalizeTxReceipt.BlockNumber.Uint64())
 	assert.NoError(t, err)
-	status, err = db.GetRollupStatus(batchID)
+	status, err = db.GetRollupStatus(batchHash)
 	assert.NoError(t, err)
 	assert.Equal(t, types.RollupFinalized, status)
 
@@ -154,4 +163,3 @@ func testRelayL2MessageSucceed(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, msg.Status, types.MsgConfirmed)
 }
-*/

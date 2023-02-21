@@ -25,7 +25,7 @@ func NewL1BlockOrm(db *sqlx.DB) L1BlockOrm {
 }
 
 func (l *l1BlockOrm) GetL1BlockInfos(fields map[string]interface{}, args ...string) ([]*types.L1BlockInfo, error) {
-	query := "SELECT number, hash, header_rlp, block_status, import_tx_hash FROM l1_block WHERE 1 = 1 "
+	query := "SELECT * FROM l1_block WHERE 1 = 1 "
 	for key := range fields {
 		query += fmt.Sprintf("AND %s=:%s ", key, key)
 	}

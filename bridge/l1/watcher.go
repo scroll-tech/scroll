@@ -127,7 +127,7 @@ func (w *Watcher) Start() {
 					continue
 				}
 
-				if err := w.fetchBlockHeader(number); err != nil {
+				if err := w.FetchBlockHeader(number); err != nil {
 					log.Error("Failed to fetch L1 block header", "lastest", number, "err", err)
 				}
 
@@ -147,7 +147,7 @@ func (w *Watcher) Stop() {
 const contractEventsBlocksFetchLimit = int64(10)
 
 // fetchBlockHeader pull latest L1 blocks and save in DB
-func (w *Watcher) fetchBlockHeader(blockHeight uint64) error {
+func (w *Watcher) FetchBlockHeader(blockHeight uint64) error {
 	fromBlock := int64(w.processedBlockHeight) + 1
 	toBlock := int64(blockHeight) - int64(w.confirmations)
 	if toBlock < fromBlock {
@@ -353,7 +353,7 @@ func (w *Watcher) parseBridgeEventLogs(logs []geth_types.Log) ([]*types.L1Messag
 			}
 
 			relayedMessages = append(relayedMessages, relayedMessage{
-				msgHash:      event.MsgHash,
+				msgHash:      event.MessageHash,
 				txHash:       vLog.TxHash,
 				isSuccessful: true,
 			})
@@ -366,7 +366,7 @@ func (w *Watcher) parseBridgeEventLogs(logs []geth_types.Log) ([]*types.L1Messag
 			}
 
 			relayedMessages = append(relayedMessages, relayedMessage{
-				msgHash:      event.MsgHash,
+				msgHash:      event.MessageHash,
 				txHash:       vLog.TxHash,
 				isSuccessful: false,
 			})

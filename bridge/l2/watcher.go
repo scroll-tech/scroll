@@ -421,7 +421,7 @@ func (w *WatcherClient) parseBridgeEventLogs(logs []geth_types.Log) ([]*types.L2
 			}
 
 			relayedMessages = append(relayedMessages, relayedMessage{
-				msgHash:      event.MsgHash,
+				msgHash:      event.MessageHash,
 				txHash:       vLog.TxHash,
 				isSuccessful: true,
 			})
@@ -434,7 +434,7 @@ func (w *WatcherClient) parseBridgeEventLogs(logs []geth_types.Log) ([]*types.L2
 			}
 
 			relayedMessages = append(relayedMessages, relayedMessage{
-				msgHash:      event.MsgHash,
+				msgHash:      event.MessageHash,
 				txHash:       vLog.TxHash,
 				isSuccessful: false,
 			})
