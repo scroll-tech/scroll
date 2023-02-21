@@ -1,18 +1,17 @@
 .PHONY: lint docker clean libzkp
 
-ZKEVM_VERSION=3.0
-
-zkp:
-	# wget https://github.com/scroll-tech/scroll-zkevm/archive/refs/tags/${ZKEVM_VERSION}.zip
-
-test-zkp: zkp
+test-zkp:
+	sh ./build.sh
 	go test -tags ffi -timeout 0 -v
 
-twice-test: zkp
+twice-test:
+	sh ./build.sh
 	go test -tags ffi -timeout 0 -v -times=2
 
-test-gpu: zkp
+test-gpu:
+	sh ./build.sh
 	go test -tags="gpu ffi" -timeout 0 -v
 
-twice-gpu-test: zkp
+twice-gpu-test:
+	sh ./build.sh
 	go test -tags="gpu ffi" -timeout 0 -v -times=2

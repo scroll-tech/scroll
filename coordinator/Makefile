@@ -4,28 +4,12 @@ IMAGE_NAME=coordinator
 IMAGE_VERSION=latest
 REPO_ROOT_DIR=./..
 
-ifeq (4.3,$(firstword $(sort $(MAKE_VERSION) 4.3)))
-	ZK_VERSION=$(shell grep -m 1 "scroll-zkevm" ../common/libzkp/impl/Cargo.lock | cut -d "#" -f2 | cut -c-7)
-else
-	ZK_VERSION=$(shell grep -m 1 "scroll-zkevm" ../common/libzkp/impl/Cargo.lock | cut -d "\#" -f2 | cut -c-7)
-endif
-
 test:
 	go test -v -race -coverprofile=coverage.txt -covermode=atomic -p 1 $(PWD)/...
 
-libzkp:
-	cd ../common/libzkp/impl && cargo build --release && cp ./target/release/libzkp.a ../interface/
-	rm -rf ./verifier/lib && cp -r ../common/libzkp/interface ./verifier/lib
-	find ../common | grep libzktrie.so | xargs -i cp {} ./verifier/lib/
-
-coordinator: libzkp ## Builds the Coordinator instance.
-	go build -ldflags "-X scroll-tech/common/version.ZkVersion=${ZK_VERSION}" -o $(PWD)/build/bin/coordinator ./cmd
-
-test-verifier: libzkp
-	go test -tags ffi -timeout 0 -v ./verifier
-
-test-gpu-verifier: libzkp
-	go test -tags="gpu ffi" -timeout 0 -v ./verifier
+coordinator: ## Builds the Coordinator instance.
+	cd ../common/libzkp && sh build.sh
+	go build -o $(PWD)/build/bin/coordinator ./cmd
 
 lint: ## Lint the files - used for CI
 	GOBIN=$(PWD)/build/bin go run ../build/lint.go
