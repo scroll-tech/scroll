@@ -3,18 +3,19 @@ package tests
 import (
 	"context"
 	"math/big"
+	"testing"
+
+	"github.com/scroll-tech/go-ethereum/accounts/abi/bind"
+	"github.com/scroll-tech/go-ethereum/common"
+	geth_types "github.com/scroll-tech/go-ethereum/core/types"
+	"github.com/scroll-tech/go-ethereum/rpc"
+	"github.com/stretchr/testify/assert"
+
 	"scroll-tech/bridge/l1"
 	"scroll-tech/bridge/l2"
 	"scroll-tech/common/types"
 	"scroll-tech/database"
 	"scroll-tech/database/migrate"
-	"testing"
-
-	"github.com/scroll-tech/go-ethereum/accounts/abi/bind"
-	"github.com/scroll-tech/go-ethereum/common"
-	eth_types "github.com/scroll-tech/go-ethereum/core/types"
-	"github.com/scroll-tech/go-ethereum/rpc"
-	"github.com/stretchr/testify/assert"
 )
 
 func testRelayL1MessageSucceed(t *testing.T) {
@@ -48,7 +49,7 @@ func testRelayL1MessageSucceed(t *testing.T) {
 	assert.NoError(t, err)
 	sendReceipt, err := bind.WaitMined(context.Background(), l1Client, sendTx)
 	assert.NoError(t, err)
-	if sendReceipt.Status != eth_types.ReceiptStatusSuccessful || err != nil {
+	if sendReceipt.Status != geth_types.ReceiptStatusSuccessful || err != nil {
 		t.Fatalf("Call failed")
 	}
 

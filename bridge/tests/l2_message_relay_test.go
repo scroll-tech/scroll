@@ -3,18 +3,19 @@ package tests
 import (
 	"context"
 	"math/big"
+	"testing"
+
+	"github.com/scroll-tech/go-ethereum/accounts/abi/bind"
+	"github.com/scroll-tech/go-ethereum/common"
+	geth_types "github.com/scroll-tech/go-ethereum/core/types"
+	"github.com/scroll-tech/go-ethereum/rpc"
+	"github.com/stretchr/testify/assert"
+
 	"scroll-tech/bridge/l1"
 	"scroll-tech/bridge/l2"
 	"scroll-tech/common/types"
 	"scroll-tech/database"
 	"scroll-tech/database/migrate"
-	"testing"
-
-	"github.com/scroll-tech/go-ethereum/accounts/abi/bind"
-	"github.com/scroll-tech/go-ethereum/common"
-	eth_types "github.com/scroll-tech/go-ethereum/core/types"
-	"github.com/scroll-tech/go-ethereum/rpc"
-	"github.com/stretchr/testify/assert"
 )
 
 func testRelayL2MessageSucceed(t *testing.T) {
@@ -47,7 +48,7 @@ func testRelayL2MessageSucceed(t *testing.T) {
 	assert.NoError(t, err)
 	sendReceipt, err := bind.WaitMined(context.Background(), l2Client, sendTx)
 	assert.NoError(t, err)
-	if sendReceipt.Status != eth_types.ReceiptStatusSuccessful || err != nil {
+	if sendReceipt.Status != geth_types.ReceiptStatusSuccessful || err != nil {
 		t.Fatalf("Call failed")
 	}
 
@@ -62,15 +63,15 @@ func testRelayL2MessageSucceed(t *testing.T) {
 	assert.Equal(t, msg.Target, l1Auth.From.String())
 
 	// add fake blocks
-	traces := []*eth_types.BlockTrace{
+	traces := []*geth_types.BlockTrace{
 		{
-			Header: &eth_types.Header{
+			Header: &geth_types.Header{
 				Number:     sendReceipt.BlockNumber,
 				ParentHash: common.Hash{},
 				Difficulty: big.NewInt(0),
 				BaseFee:    big.NewInt(0),
 			},
-			StorageTrace: &eth_types.StorageTrace{},
+			StorageTrace: &geth_types.StorageTrace{},
 		},
 	}
 	err = db.InsertBlockTraces(traces)
@@ -80,7 +81,7 @@ func testRelayL2MessageSucceed(t *testing.T) {
 		Index: 0,
 		Hash:  "0x0000000000000000000000000000000000000000",
 	}
-	batchData := types.NewBatchData(parentBatch, []*eth_types.BlockTrace{
+	batchData := types.NewBatchData(parentBatch, []*geth_types.BlockTrace{
 		traces[0],
 	}, cfg.L2Config.BatchProposerConfig.PublicInputConfig)
 	batchHash := batchData.Hash().String()
@@ -88,8 +89,7 @@ func testRelayL2MessageSucceed(t *testing.T) {
 	// add fake batch
 	dbTx, err := db.Beginx()
 	assert.NoError(t, err)
-	err = db.NewBatchInDBTx(dbTx, batchData)
-	assert.NoError(t, err)
+	assert.NoError(t, db.NewBatchInDBTx(dbTx, batchData))
 	assert.NoError(t, dbTx.Commit())
 
 	// add dummy proof

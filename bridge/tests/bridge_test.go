@@ -205,17 +205,17 @@ func TestFunction(t *testing.T) {
 	setupEnv(t)
 
 	// l1 rollup and watch rollup events
-	// t.Run("TestCommitBatchAndFinalizeBatch", testCommitBatchAndFinalizeBatch)
+	t.Run("TestCommitBatchAndFinalizeBatch", testCommitBatchAndFinalizeBatch)
 
 	// l1 message
-	// t.Run("testRelayL1MessageSucceed", testRelayL1MessageSucceed)
+	t.Run("TestRelayL1MessageSucceed", testRelayL1MessageSucceed)
 
 	// l2 message
-	// t.Run("testRelayL2MessageSucceed", testRelayL2MessageSucceed)
+	t.Run("TestRelayL2MessageSucceed", testRelayL2MessageSucceed)
 
 	// l1/l2 gas oracle
-	// t.Run("testImportL1GasPrice", testImportL1GasPrice)
-	t.Run("testImportL2GasPrice", testImportL2GasPrice)
+	t.Run("TestImportL1GasPrice", testImportL1GasPrice)
+	t.Run("TestImportL2GasPrice", testImportL2GasPrice)
 
 	t.Cleanup(func() {
 		free(t)

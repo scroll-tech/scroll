@@ -69,8 +69,7 @@ func testCommitBatchAndFinalizeBatch(t *testing.T) {
 	// add one batch to db
 	dbTx, err := db.Beginx()
 	assert.NoError(t, err)
-	err = db.NewBatchInDBTx(dbTx, batchData)
-	assert.NoError(t, err)
+	assert.NoError(t, db.NewBatchInDBTx(dbTx, batchData))
 	assert.NoError(t, dbTx.Commit())
 
 	// process pending batch and check status

@@ -3,17 +3,18 @@ package tests
 import (
 	"context"
 	"math/big"
+	"testing"
+
+	"github.com/scroll-tech/go-ethereum/common"
+	geth_types "github.com/scroll-tech/go-ethereum/core/types"
+	"github.com/scroll-tech/go-ethereum/rpc"
+	"github.com/stretchr/testify/assert"
+
 	"scroll-tech/bridge/l1"
 	"scroll-tech/bridge/l2"
 	"scroll-tech/common/types"
 	"scroll-tech/database"
 	"scroll-tech/database/migrate"
-	"testing"
-
-	"github.com/scroll-tech/go-ethereum/common"
-	eth_types "github.com/scroll-tech/go-ethereum/core/types"
-	"github.com/scroll-tech/go-ethereum/rpc"
-	"github.com/stretchr/testify/assert"
 )
 
 func testImportL1GasPrice(t *testing.T) {
@@ -83,15 +84,15 @@ func testImportL2GasPrice(t *testing.T) {
 	defer l2Relayer.Stop()
 
 	// add fake blocks
-	traces := []*eth_types.BlockTrace{
+	traces := []*geth_types.BlockTrace{
 		{
-			Header: &eth_types.Header{
+			Header: &geth_types.Header{
 				Number:     big.NewInt(1),
 				ParentHash: common.Hash{},
 				Difficulty: big.NewInt(0),
 				BaseFee:    big.NewInt(0),
 			},
-			StorageTrace: &eth_types.StorageTrace{},
+			StorageTrace: &geth_types.StorageTrace{},
 		},
 	}
 	err = db.InsertBlockTraces(traces)
@@ -101,15 +102,14 @@ func testImportL2GasPrice(t *testing.T) {
 		Index: 0,
 		Hash:  "0x0000000000000000000000000000000000000000",
 	}
-	batchData := types.NewBatchData(parentBatch, []*eth_types.BlockTrace{
+	batchData := types.NewBatchData(parentBatch, []*geth_types.BlockTrace{
 		traces[0],
 	}, cfg.L2Config.BatchProposerConfig.PublicInputConfig)
 
 	// add fake batch
 	dbTx, err := db.Beginx()
 	assert.NoError(t, err)
-	err = db.NewBatchInDBTx(dbTx, batchData)
-	assert.NoError(t, err)
+	assert.NoError(t, db.NewBatchInDBTx(dbTx, batchData))
 	assert.NoError(t, dbTx.Commit())
 
 	// check db status
