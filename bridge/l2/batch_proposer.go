@@ -54,6 +54,9 @@ func newBatchProposer(cfg *config.BatchProposerConfig, relayer *Layer2Relayer, o
 	// for graceful restart.
 	p.recoverBatchDataBuffer()
 
+	// try to commit the leftover pending batches
+	p.tryCommitBatches()
+
 	return p
 }
 
@@ -84,6 +87,7 @@ func (p *batchProposer) recoverBatchDataBuffer() {
 
 	// recover the in-memory batchData from DB
 	for _, batchHash := range batchHashes {
+		log.Info("recover batch data from pending batch", "batch_hash", batchHash)
 		blockBatch, err := getBlockBatch(batchHash)
 		if err != nil {
 			log.Error("could not get BlockBatch", "batch_hash", batchHash, "error", err)
@@ -101,17 +105,26 @@ func (p *batchProposer) recoverBatchDataBuffer() {
 			log.Error("could not GetBlockInfos", "batch_hash", batchHash, "error", err)
 			continue
 		}
+		if len(blockInfos) != int(blockBatch.EndBlockNumber - blockBatch.StartBlockNumber + 1) {
+			log.Error("the number of block info retrieved from DB mistmatches the batch info in the DB",
+					  "len(blockInfos)", len(blockInfos),
+					  "expected", blockBatch.EndBlockNumber - blockBatch.StartBlockNumber + 1)
+			continue
+		}
 
 		batchData, err := p.generateBatchData(parentBatch, blockInfos)
 		if err != nil {
 			continue
 		}
+		if batchData.Hash().Hex() != batchHash {
+			log.Error("the hash from recovered batch data mismatches the DB entry",
+					  "recovered_batch_hash", batchData.Hash().Hex(),
+					  "expected", batchHash)
+			continue
+		}
 
 		p.batchDataBuffer = append(p.batchDataBuffer, batchData)
 	}
-
-	// try to commit the leftover pending batches
-	p.tryCommitBatches()
 }
 
 func (p *batchProposer) tryProposeBatch() {
@@ -142,9 +155,12 @@ func (p *batchProposer) tryCommitBatches() {
 		if calldataByteLen > p.commitCalldataSizeLimit {
 			commit = true
 			if index == 0 {
-				log.Warn("The calldata size of the batch is larger than the threshold", "batch_hash", p.batchDataBuffer[index].Hash().Hex(), "calldata_size", calldataByteLen)
-			} else {
-				index--
+				log.Warn(
+					"The calldata size of one batch is larger than the threshold",
+					"batch_hash", p.batchDataBuffer[0].Hash().Hex(),
+					"calldata_size", calldataByteLen,
+				)
+				index = 1
 			}
 			break
 		}
@@ -153,14 +169,16 @@ func (p *batchProposer) tryCommitBatches() {
 		return
 	}
 
-	// try sending commit tx for batchDataBuffer[0:index]
-	err := p.relayer.SendCommitTx(p.batchDataBuffer[:index+1])
+	// Send commit tx for batchDataBuffer[0:index]
+	log.Info("Commit batches", "start_index", p.batchDataBuffer[0].Batch.BatchIndex,
+			 "end_index", p.batchDataBuffer[index-1].Batch.BatchIndex)
+	err := p.relayer.SendCommitTx(p.batchDataBuffer[:index])
 	if err != nil {
 		// leave the retry to the next ticker
 		log.Error("SendCommitTx failed", "error", err)
 	} else {
 		// pop the processed batches from the buffer
-		p.batchDataBuffer = p.batchDataBuffer[index+1:]
+		p.batchDataBuffer = p.batchDataBuffer[index:]
 	}
 }
 
