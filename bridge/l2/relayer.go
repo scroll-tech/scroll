@@ -59,10 +59,6 @@ type Layer2Relayer struct {
 	// key(string): confirmation ID, value(string): layer2 hash.
 	processingMessage sync.Map
 
-	// A list of processing batch commitment.
-	// key(string): confirmation ID, value(string): batch hash.
-	processingCommitment sync.Map
-
 	// A list of processing batches commitment.
 	// key(string): confirmation ID, value([]string): batch hashes.
 	processingBatchesCommitment sync.Map
@@ -115,7 +111,6 @@ func NewLayer2Relayer(ctx context.Context, l2Client *ethclient.Client, db databa
 
 		cfg:                         cfg,
 		processingMessage:           sync.Map{},
-		processingCommitment:        sync.Map{},
 		processingBatchesCommitment: sync.Map{},
 		processingFinalization:      sync.Map{},
 		stopCh:                      make(chan struct{}),
@@ -499,18 +494,7 @@ func (r *Layer2Relayer) handleConfirmation(confirmation *sender.Confirmation) {
 		r.processingMessage.Delete(confirmation.ID)
 	}
 
-	// check whether it is block commitment transaction
-	if batchHash, ok := r.processingCommitment.Load(confirmation.ID); ok {
-		transactionType = "BatchCommitment"
-		// @todo handle db error
-		err := r.db.UpdateCommitTxHashAndRollupStatus(r.ctx, batchHash.(string), confirmation.TxHash.String(), types.RollupCommitted)
-		if err != nil {
-			log.Warn("UpdateCommitTxHashAndRollupStatus failed", "batch_hash", batchHash.(string), "err", err)
-		}
-		r.processingCommitment.Delete(confirmation.ID)
-	}
-
-	// check whether it is block commitment transaction
+	// check whether it is CommitBatches transaction
 	if batchBatches, ok := r.processingBatchesCommitment.Load(confirmation.ID); ok {
 		transactionType = "BatchesCommitment"
 		for _, batchHash := range batchBatches.([]string) {
