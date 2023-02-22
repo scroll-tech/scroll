@@ -178,7 +178,11 @@ func (p *BatchProposer) recoverBatchDataBuffer() {
 			continue
 		}
 
-		blockInfos, err := p.orm.GetL2BlockInfos(map[string]interface{}{"batch_hash": batchHash})
+		blockInfos, err := p.orm.GetL2BlockInfos(
+			map[string]interface{}{"batch_hash": batchHash},
+			"order by number ASC",
+		)
+
 		if err != nil {
 			log.Error("could not GetL2BlockInfos", "batch_hash", batchHash, "error", err)
 			continue
@@ -209,18 +213,19 @@ func (p *BatchProposer) tryProposeBatch() {
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
 
-	blocks, err := p.orm.GetUnbatchedL2Blocks(
-		map[string]interface{}{},
-		fmt.Sprintf("order by number ASC LIMIT %d", p.batchBlocksLimit),
-	)
-	if err != nil {
-		log.Error("failed to get unbatched blocks", "err", err)
-		return
-	}
-
 	if p.getBatchDataBufferSize() < p.batchDataBufferSizeLimit {
+		blocks, err := p.orm.GetUnbatchedL2Blocks(
+			map[string]interface{}{},
+			fmt.Sprintf("order by number ASC LIMIT %d", p.batchBlocksLimit),
+		)
+		if err != nil {
+			log.Error("failed to get unbatched blocks", "err", err)
+			return
+		}
+
 		p.proposeBatch(blocks)
 	}
+
 	p.tryCommitBatches()
 }
 
