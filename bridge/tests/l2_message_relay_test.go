@@ -34,12 +34,10 @@ func testRelayL2MessageSucceed(t *testing.T) {
 	// Create L2Watcher
 	confirmations := rpc.LatestBlockNumber
 	l2Watcher := l2.NewL2WatcherClient(context.Background(), l2Client, confirmations, l2Cfg.L2MessengerAddress, l2Cfg.L2MessageQueueAddress, db)
-	defer l2Watcher.Stop()
 
 	// Create L2Relayer
 	l2Relayer, err := l2.NewLayer2Relayer(context.Background(), l2Client, db, l2Cfg.RelayerConfig)
 	assert.NoError(t, err)
-	defer l2Relayer.Stop()
 
 	// Create L1Watcher
 	l1Cfg := cfg.L1Config
