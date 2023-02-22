@@ -18,6 +18,7 @@ lint: ## Lint the files - used for CI
 	GOBIN=$(PWD)/build/bin go run ../build/lint.go
 
 clean: ## Empty out the bin folder
+	cd ../common/libzkp/lib/ && rm *.a *.so
 	@rm -rf build/bin
 
 docker:

@@ -2,3 +2,4 @@
 .idea
 libzkp/assets
 libzkp/lib/*.a
+libzkp/lib/*.so
