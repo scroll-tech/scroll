@@ -11,6 +11,9 @@ coordinator: ## Builds the Coordinator instance.
 	cd ../common/libzkp && sh build.sh
 	go build -o $(PWD)/build/bin/coordinator ./cmd
 
+mock-coordinator:
+	go build -tags mock -o $(PWD)/build/bin/coordinator ./cmd
+
 lint: ## Lint the files - used for CI
 	GOBIN=$(PWD)/build/bin go run ../build/lint.go
 
