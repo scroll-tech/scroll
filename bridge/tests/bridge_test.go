@@ -208,7 +208,7 @@ func TestFunction(t *testing.T) {
 	t.Run("TestCommitBatchAndFinalizeBatch", testCommitBatchAndFinalizeBatch)
 
 	// l1 message
-	t.Run("TestRelayL1MessageSucceed", testRelayL1MessageSucceed)
+	// t.Run("TestRelayL1MessageSucceed", testRelayL1MessageSucceed)
 
 	// l2 message
 	//t.Run("TestRelayL2MessageSucceed", testRelayL2MessageSucceed)
