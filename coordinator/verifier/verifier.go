@@ -8,11 +8,11 @@ package verifier
 #include <stdlib.h>
 #include "./lib/libzkp.h"
 */
-// import "C" //nolint:typecheck
+import "C" //nolint:typecheck
 
 import (
-	// "encoding/json"
-	// "unsafe"
+	"encoding/json"
+	"unsafe"
 
 	"github.com/scroll-tech/go-ethereum/log"
 
@@ -31,14 +31,14 @@ func NewVerifier(cfg *config.VerifierConfig) (*Verifier, error) {
 	if cfg.MockMode {
 		return &Verifier{cfg: cfg}, nil
 	}
-	/*paramsPathStr := C.CString(cfg.ParamsPath)
+	paramsPathStr := C.CString(cfg.ParamsPath)
 	aggVkPathStr := C.CString(cfg.AggVkPath)
 	defer func() {
 		C.free(unsafe.Pointer(paramsPathStr))
 		C.free(unsafe.Pointer(aggVkPathStr))
 	}()
 
-	C.init_verifier(paramsPathStr, aggVkPathStr)*/
+	C.init_verifier(paramsPathStr, aggVkPathStr)
 
 	return &Verifier{cfg: cfg}, nil
 }
@@ -50,7 +50,7 @@ func (v *Verifier) VerifyProof(proof *message.AggProof) (bool, error) {
 		return true, nil
 
 	}
-	/*buf, err := json.Marshal(proof)
+	buf, err := json.Marshal(proof)
 	if err != nil {
 		return false, err
 	}
@@ -62,5 +62,5 @@ func (v *Verifier) VerifyProof(proof *message.AggProof) (bool, error) {
 
 	log.Info("Start to verify proof ...")
 	verified := C.verify_agg_proof(aggProofStr)
-	return verified != 0, nil*/return true, nil
+	return verified != 0, nil
 }
