@@ -24,8 +24,6 @@ import (
 	"scroll-tech/common/types"
 
 	"scroll-tech/database"
-
-	"scroll-tech/bridge/config"
 )
 
 // Metrics
@@ -61,12 +59,10 @@ type WatcherClient struct {
 
 	stopped uint64
 	stopCh  chan struct{}
-
-	batchProposer *batchProposer
 }
 
 // NewL2WatcherClient take a l2geth instance to generate a l2watcherclient instance
-func NewL2WatcherClient(ctx context.Context, client *ethclient.Client, confirmations rpc.BlockNumber, bpCfg *config.BatchProposerConfig, messengerAddress, messageQueueAddress common.Address, relayer *Layer2Relayer, orm database.OrmFactory) *WatcherClient {
+func NewL2WatcherClient(ctx context.Context, client *ethclient.Client, confirmations rpc.BlockNumber, messengerAddress, messageQueueAddress common.Address, orm database.OrmFactory) *WatcherClient {
 	savedHeight, err := orm.GetLayer2LatestWatchedHeight()
 	if err != nil {
 		log.Warn("fetch height from db failed", "err", err)
@@ -88,7 +84,6 @@ func NewL2WatcherClient(ctx context.Context, client *ethclient.Client, confirmat
 
 		stopCh:        make(chan struct{}),
 		stopped:       0,
-		batchProposer: newBatchProposer(bpCfg, relayer, orm),
 	}
 
 	// Initialize genesis before we do anything else
@@ -125,7 +120,7 @@ func (w *WatcherClient) initializeGenesis() error {
 
 	batchData := types.NewGenesisBatchData(blockTrace)
 
-	if err = w.batchProposer.addBatchInfoToDB(batchData); err != nil {
+	if err = AddBatchInfoToDB(w.orm, batchData); err != nil {
 		log.Error("failed to add batch info to DB", "BatchHash", batchData.Hash(), "error", err)
 		return err
 	}
@@ -194,22 +189,6 @@ func (w *WatcherClient) Start() {
 					}
 
 					w.FetchContractEvent(number)
-				}
-			}
-		}(ctx)
-
-		// batch proposer loop
-		go func(ctx context.Context) {
-			ticker := time.NewTicker(3 * time.Second)
-			defer ticker.Stop()
-
-			for {
-				select {
-				case <-ctx.Done():
-					return
-
-				case <-ticker.C:
-					w.batchProposer.tryProposeBatch()
 				}
 			}
 		}(ctx)

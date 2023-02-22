@@ -42,7 +42,7 @@ func testRelayL1MessageSucceed(t *testing.T) {
 	l1Watcher := l1.NewWatcher(context.Background(), l1Client, 0, confirmations, l1Cfg.L1MessengerAddress, l1Cfg.L1MessageQueueAddress, l1Cfg.ScrollChainContractAddress, db)
 
 	// Create L2Watcher
-	l2Watcher := l2.NewL2WatcherClient(context.Background(), l2Client, confirmations, l2Cfg.BatchProposerConfig, l2Cfg.L2MessengerAddress, l2Cfg.L2MessageQueueAddress, nil, db)
+	l2Watcher := l2.NewL2WatcherClient(context.Background(), l2Client, confirmations, l2Cfg.L2MessengerAddress, l2Cfg.L2MessageQueueAddress, db)
 
 	// send message through l1 messenger contract
 	nonce, err := l1MessengerInstance.MessageNonce(&bind.CallOpts{})

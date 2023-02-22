@@ -1,8 +1,10 @@
 package l2
 
 import (
+	"context"
 	"fmt"
 	"math"
+	"reflect"
 	"sync"
 	"time"
 
@@ -17,9 +19,44 @@ import (
 	"scroll-tech/bridge/config"
 )
 
-type batchProposer struct {
+// AddBatchInfoToDB inserts the batch information to the BlockBatch table and updates the batch_hash
+// in all blocks included in the batch.
+func AddBatchInfoToDB(db database.OrmFactory, batchData *types.BatchData) error {
+	dbTx, err := db.Beginx()
+	if err != nil {
+		return err
+	}
+
+	var dbTxErr error
+	defer func() {
+		if dbTxErr != nil {
+			if err := dbTx.Rollback(); err != nil {
+				log.Error("dbTx.Rollback()", "err", err)
+			}
+		}
+	}()
+
+	if dbTxErr = db.NewBatchInDBTx(dbTx, batchData); dbTxErr != nil {
+		return dbTxErr
+	}
+
+	var blockIDs = make([]uint64, len(batchData.Batch.Blocks))
+	for i, block := range batchData.Batch.Blocks {
+		blockIDs[i] = block.BlockNumber
+	}
+
+	if dbTxErr = db.SetBatchHashForL2BlocksInDBTx(dbTx, blockIDs, batchData.Hash().Hex()); dbTxErr != nil {
+		return dbTxErr
+	}
+
+	dbTxErr = dbTx.Commit()
+	return dbTxErr
+}
+
+type BatchProposer struct {
 	mutex sync.Mutex
 
+	ctx context.Context
 	orm database.OrmFactory
 
 	batchTimeSec            uint64
@@ -34,11 +71,14 @@ type batchProposer struct {
 	relayer             *Layer2Relayer
 
 	piCfg *types.PublicInputHashConfig
+
+	stopCh chan struct{}
 }
 
-func newBatchProposer(cfg *config.BatchProposerConfig, relayer *Layer2Relayer, orm database.OrmFactory) *batchProposer {
-	p := &batchProposer{
+func NewBatchProposer(ctx context.Context, cfg *config.BatchProposerConfig, relayer *Layer2Relayer, orm database.OrmFactory) *BatchProposer {
+	p := &BatchProposer{
 		mutex:                   sync.Mutex{},
+		ctx:                     ctx,
 		orm:                     orm,
 		batchTimeSec:            cfg.BatchTimeSec,
 		batchGasThreshold:       cfg.BatchGasThreshold,
@@ -49,6 +89,7 @@ func newBatchProposer(cfg *config.BatchProposerConfig, relayer *Layer2Relayer, o
 		skippedOpcodes:          cfg.SkippedOpcodes,
 		piCfg:                   cfg.PublicInputConfig,
 		relayer:                 relayer,
+		stopCh:                  make(chan struct{}),
 	}
 
 	// for graceful restart.
@@ -60,7 +101,42 @@ func newBatchProposer(cfg *config.BatchProposerConfig, relayer *Layer2Relayer, o
 	return p
 }
 
-func (p *batchProposer) recoverBatchDataBuffer() {
+// Start the Listening process
+func (p *BatchProposer) Start() {
+	go func() {
+		if reflect.ValueOf(p.orm).IsNil() {
+			panic("must run BatchProposer with DB")
+		}
+
+		ctx, cancel := context.WithCancel(p.ctx)
+
+		// batch proposer loop
+		go func(ctx context.Context) {
+			ticker := time.NewTicker(3 * time.Second)
+			defer ticker.Stop()
+
+			for {
+				select {
+				case <-ctx.Done():
+					return
+
+				case <-ticker.C:
+					p.tryProposeBatch()
+				}
+			}
+		}(ctx)
+
+		<-p.stopCh
+		cancel()
+	}()
+}
+
+// Stop the Watcher module, for a graceful shutdown.
+func (p *BatchProposer) Stop() {
+	p.stopCh <- struct{}{}
+}
+
+func (p *BatchProposer) recoverBatchDataBuffer() {
 	// batches are sorted by batch index in increasing order
 	batchHashes, err := p.orm.GetPendingBatches(math.MaxInt32)
 	if err != nil {
@@ -127,7 +203,7 @@ func (p *batchProposer) recoverBatchDataBuffer() {
 	}
 }
 
-func (p *batchProposer) tryProposeBatch() {
+func (p *BatchProposer) tryProposeBatch() {
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
 
@@ -144,7 +220,7 @@ func (p *batchProposer) tryProposeBatch() {
 	p.tryCommitBatches()
 }
 
-func (p *batchProposer) tryCommitBatches() {
+func (p *BatchProposer) tryCommitBatches() {
 	// estimate the calldata length to determine whether to commit the pending batches
 	index := 0
 	commit := false
@@ -181,7 +257,7 @@ func (p *batchProposer) tryCommitBatches() {
 	}
 }
 
-func (p *batchProposer) proposeBatch(blocks []*types.BlockInfo) {
+func (p *BatchProposer) proposeBatch(blocks []*types.BlockInfo) {
 	if len(blocks) == 0 {
 		return
 	}
@@ -228,7 +304,7 @@ func (p *batchProposer) proposeBatch(blocks []*types.BlockInfo) {
 	}
 }
 
-func (p *batchProposer) createBatchForBlocks(blocks []*types.BlockInfo) error {
+func (p *BatchProposer) createBatchForBlocks(blocks []*types.BlockInfo) error {
 	lastBatch, err := p.orm.GetLatestBatch()
 	if err != nil {
 		// We should not receive sql.ErrNoRows error. The DB should have the batch entry that contains the genesis block.
@@ -241,7 +317,7 @@ func (p *batchProposer) createBatchForBlocks(blocks []*types.BlockInfo) error {
 		return err
 	}
 
-	if err := p.addBatchInfoToDB(batchData); err != nil {
+	if err := AddBatchInfoToDB(p.orm, batchData); err != nil {
 		log.Error("addBatchInfoToDB failed", "BatchHash", batchData.Hash(), "error", err)
 		return err
 	}
@@ -250,39 +326,7 @@ func (p *batchProposer) createBatchForBlocks(blocks []*types.BlockInfo) error {
 	return nil
 }
 
-func (p *batchProposer) addBatchInfoToDB(batchData *types.BatchData) error {
-	dbTx, err := p.orm.Beginx()
-	if err != nil {
-		return err
-	}
-
-	var dbTxErr error
-	defer func() {
-		if dbTxErr != nil {
-			if err := dbTx.Rollback(); err != nil {
-				log.Error("dbTx.Rollback()", "err", err)
-			}
-		}
-	}()
-
-	if dbTxErr = p.orm.NewBatchInDBTx(dbTx, batchData); dbTxErr != nil {
-		return dbTxErr
-	}
-
-	var blockIDs = make([]uint64, len(batchData.Batch.Blocks))
-	for i, block := range batchData.Batch.Blocks {
-		blockIDs[i] = block.BlockNumber
-	}
-
-	if dbTxErr = p.orm.SetBatchHashForL2BlocksInDBTx(dbTx, blockIDs, batchData.Hash().Hex()); dbTxErr != nil {
-		return dbTxErr
-	}
-
-	dbTxErr = dbTx.Commit()
-	return dbTxErr
-}
-
-func (p *batchProposer) generateBatchData(parentBatch *types.BlockBatch, blocks []*types.BlockInfo) (*types.BatchData, error) {
+func (p *BatchProposer) generateBatchData(parentBatch *types.BlockBatch, blocks []*types.BlockInfo) (*types.BatchData, error) {
 	var traces []*geth_types.BlockTrace
 	for _, block := range blocks {
 		trs, err := p.orm.GetL2BlockTraces(map[string]interface{}{"hash": block.Hash})

@@ -28,14 +28,14 @@ func testBatchProposerProposeBatch(t *testing.T) {
 	assert.NoError(t, db.InsertL2BlockTraces([]*geth_types.BlockTrace{blockTrace1}))
 
 	l2cfg := cfg.L2Config
-	wc := NewL2WatcherClient(context.Background(), l2Cli, l2cfg.Confirmations, l2cfg.BatchProposerConfig, l2cfg.L2MessengerAddress, l2cfg.L2MessageQueueAddress, nil, db)
+	wc := NewL2WatcherClient(context.Background(), l2Cli, l2cfg.Confirmations, l2cfg.L2MessengerAddress, l2cfg.L2MessageQueueAddress, db)
 	wc.Start()
 	defer wc.Stop()
 
 	relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, cfg.L2Config.RelayerConfig)
 	assert.NoError(t, err)
 
-	proposer := newBatchProposer(&config.BatchProposerConfig{
+	proposer := NewBatchProposer(context.Background(), &config.BatchProposerConfig{
 		ProofGenerationFreq: 1,
 		BatchGasThreshold:   3000000,
 		BatchTxNumThreshold: 135,
@@ -85,7 +85,7 @@ func testBatchProposerGracefulRestart(t *testing.T) {
 	assert.Equal(t, 1, len(batchHashes))
 	assert.Equal(t, batchData2.Hash().Hex(), batchHashes[0])
 	// test p.recoverBatchDataBuffer().
-	_ = newBatchProposer(&config.BatchProposerConfig{
+	_ = NewBatchProposer(context.Background(), &config.BatchProposerConfig{
 		ProofGenerationFreq: 1,
 		BatchGasThreshold:   3000000,
 		BatchTxNumThreshold: 135,
