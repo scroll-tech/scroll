@@ -82,8 +82,8 @@ func NewL2WatcherClient(ctx context.Context, client *ethclient.Client, confirmat
 		messageQueueAddress: messageQueueAddress,
 		messageQueueABI:     bridge_abi.L2MessageQueueABI,
 
-		stopCh:        make(chan struct{}),
-		stopped:       0,
+		stopCh:  make(chan struct{}),
+		stopped: 0,
 	}
 
 	// Initialize genesis before we do anything else
@@ -367,12 +367,12 @@ func (w *WatcherClient) parseBridgeEventLogs(logs []geth_types.Log) ([]*types.L2
 			// So they should always match, just double check
 			if event.MessageNonce.Uint64() != lastAppendMsgNonce {
 				errMsg := fmt.Sprintf("l2 message nonces mismatch: AppendMessage.nonce=%v, SentMessage.nonce=%v, tx_hash=%v",
-									  lastAppendMsgNonce, event.MessageNonce.Uint64(), vLog.TxHash.Hex())
+					lastAppendMsgNonce, event.MessageNonce.Uint64(), vLog.TxHash.Hex())
 				return l2Messages, relayedMessages, errors.New(errMsg)
 			}
 			if computedMsgHash != lastAppendMsgHash {
 				errMsg := fmt.Sprintf("l2 message hashes mismatch: AppendMessage.msg_hash=%v, SentMessage.msg_hash=%v, tx_hash=%v",
-									  lastAppendMsgHash.Hex(), computedMsgHash.Hex(), vLog.TxHash.Hex())
+					lastAppendMsgHash.Hex(), computedMsgHash.Hex(), vLog.TxHash.Hex())
 				return l2Messages, relayedMessages, errors.New(errMsg)
 			}
 
