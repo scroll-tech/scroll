@@ -285,6 +285,7 @@ func (r *Layer2Relayer) SendCommitTx(batchData []*types.BatchData) error {
 	// generate a unique txID and send transaction
 	var bytes []byte
 	for _, batch := range batchData {
+		log.Info("!!!!!", "BatchIndex", batch.Batch.BatchIndex, "BatchHash", batch.Hash().String(), "ParentBatchHash", batch.Batch.ParentBatchHash.String(), "PrevStateRoot", batch.Batch.PrevStateRoot.String(), "NewStateRoot", batch.Batch.NewStateRoot.String())
 		bytes = append(bytes, batch.Hash().Bytes()...)
 	}
 	txID := crypto.Keccak256Hash(bytes).String()
@@ -292,6 +293,7 @@ func (r *Layer2Relayer) SendCommitTx(batchData []*types.BatchData) error {
 	if err != nil {
 		if !errors.Is(err, sender.ErrNoAvailableAccount) {
 			log.Error("Failed to send commitBatches tx to layer1 ", "err", err)
+			fmt.Printf("Calldata = %v\n", common.Bytes2Hex(calldata))
 		}
 		return err
 	}

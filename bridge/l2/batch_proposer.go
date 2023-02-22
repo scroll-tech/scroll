@@ -157,7 +157,7 @@ func (p *BatchProposer) recoverBatchDataBuffer() {
 		}
 		blockBatches, err := p.orm.GetBlockBatches(map[string]interface{}{"hash": batchHash})
 		if err != nil || len(blockBatches) == 0 {
-			return nil, err
+			return nil, err //
 		}
 		blockBatchCache[batchHash] = blockBatches[0]
 		return blockBatches[0], nil
@@ -249,6 +249,7 @@ func (p *BatchProposer) tryCommitBatches() {
 			break
 		}
 	}
+	log.Info("tryCommitBatches", "calldataByteLen", calldataByteLen, "p.commitCalldataSizeLimit", p.commitCalldataSizeLimit)
 	if !commit {
 		return
 	}
