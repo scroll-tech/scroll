@@ -56,17 +56,17 @@ func TestBatchHash(t *testing.T) {
 
 func TestNewGenesisBatch(t *testing.T) {
 	genesisBlock := &geth_types.Header{
-		UncleHash: common.HexToHash("0x1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347"),
-		Root: common.HexToHash("0x1b186a7a90ec3b41a2417062fe44dce8ce82ae76bfbb09eae786a4f1be1895f5"),
-		TxHash: common.HexToHash("0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421"),
+		UncleHash:   common.HexToHash("0x1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347"),
+		Root:        common.HexToHash("0x1b186a7a90ec3b41a2417062fe44dce8ce82ae76bfbb09eae786a4f1be1895f5"),
+		TxHash:      common.HexToHash("0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421"),
 		ReceiptHash: common.HexToHash("0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421"),
-		Difficulty: big.NewInt(1),
-		Number: big.NewInt(0),
-		GasLimit: 940000000,
-		GasUsed: 0,
-		Time: 1639724192,
-		Extra: common.Hex2Bytes("0000000000000000000000000000000000000000000000000000000000000000214f8d488aa9ebf83e30bad45fb8f9c8ee2509f5511caff794753d07e9dfb218cfc233bb62d2c57022783094e1a7edb6f069f8424bb68496a0926b130000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"),
-		BaseFee: big.NewInt(1000000000),
+		Difficulty:  big.NewInt(1),
+		Number:      big.NewInt(0),
+		GasLimit:    940000000,
+		GasUsed:     0,
+		Time:        1639724192,
+		Extra:       common.Hex2Bytes("0000000000000000000000000000000000000000000000000000000000000000214f8d488aa9ebf83e30bad45fb8f9c8ee2509f5511caff794753d07e9dfb218cfc233bb62d2c57022783094e1a7edb6f069f8424bb68496a0926b130000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"),
+		BaseFee:     big.NewInt(1000000000),
 	}
 	assert.Equal(
 		t,
@@ -87,7 +87,7 @@ func TestNewGenesisBatch(t *testing.T) {
 	batchData := NewGenesisBatchData(blockTrace)
 	t.Log(batchData.Batch.Blocks[0])
 	batchData.piCfg = &PublicInputHashConfig{
-		MaxTxNum: 25,
+		MaxTxNum:      25,
 		PaddingTxHash: common.HexToHash("0xb5baa665b2664c3bfed7eb46e00ebc110ecf2ebd257854a9bf2b9dbc9b2c08f6"),
 	}
 	assert.Equal(

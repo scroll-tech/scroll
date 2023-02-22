@@ -53,6 +53,7 @@ func AddBatchInfoToDB(db database.OrmFactory, batchData *types.BatchData) error 
 	return dbTxErr
 }
 
+// BatchProposer sends batches commit transactions to relayer.
 type BatchProposer struct {
 	mutex sync.Mutex
 
@@ -74,6 +75,7 @@ type BatchProposer struct {
 	stopCh chan struct{}
 }
 
+// NewBatchProposer will return a new instance of BatchProposer.
 func NewBatchProposer(ctx context.Context, cfg *config.BatchProposerConfig, relayer *Layer2Relayer, orm database.OrmFactory) *BatchProposer {
 	p := &BatchProposer{
 		mutex:                   sync.Mutex{},
