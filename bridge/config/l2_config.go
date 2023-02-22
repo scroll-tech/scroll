@@ -1,8 +1,6 @@
 package config
 
 import (
-	"encoding/json"
-
 	"github.com/scroll-tech/go-ethereum/rpc"
 
 	"github.com/scroll-tech/go-ethereum/common"
@@ -40,44 +38,6 @@ type BatchProposerConfig struct {
 	BatchBlocksLimit uint64 `json:"batch_blocks_limit"`
 	// Commit tx calldata size limit in bytes, target to cap the gas use of commit tx at 2M gas
 	CommitTxCalldataSizeLimit uint64 `json:"commit_tx_calldata_size_limit"`
-	// Skip generating proof when that opcodes appeared
-	SkippedOpcodes map[string]struct{} `json:"-"`
 	// The public input hash config
 	PublicInputConfig *types.PublicInputHashConfig `json:"public_input_config"`
-}
-
-// batchProposerConfigAlias RelayerConfig alias name
-type batchProposerConfigAlias BatchProposerConfig
-
-// UnmarshalJSON unmarshal BatchProposerConfig config struct.
-func (b *BatchProposerConfig) UnmarshalJSON(input []byte) error {
-	var jsonConfig struct {
-		batchProposerConfigAlias
-		SkippedOpcodes []string `json:"skipped_opcodes,omitempty"`
-	}
-	if err := json.Unmarshal(input, &jsonConfig); err != nil {
-		return err
-	}
-
-	*b = BatchProposerConfig(jsonConfig.batchProposerConfigAlias)
-	b.SkippedOpcodes = make(map[string]struct{}, len(jsonConfig.SkippedOpcodes))
-	for _, opcode := range jsonConfig.SkippedOpcodes {
-		b.SkippedOpcodes[opcode] = struct{}{}
-	}
-	return nil
-}
-
-// MarshalJSON marshal BatchProposerConfig in order to transfer skipOpcodes.
-func (b *BatchProposerConfig) MarshalJSON() ([]byte, error) {
-	jsonConfig := struct {
-		batchProposerConfigAlias
-		SkippedOpcodes []string `json:"skipped_opcodes,omitempty"`
-	}{batchProposerConfigAlias(*b), nil}
-
-	// Load skipOpcodes.
-	for op := range b.SkippedOpcodes {
-		jsonConfig.SkippedOpcodes = append(jsonConfig.SkippedOpcodes, op)
-	}
-
-	return json.Marshal(&jsonConfig)
 }

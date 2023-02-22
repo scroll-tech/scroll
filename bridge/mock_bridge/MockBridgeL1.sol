@@ -130,8 +130,8 @@ contract MockBridgeL1 {
    ***************/
 
   constructor() {
-    maxNumTxInBatch = 4;
-    paddingTxHash = 0xb5baa665b2664c3bfed7eb46e00ebc110ecf2ebd257854a9bf2b9dbc9b2c08f6;
+    maxNumTxInBatch = 44;
+    paddingTxHash = 0x0000000000000000000000000000000000000000000000000000000000000000;
   }
 
   /***********************************
@@ -187,7 +187,7 @@ contract MockBridgeL1 {
       _commitBatch(_batches[i]);
     }
   }
-  
+
   function revertBatch(bytes32 _batchHash) external {
     emit RevertBatch(_batchHash);
   }

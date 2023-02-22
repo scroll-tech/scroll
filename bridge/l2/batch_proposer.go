@@ -66,7 +66,6 @@ type BatchProposer struct {
 	commitCalldataSizeLimit uint64
 
 	proofGenerationFreq uint64
-	skippedOpcodes      map[string]struct{}
 	batchDataBuffer     []*types.BatchData
 	relayer             *Layer2Relayer
 
@@ -86,7 +85,6 @@ func NewBatchProposer(ctx context.Context, cfg *config.BatchProposerConfig, rela
 		batchBlocksLimit:        cfg.BatchBlocksLimit,
 		commitCalldataSizeLimit: cfg.CommitTxCalldataSizeLimit,
 		proofGenerationFreq:     cfg.ProofGenerationFreq,
-		skippedOpcodes:          cfg.SkippedOpcodes,
 		piCfg:                   cfg.PublicInputConfig,
 		relayer:                 relayer,
 		stopCh:                  make(chan struct{}),

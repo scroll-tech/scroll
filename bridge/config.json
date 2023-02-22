@@ -65,7 +65,6 @@
       "batch_time_sec": 300,
       "batch_blocks_limit": 100,
       "commit_tx_calldata_size_limit": 200000,
-      "skipped_opcodes": [],
       "public_input_config": {
         "max_tx_num": 44,
         "padding_tx_hash": "0x0000000000000000000000000000000000000000000000000000000000000000"
