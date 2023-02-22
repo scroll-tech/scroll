@@ -165,9 +165,20 @@ func (r *Layer2Relayer) processSavedEvent(msg *types.L2Message) error {
 	// @todo fetch merkle proof from l2geth
 	log.Info("Processing L2 Message", "msg.nonce", msg.Nonce, "msg.height", msg.Height)
 
-	// TODO: finalize hashing method, build proof
+	// Get the block info that contains the message
+	blockInfos, err := r.db.GetL2BlockInfos(map[string]interface{}{"number": msg.Height})
+	if err != nil {
+		log.Error("Failed to GetL2BlockInfos from DB", "number", msg.Height)
+	}
+	blockInfo := blockInfos[0]
+	if !blockInfo.BatchHash.Valid {
+		log.Error("Block has not been batched yet", "number", blockInfo.Number, "msg.nonce", msg.Nonce)
+		return nil
+	}
+
+	// TODO: rebuild the withdraw trie to generate the merkle proof
 	proof := bridge_abi.IL1ScrollMessengerL2MessageProof{
-		BatchHash:   common.Hash{},
+		BatchHash:   common.HexToHash(blockInfo.BatchHash.String),
 		MerkleProof: make([]byte, 0),
 	}
 	from := common.HexToAddress(msg.Sender)

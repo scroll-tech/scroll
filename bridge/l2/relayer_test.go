@@ -73,14 +73,14 @@ func testL2RelayerProcessSaveEvents(t *testing.T) {
 			},
 		},
 	}
-	err = db.InsertBlockTraces(traces)
+	err = db.InsertL2BlockTraces(traces)
 	assert.NoError(t, err)
 
 	dbTx, err := db.Beginx()
 	assert.NoError(t, err)
 	assert.NoError(t, db.NewBatchInDBTx(dbTx, batchData1))
 	batchHash := batchData1.Hash().Hex()
-	assert.NoError(t, db.SetBatchHashForBlocksInDBTx(dbTx, []uint64{
+	assert.NoError(t, db.SetBatchHashForL2BlocksInDBTx(dbTx, []uint64{
 		batchData1.Batch.Blocks[0].BlockNumber}, batchHash))
 	assert.NoError(t, dbTx.Commit())
 

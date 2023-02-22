@@ -231,9 +231,9 @@ func (w *WatcherClient) tryFetchRunningMissingBlocks(ctx context.Context, blockH
 	// Get newest block in DB. must have blocks at that time.
 	// Don't use "block_trace" table "trace" column's BlockTrace.Number,
 	// because it might be empty if the corresponding rollup_result is finalized/finalization_skipped
-	heightInDB, err := w.orm.GetBlockTracesLatestHeight()
+	heightInDB, err := w.orm.GetL2BlockTracesLatestHeight()
 	if err != nil {
-		log.Error("failed to GetBlockTracesLatestHeight", "err", err)
+		log.Error("failed to GetL2BlockTracesLatestHeight", "err", err)
 		return
 	}
 
@@ -273,7 +273,7 @@ func (w *WatcherClient) getAndStoreBlockTraces(ctx context.Context, from, to uin
 
 	}
 	if len(traces) > 0 {
-		if err := w.orm.InsertBlockTraces(traces); err != nil {
+		if err := w.orm.InsertL2BlockTraces(traces); err != nil {
 			return fmt.Errorf("failed to batch insert BlockTraces: %v", err)
 		}
 	}
@@ -338,7 +338,6 @@ func (w *WatcherClient) FetchContractEvent(blockHeight uint64) {
 		for _, msg := range relayedMessageEvents {
 			var msgStatus types.MsgStatus
 			if msg.isSuccessful {
-				// succeed
 				msgStatus = types.MsgConfirmed
 			} else {
 				msgStatus = types.MsgFailed

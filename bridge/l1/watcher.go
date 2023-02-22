@@ -280,14 +280,13 @@ func (w *Watcher) FetchContractEvent(blockHeight uint64) error {
 		// Update relayed message first to make sure we don't forget to update submitted message.
 		// Since, we always start sync from the latest unprocessed message.
 		for _, msg := range relayedMessageEvents {
+			var msgStatus types.MsgStatus
 			if msg.isSuccessful {
-				// succeed
-				err = w.db.UpdateLayer2StatusAndLayer1Hash(w.ctx, msg.msgHash.String(), types.MsgConfirmed, msg.txHash.String())
+				msgStatus = types.MsgConfirmed
 			} else {
-				// failed
-				err = w.db.UpdateLayer2StatusAndLayer1Hash(w.ctx, msg.msgHash.String(), types.MsgFailed, msg.txHash.String())
+				msgStatus = types.MsgFailed
 			}
-			if err != nil {
+			if err = w.db.UpdateLayer2StatusAndLayer1Hash(w.ctx, msg.msgHash.String(), msgStatus, msg.txHash.String()); err != nil {
 				log.Error("Failed to update layer1 status and layer2 hash", "err", err)
 				return err
 			}

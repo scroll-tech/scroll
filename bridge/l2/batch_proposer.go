@@ -100,9 +100,9 @@ func (p *batchProposer) recoverBatchDataBuffer() {
 			continue
 		}
 
-		blockInfos, err := p.orm.GetBlockInfos(map[string]interface{}{"batch_hash": batchHash})
+		blockInfos, err := p.orm.GetL2BlockInfos(map[string]interface{}{"batch_hash": batchHash})
 		if err != nil {
-			log.Error("could not GetBlockInfos", "batch_hash", batchHash, "error", err)
+			log.Error("could not GetL2BlockInfos", "batch_hash", batchHash, "error", err)
 			continue
 		}
 		if len(blockInfos) != int(blockBatch.EndBlockNumber-blockBatch.StartBlockNumber+1) {
@@ -131,7 +131,7 @@ func (p *batchProposer) tryProposeBatch() {
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
 
-	blocks, err := p.orm.GetUnbatchedBlocks(
+	blocks, err := p.orm.GetUnbatchedL2Blocks(
 		map[string]interface{}{},
 		fmt.Sprintf("order by number ASC LIMIT %d", p.batchBlocksLimit),
 	)
@@ -274,7 +274,7 @@ func (p *batchProposer) addBatchInfoToDB(batchData *types.BatchData) error {
 		blockIDs[i] = block.BlockNumber
 	}
 
-	if dbTxErr = p.orm.SetBatchHashForBlocksInDBTx(dbTx, blockIDs, batchData.Hash().Hex()); dbTxErr != nil {
+	if dbTxErr = p.orm.SetBatchHashForL2BlocksInDBTx(dbTx, blockIDs, batchData.Hash().Hex()); dbTxErr != nil {
 		return dbTxErr
 	}
 
@@ -285,7 +285,7 @@ func (p *batchProposer) addBatchInfoToDB(batchData *types.BatchData) error {
 func (p *batchProposer) generateBatchData(parentBatch *types.BlockBatch, blocks []*types.BlockInfo) (*types.BatchData, error) {
 	var traces []*geth_types.BlockTrace
 	for _, block := range blocks {
-		trs, err := p.orm.GetBlockTraces(map[string]interface{}{"hash": block.Hash})
+		trs, err := p.orm.GetL2BlockTraces(map[string]interface{}{"hash": block.Hash})
 		if err != nil || len(trs) != 1 {
 			log.Error("Failed to GetBlockTraces", "hash", block.Hash, "err", err)
 			return nil, err

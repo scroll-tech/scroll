@@ -182,27 +182,27 @@ func testOrmBlockTraces(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(factory.GetDB().DB))
 
-	res, err := ormBlock.GetBlockTraces(map[string]interface{}{})
+	res, err := ormBlock.GetL2BlockTraces(map[string]interface{}{})
 	assert.NoError(t, err)
 	assert.Equal(t, true, len(res) == 0)
 
-	exist, err := ormBlock.Exist(blockTrace.Header.Number.Uint64())
+	exist, err := ormBlock.IsL2BlockExists(blockTrace.Header.Number.Uint64())
 	assert.NoError(t, err)
 	assert.Equal(t, false, exist)
 
 	// Insert into db
-	err = ormBlock.InsertBlockTraces([]*geth_types.BlockTrace{blockTrace})
+	err = ormBlock.InsertL2BlockTraces([]*geth_types.BlockTrace{blockTrace})
 	assert.NoError(t, err)
 
-	res2, err := ormBlock.GetUnbatchedBlocks(map[string]interface{}{})
+	res2, err := ormBlock.GetUnbatchedL2Blocks(map[string]interface{}{})
 	assert.NoError(t, err)
 	assert.Equal(t, true, len(res2) == 1)
 
-	exist, err = ormBlock.Exist(blockTrace.Header.Number.Uint64())
+	exist, err = ormBlock.IsL2BlockExists(blockTrace.Header.Number.Uint64())
 	assert.NoError(t, err)
 	assert.Equal(t, true, exist)
 
-	res, err = ormBlock.GetBlockTraces(map[string]interface{}{
+	res, err = ormBlock.GetL2BlockTraces(map[string]interface{}{
 		"hash": blockTrace.Header.Hash().String(),
 	})
 	assert.NoError(t, err)
@@ -298,13 +298,13 @@ func testOrmBlockBatch(t *testing.T) {
 	err = ormBatch.NewBatchInDBTx(dbTx, batchData1)
 	assert.NoError(t, err)
 	batchHash1 := batchData1.Hash().Hex()
-	err = ormBlock.SetBatchHashForBlocksInDBTx(dbTx, []uint64{
+	err = ormBlock.SetBatchHashForL2BlocksInDBTx(dbTx, []uint64{
 		batchData1.Batch.Blocks[0].BlockNumber}, batchHash1)
 	assert.NoError(t, err)
 	err = ormBatch.NewBatchInDBTx(dbTx, batchData2)
 	assert.NoError(t, err)
 	batchHash2 := batchData2.Hash().Hex()
-	err = ormBlock.SetBatchHashForBlocksInDBTx(dbTx, []uint64{
+	err = ormBlock.SetBatchHashForL2BlocksInDBTx(dbTx, []uint64{
 		batchData2.Batch.Blocks[0].BlockNumber,
 		batchData2.Batch.Blocks[1].BlockNumber}, batchHash2)
 	assert.NoError(t, err)
@@ -382,7 +382,7 @@ func testOrmSessionInfo(t *testing.T) {
 	err = ormBatch.NewBatchInDBTx(dbTx, batchData1)
 	batchHash := batchData1.Hash().Hex()
 	assert.NoError(t, err)
-	assert.NoError(t, ormBlock.SetBatchHashForBlocksInDBTx(dbTx, []uint64{
+	assert.NoError(t, ormBlock.SetBatchHashForL2BlocksInDBTx(dbTx, []uint64{
 		batchData1.Batch.Blocks[0].BlockNumber}, batchHash))
 	assert.NoError(t, dbTx.Commit())
 	assert.NoError(t, ormBatch.UpdateProvingStatus(batchHash, types.ProvingTaskAssigned))

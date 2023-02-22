@@ -25,7 +25,7 @@ func testBatchProposerProposeBatch(t *testing.T) {
 	defer db.Close()
 
 	// Insert traces into db.
-	assert.NoError(t, db.InsertBlockTraces([]*geth_types.BlockTrace{blockTrace1}))
+	assert.NoError(t, db.InsertL2BlockTraces([]*geth_types.BlockTrace{blockTrace1}))
 
 	l2cfg := cfg.L2Config
 	wc := NewL2WatcherClient(context.Background(), l2Cli, l2cfg.Confirmations, l2cfg.BatchProposerConfig, l2cfg.L2MessengerAddress, l2cfg.L2MessageQueueAddress, nil, db)
@@ -44,7 +44,7 @@ func testBatchProposerProposeBatch(t *testing.T) {
 	}, relayer, db)
 	proposer.tryProposeBatch()
 
-	infos, err := db.GetUnbatchedBlocks(map[string]interface{}{},
+	infos, err := db.GetUnbatchedL2Blocks(map[string]interface{}{},
 		fmt.Sprintf("order by number ASC LIMIT %d", 100))
 	assert.NoError(t, err)
 	assert.Equal(t, 0, len(infos))
@@ -65,16 +65,16 @@ func testBatchProposerGracefulRestart(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Insert traces into db.
-	assert.NoError(t, db.InsertBlockTraces([]*geth_types.BlockTrace{blockTrace2}))
+	assert.NoError(t, db.InsertL2BlockTraces([]*geth_types.BlockTrace{blockTrace2}))
 
 	// Insert block batch into db.
 	dbTx, err := db.Beginx()
 	assert.NoError(t, err)
 	assert.NoError(t, db.NewBatchInDBTx(dbTx, batchData1))
 	assert.NoError(t, db.NewBatchInDBTx(dbTx, batchData2))
-	assert.NoError(t, db.SetBatchHashForBlocksInDBTx(dbTx, []uint64{
+	assert.NoError(t, db.SetBatchHashForL2BlocksInDBTx(dbTx, []uint64{
 		batchData1.Batch.Blocks[0].BlockNumber}, batchData1.Hash().Hex()))
-	assert.NoError(t, db.SetBatchHashForBlocksInDBTx(dbTx, []uint64{
+	assert.NoError(t, db.SetBatchHashForL2BlocksInDBTx(dbTx, []uint64{
 		batchData2.Batch.Blocks[0].BlockNumber}, batchData2.Hash().Hex()))
 	assert.NoError(t, dbTx.Commit())
 

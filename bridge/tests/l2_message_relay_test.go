@@ -76,7 +76,7 @@ func testRelayL2MessageSucceed(t *testing.T) {
 			StorageTrace: &geth_types.StorageTrace{},
 		},
 	}
-	err = db.InsertBlockTraces(traces)
+	err = db.InsertL2BlockTraces(traces)
 	assert.NoError(t, err)
 
 	parentBatch := &types.BlockBatch{
