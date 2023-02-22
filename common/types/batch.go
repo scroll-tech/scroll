@@ -174,6 +174,7 @@ func NewBatchData(parentBatch *BlockBatch, blockTraces []*types.BlockTrace, piCf
 		}
 	}
 
+	batchTxDataWriter.Flush()
 	batch.L2Transactions = batchTxDataBuf.Bytes()
 	batchData.piCfg = piCfg
 
