@@ -8,7 +8,7 @@ test:
 	go test -v -race -coverprofile=coverage.txt -covermode=atomic -p 1 $(PWD)/...
 
 coordinator: ## Builds the Coordinator instance.
-	cd ../common/libzkp && sh build.sh
+	cd ../common/libzkp && bash build.sh
 	go build -o $(PWD)/build/bin/coordinator ./cmd
 
 mock-coordinator:

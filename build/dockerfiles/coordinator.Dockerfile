@@ -18,7 +18,7 @@ RUN go mod download -x
 # Build coordinator
 FROM base as builder
 COPY . .
-RUN cd ./common/libzkp && sh build.sh
+RUN cd ./common/libzkp && bash build.sh
 RUN cd ./coordinator && go build -v -p 4 -o /bin/coordinator ./cmd
 
 

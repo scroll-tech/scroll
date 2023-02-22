@@ -4,11 +4,11 @@ IMAGE_NAME=go-roller
 IMAGE_VERSION=latest
 
 roller: ## Build the Roller instance.
-	cd ../common/libzkp && sh build.sh
+	cd ../common/libzkp && bash build.sh
 	GOBIN=$(PWD)/build/bin go build -o $(PWD)/build/bin/roller ./cmd
 
 gpu-roller: ## Build the GPU Roller instance.
-	cd ../common/libzkp && sh build.sh
+	cd ../common/libzkp && bash build.sh
 	GOBIN=$(PWD)/build/bin go build -tags gpu -o $(PWD)/build/bin/roller ./cmd
 
 mock_roller:
