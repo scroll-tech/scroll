@@ -9,9 +9,10 @@ import (
 
 	"github.com/jmoiron/sqlx"
 	"github.com/scroll-tech/go-ethereum/common"
-	"github.com/scroll-tech/go-ethereum/core/types"
+	geth_types "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/log"
 
+	"scroll-tech/common/types"
 	"scroll-tech/common/utils"
 )
 
@@ -26,7 +27,7 @@ func NewBlockTraceOrm(db *sqlx.DB) BlockTraceOrm {
 	return &blockTraceOrm{db: db}
 }
 
-func (o *blockTraceOrm) Exist(number uint64) (bool, error) {
+func (o *blockTraceOrm) IsL2BlockExists(number uint64) (bool, error) {
 	var res int
 	err := o.db.QueryRow(o.db.Rebind(`SELECT 1 from block_trace where number = ? limit 1;`), number).Scan(&res)
 	if err != nil {
@@ -38,7 +39,7 @@ func (o *blockTraceOrm) Exist(number uint64) (bool, error) {
 	return true, nil
 }
 
-func (o *blockTraceOrm) GetBlockTracesLatestHeight() (int64, error) {
+func (o *blockTraceOrm) GetL2BlockTracesLatestHeight() (int64, error) {
 	row := o.db.QueryRow("SELECT COALESCE(MAX(number), -1) FROM block_trace;")
 
 	var height int64
@@ -48,7 +49,7 @@ func (o *blockTraceOrm) GetBlockTracesLatestHeight() (int64, error) {
 	return height, nil
 }
 
-func (o *blockTraceOrm) GetBlockTraces(fields map[string]interface{}, args ...string) ([]*types.BlockTrace, error) {
+func (o *blockTraceOrm) GetL2BlockTraces(fields map[string]interface{}, args ...string) ([]*geth_types.BlockTrace, error) {
 	type Result struct {
 		Trace string
 	}
@@ -65,13 +66,13 @@ func (o *blockTraceOrm) GetBlockTraces(fields map[string]interface{}, args ...st
 		return nil, err
 	}
 
-	var traces []*types.BlockTrace
+	var traces []*geth_types.BlockTrace
 	for rows.Next() {
 		result := &Result{}
 		if err = rows.StructScan(result); err != nil {
 			break
 		}
-		trace := types.BlockTrace{}
+		trace := geth_types.BlockTrace{}
 		err = json.Unmarshal([]byte(result.Trace), &trace)
 		if err != nil {
 			break
@@ -85,8 +86,8 @@ func (o *blockTraceOrm) GetBlockTraces(fields map[string]interface{}, args ...st
 	return traces, rows.Close()
 }
 
-func (o *blockTraceOrm) GetBlockInfos(fields map[string]interface{}, args ...string) ([]*BlockInfo, error) {
-	query := "SELECT number, hash, parent_hash, batch_id, tx_num, gas_used, block_timestamp FROM block_trace WHERE 1 = 1 "
+func (o *blockTraceOrm) GetL2BlockInfos(fields map[string]interface{}, args ...string) ([]*types.BlockInfo, error) {
+	query := "SELECT number, hash, parent_hash, batch_hash, tx_num, gas_used, block_timestamp FROM block_trace WHERE 1 = 1 "
 	for key := range fields {
 		query += fmt.Sprintf("AND %s=:%s ", key, key)
 	}
@@ -98,9 +99,9 @@ func (o *blockTraceOrm) GetBlockInfos(fields map[string]interface{}, args ...str
 		return nil, err
 	}
 
-	var blocks []*BlockInfo
+	var blocks []*types.BlockInfo
 	for rows.Next() {
-		block := &BlockInfo{}
+		block := &types.BlockInfo{}
 		if err = rows.StructScan(block); err != nil {
 			break
 		}
@@ -113,8 +114,8 @@ func (o *blockTraceOrm) GetBlockInfos(fields map[string]interface{}, args ...str
 	return blocks, rows.Close()
 }
 
-func (o *blockTraceOrm) GetUnbatchedBlocks(fields map[string]interface{}, args ...string) ([]*BlockInfo, error) {
-	query := "SELECT number, hash, parent_hash, batch_id, tx_num, gas_used, block_timestamp FROM block_trace WHERE batch_id is NULL "
+func (o *blockTraceOrm) GetUnbatchedL2Blocks(fields map[string]interface{}, args ...string) ([]*types.BlockInfo, error) {
+	query := "SELECT number, hash, parent_hash, batch_hash, tx_num, gas_used, block_timestamp FROM block_trace WHERE batch_hash is NULL "
 	for key := range fields {
 		query += fmt.Sprintf("AND %s=:%s ", key, key)
 	}
@@ -126,9 +127,9 @@ func (o *blockTraceOrm) GetUnbatchedBlocks(fields map[string]interface{}, args .
 		return nil, err
 	}
 
-	var blocks []*BlockInfo
+	var blocks []*types.BlockInfo
 	for rows.Next() {
-		block := &BlockInfo{}
+		block := &types.BlockInfo{}
 		if err = rows.StructScan(block); err != nil {
 			break
 		}
@@ -141,7 +142,7 @@ func (o *blockTraceOrm) GetUnbatchedBlocks(fields map[string]interface{}, args .
 	return blocks, rows.Close()
 }
 
-func (o *blockTraceOrm) GetHashByNumber(number uint64) (*common.Hash, error) {
+func (o *blockTraceOrm) GetL2BlockHashByNumber(number uint64) (*common.Hash, error) {
 	row := o.db.QueryRow(`SELECT hash FROM block_trace WHERE number = $1`, number)
 	var hashStr string
 	if err := row.Scan(&hashStr); err != nil {
@@ -151,7 +152,7 @@ func (o *blockTraceOrm) GetHashByNumber(number uint64) (*common.Hash, error) {
 	return &hash, nil
 }
 
-func (o *blockTraceOrm) InsertBlockTraces(blockTraces []*types.BlockTrace) error {
+func (o *blockTraceOrm) InsertL2BlockTraces(blockTraces []*geth_types.BlockTrace) error {
 	traceMaps := make([]map[string]interface{}, len(blockTraces))
 	for i, trace := range blockTraces {
 		number, hash, txNum, mtime := trace.Header.Number.Int64(),
@@ -186,8 +187,8 @@ func (o *blockTraceOrm) InsertBlockTraces(blockTraces []*types.BlockTrace) error
 	return err
 }
 
-func (o *blockTraceOrm) DeleteTracesByBatchID(batchID string) error {
-	if _, err := o.db.Exec(o.db.Rebind("update block_trace set trace = ? where batch_id = ?;"), "{}", batchID); err != nil {
+func (o *blockTraceOrm) DeleteTracesByBatchHash(batchHash string) error {
+	if _, err := o.db.Exec(o.db.Rebind("update block_trace set trace = ? where batch_hash = ?;"), "{}", batchHash); err != nil {
 		return err
 	}
 	return nil
@@ -195,10 +196,10 @@ func (o *blockTraceOrm) DeleteTracesByBatchID(batchID string) error {
 
 // http://jmoiron.github.io/sqlx/#inQueries
 // https://stackoverflow.com/questions/56568799/how-to-update-multiple-rows-using-sqlx
-func (o *blockTraceOrm) SetBatchIDForBlocksInDBTx(dbTx *sqlx.Tx, numbers []uint64, batchID string) error {
-	query := "UPDATE block_trace SET batch_id=? WHERE number IN (?)"
+func (o *blockTraceOrm) SetBatchHashForL2BlocksInDBTx(dbTx *sqlx.Tx, numbers []uint64, batchHash string) error {
+	query := "UPDATE block_trace SET batch_hash=? WHERE number IN (?)"
 
-	qry, args, err := sqlx.In(query, batchID, numbers)
+	qry, args, err := sqlx.In(query, batchHash, numbers)
 	if err != nil {
 		return err
 	}

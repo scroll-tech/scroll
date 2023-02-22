@@ -12,6 +12,7 @@ require (
 	github.com/scroll-tech/go-ethereum v1.10.14-0.20230220082843-ec9254b0b1c6
 	github.com/stretchr/testify v1.8.0
 	github.com/urfave/cli/v2 v2.17.2-0.20221006022127-8f469abc00aa
+	gotest.tools v2.2.0+incompatible
 )
 
 require (
@@ -30,11 +31,12 @@ require (
 	github.com/ethereum/go-ethereum v1.11.1 // indirect
 	github.com/fjl/memsize v0.0.0-20190710130421-bcb5799ab5e5 // indirect
 	github.com/gballet/go-libpcsclite v0.0.0-20190607065134-2772fd86a8ff // indirect
+	github.com/go-logfmt/logfmt v0.5.1 // indirect
 	github.com/go-ole/go-ole v1.2.6 // indirect
 	github.com/go-stack/stack v1.8.1 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
-	github.com/google/go-cmp v0.5.8 // indirect
+	github.com/google/go-cmp v0.5.9 // indirect
 	github.com/google/uuid v1.3.0 // indirect
 	github.com/gorilla/websocket v1.5.0 // indirect
 	github.com/graph-gophers/graphql-go v1.3.0 // indirect

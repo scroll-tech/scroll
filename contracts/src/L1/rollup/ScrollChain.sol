@@ -147,7 +147,7 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
     require(_genesisBlock.blockNumber == 0, "Block is not genesis");
     require(_genesisBlock.parentHash == bytes32(0), "Parent hash not empty");
 
-    bytes32 _batchHash = _commitBatch(_genesisBatch, true);
+    bytes32 _batchHash = _commitBatch(_genesisBatch);
 
     lastFinalizedBatchHash = _batchHash;
     finalizedBatches[0] = _batchHash;
@@ -158,13 +158,13 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
 
   /// @inheritdoc IScrollChain
   function commitBatch(Batch memory _batch) public override OnlySequencer {
-    _commitBatch(_batch, false);
+    _commitBatch(_batch);
   }
 
   /// @inheritdoc IScrollChain
   function commitBatches(Batch[] memory _batches) public override OnlySequencer {
     for (uint256 i = 0; i < _batches.length; i++) {
-      _commitBatch(_batches[i], false);
+      _commitBatch(_batches[i]);
     }
   }
 
@@ -232,7 +232,7 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
 
   /// @dev Internal function to commit a batch.
   /// @param _batch The batch to commit.
-  function _commitBatch(Batch memory _batch, bool _isGenesis) internal returns (bytes32) {
+  function _commitBatch(Batch memory _batch) internal returns (bytes32) {
     // check whether the batch is empty
     require(_batch.blocks.length > 0, "Batch is empty");
 

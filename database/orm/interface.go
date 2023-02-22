@@ -3,191 +3,108 @@ package orm
 import (
 	"context"
 	"database/sql"
-	"fmt"
+
+	"scroll-tech/common/types"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/scroll-tech/go-ethereum/common"
-	"github.com/scroll-tech/go-ethereum/core/types"
+	eth_types "github.com/scroll-tech/go-ethereum/core/types"
 )
 
-// MsgStatus represents current layer1 transaction processing status
-type MsgStatus int
-
-const (
-	// MsgUndefined : undefined msg status
-	MsgUndefined MsgStatus = iota
-
-	// MsgPending represents the from_layer message status is pending
-	MsgPending
-
-	// MsgSubmitted represents the from_layer message status is submitted
-	MsgSubmitted
-
-	// MsgConfirmed represents the from_layer message status is confirmed
-	MsgConfirmed
-
-	// MsgFailed represents the from_layer message status is failed
-	MsgFailed
-
-	// MsgExpired represents the from_layer message status is expired
-	MsgExpired
-)
-
-// L1Message is structure of stored layer1 bridge message
-type L1Message struct {
-	Nonce      uint64    `json:"nonce" db:"nonce"`
-	MsgHash    string    `json:"msg_hash" db:"msg_hash"`
-	Height     uint64    `json:"height" db:"height"`
-	Sender     string    `json:"sender" db:"sender"`
-	Value      string    `json:"value" db:"value"`
-	Fee        string    `json:"fee" db:"fee"`
-	GasLimit   uint64    `json:"gas_limit" db:"gas_limit"`
-	Deadline   uint64    `json:"deadline" db:"deadline"`
-	Target     string    `json:"target" db:"target"`
-	Calldata   string    `json:"calldata" db:"calldata"`
-	Layer1Hash string    `json:"layer1_hash" db:"layer1_hash"`
-	Status     MsgStatus `json:"status" db:"status"`
-}
-
-// L2Message is structure of stored layer2 bridge message
-type L2Message struct {
-	Nonce      uint64    `json:"nonce" db:"nonce"`
-	MsgHash    string    `json:"msg_hash" db:"msg_hash"`
-	Height     uint64    `json:"height" db:"height"`
-	Sender     string    `json:"sender" db:"sender"`
-	Value      string    `json:"value" db:"value"`
-	Fee        string    `json:"fee" db:"fee"`
-	GasLimit   uint64    `json:"gas_limit" db:"gas_limit"`
-	Deadline   uint64    `json:"deadline" db:"deadline"`
-	Target     string    `json:"target" db:"target"`
-	Calldata   string    `json:"calldata" db:"calldata"`
-	Layer2Hash string    `json:"layer2_hash" db:"layer2_hash"`
-	Status     MsgStatus `json:"status" db:"status"`
-}
-
-// BlockInfo is structure of stored `block_trace` without `trace`
-type BlockInfo struct {
-	Number         uint64         `json:"number" db:"number"`
-	Hash           string         `json:"hash" db:"hash"`
-	ParentHash     string         `json:"parent_hash" db:"parent_hash"`
-	BatchID        sql.NullString `json:"batch_id" db:"batch_id"`
-	TxNum          uint64         `json:"tx_num" db:"tx_num"`
-	GasUsed        uint64         `json:"gas_used" db:"gas_used"`
-	BlockTimestamp uint64         `json:"block_timestamp" db:"block_timestamp"`
-}
-
-// RollerProveStatus is the roller prove status of a block batch (session)
-type RollerProveStatus int32
-
-const (
-	// RollerAssigned indicates roller assigned but has not submitted proof
-	RollerAssigned RollerProveStatus = iota
-	// RollerProofValid indicates roller has submitted valid proof
-	RollerProofValid
-	// RollerProofInvalid indicates roller has submitted invalid proof
-	RollerProofInvalid
-)
-
-func (s RollerProveStatus) String() string {
-	switch s {
-	case RollerAssigned:
-		return "RollerAssigned"
-	case RollerProofValid:
-		return "RollerProofValid"
-	case RollerProofInvalid:
-		return "RollerProofInvalid"
-	default:
-		return fmt.Sprintf("Bad Value: %d", int32(s))
-	}
-}
-
-// RollerStatus is the roller name and roller prove status
-type RollerStatus struct {
-	PublicKey string            `json:"public_key"`
-	Name      string            `json:"name"`
-	Status    RollerProveStatus `json:"status"`
-}
-
-// SessionInfo is assigned rollers info of a block batch (session)
-type SessionInfo struct {
-	ID             string                   `json:"id"`
-	Rollers        map[string]*RollerStatus `json:"rollers"`
-	StartTimestamp int64                    `json:"start_timestamp"`
+// L1BlockOrm l1_block operation interface
+type L1BlockOrm interface {
+	GetL1BlockInfos(fields map[string]interface{}, args ...string) ([]*types.L1BlockInfo, error)
+	InsertL1Blocks(ctx context.Context, blocks []*types.L1BlockInfo) error
+	DeleteHeaderRLPByBlockHash(ctx context.Context, blockHash string) error
+	UpdateImportTxHash(ctx context.Context, blockHash, txHash string) error
+	UpdateL1BlockStatus(ctx context.Context, blockHash string, status types.L1BlockStatus) error
+	UpdateL1BlockStatusAndImportTxHash(ctx context.Context, blockHash string, status types.L1BlockStatus, txHash string) error
+	UpdateL1OracleTxHash(ctx context.Context, blockHash, txHash string) error
+	UpdateL1GasOracleStatus(ctx context.Context, blockHash string, status types.GasOracleStatus) error
+	UpdateL1GasOracleStatusAndOracleTxHash(ctx context.Context, blockHash string, status types.GasOracleStatus, txHash string) error
+	GetLatestL1BlockHeight() (uint64, error)
+	GetLatestImportedL1Block() (*types.L1BlockInfo, error)
 }
 
 // BlockTraceOrm block_trace operation interface
 type BlockTraceOrm interface {
-	Exist(number uint64) (bool, error)
-	GetBlockTracesLatestHeight() (int64, error)
-	GetBlockTraces(fields map[string]interface{}, args ...string) ([]*types.BlockTrace, error)
-	GetBlockInfos(fields map[string]interface{}, args ...string) ([]*BlockInfo, error)
-	// GetUnbatchedBlocks add `GetUnbatchedBlocks` because `GetBlockInfos` cannot support query "batch_id is NULL"
-	GetUnbatchedBlocks(fields map[string]interface{}, args ...string) ([]*BlockInfo, error)
-	GetHashByNumber(number uint64) (*common.Hash, error)
-	DeleteTracesByBatchID(batchID string) error
-	InsertBlockTraces(blockTraces []*types.BlockTrace) error
-	SetBatchIDForBlocksInDBTx(dbTx *sqlx.Tx, numbers []uint64, batchID string) error
+	IsL2BlockExists(number uint64) (bool, error)
+	GetL2BlockTracesLatestHeight() (int64, error)
+	GetL2BlockTraces(fields map[string]interface{}, args ...string) ([]*eth_types.BlockTrace, error)
+	GetL2BlockInfos(fields map[string]interface{}, args ...string) ([]*types.BlockInfo, error)
+	// GetUnbatchedBlocks add `GetUnbatchedBlocks` because `GetBlockInfos` cannot support query "batch_hash is NULL"
+	GetUnbatchedL2Blocks(fields map[string]interface{}, args ...string) ([]*types.BlockInfo, error)
+	GetL2BlockHashByNumber(number uint64) (*common.Hash, error)
+	DeleteTracesByBatchHash(batchHash string) error
+	InsertL2BlockTraces(blockTraces []*eth_types.BlockTrace) error
+	SetBatchHashForL2BlocksInDBTx(dbTx *sqlx.Tx, numbers []uint64, batchHash string) error
 }
 
 // SessionInfoOrm sessions info operation inte
 type SessionInfoOrm interface {
-	GetSessionInfosByIDs(ids []string) ([]*SessionInfo, error)
-	SetSessionInfo(rollersInfo *SessionInfo) error
+	GetSessionInfosByHashes(hashes []string) ([]*types.SessionInfo, error)
+	SetSessionInfo(rollersInfo *types.SessionInfo) error
 }
 
 // BlockBatchOrm block_batch operation interface
 type BlockBatchOrm interface {
-	GetBlockBatches(fields map[string]interface{}, args ...string) ([]*BlockBatch, error)
-	GetProvingStatusByID(id string) (ProvingStatus, error)
-	GetVerifiedProofAndInstanceByID(id string) ([]byte, []byte, error)
-	UpdateProofByID(ctx context.Context, id string, proof, instanceCommitments []byte, proofTimeSec uint64) error
-	UpdateProvingStatus(id string, status ProvingStatus) error
-	ResetProvingStatusFor(before ProvingStatus) error
-	NewBatchInDBTx(dbTx *sqlx.Tx, startBlock *BlockInfo, endBlock *BlockInfo, parentHash string, totalTxNum uint64, gasUsed uint64) (string, error)
-	BatchRecordExist(id string) (bool, error)
+	GetBlockBatches(fields map[string]interface{}, args ...string) ([]*types.BlockBatch, error)
+	GetProvingStatusByHash(hash string) (types.ProvingStatus, error)
+	GetVerifiedProofAndInstanceByHash(hash string) ([]byte, []byte, error)
+	UpdateProofByHash(ctx context.Context, hash string, proof, instanceCommitments []byte, proofTimeSec uint64) error
+	UpdateProvingStatus(hash string, status types.ProvingStatus) error
+	ResetProvingStatusFor(before types.ProvingStatus) error
+	NewBatchInDBTx(dbTx *sqlx.Tx, batchData *types.BatchData) error
+	BatchRecordExist(hash string) (bool, error)
 	GetPendingBatches(limit uint64) ([]string, error)
 	GetCommittedBatches(limit uint64) ([]string, error)
-	GetRollupStatus(id string) (RollupStatus, error)
-	GetRollupStatusByIDList(ids []string) ([]RollupStatus, error)
-	GetLatestFinalizedBatch() (*BlockBatch, error)
-	UpdateRollupStatus(ctx context.Context, id string, status RollupStatus) error
-	UpdateCommitTxHashAndRollupStatus(ctx context.Context, id string, commitTxHash string, status RollupStatus) error
-	UpdateFinalizeTxHashAndRollupStatus(ctx context.Context, id string, finalizeTxHash string, status RollupStatus) error
-	GetAssignedBatchIDs() ([]string, error)
+	GetRollupStatus(hash string) (types.RollupStatus, error)
+	GetRollupStatusByHashList(hashes []string) ([]types.RollupStatus, error)
+	GetLatestBatch() (*types.BlockBatch, error)
+	GetLatestCommittedBatch() (*types.BlockBatch, error)
+	GetLatestFinalizedBatch() (*types.BlockBatch, error)
+	UpdateRollupStatus(ctx context.Context, hash string, status types.RollupStatus) error
+	UpdateCommitTxHashAndRollupStatus(ctx context.Context, hash string, commitTxHash string, status types.RollupStatus) error
+	UpdateFinalizeTxHashAndRollupStatus(ctx context.Context, hash string, finalizeTxHash string, status types.RollupStatus) error
+	GetAssignedBatchHashes() ([]string, error)
 	UpdateSkippedBatches() (int64, error)
 	GetBatchCount() (int64, error)
 
-	GetCommitTxHash(id string) (sql.NullString, error)   // for unit tests only
-	GetFinalizeTxHash(id string) (sql.NullString, error) // for unit tests only
+	UpdateL2OracleTxHash(ctx context.Context, hash, txHash string) error
+	UpdateL2GasOracleStatus(ctx context.Context, hash string, status types.GasOracleStatus) error
+	UpdateL2GasOracleStatusAndOracleTxHash(ctx context.Context, hash string, status types.GasOracleStatus, txHash string) error
+
+	GetCommitTxHash(hash string) (sql.NullString, error)   // for unit tests only
+	GetFinalizeTxHash(hash string) (sql.NullString, error) // for unit tests only
 }
 
 // L1MessageOrm is layer1 message db interface
 type L1MessageOrm interface {
-	GetL1MessageByNonce(nonce uint64) (*L1Message, error)
-	GetL1MessageByMsgHash(msgHash string) (*L1Message, error)
-	GetL1MessagesByStatus(status MsgStatus, limit uint64) ([]*L1Message, error)
-	GetL1ProcessedNonce() (int64, error)
-	SaveL1Messages(ctx context.Context, messages []*L1Message) error
+	GetL1MessageByQueueIndex(queueIndex uint64) (*types.L1Message, error)
+	GetL1MessageByMsgHash(msgHash string) (*types.L1Message, error)
+	GetL1MessagesByStatus(status types.MsgStatus, limit uint64) ([]*types.L1Message, error)
+	GetL1ProcessedQueueIndex() (int64, error)
+	SaveL1Messages(ctx context.Context, messages []*types.L1Message) error
 	UpdateLayer2Hash(ctx context.Context, msgHash string, layer2Hash string) error
-	UpdateLayer1Status(ctx context.Context, msgHash string, status MsgStatus) error
-	UpdateLayer1StatusAndLayer2Hash(ctx context.Context, msgHash string, status MsgStatus, layer2Hash string) error
+	UpdateLayer1Status(ctx context.Context, msgHash string, status types.MsgStatus) error
+	UpdateLayer1StatusAndLayer2Hash(ctx context.Context, msgHash string, status types.MsgStatus, layer2Hash string) error
 	GetLayer1LatestWatchedHeight() (int64, error)
 
-	GetRelayL1MessageTxHash(nonce uint64) (sql.NullString, error) // for unit tests only
+	GetRelayL1MessageTxHash(queueIndex uint64) (sql.NullString, error) // for unit tests only
 }
 
 // L2MessageOrm is layer2 message db interface
 type L2MessageOrm interface {
-	GetL2MessageByNonce(nonce uint64) (*L2Message, error)
-	GetL2MessageByMsgHash(msgHash string) (*L2Message, error)
+	GetL2MessageByNonce(nonce uint64) (*types.L2Message, error)
+	GetL2MessageByMsgHash(msgHash string) (*types.L2Message, error)
 	MessageProofExist(nonce uint64) (bool, error)
 	GetMessageProofByNonce(nonce uint64) (string, error)
-	GetL2Messages(fields map[string]interface{}, args ...string) ([]*L2Message, error)
+	GetL2Messages(fields map[string]interface{}, args ...string) ([]*types.L2Message, error)
 	GetL2ProcessedNonce() (int64, error)
-	SaveL2Messages(ctx context.Context, messages []*L2Message) error
+	SaveL2Messages(ctx context.Context, messages []*types.L2Message) error
 	UpdateLayer1Hash(ctx context.Context, msgHash string, layer1Hash string) error
-	UpdateLayer2Status(ctx context.Context, msgHash string, status MsgStatus) error
-	UpdateLayer2StatusAndLayer1Hash(ctx context.Context, msgHash string, status MsgStatus, layer1Hash string) error
+	UpdateLayer2Status(ctx context.Context, msgHash string, status types.MsgStatus) error
+	UpdateLayer2StatusAndLayer1Hash(ctx context.Context, msgHash string, status types.MsgStatus, layer1Hash string) error
 	UpdateMessageProof(ctx context.Context, nonce uint64, proof string) error
 	GetLayer2LatestWatchedHeight() (int64, error)
 

@@ -11,6 +11,7 @@ import (
 type OrmFactory interface {
 	orm.BlockTraceOrm
 	orm.BlockBatchOrm
+	orm.L1BlockOrm
 	orm.L1MessageOrm
 	orm.L2MessageOrm
 	orm.SessionInfoOrm
@@ -22,6 +23,7 @@ type OrmFactory interface {
 type ormFactory struct {
 	orm.BlockTraceOrm
 	orm.BlockBatchOrm
+	orm.L1BlockOrm
 	orm.L1MessageOrm
 	orm.L2MessageOrm
 	orm.SessionInfoOrm
@@ -47,6 +49,7 @@ func NewOrmFactory(cfg *DBConfig) (OrmFactory, error) {
 		BlockBatchOrm:  orm.NewBlockBatchOrm(db),
 		L1MessageOrm:   orm.NewL1MessageOrm(db),
 		L2MessageOrm:   orm.NewL2MessageOrm(db),
+		L1BlockOrm:     orm.NewL1BlockOrm(db),
 		SessionInfoOrm: orm.NewSessionInfoOrm(db),
 		DB:             db,
 	}, nil
