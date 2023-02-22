@@ -17,6 +17,8 @@ type RollerManagerConfig struct {
 	OrderSession string `json:"order_session,omitempty"`
 	// The amount of rollers to pick per proof generation session.
 	RollersPerSession uint8 `json:"rollers_per_session"`
+	// Number of attempts that session can repeat if previous attempt failed (timed out curretly)
+	SessionAttempts uint8 `json:"session_attempts"`
 	// Zk verifier config.
 	Verifier *VerifierConfig `json:"verifier,omitempty"`
 	// Proof collection time (in minutes).

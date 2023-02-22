@@ -67,6 +67,7 @@ func TestApis(t *testing.T) {
 	t.Run("TestSeveralConnections", testSeveralConnections)
 	t.Run("TestValidProof", testValidProof)
 	t.Run("TestInvalidProof", testInvalidProof)
+	t.Run("TestTimedoutProof", testTimedoutProof)
 	t.Run("TestIdleRollerSelection", testIdleRollerSelection)
 	// TODO: Restart roller alone when received task, can add this test case in integration-test.
 	//t.Run("TestRollerReconnect", testRollerReconnect)
@@ -337,6 +338,86 @@ func testInvalidProof(t *testing.T) {
 	}
 }
 
+func testTimedoutProof(t *testing.T) {
+	// Create db handler and reset db.
+	l2db, err := database.NewOrmFactory(cfg.DBConfig)
+	assert.NoError(t, err)
+	assert.NoError(t, migrate.ResetDB(l2db.GetDB().DB))
+	defer l2db.Close()
+
+	// Setup coordinator and ws server.
+	wsURL := "ws://" + randomURL()
+	rollerManager, handler := setupCoordinator(t, cfg.DBConfig, 1, wsURL)
+	defer func() {
+		handler.Shutdown(context.Background())
+		rollerManager.Stop()
+	}()
+
+	// create first mock roller, that will not send any proof.
+	roller1 := newMockRoller(t, "roller_test"+strconv.Itoa(0), wsURL)
+	defer func() {
+		// close connection
+		roller1.close()
+	}()
+	assert.Equal(t, 1, rollerManager.GetNumberOfIdleRollers())
+
+	var ids = make([]string, 1)
+	dbTx, err := l2db.Beginx()
+	assert.NoError(t, err)
+	for i := range ids {
+		ID, err := l2db.NewBatchInDBTx(dbTx, &orm.BlockInfo{Number: uint64(i)}, &orm.BlockInfo{Number: uint64(i)}, "0f", 1, 194676)
+		assert.NoError(t, err)
+		ids[i] = ID
+	}
+	assert.NoError(t, dbTx.Commit())
+
+	// verify proof status, it should be assigned, because roller didn't send any proof
+	var (
+		tick     = time.Tick(500 * time.Millisecond)
+		tickStop = time.Tick(10 * time.Second)
+	)
+	for len(ids) > 0 {
+		select {
+		case <-tick:
+			status, err := l2db.GetProvingStatusByID(ids[0])
+			assert.NoError(t, err)
+			if status == orm.ProvingTaskAssigned {
+				ids = ids[1:]
+			}
+		case <-tickStop:
+			t.Error("failed to check proof status")
+			return
+		}
+	}
+
+	// create first mock roller, that will send valid proof.
+	roller2 := newMockRoller(t, "roller_test"+strconv.Itoa(1), wsURL)
+	roller2.waitTaskAndSendProof(t, time.Second, false, true)
+	defer func() {
+		// close connection
+		roller2.close()
+	}()
+	assert.Equal(t, 1, rollerManager.GetNumberOfIdleRollers())
+
+	// wait manager to finish first CollectProofs
+	<-time.After(60 * time.Second)
+
+	// verify proof status, it should be verified now, because second roller didn't sent valid proof
+	for len(ids) > 0 {
+		select {
+		case <-tick:
+			status, err := l2db.GetProvingStatusByID(ids[0])
+			assert.NoError(t, err)
+			if status == orm.ProvingTaskVerified {
+				ids = ids[1:]
+			}
+		case <-tickStop:
+			t.Error("failed to check proof status")
+			return
+		}
+	}
+}
+
 func testIdleRollerSelection(t *testing.T) {
 	// Create db handler and reset db.
 	l2db, err := database.NewOrmFactory(cfg.DBConfig)
@@ -486,6 +567,7 @@ func setupCoordinator(t *testing.T, dbCfg *database.DBConfig, rollersPerSession 
 		Verifier:          &coordinator_config.VerifierConfig{MockMode: true},
 		CollectionTime:    1,
 		TokenTimeToLive:   5,
+		SessionAttempts:   2,
 	}, db, nil)
 	assert.NoError(t, err)
 	assert.NoError(t, rollerManager.Start())

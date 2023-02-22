@@ -113,6 +113,7 @@ type SessionInfo struct {
 	ID             string                   `json:"id"`
 	Rollers        map[string]*RollerStatus `json:"rollers"`
 	StartTimestamp int64                    `json:"start_timestamp"`
+	Attempts       uint8                    `json:"attempts"`
 }
 
 // BlockTraceOrm block_trace operation interface

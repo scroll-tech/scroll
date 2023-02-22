@@ -329,6 +329,29 @@ func (m *Manager) CollectProofs(sess *session) {
 		select {
 		case <-time.After(time.Duration(m.cfg.CollectionTime) * time.Minute):
 			m.mu.Lock()
+
+			// Count number of rollers that sent any proof
+			var cntRespondedRollers int64 = 0
+			for _, roller := range sess.info.Rollers {
+				if roller.Status != orm.RollerAssigned {
+					cntRespondedRollers++
+				}
+			}
+			// If all rollers didn't respond (timed out) and there are attempts left for session
+			if cntRespondedRollers == 0 && sess.info.Attempts < m.cfg.SessionAttempts {
+				if !m.ReplayProofGenerationSession(sess) {
+					delete(m.sessions, sess.info.ID)
+				}
+				// record failed session.
+				errMsg := "proof generation session ended without receiving any proofs (timed out)"
+				m.addFailedSession(sess, errMsg)
+				for pk := range sess.info.Rollers {
+					m.freeTaskIDForRoller(pk, sess.info.ID)
+				}
+				m.mu.Unlock()
+				return
+			}
+
 			defer func() {
 				// TODO: remove the clean-up, rollers report healthy status.
 				for pk := range sess.info.Rollers {
@@ -483,6 +506,7 @@ func (m *Manager) StartProofGenerationSession(task *orm.BlockBatch) (success boo
 			ID:             task.ID,
 			Rollers:        rollers,
 			StartTimestamp: time.Now().Unix(),
+			Attempts:       1,
 		},
 		finishChan: make(chan rollerProofStatus, proofAndPkBufferSize),
 	}
@@ -503,6 +527,108 @@ func (m *Manager) StartProofGenerationSession(task *orm.BlockBatch) (success boo
 
 	m.mu.Lock()
 	m.sessions[task.ID] = sess
+	m.mu.Unlock()
+	go m.CollectProofs(sess)
+
+	return true
+}
+
+// ReplayProofGenerationSession replays a proof generation session
+func (m *Manager) ReplayProofGenerationSession(prevSession *session) (success bool) {
+	defer func() {
+		if !success {
+			if err := m.orm.UpdateProvingStatus(prevSession.info.ID, orm.ProvingTaskFailed); err != nil {
+				log.Error("fail to reset task_status as Failed", "id", prevSession.info.ID, "err", err)
+			}
+		}
+	}()
+
+	if m.GetNumberOfIdleRollers() == 0 {
+		log.Warn("no idle roller when replaying proof generation session", "id", prevSession.info.ID)
+		return false
+	}
+
+	log.Info("start replay proof generation session", "id", prevSession.info.ID)
+
+	// Get block traces.
+	blockInfos, err := m.orm.GetBlockInfos(map[string]interface{}{"batch_id": prevSession.info.ID})
+	if err != nil {
+		log.Error(
+			"could not GetBlockInfos",
+			"batch_id", prevSession.info.ID,
+			"error", err,
+		)
+		return false
+	}
+	traces := make([]*types.BlockTrace, len(blockInfos))
+	for i, blockInfo := range blockInfos {
+		traces[i], err = m.Client.GetBlockTraceByHash(m.ctx, common.HexToHash(blockInfo.Hash))
+		if err != nil {
+			log.Error(
+				"could not GetBlockTraceByNumber",
+				"block number", blockInfo.Number,
+				"block hash", blockInfo.Hash,
+				"error", err,
+			)
+			return false
+		}
+	}
+
+	// Dispatch task to rollers.
+	rollers := make(map[string]*orm.RollerStatus)
+	for i := 0; i < int(m.cfg.RollersPerSession); i++ {
+		roller := m.selectRoller()
+		if roller == nil {
+			log.Info("selectRoller returns nil")
+			break
+		}
+		log.Info("roller is picked", "session id", prevSession.info.ID, "name", roller.Name, "public key", roller.PublicKey)
+		// send trace to roller
+		if !roller.sendTask(prevSession.info.ID, traces) {
+			log.Error("send task failed", "roller name", roller.Name, "public key", roller.PublicKey, "id", prevSession.info.ID)
+			continue
+		}
+		rollers[roller.PublicKey] = &orm.RollerStatus{PublicKey: roller.PublicKey, Name: roller.Name, Status: orm.RollerAssigned}
+	}
+	// No roller assigned.
+	if len(rollers) == 0 {
+		log.Error("no roller assigned", "id", prevSession.info.ID, "number of idle rollers", m.GetNumberOfIdleRollers())
+		return false
+	}
+
+	// Update session proving status as assigned.
+	if err = m.orm.UpdateProvingStatus(prevSession.info.ID, orm.ProvingTaskAssigned); err != nil {
+		log.Error("failed to update task status", "id", prevSession.info.ID, "err", err)
+		return false
+	}
+
+	// Create a proof generation session.
+	sess := &session{
+		info: &orm.SessionInfo{
+			ID:             prevSession.info.ID,
+			Rollers:        rollers,
+			StartTimestamp: time.Now().Unix(),
+			Attempts:       prevSession.info.Attempts + 1,
+		},
+		finishChan: make(chan rollerProofStatus, proofAndPkBufferSize),
+	}
+
+	// Store session info.
+	if err = m.orm.SetSessionInfo(sess.info); err != nil {
+		log.Error("db set session info fail", "error", err)
+		for _, roller := range sess.info.Rollers {
+			log.Error(
+				"restore roller info for session",
+				"session id", sess.info.ID,
+				"roller name", roller.Name,
+				"public key", roller.PublicKey,
+				"proof status", roller.Status)
+		}
+		return false
+	}
+
+	m.mu.Lock()
+	m.sessions[sess.info.ID] = sess
 	m.mu.Unlock()
 	go m.CollectProofs(sess)
 
