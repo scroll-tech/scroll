@@ -151,7 +151,7 @@ func (w *WatcherClient) Start() {
 
 		// trace fetcher loop
 		go func(ctx context.Context) {
-			ticker := time.NewTicker(3 * time.Second)
+			ticker := time.NewTicker(2 * time.Second)
 			defer ticker.Stop()
 
 			for {
@@ -173,7 +173,7 @@ func (w *WatcherClient) Start() {
 
 		// event fetcher loop
 		go func(ctx context.Context) {
-			ticker := time.NewTicker(3 * time.Second)
+			ticker := time.NewTicker(2 * time.Second)
 			defer ticker.Stop()
 
 			for {

@@ -136,7 +136,7 @@ func (m *Manager) isRunning() bool {
 // Loop keeps the manager running.
 func (m *Manager) Loop() {
 	var (
-		tick  = time.NewTicker(time.Second * 3)
+		tick  = time.NewTicker(time.Second * 2)
 		tasks []*types.BlockBatch
 	)
 	defer tick.Stop()

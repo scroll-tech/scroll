@@ -62,7 +62,7 @@ type Watcher struct {
 	// The height of the block that the watcher has retrieved header rlp
 	processedBlockHeight uint64
 
-	stop chan bool
+	stopCh chan bool
 }
 
 // NewWatcher returns a new instance of Watcher. The instance will be not fully prepared,
@@ -86,7 +86,7 @@ func NewWatcher(ctx context.Context, client *ethclient.Client, startHeight uint6
 		savedL1BlockHeight = startHeight
 	}
 
-	stop := make(chan bool)
+	stopCh := make(chan bool)
 
 	return &Watcher{
 		ctx:           ctx,
@@ -105,43 +105,69 @@ func NewWatcher(ctx context.Context, client *ethclient.Client, startHeight uint6
 
 		processedMsgHeight:   uint64(savedHeight),
 		processedBlockHeight: savedL1BlockHeight,
-		stop:                 stop,
+		stopCh:               stopCh,
 	}
 }
 
 // Start the Watcher module.
 func (w *Watcher) Start() {
 	go func() {
-		ticker := time.NewTicker(10 * time.Second)
-		defer ticker.Stop()
+		ctx, cancel := context.WithCancel(w.ctx)
 
-		for ; true; <-ticker.C {
-			select {
-			case <-w.stop:
-				return
+		go func(ctx context.Context) {
+			ticker := time.NewTicker(2 * time.Second)
+			defer ticker.Stop()
 
-			default:
-				number, err := utils.GetLatestConfirmedBlockNumber(w.ctx, w.client, w.confirmations)
-				if err != nil {
-					log.Error("failed to get block number", "err", err)
-					continue
-				}
+			for {
+				select {
+				case <-ctx.Done():
+					return
 
-				if err := w.FetchBlockHeader(number); err != nil {
-					log.Error("Failed to fetch L1 block header", "lastest", number, "err", err)
-				}
+				case <-ticker.C:
+					number, err := utils.GetLatestConfirmedBlockNumber(w.ctx, w.client, w.confirmations)
+					if err != nil {
+						log.Error("failed to get block number", "err", err)
+						continue
+					}
 
-				if err := w.FetchContractEvent(number); err != nil {
-					log.Error("Failed to fetch bridge contract", "err", err)
+					if err := w.FetchBlockHeader(number); err != nil {
+						log.Error("Failed to fetch L1 block header", "lastest", number, "err", err)
+					}
 				}
 			}
-		}
+		}(ctx)
+
+		go func(ctx context.Context) {
+			ticker := time.NewTicker(2 * time.Second)
+			defer ticker.Stop()
+
+			for {
+				select {
+				case <-ctx.Done():
+					return
+
+				case <-ticker.C:
+					number, err := utils.GetLatestConfirmedBlockNumber(w.ctx, w.client, w.confirmations)
+					if err != nil {
+						log.Error("failed to get block number", "err", err)
+						continue
+					}
+
+					if err := w.FetchContractEvent(number); err != nil {
+						log.Error("Failed to fetch bridge contract", "err", err)
+					}
+				}
+			}
+		}(ctx)
+
+		<-w.stopCh
+		cancel()
 	}()
 }
 
 // Stop the Watcher module, for a graceful shutdown.
 func (w *Watcher) Stop() {
-	w.stop <- true
+	w.stopCh <- true
 }
 
 const contractEventsBlocksFetchLimit = int64(10)

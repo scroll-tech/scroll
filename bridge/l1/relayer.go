@@ -173,7 +173,7 @@ func (r *Layer1Relayer) ProcessGasPriceOracle() {
 // Start the relayer process
 func (r *Layer1Relayer) Start() {
 	loop := func(ctx context.Context, f func()) {
-		ticker := time.NewTicker(3 * time.Second)
+		ticker := time.NewTicker(2 * time.Second)
 		defer ticker.Stop()
 
 		for {
