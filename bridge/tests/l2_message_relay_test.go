@@ -94,6 +94,12 @@ func testRelayL2MessageSucceed(t *testing.T) {
 	dbTx, err := db.Beginx()
 	assert.NoError(t, err)
 	assert.NoError(t, db.NewBatchInDBTx(dbTx, batchData))
+	var blockIDs = make([]uint64, len(batchData.Batch.Blocks))
+	for i, block := range batchData.Batch.Blocks {
+		blockIDs[i] = block.BlockNumber
+	}
+	err = db.SetBatchHashForL2BlocksInDBTx(dbTx, blockIDs, batchHash)
+	assert.NoError(t, err)
 	assert.NoError(t, dbTx.Commit())
 
 	// add dummy proof
