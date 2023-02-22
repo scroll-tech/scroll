@@ -13,7 +13,7 @@ function check_sha256() {
 
 wget https://github.com/scroll-tech/scroll-zkevm/releases/download/$ZKEVM_VERSION/libs.zip -O ./lib/libs.zip
 wget https://github.com/scroll-tech/scroll-zkevm/releases/download/$ZKEVM_VERSION/zip.sha256 -O ./lib/zip.sha256
-check_sha256 libs.zip zip.sha256
+cd ./lib && check_sha256 libs.zip zip.sha256
 rm zip.sha256
 
 unzip -d ./lib ./lib/libs.zip
