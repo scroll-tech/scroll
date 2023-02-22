@@ -48,7 +48,7 @@ func (b *BatchData) Hash() *common.Hash {
 	hasher := crypto.NewKeccakState()
 
 	// 1. hash PrevStateRoot, NewStateRoot, WithdrawTrieRoot
-	// todo: panic on error here.
+	// @todo: panic on error here.
 	_, _ = hasher.Write(b.Batch.PrevStateRoot[:])
 	_, _ = hasher.Write(b.Batch.NewStateRoot[:])
 	_, _ = hasher.Write(b.Batch.WithdrawTrieRoot[:])

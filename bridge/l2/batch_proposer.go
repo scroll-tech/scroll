@@ -60,11 +60,12 @@ type BatchProposer struct {
 	ctx context.Context
 	orm database.OrmFactory
 
-	batchTimeSec            uint64
-	batchGasThreshold       uint64
-	batchTxNumThreshold     uint64
-	batchBlocksLimit        uint64
-	commitCalldataSizeLimit uint64
+	batchTimeSec             uint64
+	batchGasThreshold        uint64
+	batchTxNumThreshold      uint64
+	batchBlocksLimit         uint64
+	commitCalldataSizeLimit  uint64
+	batchDataBufferSizeLimit uint64
 
 	proofGenerationFreq uint64
 	batchDataBuffer     []*types.BatchData
@@ -78,18 +79,19 @@ type BatchProposer struct {
 // NewBatchProposer will return a new instance of BatchProposer.
 func NewBatchProposer(ctx context.Context, cfg *config.BatchProposerConfig, relayer *Layer2Relayer, orm database.OrmFactory) *BatchProposer {
 	p := &BatchProposer{
-		mutex:                   sync.Mutex{},
-		ctx:                     ctx,
-		orm:                     orm,
-		batchTimeSec:            cfg.BatchTimeSec,
-		batchGasThreshold:       cfg.BatchGasThreshold,
-		batchTxNumThreshold:     cfg.BatchTxNumThreshold,
-		batchBlocksLimit:        cfg.BatchBlocksLimit,
-		commitCalldataSizeLimit: cfg.CommitTxCalldataSizeLimit,
-		proofGenerationFreq:     cfg.ProofGenerationFreq,
-		piCfg:                   cfg.PublicInputConfig,
-		relayer:                 relayer,
-		stopCh:                  make(chan struct{}),
+		mutex:                    sync.Mutex{},
+		ctx:                      ctx,
+		orm:                      orm,
+		batchTimeSec:             cfg.BatchTimeSec,
+		batchGasThreshold:        cfg.BatchGasThreshold,
+		batchTxNumThreshold:      cfg.BatchTxNumThreshold,
+		batchBlocksLimit:         cfg.BatchBlocksLimit,
+		commitCalldataSizeLimit:  cfg.CommitTxCalldataSizeLimit,
+		batchDataBufferSizeLimit: 100*cfg.CommitTxCalldataSizeLimit + 1*1024*1024, // @todo: determine the value.
+		proofGenerationFreq:      cfg.ProofGenerationFreq,
+		piCfg:                    cfg.PublicInputConfig,
+		relayer:                  relayer,
+		stopCh:                   make(chan struct{}),
 	}
 
 	// for graceful restart.
@@ -216,7 +218,9 @@ func (p *BatchProposer) tryProposeBatch() {
 		return
 	}
 
-	p.proposeBatch(blocks)
+	if p.getBatchDataBufferSize() < p.batchDataBufferSizeLimit {
+		p.proposeBatch(blocks)
+	}
 	p.tryCommitBatches()
 }
 
@@ -337,4 +341,11 @@ func (p *BatchProposer) generateBatchData(parentBatch *types.BlockBatch, blocks 
 		traces = append(traces, trs[0])
 	}
 	return types.NewBatchData(parentBatch, traces, p.piCfg), nil
+}
+
+func (p *BatchProposer) getBatchDataBufferSize() (size uint64) {
+	for _, batchData := range p.batchDataBuffer {
+		size += bridgeabi.GetBatchCalldataLength(&batchData.Batch)
+	}
+	return
 }
