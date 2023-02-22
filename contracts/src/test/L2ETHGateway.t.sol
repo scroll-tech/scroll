@@ -178,12 +178,8 @@ contract L2ETHGatewayTest is L2GatewayTestBase {
     uint256 amount,
     bytes memory dataToCall
   ) public {
-    uint256 size;
-    assembly {
-      size := extcodesize(recipient)
-    }
-    hevm.assume(size == 0);
     hevm.assume(recipient != address(0));
+    hevm.assume(recipient.code.length == 0);
 
     amount = bound(amount, 1, address(this).balance / 2);
 
