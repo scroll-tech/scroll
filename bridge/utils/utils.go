@@ -58,6 +58,7 @@ func BufferToUint256Le(buffer []byte) []*big.Int {
 }
 
 // UnpackLog unpacks a retrieved log into the provided output structure.
+// todo: add unit test.
 func UnpackLog(c *abi.ABI, out interface{}, event string, log types.Log) error {
 	if log.Topics[0] != c.Events[event].ID {
 		return fmt.Errorf("event signature mismatch")
@@ -77,6 +78,7 @@ func UnpackLog(c *abi.ABI, out interface{}, event string, log types.Log) error {
 }
 
 // UnpackLogIntoMap unpacks a retrieved log into the provided map.
+// todo: add unit test.
 func UnpackLogIntoMap(c *abi.ABI, out map[string]interface{}, event string, log types.Log) error {
 	if log.Topics[0] != c.Events[event].ID {
 		return fmt.Errorf("event signature mismatch")
