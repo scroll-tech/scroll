@@ -7,6 +7,7 @@ import (
 	"math/big"
 
 	"github.com/scroll-tech/go-ethereum/common"
+	"github.com/scroll-tech/go-ethereum/common/hexutil"
 	"github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/crypto"
 
@@ -140,6 +141,7 @@ func NewBatchData(parentBatch *BlockBatch, blockTraces []*types.BlockTrace, piCf
 
 		// fill in RLP-encoded transactions
 		for _, txData := range trace.Transactions {
+			data, _ := hexutil.Decode(txData.Data)
 			// right now we only support legacy tx
 			tx := types.NewTx(&types.LegacyTx{
 				Nonce:    txData.Nonce,
@@ -147,15 +149,12 @@ func NewBatchData(parentBatch *BlockBatch, blockTraces []*types.BlockTrace, piCf
 				Value:    txData.Value.ToInt(),
 				Gas:      txData.Gas,
 				GasPrice: txData.GasPrice.ToInt(),
-				Data:     []byte(txData.Data),
+				Data:     data,
 				V:        txData.V.ToInt(),
 				R:        txData.R.ToInt(),
 				S:        txData.S.ToInt(),
 			})
-			var rlpBuf bytes.Buffer
-			writer := bufio.NewWriter(&rlpBuf)
-			_ = tx.EncodeRLP(writer)
-			rlpTxData := rlpBuf.Bytes()
+			rlpTxData, _ := tx.MarshalBinary()
 			var txLen [4]byte
 			binary.BigEndian.PutUint32(txLen[:], uint32(len(rlpTxData)))
 			_, _ = batchTxDataWriter.Write(txLen[:])
