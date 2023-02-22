@@ -174,6 +174,10 @@ func NewBatchData(parentBatch *BlockBatch, blockTraces []*types.BlockTrace, piCf
 		}
 	}
 
+	if err := batchTxDataWriter.Flush(); err != nil {
+		panic("Buffered I/O flush failed")
+	}
+
 	batch.L2Transactions = batchTxDataBuf.Bytes()
 	batchData.piCfg = piCfg
 
