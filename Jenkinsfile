@@ -13,7 +13,7 @@ pipeline {
     environment {
         GO111MODULE = 'on'
         PATH="/home/ubuntu/.cargo/bin:$PATH"
-        LD_LIBRARY_PATH="$LD_LIBRARY_PATH:./coordinator/verifier/lib"
+        LD_LIBRARY_PATH="$LD_LIBRARY_PATH:./common/libzkp/lib"
         CHAIN_ID='534353'
         // LOG_DOCKER = 'true'
     }

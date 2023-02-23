@@ -6,7 +6,6 @@ ZKEVM_VERSION=alpha-v1.0
 # export CHAIN_ID=534353 # change to correct chain_id
 # export RUST_MIN_STACK=100000000
 # export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:./lib:/usr/local/cuda/   # cuda only for GPU machine
-# export ZK_VERSION=$ZKEVM_VERSION
 
 function check_sha256() {
   real_sha256=`shasum -a 256 $1`
