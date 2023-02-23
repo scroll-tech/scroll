@@ -8,8 +8,8 @@ import (
 	"scroll-tech/database/orm"
 	"testing"
 
-	"scroll-tech/bridge/l1"
-	"scroll-tech/bridge/l2"
+	"scroll-tech/bridge/relayer"
+	"scroll-tech/bridge/watcher"
 
 	"github.com/scroll-tech/go-ethereum/accounts/abi/bind"
 	"github.com/scroll-tech/go-ethereum/common"
@@ -28,11 +28,11 @@ func testCommitBatchAndFinalizeBatch(t *testing.T) {
 
 	// Create L2Relayer
 	l2Cfg := cfg.L2Config
-	l2Relayer, err := l2.NewLayer2Relayer(context.Background(), db, l2Cfg.RelayerConfig)
+	l2Relayer, err := relayer.NewLayer2Relayer(context.Background(), db, l2Cfg.RelayerConfig)
 	assert.NoError(t, err)
 	// Create L1Watcher
 	l1Cfg := cfg.L1Config
-	l1Watcher := l1.NewWatcher(context.Background(), l1Client, 0, l1Cfg.Confirmations, l1Cfg.L1MessengerAddress, l1Cfg.RollupContractAddress, db)
+	l1Watcher := watcher.NewWatcher(context.Background(), l1Client, 0, l1Cfg.Confirmations, l1Cfg.L1MessengerAddress, l1Cfg.RollupContractAddress, db)
 
 	// add some blocks to db
 	var traces []*types.BlockTrace

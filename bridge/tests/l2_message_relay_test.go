@@ -15,8 +15,8 @@ import (
 	"scroll-tech/database/migrate"
 	"scroll-tech/database/orm"
 
-	"scroll-tech/bridge/l1"
-	"scroll-tech/bridge/l2"
+	"scroll-tech/bridge/relayer"
+	"scroll-tech/bridge/watcher"
 )
 
 func testRelayL2MessageSucceed(t *testing.T) {
@@ -30,16 +30,16 @@ func testRelayL2MessageSucceed(t *testing.T) {
 
 	// Create L2Relayer
 	l2Cfg := cfg.L2Config
-	l2Relayer, err := l2.NewLayer2Relayer(context.Background(), db, l2Cfg.RelayerConfig)
+	l2Relayer, err := relayer.NewLayer2Relayer(context.Background(), db, l2Cfg.RelayerConfig)
 	assert.NoError(t, err)
 
 	// Create L2Watcher
 	confirmations := rpc.LatestBlockNumber
-	l2Watcher := l2.NewL2WatcherClient(context.Background(), l2Client, confirmations, l2Cfg.BatchProposerConfig, l2Cfg.L2MessengerAddress, db)
+	l2Watcher := watcher.NewL2WatcherClient(context.Background(), l2Client, confirmations, l2Cfg.BatchProposerConfig, l2Cfg.L2MessengerAddress, db)
 
 	// Create L1Watcher
 	l1Cfg := cfg.L1Config
-	l1Watcher := l1.NewWatcher(context.Background(), l1Client, 0, confirmations, l1Cfg.L1MessengerAddress, l1Cfg.RollupContractAddress, db)
+	l1Watcher := watcher.NewWatcher(context.Background(), l1Client, 0, confirmations, l1Cfg.L1MessengerAddress, l1Cfg.RollupContractAddress, db)
 
 	// send message through l2 messenger contract
 	nonce, err := l2MessengerInstance.MessageNonce(&bind.CallOpts{})
