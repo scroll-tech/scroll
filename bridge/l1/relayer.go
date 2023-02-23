@@ -69,7 +69,7 @@ func NewLayer1Relayer(ctx context.Context, db database.OrmFactory, cfg *config.R
 	gasOracleSender, err := sender.NewSender(ctx, cfg.SenderConfig, cfg.GasOracleSenderPrivateKeys)
 	if err != nil {
 		addr := crypto.PubkeyToAddress(cfg.GasOracleSenderPrivateKeys[0].PublicKey)
-		log.Error("new MessageSender failed", "main address", addr.String(), "err", err)
+		log.Error("new GasOracleSender failed", "main address", addr.String(), "err", err)
 		return nil, err
 	}
 
