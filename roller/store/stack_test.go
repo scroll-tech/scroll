@@ -36,10 +36,11 @@ func TestStack(t *testing.T) {
 	}
 
 	for i := 2; i >= 0; i-- {
-		var pop *ProvingTask
-		pop, err = s.Pop()
+		peek, err := s.Peek()
 		assert.NoError(t, err)
-		assert.Equal(t, strconv.Itoa(i), pop.Task.ID)
+		assert.Equal(t, strconv.Itoa(i), peek.Task.ID)
+		err = s.Delete(strconv.Itoa(i))
+		assert.NoError(t, err)
 	}
 
 	// test times
@@ -52,18 +53,13 @@ func TestStack(t *testing.T) {
 	}
 	err = s.Push(task)
 	assert.NoError(t, err)
-	pop, err := s.Pop()
-	assert.NoError(t, err)
-	err = s.Push(pop)
-	assert.NoError(t, err)
-
 	peek, err := s.Peek()
 	assert.NoError(t, err)
-	pop2, err := s.Pop()
+	assert.Equal(t, 0, peek.Times)
+	err = s.UpdateTimes(peek, 3)
 	assert.NoError(t, err)
-	assert.Equal(t, peek, pop2)
 
-	s.UpdateTimes(pop2, 1)
+	peek2, err := s.Peek()
 	assert.NoError(t, err)
-	assert.Equal(t, 1, pop2.Times)
+	assert.Equal(t, 3, peek2.Times)
 }
