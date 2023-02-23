@@ -5,7 +5,6 @@ import (
 	"runtime/debug"
 )
 
-
 var tag = "alpha-v1.8"
 
 var commit = func() string {
