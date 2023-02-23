@@ -20,6 +20,10 @@
         "tx_type": "LegacyTx",
         "min_balance": 100000000000000000000
       },
+      "gas_oracle_config": {
+        "min_gas_price": 0,
+        "gas_price_diff": 50000
+      },
       "message_sender_private_keys": [
         "1212121212121212121212121212121212121212121212121212121212121212"
       ],
@@ -47,6 +51,10 @@
         "max_gas_price": 10000000000,
         "tx_type": "LegacyTx",
         "min_balance": 100000000000000000000
+      },
+      "gas_oracle_config": {
+        "min_gas_price": 0,
+        "gas_price_diff": 50000
       },
       "message_sender_private_keys": [
         "1212121212121212121212121212121212121212121212121212121212121212"
