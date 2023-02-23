@@ -2,11 +2,14 @@ package version
 
 import (
 	"fmt"
-	"os"
 	"runtime/debug"
 )
 
-var tag = "alpha-v1.2"
+var (
+	tag = "alpha-v1.2"
+	// ZkVersion is version of https://github.com/scroll-tech/scroll-zkevm
+	ZkVersion = "alpha-v1.0"
+)
 
 var commit = func() string {
 	if info, ok := debug.ReadBuildInfo(); ok {
@@ -22,9 +25,6 @@ var commit = func() string {
 	}
 	return ""
 }()
-
-// ZkVersion is commit-id of common/libzkp/impl/cargo.lock/scroll-zkevm
-var ZkVersion = os.Getenv("ZK_VERSION")
 
 // Version denote the version of scroll protocol, including the l2geth, relayer, coordinator, roller, contracts and etc.
 var Version = fmt.Sprintf("%s-%s-%s", tag, commit, ZkVersion)
