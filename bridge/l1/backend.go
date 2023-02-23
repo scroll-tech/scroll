@@ -31,7 +31,7 @@ func New(ctx context.Context, cfg *config.L1Config, orm database.OrmFactory) (*B
 		return nil, err
 	}
 
-	watcher := NewWatcher(ctx, client, cfg.StartHeight, cfg.Confirmations, cfg.L1MessengerAddress, cfg.RollupContractAddress, orm)
+	watcher := NewWatcher(ctx, client, cfg.StartHeight, cfg.Confirmations, cfg.L1MessengerAddress, cfg.L1MessageQueueAddress, cfg.ScrollChainContractAddress, orm)
 
 	return &Backend{
 		cfg:     cfg,

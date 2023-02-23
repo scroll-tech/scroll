@@ -23,7 +23,7 @@ func testStartWatcher(t *testing.T) {
 
 	l1Cfg := cfg.L1Config
 
-	watcher := NewWatcher(context.Background(), client, l1Cfg.StartHeight, l1Cfg.Confirmations, l1Cfg.L1MessengerAddress, l1Cfg.RelayerConfig.RollupContractAddress, db)
+	watcher := NewWatcher(context.Background(), client, l1Cfg.StartHeight, l1Cfg.Confirmations, l1Cfg.L1MessengerAddress, l1Cfg.L1MessageQueueAddress, l1Cfg.RelayerConfig.RollupContractAddress, db)
 	watcher.Start()
 	defer watcher.Stop()
 }

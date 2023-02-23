@@ -3,12 +3,12 @@
 
 create table session_info
 (
-    id           VARCHAR NOT NULL,
+    hash         VARCHAR NOT NULL,
     rollers_info BYTEA   NOT NULL
 );
 
-create unique index session_info_id_uindex
-    on session_info (id);
+create unique index session_info_hash_uindex
+    on session_info (hash);
 
 -- +goose StatementEnd
 

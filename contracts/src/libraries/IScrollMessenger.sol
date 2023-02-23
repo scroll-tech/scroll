@@ -3,51 +3,54 @@
 pragma solidity ^0.8.0;
 
 interface IScrollMessenger {
-  /**************************************** Events ****************************************/
+  /**********
+   * Events *
+   **********/
 
+  /// @notice Emitted when a cross domain message is sent.
+  /// @param sender The address of the sender who initiates the message.
+  /// @param target The address of target contract to call.
+  /// @param value The amount of value passed to the target contract.
+  /// @param messageNonce The nonce of the message.
+  /// @param gasLimit The optional gas limit passed to L1 or L2.
+  /// @param message The calldata passed to the target contract.
   event SentMessage(
+    address indexed sender,
     address indexed target,
-    address sender,
     uint256 value,
-    uint256 fee,
-    uint256 deadline,
-    bytes message,
     uint256 messageNonce,
-    uint256 gasLimit
+    uint256 gasLimit,
+    bytes message
   );
-  event MessageDropped(bytes32 indexed msgHash);
-  event RelayedMessage(bytes32 indexed msgHash);
-  event FailedRelayedMessage(bytes32 indexed msgHash);
 
-  /**************************************** View Functions ****************************************/
+  /// @notice Emitted when a cross domain message is relayed successfully.
+  /// @param messageHash The hash of the message.
+  event RelayedMessage(bytes32 indexed messageHash);
 
+  /// @notice Emitted when a cross domain message is failed to relay.
+  /// @param messageHash The hash of the message.
+  event FailedRelayedMessage(bytes32 indexed messageHash);
+
+  /*************************
+   * Public View Functions *
+   *************************/
+
+  /// @notice Return the sender of a cross domain message.
   function xDomainMessageSender() external view returns (address);
 
-  /**************************************** Mutated Functions ****************************************/
+  /****************************
+   * Public Mutated Functions *
+   ****************************/
 
-  /// @notice Send cross chain message (L1 => L2 or L2 => L1)
-  /// @dev Currently, only privileged accounts can call this function for safty. And adding an extra
-  /// `_fee` variable make it more easy to upgrade to decentralized version.
-  /// @param _to The address of account who recieve the message.
-  /// @param _fee The amount of fee in Ether the caller would like to pay to the relayer.
-  /// @param _message The content of the message.
-  /// @param _gasLimit Unused, but included for potential forward compatibility considerations.
+  /// @notice Send cross chain message from L1 to L2 or L2 to L1.
+  /// @param target The address of account who recieve the message.
+  /// @param value The amount of ether passed when call target contract.
+  /// @param message The content of the message.
+  /// @param gasLimit Gas limit required to complete the message relay on corresponding chain.
   function sendMessage(
-    address _to,
-    uint256 _fee,
-    bytes memory _message,
-    uint256 _gasLimit
+    address target,
+    uint256 value,
+    bytes calldata message,
+    uint256 gasLimit
   ) external payable;
-
-  // @todo add comments
-  function dropMessage(
-    address _from,
-    address _to,
-    uint256 _value,
-    uint256 _fee,
-    uint256 _deadline,
-    uint256 _nonce,
-    bytes memory _message,
-    uint256 _gasLimit
-  ) external;
 }

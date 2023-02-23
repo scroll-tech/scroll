@@ -22,41 +22,43 @@ import { ScrollGatewayBase, IScrollGateway } from "../../libraries/gateway/Scrol
 contract L2WETHGateway is Initializable, ScrollGatewayBase, L2ERC20Gateway {
   using SafeERC20 for IERC20;
 
-  /**************************************** Variables ****************************************/
+  /*************
+   * Constants *
+   *************/
 
   /// @notice The address of L1 WETH address.
-  address public l1WETH;
+  address public immutable l1WETH;
 
   /// @notice The address of L2 WETH address.
   // @todo It should be predeployed in L2 and make it a constant.
   // solhint-disable-next-line var-name-mixedcase
-  address public WETH;
+  address public immutable WETH;
 
-  /**************************************** Constructor ****************************************/
+  /***************
+   * Constructor *
+   ***************/
+
+  constructor(address _WETH, address _l1WETH) {
+    WETH = _WETH;
+    l1WETH = _l1WETH;
+  }
 
   function initialize(
     address _counterpart,
     address _router,
-    address _messenger,
-    // solhint-disable-next-line var-name-mixedcase
-    address _WETH,
-    address _l1WETH
+    address _messenger
   ) external initializer {
     require(_router != address(0), "zero router address");
     ScrollGatewayBase._initialize(_counterpart, _router, _messenger);
-
-    require(_WETH != address(0), "zero WETH address");
-    require(_l1WETH != address(0), "zero L1WETH address");
-
-    WETH = _WETH;
-    l1WETH = _l1WETH;
   }
 
   receive() external payable {
     require(msg.sender == WETH, "only WETH");
   }
 
-  /**************************************** View Functions ****************************************/
+  /*************************
+   * Public View Functions *
+   *************************/
 
   /// @inheritdoc IL2ERC20Gateway
   function getL1ERC20Address(address) external view override returns (address) {
@@ -68,7 +70,9 @@ contract L2WETHGateway is Initializable, ScrollGatewayBase, L2ERC20Gateway {
     return WETH;
   }
 
-  /**************************************** Mutate Functions ****************************************/
+  /****************************
+   * Public Mutated Functions *
+   ****************************/
 
   /// @inheritdoc IL2ERC20Gateway
   function finalizeDepositERC20(
@@ -91,12 +95,9 @@ contract L2WETHGateway is Initializable, ScrollGatewayBase, L2ERC20Gateway {
     emit FinalizeDepositERC20(_l1Token, _l2Token, _from, _to, _amount, _data);
   }
 
-  /// @inheritdoc IScrollGateway
-  function finalizeDropMessage() external payable virtual onlyMessenger {
-    // @todo should refund token back to sender.
-  }
-
-  /**************************************** Internal Functions ****************************************/
+  /**********************
+   * Internal Functions *
+   **********************/
 
   /// @inheritdoc L2ERC20Gateway
   function _withdraw(
@@ -132,12 +133,7 @@ contract L2WETHGateway is Initializable, ScrollGatewayBase, L2ERC20Gateway {
     );
 
     // 4. Send message to L1ScrollMessenger.
-    IL2ScrollMessenger(messenger).sendMessage{ value: _amount + msg.value }(
-      counterpart,
-      msg.value,
-      _message,
-      _gasLimit
-    );
+    IL2ScrollMessenger(messenger).sendMessage{ value: _amount + msg.value }(counterpart, _amount, _message, _gasLimit);
 
     emit WithdrawERC20(_l1WETH, _token, _from, _to, _amount, _data);
   }

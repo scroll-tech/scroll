@@ -6,10 +6,11 @@ import { OwnableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/O
 import { IERC721Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC721/IERC721Upgradeable.sol";
 import { ERC721HolderUpgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC721/utils/ERC721HolderUpgradeable.sol";
 
-import { IL1ERC721Gateway } from "./IL1ERC721Gateway.sol";
-import { IL1ScrollMessenger } from "../IL1ScrollMessenger.sol";
 import { IL2ERC721Gateway } from "../../L2/gateways/IL2ERC721Gateway.sol";
-import { ScrollGatewayBase, IScrollGateway } from "../../libraries/gateway/ScrollGatewayBase.sol";
+import { IL1ScrollMessenger } from "../IL1ScrollMessenger.sol";
+import { IL1ERC721Gateway } from "./IL1ERC721Gateway.sol";
+
+import { ScrollGatewayBase } from "../../libraries/gateway/ScrollGatewayBase.sol";
 
 /// @title L1ERC721Gateway
 /// @notice The `L1ERC721Gateway` is used to deposit ERC721 compatible NFT in layer 1 and
@@ -20,34 +21,44 @@ import { ScrollGatewayBase, IScrollGateway } from "../../libraries/gateway/Scrol
 /// This will be changed if we have more specific scenarios.
 // @todo Current implementation doesn't support calling from `L1GatewayRouter`.
 contract L1ERC721Gateway is OwnableUpgradeable, ERC721HolderUpgradeable, ScrollGatewayBase, IL1ERC721Gateway {
-  /**************************************** Events ****************************************/
+  /**********
+   * Events *
+   **********/
 
   /// @notice Emitted when token mapping for ERC721 token is updated.
   /// @param _l1Token The address of ERC721 token in layer 1.
   /// @param _l1Token The address of corresponding ERC721 token in layer 2.
   event UpdateTokenMapping(address _l1Token, address _l2Token);
 
-  /**************************************** Variables ****************************************/
+  /*************
+   * Variables *
+   *************/
 
   /// @notice Mapping from l1 token address to l2 token address for ERC721 NFT.
-  // solhint-disable-next-line var-name-mixedcase
   mapping(address => address) public tokenMapping;
 
-  /**************************************** Constructor ****************************************/
+  /***************
+   * Constructor *
+   ***************/
 
+  /// @notice Initialize the storage of L1ERC721Gateway.
+  /// @param _counterpart The address of L2ERC721Gateway in L2.
+  /// @param _messenger The address of L1ScrollMessenger.
   function initialize(address _counterpart, address _messenger) external initializer {
     OwnableUpgradeable.__Ownable_init();
     ScrollGatewayBase._initialize(_counterpart, address(0), _messenger);
   }
 
-  /**************************************** Mutate Funtions ****************************************/
+  /****************************
+   * Public Mutated Functions *
+   ****************************/
 
   /// @inheritdoc IL1ERC721Gateway
   function depositERC721(
     address _token,
     uint256 _tokenId,
     uint256 _gasLimit
-  ) external override {
+  ) external payable override {
     _depositERC721(_token, msg.sender, _tokenId, _gasLimit);
   }
 
@@ -57,7 +68,7 @@ contract L1ERC721Gateway is OwnableUpgradeable, ERC721HolderUpgradeable, ScrollG
     address _to,
     uint256 _tokenId,
     uint256 _gasLimit
-  ) external override {
+  ) external payable override {
     _depositERC721(_token, _to, _tokenId, _gasLimit);
   }
 
@@ -66,7 +77,7 @@ contract L1ERC721Gateway is OwnableUpgradeable, ERC721HolderUpgradeable, ScrollG
     address _token,
     uint256[] calldata _tokenIds,
     uint256 _gasLimit
-  ) external override {
+  ) external payable override {
     _batchDepositERC721(_token, msg.sender, _tokenIds, _gasLimit);
   }
 
@@ -76,7 +87,7 @@ contract L1ERC721Gateway is OwnableUpgradeable, ERC721HolderUpgradeable, ScrollG
     address _to,
     uint256[] calldata _tokenIds,
     uint256 _gasLimit
-  ) external override {
+  ) external payable override {
     _batchDepositERC721(_token, _to, _tokenIds, _gasLimit);
   }
 
@@ -88,6 +99,8 @@ contract L1ERC721Gateway is OwnableUpgradeable, ERC721HolderUpgradeable, ScrollG
     address _to,
     uint256 _tokenId
   ) external override nonReentrant onlyCallByCounterpart {
+    require(_l2Token == tokenMapping[_l1Token], "l2 token mismatch");
+
     IERC721Upgradeable(_l1Token).safeTransferFrom(address(this), _to, _tokenId);
 
     emit FinalizeWithdrawERC721(_l1Token, _l2Token, _from, _to, _tokenId);
@@ -101,6 +114,8 @@ contract L1ERC721Gateway is OwnableUpgradeable, ERC721HolderUpgradeable, ScrollG
     address _to,
     uint256[] calldata _tokenIds
   ) external override nonReentrant onlyCallByCounterpart {
+    require(_l2Token == tokenMapping[_l1Token], "l2 token mismatch");
+
     for (uint256 i = 0; i < _tokenIds.length; i++) {
       IERC721Upgradeable(_l1Token).safeTransferFrom(address(this), _to, _tokenIds[i]);
     }
@@ -108,12 +123,9 @@ contract L1ERC721Gateway is OwnableUpgradeable, ERC721HolderUpgradeable, ScrollG
     emit FinalizeBatchWithdrawERC721(_l1Token, _l2Token, _from, _to, _tokenIds);
   }
 
-  /// @inheritdoc IScrollGateway
-  function finalizeDropMessage() external payable {
-    // @todo finish the logic later
-  }
-
-  /**************************************** Restricted Funtions ****************************************/
+  /************************
+   * Restricted Functions *
+   ************************/
 
   /// @notice Update layer 2 to layer 2 token mapping.
   /// @param _l1Token The address of ERC721 token in layer 1.
@@ -126,7 +138,9 @@ contract L1ERC721Gateway is OwnableUpgradeable, ERC721HolderUpgradeable, ScrollG
     emit UpdateTokenMapping(_l1Token, _l2Token);
   }
 
-  /**************************************** Internal Funtions ****************************************/
+  /**********************
+   * Internal Functions *
+   **********************/
 
   /// @dev Internal function to deposit ERC721 NFT to layer 2.
   /// @param _token The address of ERC721 NFT in layer 1.
@@ -156,7 +170,7 @@ contract L1ERC721Gateway is OwnableUpgradeable, ERC721HolderUpgradeable, ScrollG
     );
 
     // 3. Send message to L1ScrollMessenger.
-    IL1ScrollMessenger(messenger).sendMessage(counterpart, msg.value, _message, _gasLimit);
+    IL1ScrollMessenger(messenger).sendMessage{ value: msg.value }(counterpart, 0, _message, _gasLimit);
 
     emit DepositERC721(_token, _l2Token, msg.sender, _to, _tokenId);
   }
@@ -193,7 +207,7 @@ contract L1ERC721Gateway is OwnableUpgradeable, ERC721HolderUpgradeable, ScrollG
     );
 
     // 3. Send message to L1ScrollMessenger.
-    IL1ScrollMessenger(messenger).sendMessage{ value: msg.value }(counterpart, msg.value, _message, _gasLimit);
+    IL1ScrollMessenger(messenger).sendMessage{ value: msg.value }(counterpart, 0, _message, _gasLimit);
 
     emit BatchDepositERC721(_token, _l2Token, msg.sender, _to, _tokenIds);
   }

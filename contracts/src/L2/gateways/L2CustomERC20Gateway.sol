@@ -17,20 +17,26 @@ import { IScrollStandardERC20 } from "../../libraries/token/IScrollStandardERC20
 /// @dev The withdrawn tokens tokens will be burned directly. On finalizing deposit, the corresponding
 /// tokens will be minted and transfered to the recipient.
 contract L2CustomERC20Gateway is OwnableUpgradeable, ScrollGatewayBase, L2ERC20Gateway {
-  /**************************************** Events ****************************************/
+  /**********
+   * Events *
+   **********/
 
   /// @notice Emitted when token mapping for ERC20 token is updated.
   /// @param _l2Token The address of corresponding ERC20 token in layer 2.
   /// @param _l1Token The address of ERC20 token in layer 1.
   event UpdateTokenMapping(address _l2Token, address _l1Token);
 
-  /**************************************** Variables ****************************************/
+  /*************
+   * Variables *
+   *************/
 
   /// @notice Mapping from layer 2 token address to layer 1 token address for ERC20 token.
   // solhint-disable-next-line var-name-mixedcase
   mapping(address => address) public tokenMapping;
 
-  /**************************************** Constructor ****************************************/
+  /***************
+   * Constructor *
+   ***************/
 
   function initialize(
     address _counterpart,
@@ -43,7 +49,9 @@ contract L2CustomERC20Gateway is OwnableUpgradeable, ScrollGatewayBase, L2ERC20G
     ScrollGatewayBase._initialize(_counterpart, _router, _messenger);
   }
 
-  /**************************************** View Functions ****************************************/
+  /*************************
+   * Public View Functions *
+   *************************/
 
   /// @inheritdoc IL2ERC20Gateway
   function getL1ERC20Address(address _l2Token) external view override returns (address) {
@@ -55,7 +63,9 @@ contract L2CustomERC20Gateway is OwnableUpgradeable, ScrollGatewayBase, L2ERC20G
     revert("unimplemented");
   }
 
-  /**************************************** Mutate Functions ****************************************/
+  /****************************
+   * Public Mutated Functions *
+   ****************************/
 
   /// @inheritdoc IL2ERC20Gateway
   function finalizeDepositERC20(
@@ -67,6 +77,7 @@ contract L2CustomERC20Gateway is OwnableUpgradeable, ScrollGatewayBase, L2ERC20G
     bytes calldata _data
   ) external payable override onlyCallByCounterpart {
     require(msg.value == 0, "nonzero msg.value");
+    require(_l1Token == tokenMapping[_l2Token], "l1 token mismatch");
 
     // @todo forward `_callData` to `_to` using transferAndCall in the near future
 
@@ -75,12 +86,9 @@ contract L2CustomERC20Gateway is OwnableUpgradeable, ScrollGatewayBase, L2ERC20G
     emit FinalizeDepositERC20(_l1Token, _l2Token, _from, _to, _amount, _data);
   }
 
-  /// @inheritdoc IScrollGateway
-  function finalizeDropMessage() external payable {
-    // @todo finish the logic later
-  }
-
-  /**************************************** Restricted Functions ****************************************/
+  /************************
+   * Restricted Functions *
+   ************************/
 
   /// @notice Update layer 2 to layer 1 token mapping.
   /// @param _l2Token The address of corresponding ERC20 token in layer 2.
@@ -93,7 +101,9 @@ contract L2CustomERC20Gateway is OwnableUpgradeable, ScrollGatewayBase, L2ERC20G
     emit UpdateTokenMapping(_l2Token, _l1Token);
   }
 
-  /**************************************** Internal Functions ****************************************/
+  /**********************
+   * Internal Functions *
+   **********************/
 
   /// @inheritdoc L2ERC20Gateway
   function _withdraw(
@@ -103,10 +113,10 @@ contract L2CustomERC20Gateway is OwnableUpgradeable, ScrollGatewayBase, L2ERC20G
     bytes memory _data,
     uint256 _gasLimit
   ) internal virtual override {
-    require(_amount > 0, "withdraw zero amount");
-
     address _l1Token = tokenMapping[_token];
     require(_l1Token != address(0), "no corresponding l1 token");
+
+    require(_amount > 0, "withdraw zero amount");
 
     // 1. Extract real sender if this call is from L2GatewayRouter.
     address _from = msg.sender;
@@ -129,7 +139,7 @@ contract L2CustomERC20Gateway is OwnableUpgradeable, ScrollGatewayBase, L2ERC20G
     );
 
     // 4. send message to L2ScrollMessenger
-    IL2ScrollMessenger(messenger).sendMessage{ value: msg.value }(counterpart, msg.value, _message, _gasLimit);
+    IL2ScrollMessenger(messenger).sendMessage{ value: msg.value }(counterpart, 0, _message, _gasLimit);
 
     emit WithdrawERC20(_l1Token, _token, _from, _to, _amount, _data);
   }

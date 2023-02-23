@@ -3,33 +3,53 @@
 pragma solidity ^0.8.0;
 
 interface IL1ERC20Gateway {
-  /**************************************** Events ****************************************/
+  /**********
+   * Events *
+   **********/
 
+  /// @notice Emitted when ERC20 token is withdrawn from L2 to L1 and transfer to recipient.
+  /// @param l1Token The address of the token in L1.
+  /// @param l2Token The address of the token in L2.
+  /// @param from The address of sender in L2.
+  /// @param to The address of recipient in L1.
+  /// @param amount The amount of token withdrawn from L2 to L1.
+  /// @param data The optional calldata passed to recipient in L1.
   event FinalizeWithdrawERC20(
-    address indexed _l1Token,
-    address indexed _l2Token,
-    address indexed _from,
-    address _to,
-    uint256 _amount,
-    bytes _data
+    address indexed l1Token,
+    address indexed l2Token,
+    address indexed from,
+    address to,
+    uint256 amount,
+    bytes data
   );
 
+  /// @notice Emitted when someone deposit ERC20 token from L1 to L2.
+  /// @param l1Token The address of the token in L1.
+  /// @param l2Token The address of the token in L2.
+  /// @param from The address of sender in L1.
+  /// @param to The address of recipient in L2.
+  /// @param amount The amount of token will be deposited from L1 to L2.
+  /// @param data The optional calldata passed to recipient in L2.
   event DepositERC20(
-    address indexed _l1Token,
-    address indexed _l2Token,
-    address indexed _from,
-    address _to,
-    uint256 _amount,
-    bytes _data
+    address indexed l1Token,
+    address indexed l2Token,
+    address indexed from,
+    address to,
+    uint256 amount,
+    bytes data
   );
 
-  /**************************************** View Functions ****************************************/
+  /*************************
+   * Public View Functions *
+   *************************/
 
   /// @notice Return the corresponding l2 token address given l1 token address.
   /// @param _l1Token The address of l1 token.
   function getL2ERC20Address(address _l1Token) external view returns (address);
 
-  /**************************************** Mutated Functions ****************************************/
+  /****************************
+   * Public Mutated Functions *
+   ****************************/
 
   /// @notice Deposit some token to a caller's account on L2.
   /// @dev Make this function payable to send relayer fee in Ether.
