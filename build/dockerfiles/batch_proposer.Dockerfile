@@ -16,7 +16,7 @@ FROM base as builder
 
 RUN --mount=target=. \
     --mount=type=cache,target=/root/.cache/go-build \
-    cd /src/bridge/multibin/batch_proposer/cmd && go build -v -p 4 -o /bin/batch_proposer
+    cd /src/bridge/cmd/batch_proposer/cmd && go build -v -p 4 -o /bin/batch_proposer
 
 # Pull batch_proposer into a second stage deploy alpine container
 FROM alpine:latest

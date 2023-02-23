@@ -16,7 +16,7 @@ FROM base as builder
 
 RUN --mount=target=. \
     --mount=type=cache,target=/root/.cache/go-build \
-    cd /src/bridge/multibin/rollup_relayer/cmd && go build -v -p 4 -o /bin/rollup_relayer
+    cd /src/bridge/cmd/rollup_relayer/cmd && go build -v -p 4 -o /bin/rollup_relayer
 
 # Pull rollup_relayer into a second stage deploy alpine container
 FROM alpine:latest
