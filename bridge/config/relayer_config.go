@@ -42,7 +42,7 @@ type RelayerConfig struct {
 	// MessengerContractAddress store the scroll messenger contract address.
 	MessengerContractAddress common.Address `json:"messenger_contract_address"`
 	// GasPriceOracleContractAddress store the scroll messenger contract address.
-	GasPriceOracleContractAddress common.Address `json:"gas_proce_oracle_contract_address"`
+	GasPriceOracleContractAddress common.Address `json:"gas_price_oracle_contract_address"`
 	// sender config
 	SenderConfig *SenderConfig `json:"sender_config"`
 	// The private key of the relayer
