@@ -34,6 +34,8 @@ type BatchProposerConfig struct {
 	BatchGasThreshold uint64 `json:"batch_gas_threshold"`
 	// Time waited to generate a batch even if gas_threshold not met
 	BatchTimeSec uint64 `json:"batch_time_sec"`
+	// Time waited to commit batches before the calldata met CommitTxCalldataSizeLimit
+	BatchCommitTimeSec uint64 `json:"batch_commit_time_sec"`
 	// Max number of blocks in a batch
 	BatchBlocksLimit uint64 `json:"batch_blocks_limit"`
 	// Commit tx calldata size limit in bytes, target to cap the gas use of commit tx at 2M gas
