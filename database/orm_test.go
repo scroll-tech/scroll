@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"math/big"
 	"os"
-	"scroll-tech/database/cache"
 	"testing"
 	"time"
 
@@ -15,6 +14,8 @@ import (
 	"github.com/scroll-tech/go-ethereum/common"
 	geth_types "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/stretchr/testify/assert"
+
+	"scroll-tech/database/cache"
 
 	"scroll-tech/common/docker"
 	"scroll-tech/common/types"

@@ -1,8 +1,9 @@
 package migrate
 
 import (
-	"scroll-tech/database/cache"
 	"testing"
+
+	"scroll-tech/database/cache"
 
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"

@@ -2,12 +2,13 @@ package database
 
 import (
 	"fmt"
-	"scroll-tech/database/cache"
 
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq" //nolint:golint
 
 	"scroll-tech/database/orm"
+
+	"scroll-tech/database/cache"
 )
 
 // OrmFactory include all ormFactory interface

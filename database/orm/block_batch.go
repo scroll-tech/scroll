@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"scroll-tech/database/cache"
 	"strings"
 	"time"
 
@@ -13,6 +12,8 @@ import (
 	"github.com/scroll-tech/go-ethereum/log"
 
 	"scroll-tech/common/types"
+
+	"scroll-tech/database/cache"
 )
 
 type blockBatchOrm struct {

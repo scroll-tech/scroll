@@ -5,13 +5,14 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"scroll-tech/database/cache"
 	"strings"
-
-	"scroll-tech/common/types"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/scroll-tech/go-ethereum/log"
+
+	"scroll-tech/database/cache"
+
+	"scroll-tech/common/types"
 )
 
 type l1BlockOrm struct {
