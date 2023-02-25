@@ -90,6 +90,10 @@ func NewL2WatcherClient(ctx context.Context, client *ethclient.Client, confirmat
 	if err := w.initializeGenesis(); err != nil {
 		panic(fmt.Sprintf("failed to initialize L2 genesis batch, err: %v", err))
 	}
+	// Init cache, if traces in cache expired reset it.
+	if err = w.initCache(ctx); err != nil {
+		panic("failed to init cache in l2 watcher")
+	}
 
 	return &w
 }

@@ -1,10 +1,11 @@
 package orm
 
 import (
+	"context"
 	"database/sql"
-	"encoding/json"
 	"errors"
 	"fmt"
+	"scroll-tech/common/types"
 	"strings"
 
 	"github.com/jmoiron/sqlx"
@@ -12,19 +13,20 @@ import (
 	geth_types "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/log"
 
-	"scroll-tech/common/types"
 	"scroll-tech/common/utils"
+	"scroll-tech/database/cache"
 )
 
 type blockTraceOrm struct {
-	db *sqlx.DB
+	db    *sqlx.DB
+	cache cache.Cache
 }
 
 var _ BlockTraceOrm = (*blockTraceOrm)(nil)
 
 // NewBlockTraceOrm create an blockTraceOrm instance
-func NewBlockTraceOrm(db *sqlx.DB) BlockTraceOrm {
-	return &blockTraceOrm{db: db}
+func NewBlockTraceOrm(db *sqlx.DB, cache cache.Cache) BlockTraceOrm {
+	return &blockTraceOrm{db: db, cache: cache}
 }
 
 func (o *blockTraceOrm) IsL2BlockExists(number uint64) (bool, error) {
@@ -50,11 +52,7 @@ func (o *blockTraceOrm) GetL2BlockTracesLatestHeight() (int64, error) {
 }
 
 func (o *blockTraceOrm) GetL2BlockTraces(fields map[string]interface{}, args ...string) ([]*geth_types.BlockTrace, error) {
-	type Result struct {
-		Trace string
-	}
-
-	query := "SELECT trace FROM block_trace WHERE 1 = 1 "
+	query := "SELECT hash FROM block_trace WHERE 1 = 1 "
 	for key := range fields {
 		query += fmt.Sprintf("AND %s=:%s ", key, key)
 	}
@@ -66,18 +64,23 @@ func (o *blockTraceOrm) GetL2BlockTraces(fields map[string]interface{}, args ...
 		return nil, err
 	}
 
-	var traces []*geth_types.BlockTrace
+	var (
+		traces []*geth_types.BlockTrace
+		rdb    = o.cache
+	)
 	for rows.Next() {
-		result := &Result{}
-		if err = rows.StructScan(result); err != nil {
+		var (
+			trace *geth_types.BlockTrace
+			hash  string
+		)
+		if err = rows.Scan(&hash); err != nil {
 			break
 		}
-		trace := geth_types.BlockTrace{}
-		err = json.Unmarshal([]byte(result.Trace), &trace)
+		trace, err = rdb.GetBlockTrace(context.Background(), common.HexToHash(hash))
 		if err != nil {
 			break
 		}
-		traces = append(traces, &trace)
+		traces = append(traces, trace)
 	}
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return nil, err
@@ -154,6 +157,7 @@ func (o *blockTraceOrm) GetL2BlockHashByNumber(number uint64) (*common.Hash, err
 
 func (o *blockTraceOrm) InsertL2BlockTraces(blockTraces []*geth_types.BlockTrace) error {
 	traceMaps := make([]map[string]interface{}, len(blockTraces))
+	rdb := o.cache
 	for i, trace := range blockTraces {
 		number, hash, txNum, mtime := trace.Header.Number.Int64(),
 			trace.Header.Hash().String(),
@@ -161,23 +165,21 @@ func (o *blockTraceOrm) InsertL2BlockTraces(blockTraces []*geth_types.BlockTrace
 			trace.Header.Time
 
 		gasCost := utils.ComputeTraceGasCost(trace)
-		// clear the `StructLogs` to reduce storage cost
-		for _, executionResult := range trace.ExecutionResults {
-			executionResult.StructLogs = nil
-		}
-		data, err := json.Marshal(trace)
-		if err != nil {
-			log.Error("failed to marshal blockTrace", "hash", hash, "err", err)
-			return err
-		}
 		traceMaps[i] = map[string]interface{}{
-			"number":          number,
-			"hash":            hash,
-			"parent_hash":     trace.Header.ParentHash.String(),
-			"trace":           string(data),
+			"number":      number,
+			"hash":        hash,
+			"parent_hash": trace.Header.ParentHash.String(),
+			// Empty trace content.
+			"trace":           "{}",
 			"tx_num":          txNum,
 			"gas_used":        gasCost,
 			"block_timestamp": mtime,
+		}
+		if rdb != nil {
+			err := rdb.SetBlockTrace(context.Background(), trace)
+			if err != nil {
+				return err
+			}
 		}
 	}
 	_, err := o.db.NamedExec(`INSERT INTO public.block_trace (number, hash, parent_hash, trace, tx_num, gas_used, block_timestamp) VALUES (:number, :hash, :parent_hash, :trace, :tx_num, :gas_used, :block_timestamp);`, traceMaps)

@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"scroll-tech/database/cache"
 	"strings"
 
 	"scroll-tech/common/types"
@@ -14,14 +15,15 @@ import (
 )
 
 type l1BlockOrm struct {
-	db *sqlx.DB
+	db    *sqlx.DB
+	cache cache.Cache
 }
 
 var _ L1BlockOrm = (*l1BlockOrm)(nil)
 
 // NewL1BlockOrm create an l1BlockOrm instance
-func NewL1BlockOrm(db *sqlx.DB) L1BlockOrm {
-	return &l1BlockOrm{db: db}
+func NewL1BlockOrm(db *sqlx.DB, cache cache.Cache) L1BlockOrm {
+	return &l1BlockOrm{db: db, cache: cache}
 }
 
 func (l *l1BlockOrm) GetL1BlockInfos(fields map[string]interface{}, args ...string) ([]*types.L1BlockInfo, error) {

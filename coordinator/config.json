@@ -11,10 +11,16 @@
     }
   },
   "db_config": {
-    "driver_name": "postgres",
-    "dsn": "postgres://admin:123456@localhost/test?sslmode=disable"
-  },
-  "l2_config": {
-    "endpoint": "/var/lib/jenkins/workspace/SequencerPipeline/MyPrivateNetwork/geth.ipc"
+    "persistence": {
+      "driver_name": "postgres",
+      "dsn": "postgres://admin:123456@localhost/test?sslmode=disable"
+    },
+    "redis": {
+      "skip_tls_verify": false,
+      "url": "redis://default:@localhost:6379/0",
+      "expirations": {
+        "trace": 3600
+      }
+    }
   }
 }

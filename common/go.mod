@@ -9,8 +9,9 @@ require (
 	github.com/mattn/go-colorable v0.1.13
 	github.com/mattn/go-isatty v0.0.16
 	github.com/orcaman/concurrent-map v1.0.0
-	github.com/scroll-tech/go-ethereum v1.10.14-0.20230220082843-ec9254b0b1c6
-	github.com/stretchr/testify v1.8.0
+	github.com/redis/go-redis/v9 v9.0.2
+	github.com/scroll-tech/go-ethereum v1.10.14-0.20230224060425-15f94b93ea4f
+	github.com/stretchr/testify v1.8.1
 	github.com/urfave/cli/v2 v2.17.2-0.20221006022127-8f469abc00aa
 	gotest.tools v2.2.0+incompatible
 )
@@ -24,11 +25,12 @@ require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/deckarep/golang-set v1.8.0 // indirect
 	github.com/deepmap/oapi-codegen v1.8.2 // indirect
+	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
 	github.com/docker/distribution v2.8.1+incompatible // indirect
 	github.com/docker/go-connections v0.4.0 // indirect
 	github.com/docker/go-units v0.5.0 // indirect
 	github.com/edsrzf/mmap-go v1.0.0 // indirect
-	github.com/ethereum/go-ethereum v1.11.1 // indirect
+	github.com/ethereum/go-ethereum v1.11.2 // indirect
 	github.com/fjl/memsize v0.0.0-20190710130421-bcb5799ab5e5 // indirect
 	github.com/gballet/go-libpcsclite v0.0.0-20190607065134-2772fd86a8ff // indirect
 	github.com/go-logfmt/logfmt v0.5.1 // indirect

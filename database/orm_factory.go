@@ -1,6 +1,9 @@
 package database
 
 import (
+	"fmt"
+	"scroll-tech/database/cache"
+
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq" //nolint:golint
 
@@ -15,6 +18,7 @@ type OrmFactory interface {
 	orm.L1MessageOrm
 	orm.L2MessageOrm
 	orm.SessionInfoOrm
+	GetCache() cache.Cache
 	GetDB() *sqlx.DB
 	Beginx() (*sqlx.Tx, error)
 	Close() error
@@ -27,30 +31,43 @@ type ormFactory struct {
 	orm.L1MessageOrm
 	orm.L2MessageOrm
 	orm.SessionInfoOrm
+	cache.Cache
 	*sqlx.DB
 }
 
 // NewOrmFactory create an ormFactory factory include all ormFactory interface
 func NewOrmFactory(cfg *DBConfig) (OrmFactory, error) {
 	// Initialize sql/sqlx
-	db, err := sqlx.Open(cfg.DriverName, cfg.DSN)
+	pCfg, rCfg := cfg.Persistence, cfg.Redis
+	if rCfg == nil {
+		return nil, fmt.Errorf("redis config is empty")
+	}
+	// Initialize sql/sqlx
+	db, err := sqlx.Open(pCfg.DriverName, pCfg.DSN)
 	if err != nil {
 		return nil, err
 	}
 
-	db.SetMaxIdleConns(cfg.MaxOpenNum)
-	db.SetMaxIdleConns(cfg.MaxIdleNum)
+	db.SetMaxIdleConns(pCfg.MaxOpenNum)
+	db.SetMaxIdleConns(pCfg.MaxIdleNum)
 	if err = db.Ping(); err != nil {
 		return nil, err
 	}
 
+	// Create redis client.
+	cacheOrm, err := cache.NewRedisClientWrapper(rCfg)
+	if err != nil {
+		return nil, err
+	}
+
 	return &ormFactory{
-		BlockTraceOrm:  orm.NewBlockTraceOrm(db),
-		BlockBatchOrm:  orm.NewBlockBatchOrm(db),
-		L1MessageOrm:   orm.NewL1MessageOrm(db),
-		L2MessageOrm:   orm.NewL2MessageOrm(db),
-		L1BlockOrm:     orm.NewL1BlockOrm(db),
-		SessionInfoOrm: orm.NewSessionInfoOrm(db),
+		BlockTraceOrm:  orm.NewBlockTraceOrm(db, cacheOrm),
+		BlockBatchOrm:  orm.NewBlockBatchOrm(db, cacheOrm),
+		L1MessageOrm:   orm.NewL1MessageOrm(db, cacheOrm),
+		L2MessageOrm:   orm.NewL2MessageOrm(db, cacheOrm),
+		L1BlockOrm:     orm.NewL1BlockOrm(db, cacheOrm),
+		SessionInfoOrm: orm.NewSessionInfoOrm(db, cacheOrm),
+		Cache:          cacheOrm,
 		DB:             db,
 	}, nil
 }
@@ -61,4 +78,8 @@ func (o *ormFactory) GetDB() *sqlx.DB {
 
 func (o *ormFactory) Beginx() (*sqlx.Tx, error) {
 	return o.DB.Beginx()
+}
+
+func (o *ormFactory) GetCache() cache.Cache {
+	return o.Cache
 }

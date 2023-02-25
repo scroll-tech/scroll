@@ -39,10 +39,13 @@ import (
 )
 
 var (
-	cfg   *bridge_config.Config
-	dbImg docker.ImgInstance
+	dbImg    docker.ImgInstance
+	redisImg docker.ImgInstance
 
-	batchData *types.BatchData
+	cfg *bridge_config.Config
+
+	blockTrace = &geth_types.BlockTrace{}
+	batchData  *types.BatchData
 )
 
 func randomURL() string {
@@ -56,15 +59,18 @@ func setEnv(t *testing.T) (err error) {
 	assert.NoError(t, err)
 
 	// Create db container.
-	dbImg = docker.NewTestDBDocker(t, cfg.DBConfig.DriverName)
-	cfg.DBConfig.DSN = dbImg.Endpoint()
+	dbImg = docker.NewTestDBDocker(t, cfg.DBConfig.Persistence.DriverName)
+	cfg.DBConfig.Persistence.DSN = dbImg.Endpoint()
+
+	// Create redis container.
+	redisImg = docker.NewTestRedisDocker(t)
+	cfg.DBConfig.Redis.URL = redisImg.Endpoint()
 
 	templateBlockTrace, err := os.ReadFile("../common/testdata/blockTrace_02.json")
 	if err != nil {
 		return err
 	}
 	// unmarshal blockTrace
-	blockTrace := &geth_types.BlockTrace{}
 	if err = json.Unmarshal(templateBlockTrace, blockTrace); err != nil {
 		return err
 	}
@@ -76,6 +82,15 @@ func setEnv(t *testing.T) (err error) {
 	batchData = types.NewBatchData(parentBatch, []*geth_types.BlockTrace{blockTrace}, nil)
 
 	return
+}
+
+func free(t *testing.T) {
+	if dbImg != nil {
+		assert.NoError(t, dbImg.Stop())
+	}
+	if redisImg != nil {
+		assert.NoError(t, redisImg.Stop())
+	}
 }
 
 func TestApis(t *testing.T) {
@@ -94,7 +109,7 @@ func TestApis(t *testing.T) {
 
 	// Teardown
 	t.Cleanup(func() {
-		dbImg.Stop()
+		free(t)
 	})
 }
 
@@ -246,6 +261,20 @@ func testValidProof(t *testing.T) {
 	assert.NoError(t, migrate.ResetDB(l2db.GetDB().DB))
 	defer l2db.Close()
 
+	var hashes = make([]string, 1)
+	dbTx, err := l2db.Beginx()
+	assert.NoError(t, err)
+	for i := range hashes {
+		assert.NoError(t, l2db.NewBatchInDBTx(dbTx, batchData))
+		hashes[i] = batchData.Hash().Hex()
+	}
+	assert.NoError(t, dbTx.Commit())
+	assert.NoError(t, l2db.InsertL2BlockTraces([]*geth_types.BlockTrace{blockTrace}))
+	rdb := l2db.GetCache()
+	ok, err := rdb.ExistTrace(context.Background(), blockTrace.Header.Number)
+	assert.NoError(t, err)
+	assert.Equal(t, true, ok)
+
 	// Setup coordinator and ws server.
 	wsURL := "ws://" + randomURL()
 	rollerManager, handler := setupCoordinator(t, cfg.DBConfig, 3, wsURL)
@@ -268,15 +297,6 @@ func testValidProof(t *testing.T) {
 		}
 	}()
 	assert.Equal(t, 3, rollerManager.GetNumberOfIdleRollers())
-
-	var hashes = make([]string, 1)
-	dbTx, err := l2db.Beginx()
-	assert.NoError(t, err)
-	for i := range hashes {
-		assert.NoError(t, l2db.NewBatchInDBTx(dbTx, batchData))
-		hashes[i] = batchData.Hash().Hex()
-	}
-	assert.NoError(t, dbTx.Commit())
 
 	// verify proof status
 	var (
@@ -305,6 +325,16 @@ func testInvalidProof(t *testing.T) {
 	assert.NoError(t, migrate.ResetDB(l2db.GetDB().DB))
 	defer l2db.Close()
 
+	var hashes = make([]string, 1)
+	dbTx, err := l2db.Beginx()
+	assert.NoError(t, err)
+	for i := range hashes {
+		assert.NoError(t, l2db.NewBatchInDBTx(dbTx, batchData))
+		hashes[i] = batchData.Hash().Hex()
+	}
+	assert.NoError(t, dbTx.Commit())
+	assert.NoError(t, l2db.InsertL2BlockTraces([]*geth_types.BlockTrace{blockTrace}))
+
 	// Setup coordinator and ws server.
 	wsURL := "ws://" + randomURL()
 	rollerManager, handler := setupCoordinator(t, cfg.DBConfig, 3, wsURL)
@@ -326,15 +356,6 @@ func testInvalidProof(t *testing.T) {
 		}
 	}()
 	assert.Equal(t, 3, rollerManager.GetNumberOfIdleRollers())
-
-	var hashes = make([]string, 1)
-	dbTx, err := l2db.Beginx()
-	assert.NoError(t, err)
-	for i := range hashes {
-		assert.NoError(t, l2db.NewBatchInDBTx(dbTx, batchData))
-		hashes[i] = batchData.Hash().Hex()
-	}
-	assert.NoError(t, dbTx.Commit())
 
 	// verify proof status
 	var (
@@ -363,6 +384,16 @@ func testIdleRollerSelection(t *testing.T) {
 	assert.NoError(t, migrate.ResetDB(l2db.GetDB().DB))
 	defer l2db.Close()
 
+	var hashes = make([]string, 1)
+	dbTx, err := l2db.Beginx()
+	assert.NoError(t, err)
+	for i := range hashes {
+		assert.NoError(t, l2db.NewBatchInDBTx(dbTx, batchData))
+		hashes[i] = batchData.Hash().Hex()
+	}
+	assert.NoError(t, dbTx.Commit())
+	assert.NoError(t, l2db.InsertL2BlockTraces([]*geth_types.BlockTrace{blockTrace}))
+
 	// Setup coordinator and ws server.
 	wsURL := "ws://" + randomURL()
 	rollerManager, handler := setupCoordinator(t, cfg.DBConfig, 1, wsURL)
@@ -385,15 +416,6 @@ func testIdleRollerSelection(t *testing.T) {
 	}()
 
 	assert.Equal(t, len(rollers), rollerManager.GetNumberOfIdleRollers())
-
-	var hashes = make([]string, 1)
-	dbTx, err := l2db.Beginx()
-	assert.NoError(t, err)
-	for i := range hashes {
-		assert.NoError(t, l2db.NewBatchInDBTx(dbTx, batchData))
-		hashes[i] = batchData.Hash().Hex()
-	}
-	assert.NoError(t, dbTx.Commit())
 
 	// verify proof status
 	var (
@@ -430,6 +452,7 @@ func testGracefulRestart(t *testing.T) {
 		hashes[i] = batchData.Hash().Hex()
 	}
 	assert.NoError(t, dbTx.Commit())
+	assert.NoError(t, l2db.InsertL2BlockTraces([]*geth_types.BlockTrace{blockTrace}))
 
 	// Setup coordinator and ws server.
 	wsURL := "ws://" + randomURL()
@@ -504,7 +527,7 @@ func setupCoordinator(t *testing.T, dbCfg *database.DBConfig, rollersPerSession 
 		Verifier:          &coordinator_config.VerifierConfig{MockMode: true},
 		CollectionTime:    1,
 		TokenTimeToLive:   5,
-	}, db, nil)
+	}, db)
 	assert.NoError(t, err)
 	assert.NoError(t, rollerManager.Start())
 

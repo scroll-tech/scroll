@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"scroll-tech/database/cache"
 	"strings"
 	"time"
 
@@ -15,14 +16,25 @@ import (
 )
 
 type blockBatchOrm struct {
-	db *sqlx.DB
+	db    *sqlx.DB
+	cache cache.Cache
 }
 
 var _ BlockBatchOrm = (*blockBatchOrm)(nil)
 
 // NewBlockBatchOrm create an blockBatchOrm instance
-func NewBlockBatchOrm(db *sqlx.DB) BlockBatchOrm {
-	return &blockBatchOrm{db: db}
+func NewBlockBatchOrm(db *sqlx.DB, cache cache.Cache) BlockBatchOrm {
+	return &blockBatchOrm{db: db, cache: cache}
+}
+
+// GetBatchIDByIndex get batch id by index.
+func (o *blockBatchOrm) GetBatchIDByIndex(index uint64) (string, error) {
+	row := o.db.QueryRowx(`SELECT hash FROM public.block_batch WHERE index = $1;`, index)
+	var hash string
+	if err := row.Scan(&hash); err != nil {
+		return "", err
+	}
+	return hash, nil
 }
 
 func (o *blockBatchOrm) GetBlockBatches(fields map[string]interface{}, args ...string) ([]*types.BlockBatch, error) {

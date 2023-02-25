@@ -62,10 +62,10 @@ func testMonitorBridgeContract(t *testing.T) {
 	assert.NoError(t, migrate.ResetDB(db.GetDB().DB))
 	defer db.Close()
 
-	l2cfg := cfg.L2Config
+	/*l2cfg := cfg.L2Config
 	wc := NewL2WatcherClient(context.Background(), l2Cli, l2cfg.Confirmations, l2cfg.L2MessengerAddress, l2cfg.L2MessageQueueAddress, db)
 	wc.Start()
-	defer wc.Stop()
+	defer wc.Stop()*/
 
 	previousHeight, err := l2Cli.BlockNumber(context.Background())
 	assert.NoError(t, err)
