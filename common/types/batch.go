@@ -39,6 +39,10 @@ type BatchData struct {
 	piCfg *PublicInputHashConfig
 }
 
+func (b *BatchData) Timestamp() uint64 {
+	return b.Batch.Blocks[0].Timestamp
+}
+
 // Hash calculates the hash of this batch.
 func (b *BatchData) Hash() *common.Hash {
 	if b.hash != nil {

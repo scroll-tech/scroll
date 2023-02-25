@@ -64,6 +64,7 @@ type BatchProposer struct {
 	batchGasThreshold        uint64
 	batchTxNumThreshold      uint64
 	batchBlocksLimit         uint64
+	batchCommitTimeSec       uint64
 	commitCalldataSizeLimit  uint64
 	batchDataBufferSizeLimit uint64
 
@@ -86,6 +87,7 @@ func NewBatchProposer(ctx context.Context, cfg *config.BatchProposerConfig, rela
 		batchGasThreshold:        cfg.BatchGasThreshold,
 		batchTxNumThreshold:      cfg.BatchTxNumThreshold,
 		batchBlocksLimit:         cfg.BatchBlocksLimit,
+		batchCommitTimeSec:       cfg.BatchCommitTimeSec,
 		commitCalldataSizeLimit:  cfg.CommitTxCalldataSizeLimit,
 		batchDataBufferSizeLimit: 100*cfg.CommitTxCalldataSizeLimit + 1*1024*1024, // @todo: determine the value.
 		proofGenerationFreq:      cfg.ProofGenerationFreq,
@@ -124,6 +126,7 @@ func (p *BatchProposer) Start() {
 
 				case <-ticker.C:
 					p.tryProposeBatch()
+					p.tryCommitBatches()
 				}
 			}
 		}(ctx)
@@ -225,11 +228,13 @@ func (p *BatchProposer) tryProposeBatch() {
 
 		p.proposeBatch(blocks)
 	}
-
-	p.tryCommitBatches()
 }
 
 func (p *BatchProposer) tryCommitBatches() {
+	if len(p.batchDataBuffer) == 0 {
+		return
+	}
+
 	// estimate the calldata length to determine whether to commit the pending batches
 	index := 0
 	commit := false
@@ -249,7 +254,7 @@ func (p *BatchProposer) tryCommitBatches() {
 			break
 		}
 	}
-	if !commit {
+	if !commit && p.batchDataBuffer[0].Timestamp()+p.batchCommitTimeSec > uint64(time.Now().Unix()) {
 		return
 	}
 
