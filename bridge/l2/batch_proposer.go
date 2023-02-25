@@ -64,6 +64,7 @@ type BatchProposer struct {
 	batchGasThreshold        uint64
 	batchTxNumThreshold      uint64
 	batchBlocksLimit         uint64
+	batchCommitTimeSec       uint64
 	commitCalldataSizeLimit  uint64
 	batchDataBufferSizeLimit uint64
 
@@ -86,6 +87,7 @@ func NewBatchProposer(ctx context.Context, cfg *config.BatchProposerConfig, rela
 		batchGasThreshold:        cfg.BatchGasThreshold,
 		batchTxNumThreshold:      cfg.BatchTxNumThreshold,
 		batchBlocksLimit:         cfg.BatchBlocksLimit,
+		batchCommitTimeSec:       cfg.BatchCommitTimeSec,
 		commitCalldataSizeLimit:  cfg.CommitTxCalldataSizeLimit,
 		batchDataBufferSizeLimit: 100*cfg.CommitTxCalldataSizeLimit + 1*1024*1024, // @todo: determine the value.
 		proofGenerationFreq:      cfg.ProofGenerationFreq,
@@ -124,6 +126,7 @@ func (p *BatchProposer) Start() {
 
 				case <-ticker.C:
 					p.tryProposeBatch()
+					p.tryCommitBatches()
 				}
 			}
 		}(ctx)
@@ -225,11 +228,16 @@ func (p *BatchProposer) tryProposeBatch() {
 
 		p.proposeBatch(blocks)
 	}
-
-	p.tryCommitBatches()
 }
 
 func (p *BatchProposer) tryCommitBatches() {
+	p.mutex.Lock()
+	defer p.mutex.Unlock()
+
+	if len(p.batchDataBuffer) == 0 {
+		return
+	}
+
 	// estimate the calldata length to determine whether to commit the pending batches
 	index := 0
 	commit := false
@@ -249,7 +257,7 @@ func (p *BatchProposer) tryCommitBatches() {
 			break
 		}
 	}
-	if !commit {
+	if !commit && p.batchDataBuffer[0].Timestamp()+p.batchCommitTimeSec > uint64(time.Now().Unix()) {
 		return
 	}
 
@@ -287,14 +295,13 @@ func (p *BatchProposer) proposeBatch(blocks []*types.BlockInfo) {
 		return
 	}
 
-	var (
-		length         = len(blocks)
-		gasUsed, txNum uint64
-	)
+	var gasUsed, txNum uint64
+	reachThreshold := false
 	// add blocks into batch until reach batchGasThreshold
 	for i, block := range blocks {
 		if (gasUsed+block.GasUsed > p.batchGasThreshold) || (txNum+block.TxNum > p.batchTxNumThreshold) {
 			blocks = blocks[:i]
+			reachThreshold = true
 			break
 		}
 		gasUsed += block.GasUsed
@@ -304,7 +311,7 @@ func (p *BatchProposer) proposeBatch(blocks []*types.BlockInfo) {
 	// if too few gas gathered, but we don't want to halt, we then check the first block in the batch:
 	// if it's not old enough we will skip proposing the batch,
 	// otherwise we will still propose a batch
-	if length == len(blocks) && blocks[0].BlockTimestamp+p.batchTimeSec > uint64(time.Now().Unix()) {
+	if !reachThreshold && blocks[0].BlockTimestamp+p.batchTimeSec > uint64(time.Now().Unix()) {
 		return
 	}
 
