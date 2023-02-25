@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"scroll-tech/common/types"
 	"strings"
 
 	"github.com/jmoiron/sqlx"
@@ -13,8 +12,11 @@ import (
 	geth_types "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/log"
 
-	"scroll-tech/common/utils"
 	"scroll-tech/database/cache"
+
+	"scroll-tech/common/utils"
+
+	"scroll-tech/common/types"
 )
 
 type blockTraceOrm struct {

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math/big"
 	"runtime"
+
 	"scroll-tech/common/types"
 
 	"modernc.org/mathutil"
