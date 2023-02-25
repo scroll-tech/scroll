@@ -295,14 +295,13 @@ func (p *BatchProposer) proposeBatch(blocks []*types.BlockInfo) {
 		return
 	}
 
-	var (
-		length         = len(blocks)
-		gasUsed, txNum uint64
-	)
+	var gasUsed, txNum uint64
+	reachThreshold := false
 	// add blocks into batch until reach batchGasThreshold
 	for i, block := range blocks {
 		if (gasUsed+block.GasUsed > p.batchGasThreshold) || (txNum+block.TxNum > p.batchTxNumThreshold) {
 			blocks = blocks[:i]
+			reachThreshold = true
 			break
 		}
 		gasUsed += block.GasUsed
@@ -312,7 +311,7 @@ func (p *BatchProposer) proposeBatch(blocks []*types.BlockInfo) {
 	// if too few gas gathered, but we don't want to halt, we then check the first block in the batch:
 	// if it's not old enough we will skip proposing the batch,
 	// otherwise we will still propose a batch
-	if length == len(blocks) && blocks[0].BlockTimestamp+p.batchTimeSec > uint64(time.Now().Unix()) {
+	if !reachThreshold && blocks[0].BlockTimestamp+p.batchTimeSec > uint64(time.Now().Unix()) {
 		return
 	}
 
