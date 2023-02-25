@@ -39,7 +39,11 @@ type BatchData struct {
 	piCfg *PublicInputHashConfig
 }
 
+// Timestamp returns the timestamp of the first block in the BlockData.
 func (b *BatchData) Timestamp() uint64 {
+	if len(b.Batch.Blocks) == 0 {
+		return 0
+	}
 	return b.Batch.Blocks[0].Timestamp
 }
 
