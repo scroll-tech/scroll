@@ -231,6 +231,9 @@ func (p *BatchProposer) tryProposeBatch() {
 }
 
 func (p *BatchProposer) tryCommitBatches() {
+	p.mutex.Lock()
+	defer p.mutex.Unlock()
+
 	if len(p.batchDataBuffer) == 0 {
 		return
 	}
