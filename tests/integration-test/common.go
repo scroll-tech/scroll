@@ -143,7 +143,7 @@ func mockBridgeConfig(t *testing.T) string {
 		cfg.L1Config.RelayerConfig.SenderConfig.Endpoint = l2gethImg.Endpoint()
 	}
 	if dbImg != nil {
-		cfg.DBConfig.DSN = dbImg.Endpoint()
+		cfg.DBConfig.Persistence.DSN = dbImg.Endpoint()
 	}
 
 	// Store changed bridge config into a temp file.
@@ -162,11 +162,7 @@ func mockCoordinatorConfig(t *testing.T) string {
 
 	cfg.RollerManagerConfig.Verifier.MockMode = true
 	if dbImg != nil {
-		cfg.DBConfig.DSN = dbImg.Endpoint()
-	}
-
-	if l2gethImg != nil {
-		cfg.L2Config.Endpoint = l2gethImg.Endpoint()
+		cfg.DBConfig.Persistence.DSN = dbImg.Endpoint()
 	}
 
 	data, err := json.Marshal(cfg)
@@ -183,7 +179,7 @@ func mockDatabaseConfig(t *testing.T) string {
 	cfg, err := database.NewConfig("../../database/config.json")
 	assert.NoError(t, err)
 	if dbImg != nil {
-		cfg.DSN = dbImg.Endpoint()
+		cfg.Persistence.DSN = dbImg.Endpoint()
 	}
 	data, err := json.Marshal(cfg)
 	assert.NoError(t, err)
