@@ -7,6 +7,8 @@ import (
 
 	"github.com/jmoiron/sqlx"
 	"github.com/scroll-tech/go-ethereum/log"
+
+	"scroll-tech/common/types"
 )
 
 type l1MessageOrm struct {
@@ -20,11 +22,11 @@ func NewL1MessageOrm(db *sqlx.DB) L1MessageOrm {
 	return &l1MessageOrm{db: db}
 }
 
-// GetL1MessageByMsgHash fetch message by nonce
-func (m *l1MessageOrm) GetL1MessageByMsgHash(msgHash string) (*L1Message, error) {
-	msg := L1Message{}
+// GetL1MessageByMsgHash fetch message by queue_index
+func (m *l1MessageOrm) GetL1MessageByMsgHash(msgHash string) (*types.L1Message, error) {
+	msg := types.L1Message{}
 
-	row := m.db.QueryRowx(`SELECT nonce, msg_hash, height, sender, target, value, fee, gas_limit, deadline, calldata, layer1_hash, status FROM l1_message WHERE msg_hash = $1`, msgHash)
+	row := m.db.QueryRowx(`SELECT queue_index, msg_hash, height, sender, target, value, gas_limit, calldata, layer1_hash, status FROM l1_message WHERE msg_hash = $1`, msgHash)
 
 	if err := row.StructScan(&msg); err != nil {
 		return nil, err
@@ -32,11 +34,11 @@ func (m *l1MessageOrm) GetL1MessageByMsgHash(msgHash string) (*L1Message, error)
 	return &msg, nil
 }
 
-// GetL1MessageByNonce fetch message by nonce
-func (m *l1MessageOrm) GetL1MessageByNonce(nonce uint64) (*L1Message, error) {
-	msg := L1Message{}
+// GetL1MessageByQueueIndex fetch message by queue_index
+func (m *l1MessageOrm) GetL1MessageByQueueIndex(queueIndex uint64) (*types.L1Message, error) {
+	msg := types.L1Message{}
 
-	row := m.db.QueryRowx(`SELECT nonce, msg_hash, height, sender, target, value, fee, gas_limit, deadline, calldata, layer1_hash, status FROM l1_message WHERE nonce = $1`, nonce)
+	row := m.db.QueryRowx(`SELECT queue_index, msg_hash, height, sender, target, value, calldata, layer1_hash, status FROM l1_message WHERE queue_index = $1`, queueIndex)
 
 	if err := row.StructScan(&msg); err != nil {
 		return nil, err
@@ -45,15 +47,15 @@ func (m *l1MessageOrm) GetL1MessageByNonce(nonce uint64) (*L1Message, error) {
 }
 
 // GetL1MessagesByStatus fetch list of unprocessed messages given msg status
-func (m *l1MessageOrm) GetL1MessagesByStatus(status MsgStatus, limit uint64) ([]*L1Message, error) {
-	rows, err := m.db.Queryx(`SELECT nonce, msg_hash, height, sender, target, value, fee, gas_limit, deadline, calldata, layer1_hash, status FROM l1_message WHERE status = $1 ORDER BY nonce ASC LIMIT $2;`, status, limit)
+func (m *l1MessageOrm) GetL1MessagesByStatus(status types.MsgStatus, limit uint64) ([]*types.L1Message, error) {
+	rows, err := m.db.Queryx(`SELECT queue_index, msg_hash, height, sender, target, value, calldata, layer1_hash, status FROM l1_message WHERE status = $1 ORDER BY queue_index ASC LIMIT $2;`, status, limit)
 	if err != nil {
 		return nil, err
 	}
 
-	var msgs []*L1Message
+	var msgs []*types.L1Message
 	for rows.Next() {
-		msg := &L1Message{}
+		msg := &types.L1Message{}
 		if err = rows.StructScan(&msg); err != nil {
 			break
 		}
@@ -68,56 +70,55 @@ func (m *l1MessageOrm) GetL1MessagesByStatus(status MsgStatus, limit uint64) ([]
 	return msgs, rows.Close()
 }
 
-// GetL1ProcessedNonce fetch latest processed message nonce
-func (m *l1MessageOrm) GetL1ProcessedNonce() (int64, error) {
-	row := m.db.QueryRow(`SELECT MAX(nonce) FROM l1_message WHERE status = $1;`, MsgConfirmed)
+// GetL1ProcessedQueueIndex fetch latest processed message queue_index
+func (m *l1MessageOrm) GetL1ProcessedQueueIndex() (int64, error) {
+	row := m.db.QueryRow(`SELECT MAX(queue_index) FROM l1_message WHERE status = $1;`, types.MsgConfirmed)
 
-	var nonce sql.NullInt64
-	if err := row.Scan(&nonce); err != nil {
-		if err == sql.ErrNoRows || !nonce.Valid {
+	var queueIndex sql.NullInt64
+	if err := row.Scan(&queueIndex); err != nil {
+		if err == sql.ErrNoRows || !queueIndex.Valid {
 			// no row means no message
-			// since nonce starts with 0, return -1 as the processed nonce
+			// since queueIndex starts with 0, return -1 as the processed queueIndex
 			return -1, nil
 		}
 		return 0, err
 	}
-	if nonce.Valid {
-		return nonce.Int64, nil
+	if queueIndex.Valid {
+		return queueIndex.Int64, nil
 	}
 	return -1, nil
 }
 
 // SaveL1Messages batch save a list of layer1 messages
-func (m *l1MessageOrm) SaveL1Messages(ctx context.Context, messages []*L1Message) error {
+func (m *l1MessageOrm) SaveL1Messages(ctx context.Context, messages []*types.L1Message) error {
 	if len(messages) == 0 {
 		return nil
 	}
 
 	messageMaps := make([]map[string]interface{}, len(messages))
 	for i, msg := range messages {
+
 		messageMaps[i] = map[string]interface{}{
-			"nonce":       msg.Nonce,
+			"queue_index": msg.QueueIndex,
 			"msg_hash":    msg.MsgHash,
 			"height":      msg.Height,
 			"sender":      msg.Sender,
 			"target":      msg.Target,
 			"value":       msg.Value,
-			"fee":         msg.Fee,
 			"gas_limit":   msg.GasLimit,
-			"deadline":    msg.Deadline,
 			"calldata":    msg.Calldata,
 			"layer1_hash": msg.Layer1Hash,
 		}
 	}
-	_, err := m.db.NamedExec(`INSERT INTO public.l1_message (nonce, msg_hash, height, sender, target, value, fee, gas_limit, deadline, calldata, layer1_hash) VALUES (:nonce, :msg_hash, :height, :sender, :target, :value, :fee, :gas_limit, :deadline, :calldata, :layer1_hash);`, messageMaps)
+	_, err := m.db.NamedExec(`INSERT INTO public.l1_message (queue_index, msg_hash, height, sender, target, value, gas_limit, calldata, layer1_hash) VALUES (:queue_index, :msg_hash, :height, :sender, :target, :value, :gas_limit, :calldata, :layer1_hash);`, messageMaps)
 	if err != nil {
-		nonces := make([]uint64, 0, len(messages))
+		queueIndices := make([]uint64, 0, len(messages))
 		heights := make([]uint64, 0, len(messages))
 		for _, msg := range messages {
-			nonces = append(nonces, msg.Nonce)
+			queueIndices = append(queueIndices, msg.QueueIndex)
 			heights = append(heights, msg.Height)
 		}
-		log.Error("failed to insert l1Messages", "nonces", nonces, "heights", heights, "err", err)
+		log.Error("failed to insert l1Messages", "queueIndices", queueIndices, "heights", heights, "err", err)
 	}
 	return err
 }
@@ -132,7 +133,7 @@ func (m *l1MessageOrm) UpdateLayer2Hash(ctx context.Context, msgHash, layer2Hash
 }
 
 // UpdateLayer1Status updates message stauts, given message hash
-func (m *l1MessageOrm) UpdateLayer1Status(ctx context.Context, msgHash string, status MsgStatus) error {
+func (m *l1MessageOrm) UpdateLayer1Status(ctx context.Context, msgHash string, status types.MsgStatus) error {
 	if _, err := m.db.ExecContext(ctx, m.db.Rebind("update l1_message set status = ? where msg_hash = ?;"), status, msgHash); err != nil {
 		return err
 	}
@@ -141,7 +142,7 @@ func (m *l1MessageOrm) UpdateLayer1Status(ctx context.Context, msgHash string, s
 }
 
 // UpdateLayer1StatusAndLayer2Hash updates message status and layer2 transaction hash, given message hash
-func (m *l1MessageOrm) UpdateLayer1StatusAndLayer2Hash(ctx context.Context, msgHash string, status MsgStatus, layer2Hash string) error {
+func (m *l1MessageOrm) UpdateLayer1StatusAndLayer2Hash(ctx context.Context, msgHash string, status types.MsgStatus, layer2Hash string) error {
 	if _, err := m.db.ExecContext(ctx, m.db.Rebind("update l1_message set status = ?, layer2_hash = ? where msg_hash = ?;"), status, layer2Hash, msgHash); err != nil {
 		return err
 	}
@@ -168,8 +169,8 @@ func (m *l1MessageOrm) GetLayer1LatestWatchedHeight() (int64, error) {
 	return -1, nil
 }
 
-func (m *l1MessageOrm) GetRelayL1MessageTxHash(nonce uint64) (sql.NullString, error) {
-	row := m.db.QueryRow(`SELECT layer2_hash FROM l1_message WHERE nonce = $1`, nonce)
+func (m *l1MessageOrm) GetRelayL1MessageTxHash(queueIndex uint64) (sql.NullString, error) {
+	row := m.db.QueryRow(`SELECT layer2_hash FROM l1_message WHERE queue_index = $1`, queueIndex)
 	var hash sql.NullString
 	if err := row.Scan(&hash); err != nil {
 		return sql.NullString{}, err

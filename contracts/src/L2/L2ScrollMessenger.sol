@@ -2,11 +2,16 @@
 
 pragma solidity ^0.8.0;
 
-import { IL2ScrollMessenger, IScrollMessenger } from "./IL2ScrollMessenger.sol";
-import { L2ToL1MessagePasser } from "./predeploys/L2ToL1MessagePasser.sol";
-import { OwnableBase } from "../libraries/common/OwnableBase.sol";
-import { IGasOracle } from "../libraries/oracle/IGasOracle.sol";
-import { ScrollConstants } from "../libraries/ScrollConstants.sol";
+import { PausableUpgradeable } from "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
+
+import { IL2ScrollMessenger } from "./IL2ScrollMessenger.sol";
+import { L2MessageQueue } from "./predeploys/L2MessageQueue.sol";
+import { IL1BlockContainer } from "./predeploys/IL1BlockContainer.sol";
+import { IL1GasPriceOracle } from "./predeploys/IL1GasPriceOracle.sol";
+
+import { PatriciaMerkleTrieVerifier } from "../libraries/verifier/PatriciaMerkleTrieVerifier.sol";
+import { ScrollConstants } from "../libraries/constants/ScrollConstants.sol";
+import { IScrollMessenger } from "../libraries/IScrollMessenger.sol";
 import { ScrollMessengerBase } from "../libraries/ScrollMessengerBase.sol";
 
 /// @title L2ScrollMessenger
@@ -18,63 +23,171 @@ import { ScrollMessengerBase } from "../libraries/ScrollMessengerBase.sol";
 ///
 /// @dev It should be a predeployed contract in layer 2 and should hold infinite amount
 /// of Ether (Specifically, `uint256(-1)`), which can be initialized in Genesis Block.
-contract L2ScrollMessenger is ScrollMessengerBase, OwnableBase, IL2ScrollMessenger {
-  /**************************************** Variables ****************************************/
+contract L2ScrollMessenger is ScrollMessengerBase, PausableUpgradeable, IL2ScrollMessenger {
+  /**********
+   * Events *
+   **********/
 
-  /// @notice Mapping from relay id to relay status.
-  mapping(bytes32 => bool) public isMessageRelayed;
+  /// @notice Emitted when the maximum number of times each message can fail in L2 is updated.
+  /// @param maxFailedExecutionTimes The new maximum number of times each message can fail in L2.
+  event UpdateMaxFailedExecutionTimes(uint256 maxFailedExecutionTimes);
 
-  /// @notice Mapping from message hash to execution status.
-  mapping(bytes32 => bool) public isMessageExecuted;
+  /*************
+   * Constants *
+   *************/
 
-  /// @notice Message nonce, used to avoid relay attack.
-  uint256 public messageNonce;
+  uint256 private constant MIN_GAS_LIMIT = 21000;
 
-  /// @notice Contract to store the sent message.
-  L2ToL1MessagePasser public messagePasser;
+  /// @notice The contract contains the list of L1 blocks.
+  address public immutable blockContainer;
 
-  constructor(address _owner) {
-    ScrollMessengerBase._initialize();
-    owner = _owner;
+  /// @notice The address of L2MessageQueue.
+  address public immutable gasOracle;
+
+  /// @notice The address of L2MessageQueue.
+  address public immutable messageQueue;
+
+  /*************
+   * Variables *
+   *************/
+
+  /// @notice Mapping from L2 message hash to sent status.
+  mapping(bytes32 => bool) public isL2MessageSent;
+
+  /// @notice Mapping from L1 message hash to a boolean value indicating if the message has been successfully executed.
+  mapping(bytes32 => bool) public isL1MessageExecuted;
+
+  /// @notice Mapping from L1 message hash to the number of failure times.
+  mapping(bytes32 => uint256) public l1MessageFailedTimes;
+
+  /// @notice The maximum number of times each L1 message can fail on L2.
+  uint256 public maxFailedExecutionTimes;
+
+  /***************
+   * Constructor *
+   ***************/
+
+  constructor(
+    address _blockContainer,
+    address _gasOracle,
+    address _messageQueue
+  ) {
+    blockContainer = _blockContainer;
+    gasOracle = _gasOracle;
+    messageQueue = _messageQueue;
+  }
+
+  function initialize(address _counterpart, address _feeVault) external initializer {
+    PausableUpgradeable.__Pausable_init();
+    ScrollMessengerBase._initialize(_counterpart, _feeVault);
+
+    maxFailedExecutionTimes = 3;
 
     // initialize to a nonzero value
     xDomainMessageSender = ScrollConstants.DEFAULT_XDOMAIN_MESSAGE_SENDER;
-
-    messagePasser = new L2ToL1MessagePasser(address(this));
   }
 
-  /**************************************** Mutated Functions ****************************************/
+  /*************************
+   * Public View Functions *
+   *************************/
+
+  /// @notice Check whether the l1 message is included in the corresponding L1 block.
+  /// @param _blockHash The block hash where the message should in.
+  /// @param _msgHash The hash of the message to check.
+  /// @param _proof The encoded storage proof from eth_getProof.
+  /// @return bool Return true is the message is included in L1, otherwise return false.
+  function verifyMessageInclusionStatus(
+    bytes32 _blockHash,
+    bytes32 _msgHash,
+    bytes calldata _proof
+  ) public view returns (bool) {
+    bytes32 _expectedStateRoot = IL1BlockContainer(blockContainer).getStateRoot(_blockHash);
+    require(_expectedStateRoot != bytes32(0), "Block is not imported");
+
+    // @todo fix the actual slot later.
+    bytes32 _storageKey;
+    // `mapping(bytes32 => bool) public isL1MessageSent` is the 105-nd slot of contract `L1ScrollMessenger`.
+    assembly {
+      mstore(0x00, _msgHash)
+      mstore(0x20, 105)
+      _storageKey := keccak256(0x00, 0x40)
+    }
+
+    (bytes32 _computedStateRoot, bytes32 _storageValue) = PatriciaMerkleTrieVerifier.verifyPatriciaProof(
+      counterpart,
+      _storageKey,
+      _proof
+    );
+    require(_computedStateRoot == _expectedStateRoot, "State roots mismatch");
+
+    return uint256(_storageValue) == 1;
+  }
+
+  /// @notice Check whether the message is executed in the corresponding L1 block.
+  /// @param _blockHash The block hash where the message should in.
+  /// @param _msgHash The hash of the message to check.
+  /// @param _proof The encoded storage proof from eth_getProof.
+  /// @return bool Return true is the message is executed in L1, otherwise return false.
+  function verifyMessageExecutionStatus(
+    bytes32 _blockHash,
+    bytes32 _msgHash,
+    bytes calldata _proof
+  ) external view returns (bool) {
+    bytes32 _expectedStateRoot = IL1BlockContainer(blockContainer).getStateRoot(_blockHash);
+    require(_expectedStateRoot != bytes32(0), "Block not imported");
+
+    // @todo fix the actual slot later.
+    bytes32 _storageKey;
+    // `mapping(bytes32 => bool) public isL2MessageExecuted` is the 106-th slot of contract `L1ScrollMessenger`.
+    assembly {
+      mstore(0x00, _msgHash)
+      mstore(0x20, 106)
+      _storageKey := keccak256(0x00, 0x40)
+    }
+
+    (bytes32 _computedStateRoot, bytes32 _storageValue) = PatriciaMerkleTrieVerifier.verifyPatriciaProof(
+      counterpart,
+      _storageKey,
+      _proof
+    );
+    require(_computedStateRoot == _expectedStateRoot, "State root mismatch");
+
+    return uint256(_storageValue) == 1;
+  }
+
+  /****************************
+   * Public Mutated Functions *
+   ****************************/
 
   /// @inheritdoc IScrollMessenger
   function sendMessage(
     address _to,
-    uint256 _fee,
+    uint256 _value,
     bytes memory _message,
     uint256 _gasLimit
-  ) external payable override onlyWhitelistedSender(msg.sender) {
-    require(msg.value >= _fee, "cannot pay fee");
-
-    // solhint-disable-next-line not-rely-on-time
-    uint256 _deadline = block.timestamp + dropDelayDuration;
-    // compute fee by GasOracle contract.
-    uint256 _minFee = gasOracle == address(0) ? 0 : IGasOracle(gasOracle).estimateMessageFee(msg.sender, _to, _message);
-    require(_fee >= _minFee, "fee too small");
-
-    uint256 _nonce = messageNonce;
-    uint256 _value;
-    unchecked {
-      _value = msg.value - _fee;
+  ) external payable override whenNotPaused {
+    // by pass fee vault relay
+    if (feeVault != msg.sender) {
+      require(_gasLimit >= MIN_GAS_LIMIT, "gas limit too small");
     }
 
-    bytes32 _msghash = keccak256(abi.encodePacked(msg.sender, _to, _value, _fee, _deadline, _nonce, _message));
-
-    messagePasser.passMessageToL1(_msghash);
-
-    emit SentMessage(_to, msg.sender, _value, _fee, _deadline, _message, _nonce, _gasLimit);
-
-    unchecked {
-      messageNonce = _nonce + 1;
+    // compute and deduct the messaging fee to fee vault.
+    uint256 _fee = _gasLimit * IL1GasPriceOracle(gasOracle).l1BaseFee();
+    require(msg.value >= _value + _fee, "Insufficient msg.value");
+    if (_fee > 0) {
+      (bool _success, ) = feeVault.call{ value: msg.value - _value }("");
+      require(_success, "Failed to deduct the fee");
     }
+
+    uint256 _nonce = L2MessageQueue(messageQueue).nextMessageIndex();
+    bytes32 _xDomainCalldataHash = keccak256(_encodeXDomainCalldata(msg.sender, _to, _value, _nonce, _message));
+
+    require(!isL2MessageSent[_xDomainCalldataHash], "Duplicated message");
+    isL2MessageSent[_xDomainCalldataHash] = true;
+
+    L2MessageQueue(messageQueue).appendMessage(_xDomainCalldataHash);
+
+    emit SentMessage(msg.sender, _to, _value, _nonce, _gasLimit, _message);
   }
 
   /// @inheritdoc IL2ScrollMessenger
@@ -82,27 +195,77 @@ contract L2ScrollMessenger is ScrollMessengerBase, OwnableBase, IL2ScrollMesseng
     address _from,
     address _to,
     uint256 _value,
-    uint256 _fee,
-    uint256 _deadline,
     uint256 _nonce,
     bytes memory _message
-  ) external override onlyWhitelistedSender(msg.sender) {
+  ) external override whenNotPaused onlyWhitelistedSender(msg.sender) {
     // anti reentrance
-    require(xDomainMessageSender == ScrollConstants.DEFAULT_XDOMAIN_MESSAGE_SENDER, "already in execution");
+    require(xDomainMessageSender == ScrollConstants.DEFAULT_XDOMAIN_MESSAGE_SENDER, "Message is already in execution");
 
-    // solhint-disable-next-line not-rely-on-time
-    require(_deadline >= block.timestamp, "Message expired");
+    // @todo address unalis to check sender is L1ScrollMessenger
 
-    bytes32 _msghash = keccak256(abi.encodePacked(_from, _to, _value, _fee, _deadline, _nonce, _message));
+    bytes32 _xDomainCalldataHash = keccak256(_encodeXDomainCalldata(_from, _to, _value, _nonce, _message));
 
-    require(!isMessageExecuted[_msghash], "Message successfully executed");
+    require(!isL1MessageExecuted[_xDomainCalldataHash], "Message was already successfully executed");
 
+    _executeMessage(_from, _to, _value, _message, _xDomainCalldataHash);
+  }
+
+  /// @inheritdoc IL2ScrollMessenger
+  function retryMessageWithProof(
+    address _from,
+    address _to,
+    uint256 _value,
+    uint256 _nonce,
+    bytes memory _message,
+    L1MessageProof calldata _proof
+  ) external override whenNotPaused {
+    // anti reentrance
+    require(xDomainMessageSender == ScrollConstants.DEFAULT_XDOMAIN_MESSAGE_SENDER, "Already in execution");
+
+    // check message status
+    bytes32 _xDomainCalldataHash = keccak256(_encodeXDomainCalldata(_from, _to, _value, _nonce, _message));
+    require(!isL1MessageExecuted[_xDomainCalldataHash], "Message successfully executed");
+    require(l1MessageFailedTimes[_xDomainCalldataHash] > 0, "Message not relayed before");
+
+    require(
+      verifyMessageInclusionStatus(_proof.blockHash, _xDomainCalldataHash, _proof.stateRootProof),
+      "Message not included"
+    );
+
+    _executeMessage(_from, _to, _value, _message, _xDomainCalldataHash);
+  }
+
+  /************************
+   * Restricted Functions *
+   ************************/
+
+  /// @notice Pause the contract
+  /// @dev This function can only called by contract owner.
+  function pause() external onlyOwner {
+    _pause();
+  }
+
+  function updateMaxFailedExecutionTimes(uint256 _maxFailedExecutionTimes) external onlyOwner {
+    maxFailedExecutionTimes = _maxFailedExecutionTimes;
+
+    emit UpdateMaxFailedExecutionTimes(_maxFailedExecutionTimes);
+  }
+
+  /**********************
+   * Internal Functions *
+   **********************/
+
+  function _executeMessage(
+    address _from,
+    address _to,
+    uint256 _value,
+    bytes memory _message,
+    bytes32 _xDomainCalldataHash
+  ) internal {
     // @todo check `_to` address to avoid attack.
 
-    // @todo take fee and distribute to relayer later.
-
     // @note This usually will never happen, just in case.
-    require(_from != xDomainMessageSender, "invalid message sender");
+    require(_from != xDomainMessageSender, "Invalid message sender");
 
     xDomainMessageSender = _from;
     // solhint-disable-next-line avoid-low-level-calls
@@ -111,60 +274,15 @@ contract L2ScrollMessenger is ScrollMessengerBase, OwnableBase, IL2ScrollMesseng
     xDomainMessageSender = ScrollConstants.DEFAULT_XDOMAIN_MESSAGE_SENDER;
 
     if (success) {
-      isMessageExecuted[_msghash] = true;
-      emit RelayedMessage(_msghash);
+      isL1MessageExecuted[_xDomainCalldataHash] = true;
+      emit RelayedMessage(_xDomainCalldataHash);
     } else {
-      emit FailedRelayedMessage(_msghash);
+      unchecked {
+        uint256 _failedTimes = l1MessageFailedTimes[_xDomainCalldataHash] + 1;
+        require(_failedTimes <= maxFailedExecutionTimes, "Exceed maximum failure times");
+        l1MessageFailedTimes[_xDomainCalldataHash] = _failedTimes;
+      }
+      emit FailedRelayedMessage(_xDomainCalldataHash);
     }
-
-    bytes32 _relayId = keccak256(abi.encodePacked(_msghash, msg.sender, block.number));
-
-    isMessageRelayed[_relayId] = true;
-  }
-
-  /// @inheritdoc IScrollMessenger
-  function dropMessage(
-    address,
-    address,
-    uint256,
-    uint256,
-    uint256,
-    uint256,
-    bytes memory,
-    uint256
-  ) external virtual override {
-    revert("not supported");
-  }
-
-  /**************************************** Restricted Functions ****************************************/
-
-  /// @notice Update whitelist contract.
-  /// @dev This function can only called by contract owner.
-  /// @param _newWhitelist The address of new whitelist contract.
-  function updateWhitelist(address _newWhitelist) external onlyOwner {
-    address _oldWhitelist = whitelist;
-
-    whitelist = _newWhitelist;
-    emit UpdateWhitelist(_oldWhitelist, _newWhitelist);
-  }
-
-  /// @notice Update the address of gas oracle.
-  /// @dev This function can only called by contract owner.
-  /// @param _newGasOracle The address to update.
-  function updateGasOracle(address _newGasOracle) external onlyOwner {
-    address _oldGasOracle = gasOracle;
-    gasOracle = _newGasOracle;
-
-    emit UpdateGasOracle(_oldGasOracle, _newGasOracle);
-  }
-
-  /// @notice Update the drop delay duration.
-  /// @dev This function can only called by contract owner.
-  /// @param _newDuration The new delay duration to update.
-  function updateDropDelayDuration(uint256 _newDuration) external onlyOwner {
-    uint256 _oldDuration = dropDelayDuration;
-    dropDelayDuration = _newDuration;
-
-    emit UpdateDropDelayDuration(_oldDuration, _newDuration);
   }
 }

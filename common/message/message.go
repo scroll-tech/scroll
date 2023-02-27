@@ -214,8 +214,9 @@ func (z *ProofDetail) Hash() ([]byte, error) {
 
 // AggProof includes the proof and public input that are required to verification and rollup.
 type AggProof struct {
-	Proof     []byte `json:"proof"`
-	Instance  []byte `json:"instance"`
-	FinalPair []byte `json:"final_pair"`
-	Vk        []byte `json:"vk"`
+	Proof      []byte `json:"proof"`
+	Instance   []byte `json:"instance"`
+	FinalPair  []byte `json:"final_pair"`
+	Vk         []byte `json:"vk"`
+	BlockCount uint   `json:"block_count"`
 }

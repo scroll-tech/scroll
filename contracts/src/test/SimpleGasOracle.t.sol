@@ -63,10 +63,10 @@ contract SimpleGasOracleTest is DSTestPlus {
   ) external {
     // use default config when no custom config
     oracle.updateDefaultFeeConfig(1, 2);
-    assertEq(oracle.estimateMessageFee(_sender, address(0), _message), 1 + 2 * _message.length);
+    assertEq(oracle.estimateMessageFee(_sender, address(0), _message, 0), 1 + 2 * _message.length);
 
     // use custom config when set
     oracle.updateCustomFeeConfig(_sender, 4, 5);
-    assertEq(oracle.estimateMessageFee(_sender, address(0), _message), 4 + 5 * _message.length);
+    assertEq(oracle.estimateMessageFee(_sender, address(0), _message, 0), 4 + 5 * _message.length);
   }
 }

@@ -4,7 +4,9 @@ pragma solidity ^0.8.0;
 
 /// @title The interface for the ERC721 cross chain gateway in layer 1.
 interface IL1ERC721Gateway {
-  /**************************************** Events ****************************************/
+  /**********
+   * Events *
+   **********/
 
   /// @notice Emitted when the ERC721 NFT is transfered to recipient in layer 1.
   /// @param _l1Token The address of ERC721 NFT in layer 1.
@@ -62,7 +64,9 @@ interface IL1ERC721Gateway {
     uint256[] _tokenIds
   );
 
-  /**************************************** Mutated Funtions ****************************************/
+  /****************************
+   * Public Mutated Functions *
+   ****************************/
 
   /// @notice Deposit some ERC721 NFT to caller's account on layer 2.
   /// @param _token The address of ERC721 NFT in layer 1.
@@ -72,7 +76,7 @@ interface IL1ERC721Gateway {
     address _token,
     uint256 _tokenId,
     uint256 _gasLimit
-  ) external;
+  ) external payable;
 
   /// @notice Deposit some ERC721 NFT to a recipient's account on layer 2.
   /// @param _token The address of ERC721 NFT in layer 1.
@@ -84,7 +88,7 @@ interface IL1ERC721Gateway {
     address _to,
     uint256 _tokenId,
     uint256 _gasLimit
-  ) external;
+  ) external payable;
 
   /// @notice Deposit a list of some ERC721 NFT to caller's account on layer 2.
   /// @param _token The address of ERC721 NFT in layer 1.
@@ -94,7 +98,7 @@ interface IL1ERC721Gateway {
     address _token,
     uint256[] calldata _tokenIds,
     uint256 _gasLimit
-  ) external;
+  ) external payable;
 
   /// @notice Deposit a list of some ERC721 NFT to a recipient's account on layer 2.
   /// @param _token The address of ERC721 NFT in layer 1.
@@ -106,7 +110,7 @@ interface IL1ERC721Gateway {
     address _to,
     uint256[] calldata _tokenIds,
     uint256 _gasLimit
-  ) external;
+  ) external payable;
 
   /// @notice Complete ERC721 withdraw from layer 2 to layer 1 and send NFT to recipient's account in layer 1.
   /// @dev Requirements:
