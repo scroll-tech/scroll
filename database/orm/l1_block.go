@@ -10,9 +10,8 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/scroll-tech/go-ethereum/log"
 
-	"scroll-tech/database/cache"
-
 	"scroll-tech/common/types"
+	"scroll-tech/database/cache"
 )
 
 type l1BlockOrm struct {

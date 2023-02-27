@@ -6,12 +6,11 @@ import (
 	"math/big"
 	"runtime"
 
-	"scroll-tech/common/types"
-
-	"modernc.org/mathutil"
-
 	"github.com/scroll-tech/go-ethereum/log"
 	"golang.org/x/sync/errgroup"
+	"modernc.org/mathutil"
+
+	"scroll-tech/common/types"
 )
 
 func (w *WatcherClient) initCache(ctx context.Context) error {

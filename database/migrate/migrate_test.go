@@ -3,15 +3,13 @@ package migrate
 import (
 	"testing"
 
-	"scroll-tech/database/cache"
-
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
 	"github.com/stretchr/testify/assert"
 
 	"scroll-tech/common/docker"
-
 	"scroll-tech/database"
+	"scroll-tech/database/cache"
 )
 
 var (

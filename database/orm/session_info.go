@@ -6,7 +6,6 @@ import (
 	"github.com/jmoiron/sqlx"
 
 	"scroll-tech/common/types"
-
 	"scroll-tech/database/cache"
 )
 

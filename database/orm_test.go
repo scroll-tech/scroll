@@ -15,14 +15,13 @@ import (
 	geth_types "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/stretchr/testify/assert"
 
-	"scroll-tech/database/cache"
-
 	"scroll-tech/common/docker"
 	"scroll-tech/common/types"
 
 	abi "scroll-tech/bridge/abi"
 
 	"scroll-tech/database"
+	"scroll-tech/database/cache"
 	"scroll-tech/database/migrate"
 	"scroll-tech/database/orm"
 )

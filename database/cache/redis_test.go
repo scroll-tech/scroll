@@ -9,9 +9,8 @@ import (
 	"github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/stretchr/testify/assert"
 
-	"scroll-tech/database/cache"
-
 	"scroll-tech/common/docker"
+	"scroll-tech/database/cache"
 )
 
 func TestRedisCache(t *testing.T) {

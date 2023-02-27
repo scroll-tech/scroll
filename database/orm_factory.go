@@ -6,9 +6,8 @@ import (
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq" //nolint:golint
 
-	"scroll-tech/database/orm"
-
 	"scroll-tech/database/cache"
+	"scroll-tech/database/orm"
 )
 
 // OrmFactory include all ormFactory interface
