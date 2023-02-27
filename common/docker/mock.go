@@ -92,7 +92,7 @@ func NewTestRedisDocker(t *testing.T) ImgInstance {
 	}
 
 	rdb := redis.NewClient(op)
-	utils.TryTimes(3, func() bool {
+	utils.TryTimes(10, func() bool {
 		err = rdb.Ping(context.Background()).Err()
 		return err == nil
 	})
