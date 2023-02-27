@@ -12,6 +12,7 @@ import (
 	"github.com/scroll-tech/go-ethereum/log"
 
 	"scroll-tech/common/types"
+
 	"scroll-tech/database/cache"
 )
 

@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"scroll-tech/common/docker"
+
 	"scroll-tech/database"
 	"scroll-tech/database/cache"
 )
