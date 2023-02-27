@@ -8,7 +8,7 @@ require (
 	github.com/mattn/go-sqlite3 v1.14.14
 	github.com/pressly/goose/v3 v3.7.0
 	github.com/redis/go-redis/v9 v9.0.2
-	github.com/scroll-tech/go-ethereum v1.10.14-0.20230224060425-15f94b93ea4f
+	github.com/scroll-tech/go-ethereum v1.10.14-0.20230220082843-ec9254b0b1c6
 	github.com/stretchr/testify v1.8.1
 	github.com/urfave/cli/v2 v2.17.2-0.20221006022127-8f469abc00aa
 )

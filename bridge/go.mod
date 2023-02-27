@@ -4,7 +4,7 @@ go 1.18
 
 require (
 	github.com/orcaman/concurrent-map v1.0.0
-	github.com/scroll-tech/go-ethereum v1.10.14-0.20230224060425-15f94b93ea4f
+	github.com/scroll-tech/go-ethereum v1.10.14-0.20230220082843-ec9254b0b1c6
 	github.com/stretchr/testify v1.8.1
 	github.com/urfave/cli/v2 v2.17.2-0.20221006022127-8f469abc00aa
 	golang.org/x/sync v0.1.0
