@@ -41,14 +41,9 @@ pipeline {
                                 if (TAGNAME == ""){
                                     return;
                                 }
-                                def brigeImageName = "scrolltech/bridge:$TAGNAME"
                                 sh "docker login --username=$dockerUser --password=$dockerPassword"
-                                sh "echo $brigeImageName"
-                                sh "docker manifest inspect scrolltech/bridge:$TAGNAME > /dev/null"
-
-                                def exist = sh(returnStdout: true, script: 'echo $?')
-                                if (exist != 0){
-                                    return;
+                                catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
+                                    sh "docker manifest inspect scrolltech/bridge:$TAGNAME > /dev/null"
                                 }
                                 // sh "docker login --username=${dockerUser} --password=${dockerPassword}"
                                 // sh "make -C bridge docker"
