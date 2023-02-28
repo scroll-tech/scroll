@@ -399,14 +399,21 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 		log.Info("Start to roll up zk proof", "hash", hash)
 		success := false
 
-		previousBatch, err := r.db.GetLatestFinalizedBatch()
+		previousBatch, err := r.db.GetLatestFinalizingOrFinalizedBatch()
 		if err != nil {
 			log.Error("Failed to get latest finalized batch", "err", err)
 			return
 		}
 
 		if uint64(batch.CreatedAt.Sub(*previousBatch.CreatedAt).Seconds()) < r.cfg.FinalizeBatchIntervalSec {
-			log.Info("Not enough time passed, skipping", "hash", hash)
+			log.Info(
+				"Not enough time passed, skipping",
+				"hash", hash,
+				"createdAt", batch.CreatedAt,
+				"prevHash", previousBatch.Hash,
+				"prevStatus", previousBatch.RollupStatus,
+				"prevCreatedAt", previousBatch.CreatedAt,
+			)
 
 			if err = r.db.UpdateRollupStatus(r.ctx, hash, types.RollupFinalizationSkipped); err != nil {
 				log.Warn("UpdateRollupStatus failed", "hash", hash, "err", err)
