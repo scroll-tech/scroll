@@ -400,12 +400,9 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 		success := false
 
 		previousBatch, err := r.db.GetLatestFinalizingOrFinalizedBatch()
-		if err != nil {
-			log.Error("Failed to get latest finalized batch", "err", err)
-			return
-		}
 
-		if uint64(batch.CreatedAt.Sub(*previousBatch.CreatedAt).Seconds()) < r.cfg.FinalizeBatchIntervalSec {
+		// skip submitting proof
+		if err == nil && uint64(batch.CreatedAt.Sub(*previousBatch.CreatedAt).Seconds()) < r.cfg.FinalizeBatchIntervalSec {
 			log.Info(
 				"Not enough time passed, skipping",
 				"hash", hash,
@@ -421,6 +418,12 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 				success = true
 			}
 
+			return
+		}
+
+		// handle unexpected db error
+		if err != nil && err.Error() != "sql: no rows in result set" {
+			log.Error("Failed to get latest finalized batch", "err", err)
 			return
 		}
 
