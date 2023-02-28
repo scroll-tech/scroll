@@ -404,8 +404,12 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 			log.Error("Failed to get latest finalized batch", "err", err)
 			return
 		}
+		if previousBatch.FinalizedAt == nil {
+			log.Error("Unexpected FinalizedAt value nil for latest finalized batch")
+			return
+		}
 
-		if time.Now().Before(previousBatch.FinalizedAt.Add(1 * time.Minute)) {
+		if uint64(time.Since(*previousBatch.FinalizedAt).Seconds()) < r.cfg.FinalizeBatchIntervalSec {
 			log.Info("Not enough time passed, skipping")
 			return
 		}
