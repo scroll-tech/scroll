@@ -41,10 +41,11 @@ pipeline {
                                 if (TAGNAME == ""){
                                     return;
                                 }
+                                brigeImageName = "scrolltech/bridge:${TAGNAME}"
                                 sh'''
                                 docker login --username=${dockerUser} --password=${dockerPassword}
-                                echo "scrolltech/bridge:${TAGNAME}"
-                                docker manifest inspect "scrolltech/bridge:${TAGNAME}" > /dev/null
+                                echo "${brigeImageName}"
+                                docker manifest inspect "${brigeImageName}" > /dev/null
                                 echo $?
                                 '''
                                 // sh "docker login --username=${dockerUser} --password=${dockerPassword}"
