@@ -1,6 +1,6 @@
 imagePrefix = 'scrolltech'
 credentialDocker = 'dockerhub'
-
+TAGNAME = ''
 pipeline {
     agent any
     options {
