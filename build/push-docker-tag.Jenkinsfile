@@ -45,7 +45,11 @@ pipeline {
                                 sh "docker login --username=$dockerUser --password=$dockerPassword"
                                 sh "echo $brigeImageName"
                                 sh "docker manifest inspect scrolltech/bridge:$TAGNAME > /dev/null"
-                                sh "echo ${?}"
+
+                                def exist = sh(returnStdout: true, script: 'echo $?')
+                                if (exist != 0){
+                                    return;
+                                }
                                 // sh "docker login --username=${dockerUser} --password=${dockerPassword}"
                                 // sh "make -C bridge docker"
                                 // sh "make -C coordinator docker"
