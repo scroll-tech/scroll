@@ -42,13 +42,10 @@ pipeline {
                                     return;
                                 }
                                 def brigeImageName = "scrolltech/bridge:$TAGNAME"
-                                sh'''
-                                #!/bin/bash
-                                docker login --username=${dockerUser} --password=${dockerPassword}
-                                echo "$brigeImageName"
-                                docker manifest inspect "scrolltech/bridge:$TAGNAME" > /dev/null
-                                echo $?
-                                '''
+                                sh "docker login --username=$dockerUser --password=$dockerPassword"
+                                sh "echo $brigeImageName"
+                                sh "docker manifest inspect scrolltech/bridge:$TAGNAME > /dev/null"
+                                sh "echo $?"
                                 // sh "docker login --username=${dockerUser} --password=${dockerPassword}"
                                 // sh "make -C bridge docker"
                                 // sh "make -C coordinator docker"
