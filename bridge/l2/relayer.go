@@ -410,9 +410,9 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 				"Not enough time passed, skipping",
 				"hash", hash,
 				"createdAt", batch.CreatedAt,
-				"prevHash", previousBatch.Hash,
-				"prevStatus", previousBatch.RollupStatus,
-				"prevCreatedAt", previousBatch.CreatedAt,
+				"lastFinalizingHash", previousBatch.Hash,
+				"lastFinalizingStatus", previousBatch.RollupStatus,
+				"lastFinalizingCreatedAt", previousBatch.CreatedAt,
 			)
 
 			if err = r.db.UpdateRollupStatus(r.ctx, hash, types.RollupFinalizationSkipped); err != nil {
