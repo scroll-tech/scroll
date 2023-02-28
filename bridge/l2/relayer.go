@@ -410,7 +410,14 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 		}
 
 		if uint64(time.Since(*previousBatch.FinalizedAt).Seconds()) < r.cfg.FinalizeBatchIntervalSec {
-			log.Info("Not enough time passed, skipping")
+			log.Info("Not enough time passed, skipping", "hash", hash)
+
+			if err = r.db.UpdateRollupStatus(r.ctx, hash, types.RollupFinalizationSkipped); err != nil {
+				log.Warn("UpdateRollupStatus failed", "hash", hash, "err", err)
+			} else {
+				success = true
+			}
+
 			return
 		}
 
