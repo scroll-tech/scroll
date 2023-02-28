@@ -42,8 +42,14 @@ pipeline {
                                     return;
                                 }
                                 sh "docker login --username=$dockerUser --password=$dockerPassword"
-                                catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
+                                catchError(buildResult: 'SUCCESS', stageResult: 'SUCCESS') {
                                     sh "docker manifest inspect scrolltech/bridge:$TAGNAME > /dev/null"
+                                }
+                                def condition = sh(returnStdout: true, script: 'echo $?')
+                                echo condition
+                                // skip the building part if the tag already existed
+                                if condition == 0 {
+                                    return;
                                 }
                                 // sh "docker login --username=${dockerUser} --password=${dockerPassword}"
                                 // sh "make -C bridge docker"
