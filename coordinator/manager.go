@@ -15,15 +15,26 @@ import (
 	geth_types "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
+	geth_metrics "github.com/scroll-tech/go-ethereum/metrics"
 	"github.com/scroll-tech/go-ethereum/rpc"
 
 	"scroll-tech/common/message"
+	"scroll-tech/common/metrics"
 	"scroll-tech/common/types"
-
 	"scroll-tech/database"
 
 	"scroll-tech/coordinator/config"
 	"scroll-tech/coordinator/verifier"
+)
+
+var (
+	coordinatorProofsReceivedHeightGauge = geth_metrics.NewRegisteredGauge("coordinator/proofs/received/height", metrics.ScrollRegistry)
+	coordinatorProofsVerifiedHeightGauge = geth_metrics.NewRegisteredGauge("coordinator/proofs/verified/height", metrics.ScrollRegistry)
+
+	coordinatorSessionsTimeoutTotalCounter      = geth_metrics.NewRegisteredCounter("coordinator/sessions/timeout/total", metrics.ScrollRegistry)
+	coordinatorProofsReceivedTotalCounter       = geth_metrics.NewRegisteredCounter("coordinator/proofs/received/total", metrics.ScrollRegistry)
+	coordinatorProofsVerifiedTotalCounter       = geth_metrics.NewRegisteredCounter("coordinator/proofs/verified/total", metrics.ScrollRegistry)
+	coordinatorProofsVerifiedFailedTotalCounter = geth_metrics.NewRegisteredCounter("coordinator/proofs/verified/failed/total", metrics.ScrollRegistry)
 )
 
 const (
@@ -291,15 +302,14 @@ func (m *Manager) handleZkProof(pk string, msg *message.ProofDetail) error {
 		return dbErr
 	}
 
-	var err error
-	tasks, err := m.orm.GetBlockBatches(map[string]interface{}{"hash": msg.ID})
-	if len(tasks) == 0 {
-		if err != nil {
-			log.Error("failed to get tasks", "error", err)
-		}
-		return err
+	if batchIndex, err := m.orm.GetBatchIndexByBatchHash(msg.ID); err == nil {
+		log.Error("failed to get batch index", "msg.ID", msg.ID, "error", err)
+	} else {
+		coordinatorProofsReceivedHeightGauge.Update(int64(batchIndex))
 	}
+	coordinatorProofsReceivedTotalCounter.Inc(1)
 
+	var err error
 	success, err = m.verifier.VerifyProof(msg.Proof)
 	if err != nil {
 		// TODO: this is only a temp workaround for testnet, we should return err in real cases
@@ -317,8 +327,16 @@ func (m *Manager) handleZkProof(pk string, msg *message.ProofDetail) error {
 				"msg.ID", msg.ID,
 				"status", types.ProvingTaskVerified,
 				"error", dbErr)
+			return dbErr
 		}
-		return dbErr
+		if batchIndex, err := m.orm.GetBatchIndexByBatchHash(msg.ID); err == nil {
+			log.Error("failed to get batch index", "msg.ID", msg.ID, "error", err)
+		} else {
+			coordinatorProofsVerifiedHeightGauge.Update(int64(batchIndex))
+		}
+		coordinatorProofsVerifiedTotalCounter.Inc(1)
+	} else {
+		coordinatorProofsVerifiedFailedTotalCounter.Inc(1)
 	}
 	return nil
 }
@@ -349,6 +367,7 @@ func (m *Manager) CollectProofs(sess *session) {
 			// Ensure we got at least one proof before selecting a winner.
 			if len(participatingRollers) == 0 {
 				// record failed session.
+				coordinatorSessionsTimeoutTotalCounter.Inc(1)
 				errMsg := "proof generation session ended without receiving any valid proofs"
 				m.addFailedSession(sess, errMsg)
 				log.Warn(errMsg, "session id", sess.info.ID)

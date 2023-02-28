@@ -68,6 +68,7 @@ type BlockBatchOrm interface {
 	UpdateFinalizeTxHashAndRollupStatus(ctx context.Context, hash string, finalizeTxHash string, status types.RollupStatus) error
 	GetAssignedBatchHashes() ([]string, error)
 	UpdateSkippedBatches() (int64, error)
+	GetBatchIndexByBatchHash(hash string) (uint64, error)
 	GetBatchCount() (int64, error)
 
 	UpdateL2OracleTxHash(ctx context.Context, hash, txHash string) error

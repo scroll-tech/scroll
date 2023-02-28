@@ -61,21 +61,40 @@ func testMonitorMetrics(t *testing.T) {
 	runDBCliApp(t, "migrate", "current version:")
 
 	// Start bridge process with metrics server.
-	port, _ := rand.Int(rand.Reader, big.NewInt(2000))
-	svrPort := strconv.FormatInt(port.Int64()+50000, 10)
-	bridgeCmd := runBridgeApp(t, "--metrics", "--metrics.addr", "localhost", "--metrics.port", svrPort)
+	port1, _ := rand.Int(rand.Reader, big.NewInt(2000))
+	svrPort1 := strconv.FormatInt(port1.Int64()+50000, 10)
+	bridgeCmd := runBridgeApp(t, "--metrics", "--metrics.addr", "localhost", "--metrics.port", svrPort1)
 	bridgeCmd.RunApp(func() bool { return bridgeCmd.WaitResult(time.Second*20, "Start bridge successfully") })
 
-	// Get monitor metrics.
-	resp, err := http.Get("http://localhost:" + svrPort)
+	// Start coordinator process with metrics server.
+	port, _ := rand.Int(rand.Reader, big.NewInt(2000))
+	svrPort2 := strconv.FormatInt(port.Int64()+52000, 10)
+	coordinatorCmd := runCoordinatorApp(t, "--metrics", "--metrics.addr", "localhost", "--metrics.port", svrPort2)
+	coordinatorCmd.RunApp(func() bool { return coordinatorCmd.WaitResult(time.Second*20, "Start coordinator successfully") })
+
+	// Get bridge monitor metrics.
+	resp, err := http.Get("http://localhost:" + svrPort1)
 	assert.NoError(t, err)
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
 	assert.NoError(t, err)
 	bodyStr := string(body)
 	assert.Equal(t, 200, resp.StatusCode)
-	assert.Equal(t, true, strings.Contains(bodyStr, "bridge_l1_msg_sync_height"))
-	assert.Equal(t, true, strings.Contains(bodyStr, "bridge_l2_msg_sync_height"))
+	assert.Equal(t, true, strings.Contains(bodyStr, "bridge_l1_msgs_sync_height"))
+	assert.Equal(t, true, strings.Contains(bodyStr, "bridge_l2_msgs_sync_height"))
 
+	// Get coordinator monitor metrics.
+	resp, err = http.Get("http://localhost:" + svrPort2)
+	assert.NoError(t, err)
+	defer resp.Body.Close()
+	body, err = ioutil.ReadAll(resp.Body)
+	assert.NoError(t, err)
+	bodyStr = string(body)
+	assert.Equal(t, 200, resp.StatusCode)
+	assert.Equal(t, true, strings.Contains(bodyStr, "coordinator_sessions_timeout_total"))
+	assert.Equal(t, true, strings.Contains(bodyStr, "coordinator_rollers_disconnects_total"))
+
+	// Exit.
 	bridgeCmd.WaitExit()
+	coordinatorCmd.WaitExit()
 }

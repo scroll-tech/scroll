@@ -333,6 +333,15 @@ func (o *blockBatchOrm) GetAssignedBatchHashes() ([]string, error) {
 	return hashes, rows.Close()
 }
 
+func (o *blockBatchOrm) GetBatchIndexByBatchHash(hash string) (uint64, error) {
+	row := o.db.QueryRowx(`select index from block_batch where hash = $1;`, hash)
+	var index uint64
+	if err := row.Scan(&index); err != nil {
+		return 0, err
+	}
+	return index, nil
+}
+
 func (o *blockBatchOrm) GetBatchCount() (int64, error) {
 	row := o.db.QueryRow(`select count(*) from block_batch`)
 	var count int64

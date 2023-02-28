@@ -15,20 +15,27 @@ import (
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/event"
 	"github.com/scroll-tech/go-ethereum/log"
-	"github.com/scroll-tech/go-ethereum/metrics"
+	geth_metrics "github.com/scroll-tech/go-ethereum/metrics"
 	"github.com/scroll-tech/go-ethereum/rpc"
+
+	"scroll-tech/common/metrics"
+	"scroll-tech/common/types"
+	"scroll-tech/database"
 
 	bridge_abi "scroll-tech/bridge/abi"
 	"scroll-tech/bridge/utils"
-
-	"scroll-tech/common/types"
-
-	"scroll-tech/database"
 )
 
 // Metrics
 var (
-	bridgeL2MsgSyncHeightGauge = metrics.NewRegisteredGauge("bridge/l2/msg/sync/height", nil)
+	bridgeL2MsgsSyncHeightGauge      = geth_metrics.NewRegisteredGauge("bridge/l2/msgs/sync/height", metrics.ScrollRegistry)
+	bridgeL2TracesFetchedHeightGauge = geth_metrics.NewRegisteredGauge("bridge/l2/traces/fetched/height", metrics.ScrollRegistry)
+
+	bridgeL2MsgsSentEventsTotalCounter    = geth_metrics.NewRegisteredCounter("bridge/l2/msgs/sent/events/total", metrics.ScrollRegistry)
+	bridgeL2MsgsRelayedEventsTotalCounter = geth_metrics.NewRegisteredCounter("bridge/l2/msgs/relayed/events/total", metrics.ScrollRegistry)
+
+	bridgeL2TracesGasRateMeter  = geth_metrics.NewRegisteredMeter("bridge/l2/traces/gas/rate", metrics.ScrollRegistry)
+	bridgeL2TracesSizeRateMeter = geth_metrics.NewRegisteredMeter("bridge/l2/traces/size/rate", metrics.ScrollRegistry)
 )
 
 type relayedMessage struct {
@@ -234,6 +241,7 @@ func (w *WatcherClient) tryFetchRunningMissingBlocks(ctx context.Context, blockH
 			log.Error("fail to getAndStoreBlockTraces", "from", from, "to", to, "err", err)
 			return
 		}
+		bridgeL2TracesFetchedHeightGauge.Update(int64(to))
 	}
 }
 
@@ -247,9 +255,10 @@ func (w *WatcherClient) getAndStoreBlockTraces(ctx context.Context, from, to uin
 			return fmt.Errorf("failed to GetBlockResultByHash: %v. number: %v", err2, number)
 		}
 		log.Info("retrieved block trace", "height", trace.Header.Number, "hash", trace.Header.Hash().String())
-
 		traces = append(traces, trace)
 
+		bridgeL2TracesGasRateMeter.Mark(int64(trace.Header.GasUsed))
+		bridgeL2TracesSizeRateMeter.Mark(int64(trace.Header.Size()))
 	}
 	if len(traces) > 0 {
 		if err := w.orm.InsertL2BlockTraces(traces); err != nil {
@@ -301,7 +310,7 @@ func (w *WatcherClient) FetchContractEvent(blockHeight uint64) {
 		}
 		if len(logs) == 0 {
 			w.processedMsgHeight = uint64(to)
-			bridgeL2MsgSyncHeightGauge.Update(to)
+			bridgeL2MsgsSyncHeightGauge.Update(to)
 			continue
 		}
 		log.Info("received new L2 messages", "fromBlock", from, "toBlock", to, "cnt", len(logs))
@@ -311,6 +320,8 @@ func (w *WatcherClient) FetchContractEvent(blockHeight uint64) {
 			log.Error("failed to parse emitted event log", "err", err)
 			return
 		}
+		bridgeL2MsgsSentEventsTotalCounter.Inc(int64(len(sentMessageEvents)))
+		bridgeL2MsgsRelayedEventsTotalCounter.Inc(int64(len(relayedMessageEvents)))
 
 		// Update relayed message first to make sure we don't forget to update submited message.
 		// Since, we always start sync from the latest unprocessed message.
@@ -333,7 +344,7 @@ func (w *WatcherClient) FetchContractEvent(blockHeight uint64) {
 		}
 
 		w.processedMsgHeight = uint64(to)
-		bridgeL2MsgSyncHeightGauge.Update(to)
+		bridgeL2MsgsSyncHeightGauge.Update(to)
 	}
 }
 
