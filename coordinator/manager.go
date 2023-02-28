@@ -302,7 +302,7 @@ func (m *Manager) handleZkProof(pk string, msg *message.ProofDetail) error {
 		return dbErr
 	}
 
-	if batchIndex, err := m.orm.GetBatchIndexByBatchHash(msg.ID); err == nil {
+	if batchIndex, err := m.orm.GetBatchIndexByBatchHash(msg.ID); err != nil {
 		log.Error("failed to get batch index", "msg.ID", msg.ID, "error", err)
 	} else {
 		coordinatorProofsReceivedHeightGauge.Update(int64(batchIndex))
@@ -329,7 +329,7 @@ func (m *Manager) handleZkProof(pk string, msg *message.ProofDetail) error {
 				"error", dbErr)
 			return dbErr
 		}
-		if batchIndex, err := m.orm.GetBatchIndexByBatchHash(msg.ID); err == nil {
+		if batchIndex, err := m.orm.GetBatchIndexByBatchHash(msg.ID); err != nil {
 			log.Error("failed to get batch index", "msg.ID", msg.ID, "error", err)
 		} else {
 			coordinatorProofsVerifiedHeightGauge.Update(int64(batchIndex))

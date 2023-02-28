@@ -32,6 +32,7 @@ var (
 	bridgeL2TracesFetchedHeightGauge = geth_metrics.NewRegisteredGauge("bridge/l2/traces/fetched/height", metrics.ScrollRegistry)
 
 	bridgeL2MsgsSentEventsTotalCounter    = geth_metrics.NewRegisteredCounter("bridge/l2/msgs/sent/events/total", metrics.ScrollRegistry)
+	bridgeL2MsgsAppendEventsTotalCounter  = geth_metrics.NewRegisteredCounter("bridge/l2/msgs/append/events/total", metrics.ScrollRegistry)
 	bridgeL2MsgsRelayedEventsTotalCounter = geth_metrics.NewRegisteredCounter("bridge/l2/msgs/relayed/events/total", metrics.ScrollRegistry)
 
 	bridgeL2TracesGasRateMeter  = geth_metrics.NewRegisteredMeter("bridge/l2/traces/gas/rate", metrics.ScrollRegistry)
@@ -320,8 +321,12 @@ func (w *WatcherClient) FetchContractEvent(blockHeight uint64) {
 			log.Error("failed to parse emitted event log", "err", err)
 			return
 		}
-		bridgeL2MsgsSentEventsTotalCounter.Inc(int64(len(sentMessageEvents)))
-		bridgeL2MsgsRelayedEventsTotalCounter.Inc(int64(len(relayedMessageEvents)))
+
+		sentMessageCount := int64(len(sentMessageEvents))
+		relayedMessageCount := int64(len(relayedMessageEvents))
+		bridgeL2MsgsSentEventsTotalCounter.Inc(sentMessageCount)
+		bridgeL2MsgsRelayedEventsTotalCounter.Inc(relayedMessageCount)
+		log.Info("L2 events types", "SentMessageCount", sentMessageCount, "RelayedMessageCount", relayedMessageCount)
 
 		// Update relayed message first to make sure we don't forget to update submited message.
 		// Since, we always start sync from the latest unprocessed message.
@@ -433,6 +438,7 @@ func (w *WatcherClient) parseBridgeEventLogs(logs []geth_types.Log) ([]*types.L2
 
 			lastAppendMsgHash = event.MessageHash
 			lastAppendMsgNonce = event.Index.Uint64()
+			bridgeL2MsgsAppendEventsTotalCounter.Inc(1)
 		default:
 			log.Error("Unknown event", "topic", vLog.Topics[0], "txHash", vLog.TxHash)
 		}
