@@ -41,13 +41,16 @@ pipeline {
                                 if (TAGNAME == ""){
                                     return;
                                 }
+                                
                                 sh "docker login --username=${dockerUser} --password=${dockerPassword}"
-                                sh "make -C bridge docker"
-                                sh "make -C coordinator docker"
-                                sh "docker tag scrolltech/bridge:latest scrolltech/bridge:${TAGNAME}"
-                                sh "docker tag scrolltech/coordinator:latest scrolltech/coordinator:${TAGNAME}"
-                                sh "docker push scrolltech/bridge:${TAGNAME}"
-                                sh "docker push scrolltech/coordinator:${TAGNAME}"
+                                sh "docker manifest inspect scrolltech/bridge:${TAGNAME} > /dev/null ; echo $?"
+                                // sh "docker login --username=${dockerUser} --password=${dockerPassword}"
+                                // sh "make -C bridge docker"
+                                // sh "make -C coordinator docker"
+                                // sh "docker tag scrolltech/bridge:latest scrolltech/bridge:${TAGNAME}"
+                                // sh "docker tag scrolltech/coordinator:latest scrolltech/coordinator:${TAGNAME}"
+                                // sh "docker push scrolltech/bridge:${TAGNAME}"
+                                // sh "docker push scrolltech/coordinator:${TAGNAME}"
                             }                              
                     }
                }
