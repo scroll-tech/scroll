@@ -43,7 +43,7 @@ pipeline {
                                 }
                                 sh'''
                                 docker login --username=${dockerUser} --password=${dockerPassword}
-                                docker manifest inspect scrolltech/bridge:${TAGNAME} > /dev/null
+                                docker manifest inspect scrolltech/bridge:$TAGNAME > /dev/null
                                 echo $?
                                 '''
                                 // sh "docker login --username=${dockerUser} --password=${dockerPassword}"
