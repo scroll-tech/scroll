@@ -92,7 +92,7 @@ func (m *layer2MessageOrm) GetL2ProcessedNonce() (int64, error) {
 
 // GetL2MessagesByStatus fetch list of messages given msg status
 func (m *layer2MessageOrm) GetL2Messages(fields map[string]interface{}, args ...string) ([]*types.L2Message, error) {
-	query := "SELECT nonce, msg_hash, height, sender, target, value, calldata, layer2_hash FROM l2_message WHERE 1 = 1 "
+	query := "SELECT nonce, msg_hash, height, sender, target, value, calldata, layer1_hash, layer2_hash FROM l2_message WHERE 1 = 1 "
 	for key := range fields {
 		query += fmt.Sprintf("AND %s=:%s ", key, key)
 	}
@@ -137,11 +137,12 @@ func (m *layer2MessageOrm) SaveL2Messages(ctx context.Context, messages []*types
 			"target":      msg.Target,
 			"value":       msg.Value,
 			"calldata":    msg.Calldata,
+			"layer1_hash": msg.Layer1Hash,
 			"layer2_hash": msg.Layer2Hash,
 		}
 	}
 
-	_, err := m.db.NamedExec(`INSERT INTO public.l2_message (nonce, msg_hash, height, sender, target, value, calldata, layer2_hash) VALUES (:nonce, :msg_hash, :height, :sender, :target, :value, :calldata, :layer2_hash);`, messageMaps)
+	_, err := m.db.NamedExec(`INSERT INTO public.l2_message (nonce, msg_hash, height, sender, target, value, calldata, layer1_hash, layer2_hash) VALUES (:nonce, :msg_hash, :height, :sender, :target, :value, :calldata, :layer1_hash, :layer2_hash);`, messageMaps)
 	if err != nil {
 		nonces := make([]uint64, 0, len(messages))
 		heights := make([]uint64, 0, len(messages))

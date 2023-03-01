@@ -78,6 +78,7 @@ type Sender struct {
 
 	blockNumber   uint64   // Current block number on chain.
 	baseFeePerGas uint64   // Current base fee per gas on chain
+	pendingNum    int64    // current pending tx count.
 	pendingTxs    sync.Map // Mapping from nonce to pending transaction
 	confirmCh     chan *Confirmation
 
@@ -136,6 +137,16 @@ func NewSender(ctx context.Context, config *config.SenderConfig, privs []*ecdsa.
 	return sender, nil
 }
 
+// PendingCount return the current pending txs num.
+func (s *Sender) PendingCount() int64 {
+	return atomic.LoadInt64(&s.pendingNum)
+}
+
+// PendingLimit return the maximum pendingTxs can handle.
+func (s *Sender) PendingLimit() int64 {
+	return s.config.PendingLimit
+}
+
 // Stop stop the sender module.
 func (s *Sender) Stop() {
 	close(s.stopCh)
@@ -186,16 +197,27 @@ func (s *Sender) getFeeData(auth *bind.TransactOpts, target *common.Address, val
 	}, nil
 }
 
+// IsFull If pendingTxs pool is full return true.
+func (s *Sender) IsFull() bool {
+	return atomic.LoadInt64(&s.pendingNum) == s.config.PendingLimit
+}
+
 // SendTransaction send a signed L2tL1 transaction.
 func (s *Sender) SendTransaction(ID string, target *common.Address, value *big.Int, data []byte) (hash common.Hash, err error) {
+	if s.IsFull() {
+		return common.Hash{}, fmt.Errorf("pending txs is full, pending size: %d", s.config.PendingLimit)
+	}
 	// We occupy the ID, in case some other threads call with the same ID in the same time
 	if _, loaded := s.pendingTxs.LoadOrStore(ID, nil); loaded {
 		return common.Hash{}, fmt.Errorf("has the repeat tx ID, ID: %s", ID)
 	}
+	atomic.AddInt64(&s.pendingNum, 1)
+
 	// get
 	auth := s.auths.getAccount()
 	if auth == nil {
 		s.pendingTxs.Delete(ID) // release the ID on failure
+		atomic.AddInt64(&s.pendingNum, -1)
 		return common.Hash{}, ErrNoAvailableAccount
 	}
 
@@ -203,6 +225,7 @@ func (s *Sender) SendTransaction(ID string, target *common.Address, value *big.I
 	defer func() {
 		if err != nil {
 			s.pendingTxs.Delete(ID) // release the ID on failure
+			atomic.AddInt64(&s.pendingNum, -1)
 		}
 	}()
 
@@ -228,6 +251,61 @@ func (s *Sender) SendTransaction(ID string, target *common.Address, value *big.I
 	}
 
 	return
+}
+
+func (s *Sender) getTxAndAddr(txHash common.Hash) (*types.Transaction, uint64, common.Address, error) {
+	tx, isPending, err := s.client.TransactionByHash(s.ctx, txHash)
+	if err != nil {
+		return nil, 0, common.Address{}, err
+	}
+
+	sender, err := types.Sender(types.LatestSignerForChainID(s.chainID), tx)
+	if err != nil {
+		return nil, 0, common.Address{}, err
+	}
+
+	if isPending {
+		return tx, s.blockNumber, sender, nil
+	}
+
+	receipt, err := s.client.TransactionReceipt(s.ctx, txHash)
+	if err != nil {
+		return nil, 0, common.Address{}, err
+	}
+	return tx, receipt.BlockNumber.Uint64(), sender, nil
+}
+
+// LoadOrSendTx If the tx already exist in chain load it or resend it.
+func (s *Sender) LoadOrSendTx(destTxHash common.Hash, ID string, target *common.Address, value *big.Int, data []byte) error {
+	tx, blockNumber, from, err := s.getTxAndAddr(destTxHash)
+	// If this tx already exist load it to the pending.
+	if err == nil && tx != nil {
+		auth := s.auths.accounts[from]
+		var feeData *FeeData
+		feeData, err = s.getFeeData(auth, target, value, data)
+		if err != nil {
+			return err
+		}
+
+		// We occupy the ID, in case some other threads call with the same ID in the same time
+		if _, loaded := s.pendingTxs.LoadOrStore(ID, nil); loaded {
+			return fmt.Errorf("has the repeat tx ID, ID: %s", ID)
+		}
+		atomic.AddInt64(&s.pendingNum, 1)
+		s.pendingTxs.Store(ID, &PendingTransaction{
+			tx:     tx,
+			id:     ID,
+			signer: auth,
+			// Record the transaction's block blockNumber.
+			submitAt: blockNumber,
+			feeData:  feeData,
+		})
+		return nil
+	}
+
+	// Tx is dropped from chain node, resend it.
+	_, err = s.SendTransaction(ID, target, value, data)
+	return err
 }
 
 func (s *Sender) createAndSendTx(auth *bind.TransactOpts, feeData *FeeData, target *common.Address, value *big.Int, data []byte, overrideNonce *uint64) (tx *types.Transaction, err error) {
@@ -375,6 +453,7 @@ func (s *Sender) checkPendingTransaction(header *types.Header, confirmed uint64)
 		if (err == nil) && (receipt != nil) {
 			if receipt.BlockNumber.Uint64() <= confirmed {
 				s.pendingTxs.Delete(key)
+				atomic.AddInt64(&s.pendingNum, -1)
 				// send confirm message
 				s.confirmCh <- &Confirmation{
 					ID:           pending.id,
@@ -406,6 +485,7 @@ func (s *Sender) checkPendingTransaction(header *types.Header, confirmed uint64)
 				if strings.Contains(err.Error(), "nonce") {
 					// This key can be deleted
 					s.pendingTxs.Delete(key)
+					atomic.AddInt64(&s.pendingNum, -1)
 					// Try get receipt by the latest replaced tx hash
 					receipt, err := s.client.TransactionReceipt(s.ctx, pending.tx.Hash())
 					if (err == nil) && (receipt != nil) {

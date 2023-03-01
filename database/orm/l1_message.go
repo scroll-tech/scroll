@@ -4,6 +4,8 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
+	"strings"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/scroll-tech/go-ethereum/log"
@@ -20,6 +22,37 @@ var _ L1MessageOrm = (*l1MessageOrm)(nil)
 // NewL1MessageOrm create an L1MessageOrm instance
 func NewL1MessageOrm(db *sqlx.DB) L1MessageOrm {
 	return &l1MessageOrm{db: db}
+}
+
+// GetL1Messages get l1 messages by k-v map and args.
+func (m *l1MessageOrm) GetL1Messages(fields map[string]interface{}, args ...string) ([]*types.L1Message, error) {
+	query := "SELECT nonce, msg_hash, height, sender, target, value, fee, gas_limit, deadline, calldata, layer1_hash, layer2_hash, status FROM l2_message WHERE 1 = 1 "
+	for key := range fields {
+		query += fmt.Sprintf(" AND %s=:%s ", key, key)
+	}
+	query = strings.Join(append([]string{query}, args...), " ")
+
+	db := m.db
+	rows, err := db.NamedQuery(db.Rebind(query), fields)
+	if err != nil {
+		return nil, err
+	}
+
+	var msgs []*types.L1Message
+	for rows.Next() {
+		msg := &types.L1Message{}
+		if err = rows.StructScan(&msg); err != nil {
+			break
+		}
+		msgs = append(msgs, msg)
+	}
+	if len(msgs) == 0 || errors.Is(err, sql.ErrNoRows) {
+		// log.Warn("no unprocessed layer2 messages in db", "err", err)
+	} else if err != nil {
+		return nil, err
+	}
+
+	return msgs, rows.Close()
 }
 
 // GetL1MessageByMsgHash fetch message by queue_index
@@ -48,7 +81,7 @@ func (m *l1MessageOrm) GetL1MessageByQueueIndex(queueIndex uint64) (*types.L1Mes
 
 // GetL1MessagesByStatus fetch list of unprocessed messages given msg status
 func (m *l1MessageOrm) GetL1MessagesByStatus(status types.MsgStatus, limit uint64) ([]*types.L1Message, error) {
-	rows, err := m.db.Queryx(`SELECT queue_index, msg_hash, height, sender, target, value, calldata, layer1_hash, status FROM l1_message WHERE status = $1 ORDER BY queue_index ASC LIMIT $2;`, status, limit)
+	rows, err := m.db.Queryx(`SELECT queue_index, msg_hash, height, sender, target, value, calldata, layer1_hash, layer2_hash, status FROM l1_message WHERE status = $1 ORDER BY queue_index ASC LIMIT $2;`, status, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -108,9 +141,10 @@ func (m *l1MessageOrm) SaveL1Messages(ctx context.Context, messages []*types.L1M
 			"gas_limit":   msg.GasLimit,
 			"calldata":    msg.Calldata,
 			"layer1_hash": msg.Layer1Hash,
+			"layer2_hash": msg.Layer2Hash,
 		}
 	}
-	_, err := m.db.NamedExec(`INSERT INTO public.l1_message (queue_index, msg_hash, height, sender, target, value, gas_limit, calldata, layer1_hash) VALUES (:queue_index, :msg_hash, :height, :sender, :target, :value, :gas_limit, :calldata, :layer1_hash);`, messageMaps)
+	_, err := m.db.NamedExec(`INSERT INTO public.l1_message (queue_index, msg_hash, height, sender, target, value, gas_limit, calldata, layer1_hash, layer2_hash) VALUES (:queue_index, :msg_hash, :height, :sender, :target, :value, :gas_limit, :calldata, :layer1_hash, :layer2_hash);`, messageMaps)
 	if err != nil {
 		queueIndices := make([]uint64, 0, len(messages))
 		heights := make([]uint64, 0, len(messages))

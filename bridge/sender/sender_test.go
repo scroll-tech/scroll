@@ -49,6 +49,7 @@ func TestSender(t *testing.T) {
 	// Setup
 	setupEnv(t)
 
+	t.Run("testLoadOrSendTx", testLoadOrSendTx)
 	t.Run("test 1 account sender", func(t *testing.T) { testBatchSender(t, 1) })
 	t.Run("test 3 account sender", func(t *testing.T) { testBatchSender(t, 3) })
 	t.Run("test 8 account sender", func(t *testing.T) { testBatchSender(t, 8) })
@@ -57,6 +58,38 @@ func TestSender(t *testing.T) {
 	t.Cleanup(func() {
 		assert.NoError(t, l2gethImg.Stop())
 	})
+}
+
+func testLoadOrSendTx(t *testing.T) {
+	senderCfg := cfg.L1Config.RelayerConfig.SenderConfig
+	senderCfg.Confirmations = 0
+	newSender, err := sender.NewSender(context.Background(), senderCfg, privateKeys)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	newSender2, err := sender.NewSender(context.Background(), senderCfg, privateKeys)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	toAddr := common.HexToAddress("0x4592d8f8d7b001e72cb26a73e4fa1806a51ac79d")
+	id := "aaa"
+
+	hash, err := newSender.SendTransaction(id, &toAddr, big.NewInt(0), nil)
+	assert.NoError(t, err)
+
+	err = newSender2.LoadOrSendTx(hash, id, &toAddr, big.NewInt(0), nil)
+	assert.NoError(t, err)
+
+	select {
+	case cfm := <-newSender2.ConfirmChan():
+		assert.Equal(t, true, cfm.IsSuccessful)
+		assert.Equal(t, hash, cfm.TxHash)
+		assert.Equal(t, id, cfm.ID)
+	case <-time.After(time.Second * 10):
+		t.Error("testLoadOrSendTx test failed because of timeout")
+	}
 }
 
 func testBatchSender(t *testing.T, batchSize int) {

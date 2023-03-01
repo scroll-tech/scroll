@@ -95,6 +95,7 @@ type L1Message struct {
 	Calldata   string    `json:"calldata" db:"calldata"`
 	GasLimit   uint64    `json:"gas_limit" db:"gas_limit"`
 	Layer1Hash string    `json:"layer1_hash" db:"layer1_hash"`
+	Layer2Hash string    `json:"layer2_hash" db:"layer2_hash"`
 	Status     MsgStatus `json:"status" db:"status"`
 }
 
@@ -107,6 +108,7 @@ type L2Message struct {
 	Value      string    `json:"value" db:"value"`
 	Target     string    `json:"target" db:"target"`
 	Calldata   string    `json:"calldata" db:"calldata"`
+	Layer1Hash string    `json:"layer1_hash" db:"layer1_hash"`
 	Layer2Hash string    `json:"layer2_hash" db:"layer2_hash"`
 	Status     MsgStatus `json:"status" db:"status"`
 }

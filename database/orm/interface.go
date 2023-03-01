@@ -80,6 +80,7 @@ type BlockBatchOrm interface {
 
 // L1MessageOrm is layer1 message db interface
 type L1MessageOrm interface {
+	GetL1Messages(fields map[string]interface{}, args ...string) ([]*types.L1Message, error)
 	GetL1MessageByQueueIndex(queueIndex uint64) (*types.L1Message, error)
 	GetL1MessageByMsgHash(msgHash string) (*types.L1Message, error)
 	GetL1MessagesByStatus(status types.MsgStatus, limit uint64) ([]*types.L1Message, error)
