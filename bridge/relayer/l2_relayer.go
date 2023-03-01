@@ -1,4 +1,4 @@
-package l2
+package relayer
 
 import (
 	"context"
@@ -7,7 +7,6 @@ import (
 	"math/big"
 	"runtime"
 	"sync"
-	"time"
 
 	// not sure if this will make problems when relay with l1geth
 
@@ -29,12 +28,6 @@ import (
 	"scroll-tech/bridge/utils"
 )
 
-const (
-	gasPriceDiffPrecision = 1000000
-
-	defaultGasPriceDiff = 50000 // 5%
-)
-
 // Layer2Relayer is responsible for
 //  1. Committing and finalizing L2 blocks on L1
 //  2. Relaying messages from L2 to L1
@@ -42,6 +35,7 @@ const (
 // Actions are triggered by new head from layer 1 geth node.
 // @todo It's better to be triggered by watcher.
 type Layer2Relayer struct {
+	*RelayerConfirmChs
 	ctx context.Context
 
 	l2Client *ethclient.Client
@@ -50,15 +44,12 @@ type Layer2Relayer struct {
 	cfg *config.RelayerConfig
 
 	messageSender  *sender.Sender
-	messageCh      <-chan *sender.Confirmation
 	l1MessengerABI *abi.ABI
 
 	rollupSender *sender.Sender
-	rollupCh     <-chan *sender.Confirmation
 	l1RollupABI  *abi.ABI
 
 	gasOracleSender *sender.Sender
-	gasOracleCh     <-chan *sender.Confirmation
 	l2GasOracleABI  *abi.ABI
 
 	lastGasPrice uint64
@@ -112,21 +103,22 @@ func NewLayer2Relayer(ctx context.Context, l2Client *ethclient.Client, db databa
 	}
 
 	return &Layer2Relayer{
-		ctx: ctx,
-		db:  db,
-
+		RelayerConfirmChs: &RelayerConfirmChs{
+			messageCh:   messageSender.ConfirmChan(),
+			rollupCh:    rollupSender.ConfirmChan(),
+			gasOracleCh: gasOracleSender.ConfirmChan(),
+		},
+		ctx:      ctx,
+		db:       db,
 		l2Client: l2Client,
 
 		messageSender:  messageSender,
-		messageCh:      messageSender.ConfirmChan(),
 		l1MessengerABI: bridge_abi.L1ScrollMessengerABI,
 
 		rollupSender: rollupSender,
-		rollupCh:     rollupSender.ConfirmChan(),
 		l1RollupABI:  bridge_abi.ScrollChainABI,
 
 		gasOracleSender: gasOracleSender,
-		gasOracleCh:     gasOracleSender.ConfirmChan(),
 		l2GasOracleABI:  bridge_abi.L2GasPriceOracleABI,
 
 		minGasPrice:  minGasPrice,
@@ -490,69 +482,8 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 	}
 }
 
-// Start the relayer process
-func (r *Layer2Relayer) Start() {
-	loop := func(ctx context.Context, f func()) {
-		ticker := time.NewTicker(time.Second)
-		defer ticker.Stop()
-
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case <-ticker.C:
-				f()
-			}
-		}
-	}
-
-	go func() {
-		ctx, cancel := context.WithCancel(r.ctx)
-
-		go loop(ctx, r.ProcessSavedEvents)
-		go loop(ctx, r.ProcessCommittedBatches)
-		go loop(ctx, r.ProcessGasPriceOracle)
-
-		go func(ctx context.Context) {
-			for {
-				select {
-				case <-ctx.Done():
-					return
-				case confirmation := <-r.messageCh:
-					r.handleConfirmation(confirmation)
-				case confirmation := <-r.rollupCh:
-					r.handleConfirmation(confirmation)
-				case cfm := <-r.gasOracleCh:
-					if !cfm.IsSuccessful {
-						// @discuss: maybe make it pending again?
-						err := r.db.UpdateL2GasOracleStatusAndOracleTxHash(r.ctx, cfm.ID, types.GasOracleFailed, cfm.TxHash.String())
-						if err != nil {
-							log.Warn("UpdateL2GasOracleStatusAndOracleTxHash failed", "err", err)
-						}
-						log.Warn("transaction confirmed but failed in layer1", "confirmation", cfm)
-					} else {
-						// @todo handle db error
-						err := r.db.UpdateL2GasOracleStatusAndOracleTxHash(r.ctx, cfm.ID, types.GasOracleImported, cfm.TxHash.String())
-						if err != nil {
-							log.Warn("UpdateL2GasOracleStatusAndOracleTxHash failed", "err", err)
-						}
-						log.Info("transaction confirmed in layer1", "confirmation", cfm)
-					}
-				}
-			}
-		}(ctx)
-
-		<-r.stopCh
-		cancel()
-	}()
-}
-
-// Stop the relayer module, for a graceful shutdown.
-func (r *Layer2Relayer) Stop() {
-	close(r.stopCh)
-}
-
-func (r *Layer2Relayer) handleConfirmation(confirmation *sender.Confirmation) {
+// HandleConfirmation handles the received confirmations from chanels
+func (r *Layer2Relayer) HandleConfirmation(confirmation *sender.Confirmation) {
 	if !confirmation.IsSuccessful {
 		log.Warn("transaction confirmed but failed in layer1", "confirmation", confirmation)
 		return

@@ -1,8 +1,10 @@
 package utils
 
 import (
+	"context"
 	"fmt"
 	"math/big"
+	"time"
 
 	"github.com/scroll-tech/go-ethereum/accounts/abi"
 	"github.com/scroll-tech/go-ethereum/common"
@@ -95,4 +97,30 @@ func UnpackLogIntoMap(c *abi.ABI, out map[string]interface{}, event string, log 
 		}
 	}
 	return abi.ParseTopicsIntoMap(out, indexed, log.Topics[1:])
+}
+
+// LoopWithContext Run the f func with context periodically.
+func LoopWithContext(ctx context.Context, tick *time.Ticker, f func(ctx context.Context)) {
+	defer tick.Stop()
+	for ; ; <-tick.C {
+		select {
+		case <-ctx.Done():
+			return
+		default:
+			f(ctx)
+		}
+	}
+}
+
+// Loop Run the f func periodically.
+func Loop(ctx context.Context, tick *time.Ticker, f func()) {
+	defer tick.Stop()
+	for ; ; <-tick.C {
+		select {
+		case <-ctx.Done():
+			return
+		default:
+			f()
+		}
+	}
 }

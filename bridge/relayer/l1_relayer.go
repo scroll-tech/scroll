@@ -1,10 +1,9 @@
-package l1
+package relayer
 
 import (
 	"context"
 	"errors"
 	"math/big"
-	"time"
 
 	// not sure if this will make problems when relay with l1geth
 
@@ -22,12 +21,6 @@ import (
 	"scroll-tech/bridge/sender"
 )
 
-const (
-	gasPriceDiffPrecision = 1000000
-
-	defaultGasPriceDiff = 50000 // 5%
-)
-
 // Layer1Relayer is responsible for
 //  1. fetch pending L1Message from db
 //  2. relay pending message to layer 2 node
@@ -35,6 +28,7 @@ const (
 // Actions are triggered by new head from layer 1 geth node.
 // @todo It's better to be triggered by watcher.
 type Layer1Relayer struct {
+	*RelayerConfirmChs
 	ctx context.Context
 
 	db  database.OrmFactory
@@ -42,11 +36,9 @@ type Layer1Relayer struct {
 
 	// channel used to communicate with transaction sender
 	messageSender  *sender.Sender
-	messageCh      <-chan *sender.Confirmation
 	l2MessengerABI *abi.ABI
 
 	gasOracleSender *sender.Sender
-	gasOracleCh     <-chan *sender.Confirmation
 	l1GasOracleABI  *abi.ABI
 
 	lastGasPrice uint64
@@ -84,15 +76,18 @@ func NewLayer1Relayer(ctx context.Context, db database.OrmFactory, cfg *config.R
 	}
 
 	return &Layer1Relayer{
+		RelayerConfirmChs: &RelayerConfirmChs{
+			messageCh:   messageSender.ConfirmChan(),
+			gasOracleCh: gasOracleSender.ConfirmChan(),
+			rollupCh:    nil,
+		},
 		ctx: ctx,
 		db:  db,
 
 		messageSender:  messageSender,
-		messageCh:      messageSender.ConfirmChan(),
 		l2MessengerABI: bridge_abi.L2ScrollMessengerABI,
 
 		gasOracleSender: gasOracleSender,
-		gasOracleCh:     gasOracleSender.ConfirmChan(),
 		l1GasOracleABI:  bridge_abi.L1GasPriceOracleABI,
 
 		minGasPrice:  minGasPrice,
@@ -197,71 +192,4 @@ func (r *Layer1Relayer) ProcessGasPriceOracle() {
 			log.Info("Update l1 base fee", "txHash", hash.String(), "baseFee", baseFee)
 		}
 	}
-}
-
-// Start the relayer process
-func (r *Layer1Relayer) Start() {
-	loop := func(ctx context.Context, f func()) {
-		ticker := time.NewTicker(2 * time.Second)
-		defer ticker.Stop()
-
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case <-ticker.C:
-				f()
-			}
-		}
-	}
-	go func() {
-		ctx, cancel := context.WithCancel(r.ctx)
-
-		go loop(ctx, r.ProcessSavedEvents)
-		go loop(ctx, r.ProcessGasPriceOracle)
-
-		go func(ctx context.Context) {
-			for {
-				select {
-				case <-ctx.Done():
-					return
-				case cfm := <-r.messageCh:
-					if !cfm.IsSuccessful {
-						log.Warn("transaction confirmed but failed in layer2", "confirmation", cfm)
-					} else {
-						// @todo handle db error
-						err := r.db.UpdateLayer1StatusAndLayer2Hash(r.ctx, cfm.ID, types.MsgConfirmed, cfm.TxHash.String())
-						if err != nil {
-							log.Warn("UpdateLayer1StatusAndLayer2Hash failed", "err", err)
-						}
-						log.Info("transaction confirmed in layer2", "confirmation", cfm)
-					}
-				case cfm := <-r.gasOracleCh:
-					if !cfm.IsSuccessful {
-						// @discuss: maybe make it pending again?
-						err := r.db.UpdateL1GasOracleStatusAndOracleTxHash(r.ctx, cfm.ID, types.GasOracleFailed, cfm.TxHash.String())
-						if err != nil {
-							log.Warn("UpdateL1GasOracleStatusAndOracleTxHash failed", "err", err)
-						}
-						log.Warn("transaction confirmed but failed in layer2", "confirmation", cfm)
-					} else {
-						// @todo handle db error
-						err := r.db.UpdateL1GasOracleStatusAndOracleTxHash(r.ctx, cfm.ID, types.GasOracleImported, cfm.TxHash.String())
-						if err != nil {
-							log.Warn("UpdateGasOracleStatusAndOracleTxHash failed", "err", err)
-						}
-						log.Info("transaction confirmed in layer2", "confirmation", cfm)
-					}
-				}
-			}
-		}(ctx)
-
-		<-r.stopCh
-		cancel()
-	}()
-}
-
-// Stop the relayer module, for a graceful shutdown.
-func (r *Layer1Relayer) Stop() {
-	close(r.stopCh)
 }

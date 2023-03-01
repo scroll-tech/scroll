@@ -1,19 +1,17 @@
-package l2
+package watcher_test
 
 import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"scroll-tech/bridge/config"
+	"scroll-tech/common/docker"
+	"scroll-tech/common/types"
 	"testing"
 
 	geth_types "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/stretchr/testify/assert"
-
-	"scroll-tech/common/docker"
-	"scroll-tech/common/types"
-
-	"scroll-tech/bridge/config"
 )
 
 var (
@@ -113,17 +111,12 @@ func TestFunction(t *testing.T) {
 	if err := setupEnv(t); err != nil {
 		t.Fatal(err)
 	}
-
+	// Run l1 watcher test cases.
+	t.Run("TestStartL1Watcher", testStartL1Watcher)
 	// Run l2 watcher test cases.
 	t.Run("TestCreateNewWatcherAndStop", testCreateNewWatcherAndStop)
 	t.Run("TestMonitorBridgeContract", testMonitorBridgeContract)
 	t.Run("TestFetchMultipleSentMessageInOneBlock", testFetchMultipleSentMessageInOneBlock)
-
-	// Run l2 relayer test cases.
-	t.Run("TestCreateNewRelayer", testCreateNewRelayer)
-	t.Run("TestL2RelayerProcessSaveEvents", testL2RelayerProcessSaveEvents)
-	t.Run("TestL2RelayerProcessCommittedBatches", testL2RelayerProcessCommittedBatches)
-	t.Run("TestL2RelayerSkipBatches", testL2RelayerSkipBatches)
 
 	// Run batch proposer test cases.
 	t.Run("TestBatchProposerProposeBatch", testBatchProposerProposeBatch)

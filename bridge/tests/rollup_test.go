@@ -10,10 +10,9 @@ import (
 	geth_types "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/stretchr/testify/assert"
 
+	"scroll-tech/bridge/relayer"
+	"scroll-tech/bridge/watcher"
 	"scroll-tech/common/types"
-
-	"scroll-tech/bridge/l1"
-	"scroll-tech/bridge/l2"
 
 	"scroll-tech/database"
 	"scroll-tech/database/migrate"
@@ -30,13 +29,12 @@ func testCommitBatchAndFinalizeBatch(t *testing.T) {
 
 	// Create L2Relayer
 	l2Cfg := cfg.L2Config
-	l2Relayer, err := l2.NewLayer2Relayer(context.Background(), l2Client, db, l2Cfg.RelayerConfig)
+	l2Relayer, err := relayer.NewLayer2Relayer(context.Background(), l2Client, db, l2Cfg.RelayerConfig)
 	assert.NoError(t, err)
-	defer l2Relayer.Stop()
 
 	// Create L1Watcher
 	l1Cfg := cfg.L1Config
-	l1Watcher := l1.NewWatcher(context.Background(), l1Client, 0, l1Cfg.Confirmations, l1Cfg.L1MessengerAddress, l1Cfg.L1MessageQueueAddress, l1Cfg.ScrollChainContractAddress, db)
+	l1Watcher := watcher.NewL1Watcher(context.Background(), l1Client, 0, l1Cfg.Confirmations, l1Cfg.L1MessengerAddress, l1Cfg.L1MessageQueueAddress, l1Cfg.ScrollChainContractAddress, db)
 
 	// add some blocks to db
 	var traces []*geth_types.BlockTrace

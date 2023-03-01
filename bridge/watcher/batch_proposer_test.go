@@ -1,4 +1,4 @@
-package l2
+package watcher_test
 
 import (
 	"context"
@@ -13,6 +13,8 @@ import (
 	"scroll-tech/database/migrate"
 
 	"scroll-tech/bridge/config"
+	"scroll-tech/bridge/relayer"
+	"scroll-tech/bridge/watcher"
 
 	"scroll-tech/common/types"
 )
@@ -27,22 +29,17 @@ func testBatchProposerProposeBatch(t *testing.T) {
 	// Insert traces into db.
 	assert.NoError(t, db.InsertL2BlockTraces([]*geth_types.BlockTrace{blockTrace1}))
 
-	l2cfg := cfg.L2Config
-	wc := NewL2WatcherClient(context.Background(), l2Cli, l2cfg.Confirmations, l2cfg.L2MessengerAddress, l2cfg.L2MessageQueueAddress, db)
-	wc.Start()
-	defer wc.Stop()
-
-	relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, cfg.L2Config.RelayerConfig)
+	relayer, err := relayer.NewLayer2Relayer(context.Background(), l2Cli, db, cfg.L2Config.RelayerConfig)
 	assert.NoError(t, err)
 
-	proposer := NewBatchProposer(context.Background(), &config.BatchProposerConfig{
+	proposer := watcher.NewBatchProposer(context.Background(), &config.BatchProposerConfig{
 		ProofGenerationFreq: 1,
 		BatchGasThreshold:   3000000,
 		BatchTxNumThreshold: 135,
 		BatchTimeSec:        1,
 		BatchBlocksLimit:    100,
 	}, relayer, db)
-	proposer.tryProposeBatch()
+	proposer.TryProposeBatch()
 
 	infos, err := db.GetUnbatchedL2Blocks(map[string]interface{}{},
 		fmt.Sprintf("order by number ASC LIMIT %d", 100))
@@ -61,7 +58,7 @@ func testBatchProposerGracefulRestart(t *testing.T) {
 	assert.NoError(t, migrate.ResetDB(db.GetDB().DB))
 	defer db.Close()
 
-	relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, cfg.L2Config.RelayerConfig)
+	relayer, err := relayer.NewLayer2Relayer(context.Background(), l2Cli, db, cfg.L2Config.RelayerConfig)
 	assert.NoError(t, err)
 
 	// Insert traces into db.
@@ -85,7 +82,7 @@ func testBatchProposerGracefulRestart(t *testing.T) {
 	assert.Equal(t, 1, len(batchHashes))
 	assert.Equal(t, batchData2.Hash().Hex(), batchHashes[0])
 	// test p.recoverBatchDataBuffer().
-	_ = NewBatchProposer(context.Background(), &config.BatchProposerConfig{
+	_ = watcher.NewBatchProposer(context.Background(), &config.BatchProposerConfig{
 		ProofGenerationFreq: 1,
 		BatchGasThreshold:   3000000,
 		BatchTxNumThreshold: 135,

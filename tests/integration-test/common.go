@@ -22,7 +22,6 @@ import (
 	_ "scroll-tech/roller/cmd/app"
 	rollerConfig "scroll-tech/roller/config"
 
-	_ "scroll-tech/bridge/cmd/app"
 	bridgeConfig "scroll-tech/bridge/config"
 	"scroll-tech/bridge/sender"
 

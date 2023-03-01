@@ -1,12 +1,10 @@
-package l2
+package watcher
 
 import (
 	"context"
 	"errors"
 	"fmt"
 	"math/big"
-	"reflect"
-	"time"
 
 	geth "github.com/scroll-tech/go-ethereum"
 	"github.com/scroll-tech/go-ethereum/accounts/abi"
@@ -30,12 +28,6 @@ import (
 var (
 	bridgeL2MsgSyncHeightGauge = metrics.NewRegisteredGauge("bridge/l2/msg/sync/height", nil)
 )
-
-type relayedMessage struct {
-	msgHash      common.Hash
-	txHash       common.Hash
-	isSuccessful bool
-}
 
 // WatcherClient provide APIs which support others to subscribe to various event from l2geth
 type WatcherClient struct {
@@ -140,73 +132,10 @@ func (w *WatcherClient) initializeGenesis() error {
 	return nil
 }
 
-// Start the Listening process
-func (w *WatcherClient) Start() {
-	go func() {
-		if reflect.ValueOf(w.orm).IsNil() {
-			panic("must run L2 watcher with DB")
-		}
-
-		ctx, cancel := context.WithCancel(w.ctx)
-
-		// trace fetcher loop
-		go func(ctx context.Context) {
-			ticker := time.NewTicker(2 * time.Second)
-			defer ticker.Stop()
-
-			for {
-				select {
-				case <-ctx.Done():
-					return
-
-				case <-ticker.C:
-					number, err := utils.GetLatestConfirmedBlockNumber(ctx, w.Client, w.confirmations)
-					if err != nil {
-						log.Error("failed to get block number", "err", err)
-						continue
-					}
-
-					w.tryFetchRunningMissingBlocks(ctx, number)
-				}
-			}
-		}(ctx)
-
-		// event fetcher loop
-		go func(ctx context.Context) {
-			ticker := time.NewTicker(2 * time.Second)
-			defer ticker.Stop()
-
-			for {
-				select {
-				case <-ctx.Done():
-					return
-
-				case <-ticker.C:
-					number, err := utils.GetLatestConfirmedBlockNumber(ctx, w.Client, w.confirmations)
-					if err != nil {
-						log.Error("failed to get block number", "err", err)
-						continue
-					}
-
-					w.FetchContractEvent(number)
-				}
-			}
-		}(ctx)
-
-		<-w.stopCh
-		cancel()
-	}()
-}
-
-// Stop the Watcher module, for a graceful shutdown.
-func (w *WatcherClient) Stop() {
-	w.stopCh <- struct{}{}
-}
-
 const blockTracesFetchLimit = uint64(10)
 
-// try fetch missing blocks if inconsistent
-func (w *WatcherClient) tryFetchRunningMissingBlocks(ctx context.Context, blockHeight uint64) {
+// TryFetchRunningMissingBlocks tries fetch missing blocks if inconsistent
+func (w *WatcherClient) TryFetchRunningMissingBlocks(ctx context.Context, blockHeight uint64) {
 	// Get newest block in DB. must have blocks at that time.
 	// Don't use "block_trace" table "trace" column's BlockTrace.Number,
 	// because it might be empty if the corresponding rollup_result is finalized/finalization_skipped
@@ -259,8 +188,6 @@ func (w *WatcherClient) getAndStoreBlockTraces(ctx context.Context, from, to uin
 
 	return nil
 }
-
-const contractEventsBlocksFetchLimit = int64(10)
 
 // FetchContractEvent pull latest event logs from given contract address and save in DB
 func (w *WatcherClient) FetchContractEvent(blockHeight uint64) {

@@ -28,7 +28,7 @@ pipeline {
                 }
                 stage('Check Bridge Compilation') {
                     steps {
-                        sh 'make -C bridge bridge'
+                        sh 'make -C bridge bridge_bins'
                     }
                 }
                 stage('Check Coordinator Compilation') {

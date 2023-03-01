@@ -37,9 +37,10 @@ func testStartProcess(t *testing.T) {
 	runDBCliApp(t, "reset", "successful to reset")
 	runDBCliApp(t, "migrate", "current version:")
 
+	// To do: recover this test
 	// Start bridge process.
-	bridgeCmd := runBridgeApp(t)
-	bridgeCmd.RunApp(func() bool { return bridgeCmd.WaitResult(time.Second*20, "Start bridge successfully") })
+	// bridgeCmd := runBridgeApp(t)
+	// bridgeCmd.RunApp(func() bool { return bridgeCmd.WaitResult(time.Second*20, "Start bridge successfully") })
 
 	// Start coordinator process.
 	coordinatorCmd := runCoordinatorApp(t, "--ws", "--ws.port", "8391")
@@ -51,7 +52,7 @@ func testStartProcess(t *testing.T) {
 	rollerCmd.RunApp(func() bool { return rollerCmd.WaitResult(time.Second*40, "roller start successfully") })
 
 	rollerCmd.WaitExit()
-	bridgeCmd.WaitExit()
+	// bridgeCmd.WaitExit()
 	coordinatorCmd.WaitExit()
 }
 

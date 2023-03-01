@@ -1,9 +1,8 @@
-package l1
+package watcher
 
 import (
 	"context"
 	"math/big"
-	"time"
 
 	geth "github.com/scroll-tech/go-ethereum"
 	"github.com/scroll-tech/go-ethereum/accounts/abi"
@@ -26,12 +25,6 @@ import (
 var (
 	bridgeL1MsgSyncHeightGauge = metrics.NewRegisteredGauge("bridge/l1/msg/sync/height", nil)
 )
-
-type relayedMessage struct {
-	msgHash      common.Hash
-	txHash       common.Hash
-	isSuccessful bool
-}
 
 type rollupEvent struct {
 	batchHash common.Hash
@@ -65,9 +58,9 @@ type Watcher struct {
 	stopCh chan bool
 }
 
-// NewWatcher returns a new instance of Watcher. The instance will be not fully prepared,
+// NewL1Watcher returns a new instance of Watcher. The instance will be not fully prepared,
 // and still needs to be finalized and ran by calling `watcher.Start`.
-func NewWatcher(ctx context.Context, client *ethclient.Client, startHeight uint64, confirmations rpc.BlockNumber, messengerAddress, messageQueueAddress, scrollChainAddress common.Address, db database.OrmFactory) *Watcher {
+func NewL1Watcher(ctx context.Context, client *ethclient.Client, startHeight uint64, confirmations rpc.BlockNumber, messengerAddress, messageQueueAddress, scrollChainAddress common.Address, db database.OrmFactory) *Watcher {
 	savedHeight, err := db.GetLayer1LatestWatchedHeight()
 	if err != nil {
 		log.Warn("Failed to fetch height from db", "err", err)
@@ -108,69 +101,6 @@ func NewWatcher(ctx context.Context, client *ethclient.Client, startHeight uint6
 		stopCh:               stopCh,
 	}
 }
-
-// Start the Watcher module.
-func (w *Watcher) Start() {
-	go func() {
-		ctx, cancel := context.WithCancel(w.ctx)
-
-		go func(ctx context.Context) {
-			ticker := time.NewTicker(2 * time.Second)
-			defer ticker.Stop()
-
-			for {
-				select {
-				case <-ctx.Done():
-					return
-
-				case <-ticker.C:
-					number, err := utils.GetLatestConfirmedBlockNumber(w.ctx, w.client, w.confirmations)
-					if err != nil {
-						log.Error("failed to get block number", "err", err)
-						continue
-					}
-
-					if err := w.FetchBlockHeader(number); err != nil {
-						log.Error("Failed to fetch L1 block header", "lastest", number, "err", err)
-					}
-				}
-			}
-		}(ctx)
-
-		go func(ctx context.Context) {
-			ticker := time.NewTicker(2 * time.Second)
-			defer ticker.Stop()
-
-			for {
-				select {
-				case <-ctx.Done():
-					return
-
-				case <-ticker.C:
-					number, err := utils.GetLatestConfirmedBlockNumber(w.ctx, w.client, w.confirmations)
-					if err != nil {
-						log.Error("failed to get block number", "err", err)
-						continue
-					}
-
-					if err := w.FetchContractEvent(number); err != nil {
-						log.Error("Failed to fetch bridge contract", "err", err)
-					}
-				}
-			}
-		}(ctx)
-
-		<-w.stopCh
-		cancel()
-	}()
-}
-
-// Stop the Watcher module, for a graceful shutdown.
-func (w *Watcher) Stop() {
-	w.stopCh <- true
-}
-
-const contractEventsBlocksFetchLimit = int64(10)
 
 // FetchBlockHeader pull latest L1 blocks and save in DB
 func (w *Watcher) FetchBlockHeader(blockHeight uint64) error {

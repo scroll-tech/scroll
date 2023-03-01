@@ -1,4 +1,4 @@
-package l2
+package watcher_test
 
 import (
 	"context"
@@ -19,6 +19,8 @@ import (
 
 	"scroll-tech/bridge/mock_bridge"
 	"scroll-tech/bridge/sender"
+	"scroll-tech/bridge/utils"
+	"scroll-tech/bridge/watcher"
 
 	"scroll-tech/database"
 	"scroll-tech/database/migrate"
@@ -31,11 +33,13 @@ func testCreateNewWatcherAndStop(t *testing.T) {
 	assert.NoError(t, migrate.ResetDB(l2db.GetDB().DB))
 	defer l2db.Close()
 
+	ctx := context.Background()
+	subCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
 	l2cfg := cfg.L2Config
-	rc := NewL2WatcherClient(context.Background(), l2Cli, l2cfg.Confirmations, l2cfg.L2MessengerAddress, l2cfg.L2MessageQueueAddress, l2db)
-	rc.Start()
-	defer rc.Stop()
+	rc := watcher.NewL2WatcherClient(context.Background(), l2Cli, l2cfg.Confirmations, l2cfg.L2MessengerAddress, l2cfg.L2MessageQueueAddress, l2db)
 
+	loopToFetchEvent(t, subCtx, rc)
 	l1cfg := cfg.L1Config
 	l1cfg.RelayerConfig.SenderConfig.Confirmations = rpc.LatestBlockNumber
 	newSender, err := sender.NewSender(context.Background(), l1cfg.RelayerConfig.SenderConfig, l1cfg.RelayerConfig.MessageSenderPrivateKeys)
@@ -60,12 +64,14 @@ func testMonitorBridgeContract(t *testing.T) {
 	db, err := database.NewOrmFactory(cfg.DBConfig)
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(db.GetDB().DB))
-	defer db.Close()
 
-	l2cfg := cfg.L2Config
-	wc := NewL2WatcherClient(context.Background(), l2Cli, l2cfg.Confirmations, l2cfg.L2MessengerAddress, l2cfg.L2MessageQueueAddress, db)
-	wc.Start()
-	defer wc.Stop()
+	ctx := context.Background()
+	subCtx, cancel := context.WithCancel(ctx)
+
+	defer func() {
+		db.Close()
+		cancel()
+	}()
 
 	previousHeight, err := l2Cli.BlockNumber(context.Background())
 	assert.NoError(t, err)
@@ -79,8 +85,7 @@ func testMonitorBridgeContract(t *testing.T) {
 	assert.NoError(t, err)
 
 	rc := prepareWatcherClient(l2Cli, db, address)
-	rc.Start()
-	defer rc.Stop()
+	loopToFetchEvent(t, subCtx, rc)
 
 	// Call mock_bridge instance sendMessage to trigger emit events
 	toAddress := common.HexToAddress("0x4592d8f8d7b001e72cb26a73e4fa1806a51ac79d")
@@ -128,7 +133,13 @@ func testFetchMultipleSentMessageInOneBlock(t *testing.T) {
 	db, err := database.NewOrmFactory(cfg.DBConfig)
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(db.GetDB().DB))
-	defer db.Close()
+	ctx := context.Background()
+	subCtx, cancel := context.WithCancel(ctx)
+
+	defer func() {
+		db.Close()
+		cancel()
+	}()
 
 	previousHeight, err := l2Cli.BlockNumber(context.Background()) // shallow the global previousHeight
 	assert.NoError(t, err)
@@ -141,8 +152,7 @@ func testFetchMultipleSentMessageInOneBlock(t *testing.T) {
 	assert.NoError(t, err)
 
 	rc := prepareWatcherClient(l2Cli, db, address)
-	rc.Start()
-	defer rc.Stop()
+	loopToFetchEvent(t, subCtx, rc)
 
 	// Call mock_bridge instance sendMessage to trigger emit events multiple times
 	numTransactions := 4
@@ -195,9 +205,18 @@ func testFetchMultipleSentMessageInOneBlock(t *testing.T) {
 	assert.Equal(t, 5, len(msgs))
 }
 
-func prepareWatcherClient(l2Cli *ethclient.Client, db database.OrmFactory, contractAddr common.Address) *WatcherClient {
+func prepareWatcherClient(l2Cli *ethclient.Client, db database.OrmFactory, contractAddr common.Address) *watcher.WatcherClient {
 	confirmations := rpc.LatestBlockNumber
-	return NewL2WatcherClient(context.Background(), l2Cli, confirmations, contractAddr, contractAddr, db)
+	return watcher.NewL2WatcherClient(context.Background(), l2Cli, confirmations, contractAddr, contractAddr, db)
+}
+
+func loopToFetchEvent(t *testing.T, subCtx context.Context, watcher *watcher.WatcherClient) {
+	go utils.LoopWithContext(subCtx, time.NewTicker(2*time.Second), func(ctx context.Context) {
+		number, err := utils.GetLatestConfirmedBlockNumber(ctx, l2Cli, cfg.L2Config.Confirmations)
+		assert.NoError(t, err)
+		watcher.FetchContractEvent(number)
+	})
+
 }
 
 func prepareAuth(t *testing.T, l2Cli *ethclient.Client, privateKey *ecdsa.PrivateKey) *bind.TransactOpts {

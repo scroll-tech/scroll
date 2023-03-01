@@ -1,10 +1,9 @@
-package l2
+package watcher
 
 import (
 	"context"
 	"fmt"
 	"math"
-	"reflect"
 	"sync"
 	"time"
 
@@ -17,6 +16,7 @@ import (
 
 	bridgeabi "scroll-tech/bridge/abi"
 	"scroll-tech/bridge/config"
+	"scroll-tech/bridge/relayer"
 )
 
 // AddBatchInfoToDB inserts the batch information to the BlockBatch table and updates the batch_hash
@@ -70,7 +70,7 @@ type BatchProposer struct {
 
 	proofGenerationFreq uint64
 	batchDataBuffer     []*types.BatchData
-	relayer             *Layer2Relayer
+	relayer             *relayer.Layer2Relayer
 
 	piCfg *types.PublicInputHashConfig
 
@@ -78,7 +78,7 @@ type BatchProposer struct {
 }
 
 // NewBatchProposer will return a new instance of BatchProposer.
-func NewBatchProposer(ctx context.Context, cfg *config.BatchProposerConfig, relayer *Layer2Relayer, orm database.OrmFactory) *BatchProposer {
+func NewBatchProposer(ctx context.Context, cfg *config.BatchProposerConfig, relayer *relayer.Layer2Relayer, orm database.OrmFactory) *BatchProposer {
 	p := &BatchProposer{
 		mutex:                    sync.Mutex{},
 		ctx:                      ctx,
@@ -100,45 +100,9 @@ func NewBatchProposer(ctx context.Context, cfg *config.BatchProposerConfig, rela
 	p.recoverBatchDataBuffer()
 
 	// try to commit the leftover pending batches
-	p.tryCommitBatches()
+	p.TryCommitBatches()
 
 	return p
-}
-
-// Start the Listening process
-func (p *BatchProposer) Start() {
-	go func() {
-		if reflect.ValueOf(p.orm).IsNil() {
-			panic("must run BatchProposer with DB")
-		}
-
-		ctx, cancel := context.WithCancel(p.ctx)
-
-		// batch proposer loop
-		go func(ctx context.Context) {
-			ticker := time.NewTicker(2 * time.Second)
-			defer ticker.Stop()
-
-			for {
-				select {
-				case <-ctx.Done():
-					return
-
-				case <-ticker.C:
-					p.tryProposeBatch()
-					p.tryCommitBatches()
-				}
-			}
-		}(ctx)
-
-		<-p.stopCh
-		cancel()
-	}()
-}
-
-// Stop the Watcher module, for a graceful shutdown.
-func (p *BatchProposer) Stop() {
-	p.stopCh <- struct{}{}
 }
 
 func (p *BatchProposer) recoverBatchDataBuffer() {
@@ -212,7 +176,8 @@ func (p *BatchProposer) recoverBatchDataBuffer() {
 	}
 }
 
-func (p *BatchProposer) tryProposeBatch() {
+// TryProposeBatch creates batch block data and try to save into db
+func (p *BatchProposer) TryProposeBatch() {
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
 
@@ -230,7 +195,8 @@ func (p *BatchProposer) tryProposeBatch() {
 	}
 }
 
-func (p *BatchProposer) tryCommitBatches() {
+// TryCommitBatches try commit batch txs to L1
+func (p *BatchProposer) TryCommitBatches() {
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
 

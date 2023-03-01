@@ -1,4 +1,4 @@
-package l2
+package relayer_test
 
 import (
 	"context"
@@ -12,38 +12,22 @@ import (
 	geth_types "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/stretchr/testify/assert"
 
+	"scroll-tech/bridge/relayer"
 	"scroll-tech/common/types"
 
 	"scroll-tech/database"
 	"scroll-tech/database/migrate"
 )
 
-var (
-	templateL2Message = []*types.L2Message{
-		{
-			Nonce:      1,
-			Height:     1,
-			Sender:     "0x596a746661dbed76a84556111c2872249b070e15",
-			Value:      "100",
-			Target:     "0x2c73620b223808297ea734d946813f0dd78eb8f7",
-			Calldata:   "testdata",
-			Layer2Hash: "hash0",
-		},
-	}
-)
-
-func testCreateNewRelayer(t *testing.T) {
+func testCreateNewL2Relayer(t *testing.T) {
 	// Create db handler and reset db.
 	db, err := database.NewOrmFactory(cfg.DBConfig)
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(db.GetDB().DB))
 	defer db.Close()
 
-	relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, cfg.L2Config.RelayerConfig)
+	_, err = relayer.NewLayer2Relayer(context.Background(), l2Cli, db, cfg.L2Config.RelayerConfig)
 	assert.NoError(t, err)
-	defer relayer.Stop()
-
-	relayer.Start()
 }
 
 func testL2RelayerProcessSaveEvents(t *testing.T) {
@@ -54,9 +38,8 @@ func testL2RelayerProcessSaveEvents(t *testing.T) {
 	defer db.Close()
 
 	l2Cfg := cfg.L2Config
-	relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, l2Cfg.RelayerConfig)
+	relayer, err := relayer.NewLayer2Relayer(context.Background(), l2Cli, db, l2Cfg.RelayerConfig)
 	assert.NoError(t, err)
-	defer relayer.Stop()
 
 	err = db.SaveL2Messages(context.Background(), templateL2Message)
 	assert.NoError(t, err)
@@ -101,9 +84,8 @@ func testL2RelayerProcessCommittedBatches(t *testing.T) {
 	defer db.Close()
 
 	l2Cfg := cfg.L2Config
-	relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, l2Cfg.RelayerConfig)
+	relayer, err := relayer.NewLayer2Relayer(context.Background(), l2Cli, db, l2Cfg.RelayerConfig)
 	assert.NoError(t, err)
-	defer relayer.Stop()
 
 	dbTx, err := db.Beginx()
 	assert.NoError(t, err)
@@ -137,9 +119,8 @@ func testL2RelayerSkipBatches(t *testing.T) {
 	defer db.Close()
 
 	l2Cfg := cfg.L2Config
-	relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, l2Cfg.RelayerConfig)
+	relayer, err := relayer.NewLayer2Relayer(context.Background(), l2Cli, db, l2Cfg.RelayerConfig)
 	assert.NoError(t, err)
-	defer relayer.Stop()
 
 	createBatch := func(rollupStatus types.RollupStatus, provingStatus types.ProvingStatus, index uint64) string {
 		dbTx, err := db.Beginx()

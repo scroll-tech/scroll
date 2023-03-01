@@ -1,4 +1,4 @@
-package l2
+package utils
 
 import (
 	"fmt"

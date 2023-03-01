@@ -1,4 +1,4 @@
-package l1
+package relayer_test
 
 import (
 	"context"
@@ -6,6 +6,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"scroll-tech/bridge/relayer"
 	"scroll-tech/database/migrate"
 
 	"scroll-tech/database"
@@ -19,9 +20,6 @@ func testCreateNewL1Relayer(t *testing.T) {
 	assert.NoError(t, migrate.ResetDB(db.GetDB().DB))
 	defer db.Close()
 
-	relayer, err := NewLayer1Relayer(context.Background(), db, cfg.L2Config.RelayerConfig)
+	_, err = relayer.NewLayer1Relayer(context.Background(), db, cfg.L2Config.RelayerConfig)
 	assert.NoError(t, err)
-	defer relayer.Stop()
-
-	relayer.Start()
 }
