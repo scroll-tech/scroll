@@ -325,8 +325,13 @@ func (m *Manager) handleZkProof(pk string, msg *message.ProofDetail) error {
 
 // CollectProofs collects proofs corresponding to a proof generation session.
 func (m *Manager) CollectProofs(sess *session) {
+	rollersPerSession := int(m.cfg.RollersPerSession)
+	rollersLeftCounter := rollersPerSession
+	var validRollers []string
 	for {
 		select {
+	
+		//Execute after timeout, set in config.json.
 		case <-time.After(time.Duration(m.cfg.CollectionTime) * time.Minute):
 			m.mu.Lock()
 			defer func() {
@@ -337,17 +342,9 @@ func (m *Manager) CollectProofs(sess *session) {
 				delete(m.sessions, sess.info.ID)
 				m.mu.Unlock()
 			}()
-
-			// Pick a random winner.
-			// First, round up the keys that actually sent in a valid proof.
-			var participatingRollers []string
-			for pk, roller := range sess.info.Rollers {
-				if roller.Status == orm.RollerProofValid {
-					participatingRollers = append(participatingRollers, pk)
-				}
-			}
+				
 			// Ensure we got at least one proof before selecting a winner.
-			if len(participatingRollers) == 0 {
+			if len(validRollers) == 0 {
 				// record failed session.
 				errMsg := "proof generation session ended without receiving any valid proofs"
 				m.addFailedSession(sess, errMsg)
@@ -363,11 +360,12 @@ func (m *Manager) CollectProofs(sess *session) {
 			}
 
 			// Now, select a random index for this slice.
-			randIndex := mathrand.Intn(len(participatingRollers))
-			_ = participatingRollers[randIndex]
+			randIndex := mathrand.Intn(len(validRollers))
+			_ = validRollers[randIndex]
 			// TODO: reward winner
 			return
 
+		//Execute after one of the roller finishes sending proof.
 		case ret := <-sess.finishChan:
 			m.mu.Lock()
 			sess.info.Rollers[ret.pk].Status = ret.status
@@ -379,9 +377,65 @@ func (m *Manager) CollectProofs(sess *session) {
 			if err := m.orm.SetSessionInfo(sess.info); err != nil {
 				log.Error("db set session info fail", "pk", ret.pk, "error", err)
 			}
+			//Record the number of rollers who have finished their tasks(in order for early return before timeout), and rollers with valid results indexed by public key.
+			rollersLeftCounter, validRollers = sess.isRollersFinished(rollersPerSession, rollersLeftCounter, validRollers)
 			m.mu.Unlock()
+		
+		//Check if all rollers have returned valid proof results earlier than timeout.
+		//Todo: remove duplicate codes with the timeout case.
+		default:
+			if rollersLeftCounter == 0 {
+				m.mu.Lock()
+				defer func() {
+					// TODO: remove the clean-up, rollers report healthy status.
+					for pk := range sess.info.Rollers {
+						m.freeTaskIDForRoller(pk, sess.info.ID)
+					}
+					delete(m.sessions, sess.info.ID)
+					m.mu.Unlock()
+				}()
+					
+				// Ensure we got at least one proof before selecting a winner.
+				if len(validRollers) == 0 {
+					// record failed session.
+					errMsg := "proof generation session ended without receiving any valid proofs"
+					m.addFailedSession(sess, errMsg)
+					log.Warn(errMsg, "session id", sess.info.ID)
+					// Set status as skipped.
+					// Note that this is only a workaround for testnet here.
+					// TODO: In real cases we should reset to orm.ProvingTaskUnassigned
+					// so as to re-distribute the task in the future
+					if err := m.orm.UpdateProvingStatus(sess.info.ID, orm.ProvingTaskFailed); err != nil {
+						log.Error("fail to reset task_status as Unassigned", "id", sess.info.ID, "err", err)
+					}
+					return
+				}
+	
+				// Now, select a random index for this slice.
+				randIndex := mathrand.Intn(len(validRollers))
+				_ = validRollers[randIndex]
+				// TODO: reward winner
+				return
+			}
 		}
 	}
+}
+
+// isRollersFinished checks if all rollers have produced valid proofs.
+// rollersLeftCounter was initalized to the value of rollersPerSession, which is assigned by user in config.json. 
+// When it reaches 0, it means all rollers have finished their tasks correctly.
+// validRollers also records the public keys of rollers who have finished their tasks correctly as index.
+func (s *session) isRollersFinished(rollersPerSession int, rollersLeftCounter int, validRollers []string) (int, []string){
+	for pk, roller := range s.info.Rollers {
+		if rollersPerSession == 0 {
+			return 0, validRollers
+		}
+		if rollersPerSession > 0 && roller.Status == orm.RollerProofValid {
+			rollersLeftCounter--
+			validRollers = append(validRollers, pk)
+		}
+	}
+	return rollersLeftCounter, validRollers
 }
 
 func (m *Manager) isSessionFailed(info *orm.SessionInfo) bool {
