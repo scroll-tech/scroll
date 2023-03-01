@@ -28,7 +28,7 @@ import (
 // Actions are triggered by new head from layer 1 geth node.
 // @todo It's better to be triggered by watcher.
 type Layer1Relayer struct {
-	*RelayerConfirmChs
+	*ConfirmChs
 	ctx context.Context
 
 	db  database.OrmFactory
@@ -76,7 +76,7 @@ func NewLayer1Relayer(ctx context.Context, db database.OrmFactory, cfg *config.R
 	}
 
 	return &Layer1Relayer{
-		RelayerConfirmChs: &RelayerConfirmChs{
+		ConfirmChs: &ConfirmChs{
 			messageCh:   messageSender.ConfirmChan(),
 			gasOracleCh: gasOracleSender.ConfirmChan(),
 			rollupCh:    nil,

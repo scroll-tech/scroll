@@ -35,7 +35,7 @@ import (
 // Actions are triggered by new head from layer 1 geth node.
 // @todo It's better to be triggered by watcher.
 type Layer2Relayer struct {
-	*RelayerConfirmChs
+	*ConfirmChs
 	ctx context.Context
 
 	l2Client *ethclient.Client
@@ -103,7 +103,7 @@ func NewLayer2Relayer(ctx context.Context, l2Client *ethclient.Client, db databa
 	}
 
 	return &Layer2Relayer{
-		RelayerConfirmChs: &RelayerConfirmChs{
+		ConfirmChs: &ConfirmChs{
 			messageCh:   messageSender.ConfirmChan(),
 			rollupCh:    rollupSender.ConfirmChan(),
 			gasOracleCh: gasOracleSender.ConfirmChan(),
