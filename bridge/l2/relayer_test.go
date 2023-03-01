@@ -61,6 +61,10 @@ func testL2RelayerProcessSaveEvents(t *testing.T) {
 	err = db.SaveL2Messages(context.Background(), templateL2Message)
 	assert.NoError(t, err)
 
+	// add dummy proof
+	err = db.UpdateL2MessageProof(context.Background(), templateL2Message[0].Nonce, "0x00")
+	assert.NoError(t, err)
+
 	traces := []*geth_types.BlockTrace{
 		{
 			Header: &geth_types.Header{

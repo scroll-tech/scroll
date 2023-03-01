@@ -2,6 +2,7 @@ package database_test
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"math/big"
@@ -9,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/scroll-tech/go-ethereum/common"
@@ -70,6 +72,26 @@ var (
 			Target:     "0x2c73620b223808297ea734d946813f0dd78eb8f7",
 			Calldata:   "testdata",
 			Layer2Hash: "hash1",
+		},
+		{
+			Nonce:      3,
+			MsgHash:    "msg_hash3",
+			Height:     3,
+			Sender:     "0x596a746661dbed76a84556111c2872249b070e15",
+			Value:      "0x19ece",
+			Target:     "0x2c73620b223808297ea734d946813f0dd78eb8f7",
+			Calldata:   "testdata",
+			Layer2Hash: "hash2",
+		},
+		{
+			Nonce:      4,
+			MsgHash:    "msg_hash4",
+			Height:     4,
+			Sender:     "0x596a746661dbed76a84556111c2872249b070e15",
+			Value:      "0x19ece",
+			Target:     "0x2c73620b223808297ea734d946813f0dd78eb8f7",
+			Calldata:   "testdata",
+			Layer2Hash: "hash3",
 		},
 	}
 	blockTrace *geth_types.BlockTrace
@@ -278,12 +300,63 @@ func testOrmL2Message(t *testing.T) {
 
 	height, err := ormLayer2.GetLayer2LatestWatchedHeight()
 	assert.NoError(t, err)
-	assert.Equal(t, int64(2), height)
+	assert.Equal(t, int64(4), height)
 
 	msg, err := ormLayer2.GetL2MessageByMsgHash("msg_hash2")
 	assert.NoError(t, err)
 	assert.Equal(t, types.MsgSubmitted, msg.Status)
 	assert.Equal(t, msg.MsgHash, "msg_hash2")
+
+	// test GetLastL2MessageNonceBeforeHeight
+	nonce, err := ormLayer2.GetLastL2MessageNonceBeforeHeight(context.Background(), 0)
+	assert.NoError(t, err)
+	assert.Equal(t, nonce.Valid, false)
+	for i := 1; i <= 4; i++ {
+		nonce, err = ormLayer2.GetLastL2MessageNonceBeforeHeight(context.Background(), uint64(i))
+		assert.NoError(t, err)
+		assert.Equal(t, nonce.Valid, true)
+		assert.Equal(t, nonce.Int64, int64(i))
+	}
+	nonce, err = ormLayer2.GetLastL2MessageNonceBeforeHeight(context.Background(), 5)
+	assert.NoError(t, err)
+	assert.Equal(t, nonce.Valid, true)
+	assert.Equal(t, nonce.Int64, int64(4))
+
+	// test GetL2MessagesBetween
+	for start := 1; start <= 4; start++ {
+		var msgs []*types.L2Message
+		for finish := start; finish <= 4; finish++ {
+			msgs, err = ormLayer2.GetL2MessagesBetween(context.Background(), uint64(start), uint64(finish))
+			assert.NoError(t, err)
+			assert.Equal(t, len(msgs), finish-start+1)
+			for i := start; i <= finish; i++ {
+				assert.Equal(t, msgs[i-start].Nonce, uint64(i))
+			}
+		}
+	}
+
+	// test UpdateL2MessageProofInDbTx
+	var proof sql.NullString
+	for i := 1; i <= 4; i++ {
+		proof, err = ormLayer2.GetL2MessageProofByNonce(uint64(i))
+		assert.NoError(t, err)
+		assert.Equal(t, proof.Valid, false)
+	}
+	var dbTx *sqlx.Tx
+	dbTx, err = factory.Beginx()
+	assert.NoError(t, err)
+	for i := 0; i < 4; i++ {
+		err = ormLayer2.UpdateL2MessageProofInDbTx(context.Background(), dbTx, templateL2Message[i].MsgHash, "0x00")
+		assert.NoError(t, err)
+	}
+	err = dbTx.Commit()
+	assert.NoError(t, err)
+	for i := 1; i <= 4; i++ {
+		proof, err = ormLayer2.GetL2MessageProofByNonce(uint64(i))
+		assert.NoError(t, err)
+		assert.Equal(t, proof.Valid, true)
+		assert.Equal(t, proof.String, "0x00")
+	}
 }
 
 // testOrmBlockBatch test rollup result table functions

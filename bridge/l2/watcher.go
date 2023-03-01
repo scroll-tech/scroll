@@ -120,7 +120,7 @@ func (w *WatcherClient) initializeGenesis() error {
 
 	batchData := types.NewGenesisBatchData(blockTrace)
 
-	if err = AddBatchInfoToDB(w.orm, batchData); err != nil {
+	if err = AddBatchInfoToDB(w.orm, batchData, make([]*types.L2Message, 0), make([][]byte, 0)); err != nil {
 		log.Error("failed to add batch info to DB", "BatchHash", batchData.Hash(), "error", err)
 		return err
 	}

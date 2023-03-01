@@ -2,12 +2,15 @@ package l2
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 	"fmt"
 	"math"
 	"reflect"
 	"sync"
 	"time"
 
+	"github.com/scroll-tech/go-ethereum/common"
 	geth_types "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/log"
 
@@ -21,7 +24,7 @@ import (
 
 // AddBatchInfoToDB inserts the batch information to the BlockBatch table and updates the batch_hash
 // in all blocks included in the batch.
-func AddBatchInfoToDB(db database.OrmFactory, batchData *types.BatchData) error {
+func AddBatchInfoToDB(db database.OrmFactory, batchData *types.BatchData, messages []*types.L2Message, msgProofs [][]byte) error {
 	dbTx, err := db.Beginx()
 	if err != nil {
 		return err
@@ -49,6 +52,12 @@ func AddBatchInfoToDB(db database.OrmFactory, batchData *types.BatchData) error 
 		return dbTxErr
 	}
 
+	for i, msg := range messages {
+		if dbTxErr = db.UpdateL2MessageProofInDbTx(context.Background(), dbTx, msg.MsgHash, common.Bytes2Hex(msgProofs[i])); dbTxErr != nil {
+			return dbTxErr
+		}
+	}
+
 	dbTxErr = dbTx.Commit()
 	return dbTxErr
 }
@@ -72,6 +81,8 @@ type BatchProposer struct {
 	batchDataBuffer     []*types.BatchData
 	relayer             *Layer2Relayer
 
+	withdrawTrie *WithdrawTrie
+
 	piCfg *types.PublicInputHashConfig
 
 	stopCh chan struct{}
@@ -79,6 +90,8 @@ type BatchProposer struct {
 
 // NewBatchProposer will return a new instance of BatchProposer.
 func NewBatchProposer(ctx context.Context, cfg *config.BatchProposerConfig, relayer *Layer2Relayer, orm database.OrmFactory) *BatchProposer {
+	withdrawTrie := NewWithdrawTrie()
+
 	p := &BatchProposer{
 		mutex:                    sync.Mutex{},
 		ctx:                      ctx,
@@ -91,6 +104,7 @@ func NewBatchProposer(ctx context.Context, cfg *config.BatchProposerConfig, rela
 		commitCalldataSizeLimit:  cfg.CommitTxCalldataSizeLimit,
 		batchDataBufferSizeLimit: 100*cfg.CommitTxCalldataSizeLimit + 1*1024*1024, // @todo: determine the value.
 		proofGenerationFreq:      cfg.ProofGenerationFreq,
+		withdrawTrie:             withdrawTrie,
 		piCfg:                    cfg.PublicInputConfig,
 		relayer:                  relayer,
 		stopCh:                   make(chan struct{}),
@@ -99,10 +113,141 @@ func NewBatchProposer(ctx context.Context, cfg *config.BatchProposerConfig, rela
 	// for graceful restart.
 	p.recoverBatchDataBuffer()
 
+	// Initialize missing proof before we do anything else
+	if err := p.initializeMissingMessageProof(); err != nil {
+		panic(fmt.Sprintf("failed to initialize missing message proof, err: %v", err))
+	}
+
 	// try to commit the leftover pending batches
 	p.tryCommitBatches()
 
 	return p
+}
+
+func (p *BatchProposer) initializeMissingMessageProof() error {
+	firstMsg, err := p.orm.GetL2MessageByNonce(0)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return fmt.Errorf("failed to get first l2 message: %v", err)
+	}
+	// no l2 message
+	if firstMsg == nil {
+		return nil
+	}
+
+	// batch will never be empty, since we always have genesis batch in db
+	batch, err := p.orm.GetLatestBatch()
+	if err != nil {
+		return fmt.Errorf("failed to get latest batch: %v", err)
+	}
+
+	var batches []*types.BlockBatch
+	batchIndex := batch.Index
+	for {
+		var nonce sql.NullInt64
+		// find last message nonce in before or in this batch
+		nonce, err = p.orm.GetLastL2MessageNonceBeforeHeight(p.ctx, batch.EndBlockNumber)
+		if err != nil {
+			return fmt.Errorf("failed to last l2 message nonce before %v: %v", batch.EndBlockNumber, err)
+		}
+		if !nonce.Valid {
+			// no message before or in this batch
+			break
+		}
+		var proof sql.NullString
+		proof, err = p.orm.GetL2MessageProofByNonce(uint64(nonce.Int64))
+		if err != nil {
+			return fmt.Errorf("failed to check proof %v: %v", nonce.Int64, err)
+		}
+		if proof.Valid {
+			var msg *types.L2Message
+			// fetch message
+			msg, err = p.orm.GetL2MessageByNonce(uint64(nonce.Int64))
+			if err != nil {
+				return fmt.Errorf("failed to l2 message with nonce %v: %v", nonce.Int64, err)
+			}
+
+			// initialize withdrawTrie
+			proofBytes := common.Hex2Bytes(proof.String)
+			p.withdrawTrie.Initialize(uint64(nonce.Int64), common.HexToHash(msg.MsgHash), proofBytes)
+			break
+		}
+
+		// append unprocessed batch
+		batches = append(batches, batch)
+
+		// iterate for next batch
+		batchIndex--
+		var tBatches []*types.BlockBatch
+		tBatches, err = p.orm.GetBlockBatches(map[string]interface{}{
+			"index": batchIndex,
+		})
+		if err != nil {
+			return fmt.Errorf("failed to get block batch %v: %v", batchIndex, err)
+		}
+		if len(tBatches) != 1 {
+			return fmt.Errorf("no batch with index %v", batchIndex)
+		}
+		batch = tBatches[0]
+	}
+
+	// reverse batches
+	for i := 0; i < len(batches)/2; i++ {
+		j := len(batches) - i - 1
+		batches[i], batches[j] = batches[j], batches[i]
+	}
+
+	log.Info("Build withdraw trie with pending messages")
+	msgs, err := p.orm.GetL2MessagesBetween(p.ctx, batches[0].StartBlockNumber, batches[len(batches)-1].EndBlockNumber)
+	if err != nil {
+		return fmt.Errorf("failed to get l2 message between %v and %v: %v", batches[0].StartBlockNumber, batches[len(batches)-1].EndBlockNumber, err)
+	}
+
+	i := 0
+	// iterate each batch and fill local withdraw trie
+	for _, batch := range batches {
+		if msgs[i].Height > batch.EndBlockNumber {
+			continue
+		}
+
+		// double check whether nonce is matched
+		if msgs[i].Nonce != p.withdrawTrie.NextMessageNonce {
+			log.Error("L2 message nonce mismatch", "expected", msgs[i].Nonce, "found", p.withdrawTrie.NextMessageNonce)
+			return fmt.Errorf("l2 message nonce mismatch, expected: %v, found: %v", msgs[i].Nonce, p.withdrawTrie.NextMessageNonce)
+		}
+
+		var hashes []common.Hash
+		for ; i < len(msgs) && msgs[i].Height <= batch.EndBlockNumber; i++ {
+			hashes = append(hashes, common.HexToHash(msgs[i].MsgHash))
+		}
+
+		if len(hashes) > 0 {
+			msgProofs := p.withdrawTrie.AppendMessages(hashes)
+
+			dbTx, err := p.orm.Beginx()
+			if err != nil {
+				return err
+			}
+
+			for i, msgHash := range hashes {
+				if dbTxErr := p.orm.UpdateL2MessageProofInDbTx(context.Background(), dbTx, msgHash.String(), common.Bytes2Hex(msgProofs[i])); dbTxErr != nil {
+					if err := dbTx.Rollback(); err != nil {
+						log.Error("dbTx.Rollback()", "err", err)
+					}
+					return dbTxErr
+				}
+			}
+
+			if dbTxErr := dbTx.Commit(); dbTxErr != nil {
+				if err := dbTx.Rollback(); err != nil {
+					log.Error("dbTx.Rollback()", "err", err)
+				}
+				return dbTxErr
+			}
+		}
+	}
+	log.Info("Build withdraw trie finished")
+
+	return nil
 }
 
 // Start the Listening process
@@ -333,7 +478,38 @@ func (p *BatchProposer) createBatchForBlocks(blocks []*types.BlockInfo) error {
 		return err
 	}
 
-	if err := AddBatchInfoToDB(p.orm, batchData); err != nil {
+	messages, err := p.orm.GetL2MessagesBetween(
+		p.ctx,
+		batchData.Batch.Blocks[0].BlockNumber,
+		batchData.Batch.Blocks[len(batchData.Batch.Blocks)-1].BlockNumber,
+	)
+	if err != nil {
+		log.Error("GetL2MessagesBetween failed", "error", err)
+		return err
+	}
+
+	var msgProofs [][]byte
+	if len(messages) > 0 {
+		// double check whether nonce is matched
+		if messages[0].Nonce != p.withdrawTrie.NextMessageNonce {
+			log.Error("L2 message nonce mismatch", "expected", messages[0].Nonce, "found", p.withdrawTrie.NextMessageNonce)
+			return fmt.Errorf("l2 message nonce mismatch, expected: %v, found: %v", messages[0].Nonce, p.withdrawTrie.NextMessageNonce)
+		}
+
+		var hashes []common.Hash
+		for _, msg := range messages {
+			hashes = append(hashes, common.HexToHash(msg.MsgHash))
+		}
+		msgProofs = p.withdrawTrie.AppendMessages(hashes)
+	}
+
+	// double check whether message root is matched
+	if p.withdrawTrie.MessageRoot() != batchData.Batch.WithdrawTrieRoot {
+		log.Error("L2 message root mismatch", "expected", p.withdrawTrie.MessageRoot(), "found", batchData.Batch.WithdrawTrieRoot)
+		return fmt.Errorf("l2 message root mismatch, expected: %v, found: %v", p.withdrawTrie.MessageRoot(), batchData.Batch.WithdrawTrieRoot)
+	}
+
+	if err := AddBatchInfoToDB(p.orm, batchData, messages, msgProofs); err != nil {
 		log.Error("addBatchInfoToDB failed", "BatchHash", batchData.Hash(), "error", err)
 		return err
 	}

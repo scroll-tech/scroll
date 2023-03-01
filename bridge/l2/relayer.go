@@ -185,24 +185,34 @@ func (r *Layer2Relayer) ProcessSavedEvents() {
 }
 
 func (r *Layer2Relayer) processSavedEvent(msg *types.L2Message) error {
-	// @todo fetch merkle proof from l2geth
 	log.Info("Processing L2 Message", "msg.nonce", msg.Nonce, "msg.height", msg.Height)
+
+	// fetch message proof
+	proof, err := r.db.GetL2MessageProofByNonce(msg.Nonce)
+	if err != nil {
+		log.Error("Failed to GetL2MessageProofByNonce from DB", "nonce", msg.Nonce)
+		return err
+	}
+	if !proof.Valid {
+		log.Error("Message proof not ready", "nonce", msg.Nonce)
+		return fmt.Errorf("Message proof not ready, nonce: %v", msg.Nonce)
+	}
 
 	// Get the block info that contains the message
 	blockInfos, err := r.db.GetL2BlockInfos(map[string]interface{}{"number": msg.Height})
 	if err != nil {
 		log.Error("Failed to GetL2BlockInfos from DB", "number", msg.Height)
+		return err
 	}
 	blockInfo := blockInfos[0]
 	if !blockInfo.BatchHash.Valid {
 		log.Error("Block has not been batched yet", "number", blockInfo.Number, "msg.nonce", msg.Nonce)
-		return nil
+		return fmt.Errorf("Block has not been batched yet, number: %v, msg.nonce: %v", blockInfo.Number, msg.Nonce)
 	}
 
-	// TODO: rebuild the withdraw trie to generate the merkle proof
-	proof := bridge_abi.IL1ScrollMessengerL2MessageProof{
+	l2MessageProof := bridge_abi.IL1ScrollMessengerL2MessageProof{
 		BatchHash:   common.HexToHash(blockInfo.BatchHash.String),
-		MerkleProof: make([]byte, 0),
+		MerkleProof: common.Hex2Bytes(proof.String),
 	}
 	from := common.HexToAddress(msg.Sender)
 	target := common.HexToAddress(msg.Target)
@@ -214,7 +224,7 @@ func (r *Layer2Relayer) processSavedEvent(msg *types.L2Message) error {
 	}
 	msgNonce := big.NewInt(int64(msg.Nonce))
 	calldata := common.Hex2Bytes(msg.Calldata)
-	data, err := r.l1MessengerABI.Pack("relayMessageWithProof", from, target, value, msgNonce, calldata, proof)
+	data, err := r.l1MessengerABI.Pack("relayMessageWithProof", from, target, value, msgNonce, calldata, l2MessageProof)
 	if err != nil {
 		log.Error("Failed to pack relayMessageWithProof", "msg.nonce", msg.Nonce, "err", err)
 		// TODO: need to skip this message by changing its status to MsgError

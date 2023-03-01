@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/jmoiron/sqlx"
@@ -46,17 +47,12 @@ func (m *layer2MessageOrm) GetL2MessageByMsgHash(msgHash string) (*types.L2Messa
 	return &msg, nil
 }
 
-// GetMessageProofByNonce fetch message by nonce
-func (m *layer2MessageOrm) GetMessageProofByNonce(nonce uint64) (string, error) {
+// GetL2MessageProofByNonce fetch message by nonce
+func (m *layer2MessageOrm) GetL2MessageProofByNonce(nonce uint64) (sql.NullString, error) {
 	row := m.db.QueryRow(`SELECT proof FROM l2_message WHERE nonce = $1`, nonce)
 	var proof sql.NullString
-	if err := row.Scan(&proof); err != nil {
-		return "", err
-	}
-	if proof.Valid {
-		return proof.String, nil
-	}
-	return "", nil
+	err := row.Scan(&proof)
+	return proof, err
 }
 
 // MessageProofExist fetch message by nonce
@@ -69,6 +65,41 @@ func (m *layer2MessageOrm) MessageProofExist(nonce uint64) (bool, error) {
 		return false, nil
 	}
 	return true, nil
+}
+
+// GetLastL2MessageNonceBeforeHeight return the latest message nonce whose height <= `height`.
+func (m *layer2MessageOrm) GetLastL2MessageNonceBeforeHeight(ctx context.Context, height uint64) (sql.NullInt64, error) {
+	row := m.db.QueryRow(`SELECT MAX(nonce) FROM l2_message WHERE height <= $1;`, height)
+	var nonce sql.NullInt64
+	err := row.Scan(&nonce)
+
+	return nonce, err
+}
+
+// GetL2MessagesBetween fetch a list of message between startHeight and finishHeight (both inclusive). The returned messages are ordered by nonce.
+func (m *layer2MessageOrm) GetL2MessagesBetween(ctx context.Context, startHeight, finishHeight uint64) ([]*types.L2Message, error) {
+	rows, err := m.db.Queryx(`SELECT nonce, msg_hash, height, sender, target, value, calldata, layer2_hash, status FROM l2_message WHERE height >= $1 and height <= $2`, startHeight, finishHeight)
+	if err != nil {
+		return nil, err
+	}
+
+	var msgs []*types.L2Message
+	for rows.Next() {
+		msg := &types.L2Message{}
+		if err = rows.StructScan(&msg); err != nil {
+			break
+		}
+		msgs = append(msgs, msg)
+	}
+
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return nil, err
+	}
+
+	// sort by nonce
+	sort.SliceStable(msgs, func(i, j int) bool { return msgs[i].Nonce < msgs[j].Nonce })
+
+	return msgs, rows.Close()
 }
 
 // GetL2ProcessedNonce fetch latest processed message nonce
@@ -163,13 +194,19 @@ func (m *layer2MessageOrm) UpdateLayer1Hash(ctx context.Context, msgHash, layer1
 	return nil
 }
 
-// UpdateMessageProof update corresponding message proof, given message nonce
-func (m *layer2MessageOrm) UpdateMessageProof(ctx context.Context, nonce uint64, proof string) error {
+// UpdateL2MessageProof update corresponding message proof, given message nonce
+func (m *layer2MessageOrm) UpdateL2MessageProof(ctx context.Context, nonce uint64, proof string) error {
 	if _, err := m.db.ExecContext(ctx, m.db.Rebind("update l2_message set proof = ? where nonce = ?;"), proof, nonce); err != nil {
 		return err
 	}
 
 	return nil
+}
+
+// UpdateL2MessageProofInDbTx update corresponding message proof in db transaction, given message nonce
+func (m *layer2MessageOrm) UpdateL2MessageProofInDbTx(ctx context.Context, dbTx *sqlx.Tx, msgHash, proof string) error {
+	_, err := dbTx.ExecContext(ctx, m.db.Rebind("update l2_message set proof = ? where msg_hash = ?;"), proof, msgHash)
+	return err
 }
 
 // UpdateLayer2Status updates message stauts, given message hash

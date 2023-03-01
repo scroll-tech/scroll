@@ -64,6 +64,10 @@ func testRelayL2MessageSucceed(t *testing.T) {
 	assert.Equal(t, msg.Sender, l2Auth.From.String())
 	assert.Equal(t, msg.Target, l1Auth.From.String())
 
+	// add dummy proof
+	err = db.UpdateL2MessageProof(context.Background(), msg.Nonce, "0x00")
+	assert.NoError(t, err)
+
 	// add fake blocks
 	traces := []*geth_types.BlockTrace{
 		{

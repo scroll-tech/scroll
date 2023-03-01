@@ -128,6 +128,8 @@ func TestFunction(t *testing.T) {
 	// Run batch proposer test cases.
 	t.Run("TestBatchProposerProposeBatch", testBatchProposerProposeBatch)
 	t.Run("TestBatchProposerGracefulRestart", testBatchProposerGracefulRestart)
+	t.Run("TestProposeBatchWithMessages", testProposeBatchWithMessages)
+	t.Run("TestInitializeMissingMessageProof", testInitializeMissingMessageProof)
 
 	t.Cleanup(func() {
 		free(t)
