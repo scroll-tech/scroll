@@ -1,13 +1,12 @@
 package l2
 
 import (
-	"encoding/json"
+	"context"
 	"fmt"
-	"math/big"
-	"os"
+	"math"
 	"testing"
 
-	"github.com/scroll-tech/go-ethereum/core/types"
+	geth_types "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/stretchr/testify/assert"
 
 	"scroll-tech/database"
@@ -15,48 +14,90 @@ import (
 
 	"scroll-tech/bridge/config"
 
-	"scroll-tech/common/utils"
+	"scroll-tech/common/types"
 )
 
-func testBatchProposer(t *testing.T) {
+func testBatchProposerProposeBatch(t *testing.T) {
 	// Create db handler and reset db.
 	db, err := database.NewOrmFactory(cfg.DBConfig)
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(db.GetDB().DB))
 	defer db.Close()
 
-	trace2 := &types.BlockTrace{}
-	trace3 := &types.BlockTrace{}
-
-	data, err := os.ReadFile("../../common/testdata/blockTrace_02.json")
-	assert.NoError(t, err)
-	err = json.Unmarshal(data, trace2)
-	assert.NoError(t, err)
-
-	data, err = os.ReadFile("../../common/testdata/blockTrace_03.json")
-	assert.NoError(t, err)
-	err = json.Unmarshal(data, trace3)
-	assert.NoError(t, err)
 	// Insert traces into db.
-	assert.NoError(t, db.InsertBlockTraces([]*types.BlockTrace{trace2, trace3}))
+	assert.NoError(t, db.InsertL2BlockTraces([]*geth_types.BlockTrace{blockTrace1}))
 
-	id := utils.ComputeBatchID(trace3.Header.Hash(), trace2.Header.ParentHash, big.NewInt(1))
+	l2cfg := cfg.L2Config
+	wc := NewL2WatcherClient(context.Background(), l2Cli, l2cfg.Confirmations, l2cfg.L2MessengerAddress, l2cfg.L2MessageQueueAddress, db)
+	wc.Start()
+	defer wc.Stop()
 
-	proposer := newBatchProposer(&config.BatchProposerConfig{
+	relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, cfg.L2Config.RelayerConfig)
+	assert.NoError(t, err)
+
+	proposer := NewBatchProposer(context.Background(), &config.BatchProposerConfig{
 		ProofGenerationFreq: 1,
 		BatchGasThreshold:   3000000,
 		BatchTxNumThreshold: 135,
 		BatchTimeSec:        1,
 		BatchBlocksLimit:    100,
-	}, db)
+	}, relayer, db)
 	proposer.tryProposeBatch()
 
-	infos, err := db.GetUnbatchedBlocks(map[string]interface{}{},
+	infos, err := db.GetUnbatchedL2Blocks(map[string]interface{}{},
 		fmt.Sprintf("order by number ASC LIMIT %d", 100))
 	assert.NoError(t, err)
-	assert.Equal(t, true, len(infos) == 0)
+	assert.Equal(t, 0, len(infos))
 
-	exist, err := db.BatchRecordExist(id)
+	exist, err := db.BatchRecordExist(batchData1.Hash().Hex())
+	assert.NoError(t, err)
+	assert.Equal(t, true, exist)
+}
+
+func testBatchProposerGracefulRestart(t *testing.T) {
+	// Create db handler and reset db.
+	db, err := database.NewOrmFactory(cfg.DBConfig)
+	assert.NoError(t, err)
+	assert.NoError(t, migrate.ResetDB(db.GetDB().DB))
+	defer db.Close()
+
+	relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, cfg.L2Config.RelayerConfig)
+	assert.NoError(t, err)
+
+	// Insert traces into db.
+	assert.NoError(t, db.InsertL2BlockTraces([]*geth_types.BlockTrace{blockTrace2}))
+
+	// Insert block batch into db.
+	dbTx, err := db.Beginx()
+	assert.NoError(t, err)
+	assert.NoError(t, db.NewBatchInDBTx(dbTx, batchData1))
+	assert.NoError(t, db.NewBatchInDBTx(dbTx, batchData2))
+	assert.NoError(t, db.SetBatchHashForL2BlocksInDBTx(dbTx, []uint64{
+		batchData1.Batch.Blocks[0].BlockNumber}, batchData1.Hash().Hex()))
+	assert.NoError(t, db.SetBatchHashForL2BlocksInDBTx(dbTx, []uint64{
+		batchData2.Batch.Blocks[0].BlockNumber}, batchData2.Hash().Hex()))
+	assert.NoError(t, dbTx.Commit())
+
+	assert.NoError(t, db.UpdateRollupStatus(context.Background(), batchData1.Hash().Hex(), types.RollupFinalized))
+
+	batchHashes, err := db.GetPendingBatches(math.MaxInt32)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, len(batchHashes))
+	assert.Equal(t, batchData2.Hash().Hex(), batchHashes[0])
+	// test p.recoverBatchDataBuffer().
+	_ = NewBatchProposer(context.Background(), &config.BatchProposerConfig{
+		ProofGenerationFreq: 1,
+		BatchGasThreshold:   3000000,
+		BatchTxNumThreshold: 135,
+		BatchTimeSec:        1,
+		BatchBlocksLimit:    100,
+	}, relayer, db)
+
+	batchHashes, err = db.GetPendingBatches(math.MaxInt32)
+	assert.NoError(t, err)
+	assert.Equal(t, 0, len(batchHashes))
+
+	exist, err := db.BatchRecordExist(batchData2.Hash().Hex())
 	assert.NoError(t, err)
 	assert.Equal(t, true, exist)
 }

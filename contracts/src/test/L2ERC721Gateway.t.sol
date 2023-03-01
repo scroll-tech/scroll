@@ -2,7 +2,6 @@
 
 pragma solidity ^0.8.0;
 
-import { console2 } from "forge-std/console2.sol";
 import { DSTestPlus } from "solmate/test/utils/DSTestPlus.sol";
 import { MockERC721 } from "solmate/test/utils/mocks/MockERC721.sol";
 
@@ -221,8 +220,9 @@ contract L2ERC721GatewayTest is DSTestPlus {
     address to,
     uint256 tokenId
   ) public {
-    if (to == address(0)) to = address(1);
-    if (to == address(mockRecipient)) to = address(1);
+    hevm.assume(to != address(0));
+    hevm.assume(to.code.length == 0);
+
     tokenId = bound(tokenId, NOT_OWNED_TOKEN_ID + 1, type(uint256).max);
 
     // finalize deposit

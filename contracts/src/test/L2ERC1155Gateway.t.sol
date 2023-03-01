@@ -2,7 +2,6 @@
 
 pragma solidity ^0.8.0;
 
-import { console2 } from "forge-std/console2.sol";
 import { DSTestPlus } from "solmate/test/utils/DSTestPlus.sol";
 import { MockERC1155 } from "solmate/test/utils/mocks/MockERC1155.sol";
 import { ERC1155TokenReceiver } from "solmate/tokens/ERC1155.sol";
@@ -242,7 +241,8 @@ contract L2ERC1155GatewayTest is DSTestPlus, ERC1155TokenReceiver {
     uint256 tokenId,
     uint256 amount
   ) public {
-    if (to == address(0) || to.code.length > 0) to = address(1);
+    hevm.assume(to != address(0));
+    hevm.assume(to.code.length == 0);
 
     gateway.updateTokenMapping(address(token), address(token));
     tokenId = bound(tokenId, 0, TOKEN_COUNT - 1);

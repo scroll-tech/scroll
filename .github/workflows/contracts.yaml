@@ -8,6 +8,7 @@ on:
       - prod
       - release/*
       - staging
+      - alpha
     paths:
       - 'contracts/**'
       - '.github/workflows/contracts.yaml'
@@ -18,6 +19,7 @@ on:
       - prod
       - release/*
       - staging
+      - alpha
     paths:
       - 'contracts/**'
       - '.github/workflows/contracts.yaml'

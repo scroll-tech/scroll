@@ -6,10 +6,12 @@ import { OwnableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/O
 import { IERC20Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import { SafeERC20Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 
-import { IL1ERC20Gateway, L1ERC20Gateway } from "./L1ERC20Gateway.sol";
-import { IL1ScrollMessenger } from "../IL1ScrollMessenger.sol";
 import { IL2ERC20Gateway } from "../../L2/gateways/IL2ERC20Gateway.sol";
-import { ScrollGatewayBase, IScrollGateway } from "../../libraries/gateway/ScrollGatewayBase.sol";
+import { IL1ScrollMessenger } from "../IL1ScrollMessenger.sol";
+import { IL1ERC20Gateway } from "./IL1ERC20Gateway.sol";
+
+import { ScrollGatewayBase } from "../../libraries/gateway/ScrollGatewayBase.sol";
+import { L1ERC20Gateway } from "./L1ERC20Gateway.sol";
 
 /// @title L1CustomERC20Gateway
 /// @notice The `L1CustomERC20Gateway` is used to deposit custom ERC20 compatible tokens in layer 1 and
@@ -19,21 +21,30 @@ import { ScrollGatewayBase, IScrollGateway } from "../../libraries/gateway/Scrol
 contract L1CustomERC20Gateway is OwnableUpgradeable, ScrollGatewayBase, L1ERC20Gateway {
   using SafeERC20Upgradeable for IERC20Upgradeable;
 
-  /**************************************** Events ****************************************/
+  /**********
+   * Events *
+   **********/
 
   /// @notice Emitted when token mapping for ERC20 token is updated.
   /// @param _l1Token The address of ERC20 token in layer 1.
   /// @param _l2Token The address of corresponding ERC20 token in layer 2.
   event UpdateTokenMapping(address _l1Token, address _l2Token);
 
-  /**************************************** Variables ****************************************/
+  /*************
+   * Variables *
+   *************/
 
   /// @notice Mapping from l1 token address to l2 token address for ERC20 token.
-  // solhint-disable-next-line var-name-mixedcase
   mapping(address => address) public tokenMapping;
 
-  /**************************************** Constructor ****************************************/
+  /***************
+   * Constructor *
+   ***************/
 
+  /// @notice Initialize the storage of L1CustomERC20Gateway.
+  /// @param _counterpart The address of L2CustomERC20Gateway in L2.
+  /// @param _router The address of L1GatewayRouter.
+  /// @param _messenger The address of L1ScrollMessenger.
   function initialize(
     address _counterpart,
     address _router,
@@ -45,14 +56,18 @@ contract L1CustomERC20Gateway is OwnableUpgradeable, ScrollGatewayBase, L1ERC20G
     ScrollGatewayBase._initialize(_counterpart, _router, _messenger);
   }
 
-  /**************************************** View Functions ****************************************/
+  /*************************
+   * Public View Functions *
+   *************************/
 
   /// @inheritdoc IL1ERC20Gateway
   function getL2ERC20Address(address _l1Token) public view override returns (address) {
     return tokenMapping[_l1Token];
   }
 
-  /**************************************** Mutate Functions ****************************************/
+  /****************************
+   * Public Mutated Functions *
+   ****************************/
 
   /// @inheritdoc IL1ERC20Gateway
   function finalizeWithdrawERC20(
@@ -64,6 +79,7 @@ contract L1CustomERC20Gateway is OwnableUpgradeable, ScrollGatewayBase, L1ERC20G
     bytes calldata _data
   ) external payable override onlyCallByCounterpart {
     require(msg.value == 0, "nonzero msg.value");
+    require(_l2Token == tokenMapping[_l1Token], "l2 token mismatch");
 
     // @note can possible trigger reentrant call to this contract or messenger,
     // but it seems not a big problem.
@@ -74,12 +90,9 @@ contract L1CustomERC20Gateway is OwnableUpgradeable, ScrollGatewayBase, L1ERC20G
     emit FinalizeWithdrawERC20(_l1Token, _l2Token, _from, _to, _amount, _data);
   }
 
-  /// @inheritdoc IScrollGateway
-  function finalizeDropMessage() external payable {
-    // @todo finish the logic later
-  }
-
-  /**************************************** Restricted Functions ****************************************/
+  /************************
+   * Restricted Functions *
+   ************************/
 
   /// @notice Update layer 1 to layer 2 token mapping.
   /// @param _l1Token The address of ERC20 token in layer 1.
@@ -92,7 +105,9 @@ contract L1CustomERC20Gateway is OwnableUpgradeable, ScrollGatewayBase, L1ERC20G
     emit UpdateTokenMapping(_l1Token, _l2Token);
   }
 
-  /**************************************** Internal Functions ****************************************/
+  /**********************
+   * Internal Functions *
+   **********************/
 
   /// @inheritdoc L1ERC20Gateway
   function _deposit(
@@ -135,7 +150,7 @@ contract L1CustomERC20Gateway is OwnableUpgradeable, ScrollGatewayBase, L1ERC20G
     );
 
     // 4. Send message to L1ScrollMessenger.
-    IL1ScrollMessenger(messenger).sendMessage{ value: msg.value }(counterpart, msg.value, _message, _gasLimit);
+    IL1ScrollMessenger(messenger).sendMessage{ value: msg.value }(counterpart, 0, _message, _gasLimit);
 
     emit DepositERC20(_token, _l2Token, _from, _to, _amount, _data);
   }
