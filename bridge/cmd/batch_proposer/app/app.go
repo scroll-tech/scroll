@@ -74,9 +74,9 @@ func action(ctx *cli.Context) error {
 
 	// Watcher loop to fetch missing blocks
 	go utils.LoopWithContext(subCtx, time.NewTicker(3*time.Second), func(ctx context.Context) {
-		number, err := utils.GetLatestConfirmedBlockNumber(ctx, l2client, cfg.L2Config.Confirmations)
-		if err != nil {
-			log.Error("failed to get block number", "err", err)
+		number, loopErr := utils.GetLatestConfirmedBlockNumber(ctx, l2client, cfg.L2Config.Confirmations)
+		if loopErr != nil {
+			log.Error("failed to get block number", "err", loopErr)
 			return
 		}
 		watcher.TryFetchRunningMissingBlocks(ctx, number)

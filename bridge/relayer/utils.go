@@ -8,6 +8,7 @@ const (
 	defaultGasPriceDiff = 50000 // 5%
 )
 
+// RelayerConfirmChs collects all chanels used in l1/l2 relayer
 type RelayerConfirmChs struct {
 	messageCh   <-chan *sender.Confirmation
 	gasOracleCh <-chan *sender.Confirmation

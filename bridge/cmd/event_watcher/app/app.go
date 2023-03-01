@@ -71,34 +71,34 @@ func action(ctx *cli.Context) error {
 
 	// Start l1 watcher process
 	go utils.LoopWithContext(subCtx, time.NewTicker(2*time.Second), func(ctx context.Context) {
-		number, err := utils.GetLatestConfirmedBlockNumber(ctx, l1client, cfg.L1Config.Confirmations)
-		if err != nil {
-			log.Error("failed to get block number", "err", err)
+		number, loopErr := utils.GetLatestConfirmedBlockNumber(ctx, l1client, cfg.L1Config.Confirmations)
+		if loopErr != nil {
+			log.Error("failed to get block number", "err", loopErr)
 			return
 		}
 
-		if err := l1watcher.FetchBlockHeader(number); err != nil {
-			log.Error("Failed to fetch L1 block header", "lastest", number, "err", err)
+		if loopErr = l1watcher.FetchBlockHeader(number); loopErr != nil {
+			log.Error("Failed to fetch L1 block header", "lastest", number, "err", loopErr)
 		}
 	})
 
 	go utils.LoopWithContext(subCtx, time.NewTicker(2*time.Second), func(ctx context.Context) {
-		number, err := utils.GetLatestConfirmedBlockNumber(ctx, l1client, cfg.L1Config.Confirmations)
-		if err != nil {
-			log.Error("failed to get block number", "err", err)
+		number, loopErr := utils.GetLatestConfirmedBlockNumber(ctx, l1client, cfg.L1Config.Confirmations)
+		if loopErr != nil {
+			log.Error("failed to get block number", "err", loopErr)
 			return
 		}
 
-		if err := l1watcher.FetchContractEvent(number); err != nil {
-			log.Error("Failed to fetch bridge contract", "err", err)
+		if loopErr = l1watcher.FetchContractEvent(number); loopErr != nil {
+			log.Error("Failed to fetch bridge contract", "err", loopErr)
 		}
 	})
 
 	// Start l2 watcher process
 	go utils.LoopWithContext(subCtx, time.NewTicker(2*time.Second), func(ctx context.Context) {
-		number, err := utils.GetLatestConfirmedBlockNumber(ctx, l2client, cfg.L2Config.Confirmations)
-		if err != nil {
-			log.Error("failed to get block number", "err", err)
+		number, loopErr := utils.GetLatestConfirmedBlockNumber(ctx, l2client, cfg.L2Config.Confirmations)
+		if loopErr != nil {
+			log.Error("failed to get block number", "err", loopErr)
 			return
 		}
 

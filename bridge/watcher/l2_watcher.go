@@ -29,8 +29,8 @@ var (
 	bridgeL2MsgSyncHeightGauge = metrics.NewRegisteredGauge("bridge/l2/msg/sync/height", nil)
 )
 
-// WatcherClient provide APIs which support others to subscribe to various event from l2geth
-type WatcherClient struct {
+// L2WatcherClient provide APIs which support others to subscribe to various event from l2geth
+type L2WatcherClient struct {
 	ctx context.Context
 	event.Feed
 
@@ -54,14 +54,14 @@ type WatcherClient struct {
 }
 
 // NewL2WatcherClient take a l2geth instance to generate a l2watcherclient instance
-func NewL2WatcherClient(ctx context.Context, client *ethclient.Client, confirmations rpc.BlockNumber, messengerAddress, messageQueueAddress common.Address, orm database.OrmFactory) *WatcherClient {
+func NewL2WatcherClient(ctx context.Context, client *ethclient.Client, confirmations rpc.BlockNumber, messengerAddress, messageQueueAddress common.Address, orm database.OrmFactory) *L2WatcherClient {
 	savedHeight, err := orm.GetLayer2LatestWatchedHeight()
 	if err != nil {
 		log.Warn("fetch height from db failed", "err", err)
 		savedHeight = 0
 	}
 
-	w := WatcherClient{
+	w := L2WatcherClient{
 		ctx:                ctx,
 		Client:             client,
 		orm:                orm,
@@ -86,7 +86,7 @@ func NewL2WatcherClient(ctx context.Context, client *ethclient.Client, confirmat
 	return &w
 }
 
-func (w *WatcherClient) initializeGenesis() error {
+func (w *L2WatcherClient) initializeGenesis() error {
 	if count, err := w.orm.GetBatchCount(); err != nil {
 		return fmt.Errorf("failed to get batch count: %v", err)
 	} else if count > 0 {
@@ -135,7 +135,7 @@ func (w *WatcherClient) initializeGenesis() error {
 const blockTracesFetchLimit = uint64(10)
 
 // TryFetchRunningMissingBlocks tries fetch missing blocks if inconsistent
-func (w *WatcherClient) TryFetchRunningMissingBlocks(ctx context.Context, blockHeight uint64) {
+func (w *L2WatcherClient) TryFetchRunningMissingBlocks(ctx context.Context, blockHeight uint64) {
 	// Get newest block in DB. must have blocks at that time.
 	// Don't use "block_trace" table "trace" column's BlockTrace.Number,
 	// because it might be empty if the corresponding rollup_result is finalized/finalization_skipped
@@ -166,7 +166,7 @@ func (w *WatcherClient) TryFetchRunningMissingBlocks(ctx context.Context, blockH
 	}
 }
 
-func (w *WatcherClient) getAndStoreBlockTraces(ctx context.Context, from, to uint64) error {
+func (w *L2WatcherClient) getAndStoreBlockTraces(ctx context.Context, from, to uint64) error {
 	var traces []*geth_types.BlockTrace
 
 	for number := from; number <= to; number++ {
@@ -190,7 +190,7 @@ func (w *WatcherClient) getAndStoreBlockTraces(ctx context.Context, from, to uin
 }
 
 // FetchContractEvent pull latest event logs from given contract address and save in DB
-func (w *WatcherClient) FetchContractEvent(blockHeight uint64) {
+func (w *L2WatcherClient) FetchContractEvent(blockHeight uint64) {
 	defer func() {
 		log.Info("l2 watcher fetchContractEvent", "w.processedMsgHeight", w.processedMsgHeight)
 	}()
@@ -264,7 +264,7 @@ func (w *WatcherClient) FetchContractEvent(blockHeight uint64) {
 	}
 }
 
-func (w *WatcherClient) parseBridgeEventLogs(logs []geth_types.Log) ([]*types.L2Message, []relayedMessage, error) {
+func (w *L2WatcherClient) parseBridgeEventLogs(logs []geth_types.Log) ([]*types.L2Message, []relayedMessage, error) {
 	// Need use contract abi to parse event Log
 	// Can only be tested after we have our contracts set up
 

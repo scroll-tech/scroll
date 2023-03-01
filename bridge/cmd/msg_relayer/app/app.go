@@ -86,25 +86,25 @@ func action(ctx *cli.Context) error {
 					log.Warn("transaction confirmed but failed in layer2", "confirmation", cfm)
 				} else {
 					// @todo handle db error
-					err := ormFactory.UpdateLayer1StatusAndLayer2Hash(ctx, cfm.ID, types.MsgConfirmed, cfm.TxHash.String())
-					if err != nil {
-						log.Warn("UpdateLayer1StatusAndLayer2Hash failed", "err", err)
+					cfmErr := ormFactory.UpdateLayer1StatusAndLayer2Hash(ctx, cfm.ID, types.MsgConfirmed, cfm.TxHash.String())
+					if cfmErr != nil {
+						log.Warn("UpdateLayer1StatusAndLayer2Hash failed", "err", cfmErr)
 					}
 					log.Info("transaction confirmed in layer2", "confirmation", cfm)
 				}
 			case cfm := <-l1relayer.GetGasOracleChanel():
 				if !cfm.IsSuccessful {
 					// @discuss: maybe make it pending again?
-					err := ormFactory.UpdateL1GasOracleStatusAndOracleTxHash(ctx, cfm.ID, types.GasOracleFailed, cfm.TxHash.String())
-					if err != nil {
-						log.Warn("UpdateL1GasOracleStatusAndOracleTxHash failed", "err", err)
+					cfmErr := ormFactory.UpdateL1GasOracleStatusAndOracleTxHash(ctx, cfm.ID, types.GasOracleFailed, cfm.TxHash.String())
+					if cfmErr != nil {
+						log.Warn("UpdateL1GasOracleStatusAndOracleTxHash failed", "err", cfmErr)
 					}
 					log.Warn("transaction confirmed but failed in layer2", "confirmation", cfm)
 				} else {
 					// @todo handle db error
-					err := ormFactory.UpdateL1GasOracleStatusAndOracleTxHash(ctx, cfm.ID, types.GasOracleImported, cfm.TxHash.String())
-					if err != nil {
-						log.Warn("UpdateGasOracleStatusAndOracleTxHash failed", "err", err)
+					cfmErr := ormFactory.UpdateL1GasOracleStatusAndOracleTxHash(ctx, cfm.ID, types.GasOracleImported, cfm.TxHash.String())
+					if cfmErr != nil {
+						log.Warn("UpdateGasOracleStatusAndOracleTxHash failed", "err", cfmErr)
 					}
 					log.Info("transaction confirmed in layer2", "confirmation", cfm)
 				}
@@ -126,16 +126,16 @@ func action(ctx *cli.Context) error {
 			case cfm := <-l2relayer.GetGasOracleChanel():
 				if !cfm.IsSuccessful {
 					// @discuss: maybe make it pending again?
-					err := ormFactory.UpdateL2GasOracleStatusAndOracleTxHash(ctx, cfm.ID, types.GasOracleFailed, cfm.TxHash.String())
-					if err != nil {
-						log.Warn("UpdateL2GasOracleStatusAndOracleTxHash failed", "err", err)
+					cfmErr := ormFactory.UpdateL2GasOracleStatusAndOracleTxHash(ctx, cfm.ID, types.GasOracleFailed, cfm.TxHash.String())
+					if cfmErr != nil {
+						log.Warn("UpdateL2GasOracleStatusAndOracleTxHash failed", "err", cfmErr)
 					}
 					log.Warn("transaction confirmed but failed in layer1", "confirmation", cfm)
 				} else {
 					// @todo handle db error
-					err := ormFactory.UpdateL2GasOracleStatusAndOracleTxHash(ctx, cfm.ID, types.GasOracleImported, cfm.TxHash.String())
-					if err != nil {
-						log.Warn("UpdateL2GasOracleStatusAndOracleTxHash failed", "err", err)
+					cfmErr := ormFactory.UpdateL2GasOracleStatusAndOracleTxHash(ctx, cfm.ID, types.GasOracleImported, cfm.TxHash.String())
+					if cfmErr != nil {
+						log.Warn("UpdateL2GasOracleStatusAndOracleTxHash failed", "err", cfmErr)
 					}
 					log.Info("transaction confirmed in layer1", "confirmation", cfm)
 				}
