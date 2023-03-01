@@ -2,6 +2,8 @@ package l2
 
 import (
 	"context"
+	"golang.org/x/sync/errgroup"
+	"scroll-tech/common/utils"
 	"sync"
 	"time"
 
@@ -129,8 +131,37 @@ func NewLayer2Relayer(ctx context.Context, l2Client *ethclient.Client, db databa
 		stopCh:                      make(chan struct{}),
 	}
 	go relayer.confirmLoop(ctx)
+	if err = relayer.prepare(); err != nil {
+		return nil, err
+	}
 
 	return relayer, nil
+}
+
+func (r *Layer2Relayer) prepare() error {
+	var eg errgroup.Group
+	eg.Go(func() error {
+		if err := r.checkFinalizingBatches(); err != nil {
+			log.Error("failed to init layer2 finalizing batches", "err", err)
+			return err
+		}
+		utils.TryTimes(-1, func() bool {
+			return r.rollupSender.PendingCount() == 0
+		})
+		return nil
+	})
+	eg.Go(func() error {
+		if err := r.checkSubmittedMessages(); err != nil {
+			log.Error("failed to init layer2 submitted messages", "err", err)
+			return err
+		}
+		utils.TryTimes(-1, func() bool {
+			return r.messageSender.PendingCount() == 0
+		})
+		return nil
+	})
+
+	return eg.Wait()
 }
 
 // Start the relayer process
