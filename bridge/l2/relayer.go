@@ -365,7 +365,7 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 	hash := batchHashes[0]
 	// @todo add support to relay multiple batches
 
-	batches, err := r.db.GetBlockBatches(map[string]interface{}{"hash": hash})
+	batches, err := r.db.GetBlockBatches(map[string]interface{}{"hash": hash}, "LIMIT 1")
 	if err != nil {
 		log.Error("Failed to fetch committed L2 batch", "hash", hash, "err", err)
 		return
