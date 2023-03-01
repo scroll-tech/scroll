@@ -195,7 +195,12 @@ func (w *L2WatcherClient) FetchContractEvent(blockHeight uint64) {
 		log.Info("l2 watcher fetchContractEvent", "w.processedMsgHeight", w.processedMsgHeight)
 	}()
 
-	fromBlock := int64(w.processedMsgHeight) + 1
+	var fromBlock int64
+	if int64(w.processedMsgHeight) <= 0 {
+		fromBlock = int64(w.processedMsgHeight)
+	} else {
+		fromBlock = int64(w.processedMsgHeight) + 1
+	}
 	toBlock := int64(blockHeight)
 
 	for from := fromBlock; from <= toBlock; from += contractEventsBlocksFetchLimit {
