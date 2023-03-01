@@ -10,10 +10,6 @@ import (
 	"scroll-tech/common/types"
 )
 
-func (r *Layer1Relayer) checkGasPriceOracle() error {
-
-}
-
 // ProcessGasPriceOracle imports gas price to layer2
 func (r *Layer1Relayer) ProcessGasPriceOracle() {
 	latestBlockHeight, err := r.db.GetLatestL1BlockHeight()
