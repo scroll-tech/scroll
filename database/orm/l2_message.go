@@ -9,6 +9,8 @@ import (
 
 	"github.com/jmoiron/sqlx"
 	"github.com/scroll-tech/go-ethereum/log"
+
+	"scroll-tech/common/types"
 )
 
 type layer2MessageOrm struct {
@@ -23,10 +25,10 @@ func NewL2MessageOrm(db *sqlx.DB) L2MessageOrm {
 }
 
 // GetL2MessageByNonce fetch message by nonce
-func (m *layer2MessageOrm) GetL2MessageByNonce(nonce uint64) (*L2Message, error) {
-	msg := L2Message{}
+func (m *layer2MessageOrm) GetL2MessageByNonce(nonce uint64) (*types.L2Message, error) {
+	msg := types.L2Message{}
 
-	row := m.db.QueryRowx(`SELECT nonce, msg_hash, height, sender, target, value, fee, gas_limit, deadline, calldata, layer2_hash, status FROM l2_message WHERE nonce = $1`, nonce)
+	row := m.db.QueryRowx(`SELECT nonce, msg_hash, height, sender, target, value, calldata, layer2_hash, status FROM l2_message WHERE nonce = $1`, nonce)
 	if err := row.StructScan(&msg); err != nil {
 		return nil, err
 	}
@@ -34,10 +36,10 @@ func (m *layer2MessageOrm) GetL2MessageByNonce(nonce uint64) (*L2Message, error)
 }
 
 // GetL2MessageByMsgHash fetch message by message hash
-func (m *layer2MessageOrm) GetL2MessageByMsgHash(msgHash string) (*L2Message, error) {
-	msg := L2Message{}
+func (m *layer2MessageOrm) GetL2MessageByMsgHash(msgHash string) (*types.L2Message, error) {
+	msg := types.L2Message{}
 
-	row := m.db.QueryRowx(`SELECT nonce, msg_hash, height, sender, target, value, fee, gas_limit, deadline, calldata, layer2_hash, status FROM l2_message WHERE msg_hash = $1`, msgHash)
+	row := m.db.QueryRowx(`SELECT nonce, msg_hash, height, sender, target, value, calldata, layer2_hash, status FROM l2_message WHERE msg_hash = $1`, msgHash)
 	if err := row.StructScan(&msg); err != nil {
 		return nil, err
 	}
@@ -71,7 +73,7 @@ func (m *layer2MessageOrm) MessageProofExist(nonce uint64) (bool, error) {
 
 // GetL2ProcessedNonce fetch latest processed message nonce
 func (m *layer2MessageOrm) GetL2ProcessedNonce() (int64, error) {
-	row := m.db.QueryRow(`SELECT MAX(nonce) FROM l2_message WHERE status = $1;`, MsgConfirmed)
+	row := m.db.QueryRow(`SELECT MAX(nonce) FROM l2_message WHERE status = $1;`, types.MsgConfirmed)
 
 	// no row means no message
 	// since nonce starts with 0, return -1 as the processed nonce
@@ -89,8 +91,8 @@ func (m *layer2MessageOrm) GetL2ProcessedNonce() (int64, error) {
 }
 
 // GetL2MessagesByStatus fetch list of messages given msg status
-func (m *layer2MessageOrm) GetL2Messages(fields map[string]interface{}, args ...string) ([]*L2Message, error) {
-	query := "SELECT nonce, msg_hash, height, sender, target, value, fee, gas_limit, deadline, calldata, layer2_hash FROM l2_message WHERE 1 = 1 "
+func (m *layer2MessageOrm) GetL2Messages(fields map[string]interface{}, args ...string) ([]*types.L2Message, error) {
+	query := "SELECT nonce, msg_hash, height, sender, target, value, calldata, layer2_hash FROM l2_message WHERE 1 = 1 "
 	for key := range fields {
 		query += fmt.Sprintf("AND %s=:%s ", key, key)
 	}
@@ -102,9 +104,9 @@ func (m *layer2MessageOrm) GetL2Messages(fields map[string]interface{}, args ...
 		return nil, err
 	}
 
-	var msgs []*L2Message
+	var msgs []*types.L2Message
 	for rows.Next() {
-		msg := &L2Message{}
+		msg := &types.L2Message{}
 		if err = rows.StructScan(&msg); err != nil {
 			break
 		}
@@ -120,7 +122,7 @@ func (m *layer2MessageOrm) GetL2Messages(fields map[string]interface{}, args ...
 }
 
 // SaveL2Messages batch save a list of layer2 messages
-func (m *layer2MessageOrm) SaveL2Messages(ctx context.Context, messages []*L2Message) error {
+func (m *layer2MessageOrm) SaveL2Messages(ctx context.Context, messages []*types.L2Message) error {
 	if len(messages) == 0 {
 		return nil
 	}
@@ -134,15 +136,12 @@ func (m *layer2MessageOrm) SaveL2Messages(ctx context.Context, messages []*L2Mes
 			"sender":      msg.Sender,
 			"target":      msg.Target,
 			"value":       msg.Value,
-			"fee":         msg.Fee,
-			"gas_limit":   msg.GasLimit,
-			"deadline":    msg.Deadline,
 			"calldata":    msg.Calldata,
 			"layer2_hash": msg.Layer2Hash,
 		}
 	}
 
-	_, err := m.db.NamedExec(`INSERT INTO public.l2_message (nonce, msg_hash, height, sender, target, value, fee, gas_limit, deadline, calldata, layer2_hash) VALUES (:nonce, :msg_hash, :height, :sender, :target, :value, :fee, :gas_limit, :deadline, :calldata, :layer2_hash);`, messageMaps)
+	_, err := m.db.NamedExec(`INSERT INTO public.l2_message (nonce, msg_hash, height, sender, target, value, calldata, layer2_hash) VALUES (:nonce, :msg_hash, :height, :sender, :target, :value, :calldata, :layer2_hash);`, messageMaps)
 	if err != nil {
 		nonces := make([]uint64, 0, len(messages))
 		heights := make([]uint64, 0, len(messages))
@@ -174,7 +173,7 @@ func (m *layer2MessageOrm) UpdateMessageProof(ctx context.Context, nonce uint64,
 }
 
 // UpdateLayer2Status updates message stauts, given message hash
-func (m *layer2MessageOrm) UpdateLayer2Status(ctx context.Context, msgHash string, status MsgStatus) error {
+func (m *layer2MessageOrm) UpdateLayer2Status(ctx context.Context, msgHash string, status types.MsgStatus) error {
 	if _, err := m.db.ExecContext(ctx, m.db.Rebind("update l2_message set status = ? where msg_hash = ?;"), status, msgHash); err != nil {
 		return err
 	}
@@ -183,7 +182,7 @@ func (m *layer2MessageOrm) UpdateLayer2Status(ctx context.Context, msgHash strin
 }
 
 // UpdateLayer2StatusAndLayer1Hash updates message stauts and layer1 transaction hash, given message hash
-func (m *layer2MessageOrm) UpdateLayer2StatusAndLayer1Hash(ctx context.Context, msgHash string, status MsgStatus, layer1Hash string) error {
+func (m *layer2MessageOrm) UpdateLayer2StatusAndLayer1Hash(ctx context.Context, msgHash string, status types.MsgStatus, layer1Hash string) error {
 	if _, err := m.db.ExecContext(ctx, m.db.Rebind("update l2_message set status = ?, layer1_hash = ? where msg_hash = ?;"), status, layer1Hash, msgHash); err != nil {
 		return err
 	}

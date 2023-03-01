@@ -20,6 +20,8 @@ import (
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
 
+	"scroll-tech/bridge/utils"
+
 	"scroll-tech/bridge/config"
 )
 
@@ -38,16 +40,6 @@ var (
 	// ErrNoAvailableAccount indicates no available account error in the account pool.
 	ErrNoAvailableAccount = errors.New("sender has no available account to send transaction")
 )
-
-// DefaultSenderConfig The default config
-var DefaultSenderConfig = config.SenderConfig{
-	Endpoint:            "",
-	EscalateBlocks:      3,
-	EscalateMultipleNum: 11,
-	EscalateMultipleDen: 10,
-	MaxGasPrice:         1000_000_000_000, // this is 1000 gwei
-	TxType:              AccessListTxType,
-}
 
 // Confirmation struct used to indicate transaction confirmation details
 type Confirmation struct {
@@ -95,9 +87,6 @@ type Sender struct {
 // NewSender returns a new instance of transaction sender
 // txConfirmationCh is used to notify confirmed transaction
 func NewSender(ctx context.Context, config *config.SenderConfig, privs []*ecdsa.PrivateKey) (*Sender, error) {
-	if config == nil {
-		config = &DefaultSenderConfig
-	}
 	client, err := ethclient.Dial(config.Endpoint)
 	if err != nil {
 		return nil, err
@@ -120,6 +109,15 @@ func NewSender(ctx context.Context, config *config.SenderConfig, privs []*ecdsa.
 		return nil, err
 	}
 
+	var baseFeePerGas uint64
+	if config.TxType == DynamicFeeTxType {
+		if header.BaseFee != nil {
+			baseFeePerGas = header.BaseFee.Uint64()
+		} else {
+			return nil, errors.New("DynamicFeeTxType not supported, header.BaseFee nil")
+		}
+	}
+
 	sender := &Sender{
 		ctx:           ctx,
 		config:        config,
@@ -128,7 +126,7 @@ func NewSender(ctx context.Context, config *config.SenderConfig, privs []*ecdsa.
 		auths:         auths,
 		confirmCh:     make(chan *Confirmation, 128),
 		blockNumber:   header.Number.Uint64(),
-		baseFeePerGas: header.BaseFee.Uint64(),
+		baseFeePerGas: baseFeePerGas,
 		pendingTxs:    sync.Map{},
 		stopCh:        make(chan struct{}),
 	}
@@ -352,11 +350,20 @@ func (s *Sender) resubmitTransaction(feeData *FeeData, auth *bind.TransactOpts, 
 	return s.createAndSendTx(auth, feeData, tx.To(), tx.Value(), tx.Data(), &nonce)
 }
 
-// CheckPendingTransaction Check pending transaction given number of blocks to wait before confirmation.
-func (s *Sender) CheckPendingTransaction(header *types.Header) {
+// checkPendingTransaction checks the confirmation status of pending transactions against the latest confirmed block number.
+// If a transaction hasn't been confirmed after a certain number of blocks, it will be resubmitted with an increased gas price.
+func (s *Sender) checkPendingTransaction(header *types.Header, confirmed uint64) {
 	number := header.Number.Uint64()
 	atomic.StoreUint64(&s.blockNumber, number)
-	atomic.StoreUint64(&s.baseFeePerGas, header.BaseFee.Uint64())
+
+	if s.config.TxType == DynamicFeeTxType {
+		if header.BaseFee != nil {
+			atomic.StoreUint64(&s.baseFeePerGas, header.BaseFee.Uint64())
+		} else {
+			log.Error("DynamicFeeTxType not supported, header.BaseFee nil")
+		}
+	}
+
 	s.pendingTxs.Range(func(key, value interface{}) bool {
 		// ignore empty id, since we use empty id to occupy pending task
 		if value == nil || reflect.ValueOf(value).IsNil() {
@@ -366,7 +373,7 @@ func (s *Sender) CheckPendingTransaction(header *types.Header) {
 		pending := value.(*PendingTransaction)
 		receipt, err := s.client.TransactionReceipt(s.ctx, pending.tx.Hash())
 		if (err == nil) && (receipt != nil) {
-			if number >= receipt.BlockNumber.Uint64()+s.config.Confirmations {
+			if receipt.BlockNumber.Uint64() <= confirmed {
 				s.pendingTxs.Delete(key)
 				// send confirm message
 				s.confirmCh <- &Confirmation{
@@ -440,7 +447,14 @@ func (s *Sender) loop(ctx context.Context) {
 				log.Error("failed to get latest head", "err", err)
 				continue
 			}
-			s.CheckPendingTransaction(header)
+
+			confirmed, err := utils.GetLatestConfirmedBlockNumber(s.ctx, s.client, s.config.Confirmations)
+			if err != nil {
+				log.Error("failed to get latest confirmed block number", "err", err)
+				continue
+			}
+
+			s.checkPendingTransaction(header, confirmed)
 		case <-checkBalanceTicker.C:
 			// Check and set balance.
 			_ = s.auths.checkAndSetBalances(ctx)

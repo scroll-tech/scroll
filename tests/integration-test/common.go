@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/scroll-tech/go-ethereum/crypto"
+	"github.com/scroll-tech/go-ethereum/rpc"
 	"github.com/stretchr/testify/assert"
 
 	"scroll-tech/database"
@@ -119,10 +120,10 @@ func runSender(t *testing.T, endpoint string) *sender.Sender {
 		Endpoint:            endpoint,
 		CheckPendingTime:    3,
 		EscalateBlocks:      100,
-		Confirmations:       0,
+		Confirmations:       rpc.LatestBlockNumber,
 		EscalateMultipleNum: 11,
 		EscalateMultipleDen: 10,
-		TxType:              "DynamicFeeTx",
+		TxType:              "LegacyTx",
 	}, []*ecdsa.PrivateKey{priv})
 	assert.NoError(t, err)
 	return newSender

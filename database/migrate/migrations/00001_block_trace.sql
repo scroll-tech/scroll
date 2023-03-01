@@ -9,7 +9,7 @@ create table block_trace
     hash                    VARCHAR         NOT NULL,
     parent_hash             VARCHAR         NOT NULL,
     trace                   JSON            NOT NULL,
-    batch_id                VARCHAR         DEFAULT NULL,
+    batch_hash              VARCHAR         DEFAULT NULL,
     tx_num                  INTEGER         NOT NULL,
     gas_used                BIGINT          NOT NULL,
     block_timestamp         NUMERIC         NOT NULL
@@ -27,8 +27,8 @@ create unique index block_trace_parent_uindex
 create unique index block_trace_parent_hash_uindex
     on block_trace (hash, parent_hash);
 
-create index block_trace_batch_id_index
-    on block_trace (batch_id);
+create index block_trace_batch_hash_index
+    on block_trace (batch_hash);
 
 -- +goose StatementEnd
 

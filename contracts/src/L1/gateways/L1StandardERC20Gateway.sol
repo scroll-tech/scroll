@@ -7,11 +7,13 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { Clones } from "@openzeppelin/contracts/proxy/Clones.sol";
 
-import { L1ERC20Gateway, IL1ERC20Gateway } from "./L1ERC20Gateway.sol";
-import { IL1ScrollMessenger } from "../IL1ScrollMessenger.sol";
 import { IERC20Metadata } from "../../interfaces/IERC20Metadata.sol";
 import { IL2ERC20Gateway } from "../../L2/gateways/IL2ERC20Gateway.sol";
-import { ScrollGatewayBase, IScrollGateway } from "../../libraries/gateway/ScrollGatewayBase.sol";
+import { IL1ScrollMessenger } from "../IL1ScrollMessenger.sol";
+import { IL1ERC20Gateway } from "./IL1ERC20Gateway.sol";
+
+import { ScrollGatewayBase } from "../../libraries/gateway/ScrollGatewayBase.sol";
+import { L1ERC20Gateway } from "./L1ERC20Gateway.sol";
 
 /// @title L1StandardERC20Gateway
 /// @notice The `L1StandardERC20Gateway` is used to deposit standard ERC20 tokens in layer 1 and
@@ -22,7 +24,9 @@ import { ScrollGatewayBase, IScrollGateway } from "../../libraries/gateway/Scrol
 contract L1StandardERC20Gateway is Initializable, ScrollGatewayBase, L1ERC20Gateway {
   using SafeERC20 for IERC20;
 
-  /**************************************** Variables ****************************************/
+  /*************
+   * Variables *
+   *************/
 
   /// @notice The address of ScrollStandardERC20 implementation in L2.
   address public l2TokenImplementation;
@@ -36,8 +40,16 @@ contract L1StandardERC20Gateway is Initializable, ScrollGatewayBase, L1ERC20Gate
   /// pass deploy data on first call to the token.
   mapping(address => address) private tokenMapping;
 
-  /**************************************** Constructor ****************************************/
+  /***************
+   * Constructor *
+   ***************/
 
+  /// @notice Initialize the storage of L1StandardERC20Gateway.
+  /// @param _counterpart The address of L2StandardERC20Gateway in L2.
+  /// @param _router The address of L1GatewayRouter.
+  /// @param _messenger The address of L1ScrollMessenger.
+  /// @param _l2TokenImplementation The address of ScrollStandardERC20 implementation in L2.
+  /// @param _l2TokenFactory The address of ScrollStandardERC20Factory contract in L2.
   function initialize(
     address _counterpart,
     address _router,
@@ -55,7 +67,9 @@ contract L1StandardERC20Gateway is Initializable, ScrollGatewayBase, L1ERC20Gate
     l2TokenFactory = _l2TokenFactory;
   }
 
-  /**************************************** View Functions ****************************************/
+  /*************************
+   * Public View Functions *
+   *************************/
 
   /// @inheritdoc IL1ERC20Gateway
   function getL2ERC20Address(address _l1Token) public view override returns (address) {
@@ -66,7 +80,9 @@ contract L1StandardERC20Gateway is Initializable, ScrollGatewayBase, L1ERC20Gate
     return Clones.predictDeterministicAddress(l2TokenImplementation, _salt, l2TokenFactory);
   }
 
-  /**************************************** Mutate Functions ****************************************/
+  /****************************
+   * Public Mutated Functions *
+   ****************************/
 
   /// @inheritdoc IL1ERC20Gateway
   function finalizeWithdrawERC20(
@@ -88,12 +104,9 @@ contract L1StandardERC20Gateway is Initializable, ScrollGatewayBase, L1ERC20Gate
     emit FinalizeWithdrawERC20(_l1Token, _l2Token, _from, _to, _amount, _data);
   }
 
-  /// @inheritdoc IScrollGateway
-  function finalizeDropMessage() external payable virtual override onlyMessenger {
-    // @todo should refund token back to sender.
-  }
-
-  /**************************************** Internal Functions ****************************************/
+  /**********************
+   * Internal Functions *
+   **********************/
 
   /// @inheritdoc L1ERC20Gateway
   function _deposit(
@@ -148,7 +161,7 @@ contract L1StandardERC20Gateway is Initializable, ScrollGatewayBase, L1ERC20Gate
     );
 
     // 4. Send message to L1ScrollMessenger.
-    IL1ScrollMessenger(messenger).sendMessage{ value: msg.value }(counterpart, msg.value, _message, _gasLimit);
+    IL1ScrollMessenger(messenger).sendMessage{ value: msg.value }(counterpart, 0, _message, _gasLimit);
 
     emit DepositERC20(_token, _l2Token, _from, _to, _amount, _data);
   }

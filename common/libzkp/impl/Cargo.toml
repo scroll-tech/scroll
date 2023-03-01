@@ -7,9 +7,16 @@ edition = "2021"
 [lib]
 crate-type = ["staticlib"]
 
+[patch."https://github.com/privacy-scaling-explorations/halo2.git"]
+halo2_proofs = { git = "https://github.com/scroll-tech/halo2.git", branch = "scroll-dev-0220"  }
+[patch."https://github.com/privacy-scaling-explorations/poseidon.git"]
+poseidon = { git = "https://github.com/scroll-tech/poseidon.git", branch = "scroll-dev-0220" }
+[patch."https://github.com/scroll-tech/zktrie.git"]
+zktrie = { git = "https://github.com/lispc/zktrie", branch = "scroll-dev-0215" }
+
 [dependencies]
-zkevm = { git = "https://github.com/scroll-tech/scroll-zkevm", branch="fix/mpt_limit" }
-types = { git = "https://github.com/scroll-tech/scroll-zkevm", branch="fix/mpt_limit" }
+zkevm = { git = "https://github.com/scroll-tech/scroll-zkevm", branch="goerli-0215" }
+types = { git = "https://github.com/scroll-tech/scroll-zkevm", branch="goerli-0215" }
 
 log = "0.4"
 env_logger = "0.9.0"
