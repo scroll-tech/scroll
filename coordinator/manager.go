@@ -379,21 +379,7 @@ func (m *Manager) CollectProofs(sess *session) {
 			
 			//When all rollers have finished their tasks, select a winner and return.
 			if finished {
-				// Ensure we got at least one roller with pk as ID before selecting a winner.
-				if len(validRollers) == 0 {
-					// record failed session.
-					errMsg := "proof generation session ended without receiving any valid proofs"
-					m.addFailedSession(sess, errMsg)
-					log.Warn(errMsg, "session id", sess.info.ID)
-					// Set status as skipped.
-					// Note that this is only a workaround for testnet here.
-					// TODO: In real cases we should reset to orm.ProvingTaskUnassigned
-					// so as to re-distribute the task in the future
-					if err := m.orm.UpdateProvingStatus(sess.info.ID, types.ProvingTaskFailed); err != nil {
-						log.Error("fail to reset task_status as Unassigned", "id", sess.info.ID, "err", err)
-					}
-				}
-				// Now, select a random index for this slice.
+				//Select a random index for this slice.
 				randIndex := mathrand.Intn(len(validRollers))
 				_ = validRollers[randIndex]
 				// TODO: reward winner
@@ -422,8 +408,8 @@ func (s *session) isRollersFinished(rollersPerSession int) (bool, []string){
 	return false, validRollers
 }
 
-func (sess *session) isSessionFailed() bool {
-	for _, roller := range sess.info.Rollers {
+func (s *session) isSessionFailed() bool {
+	for _, roller := range s.info.Rollers {
 		if roller.Status != types.RollerProofInvalid {
 			return false
 		}
