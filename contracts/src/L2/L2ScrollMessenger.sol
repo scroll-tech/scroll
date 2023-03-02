@@ -262,7 +262,9 @@ contract L2ScrollMessenger is ScrollMessengerBase, PausableUpgradeable, IL2Scrol
     bytes memory _message,
     bytes32 _xDomainCalldataHash
   ) internal {
-    // @todo check `_to` address to avoid attack.
+    // @todo check more `_to` address to avoid attack.
+    require(_to != messageQueue, "Forbid to call message queue");
+    require(_to != address(this), "Forbid to call self");
 
     // @note This usually will never happen, just in case.
     require(_from != xDomainMessageSender, "Invalid message sender");
