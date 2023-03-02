@@ -37,7 +37,7 @@ func testBatchProposerProposeBatch(t *testing.T) {
 
 	l2cfg := cfg.L2Config
 	wc := watcher.NewL2WatcherClient(context.Background(), l2Cli, l2cfg.Confirmations, l2cfg.L2MessengerAddress, l2cfg.L2MessageQueueAddress, db)
-	loopToFetchEvent(subCtx, t, wc)
+	loopToFetchEvent(subCtx, wc)
 
 	relayer, err := relayer.NewLayer2Relayer(context.Background(), l2Cli, db, cfg.L2Config.RelayerConfig)
 	assert.NoError(t, err)

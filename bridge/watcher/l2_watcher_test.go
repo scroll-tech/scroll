@@ -39,7 +39,7 @@ func testCreateNewWatcherAndStop(t *testing.T) {
 	l2cfg := cfg.L2Config
 	rc := watcher.NewL2WatcherClient(context.Background(), l2Cli, l2cfg.Confirmations, l2cfg.L2MessengerAddress, l2cfg.L2MessageQueueAddress, l2db)
 
-	loopToFetchEvent(subCtx, t, rc)
+	loopToFetchEvent(subCtx, rc)
 	l1cfg := cfg.L1Config
 	l1cfg.RelayerConfig.SenderConfig.Confirmations = rpc.LatestBlockNumber
 	newSender, err := sender.NewSender(context.Background(), l1cfg.RelayerConfig.SenderConfig, l1cfg.RelayerConfig.MessageSenderPrivateKeys)
@@ -85,7 +85,7 @@ func testMonitorBridgeContract(t *testing.T) {
 	assert.NoError(t, err)
 
 	rc := prepareWatcherClient(l2Cli, db, address)
-	loopToFetchEvent(subCtx, t, rc)
+	loopToFetchEvent(subCtx, rc)
 
 	// Call mock_bridge instance sendMessage to trigger emit events
 	toAddress := common.HexToAddress("0x4592d8f8d7b001e72cb26a73e4fa1806a51ac79d")
@@ -152,7 +152,7 @@ func testFetchMultipleSentMessageInOneBlock(t *testing.T) {
 	assert.NoError(t, err)
 
 	rc := prepareWatcherClient(l2Cli, db, address)
-	loopToFetchEvent(subCtx, t, rc)
+	loopToFetchEvent(subCtx, rc)
 
 	// Call mock_bridge instance sendMessage to trigger emit events multiple times
 	numTransactions := 4
@@ -210,11 +210,8 @@ func prepareWatcherClient(l2Cli *ethclient.Client, db database.OrmFactory, contr
 	return watcher.NewL2WatcherClient(context.Background(), l2Cli, confirmations, contractAddr, contractAddr, db)
 }
 
-func loopToFetchEvent(subCtx context.Context, t *testing.T, watcher *watcher.L2WatcherClient) {
-	go utils.LoopWithContext(subCtx, (2 * time.Second), func(ctx context.Context) {
-		watcher.FetchContractEvent()
-	})
-
+func loopToFetchEvent(subCtx context.Context, watcher *watcher.L2WatcherClient) {
+	go utils.Loop(subCtx, 2*time.Second, watcher.FetchContractEvent)
 }
 
 func prepareAuth(t *testing.T, l2Cli *ethclient.Client, privateKey *ecdsa.PrivateKey) *bind.TransactOpts {
