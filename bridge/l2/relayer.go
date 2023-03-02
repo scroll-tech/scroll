@@ -29,13 +29,13 @@ import (
 )
 
 var (
-	bridgeL2MsgsRelayedTotalCounter            = geth_metrics.NewRegisteredCounter("bridge/l2/msgs/relayed/total", metrics.ScrollRegistry)
-	bridgeL2MsgsCommittedTotalCounter          = geth_metrics.NewRegisteredCounter("bridge/l2/msgs/committed/total", metrics.ScrollRegistry)
-	bridgeL2MsgsFinalizedTotalCounter          = geth_metrics.NewRegisteredCounter("bridge/l2/msgs/finalized/total", metrics.ScrollRegistry)
-	bridgeL2MsgsRelayedConfirmedTotalCounter   = geth_metrics.NewRegisteredCounter("bridge/l2/msgs/relayed/confirmed/total", metrics.ScrollRegistry)
-	bridgeL2MsgsCommittedConfirmedTotalCounter = geth_metrics.NewRegisteredCounter("bridge/l2/msgs/committed/confirmed/total", metrics.ScrollRegistry)
-	bridgeL2MsgsFinalizedConfirmedTotalCounter = geth_metrics.NewRegisteredCounter("bridge/l2/msgs/finalized/confirmed/total", metrics.ScrollRegistry)
-	bridgeL2BatchesSkippedTotalCounter         = geth_metrics.NewRegisteredCounter("bridge/l2/batches/skipped/total", metrics.ScrollRegistry)
+	bridgeL2MsgsRelayedTotalCounter               = geth_metrics.NewRegisteredCounter("bridge/l2/msgs/relayed/total", metrics.ScrollRegistry)
+	bridgeL2BatchesFinalizedTotalCounter          = geth_metrics.NewRegisteredCounter("bridge/l2/batches/finalized/total", metrics.ScrollRegistry)
+	bridgeL2BatchesCommittedTotalCounter          = geth_metrics.NewRegisteredCounter("bridge/l2/batches/committed/total", metrics.ScrollRegistry)
+	bridgeL2MsgsRelayedConfirmedTotalCounter      = geth_metrics.NewRegisteredCounter("bridge/l2/msgs/relayed/confirmed/total", metrics.ScrollRegistry)
+	bridgeL2BatchesFinalizedConfirmedTotalCounter = geth_metrics.NewRegisteredCounter("bridge/l2/batches/finalized/confirmed/total", metrics.ScrollRegistry)
+	bridgeL2BatchesCommittedConfirmedTotalCounter = geth_metrics.NewRegisteredCounter("bridge/l2/batches/committed/confirmed/total", metrics.ScrollRegistry)
+	bridgeL2BatchesSkippedTotalCounter            = geth_metrics.NewRegisteredCounter("bridge/l2/batches/skipped/total", metrics.ScrollRegistry)
 )
 
 const (
@@ -335,7 +335,7 @@ func (r *Layer2Relayer) SendCommitTx(batchData []*types.BatchData) error {
 		}
 		return err
 	}
-	bridgeL2MsgsCommittedTotalCounter.Inc(1)
+	bridgeL2BatchesCommittedTotalCounter.Inc(int64(len(commitBatches)))
 	log.Info("Sent the commitBatches tx to layer1",
 		"tx_hash", txHash.Hex(),
 		"start_batch_index", commitBatches[0].BatchIndex,
@@ -485,7 +485,7 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 			}
 			return
 		}
-		bridgeL2MsgsFinalizedTotalCounter.Inc(1)
+		bridgeL2BatchesFinalizedTotalCounter.Inc(1)
 		log.Info("finalizeBatchWithProof in layer1", "batch_hash", hash, "tx_hash", hash)
 
 		// record and sync with db, @todo handle db error
@@ -587,14 +587,15 @@ func (r *Layer2Relayer) handleConfirmation(confirmation *sender.Confirmation) {
 	// check whether it is CommitBatches transaction
 	if batchBatches, ok := r.processingBatchesCommitment.Load(confirmation.ID); ok {
 		transactionType = "BatchesCommitment"
-		for _, batchHash := range batchBatches.([]string) {
+		batchHashes := batchBatches.([]string)
+		for _, batchHash := range batchHashes {
 			// @todo handle db error
 			err := r.db.UpdateCommitTxHashAndRollupStatus(r.ctx, batchHash, confirmation.TxHash.String(), types.RollupCommitted)
 			if err != nil {
 				log.Warn("UpdateCommitTxHashAndRollupStatus failed", "batch_hash", batchHash, "err", err)
 			}
 		}
-		bridgeL2MsgsCommittedConfirmedTotalCounter.Inc(1)
+		bridgeL2BatchesCommittedConfirmedTotalCounter.Inc(int64(len(batchHashes)))
 		r.processingBatchesCommitment.Delete(confirmation.ID)
 	}
 
@@ -606,7 +607,7 @@ func (r *Layer2Relayer) handleConfirmation(confirmation *sender.Confirmation) {
 		if err != nil {
 			log.Warn("UpdateFinalizeTxHashAndRollupStatus failed", "batch_hash", batchHash.(string), "err", err)
 		}
-		bridgeL2MsgsFinalizedConfirmedTotalCounter.Inc(1)
+		bridgeL2BatchesFinalizedConfirmedTotalCounter.Inc(1)
 		r.processingFinalization.Delete(confirmation.ID)
 	}
 	log.Info("transaction confirmed in layer1", "type", transactionType, "confirmation", confirmation)
