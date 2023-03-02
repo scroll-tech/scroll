@@ -13,9 +13,10 @@ import (
 
 	"scroll-tech/database"
 
-	"scroll-tech/bridge/utils"
 	cutil "scroll-tech/common/utils"
 	"scroll-tech/common/version"
+
+	"scroll-tech/bridge/utils"
 
 	"scroll-tech/bridge/config"
 	"scroll-tech/bridge/relayer"

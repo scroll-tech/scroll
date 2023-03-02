@@ -13,11 +13,12 @@ import (
 
 	"scroll-tech/database"
 
+	cutil "scroll-tech/common/utils"
+	"scroll-tech/common/version"
+
 	"scroll-tech/bridge/config"
 	"scroll-tech/bridge/relayer"
 	"scroll-tech/bridge/utils"
-	cutil "scroll-tech/common/utils"
-	"scroll-tech/common/version"
 )
 
 var (

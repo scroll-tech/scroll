@@ -11,9 +11,10 @@ import (
 	"github.com/scroll-tech/go-ethereum/rpc"
 	"github.com/stretchr/testify/assert"
 
+	"scroll-tech/common/types"
+
 	"scroll-tech/bridge/relayer"
 	"scroll-tech/bridge/watcher"
-	"scroll-tech/common/types"
 
 	"scroll-tech/database"
 	"scroll-tech/database/migrate"

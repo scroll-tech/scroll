@@ -4,10 +4,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"scroll-tech/bridge/config"
 	"scroll-tech/common/docker"
 	"scroll-tech/common/types"
 	"testing"
+
+	"scroll-tech/bridge/config"
 
 	geth_types "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/ethclient"
