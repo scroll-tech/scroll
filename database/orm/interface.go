@@ -64,6 +64,7 @@ type BlockBatchOrm interface {
 	GetLatestBatch() (*types.BlockBatch, error)
 	GetLatestCommittedBatch() (*types.BlockBatch, error)
 	GetLatestFinalizedBatch() (*types.BlockBatch, error)
+	GetLatestFinalizingOrFinalizedBatch() (*types.BlockBatch, error)
 	UpdateRollupStatus(ctx context.Context, hash string, status types.RollupStatus) error
 	UpdateCommitTxHashAndRollupStatus(ctx context.Context, hash string, commitTxHash string, status types.RollupStatus) error
 	UpdateFinalizeTxHashAndRollupStatus(ctx context.Context, hash string, finalizeTxHash string, status types.RollupStatus) error

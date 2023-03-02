@@ -354,22 +354,29 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 	}
 
 	// batches are sorted by batch index in increasing order
-	batches, err := r.db.GetCommittedBatches(1)
+	batchHashes, err := r.db.GetCommittedBatches(1)
 	if err != nil {
 		log.Error("Failed to fetch committed L2 batches", "err", err)
 		return
 	}
-	if len(batches) == 0 {
+	if len(batchHashes) == 0 {
 		return
 	}
-	hash := batches[0]
+	hash := batchHashes[0]
 	// @todo add support to relay multiple batches
 
-	status, err := r.db.GetProvingStatusByHash(hash)
+	batches, err := r.db.GetBlockBatches(map[string]interface{}{"hash": hash}, "LIMIT 1")
 	if err != nil {
-		log.Error("GetProvingStatusByHash failed", "hash", hash, "err", err)
+		log.Error("Failed to fetch committed L2 batch", "hash", hash, "err", err)
 		return
 	}
+	if len(batches) == 0 {
+		log.Error("Unexpected result for GetBlockBatches", "hash", hash, "len", 0)
+		return
+	}
+
+	batch := batches[0]
+	status := batch.ProvingStatus
 
 	switch status {
 	case types.ProvingTaskUnassigned, types.ProvingTaskAssigned:
@@ -391,6 +398,34 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 	case types.ProvingTaskVerified:
 		log.Info("Start to roll up zk proof", "hash", hash)
 		success := false
+
+		previousBatch, err := r.db.GetLatestFinalizingOrFinalizedBatch()
+
+		// skip submitting proof
+		if err == nil && uint64(batch.CreatedAt.Sub(*previousBatch.CreatedAt).Seconds()) < r.cfg.FinalizeBatchIntervalSec {
+			log.Info(
+				"Not enough time passed, skipping",
+				"hash", hash,
+				"createdAt", batch.CreatedAt,
+				"lastFinalizingHash", previousBatch.Hash,
+				"lastFinalizingStatus", previousBatch.RollupStatus,
+				"lastFinalizingCreatedAt", previousBatch.CreatedAt,
+			)
+
+			if err = r.db.UpdateRollupStatus(r.ctx, hash, types.RollupFinalizationSkipped); err != nil {
+				log.Warn("UpdateRollupStatus failed", "hash", hash, "err", err)
+			} else {
+				success = true
+			}
+
+			return
+		}
+
+		// handle unexpected db error
+		if err != nil && err.Error() != "sql: no rows in result set" {
+			log.Error("Failed to get latest finalized batch", "err", err)
+			return
+		}
 
 		defer func() {
 			// TODO: need to revisit this and have a more fine-grained error handling
