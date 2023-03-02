@@ -55,8 +55,8 @@ func action(ctx *cli.Context) error {
 	if ormFactory, err = database.NewOrmFactory(cfg.DBConfig); err != nil {
 		log.Crit("failed to init db connection", "err", err)
 	}
-	masterCtx := context.Background()
-	subCtx, cancel := context.WithCancel(masterCtx)
+	subCtx, cancel := context.WithCancel(ctx.Context)
+	defer cancel()
 
 	l2client, err := ethclient.Dial(cfg.L1Config.Endpoint)
 	if err != nil {
@@ -73,7 +73,7 @@ func action(ctx *cli.Context) error {
 	watcher := watcher.NewL2WatcherClient(subCtx, l2client, cfg.L2Config.Confirmations, cfg.L2Config.L2MessengerAddress, cfg.L2Config.L2MessageQueueAddress, ormFactory)
 
 	// Watcher loop to fetch missing blocks
-	go utils.LoopWithContext(subCtx, time.NewTicker(3*time.Second), func(ctx context.Context) {
+	go utils.LoopWithContext(subCtx, 3*time.Second, func(ctx context.Context) {
 		number, loopErr := utils.GetLatestConfirmedBlockNumber(ctx, l2client, cfg.L2Config.Confirmations)
 		if loopErr != nil {
 			log.Error("failed to get block number", "err", loopErr)
@@ -83,7 +83,7 @@ func action(ctx *cli.Context) error {
 	})
 
 	// Batch proposer loop
-	go utils.Loop(subCtx, time.NewTicker(3*time.Second), func() {
+	go utils.Loop(subCtx, 3*time.Second, func() {
 		batchProposer.TryProposeBatch()
 		batchProposer.TryCommitBatches()
 	})
@@ -92,7 +92,6 @@ func action(ctx *cli.Context) error {
 	log.Info("Start batch_proposer successfully")
 
 	defer func() {
-		cancel()
 		err = ormFactory.Close()
 		if err != nil {
 			log.Error("can not close ormFactory", "error", err)

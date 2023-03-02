@@ -94,7 +94,7 @@ func testCommitBatchAndFinalizeBatch(t *testing.T) {
 	assert.Equal(t, len(commitTxReceipt.Logs), 1)
 
 	// fetch rollup events
-	err = l1Watcher.FetchContractEvent(commitTxReceipt.BlockNumber.Uint64())
+	err = l1Watcher.FetchContractEvent()
 	assert.NoError(t, err)
 	status, err = db.GetRollupStatus(batchHash)
 	assert.NoError(t, err)
@@ -124,7 +124,7 @@ func testCommitBatchAndFinalizeBatch(t *testing.T) {
 	assert.Equal(t, len(finalizeTxReceipt.Logs), 1)
 
 	// fetch rollup events
-	err = l1Watcher.FetchContractEvent(finalizeTxReceipt.BlockNumber.Uint64())
+	err = l1Watcher.FetchContractEvent()
 	assert.NoError(t, err)
 	status, err = db.GetRollupStatus(batchHash)
 	assert.NoError(t, err)

@@ -35,7 +35,6 @@ import (
 // Actions are triggered by new head from layer 1 geth node.
 // @todo It's better to be triggered by watcher.
 type Layer2Relayer struct {
-	*ConfirmChs
 	ctx context.Context
 
 	l2Client *ethclient.Client
@@ -102,12 +101,7 @@ func NewLayer2Relayer(ctx context.Context, l2Client *ethclient.Client, db databa
 		gasPriceDiff = defaultGasPriceDiff
 	}
 
-	return &Layer2Relayer{
-		ConfirmChs: &ConfirmChs{
-			messageCh:   messageSender.ConfirmChan(),
-			rollupCh:    rollupSender.ConfirmChan(),
-			gasOracleCh: gasOracleSender.ConfirmChan(),
-		},
+	l2Relayer := &Layer2Relayer{
 		ctx:      ctx,
 		db:       db,
 		l2Client: l2Client,
@@ -129,7 +123,10 @@ func NewLayer2Relayer(ctx context.Context, l2Client *ethclient.Client, db databa
 		processingBatchesCommitment: sync.Map{},
 		processingFinalization:      sync.Map{},
 		stopCh:                      make(chan struct{}),
-	}, nil
+	}
+
+	go l2Relayer.handleConfirmLoop(ctx)
+	return l2Relayer, nil
 }
 
 const processMsgLimit = 100
@@ -482,8 +479,7 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 	}
 }
 
-// HandleConfirmation handles the received confirmations from chanels
-func (r *Layer2Relayer) HandleConfirmation(confirmation *sender.Confirmation) {
+func (r *Layer2Relayer) handleConfirmation(confirmation *sender.Confirmation) {
 	if !confirmation.IsSuccessful {
 		log.Warn("transaction confirmed but failed in layer1", "confirmation", confirmation)
 		return
@@ -525,4 +521,33 @@ func (r *Layer2Relayer) HandleConfirmation(confirmation *sender.Confirmation) {
 		r.processingFinalization.Delete(confirmation.ID)
 	}
 	log.Info("transaction confirmed in layer1", "type", transactionType, "confirmation", confirmation)
+}
+
+func (r *Layer2Relayer) handleConfirmLoop(ctx context.Context) {
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case confirmation := <-r.messageSender.ConfirmChan():
+			r.handleConfirmation(confirmation)
+		case confirmation := <-r.rollupSender.ConfirmChan():
+			r.handleConfirmation(confirmation)
+		case cfm := <-r.gasOracleSender.ConfirmChan():
+			if !cfm.IsSuccessful {
+				// @discuss: maybe make it pending again?
+				err := r.db.UpdateL2GasOracleStatusAndOracleTxHash(r.ctx, cfm.ID, types.GasOracleFailed, cfm.TxHash.String())
+				if err != nil {
+					log.Warn("UpdateL2GasOracleStatusAndOracleTxHash failed", "err", err)
+				}
+				log.Warn("transaction confirmed but failed in layer1", "confirmation", cfm)
+			} else {
+				// @todo handle db error
+				err := r.db.UpdateL2GasOracleStatusAndOracleTxHash(r.ctx, cfm.ID, types.GasOracleImported, cfm.TxHash.String())
+				if err != nil {
+					log.Warn("UpdateL2GasOracleStatusAndOracleTxHash failed", "err", err)
+				}
+				log.Info("transaction confirmed in layer1", "confirmation", cfm)
+			}
+		}
+	}
 }

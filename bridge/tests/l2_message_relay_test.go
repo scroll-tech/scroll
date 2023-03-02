@@ -54,7 +54,7 @@ func testRelayL2MessageSucceed(t *testing.T) {
 	}
 
 	// l2 watch process events
-	l2Watcher.FetchContractEvent(sendReceipt.BlockNumber.Uint64())
+	l2Watcher.FetchContractEvent()
 
 	// check db status
 	msg, err := db.GetL2MessageByNonce(nonce.Uint64())
@@ -122,7 +122,7 @@ func testRelayL2MessageSucceed(t *testing.T) {
 	assert.Equal(t, len(commitTxReceipt.Logs), 1)
 
 	// fetch CommitBatch rollup events
-	err = l1Watcher.FetchContractEvent(commitTxReceipt.BlockNumber.Uint64())
+	err = l1Watcher.FetchContractEvent()
 	assert.NoError(t, err)
 	status, err = db.GetRollupStatus(batchHash)
 	assert.NoError(t, err)
@@ -143,7 +143,7 @@ func testRelayL2MessageSucceed(t *testing.T) {
 	assert.Equal(t, len(finalizeTxReceipt.Logs), 1)
 
 	// fetch FinalizeBatch events
-	err = l1Watcher.FetchContractEvent(finalizeTxReceipt.BlockNumber.Uint64())
+	err = l1Watcher.FetchContractEvent()
 	assert.NoError(t, err)
 	status, err = db.GetRollupStatus(batchHash)
 	assert.NoError(t, err)
@@ -164,7 +164,7 @@ func testRelayL2MessageSucceed(t *testing.T) {
 	assert.Equal(t, len(relayTxReceipt.Logs), 1)
 
 	// fetch message relayed events
-	err = l1Watcher.FetchContractEvent(relayTxReceipt.BlockNumber.Uint64())
+	err = l1Watcher.FetchContractEvent()
 	assert.NoError(t, err)
 	msg, err = db.GetL2MessageByNonce(nonce.Uint64())
 	assert.NoError(t, err)

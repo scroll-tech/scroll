@@ -48,8 +48,8 @@ func action(ctx *cli.Context) error {
 		log.Crit("failed to load config file", "config file", cfgFile, "error", err)
 	}
 
-	masterCtx := context.Background()
-	subCtx, cancel := context.WithCancel(masterCtx)
+	subCtx, cancel := context.WithCancel(ctx.Context)
+	defer cancel()
 
 	// init db connection
 	var ormFactory database.OrmFactory
@@ -70,7 +70,7 @@ func action(ctx *cli.Context) error {
 	l2watcher := watcher.NewL2WatcherClient(ctx.Context, l2client, cfg.L2Config.RelayerConfig.SenderConfig.Confirmations, cfg.L2Config.L2MessengerAddress, cfg.L2Config.L2MessageQueueAddress, ormFactory)
 
 	// Start l1 watcher process
-	go utils.LoopWithContext(subCtx, time.NewTicker(2*time.Second), func(ctx context.Context) {
+	go utils.LoopWithContext(subCtx, 2*time.Second, func(ctx context.Context) {
 		number, loopErr := utils.GetLatestConfirmedBlockNumber(ctx, l1client, cfg.L1Config.Confirmations)
 		if loopErr != nil {
 			log.Error("failed to get block number", "err", loopErr)
@@ -82,33 +82,18 @@ func action(ctx *cli.Context) error {
 		}
 	})
 
-	go utils.LoopWithContext(subCtx, time.NewTicker(2*time.Second), func(ctx context.Context) {
-		number, loopErr := utils.GetLatestConfirmedBlockNumber(ctx, l1client, cfg.L1Config.Confirmations)
-		if loopErr != nil {
-			log.Error("failed to get block number", "err", loopErr)
-			return
-		}
-
-		if loopErr = l1watcher.FetchContractEvent(number); loopErr != nil {
+	go utils.Loop(subCtx, 2*time.Second, func() {
+		if loopErr := l1watcher.FetchContractEvent(); loopErr != nil {
 			log.Error("Failed to fetch bridge contract", "err", loopErr)
 		}
 	})
 
 	// Start l2 watcher process
-	go utils.LoopWithContext(subCtx, time.NewTicker(2*time.Second), func(ctx context.Context) {
-		number, loopErr := utils.GetLatestConfirmedBlockNumber(ctx, l2client, cfg.L2Config.Confirmations)
-		if loopErr != nil {
-			log.Error("failed to get block number", "err", loopErr)
-			return
-		}
-
-		l2watcher.FetchContractEvent(number)
-	})
+	go utils.Loop(subCtx, 2*time.Second, l2watcher.FetchContractEvent)
 	// Finish start all l2 functions
 	log.Info("Start event-watcher successfully")
 
 	defer func() {
-		cancel()
 		err = ormFactory.Close()
 		if err != nil {
 			log.Error("can not close ormFactory", "error", err)

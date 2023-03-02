@@ -14,7 +14,6 @@ import (
 	"scroll-tech/bridge/config"
 	"scroll-tech/bridge/relayer"
 	"scroll-tech/bridge/utils"
-	"scroll-tech/common/types"
 	cutil "scroll-tech/common/utils"
 	"scroll-tech/common/version"
 	"scroll-tech/database"
@@ -48,8 +47,8 @@ func action(ctx *cli.Context) error {
 	if err != nil {
 		log.Crit("failed to load config file", "config file", cfgFile, "error", err)
 	}
-	masterCtx := context.Background()
-	subCtx, cancel := context.WithCancel(masterCtx)
+	subCtx, cancel := context.WithCancel(ctx.Context)
+	defer cancel()
 
 	// Init l2geth connection
 	l2client, err := ethclient.Dial(cfg.L1Config.Endpoint)
@@ -73,81 +72,17 @@ func action(ctx *cli.Context) error {
 	}
 
 	// Start l1relayer process
-	go utils.Loop(subCtx, time.NewTicker(2*time.Second), l1relayer.ProcessSavedEvents)
-	go utils.Loop(subCtx, time.NewTicker(2*time.Second), l1relayer.ProcessGasPriceOracle)
-
-	go func(ctx context.Context) {
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case cfm := <-l1relayer.GetMsgChanel():
-				if !cfm.IsSuccessful {
-					log.Warn("transaction confirmed but failed in layer2", "confirmation", cfm)
-				} else {
-					// @todo handle db error
-					cfmErr := ormFactory.UpdateLayer1StatusAndLayer2Hash(ctx, cfm.ID, types.MsgConfirmed, cfm.TxHash.String())
-					if cfmErr != nil {
-						log.Warn("UpdateLayer1StatusAndLayer2Hash failed", "err", cfmErr)
-					}
-					log.Info("transaction confirmed in layer2", "confirmation", cfm)
-				}
-			case cfm := <-l1relayer.GetGasOracleChanel():
-				if !cfm.IsSuccessful {
-					// @discuss: maybe make it pending again?
-					cfmErr := ormFactory.UpdateL1GasOracleStatusAndOracleTxHash(ctx, cfm.ID, types.GasOracleFailed, cfm.TxHash.String())
-					if cfmErr != nil {
-						log.Warn("UpdateL1GasOracleStatusAndOracleTxHash failed", "err", cfmErr)
-					}
-					log.Warn("transaction confirmed but failed in layer2", "confirmation", cfm)
-				} else {
-					// @todo handle db error
-					cfmErr := ormFactory.UpdateL1GasOracleStatusAndOracleTxHash(ctx, cfm.ID, types.GasOracleImported, cfm.TxHash.String())
-					if cfmErr != nil {
-						log.Warn("UpdateGasOracleStatusAndOracleTxHash failed", "err", cfmErr)
-					}
-					log.Info("transaction confirmed in layer2", "confirmation", cfm)
-				}
-			}
-		}
-	}(subCtx)
+	go utils.Loop(subCtx, 2*time.Second, l1relayer.ProcessSavedEvents)
+	go utils.Loop(subCtx, 2*time.Second, l1relayer.ProcessGasPriceOracle)
 
 	// Start l2relayer process
-	go utils.Loop(subCtx, time.NewTicker(time.Second), l2relayer.ProcessSavedEvents)
-	go utils.Loop(subCtx, time.NewTicker(time.Second), l2relayer.ProcessGasPriceOracle)
-
-	go func(ctx context.Context) {
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case confirmation := <-l2relayer.GetMsgChanel():
-				l2relayer.HandleConfirmation(confirmation)
-			case cfm := <-l2relayer.GetGasOracleChanel():
-				if !cfm.IsSuccessful {
-					// @discuss: maybe make it pending again?
-					cfmErr := ormFactory.UpdateL2GasOracleStatusAndOracleTxHash(ctx, cfm.ID, types.GasOracleFailed, cfm.TxHash.String())
-					if cfmErr != nil {
-						log.Warn("UpdateL2GasOracleStatusAndOracleTxHash failed", "err", cfmErr)
-					}
-					log.Warn("transaction confirmed but failed in layer1", "confirmation", cfm)
-				} else {
-					// @todo handle db error
-					cfmErr := ormFactory.UpdateL2GasOracleStatusAndOracleTxHash(ctx, cfm.ID, types.GasOracleImported, cfm.TxHash.String())
-					if cfmErr != nil {
-						log.Warn("UpdateL2GasOracleStatusAndOracleTxHash failed", "err", cfmErr)
-					}
-					log.Info("transaction confirmed in layer1", "confirmation", cfm)
-				}
-			}
-		}
-	}(subCtx)
+	go utils.Loop(subCtx, time.Second, l2relayer.ProcessSavedEvents)
+	go utils.Loop(subCtx, time.Second, l2relayer.ProcessGasPriceOracle)
 
 	// Finish start all message relayer functions
 	log.Info("Start message_relayer successfully")
 
 	defer func() {
-		cancel()
 		err = ormFactory.Close()
 		if err != nil {
 			log.Error("can not close ormFactory", "error", err)

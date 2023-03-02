@@ -211,10 +211,8 @@ func prepareWatcherClient(l2Cli *ethclient.Client, db database.OrmFactory, contr
 }
 
 func loopToFetchEvent(subCtx context.Context, t *testing.T, watcher *watcher.L2WatcherClient) {
-	go utils.LoopWithContext(subCtx, time.NewTicker(2*time.Second), func(ctx context.Context) {
-		number, err := utils.GetLatestConfirmedBlockNumber(ctx, l2Cli, cfg.L2Config.Confirmations)
-		assert.NoError(t, err)
-		watcher.FetchContractEvent(number)
+	go utils.LoopWithContext(subCtx, (2 * time.Second), func(ctx context.Context) {
+		watcher.FetchContractEvent()
 	})
 
 }

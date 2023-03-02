@@ -149,10 +149,16 @@ func (w *Watcher) FetchBlockHeader(blockHeight uint64) error {
 }
 
 // FetchContractEvent pull latest event logs from given contract address and save in DB
-func (w *Watcher) FetchContractEvent(blockHeight uint64) error {
+func (w *Watcher) FetchContractEvent() error {
 	defer func() {
 		log.Info("l1 watcher fetchContractEvent", "w.processedMsgHeight", w.processedMsgHeight)
 	}()
+
+	blockHeight, err := utils.GetLatestConfirmedBlockNumber(w.ctx, w.client, w.confirmations)
+	if err != nil {
+		log.Error("failed to get block number", "err", err)
+		return err
+	}
 
 	fromBlock := int64(w.processedMsgHeight) + 1
 	toBlock := int64(blockHeight)

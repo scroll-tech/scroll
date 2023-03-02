@@ -48,8 +48,8 @@ func action(ctx *cli.Context) error {
 		log.Crit("failed to load config file", "config file", cfgFile, "error", err)
 	}
 
-	masterCtx := context.Background()
-	subCtx, cancel := context.WithCancel(masterCtx)
+	subCtx, cancel := context.WithCancel(ctx.Context)
+	defer cancel()
 
 	// Init l2geth connection
 	l2client, err := ethclient.Dial(cfg.L1Config.Endpoint)
@@ -68,24 +68,12 @@ func action(ctx *cli.Context) error {
 		log.Crit("failed to create l2 relayer", "config file", cfgFile, "error", err)
 	}
 
-	go utils.Loop(subCtx, time.NewTicker(time.Second), l2relayer.ProcessCommittedBatches)
-
-	go func(ctx context.Context) {
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case confirmation := <-l2relayer.GetRollupChanel():
-				l2relayer.HandleConfirmation(confirmation)
-			}
-		}
-	}(subCtx)
+	go utils.Loop(subCtx, time.Second, l2relayer.ProcessCommittedBatches)
 
 	// Finish start all rollup relayer functions.
 	log.Info("Start rollup_relayer successfully")
 
 	defer func() {
-		cancel()
 		err = ormFactory.Close()
 		if err != nil {
 			log.Error("can not close ormFactory", "error", err)

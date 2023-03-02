@@ -54,7 +54,8 @@ func testRelayL1MessageSucceed(t *testing.T) {
 	}
 
 	// l1 watch process events
-	l1Watcher.FetchContractEvent(sendReceipt.BlockNumber.Uint64())
+	err = l1Watcher.FetchContractEvent()
+	assert.NoError(t, err)
 
 	// check db status
 	msg, err := db.GetL1MessageByQueueIndex(nonce.Uint64())
@@ -77,7 +78,7 @@ func testRelayL1MessageSucceed(t *testing.T) {
 	assert.Equal(t, len(relayTxReceipt.Logs), 1)
 
 	// fetch message relayed events
-	l2Watcher.FetchContractEvent(relayTxReceipt.BlockNumber.Uint64())
+	l2Watcher.FetchContractEvent()
 	msg, err = db.GetL1MessageByQueueIndex(nonce.Uint64())
 	assert.NoError(t, err)
 	assert.Equal(t, msg.Status, types.MsgConfirmed)

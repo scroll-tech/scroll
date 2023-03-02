@@ -28,7 +28,6 @@ import (
 // Actions are triggered by new head from layer 1 geth node.
 // @todo It's better to be triggered by watcher.
 type Layer1Relayer struct {
-	*ConfirmChs
 	ctx context.Context
 
 	db  database.OrmFactory
@@ -75,12 +74,7 @@ func NewLayer1Relayer(ctx context.Context, db database.OrmFactory, cfg *config.R
 		gasPriceDiff = defaultGasPriceDiff
 	}
 
-	return &Layer1Relayer{
-		ConfirmChs: &ConfirmChs{
-			messageCh:   messageSender.ConfirmChan(),
-			gasOracleCh: gasOracleSender.ConfirmChan(),
-			rollupCh:    nil,
-		},
+	l1Relayer := &Layer1Relayer{
 		ctx: ctx,
 		db:  db,
 
@@ -95,7 +89,10 @@ func NewLayer1Relayer(ctx context.Context, db database.OrmFactory, cfg *config.R
 
 		cfg:    cfg,
 		stopCh: make(chan struct{}),
-	}, nil
+	}
+
+	go l1Relayer.handleConfirmLoop(ctx)
+	return l1Relayer, nil
 }
 
 // ProcessSavedEvents relays saved un-processed cross-domain transactions to desired blockchain
@@ -190,6 +187,42 @@ func (r *Layer1Relayer) ProcessGasPriceOracle() {
 			}
 			r.lastGasPrice = block.BaseFee
 			log.Info("Update l1 base fee", "txHash", hash.String(), "baseFee", baseFee)
+		}
+	}
+}
+
+func (r *Layer1Relayer) handleConfirmLoop(ctx context.Context) {
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case cfm := <-r.messageSender.ConfirmChan():
+			if !cfm.IsSuccessful {
+				log.Warn("transaction confirmed but failed in layer2", "confirmation", cfm)
+			} else {
+				// @todo handle db error
+				err := r.db.UpdateLayer1StatusAndLayer2Hash(r.ctx, cfm.ID, types.MsgConfirmed, cfm.TxHash.String())
+				if err != nil {
+					log.Warn("UpdateLayer1StatusAndLayer2Hash failed", "err", err)
+				}
+				log.Info("transaction confirmed in layer2", "confirmation", cfm)
+			}
+		case cfm := <-r.gasOracleSender.ConfirmChan():
+			if !cfm.IsSuccessful {
+				// @discuss: maybe make it pending again?
+				err := r.db.UpdateL1GasOracleStatusAndOracleTxHash(r.ctx, cfm.ID, types.GasOracleFailed, cfm.TxHash.String())
+				if err != nil {
+					log.Warn("UpdateL1GasOracleStatusAndOracleTxHash failed", "err", err)
+				}
+				log.Warn("transaction confirmed but failed in layer2", "confirmation", cfm)
+			} else {
+				// @todo handle db error
+				err := r.db.UpdateL1GasOracleStatusAndOracleTxHash(r.ctx, cfm.ID, types.GasOracleImported, cfm.TxHash.String())
+				if err != nil {
+					log.Warn("UpdateGasOracleStatusAndOracleTxHash failed", "err", err)
+				}
+				log.Info("transaction confirmed in layer2", "confirmation", cfm)
+			}
 		}
 	}
 }

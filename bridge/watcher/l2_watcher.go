@@ -190,10 +190,16 @@ func (w *L2WatcherClient) getAndStoreBlockTraces(ctx context.Context, from, to u
 }
 
 // FetchContractEvent pull latest event logs from given contract address and save in DB
-func (w *L2WatcherClient) FetchContractEvent(blockHeight uint64) {
+func (w *L2WatcherClient) FetchContractEvent() {
 	defer func() {
 		log.Info("l2 watcher fetchContractEvent", "w.processedMsgHeight", w.processedMsgHeight)
 	}()
+
+	blockHeight, err := utils.GetLatestConfirmedBlockNumber(w.ctx, w.Client, w.confirmations)
+	if err != nil {
+		log.Error("failed to get block number", "err", err)
+		return
+	}
 
 	var fromBlock int64
 	if int64(w.processedMsgHeight) <= 0 {

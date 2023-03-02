@@ -100,7 +100,8 @@ func UnpackLogIntoMap(c *abi.ABI, out map[string]interface{}, event string, log 
 }
 
 // LoopWithContext Run the f func with context periodically.
-func LoopWithContext(ctx context.Context, tick *time.Ticker, f func(ctx context.Context)) {
+func LoopWithContext(ctx context.Context, second time.Duration, f func(ctx context.Context)) {
+	tick := time.NewTicker(second)
 	defer tick.Stop()
 	for ; ; <-tick.C {
 		select {
@@ -113,7 +114,8 @@ func LoopWithContext(ctx context.Context, tick *time.Ticker, f func(ctx context.
 }
 
 // Loop Run the f func periodically.
-func Loop(ctx context.Context, tick *time.Ticker, f func()) {
+func Loop(ctx context.Context, second time.Duration, f func()) {
+	tick := time.NewTicker(second)
 	defer tick.Stop()
 	for ; ; <-tick.C {
 		select {
