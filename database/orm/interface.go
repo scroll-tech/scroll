@@ -36,7 +36,7 @@ type BlockTraceOrm interface {
 	GetUnbatchedL2Blocks(fields map[string]interface{}, args ...string) ([]*types.BlockInfo, error)
 	GetL2BlockHashByNumber(number uint64) (*common.Hash, error)
 	DeleteTracesByBatchHash(batchHash string) error
-	InsertL2BlockTraces(blockTraces []*eth_types.BlockTrace) error
+	InsertL2BlockTraces(blockTraces []*eth_types.BlockTrace) (uint64, error)
 	SetBatchHashForL2BlocksInDBTx(dbTx *sqlx.Tx, numbers []uint64, batchHash string) error
 }
 

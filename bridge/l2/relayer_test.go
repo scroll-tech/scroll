@@ -73,7 +73,7 @@ func testL2RelayerProcessSaveEvents(t *testing.T) {
 			},
 		},
 	}
-	err = db.InsertL2BlockTraces(traces)
+	_, err = db.InsertL2BlockTraces(traces)
 	assert.NoError(t, err)
 
 	dbTx, err := db.Beginx()
