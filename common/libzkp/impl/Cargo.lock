@@ -402,7 +402,7 @@ checksum = "8f1e260c3a9040a7c19a12468758f4c16f31a81a1fe087482be9570ec864bb6c"
 [[package]]
 name = "bus-mapping"
 version = "0.1.0"
-source = "git+https://github.com/scroll-tech/zkevm-circuits.git?branch=goerli-0215#3395fe1abfb39000da19631af27508e33437295d"
+source = "git+https://github.com/scroll-tech/zkevm-circuits.git?branch=goerli-0215#7dad9b109b34d938830f85f265e4f5682581b142"
 dependencies = [
  "eth-types",
  "ethers-core",
@@ -669,8 +669,9 @@ dependencies = [
 
 [[package]]
 name = "cranelift-entity"
-version = "0.92.0"
-source = "git+https://github.com/paritytech/wasmtime.git?branch=v5.0.0_lto_fix#8a02705ad378108e43abe23c538688adf73f3b71"
+version = "0.93.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "af684f7f7b01427b1942c7102673322a51b9d6f261e9663dc5e5595786775531"
 dependencies = [
  "serde",
 ]
@@ -1136,7 +1137,7 @@ dependencies = [
 [[package]]
 name = "eth-types"
 version = "0.1.0"
-source = "git+https://github.com/scroll-tech/zkevm-circuits.git?branch=goerli-0215#3395fe1abfb39000da19631af27508e33437295d"
+source = "git+https://github.com/scroll-tech/zkevm-circuits.git?branch=goerli-0215#7dad9b109b34d938830f85f265e4f5682581b142"
 dependencies = [
  "ethers-core",
  "ethers-signers",
@@ -1398,7 +1399,7 @@ dependencies = [
 [[package]]
 name = "external-tracer"
 version = "0.1.0"
-source = "git+https://github.com/scroll-tech/zkevm-circuits.git?branch=goerli-0215#3395fe1abfb39000da19631af27508e33437295d"
+source = "git+https://github.com/scroll-tech/zkevm-circuits.git?branch=goerli-0215#7dad9b109b34d938830f85f265e4f5682581b142"
 dependencies = [
  "eth-types",
  "geth-utils",
@@ -1531,9 +1532,10 @@ dependencies = [
 [[package]]
 name = "frame-support"
 version = "4.0.0-dev"
-source = "git+https://github.com/paritytech/substrate?branch=master#d97a18851f9da0b1c299daa8fb18022794065779"
+source = "git+https://github.com/paritytech/substrate?branch=master#6e81199eac74ce9a7bf3b1c720989031dd9b18a1"
 dependencies = [
  "bitflags",
+ "environmental",
  "frame-metadata",
  "frame-support-procedural",
  "impl-trait-for-tuples",
@@ -1563,7 +1565,7 @@ dependencies = [
 [[package]]
 name = "frame-support-procedural"
 version = "4.0.0-dev"
-source = "git+https://github.com/paritytech/substrate?branch=master#d97a18851f9da0b1c299daa8fb18022794065779"
+source = "git+https://github.com/paritytech/substrate?branch=master#6e81199eac74ce9a7bf3b1c720989031dd9b18a1"
 dependencies = [
  "Inflector",
  "cfg-expr",
@@ -1578,7 +1580,7 @@ dependencies = [
 [[package]]
 name = "frame-support-procedural-tools"
 version = "4.0.0-dev"
-source = "git+https://github.com/paritytech/substrate?branch=master#d97a18851f9da0b1c299daa8fb18022794065779"
+source = "git+https://github.com/paritytech/substrate?branch=master#6e81199eac74ce9a7bf3b1c720989031dd9b18a1"
 dependencies = [
  "frame-support-procedural-tools-derive",
  "proc-macro-crate",
@@ -1590,7 +1592,7 @@ dependencies = [
 [[package]]
 name = "frame-support-procedural-tools-derive"
 version = "3.0.0"
-source = "git+https://github.com/paritytech/substrate?branch=master#d97a18851f9da0b1c299daa8fb18022794065779"
+source = "git+https://github.com/paritytech/substrate?branch=master#6e81199eac74ce9a7bf3b1c720989031dd9b18a1"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1711,7 +1713,7 @@ dependencies = [
 [[package]]
 name = "gadgets"
 version = "0.1.0"
-source = "git+https://github.com/scroll-tech/zkevm-circuits.git?branch=goerli-0215#3395fe1abfb39000da19631af27508e33437295d"
+source = "git+https://github.com/scroll-tech/zkevm-circuits.git?branch=goerli-0215#7dad9b109b34d938830f85f265e4f5682581b142"
 dependencies = [
  "digest 0.7.6",
  "eth-types",
@@ -1751,7 +1753,7 @@ dependencies = [
 [[package]]
 name = "geth-utils"
 version = "0.1.0"
-source = "git+https://github.com/scroll-tech/zkevm-circuits.git?branch=goerli-0215#3395fe1abfb39000da19631af27508e33437295d"
+source = "git+https://github.com/scroll-tech/zkevm-circuits.git?branch=goerli-0215#7dad9b109b34d938830f85f265e4f5682581b142"
 dependencies = [
  "env_logger",
  "gobuild",
@@ -2073,6 +2075,9 @@ name = "hashbrown"
 version = "0.13.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "43a3c133739dddd0d2990f9a4bdf8eb4b21ef50e4851ca85ab661199821d510e"
+dependencies = [
+ "ahash 0.8.3",
+]
 
 [[package]]
 name = "hashers"
@@ -2437,7 +2442,7 @@ checksum = "f9b7d56ba4a8344d6be9729995e6b06f928af29998cdf79fe390cbf6b1fee838"
 [[package]]
 name = "keccak256"
 version = "0.1.0"
-source = "git+https://github.com/scroll-tech/zkevm-circuits.git?branch=goerli-0215#3395fe1abfb39000da19631af27508e33437295d"
+source = "git+https://github.com/scroll-tech/zkevm-circuits.git?branch=goerli-0215#7dad9b109b34d938830f85f265e4f5682581b142"
 dependencies = [
  "env_logger",
  "eth-types",
@@ -2678,7 +2683,7 @@ dependencies = [
 [[package]]
 name = "mock"
 version = "0.1.0"
-source = "git+https://github.com/scroll-tech/zkevm-circuits.git?branch=goerli-0215#3395fe1abfb39000da19631af27508e33437295d"
+source = "git+https://github.com/scroll-tech/zkevm-circuits.git?branch=goerli-0215#7dad9b109b34d938830f85f265e4f5682581b142"
 dependencies = [
  "eth-types",
  "ethers-core",
@@ -2693,7 +2698,7 @@ dependencies = [
 [[package]]
 name = "mpt-zktrie"
 version = "0.1.0"
-source = "git+https://github.com/scroll-tech/zkevm-circuits.git?branch=goerli-0215#3395fe1abfb39000da19631af27508e33437295d"
+source = "git+https://github.com/scroll-tech/zkevm-circuits.git?branch=goerli-0215#7dad9b109b34d938830f85f265e4f5682581b142"
 dependencies = [
  "bus-mapping",
  "eth-types",
@@ -4109,7 +4114,7 @@ dependencies = [
 [[package]]
 name = "sp-api"
 version = "4.0.0-dev"
-source = "git+https://github.com/paritytech/substrate?branch=master#d97a18851f9da0b1c299daa8fb18022794065779"
+source = "git+https://github.com/paritytech/substrate?branch=master#6e81199eac74ce9a7bf3b1c720989031dd9b18a1"
 dependencies = [
  "hash-db",
  "log",
@@ -4127,7 +4132,7 @@ dependencies = [
 [[package]]
 name = "sp-api-proc-macro"
 version = "4.0.0-dev"
-source = "git+https://github.com/paritytech/substrate?branch=master#d97a18851f9da0b1c299daa8fb18022794065779"
+source = "git+https://github.com/paritytech/substrate?branch=master#6e81199eac74ce9a7bf3b1c720989031dd9b18a1"
 dependencies = [
  "blake2",
  "proc-macro-crate",
@@ -4139,7 +4144,7 @@ dependencies = [
 [[package]]
 name = "sp-application-crypto"
 version = "7.0.0"
-source = "git+https://github.com/paritytech/substrate?branch=master#d97a18851f9da0b1c299daa8fb18022794065779"
+source = "git+https://github.com/paritytech/substrate?branch=master#6e81199eac74ce9a7bf3b1c720989031dd9b18a1"
 dependencies = [
  "parity-scale-codec",
  "scale-info",
@@ -4152,7 +4157,7 @@ dependencies = [
 [[package]]
 name = "sp-arithmetic"
 version = "6.0.0"
-source = "git+https://github.com/paritytech/substrate?branch=master#d97a18851f9da0b1c299daa8fb18022794065779"
+source = "git+https://github.com/paritytech/substrate?branch=master#6e81199eac74ce9a7bf3b1c720989031dd9b18a1"
 dependencies = [
  "integer-sqrt",
  "num-traits",
@@ -4166,7 +4171,7 @@ dependencies = [
 [[package]]
 name = "sp-core"
 version = "7.0.0"
-source = "git+https://github.com/paritytech/substrate?branch=master#d97a18851f9da0b1c299daa8fb18022794065779"
+source = "git+https://github.com/paritytech/substrate?branch=master#6e81199eac74ce9a7bf3b1c720989031dd9b18a1"
 dependencies = [
  "array-bytes",
  "base58 0.2.0",
@@ -4209,7 +4214,7 @@ dependencies = [
 [[package]]
 name = "sp-core-hashing"
 version = "5.0.0"
-source = "git+https://github.com/paritytech/substrate?branch=master#d97a18851f9da0b1c299daa8fb18022794065779"
+source = "git+https://github.com/paritytech/substrate?branch=master#6e81199eac74ce9a7bf3b1c720989031dd9b18a1"
 dependencies = [
  "blake2",
  "byteorder",
@@ -4223,7 +4228,7 @@ dependencies = [
 [[package]]
 name = "sp-core-hashing-proc-macro"
 version = "5.0.0"
-source = "git+https://github.com/paritytech/substrate?branch=master#d97a18851f9da0b1c299daa8fb18022794065779"
+source = "git+https://github.com/paritytech/substrate?branch=master#6e81199eac74ce9a7bf3b1c720989031dd9b18a1"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -4234,7 +4239,7 @@ dependencies = [
 [[package]]
 name = "sp-debug-derive"
 version = "5.0.0"
-source = "git+https://github.com/paritytech/substrate?branch=master#d97a18851f9da0b1c299daa8fb18022794065779"
+source = "git+https://github.com/paritytech/substrate?branch=master#6e81199eac74ce9a7bf3b1c720989031dd9b18a1"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -4244,7 +4249,7 @@ dependencies = [
 [[package]]
 name = "sp-externalities"
 version = "0.13.0"
-source = "git+https://github.com/paritytech/substrate?branch=master#d97a18851f9da0b1c299daa8fb18022794065779"
+source = "git+https://github.com/paritytech/substrate?branch=master#6e81199eac74ce9a7bf3b1c720989031dd9b18a1"
 dependencies = [
  "environmental",
  "parity-scale-codec",
@@ -4255,7 +4260,7 @@ dependencies = [
 [[package]]
 name = "sp-inherents"
 version = "4.0.0-dev"
-source = "git+https://github.com/paritytech/substrate?branch=master#d97a18851f9da0b1c299daa8fb18022794065779"
+source = "git+https://github.com/paritytech/substrate?branch=master#6e81199eac74ce9a7bf3b1c720989031dd9b18a1"
 dependencies = [
  "async-trait",
  "impl-trait-for-tuples",
@@ -4270,7 +4275,7 @@ dependencies = [
 [[package]]
 name = "sp-io"
 version = "7.0.0"
-source = "git+https://github.com/paritytech/substrate?branch=master#d97a18851f9da0b1c299daa8fb18022794065779"
+source = "git+https://github.com/paritytech/substrate?branch=master#6e81199eac74ce9a7bf3b1c720989031dd9b18a1"
 dependencies = [
  "bytes",
  "ed25519",
@@ -4295,7 +4300,7 @@ dependencies = [
 [[package]]
 name = "sp-keystore"
 version = "0.13.0"
-source = "git+https://github.com/paritytech/substrate?branch=master#d97a18851f9da0b1c299daa8fb18022794065779"
+source = "git+https://github.com/paritytech/substrate?branch=master#6e81199eac74ce9a7bf3b1c720989031dd9b18a1"
 dependencies = [
  "async-trait",
  "futures",
@@ -4311,7 +4316,7 @@ dependencies = [
 [[package]]
 name = "sp-panic-handler"
 version = "5.0.0"
-source = "git+https://github.com/paritytech/substrate?branch=master#d97a18851f9da0b1c299daa8fb18022794065779"
+source = "git+https://github.com/paritytech/substrate?branch=master#6e81199eac74ce9a7bf3b1c720989031dd9b18a1"
 dependencies = [
  "backtrace",
  "lazy_static",
@@ -4321,7 +4326,7 @@ dependencies = [
 [[package]]
 name = "sp-runtime"
 version = "7.0.0"
-source = "git+https://github.com/paritytech/substrate?branch=master#d97a18851f9da0b1c299daa8fb18022794065779"
+source = "git+https://github.com/paritytech/substrate?branch=master#6e81199eac74ce9a7bf3b1c720989031dd9b18a1"
 dependencies = [
  "either",
  "hash256-std-hasher",
@@ -4343,7 +4348,7 @@ dependencies = [
 [[package]]
 name = "sp-runtime-interface"
 version = "7.0.0"
-source = "git+https://github.com/paritytech/substrate?branch=master#d97a18851f9da0b1c299daa8fb18022794065779"
+source = "git+https://github.com/paritytech/substrate?branch=master#6e81199eac74ce9a7bf3b1c720989031dd9b18a1"
 dependencies = [
  "bytes",
  "impl-trait-for-tuples",
@@ -4361,7 +4366,7 @@ dependencies = [
 [[package]]
 name = "sp-runtime-interface-proc-macro"
 version = "6.0.0"
-source = "git+https://github.com/paritytech/substrate?branch=master#d97a18851f9da0b1c299daa8fb18022794065779"
+source = "git+https://github.com/paritytech/substrate?branch=master#6e81199eac74ce9a7bf3b1c720989031dd9b18a1"
 dependencies = [
  "Inflector",
  "proc-macro-crate",
@@ -4373,7 +4378,7 @@ dependencies = [
 [[package]]
 name = "sp-staking"
 version = "4.0.0-dev"
-source = "git+https://github.com/paritytech/substrate?branch=master#d97a18851f9da0b1c299daa8fb18022794065779"
+source = "git+https://github.com/paritytech/substrate?branch=master#6e81199eac74ce9a7bf3b1c720989031dd9b18a1"
 dependencies = [
  "parity-scale-codec",
  "scale-info",
@@ -4385,7 +4390,7 @@ dependencies = [
 [[package]]
 name = "sp-state-machine"
 version = "0.13.0"
-source = "git+https://github.com/paritytech/substrate?branch=master#d97a18851f9da0b1c299daa8fb18022794065779"
+source = "git+https://github.com/paritytech/substrate?branch=master#6e81199eac74ce9a7bf3b1c720989031dd9b18a1"
 dependencies = [
  "hash-db",
  "log",
@@ -4405,12 +4410,12 @@ dependencies = [
 [[package]]
 name = "sp-std"
 version = "5.0.0"
-source = "git+https://github.com/paritytech/substrate?branch=master#d97a18851f9da0b1c299daa8fb18022794065779"
+source = "git+https://github.com/paritytech/substrate?branch=master#6e81199eac74ce9a7bf3b1c720989031dd9b18a1"
 
 [[package]]
 name = "sp-storage"
 version = "7.0.0"
-source = "git+https://github.com/paritytech/substrate?branch=master#d97a18851f9da0b1c299daa8fb18022794065779"
+source = "git+https://github.com/paritytech/substrate?branch=master#6e81199eac74ce9a7bf3b1c720989031dd9b18a1"
 dependencies = [
  "impl-serde 0.4.0",
  "parity-scale-codec",
@@ -4423,7 +4428,7 @@ dependencies = [
 [[package]]
 name = "sp-tracing"
 version = "6.0.0"
-source = "git+https://github.com/paritytech/substrate?branch=master#d97a18851f9da0b1c299daa8fb18022794065779"
+source = "git+https://github.com/paritytech/substrate?branch=master#6e81199eac74ce9a7bf3b1c720989031dd9b18a1"
 dependencies = [
  "parity-scale-codec",
  "sp-std",
@@ -4435,7 +4440,7 @@ dependencies = [
 [[package]]
 name = "sp-trie"
 version = "7.0.0"
-source = "git+https://github.com/paritytech/substrate?branch=master#d97a18851f9da0b1c299daa8fb18022794065779"
+source = "git+https://github.com/paritytech/substrate?branch=master#6e81199eac74ce9a7bf3b1c720989031dd9b18a1"
 dependencies = [
  "ahash 0.8.3",
  "hash-db",
@@ -4458,7 +4463,7 @@ dependencies = [
 [[package]]
 name = "sp-version"
 version = "5.0.0"
-source = "git+https://github.com/paritytech/substrate?branch=master#d97a18851f9da0b1c299daa8fb18022794065779"
+source = "git+https://github.com/paritytech/substrate?branch=master#6e81199eac74ce9a7bf3b1c720989031dd9b18a1"
 dependencies = [
  "impl-serde 0.4.0",
  "parity-scale-codec",
@@ -4475,7 +4480,7 @@ dependencies = [
 [[package]]
 name = "sp-version-proc-macro"
 version = "4.0.0-dev"
-source = "git+https://github.com/paritytech/substrate?branch=master#d97a18851f9da0b1c299daa8fb18022794065779"
+source = "git+https://github.com/paritytech/substrate?branch=master#6e81199eac74ce9a7bf3b1c720989031dd9b18a1"
 dependencies = [
  "parity-scale-codec",
  "proc-macro2",
@@ -4486,7 +4491,7 @@ dependencies = [
 [[package]]
 name = "sp-wasm-interface"
 version = "7.0.0"
-source = "git+https://github.com/paritytech/substrate?branch=master#d97a18851f9da0b1c299daa8fb18022794065779"
+source = "git+https://github.com/paritytech/substrate?branch=master#6e81199eac74ce9a7bf3b1c720989031dd9b18a1"
 dependencies = [
  "anyhow",
  "impl-trait-for-tuples",
@@ -4500,7 +4505,7 @@ dependencies = [
 [[package]]
 name = "sp-weights"
 version = "4.0.0"
-source = "git+https://github.com/paritytech/substrate?branch=master#d97a18851f9da0b1c299daa8fb18022794065779"
+source = "git+https://github.com/paritytech/substrate?branch=master#6e81199eac74ce9a7bf3b1c720989031dd9b18a1"
 dependencies = [
  "parity-scale-codec",
  "scale-info",
@@ -4930,12 +4935,12 @@ dependencies = [
 
 [[package]]
 name = "trie-db"
-version = "0.24.0"
+version = "0.26.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "004e1e8f92535694b4cb1444dc5a8073ecf0815e3357f729638b9f8fc4062908"
+checksum = "879380c0061b165ba1f036325b7f3478bc1a947814d9fc36d22c5d8e960b11bd"
 dependencies = [
  "hash-db",
- "hashbrown 0.12.3",
+ "hashbrown 0.13.2",
  "log",
  "rustc-hex",
  "smallvec",
@@ -5014,7 +5019,7 @@ checksum = "dcf81ac59edc17cc8697ff311e8f5ef2d99fcbd9817b34cec66f90b6c3dfd987"
 [[package]]
 name = "types"
 version = "0.1.0"
-source = "git+https://github.com/scroll-tech/scroll-zkevm?branch=goerli-0215#a090be6f603f58f9e1fb9cf500834fa2e51e0ca9"
+source = "git+https://github.com/scroll-tech/scroll-zkevm?branch=goerli-0215#1f7a3c7da2370860087555a11346bd5d96f609fd"
 dependencies = [
  "base64 0.13.0",
  "blake2",
@@ -5330,9 +5335,9 @@ dependencies = [
 
 [[package]]
 name = "wasmparser"
-version = "0.96.0"
+version = "0.100.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "adde01ade41ab9a5d10ec8ed0bb954238cf8625b5cd5a13093d6de2ad9c2be1a"
+checksum = "64b20236ab624147dfbb62cf12a19aaf66af0e41b8398838b66e997d07d269d4"
 dependencies = [
  "indexmap",
  "url",
@@ -5340,8 +5345,9 @@ dependencies = [
 
 [[package]]
 name = "wasmtime"
-version = "5.0.0"
-source = "git+https://github.com/paritytech/wasmtime.git?branch=v5.0.0_lto_fix#8a02705ad378108e43abe23c538688adf73f3b71"
+version = "6.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9010891d0b8e367c3be94ca35d7bc25c1de3240463bb1d61bcfc8c2233c4e0d0"
 dependencies = [
  "anyhow",
  "bincode",
@@ -5364,16 +5370,18 @@ dependencies = [
 
 [[package]]
 name = "wasmtime-asm-macros"
-version = "5.0.0"
-source = "git+https://github.com/paritytech/wasmtime.git?branch=v5.0.0_lto_fix#8a02705ad378108e43abe23c538688adf73f3b71"
+version = "6.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "65805c663eaa8257b910666f6d4b056b5c7329750da754ba5df54f3af7dbf35c"
 dependencies = [
  "cfg-if 1.0.0",
 ]
 
 [[package]]
 name = "wasmtime-environ"
-version = "5.0.0"
-source = "git+https://github.com/paritytech/wasmtime.git?branch=v5.0.0_lto_fix#8a02705ad378108e43abe23c538688adf73f3b71"
+version = "6.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4f964bb0b91fa021b8d1b488c62cc77b346c1dae6e3ebd010050b57c1f2ca657"
 dependencies = [
  "anyhow",
  "cranelift-entity",
@@ -5390,8 +5398,9 @@ dependencies = [
 
 [[package]]
 name = "wasmtime-jit"
-version = "5.0.0"
-source = "git+https://github.com/paritytech/wasmtime.git?branch=v5.0.0_lto_fix#8a02705ad378108e43abe23c538688adf73f3b71"
+version = "6.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b7a1d06f5d109539e0168fc74fa65e3948ac8dac3bb8cdbd08b62b36a0ae27b8"
 dependencies = [
  "addr2line 0.17.0",
  "anyhow",
@@ -5412,16 +5421,18 @@ dependencies = [
 
 [[package]]
 name = "wasmtime-jit-debug"
-version = "5.0.0"
-source = "git+https://github.com/paritytech/wasmtime.git?branch=v5.0.0_lto_fix#8a02705ad378108e43abe23c538688adf73f3b71"
+version = "6.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f76ef2e410329aaf8555ac6571d6fe07711be0646dcdf7ff3ab750a42ed2e583"
 dependencies = [
  "once_cell",
 ]
 
 [[package]]
 name = "wasmtime-jit-icache-coherence"
-version = "5.0.0"
-source = "git+https://github.com/paritytech/wasmtime.git?branch=v5.0.0_lto_fix#8a02705ad378108e43abe23c538688adf73f3b71"
+version = "6.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ec1fd0f0dd79e7cc0f55b102e320d7c77ab76cd272008a8fd98e25b5777e2636"
 dependencies = [
  "cfg-if 1.0.0",
  "libc",
@@ -5430,8 +5441,9 @@ dependencies = [
 
 [[package]]
 name = "wasmtime-runtime"
-version = "5.0.0"
-source = "git+https://github.com/paritytech/wasmtime.git?branch=v5.0.0_lto_fix#8a02705ad378108e43abe23c538688adf73f3b71"
+version = "6.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "271aef9b4ca2e953a866293683f2db33cda46f6933c5e431e68d8373723d4ab6"
 dependencies = [
  "anyhow",
  "cc",
@@ -5453,8 +5465,9 @@ dependencies = [
 
 [[package]]
 name = "wasmtime-types"
-version = "5.0.0"
-source = "git+https://github.com/paritytech/wasmtime.git?branch=v5.0.0_lto_fix#8a02705ad378108e43abe23c538688adf73f3b71"
+version = "6.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b18144b0e45479a830ac9fcebfc71a16d90dc72d8ebd5679700eb3bfe974d7df"
 dependencies = [
  "cranelift-entity",
  "serde",
@@ -5682,7 +5695,7 @@ dependencies = [
 [[package]]
 name = "zkevm"
 version = "0.1.0"
-source = "git+https://github.com/scroll-tech/scroll-zkevm?branch=goerli-0215#a090be6f603f58f9e1fb9cf500834fa2e51e0ca9"
+source = "git+https://github.com/scroll-tech/scroll-zkevm?branch=goerli-0215#1f7a3c7da2370860087555a11346bd5d96f609fd"
 dependencies = [
  "anyhow",
  "blake2",
@@ -5719,7 +5732,7 @@ dependencies = [
 [[package]]
 name = "zkevm-circuits"
 version = "0.1.0"
-source = "git+https://github.com/scroll-tech/zkevm-circuits.git?branch=goerli-0215#3395fe1abfb39000da19631af27508e33437295d"
+source = "git+https://github.com/scroll-tech/zkevm-circuits.git?branch=goerli-0215#7dad9b109b34d938830f85f265e4f5682581b142"
 dependencies = [
  "array-init",
  "bus-mapping",
