@@ -8,5 +8,5 @@
     "declaration": true
   },
   "include": ["./scripts", "integration-test", "./typechain"],
-  "files": ["./hardhat.config.ts"]
+  "files": ["./hardhat.config.ts", "./circomlib.d.ts"]
 }
