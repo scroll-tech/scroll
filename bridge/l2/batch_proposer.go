@@ -26,7 +26,7 @@ var (
 	bridgeL2BatchesTxsOverThresholdTotalCounter = geth_metrics.NewRegisteredCounter("bridge/l2/batches/txs/over/threshold/total", metrics.ScrollRegistry)
 	bridgeL2BatchesCommitTotalCounter           = geth_metrics.NewRegisteredCounter("bridge/l2/batches/commit/total", metrics.ScrollRegistry)
 
-	bridgeL2BatchesCreatedRateMeter    = geth_metrics.NewRegisteredMeter("bridge/l2/batches/created/rate", metrics.ScrollRegistry)
+	bridgeL2BatchesCreatedRateMeter    = geth_metrics.NewRegisteredMeter("bridge/l2/batches/blocks/created/rate", metrics.ScrollRegistry)
 	bridgeL2BatchesTxsCreatedRateMeter = geth_metrics.NewRegisteredMeter("bridge/l2/batches/txs/created/rate", metrics.ScrollRegistry)
 	bridgeL2BatchesGasCreatedRateMeter = geth_metrics.NewRegisteredMeter("bridge/l2/batches/gas/created/rate", metrics.ScrollRegistry)
 )
