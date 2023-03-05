@@ -22,6 +22,12 @@ import (
 	"scroll-tech/bridge/sender"
 )
 
+const (
+	gasPriceDiffPrecision = 1000000
+
+	defaultGasPriceDiff = 50000 // 5%
+)
+
 // Layer1Relayer is responsible for
 //  1. fetch pending L1Message from db
 //  2. relay pending message to layer 2 node
@@ -43,6 +49,10 @@ type Layer1Relayer struct {
 	gasOracleCh     <-chan *sender.Confirmation
 	l1GasOracleABI  *abi.ABI
 
+	lastGasPrice uint64
+	minGasPrice  uint64
+	gasPriceDiff uint64
+
 	stopCh chan struct{}
 }
 
@@ -59,8 +69,18 @@ func NewLayer1Relayer(ctx context.Context, db database.OrmFactory, cfg *config.R
 	gasOracleSender, err := sender.NewSender(ctx, cfg.SenderConfig, cfg.GasOracleSenderPrivateKeys)
 	if err != nil {
 		addr := crypto.PubkeyToAddress(cfg.GasOracleSenderPrivateKeys[0].PublicKey)
-		log.Error("new MessageSender failed", "main address", addr.String(), "err", err)
+		log.Error("new GasOracleSender failed", "main address", addr.String(), "err", err)
 		return nil, err
+	}
+
+	var minGasPrice uint64
+	var gasPriceDiff uint64
+	if cfg.GasOracleConfig != nil {
+		minGasPrice = cfg.GasOracleConfig.MinGasPrice
+		gasPriceDiff = cfg.GasOracleConfig.GasPriceDiff
+	} else {
+		minGasPrice = 0
+		gasPriceDiff = defaultGasPriceDiff
 	}
 
 	return &Layer1Relayer{
@@ -74,6 +94,9 @@ func NewLayer1Relayer(ctx context.Context, db database.OrmFactory, cfg *config.R
 		gasOracleSender: gasOracleSender,
 		gasOracleCh:     gasOracleSender.ConfirmChan(),
 		l1GasOracleABI:  bridge_abi.L1GasPriceOracleABI,
+
+		minGasPrice:  minGasPrice,
+		gasPriceDiff: gasPriceDiff,
 
 		cfg:    cfg,
 		stopCh: make(chan struct{}),
@@ -147,25 +170,31 @@ func (r *Layer1Relayer) ProcessGasPriceOracle() {
 	block := blocks[0]
 
 	if block.GasOracleStatus == types.GasOraclePending {
-		baseFee := big.NewInt(int64(block.BaseFee))
-		data, err := r.l1GasOracleABI.Pack("setL1BaseFee", baseFee)
-		if err != nil {
-			log.Error("Failed to pack setL1BaseFee", "block.Hash", block.Hash, "block.Height", block.Number, "block.BaseFee", block.BaseFee, "err", err)
-			return
-		}
-
-		hash, err := r.gasOracleSender.SendTransaction(block.Hash, &r.cfg.GasPriceOracleContractAddress, big.NewInt(0), data)
-		if err != nil {
-			if !errors.Is(err, sender.ErrNoAvailableAccount) {
-				log.Error("Failed to send setL1BaseFee tx to layer2 ", "block.Hash", block.Hash, "block.Height", block.Number, "err", err)
+		expectedDelta := r.lastGasPrice * r.gasPriceDiff / gasPriceDiffPrecision
+		// last is undefine or (block.BaseFee >= minGasPrice && exceed diff)
+		if r.lastGasPrice == 0 || (block.BaseFee >= r.minGasPrice && (block.BaseFee >= r.lastGasPrice+expectedDelta || block.BaseFee <= r.lastGasPrice-expectedDelta)) {
+			baseFee := big.NewInt(int64(block.BaseFee))
+			data, err := r.l1GasOracleABI.Pack("setL1BaseFee", baseFee)
+			if err != nil {
+				log.Error("Failed to pack setL1BaseFee", "block.Hash", block.Hash, "block.Height", block.Number, "block.BaseFee", block.BaseFee, "err", err)
+				return
 			}
-			return
-		}
 
-		err = r.db.UpdateL1GasOracleStatusAndOracleTxHash(r.ctx, block.Hash, types.GasOracleImporting, hash.String())
-		if err != nil {
-			log.Error("UpdateGasOracleStatusAndOracleTxHash failed", "block.Hash", block.Hash, "block.Height", block.Number, "err", err)
-			return
+			hash, err := r.gasOracleSender.SendTransaction(block.Hash, &r.cfg.GasPriceOracleContractAddress, big.NewInt(0), data)
+			if err != nil {
+				if !errors.Is(err, sender.ErrNoAvailableAccount) {
+					log.Error("Failed to send setL1BaseFee tx to layer2 ", "block.Hash", block.Hash, "block.Height", block.Number, "err", err)
+				}
+				return
+			}
+
+			err = r.db.UpdateL1GasOracleStatusAndOracleTxHash(r.ctx, block.Hash, types.GasOracleImporting, hash.String())
+			if err != nil {
+				log.Error("UpdateGasOracleStatusAndOracleTxHash failed", "block.Hash", block.Hash, "block.Height", block.Number, "err", err)
+				return
+			}
+			r.lastGasPrice = block.BaseFee
+			log.Info("Update l1 base fee", "txHash", hash.String(), "baseFee", baseFee)
 		}
 	}
 }

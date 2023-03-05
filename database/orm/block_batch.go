@@ -194,6 +194,15 @@ func (o *blockBatchOrm) GetLatestFinalizedBatch() (*types.BlockBatch, error) {
 	return batch, nil
 }
 
+func (o *blockBatchOrm) GetLatestFinalizingOrFinalizedBatch() (*types.BlockBatch, error) {
+	row := o.db.QueryRowx(`select * from block_batch where index = (select max(index) from block_batch where rollup_status = $1 or rollup_status = $2);`, types.RollupFinalizing, types.RollupFinalized)
+	batch := &types.BlockBatch{}
+	if err := row.StructScan(batch); err != nil {
+		return nil, err
+	}
+	return batch, nil
+}
+
 func (o *blockBatchOrm) GetCommittedBatches(limit uint64) ([]string, error) {
 	rows, err := o.db.Queryx(`SELECT hash FROM block_batch WHERE rollup_status = $1 ORDER BY index ASC LIMIT $2`, types.RollupCommitted, limit)
 	if err != nil {

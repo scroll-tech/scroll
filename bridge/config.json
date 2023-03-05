@@ -20,6 +20,11 @@
         "tx_type": "LegacyTx",
         "min_balance": 100000000000000000000
       },
+      "gas_oracle_config": {
+        "min_gas_price": 0,
+        "gas_price_diff": 50000
+      },
+      "finalize_batch_interval_sec": 0,
       "message_sender_private_keys": [
         "1212121212121212121212121212121212121212121212121212121212121212"
       ],
@@ -48,6 +53,11 @@
         "tx_type": "LegacyTx",
         "min_balance": 100000000000000000000
       },
+      "gas_oracle_config": {
+        "min_gas_price": 0,
+        "gas_price_diff": 50000
+      },
+      "finalize_batch_interval_sec": 0,
       "message_sender_private_keys": [
         "1212121212121212121212121212121212121212121212121212121212121212"
       ],
@@ -63,6 +73,7 @@
       "batch_gas_threshold": 3000000,
       "batch_tx_num_threshold": 44,
       "batch_time_sec": 300,
+      "batch_commit_time_sec": 1200,
       "batch_blocks_limit": 100,
       "commit_tx_calldata_size_limit": 200000,
       "public_input_config": {
@@ -73,6 +84,8 @@
   },
   "db_config": {
     "driver_name": "postgres",
-    "dsn": "postgres://admin:123456@localhost/test?sslmode=disable"
+    "dsn": "postgres://admin:123456@localhost/test?sslmode=disable",
+    "maxOpenNum": 200,
+    "maxIdleNum": 20
   }
 }

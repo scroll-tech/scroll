@@ -45,10 +45,22 @@ type RelayerConfig struct {
 	GasPriceOracleContractAddress common.Address `json:"gas_price_oracle_contract_address"`
 	// sender config
 	SenderConfig *SenderConfig `json:"sender_config"`
+	// gas oracle config
+	GasOracleConfig *GasOracleConfig `json:"gas_oracle_config"`
+	// The interval in which we send finalize batch transactions.
+	FinalizeBatchIntervalSec uint64 `json:"finalize_batch_interval_sec"`
 	// The private key of the relayer
 	MessageSenderPrivateKeys   []*ecdsa.PrivateKey `json:"-"`
 	GasOracleSenderPrivateKeys []*ecdsa.PrivateKey `json:"-"`
 	RollupSenderPrivateKeys    []*ecdsa.PrivateKey `json:"-"`
+}
+
+// GasOracleConfig The config for updating gas price oracle.
+type GasOracleConfig struct {
+	// MinGasPrice store the minimum gas price to set.
+	MinGasPrice uint64 `json:"min_gas_price"`
+	// GasPriceDiff store the percentage of gas price difference.
+	GasPriceDiff uint64 `json:"gas_price_diff"`
 }
 
 // relayerConfigAlias RelayerConfig alias name
