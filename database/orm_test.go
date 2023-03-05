@@ -191,8 +191,7 @@ func testOrmBlockTraces(t *testing.T) {
 	assert.Equal(t, false, exist)
 
 	// Insert into db
-	_, err = ormBlock.InsertL2BlockTraces([]*geth_types.BlockTrace{blockTrace})
-	assert.NoError(t, err)
+	assert.NoError(t, ormBlock.InsertL2BlockTraces([]*geth_types.BlockTrace{blockTrace}))
 
 	res2, err := ormBlock.GetUnbatchedL2Blocks(map[string]interface{}{})
 	assert.NoError(t, err)
@@ -369,15 +368,6 @@ func testOrmBlockBatch(t *testing.T) {
 	assert.Equal(t, statues[1], status1)
 	assert.Equal(t, statues[2], status2)
 	assert.Equal(t, statues[3], status1)
-
-	index1, err := ormBatch.GetBatchIndexByBatchHash(batchHash1)
-	assert.NoError(t, err)
-	assert.Equal(t, uint64(2), index1)
-	index2, err := ormBatch.GetBatchIndexByBatchHash(batchHash2)
-	assert.NoError(t, err)
-	assert.Equal(t, uint64(3), index2)
-	_, err = ormBatch.GetBatchIndexByBatchHash("not exist batch ID")
-	assert.Error(t, err)
 }
 
 // testOrmSessionInfo test rollup result table functions

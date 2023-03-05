@@ -36,7 +36,7 @@ type BlockTraceOrm interface {
 	GetUnbatchedL2Blocks(fields map[string]interface{}, args ...string) ([]*types.BlockInfo, error)
 	GetL2BlockHashByNumber(number uint64) (*common.Hash, error)
 	DeleteTracesByBatchHash(batchHash string) error
-	InsertL2BlockTraces(blockTraces []*eth_types.BlockTrace) (uint64, error)
+	InsertL2BlockTraces(blockTraces []*eth_types.BlockTrace) error
 	SetBatchHashForL2BlocksInDBTx(dbTx *sqlx.Tx, numbers []uint64, batchHash string) error
 }
 
@@ -69,7 +69,6 @@ type BlockBatchOrm interface {
 	UpdateFinalizeTxHashAndRollupStatus(ctx context.Context, hash string, finalizeTxHash string, status types.RollupStatus) error
 	GetAssignedBatchHashes() ([]string, error)
 	UpdateSkippedBatches() (int64, error)
-	GetBatchIndexByBatchHash(hash string) (uint64, error)
 	GetBatchCount() (int64, error)
 
 	UpdateL2OracleTxHash(ctx context.Context, hash, txHash string) error

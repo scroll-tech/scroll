@@ -34,9 +34,6 @@ var (
 	bridgeL2MsgsSentEventsTotalCounter    = geth_metrics.NewRegisteredCounter("bridge/l2/msgs/sent/events/total", metrics.ScrollRegistry)
 	bridgeL2MsgsAppendEventsTotalCounter  = geth_metrics.NewRegisteredCounter("bridge/l2/msgs/append/events/total", metrics.ScrollRegistry)
 	bridgeL2MsgsRelayedEventsTotalCounter = geth_metrics.NewRegisteredCounter("bridge/l2/msgs/relayed/events/total", metrics.ScrollRegistry)
-
-	bridgeL2TracesGasRateMeter  = geth_metrics.NewRegisteredMeter("bridge/l2/traces/gas/rate", metrics.ScrollRegistry)
-	bridgeL2TracesSizeRateMeter = geth_metrics.NewRegisteredMeter("bridge/l2/traces/size/rate", metrics.ScrollRegistry)
 )
 
 type relayedMessage struct {
@@ -260,12 +257,9 @@ func (w *WatcherClient) getAndStoreBlockTraces(ctx context.Context, from, to uin
 		traces = append(traces, trace)
 	}
 	if len(traces) > 0 {
-		tracesLen, err := w.orm.InsertL2BlockTraces(traces)
-		if err != nil {
+		if err := w.orm.InsertL2BlockTraces(traces); err != nil {
 			return fmt.Errorf("failed to batch insert BlockTraces: %v", err)
 		}
-		bridgeL2TracesGasRateMeter.Mark(int64(gasUsed))
-		bridgeL2TracesSizeRateMeter.Mark(int64(tracesLen))
 	}
 
 	return nil

@@ -28,9 +28,6 @@ import (
 )
 
 var (
-	coordinatorProofsReceivedHeightGauge = geth_metrics.NewRegisteredGauge("coordinator/proofs/received/height", metrics.ScrollRegistry)
-	coordinatorProofsVerifiedHeightGauge = geth_metrics.NewRegisteredGauge("coordinator/proofs/verified/height", metrics.ScrollRegistry)
-
 	coordinatorSessionsTimeoutTotalCounter      = geth_metrics.NewRegisteredCounter("coordinator/sessions/timeout/total", metrics.ScrollRegistry)
 	coordinatorProofsReceivedTotalCounter       = geth_metrics.NewRegisteredCounter("coordinator/proofs/received/total", metrics.ScrollRegistry)
 	coordinatorProofsVerifiedTotalCounter       = geth_metrics.NewRegisteredCounter("coordinator/proofs/verified/total", metrics.ScrollRegistry)
@@ -302,11 +299,6 @@ func (m *Manager) handleZkProof(pk string, msg *message.ProofDetail) error {
 		return dbErr
 	}
 
-	if batchIndex, err := m.orm.GetBatchIndexByBatchHash(msg.ID); err != nil {
-		log.Error("failed to get batch index", "msg.ID", msg.ID, "error", err)
-	} else {
-		coordinatorProofsReceivedHeightGauge.Update(int64(batchIndex))
-	}
 	coordinatorProofsReceivedTotalCounter.Inc(1)
 
 	var err error
@@ -328,11 +320,6 @@ func (m *Manager) handleZkProof(pk string, msg *message.ProofDetail) error {
 				"status", types.ProvingTaskVerified,
 				"error", dbErr)
 			return dbErr
-		}
-		if batchIndex, err := m.orm.GetBatchIndexByBatchHash(msg.ID); err != nil {
-			log.Error("failed to get batch index", "msg.ID", msg.ID, "error", err)
-		} else {
-			coordinatorProofsVerifiedHeightGauge.Update(int64(batchIndex))
 		}
 		coordinatorProofsVerifiedTotalCounter.Inc(1)
 	} else {

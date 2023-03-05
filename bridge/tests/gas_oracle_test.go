@@ -97,8 +97,7 @@ func testImportL2GasPrice(t *testing.T) {
 			StorageTrace: &geth_types.StorageTrace{},
 		},
 	}
-	_, err = db.InsertL2BlockTraces(traces)
-	assert.NoError(t, err)
+	assert.NoError(t, db.InsertL2BlockTraces(traces))
 
 	parentBatch := &types.BlockBatch{
 		Index: 0,

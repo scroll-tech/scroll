@@ -152,9 +152,8 @@ func (o *blockTraceOrm) GetL2BlockHashByNumber(number uint64) (*common.Hash, err
 	return &hash, nil
 }
 
-func (o *blockTraceOrm) InsertL2BlockTraces(blockTraces []*geth_types.BlockTrace) (uint64, error) {
+func (o *blockTraceOrm) InsertL2BlockTraces(blockTraces []*geth_types.BlockTrace) error {
 	traceMaps := make([]map[string]interface{}, len(blockTraces))
-	var tracesLen uint64
 	for i, trace := range blockTraces {
 		number, hash, txNum, mtime := trace.Header.Number.Int64(),
 			trace.Header.Hash().String(),
@@ -169,7 +168,7 @@ func (o *blockTraceOrm) InsertL2BlockTraces(blockTraces []*geth_types.BlockTrace
 		data, err := json.Marshal(trace)
 		if err != nil {
 			log.Error("failed to marshal blockTrace", "hash", hash, "err", err)
-			return 0, err
+			return err
 		}
 		traceMaps[i] = map[string]interface{}{
 			"number":          number,
@@ -180,13 +179,12 @@ func (o *blockTraceOrm) InsertL2BlockTraces(blockTraces []*geth_types.BlockTrace
 			"gas_used":        gasCost,
 			"block_timestamp": mtime,
 		}
-		tracesLen += uint64(len(data))
 	}
 	_, err := o.db.NamedExec(`INSERT INTO public.block_trace (number, hash, parent_hash, trace, tx_num, gas_used, block_timestamp) VALUES (:number, :hash, :parent_hash, :trace, :tx_num, :gas_used, :block_timestamp);`, traceMaps)
 	if err != nil {
 		log.Error("failed to insert blockTraces", "err", err)
 	}
-	return tracesLen, err
+	return err
 }
 
 func (o *blockTraceOrm) DeleteTracesByBatchHash(batchHash string) error {
