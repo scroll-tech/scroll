@@ -48,6 +48,8 @@ type RelayerConfig struct {
 	SenderConfig *SenderConfig `json:"sender_config"`
 	// gas oracle config
 	GasOracleConfig *GasOracleConfig `json:"gas_oracle_config"`
+	// The interval in which we send finalize batch transactions.
+	FinalizeBatchIntervalSec uint64 `json:"finalize_batch_interval_sec"`
 	// The private key of the relayer
 	MessageSenderPrivateKeys   []*ecdsa.PrivateKey `json:"-"`
 	GasOracleSenderPrivateKeys []*ecdsa.PrivateKey `json:"-"`

@@ -25,6 +25,7 @@
         "min_gas_price": 0,
         "gas_price_diff": 50000
       },
+      "finalize_batch_interval_sec": 0,
       "message_sender_private_keys": [
         "1212121212121212121212121212121212121212121212121212121212121212"
       ],
@@ -58,6 +59,7 @@
         "min_gas_price": 0,
         "gas_price_diff": 50000
       },
+      "finalize_batch_interval_sec": 0,
       "message_sender_private_keys": [
         "1212121212121212121212121212121212121212121212121212121212121212"
       ],
