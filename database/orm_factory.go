@@ -38,7 +38,7 @@ func NewOrmFactory(cfg *DBConfig) (OrmFactory, error) {
 		return nil, err
 	}
 
-	db.SetMaxIdleConns(cfg.MaxOpenNum)
+	db.SetMaxOpenConns(cfg.MaxOpenNum)
 	db.SetMaxIdleConns(cfg.MaxIdleNum)
 	if err = db.Ping(); err != nil {
 		return nil, err
