@@ -237,6 +237,7 @@ contract L2CustomERC20GatewayTest is L2GatewayTestBase {
   ) public {
     // blacklist some addresses
     hevm.assume(recipient != address(0));
+    hevm.assume(recipient != address(gateway));
 
     gateway.updateTokenMapping(address(l2Token), address(l1Token));
 
