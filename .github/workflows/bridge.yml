@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - staging
+      - alpha
     paths:
       - 'bridge/**'
       - '.github/workflows/bridge.yml'
@@ -12,6 +13,7 @@ on:
     branches:
       - main
       - staging
+      - alpha
     paths:
       - 'bridge/**'
       - '.github/workflows/bridge.yml'

@@ -36,24 +36,25 @@ describe("ScrollChain", async () => {
     await chain.importGenesisBatch({
       blocks: [
         {
-          blockHash: "0xb5baa665b2664c3bfed7eb46e00ebc110ecf2ebd257854a9bf2b9dbc9b2c08f6",
+          blockHash: "0x92826bd3aad2ef70d8061dc4e25150b305d1233d9cd7579433a77d6eb01dae1c",
           parentHash: constants.HashZero,
           blockNumber: 0,
-          timestamp: 0,
-          baseFee: 0,
-          gasLimit: 0,
+          timestamp: 1639724192,
+          baseFee: 1000000000,
+          gasLimit: 940000000,
           numTransactions: 0,
           numL1Messages: 0,
         },
       ],
       prevStateRoot: constants.HashZero,
-      newStateRoot: "0xb5baa665b2664c3bfed7eb46e00ebc110ecf2ebd257854a9bf2b9dbc9b2c08f6",
-      withdrawTrieRoot: "0xb5baa665b2664c3bfed7eb46e00ebc110ecf2ebd257854a9bf2b9dbc9b2c08f6",
+      newStateRoot: "0x1b186a7a90ec3b41a2417062fe44dce8ce82ae76bfbb09eae786a4f1be1895f5",
+      withdrawTrieRoot: constants.HashZero,
       batchIndex: 0,
       parentBatchHash: constants.HashZero,
       l2Transactions: [],
     });
     const parentBatchHash = await chain.lastFinalizedBatchHash();
+    console.log("genesis batch hash:", parentBatchHash);
 
     for (let numTx = 1; numTx <= 25; ++numTx) {
       for (let txLength = 100; txLength <= 1000; txLength += 100) {
@@ -72,7 +73,7 @@ describe("ScrollChain", async () => {
           blocks: [
             {
               blockHash: "0xb5baa665b2664c3bfed7eb46e00ebc110ecf2ebd257854a9bf2b9dbc9b2c08f6",
-              parentHash: "0xb5baa665b2664c3bfed7eb46e00ebc110ecf2ebd257854a9bf2b9dbc9b2c08f6",
+              parentHash: "0x92826bd3aad2ef70d8061dc4e25150b305d1233d9cd7579433a77d6eb01dae1c",
               blockNumber: 1,
               timestamp: numTx * 100000 + txLength,
               baseFee: 0,
@@ -81,7 +82,7 @@ describe("ScrollChain", async () => {
               numL1Messages: 0,
             },
           ],
-          prevStateRoot: "0xb5baa665b2664c3bfed7eb46e00ebc110ecf2ebd257854a9bf2b9dbc9b2c08f6",
+          prevStateRoot: "0x1b186a7a90ec3b41a2417062fe44dce8ce82ae76bfbb09eae786a4f1be1895f5",
           newStateRoot: "0xb5baa665b2664c3bfed7eb46e00ebc110ecf2ebd257854a9bf2b9dbc9b2c08f6",
           withdrawTrieRoot: "0xb5baa665b2664c3bfed7eb46e00ebc110ecf2ebd257854a9bf2b9dbc9b2c08f6",
           batchIndex: 1,

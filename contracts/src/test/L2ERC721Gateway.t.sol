@@ -220,8 +220,9 @@ contract L2ERC721GatewayTest is DSTestPlus {
     address to,
     uint256 tokenId
   ) public {
-    if (to == address(0)) to = address(1);
-    if (to == address(mockRecipient)) to = address(1);
+    hevm.assume(to != address(0));
+    hevm.assume(to.code.length == 0);
+
     tokenId = bound(tokenId, NOT_OWNED_TOKEN_ID + 1, type(uint256).max);
 
     // finalize deposit

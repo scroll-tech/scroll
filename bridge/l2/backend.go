@@ -14,10 +14,11 @@ import (
 // Backend manage the resources and services of L2 backend.
 // The backend should monitor events in layer 2 and relay transactions to layer 1
 type Backend struct {
-	cfg       *config.L2Config
-	l2Watcher *WatcherClient
-	relayer   *Layer2Relayer
-	orm       database.OrmFactory
+	cfg           *config.L2Config
+	watcher       *WatcherClient
+	relayer       *Layer2Relayer
+	batchProposer *BatchProposer
+	orm           database.OrmFactory
 }
 
 // New returns a new instance of Backend.
@@ -29,32 +30,37 @@ func New(ctx context.Context, cfg *config.L2Config, orm database.OrmFactory) (*B
 
 	// Note: initialize watcher before relayer to keep DB consistent.
 	// Otherwise, there will be a race condition between watcher.initializeGenesis and relayer.ProcessPendingBatches.
-	l2Watcher := NewL2WatcherClient(ctx, client, cfg.Confirmations, cfg.BatchProposerConfig, cfg.L2MessengerAddress, orm)
+	watcher := NewL2WatcherClient(ctx, client, cfg.Confirmations, cfg.L2MessengerAddress, cfg.L2MessageQueueAddress, orm)
 
-	relayer, err := NewLayer2Relayer(ctx, orm, cfg.RelayerConfig)
+	relayer, err := NewLayer2Relayer(ctx, client, orm, cfg.RelayerConfig)
 	if err != nil {
 		return nil, err
 	}
 
+	batchProposer := NewBatchProposer(ctx, cfg.BatchProposerConfig, relayer, orm)
+
 	return &Backend{
-		cfg:       cfg,
-		l2Watcher: l2Watcher,
-		relayer:   relayer,
-		orm:       orm,
+		cfg:           cfg,
+		watcher:       watcher,
+		relayer:       relayer,
+		batchProposer: batchProposer,
+		orm:           orm,
 	}, nil
 }
 
 // Start Backend module.
 func (l2 *Backend) Start() error {
-	l2.l2Watcher.Start()
+	l2.watcher.Start()
 	l2.relayer.Start()
+	l2.batchProposer.Start()
 	return nil
 }
 
 // Stop Backend module.
 func (l2 *Backend) Stop() {
-	l2.l2Watcher.Stop()
+	l2.batchProposer.Stop()
 	l2.relayer.Stop()
+	l2.watcher.Stop()
 }
 
 // APIs collect API modules.
@@ -63,7 +69,7 @@ func (l2 *Backend) APIs() []rpc.API {
 		{
 			Namespace: "l2",
 			Version:   "1.0",
-			Service:   WatcherAPI(l2.l2Watcher),
+			Service:   WatcherAPI(l2.watcher),
 			Public:    true,
 		},
 	}
