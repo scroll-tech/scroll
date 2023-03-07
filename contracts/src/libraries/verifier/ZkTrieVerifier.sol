@@ -31,12 +31,6 @@ library ZkTrieVerifier {
     bytes calldata proof
   ) internal view returns (bytes32 stateRoot, bytes32 storageValue) {
     assembly {
-      function log_hardhat(u) {
-        mstore(0x00, 0xf5b1bba92d8f98cf25e27c94d7fc7cbfbae95a49dfe5ab0cdf64ddd7181bb984)
-        mstore(0x04, u)
-        let r := staticcall(gas(), 0x000000000000000000636F6e736F6c652e6c6f67, 0x00, 0x24, 0, 0)
-      }
-
       // reverts with error `msg`.
       // make sure the length of error string <= 32
       function revertWith(msg) {
