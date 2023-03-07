@@ -6,8 +6,9 @@ import (
 
 	"github.com/scroll-tech/go-ethereum/log"
 
-	"scroll-tech/bridge/sender"
 	"scroll-tech/common/types"
+
+	"scroll-tech/bridge/sender"
 )
 
 // ProcessGasPriceOracle imports gas price to layer2

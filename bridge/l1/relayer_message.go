@@ -3,13 +3,16 @@ package l1
 import (
 	"errors"
 	"fmt"
+	"math/big"
+	"time"
+
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/log"
-	"math/big"
 	"modernc.org/mathutil"
-	"scroll-tech/bridge/sender"
+
 	"scroll-tech/common/types"
-	"time"
+
+	"scroll-tech/bridge/sender"
 )
 
 func (r *Layer1Relayer) checkSubmittedMessages() error {

@@ -2,12 +2,15 @@ package l2
 
 import (
 	"errors"
+	"math/big"
+
 	"github.com/scroll-tech/go-ethereum/crypto"
 	"github.com/scroll-tech/go-ethereum/log"
-	"math/big"
+
+	"scroll-tech/common/types"
+
 	bridge_abi "scroll-tech/bridge/abi"
 	"scroll-tech/bridge/sender"
-	"scroll-tech/common/types"
 )
 
 // SendCommitTx sends commitBatches tx to L1.

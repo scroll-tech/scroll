@@ -2,10 +2,13 @@ package l2
 
 import (
 	"errors"
-	"github.com/scroll-tech/go-ethereum/log"
 	"math/big"
-	"scroll-tech/bridge/sender"
+
+	"github.com/scroll-tech/go-ethereum/log"
+
 	"scroll-tech/common/types"
+
+	"scroll-tech/bridge/sender"
 )
 
 // ProcessGasPriceOracle imports gas price to layer1

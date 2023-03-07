@@ -3,16 +3,19 @@ package l2
 import (
 	"errors"
 	"fmt"
+	"math/big"
+	"runtime"
+	"time"
+
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/log"
 	"golang.org/x/sync/errgroup"
-	"math/big"
 	"modernc.org/mathutil"
-	"runtime"
+
+	"scroll-tech/common/types"
+
 	bridge_abi "scroll-tech/bridge/abi"
 	"scroll-tech/bridge/sender"
-	"scroll-tech/common/types"
-	"time"
 )
 
 const processMsgLimit = 100

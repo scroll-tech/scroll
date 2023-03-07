@@ -3,14 +3,17 @@ package l2
 import (
 	"errors"
 	"fmt"
+	"math/big"
+	"time"
+
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/log"
-	"math/big"
 	"modernc.org/mathutil"
+
+	"scroll-tech/common/types"
+
 	"scroll-tech/bridge/sender"
 	"scroll-tech/bridge/utils"
-	"scroll-tech/common/types"
-	"time"
 )
 
 func (r *Layer2Relayer) checkFinalizingBatches() error {

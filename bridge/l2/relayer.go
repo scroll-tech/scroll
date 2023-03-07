@@ -2,18 +2,20 @@ package l2
 
 import (
 	"context"
-	"golang.org/x/sync/errgroup"
-	"scroll-tech/common/utils"
 	"sync"
 	"time"
+
+	"golang.org/x/sync/errgroup"
 
 	// not sure if this will make problems when relay with l1geth
 
 	"github.com/scroll-tech/go-ethereum/accounts/abi"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
-	"scroll-tech/common/types"
 
+	"scroll-tech/common/utils"
+
+	"scroll-tech/common/types"
 	"scroll-tech/database"
 
 	bridge_abi "scroll-tech/bridge/abi"
