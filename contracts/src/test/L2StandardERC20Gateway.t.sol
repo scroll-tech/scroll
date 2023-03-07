@@ -269,6 +269,7 @@ contract L2StandardERC20GatewayTest is L2GatewayTestBase {
   ) public {
     // blacklist some addresses
     hevm.assume(recipient != address(0));
+    hevm.assume(recipient != address(gateway));
 
     amount = bound(amount, 1, l2Token.balanceOf(address(this)));
 
