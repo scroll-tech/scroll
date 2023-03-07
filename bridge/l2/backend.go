@@ -32,18 +32,19 @@ func New(ctx context.Context, cfg *config.L2Config, orm database.OrmFactory) (*B
 	// Otherwise, there will be a race condition between watcher.initializeGenesis and relayer.ProcessPendingBatches.
 	watcher := NewL2WatcherClient(ctx, client, cfg.Confirmations, cfg.L2MessengerAddress, cfg.L2MessageQueueAddress, orm)
 
+	proposer := NewBatchProposer(ctx, cfg.BatchProposerConfig, orm)
 	relayer, err := NewLayer2Relayer(ctx, client, orm, cfg.RelayerConfig)
 	if err != nil {
 		return nil, err
 	}
-
-	batchProposer := NewBatchProposer(ctx, cfg.BatchProposerConfig, relayer, orm)
+	proposer.SetLayer2Relayer(relayer)
+	relayer.SetBatchProposer(proposer)
 
 	return &Backend{
 		cfg:           cfg,
 		watcher:       watcher,
 		relayer:       relayer,
-		batchProposer: batchProposer,
+		batchProposer: proposer,
 		orm:           orm,
 	}, nil
 }

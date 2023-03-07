@@ -26,7 +26,7 @@ func NewL1MessageOrm(db *sqlx.DB) L1MessageOrm {
 
 // GetL1Messages get l1 messages by k-v map and args.
 func (m *l1MessageOrm) GetL1Messages(fields map[string]interface{}, args ...string) ([]*types.L1Message, error) {
-	query := "SELECT nonce, msg_hash, height, sender, target, value, fee, gas_limit, deadline, calldata, layer1_hash, layer2_hash, status FROM l2_message WHERE 1 = 1 "
+	query := "SELECT queue_index, msg_hash, height, sender, target, value, calldata, layer1_hash, layer2_hash, status FROM l1_message WHERE 1 = 1 "
 	for key := range fields {
 		query += fmt.Sprintf(" AND %s=:%s ", key, key)
 	}

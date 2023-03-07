@@ -100,10 +100,6 @@ func NewLayer1Relayer(ctx context.Context, db database.OrmFactory, cfg *config.R
 		stopCh: make(chan struct{}),
 	}
 	go relayer.confirmLoop(ctx)
-	// Deal with broken transactions.
-	if err = relayer.prepare(); err != nil {
-		return nil, err
-	}
 
 	return relayer, nil
 }
@@ -123,6 +119,11 @@ func (r *Layer1Relayer) prepare() error {
 
 // Start the relayer process
 func (r *Layer1Relayer) Start() {
+	// Deal with broken transactions.
+	if err := r.prepare(); err != nil {
+		log.Crit("failed to init layer1 transaction messages")
+	}
+
 	loop := func(ctx context.Context, f func()) {
 		ticker := time.NewTicker(2 * time.Second)
 		defer ticker.Stop()

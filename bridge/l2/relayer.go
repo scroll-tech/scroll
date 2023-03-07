@@ -29,6 +29,10 @@ const (
 	defaultGasPriceDiff = 50000 // 5%
 )
 
+type batchInterface interface {
+	GenerateBatchData(parentBatch *types.BlockBatch, blocks []*types.BlockInfo) (*types.BatchData, error)
+}
+
 // Layer2Relayer is responsible for
 //  1. Committing and finalizing L2 blocks on L1
 //  2. Relaying messages from L2 to L1
@@ -70,6 +74,9 @@ type Layer2Relayer struct {
 	// A list of processing batch finalization.
 	// key(string): confirmation ID, value(string): batch hash.
 	processingFinalization sync.Map
+
+	// Use batch_proposer's GenerateBatchData interface.
+	batchInterface
 
 	stopCh chan struct{}
 }
@@ -133,11 +140,13 @@ func NewLayer2Relayer(ctx context.Context, l2Client *ethclient.Client, db databa
 		stopCh:                      make(chan struct{}),
 	}
 	go relayer.confirmLoop(ctx)
-	if err = relayer.prepare(); err != nil {
-		return nil, err
-	}
 
 	return relayer, nil
+}
+
+// SetBatchProposer set interface from batch_proposer.
+func (r *Layer2Relayer) SetBatchProposer(proposer batchInterface) {
+	r.batchInterface = proposer
 }
 
 func (r *Layer2Relayer) prepare() error {
@@ -162,12 +171,26 @@ func (r *Layer2Relayer) prepare() error {
 		})
 		return nil
 	})
+	eg.Go(func() error {
+		if err := r.checkRollupBatches(); err != nil {
+			log.Error("failed to init layer2 rollupCommitting messages", "err", err)
+			return err
+		}
+		utils.TryTimes(-1, func() bool {
+			return r.rollupSender.PendingCount() == 0
+		})
+		return nil
+	})
 
 	return eg.Wait()
 }
 
 // Start the relayer process
 func (r *Layer2Relayer) Start() {
+	if err := r.prepare(); err != nil {
+		log.Crit("failed to init layer2 transaction messages")
+	}
+
 	loop := func(ctx context.Context, f func()) {
 		ticker := time.NewTicker(time.Second)
 		defer ticker.Stop()

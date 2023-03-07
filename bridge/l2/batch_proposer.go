@@ -19,6 +19,10 @@ import (
 	"scroll-tech/bridge/config"
 )
 
+type layer2Interface interface {
+	SendCommitTx(batchData []*types.BatchData) error
+}
+
 // AddBatchInfoToDB inserts the batch information to the BlockBatch table and updates the batch_hash
 // in all blocks included in the batch.
 func AddBatchInfoToDB(db database.OrmFactory, batchData *types.BatchData) error {
@@ -70,7 +74,8 @@ type BatchProposer struct {
 
 	proofGenerationFreq uint64
 	batchDataBuffer     []*types.BatchData
-	relayer             *Layer2Relayer
+
+	layer2Interface
 
 	piCfg *types.PublicInputHashConfig
 
@@ -78,8 +83,8 @@ type BatchProposer struct {
 }
 
 // NewBatchProposer will return a new instance of BatchProposer.
-func NewBatchProposer(ctx context.Context, cfg *config.BatchProposerConfig, relayer *Layer2Relayer, orm database.OrmFactory) *BatchProposer {
-	p := &BatchProposer{
+func NewBatchProposer(ctx context.Context, cfg *config.BatchProposerConfig, orm database.OrmFactory) *BatchProposer {
+	return &BatchProposer{
 		mutex:                    sync.Mutex{},
 		ctx:                      ctx,
 		orm:                      orm,
@@ -92,21 +97,23 @@ func NewBatchProposer(ctx context.Context, cfg *config.BatchProposerConfig, rela
 		batchDataBufferSizeLimit: 100*cfg.CommitTxCalldataSizeLimit + 1*1024*1024, // @todo: determine the value.
 		proofGenerationFreq:      cfg.ProofGenerationFreq,
 		piCfg:                    cfg.PublicInputConfig,
-		relayer:                  relayer,
 		stopCh:                   make(chan struct{}),
 	}
+}
 
+// SetLayer2Relayer set interface from layer2.
+func (p *BatchProposer) SetLayer2Relayer(relayer layer2Interface) {
+	p.layer2Interface = relayer
+}
+
+// Start the Listening process
+func (p *BatchProposer) Start() {
 	// for graceful restart.
 	p.recoverBatchDataBuffer()
 
 	// try to commit the leftover pending batches
 	p.tryCommitBatches()
 
-	return p
-}
-
-// Start the Listening process
-func (p *BatchProposer) Start() {
 	go func() {
 		if reflect.ValueOf(p.orm).IsNil() {
 			panic("must run BatchProposer with DB")
@@ -197,7 +204,7 @@ func (p *BatchProposer) recoverBatchDataBuffer() {
 			continue
 		}
 
-		batchData, err := p.generateBatchData(parentBatch, blockInfos)
+		batchData, err := p.GenerateBatchData(parentBatch, blockInfos)
 		if err != nil {
 			continue
 		}
@@ -264,7 +271,7 @@ func (p *BatchProposer) tryCommitBatches() {
 	// Send commit tx for batchDataBuffer[0:index]
 	log.Info("Commit batches", "start_index", p.batchDataBuffer[0].Batch.BatchIndex,
 		"end_index", p.batchDataBuffer[index-1].Batch.BatchIndex)
-	err := p.relayer.SendCommitTx(p.batchDataBuffer[:index])
+	err := p.SendCommitTx(p.batchDataBuffer[:index])
 	if err != nil {
 		// leave the retry to the next ticker
 		log.Error("SendCommitTx failed", "error", err)
@@ -327,7 +334,7 @@ func (p *BatchProposer) createBatchForBlocks(blocks []*types.BlockInfo) error {
 		return err
 	}
 
-	batchData, err := p.generateBatchData(lastBatch, blocks)
+	batchData, err := p.GenerateBatchData(lastBatch, blocks)
 	if err != nil {
 		log.Error("createBatchData failed", "error", err)
 		return err
@@ -342,7 +349,8 @@ func (p *BatchProposer) createBatchForBlocks(blocks []*types.BlockInfo) error {
 	return nil
 }
 
-func (p *BatchProposer) generateBatchData(parentBatch *types.BlockBatch, blocks []*types.BlockInfo) (*types.BatchData, error) {
+// GenerateBatchData as a public function can be called by layer2 relayer.
+func (p *BatchProposer) GenerateBatchData(parentBatch *types.BlockBatch, blocks []*types.BlockInfo) (*types.BatchData, error) {
 	var traces []*geth_types.BlockTrace
 	for _, block := range blocks {
 		trs, err := p.orm.GetL2BlockTraces(map[string]interface{}{"hash": block.Hash})

@@ -41,7 +41,10 @@ func testBatchProposerProposeBatch(t *testing.T) {
 		BatchTxNumThreshold: 135,
 		BatchTimeSec:        1,
 		BatchBlocksLimit:    100,
-	}, relayer, db)
+	}, db)
+	relayer.SetBatchProposer(proposer)
+	proposer.SetLayer2Relayer(relayer)
+
 	proposer.tryProposeBatch()
 
 	infos, err := db.GetUnbatchedL2Blocks(map[string]interface{}{},
@@ -85,13 +88,14 @@ func testBatchProposerGracefulRestart(t *testing.T) {
 	assert.Equal(t, 1, len(batchHashes))
 	assert.Equal(t, batchData2.Hash().Hex(), batchHashes[0])
 	// test p.recoverBatchDataBuffer().
-	_ = NewBatchProposer(context.Background(), &config.BatchProposerConfig{
+	proposer := NewBatchProposer(context.Background(), &config.BatchProposerConfig{
 		ProofGenerationFreq: 1,
 		BatchGasThreshold:   3000000,
 		BatchTxNumThreshold: 135,
 		BatchTimeSec:        1,
 		BatchBlocksLimit:    100,
-	}, relayer, db)
+	}, db)
+	proposer.SetLayer2Relayer(relayer)
 
 	batchHashes, err = db.GetPendingBatches(math.MaxInt32)
 	assert.NoError(t, err)
