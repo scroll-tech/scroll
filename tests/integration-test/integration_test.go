@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"math/big"
 	"net/http"
+	"scroll-tech/common/docker"
 	"strconv"
 	"strings"
 	"testing"
@@ -14,6 +15,7 @@ import (
 )
 
 func TestIntegration(t *testing.T) {
+	base = docker.NewDockerApp("../../database/config.json")
 	setupEnv(t)
 
 	// test db_cli migrate cmd.

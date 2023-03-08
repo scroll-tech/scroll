@@ -13,18 +13,18 @@ import (
 )
 
 var (
-	pgDB  *sqlx.DB
-	dbImg docker.ImgInstance
+	base *docker.DockerApp
+	pgDB *sqlx.DB
 )
 
 func initEnv(t *testing.T) error {
 	// Start db container.
-	dbImg = docker.NewTestDBDocker(t, "postgres")
+	base.RunImages(t)
 
 	// Create db orm handler.
 	factory, err := database.NewOrmFactory(&database.DBConfig{
 		DriverName: "postgres",
-		DSN:        dbImg.Endpoint(),
+		DSN:        base.DbEndpoint(),
 	})
 	if err != nil {
 		return err
@@ -34,6 +34,7 @@ func initEnv(t *testing.T) error {
 }
 
 func TestMigrate(t *testing.T) {
+	base = docker.NewDockerApp("../config.json")
 	if err := initEnv(t); err != nil {
 		t.Fatal(err)
 	}
@@ -45,9 +46,7 @@ func TestMigrate(t *testing.T) {
 	t.Run("testRollback", testRollback)
 
 	t.Cleanup(func() {
-		if dbImg != nil {
-			assert.NoError(t, dbImg.Stop())
-		}
+		base.Free()
 	})
 }
 

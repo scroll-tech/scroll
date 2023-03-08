@@ -17,7 +17,6 @@ import (
 
 	"scroll-tech/common/cmd"
 	"scroll-tech/common/utils"
-	"scroll-tech/common/version"
 	"scroll-tech/database"
 )
 
@@ -32,20 +31,22 @@ type DockerApp struct {
 	l1gethImg ImgInstance
 	l2gethImg ImgInstance
 
-	dbImg    ImgInstance
-	dbConfig *database.DBConfig
-	dbFile   string
+	dbImg       ImgInstance
+	dbConfig    *database.DBConfig
+	dbOriginCfg string
+	dbFile      string
 
 	// common time stamp.
 	timestamp int
 }
 
 // NewDockerApp returns new instance of dokerApp struct
-func NewDockerApp() *DockerApp {
+func NewDockerApp(cfg string) *DockerApp {
 	timestamp := time.Now().Nanosecond()
 	return &DockerApp{
-		timestamp: timestamp,
-		dbFile:    fmt.Sprintf("/tmp/%d_db-config.json", timestamp),
+		timestamp:   timestamp,
+		dbFile:      fmt.Sprintf("/tmp/%d_db-config.json", timestamp),
+		dbOriginCfg: cfg,
 	}
 }
 
@@ -71,19 +72,13 @@ func (b *DockerApp) runDBImage(t *testing.T) {
 
 // RunDBApp runs DB app with command
 func (b *DockerApp) RunDBApp(t *testing.T, option, keyword string) {
-	dbcli := cmd.NewCmd(t, "db_cli-test", "--version")
-	defer dbcli.WaitExit()
+	args := []string{option, "--config", b.dbFile}
+	app := cmd.NewCmd(t, "db_cli-test", args...)
+	defer app.WaitExit()
 
-	// wait result
-	dbcli.ExpectWithTimeout(true, time.Second*3, fmt.Sprintf("db_cli version %s", version.Version))
-	dbcli.RunApp(nil)
-	// args := []string{option, "--config", b.dbFile}
-	// app := cmd.NewCmd(t, "db_cli-test", args...)
-	// defer app.WaitExit()
-
-	// // Wait expect result.
-	// app.ExpectWithTimeout(true, time.Second*3, keyword)
-	// app.RunApp(nil)
+	// Wait expect result.
+	app.ExpectWithTimeout(true, time.Second*3, keyword)
+	app.RunApp(nil)
 }
 
 // Free clear all running images
@@ -101,6 +96,22 @@ func (b *DockerApp) Free() {
 		b.dbImg = nil
 		_ = os.Remove(b.dbFile)
 	}
+}
+
+// L1GethEndpoint returns l1gethimg endpoint
+func (b *DockerApp) L1GethEndpoint() string {
+	if b.l1gethImg != nil {
+		return b.l1gethImg.Endpoint()
+	}
+	return ""
+}
+
+// L2GethEndpoint returns l2gethimg endpoint
+func (b *DockerApp) L2GethEndpoint() string {
+	if b.l2gethImg != nil {
+		return b.l2gethImg.Endpoint()
+	}
+	return ""
 }
 
 // DbEndpoint returns the endpoint of the dbimg
@@ -148,7 +159,7 @@ func (b *DockerApp) L2Client() (*ethclient.Client, error) {
 
 func (b *DockerApp) mockDBConfig() error {
 	if b.dbConfig == nil {
-		cfg, err := database.NewConfig("../../database/config.json")
+		cfg, err := database.NewConfig(b.dbOriginCfg)
 		if err != nil {
 			return err
 		}

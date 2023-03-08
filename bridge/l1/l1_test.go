@@ -15,42 +15,27 @@ var (
 	cfg *config.Config
 
 	// docker consider handler.
-	l1gethImg docker.ImgInstance
-	l2gethImg docker.ImgInstance
-	dbImg     docker.ImgInstance
+	base *docker.DockerApp
 )
+
+func TestMain(m *testing.M) {
+	base = docker.NewDockerApp("../../database/config.json")
+
+	m.Run()
+
+	base.Free()
+}
 
 func setupEnv(t *testing.T) {
 	// Load config.
 	var err error
 	cfg, err = config.NewConfig("../config.json")
 	assert.NoError(t, err)
+	base.RunImages(t)
 
-	// Create l1geth container.
-	l1gethImg = docker.NewTestL1Docker(t)
-	cfg.L2Config.RelayerConfig.SenderConfig.Endpoint = l1gethImg.Endpoint()
-	cfg.L1Config.Endpoint = l1gethImg.Endpoint()
-
-	// Create l2geth container.
-	l2gethImg = docker.NewTestL2Docker(t)
-	cfg.L1Config.RelayerConfig.SenderConfig.Endpoint = l2gethImg.Endpoint()
-	cfg.L2Config.Endpoint = l2gethImg.Endpoint()
-
-	// Create db container.
-	dbImg = docker.NewTestDBDocker(t, cfg.DBConfig.DriverName)
-	cfg.DBConfig.DSN = dbImg.Endpoint()
-}
-
-func free(t *testing.T) {
-	if dbImg != nil {
-		assert.NoError(t, dbImg.Stop())
-	}
-	if l1gethImg != nil {
-		assert.NoError(t, l1gethImg.Stop())
-	}
-	if l2gethImg != nil {
-		assert.NoError(t, l2gethImg.Stop())
-	}
+	cfg.L2Config.RelayerConfig.SenderConfig.Endpoint = base.L1GethEndpoint()
+	cfg.L1Config.RelayerConfig.SenderConfig.Endpoint = base.L2GethEndpoint()
+	cfg.DBConfig.DSN = base.DbEndpoint()
 }
 
 func TestL1(t *testing.T) {
@@ -58,8 +43,4 @@ func TestL1(t *testing.T) {
 
 	t.Run("testCreateNewL1Relayer", testCreateNewL1Relayer)
 	t.Run("testStartWatcher", testStartWatcher)
-
-	t.Cleanup(func() {
-		free(t)
-	})
 }
