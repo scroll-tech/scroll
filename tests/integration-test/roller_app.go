@@ -54,8 +54,8 @@ func (r *rollerApp) runApp(t *testing.T, args ...string) {
 	if err := r.mockRollerConfig(); err != nil {
 		t.Fatal(err)
 	}
-	r.appAPI = cmd.NewCmd(t, r.name, append(args, r.args...)...)
-	r.appAPI.RunApp(func() bool { return r.appAPI.WaitResult(time.Second*40, "roller start successfully") })
+	r.appAPI = cmd.NewCmd(r.name, append(args, r.args...)...)
+	r.appAPI.RunApp(func() bool { return r.appAPI.WaitResult(t, time.Second*40, "roller start successfully") })
 }
 
 func (r *rollerApp) free() {

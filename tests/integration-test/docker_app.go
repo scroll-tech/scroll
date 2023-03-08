@@ -57,11 +57,11 @@ func (b *dockerApp) runDBImage(t *testing.T) {
 
 func (b *dockerApp) runDBApp(t *testing.T, option, keyword string) {
 	args := []string{option, "--config", b.dbFile}
-	app := cmd.NewCmd(t, "db_cli-test", args...)
+	app := cmd.NewCmd("db_cli-test", args...)
 	defer app.WaitExit()
 
 	// Wait expect result.
-	app.ExpectWithTimeout(true, time.Second*3, keyword)
+	app.ExpectWithTimeout(t, true, time.Second*3, keyword)
 	app.RunApp(nil)
 }
 

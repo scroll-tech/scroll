@@ -22,7 +22,7 @@ var (
 // NewTestL1Docker starts and returns l1geth docker
 func NewTestL1Docker(t *testing.T) ImgInstance {
 	id, _ := rand.Int(rand.Reader, big.NewInt(2000))
-	imgL1geth := NewImgGeth(t, "scroll_l1geth", "", "", 0, l1StartPort+int(id.Int64()))
+	imgL1geth := NewImgGeth("scroll_l1geth", "", "", 0, l1StartPort+int(id.Int64()))
 	assert.NoError(t, imgL1geth.Start())
 
 	// try 3 times to get chainID until is ok.
@@ -42,7 +42,7 @@ func NewTestL1Docker(t *testing.T) ImgInstance {
 // NewTestL2Docker starts and returns l2geth docker
 func NewTestL2Docker(t *testing.T) ImgInstance {
 	id, _ := rand.Int(rand.Reader, big.NewInt(2000))
-	imgL2geth := NewImgGeth(t, "scroll_l2geth", "", "", 0, l2StartPort+int(id.Int64()))
+	imgL2geth := NewImgGeth("scroll_l2geth", "", "", 0, l2StartPort+int(id.Int64()))
 	assert.NoError(t, imgL2geth.Start())
 
 	// try 3 times to get chainID until is ok.
@@ -62,7 +62,7 @@ func NewTestL2Docker(t *testing.T) ImgInstance {
 // NewTestDBDocker starts and returns database docker
 func NewTestDBDocker(t *testing.T, driverName string) ImgInstance {
 	id, _ := rand.Int(rand.Reader, big.NewInt(2000))
-	imgDB := NewImgDB(t, driverName, "123456", "test_db", dbStartPort+int(id.Int64()))
+	imgDB := NewImgDB(driverName, "123456", "test_db", dbStartPort+int(id.Int64()))
 	assert.NoError(t, imgDB.Start())
 
 	// try 5 times until the db is ready.

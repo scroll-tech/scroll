@@ -44,8 +44,8 @@ func (c *coordinatorApp) runApp(t *testing.T, args ...string) {
 	c.base.wsPort = port.Int64() + 22000
 	args = append(args, []string{"--ws", "--ws.port", strconv.Itoa(int(c.base.wsPort))}...)
 	args = append(args, c.args...)
-	c.appAPI = cmd.NewCmd(t, c.name, args...)
-	c.appAPI.RunApp(func() bool { return c.appAPI.WaitResult(time.Second*20, "Start coordinator successfully") })
+	c.appAPI = cmd.NewCmd(c.name, args...)
+	c.appAPI.RunApp(func() bool { return c.appAPI.WaitResult(t, time.Second*20, "Start coordinator successfully") })
 }
 
 func (c *coordinatorApp) free() {

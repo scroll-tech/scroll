@@ -37,8 +37,8 @@ func (b *bridgeApp) runApp(t *testing.T, args ...string) {
 	if err := b.mockBridgeConfig(); err != nil {
 		t.Fatal(err)
 	}
-	b.appAPI = cmd.NewCmd(t, b.name, append(b.args, args...)...)
-	b.appAPI.RunApp(func() bool { return b.appAPI.WaitResult(time.Second*20, "Start bridge successfully") })
+	b.appAPI = cmd.NewCmd(b.name, append(b.args, args...)...)
+	b.appAPI.RunApp(func() bool { return b.appAPI.WaitResult(t, time.Second*20, "Start bridge successfully") })
 }
 
 func (b *bridgeApp) free() {
