@@ -96,6 +96,7 @@ func testBatchProposerGracefulRestart(t *testing.T) {
 		BatchBlocksLimit:    100,
 	}, db)
 	proposer.SetLayer2Relayer(relayer)
+	proposer.Start()
 
 	batchHashes, err = db.GetPendingBatches(math.MaxInt32)
 	assert.NoError(t, err)
