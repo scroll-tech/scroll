@@ -26,7 +26,7 @@ var (
 
 	// private key
 	privateKey *ecdsa.PrivateKey
-	base       *docker.DockerApp
+	base       *docker.App
 
 	// clients
 	l1Client *ethclient.Client

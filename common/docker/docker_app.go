@@ -26,8 +26,8 @@ var (
 	dbStartPort = 30000
 )
 
-// DockerApp is collection struct of runtime docker images
-type DockerApp struct {
+// App is collection struct of runtime docker images
+type App struct {
 	l1gethImg ImgInstance
 	l2gethImg ImgInstance
 
@@ -41,9 +41,9 @@ type DockerApp struct {
 }
 
 // NewDockerApp returns new instance of dokerApp struct
-func NewDockerApp(cfg string) *DockerApp {
+func NewDockerApp(cfg string) *App {
 	timestamp := time.Now().Nanosecond()
-	return &DockerApp{
+	return &App{
 		timestamp:   timestamp,
 		dbFile:      fmt.Sprintf("/tmp/%d_db-config.json", timestamp),
 		dbOriginCfg: cfg,
@@ -51,13 +51,13 @@ func NewDockerApp(cfg string) *DockerApp {
 }
 
 // RunImages runs all images togather
-func (b *DockerApp) RunImages(t *testing.T) {
+func (b *App) RunImages(t *testing.T) {
 	b.runDBImage(t)
 	b.runL1Geth(t)
 	b.runL2Geth(t)
 }
 
-func (b *DockerApp) runDBImage(t *testing.T) {
+func (b *App) runDBImage(t *testing.T) {
 	if b.dbImg != nil {
 		return
 	}
@@ -71,7 +71,7 @@ func (b *DockerApp) runDBImage(t *testing.T) {
 }
 
 // RunDBApp runs DB app with command
-func (b *DockerApp) RunDBApp(t *testing.T, option, keyword string) {
+func (b *App) RunDBApp(t *testing.T, option, keyword string) {
 	args := []string{option, "--config", b.dbFile}
 	app := cmd.NewCmd(t, "db_cli-test", args...)
 	defer app.WaitExit()
@@ -82,7 +82,7 @@ func (b *DockerApp) RunDBApp(t *testing.T, option, keyword string) {
 }
 
 // Free clear all running images
-func (b *DockerApp) Free() {
+func (b *App) Free() {
 	if b.l1gethImg != nil {
 		_ = b.l1gethImg.Stop()
 		b.l1gethImg = nil
@@ -99,7 +99,7 @@ func (b *DockerApp) Free() {
 }
 
 // L1GethEndpoint returns l1gethimg endpoint
-func (b *DockerApp) L1GethEndpoint() string {
+func (b *App) L1GethEndpoint() string {
 	if b.l1gethImg != nil {
 		return b.l1gethImg.Endpoint()
 	}
@@ -107,7 +107,7 @@ func (b *DockerApp) L1GethEndpoint() string {
 }
 
 // L2GethEndpoint returns l2gethimg endpoint
-func (b *DockerApp) L2GethEndpoint() string {
+func (b *App) L2GethEndpoint() string {
 	if b.l2gethImg != nil {
 		return b.l2gethImg.Endpoint()
 	}
@@ -115,11 +115,11 @@ func (b *DockerApp) L2GethEndpoint() string {
 }
 
 // DbEndpoint returns the endpoint of the dbimg
-func (b *DockerApp) DbEndpoint() string {
+func (b *App) DbEndpoint() string {
 	return b.dbImg.Endpoint()
 }
 
-func (b *DockerApp) runL1Geth(t *testing.T) {
+func (b *App) runL1Geth(t *testing.T) {
 	if b.l1gethImg != nil {
 		return
 	}
@@ -127,7 +127,7 @@ func (b *DockerApp) runL1Geth(t *testing.T) {
 }
 
 // L1Client returns a ethclient by dialing running l1geth
-func (b *DockerApp) L1Client() (*ethclient.Client, error) {
+func (b *App) L1Client() (*ethclient.Client, error) {
 	if b.l1gethImg == nil || reflect2.IsNil(b.l1gethImg) {
 		return nil, fmt.Errorf("l1 geth is not running")
 	}
@@ -138,7 +138,7 @@ func (b *DockerApp) L1Client() (*ethclient.Client, error) {
 	return client, nil
 }
 
-func (b *DockerApp) runL2Geth(t *testing.T) {
+func (b *App) runL2Geth(t *testing.T) {
 	if b.l2gethImg != nil {
 		return
 	}
@@ -146,7 +146,7 @@ func (b *DockerApp) runL2Geth(t *testing.T) {
 }
 
 // L2Client returns a ethclient by dialing running l2geth
-func (b *DockerApp) L2Client() (*ethclient.Client, error) {
+func (b *App) L2Client() (*ethclient.Client, error) {
 	if b.l2gethImg == nil || reflect2.IsNil(b.l2gethImg) {
 		return nil, fmt.Errorf("l2 geth is not running")
 	}
@@ -157,7 +157,7 @@ func (b *DockerApp) L2Client() (*ethclient.Client, error) {
 	return client, nil
 }
 
-func (b *DockerApp) mockDBConfig() error {
+func (b *App) mockDBConfig() error {
 	if b.dbConfig == nil {
 		cfg, err := database.NewConfig(b.dbOriginCfg)
 		if err != nil {
@@ -174,7 +174,7 @@ func (b *DockerApp) mockDBConfig() error {
 		return err
 	}
 
-	return os.WriteFile(b.dbFile, data, 0644)
+	return os.WriteFile(b.dbFile, data, 0644) //nolint:gosec
 }
 
 func newTestL1Docker(t *testing.T) ImgInstance {

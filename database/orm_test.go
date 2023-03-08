@@ -77,7 +77,7 @@ var (
 	batchData2 *types.BatchData
 
 	dbConfig   *database.DBConfig
-	base       *docker.DockerApp
+	base       *docker.App
 	ormBlock   orm.BlockTraceOrm
 	ormLayer1  orm.L1MessageOrm
 	ormLayer2  orm.L2MessageOrm

@@ -34,7 +34,7 @@ import (
 )
 
 var (
-	base *docker.DockerApp
+	base *docker.App
 
 	timestamp int
 	wsPort    int64
