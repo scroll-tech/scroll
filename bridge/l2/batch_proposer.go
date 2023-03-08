@@ -145,7 +145,7 @@ func (p *BatchProposer) initializeMissingMessageProof() error {
 	for {
 		var nonce sql.NullInt64
 		// find last message nonce in before or in this batch
-		nonce, err = p.orm.GetLastL2MessageNonceBeforeHeight(p.ctx, batch.EndBlockNumber)
+		nonce, err = p.orm.GetLastL2MessageNonceLEHeight(p.ctx, batch.EndBlockNumber)
 		if err != nil {
 			return fmt.Errorf("failed to last l2 message nonce before %v: %v", batch.EndBlockNumber, err)
 		}
@@ -153,21 +153,15 @@ func (p *BatchProposer) initializeMissingMessageProof() error {
 			// no message before or in this batch
 			break
 		}
-		var proof sql.NullString
-		proof, err = p.orm.GetL2MessageProofByNonce(uint64(nonce.Int64))
-		if err != nil {
-			return fmt.Errorf("failed to check proof %v: %v", nonce.Int64, err)
-		}
-		if proof.Valid {
-			var msg *types.L2Message
-			// fetch message
-			msg, err = p.orm.GetL2MessageByNonce(uint64(nonce.Int64))
-			if err != nil {
-				return fmt.Errorf("failed to l2 message with nonce %v: %v", nonce.Int64, err)
-			}
 
+		var msg *types.L2Message
+		msg, err = p.orm.GetL2MessageByNonce(uint64(nonce.Int64))
+		if err != nil {
+			return fmt.Errorf("failed to l2 message with nonce %v: %v", nonce.Int64, err)
+		}
+		if msg.Proof.Valid {
 			// initialize withdrawTrie
-			proofBytes := common.Hex2Bytes(proof.String)
+			proofBytes := common.Hex2Bytes(msg.Proof.String)
 			p.withdrawTrie.Initialize(uint64(nonce.Int64), common.HexToHash(msg.MsgHash), proofBytes)
 			break
 		}

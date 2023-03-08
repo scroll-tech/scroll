@@ -98,12 +98,11 @@ type L1MessageOrm interface {
 type L2MessageOrm interface {
 	GetL2MessageByNonce(nonce uint64) (*types.L2Message, error)
 	GetL2MessageByMsgHash(msgHash string) (*types.L2Message, error)
-	MessageProofExist(nonce uint64) (bool, error)
 	GetL2MessageProofByNonce(nonce uint64) (sql.NullString, error)
 	GetL2Messages(fields map[string]interface{}, args ...string) ([]*types.L2Message, error)
 	GetL2ProcessedNonce() (int64, error)
 	SaveL2Messages(ctx context.Context, messages []*types.L2Message) error
-	GetLastL2MessageNonceBeforeHeight(ctx context.Context, height uint64) (sql.NullInt64, error)
+	GetLastL2MessageNonceLEHeight(ctx context.Context, height uint64) (sql.NullInt64, error)
 	GetL2MessagesBetween(ctx context.Context, startHeight, finishHeight uint64) ([]*types.L2Message, error)
 	UpdateLayer1Hash(ctx context.Context, msgHash string, layer1Hash string) error
 	UpdateLayer2Status(ctx context.Context, msgHash string, status types.MsgStatus) error

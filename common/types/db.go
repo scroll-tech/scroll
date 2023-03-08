@@ -100,15 +100,16 @@ type L1Message struct {
 
 // L2Message is structure of stored layer2 bridge message
 type L2Message struct {
-	Nonce      uint64    `json:"nonce" db:"nonce"`
-	MsgHash    string    `json:"msg_hash" db:"msg_hash"`
-	Height     uint64    `json:"height" db:"height"`
-	Sender     string    `json:"sender" db:"sender"`
-	Value      string    `json:"value" db:"value"`
-	Target     string    `json:"target" db:"target"`
-	Calldata   string    `json:"calldata" db:"calldata"`
-	Layer2Hash string    `json:"layer2_hash" db:"layer2_hash"`
-	Status     MsgStatus `json:"status" db:"status"`
+	Nonce      uint64         `json:"nonce" db:"nonce"`
+	MsgHash    string         `json:"msg_hash" db:"msg_hash"`
+	Height     uint64         `json:"height" db:"height"`
+	Sender     string         `json:"sender" db:"sender"`
+	Value      string         `json:"value" db:"value"`
+	Target     string         `json:"target" db:"target"`
+	Calldata   string         `json:"calldata" db:"calldata"`
+	Layer2Hash string         `json:"layer2_hash" db:"layer2_hash"`
+	Proof      sql.NullString `json:"proof" db:"proof"`
+	Status     MsgStatus      `json:"status" db:"status"`
 }
 
 // BlockInfo is structure of stored `block_trace` without `trace`

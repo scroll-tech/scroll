@@ -29,7 +29,7 @@ func NewL2MessageOrm(db *sqlx.DB) L2MessageOrm {
 func (m *layer2MessageOrm) GetL2MessageByNonce(nonce uint64) (*types.L2Message, error) {
 	msg := types.L2Message{}
 
-	row := m.db.QueryRowx(`SELECT nonce, msg_hash, height, sender, target, value, calldata, layer2_hash, status FROM l2_message WHERE nonce = $1`, nonce)
+	row := m.db.QueryRowx(`SELECT nonce, msg_hash, height, sender, target, value, calldata, layer2_hash, proof, status FROM l2_message WHERE nonce = $1`, nonce)
 	if err := row.StructScan(&msg); err != nil {
 		return nil, err
 	}
@@ -40,7 +40,7 @@ func (m *layer2MessageOrm) GetL2MessageByNonce(nonce uint64) (*types.L2Message, 
 func (m *layer2MessageOrm) GetL2MessageByMsgHash(msgHash string) (*types.L2Message, error) {
 	msg := types.L2Message{}
 
-	row := m.db.QueryRowx(`SELECT nonce, msg_hash, height, sender, target, value, calldata, layer2_hash, status FROM l2_message WHERE msg_hash = $1`, msgHash)
+	row := m.db.QueryRowx(`SELECT nonce, msg_hash, height, sender, target, value, calldata, layer2_hash, proof, status FROM l2_message WHERE msg_hash = $1`, msgHash)
 	if err := row.StructScan(&msg); err != nil {
 		return nil, err
 	}
@@ -55,20 +55,8 @@ func (m *layer2MessageOrm) GetL2MessageProofByNonce(nonce uint64) (sql.NullStrin
 	return proof, err
 }
 
-// MessageProofExist fetch message by nonce
-func (m *layer2MessageOrm) MessageProofExist(nonce uint64) (bool, error) {
-	err := m.db.QueryRow(`SELECT nonce FROM l2_message WHERE nonce = $1 and proof IS NOT NULL`, nonce).Scan(&nonce)
-	if err != nil {
-		if err != sql.ErrNoRows {
-			return false, err
-		}
-		return false, nil
-	}
-	return true, nil
-}
-
-// GetLastL2MessageNonceBeforeHeight return the latest message nonce whose height <= `height`.
-func (m *layer2MessageOrm) GetLastL2MessageNonceBeforeHeight(ctx context.Context, height uint64) (sql.NullInt64, error) {
+// GetLastL2MessageNonceLEHeight return the latest message nonce whose height <= `height`.
+func (m *layer2MessageOrm) GetLastL2MessageNonceLEHeight(ctx context.Context, height uint64) (sql.NullInt64, error) {
 	row := m.db.QueryRow(`SELECT MAX(nonce) FROM l2_message WHERE height <= $1;`, height)
 	var nonce sql.NullInt64
 	err := row.Scan(&nonce)

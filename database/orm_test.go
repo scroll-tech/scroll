@@ -307,17 +307,17 @@ func testOrmL2Message(t *testing.T) {
 	assert.Equal(t, types.MsgSubmitted, msg.Status)
 	assert.Equal(t, msg.MsgHash, "msg_hash2")
 
-	// test GetLastL2MessageNonceBeforeHeight
-	nonce, err := ormLayer2.GetLastL2MessageNonceBeforeHeight(context.Background(), 0)
+	// test GetLastL2MessageNonceLEHeight
+	nonce, err := ormLayer2.GetLastL2MessageNonceLEHeight(context.Background(), 0)
 	assert.NoError(t, err)
 	assert.Equal(t, nonce.Valid, false)
 	for i := 1; i <= 4; i++ {
-		nonce, err = ormLayer2.GetLastL2MessageNonceBeforeHeight(context.Background(), uint64(i))
+		nonce, err = ormLayer2.GetLastL2MessageNonceLEHeight(context.Background(), uint64(i))
 		assert.NoError(t, err)
 		assert.Equal(t, nonce.Valid, true)
 		assert.Equal(t, nonce.Int64, int64(i))
 	}
-	nonce, err = ormLayer2.GetLastL2MessageNonceBeforeHeight(context.Background(), 5)
+	nonce, err = ormLayer2.GetLastL2MessageNonceLEHeight(context.Background(), 5)
 	assert.NoError(t, err)
 	assert.Equal(t, nonce.Valid, true)
 	assert.Equal(t, nonce.Int64, int64(4))

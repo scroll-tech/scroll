@@ -194,8 +194,7 @@ func (r *Layer2Relayer) processSavedEvent(msg *types.L2Message) error {
 		return err
 	}
 	if !proof.Valid {
-		log.Error("Message proof not ready", "nonce", msg.Nonce)
-		return fmt.Errorf("Message proof not ready, nonce: %v", msg.Nonce)
+		return fmt.Errorf("message proof not ready, nonce: %v", msg.Nonce)
 	}
 
 	// Get the block info that contains the message
@@ -206,8 +205,7 @@ func (r *Layer2Relayer) processSavedEvent(msg *types.L2Message) error {
 	}
 	blockInfo := blockInfos[0]
 	if !blockInfo.BatchHash.Valid {
-		log.Error("Block has not been batched yet", "number", blockInfo.Number, "msg.nonce", msg.Nonce)
-		return fmt.Errorf("Block has not been batched yet, number: %v, msg.nonce: %v", blockInfo.Number, msg.Nonce)
+		return fmt.Errorf("block has not been batched yet, number: %v, msg.nonce: %v", blockInfo.Number, msg.Nonce)
 	}
 
 	l2MessageProof := bridge_abi.IL1ScrollMessengerL2MessageProof{
@@ -218,6 +216,7 @@ func (r *Layer2Relayer) processSavedEvent(msg *types.L2Message) error {
 	target := common.HexToAddress(msg.Target)
 	value, ok := big.NewInt(0).SetString(msg.Value, 10)
 	if !ok {
+		// this is not likely to happen
 		// @todo maybe panic?
 		log.Error("Failed to parse message value", "msg.nonce", msg.Nonce, "msg.height", msg.Height)
 		// TODO: need to skip this message by changing its status to MsgError
