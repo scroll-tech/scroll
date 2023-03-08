@@ -1,59 +1,72 @@
-package docker
+package docker_test
 
 import (
-	"context"
 	"testing"
 
-	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq" //nolint:golint
-	"github.com/scroll-tech/go-ethereum/ethclient"
-	"github.com/stretchr/testify/assert"
+
+	"scroll-tech/common/docker"
 )
 
-func TestDocker(t *testing.T) {
-	t.Parallel()
+// func TestMain(m *testing.M) {
+// 	base = NewDockerApp()
 
-	t.Run("testL1Geth", testL1Geth)
-	t.Run("testL2Geth", testL2Geth)
-	t.Run("testDB", testDB)
+// 	m.Run()
+
+// 	base.free()
+// }
+
+func TestStartProcess(t *testing.T) {
+	base := docker.NewDockerApp()
+	// Start l1geth l2geth postgres.
+	base.RunImages(t)
+
+	// migrate db.
+	base.RunDBApp(t, "reset", "successful to reset")
+	//base.runDBApp(t, "migrate", "current version:")
+	base.Free()
 }
 
-func testL1Geth(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+// func TestDocker(t *testing.T) {
+// 	t.Parallel()
+// 	t.Run("testL1Geth", testL1Geth)
+// 	t.Run("testL2Geth", testL2Geth)
+// 	//t.Run("testDB", testDB)
+// }
 
-	img := NewTestL1Docker(t)
-	defer img.Stop()
+// func testL1Geth(t *testing.T) {
+// 	ctx, cancel := context.WithCancel(context.Background())
+// 	defer cancel()
 
-	client, err := ethclient.Dial(img.Endpoint())
-	assert.NoError(t, err)
+// 	img := base.l1gethImg
 
-	chainID, err := client.ChainID(ctx)
-	assert.NoError(t, err)
-	t.Logf("chainId: %s", chainID.String())
-}
+// 	client, err := ethclient.Dial(img.Endpoint())
+// 	assert.NoError(t, err)
 
-func testL2Geth(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+// 	chainID, err := client.ChainID(ctx)
+// 	assert.NoError(t, err)
+// 	t.Logf("chainId: %s", chainID.String())
+// }
 
-	img := NewTestL2Docker(t)
-	defer img.Stop()
+// func testL2Geth(t *testing.T) {
+// 	ctx, cancel := context.WithCancel(context.Background())
+// 	defer cancel()
 
-	client, err := ethclient.Dial(img.Endpoint())
-	assert.NoError(t, err)
+// 	img := base.l2gethImg
 
-	chainID, err := client.ChainID(ctx)
-	assert.NoError(t, err)
-	t.Logf("chainId: %s", chainID.String())
-}
+// 	client, err := ethclient.Dial(img.Endpoint())
+// 	assert.NoError(t, err)
 
-func testDB(t *testing.T) {
-	driverName := "postgres"
-	dbImg := NewTestDBDocker(t, driverName)
-	defer dbImg.Stop()
+// 	chainID, err := client.ChainID(ctx)
+// 	assert.NoError(t, err)
+// 	t.Logf("chainId: %s", chainID.String())
+// }
 
-	db, err := sqlx.Open(driverName, dbImg.Endpoint())
-	assert.NoError(t, err)
-	assert.NoError(t, db.Ping())
-}
+// func testDB(t *testing.T) {
+// 	driverName := "postgres"
+// 	dbImg := base.dbImg
+
+// 	db, err := sqlx.Open(driverName, dbImg.Endpoint())
+// 	assert.NoError(t, err)
+// 	assert.NoError(t, db.Ping())
+// }
