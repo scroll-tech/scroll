@@ -21,27 +21,35 @@ import { IScrollERC1155 } from "../../libraries/token/IScrollERC1155.sol";
 /// This will be changed if we have more specific scenarios.
 // @todo Current implementation doesn't support calling from `L2GatewayRouter`.
 contract L2ERC1155Gateway is OwnableUpgradeable, ERC1155HolderUpgradeable, ScrollGatewayBase, IL2ERC1155Gateway {
-  /**************************************** Events ****************************************/
+  /**********
+   * Events *
+   **********/
 
   /// @notice Emitted when token mapping for ERC1155 token is updated.
   /// @param _l1Token The address of corresponding ERC1155 token in layer 2.
   /// @param _l1Token The address of ERC1155 token in layer 1.
   event UpdateTokenMapping(address _l2Token, address _l1Token);
 
-  /**************************************** Variables ****************************************/
+  /*************
+   * Variables *
+   *************/
 
   /// @notice Mapping from layer 2 token address to layer 1 token address for ERC1155 NFT.
   // solhint-disable-next-line var-name-mixedcase
   mapping(address => address) public tokenMapping;
 
-  /**************************************** Constructor ****************************************/
+  /***************
+   * Constructor *
+   ***************/
 
   function initialize(address _counterpart, address _messenger) external initializer {
     OwnableUpgradeable.__Ownable_init();
     ScrollGatewayBase._initialize(_counterpart, address(0), _messenger);
   }
 
-  /**************************************** Mutate Funtions ****************************************/
+  /****************************
+   * Public Mutated Functions *
+   ****************************/
 
   /// @inheritdoc IL2ERC1155Gateway
   function withdrawERC1155(
@@ -113,12 +121,9 @@ contract L2ERC1155Gateway is OwnableUpgradeable, ERC1155HolderUpgradeable, Scrol
     emit FinalizeBatchDepositERC1155(_l1Token, _l2Token, _from, _to, _tokenIds, _amounts);
   }
 
-  /// @inheritdoc IScrollGateway
-  function finalizeDropMessage() external payable {
-    // @todo finish the logic later
-  }
-
-  /**************************************** Restricted Funtions ****************************************/
+  /************************
+   * Restricted Functions *
+   ************************/
 
   /// @notice Update layer 2 to layer 1 token mapping.
   /// @param _l1Token The address of corresponding ERC1155 token in layer 2.
@@ -131,7 +136,9 @@ contract L2ERC1155Gateway is OwnableUpgradeable, ERC1155HolderUpgradeable, Scrol
     emit UpdateTokenMapping(_l2Token, _l1Token);
   }
 
-  /**************************************** Internal Funtions ****************************************/
+  /**********************
+   * Internal Functions *
+   **********************/
 
   /// @dev Internal function to withdraw ERC1155 NFT to layer 2.
   /// @param _token The address of ERC1155 NFT in layer 1.

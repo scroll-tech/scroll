@@ -6,18 +6,33 @@ import { IScrollGateway } from "./IScrollGateway.sol";
 import { IScrollMessenger } from "../IScrollMessenger.sol";
 
 abstract contract ScrollGatewayBase is IScrollGateway {
-  /// @notice The address of corresponding L1/L2 Gateway contract.
-  address public override counterpart;
-  /// @notice The address of L1GatewayRouter/L2GatewayRouter contract.
-  address public router;
-  /// @notice The address of L1ScrollMessenger/L2ScrollMessenger contract.
-  address public messenger;
+  /*************
+   * Constants *
+   *************/
 
-  // start of inline reentrancy guard
   // https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v4.5.0/contracts/security/ReentrancyGuard.sol
   uint256 private constant _NOT_ENTERED = 1;
   uint256 private constant _ENTERED = 2;
+
+  /*************
+   * Variables *
+   *************/
+
+  /// @inheritdoc IScrollGateway
+  address public override counterpart;
+
+  /// @inheritdoc IScrollGateway
+  address public override router;
+
+  /// @inheritdoc IScrollGateway
+  address public override messenger;
+
+  /// @dev The status of for non-reentrant check.
   uint256 private _status;
+
+  /**********************
+   * Function Modifiers *
+   **********************/
 
   modifier nonReentrant() {
     // On the first call to nonReentrant, _notEntered will be true
@@ -44,6 +59,10 @@ abstract contract ScrollGatewayBase is IScrollGateway {
     require(counterpart == IScrollMessenger(_messenger).xDomainMessageSender(), "only call by conterpart");
     _;
   }
+
+  /***************
+   * Constructor *
+   ***************/
 
   function _initialize(
     address _counterpart,

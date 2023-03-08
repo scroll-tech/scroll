@@ -7,12 +7,11 @@ import (
 	"time"
 
 	cmap "github.com/orcaman/concurrent-map"
-	"github.com/scroll-tech/go-ethereum/core/types"
+	geth_types "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/log"
 
 	"scroll-tech/common/message"
-
-	"scroll-tech/database/orm"
+	"scroll-tech/common/types"
 )
 
 // rollerNode records roller status and send task to connected roller.
@@ -33,7 +32,7 @@ type rollerNode struct {
 	registerTime time.Time
 }
 
-func (r *rollerNode) sendTask(id string, traces []*types.BlockTrace) bool {
+func (r *rollerNode) sendTask(id string, traces []*geth_types.BlockTrace) bool {
 	select {
 	case r.taskChan <- &message.TaskMsg{
 		ID:     id,
@@ -53,7 +52,7 @@ func (m *Manager) reloadRollerAssignedTasks(pubkey string) *cmap.ConcurrentMap {
 	taskIDs := cmap.New()
 	for id, sess := range m.sessions {
 		for pk, roller := range sess.info.Rollers {
-			if pk == pubkey && roller.Status == orm.RollerAssigned {
+			if pk == pubkey && roller.Status == types.RollerAssigned {
 				taskIDs.Set(id, struct{}{})
 			}
 		}

@@ -24,9 +24,9 @@ Batch withdraw a list of ERC721 NFT to caller&#39;s account on layer 1.
 
 | Name | Type | Description |
 |---|---|---|
-| _token | address | The address of ERC721 NFT in layer 2. |
-| _tokenIds | uint256[] | The list of token ids to withdraw. |
-| _gasLimit | uint256 | Unused, but included for potential forward compatibility considerations. |
+| _token | address | undefined |
+| _tokenIds | uint256[] | undefined |
+| _gasLimit | uint256 | undefined |
 
 ### batchWithdrawERC721
 
@@ -42,10 +42,10 @@ Batch withdraw a list of ERC721 NFT to caller&#39;s account on layer 1.
 
 | Name | Type | Description |
 |---|---|---|
-| _token | address | The address of ERC721 NFT in layer 2. |
-| _to | address | The address of recipient in layer 1. |
-| _tokenIds | uint256[] | The list of token ids to withdraw. |
-| _gasLimit | uint256 | Unused, but included for potential forward compatibility considerations. |
+| _token | address | undefined |
+| _to | address | undefined |
+| _tokenIds | uint256[] | undefined |
+| _gasLimit | uint256 | undefined |
 
 ### counterpart
 
@@ -78,11 +78,11 @@ Complete ERC721 deposit from layer 1 to layer 2 and send NFT to recipient&#39;s 
 
 | Name | Type | Description |
 |---|---|---|
-| _l1Token | address | The address of corresponding layer 1 token. |
-| _l2Token | address | The address of corresponding layer 2 token. |
-| _from | address | The address of account who withdraw the token in layer 1. |
-| _to | address | The address of recipient in layer 2 to receive the token. |
-| _tokenIds | uint256[] | The list of token ids to withdraw. |
+| _l1Token | address | undefined |
+| _l2Token | address | undefined |
+| _from | address | undefined |
+| _to | address | undefined |
+| _tokenIds | uint256[] | undefined |
 
 ### finalizeDepositERC721
 
@@ -98,22 +98,11 @@ Complete ERC721 deposit from layer 1 to layer 2 and send NFT to recipient&#39;s 
 
 | Name | Type | Description |
 |---|---|---|
-| _l1Token | address | The address of corresponding layer 1 token. |
-| _l2Token | address | The address of corresponding layer 2 token. |
-| _from | address | The address of account who withdraw the token in layer 1. |
-| _to | address | The address of recipient in layer 2 to receive the token. |
-| _tokenId | uint256 | The token id to withdraw. |
-
-### finalizeDropMessage
-
-```solidity
-function finalizeDropMessage() external payable
-```
-
-
-
-
-
+| _l1Token | address | undefined |
+| _l2Token | address | undefined |
+| _from | address | undefined |
+| _to | address | undefined |
+| _tokenId | uint256 | undefined |
 
 ### initialize
 
@@ -138,7 +127,7 @@ function initialize(address _counterpart, address _messenger) external nonpayabl
 function messenger() external view returns (address)
 ```
 
-The address of L1ScrollMessenger/L2ScrollMessenger contract.
+The address of corresponding L1ScrollMessenger/L2ScrollMessenger contract.
 
 
 
@@ -288,9 +277,9 @@ Withdraw some ERC721 NFT to caller&#39;s account on layer 1.
 
 | Name | Type | Description |
 |---|---|---|
-| _token | address | The address of ERC721 NFT in layer 2. |
-| _tokenId | uint256 | The token id to withdraw. |
-| _gasLimit | uint256 | Unused, but included for potential forward compatibility considerations. |
+| _token | address | undefined |
+| _tokenId | uint256 | undefined |
+| _gasLimit | uint256 | undefined |
 
 ### withdrawERC721
 
@@ -306,10 +295,10 @@ Withdraw some ERC721 NFT to caller&#39;s account on layer 1.
 
 | Name | Type | Description |
 |---|---|---|
-| _token | address | The address of ERC721 NFT in layer 2. |
-| _to | address | The address of recipient in layer 1. |
-| _tokenId | uint256 | The token id to withdraw. |
-| _gasLimit | uint256 | Unused, but included for potential forward compatibility considerations. |
+| _token | address | undefined |
+| _to | address | undefined |
+| _tokenId | uint256 | undefined |
+| _gasLimit | uint256 | undefined |
 
 
 
@@ -318,7 +307,7 @@ Withdraw some ERC721 NFT to caller&#39;s account on layer 1.
 ### BatchWithdrawERC721
 
 ```solidity
-event BatchWithdrawERC721(address indexed _l1Token, address indexed _l2Token, address indexed _from, address _to, uint256[] _tokenIds)
+event BatchWithdrawERC721(address indexed l1Token, address indexed l2Token, address indexed from, address to, uint256[] tokenIds)
 ```
 
 Emitted when the ERC721 NFT is batch transfered to gateway in layer 2.
@@ -329,16 +318,16 @@ Emitted when the ERC721 NFT is batch transfered to gateway in layer 2.
 
 | Name | Type | Description |
 |---|---|---|
-| _l1Token `indexed` | address | undefined |
-| _l2Token `indexed` | address | undefined |
-| _from `indexed` | address | undefined |
-| _to  | address | undefined |
-| _tokenIds  | uint256[] | undefined |
+| l1Token `indexed` | address | undefined |
+| l2Token `indexed` | address | undefined |
+| from `indexed` | address | undefined |
+| to  | address | undefined |
+| tokenIds  | uint256[] | undefined |
 
 ### FinalizeBatchDepositERC721
 
 ```solidity
-event FinalizeBatchDepositERC721(address indexed _l1Token, address indexed _l2Token, address indexed _from, address _to, uint256[] _tokenIds)
+event FinalizeBatchDepositERC721(address indexed l1Token, address indexed l2Token, address indexed from, address to, uint256[] tokenIds)
 ```
 
 Emitted when the ERC721 NFT is batch transfered to recipient in layer 2.
@@ -349,16 +338,16 @@ Emitted when the ERC721 NFT is batch transfered to recipient in layer 2.
 
 | Name | Type | Description |
 |---|---|---|
-| _l1Token `indexed` | address | undefined |
-| _l2Token `indexed` | address | undefined |
-| _from `indexed` | address | undefined |
-| _to  | address | undefined |
-| _tokenIds  | uint256[] | undefined |
+| l1Token `indexed` | address | undefined |
+| l2Token `indexed` | address | undefined |
+| from `indexed` | address | undefined |
+| to  | address | undefined |
+| tokenIds  | uint256[] | undefined |
 
 ### FinalizeDepositERC721
 
 ```solidity
-event FinalizeDepositERC721(address indexed _l1Token, address indexed _l2Token, address indexed _from, address _to, uint256 _tokenId)
+event FinalizeDepositERC721(address indexed l1Token, address indexed l2Token, address indexed from, address to, uint256 tokenId)
 ```
 
 Emitted when the ERC721 NFT is transfered to recipient in layer 2.
@@ -369,11 +358,11 @@ Emitted when the ERC721 NFT is transfered to recipient in layer 2.
 
 | Name | Type | Description |
 |---|---|---|
-| _l1Token `indexed` | address | undefined |
-| _l2Token `indexed` | address | undefined |
-| _from `indexed` | address | undefined |
-| _to  | address | undefined |
-| _tokenId  | uint256 | undefined |
+| l1Token `indexed` | address | undefined |
+| l2Token `indexed` | address | undefined |
+| from `indexed` | address | undefined |
+| to  | address | undefined |
+| tokenId  | uint256 | undefined |
 
 ### OwnershipTransferred
 
@@ -412,7 +401,7 @@ Emitted when token mapping for ERC721 token is updated.
 ### WithdrawERC721
 
 ```solidity
-event WithdrawERC721(address indexed _l1Token, address indexed _l2Token, address indexed _from, address _to, uint256 _tokenId)
+event WithdrawERC721(address indexed l1Token, address indexed l2Token, address indexed from, address to, uint256 tokenId)
 ```
 
 Emitted when the ERC721 NFT is transfered to gateway in layer 2.
@@ -423,11 +412,11 @@ Emitted when the ERC721 NFT is transfered to gateway in layer 2.
 
 | Name | Type | Description |
 |---|---|---|
-| _l1Token `indexed` | address | undefined |
-| _l2Token `indexed` | address | undefined |
-| _from `indexed` | address | undefined |
-| _to  | address | undefined |
-| _tokenId  | uint256 | undefined |
+| l1Token `indexed` | address | undefined |
+| l2Token `indexed` | address | undefined |
+| from `indexed` | address | undefined |
+| to  | address | undefined |
+| tokenId  | uint256 | undefined |
 
 
 

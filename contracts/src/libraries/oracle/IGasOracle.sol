@@ -10,6 +10,7 @@ interface IGasOracle {
   function estimateMessageFee(
     address _sender,
     address _to,
-    bytes memory _message
+    bytes memory _message,
+    uint256 _gasLimit
   ) external view returns (uint256);
 }
