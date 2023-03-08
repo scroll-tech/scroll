@@ -5,13 +5,14 @@ import (
 	"io/ioutil"
 	"math/big"
 	"net/http"
-	"scroll-tech/common/docker"
 	"strconv"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
+
+	"scroll-tech/common/docker"
 )
 
 func TestIntegration(t *testing.T) {

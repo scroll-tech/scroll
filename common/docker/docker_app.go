@@ -15,9 +15,10 @@ import (
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/stretchr/testify/assert"
 
+	"scroll-tech/database"
+
 	"scroll-tech/common/cmd"
 	"scroll-tech/common/utils"
-	"scroll-tech/database"
 )
 
 var (
