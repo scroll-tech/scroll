@@ -45,6 +45,7 @@ func (t *Cmd) WaitExit() {
 	// Send interrupt signal.
 	t.mu.Lock()
 	_ = t.cmd.Process.Signal(os.Interrupt)
+	_, _ = t.cmd.Process.Wait()
 	t.mu.Unlock()
 }
 
