@@ -46,6 +46,7 @@
       "sender_config": {
         "endpoint": "https://goerli.infura.io/v3/9aa3d95b3bc440fa88ea12eaa4456161",
         "check_pending_time": 10,
+        "check_balance_time": 100,
         "escalate_blocks": 100,
         "confirmations": "0x6",
         "escalate_multiple_num": 11,
