@@ -90,7 +90,7 @@ func setupEnv(t *testing.T) {
 	cfg.L2Config.Endpoint = base.L2GethEndpoint()
 
 	// Create db container.
-	cfg.DBConfig.DSN = base.DbEndpoint()
+	cfg.DBConfig.DSN = base.DBEndpoint()
 
 	// Create l1geth and l2geth client.
 	l1Client, err = ethclient.Dial(cfg.L1Config.Endpoint)

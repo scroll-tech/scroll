@@ -43,7 +43,7 @@ func setupEnv(t *testing.T) (err error) {
 
 	cfg.L2Config.RelayerConfig.SenderConfig.Endpoint = base.L1GethEndpoint()
 	cfg.L1Config.RelayerConfig.SenderConfig.Endpoint = base.L2GethEndpoint()
-	cfg.DBConfig.DSN = base.DbEndpoint()
+	cfg.DBConfig.DSN = base.DBEndpoint()
 
 	// Create l2geth client.
 	l2Cli, err = base.L2Client()

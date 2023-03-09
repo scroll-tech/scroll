@@ -57,7 +57,7 @@ func setEnv(t *testing.T) (err error) {
 	base.RunImages(t)
 
 	// Create db container.
-	cfg.DBConfig.DSN = base.DbEndpoint()
+	cfg.DBConfig.DSN = base.DBEndpoint()
 
 	templateBlockTrace, err := os.ReadFile("../common/testdata/blockTrace_02.json")
 	if err != nil {

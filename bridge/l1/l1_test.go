@@ -35,7 +35,7 @@ func setupEnv(t *testing.T) {
 
 	cfg.L2Config.RelayerConfig.SenderConfig.Endpoint = base.L1GethEndpoint()
 	cfg.L1Config.RelayerConfig.SenderConfig.Endpoint = base.L2GethEndpoint()
-	cfg.DBConfig.DSN = base.DbEndpoint()
+	cfg.DBConfig.DSN = base.DBEndpoint()
 }
 
 func TestL1(t *testing.T) {

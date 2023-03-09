@@ -68,7 +68,7 @@ func testL2Geth(t *testing.T) {
 func testDB(t *testing.T) {
 	driverName := "postgres"
 
-	db, err := sqlx.Open(driverName, base.DbEndpoint())
+	db, err := sqlx.Open(driverName, base.DBEndpoint())
 	assert.NoError(t, err)
 	assert.NoError(t, db.Ping())
 }
