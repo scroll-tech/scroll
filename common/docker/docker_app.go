@@ -114,7 +114,7 @@ func (b *App) L2GethEndpoint() string {
 }
 
 // DbEndpoint returns the endpoint of the dbimg
-func (b *App) DbEndpoint() string {
+func (b *App) DBEndpoint() string {
 	return b.dbImg.Endpoint()
 }
 
