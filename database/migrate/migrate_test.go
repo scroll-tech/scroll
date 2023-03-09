@@ -34,7 +34,7 @@ func initEnv(t *testing.T) error {
 }
 
 func TestMigrate(t *testing.T) {
-	base = docker.NewDockerApp("../config.json")
+	base = docker.NewDockerApp()
 	if err := initEnv(t); err != nil {
 		t.Fatal(err)
 	}

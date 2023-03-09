@@ -32,22 +32,20 @@ type App struct {
 	l1gethImg ImgInstance
 	l2gethImg ImgInstance
 
-	dbImg       ImgInstance
-	dbConfig    *database.DBConfig
-	dbOriginCfg string
-	dbFile      string
+	dbImg    ImgInstance
+	dbConfig *database.DBConfig
+	dbFile   string
 
 	// common time stamp.
 	timestamp int
 }
 
 // NewDockerApp returns new instance of dokerApp struct
-func NewDockerApp(cfg string) *App {
+func NewDockerApp() *App {
 	timestamp := time.Now().Nanosecond()
 	return &App{
-		timestamp:   timestamp,
-		dbFile:      fmt.Sprintf("/tmp/%d_db-config.json", timestamp),
-		dbOriginCfg: cfg,
+		timestamp: timestamp,
+		dbFile:    fmt.Sprintf("/tmp/%d_db-config.json", timestamp),
 	}
 }
 
@@ -160,11 +158,13 @@ func (b *App) L2Client() (*ethclient.Client, error) {
 
 func (b *App) mockDBConfig() error {
 	if b.dbConfig == nil {
-		cfg, err := database.NewConfig(b.dbOriginCfg)
-		if err != nil {
-			return err
+
+		b.dbConfig = &database.DBConfig{
+			DSN:        "",
+			DriverName: "postgres",
+			MaxOpenNum: 200,
+			MaxIdleNum: 20,
 		}
-		b.dbConfig = cfg
 	}
 
 	if b.dbImg != nil {

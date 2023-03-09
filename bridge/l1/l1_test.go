@@ -19,7 +19,7 @@ var (
 )
 
 func TestMain(m *testing.M) {
-	base = docker.NewDockerApp("../../database/config.json")
+	base = docker.NewDockerApp()
 
 	m.Run()
 

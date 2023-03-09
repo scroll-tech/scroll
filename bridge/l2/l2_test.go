@@ -87,7 +87,7 @@ func setupEnv(t *testing.T) (err error) {
 }
 
 func TestMain(m *testing.M) {
-	base = docker.NewDockerApp("../../database/config.json")
+	base = docker.NewDockerApp()
 
 	m.Run()
 

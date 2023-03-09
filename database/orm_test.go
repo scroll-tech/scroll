@@ -156,7 +156,7 @@ func setupEnv(t *testing.T) error {
 
 // TestOrmFactory run several test cases.
 func TestOrmFactory(t *testing.T) {
-	base = docker.NewDockerApp("../config.json")
+	base = docker.NewDockerApp()
 	defer func() {
 		base.Free()
 	}()
