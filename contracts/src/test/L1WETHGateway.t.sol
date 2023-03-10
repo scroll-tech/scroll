@@ -369,9 +369,9 @@ contract L1WETHGatewayTest is L1GatewayTestBase {
     if (amount == 0) {
       hevm.expectRevert("deposit zero amount");
       if (useRouter) {
-        router.depositERC20{ value: feeToPay }(address(l1weth), amount, gasLimit);
+        router.depositERC20{ value: feeToPay + extraValue }(address(l1weth), amount, gasLimit);
       } else {
-        gateway.depositERC20{ value: feeToPay }(address(l1weth), amount, gasLimit);
+        gateway.depositERC20{ value: feeToPay + extraValue }(address(l1weth), amount, gasLimit);
       }
     } else {
       // token is not l1WETH
@@ -399,9 +399,9 @@ contract L1WETHGatewayTest is L1GatewayTestBase {
       uint256 feeVaultBalance = address(feeVault).balance;
       assertBoolEq(false, l1Messenger.isL1MessageSent(keccak256(xDomainCalldata)));
       if (useRouter) {
-        router.depositERC20{ value: feeToPay }(address(l1weth), amount, gasLimit);
+        router.depositERC20{ value: feeToPay + extraValue }(address(l1weth), amount, gasLimit);
       } else {
-        gateway.depositERC20{ value: feeToPay }(address(l1weth), amount, gasLimit);
+        gateway.depositERC20{ value: feeToPay + extraValue }(address(l1weth), amount, gasLimit);
       }
       assertEq(amount + messengerBalance, address(l1Messenger).balance);
       assertEq(feeToPay + feeVaultBalance, address(feeVault).balance);
@@ -444,9 +444,9 @@ contract L1WETHGatewayTest is L1GatewayTestBase {
     if (amount == 0) {
       hevm.expectRevert("deposit zero amount");
       if (useRouter) {
-        router.depositERC20{ value: feeToPay }(address(l1weth), recipient, amount, gasLimit);
+        router.depositERC20{ value: feeToPay + extraValue }(address(l1weth), recipient, amount, gasLimit);
       } else {
-        gateway.depositERC20{ value: feeToPay }(address(l1weth), recipient, amount, gasLimit);
+        gateway.depositERC20{ value: feeToPay + extraValue }(address(l1weth), recipient, amount, gasLimit);
       }
     } else {
       // token is not l1WETH
@@ -474,9 +474,9 @@ contract L1WETHGatewayTest is L1GatewayTestBase {
       uint256 feeVaultBalance = address(feeVault).balance;
       assertBoolEq(false, l1Messenger.isL1MessageSent(keccak256(xDomainCalldata)));
       if (useRouter) {
-        router.depositERC20{ value: feeToPay }(address(l1weth), recipient, amount, gasLimit);
+        router.depositERC20{ value: feeToPay + extraValue }(address(l1weth), recipient, amount, gasLimit);
       } else {
-        gateway.depositERC20{ value: feeToPay }(address(l1weth), recipient, amount, gasLimit);
+        gateway.depositERC20{ value: feeToPay + extraValue }(address(l1weth), recipient, amount, gasLimit);
       }
       assertEq(amount + messengerBalance, address(l1Messenger).balance);
       assertEq(feeToPay + feeVaultBalance, address(feeVault).balance);
@@ -520,9 +520,21 @@ contract L1WETHGatewayTest is L1GatewayTestBase {
     if (amount == 0) {
       hevm.expectRevert("deposit zero amount");
       if (useRouter) {
-        router.depositERC20AndCall{ value: feeToPay }(address(l1weth), recipient, amount, dataToCall, gasLimit);
+        router.depositERC20AndCall{ value: feeToPay + extraValue }(
+          address(l1weth),
+          recipient,
+          amount,
+          dataToCall,
+          gasLimit
+        );
       } else {
-        gateway.depositERC20AndCall{ value: feeToPay }(address(l1weth), recipient, amount, dataToCall, gasLimit);
+        gateway.depositERC20AndCall{ value: feeToPay + extraValue }(
+          address(l1weth),
+          recipient,
+          amount,
+          dataToCall,
+          gasLimit
+        );
       }
     } else {
       // token is not l1WETH
@@ -550,9 +562,21 @@ contract L1WETHGatewayTest is L1GatewayTestBase {
       uint256 feeVaultBalance = address(feeVault).balance;
       assertBoolEq(false, l1Messenger.isL1MessageSent(keccak256(xDomainCalldata)));
       if (useRouter) {
-        router.depositERC20AndCall{ value: feeToPay }(address(l1weth), recipient, amount, dataToCall, gasLimit);
+        router.depositERC20AndCall{ value: feeToPay + extraValue }(
+          address(l1weth),
+          recipient,
+          amount,
+          dataToCall,
+          gasLimit
+        );
       } else {
-        gateway.depositERC20AndCall{ value: feeToPay }(address(l1weth), recipient, amount, dataToCall, gasLimit);
+        gateway.depositERC20AndCall{ value: feeToPay + extraValue }(
+          address(l1weth),
+          recipient,
+          amount,
+          dataToCall,
+          gasLimit
+        );
       }
       assertEq(amount + messengerBalance, address(l1Messenger).balance);
       assertEq(feeToPay + feeVaultBalance, address(feeVault).balance);
