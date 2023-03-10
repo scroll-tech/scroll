@@ -81,6 +81,9 @@ type Manager struct {
 	tokenCache *cache.Cache
 	// A mutex guarding registration
 	registerMu sync.RWMutex
+
+	// Verifier worker pool
+	verifierWorkerPool *verifierWorkerPool
 }
 
 // New returns a new instance of Manager. The instance will be not fully prepared,
@@ -102,6 +105,7 @@ func New(ctx context.Context, cfg *config.RollerManagerConfig, orm database.OrmF
 		orm:                orm,
 		Client:             client,
 		tokenCache:         cache.New(time.Duration(cfg.TokenTimeToLive)*time.Second, 1*time.Hour),
+		verifierWorkerPool: newVerifierWorkerPool(cfg.MaxVerifierWorker),
 	}, nil
 }
 
@@ -111,6 +115,7 @@ func (m *Manager) Start() error {
 		return nil
 	}
 
+	m.verifierWorkerPool.run()
 	m.restorePrevSessions()
 
 	atomic.StoreInt32(&m.running, 1)
@@ -124,6 +129,7 @@ func (m *Manager) Stop() {
 	if !m.isRunning() {
 		return
 	}
+	m.verifierWorkerPool.stop()
 
 	atomic.StoreInt32(&m.running, 0)
 }
@@ -300,7 +306,7 @@ func (m *Manager) handleZkProof(pk string, msg *message.ProofDetail) error {
 		return err
 	}
 
-	success, err = m.verifier.VerifyProof(msg.Proof)
+	success, err = m.verifyProof(msg.Proof)
 	if err != nil {
 		// TODO: this is only a temp workaround for testnet, we should return err in real cases
 		success = false
@@ -538,4 +544,65 @@ func (m *Manager) VerifyToken(authMsg *message.AuthMsg) (bool, error) {
 		return false, errors.New("failed to find corresponding token")
 	}
 	return true, nil
+}
+
+type verifierWorkerPool struct {
+	maxWorker     int
+	taskQueueChan chan func()
+	wg            sync.WaitGroup
+}
+
+func newVerifierWorkerPool(maxWorker int) *verifierWorkerPool {
+	return &verifierWorkerPool{
+		maxWorker:     maxWorker,
+		taskQueueChan: nil,
+		wg:            sync.WaitGroup{},
+	}
+}
+
+func (vwp *verifierWorkerPool) run() {
+	vwp.taskQueueChan = make(chan func())
+	for i := 0; i < vwp.maxWorker; i++ {
+		go func() {
+			for task := range vwp.taskQueueChan {
+				if task != nil {
+					task()
+				} else {
+					return
+				}
+			}
+		}()
+	}
+}
+
+func (vwp *verifierWorkerPool) stop() {
+	vwp.wg.Wait()
+	// close task queue channel, so that all goruotines listening from it stop
+	close(vwp.taskQueueChan)
+}
+
+func (vwp *verifierWorkerPool) addTask(task func()) {
+	vwp.wg.Add(1)
+	vwp.taskQueueChan <- task
+}
+
+type verifyResult struct {
+	result bool
+	err    error
+}
+
+func (m *Manager) addVerifyTask(proof *message.AggProof) chan verifyResult {
+	c := make(chan verifyResult, 1)
+	m.verifierWorkerPool.addTask(func() {
+		result, err := m.verifier.VerifyProof(proof)
+		c <- verifyResult{result, err}
+	})
+	return c
+}
+
+func (m *Manager) verifyProof(proof *message.AggProof) (bool, error) {
+	verifyResultChan := m.addVerifyTask(proof)
+	verfyResult := <-verifyResultChan
+	m.verifierWorkerPool.wg.Done()
+	return verfyResult.result, verfyResult.err
 }
