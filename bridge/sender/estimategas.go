@@ -50,14 +50,6 @@ func (s *Sender) estimateDynamicGas(auth *bind.TransactOpts, contract *common.Ad
 }
 
 func (s *Sender) estimateGasLimit(opts *bind.TransactOpts, contract *common.Address, input []byte, gasPrice, gasTipCap, gasFeeCap, value *big.Int) (uint64, error) {
-	if contract != nil {
-		// Gas estimation cannot succeed without code for method invocations.
-		if code, err := s.client.PendingCodeAt(s.ctx, *contract); err != nil {
-			return 0, err
-		} else if len(code) == 0 {
-			return 0, bind.ErrNoCode
-		}
-	}
 	msg := ethereum.CallMsg{
 		From:      opts.From,
 		To:        contract,
