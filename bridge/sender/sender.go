@@ -151,10 +151,10 @@ func (s *Sender) NumberOfAccounts() int {
 }
 
 func (s *Sender) getFeeData(auth *bind.TransactOpts, target *common.Address, value *big.Int, data []byte) (*FeeData, error) {
-	if s.config.TxType != DynamicFeeTxType {
-		return s.estimateLegacyGas(auth, target, value, data)
+	if s.config.TxType == DynamicFeeTxType {
+		return s.estimateDynamicGas(auth, target, value, data)
 	}
-	return s.estimateDynamicGas(auth, target, value, data)
+	return s.estimateLegacyGas(auth, target, value, data)
 }
 
 // SendTransaction send a signed L2tL1 transaction.

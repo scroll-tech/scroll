@@ -59,5 +59,11 @@ func (s *Sender) estimateGasLimit(opts *bind.TransactOpts, contract *common.Addr
 		Value:     value,
 		Data:      input,
 	}
-	return s.client.EstimateGas(s.ctx, msg)
+	gasLimit, err := s.client.EstimateGas(s.ctx, msg)
+	if err != nil {
+		return 0, err
+	}
+	gasLimit = gasLimit * 15 / 10 // 50% extra gas to void out of gas error
+
+	return gasLimit, nil
 }
