@@ -365,7 +365,7 @@ func (m *Manager) CollectProofs(sess *session) {
 				log.Error("db set session info fail", "pk", ret.pk, "error", err)
 			}
 			//Check if all rollers have finished their tasks, and rollers with valid results are indexed by public key.
-			finished, validRollers := sess.isRollersFinished(int(m.cfg.RollersPerSession))
+			finished, validRollers := sess.isRollersFinished()
 
 			//When all rollers have finished submitting their tasks, select a winner within rollers with valid proof, and return, terminate the for loop.
 			if finished {
@@ -384,21 +384,20 @@ func (m *Manager) CollectProofs(sess *session) {
 // isRollersFinished checks if all rollers have finished submitting proofs, check their validity, and record rollers who produce valid proof.
 // When rollersLeft reaches 0, it means all rollers have finished their tasks.
 // validRollers also records the public keys of rollers who have finished their tasks correctly as index.
-func (s *session) isRollersFinished(rollersLeft int) (bool, []string) {
+func (s *session) isRollersFinished() (bool, []string) {
 	var validRollers []string
 	for pk, roller := range s.info.Rollers {
-		if rollersLeft == 0 {
-			return true, validRollers
-		}
-		if rollersLeft > 0 && roller.Status == types.RollerProofValid {
-			rollersLeft--
+		if roller.Status == types.RollerProofValid {
 			validRollers = append(validRollers, pk)
+			continue
 		}
-		if rollersLeft > 0 && roller.Status == types.RollerProofInvalid {
-			rollersLeft--
+		if roller.Status == types.RollerProofInvalid {
+			continue
 		}
+		// Some rollers are still proving.
+		return false, nil
 	}
-	return false, validRollers
+	return true, validRollers
 }
 
 func (s *session) isSessionFailed() bool {
