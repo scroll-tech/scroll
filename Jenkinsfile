@@ -73,7 +73,7 @@ pipeline {
                 }
                 stage('Test coordinator package') {
                     steps {
-                        sh 'go test -v -race -tags="mock_verifier" -coverprofile=coverage.coordinator.txt -covermode=atomic -p 1 scroll-tech/coordinator/...'
+                        sh 'go test -v -race -coverprofile=coverage.coordinator.txt -covermode=atomic -p 1 scroll-tech/coordinator/...'
                     }
                 }
                 stage('Test database package') {
