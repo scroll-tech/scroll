@@ -175,19 +175,29 @@ contract L2ScrollMessenger is ScrollMessengerBase, PausableUpgradeable, IL2Scrol
     uint256 _fee = _gasLimit * IL1GasPriceOracle(gasOracle).l1BaseFee();
     require(msg.value >= _value + _fee, "Insufficient msg.value");
     if (_fee > 0) {
-      (bool _success, ) = feeVault.call{ value: msg.value - _value }("");
+      (bool _success, ) = feeVault.call{ value: _fee }("");
       require(_success, "Failed to deduct the fee");
     }
 
     uint256 _nonce = L2MessageQueue(messageQueue).nextMessageIndex();
     bytes32 _xDomainCalldataHash = keccak256(_encodeXDomainCalldata(msg.sender, _to, _value, _nonce, _message));
 
+    // normally this won't happen, since each message has different nonce, but just in case.
     require(!isL2MessageSent[_xDomainCalldataHash], "Duplicated message");
     isL2MessageSent[_xDomainCalldataHash] = true;
 
     L2MessageQueue(messageQueue).appendMessage(_xDomainCalldataHash);
 
     emit SentMessage(msg.sender, _to, _value, _nonce, _gasLimit, _message);
+
+    // refund fee to tx.origin
+    unchecked {
+      uint256 _refund = msg.value - _fee - _value;
+      if (_refund > 0) {
+        (bool _success, ) = tx.origin.call{ value: _refund }("");
+        require(_success, "Failed to refund the fee");
+      }
+    }
   }
 
   /// @inheritdoc IL2ScrollMessenger
