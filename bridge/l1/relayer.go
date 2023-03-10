@@ -2,7 +2,6 @@ package l1
 
 import (
 	"context"
-	"scroll-tech/common/utils"
 	"time"
 
 	// not sure if this will make problems when relay with l1geth
@@ -12,6 +11,7 @@ import (
 	"github.com/scroll-tech/go-ethereum/log"
 
 	"scroll-tech/common/types"
+	"scroll-tech/common/utils"
 
 	"scroll-tech/database"
 
