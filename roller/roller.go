@@ -241,7 +241,7 @@ func (r *Roller) prove() error {
 		}
 	} else {
 		// when the roller has more than 3 times panic,
-		// it will omit to prove the task, submit StatusProofError and then Pop the task.
+		// it will omit to prove the task, submit StatusProofError and then Delete the task.
 		proofMsg = &message.ProofDetail{
 			Status: message.StatusProofError,
 			Error:  "zk proving panic",
@@ -251,7 +251,7 @@ func (r *Roller) prove() error {
 	}
 
 	defer func() {
-		_, err = r.stack.Pop()
+		err = r.stack.Delete(task.Task.ID)
 		if err != nil {
 			log.Error("roller stack pop failed!", "err", err)
 		}

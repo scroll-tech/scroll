@@ -6,10 +6,10 @@ import (
 )
 
 var (
-	tag = "alpha-v1.15"
+	tag = "alpha-v1.16"
 	// ZkVersion is version of https://github.com/scroll-tech/scroll-zkevm
 	ZkVersion = "alpha-v1.0"
-)
+) 
 
 var commit = func() string {
 	if info, ok := debug.ReadBuildInfo(); ok {
