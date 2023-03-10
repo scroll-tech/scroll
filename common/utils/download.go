@@ -1,11 +1,12 @@
 package utils
 
 import (
-	"github.com/scroll-tech/go-ethereum/log"
 	"io"
 	"net/http"
 	"os"
 	"path/filepath"
+
+	"github.com/scroll-tech/go-ethereum/log"
 )
 
 // DownloadToDir downloads the file and store it into dir, will do nothing if file exists.

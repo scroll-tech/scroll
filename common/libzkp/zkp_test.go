@@ -4,12 +4,15 @@ package libzkp
 
 import (
 	"flag"
-	"github.com/stretchr/testify/assert"
 	"os"
 	"path/filepath"
-	"scroll-tech/common/utils"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
+
+	"scroll-tech/common/message"
+	"scroll-tech/common/utils"
 )
 
 const (
