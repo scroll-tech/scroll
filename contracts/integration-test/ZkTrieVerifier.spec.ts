@@ -224,5 +224,193 @@ describe("ZkTrieVerifier", async () => {
     });
   }
 
-  // @todo add tests with invalid inputs
+  it("should revert, when parent node invalid", async () => {
+    const test = testcases[0];
+    test.accountProof[0] =
+      "0x010a52b818e0a009930d62c17f2b1244179b7c14f8e1ae317fb3bfd3a3ba6060031b2a4aa2df31e79f926474987eea69aab84f4581cfd61b0338438110f6be145b";
+    const proof = concat([
+      `0x${test.accountProof.length.toString(16).padStart(2, "0")}`,
+      ...test.accountProof,
+      `0x${test.storageProof.length.toString(16).padStart(2, "0")}`,
+      ...test.storageProof,
+    ]);
+    await expect(verifier.verifyZkTrieProof(test.account, test.storage, proof)).revertedWith("Invalid parent node");
+
+    test.accountProof[0] =
+      "0x000a52b818e0a009930d62c17f2b1244179b7c14f8e1ae317fb3bfd3a3ba6060031b2a4aa2df31e79f926474987eea69aab84f4581cfd61b0338438110f6be145b";
+    test.storageProof[0] =
+      "0x010a52b818e0a009930d62c17f2b1244179b7c14f8e1ae317fb3bfd3a3ba6060031b2a4aa2df31e79f926474987eea69aab84f4581cfd61b0338438110f6be145b";
+    await expect(verifier.verifyZkTrieProof(test.account, test.storage, proof)).revertedWith("Invalid parent node");
+  });
+
+  it("should revert, when hash mismatch", async () => {
+    const test = testcases[0];
+    test.accountProof[1] =
+      "0x0028db7c407cab6652f1f194401bd87bda33c9a1723b4f93515bd5929cad02668123fa5a3e69136c8e03a62c805f89c9d3578a6f5fac4bb281fc4d7df12fbcc5dc";
+    const proof = concat([
+      `0x${test.accountProof.length.toString(16).padStart(2, "0")}`,
+      ...test.accountProof,
+      `0x${test.storageProof.length.toString(16).padStart(2, "0")}`,
+      ...test.storageProof,
+    ]);
+    await expect(verifier.verifyZkTrieProof(test.account, test.storage, proof)).revertedWith("Hash mismatch");
+  });
+
+  it("should revert, when invalid proof magic bytes", async () => {
+    const test = testcases[0];
+    test.accountProof[17] =
+      "0x5448495320495320534f4d45204d4147494320425954455320464f5220534d54206d3172525867503278704448";
+    const proof = concat([
+      `0x${test.accountProof.length.toString(16).padStart(2, "0")}`,
+      ...test.accountProof,
+      `0x${test.storageProof.length.toString(16).padStart(2, "0")}`,
+      ...test.storageProof,
+    ]);
+    await expect(verifier.verifyZkTrieProof(test.account, test.storage, proof)).revertedWith("Invalid ProofMagicBytes");
+  });
+
+  it("should revert, when invalid leaf node in account proof", async () => {
+    const test = testcases[0];
+    // Invalid leaf node in account proof
+    test.accountProof[16] =
+      "0x000aef26efde9e4bca477d460482bce3de3577f6e9a280dea6d3f9985b4151deab0508000000000000000000000000000000000000000000000000071d0000000000000000000000000000000000000000000000000000000000000013328350573dd32b38291529042b30b83bf20bfc7e18ab6a9755e2ea692d5a7644f896b0d629cf9740d72ccbc90dd6141deb3fab132f1ebc17ab963c612c7123d5a524d0158cc8291b081281272d79459760d885ea652024615d55b114b5872571b21aee99977b8681205300000000000000000000000000000000000004000000000000000000000000";
+    let proof = concat([
+      `0x${test.accountProof.length.toString(16).padStart(2, "0")}`,
+      ...test.accountProof,
+      `0x${test.storageProof.length.toString(16).padStart(2, "0")}`,
+      ...test.storageProof,
+    ]);
+    await expect(verifier.verifyZkTrieProof(test.account, test.storage, proof)).revertedWith("Invalid leaf node");
+
+    // Node key mismatch in account proof
+    test.accountProof[16] =
+      "0x010aef16efde9e4bca477d460482bce3de3577f6e9a280dea6d3f9985b4151deab0508000000000000000000000000000000000000000000000000071d0000000000000000000000000000000000000000000000000000000000000013328350573dd32b38291529042b30b83bf20bfc7e18ab6a9755e2ea692d5a7644f896b0d629cf9740d72ccbc90dd6141deb3fab132f1ebc17ab963c612c7123d5a524d0158cc8291b081281272d79459760d885ea652024615d55b114b5872571b21aee99977b8681205300000000000000000000000000000000000004000000000000000000000000";
+    proof = concat([
+      `0x${test.accountProof.length.toString(16).padStart(2, "0")}`,
+      ...test.accountProof,
+      `0x${test.storageProof.length.toString(16).padStart(2, "0")}`,
+      ...test.storageProof,
+    ]);
+    await expect(verifier.verifyZkTrieProof(test.account, test.storage, proof)).revertedWith("Node key mismatch");
+
+    // Invalid leaf node hash in account proof
+    test.accountProof[16] =
+      "0x010aef26efde9e4bca477d460482bce3de3577f6e9a280dea6d3f9985b4151deab0508000000000000000000000000000000000000000000000000071e0000000000000000000000000000000000000000000000000000000000000013328350573dd32b38291529042b30b83bf20bfc7e18ab6a9755e2ea692d5a7644f896b0d629cf9740d72ccbc90dd6141deb3fab132f1ebc17ab963c612c7123d5a524d0158cc8291b081281272d79459760d885ea652024615d55b114b5872571b21aee99977b8681205300000000000000000000000000000000000004000000000000000000000000";
+    proof = concat([
+      `0x${test.accountProof.length.toString(16).padStart(2, "0")}`,
+      ...test.accountProof,
+      `0x${test.storageProof.length.toString(16).padStart(2, "0")}`,
+      ...test.storageProof,
+    ]);
+    await expect(verifier.verifyZkTrieProof(test.account, test.storage, proof)).revertedWith("Invalid leaf node hash");
+
+    // Invalid KeyPreimage length in account proof
+    test.accountProof[16] =
+      "0x010aef26efde9e4bca477d460482bce3de3577f6e9a280dea6d3f9985b4151deab0508000000000000000000000000000000000000000000000000071d0000000000000000000000000000000000000000000000000000000000000013328350573dd32b38291529042b30b83bf20bfc7e18ab6a9755e2ea692d5a7644f896b0d629cf9740d72ccbc90dd6141deb3fab132f1ebc17ab963c612c7123d5a524d0158cc8291b081281272d79459760d885ea652024615d55b114b5872571b21aee99977b8681215300000000000000000000000000000000000004000000000000000000000000";
+    proof = concat([
+      `0x${test.accountProof.length.toString(16).padStart(2, "0")}`,
+      ...test.accountProof,
+      `0x${test.storageProof.length.toString(16).padStart(2, "0")}`,
+      ...test.storageProof,
+    ]);
+    await expect(verifier.verifyZkTrieProof(test.account, test.storage, proof)).revertedWith(
+      "Invalid KeyPreimage length"
+    );
+
+    // Invalid KeyPreimage in account proof
+    test.accountProof[16] =
+      "0x010aef26efde9e4bca477d460482bce3de3577f6e9a280dea6d3f9985b4151deab0508000000000000000000000000000000000000000000000000071d0000000000000000000000000000000000000000000000000000000000000013328350573dd32b38291529042b30b83bf20bfc7e18ab6a9755e2ea692d5a7644f896b0d629cf9740d72ccbc90dd6141deb3fab132f1ebc17ab963c612c7123d5a524d0158cc8291b081281272d79459760d885ea652024615d55b114b5872571b21aee99977b8681205300000000000000000000000000000000000003000000000000000000000000";
+    proof = concat([
+      `0x${test.accountProof.length.toString(16).padStart(2, "0")}`,
+      ...test.accountProof,
+      `0x${test.storageProof.length.toString(16).padStart(2, "0")}`,
+      ...test.storageProof,
+    ]);
+    await expect(verifier.verifyZkTrieProof(test.account, test.storage, proof)).revertedWith("Invalid KeyPreimage");
+  });
+
+  it("should revert, when storage root mismatch", async () => {
+    const test = testcases[0];
+    test.storageProof[0] =
+      "0x000a52b818e0a009930d62c17f2b1244179b7c14f8e1ae317fb3bfd3a3ba6060031b2a4aa2df31e79f926474987eea69aab84f4581cfd61b0338438110f6be145c";
+    const proof = concat([
+      `0x${test.accountProof.length.toString(16).padStart(2, "0")}`,
+      ...test.accountProof,
+      `0x${test.storageProof.length.toString(16).padStart(2, "0")}`,
+      ...test.storageProof,
+    ]);
+    await expect(verifier.verifyZkTrieProof(test.account, test.storage, proof)).revertedWith("Storage root mismatch");
+  });
+
+  it("should revert, when invalid leaf node in storage proof", async () => {
+    const test = testcases[0];
+    // Invalid leaf node in account proof
+    test.storageProof[15] =
+      "0x0026ae15b478408eb45ea8b6f61aad1345f2b6257efd1acc4a6024b26f664c98240101000000000000000000000000000000000000000000000000000111346048bf18a14a209505174b0709a2a1997fe9797cb89648a93f17ce0096cbc1a6ed52b73170b96a";
+    let proof = concat([
+      `0x${test.accountProof.length.toString(16).padStart(2, "0")}`,
+      ...test.accountProof,
+      `0x${test.storageProof.length.toString(16).padStart(2, "0")}`,
+      ...test.storageProof,
+    ]);
+    await expect(verifier.verifyZkTrieProof(test.account, test.storage, proof)).revertedWith("Invalid leaf node");
+
+    // Node key mismatch in account proof
+    test.storageProof[15] =
+      "0x0136ae15b478408eb45ea8b6f61aad1345f2b6257efd1acc4a6024b26f664c98240101000000000000000000000000000000000000000000000000000111346048bf18a14a209505174b0709a2a1997fe9797cb89648a93f17ce0096cbc1a6ed52b73170b96a";
+    proof = concat([
+      `0x${test.accountProof.length.toString(16).padStart(2, "0")}`,
+      ...test.accountProof,
+      `0x${test.storageProof.length.toString(16).padStart(2, "0")}`,
+      ...test.storageProof,
+    ]);
+    await expect(verifier.verifyZkTrieProof(test.account, test.storage, proof)).revertedWith("Node key mismatch");
+
+    // Invalid leaf node hash in account proof
+    test.storageProof[15] =
+      "0x0126ae15b478408eb45ea8b6f61aad1345f2b6257efd1acc4a6024b26f664c98240101000000000000000000000000000000000000000000000000000111446048bf18a14a209505174b0709a2a1997fe9797cb89648a93f17ce0096cbc1a6ed52b73170b96a";
+    proof = concat([
+      `0x${test.accountProof.length.toString(16).padStart(2, "0")}`,
+      ...test.accountProof,
+      `0x${test.storageProof.length.toString(16).padStart(2, "0")}`,
+      ...test.storageProof,
+    ]);
+    await expect(verifier.verifyZkTrieProof(test.account, test.storage, proof)).revertedWith("Invalid leaf node hash");
+
+    // Invalid KeyPreimage length in account proof
+    test.storageProof[15] =
+      "0x0126ae15b478408eb45ea8b6f61aad1345f2b6257efd1acc4a6024b26f664c98240101000000000000000000000000000000000000000000000000000111346048bf18a14a219505174b0709a2a1997fe9797cb89648a93f17ce0096cbc1a6ed52b73170b96a";
+    proof = concat([
+      `0x${test.accountProof.length.toString(16).padStart(2, "0")}`,
+      ...test.accountProof,
+      `0x${test.storageProof.length.toString(16).padStart(2, "0")}`,
+      ...test.storageProof,
+    ]);
+    await expect(verifier.verifyZkTrieProof(test.account, test.storage, proof)).revertedWith(
+      "Invalid KeyPreimage length"
+    );
+
+    // Invalid KeyPreimage in account proof
+    test.storageProof[15] =
+      "0x0126ae15b478408eb45ea8b6f61aad1345f2b6257efd1acc4a6024b26f664c98240101000000000000000000000000000000000000000000000000000111346048bf18a14a209505174b0709a2a1997fe9797cb89648a93f17ce0096cbc1a6ed52b73170b97a";
+    proof = concat([
+      `0x${test.accountProof.length.toString(16).padStart(2, "0")}`,
+      ...test.accountProof,
+      `0x${test.storageProof.length.toString(16).padStart(2, "0")}`,
+      ...test.storageProof,
+    ]);
+    await expect(verifier.verifyZkTrieProof(test.account, test.storage, proof)).revertedWith("Invalid KeyPreimage");
+  });
+
+  it("should revert, when proof length mismatch", async () => {
+    const test = testcases[0];
+    const proof = concat([
+      `0x${test.accountProof.length.toString(16).padStart(2, "0")}`,
+      ...test.accountProof,
+      `0x${test.storageProof.length.toString(16).padStart(2, "0")}`,
+      ...test.storageProof,
+      "0x00",
+    ]);
+    await expect(verifier.verifyZkTrieProof(test.account, test.storage, proof)).revertedWith("Proof length mismatch");
+  });
 });
