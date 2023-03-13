@@ -374,7 +374,7 @@ func (m *Manager) CollectProofs(sess *session) {
 			finished, validRollers := sess.isRollersFinished()
 
 			//When all rollers have finished submitting their tasks, select a winner within rollers with valid proof, and return, terminate the for loop.
-			if finished {
+			if finished && len(validRollers) > 0 {
 				//Select a random index for this slice.
 				randIndex := mathrand.Intn(len(validRollers))
 				_ = validRollers[randIndex]
@@ -549,6 +549,8 @@ func (m *Manager) IsRollerIdle(hexPk string) bool {
 }
 
 func (m *Manager) addFailedSession(sess *session, errMsg string) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	m.failedSessionInfos[sess.info.ID] = newSessionInfo(sess, types.ProvingTaskFailed, errMsg, true)
 }
 
