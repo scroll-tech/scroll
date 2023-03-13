@@ -3,16 +3,14 @@ name: Coordinator
 on:
   push:
     branches:
-      - main
-      - staging
+      - develop
       - alpha
     paths:
       - 'coordinator/**'
       - '.github/workflows/coordinator.yml'
   pull_request:
     branches:
-      - main
-      - staging
+      - develop
       - alpha
     paths:
       - 'coordinator/**'

@@ -4,10 +4,9 @@ on:
   push:
     branches:
       - master
-      - main
       - prod
       - release/*
-      - staging
+      - develop
       - alpha
     paths:
       - 'contracts/**'
@@ -15,10 +14,9 @@ on:
   pull_request:
     branches:
       - master
-      - main
       - prod
       - release/*
-      - staging
+      - develop
       - alpha
     paths:
       - 'contracts/**'

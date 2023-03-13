@@ -3,16 +3,14 @@ name: Database
 on:
   push:
     branches:
-      - main
-      - staging
+      - develop
       - alpha
     paths:
       - 'database/**'
       - '.github/workflows/database.yml'
   pull_request:
     branches:
-      - main
-      - staging
+      - develop
       - alpha
     paths:
       - 'database/**'

@@ -3,16 +3,14 @@ name: Common
 on:
   push:
     branches:
-      - main
-      - staging
+      - develop
       - alpha
     paths:
       - 'common/**'
       - '.github/workflows/common.yml'
   pull_request:
     branches:
-      - main
-      - staging
+      - develop
       - alpha
     paths:
       - 'common/**'

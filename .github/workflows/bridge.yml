@@ -3,16 +3,14 @@ name: Bridge
 on:
   push:
     branches:
-      - main
-      - staging
+      - develop
       - alpha
     paths:
       - 'bridge/**'
       - '.github/workflows/bridge.yml'
   pull_request:
     branches:
-      - main
-      - staging
+      - develop
       - alpha
     paths:
       - 'bridge/**'
