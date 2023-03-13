@@ -353,7 +353,6 @@ func (m *Manager) CollectProofs(sess *session) {
 			}
 			// Ensure we got at least one proof before selecting a winner.
 			if len(participatingRollers) == 0 {
-				m.mu.Lock()
 				// record failed session.
 				errMsg := "proof generation session ended without receiving any valid proofs"
 				m.addFailedSession(sess, errMsg)
@@ -366,7 +365,6 @@ func (m *Manager) CollectProofs(sess *session) {
 					log.Error("fail to reset task_status as Unassigned", "id", sess.info.ID, "err", err)
 				}
 				coordinatorSessionsTimeoutTotalCounter.Inc(1)
-				m.mu.Unlock()
 				return
 			}
 
@@ -567,6 +565,8 @@ func (m *Manager) IsRollerIdle(hexPk string) bool {
 }
 
 func (m *Manager) addFailedSession(sess *session, errMsg string) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	m.failedSessionInfos[sess.info.ID] = newSessionInfo(sess, types.ProvingTaskFailed, errMsg, true)
 }
 

@@ -30,6 +30,7 @@ import (
 var (
 	bridgeL2MsgsSyncHeightGauge      = geth_metrics.NewRegisteredGauge("bridge/l2/msgs/sync/height", metrics.ScrollRegistry)
 	bridgeL2TracesFetchedHeightGauge = geth_metrics.NewRegisteredGauge("bridge/l2/traces/fetched/height", metrics.ScrollRegistry)
+	bridgeL2TracesFetchedGapGauge    = geth_metrics.NewRegisteredGauge("bridge/l2/traces/fetched/gap", metrics.ScrollRegistry)
 
 	bridgeL2MsgsSentEventsTotalCounter    = geth_metrics.NewRegisteredCounter("bridge/l2/msgs/sent/events/total", metrics.ScrollRegistry)
 	bridgeL2MsgsAppendEventsTotalCounter  = geth_metrics.NewRegisteredCounter("bridge/l2/msgs/append/events/total", metrics.ScrollRegistry)
@@ -240,6 +241,7 @@ func (w *WatcherClient) tryFetchRunningMissingBlocks(ctx context.Context, blockH
 			return
 		}
 		bridgeL2TracesFetchedHeightGauge.Update(int64(to))
+		bridgeL2TracesFetchedGapGauge.Update(int64(blockHeight - to))
 	}
 }
 
