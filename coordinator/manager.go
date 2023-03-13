@@ -339,7 +339,6 @@ func (m *Manager) CollectProofs(sess *session) {
 		select {
 		//Execute after timeout, set in config.json. Consider all rollers failed.
 		case <-time.After(time.Duration(m.cfg.CollectionTime) * time.Minute):
-			m.mu.Lock()
 			// record failed session.
 			errMsg := "proof generation session ended without receiving any valid proofs"
 			m.addFailedSession(sess, errMsg)
@@ -351,7 +350,6 @@ func (m *Manager) CollectProofs(sess *session) {
 			if err := m.orm.UpdateProvingStatus(sess.info.ID, types.ProvingTaskFailed); err != nil {
 				log.Error("fail to reset task_status as Unassigned", "id", sess.info.ID, "err", err)
 			}
-			m.mu.Unlock()
 			return
 
 		//Execute after one of the roller finishes sending proof, return early if all rollers had sent results.
@@ -370,7 +368,7 @@ func (m *Manager) CollectProofs(sess *session) {
 			finished, validRollers := sess.isRollersFinished()
 
 			//When all rollers have finished submitting their tasks, select a winner within rollers with valid proof, and return, terminate the for loop.
-			if finished {
+			if finished && len(validRollers) > 0 {
 				//Select a random index for this slice.
 				randIndex := mathrand.Intn(len(validRollers))
 				_ = validRollers[randIndex]
@@ -545,6 +543,8 @@ func (m *Manager) IsRollerIdle(hexPk string) bool {
 }
 
 func (m *Manager) addFailedSession(sess *session, errMsg string) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	m.failedSessionInfos[sess.info.ID] = newSessionInfo(sess, types.ProvingTaskFailed, errMsg, true)
 }
 
