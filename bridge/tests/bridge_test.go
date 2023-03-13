@@ -26,11 +26,7 @@ var (
 
 	// private key
 	privateKey *ecdsa.PrivateKey
-
-	// docker consider handler.
-	l1gethImg docker.ImgInstance
-	l2gethImg docker.ImgInstance
-	dbImg     docker.ImgInstance
+	base       *docker.App
 
 	// clients
 	l1Client *ethclient.Client
@@ -52,6 +48,14 @@ var (
 	l2MessengerInstance *mock_bridge.MockBridgeL2
 	l2MessengerAddress  common.Address
 )
+
+func TestMain(m *testing.M) {
+	base = docker.NewDockerApp()
+
+	m.Run()
+
+	base.Free()
+}
 
 func setupEnv(t *testing.T) {
 	var err error
@@ -75,20 +79,18 @@ func setupEnv(t *testing.T) {
 	cfg.L2Config.RelayerConfig.MessageSenderPrivateKeys = []*ecdsa.PrivateKey{messagePrivateKey}
 	cfg.L2Config.RelayerConfig.RollupSenderPrivateKeys = []*ecdsa.PrivateKey{rollupPrivateKey}
 	cfg.L2Config.RelayerConfig.GasOracleSenderPrivateKeys = []*ecdsa.PrivateKey{gasOraclePrivateKey}
+	base.RunImages(t)
 
 	// Create l1geth container.
-	l1gethImg = docker.NewTestL1Docker(t)
-	cfg.L2Config.RelayerConfig.SenderConfig.Endpoint = l1gethImg.Endpoint()
-	cfg.L1Config.Endpoint = l1gethImg.Endpoint()
+	cfg.L2Config.RelayerConfig.SenderConfig.Endpoint = base.L1GethEndpoint()
+	cfg.L1Config.Endpoint = base.L1GethEndpoint()
 
 	// Create l2geth container.
-	l2gethImg = docker.NewTestL2Docker(t)
-	cfg.L1Config.RelayerConfig.SenderConfig.Endpoint = l2gethImg.Endpoint()
-	cfg.L2Config.Endpoint = l2gethImg.Endpoint()
+	cfg.L1Config.RelayerConfig.SenderConfig.Endpoint = base.L2GethEndpoint()
+	cfg.L2Config.Endpoint = base.L2GethEndpoint()
 
 	// Create db container.
-	dbImg = docker.NewTestDBDocker(t, cfg.DBConfig.DriverName)
-	cfg.DBConfig.DSN = dbImg.Endpoint()
+	cfg.DBConfig.DSN = base.DBEndpoint()
 
 	// Create l1geth and l2geth client.
 	l1Client, err = ethclient.Dial(cfg.L1Config.Endpoint)
@@ -141,18 +143,6 @@ func transferEther(t *testing.T, auth *bind.TransactOpts, client *ethclient.Clie
 	assert.NoError(t, err)
 	if receipt.Status != types.ReceiptStatusSuccessful {
 		t.Fatalf("Call failed")
-	}
-}
-
-func free(t *testing.T) {
-	if dbImg != nil {
-		assert.NoError(t, dbImg.Stop())
-	}
-	if l1gethImg != nil {
-		assert.NoError(t, l1gethImg.Stop())
-	}
-	if l2gethImg != nil {
-		assert.NoError(t, l2gethImg.Stop())
 	}
 }
 
@@ -217,7 +207,4 @@ func TestFunction(t *testing.T) {
 	t.Run("TestImportL1GasPrice", testImportL1GasPrice)
 	t.Run("TestImportL2GasPrice", testImportL2GasPrice)
 
-	t.Cleanup(func() {
-		free(t)
-	})
 }

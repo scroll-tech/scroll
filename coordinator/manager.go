@@ -325,53 +325,38 @@ func (m *Manager) handleZkProof(pk string, msg *message.ProofDetail) error {
 
 // CollectProofs collects proofs corresponding to a proof generation session.
 func (m *Manager) CollectProofs(sess *session) {
+	//Cleanup roller sessions before return.
+	defer func() {
+		// TODO: remove the clean-up, rollers report healthy status.
+		m.mu.Lock()
+		for pk := range sess.info.Rollers {
+			m.freeTaskIDForRoller(pk, sess.info.ID)
+		}
+		delete(m.sessions, sess.info.ID)
+		m.mu.Unlock()
+	}()
 	for {
 		select {
+		//Execute after timeout, set in config.json. Consider all rollers failed.
 		case <-time.After(time.Duration(m.cfg.CollectionTime) * time.Minute):
-			m.mu.Lock()
-			defer func() {
-				// TODO: remove the clean-up, rollers report healthy status.
-				for pk := range sess.info.Rollers {
-					m.freeTaskIDForRoller(pk, sess.info.ID)
-				}
-				delete(m.sessions, sess.info.ID)
-				m.mu.Unlock()
-			}()
-
-			// Pick a random winner.
-			// First, round up the keys that actually sent in a valid proof.
-			var participatingRollers []string
-			for pk, roller := range sess.info.Rollers {
-				if roller.Status == types.RollerProofValid {
-					participatingRollers = append(participatingRollers, pk)
-				}
+			// record failed session.
+			errMsg := "proof generation session ended without receiving any valid proofs"
+			m.addFailedSession(sess, errMsg)
+			log.Warn(errMsg, "session id", sess.info.ID)
+			// Set status as skipped.
+			// Note that this is only a workaround for testnet here.
+			// TODO: In real cases we should reset to orm.ProvingTaskUnassigned
+			// so as to re-distribute the task in the future
+			if err := m.orm.UpdateProvingStatus(sess.info.ID, types.ProvingTaskFailed); err != nil {
+				log.Error("fail to reset task_status as Unassigned", "id", sess.info.ID, "err", err)
 			}
-			// Ensure we got at least one proof before selecting a winner.
-			if len(participatingRollers) == 0 {
-				// record failed session.
-				errMsg := "proof generation session ended without receiving any valid proofs"
-				m.addFailedSession(sess, errMsg)
-				log.Warn(errMsg, "session id", sess.info.ID)
-				// Set status as skipped.
-				// Note that this is only a workaround for testnet here.
-				// TODO: In real cases we should reset to orm.ProvingTaskUnassigned
-				// so as to re-distribute the task in the future
-				if err := m.orm.UpdateProvingStatus(sess.info.ID, types.ProvingTaskFailed); err != nil {
-					log.Error("fail to reset task_status as Unassigned", "id", sess.info.ID, "err", err)
-				}
-				return
-			}
-
-			// Now, select a random index for this slice.
-			randIndex := mathrand.Intn(len(participatingRollers))
-			_ = participatingRollers[randIndex]
-			// TODO: reward winner
 			return
 
+		//Execute after one of the roller finishes sending proof, return early if all rollers had sent results.
 		case ret := <-sess.finishChan:
 			m.mu.Lock()
 			sess.info.Rollers[ret.pk].Status = ret.status
-			if m.isSessionFailed(sess.info) {
+			if sess.isSessionFailed() {
 				if err := m.orm.UpdateProvingStatus(ret.id, types.ProvingTaskFailed); err != nil {
 					log.Error("failed to update proving_status as failed", "msg.ID", ret.id, "error", err)
 				}
@@ -379,13 +364,44 @@ func (m *Manager) CollectProofs(sess *session) {
 			if err := m.orm.SetSessionInfo(sess.info); err != nil {
 				log.Error("db set session info fail", "pk", ret.pk, "error", err)
 			}
+			//Check if all rollers have finished their tasks, and rollers with valid results are indexed by public key.
+			finished, validRollers := sess.isRollersFinished()
+
+			//When all rollers have finished submitting their tasks, select a winner within rollers with valid proof, and return, terminate the for loop.
+			if finished {
+				//Select a random index for this slice.
+				randIndex := mathrand.Intn(len(validRollers))
+				_ = validRollers[randIndex]
+				// TODO: reward winner
+				m.mu.Unlock()
+				return
+			}
 			m.mu.Unlock()
 		}
 	}
 }
 
-func (m *Manager) isSessionFailed(info *types.SessionInfo) bool {
-	for _, roller := range info.Rollers {
+// isRollersFinished checks if all rollers have finished submitting proofs, check their validity, and record rollers who produce valid proof.
+// When rollersLeft reaches 0, it means all rollers have finished their tasks.
+// validRollers also records the public keys of rollers who have finished their tasks correctly as index.
+func (s *session) isRollersFinished() (bool, []string) {
+	var validRollers []string
+	for pk, roller := range s.info.Rollers {
+		if roller.Status == types.RollerProofValid {
+			validRollers = append(validRollers, pk)
+			continue
+		}
+		if roller.Status == types.RollerProofInvalid {
+			continue
+		}
+		// Some rollers are still proving.
+		return false, nil
+	}
+	return true, validRollers
+}
+
+func (s *session) isSessionFailed() bool {
+	for _, roller := range s.info.Rollers {
 		if roller.Status != types.RollerProofInvalid {
 			return false
 		}

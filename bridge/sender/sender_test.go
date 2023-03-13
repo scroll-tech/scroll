@@ -28,21 +28,28 @@ const TXBatch = 50
 var (
 	privateKeys []*ecdsa.PrivateKey
 	cfg         *config.Config
-	l2gethImg   docker.ImgInstance
+	base        *docker.App
 )
+
+func TestMain(m *testing.M) {
+	base = docker.NewDockerApp()
+
+	m.Run()
+
+	base.Free()
+}
 
 func setupEnv(t *testing.T) {
 	var err error
 	cfg, err = config.NewConfig("../config.json")
 	assert.NoError(t, err)
-
+	base.RunImages(t)
 	priv, err := crypto.HexToECDSA("1212121212121212121212121212121212121212121212121212121212121212")
 	assert.NoError(t, err)
 	// Load default private key.
 	privateKeys = []*ecdsa.PrivateKey{priv}
 
-	l2gethImg = docker.NewTestL2Docker(t)
-	cfg.L1Config.RelayerConfig.SenderConfig.Endpoint = l2gethImg.Endpoint()
+	cfg.L1Config.RelayerConfig.SenderConfig.Endpoint = base.L2GethEndpoint()
 }
 
 func TestSender(t *testing.T) {
@@ -52,11 +59,6 @@ func TestSender(t *testing.T) {
 	t.Run("test 1 account sender", func(t *testing.T) { testBatchSender(t, 1) })
 	t.Run("test 3 account sender", func(t *testing.T) { testBatchSender(t, 3) })
 	t.Run("test 8 account sender", func(t *testing.T) { testBatchSender(t, 8) })
-
-	// Teardown
-	t.Cleanup(func() {
-		assert.NoError(t, l2gethImg.Stop())
-	})
 }
 
 func testBatchSender(t *testing.T, batchSize int) {

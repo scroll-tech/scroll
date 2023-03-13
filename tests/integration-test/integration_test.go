@@ -11,9 +11,12 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+
+	"scroll-tech/common/docker"
 )
 
 func TestIntegration(t *testing.T) {
+	base = docker.NewDockerApp()
 	setupEnv(t)
 
 	// test db_cli migrate cmd.
