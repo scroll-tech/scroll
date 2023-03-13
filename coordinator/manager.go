@@ -330,48 +330,31 @@ func (m *Manager) handleZkProof(pk string, msg *message.ProofDetail) error {
 
 // CollectProofs collects proofs corresponding to a proof generation session.
 func (m *Manager) CollectProofs(sess *session) {
+	//Cleanup roller sessions before return.
+	defer func() {
+		// TODO: remove the clean-up, rollers report healthy status.
+		m.mu.Lock()
+		for pk := range sess.info.Rollers {
+			m.freeTaskIDForRoller(pk, sess.info.ID)
+		}
+		delete(m.sessions, sess.info.ID)
+		m.mu.Unlock()
+	}()
 	for {
 		select {
+		//Execute after timeout, set in config.json. Consider all rollers failed.
 		case <-time.After(time.Duration(m.cfg.CollectionTime) * time.Minute):
-			m.mu.Lock()
-			defer func() {
-				// TODO: remove the clean-up, rollers report healthy status.
-				for pk := range sess.info.Rollers {
-					m.freeTaskIDForRoller(pk, sess.info.ID)
-				}
-				delete(m.sessions, sess.info.ID)
-				m.mu.Unlock()
-			}()
-
-			// Pick a random winner.
-			// First, round up the keys that actually sent in a valid proof.
-			var participatingRollers []string
-			for pk, roller := range sess.info.Rollers {
-				if roller.Status == types.RollerProofValid {
-					participatingRollers = append(participatingRollers, pk)
-				}
+			// record failed session.
+			errMsg := "proof generation session ended without receiving any valid proofs"
+			m.addFailedSession(sess, errMsg)
+			log.Warn(errMsg, "session id", sess.info.ID)
+			// Set status as skipped.
+			// Note that this is only a workaround for testnet here.
+			// TODO: In real cases we should reset to orm.ProvingTaskUnassigned
+			// so as to re-distribute the task in the future
+			if err := m.orm.UpdateProvingStatus(sess.info.ID, types.ProvingTaskFailed); err != nil {
+				log.Error("fail to reset task_status as Unassigned", "id", sess.info.ID, "err", err)
 			}
-			// Ensure we got at least one proof before selecting a winner.
-			if len(participatingRollers) == 0 {
-				// record failed session.
-				errMsg := "proof generation session ended without receiving any valid proofs"
-				m.addFailedSession(sess, errMsg)
-				log.Warn(errMsg, "session id", sess.info.ID)
-				// Set status as skipped.
-				// Note that this is only a workaround for testnet here.
-				// TODO: In real cases we should reset to orm.ProvingTaskUnassigned
-				// so as to re-distribute the task in the future
-				if err := m.orm.UpdateProvingStatus(sess.info.ID, types.ProvingTaskFailed); err != nil {
-					log.Error("fail to reset task_status as Unassigned", "id", sess.info.ID, "err", err)
-				}
-				coordinatorSessionsTimeoutTotalCounter.Inc(1)
-				return
-			}
-
-			// Now, select a random index for this slice.
-			randIndex := mathrand.Intn(len(participatingRollers))
-			_ = participatingRollers[randIndex]
-			// TODO: reward winner
 			return
 
 		//Execute after one of the roller finishes sending proof, return early if all rollers had sent results.
