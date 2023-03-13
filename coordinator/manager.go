@@ -353,8 +353,8 @@ func (m *Manager) CollectProofs(sess *session) {
 			}
 			// Ensure we got at least one proof before selecting a winner.
 			if len(participatingRollers) == 0 {
+				m.mu.Lock()
 				// record failed session.
-				coordinatorSessionsTimeoutTotalCounter.Inc(1)
 				errMsg := "proof generation session ended without receiving any valid proofs"
 				m.addFailedSession(sess, errMsg)
 				log.Warn(errMsg, "session id", sess.info.ID)
@@ -365,6 +365,8 @@ func (m *Manager) CollectProofs(sess *session) {
 				if err := m.orm.UpdateProvingStatus(sess.info.ID, types.ProvingTaskFailed); err != nil {
 					log.Error("fail to reset task_status as Unassigned", "id", sess.info.ID, "err", err)
 				}
+				coordinatorSessionsTimeoutTotalCounter.Inc(1)
+				m.mu.Unlock()
 				return
 			}
 
@@ -374,10 +376,11 @@ func (m *Manager) CollectProofs(sess *session) {
 			// TODO: reward winner
 			return
 
+		//Execute after one of the roller finishes sending proof, return early if all rollers had sent results.
 		case ret := <-sess.finishChan:
 			m.mu.Lock()
 			sess.info.Rollers[ret.pk].Status = ret.status
-			if m.isSessionFailed(sess.info) {
+			if sess.isSessionFailed() {
 				if err := m.orm.UpdateProvingStatus(ret.id, types.ProvingTaskFailed); err != nil {
 					log.Error("failed to update proving_status as failed", "msg.ID", ret.id, "error", err)
 				}
@@ -385,13 +388,44 @@ func (m *Manager) CollectProofs(sess *session) {
 			if err := m.orm.SetSessionInfo(sess.info); err != nil {
 				log.Error("db set session info fail", "pk", ret.pk, "error", err)
 			}
+			//Check if all rollers have finished their tasks, and rollers with valid results are indexed by public key.
+			finished, validRollers := sess.isRollersFinished()
+
+			//When all rollers have finished submitting their tasks, select a winner within rollers with valid proof, and return, terminate the for loop.
+			if finished && len(validRollers) > 0 {
+				//Select a random index for this slice.
+				randIndex := mathrand.Intn(len(validRollers))
+				_ = validRollers[randIndex]
+				// TODO: reward winner
+				m.mu.Unlock()
+				return
+			}
 			m.mu.Unlock()
 		}
 	}
 }
 
-func (m *Manager) isSessionFailed(info *types.SessionInfo) bool {
-	for _, roller := range info.Rollers {
+// isRollersFinished checks if all rollers have finished submitting proofs, check their validity, and record rollers who produce valid proof.
+// When rollersLeft reaches 0, it means all rollers have finished their tasks.
+// validRollers also records the public keys of rollers who have finished their tasks correctly as index.
+func (s *session) isRollersFinished() (bool, []string) {
+	var validRollers []string
+	for pk, roller := range s.info.Rollers {
+		if roller.Status == types.RollerProofValid {
+			validRollers = append(validRollers, pk)
+			continue
+		}
+		if roller.Status == types.RollerProofInvalid {
+			continue
+		}
+		// Some rollers are still proving.
+		return false, nil
+	}
+	return true, validRollers
+}
+
+func (s *session) isSessionFailed() bool {
+	for _, roller := range s.info.Rollers {
 		if roller.Status != types.RollerProofInvalid {
 			return false
 		}
