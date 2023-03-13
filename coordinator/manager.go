@@ -339,6 +339,7 @@ func (m *Manager) CollectProofs(sess *session) {
 		select {
 		//Execute after timeout, set in config.json. Consider all rollers failed.
 		case <-time.After(time.Duration(m.cfg.CollectionTime) * time.Minute):
+			m.mu.Lock()
 			// record failed session.
 			errMsg := "proof generation session ended without receiving any valid proofs"
 			m.addFailedSession(sess, errMsg)
@@ -350,6 +351,7 @@ func (m *Manager) CollectProofs(sess *session) {
 			if err := m.orm.UpdateProvingStatus(sess.info.ID, types.ProvingTaskFailed); err != nil {
 				log.Error("fail to reset task_status as Unassigned", "id", sess.info.ID, "err", err)
 			}
+			m.mu.Unlock()
 			return
 
 		//Execute after one of the roller finishes sending proof, return early if all rollers had sent results.
