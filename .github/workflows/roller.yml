@@ -3,6 +3,8 @@ name: Roller
 on:
   push:
     branches:
+      - main
+      - staging
       - develop
       - alpha
     paths:
@@ -10,6 +12,8 @@ on:
       - '.github/workflows/roller.yml'
   pull_request:
     branches:
+      - main
+      - staging
       - develop
       - alpha
     paths:

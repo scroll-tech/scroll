@@ -6,6 +6,7 @@ on:
       - master
       - prod
       - release/*
+      - staging
       - develop
       - alpha
     paths:
@@ -16,6 +17,7 @@ on:
       - master
       - prod
       - release/*
+      - staging
       - develop
       - alpha
     paths:
