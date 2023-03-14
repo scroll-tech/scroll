@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"math/big"
+	"time"
 
 	// not sure if this will make problems when relay with l1geth
 
@@ -204,8 +205,8 @@ func (r *Layer1Relayer) Start() {
 	go func() {
 		ctx, cancel := context.WithCancel(r.ctx)
 
-		go utils.Loop(ctx, 2, r.ProcessSavedEvents)
-		go utils.Loop(ctx, 2, r.ProcessGasPriceOracle)
+		go utils.Loop(ctx, 2*time.Second, r.ProcessSavedEvents)
+		go utils.Loop(ctx, 2*time.Second, r.ProcessGasPriceOracle)
 
 		go func(ctx context.Context) {
 			for {

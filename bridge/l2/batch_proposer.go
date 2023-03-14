@@ -115,7 +115,7 @@ func (p *BatchProposer) Start() {
 
 		ctx, cancel := context.WithCancel(p.ctx)
 
-		go utils.Loop(ctx, 2, func() {
+		go utils.Loop(ctx, 2*time.Second, func() {
 			p.tryProposeBatch()
 			p.tryCommitBatches()
 		})

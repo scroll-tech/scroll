@@ -7,6 +7,7 @@ import (
 	"math/big"
 	"runtime"
 	"sync"
+	"time"
 
 	// not sure if this will make problems when relay with l1geth
 
@@ -495,9 +496,9 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 func (r *Layer2Relayer) Start() {
 	go func() {
 		ctx, cancel := context.WithCancel(r.ctx)
-		go cutil.Loop(ctx, 1, r.ProcessSavedEvents)
-		go cutil.Loop(ctx, 1, r.ProcessCommittedBatches)
-		go cutil.Loop(ctx, 1, r.ProcessGasPriceOracle)
+		go cutil.Loop(ctx, time.Second, r.ProcessSavedEvents)
+		go cutil.Loop(ctx, time.Second, r.ProcessCommittedBatches)
+		go cutil.Loop(ctx, time.Second, r.ProcessGasPriceOracle)
 
 		go func(ctx context.Context) {
 			for {
