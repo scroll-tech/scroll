@@ -6,7 +6,7 @@ import (
 )
 
 var (
-	tag = "alpha-v1.16"
+	tag = "alpha-v1.19"
 	// ZkVersion is version of https://github.com/scroll-tech/scroll-zkevm
 	ZkVersion = "alpha-v1.0"
 )
