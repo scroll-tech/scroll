@@ -7,7 +7,6 @@ import (
 	"math/big"
 	"runtime"
 	"sync"
-	"time"
 
 	// not sure if this will make problems when relay with l1geth
 
@@ -27,6 +26,7 @@ import (
 	"scroll-tech/bridge/config"
 	"scroll-tech/bridge/sender"
 	"scroll-tech/bridge/utils"
+	cutil "scroll-tech/common/utils"
 )
 
 const (
@@ -492,26 +492,11 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 
 // Start the relayer process
 func (r *Layer2Relayer) Start() {
-	loop := func(ctx context.Context, f func()) {
-		ticker := time.NewTicker(time.Second)
-		defer ticker.Stop()
-
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case <-ticker.C:
-				f()
-			}
-		}
-	}
-
 	go func() {
 		ctx, cancel := context.WithCancel(r.ctx)
-
-		go loop(ctx, r.ProcessSavedEvents)
-		go loop(ctx, r.ProcessCommittedBatches)
-		go loop(ctx, r.ProcessGasPriceOracle)
+		go cutil.Loop(ctx, 1, r.ProcessSavedEvents)
+		go cutil.Loop(ctx, 1, r.ProcessCommittedBatches)
+		go cutil.Loop(ctx, 1, r.ProcessGasPriceOracle)
 
 		go func(ctx context.Context) {
 			for {

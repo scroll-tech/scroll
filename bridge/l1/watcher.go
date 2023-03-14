@@ -3,7 +3,6 @@ package l1
 import (
 	"context"
 	"math/big"
-	"time"
 
 	geth "github.com/scroll-tech/go-ethereum"
 	"github.com/scroll-tech/go-ethereum/accounts/abi"
@@ -21,6 +20,7 @@ import (
 
 	bridge_abi "scroll-tech/bridge/abi"
 	"scroll-tech/bridge/utils"
+	cutil "scroll-tech/common/utils"
 )
 
 var (
@@ -114,51 +114,27 @@ func (w *Watcher) Start() {
 	go func() {
 		ctx, cancel := context.WithCancel(w.ctx)
 
-		go func(ctx context.Context) {
-			ticker := time.NewTicker(2 * time.Second)
-			defer ticker.Stop()
-
-			for {
-				select {
-				case <-ctx.Done():
-					return
-
-				case <-ticker.C:
-					number, err := utils.GetLatestConfirmedBlockNumber(w.ctx, w.client, w.confirmations)
-					if err != nil {
-						log.Error("failed to get block number", "err", err)
-						continue
-					}
-
-					if err := w.FetchBlockHeader(number); err != nil {
-						log.Error("Failed to fetch L1 block header", "lastest", number, "err", err)
-					}
+		go cutil.LoopWithContext(ctx, 2, func(ctx context.Context) {
+			number, err := utils.GetLatestConfirmedBlockNumber(w.ctx, w.client, w.confirmations)
+			if err != nil {
+				log.Error("failed to get block number", "err", err)
+			} else {
+				if err := w.FetchBlockHeader(number); err != nil {
+					log.Error("Failed to fetch L1 block header", "lastest", number, "err", err)
 				}
 			}
-		}(ctx)
+		})
 
-		go func(ctx context.Context) {
-			ticker := time.NewTicker(2 * time.Second)
-			defer ticker.Stop()
-
-			for {
-				select {
-				case <-ctx.Done():
-					return
-
-				case <-ticker.C:
-					number, err := utils.GetLatestConfirmedBlockNumber(w.ctx, w.client, w.confirmations)
-					if err != nil {
-						log.Error("failed to get block number", "err", err)
-						continue
-					}
-
-					if err := w.FetchContractEvent(number); err != nil {
-						log.Error("Failed to fetch bridge contract", "err", err)
-					}
+		go cutil.LoopWithContext(ctx, 2, func(ctx context.Context) {
+			number, err := utils.GetLatestConfirmedBlockNumber(w.ctx, w.client, w.confirmations)
+			if err != nil {
+				log.Error("failed to get block number", "err", err)
+			} else {
+				if err := w.FetchContractEvent(number); err != nil {
+					log.Error("Failed to fetch bridge contract", "err", err)
 				}
 			}
-		}(ctx)
+		})
 
 		<-w.stopCh
 		cancel()
