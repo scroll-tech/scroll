@@ -34,6 +34,9 @@ abstract contract L1GatewayTestBase is DSTestPlus {
   event RelayedMessage(bytes32 indexed messageHash);
   event FailedRelayedMessage(bytes32 indexed messageHash);
 
+  // pay 0.1 extra ETH to test refund
+  uint256 internal constant extraValue = 1e17;
+
   L1ScrollMessenger internal l1Messenger;
   L1MessageQueue internal messageQueue;
   L2GasPriceOracle internal gasOracle;

@@ -34,9 +34,7 @@ import (
 )
 
 var (
-	l1gethImg docker.ImgInstance
-	l2gethImg docker.ImgInstance
-	dbImg     docker.ImgInstance
+	base *docker.App
 
 	timestamp int
 	wsPort    int64
@@ -51,9 +49,7 @@ var (
 
 func setupEnv(t *testing.T) {
 	// Start l1geth l2geth and postgres.
-	l1gethImg = docker.NewTestL1Docker(t)
-	l2gethImg = docker.NewTestL2Docker(t)
-	dbImg = docker.NewTestDBDocker(t, "postgres")
+	base.RunImages(t)
 
 	// Create a random ws port.
 	port, _ := rand.Int(rand.Reader, big.NewInt(2000))
@@ -68,9 +64,7 @@ func setupEnv(t *testing.T) {
 }
 
 func free(t *testing.T) {
-	assert.NoError(t, l1gethImg.Stop())
-	assert.NoError(t, l2gethImg.Stop())
-	assert.NoError(t, dbImg.Stop())
+	base.Free()
 
 	// Delete temporary files.
 	assert.NoError(t, os.Remove(bridgeFile))
@@ -134,17 +128,11 @@ func mockBridgeConfig(t *testing.T) string {
 	cfg, err := bridgeConfig.NewConfig("../../bridge/config.json")
 	assert.NoError(t, err)
 
-	if l1gethImg != nil {
-		cfg.L1Config.Endpoint = l1gethImg.Endpoint()
-		cfg.L2Config.RelayerConfig.SenderConfig.Endpoint = l1gethImg.Endpoint()
-	}
-	if l2gethImg != nil {
-		cfg.L2Config.Endpoint = l2gethImg.Endpoint()
-		cfg.L1Config.RelayerConfig.SenderConfig.Endpoint = l2gethImg.Endpoint()
-	}
-	if dbImg != nil {
-		cfg.DBConfig.DSN = dbImg.Endpoint()
-	}
+	cfg.L1Config.Endpoint = base.L1GethEndpoint()
+	cfg.L2Config.RelayerConfig.SenderConfig.Endpoint = base.L1GethEndpoint()
+	cfg.L2Config.Endpoint = base.L2GethEndpoint()
+	cfg.L1Config.RelayerConfig.SenderConfig.Endpoint = base.L2GethEndpoint()
+	cfg.DBConfig.DSN = base.DBEndpoint()
 
 	// Store changed bridge config into a temp file.
 	data, err := json.Marshal(cfg)
@@ -161,13 +149,10 @@ func mockCoordinatorConfig(t *testing.T) string {
 	assert.NoError(t, err)
 
 	cfg.RollerManagerConfig.Verifier.MockMode = true
-	if dbImg != nil {
-		cfg.DBConfig.DSN = dbImg.Endpoint()
-	}
 
-	if l2gethImg != nil {
-		cfg.L2Config.Endpoint = l2gethImg.Endpoint()
-	}
+	cfg.DBConfig.DSN = base.DBEndpoint()
+
+	cfg.L2Config.Endpoint = base.L2GethEndpoint()
 
 	data, err := json.Marshal(cfg)
 	assert.NoError(t, err)
@@ -182,9 +167,8 @@ func mockCoordinatorConfig(t *testing.T) string {
 func mockDatabaseConfig(t *testing.T) string {
 	cfg, err := database.NewConfig("../../database/config.json")
 	assert.NoError(t, err)
-	if dbImg != nil {
-		cfg.DSN = dbImg.Endpoint()
-	}
+	cfg.DSN = base.DBEndpoint()
+
 	data, err := json.Marshal(cfg)
 	assert.NoError(t, err)
 
