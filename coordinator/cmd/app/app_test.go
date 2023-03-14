@@ -10,10 +10,10 @@ import (
 )
 
 func TestRunCoordinator(t *testing.T) {
-	coordinator := cmd.NewCmd(t, "coordinator-test", "--version")
+	coordinator := cmd.NewCmd("coordinator-test", "--version")
 	defer coordinator.WaitExit()
 
 	// wait result
-	coordinator.ExpectWithTimeout(true, time.Second*3, fmt.Sprintf("coordinator version %s", version.Version))
+	coordinator.ExpectWithTimeout(t, true, time.Second*3, fmt.Sprintf("coordinator version %s", version.Version))
 	coordinator.RunApp(nil)
 }

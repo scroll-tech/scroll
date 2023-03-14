@@ -72,11 +72,11 @@ func (b *App) runDBImage(t *testing.T) {
 // RunDBApp runs DB app with command
 func (b *App) RunDBApp(t *testing.T, option, keyword string) {
 	args := []string{option, "--config", b.dbFile}
-	app := cmd.NewCmd(t, "db_cli-test", args...)
+	app := cmd.NewCmd("db_cli-test", args...)
 	defer app.WaitExit()
 
 	// Wait expect result.
-	app.ExpectWithTimeout(true, time.Second*3, keyword)
+	app.ExpectWithTimeout(t, true, time.Second*3, keyword)
 	app.RunApp(nil)
 }
 
@@ -180,7 +180,7 @@ func (b *App) mockDBConfig() error {
 
 func newTestL1Docker(t *testing.T) ImgInstance {
 	id, _ := rand.Int(rand.Reader, big.NewInt(2000))
-	imgL1geth := NewImgGeth(t, "scroll_l1geth", "", "", 0, l1StartPort+int(id.Int64()))
+	imgL1geth := NewImgGeth("scroll_l1geth", "", "", 0, l1StartPort+int(id.Int64()))
 	assert.NoError(t, imgL1geth.Start())
 
 	// try 3 times to get chainID until is ok.
@@ -199,7 +199,7 @@ func newTestL1Docker(t *testing.T) ImgInstance {
 
 func newTestL2Docker(t *testing.T) ImgInstance {
 	id, _ := rand.Int(rand.Reader, big.NewInt(2000))
-	imgL2geth := NewImgGeth(t, "scroll_l2geth", "", "", 0, l2StartPort+int(id.Int64()))
+	imgL2geth := NewImgGeth("scroll_l2geth", "", "", 0, l2StartPort+int(id.Int64()))
 	assert.NoError(t, imgL2geth.Start())
 
 	// try 3 times to get chainID until is ok.
@@ -218,7 +218,7 @@ func newTestL2Docker(t *testing.T) ImgInstance {
 
 func newTestDBDocker(t *testing.T, driverName string) ImgInstance {
 	id, _ := rand.Int(rand.Reader, big.NewInt(2000))
-	imgDB := NewImgDB(t, driverName, "123456", "test_db", dbStartPort+int(id.Int64()))
+	imgDB := NewImgDB(driverName, "123456", "test_db", dbStartPort+int(id.Int64()))
 	assert.NoError(t, imgDB.Start())
 
 	// try 5 times until the db is ready.

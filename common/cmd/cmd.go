@@ -1,13 +1,12 @@
 package cmd
 
 import (
+	"fmt"
+	cmap "github.com/orcaman/concurrent-map"
 	"os"
 	"os/exec"
 	"strings"
 	"sync"
-	"testing"
-
-	cmap "github.com/orcaman/concurrent-map"
 )
 
 var verbose bool
@@ -23,8 +22,6 @@ type checkFunc func(buf string)
 
 // Cmd struct
 type Cmd struct {
-	*testing.T
-
 	name string
 	args []string
 
@@ -38,9 +35,8 @@ type Cmd struct {
 }
 
 // NewCmd create Cmd instance.
-func NewCmd(t *testing.T, name string, args ...string) *Cmd {
+func NewCmd(name string, args ...string) *Cmd {
 	return &Cmd{
-		T:          t,
 		checkFuncs: cmap.New(),
 		name:       name,
 		args:       args,
@@ -48,40 +44,40 @@ func NewCmd(t *testing.T, name string, args ...string) *Cmd {
 }
 
 // RegistFunc register check func
-func (t *Cmd) RegistFunc(key string, check checkFunc) {
-	t.checkFuncs.Set(key, check)
+func (c *Cmd) RegistFunc(key string, check checkFunc) {
+	c.checkFuncs.Set(key, check)
 }
 
 // UnRegistFunc unregister check func
-func (t *Cmd) UnRegistFunc(key string) {
-	t.checkFuncs.Pop(key)
+func (c *Cmd) UnRegistFunc(key string) {
+	c.checkFuncs.Pop(key)
 }
 
-func (t *Cmd) runCmd() {
-	cmd := exec.Command(t.args[0], t.args[1:]...) //nolint:gosec
-	cmd.Stdout = t
-	cmd.Stderr = t
+func (c *Cmd) runCmd() {
+	cmd := exec.Command(c.args[0], c.args[1:]...) //nolint:gosec
+	cmd.Stdout = c
+	cmd.Stderr = c
 	_ = cmd.Run()
 }
 
 // RunCmd parallel running when parallel is true.
-func (t *Cmd) RunCmd(parallel bool) {
-	t.Log("cmd: ", t.args)
+func (c *Cmd) RunCmd(parallel bool) {
+	fmt.Println("cmd: ", c.args)
 	if parallel {
-		go t.runCmd()
+		go c.runCmd()
 	} else {
-		t.runCmd()
+		c.runCmd()
 	}
 }
 
-func (t *Cmd) Write(data []byte) (int, error) {
+func (c *Cmd) Write(data []byte) (int, error) {
 	out := string(data)
 	if verbose {
-		t.Logf("%s: %v", t.name, out)
+		fmt.Printf("%s: %v", c.name, out)
 	} else if strings.Contains(out, "error") || strings.Contains(out, "warning") {
-		t.Logf("%s: %v", t.name, out)
+		fmt.Printf("%s: %v", c.name, out)
 	}
-	go t.checkFuncs.IterCb(func(_ string, value interface{}) {
+	go c.checkFuncs.IterCb(func(_ string, value interface{}) {
 		check := value.(checkFunc)
 		check(out)
 	})
