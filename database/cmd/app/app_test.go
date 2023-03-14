@@ -10,10 +10,10 @@ import (
 )
 
 func TestRunDatabase(t *testing.T) {
-	dbcli := cmd.NewCmd(t, "db_cli-test", "--version")
+	dbcli := cmd.NewCmd("db_cli-test", "--version")
 	defer dbcli.WaitExit()
 
 	// wait result
-	dbcli.ExpectWithTimeout(true, time.Second*3, fmt.Sprintf("db_cli version %s", version.Version))
+	dbcli.ExpectWithTimeout(t, true, time.Second*3, fmt.Sprintf("db_cli version %s", version.Version))
 	dbcli.RunApp(nil)
 }
