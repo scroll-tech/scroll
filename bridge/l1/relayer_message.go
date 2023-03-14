@@ -8,8 +8,6 @@ import (
 
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/log"
-	"modernc.org/mathutil"
-
 	"scroll-tech/common/types"
 
 	"scroll-tech/bridge/sender"
@@ -20,14 +18,20 @@ func (r *Layer1Relayer) checkSubmittedMessages() error {
 BEGIN:
 	msgs, err := r.db.GetL1Messages(
 		map[string]interface{}{"status": types.MsgSubmitted},
-		fmt.Sprintf("AND height > %d", blockNumber),
-		fmt.Sprintf("ORDER BY height ASC LIMIT %d", 100),
+		fmt.Sprintf("AND height >= %d", blockNumber),
+		fmt.Sprintf("ORDER BY height ASC LIMIT %d", r.cfg.SenderConfig.PendingLimit),
 	)
 	if err != nil || len(msgs) == 0 {
 		return err
 	}
 
+	// Update block number to the latest.
+	blockNumber = msgs[len(msgs)-1].Height
 	for msg := msgs[0]; len(msgs) > 0; { //nolint:staticcheck
+		// Don't operate the latest number's messages, let be operated in the loop.
+		if msg.Height >= blockNumber {
+			break
+		}
 		// If pending txs pool is full, wait a while and retry.
 		if r.messageSender.IsFull() {
 			log.Warn("layer1 sender pending tx reaches pending limit")
@@ -35,8 +39,6 @@ BEGIN:
 			continue
 		}
 		msg, msgs = msgs[0], msgs[1:]
-
-		blockNumber = mathutil.MaxUint64(blockNumber, msg.Height)
 
 		if err = r.messageSender.LoadOrSendTx(
 			common.HexToHash(msg.Layer2Hash),
