@@ -28,7 +28,7 @@ BEGIN:
 	// Update block number to the latest.
 	blockNumber = msgs[len(msgs)-1].Height
 	for msg := msgs[0]; len(msgs) > 0; { //nolint:staticcheck
-		// Don't operate the latest number's messages, let be operated in the loop.
+		// Don't operate the latest number's messages, let be operated in next loop.
 		if msg.Height >= blockNumber {
 			break
 		}
