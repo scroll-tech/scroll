@@ -2,11 +2,12 @@ package cmd
 
 import (
 	"fmt"
-	cmap "github.com/orcaman/concurrent-map"
 	"os"
 	"os/exec"
 	"strings"
 	"sync"
+
+	cmap "github.com/orcaman/concurrent-map"
 )
 
 var verbose bool
