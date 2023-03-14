@@ -114,8 +114,8 @@ func (w *Watcher) Start() {
 	go func() {
 		ctx, cancel := context.WithCancel(w.ctx)
 
-		go cutil.LoopWithContext(ctx, 2, func(ctx context.Context) {
-			number, err := utils.GetLatestConfirmedBlockNumber(w.ctx, w.client, w.confirmations)
+		go cutil.LoopWithContext(ctx, 2, func(subCtx context.Context) {
+			number, err := utils.GetLatestConfirmedBlockNumber(subCtx, w.client, w.confirmations)
 			if err != nil {
 				log.Error("failed to get block number", "err", err)
 			} else {
@@ -125,8 +125,8 @@ func (w *Watcher) Start() {
 			}
 		})
 
-		go cutil.LoopWithContext(ctx, 2, func(ctx context.Context) {
-			number, err := utils.GetLatestConfirmedBlockNumber(w.ctx, w.client, w.confirmations)
+		go cutil.LoopWithContext(ctx, 2, func(subCtx context.Context) {
+			number, err := utils.GetLatestConfirmedBlockNumber(subCtx, w.client, w.confirmations)
 			if err != nil {
 				log.Error("failed to get block number", "err", err)
 			} else {
