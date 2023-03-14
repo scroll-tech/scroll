@@ -50,7 +50,7 @@ type RelayerConfig struct {
 	// The interval in which we send finalize batch transactions.
 	FinalizeBatchIntervalSec uint64 `json:"finalize_batch_interval_sec"`
 	// MessageRelayMinGasLimit to avoid OutOfGas error
-	MessageRelayMinGasLimit uint64 `json:"message_relay_min_gas_limit"`
+	MessageRelayMinGasLimit uint64 `json:"message_relay_min_gas_limit,omitempty"`
 	// The private key of the relayer
 	MessageSenderPrivateKeys   []*ecdsa.PrivateKey `json:"-"`
 	GasOracleSenderPrivateKeys []*ecdsa.PrivateKey `json:"-"`
