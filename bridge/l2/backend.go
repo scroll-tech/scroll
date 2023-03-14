@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/scroll-tech/go-ethereum/ethclient"
+	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/scroll-tech/go-ethereum/rpc"
 
 	"scroll-tech/database"
@@ -39,6 +40,12 @@ func New(ctx context.Context, cfg *config.L2Config, orm database.OrmFactory) (*B
 	}
 	proposer.SetLayer2Relayer(relayer)
 	relayer.SetBatchProposer(proposer)
+
+	// Deal with pending transactions.
+	if err = relayer.Prepare(); err != nil {
+		log.Error("failed to init layer2 transaction messages")
+		return nil, err
+	}
 
 	return &Backend{
 		cfg:           cfg,

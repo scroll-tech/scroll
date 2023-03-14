@@ -5,12 +5,13 @@ import (
 	"fmt"
 	"math/big"
 	"runtime"
-	"time"
 
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/log"
 	"golang.org/x/sync/errgroup"
 	"modernc.org/mathutil"
+
+	"scroll-tech/common/utils"
 
 	"scroll-tech/common/types"
 
@@ -35,12 +36,10 @@ BEGIN:
 
 	var batch *types.BlockBatch
 	for msg := msgs[0]; len(msgs) > 0; { //nolint:staticcheck
-		// If pending pool is full, wait a while and retry.
-		if r.messageSender.IsFull() {
-			log.Warn("layer2 message tx sender is full")
-			time.Sleep(time.Millisecond * 500)
-			continue
-		}
+		// Wait until sender's pending is not full.
+		utils.TryTimes(-1, func() bool {
+			return !r.messageSender.IsFull()
+		})
 		msg, msgs = msgs[0], msgs[1:]
 		nonce = mathutil.MaxUint64(nonce, msg.Nonce)
 

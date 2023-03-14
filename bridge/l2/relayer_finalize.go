@@ -4,13 +4,13 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
-	"time"
 
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/log"
 	"modernc.org/mathutil"
 
 	"scroll-tech/common/types"
+	comutiles "scroll-tech/common/utils"
 
 	"scroll-tech/bridge/sender"
 	"scroll-tech/bridge/utils"
@@ -32,12 +32,10 @@ BEGIN:
 	}
 
 	for batch := batches[0]; len(batches) > 0; { //nolint:staticcheck
-		// If pending txs pool is full, wait a while and retry.
-		if r.rollupSender.IsFull() {
-			log.Warn("layer2 rollup sender pending finalized tx reaches pending limit")
-			time.Sleep(time.Millisecond * 500)
-			continue
-		}
+		// Wait until sender's pending is not full.
+		comutiles.TryTimes(-1, func() bool {
+			return !r.rollupSender.IsFull()
+		})
 		batch, batches = batches[0], batches[1:]
 
 		hash := batch.Hash

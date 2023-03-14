@@ -4,11 +4,12 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
-	"time"
 
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/log"
+
 	"scroll-tech/common/types"
+	"scroll-tech/common/utils"
 
 	"scroll-tech/bridge/sender"
 )
@@ -32,12 +33,10 @@ BEGIN:
 		if msg.Height >= blockNumber {
 			break
 		}
-		// If pending txs pool is full, wait a while and retry.
-		if r.messageSender.IsFull() {
-			log.Warn("layer1 sender pending tx reaches pending limit")
-			time.Sleep(time.Millisecond * 500)
-			continue
-		}
+		// If pending txs pool is full, wait until pending pool is available.
+		utils.TryTimes(-1, func() bool {
+			return !r.messageSender.IsFull()
+		})
 		msg, msgs = msgs[0], msgs[1:]
 
 		if err = r.messageSender.LoadOrSendTx(
@@ -48,6 +47,7 @@ BEGIN:
 			common.Hex2Bytes(msg.Calldata),
 		); err != nil {
 			log.Error("failed to load or send l1 submitted tx", "msg hash", msg.MsgHash, "err", err)
+			return err
 		}
 	}
 	goto BEGIN

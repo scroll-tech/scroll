@@ -149,7 +149,8 @@ func (r *Layer2Relayer) SetBatchProposer(proposer batchInterface) {
 	r.batchInterface = proposer
 }
 
-func (r *Layer2Relayer) prepare() error {
+// Prepare operate layer2's unconfirmed txs.
+func (r *Layer2Relayer) Prepare() error {
 	var eg errgroup.Group
 	eg.Go(func() error {
 		if err := r.checkFinalizingBatches(); err != nil {
@@ -187,10 +188,6 @@ func (r *Layer2Relayer) prepare() error {
 
 // Start the relayer process
 func (r *Layer2Relayer) Start() {
-	if err := r.prepare(); err != nil {
-		log.Crit("failed to init layer2 transaction messages")
-	}
-
 	loop := func(ctx context.Context, f func()) {
 		ticker := time.NewTicker(time.Second)
 		defer ticker.Stop()
