@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"strings"
-	"testing"
 	"time"
 
 	"github.com/docker/docker/api/types"
@@ -28,7 +27,7 @@ type ImgDB struct {
 }
 
 // NewImgDB return postgres db img instance.
-func NewImgDB(t *testing.T, image, password, dbName string, port int) ImgInstance {
+func NewImgDB(image, password, dbName string, port int) ImgInstance {
 	img := &ImgDB{
 		image:    image,
 		name:     fmt.Sprintf("%s-%s_%d", image, dbName, port),
@@ -36,7 +35,7 @@ func NewImgDB(t *testing.T, image, password, dbName string, port int) ImgInstanc
 		dbName:   dbName,
 		port:     port,
 	}
-	img.cmd = cmd.NewCmd(t, img.name, img.prepare()...)
+	img.cmd = cmd.NewCmd(img.name, img.prepare()...)
 	return img
 }
 
