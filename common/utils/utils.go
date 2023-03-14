@@ -16,8 +16,8 @@ func TryTimes(times int, run func() bool) {
 }
 
 // LoopWithContext Run the f func with context periodically.
-func LoopWithContext(ctx context.Context, second time.Duration, f func(ctx context.Context)) {
-	tick := time.NewTicker(second)
+func LoopWithContext(ctx context.Context, nanosecond time.Duration, f func(ctx context.Context)) {
+	tick := time.NewTicker(nanosecond)
 	defer tick.Stop()
 	for ; ; <-tick.C {
 		select {
@@ -30,8 +30,8 @@ func LoopWithContext(ctx context.Context, second time.Duration, f func(ctx conte
 }
 
 // Loop Run the f func periodically.
-func Loop(ctx context.Context, second time.Duration, f func()) {
-	tick := time.NewTicker(second)
+func Loop(ctx context.Context, nanosecond time.Duration, f func()) {
+	tick := time.NewTicker(nanosecond)
 	defer tick.Stop()
 	for ; ; <-tick.C {
 		select {
