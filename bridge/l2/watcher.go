@@ -17,9 +17,10 @@ import (
 	"github.com/scroll-tech/go-ethereum/metrics"
 	"github.com/scroll-tech/go-ethereum/rpc"
 
+	cutil "scroll-tech/common/utils"
+
 	bridge_abi "scroll-tech/bridge/abi"
 	"scroll-tech/bridge/utils"
-	cutil "scroll-tech/common/utils"
 
 	"scroll-tech/common/types"
 

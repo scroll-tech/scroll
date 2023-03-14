@@ -22,11 +22,12 @@ import (
 
 	"scroll-tech/database"
 
+	cutil "scroll-tech/common/utils"
+
 	bridge_abi "scroll-tech/bridge/abi"
 	"scroll-tech/bridge/config"
 	"scroll-tech/bridge/sender"
 	"scroll-tech/bridge/utils"
-	cutil "scroll-tech/common/utils"
 )
 
 const (
