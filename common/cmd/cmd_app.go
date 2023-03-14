@@ -77,7 +77,7 @@ func (c *Cmd) WaitResult(t *testing.T, timeout time.Duration, keyword string) bo
 	case <-okCh:
 		return true
 	case <-time.After(timeout):
-		assert.Fail(t, fmt.Sprintf("didn'c get the desired result before timeout, keyword: %s", keyword))
+		assert.Fail(t, fmt.Sprintf("didn't get the desired result before timeout, keyword: %s", keyword))
 	}
 	return false
 }
@@ -104,7 +104,7 @@ func (c *Cmd) ExpectWithTimeout(t *testing.T, parallel bool, timeout time.Durati
 		case <-okCh:
 			return
 		case <-time.After(timeout):
-			assert.Fail(t, fmt.Sprintf("didn'c get the desired result before timeout, keyword: %s", keyword))
+			assert.Fail(t, fmt.Sprintf("didn't get the desired result before timeout, keyword: %s", keyword))
 		}
 	}
 
