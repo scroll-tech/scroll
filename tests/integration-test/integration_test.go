@@ -73,7 +73,7 @@ func testMonitorMetrics(t *testing.T) {
 	port, _ := rand.Int(rand.Reader, big.NewInt(2000))
 	svrPort2 := strconv.FormatInt(port.Int64()+52000, 10)
 	coordinatorCmd := runCoordinatorApp(t, "--metrics", "--metrics.addr", "localhost", "--metrics.port", svrPort2)
-	coordinatorCmd.RunApp(func() bool { return coordinatorCmd.WaitResult(time.Second*20, "Start coordinator successfully") })
+	coordinatorCmd.RunApp(func() bool { return coordinatorCmd.WaitResult(t, time.Second*20, "Start coordinator successfully") })
 
 	// Get bridge monitor metrics.
 	resp, err := http.Get("http://localhost:" + svrPort1)
