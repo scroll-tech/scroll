@@ -10,10 +10,10 @@ import (
 )
 
 func TestRunBridge(t *testing.T) {
-	bridge := cmd.NewCmd(t, "bridge-test", "--version")
+	bridge := cmd.NewCmd("bridge-test", "--version")
 	defer bridge.WaitExit()
 
 	// wait result
-	bridge.ExpectWithTimeout(true, time.Second*3, fmt.Sprintf("bridge version %s", version.Version))
+	bridge.ExpectWithTimeout(t, true, time.Second*3, fmt.Sprintf("bridge version %s", version.Version))
 	bridge.RunApp(nil)
 }
