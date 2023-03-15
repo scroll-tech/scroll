@@ -30,10 +30,6 @@ func NewWithdrawTrie() *WithdrawTrie {
 		zeroes[i] = utils.Keccak2(zeroes[i-1], zeroes[i-1])
 	}
 
-	for i := 0; i < MaxHeight; i++ {
-		branches[i] = common.Hash{}
-	}
-
 	return &WithdrawTrie{
 		zeroes:           zeroes,
 		branches:         branches,
