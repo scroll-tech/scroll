@@ -41,73 +41,72 @@ func (r *Layer2Relayer) checkRollupBatches() error {
 	}
 
 	var batchIndex uint64
-BEGIN:
-	blockBatches, err := r.db.GetBlockBatches(
-		map[string]interface{}{"rollup_status": types.RollupCommitting},
-		fmt.Sprintf("AND commit_tx_hash IN (SELECT commit_tx_hash FROM block_batch WHERE index > %d GROUP BY commit_tx_hash LIMIT 1)", batchIndex),
-		fmt.Sprintf("AND index > %d", batchIndex),
-		"ORDER BY index ASC",
-	)
-	if err != nil || len(blockBatches) == 0 {
-		return err
-	}
-
-	var batchDataBuffer []*types.BatchData
-	for _, blockBatch := range blockBatches {
-		batchIndex = mathutil.MaxUint64(batchIndex, blockBatch.Index)
-		var (
-			parentBatch *types.BlockBatch
-			blockInfos  []*types.BlockInfo
+	for {
+		blockBatches, err := r.db.GetBlockBatches(
+			map[string]interface{}{"rollup_status": types.RollupCommitting},
+			fmt.Sprintf("AND commit_tx_hash IN (SELECT commit_tx_hash FROM block_batch WHERE index > %d GROUP BY commit_tx_hash LIMIT 1)", batchIndex),
+			fmt.Sprintf("AND index > %d", batchIndex),
+			"ORDER BY index ASC",
 		)
-		parentBatch, err = getBlockBatch(blockBatch.ParentHash)
+		if err != nil || len(blockBatches) == 0 {
+			return err
+		}
+
+		var batchDataBuffer []*types.BatchData
+		for _, blockBatch := range blockBatches {
+			batchIndex = mathutil.MaxUint64(batchIndex, blockBatch.Index)
+			var (
+				parentBatch *types.BlockBatch
+				blockInfos  []*types.BlockInfo
+			)
+			parentBatch, err = getBlockBatch(blockBatch.ParentHash)
+			if err != nil {
+				return err
+			}
+			blockInfos, err = r.db.GetL2BlockInfos(
+				map[string]interface{}{"batch_hash": blockBatch.Hash},
+				"order by number ASC",
+			)
+			if err != nil {
+				return err
+			}
+			if len(blockInfos) != int(blockBatch.EndBlockNumber-blockBatch.StartBlockNumber+1) {
+				log.Error("the number of block info retrieved from DB mistmatches the blockBatch info in the DB",
+					"len(blockInfos)", len(blockInfos),
+					"expected", blockBatch.EndBlockNumber-blockBatch.StartBlockNumber+1)
+				continue
+			}
+			var batchData *types.BatchData
+			batchData, err = r.GenerateBatchData(parentBatch, blockInfos)
+			if err != nil {
+				return err
+			}
+			batchDataBuffer = append(batchDataBuffer, batchData)
+		}
+		batchHashes, txID, callData, err := r.packBatchData(batchDataBuffer)
 		if err != nil {
 			return err
 		}
-		blockInfos, err = r.db.GetL2BlockInfos(
-			map[string]interface{}{"batch_hash": blockBatch.Hash},
-			"order by number ASC",
+
+		// Wait until sender's pending is not full.
+		utils.TryTimes(-1, func() bool {
+			return !r.rollupSender.IsFull()
+		})
+
+		// Handle tx.
+		err = r.rollupSender.LoadOrSendTx(
+			common.HexToHash(blockBatches[0].CommitTxHash.String),
+			txID,
+			&r.cfg.RollupContractAddress,
+			big.NewInt(0),
+			callData,
 		)
 		if err != nil {
+			log.Error("failed to load or send batchData tx")
 			return err
 		}
-		if len(blockInfos) != int(blockBatch.EndBlockNumber-blockBatch.StartBlockNumber+1) {
-			log.Error("the number of block info retrieved from DB mistmatches the blockBatch info in the DB",
-				"len(blockInfos)", len(blockInfos),
-				"expected", blockBatch.EndBlockNumber-blockBatch.StartBlockNumber+1)
-			continue
-		}
-		var batchData *types.BatchData
-		batchData, err = r.GenerateBatchData(parentBatch, blockInfos)
-		if err != nil {
-			return err
-		}
-		batchDataBuffer = append(batchDataBuffer, batchData)
+		r.processingBatchesCommitment.Store(txID, batchHashes)
 	}
-	batchHashes, txID, callData, err := r.packBatchData(batchDataBuffer)
-	if err != nil {
-		return err
-	}
-
-	// Wait until sender's pending is not full.
-	utils.TryTimes(-1, func() bool {
-		return !r.rollupSender.IsFull()
-	})
-
-	// Handle tx.
-	err = r.rollupSender.LoadOrSendTx(
-		common.HexToHash(blockBatches[0].CommitTxHash.String),
-		txID,
-		&r.cfg.RollupContractAddress,
-		big.NewInt(0),
-		callData,
-	)
-	if err != nil {
-		log.Error("failed to load or send batchData tx")
-		return err
-	}
-	r.processingBatchesCommitment.Store(txID, batchHashes)
-
-	goto BEGIN
 }
 
 func (r *Layer2Relayer) packBatchData(batchData []*types.BatchData) ([]string, string, []byte, error) {

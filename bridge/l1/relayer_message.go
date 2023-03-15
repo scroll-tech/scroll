@@ -19,42 +19,42 @@ func (r *Layer1Relayer) checkSubmittedMessages() error {
 		blockNumber uint64
 		msgsSize    = 100
 	)
-BEGIN:
-	msgs, err := r.db.GetL1Messages(
-		map[string]interface{}{"status": types.MsgSubmitted},
-		fmt.Sprintf("AND height >= %d", blockNumber),
-		fmt.Sprintf("ORDER BY height ASC LIMIT %d", msgsSize),
-	)
-	if err != nil || len(msgs) == 0 {
-		return err
-	}
-
-	// Update block number to the latest.
-	blockNumber = msgs[len(msgs)-1].Height
-	isFull := len(msgs) == msgsSize
-	for msg := msgs[0]; len(msgs) > 0; { //nolint:staticcheck
-		// If messages size is equal to msgsSize, don't operate the latest number's messages and let be operated in next loop.
-		if isFull && msg.Height >= blockNumber {
-			break
-		}
-		// If pending txs pool is full, wait until pending pool is available.
-		utils.TryTimes(-1, func() bool {
-			return !r.messageSender.IsFull()
-		})
-		msg, msgs = msgs[0], msgs[1:]
-
-		if err = r.messageSender.LoadOrSendTx(
-			common.HexToHash(msg.Layer2Hash),
-			msg.MsgHash,
-			&r.cfg.MessengerContractAddress,
-			big.NewInt(0),
-			common.Hex2Bytes(msg.Calldata),
-		); err != nil {
-			log.Error("failed to load or send l1 submitted tx", "msg hash", msg.MsgHash, "err", err)
+	for {
+		msgs, err := r.db.GetL1Messages(
+			map[string]interface{}{"status": types.MsgSubmitted},
+			fmt.Sprintf("AND height >= %d", blockNumber),
+			fmt.Sprintf("ORDER BY height ASC LIMIT %d", msgsSize),
+		)
+		if err != nil || len(msgs) == 0 {
 			return err
 		}
+
+		// Update block number to the latest.
+		blockNumber = msgs[len(msgs)-1].Height
+		isFull := len(msgs) == msgsSize
+		for msg := msgs[0]; len(msgs) > 0; { //nolint:staticcheck
+			// If messages size is equal to msgsSize, don't operate the latest number's messages and let be operated in next loop.
+			if isFull && msg.Height >= blockNumber {
+				break
+			}
+			// If pending txs pool is full, wait until pending pool is available.
+			utils.TryTimes(-1, func() bool {
+				return !r.messageSender.IsFull()
+			})
+			msg, msgs = msgs[0], msgs[1:]
+
+			if err = r.messageSender.LoadOrSendTx(
+				common.HexToHash(msg.Layer2Hash),
+				msg.MsgHash,
+				&r.cfg.MessengerContractAddress,
+				big.NewInt(0),
+				common.Hex2Bytes(msg.Calldata),
+			); err != nil {
+				log.Error("failed to load or send l1 submitted tx", "msg hash", msg.MsgHash, "err", err)
+				return err
+			}
+		}
 	}
-	goto BEGIN
 }
 
 // ProcessSavedEvents relays saved un-processed cross-domain transactions to desired blockchain

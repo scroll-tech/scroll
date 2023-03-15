@@ -21,53 +21,53 @@ func (r *Layer2Relayer) checkFinalizingBatches() error {
 		batchLimit = 10
 		batchIndex uint64
 	)
-BEGIN:
-	batches, err := r.db.GetBlockBatches(
-		map[string]interface{}{"rollup_status": types.RollupFinalizing},
-		fmt.Sprintf("AND index > %d", batchIndex),
-		fmt.Sprintf("ORDER BY index ASC LIMIT %d", batchLimit),
-	)
-	if err != nil || len(batches) == 0 {
-		return err
-	}
-
-	for batch := batches[0]; len(batches) > 0; { //nolint:staticcheck
-		// Wait until sender's pending is not full.
-		comutiles.TryTimes(-1, func() bool {
-			return !r.rollupSender.IsFull()
-		})
-		batch, batches = batches[0], batches[1:]
-
-		hash := batch.Hash
-		batchIndex = mathutil.MaxUint64(batchIndex, batch.Index)
-
-		txStr, err := r.db.GetFinalizeTxHash(hash)
-		if err != nil {
-			log.Error("failed to get finalize_tx_hash from block_batch", "err", err)
-			continue
-		}
-
-		data, err := r.packFinalizeBatch(hash)
-		if err != nil {
-			log.Error("failed to pack finalize data", "err", err)
-			continue
-		}
-
-		txID := hash + "-finalize"
-		err = r.rollupSender.LoadOrSendTx(
-			common.HexToHash(txStr.String),
-			txID,
-			&r.cfg.RollupContractAddress,
-			big.NewInt(0),
-			data,
+	for {
+		batches, err := r.db.GetBlockBatches(
+			map[string]interface{}{"rollup_status": types.RollupFinalizing},
+			fmt.Sprintf("AND index > %d", batchIndex),
+			fmt.Sprintf("ORDER BY index ASC LIMIT %d", batchLimit),
 		)
-		if err != nil {
-			log.Error("failed to load or send finalized tx", "batch hash", hash, "err", err)
-		} else {
-			r.processingFinalization.Store(txID, hash)
+		if err != nil || len(batches) == 0 {
+			return err
+		}
+
+		for batch := batches[0]; len(batches) > 0; { //nolint:staticcheck
+			// Wait until sender's pending is not full.
+			comutiles.TryTimes(-1, func() bool {
+				return !r.rollupSender.IsFull()
+			})
+			batch, batches = batches[0], batches[1:]
+
+			hash := batch.Hash
+			batchIndex = mathutil.MaxUint64(batchIndex, batch.Index)
+
+			txStr, err := r.db.GetFinalizeTxHash(hash)
+			if err != nil {
+				log.Error("failed to get finalize_tx_hash from block_batch", "err", err)
+				continue
+			}
+
+			data, err := r.packFinalizeBatch(hash)
+			if err != nil {
+				log.Error("failed to pack finalize data", "err", err)
+				continue
+			}
+
+			txID := hash + "-finalize"
+			err = r.rollupSender.LoadOrSendTx(
+				common.HexToHash(txStr.String),
+				txID,
+				&r.cfg.RollupContractAddress,
+				big.NewInt(0),
+				data,
+			)
+			if err != nil {
+				log.Error("failed to load or send finalized tx", "batch hash", hash, "err", err)
+			} else {
+				r.processingFinalization.Store(txID, hash)
+			}
 		}
 	}
-	goto BEGIN
 }
 
 func (r *Layer2Relayer) packFinalizeBatch(hash string) ([]byte, error) {
