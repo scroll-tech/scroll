@@ -75,36 +75,36 @@ func free(t *testing.T) {
 }
 
 type appAPI interface {
-	WaitResult(timeout time.Duration, keyword string) bool
+	WaitResult(t *testing.T, timeout time.Duration, keyword string) bool
 	RunApp(waitResult func() bool)
 	WaitExit()
-	ExpectWithTimeout(parallel bool, timeout time.Duration, keyword string)
+	ExpectWithTimeout(t *testing.T, parallel bool, timeout time.Duration, keyword string)
 }
 
 func runBridgeApp(t *testing.T, args ...string) appAPI {
 	args = append(args, "--log.debug", "--config", bridgeFile)
-	return cmd.NewCmd(t, "bridge-test", args...)
+	return cmd.NewCmd("bridge-test", args...)
 }
 
 func runCoordinatorApp(t *testing.T, args ...string) appAPI {
 	args = append(args, "--log.debug", "--config", coordinatorFile, "--ws", "--ws.port", strconv.Itoa(int(wsPort)))
 	// start process
-	return cmd.NewCmd(t, "coordinator-test", args...)
+	return cmd.NewCmd("coordinator-test", args...)
 }
 
 func runDBCliApp(t *testing.T, option, keyword string) {
 	args := []string{option, "--config", dbFile}
-	app := cmd.NewCmd(t, "db_cli-test", args...)
+	app := cmd.NewCmd("db_cli-test", args...)
 	defer app.WaitExit()
 
 	// Wait expect result.
-	app.ExpectWithTimeout(true, time.Second*3, keyword)
+	app.ExpectWithTimeout(t, true, time.Second*3, keyword)
 	app.RunApp(nil)
 }
 
 func runRollerApp(t *testing.T, args ...string) appAPI {
 	args = append(args, "--log.debug", "--config", rollerFile)
-	return cmd.NewCmd(t, "roller-test", args...)
+	return cmd.NewCmd("roller-test", args...)
 }
 
 func runSender(t *testing.T, endpoint string) *sender.Sender {
