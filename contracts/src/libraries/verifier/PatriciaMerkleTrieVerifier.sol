@@ -41,7 +41,7 @@ library PatriciaMerkleTrieVerifier {
       // make sure the length of error string <= 32
       function revertWith(msg) {
         // keccak("Error(string)")
-        mstore(0x00, shl(224, 0x08c379a0))
+        mstore(0x00, 0x08c379a000000000000000000000000000000000000000000000000000000000)
         mstore(0x04, 0x20) // str.offset
         mstore(0x44, msg)
         let msgLen
