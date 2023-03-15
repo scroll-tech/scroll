@@ -83,7 +83,7 @@ func (i *ImgDB) Endpoint() string {
 }
 
 func (i *ImgDB) prepare() []string {
-	cmd := []string{"docker", "run", "--name", i.name, "-p", fmt.Sprintf("%d:5432", i.port)}
+	cmd := []string{"docker", "container", "run", "--name", i.name, "-p", fmt.Sprintf("%d:5432", i.port)}
 	envs := []string{
 		"-e", "POSTGRES_PASSWORD=" + i.password,
 		"-e", fmt.Sprintf("POSTGRES_DB=%s", i.dbName),
