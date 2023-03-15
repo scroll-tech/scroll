@@ -14,6 +14,7 @@ import (
 
 	"scroll-tech/common/metrics"
 	"scroll-tech/common/types"
+	"scroll-tech/common/utils"
 
 	"scroll-tech/database"
 
@@ -126,22 +127,10 @@ func (p *BatchProposer) Start() {
 
 		ctx, cancel := context.WithCancel(p.ctx)
 
-		// batch proposer loop
-		go func(ctx context.Context) {
-			ticker := time.NewTicker(2 * time.Second)
-			defer ticker.Stop()
-
-			for {
-				select {
-				case <-ctx.Done():
-					return
-
-				case <-ticker.C:
-					p.tryProposeBatch()
-					p.tryCommitBatches()
-				}
-			}
-		}(ctx)
+		go utils.Loop(ctx, 2*time.Second, func() {
+			p.tryProposeBatch()
+			p.tryCommitBatches()
+		})
 
 		<-p.stopCh
 		cancel()
