@@ -15,8 +15,11 @@ import (
 
 	"scroll-tech/common/utils"
 
-	"scroll-tech/common/types"
 	"scroll-tech/database"
+
+	"scroll-tech/common/types"
+
+	cutil "scroll-tech/common/utils"
 
 	bridge_abi "scroll-tech/bridge/abi"
 	"scroll-tech/bridge/config"
@@ -188,26 +191,11 @@ func (r *Layer2Relayer) Prepare() error {
 
 // Start the relayer process
 func (r *Layer2Relayer) Start() {
-	loop := func(ctx context.Context, f func()) {
-		ticker := time.NewTicker(time.Second)
-		defer ticker.Stop()
-
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case <-ticker.C:
-				f()
-			}
-		}
-	}
-
 	go func() {
 		ctx, cancel := context.WithCancel(r.ctx)
-
-		go loop(ctx, r.ProcessSavedEvents)
-		go loop(ctx, r.ProcessCommittedBatches)
-		go loop(ctx, r.ProcessGasPriceOracle)
+		go cutil.Loop(ctx, time.Second, r.ProcessSavedEvents)
+		go cutil.Loop(ctx, time.Second, r.ProcessCommittedBatches)
+		go cutil.Loop(ctx, time.Second, r.ProcessGasPriceOracle)
 
 		<-r.stopCh
 		cancel()
