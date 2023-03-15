@@ -105,9 +105,21 @@ contract L1ScrollMessenger is PausableUpgradeable, ScrollMessengerBase, IL1Scrol
 
     // record the message hash for future use.
     bytes32 _xDomainCalldataHash = keccak256(_xDomainCalldata);
+
+    // normally this won't happen, since each message has different nonce, but just in case.
+    require(!isL1MessageSent[_xDomainCalldataHash], "Duplicated message");
     isL1MessageSent[_xDomainCalldataHash] = true;
 
     emit SentMessage(msg.sender, _to, _value, _messageNonce, _gasLimit, _message);
+
+    // refund fee to tx.origin
+    unchecked {
+      uint256 _refund = msg.value - _fee - _value;
+      if (_refund > 0) {
+        (bool _success, ) = tx.origin.call{ value: _refund }("");
+        require(_success, "Failed to refund the fee");
+      }
+    }
   }
 
   /// @inheritdoc IL1ScrollMessenger

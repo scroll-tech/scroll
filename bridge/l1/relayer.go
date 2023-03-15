@@ -14,6 +14,7 @@ import (
 	"github.com/scroll-tech/go-ethereum/log"
 
 	"scroll-tech/common/types"
+	"scroll-tech/common/utils"
 
 	"scroll-tech/database"
 
@@ -201,24 +202,11 @@ func (r *Layer1Relayer) ProcessGasPriceOracle() {
 
 // Start the relayer process
 func (r *Layer1Relayer) Start() {
-	loop := func(ctx context.Context, f func()) {
-		ticker := time.NewTicker(2 * time.Second)
-		defer ticker.Stop()
-
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case <-ticker.C:
-				f()
-			}
-		}
-	}
 	go func() {
 		ctx, cancel := context.WithCancel(r.ctx)
 
-		go loop(ctx, r.ProcessSavedEvents)
-		go loop(ctx, r.ProcessGasPriceOracle)
+		go utils.Loop(ctx, 2*time.Second, r.ProcessSavedEvents)
+		go utils.Loop(ctx, 2*time.Second, r.ProcessGasPriceOracle)
 
 		go func(ctx context.Context) {
 			for {

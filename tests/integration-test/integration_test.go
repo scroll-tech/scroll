@@ -11,9 +11,12 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+
+	"scroll-tech/common/docker"
 )
 
 func TestIntegration(t *testing.T) {
+	base = docker.NewDockerApp()
 	setupEnv(t)
 
 	// test db_cli migrate cmd.
@@ -39,16 +42,16 @@ func testStartProcess(t *testing.T) {
 
 	// Start bridge process.
 	bridgeCmd := runBridgeApp(t)
-	bridgeCmd.RunApp(func() bool { return bridgeCmd.WaitResult(time.Second*20, "Start bridge successfully") })
+	bridgeCmd.RunApp(func() bool { return bridgeCmd.WaitResult(t, time.Second*20, "Start bridge successfully") })
 
 	// Start coordinator process.
 	coordinatorCmd := runCoordinatorApp(t, "--ws", "--ws.port", "8391")
-	coordinatorCmd.RunApp(func() bool { return coordinatorCmd.WaitResult(time.Second*20, "Start coordinator successfully") })
+	coordinatorCmd.RunApp(func() bool { return coordinatorCmd.WaitResult(t, time.Second*20, "Start coordinator successfully") })
 
 	// Start roller process.
 	rollerCmd := runRollerApp(t)
-	rollerCmd.ExpectWithTimeout(true, time.Second*60, "register to coordinator successfully!")
-	rollerCmd.RunApp(func() bool { return rollerCmd.WaitResult(time.Second*40, "roller start successfully") })
+	rollerCmd.ExpectWithTimeout(t, true, time.Second*60, "register to coordinator successfully!")
+	rollerCmd.RunApp(func() bool { return rollerCmd.WaitResult(t, time.Second*40, "roller start successfully") })
 
 	rollerCmd.WaitExit()
 	bridgeCmd.WaitExit()
@@ -64,7 +67,7 @@ func testMonitorMetrics(t *testing.T) {
 	port, _ := rand.Int(rand.Reader, big.NewInt(2000))
 	svrPort := strconv.FormatInt(port.Int64()+50000, 10)
 	bridgeCmd := runBridgeApp(t, "--metrics", "--metrics.addr", "localhost", "--metrics.port", svrPort)
-	bridgeCmd.RunApp(func() bool { return bridgeCmd.WaitResult(time.Second*20, "Start bridge successfully") })
+	bridgeCmd.RunApp(func() bool { return bridgeCmd.WaitResult(t, time.Second*20, "Start bridge successfully") })
 
 	// Get monitor metrics.
 	resp, err := http.Get("http://localhost:" + svrPort)
