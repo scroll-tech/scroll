@@ -3,7 +3,6 @@ module scroll-tech/bridge
 go 1.18
 
 require (
-	github.com/iden3/go-iden3-crypto v0.0.13
 	github.com/orcaman/concurrent-map v1.0.0
 	github.com/scroll-tech/go-ethereum v1.10.14-0.20230220082843-ec9254b0b1c6
 	github.com/stretchr/testify v1.8.0
@@ -23,6 +22,7 @@ require (
 	github.com/google/uuid v1.3.0 // indirect
 	github.com/gorilla/websocket v1.5.0 // indirect
 	github.com/holiman/uint256 v1.2.0 // indirect
+	github.com/iden3/go-iden3-crypto v0.0.13 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20200410134404-eec4a21b6bb0 // indirect

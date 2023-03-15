@@ -1,21 +1,22 @@
 package utils
 
 import (
-	"bytes"
+	"context"
+	"fmt"
 	"math/big"
+	"time"
 
-	"github.com/iden3/go-iden3-crypto/keccak256"
+	"github.com/scroll-tech/go-ethereum/accounts/abi"
 	"github.com/scroll-tech/go-ethereum/common"
-	"github.com/scroll-tech/go-ethereum/common/math"
+	"github.com/scroll-tech/go-ethereum/core/types"
+	"github.com/scroll-tech/go-ethereum/crypto"
+
+	bridgeabi "scroll-tech/bridge/abi"
 )
 
 // Keccak2 compute the keccack256 of two concatenations of bytes32
 func Keccak2(a common.Hash, b common.Hash) common.Hash {
-	return common.BytesToHash(keccak256.Hash(append(a.Bytes()[:], b.Bytes()[:]...)))
-}
-
-func encodePacked(input ...[]byte) []byte {
-	return bytes.Join(input, nil)
+	return common.BytesToHash(crypto.Keccak256(append(a.Bytes()[:], b.Bytes()[:]...)))
 }
 
 // ComputeMessageHash compute the message hash
@@ -23,21 +24,11 @@ func ComputeMessageHash(
 	sender common.Address,
 	target common.Address,
 	value *big.Int,
-	fee *big.Int,
-	deadline *big.Int,
-	message []byte,
 	messageNonce *big.Int,
+	message []byte,
 ) common.Hash {
-	packed := encodePacked(
-		sender.Bytes(),
-		target.Bytes(),
-		math.U256Bytes(value),
-		math.U256Bytes(fee),
-		math.U256Bytes(deadline),
-		math.U256Bytes(messageNonce),
-		message,
-	)
-	return common.BytesToHash(keccak256.Hash(packed))
+	data, _ := bridgeabi.L2ScrollMessengerABI.Pack("relayMessage", sender, target, value, messageNonce, message)
+	return common.BytesToHash(crypto.Keccak256(data))
 }
 
 // BufferToUint256Be convert bytes array to uint256 array assuming big-endian
@@ -66,4 +57,72 @@ func BufferToUint256Le(buffer []byte) []*big.Int {
 		buffer256[i] = v
 	}
 	return buffer256
+}
+
+// UnpackLog unpacks a retrieved log into the provided output structure.
+// @todo: add unit test.
+func UnpackLog(c *abi.ABI, out interface{}, event string, log types.Log) error {
+	if log.Topics[0] != c.Events[event].ID {
+		return fmt.Errorf("event signature mismatch")
+	}
+	if len(log.Data) > 0 {
+		if err := c.UnpackIntoInterface(out, event, log.Data); err != nil {
+			return err
+		}
+	}
+	var indexed abi.Arguments
+	for _, arg := range c.Events[event].Inputs {
+		if arg.Indexed {
+			indexed = append(indexed, arg)
+		}
+	}
+	return abi.ParseTopics(out, indexed, log.Topics[1:])
+}
+
+// UnpackLogIntoMap unpacks a retrieved log into the provided map.
+// @todo: add unit test.
+func UnpackLogIntoMap(c *abi.ABI, out map[string]interface{}, event string, log types.Log) error {
+	if log.Topics[0] != c.Events[event].ID {
+		return fmt.Errorf("event signature mismatch")
+	}
+	if len(log.Data) > 0 {
+		if err := c.UnpackIntoMap(out, event, log.Data); err != nil {
+			return err
+		}
+	}
+	var indexed abi.Arguments
+	for _, arg := range c.Events[event].Inputs {
+		if arg.Indexed {
+			indexed = append(indexed, arg)
+		}
+	}
+	return abi.ParseTopicsIntoMap(out, indexed, log.Topics[1:])
+}
+
+// LoopWithContext Run the f func with context periodically.
+func LoopWithContext(ctx context.Context, second time.Duration, f func(ctx context.Context)) {
+	tick := time.NewTicker(second)
+	defer tick.Stop()
+	for ; ; <-tick.C {
+		select {
+		case <-ctx.Done():
+			return
+		default:
+			f(ctx)
+		}
+	}
+}
+
+// Loop Run the f func periodically.
+func Loop(ctx context.Context, second time.Duration, f func()) {
+	tick := time.NewTicker(second)
+	defer tick.Stop()
+	for ; ; <-tick.C {
+		select {
+		case <-ctx.Done():
+			return
+		default:
+			f()
+		}
+	}
 }

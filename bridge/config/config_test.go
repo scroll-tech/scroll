@@ -16,11 +16,9 @@ func TestConfig(t *testing.T) {
 	cfg, err := config.NewConfig("../config.json")
 	assert.True(t, assert.NoError(t, err), "failed to load config")
 
-	assert.True(t, len(cfg.L2Config.BatchProposerConfig.SkippedOpcodes) > 0)
-
-	assert.True(t, len(cfg.L1Config.RelayerConfig.MessageSenderPrivateKeys) > 0)
-	assert.True(t, len(cfg.L2Config.RelayerConfig.MessageSenderPrivateKeys) > 0)
-	assert.True(t, len(cfg.L2Config.RelayerConfig.RollupSenderPrivateKeys) > 0)
+	assert.Equal(t, 1, len(cfg.L1Config.RelayerConfig.MessageSenderPrivateKeys))
+	assert.Equal(t, 1, len(cfg.L2Config.RelayerConfig.MessageSenderPrivateKeys))
+	assert.Equal(t, 1, len(cfg.L2Config.RelayerConfig.RollupSenderPrivateKeys))
 
 	data, err := json.Marshal(cfg)
 	assert.NoError(t, err)

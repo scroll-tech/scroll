@@ -26,10 +26,10 @@ contract DeployL1BridgeContracts is Script {
 
   uint256 CHAIN_ID_L2 = vm.envUint("CHAIN_ID_L2");
 
-  uint256 MAX_TX_IN_ONE_BATCH = vm.envOr("MAX_TX_IN_ONE_BATCH", uint256(25));
+  uint256 MAX_TX_IN_ONE_BATCH = vm.envOr("MAX_TX_IN_ONE_BATCH", uint256(44));
 
   bytes32 PADDING_TX_HASH =
-    vm.envOr("PADDING_TX_HASH", bytes32(0xb5baa665b2664c3bfed7eb46e00ebc110ecf2ebd257854a9bf2b9dbc9b2c08f6));
+    vm.envOr("PADDING_TX_HASH", bytes32(0x0000000000000000000000000000000000000000000000000000000000000000));
 
   address L1_WETH_ADDR = vm.envAddress("L1_WETH_ADDR");
   address L2_WETH_ADDR = vm.envAddress("L2_WETH_ADDR");
