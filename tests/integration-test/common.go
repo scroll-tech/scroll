@@ -190,6 +190,7 @@ func mockRollerConfig(t *testing.T) string {
 
 	bboltDB = fmt.Sprintf("/tmp/%d_bbolt_db", timestamp)
 	cfg.DBPath = bboltDB
+	assert.NoError(t, os.WriteFile(bboltDB, []byte{}, 0644))
 
 	data, err := json.Marshal(cfg)
 	assert.NoError(t, err)
