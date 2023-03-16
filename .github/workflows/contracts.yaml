@@ -44,6 +44,9 @@ jobs:
         uses: foundry-rs/foundry-toolchain@v1
         with:
           version: nightly
+      
+      - name: Setup LCOV
+        uses: hrishikesh-kadam/setup-lcov@v1
 
       - name: Install Node.js 14
         uses: actions/setup-node@v2
@@ -79,6 +82,19 @@ jobs:
 
       - name: Run foundry tests
         run: forge test -vvv
+
+      - name: Run foundry coverage
+        run : forge coverage --report lcov
+
+      - name: Report code coverage
+        uses: zgosalvez/github-actions-report-lcov@v3
+        with:
+          coverage-files: contracts/lcov.info
+          minimum-coverage: 0
+          artifact-name: code-coverage-report
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          working-directory: contracts
+          update-comment: true
 
   hardhat:
     runs-on: ubuntu-latest
