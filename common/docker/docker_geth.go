@@ -57,11 +57,12 @@ func (i *ImgGeth) Start() error {
 	return nil
 }
 
+func (i *ImgGeth) IsRunning() bool {
+	return i.running
+}
+
 // Endpoint return the connection endpoint.
 func (i *ImgGeth) Endpoint() string {
-	if !i.running {
-		return ""
-	}
 	switch true {
 	case i.httpPort != 0:
 		return fmt.Sprintf("http://127.0.0.1:%d", i.httpPort)

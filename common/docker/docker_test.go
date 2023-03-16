@@ -14,7 +14,7 @@ import (
 )
 
 var (
-	base *docker.App
+	base *docker.DockerApp
 )
 
 func TestMain(m *testing.M) {

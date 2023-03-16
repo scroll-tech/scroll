@@ -28,7 +28,7 @@ const TXBatch = 50
 var (
 	privateKeys []*ecdsa.PrivateKey
 	cfg         *config.Config
-	base        *docker.App
+	base        *docker.DockerApp
 )
 
 func TestMain(m *testing.M) {

@@ -76,9 +76,6 @@ func (i *ImgDB) Stop() error {
 
 // Endpoint return the dsn.
 func (i *ImgDB) Endpoint() string {
-	if !i.running {
-		return ""
-	}
 	return fmt.Sprintf("postgres://postgres:%s@localhost:%d/%s?sslmode=disable", i.password, i.port, i.dbName)
 }
 

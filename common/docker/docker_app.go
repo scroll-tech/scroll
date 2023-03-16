@@ -15,10 +15,9 @@ import (
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/stretchr/testify/assert"
 
-	"scroll-tech/database"
-
 	"scroll-tech/common/cmd"
 	"scroll-tech/common/utils"
+	"scroll-tech/database"
 )
 
 var (
@@ -27,50 +26,138 @@ var (
 	dbStartPort = 30000
 )
 
-// App is collection struct of runtime docker images
-type App struct {
-	l1gethImg ImgInstance
-	l2gethImg ImgInstance
+type AppAPI interface {
+	WaitResult(t *testing.T, timeout time.Duration, keyword string) bool
+	RunApp(waitResult func() bool)
+	WaitExit()
+	ExpectWithTimeout(t *testing.T, parallel bool, timeout time.Duration, keyword string)
+}
 
-	dbImg    ImgInstance
+// DockerApp is collection struct of runtime docker images
+type DockerApp struct {
+	L1gethImg ImgInstance
+	L2gethImg ImgInstance
+	DBImg     ImgInstance
+
 	dbConfig *database.DBConfig
 	dbFile   string
 
 	// common time stamp.
-	timestamp int
+	Timestamp int
 }
 
 // NewDockerApp returns new instance of dokerApp struct
-func NewDockerApp() *App {
+func NewDockerApp() *DockerApp {
 	timestamp := time.Now().Nanosecond()
-	return &App{
-		timestamp: timestamp,
+	app := &DockerApp{
+		Timestamp: timestamp,
+		L1gethImg: newTestL1Docker(),
+		L2gethImg: newTestL2Docker(),
+		DBImg:     newTestDBDocker("postgres"),
 		dbFile:    fmt.Sprintf("/tmp/%d_db-config.json", timestamp),
 	}
+	if err := app.mockDBConfig(); err != nil {
+		panic(err)
+	}
+	return app
 }
 
 // RunImages runs all images togather
-func (b *App) RunImages(t *testing.T) {
-	b.runDBImage(t)
-	b.runL1Geth(t)
-	b.runL2Geth(t)
+func (b *DockerApp) RunImages(t *testing.T) {
+	b.RunDBImage(t)
+	b.RunL1Geth(t)
+	b.RunL2Geth(t)
 }
 
-func (b *App) runDBImage(t *testing.T) {
-	if b.dbImg != nil {
-		return
+func (b *DockerApp) RunDBImage(t *testing.T) {
+	assert.NoError(t, b.DBImg.Start())
+	var isRun bool
+	// try 5 times until the db is ready.
+	utils.TryTimes(5, func() bool {
+		db, _ := sqlx.Open("postgres", b.DBImg.Endpoint())
+		isRun = db != nil && db.Ping() == nil
+		return isRun
+	})
+	assert.Equal(t, true, isRun)
+}
+
+// Free clear all running images
+func (b *DockerApp) Free() {
+	if b.L1gethImg != nil {
+		_ = b.L1gethImg.Stop()
+		b.L1gethImg = nil
 	}
-	b.dbImg = newTestDBDocker(t, "postgres")
-	if err := b.mockDBConfig(); err != nil {
-		_ = b.dbImg.Stop()
-		b.dbImg = nil
+	if b.L2gethImg != nil {
+		_ = b.L2gethImg.Stop()
+		b.L2gethImg = nil
+	}
+	if b.DBImg != nil {
+		_ = b.DBImg.Stop()
+		b.DBImg = nil
 		_ = os.Remove(b.dbFile)
-		t.Fatal(err)
 	}
+}
+
+func (b *DockerApp) RunL1Geth(t *testing.T) {
+	assert.NoError(t, b.L1gethImg.Start())
+
+	var isRun bool
+	// try 3 times to get chainID until is ok.
+	utils.TryTimes(3, func() bool {
+		client, _ := ethclient.Dial(b.L1gethImg.Endpoint())
+		if client != nil {
+			if _, err := client.ChainID(context.Background()); err == nil {
+				isRun = true
+			}
+		}
+		return isRun
+	})
+	assert.Equal(t, true, isRun)
+}
+
+// L1Client returns a ethclient by dialing running l1geth
+func (b *DockerApp) L1Client() (*ethclient.Client, error) {
+	if b.L1gethImg == nil || reflect2.IsNil(b.L1gethImg) {
+		return nil, fmt.Errorf("l1 geth is not running")
+	}
+	client, err := ethclient.Dial(b.L1gethImg.Endpoint())
+	if err != nil {
+		return nil, err
+	}
+	return client, nil
+}
+
+func (b *DockerApp) RunL2Geth(t *testing.T) {
+	assert.NoError(t, b.L2gethImg.Start())
+
+	var isRun bool
+	// try 3 times to get chainID until is ok.
+	utils.TryTimes(3, func() bool {
+		client, _ := ethclient.Dial(b.L2gethImg.Endpoint())
+		if client != nil {
+			if _, err := client.ChainID(context.Background()); err == nil {
+				isRun = true
+			}
+		}
+		return isRun
+	})
+	assert.Equal(t, true, isRun)
+}
+
+// L2Client returns a ethclient by dialing running l2geth
+func (b *DockerApp) L2Client() (*ethclient.Client, error) {
+	if b.L2gethImg == nil || reflect2.IsNil(b.L2gethImg) {
+		return nil, fmt.Errorf("l2 geth is not running")
+	}
+	client, err := ethclient.Dial(b.L2gethImg.Endpoint())
+	if err != nil {
+		return nil, err
+	}
+	return client, nil
 }
 
 // RunDBApp runs DB app with command
-func (b *App) RunDBApp(t *testing.T, option, keyword string) {
+func (b *DockerApp) RunDBApp(t *testing.T, option, keyword string) {
 	args := []string{option, "--config", b.dbFile}
 	app := cmd.NewCmd("db_cli-test", args...)
 	defer app.WaitExit()
@@ -80,85 +167,8 @@ func (b *App) RunDBApp(t *testing.T, option, keyword string) {
 	app.RunApp(nil)
 }
 
-// Free clear all running images
-func (b *App) Free() {
-	if b.l1gethImg != nil {
-		_ = b.l1gethImg.Stop()
-		b.l1gethImg = nil
-	}
-	if b.l2gethImg != nil {
-		_ = b.l2gethImg.Stop()
-		b.l2gethImg = nil
-	}
-	if b.dbImg != nil {
-		_ = b.dbImg.Stop()
-		b.dbImg = nil
-		_ = os.Remove(b.dbFile)
-	}
-}
-
-// L1GethEndpoint returns l1gethimg endpoint
-func (b *App) L1GethEndpoint() string {
-	if b.l1gethImg != nil {
-		return b.l1gethImg.Endpoint()
-	}
-	return ""
-}
-
-// L2GethEndpoint returns l2gethimg endpoint
-func (b *App) L2GethEndpoint() string {
-	if b.l2gethImg != nil {
-		return b.l2gethImg.Endpoint()
-	}
-	return ""
-}
-
-// DBEndpoint returns the endpoint of the dbimg
-func (b *App) DBEndpoint() string {
-	return b.dbImg.Endpoint()
-}
-
-func (b *App) runL1Geth(t *testing.T) {
-	if b.l1gethImg != nil {
-		return
-	}
-	b.l1gethImg = newTestL1Docker(t)
-}
-
-// L1Client returns a ethclient by dialing running l1geth
-func (b *App) L1Client() (*ethclient.Client, error) {
-	if b.l1gethImg == nil || reflect2.IsNil(b.l1gethImg) {
-		return nil, fmt.Errorf("l1 geth is not running")
-	}
-	client, err := ethclient.Dial(b.l1gethImg.Endpoint())
-	if err != nil {
-		return nil, err
-	}
-	return client, nil
-}
-
-func (b *App) runL2Geth(t *testing.T) {
-	if b.l2gethImg != nil {
-		return
-	}
-	b.l2gethImg = newTestL2Docker(t)
-}
-
-// L2Client returns a ethclient by dialing running l2geth
-func (b *App) L2Client() (*ethclient.Client, error) {
-	if b.l2gethImg == nil || reflect2.IsNil(b.l2gethImg) {
-		return nil, fmt.Errorf("l2 geth is not running")
-	}
-	client, err := ethclient.Dial(b.l2gethImg.Endpoint())
-	if err != nil {
-		return nil, err
-	}
-	return client, nil
-}
-
-func (b *App) mockDBConfig() error {
+func (b *DockerApp) mockDBConfig() error {
 	if b.dbConfig == nil {
-
 		b.dbConfig = &database.DBConfig{
 			DSN:        "",
 			DriverName: "postgres",
@@ -167,8 +177,8 @@ func (b *App) mockDBConfig() error {
 		}
 	}
 
-	if b.dbImg != nil {
-		b.dbConfig.DSN = b.dbImg.Endpoint()
+	if b.DBImg != nil {
+		b.dbConfig.DSN = b.DBImg.Endpoint()
 	}
 	data, err := json.Marshal(b.dbConfig)
 	if err != nil {
@@ -178,57 +188,17 @@ func (b *App) mockDBConfig() error {
 	return os.WriteFile(b.dbFile, data, 0644) //nolint:gosec
 }
 
-func newTestL1Docker(t *testing.T) ImgInstance {
+func newTestL1Docker() ImgInstance {
 	id, _ := rand.Int(rand.Reader, big.NewInt(2000))
-	imgL1geth := NewImgGeth("scroll_l1geth", "", "", 0, l1StartPort+int(id.Int64()))
-	assert.NoError(t, imgL1geth.Start())
-
-	// try 3 times to get chainID until is ok.
-	utils.TryTimes(3, func() bool {
-		client, _ := ethclient.Dial(imgL1geth.Endpoint())
-		if client != nil {
-			if _, err := client.ChainID(context.Background()); err == nil {
-				return true
-			}
-		}
-		return false
-	})
-
-	return imgL1geth
+	return NewImgGeth("scroll_l1geth", "", "", 0, l1StartPort+int(id.Int64()))
 }
 
-func newTestL2Docker(t *testing.T) ImgInstance {
+func newTestL2Docker() ImgInstance {
 	id, _ := rand.Int(rand.Reader, big.NewInt(2000))
-	imgL2geth := NewImgGeth("scroll_l2geth", "", "", 0, l2StartPort+int(id.Int64()))
-	assert.NoError(t, imgL2geth.Start())
-
-	// try 3 times to get chainID until is ok.
-	utils.TryTimes(3, func() bool {
-		client, _ := ethclient.Dial(imgL2geth.Endpoint())
-		if client != nil {
-			if _, err := client.ChainID(context.Background()); err == nil {
-				return true
-			}
-		}
-		return false
-	})
-
-	return imgL2geth
+	return NewImgGeth("scroll_l2geth", "", "", 0, l2StartPort+int(id.Int64()))
 }
 
-func newTestDBDocker(t *testing.T, driverName string) ImgInstance {
+func newTestDBDocker(driverName string) ImgInstance {
 	id, _ := rand.Int(rand.Reader, big.NewInt(2000))
-	imgDB := NewImgDB(driverName, "123456", "test_db", dbStartPort+int(id.Int64()))
-	assert.NoError(t, imgDB.Start())
-
-	// try 5 times until the db is ready.
-	utils.TryTimes(5, func() bool {
-		db, _ := sqlx.Open(driverName, imgDB.Endpoint())
-		if db != nil {
-			return db.Ping() == nil
-		}
-		return false
-	})
-
-	return imgDB
+	return NewImgDB(driverName, "123456", "test_db", dbStartPort+int(id.Int64()))
 }

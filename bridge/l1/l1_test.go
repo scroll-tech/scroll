@@ -15,7 +15,7 @@ var (
 	cfg *config.Config
 
 	// docker consider handler.
-	base *docker.App
+	base *docker.DockerApp
 )
 
 func TestMain(m *testing.M) {

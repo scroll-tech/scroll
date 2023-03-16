@@ -13,7 +13,7 @@ import (
 )
 
 var (
-	base *docker.App
+	base *docker.DockerApp
 	pgDB *sqlx.DB
 )
 
