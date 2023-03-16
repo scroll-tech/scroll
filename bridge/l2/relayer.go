@@ -44,6 +44,8 @@ const (
 	gasPriceDiffPrecision = 1000000
 
 	defaultGasPriceDiff = 50000 // 5%
+
+	defaultMessageRelayMinGasLimit = 200000 // should be enough for both ERC20 and ETH relay
 )
 
 // Layer2Relayer is responsible for
@@ -71,6 +73,8 @@ type Layer2Relayer struct {
 	gasOracleSender *sender.Sender
 	gasOracleCh     <-chan *sender.Confirmation
 	l2GasOracleABI  *abi.ABI
+
+	minGasLimitForMessageRelay uint64
 
 	lastGasPrice uint64
 	minGasPrice  uint64
@@ -122,6 +126,11 @@ func NewLayer2Relayer(ctx context.Context, l2Client *ethclient.Client, db databa
 		gasPriceDiff = defaultGasPriceDiff
 	}
 
+	minGasLimitForMessageRelay := uint64(defaultMessageRelayMinGasLimit)
+	if cfg.MessageRelayMinGasLimit != 0 {
+		minGasLimitForMessageRelay = cfg.MessageRelayMinGasLimit
+	}
+
 	return &Layer2Relayer{
 		ctx: ctx,
 		db:  db,
@@ -139,6 +148,8 @@ func NewLayer2Relayer(ctx context.Context, l2Client *ethclient.Client, db databa
 		gasOracleSender: gasOracleSender,
 		gasOracleCh:     gasOracleSender.ConfirmChan(),
 		l2GasOracleABI:  bridge_abi.L2GasPriceOracleABI,
+
+		minGasLimitForMessageRelay: minGasLimitForMessageRelay,
 
 		minGasPrice:  minGasPrice,
 		gasPriceDiff: gasPriceDiff,
@@ -232,7 +243,7 @@ func (r *Layer2Relayer) processSavedEvent(msg *types.L2Message) error {
 		return err
 	}
 
-	hash, err := r.messageSender.SendTransaction(msg.MsgHash, &r.cfg.MessengerContractAddress, big.NewInt(0), data)
+	hash, err := r.messageSender.SendTransaction(msg.MsgHash, &r.cfg.MessengerContractAddress, big.NewInt(0), data, r.minGasLimitForMessageRelay)
 	if err != nil && err.Error() == "execution reverted: Message expired" {
 		return r.db.UpdateLayer2Status(r.ctx, msg.MsgHash, types.MsgExpired)
 	}
@@ -284,7 +295,7 @@ func (r *Layer2Relayer) ProcessGasPriceOracle() {
 				return
 			}
 
-			hash, err := r.gasOracleSender.SendTransaction(batch.Hash, &r.cfg.GasPriceOracleContractAddress, big.NewInt(0), data)
+			hash, err := r.gasOracleSender.SendTransaction(batch.Hash, &r.cfg.GasPriceOracleContractAddress, big.NewInt(0), data, 0)
 			if err != nil {
 				if !errors.Is(err, sender.ErrNoAvailableAccount) {
 					log.Error("Failed to send setL2BaseFee tx to layer2 ", "batch.Hash", batch.Hash, "err", err)
@@ -330,7 +341,7 @@ func (r *Layer2Relayer) SendCommitTx(batchData []*types.BatchData) error {
 		bytes = append(bytes, batch.Hash().Bytes()...)
 	}
 	txID := crypto.Keccak256Hash(bytes).String()
-	txHash, err := r.rollupSender.SendTransaction(txID, &r.cfg.RollupContractAddress, big.NewInt(0), calldata)
+	txHash, err := r.rollupSender.SendTransaction(txID, &r.cfg.RollupContractAddress, big.NewInt(0), calldata, 0)
 	if err != nil {
 		if !errors.Is(err, sender.ErrNoAvailableAccount) {
 			log.Error("Failed to send commitBatches tx to layer1 ", "err", err)
@@ -479,7 +490,7 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 
 		txID := hash + "-finalize"
 		// add suffix `-finalize` to avoid duplication with commit tx in unit tests
-		txHash, err := r.rollupSender.SendTransaction(txID, &r.cfg.RollupContractAddress, big.NewInt(0), data)
+		txHash, err := r.rollupSender.SendTransaction(txID, &r.cfg.RollupContractAddress, big.NewInt(0), data, 0)
 		finalizeTxHash := &txHash
 		if err != nil {
 			if !errors.Is(err, sender.ErrNoAvailableAccount) {
