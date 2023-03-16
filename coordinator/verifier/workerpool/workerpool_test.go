@@ -1,13 +1,13 @@
 package workerpool_test
 
 import (
-	"scroll-tech/coordinator/verifier/workerpool"
-
 	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
+
+	"scroll-tech/coordinator/verifier/workerpool"
 )
 
 func TestWorkerPool(t *testing.T) {
