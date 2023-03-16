@@ -24,7 +24,7 @@ import (
 
 	"scroll-tech/coordinator/config"
 	"scroll-tech/coordinator/verifier"
-	"scroll-tech/coordinator/verifierworkerpool"
+	"scroll-tech/coordinator/verifier/workerpool"
 )
 
 const (
@@ -84,7 +84,7 @@ type Manager struct {
 	registerMu sync.RWMutex
 
 	// Verifier worker pool
-	verifierWorkerPool *verifierworkerpool.VerifierWorkerPool
+	verifierWorkerPool *workerpool.WorkerPool
 }
 
 // New returns a new instance of Manager. The instance will be not fully prepared,
@@ -106,7 +106,7 @@ func New(ctx context.Context, cfg *config.RollerManagerConfig, orm database.OrmF
 		orm:                orm,
 		Client:             client,
 		tokenCache:         cache.New(time.Duration(cfg.TokenTimeToLive)*time.Second, 1*time.Hour),
-		verifierWorkerPool: verifierworkerpool.NewVerifierWorkerPool(cfg.MaxVerifierWorkers),
+		verifierWorkerPool: workerpool.NewWorkerPool(cfg.MaxVerifierWorkers),
 	}, nil
 }
 
