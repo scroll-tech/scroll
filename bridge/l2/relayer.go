@@ -5,23 +5,32 @@ import (
 	"sync"
 	"time"
 
-	// not sure if this will make problems when relay with l1geth
-
 	"github.com/scroll-tech/go-ethereum/accounts/abi"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
+	geth_metrics "github.com/scroll-tech/go-ethereum/metrics"
 
 	"scroll-tech/common/utils"
 
-	"scroll-tech/database"
-
+	"scroll-tech/common/metrics"
 	"scroll-tech/common/types"
+	"scroll-tech/database"
 
 	cutil "scroll-tech/common/utils"
 
 	bridge_abi "scroll-tech/bridge/abi"
 	"scroll-tech/bridge/config"
 	"scroll-tech/bridge/sender"
+)
+
+var (
+	bridgeL2MsgsRelayedTotalCounter               = geth_metrics.NewRegisteredCounter("bridge/l2/msgs/relayed/total", metrics.ScrollRegistry)
+	bridgeL2BatchesFinalizedTotalCounter          = geth_metrics.NewRegisteredCounter("bridge/l2/batches/finalized/total", metrics.ScrollRegistry)
+	bridgeL2BatchesCommittedTotalCounter          = geth_metrics.NewRegisteredCounter("bridge/l2/batches/committed/total", metrics.ScrollRegistry)
+	bridgeL2MsgsRelayedConfirmedTotalCounter      = geth_metrics.NewRegisteredCounter("bridge/l2/msgs/relayed/confirmed/total", metrics.ScrollRegistry)
+	bridgeL2BatchesFinalizedConfirmedTotalCounter = geth_metrics.NewRegisteredCounter("bridge/l2/batches/finalized/confirmed/total", metrics.ScrollRegistry)
+	bridgeL2BatchesCommittedConfirmedTotalCounter = geth_metrics.NewRegisteredCounter("bridge/l2/batches/committed/confirmed/total", metrics.ScrollRegistry)
+	bridgeL2BatchesSkippedTotalCounter            = geth_metrics.NewRegisteredCounter("bridge/l2/batches/skipped/total", metrics.ScrollRegistry)
 )
 
 const (
@@ -150,6 +159,18 @@ func (r *Layer2Relayer) SetBatchProposer(proposer batchInterface) {
 	r.batchInterface = proposer
 }
 
+// Prepare operate layer2's unconfirmed txs.
+func (r *Layer2Relayer) Prepare() error {
+	if err := r.checkRollupBatches(); err != nil {
+		log.Error("failed to init layer2 rollupCommitting messages", "err", err)
+		return err
+	}
+	utils.TryTimes(-1, func() bool {
+		return r.rollupSender.PendingCount() == 0
+	})
+	return nil
+}
+
 // Start the relayer process
 func (r *Layer2Relayer) Start() {
 	go func() {
@@ -233,19 +254,22 @@ func (r *Layer2Relayer) handleConfirmation(confirmation *sender.Confirmation) {
 		if err != nil {
 			log.Warn("UpdateLayer2StatusAndLayer1Hash failed", "msgHash", msgHash.(string), "err", err)
 		}
+		bridgeL2MsgsRelayedConfirmedTotalCounter.Inc(1)
 		r.processingMessage.Delete(confirmation.ID)
 	}
 
 	// check whether it is CommitBatches transaction
 	if batchBatches, ok := r.processingBatchesCommitment.Load(confirmation.ID); ok {
 		transactionType = "BatchesCommitment"
-		for _, batchHash := range batchBatches.([]string) {
+		batchHashes := batchBatches.([]string)
+		for _, batchHash := range batchHashes {
 			// @todo handle db error
 			err := r.db.UpdateCommitTxHashAndRollupStatus(r.ctx, batchHash, confirmation.TxHash.String(), types.RollupCommitted)
 			if err != nil {
 				log.Warn("UpdateCommitTxHashAndRollupStatus failed", "batch_hash", batchHash, "err", err)
 			}
 		}
+		bridgeL2BatchesCommittedConfirmedTotalCounter.Inc(int64(len(batchHashes)))
 		r.processingBatchesCommitment.Delete(confirmation.ID)
 	}
 
@@ -257,6 +281,7 @@ func (r *Layer2Relayer) handleConfirmation(confirmation *sender.Confirmation) {
 		if err != nil {
 			log.Warn("UpdateFinalizeTxHashAndRollupStatus failed", "batch_hash", batchHash.(string), "err", err)
 		}
+		bridgeL2BatchesFinalizedConfirmedTotalCounter.Inc(1)
 		r.processingFinalization.Delete(confirmation.ID)
 	}
 	log.Info("transaction confirmed in layer1", "type", transactionType, "confirmation", confirmation)

@@ -3,9 +3,10 @@ package l1
 import (
 	"errors"
 	"fmt"
+	"math/big"
+
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/log"
-	"math/big"
 	"modernc.org/mathutil"
 
 	"scroll-tech/common/types"
@@ -87,6 +88,7 @@ func (r *Layer1Relayer) processSavedEvent(msg *types.L1Message) error {
 	if err != nil {
 		return err
 	}
+	bridgeL1MsgsRelayedTotalCounter.Inc(1)
 	log.Info("relayMessage to layer2", "msg hash", msg.MsgHash, "tx hash", hash)
 
 	err = r.db.UpdateLayer1StatusAndLayer2Hash(r.ctx, msg.MsgHash, types.MsgSubmitted, hash.String())

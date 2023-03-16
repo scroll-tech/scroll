@@ -179,6 +179,7 @@ func (r *Layer2Relayer) processSavedEvent(msg *types.L2Message) error {
 		}
 		return err
 	}
+	bridgeL2MsgsRelayedTotalCounter.Inc(1)
 	log.Info("relayMessageWithProof to layer1", "msgHash", msg.MsgHash, "txhash", hash.String())
 
 	// save status in db

@@ -9,15 +9,23 @@ import (
 	"github.com/scroll-tech/go-ethereum/accounts/abi"
 	"github.com/scroll-tech/go-ethereum/crypto"
 	"github.com/scroll-tech/go-ethereum/log"
+	geth_metrics "github.com/scroll-tech/go-ethereum/metrics"
 
 	"scroll-tech/common/types"
 	"scroll-tech/common/utils"
 
 	"scroll-tech/database"
 
+	"scroll-tech/common/metrics"
+
 	bridge_abi "scroll-tech/bridge/abi"
 	"scroll-tech/bridge/config"
 	"scroll-tech/bridge/sender"
+)
+
+var (
+	bridgeL1MsgsRelayedTotalCounter          = geth_metrics.NewRegisteredCounter("bridge/l1/msgs/relayed/total", metrics.ScrollRegistry)
+	bridgeL1MsgsRelayedConfirmedTotalCounter = geth_metrics.NewRegisteredCounter("bridge/l1/msgs/relayed/confirmed/total", metrics.ScrollRegistry)
 )
 
 const (
@@ -133,6 +141,7 @@ func (r *Layer1Relayer) confirmLoop(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case cfm := <-r.messageCh:
+			bridgeL1MsgsRelayedConfirmedTotalCounter.Inc(1)
 			if !cfm.IsSuccessful {
 				log.Warn("transaction confirmed but failed in layer2", "confirmation", cfm)
 			} else {

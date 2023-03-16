@@ -160,6 +160,7 @@ func (r *Layer2Relayer) SendCommitTx(batchData []*types.BatchData) error {
 		}
 		return err
 	}
+	bridgeL2BatchesCommittedTotalCounter.Inc(int64(len(batchHashes)))
 	log.Info("Sent the commitBatches tx to layer1",
 		"tx_hash", txHash.Hex(),
 		"start_batch_index", batchData[0].Batch.BatchIndex,

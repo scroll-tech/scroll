@@ -57,7 +57,7 @@ var (
 		Name:     "metrics.addr",
 		Usage:    "Metrics reporting server listening address",
 		Category: "METRICS",
-		Value:    "0.0.0.0",
+		Value:    "127.0.0.1",
 	}
 	// MetricsPort is listening port of Metrics reporting server
 	MetricsPort = cli.IntFlag{

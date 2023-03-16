@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/scroll-tech/go-ethereum/ethclient"
+
 	"scroll-tech/database"
 
 	"scroll-tech/bridge/config"

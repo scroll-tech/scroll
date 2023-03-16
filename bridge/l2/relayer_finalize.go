@@ -106,6 +106,7 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 		log.Error("UpdateSkippedBatches failed", "err", err)
 		// continue anyway
 	} else if count > 0 {
+		bridgeL2BatchesSkippedTotalCounter.Inc(count)
 		log.Info("Skipping batches", "count", count)
 	}
 
@@ -209,6 +210,7 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 			}
 			return
 		}
+		bridgeL2BatchesFinalizedTotalCounter.Inc(1)
 		log.Info("finalizeBatchWithProof in layer1", "batch_hash", hash, "tx_hash", hash)
 
 		// record and sync with db, @todo handle db error
