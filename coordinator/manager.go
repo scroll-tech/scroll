@@ -15,16 +15,24 @@ import (
 	geth_types "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
+	geth_metrics "github.com/scroll-tech/go-ethereum/metrics"
 	"github.com/scroll-tech/go-ethereum/rpc"
 
 	"scroll-tech/common/message"
+	"scroll-tech/common/metrics"
 	"scroll-tech/common/types"
-
 	"scroll-tech/database"
 
 	"scroll-tech/coordinator/config"
 	"scroll-tech/coordinator/verifier"
 	"scroll-tech/coordinator/verifier/workerpool"
+)
+
+var (
+	coordinatorSessionsTimeoutTotalCounter      = geth_metrics.NewRegisteredCounter("coordinator/sessions/timeout/total", metrics.ScrollRegistry)
+	coordinatorProofsReceivedTotalCounter       = geth_metrics.NewRegisteredCounter("coordinator/proofs/received/total", metrics.ScrollRegistry)
+	coordinatorProofsVerifiedTotalCounter       = geth_metrics.NewRegisteredCounter("coordinator/proofs/verified/total", metrics.ScrollRegistry)
+	coordinatorProofsVerifiedFailedTotalCounter = geth_metrics.NewRegisteredCounter("coordinator/proofs/verified/failed/total", metrics.ScrollRegistry)
 )
 
 const (
@@ -298,14 +306,7 @@ func (m *Manager) handleZkProof(pk string, msg *message.ProofDetail) error {
 		return dbErr
 	}
 
-	var err error
-	tasks, err := m.orm.GetBlockBatches(map[string]interface{}{"hash": msg.ID})
-	if len(tasks) == 0 {
-		if err != nil {
-			log.Error("failed to get tasks", "error", err)
-		}
-		return err
-	}
+	coordinatorProofsReceivedTotalCounter.Inc(1)
 
 	success, err = m.verifyProof(msg.Proof)
 	if err != nil {
@@ -324,8 +325,11 @@ func (m *Manager) handleZkProof(pk string, msg *message.ProofDetail) error {
 				"msg.ID", msg.ID,
 				"status", types.ProvingTaskVerified,
 				"error", dbErr)
+			return dbErr
 		}
-		return dbErr
+		coordinatorProofsVerifiedTotalCounter.Inc(1)
+	} else {
+		coordinatorProofsVerifiedFailedTotalCounter.Inc(1)
 	}
 	return nil
 }
