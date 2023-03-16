@@ -251,8 +251,13 @@ contract L2ScrollMessenger is ScrollMessengerBase, PausableUpgradeable, IL2Scrol
 
   /// @notice Pause the contract
   /// @dev This function can only called by contract owner.
-  function pause() external onlyOwner {
-    _pause();
+  /// @param _status The pause status to update.
+  function setPause(bool _status) external onlyOwner {
+    if (_status) {
+      _pause();
+    } else {
+      _unpause();
+    }
   }
 
   function updateMaxFailedExecutionTimes(uint256 _maxFailedExecutionTimes) external onlyOwner {

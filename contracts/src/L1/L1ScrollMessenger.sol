@@ -149,6 +149,10 @@ contract L1ScrollMessenger is PausableUpgradeable, ScrollMessengerBase, IL1Scrol
       */
     }
 
+    // @todo check more `_to` address to avoid attack.
+    require(_to != messageQueue, "Forbid to call message queue");
+    require(_to != address(this), "Forbid to call self");
+
     // @note This usually will never happen, just in case.
     require(_from != xDomainMessageSender, "Invalid message sender");
 
@@ -187,7 +191,12 @@ contract L1ScrollMessenger is PausableUpgradeable, ScrollMessengerBase, IL1Scrol
 
   /// @notice Pause the contract
   /// @dev This function can only called by contract owner.
-  function pause() external onlyOwner {
-    _pause();
+  /// @param _status The pause status to update.
+  function setPause(bool _status) external onlyOwner {
+    if (_status) {
+      _pause();
+    } else {
+      _unpause();
+    }
   }
 }
