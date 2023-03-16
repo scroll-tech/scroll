@@ -308,6 +308,7 @@ func (m *Manager) handleZkProof(pk string, msg *message.ProofDetail) error {
 
 	coordinatorProofsReceivedTotalCounter.Inc(1)
 
+	var err error
 	success, err = m.verifyProof(msg.Proof)
 	if err != nil {
 		// TODO: this is only a temp workaround for testnet, we should return err in real cases
