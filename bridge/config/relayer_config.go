@@ -31,7 +31,7 @@ type SenderConfig struct {
 	TxType string `json:"tx_type"`
 	// The min balance set for check and set balance for sender's accounts.
 	MinBalance *big.Int `json:"min_balance,omitempty"`
-	// The interval to check balance and top up sender's accounts
+	// The interval (in seconds) to check balance and top up sender's accounts
 	CheckBalanceTime uint64 `json:"check_balance_time"`
 }
 
