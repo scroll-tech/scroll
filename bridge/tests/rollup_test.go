@@ -54,8 +54,7 @@ func testCommitBatchAndFinalizeBatch(t *testing.T) {
 		})
 		parentHash = header.Hash()
 	}
-	err = db.InsertL2BlockTraces(traces)
-	assert.NoError(t, err)
+	assert.NoError(t, db.InsertL2BlockTraces(traces))
 
 	parentBatch := &types.BlockBatch{
 		Index: 0,

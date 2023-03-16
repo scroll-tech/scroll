@@ -10,10 +10,14 @@ import (
 	"github.com/scroll-tech/go-ethereum/metrics"
 	"github.com/scroll-tech/go-ethereum/metrics/prometheus"
 	"github.com/scroll-tech/go-ethereum/rpc"
-
 	"github.com/urfave/cli/v2"
 
 	"scroll-tech/common/utils"
+)
+
+var (
+	// ScrollRegistry is used for scroll metrics.
+	ScrollRegistry = metrics.NewRegistry()
 )
 
 // Serve starts the metrics server on the given address, will be closed when the given
@@ -30,7 +34,7 @@ func Serve(ctx context.Context, c *cli.Context) {
 
 	server := &http.Server{
 		Addr:         address,
-		Handler:      prometheus.Handler(metrics.DefaultRegistry),
+		Handler:      prometheus.Handler(ScrollRegistry),
 		ReadTimeout:  rpc.DefaultHTTPTimeouts.ReadTimeout,
 		WriteTimeout: rpc.DefaultHTTPTimeouts.WriteTimeout,
 		IdleTimeout:  rpc.DefaultHTTPTimeouts.IdleTimeout,

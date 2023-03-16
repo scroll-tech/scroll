@@ -10,7 +10,9 @@ import (
 
 	geth_types "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/log"
+	geth_metrics "github.com/scroll-tech/go-ethereum/metrics"
 
+	"scroll-tech/common/metrics"
 	"scroll-tech/common/types"
 	"scroll-tech/common/utils"
 
@@ -18,6 +20,16 @@ import (
 
 	bridgeabi "scroll-tech/bridge/abi"
 	"scroll-tech/bridge/config"
+)
+
+var (
+	bridgeL2BatchesGasOverThresholdTotalCounter = geth_metrics.NewRegisteredCounter("bridge/l2/batches/gas/over/threshold/total", metrics.ScrollRegistry)
+	bridgeL2BatchesTxsOverThresholdTotalCounter = geth_metrics.NewRegisteredCounter("bridge/l2/batches/txs/over/threshold/total", metrics.ScrollRegistry)
+	bridgeL2BatchesCommitTotalCounter           = geth_metrics.NewRegisteredCounter("bridge/l2/batches/commit/total", metrics.ScrollRegistry)
+
+	bridgeL2BatchesCreatedRateMeter    = geth_metrics.NewRegisteredMeter("bridge/l2/batches/blocks/created/rate", metrics.ScrollRegistry)
+	bridgeL2BatchesTxsCreatedRateMeter = geth_metrics.NewRegisteredMeter("bridge/l2/batches/txs/created/rate", metrics.ScrollRegistry)
+	bridgeL2BatchesGasCreatedRateMeter = geth_metrics.NewRegisteredMeter("bridge/l2/batches/gas/created/rate", metrics.ScrollRegistry)
 )
 
 // AddBatchInfoToDB inserts the batch information to the BlockBatch table and updates the batch_hash
@@ -259,6 +271,7 @@ func (p *BatchProposer) tryCommitBatches() {
 		log.Error("SendCommitTx failed", "error", err)
 	} else {
 		// pop the processed batches from the buffer
+		bridgeL2BatchesCommitTotalCounter.Inc(1)
 		p.batchDataBuffer = p.batchDataBuffer[index:]
 	}
 }
@@ -269,17 +282,27 @@ func (p *BatchProposer) proposeBatch(blocks []*types.BlockInfo) {
 	}
 
 	if blocks[0].GasUsed > p.batchGasThreshold {
+		bridgeL2BatchesGasOverThresholdTotalCounter.Inc(1)
 		log.Warn("gas overflow even for only 1 block", "height", blocks[0].Number, "gas", blocks[0].GasUsed)
 		if err := p.createBatchForBlocks(blocks[:1]); err != nil {
 			log.Error("failed to create batch", "number", blocks[0].Number, "err", err)
+		} else {
+			bridgeL2BatchesTxsCreatedRateMeter.Mark(int64(blocks[0].TxNum))
+			bridgeL2BatchesGasCreatedRateMeter.Mark(int64(blocks[0].GasUsed))
+			bridgeL2BatchesCreatedRateMeter.Mark(1)
 		}
 		return
 	}
 
 	if blocks[0].TxNum > p.batchTxNumThreshold {
+		bridgeL2BatchesTxsOverThresholdTotalCounter.Inc(1)
 		log.Warn("too many txs even for only 1 block", "height", blocks[0].Number, "tx_num", blocks[0].TxNum)
 		if err := p.createBatchForBlocks(blocks[:1]); err != nil {
 			log.Error("failed to create batch", "number", blocks[0].Number, "err", err)
+		} else {
+			bridgeL2BatchesTxsCreatedRateMeter.Mark(int64(blocks[0].TxNum))
+			bridgeL2BatchesGasCreatedRateMeter.Mark(int64(blocks[0].GasUsed))
+			bridgeL2BatchesCreatedRateMeter.Mark(1)
 		}
 		return
 	}
@@ -306,6 +329,10 @@ func (p *BatchProposer) proposeBatch(blocks []*types.BlockInfo) {
 
 	if err := p.createBatchForBlocks(blocks); err != nil {
 		log.Error("failed to create batch", "from", blocks[0].Number, "to", blocks[len(blocks)-1].Number, "err", err)
+	} else {
+		bridgeL2BatchesTxsCreatedRateMeter.Mark(int64(txNum))
+		bridgeL2BatchesGasCreatedRateMeter.Mark(int64(gasUsed))
+		bridgeL2BatchesCreatedRateMeter.Mark(int64(len(blocks)))
 	}
 }
 
