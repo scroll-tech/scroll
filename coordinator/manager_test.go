@@ -10,6 +10,7 @@ import (
 	"math/big"
 	"net/http"
 	"os"
+	"scroll-tech/common/libzkp"
 	"strconv"
 	"strings"
 	"sync"
@@ -502,7 +503,7 @@ func setupCoordinator(t *testing.T, dbCfg *database.DBConfig, rollersPerSession 
 
 	rollerManager, err = coordinator.New(context.Background(), &coordinator_config.RollerManagerConfig{
 		RollersPerSession: rollersPerSession,
-		Verifier:          &coordinator_config.VerifierConfig{MockMode: true},
+		Verifier:          &libzkp.VerifierConfig{MockMode: true},
 		CollectionTime:    1,
 		TokenTimeToLive:   5,
 	}, db, nil)
