@@ -3,10 +3,10 @@ package l1
 import (
 	"errors"
 	"fmt"
-	"math/big"
-
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/log"
+	"math/big"
+	"modernc.org/mathutil"
 
 	"scroll-tech/common/types"
 	"scroll-tech/common/utils"
@@ -16,32 +16,26 @@ import (
 
 func (r *Layer1Relayer) checkSubmittedMessages() error {
 	var (
-		blockNumber uint64
-		msgsSize    = 100
+		index    uint64
+		msgsSize = 100
 	)
 	for {
 		msgs, err := r.db.GetL1Messages(
 			map[string]interface{}{"status": types.MsgSubmitted},
-			fmt.Sprintf("AND height >= %d", blockNumber),
-			fmt.Sprintf("ORDER BY height ASC LIMIT %d", msgsSize),
+			fmt.Sprintf("AND queue_index > %d", index),
+			fmt.Sprintf("ORDER BY queue_index ASC LIMIT %d", msgsSize),
 		)
 		if err != nil || len(msgs) == 0 {
 			return err
 		}
 
-		// Update block number to the latest.
-		blockNumber = msgs[len(msgs)-1].Height
-		isFull := len(msgs) == msgsSize
 		for msg := msgs[0]; len(msgs) > 0; { //nolint:staticcheck
-			// If messages size is equal to msgsSize, don't operate the latest number's messages and let be operated in next loop.
-			if isFull && msg.Height >= blockNumber {
-				break
-			}
 			// If pending txs pool is full, wait until pending pool is available.
 			utils.TryTimes(-1, func() bool {
 				return !r.messageSender.IsFull()
 			})
 			msg, msgs = msgs[0], msgs[1:]
+			index = mathutil.MaxUint64(index, msg.QueueIndex)
 
 			if err = r.messageSender.LoadOrSendTx(
 				common.HexToHash(msg.Layer2Hash),
