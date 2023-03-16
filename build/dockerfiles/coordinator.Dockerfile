@@ -1,5 +1,5 @@
 # Build libzkp dependency
-FROM scrolltech/golang:1.18-alpine as chef
+FROM scrolltech/go-alpine-builder:1.18 as chef
 WORKDIR app
 
 # Download Go dependencies
