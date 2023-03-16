@@ -18,6 +18,8 @@ import (
 	"github.com/scroll-tech/go-ethereum/metrics"
 	"github.com/scroll-tech/go-ethereum/rpc"
 
+	cutil "scroll-tech/common/utils"
+
 	bridge_abi "scroll-tech/bridge/abi"
 	"scroll-tech/bridge/utils"
 
@@ -148,50 +150,23 @@ func (w *WatcherClient) Start() {
 		}
 
 		ctx, cancel := context.WithCancel(w.ctx)
-
-		// trace fetcher loop
-		go func(ctx context.Context) {
-			ticker := time.NewTicker(2 * time.Second)
-			defer ticker.Stop()
-
-			for {
-				select {
-				case <-ctx.Done():
-					return
-
-				case <-ticker.C:
-					number, err := utils.GetLatestConfirmedBlockNumber(ctx, w.Client, w.confirmations)
-					if err != nil {
-						log.Error("failed to get block number", "err", err)
-						continue
-					}
-
-					w.tryFetchRunningMissingBlocks(ctx, number)
-				}
+		go cutil.LoopWithContext(ctx, 2*time.Second, func(subCtx context.Context) {
+			number, err := utils.GetLatestConfirmedBlockNumber(subCtx, w.Client, w.confirmations)
+			if err != nil {
+				log.Error("failed to get block number", "err", err)
+			} else {
+				w.tryFetchRunningMissingBlocks(ctx, number)
 			}
-		}(ctx)
+		})
 
-		// event fetcher loop
-		go func(ctx context.Context) {
-			ticker := time.NewTicker(2 * time.Second)
-			defer ticker.Stop()
-
-			for {
-				select {
-				case <-ctx.Done():
-					return
-
-				case <-ticker.C:
-					number, err := utils.GetLatestConfirmedBlockNumber(ctx, w.Client, w.confirmations)
-					if err != nil {
-						log.Error("failed to get block number", "err", err)
-						continue
-					}
-
-					w.FetchContractEvent(number)
-				}
+		go cutil.LoopWithContext(ctx, 2*time.Second, func(subCtx context.Context) {
+			number, err := utils.GetLatestConfirmedBlockNumber(subCtx, w.Client, w.confirmations)
+			if err != nil {
+				log.Error("failed to get block number", "err", err)
+			} else {
+				w.FetchContractEvent(number)
 			}
-		}(ctx)
+		})
 
 		<-w.stopCh
 		cancel()
