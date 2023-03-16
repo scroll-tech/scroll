@@ -4,8 +4,6 @@ import (
 	"context"
 
 	"github.com/scroll-tech/go-ethereum/ethclient"
-	"github.com/scroll-tech/go-ethereum/log"
-
 	"scroll-tech/database"
 
 	"scroll-tech/bridge/config"
@@ -29,12 +27,6 @@ func New(ctx context.Context, cfg *config.L1Config, orm database.OrmFactory) (*B
 
 	relayer, err := NewLayer1Relayer(ctx, orm, cfg.RelayerConfig)
 	if err != nil {
-		return nil, err
-	}
-
-	// Deal with pending transactions.
-	if err = relayer.Prepare(); err != nil {
-		log.Error("failed to process pending L1 transactions during initialization")
 		return nil, err
 	}
 

@@ -104,26 +104,22 @@ func NewLayer1Relayer(ctx context.Context, db database.OrmFactory, cfg *config.R
 	return relayer, nil
 }
 
-// Prepare operate layer1's unconfirmed txs.
-func (r *Layer1Relayer) Prepare() error {
-	if err := r.checkSubmittedMessages(); err != nil {
-		log.Error("failed to init layer1 submitted tx", "err", err)
-		return err
-	}
-
-	// Wait forever util sender is empty.
-	utils.TryTimes(-1, func() bool {
-		return r.messageSender.PendingCount() == 0
-	})
-	return nil
-}
-
 // Start the relayer process
 func (r *Layer1Relayer) Start() {
 	go func() {
 		ctx, cancel := context.WithCancel(r.ctx)
 
-		go utils.Loop(ctx, 2*time.Second, r.ProcessSavedEvents)
+		go func() {
+			if err := r.checkSubmittedMessages(); err != nil {
+				log.Error("failed to init layer1 submitted tx", "err", err)
+			}
+			// Wait until sender pool is clean.
+			utils.TryTimes(-1, func() bool {
+				return r.messageSender.PendingCount() == 0
+			})
+			go utils.Loop(ctx, 2*time.Second, r.ProcessSavedEvents)
+		}()
+
 		go utils.Loop(ctx, 2*time.Second, r.ProcessGasPriceOracle)
 
 		<-r.stopCh

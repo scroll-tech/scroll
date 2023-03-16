@@ -5,8 +5,6 @@ import (
 	"sync"
 	"time"
 
-	"golang.org/x/sync/errgroup"
-
 	// not sure if this will make problems when relay with l1geth
 
 	"github.com/scroll-tech/go-ethereum/accounts/abi"
@@ -152,49 +150,33 @@ func (r *Layer2Relayer) SetBatchProposer(proposer batchInterface) {
 	r.batchInterface = proposer
 }
 
-// Prepare operate layer2's unconfirmed txs.
-func (r *Layer2Relayer) Prepare() error {
-	var eg errgroup.Group
-	eg.Go(func() error {
-		if err := r.checkFinalizingBatches(); err != nil {
-			log.Error("failed to init layer2 finalizing batches", "err", err)
-			return err
-		}
-		utils.TryTimes(-1, func() bool {
-			return r.rollupSender.PendingCount() == 0
-		})
-		return nil
-	})
-	eg.Go(func() error {
-		if err := r.checkSubmittedMessages(); err != nil {
-			log.Error("failed to init layer2 submitted messages", "err", err)
-			return err
-		}
-		utils.TryTimes(-1, func() bool {
-			return r.messageSender.PendingCount() == 0
-		})
-		return nil
-	})
-	eg.Go(func() error {
-		if err := r.checkRollupBatches(); err != nil {
-			log.Error("failed to init layer2 rollupCommitting messages", "err", err)
-			return err
-		}
-		utils.TryTimes(-1, func() bool {
-			return r.rollupSender.PendingCount() == 0
-		})
-		return nil
-	})
-
-	return eg.Wait()
-}
-
 // Start the relayer process
 func (r *Layer2Relayer) Start() {
 	go func() {
 		ctx, cancel := context.WithCancel(r.ctx)
-		go cutil.Loop(ctx, time.Second, r.ProcessSavedEvents)
-		go cutil.Loop(ctx, time.Second, r.ProcessCommittedBatches)
+
+		go func() {
+			if err := r.checkSubmittedMessages(); err != nil {
+				log.Error("failed to init layer2 submitted messages", "err", err)
+			}
+			// Wait until sender pool is clean.
+			utils.TryTimes(-1, func() bool {
+				return r.messageSender.PendingCount() == 0
+			})
+			go cutil.Loop(ctx, time.Second, r.ProcessSavedEvents)
+		}()
+
+		go func() {
+			if err := r.checkFinalizingBatches(); err != nil {
+				log.Error("failed to init layer2 finalizing batches", "err", err)
+			}
+			// Wait until sender pool is clean.
+			utils.TryTimes(-1, func() bool {
+				return r.rollupSender.PendingCount() == 0
+			})
+			go cutil.Loop(ctx, time.Second, r.ProcessCommittedBatches)
+		}()
+
 		go cutil.Loop(ctx, time.Second, r.ProcessGasPriceOracle)
 
 		<-r.stopCh
