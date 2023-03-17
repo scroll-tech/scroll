@@ -2,26 +2,10 @@ name: Contracts
 
 on:
   push:
-    branches:
-      - master
-      - main
-      - prod
-      - release/*
-      - staging
-      - develop
-      - alpha
     paths:
       - 'contracts/**'
       - '.github/workflows/contracts.yaml'
   pull_request:
-    branches:
-      - master
-      - main
-      - prod
-      - release/*
-      - staging
-      - develop
-      - alpha
     paths:
       - 'contracts/**'
       - '.github/workflows/contracts.yaml'
