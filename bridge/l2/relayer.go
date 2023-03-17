@@ -37,6 +37,8 @@ const (
 	gasPriceDiffPrecision = 1000000
 
 	defaultGasPriceDiff = 50000 // 5%
+
+	defaultMessageRelayMinGasLimit = 200000 // should be enough for both ERC20 and ETH relay
 )
 
 type batchInterface interface {
@@ -68,6 +70,8 @@ type Layer2Relayer struct {
 	gasOracleSender *sender.Sender
 	gasOracleCh     <-chan *sender.Confirmation
 	l2GasOracleABI  *abi.ABI
+
+	minGasLimitForMessageRelay uint64
 
 	lastGasPrice uint64
 	minGasPrice  uint64
@@ -122,6 +126,11 @@ func NewLayer2Relayer(ctx context.Context, l2Client *ethclient.Client, db databa
 		gasPriceDiff = defaultGasPriceDiff
 	}
 
+	minGasLimitForMessageRelay := uint64(defaultMessageRelayMinGasLimit)
+	if cfg.MessageRelayMinGasLimit != 0 {
+		minGasLimitForMessageRelay = cfg.MessageRelayMinGasLimit
+	}
+
 	relayer := &Layer2Relayer{
 		ctx: ctx,
 		db:  db,
@@ -139,6 +148,8 @@ func NewLayer2Relayer(ctx context.Context, l2Client *ethclient.Client, db databa
 		gasOracleSender: gasOracleSender,
 		gasOracleCh:     gasOracleSender.ConfirmChan(),
 		l2GasOracleABI:  bridge_abi.L2GasPriceOracleABI,
+
+		minGasLimitForMessageRelay: minGasLimitForMessageRelay,
 
 		minGasPrice:  minGasPrice,
 		gasPriceDiff: gasPriceDiff,

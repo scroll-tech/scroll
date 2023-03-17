@@ -14,6 +14,7 @@ import (
 	cmap "github.com/orcaman/concurrent-map"
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/crypto"
+	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/rpc"
 	"github.com/stretchr/testify/assert"
 
@@ -56,42 +57,36 @@ func TestSender(t *testing.T) {
 	// Setup
 	setupEnv(t)
 
-	t.Run("testLoadOrSendTx", testLoadOrSendTx)
+	t.Run("test min gas limit", func(t *testing.T) { testMinGasLimit(t) })
+
 	t.Run("test 1 account sender", func(t *testing.T) { testBatchSender(t, 1) })
 	t.Run("test 3 account sender", func(t *testing.T) { testBatchSender(t, 3) })
 	t.Run("test 8 account sender", func(t *testing.T) { testBatchSender(t, 8) })
 }
 
-func testLoadOrSendTx(t *testing.T) {
+func testMinGasLimit(t *testing.T) {
 	senderCfg := cfg.L1Config.RelayerConfig.SenderConfig
-	senderCfg.Confirmations = 0
+	senderCfg.Confirmations = rpc.LatestBlockNumber
 	newSender, err := sender.NewSender(context.Background(), senderCfg, privateKeys)
-	if err != nil {
-		t.Fatal(err)
-	}
+	assert.NoError(t, err)
+	defer newSender.Stop()
 
-	newSender2, err := sender.NewSender(context.Background(), senderCfg, privateKeys)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	toAddr := common.HexToAddress("0x4592d8f8d7b001e72cb26a73e4fa1806a51ac79d")
-	id := "aaa"
-
-	hash, err := newSender.SendTransaction(id, &toAddr, big.NewInt(0), nil)
+	client, err := ethclient.Dial(senderCfg.Endpoint)
 	assert.NoError(t, err)
 
-	err = newSender2.LoadOrSendTx(hash, id, &toAddr, big.NewInt(0), nil)
+	// MinGasLimit = 0
+	txHash0, err := newSender.SendTransaction("0", &common.Address{}, big.NewInt(1), nil, 0)
 	assert.NoError(t, err)
+	tx0, _, err := client.TransactionByHash(context.Background(), txHash0)
+	assert.NoError(t, err)
+	assert.Greater(t, tx0.Gas(), uint64(0))
 
-	select {
-	case cfm := <-newSender2.ConfirmChan():
-		assert.Equal(t, true, cfm.IsSuccessful)
-		assert.Equal(t, hash, cfm.TxHash)
-		assert.Equal(t, id, cfm.ID)
-	case <-time.After(time.Second * 10):
-		t.Error("testLoadOrSendTx test failed because of timeout")
-	}
+	// MinGasLimit = 100000
+	txHash1, err := newSender.SendTransaction("1", &common.Address{}, big.NewInt(1), nil, 100000)
+	assert.NoError(t, err)
+	tx1, _, err := client.TransactionByHash(context.Background(), txHash1)
+	assert.NoError(t, err)
+	assert.Equal(t, tx1.Gas(), uint64(150000))
 }
 
 func testBatchSender(t *testing.T, batchSize int) {
@@ -123,7 +118,7 @@ func testBatchSender(t *testing.T, batchSize int) {
 			for i := 0; i < TXBatch; i++ {
 				toAddr := common.HexToAddress("0x4592d8f8d7b001e72cb26a73e4fa1806a51ac79d")
 				id := strconv.Itoa(i + index*1000)
-				_, err := newSender.SendTransaction(id, &toAddr, big.NewInt(1), nil)
+				_, err := newSender.SendTransaction(id, &toAddr, big.NewInt(1), nil, 0)
 				if errors.Is(err, sender.ErrNoAvailableAccount) {
 					<-time.After(time.Second)
 					continue

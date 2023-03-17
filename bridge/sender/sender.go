@@ -161,11 +161,11 @@ func (s *Sender) NumberOfAccounts() int {
 	return len(s.auths.accounts)
 }
 
-func (s *Sender) getFeeData(auth *bind.TransactOpts, target *common.Address, value *big.Int, data []byte) (*FeeData, error) {
+func (s *Sender) getFeeData(auth *bind.TransactOpts, target *common.Address, value *big.Int, data []byte, minGasLimit uint64) (*FeeData, error) {
 	if s.config.TxType == DynamicFeeTxType {
-		return s.estimateDynamicGas(auth, target, value, data)
+		return s.estimateDynamicGas(auth, target, value, data, minGasLimit)
 	}
-	return s.estimateLegacyGas(auth, target, value, data)
+	return s.estimateLegacyGas(auth, target, value, data, minGasLimit)
 }
 
 // IsFull If pendingTxs pool is full return true.
@@ -174,7 +174,7 @@ func (s *Sender) IsFull() bool {
 }
 
 // SendTransaction send a signed L2tL1 transaction.
-func (s *Sender) SendTransaction(ID string, target *common.Address, value *big.Int, data []byte) (hash common.Hash, err error) {
+func (s *Sender) SendTransaction(ID string, target *common.Address, value *big.Int, data []byte, minGasLimit uint64) (hash common.Hash, err error) {
 	if s.IsFull() {
 		return common.Hash{}, fmt.Errorf("pending txs is full, pending size: %d", s.config.PendingLimit)
 	}
@@ -205,7 +205,7 @@ func (s *Sender) SendTransaction(ID string, target *common.Address, value *big.I
 		tx      *types.Transaction
 	)
 	// estimate gas fee
-	if feeData, err = s.getFeeData(auth, target, value, data); err != nil {
+	if feeData, err = s.getFeeData(auth, target, value, data, minGasLimit); err != nil {
 		return
 	}
 	if tx, err = s.createAndSendTx(auth, feeData, target, value, data, nil); err == nil {
@@ -247,13 +247,13 @@ func (s *Sender) getTxAndAddr(txHash common.Hash) (*types.Transaction, uint64, c
 }
 
 // LoadOrSendTx If the tx already exist in chain load it or resend it.
-func (s *Sender) LoadOrSendTx(destTxHash common.Hash, ID string, target *common.Address, value *big.Int, data []byte) error {
+func (s *Sender) LoadOrSendTx(destTxHash common.Hash, ID string, target *common.Address, value *big.Int, data []byte, minGasLimit uint64) error {
 	tx, blockNumber, from, err := s.getTxAndAddr(destTxHash)
 	// If this tx already exist load it to the pending.
 	if err == nil && tx != nil {
 		auth := s.auths.accounts[from]
 		var feeData *FeeData
-		feeData, err = s.getFeeData(auth, target, value, data)
+		feeData, err = s.getFeeData(auth, target, value, data, minGasLimit)
 		if err != nil {
 			return err
 		}
@@ -275,7 +275,7 @@ func (s *Sender) LoadOrSendTx(destTxHash common.Hash, ID string, target *common.
 	}
 
 	// Tx is dropped from chain node, resend it.
-	_, err = s.SendTransaction(ID, target, value, data)
+	_, err = s.SendTransaction(ID, target, value, data, minGasLimit)
 	return err
 }
 
@@ -487,7 +487,7 @@ func (s *Sender) loop(ctx context.Context) {
 	checkTick := time.NewTicker(time.Duration(s.config.CheckPendingTime) * time.Second)
 	defer checkTick.Stop()
 
-	checkBalanceTicker := time.NewTicker(time.Minute * 10)
+	checkBalanceTicker := time.NewTicker(time.Duration(s.config.CheckBalanceTime) * time.Second)
 	defer checkBalanceTicker.Stop()
 
 	for {

@@ -100,6 +100,7 @@ func (r *Layer2Relayer) checkRollupBatches() error {
 			&r.cfg.RollupContractAddress,
 			big.NewInt(0),
 			callData,
+			0,
 		)
 		if err != nil {
 			log.Error("failed to load or send batchData tx")
@@ -153,7 +154,7 @@ func (r *Layer2Relayer) SendCommitTx(batchData []*types.BatchData) error {
 		return err
 	}
 
-	txHash, err := r.rollupSender.SendTransaction(txID, &r.cfg.RollupContractAddress, big.NewInt(0), calldata)
+	txHash, err := r.rollupSender.SendTransaction(txID, &r.cfg.RollupContractAddress, big.NewInt(0), calldata, 0)
 	if err != nil {
 		if !errors.Is(err, sender.ErrNoAvailableAccount) {
 			log.Error("Failed to send commitBatches tx to layer1 ", "err", err)

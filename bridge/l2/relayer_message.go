@@ -67,6 +67,7 @@ func (r *Layer2Relayer) checkSubmittedMessages() error {
 				&r.cfg.MessengerContractAddress,
 				big.NewInt(0),
 				data,
+				r.minGasLimitForMessageRelay,
 			)
 			if err != nil {
 				log.Error("failed to load or send l2 submitted tx", "batch hash", batch.Hash, "msg hash", msg.MsgHash, "err", err)
@@ -166,7 +167,7 @@ func (r *Layer2Relayer) processSavedEvent(msg *types.L2Message) error {
 		return err
 	}
 
-	hash, err := r.messageSender.SendTransaction(msg.MsgHash, &r.cfg.MessengerContractAddress, big.NewInt(0), data)
+	hash, err := r.messageSender.SendTransaction(msg.MsgHash, &r.cfg.MessengerContractAddress, big.NewInt(0), data, r.minGasLimitForMessageRelay)
 	if err != nil && err.Error() == "execution reverted: Message expired" {
 		return r.db.UpdateLayer2Status(r.ctx, msg.MsgHash, types.MsgExpired)
 	}

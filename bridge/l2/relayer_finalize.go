@@ -60,6 +60,7 @@ func (r *Layer2Relayer) checkFinalizingBatches() error {
 				&r.cfg.RollupContractAddress,
 				big.NewInt(0),
 				data,
+				0,
 			)
 			if err != nil {
 				log.Error("failed to load or send finalized tx", "batch hash", hash, "err", err)
@@ -202,7 +203,7 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 
 		txID := hash + "-finalize"
 		// add suffix `-finalize` to avoid duplication with commit tx in unit tests
-		txHash, err := r.rollupSender.SendTransaction(txID, &r.cfg.RollupContractAddress, big.NewInt(0), data)
+		txHash, err := r.rollupSender.SendTransaction(txID, &r.cfg.RollupContractAddress, big.NewInt(0), data, 0)
 		finalizeTxHash := &txHash
 		if err != nil {
 			if !errors.Is(err, sender.ErrNoAvailableAccount) {

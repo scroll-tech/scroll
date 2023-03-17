@@ -32,6 +32,8 @@ const (
 	gasPriceDiffPrecision = 1000000
 
 	defaultGasPriceDiff = 50000 // 5%
+
+	defaultMessageRelayMinGasLimit = 130000 // should be enough for both ERC20 and ETH relay
 )
 
 // Layer1Relayer is responsible for
@@ -54,6 +56,8 @@ type Layer1Relayer struct {
 	gasOracleSender *sender.Sender
 	gasOracleCh     <-chan *sender.Confirmation
 	l1GasOracleABI  *abi.ABI
+
+	minGasLimitForMessageRelay uint64
 
 	lastGasPrice uint64
 	minGasPrice  uint64
@@ -89,6 +93,11 @@ func NewLayer1Relayer(ctx context.Context, db database.OrmFactory, cfg *config.R
 		gasPriceDiff = defaultGasPriceDiff
 	}
 
+	minGasLimitForMessageRelay := uint64(defaultMessageRelayMinGasLimit)
+	if cfg.MessageRelayMinGasLimit != 0 {
+		minGasLimitForMessageRelay = cfg.MessageRelayMinGasLimit
+	}
+
 	relayer := &Layer1Relayer{
 		ctx: ctx,
 		db:  db,
@@ -100,6 +109,8 @@ func NewLayer1Relayer(ctx context.Context, db database.OrmFactory, cfg *config.R
 		gasOracleSender: gasOracleSender,
 		gasOracleCh:     gasOracleSender.ConfirmChan(),
 		l1GasOracleABI:  bridge_abi.L1GasPriceOracleABI,
+
+		minGasLimitForMessageRelay: minGasLimitForMessageRelay,
 
 		minGasPrice:  minGasPrice,
 		gasPriceDiff: gasPriceDiff,
