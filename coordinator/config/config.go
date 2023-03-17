@@ -28,7 +28,7 @@ type RollerManagerConfig struct {
 	// Token time to live (in seconds)
 	TokenTimeToLive int `json:"token_time_to_live"`
 	// Max number of workers in verifier worker pool
-	MaxVerifierWorkers int `json:"max_verifier_workers"`
+	MaxVerifierWorkers int `json:"max_verifier_workers,omitempty"`
 }
 
 // L2Config loads l2geth configuration items.
