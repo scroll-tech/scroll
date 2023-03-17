@@ -163,17 +163,6 @@ function owner() external view returns (address)
 |---|---|---|
 | _0 | address | undefined |
 
-### pause
-
-```solidity
-function pause() external nonpayable
-```
-
-Pause the contract
-
-*This function can only called by contract owner.*
-
-
 ### paused
 
 ```solidity
@@ -265,6 +254,26 @@ The address of Rollup contract.
 ### sendMessage
 
 ```solidity
+function sendMessage(address _to, uint256 _value, bytes _message, uint256 _gasLimit, address _refundAddress) external payable
+```
+
+Send cross chain message from L1 to L2 or L2 to L1.
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| _to | address | undefined |
+| _value | uint256 | undefined |
+| _message | bytes | undefined |
+| _gasLimit | uint256 | undefined |
+| _refundAddress | address | undefined |
+
+### sendMessage
+
+```solidity
 function sendMessage(address _to, uint256 _value, bytes _message, uint256 _gasLimit) external payable
 ```
 
@@ -280,6 +289,22 @@ Send cross chain message from L1 to L2 or L2 to L1.
 | _value | uint256 | undefined |
 | _message | bytes | undefined |
 | _gasLimit | uint256 | undefined |
+
+### setPause
+
+```solidity
+function setPause(bool _status) external nonpayable
+```
+
+Pause the contract
+
+*This function can only called by contract owner.*
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| _status | bool | The pause status to update. |
 
 ### transferOwnership
 

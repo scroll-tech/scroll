@@ -24,6 +24,14 @@ abstract contract ScrollMessengerBase is OwnableUpgradeable, IScrollMessenger {
   event UpdateFeeVault(address _oldFeeVault, address _newFeeVault);
 
   /*************
+   * Constants *
+   *************/
+
+  // https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v4.5.0/contracts/security/ReentrancyGuard.sol
+  uint256 internal constant _NOT_ENTERED = 1;
+  uint256 internal constant _ENTERED = 2;
+
+  /*************
    * Variables *
    *************/
 

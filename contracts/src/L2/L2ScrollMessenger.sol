@@ -63,15 +63,33 @@ contract L2ScrollMessenger is ScrollMessengerBase, PausableUpgradeable, IL2Scrol
   /// @notice The maximum number of times each L1 message can fail on L2.
   uint256 public maxFailedExecutionTimes;
 
+  // @note move to ScrollMessengerBase in next big refactor
+  /// @dev The status of for non-reentrant check.
+  uint256 private _lock_status;
+
+  /**********************
+   * Function Modifiers *
+   **********************/
+
+  modifier nonReentrant() {
+    // On the first call to nonReentrant, _notEntered will be true
+    require(_lock_status != _ENTERED, "ReentrancyGuard: reentrant call");
+
+    // Any calls to nonReentrant after this point will fail
+    _lock_status = _ENTERED;
+
+    _;
+
+    // By storing the original value once again, a refund is triggered (see
+    // https://eips.ethereum.org/EIPS/eip-2200)
+    _lock_status = _NOT_ENTERED;
+  }
+
   /***************
    * Constructor *
    ***************/
 
-  constructor(
-    address _blockContainer,
-    address _gasOracle,
-    address _messageQueue
-  ) {
+  constructor(address _blockContainer, address _gasOracle, address _messageQueue) {
     blockContainer = _blockContainer;
     gasOracle = _gasOracle;
     messageQueue = _messageQueue;
@@ -256,7 +274,7 @@ contract L2ScrollMessenger is ScrollMessengerBase, PausableUpgradeable, IL2Scrol
     bytes memory _message,
     uint256 _gasLimit,
     address _refundAddress
-  ) internal {
+  ) internal nonReentrant {
     // by pass fee vault relay
     if (feeVault != msg.sender) {
       require(_gasLimit >= MIN_GAS_LIMIT, "gas limit too small");
