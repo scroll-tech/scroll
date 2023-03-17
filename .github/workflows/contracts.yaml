@@ -87,7 +87,7 @@ jobs:
         run : forge coverage --report lcov
 
       - name : Prune coverage
-        run : lcov --remove ./lcov.info -o ./lcov.info.pruned '/src/mocks/*' '/src/test/*' '/scripts/*' '/node_modules/*' '/lib/*'
+        run : lcov --remove ./lcov.info -o ./lcov.info.pruned 'src/mocks/*' 'src/test/*' 'scripts/*' 'node_modules/*' 'lib/*'
 
       - name: Report code coverage
         uses: zgosalvez/github-actions-report-lcov@v3
