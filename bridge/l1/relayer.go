@@ -35,6 +35,8 @@ const (
 	gasPriceDiffPrecision = 1000000
 
 	defaultGasPriceDiff = 50000 // 5%
+
+	defaultMessageRelayMinGasLimit = 130000 // should be enough for both ERC20 and ETH relay
 )
 
 // Layer1Relayer is responsible for
@@ -57,6 +59,8 @@ type Layer1Relayer struct {
 	gasOracleSender *sender.Sender
 	gasOracleCh     <-chan *sender.Confirmation
 	l1GasOracleABI  *abi.ABI
+
+	minGasLimitForMessageRelay uint64
 
 	lastGasPrice uint64
 	minGasPrice  uint64
@@ -92,6 +96,11 @@ func NewLayer1Relayer(ctx context.Context, db database.OrmFactory, cfg *config.R
 		gasPriceDiff = defaultGasPriceDiff
 	}
 
+	minGasLimitForMessageRelay := uint64(defaultMessageRelayMinGasLimit)
+	if cfg.MessageRelayMinGasLimit != 0 {
+		minGasLimitForMessageRelay = cfg.MessageRelayMinGasLimit
+	}
+
 	return &Layer1Relayer{
 		ctx: ctx,
 		db:  db,
@@ -103,6 +112,8 @@ func NewLayer1Relayer(ctx context.Context, db database.OrmFactory, cfg *config.R
 		gasOracleSender: gasOracleSender,
 		gasOracleCh:     gasOracleSender.ConfirmChan(),
 		l1GasOracleABI:  bridge_abi.L1GasPriceOracleABI,
+
+		minGasLimitForMessageRelay: minGasLimitForMessageRelay,
 
 		minGasPrice:  minGasPrice,
 		gasPriceDiff: gasPriceDiff,
@@ -138,7 +149,7 @@ func (r *Layer1Relayer) ProcessSavedEvents() {
 func (r *Layer1Relayer) processSavedEvent(msg *types.L1Message) error {
 	calldata := common.Hex2Bytes(msg.Calldata)
 
-	hash, err := r.messageSender.SendTransaction(msg.MsgHash, &r.cfg.MessengerContractAddress, big.NewInt(0), calldata)
+	hash, err := r.messageSender.SendTransaction(msg.MsgHash, &r.cfg.MessengerContractAddress, big.NewInt(0), calldata, r.minGasLimitForMessageRelay)
 	if err != nil && err.Error() == "execution reverted: Message expired" {
 		return r.db.UpdateLayer1Status(r.ctx, msg.MsgHash, types.MsgExpired)
 	}
@@ -190,7 +201,7 @@ func (r *Layer1Relayer) ProcessGasPriceOracle() {
 				return
 			}
 
-			hash, err := r.gasOracleSender.SendTransaction(block.Hash, &r.cfg.GasPriceOracleContractAddress, big.NewInt(0), data)
+			hash, err := r.gasOracleSender.SendTransaction(block.Hash, &r.cfg.GasPriceOracleContractAddress, big.NewInt(0), data, 0)
 			if err != nil {
 				if !errors.Is(err, sender.ErrNoAvailableAccount) {
 					log.Error("Failed to send setL1BaseFee tx to layer2 ", "block.Hash", block.Hash, "block.Height", block.Number, "err", err)
