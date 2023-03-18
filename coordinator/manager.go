@@ -23,6 +23,8 @@ import (
 	"scroll-tech/common/types"
 	"scroll-tech/database"
 
+	"scroll-tech/common/utils/workerpool"
+
 	"scroll-tech/coordinator/config"
 	"scroll-tech/coordinator/verifier"
 )
@@ -89,6 +91,9 @@ type Manager struct {
 	tokenCache *cache.Cache
 	// A mutex guarding registration
 	registerMu sync.RWMutex
+
+	// Verifier worker pool
+	verifierWorkerPool *workerpool.WorkerPool
 }
 
 // New returns a new instance of Manager. The instance will be not fully prepared,
@@ -110,6 +115,7 @@ func New(ctx context.Context, cfg *config.RollerManagerConfig, orm database.OrmF
 		orm:                orm,
 		Client:             client,
 		tokenCache:         cache.New(time.Duration(cfg.TokenTimeToLive)*time.Second, 1*time.Hour),
+		verifierWorkerPool: workerpool.NewWorkerPool(cfg.MaxVerifierWorkers),
 	}, nil
 }
 
@@ -119,6 +125,7 @@ func (m *Manager) Start() error {
 		return nil
 	}
 
+	m.verifierWorkerPool.Run()
 	m.restorePrevSessions()
 
 	atomic.StoreInt32(&m.running, 1)
@@ -132,6 +139,7 @@ func (m *Manager) Stop() {
 	if !m.isRunning() {
 		return
 	}
+	m.verifierWorkerPool.Stop()
 
 	atomic.StoreInt32(&m.running, 0)
 }
@@ -302,7 +310,7 @@ func (m *Manager) handleZkProof(pk string, msg *message.ProofDetail) error {
 	coordinatorProofsReceivedTotalCounter.Inc(1)
 
 	var err error
-	success, err = m.verifier.VerifyProof(msg.Proof)
+	success, err = m.verifyProof(msg.Proof)
 	if err != nil {
 		// TODO: this is only a temp workaround for testnet, we should return err in real cases
 		success = false
@@ -561,4 +569,27 @@ func (m *Manager) VerifyToken(authMsg *message.AuthMsg) (bool, error) {
 		return false, errors.New("failed to find corresponding token")
 	}
 	return true, nil
+}
+
+func (m *Manager) addVerifyTask(proof *message.AggProof) chan verifyResult {
+	c := make(chan verifyResult, 1)
+	m.verifierWorkerPool.AddTask(func() {
+		result, err := m.verifier.VerifyProof(proof)
+		c <- verifyResult{result, err}
+	})
+	return c
+}
+
+func (m *Manager) verifyProof(proof *message.AggProof) (bool, error) {
+	if !m.isRunning() {
+		return false, errors.New("coordinator has stopped before verification")
+	}
+	verifyResultChan := m.addVerifyTask(proof)
+	verifyResult := <-verifyResultChan
+	return verifyResult.result, verifyResult.err
+}
+
+type verifyResult struct {
+	result bool
+	err    error
 }
