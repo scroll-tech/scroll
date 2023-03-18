@@ -1,4 +1,4 @@
-package workerpool_test
+package verifier_test
 
 import (
 	"sync/atomic"

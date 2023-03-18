@@ -27,8 +27,6 @@ type RollerManagerConfig struct {
 	CollectionTime int `json:"collection_time"`
 	// Token time to live (in seconds)
 	TokenTimeToLive int `json:"token_time_to_live"`
-	// Max number of workers in verifier worker pool
-	MaxVerifierWorkers int `json:"max_verifier_workers,omitempty"`
 }
 
 // L2Config loads l2geth configuration items.
@@ -49,6 +47,7 @@ type VerifierConfig struct {
 	MockMode   bool   `json:"mock_mode"`
 	ParamsPath string `json:"params_path"`
 	AggVkPath  string `json:"agg_vk_path"`
+	MaxWorkers int    `json:"max_workers,omitempty"`
 }
 
 // NewConfig returns a new instance of Config.
@@ -71,8 +70,8 @@ func NewConfig(file string) (*Config, error) {
 	}
 	cfg.RollerManagerConfig.OrderSession = order
 
-	if cfg.RollerManagerConfig.MaxVerifierWorkers == 0 {
-		cfg.RollerManagerConfig.MaxVerifierWorkers = defaultNumberOfVerifierWorkers
+	if cfg.RollerManagerConfig.Verifier.MaxWorkers == 0 {
+		cfg.RollerManagerConfig.Verifier.MaxWorkers = defaultNumberOfVerifierWorkers
 	}
 
 	return cfg, nil

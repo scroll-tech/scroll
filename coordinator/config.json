@@ -7,9 +7,9 @@
     "verifier": {
       "mock_mode": true,
       "params_path": "",
-      "agg_vk_path": ""
-    },
-    "max_verifier_workers": 10
+      "agg_vk_path": "",
+      "max_workers": 10
+    }
   },
   "db_config": {
     "driver_name": "postgres",

@@ -1,4 +1,4 @@
-package workerpool
+package verifier
 
 import (
 	"sync"
