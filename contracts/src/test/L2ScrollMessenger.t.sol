@@ -47,4 +47,21 @@ contract L2ScrollMessengerTest is DSTestPlus {
     hevm.expectRevert("Forbid to call self");
     l2Messenger.relayMessage(address(this), address(l2Messenger), 0, 0, new bytes(0));
   }
+
+  function testSendMessage(uint256 exceedValue, address refundAddress) external {
+    hevm.assume(refundAddress.code.length == 0);
+    hevm.assume(uint256(uint160(refundAddress)) > 100); // ignore some precompile contracts
+    hevm.assume(refundAddress != address(this));
+
+    exceedValue = bound(exceedValue, 1, address(this).balance / 2);
+
+    // Insufficient msg.value
+    hevm.expectRevert("Insufficient msg.value");
+    l2Messenger.sendMessage(address(0), 1, new bytes(0), 21000, refundAddress);
+
+    // refund exceed fee
+    uint256 balanceBefore = refundAddress.balance;
+    l2Messenger.sendMessage{ value: 1 + exceedValue }(address(0), 1, new bytes(0), 21000, refundAddress);
+    assertEq(balanceBefore + exceedValue, refundAddress.balance);
+  }
 }
