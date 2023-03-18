@@ -7,7 +7,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"scroll-tech/coordinator/verifier/workerpool"
+	"scroll-tech/common/utils/workerpool"
 )
 
 func TestWorkerPool(t *testing.T) {

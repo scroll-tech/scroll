@@ -25,7 +25,7 @@ import (
 
 	"scroll-tech/coordinator/config"
 	"scroll-tech/coordinator/verifier"
-	"scroll-tech/coordinator/verifier/workerpool"
+	"scroll-tech/common/utils/workerpool"
 )
 
 var (
