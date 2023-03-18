@@ -23,9 +23,10 @@ import (
 	"scroll-tech/common/types"
 	"scroll-tech/database"
 
+	"scroll-tech/common/utils/workerpool"
+
 	"scroll-tech/coordinator/config"
 	"scroll-tech/coordinator/verifier"
-	"scroll-tech/common/utils/workerpool"
 )
 
 var (
