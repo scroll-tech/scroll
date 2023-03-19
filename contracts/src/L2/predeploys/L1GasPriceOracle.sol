@@ -2,133 +2,133 @@
 
 pragma solidity ^0.8.0;
 
-import { OwnableBase } from "../../libraries/common/OwnableBase.sol";
-import { IWhitelist } from "../../libraries/common/IWhitelist.sol";
+import {OwnableBase} from "../../libraries/common/OwnableBase.sol";
+import {IWhitelist} from "../../libraries/common/IWhitelist.sol";
 
-import { IL1BlockContainer } from "./IL1BlockContainer.sol";
-import { IL1GasPriceOracle } from "./IL1GasPriceOracle.sol";
+import {IL1BlockContainer} from "./IL1BlockContainer.sol";
+import {IL1GasPriceOracle} from "./IL1GasPriceOracle.sol";
 
 contract L1GasPriceOracle is OwnableBase, IL1GasPriceOracle {
-  /**********
-   * Events *
-   **********/
+    /**********
+     * Events *
+     **********/
 
-  /// @notice Emitted when owner updates whitelist contract.
-  /// @param _oldWhitelist The address of old whitelist contract.
-  /// @param _newWhitelist The address of new whitelist contract.
-  event UpdateWhitelist(address _oldWhitelist, address _newWhitelist);
+    /// @notice Emitted when owner updates whitelist contract.
+    /// @param _oldWhitelist The address of old whitelist contract.
+    /// @param _newWhitelist The address of new whitelist contract.
+    event UpdateWhitelist(address _oldWhitelist, address _newWhitelist);
 
-  /*************
-   * Constants *
-   *************/
+    /*************
+     * Constants *
+     *************/
 
-  /// @dev The precision used in the scalar.
-  uint256 private constant PRECISION = 1e9;
+    /// @dev The precision used in the scalar.
+    uint256 private constant PRECISION = 1e9;
 
-  /// @dev The maximum possible l1 fee overhead.
-  ///      Computed based on current l1 block gas limit.
-  uint256 private constant MAX_OVERHEAD = 30000000 / 16;
+    /// @dev The maximum possible l1 fee overhead.
+    ///      Computed based on current l1 block gas limit.
+    uint256 private constant MAX_OVERHEAD = 30000000 / 16;
 
-  /// @dev The maximum possible l1 fee scale.
-  ///      x1000 should be enough.
-  uint256 private constant MAX_SCALE = 1000 * PRECISION;
+    /// @dev The maximum possible l1 fee scale.
+    ///      x1000 should be enough.
+    uint256 private constant MAX_SCALE = 1000 * PRECISION;
 
-  /*************
-   * Variables *
-   *************/
+    /*************
+     * Variables *
+     *************/
 
-  /// @inheritdoc IL1GasPriceOracle
-  uint256 public l1BaseFee;
+    /// @inheritdoc IL1GasPriceOracle
+    uint256 public l1BaseFee;
 
-  /// @inheritdoc IL1GasPriceOracle
-  uint256 public override overhead;
+    /// @inheritdoc IL1GasPriceOracle
+    uint256 public override overhead;
 
-  /// @inheritdoc IL1GasPriceOracle
-  uint256 public override scalar;
+    /// @inheritdoc IL1GasPriceOracle
+    uint256 public override scalar;
 
-  /// @notice The address of whitelist contract.
-  IWhitelist public whitelist;
+    /// @notice The address of whitelist contract.
+    IWhitelist public whitelist;
 
-  /***************
-   * Constructor *
-   ***************/
+    /***************
+     * Constructor *
+     ***************/
 
-  constructor(address _owner) {
-    _transferOwnership(_owner);
-  }
-
-  /*************************
-   * Public View Functions *
-   *************************/
-
-  /// @inheritdoc IL1GasPriceOracle
-  function getL1Fee(bytes memory _data) external view override returns (uint256) {
-    uint256 _l1GasUsed = getL1GasUsed(_data);
-    uint256 _l1Fee = _l1GasUsed * l1BaseFee;
-    return (_l1Fee * scalar) / PRECISION;
-  }
-
-  /// @inheritdoc IL1GasPriceOracle
-  /// @dev See the comments in `OVM_GasPriceOracle1` for more details
-  ///      https://github.com/ethereum-optimism/optimism/blob/develop/packages/contracts/contracts/L2/predeploys/OVM_GasPriceOracle.sol
-  function getL1GasUsed(bytes memory _data) public view override returns (uint256) {
-    uint256 _total = 0;
-    uint256 _length = _data.length;
-    unchecked {
-      for (uint256 i = 0; i < _length; i++) {
-        if (_data[i] == 0) {
-          _total += 4;
-        } else {
-          _total += 16;
-        }
-      }
-      uint256 _unsigned = _total + overhead;
-      return _unsigned + (68 * 16);
+    constructor(address _owner) {
+        _transferOwnership(_owner);
     }
-  }
 
-  /****************************
-   * Public Mutated Functions *
-   ****************************/
+    /*************************
+     * Public View Functions *
+     *************************/
 
-  /// @inheritdoc IL1GasPriceOracle
-  function setL1BaseFee(uint256 _l1BaseFee) external override {
-    require(whitelist.isSenderAllowed(msg.sender), "Not whitelisted sender");
+    /// @inheritdoc IL1GasPriceOracle
+    function getL1Fee(bytes memory _data) external view override returns (uint256) {
+        uint256 _l1GasUsed = getL1GasUsed(_data);
+        uint256 _l1Fee = _l1GasUsed * l1BaseFee;
+        return (_l1Fee * scalar) / PRECISION;
+    }
 
-    l1BaseFee = _l1BaseFee;
+    /// @inheritdoc IL1GasPriceOracle
+    /// @dev See the comments in `OVM_GasPriceOracle1` for more details
+    ///      https://github.com/ethereum-optimism/optimism/blob/develop/packages/contracts/contracts/L2/predeploys/OVM_GasPriceOracle.sol
+    function getL1GasUsed(bytes memory _data) public view override returns (uint256) {
+        uint256 _total = 0;
+        uint256 _length = _data.length;
+        unchecked {
+            for (uint256 i = 0; i < _length; i++) {
+                if (_data[i] == 0) {
+                    _total += 4;
+                } else {
+                    _total += 16;
+                }
+            }
+            uint256 _unsigned = _total + overhead;
+            return _unsigned + (68 * 16);
+        }
+    }
 
-    emit L1BaseFeeUpdated(_l1BaseFee);
-  }
+    /****************************
+     * Public Mutated Functions *
+     ****************************/
 
-  /************************
-   * Restricted Functions *
-   ************************/
+    /// @inheritdoc IL1GasPriceOracle
+    function setL1BaseFee(uint256 _l1BaseFee) external override {
+        require(whitelist.isSenderAllowed(msg.sender), "Not whitelisted sender");
 
-  /// @notice Allows the owner to modify the overhead.
-  /// @param _overhead New overhead
-  function setOverhead(uint256 _overhead) external onlyOwner {
-    require(_overhead <= MAX_OVERHEAD, "exceed maximum overhead");
+        l1BaseFee = _l1BaseFee;
 
-    overhead = _overhead;
-    emit OverheadUpdated(_overhead);
-  }
+        emit L1BaseFeeUpdated(_l1BaseFee);
+    }
 
-  /// Allows the owner to modify the scalar.
-  /// @param _scalar New scalar
-  function setScalar(uint256 _scalar) external onlyOwner {
-    require(_scalar <= MAX_SCALE, "exceed maximum scale");
+    /************************
+     * Restricted Functions *
+     ************************/
 
-    scalar = _scalar;
-    emit ScalarUpdated(_scalar);
-  }
+    /// @notice Allows the owner to modify the overhead.
+    /// @param _overhead New overhead
+    function setOverhead(uint256 _overhead) external onlyOwner {
+        require(_overhead <= MAX_OVERHEAD, "exceed maximum overhead");
 
-  /// @notice Update whitelist contract.
-  /// @dev This function can only called by contract owner.
-  /// @param _newWhitelist The address of new whitelist contract.
-  function updateWhitelist(address _newWhitelist) external onlyOwner {
-    address _oldWhitelist = address(whitelist);
+        overhead = _overhead;
+        emit OverheadUpdated(_overhead);
+    }
 
-    whitelist = IWhitelist(_newWhitelist);
-    emit UpdateWhitelist(_oldWhitelist, _newWhitelist);
-  }
+    /// Allows the owner to modify the scalar.
+    /// @param _scalar New scalar
+    function setScalar(uint256 _scalar) external onlyOwner {
+        require(_scalar <= MAX_SCALE, "exceed maximum scale");
+
+        scalar = _scalar;
+        emit ScalarUpdated(_scalar);
+    }
+
+    /// @notice Update whitelist contract.
+    /// @dev This function can only called by contract owner.
+    /// @param _newWhitelist The address of new whitelist contract.
+    function updateWhitelist(address _newWhitelist) external onlyOwner {
+        address _oldWhitelist = address(whitelist);
+
+        whitelist = IWhitelist(_newWhitelist);
+        emit UpdateWhitelist(_oldWhitelist, _newWhitelist);
+    }
 }
