@@ -63,15 +63,33 @@ contract L2ScrollMessenger is ScrollMessengerBase, PausableUpgradeable, IL2Scrol
   /// @notice The maximum number of times each L1 message can fail on L2.
   uint256 public maxFailedExecutionTimes;
 
+  // @note move to ScrollMessengerBase in next big refactor
+  /// @dev The status of for non-reentrant check.
+  uint256 private _lock_status;
+
+  /**********************
+   * Function Modifiers *
+   **********************/
+
+  modifier nonReentrant() {
+    // On the first call to nonReentrant, _notEntered will be true
+    require(_lock_status != _ENTERED, "ReentrancyGuard: reentrant call");
+
+    // Any calls to nonReentrant after this point will fail
+    _lock_status = _ENTERED;
+
+    _;
+
+    // By storing the original value once again, a refund is triggered (see
+    // https://eips.ethereum.org/EIPS/eip-2200)
+    _lock_status = _NOT_ENTERED;
+  }
+
   /***************
    * Constructor *
    ***************/
 
-  constructor(
-    address _blockContainer,
-    address _gasOracle,
-    address _messageQueue
-  ) {
+  constructor(address _blockContainer, address _gasOracle, address _messageQueue) {
     blockContainer = _blockContainer;
     gasOracle = _gasOracle;
     messageQueue = _messageQueue;
@@ -166,38 +184,18 @@ contract L2ScrollMessenger is ScrollMessengerBase, PausableUpgradeable, IL2Scrol
     bytes memory _message,
     uint256 _gasLimit
   ) external payable override whenNotPaused {
-    // by pass fee vault relay
-    if (feeVault != msg.sender) {
-      require(_gasLimit >= MIN_GAS_LIMIT, "gas limit too small");
-    }
+    _sendMessage(_to, _value, _message, _gasLimit, tx.origin);
+  }
 
-    // compute and deduct the messaging fee to fee vault.
-    uint256 _fee = _gasLimit * IL1GasPriceOracle(gasOracle).l1BaseFee();
-    require(msg.value >= _value + _fee, "Insufficient msg.value");
-    if (_fee > 0) {
-      (bool _success, ) = feeVault.call{ value: _fee }("");
-      require(_success, "Failed to deduct the fee");
-    }
-
-    uint256 _nonce = L2MessageQueue(messageQueue).nextMessageIndex();
-    bytes32 _xDomainCalldataHash = keccak256(_encodeXDomainCalldata(msg.sender, _to, _value, _nonce, _message));
-
-    // normally this won't happen, since each message has different nonce, but just in case.
-    require(!isL2MessageSent[_xDomainCalldataHash], "Duplicated message");
-    isL2MessageSent[_xDomainCalldataHash] = true;
-
-    L2MessageQueue(messageQueue).appendMessage(_xDomainCalldataHash);
-
-    emit SentMessage(msg.sender, _to, _value, _nonce, _gasLimit, _message);
-
-    // refund fee to tx.origin
-    unchecked {
-      uint256 _refund = msg.value - _fee - _value;
-      if (_refund > 0) {
-        (bool _success, ) = tx.origin.call{ value: _refund }("");
-        require(_success, "Failed to refund the fee");
-      }
-    }
+  /// @inheritdoc IScrollMessenger
+  function sendMessage(
+    address _to,
+    uint256 _value,
+    bytes calldata _message,
+    uint256 _gasLimit,
+    address _refundAddress
+  ) external payable override whenNotPaused {
+    _sendMessage(_to, _value, _message, _gasLimit, _refundAddress);
   }
 
   /// @inheritdoc IL2ScrollMessenger
@@ -269,6 +267,47 @@ contract L2ScrollMessenger is ScrollMessengerBase, PausableUpgradeable, IL2Scrol
   /**********************
    * Internal Functions *
    **********************/
+
+  function _sendMessage(
+    address _to,
+    uint256 _value,
+    bytes memory _message,
+    uint256 _gasLimit,
+    address _refundAddress
+  ) internal nonReentrant {
+    // by pass fee vault relay
+    if (feeVault != msg.sender) {
+      require(_gasLimit >= MIN_GAS_LIMIT, "gas limit too small");
+    }
+
+    // compute and deduct the messaging fee to fee vault.
+    uint256 _fee = _gasLimit * IL1GasPriceOracle(gasOracle).l1BaseFee();
+    require(msg.value >= _value + _fee, "Insufficient msg.value");
+    if (_fee > 0) {
+      (bool _success, ) = feeVault.call{ value: _fee }("");
+      require(_success, "Failed to deduct the fee");
+    }
+
+    uint256 _nonce = L2MessageQueue(messageQueue).nextMessageIndex();
+    bytes32 _xDomainCalldataHash = keccak256(_encodeXDomainCalldata(msg.sender, _to, _value, _nonce, _message));
+
+    // normally this won't happen, since each message has different nonce, but just in case.
+    require(!isL2MessageSent[_xDomainCalldataHash], "Duplicated message");
+    isL2MessageSent[_xDomainCalldataHash] = true;
+
+    L2MessageQueue(messageQueue).appendMessage(_xDomainCalldataHash);
+
+    emit SentMessage(msg.sender, _to, _value, _nonce, _gasLimit, _message);
+
+    // refund fee to tx.origin
+    unchecked {
+      uint256 _refund = msg.value - _fee - _value;
+      if (_refund > 0) {
+        (bool _success, ) = _refundAddress.call{ value: _refund }("");
+        require(_success, "Failed to refund the fee");
+      }
+    }
+  }
 
   function _executeMessage(
     address _from,
