@@ -3,7 +3,7 @@ FROM scrolltech/go-alpine-builder:1.18 as chef
 WORKDIR app
 
 # Download Go dependencies
-FROM scrolltech/golang:1.18-alpine as base
+FROM scrolltech/go-alpine-builder:1.18 as base
 WORKDIR /src
 COPY go.work* ./
 COPY ./bridge/go.* ./bridge/
