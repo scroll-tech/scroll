@@ -11,13 +11,12 @@ import (
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/urfave/cli/v2"
 
-	cutil "scroll-tech/common/utils"
+	cutils "scroll-tech/common/utils"
 	"scroll-tech/common/version"
 	"scroll-tech/database"
 
 	"scroll-tech/bridge/config"
 	"scroll-tech/bridge/relayer"
-	"scroll-tech/bridge/utils"
 )
 
 var (
@@ -33,17 +32,17 @@ func init() {
 	app.Usage = "The Scroll Message Relayer"
 	app.Description = "Message Relayer contains two main service: 1) relay l1 message to l2. 2) relay l2 message to l1."
 	app.Version = version.Version
-	app.Flags = append(app.Flags, cutil.CommonFlags...)
+	app.Flags = append(app.Flags, cutils.CommonFlags...)
 	app.Commands = []*cli.Command{}
 
 	app.Before = func(ctx *cli.Context) error {
-		return cutil.LogSetup(ctx)
+		return cutils.LogSetup(ctx)
 	}
 }
 
 func action(ctx *cli.Context) error {
 	// Load config file.
-	cfgFile := ctx.String(cutil.ConfigFileFlag.Name)
+	cfgFile := ctx.String(cutils.ConfigFileFlag.Name)
 	cfg, err := config.NewConfig(cfgFile)
 	if err != nil {
 		log.Crit("failed to load config file", "config file", cfgFile, "error", err)
@@ -73,12 +72,12 @@ func action(ctx *cli.Context) error {
 	}
 
 	// Start l1relayer process
-	go utils.Loop(subCtx, 2*time.Second, l1relayer.ProcessSavedEvents)
-	go utils.Loop(subCtx, 2*time.Second, l1relayer.ProcessGasPriceOracle)
+	go cutils.Loop(subCtx, 2*time.Second, l1relayer.ProcessSavedEvents)
+	go cutils.Loop(subCtx, 2*time.Second, l1relayer.ProcessGasPriceOracle)
 
 	// Start l2relayer process
-	go utils.Loop(subCtx, time.Second, l2relayer.ProcessSavedEvents)
-	go utils.Loop(subCtx, time.Second, l2relayer.ProcessGasPriceOracle)
+	go cutils.Loop(subCtx, time.Second, l2relayer.ProcessSavedEvents)
+	go cutils.Loop(subCtx, time.Second, l2relayer.ProcessGasPriceOracle)
 
 	// Finish start all message relayer functions
 	log.Info("Start message_relayer successfully")

@@ -18,8 +18,6 @@ import (
 	"scroll-tech/common/types"
 	"scroll-tech/database"
 
-	cutil "scroll-tech/common/utils"
-
 	bridge_abi "scroll-tech/bridge/abi"
 	"scroll-tech/bridge/utils"
 )

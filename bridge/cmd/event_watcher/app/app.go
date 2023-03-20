@@ -13,7 +13,7 @@ import (
 
 	"scroll-tech/database"
 
-	cutil "scroll-tech/common/utils"
+	cutils "scroll-tech/common/utils"
 	"scroll-tech/common/version"
 
 	"scroll-tech/bridge/config"
@@ -33,17 +33,17 @@ func init() {
 	app.Name = "event-watcher"
 	app.Usage = "The Scroll Event Watcher"
 	app.Version = version.Version
-	app.Flags = append(app.Flags, cutil.CommonFlags...)
+	app.Flags = append(app.Flags, cutils.CommonFlags...)
 	app.Commands = []*cli.Command{}
 
 	app.Before = func(ctx *cli.Context) error {
-		return cutil.LogSetup(ctx)
+		return cutils.LogSetup(ctx)
 	}
 }
 
 func action(ctx *cli.Context) error {
 	// Load config file.
-	cfgFile := ctx.String(cutil.ConfigFileFlag.Name)
+	cfgFile := ctx.String(cutils.ConfigFileFlag.Name)
 	cfg, err := config.NewConfig(cfgFile)
 	if err != nil {
 		log.Crit("failed to load config file", "config file", cfgFile, "error", err)
@@ -71,7 +71,7 @@ func action(ctx *cli.Context) error {
 	l2watcher := watcher.NewL2WatcherClient(ctx.Context, l2client, cfg.L2Config.RelayerConfig.SenderConfig.Confirmations, cfg.L2Config.L2MessengerAddress, cfg.L2Config.L2MessageQueueAddress, ormFactory)
 
 	// Start l1 watcher process
-	go utils.LoopWithContext(subCtx, 2*time.Second, func(ctx context.Context) {
+	go cutils.LoopWithContext(subCtx, 2*time.Second, func(ctx context.Context) {
 		number, loopErr := utils.GetLatestConfirmedBlockNumber(ctx, l1client, cfg.L1Config.Confirmations)
 		if loopErr != nil {
 			log.Error("failed to get block number", "err", loopErr)
@@ -83,14 +83,14 @@ func action(ctx *cli.Context) error {
 		}
 	})
 
-	go utils.Loop(subCtx, 2*time.Second, func() {
+	go cutils.Loop(subCtx, 2*time.Second, func() {
 		if loopErr := l1watcher.FetchContractEvent(); loopErr != nil {
 			log.Error("Failed to fetch bridge contract", "err", loopErr)
 		}
 	})
 
 	// Start l2 watcher process
-	go utils.Loop(subCtx, 2*time.Second, l2watcher.FetchContractEvent)
+	go cutils.Loop(subCtx, 2*time.Second, l2watcher.FetchContractEvent)
 	// Finish start all l2 functions
 	log.Info("Start event-watcher successfully")
 

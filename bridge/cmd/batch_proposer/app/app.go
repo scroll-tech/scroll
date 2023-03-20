@@ -13,10 +13,9 @@ import (
 
 	"scroll-tech/database"
 
-	cutil "scroll-tech/common/utils"
-	"scroll-tech/common/version"
-
 	"scroll-tech/bridge/utils"
+	cutils "scroll-tech/common/utils"
+	"scroll-tech/common/version"
 
 	"scroll-tech/bridge/config"
 	"scroll-tech/bridge/relayer"
@@ -35,17 +34,17 @@ func init() {
 	app.Name = "rollup-relayer"
 	app.Usage = "The Scroll Rollup Relayer"
 	app.Version = version.Version
-	app.Flags = append(app.Flags, cutil.CommonFlags...)
+	app.Flags = append(app.Flags, cutils.CommonFlags...)
 	app.Commands = []*cli.Command{}
 
 	app.Before = func(ctx *cli.Context) error {
-		return cutil.LogSetup(ctx)
+		return cutils.LogSetup(ctx)
 	}
 }
 
 func action(ctx *cli.Context) error {
 	// Load config file.
-	cfgFile := ctx.String(cutil.ConfigFileFlag.Name)
+	cfgFile := ctx.String(cutils.ConfigFileFlag.Name)
 	cfg, err := config.NewConfig(cfgFile)
 	if err != nil {
 		log.Crit("failed to load config file", "config file", cfgFile, "error", err)
@@ -74,7 +73,7 @@ func action(ctx *cli.Context) error {
 	watcher := watcher.NewL2WatcherClient(subCtx, l2client, cfg.L2Config.Confirmations, cfg.L2Config.L2MessengerAddress, cfg.L2Config.L2MessageQueueAddress, ormFactory)
 
 	// Watcher loop to fetch missing blocks
-	go utils.LoopWithContext(subCtx, 3*time.Second, func(ctx context.Context) {
+	go cutils.LoopWithContext(subCtx, 3*time.Second, func(ctx context.Context) {
 		number, loopErr := utils.GetLatestConfirmedBlockNumber(ctx, l2client, cfg.L2Config.Confirmations)
 		if loopErr != nil {
 			log.Error("failed to get block number", "err", loopErr)
@@ -84,7 +83,7 @@ func action(ctx *cli.Context) error {
 	})
 
 	// Batch proposer loop
-	go utils.Loop(subCtx, 3*time.Second, func() {
+	go cutils.Loop(subCtx, 3*time.Second, func() {
 		batchProposer.TryProposeBatch()
 		batchProposer.TryCommitBatches()
 	})

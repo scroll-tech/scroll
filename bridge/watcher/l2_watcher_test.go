@@ -19,9 +19,8 @@ import (
 
 	"scroll-tech/bridge/mock_bridge"
 	"scroll-tech/bridge/sender"
-	"scroll-tech/bridge/utils"
 	"scroll-tech/bridge/watcher"
-
+	cutils "scroll-tech/common/utils"
 	"scroll-tech/database"
 	"scroll-tech/database/migrate"
 )
@@ -211,7 +210,7 @@ func prepareWatcherClient(l2Cli *ethclient.Client, db database.OrmFactory, contr
 }
 
 func loopToFetchEvent(subCtx context.Context, watcher *watcher.L2WatcherClient) {
-	go utils.Loop(subCtx, 2*time.Second, watcher.FetchContractEvent)
+	go cutils.Loop(subCtx, 2*time.Second, watcher.FetchContractEvent)
 }
 
 func prepareAuth(t *testing.T, l2Cli *ethclient.Client, privateKey *ecdsa.PrivateKey) *bind.TransactOpts {

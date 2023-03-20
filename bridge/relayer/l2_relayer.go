@@ -21,8 +21,6 @@ import (
 	"scroll-tech/common/types"
 	"scroll-tech/database"
 
-	cutil "scroll-tech/common/utils"
-
 	bridge_abi "scroll-tech/bridge/abi"
 	"scroll-tech/bridge/config"
 	"scroll-tech/bridge/sender"
@@ -37,14 +35,6 @@ var (
 	bridgeL2BatchesFinalizedConfirmedTotalCounter = geth_metrics.NewRegisteredCounter("bridge/l2/batches/finalized/confirmed/total", metrics.ScrollRegistry)
 	bridgeL2BatchesCommittedConfirmedTotalCounter = geth_metrics.NewRegisteredCounter("bridge/l2/batches/committed/confirmed/total", metrics.ScrollRegistry)
 	bridgeL2BatchesSkippedTotalCounter            = geth_metrics.NewRegisteredCounter("bridge/l2/batches/skipped/total", metrics.ScrollRegistry)
-)
-
-const (
-	gasPriceDiffPrecision = 1000000
-
-	defaultGasPriceDiff = 50000 // 5%
-
-	defaultMessageRelayMinGasLimit = 200000 // should be enough for both ERC20 and ETH relay
 )
 
 // Layer2Relayer is responsible for
@@ -127,7 +117,7 @@ func NewLayer2Relayer(ctx context.Context, l2Client *ethclient.Client, db databa
 		minGasLimitForMessageRelay = cfg.MessageRelayMinGasLimit
 	}
 
-	return &Layer2Relayer{
+	layer2Relayer := &Layer2Relayer{
 		ctx: ctx,
 		db:  db,
 
@@ -154,8 +144,8 @@ func NewLayer2Relayer(ctx context.Context, l2Client *ethclient.Client, db databa
 		stopCh:                      make(chan struct{}),
 	}
 
-	go l2Relayer.handleConfirmLoop(ctx)
-	return l2Relayer, nil
+	go layer2Relayer.handleConfirmLoop(ctx)
+	return layer2Relayer, nil
 }
 
 const processMsgLimit = 100

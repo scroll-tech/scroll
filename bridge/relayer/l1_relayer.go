@@ -14,7 +14,6 @@ import (
 	geth_metrics "github.com/scroll-tech/go-ethereum/metrics"
 
 	"scroll-tech/common/types"
-	"scroll-tech/common/utils"
 
 	"scroll-tech/database"
 
@@ -28,14 +27,6 @@ import (
 var (
 	bridgeL1MsgsRelayedTotalCounter          = geth_metrics.NewRegisteredCounter("bridge/l1/msgs/relayed/total", metrics.ScrollRegistry)
 	bridgeL1MsgsRelayedConfirmedTotalCounter = geth_metrics.NewRegisteredCounter("bridge/l1/msgs/relayed/confirmed/total", metrics.ScrollRegistry)
-)
-
-const (
-	gasPriceDiffPrecision = 1000000
-
-	defaultGasPriceDiff = 50000 // 5%
-
-	defaultMessageRelayMinGasLimit = 130000 // should be enough for both ERC20 and ETH relay
 )
 
 // Layer1Relayer is responsible for
@@ -98,7 +89,7 @@ func NewLayer1Relayer(ctx context.Context, db database.OrmFactory, cfg *config.R
 		minGasLimitForMessageRelay = cfg.MessageRelayMinGasLimit
 	}
 
-	return &Layer1Relayer{
+	l1Relayer := &Layer1Relayer{
 		ctx: ctx,
 		db:  db,
 
