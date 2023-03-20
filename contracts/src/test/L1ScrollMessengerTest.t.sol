@@ -30,6 +30,7 @@ contract L1ScrollMessengerTest is DSTestPlus {
 
     // Initialize L1 contracts
     l1Messenger.initialize(address(l2Messenger), feeVault, address(scrollChain), address(l1MessageQueue));
+    l1MessageQueue.initialize(address(l1Messenger), address(0));
     scrollChain.initialize(address(l1MessageQueue));
   }
 
@@ -48,5 +49,22 @@ contract L1ScrollMessengerTest is DSTestPlus {
 
     hevm.expectRevert("Forbid to call self");
     l1Messenger.relayMessageWithProof(address(this), address(l1Messenger), 0, 0, new bytes(0), proof);
+  }
+
+  function testSendMessage(uint256 exceedValue, address refundAddress) external {
+    hevm.assume(refundAddress.code.length == 0);
+    hevm.assume(uint256(uint160(refundAddress)) > 100); // ignore some precompile contracts
+    hevm.assume(refundAddress != address(this));
+
+    exceedValue = bound(exceedValue, 1, address(this).balance / 2);
+
+    // Insufficient msg.value
+    hevm.expectRevert("Insufficient msg.value");
+    l1Messenger.sendMessage(address(0), 1, new bytes(0), 0, refundAddress);
+
+    // refund exceed fee
+    uint256 balanceBefore = refundAddress.balance;
+    l1Messenger.sendMessage{ value: 1 + exceedValue }(address(0), 1, new bytes(0), 0, refundAddress);
+    assertEq(balanceBefore + exceedValue, refundAddress.balance);
   }
 }
