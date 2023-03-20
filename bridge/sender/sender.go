@@ -246,7 +246,7 @@ func (s *Sender) getTxAndAddr(txHash common.Hash) (*types.Transaction, uint64, c
 	return tx, receipt.BlockNumber.Uint64(), sender, nil
 }
 
-// LoadOrSendTx If the tx already exist in chain load it or resend it.
+// LoadOrSendTx loads a transaction if it already exists on chain and resends it otherwise.
 func (s *Sender) LoadOrSendTx(destTxHash common.Hash, ID string, target *common.Address, value *big.Int, data []byte, minGasLimit uint64) error {
 	tx, blockNumber, from, err := s.getTxAndAddr(destTxHash)
 	// If this tx already exist load it to the pending.
