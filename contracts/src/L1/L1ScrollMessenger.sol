@@ -91,9 +91,9 @@ contract L1ScrollMessenger is PausableUpgradeable, ScrollMessengerBase, IL1Scrol
         xDomainMessageSender = ScrollConstants.DEFAULT_XDOMAIN_MESSAGE_SENDER;
     }
 
-    /****************************
-     * Public Mutated Functions *
-     ****************************/
+    /*****************************
+     * Public Mutation Functions *
+     *****************************/
 
     /// @inheritdoc IScrollMessenger
     function sendMessage(

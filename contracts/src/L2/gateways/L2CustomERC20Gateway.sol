@@ -63,9 +63,9 @@ contract L2CustomERC20Gateway is OwnableUpgradeable, ScrollGatewayBase, L2ERC20G
         revert("unimplemented");
     }
 
-    /****************************
-     * Public Mutated Functions *
-     ****************************/
+    /*****************************
+     * Public Mutation Functions *
+     *****************************/
 
     /// @inheritdoc IL2ERC20Gateway
     function finalizeDepositERC20(

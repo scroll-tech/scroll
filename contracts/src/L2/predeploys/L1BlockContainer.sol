@@ -107,9 +107,9 @@ contract L1BlockContainer is OwnableBase, IL1BlockContainer {
         return metadata[_blockHash].timestamp;
     }
 
-    /****************************
-     * Public Mutated Functions *
-     ****************************/
+    /*****************************
+     * Public Mutation Functions *
+     *****************************/
 
     /// @inheritdoc IL1BlockContainer
     function importBlockHeader(
