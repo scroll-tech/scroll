@@ -100,11 +100,20 @@ func (r *Layer2Relayer) checkRollupBatches() error {
 			callData,
 			0,
 		)
-		if err != nil {
+		switch true {
+		case err == nil:
+			r.processingBatchesCommitment.Store(txID, batchHashes)
+		case err.Error() == "Batch already commited":
+			for _, batchHash := range batchHashes {
+				if err = r.db.UpdateRollupStatus(r.ctx, batchHash, types.RollupCommitted); err != nil {
+					log.Error("failed to update rollup status when check rollup batched", "batch_hash", batchHash, "err", err)
+					return err
+				}
+			}
+		default:
 			log.Error("failed to load or send batchData tx")
 			return err
 		}
-		r.processingBatchesCommitment.Store(txID, batchHashes)
 	}
 }
 

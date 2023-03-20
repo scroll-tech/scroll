@@ -58,10 +58,16 @@ func (r *Layer2Relayer) checkFinalizingBatches() error {
 				data,
 				0,
 			)
-			if err != nil {
-				log.Error("failed to load or send finalized tx", "batch hash", hash, "err", err)
-			} else {
+			switch true {
+			case err == nil:
 				r.processingFinalization.Store(txID, hash)
+			case err.Error() == "Batch is already finalized":
+				if err = r.db.UpdateRollupStatus(r.ctx, hash, types.RollupFinalized); err != nil {
+					return err
+				}
+			default:
+				log.Error("failed to load or send finalized tx", "batch hash", hash, "err", err)
+				return err
 			}
 		}
 	}

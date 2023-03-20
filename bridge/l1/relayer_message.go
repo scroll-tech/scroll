@@ -35,14 +35,25 @@ func (r *Layer1Relayer) checkSubmittedMessages() error {
 				return !r.messageSender.IsFull()
 			})
 
-			if err = r.messageSender.LoadOrSendTx(
+			err = r.messageSender.LoadOrSendTx(
 				common.HexToHash(msg.Layer2Hash),
 				msg.MsgHash,
 				&r.cfg.MessengerContractAddress,
 				big.NewInt(0),
 				common.Hex2Bytes(msg.Calldata),
 				r.minGasLimitForMessageRelay,
-			); err != nil {
+			)
+			switch true {
+			case err == nil:
+			case err.Error() == "execution reverted: Message expired":
+				if err = r.db.UpdateLayer1Status(r.ctx, msg.MsgHash, types.MsgExpired); err != nil {
+					return err
+				}
+			case err.Error() == "execution reverted: Message successfully executed":
+				if err = r.db.UpdateLayer1Status(r.ctx, msg.MsgHash, types.MsgConfirmed); err != nil {
+					return err
+				}
+			default:
 				log.Error("failed to load or send l1 submitted tx", "msg hash", msg.MsgHash, "err", err)
 				return err
 			}
