@@ -204,39 +204,20 @@ func (p *BatchProposer) initializeMissingMessageProof() error {
 	}
 
 	log.Info("Build withdraw trie with pending messages")
-	msgs, err := p.orm.GetL2MessagesBetween(p.ctx, batches[0].StartBlockNumber, batches[len(batches)-1].EndBlockNumber)
-	if err != nil {
-		return fmt.Errorf("failed to get l2 message between %v and %v: %v", batches[0].StartBlockNumber, batches[len(batches)-1].EndBlockNumber, err)
-	}
-
-	i := 0
-	// iterate each batch and fill local withdraw trie
 	for _, batch := range batches {
-		if msgs[i].Height > batch.EndBlockNumber {
-			continue
+		msgs, proofs, err := p.appendL2Messages(batch.StartBlockNumber, batch.EndBlockNumber)
+		if err != nil {
+			return err
 		}
 
-		// double check whether nonce is matched
-		if msgs[i].Nonce != p.withdrawTrie.NextMessageNonce {
-			log.Error("L2 message nonce mismatch", "expected", msgs[i].Nonce, "found", p.withdrawTrie.NextMessageNonce)
-			return fmt.Errorf("l2 message nonce mismatch, expected: %v, found: %v", msgs[i].Nonce, p.withdrawTrie.NextMessageNonce)
-		}
-
-		var hashes []common.Hash
-		for ; i < len(msgs) && msgs[i].Height <= batch.EndBlockNumber; i++ {
-			hashes = append(hashes, common.HexToHash(msgs[i].MsgHash))
-		}
-
-		if len(hashes) > 0 {
-			msgProofs := p.withdrawTrie.AppendMessages(hashes)
-
+		if len(msgs) > 0 {
 			dbTx, err := p.orm.Beginx()
 			if err != nil {
 				return err
 			}
 
-			for i, msgHash := range hashes {
-				if dbTxErr := p.orm.UpdateL2MessageProofInDbTx(context.Background(), dbTx, msgHash.String(), common.Bytes2Hex(msgProofs[i])); dbTxErr != nil {
+			for i, msg := range msgs {
+				if dbTxErr := p.orm.UpdateL2MessageProofInDbTx(context.Background(), dbTx, msg.MsgHash, common.Bytes2Hex(proofs[i])); dbTxErr != nil {
 					if err := dbTx.Rollback(); err != nil {
 						log.Error("dbTx.Rollback()", "err", err)
 					}
@@ -255,6 +236,34 @@ func (p *BatchProposer) initializeMissingMessageProof() error {
 	log.Info("Build withdraw trie finished")
 
 	return nil
+}
+
+func (p *BatchProposer) appendL2Messages(firstBlock, lastBlock uint64) ([]*types.L2Message, [][]byte, error) {
+	var msgProofs [][]byte
+	messages, err := p.orm.GetL2MessagesBetween(
+		p.ctx,
+		firstBlock,
+		lastBlock,
+	)
+	if err != nil {
+		log.Error("GetL2MessagesBetween failed", "error", err)
+		return messages, msgProofs, err
+	}
+
+	if len(messages) > 0 {
+		// double check whether nonce is matched
+		if messages[0].Nonce != p.withdrawTrie.NextMessageNonce {
+			log.Error("L2 message nonce mismatch", "expected", messages[0].Nonce, "found", p.withdrawTrie.NextMessageNonce)
+			return messages, msgProofs, fmt.Errorf("l2 message nonce mismatch, expected: %v, found: %v", messages[0].Nonce, p.withdrawTrie.NextMessageNonce)
+		}
+
+		var hashes []common.Hash
+		for _, msg := range messages {
+			hashes = append(hashes, common.HexToHash(msg.MsgHash))
+		}
+		msgProofs = p.withdrawTrie.AppendMessages(hashes)
+	}
+	return messages, msgProofs, nil
 }
 
 // Start the Listening process
@@ -488,29 +497,9 @@ func (p *BatchProposer) createBatchForBlocks(blocks []*types.BlockInfo) error {
 		return err
 	}
 
-	messages, err := p.orm.GetL2MessagesBetween(
-		p.ctx,
-		batchData.Batch.Blocks[0].BlockNumber,
-		batchData.Batch.Blocks[len(batchData.Batch.Blocks)-1].BlockNumber,
-	)
+	messages, msgProofs, err := p.appendL2Messages(batchData.Batch.Blocks[0].BlockNumber, batchData.Batch.Blocks[len(batchData.Batch.Blocks)-1].BlockNumber)
 	if err != nil {
-		log.Error("GetL2MessagesBetween failed", "error", err)
 		return err
-	}
-
-	var msgProofs [][]byte
-	if len(messages) > 0 {
-		// double check whether nonce is matched
-		if messages[0].Nonce != p.withdrawTrie.NextMessageNonce {
-			log.Error("L2 message nonce mismatch", "expected", messages[0].Nonce, "found", p.withdrawTrie.NextMessageNonce)
-			return fmt.Errorf("l2 message nonce mismatch, expected: %v, found: %v", messages[0].Nonce, p.withdrawTrie.NextMessageNonce)
-		}
-
-		var hashes []common.Hash
-		for _, msg := range messages {
-			hashes = append(hashes, common.HexToHash(msg.MsgHash))
-		}
-		msgProofs = p.withdrawTrie.AppendMessages(hashes)
 	}
 
 	// double check whether message root is matched
