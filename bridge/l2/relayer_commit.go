@@ -9,11 +9,13 @@ import (
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/crypto"
 	"github.com/scroll-tech/go-ethereum/log"
+
 	bridge_abi "scroll-tech/bridge/abi"
 
-	"scroll-tech/bridge/sender"
 	"scroll-tech/common/types"
 	"scroll-tech/common/utils"
+
+	"scroll-tech/bridge/sender"
 )
 
 func (r *Layer2Relayer) checkRollupBatches() error {

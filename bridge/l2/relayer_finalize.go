@@ -3,9 +3,11 @@ package l2
 import (
 	"errors"
 	"fmt"
+	"math/big"
+
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/log"
-	"math/big"
+
 	"scroll-tech/common/types"
 	comutiles "scroll-tech/common/utils"
 
