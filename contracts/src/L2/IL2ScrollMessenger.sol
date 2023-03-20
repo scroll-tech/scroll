@@ -14,9 +14,9 @@ interface IL2ScrollMessenger is IScrollMessenger {
         bytes stateRootProof;
     }
 
-    /****************************
-     * Public Mutated Functions *
-     ****************************/
+    /*****************************
+     * Public Mutating Functions *
+     *****************************/
 
     /// @notice execute L1 => L2 message
     /// @dev Make sure this is only called by privileged accounts.

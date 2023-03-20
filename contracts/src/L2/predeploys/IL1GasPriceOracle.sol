@@ -46,9 +46,9 @@ interface IL1GasPriceOracle {
     /// @return Amount of L1 gas used to publish the transaction.
     function getL1GasUsed(bytes memory data) external view returns (uint256);
 
-    /****************************
-     * Public Mutated Functions *
-     ****************************/
+    /*****************************
+     * Public Mutating Functions *
+     *****************************/
 
     /// @notice Allows whitelisted caller to modify the l1 base fee.
     /// @param _l1BaseFee New l1 base fee.

@@ -21,9 +21,9 @@ interface IL1ETHGateway {
     /// @param data The optional calldata passed to recipient in L2.
     event DepositETH(address indexed from, address indexed to, uint256 amount, bytes data);
 
-    /****************************
-     * Public Mutated Functions *
-     ****************************/
+    /*****************************
+     * Public Mutating Functions *
+     *****************************/
 
     /// @notice Deposit ETH to caller's account in L2.
     /// @param amount The amount of ETH to be deposited.

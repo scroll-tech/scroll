@@ -9,7 +9,9 @@ import {IScrollMessenger} from "../../libraries/IScrollMessenger.sol";
 contract MockScrollMessenger is IScrollMessenger {
     address public override xDomainMessageSender;
 
-    /**************************************** Mutated Functions ****************************************/
+    /*****************************
+     * Public Mutating Functions *
+     *****************************/
 
     function setXDomainMessageSender(address _xDomainMessageSender) external {
         xDomainMessageSender = _xDomainMessageSender;

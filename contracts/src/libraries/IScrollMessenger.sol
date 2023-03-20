@@ -38,9 +38,9 @@ interface IScrollMessenger {
     /// @notice Return the sender of a cross domain message.
     function xDomainMessageSender() external view returns (address);
 
-    /****************************
-     * Public Mutated Functions *
-     ****************************/
+    /*****************************
+     * Public Mutating Functions *
+     *****************************/
 
     /// @notice Send cross chain message from L1 to L2 or L2 to L1.
     /// @param target The address of account who recieve the message.

@@ -47,9 +47,9 @@ interface IL1ERC20Gateway {
     /// @param _l1Token The address of l1 token.
     function getL2ERC20Address(address _l1Token) external view returns (address);
 
-    /****************************
-     * Public Mutated Functions *
-     ****************************/
+    /*****************************
+     * Public Mutating Functions *
+     *****************************/
 
     /// @notice Deposit some token to a caller's account on L2.
     /// @dev Make this function payable to send relayer fee in Ether.

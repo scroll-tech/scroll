@@ -47,9 +47,9 @@ contract L2ERC721Gateway is OwnableUpgradeable, ERC721HolderUpgradeable, ScrollG
         ScrollGatewayBase._initialize(_counterpart, address(0), _messenger);
     }
 
-    /****************************
-     * Public Mutated Functions *
-     ****************************/
+    /*****************************
+     * Public Mutating Functions *
+     *****************************/
 
     /// @inheritdoc IL2ERC721Gateway
     function withdrawERC721(
