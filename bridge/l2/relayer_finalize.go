@@ -3,12 +3,9 @@ package l2
 import (
 	"errors"
 	"fmt"
-	"math/big"
-
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/log"
-	"modernc.org/mathutil"
-
+	"math/big"
 	"scroll-tech/common/types"
 	comutiles "scroll-tech/common/utils"
 
@@ -31,6 +28,7 @@ func (r *Layer2Relayer) checkFinalizingBatches() error {
 			return err
 		}
 
+		batchIndex = batches[len(batches)-1].Index
 		for batch := batches[0]; len(batches) > 0; { //nolint:staticcheck
 			// Wait until sender's pending is not full.
 			comutiles.TryTimes(-1, func() bool {
@@ -39,12 +37,10 @@ func (r *Layer2Relayer) checkFinalizingBatches() error {
 			batch, batches = batches[0], batches[1:]
 
 			hash := batch.Hash
-			batchIndex = mathutil.MaxUint64(batchIndex, batch.Index)
 
-			txStr, err := r.db.GetFinalizeTxHash(hash)
-			if err != nil {
-				log.Error("failed to get finalize_tx_hash from block_batch", "err", err)
-				continue
+			var txHash common.Hash
+			if batch.CommitTxHash.Valid {
+				txHash = common.HexToHash(batch.CommitTxHash.String)
 			}
 
 			data, err := r.packFinalizeBatch(hash)
@@ -55,7 +51,7 @@ func (r *Layer2Relayer) checkFinalizingBatches() error {
 
 			txID := hash + "-finalize"
 			err = r.rollupSender.LoadOrSendTx(
-				common.HexToHash(txStr.String),
+				txHash,
 				txID,
 				&r.cfg.RollupContractAddress,
 				big.NewInt(0),

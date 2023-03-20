@@ -9,8 +9,6 @@ import (
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/crypto"
 	"github.com/scroll-tech/go-ethereum/log"
-	"modernc.org/mathutil"
-
 	"scroll-tech/common/types"
 	"scroll-tech/common/utils"
 
@@ -53,8 +51,8 @@ func (r *Layer2Relayer) checkRollupBatches() error {
 		}
 
 		var batchDataBuffer []*types.BatchData
+		batchIndex = blockBatches[len(blockBatches)-1].Index
 		for _, blockBatch := range blockBatches {
-			batchIndex = mathutil.MaxUint64(batchIndex, blockBatch.Index)
 			var (
 				parentBatch *types.BlockBatch
 				blockInfos  []*types.BlockInfo

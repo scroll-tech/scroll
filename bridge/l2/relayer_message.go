@@ -35,13 +35,13 @@ func (r *Layer2Relayer) checkSubmittedMessages() error {
 		}
 
 		var batch *types.BlockBatch
+		nonce = msgs[len(msgs)-1].Nonce
 		for msg := msgs[0]; len(msgs) > 0; { //nolint:staticcheck
 			// Wait until sender's pending is not full.
 			utils.TryTimes(-1, func() bool {
 				return !r.messageSender.IsFull()
 			})
 			msg, msgs = msgs[0], msgs[1:]
-			nonce = mathutil.MaxUint64(nonce, msg.Nonce)
 
 			// Get batch by block number.
 			if batch == nil || msg.Height < batch.StartBlockNumber || msg.Height > batch.EndBlockNumber {

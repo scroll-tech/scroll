@@ -170,18 +170,6 @@ func (r *Layer2Relayer) SetBatchProposer(proposer batchInterface) {
 	r.batchInterface = proposer
 }
 
-// Prepare operate layer2's unconfirmed txs.
-func (r *Layer2Relayer) Prepare() error {
-	if err := r.checkRollupBatches(); err != nil {
-		log.Error("failed to init layer2 rollupCommitting messages", "err", err)
-		return err
-	}
-	utils.TryTimes(-1, func() bool {
-		return r.rollupSender.PendingCount() == 0
-	})
-	return nil
-}
-
 // Start the relayer process
 func (r *Layer2Relayer) Start() {
 	go func() {
@@ -199,6 +187,13 @@ func (r *Layer2Relayer) Start() {
 		}()
 
 		go func() {
+			if err := r.checkRollupBatches(); err != nil {
+				log.Error("failed to init layer2 rollupCommitting messages", "err", err)
+			}
+			utils.TryTimes(-1, func() bool {
+				return r.rollupSender.PendingCount() == 0
+			})
+
 			if err := r.checkFinalizingBatches(); err != nil {
 				log.Error("failed to init layer2 finalizing batches", "err", err)
 			}

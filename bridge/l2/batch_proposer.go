@@ -22,7 +22,7 @@ import (
 	"scroll-tech/bridge/config"
 )
 
-type layer2Interface interface {
+type relayerInterface interface {
 	SendCommitTx(batchData []*types.BatchData) error
 }
 
@@ -88,7 +88,7 @@ type BatchProposer struct {
 	proofGenerationFreq uint64
 	batchDataBuffer     []*types.BatchData
 
-	layer2Interface
+	relayerInterface
 
 	piCfg *types.PublicInputHashConfig
 
@@ -115,8 +115,8 @@ func NewBatchProposer(ctx context.Context, cfg *config.BatchProposerConfig, orm 
 }
 
 // SetLayer2Relayer set interface from layer2.
-func (p *BatchProposer) SetLayer2Relayer(relayer layer2Interface) {
-	p.layer2Interface = relayer
+func (p *BatchProposer) SetLayer2Relayer(relayer relayerInterface) {
+	p.relayerInterface = relayer
 }
 
 // Start the Listening process

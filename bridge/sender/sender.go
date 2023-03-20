@@ -170,7 +170,7 @@ func (s *Sender) getFeeData(auth *bind.TransactOpts, target *common.Address, val
 
 // IsFull If pendingTxs pool is full return true.
 func (s *Sender) IsFull() bool {
-	return atomic.LoadInt64(&s.pendingNum) == s.config.PendingLimit
+	return atomic.LoadInt64(&s.pendingNum) >= s.config.PendingLimit
 }
 
 // SendTransaction send a signed L2tL1 transaction.
