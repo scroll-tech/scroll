@@ -33,9 +33,9 @@ contract L1ETHGateway is Initializable, ScrollGatewayBase, IL1ETHGateway {
         ScrollGatewayBase._initialize(_counterpart, _router, _messenger);
     }
 
-    /****************************
-     * Public Mutated Functions *
-     ****************************/
+    /*****************************
+     * Public Mutating Functions *
+     *****************************/
 
     /// @inheritdoc IL1ETHGateway
     function depositETH(uint256 _amount, uint256 _gasLimit) external payable override {

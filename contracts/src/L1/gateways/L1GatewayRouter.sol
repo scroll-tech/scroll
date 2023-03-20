@@ -80,9 +80,9 @@ contract L1GatewayRouter is OwnableUpgradeable, IL1GatewayRouter {
         return _gateway;
     }
 
-    /************************************************
-     * Public Mutated Functions from L1ERC20Gateway *
-     ************************************************/
+    /*************************************************
+     * Public Mutating Functions from L1ERC20Gateway *
+     *************************************************/
 
     /// @inheritdoc IL1ERC20Gateway
     function depositERC20(
@@ -132,9 +132,9 @@ contract L1GatewayRouter is OwnableUpgradeable, IL1GatewayRouter {
         revert("should never be called");
     }
 
-    /**********************************************
-     * Public Mutated Functions from L1ETHGateway *
-     **********************************************/
+    /***********************************************
+     * Public Mutating Functions from L1ETHGateway *
+     ***********************************************/
 
     /// @inheritdoc IL1ETHGateway
     function depositETH(uint256 _amount, uint256 _gasLimit) external payable override {

@@ -72,9 +72,9 @@ contract L1MessageQueue is OwnableUpgradeable, IL1MessageQueue {
         return IL2GasPriceOracle(_oracle).estimateCrossDomainMessageFee(_sender, _target, _message, _gasLimit);
     }
 
-    /****************************
-     * Public Mutated Functions *
-     ****************************/
+    /*****************************
+     * Public Mutating Functions *
+     *****************************/
 
     /// @inheritdoc IL1MessageQueue
     function appendCrossDomainMessage(

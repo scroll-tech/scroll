@@ -82,9 +82,9 @@ contract L2GatewayRouter is OwnableUpgradeable, IL2GatewayRouter {
         return _gateway;
     }
 
-    /****************************
-     * Public Mutated Functions *
-     ****************************/
+    /*****************************
+     * Public Mutating Functions *
+     *****************************/
 
     /// @inheritdoc IL2ERC20Gateway
     function withdrawERC20(

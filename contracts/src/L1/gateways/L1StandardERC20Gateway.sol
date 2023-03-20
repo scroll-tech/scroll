@@ -80,9 +80,9 @@ contract L1StandardERC20Gateway is Initializable, ScrollGatewayBase, L1ERC20Gate
         return Clones.predictDeterministicAddress(l2TokenImplementation, _salt, l2TokenFactory);
     }
 
-    /****************************
-     * Public Mutated Functions *
-     ****************************/
+    /*****************************
+     * Public Mutating Functions *
+     *****************************/
 
     /// @inheritdoc IL1ERC20Gateway
     function finalizeWithdrawERC20(

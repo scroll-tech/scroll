@@ -47,9 +47,9 @@ interface IL1BlockContainer {
     /// @return timestamp The corresponding block timestamp.
     function getBlockTimestamp(bytes32 blockHash) external view returns (uint256 timestamp);
 
-    /****************************
-     * Public Mutated Functions *
-     ****************************/
+    /*****************************
+     * Public Mutating Functions *
+     *****************************/
 
     /// @notice Import L1 block header to this contract.
     /// @param blockHash The hash of block.

@@ -16,9 +16,9 @@ interface IL1ScrollMessenger is IScrollMessenger {
         bytes merkleProof;
     }
 
-    /****************************
-     * Public Mutated Functions *
-     ****************************/
+    /*****************************
+     * Public Mutating Functions *
+     *****************************/
 
     /// @notice Relay a L2 => L1 message with message proof.
     /// @param from The address of the sender of the message.
