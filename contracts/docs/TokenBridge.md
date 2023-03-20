@@ -12,6 +12,7 @@ To bridge Ether from layer 1 to layer 2, one can use `L1GatewayRouter.depositETH
 function depositETH(uint256 _gasLimit) external payable;
 
 function depositETH(address _to, uint256 _gasLimit) external payable;
+
 ```
 
 In the layer 1, all deposited Ether will be locked in `L1ScrollMessenger` contract. It means your deposited Ether will firstly be transfered to `L1GatewayRouter` contract and then to `L1ScrollMessenger` contract.
