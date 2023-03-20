@@ -17,7 +17,7 @@ interface IL1ScrollMessenger is IScrollMessenger {
     }
 
     /*****************************
-     * Public Mutation Functions *
+     * Public Mutating Functions *
      *****************************/
 
     /// @notice Relay a L2 => L1 message with message proof.
