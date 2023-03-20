@@ -1,4 +1,4 @@
-package docker
+package docker_test
 
 import (
 	"context"
@@ -6,13 +6,36 @@ import (
 
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq" //nolint:golint
-	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/stretchr/testify/assert"
+
+	_ "scroll-tech/database/cmd/app"
+
+	"scroll-tech/common/docker"
 )
 
-func TestDocker(t *testing.T) {
-	t.Parallel()
+var (
+	base *docker.App
+)
 
+func TestMain(m *testing.M) {
+	base = docker.NewDockerApp()
+
+	m.Run()
+
+	base.Free()
+}
+
+func TestStartProcess(t *testing.T) {
+	base.RunImages(t)
+
+	// migrate db.
+	base.RunDBApp(t, "reset", "successful to reset")
+	base.RunDBApp(t, "migrate", "current version:")
+}
+
+func TestDocker(t *testing.T) {
+	base.RunImages(t)
+	t.Parallel()
 	t.Run("testL1Geth", testL1Geth)
 	t.Run("testL2Geth", testL2Geth)
 	t.Run("testDB", testDB)
@@ -22,10 +45,7 @@ func testL1Geth(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	img := NewTestL1Docker(t)
-	defer img.Stop()
-
-	client, err := ethclient.Dial(img.Endpoint())
+	client, err := base.L1Client()
 	assert.NoError(t, err)
 
 	chainID, err := client.ChainID(ctx)
@@ -37,10 +57,7 @@ func testL2Geth(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	img := NewTestL2Docker(t)
-	defer img.Stop()
-
-	client, err := ethclient.Dial(img.Endpoint())
+	client, err := base.L2Client()
 	assert.NoError(t, err)
 
 	chainID, err := client.ChainID(ctx)
@@ -50,10 +67,8 @@ func testL2Geth(t *testing.T) {
 
 func testDB(t *testing.T) {
 	driverName := "postgres"
-	dbImg := NewTestDBDocker(t, driverName)
-	defer dbImg.Stop()
 
-	db, err := sqlx.Open(driverName, dbImg.Endpoint())
+	db, err := sqlx.Open(driverName, base.DBEndpoint())
 	assert.NoError(t, err)
 	assert.NoError(t, db.Ping())
 }

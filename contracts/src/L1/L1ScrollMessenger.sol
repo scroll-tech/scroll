@@ -44,6 +44,28 @@ contract L1ScrollMessenger is PausableUpgradeable, ScrollMessengerBase, IL1Scrol
   /// @notice The address of L1MessageQueue contract.
   address public messageQueue;
 
+  // @note move to ScrollMessengerBase in next big refactor
+  /// @dev The status of for non-reentrant check.
+  uint256 private _lock_status;
+
+  /**********************
+   * Function Modifiers *
+   **********************/
+
+  modifier nonReentrant() {
+    // On the first call to nonReentrant, _notEntered will be true
+    require(_lock_status != _ENTERED, "ReentrancyGuard: reentrant call");
+
+    // Any calls to nonReentrant after this point will fail
+    _lock_status = _ENTERED;
+
+    _;
+
+    // By storing the original value once again, a refund is triggered (see
+    // https://eips.ethereum.org/EIPS/eip-2200)
+    _lock_status = _NOT_ENTERED;
+  }
+
   /***************
    * Constructor *
    ***************/
@@ -80,34 +102,18 @@ contract L1ScrollMessenger is PausableUpgradeable, ScrollMessengerBase, IL1Scrol
     bytes memory _message,
     uint256 _gasLimit
   ) external payable override whenNotPaused {
-    address _messageQueue = messageQueue; // gas saving
-    address _counterpart = counterpart; // gas saving
+    _sendMessage(_to, _value, _message, _gasLimit, tx.origin);
+  }
 
-    // compute the actual cross domain message calldata.
-    uint256 _messageNonce = IL1MessageQueue(_messageQueue).nextCrossDomainMessageIndex();
-    bytes memory _xDomainCalldata = _encodeXDomainCalldata(msg.sender, _to, _value, _messageNonce, _message);
-
-    // compute and deduct the messaging fee to fee vault.
-    uint256 _fee = IL1MessageQueue(_messageQueue).estimateCrossDomainMessageFee(
-      address(this),
-      _counterpart,
-      _xDomainCalldata,
-      _gasLimit
-    );
-    require(msg.value >= _fee + _value, "Insufficient msg.value");
-    if (_fee > 0) {
-      (bool _success, ) = feeVault.call{ value: _fee }("");
-      require(_success, "Failed to deduct the fee");
-    }
-
-    // append message to L1MessageQueue
-    IL1MessageQueue(_messageQueue).appendCrossDomainMessage(_counterpart, _gasLimit, _xDomainCalldata);
-
-    // record the message hash for future use.
-    bytes32 _xDomainCalldataHash = keccak256(_xDomainCalldata);
-    isL1MessageSent[_xDomainCalldataHash] = true;
-
-    emit SentMessage(msg.sender, _to, _value, _messageNonce, _gasLimit, _message);
+  /// @inheritdoc IScrollMessenger
+  function sendMessage(
+    address _to,
+    uint256 _value,
+    bytes calldata _message,
+    uint256 _gasLimit,
+    address _refundAddress
+  ) external payable override whenNotPaused {
+    _sendMessage(_to, _value, _message, _gasLimit, _refundAddress);
   }
 
   /// @inheritdoc IL1ScrollMessenger
@@ -136,6 +142,10 @@ contract L1ScrollMessenger is PausableUpgradeable, ScrollMessengerBase, IL1Scrol
       );
       */
     }
+
+    // @todo check more `_to` address to avoid attack.
+    require(_to != messageQueue, "Forbid to call message queue");
+    require(_to != address(this), "Forbid to call self");
 
     // @note This usually will never happen, just in case.
     require(_from != xDomainMessageSender, "Invalid message sender");
@@ -175,7 +185,65 @@ contract L1ScrollMessenger is PausableUpgradeable, ScrollMessengerBase, IL1Scrol
 
   /// @notice Pause the contract
   /// @dev This function can only called by contract owner.
-  function pause() external onlyOwner {
-    _pause();
+  /// @param _status The pause status to update.
+  function setPause(bool _status) external onlyOwner {
+    if (_status) {
+      _pause();
+    } else {
+      _unpause();
+    }
+  }
+
+  /**********************
+   * Internal Functions *
+   **********************/
+
+  function _sendMessage(
+    address _to,
+    uint256 _value,
+    bytes memory _message,
+    uint256 _gasLimit,
+    address _refundAddress
+  ) internal nonReentrant {
+    address _messageQueue = messageQueue; // gas saving
+    address _counterpart = counterpart; // gas saving
+
+    // compute the actual cross domain message calldata.
+    uint256 _messageNonce = IL1MessageQueue(_messageQueue).nextCrossDomainMessageIndex();
+    bytes memory _xDomainCalldata = _encodeXDomainCalldata(msg.sender, _to, _value, _messageNonce, _message);
+
+    // compute and deduct the messaging fee to fee vault.
+    uint256 _fee = IL1MessageQueue(_messageQueue).estimateCrossDomainMessageFee(
+      address(this),
+      _counterpart,
+      _xDomainCalldata,
+      _gasLimit
+    );
+    require(msg.value >= _fee + _value, "Insufficient msg.value");
+    if (_fee > 0) {
+      (bool _success, ) = feeVault.call{ value: _fee }("");
+      require(_success, "Failed to deduct the fee");
+    }
+
+    // append message to L1MessageQueue
+    IL1MessageQueue(_messageQueue).appendCrossDomainMessage(_counterpart, _gasLimit, _xDomainCalldata);
+
+    // record the message hash for future use.
+    bytes32 _xDomainCalldataHash = keccak256(_xDomainCalldata);
+
+    // normally this won't happen, since each message has different nonce, but just in case.
+    require(!isL1MessageSent[_xDomainCalldataHash], "Duplicated message");
+    isL1MessageSent[_xDomainCalldataHash] = true;
+
+    emit SentMessage(msg.sender, _to, _value, _messageNonce, _gasLimit, _message);
+
+    // refund fee to tx.origin
+    unchecked {
+      uint256 _refund = msg.value - _fee - _value;
+      if (_refund > 0) {
+        (bool _success, ) = _refundAddress.call{ value: _refund }("");
+        require(_success, "Failed to refund the fee");
+      }
+    }
   }
 }

@@ -12,10 +12,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	geth "github.com/scroll-tech/go-ethereum"
 	"github.com/scroll-tech/go-ethereum/accounts/abi/bind"
 	"github.com/scroll-tech/go-ethereum/common"
-	"github.com/scroll-tech/go-ethereum/common/math"
 	"github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
@@ -152,42 +150,15 @@ func (s *Sender) NumberOfAccounts() int {
 	return len(s.auths.accounts)
 }
 
-func (s *Sender) getFeeData(auth *bind.TransactOpts, target *common.Address, value *big.Int, data []byte) (*FeeData, error) {
-	// estimate gas limit
-	gasLimit, err := s.client.EstimateGas(s.ctx, geth.CallMsg{From: auth.From, To: target, Value: value, Data: data})
-	if err != nil {
-		return nil, err
+func (s *Sender) getFeeData(auth *bind.TransactOpts, target *common.Address, value *big.Int, data []byte, minGasLimit uint64) (*FeeData, error) {
+	if s.config.TxType == DynamicFeeTxType {
+		return s.estimateDynamicGas(auth, target, value, data, minGasLimit)
 	}
-	gasLimit = gasLimit * 15 / 10 // 50% extra gas to void out of gas error
-	// @todo change it when Scroll enable EIP1559
-	if s.config.TxType != DynamicFeeTxType {
-		// estimate gas price
-		var gasPrice *big.Int
-		gasPrice, err = s.client.SuggestGasPrice(s.ctx)
-		if err != nil {
-			return nil, err
-		}
-		return &FeeData{
-			gasPrice: gasPrice,
-			gasLimit: gasLimit,
-		}, nil
-	}
-	gasTipCap, err := s.client.SuggestGasTipCap(s.ctx)
-	if err != nil {
-		return nil, err
-	}
-	// Make sure feeCap is bigger than txpool's gas price. 1000000000 is l2geth's default pool.gas value.
-	baseFee := atomic.LoadUint64(&s.baseFeePerGas)
-	maxFeePerGas := math.BigMax(big.NewInt(int64(baseFee)), big.NewInt(1000000000))
-	return &FeeData{
-		gasFeeCap: math.BigMax(maxFeePerGas, gasTipCap),
-		gasTipCap: math.BigMin(maxFeePerGas, gasTipCap),
-		gasLimit:  gasLimit,
-	}, nil
+	return s.estimateLegacyGas(auth, target, value, data, minGasLimit)
 }
 
 // SendTransaction send a signed L2tL1 transaction.
-func (s *Sender) SendTransaction(ID string, target *common.Address, value *big.Int, data []byte) (hash common.Hash, err error) {
+func (s *Sender) SendTransaction(ID string, target *common.Address, value *big.Int, data []byte, minGasLimit uint64) (hash common.Hash, err error) {
 	// We occupy the ID, in case some other threads call with the same ID in the same time
 	if _, loaded := s.pendingTxs.LoadOrStore(ID, nil); loaded {
 		return common.Hash{}, fmt.Errorf("has the repeat tx ID, ID: %s", ID)
@@ -211,7 +182,7 @@ func (s *Sender) SendTransaction(ID string, target *common.Address, value *big.I
 		tx      *types.Transaction
 	)
 	// estimate gas fee
-	if feeData, err = s.getFeeData(auth, target, value, data); err != nil {
+	if feeData, err = s.getFeeData(auth, target, value, data, minGasLimit); err != nil {
 		return
 	}
 	if tx, err = s.createAndSendTx(auth, feeData, target, value, data, nil); err == nil {
@@ -436,7 +407,7 @@ func (s *Sender) loop(ctx context.Context) {
 	checkTick := time.NewTicker(time.Duration(s.config.CheckPendingTime) * time.Second)
 	defer checkTick.Stop()
 
-	checkBalanceTicker := time.NewTicker(time.Minute * 10)
+	checkBalanceTicker := time.NewTicker(time.Duration(s.config.CheckBalanceTime) * time.Second)
 	defer checkBalanceTicker.Stop()
 
 	for {

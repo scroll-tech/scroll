@@ -178,8 +178,8 @@ contract L2ETHGatewayTest is L2GatewayTestBase {
     uint256 amount,
     bytes memory dataToCall
   ) public {
-    hevm.assume(recipient != address(0));
     hevm.assume(recipient.code.length == 0);
+    hevm.assume(uint256(uint160(recipient)) > 100); // ignore some precompile contracts
 
     amount = bound(amount, 1, address(this).balance / 2);
 
@@ -281,9 +281,9 @@ contract L2ETHGatewayTest is L2GatewayTestBase {
       uint256 feeVaultBalance = address(feeVault).balance;
       assertBoolEq(false, l2Messenger.isL2MessageSent(keccak256(xDomainCalldata)));
       if (useRouter) {
-        router.withdrawETH{ value: amount + feeToPay }(amount, gasLimit);
+        router.withdrawETH{ value: amount + feeToPay + extraValue }(amount, gasLimit);
       } else {
-        gateway.withdrawETH{ value: amount + feeToPay }(amount, gasLimit);
+        gateway.withdrawETH{ value: amount + feeToPay + extraValue }(amount, gasLimit);
       }
       assertEq(amount + messengerBalance, address(l2Messenger).balance);
       assertEq(feeToPay + feeVaultBalance, address(feeVault).balance);
@@ -349,9 +349,9 @@ contract L2ETHGatewayTest is L2GatewayTestBase {
       uint256 feeVaultBalance = address(feeVault).balance;
       assertBoolEq(false, l2Messenger.isL2MessageSent(keccak256(xDomainCalldata)));
       if (useRouter) {
-        router.withdrawETH{ value: amount + feeToPay }(recipient, amount, gasLimit);
+        router.withdrawETH{ value: amount + feeToPay + extraValue }(recipient, amount, gasLimit);
       } else {
-        gateway.withdrawETH{ value: amount + feeToPay }(recipient, amount, gasLimit);
+        gateway.withdrawETH{ value: amount + feeToPay + extraValue }(recipient, amount, gasLimit);
       }
       assertEq(amount + messengerBalance, address(l2Messenger).balance);
       assertEq(feeToPay + feeVaultBalance, address(feeVault).balance);
@@ -418,9 +418,9 @@ contract L2ETHGatewayTest is L2GatewayTestBase {
       uint256 feeVaultBalance = address(feeVault).balance;
       assertBoolEq(false, l2Messenger.isL2MessageSent(keccak256(xDomainCalldata)));
       if (useRouter) {
-        router.withdrawETHAndCall{ value: amount + feeToPay }(recipient, amount, dataToCall, gasLimit);
+        router.withdrawETHAndCall{ value: amount + feeToPay + extraValue }(recipient, amount, dataToCall, gasLimit);
       } else {
-        gateway.withdrawETHAndCall{ value: amount + feeToPay }(recipient, amount, dataToCall, gasLimit);
+        gateway.withdrawETHAndCall{ value: amount + feeToPay + extraValue }(recipient, amount, dataToCall, gasLimit);
       }
       assertEq(amount + messengerBalance, address(l2Messenger).balance);
       assertEq(feeToPay + feeVaultBalance, address(feeVault).balance);

@@ -19,10 +19,7 @@ var (
 	// config
 	cfg *config.Config
 
-	// docker consider handler.
-	l1gethImg docker.ImgInstance
-	l2gethImg docker.ImgInstance
-	dbImg     docker.ImgInstance
+	base *docker.App
 
 	// l2geth client
 	l2Cli *ethclient.Client
@@ -41,22 +38,14 @@ func setupEnv(t *testing.T) (err error) {
 	cfg, err = config.NewConfig("../config.json")
 	assert.NoError(t, err)
 
-	// Create l1geth container.
-	l1gethImg = docker.NewTestL1Docker(t)
-	cfg.L2Config.RelayerConfig.SenderConfig.Endpoint = l1gethImg.Endpoint()
-	cfg.L1Config.Endpoint = l1gethImg.Endpoint()
+	base.RunImages(t)
 
-	// Create l2geth container.
-	l2gethImg = docker.NewTestL2Docker(t)
-	cfg.L1Config.RelayerConfig.SenderConfig.Endpoint = l2gethImg.Endpoint()
-	cfg.L2Config.Endpoint = l2gethImg.Endpoint()
-
-	// Create db container.
-	dbImg = docker.NewTestDBDocker(t, cfg.DBConfig.DriverName)
-	cfg.DBConfig.DSN = dbImg.Endpoint()
+	cfg.L2Config.RelayerConfig.SenderConfig.Endpoint = base.L1GethEndpoint()
+	cfg.L1Config.RelayerConfig.SenderConfig.Endpoint = base.L2GethEndpoint()
+	cfg.DBConfig.DSN = base.DBEndpoint()
 
 	// Create l2geth client.
-	l2Cli, err = ethclient.Dial(cfg.L2Config.Endpoint)
+	l2Cli, err = base.L2Client()
 	assert.NoError(t, err)
 
 	templateBlockTrace1, err := os.ReadFile("../../common/testdata/blockTrace_02.json")
@@ -96,16 +85,12 @@ func setupEnv(t *testing.T) (err error) {
 	return err
 }
 
-func free(t *testing.T) {
-	if dbImg != nil {
-		assert.NoError(t, dbImg.Stop())
-	}
-	if l1gethImg != nil {
-		assert.NoError(t, l1gethImg.Stop())
-	}
-	if l2gethImg != nil {
-		assert.NoError(t, l2gethImg.Stop())
-	}
+func TestMain(m *testing.M) {
+	base = docker.NewDockerApp()
+
+	m.Run()
+
+	base.Free()
 }
 
 func TestFunction(t *testing.T) {
@@ -123,7 +108,4 @@ func TestFunction(t *testing.T) {
 	t.Run("TestBatchProposerProposeBatch", testBatchProposerProposeBatch)
 	t.Run("TestBatchProposerGracefulRestart", testBatchProposerGracefulRestart)
 
-	t.Cleanup(func() {
-		free(t)
-	})
 }
