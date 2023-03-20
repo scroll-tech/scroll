@@ -38,6 +38,9 @@ func init() {
 	app.Before = func(ctx *cli.Context) error {
 		return cutils.LogSetup(ctx)
 	}
+
+	// Register `message-relayer-test` app for integration-test.
+	cutils.RegisterSimulation(app, "message-relayer-test")
 }
 
 func action(ctx *cli.Context) error {

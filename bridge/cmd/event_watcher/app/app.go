@@ -39,6 +39,9 @@ func init() {
 	app.Before = func(ctx *cli.Context) error {
 		return cutils.LogSetup(ctx)
 	}
+
+	// Register `event-watcher-test` app for integration-test.
+	cutils.RegisterSimulation(app, "event-watcher-test")
 }
 
 func action(ctx *cli.Context) error {

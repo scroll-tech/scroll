@@ -31,8 +31,8 @@ func init() {
 	app = cli.NewApp()
 
 	app.Action = action
-	app.Name = "rollup-relayer"
-	app.Usage = "The Scroll Rollup Relayer"
+	app.Name = "batch-proposer"
+	app.Usage = "The Scroll Batch Proposer"
 	app.Version = version.Version
 	app.Flags = append(app.Flags, cutils.CommonFlags...)
 	app.Commands = []*cli.Command{}
@@ -40,6 +40,8 @@ func init() {
 	app.Before = func(ctx *cli.Context) error {
 		return cutils.LogSetup(ctx)
 	}
+	// Register `batch-proposer-test` app for integration-test.
+	cutils.RegisterSimulation(app, "batch-proposer-test")
 }
 
 func action(ctx *cli.Context) error {
