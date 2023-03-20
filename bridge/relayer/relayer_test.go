@@ -112,10 +112,6 @@ func setupEnv(t *testing.T) (err error) {
 	return err
 }
 
-func free(t *testing.T) {
-	base.Free()
-}
-
 func TestFunction(t *testing.T) {
 	if err := setupEnv(t); err != nil {
 		t.Fatal(err)
@@ -131,6 +127,6 @@ func TestFunction(t *testing.T) {
 	t.Run("TestL2RelayerSkipBatches", testL2RelayerSkipBatches)
 
 	t.Cleanup(func() {
-		free(t)
+		base.Free()
 	})
 }

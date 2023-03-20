@@ -13,12 +13,12 @@ import (
 
 	"scroll-tech/database"
 
-	cutils "scroll-tech/common/utils"
 	"scroll-tech/common/version"
 
 	"scroll-tech/bridge/config"
 	"scroll-tech/bridge/utils"
 	"scroll-tech/bridge/watcher"
+	cutils "scroll-tech/common/utils"
 )
 
 var (

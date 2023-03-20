@@ -84,7 +84,7 @@ func NewLayer1Relayer(ctx context.Context, db database.OrmFactory, cfg *config.R
 		gasPriceDiff = defaultGasPriceDiff
 	}
 
-	minGasLimitForMessageRelay := uint64(defaultMessageRelayMinGasLimit)
+	minGasLimitForMessageRelay := uint64(defaultL1MessageRelayMinGasLimit)
 	if cfg.MessageRelayMinGasLimit != 0 {
 		minGasLimitForMessageRelay = cfg.MessageRelayMinGasLimit
 	}

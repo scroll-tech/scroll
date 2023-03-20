@@ -112,7 +112,7 @@ func NewLayer2Relayer(ctx context.Context, l2Client *ethclient.Client, db databa
 		gasPriceDiff = defaultGasPriceDiff
 	}
 
-	minGasLimitForMessageRelay := uint64(defaultMessageRelayMinGasLimit)
+	minGasLimitForMessageRelay := uint64(defaultL2MessageRelayMinGasLimit)
 	if cfg.MessageRelayMinGasLimit != 0 {
 		minGasLimitForMessageRelay = cfg.MessageRelayMinGasLimit
 	}

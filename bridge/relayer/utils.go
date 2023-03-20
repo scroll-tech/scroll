@@ -7,7 +7,7 @@ const (
 
 	defaultGasPriceDiff = 50000 // 5%
 
-	defaultMessageRelayMinGasLimit = 130000 // should be enough for both ERC20 and ETH relay
+	defaultL1MessageRelayMinGasLimit = 130000 // should be enough for both ERC20 and ETH relay
 
 	defaultL2MessageRelayMinGasLimit = 200000
 )
