@@ -4,9 +4,10 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
-	"scroll-tech/common/libzkp"
 
 	"github.com/scroll-tech/go-ethereum/log"
+
+	"scroll-tech/common/libzkp"
 )
 
 // Config loads roller configuration items.

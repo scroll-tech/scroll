@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"math"
-	"scroll-tech/common/libzkp"
 	"sort"
 	"sync/atomic"
 	"time"
@@ -16,6 +15,7 @@ import (
 	"github.com/scroll-tech/go-ethereum/crypto"
 	"github.com/scroll-tech/go-ethereum/log"
 
+	"scroll-tech/common/libzkp"
 	"scroll-tech/common/message"
 	"scroll-tech/common/utils"
 	"scroll-tech/common/version"

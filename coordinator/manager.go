@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	mathrand "math/rand"
-	"scroll-tech/common/libzkp"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -19,6 +18,7 @@ import (
 	geth_metrics "github.com/scroll-tech/go-ethereum/metrics"
 	"github.com/scroll-tech/go-ethereum/rpc"
 
+	"scroll-tech/common/libzkp"
 	"scroll-tech/common/message"
 	"scroll-tech/common/metrics"
 	"scroll-tech/common/types"

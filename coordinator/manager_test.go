@@ -10,7 +10,6 @@ import (
 	"math/big"
 	"net/http"
 	"os"
-	"scroll-tech/common/libzkp"
 	"strconv"
 	"strings"
 	"sync"
@@ -30,6 +29,7 @@ import (
 	client2 "scroll-tech/coordinator/client"
 
 	"scroll-tech/common/docker"
+	"scroll-tech/common/libzkp"
 	"scroll-tech/common/message"
 	"scroll-tech/common/types"
 	"scroll-tech/common/utils"

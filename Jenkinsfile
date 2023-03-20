@@ -33,7 +33,7 @@ pipeline {
                 stage('Check Coordinator Compilation') {
                     steps {
                         sh 'export PATH=/home/ubuntu/go/bin:$PATH'
-                        sh 'LD_LIBRARY_PATH="$LD_LIBRARY_PATH:./common/libzkp/lib"'
+                        sh 'export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:./common/libzkp/lib"'
                         sh 'make -C coordinator coordinator'
                     }
                 }
