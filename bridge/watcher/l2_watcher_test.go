@@ -17,11 +17,12 @@ import (
 
 	"scroll-tech/common/types"
 
+	"scroll-tech/database"
+	"scroll-tech/database/migrate"
+
 	"scroll-tech/bridge/mock_bridge"
 	"scroll-tech/bridge/sender"
 	"scroll-tech/bridge/watcher"
-	"scroll-tech/database"
-	"scroll-tech/database/migrate"
 
 	cutils "scroll-tech/common/utils"
 )
