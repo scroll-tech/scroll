@@ -587,7 +587,7 @@ func setupCoordinator(t *testing.T, dbCfg *database.DBConfig, rollersPerSession 
 		CollectionTime:     1,
 		TokenTimeToLive:    5,
 		MaxVerifierWorkers: 10,
-		SessionAttempts:   2,
+		SessionAttempts:    2,
 	}, db, nil)
 	assert.NoError(t, err)
 	assert.NoError(t, rollerManager.Start())
