@@ -150,15 +150,15 @@ func (s *Sender) NumberOfAccounts() int {
 	return len(s.auths.accounts)
 }
 
-func (s *Sender) getFeeData(auth *bind.TransactOpts, target *common.Address, value *big.Int, data []byte) (*FeeData, error) {
+func (s *Sender) getFeeData(auth *bind.TransactOpts, target *common.Address, value *big.Int, data []byte, minGasLimit uint64) (*FeeData, error) {
 	if s.config.TxType == DynamicFeeTxType {
-		return s.estimateDynamicGas(auth, target, value, data)
+		return s.estimateDynamicGas(auth, target, value, data, minGasLimit)
 	}
-	return s.estimateLegacyGas(auth, target, value, data)
+	return s.estimateLegacyGas(auth, target, value, data, minGasLimit)
 }
 
 // SendTransaction send a signed L2tL1 transaction.
-func (s *Sender) SendTransaction(ID string, target *common.Address, value *big.Int, data []byte) (hash common.Hash, err error) {
+func (s *Sender) SendTransaction(ID string, target *common.Address, value *big.Int, data []byte, minGasLimit uint64) (hash common.Hash, err error) {
 	// We occupy the ID, in case some other threads call with the same ID in the same time
 	if _, loaded := s.pendingTxs.LoadOrStore(ID, nil); loaded {
 		return common.Hash{}, fmt.Errorf("has the repeat tx ID, ID: %s", ID)
@@ -182,7 +182,7 @@ func (s *Sender) SendTransaction(ID string, target *common.Address, value *big.I
 		tx      *types.Transaction
 	)
 	// estimate gas fee
-	if feeData, err = s.getFeeData(auth, target, value, data); err != nil {
+	if feeData, err = s.getFeeData(auth, target, value, data, minGasLimit); err != nil {
 		return
 	}
 	if tx, err = s.createAndSendTx(auth, feeData, target, value, data, nil); err == nil {
@@ -407,7 +407,7 @@ func (s *Sender) loop(ctx context.Context) {
 	checkTick := time.NewTicker(time.Duration(s.config.CheckPendingTime) * time.Second)
 	defer checkTick.Stop()
 
-	checkBalanceTicker := time.NewTicker(time.Minute * 10)
+	checkBalanceTicker := time.NewTicker(time.Duration(s.config.CheckBalanceTime) * time.Second)
 	defer checkBalanceTicker.Stop()
 
 	for {
