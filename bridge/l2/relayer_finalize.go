@@ -29,16 +29,16 @@ func (r *Layer2Relayer) checkFinalizingBatches() error {
 		}
 
 		batchIndex = batches[len(batches)-1].Index
-		for batch := batches[0]; len(batches) > 0; { //nolint:staticcheck
+		for _, batch := range batches { //nolint:staticcheck
 			// Wait until sender's pending is not full.
 			comutiles.TryTimes(-1, func() bool {
 				return !r.rollupSender.IsFull()
 			})
-			batch, batches = batches[0], batches[1:]
 
-			hash := batch.Hash
-
-			var txHash common.Hash
+			var (
+				txHash common.Hash
+				hash   = batch.Hash
+			)
 			if batch.CommitTxHash.Valid {
 				txHash = common.HexToHash(batch.CommitTxHash.String)
 			}

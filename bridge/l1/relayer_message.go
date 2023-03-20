@@ -29,12 +29,11 @@ func (r *Layer1Relayer) checkSubmittedMessages() error {
 		}
 
 		index = msgs[len(msgs)-1].QueueIndex
-		for msg := msgs[0]; len(msgs) > 0; { //nolint:staticcheck
+		for _, msg := range msgs { //nolint:staticcheck
 			// If pending txs pool is full, wait until pending pool is available.
 			utils.TryTimes(-1, func() bool {
 				return !r.messageSender.IsFull()
 			})
-			msg, msgs = msgs[0], msgs[1:]
 
 			if err = r.messageSender.LoadOrSendTx(
 				common.HexToHash(msg.Layer2Hash),

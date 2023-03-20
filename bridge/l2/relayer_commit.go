@@ -9,11 +9,11 @@ import (
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/crypto"
 	"github.com/scroll-tech/go-ethereum/log"
+	bridge_abi "scroll-tech/bridge/abi"
+
+	"scroll-tech/bridge/sender"
 	"scroll-tech/common/types"
 	"scroll-tech/common/utils"
-
-	bridge_abi "scroll-tech/bridge/abi"
-	"scroll-tech/bridge/sender"
 )
 
 func (r *Layer2Relayer) checkRollupBatches() error {
@@ -53,6 +53,11 @@ func (r *Layer2Relayer) checkRollupBatches() error {
 		var batchDataBuffer []*types.BatchData
 		batchIndex = blockBatches[len(blockBatches)-1].Index
 		for _, blockBatch := range blockBatches {
+			// Wait until sender's pending is not full.
+			utils.TryTimes(-1, func() bool {
+				return !r.rollupSender.IsFull()
+			})
+
 			var (
 				parentBatch *types.BlockBatch
 				blockInfos  []*types.BlockInfo
@@ -85,11 +90,6 @@ func (r *Layer2Relayer) checkRollupBatches() error {
 		if err != nil {
 			return err
 		}
-
-		// Wait until sender's pending is not full.
-		utils.TryTimes(-1, func() bool {
-			return !r.rollupSender.IsFull()
-		})
 
 		// Handle tx.
 		err = r.rollupSender.LoadOrSendTx(
