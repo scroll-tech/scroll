@@ -18,6 +18,7 @@ import (
 
 	"scroll-tech/bridge/config"
 	"scroll-tech/bridge/watcher"
+
 	cutils "scroll-tech/common/utils"
 )
 

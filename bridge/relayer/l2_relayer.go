@@ -17,9 +17,10 @@ import (
 	"golang.org/x/sync/errgroup"
 	"modernc.org/mathutil"
 
+	"scroll-tech/database"
+
 	"scroll-tech/common/metrics"
 	"scroll-tech/common/types"
-	"scroll-tech/database"
 
 	bridge_abi "scroll-tech/bridge/abi"
 	"scroll-tech/bridge/config"

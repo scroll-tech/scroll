@@ -4,9 +4,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"testing"
+
 	"scroll-tech/common/docker"
 	"scroll-tech/common/types"
-	"testing"
 
 	"scroll-tech/bridge/config"
 
