@@ -6,13 +6,14 @@ The Ether and ERC20 tokens can be deposited or withdrawn using one single contra
 
 ## Bridge Ether
 
-To bridge Ether from layer 1 to layer 2, one can use `L1GatewayRouter.depositETH`. This will transfer ethers to the `L1ScrollMessenger` contract on the layer 1 and credits the same amount of ether to you in layer 2 at the specified address.
+To bridge Ether from layer 1 to layer 2, one can use `L1GatewayRouter.depositETH` and `L1GatewayRouter.depositETHAndCall`. This will transfer ethers to the `L1ScrollMessenger` contract on the layer 1 and credits the same amount of ether to you in layer 2 at the specified address, while `depositETHAndCall` can transfer ether and make aditional call at the same time.
 
 ```solidity
-function depositETH(uint256 _gasLimit) external payable;
+function depositETH(uint256 _amount, uint256 _gasLimit) external payable;
 
-function depositETH(address _to, uint256 _gasLimit) external payable;
+function depositETH(address _to, uint256 _amount, uint256 _gasLimit) public payable;
 
+function depositETHAndCall(address _to, uint256 _amount, bytes calldata _data, uint256 _gasLimit) external payable;
 ```
 
 In the layer 1, all deposited Ether will be locked in `L1ScrollMessenger` contract. It means your deposited Ether will firstly be transfered to `L1GatewayRouter` contract and then to `L1ScrollMessenger` contract.
@@ -23,7 +24,6 @@ To withdraw Ether from layer 2 to layer 1, one can use `L2GatewayRouter.withdraw
 function withdrawETH(uint256 _gasLimit) external payable;
 
 function withdrawETH(address _to, uint256 _gasLimit) external payable;
-
 ```
 
 In layer 2, the `L2ScrollMessenger` holds infinite amount of Ether at the beginning. All your withdrawn Ether will be transfered back to `L2ScrollMessenger`, just like the process in layer 1.
@@ -32,7 +32,8 @@ In addition, you can actually call `sendMessage` from the `L1ScrollMessenger` or
 
 ## Bridge ERC20 Tokens
 
-We use the similar design as [Arbitrum protocol](https://developer.offchainlabs.com/docs/bridging_assets#bridging-erc20-tokens) do. Several gateway contracts are used to bridge different kinds of ERC20 tokens, such as Wrapped Ether, standard ERC20 tokens, etc.
+We use the similar design as [Arbitrum protocol](https://developer.offchainlabs.com/docs/bridging_assets#bridging-erc20-tokens) do. Several gateway contracts are used to bridge different kinds of ERC20 tokens, such as Wrapped Ether, standard ERC20 tokens, and custom ERC20 tokens.
+`L1GatewayRouter` records the mapping of ERC20 tokens to the corresponding ERC20 gateway, either standard ERC20 gateway or custom ERC20 gateway.
 
 We implement a `StandardERC20Gateway` to deposit and withdraw standard ERC20 tokens. The standard procedure to deposit ERC20 tokens is to call `L1GatewayRouter.depositERC20` in layer 1. The token will be locked in `L1StandardERC20Gateway` contract in layer 1. The the standard procedure to withdraw ERC20 tokens is to call `L2GatewayRouter.withdrawRC20` in layer 2 and the token will be burned in layer 2.
 
@@ -40,7 +41,7 @@ For many other non-standard ERC20 tokens, we provide a custom ERC20 gateway. Any
 
 ### Passing data when depositing ERC20 tokens
 
-The Scroll protocol offer a way to call another contract after depositing the token in layer 2 by calling `L1GatewayRouter.depositERC20AndCall` in layer 1. The ERC20 token in layer 2 implements the [ERC 677 Standard](https://github.com/ethereum/EIPs/issues/677). By using `transferAndCall` function, we can transfer the token to corresponding recipient in layer 2 and then call the recipient with passed data.
+The Scroll protocol offer a way to call another contract after depositing the token in layer 2 by calling `L1GatewayRouter.depositERC20AndCall` in layer 1. The ERC20 token in layer 2 implements the [ERC 677 Standard](https://github.com/ethereum/EIPs/issues/677). By using `depositERC20AndCall` function, we can transfer the token to corresponding recipient in layer 2 and then call the recipient with passed data.
 
 ```solidity
 function depositERC20AndCall(
@@ -50,7 +51,6 @@ function depositERC20AndCall(
   bytes memory _data,
   uint256 _gasLimit
 ) external;
-
 ```
 
 Like Bridging Ether, all above functionality can be achieved by calling corresponding function in ERC20Gateway contract.
@@ -87,7 +87,6 @@ function depositERC721(
   uint256 _tokenId,
   uint256 _gasLimit
 ) external;
-
 ```
 
 One can use the following function to withdraw ERC-721/ERC-1155 tokens in layer 2.
@@ -120,14 +119,9 @@ function withdrawERC721(
   uint256 _tokenId,
   uint256 _gasLimit
 ) external;
-
 ```
 
 To save the gas usage, we also provide a batch deposit/withdraw function, such as `batchDepositERC1155` and `batchDepositERC721`, by passing a list of token ids to the function.
-
-## Drop Depositing/Withdrawing
-
-Coming soon...
 
 ## Force Exit
 
