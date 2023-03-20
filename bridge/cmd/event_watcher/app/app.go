@@ -13,6 +13,7 @@ import (
 
 	"scroll-tech/database"
 
+	"scroll-tech/common/metrics"
 	"scroll-tech/common/version"
 
 	"scroll-tech/bridge/config"
@@ -53,6 +54,9 @@ func action(ctx *cli.Context) error {
 
 	subCtx, cancel := context.WithCancel(ctx.Context)
 	defer cancel()
+
+	// Start metrics server.
+	metrics.Serve(subCtx, ctx)
 
 	// init db connection
 	var ormFactory database.OrmFactory

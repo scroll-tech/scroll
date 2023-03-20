@@ -11,6 +11,7 @@ import (
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/urfave/cli/v2"
 
+	"scroll-tech/common/metrics"
 	"scroll-tech/common/version"
 	"scroll-tech/database"
 
@@ -53,6 +54,9 @@ func action(ctx *cli.Context) error {
 	subCtx, cancel := context.WithCancel(ctx.Context)
 	defer cancel()
 
+	// Start metrics server.
+	metrics.Serve(subCtx, ctx)
+
 	// Init l2geth connection
 	l2client, err := ethclient.Dial(cfg.L1Config.Endpoint)
 	if err != nil {
@@ -81,7 +85,7 @@ func action(ctx *cli.Context) error {
 	go cutils.Loop(subCtx, time.Second, l2relayer.ProcessSavedEvents)
 
 	// Finish start all message relayer functions
-	log.Info("Start message_relayer successfully")
+	log.Info("Start message-relayer successfully")
 
 	defer func() {
 		err = ormFactory.Close()

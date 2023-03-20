@@ -22,6 +22,10 @@ import (
 	_ "scroll-tech/roller/cmd/app"
 	rollerConfig "scroll-tech/roller/config"
 
+	_ "scroll-tech/bridge/cmd/event_watcher/app"
+	_ "scroll-tech/bridge/cmd/gas_oracle/app"
+	_ "scroll-tech/bridge/cmd/msg_relayer/app"
+	_ "scroll-tech/bridge/cmd/rollup_relayer/app"
 	bridgeConfig "scroll-tech/bridge/config"
 	"scroll-tech/bridge/sender"
 
@@ -80,9 +84,24 @@ type appAPI interface {
 	ExpectWithTimeout(t *testing.T, parallel bool, timeout time.Duration, keyword string)
 }
 
-func runBridgeApp(t *testing.T, args ...string) appAPI {
+func runMsgRelayerApp(t *testing.T, args ...string) appAPI {
 	args = append(args, "--log.debug", "--config", bridgeFile)
-	return cmd.NewCmd("bridge-test", args...)
+	return cmd.NewCmd("message-relayer-test", args...)
+}
+
+func runGasOracleApp(t *testing.T, args ...string) appAPI {
+	args = append(args, "--log.debug", "--config", bridgeFile)
+	return cmd.NewCmd("gas-oracle-test", args...)
+}
+
+func runRollupRelayerApp(t *testing.T, args ...string) appAPI {
+	args = append(args, "--log.debug", "--config", bridgeFile)
+	return cmd.NewCmd("rollup-relayer-test", args...)
+}
+
+func runEventWatcherApp(t *testing.T, args ...string) appAPI {
+	args = append(args, "--log.debug", "--config", bridgeFile)
+	return cmd.NewCmd("event-watcher-test", args...)
 }
 
 func runCoordinatorApp(t *testing.T, args ...string) appAPI {

@@ -11,6 +11,7 @@ import (
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/urfave/cli/v2"
 
+	"scroll-tech/common/metrics"
 	"scroll-tech/common/version"
 	"scroll-tech/database"
 
@@ -54,6 +55,9 @@ func action(ctx *cli.Context) error {
 	}
 	subCtx, cancel := context.WithCancel(ctx.Context)
 	defer cancel()
+
+	// Start metrics server.
+	metrics.Serve(subCtx, ctx)
 
 	l1client, err := ethclient.Dial(cfg.L1Config.Endpoint)
 	if err != nil {
