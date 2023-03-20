@@ -9,11 +9,9 @@ The Ether and ERC20 tokens can be deposited or withdrawn using one single contra
 To bridge Ether from layer 1 to layer 2, one can use `L1GatewayRouter.depositETH`. This will transfer ethers to the `L1ScrollMessenger` contract on the layer 1 and credits the same amount of ether to you in layer 2 at the specified address.
 
 ```solidity
-function depositETH(uint256 _amount, uint256 _gasLimit) external payable;
+function depositETH(uint256 _gasLimit) external payable;
 
-function depositETH(address _to, uint256 _amount, uint256 _gasLimit) public payable;
-
-function depositETHAndCall(address _to, uint256 _amount, bytes calldata _data, uint256 _gasLimit) external payable;
+function depositETH(address _to, uint256 _gasLimit) external payable;
 ```
 
 In the layer 1, all deposited Ether will be locked in `L1ScrollMessenger` contract. It means your deposited Ether will firstly be transfered to `L1GatewayRouter` contract and then to `L1ScrollMessenger` contract.
