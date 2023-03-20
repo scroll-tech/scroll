@@ -74,9 +74,9 @@ interface IScrollChain {
     /// @param batchHash The hash of the batch to query.
     function getL2MessageRoot(bytes32 batchHash) external view returns (bytes32);
 
-    /****************************
-     * Public Mutated Functions *
-     ****************************/
+    /*****************************
+     * Public Mutating Functions *
+     *****************************/
 
     /// @notice commit a batch in layer 1
     /// @param batch The layer2 batch to commit.

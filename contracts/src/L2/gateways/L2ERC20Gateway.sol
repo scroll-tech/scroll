@@ -7,9 +7,9 @@ import {IL2ERC20Gateway} from "./IL2ERC20Gateway.sol";
 // solhint-disable no-empty-blocks
 
 abstract contract L2ERC20Gateway is IL2ERC20Gateway {
-    /****************************
-     * Public Mutated Functions *
-     ****************************/
+    /*****************************
+     * Public Mutating Functions *
+     *****************************/
 
     /// @inheritdoc IL2ERC20Gateway
     function withdrawERC20(

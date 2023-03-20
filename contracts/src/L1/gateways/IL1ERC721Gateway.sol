@@ -64,9 +64,9 @@ interface IL1ERC721Gateway {
         uint256[] _tokenIds
     );
 
-    /****************************
-     * Public Mutated Functions *
-     ****************************/
+    /*****************************
+     * Public Mutating Functions *
+     *****************************/
 
     /// @notice Deposit some ERC721 NFT to caller's account on layer 2.
     /// @param _token The address of ERC721 NFT in layer 1.

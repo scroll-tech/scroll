@@ -64,9 +64,9 @@ interface IL2ERC721Gateway {
         uint256[] tokenIds
     );
 
-    /****************************
-     * Public Mutated Functions *
-     ****************************/
+    /*****************************
+     * Public Mutating Functions *
+     *****************************/
 
     /// @notice Withdraw some ERC721 NFT to caller's account on layer 1.
     /// @param token The address of ERC721 NFT in layer 2.

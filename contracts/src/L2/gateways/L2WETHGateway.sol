@@ -70,9 +70,9 @@ contract L2WETHGateway is Initializable, ScrollGatewayBase, L2ERC20Gateway {
         return WETH;
     }
 
-    /****************************
-     * Public Mutated Functions *
-     ****************************/
+    /*****************************
+     * Public Mutating Functions *
+     *****************************/
 
     /// @inheritdoc IL2ERC20Gateway
     function finalizeDepositERC20(

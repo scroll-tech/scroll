@@ -70,9 +70,9 @@ contract L1WETHGateway is Initializable, ScrollGatewayBase, L1ERC20Gateway {
         return l2WETH;
     }
 
-    /****************************
-     * Public Mutated Functions *
-     ****************************/
+    /*****************************
+     * Public Mutating Functions *
+     *****************************/
 
     /// @inheritdoc IL1ERC20Gateway
     function finalizeWithdrawERC20(

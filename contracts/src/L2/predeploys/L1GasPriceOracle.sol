@@ -87,9 +87,9 @@ contract L1GasPriceOracle is OwnableBase, IL1GasPriceOracle {
         }
     }
 
-    /****************************
-     * Public Mutated Functions *
-     ****************************/
+    /*****************************
+     * Public Mutating Functions *
+     *****************************/
 
     /// @inheritdoc IL1GasPriceOracle
     function setL1BaseFee(uint256 _l1BaseFee) external override {

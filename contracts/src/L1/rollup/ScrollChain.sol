@@ -131,9 +131,9 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
         return batches[_batchHash].withdrawTrieRoot;
     }
 
-    /****************************
-     * Public Mutated Functions *
-     ****************************/
+    /*****************************
+     * Public Mutating Functions *
+     *****************************/
 
     /// @notice Import layer 2 genesis block
     function importGenesisBatch(Batch memory _genesisBatch) external {

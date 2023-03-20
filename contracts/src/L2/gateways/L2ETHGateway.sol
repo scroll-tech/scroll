@@ -33,9 +33,9 @@ contract L2ETHGateway is Initializable, ScrollGatewayBase, IL2ETHGateway {
         ScrollGatewayBase._initialize(_counterpart, _router, _messenger);
     }
 
-    /****************************
-     * Public Mutated Functions *
-     ****************************/
+    /*****************************
+     * Public Mutating Functions *
+     *****************************/
 
     /// @inheritdoc IL2ETHGateway
     function withdrawETH(uint256 _amount, uint256 _gasLimit) external payable override {
