@@ -105,7 +105,7 @@ func (r *Layer2Relayer) checkRollupBatches() error {
 		switch true {
 		case err == nil:
 			r.processingBatchesCommitment.Store(txID, batchHashes)
-		case err.Error() == "Batch already commited":
+		case err.Error() == "Batch already commited": //nolint:misspell
 			for _, batchHash := range batchHashes {
 				if err = r.db.UpdateRollupStatus(r.ctx, batchHash, types.RollupCommitted); err != nil {
 					log.Error("failed to update rollup status when check rollup batched", "batch_hash", batchHash, "err", err)
