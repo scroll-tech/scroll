@@ -39,8 +39,8 @@ import (
 )
 
 var (
-	cfg   *bridge_config.Config
-	dbImg docker.ImgInstance
+	cfg  *bridge_config.Config
+	base *docker.App
 
 	batchData *types.BatchData
 )
@@ -54,10 +54,10 @@ func setEnv(t *testing.T) (err error) {
 	// Load config.
 	cfg, err = bridge_config.NewConfig("../bridge/config.json")
 	assert.NoError(t, err)
+	base.RunImages(t)
 
 	// Create db container.
-	dbImg = docker.NewTestDBDocker(t, cfg.DBConfig.DriverName)
-	cfg.DBConfig.DSN = dbImg.Endpoint()
+	cfg.DBConfig.DSN = base.DBEndpoint()
 
 	templateBlockTrace, err := os.ReadFile("../common/testdata/blockTrace_02.json")
 	if err != nil {
@@ -80,6 +80,7 @@ func setEnv(t *testing.T) (err error) {
 
 func TestApis(t *testing.T) {
 	// Set up the test environment.
+	base = docker.NewDockerApp()
 	assert.True(t, assert.NoError(t, setEnv(t)), "failed to setup the test environment.")
 
 	t.Run("TestHandshake", testHandshake)
@@ -95,7 +96,7 @@ func TestApis(t *testing.T) {
 
 	// Teardown
 	t.Cleanup(func() {
-		dbImg.Stop()
+		base.Free()
 	})
 }
 
@@ -581,10 +582,11 @@ func setupCoordinator(t *testing.T, dbCfg *database.DBConfig, rollersPerSession 
 	assert.True(t, assert.NoError(t, err), "failed to get db handler.")
 
 	rollerManager, err = coordinator.New(context.Background(), &coordinator_config.RollerManagerConfig{
-		RollersPerSession: rollersPerSession,
-		Verifier:          &coordinator_config.VerifierConfig{MockMode: true},
-		CollectionTime:    1,
-		TokenTimeToLive:   5,
+		RollersPerSession:  rollersPerSession,
+		Verifier:           &coordinator_config.VerifierConfig{MockMode: true},
+		CollectionTime:     1,
+		TokenTimeToLive:    5,
+		MaxVerifierWorkers: 10,
 		SessionAttempts:   2,
 	}, db, nil)
 	assert.NoError(t, err)

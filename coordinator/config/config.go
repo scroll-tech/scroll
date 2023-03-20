@@ -10,6 +10,10 @@ import (
 	db_config "scroll-tech/database"
 )
 
+const (
+	defaultNumberOfVerifierWorkers = 10
+)
+
 // RollerManagerConfig loads sequencer configuration items.
 type RollerManagerConfig struct {
 	CompressionLevel int `json:"compression_level,omitempty"`
@@ -25,6 +29,8 @@ type RollerManagerConfig struct {
 	CollectionTime int `json:"collection_time"`
 	// Token time to live (in seconds)
 	TokenTimeToLive int `json:"token_time_to_live"`
+	// Max number of workers in verifier worker pool
+	MaxVerifierWorkers int `json:"max_verifier_workers,omitempty"`
 }
 
 // L2Config loads l2geth configuration items.
@@ -66,6 +72,10 @@ func NewConfig(file string) (*Config, error) {
 		return nil, errors.New("roller config's order session is invalid")
 	}
 	cfg.RollerManagerConfig.OrderSession = order
+
+	if cfg.RollerManagerConfig.MaxVerifierWorkers == 0 {
+		cfg.RollerManagerConfig.MaxVerifierWorkers = defaultNumberOfVerifierWorkers
+	}
 
 	return cfg, nil
 }

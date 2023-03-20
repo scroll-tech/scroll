@@ -12,20 +12,31 @@ import (
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/crypto"
 	"github.com/scroll-tech/go-ethereum/log"
+	geth_metrics "github.com/scroll-tech/go-ethereum/metrics"
 
 	"scroll-tech/common/types"
+	"scroll-tech/common/utils"
 
 	"scroll-tech/database"
+
+	"scroll-tech/common/metrics"
 
 	bridge_abi "scroll-tech/bridge/abi"
 	"scroll-tech/bridge/config"
 	"scroll-tech/bridge/sender"
 )
 
+var (
+	bridgeL1MsgsRelayedTotalCounter          = geth_metrics.NewRegisteredCounter("bridge/l1/msgs/relayed/total", metrics.ScrollRegistry)
+	bridgeL1MsgsRelayedConfirmedTotalCounter = geth_metrics.NewRegisteredCounter("bridge/l1/msgs/relayed/confirmed/total", metrics.ScrollRegistry)
+)
+
 const (
 	gasPriceDiffPrecision = 1000000
 
 	defaultGasPriceDiff = 50000 // 5%
+
+	defaultMessageRelayMinGasLimit = 130000 // should be enough for both ERC20 and ETH relay
 )
 
 // Layer1Relayer is responsible for
@@ -48,6 +59,8 @@ type Layer1Relayer struct {
 	gasOracleSender *sender.Sender
 	gasOracleCh     <-chan *sender.Confirmation
 	l1GasOracleABI  *abi.ABI
+
+	minGasLimitForMessageRelay uint64
 
 	lastGasPrice uint64
 	minGasPrice  uint64
@@ -83,6 +96,11 @@ func NewLayer1Relayer(ctx context.Context, db database.OrmFactory, cfg *config.R
 		gasPriceDiff = defaultGasPriceDiff
 	}
 
+	minGasLimitForMessageRelay := uint64(defaultMessageRelayMinGasLimit)
+	if cfg.MessageRelayMinGasLimit != 0 {
+		minGasLimitForMessageRelay = cfg.MessageRelayMinGasLimit
+	}
+
 	return &Layer1Relayer{
 		ctx: ctx,
 		db:  db,
@@ -94,6 +112,8 @@ func NewLayer1Relayer(ctx context.Context, db database.OrmFactory, cfg *config.R
 		gasOracleSender: gasOracleSender,
 		gasOracleCh:     gasOracleSender.ConfirmChan(),
 		l1GasOracleABI:  bridge_abi.L1GasPriceOracleABI,
+
+		minGasLimitForMessageRelay: minGasLimitForMessageRelay,
 
 		minGasPrice:  minGasPrice,
 		gasPriceDiff: gasPriceDiff,
@@ -129,7 +149,7 @@ func (r *Layer1Relayer) ProcessSavedEvents() {
 func (r *Layer1Relayer) processSavedEvent(msg *types.L1Message) error {
 	calldata := common.Hex2Bytes(msg.Calldata)
 
-	hash, err := r.messageSender.SendTransaction(msg.MsgHash, &r.cfg.MessengerContractAddress, big.NewInt(0), calldata)
+	hash, err := r.messageSender.SendTransaction(msg.MsgHash, &r.cfg.MessengerContractAddress, big.NewInt(0), calldata, r.minGasLimitForMessageRelay)
 	if err != nil && err.Error() == "execution reverted: Message expired" {
 		return r.db.UpdateLayer1Status(r.ctx, msg.MsgHash, types.MsgExpired)
 	}
@@ -139,6 +159,7 @@ func (r *Layer1Relayer) processSavedEvent(msg *types.L1Message) error {
 	if err != nil {
 		return err
 	}
+	bridgeL1MsgsRelayedTotalCounter.Inc(1)
 	log.Info("relayMessage to layer2", "msg hash", msg.MsgHash, "tx hash", hash)
 
 	err = r.db.UpdateLayer1StatusAndLayer2Hash(r.ctx, msg.MsgHash, types.MsgSubmitted, hash.String())
@@ -180,7 +201,7 @@ func (r *Layer1Relayer) ProcessGasPriceOracle() {
 				return
 			}
 
-			hash, err := r.gasOracleSender.SendTransaction(block.Hash, &r.cfg.GasPriceOracleContractAddress, big.NewInt(0), data)
+			hash, err := r.gasOracleSender.SendTransaction(block.Hash, &r.cfg.GasPriceOracleContractAddress, big.NewInt(0), data, 0)
 			if err != nil {
 				if !errors.Is(err, sender.ErrNoAvailableAccount) {
 					log.Error("Failed to send setL1BaseFee tx to layer2 ", "block.Hash", block.Hash, "block.Height", block.Number, "err", err)
@@ -201,24 +222,11 @@ func (r *Layer1Relayer) ProcessGasPriceOracle() {
 
 // Start the relayer process
 func (r *Layer1Relayer) Start() {
-	loop := func(ctx context.Context, f func()) {
-		ticker := time.NewTicker(2 * time.Second)
-		defer ticker.Stop()
-
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case <-ticker.C:
-				f()
-			}
-		}
-	}
 	go func() {
 		ctx, cancel := context.WithCancel(r.ctx)
 
-		go loop(ctx, r.ProcessSavedEvents)
-		go loop(ctx, r.ProcessGasPriceOracle)
+		go utils.Loop(ctx, 2*time.Second, r.ProcessSavedEvents)
+		go utils.Loop(ctx, 2*time.Second, r.ProcessGasPriceOracle)
 
 		go func(ctx context.Context) {
 			for {
@@ -226,6 +234,7 @@ func (r *Layer1Relayer) Start() {
 				case <-ctx.Done():
 					return
 				case cfm := <-r.messageCh:
+					bridgeL1MsgsRelayedConfirmedTotalCounter.Inc(1)
 					if !cfm.IsSuccessful {
 						log.Warn("transaction confirmed but failed in layer2", "confirmation", cfm)
 					} else {

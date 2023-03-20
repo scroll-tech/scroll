@@ -9,19 +9,20 @@ import (
 	"sync"
 	"time"
 
-	// not sure if this will make problems when relay with l1geth
-
 	"github.com/scroll-tech/go-ethereum/accounts/abi"
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/crypto"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
+	geth_metrics "github.com/scroll-tech/go-ethereum/metrics"
 	"golang.org/x/sync/errgroup"
 	"modernc.org/mathutil"
 
+	"scroll-tech/common/metrics"
 	"scroll-tech/common/types"
-
 	"scroll-tech/database"
+
+	cutil "scroll-tech/common/utils"
 
 	bridge_abi "scroll-tech/bridge/abi"
 	"scroll-tech/bridge/config"
@@ -29,10 +30,22 @@ import (
 	"scroll-tech/bridge/utils"
 )
 
+var (
+	bridgeL2MsgsRelayedTotalCounter               = geth_metrics.NewRegisteredCounter("bridge/l2/msgs/relayed/total", metrics.ScrollRegistry)
+	bridgeL2BatchesFinalizedTotalCounter          = geth_metrics.NewRegisteredCounter("bridge/l2/batches/finalized/total", metrics.ScrollRegistry)
+	bridgeL2BatchesCommittedTotalCounter          = geth_metrics.NewRegisteredCounter("bridge/l2/batches/committed/total", metrics.ScrollRegistry)
+	bridgeL2MsgsRelayedConfirmedTotalCounter      = geth_metrics.NewRegisteredCounter("bridge/l2/msgs/relayed/confirmed/total", metrics.ScrollRegistry)
+	bridgeL2BatchesFinalizedConfirmedTotalCounter = geth_metrics.NewRegisteredCounter("bridge/l2/batches/finalized/confirmed/total", metrics.ScrollRegistry)
+	bridgeL2BatchesCommittedConfirmedTotalCounter = geth_metrics.NewRegisteredCounter("bridge/l2/batches/committed/confirmed/total", metrics.ScrollRegistry)
+	bridgeL2BatchesSkippedTotalCounter            = geth_metrics.NewRegisteredCounter("bridge/l2/batches/skipped/total", metrics.ScrollRegistry)
+)
+
 const (
 	gasPriceDiffPrecision = 1000000
 
 	defaultGasPriceDiff = 50000 // 5%
+
+	defaultMessageRelayMinGasLimit = 200000 // should be enough for both ERC20 and ETH relay
 )
 
 // Layer2Relayer is responsible for
@@ -60,6 +73,8 @@ type Layer2Relayer struct {
 	gasOracleSender *sender.Sender
 	gasOracleCh     <-chan *sender.Confirmation
 	l2GasOracleABI  *abi.ABI
+
+	minGasLimitForMessageRelay uint64
 
 	lastGasPrice uint64
 	minGasPrice  uint64
@@ -111,6 +126,11 @@ func NewLayer2Relayer(ctx context.Context, l2Client *ethclient.Client, db databa
 		gasPriceDiff = defaultGasPriceDiff
 	}
 
+	minGasLimitForMessageRelay := uint64(defaultMessageRelayMinGasLimit)
+	if cfg.MessageRelayMinGasLimit != 0 {
+		minGasLimitForMessageRelay = cfg.MessageRelayMinGasLimit
+	}
+
 	return &Layer2Relayer{
 		ctx: ctx,
 		db:  db,
@@ -128,6 +148,8 @@ func NewLayer2Relayer(ctx context.Context, l2Client *ethclient.Client, db databa
 		gasOracleSender: gasOracleSender,
 		gasOracleCh:     gasOracleSender.ConfirmChan(),
 		l2GasOracleABI:  bridge_abi.L2GasPriceOracleABI,
+
+		minGasLimitForMessageRelay: minGasLimitForMessageRelay,
 
 		minGasPrice:  minGasPrice,
 		gasPriceDiff: gasPriceDiff,
@@ -221,7 +243,7 @@ func (r *Layer2Relayer) processSavedEvent(msg *types.L2Message) error {
 		return err
 	}
 
-	hash, err := r.messageSender.SendTransaction(msg.MsgHash, &r.cfg.MessengerContractAddress, big.NewInt(0), data)
+	hash, err := r.messageSender.SendTransaction(msg.MsgHash, &r.cfg.MessengerContractAddress, big.NewInt(0), data, r.minGasLimitForMessageRelay)
 	if err != nil && err.Error() == "execution reverted: Message expired" {
 		return r.db.UpdateLayer2Status(r.ctx, msg.MsgHash, types.MsgExpired)
 	}
@@ -234,6 +256,7 @@ func (r *Layer2Relayer) processSavedEvent(msg *types.L2Message) error {
 		}
 		return err
 	}
+	bridgeL2MsgsRelayedTotalCounter.Inc(1)
 	log.Info("relayMessageWithProof to layer1", "msgHash", msg.MsgHash, "txhash", hash.String())
 
 	// save status in db
@@ -272,7 +295,7 @@ func (r *Layer2Relayer) ProcessGasPriceOracle() {
 				return
 			}
 
-			hash, err := r.gasOracleSender.SendTransaction(batch.Hash, &r.cfg.GasPriceOracleContractAddress, big.NewInt(0), data)
+			hash, err := r.gasOracleSender.SendTransaction(batch.Hash, &r.cfg.GasPriceOracleContractAddress, big.NewInt(0), data, 0)
 			if err != nil {
 				if !errors.Is(err, sender.ErrNoAvailableAccount) {
 					log.Error("Failed to send setL2BaseFee tx to layer2 ", "batch.Hash", batch.Hash, "err", err)
@@ -318,13 +341,14 @@ func (r *Layer2Relayer) SendCommitTx(batchData []*types.BatchData) error {
 		bytes = append(bytes, batch.Hash().Bytes()...)
 	}
 	txID := crypto.Keccak256Hash(bytes).String()
-	txHash, err := r.rollupSender.SendTransaction(txID, &r.cfg.RollupContractAddress, big.NewInt(0), calldata)
+	txHash, err := r.rollupSender.SendTransaction(txID, &r.cfg.RollupContractAddress, big.NewInt(0), calldata, 0)
 	if err != nil {
 		if !errors.Is(err, sender.ErrNoAvailableAccount) {
 			log.Error("Failed to send commitBatches tx to layer1 ", "err", err)
 		}
 		return err
 	}
+	bridgeL2BatchesCommittedTotalCounter.Inc(int64(len(commitBatches)))
 	log.Info("Sent the commitBatches tx to layer1",
 		"tx_hash", txHash.Hex(),
 		"start_batch_index", commitBatches[0].BatchIndex,
@@ -350,6 +374,7 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 		log.Error("UpdateSkippedBatches failed", "err", err)
 		// continue anyway
 	} else if count > 0 {
+		bridgeL2BatchesSkippedTotalCounter.Inc(count)
 		log.Info("Skipping batches", "count", count)
 	}
 
@@ -465,7 +490,7 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 
 		txID := hash + "-finalize"
 		// add suffix `-finalize` to avoid duplication with commit tx in unit tests
-		txHash, err := r.rollupSender.SendTransaction(txID, &r.cfg.RollupContractAddress, big.NewInt(0), data)
+		txHash, err := r.rollupSender.SendTransaction(txID, &r.cfg.RollupContractAddress, big.NewInt(0), data, 0)
 		finalizeTxHash := &txHash
 		if err != nil {
 			if !errors.Is(err, sender.ErrNoAvailableAccount) {
@@ -473,6 +498,7 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 			}
 			return
 		}
+		bridgeL2BatchesFinalizedTotalCounter.Inc(1)
 		log.Info("finalizeBatchWithProof in layer1", "batch_hash", hash, "tx_hash", hash)
 
 		// record and sync with db, @todo handle db error
@@ -492,26 +518,11 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 
 // Start the relayer process
 func (r *Layer2Relayer) Start() {
-	loop := func(ctx context.Context, f func()) {
-		ticker := time.NewTicker(time.Second)
-		defer ticker.Stop()
-
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case <-ticker.C:
-				f()
-			}
-		}
-	}
-
 	go func() {
 		ctx, cancel := context.WithCancel(r.ctx)
-
-		go loop(ctx, r.ProcessSavedEvents)
-		go loop(ctx, r.ProcessCommittedBatches)
-		go loop(ctx, r.ProcessGasPriceOracle)
+		go cutil.Loop(ctx, time.Second, r.ProcessSavedEvents)
+		go cutil.Loop(ctx, time.Second, r.ProcessCommittedBatches)
+		go cutil.Loop(ctx, time.Second, r.ProcessGasPriceOracle)
 
 		go func(ctx context.Context) {
 			for {
@@ -567,19 +578,22 @@ func (r *Layer2Relayer) handleConfirmation(confirmation *sender.Confirmation) {
 		if err != nil {
 			log.Warn("UpdateLayer2StatusAndLayer1Hash failed", "msgHash", msgHash.(string), "err", err)
 		}
+		bridgeL2MsgsRelayedConfirmedTotalCounter.Inc(1)
 		r.processingMessage.Delete(confirmation.ID)
 	}
 
 	// check whether it is CommitBatches transaction
 	if batchBatches, ok := r.processingBatchesCommitment.Load(confirmation.ID); ok {
 		transactionType = "BatchesCommitment"
-		for _, batchHash := range batchBatches.([]string) {
+		batchHashes := batchBatches.([]string)
+		for _, batchHash := range batchHashes {
 			// @todo handle db error
 			err := r.db.UpdateCommitTxHashAndRollupStatus(r.ctx, batchHash, confirmation.TxHash.String(), types.RollupCommitted)
 			if err != nil {
 				log.Warn("UpdateCommitTxHashAndRollupStatus failed", "batch_hash", batchHash, "err", err)
 			}
 		}
+		bridgeL2BatchesCommittedConfirmedTotalCounter.Inc(int64(len(batchHashes)))
 		r.processingBatchesCommitment.Delete(confirmation.ID)
 	}
 
@@ -591,6 +605,7 @@ func (r *Layer2Relayer) handleConfirmation(confirmation *sender.Confirmation) {
 		if err != nil {
 			log.Warn("UpdateFinalizeTxHashAndRollupStatus failed", "batch_hash", batchHash.(string), "err", err)
 		}
+		bridgeL2BatchesFinalizedConfirmedTotalCounter.Inc(1)
 		r.processingFinalization.Delete(confirmation.ID)
 	}
 	log.Info("transaction confirmed in layer1", "type", transactionType, "confirmation", confirmation)

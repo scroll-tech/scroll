@@ -77,7 +77,7 @@ var (
 	batchData2 *types.BatchData
 
 	dbConfig   *database.DBConfig
-	dbImg      docker.ImgInstance
+	base       *docker.App
 	ormBlock   orm.BlockTraceOrm
 	ormLayer1  orm.L1MessageOrm
 	ormLayer2  orm.L2MessageOrm
@@ -88,8 +88,8 @@ var (
 func setupEnv(t *testing.T) error {
 	// Init db config and start db container.
 	dbConfig = &database.DBConfig{DriverName: "postgres"}
-	dbImg = docker.NewTestDBDocker(t, dbConfig.DriverName)
-	dbConfig.DSN = dbImg.Endpoint()
+	base.RunImages(t)
+	dbConfig.DSN = base.DBEndpoint()
 
 	// Create db handler and reset db.
 	factory, err := database.NewOrmFactory(dbConfig)
@@ -156,10 +156,9 @@ func setupEnv(t *testing.T) error {
 
 // TestOrmFactory run several test cases.
 func TestOrmFactory(t *testing.T) {
+	base = docker.NewDockerApp()
 	defer func() {
-		if dbImg != nil {
-			assert.NoError(t, dbImg.Stop())
-		}
+		base.Free()
 	}()
 	if err := setupEnv(t); err != nil {
 		t.Fatal(err)
@@ -191,8 +190,7 @@ func testOrmBlockTraces(t *testing.T) {
 	assert.Equal(t, false, exist)
 
 	// Insert into db
-	err = ormBlock.InsertL2BlockTraces([]*geth_types.BlockTrace{blockTrace})
-	assert.NoError(t, err)
+	assert.NoError(t, ormBlock.InsertL2BlockTraces([]*geth_types.BlockTrace{blockTrace}))
 
 	res2, err := ormBlock.GetUnbatchedL2Blocks(map[string]interface{}{})
 	assert.NoError(t, err)

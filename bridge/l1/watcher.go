@@ -12,19 +12,25 @@ import (
 	"github.com/scroll-tech/go-ethereum/crypto"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
-	"github.com/scroll-tech/go-ethereum/metrics"
+	geth_metrics "github.com/scroll-tech/go-ethereum/metrics"
 	"github.com/scroll-tech/go-ethereum/rpc"
 
+	"scroll-tech/common/metrics"
 	"scroll-tech/common/types"
-
 	"scroll-tech/database"
+
+	cutil "scroll-tech/common/utils"
 
 	bridge_abi "scroll-tech/bridge/abi"
 	"scroll-tech/bridge/utils"
 )
 
 var (
-	bridgeL1MsgSyncHeightGauge = metrics.NewRegisteredGauge("bridge/l1/msg/sync/height", nil)
+	bridgeL1MsgsSyncHeightGauge = geth_metrics.NewRegisteredGauge("bridge/l1/msgs/sync/height", metrics.ScrollRegistry)
+
+	bridgeL1MsgsSentEventsTotalCounter    = geth_metrics.NewRegisteredCounter("bridge/l1/msgs/sent/events/total", metrics.ScrollRegistry)
+	bridgeL1MsgsRelayedEventsTotalCounter = geth_metrics.NewRegisteredCounter("bridge/l1/msgs/relayed/events/total", metrics.ScrollRegistry)
+	bridgeL1MsgsRollupEventsTotalCounter  = geth_metrics.NewRegisteredCounter("bridge/l1/msgs/rollup/events/total", metrics.ScrollRegistry)
 )
 
 type relayedMessage struct {
@@ -114,51 +120,27 @@ func (w *Watcher) Start() {
 	go func() {
 		ctx, cancel := context.WithCancel(w.ctx)
 
-		go func(ctx context.Context) {
-			ticker := time.NewTicker(2 * time.Second)
-			defer ticker.Stop()
-
-			for {
-				select {
-				case <-ctx.Done():
-					return
-
-				case <-ticker.C:
-					number, err := utils.GetLatestConfirmedBlockNumber(w.ctx, w.client, w.confirmations)
-					if err != nil {
-						log.Error("failed to get block number", "err", err)
-						continue
-					}
-
-					if err := w.FetchBlockHeader(number); err != nil {
-						log.Error("Failed to fetch L1 block header", "lastest", number, "err", err)
-					}
+		go cutil.LoopWithContext(ctx, 2*time.Second, func(subCtx context.Context) {
+			number, err := utils.GetLatestConfirmedBlockNumber(subCtx, w.client, w.confirmations)
+			if err != nil {
+				log.Error("failed to get block number", "err", err)
+			} else {
+				if err := w.FetchBlockHeader(number); err != nil {
+					log.Error("Failed to fetch L1 block header", "lastest", number, "err", err)
 				}
 			}
-		}(ctx)
+		})
 
-		go func(ctx context.Context) {
-			ticker := time.NewTicker(2 * time.Second)
-			defer ticker.Stop()
-
-			for {
-				select {
-				case <-ctx.Done():
-					return
-
-				case <-ticker.C:
-					number, err := utils.GetLatestConfirmedBlockNumber(w.ctx, w.client, w.confirmations)
-					if err != nil {
-						log.Error("failed to get block number", "err", err)
-						continue
-					}
-
-					if err := w.FetchContractEvent(number); err != nil {
-						log.Error("Failed to fetch bridge contract", "err", err)
-					}
+		go cutil.LoopWithContext(ctx, 2*time.Second, func(subCtx context.Context) {
+			number, err := utils.GetLatestConfirmedBlockNumber(subCtx, w.client, w.confirmations)
+			if err != nil {
+				log.Error("failed to get block number", "err", err)
+			} else {
+				if err := w.FetchContractEvent(number); err != nil {
+					log.Error("Failed to fetch bridge contract", "err", err)
 				}
 			}
-		}(ctx)
+		})
 
 		<-w.stopCh
 		cancel()
@@ -259,7 +241,7 @@ func (w *Watcher) FetchContractEvent(blockHeight uint64) error {
 		}
 		if len(logs) == 0 {
 			w.processedMsgHeight = uint64(to)
-			bridgeL1MsgSyncHeightGauge.Update(to)
+			bridgeL1MsgsSyncHeightGauge.Update(to)
 			continue
 		}
 		log.Info("Received new L1 events", "fromBlock", from, "toBlock", to, "cnt", len(logs))
@@ -269,7 +251,13 @@ func (w *Watcher) FetchContractEvent(blockHeight uint64) error {
 			log.Error("Failed to parse emitted events log", "err", err)
 			return err
 		}
-		log.Info("L1 events types", "SentMessageCount", len(sentMessageEvents), "RelayedMessageCount", len(relayedMessageEvents), "RollupEventCount", len(rollupEvents))
+		sentMessageCount := int64(len(sentMessageEvents))
+		relayedMessageCount := int64(len(relayedMessageEvents))
+		rollupEventCount := int64(len(rollupEvents))
+		bridgeL1MsgsSentEventsTotalCounter.Inc(sentMessageCount)
+		bridgeL1MsgsRelayedEventsTotalCounter.Inc(relayedMessageCount)
+		bridgeL1MsgsRollupEventsTotalCounter.Inc(rollupEventCount)
+		log.Info("L1 events types", "SentMessageCount", sentMessageCount, "RelayedMessageCount", relayedMessageCount, "RollupEventCount", rollupEventCount)
 
 		// use rollup event to update rollup results db status
 		var batchHashes []string
@@ -323,7 +311,7 @@ func (w *Watcher) FetchContractEvent(blockHeight uint64) error {
 		}
 
 		w.processedMsgHeight = uint64(to)
-		bridgeL1MsgSyncHeightGauge.Update(to)
+		bridgeL1MsgsSyncHeightGauge.Update(to)
 	}
 
 	return nil
