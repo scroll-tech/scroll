@@ -11,11 +11,12 @@ import (
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/urfave/cli/v2"
 
+	"scroll-tech/common/version"
 	"scroll-tech/database"
 
-	"scroll-tech/common/version"
-
 	"scroll-tech/bridge/config"
+	"scroll-tech/bridge/relayer"
+	"scroll-tech/bridge/utils"
 	"scroll-tech/bridge/watcher"
 	cutils "scroll-tech/common/utils"
 )
@@ -25,12 +26,13 @@ var (
 )
 
 func init() {
-	// Set up Bridge app info.
+	// Set up gas-oracle app info.
 	app = cli.NewApp()
 
 	app.Action = action
-	app.Name = "event-watcher"
-	app.Usage = "The Scroll Event Watcher"
+	app.Name = "gas-oracle"
+	app.Usage = "The Scroll Gas Oracle"
+	app.Description = "Scroll Gas Oracle."
 	app.Version = version.Version
 	app.Flags = append(app.Flags, cutils.CommonFlags...)
 	app.Commands = []*cli.Command{}
@@ -39,8 +41,8 @@ func init() {
 		return cutils.LogSetup(ctx)
 	}
 
-	// Register `event-watcher-test` app for integration-test.
-	cutils.RegisterSimulation(app, "event-watcher-test")
+	// Register `gas-oracle-test` app for integration-test.
+	cutils.RegisterSimulation(app, "gas-oracle-test")
 }
 
 func action(ctx *cli.Context) error {
@@ -50,38 +52,55 @@ func action(ctx *cli.Context) error {
 	if err != nil {
 		log.Crit("failed to load config file", "config file", cfgFile, "error", err)
 	}
-
 	subCtx, cancel := context.WithCancel(ctx.Context)
 	defer cancel()
-
-	// init db connection
-	var ormFactory database.OrmFactory
-	if ormFactory, err = database.NewOrmFactory(cfg.DBConfig); err != nil {
-		log.Crit("failed to init db connection", "err", err)
-	}
 
 	l1client, err := ethclient.Dial(cfg.L1Config.Endpoint)
 	if err != nil {
 		log.Crit("failed to connect l1 geth", "config file", cfgFile, "error", err)
 	}
 
-	l2client, err := ethclient.Dial(cfg.L2Config.Endpoint)
+	// Init l2geth connection
+	l2client, err := ethclient.Dial(cfg.L1Config.Endpoint)
 	if err != nil {
 		log.Crit("failed to connect l2 geth", "config file", cfgFile, "error", err)
 	}
-	l1watcher := watcher.NewL1Watcher(ctx.Context, l1client, cfg.L1Config.StartHeight, cfg.L1Config.Confirmations, cfg.L1Config.L1MessengerAddress, cfg.L1Config.L1MessageQueueAddress, cfg.L1Config.ScrollChainContractAddress, ormFactory)
-	l2watcher := watcher.NewL2WatcherClient(ctx.Context, l2client, cfg.L2Config.RelayerConfig.SenderConfig.Confirmations, cfg.L2Config.L2MessengerAddress, cfg.L2Config.L2MessageQueueAddress, ormFactory)
 
-	go cutils.Loop(subCtx, 2*time.Second, func() {
-		if loopErr := l1watcher.FetchContractEvent(); loopErr != nil {
-			log.Error("Failed to fetch bridge contract", "err", loopErr)
+	// Init db connection
+	var ormFactory database.OrmFactory
+	if ormFactory, err = database.NewOrmFactory(cfg.DBConfig); err != nil {
+		log.Crit("failed to init db connection", "err", err)
+	}
+
+	l1watcher := watcher.NewL1Watcher(ctx.Context, l1client, cfg.L1Config.StartHeight, cfg.L1Config.Confirmations, cfg.L1Config.L1MessengerAddress, cfg.L1Config.L1MessageQueueAddress, cfg.L1Config.ScrollChainContractAddress, ormFactory)
+
+	l1relayer, err := relayer.NewLayer1Relayer(ctx.Context, ormFactory, cfg.L1Config.RelayerConfig)
+	if err != nil {
+		log.Crit("failed to create new l1 relayer", "config file", cfgFile, "error", err)
+	}
+	l2relayer, err := relayer.NewLayer2Relayer(ctx.Context, l2client, ormFactory, cfg.L2Config.RelayerConfig)
+	if err != nil {
+		log.Crit("failed to create new l2 relayer", "config file", cfgFile, "error", err)
+	}
+	// Start l1 watcher process
+	go cutils.LoopWithContext(subCtx, 2*time.Second, func(ctx context.Context) {
+		number, loopErr := utils.GetLatestConfirmedBlockNumber(ctx, l1client, cfg.L1Config.Confirmations)
+		if loopErr != nil {
+			log.Error("failed to get block number", "err", loopErr)
+			return
+		}
+
+		if loopErr = l1watcher.FetchBlockHeader(number); loopErr != nil {
+			log.Error("Failed to fetch L1 block header", "lastest", number, "err", loopErr)
 		}
 	})
 
-	// Start l2 watcher process
-	go cutils.Loop(subCtx, 2*time.Second, l2watcher.FetchContractEvent)
-	// Finish start all l2 functions
-	log.Info("Start event-watcher successfully")
+	// Start l1relayer process
+	go cutils.Loop(subCtx, 2*time.Second, l1relayer.ProcessGasPriceOracle)
+	go cutils.Loop(subCtx, time.Second, l2relayer.ProcessGasPriceOracle)
+
+	// Finish start all message relayer functions
+	log.Info("Start gas-oracle successfully")
 
 	defer func() {
 		err = ormFactory.Close()
@@ -100,7 +119,7 @@ func action(ctx *cli.Context) error {
 	return nil
 }
 
-// Run run event watcher cmd instance.
+// Run run message_relayer cmd instance.
 func Run() {
 	if err := app.Run(os.Args); err != nil {
 		_, _ = fmt.Fprintln(os.Stderr, err)

@@ -11,16 +11,16 @@ COPY ./roller/go.* ./roller/
 COPY ./tests/integration-test/go.* ./tests/integration-test/
 RUN go mod download -x
 
-# Build batch_proposer
+# Build gas_oracle
 FROM base as builder
 
 RUN --mount=target=. \
     --mount=type=cache,target=/root/.cache/go-build \
-    cd /src/bridge/cmd/batch_proposer/ && go build -v -p 4 -o /bin/batch_proposer
+    cd /src/bridge/cmd/gas_oracle/ && go build -v -p 4 -o /bin/gas_oracle
 
-# Pull batch_proposer into a second stage deploy alpine container
+# Pull gas_oracle into a second stage deploy alpine container
 FROM alpine:latest
 
-COPY --from=builder /bin/batch_proposer /bin/
+COPY --from=builder /bin/gas_oracle /bin/
 
-ENTRYPOINT ["batch_proposer"]
+ENTRYPOINT ["gas_oracle"]

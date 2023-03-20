@@ -16,6 +16,8 @@ import (
 
 	"scroll-tech/bridge/config"
 	"scroll-tech/bridge/relayer"
+	"scroll-tech/bridge/utils"
+	"scroll-tech/bridge/watcher"
 	cutils "scroll-tech/common/utils"
 )
 
@@ -68,6 +70,29 @@ func action(ctx *cli.Context) error {
 	if err != nil {
 		log.Crit("failed to create l2 relayer", "config file", cfgFile, "error", err)
 	}
+
+	batchProposer := watcher.NewBatchProposer(subCtx, cfg.L2Config.BatchProposerConfig, l2relayer, ormFactory)
+	if err != nil {
+		log.Crit("failed to create batchProposer", "config file", cfgFile, "error", err)
+	}
+
+	l2watcher := watcher.NewL2WatcherClient(subCtx, l2client, cfg.L2Config.Confirmations, cfg.L2Config.L2MessengerAddress, cfg.L2Config.L2MessageQueueAddress, ormFactory)
+
+	// Watcher loop to fetch missing blocks
+	go cutils.LoopWithContext(subCtx, 3*time.Second, func(ctx context.Context) {
+		number, loopErr := utils.GetLatestConfirmedBlockNumber(ctx, l2client, cfg.L2Config.Confirmations)
+		if loopErr != nil {
+			log.Error("failed to get block number", "err", loopErr)
+			return
+		}
+		l2watcher.TryFetchRunningMissingBlocks(ctx, number)
+	})
+
+	// Batch proposer loop
+	go cutils.Loop(subCtx, 3*time.Second, func() {
+		batchProposer.TryProposeBatch()
+		batchProposer.TryCommitBatches()
+	})
 
 	go cutils.Loop(subCtx, time.Second, l2relayer.ProcessCommittedBatches)
 
