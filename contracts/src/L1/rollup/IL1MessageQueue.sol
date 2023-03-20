@@ -48,7 +48,7 @@ interface IL1MessageQueue {
     ) external view returns (uint256);
 
     /*****************************
-     * Public Mutation Functions *
+     * Public Mutating Functions *
      *****************************/
 
     /// @notice Append a L1 to L2 message into this contract.

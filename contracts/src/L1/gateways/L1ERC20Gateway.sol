@@ -8,7 +8,7 @@ import {IL1ERC20Gateway} from "./IL1ERC20Gateway.sol";
 
 abstract contract L1ERC20Gateway is IL1ERC20Gateway {
     /*****************************
-     * Public Mutation Functions *
+     * Public Mutating Functions *
      *****************************/
 
     /// @inheritdoc IL1ERC20Gateway

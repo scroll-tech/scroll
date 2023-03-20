@@ -73,7 +73,7 @@ interface IL2ERC1155Gateway {
     );
 
     /*****************************
-     * Public Mutation Functions *
+     * Public Mutating Functions *
      *****************************/
 
     /// @notice Withdraw some ERC1155 NFT to caller's account on layer 1.

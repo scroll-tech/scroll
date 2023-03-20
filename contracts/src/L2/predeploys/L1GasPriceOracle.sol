@@ -88,7 +88,7 @@ contract L1GasPriceOracle is OwnableBase, IL1GasPriceOracle {
     }
 
     /*****************************
-     * Public Mutation Functions *
+     * Public Mutating Functions *
      *****************************/
 
     /// @inheritdoc IL1GasPriceOracle

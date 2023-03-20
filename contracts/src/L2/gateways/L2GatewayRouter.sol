@@ -83,7 +83,7 @@ contract L2GatewayRouter is OwnableUpgradeable, IL2GatewayRouter {
     }
 
     /*****************************
-     * Public Mutation Functions *
+     * Public Mutating Functions *
      *****************************/
 
     /// @inheritdoc IL2ERC20Gateway

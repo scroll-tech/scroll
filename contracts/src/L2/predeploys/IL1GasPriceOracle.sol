@@ -47,7 +47,7 @@ interface IL1GasPriceOracle {
     function getL1GasUsed(bytes memory data) external view returns (uint256);
 
     /*****************************
-     * Public Mutation Functions *
+     * Public Mutating Functions *
      *****************************/
 
     /// @notice Allows whitelisted caller to modify the l1 base fee.

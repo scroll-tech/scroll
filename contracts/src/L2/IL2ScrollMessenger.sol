@@ -15,7 +15,7 @@ interface IL2ScrollMessenger is IScrollMessenger {
     }
 
     /*****************************
-     * Public Mutation Functions *
+     * Public Mutating Functions *
      *****************************/
 
     /// @notice execute L1 => L2 message

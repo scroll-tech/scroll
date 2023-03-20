@@ -22,7 +22,7 @@ interface IL1ETHGateway {
     event DepositETH(address indexed from, address indexed to, uint256 amount, bytes data);
 
     /*****************************
-     * Public Mutation Functions *
+     * Public Mutating Functions *
      *****************************/
 
     /// @notice Deposit ETH to caller's account in L2.

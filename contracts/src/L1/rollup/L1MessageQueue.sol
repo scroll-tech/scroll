@@ -73,7 +73,7 @@ contract L1MessageQueue is OwnableUpgradeable, IL1MessageQueue {
     }
 
     /*****************************
-     * Public Mutation Functions *
+     * Public Mutating Functions *
      *****************************/
 
     /// @inheritdoc IL1MessageQueue

@@ -52,7 +52,7 @@ interface IL2ERC20Gateway {
     function getL2ERC20Address(address l1Token) external view returns (address);
 
     /*****************************
-     * Public Mutation Functions *
+     * Public Mutating Functions *
      *****************************/
 
     /// @notice Withdraw of some token to a caller's account on L1.

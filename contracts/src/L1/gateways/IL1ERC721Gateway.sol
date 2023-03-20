@@ -65,7 +65,7 @@ interface IL1ERC721Gateway {
     );
 
     /*****************************
-     * Public Mutation Functions *
+     * Public Mutating Functions *
      *****************************/
 
     /// @notice Deposit some ERC721 NFT to caller's account on layer 2.

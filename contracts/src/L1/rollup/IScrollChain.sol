@@ -75,7 +75,7 @@ interface IScrollChain {
     function getL2MessageRoot(bytes32 batchHash) external view returns (bytes32);
 
     /*****************************
-     * Public Mutation Functions *
+     * Public Mutating Functions *
      *****************************/
 
     /// @notice commit a batch in layer 1

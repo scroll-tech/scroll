@@ -34,7 +34,7 @@ contract L1ETHGateway is Initializable, ScrollGatewayBase, IL1ETHGateway {
     }
 
     /*****************************
-     * Public Mutation Functions *
+     * Public Mutating Functions *
      *****************************/
 
     /// @inheritdoc IL1ETHGateway

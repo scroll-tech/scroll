@@ -81,7 +81,7 @@ contract L1GatewayRouter is OwnableUpgradeable, IL1GatewayRouter {
     }
 
     /*************************************************
-     * Public Mutation Functions from L1ERC20Gateway *
+     * Public Mutating Functions from L1ERC20Gateway *
      *************************************************/
 
     /// @inheritdoc IL1ERC20Gateway
@@ -133,7 +133,7 @@ contract L1GatewayRouter is OwnableUpgradeable, IL1GatewayRouter {
     }
 
     /***********************************************
-     * Public Mutation Functions from L1ETHGateway *
+     * Public Mutating Functions from L1ETHGateway *
      ***********************************************/
 
     /// @inheritdoc IL1ETHGateway

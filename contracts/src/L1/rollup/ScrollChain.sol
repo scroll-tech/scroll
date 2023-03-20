@@ -132,7 +132,7 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
     }
 
     /*****************************
-     * Public Mutation Functions *
+     * Public Mutating Functions *
      *****************************/
 
     /// @notice Import layer 2 genesis block

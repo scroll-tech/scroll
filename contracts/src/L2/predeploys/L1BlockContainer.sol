@@ -108,7 +108,7 @@ contract L1BlockContainer is OwnableBase, IL1BlockContainer {
     }
 
     /*****************************
-     * Public Mutation Functions *
+     * Public Mutating Functions *
      *****************************/
 
     /// @inheritdoc IL1BlockContainer

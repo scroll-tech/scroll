@@ -39,7 +39,7 @@ interface IScrollMessenger {
     function xDomainMessageSender() external view returns (address);
 
     /*****************************
-     * Public Mutation Functions *
+     * Public Mutating Functions *
      *****************************/
 
     /// @notice Send cross chain message from L1 to L2 or L2 to L1.

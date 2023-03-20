@@ -22,7 +22,7 @@ interface IL2ETHGateway {
     event FinalizeDepositETH(address indexed from, address indexed to, uint256 amount, bytes data);
 
     /*****************************
-     * Public Mutation Functions *
+     * Public Mutating Functions *
      *****************************/
 
     /// @notice Withdraw ETH to caller's account in L1.

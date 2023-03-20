@@ -10,7 +10,7 @@ contract MockScrollMessenger is IScrollMessenger {
     address public override xDomainMessageSender;
 
     /*****************************
-     * Public Mutation Functions *
+     * Public Mutating Functions *
      *****************************/
 
     function setXDomainMessageSender(address _xDomainMessageSender) external {
