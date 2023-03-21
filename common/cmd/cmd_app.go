@@ -38,17 +38,22 @@ func (c *Cmd) RunApp(waitResult func() bool) {
 
 // WaitExit wait util process exit.
 func (c *Cmd) WaitExit() {
+	fmt.Printf("1. =============== %s %s", c.name, c.checkFuncs.Keys())
 	// Wait all the check funcs are finished or test status is failed.
 	for !(c.Err != nil || c.checkFuncs.IsEmpty()) {
-		fmt.Println("=============== show c.checkFuncs: ", c.checkFuncs.Keys())
 		<-time.After(time.Second)
 	}
+	fmt.Printf("2. =============== %s %s", c.name, c.checkFuncs.Keys())
 
 	// Send interrupt signal.
 	c.mu.Lock()
+	fmt.Printf("3. =============== %s %s", c.name, c.checkFuncs.Keys())
 	_ = c.cmd.Process.Signal(os.Interrupt)
+	fmt.Printf("4. =============== %s %s", c.name, c.checkFuncs.Keys())
 	_, _ = c.cmd.Process.Wait()
+	fmt.Printf("5. =============== %s %s", c.name, c.checkFuncs.Keys())
 	c.mu.Unlock()
+	fmt.Printf("6. =============== %s %s", c.name, c.checkFuncs.Keys())
 }
 
 // Interrupt send interrupt signal.

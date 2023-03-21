@@ -43,15 +43,18 @@ func testStartProcess(t *testing.T) {
 	// Start bridge process.
 	bridgeCmd := runBridgeApp(t)
 	bridgeCmd.RunApp(func() bool { return bridgeCmd.WaitResult(t, time.Second*20, "Start bridge successfully") })
+	t.Log("-------------bridge test start successful")
 
 	// Start coordinator process.
 	coordinatorCmd := runCoordinatorApp(t, "--ws", "--ws.port", "8391")
 	coordinatorCmd.RunApp(func() bool { return coordinatorCmd.WaitResult(t, time.Second*20, "Start coordinator successfully") })
+	t.Log("-------------coordinator test start successful")
 
 	// Start roller process.
 	rollerCmd := runRollerApp(t)
 	rollerCmd.ExpectWithTimeout(t, true, time.Second*60, "register to coordinator successfully!")
 	rollerCmd.RunApp(func() bool { return rollerCmd.WaitResult(t, time.Second*40, "roller start successfully") })
+	t.Log("------------- roller test start successful")
 
 	rollerCmd.WaitExit()
 	bridgeCmd.WaitExit()
@@ -74,7 +77,6 @@ func testMonitorMetrics(t *testing.T) {
 	svrPort2 := strconv.FormatInt(port.Int64()+52000, 10)
 	coordinatorCmd := runCoordinatorApp(t, "--metrics", "--metrics.addr", "localhost", "--metrics.port", svrPort2)
 	coordinatorCmd.RunApp(func() bool { return coordinatorCmd.WaitResult(t, time.Second*20, "Start coordinator successfully") })
-
 	// Get bridge monitor metrics.
 	resp, err := http.Get("http://localhost:" + svrPort1)
 	assert.NoError(t, err)
