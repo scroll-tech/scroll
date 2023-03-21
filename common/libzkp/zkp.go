@@ -1,4 +1,4 @@
-// //go:build !mock_zkp
+//go:build !mock_zkp
 
 //nolint:typecheck
 package libzkp
