@@ -15,7 +15,7 @@ pipeline {
         PATH="/home/ubuntu/.cargo/bin:$PATH"
         LD_LIBRARY_PATH="$LD_LIBRARY_PATH:./coordinator/verifier/lib"
         CHAIN_ID='534353'
-        LOG_DOCKER='true'
+        // LOG_DOCKER = 'true'
     }
     stages {
         stage('Build') {
@@ -26,7 +26,7 @@ pipeline {
                         sh 'make -C bridge mock_abi'
                     }
                 }
-                /* stage('Check Bridge Compilation') {
+                stage('Check Bridge Compilation') {
                     steps {
                         sh 'make -C bridge bridge'
                     }
@@ -56,7 +56,7 @@ pipeline {
                     steps {
                         sh 'make -C database docker'
                     }
-                } */
+                }
             }
         }
         stage('Parallel Test') {
@@ -71,11 +71,11 @@ pipeline {
                         sh 'go test -v -coverprofile=coverage.common.txt -covermode=atomic -p 1 scroll-tech/common/...'
                     }
                 }
-                /* stage('Test coordinator package') {
+                stage('Test coordinator package') {
                     steps {
                         sh 'go test -v -coverprofile=coverage.coordinator.txt -covermode=atomic -p 1 scroll-tech/coordinator/...'
                     }
-                } */
+                }
                 stage('Test database package') {
                     steps {
                         sh 'go test -v -coverprofile=coverage.db.txt -covermode=atomic -p 1 scroll-tech/database/...'
