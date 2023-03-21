@@ -16,11 +16,11 @@ lint: ## The code's format and security checks.
 
 update: ## update dependencies
 	go work sync
-	cd $(PWD)/bridge/ && go get -u github.com/scroll-tech/go-ethereum@staging && go mod tidy
-	cd $(PWD)/common/ && go get -u github.com/scroll-tech/go-ethereum@staging && go mod tidy
-	cd $(PWD)/coordinator/ && go get -u github.com/scroll-tech/go-ethereum@staging && go mod tidy
-	cd $(PWD)/database/ && go get -u github.com/scroll-tech/go-ethereum@staging && go mod tidy
-	cd $(PWD)/roller/ && go get -u github.com/scroll-tech/go-ethereum@staging && go mod tidy
+	cd $(PWD)/bridge/ && go get -u github.com/scroll-tech/go-ethereum@scroll && go mod tidy
+	cd $(PWD)/common/ && go get -u github.com/scroll-tech/go-ethereum@scroll && go mod tidy
+	cd $(PWD)/coordinator/ && go get -u github.com/scroll-tech/go-ethereum@scroll && go mod tidy
+	cd $(PWD)/database/ && go get -u github.com/scroll-tech/go-ethereum@scroll && go mod tidy
+	cd $(PWD)/roller/ && go get -u github.com/scroll-tech/go-ethereum@scroll && go mod tidy
 	goimports -local $(PWD)/bridge/ -w .
 	goimports -local $(PWD)/common/ -w .
 	goimports -local $(PWD)/coordinator/ -w .

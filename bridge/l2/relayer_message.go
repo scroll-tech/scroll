@@ -75,7 +75,7 @@ func (r *Layer2Relayer) checkSubmittedMessages() error {
 			switch true {
 			case err == nil:
 				r.processingMessage.Store(msg.MsgHash, msg.MsgHash)
-			case err.Error() == "execution reverted: execution reverted: Message expired":
+			case err.Error() == "execution reverted: Message expired":
 				if err = r.db.UpdateLayer2Status(r.ctx, msg.MsgHash, types.MsgExpired); err != nil {
 					return err
 				}
