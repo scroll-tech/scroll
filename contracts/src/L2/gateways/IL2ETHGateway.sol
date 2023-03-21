@@ -21,9 +21,9 @@ interface IL2ETHGateway {
     /// @param data The optional calldata passed to recipient in L2.
     event FinalizeDepositETH(address indexed from, address indexed to, uint256 amount, bytes data);
 
-    /****************************
-     * Public Mutated Functions *
-     ****************************/
+    /*****************************
+     * Public Mutating Functions *
+     *****************************/
 
     /// @notice Withdraw ETH to caller's account in L1.
     /// @param amount The amount of ETH to be withdrawn.

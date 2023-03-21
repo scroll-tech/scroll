@@ -115,9 +115,9 @@ contract L2GasPriceOracle is OwnableUpgradeable, IL2GasPriceOracle {
         }
     }
 
-    /****************************
-     * Public Mutated Functions *
-     ****************************/
+    /*****************************
+     * Public Mutating Functions *
+     *****************************/
 
     /// @notice Allows the owner to modify the l2 base fee.
     /// @param _l2BaseFee The new l2 base fee.

@@ -177,10 +177,9 @@ contract L2ScrollMessenger is ScrollMessengerBase, PausableUpgradeable, IL2Scrol
         return uint256(_storageValue) == 1;
     }
 
-    /****************************
-     * Public Mutated Functions *
-     ****************************/
-
+    /*****************************
+     * Public Mutating Functions *
+     *****************************/
     /// @inheritdoc IScrollMessenger
     function sendMessage(
         address _to,

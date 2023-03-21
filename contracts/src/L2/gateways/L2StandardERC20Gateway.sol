@@ -66,9 +66,9 @@ contract L2StandardERC20Gateway is Initializable, ScrollGatewayBase, L2ERC20Gate
         return IScrollStandardERC20Factory(tokenFactory).computeL2TokenAddress(address(this), _l1Token);
     }
 
-    /****************************
-     * Public Mutated Functions *
-     ****************************/
+    /*****************************
+     * Public Mutating Functions *
+     *****************************/
 
     /// @inheritdoc IL2ERC20Gateway
     function finalizeDepositERC20(

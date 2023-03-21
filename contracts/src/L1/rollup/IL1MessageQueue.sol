@@ -47,9 +47,9 @@ interface IL1MessageQueue {
         uint256 gasLimit
     ) external view returns (uint256);
 
-    /****************************
-     * Public Mutated Functions *
-     ****************************/
+    /*****************************
+     * Public Mutating Functions *
+     *****************************/
 
     /// @notice Append a L1 to L2 message into this contract.
     /// @param target The address of target contract to call in L2.

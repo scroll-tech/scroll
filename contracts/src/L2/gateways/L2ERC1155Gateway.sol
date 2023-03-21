@@ -47,9 +47,9 @@ contract L2ERC1155Gateway is OwnableUpgradeable, ERC1155HolderUpgradeable, Scrol
         ScrollGatewayBase._initialize(_counterpart, address(0), _messenger);
     }
 
-    /****************************
-     * Public Mutated Functions *
-     ****************************/
+    /*****************************
+     * Public Mutating Functions *
+     *****************************/
 
     /// @inheritdoc IL2ERC1155Gateway
     function withdrawERC1155(
