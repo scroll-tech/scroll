@@ -7,12 +7,12 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"scroll-tech/common/message"
 	"testing"
 
 	"github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/stretchr/testify/assert"
 
+	"scroll-tech/common/message"
 	"scroll-tech/roller/config"
 	"scroll-tech/roller/prover"
 )
