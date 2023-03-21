@@ -13,6 +13,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"scroll-tech/common/message"
+
 	"scroll-tech/roller/config"
 	"scroll-tech/roller/prover"
 )
