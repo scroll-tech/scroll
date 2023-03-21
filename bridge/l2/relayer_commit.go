@@ -44,12 +44,16 @@ func (r *Layer2Relayer) checkRollupBatches() error {
 	for {
 		blockBatches, err := r.db.GetBlockBatches(
 			map[string]interface{}{"rollup_status": types.RollupCommitting},
-			fmt.Sprintf("AND commit_tx_hash IN (SELECT commit_tx_hash FROM block_batch WHERE index > %d GROUP BY commit_tx_hash LIMIT 1)", batchIndex),
+			fmt.Sprintf("AND commit_tx_hash IN (SELECT commit_tx_hash FROM block_batch WHERE index > %d GROUP BY index, commit_tx_hash ORDER BY index LIMIT 1)", batchIndex),
 			fmt.Sprintf("AND index > %d", batchIndex),
 			"ORDER BY index ASC",
 		)
-		if err != nil || len(blockBatches) == 0 {
+		if err != nil {
+			log.Error("failed to get rollup committing block batches", "batch index", batchIndex, "err", err)
 			return err
+		}
+		if len(blockBatches) == 0 {
+			return nil
 		}
 
 		var batchDataBuffer []*types.BatchData
@@ -105,13 +109,8 @@ func (r *Layer2Relayer) checkRollupBatches() error {
 		switch true {
 		case err == nil:
 			r.processingBatchesCommitment.Store(txID, batchHashes)
-		case err.Error() == "Batch already commited": //nolint:misspell
-			for _, batchHash := range batchHashes {
-				if err = r.db.UpdateRollupStatus(r.ctx, batchHash, types.RollupCommitted); err != nil {
-					log.Error("failed to update rollup status when check rollup batched", "batch_hash", batchHash, "err", err)
-					return err
-				}
-			}
+		case err.Error() == "execution reverted: Batch already commited": //nolint:misspell
+			log.Warn("blockBatches already committed", "start index", blockBatches[0].Index, "end index", blockBatches[len(blockBatches)-1].Index)
 		default:
 			log.Error("failed to load or send batchData tx")
 			return err

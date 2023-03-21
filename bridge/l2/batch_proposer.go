@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"math"
-	"reflect"
 	"sync"
 	"time"
 
@@ -128,10 +127,6 @@ func (p *BatchProposer) Start() {
 	p.tryCommitBatches()
 
 	go func() {
-		if reflect.ValueOf(p.orm).IsNil() {
-			panic("must run BatchProposer with DB")
-		}
-
 		ctx, cancel := context.WithCancel(p.ctx)
 
 		go utils.Loop(ctx, 2*time.Second, func() {

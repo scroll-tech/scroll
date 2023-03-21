@@ -25,8 +25,12 @@ func (r *Layer1Relayer) checkSubmittedMessages() error {
 			fmt.Sprintf("AND queue_index > %d", index),
 			fmt.Sprintf("ORDER BY queue_index ASC LIMIT %d", msgsSize),
 		)
-		if err != nil || len(msgs) == 0 {
+		if err != nil {
+			log.Error("failed to get l1 submitted messages", "queue_index", index, "err", err)
 			return err
+		}
+		if len(msgs) == 0 {
+			return nil
 		}
 
 		index = msgs[len(msgs)-1].QueueIndex

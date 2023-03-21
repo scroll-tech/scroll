@@ -26,8 +26,12 @@ func (r *Layer2Relayer) checkFinalizingBatches() error {
 			fmt.Sprintf("AND index > %d", batchIndex),
 			fmt.Sprintf("ORDER BY index ASC LIMIT %d", batchLimit),
 		)
-		if err != nil || len(batches) == 0 {
+		if err != nil {
+			log.Error("failed to get Rollup finalizing batches", "batch index", batchIndex, "err", err)
 			return err
+		}
+		if len(batches) == 0 {
+			return nil
 		}
 
 		batchIndex = batches[len(batches)-1].Index
@@ -41,6 +45,7 @@ func (r *Layer2Relayer) checkFinalizingBatches() error {
 				txHash common.Hash
 				hash   = batch.Hash
 			)
+			// Use empty txHash can let tx resent, if tx is already on block will be checked.
 			if batch.CommitTxHash.Valid {
 				txHash = common.HexToHash(batch.CommitTxHash.String)
 			}
@@ -63,7 +68,8 @@ func (r *Layer2Relayer) checkFinalizingBatches() error {
 			switch true {
 			case err == nil:
 				r.processingFinalization.Store(txID, hash)
-			case err.Error() == "Batch is already finalized":
+			case err.Error() == "execution reverted: Batch is already finalized":
+				log.Warn("block batch already rollup finalized", "batch index", batch.Index)
 				if err = r.db.UpdateRollupStatus(r.ctx, hash, types.RollupFinalized); err != nil {
 					return err
 				}

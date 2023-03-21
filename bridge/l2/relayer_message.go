@@ -30,8 +30,12 @@ func (r *Layer2Relayer) checkSubmittedMessages() error {
 			fmt.Sprintf("AND nonce > %d", nonce),
 			fmt.Sprintf("ORDER BY nonce ASC LIMIT %d", processMsgLimit),
 		)
-		if err != nil || len(msgs) == 0 {
+		if err != nil {
+			log.Error("failed to get l2 submitted messages", "message nonce", nonce, "err", err)
 			return err
+		}
+		if len(msgs) == 0 {
+			return nil
 		}
 
 		var batch *types.BlockBatch
@@ -71,7 +75,7 @@ func (r *Layer2Relayer) checkSubmittedMessages() error {
 			switch true {
 			case err == nil:
 				r.processingMessage.Store(msg.MsgHash, msg.MsgHash)
-			case err.Error() == "execution reverted: Message expired":
+			case err.Error() == "execution reverted: execution reverted: Message expired":
 				if err = r.db.UpdateLayer2Status(r.ctx, msg.MsgHash, types.MsgExpired); err != nil {
 					return err
 				}
