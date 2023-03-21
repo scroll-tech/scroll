@@ -81,7 +81,8 @@
       "public_input_config": {
         "max_tx_num": 44,
         "padding_tx_hash": "0x0000000000000000000000000000000000000000000000000000000000000000"
-      }
+      },
+      "get_pending_batches_retry_times": 100
     }
   },
   "db_config": {

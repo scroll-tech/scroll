@@ -73,13 +73,14 @@ type BatchProposer struct {
 	ctx context.Context
 	orm database.OrmFactory
 
-	batchTimeSec             uint64
-	batchGasThreshold        uint64
-	batchTxNumThreshold      uint64
-	batchBlocksLimit         uint64
-	batchCommitTimeSec       uint64
-	commitCalldataSizeLimit  uint64
-	batchDataBufferSizeLimit uint64
+	batchTimeSec                uint64
+	batchGasThreshold           uint64
+	batchTxNumThreshold         uint64
+	batchBlocksLimit            uint64
+	batchCommitTimeSec          uint64
+	commitCalldataSizeLimit     uint64
+	batchDataBufferSizeLimit    uint64
+	getPendingBatchesRetryTimes uint64
 
 	proofGenerationFreq uint64
 	batchDataBuffer     []*types.BatchData
@@ -93,20 +94,25 @@ type BatchProposer struct {
 // NewBatchProposer will return a new instance of BatchProposer.
 func NewBatchProposer(ctx context.Context, cfg *config.BatchProposerConfig, relayer *Layer2Relayer, orm database.OrmFactory) *BatchProposer {
 	p := &BatchProposer{
-		mutex:                    sync.Mutex{},
-		ctx:                      ctx,
-		orm:                      orm,
-		batchTimeSec:             cfg.BatchTimeSec,
-		batchGasThreshold:        cfg.BatchGasThreshold,
-		batchTxNumThreshold:      cfg.BatchTxNumThreshold,
-		batchBlocksLimit:         cfg.BatchBlocksLimit,
-		batchCommitTimeSec:       cfg.BatchCommitTimeSec,
-		commitCalldataSizeLimit:  cfg.CommitTxCalldataSizeLimit,
-		batchDataBufferSizeLimit: 100*cfg.CommitTxCalldataSizeLimit + 1*1024*1024, // @todo: determine the value.
-		proofGenerationFreq:      cfg.ProofGenerationFreq,
-		piCfg:                    cfg.PublicInputConfig,
-		relayer:                  relayer,
-		stopCh:                   make(chan struct{}),
+		mutex:                       sync.Mutex{},
+		ctx:                         ctx,
+		orm:                         orm,
+		batchTimeSec:                cfg.BatchTimeSec,
+		batchGasThreshold:           cfg.BatchGasThreshold,
+		batchTxNumThreshold:         cfg.BatchTxNumThreshold,
+		batchBlocksLimit:            cfg.BatchBlocksLimit,
+		batchCommitTimeSec:          cfg.BatchCommitTimeSec,
+		commitCalldataSizeLimit:     cfg.CommitTxCalldataSizeLimit,
+		batchDataBufferSizeLimit:    100*cfg.CommitTxCalldataSizeLimit + 1*1024*1024, // @todo: determine the value.
+		proofGenerationFreq:         cfg.ProofGenerationFreq,
+		piCfg:                       cfg.PublicInputConfig,
+		getPendingBatchesRetryTimes: cfg.GetPendingBatchesRetryTimes,
+		relayer:                     relayer,
+		stopCh:                      make(chan struct{}),
+	}
+
+	if p.getPendingBatchesRetryTimes == 0 {
+		p.getPendingBatchesRetryTimes = 1
 	}
 
 	// for graceful restart.
@@ -217,7 +223,7 @@ func (p *BatchProposer) tryProposeBatch() {
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
 
-	for i := 0; i < 10; i++ {
+	for i := 0; i < int(p.getPendingBatchesRetryTimes) && p.getBatchDataBufferSize() < p.batchDataBufferSizeLimit; i++ {
 		blocks, err := p.orm.GetUnbatchedL2Blocks(
 			map[string]interface{}{},
 			fmt.Sprintf("order by number ASC LIMIT %d", p.batchBlocksLimit),
@@ -228,11 +234,6 @@ func (p *BatchProposer) tryProposeBatch() {
 		}
 
 		p.proposeBatch(blocks)
-
-		if p.getBatchDataBufferSize() >= p.batchDataBufferSizeLimit {
-			return
-		}
-		time.Sleep(500 * time.Millisecond)
 	}
 }
 
