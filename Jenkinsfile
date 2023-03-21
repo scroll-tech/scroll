@@ -86,21 +86,21 @@ pipeline {
                         sh 'go test -v -tags="mock_prover mock_verifier" -coverprofile=coverage.integration.txt -covermode=atomic -p 1 scroll-tech/integration-test/...'
                     }
                 }
-                /* stage('Race test bridge package') {
+                stage('Race test bridge package') {
                     steps {
                         sh 'go test -v -race -coverprofile=coverage.txt -covermode=atomic scroll-tech/bridge/...'
                     }
-                } */
-                /* stage('Race test coordinator package') {
+                }
+                stage('Race test coordinator package') {
                     steps {
                         sh 'go test -v -race -coverprofile=coverage.txt -covermode=atomic scroll-tech/coordinator/...'
                     }
-                } */
-                /* stage('Race test database package') {
+                }
+                stage('Race test database package') {
                     steps {
                         sh 'go test -v -race -coverprofile=coverage.txt -covermode=atomic scroll-tech/database/...'
                     }
-                } */
+                }
             }
         }
         stage('Compare Coverage') {
