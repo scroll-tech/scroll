@@ -217,7 +217,7 @@ func (p *BatchProposer) tryProposeBatch() {
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
 
-	if p.getBatchDataBufferSize() < p.batchDataBufferSizeLimit {
+	for i := 0; i < 10; i++ {
 		blocks, err := p.orm.GetUnbatchedL2Blocks(
 			map[string]interface{}{},
 			fmt.Sprintf("order by number ASC LIMIT %d", p.batchBlocksLimit),
@@ -228,6 +228,11 @@ func (p *BatchProposer) tryProposeBatch() {
 		}
 
 		p.proposeBatch(blocks)
+
+		if p.getBatchDataBufferSize() >= p.batchDataBufferSizeLimit {
+			return
+		}
+		time.Sleep(500 * time.Millisecond)
 	}
 }
 
