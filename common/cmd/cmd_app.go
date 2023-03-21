@@ -40,7 +40,8 @@ func (c *Cmd) RunApp(waitResult func() bool) {
 func (c *Cmd) WaitExit() {
 	// Wait all the check funcs are finished or test status is failed.
 	for !(c.Err != nil || c.checkFuncs.IsEmpty()) {
-		<-time.After(time.Millisecond * 500)
+		fmt.Println("=============== show c.checkFuncs: ", c.checkFuncs.Keys())
+		<-time.After(time.Second)
 	}
 
 	// Send interrupt signal.
