@@ -64,9 +64,9 @@ func (m *layer2MessageOrm) GetLastL2MessageNonceLEHeight(ctx context.Context, he
 	return nonce, err
 }
 
-// GetL2MessagesBetween fetch a list of message between startHeight and finishHeight (both inclusive). The returned messages are ordered by nonce.
-func (m *layer2MessageOrm) GetL2MessagesBetween(ctx context.Context, startHeight, finishHeight uint64) ([]*types.L2Message, error) {
-	rows, err := m.db.Queryx(`SELECT nonce, msg_hash, height, sender, target, value, calldata, layer2_hash, status FROM l2_message WHERE height >= $1 and height <= $2`, startHeight, finishHeight)
+// GetL2MessagesBetween fetch a list of message between beginHeight and endHeight (both inclusive). The returned messages are ordered by nonce.
+func (m *layer2MessageOrm) GetL2MessagesBetween(ctx context.Context, beginHeight, endHeight uint64) ([]*types.L2Message, error) {
+	rows, err := m.db.Queryx(`SELECT nonce, msg_hash, height, sender, target, value, calldata, layer2_hash, status FROM l2_message WHERE height >= $1 and height <= $2`, beginHeight, endHeight)
 	if err != nil {
 		return nil, err
 	}

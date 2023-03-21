@@ -103,7 +103,7 @@ type L2MessageOrm interface {
 	GetL2ProcessedNonce() (int64, error)
 	SaveL2Messages(ctx context.Context, messages []*types.L2Message) error
 	GetLastL2MessageNonceLEHeight(ctx context.Context, height uint64) (sql.NullInt64, error)
-	GetL2MessagesBetween(ctx context.Context, startHeight, finishHeight uint64) ([]*types.L2Message, error)
+	GetL2MessagesBetween(ctx context.Context, beginHeight, endHeight uint64) ([]*types.L2Message, error)
 	UpdateLayer1Hash(ctx context.Context, msgHash string, layer1Hash string) error
 	UpdateLayer2Status(ctx context.Context, msgHash string, status types.MsgStatus) error
 	UpdateLayer2StatusAndLayer1Hash(ctx context.Context, msgHash string, status types.MsgStatus, layer1Hash string) error

@@ -197,14 +197,9 @@ func (p *BatchProposer) initializeMissingMessageProof() error {
 		batch = tBatches[0]
 	}
 
-	// reverse batches
-	for i := 0; i < len(batches)/2; i++ {
-		j := len(batches) - i - 1
-		batches[i], batches[j] = batches[j], batches[i]
-	}
-
 	log.Info("Build withdraw trie with pending messages")
-	for _, batch := range batches {
+	for i := len(batches) - 1; i >= 0; i-- {
+		batch := batches[i]
 		msgs, proofs, err := p.appendL2Messages(batch.StartBlockNumber, batch.EndBlockNumber)
 		if err != nil {
 			return err
@@ -238,6 +233,7 @@ func (p *BatchProposer) initializeMissingMessageProof() error {
 	return nil
 }
 
+// appendL2Messages will append all messages between firstBlock and lastBlock (both inclusive) to withdrawTrie and compute corresponding merkle proof of each message.
 func (p *BatchProposer) appendL2Messages(firstBlock, lastBlock uint64) ([]*types.L2Message, [][]byte, error) {
 	var msgProofs [][]byte
 	messages, err := p.orm.GetL2MessagesBetween(
