@@ -27,7 +27,7 @@ var (
 )
 
 func init() {
-	// Set up Bridge app info.
+	// Set up event-watcher app info.
 	app = cli.NewApp()
 
 	app.Action = action

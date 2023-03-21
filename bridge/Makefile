@@ -35,6 +35,12 @@ lint: ## Lint the files - used for CI
 clean: ## Empty out the bin folder
 	@rm -rf build/bin
 
+docker_push:
+	docker docker push scrolltech/gas_oracle:${IMAGE_VERSION}
+	docker docker push scrolltech/event_watcher:${IMAGE_VERSION}
+	docker docker push scrolltech/rollup_relayer:${IMAGE_VERSION}
+	docker docker push scrolltech/msg_relayer:${IMAGE_VERSION}
+
 docker:
 	DOCKER_BUILDKIT=1 docker build -t scrolltech/gas_oracle:${IMAGE_VERSION} ${REPO_ROOT_DIR}/ -f ${REPO_ROOT_DIR}/build/dockerfiles/gas_oracle.Dockerfile
 	DOCKER_BUILDKIT=1 docker build -t scrolltech/event_watcher:${IMAGE_VERSION} ${REPO_ROOT_DIR}/ -f ${REPO_ROOT_DIR}/build/dockerfiles/event_watcher.Dockerfile
