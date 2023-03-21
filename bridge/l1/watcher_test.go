@@ -18,12 +18,12 @@ func testStartWatcher(t *testing.T) {
 	assert.NoError(t, migrate.ResetDB(db.GetDB().DB))
 	defer db.Close()
 
-	client, err := ethclient.Dial(l1gethImg.Endpoint())
+	client, err := ethclient.Dial(base.L1GethEndpoint())
 	assert.NoError(t, err)
 
 	l1Cfg := cfg.L1Config
 
-	watcher := NewWatcher(context.Background(), client, l1Cfg.StartHeight, l1Cfg.Confirmations, l1Cfg.L1MessengerAddress, l1Cfg.RelayerConfig.RollupContractAddress, db)
+	watcher := NewWatcher(context.Background(), client, l1Cfg.StartHeight, l1Cfg.Confirmations, l1Cfg.L1MessengerAddress, l1Cfg.L1MessageQueueAddress, l1Cfg.RelayerConfig.RollupContractAddress, db)
 	watcher.Start()
 	defer watcher.Stop()
 }
