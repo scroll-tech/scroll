@@ -50,7 +50,7 @@ func (c *Cmd) WaitExit() {
 	fmt.Printf("3. =============== %s %s\n", c.name, c.checkFuncs.Keys())
 	_ = c.cmd.Process.Signal(os.Interrupt)
 	fmt.Printf("4. =============== %s %s\n", c.name, c.checkFuncs.Keys())
-	_, _ = c.cmd.Process.Wait()
+	_ = c.cmd.Process.Kill()
 	fmt.Printf("5. =============== %s %s\n", c.name, c.checkFuncs.Keys())
 	c.mu.Unlock()
 	fmt.Printf("6. =============== %s %s\n", c.name, c.checkFuncs.Keys())
