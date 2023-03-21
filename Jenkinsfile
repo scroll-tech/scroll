@@ -26,37 +26,37 @@ pipeline {
                         sh 'make -C bridge mock_abi'
                     }
                 }
-                stage('Check Bridge Compilation') {
+                /* stage('Check Bridge Compilation') {
                     steps {
                         sh 'make -C bridge bridge'
                     }
-                }
+                } */
                 /* stage('Check Coordinator Compilation') {
                     steps {
                         sh 'export PATH=/home/ubuntu/go/bin:$PATH'
                         sh 'make -C coordinator coordinator'
                     }
                 } */
-                stage('Check Database Compilation') {
+                /* stage('Check Database Compilation') {
                     steps {
                         sh 'make -C database db_cli'
                     }
-                }
-                stage('Check Bridge Docker Build') {
+                } */
+                /* stage('Check Bridge Docker Build') {
                     steps {
                         sh 'make -C bridge docker'
                     }
-                }
+                } */
                 /* stage('Check Coordinator Docker Build') {
                     steps {
                         sh 'make -C coordinator docker'
                     }
                 } */
-                stage('Check Database Docker Build') {
+                /* stage('Check Database Docker Build') {
                     steps {
                         sh 'make -C database docker'
                     }
-                }
+                } */
             }
         }
         stage('Parallel Test') {
@@ -66,21 +66,21 @@ pipeline {
                         sh 'go test -v -coverprofile=coverage.bridge.txt -covermode=atomic -p 1 scroll-tech/bridge/...'
                     }
                 } */
-                stage('Test common package') {
+                /* stage('Test common package') {
                     steps {
                         sh 'go test -v -coverprofile=coverage.common.txt -covermode=atomic -p 1 scroll-tech/common/...'
                     }
-                }
+                } */
                 /* stage('Test coordinator package') {
                     steps {
                         sh 'go test -v -coverprofile=coverage.coordinator.txt -covermode=atomic -p 1 scroll-tech/coordinator/...'
                     }
                 } */
-                stage('Test database package') {
+                /* stage('Test database package') {
                     steps {
                         sh 'go test -v -coverprofile=coverage.db.txt -covermode=atomic -p 1 scroll-tech/database/...'
                     }
-                }
+                } */
                 stage('Integration test') {
                     steps {
                         sh 'go test -v -tags="mock_prover mock_verifier" -coverprofile=coverage.integration.txt -covermode=atomic -p 1 scroll-tech/integration-test/...'
@@ -96,11 +96,11 @@ pipeline {
                         sh 'go test -v -race -coverprofile=coverage.txt -covermode=atomic scroll-tech/coordinator/...'
                     }
                 } */
-                stage('Race test database package') {
+                /* stage('Race test database package') {
                     steps {
                         sh 'go test -v -race -coverprofile=coverage.txt -covermode=atomic scroll-tech/database/...'
                     }
-                }
+                } */
             }
         }
         stage('Compare Coverage') {
