@@ -83,6 +83,7 @@ type BatchProposer struct {
 	batchCommitTimeSec       uint64
 	commitCalldataSizeLimit  uint64
 	batchDataBufferSizeLimit uint64
+	commitCalldataMinSize    uint64
 
 	proofGenerationFreq uint64
 	batchDataBuffer     []*types.BatchData
@@ -106,6 +107,7 @@ func NewBatchProposer(ctx context.Context, cfg *config.BatchProposerConfig, orm 
 		batchBlocksLimit:         cfg.BatchBlocksLimit,
 		batchCommitTimeSec:       cfg.BatchCommitTimeSec,
 		commitCalldataSizeLimit:  cfg.CommitTxCalldataSizeLimit,
+		commitCalldataMinSize:    cfg.CommitTxCalldataMinSize,
 		batchDataBufferSizeLimit: 100*cfg.CommitTxCalldataSizeLimit + 1*1024*1024, // @todo: determine the value.
 		proofGenerationFreq:      cfg.ProofGenerationFreq,
 		piCfg:                    cfg.PublicInputConfig,
@@ -219,7 +221,7 @@ func (p *BatchProposer) tryProposeBatch() {
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
 
-	if p.getBatchDataBufferSize() < p.batchDataBufferSizeLimit {
+	for p.getBatchDataBufferSize() < p.batchDataBufferSizeLimit {
 		blocks, err := p.orm.GetUnbatchedL2Blocks(
 			map[string]interface{}{},
 			fmt.Sprintf("order by number ASC LIMIT %d", p.batchBlocksLimit),
@@ -229,7 +231,18 @@ func (p *BatchProposer) tryProposeBatch() {
 			return
 		}
 
-		p.proposeBatch(blocks)
+		batchCreated := p.proposeBatch(blocks)
+
+		// while size of batchDataBuffer < commitCalldataMinSize,
+		// proposer keeps fetching and porposing batches.
+		if p.getBatchDataBufferSize() >= p.commitCalldataMinSize {
+			return
+		}
+
+		if !batchCreated {
+			// wait for watcher to insert l2 traces.
+			time.Sleep(time.Second)
+		}
 	}
 }
 
@@ -278,9 +291,9 @@ func (p *BatchProposer) tryCommitBatches() {
 	}
 }
 
-func (p *BatchProposer) proposeBatch(blocks []*types.BlockInfo) {
+func (p *BatchProposer) proposeBatch(blocks []*types.BlockInfo) bool {
 	if len(blocks) == 0 {
-		return
+		return false
 	}
 
 	if blocks[0].GasUsed > p.batchGasThreshold {
@@ -293,7 +306,7 @@ func (p *BatchProposer) proposeBatch(blocks []*types.BlockInfo) {
 			bridgeL2BatchesGasCreatedRateMeter.Mark(int64(blocks[0].GasUsed))
 			bridgeL2BatchesCreatedRateMeter.Mark(1)
 		}
-		return
+		return true
 	}
 
 	if blocks[0].TxNum > p.batchTxNumThreshold {
@@ -306,7 +319,7 @@ func (p *BatchProposer) proposeBatch(blocks []*types.BlockInfo) {
 			bridgeL2BatchesGasCreatedRateMeter.Mark(int64(blocks[0].GasUsed))
 			bridgeL2BatchesCreatedRateMeter.Mark(1)
 		}
-		return
+		return true
 	}
 
 	var gasUsed, txNum uint64
@@ -326,7 +339,7 @@ func (p *BatchProposer) proposeBatch(blocks []*types.BlockInfo) {
 	// if it's not old enough we will skip proposing the batch,
 	// otherwise we will still propose a batch
 	if !reachThreshold && blocks[0].BlockTimestamp+p.batchTimeSec > uint64(time.Now().Unix()) {
-		return
+		return false
 	}
 
 	if err := p.createBatchForBlocks(blocks); err != nil {
@@ -336,6 +349,8 @@ func (p *BatchProposer) proposeBatch(blocks []*types.BlockInfo) {
 		bridgeL2BatchesGasCreatedRateMeter.Mark(int64(gasUsed))
 		bridgeL2BatchesCreatedRateMeter.Mark(int64(len(blocks)))
 	}
+
+	return true
 }
 
 func (p *BatchProposer) createBatchForBlocks(blocks []*types.BlockInfo) error {
