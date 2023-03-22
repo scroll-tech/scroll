@@ -48,7 +48,6 @@ func (i *ImgGeth) Start() error {
 	if id != "" {
 		return fmt.Errorf("container already exist, name: %s", i.name)
 	}
-	i.cmd.RunCmd(true)
 	i.running = i.isOk()
 	if !i.running {
 		_ = i.Stop()
@@ -85,6 +84,8 @@ func (i *ImgGeth) isOk() bool {
 		}
 	})
 	defer i.cmd.UnRegistFunc(keyword)
+	// Start cmd in parallel.
+	i.cmd.RunCmd(true)
 
 	select {
 	case <-okCh:
