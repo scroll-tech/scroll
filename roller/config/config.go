@@ -22,7 +22,7 @@ type Config struct {
 type ProverConfig struct {
 	ParamsPath string `json:"params_path"`
 	SeedPath   string `json:"seed_path"`
-	DumpDir    string `json:"dump_dir"`
+	DumpDir    string `json:"dump_dir,omitempty"`
 }
 
 // NewConfig returns a new instance of Config.
