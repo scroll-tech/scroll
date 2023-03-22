@@ -89,7 +89,7 @@ func (i *ImgGeth) isOk() bool {
 
 	select {
 	case <-okCh:
-		utils.TryTimes(10, func() bool {
+		utils.TryTimes(20, func() bool {
 			i.id = GetContainerID(i.name)
 			return i.id != ""
 		})
