@@ -217,7 +217,9 @@ func (p *BatchProposer) tryProposeBatch() {
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
 
-	if p.getBatchDataBufferSize() > p.batchDataBufferSizeLimit {
+	// when size of batchDataBuffer >= batchDataBufferSizeLimit,
+	// proposer does not fetch and propose batches anymore.
+	if p.getBatchDataBufferSize() >= p.batchDataBufferSizeLimit {
 		return
 	}
 
@@ -232,7 +234,9 @@ func (p *BatchProposer) tryProposeBatch() {
 		}
 
 		p.proposeBatch(blocks)
-		if p.getBatchDataBufferSize() > p.commitCalldataSizeLimit {
+		// while size of batchDataBuffer < batchDataBufferSizeLimit,
+		// proposer keeps fetching and porposing batches.
+		if p.getBatchDataBufferSize() >= p.commitCalldataSizeLimit {
 			return
 		}
 	}
