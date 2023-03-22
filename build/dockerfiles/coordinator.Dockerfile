@@ -17,6 +17,7 @@ RUN go mod download -x
 
 # Build coordinator
 FROM base as builder
+RUN apk add --no-cache shasum
 COPY . .
 RUN cd ./common/libzkp && sh build.sh
 RUN cd ./coordinator && go build -v -p 4 -o /bin/coordinator ./cmd
