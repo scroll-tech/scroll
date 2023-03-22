@@ -43,6 +43,7 @@ func NewProver(cfg *config.ProverConfig) (*Prover, error) {
 		if err != nil {
 			return nil, err
 		}
+		log.Info("Enabled dump_proof", "dir", cfg.DumpDir)
 	}
 
 	return &Prover{cfg: cfg}, nil
@@ -60,7 +61,7 @@ func (p *Prover) Prove(task *message.TaskMsg) (*message.AggProof, error) {
 	// dump proof
 	err = p.dumpProof(task.ID, proofByt)
 	if err != nil {
-		log.Error("dump proof failed", "task-id", task.ID, "error", err)
+		log.Error("Dump proof failed", "task-id", task.ID, "error", err)
 	}
 
 	zkProof := &message.AggProof{}
@@ -92,6 +93,7 @@ func (p *Prover) dumpProof(id string, proofByt []byte) error {
 	if err != nil {
 		return err
 	}
+	log.Info("Saving proof", "task-id", id)
 	_, err = f.Write(proofByt)
 	return err
 }
