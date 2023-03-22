@@ -42,6 +42,4 @@ type BatchProposerConfig struct {
 	CommitTxCalldataSizeLimit uint64 `json:"commit_tx_calldata_size_limit"`
 	// The public input hash config
 	PublicInputConfig *types.PublicInputHashConfig `json:"public_input_config"`
-	// Get pending batches retry times
-	GetPendingBatchesRetryTimes uint64 `json:"get_pending_batches_retry_times,omitempty"`
 }
