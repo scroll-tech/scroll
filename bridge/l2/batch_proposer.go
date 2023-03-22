@@ -80,6 +80,7 @@ type BatchProposer struct {
 	batchCommitTimeSec       uint64
 	commitCalldataSizeLimit  uint64
 	batchDataBufferSizeLimit uint64
+	commitCalldataMinSize    uint64
 
 	proofGenerationFreq uint64
 	batchDataBuffer     []*types.BatchData
@@ -102,6 +103,7 @@ func NewBatchProposer(ctx context.Context, cfg *config.BatchProposerConfig, rela
 		batchBlocksLimit:         cfg.BatchBlocksLimit,
 		batchCommitTimeSec:       cfg.BatchCommitTimeSec,
 		commitCalldataSizeLimit:  cfg.CommitTxCalldataSizeLimit,
+		commitCalldataMinSize:    cfg.CommitTxCalldataMinSize,
 		batchDataBufferSizeLimit: 100*cfg.CommitTxCalldataSizeLimit + 1*1024*1024, // @todo: determine the value.
 		proofGenerationFreq:      cfg.ProofGenerationFreq,
 		piCfg:                    cfg.PublicInputConfig,
@@ -217,7 +219,7 @@ func (p *BatchProposer) tryProposeBatch() {
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
 
-	if p.getBatchDataBufferSize() < p.batchDataBufferSizeLimit {
+	for p.getBatchDataBufferSize() < p.batchDataBufferSizeLimit {
 		blocks, err := p.orm.GetUnbatchedL2Blocks(
 			map[string]interface{}{},
 			fmt.Sprintf("order by number ASC LIMIT %d", p.batchBlocksLimit),
@@ -228,6 +230,13 @@ func (p *BatchProposer) tryProposeBatch() {
 		}
 
 		p.proposeBatch(blocks)
+		// while size of batchDataBuffer < commitCalldataMinSize,
+		// proposer keeps fetching and porposing batches.
+		if p.getBatchDataBufferSize() >= p.commitCalldataMinSize {
+			return
+		}
+		// wait for watcher to insert l2 traces.
+		time.Sleep(time.Second)
 	}
 }
 
