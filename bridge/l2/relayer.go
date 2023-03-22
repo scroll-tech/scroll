@@ -564,17 +564,18 @@ func (r *Layer2Relayer) Stop() {
 }
 
 func (r *Layer2Relayer) handleConfirmation(confirmation *sender.Confirmation) {
-	if !confirmation.IsSuccessful {
-		log.Warn("transaction confirmed but failed in layer1", "confirmation", confirmation)
-		return
-	}
-
 	transactionType := "Unknown"
 	// check whether it is message relay transaction
 	if msgHash, ok := r.processingMessage.Load(confirmation.ID); ok {
 		transactionType = "MessageRelay"
+		var status types.MsgStatus
+		if confirmation.IsSuccessful {
+			status = types.MsgConfirmed
+		} else {
+			status = types.MsgRelayFailed
+		}
 		// @todo handle db error
-		err := r.db.UpdateLayer2StatusAndLayer1Hash(r.ctx, msgHash.(string), types.MsgConfirmed, confirmation.TxHash.String())
+		err := r.db.UpdateLayer2StatusAndLayer1Hash(r.ctx, msgHash.(string), status, confirmation.TxHash.String())
 		if err != nil {
 			log.Warn("UpdateLayer2StatusAndLayer1Hash failed", "msgHash", msgHash.(string), "err", err)
 		}
@@ -586,9 +587,15 @@ func (r *Layer2Relayer) handleConfirmation(confirmation *sender.Confirmation) {
 	if batchBatches, ok := r.processingBatchesCommitment.Load(confirmation.ID); ok {
 		transactionType = "BatchesCommitment"
 		batchHashes := batchBatches.([]string)
+		var status types.RollupStatus
+		if confirmation.IsSuccessful {
+			status = types.RollupCommitted
+		} else {
+			status = types.RollupCommitFailed
+		}
 		for _, batchHash := range batchHashes {
 			// @todo handle db error
-			err := r.db.UpdateCommitTxHashAndRollupStatus(r.ctx, batchHash, confirmation.TxHash.String(), types.RollupCommitted)
+			err := r.db.UpdateCommitTxHashAndRollupStatus(r.ctx, batchHash, confirmation.TxHash.String(), status)
 			if err != nil {
 				log.Warn("UpdateCommitTxHashAndRollupStatus failed", "batch_hash", batchHash, "err", err)
 			}
@@ -600,8 +607,14 @@ func (r *Layer2Relayer) handleConfirmation(confirmation *sender.Confirmation) {
 	// check whether it is proof finalization transaction
 	if batchHash, ok := r.processingFinalization.Load(confirmation.ID); ok {
 		transactionType = "ProofFinalization"
+		var status types.RollupStatus
+		if confirmation.IsSuccessful {
+			status = types.RollupFinalized
+		} else {
+			status = types.RollupFinalizeFailed
+		}
 		// @todo handle db error
-		err := r.db.UpdateFinalizeTxHashAndRollupStatus(r.ctx, batchHash.(string), confirmation.TxHash.String(), types.RollupFinalized)
+		err := r.db.UpdateFinalizeTxHashAndRollupStatus(r.ctx, batchHash.(string), confirmation.TxHash.String(), status)
 		if err != nil {
 			log.Warn("UpdateFinalizeTxHashAndRollupStatus failed", "batch_hash", batchHash.(string), "err", err)
 		}

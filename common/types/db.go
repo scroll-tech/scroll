@@ -82,6 +82,9 @@ const (
 
 	// MsgExpired represents the from_layer message status is expired
 	MsgExpired
+
+	// MsgRelayFailed represents the from_layer message status is relay failed
+	MsgRelayFailed
 )
 
 // L1Message is structure of stored layer1 bridge message
@@ -216,8 +219,12 @@ const (
 	RollupFinalizing
 	// RollupFinalized : finalize transaction is confirmed to layer1
 	RollupFinalized
+	// RollupCommitFailed : rollup finalize transaction is confirmed but failed
+	RollupFinalizeFailed
 	// RollupFinalizationSkipped : batch finalization is skipped
 	RollupFinalizationSkipped
+	// RollupCommitFailed : rollup commit transaction confirmed but failed
+	RollupCommitFailed
 )
 
 // BlockBatch is structure of stored block_batch
