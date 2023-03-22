@@ -230,7 +230,7 @@ func (p *BatchProposer) tryProposeBatch() {
 		}
 
 		p.proposeBatch(blocks)
-		// while size of batchDataBuffer < batchDataBufferSizeLimit,
+		// while size of batchDataBuffer < commitCalldataMinSize,
 		// proposer keeps fetching and porposing batches.
 		if p.getBatchDataBufferSize() >= p.commitCalldataMinSize {
 			return
