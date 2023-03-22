@@ -217,13 +217,7 @@ func (p *BatchProposer) tryProposeBatch() {
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
 
-	// when size of batchDataBuffer >= batchDataBufferSizeLimit,
-	// proposer does not fetch and propose batches anymore.
-	if p.getBatchDataBufferSize() >= p.batchDataBufferSizeLimit {
-		return
-	}
-
-	for {
+	for p.getBatchDataBufferSize() < p.batchDataBufferSizeLimit {
 		blocks, err := p.orm.GetUnbatchedL2Blocks(
 			map[string]interface{}{},
 			fmt.Sprintf("order by number ASC LIMIT %d", p.batchBlocksLimit),
