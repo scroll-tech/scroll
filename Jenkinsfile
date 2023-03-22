@@ -63,42 +63,42 @@ pipeline {
             parallel{
                 stage('Test bridge package') {
                     steps {
-                        sh 'go test -v -race -coverprofile=coverage.bridge.txt -covermode=atomic -p 1 scroll-tech/bridge/...'
+                        sh 'go test -v -coverprofile=coverage.bridge.txt -covermode=atomic -p 1 scroll-tech/bridge/...'
                     }
                 }
                 stage('Test common package') {
                     steps {
-                        sh 'go test -v -race -coverprofile=coverage.common.txt -covermode=atomic -p 1 scroll-tech/common/...'
+                        sh 'go test -v -coverprofile=coverage.common.txt -covermode=atomic -p 1 scroll-tech/common/...'
                     }
                 }
                 stage('Test coordinator package') {
                     steps {
-                        sh 'go test -v -race -coverprofile=coverage.coordinator.txt -covermode=atomic -p 1 scroll-tech/coordinator/...'
+                        sh 'go test -v -coverprofile=coverage.coordinator.txt -covermode=atomic -p 1 scroll-tech/coordinator/...'
                     }
                 }
                 stage('Test database package') {
                     steps {
-                        sh 'go test -v -race -coverprofile=coverage.db.txt -covermode=atomic -p 1 scroll-tech/database/...'
+                        sh 'go test -v -coverprofile=coverage.db.txt -covermode=atomic -p 1 scroll-tech/database/...'
                     }
                 }
                 stage('Integration test') {
                     steps {
-                        sh 'go test -v -race -tags mock -coverprofile=coverage.integration.txt -covermode=atomic -p 1 scroll-tech/integration-test/...'
+                        sh 'go test -v -tags="mock_prover mock_verifier" -coverprofile=coverage.integration.txt -covermode=atomic -p 1 scroll-tech/integration-test/...'
                     }
                 }
                 stage('Race test bridge package') {
                     steps {
-                        sh "cd bridge && go test -v -race -coverprofile=coverage.txt -covermode=atomic \$(go list ./... | grep -v 'database\\|common\\|l1\\|l2\\|coordinator')"
+                        sh 'go test -v -race -coverprofile=coverage.txt -covermode=atomic scroll-tech/bridge/...'
                     }
                 }
                 stage('Race test coordinator package') {
                     steps {
-                        sh "cd coordinator && go test -v -race -coverprofile=coverage.txt -covermode=atomic \$(go list ./... | grep -v 'database\\|common\\|l1\\|l2\\|coordinator')"
+                        sh 'go test -v -race -coverprofile=coverage.txt -covermode=atomic scroll-tech/coordinator/...'
                     }
                 }
                 stage('Race test database package') {
                     steps {
-                        sh "cd database && go test -v -race -coverprofile=coverage.txt -covermode=atomic \$(go list ./... | grep -v 'database\\|common\\|l1\\|l2\\|coordinator')"
+                        sh 'go test -v -race -coverprofile=coverage.txt -covermode=atomic scroll-tech/database/...'
                     }
                 }
             }

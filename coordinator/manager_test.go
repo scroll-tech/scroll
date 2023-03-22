@@ -35,8 +35,8 @@ import (
 	"scroll-tech/common/utils"
 
 	bridge_config "scroll-tech/bridge/config"
-
-	coordinator_config "scroll-tech/coordinator/config"
+  
+  coordinator_config "scroll-tech/coordinator/config"
 )
 
 var (
@@ -506,6 +506,7 @@ func setupCoordinator(t *testing.T, dbCfg *database.DBConfig, rollersPerSession 
 		Verifier:          &libzkp.VerifierConfig{MockMode: true},
 		CollectionTime:    1,
 		TokenTimeToLive:   5,
+    MaxVerifierWorkers: 10,
 	}, db, nil)
 	assert.NoError(t, err)
 	assert.NoError(t, rollerManager.Start())
