@@ -45,7 +45,6 @@ func (i *ImgDB) Start() error {
 	if id != "" {
 		return fmt.Errorf("container already exist, name: %s", i.name)
 	}
-	i.cmd.RunCmd(true)
 	i.running = i.isOk()
 	if !i.running {
 		_ = i.Stop()
@@ -106,10 +105,12 @@ func (i *ImgDB) isOk() bool {
 		}
 	})
 	defer i.cmd.UnRegistFunc(keyword)
+	// Start cmd in parallel.
+	i.cmd.RunCmd(true)
 
 	select {
 	case <-okCh:
-		utils.TryTimes(3, func() bool {
+		utils.TryTimes(20, func() bool {
 			i.id = GetContainerID(i.name)
 			return i.id != ""
 		})
