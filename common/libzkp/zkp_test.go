@@ -76,7 +76,8 @@ func TestZkp(t *testing.T) {
 	as.NoError(err)
 	for i := 0; i < *times; i++ {
 		now := time.Now()
-		proof, err = pvr.Prove(traces)
+		task := &message.TaskMsg{ID: "test", Traces: traces}
+		proof, err = pvr.Prove(task)
 		as.NoError(err)
 		t.Logf("%d: prove successfully! cost %f sec", i+1, time.Since(now).Seconds())
 	}
