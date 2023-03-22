@@ -184,7 +184,7 @@ func newTestL1Docker(t *testing.T) ImgInstance {
 	assert.NoError(t, imgL1geth.Start())
 
 	// try 3 times to get chainID until is ok.
-	utils.TryTimes(3, func() bool {
+	utils.TryTimes(10, func() bool {
 		client, _ := ethclient.Dial(imgL1geth.Endpoint())
 		if client != nil {
 			if _, err := client.ChainID(context.Background()); err == nil {
@@ -203,7 +203,7 @@ func newTestL2Docker(t *testing.T) ImgInstance {
 	assert.NoError(t, imgL2geth.Start())
 
 	// try 3 times to get chainID until is ok.
-	utils.TryTimes(3, func() bool {
+	utils.TryTimes(10, func() bool {
 		client, _ := ethclient.Dial(imgL2geth.Endpoint())
 		if client != nil {
 			if _, err := client.ChainID(context.Background()); err == nil {
@@ -222,7 +222,7 @@ func newTestDBDocker(t *testing.T, driverName string) ImgInstance {
 	assert.NoError(t, imgDB.Start())
 
 	// try 5 times until the db is ready.
-	utils.TryTimes(5, func() bool {
+	utils.TryTimes(10, func() bool {
 		db, _ := sqlx.Open(driverName, imgDB.Endpoint())
 		if db != nil {
 			return db.Ping() == nil
