@@ -219,7 +219,7 @@ const (
 	RollupFinalizing
 	// RollupFinalized : finalize transaction is confirmed to layer1
 	RollupFinalized
-	// RollupCommitFailed : rollup finalize transaction is confirmed but failed
+	// RollupFinalizeFailed : rollup finalize transaction is confirmed but failed
 	RollupFinalizeFailed
 	// RollupFinalizationSkipped : batch finalization is skipped
 	RollupFinalizationSkipped

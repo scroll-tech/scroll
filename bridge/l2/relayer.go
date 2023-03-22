@@ -573,6 +573,7 @@ func (r *Layer2Relayer) handleConfirmation(confirmation *sender.Confirmation) {
 			status = types.MsgConfirmed
 		} else {
 			status = types.MsgRelayFailed
+			log.Warn("transaction confirmed but failed in layer1", "confirmation", confirmation)
 		}
 		// @todo handle db error
 		err := r.db.UpdateLayer2StatusAndLayer1Hash(r.ctx, msgHash.(string), status, confirmation.TxHash.String())
@@ -592,6 +593,7 @@ func (r *Layer2Relayer) handleConfirmation(confirmation *sender.Confirmation) {
 			status = types.RollupCommitted
 		} else {
 			status = types.RollupCommitFailed
+			log.Warn("transaction confirmed but failed in layer1", "confirmation", confirmation)
 		}
 		for _, batchHash := range batchHashes {
 			// @todo handle db error
@@ -612,6 +614,7 @@ func (r *Layer2Relayer) handleConfirmation(confirmation *sender.Confirmation) {
 			status = types.RollupFinalized
 		} else {
 			status = types.RollupFinalizeFailed
+			log.Warn("transaction confirmed but failed in layer1", "confirmation", confirmation)
 		}
 		// @todo handle db error
 		err := r.db.UpdateFinalizeTxHashAndRollupStatus(r.ctx, batchHash.(string), confirmation.TxHash.String(), status)
