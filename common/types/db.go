@@ -203,7 +203,7 @@ func (ps ProvingStatus) String() string {
 	}
 }
 
-// RollupStatus block_batch rollup_status (pending, committing, committed, finalizing, finalized)
+// RollupStatus block_batch rollup_status (pending, committing, committed, commit_failed, finalizing, finalized, finalize_skipped, finalize_failed)
 type RollupStatus int
 
 const (
@@ -219,12 +219,12 @@ const (
 	RollupFinalizing
 	// RollupFinalized : finalize transaction is confirmed to layer1
 	RollupFinalized
-	// RollupFinalizeFailed : rollup finalize transaction is confirmed but failed
-	RollupFinalizeFailed
 	// RollupFinalizationSkipped : batch finalization is skipped
 	RollupFinalizationSkipped
 	// RollupCommitFailed : rollup commit transaction confirmed but failed
 	RollupCommitFailed
+	// RollupFinalizeFailed : rollup finalize transaction is confirmed but failed
+	RollupFinalizeFailed
 )
 
 // BlockBatch is structure of stored block_batch
