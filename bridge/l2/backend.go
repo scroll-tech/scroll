@@ -2,7 +2,7 @@ package l2
 
 import (
 	"context"
-
+	"errors"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/rpc"
 
@@ -23,6 +23,9 @@ type Backend struct {
 
 // New returns a new instance of Backend.
 func New(ctx context.Context, cfg *config.L2Config, orm database.OrmFactory) (*Backend, error) {
+	if len(cfg.Endpoints) == 0 {
+		return nil, errors.New("empty endpoint list")
+	}
 	var clients []*ethclient.Client
 	for _, endpoint := range cfg.Endpoints {
 		client, err := ethclient.Dial(endpoint)
