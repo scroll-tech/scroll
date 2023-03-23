@@ -213,20 +213,27 @@ func (w *WatcherClient) tryFetchRunningMissingBlocks(ctx context.Context, blockH
 }
 
 func (w *WatcherClient) getAndStoreBlockTraces(ctx context.Context, from, to uint64) error {
-	var traces []*types.BlockWithWithdrawTrieRoot
+	var blocks []*types.BlockWithWithdrawTrieRoot
 
-	// for number := from; number <= to; number++ {
-	// 	log.Debug("retrieving block trace", "height", number)
-	// 	trace, err2 := w.GetBlockTraceByNumber(ctx, big.NewInt(int64(number)))
-	// 	if err2 != nil {
-	// 		return fmt.Errorf("failed to GetBlockResultByHash: %v. number: %v", err2, number)
-	// 	}
-	// 	log.Info("retrieved block trace", "height", trace.Header.Number, "hash", trace.Header.Hash().String())
-	// 	traces = append(traces, trace)
-	// }
+	for number := from; number <= to; number++ {
+		log.Debug("retrieving block", "height", number)
+		block, err2 := w.BlockByNumber(ctx, big.NewInt(int64(number)))
+		if err2 != nil {
+			return fmt.Errorf("failed to GetBlockByNumber: %v. number: %v", err2, number)
+		}
 
-	if len(traces) > 0 {
-		if err := w.orm.InsertL2BlockTraces(traces); err != nil {
+		log.Info("retrieved block", "height", block.Header().Number, "hash", block.Header().Hash().String())
+
+		withdrawTrieRoot, err3 := w.StorageAt(ctx, common.HexToAddress("0x5300000000000000000000000000000000000000"), common.HexToHash("0"), big.NewInt(int64(number)))
+		if err3 != nil {
+			return fmt.Errorf("failed to get withdrawTrieRoot: %v. number: %v", err3, number)
+		}
+
+		blocks = append(blocks, &types.BlockWithWithdrawTrieRoot{block, common.BytesToHash(withdrawTrieRoot)})
+	}
+
+	if len(blocks) > 0 {
+		if err := w.orm.InsertL2BlockTraces(blocks); err != nil {
 			return fmt.Errorf("failed to batch insert BlockTraces: %v", err)
 		}
 	}
