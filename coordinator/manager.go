@@ -587,8 +587,8 @@ func (m *Manager) verifyProof(proof *message.AggProof) (bool, error) {
 		return false, errors.New("coordinator has stopped before verification")
 	}
 	verifyResultChan := m.addVerifyTask(proof)
-	verifyResult := <-verifyResultChan
-	return verifyResult.result, verifyResult.err
+	vr := <-verifyResultChan
+	return vr.result, vr.err
 }
 
 type verifyResult struct {
