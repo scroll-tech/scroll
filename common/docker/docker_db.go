@@ -114,8 +114,12 @@ func (i *ImgDB) isOk() bool {
 			i.id = GetContainerID(i.name)
 			return i.id != ""
 		})
-		return i.id != ""
+	case err := <-i.cmd.ErrChan:
+		if err != nil {
+			fmt.Printf("failed to start %s, err: %v\n", i.name, err)
+		}
 	case <-time.After(time.Second * 20):
 		return false
 	}
+	return i.id != ""
 }
