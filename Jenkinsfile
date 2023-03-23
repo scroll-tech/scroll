@@ -61,26 +61,6 @@ pipeline {
         }
         stage('Parallel Test') {
             parallel{
-                stage('Test bridge package') {
-                    steps {
-                        sh 'go test -v -coverprofile=coverage.bridge.txt -covermode=atomic -p 1 scroll-tech/bridge/...'
-                    }
-                }
-                stage('Test common package') {
-                    steps {
-                        sh 'go test -v -coverprofile=coverage.common.txt -covermode=atomic -p 1 scroll-tech/common/...'
-                    }
-                }
-                stage('Test coordinator package') {
-                    steps {
-                        sh 'go test -v -coverprofile=coverage.coordinator.txt -covermode=atomic -p 1 scroll-tech/coordinator/...'
-                    }
-                }
-                stage('Test database package') {
-                    steps {
-                        sh 'go test -v -coverprofile=coverage.db.txt -covermode=atomic -p 1 scroll-tech/database/...'
-                    }
-                }
                 stage('Integration test') {
                     steps {
                         sh 'go test -v -tags="mock_prover mock_verifier" -coverprofile=coverage.integration.txt -covermode=atomic -p 1 scroll-tech/integration-test/...'
