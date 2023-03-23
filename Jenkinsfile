@@ -23,10 +23,10 @@ pipeline {
                 stage('clean docker containers') {
                     steps {
                         // Stop and clean exited containers.
-                        sh "docker ps -a | grep 'Exited' | awk '{print \$1}' | xargs docker stop && docker container prune -f"
+                        sh "docker ps -a | grep 'Exited' | awk 'BEGIN {print 0} {print \$1}' | xargs docker stop && docker container prune -f"
                         // Stop and clean containers older than one hour.
-                        sh "docker ps -a | grep 'hours ago' | awk '{print \$1}' | xargs docker stop && docker container prune -f"
-                        sh "docker ps -a | grep 'an hour ago' | awk '{print \$1}' | xargs docker stop && docker container prune -f"
+                        sh "docker ps -a | grep 'hours ago' | awk 'BEGIN {print 0} {print \$1}' | xargs docker stop && docker container prune -f"
+                        sh "docker ps -a | grep 'an hour ago' | awk 'BEGIN {print 0} {print \$1}' | xargs docker stop && docker container prune -f"
                     }
                 }
                 stage('Build Prerequisite') {
