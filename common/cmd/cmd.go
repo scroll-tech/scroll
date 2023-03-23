@@ -58,8 +58,8 @@ func (c *Cmd) runCmd() {
 	cmd := exec.Command(c.args[0], c.args[1:]...) //nolint:gosec
 	cmd.Stdout = c
 	cmd.Stderr = c
-	if err := cmd.Run(); err != nil {
-		fmt.Printf("failed to start %s, err: %v\n", c.name, err)
+	if c.Err = cmd.Run(); c.Err != nil {
+		fmt.Printf("failed to start %s, err: %v\n", c.name, c.Err)
 	}
 }
 
