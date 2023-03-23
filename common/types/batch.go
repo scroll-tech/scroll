@@ -7,8 +7,6 @@ import (
 	"math/big"
 
 	"github.com/scroll-tech/go-ethereum/common"
-	"github.com/scroll-tech/go-ethereum/common/hexutil"
-	"github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/crypto"
 
 	abi "scroll-tech/bridge/abi"
@@ -114,54 +112,41 @@ func (b *BatchData) Hash() *common.Hash {
 
 // NewBatchData creates a BatchData given the parent batch information and the traces of the blocks
 // included in this batch
-func NewBatchData(parentBatch *BlockBatch, blockTraces []*types.BlockTrace, piCfg *PublicInputHashConfig) *BatchData {
+func NewBatchData(parentBatch *BlockBatch, blocks []*BlockWithWithdrawTrieRoot, piCfg *PublicInputHashConfig) *BatchData {
 	batchData := new(BatchData)
 	batch := &batchData.Batch
 
 	// set BatchIndex, ParentBatchHash
 	batch.BatchIndex = parentBatch.Index + 1
 	batch.ParentBatchHash = common.HexToHash(parentBatch.Hash)
-	batch.Blocks = make([]abi.IScrollChainBlockContext, len(blockTraces))
+	batch.Blocks = make([]abi.IScrollChainBlockContext, len(blocks))
 
 	var batchTxDataBuf bytes.Buffer
 	batchTxDataWriter := bufio.NewWriter(&batchTxDataBuf)
 
-	for i, trace := range blockTraces {
-		batchData.TotalTxNum += uint64(len(trace.Transactions))
-		batchData.TotalL2Gas += trace.Header.GasUsed
+	for i, block := range blocks {
+		batchData.TotalTxNum += uint64(len(block.Transactions()))
+		batchData.TotalL2Gas += block.Header().GasUsed
 
 		// set baseFee to 0 when it's nil in the block header
-		baseFee := trace.Header.BaseFee
+		baseFee := block.Header().BaseFee
 		if baseFee == nil {
 			baseFee = big.NewInt(0)
 		}
 
 		batch.Blocks[i] = abi.IScrollChainBlockContext{
-			BlockHash:       trace.Header.Hash(),
-			ParentHash:      trace.Header.ParentHash,
-			BlockNumber:     trace.Header.Number.Uint64(),
-			Timestamp:       trace.Header.Time,
+			BlockHash:       block.Header().Hash(),
+			ParentHash:      block.Header().ParentHash,
+			BlockNumber:     block.Header().Number.Uint64(),
+			Timestamp:       block.Header().Time,
 			BaseFee:         baseFee,
-			GasLimit:        trace.Header.GasLimit,
-			NumTransactions: uint16(len(trace.Transactions)),
+			GasLimit:        block.Header().GasLimit,
+			NumTransactions: uint16(len(block.Transactions())),
 			NumL1Messages:   0, // TODO: currently use 0, will re-enable after we use l2geth to include L1 messages
 		}
 
 		// fill in RLP-encoded transactions
-		for _, txData := range trace.Transactions {
-			data, _ := hexutil.Decode(txData.Data)
-			// right now we only support legacy tx
-			tx := types.NewTx(&types.LegacyTx{
-				Nonce:    txData.Nonce,
-				To:       txData.To,
-				Value:    txData.Value.ToInt(),
-				Gas:      txData.Gas,
-				GasPrice: txData.GasPrice.ToInt(),
-				Data:     data,
-				V:        txData.V.ToInt(),
-				R:        txData.R.ToInt(),
-				S:        txData.S.ToInt(),
-			})
+		for _, tx := range block.Transactions() {
 			rlpTxData, _ := tx.MarshalBinary()
 			var txLen [4]byte
 			binary.BigEndian.PutUint32(txLen[:], uint32(len(rlpTxData)))
@@ -172,13 +157,14 @@ func NewBatchData(parentBatch *BlockBatch, blockTraces []*types.BlockTrace, piCf
 
 		// set PrevStateRoot from the first block
 		if i == 0 {
-			batch.PrevStateRoot = trace.StorageTrace.RootBefore
+			// TODO: fix
+			// batch.PrevStateRoot = block.block.RootBefore
 		}
 
 		// set NewStateRoot & WithdrawTrieRoot from the last block
-		if i == len(blockTraces)-1 {
-			batch.NewStateRoot = trace.Header.Root
-			batch.WithdrawTrieRoot = trace.WithdrawTrieRoot
+		if i == len(blocks)-1 {
+			batch.NewStateRoot = block.Header().Root
+			batch.WithdrawTrieRoot = block.WithdrawTrieRoot
 		}
 	}
 
@@ -193,8 +179,8 @@ func NewBatchData(parentBatch *BlockBatch, blockTraces []*types.BlockTrace, piCf
 }
 
 // NewGenesisBatchData generates the batch that contains the genesis block.
-func NewGenesisBatchData(genesisBlockTrace *types.BlockTrace) *BatchData {
-	header := genesisBlockTrace.Header
+func NewGenesisBatchData(genesisBlockTrace *BlockWithWithdrawTrieRoot) *BatchData {
+	header := genesisBlockTrace.Header()
 	if header.Number.Uint64() != 0 {
 		panic("invalid genesis block trace: block number is not 0")
 	}

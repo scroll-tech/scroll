@@ -116,15 +116,8 @@ func (w *WatcherClient) initializeGenesis() error {
 
 	log.Info("retrieved L2 genesis header", "hash", genesis.Hash().String())
 
-	blockTrace := &geth_types.BlockTrace{
-		Coinbase:         nil,
-		Header:           genesis,
-		Transactions:     []*geth_types.TransactionData{},
-		StorageTrace:     nil,
-		ExecutionResults: []*geth_types.ExecutionResult{},
-		MPTWitness:       nil,
-	}
-
+	block := geth_types.NewBlockWithHeader(genesis)
+	blockTrace := &types.BlockWithWithdrawTrieRoot{block, common.Hash{}}
 	batchData := types.NewGenesisBatchData(blockTrace)
 
 	if err = AddBatchInfoToDB(w.orm, batchData); err != nil {

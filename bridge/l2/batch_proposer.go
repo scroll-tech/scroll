@@ -8,7 +8,6 @@ import (
 	"sync"
 	"time"
 
-	geth_types "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/log"
 	geth_metrics "github.com/scroll-tech/go-ethereum/metrics"
 
@@ -374,7 +373,7 @@ func (p *BatchProposer) createBatchForBlocks(blocks []*types.BlockInfo) error {
 }
 
 func (p *BatchProposer) generateBatchData(parentBatch *types.BlockBatch, blocks []*types.BlockInfo) (*types.BatchData, error) {
-	var traces []*geth_types.BlockTrace
+	var traces []*types.BlockWithWithdrawTrieRoot
 	for _, block := range blocks {
 		trs, err := p.orm.GetL2BlockTraces(map[string]interface{}{"hash": block.Hash})
 		if err != nil || len(trs) != 1 {
