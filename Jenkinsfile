@@ -20,15 +20,15 @@ pipeline {
     stages {
         stage('Build') {
             parallel {
-                /* stage('Clean docker containers') {
+                stage('Clean docker containers') {
                     steps {
                         // Clean stopped and exited containers.
-                        sh 'docker ps -a | grep "hours ago" | awk \'BEGIN {print 0} {print \$1}\' | xargs docker stop 2>/dev/null'
-                        sh 'docker ps -a | grep "an hour ago" | awk \'BEGIN {print 0} {print \$1}\' | xargs docker stop 2>/dev/null'
+                        sh 'docker ps -a | grep "hours ago"'
+//                         sh 'docker ps -a | grep "an hour ago" | awk \'BEGIN {print 0} {print \$1}\' | xargs docker stop 2>/dev/null'
                         // Remove all stopped containers
                         sh "docker container prune -f"
                     }
-                } */
+                }
                 stage('Build Prerequisite') {
                     steps {
                         sh 'make dev_docker'
