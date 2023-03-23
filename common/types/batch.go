@@ -155,10 +155,8 @@ func NewBatchData(parentBatch *BlockBatch, blocks []*BlockWithWithdrawTrieRoot, 
 			batchData.TxHashes = append(batchData.TxHashes, tx.Hash())
 		}
 
-		// set PrevStateRoot from the first block
 		if i == 0 {
-			// TODO: fix
-			// batch.PrevStateRoot = block.block.RootBefore
+			batch.PrevStateRoot = common.HexToHash(parentBatch.StateRoot)
 		}
 
 		// set NewStateRoot & WithdrawTrieRoot from the last block
