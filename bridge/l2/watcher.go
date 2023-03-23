@@ -58,8 +58,9 @@ type WatcherClient struct {
 	messengerAddress common.Address
 	messengerABI     *abi.ABI
 
-	messageQueueAddress common.Address
-	messageQueueABI     *abi.ABI
+	messageQueueAddress  common.Address
+	messageQueueABI      *abi.ABI
+	withdrawTrieRootSlot common.Hash
 
 	// The height of the block that the watcher has retrieved event logs
 	processedMsgHeight uint64
@@ -69,7 +70,7 @@ type WatcherClient struct {
 }
 
 // NewL2WatcherClient take a l2geth instance to generate a l2watcherclient instance
-func NewL2WatcherClient(ctx context.Context, client *ethclient.Client, confirmations rpc.BlockNumber, messengerAddress, messageQueueAddress common.Address, orm database.OrmFactory) *WatcherClient {
+func NewL2WatcherClient(ctx context.Context, client *ethclient.Client, confirmations rpc.BlockNumber, messengerAddress, messageQueueAddress common.Address, withdrawTrieRootSlot common.Hash, orm database.OrmFactory) *WatcherClient {
 	savedHeight, err := orm.GetLayer2LatestWatchedHeight()
 	if err != nil {
 		log.Warn("fetch height from db failed", "err", err)
@@ -86,8 +87,9 @@ func NewL2WatcherClient(ctx context.Context, client *ethclient.Client, confirmat
 		messengerAddress: messengerAddress,
 		messengerABI:     bridge_abi.L2ScrollMessengerABI,
 
-		messageQueueAddress: messageQueueAddress,
-		messageQueueABI:     bridge_abi.L2MessageQueueABI,
+		messageQueueAddress:  messageQueueAddress,
+		messageQueueABI:      bridge_abi.L2MessageQueueABI,
+		withdrawTrieRootSlot: withdrawTrieRootSlot,
 
 		stopCh:  make(chan struct{}),
 		stopped: 0,
@@ -224,7 +226,7 @@ func (w *WatcherClient) getAndStoreBlockTraces(ctx context.Context, from, to uin
 
 		log.Info("retrieved block", "height", block.Header().Number, "hash", block.Header().Hash().String())
 
-		withdrawTrieRoot, err3 := w.StorageAt(ctx, common.HexToAddress("0x5300000000000000000000000000000000000000"), common.HexToHash("0"), big.NewInt(int64(number)))
+		withdrawTrieRoot, err3 := w.StorageAt(ctx, w.messageQueueAddress, w.withdrawTrieRootSlot, big.NewInt(int64(number)))
 		if err3 != nil {
 			return fmt.Errorf("failed to get withdrawTrieRoot: %v. number: %v", err3, number)
 		}
