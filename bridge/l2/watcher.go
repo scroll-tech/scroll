@@ -220,16 +220,18 @@ func (w *WatcherClient) tryFetchRunningMissingBlocks(ctx context.Context, blockH
 }
 
 func (w *WatcherClient) getAndStoreBlockTraces(ctx context.Context, from, to uint64) error {
-	var traces []*geth_types.BlockTrace
-	for number := from; number <= to; number++ {
-		log.Debug("retrieving block trace", "height", number)
-		trace, err2 := w.GetBlockTraceByNumber(ctx, big.NewInt(int64(number)))
-		if err2 != nil {
-			return fmt.Errorf("failed to GetBlockResultByHash: %v. number: %v", err2, number)
-		}
-		log.Info("retrieved block trace", "height", trace.Header.Number, "hash", trace.Header.Hash().String())
-		traces = append(traces, trace)
-	}
+	var traces []*types.BlockWithWithdrawTrieRoot
+
+	// for number := from; number <= to; number++ {
+	// 	log.Debug("retrieving block trace", "height", number)
+	// 	trace, err2 := w.GetBlockTraceByNumber(ctx, big.NewInt(int64(number)))
+	// 	if err2 != nil {
+	// 		return fmt.Errorf("failed to GetBlockResultByHash: %v. number: %v", err2, number)
+	// 	}
+	// 	log.Info("retrieved block trace", "height", trace.Header.Number, "hash", trace.Header.Hash().String())
+	// 	traces = append(traces, trace)
+	// }
+
 	if len(traces) > 0 {
 		if err := w.orm.InsertL2BlockTraces(traces); err != nil {
 			return fmt.Errorf("failed to batch insert BlockTraces: %v", err)

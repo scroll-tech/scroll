@@ -152,7 +152,7 @@ func (o *blockTraceOrm) GetL2BlockHashByNumber(number uint64) (*common.Hash, err
 	return &hash, nil
 }
 
-func (o *blockTraceOrm) InsertL2BlockTraces(blockTraces []*geth_types.BlockTrace) error {
+func (o *blockTraceOrm) InsertL2BlockTraces(blockTraces []*types.BlockWithWithdrawTrieRoot) error {
 	traceMaps := make([]map[string]interface{}, len(blockTraces))
 	for i, trace := range blockTraces {
 		number, hash, txNum, mtime := trace.Header.Number.Int64(),
