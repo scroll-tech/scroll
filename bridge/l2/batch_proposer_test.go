@@ -3,11 +3,11 @@ package l2
 import (
 	"context"
 	"fmt"
-	"github.com/scroll-tech/go-ethereum/ethclient"
 	"math"
 	"testing"
 
 	geth_types "github.com/scroll-tech/go-ethereum/core/types"
+	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/stretchr/testify/assert"
 
 	"scroll-tech/database"

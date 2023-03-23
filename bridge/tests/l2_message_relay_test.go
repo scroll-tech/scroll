@@ -2,13 +2,13 @@ package tests
 
 import (
 	"context"
-	"github.com/scroll-tech/go-ethereum/ethclient"
 	"math/big"
 	"testing"
 
 	"github.com/scroll-tech/go-ethereum/accounts/abi/bind"
 	"github.com/scroll-tech/go-ethereum/common"
 	geth_types "github.com/scroll-tech/go-ethereum/core/types"
+	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/rpc"
 	"github.com/stretchr/testify/assert"
 
