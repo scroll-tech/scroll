@@ -24,11 +24,11 @@ func (c *Cmd) RunApp(waitResult func() bool) {
 	}
 	if waitResult != nil {
 		go func() {
-			_ = cmd.Run()
+			c.ErrChan <- cmd.Run()
 		}()
 		waitResult()
 	} else {
-		_ = cmd.Run()
+		c.ErrChan <- cmd.Run()
 	}
 
 	c.mu.Lock()
@@ -39,11 +39,13 @@ func (c *Cmd) RunApp(waitResult func() bool) {
 // WaitExit wait util process exit.
 func (c *Cmd) WaitExit() {
 	// Wait all the check functions are finished, interrupt loop when appear error.
-	for !c.checkFuncs.IsEmpty() {
+	var err error
+	for err == nil && !c.checkFuncs.IsEmpty() {
 		select {
-		case err := <-c.ErrChan:
-			fmt.Printf("%s appear error durning running, err: %v\n", c.name, err)
-			break
+		case err = <-c.ErrChan:
+			if err != nil {
+				fmt.Printf("%s appear error durning running, err: %v\n", c.name, err)
+			}
 		default:
 			<-time.After(time.Millisecond * 500)
 		}
