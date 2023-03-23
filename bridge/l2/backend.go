@@ -3,6 +3,7 @@ package l2
 import (
 	"context"
 	"errors"
+
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/rpc"
 
