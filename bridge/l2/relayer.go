@@ -37,7 +37,10 @@ var (
 	bridgeL2MsgsRelayedConfirmedTotalCounter      = geth_metrics.NewRegisteredCounter("bridge/l2/msgs/relayed/confirmed/total", metrics.ScrollRegistry)
 	bridgeL2BatchesFinalizedConfirmedTotalCounter = geth_metrics.NewRegisteredCounter("bridge/l2/batches/finalized/confirmed/total", metrics.ScrollRegistry)
 	bridgeL2BatchesCommittedConfirmedTotalCounter = geth_metrics.NewRegisteredCounter("bridge/l2/batches/committed/confirmed/total", metrics.ScrollRegistry)
-	bridgeL2BatchesSkippedTotalCounter            = geth_metrics.NewRegisteredCounter("bridge/l2/batches/skipped/total", metrics.ScrollRegistry)
+
+	// proof skip rate.
+	bridgeL2BatchesSkippedTotalCounter = geth_metrics.NewRegisteredCounter("bridge/l2/batches/skipped/total", metrics.ScrollRegistry)
+	bridgeL2BatchesTotalCounter        = geth_metrics.NewRegisteredCounter("bridge/l2/batches/total", metrics.ScrollRegistry)
 )
 
 const (
@@ -374,7 +377,6 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 		log.Error("UpdateSkippedBatches failed", "err", err)
 		// continue anyway
 	} else if count > 0 {
-		bridgeL2BatchesSkippedTotalCounter.Inc(count)
 		log.Info("Skipping batches", "count", count)
 	}
 
@@ -403,6 +405,8 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 	batch := batches[0]
 	status := batch.ProvingStatus
 
+	bridgeL2BatchesTotalCounter.Inc(1)
+
 	switch status {
 	case types.ProvingTaskUnassigned, types.ProvingTaskAssigned:
 		// The proof for this block is not ready yet.
@@ -418,6 +422,10 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 
 		if err = r.db.UpdateRollupStatus(r.ctx, hash, types.RollupFinalizationSkipped); err != nil {
 			log.Warn("UpdateRollupStatus failed", "hash", hash, "err", err)
+		}
+
+		if status == types.ProvingTaskSkipped {
+			bridgeL2BatchesSkippedTotalCounter.Inc(1)
 		}
 
 	case types.ProvingTaskVerified:

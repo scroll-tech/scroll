@@ -30,10 +30,22 @@ import (
 )
 
 var (
-	coordinatorSessionsTimeoutTotalCounter      = geth_metrics.NewRegisteredCounter("coordinator/sessions/timeout/total", metrics.ScrollRegistry)
+	// proofs
 	coordinatorProofsReceivedTotalCounter       = geth_metrics.NewRegisteredCounter("coordinator/proofs/received/total", metrics.ScrollRegistry)
 	coordinatorProofsVerifiedTotalCounter       = geth_metrics.NewRegisteredCounter("coordinator/proofs/verified/total", metrics.ScrollRegistry)
 	coordinatorProofsVerifiedFailedTotalCounter = geth_metrics.NewRegisteredCounter("coordinator/proofs/verified/failed/total", metrics.ScrollRegistry)
+
+	// sessions
+	coordinatorSessionsSuccessTotalCounter = geth_metrics.NewRegisteredCounter("coordinator/sessions/success/total", metrics.ScrollRegistry)
+	coordinatorSessionsTimeoutTotalCounter = geth_metrics.NewRegisteredCounter("coordinator/sessions/timeout/total", metrics.ScrollRegistry)
+	coordinatorSessionsFailedTotalCounter  = geth_metrics.NewRegisteredCounter("coordinator/sessions/failed/total", metrics.ScrollRegistry)
+	coordinatorSessionsActiveTotalCounter  = geth_metrics.NewRegisteredCounter("coordinator/sessions/active/total", metrics.ScrollRegistry)
+
+	// proof timers
+	coordinatorSessionsProofSuccessTimeTimer            = geth_metrics.NewRegisteredTimer("coordinator/sessions/proof/success/time", metrics.ScrollRegistry)
+	coordinatorSessionsProofGenerationFailedTimeTimer   = geth_metrics.NewRegisteredTimer("coordinator/sessions/proof/verification/failed/time", metrics.ScrollRegistry)
+	coordinatorSessionsProofVerificationFailedTimeTimer = geth_metrics.NewRegisteredTimer("coordinator/sessions/proof/verification/failed/time", metrics.ScrollRegistry)
+	coordinatorSessionsVerificationTimeTimer            = geth_metrics.NewRegisteredTimer("coordinator/sessions/verification/time", metrics.ScrollRegistry)
 )
 
 const (
@@ -44,6 +56,15 @@ type rollerProofStatus struct {
 	id     string
 	pk     string
 	status types.RollerProveStatus
+}
+
+type rollerMetrics struct {
+	rollerProofsProvingSuccessTimeTimer    geth_metrics.Timer
+	rollerProofsProvingFailedTimeTimer     geth_metrics.Timer
+	rollerProofsSuccessTotalCounter        geth_metrics.Counter
+	rollerProofsFailedTotalCounter         geth_metrics.Counter
+	rollerProofsLastAssignedTimestampGauge geth_metrics.Gauge
+	rollerProofsLastFinishedTimestampGauge geth_metrics.Gauge
 }
 
 // Contains all the information on an ongoing proof generation session.
@@ -242,7 +263,8 @@ func (m *Manager) handleZkProof(pk string, msg *message.ProofDetail) error {
 	if !ok {
 		return fmt.Errorf("proof generation session for id %v does not existID", msg.ID)
 	}
-	proofTimeSec := uint64(time.Since(time.Unix(sess.info.StartTimestamp, 0)).Seconds())
+	proofTime := time.Since(time.Unix(sess.info.StartTimestamp, 0))
+	proofTimeSec := uint64(proofTime.Seconds())
 
 	// Ensure this roller is eligible to participate in the session.
 	roller, ok := sess.info.Rollers[pk]
@@ -267,6 +289,7 @@ func (m *Manager) handleZkProof(pk string, msg *message.ProofDetail) error {
 		"proof id", msg.ID,
 		"roller name", roller.Name,
 		"roller pk", roller.PublicKey,
+		"proof time", proofTimeSec,
 	)
 
 	defer func() {
@@ -287,6 +310,7 @@ func (m *Manager) handleZkProof(pk string, msg *message.ProofDetail) error {
 	}()
 
 	if msg.Status != message.StatusOk {
+		coordinatorSessionsProofGenerationFailedTimeTimer.Update(proofTime)
 		log.Error(
 			"Roller failed to generate proof",
 			"msg.ID", msg.ID,
@@ -309,8 +333,11 @@ func (m *Manager) handleZkProof(pk string, msg *message.ProofDetail) error {
 
 	coordinatorProofsReceivedTotalCounter.Inc(1)
 
+	st := time.Now().Unix()
 	var err error
 	success, err = m.verifyProof(msg.Proof)
+	verificationTime := time.Since(time.Unix(st, 0))
+	coordinatorSessionsVerificationTimeTimer.Update(verificationTime)
 	if err != nil {
 		// TODO: this is only a temp workaround for testnet, we should return err in real cases
 		success = false
@@ -330,14 +357,26 @@ func (m *Manager) handleZkProof(pk string, msg *message.ProofDetail) error {
 			return dbErr
 		}
 		coordinatorProofsVerifiedTotalCounter.Inc(1)
+		coordinatorSessionsProofSuccessTimeTimer.Update(proofTime)
+		m.updateRollerProofsSuccessTotal(roller.PublicKey)
+		m.updateRollerProvingSuccessTimeTimer(roller.PublicKey, proofTime)
+		log.Info("proof success", "proof id", msg.ID, "roller name", roller.Name,
+			"roller pk", roller.PublicKey, "proof time", proofTimeSec)
 	} else {
 		coordinatorProofsVerifiedFailedTotalCounter.Inc(1)
+		coordinatorSessionsProofVerificationFailedTimeTimer.Update(proofTime)
+		m.updateRollerProofsFailedTotal(roller.PublicKey)
+		m.updateRollerProvingFailedTimeTimer(roller.PublicKey, proofTime)
+		log.Info("proof failed", "proof id", msg.ID, "roller name", roller.Name,
+			"roller pk", roller.PublicKey, "proof time", proofTimeSec)
 	}
 	return nil
 }
 
 // CollectProofs collects proofs corresponding to a proof generation session.
 func (m *Manager) CollectProofs(sess *session) {
+	coordinatorSessionsActiveTotalCounter.Inc(1)
+
 	//Cleanup roller sessions before return.
 	defer func() {
 		// TODO: remove the clean-up, rollers report healthy status.
@@ -347,6 +386,7 @@ func (m *Manager) CollectProofs(sess *session) {
 		}
 		delete(m.sessions, sess.info.ID)
 		m.mu.Unlock()
+		coordinatorSessionsActiveTotalCounter.Dec(1)
 	}()
 	for {
 		select {
@@ -363,6 +403,7 @@ func (m *Manager) CollectProofs(sess *session) {
 			if err := m.orm.UpdateProvingStatus(sess.info.ID, types.ProvingTaskFailed); err != nil {
 				log.Error("fail to reset task_status as Unassigned", "id", sess.info.ID, "err", err)
 			}
+			coordinatorSessionsTimeoutTotalCounter.Inc(1)
 			return
 
 		//Execute after one of the roller finishes sending proof, return early if all rollers had sent results.
@@ -373,6 +414,7 @@ func (m *Manager) CollectProofs(sess *session) {
 				if err := m.orm.UpdateProvingStatus(ret.id, types.ProvingTaskFailed); err != nil {
 					log.Error("failed to update proving_status as failed", "msg.ID", ret.id, "error", err)
 				}
+				coordinatorSessionsFailedTotalCounter.Inc(1)
 			}
 			if err := m.orm.SetSessionInfo(sess.info); err != nil {
 				log.Error("db set session info fail", "pk", ret.pk, "error", err)
@@ -387,6 +429,8 @@ func (m *Manager) CollectProofs(sess *session) {
 				_ = validRollers[randIndex]
 				// TODO: reward winner
 				m.mu.Unlock()
+
+				coordinatorSessionsSuccessTotalCounter.Inc(1)
 				return
 			}
 			m.mu.Unlock()
@@ -492,6 +536,7 @@ func (m *Manager) StartProofGenerationSession(task *types.BlockBatch) (success b
 			log.Error("send task failed", "roller name", roller.Name, "public key", roller.PublicKey, "id", task.Hash)
 			continue
 		}
+		m.updateRollerProofsLastAssignedTimestamp(roller.PublicKey)
 		rollers[roller.PublicKey] = &types.RollerStatus{PublicKey: roller.PublicKey, Name: roller.Name, Status: types.RollerAssigned}
 	}
 	// No roller assigned.
@@ -516,17 +561,18 @@ func (m *Manager) StartProofGenerationSession(task *types.BlockBatch) (success b
 		finishChan: make(chan rollerProofStatus, proofAndPkBufferSize),
 	}
 
+	for _, roller := range sess.info.Rollers {
+		log.Error(
+			"assigned rollers",
+			"session id", sess.info.ID,
+			"roller name", roller.Name,
+			"roller pk", roller.PublicKey,
+			"proof status", roller.Status)
+	}
+
 	// Store session info.
 	if err = m.orm.SetSessionInfo(sess.info); err != nil {
-		log.Error("db set session info fail", "error", err)
-		for _, roller := range sess.info.Rollers {
-			log.Error(
-				"restore roller info for session",
-				"session id", sess.info.ID,
-				"roller name", roller.Name,
-				"public key", roller.PublicKey,
-				"proof status", roller.Status)
-		}
+		log.Error("db set session info fail", "session id", sess.info.ID, "error", err)
 		return false
 	}
 
