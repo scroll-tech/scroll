@@ -61,24 +61,29 @@ pipeline {
         }
         stage('Parallel Test') {
             parallel{
-                stage('Integration test') {
+                stage('Race test common package') {
                     steps {
-                        sh 'go test -v -tags="mock_prover mock_verifier" -coverprofile=coverage.integration.txt -covermode=atomic -p 1 scroll-tech/integration-test/...'
+                        sh 'go test -v -race -coverprofile=coverage.common.txt -covermode=atomic scroll-tech/common/...'
                     }
                 }
                 stage('Race test bridge package') {
                     steps {
-                        sh 'go test -v -race -coverprofile=coverage.txt -covermode=atomic scroll-tech/bridge/...'
+                        sh 'go test -v -race -coverprofile=coverage.bridge.txt -covermode=atomic scroll-tech/bridge/...'
                     }
                 }
                 stage('Race test coordinator package') {
                     steps {
-                        sh 'go test -v -race -coverprofile=coverage.txt -covermode=atomic scroll-tech/coordinator/...'
+                        sh 'go test -v -race -coverprofile=coverage.coordinator.txt -covermode=atomic scroll-tech/coordinator/...'
                     }
                 }
                 stage('Race test database package') {
                     steps {
-                        sh 'go test -v -race -coverprofile=coverage.txt -covermode=atomic scroll-tech/database/...'
+                        sh 'go test -v -race -coverprofile=coverage.db.txt -covermode=atomic scroll-tech/database/...'
+                    }
+                }
+                stage('Integration test') {
+                    steps {
+                        sh 'go test -v -tags="mock_prover mock_verifier" -coverprofile=coverage.integration.txt -covermode=atomic -p 1 scroll-tech/integration-test/...'
                     }
                 }
             }
