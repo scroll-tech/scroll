@@ -9,7 +9,6 @@ import (
 
 	"github.com/jmoiron/sqlx"
 	"github.com/scroll-tech/go-ethereum/common"
-	geth_types "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/log"
 
 	"scroll-tech/common/types"
@@ -48,7 +47,7 @@ func (o *blockTraceOrm) GetL2BlockTracesLatestHeight() (int64, error) {
 	return height, nil
 }
 
-func (o *blockTraceOrm) GetL2BlockTraces(fields map[string]interface{}, args ...string) ([]*geth_types.BlockTrace, error) {
+func (o *blockTraceOrm) GetL2BlockTraces(fields map[string]interface{}, args ...string) ([]*types.BlockWithWithdrawTrieRoot, error) {
 	type Result struct {
 		Trace string
 	}
@@ -65,13 +64,13 @@ func (o *blockTraceOrm) GetL2BlockTraces(fields map[string]interface{}, args ...
 		return nil, err
 	}
 
-	var traces []*geth_types.BlockTrace
+	var traces []*types.BlockWithWithdrawTrieRoot
 	for rows.Next() {
 		result := &Result{}
 		if err = rows.StructScan(result); err != nil {
 			break
 		}
-		trace := geth_types.BlockTrace{}
+		trace := types.BlockWithWithdrawTrieRoot{}
 		err = json.Unmarshal([]byte(result.Trace), &trace)
 		if err != nil {
 			break

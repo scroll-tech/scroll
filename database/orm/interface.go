@@ -8,7 +8,6 @@ import (
 
 	"github.com/jmoiron/sqlx"
 	"github.com/scroll-tech/go-ethereum/common"
-	eth_types "github.com/scroll-tech/go-ethereum/core/types"
 )
 
 // L1BlockOrm l1_block operation interface
@@ -30,7 +29,7 @@ type L1BlockOrm interface {
 type BlockTraceOrm interface {
 	IsL2BlockExists(number uint64) (bool, error)
 	GetL2BlockTracesLatestHeight() (int64, error)
-	GetL2BlockTraces(fields map[string]interface{}, args ...string) ([]*eth_types.BlockTrace, error)
+	GetL2BlockTraces(fields map[string]interface{}, args ...string) ([]*types.BlockWithWithdrawTrieRoot, error)
 	GetL2BlockInfos(fields map[string]interface{}, args ...string) ([]*types.BlockInfo, error)
 	// GetUnbatchedBlocks add `GetUnbatchedBlocks` because `GetBlockInfos` cannot support query "batch_hash is NULL"
 	GetUnbatchedL2Blocks(fields map[string]interface{}, args ...string) ([]*types.BlockInfo, error)
