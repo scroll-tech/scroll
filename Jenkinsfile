@@ -15,7 +15,7 @@ pipeline {
         PATH="/home/ubuntu/.cargo/bin:$PATH"
         LD_LIBRARY_PATH="$LD_LIBRARY_PATH:./coordinator/verifier/lib"
         CHAIN_ID='534353'
-        LOG_DOCKER = 'true'
+        // LOG_DOCKER = 'true'
     }
     stages {
         stage('Build') {
@@ -31,12 +31,12 @@ pipeline {
                         sh 'make -C bridge bridge'
                     }
                 }
-                /* stage('Check Coordinator Compilation') {
+                stage('Check Coordinator Compilation') {
                     steps {
                         sh 'export PATH=/home/ubuntu/go/bin:$PATH'
                         sh 'make -C coordinator coordinator'
                     }
-                } */
+                }
                 stage('Check Database Compilation') {
                     steps {
                         sh 'make -C database db_cli'

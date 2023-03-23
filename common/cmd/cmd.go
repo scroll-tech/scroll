@@ -32,7 +32,7 @@ type Cmd struct {
 	checkFuncs cmap.ConcurrentMap //map[string]checkFunc
 
 	//stdout bytes.Buffer
-	Err error
+	ErrChan chan error
 }
 
 // NewCmd create Cmd instance.
@@ -41,6 +41,7 @@ func NewCmd(name string, args ...string) *Cmd {
 		checkFuncs: cmap.New(),
 		name:       name,
 		args:       args,
+		ErrChan:    make(chan error, 10),
 	}
 }
 
@@ -58,9 +59,7 @@ func (c *Cmd) runCmd() {
 	cmd := exec.Command(c.args[0], c.args[1:]...) //nolint:gosec
 	cmd.Stdout = c
 	cmd.Stderr = c
-	if c.Err = cmd.Run(); c.Err != nil {
-		fmt.Printf("failed to start %s, err: %v\n", c.name, c.Err)
-	}
+	c.ErrChan <- cmd.Run()
 }
 
 // RunCmd parallel running when parallel is true.

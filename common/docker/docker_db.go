@@ -115,6 +115,9 @@ func (i *ImgDB) isOk() bool {
 			return i.id != ""
 		})
 		return i.id != ""
+	case err := <-i.cmd.ErrChan:
+		fmt.Printf("failed to start %s, err: %v\n", i.name, err)
+		return false
 	case <-time.After(time.Second * 20):
 		return false
 	}
