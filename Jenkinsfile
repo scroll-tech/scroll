@@ -15,11 +15,20 @@ pipeline {
         PATH="/home/ubuntu/.cargo/bin:$PATH"
         LD_LIBRARY_PATH="$LD_LIBRARY_PATH:./coordinator/verifier/lib"
         CHAIN_ID='534353'
-        LOG_DOCKER = 'true'
+        // LOG_DOCKER = 'true'
     }
     stages {
         stage('Build') {
             parallel {
+                stage('clean docker containers') {
+                    steps {
+                        // Stop and clean exited containers.
+                        sh "docker ps -a | grep 'Exited' | awk '{print $1}' | xargs docker stop && docker container prune -f"
+                        // Stop and clean containers older than one hour.
+                        sh "docker ps -a | grep 'hours ago' | awk '{print $1}' | xargs docker stop && docker container prune -f"
+                        sh "docker ps -a | grep 'an hour ago' | awk '{print $1}' | xargs docker stop && docker container prune -f"
+                    }
+                }
                 stage('Build Prerequisite') {
                     steps {
                         sh 'make dev_docker'
