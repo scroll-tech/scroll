@@ -17,7 +17,7 @@ RUN go mod download -x
 
 # Build coordinator
 FROM base as builder
-ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:./common/libzkp/lib
+ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/src/common/libzkp/lib
 RUN apk add --no-cache perl-utils
 COPY . .
 RUN cd ./common/libzkp && sh build.sh
