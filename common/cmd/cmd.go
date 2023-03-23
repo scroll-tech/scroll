@@ -58,7 +58,9 @@ func (c *Cmd) runCmd() {
 	cmd := exec.Command(c.args[0], c.args[1:]...) //nolint:gosec
 	cmd.Stdout = c
 	cmd.Stderr = c
-	_ = cmd.Run()
+	if err := cmd.Run(); err != nil {
+		fmt.Printf("failed to start %s, err: %v\n", c.name, err)
+	}
 }
 
 // RunCmd parallel running when parallel is true.
