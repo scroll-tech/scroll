@@ -2,6 +2,7 @@ package l2
 
 import (
 	"context"
+	"crypto/rand"
 	"errors"
 	"fmt"
 	"math/big"
@@ -50,6 +51,7 @@ type WatcherClient struct {
 	event.Feed
 
 	*ethclient.Client
+	traceClients []*ethclient.Client
 
 	orm database.OrmFactory
 
@@ -69,7 +71,7 @@ type WatcherClient struct {
 }
 
 // NewL2WatcherClient take a l2geth instance to generate a l2watcherclient instance
-func NewL2WatcherClient(ctx context.Context, client *ethclient.Client, confirmations rpc.BlockNumber, messengerAddress, messageQueueAddress common.Address, orm database.OrmFactory) *WatcherClient {
+func NewL2WatcherClient(ctx context.Context, clients []*ethclient.Client, confirmations rpc.BlockNumber, messengerAddress, messageQueueAddress common.Address, orm database.OrmFactory) *WatcherClient {
 	savedHeight, err := orm.GetLayer2LatestWatchedHeight()
 	if err != nil {
 		log.Warn("fetch height from db failed", "err", err)
@@ -78,7 +80,8 @@ func NewL2WatcherClient(ctx context.Context, client *ethclient.Client, confirmat
 
 	w := WatcherClient{
 		ctx:                ctx,
-		Client:             client,
+		Client:             clients[0],
+		traceClients:       clients,
 		orm:                orm,
 		processedMsgHeight: uint64(savedHeight),
 		confirmations:      confirmations,
@@ -219,11 +222,26 @@ func (w *WatcherClient) tryFetchRunningMissingBlocks(ctx context.Context, blockH
 	}
 }
 
+func getTraceFromMultiNodes(ctx context.Context, clients []*ethclient.Client, number *big.Int) (trace *geth_types.BlockTrace, err error) {
+	if len(clients) == 0 {
+		return nil, errors.New("can't get trace from empty clients")
+	}
+	// Try 3times if failed to get trace.
+	cutil.TryTimes(3, func() bool {
+		// Randomly select a client from traceClients.
+		id, _ := rand.Int(rand.Reader, big.NewInt(int64(len(clients))))
+		client := clients[id.Int64()]
+		trace, err = client.GetBlockTraceByNumber(ctx, number)
+		return err == nil && trace != nil
+	})
+	return
+}
+
 func (w *WatcherClient) getAndStoreBlockTraces(ctx context.Context, from, to uint64) error {
 	var traces []*geth_types.BlockTrace
 	for number := from; number <= to; number++ {
 		log.Debug("retrieving block trace", "height", number)
-		trace, err2 := w.GetBlockTraceByNumber(ctx, big.NewInt(int64(number)))
+		trace, err2 := getTraceFromMultiNodes(ctx, w.traceClients, big.NewInt(int64(number)))
 		if err2 != nil {
 			return fmt.Errorf("failed to GetBlockResultByHash: %v. number: %v", err2, number)
 		}

@@ -3,6 +3,7 @@ package l2
 import (
 	"context"
 	"fmt"
+	"github.com/scroll-tech/go-ethereum/ethclient"
 	"math"
 	"testing"
 
@@ -28,7 +29,7 @@ func testBatchProposerProposeBatch(t *testing.T) {
 	assert.NoError(t, db.InsertL2BlockTraces([]*geth_types.BlockTrace{blockTrace1}))
 
 	l2cfg := cfg.L2Config
-	wc := NewL2WatcherClient(context.Background(), l2Cli, l2cfg.Confirmations, l2cfg.L2MessengerAddress, l2cfg.L2MessageQueueAddress, db)
+	wc := NewL2WatcherClient(context.Background(), []*ethclient.Client{l2Cli}, l2cfg.Confirmations, l2cfg.L2MessengerAddress, l2cfg.L2MessageQueueAddress, db)
 	wc.Start()
 	defer wc.Stop()
 

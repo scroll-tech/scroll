@@ -130,7 +130,7 @@ func mockBridgeConfig(t *testing.T) string {
 
 	cfg.L1Config.Endpoint = base.L1GethEndpoint()
 	cfg.L2Config.RelayerConfig.SenderConfig.Endpoint = base.L1GethEndpoint()
-	cfg.L2Config.Endpoint = base.L2GethEndpoint()
+	cfg.L2Config.Endpoints[0] = base.L2GethEndpoint()
 	cfg.L1Config.RelayerConfig.SenderConfig.Endpoint = base.L2GethEndpoint()
 	cfg.DBConfig.DSN = base.DBEndpoint()
 

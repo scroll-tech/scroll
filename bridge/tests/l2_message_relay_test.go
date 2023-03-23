@@ -2,6 +2,7 @@ package tests
 
 import (
 	"context"
+	"github.com/scroll-tech/go-ethereum/ethclient"
 	"math/big"
 	"testing"
 
@@ -33,7 +34,7 @@ func testRelayL2MessageSucceed(t *testing.T) {
 
 	// Create L2Watcher
 	confirmations := rpc.LatestBlockNumber
-	l2Watcher := l2.NewL2WatcherClient(context.Background(), l2Client, confirmations, l2Cfg.L2MessengerAddress, l2Cfg.L2MessageQueueAddress, db)
+	l2Watcher := l2.NewL2WatcherClient(context.Background(), []*ethclient.Client{l2Client}, confirmations, l2Cfg.L2MessengerAddress, l2Cfg.L2MessageQueueAddress, db)
 
 	// Create L2Relayer
 	l2Relayer, err := l2.NewLayer2Relayer(context.Background(), l2Client, db, l2Cfg.RelayerConfig)

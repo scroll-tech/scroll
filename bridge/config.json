@@ -36,7 +36,9 @@
   },
   "l2_config": {
     "confirmations": "0x1",
-    "endpoint": "/var/lib/jenkins/workspace/SequencerPipeline/MyPrivateNetwork/geth.ipc",
+    "endpoints": [
+      "/var/lib/jenkins/workspace/SequencerPipeline/MyPrivateNetwork/geth.ipc"
+    ],
     "l2_messenger_address": "0x0000000000000000000000000000000000000000",
     "l2_message_queue_address": "0x0000000000000000000000000000000000000000",
     "relayer_config": {

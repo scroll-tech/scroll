@@ -13,7 +13,7 @@ type L2Config struct {
 	// Confirmations block height confirmations number.
 	Confirmations rpc.BlockNumber `json:"confirmations"`
 	// l2geth node url.
-	Endpoint string `json:"endpoint"`
+	Endpoints []string `json:"endpoints"`
 	// The messenger contract address deployed on layer 2 chain.
 	L2MessengerAddress common.Address `json:"l2_messenger_address"`
 	// The L2MessageQueue contract address deployed on layer 2 chain.

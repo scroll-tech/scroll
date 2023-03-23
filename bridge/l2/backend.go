@@ -23,16 +23,20 @@ type Backend struct {
 
 // New returns a new instance of Backend.
 func New(ctx context.Context, cfg *config.L2Config, orm database.OrmFactory) (*Backend, error) {
-	client, err := ethclient.Dial(cfg.Endpoint)
-	if err != nil {
-		return nil, err
+	var clients []*ethclient.Client
+	for _, endpoint := range cfg.Endpoints {
+		client, err := ethclient.Dial(endpoint)
+		if err != nil {
+			return nil, err
+		}
+		clients = append(clients, client)
 	}
 
 	// Note: initialize watcher before relayer to keep DB consistent.
 	// Otherwise, there will be a race condition between watcher.initializeGenesis and relayer.ProcessPendingBatches.
-	watcher := NewL2WatcherClient(ctx, client, cfg.Confirmations, cfg.L2MessengerAddress, cfg.L2MessageQueueAddress, orm)
+	watcher := NewL2WatcherClient(ctx, clients, cfg.Confirmations, cfg.L2MessengerAddress, cfg.L2MessageQueueAddress, orm)
 
-	relayer, err := NewLayer2Relayer(ctx, client, orm, cfg.RelayerConfig)
+	relayer, err := NewLayer2Relayer(ctx, clients[0], orm, cfg.RelayerConfig)
 	if err != nil {
 		return nil, err
 	}

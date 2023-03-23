@@ -87,7 +87,7 @@ func setupEnv(t *testing.T) {
 
 	// Create l2geth container.
 	cfg.L1Config.RelayerConfig.SenderConfig.Endpoint = base.L2GethEndpoint()
-	cfg.L2Config.Endpoint = base.L2GethEndpoint()
+	cfg.L2Config.Endpoints[0] = base.L2GethEndpoint()
 
 	// Create db container.
 	cfg.DBConfig.DSN = base.DBEndpoint()
@@ -95,7 +95,7 @@ func setupEnv(t *testing.T) {
 	// Create l1geth and l2geth client.
 	l1Client, err = ethclient.Dial(cfg.L1Config.Endpoint)
 	assert.NoError(t, err)
-	l2Client, err = ethclient.Dial(cfg.L2Config.Endpoint)
+	l2Client, err = ethclient.Dial(cfg.L2Config.Endpoints[0])
 	assert.NoError(t, err)
 
 	// Create l1 and l2 auth
