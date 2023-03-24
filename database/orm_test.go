@@ -12,9 +12,6 @@ import (
 	_ "github.com/lib/pq"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/scroll-tech/go-ethereum/common"
-	"github.com/scroll-tech/go-ethereum/common/hexutil"
-	geth_types "github.com/scroll-tech/go-ethereum/core/types"
-	"github.com/scroll-tech/go-ethereum/trie"
 	"github.com/stretchr/testify/assert"
 
 	"scroll-tech/common/docker"
@@ -111,29 +108,9 @@ func setupEnv(t *testing.T) error {
 		return err
 	}
 	// unmarshal blockTrace
-	blockTrace := &geth_types.BlockTrace{}
-	if err = json.Unmarshal(templateBlockTrace, blockTrace); err != nil {
+	blockWithWithdrawTrieRoot = &types.BlockWithWithdrawTrieRoot{}
+	if err = json.Unmarshal(templateBlockTrace, blockWithWithdrawTrieRoot); err != nil {
 		return err
-	}
-	transactions := make(geth_types.Transactions, len(blockTrace.Transactions))
-	for i, txData := range blockTrace.Transactions {
-		data, _ := hexutil.Decode(txData.Data)
-		transactions[i] = geth_types.NewTx(&geth_types.LegacyTx{
-			Nonce:    txData.Nonce,
-			To:       txData.To,
-			Value:    txData.Value.ToInt(),
-			Gas:      txData.Gas,
-			GasPrice: txData.GasPrice.ToInt(),
-			Data:     data,
-			V:        txData.V.ToInt(),
-			R:        txData.R.ToInt(),
-			S:        txData.S.ToInt(),
-		})
-	}
-	block := geth_types.NewBlock(blockTrace.Header, transactions, nil, nil, trie.NewStackTrie(nil))
-	blockWithWithdrawTrieRoot = &types.BlockWithWithdrawTrieRoot{
-		Block:            block,
-		WithdrawTrieRoot: common.Hash{},
 	}
 
 	parentBatch := &types.BlockBatch{
@@ -147,29 +124,9 @@ func setupEnv(t *testing.T) error {
 		return err
 	}
 	// unmarshal blockTrace
-	blockTrace2 := &geth_types.BlockTrace{}
-	if err = json.Unmarshal(templateBlockTrace, blockTrace2); err != nil {
+	blockWithWithdrawTrieRoot2 := &types.BlockWithWithdrawTrieRoot{}
+	if err = json.Unmarshal(templateBlockTrace, blockWithWithdrawTrieRoot2); err != nil {
 		return err
-	}
-	transactions2 := make(geth_types.Transactions, len(blockTrace2.Transactions))
-	for i, txData := range blockTrace2.Transactions {
-		data, _ := hexutil.Decode(txData.Data)
-		transactions2[i] = geth_types.NewTx(&geth_types.LegacyTx{
-			Nonce:    txData.Nonce,
-			To:       txData.To,
-			Value:    txData.Value.ToInt(),
-			Gas:      txData.Gas,
-			GasPrice: txData.GasPrice.ToInt(),
-			Data:     data,
-			V:        txData.V.ToInt(),
-			R:        txData.R.ToInt(),
-			S:        txData.S.ToInt(),
-		})
-	}
-	block2 := geth_types.NewBlock(blockTrace2.Header, transactions2, nil, nil, trie.NewStackTrie(nil))
-	blockWithWithdrawTrieRoot2 := &types.BlockWithWithdrawTrieRoot{
-		Block:            block2,
-		WithdrawTrieRoot: blockTrace2.WithdrawTrieRoot,
 	}
 	parentBatch2 := &types.BlockBatch{
 		Index: batchData1.Batch.BatchIndex,
@@ -227,7 +184,7 @@ func testOrmBlockTraces(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, true, len(res) == 0)
 
-	exist, err := ormBlock.IsL2BlockExists(blockWithWithdrawTrieRoot.Header().Number.Uint64())
+	exist, err := ormBlock.IsL2BlockExists(blockWithWithdrawTrieRoot.Header.Number.Uint64())
 	assert.NoError(t, err)
 	assert.Equal(t, false, exist)
 
@@ -238,12 +195,12 @@ func testOrmBlockTraces(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, true, len(res2) == 1)
 
-	exist, err = ormBlock.IsL2BlockExists(blockWithWithdrawTrieRoot.Header().Number.Uint64())
+	exist, err = ormBlock.IsL2BlockExists(blockWithWithdrawTrieRoot.Header.Number.Uint64())
 	assert.NoError(t, err)
 	assert.Equal(t, true, exist)
 
 	res, err = ormBlock.GetL2BlockTraces(map[string]interface{}{
-		"hash": blockWithWithdrawTrieRoot.Header().Hash().String(),
+		"hash": blockWithWithdrawTrieRoot.Header.Hash().String(),
 	})
 	assert.NoError(t, err)
 	assert.Equal(t, true, len(res) == 1)

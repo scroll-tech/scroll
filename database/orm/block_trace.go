@@ -153,12 +153,12 @@ func (o *blockTraceOrm) GetL2BlockHashByNumber(number uint64) (*common.Hash, err
 func (o *blockTraceOrm) InsertBlockWithWithdrawTrieRoot(blocks []*types.BlockWithWithdrawTrieRoot) error {
 	blockMaps := make([]map[string]interface{}, len(blocks))
 	for i, block := range blocks {
-		number, hash, txNum, mtime := block.Header().Number.Int64(),
-			block.Header().Hash().String(),
-			len(block.Transactions()),
-			block.Header().Time
+		number, hash, txNum, mtime := block.Header.Number.Int64(),
+			block.Header.Hash().String(),
+			len(block.Transactions),
+			block.Header.Time
 
-		gasCost := block.Header().GasUsed
+		gasCost := block.Header.GasUsed
 		data, err := json.Marshal(block)
 		if err != nil {
 			log.Error("failed to marshal block", "hash", hash, "err", err)
@@ -167,7 +167,7 @@ func (o *blockTraceOrm) InsertBlockWithWithdrawTrieRoot(blocks []*types.BlockWit
 		blockMaps[i] = map[string]interface{}{
 			"number":          number,
 			"hash":            hash,
-			"parent_hash":     block.Header().ParentHash.String(),
+			"parent_hash":     block.Header.ParentHash.String(),
 			"trace":           string(data),
 			"tx_num":          txNum,
 			"gas_used":        gasCost,

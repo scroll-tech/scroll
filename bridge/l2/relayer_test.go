@@ -9,9 +9,7 @@ import (
 	"testing"
 
 	"github.com/scroll-tech/go-ethereum/common"
-	"github.com/scroll-tech/go-ethereum/common/hexutil"
 	geth_types "github.com/scroll-tech/go-ethereum/core/types"
-	"github.com/scroll-tech/go-ethereum/trie"
 	"github.com/stretchr/testify/assert"
 
 	"scroll-tech/common/types"
@@ -65,15 +63,17 @@ func testL2RelayerProcessSaveEvents(t *testing.T) {
 
 	traces := []*types.BlockWithWithdrawTrieRoot{
 		{
-			Block: geth_types.NewBlockWithHeader(&geth_types.Header{
+			Header: &geth_types.Header{
 				Number: big.NewInt(int64(templateL2Message[0].Height)),
-			}),
+			},
+			Transactions:     nil,
 			WithdrawTrieRoot: common.Hash{},
 		},
 		{
-			Block: geth_types.NewBlockWithHeader(&geth_types.Header{
+			Header: &geth_types.Header{
 				Number: big.NewInt(int64(templateL2Message[0].Height + 1)),
-			}),
+			},
+			Transactions:     nil,
 			WithdrawTrieRoot: common.Hash{},
 		},
 	}
@@ -202,33 +202,13 @@ func genBatchData(t *testing.T, index uint64) *types.BatchData {
 	templateBlockTrace, err := os.ReadFile("../../common/testdata/blockTrace_02.json")
 	assert.NoError(t, err)
 	// unmarshal blockTrace
-	blockTrace := &geth_types.BlockTrace{}
-	err = json.Unmarshal(templateBlockTrace, blockTrace)
+	blockWithWithdrawTrieRoot := &types.BlockWithWithdrawTrieRoot{}
+	err = json.Unmarshal(templateBlockTrace, blockWithWithdrawTrieRoot)
 	assert.NoError(t, err)
-	blockTrace.Header.ParentHash = common.HexToHash("0x" + strconv.FormatUint(index+1, 16))
+	blockWithWithdrawTrieRoot.Header.ParentHash = common.HexToHash("0x" + strconv.FormatUint(index+1, 16))
 	parentBatch := &types.BlockBatch{
 		Index: index,
 		Hash:  "0x0000000000000000000000000000000000000000",
-	}
-	transactions := make(geth_types.Transactions, len(blockTrace.Transactions))
-	for i, txData := range blockTrace.Transactions {
-		data, _ := hexutil.Decode(txData.Data)
-		transactions[i] = geth_types.NewTx(&geth_types.LegacyTx{
-			Nonce:    txData.Nonce,
-			To:       txData.To,
-			Value:    txData.Value.ToInt(),
-			Gas:      txData.Gas,
-			GasPrice: txData.GasPrice.ToInt(),
-			Data:     data,
-			V:        txData.V.ToInt(),
-			R:        txData.R.ToInt(),
-			S:        txData.S.ToInt(),
-		})
-	}
-	block := geth_types.NewBlock(blockTrace.Header, transactions, nil, nil, trie.NewStackTrie(nil))
-	blockWithWithdrawTrieRoot := &types.BlockWithWithdrawTrieRoot{
-		Block:            block,
-		WithdrawTrieRoot: common.Hash{},
 	}
 	return types.NewBatchData(parentBatch, []*types.BlockWithWithdrawTrieRoot{blockWithWithdrawTrieRoot}, nil)
 }

@@ -11,6 +11,7 @@ import (
 	geth "github.com/scroll-tech/go-ethereum"
 	"github.com/scroll-tech/go-ethereum/accounts/abi"
 	"github.com/scroll-tech/go-ethereum/common"
+	"github.com/scroll-tech/go-ethereum/common/hexutil"
 	geth_types "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/event"
@@ -118,8 +119,7 @@ func (w *WatcherClient) initializeGenesis() error {
 
 	log.Info("retrieved L2 genesis header", "hash", genesis.Hash().String())
 
-	block := geth_types.NewBlockWithHeader(genesis)
-	blockTrace := &types.BlockWithWithdrawTrieRoot{Block: block, WithdrawTrieRoot: common.Hash{}}
+	blockTrace := &types.BlockWithWithdrawTrieRoot{Header: genesis, Transactions: nil, WithdrawTrieRoot: common.Hash{}}
 	batchData := types.NewGenesisBatchData(blockTrace)
 
 	if err = AddBatchInfoToDB(w.orm, batchData); err != nil {
@@ -214,6 +214,30 @@ func (w *WatcherClient) tryFetchRunningMissingBlocks(ctx context.Context, blockH
 	}
 }
 
+// getTransactionData gets the transactions' data known from txs.
+func (w *WatcherClient) getTransactionsData(txs geth_types.Transactions) []*geth_types.TransactionData {
+	txsData := make([]*geth_types.TransactionData, len(txs))
+	for i, tx := range txs {
+		v, r, s := tx.RawSignatureValues()
+		txsData[i] = &geth_types.TransactionData{
+			Type:     tx.Type(),
+			TxHash:   tx.Hash().String(),
+			Nonce:    tx.Nonce(),
+			ChainId:  (*hexutil.Big)(tx.ChainId()),
+			Gas:      tx.Gas(),
+			GasPrice: (*hexutil.Big)(tx.GasPrice()),
+			To:       tx.To(),
+			Value:    (*hexutil.Big)(tx.Value()),
+			Data:     hexutil.Encode(tx.Data()),
+			IsCreate: tx.To() == nil,
+			V:        (*hexutil.Big)(v),
+			R:        (*hexutil.Big)(r),
+			S:        (*hexutil.Big)(s),
+		}
+	}
+	return txsData
+}
+
 func (w *WatcherClient) getAndStoreBlockTraces(ctx context.Context, from, to uint64) error {
 	var blocks []*types.BlockWithWithdrawTrieRoot
 
@@ -231,7 +255,11 @@ func (w *WatcherClient) getAndStoreBlockTraces(ctx context.Context, from, to uin
 			return fmt.Errorf("failed to get withdrawTrieRoot: %v. number: %v", err3, number)
 		}
 
-		blocks = append(blocks, &types.BlockWithWithdrawTrieRoot{Block: block, WithdrawTrieRoot: common.BytesToHash(withdrawTrieRoot)})
+		blocks = append(blocks, &types.BlockWithWithdrawTrieRoot{
+			Header:           block.Header(),
+			Transactions:     w.getTransactionsData(block.Transactions()),
+			WithdrawTrieRoot: common.BytesToHash(withdrawTrieRoot),
+		})
 	}
 
 	if len(blocks) > 0 {

@@ -88,12 +88,13 @@ func testImportL2GasPrice(t *testing.T) {
 	// add fake blocks
 	traces := []*types.BlockWithWithdrawTrieRoot{
 		{
-			Block: geth_types.NewBlockWithHeader(&geth_types.Header{
+			Header: &geth_types.Header{
 				Number:     big.NewInt(1),
 				ParentHash: common.Hash{},
 				Difficulty: big.NewInt(0),
 				BaseFee:    big.NewInt(0),
-			}),
+			},
+			Transactions:     nil,
 			WithdrawTrieRoot: common.Hash{},
 		},
 	}

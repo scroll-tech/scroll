@@ -67,12 +67,13 @@ func testRelayL2MessageSucceed(t *testing.T) {
 	// add fake blocks
 	traces := []*types.BlockWithWithdrawTrieRoot{
 		{
-			Block: geth_types.NewBlockWithHeader(&geth_types.Header{
+			Header: &geth_types.Header{
 				Number:     sendReceipt.BlockNumber,
 				ParentHash: common.Hash{},
 				Difficulty: big.NewInt(0),
 				BaseFee:    big.NewInt(0),
-			}),
+			},
+			Transactions:     nil,
 			WithdrawTrieRoot: common.Hash{},
 		},
 	}

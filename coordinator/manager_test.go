@@ -17,11 +17,7 @@ import (
 	"time"
 
 	"github.com/scroll-tech/go-ethereum"
-	"github.com/scroll-tech/go-ethereum/common"
-	"github.com/scroll-tech/go-ethereum/common/hexutil"
-	geth_types "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/crypto"
-	"github.com/scroll-tech/go-ethereum/trie"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/sync/errgroup"
 
@@ -67,34 +63,14 @@ func setEnv(t *testing.T) (err error) {
 		return err
 	}
 	// unmarshal blockTrace
-	blockTrace := &geth_types.BlockTrace{}
-	if err = json.Unmarshal(templateBlockTrace, blockTrace); err != nil {
+	blockWithWithdrawTrieRoot := &types.BlockWithWithdrawTrieRoot{}
+	if err = json.Unmarshal(templateBlockTrace, blockWithWithdrawTrieRoot); err != nil {
 		return err
 	}
 
 	parentBatch := &types.BlockBatch{
 		Index: 1,
 		Hash:  "0x0000000000000000000000000000000000000000",
-	}
-	transactions := make(geth_types.Transactions, len(blockTrace.Transactions))
-	for i, txData := range blockTrace.Transactions {
-		data, _ := hexutil.Decode(txData.Data)
-		transactions[i] = geth_types.NewTx(&geth_types.LegacyTx{
-			Nonce:    txData.Nonce,
-			To:       txData.To,
-			Value:    txData.Value.ToInt(),
-			Gas:      txData.Gas,
-			GasPrice: txData.GasPrice.ToInt(),
-			Data:     data,
-			V:        txData.V.ToInt(),
-			R:        txData.R.ToInt(),
-			S:        txData.S.ToInt(),
-		})
-	}
-	block1 := geth_types.NewBlock(blockTrace.Header, transactions, nil, nil, trie.NewStackTrie(nil))
-	blockWithWithdrawTrieRoot := &types.BlockWithWithdrawTrieRoot{
-		Block:            block1,
-		WithdrawTrieRoot: common.Hash{},
 	}
 	batchData = types.NewBatchData(parentBatch, []*types.BlockWithWithdrawTrieRoot{blockWithWithdrawTrieRoot}, nil)
 

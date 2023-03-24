@@ -49,7 +49,8 @@ func testCommitBatchAndFinalizeBatch(t *testing.T) {
 			BaseFee:    big.NewInt(0),
 		}
 		traces = append(traces, &types.BlockWithWithdrawTrieRoot{
-			Block:            geth_types.NewBlockWithHeader(&header),
+			Header:           &header,
+			Transactions:     nil,
 			WithdrawTrieRoot: common.Hash{},
 		})
 		parentHash = header.Hash()

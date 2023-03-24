@@ -6,11 +6,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/scroll-tech/go-ethereum/common"
-	"github.com/scroll-tech/go-ethereum/common/hexutil"
-	geth_types "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/ethclient"
-	"github.com/scroll-tech/go-ethereum/trie"
 	"github.com/stretchr/testify/assert"
 
 	"scroll-tech/common/docker"
@@ -57,34 +53,13 @@ func setupEnv(t *testing.T) (err error) {
 		return err
 	}
 	// unmarshal blockTrace
-	blockTrace1 := &geth_types.BlockTrace{}
-	if err = json.Unmarshal(templateBlockTrace1, blockTrace1); err != nil {
+	blockWithWithdrawTrieRoot1 = &types.BlockWithWithdrawTrieRoot{}
+	if err = json.Unmarshal(templateBlockTrace1, blockWithWithdrawTrieRoot1); err != nil {
 		return err
 	}
-
 	parentBatch1 := &types.BlockBatch{
 		Index: 1,
 		Hash:  "0x0000000000000000000000000000000000000000",
-	}
-	transactions1 := make(geth_types.Transactions, len(blockTrace1.Transactions))
-	for i, txData := range blockTrace1.Transactions {
-		data, _ := hexutil.Decode(txData.Data)
-		transactions1[i] = geth_types.NewTx(&geth_types.LegacyTx{
-			Nonce:    txData.Nonce,
-			To:       txData.To,
-			Value:    txData.Value.ToInt(),
-			Gas:      txData.Gas,
-			GasPrice: txData.GasPrice.ToInt(),
-			Data:     data,
-			V:        txData.V.ToInt(),
-			R:        txData.R.ToInt(),
-			S:        txData.S.ToInt(),
-		})
-	}
-	block1 := geth_types.NewBlock(blockTrace1.Header, transactions1, nil, nil, trie.NewStackTrie(nil))
-	blockWithWithdrawTrieRoot1 = &types.BlockWithWithdrawTrieRoot{
-		Block:            block1,
-		WithdrawTrieRoot: common.Hash{},
 	}
 	batchData1 = types.NewBatchData(parentBatch1, []*types.BlockWithWithdrawTrieRoot{blockWithWithdrawTrieRoot1}, nil)
 
@@ -93,33 +68,13 @@ func setupEnv(t *testing.T) (err error) {
 		return err
 	}
 	// unmarshal blockTrace
-	blockTrace2 := &geth_types.BlockTrace{}
-	if err = json.Unmarshal(templateBlockTrace2, blockTrace2); err != nil {
+	blockWithWithdrawTrieRoot2 = &types.BlockWithWithdrawTrieRoot{}
+	if err = json.Unmarshal(templateBlockTrace2, blockWithWithdrawTrieRoot2); err != nil {
 		return err
 	}
 	parentBatch2 := &types.BlockBatch{
 		Index: batchData1.Batch.BatchIndex,
 		Hash:  batchData1.Hash().Hex(),
-	}
-	transactions2 := make(geth_types.Transactions, len(blockTrace2.Transactions))
-	for i, txData := range blockTrace2.Transactions {
-		data, _ := hexutil.Decode(txData.Data)
-		transactions2[i] = geth_types.NewTx(&geth_types.LegacyTx{
-			Nonce:    txData.Nonce,
-			To:       txData.To,
-			Value:    txData.Value.ToInt(),
-			Gas:      txData.Gas,
-			GasPrice: txData.GasPrice.ToInt(),
-			Data:     data,
-			V:        txData.V.ToInt(),
-			R:        txData.R.ToInt(),
-			S:        txData.S.ToInt(),
-		})
-	}
-	block2 := geth_types.NewBlock(blockTrace2.Header, transactions2, nil, nil, trie.NewStackTrie(nil))
-	blockWithWithdrawTrieRoot2 = &types.BlockWithWithdrawTrieRoot{
-		Block:            block2,
-		WithdrawTrieRoot: common.Hash{},
 	}
 	batchData2 = types.NewBatchData(parentBatch2, []*types.BlockWithWithdrawTrieRoot{blockWithWithdrawTrieRoot2}, nil)
 

@@ -7,6 +7,8 @@ import (
 	"math/big"
 
 	"github.com/scroll-tech/go-ethereum/common"
+	"github.com/scroll-tech/go-ethereum/common/hexutil"
+	"github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/crypto"
 
 	abi "scroll-tech/bridge/abi"
@@ -125,28 +127,41 @@ func NewBatchData(parentBatch *BlockBatch, blocks []*BlockWithWithdrawTrieRoot, 
 	batchTxDataWriter := bufio.NewWriter(&batchTxDataBuf)
 
 	for i, block := range blocks {
-		batchData.TotalTxNum += uint64(len(block.Transactions()))
-		batchData.TotalL2Gas += block.Header().GasUsed
+		batchData.TotalTxNum += uint64(len(block.Transactions))
+		batchData.TotalL2Gas += block.Header.GasUsed
 
 		// set baseFee to 0 when it's nil in the block header
-		baseFee := block.Header().BaseFee
+		baseFee := block.Header.BaseFee
 		if baseFee == nil {
 			baseFee = big.NewInt(0)
 		}
 
 		batch.Blocks[i] = abi.IScrollChainBlockContext{
-			BlockHash:       block.Header().Hash(),
-			ParentHash:      block.Header().ParentHash,
-			BlockNumber:     block.Header().Number.Uint64(),
-			Timestamp:       block.Header().Time,
+			BlockHash:       block.Header.Hash(),
+			ParentHash:      block.Header.ParentHash,
+			BlockNumber:     block.Header.Number.Uint64(),
+			Timestamp:       block.Header.Time,
 			BaseFee:         baseFee,
-			GasLimit:        block.Header().GasLimit,
-			NumTransactions: uint16(len(block.Transactions())),
+			GasLimit:        block.Header.GasLimit,
+			NumTransactions: uint16(len(block.Transactions)),
 			NumL1Messages:   0, // TODO: currently use 0, will re-enable after we use l2geth to include L1 messages
 		}
 
 		// fill in RLP-encoded transactions
-		for _, tx := range block.Transactions() {
+		for _, txData := range block.Transactions {
+			data, _ := hexutil.Decode(txData.Data)
+			// right now we only support legacy tx
+			tx := types.NewTx(&types.LegacyTx{
+				Nonce:    txData.Nonce,
+				To:       txData.To,
+				Value:    txData.Value.ToInt(),
+				Gas:      txData.Gas,
+				GasPrice: txData.GasPrice.ToInt(),
+				Data:     data,
+				V:        txData.V.ToInt(),
+				R:        txData.R.ToInt(),
+				S:        txData.S.ToInt(),
+			})
 			rlpTxData, _ := tx.MarshalBinary()
 			var txLen [4]byte
 			binary.BigEndian.PutUint32(txLen[:], uint32(len(rlpTxData)))
@@ -161,7 +176,7 @@ func NewBatchData(parentBatch *BlockBatch, blocks []*BlockWithWithdrawTrieRoot, 
 
 		// set NewStateRoot & WithdrawTrieRoot from the last block
 		if i == len(blocks)-1 {
-			batch.NewStateRoot = block.Header().Root
+			batch.NewStateRoot = block.Header.Root
 			batch.WithdrawTrieRoot = block.WithdrawTrieRoot
 		}
 	}
@@ -178,7 +193,7 @@ func NewBatchData(parentBatch *BlockBatch, blocks []*BlockWithWithdrawTrieRoot, 
 
 // NewGenesisBatchData generates the batch that contains the genesis block.
 func NewGenesisBatchData(genesisBlockTrace *BlockWithWithdrawTrieRoot) *BatchData {
-	header := genesisBlockTrace.Header()
+	header := genesisBlockTrace.Header
 	if header.Number.Uint64() != 0 {
 		panic("invalid genesis block trace: block number is not 0")
 	}
