@@ -75,7 +75,7 @@ func TestNewGenesisBatch(t *testing.T) {
 		"wrong genesis block header",
 	)
 
-	blockTrace := &BlockWithWithdrawTrieRoot{genesisBlock, nil, common.Hash{}}
+	blockTrace := &WrappedBlock{genesisBlock, nil, common.Hash{}}
 	batchData := NewGenesisBatchData(blockTrace)
 	t.Log(batchData.Batch.Blocks[0])
 	batchData.piCfg = &PublicInputHashConfig{

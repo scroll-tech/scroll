@@ -86,7 +86,7 @@ func testImportL2GasPrice(t *testing.T) {
 	defer l2Relayer.Stop()
 
 	// add fake blocks
-	traces := []*types.BlockWithWithdrawTrieRoot{
+	traces := []*types.WrappedBlock{
 		{
 			Header: &geth_types.Header{
 				Number:     big.NewInt(1),
@@ -98,13 +98,13 @@ func testImportL2GasPrice(t *testing.T) {
 			WithdrawTrieRoot: common.Hash{},
 		},
 	}
-	assert.NoError(t, db.InsertBlockWithWithdrawTrieRoot(traces))
+	assert.NoError(t, db.InsertWrappedBlock(traces))
 
 	parentBatch := &types.BlockBatch{
 		Index: 0,
 		Hash:  "0x0000000000000000000000000000000000000000",
 	}
-	batchData := types.NewBatchData(parentBatch, []*types.BlockWithWithdrawTrieRoot{
+	batchData := types.NewBatchData(parentBatch, []*types.WrappedBlock{
 		traces[0],
 	}, cfg.L2Config.BatchProposerConfig.PublicInputConfig)
 

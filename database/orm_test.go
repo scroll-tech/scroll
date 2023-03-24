@@ -71,9 +71,9 @@ var (
 			Layer2Hash: "hash1",
 		},
 	}
-	blockWithWithdrawTrieRoot *types.BlockWithWithdrawTrieRoot
-	batchData1                *types.BatchData
-	batchData2                *types.BatchData
+	wrappedBlock *types.WrappedBlock
+	batchData1   *types.BatchData
+	batchData2   *types.BatchData
 
 	dbConfig   *database.DBConfig
 	base       *docker.App
@@ -108,8 +108,8 @@ func setupEnv(t *testing.T) error {
 		return err
 	}
 	// unmarshal blockTrace
-	blockWithWithdrawTrieRoot = &types.BlockWithWithdrawTrieRoot{}
-	if err = json.Unmarshal(templateBlockTrace, blockWithWithdrawTrieRoot); err != nil {
+	wrappedBlock = &types.WrappedBlock{}
+	if err = json.Unmarshal(templateBlockTrace, wrappedBlock); err != nil {
 		return err
 	}
 
@@ -117,22 +117,22 @@ func setupEnv(t *testing.T) error {
 		Index: 1,
 		Hash:  "0x0000000000000000000000000000000000000000",
 	}
-	batchData1 = types.NewBatchData(parentBatch, []*types.BlockWithWithdrawTrieRoot{blockWithWithdrawTrieRoot}, nil)
+	batchData1 = types.NewBatchData(parentBatch, []*types.WrappedBlock{wrappedBlock}, nil)
 
 	templateBlockTrace, err = os.ReadFile("../common/testdata/blockTrace_03.json")
 	if err != nil {
 		return err
 	}
 	// unmarshal blockTrace
-	blockWithWithdrawTrieRoot2 := &types.BlockWithWithdrawTrieRoot{}
-	if err = json.Unmarshal(templateBlockTrace, blockWithWithdrawTrieRoot2); err != nil {
+	wrappedBlock2 := &types.WrappedBlock{}
+	if err = json.Unmarshal(templateBlockTrace, wrappedBlock2); err != nil {
 		return err
 	}
 	parentBatch2 := &types.BlockBatch{
 		Index: batchData1.Batch.BatchIndex,
 		Hash:  batchData1.Hash().Hex(),
 	}
-	batchData2 = types.NewBatchData(parentBatch2, []*types.BlockWithWithdrawTrieRoot{blockWithWithdrawTrieRoot2}, nil)
+	batchData2 = types.NewBatchData(parentBatch2, []*types.WrappedBlock{wrappedBlock2}, nil)
 
 	// insert a fake empty block to batchData2
 	fakeBlockContext := abi.IScrollChainBlockContext{
@@ -180,27 +180,27 @@ func testOrmBlockTraces(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(factory.GetDB().DB))
 
-	res, err := ormBlock.GetL2BlocksWithWithdrawTrieRoot(map[string]interface{}{})
+	res, err := ormBlock.GetL2WrappedBlock(map[string]interface{}{})
 	assert.NoError(t, err)
 	assert.Equal(t, true, len(res) == 0)
 
-	exist, err := ormBlock.IsL2BlockExists(blockWithWithdrawTrieRoot.Header.Number.Uint64())
+	exist, err := ormBlock.IsL2BlockExists(wrappedBlock.Header.Number.Uint64())
 	assert.NoError(t, err)
 	assert.Equal(t, false, exist)
 
 	// Insert into db
-	assert.NoError(t, ormBlock.InsertBlockWithWithdrawTrieRoot([]*types.BlockWithWithdrawTrieRoot{blockWithWithdrawTrieRoot}))
+	assert.NoError(t, ormBlock.InsertWrappedBlock([]*types.WrappedBlock{wrappedBlock}))
 
 	res2, err := ormBlock.GetUnbatchedL2Blocks(map[string]interface{}{})
 	assert.NoError(t, err)
 	assert.Equal(t, true, len(res2) == 1)
 
-	exist, err = ormBlock.IsL2BlockExists(blockWithWithdrawTrieRoot.Header.Number.Uint64())
+	exist, err = ormBlock.IsL2BlockExists(wrappedBlock.Header.Number.Uint64())
 	assert.NoError(t, err)
 	assert.Equal(t, true, exist)
 
-	res, err = ormBlock.GetL2BlocksWithWithdrawTrieRoot(map[string]interface{}{
-		"hash": blockWithWithdrawTrieRoot.Header.Hash().String(),
+	res, err = ormBlock.GetL2WrappedBlock(map[string]interface{}{
+		"hash": wrappedBlock.Header.Hash().String(),
 	})
 	assert.NoError(t, err)
 	assert.Equal(t, true, len(res) == 1)
@@ -208,7 +208,7 @@ func testOrmBlockTraces(t *testing.T) {
 	// Compare trace
 	data1, err := json.Marshal(res[0])
 	assert.NoError(t, err)
-	data2, err := json.Marshal(blockWithWithdrawTrieRoot)
+	data2, err := json.Marshal(wrappedBlock)
 	assert.NoError(t, err)
 	// check trace
 	assert.Equal(t, true, string(data1) == string(data2))

@@ -63,8 +63,8 @@ func setEnv(t *testing.T) (err error) {
 		return err
 	}
 	// unmarshal blockTrace
-	blockWithWithdrawTrieRoot := &types.BlockWithWithdrawTrieRoot{}
-	if err = json.Unmarshal(templateBlockTrace, blockWithWithdrawTrieRoot); err != nil {
+	wrappedBlock := &types.WrappedBlock{}
+	if err = json.Unmarshal(templateBlockTrace, wrappedBlock); err != nil {
 		return err
 	}
 
@@ -72,7 +72,7 @@ func setEnv(t *testing.T) (err error) {
 		Index: 1,
 		Hash:  "0x0000000000000000000000000000000000000000",
 	}
-	batchData = types.NewBatchData(parentBatch, []*types.BlockWithWithdrawTrieRoot{blockWithWithdrawTrieRoot}, nil)
+	batchData = types.NewBatchData(parentBatch, []*types.WrappedBlock{wrappedBlock}, nil)
 
 	return
 }

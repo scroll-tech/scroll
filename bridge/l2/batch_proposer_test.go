@@ -24,7 +24,7 @@ func testBatchProposerProposeBatch(t *testing.T) {
 	defer db.Close()
 
 	// Insert traces into db.
-	assert.NoError(t, db.InsertBlockWithWithdrawTrieRoot([]*types.BlockWithWithdrawTrieRoot{blockWithWithdrawTrieRoot1}))
+	assert.NoError(t, db.InsertWrappedBlock([]*types.WrappedBlock{wrappedBlock1}))
 
 	l2cfg := cfg.L2Config
 	wc := NewL2WatcherClient(context.Background(), l2Cli, l2cfg.Confirmations, l2cfg.L2MessengerAddress, l2cfg.L2MessageQueueAddress, l2cfg.WithdrawTrieRootSlot, db)
@@ -64,7 +64,7 @@ func testBatchProposerGracefulRestart(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Insert traces into db.
-	assert.NoError(t, db.InsertBlockWithWithdrawTrieRoot([]*types.BlockWithWithdrawTrieRoot{blockWithWithdrawTrieRoot2}))
+	assert.NoError(t, db.InsertWrappedBlock([]*types.WrappedBlock{wrappedBlock2}))
 
 	// Insert block batch into db.
 	dbTx, err := db.Beginx()

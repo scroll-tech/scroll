@@ -114,7 +114,7 @@ func (b *BatchData) Hash() *common.Hash {
 
 // NewBatchData creates a BatchData given the parent batch information and the traces of the blocks
 // included in this batch
-func NewBatchData(parentBatch *BlockBatch, blocks []*BlockWithWithdrawTrieRoot, piCfg *PublicInputHashConfig) *BatchData {
+func NewBatchData(parentBatch *BlockBatch, blocks []*WrappedBlock, piCfg *PublicInputHashConfig) *BatchData {
 	batchData := new(BatchData)
 	batch := &batchData.Batch
 
@@ -192,7 +192,7 @@ func NewBatchData(parentBatch *BlockBatch, blocks []*BlockWithWithdrawTrieRoot, 
 }
 
 // NewGenesisBatchData generates the batch that contains the genesis block.
-func NewGenesisBatchData(genesisBlockTrace *BlockWithWithdrawTrieRoot) *BatchData {
+func NewGenesisBatchData(genesisBlockTrace *WrappedBlock) *BatchData {
 	header := genesisBlockTrace.Header
 	if header.Number.Uint64() != 0 {
 		panic("invalid genesis block trace: block number is not 0")

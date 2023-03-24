@@ -119,7 +119,7 @@ func (w *WatcherClient) initializeGenesis() error {
 
 	log.Info("retrieved L2 genesis header", "hash", genesis.Hash().String())
 
-	blockTrace := &types.BlockWithWithdrawTrieRoot{Header: genesis, Transactions: nil, WithdrawTrieRoot: common.Hash{}}
+	blockTrace := &types.WrappedBlock{Header: genesis, Transactions: nil, WithdrawTrieRoot: common.Hash{}}
 	batchData := types.NewGenesisBatchData(blockTrace)
 
 	if err = AddBatchInfoToDB(w.orm, batchData); err != nil {
@@ -214,8 +214,7 @@ func (w *WatcherClient) tryFetchRunningMissingBlocks(ctx context.Context, blockH
 	}
 }
 
-// getTransactionData gets the transactions' data known from txs.
-func (w *WatcherClient) getTransactionsData(txs geth_types.Transactions) []*geth_types.TransactionData {
+func txsToTxsData(txs geth_types.Transactions) []*geth_types.TransactionData {
 	txsData := make([]*geth_types.TransactionData, len(txs))
 	for i, tx := range txs {
 		v, r, s := tx.RawSignatureValues()
@@ -239,7 +238,7 @@ func (w *WatcherClient) getTransactionsData(txs geth_types.Transactions) []*geth
 }
 
 func (w *WatcherClient) getAndStoreBlockTraces(ctx context.Context, from, to uint64) error {
-	var blocks []*types.BlockWithWithdrawTrieRoot
+	var blocks []*types.WrappedBlock
 
 	for number := from; number <= to; number++ {
 		log.Debug("retrieving block", "height", number)
@@ -255,15 +254,15 @@ func (w *WatcherClient) getAndStoreBlockTraces(ctx context.Context, from, to uin
 			return fmt.Errorf("failed to get withdrawTrieRoot: %v. number: %v", err3, number)
 		}
 
-		blocks = append(blocks, &types.BlockWithWithdrawTrieRoot{
+		blocks = append(blocks, &types.WrappedBlock{
 			Header:           block.Header(),
-			Transactions:     w.getTransactionsData(block.Transactions()),
+			Transactions:     txsToTxsData(block.Transactions()),
 			WithdrawTrieRoot: common.BytesToHash(withdrawTrieRoot),
 		})
 	}
 
 	if len(blocks) > 0 {
-		if err := w.orm.InsertBlockWithWithdrawTrieRoot(blocks); err != nil {
+		if err := w.orm.InsertWrappedBlock(blocks); err != nil {
 			return fmt.Errorf("failed to batch insert BlockTraces: %v", err)
 		}
 	}

@@ -47,7 +47,7 @@ func (o *blockTraceOrm) GetL2BlocksLatestHeight() (int64, error) {
 	return height, nil
 }
 
-func (o *blockTraceOrm) GetL2BlocksWithWithdrawTrieRoot(fields map[string]interface{}, args ...string) ([]*types.BlockWithWithdrawTrieRoot, error) {
+func (o *blockTraceOrm) GetL2WrappedBlock(fields map[string]interface{}, args ...string) ([]*types.WrappedBlock, error) {
 	type Result struct {
 		Trace string
 	}
@@ -64,24 +64,24 @@ func (o *blockTraceOrm) GetL2BlocksWithWithdrawTrieRoot(fields map[string]interf
 		return nil, err
 	}
 
-	var blocksWithWithdrawTrieRoot []*types.BlockWithWithdrawTrieRoot
+	var wrappedBlocks []*types.WrappedBlock
 	for rows.Next() {
 		result := &Result{}
 		if err = rows.StructScan(result); err != nil {
 			break
 		}
-		blockWithWithdrawTrieRoot := types.BlockWithWithdrawTrieRoot{}
-		err = json.Unmarshal([]byte(result.Trace), &blockWithWithdrawTrieRoot)
+		wrappedBlock := types.WrappedBlock{}
+		err = json.Unmarshal([]byte(result.Trace), &wrappedBlock)
 		if err != nil {
 			break
 		}
-		blocksWithWithdrawTrieRoot = append(blocksWithWithdrawTrieRoot, &blockWithWithdrawTrieRoot)
+		wrappedBlocks = append(wrappedBlocks, &wrappedBlock)
 	}
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return nil, err
 	}
 
-	return blocksWithWithdrawTrieRoot, rows.Close()
+	return wrappedBlocks, rows.Close()
 }
 
 func (o *blockTraceOrm) GetL2BlockInfos(fields map[string]interface{}, args ...string) ([]*types.BlockInfo, error) {
@@ -150,7 +150,7 @@ func (o *blockTraceOrm) GetL2BlockHashByNumber(number uint64) (*common.Hash, err
 	return &hash, nil
 }
 
-func (o *blockTraceOrm) InsertBlockWithWithdrawTrieRoot(blocks []*types.BlockWithWithdrawTrieRoot) error {
+func (o *blockTraceOrm) InsertWrappedBlock(blocks []*types.WrappedBlock) error {
 	blockMaps := make([]map[string]interface{}, len(blocks))
 	for i, block := range blocks {
 		number, hash, txNum, mtime := block.Header.Number.Int64(),

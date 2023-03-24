@@ -373,16 +373,16 @@ func (p *BatchProposer) createBatchForBlocks(blocks []*types.BlockInfo) error {
 }
 
 func (p *BatchProposer) generateBatchData(parentBatch *types.BlockBatch, blocks []*types.BlockInfo) (*types.BatchData, error) {
-	var blocksWithWithdrawTrieRoot []*types.BlockWithWithdrawTrieRoot
+	var wrappedBlocks []*types.WrappedBlock
 	for _, block := range blocks {
-		trs, err := p.orm.GetL2BlocksWithWithdrawTrieRoot(map[string]interface{}{"hash": block.Hash})
+		trs, err := p.orm.GetL2WrappedBlock(map[string]interface{}{"hash": block.Hash})
 		if err != nil || len(trs) != 1 {
 			log.Error("Failed to GetBlockTraces", "hash", block.Hash, "err", err)
 			return nil, err
 		}
-		blocksWithWithdrawTrieRoot = append(blocksWithWithdrawTrieRoot, trs[0])
+		wrappedBlocks = append(wrappedBlocks, trs[0])
 	}
-	return types.NewBatchData(parentBatch, blocksWithWithdrawTrieRoot, p.piCfg), nil
+	return types.NewBatchData(parentBatch, wrappedBlocks, p.piCfg), nil
 }
 
 func (p *BatchProposer) getBatchDataBufferSize() (size uint64) {

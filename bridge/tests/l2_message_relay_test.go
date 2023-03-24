@@ -65,7 +65,7 @@ func testRelayL2MessageSucceed(t *testing.T) {
 	assert.Equal(t, msg.Target, l1Auth.From.String())
 
 	// add fake blocks
-	traces := []*types.BlockWithWithdrawTrieRoot{
+	traces := []*types.WrappedBlock{
 		{
 			Header: &geth_types.Header{
 				Number:     sendReceipt.BlockNumber,
@@ -77,13 +77,13 @@ func testRelayL2MessageSucceed(t *testing.T) {
 			WithdrawTrieRoot: common.Hash{},
 		},
 	}
-	assert.NoError(t, db.InsertBlockWithWithdrawTrieRoot(traces))
+	assert.NoError(t, db.InsertWrappedBlock(traces))
 
 	parentBatch := &types.BlockBatch{
 		Index: 0,
 		Hash:  "0x0000000000000000000000000000000000000000",
 	}
-	batchData := types.NewBatchData(parentBatch, []*types.BlockWithWithdrawTrieRoot{
+	batchData := types.NewBatchData(parentBatch, []*types.WrappedBlock{
 		traces[0],
 	}, cfg.L2Config.BatchProposerConfig.PublicInputConfig)
 	batchHash := batchData.Hash().String()
