@@ -235,7 +235,7 @@ func (w *WatcherClient) getAndStoreBlockTraces(ctx context.Context, from, to uin
 	}
 
 	if len(blocks) > 0 {
-		if err := w.orm.InsertL2BlockTraces(blocks); err != nil {
+		if err := w.orm.InsertBlockWithWithdrawTrieRoot(blocks); err != nil {
 			return fmt.Errorf("failed to batch insert BlockTraces: %v", err)
 		}
 	}

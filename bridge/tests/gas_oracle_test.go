@@ -97,7 +97,7 @@ func testImportL2GasPrice(t *testing.T) {
 			WithdrawTrieRoot: common.Hash{},
 		},
 	}
-	assert.NoError(t, db.InsertL2BlockTraces(traces))
+	assert.NoError(t, db.InsertBlockWithWithdrawTrieRoot(traces))
 
 	parentBatch := &types.BlockBatch{
 		Index: 0,

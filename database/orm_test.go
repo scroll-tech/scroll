@@ -232,7 +232,7 @@ func testOrmBlockTraces(t *testing.T) {
 	assert.Equal(t, false, exist)
 
 	// Insert into db
-	assert.NoError(t, ormBlock.InsertL2BlockTraces([]*types.BlockWithWithdrawTrieRoot{blockWithWithdrawTrieRoot}))
+	assert.NoError(t, ormBlock.InsertBlockWithWithdrawTrieRoot([]*types.BlockWithWithdrawTrieRoot{blockWithWithdrawTrieRoot}))
 
 	res2, err := ormBlock.GetUnbatchedL2Blocks(map[string]interface{}{})
 	assert.NoError(t, err)
