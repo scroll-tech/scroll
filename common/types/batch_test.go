@@ -75,15 +75,8 @@ func TestNewGenesisBatch(t *testing.T) {
 		"wrong genesis block header",
 	)
 
-	blockTrace := &geth_types.BlockTrace{
-		Coinbase:         nil,
-		Header:           genesisBlock,
-		Transactions:     []*geth_types.TransactionData{},
-		StorageTrace:     nil,
-		ExecutionResults: []*geth_types.ExecutionResult{},
-		MPTWitness:       nil,
-	}
-
+	block := geth_types.NewBlockWithHeader(genesisBlock)
+	blockTrace := &BlockWithWithdrawTrieRoot{block, common.Hash{}}
 	batchData := NewGenesisBatchData(blockTrace)
 	t.Log(batchData.Batch.Blocks[0])
 	batchData.piCfg = &PublicInputHashConfig{

@@ -133,7 +133,7 @@ func setupEnv(t *testing.T) error {
 	block := geth_types.NewBlock(blockTrace.Header, transactions, nil, nil, trie.NewStackTrie(nil))
 	blockWithWithdrawTrieRoot = &types.BlockWithWithdrawTrieRoot{
 		Block:            block,
-		WithdrawTrieRoot: common.HexToHash("0x0000000000000000000000000000000000000000"),
+		WithdrawTrieRoot: common.Hash{},
 	}
 
 	parentBatch := &types.BlockBatch{
