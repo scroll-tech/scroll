@@ -5,8 +5,11 @@ import (
 	"crypto/rand"
 	"errors"
 	"fmt"
+	"golang.org/x/sync/errgroup"
 	"math/big"
 	"reflect"
+	"runtime"
+	"sync"
 	"time"
 
 	geth "github.com/scroll-tech/go-ethereum"
@@ -222,32 +225,52 @@ func (w *WatcherClient) tryFetchRunningMissingBlocks(ctx context.Context, blockH
 	}
 }
 
-func getTraceFromMultiNodes(ctx context.Context, clients []*ethclient.Client, number *big.Int) (trace *geth_types.BlockTrace, err error) {
+func getTracesFromMultiNodes(ctx context.Context, clients []*ethclient.Client, from, to uint64) (traces []*geth_types.BlockTrace, err error) {
 	if len(clients) == 0 {
 		return nil, errors.New("can't get trace from empty clients")
 	}
-	// Try 3times if failed to get trace.
-	cutil.TryTimes(3, func() bool {
-		// Randomly select a client from traceClients.
-		id, _ := rand.Int(rand.Reader, big.NewInt(int64(len(clients))))
-		client := clients[id.Int64()]
-		trace, err = client.GetBlockTraceByNumber(ctx, number)
-		return err == nil && trace != nil
-	})
+	var (
+		mu sync.Mutex
+		eg errgroup.Group
+	)
+	// At most use half of cpu num.
+	eg.SetLimit((runtime.GOMAXPROCS(0) + 1) / 2)
+	for number := from; number <= to; number++ {
+		number := number
+		eg.Go(func() error {
+			log.Debug("retrieving block trace", "height", number)
+			var (
+				trace *geth_types.BlockTrace
+				err   error
+			)
+			// Try 3times if failed to get trace.
+			cutil.TryTimes(3, func() bool {
+				// Randomly select a client from traceClients.
+				id, _ := rand.Int(rand.Reader, big.NewInt(int64(len(clients))))
+				client := clients[id.Int64()]
+				trace, err = client.GetBlockTraceByNumber(ctx, big.NewInt(0).SetUint64(number))
+				return err == nil && trace != nil
+			})
+			if err != nil {
+				return fmt.Errorf("failed to GetBlockResultByHash: %v. number: %v", err, number)
+			}
+			log.Info("retrieved block trace", "height", trace.Header.Number, "hash", trace.Header.Hash().String())
+			mu.Lock()
+			traces = append(traces, trace)
+			mu.Unlock()
+			return nil
+		})
+	}
+
 	return
 }
 
 func (w *WatcherClient) getAndStoreBlockTraces(ctx context.Context, from, to uint64) error {
-	var traces []*geth_types.BlockTrace
-	for number := from; number <= to; number++ {
-		log.Debug("retrieving block trace", "height", number)
-		trace, err2 := getTraceFromMultiNodes(ctx, w.traceClients, big.NewInt(int64(number)))
-		if err2 != nil {
-			return fmt.Errorf("failed to GetBlockResultByHash: %v. number: %v", err2, number)
-		}
-		log.Info("retrieved block trace", "height", trace.Header.Number, "hash", trace.Header.Hash().String())
-		traces = append(traces, trace)
+	traces, err := getTracesFromMultiNodes(ctx, w.traceClients, from, to)
+	if err != nil {
+		log.Error("failed to get traces", "from", from, "to", to, "err", err)
 	}
+
 	if len(traces) > 0 {
 		if err := w.orm.InsertL2BlockTraces(traces); err != nil {
 			return fmt.Errorf("failed to batch insert BlockTraces: %v", err)
