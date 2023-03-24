@@ -180,7 +180,7 @@ func testOrmBlockTraces(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(factory.GetDB().DB))
 
-	res, err := ormBlock.GetL2WrappedBlock(map[string]interface{}{})
+	res, err := ormBlock.GetL2WrappedBlocks(map[string]interface{}{})
 	assert.NoError(t, err)
 	assert.Equal(t, true, len(res) == 0)
 
@@ -189,7 +189,7 @@ func testOrmBlockTraces(t *testing.T) {
 	assert.Equal(t, false, exist)
 
 	// Insert into db
-	assert.NoError(t, ormBlock.InsertWrappedBlock([]*types.WrappedBlock{wrappedBlock}))
+	assert.NoError(t, ormBlock.InsertWrappedBlocks([]*types.WrappedBlock{wrappedBlock}))
 
 	res2, err := ormBlock.GetUnbatchedL2Blocks(map[string]interface{}{})
 	assert.NoError(t, err)
@@ -199,7 +199,7 @@ func testOrmBlockTraces(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, true, exist)
 
-	res, err = ormBlock.GetL2WrappedBlock(map[string]interface{}{
+	res, err = ormBlock.GetL2WrappedBlocks(map[string]interface{}{
 		"hash": wrappedBlock.Header.Hash().String(),
 	})
 	assert.NoError(t, err)

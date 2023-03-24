@@ -47,7 +47,7 @@ func (o *blockTraceOrm) GetL2BlocksLatestHeight() (int64, error) {
 	return height, nil
 }
 
-func (o *blockTraceOrm) GetL2WrappedBlock(fields map[string]interface{}, args ...string) ([]*types.WrappedBlock, error) {
+func (o *blockTraceOrm) GetL2WrappedBlocks(fields map[string]interface{}, args ...string) ([]*types.WrappedBlock, error) {
 	type Result struct {
 		Trace string
 	}
@@ -150,7 +150,7 @@ func (o *blockTraceOrm) GetL2BlockHashByNumber(number uint64) (*common.Hash, err
 	return &hash, nil
 }
 
-func (o *blockTraceOrm) InsertWrappedBlock(blocks []*types.WrappedBlock) error {
+func (o *blockTraceOrm) InsertWrappedBlocks(blocks []*types.WrappedBlock) error {
 	blockMaps := make([]map[string]interface{}, len(blocks))
 	for i, block := range blocks {
 		number, hash, txNum, mtime := block.Header.Number.Int64(),

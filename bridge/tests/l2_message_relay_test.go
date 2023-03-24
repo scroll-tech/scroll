@@ -77,7 +77,7 @@ func testRelayL2MessageSucceed(t *testing.T) {
 			WithdrawTrieRoot: common.Hash{},
 		},
 	}
-	assert.NoError(t, db.InsertWrappedBlock(traces))
+	assert.NoError(t, db.InsertWrappedBlocks(traces))
 
 	parentBatch := &types.BlockBatch{
 		Index: 0,

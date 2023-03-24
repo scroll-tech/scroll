@@ -375,7 +375,7 @@ func (p *BatchProposer) createBatchForBlocks(blocks []*types.BlockInfo) error {
 func (p *BatchProposer) generateBatchData(parentBatch *types.BlockBatch, blocks []*types.BlockInfo) (*types.BatchData, error) {
 	var wrappedBlocks []*types.WrappedBlock
 	for _, block := range blocks {
-		trs, err := p.orm.GetL2WrappedBlock(map[string]interface{}{"hash": block.Hash})
+		trs, err := p.orm.GetL2WrappedBlocks(map[string]interface{}{"hash": block.Hash})
 		if err != nil || len(trs) != 1 {
 			log.Error("Failed to GetBlockTraces", "hash", block.Hash, "err", err)
 			return nil, err

@@ -77,7 +77,7 @@ func testL2RelayerProcessSaveEvents(t *testing.T) {
 			WithdrawTrieRoot: common.Hash{},
 		},
 	}
-	assert.NoError(t, db.InsertWrappedBlock(traces))
+	assert.NoError(t, db.InsertWrappedBlocks(traces))
 
 	dbTx, err := db.Beginx()
 	assert.NoError(t, err)

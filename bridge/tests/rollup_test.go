@@ -55,7 +55,7 @@ func testCommitBatchAndFinalizeBatch(t *testing.T) {
 		})
 		parentHash = header.Hash()
 	}
-	assert.NoError(t, db.InsertWrappedBlock(wrappedBlocks))
+	assert.NoError(t, db.InsertWrappedBlocks(wrappedBlocks))
 
 	parentBatch := &types.BlockBatch{
 		Index: 0,
