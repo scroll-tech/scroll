@@ -5,12 +5,13 @@ import (
 	"crypto/rand"
 	"errors"
 	"fmt"
-	"golang.org/x/sync/errgroup"
 	"math/big"
 	"reflect"
 	"runtime"
 	"sync"
 	"time"
+
+	"golang.org/x/sync/errgroup"
 
 	geth "github.com/scroll-tech/go-ethereum"
 	"github.com/scroll-tech/go-ethereum/accounts/abi"
