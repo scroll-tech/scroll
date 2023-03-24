@@ -263,7 +263,7 @@ func getTracesFromMultiNodes(ctx context.Context, clients []*ethclient.Client, f
 		})
 	}
 
-	return
+	return traces, eg.Wait()
 }
 
 func (w *WatcherClient) getAndStoreBlockTraces(ctx context.Context, from, to uint64) error {
