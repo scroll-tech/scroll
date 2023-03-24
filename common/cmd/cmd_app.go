@@ -38,9 +38,17 @@ func (c *Cmd) RunApp(waitResult func() bool) {
 
 // WaitExit wait util process exit.
 func (c *Cmd) WaitExit() {
-	// Wait all the check funcs are finished or test status is failed.
-	for !(c.Err != nil || c.checkFuncs.IsEmpty()) {
-		<-time.After(time.Millisecond * 500)
+	// Wait all the check functions are finished, interrupt loop when appear error.
+	var err error
+	for err == nil && !c.checkFuncs.IsEmpty() {
+		select {
+		case err = <-c.ErrChan:
+			if err != nil {
+				fmt.Printf("%s appear error durning running, err: %v\n", c.name, err)
+			}
+		default:
+			<-time.After(time.Millisecond * 500)
+		}
 	}
 
 	// Send interrupt signal.
@@ -56,7 +64,7 @@ func (c *Cmd) WaitExit() {
 // Interrupt send interrupt signal.
 func (c *Cmd) Interrupt() {
 	c.mu.Lock()
-	c.Err = c.cmd.Process.Signal(os.Interrupt)
+	c.ErrChan <- c.cmd.Process.Signal(os.Interrupt)
 	c.mu.Unlock()
 }
 
