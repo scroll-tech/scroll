@@ -9,7 +9,9 @@ import (
 	"testing"
 
 	"github.com/scroll-tech/go-ethereum/common"
+	"github.com/scroll-tech/go-ethereum/common/hexutil"
 	geth_types "github.com/scroll-tech/go-ethereum/core/types"
+	"github.com/scroll-tech/go-ethereum/trie"
 	"github.com/stretchr/testify/assert"
 
 	"scroll-tech/common/types"
@@ -61,16 +63,18 @@ func testL2RelayerProcessSaveEvents(t *testing.T) {
 	err = db.SaveL2Messages(context.Background(), templateL2Message)
 	assert.NoError(t, err)
 
-	traces := []*geth_types.BlockTrace{
+	traces := []*types.BlockWithWithdrawTrieRoot{
 		{
-			Header: &geth_types.Header{
+			Block: geth_types.NewBlockWithHeader(&geth_types.Header{
 				Number: big.NewInt(int64(templateL2Message[0].Height)),
-			},
+			}),
+			WithdrawTrieRoot: common.Hash{},
 		},
 		{
-			Header: &geth_types.Header{
+			Block: geth_types.NewBlockWithHeader(&geth_types.Header{
 				Number: big.NewInt(int64(templateL2Message[0].Height + 1)),
-			},
+			}),
+			WithdrawTrieRoot: common.Hash{},
 		},
 	}
 	assert.NoError(t, db.InsertL2BlockTraces(traces))
@@ -206,5 +210,25 @@ func genBatchData(t *testing.T, index uint64) *types.BatchData {
 		Index: index,
 		Hash:  "0x0000000000000000000000000000000000000000",
 	}
-	return types.NewBatchData(parentBatch, []*geth_types.BlockTrace{blockTrace}, nil)
+	transactions := make(geth_types.Transactions, len(blockTrace.Transactions))
+	for i, txData := range blockTrace.Transactions {
+		data, _ := hexutil.Decode(txData.Data)
+		transactions[i] = geth_types.NewTx(&geth_types.LegacyTx{
+			Nonce:    txData.Nonce,
+			To:       txData.To,
+			Value:    txData.Value.ToInt(),
+			Gas:      txData.Gas,
+			GasPrice: txData.GasPrice.ToInt(),
+			Data:     data,
+			V:        txData.V.ToInt(),
+			R:        txData.R.ToInt(),
+			S:        txData.S.ToInt(),
+		})
+	}
+	block := geth_types.NewBlock(blockTrace.Header, transactions, nil, nil, trie.NewStackTrie(nil))
+	blockWithWithdrawTrieRoot := &types.BlockWithWithdrawTrieRoot{
+		Block:            block,
+		WithdrawTrieRoot: common.Hash{},
+	}
+	return types.NewBatchData(parentBatch, []*types.BlockWithWithdrawTrieRoot{blockWithWithdrawTrieRoot}, nil)
 }

@@ -119,7 +119,7 @@ func (w *WatcherClient) initializeGenesis() error {
 	log.Info("retrieved L2 genesis header", "hash", genesis.Hash().String())
 
 	block := geth_types.NewBlockWithHeader(genesis)
-	blockTrace := &types.BlockWithWithdrawTrieRoot{block, common.Hash{}}
+	blockTrace := &types.BlockWithWithdrawTrieRoot{Block: block, WithdrawTrieRoot: common.Hash{}}
 	batchData := types.NewGenesisBatchData(blockTrace)
 
 	if err = AddBatchInfoToDB(w.orm, batchData); err != nil {
@@ -231,7 +231,7 @@ func (w *WatcherClient) getAndStoreBlockTraces(ctx context.Context, from, to uin
 			return fmt.Errorf("failed to get withdrawTrieRoot: %v. number: %v", err3, number)
 		}
 
-		blocks = append(blocks, &types.BlockWithWithdrawTrieRoot{block, common.BytesToHash(withdrawTrieRoot)})
+		blocks = append(blocks, &types.BlockWithWithdrawTrieRoot{Block: block, WithdrawTrieRoot: common.BytesToHash(withdrawTrieRoot)})
 	}
 
 	if len(blocks) > 0 {

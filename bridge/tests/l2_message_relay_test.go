@@ -33,7 +33,7 @@ func testRelayL2MessageSucceed(t *testing.T) {
 
 	// Create L2Watcher
 	confirmations := rpc.LatestBlockNumber
-	l2Watcher := l2.NewL2WatcherClient(context.Background(), l2Client, confirmations, l2Cfg.L2MessengerAddress, l2Cfg.L2MessageQueueAddress, db)
+	l2Watcher := l2.NewL2WatcherClient(context.Background(), l2Client, confirmations, l2Cfg.L2MessengerAddress, l2Cfg.L2MessageQueueAddress, l2Cfg.WithdrawTrieRootSlot, db)
 
 	// Create L2Relayer
 	l2Relayer, err := l2.NewLayer2Relayer(context.Background(), l2Client, db, l2Cfg.RelayerConfig)
@@ -65,15 +65,15 @@ func testRelayL2MessageSucceed(t *testing.T) {
 	assert.Equal(t, msg.Target, l1Auth.From.String())
 
 	// add fake blocks
-	traces := []*geth_types.BlockTrace{
+	traces := []*types.BlockWithWithdrawTrieRoot{
 		{
-			Header: &geth_types.Header{
+			Block: geth_types.NewBlockWithHeader(&geth_types.Header{
 				Number:     sendReceipt.BlockNumber,
 				ParentHash: common.Hash{},
 				Difficulty: big.NewInt(0),
 				BaseFee:    big.NewInt(0),
-			},
-			StorageTrace: &geth_types.StorageTrace{},
+			}),
+			WithdrawTrieRoot: common.Hash{},
 		},
 	}
 	assert.NoError(t, db.InsertL2BlockTraces(traces))
@@ -82,7 +82,7 @@ func testRelayL2MessageSucceed(t *testing.T) {
 		Index: 0,
 		Hash:  "0x0000000000000000000000000000000000000000",
 	}
-	batchData := types.NewBatchData(parentBatch, []*geth_types.BlockTrace{
+	batchData := types.NewBatchData(parentBatch, []*types.BlockWithWithdrawTrieRoot{
 		traces[0],
 	}, cfg.L2Config.BatchProposerConfig.PublicInputConfig)
 	batchHash := batchData.Hash().String()
