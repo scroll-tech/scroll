@@ -28,8 +28,8 @@ type L1BlockOrm interface {
 // BlockTraceOrm block_trace operation interface
 type BlockTraceOrm interface {
 	IsL2BlockExists(number uint64) (bool, error)
-	GetL2BlockTracesLatestHeight() (int64, error)
-	GetL2BlockTraces(fields map[string]interface{}, args ...string) ([]*types.BlockWithWithdrawTrieRoot, error)
+	GetL2BlocksLatestHeight() (int64, error)
+	GetL2BlocksWithWithdrawTrieRoot(fields map[string]interface{}, args ...string) ([]*types.BlockWithWithdrawTrieRoot, error)
 	GetL2BlockInfos(fields map[string]interface{}, args ...string) ([]*types.BlockInfo, error)
 	// GetUnbatchedBlocks add `GetUnbatchedBlocks` because `GetBlockInfos` cannot support query "batch_hash is NULL"
 	GetUnbatchedL2Blocks(fields map[string]interface{}, args ...string) ([]*types.BlockInfo, error)

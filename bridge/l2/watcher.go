@@ -185,9 +185,9 @@ func (w *WatcherClient) tryFetchRunningMissingBlocks(ctx context.Context, blockH
 	// Get newest block in DB. must have blocks at that time.
 	// Don't use "block_trace" table "trace" column's BlockTrace.Number,
 	// because it might be empty if the corresponding rollup_result is finalized/finalization_skipped
-	heightInDB, err := w.orm.GetL2BlockTracesLatestHeight()
+	heightInDB, err := w.orm.GetL2BlocksLatestHeight()
 	if err != nil {
-		log.Error("failed to GetL2BlockTracesLatestHeight", "err", err)
+		log.Error("failed to GetL2BlocksLatestHeight", "err", err)
 		return
 	}
 

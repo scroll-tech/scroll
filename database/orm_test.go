@@ -180,7 +180,7 @@ func testOrmBlockTraces(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(factory.GetDB().DB))
 
-	res, err := ormBlock.GetL2BlockTraces(map[string]interface{}{})
+	res, err := ormBlock.GetL2BlocksWithWithdrawTrieRoot(map[string]interface{}{})
 	assert.NoError(t, err)
 	assert.Equal(t, true, len(res) == 0)
 
@@ -199,7 +199,7 @@ func testOrmBlockTraces(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, true, exist)
 
-	res, err = ormBlock.GetL2BlockTraces(map[string]interface{}{
+	res, err = ormBlock.GetL2BlocksWithWithdrawTrieRoot(map[string]interface{}{
 		"hash": blockWithWithdrawTrieRoot.Header.Hash().String(),
 	})
 	assert.NoError(t, err)

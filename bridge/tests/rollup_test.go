@@ -39,7 +39,7 @@ func testCommitBatchAndFinalizeBatch(t *testing.T) {
 	l1Watcher := l1.NewWatcher(context.Background(), l1Client, 0, l1Cfg.Confirmations, l1Cfg.L1MessengerAddress, l1Cfg.L1MessageQueueAddress, l1Cfg.ScrollChainContractAddress, db)
 
 	// add some blocks to db
-	var traces []*types.BlockWithWithdrawTrieRoot
+	var blocksWithWithdrawTrieRoot []*types.BlockWithWithdrawTrieRoot
 	var parentHash common.Hash
 	for i := 1; i <= 10; i++ {
 		header := geth_types.Header{
@@ -48,22 +48,22 @@ func testCommitBatchAndFinalizeBatch(t *testing.T) {
 			Difficulty: big.NewInt(0),
 			BaseFee:    big.NewInt(0),
 		}
-		traces = append(traces, &types.BlockWithWithdrawTrieRoot{
+		blocksWithWithdrawTrieRoot = append(blocksWithWithdrawTrieRoot, &types.BlockWithWithdrawTrieRoot{
 			Header:           &header,
 			Transactions:     nil,
 			WithdrawTrieRoot: common.Hash{},
 		})
 		parentHash = header.Hash()
 	}
-	assert.NoError(t, db.InsertBlockWithWithdrawTrieRoot(traces))
+	assert.NoError(t, db.InsertBlockWithWithdrawTrieRoot(blocksWithWithdrawTrieRoot))
 
 	parentBatch := &types.BlockBatch{
 		Index: 0,
 		Hash:  "0x0000000000000000000000000000000000000000",
 	}
 	batchData := types.NewBatchData(parentBatch, []*types.BlockWithWithdrawTrieRoot{
-		traces[0],
-		traces[1],
+		blocksWithWithdrawTrieRoot[0],
+		blocksWithWithdrawTrieRoot[1],
 	}, cfg.L2Config.BatchProposerConfig.PublicInputConfig)
 
 	batchHash := batchData.Hash().String()

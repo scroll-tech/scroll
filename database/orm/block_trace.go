@@ -37,7 +37,7 @@ func (o *blockTraceOrm) IsL2BlockExists(number uint64) (bool, error) {
 	return true, nil
 }
 
-func (o *blockTraceOrm) GetL2BlockTracesLatestHeight() (int64, error) {
+func (o *blockTraceOrm) GetL2BlocksLatestHeight() (int64, error) {
 	row := o.db.QueryRow("SELECT COALESCE(MAX(number), -1) FROM block_trace;")
 
 	var height int64
@@ -47,7 +47,7 @@ func (o *blockTraceOrm) GetL2BlockTracesLatestHeight() (int64, error) {
 	return height, nil
 }
 
-func (o *blockTraceOrm) GetL2BlockTraces(fields map[string]interface{}, args ...string) ([]*types.BlockWithWithdrawTrieRoot, error) {
+func (o *blockTraceOrm) GetL2BlocksWithWithdrawTrieRoot(fields map[string]interface{}, args ...string) ([]*types.BlockWithWithdrawTrieRoot, error) {
 	type Result struct {
 		Trace string
 	}
@@ -64,24 +64,24 @@ func (o *blockTraceOrm) GetL2BlockTraces(fields map[string]interface{}, args ...
 		return nil, err
 	}
 
-	var traces []*types.BlockWithWithdrawTrieRoot
+	var blocksWithWithdrawTrieRoot []*types.BlockWithWithdrawTrieRoot
 	for rows.Next() {
 		result := &Result{}
 		if err = rows.StructScan(result); err != nil {
 			break
 		}
-		trace := types.BlockWithWithdrawTrieRoot{}
-		err = json.Unmarshal([]byte(result.Trace), &trace)
+		blockWithWithdrawTrieRoot := types.BlockWithWithdrawTrieRoot{}
+		err = json.Unmarshal([]byte(result.Trace), &blockWithWithdrawTrieRoot)
 		if err != nil {
 			break
 		}
-		traces = append(traces, &trace)
+		blocksWithWithdrawTrieRoot = append(blocksWithWithdrawTrieRoot, &blockWithWithdrawTrieRoot)
 	}
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return nil, err
 	}
 
-	return traces, rows.Close()
+	return blocksWithWithdrawTrieRoot, rows.Close()
 }
 
 func (o *blockTraceOrm) GetL2BlockInfos(fields map[string]interface{}, args ...string) ([]*types.BlockInfo, error) {
