@@ -61,19 +61,23 @@ func testL2RelayerProcessSaveEvents(t *testing.T) {
 	err = db.SaveL2Messages(context.Background(), templateL2Message)
 	assert.NoError(t, err)
 
-	traces := []*geth_types.BlockTrace{
+	traces := []*types.WrappedBlock{
 		{
 			Header: &geth_types.Header{
 				Number: big.NewInt(int64(templateL2Message[0].Height)),
 			},
+			Transactions:     nil,
+			WithdrawTrieRoot: common.Hash{},
 		},
 		{
 			Header: &geth_types.Header{
 				Number: big.NewInt(int64(templateL2Message[0].Height + 1)),
 			},
+			Transactions:     nil,
+			WithdrawTrieRoot: common.Hash{},
 		},
 	}
-	assert.NoError(t, db.InsertL2BlockTraces(traces))
+	assert.NoError(t, db.InsertWrappedBlocks(traces))
 
 	dbTx, err := db.Beginx()
 	assert.NoError(t, err)
@@ -198,13 +202,13 @@ func genBatchData(t *testing.T, index uint64) *types.BatchData {
 	templateBlockTrace, err := os.ReadFile("../../common/testdata/blockTrace_02.json")
 	assert.NoError(t, err)
 	// unmarshal blockTrace
-	blockTrace := &geth_types.BlockTrace{}
-	err = json.Unmarshal(templateBlockTrace, blockTrace)
+	wrappedBlock := &types.WrappedBlock{}
+	err = json.Unmarshal(templateBlockTrace, wrappedBlock)
 	assert.NoError(t, err)
-	blockTrace.Header.ParentHash = common.HexToHash("0x" + strconv.FormatUint(index+1, 16))
+	wrappedBlock.Header.ParentHash = common.HexToHash("0x" + strconv.FormatUint(index+1, 16))
 	parentBatch := &types.BlockBatch{
 		Index: index,
 		Hash:  "0x0000000000000000000000000000000000000000",
 	}
-	return types.NewBatchData(parentBatch, []*geth_types.BlockTrace{blockTrace}, nil)
+	return types.NewBatchData(parentBatch, []*types.WrappedBlock{wrappedBlock}, nil)
 }
