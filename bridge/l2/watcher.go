@@ -11,6 +11,7 @@ import (
 	geth "github.com/scroll-tech/go-ethereum"
 	"github.com/scroll-tech/go-ethereum/accounts/abi"
 	"github.com/scroll-tech/go-ethereum/common"
+	"github.com/scroll-tech/go-ethereum/common/hexutil"
 	geth_types "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/event"
@@ -59,8 +60,9 @@ type WatcherClient struct {
 	messengerAddress common.Address
 	messengerABI     *abi.ABI
 
-	messageQueueAddress common.Address
-	messageQueueABI     *abi.ABI
+	messageQueueAddress  common.Address
+	messageQueueABI      *abi.ABI
+	withdrawTrieRootSlot common.Hash
 
 	// The height of the block that the watcher has retrieved event logs
 	processedMsgHeight uint64
@@ -70,7 +72,7 @@ type WatcherClient struct {
 }
 
 // NewL2WatcherClient take a l2geth instance to generate a l2watcherclient instance
-func NewL2WatcherClient(ctx context.Context, client *ethclient.Client, confirmations rpc.BlockNumber, messengerAddress, messageQueueAddress common.Address, orm database.OrmFactory) *WatcherClient {
+func NewL2WatcherClient(ctx context.Context, client *ethclient.Client, confirmations rpc.BlockNumber, messengerAddress, messageQueueAddress common.Address, withdrawTrieRootSlot common.Hash, orm database.OrmFactory) *WatcherClient {
 	savedHeight, err := orm.GetLayer2LatestWatchedHeight()
 	if err != nil {
 		log.Warn("fetch height from db failed", "err", err)
@@ -87,8 +89,9 @@ func NewL2WatcherClient(ctx context.Context, client *ethclient.Client, confirmat
 		messengerAddress: messengerAddress,
 		messengerABI:     bridge_abi.L2ScrollMessengerABI,
 
-		messageQueueAddress: messageQueueAddress,
-		messageQueueABI:     bridge_abi.L2MessageQueueABI,
+		messageQueueAddress:  messageQueueAddress,
+		messageQueueABI:      bridge_abi.L2MessageQueueABI,
+		withdrawTrieRootSlot: withdrawTrieRootSlot,
 
 		stopCh:  make(chan struct{}),
 		stopped: 0,
@@ -117,15 +120,7 @@ func (w *WatcherClient) initializeGenesis() error {
 
 	log.Info("retrieved L2 genesis header", "hash", genesis.Hash().String())
 
-	blockTrace := &geth_types.BlockTrace{
-		Coinbase:         nil,
-		Header:           genesis,
-		Transactions:     []*geth_types.TransactionData{},
-		StorageTrace:     nil,
-		ExecutionResults: []*geth_types.ExecutionResult{},
-		MPTWitness:       nil,
-	}
-
+	blockTrace := &types.WrappedBlock{Header: genesis, Transactions: nil, WithdrawTrieRoot: common.Hash{}}
 	batchData := types.NewGenesisBatchData(blockTrace)
 
 	if err = AddBatchInfoToDB(w.orm, batchData); err != nil {
@@ -191,9 +186,9 @@ func (w *WatcherClient) tryFetchRunningMissingBlocks(ctx context.Context, blockH
 	// Get newest block in DB. must have blocks at that time.
 	// Don't use "block_trace" table "trace" column's BlockTrace.Number,
 	// because it might be empty if the corresponding rollup_result is finalized/finalization_skipped
-	heightInDB, err := w.orm.GetL2BlockTracesLatestHeight()
+	heightInDB, err := w.orm.GetL2BlocksLatestHeight()
 	if err != nil {
-		log.Error("failed to GetL2BlockTracesLatestHeight", "err", err)
+		log.Error("failed to GetL2BlocksLatestHeight", "err", err)
 		return
 	}
 
@@ -220,19 +215,55 @@ func (w *WatcherClient) tryFetchRunningMissingBlocks(ctx context.Context, blockH
 	}
 }
 
-func (w *WatcherClient) getAndStoreBlockTraces(ctx context.Context, from, to uint64) error {
-	var traces []*geth_types.BlockTrace
-	for number := from; number <= to; number++ {
-		log.Debug("retrieving block trace", "height", number)
-		trace, err2 := w.GetBlockTraceByNumber(ctx, big.NewInt(int64(number)))
-		if err2 != nil {
-			return fmt.Errorf("failed to GetBlockResultByHash: %v. number: %v", err2, number)
+func txsToTxsData(txs geth_types.Transactions) []*geth_types.TransactionData {
+	txsData := make([]*geth_types.TransactionData, len(txs))
+	for i, tx := range txs {
+		v, r, s := tx.RawSignatureValues()
+		txsData[i] = &geth_types.TransactionData{
+			Type:     tx.Type(),
+			TxHash:   tx.Hash().String(),
+			Nonce:    tx.Nonce(),
+			ChainId:  (*hexutil.Big)(tx.ChainId()),
+			Gas:      tx.Gas(),
+			GasPrice: (*hexutil.Big)(tx.GasPrice()),
+			To:       tx.To(),
+			Value:    (*hexutil.Big)(tx.Value()),
+			Data:     hexutil.Encode(tx.Data()),
+			IsCreate: tx.To() == nil,
+			V:        (*hexutil.Big)(v),
+			R:        (*hexutil.Big)(r),
+			S:        (*hexutil.Big)(s),
 		}
-		log.Info("retrieved block trace", "height", trace.Header.Number, "hash", trace.Header.Hash().String())
-		traces = append(traces, trace)
 	}
-	if len(traces) > 0 {
-		if err := w.orm.InsertL2BlockTraces(traces); err != nil {
+	return txsData
+}
+
+func (w *WatcherClient) getAndStoreBlockTraces(ctx context.Context, from, to uint64) error {
+	var blocks []*types.WrappedBlock
+
+	for number := from; number <= to; number++ {
+		log.Debug("retrieving block", "height", number)
+		block, err2 := w.BlockByNumber(ctx, big.NewInt(int64(number)))
+		if err2 != nil {
+			return fmt.Errorf("failed to GetBlockByNumber: %v. number: %v", err2, number)
+		}
+
+		log.Info("retrieved block", "height", block.Header().Number, "hash", block.Header().Hash().String())
+
+		withdrawTrieRoot, err3 := w.StorageAt(ctx, w.messageQueueAddress, w.withdrawTrieRootSlot, big.NewInt(int64(number)))
+		if err3 != nil {
+			return fmt.Errorf("failed to get withdrawTrieRoot: %v. number: %v", err3, number)
+		}
+
+		blocks = append(blocks, &types.WrappedBlock{
+			Header:           block.Header(),
+			Transactions:     txsToTxsData(block.Transactions()),
+			WithdrawTrieRoot: common.BytesToHash(withdrawTrieRoot),
+		})
+	}
+
+	if len(blocks) > 0 {
+		if err := w.orm.InsertWrappedBlocks(blocks); err != nil {
 			return fmt.Errorf("failed to batch insert BlockTraces: %v", err)
 		}
 	}
