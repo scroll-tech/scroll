@@ -86,6 +86,7 @@ var (
 
 func TestMain(m *testing.M) {
 	base = docker.NewDockerApp()
+	dbConfig = base.DBConfig
 	m.Run()
 	base.Free()
 }
@@ -93,7 +94,6 @@ func TestMain(m *testing.M) {
 func setupEnv(t *testing.T) error {
 	// Init db config and start db container.
 	base.RunDBImage(t)
-	dbConfig = base.DBConfig
 
 	// Create db handler and reset db.
 	factory, err := database.NewOrmFactory(dbConfig)

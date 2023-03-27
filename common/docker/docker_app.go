@@ -79,7 +79,7 @@ func (b *App) RunDBImage(t *testing.T) {
 	assert.NoError(t, b.DBImg.Start())
 	var isRun bool
 	// try 5 times until the db is ready.
-	utils.TryTimes(5, func() bool {
+	utils.TryTimes(10, func() bool {
 		db, _ := sqlx.Open("postgres", b.DBImg.Endpoint())
 		isRun = db != nil && db.Ping() == nil
 		return isRun
@@ -114,7 +114,7 @@ func (b *App) RunL1Geth(t *testing.T) {
 
 	var isRun bool
 	// try 3 times to get chainID until is ok.
-	utils.TryTimes(3, func() bool {
+	utils.TryTimes(10, func() bool {
 		client, _ := ethclient.Dial(b.L1gethImg.Endpoint())
 		if client != nil {
 			if _, err := client.ChainID(context.Background()); err == nil {
@@ -147,7 +147,7 @@ func (b *App) RunL2Geth(t *testing.T) {
 
 	var isRun bool
 	// try 3 times to get chainID until is ok.
-	utils.TryTimes(3, func() bool {
+	utils.TryTimes(10, func() bool {
 		client, _ := ethclient.Dial(b.L2gethImg.Endpoint())
 		if client != nil {
 			if _, err := client.ChainID(context.Background()); err == nil {
