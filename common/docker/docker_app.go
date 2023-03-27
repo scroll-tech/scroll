@@ -99,7 +99,7 @@ func (b *App) Free() {
 		_ = b.DBImg.Stop()
 		_ = os.Remove(b.dbFile)
 		if !utils.IsNil(b.dbClient) {
-			b.dbClient.Close()
+			_ = b.dbClient.Close()
 			b.dbClient = nil
 		}
 	}
