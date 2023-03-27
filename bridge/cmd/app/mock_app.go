@@ -4,15 +4,17 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"scroll-tech/common/utils"
 	"testing"
 	"time"
 
-	bridgeConfig "scroll-tech/bridge/config"
 	"scroll-tech/common/cmd"
 	"scroll-tech/common/docker"
+	"scroll-tech/common/utils"
+
+	bridgeConfig "scroll-tech/bridge/config"
 )
 
+// BridgeApp bridge-test client manager.
 type BridgeApp struct {
 	Config *bridgeConfig.Config
 
@@ -26,6 +28,7 @@ type BridgeApp struct {
 	docker.AppAPI
 }
 
+// NewBridgeApp return a new bridgeApp manager.
 func NewBridgeApp(base *docker.App, file string) *BridgeApp {
 	bridgeFile := fmt.Sprintf("/tmp/%d_bridge-config.json", base.Timestamp)
 	bridgeApp := &BridgeApp{
@@ -38,11 +41,13 @@ func NewBridgeApp(base *docker.App, file string) *BridgeApp {
 	return bridgeApp
 }
 
+// RunApp run bridge-test child process by multi parameters.
 func (b *BridgeApp) RunApp(t *testing.T, args ...string) {
 	b.AppAPI = cmd.NewCmd("bridge-test", append(b.args, args...)...)
 	b.AppAPI.RunApp(func() bool { return b.AppAPI.WaitResult(t, time.Second*20, "Start bridge successfully") })
 }
 
+// Free stop and release bridge-test.
 func (b *BridgeApp) Free() {
 	if !utils.IsNil(b.AppAPI) {
 		b.AppAPI.WaitExit()
@@ -50,6 +55,7 @@ func (b *BridgeApp) Free() {
 	}
 }
 
+// MockBridgeConfig creates a new bridge config.
 func (b *BridgeApp) MockBridgeConfig(store bool) error {
 	base := b.base
 	// Load origin bridge config file.

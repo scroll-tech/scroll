@@ -2,8 +2,9 @@ package utils
 
 import (
 	"context"
-	"github.com/modern-go/reflect2"
 	"time"
+
+	"github.com/modern-go/reflect2"
 )
 
 // TryTimes try run several times until the function return true.

@@ -10,10 +10,11 @@ import (
 	"testing"
 	"time"
 
+	coordinatorConfig "scroll-tech/coordinator/config"
+
 	"scroll-tech/common/cmd"
 	"scroll-tech/common/docker"
 	"scroll-tech/common/utils"
-	coordinatorConfig "scroll-tech/coordinator/config"
 )
 
 var (

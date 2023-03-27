@@ -10,10 +10,11 @@ import (
 
 	"golang.org/x/sync/errgroup"
 
+	rollerConfig "scroll-tech/roller/config"
+
 	"scroll-tech/common/cmd"
 	"scroll-tech/common/docker"
 	"scroll-tech/common/utils"
-	rollerConfig "scroll-tech/roller/config"
 )
 
 var (

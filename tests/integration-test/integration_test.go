@@ -14,10 +14,13 @@ import (
 
 	"scroll-tech/common/docker"
 
-	app2 "scroll-tech/bridge/cmd/app"
-	app3 "scroll-tech/coordinator/cmd/app"
 	_ "scroll-tech/database/cmd/app"
+
 	app4 "scroll-tech/roller/cmd/app"
+
+	app3 "scroll-tech/coordinator/cmd/app"
+
+	app2 "scroll-tech/bridge/cmd/app"
 )
 
 var (

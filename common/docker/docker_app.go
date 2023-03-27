@@ -16,9 +16,10 @@ import (
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/stretchr/testify/assert"
 
+	"scroll-tech/database"
+
 	"scroll-tech/common/cmd"
 	"scroll-tech/common/utils"
-	"scroll-tech/database"
 )
 
 var (
@@ -27,6 +28,7 @@ var (
 	dbStartPort = 30000
 )
 
+// AppAPI app interface.
 type AppAPI interface {
 	WaitResult(t *testing.T, timeout time.Duration, keyword string) bool
 	RunApp(waitResult func() bool)
@@ -70,6 +72,7 @@ func (b *App) RunImages(t *testing.T) {
 	b.RunL2Geth(t)
 }
 
+// RunDBImage starts postgres docker container.
 func (b *App) RunDBImage(t *testing.T) {
 	if b.DBImg.IsRunning() {
 		return
@@ -99,6 +102,7 @@ func (b *App) Free() {
 	}
 }
 
+// RunL1Geth starts l1geth docker container.
 func (b *App) RunL1Geth(t *testing.T) {
 	if b.L1gethImg.IsRunning() {
 		return
@@ -131,6 +135,7 @@ func (b *App) L1Client() (*ethclient.Client, error) {
 	return client, nil
 }
 
+// RunL2Geth starts l2geth docker container.
 func (b *App) RunL2Geth(t *testing.T) {
 	if b.L2gethImg.IsRunning() {
 		return
@@ -194,6 +199,7 @@ func (b *App) RunDBApp(t *testing.T, option, keyword string) {
 	}
 }
 
+// InitDB init database.
 func (b *App) InitDB(t *testing.T) {
 	// Init database.
 	b.RunDBApp(t, "reset", "successful to reset")
