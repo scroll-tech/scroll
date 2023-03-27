@@ -8,7 +8,6 @@ import (
 	"sync"
 	"time"
 
-	geth_types "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/log"
 	geth_metrics "github.com/scroll-tech/go-ethereum/metrics"
 
@@ -374,16 +373,16 @@ func (p *BatchProposer) createBatchForBlocks(blocks []*types.BlockInfo) error {
 }
 
 func (p *BatchProposer) generateBatchData(parentBatch *types.BlockBatch, blocks []*types.BlockInfo) (*types.BatchData, error) {
-	var traces []*geth_types.BlockTrace
+	var wrappedBlocks []*types.WrappedBlock
 	for _, block := range blocks {
-		trs, err := p.orm.GetL2BlockTraces(map[string]interface{}{"hash": block.Hash})
+		trs, err := p.orm.GetL2WrappedBlocks(map[string]interface{}{"hash": block.Hash})
 		if err != nil || len(trs) != 1 {
 			log.Error("Failed to GetBlockTraces", "hash", block.Hash, "err", err)
 			return nil, err
 		}
-		traces = append(traces, trs[0])
+		wrappedBlocks = append(wrappedBlocks, trs[0])
 	}
-	return types.NewBatchData(parentBatch, traces, p.piCfg), nil
+	return types.NewBatchData(parentBatch, wrappedBlocks, p.piCfg), nil
 }
 
 func (p *BatchProposer) getBatchDataBufferSize() (size uint64) {
