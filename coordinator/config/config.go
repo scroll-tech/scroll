@@ -11,7 +11,8 @@ import (
 )
 
 const (
-	defaultNumberOfVerifierWorkers = 10
+	defaultNumberOfVerifierWorkers      = 10
+	defaultNumberOfSessionRetryAttempts = 2
 )
 
 // RollerManagerConfig loads sequencer configuration items.
@@ -22,7 +23,7 @@ type RollerManagerConfig struct {
 	// The amount of rollers to pick per proof generation session.
 	RollersPerSession uint8 `json:"rollers_per_session"`
 	// Number of attempts that session can repeat if previous attempt failed (timed out curretly)
-	SessionAttempts uint8 `json:"session_attempts"`
+	SessionAttempts uint8 `json:"session_attempts,omitempty"`
 	// Zk verifier config.
 	Verifier *VerifierConfig `json:"verifier,omitempty"`
 	// Proof collection time (in minutes).
@@ -75,6 +76,9 @@ func NewConfig(file string) (*Config, error) {
 
 	if cfg.RollerManagerConfig.MaxVerifierWorkers == 0 {
 		cfg.RollerManagerConfig.MaxVerifierWorkers = defaultNumberOfVerifierWorkers
+	}
+	if cfg.RollerManagerConfig.SessionAttempts == 0 {
+		cfg.RollerManagerConfig.SessionAttempts = defaultNumberOfSessionRetryAttempts
 	}
 
 	return cfg, nil
