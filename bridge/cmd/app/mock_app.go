@@ -59,19 +59,17 @@ func (b *BridgeApp) Free() {
 func (b *BridgeApp) MockBridgeConfig(store bool) error {
 	base := b.base
 	// Load origin bridge config file.
-	if b.Config == nil {
-		cfg, err := bridgeConfig.NewConfig(b.originFile)
-		if err != nil {
-			return err
-		}
-		b.Config = cfg
+	cfg, err := bridgeConfig.NewConfig(b.originFile)
+	if err != nil {
+		return err
 	}
 
-	b.Config.L1Config.Endpoint = base.L1gethImg.Endpoint()
-	b.Config.L2Config.RelayerConfig.SenderConfig.Endpoint = base.L1gethImg.Endpoint()
-	b.Config.L2Config.Endpoint = base.L2gethImg.Endpoint()
-	b.Config.L1Config.RelayerConfig.SenderConfig.Endpoint = base.L2gethImg.Endpoint()
-	b.Config.DBConfig.DSN = base.DBImg.Endpoint()
+	cfg.L1Config.Endpoint = base.L1gethImg.Endpoint()
+	cfg.L2Config.RelayerConfig.SenderConfig.Endpoint = base.L1gethImg.Endpoint()
+	cfg.L2Config.Endpoint = base.L2gethImg.Endpoint()
+	cfg.L1Config.RelayerConfig.SenderConfig.Endpoint = base.L2gethImg.Endpoint()
+	cfg.DBConfig.DSN = base.DBImg.Endpoint()
+	b.Config = cfg
 
 	if !store {
 		return nil

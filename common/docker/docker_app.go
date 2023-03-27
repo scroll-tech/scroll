@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/jmoiron/sqlx"
-	"github.com/modern-go/reflect2"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/stretchr/testify/assert"
 
@@ -125,7 +124,7 @@ func (b *App) RunL1Geth(t *testing.T) {
 
 // L1Client returns a ethclient by dialing running l1geth
 func (b *App) L1Client() (*ethclient.Client, error) {
-	if b.L1gethImg == nil || reflect2.IsNil(b.L1gethImg) {
+	if utils.IsNil(b.L1gethImg) {
 		return nil, fmt.Errorf("l1 geth is not running")
 	}
 	client, err := ethclient.Dial(b.L1gethImg.Endpoint())
@@ -158,7 +157,7 @@ func (b *App) RunL2Geth(t *testing.T) {
 
 // L2Client returns a ethclient by dialing running l2geth
 func (b *App) L2Client() (*ethclient.Client, error) {
-	if b.L2gethImg == nil || reflect2.IsNil(b.L2gethImg) {
+	if utils.IsNil(b.L2gethImg) {
 		return nil, fmt.Errorf("l2 geth is not running")
 	}
 	client, err := ethclient.Dial(b.L2gethImg.Endpoint())
@@ -207,13 +206,11 @@ func (b *App) InitDB(t *testing.T) {
 }
 
 func (b *App) mockDBConfig() error {
-	if b.DBConfig == nil {
-		b.DBConfig = &database.DBConfig{
-			DSN:        "",
-			DriverName: "postgres",
-			MaxOpenNum: 200,
-			MaxIdleNum: 20,
-		}
+	b.DBConfig = &database.DBConfig{
+		DSN:        "",
+		DriverName: "postgres",
+		MaxOpenNum: 200,
+		MaxIdleNum: 20,
 	}
 
 	if b.DBImg != nil {

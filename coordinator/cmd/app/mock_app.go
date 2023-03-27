@@ -83,10 +83,9 @@ func (c *CoordinatorApp) MockCoordinatorConfig(store bool) error {
 		CollectionTime:    1,
 		TokenTimeToLive:   1,
 	}
+	cfg.DBConfig.DSN = base.DBImg.Endpoint()
+	cfg.L2Config.Endpoint = base.L2gethImg.Endpoint()
 	c.Config = cfg
-
-	c.Config.DBConfig.DSN = base.DBImg.Endpoint()
-	c.Config.L2Config.Endpoint = base.L2gethImg.Endpoint()
 
 	if !store {
 		return nil
