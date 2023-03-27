@@ -23,7 +23,7 @@ var (
 type CoordinatorApp struct {
 	Config *coordinatorConfig.Config
 
-	base *docker.DockerApp
+	base *docker.App
 
 	originFile      string
 	coordinatorFile string
@@ -33,7 +33,7 @@ type CoordinatorApp struct {
 	docker.AppAPI
 }
 
-func NewCoordinatorApp(base *docker.DockerApp, file string) *CoordinatorApp {
+func NewCoordinatorApp(base *docker.App, file string) *CoordinatorApp {
 	coordinatorFile := fmt.Sprintf("/tmp/%d_coordinator-config.json", base.Timestamp)
 	port, _ := rand.Int(rand.Reader, big.NewInt(2000))
 	wsPort := port.Int64() + wsStartPort

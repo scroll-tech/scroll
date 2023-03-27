@@ -76,7 +76,7 @@ var (
 	batchData2   *types.BatchData
 
 	dbConfig   *database.DBConfig
-	base       *docker.DockerApp
+	base       *docker.App
 	ormBlock   orm.BlockTraceOrm
 	ormLayer1  orm.L1MessageOrm
 	ormLayer2  orm.L2MessageOrm
@@ -86,9 +86,8 @@ var (
 
 func setupEnv(t *testing.T) error {
 	// Init db config and start db container.
-	dbConfig = &database.DBConfig{DriverName: "postgres"}
-	base.RunImages(t)
-	dbConfig.DSN = base.DBEndpoint()
+	base.RunDBImage(t)
+	dbConfig = base.DBConfig
 
 	// Create db handler and reset db.
 	factory, err := database.NewOrmFactory(dbConfig)

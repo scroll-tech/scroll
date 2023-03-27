@@ -28,7 +28,7 @@ func getIndex() int {
 type RollerApp struct {
 	Config *rollerConfig.Config
 
-	base *docker.DockerApp
+	base *docker.App
 
 	originFile string
 	rollerFile string
@@ -41,7 +41,7 @@ type RollerApp struct {
 	docker.AppAPI
 }
 
-func NewRollerApp(base *docker.DockerApp, file string) *RollerApp {
+func NewRollerApp(base *docker.App, file string) *RollerApp {
 	rollerFile := fmt.Sprintf("/tmp/%d_roller-config.json", base.Timestamp)
 	rollerApp := &RollerApp{
 		base:       base,

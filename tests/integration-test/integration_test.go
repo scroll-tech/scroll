@@ -21,7 +21,7 @@ import (
 )
 
 var (
-	base        *docker.DockerApp
+	base        *docker.App
 	bridge      *app2.BridgeApp
 	coordinator *app3.CoordinatorApp
 	rollers     app4.RollerApps

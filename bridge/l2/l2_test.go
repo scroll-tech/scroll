@@ -19,7 +19,7 @@ var (
 	// config
 	cfg *config.Config
 
-	base *docker.DockerApp
+	base *docker.App
 
 	// l2geth client
 	l2Cli *ethclient.Client

@@ -39,7 +39,7 @@ import (
 
 var (
 	cfg  *bridge_config.Config
-	base *docker.DockerApp
+	base *docker.App
 
 	batchData *types.BatchData
 )

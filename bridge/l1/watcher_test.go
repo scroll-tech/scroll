@@ -4,7 +4,6 @@ import (
 	"context"
 	"testing"
 
-	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/stretchr/testify/assert"
 
 	"scroll-tech/database"
@@ -18,7 +17,7 @@ func testStartWatcher(t *testing.T) {
 	assert.NoError(t, migrate.ResetDB(db.GetDB().DB))
 	defer db.Close()
 
-	client, err := ethclient.Dial(base.L1GethEndpoint())
+	client, err := base.L1Client()
 	assert.NoError(t, err)
 
 	l1Cfg := cfg.L1Config

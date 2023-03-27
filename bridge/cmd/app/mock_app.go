@@ -16,7 +16,7 @@ import (
 type BridgeApp struct {
 	Config *bridgeConfig.Config
 
-	base *docker.DockerApp
+	base *docker.App
 
 	originFile string
 	bridgeFile string
@@ -26,7 +26,7 @@ type BridgeApp struct {
 	docker.AppAPI
 }
 
-func NewBridgeApp(base *docker.DockerApp, file string) *BridgeApp {
+func NewBridgeApp(base *docker.App, file string) *BridgeApp {
 	bridgeFile := fmt.Sprintf("/tmp/%d_bridge-config.json", base.Timestamp)
 	bridgeApp := &BridgeApp{
 		base:       base,
@@ -75,5 +75,5 @@ func (b *BridgeApp) MockBridgeConfig(store bool) error {
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(b.bridgeFile, data, 0644)
+	return os.WriteFile(b.bridgeFile, data, 0600)
 }

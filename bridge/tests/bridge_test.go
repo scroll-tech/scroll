@@ -29,7 +29,7 @@ var (
 	privateKey *ecdsa.PrivateKey
 
 	bridgeApp *app.BridgeApp
-	base      *docker.DockerApp
+	base      *docker.App
 
 	// clients
 	l1Client *ethclient.Client

@@ -13,18 +13,18 @@ import (
 )
 
 var (
-	base *docker.DockerApp
+	base *docker.App
 	pgDB *sqlx.DB
 )
 
 func initEnv(t *testing.T) error {
 	// Start db container.
-	base.RunImages(t)
+	base.RunDBImage(t)
 
 	// Create db orm handler.
 	factory, err := database.NewOrmFactory(&database.DBConfig{
 		DriverName: "postgres",
-		DSN:        base.DBEndpoint(),
+		DSN:        base.DBImg.Endpoint(),
 	})
 	if err != nil {
 		return err

@@ -29,7 +29,7 @@ const TXBatch = 50
 var (
 	privateKeys []*ecdsa.PrivateKey
 	cfg         *config.Config
-	base        *docker.DockerApp
+	base        *docker.App
 )
 
 func TestMain(m *testing.M) {
@@ -50,7 +50,7 @@ func setupEnv(t *testing.T) {
 	// Load default private key.
 	privateKeys = []*ecdsa.PrivateKey{priv}
 
-	cfg.L1Config.RelayerConfig.SenderConfig.Endpoint = base.L2GethEndpoint()
+	cfg.L1Config.RelayerConfig.SenderConfig.Endpoint = base.L2gethImg.Endpoint()
 }
 
 func TestSender(t *testing.T) {
