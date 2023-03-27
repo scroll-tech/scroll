@@ -21,6 +21,7 @@ var (
 	wsStartPort int64 = 40000
 )
 
+// CoordinatorApp coordinator-test client manager.
 type CoordinatorApp struct {
 	Config *coordinatorConfig.Config
 
@@ -34,6 +35,7 @@ type CoordinatorApp struct {
 	docker.AppAPI
 }
 
+// NewCoordinatorApp return a new coordinatorApp manager.
 func NewCoordinatorApp(base *docker.App, file string) *CoordinatorApp {
 	coordinatorFile := fmt.Sprintf("/tmp/%d_coordinator-config.json", base.Timestamp)
 	port, _ := rand.Int(rand.Reader, big.NewInt(2000))
@@ -48,11 +50,13 @@ func NewCoordinatorApp(base *docker.App, file string) *CoordinatorApp {
 	return coordinatorApp
 }
 
+// RunApp run coordinator-test child process by multi parameters.
 func (c *CoordinatorApp) RunApp(t *testing.T, args ...string) {
 	c.AppAPI = cmd.NewCmd("coordinator-test", append(c.args, args...)...)
 	c.AppAPI.RunApp(func() bool { return c.AppAPI.WaitResult(t, time.Second*20, "Start coordinator successfully") })
 }
 
+// Free stop and release coordinator-test.
 func (c *CoordinatorApp) Free() {
 	if !utils.IsNil(c.AppAPI) {
 		c.AppAPI.WaitExit()
@@ -60,10 +64,12 @@ func (c *CoordinatorApp) Free() {
 	}
 }
 
+// WSEndpoint returns ws endpoint.
 func (c *CoordinatorApp) WSEndpoint() string {
 	return fmt.Sprintf("ws://localhost:%d", c.WSPort)
 }
 
+// MockCoordinatorConfig creates a new coordinator config.
 func (c *CoordinatorApp) MockCoordinatorConfig(store bool) error {
 	base := c.base
 	cfg, err := coordinatorConfig.NewConfig(c.originFile)

@@ -26,6 +26,7 @@ func getIndex() int {
 	return rollerIndex
 }
 
+// RollerApp roller-test client manager.
 type RollerApp struct {
 	Config *rollerConfig.Config
 
@@ -42,6 +43,7 @@ type RollerApp struct {
 	docker.AppAPI
 }
 
+// NewRollerApp return a new rollerApp manager.
 func NewRollerApp(base *docker.App, file string) *RollerApp {
 	rollerFile := fmt.Sprintf("/tmp/%d_roller-config.json", base.Timestamp)
 	rollerApp := &RollerApp{
@@ -56,11 +58,13 @@ func NewRollerApp(base *docker.App, file string) *RollerApp {
 	return rollerApp
 }
 
+// RunApp run roller-test child process by multi parameters.
 func (r *RollerApp) RunApp(t *testing.T, args ...string) {
 	r.AppAPI = cmd.NewCmd(r.name, append(r.args, args...)...)
 	r.AppAPI.RunApp(func() bool { return r.AppAPI.WaitResult(t, time.Second*40, "roller start successfully") })
 }
 
+// Free stop and release roller-test.
 func (r *RollerApp) Free() {
 	if !utils.IsNil(r.AppAPI) {
 		r.AppAPI.WaitExit()
@@ -70,6 +74,7 @@ func (r *RollerApp) Free() {
 	}
 }
 
+// MockRollerConfig creates a new roller config.
 func (r *RollerApp) MockRollerConfig(store bool, wsUrl string) error {
 	cfg, err := rollerConfig.NewConfig(r.originFile)
 	if err != nil {
@@ -99,8 +104,10 @@ func (r *RollerApp) MockRollerConfig(store bool, wsUrl string) error {
 	return os.WriteFile(r.rollerFile, data, 0644)
 }
 
+// RollerApps rollerApp list.
 type RollerApps []*RollerApp
 
+// RunApps starts all the rollerApps.
 func (r RollerApps) RunApps(t *testing.T, args ...string) {
 	var eg errgroup.Group
 	for i := range r {
@@ -113,6 +120,7 @@ func (r RollerApps) RunApps(t *testing.T, args ...string) {
 	_ = eg.Wait()
 }
 
+// MockConfigs creates all the rollerApps' configs.
 func (r RollerApps) MockConfigs(store bool, wsUrl string) error {
 	var eg errgroup.Group
 	for _, roller := range r {
@@ -124,6 +132,7 @@ func (r RollerApps) MockConfigs(store bool, wsUrl string) error {
 	return eg.Wait()
 }
 
+// Free releases rollerApps.
 func (r RollerApps) Free() {
 	var wg sync.WaitGroup
 	wg.Add(len(r))
@@ -137,6 +146,7 @@ func (r RollerApps) Free() {
 	wg.Wait()
 }
 
+// WaitExit wait rollerApps stopped.
 func (r RollerApps) WaitExit() {
 	var wg sync.WaitGroup
 	wg.Add(len(r))
