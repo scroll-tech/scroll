@@ -16,6 +16,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"scroll-tech/database"
+	_ "scroll-tech/database/cmd/app"
 
 	"scroll-tech/common/cmd"
 	"scroll-tech/common/utils"
