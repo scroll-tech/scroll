@@ -4,10 +4,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"scroll-tech/common/utils"
 	"testing"
 	"time"
-
-	"github.com/modern-go/reflect2"
 
 	bridgeConfig "scroll-tech/bridge/config"
 	"scroll-tech/common/cmd"
@@ -15,9 +14,10 @@ import (
 )
 
 type BridgeApp struct {
+	Config *bridgeConfig.Config
+
 	base *docker.DockerApp
 
-	Config     *bridgeConfig.Config
 	originFile string
 	bridgeFile string
 
@@ -35,9 +35,6 @@ func NewBridgeApp(base *docker.DockerApp, file string) *BridgeApp {
 		bridgeFile: bridgeFile,
 		args:       []string{"--log.debug", "--config", bridgeFile},
 	}
-	if err := bridgeApp.MockBridgeConfig(); err != nil {
-		panic(err)
-	}
 	return bridgeApp
 }
 
@@ -47,13 +44,13 @@ func (b *BridgeApp) RunApp(t *testing.T, args ...string) {
 }
 
 func (b *BridgeApp) Free() {
-	if !reflect2.IsNil(b.AppAPI) {
+	if !utils.IsNil(b.AppAPI) {
 		b.AppAPI.WaitExit()
 		_ = os.Remove(b.bridgeFile)
 	}
 }
 
-func (b *BridgeApp) MockBridgeConfig() error {
+func (b *BridgeApp) MockBridgeConfig(store bool) error {
 	base := b.base
 	// Load origin bridge config file.
 	if b.Config == nil {
@@ -70,6 +67,9 @@ func (b *BridgeApp) MockBridgeConfig() error {
 	b.Config.L1Config.RelayerConfig.SenderConfig.Endpoint = base.L2gethImg.Endpoint()
 	b.Config.DBConfig.DSN = base.DBImg.Endpoint()
 
+	if !store {
+		return nil
+	}
 	// Store changed bridge config into a temp file.
 	data, err := json.Marshal(b.Config)
 	if err != nil {

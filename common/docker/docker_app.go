@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"math/big"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -39,7 +40,7 @@ type DockerApp struct {
 	L2gethImg ImgInstance
 	DBImg     ImgInstance
 
-	dbConfig *database.DBConfig
+	DBConfig *database.DBConfig
 	dbFile   string
 
 	// common time stamp.
@@ -70,6 +71,9 @@ func (b *DockerApp) RunImages(t *testing.T) {
 }
 
 func (b *DockerApp) RunDBImage(t *testing.T) {
+	if b.DBImg.IsRunning() {
+		return
+	}
 	assert.NoError(t, b.DBImg.Start())
 	var isRun bool
 	// try 5 times until the db is ready.
@@ -83,22 +87,22 @@ func (b *DockerApp) RunDBImage(t *testing.T) {
 
 // Free clear all running images
 func (b *DockerApp) Free() {
-	if b.L1gethImg != nil {
+	if b.L1gethImg.IsRunning() {
 		_ = b.L1gethImg.Stop()
-		b.L1gethImg = nil
 	}
-	if b.L2gethImg != nil {
+	if b.L2gethImg.IsRunning() {
 		_ = b.L2gethImg.Stop()
-		b.L2gethImg = nil
 	}
-	if b.DBImg != nil {
+	if b.DBImg.IsRunning() {
 		_ = b.DBImg.Stop()
-		b.DBImg = nil
 		_ = os.Remove(b.dbFile)
 	}
 }
 
 func (b *DockerApp) RunL1Geth(t *testing.T) {
+	if b.L1gethImg.IsRunning() {
+		return
+	}
 	assert.NoError(t, b.L1gethImg.Start())
 
 	var isRun bool
@@ -128,6 +132,9 @@ func (b *DockerApp) L1Client() (*ethclient.Client, error) {
 }
 
 func (b *DockerApp) RunL2Geth(t *testing.T) {
+	if b.L2gethImg.IsRunning() {
+		return
+	}
 	assert.NoError(t, b.L2gethImg.Start())
 
 	var isRun bool
@@ -162,14 +169,40 @@ func (b *DockerApp) RunDBApp(t *testing.T, option, keyword string) {
 	app := cmd.NewCmd("db_cli-test", args...)
 	defer app.WaitExit()
 
-	// Wait expect result.
-	app.ExpectWithTimeout(t, true, time.Second*3, keyword)
+	okCh := make(chan struct{}, 1)
+	app.RegistFunc(keyword, func(buf string) {
+		if strings.Contains(buf, keyword) {
+			select {
+			case okCh <- struct{}{}:
+			default:
+				return
+			}
+		}
+	})
+	defer app.UnRegistFunc(keyword)
+
+	// Start process.
 	app.RunApp(nil)
+
+	select {
+	case <-okCh:
+		return
+	case err := <-app.ErrChan:
+		assert.Fail(t, err.Error())
+	case <-time.After(time.Second * 3):
+		assert.Fail(t, fmt.Sprintf("didn't get the desired result before timeout, keyword: %s", keyword))
+	}
+}
+
+func (b *DockerApp) InitDB(t *testing.T) {
+	// Init database.
+	b.RunDBApp(t, "reset", "successful to reset")
+	b.RunDBApp(t, "migrate", "current version:")
 }
 
 func (b *DockerApp) mockDBConfig() error {
-	if b.dbConfig == nil {
-		b.dbConfig = &database.DBConfig{
+	if b.DBConfig == nil {
+		b.DBConfig = &database.DBConfig{
 			DSN:        "",
 			DriverName: "postgres",
 			MaxOpenNum: 200,
@@ -178,9 +211,9 @@ func (b *DockerApp) mockDBConfig() error {
 	}
 
 	if b.DBImg != nil {
-		b.dbConfig.DSN = b.DBImg.Endpoint()
+		b.DBConfig.DSN = b.DBImg.Endpoint()
 	}
-	data, err := json.Marshal(b.dbConfig)
+	data, err := json.Marshal(b.DBConfig)
 	if err != nil {
 		return err
 	}

@@ -31,6 +31,8 @@ type SenderConfig struct {
 	TxType string `json:"tx_type"`
 	// The min balance set for check and set balance for sender's accounts.
 	MinBalance *big.Int `json:"min_balance,omitempty"`
+	// The interval (in seconds) to check balance and top up sender's accounts
+	CheckBalanceTime uint64 `json:"check_balance_time"`
 }
 
 // RelayerConfig loads relayer configuration items.
@@ -49,6 +51,8 @@ type RelayerConfig struct {
 	GasOracleConfig *GasOracleConfig `json:"gas_oracle_config"`
 	// The interval in which we send finalize batch transactions.
 	FinalizeBatchIntervalSec uint64 `json:"finalize_batch_interval_sec"`
+	// MessageRelayMinGasLimit to avoid OutOfGas error
+	MessageRelayMinGasLimit uint64 `json:"message_relay_min_gas_limit,omitempty"`
 	// The private key of the relayer
 	MessageSenderPrivateKeys   []*ecdsa.PrivateKey `json:"-"`
 	GasOracleSenderPrivateKeys []*ecdsa.PrivateKey `json:"-"`

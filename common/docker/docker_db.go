@@ -45,7 +45,6 @@ func (i *ImgDB) Start() error {
 	if id != "" {
 		return fmt.Errorf("container already exist, name: %s", i.name)
 	}
-	i.cmd.RunCmd(true)
 	i.running = i.isOk()
 	if !i.running {
 		_ = i.Stop()
@@ -79,6 +78,11 @@ func (i *ImgDB) Endpoint() string {
 	return fmt.Sprintf("postgres://postgres:%s@localhost:%d/%s?sslmode=disable", i.password, i.port, i.dbName)
 }
 
+// IsRunning returns docker container's running status.
+func (i *ImgDB) IsRunning() bool {
+	return i.running
+}
+
 func (i *ImgDB) prepare() []string {
 	cmd := []string{"docker", "run", "--name", i.name, "-p", fmt.Sprintf("%d:5432", i.port)}
 	envs := []string{
@@ -103,15 +107,21 @@ func (i *ImgDB) isOk() bool {
 		}
 	})
 	defer i.cmd.UnRegistFunc(keyword)
+	// Start cmd in parallel.
+	i.cmd.RunCmd(true)
 
 	select {
 	case <-okCh:
-		utils.TryTimes(3, func() bool {
+		utils.TryTimes(20, func() bool {
 			i.id = GetContainerID(i.name)
 			return i.id != ""
 		})
-		return i.id != ""
+	case err := <-i.cmd.ErrChan:
+		if err != nil {
+			fmt.Printf("failed to start %s, err: %v\n", i.name, err)
+		}
 	case <-time.After(time.Second * 20):
 		return false
 	}
+	return i.id != ""
 }

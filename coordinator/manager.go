@@ -15,15 +15,25 @@ import (
 	geth_types "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
+	geth_metrics "github.com/scroll-tech/go-ethereum/metrics"
 	"github.com/scroll-tech/go-ethereum/rpc"
 
 	"scroll-tech/common/message"
+	"scroll-tech/common/metrics"
 	"scroll-tech/common/types"
-
 	"scroll-tech/database"
+
+	"scroll-tech/common/utils/workerpool"
 
 	"scroll-tech/coordinator/config"
 	"scroll-tech/coordinator/verifier"
+)
+
+var (
+	coordinatorSessionsTimeoutTotalCounter      = geth_metrics.NewRegisteredCounter("coordinator/sessions/timeout/total", metrics.ScrollRegistry)
+	coordinatorProofsReceivedTotalCounter       = geth_metrics.NewRegisteredCounter("coordinator/proofs/received/total", metrics.ScrollRegistry)
+	coordinatorProofsVerifiedTotalCounter       = geth_metrics.NewRegisteredCounter("coordinator/proofs/verified/total", metrics.ScrollRegistry)
+	coordinatorProofsVerifiedFailedTotalCounter = geth_metrics.NewRegisteredCounter("coordinator/proofs/verified/failed/total", metrics.ScrollRegistry)
 )
 
 const (
@@ -81,6 +91,9 @@ type Manager struct {
 	tokenCache *cache.Cache
 	// A mutex guarding registration
 	registerMu sync.RWMutex
+
+	// Verifier worker pool
+	verifierWorkerPool *workerpool.WorkerPool
 }
 
 // New returns a new instance of Manager. The instance will be not fully prepared,
@@ -102,6 +115,7 @@ func New(ctx context.Context, cfg *config.RollerManagerConfig, orm database.OrmF
 		orm:                orm,
 		Client:             client,
 		tokenCache:         cache.New(time.Duration(cfg.TokenTimeToLive)*time.Second, 1*time.Hour),
+		verifierWorkerPool: workerpool.NewWorkerPool(cfg.MaxVerifierWorkers),
 	}, nil
 }
 
@@ -111,6 +125,7 @@ func (m *Manager) Start() error {
 		return nil
 	}
 
+	m.verifierWorkerPool.Run()
 	m.restorePrevSessions()
 
 	atomic.StoreInt32(&m.running, 1)
@@ -124,6 +139,7 @@ func (m *Manager) Stop() {
 	if !m.isRunning() {
 		return
 	}
+	m.verifierWorkerPool.Stop()
 
 	atomic.StoreInt32(&m.running, 0)
 }
@@ -291,16 +307,10 @@ func (m *Manager) handleZkProof(pk string, msg *message.ProofDetail) error {
 		return dbErr
 	}
 
-	var err error
-	tasks, err := m.orm.GetBlockBatches(map[string]interface{}{"hash": msg.ID})
-	if len(tasks) == 0 {
-		if err != nil {
-			log.Error("failed to get tasks", "error", err)
-		}
-		return err
-	}
+	coordinatorProofsReceivedTotalCounter.Inc(1)
 
-	success, err = m.verifier.VerifyProof(msg.Proof)
+	var err error
+	success, err = m.verifyProof(msg.Proof)
 	if err != nil {
 		// TODO: this is only a temp workaround for testnet, we should return err in real cases
 		success = false
@@ -317,8 +327,11 @@ func (m *Manager) handleZkProof(pk string, msg *message.ProofDetail) error {
 				"msg.ID", msg.ID,
 				"status", types.ProvingTaskVerified,
 				"error", dbErr)
+			return dbErr
 		}
-		return dbErr
+		coordinatorProofsVerifiedTotalCounter.Inc(1)
+	} else {
+		coordinatorProofsVerifiedFailedTotalCounter.Inc(1)
 	}
 	return nil
 }
@@ -556,4 +569,27 @@ func (m *Manager) VerifyToken(authMsg *message.AuthMsg) (bool, error) {
 		return false, errors.New("failed to find corresponding token")
 	}
 	return true, nil
+}
+
+func (m *Manager) addVerifyTask(proof *message.AggProof) chan verifyResult {
+	c := make(chan verifyResult, 1)
+	m.verifierWorkerPool.AddTask(func() {
+		result, err := m.verifier.VerifyProof(proof)
+		c <- verifyResult{result, err}
+	})
+	return c
+}
+
+func (m *Manager) verifyProof(proof *message.AggProof) (bool, error) {
+	if !m.isRunning() {
+		return false, errors.New("coordinator has stopped before verification")
+	}
+	verifyResultChan := m.addVerifyTask(proof)
+	verifyResult := <-verifyResultChan
+	return verifyResult.result, verifyResult.err
+}
+
+type verifyResult struct {
+	result bool
+	err    error
 }

@@ -5,7 +5,7 @@ import (
 	"runtime/debug"
 )
 
-var tag = "alpha-v1.18"
+var tag = "v3.0.1"
 
 var commit = func() string {
 	if info, ok := debug.ReadBuildInfo(); ok {

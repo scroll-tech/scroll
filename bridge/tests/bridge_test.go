@@ -14,6 +14,7 @@ import (
 	"github.com/scroll-tech/go-ethereum/rpc"
 	"github.com/stretchr/testify/assert"
 
+	"scroll-tech/bridge/cmd/app"
 	"scroll-tech/bridge/config"
 	"scroll-tech/bridge/mock_bridge"
 
@@ -26,7 +27,9 @@ var (
 
 	// private key
 	privateKey *ecdsa.PrivateKey
-	base       *docker.DockerApp
+
+	bridgeApp *app.BridgeApp
+	base      *docker.DockerApp
 
 	// clients
 	l1Client *ethclient.Client
@@ -51,9 +54,11 @@ var (
 
 func TestMain(m *testing.M) {
 	base = docker.NewDockerApp()
+	bridgeApp = app.NewBridgeApp(base, "../config.json")
 
 	m.Run()
 
+	bridgeApp.Free()
 	base.Free()
 }
 
@@ -68,9 +73,11 @@ func setupEnv(t *testing.T) {
 	gasOraclePrivateKey, err := crypto.ToECDSA(common.FromHex("1212121212121212121212121212121212121212121212121212121212121215"))
 	assert.NoError(t, err)
 
-	// Load config.
-	cfg, err = config.NewConfig("../config.json")
-	assert.NoError(t, err)
+	base.RunImages(t)
+	assert.NoError(t, bridgeApp.MockBridgeConfig(false))
+
+	// Use the created config.
+	cfg = bridgeApp.Config
 	cfg.L1Config.Confirmations = rpc.LatestBlockNumber
 	cfg.L1Config.RelayerConfig.MessageSenderPrivateKeys = []*ecdsa.PrivateKey{messagePrivateKey}
 	cfg.L1Config.RelayerConfig.RollupSenderPrivateKeys = []*ecdsa.PrivateKey{rollupPrivateKey}
@@ -79,23 +86,11 @@ func setupEnv(t *testing.T) {
 	cfg.L2Config.RelayerConfig.MessageSenderPrivateKeys = []*ecdsa.PrivateKey{messagePrivateKey}
 	cfg.L2Config.RelayerConfig.RollupSenderPrivateKeys = []*ecdsa.PrivateKey{rollupPrivateKey}
 	cfg.L2Config.RelayerConfig.GasOracleSenderPrivateKeys = []*ecdsa.PrivateKey{gasOraclePrivateKey}
-	base.RunImages(t)
-
-	// Create l1geth container.
-	cfg.L2Config.RelayerConfig.SenderConfig.Endpoint = base.L1GethEndpoint()
-	cfg.L1Config.Endpoint = base.L1GethEndpoint()
-
-	// Create l2geth container.
-	cfg.L1Config.RelayerConfig.SenderConfig.Endpoint = base.L2GethEndpoint()
-	cfg.L2Config.Endpoint = base.L2GethEndpoint()
-
-	// Create db container.
-	cfg.DBConfig.DSN = base.DBEndpoint()
 
 	// Create l1geth and l2geth client.
-	l1Client, err = ethclient.Dial(cfg.L1Config.Endpoint)
+	l1Client, err = base.L1Client()
 	assert.NoError(t, err)
-	l2Client, err = ethclient.Dial(cfg.L2Config.Endpoint)
+	l2Client, err = base.L2Client()
 	assert.NoError(t, err)
 
 	// Create l1 and l2 auth

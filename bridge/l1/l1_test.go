@@ -31,11 +31,14 @@ func setupEnv(t *testing.T) {
 	var err error
 	cfg, err = config.NewConfig("../config.json")
 	assert.NoError(t, err)
-	base.RunImages(t)
 
-	cfg.L2Config.RelayerConfig.SenderConfig.Endpoint = base.L1GethEndpoint()
-	cfg.L1Config.RelayerConfig.SenderConfig.Endpoint = base.L2GethEndpoint()
-	cfg.DBConfig.DSN = base.DBEndpoint()
+	// Start l1geth l2geth and postgres docker containers.
+	base.RunImages(t)
+	// Init db.
+	base.InitDB(t)
+	cfg.L2Config.RelayerConfig.SenderConfig.Endpoint = base.L1gethImg.Endpoint()
+	cfg.L1Config.RelayerConfig.SenderConfig.Endpoint = base.L2gethImg.Endpoint()
+	cfg.DBConfig = base.DBConfig
 }
 
 func TestL1(t *testing.T) {

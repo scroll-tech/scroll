@@ -11,26 +11,32 @@ import (
 	geth "github.com/scroll-tech/go-ethereum"
 	"github.com/scroll-tech/go-ethereum/accounts/abi"
 	"github.com/scroll-tech/go-ethereum/common"
+	"github.com/scroll-tech/go-ethereum/common/hexutil"
 	geth_types "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/event"
 	"github.com/scroll-tech/go-ethereum/log"
-	"github.com/scroll-tech/go-ethereum/metrics"
+	geth_metrics "github.com/scroll-tech/go-ethereum/metrics"
 	"github.com/scroll-tech/go-ethereum/rpc"
 
+	"scroll-tech/common/metrics"
+	"scroll-tech/common/types"
 	cutil "scroll-tech/common/utils"
+	"scroll-tech/database"
 
 	bridge_abi "scroll-tech/bridge/abi"
 	"scroll-tech/bridge/utils"
-
-	"scroll-tech/common/types"
-
-	"scroll-tech/database"
 )
 
 // Metrics
 var (
-	bridgeL2MsgSyncHeightGauge = metrics.NewRegisteredGauge("bridge/l2/msg/sync/height", nil)
+	bridgeL2MsgsSyncHeightGauge      = geth_metrics.NewRegisteredGauge("bridge/l2/msgs/sync/height", metrics.ScrollRegistry)
+	bridgeL2TracesFetchedHeightGauge = geth_metrics.NewRegisteredGauge("bridge/l2/traces/fetched/height", metrics.ScrollRegistry)
+	bridgeL2TracesFetchedGapGauge    = geth_metrics.NewRegisteredGauge("bridge/l2/traces/fetched/gap", metrics.ScrollRegistry)
+
+	bridgeL2MsgsSentEventsTotalCounter    = geth_metrics.NewRegisteredCounter("bridge/l2/msgs/sent/events/total", metrics.ScrollRegistry)
+	bridgeL2MsgsAppendEventsTotalCounter  = geth_metrics.NewRegisteredCounter("bridge/l2/msgs/append/events/total", metrics.ScrollRegistry)
+	bridgeL2MsgsRelayedEventsTotalCounter = geth_metrics.NewRegisteredCounter("bridge/l2/msgs/relayed/events/total", metrics.ScrollRegistry)
 )
 
 type relayedMessage struct {
@@ -53,8 +59,9 @@ type WatcherClient struct {
 	messengerAddress common.Address
 	messengerABI     *abi.ABI
 
-	messageQueueAddress common.Address
-	messageQueueABI     *abi.ABI
+	messageQueueAddress  common.Address
+	messageQueueABI      *abi.ABI
+	withdrawTrieRootSlot common.Hash
 
 	// The height of the block that the watcher has retrieved event logs
 	processedMsgHeight uint64
@@ -64,7 +71,7 @@ type WatcherClient struct {
 }
 
 // NewL2WatcherClient take a l2geth instance to generate a l2watcherclient instance
-func NewL2WatcherClient(ctx context.Context, client *ethclient.Client, confirmations rpc.BlockNumber, messengerAddress, messageQueueAddress common.Address, orm database.OrmFactory) *WatcherClient {
+func NewL2WatcherClient(ctx context.Context, client *ethclient.Client, confirmations rpc.BlockNumber, messengerAddress, messageQueueAddress common.Address, withdrawTrieRootSlot common.Hash, orm database.OrmFactory) *WatcherClient {
 	savedHeight, err := orm.GetLayer2LatestWatchedHeight()
 	if err != nil {
 		log.Warn("fetch height from db failed", "err", err)
@@ -81,8 +88,9 @@ func NewL2WatcherClient(ctx context.Context, client *ethclient.Client, confirmat
 		messengerAddress: messengerAddress,
 		messengerABI:     bridge_abi.L2ScrollMessengerABI,
 
-		messageQueueAddress: messageQueueAddress,
-		messageQueueABI:     bridge_abi.L2MessageQueueABI,
+		messageQueueAddress:  messageQueueAddress,
+		messageQueueABI:      bridge_abi.L2MessageQueueABI,
+		withdrawTrieRootSlot: withdrawTrieRootSlot,
 
 		stopCh:  make(chan struct{}),
 		stopped: 0,
@@ -111,15 +119,7 @@ func (w *WatcherClient) initializeGenesis() error {
 
 	log.Info("retrieved L2 genesis header", "hash", genesis.Hash().String())
 
-	blockTrace := &geth_types.BlockTrace{
-		Coinbase:         nil,
-		Header:           genesis,
-		Transactions:     []*geth_types.TransactionData{},
-		StorageTrace:     nil,
-		ExecutionResults: []*geth_types.ExecutionResult{},
-		MPTWitness:       nil,
-	}
-
+	blockTrace := &types.WrappedBlock{Header: genesis, Transactions: nil, WithdrawTrieRoot: common.Hash{}}
 	batchData := types.NewGenesisBatchData(blockTrace)
 
 	if err = AddBatchInfoToDB(w.orm, batchData); err != nil {
@@ -185,9 +185,9 @@ func (w *WatcherClient) tryFetchRunningMissingBlocks(ctx context.Context, blockH
 	// Get newest block in DB. must have blocks at that time.
 	// Don't use "block_trace" table "trace" column's BlockTrace.Number,
 	// because it might be empty if the corresponding rollup_result is finalized/finalization_skipped
-	heightInDB, err := w.orm.GetL2BlockTracesLatestHeight()
+	heightInDB, err := w.orm.GetL2BlocksLatestHeight()
 	if err != nil {
-		log.Error("failed to GetL2BlockTracesLatestHeight", "err", err)
+		log.Error("failed to GetL2BlocksLatestHeight", "err", err)
 		return
 	}
 
@@ -209,25 +209,60 @@ func (w *WatcherClient) tryFetchRunningMissingBlocks(ctx context.Context, blockH
 			log.Error("fail to getAndStoreBlockTraces", "from", from, "to", to, "err", err)
 			return
 		}
+		bridgeL2TracesFetchedHeightGauge.Update(int64(to))
+		bridgeL2TracesFetchedGapGauge.Update(int64(blockHeight - to))
 	}
 }
 
+func txsToTxsData(txs geth_types.Transactions) []*geth_types.TransactionData {
+	txsData := make([]*geth_types.TransactionData, len(txs))
+	for i, tx := range txs {
+		v, r, s := tx.RawSignatureValues()
+		txsData[i] = &geth_types.TransactionData{
+			Type:     tx.Type(),
+			TxHash:   tx.Hash().String(),
+			Nonce:    tx.Nonce(),
+			ChainId:  (*hexutil.Big)(tx.ChainId()),
+			Gas:      tx.Gas(),
+			GasPrice: (*hexutil.Big)(tx.GasPrice()),
+			To:       tx.To(),
+			Value:    (*hexutil.Big)(tx.Value()),
+			Data:     hexutil.Encode(tx.Data()),
+			IsCreate: tx.To() == nil,
+			V:        (*hexutil.Big)(v),
+			R:        (*hexutil.Big)(r),
+			S:        (*hexutil.Big)(s),
+		}
+	}
+	return txsData
+}
+
 func (w *WatcherClient) getAndStoreBlockTraces(ctx context.Context, from, to uint64) error {
-	var traces []*geth_types.BlockTrace
+	var blocks []*types.WrappedBlock
 
 	for number := from; number <= to; number++ {
-		log.Debug("retrieving block trace", "height", number)
-		trace, err2 := w.GetBlockTraceByNumber(ctx, big.NewInt(int64(number)))
+		log.Debug("retrieving block", "height", number)
+		block, err2 := w.BlockByNumber(ctx, big.NewInt(int64(number)))
 		if err2 != nil {
-			return fmt.Errorf("failed to GetBlockResultByHash: %v. number: %v", err2, number)
+			return fmt.Errorf("failed to GetBlockByNumber: %v. number: %v", err2, number)
 		}
-		log.Info("retrieved block trace", "height", trace.Header.Number, "hash", trace.Header.Hash().String())
 
-		traces = append(traces, trace)
+		log.Info("retrieved block", "height", block.Header().Number, "hash", block.Header().Hash().String())
 
+		withdrawTrieRoot, err3 := w.StorageAt(ctx, w.messageQueueAddress, w.withdrawTrieRootSlot, big.NewInt(int64(number)))
+		if err3 != nil {
+			return fmt.Errorf("failed to get withdrawTrieRoot: %v. number: %v", err3, number)
+		}
+
+		blocks = append(blocks, &types.WrappedBlock{
+			Header:           block.Header(),
+			Transactions:     txsToTxsData(block.Transactions()),
+			WithdrawTrieRoot: common.BytesToHash(withdrawTrieRoot),
+		})
 	}
-	if len(traces) > 0 {
-		if err := w.orm.InsertL2BlockTraces(traces); err != nil {
+
+	if len(blocks) > 0 {
+		if err := w.orm.InsertWrappedBlocks(blocks); err != nil {
 			return fmt.Errorf("failed to batch insert BlockTraces: %v", err)
 		}
 	}
@@ -276,7 +311,7 @@ func (w *WatcherClient) FetchContractEvent(blockHeight uint64) {
 		}
 		if len(logs) == 0 {
 			w.processedMsgHeight = uint64(to)
-			bridgeL2MsgSyncHeightGauge.Update(to)
+			bridgeL2MsgsSyncHeightGauge.Update(to)
 			continue
 		}
 		log.Info("received new L2 messages", "fromBlock", from, "toBlock", to, "cnt", len(logs))
@@ -286,6 +321,12 @@ func (w *WatcherClient) FetchContractEvent(blockHeight uint64) {
 			log.Error("failed to parse emitted event log", "err", err)
 			return
 		}
+
+		sentMessageCount := int64(len(sentMessageEvents))
+		relayedMessageCount := int64(len(relayedMessageEvents))
+		bridgeL2MsgsSentEventsTotalCounter.Inc(sentMessageCount)
+		bridgeL2MsgsRelayedEventsTotalCounter.Inc(relayedMessageCount)
+		log.Info("L2 events types", "SentMessageCount", sentMessageCount, "RelayedMessageCount", relayedMessageCount)
 
 		// Update relayed message first to make sure we don't forget to update submited message.
 		// Since, we always start sync from the latest unprocessed message.
@@ -308,7 +349,7 @@ func (w *WatcherClient) FetchContractEvent(blockHeight uint64) {
 		}
 
 		w.processedMsgHeight = uint64(to)
-		bridgeL2MsgSyncHeightGauge.Update(to)
+		bridgeL2MsgsSyncHeightGauge.Update(to)
 	}
 }
 
@@ -397,6 +438,7 @@ func (w *WatcherClient) parseBridgeEventLogs(logs []geth_types.Log) ([]*types.L2
 
 			lastAppendMsgHash = event.MessageHash
 			lastAppendMsgNonce = event.Index.Uint64()
+			bridgeL2MsgsAppendEventsTotalCounter.Inc(1)
 		default:
 			log.Error("Unknown event", "topic", vLog.Topics[0], "txHash", vLog.TxHash)
 		}

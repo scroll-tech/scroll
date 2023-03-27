@@ -17,7 +17,6 @@ import (
 	"time"
 
 	"github.com/scroll-tech/go-ethereum"
-	geth_types "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/crypto"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/sync/errgroup"
@@ -57,15 +56,15 @@ func setEnv(t *testing.T) (err error) {
 	base.RunImages(t)
 
 	// Create db container.
-	cfg.DBConfig.DSN = base.DBEndpoint()
+	cfg.DBConfig = base.DBConfig
 
 	templateBlockTrace, err := os.ReadFile("../common/testdata/blockTrace_02.json")
 	if err != nil {
 		return err
 	}
 	// unmarshal blockTrace
-	blockTrace := &geth_types.BlockTrace{}
-	if err = json.Unmarshal(templateBlockTrace, blockTrace); err != nil {
+	wrappedBlock := &types.WrappedBlock{}
+	if err = json.Unmarshal(templateBlockTrace, wrappedBlock); err != nil {
 		return err
 	}
 
@@ -73,7 +72,7 @@ func setEnv(t *testing.T) (err error) {
 		Index: 1,
 		Hash:  "0x0000000000000000000000000000000000000000",
 	}
-	batchData = types.NewBatchData(parentBatch, []*geth_types.BlockTrace{blockTrace}, nil)
+	batchData = types.NewBatchData(parentBatch, []*types.WrappedBlock{wrappedBlock}, nil)
 
 	return
 }
@@ -501,10 +500,11 @@ func setupCoordinator(t *testing.T, dbCfg *database.DBConfig, rollersPerSession 
 	assert.True(t, assert.NoError(t, err), "failed to get db handler.")
 
 	rollerManager, err = coordinator.New(context.Background(), &coordinator_config.RollerManagerConfig{
-		RollersPerSession: rollersPerSession,
-		Verifier:          &coordinator_config.VerifierConfig{MockMode: true},
-		CollectionTime:    1,
-		TokenTimeToLive:   5,
+		RollersPerSession:  rollersPerSession,
+		Verifier:           &coordinator_config.VerifierConfig{MockMode: true},
+		CollectionTime:     1,
+		TokenTimeToLive:    5,
+		MaxVerifierWorkers: 10,
 	}, db, nil)
 	assert.NoError(t, err)
 	assert.NoError(t, rollerManager.Start())
