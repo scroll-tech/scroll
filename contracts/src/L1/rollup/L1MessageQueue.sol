@@ -84,7 +84,7 @@ contract L1MessageQueue is OwnableUpgradeable, IL1MessageQueue {
         // We use EIP-2718 to encode the L1 message, and the encoding of the message is
         //      `TransactionType || TransactionPayload`
         // where
-        //  1. `TransactionType` is `
+        //  1. `TransactionType` is TBD
         //  2. `TransactionPayload` is `rlp([nonce, gasLimit, to, value, data, sender])`
         //
         // The spec of rlp: https://ethereum.org/en/developers/docs/data-structures-and-encoding/rlp/
@@ -111,13 +111,13 @@ contract L1MessageQueue is OwnableUpgradeable, IL1MessageQueue {
                 switch lt(v, 128)
                 case 1 {
                     // single byte in the [0x00, 0x7f]
-                    mstore(ptr, shl(255, v))
+                    mstore(ptr, shl(248, v))
                     ptr := add(ptr, 1)
                 }
                 default {
                     // 1-32 bytes long
                     let len := get_uint_bytes(v)
-                    mstore(ptr, add(len, 0x80))
+                    mstore(ptr, shl(248, add(len, 0x80)))
                     ptr := add(ptr, 1)
                     mstore(ptr, shl(mul(8, sub(32, len)), v))
                     ptr := add(ptr, len)
@@ -127,7 +127,7 @@ contract L1MessageQueue is OwnableUpgradeable, IL1MessageQueue {
             function store_address(_ptr, v) -> ptr {
                 ptr := _ptr
                 // 20 bytes long
-                mstore(ptr, 0x94) // 0x80 + 0x14
+                mstore(ptr, shl(248, 0x94)) // 0x80 + 0x14
                 ptr := add(ptr, 1)
                 mstore(ptr, shl(96, v))
                 ptr := add(ptr, 0x14)
@@ -145,13 +145,13 @@ contract L1MessageQueue is OwnableUpgradeable, IL1MessageQueue {
             switch eq(_data.length, 1)
             case 1 {
                 // single byte
-                ptr := store_uint(ptr, byte(1, calldataload(_data.offset)))
+                ptr := store_uint(ptr, shr(248, calldataload(_data.offset)))
             }
             default {
                 switch lt(_data.length, 56)
                 case 1 {
                     // a string is 0-55 bytes long
-                    mstore(ptr, add(0x80, _data.length))
+                    mstore(ptr, shl(248, add(0x80, _data.length)))
                     ptr := add(ptr, 1)
                     calldatacopy(ptr, _data.offset, _data.length)
                     ptr := add(ptr, _data.length)
@@ -159,7 +159,7 @@ contract L1MessageQueue is OwnableUpgradeable, IL1MessageQueue {
                 default {
                     // a string is more than 55 bytes long
                     let len_bytes := get_uint_bytes(_data.length)
-                    mstore(ptr, add(0xb7, len_bytes))
+                    mstore(ptr, shl(248, add(0xb7, len_bytes)))
                     ptr := add(ptr, 1)
                     mstore(ptr, shl(mul(8, sub(32, len_bytes)), _data.length))
                     ptr := add(ptr, len_bytes)
@@ -167,28 +167,31 @@ contract L1MessageQueue is OwnableUpgradeable, IL1MessageQueue {
                     ptr := add(ptr, _data.length)
                 }
             }
-
             ptr := store_address(ptr, _sender)
 
             let payload_len := sub(ptr, start_ptr)
+            let value
+            let value_bytes
             switch lt(payload_len, 56)
             case 1 {
                 // the total payload of a list is 0-55 bytes long
-                start_ptr := sub(start_ptr, 1)
-                mstore(start_ptr, add(0xc0, payload_len))
+                value := add(0xc0, payload_len)
+                value_bytes := 1
             }
             default {
                 // If the total payload of a list is more than 55 bytes long
                 let len_bytes := get_uint_bytes(payload_len)
-                let len_bits := mul(8, len_bytes)
-                let value := or(shr(len_bits, mload(start_ptr)), shl(sub(256, len_bits), payload_len))
-                start_ptr := sub(start_ptr, len_bytes)
-                mstore(start_ptr, value)
-                start_ptr := sub(start_ptr, 1)
-                mstore(start_ptr, add(0xf7, len_bytes))
+                value_bytes := add(len_bytes, 1)
+                value := add(0xf7, len_bytes)
+                value := shl(mul(len_bytes, 8), value)
+                value := or(value, payload_len)
             }
-            start_ptr := sub(start_ptr, 1)
-            mstore(start_ptr, transactionType)
+            value := or(value, shl(mul(8, value_bytes), transactionType))
+            value_bytes := add(value_bytes, 1)
+            let value_bits := mul(8, value_bytes)
+            value := or(shl(sub(256, value_bits), value), shr(value_bits, mload(start_ptr)))
+            start_ptr := sub(start_ptr, value_bytes)
+            mstore(start_ptr, value)
             hash := keccak256(start_ptr, sub(ptr, start_ptr))
         }
         return hash;
@@ -199,7 +202,11 @@ contract L1MessageQueue is OwnableUpgradeable, IL1MessageQueue {
      *****************************/
 
     /// @inheritdoc IL1MessageQueue
-    function appendCrossDomainMessage(address _target, uint256 _gasLimit, bytes calldata _data) external override {
+    function appendCrossDomainMessage(
+        address _target,
+        uint256 _gasLimit,
+        bytes calldata _data
+    ) external override {
         require(msg.sender == messenger, "Only callable by the L1ScrollMessenger");
 
         // do address alias to avoid replay attack in L2.
@@ -214,7 +221,13 @@ contract L1MessageQueue is OwnableUpgradeable, IL1MessageQueue {
     }
 
     /// @inheritdoc IL1MessageQueue
-    function appendEnforcedTransaction(address, address, uint256, uint256, bytes calldata) external override {
+    function appendEnforcedTransaction(
+        address,
+        address,
+        uint256,
+        uint256,
+        bytes calldata
+    ) external override {
         // @todo
     }
 

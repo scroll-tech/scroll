@@ -71,7 +71,11 @@ interface IL1MessageQueue {
     /// @param target The address of target contract to call in L2.
     /// @param gasLimit The maximum gas should be used for relay this message in L2.
     /// @param data The calldata passed to target contract.
-    function appendCrossDomainMessage(address target, uint256 gasLimit, bytes calldata data) external;
+    function appendCrossDomainMessage(
+        address target,
+        uint256 gasLimit,
+        bytes calldata data
+    ) external;
 
     /// @notice Append an enforced transaction to this contract.
     /// @dev The address of sender should be an EOA.
