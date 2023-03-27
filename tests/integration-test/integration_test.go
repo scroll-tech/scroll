@@ -15,6 +15,7 @@ import (
 	"scroll-tech/common/docker"
 
 	_ "scroll-tech/database/cmd/app"
+	"scroll-tech/database/migrate"
 
 	app4 "scroll-tech/roller/cmd/app"
 
@@ -47,8 +48,8 @@ func TestMain(m *testing.M) {
 func TestStartProcess(t *testing.T) {
 	// Start l1geth l2geth and postgres docker containers.
 	base.RunImages(t)
-	// Init database.
-	base.InitDB(t)
+	// reset db.
+	assert.NoError(t, migrate.ResetDB(base.DBClient(t)))
 
 	// Mock bridge coordinator rollers configs.
 	assert.NoError(t, bridge.MockBridgeConfig(true))
@@ -72,9 +73,8 @@ func TestStartProcess(t *testing.T) {
 func TestMonitorMetrics(t *testing.T) {
 	// Start l1geth l2geth and postgres docker containers.
 	base.RunImages(t)
-
-	// Init database.
-	base.InitDB(t)
+	// reset db.
+	assert.NoError(t, migrate.ResetDB(base.DBClient(t)))
 
 	// Mock bridge coordinator rollers configs.
 	assert.NoError(t, bridge.MockBridgeConfig(true))

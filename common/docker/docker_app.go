@@ -3,11 +3,11 @@ package docker
 import (
 	"context"
 	"crypto/rand"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"math/big"
 	"os"
-	"strings"
 	"testing"
 	"time"
 
@@ -16,9 +16,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"scroll-tech/database"
-	_ "scroll-tech/database/cmd/app"
 
-	"scroll-tech/common/cmd"
 	"scroll-tech/common/utils"
 )
 
@@ -168,42 +166,15 @@ func (b *App) L2Client() (*ethclient.Client, error) {
 	return client, nil
 }
 
-// RunDBApp runs DB app with command
-func (b *App) RunDBApp(t *testing.T, option, keyword string) {
-	args := []string{option, "--config", b.dbFile}
-	app := cmd.NewCmd("db_cli-test", args...)
-	defer app.WaitExit()
-
-	okCh := make(chan struct{}, 1)
-	app.RegistFunc(keyword, func(buf string) {
-		if strings.Contains(buf, keyword) {
-			select {
-			case okCh <- struct{}{}:
-			default:
-				return
-			}
-		}
-	})
-	defer app.UnRegistFunc(keyword)
-
-	// Start process.
-	app.RunApp(nil)
-
-	select {
-	case <-okCh:
-		return
-	case err := <-app.ErrChan:
-		assert.Fail(t, err.Error())
-	case <-time.After(time.Second * 3):
-		assert.Fail(t, fmt.Sprintf("didn't get the desired result before timeout, keyword: %s", keyword))
-	}
-}
-
-// InitDB init database.
-func (b *App) InitDB(t *testing.T) {
-	// Init database.
-	b.RunDBApp(t, "reset", "successful to reset")
-	b.RunDBApp(t, "migrate", "current version:")
+// DBClient create and return *sql.DB instance.
+func (b App) DBClient(t *testing.T) *sql.DB {
+	cfg := b.DBConfig
+	db, err := sql.Open(cfg.DriverName, cfg.DSN)
+	assert.NoError(t, err)
+	db.SetMaxOpenConns(cfg.MaxOpenNum)
+	db.SetMaxIdleConns(cfg.MaxIdleNum)
+	assert.NoError(t, db.Ping())
+	return db
 }
 
 func (b *App) mockDBConfig() error {
