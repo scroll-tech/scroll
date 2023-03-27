@@ -73,8 +73,8 @@ func setupEnv(t *testing.T) {
 	gasOraclePrivateKey, err := crypto.ToECDSA(common.FromHex("1212121212121212121212121212121212121212121212121212121212121215"))
 	assert.NoError(t, err)
 
+	// Start l1geth l2geth and postgres docker containers.
 	base.RunImages(t)
-	assert.NoError(t, bridgeApp.MockBridgeConfig(false))
 
 	// Use the created config.
 	cfg = bridgeApp.Config

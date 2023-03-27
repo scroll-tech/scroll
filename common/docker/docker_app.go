@@ -40,6 +40,7 @@ type App struct {
 	L2gethImg ImgInstance
 	DBImg     ImgInstance
 
+	dbClient *sql.DB
 	DBConfig *database.DBConfig
 	dbFile   string
 
@@ -97,6 +98,10 @@ func (b *App) Free() {
 	if b.DBImg.IsRunning() {
 		_ = b.DBImg.Stop()
 		_ = os.Remove(b.dbFile)
+		if !utils.IsNil(b.dbClient) {
+			b.dbClient.Close()
+			b.dbClient = nil
+		}
 	}
 }
 
@@ -168,13 +173,19 @@ func (b *App) L2Client() (*ethclient.Client, error) {
 
 // DBClient create and return *sql.DB instance.
 func (b App) DBClient(t *testing.T) *sql.DB {
-	cfg := b.DBConfig
-	db, err := sql.Open(cfg.DriverName, cfg.DSN)
+	if !utils.IsNil(b.dbClient) {
+		return b.dbClient
+	}
+	var (
+		cfg = b.DBConfig
+		err error
+	)
+	b.dbClient, err = sql.Open(cfg.DriverName, cfg.DSN)
 	assert.NoError(t, err)
-	db.SetMaxOpenConns(cfg.MaxOpenNum)
-	db.SetMaxIdleConns(cfg.MaxIdleNum)
-	assert.NoError(t, db.Ping())
-	return db
+	b.dbClient.SetMaxOpenConns(cfg.MaxOpenNum)
+	b.dbClient.SetMaxIdleConns(cfg.MaxIdleNum)
+	assert.NoError(t, b.dbClient.Ping())
+	return b.dbClient
 }
 
 func (b *App) mockDBConfig() error {

@@ -5,8 +5,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"scroll-tech/database/migrate"
-
 	"scroll-tech/common/docker"
 
 	"scroll-tech/bridge/config"
@@ -36,8 +34,6 @@ func setupEnv(t *testing.T) {
 
 	// Start l1geth l2geth and postgres docker containers.
 	base.RunImages(t)
-	// reset db.
-	assert.NoError(t, migrate.ResetDB(base.DBClient(t)))
 
 	cfg.L2Config.RelayerConfig.SenderConfig.Endpoint = base.L1gethImg.Endpoint()
 	cfg.L1Config.RelayerConfig.SenderConfig.Endpoint = base.L2gethImg.Endpoint()

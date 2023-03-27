@@ -84,6 +84,12 @@ var (
 	ormSession orm.SessionInfoOrm
 )
 
+func TestMain(m *testing.M) {
+	base = docker.NewDockerApp()
+	m.Run()
+	base.Free()
+}
+
 func setupEnv(t *testing.T) error {
 	// Init db config and start db container.
 	base.RunDBImage(t)
@@ -96,7 +102,7 @@ func setupEnv(t *testing.T) error {
 	assert.NoError(t, migrate.ResetDB(db.DB))
 
 	// Init several orm handles.
-	ormBlock = orm.NewBlockTraceOrm(db)
+	ormBlock = factory
 	ormLayer1 = orm.NewL1MessageOrm(db)
 	ormLayer2 = orm.NewL2MessageOrm(db)
 	ormBatch = orm.NewBlockBatchOrm(db)
@@ -154,10 +160,6 @@ func setupEnv(t *testing.T) error {
 
 // TestOrmFactory run several test cases.
 func TestOrmFactory(t *testing.T) {
-	base = docker.NewDockerApp()
-	defer func() {
-		base.Free()
-	}()
 	if err := setupEnv(t); err != nil {
 		t.Fatal(err)
 	}
@@ -174,10 +176,8 @@ func TestOrmFactory(t *testing.T) {
 }
 
 func testOrmBlockTraces(t *testing.T) {
-	// Create db handler and reset db.
-	factory, err := database.NewOrmFactory(dbConfig)
-	assert.NoError(t, err)
-	assert.NoError(t, migrate.ResetDB(factory.GetDB().DB))
+	// reset db.
+	assert.NoError(t, migrate.ResetDB(base.DBClient(t)))
 
 	res, err := ormBlock.GetL2WrappedBlocks(map[string]interface{}{})
 	assert.NoError(t, err)

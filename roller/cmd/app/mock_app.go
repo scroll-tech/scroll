@@ -44,7 +44,7 @@ type RollerApp struct {
 }
 
 // NewRollerApp return a new rollerApp manager.
-func NewRollerApp(base *docker.App, file string) *RollerApp {
+func NewRollerApp(base *docker.App, file string, wsUrl string) *RollerApp {
 	rollerFile := fmt.Sprintf("/tmp/%d_roller-config.json", base.Timestamp)
 	rollerApp := &RollerApp{
 		base:       base,
@@ -54,6 +54,9 @@ func NewRollerApp(base *docker.App, file string) *RollerApp {
 		index:      getIndex(),
 		name:       "roller-test",
 		args:       []string{"--log.debug", "--config", rollerFile},
+	}
+	if err := rollerApp.mockConfig(true, wsUrl); err != nil {
+		panic(err)
 	}
 	return rollerApp
 }
@@ -68,14 +71,14 @@ func (r *RollerApp) RunApp(t *testing.T, args ...string) {
 func (r *RollerApp) Free() {
 	if !utils.IsNil(r.AppAPI) {
 		r.AppAPI.WaitExit()
-		_ = os.Remove(r.rollerFile)
-		_ = os.Remove(r.Config.KeystorePath)
-		_ = os.Remove(r.bboltDB)
 	}
+	_ = os.Remove(r.rollerFile)
+	_ = os.Remove(r.Config.KeystorePath)
+	_ = os.Remove(r.bboltDB)
 }
 
-// MockRollerConfig creates a new roller config.
-func (r *RollerApp) MockRollerConfig(store bool, wsUrl string) error {
+// mockConfig creates a new roller config.
+func (r *RollerApp) mockConfig(store bool, wsUrl string) error {
 	cfg, err := rollerConfig.NewConfig(r.originFile)
 	if err != nil {
 		return err
@@ -126,7 +129,7 @@ func (r RollerApps) MockConfigs(store bool, wsUrl string) error {
 	for _, roller := range r {
 		roller := roller
 		eg.Go(func() error {
-			return roller.MockRollerConfig(store, wsUrl)
+			return roller.mockConfig(store, wsUrl)
 		})
 	}
 	return eg.Wait()

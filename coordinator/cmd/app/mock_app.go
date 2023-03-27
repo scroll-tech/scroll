@@ -47,6 +47,9 @@ func NewCoordinatorApp(base *docker.App, file string) *CoordinatorApp {
 		WSPort:          wsPort,
 		args:            []string{"--log.debug", "--config", coordinatorFile, "--ws", "--ws.port", strconv.Itoa(int(wsPort))},
 	}
+	if err := coordinatorApp.mockConfig(true); err != nil {
+		panic(err)
+	}
 	return coordinatorApp
 }
 
@@ -60,8 +63,8 @@ func (c *CoordinatorApp) RunApp(t *testing.T, args ...string) {
 func (c *CoordinatorApp) Free() {
 	if !utils.IsNil(c.AppAPI) {
 		c.AppAPI.WaitExit()
-		_ = os.Remove(c.coordinatorFile)
 	}
+	_ = os.Remove(c.coordinatorFile)
 }
 
 // WSEndpoint returns ws endpoint.
@@ -69,8 +72,8 @@ func (c *CoordinatorApp) WSEndpoint() string {
 	return fmt.Sprintf("ws://localhost:%d", c.WSPort)
 }
 
-// MockCoordinatorConfig creates a new coordinator config.
-func (c *CoordinatorApp) MockCoordinatorConfig(store bool) error {
+// mockConfig creates a new coordinator config.
+func (c *CoordinatorApp) mockConfig(store bool) error {
 	base := c.base
 	cfg, err := coordinatorConfig.NewConfig(c.originFile)
 	if err != nil {

@@ -35,7 +35,7 @@ func TestMain(m *testing.M) {
 	base = docker.NewDockerApp()
 	bridge = app2.NewBridgeApp(base, "../../bridge/config.json")
 	coordinator = app3.NewCoordinatorApp(base, "../../coordinator/config.json")
-	rollers = append(rollers, app4.NewRollerApp(base, "../../roller/config.json"))
+	rollers = append(rollers, app4.NewRollerApp(base, "../../roller/config.json", coordinator.WSEndpoint()))
 
 	m.Run()
 
@@ -50,11 +50,6 @@ func TestStartProcess(t *testing.T) {
 	base.RunImages(t)
 	// reset db.
 	assert.NoError(t, migrate.ResetDB(base.DBClient(t)))
-
-	// Mock bridge coordinator rollers configs.
-	assert.NoError(t, bridge.MockBridgeConfig(true))
-	assert.NoError(t, coordinator.MockCoordinatorConfig(true))
-	assert.NoError(t, rollers.MockConfigs(true, coordinator.WSEndpoint()))
 
 	// Start bridge.
 	bridge.RunApp(t)
@@ -75,10 +70,6 @@ func TestMonitorMetrics(t *testing.T) {
 	base.RunImages(t)
 	// reset db.
 	assert.NoError(t, migrate.ResetDB(base.DBClient(t)))
-
-	// Mock bridge coordinator rollers configs.
-	assert.NoError(t, bridge.MockBridgeConfig(true))
-	assert.NoError(t, coordinator.MockCoordinatorConfig(true))
 
 	// Start bridge process with metrics server.
 	port1, _ := rand.Int(rand.Reader, big.NewInt(2000))
