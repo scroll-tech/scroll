@@ -338,16 +338,6 @@ func (m *Manager) handleZkProof(pk string, msg *message.ProofDetail) error {
 
 // CollectProofs collects proofs corresponding to a proof generation session.
 func (m *Manager) CollectProofs(sess *session) {
-	//Cleanup roller sessions before return.
-	// defer func() {
-	// 	// TODO: remove the clean-up, rollers report healthy status.
-	// 	m.mu.Lock()
-	// 	for pk := range sess.info.Rollers {
-	// 		m.freeTaskIDForRoller(pk, sess.info.ID)
-	// 	}
-	// 	delete(m.sessions, sess.info.ID)
-	// 	m.mu.Unlock()
-	// }()
 	for {
 		select {
 		//Execute after timeout, set in config.json. Consider all rollers failed.
@@ -360,7 +350,7 @@ func (m *Manager) CollectProofs(sess *session) {
 						m.freeTaskIDForRoller(pk, sess.info.ID)
 					}
 					m.mu.Unlock()
-					log.Info("session has replayed, session id:", sess.info.ID)
+					log.Info("Retrying session", "session id:", sess.info.ID)
 					return
 				}
 			}
