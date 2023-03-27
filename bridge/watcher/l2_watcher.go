@@ -1,12 +1,10 @@
-package l2
+package watcher
 
 import (
 	"context"
 	"errors"
 	"fmt"
 	"math/big"
-	"reflect"
-	"time"
 
 	geth "github.com/scroll-tech/go-ethereum"
 	"github.com/scroll-tech/go-ethereum/accounts/abi"
@@ -21,7 +19,6 @@ import (
 
 	"scroll-tech/common/metrics"
 	"scroll-tech/common/types"
-	cutil "scroll-tech/common/utils"
 	"scroll-tech/database"
 
 	bridge_abi "scroll-tech/bridge/abi"
@@ -39,14 +36,8 @@ var (
 	bridgeL2MsgsRelayedEventsTotalCounter = geth_metrics.NewRegisteredCounter("bridge/l2/msgs/relayed/events/total", metrics.ScrollRegistry)
 )
 
-type relayedMessage struct {
-	msgHash      common.Hash
-	txHash       common.Hash
-	isSuccessful bool
-}
-
-// WatcherClient provide APIs which support others to subscribe to various event from l2geth
-type WatcherClient struct {
+// L2WatcherClient provide APIs which support others to subscribe to various event from l2geth
+type L2WatcherClient struct {
 	ctx context.Context
 	event.Feed
 
@@ -71,14 +62,14 @@ type WatcherClient struct {
 }
 
 // NewL2WatcherClient take a l2geth instance to generate a l2watcherclient instance
-func NewL2WatcherClient(ctx context.Context, client *ethclient.Client, confirmations rpc.BlockNumber, messengerAddress, messageQueueAddress common.Address, withdrawTrieRootSlot common.Hash, orm database.OrmFactory) *WatcherClient {
+func NewL2WatcherClient(ctx context.Context, client *ethclient.Client, confirmations rpc.BlockNumber, messengerAddress, messageQueueAddress common.Address, withdrawTrieRootSlot common.Hash, orm database.OrmFactory) *L2WatcherClient {
 	savedHeight, err := orm.GetLayer2LatestWatchedHeight()
 	if err != nil {
 		log.Warn("fetch height from db failed", "err", err)
 		savedHeight = 0
 	}
 
-	w := WatcherClient{
+	w := L2WatcherClient{
 		ctx:                ctx,
 		Client:             client,
 		orm:                orm,
@@ -104,7 +95,7 @@ func NewL2WatcherClient(ctx context.Context, client *ethclient.Client, confirmat
 	return &w
 }
 
-func (w *WatcherClient) initializeGenesis() error {
+func (w *L2WatcherClient) initializeGenesis() error {
 	if count, err := w.orm.GetBatchCount(); err != nil {
 		return fmt.Errorf("failed to get batch count: %v", err)
 	} else if count > 0 {
@@ -142,46 +133,10 @@ func (w *WatcherClient) initializeGenesis() error {
 	return nil
 }
 
-// Start the Listening process
-func (w *WatcherClient) Start() {
-	go func() {
-		if reflect.ValueOf(w.orm).IsNil() {
-			panic("must run L2 watcher with DB")
-		}
-
-		ctx, cancel := context.WithCancel(w.ctx)
-		go cutil.LoopWithContext(ctx, 2*time.Second, func(subCtx context.Context) {
-			number, err := utils.GetLatestConfirmedBlockNumber(subCtx, w.Client, w.confirmations)
-			if err != nil {
-				log.Error("failed to get block number", "err", err)
-			} else {
-				w.tryFetchRunningMissingBlocks(ctx, number)
-			}
-		})
-
-		go cutil.LoopWithContext(ctx, 2*time.Second, func(subCtx context.Context) {
-			number, err := utils.GetLatestConfirmedBlockNumber(subCtx, w.Client, w.confirmations)
-			if err != nil {
-				log.Error("failed to get block number", "err", err)
-			} else {
-				w.FetchContractEvent(number)
-			}
-		})
-
-		<-w.stopCh
-		cancel()
-	}()
-}
-
-// Stop the Watcher module, for a graceful shutdown.
-func (w *WatcherClient) Stop() {
-	w.stopCh <- struct{}{}
-}
-
 const blockTracesFetchLimit = uint64(10)
 
 // try fetch missing blocks if inconsistent
-func (w *WatcherClient) tryFetchRunningMissingBlocks(ctx context.Context, blockHeight uint64) {
+func (w *L2WatcherClient) tryFetchRunningMissingBlocks(ctx context.Context, blockHeight uint64) {
 	// Get newest block in DB. must have blocks at that time.
 	// Don't use "block_trace" table "trace" column's BlockTrace.Number,
 	// because it might be empty if the corresponding rollup_result is finalized/finalization_skipped
@@ -237,7 +192,7 @@ func txsToTxsData(txs geth_types.Transactions) []*geth_types.TransactionData {
 	return txsData
 }
 
-func (w *WatcherClient) getAndStoreBlockTraces(ctx context.Context, from, to uint64) error {
+func (w *L2WatcherClient) getAndStoreBlockTraces(ctx context.Context, from, to uint64) error {
 	var blocks []*types.WrappedBlock
 
 	for number := from; number <= to; number++ {
@@ -270,13 +225,17 @@ func (w *WatcherClient) getAndStoreBlockTraces(ctx context.Context, from, to uin
 	return nil
 }
 
-const contractEventsBlocksFetchLimit = int64(10)
-
 // FetchContractEvent pull latest event logs from given contract address and save in DB
-func (w *WatcherClient) FetchContractEvent(blockHeight uint64) {
+func (w *L2WatcherClient) FetchContractEvent() {
 	defer func() {
 		log.Info("l2 watcher fetchContractEvent", "w.processedMsgHeight", w.processedMsgHeight)
 	}()
+
+	blockHeight, err := utils.GetLatestConfirmedBlockNumber(w.ctx, w.Client, w.confirmations)
+	if err != nil {
+		log.Error("failed to get block number", "err", err)
+		return
+	}
 
 	fromBlock := int64(w.processedMsgHeight) + 1
 	toBlock := int64(blockHeight)
@@ -353,7 +312,7 @@ func (w *WatcherClient) FetchContractEvent(blockHeight uint64) {
 	}
 }
 
-func (w *WatcherClient) parseBridgeEventLogs(logs []geth_types.Log) ([]*types.L2Message, []relayedMessage, error) {
+func (w *L2WatcherClient) parseBridgeEventLogs(logs []geth_types.Log) ([]*types.L2Message, []relayedMessage, error) {
 	// Need use contract abi to parse event Log
 	// Can only be tested after we have our contracts set up
 

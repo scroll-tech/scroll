@@ -1,4 +1,4 @@
-package l2
+package watcher
 
 import (
 	"context"
@@ -19,6 +19,7 @@ import (
 
 	bridgeabi "scroll-tech/bridge/abi"
 	"scroll-tech/bridge/config"
+	"scroll-tech/bridge/relayer"
 )
 
 var (
@@ -83,7 +84,7 @@ type BatchProposer struct {
 
 	proofGenerationFreq uint64
 	batchDataBuffer     []*types.BatchData
-	relayer             *Layer2Relayer
+	relayer             *relayer.Layer2Relayer
 
 	piCfg *types.PublicInputHashConfig
 
@@ -91,7 +92,7 @@ type BatchProposer struct {
 }
 
 // NewBatchProposer will return a new instance of BatchProposer.
-func NewBatchProposer(ctx context.Context, cfg *config.BatchProposerConfig, relayer *Layer2Relayer, orm database.OrmFactory) *BatchProposer {
+func NewBatchProposer(ctx context.Context, cfg *config.BatchProposerConfig, relayer *relayer.Layer2Relayer, orm database.OrmFactory) *BatchProposer {
 	p := &BatchProposer{
 		mutex:                    sync.Mutex{},
 		ctx:                      ctx,
@@ -114,7 +115,7 @@ func NewBatchProposer(ctx context.Context, cfg *config.BatchProposerConfig, rela
 	p.recoverBatchDataBuffer()
 
 	// try to commit the leftover pending batches
-	p.tryCommitBatches()
+	p.TryCommitBatches()
 
 	return p
 }
@@ -129,8 +130,8 @@ func (p *BatchProposer) Start() {
 		ctx, cancel := context.WithCancel(p.ctx)
 
 		go utils.Loop(ctx, 2*time.Second, func() {
-			p.tryProposeBatch()
-			p.tryCommitBatches()
+			p.TryProposeBatch()
+			p.TryCommitBatches()
 		})
 
 		<-p.stopCh
@@ -214,7 +215,8 @@ func (p *BatchProposer) recoverBatchDataBuffer() {
 	}
 }
 
-func (p *BatchProposer) tryProposeBatch() {
+// TryProposeBatch will try to propose a batch.
+func (p *BatchProposer) TryProposeBatch() {
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
 
@@ -243,7 +245,8 @@ func (p *BatchProposer) tryProposeBatch() {
 	}
 }
 
-func (p *BatchProposer) tryCommitBatches() {
+// TryCommitBatches will try to commit the pending batches.
+func (p *BatchProposer) TryCommitBatches() {
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
 

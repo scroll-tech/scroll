@@ -1,4 +1,4 @@
-package l1
+package watcher_test
 
 import (
 	"context"
@@ -7,6 +7,7 @@ import (
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/stretchr/testify/assert"
 
+	"scroll-tech/bridge/watcher"
 	"scroll-tech/database"
 	"scroll-tech/database/migrate"
 )
@@ -23,7 +24,6 @@ func testStartWatcher(t *testing.T) {
 
 	l1Cfg := cfg.L1Config
 
-	watcher := NewWatcher(context.Background(), client, l1Cfg.StartHeight, l1Cfg.Confirmations, l1Cfg.L1MessengerAddress, l1Cfg.L1MessageQueueAddress, l1Cfg.RelayerConfig.RollupContractAddress, db)
-	watcher.Start()
-	defer watcher.Stop()
+	watcher := watcher.NewWatcher(context.Background(), client, l1Cfg.StartHeight, l1Cfg.Confirmations, l1Cfg.L1MessengerAddress, l1Cfg.L1MessageQueueAddress, l1Cfg.RelayerConfig.RollupContractAddress, db)
+	assert.NoError(t, watcher.FetchContractEvent())
 }

@@ -1,4 +1,4 @@
-package l2
+package watcher_test
 
 import (
 	"context"
@@ -19,7 +19,9 @@ import (
 
 	"scroll-tech/bridge/mock_bridge"
 	"scroll-tech/bridge/sender"
+	"scroll-tech/bridge/watcher"
 
+	cutils "scroll-tech/common/utils"
 	"scroll-tech/database"
 	"scroll-tech/database/migrate"
 )
@@ -29,12 +31,13 @@ func testCreateNewWatcherAndStop(t *testing.T) {
 	l2db, err := database.NewOrmFactory(cfg.DBConfig)
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(l2db.GetDB().DB))
-	defer l2db.Close()
+	ctx := context.Background()
+	subCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
 
 	l2cfg := cfg.L2Config
-	rc := NewL2WatcherClient(context.Background(), l2Cli, l2cfg.Confirmations, l2cfg.L2MessengerAddress, l2cfg.L2MessageQueueAddress, l2cfg.WithdrawTrieRootSlot, l2db)
-	rc.Start()
-	defer rc.Stop()
+	rc := watcher.NewL2WatcherClient(context.Background(), l2Cli, l2cfg.Confirmations, l2cfg.L2MessengerAddress, l2cfg.L2MessageQueueAddress, l2cfg.WithdrawTrieRootSlot, l2db)
+	loopToFetchEvent(subCtx, rc)
 
 	l1cfg := cfg.L1Config
 	l1cfg.RelayerConfig.SenderConfig.Confirmations = rpc.LatestBlockNumber
@@ -60,12 +63,17 @@ func testMonitorBridgeContract(t *testing.T) {
 	db, err := database.NewOrmFactory(cfg.DBConfig)
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(db.GetDB().DB))
-	defer db.Close()
+	ctx := context.Background()
+	subCtx, cancel := context.WithCancel(ctx)
+
+	defer func() {
+		db.Close()
+		cancel()
+	}()
 
 	l2cfg := cfg.L2Config
-	wc := NewL2WatcherClient(context.Background(), l2Cli, l2cfg.Confirmations, l2cfg.L2MessengerAddress, l2cfg.L2MessageQueueAddress, l2cfg.WithdrawTrieRootSlot, db)
-	wc.Start()
-	defer wc.Stop()
+	wc := watcher.NewL2WatcherClient(context.Background(), l2Cli, l2cfg.Confirmations, l2cfg.L2MessengerAddress, l2cfg.L2MessageQueueAddress, l2cfg.WithdrawTrieRootSlot, db)
+	loopToFetchEvent(subCtx, wc)
 
 	previousHeight, err := l2Cli.BlockNumber(context.Background())
 	assert.NoError(t, err)
@@ -79,9 +87,7 @@ func testMonitorBridgeContract(t *testing.T) {
 	assert.NoError(t, err)
 
 	rc := prepareWatcherClient(l2Cli, db, address)
-	rc.Start()
-	defer rc.Stop()
-
+	loopToFetchEvent(subCtx, rc)
 	// Call mock_bridge instance sendMessage to trigger emit events
 	toAddress := common.HexToAddress("0x4592d8f8d7b001e72cb26a73e4fa1806a51ac79d")
 	message := []byte("testbridgecontract")
@@ -128,7 +134,13 @@ func testFetchMultipleSentMessageInOneBlock(t *testing.T) {
 	db, err := database.NewOrmFactory(cfg.DBConfig)
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(db.GetDB().DB))
-	defer db.Close()
+	ctx := context.Background()
+	subCtx, cancel := context.WithCancel(ctx)
+
+	defer func() {
+		db.Close()
+		cancel()
+	}()
 
 	previousHeight, err := l2Cli.BlockNumber(context.Background()) // shallow the global previousHeight
 	assert.NoError(t, err)
@@ -141,8 +153,7 @@ func testFetchMultipleSentMessageInOneBlock(t *testing.T) {
 	assert.NoError(t, err)
 
 	rc := prepareWatcherClient(l2Cli, db, address)
-	rc.Start()
-	defer rc.Stop()
+	loopToFetchEvent(subCtx, rc)
 
 	// Call mock_bridge instance sendMessage to trigger emit events multiple times
 	numTransactions := 4
@@ -195,9 +206,9 @@ func testFetchMultipleSentMessageInOneBlock(t *testing.T) {
 	assert.Equal(t, 5, len(msgs))
 }
 
-func prepareWatcherClient(l2Cli *ethclient.Client, db database.OrmFactory, contractAddr common.Address) *WatcherClient {
+func prepareWatcherClient(l2Cli *ethclient.Client, db database.OrmFactory, contractAddr common.Address) *watcher.L2WatcherClient {
 	confirmations := rpc.LatestBlockNumber
-	return NewL2WatcherClient(context.Background(), l2Cli, confirmations, contractAddr, contractAddr, common.Hash{}, db)
+	return watcher.NewL2WatcherClient(context.Background(), l2Cli, confirmations, contractAddr, contractAddr, common.Hash{}, db)
 }
 
 func prepareAuth(t *testing.T, l2Cli *ethclient.Client, privateKey *ecdsa.PrivateKey) *bind.TransactOpts {
@@ -208,4 +219,8 @@ func prepareAuth(t *testing.T, l2Cli *ethclient.Client, privateKey *ecdsa.Privat
 	auth.GasPrice, err = l2Cli.SuggestGasPrice(context.Background())
 	assert.NoError(t, err)
 	return auth
+}
+
+func loopToFetchEvent(subCtx context.Context, watcher *watcher.L2WatcherClient) {
+	go cutils.Loop(subCtx, 2*time.Second, watcher.FetchContractEvent)
 }

@@ -1,4 +1,4 @@
-package l1
+package relayer
 
 import (
 	"context"
@@ -29,14 +29,6 @@ import (
 var (
 	bridgeL1MsgsRelayedTotalCounter          = geth_metrics.NewRegisteredCounter("bridge/l1/msgs/relayed/total", metrics.ScrollRegistry)
 	bridgeL1MsgsRelayedConfirmedTotalCounter = geth_metrics.NewRegisteredCounter("bridge/l1/msgs/relayed/confirmed/total", metrics.ScrollRegistry)
-)
-
-const (
-	gasPriceDiffPrecision = 1000000
-
-	defaultGasPriceDiff = 50000 // 5%
-
-	defaultMessageRelayMinGasLimit = 130000 // should be enough for both ERC20 and ETH relay
 )
 
 // Layer1Relayer is responsible for
@@ -96,7 +88,7 @@ func NewLayer1Relayer(ctx context.Context, db database.OrmFactory, cfg *config.R
 		gasPriceDiff = defaultGasPriceDiff
 	}
 
-	minGasLimitForMessageRelay := uint64(defaultMessageRelayMinGasLimit)
+	minGasLimitForMessageRelay := uint64(defaultL1MessageRelayMinGasLimit)
 	if cfg.MessageRelayMinGasLimit != 0 {
 		minGasLimitForMessageRelay = cfg.MessageRelayMinGasLimit
 	}

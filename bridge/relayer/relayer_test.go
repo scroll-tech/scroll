@@ -1,4 +1,4 @@
-package l2
+package relayer_test
 
 import (
 	"encoding/json"
@@ -97,20 +97,12 @@ func TestFunction(t *testing.T) {
 	if err := setupEnv(t); err != nil {
 		t.Fatal(err)
 	}
-
-	// Run l2 watcher test cases.
-	t.Run("TestCreateNewWatcherAndStop", testCreateNewWatcherAndStop)
-	t.Run("TestMonitorBridgeContract", testMonitorBridgeContract)
-	t.Run("TestFetchMultipleSentMessageInOneBlock", testFetchMultipleSentMessageInOneBlock)
-
+	// Run l1 relayer test cases.
+	t.Run("testCreateNewL1Relayer", testCreateNewL1Relayer)
 	// Run l2 relayer test cases.
 	t.Run("TestCreateNewRelayer", testCreateNewRelayer)
 	t.Run("TestL2RelayerProcessSaveEvents", testL2RelayerProcessSaveEvents)
 	t.Run("TestL2RelayerProcessCommittedBatches", testL2RelayerProcessCommittedBatches)
 	t.Run("TestL2RelayerSkipBatches", testL2RelayerSkipBatches)
-
-	// Run batch proposer test cases.
-	t.Run("TestBatchProposerProposeBatch", testBatchProposerProposeBatch)
-	t.Run("TestBatchProposerGracefulRestart", testBatchProposerGracefulRestart)
 
 }

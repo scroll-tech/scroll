@@ -1,9 +1,8 @@
-package l1
+package watcher
 
 import (
 	"context"
 	"math/big"
-	"time"
 
 	geth "github.com/scroll-tech/go-ethereum"
 	"github.com/scroll-tech/go-ethereum/accounts/abi"
@@ -19,8 +18,6 @@ import (
 	"scroll-tech/common/types"
 	"scroll-tech/database"
 
-	cutil "scroll-tech/common/utils"
-
 	bridge_abi "scroll-tech/bridge/abi"
 	"scroll-tech/bridge/utils"
 )
@@ -32,12 +29,6 @@ var (
 	bridgeL1MsgsRelayedEventsTotalCounter = geth_metrics.NewRegisteredCounter("bridge/l1/msgs/relayed/events/total", metrics.ScrollRegistry)
 	bridgeL1MsgsRollupEventsTotalCounter  = geth_metrics.NewRegisteredCounter("bridge/l1/msgs/rollup/events/total", metrics.ScrollRegistry)
 )
-
-type relayedMessage struct {
-	msgHash      common.Hash
-	txHash       common.Hash
-	isSuccessful bool
-}
 
 type rollupEvent struct {
 	batchHash common.Hash
@@ -115,45 +106,6 @@ func NewWatcher(ctx context.Context, client *ethclient.Client, startHeight uint6
 	}
 }
 
-// Start the Watcher module.
-func (w *Watcher) Start() {
-	go func() {
-		ctx, cancel := context.WithCancel(w.ctx)
-
-		go cutil.LoopWithContext(ctx, 2*time.Second, func(subCtx context.Context) {
-			number, err := utils.GetLatestConfirmedBlockNumber(subCtx, w.client, w.confirmations)
-			if err != nil {
-				log.Error("failed to get block number", "err", err)
-			} else {
-				if err := w.FetchBlockHeader(number); err != nil {
-					log.Error("Failed to fetch L1 block header", "lastest", number, "err", err)
-				}
-			}
-		})
-
-		go cutil.LoopWithContext(ctx, 2*time.Second, func(subCtx context.Context) {
-			number, err := utils.GetLatestConfirmedBlockNumber(subCtx, w.client, w.confirmations)
-			if err != nil {
-				log.Error("failed to get block number", "err", err)
-			} else {
-				if err := w.FetchContractEvent(number); err != nil {
-					log.Error("Failed to fetch bridge contract", "err", err)
-				}
-			}
-		})
-
-		<-w.stopCh
-		cancel()
-	}()
-}
-
-// Stop the Watcher module, for a graceful shutdown.
-func (w *Watcher) Stop() {
-	w.stopCh <- true
-}
-
-const contractEventsBlocksFetchLimit = int64(10)
-
 // FetchBlockHeader pull latest L1 blocks and save in DB
 func (w *Watcher) FetchBlockHeader(blockHeight uint64) error {
 	fromBlock := int64(w.processedBlockHeight) + 1
@@ -201,10 +153,15 @@ func (w *Watcher) FetchBlockHeader(blockHeight uint64) error {
 }
 
 // FetchContractEvent pull latest event logs from given contract address and save in DB
-func (w *Watcher) FetchContractEvent(blockHeight uint64) error {
+func (w *Watcher) FetchContractEvent() error {
 	defer func() {
 		log.Info("l1 watcher fetchContractEvent", "w.processedMsgHeight", w.processedMsgHeight)
 	}()
+	blockHeight, err := utils.GetLatestConfirmedBlockNumber(w.ctx, w.client, w.confirmations)
+	if err != nil {
+		log.Error("failed to get block number", "err", err)
+		return err
+	}
 
 	fromBlock := int64(w.processedMsgHeight) + 1
 	toBlock := int64(blockHeight)
