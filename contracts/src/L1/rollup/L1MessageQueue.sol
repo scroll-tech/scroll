@@ -72,38 +72,149 @@ contract L1MessageQueue is OwnableUpgradeable, IL1MessageQueue {
         return IL2GasPriceOracle(_oracle).estimateCrossDomainMessageFee(_sender, _target, _message, _gasLimit);
     }
 
+    /// @inheritdoc IL1MessageQueue
+    function computeTransactionHash(
+        address _sender,
+        uint256 _nonce,
+        uint256 _value,
+        address _target,
+        uint256 _gasLimit,
+        bytes calldata _data
+    ) public pure override returns (bytes32) {
+        // We use EIP-2718 to encode the L1 message, and the encoding of the message is
+        //      `TransactionType || TransactionPayload`
+        // where
+        //  1. `TransactionType` is `
+        //  2. `TransactionPayload` is `rlp([nonce, gasLimit, to, value, data, sender])`
+        //
+        // The spec of rlp: https://ethereum.org/en/developers/docs/data-structures-and-encoding/rlp/
+        uint256 transactionType = 0x33; // to change later
+        bytes32 hash;
+        assembly {
+            function get_uint_bytes(v) -> len {
+                if eq(v, 0) {
+                    len := 1
+                    leave
+                }
+                for {
+
+                } gt(v, 0) {
+
+                } {
+                    len := add(len, 1)
+                    v := shr(8, v)
+                }
+            }
+
+            function store_uint(_ptr, v) -> ptr {
+                ptr := _ptr
+                switch lt(v, 128)
+                case 1 {
+                    // single byte in the [0x00, 0x7f]
+                    mstore(ptr, shl(255, v))
+                    ptr := add(ptr, 1)
+                }
+                default {
+                    // 1-32 bytes long
+                    let len := get_uint_bytes(v)
+                    mstore(ptr, add(len, 0x80))
+                    ptr := add(ptr, 1)
+                    mstore(ptr, shl(mul(8, sub(32, len)), v))
+                    ptr := add(ptr, len)
+                }
+            }
+
+            function store_address(_ptr, v) -> ptr {
+                ptr := _ptr
+                // 20 bytes long
+                mstore(ptr, 0x94) // 0x80 + 0x14
+                ptr := add(ptr, 1)
+                mstore(ptr, shl(96, v))
+                ptr := add(ptr, 0x14)
+            }
+
+            // 1 byte for TransactionType
+            // 4 byte for list payload length
+            let start_ptr := add(mload(0x40), 5)
+            let ptr := start_ptr
+            ptr := store_uint(ptr, _nonce)
+            ptr := store_uint(ptr, _gasLimit)
+            ptr := store_address(ptr, _target)
+            ptr := store_uint(ptr, _value)
+
+            switch eq(_data.length, 1)
+            case 1 {
+                // single byte
+                ptr := store_uint(ptr, byte(1, calldataload(_data.offset)))
+            }
+            default {
+                switch lt(_data.length, 56)
+                case 1 {
+                    // a string is 0-55 bytes long
+                    mstore(ptr, add(0x80, _data.length))
+                    ptr := add(ptr, 1)
+                    calldatacopy(ptr, _data.offset, _data.length)
+                    ptr := add(ptr, _data.length)
+                }
+                default {
+                    // a string is more than 55 bytes long
+                    let len_bytes := get_uint_bytes(_data.length)
+                    mstore(ptr, add(0xb7, len_bytes))
+                    ptr := add(ptr, 1)
+                    mstore(ptr, shl(mul(8, sub(32, len_bytes)), _data.length))
+                    ptr := add(ptr, len_bytes)
+                    calldatacopy(ptr, _data.offset, _data.length)
+                    ptr := add(ptr, _data.length)
+                }
+            }
+
+            ptr := store_address(ptr, _sender)
+
+            let payload_len := sub(ptr, start_ptr)
+            switch lt(payload_len, 56)
+            case 1 {
+                // the total payload of a list is 0-55 bytes long
+                start_ptr := sub(start_ptr, 1)
+                mstore(start_ptr, add(0xc0, payload_len))
+            }
+            default {
+                // If the total payload of a list is more than 55 bytes long
+                let len_bytes := get_uint_bytes(payload_len)
+                let len_bits := mul(8, len_bytes)
+                let value := or(shr(len_bits, mload(start_ptr)), shl(sub(256, len_bits), payload_len))
+                start_ptr := sub(start_ptr, len_bytes)
+                mstore(start_ptr, value)
+                start_ptr := sub(start_ptr, 1)
+                mstore(start_ptr, add(0xf7, len_bytes))
+            }
+            start_ptr := sub(start_ptr, 1)
+            mstore(start_ptr, transactionType)
+            hash := keccak256(start_ptr, sub(ptr, start_ptr))
+        }
+        return hash;
+    }
+
     /*****************************
      * Public Mutating Functions *
      *****************************/
 
     /// @inheritdoc IL1MessageQueue
-    function appendCrossDomainMessage(
-        address _target,
-        uint256 _gasLimit,
-        bytes calldata _data
-    ) external override {
+    function appendCrossDomainMessage(address _target, uint256 _gasLimit, bytes calldata _data) external override {
         require(msg.sender == messenger, "Only callable by the L1ScrollMessenger");
 
         // do address alias to avoid replay attack in L2.
         address _sender = AddressAliasHelper.applyL1ToL2Alias(msg.sender);
 
-        // @todo Change it to rlp encoding later.
-        bytes32 _hash = keccak256(abi.encode(_sender, _target, 0, _gasLimit, _data));
-
+        // compute transaction hash
         uint256 _queueIndex = messageQueue.length;
-        emit QueueTransaction(_sender, _target, 0, _queueIndex, _gasLimit, _data);
-
+        bytes32 _hash = computeTransactionHash(_sender, _queueIndex, 0, _target, _gasLimit, _data);
         messageQueue.push(_hash);
+
+        emit QueueTransaction(_sender, _target, 0, _queueIndex, _gasLimit, _data);
     }
 
     /// @inheritdoc IL1MessageQueue
-    function appendEnforcedTransaction(
-        address,
-        address,
-        uint256,
-        uint256,
-        bytes calldata
-    ) external override {
+    function appendEnforcedTransaction(address, address, uint256, uint256, bytes calldata) external override {
         // @todo
     }
 
