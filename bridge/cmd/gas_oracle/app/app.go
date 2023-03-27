@@ -78,7 +78,7 @@ func action(ctx *cli.Context) error {
 		log.Crit("failed to init db connection", "err", err)
 	}
 
-	l1watcher := watcher.NewL1Watcher(ctx.Context, l1client, cfg.L1Config.StartHeight, cfg.L1Config.Confirmations, cfg.L1Config.L1MessengerAddress, cfg.L1Config.L1MessageQueueAddress, cfg.L1Config.ScrollChainContractAddress, ormFactory)
+	l1watcher := watcher.NewWatcher(ctx.Context, l1client, cfg.L1Config.StartHeight, cfg.L1Config.Confirmations, cfg.L1Config.L1MessengerAddress, cfg.L1Config.L1MessageQueueAddress, cfg.L1Config.ScrollChainContractAddress, ormFactory)
 
 	l1relayer, err := relayer.NewLayer1Relayer(ctx.Context, ormFactory, cfg.L1Config.RelayerConfig)
 	if err != nil {
@@ -89,7 +89,7 @@ func action(ctx *cli.Context) error {
 		log.Crit("failed to create new l2 relayer", "config file", cfgFile, "error", err)
 	}
 	// Start l1 watcher process
-	go cutils.LoopWithContext(subCtx, 2*time.Second, func(ctx context.Context) {
+	go cutils.LoopWithContext(subCtx, 10*time.Second, func(ctx context.Context) {
 		number, loopErr := utils.GetLatestConfirmedBlockNumber(ctx, l1client, cfg.L1Config.Confirmations)
 		if loopErr != nil {
 			log.Error("failed to get block number", "err", loopErr)

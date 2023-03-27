@@ -22,7 +22,5 @@ func testCreateNewL1Relayer(t *testing.T) {
 
 	relayer, err := relayer.NewLayer1Relayer(context.Background(), db, cfg.L2Config.RelayerConfig)
 	assert.NoError(t, err)
-	defer relayer.Stop()
-
-	relayer.Start()
+	assert.NotNil(t, relayer)
 }

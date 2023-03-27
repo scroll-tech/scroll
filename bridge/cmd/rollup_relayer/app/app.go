@@ -82,7 +82,7 @@ func action(ctx *cli.Context) error {
 		log.Crit("failed to create batchProposer", "config file", cfgFile, "error", err)
 	}
 
-	l2watcher := watcher.NewL2WatcherClient(subCtx, l2client, cfg.L2Config.Confirmations, cfg.L2Config.L2MessengerAddress, cfg.L2Config.L2MessageQueueAddress, ormFactory)
+	l2watcher := watcher.NewL2WatcherClient(subCtx, l2client, cfg.L2Config.Confirmations, cfg.L2Config.L2MessengerAddress, cfg.L2Config.L2MessageQueueAddress, cfg.L2Config.WithdrawTrieRootSlot, ormFactory)
 
 	// Watcher loop to fetch missing blocks
 	go cutils.LoopWithContext(subCtx, 3*time.Second, func(ctx context.Context) {
@@ -95,12 +95,12 @@ func action(ctx *cli.Context) error {
 	})
 
 	// Batch proposer loop
-	go cutils.Loop(subCtx, 3*time.Second, func() {
+	go cutils.Loop(subCtx, 2*time.Second, func() {
 		batchProposer.TryProposeBatch()
 		batchProposer.TryCommitBatches()
 	})
 
-	go cutils.Loop(subCtx, time.Second, l2relayer.ProcessCommittedBatches)
+	go cutils.Loop(subCtx, 2*time.Second, l2relayer.ProcessCommittedBatches)
 
 	// Finish start all rollup relayer functions.
 	log.Info("Start rollup-relayer successfully")

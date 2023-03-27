@@ -42,9 +42,7 @@ func testCreateNewRelayer(t *testing.T) {
 
 	relayer, err := relayer.NewLayer2Relayer(context.Background(), l2Cli, db, cfg.L2Config.RelayerConfig)
 	assert.NoError(t, err)
-	defer relayer.Stop()
-
-	relayer.Start()
+	assert.NotNil(t, relayer)
 }
 
 func testL2RelayerProcessSaveEvents(t *testing.T) {
@@ -57,7 +55,6 @@ func testL2RelayerProcessSaveEvents(t *testing.T) {
 	l2Cfg := cfg.L2Config
 	relayer, err := relayer.NewLayer2Relayer(context.Background(), l2Cli, db, l2Cfg.RelayerConfig)
 	assert.NoError(t, err)
-	defer relayer.Stop()
 
 	err = db.SaveL2Messages(context.Background(), templateL2Message)
 	assert.NoError(t, err)
@@ -107,7 +104,6 @@ func testL2RelayerProcessCommittedBatches(t *testing.T) {
 	l2Cfg := cfg.L2Config
 	relayer, err := relayer.NewLayer2Relayer(context.Background(), l2Cli, db, l2Cfg.RelayerConfig)
 	assert.NoError(t, err)
-	defer relayer.Stop()
 
 	dbTx, err := db.Beginx()
 	assert.NoError(t, err)
@@ -143,7 +139,6 @@ func testL2RelayerSkipBatches(t *testing.T) {
 	l2Cfg := cfg.L2Config
 	relayer, err := relayer.NewLayer2Relayer(context.Background(), l2Cli, db, l2Cfg.RelayerConfig)
 	assert.NoError(t, err)
-	defer relayer.Stop()
 
 	createBatch := func(rollupStatus types.RollupStatus, provingStatus types.ProvingStatus, index uint64) string {
 		dbTx, err := db.Beginx()

@@ -135,8 +135,8 @@ func (w *L2WatcherClient) initializeGenesis() error {
 
 const blockTracesFetchLimit = uint64(10)
 
-// try fetch missing blocks if inconsistent
-func (w *L2WatcherClient) tryFetchRunningMissingBlocks(ctx context.Context, blockHeight uint64) {
+// TryFetchRunningMissingBlocks try fetch missing blocks if inconsistent
+func (w *L2WatcherClient) TryFetchRunningMissingBlocks(ctx context.Context, blockHeight uint64) {
 	// Get newest block in DB. must have blocks at that time.
 	// Don't use "block_trace" table "trace" column's BlockTrace.Number,
 	// because it might be empty if the corresponding rollup_result is finalized/finalization_skipped

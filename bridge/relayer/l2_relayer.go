@@ -7,7 +7,6 @@ import (
 	"math/big"
 	"runtime"
 	"sync"
-	"time"
 
 	"github.com/scroll-tech/go-ethereum/accounts/abi"
 	"github.com/scroll-tech/go-ethereum/common"
@@ -21,8 +20,6 @@ import (
 	"scroll-tech/common/metrics"
 	"scroll-tech/common/types"
 	"scroll-tech/database"
-
-	cutil "scroll-tech/common/utils"
 
 	bridge_abi "scroll-tech/bridge/abi"
 	"scroll-tech/bridge/config"
@@ -123,7 +120,7 @@ func NewLayer2Relayer(ctx context.Context, l2Client *ethclient.Client, db databa
 		minGasLimitForMessageRelay = cfg.MessageRelayMinGasLimit
 	}
 
-	return &Layer2Relayer{
+	layer2Relayer := &Layer2Relayer{
 		ctx: ctx,
 		db:  db,
 
@@ -151,7 +148,9 @@ func NewLayer2Relayer(ctx context.Context, l2Client *ethclient.Client, db databa
 		processingBatchesCommitment: sync.Map{},
 		processingFinalization:      sync.Map{},
 		stopCh:                      make(chan struct{}),
-	}, nil
+	}
+	go layer2Relayer.handleConfirmLoop(ctx)
+	return layer2Relayer, nil
 }
 
 const processMsgLimit = 100
@@ -508,53 +507,6 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 	}
 }
 
-// Start the relayer process
-func (r *Layer2Relayer) Start() {
-	go func() {
-		ctx, cancel := context.WithCancel(r.ctx)
-		go cutil.Loop(ctx, time.Second, r.ProcessSavedEvents)
-		go cutil.Loop(ctx, time.Second, r.ProcessCommittedBatches)
-		go cutil.Loop(ctx, time.Second, r.ProcessGasPriceOracle)
-
-		go func(ctx context.Context) {
-			for {
-				select {
-				case <-ctx.Done():
-					return
-				case confirmation := <-r.messageCh:
-					r.handleConfirmation(confirmation)
-				case confirmation := <-r.rollupCh:
-					r.handleConfirmation(confirmation)
-				case cfm := <-r.gasOracleCh:
-					if !cfm.IsSuccessful {
-						// @discuss: maybe make it pending again?
-						err := r.db.UpdateL2GasOracleStatusAndOracleTxHash(r.ctx, cfm.ID, types.GasOracleFailed, cfm.TxHash.String())
-						if err != nil {
-							log.Warn("UpdateL2GasOracleStatusAndOracleTxHash failed", "err", err)
-						}
-						log.Warn("transaction confirmed but failed in layer1", "confirmation", cfm)
-					} else {
-						// @todo handle db error
-						err := r.db.UpdateL2GasOracleStatusAndOracleTxHash(r.ctx, cfm.ID, types.GasOracleImported, cfm.TxHash.String())
-						if err != nil {
-							log.Warn("UpdateL2GasOracleStatusAndOracleTxHash failed", "err", err)
-						}
-						log.Info("transaction confirmed in layer1", "confirmation", cfm)
-					}
-				}
-			}
-		}(ctx)
-
-		<-r.stopCh
-		cancel()
-	}()
-}
-
-// Stop the relayer module, for a graceful shutdown.
-func (r *Layer2Relayer) Stop() {
-	close(r.stopCh)
-}
-
 func (r *Layer2Relayer) handleConfirmation(confirmation *sender.Confirmation) {
 	transactionType := "Unknown"
 	// check whether it is message relay transaction
@@ -617,4 +569,33 @@ func (r *Layer2Relayer) handleConfirmation(confirmation *sender.Confirmation) {
 		r.processingFinalization.Delete(confirmation.ID)
 	}
 	log.Info("transaction confirmed in layer1", "type", transactionType, "confirmation", confirmation)
+}
+
+func (r *Layer2Relayer) handleConfirmLoop(ctx context.Context) {
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case confirmation := <-r.messageSender.ConfirmChan():
+			r.handleConfirmation(confirmation)
+		case confirmation := <-r.rollupSender.ConfirmChan():
+			r.handleConfirmation(confirmation)
+		case cfm := <-r.gasOracleSender.ConfirmChan():
+			if !cfm.IsSuccessful {
+				// @discuss: maybe make it pending again?
+				err := r.db.UpdateL2GasOracleStatusAndOracleTxHash(r.ctx, cfm.ID, types.GasOracleFailed, cfm.TxHash.String())
+				if err != nil {
+					log.Warn("UpdateL2GasOracleStatusAndOracleTxHash failed", "err", err)
+				}
+				log.Warn("transaction confirmed but failed in layer1", "confirmation", cfm)
+			} else {
+				// @todo handle db error
+				err := r.db.UpdateL2GasOracleStatusAndOracleTxHash(r.ctx, cfm.ID, types.GasOracleImported, cfm.TxHash.String())
+				if err != nil {
+					log.Warn("UpdateL2GasOracleStatusAndOracleTxHash failed", "err", err)
+				}
+				log.Info("transaction confirmed in layer1", "confirmation", cfm)
+			}
+		}
+	}
 }

@@ -77,7 +77,7 @@ func action(ctx *cli.Context) error {
 	l1watcher := watcher.NewWatcher(ctx.Context, l1client, cfg.L1Config.StartHeight, cfg.L1Config.Confirmations, cfg.L1Config.L1MessengerAddress, cfg.L1Config.L1MessageQueueAddress, cfg.L1Config.ScrollChainContractAddress, ormFactory)
 	l2watcher := watcher.NewL2WatcherClient(ctx.Context, l2client, cfg.L2Config.RelayerConfig.SenderConfig.Confirmations, cfg.L2Config.L2MessengerAddress, cfg.L2Config.L2MessageQueueAddress, cfg.L2Config.WithdrawTrieRootSlot, ormFactory)
 
-	go cutils.Loop(subCtx, 2*time.Second, func() {
+	go cutils.Loop(subCtx, 10*time.Second, func() {
 		if loopErr := l1watcher.FetchContractEvent(); loopErr != nil {
 			log.Error("Failed to fetch bridge contract", "err", loopErr)
 		}

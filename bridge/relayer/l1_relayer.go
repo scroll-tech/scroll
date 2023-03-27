@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"math/big"
-	"time"
 
 	// not sure if this will make problems when relay with l1geth
 
@@ -15,7 +14,6 @@ import (
 	geth_metrics "github.com/scroll-tech/go-ethereum/metrics"
 
 	"scroll-tech/common/types"
-	"scroll-tech/common/utils"
 
 	"scroll-tech/database"
 
@@ -93,7 +91,7 @@ func NewLayer1Relayer(ctx context.Context, db database.OrmFactory, cfg *config.R
 		minGasLimitForMessageRelay = cfg.MessageRelayMinGasLimit
 	}
 
-	return &Layer1Relayer{
+	l1Relayer := &Layer1Relayer{
 		ctx: ctx,
 		db:  db,
 
@@ -112,7 +110,10 @@ func NewLayer1Relayer(ctx context.Context, db database.OrmFactory, cfg *config.R
 
 		cfg:    cfg,
 		stopCh: make(chan struct{}),
-	}, nil
+	}
+
+	go l1Relayer.handleConfirmLoop(ctx)
+	return l1Relayer, nil
 }
 
 // ProcessSavedEvents relays saved un-processed cross-domain transactions to desired blockchain
@@ -212,61 +213,39 @@ func (r *Layer1Relayer) ProcessGasPriceOracle() {
 	}
 }
 
-// Start the relayer process
-func (r *Layer1Relayer) Start() {
-	go func() {
-		ctx, cancel := context.WithCancel(r.ctx)
-
-		go utils.Loop(ctx, 2*time.Second, r.ProcessSavedEvents)
-		go utils.Loop(ctx, 2*time.Second, r.ProcessGasPriceOracle)
-
-		go func(ctx context.Context) {
-			for {
-				select {
-				case <-ctx.Done():
-					return
-				case cfm := <-r.messageCh:
-					bridgeL1MsgsRelayedConfirmedTotalCounter.Inc(1)
-					if !cfm.IsSuccessful {
-						err := r.db.UpdateLayer1StatusAndLayer2Hash(r.ctx, cfm.ID, types.MsgRelayFailed, cfm.TxHash.String())
-						if err != nil {
-							log.Warn("UpdateLayer1StatusAndLayer2Hash failed", "err", err)
-						}
-						log.Warn("transaction confirmed but failed in layer2", "confirmation", cfm)
-					} else {
-						// @todo handle db error
-						err := r.db.UpdateLayer1StatusAndLayer2Hash(r.ctx, cfm.ID, types.MsgConfirmed, cfm.TxHash.String())
-						if err != nil {
-							log.Warn("UpdateLayer1StatusAndLayer2Hash failed", "err", err)
-						}
-						log.Info("transaction confirmed in layer2", "confirmation", cfm)
-					}
-				case cfm := <-r.gasOracleCh:
-					if !cfm.IsSuccessful {
-						// @discuss: maybe make it pending again?
-						err := r.db.UpdateL1GasOracleStatusAndOracleTxHash(r.ctx, cfm.ID, types.GasOracleFailed, cfm.TxHash.String())
-						if err != nil {
-							log.Warn("UpdateL1GasOracleStatusAndOracleTxHash failed", "err", err)
-						}
-						log.Warn("transaction confirmed but failed in layer2", "confirmation", cfm)
-					} else {
-						// @todo handle db error
-						err := r.db.UpdateL1GasOracleStatusAndOracleTxHash(r.ctx, cfm.ID, types.GasOracleImported, cfm.TxHash.String())
-						if err != nil {
-							log.Warn("UpdateGasOracleStatusAndOracleTxHash failed", "err", err)
-						}
-						log.Info("transaction confirmed in layer2", "confirmation", cfm)
-					}
+func (r *Layer1Relayer) handleConfirmLoop(ctx context.Context) {
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case cfm := <-r.messageSender.ConfirmChan():
+			bridgeL1MsgsRelayedConfirmedTotalCounter.Inc(1)
+			if !cfm.IsSuccessful {
+				log.Warn("transaction confirmed but failed in layer2", "confirmation", cfm)
+			} else {
+				// @todo handle db error
+				err := r.db.UpdateLayer1StatusAndLayer2Hash(r.ctx, cfm.ID, types.MsgConfirmed, cfm.TxHash.String())
+				if err != nil {
+					log.Warn("UpdateLayer1StatusAndLayer2Hash failed", "err", err)
 				}
+				log.Info("transaction confirmed in layer2", "confirmation", cfm)
 			}
-		}(ctx)
-
-		<-r.stopCh
-		cancel()
-	}()
-}
-
-// Stop the relayer module, for a graceful shutdown.
-func (r *Layer1Relayer) Stop() {
-	close(r.stopCh)
+		case cfm := <-r.gasOracleSender.ConfirmChan():
+			if !cfm.IsSuccessful {
+				// @discuss: maybe make it pending again?
+				err := r.db.UpdateL1GasOracleStatusAndOracleTxHash(r.ctx, cfm.ID, types.GasOracleFailed, cfm.TxHash.String())
+				if err != nil {
+					log.Warn("UpdateL1GasOracleStatusAndOracleTxHash failed", "err", err)
+				}
+				log.Warn("transaction confirmed but failed in layer2", "confirmation", cfm)
+			} else {
+				// @todo handle db error
+				err := r.db.UpdateL1GasOracleStatusAndOracleTxHash(r.ctx, cfm.ID, types.GasOracleImported, cfm.TxHash.String())
+				if err != nil {
+					log.Warn("UpdateGasOracleStatusAndOracleTxHash failed", "err", err)
+				}
+				log.Info("transaction confirmed in layer2", "confirmation", cfm)
+			}
+		}
+	}
 }

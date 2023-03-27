@@ -11,16 +11,16 @@ COPY ./roller/go.* ./roller/
 COPY ./tests/integration-test/go.* ./tests/integration-test/
 RUN go mod download -x
 
-# Build bridge
+# Build rollup_relayer
 FROM base as builder
 
 RUN --mount=target=. \
     --mount=type=cache,target=/root/.cache/go-build \
-    cd /src/bridge/cmd && go build -v -p 4 -o /bin/bridge
+    cd /src/bridge/cmd/rollup_relayer/ && go build -v -p 4 -o /bin/rollup_relayer
 
-# Pull bridge into a second stage deploy alpine container
+# Pull rollup_relayer into a second stage deploy alpine container
 FROM alpine:latest
 
-COPY --from=builder /bin/bridge /bin/
+COPY --from=builder /bin/rollup_relayer /bin/
 
-ENTRYPOINT ["bridge"]
+ENTRYPOINT ["rollup_relayer"]
