@@ -82,6 +82,9 @@ const (
 
 	// MsgExpired represents the from_layer message status is expired
 	MsgExpired
+
+	// MsgRelayFailed represents the from_layer message status is relay failed
+	MsgRelayFailed
 )
 
 // L1Message is structure of stored layer1 bridge message
@@ -202,7 +205,7 @@ func (ps ProvingStatus) String() string {
 	}
 }
 
-// RollupStatus block_batch rollup_status (pending, committing, committed, finalizing, finalized)
+// RollupStatus block_batch rollup_status (pending, committing, committed, commit_failed, finalizing, finalized, finalize_skipped, finalize_failed)
 type RollupStatus int
 
 const (
@@ -220,6 +223,10 @@ const (
 	RollupFinalized
 	// RollupFinalizationSkipped : batch finalization is skipped
 	RollupFinalizationSkipped
+	// RollupCommitFailed : rollup commit transaction confirmed but failed
+	RollupCommitFailed
+	// RollupFinalizeFailed : rollup finalize transaction is confirmed but failed
+	RollupFinalizeFailed
 )
 
 // BlockBatch is structure of stored block_batch

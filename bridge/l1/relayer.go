@@ -154,6 +154,10 @@ func (r *Layer1Relayer) confirmLoop(ctx context.Context) {
 		case cfm := <-r.messageCh:
 			bridgeL1MsgsRelayedConfirmedTotalCounter.Inc(1)
 			if !cfm.IsSuccessful {
+				err := r.db.UpdateLayer1StatusAndLayer2Hash(r.ctx, cfm.ID, types.MsgRelayFailed, cfm.TxHash.String())
+				if err != nil {
+					log.Warn("UpdateLayer1StatusAndLayer2Hash failed", "err", err)
+				}
 				log.Warn("transaction confirmed but failed in layer2", "confirmation", cfm)
 			} else {
 				// @todo handle db error
