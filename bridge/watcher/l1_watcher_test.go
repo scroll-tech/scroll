@@ -7,9 +7,10 @@ import (
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/stretchr/testify/assert"
 
-	"scroll-tech/bridge/watcher"
 	"scroll-tech/database"
 	"scroll-tech/database/migrate"
+
+	"scroll-tech/bridge/watcher"
 )
 
 func testStartWatcher(t *testing.T) {

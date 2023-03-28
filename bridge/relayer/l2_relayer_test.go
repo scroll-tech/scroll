@@ -12,8 +12,9 @@ import (
 	geth_types "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/stretchr/testify/assert"
 
-	"scroll-tech/bridge/relayer"
 	"scroll-tech/common/types"
+
+	"scroll-tech/bridge/relayer"
 
 	"scroll-tech/database"
 	"scroll-tech/database/migrate"

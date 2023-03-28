@@ -6,8 +6,9 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"scroll-tech/bridge/relayer"
 	"scroll-tech/database/migrate"
+
+	"scroll-tech/bridge/relayer"
 
 	"scroll-tech/database"
 )
