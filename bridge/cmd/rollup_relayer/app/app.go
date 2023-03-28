@@ -85,7 +85,7 @@ func action(ctx *cli.Context) error {
 	l2watcher := watcher.NewL2WatcherClient(subCtx, l2client, cfg.L2Config.Confirmations, cfg.L2Config.L2MessengerAddress, cfg.L2Config.L2MessageQueueAddress, cfg.L2Config.WithdrawTrieRootSlot, ormFactory)
 
 	// Watcher loop to fetch missing blocks
-	go cutils.LoopWithContext(subCtx, 3*time.Second, func(ctx context.Context) {
+	go cutils.LoopWithContext(subCtx, 2*time.Second, func(ctx context.Context) {
 		number, loopErr := utils.GetLatestConfirmedBlockNumber(ctx, l2client, cfg.L2Config.Confirmations)
 		if loopErr != nil {
 			log.Error("failed to get block number", "err", loopErr)

@@ -102,8 +102,8 @@ func action(ctx *cli.Context) error {
 	})
 
 	// Start l1relayer process
-	go cutils.Loop(subCtx, 2*time.Second, l1relayer.ProcessGasPriceOracle)
-	go cutils.Loop(subCtx, time.Second, l2relayer.ProcessGasPriceOracle)
+	go cutils.Loop(subCtx, 10*time.Second, l1relayer.ProcessGasPriceOracle)
+	go cutils.Loop(subCtx, 2*time.Second, l2relayer.ProcessGasPriceOracle)
 
 	// Finish start all message relayer functions
 	log.Info("Start gas-oracle successfully")

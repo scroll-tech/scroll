@@ -84,7 +84,7 @@ func action(ctx *cli.Context) error {
 	go cutils.Loop(subCtx, 10*time.Second, l1relayer.ProcessSavedEvents)
 
 	// Start l2relayer process
-	go cutils.Loop(subCtx, time.Second, l2relayer.ProcessSavedEvents)
+	go cutils.Loop(subCtx, 2*time.Second, l2relayer.ProcessSavedEvents)
 
 	// Finish start all message relayer functions
 	log.Info("Start message-relayer successfully")
