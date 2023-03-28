@@ -2,6 +2,7 @@ package docker
 
 import (
 	"context"
+	"math/big"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/filters"
@@ -27,6 +28,12 @@ type ImgInstance interface {
 	Stop() error
 	Endpoint() string
 	IsRunning() bool
+}
+
+// GethImgInstance based on ImgInstance and add chainID interface.
+type GethImgInstance interface {
+	ImgInstance
+	ChainID() *big.Int
 }
 
 // GetContainerID returns the ID of Container.

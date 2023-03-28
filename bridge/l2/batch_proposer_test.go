@@ -16,7 +16,12 @@ import (
 	"scroll-tech/common/types"
 )
 
-func testBatchProposerProposeBatch(t *testing.T) {
+func TestBatchProposerProposeBatch(t *testing.T) {
+	// Start docker containers.
+	base.RunImages(t)
+	l2Cli, err := base.L2Client()
+	assert.NoError(t, err)
+
 	// Create db handler and reset db.
 	db, err := database.NewOrmFactory(cfg.DBConfig)
 	assert.NoError(t, err)
@@ -53,7 +58,12 @@ func testBatchProposerProposeBatch(t *testing.T) {
 	assert.Equal(t, true, exist)
 }
 
-func testBatchProposerGracefulRestart(t *testing.T) {
+func TestBatchProposerGracefulRestart(t *testing.T) {
+	// Start docker containers.
+	base.RunImages(t)
+	l2Cli, err := base.L2Client()
+	assert.NoError(t, err)
+
 	// Create db handler and reset db.
 	db, err := database.NewOrmFactory(cfg.DBConfig)
 	assert.NoError(t, err)

@@ -10,7 +10,9 @@ import (
 	"scroll-tech/database/migrate"
 )
 
-func testStartWatcher(t *testing.T) {
+func TestStartWatcher(t *testing.T) {
+	// Start docker containers.
+	base.RunImages(t)
 	// Create db handler and reset db.
 	db, err := database.NewOrmFactory(cfg.DBConfig)
 	assert.NoError(t, err)

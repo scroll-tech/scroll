@@ -1,7 +1,6 @@
 package docker
 
 import (
-	"context"
 	"crypto/rand"
 	"database/sql"
 	"encoding/json"
@@ -36,8 +35,8 @@ type AppAPI interface {
 
 // App is collection struct of runtime docker images
 type App struct {
-	L1gethImg ImgInstance
-	L2gethImg ImgInstance
+	L1gethImg GethImgInstance
+	L2gethImg GethImgInstance
 	DBImg     ImgInstance
 
 	dbClient *sql.DB
@@ -111,19 +110,6 @@ func (b *App) RunL1Geth(t *testing.T) {
 		return
 	}
 	assert.NoError(t, b.L1gethImg.Start())
-
-	var isRun bool
-	// try 3 times to get chainID until is ok.
-	utils.TryTimes(10, func() bool {
-		client, _ := ethclient.Dial(b.L1gethImg.Endpoint())
-		if client != nil {
-			if _, err := client.ChainID(context.Background()); err == nil {
-				isRun = true
-			}
-		}
-		return isRun
-	})
-	assert.Equal(t, true, isRun)
 }
 
 // L1Client returns a ethclient by dialing running l1geth
@@ -144,19 +130,6 @@ func (b *App) RunL2Geth(t *testing.T) {
 		return
 	}
 	assert.NoError(t, b.L2gethImg.Start())
-
-	var isRun bool
-	// try 3 times to get chainID until is ok.
-	utils.TryTimes(10, func() bool {
-		client, _ := ethclient.Dial(b.L2gethImg.Endpoint())
-		if client != nil {
-			if _, err := client.ChainID(context.Background()); err == nil {
-				isRun = true
-			}
-		}
-		return isRun
-	})
-	assert.Equal(t, true, isRun)
 }
 
 // L2Client returns a ethclient by dialing running l2geth
@@ -207,12 +180,12 @@ func (b *App) mockDBConfig() error {
 	return os.WriteFile(b.dbFile, data, 0644) //nolint:gosec
 }
 
-func newTestL1Docker() ImgInstance {
+func newTestL1Docker() GethImgInstance {
 	id, _ := rand.Int(rand.Reader, big.NewInt(2000))
 	return NewImgGeth("scroll_l1geth", "", "", 0, l1StartPort+int(id.Int64()))
 }
 
-func newTestL2Docker() ImgInstance {
+func newTestL2Docker() GethImgInstance {
 	id, _ := rand.Int(rand.Reader, big.NewInt(2000))
 	return NewImgGeth("scroll_l2geth", "", "", 0, l2StartPort+int(id.Int64()))
 }

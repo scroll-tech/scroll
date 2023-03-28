@@ -32,7 +32,12 @@ var (
 	}
 )
 
-func testCreateNewRelayer(t *testing.T) {
+func TestCreateNewRelayer(t *testing.T) {
+	// Start docker containers.
+	base.RunImages(t)
+	l2Cli, err := base.L2Client()
+	assert.NoError(t, err)
+
 	// Create db handler and reset db.
 	db, err := database.NewOrmFactory(cfg.DBConfig)
 	assert.NoError(t, err)
@@ -46,7 +51,12 @@ func testCreateNewRelayer(t *testing.T) {
 	relayer.Start()
 }
 
-func testL2RelayerProcessSaveEvents(t *testing.T) {
+func TestL2RelayerProcessSaveEvents(t *testing.T) {
+	// Start docker containers.
+	base.RunImages(t)
+	l2Cli, err := base.L2Client()
+	assert.NoError(t, err)
+
 	// Create db handler and reset db.
 	db, err := database.NewOrmFactory(cfg.DBConfig)
 	assert.NoError(t, err)
@@ -96,7 +106,12 @@ func testL2RelayerProcessSaveEvents(t *testing.T) {
 	assert.Equal(t, types.MsgSubmitted, msg.Status)
 }
 
-func testL2RelayerProcessCommittedBatches(t *testing.T) {
+func TestL2RelayerProcessCommittedBatches(t *testing.T) {
+	// Start docker containers.
+	base.RunImages(t)
+	l2Cli, err := base.L2Client()
+	assert.NoError(t, err)
+
 	// Create db handler and reset db.
 	db, err := database.NewOrmFactory(cfg.DBConfig)
 	assert.NoError(t, err)
@@ -132,7 +147,12 @@ func testL2RelayerProcessCommittedBatches(t *testing.T) {
 	assert.Equal(t, types.RollupFinalizing, status)
 }
 
-func testL2RelayerSkipBatches(t *testing.T) {
+func TestL2RelayerSkipBatches(t *testing.T) {
+	// Start docker containers.
+	base.RunImages(t)
+	l2Cli, err := base.L2Client()
+	assert.NoError(t, err)
+
 	// Create db handler and reset db.
 	db, err := database.NewOrmFactory(cfg.DBConfig)
 	assert.NoError(t, err)

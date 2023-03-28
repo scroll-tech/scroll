@@ -24,7 +24,12 @@ import (
 	"scroll-tech/database/migrate"
 )
 
-func testCreateNewWatcherAndStop(t *testing.T) {
+func TestCreateNewWatcherAndStop(t *testing.T) {
+	// Start docker containers.
+	base.RunImages(t)
+	l2Cli, err := base.L2Client()
+	assert.NoError(t, err)
+
 	// Create db handler and reset db.
 	l2db, err := database.NewOrmFactory(cfg.DBConfig)
 	assert.NoError(t, err)
@@ -55,7 +60,12 @@ func testCreateNewWatcherAndStop(t *testing.T) {
 	assert.GreaterOrEqual(t, blockNum, uint64(numTransactions))
 }
 
-func testMonitorBridgeContract(t *testing.T) {
+func TestMonitorBridgeContract(t *testing.T) {
+	// Start docker containers.
+	base.RunImages(t)
+	l2Cli, err := base.L2Client()
+	assert.NoError(t, err)
+
 	// Create db handler and reset db.
 	db, err := database.NewOrmFactory(cfg.DBConfig)
 	assert.NoError(t, err)
@@ -123,7 +133,12 @@ func testMonitorBridgeContract(t *testing.T) {
 	assert.Equal(t, 2, len(msgs))
 }
 
-func testFetchMultipleSentMessageInOneBlock(t *testing.T) {
+func TestFetchMultipleSentMessageInOneBlock(t *testing.T) {
+	// Start docker containers.
+	base.RunImages(t)
+	l2Cli, err := base.L2Client()
+	assert.NoError(t, err)
+
 	// Create db handler and reset db.
 	db, err := database.NewOrmFactory(cfg.DBConfig)
 	assert.NoError(t, err)

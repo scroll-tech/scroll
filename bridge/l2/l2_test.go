@@ -1,15 +1,9 @@
 package l2
 
 import (
-	"encoding/json"
-	"os"
 	"testing"
 
-	"github.com/scroll-tech/go-ethereum/ethclient"
-	"github.com/scroll-tech/go-ethereum/log"
-	"github.com/stretchr/testify/assert"
-
-	"scroll-tech/database/migrate"
+	"scroll-tech/common/testdata"
 
 	"scroll-tech/common/docker"
 	"scroll-tech/common/types"
@@ -23,9 +17,6 @@ var (
 
 	base *docker.App
 
-	// l2geth client
-	l2Cli *ethclient.Client
-
 	// block trace
 	wrappedBlock1 *types.WrappedBlock
 	wrappedBlock2 *types.WrappedBlock
@@ -35,87 +26,47 @@ var (
 	batchData2 *types.BatchData
 )
 
+func init() {
+	trace02 := testdata.TraceList["blockTrace_02.json"]
+	wrappedBlock1 = &types.WrappedBlock{
+		Header:           trace02.Header,
+		Transactions:     trace02.Transactions,
+		WithdrawTrieRoot: trace02.WithdrawTrieRoot,
+	}
+	batchData1 = types.NewBatchData(&types.BlockBatch{
+		Index:     0,
+		Hash:      "0x0cc6b102c2924402c14b2e3a19baccc316252bfdc44d9ec62e942d34e39ec729",
+		StateRoot: "0x2579122e8f9ec1e862e7d415cef2fb495d7698a8e5f0dddc5651ba4236336e7d",
+	}, []*types.WrappedBlock{wrappedBlock1}, nil)
+
+	trace03 := testdata.TraceList["blockTrace_03.json"]
+	wrappedBlock2 = &types.WrappedBlock{
+		Header:           trace03.Header,
+		Transactions:     trace03.Transactions,
+		WithdrawTrieRoot: trace03.WithdrawTrieRoot,
+	}
+	batchData2 = types.NewBatchData(&types.BlockBatch{
+		Index:     batchData1.Batch.BatchIndex,
+		Hash:      batchData1.Hash().Hex(),
+		StateRoot: batchData1.Batch.NewStateRoot.String(),
+	}, []*types.WrappedBlock{wrappedBlock2}, nil)
+
+}
+
 func TestMain(m *testing.M) {
 	base = docker.NewDockerApp()
 
-	m.Run()
-
-	base.Free()
-}
-
-func setupEnv(t *testing.T) (err error) {
 	// Load config.
+	var err error
 	cfg, err = config.NewConfig("../config.json")
-	assert.NoError(t, err)
-
-	// Start l1geth l2geth and postgres docker containers.
-	base.RunImages(t)
-	// reset db.
-	assert.NoError(t, migrate.ResetDB(base.DBClient(t)))
-
+	if err != nil {
+		panic(err)
+	}
 	cfg.L2Config.RelayerConfig.SenderConfig.Endpoint = base.L1gethImg.Endpoint()
 	cfg.L1Config.RelayerConfig.SenderConfig.Endpoint = base.L2gethImg.Endpoint()
 	cfg.DBConfig = base.DBConfig
 
-	// Create l2geth client.
-	l2Cli, err = base.L2Client()
-	assert.NoError(t, err)
+	m.Run()
 
-	templateBlockTrace1, err := os.ReadFile("../../common/testdata/blockTrace_02.json")
-	if err != nil {
-		return err
-	}
-	// unmarshal blockTrace
-	wrappedBlock1 = &types.WrappedBlock{}
-	if err = json.Unmarshal(templateBlockTrace1, wrappedBlock1); err != nil {
-		return err
-	}
-	parentBatch1 := &types.BlockBatch{
-		Index:     0,
-		Hash:      "0x0cc6b102c2924402c14b2e3a19baccc316252bfdc44d9ec62e942d34e39ec729",
-		StateRoot: "0x2579122e8f9ec1e862e7d415cef2fb495d7698a8e5f0dddc5651ba4236336e7d",
-	}
-	batchData1 = types.NewBatchData(parentBatch1, []*types.WrappedBlock{wrappedBlock1}, nil)
-
-	templateBlockTrace2, err := os.ReadFile("../../common/testdata/blockTrace_03.json")
-	if err != nil {
-		return err
-	}
-	// unmarshal blockTrace
-	wrappedBlock2 = &types.WrappedBlock{}
-	if err = json.Unmarshal(templateBlockTrace2, wrappedBlock2); err != nil {
-		return err
-	}
-	parentBatch2 := &types.BlockBatch{
-		Index:     batchData1.Batch.BatchIndex,
-		Hash:      batchData1.Hash().Hex(),
-		StateRoot: batchData1.Batch.NewStateRoot.String(),
-	}
-	batchData2 = types.NewBatchData(parentBatch2, []*types.WrappedBlock{wrappedBlock2}, nil)
-
-	log.Info("batchHash", "batchhash1", batchData1.Hash().Hex(), "batchhash2", batchData2.Hash().Hex())
-
-	return err
-}
-
-func TestFunction(t *testing.T) {
-	if err := setupEnv(t); err != nil {
-		t.Fatal(err)
-	}
-
-	// Run l2 watcher test cases.
-	t.Run("TestCreateNewWatcherAndStop", testCreateNewWatcherAndStop)
-	t.Run("TestMonitorBridgeContract", testMonitorBridgeContract)
-	t.Run("TestFetchMultipleSentMessageInOneBlock", testFetchMultipleSentMessageInOneBlock)
-
-	// Run l2 relayer test cases.
-	t.Run("TestCreateNewRelayer", testCreateNewRelayer)
-	t.Run("TestL2RelayerProcessSaveEvents", testL2RelayerProcessSaveEvents)
-	t.Run("TestL2RelayerProcessCommittedBatches", testL2RelayerProcessCommittedBatches)
-	t.Run("TestL2RelayerSkipBatches", testL2RelayerSkipBatches)
-
-	// Run batch proposer test cases.
-	t.Run("TestBatchProposerProposeBatch", testBatchProposerProposeBatch)
-	t.Run("TestBatchProposerGracefulRestart", testBatchProposerGracefulRestart)
-
+	base.Free()
 }

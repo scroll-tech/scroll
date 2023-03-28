@@ -38,9 +38,6 @@ func NewBridgeApp(base *docker.App, file string) *BridgeApp {
 		bridgeFile: bridgeFile,
 		args:       []string{"--log.debug", "--config", bridgeFile},
 	}
-	if err := bridgeApp.mockConfig(true); err != nil {
-		panic(err)
-	}
 	return bridgeApp
 }
 
@@ -58,8 +55,8 @@ func (b *BridgeApp) Free() {
 	_ = os.Remove(b.bridgeFile)
 }
 
-// mockConfig creates a new bridge config.
-func (b *BridgeApp) mockConfig(store bool) error {
+// MockConfig creates a new bridge config.
+func (b *BridgeApp) MockConfig(store bool) error {
 	base := b.base
 	// Load origin bridge config file.
 	cfg, err := bridgeConfig.NewConfig(b.originFile)

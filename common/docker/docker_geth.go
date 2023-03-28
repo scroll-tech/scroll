@@ -3,11 +3,13 @@ package docker
 import (
 	"context"
 	"fmt"
+	"math/big"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/docker/docker/api/types"
+	"github.com/scroll-tech/go-ethereum/ethclient"
 
 	"scroll-tech/common/cmd"
 	"scroll-tech/common/utils"
@@ -23,13 +25,14 @@ type ImgGeth struct {
 	ipcPath  string
 	httpPort int
 	wsPort   int
+	chainID  *big.Int
 
 	running bool
 	cmd     *cmd.Cmd
 }
 
 // NewImgGeth return geth img instance.
-func NewImgGeth(image, volume, ipc string, hPort, wPort int) ImgInstance {
+func NewImgGeth(image, volume, ipc string, hPort, wPort int) GethImgInstance {
 	img := &ImgGeth{
 		image:    image,
 		name:     fmt.Sprintf("%s-%d", image, time.Now().Nanosecond()),
@@ -53,6 +56,18 @@ func (i *ImgGeth) Start() error {
 		_ = i.Stop()
 		return fmt.Errorf("failed to start image: %s", i.image)
 	}
+
+	// try 10 times to get chainID until is ok.
+	utils.TryTimes(10, func() bool {
+		client, _ := ethclient.Dial(i.Endpoint())
+		if client != nil {
+			var err error
+			i.chainID, err = client.ChainID(context.Background())
+			return err == nil && i.chainID != nil
+		}
+		return false
+	})
+
 	return nil
 }
 
@@ -71,6 +86,11 @@ func (i *ImgGeth) Endpoint() string {
 	default:
 		return i.ipcPath
 	}
+}
+
+// ChainID return chainID.
+func (i *ImgGeth) ChainID() *big.Int {
+	return i.chainID
 }
 
 func (i *ImgGeth) isOk() bool {

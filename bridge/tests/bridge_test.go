@@ -11,7 +11,6 @@ import (
 	"github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/crypto"
 	"github.com/scroll-tech/go-ethereum/ethclient"
-	"github.com/scroll-tech/go-ethereum/rpc"
 	"github.com/stretchr/testify/assert"
 
 	"scroll-tech/bridge/cmd/app"
@@ -55,6 +54,12 @@ var (
 func TestMain(m *testing.M) {
 	base = docker.NewDockerApp()
 	bridgeApp = app.NewBridgeApp(base, "../config.json")
+	err := bridgeApp.MockConfig(false)
+	if err != nil {
+		panic(err)
+	}
+	// Load config.
+	cfg = bridgeApp.Config
 
 	m.Run()
 
@@ -63,30 +68,12 @@ func TestMain(m *testing.M) {
 }
 
 func setupEnv(t *testing.T) {
-	var err error
-	privateKey, err = crypto.ToECDSA(common.FromHex("1212121212121212121212121212121212121212121212121212121212121212"))
-	assert.NoError(t, err)
-	messagePrivateKey, err := crypto.ToECDSA(common.FromHex("1212121212121212121212121212121212121212121212121212121212121213"))
-	assert.NoError(t, err)
-	rollupPrivateKey, err := crypto.ToECDSA(common.FromHex("1212121212121212121212121212121212121212121212121212121212121214"))
-	assert.NoError(t, err)
-	gasOraclePrivateKey, err := crypto.ToECDSA(common.FromHex("1212121212121212121212121212121212121212121212121212121212121215"))
-	assert.NoError(t, err)
-
 	// Start l1geth l2geth and postgres docker containers.
 	base.RunImages(t)
 
-	// Use the created config.
-	cfg = bridgeApp.Config
-	cfg.L1Config.Confirmations = rpc.LatestBlockNumber
-	cfg.L1Config.RelayerConfig.MessageSenderPrivateKeys = []*ecdsa.PrivateKey{messagePrivateKey}
-	cfg.L1Config.RelayerConfig.RollupSenderPrivateKeys = []*ecdsa.PrivateKey{rollupPrivateKey}
-	cfg.L1Config.RelayerConfig.GasOracleSenderPrivateKeys = []*ecdsa.PrivateKey{gasOraclePrivateKey}
-	cfg.L2Config.Confirmations = rpc.LatestBlockNumber
-	cfg.L2Config.RelayerConfig.MessageSenderPrivateKeys = []*ecdsa.PrivateKey{messagePrivateKey}
-	cfg.L2Config.RelayerConfig.RollupSenderPrivateKeys = []*ecdsa.PrivateKey{rollupPrivateKey}
-	cfg.L2Config.RelayerConfig.GasOracleSenderPrivateKeys = []*ecdsa.PrivateKey{gasOraclePrivateKey}
-
+	var err error
+	privateKey, err = crypto.ToECDSA(common.FromHex("1212121212121212121212121212121212121212121212121212121212121212"))
+	assert.NoError(t, err)
 	// Create l1geth and l2geth client.
 	l1Client, err = base.L1Client()
 	assert.NoError(t, err)
@@ -94,51 +81,8 @@ func setupEnv(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Create l1 and l2 auth
-	l1Auth = prepareAuth(t, l1Client, privateKey)
-	l2Auth = prepareAuth(t, l2Client, privateKey)
-
-	// send some balance to message and rollup sender
-	transferEther(t, l1Auth, l1Client, messagePrivateKey)
-	transferEther(t, l1Auth, l1Client, rollupPrivateKey)
-	transferEther(t, l1Auth, l1Client, gasOraclePrivateKey)
-	transferEther(t, l2Auth, l2Client, messagePrivateKey)
-	transferEther(t, l2Auth, l2Client, rollupPrivateKey)
-	transferEther(t, l2Auth, l2Client, gasOraclePrivateKey)
-}
-
-func transferEther(t *testing.T, auth *bind.TransactOpts, client *ethclient.Client, privateKey *ecdsa.PrivateKey) {
-	targetAddress := crypto.PubkeyToAddress(privateKey.PublicKey)
-
-	gasPrice, err := client.SuggestGasPrice(context.Background())
-	assert.NoError(t, err)
-	gasPrice.Mul(gasPrice, big.NewInt(2))
-
-	// Get pending nonce
-	nonce, err := client.PendingNonceAt(context.Background(), auth.From)
-	assert.NoError(t, err)
-
-	// 200 ether should be enough
-	value, ok := big.NewInt(0).SetString("0xad78ebc5ac6200000", 0)
-	assert.Equal(t, ok, true)
-
-	tx := types.NewTx(&types.LegacyTx{
-		Nonce:    nonce,
-		To:       &targetAddress,
-		Value:    value,
-		Gas:      500000,
-		GasPrice: gasPrice,
-	})
-	signedTx, err := auth.Signer(auth.From, tx)
-	assert.NoError(t, err)
-
-	err = client.SendTransaction(context.Background(), signedTx)
-	assert.NoError(t, err)
-
-	receipt, err := bind.WaitMined(context.Background(), client, signedTx)
-	assert.NoError(t, err)
-	if receipt.Status != types.ReceiptStatusSuccessful {
-		t.Fatalf("Call failed")
-	}
+	l1Auth = prepareAuth(t, base.L1gethImg.ChainID(), privateKey)
+	l2Auth = prepareAuth(t, base.L2gethImg.ChainID(), privateKey)
 }
 
 func prepareContracts(t *testing.T) {
@@ -176,9 +120,7 @@ func prepareContracts(t *testing.T) {
 	cfg.L2Config.RelayerConfig.GasPriceOracleContractAddress = l2MessengerAddress
 }
 
-func prepareAuth(t *testing.T, client *ethclient.Client, privateKey *ecdsa.PrivateKey) *bind.TransactOpts {
-	chainID, err := client.ChainID(context.Background())
-	assert.NoError(t, err)
+func prepareAuth(t *testing.T, chainID *big.Int, privateKey *ecdsa.PrivateKey) *bind.TransactOpts {
 	auth, err := bind.NewKeyedTransactorWithChainID(privateKey, chainID)
 	assert.NoError(t, err)
 	auth.Value = big.NewInt(0) // in wei

@@ -11,8 +11,10 @@ import (
 	"scroll-tech/database"
 )
 
-// testCreateNewRelayer test create new relayer instance and stop
-func testCreateNewL1Relayer(t *testing.T) {
+// TestCreateNewL1Relayer test create new relayer instance and stop
+func TestCreateNewL1Relayer(t *testing.T) {
+	// Start docker containers.
+	base.RunImages(t)
 	// Create db handler and reset db.
 	db, err := database.NewOrmFactory(cfg.DBConfig)
 	assert.NoError(t, err)
