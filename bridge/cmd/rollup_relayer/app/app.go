@@ -55,21 +55,28 @@ func action(ctx *cli.Context) error {
 	}
 
 	subCtx, cancel := context.WithCancel(ctx.Context)
-	defer cancel()
-
-	// Start metrics server.
-	metrics.Serve(subCtx, ctx)
-
-	// Init l2geth connection
-	l2client, err := ethclient.Dial(cfg.L1Config.Endpoint)
-	if err != nil {
-		log.Crit("failed to connect l2 geth", "config file", cfgFile, "error", err)
-	}
 
 	// init db connection
 	var ormFactory database.OrmFactory
 	if ormFactory, err = database.NewOrmFactory(cfg.DBConfig); err != nil {
 		log.Crit("failed to init db connection", "err", err)
+	}
+	defer func() {
+		cancel()
+		err = ormFactory.Close()
+		if err != nil {
+			log.Error("can not close ormFactory", "error", err)
+		}
+	}()
+
+	// Start metrics server.
+	metrics.Serve(subCtx, ctx)
+
+	// Init l2geth connection
+	l2client, err := ethclient.Dial(cfg.L2Config.Endpoint)
+	if err != nil {
+		log.Crit("failed to connect l2 geth", "config file", cfgFile, "error", err)
+		return err
 	}
 
 	l2relayer, err := relayer.NewLayer2Relayer(ctx.Context, l2client, ormFactory, cfg.L2Config.RelayerConfig)
@@ -104,13 +111,6 @@ func action(ctx *cli.Context) error {
 
 	// Finish start all rollup relayer functions.
 	log.Info("Start rollup-relayer successfully")
-
-	defer func() {
-		err = ormFactory.Close()
-		if err != nil {
-			log.Error("can not close ormFactory", "error", err)
-		}
-	}()
 
 	// Catch CTRL-C to ensure a graceful shutdown.
 	interrupt := make(chan os.Signal, 1)

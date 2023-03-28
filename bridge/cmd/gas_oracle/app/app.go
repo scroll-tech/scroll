@@ -56,26 +56,33 @@ func action(ctx *cli.Context) error {
 		log.Crit("failed to load config file", "config file", cfgFile, "error", err)
 	}
 	subCtx, cancel := context.WithCancel(ctx.Context)
-	defer cancel()
+	// Init db connection
+	var ormFactory database.OrmFactory
+	if ormFactory, err = database.NewOrmFactory(cfg.DBConfig); err != nil {
+		log.Crit("failed to init db connection", "err", err)
+	}
 
+	defer func() {
+		cancel()
+		err = ormFactory.Close()
+		if err != nil {
+			log.Error("can not close ormFactory", "error", err)
+		}
+	}()
 	// Start metrics server.
 	metrics.Serve(subCtx, ctx)
 
 	l1client, err := ethclient.Dial(cfg.L1Config.Endpoint)
 	if err != nil {
 		log.Crit("failed to connect l1 geth", "config file", cfgFile, "error", err)
+		return err
 	}
 
 	// Init l2geth connection
-	l2client, err := ethclient.Dial(cfg.L1Config.Endpoint)
+	l2client, err := ethclient.Dial(cfg.L2Config.Endpoint)
 	if err != nil {
 		log.Crit("failed to connect l2 geth", "config file", cfgFile, "error", err)
-	}
-
-	// Init db connection
-	var ormFactory database.OrmFactory
-	if ormFactory, err = database.NewOrmFactory(cfg.DBConfig); err != nil {
-		log.Crit("failed to init db connection", "err", err)
+		return err
 	}
 
 	l1watcher := watcher.NewWatcher(ctx.Context, l1client, cfg.L1Config.StartHeight, cfg.L1Config.Confirmations, cfg.L1Config.L1MessengerAddress, cfg.L1Config.L1MessageQueueAddress, cfg.L1Config.ScrollChainContractAddress, ormFactory)
@@ -107,13 +114,6 @@ func action(ctx *cli.Context) error {
 
 	// Finish start all message relayer functions
 	log.Info("Start gas-oracle successfully")
-
-	defer func() {
-		err = ormFactory.Close()
-		if err != nil {
-			log.Error("can not close ormFactory", "error", err)
-		}
-	}()
 
 	// Catch CTRL-C to ensure a graceful shutdown.
 	interrupt := make(chan os.Signal, 1)
