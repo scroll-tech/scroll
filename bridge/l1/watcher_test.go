@@ -3,6 +3,7 @@ package l1
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 
@@ -26,5 +27,6 @@ func TestStartWatcher(t *testing.T) {
 
 	watcher := NewWatcher(context.Background(), client, l1Cfg.StartHeight, l1Cfg.Confirmations, l1Cfg.L1MessengerAddress, l1Cfg.L1MessageQueueAddress, l1Cfg.RelayerConfig.RollupContractAddress, db)
 	watcher.Start()
+	time.Sleep(time.Millisecond * 500)
 	defer watcher.Stop()
 }
