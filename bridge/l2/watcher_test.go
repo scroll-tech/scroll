@@ -164,10 +164,6 @@ func TestFetchMultipleSentMessageInOneBlock(t *testing.T) {
 	var tx *geth_types.Transaction
 
 	for i := 0; i < numTransactions; i++ {
-		addr := common.HexToAddress("0x1c5a77d9fa7ef466951b2f01f724bca3a5820b63")
-		nonce, nounceErr := l2Cli.PendingNonceAt(context.Background(), addr)
-		assert.NoError(t, nounceErr)
-		auth.Nonce = big.NewInt(int64(nonce))
 		toAddress := common.HexToAddress("0x4592d8f8d7b001e72cb26a73e4fa1806a51ac79d")
 		message := []byte("testbridgecontract")
 		fee := big.NewInt(0)
@@ -182,10 +178,6 @@ func TestFetchMultipleSentMessageInOneBlock(t *testing.T) {
 	}
 
 	// extra block mined
-	addr := common.HexToAddress("0x1c5a77d9fa7ef466951b2f01f724bca3a5820b63")
-	nonce, nounceErr := l2Cli.PendingNonceAt(context.Background(), addr)
-	assert.NoError(t, nounceErr)
-	auth.Nonce = big.NewInt(int64(nonce))
 	toAddress := common.HexToAddress("0x4592d8f8d7b001e72cb26a73e4fa1806a51ac79d")
 	message := []byte("testbridgecontract")
 	fee := big.NewInt(0)
