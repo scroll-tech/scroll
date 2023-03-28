@@ -38,6 +38,9 @@ func NewBridgeApp(base *docker.App, file string) *BridgeApp {
 		bridgeFile: bridgeFile,
 		args:       []string{"--log.debug", "--config", bridgeFile},
 	}
+	if err := bridgeApp.MockConfig(true); err != nil {
+		panic(err)
+	}
 	return bridgeApp
 }
 

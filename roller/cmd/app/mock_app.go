@@ -55,7 +55,7 @@ func NewRollerApp(base *docker.App, file string, wsUrl string) *RollerApp {
 		name:       "roller-test",
 		args:       []string{"--log.debug", "--config", rollerFile},
 	}
-	if err := rollerApp.mockConfig(true, wsUrl); err != nil {
+	if err := rollerApp.MockConfig(true, wsUrl); err != nil {
 		panic(err)
 	}
 	return rollerApp
@@ -77,8 +77,8 @@ func (r *RollerApp) Free() {
 	_ = os.Remove(r.bboltDB)
 }
 
-// mockConfig creates a new roller config.
-func (r *RollerApp) mockConfig(store bool, wsUrl string) error {
+// MockConfig creates a new roller config.
+func (r *RollerApp) MockConfig(store bool, wsUrl string) error {
 	cfg, err := rollerConfig.NewConfig(r.originFile)
 	if err != nil {
 		return err
@@ -129,7 +129,7 @@ func (r RollerApps) MockConfigs(store bool, wsUrl string) error {
 	for _, roller := range r {
 		roller := roller
 		eg.Go(func() error {
-			return roller.mockConfig(store, wsUrl)
+			return roller.MockConfig(store, wsUrl)
 		})
 	}
 	return eg.Wait()

@@ -54,10 +54,6 @@ var (
 func TestMain(m *testing.M) {
 	base = docker.NewDockerApp()
 	bridgeApp = app.NewBridgeApp(base, "../config.json")
-	err := bridgeApp.MockConfig(false)
-	if err != nil {
-		panic(err)
-	}
 	// Load config.
 	cfg = bridgeApp.Config
 
