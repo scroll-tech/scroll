@@ -36,6 +36,7 @@ const (
 var (
 	// ErrNoAvailableAccount indicates no available account error in the account pool.
 	ErrNoAvailableAccount = errors.New("sender has no available account to send transaction")
+	ErrFullPending        = errors.New("sender's pending pool is full")
 )
 
 var (
@@ -183,7 +184,7 @@ func (s *Sender) getFeeData(auth *bind.TransactOpts, target *common.Address, val
 // SendTransaction send a signed L2tL1 transaction.
 func (s *Sender) SendTransaction(ID string, target *common.Address, value *big.Int, data []byte, minGasLimit uint64) (hash common.Hash, err error) {
 	if s.IsFull() {
-		return common.Hash{}, fmt.Errorf("pending txs is full, pending size: %d", s.config.PendingLimit)
+		return common.Hash{}, ErrFullPending
 	}
 	// We occupy the ID, in case some other threads call with the same ID in the same time
 	if _, loaded := s.pendingTxs.LoadOrStore(ID, nil); loaded {

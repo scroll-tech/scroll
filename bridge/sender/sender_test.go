@@ -57,11 +57,29 @@ func TestSender(t *testing.T) {
 	// Setup
 	setupEnv(t)
 
+	t.Run("test pending limit", func(t *testing.T) { testPendLimit(t) })
+
 	t.Run("test min gas limit", func(t *testing.T) { testMinGasLimit(t) })
 
 	t.Run("test 1 account sender", func(t *testing.T) { testBatchSender(t, 1) })
 	t.Run("test 3 account sender", func(t *testing.T) { testBatchSender(t, 3) })
 	t.Run("test 8 account sender", func(t *testing.T) { testBatchSender(t, 8) })
+}
+
+func testPendLimit(t *testing.T) {
+	senderCfg := cfg.L1Config.RelayerConfig.SenderConfig
+	senderCfg.Confirmations = rpc.LatestBlockNumber
+	senderCfg.PendingLimit = 2
+	newSender, err := sender.NewSender(context.Background(), senderCfg, privateKeys)
+	assert.NoError(t, err)
+	defer newSender.Stop()
+
+	for i := 0; i < int(newSender.PendingLimit()); i++ {
+		_, err = newSender.SendTransaction(strconv.Itoa(i), &common.Address{}, big.NewInt(1), nil, 0)
+		assert.NoError(t, err)
+	}
+	_, err = newSender.SendTransaction("0x0001", &common.Address{}, big.NewInt(1), nil, 0)
+	assert.Equal(t, true, newSender.PendingCount() >= newSender.PendingLimit() && errors.Is(err, sender.ErrFullPending))
 }
 
 func testMinGasLimit(t *testing.T) {

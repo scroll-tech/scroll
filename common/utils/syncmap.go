@@ -14,7 +14,11 @@ type SyncMap[K, V any] struct {
 
 // Store sets the value for a key.
 func (m *SyncMap[K, V]) Store(key K, value V) {
-	m.LoadOrStore(key, value)
+	_, ok := m.data.Load(key)
+	if !ok {
+		atomic.AddInt64(&m.count, 1)
+	}
+	m.data.Store(key, value)
 }
 
 // Load gets value by key, if not exist return zero value.
@@ -57,7 +61,7 @@ func (m *SyncMap[K, V]) Range(fn func(key K, value V) bool) {
 	})
 }
 
-// Count returns the count members.
+// Count returns the count member.
 func (m *SyncMap[K, V]) Count() int64 {
 	return atomic.LoadInt64(&m.count)
 }
