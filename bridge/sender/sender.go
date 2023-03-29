@@ -121,7 +121,7 @@ func NewSender(ctx context.Context, config *config.SenderConfig, privs []*ecdsa.
 		}
 	}
 
-	// pending limit should has a default value.
+	// initialize pending limit with a default value
 	if config.PendingLimit == 0 {
 		config.PendingLimit = defaultPendLimit
 	}
@@ -144,17 +144,17 @@ func NewSender(ctx context.Context, config *config.SenderConfig, privs []*ecdsa.
 	return sender, nil
 }
 
-// PendingCount return the current pending txs num.
+// PendingCount returns the current number of pending txs.
 func (s *Sender) PendingCount() int64 {
 	return s.pendingTxs.Count()
 }
 
-// PendingLimit return the maximum pendingTxs can handle.
+// PendingLimit returns the maximum number of pending txs the sender can handle.
 func (s *Sender) PendingLimit() int64 {
 	return s.config.PendingLimit
 }
 
-// IsFull If pendingTxs pool is full return true.
+// IsFull returns true if the sender's pending tx pool is full.
 func (s *Sender) IsFull() bool {
 	return s.pendingTxs.Count() >= s.config.PendingLimit
 }
