@@ -25,14 +25,20 @@ func TestSyncMap(t *testing.T) {
 	assert.Equal(t, value, *expect)
 	assert.Equal(t, true, mp.Count() == 0)
 
-	mp.Store("1", nil)
-	value = "2"
-	mp.Store("2", &value)
+	var data = make(map[string]*string)
+	data["1"] = nil
+	mp.Store("1", data["1"])
+
+	val0 := "2"
+	data["2"] = &val0
+	mp.Store("2", data["2"])
+
 	val1 := "3"
-	mp.Store("3", &val1)
+	data["3"] = &val1
+	mp.Store("3", data["3"])
 
 	mp.Range(func(key string, value *string) bool {
-		t.Logf("key: %s, value: %v\n", key, value)
+		assert.Equal(t, data[key], value)
 		return true
 	})
 }
