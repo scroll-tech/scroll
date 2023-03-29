@@ -58,7 +58,6 @@ type L2WatcherClient struct {
 	processedMsgHeight uint64
 
 	stopped uint64
-	stopCh  chan struct{}
 }
 
 // NewL2WatcherClient take a l2geth instance to generate a l2watcherclient instance
@@ -83,7 +82,6 @@ func NewL2WatcherClient(ctx context.Context, client *ethclient.Client, confirmat
 		messageQueueABI:      bridge_abi.L2MessageQueueABI,
 		withdrawTrieRootSlot: withdrawTrieRootSlot,
 
-		stopCh:  make(chan struct{}),
 		stopped: 0,
 	}
 

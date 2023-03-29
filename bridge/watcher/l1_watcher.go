@@ -58,8 +58,6 @@ type Watcher struct {
 	processedMsgHeight uint64
 	// The height of the block that the watcher has retrieved header rlp
 	processedBlockHeight uint64
-
-	stopCh chan bool
 }
 
 // NewWatcher returns a new instance of Watcher. The instance will be not fully prepared,
@@ -83,8 +81,6 @@ func NewWatcher(ctx context.Context, client *ethclient.Client, startHeight uint6
 		savedL1BlockHeight = startHeight
 	}
 
-	stopCh := make(chan bool)
-
 	return &Watcher{
 		ctx:           ctx,
 		client:        client,
@@ -102,7 +98,6 @@ func NewWatcher(ctx context.Context, client *ethclient.Client, startHeight uint6
 
 		processedMsgHeight:   uint64(savedHeight),
 		processedBlockHeight: savedL1BlockHeight,
-		stopCh:               stopCh,
 	}
 }
 

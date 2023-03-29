@@ -52,15 +52,12 @@ type Layer2Relayer struct {
 	cfg *config.RelayerConfig
 
 	messageSender  *sender.Sender
-	messageCh      <-chan *sender.Confirmation
 	l1MessengerABI *abi.ABI
 
 	rollupSender *sender.Sender
-	rollupCh     <-chan *sender.Confirmation
 	l1RollupABI  *abi.ABI
 
 	gasOracleSender *sender.Sender
-	gasOracleCh     <-chan *sender.Confirmation
 	l2GasOracleABI  *abi.ABI
 
 	minGasLimitForMessageRelay uint64
@@ -80,8 +77,6 @@ type Layer2Relayer struct {
 	// A list of processing batch finalization.
 	// key(string): confirmation ID, value(string): batch hash.
 	processingFinalization sync.Map
-
-	stopCh chan struct{}
 }
 
 // NewLayer2Relayer will return a new instance of Layer2RelayerClient
@@ -127,15 +122,12 @@ func NewLayer2Relayer(ctx context.Context, l2Client *ethclient.Client, db databa
 		l2Client: l2Client,
 
 		messageSender:  messageSender,
-		messageCh:      messageSender.ConfirmChan(),
 		l1MessengerABI: bridge_abi.L1ScrollMessengerABI,
 
 		rollupSender: rollupSender,
-		rollupCh:     rollupSender.ConfirmChan(),
 		l1RollupABI:  bridge_abi.ScrollChainABI,
 
 		gasOracleSender: gasOracleSender,
-		gasOracleCh:     gasOracleSender.ConfirmChan(),
 		l2GasOracleABI:  bridge_abi.L2GasPriceOracleABI,
 
 		minGasLimitForMessageRelay: minGasLimitForMessageRelay,
@@ -147,7 +139,6 @@ func NewLayer2Relayer(ctx context.Context, l2Client *ethclient.Client, db databa
 		processingMessage:           sync.Map{},
 		processingBatchesCommitment: sync.Map{},
 		processingFinalization:      sync.Map{},
-		stopCh:                      make(chan struct{}),
 	}
 	go layer2Relayer.handleConfirmLoop(ctx)
 	return layer2Relayer, nil

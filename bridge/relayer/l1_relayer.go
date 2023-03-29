@@ -43,11 +43,9 @@ type Layer1Relayer struct {
 
 	// channel used to communicate with transaction sender
 	messageSender  *sender.Sender
-	messageCh      <-chan *sender.Confirmation
 	l2MessengerABI *abi.ABI
 
 	gasOracleSender *sender.Sender
-	gasOracleCh     <-chan *sender.Confirmation
 	l1GasOracleABI  *abi.ABI
 
 	minGasLimitForMessageRelay uint64
@@ -55,8 +53,6 @@ type Layer1Relayer struct {
 	lastGasPrice uint64
 	minGasPrice  uint64
 	gasPriceDiff uint64
-
-	stopCh chan struct{}
 }
 
 // NewLayer1Relayer will return a new instance of Layer1RelayerClient
@@ -96,11 +92,9 @@ func NewLayer1Relayer(ctx context.Context, db database.OrmFactory, cfg *config.R
 		db:  db,
 
 		messageSender:  messageSender,
-		messageCh:      messageSender.ConfirmChan(),
 		l2MessengerABI: bridge_abi.L2ScrollMessengerABI,
 
 		gasOracleSender: gasOracleSender,
-		gasOracleCh:     gasOracleSender.ConfirmChan(),
 		l1GasOracleABI:  bridge_abi.L1GasPriceOracleABI,
 
 		minGasLimitForMessageRelay: minGasLimitForMessageRelay,
@@ -108,8 +102,7 @@ func NewLayer1Relayer(ctx context.Context, db database.OrmFactory, cfg *config.R
 		minGasPrice:  minGasPrice,
 		gasPriceDiff: gasPriceDiff,
 
-		cfg:    cfg,
-		stopCh: make(chan struct{}),
+		cfg: cfg,
 	}
 
 	go l1Relayer.handleConfirmLoop(ctx)
