@@ -41,7 +41,7 @@ var (
 )
 
 var (
-	defaultPendLimit int64 = 500
+	defaultPendLimit int64 = 10
 )
 
 // Confirmation struct used to indicate transaction confirmation details
