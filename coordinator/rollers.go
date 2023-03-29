@@ -16,6 +16,15 @@ import (
 	"scroll-tech/common/types"
 )
 
+type rollerMetrics struct {
+	rollerProofsProvingSuccessTimeTimer    geth_metrics.Timer
+	rollerProofsProvingFailedTimeTimer     geth_metrics.Timer
+	rollerProofsSuccessTotalCounter        geth_metrics.Counter
+	rollerProofsFailedTotalCounter         geth_metrics.Counter
+	rollerProofsLastAssignedTimestampGauge geth_metrics.Gauge
+	rollerProofsLastFinishedTimestampGauge geth_metrics.Gauge
+}
+
 // rollerNode records roller status and send task to connected roller.
 type rollerNode struct {
 	// Roller name

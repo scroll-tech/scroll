@@ -58,15 +58,6 @@ type rollerProofStatus struct {
 	status types.RollerProveStatus
 }
 
-type rollerMetrics struct {
-	rollerProofsProvingSuccessTimeTimer    geth_metrics.Timer
-	rollerProofsProvingFailedTimeTimer     geth_metrics.Timer
-	rollerProofsSuccessTotalCounter        geth_metrics.Counter
-	rollerProofsFailedTotalCounter         geth_metrics.Counter
-	rollerProofsLastAssignedTimestampGauge geth_metrics.Gauge
-	rollerProofsLastFinishedTimestampGauge geth_metrics.Gauge
-}
-
 // Contains all the information on an ongoing proof generation session.
 type session struct {
 	info *types.SessionInfo
@@ -333,10 +324,10 @@ func (m *Manager) handleZkProof(pk string, msg *message.ProofDetail) error {
 
 	coordinatorProofsReceivedTotalCounter.Inc(1)
 
-	st := time.Now().Unix()
+	st := time.Now()
 	var err error
 	success, err = m.verifyProof(msg.Proof)
-	verificationTime := time.Since(time.Unix(st, 0))
+	verificationTime := time.Since(st)
 	coordinatorSessionsVerificationTimeTimer.Update(verificationTime)
 	if err != nil {
 		// TODO: this is only a temp workaround for testnet, we should return err in real cases
