@@ -36,7 +36,8 @@ const (
 var (
 	// ErrNoAvailableAccount indicates no available account error in the account pool.
 	ErrNoAvailableAccount = errors.New("sender has no available account to send transaction")
-	ErrFullPending        = errors.New("sender's pending pool is full")
+	// ErrFullPending sender's pending pool is full.
+	ErrFullPending = errors.New("sender's pending pool is full")
 )
 
 var (
