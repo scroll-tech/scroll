@@ -27,6 +27,8 @@ var (
 )
 
 func init() {
+	//
+	testdata.Load()
 	trace02 := testdata.TraceList["blockTrace_02.json"]
 	wrappedBlock1 = &types.WrappedBlock{
 		Header:           trace02.Header,

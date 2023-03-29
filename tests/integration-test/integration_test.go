@@ -17,25 +17,25 @@ import (
 	_ "scroll-tech/database/cmd/app"
 	"scroll-tech/database/migrate"
 
-	app4 "scroll-tech/roller/cmd/app"
+	rApp "scroll-tech/roller/cmd/app"
 
-	app3 "scroll-tech/coordinator/cmd/app"
+	cApp "scroll-tech/coordinator/cmd/app"
 
-	app2 "scroll-tech/bridge/cmd/app"
+	bApp "scroll-tech/bridge/cmd/app"
 )
 
 var (
 	base        *docker.App
-	bridge      *app2.BridgeApp
-	coordinator *app3.CoordinatorApp
-	rollers     app4.RollerApps
+	bridge      *bApp.BridgeApp
+	coordinator *cApp.CoordinatorApp
+	rollers     rApp.RollerApps
 )
 
 func TestMain(m *testing.M) {
 	base = docker.NewDockerApp()
-	bridge = app2.NewBridgeApp(base, "../../bridge/config.json")
-	coordinator = app3.NewCoordinatorApp(base, "../../coordinator/config.json")
-	rollers = append(rollers, app4.NewRollerApp(base, "../../roller/config.json", coordinator.WSEndpoint()))
+	bridge = bApp.NewBridgeApp(base, "../../bridge/config.json")
+	coordinator = cApp.NewCoordinatorApp(base, "../../coordinator/config.json")
+	rollers = append(rollers, rApp.NewRollerApp(base, "../../roller/config.json", coordinator.WSEndpoint()))
 
 	m.Run()
 
