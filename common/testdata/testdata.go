@@ -23,7 +23,7 @@ func init() {
 	dir, _ := os.Getwd()
 	index := strings.LastIndex(dir, "scroll-tech/scroll")
 	if index == -1 {
-		fmt.Println("call stack is: ", debug.Stack())
+		fmt.Println("call stack is: ", string(debug.Stack()))
 	}
 	pwd := dir[:index] + "scroll-tech/scroll/common/testdata/"
 	for file := range TraceList {
