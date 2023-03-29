@@ -4,10 +4,11 @@ import (
 	"context"
 	"database/sql"
 
-	"scroll-tech/common/types"
-
 	"github.com/jmoiron/sqlx"
 	"github.com/scroll-tech/go-ethereum/common"
+	etypes "github.com/scroll-tech/go-ethereum/core/types"
+
+	"scroll-tech/common/types"
 )
 
 // L1BlockOrm l1_block operation interface
@@ -109,4 +110,10 @@ type L2MessageOrm interface {
 	GetLayer2LatestWatchedHeight() (int64, error)
 
 	GetRelayL2MessageTxHash(nonce uint64) (sql.NullString, error) // for unit tests only
+}
+
+// TxOrm transaction operation interfaces.
+type TxOrm interface {
+	SaveTx(hash, sender string, tx *etypes.Transaction) error
+	GetTxByHash(hash string) (*types.TxMessage, error)
 }

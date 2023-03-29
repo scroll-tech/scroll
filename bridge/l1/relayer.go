@@ -149,7 +149,7 @@ func (r *Layer1Relayer) ProcessSavedEvents() {
 func (r *Layer1Relayer) processSavedEvent(msg *types.L1Message) error {
 	calldata := common.Hex2Bytes(msg.Calldata)
 
-	hash, err := r.messageSender.SendTransaction(msg.MsgHash, &r.cfg.MessengerContractAddress, big.NewInt(0), calldata, r.minGasLimitForMessageRelay)
+	from, tx, err := r.messageSender.SendTransaction(msg.MsgHash, &r.cfg.MessengerContractAddress, big.NewInt(0), calldata, r.minGasLimitForMessageRelay)
 	if err != nil && err.Error() == "execution reverted: Message expired" {
 		return r.db.UpdateLayer1Status(r.ctx, msg.MsgHash, types.MsgExpired)
 	}
@@ -160,12 +160,17 @@ func (r *Layer1Relayer) processSavedEvent(msg *types.L1Message) error {
 		return err
 	}
 	bridgeL1MsgsRelayedTotalCounter.Inc(1)
-	log.Info("relayMessage to layer2", "msg hash", msg.MsgHash, "tx hash", hash)
+	log.Info("relayMessage to layer2", "msg hash", msg.MsgHash, "tx hash", tx.Hash().String())
 
-	err = r.db.UpdateLayer1StatusAndLayer2Hash(r.ctx, msg.MsgHash, types.MsgSubmitted, hash.String())
+	err = r.db.UpdateLayer1StatusAndLayer2Hash(r.ctx, msg.MsgHash, types.MsgSubmitted, tx.Hash().String())
 	if err != nil {
 		log.Error("UpdateLayer1StatusAndLayer2Hash failed", "msg.msgHash", msg.MsgHash, "msg.height", msg.Height, "err", err)
 	}
+	err = r.db.SaveTx(msg.MsgHash, from.String(), tx)
+	if err != nil {
+		log.Error("failed to save l1 relay tx message", "msg hash", msg.MsgHash, "tx hash", tx.Hash().String(), "err", err)
+	}
+
 	return err
 }
 
@@ -201,7 +206,7 @@ func (r *Layer1Relayer) ProcessGasPriceOracle() {
 				return
 			}
 
-			hash, err := r.gasOracleSender.SendTransaction(block.Hash, &r.cfg.GasPriceOracleContractAddress, big.NewInt(0), data, 0)
+			from, tx, err := r.gasOracleSender.SendTransaction(block.Hash, &r.cfg.GasPriceOracleContractAddress, big.NewInt(0), data, 0)
 			if err != nil {
 				if !errors.Is(err, sender.ErrNoAvailableAccount) {
 					log.Error("Failed to send setL1BaseFee tx to layer2 ", "block.Hash", block.Hash, "block.Height", block.Number, "err", err)
@@ -209,13 +214,18 @@ func (r *Layer1Relayer) ProcessGasPriceOracle() {
 				return
 			}
 
-			err = r.db.UpdateL1GasOracleStatusAndOracleTxHash(r.ctx, block.Hash, types.GasOracleImporting, hash.String())
+			err = r.db.UpdateL1GasOracleStatusAndOracleTxHash(r.ctx, block.Hash, types.GasOracleImporting, tx.Hash().String())
 			if err != nil {
 				log.Error("UpdateGasOracleStatusAndOracleTxHash failed", "block.Hash", block.Hash, "block.Height", block.Number, "err", err)
 				return
 			}
+			err = r.db.SaveTx(block.Hash, from.String(), tx)
+			if err != nil {
+				log.Error("failed to store l1 gas oracle tx message", "block hash", block.Hash, "tx hash", tx.Hash().String(), "err", err)
+			}
+
 			r.lastGasPrice = block.BaseFee
-			log.Info("Update l1 base fee", "txHash", hash.String(), "baseFee", baseFee)
+			log.Info("Update l1 base fee", "txHash", tx.Hash().String(), "baseFee", baseFee)
 		}
 	}
 }

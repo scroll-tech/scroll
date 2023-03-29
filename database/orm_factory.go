@@ -15,6 +15,7 @@ type OrmFactory interface {
 	orm.L1MessageOrm
 	orm.L2MessageOrm
 	orm.SessionInfoOrm
+	orm.TxOrm
 	GetDB() *sqlx.DB
 	Beginx() (*sqlx.Tx, error)
 	Close() error
@@ -27,6 +28,7 @@ type ormFactory struct {
 	orm.L1MessageOrm
 	orm.L2MessageOrm
 	orm.SessionInfoOrm
+	orm.TxOrm
 	*sqlx.DB
 }
 

@@ -243,7 +243,7 @@ func (r *Layer2Relayer) processSavedEvent(msg *types.L2Message) error {
 		return err
 	}
 
-	hash, err := r.messageSender.SendTransaction(msg.MsgHash, &r.cfg.MessengerContractAddress, big.NewInt(0), data, r.minGasLimitForMessageRelay)
+	senderAddr, tx, err := r.messageSender.SendTransaction(msg.MsgHash, &r.cfg.MessengerContractAddress, big.NewInt(0), data, r.minGasLimitForMessageRelay)
 	if err != nil && err.Error() == "execution reverted: Message expired" {
 		return r.db.UpdateLayer2Status(r.ctx, msg.MsgHash, types.MsgExpired)
 	}
@@ -257,15 +257,20 @@ func (r *Layer2Relayer) processSavedEvent(msg *types.L2Message) error {
 		return err
 	}
 	bridgeL2MsgsRelayedTotalCounter.Inc(1)
-	log.Info("relayMessageWithProof to layer1", "msgHash", msg.MsgHash, "txhash", hash.String())
+	log.Info("relayMessageWithProof to layer1", "msgHash", msg.MsgHash, "txhash", tx.Hash().String())
 
 	// save status in db
 	// @todo handle db error
-	err = r.db.UpdateLayer2StatusAndLayer1Hash(r.ctx, msg.MsgHash, types.MsgSubmitted, hash.String())
+	err = r.db.UpdateLayer2StatusAndLayer1Hash(r.ctx, msg.MsgHash, types.MsgSubmitted, tx.Hash().String())
 	if err != nil {
 		log.Error("UpdateLayer2StatusAndLayer1Hash failed", "msgHash", msg.MsgHash, "err", err)
 		return err
 	}
+	err = r.db.SaveTx(msg.MsgHash, senderAddr.String(), tx)
+	if err != nil {
+		log.Error("failed to save l2 relay tx message", "msg hash", msg.MsgHash, "tx hash", tx.Hash().String(), "err", err)
+	}
+
 	r.processingMessage.Store(msg.MsgHash, msg.MsgHash)
 	return nil
 }
@@ -295,7 +300,7 @@ func (r *Layer2Relayer) ProcessGasPriceOracle() {
 				return
 			}
 
-			hash, err := r.gasOracleSender.SendTransaction(batch.Hash, &r.cfg.GasPriceOracleContractAddress, big.NewInt(0), data, 0)
+			from, tx, err := r.gasOracleSender.SendTransaction(batch.Hash, &r.cfg.GasPriceOracleContractAddress, big.NewInt(0), data, 0)
 			if err != nil {
 				if !errors.Is(err, sender.ErrNoAvailableAccount) {
 					log.Error("Failed to send setL2BaseFee tx to layer2 ", "batch.Hash", batch.Hash, "err", err)
@@ -303,13 +308,18 @@ func (r *Layer2Relayer) ProcessGasPriceOracle() {
 				return
 			}
 
-			err = r.db.UpdateL2GasOracleStatusAndOracleTxHash(r.ctx, batch.Hash, types.GasOracleImporting, hash.String())
+			err = r.db.UpdateL2GasOracleStatusAndOracleTxHash(r.ctx, batch.Hash, types.GasOracleImporting, tx.Hash().String())
 			if err != nil {
 				log.Error("UpdateGasOracleStatusAndOracleTxHash failed", "batch.Hash", batch.Hash, "err", err)
 				return
 			}
+			// Record gas oracle tx message.
+			err = r.db.SaveTx(batch.Hash, from.String(), tx)
+			if err != nil {
+				log.Error("failed to save l2 gas oracle tx message", "batch hash", batch.Hash, "tx hash", tx.Hash().String(), "err", err)
+			}
 			r.lastGasPrice = suggestGasPriceUint64
-			log.Info("Update l2 gas price", "txHash", hash.String(), "GasPrice", suggestGasPrice)
+			log.Info("Update l2 gas price", "txHash", tx.Hash().String(), "GasPrice", suggestGasPrice)
 		}
 	}
 }
@@ -341,7 +351,7 @@ func (r *Layer2Relayer) SendCommitTx(batchData []*types.BatchData) error {
 		bytes = append(bytes, batch.Hash().Bytes()...)
 	}
 	txID := crypto.Keccak256Hash(bytes).String()
-	txHash, err := r.rollupSender.SendTransaction(txID, &r.cfg.RollupContractAddress, big.NewInt(0), calldata, 0)
+	from, tx, err := r.rollupSender.SendTransaction(txID, &r.cfg.RollupContractAddress, big.NewInt(0), calldata, 0)
 	if err != nil {
 		if !errors.Is(err, sender.ErrNoAvailableAccount) {
 			log.Error("Failed to send commitBatches tx to layer1 ", "err", err)
@@ -350,7 +360,7 @@ func (r *Layer2Relayer) SendCommitTx(batchData []*types.BatchData) error {
 	}
 	bridgeL2BatchesCommittedTotalCounter.Inc(int64(len(commitBatches)))
 	log.Info("Sent the commitBatches tx to layer1",
-		"tx_hash", txHash.Hex(),
+		"tx_hash", tx.Hash().Hex(),
 		"start_batch_index", commitBatches[0].BatchIndex,
 		"end_batch_index", commitBatches[len(commitBatches)-1].BatchIndex)
 
@@ -358,10 +368,15 @@ func (r *Layer2Relayer) SendCommitTx(batchData []*types.BatchData) error {
 	batchHashes := make([]string, len(batchData))
 	for i, batch := range batchData {
 		batchHashes[i] = batch.Hash().Hex()
-		err = r.db.UpdateCommitTxHashAndRollupStatus(r.ctx, batchHashes[i], txHash.String(), types.RollupCommitting)
+		err = r.db.UpdateCommitTxHashAndRollupStatus(r.ctx, batchHashes[i], tx.Hash().String(), types.RollupCommitting)
 		if err != nil {
 			log.Error("UpdateCommitTxHashAndRollupStatus failed", "hash", batchHashes[i], "index", batch.Batch.BatchIndex, "err", err)
 		}
+	}
+	// Record gas oracle tx message.
+	err = r.db.SaveTx(txID, from.String(), tx)
+	if err != nil {
+		log.Error("failed to save l2 gas oracle tx message", "tx id", txID, "tx hash", tx.Hash().String(), "err", err)
 	}
 	r.processingBatchesCommitment.Store(txID, batchHashes)
 	return nil

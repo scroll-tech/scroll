@@ -158,18 +158,19 @@ func (s *Sender) getFeeData(auth *bind.TransactOpts, target *common.Address, val
 }
 
 // SendTransaction send a signed L2tL1 transaction.
-func (s *Sender) SendTransaction(ID string, target *common.Address, value *big.Int, data []byte, minGasLimit uint64) (hash common.Hash, err error) {
+func (s *Sender) SendTransaction(ID string, target *common.Address, value *big.Int, data []byte, minGasLimit uint64) (common.Address, *types.Transaction, error) {
 	// We occupy the ID, in case some other threads call with the same ID in the same time
 	if _, loaded := s.pendingTxs.LoadOrStore(ID, nil); loaded {
-		return common.Hash{}, fmt.Errorf("has the repeat tx ID, ID: %s", ID)
+		return common.Address{}, nil, fmt.Errorf("has the repeat tx ID, ID: %s", ID)
 	}
 	// get
 	auth := s.auths.getAccount()
 	if auth == nil {
 		s.pendingTxs.Delete(ID) // release the ID on failure
-		return common.Hash{}, ErrNoAvailableAccount
+		return common.Address{}, nil, ErrNoAvailableAccount
 	}
 
+	var err error
 	defer s.auths.releaseAccount(auth)
 	defer func() {
 		if err != nil {
@@ -183,22 +184,23 @@ func (s *Sender) SendTransaction(ID string, target *common.Address, value *big.I
 	)
 	// estimate gas fee
 	if feeData, err = s.getFeeData(auth, target, value, data, minGasLimit); err != nil {
-		return
+		return common.Address{}, nil, err
 	}
-	if tx, err = s.createAndSendTx(auth, feeData, target, value, data, nil); err == nil {
-		// add pending transaction to queue
-		pending := &PendingTransaction{
-			tx:       tx,
-			id:       ID,
-			signer:   auth,
-			submitAt: atomic.LoadUint64(&s.blockNumber),
-			feeData:  feeData,
-		}
-		s.pendingTxs.Store(ID, pending)
-		return tx.Hash(), nil
+	tx, err = s.createAndSendTx(auth, feeData, target, value, data, nil)
+	if err != nil {
+		return common.Address{}, nil, err
 	}
+	// add pending transaction to queue
+	pending := &PendingTransaction{
+		tx:       tx,
+		id:       ID,
+		signer:   auth,
+		submitAt: atomic.LoadUint64(&s.blockNumber),
+		feeData:  feeData,
+	}
+	s.pendingTxs.Store(ID, pending)
 
-	return
+	return auth.From, tx, nil
 }
 
 func (s *Sender) createAndSendTx(auth *bind.TransactOpts, feeData *FeeData, target *common.Address, value *big.Int, data []byte, overrideNonce *uint64) (tx *types.Transaction, err error) {
