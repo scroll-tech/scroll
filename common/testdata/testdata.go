@@ -2,7 +2,9 @@ package testdata
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
+	"runtime/debug"
 	"strings"
 
 	"github.com/scroll-tech/go-ethereum/core/types"
@@ -20,6 +22,9 @@ var (
 func init() {
 	dir, _ := os.Getwd()
 	index := strings.LastIndex(dir, "scroll-tech/scroll")
+	if index == -1 {
+		fmt.Println("call stack is: ", debug.Stack())
+	}
 	pwd := dir[:index] + "scroll-tech/scroll/common/testdata/"
 	for file := range TraceList {
 		data, err := os.ReadFile(pwd + file)
