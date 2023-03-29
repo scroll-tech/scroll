@@ -72,13 +72,13 @@ func action(ctx *cli.Context) error {
 	metrics.Serve(subCtx, ctx)
 	l1client, err := ethclient.Dial(cfg.L1Config.Endpoint)
 	if err != nil {
-		log.Crit("failed to connect l1 geth", "config file", cfgFile, "error", err)
+		log.Error("failed to connect l1 geth", "config file", cfgFile, "error", err)
 		return err
 	}
 
 	l2client, err := ethclient.Dial(cfg.L2Config.Endpoint)
 	if err != nil {
-		log.Crit("failed to connect l2 geth", "config file", cfgFile, "error", err)
+		log.Error("failed to connect l2 geth", "config file", cfgFile, "error", err)
 		return err
 	}
 	l1watcher := watcher.NewWatcher(ctx.Context, l1client, cfg.L1Config.StartHeight, cfg.L1Config.Confirmations, cfg.L1Config.L1MessengerAddress, cfg.L1Config.L1MessageQueueAddress, cfg.L1Config.ScrollChainContractAddress, ormFactory)

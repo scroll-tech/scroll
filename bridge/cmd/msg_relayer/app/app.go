@@ -75,17 +75,19 @@ func action(ctx *cli.Context) error {
 	// Init l2geth connection
 	l2client, err := ethclient.Dial(cfg.L2Config.Endpoint)
 	if err != nil {
-		log.Crit("failed to connect l2 geth", "config file", cfgFile, "error", err)
+		log.Error("failed to connect l2 geth", "config file", cfgFile, "error", err)
 		return err
 	}
 
 	l1relayer, err := relayer.NewLayer1Relayer(ctx.Context, ormFactory, cfg.L1Config.RelayerConfig)
 	if err != nil {
-		log.Crit("failed to create new l1 relayer", "config file", cfgFile, "error", err)
+		log.Error("failed to create new l1 relayer", "config file", cfgFile, "error", err)
+		return err
 	}
 	l2relayer, err := relayer.NewLayer2Relayer(ctx.Context, l2client, ormFactory, cfg.L2Config.RelayerConfig)
 	if err != nil {
-		log.Crit("failed to create new l2 relayer", "config file", cfgFile, "error", err)
+		log.Error("failed to create new l2 relayer", "config file", cfgFile, "error", err)
+		return err
 	}
 
 	// Start l1relayer process

@@ -93,12 +93,12 @@ func TestMain(m *testing.M) {
 	base.Free()
 }
 
-func TestFunction(t *testing.T) {
+func TestFunctions(t *testing.T) {
 	if err := setupEnv(t); err != nil {
 		t.Fatal(err)
 	}
 	// Run l1 relayer test cases.
-	t.Run("testCreateNewL1Relayer", testCreateNewL1Relayer)
+	t.Run("TestCreateNewL1Relayer", testCreateNewL1Relayer)
 	// Run l2 relayer test cases.
 	t.Run("TestCreateNewRelayer", testCreateNewRelayer)
 	t.Run("TestL2RelayerProcessSaveEvents", testL2RelayerProcessSaveEvents)

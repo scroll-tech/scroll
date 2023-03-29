@@ -75,18 +75,20 @@ func action(ctx *cli.Context) error {
 	// Init l2geth connection
 	l2client, err := ethclient.Dial(cfg.L2Config.Endpoint)
 	if err != nil {
-		log.Crit("failed to connect l2 geth", "config file", cfgFile, "error", err)
+		log.Error("failed to connect l2 geth", "config file", cfgFile, "error", err)
 		return err
 	}
 
 	l2relayer, err := relayer.NewLayer2Relayer(ctx.Context, l2client, ormFactory, cfg.L2Config.RelayerConfig)
 	if err != nil {
-		log.Crit("failed to create l2 relayer", "config file", cfgFile, "error", err)
+		log.Error("failed to create l2 relayer", "config file", cfgFile, "error", err)
+		return err
 	}
 
 	batchProposer := watcher.NewBatchProposer(subCtx, cfg.L2Config.BatchProposerConfig, l2relayer, ormFactory)
 	if err != nil {
-		log.Crit("failed to create batchProposer", "config file", cfgFile, "error", err)
+		log.Error("failed to create batchProposer", "config file", cfgFile, "error", err)
+		return err
 	}
 
 	l2watcher := watcher.NewL2WatcherClient(subCtx, l2client, cfg.L2Config.Confirmations, cfg.L2Config.L2MessengerAddress, cfg.L2Config.L2MessageQueueAddress, cfg.L2Config.WithdrawTrieRootSlot, ormFactory)

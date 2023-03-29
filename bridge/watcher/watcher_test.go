@@ -98,7 +98,7 @@ func TestFunction(t *testing.T) {
 		t.Fatal(err)
 	}
 	// Run l1 watcher test cases.
-	t.Run("testStartWatcher", testStartWatcher)
+	t.Run("TestStartWatcher", testStartWatcher)
 	// Run l2 watcher test cases.
 	t.Run("TestCreateNewWatcherAndStop", testCreateNewWatcherAndStop)
 	t.Run("TestMonitorBridgeContract", testMonitorBridgeContract)
