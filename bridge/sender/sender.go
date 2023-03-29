@@ -16,10 +16,10 @@ import (
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
 
-	"scroll-tech/bridge/utils"
 	cutils "scroll-tech/common/utils"
 
 	"scroll-tech/bridge/config"
+	"scroll-tech/bridge/utils"
 )
 
 const (
