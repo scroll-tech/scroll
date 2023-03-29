@@ -27,9 +27,7 @@ var (
 )
 
 func init() {
-	//
-	testdata.Load()
-	trace02 := testdata.TraceList["blockTrace_02.json"]
+	trace02 := testdata.GetTrace("../../common/testdata/blockTrace_02.json")
 	wrappedBlock1 = &types.WrappedBlock{
 		Header:           trace02.Header,
 		Transactions:     trace02.Transactions,
@@ -41,7 +39,7 @@ func init() {
 		StateRoot: "0x2579122e8f9ec1e862e7d415cef2fb495d7698a8e5f0dddc5651ba4236336e7d",
 	}, []*types.WrappedBlock{wrappedBlock1}, nil)
 
-	trace03 := testdata.TraceList["blockTrace_03.json"]
+	trace03 := testdata.GetTrace("../../common/testdata/blockTrace_03.json")
 	wrappedBlock2 = &types.WrappedBlock{
 		Header:           trace03.Header,
 		Transactions:     trace03.Transactions,
