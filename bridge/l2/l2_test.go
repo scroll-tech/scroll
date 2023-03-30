@@ -5,6 +5,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/stretchr/testify/assert"
@@ -57,10 +58,11 @@ func setupEnv(t *testing.T) (err error) {
 	if err = json.Unmarshal(templateBlockTrace1, wrappedBlock1); err != nil {
 		return err
 	}
+
 	parentBatch1 := &types.BlockBatch{
 		Index:     0,
-		Hash:      "0x0cc6b102c2924402c14b2e3a19baccc316252bfdc44d9ec62e942d34e39ec729",
-		StateRoot: "0x2579122e8f9ec1e862e7d415cef2fb495d7698a8e5f0dddc5651ba4236336e7d",
+		Hash:      common.Hash{}.String(),
+		StateRoot: common.Hash{}.String(),
 	}
 	batchData1 = types.NewBatchData(parentBatch1, []*types.WrappedBlock{wrappedBlock1}, nil)
 
