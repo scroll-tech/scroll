@@ -2,7 +2,7 @@ package utils
 
 import "sync"
 
-// SafeMap the exposed SafeMap apis.
+// SafeMap the exposed interface of safeMap.
 type SafeMap[K comparable, V comparable] interface {
 	Store(key K, value V)
 	Load(key K) (V, bool)
@@ -14,7 +14,7 @@ type SafeMap[K comparable, V comparable] interface {
 	Count() (count int64)
 }
 
-// safeMap wraps sync.Map to make it easier to use.
+// safeMap wraps normal map to make it easier to use.
 type safeMap[K comparable, V comparable] struct {
 	data map[K]V
 	zero V
