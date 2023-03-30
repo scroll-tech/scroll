@@ -10,13 +10,12 @@ import (
 	"sync/atomic"
 	"time"
 
+	cmapV2 "github.com/orcaman/concurrent-map/v2"
 	"github.com/scroll-tech/go-ethereum/accounts/abi/bind"
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
-
-	cutils "scroll-tech/common/utils"
 
 	"scroll-tech/bridge/config"
 	"scroll-tech/bridge/utils"
@@ -41,7 +40,7 @@ var (
 )
 
 var (
-	defaultPendingLimit int64 = 10
+	defaultPendingLimit = 10
 )
 
 // Confirmation struct used to indicate transaction confirmation details
@@ -79,9 +78,9 @@ type Sender struct {
 	// account fields.
 	auths *accountPool
 
-	blockNumber   uint64                                      // Current block number on chain.
-	baseFeePerGas uint64                                      // Current base fee per gas on chain
-	pendingTxs    cutils.SafeMap[string, *PendingTransaction] // Mapping from nonce to pending transaction
+	blockNumber   uint64                                            // Current block number on chain.
+	baseFeePerGas uint64                                            // Current base fee per gas on chain
+	pendingTxs    cmapV2.ConcurrentMap[string, *PendingTransaction] // Mapping from nonce to pending transaction
 	confirmCh     chan *Confirmation
 
 	stopCh chan struct{}
@@ -135,7 +134,7 @@ func NewSender(ctx context.Context, config *config.SenderConfig, privs []*ecdsa.
 		confirmCh:     make(chan *Confirmation, 128),
 		blockNumber:   header.Number.Uint64(),
 		baseFeePerGas: baseFeePerGas,
-		pendingTxs:    cutils.NewSafeMap[string, *PendingTransaction](config.PendingLimit),
+		pendingTxs:    cmapV2.New[*PendingTransaction](),
 		stopCh:        make(chan struct{}),
 	}
 
@@ -145,12 +144,12 @@ func NewSender(ctx context.Context, config *config.SenderConfig, privs []*ecdsa.
 }
 
 // PendingCount returns the current number of pending txs.
-func (s *Sender) PendingCount() int64 {
+func (s *Sender) PendingCount() int {
 	return s.pendingTxs.Count()
 }
 
 // PendingLimit returns the maximum number of pending txs the sender can handle.
-func (s *Sender) PendingLimit() int64 {
+func (s *Sender) PendingLimit() int {
 	return s.config.PendingLimit
 }
 
@@ -188,20 +187,20 @@ func (s *Sender) SendTransaction(ID string, target *common.Address, value *big.I
 		return common.Hash{}, ErrFullPending
 	}
 	// We occupy the ID, in case some other threads call with the same ID in the same time
-	if _, loaded := s.pendingTxs.LoadOrStore(ID, nil); loaded {
+	if ok := s.pendingTxs.SetIfAbsent(ID, nil); !ok {
 		return common.Hash{}, fmt.Errorf("has the repeat tx ID, ID: %s", ID)
 	}
 	// get
 	auth := s.auths.getAccount()
 	if auth == nil {
-		s.pendingTxs.Delete(ID) // release the ID on failure
+		s.pendingTxs.Remove(ID) // release the ID on failure
 		return common.Hash{}, ErrNoAvailableAccount
 	}
 
 	defer s.auths.releaseAccount(auth)
 	defer func() {
 		if err != nil {
-			s.pendingTxs.Delete(ID) // release the ID on failure
+			s.pendingTxs.Remove(ID) // release the ID on failure
 		}
 	}()
 
@@ -222,7 +221,7 @@ func (s *Sender) SendTransaction(ID string, target *common.Address, value *big.I
 			submitAt: atomic.LoadUint64(&s.blockNumber),
 			feeData:  feeData,
 		}
-		s.pendingTxs.Store(ID, pending)
+		s.pendingTxs.Set(ID, pending)
 		return tx.Hash(), nil
 	}
 
@@ -363,16 +362,17 @@ func (s *Sender) checkPendingTransaction(header *types.Header, confirmed uint64)
 		}
 	}
 
-	s.pendingTxs.Range(func(key string, pending *PendingTransaction) {
+	for item := range s.pendingTxs.IterBuffered() {
+		key, pending := item.Key, item.Val
 		// ignore empty id, since we use empty id to occupy pending task
 		if pending == nil {
-			return
+			continue
 		}
 
 		receipt, err := s.client.TransactionReceipt(s.ctx, pending.tx.Hash())
 		if (err == nil) && (receipt != nil) {
 			if receipt.BlockNumber.Uint64() <= confirmed {
-				s.pendingTxs.Delete(key)
+				s.pendingTxs.Remove(key)
 				// send confirm message
 				s.confirmCh <- &Confirmation{
 					ID:           pending.id,
@@ -403,7 +403,7 @@ func (s *Sender) checkPendingTransaction(header *types.Header, confirmed uint64)
 				// We need to stop the program and manually handle the situation.
 				if strings.Contains(err.Error(), "nonce") {
 					// This key can be deleted
-					s.pendingTxs.Delete(key)
+					s.pendingTxs.Remove(key)
 					// Try get receipt by the latest replaced tx hash
 					receipt, err := s.client.TransactionReceipt(s.ctx, pending.tx.Hash())
 					if (err == nil) && (receipt != nil) {
@@ -425,7 +425,7 @@ func (s *Sender) checkPendingTransaction(header *types.Header, confirmed uint64)
 				pending.submitAt = number
 			}
 		}
-	})
+	}
 }
 
 // Loop is the main event loop

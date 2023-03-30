@@ -118,7 +118,7 @@ func testBatchSender(t *testing.T, batchSize int) {
 
 	senderCfg := cfg.L1Config.RelayerConfig.SenderConfig
 	senderCfg.Confirmations = rpc.LatestBlockNumber
-	senderCfg.PendingLimit = int64(batchSize * TXBatch)
+	senderCfg.PendingLimit = batchSize * TXBatch
 	newSender, err := sender.NewSender(context.Background(), senderCfg, privateKeys)
 	if err != nil {
 		t.Fatal(err)

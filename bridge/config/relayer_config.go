@@ -34,7 +34,7 @@ type SenderConfig struct {
 	// The interval (in seconds) to check balance and top up sender's accounts
 	CheckBalanceTime uint64 `json:"check_balance_time"`
 	// The sender's pending count limit.
-	PendingLimit int64 `json:"pending_limit,omitempty"`
+	PendingLimit int `json:"pending_limit,omitempty"`
 }
 
 // RelayerConfig loads relayer configuration items.
