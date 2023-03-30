@@ -2,22 +2,16 @@ package utils
 
 import (
 	"sync"
-	"sync/atomic"
 )
 
 // SyncMap wraps sync.Map to make it easier to use.
 type SyncMap[K, V any] struct {
-	count int64
-	data  sync.Map
-	zero  V
+	data sync.Map
+	zero V
 }
 
 // Store sets the value for a key.
 func (m *SyncMap[K, V]) Store(key K, value V) {
-	_, ok := m.data.Load(key)
-	if !ok {
-		atomic.AddInt64(&m.count, 1)
-	}
 	m.data.Store(key, value)
 }
 
@@ -32,15 +26,12 @@ func (m *SyncMap[K, V]) Load(key K) (V, bool) {
 
 // Delete deletes the value for a key.
 func (m *SyncMap[K, V]) Delete(key K) {
-	_, _ = m.LoadAndDelete(key)
+	m.data.Delete(key)
 }
 
 // LoadOrStore returns the existing value for the key if present. Otherwise, it stores and returns the given value. The loaded result is true if the value was loaded, false if stored.
 func (m *SyncMap[K, V]) LoadOrStore(key K, value V) (V, bool) {
 	val, loaded := m.data.LoadOrStore(key, value)
-	if !loaded {
-		atomic.AddInt64(&m.count, 1)
-	}
 	return val.(V), loaded
 }
 
@@ -48,7 +39,6 @@ func (m *SyncMap[K, V]) LoadOrStore(key K, value V) (V, bool) {
 func (m *SyncMap[K, V]) LoadAndDelete(key K) (V, bool) {
 	val, loaded := m.data.LoadAndDelete(key)
 	if loaded {
-		atomic.AddInt64(&m.count, -1)
 		return val.(V), loaded
 	}
 	return m.zero, loaded
@@ -62,6 +52,10 @@ func (m *SyncMap[K, V]) Range(fn func(key K, value V) bool) {
 }
 
 // Count returns the number of elements in the map.
-func (m *SyncMap[K, V]) Count() int64 {
-	return atomic.LoadInt64(&m.count)
+func (m *SyncMap[K, V]) Count() (count int64) {
+	m.data.Range(func(key, value any) bool {
+		count++
+		return true
+	})
+	return count
 }
