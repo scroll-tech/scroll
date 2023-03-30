@@ -33,7 +33,10 @@ func testCreateNewWatcherAndStop(t *testing.T) {
 	assert.NoError(t, migrate.ResetDB(l2db.GetDB().DB))
 	ctx := context.Background()
 	subCtx, cancel := context.WithCancel(ctx)
-	defer cancel()
+	defer func() {
+		l2db.Close()
+		cancel()
+	}()
 
 	l2cfg := cfg.L2Config
 	rc := watcher.NewL2WatcherClient(context.Background(), l2Cli, l2cfg.Confirmations, l2cfg.L2MessengerAddress, l2cfg.L2MessageQueueAddress, l2cfg.WithdrawTrieRootSlot, l2db)
