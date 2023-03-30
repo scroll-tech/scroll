@@ -25,6 +25,6 @@ func testStartWatcher(t *testing.T) {
 
 	l1Cfg := cfg.L1Config
 
-	watcher := watcher.NewWatcher(context.Background(), client, l1Cfg.StartHeight, l1Cfg.Confirmations, l1Cfg.L1MessengerAddress, l1Cfg.L1MessageQueueAddress, l1Cfg.RelayerConfig.RollupContractAddress, db)
+	watcher := watcher.NewL1WatcherClient(context.Background(), client, l1Cfg.StartHeight, l1Cfg.Confirmations, l1Cfg.L1MessengerAddress, l1Cfg.L1MessageQueueAddress, l1Cfg.RelayerConfig.RollupContractAddress, db)
 	assert.NoError(t, watcher.FetchContractEvent())
 }
