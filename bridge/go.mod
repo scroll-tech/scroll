@@ -4,6 +4,7 @@ go 1.18
 
 require (
 	github.com/orcaman/concurrent-map v1.0.0
+	github.com/orcaman/concurrent-map/v2 v2.0.1
 	github.com/scroll-tech/go-ethereum v1.10.14-0.20230321020420-127af384ed04
 	github.com/stretchr/testify v1.8.2
 	github.com/urfave/cli/v2 v2.17.2-0.20221006022127-8f469abc00aa
@@ -24,7 +25,6 @@ require (
 	github.com/holiman/uint256 v1.2.0 // indirect
 	github.com/iden3/go-iden3-crypto v0.0.14 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
-	github.com/orcaman/concurrent-map/v2 v2.0.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20200410134404-eec4a21b6bb0 // indirect
 	github.com/rjeczalik/notify v0.9.1 // indirect

@@ -74,7 +74,7 @@ func testPendLimit(t *testing.T) {
 	assert.NoError(t, err)
 	defer newSender.Stop()
 
-	for i := 0; i < int(newSender.PendingLimit()); i++ {
+	for i := 0; i < newSender.PendingLimit(); i++ {
 		_, err = newSender.SendTransaction(strconv.Itoa(i), &common.Address{}, big.NewInt(1), nil, 0)
 		assert.NoError(t, err)
 	}
