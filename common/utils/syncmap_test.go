@@ -9,9 +9,9 @@ import (
 func TestSyncMap(t *testing.T) {
 	key, value := "1", "1"
 
-	mp := SyncMap[string, *string]{}
+	mp := NewSafeMap[string, *string](10)
 	mp.LoadOrStore(key, nil)
-	assert.Equal(t, int64(1), mp.Count())
+	assert.Equal(t, int64(0), mp.Count())
 
 	// test store and load
 	mp.Store(key, &value)
@@ -37,8 +37,7 @@ func TestSyncMap(t *testing.T) {
 	data["3"] = &val1
 	mp.Store("3", data["3"])
 
-	mp.Range(func(key string, value *string) bool {
+	mp.Range(func(key string, value *string) {
 		assert.Equal(t, data[key], value)
-		return true
 	})
 }

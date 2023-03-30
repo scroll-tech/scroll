@@ -81,7 +81,7 @@ type Sender struct {
 
 	blockNumber   uint64                                      // Current block number on chain.
 	baseFeePerGas uint64                                      // Current base fee per gas on chain
-	pendingTxs    cutils.SyncMap[string, *PendingTransaction] // Mapping from nonce to pending transaction
+	pendingTxs    cutils.SafeMap[string, *PendingTransaction] // Mapping from nonce to pending transaction
 	confirmCh     chan *Confirmation
 
 	stopCh chan struct{}
@@ -135,7 +135,7 @@ func NewSender(ctx context.Context, config *config.SenderConfig, privs []*ecdsa.
 		confirmCh:     make(chan *Confirmation, 128),
 		blockNumber:   header.Number.Uint64(),
 		baseFeePerGas: baseFeePerGas,
-		pendingTxs:    cutils.SyncMap[string, *PendingTransaction]{},
+		pendingTxs:    cutils.NewSafeMap[string, *PendingTransaction](config.PendingLimit),
 		stopCh:        make(chan struct{}),
 	}
 
@@ -363,10 +363,10 @@ func (s *Sender) checkPendingTransaction(header *types.Header, confirmed uint64)
 		}
 	}
 
-	s.pendingTxs.Range(func(key string, pending *PendingTransaction) bool {
+	s.pendingTxs.Range(func(key string, pending *PendingTransaction) {
 		// ignore empty id, since we use empty id to occupy pending task
 		if pending == nil {
-			return true
+			return
 		}
 
 		receipt, err := s.client.TransactionReceipt(s.ctx, pending.tx.Hash())
@@ -425,7 +425,6 @@ func (s *Sender) checkPendingTransaction(header *types.Header, confirmed uint64)
 				pending.submitAt = number
 			}
 		}
-		return true
 	})
 }
 
