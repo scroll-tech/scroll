@@ -22,6 +22,11 @@ contract L1MessageQueue is OwnableUpgradeable, IL1MessageQueue {
     /// @param _newGasOracle The address of new gas oracle contract.
     event UpdateGasOracle(address _oldGasOracle, address _newGasOracle);
 
+    /// @notice Emitted when owner updates EnforcedTxnGateway contract.
+    /// @param _oldGateway The address of old EnforcedTxnGateway contract.
+    /// @param _newGateway The address of new EnforcedTxnGateway contract.
+    event UpdateEnforcedTxnGateway(address _oldGateway, address _newGateway);
+
     /*************
      * Variables *
      *************/
@@ -34,6 +39,9 @@ contract L1MessageQueue is OwnableUpgradeable, IL1MessageQueue {
 
     /// @notice The list of queued cross domain messages.
     bytes32[] public messageQueue;
+
+    /// @notice The address EnforcedTxnGateway contract.
+    address public enforcedTxnGateway;
 
     /***************
      * Constructor *
@@ -212,23 +220,22 @@ contract L1MessageQueue is OwnableUpgradeable, IL1MessageQueue {
         // do address alias to avoid replay attack in L2.
         address _sender = AddressAliasHelper.applyL1ToL2Alias(msg.sender);
 
-        // compute transaction hash
-        uint256 _queueIndex = messageQueue.length;
-        bytes32 _hash = computeTransactionHash(_sender, _queueIndex, 0, _target, _gasLimit, _data);
-        messageQueue.push(_hash);
-
-        emit QueueTransaction(_sender, _target, 0, _queueIndex, _gasLimit, _data);
+        _queueTransaction(_sender, _target, 0, _gasLimit, _data);
     }
 
     /// @inheritdoc IL1MessageQueue
     function appendEnforcedTransaction(
-        address,
-        address,
-        uint256,
-        uint256,
-        bytes calldata
+        address _sender,
+        address _target,
+        uint256 _value,
+        uint256 _gasLimit,
+        bytes calldata _data
     ) external override {
-        // @todo
+        require(msg.sender == enforcedTxnGateway, "Only callable by the EnforcedTxnGateway");
+        // We will check it in EnforcedTxnGateway, just in case.
+        require(_sender.code.length == 0, "only EOA");
+
+        _queueTransaction(_sender, _target, _value, _gasLimit, _data);
     }
 
     /************************
@@ -243,5 +250,41 @@ contract L1MessageQueue is OwnableUpgradeable, IL1MessageQueue {
         gasOracle = _newGasOracle;
 
         emit UpdateGasOracle(_oldGasOracle, _newGasOracle);
+    }
+
+    /// @notice Update the address of EnforcedTxnGateway.
+    /// @dev This function can only called by contract owner.
+    /// @param _newGateway The address to update.
+    function updateEnforcedTxnGateway(address _newGateway) external onlyOwner {
+        address _oldGateway = enforcedTxnGateway;
+        enforcedTxnGateway = _newGateway;
+
+        emit UpdateEnforcedTxnGateway(_oldGateway, _newGateway);
+    }
+
+    /**********************
+     * Internal Functions *
+     **********************/
+
+    /// @dev Internal function to queue a L1 transaction.
+    /// @param _sender The address of sender who will initiate this transaction in L2.
+    /// @param _target The address of target contract to call in L2.
+    /// @param _value The value passed
+    /// @param _gasLimit The maximum gas should be used for this transaction in L2.
+    /// @param _data The calldata passed to target contract.
+    function _queueTransaction(
+        address _sender,
+        address _target,
+        uint256 _value,
+        uint256 _gasLimit,
+        bytes calldata _data
+    ) internal {
+        // compute transaction hash
+        uint256 _queueIndex = messageQueue.length;
+        bytes32 _hash = computeTransactionHash(_sender, _queueIndex, _value, _target, _gasLimit, _data);
+        messageQueue.push(_hash);
+
+        // emit event
+        emit QueueTransaction(_sender, _target, _value, _queueIndex, _gasLimit, _data);
     }
 }
