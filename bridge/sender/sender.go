@@ -123,7 +123,7 @@ func NewSender(ctx context.Context, config *config.SenderConfig, privs []*ecdsa.
 
 	// initialize pending limit with a default value
 	if config.PendingLimit == 0 {
-		config.PendingLimit = defaultPendLimit
+		config.PendingLimit = defaultPendingLimit
 	}
 
 	sender := &Sender{

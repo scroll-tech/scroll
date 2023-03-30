@@ -14,7 +14,7 @@ func TestSyncMap(t *testing.T) {
 	assert.Equal(t, int64(1), mp.Count())
 
 	// test store and load
-	mp.Store("1", &value)
+	mp.Store(key, &value)
 	assert.Equal(t, int64(1), mp.Count())
 	expect, ok := mp.Load("1")
 	assert.Equal(t, true, ok)

@@ -79,7 +79,7 @@ func testPendLimit(t *testing.T) {
 		assert.NoError(t, err)
 	}
 	_, err = newSender.SendTransaction("0x0001", &common.Address{}, big.NewInt(1), nil, 0)
-	assert.Equal(t, true, newSender.PendingCount() >= newSender.PendingLimit() && errors.Is(err, sender.ErrFullPending))
+	assert.True(t, newSender.PendingCount() >= newSender.PendingLimit() && errors.Is(err, sender.ErrFullPending))
 }
 
 func testMinGasLimit(t *testing.T) {
@@ -138,7 +138,7 @@ func testBatchSender(t *testing.T, batchSize int) {
 				toAddr := common.HexToAddress("0x4592d8f8d7b001e72cb26a73e4fa1806a51ac79d")
 				id := strconv.Itoa(i + index*1000)
 				_, err := newSender.SendTransaction(id, &toAddr, big.NewInt(1), nil, 0)
-				if errors.Is(err, sender.ErrNoAvailableAccount) {
+				if errors.Is(err, sender.ErrNoAvailableAccount) || errors.Is(err, sender.ErrFullPending) {
 					<-time.After(time.Second)
 					continue
 				}
