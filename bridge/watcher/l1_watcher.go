@@ -36,8 +36,8 @@ type rollupEvent struct {
 	status    types.RollupStatus
 }
 
-// Watcher will listen for smart contract events from Eth L1.
-type Watcher struct {
+// L1WatcherClient will listen for smart contract events from Eth L1.
+type L1WatcherClient struct {
 	ctx    context.Context
 	client *ethclient.Client
 	db     database.OrmFactory
@@ -60,9 +60,8 @@ type Watcher struct {
 	processedBlockHeight uint64
 }
 
-// NewL1WatcherClient returns a new instance of Watcher. The instance will be not fully prepared,
-// and still needs to be finalized and ran by calling `watcher.Start`.
-func NewL1WatcherClient(ctx context.Context, client *ethclient.Client, startHeight uint64, confirmations rpc.BlockNumber, messengerAddress, messageQueueAddress, scrollChainAddress common.Address, db database.OrmFactory) *Watcher {
+// NewL1WatcherClient returns a new instance of L1WatcherClient.
+func NewL1WatcherClient(ctx context.Context, client *ethclient.Client, startHeight uint64, confirmations rpc.BlockNumber, messengerAddress, messageQueueAddress, scrollChainAddress common.Address, db database.OrmFactory) *L1WatcherClient {
 	savedHeight, err := db.GetLayer1LatestWatchedHeight()
 	if err != nil {
 		log.Warn("Failed to fetch height from db", "err", err)
@@ -81,7 +80,7 @@ func NewL1WatcherClient(ctx context.Context, client *ethclient.Client, startHeig
 		savedL1BlockHeight = startHeight
 	}
 
-	return &Watcher{
+	return &L1WatcherClient{
 		ctx:           ctx,
 		client:        client,
 		db:            db,
@@ -102,7 +101,7 @@ func NewL1WatcherClient(ctx context.Context, client *ethclient.Client, startHeig
 }
 
 // FetchBlockHeader pull latest L1 blocks and save in DB
-func (w *Watcher) FetchBlockHeader(blockHeight uint64) error {
+func (w *L1WatcherClient) FetchBlockHeader(blockHeight uint64) error {
 	fromBlock := int64(w.processedBlockHeight) + 1
 	toBlock := int64(blockHeight)
 	if toBlock < fromBlock {
@@ -148,7 +147,7 @@ func (w *Watcher) FetchBlockHeader(blockHeight uint64) error {
 }
 
 // FetchContractEvent pull latest event logs from given contract address and save in DB
-func (w *Watcher) FetchContractEvent() error {
+func (w *L1WatcherClient) FetchContractEvent() error {
 	defer func() {
 		log.Info("l1 watcher fetchContractEvent", "w.processedMsgHeight", w.processedMsgHeight)
 	}()
@@ -269,7 +268,7 @@ func (w *Watcher) FetchContractEvent() error {
 	return nil
 }
 
-func (w *Watcher) parseBridgeEventLogs(logs []geth_types.Log) ([]*types.L1Message, []relayedMessage, []rollupEvent, error) {
+func (w *L1WatcherClient) parseBridgeEventLogs(logs []geth_types.Log) ([]*types.L1Message, []relayedMessage, []rollupEvent, error) {
 	// Need use contract abi to parse event Log
 	// Can only be tested after we have our contracts set up
 

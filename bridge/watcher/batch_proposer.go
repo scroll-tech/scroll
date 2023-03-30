@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"math"
-	"reflect"
 	"sync"
 	"time"
 
@@ -13,7 +12,6 @@ import (
 
 	"scroll-tech/common/metrics"
 	"scroll-tech/common/types"
-	"scroll-tech/common/utils"
 
 	"scroll-tech/database"
 
@@ -87,8 +85,6 @@ type BatchProposer struct {
 	relayer             *relayer.Layer2Relayer
 
 	piCfg *types.PublicInputHashConfig
-
-	stopCh chan struct{}
 }
 
 // NewBatchProposer will return a new instance of BatchProposer.
@@ -108,7 +104,6 @@ func NewBatchProposer(ctx context.Context, cfg *config.BatchProposerConfig, rela
 		proofGenerationFreq:      cfg.ProofGenerationFreq,
 		piCfg:                    cfg.PublicInputConfig,
 		relayer:                  relayer,
-		stopCh:                   make(chan struct{}),
 	}
 
 	// for graceful restart.
@@ -118,30 +113,6 @@ func NewBatchProposer(ctx context.Context, cfg *config.BatchProposerConfig, rela
 	p.TryCommitBatches()
 
 	return p
-}
-
-// Start the Listening process
-func (p *BatchProposer) Start() {
-	go func() {
-		if reflect.ValueOf(p.orm).IsNil() {
-			panic("must run BatchProposer with DB")
-		}
-
-		ctx, cancel := context.WithCancel(p.ctx)
-
-		go utils.Loop(ctx, 2*time.Second, func() {
-			p.TryProposeBatch()
-			p.TryCommitBatches()
-		})
-
-		<-p.stopCh
-		cancel()
-	}()
-}
-
-// Stop the Watcher module, for a graceful shutdown.
-func (p *BatchProposer) Stop() {
-	p.stopCh <- struct{}{}
 }
 
 func (p *BatchProposer) recoverBatchDataBuffer() {
