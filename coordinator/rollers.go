@@ -16,15 +16,6 @@ import (
 	"scroll-tech/common/types"
 )
 
-type rollerMetrics struct {
-	rollerProofsProvingSuccessTimeTimer    geth_metrics.Timer
-	rollerProofsProvingFailedTimeTimer     geth_metrics.Timer
-	rollerProofsSuccessTotalCounter        geth_metrics.Counter
-	rollerProofsFailedTotalCounter         geth_metrics.Counter
-	rollerProofsLastAssignedTimestampGauge geth_metrics.Gauge
-	rollerProofsLastFinishedTimestampGauge geth_metrics.Gauge
-}
-
 // rollerNode records roller status and send task to connected roller.
 type rollerNode struct {
 	// Roller name
@@ -109,72 +100,6 @@ func (m *Manager) register(pubkey string, identity *message.Identity) (<-chan *m
 
 func (m *Manager) freeRoller(pk string) {
 	m.rollerPool.Pop(pk)
-}
-
-func (m *Manager) updateRollerProofsSuccessTotal(pk string) {
-	if node, ok := m.rollerPool.Get(pk); ok {
-		rMs := node.(*rollerNode).rollerMetrics
-		if rMs != nil {
-			rMs.rollerProofsSuccessTotalCounter.Inc(1)
-		} else {
-			log.Error("successTotal metric is nil", "roller pk", pk)
-		}
-	}
-}
-
-func (m *Manager) updateRollerProofsFailedTotal(pk string) {
-	if node, ok := m.rollerPool.Get(pk); ok {
-		rMs := node.(*rollerNode).rollerMetrics
-		if rMs != nil {
-			rMs.rollerProofsFailedTotalCounter.Inc(1)
-		} else {
-			log.Error("failedTotal metric is nil", "roller pk", pk)
-		}
-	}
-}
-
-func (m *Manager) updateRollerProofsLastFinishedTimestamp(pk string) {
-	if node, ok := m.rollerPool.Get(pk); ok {
-		rMs := node.(*rollerNode).rollerMetrics
-		if rMs != nil {
-			rMs.rollerProofsLastFinishedTimestampGauge.Update(time.Now().Unix())
-		} else {
-			log.Error("lastFinishedTimestamp metric is nil", "roller pk", pk)
-		}
-	}
-}
-
-func (m *Manager) updateRollerProofsLastAssignedTimestamp(pk string) {
-	if node, ok := m.rollerPool.Get(pk); ok {
-		rMs := node.(*rollerNode).rollerMetrics
-		if rMs != nil {
-			rMs.rollerProofsLastAssignedTimestampGauge.Update(time.Now().Unix())
-		} else {
-			log.Error("lastAssignedTimestamp metric is nil", "roller pk", pk)
-		}
-	}
-}
-
-func (m *Manager) updateRollerProvingSuccessTimeTimer(pk string, d time.Duration) {
-	if node, ok := m.rollerPool.Get(pk); ok {
-		rMs := node.(*rollerNode).rollerMetrics
-		if rMs != nil {
-			rMs.rollerProofsProvingSuccessTimeTimer.Update(d)
-		} else {
-			log.Error("provingSuccessTime metric is nil", "roller pk", pk)
-		}
-	}
-}
-
-func (m *Manager) updateRollerProvingFailedTimeTimer(pk string, d time.Duration) {
-	if node, ok := m.rollerPool.Get(pk); ok {
-		rMs := node.(*rollerNode).rollerMetrics
-		if rMs != nil {
-			rMs.rollerProofsProvingFailedTimeTimer.Update(d)
-		} else {
-			log.Error("provingFailedTime metric is nil", "roller pk", pk)
-		}
-	}
 }
 
 func (m *Manager) existTaskIDForRoller(pk string, id string) bool {

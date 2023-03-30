@@ -349,15 +349,15 @@ func (m *Manager) handleZkProof(pk string, msg *message.ProofDetail) error {
 		}
 		coordinatorProofsVerifiedTotalCounter.Inc(1)
 		coordinatorSessionsProofSuccessTimeTimer.Update(proofTime)
-		m.updateRollerProofsSuccessTotal(roller.PublicKey)
-		m.updateRollerProvingSuccessTimeTimer(roller.PublicKey, proofTime)
+		m.updateMetricRollerProofsSuccessTotal(roller.PublicKey)
+		m.updateMetricRollerProvingSuccessTimeTimer(roller.PublicKey, proofTime)
 		log.Info("proof success", "proof id", msg.ID, "roller name", roller.Name,
 			"roller pk", roller.PublicKey, "proof time", proofTimeSec)
 	} else {
 		coordinatorProofsVerifiedFailedTotalCounter.Inc(1)
 		coordinatorSessionsProofVerificationFailedTimeTimer.Update(proofTime)
-		m.updateRollerProofsFailedTotal(roller.PublicKey)
-		m.updateRollerProvingFailedTimeTimer(roller.PublicKey, proofTime)
+		m.updateMetricRollerProofsFailedTotal(roller.PublicKey)
+		m.updateMetricRollerProvingFailedTimeTimer(roller.PublicKey, proofTime)
 		log.Info("proof failed", "proof id", msg.ID, "roller name", roller.Name,
 			"roller pk", roller.PublicKey, "proof time", proofTimeSec)
 	}
@@ -527,7 +527,7 @@ func (m *Manager) StartProofGenerationSession(task *types.BlockBatch) (success b
 			log.Error("send task failed", "roller name", roller.Name, "public key", roller.PublicKey, "id", task.Hash)
 			continue
 		}
-		m.updateRollerProofsLastAssignedTimestamp(roller.PublicKey)
+		m.updateMetricRollerProofsLastAssignedTimestamp(roller.PublicKey)
 		rollers[roller.PublicKey] = &types.RollerStatus{PublicKey: roller.PublicKey, Name: roller.Name, Status: types.RollerAssigned}
 	}
 	// No roller assigned.
