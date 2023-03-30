@@ -5,9 +5,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/ethclient"
-	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/stretchr/testify/assert"
 
 	"scroll-tech/common/docker"
@@ -28,10 +26,6 @@ var (
 	// block trace
 	wrappedBlock1 *types.WrappedBlock
 	wrappedBlock2 *types.WrappedBlock
-
-	// batch data
-	batchData1 *types.BatchData
-	batchData2 *types.BatchData
 )
 
 func setupEnv(t *testing.T) (err error) {
@@ -59,13 +53,6 @@ func setupEnv(t *testing.T) (err error) {
 		return err
 	}
 
-	parentBatch1 := &types.BlockBatch{
-		Index:     0,
-		Hash:      common.Hash{}.String(),
-		StateRoot: common.Hash{}.String(),
-	}
-	batchData1 = types.NewBatchData(parentBatch1, []*types.WrappedBlock{wrappedBlock1}, nil)
-
 	templateBlockTrace2, err := os.ReadFile("../../common/testdata/blockTrace_03.json")
 	if err != nil {
 		return err
@@ -75,15 +62,6 @@ func setupEnv(t *testing.T) (err error) {
 	if err = json.Unmarshal(templateBlockTrace2, wrappedBlock2); err != nil {
 		return err
 	}
-	parentBatch2 := &types.BlockBatch{
-		Index:     batchData1.Batch.BatchIndex,
-		Hash:      batchData1.Hash().Hex(),
-		StateRoot: batchData1.Batch.NewStateRoot.String(),
-	}
-	batchData2 = types.NewBatchData(parentBatch2, []*types.WrappedBlock{wrappedBlock2}, nil)
-
-	log.Info("batchHash", "batchhash1", batchData1.Hash().Hex(), "batchhash2", batchData2.Hash().Hex())
-
 	return err
 }
 

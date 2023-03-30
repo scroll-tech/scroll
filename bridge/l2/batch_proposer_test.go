@@ -6,6 +6,7 @@ import (
 	"math"
 	"testing"
 
+	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/stretchr/testify/assert"
 
 	"scroll-tech/database"
@@ -35,7 +36,7 @@ func testBatchProposerProposeBatch(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Create a new batch.
-	batchLocalData := types.NewBatchData(&types.BlockBatch{
+	batchData := types.NewBatchData(&types.BlockBatch{
 		Index:     0,
 		Hash:      batch.Hash,
 		StateRoot: batch.StateRoot,
@@ -58,7 +59,7 @@ func testBatchProposerProposeBatch(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 0, len(infos))
 
-	exist, err := db.BatchRecordExist(batchLocalData.Hash().Hex())
+	exist, err := db.BatchRecordExist(batchData.Hash().Hex())
 	assert.NoError(t, err)
 	assert.Equal(t, true, exist)
 }
@@ -77,6 +78,19 @@ func testBatchProposerGracefulRestart(t *testing.T) {
 	assert.NoError(t, db.InsertWrappedBlocks([]*types.WrappedBlock{wrappedBlock2}))
 
 	// Insert block batch into db.
+	batchData1 := types.NewBatchData(&types.BlockBatch{
+		Index:     0,
+		Hash:      common.Hash{}.String(),
+		StateRoot: common.Hash{}.String(),
+	}, []*types.WrappedBlock{wrappedBlock1}, nil)
+
+	parentBatch2 := &types.BlockBatch{
+		Index:     batchData1.Batch.BatchIndex,
+		Hash:      batchData1.Hash().Hex(),
+		StateRoot: batchData1.Batch.NewStateRoot.String(),
+	}
+	batchData2 := types.NewBatchData(parentBatch2, []*types.WrappedBlock{wrappedBlock2}, nil)
+
 	dbTx, err := db.Beginx()
 	assert.NoError(t, err)
 	assert.NoError(t, db.NewBatchInDBTx(dbTx, batchData1))
