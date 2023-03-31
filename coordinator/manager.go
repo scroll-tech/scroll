@@ -45,7 +45,6 @@ var (
 	coordinatorSessionsProofSuccessTimeTimer            = geth_metrics.NewRegisteredTimer("coordinator/sessions/proof/success/time", metrics.ScrollRegistry)
 	coordinatorSessionsProofGenerationFailedTimeTimer   = geth_metrics.NewRegisteredTimer("coordinator/sessions/proof/verification/failed/time", metrics.ScrollRegistry)
 	coordinatorSessionsProofVerificationFailedTimeTimer = geth_metrics.NewRegisteredTimer("coordinator/sessions/proof/verification/failed/time", metrics.ScrollRegistry)
-	coordinatorSessionsVerificationTimeTimer            = geth_metrics.NewRegisteredTimer("coordinator/sessions/verification/time", metrics.ScrollRegistry)
 )
 
 const (
@@ -324,11 +323,8 @@ func (m *Manager) handleZkProof(pk string, msg *message.ProofDetail) error {
 
 	coordinatorProofsReceivedTotalCounter.Inc(1)
 
-	st := time.Now()
 	var err error
 	success, err = m.verifyProof(msg.Proof)
-	verificationTime := time.Since(st)
-	coordinatorSessionsVerificationTimeTimer.Update(verificationTime)
 	if err != nil {
 		// TODO: this is only a temp workaround for testnet, we should return err in real cases
 		success = false
