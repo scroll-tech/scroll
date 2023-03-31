@@ -75,10 +75,12 @@ func (i *ImgDB) Stop() error {
 
 // Endpoint return the dsn.
 func (i *ImgDB) Endpoint() string {
-	if !i.running {
-		return ""
-	}
 	return fmt.Sprintf("postgres://postgres:%s@localhost:%d/%s?sslmode=disable", i.password, i.port, i.dbName)
+}
+
+// IsRunning returns docker container's running status.
+func (i *ImgDB) IsRunning() bool {
+	return i.running
 }
 
 func (i *ImgDB) prepare() []string {

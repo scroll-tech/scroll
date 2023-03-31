@@ -16,7 +16,6 @@ import (
 	"github.com/scroll-tech/go-ethereum/rpc"
 	"github.com/stretchr/testify/assert"
 
-	"scroll-tech/database"
 	_ "scroll-tech/database/cmd/app"
 
 	_ "scroll-tech/roller/cmd/app"
@@ -43,7 +42,6 @@ var (
 	wsPort    int64
 
 	bridgeFile      string
-	dbFile          string
 	coordinatorFile string
 
 	bboltDB    string
@@ -61,7 +59,6 @@ func setupEnv(t *testing.T) {
 
 	// Load reset and store config into a random file.
 	bridgeFile = mockBridgeConfig(t)
-	dbFile = mockDatabaseConfig(t)
 	coordinatorFile = mockCoordinatorConfig(t)
 	rollerFile = mockRollerConfig(t)
 }
@@ -71,7 +68,6 @@ func free(t *testing.T) {
 
 	// Delete temporary files.
 	assert.NoError(t, os.Remove(bridgeFile))
-	assert.NoError(t, os.Remove(dbFile))
 	assert.NoError(t, os.Remove(coordinatorFile))
 	assert.NoError(t, os.Remove(rollerFile))
 	assert.NoError(t, os.Remove(bboltDB))
@@ -111,7 +107,7 @@ func runCoordinatorApp(t *testing.T, args ...string) appAPI {
 }
 
 func runDBCliApp(t *testing.T, option, keyword string) {
-	args := []string{option, "--config", dbFile}
+	args := []string{option, "--config", base.DBFile}
 	app := cmd.NewCmd("db_cli-test", args...)
 	defer app.WaitExit()
 
@@ -146,11 +142,11 @@ func mockBridgeConfig(t *testing.T) string {
 	cfg, err := bridgeConfig.NewConfig("../../bridge/config.json")
 	assert.NoError(t, err)
 
-	cfg.L1Config.Endpoint = base.L1GethEndpoint()
-	cfg.L2Config.RelayerConfig.SenderConfig.Endpoint = base.L1GethEndpoint()
-	cfg.L2Config.Endpoint = base.L2GethEndpoint()
-	cfg.L1Config.RelayerConfig.SenderConfig.Endpoint = base.L2GethEndpoint()
-	cfg.DBConfig.DSN = base.DBEndpoint()
+	cfg.L1Config.Endpoint = base.L1gethImg.Endpoint()
+	cfg.L2Config.RelayerConfig.SenderConfig.Endpoint = base.L1gethImg.Endpoint()
+	cfg.L2Config.Endpoint = base.L2gethImg.Endpoint()
+	cfg.L1Config.RelayerConfig.SenderConfig.Endpoint = base.L2gethImg.Endpoint()
+	cfg.DBConfig = base.DBConfig
 
 	// Store changed bridge config into a temp file.
 	data, err := json.Marshal(cfg)
@@ -168,9 +164,9 @@ func mockCoordinatorConfig(t *testing.T) string {
 
 	cfg.RollerManagerConfig.Verifier.MockMode = true
 
-	cfg.DBConfig.DSN = base.DBEndpoint()
+	cfg.DBConfig = base.DBConfig
 
-	cfg.L2Config.Endpoint = base.L2GethEndpoint()
+	cfg.L2Config.Endpoint = base.L2gethImg.Endpoint()
 
 	data, err := json.Marshal(cfg)
 	assert.NoError(t, err)
@@ -183,11 +179,7 @@ func mockCoordinatorConfig(t *testing.T) string {
 }
 
 func mockDatabaseConfig(t *testing.T) string {
-	cfg, err := database.NewConfig("../../database/config.json")
-	assert.NoError(t, err)
-	cfg.DSN = base.DBEndpoint()
-
-	data, err := json.Marshal(cfg)
+	data, err := json.Marshal(base.DBConfig)
 	assert.NoError(t, err)
 
 	file := fmt.Sprintf("/tmp/%d_db-config.json", timestamp)
