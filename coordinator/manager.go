@@ -549,7 +549,7 @@ func (m *Manager) StartProofGenerationSession(task *types.BlockBatch) (success b
 	}
 
 	for _, roller := range sess.info.Rollers {
-		log.Error(
+		log.Info(
 			"assigned rollers",
 			"session id", sess.info.ID,
 			"roller name", roller.Name,
