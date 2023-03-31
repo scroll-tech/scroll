@@ -31,6 +31,16 @@ func testBatchProposerProposeBatch(t *testing.T) {
 	wc.Start()
 	defer wc.Stop()
 
+	batch, err := db.GetLatestBatch()
+	assert.NoError(t, err)
+
+	// Create a new batch.
+	batchData := types.NewBatchData(&types.BlockBatch{
+		Index:     0,
+		Hash:      batch.Hash,
+		StateRoot: batch.StateRoot,
+	}, []*types.WrappedBlock{wrappedBlock1}, nil)
+
 	relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, cfg.L2Config.RelayerConfig)
 	assert.NoError(t, err)
 
@@ -48,7 +58,7 @@ func testBatchProposerProposeBatch(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 0, len(infos))
 
-	exist, err := db.BatchRecordExist(batchData1.Hash().Hex())
+	exist, err := db.BatchRecordExist(batchData.Hash().Hex())
 	assert.NoError(t, err)
 	assert.Equal(t, true, exist)
 }
