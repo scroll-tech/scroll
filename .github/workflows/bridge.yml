@@ -66,3 +66,7 @@ jobs:
         if [ -n "$(git status --porcelain)" ]; then
           exit 1
         fi
+  docker-build:
+    runs-on: ubuntu-latest
+    steps:
+    - run: make docker
