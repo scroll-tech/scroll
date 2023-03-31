@@ -7,11 +7,9 @@ create table transaction
     tx_hash      VARCHAR      NOT NULL,
     sender       VARCHAR      NOT NULL,
     nonce        BIGINT       NOT NULL,
-    target       VARCHAR      NOT NULL,
-    gas          BIGINT       NOT NULL,
-    gas_limit    BIGINT       NOT NULL,
+    target       VARCHAR      DEFAULT '',
     value        VARCHAR      NOT NULL,
-    data         TEXT                  DEFAULT NULL,
+    data         BYTEA        DEFAULT NULL,
     created_time TIMESTAMP(0) NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 

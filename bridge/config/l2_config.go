@@ -32,7 +32,7 @@ type BatchProposerConfig struct {
 	ProofGenerationFreq uint64 `json:"proof_generation_freq"`
 	// Txnum threshold in a batch
 	BatchTxNumThreshold uint64 `json:"batch_tx_num_threshold"`
-	// Gas threshold in a batch
+	// GasPrice threshold in a batch
 	BatchGasThreshold uint64 `json:"batch_gas_threshold"`
 	// Time waited to generate a batch even if gas_threshold not met
 	BatchTimeSec uint64 `json:"batch_time_sec"`

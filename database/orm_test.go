@@ -4,6 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/scroll-tech/go-ethereum/accounts/abi/bind"
+	etypes "github.com/scroll-tech/go-ethereum/core/types"
+	"github.com/scroll-tech/go-ethereum/crypto"
 	"math/big"
 	"os"
 	"testing"
@@ -82,13 +85,14 @@ var (
 	ormLayer2  orm.L2MessageOrm
 	ormBatch   orm.BlockBatchOrm
 	ormSession orm.SessionInfoOrm
+	ormTx      orm.TxOrm
 )
 
 func setupEnv(t *testing.T) error {
 	// Init db config and start db container.
 	dbConfig = &database.DBConfig{DriverName: "postgres"}
-	base.RunImages(t)
-	dbConfig.DSN = base.DBEndpoint()
+	//base.RunImages(t)
+	dbConfig.DSN = "postgres://maskpp:123456@localhost:5432/postgres?sslmode=disable" //base.DBEndpoint()
 
 	// Create db handler and reset db.
 	factory, err := database.NewOrmFactory(dbConfig)
@@ -102,6 +106,7 @@ func setupEnv(t *testing.T) error {
 	ormLayer2 = orm.NewL2MessageOrm(db)
 	ormBatch = orm.NewBlockBatchOrm(db)
 	ormSession = orm.NewSessionInfoOrm(db)
+	ormTx = orm.NewTxOrm(db)
 
 	templateBlockTrace, err := os.ReadFile("../common/testdata/blockTrace_02.json")
 	if err != nil {
@@ -172,6 +177,12 @@ func TestOrmFactory(t *testing.T) {
 	t.Run("testOrmBlockBatch", testOrmBlockBatch)
 
 	t.Run("testOrmSessionInfo", testOrmSessionInfo)
+
+	// test OrmTx interface.
+	t.Run("testTxOrm", testTxOrmSaveTxAndGetTxByHash)
+	t.Run("testTxOrmGetL1TxMessages", testTxOrmGetL1TxMessages)
+	t.Run("testTxOrmGetL2TxMessages", testTxOrmGetL2TxMessages)
+	t.Run("testTxOrmGetBlockBatchTxMessages", testTxOrmGetBlockBatchTxMessages)
 }
 
 func testOrmBlockTraces(t *testing.T) {
@@ -426,4 +437,193 @@ func testOrmSessionInfo(t *testing.T) {
 	sessionInfos, err = ormSession.GetSessionInfosByHashes(hashes)
 	assert.NoError(t, err)
 	assert.Equal(t, 0, len(sessionInfos))
+}
+
+func testTxOrmSaveTxAndGetTxByHash(t *testing.T) {
+	// Create db handler and reset db.
+	factory, err := database.NewOrmFactory(dbConfig)
+	assert.NoError(t, err)
+	assert.NoError(t, migrate.ResetDB(factory.GetDB().DB))
+
+	sk, err := crypto.ToECDSA(common.FromHex("1212121212121212121212121212121212121212121212121212121212121212"))
+	assert.NoError(t, err)
+	auth, err := bind.NewKeyedTransactorWithChainID(sk, big.NewInt(1))
+	assert.NoError(t, err)
+
+	nonce := uint64(1)
+	tx := etypes.NewTx(&etypes.LegacyTx{
+		Nonce:    nonce,
+		To:       &auth.From,
+		Value:    big.NewInt(0),
+		Gas:      500000,
+		GasPrice: big.NewInt(500000),
+		Data:     common.Hex2Bytes("1212121212121212121212121212121212121212121212121212121212121212"),
+	})
+
+	signedTx, err := auth.Signer(auth.From, tx)
+	assert.NoError(t, err)
+
+	err = ormTx.SaveTx("1", auth.From.String(), signedTx)
+	assert.Nil(t, err)
+
+	savedTx, err := ormTx.GetTxByHash("1")
+	assert.NoError(t, err)
+
+	assert.Equal(t, signedTx.Hash().String(), savedTx.TxHash.String)
+	assert.Equal(t, auth.From.String(), savedTx.Sender.String)
+	assert.Equal(t, nonce, uint64(savedTx.Nonce.Int64))
+	assert.Equal(t, signedTx.Data(), savedTx.Data)
+}
+
+func testTxOrmGetL1TxMessages(t *testing.T) {
+	// Create db handler and reset db.
+	factory, err := database.NewOrmFactory(dbConfig)
+	assert.NoError(t, err)
+	assert.NoError(t, migrate.ResetDB(factory.GetDB().DB))
+
+	sk, err := crypto.ToECDSA(common.FromHex("1212121212121212121212121212121212121212121212121212121212121212"))
+	assert.NoError(t, err)
+	auth, err := bind.NewKeyedTransactorWithChainID(sk, big.NewInt(1))
+	assert.NoError(t, err)
+
+	nonce := uint64(1)
+	tx := etypes.NewTx(&etypes.LegacyTx{
+		Nonce:    nonce,
+		To:       &auth.From,
+		Value:    big.NewInt(0),
+		Gas:      500000,
+		GasPrice: big.NewInt(500000),
+		Data:     common.Hex2Bytes("1212121212121212121212121212121212121212121212121212121212121212"),
+	})
+	signedTx, err := auth.Signer(auth.From, tx)
+	assert.NoError(t, err)
+	err = ormTx.SaveTx(templateL1Message[0].MsgHash, auth.From.String(), signedTx)
+	assert.Nil(t, err)
+
+	nonce = 2
+	tx = etypes.NewTx(&etypes.LegacyTx{
+		Nonce:    nonce,
+		To:       &auth.From,
+		Value:    big.NewInt(0),
+		Gas:      500000,
+		GasPrice: big.NewInt(500000),
+		Data:     common.Hex2Bytes("1212121212121212121212121212121212121212121212121212121212121212"),
+	})
+	signedTx, err = auth.Signer(auth.From, tx)
+	assert.NoError(t, err)
+	err = ormTx.SaveTx("3", auth.From.String(), signedTx)
+	assert.Nil(t, err)
+
+	// Insert into db
+	err = ormLayer1.SaveL1Messages(context.Background(), templateL1Message)
+	assert.NoError(t, err)
+
+	for _, msg := range templateL1Message {
+		err = ormLayer1.UpdateLayer1Status(context.Background(), msg.MsgHash, types.MsgSubmitted)
+		assert.NoError(t, err)
+	}
+
+	txMsgs, err := ormTx.GetL1TxMessages(
+		map[string]interface{}{"status": types.MsgSubmitted},
+		fmt.Sprintf("AND queue_index > %d", 0),
+		fmt.Sprintf("ORDER BY queue_index ASC LIMIT %d", 10),
+	)
+	assert.NoError(t, err)
+	assert.Equal(t, len(templateL1Message), len(txMsgs))
+	// The first field is full.
+	assert.Equal(t, templateL1Message[0].MsgHash, txMsgs[0].Hash)
+	// The second field is empty.
+	assert.Equal(t, false, txMsgs[1].TxHash.Valid)
+	assert.Equal(t, templateL1Message[1].MsgHash, txMsgs[1].Hash)
+}
+
+func testTxOrmGetL2TxMessages(t *testing.T) {
+	// Create db handler and reset db.
+	factory, err := database.NewOrmFactory(dbConfig)
+	assert.NoError(t, err)
+	assert.NoError(t, migrate.ResetDB(factory.GetDB().DB))
+
+	sk, err := crypto.ToECDSA(common.FromHex("1212121212121212121212121212121212121212121212121212121212121212"))
+	assert.NoError(t, err)
+	auth, err := bind.NewKeyedTransactorWithChainID(sk, big.NewInt(1))
+	assert.NoError(t, err)
+
+	nonce := uint64(1)
+	tx := etypes.NewTx(&etypes.LegacyTx{
+		Nonce:    nonce,
+		To:       &auth.From,
+		Value:    big.NewInt(0),
+		Gas:      500000,
+		GasPrice: big.NewInt(500000),
+		Data:     common.Hex2Bytes("1212121212121212121212121212121212121212121212121212121212121212"),
+	})
+	signedTx, err := auth.Signer(auth.From, tx)
+	assert.NoError(t, err)
+	err = ormTx.SaveTx(templateL1Message[0].MsgHash, auth.From.String(), signedTx)
+	assert.Nil(t, err)
+
+	// Insert into db
+	err = ormLayer2.SaveL2Messages(context.Background(), templateL2Message)
+	assert.NoError(t, err)
+
+	for _, msg := range templateL2Message {
+		err = ormLayer2.UpdateLayer2Status(context.Background(), msg.MsgHash, types.MsgSubmitted)
+		assert.NoError(t, err)
+	}
+
+	txMsgs, err := ormTx.GetL2TxMessages(
+		map[string]interface{}{"status": types.MsgSubmitted},
+		fmt.Sprintf("AND nonce > %d", 0),
+		fmt.Sprintf("ORDER BY nonce ASC LIMIT %d", 10),
+	)
+	assert.NoError(t, err)
+	assert.Equal(t, len(templateL2Message), len(txMsgs))
+	assert.Equal(t, templateL2Message[0].MsgHash, txMsgs[0].Hash)
+	assert.Equal(t, false, txMsgs[1].TxHash.Valid)
+	assert.Equal(t, templateL2Message[1].MsgHash, txMsgs[1].Hash)
+}
+
+func testTxOrmGetBlockBatchTxMessages(t *testing.T) {
+	// Create db handler and reset db.
+	factory, err := database.NewOrmFactory(dbConfig)
+	assert.NoError(t, err)
+	assert.NoError(t, migrate.ResetDB(factory.GetDB().DB))
+
+	dbTx, err := factory.Beginx()
+	assert.NoError(t, err)
+	for _, batch := range []*types.BatchData{batchData1, batchData2} {
+		err = ormBatch.NewBatchInDBTx(dbTx, batch)
+		assert.NoError(t, err)
+	}
+	assert.NoError(t, dbTx.Commit())
+
+	sk, err := crypto.ToECDSA(common.FromHex("1212121212121212121212121212121212121212121212121212121212121212"))
+	assert.NoError(t, err)
+	auth, err := bind.NewKeyedTransactorWithChainID(sk, big.NewInt(1))
+	assert.NoError(t, err)
+
+	nonce := uint64(1)
+	tx := etypes.NewTx(&etypes.LegacyTx{
+		Nonce:    nonce,
+		To:       &auth.From,
+		Value:    big.NewInt(0),
+		Gas:      500000,
+		GasPrice: big.NewInt(500000),
+		Data:     common.Hex2Bytes("1212121212121212121212121212121212121212121212121212121212121212"),
+	})
+	signedTx, err := auth.Signer(auth.From, tx)
+	assert.NoError(t, err)
+	err = ormTx.SaveTx(batchData1.Hash().String(), auth.From.String(), signedTx)
+	assert.Nil(t, err)
+
+	txMsgs, err := ormTx.GetBlockBatchTxMessages(
+		map[string]interface{}{"rollup_status": types.RollupPending},
+		fmt.Sprintf("AND index > %d", 0),
+		fmt.Sprintf("ORDER BY index ASC LIMIT %d", 10),
+	)
+	assert.NoError(t, err)
+	assert.Equal(t, 2, len(txMsgs))
+	assert.Equal(t, batchData1.Hash().String(), txMsgs[0].Hash)
+	assert.Equal(t, false, txMsgs[1].TxHash.Valid)
+	assert.Equal(t, batchData2.Hash().String(), txMsgs[1].Hash)
 }

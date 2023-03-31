@@ -1,18 +1,13 @@
 package types
 
-import (
-	"github.com/scroll-tech/go-ethereum/common"
-	"math/big"
-)
+import "database/sql"
 
 type TxMessage struct {
-	Hash     common.Hash     `json:"hash" db:"hash"`
-	TxHash   common.Hash     `json:"tx_hash" db:"tx_hash"`
-	Sender   common.Address  `json:"sender" db:"sender"`
-	Nonce    uint64          `json:"nonce" db:"nonce"`
-	Target   *common.Address `json:"target" db:"target"`
-	Gas      *big.Int        `json:"gas" db:"gas"`
-	GasLimit uint64          `json:"gas_limit" db:"gas_limit"`
-	Value    *big.Int        `json:"value" db:"value"`
-	Data     string          `json:"data" db:"data"`
+	Hash   string         `json:"hash" db:"hash"`
+	TxHash sql.NullString `json:"tx_hash" db:"tx_hash"`
+	Sender sql.NullString `json:"sender" db:"sender"`
+	Nonce  sql.NullInt64  `json:"nonce" db:"nonce"`
+	Target sql.NullString `json:"target" db:"target"`
+	Value  sql.NullString `json:"value" db:"value"`
+	Data   []byte         `json:"data" db:"data"`
 }

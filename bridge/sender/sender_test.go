@@ -75,16 +75,16 @@ func testMinGasLimit(t *testing.T) {
 	assert.NoError(t, err)
 
 	// MinGasLimit = 0
-	txHash0, err := newSender.SendTransaction("0", &common.Address{}, big.NewInt(1), nil, 0)
+	_, tx, err := newSender.SendTransaction("0", &common.Address{}, big.NewInt(1), nil, 0)
 	assert.NoError(t, err)
-	tx0, _, err := client.TransactionByHash(context.Background(), txHash0)
+	tx0, _, err := client.TransactionByHash(context.Background(), tx.Hash())
 	assert.NoError(t, err)
 	assert.Greater(t, tx0.Gas(), uint64(0))
 
 	// MinGasLimit = 100000
-	txHash1, err := newSender.SendTransaction("1", &common.Address{}, big.NewInt(1), nil, 100000)
+	_, tx, err = newSender.SendTransaction("1", &common.Address{}, big.NewInt(1), nil, 100000)
 	assert.NoError(t, err)
-	tx1, _, err := client.TransactionByHash(context.Background(), txHash1)
+	tx1, _, err := client.TransactionByHash(context.Background(), tx.Hash())
 	assert.NoError(t, err)
 	assert.Equal(t, tx1.Gas(), uint64(150000))
 }
@@ -118,7 +118,7 @@ func testBatchSender(t *testing.T, batchSize int) {
 			for i := 0; i < TXBatch; i++ {
 				toAddr := common.HexToAddress("0x4592d8f8d7b001e72cb26a73e4fa1806a51ac79d")
 				id := strconv.Itoa(i + index*1000)
-				_, err := newSender.SendTransaction(id, &toAddr, big.NewInt(1), nil, 0)
+				_, _, err := newSender.SendTransaction(id, &toAddr, big.NewInt(1), nil, 0)
 				if errors.Is(err, sender.ErrNoAvailableAccount) {
 					<-time.After(time.Second)
 					continue

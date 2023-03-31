@@ -1,8 +1,10 @@
 package orm
 
 import (
+	"fmt"
+	"strings"
+
 	"github.com/jmoiron/sqlx"
-	"github.com/scroll-tech/go-ethereum/common/hexutil"
 	"github.com/scroll-tech/go-ethereum/core/types"
 
 	stypes "scroll-tech/common/types"
@@ -29,23 +31,110 @@ func (t *txOrm) SaveTx(hash, sender string, tx *types.Transaction) error {
 		target = tx.To().String()
 	}
 	_, err := t.db.Exec(
-		t.db.Rebind(t.db.Rebind("INSERT INTO transaction (hash, tx_hash, sender, nonce, target, gas, gas_limit, value, data) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);")),
+		t.db.Rebind("INSERT INTO transaction (hash, tx_hash, sender, nonce, target, value, data) VALUES (?, ?, ?, ?, ?, ?, ?);"),
 		hash,
 		tx.Hash().String(),
 		sender,
 		tx.Nonce(),
 		target,
-		tx.GasPrice().Uint64(),
-		tx.Gas(),
-		hexutil.Encode(tx.Data()),
+		tx.Value().String(),
+		tx.Data(),
 	)
+	return err
+}
+
+// DeleteTxDataByHash remove data content by hash.
+func (t *txOrm) DeleteTxDataByHash(hash string) error {
+	db := t.db
+	_, err := db.Exec(db.Rebind("UPDATE transaction SET data = '' WHERE hash = ?;"), hash)
 	return err
 }
 
 // GetTxByHash returns tx message by message hash.
 func (t *txOrm) GetTxByHash(hash string) (*stypes.TxMessage, error) {
 	db := t.db
-	row := db.QueryRowx(db.Rebind("SELECT * FROM transaction WHERE hash = ?"), hash)
+	row := db.QueryRowx(db.Rebind("SELECT hash, tx_hash, sender, nonce, target, value, data FROM transaction WHERE hash = ?"), hash)
 	txMsg := &stypes.TxMessage{}
-	return txMsg, row.Scan(&txMsg)
+	if err := row.StructScan(txMsg); err != nil {
+		return nil, err
+	}
+	return txMsg, nil
+}
+
+// GetL1TxMessages gets tx messages by transaction right join l1_message.
+func (t *txOrm) GetL1TxMessages(fields map[string]interface{}, args ...string) ([]*stypes.TxMessage, error) {
+	query := "select msg_hash from l1_message where 1 = 1"
+	for key := range fields {
+		query = query + fmt.Sprintf(" AND %s = :%s", key, key)
+	}
+	query = strings.Join(append([]string{query}, args...), " ")
+	query = fmt.Sprintf("select l1.msg_hash as hash, tx.tx_hash, tx.sender, tx.nonce, tx.target, tx.value, tx.data from transaction as tx right join (%s) as l1 on tx.hash = l1.msg_hash;", query)
+
+	db := t.db
+	rows, err := db.NamedQuery(db.Rebind(query), fields)
+	if err != nil {
+		return nil, err
+	}
+
+	var txMsgs []*stypes.TxMessage
+	for rows.Next() {
+		msg := &stypes.TxMessage{}
+		if err = rows.StructScan(msg); err != nil {
+			return nil, err
+		}
+		txMsgs = append(txMsgs, msg)
+	}
+	return txMsgs, nil
+}
+
+// GetL2TxMessages gets tx messages by transaction right join l2_message.
+func (t *txOrm) GetL2TxMessages(fields map[string]interface{}, args ...string) ([]*stypes.TxMessage, error) {
+	query := "select msg_hash from l2_message where 1 = 1"
+	for key := range fields {
+		query = query + fmt.Sprintf(" AND %s = :%s", key, key)
+	}
+	query = strings.Join(append([]string{query}, args...), " ")
+	query = fmt.Sprintf("select l2.msg_hash as hash, tx.tx_hash, tx.sender, tx.nonce, tx.target, tx.value, tx.data from transaction as tx right join (%s) as l2 on tx.hash = l2.msg_hash;", query)
+
+	db := t.db
+	rows, err := db.NamedQuery(db.Rebind(query), fields)
+	if err != nil {
+		return nil, err
+	}
+
+	var txMsgs []*stypes.TxMessage
+	for rows.Next() {
+		msg := &stypes.TxMessage{}
+		if err = rows.StructScan(msg); err != nil {
+			return nil, err
+		}
+		txMsgs = append(txMsgs, msg)
+	}
+	return txMsgs, nil
+}
+
+// GetBlockBatchTxMessages gets tx messages by transaction right join block_batch.
+func (t *txOrm) GetBlockBatchTxMessages(fields map[string]interface{}, args ...string) ([]*stypes.TxMessage, error) {
+	query := "select hash from block_batch where 1 = 1"
+	for key := range fields {
+		query = query + fmt.Sprintf(" AND %s = :%s", key, key)
+	}
+	query = strings.Join(append([]string{query}, args...), " ")
+	query = fmt.Sprintf("select bt.hash as hash, tx.tx_hash, tx.sender, tx.nonce, tx.target, tx.value, tx.data from transaction as tx right join (%s) as bt on tx.hash = bt.hash;", query)
+
+	db := t.db
+	rows, err := db.NamedQuery(db.Rebind(query), fields)
+	if err != nil {
+		return nil, err
+	}
+
+	var txMsgs []*stypes.TxMessage
+	for rows.Next() {
+		msg := &stypes.TxMessage{}
+		if err = rows.StructScan(msg); err != nil {
+			return nil, err
+		}
+		txMsgs = append(txMsgs, msg)
+	}
+	return txMsgs, nil
 }
