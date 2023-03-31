@@ -1,8 +1,17 @@
 # Build libzkp dependency
-FROM scrolltech/go-rust-builder:go-1.18-rust-nightly-2022-12-10 as zkp-builder
+FROM scrolltech/go-rust-builder:go-1.18-rust-nightly-2022-12-10 as chef
 WORKDIR app
 
+FROM chef as planner
 COPY ./common/libzkp/impl/ .
+RUN cargo chef prepare --recipe-path recipe.json
+
+FROM chef as zkp-builder
+COPY ./common/libzkp/impl/rust-toolchain ./
+COPY --from=planner /app/recipe.json recipe.json
+RUN cargo chef cook --release --recipe-path recipe.json
+
+COPY ./common/libzkp/impl .
 RUN cargo build --release
 RUN find ./ | grep libzktrie.so | xargs -i cp {} /app/target/release/
 
