@@ -18,7 +18,7 @@ func testStartWatcher(t *testing.T) {
 	assert.NoError(t, migrate.ResetDB(db.GetDB().DB))
 	defer db.Close()
 
-	client, err := ethclient.Dial(base.L1GethEndpoint())
+	client, err := ethclient.Dial(base.L1gethImg.Endpoint())
 	assert.NoError(t, err)
 
 	l1Cfg := cfg.L1Config
