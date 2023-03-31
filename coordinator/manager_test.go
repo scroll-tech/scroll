@@ -54,7 +54,9 @@ func setEnv(t *testing.T) (err error) {
 	base.RunDBImage(t)
 	base.RunL2Geth(t)
 
-	// Create db container.
+	// Load config.
+	cfg, err = bridge_config.NewConfig("../bridge/config.json")
+	assert.NoError(t, err)
 	cfg.DBConfig = base.DBConfig
 
 	templateBlockTrace, err := os.ReadFile("../common/testdata/blockTrace_02.json")
