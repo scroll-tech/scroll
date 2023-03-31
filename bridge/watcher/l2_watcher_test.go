@@ -70,8 +70,8 @@ func testMonitorBridgeContract(t *testing.T) {
 	subCtx, cancel := context.WithCancel(ctx)
 
 	defer func() {
-		db.Close()
 		cancel()
+		db.Close()
 	}()
 
 	l2cfg := cfg.L2Config
@@ -141,8 +141,8 @@ func testFetchMultipleSentMessageInOneBlock(t *testing.T) {
 	subCtx, cancel := context.WithCancel(ctx)
 
 	defer func() {
-		db.Close()
 		cancel()
+		db.Close()
 	}()
 
 	previousHeight, err := l2Cli.BlockNumber(context.Background()) // shallow the global previousHeight
