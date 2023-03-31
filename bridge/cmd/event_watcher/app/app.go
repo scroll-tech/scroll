@@ -82,7 +82,7 @@ func action(ctx *cli.Context) error {
 		return err
 	}
 	l1watcher := watcher.NewL1WatcherClient(ctx.Context, l1client, cfg.L1Config.StartHeight, cfg.L1Config.Confirmations, cfg.L1Config.L1MessengerAddress, cfg.L1Config.L1MessageQueueAddress, cfg.L1Config.ScrollChainContractAddress, ormFactory)
-	l2watcher := watcher.NewL2WatcherClient(ctx.Context, l2client, cfg.L2Config.RelayerConfig.SenderConfig.Confirmations, cfg.L2Config.L2MessengerAddress, cfg.L2Config.L2MessageQueueAddress, cfg.L2Config.WithdrawTrieRootSlot, ormFactory)
+	l2watcher := watcher.NewL2WatcherClient(ctx.Context, l2client, cfg.L2Config.Confirmations, cfg.L2Config.L2MessengerAddress, cfg.L2Config.L2MessageQueueAddress, cfg.L2Config.WithdrawTrieRootSlot, ormFactory)
 
 	go cutils.Loop(subCtx, 10*time.Second, func() {
 		if loopErr := l1watcher.FetchContractEvent(); loopErr != nil {
@@ -105,7 +105,7 @@ func action(ctx *cli.Context) error {
 	return nil
 }
 
-// Run run event watcher cmd instance.
+// Run event watcher cmd instance.
 func Run() {
 	if err := app.Run(os.Args); err != nil {
 		_, _ = fmt.Fprintln(os.Stderr, err)

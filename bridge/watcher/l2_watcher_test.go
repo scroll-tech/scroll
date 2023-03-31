@@ -34,8 +34,8 @@ func testCreateNewWatcherAndStop(t *testing.T) {
 	ctx := context.Background()
 	subCtx, cancel := context.WithCancel(ctx)
 	defer func() {
-		l2db.Close()
 		cancel()
+		l2db.Close()
 	}()
 
 	l2cfg := cfg.L2Config

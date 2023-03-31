@@ -124,7 +124,7 @@ func action(ctx *cli.Context) error {
 	return nil
 }
 
-// Run run rollup relayer cmd instance.
+// Run rollup relayer cmd instance.
 func Run() {
 	if err := app.Run(os.Args); err != nil {
 		_, _ = fmt.Fprintln(os.Stderr, err)
