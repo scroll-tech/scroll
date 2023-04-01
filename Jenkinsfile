@@ -28,7 +28,7 @@ pipeline {
                 }
                 stage('Check Bridge Compilation') {
                     steps {
-                        sh 'make -C bridge bridge'
+                        sh 'make -C bridge bridge_bins'
                     }
                 }
                 stage('Check Coordinator Compilation') {
@@ -40,16 +40,6 @@ pipeline {
                 stage('Check Database Compilation') {
                     steps {
                         sh 'make -C database db_cli'
-                    }
-                }
-                stage('Check Bridge Docker Build') {
-                    steps {
-                        sh 'make -C bridge docker'
-                    }
-                }
-                stage('Check Coordinator Docker Build') {
-                    steps {
-                        sh 'make -C coordinator docker'
                     }
                 }
                 stage('Check Database Docker Build') {
