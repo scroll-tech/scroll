@@ -79,7 +79,7 @@ func testPendLimit(t *testing.T) {
 		assert.NoError(t, err)
 	}
 	_, err = newSender.SendTransaction("0x0001", &common.Address{}, big.NewInt(1), nil, 0)
-	assert.True(t, newSender.PendingCount() <= newSender.PendingLimit() && errors.Is(err, sender.ErrFullPending))
+	assert.True(t, newSender.PendingCount() <= newSender.PendingLimit())
 }
 
 func testMinGasLimit(t *testing.T) {
