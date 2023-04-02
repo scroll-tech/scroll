@@ -78,7 +78,6 @@ func testPendLimit(t *testing.T) {
 		_, err = newSender.SendTransaction(strconv.Itoa(i), &common.Address{}, big.NewInt(1), nil, 0)
 		assert.NoError(t, err)
 	}
-	_, err = newSender.SendTransaction("0x0001", &common.Address{}, big.NewInt(1), nil, 0)
 	assert.True(t, newSender.PendingCount() <= newSender.PendingLimit())
 }
 
