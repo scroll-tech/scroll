@@ -466,7 +466,7 @@ func testTxOrmSaveTxAndGetTxByHash(t *testing.T) {
 	err = ormTx.SaveTx("1", auth.From.String(), signedTx)
 	assert.Nil(t, err)
 
-	savedTx, err := ormTx.GetTxByHash("1")
+	savedTx, err := ormTx.GetTxById("1")
 	assert.NoError(t, err)
 
 	assert.Equal(t, signedTx.Hash().String(), savedTx.TxHash.String)
@@ -531,10 +531,10 @@ func testTxOrmGetL1TxMessages(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, len(templateL1Message), len(txMsgs))
 	// The first field is full.
-	assert.Equal(t, templateL1Message[0].MsgHash, txMsgs[0].Hash)
+	assert.Equal(t, templateL1Message[0].MsgHash, txMsgs[0].ID)
 	// The second field is empty.
 	assert.Equal(t, false, txMsgs[1].TxHash.Valid)
-	assert.Equal(t, templateL1Message[1].MsgHash, txMsgs[1].Hash)
+	assert.Equal(t, templateL1Message[1].MsgHash, txMsgs[1].ID)
 }
 
 func testTxOrmGetL2TxMessages(t *testing.T) {
@@ -578,9 +578,9 @@ func testTxOrmGetL2TxMessages(t *testing.T) {
 	)
 	assert.NoError(t, err)
 	assert.Equal(t, len(templateL2Message), len(txMsgs))
-	assert.Equal(t, templateL2Message[0].MsgHash, txMsgs[0].Hash)
+	assert.Equal(t, templateL2Message[0].MsgHash, txMsgs[0].ID)
 	assert.Equal(t, false, txMsgs[1].TxHash.Valid)
-	assert.Equal(t, templateL2Message[1].MsgHash, txMsgs[1].Hash)
+	assert.Equal(t, templateL2Message[1].MsgHash, txMsgs[1].ID)
 }
 
 func testTxOrmGetBlockBatchTxMessages(t *testing.T) {
@@ -623,7 +623,7 @@ func testTxOrmGetBlockBatchTxMessages(t *testing.T) {
 	)
 	assert.NoError(t, err)
 	assert.Equal(t, 2, len(txMsgs))
-	assert.Equal(t, batchData1.Hash().String(), txMsgs[0].Hash)
+	assert.Equal(t, batchData1.Hash().String(), txMsgs[0].ID)
 	assert.Equal(t, false, txMsgs[1].TxHash.Valid)
-	assert.Equal(t, batchData2.Hash().String(), txMsgs[1].Hash)
+	assert.Equal(t, batchData2.Hash().String(), txMsgs[1].ID)
 }
