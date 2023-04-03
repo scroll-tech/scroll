@@ -62,6 +62,15 @@ func (t *txOrm) GetTxByHash(hash string) (*stypes.TxMessage, error) {
 }
 
 // GetL1TxMessages gets tx messages by transaction right join l1_message.
+// sql i.g:
+// select l1.msg_hash as hash, tx.tx_hash, tx.sender, tx.nonce, tx.target, tx.value, tx.data
+// from transaction as tx
+// right join (select msg_hash
+//
+//	from l1_message
+//	where 1 = 1 AND status = :status AND queue_index > 0
+//	ORDER BY queue_index ASC
+//	LIMIT 10) as l1 on tx.hash = l1.msg_hash;
 func (t *txOrm) GetL1TxMessages(fields map[string]interface{}, args ...string) ([]*stypes.TxMessage, error) {
 	query := "select msg_hash from l1_message where 1 = 1"
 	for key := range fields {
