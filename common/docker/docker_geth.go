@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
-	"testing"
 	"time"
 
 	"github.com/docker/docker/api/types"
@@ -30,7 +29,7 @@ type ImgGeth struct {
 }
 
 // NewImgGeth return geth img instance.
-func NewImgGeth(t *testing.T, image, volume, ipc string, hPort, wPort int) ImgInstance {
+func NewImgGeth(image, volume, ipc string, hPort, wPort int) ImgInstance {
 	img := &ImgGeth{
 		image:    image,
 		name:     fmt.Sprintf("%s-%d", image, time.Now().Nanosecond()),
@@ -39,7 +38,7 @@ func NewImgGeth(t *testing.T, image, volume, ipc string, hPort, wPort int) ImgIn
 		httpPort: hPort,
 		wsPort:   wPort,
 	}
-	img.cmd = cmd.NewCmd(t, img.name, img.prepare()...)
+	img.cmd = cmd.NewCmd(img.name, img.prepare()...)
 	return img
 }
 
@@ -49,7 +48,6 @@ func (i *ImgGeth) Start() error {
 	if id != "" {
 		return fmt.Errorf("container already exist, name: %s", i.name)
 	}
-	i.cmd.RunCmd(true)
 	i.running = i.isOk()
 	if !i.running {
 		_ = i.Stop()
@@ -86,17 +84,23 @@ func (i *ImgGeth) isOk() bool {
 		}
 	})
 	defer i.cmd.UnRegistFunc(keyword)
+	// Start cmd in parallel.
+	i.cmd.RunCmd(true)
 
 	select {
 	case <-okCh:
-		utils.TryTimes(3, func() bool {
+		utils.TryTimes(20, func() bool {
 			i.id = GetContainerID(i.name)
 			return i.id != ""
 		})
-		return i.id != ""
+	case err := <-i.cmd.ErrChan:
+		if err != nil {
+			fmt.Printf("failed to start %s, err: %v\n", i.name, err)
+		}
 	case <-time.After(time.Second * 10):
 		return false
 	}
+	return i.id != ""
 }
 
 // Stop the docker container.

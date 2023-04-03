@@ -14,6 +14,7 @@ import (
 	cmap "github.com/orcaman/concurrent-map"
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/crypto"
+	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/rpc"
 	"github.com/stretchr/testify/assert"
 
@@ -28,35 +29,81 @@ const TXBatch = 50
 var (
 	privateKeys []*ecdsa.PrivateKey
 	cfg         *config.Config
-	l2gethImg   docker.ImgInstance
+	base        *docker.App
 )
+
+func TestMain(m *testing.M) {
+	base = docker.NewDockerApp()
+
+	m.Run()
+
+	base.Free()
+}
 
 func setupEnv(t *testing.T) {
 	var err error
 	cfg, err = config.NewConfig("../config.json")
 	assert.NoError(t, err)
-
+	base.RunImages(t)
 	priv, err := crypto.HexToECDSA("1212121212121212121212121212121212121212121212121212121212121212")
 	assert.NoError(t, err)
 	// Load default private key.
 	privateKeys = []*ecdsa.PrivateKey{priv}
 
-	l2gethImg = docker.NewTestL2Docker(t)
-	cfg.L1Config.RelayerConfig.SenderConfig.Endpoint = l2gethImg.Endpoint()
+	cfg.L1Config.RelayerConfig.SenderConfig.Endpoint = base.L2GethEndpoint()
 }
 
 func TestSender(t *testing.T) {
 	// Setup
 	setupEnv(t)
 
+	t.Run("test pending limit", func(t *testing.T) { testPendLimit(t) })
+
+	t.Run("test min gas limit", func(t *testing.T) { testMinGasLimit(t) })
+
 	t.Run("test 1 account sender", func(t *testing.T) { testBatchSender(t, 1) })
 	t.Run("test 3 account sender", func(t *testing.T) { testBatchSender(t, 3) })
 	t.Run("test 8 account sender", func(t *testing.T) { testBatchSender(t, 8) })
+}
 
-	// Teardown
-	t.Cleanup(func() {
-		assert.NoError(t, l2gethImg.Stop())
-	})
+func testPendLimit(t *testing.T) {
+	senderCfg := cfg.L1Config.RelayerConfig.SenderConfig
+	senderCfg.Confirmations = rpc.LatestBlockNumber
+	senderCfg.PendingLimit = 2
+	newSender, err := sender.NewSender(context.Background(), senderCfg, privateKeys)
+	assert.NoError(t, err)
+	defer newSender.Stop()
+
+	for i := 0; i < newSender.PendingLimit(); i++ {
+		_, err = newSender.SendTransaction(strconv.Itoa(i), &common.Address{}, big.NewInt(1), nil, 0)
+		assert.NoError(t, err)
+	}
+	assert.True(t, newSender.PendingCount() <= newSender.PendingLimit())
+}
+
+func testMinGasLimit(t *testing.T) {
+	senderCfg := cfg.L1Config.RelayerConfig.SenderConfig
+	senderCfg.Confirmations = rpc.LatestBlockNumber
+	newSender, err := sender.NewSender(context.Background(), senderCfg, privateKeys)
+	assert.NoError(t, err)
+	defer newSender.Stop()
+
+	client, err := ethclient.Dial(senderCfg.Endpoint)
+	assert.NoError(t, err)
+
+	// MinGasLimit = 0
+	txHash0, err := newSender.SendTransaction("0", &common.Address{}, big.NewInt(1), nil, 0)
+	assert.NoError(t, err)
+	tx0, _, err := client.TransactionByHash(context.Background(), txHash0)
+	assert.NoError(t, err)
+	assert.Greater(t, tx0.Gas(), uint64(0))
+
+	// MinGasLimit = 100000
+	txHash1, err := newSender.SendTransaction("1", &common.Address{}, big.NewInt(1), nil, 100000)
+	assert.NoError(t, err)
+	tx1, _, err := client.TransactionByHash(context.Background(), txHash1)
+	assert.NoError(t, err)
+	assert.Equal(t, tx1.Gas(), uint64(150000))
 }
 
 func testBatchSender(t *testing.T, batchSize int) {
@@ -70,6 +117,7 @@ func testBatchSender(t *testing.T, batchSize int) {
 
 	senderCfg := cfg.L1Config.RelayerConfig.SenderConfig
 	senderCfg.Confirmations = rpc.LatestBlockNumber
+	senderCfg.PendingLimit = batchSize * TXBatch
 	newSender, err := sender.NewSender(context.Background(), senderCfg, privateKeys)
 	if err != nil {
 		t.Fatal(err)
@@ -88,8 +136,8 @@ func testBatchSender(t *testing.T, batchSize int) {
 			for i := 0; i < TXBatch; i++ {
 				toAddr := common.HexToAddress("0x4592d8f8d7b001e72cb26a73e4fa1806a51ac79d")
 				id := strconv.Itoa(i + index*1000)
-				_, err := newSender.SendTransaction(id, &toAddr, big.NewInt(1), nil)
-				if errors.Is(err, sender.ErrNoAvailableAccount) {
+				_, err := newSender.SendTransaction(id, &toAddr, big.NewInt(1), nil, 0)
+				if errors.Is(err, sender.ErrNoAvailableAccount) || errors.Is(err, sender.ErrFullPending) {
 					<-time.After(time.Second)
 					continue
 				}

@@ -15,15 +15,25 @@ import (
 	geth_types "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
+	geth_metrics "github.com/scroll-tech/go-ethereum/metrics"
 	"github.com/scroll-tech/go-ethereum/rpc"
 
 	"scroll-tech/common/message"
+	"scroll-tech/common/metrics"
 	"scroll-tech/common/types"
-
 	"scroll-tech/database"
+
+	"scroll-tech/common/utils/workerpool"
 
 	"scroll-tech/coordinator/config"
 	"scroll-tech/coordinator/verifier"
+)
+
+var (
+	coordinatorSessionsTimeoutTotalCounter      = geth_metrics.NewRegisteredCounter("coordinator/sessions/timeout/total", metrics.ScrollRegistry)
+	coordinatorProofsReceivedTotalCounter       = geth_metrics.NewRegisteredCounter("coordinator/proofs/received/total", metrics.ScrollRegistry)
+	coordinatorProofsVerifiedTotalCounter       = geth_metrics.NewRegisteredCounter("coordinator/proofs/verified/total", metrics.ScrollRegistry)
+	coordinatorProofsVerifiedFailedTotalCounter = geth_metrics.NewRegisteredCounter("coordinator/proofs/verified/failed/total", metrics.ScrollRegistry)
 )
 
 const (
@@ -81,6 +91,9 @@ type Manager struct {
 	tokenCache *cache.Cache
 	// A mutex guarding registration
 	registerMu sync.RWMutex
+
+	// Verifier worker pool
+	verifierWorkerPool *workerpool.WorkerPool
 }
 
 // New returns a new instance of Manager. The instance will be not fully prepared,
@@ -102,6 +115,7 @@ func New(ctx context.Context, cfg *config.RollerManagerConfig, orm database.OrmF
 		orm:                orm,
 		Client:             client,
 		tokenCache:         cache.New(time.Duration(cfg.TokenTimeToLive)*time.Second, 1*time.Hour),
+		verifierWorkerPool: workerpool.NewWorkerPool(cfg.MaxVerifierWorkers),
 	}, nil
 }
 
@@ -111,6 +125,7 @@ func (m *Manager) Start() error {
 		return nil
 	}
 
+	m.verifierWorkerPool.Run()
 	m.restorePrevSessions()
 
 	atomic.StoreInt32(&m.running, 1)
@@ -124,6 +139,7 @@ func (m *Manager) Stop() {
 	if !m.isRunning() {
 		return
 	}
+	m.verifierWorkerPool.Stop()
 
 	atomic.StoreInt32(&m.running, 0)
 }
@@ -355,16 +371,10 @@ func (m *Manager) handleZkProof(pk string, msg *message.ProofDetail) error {
 		return dbErr
 	}
 
-	var err error
-	tasks, err := m.orm.GetBlockBatches(map[string]interface{}{"hash": msg.ID})
-	if len(tasks) == 0 {
-		if err != nil {
-			log.Error("failed to get tasks", "error", err)
-		}
-		return err
-	}
+	coordinatorProofsReceivedTotalCounter.Inc(1)
 
-	success, err = m.verifier.VerifyProof(msg.Proof)
+	var err error
+	success, err = m.verifyProof(msg.Proof)
 	if err != nil {
 		// TODO: this is only a temp workaround for testnet, we should return err in real cases
 		success = false
@@ -381,61 +391,49 @@ func (m *Manager) handleZkProof(pk string, msg *message.ProofDetail) error {
 				"msg.ID", msg.ID,
 				"status", types.ProvingTaskVerified,
 				"error", dbErr)
+			return dbErr
 		}
-		return dbErr
+		coordinatorProofsVerifiedTotalCounter.Inc(1)
+	} else {
+		coordinatorProofsVerifiedFailedTotalCounter.Inc(1)
 	}
 	return nil
 }
 
 // CollectProofs collects proofs corresponding to a proof generation session.
 func (m *Manager) CollectProofs(sess *session) {
+	//Cleanup roller sessions before return.
+	defer func() {
+		// TODO: remove the clean-up, rollers report healthy status.
+		m.mu.Lock()
+		for pk := range sess.info.Rollers {
+			m.freeTaskIDForRoller(pk, sess.info.ID)
+		}
+		delete(m.sessions, sess.info.ID)
+		m.mu.Unlock()
+	}()
 	for {
 		select {
+		//Execute after timeout, set in config.json. Consider all rollers failed.
 		case <-time.After(time.Duration(m.cfg.CollectionTime) * time.Minute):
-			m.mu.Lock()
-			defer func() {
-				// TODO: remove the clean-up, rollers report healthy status.
-				for pk := range sess.info.Rollers {
-					m.freeTaskIDForRoller(pk, sess.info.ID)
-				}
-				delete(m.sessions, sess.info.ID)
-				m.mu.Unlock()
-			}()
-
-			// Pick a random winner.
-			// First, round up the keys that actually sent in a valid proof.
-			var participatingRollers []string
-			for pk, roller := range sess.info.Rollers {
-				if roller.Status == types.RollerProofValid {
-					participatingRollers = append(participatingRollers, pk)
-				}
+			// record failed session.
+			errMsg := "proof generation session ended without receiving any valid proofs"
+			m.addFailedSession(sess, errMsg)
+			log.Warn(errMsg, "session id", sess.info.ID)
+			// Set status as skipped.
+			// Note that this is only a workaround for testnet here.
+			// TODO: In real cases we should reset to orm.ProvingTaskUnassigned
+			// so as to re-distribute the task in the future
+			if err := m.orm.UpdateProvingStatus(sess.info.ID, types.ProvingTaskFailed); err != nil {
+				log.Error("fail to reset task_status as Unassigned", "id", sess.info.ID, "err", err)
 			}
-			// Ensure we got at least one proof before selecting a winner.
-			if len(participatingRollers) == 0 {
-				// record failed session.
-				errMsg := "proof generation session ended without receiving any valid proofs"
-				m.addFailedSession(sess, errMsg)
-				log.Warn(errMsg, "session id", sess.info.ID)
-				// Set status as skipped.
-				// Note that this is only a workaround for testnet here.
-				// TODO: In real cases we should reset to orm.ProvingTaskUnassigned
-				// so as to re-distribute the task in the future
-				if err := m.orm.UpdateProvingStatus(sess.info.ID, types.ProvingTaskFailed); err != nil {
-					log.Error("fail to reset task_status as Unassigned", "id", sess.info.ID, "err", err)
-				}
-				return
-			}
-
-			// Now, select a random index for this slice.
-			randIndex := mathrand.Intn(len(participatingRollers))
-			_ = participatingRollers[randIndex]
-			// TODO: reward winner
 			return
 
+		//Execute after one of the roller finishes sending proof, return early if all rollers had sent results.
 		case ret := <-sess.finishChan:
 			m.mu.Lock()
 			sess.info.Rollers[ret.pk].Status = ret.status
-			if m.isSessionFailed(sess.info) {
+			if sess.isSessionFailed() {
 				if err := m.orm.UpdateProvingStatus(ret.id, types.ProvingTaskFailed); err != nil {
 					log.Error("failed to update proving_status as failed", "msg.ID", ret.id, "error", err)
 				}
@@ -443,13 +441,44 @@ func (m *Manager) CollectProofs(sess *session) {
 			if err := m.orm.SetSessionInfo(sess.info); err != nil {
 				log.Error("db set session info fail", "pk", ret.pk, "error", err)
 			}
+			//Check if all rollers have finished their tasks, and rollers with valid results are indexed by public key.
+			finished, validRollers := sess.isRollersFinished()
+
+			//When all rollers have finished submitting their tasks, select a winner within rollers with valid proof, and return, terminate the for loop.
+			if finished && len(validRollers) > 0 {
+				//Select a random index for this slice.
+				randIndex := mathrand.Intn(len(validRollers))
+				_ = validRollers[randIndex]
+				// TODO: reward winner
+				m.mu.Unlock()
+				return
+			}
 			m.mu.Unlock()
 		}
 	}
 }
 
-func (m *Manager) isSessionFailed(info *types.SessionInfo) bool {
-	for _, roller := range info.Rollers {
+// isRollersFinished checks if all rollers have finished submitting proofs, check their validity, and record rollers who produce valid proof.
+// When rollersLeft reaches 0, it means all rollers have finished their tasks.
+// validRollers also records the public keys of rollers who have finished their tasks correctly as index.
+func (s *session) isRollersFinished() (bool, []string) {
+	var validRollers []string
+	for pk, roller := range s.info.Rollers {
+		if roller.Status == types.RollerProofValid {
+			validRollers = append(validRollers, pk)
+			continue
+		}
+		if roller.Status == types.RollerProofInvalid {
+			continue
+		}
+		// Some rollers are still proving.
+		return false, nil
+	}
+	return true, validRollers
+}
+
+func (s *session) isSessionFailed() bool {
+	for _, roller := range s.info.Rollers {
 		if roller.Status != types.RollerProofInvalid {
 			return false
 		}
@@ -591,6 +620,8 @@ func (m *Manager) IsRollerIdle(hexPk string) bool {
 }
 
 func (m *Manager) addFailedSession(sess *session, errMsg string) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	m.failedSessionInfos[sess.info.ID] = newSessionInfo(sess, types.ProvingTaskFailed, errMsg, true)
 }
 
@@ -602,4 +633,27 @@ func (m *Manager) VerifyToken(authMsg *message.AuthMsg) (bool, error) {
 		return false, errors.New("failed to find corresponding token")
 	}
 	return true, nil
+}
+
+func (m *Manager) addVerifyTask(proof *message.AggProof) chan verifyResult {
+	c := make(chan verifyResult, 1)
+	m.verifierWorkerPool.AddTask(func() {
+		result, err := m.verifier.VerifyProof(proof)
+		c <- verifyResult{result, err}
+	})
+	return c
+}
+
+func (m *Manager) verifyProof(proof *message.AggProof) (bool, error) {
+	if !m.isRunning() {
+		return false, errors.New("coordinator has stopped before verification")
+	}
+	verifyResultChan := m.addVerifyTask(proof)
+	verifyResult := <-verifyResultChan
+	return verifyResult.result, verifyResult.err
+}
+
+type verifyResult struct {
+	result bool
+	err    error
 }

@@ -2,62 +2,62 @@
 
 pragma solidity ^0.8.0;
 
-import { MockERC20 } from "solmate/test/utils/mocks/MockERC20.sol";
+import {MockERC20} from "solmate/test/utils/mocks/MockERC20.sol";
 
 // solhint-disable no-empty-blocks
 
 contract FeeOnTransferToken is MockERC20 {
-  uint256 private feeRate;
+    uint256 private feeRate;
 
-  constructor(
-    string memory _name,
-    string memory _symbol,
-    uint8 _decimals
-  ) MockERC20(_name, _symbol, _decimals) {}
+    constructor(
+        string memory _name,
+        string memory _symbol,
+        uint8 _decimals
+    ) MockERC20(_name, _symbol, _decimals) {}
 
-  function setFeeRate(uint256 _feeRate) external payable {
-    feeRate = _feeRate;
-  }
-
-  function transfer(address to, uint256 amount) public virtual override returns (bool) {
-    balanceOf[msg.sender] -= amount;
-
-    uint256 fee = (amount * feeRate) / 1e9;
-    amount -= fee;
-
-    // Cannot overflow because the sum of all user
-    // balances can't exceed the max uint256 value.
-    unchecked {
-      balanceOf[to] += amount;
+    function setFeeRate(uint256 _feeRate) external payable {
+        feeRate = _feeRate;
     }
 
-    emit Transfer(msg.sender, to, amount);
+    function transfer(address to, uint256 amount) public virtual override returns (bool) {
+        balanceOf[msg.sender] -= amount;
 
-    return true;
-  }
+        uint256 fee = (amount * feeRate) / 1e9;
+        amount -= fee;
 
-  function transferFrom(
-    address from,
-    address to,
-    uint256 amount
-  ) public virtual override returns (bool) {
-    uint256 allowed = allowance[from][msg.sender]; // Saves gas for limited approvals.
+        // Cannot overflow because the sum of all user
+        // balances can't exceed the max uint256 value.
+        unchecked {
+            balanceOf[to] += amount;
+        }
 
-    if (allowed != type(uint256).max) allowance[from][msg.sender] = allowed - amount;
+        emit Transfer(msg.sender, to, amount);
 
-    balanceOf[from] -= amount;
-
-    uint256 fee = (amount * feeRate) / 1e9;
-    amount -= fee;
-
-    // Cannot overflow because the sum of all user
-    // balances can't exceed the max uint256 value.
-    unchecked {
-      balanceOf[to] += amount;
+        return true;
     }
 
-    emit Transfer(from, to, amount);
+    function transferFrom(
+        address from,
+        address to,
+        uint256 amount
+    ) public virtual override returns (bool) {
+        uint256 allowed = allowance[from][msg.sender]; // Saves gas for limited approvals.
 
-    return true;
-  }
+        if (allowed != type(uint256).max) allowance[from][msg.sender] = allowed - amount;
+
+        balanceOf[from] -= amount;
+
+        uint256 fee = (amount * feeRate) / 1e9;
+        amount -= fee;
+
+        // Cannot overflow because the sum of all user
+        // balances can't exceed the max uint256 value.
+        unchecked {
+            balanceOf[to] += amount;
+        }
+
+        emit Transfer(from, to, amount);
+
+        return true;
+    }
 }

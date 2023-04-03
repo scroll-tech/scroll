@@ -7,9 +7,15 @@ import (
 
 	"github.com/patrickmn/go-cache"
 	"github.com/scroll-tech/go-ethereum/log"
+	geth_metrics "github.com/scroll-tech/go-ethereum/metrics"
 	"github.com/scroll-tech/go-ethereum/rpc"
 
 	"scroll-tech/common/message"
+	"scroll-tech/common/metrics"
+)
+
+var (
+	coordinatorRollersDisconnectsTotalCounter = geth_metrics.NewRegisteredCounter("coordinator/rollers/disconnects/total", metrics.ScrollRegistry)
 )
 
 // RollerAPI for rollers inorder to register and submit proof
@@ -82,6 +88,7 @@ func (m *Manager) Register(ctx context.Context, authMsg *message.AuthMsg) (*rpc.
 			case task := <-taskCh:
 				notifier.Notify(rpcSub.ID, task) //nolint
 			case err := <-rpcSub.Err():
+				coordinatorRollersDisconnectsTotalCounter.Inc(1)
 				log.Warn("client stopped the ws connection", "name", authMsg.Identity.Name, "pubkey", pubkey, "err", err)
 				return
 			case <-notifier.Closed():

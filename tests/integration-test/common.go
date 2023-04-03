@@ -22,7 +22,10 @@ import (
 	_ "scroll-tech/roller/cmd/app"
 	rollerConfig "scroll-tech/roller/config"
 
-	_ "scroll-tech/bridge/cmd/app"
+	_ "scroll-tech/bridge/cmd/event_watcher/app"
+	_ "scroll-tech/bridge/cmd/gas_oracle/app"
+	_ "scroll-tech/bridge/cmd/msg_relayer/app"
+	_ "scroll-tech/bridge/cmd/rollup_relayer/app"
 	bridgeConfig "scroll-tech/bridge/config"
 	"scroll-tech/bridge/sender"
 
@@ -34,9 +37,7 @@ import (
 )
 
 var (
-	l1gethImg docker.ImgInstance
-	l2gethImg docker.ImgInstance
-	dbImg     docker.ImgInstance
+	base *docker.App
 
 	timestamp int
 	wsPort    int64
@@ -51,9 +52,7 @@ var (
 
 func setupEnv(t *testing.T) {
 	// Start l1geth l2geth and postgres.
-	l1gethImg = docker.NewTestL1Docker(t)
-	l2gethImg = docker.NewTestL2Docker(t)
-	dbImg = docker.NewTestDBDocker(t, "postgres")
+	base.RunImages(t)
 
 	// Create a random ws port.
 	port, _ := rand.Int(rand.Reader, big.NewInt(2000))
@@ -68,9 +67,7 @@ func setupEnv(t *testing.T) {
 }
 
 func free(t *testing.T) {
-	assert.NoError(t, l1gethImg.Stop())
-	assert.NoError(t, l2gethImg.Stop())
-	assert.NoError(t, dbImg.Stop())
+	base.Free()
 
 	// Delete temporary files.
 	assert.NoError(t, os.Remove(bridgeFile))
@@ -81,36 +78,51 @@ func free(t *testing.T) {
 }
 
 type appAPI interface {
-	WaitResult(timeout time.Duration, keyword string) bool
+	WaitResult(t *testing.T, timeout time.Duration, keyword string) bool
 	RunApp(waitResult func() bool)
 	WaitExit()
-	ExpectWithTimeout(parallel bool, timeout time.Duration, keyword string)
+	ExpectWithTimeout(t *testing.T, parallel bool, timeout time.Duration, keyword string)
 }
 
-func runBridgeApp(t *testing.T, args ...string) appAPI {
+func runMsgRelayerApp(t *testing.T, args ...string) appAPI {
 	args = append(args, "--log.debug", "--config", bridgeFile)
-	return cmd.NewCmd(t, "bridge-test", args...)
+	return cmd.NewCmd("message-relayer-test", args...)
+}
+
+func runGasOracleApp(t *testing.T, args ...string) appAPI {
+	args = append(args, "--log.debug", "--config", bridgeFile)
+	return cmd.NewCmd("gas-oracle-test", args...)
+}
+
+func runRollupRelayerApp(t *testing.T, args ...string) appAPI {
+	args = append(args, "--log.debug", "--config", bridgeFile)
+	return cmd.NewCmd("rollup-relayer-test", args...)
+}
+
+func runEventWatcherApp(t *testing.T, args ...string) appAPI {
+	args = append(args, "--log.debug", "--config", bridgeFile)
+	return cmd.NewCmd("event-watcher-test", args...)
 }
 
 func runCoordinatorApp(t *testing.T, args ...string) appAPI {
 	args = append(args, "--log.debug", "--config", coordinatorFile, "--ws", "--ws.port", strconv.Itoa(int(wsPort)))
 	// start process
-	return cmd.NewCmd(t, "coordinator-test", args...)
+	return cmd.NewCmd("coordinator-test", args...)
 }
 
 func runDBCliApp(t *testing.T, option, keyword string) {
 	args := []string{option, "--config", dbFile}
-	app := cmd.NewCmd(t, "db_cli-test", args...)
+	app := cmd.NewCmd("db_cli-test", args...)
 	defer app.WaitExit()
 
 	// Wait expect result.
-	app.ExpectWithTimeout(true, time.Second*3, keyword)
+	app.ExpectWithTimeout(t, true, time.Second*3, keyword)
 	app.RunApp(nil)
 }
 
 func runRollerApp(t *testing.T, args ...string) appAPI {
 	args = append(args, "--log.debug", "--config", rollerFile)
-	return cmd.NewCmd(t, "roller-test", args...)
+	return cmd.NewCmd("roller-test", args...)
 }
 
 func runSender(t *testing.T, endpoint string) *sender.Sender {
@@ -134,17 +146,11 @@ func mockBridgeConfig(t *testing.T) string {
 	cfg, err := bridgeConfig.NewConfig("../../bridge/config.json")
 	assert.NoError(t, err)
 
-	if l1gethImg != nil {
-		cfg.L1Config.Endpoint = l1gethImg.Endpoint()
-		cfg.L2Config.RelayerConfig.SenderConfig.Endpoint = l1gethImg.Endpoint()
-	}
-	if l2gethImg != nil {
-		cfg.L2Config.Endpoint = l2gethImg.Endpoint()
-		cfg.L1Config.RelayerConfig.SenderConfig.Endpoint = l2gethImg.Endpoint()
-	}
-	if dbImg != nil {
-		cfg.DBConfig.DSN = dbImg.Endpoint()
-	}
+	cfg.L1Config.Endpoint = base.L1GethEndpoint()
+	cfg.L2Config.RelayerConfig.SenderConfig.Endpoint = base.L1GethEndpoint()
+	cfg.L2Config.Endpoint = base.L2GethEndpoint()
+	cfg.L1Config.RelayerConfig.SenderConfig.Endpoint = base.L2GethEndpoint()
+	cfg.DBConfig.DSN = base.DBEndpoint()
 
 	// Store changed bridge config into a temp file.
 	data, err := json.Marshal(cfg)
@@ -161,13 +167,10 @@ func mockCoordinatorConfig(t *testing.T) string {
 	assert.NoError(t, err)
 
 	cfg.RollerManagerConfig.Verifier.MockMode = true
-	if dbImg != nil {
-		cfg.DBConfig.DSN = dbImg.Endpoint()
-	}
 
-	if l2gethImg != nil {
-		cfg.L2Config.Endpoint = l2gethImg.Endpoint()
-	}
+	cfg.DBConfig.DSN = base.DBEndpoint()
+
+	cfg.L2Config.Endpoint = base.L2GethEndpoint()
 
 	data, err := json.Marshal(cfg)
 	assert.NoError(t, err)
@@ -182,9 +185,8 @@ func mockCoordinatorConfig(t *testing.T) string {
 func mockDatabaseConfig(t *testing.T) string {
 	cfg, err := database.NewConfig("../../database/config.json")
 	assert.NoError(t, err)
-	if dbImg != nil {
-		cfg.DSN = dbImg.Endpoint()
-	}
+	cfg.DSN = base.DBEndpoint()
+
 	data, err := json.Marshal(cfg)
 	assert.NoError(t, err)
 
@@ -206,6 +208,7 @@ func mockRollerConfig(t *testing.T) string {
 
 	bboltDB = fmt.Sprintf("/tmp/%d_bbolt_db", timestamp)
 	cfg.DBPath = bboltDB
+	assert.NoError(t, os.WriteFile(bboltDB, []byte{}, 0644))
 
 	data, err := json.Marshal(cfg)
 	assert.NoError(t, err)
