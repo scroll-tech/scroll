@@ -43,14 +43,14 @@ func (t *txOrm) SaveTx(id, sender string, tx *types.Transaction) error {
 	return err
 }
 
-// DeleteTxDataById remove data content by hash.
-func (t *txOrm) DeleteTxDataById(id string) error {
+// UpdateTxMsgById remove data content by id.
+func (t *txOrm) UpdateTxMsgById(id string, txHash string) error {
 	db := t.db
-	_, err := db.Exec(db.Rebind("UPDATE transaction SET data = '' WHERE hash = ?;"), id)
+	_, err := db.Exec(db.Rebind("UPDATE transaction SET data = '', tx_hash = ? WHERE id = ?;"), txHash, id)
 	return err
 }
 
-// GetTxById returns tx message by message hash.
+// GetTxById returns tx message by message id.
 func (t *txOrm) GetTxById(id string) (*stypes.TxMessage, error) {
 	db := t.db
 	row := db.QueryRowx(db.Rebind("SELECT id, tx_hash, sender, nonce, target, value, data FROM transaction WHERE id = ?"), id)
@@ -63,14 +63,14 @@ func (t *txOrm) GetTxById(id string) (*stypes.TxMessage, error) {
 
 // GetL1TxMessages gets tx messages by transaction right join l1_message.
 // sql i.g:
-// select l1.msg_hash as hash, tx.tx_hash, tx.sender, tx.nonce, tx.target, tx.value, tx.data
+// select l1.msg_hash as id, tx.tx_hash, tx.sender, tx.nonce, tx.target, tx.value, tx.data
 // from transaction as tx
 // right join (select msg_hash
 //
 //	from l1_message
 //	where 1 = 1 AND status = :status AND queue_index > 0
 //	ORDER BY queue_index ASC
-//	LIMIT 10) as l1 on tx.hash = l1.msg_hash;
+//	LIMIT 10) as l1 on tx.id = l1.msg_hash;
 func (t *txOrm) GetL1TxMessages(fields map[string]interface{}, args ...string) ([]*stypes.TxMessage, error) {
 	query := "select msg_hash from l1_message where 1 = 1"
 	for key := range fields {

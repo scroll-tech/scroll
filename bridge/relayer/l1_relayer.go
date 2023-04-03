@@ -235,8 +235,8 @@ func (r *Layer1Relayer) handleConfirmLoop(ctx context.Context) {
 				if err != nil {
 					log.Warn("UpdateLayer1StatusAndLayer2Hash failed", "err", err)
 				}
-				if err = r.db.DeleteTxDataById(cfm.ID); err != nil {
-					log.Warn("failed to delete l1 relayer tx data by hash", "msg.msgHash", cfm.ID, "err", err)
+				if err = r.db.UpdateTxMsgById(cfm.ID, cfm.TxHash.String()); err != nil {
+					log.Warn("failed to delete l1 relayer tx data by hash", "msg.msgHash", cfm.ID, "tx.Hash", cfm.TxHash.String(), "err", err)
 				}
 				log.Info("transaction confirmed in layer2", "confirmation", cfm)
 			}
@@ -254,8 +254,8 @@ func (r *Layer1Relayer) handleConfirmLoop(ctx context.Context) {
 				if err != nil {
 					log.Warn("UpdateGasOracleStatusAndOracleTxHash failed", "err", err)
 				}
-				if err = r.db.DeleteTxDataById(cfm.ID); err != nil {
-					log.Warn("failed to delete l1 gas oracle tx data", "block.Hash", cfm.ID, "err", err)
+				if err = r.db.UpdateTxMsgById(cfm.ID, cfm.TxHash.String()); err != nil {
+					log.Warn("failed to delete l1 gas oracle tx data", "block.Hash", cfm.ID, "tx.Hash", cfm.TxHash.String(), "err", err)
 				}
 
 				log.Info("transaction confirmed in layer2", "confirmation", cfm)

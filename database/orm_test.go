@@ -86,13 +86,15 @@ var (
 	ormBatch   orm.BlockBatchOrm
 	ormSession orm.SessionInfoOrm
 	ormTx      orm.TxOrm
+
+	auth *bind.TransactOpts
 )
 
 func setupEnv(t *testing.T) error {
 	// Init db config and start db container.
 	dbConfig = &database.DBConfig{DriverName: "postgres"}
-	base.RunImages(t)
-	dbConfig.DSN = base.DBEndpoint()
+	//base.RunImages(t)
+	dbConfig.DSN = "postgres://maskpp:123456@localhost:5432/postgres?sslmode=disable" //base.DBEndpoint()
 
 	// Create db handler and reset db.
 	factory, err := database.NewOrmFactory(dbConfig)
@@ -152,6 +154,11 @@ func setupEnv(t *testing.T) error {
 	}
 	batchData2.Batch.Blocks = append(batchData2.Batch.Blocks, fakeBlockContext)
 	batchData2.Batch.NewStateRoot = common.HexToHash("0x000000000000000000000000000000000000000000000000000000000000cafe")
+
+	sk, err := crypto.ToECDSA(common.FromHex("1212121212121212121212121212121212121212121212121212121212121212"))
+	assert.NoError(t, err)
+	auth, err = bind.NewKeyedTransactorWithChainID(sk, big.NewInt(1))
+	assert.NoError(t, err)
 
 	fmt.Printf("batchhash1 = %x\n", batchData1.Hash())
 	fmt.Printf("batchhash2 = %x\n", batchData2.Hash())
@@ -439,20 +446,15 @@ func testOrmSessionInfo(t *testing.T) {
 	assert.Equal(t, 0, len(sessionInfos))
 }
 
-func testTxOrmSaveTxAndGetTxByHash(t *testing.T) {
-	// Create db handler and reset db.
-	factory, err := database.NewOrmFactory(dbConfig)
-	assert.NoError(t, err)
-	assert.NoError(t, migrate.ResetDB(factory.GetDB().DB))
+func mockTx(auth *bind.TransactOpts) (*etypes.Transaction, error) {
+	if auth.Nonce == nil {
+		auth.Nonce = big.NewInt(0)
+	} else {
+		auth.Nonce.Add(auth.Nonce, big.NewInt(1))
+	}
 
-	sk, err := crypto.ToECDSA(common.FromHex("1212121212121212121212121212121212121212121212121212121212121212"))
-	assert.NoError(t, err)
-	auth, err := bind.NewKeyedTransactorWithChainID(sk, big.NewInt(1))
-	assert.NoError(t, err)
-
-	nonce := uint64(1)
 	tx := etypes.NewTx(&etypes.LegacyTx{
-		Nonce:    nonce,
+		Nonce:    auth.Nonce.Uint64(),
 		To:       &auth.From,
 		Value:    big.NewInt(0),
 		Gas:      500000,
@@ -460,19 +462,35 @@ func testTxOrmSaveTxAndGetTxByHash(t *testing.T) {
 		Data:     common.Hex2Bytes("1212121212121212121212121212121212121212121212121212121212121212"),
 	})
 
+	return auth.Signer(auth.From, tx)
+}
+
+func testTxOrmSaveTxAndGetTxByHash(t *testing.T) {
+	// Create db handler and reset db.
+	factory, err := database.NewOrmFactory(dbConfig)
+	assert.NoError(t, err)
+	assert.NoError(t, migrate.ResetDB(factory.GetDB().DB))
+
+	tx, err := mockTx(auth)
+	assert.NoError(t, err)
+
 	signedTx, err := auth.Signer(auth.From, tx)
 	assert.NoError(t, err)
 
 	err = ormTx.SaveTx("1", auth.From.String(), signedTx)
 	assert.Nil(t, err)
 
+	// Update tx message by id.
+	err = ormTx.UpdateTxMsgById("1", signedTx.Hash().String())
+	assert.NoError(t, err)
+
 	savedTx, err := ormTx.GetTxById("1")
 	assert.NoError(t, err)
 
 	assert.Equal(t, signedTx.Hash().String(), savedTx.TxHash.String)
 	assert.Equal(t, auth.From.String(), savedTx.Sender.String)
-	assert.Equal(t, nonce, uint64(savedTx.Nonce.Int64))
-	assert.Equal(t, signedTx.Data(), savedTx.Data)
+	assert.Equal(t, auth.Nonce.Int64(), savedTx.Nonce.Int64)
+	assert.Equal(t, []byte{}, savedTx.Data)
 }
 
 func testTxOrmGetL1TxMessages(t *testing.T) {
@@ -481,35 +499,12 @@ func testTxOrmGetL1TxMessages(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(factory.GetDB().DB))
 
-	sk, err := crypto.ToECDSA(common.FromHex("1212121212121212121212121212121212121212121212121212121212121212"))
-	assert.NoError(t, err)
-	auth, err := bind.NewKeyedTransactorWithChainID(sk, big.NewInt(1))
-	assert.NoError(t, err)
-
-	nonce := uint64(1)
-	tx := etypes.NewTx(&etypes.LegacyTx{
-		Nonce:    nonce,
-		To:       &auth.From,
-		Value:    big.NewInt(0),
-		Gas:      500000,
-		GasPrice: big.NewInt(500000),
-		Data:     common.Hex2Bytes("1212121212121212121212121212121212121212121212121212121212121212"),
-	})
-	signedTx, err := auth.Signer(auth.From, tx)
+	signedTx, err := mockTx(auth)
 	assert.NoError(t, err)
 	err = ormTx.SaveTx(templateL1Message[0].MsgHash, auth.From.String(), signedTx)
 	assert.Nil(t, err)
 
-	nonce = 2
-	tx = etypes.NewTx(&etypes.LegacyTx{
-		Nonce:    nonce,
-		To:       &auth.From,
-		Value:    big.NewInt(0),
-		Gas:      500000,
-		GasPrice: big.NewInt(500000),
-		Data:     common.Hex2Bytes("1212121212121212121212121212121212121212121212121212121212121212"),
-	})
-	signedTx, err = auth.Signer(auth.From, tx)
+	signedTx, err = mockTx(auth)
 	assert.NoError(t, err)
 	err = ormTx.SaveTx("3", auth.From.String(), signedTx)
 	assert.Nil(t, err)
@@ -543,21 +538,7 @@ func testTxOrmGetL2TxMessages(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(factory.GetDB().DB))
 
-	sk, err := crypto.ToECDSA(common.FromHex("1212121212121212121212121212121212121212121212121212121212121212"))
-	assert.NoError(t, err)
-	auth, err := bind.NewKeyedTransactorWithChainID(sk, big.NewInt(1))
-	assert.NoError(t, err)
-
-	nonce := uint64(1)
-	tx := etypes.NewTx(&etypes.LegacyTx{
-		Nonce:    nonce,
-		To:       &auth.From,
-		Value:    big.NewInt(0),
-		Gas:      500000,
-		GasPrice: big.NewInt(500000),
-		Data:     common.Hex2Bytes("1212121212121212121212121212121212121212121212121212121212121212"),
-	})
-	signedTx, err := auth.Signer(auth.From, tx)
+	signedTx, err := mockTx(auth)
 	assert.NoError(t, err)
 	err = ormTx.SaveTx(templateL1Message[0].MsgHash, auth.From.String(), signedTx)
 	assert.Nil(t, err)
@@ -597,21 +578,7 @@ func testTxOrmGetBlockBatchTxMessages(t *testing.T) {
 	}
 	assert.NoError(t, dbTx.Commit())
 
-	sk, err := crypto.ToECDSA(common.FromHex("1212121212121212121212121212121212121212121212121212121212121212"))
-	assert.NoError(t, err)
-	auth, err := bind.NewKeyedTransactorWithChainID(sk, big.NewInt(1))
-	assert.NoError(t, err)
-
-	nonce := uint64(1)
-	tx := etypes.NewTx(&etypes.LegacyTx{
-		Nonce:    nonce,
-		To:       &auth.From,
-		Value:    big.NewInt(0),
-		Gas:      500000,
-		GasPrice: big.NewInt(500000),
-		Data:     common.Hex2Bytes("1212121212121212121212121212121212121212121212121212121212121212"),
-	})
-	signedTx, err := auth.Signer(auth.From, tx)
+	signedTx, err := mockTx(auth)
 	assert.NoError(t, err)
 	err = ormTx.SaveTx(batchData1.Hash().String(), auth.From.String(), signedTx)
 	assert.Nil(t, err)
