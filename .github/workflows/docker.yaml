@@ -33,7 +33,7 @@ jobs:
         context: .
         file: ./build/dockerfiles/event_watcher.Dockerfile
         push: true
-        tags: scrolltech/event_watcher:${{github.ref_name}}
+        tags: scrolltech/event-watcher:${{github.ref_name}}
         # cache-from: type=gha,scope=${{ github.workflow }}
         # cache-to: type=gha,scope=${{ github.workflow }}
     - name: Build and push gas_oracle docker
@@ -42,7 +42,7 @@ jobs:
         context: .
         file: ./build/dockerfiles/gas_oracle.Dockerfile
         push: true
-        tags: scrolltech/gas_oracle:${{github.ref_name}}
+        tags: scrolltech/gas-oracle:${{github.ref_name}}
         # cache-from: type=gha,scope=${{ github.workflow }}
         # cache-to: type=gha,scope=${{ github.workflow }}
     - name: Build and push msg_relayer docker
@@ -51,7 +51,7 @@ jobs:
         context: .
         file: ./build/dockerfiles/msg_relayer.Dockerfile
         push: true
-        tags: scrolltech/msg_relayer:${{github.ref_name}}
+        tags: scrolltech/msg-relayer:${{github.ref_name}}
         # cache-from: type=gha,scope=${{ github.workflow }}
         # cache-to: type=gha,scope=${{ github.workflow }}
     - name: Build and push rollup_relayer docker
@@ -60,6 +60,6 @@ jobs:
         context: .
         file: ./build/dockerfiles/rollup_relayer.Dockerfile
         push: true
-        tags: scrolltech/rollup_relayer:${{github.ref_name}}
+        tags: scrolltech/rollup-relayer:${{github.ref_name}}
         # cache-from: type=gha,scope=${{ github.workflow }}
         # cache-to: type=gha,scope=${{ github.workflow }}
