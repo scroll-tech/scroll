@@ -180,7 +180,7 @@ func (r *Layer2Relayer) ProcessSavedEvents() {
 			})
 		}
 		if err := g.Wait(); err != nil {
-			if !errors.Is(err, sender.ErrNoAvailableAccount) {
+			if !errors.Is(err, sender.ErrNoAvailableAccount) && !errors.Is(err, sender.ErrFullPending) {
 				log.Error("failed to process l2 saved event", "err", err)
 			}
 			return
@@ -233,7 +233,7 @@ func (r *Layer2Relayer) processSavedEvent(msg *types.L2Message) error {
 		return r.db.UpdateLayer2Status(r.ctx, msg.MsgHash, types.MsgConfirmed)
 	}
 	if err != nil {
-		if !errors.Is(err, sender.ErrNoAvailableAccount) {
+		if !errors.Is(err, sender.ErrNoAvailableAccount) && !errors.Is(err, sender.ErrFullPending) {
 			log.Error("Failed to send relayMessageWithProof tx to layer1 ", "msg.height", msg.Height, "msg.MsgHash", msg.MsgHash, "err", err)
 		}
 		return err
@@ -284,7 +284,7 @@ func (r *Layer2Relayer) ProcessGasPriceOracle() {
 
 			from, tx, err := r.gasOracleSender.SendTransaction(batch.Hash, &r.cfg.GasPriceOracleContractAddress, big.NewInt(0), data, 0)
 			if err != nil {
-				if !errors.Is(err, sender.ErrNoAvailableAccount) {
+				if !errors.Is(err, sender.ErrNoAvailableAccount) && !errors.Is(err, sender.ErrFullPending) {
 					log.Error("Failed to send setL2BaseFee tx to layer2 ", "batch.Hash", batch.Hash, "err", err)
 				}
 				return
@@ -335,7 +335,7 @@ func (r *Layer2Relayer) SendCommitTx(batchData []*types.BatchData) error {
 	txID := crypto.Keccak256Hash(bytes).String()
 	from, tx, err := r.rollupSender.SendTransaction(txID, &r.cfg.RollupContractAddress, big.NewInt(0), calldata, 0)
 	if err != nil {
-		if !errors.Is(err, sender.ErrNoAvailableAccount) {
+		if !errors.Is(err, sender.ErrNoAvailableAccount) && !errors.Is(err, sender.ErrFullPending) {
 			log.Error("Failed to send commitBatches tx to layer1 ", "err", err)
 		}
 		return err
@@ -489,7 +489,7 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 		// add suffix `-finalize` to avoid duplication with commit tx in unit tests
 		from, tx, err := r.rollupSender.SendTransaction(txID, &r.cfg.RollupContractAddress, big.NewInt(0), data, 0)
 		if err != nil {
-			if !errors.Is(err, sender.ErrNoAvailableAccount) {
+			if !errors.Is(err, sender.ErrNoAvailableAccount) && !errors.Is(err, sender.ErrFullPending) {
 				log.Error("finalizeBatchWithProof in layer1 failed", "hash", hash, "err", err)
 			}
 			return

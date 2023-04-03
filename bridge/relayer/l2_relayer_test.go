@@ -78,6 +78,12 @@ func testL2RelayerProcessSaveEvents(t *testing.T) {
 	}
 	assert.NoError(t, db.InsertWrappedBlocks(traces))
 
+	parentBatch1 := &types.BlockBatch{
+		Index:     0,
+		Hash:      common.Hash{}.String(),
+		StateRoot: common.Hash{}.String(),
+	}
+	batchData1 := types.NewBatchData(parentBatch1, []*types.WrappedBlock{wrappedBlock1}, nil)
 	dbTx, err := db.Beginx()
 	assert.NoError(t, err)
 	assert.NoError(t, db.NewBatchInDBTx(dbTx, batchData1))
@@ -106,6 +112,12 @@ func testL2RelayerProcessCommittedBatches(t *testing.T) {
 	relayer, err := relayer.NewLayer2Relayer(context.Background(), l2Cli, db, l2Cfg.RelayerConfig)
 	assert.NoError(t, err)
 
+	parentBatch1 := &types.BlockBatch{
+		Index:     0,
+		Hash:      common.Hash{}.String(),
+		StateRoot: common.Hash{}.String(),
+	}
+	batchData1 := types.NewBatchData(parentBatch1, []*types.WrappedBlock{wrappedBlock1}, nil)
 	dbTx, err := db.Beginx()
 	assert.NoError(t, err)
 	assert.NoError(t, db.NewBatchInDBTx(dbTx, batchData1))

@@ -124,7 +124,7 @@ func (r *Layer1Relayer) ProcessSavedEvents() {
 
 	for _, msg := range msgs {
 		if err = r.processSavedEvent(msg); err != nil {
-			if !errors.Is(err, sender.ErrNoAvailableAccount) {
+			if !errors.Is(err, sender.ErrNoAvailableAccount) && !errors.Is(err, sender.ErrFullPending) {
 				log.Error("failed to process event", "msg.msgHash", msg.MsgHash, "err", err)
 			}
 			return
@@ -194,7 +194,7 @@ func (r *Layer1Relayer) ProcessGasPriceOracle() {
 
 			from, tx, err := r.gasOracleSender.SendTransaction(block.Hash, &r.cfg.GasPriceOracleContractAddress, big.NewInt(0), data, 0)
 			if err != nil {
-				if !errors.Is(err, sender.ErrNoAvailableAccount) {
+				if !errors.Is(err, sender.ErrNoAvailableAccount) && !errors.Is(err, sender.ErrFullPending) {
 					log.Error("Failed to send setL1BaseFee tx to layer2 ", "block.Hash", block.Hash, "block.Height", block.Number, "err", err)
 				}
 				return
