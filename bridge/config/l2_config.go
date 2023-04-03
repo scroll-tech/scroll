@@ -18,6 +18,8 @@ type L2Config struct {
 	L2MessengerAddress common.Address `json:"l2_messenger_address"`
 	// The L2MessageQueue contract address deployed on layer 2 chain.
 	L2MessageQueueAddress common.Address `json:"l2_message_queue_address"`
+	// The WithdrawTrieRootSlot in L2MessageQueue contract.
+	WithdrawTrieRootSlot common.Hash `json:"withdraw_trie_root_slot,omitempty"`
 	// The relayer config
 	RelayerConfig *RelayerConfig `json:"relayer_config"`
 	// The batch_proposer config
@@ -40,6 +42,8 @@ type BatchProposerConfig struct {
 	BatchBlocksLimit uint64 `json:"batch_blocks_limit"`
 	// Commit tx calldata size limit in bytes, target to cap the gas use of commit tx at 2M gas
 	CommitTxCalldataSizeLimit uint64 `json:"commit_tx_calldata_size_limit"`
+	// Commit tx calldata min size limit in bytes
+	CommitTxCalldataMinSize uint64 `json:"commit_tx_calldata_min_size,omitempty"`
 	// The public input hash config
 	PublicInputConfig *types.PublicInputHashConfig `json:"public_input_config"`
 }

@@ -17,7 +17,6 @@ import (
 	"time"
 
 	"github.com/scroll-tech/go-ethereum"
-	geth_types "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/crypto"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/sync/errgroup"
@@ -64,8 +63,8 @@ func setEnv(t *testing.T) (err error) {
 		return err
 	}
 	// unmarshal blockTrace
-	blockTrace := &geth_types.BlockTrace{}
-	if err = json.Unmarshal(templateBlockTrace, blockTrace); err != nil {
+	wrappedBlock := &types.WrappedBlock{}
+	if err = json.Unmarshal(templateBlockTrace, wrappedBlock); err != nil {
 		return err
 	}
 
@@ -73,7 +72,7 @@ func setEnv(t *testing.T) (err error) {
 		Index: 1,
 		Hash:  "0x0000000000000000000000000000000000000000",
 	}
-	batchData = types.NewBatchData(parentBatch, []*geth_types.BlockTrace{blockTrace}, nil)
+	batchData = types.NewBatchData(parentBatch, []*types.WrappedBlock{wrappedBlock}, nil)
 
 	return
 }
