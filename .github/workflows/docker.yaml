@@ -3,7 +3,7 @@ name: Docker
 on:
   push:
     tags:
-      - v3.*
+      - v**
 
 jobs:
   build:
@@ -13,12 +13,18 @@ jobs:
       uses: actions/checkout@v2
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v2
+    - name: Login to Docker Hub
+      uses: docker/login-action@v2
+      with:
+        username: ${{ secrets.DOCKERHUB_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_TOKEN }}
     - name: Build coordinator docker
       uses: docker/build-push-action@v2
       with:
         context: .
         file: ./build/dockerfiles/coordinator.Dockerfile
-        push: false
+        push: true
+        tags: scrolltech/l2geth:${{github.ref_name}}
         # cache-from: type=gha,scope=${{ github.workflow }}
         # cache-to: type=gha,scope=${{ github.workflow }}
     - name: Build event_watcher docker
@@ -26,7 +32,8 @@ jobs:
       with:
         context: .
         file: ./build/dockerfiles/event_watcher.Dockerfile
-        push: false
+        push: true
+        tags: scrolltech/l2geth:${{github.ref_name}}
         # cache-from: type=gha,scope=${{ github.workflow }}
         # cache-to: type=gha,scope=${{ github.workflow }}
     - name: Build gas_oracle docker
@@ -34,7 +41,8 @@ jobs:
       with:
         context: .
         file: ./build/dockerfiles/gas_oracle.Dockerfile
-        push: false
+        push: true
+        tags: scrolltech/l2geth:${{github.ref_name}}
         # cache-from: type=gha,scope=${{ github.workflow }}
         # cache-to: type=gha,scope=${{ github.workflow }}
     - name: Build msg_relayer docker
@@ -42,7 +50,8 @@ jobs:
       with:
         context: .
         file: ./build/dockerfiles/msg_relayer.Dockerfile
-        push: false
+        push: true
+        tags: scrolltech/l2geth:${{github.ref_name}}
         # cache-from: type=gha,scope=${{ github.workflow }}
         # cache-to: type=gha,scope=${{ github.workflow }}
     - name: Build rollup_relayer docker
@@ -50,6 +59,7 @@ jobs:
       with:
         context: .
         file: ./build/dockerfiles/rollup_relayer.Dockerfile
-        push: false
+        push: true
+        tags: scrolltech/l2geth:${{github.ref_name}}
         # cache-from: type=gha,scope=${{ github.workflow }}
         # cache-to: type=gha,scope=${{ github.workflow }}
