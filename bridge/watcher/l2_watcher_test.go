@@ -16,12 +16,12 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"scroll-tech/common/types"
+	cutils "scroll-tech/common/utils"
 
 	"scroll-tech/bridge/mock_bridge"
 	"scroll-tech/bridge/sender"
 	"scroll-tech/bridge/watcher"
 
-	cutils "scroll-tech/common/utils"
 	"scroll-tech/database"
 	"scroll-tech/database/migrate"
 )

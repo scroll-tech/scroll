@@ -2,6 +2,7 @@ package types
 
 import "database/sql"
 
+// TxMessage Contains tx message, hash is the index.
 type TxMessage struct {
 	Hash   string         `json:"hash" db:"hash"`
 	TxHash sql.NullString `json:"tx_hash" db:"tx_hash"`

@@ -34,8 +34,8 @@ func init() {
 
 	app.Action = action
 	app.Name = "gas-oracle"
-	app.Usage = "The Scroll GasPrice Oracle"
-	app.Description = "Scroll GasPrice Oracle."
+	app.Usage = "The Scroll Gas Oracle"
+	app.Description = "Scroll Gas Oracle."
 	app.Version = version.Version
 	app.Flags = append(app.Flags, cutils.CommonFlags...)
 	app.Commands = []*cli.Command{}
