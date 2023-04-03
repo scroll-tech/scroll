@@ -73,34 +73,27 @@ func free(t *testing.T) {
 	assert.NoError(t, os.Remove(bboltDB))
 }
 
-type appAPI interface {
-	WaitResult(t *testing.T, timeout time.Duration, keyword string) bool
-	RunApp(waitResult func() bool)
-	WaitExit()
-	ExpectWithTimeout(t *testing.T, parallel bool, timeout time.Duration, keyword string)
-}
-
-func runMsgRelayerApp(t *testing.T, args ...string) appAPI {
+func runMsgRelayerApp(t *testing.T, args ...string) docker.AppAPI {
 	args = append(args, "--log.debug", "--config", bridgeFile)
 	return cmd.NewCmd("message-relayer-test", args...)
 }
 
-func runGasOracleApp(t *testing.T, args ...string) appAPI {
+func runGasOracleApp(t *testing.T, args ...string) docker.AppAPI {
 	args = append(args, "--log.debug", "--config", bridgeFile)
 	return cmd.NewCmd("gas-oracle-test", args...)
 }
 
-func runRollupRelayerApp(t *testing.T, args ...string) appAPI {
+func runRollupRelayerApp(t *testing.T, args ...string) docker.AppAPI {
 	args = append(args, "--log.debug", "--config", bridgeFile)
 	return cmd.NewCmd("rollup-relayer-test", args...)
 }
 
-func runEventWatcherApp(t *testing.T, args ...string) appAPI {
+func runEventWatcherApp(t *testing.T, args ...string) docker.AppAPI {
 	args = append(args, "--log.debug", "--config", bridgeFile)
 	return cmd.NewCmd("event-watcher-test", args...)
 }
 
-func runCoordinatorApp(t *testing.T, args ...string) appAPI {
+func runCoordinatorApp(t *testing.T, args ...string) docker.AppAPI {
 	args = append(args, "--log.debug", "--config", coordinatorFile, "--ws", "--ws.port", strconv.Itoa(int(wsPort)))
 	// start process
 	return cmd.NewCmd("coordinator-test", args...)
@@ -116,7 +109,7 @@ func runDBCliApp(t *testing.T, option, keyword string) {
 	app.RunApp(nil)
 }
 
-func runRollerApp(t *testing.T, args ...string) appAPI {
+func runRollerApp(t *testing.T, args ...string) docker.AppAPI {
 	args = append(args, "--log.debug", "--config", rollerFile)
 	return cmd.NewCmd("roller-test", args...)
 }
