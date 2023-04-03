@@ -91,7 +91,7 @@ var (
 func setupEnv(t *testing.T) error {
 	// Init db config and start db container.
 	dbConfig = &database.DBConfig{DriverName: "postgres"}
-	//base.RunImages(t)
+	base.RunImages(t)
 	dbConfig.DSN = base.DBEndpoint()
 
 	// Create db handler and reset db.
