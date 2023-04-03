@@ -43,15 +43,15 @@ func (t *txOrm) SaveTx(id, sender string, tx *types.Transaction) error {
 	return err
 }
 
-// UpdateTxMsgById remove data content by id.
-func (t *txOrm) UpdateTxMsgById(id string, txHash string) error {
+// UpdateTxMsgByID remove data content by id.
+func (t *txOrm) UpdateTxMsgByID(id string, txHash string) error {
 	db := t.db
 	_, err := db.Exec(db.Rebind("UPDATE transaction SET data = '', tx_hash = ? WHERE id = ?;"), txHash, id)
 	return err
 }
 
-// GetTxById returns tx message by message id.
-func (t *txOrm) GetTxById(id string) (*stypes.TxMessage, error) {
+// GetTxByID returns tx message by message id.
+func (t *txOrm) GetTxByID(id string) (*stypes.TxMessage, error) {
 	db := t.db
 	row := db.QueryRowx(db.Rebind("SELECT id, tx_hash, sender, nonce, target, value, data FROM transaction WHERE id = ?"), id)
 	txMsg := &stypes.TxMessage{}
