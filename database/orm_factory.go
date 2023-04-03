@@ -53,6 +53,7 @@ func NewOrmFactory(cfg *DBConfig) (OrmFactory, error) {
 		L2MessageOrm:   orm.NewL2MessageOrm(db),
 		L1BlockOrm:     orm.NewL1BlockOrm(db),
 		SessionInfoOrm: orm.NewSessionInfoOrm(db),
+		TxOrm:          orm.NewTxOrm(db),
 		DB:             db,
 	}, nil
 }
