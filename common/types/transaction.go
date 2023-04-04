@@ -6,13 +6,19 @@ import "database/sql"
 type TxType int
 
 const (
+	// UndefinedTx undefined scroll tx type
 	UndefinedTx TxType = iota
-	// L1MessageTx l1 relayer tx
+	// L1MessageTx l1 relayer message tx
 	L1MessageTx
+	// L1GasOracleTx l1 relayer gas oracle tx
 	L1GasOracleTx
+	// L2MessageTx l2 relayer message tx
 	L2MessageTx
+	// L2GasOracleTx l2 gas oracle tx
 	L2GasOracleTx
+	// L2RollUpCommitTx l2 rollup commit tx
 	L2RollUpCommitTx
+	// L2RollupFinalizeTx l2 rollup finalize tx
 	L2RollupFinalizeTx
 )
 
