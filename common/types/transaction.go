@@ -8,18 +8,18 @@ type TxType int
 const (
 	// UndefinedTx undefined scroll tx type
 	UndefinedTx TxType = iota
-	// L1MessageTx is sent by l1 relayer but to L2
-	L1MessageTx
-	// L1GasOracleTx  is sent by l1 relayer but to L2
-	L1GasOracleTx
-	// L2MessageTx  is sent by l2 relayer but to L1
-	L2MessageTx
-	// L2GasOracleTx  is sent by l2 relayer but to L1
-	L2GasOracleTx
-	// L2RollUpCommitTx  is sent to L2
-	L2RollUpCommitTx
-	// L2RollupFinalizeTx  is sent to L2
-	L2RollupFinalizeTx
+	// L1toL2MessageTx is sent by l1 relayer but to L2
+	L1toL2MessageTx
+	// L1toL2GasOracleTx  is sent by l1 relayer but to L2
+	L1toL2GasOracleTx
+	// L2toL1MessageTx  is sent by l2 relayer but to L1
+	L2toL1MessageTx
+	// L2toL1GasOracleTx  is sent by l2 relayer but to L1
+	L2toL1GasOracleTx
+	// RollUpCommitTx  is sent to L2
+	RollUpCommitTx
+	// RollupFinalizeTx  is sent to L2
+	RollupFinalizeTx
 )
 
 // ScrollTx Contains tx message, hash is the index.
