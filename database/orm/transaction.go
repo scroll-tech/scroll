@@ -22,7 +22,7 @@ func NewTxOrm(db *sqlx.DB) TxOrm {
 }
 
 // SaveTx stores tx message into db.
-func (t *txOrm) SaveTx(id, sender string, tx *types.Transaction) error {
+func (t *txOrm) SaveTx(id, sender string, txType stypes.TxType, tx *types.Transaction) error {
 	if tx == nil {
 		return nil
 	}
@@ -31,7 +31,7 @@ func (t *txOrm) SaveTx(id, sender string, tx *types.Transaction) error {
 		target = tx.To().String()
 	}
 	_, err := t.db.Exec(
-		t.db.Rebind("INSERT INTO transaction (id, tx_hash, sender, nonce, target, value, data) VALUES (?, ?, ?, ?, ?, ?, ?);"),
+		t.db.Rebind("INSERT INTO transaction (id, tx_hash, sender, nonce, target, value, data, type) VALUES (?, ?, ?, ?, ?, ?, ?, ?);"),
 		id,
 		tx.Hash().String(),
 		sender,
@@ -39,6 +39,7 @@ func (t *txOrm) SaveTx(id, sender string, tx *types.Transaction) error {
 		target,
 		tx.Value().String(),
 		tx.Data(),
+		txType,
 	)
 	return err
 }
@@ -51,10 +52,10 @@ func (t *txOrm) UpdateTxMsgByID(id string, txHash string) error {
 }
 
 // GetTxByID returns tx message by message id.
-func (t *txOrm) GetTxByID(id string) (*stypes.TxMessage, error) {
+func (t *txOrm) GetTxByID(id string) (*stypes.ScrollTx, error) {
 	db := t.db
 	row := db.QueryRowx(db.Rebind("SELECT id, tx_hash, sender, nonce, target, value, data FROM transaction WHERE id = ?"), id)
-	txMsg := &stypes.TxMessage{}
+	txMsg := &stypes.ScrollTx{}
 	if err := row.StructScan(txMsg); err != nil {
 		return nil, err
 	}
@@ -71,7 +72,7 @@ func (t *txOrm) GetTxByID(id string) (*stypes.TxMessage, error) {
 //	where 1 = 1 AND status = :status AND queue_index > 0
 //	ORDER BY queue_index ASC
 //	LIMIT 10) as l1 on tx.id = l1.msg_hash;
-func (t *txOrm) GetL1TxMessages(fields map[string]interface{}, args ...string) ([]*stypes.TxMessage, error) {
+func (t *txOrm) GetL1TxMessages(fields map[string]interface{}, args ...string) ([]*stypes.ScrollTx, error) {
 	query := "select msg_hash from l1_message where 1 = 1"
 	for key := range fields {
 		query = query + fmt.Sprintf(" AND %s = :%s", key, key)
@@ -85,9 +86,9 @@ func (t *txOrm) GetL1TxMessages(fields map[string]interface{}, args ...string) (
 		return nil, err
 	}
 
-	var txMsgs []*stypes.TxMessage
+	var txMsgs []*stypes.ScrollTx
 	for rows.Next() {
-		msg := &stypes.TxMessage{}
+		msg := &stypes.ScrollTx{}
 		if err = rows.StructScan(msg); err != nil {
 			return nil, err
 		}
@@ -97,7 +98,7 @@ func (t *txOrm) GetL1TxMessages(fields map[string]interface{}, args ...string) (
 }
 
 // GetL2TxMessages gets tx messages by transaction right join l2_message.
-func (t *txOrm) GetL2TxMessages(fields map[string]interface{}, args ...string) ([]*stypes.TxMessage, error) {
+func (t *txOrm) GetL2TxMessages(fields map[string]interface{}, args ...string) ([]*stypes.ScrollTx, error) {
 	query := "select msg_hash from l2_message where 1 = 1"
 	for key := range fields {
 		query = query + fmt.Sprintf(" AND %s = :%s", key, key)
@@ -111,9 +112,9 @@ func (t *txOrm) GetL2TxMessages(fields map[string]interface{}, args ...string) (
 		return nil, err
 	}
 
-	var txMsgs []*stypes.TxMessage
+	var txMsgs []*stypes.ScrollTx
 	for rows.Next() {
-		msg := &stypes.TxMessage{}
+		msg := &stypes.ScrollTx{}
 		if err = rows.StructScan(msg); err != nil {
 			return nil, err
 		}
@@ -123,7 +124,7 @@ func (t *txOrm) GetL2TxMessages(fields map[string]interface{}, args ...string) (
 }
 
 // GetBlockBatchTxMessages gets tx messages by transaction right join block_batch.
-func (t *txOrm) GetBlockBatchTxMessages(fields map[string]interface{}, args ...string) ([]*stypes.TxMessage, error) {
+func (t *txOrm) GetBlockBatchTxMessages(fields map[string]interface{}, args ...string) ([]*stypes.ScrollTx, error) {
 	query := "select hash from block_batch where 1 = 1"
 	for key := range fields {
 		query = query + fmt.Sprintf(" AND %s = :%s", key, key)
@@ -137,9 +138,9 @@ func (t *txOrm) GetBlockBatchTxMessages(fields map[string]interface{}, args ...s
 		return nil, err
 	}
 
-	var txMsgs []*stypes.TxMessage
+	var txMsgs []*stypes.ScrollTx
 	for rows.Next() {
-		msg := &stypes.TxMessage{}
+		msg := &stypes.ScrollTx{}
 		if err = rows.StructScan(msg); err != nil {
 			return nil, err
 		}

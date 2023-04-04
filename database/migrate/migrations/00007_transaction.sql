@@ -10,6 +10,7 @@ create table transaction
     target       VARCHAR      DEFAULT '',
     value        VARCHAR      NOT NULL,
     data         BYTEA        DEFAULT NULL,
+    type         INTEGER      DEFAULT 0,
     created_time TIMESTAMP(0) NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
