@@ -139,7 +139,7 @@ func (r *Layer1Relayer) processSavedEvent(msg *types.L1Message) error {
 	if err != nil && err.Error() == "execution reverted: Message expired" {
 		return r.db.UpdateLayer1Status(r.ctx, msg.MsgHash, types.MsgExpired)
 	}
-	if err != nil && err.Error() == "execution reverted: Message successfully executed" {
+	if err != nil && err.Error() == "execution reverted: Message was already successfully executed" {
 		return r.db.UpdateLayer1Status(r.ctx, msg.MsgHash, types.MsgConfirmed)
 	}
 	if err != nil {
