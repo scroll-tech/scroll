@@ -124,7 +124,7 @@ func (r *Layer1Relayer) ProcessSavedEvents() {
 
 	for _, msg := range msgs {
 		if err = r.processSavedEvent(msg); err != nil {
-			if !errors.Is(err, sender.ErrNoAvailableAccount) {
+			if !errors.Is(err, sender.ErrNoAvailableAccount) && !errors.Is(err, sender.ErrFullPending) {
 				log.Error("failed to process event", "msg.msgHash", msg.MsgHash, "err", err)
 			}
 			return
@@ -139,7 +139,7 @@ func (r *Layer1Relayer) processSavedEvent(msg *types.L1Message) error {
 	if err != nil && err.Error() == "execution reverted: Message expired" {
 		return r.db.UpdateLayer1Status(r.ctx, msg.MsgHash, types.MsgExpired)
 	}
-	if err != nil && err.Error() == "execution reverted: Message successfully executed" {
+	if err != nil && err.Error() == "execution reverted: Message was already successfully executed" {
 		return r.db.UpdateLayer1Status(r.ctx, msg.MsgHash, types.MsgConfirmed)
 	}
 	if err != nil {
@@ -189,7 +189,7 @@ func (r *Layer1Relayer) ProcessGasPriceOracle() {
 
 			hash, err := r.gasOracleSender.SendTransaction(block.Hash, &r.cfg.GasPriceOracleContractAddress, big.NewInt(0), data, 0)
 			if err != nil {
-				if !errors.Is(err, sender.ErrNoAvailableAccount) {
+				if !errors.Is(err, sender.ErrNoAvailableAccount) && !errors.Is(err, sender.ErrFullPending) {
 					log.Error("Failed to send setL1BaseFee tx to layer2 ", "block.Hash", block.Hash, "block.Height", block.Number, "err", err)
 				}
 				return
