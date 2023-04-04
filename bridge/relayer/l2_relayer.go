@@ -34,10 +34,7 @@ var (
 	bridgeL2MsgsRelayedConfirmedTotalCounter      = geth_metrics.NewRegisteredCounter("bridge/l2/msgs/relayed/confirmed/total", metrics.ScrollRegistry)
 	bridgeL2BatchesFinalizedConfirmedTotalCounter = geth_metrics.NewRegisteredCounter("bridge/l2/batches/finalized/confirmed/total", metrics.ScrollRegistry)
 	bridgeL2BatchesCommittedConfirmedTotalCounter = geth_metrics.NewRegisteredCounter("bridge/l2/batches/committed/confirmed/total", metrics.ScrollRegistry)
-
-	// proof skip rate.
-	bridgeL2BatchesSkippedTotalCounter = geth_metrics.NewRegisteredCounter("bridge/l2/batches/skipped/total", metrics.ScrollRegistry)
-	bridgeL2BatchesTotalCounter        = geth_metrics.NewRegisteredCounter("bridge/l2/batches/total", metrics.ScrollRegistry)
+	bridgeL2BatchesSkippedTotalCounter            = geth_metrics.NewRegisteredCounter("bridge/l2/batches/skipped/total", metrics.ScrollRegistry)
 )
 
 // Layer2Relayer is responsible for
@@ -387,8 +384,6 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 
 	batch := batches[0]
 	status := batch.ProvingStatus
-
-	bridgeL2BatchesTotalCounter.Inc(1)
 
 	switch status {
 	case types.ProvingTaskUnassigned, types.ProvingTaskAssigned:

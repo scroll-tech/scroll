@@ -43,7 +43,7 @@ var (
 
 	// proof timers
 	coordinatorSessionsProofSuccessTimeTimer            = geth_metrics.NewRegisteredTimer("coordinator/sessions/proof/success/time", metrics.ScrollRegistry)
-	coordinatorSessionsProofGenerationFailedTimeTimer   = geth_metrics.NewRegisteredTimer("coordinator/sessions/proof/verification/failed/time", metrics.ScrollRegistry)
+	coordinatorSessionsProofGenerationFailedTimeTimer   = geth_metrics.NewRegisteredTimer("coordinator/sessions/proof/generation/failed/time", metrics.ScrollRegistry)
 	coordinatorSessionsProofVerificationFailedTimeTimer = geth_metrics.NewRegisteredTimer("coordinator/sessions/proof/verification/failed/time", metrics.ScrollRegistry)
 )
 
