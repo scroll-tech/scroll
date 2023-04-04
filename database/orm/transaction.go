@@ -23,7 +23,7 @@ func NewTxOrm(db *sqlx.DB) TxOrm {
 }
 
 // SaveTx stores tx message into db.
-func (t *txOrm) SaveTx(id, sender string, tx *types.Transaction) error {
+func (t *txOrm) SaveTx(id, sender string, txType stypes.TxType, tx *types.Transaction) error {
 	if tx == nil {
 		return nil
 	}
@@ -32,7 +32,7 @@ func (t *txOrm) SaveTx(id, sender string, tx *types.Transaction) error {
 		target = tx.To().String()
 	}
 	_, err := t.db.Exec(
-		t.db.Rebind("INSERT INTO transaction (id, tx_hash, sender, nonce, target, value, data) VALUES (?, ?, ?, ?, ?, ?, ?);"),
+		t.db.Rebind("INSERT INTO transaction (id, tx_hash, sender, nonce, target, value, data, type) VALUES (?, ?, ?, ?, ?, ?, ?, ?);"),
 		id,
 		tx.Hash().String(),
 		sender,
@@ -40,6 +40,7 @@ func (t *txOrm) SaveTx(id, sender string, tx *types.Transaction) error {
 		target,
 		tx.Value().String(),
 		tx.Data(),
+		txType,
 	)
 	return err
 }
@@ -52,10 +53,10 @@ func (t *txOrm) UpdateTxMsgByID(id string, txHash string) error {
 }
 
 // GetTxByID returns tx message by message id.
-func (t *txOrm) GetTxByID(id string) (*stypes.TxMessage, error) {
+func (t *txOrm) GetTxByID(id string) (*stypes.ScrollTx, error) {
 	db := t.db
 	row := db.QueryRowx(db.Rebind("SELECT id, tx_hash, sender, nonce, target, value, data FROM transaction WHERE id = ?"), id)
-	txMsg := &stypes.TxMessage{}
+	txMsg := &stypes.ScrollTx{}
 	if err := row.StructScan(txMsg); err != nil {
 		return nil, err
 	}
@@ -72,7 +73,8 @@ func (t *txOrm) GetTxByID(id string) (*stypes.TxMessage, error) {
 //	where 1 = 1 AND status = :status AND queue_index > 0
 //	ORDER BY queue_index ASC
 //	LIMIT 10) as l1 on tx.id = l1.msg_hash;
-func (t *txOrm) GetL1TxMessages(fields map[string]interface{}, args ...string) (uint64, []*stypes.TxMessage, error) {
+
+func (t *txOrm) GetL1TxMessages(fields map[string]interface{}, args ...string) (uint64, []*stypes.ScrollTx, error) {
 	query := "select msg_hash, queue_index from l1_message where 1 = 1"
 	for key := range fields {
 		query = query + fmt.Sprintf(" AND %s = :%s", key, key)
@@ -88,25 +90,25 @@ func (t *txOrm) GetL1TxMessages(fields map[string]interface{}, args ...string) (
 
 	var (
 		index  uint64
-		txMsgs []*stypes.TxMessage
+		txMsgs []*stypes.ScrollTx
 	)
 	for rows.Next() {
 		warp := struct {
 			Index uint64 `db:"index"`
-			*stypes.TxMessage
+			*stypes.ScrollTx
 		}{}
 		if err = rows.StructScan(&warp); err != nil {
 			return 0, nil, err
 		}
 		index = mathutil.MaxUint64(index, warp.Index)
-		txMsgs = append(txMsgs, warp.TxMessage)
+		txMsgs = append(txMsgs, warp.ScrollTx)
 	}
 	return index, txMsgs, nil
 }
 
 // GetL2TxMessages gets tx messages by transaction right join l2_message.
-func (t *txOrm) GetL2TxMessages(fields map[string]interface{}, args ...string) (uint64, []*stypes.TxMessage, error) {
-	query := "select msg_hash, nonce from l2_message where 1 = 1"
+func (t *txOrm) GetL2TxMessages(fields map[string]interface{}, args ...string) (uint64, []*stypes.ScrollTx, error) {
+	query := "select msg_hash from l2_message where 1 = 1"
 	for key := range fields {
 		query = query + fmt.Sprintf(" AND %s = :%s", key, key)
 	}
@@ -121,24 +123,24 @@ func (t *txOrm) GetL2TxMessages(fields map[string]interface{}, args ...string) (
 
 	var (
 		nonce  uint64
-		txMsgs []*stypes.TxMessage
+		txMsgs []*stypes.ScrollTx
 	)
 	for rows.Next() {
 		warp := struct {
 			Nonce uint64 `db:"l2_nonce"`
-			*stypes.TxMessage
+			*stypes.ScrollTx
 		}{}
 		if err = rows.StructScan(&warp); err != nil {
 			return 0, nil, err
 		}
 		nonce = mathutil.MaxUint64(nonce, warp.Nonce)
-		txMsgs = append(txMsgs, warp.TxMessage)
+		txMsgs = append(txMsgs, warp.ScrollTx)
 	}
 	return nonce, txMsgs, nil
 }
 
 // GetBlockBatchTxMessages gets tx messages by transaction right join block_batch.
-func (t *txOrm) GetBlockBatchTxMessages(fields map[string]interface{}, args ...string) (uint64, []*stypes.TxMessage, error) {
+func (t *txOrm) GetBlockBatchTxMessages(fields map[string]interface{}, args ...string) (uint64, []*stypes.ScrollTx, error) {
 	query := "select hash, index from block_batch where 1 = 1"
 	for key := range fields {
 		query = query + fmt.Sprintf(" AND %s = :%s", key, key)
@@ -154,18 +156,18 @@ func (t *txOrm) GetBlockBatchTxMessages(fields map[string]interface{}, args ...s
 
 	var (
 		index  uint64
-		txMsgs []*stypes.TxMessage
+		txMsgs []*stypes.ScrollTx
 	)
 	for rows.Next() {
 		warp := struct {
 			Index uint64 `db:"index"`
-			*stypes.TxMessage
+			*stypes.ScrollTx
 		}{}
 		if err = rows.StructScan(&warp); err != nil {
 			return 0, nil, err
 		}
 		index = mathutil.MaxUint64(index, warp.Index)
-		txMsgs = append(txMsgs, warp.TxMessage)
+		txMsgs = append(txMsgs, warp.ScrollTx)
 	}
 	return index, txMsgs, nil
 }

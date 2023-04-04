@@ -94,8 +94,8 @@ var (
 func setupEnv(t *testing.T) error {
 	// Init db config and start db container.
 	dbConfig = &database.DBConfig{DriverName: "postgres"}
-	//base.RunImages(t)
-	dbConfig.DSN = "postgres://maskpp:123456@localhost:5432/postgres?sslmode=disable" //base.DBEndpoint()
+	base.RunImages(t)
+	dbConfig.DSN = base.DBEndpoint()
 
 	// Create db handler and reset db.
 	factory, err := database.NewOrmFactory(dbConfig)
@@ -478,7 +478,7 @@ func testTxOrmSaveTxAndGetTxByHash(t *testing.T) {
 	signedTx, err := auth.Signer(auth.From, tx)
 	assert.NoError(t, err)
 
-	err = ormTx.SaveTx("1", auth.From.String(), signedTx)
+	err = ormTx.SaveTx("1", auth.From.String(), types.L1MessageTx, signedTx)
 	assert.Nil(t, err)
 
 	// Update tx message by id.
@@ -502,12 +502,12 @@ func testTxOrmGetL1TxMessages(t *testing.T) {
 
 	signedTx, err := mockTx(auth)
 	assert.NoError(t, err)
-	err = ormTx.SaveTx(templateL1Message[0].MsgHash, auth.From.String(), signedTx)
+	err = ormTx.SaveTx(templateL1Message[0].MsgHash, auth.From.String(), types.L1MessageTx, signedTx)
 	assert.Nil(t, err)
 
 	signedTx, err = mockTx(auth)
 	assert.NoError(t, err)
-	err = ormTx.SaveTx("3", auth.From.String(), signedTx)
+	err = ormTx.SaveTx("3", auth.From.String(), types.L1MessageTx, signedTx)
 	assert.Nil(t, err)
 
 	// Insert into db
@@ -543,7 +543,7 @@ func testTxOrmGetL2TxMessages(t *testing.T) {
 
 	signedTx, err := mockTx(auth)
 	assert.NoError(t, err)
-	err = ormTx.SaveTx(templateL1Message[0].MsgHash, auth.From.String(), signedTx)
+	err = ormTx.SaveTx(templateL1Message[0].MsgHash, auth.From.String(), types.L2MessageTx, signedTx)
 	assert.Nil(t, err)
 
 	// Insert into db
@@ -584,7 +584,7 @@ func testTxOrmGetBlockBatchTxMessages(t *testing.T) {
 
 	signedTx, err := mockTx(auth)
 	assert.NoError(t, err)
-	err = ormTx.SaveTx(batchData1.Hash().String(), auth.From.String(), signedTx)
+	err = ormTx.SaveTx(batchData1.Hash().String(), auth.From.String(), types.L2RollUpCommitTx, signedTx)
 	assert.Nil(t, err)
 
 	batchIndex, txMsgs, err := ormTx.GetBlockBatchTxMessages(

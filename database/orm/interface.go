@@ -114,10 +114,10 @@ type L2MessageOrm interface {
 
 // TxOrm transaction operation interfaces.
 type TxOrm interface {
-	SaveTx(id, sender string, tx *etypes.Transaction) error
+	SaveTx(id, sender string, txType types.TxType, tx *etypes.Transaction) error
 	UpdateTxMsgByID(hash string, txHash string) error
-	GetTxByID(id string) (*types.TxMessage, error)
-	GetL1TxMessages(fields map[string]interface{}, args ...string) (uint64, []*types.TxMessage, error)
-	GetL2TxMessages(fields map[string]interface{}, args ...string) (uint64, []*types.TxMessage, error)
-	GetBlockBatchTxMessages(fields map[string]interface{}, args ...string) (uint64, []*types.TxMessage, error)
+	GetTxByID(id string) (*types.ScrollTx, error)
+	GetL1TxMessages(fields map[string]interface{}, args ...string) (uint64, []*types.ScrollTx, error)
+	GetL2TxMessages(fields map[string]interface{}, args ...string) (uint64, []*types.ScrollTx, error)
+	GetBlockBatchTxMessages(fields map[string]interface{}, args ...string) (uint64, []*types.ScrollTx, error)
 }

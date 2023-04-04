@@ -177,7 +177,7 @@ func (r *Layer1Relayer) processSavedEvent(msg *types.L1Message) error {
 	if err != nil && err.Error() == "execution reverted: Message expired" {
 		return r.db.UpdateLayer1Status(r.ctx, msg.MsgHash, types.MsgExpired)
 	}
-	if err != nil && err.Error() == "execution reverted: Message successfully executed" {
+	if err != nil && err.Error() == "execution reverted: Message was already successfully executed" {
 		return r.db.UpdateLayer1Status(r.ctx, msg.MsgHash, types.MsgConfirmed)
 	}
 	if err != nil {
@@ -190,7 +190,7 @@ func (r *Layer1Relayer) processSavedEvent(msg *types.L1Message) error {
 	if err != nil {
 		log.Error("UpdateLayer1StatusAndLayer2Hash failed", "msg.msgHash", msg.MsgHash, "msg.height", msg.Height, "err", err)
 	}
-	err = r.db.SaveTx(msg.MsgHash, from.String(), tx)
+	err = r.db.SaveTx(msg.MsgHash, from.String(), types.L1MessageTx, tx)
 	if err != nil {
 		log.Error("failed to save l1 relay tx message", "msg.msgHash", msg.MsgHash, "msg.height", msg.Height, "tx.hash", tx.Hash().String(), "err", err)
 	}
@@ -243,7 +243,7 @@ func (r *Layer1Relayer) ProcessGasPriceOracle() {
 				log.Error("UpdateGasOracleStatusAndOracleTxHash failed", "block.Hash", block.Hash, "block.Height", block.Number, "err", err)
 				return
 			}
-			err = r.db.SaveTx(block.Hash, from.String(), tx)
+			err = r.db.SaveTx(block.Hash, from.String(), types.L1GasOracleTx, tx)
 			if err != nil {
 				log.Error("failed to store l1 gas oracle tx message", "block.Hash", block.Hash, "block.Height", block.Number, "tx.hash", tx.Hash().String(), "err", err)
 			}
