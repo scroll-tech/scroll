@@ -31,8 +31,10 @@ type Cmd struct {
 
 	checkFuncs cmap.ConcurrentMap //map[string]checkFunc
 
-	//stdout bytes.Buffer
-	Err error
+	// open log flag.
+	openLog bool
+	// error channel
+	ErrChan chan error
 }
 
 // NewCmd create Cmd instance.
@@ -41,6 +43,7 @@ func NewCmd(name string, args ...string) *Cmd {
 		checkFuncs: cmap.New(),
 		name:       name,
 		args:       args,
+		ErrChan:    make(chan error, 10),
 	}
 }
 
@@ -58,12 +61,12 @@ func (c *Cmd) runCmd() {
 	cmd := exec.Command(c.args[0], c.args[1:]...) //nolint:gosec
 	cmd.Stdout = c
 	cmd.Stderr = c
-	_ = cmd.Run()
+	c.ErrChan <- cmd.Run()
 }
 
 // RunCmd parallel running when parallel is true.
 func (c *Cmd) RunCmd(parallel bool) {
-	fmt.Println("cmd: ", c.args)
+	fmt.Println("cmd:", c.args)
 	if parallel {
 		go c.runCmd()
 	} else {
@@ -71,12 +74,17 @@ func (c *Cmd) RunCmd(parallel bool) {
 	}
 }
 
+// OpenLog open cmd log by this api.
+func (c *Cmd) OpenLog(open bool) {
+	c.openLog = open
+}
+
 func (c *Cmd) Write(data []byte) (int, error) {
 	out := string(data)
-	if verbose {
-		fmt.Printf("%s: %v", c.name, out)
+	if verbose || c.openLog {
+		fmt.Printf("%s:\n\t%v", c.name, out)
 	} else if strings.Contains(out, "error") || strings.Contains(out, "warning") {
-		fmt.Printf("%s: %v", c.name, out)
+		fmt.Printf("%s:\n\t%v", c.name, out)
 	}
 	go c.checkFuncs.IterCb(func(_ string, value interface{}) {
 		check := value.(checkFunc)

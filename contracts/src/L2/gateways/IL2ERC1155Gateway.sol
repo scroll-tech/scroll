@@ -86,7 +86,7 @@ interface IL2ERC1155Gateway {
         uint256 tokenId,
         uint256 amount,
         uint256 gasLimit
-    ) external;
+    ) external payable;
 
     /// @notice Withdraw some ERC1155 NFT to caller's account on layer 1.
     /// @param token The address of ERC1155 NFT in layer 2.
@@ -100,7 +100,7 @@ interface IL2ERC1155Gateway {
         uint256 tokenId,
         uint256 amount,
         uint256 gasLimit
-    ) external;
+    ) external payable;
 
     /// @notice Batch withdraw a list of ERC1155 NFT to caller's account on layer 1.
     /// @param token The address of ERC1155 NFT in layer 2.
@@ -112,7 +112,7 @@ interface IL2ERC1155Gateway {
         uint256[] memory tokenIds,
         uint256[] memory amounts,
         uint256 gasLimit
-    ) external;
+    ) external payable;
 
     /// @notice Batch withdraw a list of ERC1155 NFT to caller's account on layer 1.
     /// @param token The address of ERC1155 NFT in layer 2.
@@ -126,7 +126,7 @@ interface IL2ERC1155Gateway {
         uint256[] memory tokenIds,
         uint256[] memory amounts,
         uint256 gasLimit
-    ) external;
+    ) external payable;
 
     /// @notice Complete ERC1155 deposit from layer 1 to layer 2 and send NFT to recipient's account in layer 2.
     /// @dev Requirements:

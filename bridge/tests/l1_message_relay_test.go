@@ -13,8 +13,8 @@ import (
 
 	"scroll-tech/common/types"
 
-	"scroll-tech/bridge/l1"
-	"scroll-tech/bridge/l2"
+	"scroll-tech/bridge/relayer"
+	"scroll-tech/bridge/watcher"
 
 	"scroll-tech/database"
 	"scroll-tech/database/migrate"
@@ -33,16 +33,14 @@ func testRelayL1MessageSucceed(t *testing.T) {
 	l2Cfg := cfg.L2Config
 
 	// Create L1Relayer
-	l1Relayer, err := l1.NewLayer1Relayer(context.Background(), db, l1Cfg.RelayerConfig)
+	l1Relayer, err := relayer.NewLayer1Relayer(context.Background(), db, l1Cfg.RelayerConfig)
 	assert.NoError(t, err)
-	defer l1Relayer.Stop()
-
 	// Create L1Watcher
 	confirmations := rpc.LatestBlockNumber
-	l1Watcher := l1.NewWatcher(context.Background(), l1Client, 0, confirmations, l1Cfg.L1MessengerAddress, l1Cfg.L1MessageQueueAddress, l1Cfg.ScrollChainContractAddress, db)
+	l1Watcher := watcher.NewL1WatcherClient(context.Background(), l1Client, 0, confirmations, l1Cfg.L1MessengerAddress, l1Cfg.L1MessageQueueAddress, l1Cfg.ScrollChainContractAddress, db)
 
 	// Create L2Watcher
-	l2Watcher := l2.NewL2WatcherClient(context.Background(), l2Client, confirmations, l2Cfg.L2MessengerAddress, l2Cfg.L2MessageQueueAddress, db)
+	l2Watcher := watcher.NewL2WatcherClient(context.Background(), l2Client, confirmations, l2Cfg.L2MessengerAddress, l2Cfg.L2MessageQueueAddress, l2Cfg.WithdrawTrieRootSlot, db)
 
 	// send message through l1 messenger contract
 	nonce, err := l1MessengerInstance.MessageNonce(&bind.CallOpts{})
@@ -56,7 +54,7 @@ func testRelayL1MessageSucceed(t *testing.T) {
 	}
 
 	// l1 watch process events
-	l1Watcher.FetchContractEvent(sendReceipt.BlockNumber.Uint64())
+	l1Watcher.FetchContractEvent()
 
 	// check db status
 	msg, err := db.GetL1MessageByQueueIndex(nonce.Uint64())
@@ -79,7 +77,7 @@ func testRelayL1MessageSucceed(t *testing.T) {
 	assert.Equal(t, len(relayTxReceipt.Logs), 1)
 
 	// fetch message relayed events
-	l2Watcher.FetchContractEvent(relayTxReceipt.BlockNumber.Uint64())
+	l2Watcher.FetchContractEvent()
 	msg, err = db.GetL1MessageByQueueIndex(nonce.Uint64())
 	assert.NoError(t, err)
 	assert.Equal(t, msg.Status, types.MsgConfirmed)
