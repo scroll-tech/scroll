@@ -7,6 +7,7 @@ import (
 	"math/big"
 	"runtime"
 	"sync"
+	"time"
 
 	"github.com/scroll-tech/go-ethereum/accounts/abi"
 	"github.com/scroll-tech/go-ethereum/common"
@@ -18,9 +19,11 @@ import (
 	"modernc.org/mathutil"
 
 	"scroll-tech/database"
+	"scroll-tech/database/orm"
 
 	"scroll-tech/common/metrics"
 	"scroll-tech/common/types"
+	cutils "scroll-tech/common/utils"
 
 	bridge_abi "scroll-tech/bridge/abi"
 	"scroll-tech/bridge/config"
@@ -146,6 +149,60 @@ func NewLayer2Relayer(ctx context.Context, l2Client *ethclient.Client, db databa
 }
 
 const processMsgLimit = 100
+
+// CheckSubmittedMessages loads or resends submitted status of txs.
+func (r *Layer2Relayer) CheckSubmittedMessages() error {
+	var nonce uint64
+	for {
+		// msgs are sorted by nonce in increasing order
+		l2Nonce, msgs, err := r.db.GetL2TxMessages(
+			map[string]interface{}{"status": types.MsgSubmitted},
+			fmt.Sprintf("AND nonce > %d", nonce),
+			fmt.Sprintf("ORDER BY nonce ASC LIMIT %d", processMsgLimit),
+		)
+		if err != nil {
+			log.Error("failed to get l2 submitted messages", "message nonce", nonce, "err", err)
+			return err
+		}
+		if len(msgs) == 0 {
+			return nil
+		}
+		nonce = l2Nonce
+
+		for _, msg := range msgs {
+			// TODO: restore incomplete transaction.
+			if !msg.TxHash.Valid {
+				continue
+			}
+			// Wait until sender's pending is not full.
+			cutils.TryTimes(-1, func() bool {
+				return !r.messageSender.IsFull()
+			})
+
+			err = r.messageSender.LoadOrResendTx(
+				msg.GetTxHash(),
+				msg.GetSender(),
+				msg.GetNonce(),
+				msg.ID,
+				msg.GetTarget(),
+				msg.GetValue(),
+				msg.Data,
+				r.minGasLimitForMessageRelay,
+			)
+			if err != nil {
+				log.Error("failed to load or send l2 submitted tx", "msg.hash", msg.ID, "err", err)
+				return err
+			}
+		}
+	}
+}
+
+// WaitL2MsgSender wait until l2 message sender is empty.
+func (r *Layer2Relayer) WaitL2MsgSender() {
+	for r.messageSender.PendingCount() != 0 {
+		time.Sleep(time.Second)
+	}
+}
 
 // ProcessSavedEvents relays saved un-processed cross-domain transactions to desired blockchain
 func (r *Layer2Relayer) ProcessSavedEvents() {
@@ -363,6 +420,62 @@ func (r *Layer2Relayer) SendCommitTx(batchData []*types.BatchData) error {
 	}
 	r.processingBatchesCommitment.Store(txID, batchHashes)
 	return nil
+}
+
+// CheckRollupBatches rollupStatus: types.RollupCommitting, types.RollupFinalizing
+func (r *Layer2Relayer) CheckRollupBatches(rollupStatus types.RollupStatus) error {
+	var (
+		batchIndex uint64
+		batchLimit = 10
+		db         = orm.TxOrm(r.db)
+	)
+	for {
+		index, batches, err := db.GetBlockBatchTxMessages(
+			map[string]interface{}{"rollup_status": rollupStatus},
+			fmt.Sprintf("AND index > %d", batchIndex),
+			fmt.Sprintf("ORDER BY index ASC LIMIT %d", batchLimit),
+		)
+		if err != nil {
+			log.Error("failed to get Rollup finalizing batches", "batch index", batchIndex, "err", err)
+			return err
+		}
+		if len(batches) == 0 {
+			return nil
+		}
+		batchIndex = index
+
+		for _, msg := range batches {
+			// TODO: restore incomplete transaction.
+			if !msg.TxHash.Valid {
+				continue
+			}
+			cutils.TryTimes(-1, func() bool {
+				return !r.rollupSender.IsFull()
+			})
+
+			err = r.rollupSender.LoadOrResendTx(
+				msg.GetTxHash(),
+				msg.GetSender(),
+				msg.GetNonce(),
+				msg.ID,
+				msg.GetTarget(),
+				msg.GetValue(),
+				msg.Data,
+				0,
+			)
+			if err != nil {
+				log.Error("failed to load or send finalized tx", "batch hash", msg.ID, "err", err)
+				return err
+			}
+		}
+	}
+}
+
+// WaitL2RollupSender wait until l2 rollup sender is empty.
+func (r *Layer2Relayer) WaitL2RollupSender() {
+	for r.rollupSender.PendingCount() != 0 {
+		time.Sleep(time.Second)
+	}
 }
 
 // ProcessCommittedBatches submit proof to layer 1 rollup contract

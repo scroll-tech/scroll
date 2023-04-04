@@ -200,32 +200,35 @@ func (s *Sender) getTransaction(txHash common.Hash) (*types.Transaction, uint64,
 
 // LoadOrResendTx load
 func (s *Sender) LoadOrResendTx(destTxHash common.Hash, sender common.Address, nonce uint64, ID string, target *common.Address, value *big.Int, data []byte, minGasLimit uint64) error {
-	tx, number, err := s.getTransaction(destTxHash)
-	// check error except `not found` tx.
-	if err != nil && err.Error() != "not found" {
-		return err
+	tx, number, errTx := s.getTransaction(destTxHash)
+	// check error except `not found` kind of tx.
+	if errTx != nil && errTx.Error() != "not found" {
+		return errTx
 	}
 	// We occupy the ID, in case some other threads call with the same ID in the same time
 	if ok := s.pendingTxs.SetIfAbsent(ID, nil); !ok {
 		return fmt.Errorf("pending pool has repeat ID, ID: %s", ID)
 	}
+
+	var (
+		feeData *FeeData
+		err2Ld  error
+	)
 	defer func() {
-		if err != nil {
+		if err2Ld != nil {
 			s.pendingTxs.Remove(ID)
 		}
 	}()
-
 	auth := s.auths.accounts[sender]
-	var feeData *FeeData
-	feeData, err = s.getFeeData(auth, target, value, data, minGasLimit)
-	if err != nil {
-		return err
+	feeData, err2Ld = s.getFeeData(auth, target, value, data, minGasLimit)
+	if err2Ld != nil {
+		return err2Ld
 	}
 	// If tx is not in chain node, create and resend it.
-	if err != nil || tx == nil {
-		tx, err = s.createAndSendTx(auth, feeData, target, value, data, &nonce)
-		if err != nil {
-			return err
+	if errTx != nil {
+		tx, err2Ld = s.createAndSendTx(auth, feeData, target, value, data, &nonce)
+		if err2Ld != nil {
+			return err2Ld
 		}
 	}
 	s.pendingTxs.Set(ID, &PendingTransaction{

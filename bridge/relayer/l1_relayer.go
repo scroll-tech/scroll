@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
-	"scroll-tech/common/utils"
+	"time"
 
 	// not sure if this will make problems when relay with l1geth
 
@@ -16,6 +16,7 @@ import (
 	geth_metrics "github.com/scroll-tech/go-ethereum/metrics"
 
 	"scroll-tech/common/types"
+	"scroll-tech/common/utils"
 
 	"scroll-tech/database"
 
@@ -111,7 +112,8 @@ func NewLayer1Relayer(ctx context.Context, db database.OrmFactory, cfg *config.R
 	return l1Relayer, nil
 }
 
-func (r *Layer1Relayer) checkSubmittedMessages() error {
+// CheckSubmittedMessages loads or resends submitted status of txs.
+func (r *Layer1Relayer) CheckSubmittedMessages() error {
 	var (
 		index    uint64
 		msgsSize = 100
@@ -142,9 +144,29 @@ func (r *Layer1Relayer) checkSubmittedMessages() error {
 				return !r.messageSender.IsFull()
 			})
 
+			err = r.messageSender.LoadOrResendTx(
+				msg.GetTxHash(),
+				msg.GetSender(),
+				msg.GetNonce(),
+				msg.ID,
+				msg.GetTarget(),
+				msg.GetValue(),
+				msg.Data,
+				r.minGasLimitForMessageRelay,
+			)
+			if err != nil {
+				log.Error("failed to load or send l1 submitted tx", "msg hash", msg.ID, "err", err)
+				return err
+			}
 		}
 	}
-	return nil
+}
+
+// WaitL1MsgSender wait until l1 message sender is empty.
+func (r *Layer2Relayer) WaitL1MsgSender() {
+	for r.messageSender.PendingCount() != 0 {
+		time.Sleep(time.Second)
+	}
 }
 
 // ProcessSavedEvents relays saved un-processed cross-domain transactions to desired blockchain
