@@ -359,6 +359,7 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 		log.Error("UpdateSkippedBatches failed", "err", err)
 		// continue anyway
 	} else if count > 0 {
+		bridgeL2BatchesSkippedTotalCounter.Inc(count)
 		log.Info("Skipping batches", "count", count)
 	}
 
@@ -404,10 +405,6 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 
 		if err = r.db.UpdateRollupStatus(r.ctx, hash, types.RollupFinalizationSkipped); err != nil {
 			log.Warn("UpdateRollupStatus failed", "hash", hash, "err", err)
-		}
-
-		if status == types.ProvingTaskSkipped {
-			bridgeL2BatchesSkippedTotalCounter.Inc(1)
 		}
 
 	case types.ProvingTaskVerified:

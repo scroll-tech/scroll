@@ -25,9 +25,9 @@ var (
 	bridgeL2BatchesTxsOverThresholdTotalCounter = geth_metrics.NewRegisteredCounter("bridge/l2/batches/txs/over/threshold/total", metrics.ScrollRegistry)
 	bridgeL2BatchesCommitTotalCounter           = geth_metrics.NewRegisteredCounter("bridge/l2/batches/commit/total", metrics.ScrollRegistry)
 
-	bridgeL2BatchesCreatedTotalCounter    = geth_metrics.NewRegisteredMeter("bridge/l2/batches/blocks/created/total", metrics.ScrollRegistry)
-	bridgeL2BatchesTxsCreatedTotalCounter = geth_metrics.NewRegisteredMeter("bridge/l2/batches/txs/created/total", metrics.ScrollRegistry)
-	bridgeL2BatchesGasCreatedTotalCounter = geth_metrics.NewRegisteredMeter("bridge/l2/batches/gas/created/total", metrics.ScrollRegistry)
+	bridgeL2BatchesCreatedTotalCounter    = geth_metrics.NewRegisteredCounter("bridge/l2/batches/blocks/created/total", metrics.ScrollRegistry)
+	bridgeL2BatchesTxsCreatedTotalCounter = geth_metrics.NewRegisteredCounter("bridge/l2/batches/txs/created/total", metrics.ScrollRegistry)
+	bridgeL2BatchesGasCreatedTotalCounter = geth_metrics.NewRegisteredCounter("bridge/l2/batches/gas/created/total", metrics.ScrollRegistry)
 )
 
 // AddBatchInfoToDB inserts the batch information to the BlockBatch table and updates the batch_hash
@@ -273,9 +273,9 @@ func (p *BatchProposer) proposeBatch(blocks []*types.BlockInfo) bool {
 		if err := p.createBatchForBlocks(blocks[:1]); err != nil {
 			log.Error("failed to create batch", "number", blocks[0].Number, "err", err)
 		} else {
-			bridgeL2BatchesTxsCreatedTotalCounter.Mark(int64(blocks[0].TxNum))
-			bridgeL2BatchesGasCreatedTotalCounter.Mark(int64(blocks[0].GasUsed))
-			bridgeL2BatchesCreatedTotalCounter.Mark(1)
+			bridgeL2BatchesTxsCreatedTotalCounter.Inc(int64(blocks[0].TxNum))
+			bridgeL2BatchesGasCreatedTotalCounter.Inc(int64(blocks[0].GasUsed))
+			bridgeL2BatchesCreatedTotalCounter.Inc(1)
 		}
 		return true
 	}
@@ -286,9 +286,9 @@ func (p *BatchProposer) proposeBatch(blocks []*types.BlockInfo) bool {
 		if err := p.createBatchForBlocks(blocks[:1]); err != nil {
 			log.Error("failed to create batch", "number", blocks[0].Number, "err", err)
 		} else {
-			bridgeL2BatchesTxsCreatedTotalCounter.Mark(int64(blocks[0].TxNum))
-			bridgeL2BatchesGasCreatedTotalCounter.Mark(int64(blocks[0].GasUsed))
-			bridgeL2BatchesCreatedTotalCounter.Mark(1)
+			bridgeL2BatchesTxsCreatedTotalCounter.Inc(int64(blocks[0].TxNum))
+			bridgeL2BatchesGasCreatedTotalCounter.Inc(int64(blocks[0].GasUsed))
+			bridgeL2BatchesCreatedTotalCounter.Inc(1)
 		}
 		return true
 	}
@@ -316,9 +316,9 @@ func (p *BatchProposer) proposeBatch(blocks []*types.BlockInfo) bool {
 	if err := p.createBatchForBlocks(blocks); err != nil {
 		log.Error("failed to create batch", "from", blocks[0].Number, "to", blocks[len(blocks)-1].Number, "err", err)
 	} else {
-		bridgeL2BatchesTxsCreatedTotalCounter.Mark(int64(txNum))
-		bridgeL2BatchesGasCreatedTotalCounter.Mark(int64(gasUsed))
-		bridgeL2BatchesCreatedTotalCounter.Mark(int64(len(blocks)))
+		bridgeL2BatchesTxsCreatedTotalCounter.Inc(int64(txNum))
+		bridgeL2BatchesGasCreatedTotalCounter.Inc(int64(gasUsed))
+		bridgeL2BatchesCreatedTotalCounter.Inc(int64(len(blocks)))
 	}
 
 	return true
