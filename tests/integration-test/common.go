@@ -78,6 +78,7 @@ func free(t *testing.T) {
 }
 
 type appAPI interface {
+	OpenLog(open bool)
 	WaitResult(t *testing.T, timeout time.Duration, keyword string) bool
 	RunApp(waitResult func() bool)
 	WaitExit()
@@ -86,33 +87,44 @@ type appAPI interface {
 
 func runMsgRelayerApp(t *testing.T, args ...string) appAPI {
 	args = append(args, "--log.debug", "--config", bridgeFile)
-	return cmd.NewCmd("message-relayer-test", args...)
+	app := cmd.NewCmd("message-relayer-test", args...)
+	app.OpenLog(true)
+	return app
 }
 
 func runGasOracleApp(t *testing.T, args ...string) appAPI {
 	args = append(args, "--log.debug", "--config", bridgeFile)
-	return cmd.NewCmd("gas-oracle-test", args...)
+	app := cmd.NewCmd("gas-oracle-test", args...)
+	app.OpenLog(true)
+	return app
 }
 
 func runRollupRelayerApp(t *testing.T, args ...string) appAPI {
 	args = append(args, "--log.debug", "--config", bridgeFile)
-	return cmd.NewCmd("rollup-relayer-test", args...)
+	app := cmd.NewCmd("rollup-relayer-test", args...)
+	app.OpenLog(true)
+	return app
 }
 
 func runEventWatcherApp(t *testing.T, args ...string) appAPI {
 	args = append(args, "--log.debug", "--config", bridgeFile)
-	return cmd.NewCmd("event-watcher-test", args...)
+	app := cmd.NewCmd("event-watcher-test", args...)
+	app.OpenLog(true)
+	return app
 }
 
 func runCoordinatorApp(t *testing.T, args ...string) appAPI {
 	args = append(args, "--log.debug", "--config", coordinatorFile, "--ws", "--ws.port", strconv.Itoa(int(wsPort)))
 	// start process
-	return cmd.NewCmd("coordinator-test", args...)
+	app := cmd.NewCmd("coordinator-test", args...)
+	app.OpenLog(true)
+	return app
 }
 
 func runDBCliApp(t *testing.T, option, keyword string) {
 	args := []string{option, "--config", dbFile}
 	app := cmd.NewCmd("db_cli-test", args...)
+	app.OpenLog(true)
 	defer app.WaitExit()
 
 	// Wait expect result.
@@ -122,7 +134,9 @@ func runDBCliApp(t *testing.T, option, keyword string) {
 
 func runRollerApp(t *testing.T, args ...string) appAPI {
 	args = append(args, "--log.debug", "--config", rollerFile)
-	return cmd.NewCmd("roller-test", args...)
+	app := cmd.NewCmd("roller-test", args...)
+	app.OpenLog(true)
+	return app
 }
 
 func runSender(t *testing.T, endpoint string) *sender.Sender {
