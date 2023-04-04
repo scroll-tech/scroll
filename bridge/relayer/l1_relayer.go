@@ -3,7 +3,9 @@ package relayer
 import (
 	"context"
 	"errors"
+	"fmt"
 	"math/big"
+	"scroll-tech/common/utils"
 
 	// not sure if this will make problems when relay with l1geth
 
@@ -107,6 +109,42 @@ func NewLayer1Relayer(ctx context.Context, db database.OrmFactory, cfg *config.R
 
 	go l1Relayer.handleConfirmLoop(ctx)
 	return l1Relayer, nil
+}
+
+func (r *Layer1Relayer) checkSubmittedMessages() error {
+	var (
+		index    uint64
+		msgsSize = 100
+		db       = r.db
+	)
+	for {
+		l1Index, msgs, err := db.GetL1TxMessages(
+			map[string]interface{}{"status": types.MsgSubmitted},
+			fmt.Sprintf("AND queue_index > %d", index),
+			fmt.Sprintf("ORDER BY queue_index ASC LIMIT %d", msgsSize),
+		)
+		if err != nil {
+			log.Error("failed to get l1 submitted messages", "queue_index", index, "err", err)
+			return err
+		}
+		if len(msgs) == 0 {
+			return nil
+		}
+
+		index = l1Index
+		for _, msg := range msgs {
+			// TODO: restore incomplete transaction.
+			if !msg.TxHash.Valid {
+				continue
+			}
+			// If pending txs pool is full, wait until pending pool is available.
+			utils.TryTimes(-1, func() bool {
+				return !r.messageSender.IsFull()
+			})
+
+		}
+	}
+	return nil
 }
 
 // ProcessSavedEvents relays saved un-processed cross-domain transactions to desired blockchain

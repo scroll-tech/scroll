@@ -181,6 +181,63 @@ func (s *Sender) getFeeData(auth *bind.TransactOpts, target *common.Address, val
 	return s.estimateLegacyGas(auth, target, value, data, minGasLimit)
 }
 
+func (s *Sender) getTransaction(txHash common.Hash) (*types.Transaction, uint64, error) {
+	tx, isPending, err := s.client.TransactionByHash(s.ctx, txHash)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	if isPending {
+		return tx, atomic.LoadUint64(&s.blockNumber), nil
+	}
+
+	receipt, err := s.client.TransactionReceipt(s.ctx, txHash)
+	if err != nil {
+		return nil, 0, err
+	}
+	return tx, receipt.BlockNumber.Uint64(), nil
+}
+
+// LoadOrResendTx load
+func (s *Sender) LoadOrResendTx(destTxHash common.Hash, sender common.Address, nonce uint64, ID string, target *common.Address, value *big.Int, data []byte, minGasLimit uint64) error {
+	tx, number, err := s.getTransaction(destTxHash)
+	// check error except `not found` tx.
+	if err != nil && err.Error() != "not found" {
+		return err
+	}
+	// We occupy the ID, in case some other threads call with the same ID in the same time
+	if ok := s.pendingTxs.SetIfAbsent(ID, nil); !ok {
+		return fmt.Errorf("pending pool has repeat ID, ID: %s", ID)
+	}
+	defer func() {
+		if err != nil {
+			s.pendingTxs.Remove(ID)
+		}
+	}()
+
+	auth := s.auths.accounts[sender]
+	var feeData *FeeData
+	feeData, err = s.getFeeData(auth, target, value, data, minGasLimit)
+	if err != nil {
+		return err
+	}
+	// If tx is not in chain node, create and resend it.
+	if err != nil || tx == nil {
+		tx, err = s.createAndSendTx(auth, feeData, target, value, data, &nonce)
+		if err != nil {
+			return err
+		}
+	}
+	s.pendingTxs.Set(ID, &PendingTransaction{
+		submitAt: number,
+		id:       ID,
+		feeData:  feeData,
+		signer:   auth,
+		tx:       tx,
+	})
+	return nil
+}
+
 // SendTransaction send a signed L2tL1 transaction.
 func (s *Sender) SendTransaction(ID string, target *common.Address, value *big.Int, data []byte, minGasLimit uint64) (common.Address, *types.Transaction, error) {
 	if s.IsFull() {

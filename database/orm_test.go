@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/big"
+	"modernc.org/mathutil"
 	"os"
 	"testing"
 	"time"
@@ -93,8 +94,8 @@ var (
 func setupEnv(t *testing.T) error {
 	// Init db config and start db container.
 	dbConfig = &database.DBConfig{DriverName: "postgres"}
-	base.RunImages(t)
-	dbConfig.DSN = base.DBEndpoint()
+	//base.RunImages(t)
+	dbConfig.DSN = "postgres://maskpp:123456@localhost:5432/postgres?sslmode=disable" //base.DBEndpoint()
 
 	// Create db handler and reset db.
 	factory, err := database.NewOrmFactory(dbConfig)
@@ -518,12 +519,14 @@ func testTxOrmGetL1TxMessages(t *testing.T) {
 		assert.NoError(t, err)
 	}
 
-	txMsgs, err := ormTx.GetL1TxMessages(
+	index, txMsgs, err := ormTx.GetL1TxMessages(
 		map[string]interface{}{"status": types.MsgSubmitted},
 		fmt.Sprintf("AND queue_index > %d", 0),
 		fmt.Sprintf("ORDER BY queue_index ASC LIMIT %d", 10),
 	)
 	assert.NoError(t, err)
+	// check index is the biggest one.
+	assert.Equal(t, templateL1Message[1].QueueIndex, index)
 	assert.Equal(t, len(templateL1Message), len(txMsgs))
 	// The first field is full.
 	assert.Equal(t, templateL1Message[0].MsgHash, txMsgs[0].ID)
@@ -552,12 +555,13 @@ func testTxOrmGetL2TxMessages(t *testing.T) {
 		assert.NoError(t, err)
 	}
 
-	txMsgs, err := ormTx.GetL2TxMessages(
+	nonce, txMsgs, err := ormTx.GetL2TxMessages(
 		map[string]interface{}{"status": types.MsgSubmitted},
 		fmt.Sprintf("AND nonce > %d", 0),
 		fmt.Sprintf("ORDER BY nonce ASC LIMIT %d", 10),
 	)
 	assert.NoError(t, err)
+	assert.Equal(t, templateL2Message[1].Nonce, nonce)
 	assert.Equal(t, len(templateL2Message), len(txMsgs))
 	assert.Equal(t, templateL2Message[0].MsgHash, txMsgs[0].ID)
 	assert.Equal(t, false, txMsgs[1].TxHash.Valid)
@@ -583,12 +587,14 @@ func testTxOrmGetBlockBatchTxMessages(t *testing.T) {
 	err = ormTx.SaveTx(batchData1.Hash().String(), auth.From.String(), signedTx)
 	assert.Nil(t, err)
 
-	txMsgs, err := ormTx.GetBlockBatchTxMessages(
+	batchIndex, txMsgs, err := ormTx.GetBlockBatchTxMessages(
 		map[string]interface{}{"rollup_status": types.RollupPending},
 		fmt.Sprintf("AND index > %d", 0),
 		fmt.Sprintf("ORDER BY index ASC LIMIT %d", 10),
 	)
 	assert.NoError(t, err)
+	// Check bath index is the biggest one.
+	assert.Equal(t, mathutil.MaxUint64(batchData1.Batch.BatchIndex, batchData2.Batch.BatchIndex), batchIndex)
 	assert.Equal(t, 2, len(txMsgs))
 	assert.Equal(t, batchData1.Hash().String(), txMsgs[0].ID)
 	assert.Equal(t, false, txMsgs[1].TxHash.Valid)

@@ -117,7 +117,7 @@ type TxOrm interface {
 	SaveTx(id, sender string, tx *etypes.Transaction) error
 	UpdateTxMsgByID(hash string, txHash string) error
 	GetTxByID(id string) (*types.TxMessage, error)
-	GetL1TxMessages(fields map[string]interface{}, args ...string) ([]*types.TxMessage, error)
-	GetL2TxMessages(fields map[string]interface{}, args ...string) ([]*types.TxMessage, error)
-	GetBlockBatchTxMessages(fields map[string]interface{}, args ...string) ([]*types.TxMessage, error)
+	GetL1TxMessages(fields map[string]interface{}, args ...string) (uint64, []*types.TxMessage, error)
+	GetL2TxMessages(fields map[string]interface{}, args ...string) (uint64, []*types.TxMessage, error)
+	GetBlockBatchTxMessages(fields map[string]interface{}, args ...string) (uint64, []*types.TxMessage, error)
 }
