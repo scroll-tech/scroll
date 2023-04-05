@@ -22,7 +22,8 @@ type RollerManagerConfig struct {
 	OrderSession string `json:"order_session,omitempty"`
 	// The amount of rollers to pick per proof generation session.
 	RollersPerSession uint8 `json:"rollers_per_session"`
-	// Number of attempts that session can repeat if previous attempt failed (timed out curretly)
+	// Number of attempts that a session can be retried if previous attempts failed.
+	// Currently we only consider proving timeout as failure here.
 	SessionAttempts uint8 `json:"session_attempts,omitempty"`
 	// Zk verifier config.
 	Verifier *VerifierConfig `json:"verifier,omitempty"`

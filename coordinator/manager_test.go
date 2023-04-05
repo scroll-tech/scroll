@@ -409,7 +409,7 @@ func testTimedoutProof(t *testing.T) {
 		}
 	}
 
-	// create first mock roller, that will send valid proof.
+	// create second mock roller, that will send valid proof.
 	roller2 := newMockRoller(t, "roller_test"+strconv.Itoa(1), wsURL)
 	roller2.waitTaskAndSendProof(t, time.Second, false, true)
 	defer func() {
@@ -421,7 +421,7 @@ func testTimedoutProof(t *testing.T) {
 	// wait manager to finish first CollectProofs
 	<-time.After(60 * time.Second)
 
-	// verify proof status, it should be verified now, because second roller didn't sent valid proof
+	// verify proof status, it should be verified now, because second roller sent valid proof
 	for len(hashes) > 0 {
 		select {
 		case <-tick:
