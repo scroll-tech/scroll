@@ -31,20 +31,17 @@ import (
 
 var (
 	// proofs
-	coordinatorProofsReceivedTotalCounter       = geth_metrics.NewRegisteredCounter("coordinator/proofs/received/total", metrics.ScrollRegistry)
-	coordinatorProofsVerifiedTotalCounter       = geth_metrics.NewRegisteredCounter("coordinator/proofs/verified/total", metrics.ScrollRegistry)
-	coordinatorProofsVerifiedFailedTotalCounter = geth_metrics.NewRegisteredCounter("coordinator/proofs/verified/failed/total", metrics.ScrollRegistry)
+	coordinatorProofsReceivedTotalCounter = geth_metrics.NewRegisteredCounter("coordinator/proofs/received/total", metrics.ScrollRegistry)
+
+	coordinatorProofsVerifiedSuccessTimeTimer  = geth_metrics.NewRegisteredTimer("coordinator/proofs/verified/success/time", metrics.ScrollRegistry)
+	coordinatorProofsVerifiedFailedTimeTimer   = geth_metrics.NewRegisteredTimer("coordinator/proofs/verified/failed/time", metrics.ScrollRegistry)
+	coordinatorProofsGenerationFailedTimeTimer = geth_metrics.NewRegisteredTimer("coordinator/proofs/generation/failed/time", metrics.ScrollRegistry)
 
 	// sessions
 	coordinatorSessionsSuccessTotalCounter = geth_metrics.NewRegisteredCounter("coordinator/sessions/success/total", metrics.ScrollRegistry)
 	coordinatorSessionsTimeoutTotalCounter = geth_metrics.NewRegisteredCounter("coordinator/sessions/timeout/total", metrics.ScrollRegistry)
 	coordinatorSessionsFailedTotalCounter  = geth_metrics.NewRegisteredCounter("coordinator/sessions/failed/total", metrics.ScrollRegistry)
 	coordinatorSessionsActiveTotalCounter  = geth_metrics.NewRegisteredCounter("coordinator/sessions/active/total", metrics.ScrollRegistry)
-
-	// proof timers
-	coordinatorSessionsProofSuccessTimeTimer            = geth_metrics.NewRegisteredTimer("coordinator/sessions/proof/success/time", metrics.ScrollRegistry)
-	coordinatorSessionsProofGenerationFailedTimeTimer   = geth_metrics.NewRegisteredTimer("coordinator/sessions/proof/generation/failed/time", metrics.ScrollRegistry)
-	coordinatorSessionsProofVerificationFailedTimeTimer = geth_metrics.NewRegisteredTimer("coordinator/sessions/proof/verification/failed/time", metrics.ScrollRegistry)
 )
 
 const (
@@ -300,7 +297,7 @@ func (m *Manager) handleZkProof(pk string, msg *message.ProofDetail) error {
 	}()
 
 	if msg.Status != message.StatusOk {
-		coordinatorSessionsProofGenerationFailedTimeTimer.Update(proofTime)
+		coordinatorProofsGenerationFailedTimeTimer.Update(proofTime)
 		log.Error(
 			"Roller failed to generate proof",
 			"msg.ID", msg.ID,
@@ -343,15 +340,13 @@ func (m *Manager) handleZkProof(pk string, msg *message.ProofDetail) error {
 				"error", dbErr)
 			return dbErr
 		}
-		coordinatorProofsVerifiedTotalCounter.Inc(1)
-		coordinatorSessionsProofSuccessTimeTimer.Update(proofTime)
+		coordinatorProofsVerifiedSuccessTimeTimer.Update(proofTime)
 		m.updateMetricRollerProofsSuccessTotal(roller.PublicKey)
 		m.updateMetricRollerProvingSuccessTimeTimer(roller.PublicKey, proofTime)
 		log.Info("proof success", "proof id", msg.ID, "roller name", roller.Name,
 			"roller pk", roller.PublicKey, "proof time", proofTimeSec)
 	} else {
-		coordinatorProofsVerifiedFailedTotalCounter.Inc(1)
-		coordinatorSessionsProofVerificationFailedTimeTimer.Update(proofTime)
+		coordinatorProofsVerifiedFailedTimeTimer.Update(proofTime)
 		m.updateMetricRollerProofsFailedTotal(roller.PublicKey)
 		m.updateMetricRollerProvingFailedTimeTimer(roller.PublicKey, proofTime)
 		log.Info("proof failed", "proof id", msg.ID, "roller name", roller.Name,
