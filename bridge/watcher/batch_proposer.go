@@ -123,7 +123,7 @@ func NewBatchProposer(ctx context.Context, cfg *config.BatchProposerConfig, rela
 	p.recoverBatchDataBuffer()
 
 	// Initialize missing proof before we do anything else
-	if err := p.initializeMissingMessageProof(); err != nil {
+	if err := p.InitializeMissingMessageProof(); err != nil {
 		panic(fmt.Sprintf("failed to initialize missing message proof, err: %v", err))
 	}
 
@@ -133,7 +133,8 @@ func NewBatchProposer(ctx context.Context, cfg *config.BatchProposerConfig, rela
 	return p
 }
 
-func (p *BatchProposer) initializeMissingMessageProof() error {
+// InitializeMissingMessageProof will initialize missing message proof.
+func (p *BatchProposer) InitializeMissingMessageProof() error {
 	firstMsg, err := p.orm.GetL2MessageByNonce(0)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return fmt.Errorf("failed to get first l2 message: %v", err)
@@ -344,7 +345,7 @@ func (p *BatchProposer) TryProposeBatch() {
 			return
 		}
 
-		batchCreated := p.proposeBatch(blocks)
+		batchCreated := p.ProposeBatch(blocks)
 
 		// while size of batchDataBuffer < commitCalldataMinSize,
 		// proposer keeps fetching and porposing batches.
@@ -405,7 +406,8 @@ func (p *BatchProposer) TryCommitBatches() {
 	}
 }
 
-func (p *BatchProposer) proposeBatch(blocks []*types.BlockInfo) bool {
+// ProposeBatch will propose a batch, unit testing only
+func (p *BatchProposer) ProposeBatch(blocks []*types.BlockInfo) bool {
 	if len(blocks) == 0 {
 		return false
 	}

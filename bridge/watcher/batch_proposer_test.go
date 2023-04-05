@@ -143,10 +143,10 @@ func testProposeBatchWithMessages(t *testing.T) {
 	defer db.Close()
 
 	// create proposer
-	relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, cfg.L2Config.RelayerConfig)
+	relayer, err := relayer.NewLayer2Relayer(context.Background(), l2Cli, db, cfg.L2Config.RelayerConfig)
 	assert.NoError(t, err)
 
-	proposer := NewBatchProposer(context.Background(), &config.BatchProposerConfig{
+	proposer := watcher.NewBatchProposer(context.Background(), &config.BatchProposerConfig{
 		ProofGenerationFreq: 1,
 		BatchGasThreshold:   3000000,
 		BatchTxNumThreshold: 135,
@@ -154,11 +154,11 @@ func testProposeBatchWithMessages(t *testing.T) {
 		BatchBlocksLimit:    100,
 	}, relayer, db)
 
-	trie := NewWithdrawTrie()
+	trie := watcher.NewWithdrawTrie()
 
 	// fake 11 blocks and 10 messages
 	var msgs []*types.L2Message
-	var traces []*geth_types.BlockTrace
+	var traces []*types.WrappedBlock
 	for i := 0; i < 11; i++ {
 		parentHash := common.Hash{}
 		withdrawTrieRoot := common.Hash{}
@@ -172,29 +172,25 @@ func testProposeBatchWithMessages(t *testing.T) {
 			trie.AppendMessages([]common.Hash{common.HexToHash(msgs[i-1].MsgHash)})
 			withdrawTrieRoot = trie.MessageRoot()
 		}
-		traces = append(traces, &geth_types.BlockTrace{
+		traces = append(traces, &types.WrappedBlock{
 			Header: &geth_types.Header{
 				ParentHash: parentHash,
 				Difficulty: big.NewInt(0),
 				Number:     big.NewInt(int64(i)),
-			},
-			StorageTrace: &geth_types.StorageTrace{
-				RootBefore: common.BigToHash(big.NewInt(int64(i))),
-				RootAfter:  common.BigToHash(big.NewInt(int64(i + 1))),
 			},
 			WithdrawTrieRoot: withdrawTrieRoot,
 		})
 	}
 
 	// insert blocks and message
-	err = db.InsertL2BlockTraces(traces)
+	err = db.InsertWrappedBlocks(traces)
 	assert.NoError(t, err)
 	err = db.SaveL2Messages(context.Background(), msgs)
 	assert.NoError(t, err)
 
 	// insert genesis batch
 	genssisBatchData := types.NewGenesisBatchData(traces[0])
-	err = AddBatchInfoToDB(db, genssisBatchData, make([]*types.L2Message, 0), make([][]byte, 0))
+	err = watcher.AddBatchInfoToDB(db, genssisBatchData, make([]*types.L2Message, 0), make([][]byte, 0))
 	assert.NoError(t, err)
 	batchHash := genssisBatchData.Hash().Hex()
 	err = db.UpdateProvingStatus(batchHash, types.ProvingTaskProved)
@@ -207,7 +203,7 @@ func testProposeBatchWithMessages(t *testing.T) {
 	// propose batch with 1 block
 	blocks, err = db.GetUnbatchedL2Blocks(map[string]interface{}{}, "order by number ASC LIMIT 1")
 	assert.NoError(t, err)
-	proposer.proposeBatch(blocks)
+	proposer.ProposeBatch(blocks)
 	for i := 0; i < 10; i++ {
 		proof, err = db.GetL2MessageProofByNonce(msgs[i].Nonce)
 		assert.NoError(t, err)
@@ -216,7 +212,7 @@ func testProposeBatchWithMessages(t *testing.T) {
 	// propose batch with 2 block
 	blocks, err = db.GetUnbatchedL2Blocks(map[string]interface{}{}, "order by number ASC LIMIT 2")
 	assert.NoError(t, err)
-	proposer.proposeBatch(blocks)
+	proposer.ProposeBatch(blocks)
 	for i := 0; i < 10; i++ {
 		proof, err = db.GetL2MessageProofByNonce(msgs[i].Nonce)
 		assert.NoError(t, err)
@@ -225,7 +221,7 @@ func testProposeBatchWithMessages(t *testing.T) {
 	// propose batch with 3 block
 	blocks, err = db.GetUnbatchedL2Blocks(map[string]interface{}{}, "order by number ASC LIMIT 3")
 	assert.NoError(t, err)
-	proposer.proposeBatch(blocks)
+	proposer.ProposeBatch(blocks)
 	for i := 0; i < 10; i++ {
 		proof, err = db.GetL2MessageProofByNonce(msgs[i].Nonce)
 		assert.NoError(t, err)
@@ -234,7 +230,7 @@ func testProposeBatchWithMessages(t *testing.T) {
 	// propose batch with 4 block
 	blocks, err = db.GetUnbatchedL2Blocks(map[string]interface{}{}, "order by number ASC LIMIT 4")
 	assert.NoError(t, err)
-	proposer.proposeBatch(blocks)
+	proposer.ProposeBatch(blocks)
 	for i := 0; i < 10; i++ {
 		proof, err = db.GetL2MessageProofByNonce(msgs[i].Nonce)
 		assert.NoError(t, err)
@@ -249,11 +245,11 @@ func testInitializeMissingMessageProof(t *testing.T) {
 	assert.NoError(t, migrate.ResetDB(db.GetDB().DB))
 	defer db.Close()
 
-	trie := NewWithdrawTrie()
+	trie := watcher.NewWithdrawTrie()
 
 	// fake 11 blocks and 10 messages
 	var msgs []*types.L2Message
-	var traces []*geth_types.BlockTrace
+	var traces []*types.WrappedBlock
 	for i := 0; i < 11; i++ {
 		parentHash := common.Hash{}
 		withdrawTrieRoot := common.Hash{}
@@ -270,27 +266,23 @@ func testInitializeMissingMessageProof(t *testing.T) {
 		if i <= 6 {
 			withdrawTrieRoot = common.Hash{}
 		}
-		traces = append(traces, &geth_types.BlockTrace{
+		traces = append(traces, &types.WrappedBlock{
 			Header: &geth_types.Header{
 				ParentHash: parentHash,
 				Difficulty: big.NewInt(0),
 				Number:     big.NewInt(int64(i)),
-			},
-			StorageTrace: &geth_types.StorageTrace{
-				RootBefore: common.BigToHash(big.NewInt(int64(i))),
-				RootAfter:  common.BigToHash(big.NewInt(int64(i + 1))),
 			},
 			WithdrawTrieRoot: withdrawTrieRoot,
 		})
 	}
 
 	// insert blocks
-	err = db.InsertL2BlockTraces(traces)
+	err = db.InsertWrappedBlocks(traces)
 	assert.NoError(t, err)
 
 	// insert genesis batch
 	genssisBatchData := types.NewGenesisBatchData(traces[0])
-	err = AddBatchInfoToDB(db, genssisBatchData, make([]*types.L2Message, 0), make([][]byte, 0))
+	err = watcher.AddBatchInfoToDB(db, genssisBatchData, make([]*types.L2Message, 0), make([][]byte, 0))
 	assert.NoError(t, err)
 	batchHash := genssisBatchData.Hash().Hex()
 	err = db.UpdateProvingStatus(batchHash, types.ProvingTaskProved)
@@ -299,10 +291,10 @@ func testInitializeMissingMessageProof(t *testing.T) {
 	assert.NoError(t, err)
 
 	// create proposer
-	relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, cfg.L2Config.RelayerConfig)
+	relayer, err := relayer.NewLayer2Relayer(context.Background(), l2Cli, db, cfg.L2Config.RelayerConfig)
 	assert.NoError(t, err)
 
-	proposer := NewBatchProposer(context.Background(), &config.BatchProposerConfig{
+	proposer := watcher.NewBatchProposer(context.Background(), &config.BatchProposerConfig{
 		ProofGenerationFreq: 1,
 		BatchGasThreshold:   3000000,
 		BatchTxNumThreshold: 135,
@@ -315,15 +307,15 @@ func testInitializeMissingMessageProof(t *testing.T) {
 	// propose batch with 1 block
 	blocks, err = db.GetUnbatchedL2Blocks(map[string]interface{}{}, "order by number ASC LIMIT 1")
 	assert.NoError(t, err)
-	proposer.proposeBatch(blocks)
+	proposer.ProposeBatch(blocks)
 	// propose batch with 2 block
 	blocks, err = db.GetUnbatchedL2Blocks(map[string]interface{}{}, "order by number ASC LIMIT 2")
 	assert.NoError(t, err)
-	proposer.proposeBatch(blocks)
+	proposer.ProposeBatch(blocks)
 	// propose batch with 3 block
 	blocks, err = db.GetUnbatchedL2Blocks(map[string]interface{}{}, "order by number ASC LIMIT 3")
 	assert.NoError(t, err)
-	proposer.proposeBatch(blocks)
+	proposer.ProposeBatch(blocks)
 
 	// save messages
 	err = db.SaveL2Messages(context.Background(), msgs)
@@ -336,7 +328,7 @@ func testInitializeMissingMessageProof(t *testing.T) {
 	}
 
 	// initialize missing proof
-	err = proposer.initializeMissingMessageProof()
+	err = proposer.InitializeMissingMessageProof()
 	assert.NoError(t, err)
 
 	for i := 0; i < 6; i++ {
@@ -348,7 +340,7 @@ func testInitializeMissingMessageProof(t *testing.T) {
 	// propose batch with 4 block
 	blocks, err = db.GetUnbatchedL2Blocks(map[string]interface{}{}, "order by number ASC LIMIT 4")
 	assert.NoError(t, err)
-	proposer.proposeBatch(blocks)
+	proposer.ProposeBatch(blocks)
 	for i := 0; i < 10; i++ {
 		proof, err = db.GetL2MessageProofByNonce(msgs[i].Nonce)
 		assert.NoError(t, err)

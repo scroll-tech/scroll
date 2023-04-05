@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"sync/atomic"
 
 	geth "github.com/scroll-tech/go-ethereum"
 	"github.com/scroll-tech/go-ethereum/accounts/abi"
@@ -135,6 +136,12 @@ const blockTracesFetchLimit = uint64(10)
 
 // TryFetchRunningMissingBlocks try fetch missing blocks if inconsistent
 func (w *L2WatcherClient) TryFetchRunningMissingBlocks(ctx context.Context, blockHeight uint64) {
+	// all messages should be fetched before blocks to make sure batch proposer work properly.
+	processedMsgHeight := atomic.LoadUint64(&w.processedMsgHeight)
+	if blockHeight > processedMsgHeight {
+		blockHeight = processedMsgHeight
+	}
+
 	// Get newest block in DB. must have blocks at that time.
 	// Don't use "block_trace" table "trace" column's BlockTrace.Number,
 	// because it might be empty if the corresponding rollup_result is finalized/finalization_skipped
@@ -226,7 +233,7 @@ func (w *L2WatcherClient) getAndStoreBlockTraces(ctx context.Context, from, to u
 // FetchContractEvent pull latest event logs from given contract address and save in DB
 func (w *L2WatcherClient) FetchContractEvent() {
 	defer func() {
-		log.Info("l2 watcher fetchContractEvent", "w.processedMsgHeight", w.processedMsgHeight)
+		log.Info("l2 watcher fetchContractEvent", "w.processedMsgHeight", atomic.LoadUint64(&w.processedMsgHeight))
 	}()
 
 	blockHeight, err := utils.GetLatestConfirmedBlockNumber(w.ctx, w.Client, w.confirmations)
@@ -235,7 +242,7 @@ func (w *L2WatcherClient) FetchContractEvent() {
 		return
 	}
 
-	fromBlock := int64(w.processedMsgHeight) + 1
+	fromBlock := int64(atomic.LoadUint64(&w.processedMsgHeight)) + 1
 	toBlock := int64(blockHeight)
 
 	for from := fromBlock; from <= toBlock; from += contractEventsBlocksFetchLimit {
@@ -267,7 +274,7 @@ func (w *L2WatcherClient) FetchContractEvent() {
 			return
 		}
 		if len(logs) == 0 {
-			w.processedMsgHeight = uint64(to)
+			atomic.StoreUint64(&w.processedMsgHeight, uint64(to))
 			bridgeL2MsgsSyncHeightGauge.Update(to)
 			continue
 		}
@@ -305,7 +312,7 @@ func (w *L2WatcherClient) FetchContractEvent() {
 			return
 		}
 
-		w.processedMsgHeight = uint64(to)
+		atomic.StoreUint64(&w.processedMsgHeight, uint64(to))
 		bridgeL2MsgsSyncHeightGauge.Update(to)
 	}
 }

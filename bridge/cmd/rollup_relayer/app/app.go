@@ -103,6 +103,9 @@ func action(ctx *cli.Context) error {
 		l2watcher.TryFetchRunningMissingBlocks(ctx, number)
 	})
 
+	// Start l2 watcher process
+	go cutils.Loop(subCtx, 2*time.Second, l2watcher.FetchContractEvent)
+
 	// Batch proposer loop
 	go cutils.Loop(subCtx, 2*time.Second, func() {
 		batchProposer.TryProposeBatch()
