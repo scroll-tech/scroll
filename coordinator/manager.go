@@ -391,7 +391,7 @@ func (m *Manager) CollectProofs(sess *session) {
 			}
 			delete(m.sessions, sess.info.ID)
 			m.mu.Unlock()
-      coordinatorSessionsTimeoutTotalCounter.Inc(1)
+			coordinatorSessionsTimeoutTotalCounter.Inc(1)
 			return
 
 		//Execute after one of the roller finishes sending proof, return early if all rollers had sent results.
