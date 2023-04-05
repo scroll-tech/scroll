@@ -163,6 +163,7 @@ type SessionInfo struct {
 	ID             string                   `json:"id"`
 	Rollers        map[string]*RollerStatus `json:"rollers"`
 	StartTimestamp int64                    `json:"start_timestamp"`
+	Attempts       uint8                    `json:"attempts,omitempty"`
 }
 
 // ProvingStatus block_batch proving_status (unassigned, assigned, proved, verified, submitted)
