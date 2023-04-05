@@ -31,7 +31,7 @@ As described above, the first step is to call `L1ScrollMessenger.sendMessage` in
 
 The execution in layer 2 may be failed due to out of gas problem. In such case, one can call `L1ScrollMessenger.replayMessage` to replace the message with a larger gas limit. And the Relayer will follow the steps and execute the message again in layer 2.
 
-In the next version, we will replace the Relayer by the L2 seqeuncer to include the L1 messages as a new type of transaciton
+In the next version, we will replace the Relayer by the L2 seqeuncer to include the L1 message transaction in the L2 blocks.
 
 ### Send Message from L2 to L1
 

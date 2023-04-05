@@ -3,21 +3,30 @@
 ## Directory Structure
 
 ```
-integration-test
-|- xxx.test.ts - "Hardhat integration tests"
-lib
-|- forge-std - "foundry dependency"
-scripts
-|- deploy_xxx.ts - "hardhat deploy script"
-|- foundry - "foundry deploy scripts"
-src
-|- test
-|  `- xxx.t.sol - "Unit testi in solidity"
-`- xxx.sol - "solidity contract"
-.gitmodules -  "foundry dependecy modules"
-foundry.toml - "configure foundry"
-hardhat.config.ts - "configure hardhat"
-remappings.txt - "foundry dependency mappings"
+├── integration-test: Hardhat integration tests
+├── lib:
+│   ├── ds-test: testing tools
+│   ├── forge-std: foundry dependency
+│   └── solmate: testing tools
+├── scripts: deployment scripts
+├── src
+│   ├── interfaces: common contract interfaces
+│   ├── L1: contracts on the L1
+│   │   ├── gateways: Gateway router and individual gateway contracts
+│   │   ├── rollup: Rollup contracts for data availability and finalization
+│   │   ├── IL1ScrollMessenger.sol: L1 Scroll messenger interface
+│   │   └── L1ScrollMessenger.sol: L1 Scroll messenger contract
+│   ├── L2: contracts on the L2
+│   │   ├── gateways: Gateway router and individual gateway contracts
+│   │   ├── predeploys: Predeployed contracts on the L2 messenger interface
+│   │   ├── IL2ScrollMessenger.sol: L2 Scroll messenger interface
+│   │   └── L2ScrollMessenger.sol: L2 Scroll messenger contract
+│   ├── libraries: shared contract libraries
+│   ├── mocks: mock contracts used in the testing
+│   └── test: unit tests in solidity
+├── foundry.toml: configure foundry
+├── hardhat.config.ts: configure hardhat
+├── remappings.txt: foundry dependency mappings
 ...
 ```
 
@@ -55,21 +64,21 @@ yarn install
 
 ## TODO
 
-- [ ] unit tests
-  - [ ] L1 Messenger
+- [x] unit tests
+  - [x] L1 Messenger
   - [x] L1 Gateways
   - [x] L1 Gateway Router
-  - [ ] L2 Messenger
+  - [x] L2 Messenger
   - [x] L2 Gateways
   - [x] L2 Gateway Router
   - [x] ScrollStandardERC20Factory
   - [x] Whitelist
-  - [ ] SimpleGasOracle
-- [ ] integration tests
+  - [x] SimpleGasOracle
+- [x] integration tests
   - [x] ERC20Gateway
   - [x] GatewayRouter
-- [ ] ZKRollup contracts
+- [x] ZKRollup contracts
 - [x] Gas Oracle contracts for cross chain message call
-- [ ] ERC721/ERC115 interface design
-- [ ] add proof verification codes
+- [x] ERC721/ERC115 interface design
+- [x] add proof verification codes
 - [ ] security analysis
