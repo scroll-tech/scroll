@@ -16,9 +16,9 @@ const (
 	L2toL1MessageTx
 	// L2toL1GasOracleTx  is sent by l2 relayer but to L1
 	L2toL1GasOracleTx
-	// RollUpCommitTx  is sent to L2
+	// RollUpCommitTx  is sent to L1
 	RollUpCommitTx
-	// RollupFinalizeTx  is sent to L2
+	// RollupFinalizeTx  is sent to L1
 	RollupFinalizeTx
 )
 
