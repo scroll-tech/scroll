@@ -86,7 +86,7 @@ var (
 	ormLayer2  orm.L2MessageOrm
 	ormBatch   orm.BlockBatchOrm
 	ormSession orm.SessionInfoOrm
-	ormTx      orm.TxOrm
+	ormTx      orm.ScrollTxOrm
 
 	auth *bind.TransactOpts
 )
@@ -94,8 +94,8 @@ var (
 func setupEnv(t *testing.T) error {
 	// Init db config and start db container.
 	dbConfig = &database.DBConfig{DriverName: "postgres"}
-	base.RunImages(t)
-	dbConfig.DSN = base.DBEndpoint()
+	//base.RunImages(t)
+	dbConfig.DSN = "postgres://maskpp:123456@localhost:5432/postgres?sslmode=disable" // base.DBEndpoint()
 
 	// Create db handler and reset db.
 	factory, err := database.NewOrmFactory(dbConfig)
@@ -109,7 +109,7 @@ func setupEnv(t *testing.T) error {
 	ormLayer2 = orm.NewL2MessageOrm(db)
 	ormBatch = orm.NewBlockBatchOrm(db)
 	ormSession = orm.NewSessionInfoOrm(db)
-	ormTx = orm.NewTxOrm(db)
+	ormTx = orm.NewScrollTxOrm(db)
 
 	templateBlockTrace, err := os.ReadFile("../common/testdata/blockTrace_02.json")
 	if err != nil {

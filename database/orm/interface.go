@@ -112,9 +112,9 @@ type L2MessageOrm interface {
 	GetRelayL2MessageTxHash(nonce uint64) (sql.NullString, error) // for unit tests only
 }
 
-// TxOrm transaction operation interfaces.
-type TxOrm interface {
-	SaveTx(id, sender string, txType types.TxType, tx *etypes.Transaction) error
+// ScrollTxOrm transaction operation interfaces.
+type ScrollTxOrm interface {
+	SaveTx(id, sender string, txType types.ScrollTxType, tx *etypes.Transaction) error
 	UpdateTxMsgByID(hash string, txHash string) error
 	GetTxByID(id string) (*types.ScrollTx, error)
 	GetL1TxMessages(fields map[string]interface{}, args ...string) (uint64, []*types.ScrollTx, error)

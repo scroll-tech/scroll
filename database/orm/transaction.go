@@ -11,19 +11,19 @@ import (
 	stypes "scroll-tech/common/types"
 )
 
-type txOrm struct {
+type scrollTxOrm struct {
 	db *sqlx.DB
 }
 
-var _ TxOrm = (*txOrm)(nil)
+var _ ScrollTxOrm = (*scrollTxOrm)(nil)
 
-// NewTxOrm create an TxOrm instance.
-func NewTxOrm(db *sqlx.DB) TxOrm {
-	return &txOrm{db: db}
+// NewScrollTxOrm create an ScrollTxOrm instance.
+func NewScrollTxOrm(db *sqlx.DB) ScrollTxOrm {
+	return &scrollTxOrm{db: db}
 }
 
 // SaveTx stores tx message into db.
-func (t *txOrm) SaveTx(id, sender string, txType stypes.TxType, tx *types.Transaction) error {
+func (t *scrollTxOrm) SaveTx(id, sender string, txType stypes.ScrollTxType, tx *types.Transaction) error {
 	if tx == nil {
 		return nil
 	}
@@ -32,7 +32,7 @@ func (t *txOrm) SaveTx(id, sender string, txType stypes.TxType, tx *types.Transa
 		target = tx.To().String()
 	}
 	_, err := t.db.Exec(
-		t.db.Rebind("INSERT INTO transaction (id, tx_hash, sender, nonce, target, value, data, type) VALUES (?, ?, ?, ?, ?, ?, ?, ?);"),
+		t.db.Rebind("INSERT INTO scroll_transaction (id, tx_hash, sender, nonce, target, value, data, type) VALUES (?, ?, ?, ?, ?, ?, ?, ?);"),
 		id,
 		tx.Hash().String(),
 		sender,
@@ -46,16 +46,16 @@ func (t *txOrm) SaveTx(id, sender string, txType stypes.TxType, tx *types.Transa
 }
 
 // UpdateTxMsgByID remove data content by id.
-func (t *txOrm) UpdateTxMsgByID(id string, txHash string) error {
+func (t *scrollTxOrm) UpdateTxMsgByID(id string, txHash string) error {
 	db := t.db
-	_, err := db.Exec(db.Rebind("UPDATE transaction SET data = '', tx_hash = ? WHERE id = ?;"), txHash, id)
+	_, err := db.Exec(db.Rebind("UPDATE scroll_transaction SET data = '', tx_hash = ? WHERE id = ?;"), txHash, id)
 	return err
 }
 
 // GetTxByID returns tx message by message id.
-func (t *txOrm) GetTxByID(id string) (*stypes.ScrollTx, error) {
+func (t *scrollTxOrm) GetTxByID(id string) (*stypes.ScrollTx, error) {
 	db := t.db
-	row := db.QueryRowx(db.Rebind("SELECT id, tx_hash, sender, nonce, target, value, data FROM transaction WHERE id = ?"), id)
+	row := db.QueryRowx(db.Rebind("SELECT id, tx_hash, sender, nonce, target, value, data FROM scroll_transaction WHERE id = ?"), id)
 	txMsg := &stypes.ScrollTx{}
 	if err := row.StructScan(txMsg); err != nil {
 		return nil, err
@@ -63,18 +63,17 @@ func (t *txOrm) GetTxByID(id string) (*stypes.ScrollTx, error) {
 	return txMsg, nil
 }
 
-// GetL1TxMessages gets tx messages by transaction right join l1_message.
+// GetL1TxMessages gets tx messages by scroll_transaction right join l1_message.
 // sql i.g:
 // select l1.msg_hash as id, tx.tx_hash, tx.sender, tx.nonce, tx.target, tx.value, tx.data
-// from transaction as tx
+// from scroll_transaction as tx
 // right join (select msg_hash
 //
 //	from l1_message
 //	where 1 = 1 AND status = :status AND queue_index > 0
 //	ORDER BY queue_index ASC
 //	LIMIT 10) as l1 on tx.id = l1.msg_hash;
-
-func (t *txOrm) GetL1TxMessages(fields map[string]interface{}, args ...string) (uint64, []*stypes.ScrollTx, error) {
+func (t *scrollTxOrm) GetL1TxMessages(fields map[string]interface{}, args ...string) (uint64, []*stypes.ScrollTx, error) {
 	query := "select msg_hash, queue_index from l1_message where 1 = 1"
 	for key := range fields {
 		query = query + fmt.Sprintf(" AND %s = :%s", key, key)
@@ -107,7 +106,7 @@ func (t *txOrm) GetL1TxMessages(fields map[string]interface{}, args ...string) (
 }
 
 // GetL2TxMessages gets tx messages by transaction right join l2_message.
-func (t *txOrm) GetL2TxMessages(fields map[string]interface{}, args ...string) (uint64, []*stypes.ScrollTx, error) {
+func (t *scrollTxOrm) GetL2TxMessages(fields map[string]interface{}, args ...string) (uint64, []*stypes.ScrollTx, error) {
 	query := "select msg_hash from l2_message where 1 = 1"
 	for key := range fields {
 		query = query + fmt.Sprintf(" AND %s = :%s", key, key)
@@ -140,7 +139,7 @@ func (t *txOrm) GetL2TxMessages(fields map[string]interface{}, args ...string) (
 }
 
 // GetBlockBatchTxMessages gets tx messages by transaction right join block_batch.
-func (t *txOrm) GetBlockBatchTxMessages(fields map[string]interface{}, args ...string) (uint64, []*stypes.ScrollTx, error) {
+func (t *scrollTxOrm) GetBlockBatchTxMessages(fields map[string]interface{}, args ...string) (uint64, []*stypes.ScrollTx, error) {
 	query := "select hash, index from block_batch where 1 = 1"
 	for key := range fields {
 		query = query + fmt.Sprintf(" AND %s = :%s", key, key)

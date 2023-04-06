@@ -1,7 +1,7 @@
 -- +goose Up
 -- +goose StatementBegin
 
-create table transaction
+create table scroll_transaction
 (
     id           VARCHAR      NOT NULL,
     tx_hash      VARCHAR      NOT NULL,
@@ -14,15 +14,15 @@ create table transaction
     created_time TIMESTAMP(0) NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
-create unique index transaction_id_uindex
-    on transaction (id);
+create unique index scroll_transaction_id_uindex
+    on scroll_transaction (id);
 
-create unique index transaction_tx_hash_uindex
-    on transaction (tx_hash);
+create unique index scroll_transaction_tx_hash_uindex
+    on scroll_transaction (tx_hash);
 
 -- +goose StatementEnd
 
 -- +goose Down
 -- +goose StatementBegin
-drop table if exists transaction;
+drop table if exists scroll_transaction;
 -- +goose StatementEnd
