@@ -69,9 +69,9 @@ func (m *Manager) register(pubkey string, identity *message.Identity) (<-chan *m
 	if !ok {
 		taskIDs := m.reloadRollerAssignedTasks(pubkey)
 		rMs := &rollerMetrics{
-			rollerProofsVerifiedSuccessTimeTimer:   geth_metrics.GetOrRegisterTimer(fmt.Sprintf("roller/proofs/proofs/verified/success/time/%s", pubkey), metrics.ScrollRegistry),
-			rollerProofsVerifiedFailedTimeTimer:    geth_metrics.GetOrRegisterTimer(fmt.Sprintf("roller/proofs/proofs/verified/failed/time/%s", pubkey), metrics.ScrollRegistry),
-			rollerProofsGenerationFailedTimeTimer:  geth_metrics.GetOrRegisterTimer(fmt.Sprintf("roller/proofs/proofs/generation/failed/time/%s", pubkey), metrics.ScrollRegistry),
+			rollerProofsVerifiedSuccessTimeTimer:   geth_metrics.GetOrRegisterTimer(fmt.Sprintf("roller/proofs/verified/success/time/%s", pubkey), metrics.ScrollRegistry),
+			rollerProofsVerifiedFailedTimeTimer:    geth_metrics.GetOrRegisterTimer(fmt.Sprintf("roller/proofs/verified/failed/time/%s", pubkey), metrics.ScrollRegistry),
+			rollerProofsGeneratedFailedTimeTimer:   geth_metrics.GetOrRegisterTimer(fmt.Sprintf("roller/proofs/generated/failed/time/%s", pubkey), metrics.ScrollRegistry),
 			rollerProofsLastAssignedTimestampGauge: geth_metrics.GetOrRegisterGauge(fmt.Sprintf("roller/proofs/last/assigned/timestamp/%s", pubkey), metrics.ScrollRegistry),
 			rollerProofsLastFinishedTimestampGauge: geth_metrics.GetOrRegisterGauge(fmt.Sprintf("roller/proofs/last/finished/timestamp/%s", pubkey), metrics.ScrollRegistry),
 		}

@@ -23,8 +23,8 @@ import (
 var (
 	bridgeL2BatchesGasOverThresholdTotalCounter = geth_metrics.NewRegisteredCounter("bridge/l2/batches/gas/over/threshold/total", metrics.ScrollRegistry)
 	bridgeL2BatchesTxsOverThresholdTotalCounter = geth_metrics.NewRegisteredCounter("bridge/l2/batches/txs/over/threshold/total", metrics.ScrollRegistry)
-	bridgeL2BatchesCreatedTotalCounter          = geth_metrics.NewRegisteredCounter("bridge/l2/batches/blocks/created/total", metrics.ScrollRegistry)
-	bridgeL2BatchesCommitTotalCounter           = geth_metrics.NewRegisteredCounter("bridge/l2/batches/commit/total", metrics.ScrollRegistry)
+	bridgeL2BatchesBlocksCreatedTotalCounter    = geth_metrics.NewRegisteredCounter("bridge/l2/batches/blocks/created/total", metrics.ScrollRegistry)
+	bridgeL2BatchesCommitsSentTotalCounter      = geth_metrics.NewRegisteredCounter("bridge/l2/batches/commits/sent/total", metrics.ScrollRegistry)
 
 	bridgeL2BatchesTxsCreatedPerBatchGauge = geth_metrics.NewRegisteredGauge("bridge/l2/batches/txs/created/per/batch", metrics.ScrollRegistry)
 	bridgeL2BatchesGasCreatedPerBatchGauge = geth_metrics.NewRegisteredGauge("bridge/l2/batches/gas/created/per/batch", metrics.ScrollRegistry)
@@ -257,7 +257,7 @@ func (p *BatchProposer) TryCommitBatches() {
 		log.Error("SendCommitTx failed", "error", err)
 	} else {
 		// pop the processed batches from the buffer
-		bridgeL2BatchesCommitTotalCounter.Inc(1)
+		bridgeL2BatchesCommitsSentTotalCounter.Inc(1)
 		p.batchDataBuffer = p.batchDataBuffer[index:]
 	}
 }
@@ -275,7 +275,7 @@ func (p *BatchProposer) proposeBatch(blocks []*types.BlockInfo) bool {
 		} else {
 			bridgeL2BatchesTxsCreatedPerBatchGauge.Update(int64(blocks[0].TxNum))
 			bridgeL2BatchesGasCreatedPerBatchGauge.Update(int64(blocks[0].GasUsed))
-			bridgeL2BatchesCreatedTotalCounter.Inc(1)
+			bridgeL2BatchesBlocksCreatedTotalCounter.Inc(1)
 		}
 		return true
 	}
@@ -288,7 +288,7 @@ func (p *BatchProposer) proposeBatch(blocks []*types.BlockInfo) bool {
 		} else {
 			bridgeL2BatchesTxsCreatedPerBatchGauge.Update(int64(blocks[0].TxNum))
 			bridgeL2BatchesGasCreatedPerBatchGauge.Update(int64(blocks[0].GasUsed))
-			bridgeL2BatchesCreatedTotalCounter.Inc(1)
+			bridgeL2BatchesBlocksCreatedTotalCounter.Inc(1)
 		}
 		return true
 	}
@@ -318,7 +318,7 @@ func (p *BatchProposer) proposeBatch(blocks []*types.BlockInfo) bool {
 	} else {
 		bridgeL2BatchesTxsCreatedPerBatchGauge.Update(int64(txNum))
 		bridgeL2BatchesGasCreatedPerBatchGauge.Update(int64(gasUsed))
-		bridgeL2BatchesCreatedTotalCounter.Inc(int64(len(blocks)))
+		bridgeL2BatchesBlocksCreatedTotalCounter.Inc(int64(len(blocks)))
 	}
 
 	return true
