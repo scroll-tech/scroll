@@ -79,7 +79,7 @@ func (t *scrollTxOrm) GetL1TxMessages(fields map[string]interface{}, args ...str
 		query = query + fmt.Sprintf(" AND %s = :%s", key, key)
 	}
 	query = strings.Join(append([]string{query}, args...), " ")
-	query = fmt.Sprintf("select l1.queue_index as index, l1.msg_hash as id, tx.tx_hash, tx.sender, tx.nonce, tx.target, tx.value, tx.data from transaction as tx right join (%s) as l1 on tx.id = l1.msg_hash;", query)
+	query = fmt.Sprintf("select l1.queue_index as index, l1.msg_hash as id, tx.tx_hash, tx.sender, tx.nonce, tx.target, tx.value, tx.data from scroll_transaction as tx right join (%s) as l1 on tx.id = l1.msg_hash;", query)
 
 	db := t.db
 	rows, err := db.NamedQuery(db.Rebind(query), fields)
@@ -107,12 +107,12 @@ func (t *scrollTxOrm) GetL1TxMessages(fields map[string]interface{}, args ...str
 
 // GetL2TxMessages gets tx messages by transaction right join l2_message.
 func (t *scrollTxOrm) GetL2TxMessages(fields map[string]interface{}, args ...string) (uint64, []*stypes.ScrollTx, error) {
-	query := "select msg_hash from l2_message where 1 = 1"
+	query := "select msg_hash, nonce from l2_message where 1 = 1"
 	for key := range fields {
 		query = query + fmt.Sprintf(" AND %s = :%s", key, key)
 	}
 	query = strings.Join(append([]string{query}, args...), " ")
-	query = fmt.Sprintf("select l2.nonce as l2_nonce, l2.msg_hash as id, tx.tx_hash, tx.sender, tx.nonce, tx.target, tx.value, tx.data from transaction as tx right join (%s) as l2 on tx.id = l2.msg_hash;", query)
+	query = fmt.Sprintf("select l2.nonce as l2_nonce, l2.msg_hash as id, tx.tx_hash, tx.sender, tx.nonce, tx.target, tx.value, tx.data from scroll_transaction as tx right join (%s) as l2 on tx.id = l2.msg_hash;", query)
 
 	db := t.db
 	rows, err := db.NamedQuery(db.Rebind(query), fields)
