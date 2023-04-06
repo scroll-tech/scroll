@@ -117,7 +117,7 @@ func (m *Manager) SubmitProof(proof *message.ProofMsg) (bool, error) {
 		return false, fmt.Errorf("the roller or session id doesn't exist, pubkey: %s, ID: %s", pubkey, proof.ID)
 	}
 
-	m.updateMetricRollerProofsLastFinishedTimestamp(pubkey)
+	m.updateMetricRollerProofsLastFinishedTimestampGauge(pubkey)
 
 	err := m.handleZkProof(pubkey, proof.ProofDetail)
 	if err != nil {

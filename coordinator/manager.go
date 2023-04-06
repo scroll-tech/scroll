@@ -41,7 +41,8 @@ var (
 	coordinatorSessionsSuccessTotalCounter = geth_metrics.NewRegisteredCounter("coordinator/sessions/success/total", metrics.ScrollRegistry)
 	coordinatorSessionsTimeoutTotalCounter = geth_metrics.NewRegisteredCounter("coordinator/sessions/timeout/total", metrics.ScrollRegistry)
 	coordinatorSessionsFailedTotalCounter  = geth_metrics.NewRegisteredCounter("coordinator/sessions/failed/total", metrics.ScrollRegistry)
-	coordinatorSessionsActiveTotalCounter  = geth_metrics.NewRegisteredCounter("coordinator/sessions/active/total", metrics.ScrollRegistry)
+
+	coordinatorSessionsActiveNumberGauge = geth_metrics.NewRegisteredCounter("coordinator/sessions/active/number", metrics.ScrollRegistry)
 )
 
 const (
@@ -341,13 +342,11 @@ func (m *Manager) handleZkProof(pk string, msg *message.ProofDetail) error {
 			return dbErr
 		}
 		coordinatorProofsVerifiedSuccessTimeTimer.Update(proofTime)
-		m.updateMetricRollerProofsSuccessTotal(roller.PublicKey)
-		m.updateMetricRollerProvingSuccessTimeTimer(roller.PublicKey, proofTime)
+		m.updateMetricRollerProofsVerifiedSuccessTimeTimer(roller.PublicKey, proofTime)
 		log.Info("proof success", "proof id", msg.ID, "roller name", roller.Name,
 			"roller pk", roller.PublicKey, "proof time", proofTimeSec)
 	} else {
 		coordinatorProofsVerifiedFailedTimeTimer.Update(proofTime)
-		m.updateMetricRollerProofsFailedTotal(roller.PublicKey)
 		m.updateMetricRollerProvingFailedTimeTimer(roller.PublicKey, proofTime)
 		log.Info("proof failed", "proof id", msg.ID, "roller name", roller.Name,
 			"roller pk", roller.PublicKey, "proof time", proofTimeSec)
@@ -357,7 +356,9 @@ func (m *Manager) handleZkProof(pk string, msg *message.ProofDetail) error {
 
 // CollectProofs collects proofs corresponding to a proof generation session.
 func (m *Manager) CollectProofs(sess *session) {
-	coordinatorSessionsActiveTotalCounter.Inc(1)
+	coordinatorSessionsActiveNumberGauge.Inc(1)
+	defer coordinatorSessionsActiveNumberGauge.Dec(1)
+
 	for {
 		select {
 		//Execute after timeout, set in config.json. Consider all rollers failed.
@@ -541,7 +542,7 @@ func (m *Manager) StartProofGenerationSession(task *types.BlockBatch, prevSessio
 			log.Error("send task failed", "roller name", roller.Name, "public key", roller.PublicKey, "id", taskId)
 			continue
 		}
-		m.updateMetricRollerProofsLastAssignedTimestamp(roller.PublicKey)
+		m.updateMetricRollerProofsLastAssignedTimestampGauge(roller.PublicKey)
 		rollers[roller.PublicKey] = &types.RollerStatus{PublicKey: roller.PublicKey, Name: roller.Name, Status: types.RollerAssigned}
 	}
 	// No roller assigned.

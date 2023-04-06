@@ -8,37 +8,14 @@ import (
 )
 
 type rollerMetrics struct {
-	rollerProofsProvingSuccessTimeTimer    geth_metrics.Timer
-	rollerProofsProvingFailedTimeTimer     geth_metrics.Timer
-	rollerProofsSuccessTotalCounter        geth_metrics.Counter
-	rollerProofsFailedTotalCounter         geth_metrics.Counter
+	rollerProofsVerifiedSuccessTimeTimer   geth_metrics.Timer
+	rollerProofsVerifiedFailedTimeTimer    geth_metrics.Timer
+	rollerProofsGenerationFailedTimeTimer  geth_metrics.Timer
 	rollerProofsLastAssignedTimestampGauge geth_metrics.Gauge
 	rollerProofsLastFinishedTimestampGauge geth_metrics.Gauge
 }
 
-func (m *Manager) updateMetricRollerProofsSuccessTotal(pk string) {
-	if node, ok := m.rollerPool.Get(pk); ok {
-		rMs := node.(*rollerNode).rollerMetrics
-		if rMs != nil {
-			rMs.rollerProofsSuccessTotalCounter.Inc(1)
-		} else {
-			log.Error("successTotal metric is nil", "roller pk", pk)
-		}
-	}
-}
-
-func (m *Manager) updateMetricRollerProofsFailedTotal(pk string) {
-	if node, ok := m.rollerPool.Get(pk); ok {
-		rMs := node.(*rollerNode).rollerMetrics
-		if rMs != nil {
-			rMs.rollerProofsFailedTotalCounter.Inc(1)
-		} else {
-			log.Error("failedTotal metric is nil", "roller pk", pk)
-		}
-	}
-}
-
-func (m *Manager) updateMetricRollerProofsLastFinishedTimestamp(pk string) {
+func (m *Manager) updateMetricRollerProofsLastFinishedTimestampGauge(pk string) {
 	if node, ok := m.rollerPool.Get(pk); ok {
 		rMs := node.(*rollerNode).rollerMetrics
 		if rMs != nil {
@@ -49,7 +26,7 @@ func (m *Manager) updateMetricRollerProofsLastFinishedTimestamp(pk string) {
 	}
 }
 
-func (m *Manager) updateMetricRollerProofsLastAssignedTimestamp(pk string) {
+func (m *Manager) updateMetricRollerProofsLastAssignedTimestampGauge(pk string) {
 	if node, ok := m.rollerPool.Get(pk); ok {
 		rMs := node.(*rollerNode).rollerMetrics
 		if rMs != nil {
@@ -60,11 +37,11 @@ func (m *Manager) updateMetricRollerProofsLastAssignedTimestamp(pk string) {
 	}
 }
 
-func (m *Manager) updateMetricRollerProvingSuccessTimeTimer(pk string, d time.Duration) {
+func (m *Manager) updateMetricRollerProofsVerifiedSuccessTimeTimer(pk string, d time.Duration) {
 	if node, ok := m.rollerPool.Get(pk); ok {
 		rMs := node.(*rollerNode).rollerMetrics
 		if rMs != nil {
-			rMs.rollerProofsProvingSuccessTimeTimer.Update(d)
+			rMs.rollerProofsVerifiedSuccessTimeTimer.Update(d)
 		} else {
 			log.Error("provingSuccessTime metric is nil", "roller pk", pk)
 		}
@@ -75,7 +52,7 @@ func (m *Manager) updateMetricRollerProvingFailedTimeTimer(pk string, d time.Dur
 	if node, ok := m.rollerPool.Get(pk); ok {
 		rMs := node.(*rollerNode).rollerMetrics
 		if rMs != nil {
-			rMs.rollerProofsProvingFailedTimeTimer.Update(d)
+			rMs.rollerProofsVerifiedFailedTimeTimer.Update(d)
 		} else {
 			log.Error("provingFailedTime metric is nil", "roller pk", pk)
 		}
