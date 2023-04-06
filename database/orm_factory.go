@@ -15,7 +15,7 @@ type OrmFactory interface {
 	orm.L1MessageOrm
 	orm.L2MessageOrm
 	orm.SessionInfoOrm
-	orm.TxOrm
+	orm.ScrollTxOrm
 	GetDB() *sqlx.DB
 	Beginx() (*sqlx.Tx, error)
 	Close() error
@@ -28,7 +28,7 @@ type ormFactory struct {
 	orm.L1MessageOrm
 	orm.L2MessageOrm
 	orm.SessionInfoOrm
-	orm.TxOrm
+	orm.ScrollTxOrm
 	*sqlx.DB
 }
 
@@ -53,7 +53,7 @@ func NewOrmFactory(cfg *DBConfig) (OrmFactory, error) {
 		L2MessageOrm:   orm.NewL2MessageOrm(db),
 		L1BlockOrm:     orm.NewL1BlockOrm(db),
 		SessionInfoOrm: orm.NewSessionInfoOrm(db),
-		TxOrm:          orm.NewTxOrm(db),
+		ScrollTxOrm:    orm.NewScrollTxOrm(db),
 		DB:             db,
 	}, nil
 }

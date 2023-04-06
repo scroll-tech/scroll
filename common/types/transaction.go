@@ -2,12 +2,12 @@ package types
 
 import "database/sql"
 
-// TxType scroll tx type (l1_message_tx, l1_gasOracle_tx, l2_message_tx, l2_gasOracle_tx, l2_rollupCommit_tx, l2_rollupFinalize_tx)
-type TxType int
+// ScrollTxType scroll tx type (l1_message_tx, l1_gasOracle_tx, l2_message_tx, l2_gasOracle_tx, l2_rollupCommit_tx, l2_rollupFinalize_tx)
+type ScrollTxType int
 
 const (
 	// UndefinedTx undefined scroll tx type
-	UndefinedTx TxType = iota
+	UndefinedTx ScrollTxType = iota
 	// L1toL2MessageTx is sent by l1 relayer but to L2
 	L1toL2MessageTx
 	// L1toL2GasOracleTx  is sent by l1 relayer but to L2
