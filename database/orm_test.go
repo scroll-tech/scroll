@@ -94,8 +94,8 @@ var (
 func setupEnv(t *testing.T) error {
 	// Init db config and start db container.
 	dbConfig = &database.DBConfig{DriverName: "postgres"}
-	//base.RunImages(t)
-	dbConfig.DSN = "postgres://maskpp:123456@localhost:5432/postgres?sslmode=disable" // base.DBEndpoint()
+	base.RunImages(t)
+	dbConfig.DSN = base.DBEndpoint()
 
 	// Create db handler and reset db.
 	factory, err := database.NewOrmFactory(dbConfig)
