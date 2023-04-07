@@ -198,21 +198,22 @@ func (s *Sender) getTransaction(txHash common.Hash) (*types.Transaction, uint64,
 	return tx, receipt.BlockNumber.Uint64(), nil
 }
 
-// LoadOrResendTx load
-func (s *Sender) LoadOrResendTx(destTxHash common.Hash, sender common.Address, nonce uint64, ID string, target *common.Address, value *big.Int, data []byte, minGasLimit uint64) error {
+// LoadOrResendTx load or resend tx, if it's resend the first return value is true.
+func (s *Sender) LoadOrResendTx(destTxHash common.Hash, sender common.Address, nonce uint64, ID string, target *common.Address, value *big.Int, data []byte, minGasLimit uint64) (bool, error) {
 	tx, number, errTx := s.getTransaction(destTxHash)
 	// check error except `not found` kind of tx.
 	if errTx != nil && errTx.Error() != "not found" {
-		return errTx
+		return false, errTx
 	}
 	// We occupy the ID, in case some other threads call with the same ID in the same time
 	if ok := s.pendingTxs.SetIfAbsent(ID, nil); !ok {
-		return fmt.Errorf("pending pool has repeat ID, ID: %s", ID)
+		return false, fmt.Errorf("pending pool has repeat ID, ID: %s", ID)
 	}
 
 	var (
-		feeData *FeeData
-		err2Ld  error
+		feeData  *FeeData
+		isResend bool
+		err2Ld   error
 	)
 	defer func() {
 		if err2Ld != nil {
@@ -222,14 +223,15 @@ func (s *Sender) LoadOrResendTx(destTxHash common.Hash, sender common.Address, n
 	auth := s.auths.accounts[sender]
 	feeData, err2Ld = s.getFeeData(auth, target, value, data, minGasLimit)
 	if err2Ld != nil {
-		return err2Ld
+		return false, err2Ld
 	}
 	// If tx is not in chain node, create and resend it.
 	if errTx != nil {
 		tx, err2Ld = s.createAndSendTx(auth, feeData, target, value, data, &nonce)
 		if err2Ld != nil {
-			return err2Ld
+			return false, err2Ld
 		}
+		isResend = true
 	}
 	s.pendingTxs.Set(ID, &PendingTransaction{
 		submitAt: number,
@@ -238,7 +240,7 @@ func (s *Sender) LoadOrResendTx(destTxHash common.Hash, sender common.Address, n
 		signer:   auth,
 		tx:       tx,
 	})
-	return nil
+	return isResend, nil
 }
 
 // SendTransaction send a signed L2tL1 transaction.

@@ -170,8 +170,9 @@ func (r *Layer2Relayer) CheckSubmittedMessages() error {
 		nonce = l2Nonce
 
 		for _, msg := range msgs {
-			// TODO: restore incomplete transaction.
+			// TODO: Is it necessary repair tx message?
 			if !msg.TxHash.Valid {
+				log.Warn("l2 submitted tx message is empty", "tx id", msg.ID)
 				continue
 			}
 			// Wait until sender's pending is not full.
@@ -179,7 +180,7 @@ func (r *Layer2Relayer) CheckSubmittedMessages() error {
 				return !r.messageSender.IsFull()
 			})
 
-			err = r.messageSender.LoadOrResendTx(
+			isResend, err := r.messageSender.LoadOrResendTx(
 				msg.GetTxHash(),
 				msg.GetSender(),
 				msg.GetNonce(),
@@ -427,7 +428,7 @@ func (r *Layer2Relayer) CheckRollupBatches(rollupStatus types.RollupStatus) erro
 	var (
 		batchIndex uint64
 		batchLimit = 10
-		db         = orm.TxOrm(r.db)
+		db         = orm.ScrollTxOrm(r.db)
 	)
 	for {
 		index, batches, err := db.GetBlockBatchTxMessages(
@@ -436,7 +437,7 @@ func (r *Layer2Relayer) CheckRollupBatches(rollupStatus types.RollupStatus) erro
 			fmt.Sprintf("ORDER BY index ASC LIMIT %d", batchLimit),
 		)
 		if err != nil {
-			log.Error("failed to get Rollup finalizing batches", "batch index", batchIndex, "err", err)
+			log.Error("failed to get Rollup batches", "rollup status", rollupStatus, "batch index", batchIndex, "err", err)
 			return err
 		}
 		if len(batches) == 0 {
@@ -445,15 +446,16 @@ func (r *Layer2Relayer) CheckRollupBatches(rollupStatus types.RollupStatus) erro
 		batchIndex = index
 
 		for _, msg := range batches {
-			// TODO: restore incomplete transaction.
+			// TODO: Is it necessary repair tx message?
 			if !msg.TxHash.Valid {
+				log.Warn("Rollup tx message is empty", "rollup status", rollupStatus, "tx id", msg.ID)
 				continue
 			}
 			cutils.TryTimes(-1, func() bool {
 				return !r.rollupSender.IsFull()
 			})
 
-			err = r.rollupSender.LoadOrResendTx(
+			isResend, err := r.rollupSender.LoadOrResendTx(
 				msg.GetTxHash(),
 				msg.GetSender(),
 				msg.GetNonce(),
@@ -464,9 +466,10 @@ func (r *Layer2Relayer) CheckRollupBatches(rollupStatus types.RollupStatus) erro
 				0,
 			)
 			if err != nil {
-				log.Error("failed to load or send finalized tx", "batch hash", msg.ID, "err", err)
+				log.Error("failed to load or send rollup tx", "batch hash", msg.ID, "rollup status", rollupStatus, "err", err)
 				return err
 			}
+			log.Info("")
 		}
 	}
 }

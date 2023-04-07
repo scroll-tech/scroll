@@ -135,8 +135,9 @@ func (r *Layer1Relayer) CheckSubmittedMessages() error {
 
 		index = l1Index
 		for _, msg := range msgs {
-			// TODO: restore incomplete transaction.
+			// TODO: Is it necessary repair tx message?
 			if !msg.TxHash.Valid {
+				log.Warn("l1 submitted tx message is empty", "tx id", msg.ID)
 				continue
 			}
 			// If pending txs pool is full, wait until pending pool is available.
@@ -144,7 +145,7 @@ func (r *Layer1Relayer) CheckSubmittedMessages() error {
 				return !r.messageSender.IsFull()
 			})
 
-			err = r.messageSender.LoadOrResendTx(
+			isResend, err := r.messageSender.LoadOrResendTx(
 				msg.GetTxHash(),
 				msg.GetSender(),
 				msg.GetNonce(),
@@ -155,15 +156,16 @@ func (r *Layer1Relayer) CheckSubmittedMessages() error {
 				r.minGasLimitForMessageRelay,
 			)
 			if err != nil {
-				log.Error("failed to load or send l1 submitted tx", "msg hash", msg.ID, "err", err)
+				log.Error("failed to load or send l1 submitted tx", "msg hash", msg.ID, "is resend", isResend, "err", err)
 				return err
 			}
+			log.Info("")
 		}
 	}
 }
 
 // WaitL1MsgSender wait until l1 message sender is empty.
-func (r *Layer2Relayer) WaitL1MsgSender() {
+func (r *Layer1Relayer) WaitL1MsgSender() {
 	for r.messageSender.PendingCount() != 0 {
 		time.Sleep(time.Second)
 	}

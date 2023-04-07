@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"scroll-tech/common/types"
 	"time"
 
 	"github.com/scroll-tech/go-ethereum/ethclient"
@@ -109,7 +110,20 @@ func action(ctx *cli.Context) error {
 		batchProposer.TryCommitBatches()
 	})
 
-	go cutils.Loop(subCtx, 2*time.Second, l2relayer.ProcessCommittedBatches)
+	go cutils.Loop(subCtx, 2*time.Second, func() {
+		if err = l2relayer.CheckRollupBatches(types.RollupCommitting); err != nil {
+			log.Error("failed to check rollup committing txs", "err", err)
+			return
+		}
+		if err = l2relayer.CheckRollupBatches(types.RollupFinalizing); err != nil {
+			log.Error("failed to check rollup finalizing txs", "err", err)
+			return
+		}
+		// Wait until sender's pending txs are confirmed.
+		l2relayer.WaitL2RollupSender()
+
+		l2relayer.ProcessCommittedBatches()
+	})
 
 	// Finish start all rollup relayer functions.
 	log.Info("Start rollup-relayer successfully")

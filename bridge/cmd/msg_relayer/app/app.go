@@ -91,10 +91,30 @@ func action(ctx *cli.Context) error {
 	}
 
 	// Start l1relayer process
-	go cutils.Loop(subCtx, 10*time.Second, l1relayer.ProcessSavedEvents)
+	go cutils.Loop(subCtx, 10*time.Second, func() {
+		err = l1relayer.CheckSubmittedMessages()
+		if err != nil {
+			log.Error("appear error when resend l1 submitted txs", "err", err)
+			return
+		}
+		// Wait until sender's pending txs are confirmed.
+		l1relayer.WaitL1MsgSender()
+
+		l1relayer.ProcessSavedEvents()
+	})
 
 	// Start l2relayer process
-	go cutils.Loop(subCtx, 2*time.Second, l2relayer.ProcessSavedEvents)
+	go cutils.Loop(subCtx, 2*time.Second, func() {
+		err = l2relayer.CheckSubmittedMessages()
+		if err != nil {
+			log.Error("appear error when resend l2 submitted txs", "err", err)
+			return
+		}
+		// Wait until sender's pending txs are confirmed.
+		l2relayer.WaitL2MsgSender()
+
+		l2relayer.ProcessSavedEvents()
+	})
 
 	// Finish start all message relayer functions
 	log.Info("Start message-relayer successfully")
