@@ -13,6 +13,11 @@ We provide a few standard gateways for different types of tokens, listed in the 
 | `L1ERC721Gateway`        | The gateway for ERC-721 token deposits.                            |
 | `L1ERC1155Gateway`       | The gateway for ERC-1155 token deposits.                           |
 
+The figure below depicts the deposit workflow from L1 to L2. Users call the gateways to initialize the token deposit. The deposit is then encoded to a message and sent to the `L1ScrollMessenger` and appended to the `L1MessageQueue`. Afterwards, the L2 sequencer picks up the new L1 transaction events and then include corresponding transactions in the L2 blocks to finalize the deposits on L2.
+The subsequent sections describe the details of how different tokens are deposited.
+
+![Deposit Workflow](assets/deposit.png)
+
 ## Deposit Ether
 
 To deposit Ether from L1 to L2, one can use `L1GatewayRouter.depositETH` or `L1GatewayRouter.depositETHAndCall`:
