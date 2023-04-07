@@ -180,7 +180,7 @@ func (r *Layer2Relayer) CheckSubmittedMessages() error {
 				return !r.messageSender.IsFull()
 			})
 
-			isResend, err := r.messageSender.LoadOrResendTx(
+			isResend, tx, err := r.messageSender.LoadOrResendTx(
 				msg.GetTxHash(),
 				msg.GetSender(),
 				msg.GetNonce(),
@@ -194,6 +194,7 @@ func (r *Layer2Relayer) CheckSubmittedMessages() error {
 				log.Error("failed to load or send l2 submitted tx", "msg.hash", msg.ID, "err", err)
 				return err
 			}
+			log.Info("successfully check l2 submitted tx", "resend", isResend, "tx.Hash", tx.Hash().String())
 		}
 	}
 }
@@ -455,7 +456,7 @@ func (r *Layer2Relayer) CheckRollupBatches(rollupStatus types.RollupStatus) erro
 				return !r.rollupSender.IsFull()
 			})
 
-			isResend, err := r.rollupSender.LoadOrResendTx(
+			isResend, tx, err := r.rollupSender.LoadOrResendTx(
 				msg.GetTxHash(),
 				msg.GetSender(),
 				msg.GetNonce(),
@@ -469,7 +470,7 @@ func (r *Layer2Relayer) CheckRollupBatches(rollupStatus types.RollupStatus) erro
 				log.Error("failed to load or send rollup tx", "batch hash", msg.ID, "rollup status", rollupStatus, "err", err)
 				return err
 			}
-			log.Info("")
+			log.Info("successfully check rollup batch tx", "resend", isResend, "tx.Hash", tx.Hash().String())
 		}
 	}
 }

@@ -145,7 +145,7 @@ func (r *Layer1Relayer) CheckSubmittedMessages() error {
 				return !r.messageSender.IsFull()
 			})
 
-			isResend, err := r.messageSender.LoadOrResendTx(
+			isResend, tx, err := r.messageSender.LoadOrResendTx(
 				msg.GetTxHash(),
 				msg.GetSender(),
 				msg.GetNonce(),
@@ -159,7 +159,7 @@ func (r *Layer1Relayer) CheckSubmittedMessages() error {
 				log.Error("failed to load or send l1 submitted tx", "msg hash", msg.ID, "is resend", isResend, "err", err)
 				return err
 			}
-			log.Info("")
+			log.Info("successfully check l1 submitted tx", "resend", isResend, "tx.Hash", tx.Hash().String())
 		}
 	}
 }

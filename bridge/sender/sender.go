@@ -199,15 +199,15 @@ func (s *Sender) getTransaction(txHash common.Hash) (*types.Transaction, uint64,
 }
 
 // LoadOrResendTx load or resend tx, if it's resend the first return value is true.
-func (s *Sender) LoadOrResendTx(destTxHash common.Hash, sender common.Address, nonce uint64, ID string, target *common.Address, value *big.Int, data []byte, minGasLimit uint64) (bool, error) {
+func (s *Sender) LoadOrResendTx(destTxHash common.Hash, sender common.Address, nonce uint64, ID string, target *common.Address, value *big.Int, data []byte, minGasLimit uint64) (bool, *types.Transaction, error) {
 	tx, number, errTx := s.getTransaction(destTxHash)
 	// check error except `not found` kind of tx.
 	if errTx != nil && errTx.Error() != "not found" {
-		return false, errTx
+		return false, nil, errTx
 	}
 	// We occupy the ID, in case some other threads call with the same ID in the same time
 	if ok := s.pendingTxs.SetIfAbsent(ID, nil); !ok {
-		return false, fmt.Errorf("pending pool has repeat ID, ID: %s", ID)
+		return false, nil, fmt.Errorf("pending pool has repeat ID, ID: %s", ID)
 	}
 
 	var (
@@ -223,13 +223,13 @@ func (s *Sender) LoadOrResendTx(destTxHash common.Hash, sender common.Address, n
 	auth := s.auths.accounts[sender]
 	feeData, err2Ld = s.getFeeData(auth, target, value, data, minGasLimit)
 	if err2Ld != nil {
-		return false, err2Ld
+		return false, nil, err2Ld
 	}
 	// If tx is not in chain node, create and resend it.
 	if errTx != nil {
 		tx, err2Ld = s.createAndSendTx(auth, feeData, target, value, data, &nonce)
 		if err2Ld != nil {
-			return false, err2Ld
+			return false, nil, err2Ld
 		}
 		isResend = true
 	}
@@ -240,7 +240,7 @@ func (s *Sender) LoadOrResendTx(destTxHash common.Hash, sender common.Address, n
 		signer:   auth,
 		tx:       tx,
 	})
-	return isResend, nil
+	return isResend, tx, nil
 }
 
 // SendTransaction send a signed L2tL1 transaction.
