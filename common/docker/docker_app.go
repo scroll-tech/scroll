@@ -80,7 +80,7 @@ func (b *App) RunDBApp(t *testing.T, option, keyword string) {
 	app.RunApp(nil)
 }
 
-// Free clear all running images
+// Free clear all running images, double check and recycle docker container.
 func (b *App) Free() {
 	if b.l1gethImg != nil {
 		_ = b.l1gethImg.Stop()
