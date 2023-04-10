@@ -3,6 +3,8 @@ package relayer_test
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"github.com/scroll-tech/go-ethereum/accounts/abi/bind"
 	"math/big"
 	"os"
 	"strconv"
@@ -205,6 +207,49 @@ func testL2RelayerSkipBatches(t *testing.T) {
 		assert.NoError(t, err)
 		assert.NotEqual(t, types.RollupFinalizationSkipped, status)
 	}
+}
+
+func testL2CheckSubmittedMessages(t *testing.T) {
+	// Create db handler and reset db.
+	db, err := database.NewOrmFactory(cfg.DBConfig)
+	assert.NoError(t, err)
+	assert.NoError(t, migrate.ResetDB(db.GetDB().DB))
+	defer db.Close()
+
+	auth, err := bind.NewKeyedTransactorWithChainID(cfg.L2Config.RelayerConfig.MessageSenderPrivateKeys[0], l2ChainID)
+	assert.NoError(t, err)
+
+	signedTx, err := mockTx(auth)
+	assert.NoError(t, err)
+	err = db.SaveTx(templateL2Message[0].MsgHash, auth.From.String(), types.L2toL1MessageTx, signedTx)
+	assert.Nil(t, err)
+	err = db.SaveL2Messages(context.Background(), templateL2Message)
+	assert.NoError(t, err)
+	err = db.UpdateLayer2Status(context.Background(), templateL2Message[0].MsgHash, types.MsgSubmitted)
+	assert.NoError(t, err)
+
+	cfg.L2Config.RelayerConfig.SenderConfig.Confirmations = 0
+	relayer, err := relayer.NewLayer2Relayer(context.Background(), l2Cli, db, cfg.L2Config.RelayerConfig)
+	assert.NoError(t, err)
+	assert.NotNil(t, relayer)
+	err = relayer.CheckSubmittedMessages()
+	assert.Nil(t, err)
+
+	relayer.WaitL2MsgSender()
+
+	// check tx is confirmed.
+	maxNonce, txMsgs, err := db.GetL2TxMessages(
+		map[string]interface{}{"status": types.MsgConfirmed},
+		fmt.Sprintf("AND nonce > %d", 0),
+		fmt.Sprintf("ORDER BY nonce ASC LIMIT %d", 10),
+	)
+	assert.Nil(t, err)
+	assert.Equal(t, 1, len(txMsgs))
+	assert.Equal(t, templateL2Message[0].Nonce, maxNonce)
+
+	// check tx is on chain.
+	_, err = l2Cli.TransactionReceipt(context.Background(), common.HexToHash(txMsgs[0].TxHash.String))
+	assert.NoError(t, err)
 }
 
 func genBatchData(t *testing.T, index uint64) *types.BatchData {

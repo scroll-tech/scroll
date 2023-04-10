@@ -472,16 +472,13 @@ func testTxOrmSaveTxAndGetTxByHash(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(factory.GetDB().DB))
 
-	tx, err := mockTx(auth)
-	assert.NoError(t, err)
-
-	signedTx, err := auth.Signer(auth.From, tx)
+	signedTx, err := mockTx(auth)
 	assert.NoError(t, err)
 
 	err = ormTx.SaveTx("1", auth.From.String(), types.L1toL2MessageTx, signedTx)
 	assert.Nil(t, err)
 
-	// Update tx message by id.
+	// Update signedTx message by id.
 	err = ormTx.ConfirmTxByID("1", signedTx.Hash().String())
 	assert.NoError(t, err)
 

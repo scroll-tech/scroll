@@ -1,7 +1,12 @@
 package relayer_test
 
 import (
+	"context"
 	"encoding/json"
+	"github.com/scroll-tech/go-ethereum/accounts/abi/bind"
+	"github.com/scroll-tech/go-ethereum/common"
+	etypes "github.com/scroll-tech/go-ethereum/core/types"
+	"math/big"
 	"os"
 	"testing"
 
@@ -21,6 +26,11 @@ var (
 
 	base *docker.App
 
+	l1ChainID *big.Int
+	l2ChainID *big.Int
+
+	// l1geth client
+	l1Cli *ethclient.Client
 	// l2geth client
 	l2Cli *ethclient.Client
 
@@ -42,10 +52,18 @@ func setupEnv(t *testing.T) (err error) {
 
 	cfg.L2Config.RelayerConfig.SenderConfig.Endpoint = base.L1GethEndpoint()
 	cfg.L1Config.RelayerConfig.SenderConfig.Endpoint = base.L2GethEndpoint()
-	cfg.DBConfig.DSN = base.DBEndpoint()
+	cfg.DBConfig.DSN = "postgres://maskpp:123456@localhost:5432/postgres?sslmode=disable" //base.DBEndpoint()
 
+	// Create l1geth client.
+	l1Cli, err = base.L1Client()
+	assert.NoError(t, err)
 	// Create l2geth client.
 	l2Cli, err = base.L2Client()
+	assert.NoError(t, err)
+
+	l1ChainID, err = l1Cli.ChainID(context.Background())
+	assert.NoError(t, err)
+	l2ChainID, err = l2Cli.ChainID(context.Background())
 	assert.NoError(t, err)
 
 	templateBlockTrace1, err := os.ReadFile("../../common/testdata/blockTrace_02.json")
@@ -99,10 +117,30 @@ func TestFunctions(t *testing.T) {
 	}
 	// Run l1 relayer test cases.
 	t.Run("TestCreateNewL1Relayer", testCreateNewL1Relayer)
+	t.Run("testL1CheckSubmittedMessages", testL1CheckSubmittedMessages)
 	// Run l2 relayer test cases.
 	t.Run("TestCreateNewRelayer", testCreateNewRelayer)
 	t.Run("TestL2RelayerProcessSaveEvents", testL2RelayerProcessSaveEvents)
 	t.Run("TestL2RelayerProcessCommittedBatches", testL2RelayerProcessCommittedBatches)
 	t.Run("TestL2RelayerSkipBatches", testL2RelayerSkipBatches)
+	t.Run("testL2CheckSubmittedMessages", testL2CheckSubmittedMessages)
+}
 
+func mockTx(auth *bind.TransactOpts) (*etypes.Transaction, error) {
+	if auth.Nonce == nil {
+		auth.Nonce = big.NewInt(0)
+	} else {
+		auth.Nonce.Add(auth.Nonce, big.NewInt(1))
+	}
+
+	tx := etypes.NewTx(&etypes.LegacyTx{
+		Nonce:    auth.Nonce.Uint64(),
+		To:       &auth.From,
+		Value:    big.NewInt(0),
+		Gas:      500000,
+		GasPrice: big.NewInt(500000),
+		Data:     common.Hex2Bytes("1212121212121212121212121212121212121212121212121212121212121212"),
+	})
+
+	return auth.Signer(auth.From, tx)
 }
