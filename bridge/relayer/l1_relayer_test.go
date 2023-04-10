@@ -95,6 +95,6 @@ func testL1CheckSubmittedMessages(t *testing.T) {
 	assert.Equal(t, templateL1Message[0].QueueIndex, maxIndex)
 
 	// check tx is on chain.
-	_, err = l1Cli.TransactionReceipt(context.Background(), common.HexToHash(txMsgs[0].TxHash.String))
+	_, err = l2Cli.TransactionReceipt(context.Background(), common.HexToHash(txMsgs[0].TxHash.String))
 	assert.NoError(t, err)
 }

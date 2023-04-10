@@ -18,12 +18,10 @@ import (
 	"golang.org/x/sync/errgroup"
 	"modernc.org/mathutil"
 
-	"scroll-tech/database"
-	"scroll-tech/database/orm"
-
 	"scroll-tech/common/metrics"
 	"scroll-tech/common/types"
 	cutils "scroll-tech/common/utils"
+	"scroll-tech/database"
 
 	bridge_abi "scroll-tech/bridge/abi"
 	"scroll-tech/bridge/config"
@@ -194,6 +192,7 @@ func (r *Layer2Relayer) CheckSubmittedMessages() error {
 				log.Error("failed to load or send l2 submitted tx", "msg.hash", msg.ID, "err", err)
 				return err
 			}
+			r.processingMessage.Store(msg.ID, msg.ID)
 			log.Info("successfully check l2 submitted tx", "resend", isResend, "tx.Hash", tx.Hash().String())
 		}
 	}
@@ -366,6 +365,23 @@ func (r *Layer2Relayer) ProcessGasPriceOracle() {
 	}
 }
 
+func (r *Layer2Relayer) CheckRollupCommittingMessages() error {
+	var (
+		batchIndex uint64
+		batchLimit uint64 = 10
+	)
+	for {
+		maxIndex, batchHashes, err := r.checkRollupBatches(types.RollupCommitting, batchIndex, batchLimit)
+		if err != nil {
+			return err
+		}
+		batchIndex = maxIndex
+		for _, hash := range batchHashes {
+			r.processingBatchesCommitment.Store(hash+"-finalize", hash)
+		}
+	}
+}
+
 // SendCommitTx sends commitBatches tx to L1.
 func (r *Layer2Relayer) SendCommitTx(batchData []*types.BatchData) error {
 	if len(batchData) == 0 {
@@ -424,53 +440,66 @@ func (r *Layer2Relayer) SendCommitTx(batchData []*types.BatchData) error {
 	return nil
 }
 
+func (r *Layer2Relayer) checkRollupBatches(rollupStatus types.RollupStatus, batchIndex, batchLimit uint64) (uint64, []string, error) {
+	maxIndex, batches, err := r.db.GetBlockBatchTxMessages(
+		map[string]interface{}{"rollup_status": rollupStatus},
+		fmt.Sprintf("AND index > %d", batchIndex),
+		fmt.Sprintf("ORDER BY index ASC LIMIT %d", batchLimit),
+	)
+	if err != nil {
+		log.Error("failed to get Rollup batches", "rollup status", rollupStatus, "batch index", batchIndex, "err", err)
+		return 0, nil, err
+	}
+	if len(batches) == 0 {
+		return 0, nil, nil
+	}
+
+	batchHashes := make([]string, len(batches))
+	for i, msg := range batches {
+		// TODO: Is it necessary repair tx message?
+		if !msg.TxHash.Valid {
+			log.Warn("Rollup tx message is empty", "rollup status", rollupStatus, "tx id", msg.ID)
+			continue
+		}
+		cutils.TryTimes(-1, func() bool {
+			return !r.rollupSender.IsFull()
+		})
+		batchHashes[i] = msg.ID
+
+		isResend, tx, err := r.rollupSender.LoadOrResendTx(
+			msg.GetTxHash(),
+			msg.GetSender(),
+			msg.GetNonce(),
+			msg.ID,
+			msg.GetTarget(),
+			msg.GetValue(),
+			msg.Data,
+			0,
+		)
+		if err != nil {
+			log.Error("failed to load or send rollup tx", "batch hash", msg.ID, "rollup status", rollupStatus, "err", err)
+			return 0, nil, err
+		}
+		r.processingFinalization.Store(msg.ID+"-finalize", msg.ID)
+		log.Info("successfully check rollup batch tx", "resend", isResend, "tx.Hash", tx.Hash().String())
+	}
+	return maxIndex, batchHashes, nil
+}
+
 // CheckRollupBatches rollupStatus: types.RollupCommitting, types.RollupFinalizing
 func (r *Layer2Relayer) CheckRollupBatches(rollupStatus types.RollupStatus) error {
 	var (
 		batchIndex uint64
-		batchLimit = 10
-		db         = orm.ScrollTxOrm(r.db)
+		batchLimit uint64 = 10
 	)
 	for {
-		index, batches, err := db.GetBlockBatchTxMessages(
-			map[string]interface{}{"rollup_status": rollupStatus},
-			fmt.Sprintf("AND index > %d", batchIndex),
-			fmt.Sprintf("ORDER BY index ASC LIMIT %d", batchLimit),
-		)
+		maxIndex, batchHashes, err := r.checkRollupBatches(types.RollupFinalizing, batchIndex, batchLimit)
 		if err != nil {
-			log.Error("failed to get Rollup batches", "rollup status", rollupStatus, "batch index", batchIndex, "err", err)
 			return err
 		}
-		if len(batches) == 0 {
-			return nil
-		}
-		batchIndex = index
-
-		for _, msg := range batches {
-			// TODO: Is it necessary repair tx message?
-			if !msg.TxHash.Valid {
-				log.Warn("Rollup tx message is empty", "rollup status", rollupStatus, "tx id", msg.ID)
-				continue
-			}
-			cutils.TryTimes(-1, func() bool {
-				return !r.rollupSender.IsFull()
-			})
-
-			isResend, tx, err := r.rollupSender.LoadOrResendTx(
-				msg.GetTxHash(),
-				msg.GetSender(),
-				msg.GetNonce(),
-				msg.ID,
-				msg.GetTarget(),
-				msg.GetValue(),
-				msg.Data,
-				0,
-			)
-			if err != nil {
-				log.Error("failed to load or send rollup tx", "batch hash", msg.ID, "rollup status", rollupStatus, "err", err)
-				return err
-			}
-			log.Info("successfully check rollup batch tx", "resend", isResend, "tx.Hash", tx.Hash().String())
+		batchIndex = maxIndex
+		for _, hash := range batchHashes {
+			r.processingFinalization.Store(hash+"-finalize", hash)
 		}
 	}
 }

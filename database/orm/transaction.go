@@ -145,7 +145,7 @@ func (t *scrollTxOrm) GetBlockBatchTxMessages(fields map[string]interface{}, arg
 		query = query + fmt.Sprintf(" AND %s = :%s", key, key)
 	}
 	query = strings.Join(append([]string{query}, args...), " ")
-	query = fmt.Sprintf("select bt.index as index, bt.hash as id, tx.tx_hash, tx.sender, tx.nonce, tx.target, tx.value, tx.data from transaction as tx right join (%s) as bt on tx.id = bt.hash;", query)
+	query = fmt.Sprintf("select bt.index as index, bt.hash as id, tx.tx_hash, tx.sender, tx.nonce, tx.target, tx.value, tx.data from scroll_transaction as tx right join (%s) as bt on tx.id = bt.hash;", query)
 
 	db := t.db
 	rows, err := db.NamedQuery(db.Rebind(query), fields)

@@ -26,6 +26,7 @@ var (
 	templateL2Message = []*types.L2Message{
 		{
 			Nonce:      1,
+			MsgHash:    "msg_hash1",
 			Height:     1,
 			Sender:     "0x596a746661dbed76a84556111c2872249b070e15",
 			Value:      "100",
@@ -248,7 +249,80 @@ func testL2CheckSubmittedMessages(t *testing.T) {
 	assert.Equal(t, templateL2Message[0].Nonce, maxNonce)
 
 	// check tx is on chain.
-	_, err = l2Cli.TransactionReceipt(context.Background(), common.HexToHash(txMsgs[0].TxHash.String))
+	_, err = l1Cli.TransactionReceipt(context.Background(), common.HexToHash(txMsgs[0].TxHash.String))
+	assert.NoError(t, err)
+}
+
+func testL2CheckRollupBatches(t *testing.T) {
+	// Create db handler and reset db.
+	db, err := database.NewOrmFactory(cfg.DBConfig)
+	assert.NoError(t, err)
+	assert.NoError(t, migrate.ResetDB(db.GetDB().DB))
+	defer db.Close()
+
+	err = db.SaveL2Messages(context.Background(), templateL2Message)
+	assert.NoError(t, err)
+
+	traces := []*types.WrappedBlock{
+		{
+			Header: &geth_types.Header{
+				Number: big.NewInt(int64(templateL2Message[0].Height)),
+			},
+			Transactions:     nil,
+			WithdrawTrieRoot: common.Hash{},
+		},
+		{
+			Header: &geth_types.Header{
+				Number: big.NewInt(int64(templateL2Message[0].Height + 1)),
+			},
+			Transactions:     nil,
+			WithdrawTrieRoot: common.Hash{},
+		},
+	}
+	assert.NoError(t, db.InsertWrappedBlocks(traces))
+
+	batchData1 := types.NewBatchData(&types.BlockBatch{
+		Index:     0,
+		Hash:      common.Hash{}.String(),
+		StateRoot: common.Hash{}.String(),
+	}, []*types.WrappedBlock{wrappedBlock1}, nil)
+	dbTx, err := db.Beginx()
+	assert.NoError(t, err)
+	assert.NoError(t, db.NewBatchInDBTx(dbTx, batchData1))
+	batchHash := batchData1.Hash().Hex()
+	assert.NoError(t, db.SetBatchHashForL2BlocksInDBTx(dbTx, []uint64{1}, batchHash))
+	assert.NoError(t, dbTx.Commit())
+
+	err = db.UpdateRollupStatus(context.Background(), batchHash, types.RollupCommitting)
+	assert.NoError(t, err)
+
+	auth, err := bind.NewKeyedTransactorWithChainID(cfg.L2Config.RelayerConfig.MessageSenderPrivateKeys[0], l2ChainID)
+	assert.NoError(t, err)
+
+	signedTx, err := mockTx(auth)
+	assert.NoError(t, err)
+	err = db.SaveTx(batchHash, auth.From.String(), types.RollUpCommitTx, signedTx)
+	assert.NoError(t, err)
+
+	l2Cfg := cfg.L2Config
+	l2Cfg.RelayerConfig.SenderConfig.Confirmations = 0
+	relayer, err := relayer.NewLayer2Relayer(context.Background(), l2Cli, db, l2Cfg.RelayerConfig)
+	assert.NoError(t, err)
+	assert.NoError(t, relayer.CheckRollupBatches(types.RollupCommitting))
+	relayer.WaitL2RollupSender()
+
+	// check tx is confirmed.
+	maxIndex, batches, err := db.GetBlockBatchTxMessages(
+		map[string]interface{}{"rollup_status": types.RollupCommitting},
+		fmt.Sprintf("AND index > %d", 0),
+		fmt.Sprintf("ORDER BY index ASC LIMIT %d", 10),
+	)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, len(batches))
+	assert.Equal(t, batchData1.Batch.BatchIndex+1, maxIndex)
+
+	// check tx is on chain.
+	_, err = l2Cli.TransactionReceipt(context.Background(), common.HexToHash(batches[0].TxHash.String))
 	assert.NoError(t, err)
 }
 

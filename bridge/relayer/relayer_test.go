@@ -124,6 +124,7 @@ func TestFunctions(t *testing.T) {
 	t.Run("TestL2RelayerProcessCommittedBatches", testL2RelayerProcessCommittedBatches)
 	t.Run("TestL2RelayerSkipBatches", testL2RelayerSkipBatches)
 	t.Run("testL2CheckSubmittedMessages", testL2CheckSubmittedMessages)
+	t.Run("testL2CheckRollupBatches", testL2CheckRollupBatches)
 }
 
 func mockTx(auth *bind.TransactOpts) (*etypes.Transaction, error) {
