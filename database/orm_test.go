@@ -481,7 +481,7 @@ func testTxOrmSaveTxAndGetTxByHash(t *testing.T) {
 	assert.Nil(t, err)
 
 	// Update tx message by id.
-	err = ormTx.UpdateTxMsgByID("1", signedTx.Hash().String())
+	err = ormTx.ConfirmTxByID("1", signedTx.Hash().String())
 	assert.NoError(t, err)
 
 	savedTx, err := ormTx.GetTxByID("1")
