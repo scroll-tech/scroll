@@ -45,10 +45,10 @@ func (t *scrollTxOrm) SaveTx(id, sender string, txType stypes.ScrollTxType, tx *
 	return err
 }
 
-// UpdateTxMsgByID remove data content by id.
-func (t *scrollTxOrm) UpdateTxMsgByID(id string, txHash string) error {
+// ConfirmTxByID updates confirm and txHash field and clean data content.
+func (t *scrollTxOrm) ConfirmTxByID(id string, txHash string) error {
 	db := t.db
-	_, err := db.Exec(db.Rebind("UPDATE scroll_transaction SET data = '', tx_hash = ? WHERE id = ?;"), txHash, id)
+	_, err := db.Exec(db.Rebind("UPDATE scroll_transaction SET confirm = true, data = '', tx_hash = ? WHERE id = ?;"), txHash, id)
 	return err
 }
 
@@ -70,7 +70,7 @@ func (t *scrollTxOrm) GetTxByID(id string) (*stypes.ScrollTx, error) {
 // right join (select msg_hash
 //
 //	from l1_message
-//	where 1 = 1 AND status = :status AND queue_index > 0
+//	where 1 = 1 AND status = :status AND queue_index > :index
 //	ORDER BY queue_index ASC
 //	LIMIT 10) as l1 on tx.id = l1.msg_hash;
 func (t *scrollTxOrm) GetL1TxMessages(fields map[string]interface{}, args ...string) (uint64, []*stypes.ScrollTx, error) {

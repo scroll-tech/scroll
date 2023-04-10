@@ -652,7 +652,7 @@ func (r *Layer2Relayer) handleConfirmation(confirmation *sender.Confirmation) {
 		if err != nil {
 			log.Warn("UpdateLayer2StatusAndLayer1Hash failed", "msgHash", msgHash.(string), "err", err)
 		}
-		if err = r.db.UpdateTxMsgByID(confirmation.ID, confirmation.TxHash.String()); err != nil {
+		if err = r.db.ConfirmTxByID(confirmation.ID, confirmation.TxHash.String()); err != nil {
 			log.Warn("failed to delete l2 relayer message tx data", "msg.Hash", confirmation.ID, "tx.Hash", confirmation.TxHash.String(), "err", err)
 		}
 		bridgeL2MsgsRelayedConfirmedTotalCounter.Inc(1)
@@ -677,7 +677,7 @@ func (r *Layer2Relayer) handleConfirmation(confirmation *sender.Confirmation) {
 				log.Warn("UpdateCommitTxHashAndRollupStatus failed", "batch_hash", batchHash, "err", err)
 			}
 		}
-		if err := r.db.UpdateTxMsgByID(confirmation.ID, confirmation.TxHash.String()); err != nil {
+		if err := r.db.ConfirmTxByID(confirmation.ID, confirmation.TxHash.String()); err != nil {
 			log.Warn("failed to delete commitBatches committed tx data", "batched.id", confirmation.ID, "tx.Hash", confirmation.TxHash.String(), "err", err)
 		}
 		bridgeL2BatchesCommittedConfirmedTotalCounter.Inc(int64(len(batchHashes)))
@@ -699,7 +699,7 @@ func (r *Layer2Relayer) handleConfirmation(confirmation *sender.Confirmation) {
 		if err != nil {
 			log.Warn("UpdateFinalizeTxHashAndRollupStatus failed", "batch_hash", batchHash.(string), "err", err)
 		}
-		if err = r.db.UpdateTxMsgByID(confirmation.ID, confirmation.TxHash.String()); err != nil {
+		if err = r.db.ConfirmTxByID(confirmation.ID, confirmation.TxHash.String()); err != nil {
 			log.Warn("failed to delete finalizeBatchWithProof tx data", "batch.Hash", confirmation.ID, "tx.Hash", confirmation.TxHash.String(), "err", err)
 		}
 		bridgeL2BatchesFinalizedConfirmedTotalCounter.Inc(1)
@@ -731,7 +731,7 @@ func (r *Layer2Relayer) handleConfirmLoop(ctx context.Context) {
 				if err != nil {
 					log.Warn("UpdateL2GasOracleStatusAndOracleTxHash failed", "err", err)
 				}
-				if err = r.db.UpdateTxMsgByID(cfm.ID, cfm.TxHash.String()); err != nil {
+				if err = r.db.ConfirmTxByID(cfm.ID, cfm.TxHash.String()); err != nil {
 					log.Warn("failed to delete l2 gas oracle tx data", "batch.Hash", cfm.ID, "tx.Hash", cfm.TxHash.String(), "err", err)
 				}
 				log.Info("transaction confirmed in layer1", "confirmation", cfm)

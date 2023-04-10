@@ -11,6 +11,7 @@ create table scroll_transaction
     value        VARCHAR      NOT NULL,
     data         BYTEA        DEFAULT NULL,
     type         INTEGER      DEFAULT 0,
+    confirm      boolean      DEFAULT false,
     created_time TIMESTAMP(0) NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 

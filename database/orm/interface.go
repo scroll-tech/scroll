@@ -115,7 +115,7 @@ type L2MessageOrm interface {
 // ScrollTxOrm transaction operation interfaces.
 type ScrollTxOrm interface {
 	SaveTx(id, sender string, txType types.ScrollTxType, tx *etypes.Transaction) error
-	UpdateTxMsgByID(hash string, txHash string) error
+	ConfirmTxByID(hash string, txHash string) error
 	GetTxByID(id string) (*types.ScrollTx, error)
 	GetL1TxMessages(fields map[string]interface{}, args ...string) (uint64, []*types.ScrollTx, error)
 	GetL2TxMessages(fields map[string]interface{}, args ...string) (uint64, []*types.ScrollTx, error)
