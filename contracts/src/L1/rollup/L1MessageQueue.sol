@@ -22,10 +22,10 @@ contract L1MessageQueue is OwnableUpgradeable, IL1MessageQueue {
     /// @param _newGasOracle The address of new gas oracle contract.
     event UpdateGasOracle(address _oldGasOracle, address _newGasOracle);
 
-    /// @notice Emitted when owner updates EnforcedTxnGateway contract.
-    /// @param _oldGateway The address of old EnforcedTxnGateway contract.
-    /// @param _newGateway The address of new EnforcedTxnGateway contract.
-    event UpdateEnforcedTxnGateway(address _oldGateway, address _newGateway);
+    /// @notice Emitted when owner updates EnforcedTxGateway contract.
+    /// @param _oldGateway The address of old EnforcedTxGateway contract.
+    /// @param _newGateway The address of new EnforcedTxGateway contract.
+    event UpdateEnforcedTxGateway(address _oldGateway, address _newGateway);
 
     /*************
      * Variables *
@@ -40,8 +40,8 @@ contract L1MessageQueue is OwnableUpgradeable, IL1MessageQueue {
     /// @notice The list of queued cross domain messages.
     bytes32[] public messageQueue;
 
-    /// @notice The address EnforcedTxnGateway contract.
-    address public enforcedTxnGateway;
+    /// @notice The address EnforcedTxGateway contract.
+    address public enforcedTxGateway;
 
     /***************
      * Constructor *
@@ -231,8 +231,8 @@ contract L1MessageQueue is OwnableUpgradeable, IL1MessageQueue {
         uint256 _gasLimit,
         bytes calldata _data
     ) external override {
-        require(msg.sender == enforcedTxnGateway, "Only callable by the EnforcedTxnGateway");
-        // We will check it in EnforcedTxnGateway, just in case.
+        require(msg.sender == enforcedTxGateway, "Only callable by the EnforcedTxGateway");
+        // We will check it in EnforcedTxGateway, just in case.
         require(_sender.code.length == 0, "only EOA");
 
         _queueTransaction(_sender, _target, _value, _gasLimit, _data);
@@ -252,14 +252,14 @@ contract L1MessageQueue is OwnableUpgradeable, IL1MessageQueue {
         emit UpdateGasOracle(_oldGasOracle, _newGasOracle);
     }
 
-    /// @notice Update the address of EnforcedTxnGateway.
+    /// @notice Update the address of EnforcedTxGateway.
     /// @dev This function can only called by contract owner.
     /// @param _newGateway The address to update.
-    function updateEnforcedTxnGateway(address _newGateway) external onlyOwner {
-        address _oldGateway = enforcedTxnGateway;
-        enforcedTxnGateway = _newGateway;
+    function updateEnforcedTxGateway(address _newGateway) external onlyOwner {
+        address _oldGateway = enforcedTxGateway;
+        enforcedTxGateway = _newGateway;
 
-        emit UpdateEnforcedTxnGateway(_oldGateway, _newGateway);
+        emit UpdateEnforcedTxGateway(_oldGateway, _newGateway);
     }
 
     /**********************

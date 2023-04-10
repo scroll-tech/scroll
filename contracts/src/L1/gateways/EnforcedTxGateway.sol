@@ -8,7 +8,7 @@ import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/se
 
 import {IL1MessageQueue} from "../rollup/IL1MessageQueue.sol";
 
-contract EnforcedTxnGateway is OwnableUpgradeable, ReentrancyGuardUpgradeable {
+contract EnforcedTxGateway is OwnableUpgradeable, ReentrancyGuardUpgradeable {
     /**********
      * Events *
      **********/
@@ -47,7 +47,7 @@ contract EnforcedTxnGateway is OwnableUpgradeable, ReentrancyGuardUpgradeable {
     /// @param _value The value passed
     /// @param _gasLimit The maximum gas should be used for this transaction in L2.
     /// @param _data The calldata passed to target contract.
-    function addTransaction(
+    function sendTransaction(
         address _target,
         uint256 _value,
         uint256 _gasLimit,
@@ -55,7 +55,7 @@ contract EnforcedTxnGateway is OwnableUpgradeable, ReentrancyGuardUpgradeable {
     ) external payable {
         require(msg.sender == tx.origin, "only EOA");
 
-        _addTransaction(msg.sender, _target, _value, _gasLimit, _data);
+        _sendTransaction(msg.sender, _target, _value, _gasLimit, _data);
     }
 
     /// @notice Add an enforced transaction to L2.
@@ -68,7 +68,7 @@ contract EnforcedTxnGateway is OwnableUpgradeable, ReentrancyGuardUpgradeable {
     /// @param v The `v` value of signature.
     /// @param r The `r` value of signature.
     /// @param s The `s` value of signature.
-    function addTransaction(
+    function sendTransaction(
         address _sender,
         address _target,
         uint256 _value,
@@ -90,9 +90,10 @@ contract EnforcedTxnGateway is OwnableUpgradeable, ReentrancyGuardUpgradeable {
         );
 
         address _signer = ECDSAUpgradeable.recover(_hash, v, r, s);
-        require(_signer == _sender, "invalid signature");
+        // no need to check `_signer != address(0)`, since it is checked in `recover`.
+        require(_signer == _sender, "signer mismatch");
 
-        _addTransaction(_sender, _target, _value, _gasLimit, _data);
+        _sendTransaction(_sender, _target, _value, _gasLimit, _data);
     }
 
     /************************
@@ -118,7 +119,7 @@ contract EnforcedTxnGateway is OwnableUpgradeable, ReentrancyGuardUpgradeable {
     /// @param _value The value passed
     /// @param _gasLimit The maximum gas should be used for this transaction in L2.
     /// @param _data The calldata passed to target contract.
-    function _addTransaction(
+    function _sendTransaction(
         address _sender,
         address _target,
         uint256 _value,
