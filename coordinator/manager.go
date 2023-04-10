@@ -322,15 +322,14 @@ func (m *Manager) handleZkProof(pk string, msg *message.ProofDetail) error {
 
 	coordinatorProofsReceivedTotalCounter.Inc(1)
 
-	var err error
-	success, err = m.verifyProof(msg.Proof)
-	if err != nil {
+	var verifyErr error
+	success, verifyErr = m.verifyProof(msg.Proof)
+	if verifyErr != nil {
 		// TODO: this is only a temp workaround for testnet, we should return err in real cases
 		success = false
-		log.Error("Failed to verify zk proof", "proof id", msg.ID, "error", err)
+		log.Error("verify proof error", "proof id", msg.ID, "roller name", roller.Name,
+			"roller pk", roller.PublicKey, "proof time", proofTimeSec, "error", verifyErr)
 		// TODO: Roller needs to be slashed if proof is invalid.
-	} else {
-		log.Info("Verify zk proof successfully", "verification result", success, "proof id", msg.ID)
 	}
 
 	if success {
@@ -350,7 +349,7 @@ func (m *Manager) handleZkProof(pk string, msg *message.ProofDetail) error {
 		coordinatorProofsVerifiedFailedTimeTimer.Update(proofTime)
 		m.updateMetricRollerProofsVerifiedFailedTimeTimer(roller.PublicKey, proofTime)
 		log.Info("proof verified by coordinator failed", "proof id", msg.ID, "roller name", roller.Name,
-			"roller pk", roller.PublicKey, "proof time", proofTimeSec)
+			"roller pk", roller.PublicKey, "proof time", proofTimeSec, "error", verifyErr)
 	}
 	return nil
 }
