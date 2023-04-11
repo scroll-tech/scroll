@@ -110,8 +110,7 @@ func action(ctx *cli.Context) error {
 			log.Error("appear error when resend l2 submitted txs", "err", err)
 			return
 		}
-		// Wait until sender's pending txs are confirmed.
-		l2relayer.WaitL2MsgSender()
+		l2relayer.WaitSubmittedMessages()
 
 		l2relayer.ProcessSavedEvents()
 	})

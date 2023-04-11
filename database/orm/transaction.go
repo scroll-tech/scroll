@@ -55,7 +55,7 @@ func (t *scrollTxOrm) ConfirmTxByID(id string, txHash string) error {
 
 // GetScrollTxs get scroll txs by params.
 func (t *scrollTxOrm) GetScrollTxs(fields map[string]interface{}, args ...string) ([]*stypes.ScrollTx, error) {
-	query := "select * from l1_message where 1 = 1"
+	query := "select id, tx_hash, sender, nonce, target, value, data, extra_data from scroll_transaction where 1 = 1"
 	for key := range fields {
 		query = query + fmt.Sprintf(" AND %s = :%s", key, key)
 	}

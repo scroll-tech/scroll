@@ -4,12 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/scroll-tech/go-ethereum/accounts/abi/bind"
 	"math/big"
 	"os"
 	"strconv"
+	"strings"
 	"testing"
 
+	"github.com/scroll-tech/go-ethereum/accounts/abi/bind"
 	"github.com/scroll-tech/go-ethereum/common"
 	geth_types "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/stretchr/testify/assert"
@@ -236,7 +237,7 @@ func testL2CheckSubmittedMessages(t *testing.T) {
 	err = relayer.CheckSubmittedMessages()
 	assert.Nil(t, err)
 
-	relayer.WaitL2MsgSender()
+	relayer.WaitSubmittedMessages()
 
 	// check tx is confirmed.
 	maxNonce, txMsgs, err := db.GetL2TxMessages(
@@ -253,32 +254,103 @@ func testL2CheckSubmittedMessages(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func testL2CheckRollupBatches(t *testing.T) {
+func testL2CheckRollupCommittingBatches(t *testing.T) {
 	// Create db handler and reset db.
 	db, err := database.NewOrmFactory(cfg.DBConfig)
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(db.GetDB().DB))
 	defer db.Close()
 
-	batch1 := types.NewBatchData(&types.BlockBatch{
+	var batches []*types.BatchData
+	batches = append(batches, types.NewBatchData(&types.BlockBatch{
 		Index:     0,
 		Hash:      common.Hash{}.String(),
 		StateRoot: common.Hash{}.String(),
-	}, []*types.WrappedBlock{wrappedBlock1}, nil)
-	batch2 := types.NewBatchData(&types.BlockBatch{
-		Index:     batch1.Batch.BatchIndex,
-		Hash:      batch1.Hash().Hex(),
-		StateRoot: batch1.Batch.NewStateRoot.String(),
-	}, []*types.WrappedBlock{wrappedBlock2}, nil)
+	}, []*types.WrappedBlock{wrappedBlock1}, nil))
+	batches = append(batches, types.NewBatchData(&types.BlockBatch{
+		Index:     batches[0].Batch.BatchIndex,
+		Hash:      batches[0].Hash().Hex(),
+		StateRoot: batches[0].Batch.NewStateRoot.String(),
+	}, []*types.WrappedBlock{wrappedBlock2}, nil))
 
 	dbTx, err := db.Beginx()
 	assert.NoError(t, err)
-	assert.NoError(t, db.NewBatchInDBTx(dbTx, batch1))
-	batchHash := batch1.Hash().Hex()
-	assert.NoError(t, db.SetBatchHashForL2BlocksInDBTx(dbTx, []uint64{1}, batchHash))
+	batchHashes := make([]string, len(batches))
+	for i, batch := range batches {
+		assert.NoError(t, db.NewBatchInDBTx(dbTx, batch))
+		batchHash := batch.Hash().Hex()
+		batchHashes[i] = batchHash
+		assert.NoError(t, db.SetBatchHashForL2BlocksInDBTx(dbTx, []uint64{1}, batchHash))
+		assert.NoError(t, db.UpdateCommitTxHashAndRollupStatus(context.Background(), batchHash, "", types.RollupCommitting))
+	}
 	assert.NoError(t, dbTx.Commit())
 
-	err = db.UpdateRollupStatus(context.Background(), batchHash, types.RollupCommitting)
+	l2Cfg := cfg.L2Config
+	l2Cfg.RelayerConfig.SenderConfig.Confirmations = 0
+	relayer, err := relayer.NewLayer2Relayer(context.Background(), l2Cli, db, l2Cfg.RelayerConfig)
+	assert.NoError(t, err)
+
+	auth, err := bind.NewKeyedTransactorWithChainID(cfg.L2Config.RelayerConfig.MessageSenderPrivateKeys[0], l2ChainID)
+	assert.NoError(t, err)
+	signedTx, err := mockTx(auth)
+	assert.NoError(t, err)
+	id := "rollup committing tx"
+	err = db.SaveTx(id, auth.From.String(), types.RollUpCommitTx, signedTx, strings.Join(batchHashes, ","))
+	assert.NoError(t, err)
+
+	assert.NoError(t, relayer.CheckRollupCommittingBatches())
+	relayer.WaitRollupCommittingBatches()
+
+	// check tx is confirmed.
+	txMsgs, err := db.GetScrollTxs(
+		map[string]interface{}{
+			"type":    types.RollUpCommitTx,
+			"confirm": true,
+		},
+		"ORDER BY nonce ASC",
+	)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, len(txMsgs))
+	assert.Equal(t, "", txMsgs[0].ExtraData.String)
+	// check tx is on chain.
+	_, err = l1Cli.TransactionReceipt(context.Background(), common.HexToHash(txMsgs[0].TxHash.String))
+	assert.NoError(t, err)
+}
+
+func testL2CheckRollupFinalizingBatches(t *testing.T) {
+	// Create db handler and reset db.
+	db, err := database.NewOrmFactory(cfg.DBConfig)
+	assert.NoError(t, err)
+	assert.NoError(t, migrate.ResetDB(db.GetDB().DB))
+	defer db.Close()
+
+	var batches []*types.BatchData
+	batches = append(batches, types.NewBatchData(&types.BlockBatch{
+		Index:     0,
+		Hash:      common.Hash{}.String(),
+		StateRoot: common.Hash{}.String(),
+	}, []*types.WrappedBlock{wrappedBlock1}, nil))
+	batches = append(batches, types.NewBatchData(&types.BlockBatch{
+		Index:     batches[0].Batch.BatchIndex,
+		Hash:      batches[0].Hash().Hex(),
+		StateRoot: batches[0].Batch.NewStateRoot.String(),
+	}, []*types.WrappedBlock{wrappedBlock2}, nil))
+
+	dbTx, err := db.Beginx()
+	assert.NoError(t, err)
+	batchHashes := make([]string, len(batches))
+	for i, batch := range batches {
+		assert.NoError(t, db.NewBatchInDBTx(dbTx, batch))
+		batchHash := batch.Hash().Hex()
+		batchHashes[i] = batchHash
+		assert.NoError(t, db.SetBatchHashForL2BlocksInDBTx(dbTx, []uint64{1}, batchHash))
+	}
+	assert.NoError(t, dbTx.Commit())
+	assert.NoError(t, db.UpdateFinalizeTxHashAndRollupStatus(context.Background(), batchHashes[0], "", types.RollupFinalizing))
+
+	l2Cfg := cfg.L2Config
+	l2Cfg.RelayerConfig.SenderConfig.Confirmations = 0
+	relayer, err := relayer.NewLayer2Relayer(context.Background(), l2Cli, db, l2Cfg.RelayerConfig)
 	assert.NoError(t, err)
 
 	auth, err := bind.NewKeyedTransactorWithChainID(cfg.L2Config.RelayerConfig.MessageSenderPrivateKeys[0], l2ChainID)
@@ -286,28 +358,24 @@ func testL2CheckRollupBatches(t *testing.T) {
 
 	signedTx, err := mockTx(auth)
 	assert.NoError(t, err)
-	err = db.SaveTx(batchHash, auth.From.String(), types.RollUpCommitTx, signedTx, "")
-	assert.NoError(t, err)
-
-	l2Cfg := cfg.L2Config
-	l2Cfg.RelayerConfig.SenderConfig.Confirmations = 0
-	relayer, err := relayer.NewLayer2Relayer(context.Background(), l2Cli, db, l2Cfg.RelayerConfig)
+	err = db.SaveTx(batchHashes[0], auth.From.String(), types.RollupFinalizeTx, signedTx, strings.Join(batchHashes, ","))
 	assert.NoError(t, err)
 	assert.NoError(t, relayer.CheckRollupFinalizingBatches())
-	relayer.WaitL2RollupSender()
+	relayer.WaitRollupFinalizingBatches()
 
 	// check tx is confirmed.
-	maxIndex, batches, err := db.GetBlockBatchTxMessages(
-		map[string]interface{}{"rollup_status": types.RollupCommitting},
-		fmt.Sprintf("AND index > %d", 0),
-		fmt.Sprintf("ORDER BY index ASC LIMIT %d", 10),
+	txMsgs, err := db.GetScrollTxs(
+		map[string]interface{}{
+			"type":    types.RollupFinalizeTx,
+			"confirm": true,
+		},
+		"ORDER BY nonce ASC",
 	)
 	assert.NoError(t, err)
-	assert.Equal(t, 1, len(batches))
-	assert.Equal(t, batchData1.Batch.BatchIndex, maxIndex)
-
+	assert.Equal(t, 1, len(txMsgs))
+	assert.Equal(t, "", txMsgs[0].ExtraData.String)
 	// check tx is on chain.
-	_, err = l2Cli.TransactionReceipt(context.Background(), common.HexToHash(batches[0].TxHash.String))
+	_, err = l1Cli.TransactionReceipt(context.Background(), common.HexToHash(txMsgs[0].TxHash.String))
 	assert.NoError(t, err)
 }
 

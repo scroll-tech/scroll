@@ -114,12 +114,14 @@ func action(ctx *cli.Context) error {
 			log.Error("failed to check rollup committing txs", "err", err)
 			return
 		}
+		l2relayer.WaitRollupCommittingBatches()
+
 		if err = l2relayer.CheckRollupFinalizingBatches(); err != nil {
 			log.Error("failed to check rollup finalizing txs", "err", err)
 			return
 		}
 		// Wait until sender's pending txs are confirmed.
-		l2relayer.WaitL2RollupSender()
+		l2relayer.WaitRollupFinalizingBatches()
 
 		l2relayer.ProcessCommittedBatches()
 	})

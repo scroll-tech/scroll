@@ -3,13 +3,13 @@ package relayer_test
 import (
 	"context"
 	"encoding/json"
-	"github.com/scroll-tech/go-ethereum/accounts/abi/bind"
-	"github.com/scroll-tech/go-ethereum/common"
-	etypes "github.com/scroll-tech/go-ethereum/core/types"
 	"math/big"
 	"os"
 	"testing"
 
+	"github.com/scroll-tech/go-ethereum/accounts/abi/bind"
+	"github.com/scroll-tech/go-ethereum/common"
+	etypes "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/stretchr/testify/assert"
@@ -52,7 +52,7 @@ func setupEnv(t *testing.T) (err error) {
 
 	cfg.L2Config.RelayerConfig.SenderConfig.Endpoint = base.L1GethEndpoint()
 	cfg.L1Config.RelayerConfig.SenderConfig.Endpoint = base.L2GethEndpoint()
-	cfg.DBConfig.DSN = "postgres://maskpp:123456@localhost:5432/postgres?sslmode=disable" //base.DBEndpoint()
+	cfg.DBConfig.DSN = base.DBEndpoint()
 
 	// Create l1geth client.
 	l1Cli, err = base.L1Client()
@@ -124,7 +124,8 @@ func TestFunctions(t *testing.T) {
 	t.Run("TestL2RelayerProcessCommittedBatches", testL2RelayerProcessCommittedBatches)
 	t.Run("TestL2RelayerSkipBatches", testL2RelayerSkipBatches)
 	t.Run("testL2CheckSubmittedMessages", testL2CheckSubmittedMessages)
-	t.Run("testL2CheckRollupBatches", testL2CheckRollupBatches)
+	t.Run("testL2CheckRollupCommittingBatches", testL2CheckRollupCommittingBatches)
+	t.Run("testL2CheckRollupFinalizingBatches", testL2CheckRollupFinalizingBatches)
 }
 
 func mockTx(auth *bind.TransactOpts) (*etypes.Transaction, error) {

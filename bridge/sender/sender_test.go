@@ -9,14 +9,14 @@ import (
 	"testing"
 	"time"
 
-	"golang.org/x/sync/errgroup"
-
 	cmap "github.com/orcaman/concurrent-map"
+	"github.com/scroll-tech/go-ethereum/accounts/abi/bind"
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/crypto"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/rpc"
 	"github.com/stretchr/testify/assert"
+	"golang.org/x/sync/errgroup"
 
 	"scroll-tech/common/docker"
 
@@ -56,6 +56,8 @@ func setupEnv(t *testing.T) {
 func TestSender(t *testing.T) {
 	// Setup
 	setupEnv(t)
+
+	t.Run("test load or resend", testLoadOrResendTx)
 
 	t.Run("test pending limit", func(t *testing.T) { testPendLimit(t) })
 
@@ -171,4 +173,45 @@ func testBatchSender(t *testing.T, batchSize int) {
 			return
 		}
 	}
+}
+
+func testLoadOrResendTx(t *testing.T) {
+	senderCfg := cfg.L1Config.RelayerConfig.SenderConfig
+	senderCfg.Confirmations = 0
+	senderCfg.PendingLimit = 2
+	newSender, err := sender.NewSender(context.Background(), senderCfg, privateKeys)
+	assert.NoError(t, err)
+	defer newSender.Stop()
+
+	l2Cli, err := base.L2Client()
+	assert.NoError(t, err)
+	chainID, err := l2Cli.ChainID(context.Background())
+	assert.NoError(t, err)
+
+	auth, err := bind.NewKeyedTransactorWithChainID(privateKeys[0], chainID)
+	assert.NoError(t, err)
+
+	pendingNonce, err := l2Cli.PendingNonceAt(context.Background(), auth.From)
+	assert.NoError(t, err)
+
+	toAddr := common.HexToAddress("0x4592d8f8d7b001e72cb26a73e4fa1806a51ac79d")
+
+	// test resend situation.
+	isResend, _, err := newSender.LoadOrResendTx(common.Hash{}, auth.From, pendingNonce+1, "1", &toAddr, big.NewInt(0), nil, 0)
+	assert.NoError(t, err)
+	assert.True(t, isResend)
+	assert.Equal(t, 1, newSender.PendingCount())
+
+	from, tx, err := newSender.SendTransaction("2", &toAddr, big.NewInt(0), nil, 0)
+	assert.NoError(t, err)
+	assert.Equal(t, auth.From, from)
+	// wait until all the txs are on chain.
+	for newSender.PendingCount() != 0 {
+		time.Sleep(time.Second)
+	}
+
+	isResend, tx1, err := newSender.LoadOrResendTx(tx.Hash(), auth.From, pendingNonce+1, "1", &toAddr, big.NewInt(0), nil, 0)
+	assert.NoError(t, err)
+	assert.True(t, !isResend)
+	assert.Equal(t, tx.Hash(), tx1.Hash())
 }

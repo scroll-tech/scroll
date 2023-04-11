@@ -3,11 +3,13 @@ package relayer_test
 import (
 	"context"
 	"fmt"
+	"testing"
+
 	"github.com/scroll-tech/go-ethereum/accounts/abi/bind"
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/stretchr/testify/assert"
+
 	"scroll-tech/common/types"
-	"testing"
 
 	"scroll-tech/database/migrate"
 
@@ -81,7 +83,6 @@ func testL1CheckSubmittedMessages(t *testing.T) {
 	assert.NotNil(t, relayer)
 	err = relayer.CheckSubmittedMessages()
 	assert.Nil(t, err)
-
 	relayer.WaitL1MsgSender()
 
 	// check tx is confirmed.
