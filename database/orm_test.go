@@ -580,7 +580,8 @@ func testTxOrmGetBlockBatchTxMessages(t *testing.T) {
 
 	signedTx, err := mockTx(auth)
 	assert.NoError(t, err)
-	err = ormTx.SaveTx(batchData1.Hash().String(), auth.From.String(), types.RollUpCommitTx, signedTx, "")
+	extraData := "extra data"
+	err = ormTx.SaveTx(batchData1.Hash().String(), auth.From.String(), types.RollUpCommitTx, signedTx, extraData)
 	assert.Nil(t, err)
 
 	txMsgs, err := ormTx.GetBlockBatchTxMessages(
@@ -593,4 +594,5 @@ func testTxOrmGetBlockBatchTxMessages(t *testing.T) {
 	assert.Equal(t, batchData1.Hash().String(), txMsgs[0].ID)
 	assert.Equal(t, false, txMsgs[1].TxHash.Valid)
 	assert.Equal(t, batchData2.Hash().String(), txMsgs[1].ID)
+	assert.Equal(t, extraData, txMsgs[0].ExtraData.String)
 }
