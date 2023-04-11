@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math/big"
 	"os"
+	"scroll-tech/common/utils"
 	"strconv"
 	"strings"
 	"testing"
@@ -236,15 +237,22 @@ func testL2CheckSubmittedMessages(t *testing.T) {
 	assert.NotNil(t, relayer)
 	err = relayer.CheckSubmittedMessages()
 	assert.Nil(t, err)
-
 	relayer.WaitSubmittedMessages()
 
-	// check tx is confirmed.
-	maxNonce, txMsgs, err := db.GetL2TxMessages(
-		map[string]interface{}{"status": types.MsgConfirmed},
-		fmt.Sprintf("AND nonce > %d", 0),
-		fmt.Sprintf("ORDER BY nonce ASC LIMIT %d", 10),
+	var (
+		maxNonce uint64
+		txMsgs   []*types.ScrollTx
 	)
+	utils.TryTimes(5, func() bool {
+		// check tx is confirmed.
+		maxNonce, txMsgs, err = db.GetL2TxMessages(
+			map[string]interface{}{"status": types.MsgConfirmed},
+			fmt.Sprintf("AND nonce > %d", 0),
+			fmt.Sprintf("ORDER BY nonce ASC LIMIT %d", 10),
+		)
+		return err == nil
+	})
+
 	assert.Nil(t, err)
 	assert.Equal(t, 1, len(txMsgs))
 	assert.Equal(t, templateL2Message[0].Nonce, maxNonce)
@@ -301,14 +309,18 @@ func testL2CheckRollupCommittingBatches(t *testing.T) {
 	assert.NoError(t, relayer.CheckRollupCommittingBatches())
 	relayer.WaitRollupCommittingBatches()
 
-	// check tx is confirmed.
-	txMsgs, err := db.GetScrollTxs(
-		map[string]interface{}{
-			"type":    types.RollUpCommitTx,
-			"confirm": true,
-		},
-		"ORDER BY nonce ASC",
-	)
+	var txMsgs []*types.ScrollTx
+	utils.TryTimes(5, func() bool {
+		// check tx is confirmed.
+		txMsgs, err = db.GetScrollTxs(
+			map[string]interface{}{
+				"type":    types.RollUpCommitTx,
+				"confirm": true,
+			},
+			"ORDER BY nonce ASC",
+		)
+		return err == nil
+	})
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(txMsgs))
 	assert.Equal(t, "", txMsgs[0].ExtraData.String)
@@ -363,14 +375,18 @@ func testL2CheckRollupFinalizingBatches(t *testing.T) {
 	assert.NoError(t, relayer.CheckRollupFinalizingBatches())
 	relayer.WaitRollupFinalizingBatches()
 
-	// check tx is confirmed.
-	txMsgs, err := db.GetScrollTxs(
-		map[string]interface{}{
-			"type":    types.RollupFinalizeTx,
-			"confirm": true,
-		},
-		"ORDER BY nonce ASC",
-	)
+	var txMsgs []*types.ScrollTx
+	utils.TryTimes(5, func() bool {
+		// check tx is confirmed.
+		txMsgs, err = db.GetScrollTxs(
+			map[string]interface{}{
+				"type":    types.RollupFinalizeTx,
+				"confirm": true,
+			},
+			"ORDER BY nonce ASC",
+		)
+		return err == nil
+	})
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(txMsgs))
 	assert.Equal(t, "", txMsgs[0].ExtraData.String)
