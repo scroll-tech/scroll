@@ -94,8 +94,8 @@ var (
 func setupEnv(t *testing.T) error {
 	// Init db config and start db container.
 	dbConfig = &database.DBConfig{DriverName: "postgres"}
-	base.RunImages(t)
-	dbConfig.DSN = base.DBEndpoint()
+	//base.RunImages(t)
+	dbConfig.DSN = "postgres://maskpp:123456@localhost:5432/postgres?sslmode=disable" //base.DBEndpoint()
 
 	// Create db handler and reset db.
 	factory, err := database.NewOrmFactory(dbConfig)
@@ -581,7 +581,8 @@ func testTxOrmGetBlockBatchTxMessages(t *testing.T) {
 
 	signedTx, err := mockTx(auth)
 	assert.NoError(t, err)
-	err = ormTx.SaveTx(batchData1.Hash().String(), auth.From.String(), types.RollUpCommitTx, signedTx, "")
+	extraData := "extra data"
+	err = ormTx.SaveTx(batchData1.Hash().String(), auth.From.String(), types.RollUpCommitTx, signedTx, extraData)
 	assert.Nil(t, err)
 
 	batchIndex, txMsgs, err := ormTx.GetBlockBatchTxMessages(
@@ -596,4 +597,5 @@ func testTxOrmGetBlockBatchTxMessages(t *testing.T) {
 	assert.Equal(t, batchData1.Hash().String(), txMsgs[0].ID)
 	assert.Equal(t, false, txMsgs[1].TxHash.Valid)
 	assert.Equal(t, batchData2.Hash().String(), txMsgs[1].ID)
+	assert.Equal(t, extraData, txMsgs[0].ExtraData.String)
 }
