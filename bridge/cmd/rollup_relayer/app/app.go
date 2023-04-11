@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
-	"scroll-tech/common/types"
 	"time"
 
 	"github.com/scroll-tech/go-ethereum/ethclient"
@@ -111,11 +110,11 @@ func action(ctx *cli.Context) error {
 	})
 
 	go cutils.Loop(subCtx, 2*time.Second, func() {
-		if err = l2relayer.CheckRollupBatches(types.RollupCommitting); err != nil {
+		if err = l2relayer.CheckRollupCommittingBatches(); err != nil {
 			log.Error("failed to check rollup committing txs", "err", err)
 			return
 		}
-		if err = l2relayer.CheckRollupBatches(types.RollupFinalizing); err != nil {
+		if err = l2relayer.CheckRollupFinalizingBatches(); err != nil {
 			log.Error("failed to check rollup finalizing txs", "err", err)
 			return
 		}

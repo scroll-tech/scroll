@@ -49,8 +49,33 @@ func (t *scrollTxOrm) SaveTx(id, sender string, txType stypes.ScrollTxType, tx *
 // ConfirmTxByID updates confirm and txHash field and clean data content.
 func (t *scrollTxOrm) ConfirmTxByID(id string, txHash string) error {
 	db := t.db
-	_, err := db.Exec(db.Rebind("UPDATE scroll_transaction SET confirm = true, data = '', tx_hash = ? WHERE id = ?;"), txHash, id)
+	_, err := db.Exec(db.Rebind("UPDATE scroll_transaction SET confirm = true, data = '', extra_data = '', tx_hash = ? WHERE id = ?;"), txHash, id)
 	return err
+}
+
+// GetScrollTxs get scroll txs by params.
+func (t *scrollTxOrm) GetScrollTxs(fields map[string]interface{}, args ...string) ([]*stypes.ScrollTx, error) {
+	query := "select * from l1_message where 1 = 1"
+	for key := range fields {
+		query = query + fmt.Sprintf(" AND %s = :%s", key, key)
+	}
+	query = strings.Join(append([]string{query}, args...), " ")
+
+	db := t.db
+	rows, err := db.NamedQuery(db.Rebind(query), fields)
+	if err != nil {
+		return nil, err
+	}
+
+	var txMsgs []*stypes.ScrollTx
+	for rows.Next() {
+		txMsg := &stypes.ScrollTx{}
+		if err = rows.StructScan(txMsg); err != nil {
+			return nil, err
+		}
+		txMsgs = append(txMsgs, txMsg)
+	}
+	return txMsgs, nil
 }
 
 // GetTxByID returns tx message by message id.

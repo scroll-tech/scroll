@@ -222,7 +222,7 @@ func testL2CheckSubmittedMessages(t *testing.T) {
 
 	signedTx, err := mockTx(auth)
 	assert.NoError(t, err)
-	err = db.SaveTx(templateL2Message[0].MsgHash, auth.From.String(), types.L2toL1MessageTx, signedTx)
+	err = db.SaveTx(templateL2Message[0].MsgHash, auth.From.String(), types.L2toL1MessageTx, signedTx, "")
 	assert.Nil(t, err)
 	err = db.SaveL2Messages(context.Background(), templateL2Message)
 	assert.NoError(t, err)
@@ -260,36 +260,21 @@ func testL2CheckRollupBatches(t *testing.T) {
 	assert.NoError(t, migrate.ResetDB(db.GetDB().DB))
 	defer db.Close()
 
-	err = db.SaveL2Messages(context.Background(), templateL2Message)
-	assert.NoError(t, err)
-
-	traces := []*types.WrappedBlock{
-		{
-			Header: &geth_types.Header{
-				Number: big.NewInt(int64(templateL2Message[0].Height)),
-			},
-			Transactions:     nil,
-			WithdrawTrieRoot: common.Hash{},
-		},
-		{
-			Header: &geth_types.Header{
-				Number: big.NewInt(int64(templateL2Message[0].Height + 1)),
-			},
-			Transactions:     nil,
-			WithdrawTrieRoot: common.Hash{},
-		},
-	}
-	assert.NoError(t, db.InsertWrappedBlocks(traces))
-
-	batchData1 := types.NewBatchData(&types.BlockBatch{
+	batch1 := types.NewBatchData(&types.BlockBatch{
 		Index:     0,
 		Hash:      common.Hash{}.String(),
 		StateRoot: common.Hash{}.String(),
 	}, []*types.WrappedBlock{wrappedBlock1}, nil)
+	batch2 := types.NewBatchData(&types.BlockBatch{
+		Index:     batch1.Batch.BatchIndex,
+		Hash:      batch1.Hash().Hex(),
+		StateRoot: batch1.Batch.NewStateRoot.String(),
+	}, []*types.WrappedBlock{wrappedBlock2}, nil)
+
 	dbTx, err := db.Beginx()
 	assert.NoError(t, err)
-	assert.NoError(t, db.NewBatchInDBTx(dbTx, batchData1))
-	batchHash := batchData1.Hash().Hex()
+	assert.NoError(t, db.NewBatchInDBTx(dbTx, batch1))
+	batchHash := batch1.Hash().Hex()
 	assert.NoError(t, db.SetBatchHashForL2BlocksInDBTx(dbTx, []uint64{1}, batchHash))
 	assert.NoError(t, dbTx.Commit())
 
@@ -301,14 +286,14 @@ func testL2CheckRollupBatches(t *testing.T) {
 
 	signedTx, err := mockTx(auth)
 	assert.NoError(t, err)
-	err = db.SaveTx(batchHash, auth.From.String(), types.RollUpCommitTx, signedTx)
+	err = db.SaveTx(batchHash, auth.From.String(), types.RollUpCommitTx, signedTx, "")
 	assert.NoError(t, err)
 
 	l2Cfg := cfg.L2Config
 	l2Cfg.RelayerConfig.SenderConfig.Confirmations = 0
 	relayer, err := relayer.NewLayer2Relayer(context.Background(), l2Cli, db, l2Cfg.RelayerConfig)
 	assert.NoError(t, err)
-	assert.NoError(t, relayer.CheckRollupBatches(types.RollupCommitting))
+	assert.NoError(t, relayer.CheckRollupFinalizingBatches())
 	relayer.WaitL2RollupSender()
 
 	// check tx is confirmed.
@@ -319,7 +304,7 @@ func testL2CheckRollupBatches(t *testing.T) {
 	)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(batches))
-	assert.Equal(t, batchData1.Batch.BatchIndex+1, maxIndex)
+	assert.Equal(t, batchData1.Batch.BatchIndex, maxIndex)
 
 	// check tx is on chain.
 	_, err = l2Cli.TransactionReceipt(context.Background(), common.HexToHash(batches[0].TxHash.String))

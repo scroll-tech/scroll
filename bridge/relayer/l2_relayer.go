@@ -366,21 +366,50 @@ func (r *Layer2Relayer) ProcessGasPriceOracle() {
 	}
 }
 
-func (r *Layer2Relayer) CheckRollupCommittingMessages() error {
-	var (
-		batchIndex uint64
-		batchLimit uint64 = 10
+// CheckRollupCommittingBatches check or resend rollup committing txs.
+func (r *Layer2Relayer) CheckRollupCommittingBatches() error {
+	txMsgs, err := r.db.GetScrollTxs(
+		map[string]interface{}{
+			"type":    types.RollUpCommitTx,
+			"confirm": false,
+		},
+		"ORDER BY nonce ASC",
 	)
-	for {
-		maxIndex, batchHashes, err := r.checkRollupBatches(types.RollupCommitting, batchIndex, batchLimit)
+	if err != nil {
+		log.Error("failed to get rollupCommitting tx messages", "err", err)
+		return err
+	}
+	if len(txMsgs) == 0 {
+		return nil
+	}
+
+	for _, msg := range txMsgs {
+		if !msg.ExtraData.Valid {
+			return fmt.Errorf("batch hash list is empty, tx.id: %s", msg.ID)
+		}
+		// Wait until sender's pending is not full.
+		cutils.TryTimes(-1, func() bool {
+			return !r.rollupSender.IsFull()
+		})
+
+		isResend, tx, err := r.rollupSender.LoadOrResendTx(
+			msg.GetTxHash(),
+			msg.GetSender(),
+			msg.GetNonce(),
+			msg.ID,
+			msg.GetTarget(),
+			msg.GetValue(),
+			msg.Data,
+			r.minGasLimitForMessageRelay,
+		)
 		if err != nil {
+			log.Error("failed to load or resend rollup committing tx", "msg.hash", msg.ID, "tx.hash", tx.Hash().String(), "err", err)
 			return err
 		}
-		batchIndex = maxIndex
-		for _, hash := range batchHashes {
-			r.processingBatchesCommitment.Store(hash+"-finalize", hash)
-		}
+		r.processingBatchesCommitment.Store(msg.ID, strings.Split(msg.ExtraData.String, ","))
+		log.Info("successfully resend rollup coimmitting tx", "resend", isResend, "msg.hash", msg.ID, "tx.Hash", tx.Hash().String())
 	}
+	return nil
 }
 
 // SendCommitTx sends commitBatches tx to L1.
@@ -441,66 +470,53 @@ func (r *Layer2Relayer) SendCommitTx(batchData []*types.BatchData) error {
 	return nil
 }
 
-func (r *Layer2Relayer) checkRollupBatches(rollupStatus types.RollupStatus, batchIndex, batchLimit uint64) (uint64, []string, error) {
-	maxIndex, batches, err := r.db.GetBlockBatchTxMessages(
-		map[string]interface{}{"rollup_status": rollupStatus},
-		fmt.Sprintf("AND index > %d", batchIndex),
-		fmt.Sprintf("ORDER BY index ASC LIMIT %d", batchLimit),
-	)
-	if err != nil {
-		log.Error("failed to get Rollup batches", "rollup status", rollupStatus, "batch index", batchIndex, "err", err)
-		return 0, nil, err
-	}
-	if len(batches) == 0 {
-		return 0, nil, nil
-	}
-
-	batchHashes := make([]string, len(batches))
-	for i, msg := range batches {
-		// TODO: Is it necessary repair tx message?
-		if !msg.TxHash.Valid {
-			log.Warn("Rollup tx message is empty", "rollup status", rollupStatus, "tx id", msg.ID)
-			continue
-		}
-		cutils.TryTimes(-1, func() bool {
-			return !r.rollupSender.IsFull()
-		})
-		batchHashes[i] = msg.ID
-
-		isResend, tx, err := r.rollupSender.LoadOrResendTx(
-			msg.GetTxHash(),
-			msg.GetSender(),
-			msg.GetNonce(),
-			msg.ID,
-			msg.GetTarget(),
-			msg.GetValue(),
-			msg.Data,
-			0,
-		)
-		if err != nil {
-			log.Error("failed to load or send rollup tx", "batch hash", msg.ID, "rollup status", rollupStatus, "err", err)
-			return 0, nil, err
-		}
-		r.processingFinalization.Store(msg.ID+"-finalize", msg.ID)
-		log.Info("successfully check rollup batch tx", "resend", isResend, "tx.Hash", tx.Hash().String())
-	}
-	return maxIndex, batchHashes, nil
-}
-
-// CheckRollupBatches rollupStatus: types.RollupCommitting, types.RollupFinalizing
-func (r *Layer2Relayer) CheckRollupBatches(rollupStatus types.RollupStatus) error {
+// CheckRollupFinalizingBatches rollupStatus: types.RollupCommitting, types.RollupFinalizing
+func (r *Layer2Relayer) CheckRollupFinalizingBatches() error {
 	var (
 		batchIndex uint64
 		batchLimit uint64 = 10
 	)
 	for {
-		maxIndex, batchHashes, err := r.checkRollupBatches(types.RollupFinalizing, batchIndex, batchLimit)
+		maxIndex, batches, err := r.db.GetBlockBatchTxMessages(
+			map[string]interface{}{"rollup_status": types.RollupFinalizing},
+			fmt.Sprintf("AND index > %d", batchIndex),
+			fmt.Sprintf("ORDER BY index ASC LIMIT %d", batchLimit),
+		)
 		if err != nil {
+			log.Error("failed to get RollupFinalizing batches", "batch index", batchIndex, "err", err)
 			return err
 		}
+		if len(batches) == 0 {
+			return nil
+		}
 		batchIndex = maxIndex
-		for _, hash := range batchHashes {
-			r.processingFinalization.Store(hash+"-finalize", hash)
+
+		for _, msg := range batches {
+			// TODO: Is it necessary repair tx message?
+			if !msg.TxHash.Valid {
+				log.Warn("RollupFinalizing tx message is empty", "tx id", msg.ID)
+				continue
+			}
+			cutils.TryTimes(-1, func() bool {
+				return !r.rollupSender.IsFull()
+			})
+
+			isResend, tx, err := r.rollupSender.LoadOrResendTx(
+				msg.GetTxHash(),
+				msg.GetSender(),
+				msg.GetNonce(),
+				msg.ID,
+				msg.GetTarget(),
+				msg.GetValue(),
+				msg.Data,
+				0,
+			)
+			if err != nil {
+				log.Error("failed to load or send rollup finalizing tx", "batch hash", msg.ID, "err", err)
+				return err
+			}
+			r.processingFinalization.Store(msg.ID+"-finalize", msg.ID)
+			log.Info("successfully check rollup finalizing tx", "resend", isResend, "tx.Hash", tx.Hash().String())
 		}
 	}
 }
