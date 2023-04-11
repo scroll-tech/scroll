@@ -88,7 +88,7 @@ contract L1MessageQueue is OwnableUpgradeable, IL1MessageQueue {
         //  2. `TransactionPayload` is `rlp([nonce, gasLimit, to, value, data, sender])`
         //
         // The spec of rlp: https://ethereum.org/en/developers/docs/data-structures-and-encoding/rlp/
-        uint256 transactionType = 0x33; // to change later
+        uint256 transactionType = 0x7E; // to change later
         bytes32 hash;
         assembly {
             function get_uint_bytes(v) -> len {
