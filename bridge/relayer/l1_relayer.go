@@ -214,7 +214,7 @@ func (r *Layer1Relayer) processSavedEvent(msg *types.L1Message) error {
 	if err != nil {
 		log.Error("UpdateLayer1StatusAndLayer2Hash failed", "msg.msgHash", msg.MsgHash, "msg.height", msg.Height, "err", err)
 	}
-	err = r.db.SaveTx(msg.MsgHash, from.String(), types.L1toL2MessageTx, tx)
+	err = r.db.SaveTx(msg.MsgHash, from.String(), types.L1toL2MessageTx, tx, "")
 	if err != nil {
 		log.Error("failed to save l1 relay tx message", "msg.msgHash", msg.MsgHash, "msg.height", msg.Height, "tx.hash", tx.Hash().String(), "err", err)
 	}
@@ -267,7 +267,7 @@ func (r *Layer1Relayer) ProcessGasPriceOracle() {
 				log.Error("UpdateGasOracleStatusAndOracleTxHash failed", "block.Hash", block.Hash, "block.Height", block.Number, "err", err)
 				return
 			}
-			err = r.db.SaveTx(block.Hash, from.String(), types.L1toL2GasOracleTx, tx)
+			err = r.db.SaveTx(block.Hash, from.String(), types.L1toL2GasOracleTx, tx, "")
 			if err != nil {
 				log.Error("failed to store l1 gas oracle tx message", "block.Hash", block.Hash, "block.Height", block.Number, "tx.hash", tx.Hash().String(), "err", err)
 			}

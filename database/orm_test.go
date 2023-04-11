@@ -475,7 +475,7 @@ func testTxOrmSaveTxAndGetTxByHash(t *testing.T) {
 	signedTx, err := mockTx(auth)
 	assert.NoError(t, err)
 
-	err = ormTx.SaveTx("1", auth.From.String(), types.L1toL2MessageTx, signedTx)
+	err = ormTx.SaveTx("1", auth.From.String(), types.L1toL2MessageTx, signedTx, "")
 	assert.Nil(t, err)
 
 	// Update signedTx message by id.
@@ -499,12 +499,12 @@ func testTxOrmGetL1TxMessages(t *testing.T) {
 
 	signedTx, err := mockTx(auth)
 	assert.NoError(t, err)
-	err = ormTx.SaveTx(templateL1Message[0].MsgHash, auth.From.String(), types.L1toL2MessageTx, signedTx)
+	err = ormTx.SaveTx(templateL1Message[0].MsgHash, auth.From.String(), types.L1toL2MessageTx, signedTx, "")
 	assert.Nil(t, err)
 
 	signedTx, err = mockTx(auth)
 	assert.NoError(t, err)
-	err = ormTx.SaveTx("3", auth.From.String(), types.L1toL2MessageTx, signedTx)
+	err = ormTx.SaveTx("3", auth.From.String(), types.L1toL2MessageTx, signedTx, "")
 	assert.Nil(t, err)
 
 	// Insert into db
@@ -540,7 +540,7 @@ func testTxOrmGetL2TxMessages(t *testing.T) {
 
 	signedTx, err := mockTx(auth)
 	assert.NoError(t, err)
-	err = ormTx.SaveTx(templateL1Message[0].MsgHash, auth.From.String(), types.L2toL1MessageTx, signedTx)
+	err = ormTx.SaveTx(templateL1Message[0].MsgHash, auth.From.String(), types.L2toL1MessageTx, signedTx, "")
 	assert.Nil(t, err)
 
 	// Insert into db
@@ -581,7 +581,7 @@ func testTxOrmGetBlockBatchTxMessages(t *testing.T) {
 
 	signedTx, err := mockTx(auth)
 	assert.NoError(t, err)
-	err = ormTx.SaveTx(batchData1.Hash().String(), auth.From.String(), types.RollUpCommitTx, signedTx)
+	err = ormTx.SaveTx(batchData1.Hash().String(), auth.From.String(), types.RollUpCommitTx, signedTx, "")
 	assert.Nil(t, err)
 
 	batchIndex, txMsgs, err := ormTx.GetBlockBatchTxMessages(

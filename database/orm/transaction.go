@@ -23,7 +23,7 @@ func NewScrollTxOrm(db *sqlx.DB) ScrollTxOrm {
 }
 
 // SaveTx stores tx message into db.
-func (t *scrollTxOrm) SaveTx(id, sender string, txType stypes.ScrollTxType, tx *types.Transaction) error {
+func (t *scrollTxOrm) SaveTx(id, sender string, txType stypes.ScrollTxType, tx *types.Transaction, extraData string) error {
 	if tx == nil {
 		return nil
 	}
@@ -32,7 +32,7 @@ func (t *scrollTxOrm) SaveTx(id, sender string, txType stypes.ScrollTxType, tx *
 		target = tx.To().String()
 	}
 	_, err := t.db.Exec(
-		t.db.Rebind("INSERT INTO scroll_transaction (id, tx_hash, sender, nonce, target, value, data, type) VALUES (?, ?, ?, ?, ?, ?, ?, ?);"),
+		t.db.Rebind("INSERT INTO scroll_transaction (id, tx_hash, sender, nonce, target, value, data, extra_data, type) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);"),
 		id,
 		tx.Hash().String(),
 		sender,
@@ -40,6 +40,7 @@ func (t *scrollTxOrm) SaveTx(id, sender string, txType stypes.ScrollTxType, tx *
 		target,
 		tx.Value().String(),
 		tx.Data(),
+		extraData,
 		txType,
 	)
 	return err

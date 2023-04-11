@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math/big"
 	"runtime"
+	"strings"
 	"sync"
 	"time"
 
@@ -307,7 +308,7 @@ func (r *Layer2Relayer) processSavedEvent(msg *types.L2Message) error {
 		log.Error("UpdateLayer2StatusAndLayer1Hash failed", "msgHash", msg.MsgHash, "err", err)
 		return err
 	}
-	err = r.db.SaveTx(msg.MsgHash, senderAddr.String(), types.L2toL1MessageTx, tx)
+	err = r.db.SaveTx(msg.MsgHash, senderAddr.String(), types.L2toL1MessageTx, tx, "")
 	if err != nil {
 		log.Error("failed to save l2 relay tx message", "msg.hash", msg.MsgHash, "tx.hash", tx.Hash().String(), "err", err)
 	}
@@ -355,7 +356,7 @@ func (r *Layer2Relayer) ProcessGasPriceOracle() {
 				return
 			}
 			// Record gas oracle tx message.
-			err = r.db.SaveTx(batch.Hash, from.String(), types.L2toL1GasOracleTx, tx)
+			err = r.db.SaveTx(batch.Hash, from.String(), types.L2toL1GasOracleTx, tx, "")
 			if err != nil {
 				log.Error("failed to save l2 gas oracle tx message", "batch.Hash", batch.Hash, "tx.Hash", tx.Hash().String(), "err", err)
 			}
@@ -432,7 +433,7 @@ func (r *Layer2Relayer) SendCommitTx(batchData []*types.BatchData) error {
 		}
 	}
 	// Record gas oracle tx message.
-	err = r.db.SaveTx(txID, from.String(), types.RollUpCommitTx, tx)
+	err = r.db.SaveTx(txID, from.String(), types.RollUpCommitTx, tx, strings.Join(batchHashes, ","))
 	if err != nil {
 		log.Error("failed to save l2 commitBatches tx message", "batches.id", txID, "tx.hash", tx.Hash().String(), "err", err)
 	}
@@ -649,7 +650,7 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 		if err != nil {
 			log.Warn("UpdateFinalizeTxHashAndRollupStatus failed", "batch_hash", hash, "err", err)
 		}
-		err = r.db.SaveTx(txID, from.String(), types.RollupFinalizeTx, tx)
+		err = r.db.SaveTx(txID, from.String(), types.RollupFinalizeTx, tx, "")
 		if err != nil {
 			log.Error("failed to save l2 committed tx message", "batch.hash", txID, "tx.hash", tx.Hash().String(), "err", err)
 		}
