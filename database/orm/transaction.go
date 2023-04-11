@@ -48,7 +48,7 @@ func (t *scrollTxOrm) SaveTx(id, sender string, txType stypes.ScrollTxType, tx *
 // ConfirmTxByID updates confirm and txHash field and clean data content.
 func (t *scrollTxOrm) ConfirmTxByID(id string, txHash string) error {
 	db := t.db
-	_, err := db.Exec(db.Rebind("UPDATE scroll_transaction SET confirm = true, data = '', tx_hash = ? WHERE id = ?;"), txHash, id)
+	_, err := db.Exec(db.Rebind("UPDATE scroll_transaction SET confirm = true, data = '', extra_data = '', tx_hash = ? WHERE id = ?;"), txHash, id)
 	return err
 }
 
