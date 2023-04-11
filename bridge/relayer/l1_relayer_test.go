@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"scroll-tech/common/types"
+	"scroll-tech/common/utils"
 
 	"scroll-tech/database/migrate"
 
@@ -68,7 +69,7 @@ func testL1CheckSubmittedMessages(t *testing.T) {
 	auth, err := bind.NewKeyedTransactorWithChainID(cfg.L1Config.RelayerConfig.MessageSenderPrivateKeys[0], l1ChainID)
 	assert.NoError(t, err)
 
-	signedTx, err := mockTx(auth)
+	signedTx, err := mockTx(auth, l2Cli)
 	assert.NoError(t, err)
 	err = db.SaveTx(templateL1Message[0].MsgHash, auth.From.String(), types.L1toL2MessageTx, signedTx, "")
 	assert.Nil(t, err)
@@ -85,12 +86,19 @@ func testL1CheckSubmittedMessages(t *testing.T) {
 	assert.Nil(t, err)
 	relayer.WaitL1MsgSender()
 
-	// check tx is confirmed.
-	maxIndex, txMsgs, err := db.GetL1TxMessages(
-		map[string]interface{}{"status": types.MsgConfirmed},
-		fmt.Sprintf("AND queue_index > %d", 0),
-		fmt.Sprintf("ORDER BY queue_index ASC LIMIT %d", 10),
+	var (
+		maxIndex uint64
+		txMsgs   []*types.ScrollTx
 	)
+	utils.TryTimes(5, func() bool {
+		// check tx is confirmed.
+		maxIndex, txMsgs, err = db.GetL1TxMessages(
+			map[string]interface{}{"status": types.MsgConfirmed},
+			fmt.Sprintf("AND queue_index > %d", 0),
+			fmt.Sprintf("ORDER BY queue_index ASC LIMIT %d", 10),
+		)
+		return err == nil
+	})
 	assert.Nil(t, err)
 	assert.Equal(t, 1, len(txMsgs))
 	assert.Equal(t, templateL1Message[0].QueueIndex, maxIndex)

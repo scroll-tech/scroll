@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"math/big"
 	"os"
-	"scroll-tech/common/utils"
 	"strconv"
 	"strings"
 	"testing"
@@ -17,6 +16,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"scroll-tech/common/types"
+	"scroll-tech/common/utils"
 
 	"scroll-tech/bridge/relayer"
 
@@ -222,7 +222,7 @@ func testL2CheckSubmittedMessages(t *testing.T) {
 	auth, err := bind.NewKeyedTransactorWithChainID(cfg.L2Config.RelayerConfig.MessageSenderPrivateKeys[0], l2ChainID)
 	assert.NoError(t, err)
 
-	signedTx, err := mockTx(auth)
+	signedTx, err := mockTx(auth, l1Cli)
 	assert.NoError(t, err)
 	err = db.SaveTx(templateL2Message[0].MsgHash, auth.From.String(), types.L2toL1MessageTx, signedTx, "")
 	assert.Nil(t, err)
@@ -300,7 +300,7 @@ func testL2CheckRollupCommittingBatches(t *testing.T) {
 
 	auth, err := bind.NewKeyedTransactorWithChainID(cfg.L2Config.RelayerConfig.MessageSenderPrivateKeys[0], l2ChainID)
 	assert.NoError(t, err)
-	signedTx, err := mockTx(auth)
+	signedTx, err := mockTx(auth, l1Cli)
 	assert.NoError(t, err)
 	id := "rollup committing tx"
 	err = db.SaveTx(id, auth.From.String(), types.RollUpCommitTx, signedTx, strings.Join(batchHashes, ","))
@@ -368,7 +368,7 @@ func testL2CheckRollupFinalizingBatches(t *testing.T) {
 	auth, err := bind.NewKeyedTransactorWithChainID(cfg.L2Config.RelayerConfig.MessageSenderPrivateKeys[0], l2ChainID)
 	assert.NoError(t, err)
 
-	signedTx, err := mockTx(auth)
+	signedTx, err := mockTx(auth, l1Cli)
 	assert.NoError(t, err)
 	err = db.SaveTx(batchHashes[0], auth.From.String(), types.RollupFinalizeTx, signedTx, strings.Join(batchHashes, ","))
 	assert.NoError(t, err)

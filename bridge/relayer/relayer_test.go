@@ -128,12 +128,17 @@ func TestFunctions(t *testing.T) {
 	t.Run("testL2CheckRollupFinalizingBatches", testL2CheckRollupFinalizingBatches)
 }
 
-func mockTx(auth *bind.TransactOpts) (*etypes.Transaction, error) {
+func mockTx(auth *bind.TransactOpts, cli *ethclient.Client) (*etypes.Transaction, error) {
 	if auth.Nonce == nil {
 		auth.Nonce = big.NewInt(0)
 	} else {
 		auth.Nonce.Add(auth.Nonce, big.NewInt(1))
 	}
+	nonce, err := cli.PendingNonceAt(context.Background(), auth.From)
+	if err != nil {
+		return nil, err
+	}
+	auth.Nonce = big.NewInt(0).SetUint64(nonce)
 
 	tx := etypes.NewTx(&etypes.LegacyTx{
 		Nonce:    auth.Nonce.Uint64(),
