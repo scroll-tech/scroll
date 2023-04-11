@@ -147,7 +147,7 @@ func (i *ImgGeth) Stop() error {
 }
 
 func (i *ImgGeth) prepare() []string {
-	cmds := []string{"docker", "run", "--name", i.name}
+	cmds := []string{"docker", "run", "--rm", "--name", i.name}
 	var ports []string
 	if i.httpPort != 0 {
 		ports = append(ports, []string{"-p", strconv.Itoa(i.httpPort) + ":8545"}...)

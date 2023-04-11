@@ -86,7 +86,7 @@ func (b *App) RunDBImage(t *testing.T) {
 	assert.Equal(t, true, isRun)
 }
 
-// Free clear all running images
+// Free clear all running images, double check and recycle docker container.
 func (b *App) Free() {
 	if b.L1gethImg.IsRunning() {
 		_ = b.L1gethImg.Stop()
