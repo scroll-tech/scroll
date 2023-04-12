@@ -39,9 +39,9 @@ type App struct {
 	L2gethImg GethImgInstance
 	DBImg     ImgInstance
 
-	dbClient *sql.DB
-	DBConfig *database.DBConfig
-	DBConfigFile   string
+	dbClient     *sql.DB
+	DBConfig     *database.DBConfig
+	DBConfigFile string
 
 	// common time stamp.
 	Timestamp int
@@ -51,11 +51,11 @@ type App struct {
 func NewDockerApp() *App {
 	timestamp := time.Now().Nanosecond()
 	app := &App{
-		Timestamp: timestamp,
-		L1gethImg: newTestL1Docker(),
-		L2gethImg: newTestL2Docker(),
-		DBImg:     newTestDBDocker("postgres"),
-		DBFile:    fmt.Sprintf("/tmp/%d_db-config.json", timestamp),
+		Timestamp:    timestamp,
+		L1gethImg:    newTestL1Docker(),
+		L2gethImg:    newTestL2Docker(),
+		DBImg:        newTestDBDocker("postgres"),
+		DBConfigFile: fmt.Sprintf("/tmp/%d_db-config.json", timestamp),
 	}
 	if err := app.mockDBConfig(); err != nil {
 		panic(err)
@@ -96,7 +96,7 @@ func (b *App) Free() {
 	}
 	if b.DBImg.IsRunning() {
 		_ = b.DBImg.Stop()
-		_ = os.Remove(b.DBFile)
+		_ = os.Remove(b.DBConfigFile)
 		if !utils.IsNil(b.dbClient) {
 			_ = b.dbClient.Close()
 			b.dbClient = nil
@@ -177,7 +177,7 @@ func (b *App) mockDBConfig() error {
 		return err
 	}
 
-	return os.WriteFile(b.DBFile, data, 0644) //nolint:gosec
+	return os.WriteFile(b.DBConfigFile, data, 0644) //nolint:gosec
 }
 
 func newTestL1Docker() GethImgInstance {
