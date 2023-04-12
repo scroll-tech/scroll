@@ -31,5 +31,5 @@ type ScrollTx struct {
 	Target    sql.NullString `json:"target" db:"target"`
 	Value     sql.NullString `json:"value" db:"value"`
 	Data      []byte         `json:"data" db:"data"`
-	ExtraData sql.NullString `json:"extraData" db:"extra_data"`
+	ExtraData sql.NullString `json:"extra_data" db:"extra_data"`
 }
