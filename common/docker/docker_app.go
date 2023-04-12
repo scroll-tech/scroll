@@ -41,7 +41,7 @@ type App struct {
 
 	dbClient *sql.DB
 	DBConfig *database.DBConfig
-	DBFile   string
+	DBConfigFile   string
 
 	// common time stamp.
 	Timestamp int
