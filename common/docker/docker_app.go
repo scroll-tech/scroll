@@ -79,8 +79,8 @@ func (b *App) RunDBImage(t *testing.T) {
 	var isRun bool
 	// try 5 times until the db is ready.
 	utils.TryTimes(10, func() bool {
-		db, _ := sqlx.Open("postgres", b.DBImg.Endpoint())
-		isRun = db != nil && db.Ping() == nil
+		db, err := sqlx.Open("postgres", b.DBImg.Endpoint())
+		isRun = err == nil && db != nil && db.Ping() == nil
 		return isRun
 	})
 	assert.Equal(t, true, isRun)
@@ -145,7 +145,7 @@ func (b *App) L2Client() (*ethclient.Client, error) {
 }
 
 // DBClient create and return *sql.DB instance.
-func (b App) DBClient(t *testing.T) *sql.DB {
+func (b *App) DBClient(t *testing.T) *sql.DB {
 	if !utils.IsNil(b.dbClient) {
 		return b.dbClient
 	}

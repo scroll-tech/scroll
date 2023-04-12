@@ -59,9 +59,8 @@ func (i *ImgGeth) Start() error {
 
 	// try 10 times to get chainID until is ok.
 	utils.TryTimes(10, func() bool {
-		client, _ := ethclient.Dial(i.Endpoint())
-		if client != nil {
-			var err error
+		client, err := ethclient.Dial(i.Endpoint())
+		if err == nil && client != nil {
 			i.chainID, err = client.ChainID(context.Background())
 			return err == nil && i.chainID != nil
 		}
