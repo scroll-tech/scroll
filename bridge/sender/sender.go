@@ -213,17 +213,17 @@ func (s *Sender) SendTransaction(ID string, target *common.Address, value *big.I
 	if feeData, err = s.getFeeData(auth, target, value, data, minGasLimit); err != nil {
 		return common.Address{}, nil, err
 	}
-	if tx, err = s.createAndSendTx(auth, feeData, target, value, data, nil); err == nil {
-		// add pending transaction to queue
-		pending := &PendingTransaction{
-			tx:       tx,
-			id:       ID,
-			signer:   auth,
-			submitAt: atomic.LoadUint64(&s.blockNumber),
-			feeData:  feeData,
-		}
-		s.pendingTxs.Set(ID, pending)
+	if tx, err = s.createAndSendTx(auth, feeData, target, value, data, nil); err != nil {
+		return common.Address{}, nil, err
 	}
+	// add pending transaction to queue
+	s.pendingTxs.Set(ID, &PendingTransaction{
+		tx:       tx,
+		id:       ID,
+		signer:   auth,
+		submitAt: atomic.LoadUint64(&s.blockNumber),
+		feeData:  feeData,
+	})
 
 	return auth.From, tx, nil
 }
