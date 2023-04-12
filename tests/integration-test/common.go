@@ -110,7 +110,7 @@ func runCoordinatorApp(t *testing.T, args ...string) docker.AppAPI {
 }
 
 func runDBCliApp(t *testing.T, option, keyword string) {
-	args := []string{option, "--config", base.DBFile}
+	args := []string{option, "--config", base.DBConfigFile}
 	app := cmd.NewCmd("db_cli-test", args...)
 	app.OpenLog(true)
 	defer app.WaitExit()
