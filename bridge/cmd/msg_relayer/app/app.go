@@ -94,7 +94,7 @@ func action(ctx *cli.Context) error {
 	go cutils.Loop(subCtx, 10*time.Second, func() {
 		err = l1relayer.CheckSubmittedMessages()
 		if err != nil {
-			log.Error("appear error when resend l1 submitted txs", "err", err)
+			log.Error("appear error when check l1 submitted txs", "err", err)
 			return
 		}
 		// Wait until sender's pending txs are confirmed.

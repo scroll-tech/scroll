@@ -120,7 +120,7 @@ func (r *Layer1Relayer) CheckSubmittedMessages() error {
 		db       = r.db
 	)
 	for {
-		l1Index, msgs, err := db.GetL1TxMessages(
+		maxIndex, msgs, err := db.GetL1TxMessages(
 			map[string]interface{}{"status": types.MsgSubmitted},
 			fmt.Sprintf("AND queue_index > %d", index),
 			fmt.Sprintf("ORDER BY queue_index ASC LIMIT %d", msgsSize),
@@ -132,15 +132,15 @@ func (r *Layer1Relayer) CheckSubmittedMessages() error {
 		if len(msgs) == 0 {
 			return nil
 		}
+		index = maxIndex
 
-		index = l1Index
 		for _, msg := range msgs {
-			// TODO: Is it necessary repair tx message?
+			// TODO: Is it necessary to repair the tx message?
 			if !msg.TxHash.Valid {
-				log.Warn("l1 submitted tx message is empty", "tx id", msg.ID)
+				log.Warn("l1 submitted tx message is empty", "msg.id", msg.ID)
 				continue
 			}
-			// If pending txs pool is full, wait until pending pool is available.
+			// If the pending tx pool is full, wait until the it is available.
 			utils.TryTimes(-1, func() bool {
 				return !r.messageSender.IsFull()
 			})
@@ -156,10 +156,10 @@ func (r *Layer1Relayer) CheckSubmittedMessages() error {
 				r.minGasLimitForMessageRelay,
 			)
 			if err != nil {
-				log.Error("failed to load or send l1 submitted tx", "msg hash", msg.ID, "is resend", isResend, "err", err)
+				log.Error("failed to load or resend l1 submitted tx", "msg.id", msg.ID, "err", err)
 				return err
 			}
-			log.Info("successfully check l1 submitted tx", "resend", isResend, "tx.Hash", tx.Hash().String())
+			log.Info("successfully check l1 submitted tx", "resend", isResend, "msg.id", msg.ID, "tx.hash", tx.Hash().String())
 		}
 	}
 }

@@ -160,7 +160,7 @@ func (r *Layer2Relayer) CheckSubmittedMessages() error {
 			fmt.Sprintf("ORDER BY nonce ASC LIMIT %d", processMsgLimit),
 		)
 		if err != nil {
-			log.Error("failed to get l2 submitted messages", "message nonce", nonce, "err", err)
+			log.Error("failed to get l2 submitted messages", "tx.nonce", nonce, "err", err)
 			return err
 		}
 		if len(msgs) == 0 {
@@ -169,9 +169,9 @@ func (r *Layer2Relayer) CheckSubmittedMessages() error {
 		nonce = l2Nonce
 
 		for _, msg := range msgs {
-			// TODO: Is it necessary repair tx message?
+			// TODO: Is it necessary to repair the tx message?
 			if !msg.TxHash.Valid {
-				log.Warn("l2 submitted tx message is empty", "tx id", msg.ID)
+				log.Warn("l2 submitted tx message is empty", "msg.id", msg.ID)
 				continue
 			}
 			// Wait until sender's pending is not full.
@@ -190,11 +190,11 @@ func (r *Layer2Relayer) CheckSubmittedMessages() error {
 				r.minGasLimitForMessageRelay,
 			)
 			if err != nil {
-				log.Error("failed to load or send l2 submitted tx", "msg.hash", msg.ID, "err", err)
+				log.Error("failed to load or send l2 submitted tx", "msg.id", msg.ID, "err", err)
 				return err
 			}
 			r.processingMessage.Set(msg.ID, msg.ID)
-			log.Info("successfully check l2 submitted tx", "resend", isResend, "tx.Hash", tx.Hash().String())
+			log.Info("successfully check l2 submitted tx", "resend", isResend, "tx.hash", tx.Hash().String())
 		}
 	}
 }
@@ -376,7 +376,7 @@ func (r *Layer2Relayer) CheckRollupCommittingBatches() error {
 		"ORDER BY nonce ASC",
 	)
 	if err != nil {
-		log.Error("failed to get rollupCommitting tx messages", "err", err)
+		log.Error("failed to get rollup committing tx messages", "err", err)
 		return err
 	}
 	if len(txMsgs) == 0 {
@@ -403,11 +403,11 @@ func (r *Layer2Relayer) CheckRollupCommittingBatches() error {
 			r.minGasLimitForMessageRelay,
 		)
 		if err != nil {
-			log.Error("failed to load or resend rollup committing tx", "msg.hash", msg.ID, "tx.hash", tx.Hash().String(), "err", err)
+			log.Error("failed to load or resend rollup committing tx", "msg.id", msg.ID, "err", err)
 			return err
 		}
 		r.processingBatchesCommitment.Set(msg.ID, strings.Split(msg.ExtraData.String, ","))
-		log.Info("successfully resend rollup coimmitting tx", "resend", isResend, "msg.hash", msg.ID, "tx.Hash", tx.Hash().String())
+		log.Info("successfully check rollup committing tx", "resend", isResend, "msg.id", msg.ID, "tx.Hash", tx.Hash().String())
 	}
 	return nil
 }
@@ -490,7 +490,7 @@ func (r *Layer2Relayer) CheckRollupFinalizingBatches() error {
 			fmt.Sprintf("ORDER BY index ASC LIMIT %d", batchLimit),
 		)
 		if err != nil {
-			log.Error("failed to get RollupFinalizing batches", "batch index", batchIndex, "err", err)
+			log.Error("failed to get Rollup finalizing batches", "batch.index", batchIndex, "err", err)
 			return err
 		}
 		if len(batches) == 0 {
@@ -499,9 +499,9 @@ func (r *Layer2Relayer) CheckRollupFinalizingBatches() error {
 		batchIndex = maxIndex
 
 		for _, msg := range batches {
-			// TODO: Is it necessary repair tx message?
+			// TODO: Is it necessary to repair the tx message?
 			if !msg.TxHash.Valid {
-				log.Warn("RollupFinalizing tx message is empty", "tx id", msg.ID)
+				log.Warn("rollup finalizing tx message is empty", "msg.id", msg.ID)
 				continue
 			}
 			cutils.TryTimes(-1, func() bool {
@@ -519,11 +519,11 @@ func (r *Layer2Relayer) CheckRollupFinalizingBatches() error {
 				0,
 			)
 			if err != nil {
-				log.Error("failed to load or send rollup finalizing tx", "batch hash", msg.ID, "err", err)
+				log.Error("failed to load or resend rollup finalizing tx", "msg.id", msg.ID, "err", err)
 				return err
 			}
 			r.processingFinalization.Set(msg.ID, msg.ID)
-			log.Info("successfully check rollup finalizing tx", "resend", isResend, "tx.Hash", tx.Hash().String())
+			log.Info("successfully check rollup finalizing tx", "resend", isResend, "msg.id", msg.ID, "tx.hash", tx.Hash().String())
 		}
 	}
 }
