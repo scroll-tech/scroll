@@ -37,6 +37,9 @@ on column block_batch.rollup_status is 'undefined, pending, committing, committe
 comment
 on column block_batch.oracle_status is 'undefined, pending, importing, imported, failed';
 
+create unique index block_batch_rollup_status_index
+    on block_batch (rollup_status, index);
+
 create unique index block_batch_hash_uindex
     on block_batch (hash);
 create unique index block_batch_index_uindex
