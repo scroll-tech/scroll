@@ -35,9 +35,9 @@ func setupEnv(t *testing.T) (err error) {
 
 	base.RunImages(t)
 
-	cfg.L2Config.RelayerConfig.SenderConfig.Endpoint = base.L1GethEndpoint()
-	cfg.L1Config.RelayerConfig.SenderConfig.Endpoint = base.L2GethEndpoint()
-	cfg.DBConfig.DSN = base.DBEndpoint()
+	cfg.L2Config.RelayerConfig.SenderConfig.Endpoint = base.L1gethImg.Endpoint()
+	cfg.L1Config.RelayerConfig.SenderConfig.Endpoint = base.L2gethImg.Endpoint()
+	cfg.DBConfig = base.DBConfig
 
 	// Create l2geth client.
 	l2Cli, err = base.L2Client()

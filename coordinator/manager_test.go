@@ -50,13 +50,14 @@ func randomURL() string {
 }
 
 func setEnv(t *testing.T) (err error) {
+	// Start postgres and l2geth docker containers.
+	base.RunDBImage(t)
+	base.RunL2Geth(t)
+
 	// Load config.
 	cfg, err = bridge_config.NewConfig("../bridge/config.json")
 	assert.NoError(t, err)
-	base.RunImages(t)
-
-	// Create db container.
-	cfg.DBConfig.DSN = base.DBEndpoint()
+	cfg.DBConfig = base.DBConfig
 
 	templateBlockTrace, err := os.ReadFile("../common/testdata/blockTrace_02.json")
 	if err != nil {
