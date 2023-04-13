@@ -30,6 +30,9 @@ func TestIntegration(t *testing.T) {
 	// test monitor metrics
 	t.Run("testMonitorMetrics", testMonitorMetrics)
 
+	// test contracts
+	t.Run("testERC20", testERC20)
+
 	t.Cleanup(func() {
 		free(t)
 	})
