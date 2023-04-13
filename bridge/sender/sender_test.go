@@ -50,7 +50,7 @@ func setupEnv(t *testing.T) {
 	// Load default private key.
 	privateKeys = []*ecdsa.PrivateKey{priv}
 
-	cfg.L1Config.RelayerConfig.SenderConfig.Endpoint = base.L2GethEndpoint()
+	cfg.L1Config.RelayerConfig.SenderConfig.Endpoint = base.L2gethImg.Endpoint()
 }
 
 func TestSender(t *testing.T) {

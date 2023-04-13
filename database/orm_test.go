@@ -78,7 +78,6 @@ var (
 	batchData1   *types.BatchData
 	batchData2   *types.BatchData
 
-	dbConfig   *database.DBConfig
 	base       *docker.App
 	ormBlock   orm.BlockTraceOrm
 	ormLayer1  orm.L1MessageOrm
@@ -91,13 +90,11 @@ var (
 )
 
 func setupEnv(t *testing.T) error {
-	// Init db config and start db container.
-	dbConfig = &database.DBConfig{DriverName: "postgres"}
-	base.RunImages(t)
-	dbConfig.DSN = base.DBEndpoint()
+	// Start postgres docker container.
+	base.RunDBImage(t)
 
 	// Create db handler and reset db.
-	factory, err := database.NewOrmFactory(dbConfig)
+	factory, err := database.NewOrmFactory(base.DBConfig)
 	assert.NoError(t, err)
 	db := factory.GetDB()
 	assert.NoError(t, migrate.ResetDB(db.DB))
@@ -194,7 +191,7 @@ func TestOrmFactory(t *testing.T) {
 
 func testOrmBlockTraces(t *testing.T) {
 	// Create db handler and reset db.
-	factory, err := database.NewOrmFactory(dbConfig)
+	factory, err := database.NewOrmFactory(base.DBConfig)
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(factory.GetDB().DB))
 
@@ -234,7 +231,7 @@ func testOrmBlockTraces(t *testing.T) {
 
 func testOrmL1Message(t *testing.T) {
 	// Create db handler and reset db.
-	factory, err := database.NewOrmFactory(dbConfig)
+	factory, err := database.NewOrmFactory(base.DBConfig)
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(factory.GetDB().DB))
 
@@ -268,7 +265,7 @@ func testOrmL1Message(t *testing.T) {
 
 func testOrmL2Message(t *testing.T) {
 	// Create db handler and reset db.
-	factory, err := database.NewOrmFactory(dbConfig)
+	factory, err := database.NewOrmFactory(base.DBConfig)
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(factory.GetDB().DB))
 
@@ -304,7 +301,7 @@ func testOrmL2Message(t *testing.T) {
 // testOrmBlockBatch test rollup result table functions
 func testOrmBlockBatch(t *testing.T) {
 	// Create db handler and reset db.
-	factory, err := database.NewOrmFactory(dbConfig)
+	factory, err := database.NewOrmFactory(base.DBConfig)
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(factory.GetDB().DB))
 
@@ -389,7 +386,7 @@ func testOrmBlockBatch(t *testing.T) {
 // testOrmSessionInfo test rollup result table functions
 func testOrmSessionInfo(t *testing.T) {
 	// Create db handler and reset db.
-	factory, err := database.NewOrmFactory(dbConfig)
+	factory, err := database.NewOrmFactory(base.DBConfig)
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(factory.GetDB().DB))
 	dbTx, err := factory.Beginx()

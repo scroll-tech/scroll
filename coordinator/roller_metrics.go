@@ -58,3 +58,14 @@ func (m *Manager) updateMetricRollerProofsVerifiedFailedTimeTimer(pk string, d t
 		}
 	}
 }
+
+func (m *Manager) updateMetricRollerProofsGeneratedFailedTimeTimer(pk string, d time.Duration) {
+	if node, ok := m.rollerPool.Get(pk); ok {
+		rMs := node.(*rollerNode).rollerMetrics
+		if rMs != nil {
+			rMs.rollerProofsGeneratedFailedTimeTimer.Update(d)
+		} else {
+			log.Error("rollerProofsGeneratedFailedTimeTimer is nil", "roller pk", pk)
+		}
+	}
+}
