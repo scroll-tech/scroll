@@ -464,7 +464,7 @@ func mockTx(auth *bind.TransactOpts) (*etypes.Transaction, error) {
 
 func testTxOrmSaveTxAndGetTxByHash(t *testing.T) {
 	// Create db handler and reset db.
-	factory, err := database.NewOrmFactory(dbConfig)
+	factory, err := database.NewOrmFactory(base.DBConfig)
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(factory.GetDB().DB))
 
@@ -492,7 +492,7 @@ func testTxOrmSaveTxAndGetTxByHash(t *testing.T) {
 
 func testTxOrmGetL1TxMessages(t *testing.T) {
 	// Create db handler and reset db.
-	factory, err := database.NewOrmFactory(dbConfig)
+	factory, err := database.NewOrmFactory(base.DBConfig)
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(factory.GetDB().DB))
 
@@ -531,7 +531,7 @@ func testTxOrmGetL1TxMessages(t *testing.T) {
 
 func testTxOrmGetL2TxMessages(t *testing.T) {
 	// Create db handler and reset db.
-	factory, err := database.NewOrmFactory(dbConfig)
+	factory, err := database.NewOrmFactory(base.DBConfig)
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(factory.GetDB().DB))
 
@@ -563,7 +563,7 @@ func testTxOrmGetL2TxMessages(t *testing.T) {
 
 func testTxOrmGetBlockBatchTxMessages(t *testing.T) {
 	// Create db handler and reset db.
-	factory, err := database.NewOrmFactory(dbConfig)
+	factory, err := database.NewOrmFactory(base.DBConfig)
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(factory.GetDB().DB))
 
