@@ -1,11 +1,12 @@
 package integration
 
 import (
-	"github.com/stretchr/testify/assert"
-	"scroll-tech/common/bytecode/erc20"
 	"testing"
 
 	"github.com/scroll-tech/go-ethereum/common"
+	"github.com/stretchr/testify/assert"
+
+	"scroll-tech/common/bytecode/erc20"
 )
 
 var (
