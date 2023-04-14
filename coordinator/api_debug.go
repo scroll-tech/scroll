@@ -4,7 +4,8 @@ import (
 	"fmt"
 	"time"
 
-	"scroll-tech/common/types"
+	ctypes "scroll-tech/common/types"
+	"scroll-tech/coordinator/types"
 )
 
 // RollerDebugAPI roller api interface in order go get debug message.
@@ -44,7 +45,7 @@ func (m *Manager) ListRollers() ([]*types.RollerInfo, error) {
 	return res, nil
 }
 
-func newSessionInfo(sess *session, status types.ProvingStatus, errMsg string, finished bool) *SessionInfo {
+func newSessionInfo(sess *session, status ctypes.ProvingStatus, errMsg string, finished bool) *types.SessionInfo {
 	now := time.Now()
 	var nameList []string
 	for pk := range sess.info.Rollers {
@@ -71,7 +72,7 @@ func (m *Manager) GetSessionInfo(sessionID string) (*types.SessionInfo, error) {
 		return info, nil
 	}
 	if s, ok := m.sessions[sessionID]; ok {
-		return newSessionInfo(s, types.ProvingTaskAssigned, "", false), nil
+		return newSessionInfo(s, ctypes.ProvingTaskAssigned, "", false), nil
 	}
 	return nil, fmt.Errorf("no such session, sessionID: %s", sessionID)
 }
