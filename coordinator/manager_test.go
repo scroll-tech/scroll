@@ -1,14 +1,15 @@
 package coordinator_test
 
 import (
+	"compress/flate"
 	"context"
 	"crypto/ecdsa"
 	"crypto/rand"
+	"encoding/json"
 	"fmt"
 	"math/big"
 	"net/http"
-	"reflect"
-	"sort"
+	"os"
 	"strconv"
 	"strings"
 	"sync"
@@ -16,20 +17,19 @@ import (
 	"time"
 
 	"github.com/scroll-tech/go-ethereum"
-
 	"github.com/scroll-tech/go-ethereum/crypto"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/sync/errgroup"
 
 	"scroll-tech/database"
 	"scroll-tech/database/migrate"
-	"scroll-tech/database/orm"
 
 	"scroll-tech/coordinator"
 	client2 "scroll-tech/coordinator/client"
 
 	"scroll-tech/common/docker"
 	"scroll-tech/common/message"
+	"scroll-tech/common/types"
 	"scroll-tech/common/utils"
 
 	bridge_config "scroll-tech/bridge/config"
@@ -38,8 +38,10 @@ import (
 )
 
 var (
-	cfg   *bridge_config.Config
-	dbImg docker.ImgInstance
+	cfg  *bridge_config.Config
+	base *docker.App
+
+	batchData *types.BatchData
 )
 
 func randomURL() string {
@@ -48,19 +50,37 @@ func randomURL() string {
 }
 
 func setEnv(t *testing.T) (err error) {
+	// Start postgres and l2geth docker containers.
+	base.RunDBImage(t)
+	base.RunL2Geth(t)
+
 	// Load config.
 	cfg, err = bridge_config.NewConfig("../bridge/config.json")
 	assert.NoError(t, err)
+	cfg.DBConfig = base.DBConfig
 
-	// Create db container.
-	dbImg = docker.NewTestDBDocker(t, cfg.DBConfig.DriverName)
-	cfg.DBConfig.DSN = dbImg.Endpoint()
+	templateBlockTrace, err := os.ReadFile("../common/testdata/blockTrace_02.json")
+	if err != nil {
+		return err
+	}
+	// unmarshal blockTrace
+	wrappedBlock := &types.WrappedBlock{}
+	if err = json.Unmarshal(templateBlockTrace, wrappedBlock); err != nil {
+		return err
+	}
+
+	parentBatch := &types.BlockBatch{
+		Index: 1,
+		Hash:  "0x0000000000000000000000000000000000000000",
+	}
+	batchData = types.NewBatchData(parentBatch, []*types.WrappedBlock{wrappedBlock}, nil)
 
 	return
 }
 
 func TestApis(t *testing.T) {
 	// Set up the test environment.
+	base = docker.NewDockerApp()
 	assert.True(t, assert.NoError(t, setEnv(t)), "failed to setup the test environment.")
 
 	t.Run("TestListRollers", testListRollers)
@@ -69,6 +89,7 @@ func TestApis(t *testing.T) {
 	t.Run("TestSeveralConnections", testSeveralConnections)
 	t.Run("TestValidProof", testValidProof)
 	t.Run("TestInvalidProof", testInvalidProof)
+	t.Run("TestTimedoutProof", testTimedoutProof)
 	t.Run("TestIdleRollerSelection", testIdleRollerSelection)
 	// TODO: Restart roller alone when received task, can add this test case in integration-test.
 	//t.Run("TestRollerReconnect", testRollerReconnect)
@@ -76,7 +97,7 @@ func TestApis(t *testing.T) {
 
 	// Teardown
 	t.Cleanup(func() {
-		dbImg.Stop()
+		base.Free()
 	})
 }
 
@@ -277,6 +298,7 @@ func testSeveralConnections(t *testing.T) {
 		}
 	}
 }
+
 func testValidProof(t *testing.T) {
 	// Create db handler and reset db.
 	l2db, err := database.NewOrmFactory(cfg.DBConfig)
@@ -307,13 +329,12 @@ func testValidProof(t *testing.T) {
 	}()
 	assert.Equal(t, 3, rollerManager.GetNumberOfIdleRollers())
 
-	var ids = make([]string, 1)
+	var hashes = make([]string, 1)
 	dbTx, err := l2db.Beginx()
 	assert.NoError(t, err)
-	for i := range ids {
-		ID, err := l2db.NewBatchInDBTx(dbTx, &orm.BlockInfo{Number: uint64(i)}, &orm.BlockInfo{Number: uint64(i)}, "0f", 1, 194676)
-		assert.NoError(t, err)
-		ids[i] = ID
+	for i := range hashes {
+		assert.NoError(t, l2db.NewBatchInDBTx(dbTx, batchData))
+		hashes[i] = batchData.Hash().Hex()
 	}
 	assert.NoError(t, dbTx.Commit())
 
@@ -322,13 +343,13 @@ func testValidProof(t *testing.T) {
 		tick     = time.Tick(500 * time.Millisecond)
 		tickStop = time.Tick(10 * time.Second)
 	)
-	for len(ids) > 0 {
+	for len(hashes) > 0 {
 		select {
 		case <-tick:
-			status, err := l2db.GetProvingStatusByID(ids[0])
+			status, err := l2db.GetProvingStatusByHash(hashes[0])
 			assert.NoError(t, err)
-			if status == orm.ProvingTaskVerified {
-				ids = ids[1:]
+			if status == types.ProvingTaskVerified {
+				hashes = hashes[1:]
 			}
 		case <-tickStop:
 			t.Error("failed to check proof status")
@@ -366,13 +387,12 @@ func testInvalidProof(t *testing.T) {
 	}()
 	assert.Equal(t, 3, rollerManager.GetNumberOfIdleRollers())
 
-	var ids = make([]string, 1)
+	var hashes = make([]string, 1)
 	dbTx, err := l2db.Beginx()
 	assert.NoError(t, err)
-	for i := range ids {
-		ID, err := l2db.NewBatchInDBTx(dbTx, &orm.BlockInfo{Number: uint64(i)}, &orm.BlockInfo{Number: uint64(i)}, "0f", 1, 194676)
-		assert.NoError(t, err)
-		ids[i] = ID
+	for i := range hashes {
+		assert.NoError(t, l2db.NewBatchInDBTx(dbTx, batchData))
+		hashes[i] = batchData.Hash().Hex()
 	}
 	assert.NoError(t, dbTx.Commit())
 
@@ -381,13 +401,93 @@ func testInvalidProof(t *testing.T) {
 		tick     = time.Tick(500 * time.Millisecond)
 		tickStop = time.Tick(10 * time.Second)
 	)
-	for len(ids) > 0 {
+	for len(hashes) > 0 {
 		select {
 		case <-tick:
-			status, err := l2db.GetProvingStatusByID(ids[0])
+			status, err := l2db.GetProvingStatusByHash(hashes[0])
 			assert.NoError(t, err)
-			if status == orm.ProvingTaskFailed {
-				ids = ids[1:]
+			if status == types.ProvingTaskFailed {
+				hashes = hashes[1:]
+			}
+		case <-tickStop:
+			t.Error("failed to check proof status")
+			return
+		}
+	}
+}
+
+func testTimedoutProof(t *testing.T) {
+	// Create db handler and reset db.
+	l2db, err := database.NewOrmFactory(cfg.DBConfig)
+	assert.NoError(t, err)
+	assert.NoError(t, migrate.ResetDB(l2db.GetDB().DB))
+	defer l2db.Close()
+
+	// Setup coordinator and ws server.
+	wsURL := "ws://" + randomURL()
+	rollerManager, handler := setupCoordinator(t, cfg.DBConfig, 1, wsURL)
+	defer func() {
+		handler.Shutdown(context.Background())
+		rollerManager.Stop()
+	}()
+
+	// create first mock roller, that will not send any proof.
+	roller1 := newMockRoller(t, "roller_test"+strconv.Itoa(0), wsURL)
+	defer func() {
+		// close connection
+		roller1.close()
+	}()
+	assert.Equal(t, 1, rollerManager.GetNumberOfIdleRollers())
+
+	var hashes = make([]string, 1)
+	dbTx, err := l2db.Beginx()
+	assert.NoError(t, err)
+	for i := range hashes {
+		assert.NoError(t, l2db.NewBatchInDBTx(dbTx, batchData))
+		hashes[i] = batchData.Hash().Hex()
+
+	}
+	assert.NoError(t, dbTx.Commit())
+
+	// verify proof status, it should be assigned, because roller didn't send any proof
+	var (
+		tick     = time.Tick(500 * time.Millisecond)
+		tickStop = time.Tick(10 * time.Second)
+	)
+	for len(hashes) > 0 {
+		select {
+		case <-tick:
+			status, err := l2db.GetProvingStatusByHash(hashes[0])
+			assert.NoError(t, err)
+			if status == types.ProvingTaskAssigned {
+				hashes = hashes[1:]
+			}
+		case <-tickStop:
+			t.Error("failed to check proof status")
+			return
+		}
+	}
+
+	// create second mock roller, that will send valid proof.
+	roller2 := newMockRoller(t, "roller_test"+strconv.Itoa(1), wsURL)
+	roller2.waitTaskAndSendProof(t, time.Second, false, true)
+	defer func() {
+		// close connection
+		roller2.close()
+	}()
+	assert.Equal(t, 1, rollerManager.GetNumberOfIdleRollers())
+
+	// wait manager to finish first CollectProofs
+	<-time.After(60 * time.Second)
+
+	// verify proof status, it should be verified now, because second roller sent valid proof
+	for len(hashes) > 0 {
+		select {
+		case <-tick:
+			status, err := l2db.GetProvingStatusByHash(hashes[0])
+			assert.NoError(t, err)
+			if status == types.ProvingTaskVerified {
+				hashes = hashes[1:]
 			}
 		case <-tickStop:
 			t.Error("failed to check proof status")
@@ -426,13 +526,12 @@ func testIdleRollerSelection(t *testing.T) {
 
 	assert.Equal(t, len(rollers), rollerManager.GetNumberOfIdleRollers())
 
-	var ids = make([]string, 2)
+	var hashes = make([]string, 1)
 	dbTx, err := l2db.Beginx()
 	assert.NoError(t, err)
-	for i := range ids {
-		ID, err := l2db.NewBatchInDBTx(dbTx, &orm.BlockInfo{Number: uint64(i)}, &orm.BlockInfo{Number: uint64(i)}, "0f", 1, 194676)
-		assert.NoError(t, err)
-		ids[i] = ID
+	for i := range hashes {
+		assert.NoError(t, l2db.NewBatchInDBTx(dbTx, batchData))
+		hashes[i] = batchData.Hash().Hex()
 	}
 	assert.NoError(t, dbTx.Commit())
 
@@ -441,13 +540,13 @@ func testIdleRollerSelection(t *testing.T) {
 		tick     = time.Tick(500 * time.Millisecond)
 		tickStop = time.Tick(10 * time.Second)
 	)
-	for len(ids) > 0 {
+	for len(hashes) > 0 {
 		select {
 		case <-tick:
-			status, err := l2db.GetProvingStatusByID(ids[0])
+			status, err := l2db.GetProvingStatusByHash(hashes[0])
 			assert.NoError(t, err)
-			if status == orm.ProvingTaskVerified {
-				ids = ids[1:]
+			if status == types.ProvingTaskVerified {
+				hashes = hashes[1:]
 			}
 		case <-tickStop:
 			t.Error("failed to check proof status")
@@ -463,12 +562,12 @@ func testGracefulRestart(t *testing.T) {
 	assert.NoError(t, migrate.ResetDB(l2db.GetDB().DB))
 	defer l2db.Close()
 
-	var ids = make([]string, 1)
+	var hashes = make([]string, 1)
 	dbTx, err := l2db.Beginx()
 	assert.NoError(t, err)
-	for i := range ids {
-		ids[i], err = l2db.NewBatchInDBTx(dbTx, &orm.BlockInfo{Number: uint64(i)}, &orm.BlockInfo{Number: uint64(i)}, "0f", 1, 194676)
-		assert.NoError(t, err)
+	for i := range hashes {
+		assert.NoError(t, l2db.NewBatchInDBTx(dbTx, batchData))
+		hashes[i] = batchData.Hash().Hex()
 	}
 	assert.NoError(t, dbTx.Commit())
 
@@ -497,15 +596,15 @@ func testGracefulRestart(t *testing.T) {
 		newRollerManager.Stop()
 	}()
 
-	for i := range ids {
-		info, err := newRollerManager.GetSessionInfo(ids[i])
-		assert.Equal(t, orm.ProvingTaskAssigned.String(), info.Status)
+	for i := range hashes {
+		info, err := newRollerManager.GetSessionInfo(hashes[i])
+		assert.Equal(t, types.ProvingTaskAssigned.String(), info.Status)
 		assert.NoError(t, err)
 
 		// at this point, roller haven't submitted
-		status, err := l2db.GetProvingStatusByID(ids[i])
+		status, err := l2db.GetProvingStatusByHash(hashes[i])
 		assert.NoError(t, err)
-		assert.Equal(t, orm.ProvingTaskAssigned, status)
+		assert.Equal(t, types.ProvingTaskAssigned, status)
 	}
 
 	// will overwrite the roller client for `SubmitProof`
@@ -517,15 +616,15 @@ func testGracefulRestart(t *testing.T) {
 		tick     = time.Tick(500 * time.Millisecond)
 		tickStop = time.Tick(15 * time.Second)
 	)
-	for len(ids) > 0 {
+	for len(hashes) > 0 {
 		select {
 		case <-tick:
 			// this proves that the roller submits to the new coordinator,
 			// because the roller client for `submitProof` has been overwritten
-			status, err := l2db.GetProvingStatusByID(ids[0])
+			status, err := l2db.GetProvingStatusByHash(hashes[0])
 			assert.NoError(t, err)
-			if status == orm.ProvingTaskVerified {
-				ids = ids[1:]
+			if status == types.ProvingTaskVerified {
+				hashes = hashes[1:]
 			}
 
 		case <-tickStop:
@@ -541,16 +640,18 @@ func setupCoordinator(t *testing.T, dbCfg *database.DBConfig, rollersPerSession 
 	assert.True(t, assert.NoError(t, err), "failed to get db handler.")
 
 	rollerManager, err = coordinator.New(context.Background(), &coordinator_config.RollerManagerConfig{
-		RollersPerSession: rollersPerSession,
-		Verifier:          &coordinator_config.VerifierConfig{MockMode: true},
-		CollectionTime:    1,
-		TokenTimeToLive:   5,
+		RollersPerSession:  rollersPerSession,
+		Verifier:           &coordinator_config.VerifierConfig{MockMode: true},
+		CollectionTime:     1,
+		TokenTimeToLive:    5,
+		MaxVerifierWorkers: 10,
+		SessionAttempts:    2,
 	}, db, nil)
 	assert.NoError(t, err)
 	assert.NoError(t, rollerManager.Start())
 
 	// start ws service
-	handler, _, err = utils.StartWSEndpoint(strings.Split(wsURL, "//")[1], rollerManager.APIs())
+	handler, _, err = utils.StartWSEndpoint(strings.Split(wsURL, "//")[1], rollerManager.APIs(), flate.NoCompression)
 	assert.NoError(t, err)
 
 	return rollerManager, handler

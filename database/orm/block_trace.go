@@ -9,10 +9,9 @@ import (
 
 	"github.com/jmoiron/sqlx"
 	"github.com/scroll-tech/go-ethereum/common"
-	"github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/log"
 
-	"scroll-tech/common/utils"
+	"scroll-tech/common/types"
 )
 
 type blockTraceOrm struct {
@@ -26,7 +25,7 @@ func NewBlockTraceOrm(db *sqlx.DB) BlockTraceOrm {
 	return &blockTraceOrm{db: db}
 }
 
-func (o *blockTraceOrm) Exist(number uint64) (bool, error) {
+func (o *blockTraceOrm) IsL2BlockExists(number uint64) (bool, error) {
 	var res int
 	err := o.db.QueryRow(o.db.Rebind(`SELECT 1 from block_trace where number = ? limit 1;`), number).Scan(&res)
 	if err != nil {
@@ -38,7 +37,7 @@ func (o *blockTraceOrm) Exist(number uint64) (bool, error) {
 	return true, nil
 }
 
-func (o *blockTraceOrm) GetBlockTracesLatestHeight() (int64, error) {
+func (o *blockTraceOrm) GetL2BlocksLatestHeight() (int64, error) {
 	row := o.db.QueryRow("SELECT COALESCE(MAX(number), -1) FROM block_trace;")
 
 	var height int64
@@ -48,7 +47,7 @@ func (o *blockTraceOrm) GetBlockTracesLatestHeight() (int64, error) {
 	return height, nil
 }
 
-func (o *blockTraceOrm) GetBlockTraces(fields map[string]interface{}, args ...string) ([]*types.BlockTrace, error) {
+func (o *blockTraceOrm) GetL2WrappedBlocks(fields map[string]interface{}, args ...string) ([]*types.WrappedBlock, error) {
 	type Result struct {
 		Trace string
 	}
@@ -65,28 +64,28 @@ func (o *blockTraceOrm) GetBlockTraces(fields map[string]interface{}, args ...st
 		return nil, err
 	}
 
-	var traces []*types.BlockTrace
+	var wrappedBlocks []*types.WrappedBlock
 	for rows.Next() {
 		result := &Result{}
 		if err = rows.StructScan(result); err != nil {
 			break
 		}
-		trace := types.BlockTrace{}
-		err = json.Unmarshal([]byte(result.Trace), &trace)
+		wrappedBlock := types.WrappedBlock{}
+		err = json.Unmarshal([]byte(result.Trace), &wrappedBlock)
 		if err != nil {
 			break
 		}
-		traces = append(traces, &trace)
+		wrappedBlocks = append(wrappedBlocks, &wrappedBlock)
 	}
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return nil, err
 	}
 
-	return traces, rows.Close()
+	return wrappedBlocks, rows.Close()
 }
 
-func (o *blockTraceOrm) GetBlockInfos(fields map[string]interface{}, args ...string) ([]*BlockInfo, error) {
-	query := "SELECT number, hash, parent_hash, batch_id, tx_num, gas_used, block_timestamp FROM block_trace WHERE 1 = 1 "
+func (o *blockTraceOrm) GetL2BlockInfos(fields map[string]interface{}, args ...string) ([]*types.BlockInfo, error) {
+	query := "SELECT number, hash, parent_hash, batch_hash, tx_num, gas_used, block_timestamp FROM block_trace WHERE 1 = 1 "
 	for key := range fields {
 		query += fmt.Sprintf("AND %s=:%s ", key, key)
 	}
@@ -98,9 +97,9 @@ func (o *blockTraceOrm) GetBlockInfos(fields map[string]interface{}, args ...str
 		return nil, err
 	}
 
-	var blocks []*BlockInfo
+	var blocks []*types.BlockInfo
 	for rows.Next() {
-		block := &BlockInfo{}
+		block := &types.BlockInfo{}
 		if err = rows.StructScan(block); err != nil {
 			break
 		}
@@ -113,8 +112,8 @@ func (o *blockTraceOrm) GetBlockInfos(fields map[string]interface{}, args ...str
 	return blocks, rows.Close()
 }
 
-func (o *blockTraceOrm) GetUnbatchedBlocks(fields map[string]interface{}, args ...string) ([]*BlockInfo, error) {
-	query := "SELECT number, hash, parent_hash, batch_id, tx_num, gas_used, block_timestamp FROM block_trace WHERE batch_id is NULL "
+func (o *blockTraceOrm) GetUnbatchedL2Blocks(fields map[string]interface{}, args ...string) ([]*types.BlockInfo, error) {
+	query := "SELECT number, hash, parent_hash, batch_hash, tx_num, gas_used, block_timestamp FROM block_trace WHERE batch_hash is NULL "
 	for key := range fields {
 		query += fmt.Sprintf("AND %s=:%s ", key, key)
 	}
@@ -126,9 +125,9 @@ func (o *blockTraceOrm) GetUnbatchedBlocks(fields map[string]interface{}, args .
 		return nil, err
 	}
 
-	var blocks []*BlockInfo
+	var blocks []*types.BlockInfo
 	for rows.Next() {
-		block := &BlockInfo{}
+		block := &types.BlockInfo{}
 		if err = rows.StructScan(block); err != nil {
 			break
 		}
@@ -141,7 +140,7 @@ func (o *blockTraceOrm) GetUnbatchedBlocks(fields map[string]interface{}, args .
 	return blocks, rows.Close()
 }
 
-func (o *blockTraceOrm) GetHashByNumber(number uint64) (*common.Hash, error) {
+func (o *blockTraceOrm) GetL2BlockHashByNumber(number uint64) (*common.Hash, error) {
 	row := o.db.QueryRow(`SELECT hash FROM block_trace WHERE number = $1`, number)
 	var hashStr string
 	if err := row.Scan(&hashStr); err != nil {
@@ -151,43 +150,39 @@ func (o *blockTraceOrm) GetHashByNumber(number uint64) (*common.Hash, error) {
 	return &hash, nil
 }
 
-func (o *blockTraceOrm) InsertBlockTraces(blockTraces []*types.BlockTrace) error {
-	traceMaps := make([]map[string]interface{}, len(blockTraces))
-	for i, trace := range blockTraces {
-		number, hash, txNum, mtime := trace.Header.Number.Int64(),
-			trace.Header.Hash().String(),
-			len(trace.Transactions),
-			trace.Header.Time
+func (o *blockTraceOrm) InsertWrappedBlocks(blocks []*types.WrappedBlock) error {
+	blockMaps := make([]map[string]interface{}, len(blocks))
+	for i, block := range blocks {
+		number, hash, txNum, mtime := block.Header.Number.Int64(),
+			block.Header.Hash().String(),
+			len(block.Transactions),
+			block.Header.Time
 
-		gasCost := utils.ComputeTraceGasCost(trace)
-		// clear the `StructLogs` to reduce storage cost
-		for _, executionResult := range trace.ExecutionResults {
-			executionResult.StructLogs = nil
-		}
-		data, err := json.Marshal(trace)
+		gasCost := block.Header.GasUsed
+		data, err := json.Marshal(block)
 		if err != nil {
-			log.Error("failed to marshal blockTrace", "hash", hash, "err", err)
+			log.Error("failed to marshal block", "hash", hash, "err", err)
 			return err
 		}
-		traceMaps[i] = map[string]interface{}{
+		blockMaps[i] = map[string]interface{}{
 			"number":          number,
 			"hash":            hash,
-			"parent_hash":     trace.Header.ParentHash.String(),
+			"parent_hash":     block.Header.ParentHash.String(),
 			"trace":           string(data),
 			"tx_num":          txNum,
 			"gas_used":        gasCost,
 			"block_timestamp": mtime,
 		}
 	}
-	_, err := o.db.NamedExec(`INSERT INTO public.block_trace (number, hash, parent_hash, trace, tx_num, gas_used, block_timestamp) VALUES (:number, :hash, :parent_hash, :trace, :tx_num, :gas_used, :block_timestamp);`, traceMaps)
+	_, err := o.db.NamedExec(`INSERT INTO public.block_trace (number, hash, parent_hash, trace, tx_num, gas_used, block_timestamp) VALUES (:number, :hash, :parent_hash, :trace, :tx_num, :gas_used, :block_timestamp);`, blockMaps)
 	if err != nil {
 		log.Error("failed to insert blockTraces", "err", err)
 	}
 	return err
 }
 
-func (o *blockTraceOrm) DeleteTracesByBatchID(batchID string) error {
-	if _, err := o.db.Exec(o.db.Rebind("update block_trace set trace = ? where batch_id = ?;"), "{}", batchID); err != nil {
+func (o *blockTraceOrm) DeleteTracesByBatchHash(batchHash string) error {
+	if _, err := o.db.Exec(o.db.Rebind("update block_trace set trace = ? where batch_hash = ?;"), "{}", batchHash); err != nil {
 		return err
 	}
 	return nil
@@ -195,10 +190,10 @@ func (o *blockTraceOrm) DeleteTracesByBatchID(batchID string) error {
 
 // http://jmoiron.github.io/sqlx/#inQueries
 // https://stackoverflow.com/questions/56568799/how-to-update-multiple-rows-using-sqlx
-func (o *blockTraceOrm) SetBatchIDForBlocksInDBTx(dbTx *sqlx.Tx, numbers []uint64, batchID string) error {
-	query := "UPDATE block_trace SET batch_id=? WHERE number IN (?)"
+func (o *blockTraceOrm) SetBatchHashForL2BlocksInDBTx(dbTx *sqlx.Tx, numbers []uint64, batchHash string) error {
+	query := "UPDATE block_trace SET batch_hash=? WHERE number IN (?)"
 
-	qry, args, err := sqlx.In(query, batchID, numbers)
+	qry, args, err := sqlx.In(query, batchHash, numbers)
 	if err != nil {
 		return err
 	}

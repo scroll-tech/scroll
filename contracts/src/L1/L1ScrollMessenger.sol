@@ -2,15 +2,17 @@
 
 pragma solidity ^0.8.0;
 
-import { OwnableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-import { PausableUpgradeable } from "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
+import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 
-import { IZKRollup } from "./rollup/IZKRollup.sol";
-import { IL1ScrollMessenger, IScrollMessenger } from "./IL1ScrollMessenger.sol";
-import { IGasOracle } from "../libraries/oracle/IGasOracle.sol";
-import { ScrollConstants } from "../libraries/ScrollConstants.sol";
-import { ScrollMessengerBase } from "../libraries/ScrollMessengerBase.sol";
-import { ZkTrieVerifier } from "../libraries/verifier/ZkTrieVerifier.sol";
+import {IScrollChain} from "./rollup/IScrollChain.sol";
+import {IL1MessageQueue} from "./rollup/IL1MessageQueue.sol";
+import {IL1ScrollMessenger} from "./IL1ScrollMessenger.sol";
+import {ScrollConstants} from "../libraries/constants/ScrollConstants.sol";
+import {IScrollMessenger} from "../libraries/IScrollMessenger.sol";
+import {ScrollMessengerBase} from "../libraries/ScrollMessengerBase.sol";
+import {WithdrawTrieVerifier} from "../libraries/verifier/WithdrawTrieVerifier.sol";
+
+// solhint-disable avoid-low-level-calls
 
 /// @title L1ScrollMessenger
 /// @notice The `L1ScrollMessenger` contract can:
@@ -22,197 +24,229 @@ import { ZkTrieVerifier } from "../libraries/verifier/ZkTrieVerifier.sol";
 ///
 /// @dev All deposited Ether (including `WETH` deposited throng `L1WETHGateway`) will locked in
 /// this contract.
-contract L1ScrollMessenger is OwnableUpgradeable, PausableUpgradeable, ScrollMessengerBase, IL1ScrollMessenger {
-  /**************************************** Variables ****************************************/
+contract L1ScrollMessenger is PausableUpgradeable, ScrollMessengerBase, IL1ScrollMessenger {
+    /*************
+     * Variables *
+     *************/
 
-  /// @notice Mapping from relay id to relay status.
-  mapping(bytes32 => bool) public isMessageRelayed;
+    /// @notice Mapping from relay id to relay status.
+    mapping(bytes32 => bool) public isL1MessageRelayed;
 
-  /// @notice Mapping from message hash to drop status.
-  mapping(bytes32 => bool) public isMessageDropped;
+    /// @notice Mapping from L1 message hash to sent status.
+    mapping(bytes32 => bool) public isL1MessageSent;
 
-  /// @notice Mapping from message hash to execution status.
-  mapping(bytes32 => bool) public isMessageExecuted;
+    /// @notice Mapping from L2 message hash to a boolean value indicating if the message has been successfully executed.
+    mapping(bytes32 => bool) public isL2MessageExecuted;
 
-  /// @notice The address of Rollup contract.
-  address public rollup;
+    /// @notice The address of Rollup contract.
+    address public rollup;
 
-  /**************************************** Constructor ****************************************/
+    /// @notice The address of L1MessageQueue contract.
+    address public messageQueue;
 
-  function initialize(address _rollup) public initializer {
-    OwnableUpgradeable.__Ownable_init();
-    PausableUpgradeable.__Pausable_init();
-    ScrollMessengerBase._initialize();
+    // @note move to ScrollMessengerBase in next big refactor
+    /// @dev The status of for non-reentrant check.
+    uint256 private _lock_status;
 
-    rollup = _rollup;
-    // initialize to a nonzero value
-    xDomainMessageSender = ScrollConstants.DEFAULT_XDOMAIN_MESSAGE_SENDER;
-  }
+    /**********************
+     * Function Modifiers *
+     **********************/
 
-  /**************************************** Mutated Functions ****************************************/
+    modifier nonReentrant() {
+        // On the first call to nonReentrant, _notEntered will be true
+        require(_lock_status != _ENTERED, "ReentrancyGuard: reentrant call");
 
-  /// @inheritdoc IScrollMessenger
-  function sendMessage(
-    address _to,
-    uint256 _fee,
-    bytes memory _message,
-    uint256 _gasLimit
-  ) external payable override whenNotPaused onlyWhitelistedSender(msg.sender) {
-    require(msg.value >= _fee, "cannot pay fee");
+        // Any calls to nonReentrant after this point will fail
+        _lock_status = _ENTERED;
 
-    // solhint-disable-next-line not-rely-on-time
-    uint256 _deadline = block.timestamp + dropDelayDuration;
-    // compute minimum fee required by GasOracle contract.
-    uint256 _minFee = gasOracle == address(0) ? 0 : IGasOracle(gasOracle).estimateMessageFee(msg.sender, _to, _message);
-    require(_fee >= _minFee, "fee too small");
-    uint256 _value;
-    unchecked {
-      _value = msg.value - _fee;
+        _;
+
+        // By storing the original value once again, a refund is triggered (see
+        // https://eips.ethereum.org/EIPS/eip-2200)
+        _lock_status = _NOT_ENTERED;
     }
 
-    uint256 _nonce = IZKRollup(rollup).appendMessage(msg.sender, _to, _value, _fee, _deadline, _message, _gasLimit);
+    /***************
+     * Constructor *
+     ***************/
 
-    emit SentMessage(_to, msg.sender, _value, _fee, _deadline, _message, _nonce, _gasLimit);
-  }
+    /// @notice Initialize the storage of L1ScrollMessenger.
+    /// @param _counterpart The address of L2ScrollMessenger contract in L2.
+    /// @param _feeVault The address of fee vault, which will be used to collect relayer fee.
+    /// @param _rollup The address of ScrollChain contract.
+    /// @param _messageQueue The address of L1MessageQueue contract.
+    function initialize(
+        address _counterpart,
+        address _feeVault,
+        address _rollup,
+        address _messageQueue
+    ) public initializer {
+        PausableUpgradeable.__Pausable_init();
+        ScrollMessengerBase._initialize(_counterpart, _feeVault);
 
-  /// @inheritdoc IL1ScrollMessenger
-  function relayMessageWithProof(
-    address _from,
-    address _to,
-    uint256 _value,
-    uint256 _fee,
-    uint256 _deadline,
-    uint256 _nonce,
-    bytes memory _message,
-    L2MessageProof memory _proof
-  ) external override whenNotPaused onlyWhitelistedSender(msg.sender) {
-    require(xDomainMessageSender == ScrollConstants.DEFAULT_XDOMAIN_MESSAGE_SENDER, "already in execution");
+        rollup = _rollup;
+        messageQueue = _messageQueue;
 
-    // solhint-disable-next-line not-rely-on-time
-    // @note disable for now since we cannot generate proof in time.
-    // require(_deadline >= block.timestamp, "Message expired");
-
-    bytes32 _msghash = keccak256(abi.encodePacked(_from, _to, _value, _fee, _deadline, _nonce, _message));
-
-    require(!isMessageExecuted[_msghash], "Message successfully executed");
-
-    // @todo check proof
-    require(IZKRollup(rollup).isBlockFinalized(_proof.blockHeight), "invalid state proof");
-    require(ZkTrieVerifier.verifyMerkleProof(_proof.merkleProof), "invalid proof");
-
-    // @todo check `_to` address to avoid attack.
-
-    // @todo take fee and distribute to relayer later.
-
-    // @note This usually will never happen, just in case.
-    require(_from != xDomainMessageSender, "invalid message sender");
-
-    xDomainMessageSender = _from;
-    // solhint-disable-next-line avoid-low-level-calls
-    (bool success, ) = _to.call{ value: _value }(_message);
-    // reset value to refund gas.
-    xDomainMessageSender = ScrollConstants.DEFAULT_XDOMAIN_MESSAGE_SENDER;
-
-    if (success) {
-      isMessageExecuted[_msghash] = true;
-      emit RelayedMessage(_msghash);
-    } else {
-      emit FailedRelayedMessage(_msghash);
+        // initialize to a nonzero value
+        xDomainMessageSender = ScrollConstants.DEFAULT_XDOMAIN_MESSAGE_SENDER;
     }
 
-    bytes32 _relayId = keccak256(abi.encodePacked(_msghash, msg.sender, block.number));
+    /*****************************
+     * Public Mutating Functions *
+     *****************************/
 
-    isMessageRelayed[_relayId] = true;
-  }
-
-  /// @inheritdoc IL1ScrollMessenger
-  function replayMessage(
-    address _from,
-    address _to,
-    uint256 _value,
-    uint256 _fee,
-    uint256 _deadline,
-    bytes memory _message,
-    uint256 _queueIndex,
-    uint32 _oldGasLimit,
-    uint32 _newGasLimit
-  ) external override whenNotPaused {
-    // @todo
-  }
-
-  /// @inheritdoc IScrollMessenger
-  function dropMessage(
-    address _from,
-    address _to,
-    uint256 _value,
-    uint256 _fee,
-    uint256 _deadline,
-    uint256 _nonce,
-    bytes memory _message,
-    uint256 _gasLimit
-  ) external override whenNotPaused {
-    // solhint-disable-next-line not-rely-on-time
-    require(block.timestamp > _deadline, "message not expired");
-
-    // @todo The `queueIndex` is acutally updated asynchronously, it's not a good practice to compare directly.
-    address _rollup = rollup; // gas saving
-    uint256 _queueIndex = IZKRollup(_rollup).getNextQueueIndex();
-    require(_queueIndex <= _nonce, "message already executed");
-
-    bytes32 _expectedMessageHash = IZKRollup(_rollup).getMessageHashByIndex(_nonce);
-    bytes32 _messageHash = keccak256(
-      abi.encodePacked(_from, _to, _value, _fee, _deadline, _nonce, _message, _gasLimit)
-    );
-    require(_messageHash == _expectedMessageHash, "message hash mismatched");
-
-    require(!isMessageDropped[_messageHash], "message already dropped");
-    isMessageDropped[_messageHash] = true;
-
-    if (_from.code.length > 0) {
-      // @todo call finalizeDropMessage of `_from`
-    } else {
-      // just do simple ether refund
-      payable(_from).transfer(_value + _fee);
+    /// @inheritdoc IScrollMessenger
+    function sendMessage(
+        address _to,
+        uint256 _value,
+        bytes memory _message,
+        uint256 _gasLimit
+    ) external payable override whenNotPaused {
+        _sendMessage(_to, _value, _message, _gasLimit, tx.origin);
     }
 
-    emit MessageDropped(_messageHash);
-  }
+    /// @inheritdoc IScrollMessenger
+    function sendMessage(
+        address _to,
+        uint256 _value,
+        bytes calldata _message,
+        uint256 _gasLimit,
+        address _refundAddress
+    ) external payable override whenNotPaused {
+        _sendMessage(_to, _value, _message, _gasLimit, _refundAddress);
+    }
 
-  /**************************************** Restricted Functions ****************************************/
+    /// @inheritdoc IL1ScrollMessenger
+    function relayMessageWithProof(
+        address _from,
+        address _to,
+        uint256 _value,
+        uint256 _nonce,
+        bytes memory _message,
+        L2MessageProof memory _proof
+    ) external override whenNotPaused onlyWhitelistedSender(msg.sender) {
+        require(
+            xDomainMessageSender == ScrollConstants.DEFAULT_XDOMAIN_MESSAGE_SENDER,
+            "Message is already in execution"
+        );
 
-  /// @notice Pause the contract
-  /// @dev This function can only called by contract owner.
-  function pause() external onlyOwner {
-    _pause();
-  }
+        bytes32 _xDomainCalldataHash = keccak256(_encodeXDomainCalldata(_from, _to, _value, _nonce, _message));
+        require(!isL2MessageExecuted[_xDomainCalldataHash], "Message was already successfully executed");
 
-  /// @notice Update whitelist contract.
-  /// @dev This function can only called by contract owner.
-  /// @param _newWhitelist The address of new whitelist contract.
-  function updateWhitelist(address _newWhitelist) external onlyOwner {
-    address _oldWhitelist = whitelist;
+        {
+            address _rollup = rollup;
+            require(IScrollChain(_rollup).isBatchFinalized(_proof.batchHash), "Batch is not finalized");
+            // @note skip verify for now
+            /*
+      bytes32 _messageRoot = IScrollChain(_rollup).getL2MessageRoot(_proof.batchHash);
+      require(
+        WithdrawTrieVerifier.verifyMerkleProof(_messageRoot, _xDomainCalldataHash, _nonce, _proof.merkleProof),
+        "Invalid proof"
+      );
+      */
+        }
 
-    whitelist = _newWhitelist;
-    emit UpdateWhitelist(_oldWhitelist, _newWhitelist);
-  }
+        // @todo check more `_to` address to avoid attack.
+        require(_to != messageQueue, "Forbid to call message queue");
+        require(_to != address(this), "Forbid to call self");
 
-  /// @notice Update the address of gas oracle.
-  /// @dev This function can only called by contract owner.
-  /// @param _newGasOracle The address to update.
-  function updateGasOracle(address _newGasOracle) external onlyOwner {
-    address _oldGasOracle = gasOracle;
-    gasOracle = _newGasOracle;
+        // @note This usually will never happen, just in case.
+        require(_from != xDomainMessageSender, "Invalid message sender");
 
-    emit UpdateGasOracle(_oldGasOracle, _newGasOracle);
-  }
+        xDomainMessageSender = _from;
+        (bool success, ) = _to.call{value: _value}(_message);
+        // reset value to refund gas.
+        xDomainMessageSender = ScrollConstants.DEFAULT_XDOMAIN_MESSAGE_SENDER;
 
-  /// @notice Update the drop delay duration.
-  /// @dev This function can only called by contract owner.
-  /// @param _newDuration The new delay duration to update.
-  function updateDropDelayDuration(uint256 _newDuration) external onlyOwner {
-    uint256 _oldDuration = dropDelayDuration;
-    dropDelayDuration = _newDuration;
+        if (success) {
+            isL2MessageExecuted[_xDomainCalldataHash] = true;
+            emit RelayedMessage(_xDomainCalldataHash);
+        } else {
+            emit FailedRelayedMessage(_xDomainCalldataHash);
+        }
 
-    emit UpdateDropDelayDuration(_oldDuration, _newDuration);
-  }
+        bytes32 _relayId = keccak256(abi.encodePacked(_xDomainCalldataHash, msg.sender, block.number));
+        isL1MessageRelayed[_relayId] = true;
+    }
+
+    /// @inheritdoc IL1ScrollMessenger
+    function replayMessage(
+        address _from,
+        address _to,
+        uint256 _value,
+        uint256 _queueIndex,
+        bytes memory _message,
+        uint32 _oldGasLimit,
+        uint32 _newGasLimit
+    ) external override whenNotPaused {
+        // @todo
+    }
+
+    /************************
+     * Restricted Functions *
+     ************************/
+
+    /// @notice Pause the contract
+    /// @dev This function can only called by contract owner.
+    /// @param _status The pause status to update.
+    function setPause(bool _status) external onlyOwner {
+        if (_status) {
+            _pause();
+        } else {
+            _unpause();
+        }
+    }
+
+    /**********************
+     * Internal Functions *
+     **********************/
+
+    function _sendMessage(
+        address _to,
+        uint256 _value,
+        bytes memory _message,
+        uint256 _gasLimit,
+        address _refundAddress
+    ) internal nonReentrant {
+        address _messageQueue = messageQueue; // gas saving
+        address _counterpart = counterpart; // gas saving
+
+        // compute the actual cross domain message calldata.
+        uint256 _messageNonce = IL1MessageQueue(_messageQueue).nextCrossDomainMessageIndex();
+        bytes memory _xDomainCalldata = _encodeXDomainCalldata(msg.sender, _to, _value, _messageNonce, _message);
+
+        // compute and deduct the messaging fee to fee vault.
+        uint256 _fee = IL1MessageQueue(_messageQueue).estimateCrossDomainMessageFee(
+            address(this),
+            _counterpart,
+            _xDomainCalldata,
+            _gasLimit
+        );
+        require(msg.value >= _fee + _value, "Insufficient msg.value");
+        if (_fee > 0) {
+            (bool _success, ) = feeVault.call{value: _fee}("");
+            require(_success, "Failed to deduct the fee");
+        }
+
+        // append message to L1MessageQueue
+        IL1MessageQueue(_messageQueue).appendCrossDomainMessage(_counterpart, _gasLimit, _xDomainCalldata);
+
+        // record the message hash for future use.
+        bytes32 _xDomainCalldataHash = keccak256(_xDomainCalldata);
+
+        // normally this won't happen, since each message has different nonce, but just in case.
+        require(!isL1MessageSent[_xDomainCalldataHash], "Duplicated message");
+        isL1MessageSent[_xDomainCalldataHash] = true;
+
+        emit SentMessage(msg.sender, _to, _value, _messageNonce, _gasLimit, _message);
+
+        // refund fee to tx.origin
+        unchecked {
+            uint256 _refund = msg.value - _fee - _value;
+            if (_refund > 0) {
+                (bool _success, ) = _refundAddress.call{value: _refund}("");
+                require(_success, "Failed to refund the fee");
+            }
+        }
+    }
 }

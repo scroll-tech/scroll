@@ -1,5 +1,7 @@
 .PHONY: check update dev_docker clean
 
+ZKP_VERSION=release-1220
+
 help: ## Display this help message
 	@grep -h \
 		-E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
@@ -14,11 +16,11 @@ lint: ## The code's format and security checks.
 
 update: ## update dependencies
 	go work sync
-	cd $(PWD)/bridge/ && go get -u github.com/scroll-tech/go-ethereum@staging && go mod tidy
-	cd $(PWD)/common/ && go get -u github.com/scroll-tech/go-ethereum@staging && go mod tidy
-	cd $(PWD)/coordinator/ && go get -u github.com/scroll-tech/go-ethereum@staging && go mod tidy
-	cd $(PWD)/database/ && go get -u github.com/scroll-tech/go-ethereum@staging && go mod tidy
-	cd $(PWD)/roller/ && go get -u github.com/scroll-tech/go-ethereum@staging && go mod tidy
+	cd $(PWD)/bridge/ && go get -u github.com/scroll-tech/go-ethereum@scroll && go mod tidy
+	cd $(PWD)/common/ && go get -u github.com/scroll-tech/go-ethereum@scroll && go mod tidy
+	cd $(PWD)/coordinator/ && go get -u github.com/scroll-tech/go-ethereum@scroll && go mod tidy
+	cd $(PWD)/database/ && go get -u github.com/scroll-tech/go-ethereum@scroll && go mod tidy
+	cd $(PWD)/roller/ && go get -u github.com/scroll-tech/go-ethereum@scroll && go mod tidy
 	goimports -local $(PWD)/bridge/ -w .
 	goimports -local $(PWD)/common/ -w .
 	goimports -local $(PWD)/coordinator/ -w .
@@ -28,6 +30,16 @@ update: ## update dependencies
 dev_docker: ## build docker images for development/testing usages
 	docker build -t scroll_l1geth ./common/docker/l1geth/
 	docker build -t scroll_l2geth ./common/docker/l2geth/
+
+test_zkp: ## Test zkp prove and verify, roller/prover generates the proof and coordinator/verifier verifies it
+	mkdir -p test_params
+	wget https://circuit-release.s3.us-west-2.amazonaws.com/circuit-release/${ZKP_VERSION}/test_params/params19 -O ./test_params/params19
+	wget https://circuit-release.s3.us-west-2.amazonaws.com/circuit-release/${ZKP_VERSION}/test_params/params26 -O ./test_params/params26
+	wget https://circuit-release.s3.us-west-2.amazonaws.com/circuit-release/${ZKP_VERSION}/test_seed -O test_seed
+	rm -rf ./roller/assets/test_params && mv test_params ./roller/assets/ && mv test_seed ./roller/assets/
+	cd ./roller && make test-gpu-prover
+	rm -rf ./coordinator/assets/test_params && mv ./roller/assets/test_params ./coordinator/assets/ && mv ./roller/assets/agg_proof ./coordinator/assets/
+	cd ./coordinator && make test-gpu-verifier
 
 clean: ## Empty out the bin folder
 	@rm -rf build/bin

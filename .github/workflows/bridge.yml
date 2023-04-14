@@ -5,6 +5,8 @@ on:
     branches:
       - main
       - staging
+      - develop
+      - alpha
     paths:
       - 'bridge/**'
       - '.github/workflows/bridge.yml'
@@ -12,6 +14,8 @@ on:
     branches:
       - main
       - staging
+      - develop
+      - alpha
     paths:
       - 'bridge/**'
       - '.github/workflows/bridge.yml'
@@ -62,3 +66,11 @@ jobs:
         if [ -n "$(git status --porcelain)" ]; then
           exit 1
         fi
+  # docker-build:
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #   - name: Checkout code
+  #     uses: actions/checkout@v2
+  #   - name: Set up Docker Buildx
+  #     uses: docker/setup-buildx-action@v2
+  #   - run: make docker

@@ -13,19 +13,16 @@ import (
 )
 
 var (
-	pgDB  *sqlx.DB
-	dbImg docker.ImgInstance
+	base *docker.App
+	pgDB *sqlx.DB
 )
 
 func initEnv(t *testing.T) error {
 	// Start db container.
-	dbImg = docker.NewTestDBDocker(t, "postgres")
+	base.RunDBImage(t)
 
 	// Create db orm handler.
-	factory, err := database.NewOrmFactory(&database.DBConfig{
-		DriverName: "postgres",
-		DSN:        dbImg.Endpoint(),
-	})
+	factory, err := database.NewOrmFactory(base.DBConfig)
 	if err != nil {
 		return err
 	}
@@ -34,6 +31,7 @@ func initEnv(t *testing.T) error {
 }
 
 func TestMigrate(t *testing.T) {
+	base = docker.NewDockerApp()
 	if err := initEnv(t); err != nil {
 		t.Fatal(err)
 	}
@@ -45,9 +43,7 @@ func TestMigrate(t *testing.T) {
 	t.Run("testRollback", testRollback)
 
 	t.Cleanup(func() {
-		if dbImg != nil {
-			assert.NoError(t, dbImg.Stop())
-		}
+		base.Free()
 	})
 }
 
@@ -66,7 +62,8 @@ func testResetDB(t *testing.T) {
 	assert.NoError(t, ResetDB(pgDB.DB))
 	cur, err := Current(pgDB.DB)
 	assert.NoError(t, err)
-	assert.Equal(t, 5, int(cur))
+	// total number of tables.
+	assert.Equal(t, 6, int(cur))
 }
 
 func testMigrate(t *testing.T) {

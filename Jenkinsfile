@@ -13,6 +13,8 @@ pipeline {
     environment {
         GO111MODULE = 'on'
         PATH="/home/ubuntu/.cargo/bin:$PATH"
+        LD_LIBRARY_PATH="$LD_LIBRARY_PATH:./coordinator/verifier/lib"
+        CHAIN_ID='534353'
         // LOG_DOCKER = 'true'
     }
     stages {
@@ -26,7 +28,7 @@ pipeline {
                 }
                 stage('Check Bridge Compilation') {
                     steps {
-                        sh 'make -C bridge bridge'
+                        sh 'make -C bridge bridge_bins'
                     }
                 }
                 stage('Check Coordinator Compilation') {
@@ -40,16 +42,6 @@ pipeline {
                         sh 'make -C database db_cli'
                     }
                 }
-                stage('Check Bridge Docker Build') {
-                    steps {
-                        sh 'make -C bridge docker'
-                    }
-                }
-                stage('Check Coordinator Docker Build') {
-                    steps {
-                        sh 'make -C coordinator docker'
-                    }
-                }
                 stage('Check Database Docker Build') {
                     steps {
                         sh 'make -C database docker'
@@ -59,44 +51,29 @@ pipeline {
         }
         stage('Parallel Test') {
             parallel{
-                stage('Test bridge package') {
+                stage('Race test common package') {
                     steps {
-                        sh 'go test -v -race -coverprofile=coverage.bridge.txt -covermode=atomic -p 1 scroll-tech/bridge/...'
-                    }
-                }
-                stage('Test common package') {
-                    steps {
-                        sh 'go test -v -race -coverprofile=coverage.common.txt -covermode=atomic -p 1 scroll-tech/common/...'
-                    }
-                }
-                stage('Test coordinator package') {
-                    steps {
-                        sh 'go test -v -race -tags="mock_verifier" -coverprofile=coverage.coordinator.txt -covermode=atomic -p 1 scroll-tech/coordinator/...'
-                    }
-                }
-                stage('Test database package') {
-                    steps {
-                        sh 'go test -v -race -coverprofile=coverage.db.txt -covermode=atomic -p 1 scroll-tech/database/...'
-                    }
-                }
-                stage('Integration test') {
-                    steps {
-                        sh 'go test -v -race -tags="mock_prover mock_verifier" -coverprofile=coverage.integration.txt -covermode=atomic -p 1 scroll-tech/integration-test/...'
+                        sh 'go test -v -race -coverprofile=coverage.common.txt -covermode=atomic scroll-tech/common/...'
                     }
                 }
                 stage('Race test bridge package') {
                     steps {
-                        sh "cd bridge && go test -v -race -coverprofile=coverage.txt -covermode=atomic \$(go list ./... | grep -v 'database\\|common\\|l1\\|l2\\|coordinator')"
+                        sh 'go test -v -race -coverprofile=coverage.bridge.txt -covermode=atomic scroll-tech/bridge/...'
                     }
                 }
                 stage('Race test coordinator package') {
                     steps {
-                        sh "cd coordinator && go test -v -race -coverprofile=coverage.txt -covermode=atomic \$(go list ./... | grep -v 'database\\|common\\|l1\\|l2\\|coordinator')"
+                        sh 'go test -v -race -coverprofile=coverage.coordinator.txt -covermode=atomic scroll-tech/coordinator/...'
                     }
                 }
                 stage('Race test database package') {
                     steps {
-                        sh "cd database && go test -v -race -coverprofile=coverage.txt -covermode=atomic \$(go list ./... | grep -v 'database\\|common\\|l1\\|l2\\|coordinator')"
+                        sh 'go test -v -race -coverprofile=coverage.db.txt -covermode=atomic scroll-tech/database/...'
+                    }
+                }
+                stage('Integration test') {
+                    steps {
+                        sh 'go test -v -tags="mock_prover mock_verifier" -p 1 scroll-tech/integration-test/...'
                     }
                 }
             }

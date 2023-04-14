@@ -6,21 +6,19 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
-	"reflect"
 	"strings"
-	"sync"
 	"sync/atomic"
 	"time"
 
-	geth "github.com/scroll-tech/go-ethereum"
+	cmapV2 "github.com/orcaman/concurrent-map/v2"
 	"github.com/scroll-tech/go-ethereum/accounts/abi/bind"
 	"github.com/scroll-tech/go-ethereum/common"
-	"github.com/scroll-tech/go-ethereum/common/math"
 	"github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
 
 	"scroll-tech/bridge/config"
+	"scroll-tech/bridge/utils"
 )
 
 const (
@@ -37,17 +35,13 @@ const (
 var (
 	// ErrNoAvailableAccount indicates no available account error in the account pool.
 	ErrNoAvailableAccount = errors.New("sender has no available account to send transaction")
+	// ErrFullPending sender's pending pool is full.
+	ErrFullPending = errors.New("sender's pending pool is full")
 )
 
-// DefaultSenderConfig The default config
-var DefaultSenderConfig = config.SenderConfig{
-	Endpoint:            "",
-	EscalateBlocks:      3,
-	EscalateMultipleNum: 11,
-	EscalateMultipleDen: 10,
-	MaxGasPrice:         1000_000_000_000, // this is 1000 gwei
-	TxType:              AccessListTxType,
-}
+var (
+	defaultPendingLimit = 10
+)
 
 // Confirmation struct used to indicate transaction confirmation details
 type Confirmation struct {
@@ -84,9 +78,9 @@ type Sender struct {
 	// account fields.
 	auths *accountPool
 
-	blockNumber   uint64   // Current block number on chain.
-	baseFeePerGas uint64   // Current base fee per gas on chain
-	pendingTxs    sync.Map // Mapping from nonce to pending transaction
+	blockNumber   uint64                                            // Current block number on chain.
+	baseFeePerGas uint64                                            // Current base fee per gas on chain
+	pendingTxs    cmapV2.ConcurrentMap[string, *PendingTransaction] // Mapping from nonce to pending transaction
 	confirmCh     chan *Confirmation
 
 	stopCh chan struct{}
@@ -95,9 +89,6 @@ type Sender struct {
 // NewSender returns a new instance of transaction sender
 // txConfirmationCh is used to notify confirmed transaction
 func NewSender(ctx context.Context, config *config.SenderConfig, privs []*ecdsa.PrivateKey) (*Sender, error) {
-	if config == nil {
-		config = &DefaultSenderConfig
-	}
 	client, err := ethclient.Dial(config.Endpoint)
 	if err != nil {
 		return nil, err
@@ -120,6 +111,20 @@ func NewSender(ctx context.Context, config *config.SenderConfig, privs []*ecdsa.
 		return nil, err
 	}
 
+	var baseFeePerGas uint64
+	if config.TxType == DynamicFeeTxType {
+		if header.BaseFee != nil {
+			baseFeePerGas = header.BaseFee.Uint64()
+		} else {
+			return nil, errors.New("DynamicFeeTxType not supported, header.BaseFee nil")
+		}
+	}
+
+	// initialize pending limit with a default value
+	if config.PendingLimit == 0 {
+		config.PendingLimit = defaultPendingLimit
+	}
+
 	sender := &Sender{
 		ctx:           ctx,
 		config:        config,
@@ -128,14 +133,29 @@ func NewSender(ctx context.Context, config *config.SenderConfig, privs []*ecdsa.
 		auths:         auths,
 		confirmCh:     make(chan *Confirmation, 128),
 		blockNumber:   header.Number.Uint64(),
-		baseFeePerGas: header.BaseFee.Uint64(),
-		pendingTxs:    sync.Map{},
+		baseFeePerGas: baseFeePerGas,
+		pendingTxs:    cmapV2.New[*PendingTransaction](),
 		stopCh:        make(chan struct{}),
 	}
 
 	go sender.loop(ctx)
 
 	return sender, nil
+}
+
+// PendingCount returns the current number of pending txs.
+func (s *Sender) PendingCount() int {
+	return s.pendingTxs.Count()
+}
+
+// PendingLimit returns the maximum number of pending txs the sender can handle.
+func (s *Sender) PendingLimit() int {
+	return s.config.PendingLimit
+}
+
+// IsFull returns true if the sender's pending tx pool is full.
+func (s *Sender) IsFull() bool {
+	return s.pendingTxs.Count() >= s.config.PendingLimit
 }
 
 // Stop stop the sender module.
@@ -154,57 +174,33 @@ func (s *Sender) NumberOfAccounts() int {
 	return len(s.auths.accounts)
 }
 
-func (s *Sender) getFeeData(auth *bind.TransactOpts, target *common.Address, value *big.Int, data []byte) (*FeeData, error) {
-	// estimate gas limit
-	gasLimit, err := s.client.EstimateGas(s.ctx, geth.CallMsg{From: auth.From, To: target, Value: value, Data: data})
-	if err != nil {
-		return nil, err
+func (s *Sender) getFeeData(auth *bind.TransactOpts, target *common.Address, value *big.Int, data []byte, minGasLimit uint64) (*FeeData, error) {
+	if s.config.TxType == DynamicFeeTxType {
+		return s.estimateDynamicGas(auth, target, value, data, minGasLimit)
 	}
-	gasLimit = gasLimit * 15 / 10 // 50% extra gas to void out of gas error
-	// @todo change it when Scroll enable EIP1559
-	if s.config.TxType != DynamicFeeTxType {
-		// estimate gas price
-		var gasPrice *big.Int
-		gasPrice, err = s.client.SuggestGasPrice(s.ctx)
-		if err != nil {
-			return nil, err
-		}
-		return &FeeData{
-			gasPrice: gasPrice,
-			gasLimit: gasLimit,
-		}, nil
-	}
-	gasTipCap, err := s.client.SuggestGasTipCap(s.ctx)
-	if err != nil {
-		return nil, err
-	}
-	// Make sure feeCap is bigger than txpool's gas price. 1000000000 is l2geth's default pool.gas value.
-	baseFee := atomic.LoadUint64(&s.baseFeePerGas)
-	maxFeePerGas := math.BigMax(big.NewInt(int64(baseFee)), big.NewInt(1000000000))
-	return &FeeData{
-		gasFeeCap: math.BigMax(maxFeePerGas, gasTipCap),
-		gasTipCap: math.BigMin(maxFeePerGas, gasTipCap),
-		gasLimit:  gasLimit,
-	}, nil
+	return s.estimateLegacyGas(auth, target, value, data, minGasLimit)
 }
 
 // SendTransaction send a signed L2tL1 transaction.
-func (s *Sender) SendTransaction(ID string, target *common.Address, value *big.Int, data []byte) (hash common.Hash, err error) {
+func (s *Sender) SendTransaction(ID string, target *common.Address, value *big.Int, data []byte, minGasLimit uint64) (hash common.Hash, err error) {
+	if s.IsFull() {
+		return common.Hash{}, ErrFullPending
+	}
 	// We occupy the ID, in case some other threads call with the same ID in the same time
-	if _, loaded := s.pendingTxs.LoadOrStore(ID, nil); loaded {
+	if ok := s.pendingTxs.SetIfAbsent(ID, nil); !ok {
 		return common.Hash{}, fmt.Errorf("has the repeat tx ID, ID: %s", ID)
 	}
 	// get
 	auth := s.auths.getAccount()
 	if auth == nil {
-		s.pendingTxs.Delete(ID) // release the ID on failure
+		s.pendingTxs.Remove(ID) // release the ID on failure
 		return common.Hash{}, ErrNoAvailableAccount
 	}
 
 	defer s.auths.releaseAccount(auth)
 	defer func() {
 		if err != nil {
-			s.pendingTxs.Delete(ID) // release the ID on failure
+			s.pendingTxs.Remove(ID) // release the ID on failure
 		}
 	}()
 
@@ -213,7 +209,7 @@ func (s *Sender) SendTransaction(ID string, target *common.Address, value *big.I
 		tx      *types.Transaction
 	)
 	// estimate gas fee
-	if feeData, err = s.getFeeData(auth, target, value, data); err != nil {
+	if feeData, err = s.getFeeData(auth, target, value, data, minGasLimit); err != nil {
 		return
 	}
 	if tx, err = s.createAndSendTx(auth, feeData, target, value, data, nil); err == nil {
@@ -225,7 +221,7 @@ func (s *Sender) SendTransaction(ID string, target *common.Address, value *big.I
 			submitAt: atomic.LoadUint64(&s.blockNumber),
 			feeData:  feeData,
 		}
-		s.pendingTxs.Store(ID, pending)
+		s.pendingTxs.Set(ID, pending)
 		return tx.Hash(), nil
 	}
 
@@ -352,22 +348,31 @@ func (s *Sender) resubmitTransaction(feeData *FeeData, auth *bind.TransactOpts, 
 	return s.createAndSendTx(auth, feeData, tx.To(), tx.Value(), tx.Data(), &nonce)
 }
 
-// CheckPendingTransaction Check pending transaction given number of blocks to wait before confirmation.
-func (s *Sender) CheckPendingTransaction(header *types.Header) {
+// checkPendingTransaction checks the confirmation status of pending transactions against the latest confirmed block number.
+// If a transaction hasn't been confirmed after a certain number of blocks, it will be resubmitted with an increased gas price.
+func (s *Sender) checkPendingTransaction(header *types.Header, confirmed uint64) {
 	number := header.Number.Uint64()
 	atomic.StoreUint64(&s.blockNumber, number)
-	atomic.StoreUint64(&s.baseFeePerGas, header.BaseFee.Uint64())
-	s.pendingTxs.Range(func(key, value interface{}) bool {
+
+	if s.config.TxType == DynamicFeeTxType {
+		if header.BaseFee != nil {
+			atomic.StoreUint64(&s.baseFeePerGas, header.BaseFee.Uint64())
+		} else {
+			log.Error("DynamicFeeTxType not supported, header.BaseFee nil")
+		}
+	}
+
+	for item := range s.pendingTxs.IterBuffered() {
+		key, pending := item.Key, item.Val
 		// ignore empty id, since we use empty id to occupy pending task
-		if value == nil || reflect.ValueOf(value).IsNil() {
-			return true
+		if pending == nil {
+			continue
 		}
 
-		pending := value.(*PendingTransaction)
 		receipt, err := s.client.TransactionReceipt(s.ctx, pending.tx.Hash())
 		if (err == nil) && (receipt != nil) {
-			if number >= receipt.BlockNumber.Uint64()+s.config.Confirmations {
-				s.pendingTxs.Delete(key)
+			if receipt.BlockNumber.Uint64() <= confirmed {
+				s.pendingTxs.Remove(key)
 				// send confirm message
 				s.confirmCh <- &Confirmation{
 					ID:           pending.id,
@@ -398,7 +403,7 @@ func (s *Sender) CheckPendingTransaction(header *types.Header) {
 				// We need to stop the program and manually handle the situation.
 				if strings.Contains(err.Error(), "nonce") {
 					// This key can be deleted
-					s.pendingTxs.Delete(key)
+					s.pendingTxs.Remove(key)
 					// Try get receipt by the latest replaced tx hash
 					receipt, err := s.client.TransactionReceipt(s.ctx, pending.tx.Hash())
 					if (err == nil) && (receipt != nil) {
@@ -420,8 +425,7 @@ func (s *Sender) CheckPendingTransaction(header *types.Header) {
 				pending.submitAt = number
 			}
 		}
-		return true
-	})
+	}
 }
 
 // Loop is the main event loop
@@ -429,7 +433,7 @@ func (s *Sender) loop(ctx context.Context) {
 	checkTick := time.NewTicker(time.Duration(s.config.CheckPendingTime) * time.Second)
 	defer checkTick.Stop()
 
-	checkBalanceTicker := time.NewTicker(time.Minute * 10)
+	checkBalanceTicker := time.NewTicker(time.Duration(s.config.CheckBalanceTime) * time.Second)
 	defer checkBalanceTicker.Stop()
 
 	for {
@@ -440,7 +444,14 @@ func (s *Sender) loop(ctx context.Context) {
 				log.Error("failed to get latest head", "err", err)
 				continue
 			}
-			s.CheckPendingTransaction(header)
+
+			confirmed, err := utils.GetLatestConfirmedBlockNumber(s.ctx, s.client, s.config.Confirmations)
+			if err != nil {
+				log.Error("failed to get latest confirmed block number", "err", err)
+				continue
+			}
+
+			s.checkPendingTransaction(header, confirmed)
 		case <-checkBalanceTicker.C:
 			// Check and set balance.
 			_ = s.auths.checkAndSetBalances(ctx)

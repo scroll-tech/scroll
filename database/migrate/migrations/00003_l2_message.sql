@@ -8,9 +8,6 @@ create table l2_message
     sender       VARCHAR NOT NULL,
     target       VARCHAR NOT NULL,
     value        VARCHAR NOT NULL,
-    fee          VARCHAR NOT NULL,
-    gas_limit    BIGINT  NOT NULL,
-    deadline     BIGINT  NOT NULL,
     calldata     TEXT    NOT NULL,
     layer2_hash  VARCHAR NOT NULL,
     layer1_hash  VARCHAR DEFAULT NULL,
@@ -21,7 +18,7 @@ create table l2_message
 );
 
 comment
-on column l2_message.status is 'undefined, pending, submitted, confirmed, failed, expired';
+on column l2_message.status is 'undefined, pending, submitted, confirmed, failed, expired, relay_failed';
 
 create unique index l2_message_hash_uindex
 on l2_message (msg_hash);

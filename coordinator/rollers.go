@@ -7,12 +7,13 @@ import (
 	"time"
 
 	cmap "github.com/orcaman/concurrent-map"
-	"github.com/scroll-tech/go-ethereum/core/types"
+	geth_types "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/log"
+	geth_metrics "github.com/scroll-tech/go-ethereum/metrics"
 
 	"scroll-tech/common/message"
-
-	"scroll-tech/database/orm"
+	"scroll-tech/common/metrics"
+	"scroll-tech/common/types"
 )
 
 // rollerNode records roller status and send task to connected roller.
@@ -31,9 +32,11 @@ type rollerNode struct {
 
 	// Time of message creation
 	registerTime time.Time
+
+	*rollerMetrics
 }
 
-func (r *rollerNode) sendTask(id string, traces []*types.BlockTrace) bool {
+func (r *rollerNode) sendTask(id string, traces []*geth_types.BlockTrace) bool {
 	select {
 	case r.taskChan <- &message.TaskMsg{
 		ID:     id,
@@ -53,7 +56,7 @@ func (m *Manager) reloadRollerAssignedTasks(pubkey string) *cmap.ConcurrentMap {
 	taskIDs := cmap.New()
 	for id, sess := range m.sessions {
 		for pk, roller := range sess.info.Rollers {
-			if pk == pubkey && roller.Status == orm.RollerAssigned {
+			if pk == pubkey && roller.Status == types.RollerAssigned {
 				taskIDs.Set(id, struct{}{})
 			}
 		}
@@ -65,12 +68,20 @@ func (m *Manager) register(pubkey string, identity *message.Identity) (<-chan *m
 	node, ok := m.rollerPool.Get(pubkey)
 	if !ok {
 		taskIDs := m.reloadRollerAssignedTasks(pubkey)
+		rMs := &rollerMetrics{
+			rollerProofsVerifiedSuccessTimeTimer:   geth_metrics.GetOrRegisterTimer(fmt.Sprintf("roller/proofs/verified/success/time/%s", pubkey), metrics.ScrollRegistry),
+			rollerProofsVerifiedFailedTimeTimer:    geth_metrics.GetOrRegisterTimer(fmt.Sprintf("roller/proofs/verified/failed/time/%s", pubkey), metrics.ScrollRegistry),
+			rollerProofsGeneratedFailedTimeTimer:   geth_metrics.GetOrRegisterTimer(fmt.Sprintf("roller/proofs/generated/failed/time/%s", pubkey), metrics.ScrollRegistry),
+			rollerProofsLastAssignedTimestampGauge: geth_metrics.GetOrRegisterGauge(fmt.Sprintf("roller/proofs/last/assigned/timestamp/%s", pubkey), metrics.ScrollRegistry),
+			rollerProofsLastFinishedTimestampGauge: geth_metrics.GetOrRegisterGauge(fmt.Sprintf("roller/proofs/last/finished/timestamp/%s", pubkey), metrics.ScrollRegistry),
+		}
 		node = &rollerNode{
-			Name:      identity.Name,
-			Version:   identity.Version,
-			PublicKey: pubkey,
-			TaskIDs:   *taskIDs,
-			taskChan:  make(chan *message.TaskMsg, 4),
+			Name:          identity.Name,
+			Version:       identity.Version,
+			PublicKey:     pubkey,
+			TaskIDs:       *taskIDs,
+			taskChan:      make(chan *message.TaskMsg, 4),
+			rollerMetrics: rMs,
 		}
 		m.rollerPool.Set(pubkey, node)
 	}

@@ -2,15 +2,13 @@
 -- +goose StatementBegin
 create table l1_message
 (
-    nonce        BIGINT  NOT NULL,
+    queue_index  BIGINT  NOT NULL,
     msg_hash     VARCHAR NOT NULL,
     height       BIGINT  NOT NULL,
+    gas_limit    BIGINT  NOT NULL,
     sender       VARCHAR NOT NULL,
     target       VARCHAR NOT NULL,
     value        VARCHAR NOT NULL,
-    fee          VARCHAR NOT NULL,
-    gas_limit    BIGINT  NOT NULL,
-    deadline     BIGINT  NOT NULL,
     calldata     TEXT    NOT NULL,
     layer1_hash  VARCHAR NOT NULL,
     layer2_hash  VARCHAR DEFAULT NULL,
@@ -20,13 +18,13 @@ create table l1_message
 );
 
 comment
-on column l1_message.status is 'undefined, pending, submitted, confirmed, failed, expired';
+on column l1_message.status is 'undefined, pending, submitted, confirmed, failed, expired, relay_failed';
 
 create unique index l1_message_hash_uindex
 on l1_message (msg_hash);
 
 create unique index l1_message_nonce_uindex
-on l1_message (nonce);
+on l1_message (queue_index);
 
 create index l1_message_height_index
     on l1_message (height);

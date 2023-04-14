@@ -1,6 +1,6 @@
 imagePrefix = 'scrolltech'
 credentialDocker = 'dockerhub'
-
+TAGNAME = ''
 pipeline {
     agent any
     options {
@@ -41,16 +41,38 @@ pipeline {
                                 if (TAGNAME == ""){
                                     return;
                                 }
-                                sh "docker login --username=${dockerUser} --password=${dockerPassword}"
-                                sh "make -C bridge docker"
-                                sh "make -C coordinator docker"
-                                sh "docker tag scrolltech/bridge:latest scrolltech/bridge:${TAGNAME}"
-                                sh "docker tag scrolltech/coordinator:latest scrolltech/coordinator:${TAGNAME}"
-                                sh "docker push scrolltech/bridge:${TAGNAME}"
-                                sh "docker push scrolltech/coordinator:${TAGNAME}"
+                                sh "docker login --username=$dockerUser --password=$dockerPassword"
+                                catchError(buildResult: 'SUCCESS', stageResult: 'SUCCESS') {
+                                    script {
+                                        try {
+                                            sh "docker manifest inspect scrolltech/bridge:$TAGNAME > /dev/null"
+                                        } catch (e) {
+                                            // only build if the tag non existed
+                                            //sh "docker login --username=${dockerUser} --password=${dockerPassword}"
+                                            sh "make -C bridge docker"
+                                            sh "docker tag scrolltech/bridge:latest scrolltech/bridge:${TAGNAME}"
+                                            sh "docker push scrolltech/bridge:${TAGNAME}"
+                                            throw e
+                                        }
+                                    }
+                                }
+                                catchError(buildResult: 'SUCCESS', stageResult: 'SUCCESS') {
+                                    script {
+                                        try {
+                                            sh "docker manifest inspect scrolltech/coordinator:$TAGNAME > /dev/null"
+                                        } catch (e) {
+                                            // only build if the tag non existed
+                                            //sh "docker login --username=${dockerUser} --password=${dockerPassword}"
+                                            sh "make -C coordinator docker"
+                                            sh "docker tag scrolltech/coordinator:latest scrolltech/coordinator:${TAGNAME}"
+                                            sh "docker push scrolltech/coordinator:${TAGNAME}"
+                                            throw e
+                                        }
+                                    }
+                                }
                             }                              
                     }
-               }
+                }
             }
         }
     }
