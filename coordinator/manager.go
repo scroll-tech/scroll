@@ -488,7 +488,7 @@ func (m *Manager) StartProofGenerationSession(task *types.BlockBatch) (success b
 		}
 		log.Info("roller is picked", "session id", task.Hash, "name", roller.Name, "public key", roller.PublicKey)
 		// send trace to roller
-		if !roller.sendTask(task.Hash, traces) {
+		if !roller.sendTask(task.Hash, task.Index, traces) {
 			log.Error("send task failed", "roller name", roller.Name, "public key", roller.PublicKey, "id", task.Hash)
 			continue
 		}

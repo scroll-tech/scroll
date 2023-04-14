@@ -188,8 +188,9 @@ func (a *ProofMsg) PublicKey() (string, error) {
 
 // TaskMsg is a wrapper type around db ProveTask type.
 type TaskMsg struct {
-	ID     string              `json:"id"`
-	Traces []*types.BlockTrace `json:"blockTraces"`
+	ID         string              `json:"id"`
+	BatchIndex uint64              `json:"batch_index"`
+	Traces     []*types.BlockTrace `json:"blockTraces"`
 }
 
 // ProofDetail is the message received from rollers that contains zk proof, the status of

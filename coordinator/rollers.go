@@ -32,11 +32,12 @@ type rollerNode struct {
 	registerTime time.Time
 }
 
-func (r *rollerNode) sendTask(id string, traces []*geth_types.BlockTrace) bool {
+func (r *rollerNode) sendTask(id string, batchIdx uint64, traces []*geth_types.BlockTrace) bool {
 	select {
 	case r.taskChan <- &message.TaskMsg{
-		ID:     id,
-		Traces: traces,
+		ID:         id,
+		BatchIndex: batchIdx,
+		Traces:     traces,
 	}:
 		r.TaskIDs.Set(id, struct{}{})
 	default:
