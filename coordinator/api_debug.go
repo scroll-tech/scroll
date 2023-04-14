@@ -5,6 +5,7 @@ import (
 	"time"
 
 	ctypes "scroll-tech/common/types"
+
 	"scroll-tech/coordinator/types"
 )
 
