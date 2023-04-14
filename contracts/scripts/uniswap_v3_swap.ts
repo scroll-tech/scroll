@@ -1,8 +1,10 @@
 /* eslint-disable node/no-missing-import */
-import { constants, Contract, providers, utils, Wallet } from "ethers";
+import { Contract, providers, utils, Wallet } from "ethers";
 import * as dotenv from "dotenv";
 
+import ERC20ABI from "./abi/ERC20.json";
 import UniswapV3RouterABI from "./abi/UniswapV3Router.json";
+import UniswapV3FactoryABI from "./abi/UniswapV3Factory.json";
 
 dotenv.config();
 
@@ -14,15 +16,27 @@ async function main() {
 
   const USDC: string = "0x429C6C7b33Edb8cB19BD8cC0d1940B13Cca746C4";
   const WETH: string = await UniswapV3Router.WETH9();
+  const factory: string = await UniswapV3Router.factory();
+  const UniswapV3Factory = new Contract(factory, UniswapV3FactoryABI, signer);
+
+  const usdc = new Contract(USDC, ERC20ABI, signer);
+  const weth = new Contract(WETH, ERC20ABI, signer);
+
+  const pool = await UniswapV3Factory.getPool(WETH, USDC, fee);
+
+  console.log("Signer address:", signer.address);
+  console.log("Pool address:", pool);
+  console.log("USDC in pool:", (await usdc.balanceOf(pool)).toString());
+  console.log("WETH in pool:", (await weth.balanceOf(pool)).toString());
+
   let nonce = await signer.getTransactionCount();
   for (let i = 0; i < 100; i++) {
     const data = UniswapV3Router.interface.encodeFunctionData("exactInputSingle", [
       {
         tokenIn: WETH,
         tokenOut: USDC,
-        fee: fee,
+        fee,
         recipient: signer.address,
-        deadline: constants.MaxUint256,
         amountIn: utils.parseEther("0.0001"),
         amountOutMinimum: 0,
         sqrtPriceLimitX96: 0,
@@ -32,8 +46,10 @@ async function main() {
       to: UniswapV3Router.address,
       data,
       nonce,
+      value: utils.parseEther("0.0001"),
     });
     nonce = nonce + 1;
+    console.log(tx);
     console.log("send tx with hash:", tx.hash, "nonce:", nonce);
   }
 }
