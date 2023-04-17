@@ -39,7 +39,7 @@ func TestStack(t *testing.T) {
 		var peek *ProvingTask
 		peek, err = s.Peek()
 		assert.NoError(t, err)
-		assert.Equal(t, strconv.Itoa(i), peek.Task.ID)
+		assert.Equal(t, strconv.Itoa(i), peek.Task.ID.Hash)
 		err = s.Delete(strconv.Itoa(i))
 		assert.NoError(t, err)
 	}
