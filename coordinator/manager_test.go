@@ -540,8 +540,8 @@ func testGracefulRestart(t *testing.T) {
 
 	for i := range hashes {
 		info, err := newRollerManager.GetSessionInfo(hashes[i])
-		assert.Equal(t, types.ProvingTaskAssigned.String(), info.Status)
 		assert.NoError(t, err)
+		assert.Equal(t, types.ProvingTaskAssigned.String(), info.Status)
 
 		// at this point, roller haven't submitted
 		status, err := l2db.GetProvingStatusByHash(hashes[i])
