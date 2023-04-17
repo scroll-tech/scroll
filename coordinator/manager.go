@@ -385,7 +385,7 @@ func (m *Manager) CollectProofs(sess *session) {
 			// TODO: In real cases we should reset to orm.ProvingTaskUnassigned
 			// so as to re-distribute the task in the future
 			if err := m.orm.UpdateProvingStatus(sess.info.ID, types.ProvingTaskFailed); err != nil {
-				log.Error("fail to reset task_status as Unassigned", "id", sess.info.ID, "err", err)
+				log.Error("fail to reset task_status as Unassigned", "session id", sess.info.ID, "task index", sess.info.Index, "err", err)
 			}
 			m.mu.Lock()
 			for pk := range sess.info.Rollers {
@@ -494,11 +494,11 @@ func (m *Manager) StartProofGenerationSession(task *types.BlockBatch, prevSessio
 	taskID := &message.TaskID{Hash: taskHash, BatchIdx: taskIdx}
 
 	if m.GetNumberOfIdleRollers() == 0 {
-		log.Warn("no idle roller when starting proof generation session", "id", taskHash)
+		log.Warn("no idle roller when starting proof generation session", "id", taskID)
 		return false
 	}
 
-	log.Info("start proof generation session", "id", taskHash)
+	log.Info("start proof generation session", "id", taskID)
 	defer func() {
 		if !success {
 			if task != nil {
