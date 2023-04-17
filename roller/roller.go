@@ -227,14 +227,14 @@ func (r *Roller) prove() error {
 			proofMsg = &message.ProofDetail{
 				Status: message.StatusProofError,
 				Error:  err.Error(),
-				ID:     task.Task.ID,
+				ID:     task.Task.ID.Hash,
 				Proof:  &message.AggProof{},
 			}
 			log.Error("prove block failed!", "task-id", task.Task.ID)
 		} else {
 			proofMsg = &message.ProofDetail{
 				Status: message.StatusOk,
-				ID:     task.Task.ID,
+				ID:     task.Task.ID.Hash,
 				Proof:  proof,
 			}
 			log.Info("prove block successfully!", "task-id", task.Task.ID)
@@ -245,13 +245,13 @@ func (r *Roller) prove() error {
 		proofMsg = &message.ProofDetail{
 			Status: message.StatusProofError,
 			Error:  "zk proving panic",
-			ID:     task.Task.ID,
+			ID:     task.Task.ID.Hash,
 			Proof:  &message.AggProof{},
 		}
 	}
 
 	defer func() {
-		err = r.stack.Delete(task.Task.ID)
+		err = r.stack.Delete(task.Task.ID.Hash)
 		if err != nil {
 			log.Error("roller stack pop failed!", "err", err)
 		}

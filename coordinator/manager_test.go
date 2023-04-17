@@ -704,7 +704,7 @@ func (r *mockRoller) loop(t *testing.T, client *client2.Client, proofTime time.D
 			}
 			proof := &message.ProofMsg{
 				ProofDetail: &message.ProofDetail{
-					ID:     task.ID,
+					ID:     task.ID.Hash,
 					Status: message.StatusOk,
 					Proof:  &message.AggProof{},
 				},

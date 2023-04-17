@@ -25,7 +25,7 @@ func TestStack(t *testing.T) {
 	for i := 0; i < 3; i++ {
 		task := &ProvingTask{
 			Task: &message.TaskMsg{
-				ID:     strconv.Itoa(i),
+				ID:     message.TaskID{Hash: strconv.Itoa(i)},
 				Traces: nil,
 			},
 			Times: 0,
@@ -47,7 +47,7 @@ func TestStack(t *testing.T) {
 	// test times
 	task := &ProvingTask{
 		Task: &message.TaskMsg{
-			ID:     strconv.Itoa(1),
+			ID:     message.TaskID{Hash: strconv.Itoa(1)},
 			Traces: nil,
 		},
 		Times: 0,

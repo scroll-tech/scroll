@@ -36,13 +36,16 @@ type rollerNode struct {
 	*rollerMetrics
 }
 
-func (r *rollerNode) sendTask(id string, traces []*geth_types.BlockTrace) bool {
+func (r *rollerNode) sendTask(hash string, batchIdx uint64, traces []*geth_types.BlockTrace) bool {
 	select {
 	case r.taskChan <- &message.TaskMsg{
-		ID:     id,
+		ID: message.TaskID{
+			Hash:     hash,
+			BatchIdx: batchIdx,
+		},
 		Traces: traces,
 	}:
-		r.TaskIDs.Set(id, struct{}{})
+		r.TaskIDs.Set(hash, struct{}{})
 	default:
 		log.Warn("roller channel is full", "roller name", r.Name, "public key", r.PublicKey)
 		return false
