@@ -490,6 +490,9 @@ func (m *Manager) StartProofGenerationSession(task *types.BlockBatch, prevSessio
 		taskHash = prevSession.info.ID
 		taskIdx = prevSession.info.Index
 	}
+
+	taskID := &message.TaskID{Hash: taskHash, BatchIdx: taskIdx}
+
 	if m.GetNumberOfIdleRollers() == 0 {
 		log.Warn("no idle roller when starting proof generation session", "id", taskHash)
 		return false
@@ -500,11 +503,11 @@ func (m *Manager) StartProofGenerationSession(task *types.BlockBatch, prevSessio
 		if !success {
 			if task != nil {
 				if err := m.orm.UpdateProvingStatus(taskHash, types.ProvingTaskUnassigned); err != nil {
-					log.Error("fail to reset task_status as Unassigned", "id", taskHash, "err", err)
+					log.Error("fail to reset task_status as Unassigned", "id", taskID, "err", err)
 				}
 			} else {
 				if err := m.orm.UpdateProvingStatus(taskHash, types.ProvingTaskFailed); err != nil {
-					log.Error("fail to reset task_status as Failed", "id", taskHash, "err", err)
+					log.Error("fail to reset task_status as Failed", "id", taskID, "err", err)
 				}
 			}
 		}
@@ -542,10 +545,10 @@ func (m *Manager) StartProofGenerationSession(task *types.BlockBatch, prevSessio
 			log.Info("selectRoller returns nil")
 			break
 		}
-		log.Info("roller is picked", "session id", taskHash, "name", roller.Name, "public key", roller.PublicKey)
+		log.Info("roller is picked", "task id", taskID, "name", roller.Name, "public key", roller.PublicKey)
 		// send trace to roller
-		if !roller.sendTask(taskHash, taskIdx, traces) {
-			log.Error("send task failed", "roller name", roller.Name, "public key", roller.PublicKey, "id", taskHash)
+		if !roller.sendTask(taskID, traces) {
+			log.Error("send task failed", "roller name", roller.Name, "public key", roller.PublicKey, "id", taskID)
 			continue
 		}
 		m.updateMetricRollerProofsLastAssignedTimestampGauge(roller.PublicKey)
@@ -553,13 +556,13 @@ func (m *Manager) StartProofGenerationSession(task *types.BlockBatch, prevSessio
 	}
 	// No roller assigned.
 	if len(rollers) == 0 {
-		log.Error("no roller assigned", "id", taskHash, "number of idle rollers", m.GetNumberOfIdleRollers())
+		log.Error("no roller assigned", "id", taskID, "number of idle rollers", m.GetNumberOfIdleRollers())
 		return false
 	}
 
 	// Update session proving status as assigned.
 	if err = m.orm.UpdateProvingStatus(taskHash, types.ProvingTaskAssigned); err != nil {
-		log.Error("failed to update task status", "id", taskHash, "err", err)
+		log.Error("failed to update task status", "id", taskID, "err", err)
 		return false
 	}
 
@@ -567,6 +570,7 @@ func (m *Manager) StartProofGenerationSession(task *types.BlockBatch, prevSessio
 	sess := &session{
 		info: &types.SessionInfo{
 			ID:             taskHash,
+			Index:          taskIdx,
 			Rollers:        rollers,
 			StartTimestamp: time.Now().Unix(),
 			Attempts:       1,
@@ -581,6 +585,7 @@ func (m *Manager) StartProofGenerationSession(task *types.BlockBatch, prevSessio
 		log.Info(
 			"assigned proof to roller",
 			"session id", sess.info.ID,
+			"task index", sess.info.Index,
 			"roller name", roller.Name,
 			"roller pk", roller.PublicKey,
 			"proof status", roller.Status)
@@ -588,7 +593,7 @@ func (m *Manager) StartProofGenerationSession(task *types.BlockBatch, prevSessio
 
 	// Store session info.
 	if err = m.orm.SetSessionInfo(sess.info); err != nil {
-		log.Error("db set session info fail", "session id", sess.info.ID, "error", err)
+		log.Error("db set session info fail", "session id", sess.info.ID, "task index", sess.info.Index, "error", err)
 		return false
 	}
 
