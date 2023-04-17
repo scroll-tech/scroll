@@ -84,11 +84,11 @@ func (p *Prover) prove(tracesByt []byte) []byte {
 	return []byte(proof)
 }
 
-func (p *Prover) dumpProof(id string, proofByt []byte) error {
+func (p *Prover) dumpProof(id message.TaskID, proofByt []byte) error {
 	if p.cfg.DumpDir == "" {
 		return nil
 	}
-	path := filepath.Join(p.cfg.DumpDir, id)
+	path := filepath.Join(p.cfg.DumpDir, id.String())
 	f, err := os.Create(path)
 	if err != nil {
 		return err

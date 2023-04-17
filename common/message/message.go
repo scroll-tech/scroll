@@ -4,6 +4,7 @@ import (
 	"crypto/ecdsa"
 	"crypto/rand"
 	"encoding/hex"
+	"fmt"
 
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/common/hexutil"
@@ -196,6 +197,10 @@ type TaskMsg struct {
 type TaskID struct {
 	Hash     string `json:"hash"`
 	BatchIdx uint64 `json:"batch_idx"`
+}
+
+func (tid TaskID) String() string {
+	return fmt.Sprintf("%s-%d", tid.Hash, tid.BatchIdx)
 }
 
 // ProofDetail is the message received from rollers that contains zk proof, the status of
