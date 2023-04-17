@@ -39,7 +39,7 @@ type rollerNode struct {
 func (r *rollerNode) sendTask(hash string, batchIdx uint64, traces []*geth_types.BlockTrace) bool {
 	select {
 	case r.taskChan <- &message.TaskMsg{
-		ID: message.TaskID{
+		ID: &message.TaskID{
 			Hash:     hash,
 			BatchIdx: batchIdx,
 		},

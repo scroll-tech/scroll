@@ -84,7 +84,7 @@ func (p *Prover) prove(tracesByt []byte) []byte {
 	return []byte(proof)
 }
 
-func (p *Prover) dumpProof(id message.TaskID, proofByt []byte) error {
+func (p *Prover) dumpProof(id *message.TaskID, proofByt []byte) error {
 	if p.cfg.DumpDir == "" {
 		return nil
 	}

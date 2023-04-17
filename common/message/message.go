@@ -189,7 +189,7 @@ func (a *ProofMsg) PublicKey() (string, error) {
 
 // TaskMsg is a wrapper type around db ProveTask type.
 type TaskMsg struct {
-	ID     TaskID              `json:"id"`
+	ID     *TaskID             `json:"id"`
 	Traces []*types.BlockTrace `json:"blockTraces"`
 }
 
@@ -199,7 +199,7 @@ type TaskID struct {
 	BatchIdx uint64 `json:"batch_idx"`
 }
 
-func (tid TaskID) String() string {
+func (tid *TaskID) String() string {
 	return fmt.Sprintf("%s-%d", tid.Hash, tid.BatchIdx)
 }
 
