@@ -160,6 +160,7 @@ type RollerStatus struct {
 // SessionInfo is assigned rollers info of a block batch (session)
 type SessionInfo struct {
 	ID             string                   `json:"id"`
+	Index          uint64                   `json:"index"`
 	Rollers        map[string]*RollerStatus `json:"rollers"`
 	StartTimestamp int64                    `json:"start_timestamp"`
 	Attempts       uint8                    `json:"attempts,omitempty"`

@@ -479,11 +479,16 @@ func (m *Manager) APIs() []rpc.API {
 
 // StartProofGenerationSession starts a proof generation session
 func (m *Manager) StartProofGenerationSession(task *types.BlockBatch, prevSession *session) (success bool) {
-	var taskHash string
+	var (
+		taskHash string
+		taskIdx  uint64
+	)
 	if task != nil {
 		taskHash = task.Hash
+		taskIdx = task.Index
 	} else {
 		taskHash = prevSession.info.ID
+		taskIdx = prevSession.info.Index
 	}
 	if m.GetNumberOfIdleRollers() == 0 {
 		log.Warn("no idle roller when starting proof generation session", "id", taskHash)
@@ -539,7 +544,7 @@ func (m *Manager) StartProofGenerationSession(task *types.BlockBatch, prevSessio
 		}
 		log.Info("roller is picked", "session id", taskHash, "name", roller.Name, "public key", roller.PublicKey)
 		// send trace to roller
-		if !roller.sendTask(taskHash, task.Index, traces) {
+		if !roller.sendTask(taskHash, taskIdx, traces) {
 			log.Error("send task failed", "roller name", roller.Name, "public key", roller.PublicKey, "id", taskHash)
 			continue
 		}
