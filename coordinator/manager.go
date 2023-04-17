@@ -218,7 +218,7 @@ func (m *Manager) restorePrevSessions() {
 				info:       v,
 				finishChan: make(chan rollerProofStatus, proofAndPkBufferSize),
 			}
-			m.sessions[sess.info.ID] = sess
+			m.sessions[sess.info.ID.Hash] = sess
 
 			log.Info("Coordinator restart reload sessions", "session start time", time.Unix(sess.info.StartTimestamp, 0))
 			for _, roller := range sess.info.Rollers {
@@ -369,7 +369,7 @@ func (m *Manager) CollectProofs(sess *session) {
 				if m.StartProofGenerationSession(nil, sess) {
 					m.mu.Lock()
 					for pk := range sess.info.Rollers {
-						m.freeTaskIDForRoller(pk, sess.info.ID)
+						m.freeTaskIDForRoller(pk, sess.info.ID.Hash)
 					}
 					m.mu.Unlock()
 					log.Info("Retrying session", "session id:", sess.info.ID)
@@ -384,14 +384,14 @@ func (m *Manager) CollectProofs(sess *session) {
 			// Note that this is only a workaround for testnet here.
 			// TODO: In real cases we should reset to orm.ProvingTaskUnassigned
 			// so as to re-distribute the task in the future
-			if err := m.orm.UpdateProvingStatus(sess.info.ID, types.ProvingTaskFailed); err != nil {
-				log.Error("fail to reset task_status as Unassigned", "session id", sess.info.ID, "task index", sess.info.Index, "err", err)
+			if err := m.orm.UpdateProvingStatus(sess.info.ID.Hash, types.ProvingTaskFailed); err != nil {
+				log.Error("fail to reset task_status as Unassigned", "session id", sess.info.ID, "err", err)
 			}
 			m.mu.Lock()
 			for pk := range sess.info.Rollers {
-				m.freeTaskIDForRoller(pk, sess.info.ID)
+				m.freeTaskIDForRoller(pk, sess.info.ID.Hash)
 			}
-			delete(m.sessions, sess.info.ID)
+			delete(m.sessions, sess.info.ID.Hash)
 			m.mu.Unlock()
 			coordinatorSessionsTimeoutTotalCounter.Inc(1)
 			return
@@ -420,9 +420,9 @@ func (m *Manager) CollectProofs(sess *session) {
 				// TODO: reward winner
 
 				for pk := range sess.info.Rollers {
-					m.freeTaskIDForRoller(pk, sess.info.ID)
+					m.freeTaskIDForRoller(pk, sess.info.ID.Hash)
 				}
-				delete(m.sessions, sess.info.ID)
+				delete(m.sessions, sess.info.ID.Hash)
 				m.mu.Unlock()
 
 				coordinatorSessionsSuccessTotalCounter.Inc(1)
@@ -482,16 +482,15 @@ func (m *Manager) StartProofGenerationSession(task *types.BlockBatch, prevSessio
 	var (
 		taskHash string
 		taskIdx  uint64
+		taskID   *message.TaskID
 	)
 	if task != nil {
 		taskHash = task.Hash
 		taskIdx = task.Index
+		taskID = &message.TaskID{Hash: taskHash, BatchIdx: taskIdx}
 	} else {
-		taskHash = prevSession.info.ID
-		taskIdx = prevSession.info.Index
+		taskID = prevSession.info.ID
 	}
-
-	taskID := &message.TaskID{Hash: taskHash, BatchIdx: taskIdx}
 
 	if m.GetNumberOfIdleRollers() == 0 {
 		log.Warn("no idle roller when starting proof generation session", "id", taskID)
@@ -569,8 +568,7 @@ func (m *Manager) StartProofGenerationSession(task *types.BlockBatch, prevSessio
 	// Create a proof generation session.
 	sess := &session{
 		info: &types.SessionInfo{
-			ID:             taskHash,
-			Index:          taskIdx,
+			ID:             taskID,
 			Rollers:        rollers,
 			StartTimestamp: time.Now().Unix(),
 			Attempts:       1,
@@ -585,7 +583,6 @@ func (m *Manager) StartProofGenerationSession(task *types.BlockBatch, prevSessio
 		log.Info(
 			"assigned proof to roller",
 			"session id", sess.info.ID,
-			"task index", sess.info.Index,
 			"roller name", roller.Name,
 			"roller pk", roller.PublicKey,
 			"proof status", roller.Status)
@@ -593,7 +590,7 @@ func (m *Manager) StartProofGenerationSession(task *types.BlockBatch, prevSessio
 
 	// Store session info.
 	if err = m.orm.SetSessionInfo(sess.info); err != nil {
-		log.Error("db set session info fail", "session id", sess.info.ID, "task index", sess.info.Index, "error", err)
+		log.Error("db set session info fail", "session id", sess.info.ID, "error", err)
 		return false
 	}
 
@@ -625,7 +622,7 @@ func (m *Manager) IsRollerIdle(hexPk string) bool {
 func (m *Manager) addFailedSession(sess *session, errMsg string) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	m.failedSessionInfos[sess.info.ID] = newSessionInfo(sess, types.ProvingTaskFailed, errMsg, true)
+	m.failedSessionInfos[sess.info.ID.Hash] = newSessionInfo(sess, types.ProvingTaskFailed, errMsg, true)
 }
 
 // VerifyToken verifies pukey for token and expiration time
