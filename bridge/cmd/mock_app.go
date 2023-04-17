@@ -50,12 +50,12 @@ func (b *MockApp) RunApp(t *testing.T, name utils.MockAppName, args ...string) {
 		name == utils.GasOracleApp ||
 		name == utils.MessageRelayerApp ||
 		name == utils.RollupRelayerApp) {
-		t.Error(fmt.Sprintf("Don't support the mock app, name: %s", name))
+		t.Errorf(fmt.Sprintf("Don't support the mock app, name: %s", name))
 		return
 	}
 
 	if app, ok := b.mockApps[name]; ok {
-		t.Log(fmt.Sprintf("%s already exist, free the current and recreate again", string(name)))
+		t.Logf(fmt.Sprintf("%s already exist, free the current and recreate again", string(name)))
 		app.WaitExit()
 	}
 	appAPI := cmd.NewCmd(string(name), append(b.args, args...)...)
@@ -72,7 +72,7 @@ func (b *MockApp) WaitExit() {
 	b.mockApps = make(map[utils.MockAppName]docker.AppAPI)
 }
 
-// Free stop and release bridge-test.
+// Free stop and release bridge mocked apps.
 func (b *MockApp) Free() {
 	b.WaitExit()
 	_ = os.Remove(b.bridgeFile)
