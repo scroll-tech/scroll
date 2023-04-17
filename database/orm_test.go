@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math/big"
 	"os"
+	"scroll-tech/common/message"
 	"testing"
 	"time"
 
@@ -375,6 +376,7 @@ func testOrmSessionInfo(t *testing.T) {
 	assert.NoError(t, err)
 	err = ormBatch.NewBatchInDBTx(dbTx, batchData1)
 	batchHash := batchData1.Hash().Hex()
+	batchIdx := batchData1.Batch.BatchIndex
 	assert.NoError(t, err)
 	assert.NoError(t, ormBlock.SetBatchHashForL2BlocksInDBTx(dbTx, []uint64{
 		batchData1.Batch.Blocks[0].BlockNumber}, batchHash))
@@ -390,7 +392,10 @@ func testOrmSessionInfo(t *testing.T) {
 	assert.Equal(t, 0, len(sessionInfos))
 
 	sessionInfo := types.SessionInfo{
-		ID: batchHash,
+		ID: &message.TaskID{
+			Hash:     batchHash,
+			BatchIdx: batchIdx,
+		},
 		Rollers: map[string]*types.RollerStatus{
 			"0": {
 				PublicKey: "0",
