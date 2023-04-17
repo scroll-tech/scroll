@@ -481,7 +481,7 @@ func (m *Manager) APIs() []rpc.API {
 func (m *Manager) StartProofGenerationSession(task *types.BlockBatch, prevSession *session) (success bool) {
 	var taskId string
 	if task != nil {
-		taskId = task.Hash
+		taskId = fmt.Sprintf("%s:%d", task.Hash, task.Index)
 	} else {
 		taskId = prevSession.info.ID
 	}
