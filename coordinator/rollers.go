@@ -124,8 +124,6 @@ func (m *Manager) GetNumberOfIdleRollers() (count int) {
 			if r.TaskIDs.Count() == 0 {
 				count++
 			}
-		} else {
-			log.Error("rollerPool Get fail", "pk", pk, "idx", i, "pk len", pk)
 		}
 	}
 	return count
@@ -140,8 +138,6 @@ func (m *Manager) selectRoller() *rollerNode {
 			if r.TaskIDs.Count() == 0 {
 				return r
 			}
-		} else {
-			log.Error("rollerPool Get fail", "pk", pubkeys[idx.Int64()], "idx", idx.Int64(), "pk len", len(pubkeys))
 		}
 		pubkeys[idx.Int64()], pubkeys = pubkeys[0], pubkeys[1:]
 	}
