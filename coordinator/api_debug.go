@@ -2,6 +2,7 @@ package coordinator
 
 import (
 	"fmt"
+	"scroll-tech/common/message"
 	"time"
 
 	"scroll-tech/common/types"
@@ -26,12 +27,12 @@ type RollerInfo struct {
 
 // SessionInfo records proof create or proof verify failed session.
 type SessionInfo struct {
-	ID              string    `json:"id"`
-	Status          string    `json:"status"`
-	StartTime       time.Time `json:"start_time"`
-	FinishTime      time.Time `json:"finish_time,omitempty"`      // set to 0 if not finished
-	AssignedRollers []string  `json:"assigned_rollers,omitempty"` // roller name list
-	Error           string    `json:"error,omitempty"`            // empty string if no error encountered
+	ID              *message.TaskID `json:"id"`
+	Status          string          `json:"status"`
+	StartTime       time.Time       `json:"start_time"`
+	FinishTime      time.Time       `json:"finish_time,omitempty"`      // set to 0 if not finished
+	AssignedRollers []string        `json:"assigned_rollers,omitempty"` // roller name list
+	Error           string          `json:"error,omitempty"`            // empty string if no error encountered
 }
 
 // ListRollers returns all live rollers.
