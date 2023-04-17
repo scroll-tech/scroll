@@ -90,7 +90,7 @@ contract L2USDCGateway is OwnableUpgradeable, ScrollGatewayBase, L2ERC20Gateway 
         require(_l2Token == l2USDC, "l2 token not USDC");
         require(!depositPaused, "deposit paused");
 
-        IFiatToken(_l2Token).mint(_to, _amount);
+        require(IFiatToken(_l2Token).mint(_to, _amount), "mint USDC failed");
 
         emit FinalizeDepositERC20(_l1Token, _l2Token, _from, _to, _amount, _data);
     }
@@ -135,9 +135,9 @@ contract L2USDCGateway is OwnableUpgradeable, ScrollGatewayBase, L2ERC20Gateway 
 
         // 2. Transfer token into this contract.
         IERC20Upgradeable(_token).safeTransferFrom(_from, address(this), _amount);
-        IFiatToken(_token).burn(_amount);
+        require(IFiatToken(_token).burn(_amount), "burn USDC failed");
 
-        // 3. Generate message passed to L2StandardERC20Gateway.
+        // 3. Generate message passed to L1USDCGateway.
         address _l1USDC = l1USDC;
         bytes memory _message = abi.encodeWithSelector(
             IL1ERC20Gateway.finalizeWithdrawERC20.selector,

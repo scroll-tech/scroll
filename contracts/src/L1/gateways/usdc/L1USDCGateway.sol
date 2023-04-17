@@ -152,7 +152,7 @@ contract L1USDCGateway is OwnableUpgradeable, ScrollGatewayBase, L1ERC20Gateway 
         // 2. Transfer token into this contract.
         IERC20Upgradeable(_token).safeTransferFrom(_from, address(this), _amount);
 
-        // 3. Generate message passed to L2StandardERC20Gateway.
+        // 3. Generate message passed to L2USDCGateway.
         bytes memory _message = abi.encodeWithSelector(
             IL2ERC20Gateway.finalizeDepositERC20.selector,
             _token,
