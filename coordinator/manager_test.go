@@ -539,7 +539,8 @@ func testGracefulRestart(t *testing.T) {
 	}()
 
 	for i := range hashes {
-		info, err := newRollerManager.GetSessionInfo(hashes[i])
+		sessID := fmt.Sprintf("%s:%d", hashes[i], batchData.Batch.BatchIndex)
+		info, err := newRollerManager.GetSessionInfo(sessID)
 		assert.NoError(t, err)
 		assert.Equal(t, types.ProvingTaskAssigned.String(), info.Status)
 
