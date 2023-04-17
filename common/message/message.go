@@ -200,7 +200,7 @@ type TaskID struct {
 }
 
 func (tid *TaskID) String() string {
-	return fmt.Sprintf("%s-%d", tid.Hash, tid.BatchIdx)
+	return fmt.Sprintf("%d-%s", tid.BatchIdx, tid.Hash)
 }
 
 // ProofDetail is the message received from rollers that contains zk proof, the status of
