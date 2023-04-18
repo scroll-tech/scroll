@@ -25,7 +25,10 @@ var (
 	uniswapV2WETH9            = common.HexToAddress("0x7363726f6c6c6c20000000000000000000000022")
 )
 
-func testERC20(t *testing.T) {
+func TestERC20(t *testing.T) {
+	// Start l2geth docker.
+	base.RunL2Geth(t)
+
 	l2Cli, err := base.L2Client()
 	assert.Nil(t, err)
 	token, err := erc20.NewERC20Mock(erc20Address, l2Cli)
