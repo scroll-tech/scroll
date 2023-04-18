@@ -22,6 +22,13 @@ const (
 	StatusProofError
 )
 
+const (
+	// CommonRoller is default roller, it only generates zk proof from traces.
+	CommonRoller int = iota
+	// AggregatorRoller generates zk proof from other zk proofs and aggregate them into one proof.
+	AggregatorRoller
+)
+
 // AuthMsg is the first message exchanged from the Roller to the Sequencer.
 // It effectively acts as a registration, and makes the Roller identification
 // known to the Sequencer.

@@ -86,6 +86,11 @@ func NewRoller(cfg *config.Config) (*Roller, error) {
 	}, nil
 }
 
+// Type returns roller type.
+func (r *Roller) Type() int {
+	return r.cfg.RollerType
+}
+
 // PublicKey translate public key to hex and return.
 func (r *Roller) PublicKey() string {
 	return common.Bytes2Hex(crypto.CompressPubkey(&r.priv.PublicKey))

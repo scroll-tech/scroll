@@ -10,6 +10,9 @@ import (
 
 // Config loads roller configuration items.
 type Config struct {
+	// Common: 0 (default type)
+	// Aggregator: 1
+	RollerType       int           `json:"roller_type"`
 	RollerName       string        `json:"roller_name"`
 	KeystorePath     string        `json:"keystore_path"`
 	KeystorePassword string        `json:"keystore_password"`
