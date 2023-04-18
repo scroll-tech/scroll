@@ -31,7 +31,8 @@ func TestIntegration(t *testing.T) {
 	t.Run("testMonitorMetrics", testMonitorMetrics)
 
 	// test contracts
-	t.Run("testERC20", testERC20)
+	t.Run("TestERC20", TestERC20)
+	//t.Run("testDao", testDao)
 
 	t.Cleanup(func() {
 		free(t)

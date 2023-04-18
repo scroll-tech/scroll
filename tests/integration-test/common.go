@@ -41,6 +41,7 @@ var (
 	timestamp int
 	wsPort    int64
 
+	bridgeCfg       *bridgeConfig.Config
 	bridgeFile      string
 	coordinatorFile string
 
@@ -153,6 +154,7 @@ func mockBridgeConfig(t *testing.T) string {
 	cfg.L2Config.Endpoint = base.L2gethImg.Endpoint()
 	cfg.L1Config.RelayerConfig.SenderConfig.Endpoint = base.L2gethImg.Endpoint()
 	cfg.DBConfig = base.DBConfig
+	bridgeCfg = cfg
 
 	// Store changed bridge config into a temp file.
 	data, err := json.Marshal(cfg)
