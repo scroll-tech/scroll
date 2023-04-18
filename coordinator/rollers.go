@@ -132,13 +132,13 @@ func (m *Manager) GetNumberOfIdleRollers() (count int) {
 	return count
 }
 
-func (m *Manager) selectRoller() *rollerNode {
+func (m *Manager) selectRoller(rollerType message.RollerType) *rollerNode {
 	pubkeys := m.rollerPool.Keys()
 	for len(pubkeys) > 0 {
 		idx, _ := rand.Int(rand.Reader, big.NewInt(int64(len(pubkeys))))
 		if val, ok := m.rollerPool.Get(pubkeys[idx.Int64()]); ok {
 			r := val.(*rollerNode)
-			if r.TaskIDs.Count() == 0 {
+			if r.TaskIDs.Count() == 0 && r.Type == rollerType {
 				return r
 			}
 		}

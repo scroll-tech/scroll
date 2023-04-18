@@ -215,6 +215,12 @@ type TaskMsg struct {
 	Traces []*types.BlockTrace `json:"blockTraces"`
 }
 
+// AggTaskMsg is a wrapper type around db AggProveTask type.
+type AggTaskMsg struct {
+	ID     string      `json:"id"`
+	Proofs []*AggProof `json:"proofs"`
+}
+
 // ProofDetail is the message received from rollers that contains zk proof, the status of
 // the proof generation succeeded, and an error message if proof generation failed.
 type ProofDetail struct {

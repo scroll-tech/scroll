@@ -529,10 +529,10 @@ func (m *Manager) StartProofGenerationSession(task *types.BlockBatch, prevSessio
 		}
 	}
 
-	// Dispatch task to rollers.
+	// Dispatch task to common rollers.
 	rollers := make(map[string]*types.RollerStatus)
 	for i := 0; i < int(m.cfg.RollersPerSession); i++ {
-		roller := m.selectRoller()
+		roller := m.selectRoller(message.CommonRoller)
 		if roller == nil {
 			log.Info("selectRoller returns nil")
 			break
