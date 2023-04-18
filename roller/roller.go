@@ -119,6 +119,7 @@ func (r *Roller) Register() error {
 	authMsg := &message.AuthMsg{
 		Identity: &message.Identity{
 			Name:      r.cfg.RollerName,
+			Type:      r.cfg.RollerType,
 			Timestamp: uint32(timestamp),
 			PublicKey: r.PublicKey(),
 			Version:   version.Version,

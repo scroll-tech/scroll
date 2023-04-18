@@ -22,9 +22,23 @@ const (
 	StatusProofError
 )
 
+// RollerType represents the type of roller.
+type RollerType int
+
+func (r RollerType) String() string {
+	switch r {
+	case CommonRoller:
+		return "Common Roller"
+	case AggregatorRoller:
+		return "Aggregator Roller"
+	default:
+		return "illegal Roller type"
+	}
+}
+
 const (
 	// CommonRoller is default roller, it only generates zk proof from traces.
-	CommonRoller int = iota
+	CommonRoller RollerType = iota
 	// AggregatorRoller generates zk proof from other zk proofs and aggregate them into one proof.
 	AggregatorRoller
 )
@@ -43,6 +57,8 @@ type AuthMsg struct {
 type Identity struct {
 	// Roller name
 	Name string `json:"name"`
+	// Roller Type
+	Type RollerType `json:"type"`
 	// Unverified Unix timestamp of message creation
 	Timestamp uint32 `json:"timestamp"`
 	// Roller public key

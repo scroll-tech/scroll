@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"scroll-tech/common/message"
 
 	"github.com/scroll-tech/go-ethereum/log"
 )
@@ -12,13 +13,13 @@ import (
 type Config struct {
 	// Common: 0 (default type)
 	// Aggregator: 1
-	RollerType       int           `json:"roller_type"`
-	RollerName       string        `json:"roller_name"`
-	KeystorePath     string        `json:"keystore_path"`
-	KeystorePassword string        `json:"keystore_password"`
-	CoordinatorURL   string        `json:"coordinator_url"`
-	Prover           *ProverConfig `json:"prover"`
-	DBPath           string        `json:"db_path"`
+	RollerType       message.RollerType `json:"roller_type"`
+	RollerName       string             `json:"roller_name"`
+	KeystorePath     string             `json:"keystore_path"`
+	KeystorePassword string             `json:"keystore_password"`
+	CoordinatorURL   string             `json:"coordinator_url"`
+	Prover           *ProverConfig      `json:"prover"`
+	DBPath           string             `json:"db_path"`
 }
 
 // ProverConfig load zk prover config.

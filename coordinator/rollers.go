@@ -20,6 +20,8 @@ import (
 type rollerNode struct {
 	// Roller name
 	Name string
+	// Roller type
+	Type message.RollerType
 	// Roller public key
 	PublicKey string
 	// Roller version
@@ -77,6 +79,7 @@ func (m *Manager) register(pubkey string, identity *message.Identity) (<-chan *m
 		}
 		node = &rollerNode{
 			Name:          identity.Name,
+			Type:          identity.Type,
 			Version:       identity.Version,
 			PublicKey:     pubkey,
 			TaskIDs:       *taskIDs,
@@ -88,7 +91,7 @@ func (m *Manager) register(pubkey string, identity *message.Identity) (<-chan *m
 	roller := node.(*rollerNode)
 	// avoid reconnection too frequently.
 	if time.Since(roller.registerTime) < 60 {
-		log.Warn("roller reconnect too frequently", "roller_name", identity.Name, "public key", pubkey)
+		log.Warn("roller reconnect too frequently", "roller_name", identity.Name, "roller_type", identity.Type, "public key", pubkey)
 		return nil, fmt.Errorf("roller reconnect too frequently")
 	}
 	// update register time and status
