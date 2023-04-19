@@ -370,8 +370,8 @@ func (r *Layer2Relayer) ProcessGasPriceOracle() {
 func (r *Layer2Relayer) CheckRollupCommittingBatches() error {
 	txMsgs, err := r.db.GetScrollTxs(
 		map[string]interface{}{
-			"type":    types.RollUpCommitTx,
-			"confirm": false,
+			"type":      types.RollUpCommitTx,
+			"confirmed": false,
 		},
 		"ORDER BY nonce ASC",
 	)
@@ -384,7 +384,7 @@ func (r *Layer2Relayer) CheckRollupCommittingBatches() error {
 	}
 
 	for _, msg := range txMsgs {
-		if !msg.ExtraData.Valid {
+		if !msg.Note.Valid {
 			return fmt.Errorf("batch hash list is empty, tx.id: %s", msg.ID)
 		}
 		// Wait until sender's pending is not full.
@@ -406,7 +406,7 @@ func (r *Layer2Relayer) CheckRollupCommittingBatches() error {
 			log.Error("failed to load or resend rollup committing tx", "msg.id", msg.ID, "err", err)
 			return err
 		}
-		r.processingBatchesCommitment.Set(msg.ID, strings.Split(msg.ExtraData.String, ","))
+		r.processingBatchesCommitment.Set(msg.ID, strings.Split(msg.Note.String, ","))
 		log.Info("successfully check rollup committing tx", "resend", isResend, "msg.id", msg.ID, "tx.Hash", tx.Hash().String())
 	}
 	return nil

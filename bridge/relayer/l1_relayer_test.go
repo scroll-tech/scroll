@@ -71,7 +71,7 @@ func testL1CheckSubmittedMessages(t *testing.T) {
 
 	signedTx, err := mockTx(auth, l2Cli)
 	assert.NoError(t, err)
-	err = db.SaveTx(templateL1Message[0].MsgHash, auth.From.String(), types.L1toL2MessageTx, signedTx, "")
+	err = db.SaveScrollTx(templateL1Message[0].MsgHash, auth.From.String(), types.L1toL2MessageTx, signedTx, "")
 	assert.Nil(t, err)
 	err = db.SaveL1Messages(context.Background(), templateL1Message)
 	assert.NoError(t, err)

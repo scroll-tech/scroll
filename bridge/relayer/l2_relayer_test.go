@@ -224,7 +224,7 @@ func testL2CheckSubmittedMessages(t *testing.T) {
 
 	signedTx, err := mockTx(auth, l1Cli)
 	assert.NoError(t, err)
-	err = db.SaveTx(templateL2Message[0].MsgHash, auth.From.String(), types.L2toL1MessageTx, signedTx, "")
+	err = db.SaveScrollTx(templateL2Message[0].MsgHash, auth.From.String(), types.L2toL1MessageTx, signedTx, "")
 	assert.Nil(t, err)
 	err = db.SaveL2Messages(context.Background(), templateL2Message)
 	assert.NoError(t, err)
@@ -303,7 +303,7 @@ func testL2CheckRollupCommittingBatches(t *testing.T) {
 	signedTx, err := mockTx(auth, l1Cli)
 	assert.NoError(t, err)
 	id := "rollup committing tx"
-	err = db.SaveTx(id, auth.From.String(), types.RollUpCommitTx, signedTx, strings.Join(batchHashes, ","))
+	err = db.SaveScrollTx(id, auth.From.String(), types.RollUpCommitTx, signedTx, strings.Join(batchHashes, ","))
 	assert.NoError(t, err)
 
 	assert.NoError(t, relayer.CheckRollupCommittingBatches())
@@ -314,8 +314,8 @@ func testL2CheckRollupCommittingBatches(t *testing.T) {
 		// check tx is confirmed.
 		txMsgs, err = db.GetScrollTxs(
 			map[string]interface{}{
-				"type":    types.RollUpCommitTx,
-				"confirm": true,
+				"type":      types.RollUpCommitTx,
+				"confirmed": true,
 			},
 			"ORDER BY nonce ASC",
 		)
@@ -323,7 +323,7 @@ func testL2CheckRollupCommittingBatches(t *testing.T) {
 	})
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(txMsgs))
-	assert.Equal(t, "", txMsgs[0].ExtraData.String)
+	assert.Equal(t, "", txMsgs[0].Note.String)
 	// check tx is on chain.
 	_, err = l1Cli.TransactionReceipt(context.Background(), common.HexToHash(txMsgs[0].TxHash.String))
 	assert.NoError(t, err)
@@ -370,7 +370,7 @@ func testL2CheckRollupFinalizingBatches(t *testing.T) {
 
 	signedTx, err := mockTx(auth, l1Cli)
 	assert.NoError(t, err)
-	err = db.SaveTx(batchHashes[0], auth.From.String(), types.RollupFinalizeTx, signedTx, strings.Join(batchHashes, ","))
+	err = db.SaveScrollTx(batchHashes[0], auth.From.String(), types.RollupFinalizeTx, signedTx, strings.Join(batchHashes, ","))
 	assert.NoError(t, err)
 	assert.NoError(t, relayer.CheckRollupFinalizingBatches())
 	relayer.WaitRollupFinalizingBatches()
@@ -380,8 +380,8 @@ func testL2CheckRollupFinalizingBatches(t *testing.T) {
 		// check tx is confirmed.
 		txMsgs, err = db.GetScrollTxs(
 			map[string]interface{}{
-				"type":    types.RollupFinalizeTx,
-				"confirm": true,
+				"type":      types.RollupFinalizeTx,
+				"confirmed": true,
 			},
 			"ORDER BY nonce ASC",
 		)
@@ -389,7 +389,7 @@ func testL2CheckRollupFinalizingBatches(t *testing.T) {
 	})
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(txMsgs))
-	assert.Equal(t, "", txMsgs[0].ExtraData.String)
+	assert.Equal(t, "", txMsgs[0].Note.String)
 	// check tx is on chain.
 	_, err = l1Cli.TransactionReceipt(context.Background(), common.HexToHash(txMsgs[0].TxHash.String))
 	assert.NoError(t, err)
