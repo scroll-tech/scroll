@@ -79,7 +79,6 @@ var (
 	batchData1   *types.BatchData
 	batchData2   *types.BatchData
 
-	dbConfig   *database.DBConfig
 	base       *docker.App
 	ormBlock   orm.BlockTraceOrm
 	ormLayer1  orm.L1MessageOrm
@@ -92,13 +91,11 @@ var (
 )
 
 func setupEnv(t *testing.T) error {
-	// Init db config and start db container.
-	dbConfig = &database.DBConfig{DriverName: "postgres"}
-	base.RunImages(t)
-	dbConfig.DSN = base.DBEndpoint()
+	// Start postgres docker container.
+	base.RunDBImage(t)
 
 	// Create db handler and reset db.
-	factory, err := database.NewOrmFactory(dbConfig)
+	factory, err := database.NewOrmFactory(base.DBConfig)
 	assert.NoError(t, err)
 	db := factory.GetDB()
 	assert.NoError(t, migrate.ResetDB(db.DB))
@@ -195,7 +192,7 @@ func TestOrmFactory(t *testing.T) {
 
 func testOrmBlockTraces(t *testing.T) {
 	// Create db handler and reset db.
-	factory, err := database.NewOrmFactory(dbConfig)
+	factory, err := database.NewOrmFactory(base.DBConfig)
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(factory.GetDB().DB))
 
@@ -235,7 +232,7 @@ func testOrmBlockTraces(t *testing.T) {
 
 func testOrmL1Message(t *testing.T) {
 	// Create db handler and reset db.
-	factory, err := database.NewOrmFactory(dbConfig)
+	factory, err := database.NewOrmFactory(base.DBConfig)
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(factory.GetDB().DB))
 
@@ -269,7 +266,7 @@ func testOrmL1Message(t *testing.T) {
 
 func testOrmL2Message(t *testing.T) {
 	// Create db handler and reset db.
-	factory, err := database.NewOrmFactory(dbConfig)
+	factory, err := database.NewOrmFactory(base.DBConfig)
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(factory.GetDB().DB))
 
@@ -305,7 +302,7 @@ func testOrmL2Message(t *testing.T) {
 // testOrmBlockBatch test rollup result table functions
 func testOrmBlockBatch(t *testing.T) {
 	// Create db handler and reset db.
-	factory, err := database.NewOrmFactory(dbConfig)
+	factory, err := database.NewOrmFactory(base.DBConfig)
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(factory.GetDB().DB))
 
@@ -390,7 +387,7 @@ func testOrmBlockBatch(t *testing.T) {
 // testOrmSessionInfo test rollup result table functions
 func testOrmSessionInfo(t *testing.T) {
 	// Create db handler and reset db.
-	factory, err := database.NewOrmFactory(dbConfig)
+	factory, err := database.NewOrmFactory(base.DBConfig)
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(factory.GetDB().DB))
 	dbTx, err := factory.Beginx()
@@ -468,18 +465,18 @@ func mockTx(auth *bind.TransactOpts) (*etypes.Transaction, error) {
 
 func testTxOrmSaveTxAndGetTxByHash(t *testing.T) {
 	// Create db handler and reset db.
-	factory, err := database.NewOrmFactory(dbConfig)
+	factory, err := database.NewOrmFactory(base.DBConfig)
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(factory.GetDB().DB))
 
 	signedTx, err := mockTx(auth)
 	assert.NoError(t, err)
 
-	err = ormTx.SaveTx("1", auth.From.String(), types.L1toL2MessageTx, signedTx, "")
+	err = ormTx.SaveScrollTx("1", auth.From.String(), types.L1toL2MessageTx, signedTx, "")
 	assert.Nil(t, err)
 
 	// Update signedTx message by id.
-	err = ormTx.ConfirmTxByID("1", signedTx.Hash().String())
+	err = ormTx.SetScrollTxConfirmedByID("1", signedTx.Hash().String())
 	assert.NoError(t, err)
 
 	savedTx, err := ormTx.GetTxByID("1")
@@ -493,18 +490,18 @@ func testTxOrmSaveTxAndGetTxByHash(t *testing.T) {
 
 func testTxOrmGetL1TxMessages(t *testing.T) {
 	// Create db handler and reset db.
-	factory, err := database.NewOrmFactory(dbConfig)
+	factory, err := database.NewOrmFactory(base.DBConfig)
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(factory.GetDB().DB))
 
 	signedTx, err := mockTx(auth)
 	assert.NoError(t, err)
-	err = ormTx.SaveTx(templateL1Message[0].MsgHash, auth.From.String(), types.L1toL2MessageTx, signedTx, "")
+	err = ormTx.SaveScrollTx(templateL1Message[0].MsgHash, auth.From.String(), types.L1toL2MessageTx, signedTx, "")
 	assert.Nil(t, err)
 
 	signedTx, err = mockTx(auth)
 	assert.NoError(t, err)
-	err = ormTx.SaveTx("3", auth.From.String(), types.L1toL2MessageTx, signedTx, "")
+	err = ormTx.SaveScrollTx("3", auth.From.String(), types.L1toL2MessageTx, signedTx, "")
 	assert.Nil(t, err)
 
 	// Insert into db
@@ -534,13 +531,13 @@ func testTxOrmGetL1TxMessages(t *testing.T) {
 
 func testTxOrmGetL2TxMessages(t *testing.T) {
 	// Create db handler and reset db.
-	factory, err := database.NewOrmFactory(dbConfig)
+	factory, err := database.NewOrmFactory(base.DBConfig)
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(factory.GetDB().DB))
 
 	signedTx, err := mockTx(auth)
 	assert.NoError(t, err)
-	err = ormTx.SaveTx(templateL1Message[0].MsgHash, auth.From.String(), types.L2toL1MessageTx, signedTx, "")
+	err = ormTx.SaveScrollTx(templateL1Message[0].MsgHash, auth.From.String(), types.L2toL1MessageTx, signedTx, "")
 	assert.Nil(t, err)
 
 	// Insert into db
@@ -567,7 +564,7 @@ func testTxOrmGetL2TxMessages(t *testing.T) {
 
 func testTxOrmGetBlockBatchTxMessages(t *testing.T) {
 	// Create db handler and reset db.
-	factory, err := database.NewOrmFactory(dbConfig)
+	factory, err := database.NewOrmFactory(base.DBConfig)
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(factory.GetDB().DB))
 
@@ -582,7 +579,7 @@ func testTxOrmGetBlockBatchTxMessages(t *testing.T) {
 	signedTx, err := mockTx(auth)
 	assert.NoError(t, err)
 	extraData := "extra data"
-	err = ormTx.SaveTx(batchData1.Hash().String(), auth.From.String(), types.RollUpCommitTx, signedTx, extraData)
+	err = ormTx.SaveScrollTx(batchData1.Hash().String(), auth.From.String(), types.RollUpCommitTx, signedTx, extraData)
 	assert.Nil(t, err)
 
 	batchIndex, txMsgs, err := ormTx.GetBlockBatchTxMessages(
@@ -597,5 +594,5 @@ func testTxOrmGetBlockBatchTxMessages(t *testing.T) {
 	assert.Equal(t, batchData1.Hash().String(), txMsgs[0].ID)
 	assert.Equal(t, false, txMsgs[1].TxHash.Valid)
 	assert.Equal(t, batchData2.Hash().String(), txMsgs[1].ID)
-	assert.Equal(t, extraData, txMsgs[0].ExtraData.String)
+	assert.Equal(t, extraData, txMsgs[0].Note.String)
 }

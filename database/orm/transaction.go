@@ -22,8 +22,8 @@ func NewScrollTxOrm(db *sqlx.DB) ScrollTxOrm {
 	return &scrollTxOrm{db: db}
 }
 
-// SaveTx stores tx message into db.
-func (t *scrollTxOrm) SaveTx(id, sender string, txType stypes.ScrollTxType, tx *types.Transaction, extraData string) error {
+// SaveScrollTx stores tx message into db.
+func (t *scrollTxOrm) SaveScrollTx(id, sender string, txType stypes.ScrollTxType, tx *types.Transaction, extraData string) error {
 	if tx == nil {
 		return nil
 	}
@@ -32,7 +32,7 @@ func (t *scrollTxOrm) SaveTx(id, sender string, txType stypes.ScrollTxType, tx *
 		target = tx.To().String()
 	}
 	_, err := t.db.Exec(
-		t.db.Rebind("INSERT INTO scroll_transaction (id, tx_hash, sender, nonce, target, value, data, extra_data, type) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);"),
+		t.db.Rebind("INSERT INTO scroll_transaction (id, tx_hash, sender, nonce, target, value, data, note, type) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);"),
 		id,
 		tx.Hash().String(),
 		sender,
@@ -46,10 +46,10 @@ func (t *scrollTxOrm) SaveTx(id, sender string, txType stypes.ScrollTxType, tx *
 	return err
 }
 
-// ConfirmTxByID updates confirm and txHash field and clean data content.
-func (t *scrollTxOrm) ConfirmTxByID(id string, txHash string) error {
+// SetScrollTxConfirmedByID updates confirmed and txHash field and clean data content.
+func (t *scrollTxOrm) SetScrollTxConfirmedByID(id string, txHash string) error {
 	db := t.db
-	_, err := db.Exec(db.Rebind("UPDATE scroll_transaction SET confirm = true, data = '', extra_data = '', tx_hash = ? WHERE id = ?;"), txHash, id)
+	_, err := db.Exec(db.Rebind("UPDATE scroll_transaction SET confirmed = true, data = '', note = '', tx_hash = ? WHERE id = ?;"), txHash, id)
 	return err
 }
 
@@ -171,7 +171,7 @@ func (t *scrollTxOrm) GetBlockBatchTxMessages(fields map[string]interface{}, arg
 		query = query + fmt.Sprintf(" AND %s = :%s", key, key)
 	}
 	query = strings.Join(append([]string{query}, args...), " ")
-	query = fmt.Sprintf("select bt.index as index, bt.hash as id, tx.tx_hash, tx.sender, tx.nonce, tx.target, tx.value, tx.data, tx.extra_data from scroll_transaction as tx right join (%s) as bt on tx.id = bt.hash;", query)
+	query = fmt.Sprintf("select bt.index as index, bt.hash as id, tx.tx_hash, tx.sender, tx.nonce, tx.target, tx.value, tx.data, tx.note from scroll_transaction as tx right join (%s) as bt on tx.id = bt.hash;", query)
 
 	db := t.db
 	rows, err := db.NamedQuery(db.Rebind(query), fields)

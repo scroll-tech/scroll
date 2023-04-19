@@ -43,7 +43,7 @@ func init() {
 		return cutils.LogSetup(ctx)
 	}
 	// Register `rollup-relayer-test` app for integration-test.
-	cutils.RegisterSimulation(app, "rollup-relayer-test")
+	cutils.RegisterSimulation(app, cutils.RollupRelayerApp)
 }
 
 func action(ctx *cli.Context) error {

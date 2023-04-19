@@ -43,7 +43,7 @@ func init() {
 	}
 
 	// Register `message-relayer-test` app for integration-test.
-	cutils.RegisterSimulation(app, "message-relayer-test")
+	cutils.RegisterSimulation(app, cutils.MessageRelayerApp)
 }
 
 func action(ctx *cli.Context) error {
