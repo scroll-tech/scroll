@@ -3,7 +3,6 @@ package integration
 import (
 	"context"
 	"github.com/scroll-tech/go-ethereum/accounts/abi/bind"
-	"github.com/scroll-tech/go-ethereum/crypto"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"math/big"
 	"scroll-tech/common/bytecode/dao"
@@ -20,33 +19,29 @@ import (
 )
 
 var (
-	erc20Address   = common.HexToAddress("7363726f6c6c6c20000000000000000000000014")
 	daoAddress     = common.HexToAddress("0x7363726f6c6c6c20000000000000000000000013")
+	erc20Address   = common.HexToAddress("0x7363726f6c6c6c20000000000000000000000014")
 	greeterAddress = common.HexToAddress("0x7363726f6c6c6c20000000000000000000000015")
 	nftAddress     = common.HexToAddress("0x7363726f6c6c6c20000000000000000000000016")
 
-	sushiTokenAddress      = common.HexToAddress("0x7363726f6c6c6c20000000000000000000000016")
-	sushiMasterchefAddress = common.HexToAddress("0x7363726f6c6c6c20000000000000000000000017")
+	sushiTokenAddress      = common.HexToAddress("0x7363726f6c6c6c20000000000000000000000017")
+	sushiMasterchefAddress = common.HexToAddress("0x7363726f6c6c6c20000000000000000000000018")
 
-	voteAddress               = common.HexToAddress("0x7363726f6c6c6c20000000000000000000000018")
-	uniswapV2FactoryAddress   = common.HexToAddress("")
-	uniswapV2Router02Address  = common.HexToAddress("0x7363726f6c6c6c20000000000000000000000020")
-	uniswapV2MulticallAddress = common.HexToAddress("0x7363726f6c6c6c20000000000000000000000021")
-	uniswapV2WETH9            = common.HexToAddress("0x7363726f6c6c6c20000000000000000000000022")
+	voteAddress               = common.HexToAddress("0x7363726f6c6c6c20000000000000000000000019")
+	uniswapV2FactoryAddress   = common.HexToAddress("0x7363726f6c6c6c20000000000000000000000020")
+	uniswapV2Router02Address  = common.HexToAddress("0x7363726f6c6c6c20000000000000000000000021")
+	uniswapV2MulticallAddress = common.HexToAddress("0x7363726f6c6c6c20000000000000000000000022")
+	uniswapV2WETH9            = common.HexToAddress("0x7363726f6c6c6c20000000000000000000000023")
 )
 
 func TestERC20(t *testing.T) {
-	l2Cli, err := ethclient.Dial("ws://localhost:20869") //base.L2Client()
+	base.RunL2Geth(t)
+	l2Cli, err := base.L2Client()
 	assert.Nil(t, err)
 	token, err := erc20.NewERC20Mock(erc20Address, l2Cli)
 	assert.NoError(t, err)
 
-	priv, err := crypto.HexToECDSA("1212121212121212121212121212121212121212121212121212121212121212")
-	assert.NoError(t, err)
-
-	chainId, _ := l2Cli.ChainID(context.Background())
-
-	auth, err := bind.NewKeyedTransactorWithChainID(priv, chainId)
+	auth, err := bind.NewKeyedTransactorWithChainID(bridgeApp.Config.L2Config.RelayerConfig.MessageSenderPrivateKeys[0], base.L2gethImg.ChainID())
 	assert.NoError(t, err)
 
 	authBls0, err := token.BalanceOf(nil, auth.From)
@@ -73,15 +68,11 @@ func TestERC20(t *testing.T) {
 }
 
 func TestVote(t *testing.T) {
-	l2Cli, err := ethclient.Dial("ws://localhost:20869") //base.L2Client()
-	assert.NoError(t, err)
+	base.RunL2Geth(t)
+	l2Cli, err := base.L2Client()
+	assert.Nil(t, err)
 
-	priv, err := crypto.HexToECDSA("1212121212121212121212121212121212121212121212121212121212121212")
-	assert.NoError(t, err)
-
-	chainId, _ := l2Cli.ChainID(context.Background())
-
-	auth, err := bind.NewKeyedTransactorWithChainID(priv, chainId)
+	auth, err := bind.NewKeyedTransactorWithChainID(bridgeApp.Config.L2Config.RelayerConfig.MessageSenderPrivateKeys[0], base.L2gethImg.ChainID())
 	assert.NoError(t, err)
 
 	mockVote, err := vote.NewVotesMock(voteAddress, l2Cli)
@@ -109,15 +100,11 @@ func TestVote(t *testing.T) {
 }
 
 func TestDao(t *testing.T) {
-	l2Cli, err := ethclient.Dial("ws://localhost:20869") //base.L2Client()
-	assert.NoError(t, err)
+	base.RunL2Geth(t)
+	l2Cli, err := base.L2Client()
+	assert.Nil(t, err)
 
-	priv, err := crypto.HexToECDSA("1212121212121212121212121212121212121212121212121212121212121212")
-	assert.NoError(t, err)
-
-	chainId, _ := l2Cli.ChainID(context.Background())
-
-	auth, err := bind.NewKeyedTransactorWithChainID(priv, chainId)
+	auth, err := bind.NewKeyedTransactorWithChainID(bridgeApp.Config.L2Config.RelayerConfig.MessageSenderPrivateKeys[0], base.L2gethImg.ChainID())
 	assert.NoError(t, err)
 	auth.GasPrice = big.NewInt(1108583800)
 	auth.GasLimit = 11529940
@@ -137,15 +124,11 @@ func TestDao(t *testing.T) {
 }
 
 func TestGreeter(t *testing.T) {
-	l2Cli, err := ethclient.Dial("ws://localhost:20869") //base.L2Client()
-	assert.NoError(t, err)
+	base.RunL2Geth(t)
+	l2Cli, err := base.L2Client()
+	assert.Nil(t, err)
 
-	priv, err := crypto.HexToECDSA("1212121212121212121212121212121212121212121212121212121212121212")
-	assert.NoError(t, err)
-
-	chainId, _ := l2Cli.ChainID(context.Background())
-
-	auth, err := bind.NewKeyedTransactorWithChainID(priv, chainId)
+	auth, err := bind.NewKeyedTransactorWithChainID(bridgeApp.Config.L2Config.RelayerConfig.MessageSenderPrivateKeys[0], base.L2gethImg.ChainID())
 	assert.NoError(t, err)
 
 	token, err := greeter.NewGreeter(greeterAddress, l2Cli)
@@ -162,15 +145,11 @@ func TestGreeter(t *testing.T) {
 }
 
 func TestNFT(t *testing.T) {
-	l2Cli, err := ethclient.Dial("ws://localhost:20869") //base.L2Client()
-	assert.NoError(t, err)
+	base.RunL2Geth(t)
+	l2Cli, err := base.L2Client()
+	assert.Nil(t, err)
 
-	priv, err := crypto.HexToECDSA("1212121212121212121212121212121212121212121212121212121212121212")
-	assert.NoError(t, err)
-
-	chainId, _ := l2Cli.ChainID(context.Background())
-
-	auth, err := bind.NewKeyedTransactorWithChainID(priv, chainId)
+	auth, err := bind.NewKeyedTransactorWithChainID(bridgeApp.Config.L2Config.RelayerConfig.MessageSenderPrivateKeys[0], base.L2gethImg.ChainID())
 	assert.NoError(t, err)
 
 	token, err := nft.NewERC721Mock(nftAddress, l2Cli)
@@ -205,12 +184,7 @@ func TestSushi(t *testing.T) {
 	l2Cli, err := ethclient.Dial("ws://localhost:20869") //base.L2Client()
 	assert.NoError(t, err)
 
-	priv, err := crypto.HexToECDSA("1212121212121212121212121212121212121212121212121212121212121212")
-	assert.NoError(t, err)
-
-	chainId, _ := l2Cli.ChainID(context.Background())
-
-	auth, err := bind.NewKeyedTransactorWithChainID(priv, chainId)
+	auth, err := bind.NewKeyedTransactorWithChainID(bridgeApp.Config.L2Config.RelayerConfig.MessageSenderPrivateKeys[0], base.L2gethImg.ChainID())
 	assert.NoError(t, err)
 	auth.GasPrice = big.NewInt(1108583800)
 	auth.GasLimit = 11529940
