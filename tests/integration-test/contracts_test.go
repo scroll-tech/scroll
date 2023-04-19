@@ -11,7 +11,7 @@ import (
 
 var (
 	daoAddress     = common.HexToAddress("0x7363726f6c6c6c20000000000000000000000013")
-	erc20Address   = common.HexToAddress("7363726f6c6c6c20000000000000000000000014")
+	erc20Address   = common.HexToAddress("0x7363726f6c6c6c20000000000000000000000014")
 	greeterAddress = common.HexToAddress("0x7363726f6c6c6c20000000000000000000000015")
 	nftAddress     = common.HexToAddress("0x7363726f6c6c6c20000000000000000000000016")
 
