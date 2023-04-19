@@ -474,11 +474,11 @@ func testTxOrmSaveTxAndGetTxByHash(t *testing.T) {
 	signedTx, err := auth.Signer(auth.From, tx)
 	assert.NoError(t, err)
 
-	err = ormTx.SaveTx("1", auth.From.String(), types.L1toL2MessageTx, signedTx, "")
+	err = ormTx.SaveScrollTx("1", auth.From.String(), types.L1toL2MessageTx, signedTx, "")
 	assert.Nil(t, err)
 
 	// Update tx message by id.
-	err = ormTx.ConfirmTxByID("1", signedTx.Hash().String())
+	err = ormTx.SetScrollTxConfirmedByID("1", signedTx.Hash().String())
 	assert.NoError(t, err)
 
 	savedTx, err := ormTx.GetTxByID("1")
@@ -498,12 +498,12 @@ func testTxOrmGetL1TxMessages(t *testing.T) {
 
 	signedTx, err := mockTx(auth)
 	assert.NoError(t, err)
-	err = ormTx.SaveTx(templateL1Message[0].MsgHash, auth.From.String(), types.L1toL2MessageTx, signedTx, "")
+	err = ormTx.SaveScrollTx(templateL1Message[0].MsgHash, auth.From.String(), types.L1toL2MessageTx, signedTx, "")
 	assert.Nil(t, err)
 
 	signedTx, err = mockTx(auth)
 	assert.NoError(t, err)
-	err = ormTx.SaveTx("3", auth.From.String(), types.L1toL2MessageTx, signedTx, "")
+	err = ormTx.SaveScrollTx("3", auth.From.String(), types.L1toL2MessageTx, signedTx, "")
 	assert.Nil(t, err)
 
 	// Insert into db
@@ -537,7 +537,7 @@ func testTxOrmGetL2TxMessages(t *testing.T) {
 
 	signedTx, err := mockTx(auth)
 	assert.NoError(t, err)
-	err = ormTx.SaveTx(templateL1Message[0].MsgHash, auth.From.String(), types.L2toL1MessageTx, signedTx, "")
+	err = ormTx.SaveScrollTx(templateL1Message[0].MsgHash, auth.From.String(), types.L2toL1MessageTx, signedTx, "")
 	assert.Nil(t, err)
 
 	// Insert into db
@@ -578,7 +578,7 @@ func testTxOrmGetBlockBatchTxMessages(t *testing.T) {
 	signedTx, err := mockTx(auth)
 	assert.NoError(t, err)
 	extraData := "extra data"
-	err = ormTx.SaveTx(batchData1.Hash().String(), auth.From.String(), types.RollUpCommitTx, signedTx, extraData)
+	err = ormTx.SaveScrollTx(batchData1.Hash().String(), auth.From.String(), types.RollUpCommitTx, signedTx, extraData)
 	assert.Nil(t, err)
 
 	txMsgs, err := ormTx.GetBlockBatchTxMessages(
@@ -591,5 +591,5 @@ func testTxOrmGetBlockBatchTxMessages(t *testing.T) {
 	assert.Equal(t, batchData1.Hash().String(), txMsgs[0].ID)
 	assert.Equal(t, false, txMsgs[1].TxHash.Valid)
 	assert.Equal(t, batchData2.Hash().String(), txMsgs[1].ID)
-	assert.Equal(t, extraData, txMsgs[0].ExtraData.String)
+	assert.Equal(t, extraData, txMsgs[0].Note.String)
 }

@@ -250,7 +250,7 @@ func (r *Layer2Relayer) processSavedEvent(msg *types.L2Message) error {
 		log.Error("UpdateLayer2StatusAndLayer1Hash failed", "msgHash", msg.MsgHash, "err", err)
 		return err
 	}
-	err = r.db.SaveTx(msg.MsgHash, senderAddr.String(), types.L2toL1MessageTx, tx, "")
+	err = r.db.SaveScrollTx(msg.MsgHash, senderAddr.String(), types.L2toL1MessageTx, tx, "")
 	if err != nil {
 		log.Error("failed to save l2 relay tx message", "msg.hash", msg.MsgHash, "tx.hash", tx.Hash().String(), "err", err)
 	}
@@ -298,7 +298,7 @@ func (r *Layer2Relayer) ProcessGasPriceOracle() {
 				return
 			}
 			// Record gas oracle tx message.
-			err = r.db.SaveTx(batch.Hash, from.String(), types.L2toL1GasOracleTx, tx, "")
+			err = r.db.SaveScrollTx(batch.Hash, from.String(), types.L2toL1GasOracleTx, tx, "")
 			if err != nil {
 				log.Error("failed to save l2 gas oracle tx message", "batch.Hash", batch.Hash, "tx.Hash", tx.Hash().String(), "err", err)
 			}
@@ -358,7 +358,7 @@ func (r *Layer2Relayer) SendCommitTx(batchData []*types.BatchData) error {
 		}
 	}
 	// Record gas oracle tx message.
-	err = r.db.SaveTx(txID, from.String(), types.RollUpCommitTx, tx, strings.Join(batchHashes, ","))
+	err = r.db.SaveScrollTx(txID, from.String(), types.RollUpCommitTx, tx, strings.Join(batchHashes, ","))
 	if err != nil {
 		log.Error("failed to save l2 commitBatches tx message", "batches.id", txID, "tx.hash", tx.Hash().String(), "err", err)
 	}
@@ -504,7 +504,7 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 		if err != nil {
 			log.Warn("UpdateFinalizeTxHashAndRollupStatus failed", "batch_hash", hash, "err", err)
 		}
-		err = r.db.SaveTx(txID, from.String(), types.RollupFinalizeTx, tx, "")
+		err = r.db.SaveScrollTx(txID, from.String(), types.RollupFinalizeTx, tx, "")
 		if err != nil {
 			log.Error("failed to save l2 committed tx message", "batch.hash", txID, "tx.hash", tx.Hash().String(), "err", err)
 		}
@@ -536,7 +536,7 @@ func (r *Layer2Relayer) handleConfirmation(confirmation *sender.Confirmation) {
 		if err != nil {
 			log.Warn("UpdateLayer2StatusAndLayer1Hash failed", "msgHash", msgHash.(string), "err", err)
 		}
-		if err = r.db.ConfirmTxByID(confirmation.ID, confirmation.TxHash.String()); err != nil {
+		if err = r.db.SetScrollTxConfirmedByID(confirmation.ID, confirmation.TxHash.String()); err != nil {
 			log.Warn("failed to delete l2 relayer message tx data", "msg.Hash", confirmation.ID, "tx.Hash", confirmation.TxHash.String(), "err", err)
 		}
 		bridgeL2MsgsRelayedConfirmedTotalCounter.Inc(1)
@@ -561,7 +561,7 @@ func (r *Layer2Relayer) handleConfirmation(confirmation *sender.Confirmation) {
 				log.Warn("UpdateCommitTxHashAndRollupStatus failed", "batch_hash", batchHash, "err", err)
 			}
 		}
-		if err := r.db.ConfirmTxByID(confirmation.ID, confirmation.TxHash.String()); err != nil {
+		if err := r.db.SetScrollTxConfirmedByID(confirmation.ID, confirmation.TxHash.String()); err != nil {
 			log.Warn("failed to delete commitBatches committed tx data", "batched.id", confirmation.ID, "tx.Hash", confirmation.TxHash.String(), "err", err)
 		}
 		bridgeL2BatchesCommittedConfirmedTotalCounter.Inc(int64(len(batchHashes)))
@@ -583,7 +583,7 @@ func (r *Layer2Relayer) handleConfirmation(confirmation *sender.Confirmation) {
 		if err != nil {
 			log.Warn("UpdateFinalizeTxHashAndRollupStatus failed", "batch_hash", batchHash.(string), "err", err)
 		}
-		if err = r.db.ConfirmTxByID(confirmation.ID, confirmation.TxHash.String()); err != nil {
+		if err = r.db.SetScrollTxConfirmedByID(confirmation.ID, confirmation.TxHash.String()); err != nil {
 			log.Warn("failed to delete finalizeBatchWithProof tx data", "batch.Hash", confirmation.ID, "tx.Hash", confirmation.TxHash.String(), "err", err)
 		}
 		bridgeL2BatchesFinalizedConfirmedTotalCounter.Inc(1)
@@ -615,7 +615,7 @@ func (r *Layer2Relayer) handleConfirmLoop(ctx context.Context) {
 				if err != nil {
 					log.Warn("UpdateL2GasOracleStatusAndOracleTxHash failed", "err", err)
 				}
-				if err = r.db.ConfirmTxByID(cfm.ID, cfm.TxHash.String()); err != nil {
+				if err = r.db.SetScrollTxConfirmedByID(cfm.ID, cfm.TxHash.String()); err != nil {
 					log.Warn("failed to delete l2 gas oracle tx data", "batch.Hash", cfm.ID, "tx.Hash", cfm.TxHash.String(), "err", err)
 				}
 				log.Info("transaction confirmed in layer1", "confirmation", cfm)
