@@ -73,8 +73,8 @@ var (
 		},
 	}
 
-	aggTask1 = &message.AggTaskMsg{ID: "test-agg-1"}
-	aggTask2 = &message.AggTaskMsg{ID: "test-agg-2"}
+	aggTask1 = &orm.AggTask{ID: "test-agg-1"}
+	aggTask2 = &orm.AggTask{ID: "test-agg-2"}
 
 	wrappedBlock *types.WrappedBlock
 	batchData1   *types.BatchData

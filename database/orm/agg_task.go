@@ -6,6 +6,12 @@ import (
 	"scroll-tech/common/message"
 )
 
+// AggTask is a wrapper type around db AggProveTask type.
+type AggTask struct {
+	ID     string              `json:"id"`
+	Proofs []*message.AggProof `json:"proofs"`
+}
+
 type aggTaskOrm struct {
 	db *sqlx.DB
 }
@@ -16,12 +22,12 @@ func NewAggTaskOrm(db *sqlx.DB) AggTaskOrm {
 	return &aggTaskOrm{db: db}
 }
 
-func (a *aggTaskOrm) GetUnassignedTasks() ([]*message.AggTaskMsg, error) {
+func (a *aggTaskOrm) GetUnassignedTasks() ([]*AggTask, error) {
 	rows, err := a.db.Queryx("SELECT task FROM agg_task where roller = null")
 	if err != nil {
 		return nil, err
 	}
-	var tasks []*message.AggTaskMsg
+	var tasks []*AggTask
 	for rows.Next() {
 		var byt []byte
 		err = rows.Scan(&byt)
@@ -29,7 +35,7 @@ func (a *aggTaskOrm) GetUnassignedTasks() ([]*message.AggTaskMsg, error) {
 			return nil, err
 		}
 
-		task := new(message.AggTaskMsg)
+		task := new(AggTask)
 		err = json.Unmarshal(byt, task)
 		if err != nil {
 			return nil, err
@@ -39,7 +45,7 @@ func (a *aggTaskOrm) GetUnassignedTasks() ([]*message.AggTaskMsg, error) {
 	return tasks, nil
 }
 
-func (a *aggTaskOrm) SetAggTask(task *message.AggTaskMsg) error {
+func (a *aggTaskOrm) SetAggTask(task *AggTask) error {
 	byt, err := json.Marshal(task)
 	if err != nil {
 		return err

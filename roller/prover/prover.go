@@ -25,11 +25,12 @@ import (
 
 // Prover sends block-traces to rust-prover through ffi and get back the zk-proof.
 type Prover struct {
-	cfg *config.ProverConfig
+	Type message.RollerType
+	cfg  *config.ProverConfig
 }
 
 // NewProver inits a Prover object.
-func NewProver(cfg *config.ProverConfig) (*Prover, error) {
+func NewProver(cfg *config.ProverConfig, typ message.RollerType) (*Prover, error) {
 	paramsPathStr := C.CString(cfg.ParamsPath)
 	seedPathStr := C.CString(cfg.SeedPath)
 	defer func() {
@@ -46,20 +47,25 @@ func NewProver(cfg *config.ProverConfig) (*Prover, error) {
 		log.Info("Enabled dump_proof", "dir", cfg.DumpDir)
 	}
 
-	return &Prover{cfg: cfg}, nil
+	return &Prover{cfg: cfg, Type: typ}, nil
 }
 
 // Prove call rust ffi to generate proof, if first failed, try again.
 func (p *Prover) Prove(task *message.TaskMsg) (*message.AggProof, error) {
-	tracesByt, err := json.Marshal(task.Traces)
-	if err != nil {
-		return nil, err
+	var proofByt []byte
+	if p.Type == message.CommonRoller {
+		tracesByt, err := json.Marshal(task.Traces)
+		if err != nil {
+			return nil, err
+		}
+
+		proofByt = p.prove(tracesByt)
+	} else if p.Type == message.AggregatorRoller {
+		// TODO: aggregator prove
 	}
 
-	proofByt := p.prove(tracesByt)
-
 	// dump proof
-	err = p.dumpProof(task.ID, proofByt)
+	err := p.dumpProof(task.ID, proofByt)
 	if err != nil {
 		log.Error("Dump proof failed", "task-id", task.ID, "error", err)
 	}

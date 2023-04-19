@@ -211,14 +211,11 @@ func (a *ProofMsg) PublicKey() (string, error) {
 
 // TaskMsg is a wrapper type around db ProveTask type.
 type TaskMsg struct {
-	ID     string              `json:"id"`
-	Traces []*types.BlockTrace `json:"blockTraces"`
-}
-
-// AggTaskMsg is a wrapper type around db AggProveTask type.
-type AggTaskMsg struct {
-	ID     string      `json:"id"`
-	Proofs []*AggProof `json:"proofs"`
+	ID string `json:"id"`
+	// Only common rollers need traces, aggregator rollers don't!
+	Traces []*types.BlockTrace `json:"blockTraces,omitempty"`
+	// Only aggregator rollers need proofs, common rollers don't!
+	Proofs []*AggProof `json:"proofs,omitempty"`
 }
 
 // ProofDetail is the message received from rollers that contains zk proof, the status of
