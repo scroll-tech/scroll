@@ -15,6 +15,7 @@ type OrmFactory interface {
 	orm.L1MessageOrm
 	orm.L2MessageOrm
 	orm.SessionInfoOrm
+	orm.AggTaskOrm
 	GetDB() *sqlx.DB
 	Beginx() (*sqlx.Tx, error)
 	Close() error

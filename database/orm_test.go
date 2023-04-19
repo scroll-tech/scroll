@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math/big"
 	"os"
+	"scroll-tech/common/message"
 	"testing"
 	"time"
 
@@ -71,6 +72,31 @@ var (
 			Layer2Hash: "hash1",
 		},
 	}
+
+	proof1 = &message.ProofDetail{
+		ID:     "proof-1",
+		Status: 0,
+		Error:  "no error",
+	}
+	proof2 = &message.ProofDetail{
+		ID:     "proof-2",
+		Status: 0,
+		Error:  "no error",
+	}
+	proof3 = &message.ProofDetail{
+		ID:     "proof-3",
+		Status: 0,
+		Error:  "no error",
+	}
+	aggTask1 = &types.AggTask{
+		ID:     "test-agg-1",
+		Proofs: []*message.ProofDetail{proof1, proof2},
+	}
+	aggTask2 = &types.AggTask{
+		ID:     "test-agg-2",
+		Proofs: []*message.ProofDetail{proof3},
+	}
+
 	wrappedBlock *types.WrappedBlock
 	batchData1   *types.BatchData
 	batchData2   *types.BatchData
@@ -81,6 +107,7 @@ var (
 	ormLayer2  orm.L2MessageOrm
 	ormBatch   orm.BlockBatchOrm
 	ormSession orm.SessionInfoOrm
+	ormAggTask orm.AggTaskOrm
 )
 
 func setupEnv(t *testing.T) error {
@@ -99,6 +126,7 @@ func setupEnv(t *testing.T) error {
 	ormLayer2 = orm.NewL2MessageOrm(db)
 	ormBatch = orm.NewBlockBatchOrm(db)
 	ormSession = orm.NewSessionInfoOrm(db)
+	ormAggTask = orm.NewAggTaskOrm(db)
 
 	templateBlockTrace, err := os.ReadFile("../common/testdata/blockTrace_02.json")
 	if err != nil {
@@ -169,6 +197,8 @@ func TestOrmFactory(t *testing.T) {
 	t.Run("testOrmBlockBatch", testOrmBlockBatch)
 
 	t.Run("testOrmSessionInfo", testOrmSessionInfo)
+
+	t.Run("testOrmAggTask", testOrmAggTask)
 }
 
 func testOrmBlockTraces(t *testing.T) {
@@ -423,4 +453,31 @@ func testOrmSessionInfo(t *testing.T) {
 	sessionInfos, err = ormSession.GetSessionInfosByHashes(hashes)
 	assert.NoError(t, err)
 	assert.Equal(t, 0, len(sessionInfos))
+}
+
+func testOrmAggTask(t *testing.T) {
+	// Create db handler and reset db.
+	factory, err := database.NewOrmFactory(base.DBConfig)
+	assert.NoError(t, err)
+	assert.NoError(t, migrate.ResetDB(factory.GetDB().DB))
+
+	// set agg task into db
+	err = ormAggTask.SetAggTask(aggTask1)
+	assert.NoError(t, err)
+	err = ormAggTask.SetAggTask(aggTask2)
+	assert.NoError(t, err)
+
+	tasks, err := ormAggTask.GetUnassignedTasks()
+	assert.NoError(t, err)
+	assert.Equal(t, tasks[0], aggTask1)
+	assert.Equal(t, tasks[1], aggTask2)
+
+	// set agg proof into db
+	err = ormAggTask.SetAggProof(aggTask1.ID, "test-roller", &message.AggProof{})
+	assert.NoError(t, err)
+
+	// get unassigned task
+	unassignTasks, err := ormAggTask.GetUnassignedTasks()
+	assert.NoError(t, err)
+	assert.Equal(t, unassignTasks[0], aggTask2)
 }

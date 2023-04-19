@@ -169,8 +169,7 @@ type SessionInfo struct {
 type AggTask struct {
 	ID string `json:"id"`
 	// proofs from common rollers
-	Proofs   []*message.ProofDetail `json:"proofs"`
-	AggProof *message.AggProof      `json:"agg_proof"`
+	Proofs []*message.ProofDetail `json:"proofs"`
 }
 
 // ProvingStatus block_batch proving_status (unassigned, assigned, proved, verified, submitted)

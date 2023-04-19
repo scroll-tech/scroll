@@ -11,6 +11,8 @@ type aggTaskOrm struct {
 	db *sqlx.DB
 }
 
+var _ AggTaskOrm = (*aggTaskOrm)(nil)
+
 func NewAggTaskOrm(db *sqlx.DB) AggTaskOrm {
 	return &aggTaskOrm{db: db}
 }
