@@ -1,0 +1,58 @@
+package orm
+
+import (
+	"encoding/json"
+	"github.com/jmoiron/sqlx"
+	"scroll-tech/common/message"
+	"scroll-tech/common/types"
+)
+
+type aggTaskOrm struct {
+	db *sqlx.DB
+}
+
+func NewAggTaskOrm(db *sqlx.DB) AggTaskOrm {
+	return &aggTaskOrm{db: db}
+}
+
+func (a *aggTaskOrm) GetUnassignedTasks() ([]*types.AggTask, error) {
+	rows, err := a.db.Queryx("SELECT task FROM agg_task where roller = null")
+	if err != nil {
+		return nil, err
+	}
+	var tasks []*types.AggTask
+	for rows.Next() {
+		var byt []byte
+		err = rows.Scan(&byt)
+		if err != nil {
+			return nil, err
+		}
+
+		task := new(types.AggTask)
+		err = json.Unmarshal(byt, task)
+		if err != nil {
+			return nil, err
+		}
+		tasks = append(tasks, task)
+	}
+	return tasks, nil
+}
+
+func (a *aggTaskOrm) SetAggTask(task *types.AggTask) error {
+	byt, err := json.Marshal(task)
+	if err != nil {
+		return err
+	}
+	sqlStr := "INSERT INTO agg_task (hash, task) VALUES ($1, $2) ON CONFLICT (hash) DO UPDATE SET task = EXCLUDED.task;"
+	_, err = a.db.Exec(sqlStr, task.ID, byt)
+	return err
+}
+
+func (a *aggTaskOrm) SetAggProof(aggTaskID, roller string, proof *message.AggProof) error {
+	byt, err := json.Marshal(proof)
+	if err != nil {
+		return err
+	}
+	_, err = a.db.Exec(a.db.Rebind("update agg_task set roller = ?, proof = ? where hash = ?;"), roller, byt, aggTaskID)
+	return err
+}

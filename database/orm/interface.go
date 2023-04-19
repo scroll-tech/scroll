@@ -3,6 +3,7 @@ package orm
 import (
 	"context"
 	"database/sql"
+	"scroll-tech/common/message"
 
 	"scroll-tech/common/types"
 
@@ -43,6 +44,13 @@ type BlockTraceOrm interface {
 type SessionInfoOrm interface {
 	GetSessionInfosByHashes(hashes []string) ([]*types.SessionInfo, error)
 	SetSessionInfo(rollersInfo *types.SessionInfo) error
+}
+
+// AggTaskOrm is aggregator task
+type AggTaskOrm interface {
+	GetUnassignedTasks() ([]*types.AggTask, error)
+	SetAggTask(task *types.AggTask) error
+	SetAggProof(aggTaskID, roller string, proof *message.AggProof) error
 }
 
 // BlockBatchOrm block_batch operation interface
