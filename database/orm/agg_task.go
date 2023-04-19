@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"github.com/jmoiron/sqlx"
 	"scroll-tech/common/message"
-	"scroll-tech/common/types"
 )
 
 type aggTaskOrm struct {
@@ -17,12 +16,12 @@ func NewAggTaskOrm(db *sqlx.DB) AggTaskOrm {
 	return &aggTaskOrm{db: db}
 }
 
-func (a *aggTaskOrm) GetUnassignedTasks() ([]*types.AggTask, error) {
+func (a *aggTaskOrm) GetUnassignedTasks() ([]*message.AggTaskMsg, error) {
 	rows, err := a.db.Queryx("SELECT task FROM agg_task where roller = null")
 	if err != nil {
 		return nil, err
 	}
-	var tasks []*types.AggTask
+	var tasks []*message.AggTaskMsg
 	for rows.Next() {
 		var byt []byte
 		err = rows.Scan(&byt)
@@ -30,7 +29,7 @@ func (a *aggTaskOrm) GetUnassignedTasks() ([]*types.AggTask, error) {
 			return nil, err
 		}
 
-		task := new(types.AggTask)
+		task := new(message.AggTaskMsg)
 		err = json.Unmarshal(byt, task)
 		if err != nil {
 			return nil, err
@@ -40,7 +39,7 @@ func (a *aggTaskOrm) GetUnassignedTasks() ([]*types.AggTask, error) {
 	return tasks, nil
 }
 
-func (a *aggTaskOrm) SetAggTask(task *types.AggTask) error {
+func (a *aggTaskOrm) SetAggTask(task *message.AggTaskMsg) error {
 	byt, err := json.Marshal(task)
 	if err != nil {
 		return err

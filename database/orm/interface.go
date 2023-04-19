@@ -48,8 +48,8 @@ type SessionInfoOrm interface {
 
 // AggTaskOrm is aggregator task
 type AggTaskOrm interface {
-	GetUnassignedTasks() ([]*types.AggTask, error)
-	SetAggTask(task *types.AggTask) error
+	GetUnassignedTasks() ([]*message.AggTaskMsg, error)
+	SetAggTask(task *message.AggTaskMsg) error
 	SetAggProof(aggTaskID, roller string, proof *message.AggProof) error
 }
 

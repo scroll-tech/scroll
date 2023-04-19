@@ -73,29 +73,8 @@ var (
 		},
 	}
 
-	proof1 = &message.ProofDetail{
-		ID:     "proof-1",
-		Status: 0,
-		Error:  "no error",
-	}
-	proof2 = &message.ProofDetail{
-		ID:     "proof-2",
-		Status: 0,
-		Error:  "no error",
-	}
-	proof3 = &message.ProofDetail{
-		ID:     "proof-3",
-		Status: 0,
-		Error:  "no error",
-	}
-	aggTask1 = &types.AggTask{
-		ID:     "test-agg-1",
-		Proofs: []*message.ProofDetail{proof1, proof2},
-	}
-	aggTask2 = &types.AggTask{
-		ID:     "test-agg-2",
-		Proofs: []*message.ProofDetail{proof3},
-	}
+	aggTask1 = &message.AggTaskMsg{ID: "test-agg-1"}
+	aggTask2 = &message.AggTaskMsg{ID: "test-agg-2"}
 
 	wrappedBlock *types.WrappedBlock
 	batchData1   *types.BatchData

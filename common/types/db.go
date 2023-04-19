@@ -4,7 +4,6 @@ package types
 import (
 	"database/sql"
 	"fmt"
-	"scroll-tech/common/message"
 	"time"
 )
 
@@ -164,12 +163,6 @@ type SessionInfo struct {
 	Rollers        map[string]*RollerStatus `json:"rollers"`
 	StartTimestamp int64                    `json:"start_timestamp"`
 	Attempts       uint8                    `json:"attempts,omitempty"`
-}
-
-type AggTask struct {
-	ID string `json:"id"`
-	// proofs from common rollers
-	Proofs []*message.ProofDetail `json:"proofs"`
 }
 
 // ProvingStatus block_batch proving_status (unassigned, assigned, proved, verified, submitted)
