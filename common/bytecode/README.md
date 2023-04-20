@@ -4,7 +4,7 @@
 1. Setup env
     git clone git@github.com:scroll-tech/genesis-creator.git
     cd genesis-creator
-    go get -v github.com/scroll-tech/go-ethereum@staging && go mod tidy
+    go get -v github.com/scroll-tech/go-ethereum@develop && go mod tidy
     make abi && make genesis-creator
     make l2geth-docker
 
