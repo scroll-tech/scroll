@@ -1,21 +1,20 @@
-package integration
+package integration_test
 
 import (
 	"context"
-	"github.com/scroll-tech/go-ethereum/accounts/abi/bind"
-	"github.com/scroll-tech/go-ethereum/ethclient"
 	"math/big"
+	"testing"
+
+	"github.com/scroll-tech/go-ethereum/accounts/abi/bind"
+	"github.com/scroll-tech/go-ethereum/common"
+	"github.com/stretchr/testify/assert"
+
 	"scroll-tech/common/bytecode/dao"
+	"scroll-tech/common/bytecode/erc20"
 	"scroll-tech/common/bytecode/greeter"
 	"scroll-tech/common/bytecode/nft"
 	"scroll-tech/common/bytecode/sushi"
 	"scroll-tech/common/bytecode/vote"
-	"testing"
-
-	"github.com/scroll-tech/go-ethereum/common"
-	"github.com/stretchr/testify/assert"
-
-	"scroll-tech/common/bytecode/erc20"
 )
 
 var (
@@ -38,6 +37,7 @@ func TestERC20(t *testing.T) {
 	base.RunL2Geth(t)
 	l2Cli, err := base.L2Client()
 	assert.Nil(t, err)
+
 	token, err := erc20.NewERC20Mock(erc20Address, l2Cli)
 	assert.NoError(t, err)
 
@@ -181,8 +181,9 @@ func TestNFT(t *testing.T) {
 }
 
 func TestSushi(t *testing.T) {
-	l2Cli, err := ethclient.Dial("ws://localhost:20869") //base.L2Client()
-	assert.NoError(t, err)
+	base.RunL2Geth(t)
+	l2Cli, err := base.L2Client()
+	assert.Nil(t, err)
 
 	auth, err := bind.NewKeyedTransactorWithChainID(bridgeApp.Config.L2Config.RelayerConfig.MessageSenderPrivateKeys[0], base.L2gethImg.ChainID())
 	assert.NoError(t, err)
@@ -194,7 +195,7 @@ func TestSushi(t *testing.T) {
 	assert.NoError(t, err)
 
 	// master chef handler
-	chef, err := sushi.NewMasterChef(sushiTokenAddress, l2Cli)
+	chef, err := sushi.NewMasterChef(sushiMasterchefAddress, l2Cli)
 	assert.NoError(t, err)
 
 	ether := big.NewInt(1e18)
@@ -226,7 +227,7 @@ func TestSushi(t *testing.T) {
 	assert.Equal(t, 0, poolInfo.AllocPoint.Cmp(allocPoint))
 
 	// approve chef deposit
-	tx, err = sushiToken.Approve(auth, sushiTokenAddress, amount)
+	tx, err = sushiToken.Approve(auth, sushiMasterchefAddress, amount)
 	assert.NoError(t, err)
 	_, err = bind.WaitMined(context.Background(), l2Cli, tx)
 	assert.NoError(t, err)
@@ -244,12 +245,16 @@ func TestSushi(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 0, userInfo.Amount.Cmp(amount))
 
-	bls, err := sushiToken.BalanceOf(nil, auth.From)
+	sushiBls, err := sushiToken.BalanceOf(nil, auth.From)
 	assert.NoError(t, err)
-	assert.Equal(t, 0, bls.Cmp(big.NewInt(0)))
+	assert.Equal(t, int64(0), sushiBls.Int64())
+
+	chefBls, err := sushiToken.BalanceOf(nil, sushiMasterchefAddress)
+	assert.NoError(t, err)
+	assert.Equal(t, ether.String(), chefBls.String())
 
 	// change sushiToken's owner to masterChef.
-	tx, err = sushiToken.TransferOwnership(auth, sushiTokenAddress)
+	tx, err = sushiToken.TransferOwnership(auth, sushiMasterchefAddress)
 	assert.NoError(t, err)
 	_, err = bind.WaitMined(context.Background(), l2Cli, tx)
 	assert.NoError(t, err)
@@ -264,7 +269,9 @@ func TestSushi(t *testing.T) {
 
 	t.Log("-------------------testing withdraw--------------------------------------")
 
-	bls, err = sushiToken.BalanceOf(nil, auth.From)
+	sushiBls, err = sushiToken.BalanceOf(nil, auth.From)
 	assert.NoError(t, err)
-	assert.Equal(t, 0, bls.Cmp(amount))
+	// sushiBls > 0 && sushiBls < ether
+	assert.Equal(t, 1, sushiBls.Cmp(big.NewInt(0)))
+	assert.Equal(t, 1, sushiBls.Cmp(ether))
 }
