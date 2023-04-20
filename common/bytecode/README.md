@@ -18,7 +18,7 @@
 ```
 
 ## How to get contracts' abi?
-* Other contracts' step same to eth20, i.g:
+* Other contracts' step same to eth20, e.g:
 ```
 1. Download openzeppelin and set env
     git clone git@github.com:OpenZeppelin/openzeppelin-contracts.git
