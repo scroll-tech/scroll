@@ -19,5 +19,8 @@ func NewVerifier(_ *config.VerifierConfig) (*Verifier, error) {
 
 // VerifyProof always return true
 func (v *Verifier) VerifyProof(proof *message.AggProof) (bool, error) {
+	if string(proof.Proof) == "this is a invalid proof" {
+		return false, nil
+	}
 	return true, nil
 }

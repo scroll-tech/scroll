@@ -46,7 +46,10 @@ func NewVerifier(cfg *config.VerifierConfig) (*Verifier, error) {
 // VerifyProof Verify a ZkProof by marshaling it and sending it to the Halo2 Verifier.
 func (v *Verifier) VerifyProof(proof *message.AggProof) (bool, error) {
 	if v.cfg.MockMode {
-		log.Info("Verifier disabled, VerifyProof skipped")
+		log.Info("Mock mode, verifier disabled")
+		if string(proof.Proof) == "this is a invalid proof" {
+			return false, nil
+		}
 		return true, nil
 
 	}
