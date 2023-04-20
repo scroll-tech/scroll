@@ -210,8 +210,6 @@ func TestSushi(t *testing.T) {
 	_, err = bind.WaitMined(context.Background(), l2Cli, tx)
 	assert.NoError(t, err)
 
-	t.Log("!!!!!!!!!!!!!!!!!!!!must wait here to have pool!!!!!!!!!!!!!!!!!!!!")
-
 	pid, err := chef.PoolLength(&bind.CallOpts{Pending: true})
 	assert.NoError(t, err)
 	pid.Sub(pid, big.NewInt(1))
@@ -231,8 +229,6 @@ func TestSushi(t *testing.T) {
 	assert.NoError(t, err)
 	_, err = bind.WaitMined(context.Background(), l2Cli, tx)
 	assert.NoError(t, err)
-
-	t.Log("!!!!!!!!!!!!!!!!!!!!must wait here for allowance!!!!!!!!!!!!!!!!!!!!")
 
 	// deposit amount to chef
 	tx, err = chef.Deposit(auth, pid, amount)
@@ -259,15 +255,11 @@ func TestSushi(t *testing.T) {
 	_, err = bind.WaitMined(context.Background(), l2Cli, tx)
 	assert.NoError(t, err)
 
-	t.Log("!!!!!!!!!!!!!!!!!!!!must wait here for ownership!!!!!!!!!!!!!!!!!!!!")
-
 	// withdraw amount from chef
 	tx, err = chef.Withdraw(auth, pid, amount)
 	assert.NoError(t, err)
 	_, err = bind.WaitMined(context.Background(), l2Cli, tx)
 	assert.NoError(t, err)
-
-	t.Log("-------------------testing withdraw--------------------------------------")
 
 	sushiBls, err = sushiToken.BalanceOf(nil, auth.From)
 	assert.NoError(t, err)
