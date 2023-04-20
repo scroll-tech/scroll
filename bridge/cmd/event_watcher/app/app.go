@@ -42,7 +42,7 @@ func init() {
 	}
 
 	// Register `event-watcher-test` app for integration-test.
-	cutils.RegisterSimulation(app, "event-watcher-test")
+	cutils.RegisterSimulation(app, cutils.EventWatcherApp)
 }
 
 func action(ctx *cli.Context) error {

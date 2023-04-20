@@ -9,8 +9,10 @@ import (
 	cmap "github.com/orcaman/concurrent-map"
 	geth_types "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/log"
+	geth_metrics "github.com/scroll-tech/go-ethereum/metrics"
 
 	"scroll-tech/common/message"
+	"scroll-tech/common/metrics"
 	"scroll-tech/common/types"
 )
 
@@ -30,6 +32,8 @@ type rollerNode struct {
 
 	// Time of message creation
 	registerTime time.Time
+
+	*rollerMetrics
 }
 
 func (r *rollerNode) sendTask(id string, traces []*geth_types.BlockTrace) bool {
@@ -64,12 +68,20 @@ func (m *Manager) register(pubkey string, identity *message.Identity) (<-chan *m
 	node, ok := m.rollerPool.Get(pubkey)
 	if !ok {
 		taskIDs := m.reloadRollerAssignedTasks(pubkey)
+		rMs := &rollerMetrics{
+			rollerProofsVerifiedSuccessTimeTimer:   geth_metrics.GetOrRegisterTimer(fmt.Sprintf("roller/proofs/verified/success/time/%s", pubkey), metrics.ScrollRegistry),
+			rollerProofsVerifiedFailedTimeTimer:    geth_metrics.GetOrRegisterTimer(fmt.Sprintf("roller/proofs/verified/failed/time/%s", pubkey), metrics.ScrollRegistry),
+			rollerProofsGeneratedFailedTimeTimer:   geth_metrics.GetOrRegisterTimer(fmt.Sprintf("roller/proofs/generated/failed/time/%s", pubkey), metrics.ScrollRegistry),
+			rollerProofsLastAssignedTimestampGauge: geth_metrics.GetOrRegisterGauge(fmt.Sprintf("roller/proofs/last/assigned/timestamp/%s", pubkey), metrics.ScrollRegistry),
+			rollerProofsLastFinishedTimestampGauge: geth_metrics.GetOrRegisterGauge(fmt.Sprintf("roller/proofs/last/finished/timestamp/%s", pubkey), metrics.ScrollRegistry),
+		}
 		node = &rollerNode{
-			Name:      identity.Name,
-			Version:   identity.Version,
-			PublicKey: pubkey,
-			TaskIDs:   *taskIDs,
-			taskChan:  make(chan *message.TaskMsg, 4),
+			Name:          identity.Name,
+			Version:       identity.Version,
+			PublicKey:     pubkey,
+			TaskIDs:       *taskIDs,
+			taskChan:      make(chan *message.TaskMsg, 4),
+			rollerMetrics: rMs,
 		}
 		m.rollerPool.Set(pubkey, node)
 	}
@@ -106,14 +118,12 @@ func (m *Manager) freeTaskIDForRoller(pk string, id string) {
 
 // GetNumberOfIdleRollers return the count of idle rollers.
 func (m *Manager) GetNumberOfIdleRollers() (count int) {
-	for i, pk := range m.rollerPool.Keys() {
+	for _, pk := range m.rollerPool.Keys() {
 		if val, ok := m.rollerPool.Get(pk); ok {
 			r := val.(*rollerNode)
 			if r.TaskIDs.Count() == 0 {
 				count++
 			}
-		} else {
-			log.Error("rollerPool Get fail", "pk", pk, "idx", i, "pk len", pk)
 		}
 	}
 	return count
@@ -128,8 +138,6 @@ func (m *Manager) selectRoller() *rollerNode {
 			if r.TaskIDs.Count() == 0 {
 				return r
 			}
-		} else {
-			log.Error("rollerPool Get fail", "pk", pubkeys[idx.Int64()], "idx", idx.Int64(), "pk len", len(pubkeys))
 		}
 		pubkeys[idx.Int64()], pubkeys = pubkeys[0], pubkeys[1:]
 	}
