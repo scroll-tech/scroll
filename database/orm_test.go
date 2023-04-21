@@ -6,9 +6,10 @@ import (
 	"fmt"
 	"math/big"
 	"os"
-	"scroll-tech/common/message"
 	"testing"
 	"time"
+
+	"scroll-tech/common/message"
 
 	_ "github.com/lib/pq"
 	_ "github.com/mattn/go-sqlite3"

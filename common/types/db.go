@@ -4,8 +4,9 @@ package types
 import (
 	"database/sql"
 	"fmt"
-	"scroll-tech/common/message"
 	"time"
+
+	"scroll-tech/common/message"
 )
 
 // L1BlockStatus represents current l1 block processing status

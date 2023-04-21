@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+
 	"scroll-tech/common/message"
 
 	"github.com/scroll-tech/go-ethereum/log"
