@@ -45,7 +45,7 @@ func init() {
 	}
 
 	// Register `gas-oracle-test` app for integration-test.
-	cutils.RegisterSimulation(app, "gas-oracle-test")
+	cutils.RegisterSimulation(app, cutils.GasOracleApp)
 }
 
 func action(ctx *cli.Context) error {
