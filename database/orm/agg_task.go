@@ -20,6 +20,7 @@ type aggTaskOrm struct {
 
 var _ AggTaskOrm = (*aggTaskOrm)(nil)
 
+// NewAggTaskOrm creates an AggTaskOrm instance
 func NewAggTaskOrm(db *sqlx.DB) AggTaskOrm {
 	return &aggTaskOrm{db: db}
 }
