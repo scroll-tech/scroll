@@ -18,19 +18,8 @@ import (
 )
 
 var (
-	daoAddress     = common.HexToAddress("0x7363726f6c6c6c20000000000000000000000013")
 	erc20Address   = common.HexToAddress("0x7363726f6c6c6c20000000000000000000000014")
 	greeterAddress = common.HexToAddress("0x7363726f6c6c6c20000000000000000000000015")
-	nftAddress     = common.HexToAddress("0x7363726f6c6c6c20000000000000000000000016")
-
-	sushiTokenAddress      = common.HexToAddress("0x7363726f6c6c6c20000000000000000000000017")
-	sushiMasterchefAddress = common.HexToAddress("0x7363726f6c6c6c20000000000000000000000018")
-
-	voteAddress               = common.HexToAddress("0x7363726f6c6c6c20000000000000000000000019")
-	uniswapV2FactoryAddress   = common.HexToAddress("0x7363726f6c6c6c20000000000000000000000020")
-	uniswapV2Router02Address  = common.HexToAddress("0x7363726f6c6c6c20000000000000000000000021")
-	uniswapV2MulticallAddress = common.HexToAddress("0x7363726f6c6c6c20000000000000000000000022")
-	uniswapV2WETH9            = common.HexToAddress("0x7363726f6c6c6c20000000000000000000000023")
 )
 
 func TestERC20(t *testing.T) {
