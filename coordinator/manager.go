@@ -128,6 +128,10 @@ func New(ctx context.Context, cfg *config.RollerManagerConfig, orm database.OrmF
 	}, nil
 }
 
+func (m *Manager) Cache() *cache.Cache {
+	return m.tokenCache
+}
+
 // Start the Manager module.
 func (m *Manager) Start() error {
 	if m.isRunning() {
