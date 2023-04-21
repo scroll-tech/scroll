@@ -103,6 +103,8 @@ type Manager struct {
 
 	// Verifier worker pool
 	verifierWorkerPool *workerpool.WorkerPool
+
+	aggTaskChan chan *message.TaskMsg
 }
 
 // New returns a new instance of Manager. The instance will be not fully prepared,
@@ -125,6 +127,7 @@ func New(ctx context.Context, cfg *config.RollerManagerConfig, orm database.OrmF
 		Client:             client,
 		tokenCache:         cache.New(time.Duration(cfg.TokenTimeToLive)*time.Second, 1*time.Hour),
 		verifierWorkerPool: workerpool.NewWorkerPool(cfg.MaxVerifierWorkers),
+		aggTaskChan:        make(chan *message.TaskMsg),
 	}, nil
 }
 
@@ -168,7 +171,12 @@ func (m *Manager) Loop() {
 
 	for {
 		select {
+		case task := <-m.aggTaskChan:
+			if task.Proofs != nil {
+				m.StartAggProofGenerationSession(task)
+			}
 		case <-tick.C:
+			// TODO: we should use aggTaskChan instead of db directly
 			if len(tasks) == 0 && m.orm != nil {
 				var err error
 				// TODO: add cache
@@ -177,7 +185,7 @@ func (m *Manager) Loop() {
 					fmt.Sprintf(
 						"ORDER BY index %s LIMIT %d;",
 						m.cfg.OrderSession,
-						m.GetNumberOfIdleRollers(),
+						m.GetNumberOfIdleRollers(message.CommonRoller),
 					),
 				); err != nil {
 					log.Error("failed to get unassigned proving tasks", "error", err)
@@ -185,7 +193,7 @@ func (m *Manager) Loop() {
 				}
 			}
 			// Select roller and send message
-			for len(tasks) > 0 && m.StartProofGenerationSession(tasks[0], nil) {
+			for len(tasks) > 0 && m.StartCommonProofGenerationSession(tasks[0], nil) {
 				tasks = tasks[1:]
 			}
 		case <-m.ctx.Done():
@@ -208,6 +216,16 @@ func (m *Manager) restorePrevSessions() {
 
 	m.mu.Lock()
 	defer m.mu.Unlock()
+	aggTasks, err := m.orm.GetUnassignedAggTasks()
+	if err != nil {
+		log.Error("failed to load unassigned aggregator tasks from db", "error", err)
+	}
+	go func() {
+		for _, task := range aggTasks {
+			m.aggTaskChan <- &message.TaskMsg{ID: task.ID, Proofs: task.Proofs}
+		}
+	}()
+
 	if hashes, err := m.orm.GetAssignedBatchHashes(); err != nil {
 		log.Error("failed to get assigned batch hashes from db", "error", err)
 	} else if prevSessions, err := m.orm.GetSessionInfosByHashes(hashes); err != nil {
@@ -366,7 +384,7 @@ func (m *Manager) CollectProofs(sess *session) {
 		case <-time.After(time.Duration(m.cfg.CollectionTime) * time.Minute):
 			// Check if session can be replayed
 			if sess.info.Attempts < m.cfg.SessionAttempts {
-				if m.StartProofGenerationSession(nil, sess) {
+				if m.StartCommonProofGenerationSession(nil, sess) {
 					m.mu.Lock()
 					for pk := range sess.info.Rollers {
 						m.freeTaskIDForRoller(pk, sess.info.ID)
@@ -477,15 +495,15 @@ func (m *Manager) APIs() []rpc.API {
 	}
 }
 
-// StartProofGenerationSession starts a proof generation session
-func (m *Manager) StartProofGenerationSession(task *types.BlockBatch, prevSession *session) (success bool) {
+// StartCommonProofGenerationSession starts a common proof generation session
+func (m *Manager) StartCommonProofGenerationSession(task *types.BlockBatch, prevSession *session) (success bool) {
 	var taskId string
 	if task != nil {
 		taskId = task.Hash
 	} else {
 		taskId = prevSession.info.ID
 	}
-	if m.GetNumberOfIdleRollers() == 0 {
+	if m.GetNumberOfIdleRollers(message.CommonRoller) == 0 {
 		log.Warn("no idle roller when starting proof generation session", "id", taskId)
 		return false
 	}
@@ -548,7 +566,7 @@ func (m *Manager) StartProofGenerationSession(task *types.BlockBatch, prevSessio
 	}
 	// No roller assigned.
 	if len(rollers) == 0 {
-		log.Error("no roller assigned", "id", taskId, "number of idle rollers", m.GetNumberOfIdleRollers())
+		log.Error("no roller assigned", "id", taskId, "number of idle rollers", m.GetNumberOfIdleRollers(message.CommonRoller))
 		return false
 	}
 
@@ -593,6 +611,11 @@ func (m *Manager) StartProofGenerationSession(task *types.BlockBatch, prevSessio
 	go m.CollectProofs(sess)
 
 	return true
+}
+
+// StartAggProofGenerationSession starts an aggregator proof generation.
+func (m *Manager) StartAggProofGenerationSession(msg *message.TaskMsg) {
+
 }
 
 // IsRollerIdle determines whether this roller is idle.

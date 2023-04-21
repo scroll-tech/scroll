@@ -446,7 +446,7 @@ func testOrmAggTask(t *testing.T) {
 	err = ormAggTask.SetAggTask(aggTask2)
 	assert.NoError(t, err)
 
-	tasks, err := ormAggTask.GetUnassignedTasks()
+	tasks, err := ormAggTask.GetUnassignedAggTasks()
 	assert.NoError(t, err)
 	assert.Equal(t, tasks[0], aggTask1)
 	assert.Equal(t, tasks[1], aggTask2)
@@ -456,7 +456,7 @@ func testOrmAggTask(t *testing.T) {
 	assert.NoError(t, err)
 
 	// get unassigned task
-	unassignTasks, err := ormAggTask.GetUnassignedTasks()
+	unassignTasks, err := ormAggTask.GetUnassignedAggTasks()
 	assert.NoError(t, err)
 	assert.Equal(t, unassignTasks[0], aggTask2)
 }

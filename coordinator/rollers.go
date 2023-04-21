@@ -120,11 +120,11 @@ func (m *Manager) freeTaskIDForRoller(pk string, id string) {
 }
 
 // GetNumberOfIdleRollers return the count of idle rollers.
-func (m *Manager) GetNumberOfIdleRollers() (count int) {
+func (m *Manager) GetNumberOfIdleRollers(rollerType message.RollerType) (count int) {
 	for _, pk := range m.rollerPool.Keys() {
 		if val, ok := m.rollerPool.Get(pk); ok {
 			r := val.(*rollerNode)
-			if r.TaskIDs.Count() == 0 {
+			if r.TaskIDs.Count() == 0 && r.Type == rollerType {
 				count++
 			}
 		}
