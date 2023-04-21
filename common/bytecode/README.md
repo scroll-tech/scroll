@@ -12,7 +12,7 @@
 2. Start docker and write pre deployed contracts into genesis file.
 ```bash
    make start-docker
-   ./bin/genesis-creator -genesis ${SCROLLPATH}/common/docker/l2geth/genesis.json -contract [dao|erc20|greeter|nft|scroll.l1|scroll.l2|sushi|uniswap|vote]
+   ./bin/genesis-creator -genesis ${SCROLLPATH}/common/docker/l2geth/genesis.json -contract [erc20|greeter]
 ```
 
 3. Rebuild l2geth docker.
