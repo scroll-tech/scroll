@@ -47,7 +47,7 @@ var (
 )
 
 var (
-	ErrNoRollerIdle = errors.New("no roller idle")
+	ErrNoIdleRoller = errors.New("no roller idle")
 )
 
 const (
@@ -132,7 +132,7 @@ func New(ctx context.Context, cfg *config.RollerManagerConfig, orm database.OrmF
 		Client:             client,
 		tokenCache:         cache.New(time.Duration(cfg.TokenTimeToLive)*time.Second, 1*time.Hour),
 		verifierWorkerPool: workerpool.NewWorkerPool(cfg.MaxVerifierWorkers),
-		aggTaskChan:        make(chan *message.TaskMsg),
+		aggTaskChan:        make(chan *message.TaskMsg, 10),
 	}, nil
 }
 
@@ -521,7 +521,7 @@ func (m *Manager) StartCommonProofGenerationSession(task *types.BlockBatch, prev
 	}
 	if m.GetNumberOfIdleRollers(message.CommonRoller) == 0 {
 		log.Warn("no idle common roller when starting proof generation session", "id", taskId)
-		return ErrNoRollerIdle
+		return ErrNoIdleRoller
 	}
 
 	log.Info("start proof generation session", "id", taskId)
@@ -583,7 +583,7 @@ func (m *Manager) StartCommonProofGenerationSession(task *types.BlockBatch, prev
 	// No roller assigned.
 	if len(rollers) == 0 {
 		log.Error("no roller assigned", "id", taskId, "number of idle rollers", m.GetNumberOfIdleRollers(message.CommonRoller))
-		return ErrNoRollerIdle
+		return ErrNoIdleRoller
 	}
 
 	// Update session proving status as assigned.

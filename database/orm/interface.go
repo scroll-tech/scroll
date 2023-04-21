@@ -50,8 +50,8 @@ type SessionInfoOrm interface {
 // AggTaskOrm is aggregator task
 type AggTaskOrm interface {
 	GetUnassignedAggTasks() ([]*AggTask, error)
-	SetAggTask(task *AggTask) error
-	SetAggProof(aggTaskID, roller string, proof *message.AggProof) error
+	InsertAggTask(task *AggTask) error
+	UpdateProofForAggTask(aggTaskID, roller string, proof *message.AggProof) error
 }
 
 // BlockBatchOrm block_batch operation interface

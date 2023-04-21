@@ -442,9 +442,9 @@ func testOrmAggTask(t *testing.T) {
 	assert.NoError(t, migrate.ResetDB(factory.GetDB().DB))
 
 	// set agg task into db
-	err = ormAggTask.SetAggTask(aggTask1)
+	err = ormAggTask.InsertAggTask(aggTask1)
 	assert.NoError(t, err)
-	err = ormAggTask.SetAggTask(aggTask2)
+	err = ormAggTask.InsertAggTask(aggTask2)
 	assert.NoError(t, err)
 
 	tasks, err := ormAggTask.GetUnassignedAggTasks()
@@ -453,7 +453,7 @@ func testOrmAggTask(t *testing.T) {
 	assert.Equal(t, tasks[1], aggTask2)
 
 	// set agg proof into db
-	err = ormAggTask.SetAggProof(aggTask1.ID, "test-roller", &message.AggProof{})
+	err = ormAggTask.UpdateProofForAggTask(aggTask1.ID, "test-roller", &message.AggProof{})
 	assert.NoError(t, err)
 
 	// get unassigned task

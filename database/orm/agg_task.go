@@ -48,7 +48,7 @@ func (a *aggTaskOrm) GetUnassignedAggTasks() ([]*AggTask, error) {
 	return tasks, nil
 }
 
-func (a *aggTaskOrm) SetAggTask(task *AggTask) error {
+func (a *aggTaskOrm) InsertAggTask(task *AggTask) error {
 	byt, err := json.Marshal(task)
 	if err != nil {
 		return err
@@ -58,7 +58,7 @@ func (a *aggTaskOrm) SetAggTask(task *AggTask) error {
 	return err
 }
 
-func (a *aggTaskOrm) SetAggProof(aggTaskID, roller string, proof *message.AggProof) error {
+func (a *aggTaskOrm) UpdateProofForAggTask(aggTaskID, roller string, proof *message.AggProof) error {
 	byt, err := json.Marshal(proof)
 	if err != nil {
 		return err
