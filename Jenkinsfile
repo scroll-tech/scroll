@@ -24,6 +24,7 @@ pipeline {
                     steps {
                         sh 'make dev_docker'
                         sh 'make -C bridge mock_abi'
+                        sh 'make -C common/bytecode all'
                     }
                 }
                 stage('Check Bridge Compilation') {
