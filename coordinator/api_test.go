@@ -14,6 +14,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"scroll-tech/common/message"
+
 	"scroll-tech/coordinator/config"
 )
 
