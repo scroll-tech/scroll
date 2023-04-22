@@ -10,6 +10,7 @@ import {AddressAliasHelper} from "../libraries/common/AddressAliasHelper.sol";
 
 import {L1GatewayTestBase} from "./L1GatewayTestBase.t.sol";
 import {MockScrollMessenger} from "./mocks/MockScrollMessenger.sol";
+import {MockGatewayRecipient} from "./mocks/MockGatewayRecipient.sol";
 
 contract L1ETHGatewayTest is L1GatewayTestBase {
     // from L1ETHGateway
@@ -188,12 +189,10 @@ contract L1ETHGatewayTest is L1GatewayTestBase {
 
     function testFinalizeWithdrawETH(
         address sender,
-        address recipient,
         uint256 amount,
         bytes memory dataToCall
     ) public {
-        hevm.assume(recipient.code.length == 0);
-        hevm.assume(uint256(uint160(recipient)) > 100); // ignore some precompile contracts
+        MockGatewayRecipient recipient = new MockGatewayRecipient();
 
         amount = bound(amount, 1, address(this).balance / 2);
 
@@ -204,7 +203,7 @@ contract L1ETHGatewayTest is L1GatewayTestBase {
         bytes memory message = abi.encodeWithSelector(
             IL1ETHGateway.finalizeWithdrawETH.selector,
             sender,
-            recipient,
+            address(recipient),
             amount,
             dataToCall
         );
@@ -225,7 +224,7 @@ contract L1ETHGatewayTest is L1GatewayTestBase {
         // emit FinalizeWithdrawETH from L1ETHGateway
         {
             hevm.expectEmit(true, true, false, true);
-            emit FinalizeWithdrawETH(sender, recipient, amount, dataToCall);
+            emit FinalizeWithdrawETH(sender, address(recipient), amount, dataToCall);
         }
 
         // emit RelayedMessage from L1ScrollMessenger
@@ -235,11 +234,11 @@ contract L1ETHGatewayTest is L1GatewayTestBase {
         }
 
         uint256 messengerBalance = address(l1Messenger).balance;
-        uint256 recipientBalance = recipient.balance;
+        uint256 recipientBalance = address(recipient).balance;
         assertBoolEq(false, l1Messenger.isL2MessageExecuted(keccak256(xDomainCalldata)));
         l1Messenger.relayMessageWithProof(address(counterpartGateway), address(gateway), amount, 0, message, proof);
         assertEq(messengerBalance - amount, address(l1Messenger).balance);
-        assertEq(recipientBalance + amount, recipient.balance);
+        assertEq(recipientBalance + amount, address(recipient).balance);
         assertBoolEq(true, l1Messenger.isL2MessageExecuted(keccak256(xDomainCalldata)));
     }
 
