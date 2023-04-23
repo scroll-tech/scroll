@@ -643,7 +643,7 @@ func testGracefulRestart(t *testing.T) {
 
 func testListRollers(t *testing.T) {
 	// Create db handler and reset db.
-	l2db, err := database.NewOrmFactory(cfg.DBConfig)
+	assert.NoError(t, migrate.ResetDB(base.DBClient(t)))
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(l2db.GetDB().DB))
 	defer l2db.Close()
