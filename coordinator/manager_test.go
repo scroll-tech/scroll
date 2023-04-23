@@ -834,7 +834,7 @@ func (r *mockRoller) loop(t *testing.T, client *client2.Client, proofTime time.D
 			if proofStatus == generatedFailed {
 				proof.Status = message.StatusProofError
 			} else if proofStatus == verifiedFailed {
-				proof.ProofDetail.Proof.Proof = []byte("this is a invalid proof")
+				proof.ProofDetail.Proof.Proof = []byte(coordinator_config.InvalidTestProof)
 			}
 			assert.NoError(t, proof.Sign(r.privKey))
 			ok, err := client.SubmitProof(context.Background(), proof)

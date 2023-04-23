@@ -47,7 +47,7 @@ func NewVerifier(cfg *config.VerifierConfig) (*Verifier, error) {
 func (v *Verifier) VerifyProof(proof *message.AggProof) (bool, error) {
 	if v.cfg.MockMode {
 		log.Info("Mock mode, verifier disabled")
-		if string(proof.Proof) == "this is a invalid proof" {
+		if string(proof.Proof) == config.InvalidTestProof {
 			return false, nil
 		}
 		return true, nil

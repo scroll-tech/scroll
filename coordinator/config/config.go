@@ -13,6 +13,7 @@ import (
 const (
 	defaultNumberOfVerifierWorkers      = 10
 	defaultNumberOfSessionRetryAttempts = 2
+	InvalidTestProof                    = "this is a invalid proof"
 )
 
 // RollerManagerConfig loads sequencer configuration items.
