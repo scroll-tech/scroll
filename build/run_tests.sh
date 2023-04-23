@@ -3,10 +3,10 @@ set -uex
 
 profile_name=$1
 
-exclude_dirs=("scroll-tech/bridge/cmd" "scroll-tech/bridge/tests" "scroll-tech/bridge/mock_bridge" "scroll-tech/coordinator/cmd")
+exclude_dirs=("scroll-tech/bridge/cmd" "scroll-tech/bridge/tests" "scroll-tech/bridge/mock_bridge" "scroll-tech/coordinator/cmd" "scroll-tech/coordinator/config")
 
 all_packages=$(go list ./... | grep -v "^scroll-tech/${profile_name}$")
-coverpkg=""
+coverpkg="scroll-tech/${profile_name}"
 
 for pkg in $all_packages; do
     exclude_pkg=false
@@ -18,11 +18,7 @@ for pkg in $all_packages; do
     done
 
     if [ "$exclude_pkg" = false ]; then
-        if [ -z "$coverpkg" ]; then
-            coverpkg="$pkg/..."
-        else
-            coverpkg="$coverpkg,$pkg/..."
-        fi
+        coverpkg="$coverpkg,$pkg/..."
     fi
 done
 
