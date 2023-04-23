@@ -79,9 +79,9 @@ contract L2CustomERC20Gateway is OwnableUpgradeable, ScrollGatewayBase, L2ERC20G
         require(msg.value == 0, "nonzero msg.value");
         require(_l1Token == tokenMapping[_l2Token], "l1 token mismatch");
 
-        // @todo forward `_callData` to `_to` using transferAndCall in the near future
-
         IScrollStandardERC20(_l2Token).mint(_to, _amount);
+
+        _doCallback(_to, _data);
 
         emit FinalizeDepositERC20(_l1Token, _l2Token, _from, _to, _amount, _data);
     }
