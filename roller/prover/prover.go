@@ -53,7 +53,7 @@ func NewProver(cfg *config.ProverConfig, typ message.RollerType) (*Prover, error
 // Prove call rust ffi to generate proof, if first failed, try again.
 func (p *Prover) Prove(task *message.TaskMsg) (*message.AggProof, error) {
 	var proofByt []byte
-	if p.Type == message.CommonRoller {
+	if p.Type == message.BasicRoller {
 		tracesByt, err := json.Marshal(task.Traces)
 		if err != nil {
 			return nil, err

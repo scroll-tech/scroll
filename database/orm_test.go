@@ -164,6 +164,7 @@ func TestOrmFactory(t *testing.T) {
 	defer func() {
 		base.Free()
 	}()
+	t.Log("test database DSN is ", base.DBConfig.DSN)
 	if err := setupEnv(t); err != nil {
 		t.Fatal(err)
 	}

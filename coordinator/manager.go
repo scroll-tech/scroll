@@ -190,7 +190,7 @@ func (m *Manager) Loop() {
 					fmt.Sprintf(
 						"ORDER BY index %s LIMIT %d;",
 						m.cfg.OrderSession,
-						m.GetNumberOfIdleRollers(message.CommonRoller),
+						m.GetNumberOfIdleRollers(message.BasicRoller),
 					),
 				); err != nil {
 					log.Error("failed to get unassigned proving tasks", "error", err)
@@ -397,7 +397,7 @@ func (m *Manager) CollectProofs(sess *session) {
 				var err error
 				if sess.info.ProveType == message.AggregatorRoller {
 					err = m.StartAggProofGenerationSession(nil, sess)
-				} else if sess.info.ProveType == message.CommonRoller {
+				} else if sess.info.ProveType == message.BasicRoller {
 					err = m.StartCommonProofGenerationSession(nil, sess)
 				}
 				if err == nil {
@@ -519,7 +519,7 @@ func (m *Manager) StartCommonProofGenerationSession(task *types.BlockBatch, prev
 	} else {
 		taskId = prevSession.info.ID
 	}
-	if m.GetNumberOfIdleRollers(message.CommonRoller) == 0 {
+	if m.GetNumberOfIdleRollers(message.BasicRoller) == 0 {
 		log.Warn("no idle common roller when starting proof generation session", "id", taskId)
 		return ErrNoIdleRoller
 	}
@@ -566,7 +566,7 @@ func (m *Manager) StartCommonProofGenerationSession(task *types.BlockBatch, prev
 	// Dispatch task to common rollers.
 	rollers := make(map[string]*types.RollerStatus)
 	for i := 0; i < int(m.cfg.RollersPerSession); i++ {
-		roller := m.selectRoller(message.CommonRoller)
+		roller := m.selectRoller(message.BasicRoller)
 		if roller == nil {
 			log.Info("selectRoller returns nil")
 			break
@@ -582,7 +582,7 @@ func (m *Manager) StartCommonProofGenerationSession(task *types.BlockBatch, prev
 	}
 	// No roller assigned.
 	if len(rollers) == 0 {
-		log.Error("no roller assigned", "id", taskId, "number of idle rollers", m.GetNumberOfIdleRollers(message.CommonRoller))
+		log.Error("no roller assigned", "id", taskId, "number of idle rollers", m.GetNumberOfIdleRollers(message.BasicRoller))
 		return ErrNoIdleRoller
 	}
 

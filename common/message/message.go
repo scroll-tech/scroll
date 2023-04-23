@@ -27,18 +27,18 @@ type RollerType uint8
 
 func (r RollerType) String() string {
 	switch r {
-	case CommonRoller:
-		return "Common Roller"
+	case BasicRoller:
+		return "Basic Roller"
 	case AggregatorRoller:
 		return "Aggregator Roller"
 	default:
-		return "illegal Roller type"
+		return "Illegal Roller type"
 	}
 }
 
 const (
-	// CommonRoller is default roller, it only generates zk proof from traces.
-	CommonRoller RollerType = iota
+	// BasicRoller is default roller, it only generates zk proof from traces.
+	BasicRoller RollerType = iota
 	// AggregatorRoller generates zk proof from other zk proofs and aggregate them into one proof.
 	AggregatorRoller
 )
