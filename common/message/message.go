@@ -23,7 +23,7 @@ const (
 )
 
 // RollerType represents the type of roller.
-type RollerType int8
+type RollerType uint8
 
 func (r RollerType) String() string {
 	switch r {
