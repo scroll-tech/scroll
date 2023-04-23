@@ -119,6 +119,21 @@ func TestManager_Register(t *testing.T) {
 		patchGuard7.Unpatch()
 	})
 
+	convey.Convey("register failure", t, func() {
+		tmpAuthMsg = geneAuthMsg(t)
+		patchGuard7 := sm.Patch((*Manager).VerifyToken, func(manager *Manager, tmpAuthMsg *message.AuthMsg) (bool, error) {
+			return true, nil
+		})
+		patchGuard8 := sm.Patch((*Manager).register, func(*Manager, string, *message.Identity) (<-chan *message.TaskMsg, error) {
+			return nil, errors.New("register error")
+		})
+		subscription, err := rollerManager.Register(context.Background(), tmpAuthMsg)
+		assert.Error(t, err)
+		assert.Empty(t, subscription)
+		patchGuard8.Unpatch()
+		patchGuard7.Unpatch()
+	})
+
 	convey.Convey("notifier failure", t, func() {
 		tmpAuthMsg = geneAuthMsg(t)
 		patchGuard7 := sm.Patch((*Manager).VerifyToken, func(manager *Manager, tmpAuthMsg *message.AuthMsg) (bool, error) {
