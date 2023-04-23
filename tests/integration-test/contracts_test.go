@@ -68,7 +68,7 @@ func TestGreeter(t *testing.T) {
 	assert.NoError(t, err)
 	_, err = bind.WaitMined(context.Background(), l2Cli, tx)
 
-	bls, err := token.Retrieve(nil)
+	res, err := token.Retrieve(nil)
 	assert.NoError(t, err)
 	assert.Equal(t, val.String(), bls.String())
 }
