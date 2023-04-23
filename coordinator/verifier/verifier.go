@@ -21,6 +21,8 @@ import (
 	"scroll-tech/common/message"
 )
 
+const InvalidTestProof = "this is a invalid proof"
+
 // Verifier represents a rust ffi to a halo2 verifier.
 type Verifier struct {
 	cfg *config.VerifierConfig
@@ -47,7 +49,7 @@ func NewVerifier(cfg *config.VerifierConfig) (*Verifier, error) {
 func (v *Verifier) VerifyProof(proof *message.AggProof) (bool, error) {
 	if v.cfg.MockMode {
 		log.Info("Mock mode, verifier disabled")
-		if string(proof.Proof) == config.InvalidTestProof {
+		if string(proof.Proof) == InvalidTestProof {
 			return false, nil
 		}
 		return true, nil
