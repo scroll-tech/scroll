@@ -28,24 +28,25 @@ import (
 
 	"scroll-tech/coordinator"
 	client2 "scroll-tech/coordinator/client"
+	coordinator_config "scroll-tech/coordinator/config"
 	"scroll-tech/coordinator/verifier"
 
 	"scroll-tech/common/docker"
 	"scroll-tech/common/message"
 	"scroll-tech/common/types"
 	"scroll-tech/common/utils"
-
-	bridge_config "scroll-tech/bridge/config"
-
-	coordinator_config "scroll-tech/coordinator/config"
 )
 
 var (
-	cfg  *bridge_config.Config
-	base *docker.App
-
+	base      *docker.App
 	batchData *types.BatchData
 )
+
+func TestMain(m *testing.M) {
+	base = docker.NewDockerApp()
+	m.Run()
+	base.Free()
+}
 
 func randomURL() string {
 	id, _ := rand.Int(rand.Reader, big.NewInt(2000-1))
@@ -53,15 +54,7 @@ func randomURL() string {
 }
 
 func setEnv(t *testing.T) (err error) {
-	// Start postgres and l2geth docker containers.
 	base.RunDBImage(t)
-	base.RunL2Geth(t)
-
-	// Load config.
-	cfg, err = bridge_config.NewConfig("../bridge/config.json")
-	assert.NoError(t, err)
-	cfg.DBConfig = base.DBConfig
-
 	templateBlockTrace, err := os.ReadFile("../common/testdata/blockTrace_02.json")
 	if err != nil {
 		return err
@@ -104,15 +97,12 @@ func TestApis(t *testing.T) {
 }
 
 func testHandshake(t *testing.T) {
-	// Create db handler and reset db.
-	l2db, err := database.NewOrmFactory(cfg.DBConfig)
-	assert.NoError(t, err)
-	assert.NoError(t, migrate.ResetDB(l2db.GetDB().DB))
-	defer l2db.Close()
+	// Reset db.
+	assert.NoError(t, migrate.ResetDB(base.DBClient(t)))
 
 	// Setup coordinator and ws server.
 	wsURL := "ws://" + randomURL()
-	rollerManager, handler := setupCoordinator(t, cfg.DBConfig, 1, wsURL)
+	rollerManager, handler := setupCoordinator(t, base.DBConfig, 1, wsURL)
 	defer func() {
 		handler.Shutdown(context.Background())
 		rollerManager.Stop()
@@ -125,15 +115,12 @@ func testHandshake(t *testing.T) {
 }
 
 func testFailedHandshake(t *testing.T) {
-	// Create db handler and reset db.
-	l2db, err := database.NewOrmFactory(cfg.DBConfig)
-	assert.NoError(t, err)
-	assert.NoError(t, migrate.ResetDB(l2db.GetDB().DB))
-	defer l2db.Close()
+	// Reset db.
+	assert.NoError(t, migrate.ResetDB(base.DBClient(t)))
 
 	// Setup coordinator and ws server.
 	wsURL := "ws://" + randomURL()
-	rollerManager, handler := setupCoordinator(t, cfg.DBConfig, 1, wsURL)
+	rollerManager, handler := setupCoordinator(t, base.DBConfig, 1, wsURL)
 	defer func() {
 		handler.Shutdown(context.Background())
 		rollerManager.Stop()
@@ -191,15 +178,12 @@ func testFailedHandshake(t *testing.T) {
 }
 
 func testSeveralConnections(t *testing.T) {
-	// Create db handler and reset db.
-	l2db, err := database.NewOrmFactory(cfg.DBConfig)
-	assert.NoError(t, err)
-	assert.NoError(t, migrate.ResetDB(l2db.GetDB().DB))
-	defer l2db.Close()
+	// Reset db.
+	assert.NoError(t, migrate.ResetDB(base.DBClient(t)))
 
 	// Setup coordinator and ws server.
 	wsURL := "ws://" + randomURL()
-	rollerManager, handler := setupCoordinator(t, cfg.DBConfig, 1, wsURL)
+	rollerManager, handler := setupCoordinator(t, base.DBConfig, 1, wsURL)
 	defer func() {
 		handler.Shutdown(context.Background())
 		rollerManager.Stop()
@@ -246,14 +230,14 @@ func testSeveralConnections(t *testing.T) {
 
 func testValidProof(t *testing.T) {
 	// Create db handler and reset db.
-	l2db, err := database.NewOrmFactory(cfg.DBConfig)
+	l2db, err := database.NewOrmFactory(base.DBConfig)
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(l2db.GetDB().DB))
 	defer l2db.Close()
 
 	// Setup coordinator and ws server.
 	wsURL := "ws://" + randomURL()
-	rollerManager, handler := setupCoordinator(t, cfg.DBConfig, 3, wsURL)
+	rollerManager, handler := setupCoordinator(t, base.DBConfig, 3, wsURL)
 	defer func() {
 		handler.Shutdown(context.Background())
 		rollerManager.Stop()
@@ -309,14 +293,14 @@ func testValidProof(t *testing.T) {
 
 func testInvalidProof(t *testing.T) {
 	// Create db handler and reset db.
-	l2db, err := database.NewOrmFactory(cfg.DBConfig)
+	l2db, err := database.NewOrmFactory(base.DBConfig)
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(l2db.GetDB().DB))
 	defer l2db.Close()
 
 	// Setup coordinator and ws server.
 	wsURL := "ws://" + randomURL()
-	rollerManager, handler := setupCoordinator(t, cfg.DBConfig, 3, wsURL)
+	rollerManager, handler := setupCoordinator(t, base.DBConfig, 3, wsURL)
 	defer func() {
 		handler.Shutdown(context.Background())
 		rollerManager.Stop()
@@ -425,14 +409,14 @@ func testProofGeneratedFailed(t *testing.T) {
 
 func testTimedoutProof(t *testing.T) {
 	// Create db handler and reset db.
-	l2db, err := database.NewOrmFactory(cfg.DBConfig)
+	l2db, err := database.NewOrmFactory(base.DBConfig)
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(l2db.GetDB().DB))
 	defer l2db.Close()
 
 	// Setup coordinator and ws server.
 	wsURL := "ws://" + randomURL()
-	rollerManager, handler := setupCoordinator(t, cfg.DBConfig, 1, wsURL)
+	rollerManager, handler := setupCoordinator(t, base.DBConfig, 1, wsURL)
 	defer func() {
 		handler.Shutdown(context.Background())
 		rollerManager.Stop()
@@ -505,14 +489,14 @@ func testTimedoutProof(t *testing.T) {
 
 func testIdleRollerSelection(t *testing.T) {
 	// Create db handler and reset db.
-	l2db, err := database.NewOrmFactory(cfg.DBConfig)
+	l2db, err := database.NewOrmFactory(base.DBConfig)
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(l2db.GetDB().DB))
 	defer l2db.Close()
 
 	// Setup coordinator and ws server.
 	wsURL := "ws://" + randomURL()
-	rollerManager, handler := setupCoordinator(t, cfg.DBConfig, 1, wsURL)
+	rollerManager, handler := setupCoordinator(t, base.DBConfig, 1, wsURL)
 	defer func() {
 		handler.Shutdown(context.Background())
 		rollerManager.Stop()
@@ -564,7 +548,7 @@ func testIdleRollerSelection(t *testing.T) {
 
 func testGracefulRestart(t *testing.T) {
 	// Create db handler and reset db.
-	l2db, err := database.NewOrmFactory(cfg.DBConfig)
+	l2db, err := database.NewOrmFactory(base.DBConfig)
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(l2db.GetDB().DB))
 	defer l2db.Close()
@@ -580,7 +564,7 @@ func testGracefulRestart(t *testing.T) {
 
 	// Setup coordinator and ws server.
 	wsURL := "ws://" + randomURL()
-	rollerManager, handler := setupCoordinator(t, cfg.DBConfig, 1, wsURL)
+	rollerManager, handler := setupCoordinator(t, base.DBConfig, 1, wsURL)
 
 	// create mock roller
 	roller := newMockRoller(t, "roller_test", wsURL)
@@ -597,7 +581,7 @@ func testGracefulRestart(t *testing.T) {
 	rollerManager.Stop()
 
 	// Setup new coordinator and ws server.
-	newRollerManager, newHandler := setupCoordinator(t, cfg.DBConfig, 1, wsURL)
+	newRollerManager, newHandler := setupCoordinator(t, base.DBConfig, 1, wsURL)
 	defer func() {
 		newHandler.Shutdown(context.Background())
 		newRollerManager.Stop()
