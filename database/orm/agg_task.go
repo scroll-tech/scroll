@@ -26,7 +26,7 @@ func NewAggTaskOrm(db *sqlx.DB) AggTaskOrm {
 }
 
 func (a *aggTaskOrm) GetUnassignedAggTasks() ([]*AggTask, error) {
-	rows, err := a.db.Queryx("SELECT task FROM agg_task where roller = null;")
+	rows, err := a.db.Queryx("SELECT task FROM agg_task where roller is NULL;")
 	if err != nil {
 		return nil, err
 	}
