@@ -70,5 +70,5 @@ func TestGreeter(t *testing.T) {
 
 	res, err := token.Retrieve(nil)
 	assert.NoError(t, err)
-	assert.Equal(t, val.String(), bls.String())
+	assert.Equal(t, val.String(), res.String())
 }
