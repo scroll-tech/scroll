@@ -50,7 +50,7 @@ The coordinator behavior can be configured using config.json. Check the code com
 * For other usable flags, refer to ```app/flags.go```.
 
 ## Codeflow
-Upon loading config.json file, the coordinator (/cmd/app/app.go) sets up and starts the HTTP and WebSocket servers using the configured ports and addresses. Flags.go is used to parse the flags.
+Upon loading config.json file, the coordinator (/cmd/app/app.go) sets up and starts the HTTP and WebSocket servers using the configured ports and addresses. flags.go is used to parse the flags.
 Then, it creates a new RollerManager (/coordinator/manager.go) and starts listening.
 
 manager.go calls rollers.go for roller management functions. In the process, rollers.go calls api.go for communications between rollers.go and manager.go. rollers.go also call clients.go to submit proof.
