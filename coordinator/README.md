@@ -6,8 +6,32 @@ This repo contains the Scroll coordinator.
 
 ```bash
 make clean
+```
+This will clean up the build artifacts. Always clean before next make.
+
+```bash
 make coordinator
 ```
+This will build the coordinator binary and place it in the build/bin directory.
+
+## Test
+
+When developing coordinator, use the following command to mock verifier results and run coordinator tests only:
+
+```bash
+go test -tags="mock_verifier" -v -race -covermode=atomic scroll-tech/coordinator/...
+```
+Instead of using verifier/verifier.go, it will use verifier/mock.go to always return true.
+
+Lint the files before test and commit to remote:
+
+```bash
+make lint
+```
+
+## Config
+
+The coordinator behavior can be configured using config.json. Check the code comments under ```RollerManagerConfig``` in config/config.go for more detail.
 
 ## Start
 
@@ -22,3 +46,13 @@ make coordinator
 ```bash
 ./build/bin/coordinator --config ./config.json --http --http.addr localhost --http.port 8390
 ```
+
+* For other usable flags, refer to ```app/flags.go```.
+
+## Codeflow
+Upon loading config.json file, the coordinator (/cmd/app/app.go) sets up and starts the HTTP and WebSocket servers using the configured ports and addresses. Flags.go is used to parse the flags.
+Then, it creates a new RollerManager (/coordinator/manager.go) and starts listening.
+
+manager.go calls rollers.go for roller management functions. In the process, rollers.go calls api.go for communications between rollers.go and manager.go. rollers.go also call clients.go to submit proof.
+
+manager.go uses either verifier.go or mock.go(for test purposes) to verify the proof submitted by rollers. If the proof is valid, manager.go will call api.go to update the state of the roller.
