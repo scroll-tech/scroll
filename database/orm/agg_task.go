@@ -26,7 +26,7 @@ func NewAggTaskOrm(db *sqlx.DB) AggTaskOrm {
 }
 
 func (a *aggTaskOrm) GetUnassignedAggTasks() ([]*AggTask, error) {
-	rows, err := a.db.Queryx("SELECT task FROM agg_task where roller = null")
+	rows, err := a.db.Queryx("SELECT task FROM agg_task where roller = null;")
 	if err != nil {
 		return nil, err
 	}
@@ -53,7 +53,7 @@ func (a *aggTaskOrm) InsertAggTask(task *AggTask) error {
 	if err != nil {
 		return err
 	}
-	sqlStr := "INSERT INTO agg_task (hash, task) VALUES ($1, $2) ON CONFLICT (hash) DO UPDATE SET task = EXCLUDED.task;"
+	sqlStr := "INSERT INTO agg_task (hash, task) VALUES ($1, $2)"
 	_, err = a.db.Exec(sqlStr, task.ID, byt)
 	return err
 }
