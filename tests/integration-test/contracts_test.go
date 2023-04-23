@@ -36,8 +36,8 @@ func TestERC20(t *testing.T) {
 	assert.NoError(t, err)
 
 	// create tx to transfer balance.
-	bls := big.NewInt(1000)
-	tx, err := token.Transfer(auth, erc20Address, bls)
+	value := big.NewInt(1000)
+	tx, err := token.Transfer(auth, erc20Address, value)
 	assert.NoError(t, err)
 	bind.WaitMined(context.Background(), l2Cli, tx)
 
@@ -48,8 +48,8 @@ func TestERC20(t *testing.T) {
 	assert.NoError(t, err)
 
 	// check balance.
-	assert.Equal(t, authBls0.Int64(), authBls1.Add(authBls1, bls).Int64())
-	assert.Equal(t, tokenBls1.Int64(), tokenBls0.Add(tokenBls0, bls).Int64())
+	assert.Equal(t, authBls0.Int64(), authBls1.Add(authBls1, value).Int64())
+	assert.Equal(t, tokenBls1.Int64(), tokenBls0.Add(tokenBls0, value).Int64())
 }
 
 func TestGreeter(t *testing.T) {
