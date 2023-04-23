@@ -200,7 +200,7 @@ func (m *Manager) Loop() {
 			// Select roller and send message
 
 			for len(tasks) > 0 {
-				err := m.StartCommonProofGenerationSession(tasks[0], nil)
+				err := m.StartBasicProofGenerationSession(tasks[0], nil)
 				if err != nil {
 					break
 				}
@@ -398,7 +398,7 @@ func (m *Manager) CollectProofs(sess *session) {
 				if sess.info.ProveType == message.AggregatorRoller {
 					err = m.StartAggProofGenerationSession(nil, sess)
 				} else if sess.info.ProveType == message.BasicRoller {
-					err = m.StartCommonProofGenerationSession(nil, sess)
+					err = m.StartBasicProofGenerationSession(nil, sess)
 				}
 				if err == nil {
 					m.mu.Lock()
@@ -511,8 +511,8 @@ func (m *Manager) APIs() []rpc.API {
 	}
 }
 
-// StartCommonProofGenerationSession starts a common proof generation session
-func (m *Manager) StartCommonProofGenerationSession(task *types.BlockBatch, prevSession *session) (err error) {
+// StartBasicProofGenerationSession starts a common proof generation session
+func (m *Manager) StartBasicProofGenerationSession(task *types.BlockBatch, prevSession *session) (err error) {
 	var taskId string
 	if task != nil {
 		taskId = task.Hash
