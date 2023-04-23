@@ -33,12 +33,7 @@ func geneAuthMsg(t *testing.T) *message.AuthMsg {
 
 var rollerManager *Manager
 
-func TestMain(m *testing.M) {
-	initRollerManager()
-	m.Run()
-}
-
-func initRollerManager() {
+func init() {
 	rmConfig := config.RollerManagerConfig{}
 	rmConfig.Verifier = &config.VerifierConfig{MockMode: true}
 	rollerManager, _ = New(context.Background(), &rmConfig, nil, nil)
