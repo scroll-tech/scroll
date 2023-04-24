@@ -1,11 +1,13 @@
-package watcher_test
+package watcher
 
 import (
 	"context"
 	"fmt"
 	"math"
 	"testing"
+	"time"
 
+	"github.com/agiledragon/gomonkey/v2"
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/stretchr/testify/assert"
 
@@ -14,12 +16,48 @@ import (
 
 	"scroll-tech/bridge/config"
 	"scroll-tech/bridge/relayer"
-	"scroll-tech/bridge/watcher"
 
 	"scroll-tech/common/types"
 )
 
 func testBatchProposerProposeBatch(t *testing.T) {
+	p := &BatchProposer{
+		batchGasThreshold:   1000,
+		batchTxNumThreshold: 10,
+		batchTimeSec:        300,
+	}
+
+	patchGuard := gomonkey.ApplyPrivateMethod(p, "createBatchForBlocks", func(*BatchProposer, []*types.BlockInfo) error {
+		return nil
+	})
+	defer patchGuard.Reset()
+
+	block1 := &types.BlockInfo{Number: 1, GasUsed: 100, TxNum: 1, BlockTimestamp: uint64(time.Now().Unix()) - 200}
+	block2 := &types.BlockInfo{Number: 2, GasUsed: 200, TxNum: 2, BlockTimestamp: uint64(time.Now().Unix())}
+	block3 := &types.BlockInfo{Number: 3, GasUsed: 300, TxNum: 11, BlockTimestamp: uint64(time.Now().Unix())}
+	block4 := &types.BlockInfo{Number: 4, GasUsed: 1001, TxNum: 3, BlockTimestamp: uint64(time.Now().Unix())}
+	blockOutdated := &types.BlockInfo{Number: 1, GasUsed: 100, TxNum: 1, BlockTimestamp: uint64(time.Now().Add(-400 * time.Second).Unix())}
+
+	testCases := []struct {
+		blocks      []*types.BlockInfo
+		expectedRes bool
+	}{
+		{[]*types.BlockInfo{}, false},
+		{[]*types.BlockInfo{block4}, true},
+		{[]*types.BlockInfo{block3}, true},
+		{[]*types.BlockInfo{block1, block2, block3}, true},
+		{[]*types.BlockInfo{block1, block2}, false},
+		{[]*types.BlockInfo{blockOutdated, block2}, true},
+	}
+
+	for i, tc := range testCases {
+		t.Run(fmt.Sprintf("Test case %d", i+1), func(t *testing.T) {
+			assert.Equal(t, tc.expectedRes, p.proposeBatch(tc.blocks), "Failed on test case %d", i+1)
+		})
+	}
+}
+
+func testBatchProposerBatchGeneration(t *testing.T) {
 	// Create db handler and reset db.
 	db, err := database.NewOrmFactory(cfg.DBConfig)
 	assert.NoError(t, err)
@@ -36,7 +74,7 @@ func testBatchProposerProposeBatch(t *testing.T) {
 	assert.NoError(t, db.InsertWrappedBlocks([]*types.WrappedBlock{wrappedBlock1}))
 
 	l2cfg := cfg.L2Config
-	wc := watcher.NewL2WatcherClient(context.Background(), l2Cli, l2cfg.Confirmations, l2cfg.L2MessengerAddress, l2cfg.L2MessageQueueAddress, l2cfg.WithdrawTrieRootSlot, db)
+	wc := NewL2WatcherClient(context.Background(), l2Cli, l2cfg.Confirmations, l2cfg.L2MessengerAddress, l2cfg.L2MessageQueueAddress, l2cfg.WithdrawTrieRootSlot, db)
 	loopToFetchEvent(subCtx, wc)
 
 	batch, err := db.GetLatestBatch()
@@ -52,7 +90,7 @@ func testBatchProposerProposeBatch(t *testing.T) {
 	relayer, err := relayer.NewLayer2Relayer(context.Background(), l2Cli, db, cfg.L2Config.RelayerConfig)
 	assert.NoError(t, err)
 
-	proposer := watcher.NewBatchProposer(context.Background(), &config.BatchProposerConfig{
+	proposer := NewBatchProposer(context.Background(), &config.BatchProposerConfig{
 		ProofGenerationFreq: 1,
 		BatchGasThreshold:   3000000,
 		BatchTxNumThreshold: 135,
@@ -115,7 +153,7 @@ func testBatchProposerGracefulRestart(t *testing.T) {
 	assert.Equal(t, 1, len(batchHashes))
 	assert.Equal(t, batchData2.Hash().Hex(), batchHashes[0])
 	// test p.recoverBatchDataBuffer().
-	_ = watcher.NewBatchProposer(context.Background(), &config.BatchProposerConfig{
+	_ = NewBatchProposer(context.Background(), &config.BatchProposerConfig{
 		ProofGenerationFreq: 1,
 		BatchGasThreshold:   3000000,
 		BatchTxNumThreshold: 135,

@@ -169,6 +169,11 @@ func (s *Sender) ConfirmChan() <-chan *Confirmation {
 	return s.confirmCh
 }
 
+// SendConfirmation sends a confirmation to the confirmation channel.
+func (s *Sender) SendConfirmation(cfm *Confirmation) {
+	s.confirmCh <- cfm
+}
+
 // NumberOfAccounts return the count of accounts.
 func (s *Sender) NumberOfAccounts() int {
 	return len(s.auths.accounts)

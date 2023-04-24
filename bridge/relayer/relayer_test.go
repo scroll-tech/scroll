@@ -1,4 +1,4 @@
-package relayer_test
+package relayer
 
 import (
 	"encoding/json"
@@ -99,10 +99,15 @@ func TestFunctions(t *testing.T) {
 	}
 	// Run l1 relayer test cases.
 	t.Run("TestCreateNewL1Relayer", testCreateNewL1Relayer)
+	t.Run("TestL1RelayerProcessSaveEvents", testL1RelayerProcessSaveEvents)
+	t.Run("TestL1RelayerMsgConfirm", testL1RelayerMsgConfirm)
+	t.Run("TestL1RelayerGasOracleConfirm", testL1RelayerGasOracleConfirm)
 	// Run l2 relayer test cases.
 	t.Run("TestCreateNewRelayer", testCreateNewRelayer)
 	t.Run("TestL2RelayerProcessSaveEvents", testL2RelayerProcessSaveEvents)
 	t.Run("TestL2RelayerProcessCommittedBatches", testL2RelayerProcessCommittedBatches)
 	t.Run("TestL2RelayerSkipBatches", testL2RelayerSkipBatches)
-
+	t.Run("TestL2RelayerMsgConfirm", testL2RelayerMsgConfirm)
+	t.Run("TestL2RelayerRollupConfirm", testL2RelayerRollupConfirm)
+	t.Run("TestL2RelayerGasOracleConfirm", testL2RelayerGasOracleConfirm)
 }
