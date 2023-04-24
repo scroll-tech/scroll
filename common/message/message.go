@@ -22,25 +22,25 @@ const (
 	StatusProofError
 )
 
-// RollerType represents the type of roller.
-type RollerType uint8
+// ProveType represents the type of roller.
+type ProveType uint8
 
-func (r RollerType) String() string {
+func (r ProveType) String() string {
 	switch r {
-	case BasicRoller:
-		return "Basic Roller"
-	case AggregatorRoller:
-		return "Aggregator Roller"
+	case BasicProve:
+		return "Basic Prove"
+	case AggregatorProve:
+		return "Aggregator Prove"
 	default:
-		return "Illegal Roller type"
+		return "Illegal Prove type"
 	}
 }
 
 const (
-	// BasicRoller is default roller, it only generates zk proof from traces.
-	BasicRoller RollerType = iota
-	// AggregatorRoller generates zk proof from other zk proofs and aggregate them into one proof.
-	AggregatorRoller
+	// BasicProve is default roller, it only generates zk proof from traces.
+	BasicProve ProveType = iota
+	// AggregatorProve generates zk proof from other zk proofs and aggregate them into one proof.
+	AggregatorProve
 )
 
 // AuthMsg is the first message exchanged from the Roller to the Sequencer.
@@ -58,7 +58,7 @@ type Identity struct {
 	// Roller name
 	Name string `json:"name"`
 	// Roller Type
-	Type RollerType `json:"type"`
+	Type ProveType `json:"type"`
 	// Unverified Unix timestamp of message creation
 	Timestamp uint32 `json:"timestamp"`
 	// Roller public key
@@ -211,7 +211,8 @@ func (a *ProofMsg) PublicKey() (string, error) {
 
 // TaskMsg is a wrapper type around db ProveTask type.
 type TaskMsg struct {
-	ID string `json:"id"`
+	ID   string    `json:"id"`
+	Type ProveType `json:"type"`
 	// Only common rollers need traces, aggregator rollers don't!
 	Traces []*types.BlockTrace `json:"blockTraces,omitempty"`
 	// Only aggregator rollers need proofs, common rollers don't!

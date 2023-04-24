@@ -14,7 +14,7 @@ type Prover struct {
 }
 
 // NewProver inits a Prover object.
-func NewProver(cfg *config.ProverConfig, typ message.RollerType) (*Prover, error) {
+func NewProver(cfg *config.ProverConfig, typ message.ProveType) (*Prover, error) {
 	return &Prover{cfg: cfg}, nil
 }
 

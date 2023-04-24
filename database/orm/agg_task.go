@@ -2,6 +2,7 @@ package orm
 
 import (
 	"encoding/json"
+	"scroll-tech/common/types"
 
 	"github.com/jmoiron/sqlx"
 
@@ -26,7 +27,7 @@ func NewAggTaskOrm(db *sqlx.DB) AggTaskOrm {
 }
 
 func (a *aggTaskOrm) GetUnassignedAggTasks() ([]*AggTask, error) {
-	rows, err := a.db.Queryx("SELECT task FROM agg_task where roller is NULL;")
+	rows, err := a.db.Queryx("SELECT task FROM agg_task where proving_status = 1;")
 	if err != nil {
 		return nil, err
 	}
@@ -58,11 +59,15 @@ func (a *aggTaskOrm) InsertAggTask(task *AggTask) error {
 	return err
 }
 
-func (a *aggTaskOrm) UpdateProofForAggTask(aggTaskID, roller string, proof *message.AggProof) error {
-	byt, err := json.Marshal(proof)
-	if err != nil {
+func (a *aggTaskOrm) UpdateAggTaskStatus(aggTaskID string, status types.ProvingStatus, proof *message.AggProof) error {
+	if status == types.ProvingTaskVerified {
+		byt, err := json.Marshal(proof)
+		if err != nil {
+			return err
+		}
+		_, err = a.db.Exec(a.db.Rebind("update agg_task set proving_status = ?, proof = ? where hash = ?;"), status, byt, aggTaskID)
 		return err
 	}
-	_, err = a.db.Exec(a.db.Rebind("update agg_task set roller = ?, proof = ? where hash = ?;"), roller, byt, aggTaskID)
+	_, err := a.db.Exec(a.db.Rebind("update agg_task set proving_status = ? where hash = ?;"), status, aggTaskID)
 	return err
 }

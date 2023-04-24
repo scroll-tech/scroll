@@ -3,10 +3,10 @@
 
 create table agg_task
 (
-    hash         VARCHAR NOT NULL,
-    task         BYTEA   NOT NULL,
-    roller       TEXT DEFAULT NULL,
-    proof        BYTEA DEFAULT NULL
+    hash                    VARCHAR NOT NULL,
+    task                    BYTEA   NOT NULL,
+    proving_status          INTEGER DEFAULT 1,
+    proof                   BYTEA DEFAULT NULL
 );
 
 create unique index agg_task_hash_uindex

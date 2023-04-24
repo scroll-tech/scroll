@@ -25,12 +25,12 @@ import (
 
 // Prover sends block-traces to rust-prover through ffi and get back the zk-proof.
 type Prover struct {
-	Type message.RollerType
+	Type message.ProveType
 	cfg  *config.ProverConfig
 }
 
 // NewProver inits a Prover object.
-func NewProver(cfg *config.ProverConfig, typ message.RollerType) (*Prover, error) {
+func NewProver(cfg *config.ProverConfig, typ message.ProveType) (*Prover, error) {
 	paramsPathStr := C.CString(cfg.ParamsPath)
 	seedPathStr := C.CString(cfg.SeedPath)
 	defer func() {
@@ -53,14 +53,14 @@ func NewProver(cfg *config.ProverConfig, typ message.RollerType) (*Prover, error
 // Prove call rust ffi to generate proof, if first failed, try again.
 func (p *Prover) Prove(task *message.TaskMsg) (*message.AggProof, error) {
 	var proofByt []byte
-	if p.Type == message.BasicRoller {
+	if p.Type == message.BasicProve {
 		tracesByt, err := json.Marshal(task.Traces)
 		if err != nil {
 			return nil, err
 		}
 
 		proofByt = p.prove(tracesByt)
-	} else if p.Type == message.AggregatorRoller {
+	} else if p.Type == message.AggregatorProve {
 		// TODO: aggregator prove
 	}
 

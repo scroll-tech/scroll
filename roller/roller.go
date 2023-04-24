@@ -87,7 +87,7 @@ func NewRoller(cfg *config.Config) (*Roller, error) {
 }
 
 // Type returns roller type.
-func (r *Roller) Type() message.RollerType {
+func (r *Roller) Type() message.ProveType {
 	return r.cfg.RollerType
 }
 

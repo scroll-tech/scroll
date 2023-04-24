@@ -7,7 +7,6 @@ import (
 	"time"
 
 	cmap "github.com/orcaman/concurrent-map"
-	geth_types "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/log"
 	geth_metrics "github.com/scroll-tech/go-ethereum/metrics"
 
@@ -21,7 +20,7 @@ type rollerNode struct {
 	// Roller name
 	Name string
 	// Roller type
-	Type message.RollerType
+	Type message.ProveType
 	// Roller public key
 	PublicKey string
 	// Roller version
@@ -38,13 +37,10 @@ type rollerNode struct {
 	*rollerMetrics
 }
 
-func (r *rollerNode) sendTask(id string, traces []*geth_types.BlockTrace) bool {
+func (r *rollerNode) sendTask(msg *message.TaskMsg) bool {
 	select {
-	case r.taskChan <- &message.TaskMsg{
-		ID:     id,
-		Traces: traces,
-	}:
-		r.TaskIDs.Set(id, struct{}{})
+	case r.taskChan <- msg:
+		r.TaskIDs.Set(msg.ID, struct{}{})
 	default:
 		log.Warn("roller channel is full", "roller name", r.Name, "public key", r.PublicKey)
 		return false
@@ -120,7 +116,7 @@ func (m *Manager) freeTaskIDForRoller(pk string, id string) {
 }
 
 // GetNumberOfIdleRollers return the count of idle rollers.
-func (m *Manager) GetNumberOfIdleRollers(rollerType message.RollerType) (count int) {
+func (m *Manager) GetNumberOfIdleRollers(rollerType message.ProveType) (count int) {
 	for _, pk := range m.rollerPool.Keys() {
 		if val, ok := m.rollerPool.Get(pk); ok {
 			r := val.(*rollerNode)
@@ -132,7 +128,7 @@ func (m *Manager) GetNumberOfIdleRollers(rollerType message.RollerType) (count i
 	return count
 }
 
-func (m *Manager) selectRoller(rollerType message.RollerType) *rollerNode {
+func (m *Manager) selectRoller(rollerType message.ProveType) *rollerNode {
 	pubkeys := m.rollerPool.Keys()
 	for len(pubkeys) > 0 {
 		idx, _ := rand.Int(rand.Reader, big.NewInt(int64(len(pubkeys))))

@@ -51,7 +51,7 @@ type SessionInfoOrm interface {
 type AggTaskOrm interface {
 	GetUnassignedAggTasks() ([]*AggTask, error)
 	InsertAggTask(task *AggTask) error
-	UpdateProofForAggTask(aggTaskID, roller string, proof *message.AggProof) error
+	UpdateAggTaskStatus(aggTaskID string, status types.ProvingStatus, proof *message.AggProof) error
 }
 
 // BlockBatchOrm block_batch operation interface
