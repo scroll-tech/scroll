@@ -55,4 +55,4 @@ Then, it creates a new RollerManager (/coordinator/manager.go) and starts listen
 
 manager.go calls rollers.go for roller management functions. In the process, rollers.go calls api.go for communications between rollers.go and manager.go. rollers.go also call clients.go to submit proof.
 
-manager.go uses either verifier.go or mock.go(for test purposes) to verify the proof submitted by rollers. If the proof is valid, manager.go will call api.go to update the state of the roller.
+manager.go uses either verifier.go or mock.go(for test purposes) to verify the proof submitted by rollers. After verification, manager.go will call roller.go to update the state of the roller, then return the result (whether the proof is successful) to the roller.
