@@ -55,7 +55,7 @@ func TestManager_RequestToken(t *testing.T) {
 		assert.Empty(t, token)
 	})
 
-	convey.Convey("token get failure", t, func() {
+	convey.Convey("token has already been distributed", t, func() {
 		tmpAuthMsg := geneAuthMsg(t)
 		patchGuard := sm.PatchByFullSymbolName("github.com/patrickmn/go-cache.(*cache).Get", func(ptr uintptr, abc string) (interface{}, bool) {
 			return tokenCacheStored, true
