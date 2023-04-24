@@ -52,8 +52,8 @@ func (t *scrollTxOrm) SetScrollTxConfirmedByID(id string, txHash string) error {
 	return err
 }
 
-// GetTxByID returns tx message by message id.
-func (t *scrollTxOrm) GetTxByID(id string) (*stypes.ScrollTx, error) {
+// GetScrollTxByID returns tx message by message id.
+func (t *scrollTxOrm) GetScrollTxByID(id string) (*stypes.ScrollTx, error) {
 	db := t.db
 	row := db.QueryRowx(db.Rebind("SELECT id, tx_hash, sender, nonce, target, value, data FROM scroll_transaction WHERE id = ?"), id)
 	txMsg := &stypes.ScrollTx{}

@@ -6,8 +6,8 @@ import "database/sql"
 type ScrollTxType int
 
 const (
-	// UndefinedTx undefined scroll tx type
-	UndefinedTx ScrollTxType = iota
+	// UndefinedScrollTx undefined scroll tx type
+	UndefinedScrollTx ScrollTxType = iota
 	// L1toL2MessageTx is sent by l1 relayer but to L2
 	L1toL2MessageTx
 	// L1toL2GasOracleTx  is sent by l1 relayer but to L2

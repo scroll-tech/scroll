@@ -284,7 +284,7 @@ func (r *Layer2Relayer) ProcessGasPriceOracle() {
 				return
 			}
 
-			from, tx, err := r.gasOracleSender.SendTransaction(batch.Hash, &r.cfg.GasPriceOracleContractAddress, big.NewInt(0), data, 0)
+			_, tx, err := r.gasOracleSender.SendTransaction(batch.Hash, &r.cfg.GasPriceOracleContractAddress, big.NewInt(0), data, 0)
 			if err != nil {
 				if !errors.Is(err, sender.ErrNoAvailableAccount) && !errors.Is(err, sender.ErrFullPending) {
 					log.Error("Failed to send setL2BaseFee tx to layer2 ", "batch.Hash", batch.Hash, "err", err)
@@ -296,11 +296,6 @@ func (r *Layer2Relayer) ProcessGasPriceOracle() {
 			if err != nil {
 				log.Error("UpdateGasOracleStatusAndOracleTxHash failed", "batch.Hash", batch.Hash, "err", err)
 				return
-			}
-			// Record gas oracle tx message.
-			err = r.db.SaveScrollTx(batch.Hash, from.String(), types.L2toL1GasOracleTx, tx, "")
-			if err != nil {
-				log.Error("failed to save l2 gas oracle tx message", "batch.Hash", batch.Hash, "tx.Hash", tx.Hash().String(), "err", err)
 			}
 			r.lastGasPrice = suggestGasPriceUint64
 			log.Info("Update l2 gas price", "txHash", tx.Hash().String(), "GasPrice", suggestGasPrice)
@@ -357,7 +352,7 @@ func (r *Layer2Relayer) SendCommitTx(batchData []*types.BatchData) error {
 			log.Error("UpdateCommitTxHashAndRollupStatus failed", "hash", batchHashes[i], "index", batch.Batch.BatchIndex, "err", err)
 		}
 	}
-	// Record gas oracle tx message.
+	// Record batches tx message.
 	err = r.db.SaveScrollTx(txID, from.String(), types.RollUpCommitTx, tx, strings.Join(batchHashes, ","))
 	if err != nil {
 		log.Error("failed to save l2 commitBatches tx message", "batches.id", txID, "tx.hash", tx.Hash().String(), "err", err)
@@ -614,9 +609,6 @@ func (r *Layer2Relayer) handleConfirmLoop(ctx context.Context) {
 				err := r.db.UpdateL2GasOracleStatusAndOracleTxHash(r.ctx, cfm.ID, types.GasOracleImported, cfm.TxHash.String())
 				if err != nil {
 					log.Warn("UpdateL2GasOracleStatusAndOracleTxHash failed", "err", err)
-				}
-				if err = r.db.SetScrollTxConfirmedByID(cfm.ID, cfm.TxHash.String()); err != nil {
-					log.Warn("failed to delete l2 gas oracle tx data", "batch.Hash", cfm.ID, "tx.Hash", cfm.TxHash.String(), "err", err)
 				}
 				log.Info("transaction confirmed in layer1", "confirmation", cfm)
 			}

@@ -481,7 +481,7 @@ func testTxOrmSaveTxAndGetTxByHash(t *testing.T) {
 	err = ormTx.SetScrollTxConfirmedByID("1", signedTx.Hash().String())
 	assert.NoError(t, err)
 
-	savedTx, err := ormTx.GetTxByID("1")
+	savedTx, err := ormTx.GetScrollTxByID("1")
 	assert.NoError(t, err)
 
 	assert.Equal(t, signedTx.Hash().String(), savedTx.TxHash.String)
