@@ -47,7 +47,7 @@ The coordinator behavior can be configured using config.json. Check the code com
 ./build/bin/coordinator --config ./config.json --http --http.addr localhost --http.port 8390
 ```
 
-* For other usable flags, refer to ```app/flags.go```.
+* For other usable flags, refer to `./cmd/app/flags.go`.
 
 ## Codeflow
 Upon loading config.json file, the coordinator (/cmd/app/app.go) sets up and starts the HTTP and WebSocket servers using the configured ports and addresses. flags.go is used to parse the flags.
