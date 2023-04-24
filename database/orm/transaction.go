@@ -78,8 +78,8 @@ func (t *scrollTxOrm) GetScrollTxs(fields map[string]interface{}, args ...string
 	return txMsgs, nil
 }
 
-// GetTxByID returns tx message by message id.
-func (t *scrollTxOrm) GetTxByID(id string) (*stypes.ScrollTx, error) {
+// GetScrollTxByID returns tx message by message id.
+func (t *scrollTxOrm) GetScrollTxByID(id string) (*stypes.ScrollTx, error) {
 	db := t.db
 	row := db.QueryRowx(db.Rebind("SELECT id, tx_hash, sender, nonce, target, value, data FROM scroll_transaction WHERE id = ?"), id)
 	txMsg := &stypes.ScrollTx{}

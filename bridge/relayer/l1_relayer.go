@@ -254,7 +254,7 @@ func (r *Layer1Relayer) ProcessGasPriceOracle() {
 				return
 			}
 
-			from, tx, err := r.gasOracleSender.SendTransaction(block.Hash, &r.cfg.GasPriceOracleContractAddress, big.NewInt(0), data, 0)
+			_, tx, err := r.gasOracleSender.SendTransaction(block.Hash, &r.cfg.GasPriceOracleContractAddress, big.NewInt(0), data, 0)
 			if err != nil {
 				if !errors.Is(err, sender.ErrNoAvailableAccount) && !errors.Is(err, sender.ErrFullPending) {
 					log.Error("Failed to send setL1BaseFee tx to layer2 ", "block.Hash", block.Hash, "block.Height", block.Number, "err", err)
@@ -267,11 +267,6 @@ func (r *Layer1Relayer) ProcessGasPriceOracle() {
 				log.Error("UpdateGasOracleStatusAndOracleTxHash failed", "block.Hash", block.Hash, "block.Height", block.Number, "err", err)
 				return
 			}
-			err = r.db.SaveScrollTx(block.Hash, from.String(), types.L1toL2GasOracleTx, tx, "")
-			if err != nil {
-				log.Error("failed to store l1 gas oracle tx message", "block.Hash", block.Hash, "block.Height", block.Number, "tx.hash", tx.Hash().String(), "err", err)
-			}
-
 			r.lastGasPrice = block.BaseFee
 			log.Info("Update l1 base fee", "txHash", tx.Hash().String(), "baseFee", baseFee)
 		}
@@ -315,9 +310,6 @@ func (r *Layer1Relayer) handleConfirmLoop(ctx context.Context) {
 				err := r.db.UpdateL1GasOracleStatusAndOracleTxHash(r.ctx, cfm.ID, types.GasOracleImported, cfm.TxHash.String())
 				if err != nil {
 					log.Warn("UpdateGasOracleStatusAndOracleTxHash failed", "err", err)
-				}
-				if err = r.db.SetScrollTxConfirmedByID(cfm.ID, cfm.TxHash.String()); err != nil {
-					log.Warn("failed to delete l1 gas oracle tx data", "block.Hash", cfm.ID, "tx.Hash", cfm.TxHash.String(), "err", err)
 				}
 
 				log.Info("transaction confirmed in layer2", "confirmation", cfm)
