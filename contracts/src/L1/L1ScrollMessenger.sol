@@ -10,6 +10,7 @@ import {IL1ScrollMessenger} from "./IL1ScrollMessenger.sol";
 import {ScrollConstants} from "../libraries/constants/ScrollConstants.sol";
 import {IScrollMessenger} from "../libraries/IScrollMessenger.sol";
 import {ScrollMessengerBase} from "../libraries/ScrollMessengerBase.sol";
+import {AddressAliasHelper} from "../libraries/common/AddressAliasHelper.sol";
 import {WithdrawTrieVerifier} from "../libraries/verifier/WithdrawTrieVerifier.sol";
 
 // solhint-disable avoid-low-level-calls
@@ -177,9 +178,55 @@ contract L1ScrollMessenger is PausableUpgradeable, ScrollMessengerBase, IL1Scrol
         uint256 _queueIndex,
         bytes memory _message,
         uint32 _oldGasLimit,
-        uint32 _newGasLimit
-    ) external override whenNotPaused {
-        // @todo
+        uint32 _newGasLimit,
+        address _refundAddress
+    ) external payable override whenNotPaused {
+        address _messageQueue = messageQueue;
+        address _counterpart = counterpart;
+        bytes memory _xDomainCalldata = _encodeXDomainCalldata(_from, _to, _value, _queueIndex, _message);
+
+        // compute the expected transaction hash
+        bytes32 _computedTransactionHash = IL1MessageQueue(_messageQueue).computeTransactionHash(
+            AddressAliasHelper.applyL1ToL2Alias(address(this)),
+            _queueIndex,
+            0,
+            _counterpart,
+            _oldGasLimit,
+            _xDomainCalldata
+        );
+
+        // check the provided message matching with enqueued one.
+        require(
+            _computedTransactionHash == IL1MessageQueue(_messageQueue).getCrossDomainMessage(_queueIndex),
+            "Provided message has not been enqueued"
+        );
+
+        // compute and deduct the messaging fee to fee vault.
+        uint256 _fee = IL1MessageQueue(_messageQueue).estimateCrossDomainMessageFee(
+            address(this),
+            _counterpart,
+            _xDomainCalldata,
+            _newGasLimit
+        );
+
+        // charge relayer fee
+        require(msg.value >= _fee, "Insufficient msg.value for fee");
+        if (_fee > 0) {
+            (bool _success, ) = feeVault.call{value: _fee}("");
+            require(_success, "Failed to deduct the fee");
+        }
+
+        // enqueue the new transaction
+        IL1MessageQueue(_messageQueue).appendCrossDomainMessage(_counterpart, _newGasLimit, _xDomainCalldata);
+
+        // refund fee to tx.origin
+        unchecked {
+            uint256 _refund = msg.value - _fee;
+            if (_refund > 0) {
+                (bool _success, ) = _refundAddress.call{value: _refund}("");
+                require(_success, "Failed to refund the fee");
+            }
+        }
     }
 
     /************************
