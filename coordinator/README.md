@@ -31,7 +31,7 @@ make lint
 
 ## Config
 
-The coordinator behavior can be configured using config.json. Check the code comments under ```RollerManagerConfig``` in config/config.go for more detail.
+The coordinator behavior can be configured using config.json. Check the code comments under `RollerManagerConfig` in config/config.go for more detail.
 
 ## Start
 
