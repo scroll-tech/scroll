@@ -318,7 +318,7 @@ func testInvalidProof(t *testing.T) {
 			roller.close()
 		}
 	}()
-	assert.Equal(t, 3, rollerManager.GetNumberOfIdleRollers())
+	assert.Equal(t, 3, rollerManager.GetNumberOfIdleRollers(message.BasicRoller))
 
 	var hashes = make([]string, 1)
 	dbTx, err := l2db.Beginx()
