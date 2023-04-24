@@ -11,6 +11,8 @@ import {Whitelist} from "../L2/predeploys/Whitelist.sol";
 import {L1ScrollMessenger} from "../L1/L1ScrollMessenger.sol";
 import {L2ScrollMessenger} from "../L2/L2ScrollMessenger.sol";
 
+import {AddressAliasHelper} from "../libraries/common/AddressAliasHelper.sol";
+
 contract L2ScrollMessengerTest is DSTestPlus {
     L1ScrollMessenger internal l1Messenger;
 
@@ -41,11 +43,13 @@ contract L2ScrollMessengerTest is DSTestPlus {
     }
 
     function testForbidCallFromL1() external {
+        hevm.startPrank(AddressAliasHelper.applyL1ToL2Alias(address(l1Messenger)));
         hevm.expectRevert("Forbid to call message queue");
         l2Messenger.relayMessage(address(this), address(l2MessageQueue), 0, 0, new bytes(0));
 
         hevm.expectRevert("Forbid to call self");
         l2Messenger.relayMessage(address(this), address(l2Messenger), 0, 0, new bytes(0));
+        hevm.stopPrank();
     }
 
     function testSendMessage(uint256 exceedValue, address refundAddress) external {
