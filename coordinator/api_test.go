@@ -27,7 +27,7 @@ func geneAuthMsg(t *testing.T) *message.AuthMsg {
 	}
 	privKey, err := crypto.GenerateKey()
 	assert.NoError(t, err)
-	assert.NoError(t, authMsg.Sign(privKey))
+	assert.NoError(t, authMsg.SignWithKey(privKey))
 	return authMsg
 }
 
