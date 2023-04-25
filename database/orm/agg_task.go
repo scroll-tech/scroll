@@ -31,22 +31,15 @@ func (a *aggTaskOrm) GetUnassignedAggTasks() ([]*AggTask, error) {
 	if err != nil {
 		return nil, err
 	}
-	var tasks []*AggTask
-	for rows.Next() {
-		var byt []byte
-		err = rows.Scan(&byt)
-		if err != nil {
-			return nil, err
-		}
+	return a.rowsToAggTask(rows)
+}
 
-		task := new(AggTask)
-		err = json.Unmarshal(byt, task)
-		if err != nil {
-			return nil, err
-		}
-		tasks = append(tasks, task)
+func (a *aggTaskOrm) GetAssignedAggTasks() ([]*AggTask, error) {
+	rows, err := a.db.Queryx(`SELECT task FROM agg_task WHERE proving_status IN ($1, $2)`, types.ProvingTaskAssigned, types.ProvingTaskProved)
+	if err != nil {
+		return nil, err
 	}
-	return tasks, nil
+	return a.rowsToAggTask(rows)
 }
 
 func (a *aggTaskOrm) InsertAggTask(task *AggTask) error {
@@ -70,4 +63,23 @@ func (a *aggTaskOrm) UpdateAggTaskStatus(aggTaskID string, status types.ProvingS
 	}
 	_, err := a.db.Exec(a.db.Rebind("update agg_task set proving_status = ? where hash = ?;"), status, aggTaskID)
 	return err
+}
+
+func (a *aggTaskOrm) rowsToAggTask(rows *sqlx.Rows) ([]*AggTask, error) {
+	var tasks []*AggTask
+	for rows.Next() {
+		var byt []byte
+		err := rows.Scan(&byt)
+		if err != nil {
+			return nil, err
+		}
+
+		task := new(AggTask)
+		err = json.Unmarshal(byt, task)
+		if err != nil {
+			return nil, err
+		}
+		tasks = append(tasks, task)
+	}
+	return tasks, nil
 }

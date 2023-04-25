@@ -215,7 +215,7 @@ type TaskMsg struct {
 	Type ProveType `json:"type"`
 	// Only common rollers need traces, aggregator rollers don't!
 	Traces []*types.BlockTrace `json:"blockTraces,omitempty"`
-	// Only aggregator rollers need proofs, common rollers don't!
+	// Only aggregator rollers need proofs to aggregate, basic rollers don't!
 	Proofs []*AggProof `json:"proofs,omitempty"`
 }
 

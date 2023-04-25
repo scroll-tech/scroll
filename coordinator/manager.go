@@ -237,41 +237,67 @@ func (m *Manager) restorePrevSessions() {
 
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	aggTasks, err := m.orm.GetUnassignedAggTasks()
+
+	// load unassigned agg tasks into channel
+	unassignedAggs, err := m.orm.GetUnassignedAggTasks()
 	if err != nil {
 		log.Error("failed to load unassigned aggregator tasks from db", "error", err)
+		return
 	}
 	go func() {
-		for _, task := range aggTasks {
-			m.aggTaskChan <- &message.TaskMsg{ID: task.ID, Proofs: task.Proofs}
+		for _, unassigned := range unassignedAggs {
+			m.aggTaskChan <- &message.TaskMsg{ID: unassigned.ID, Proofs: unassigned.Proofs}
 		}
 	}()
 
-	if hashes, err := m.orm.GetAssignedBatchHashes(); err != nil {
-		log.Error("failed to get assigned batch hashes from db", "error", err)
-	} else if prevSessions, err := m.orm.GetSessionInfosByHashes(hashes); err != nil {
-		log.Error("failed to recover roller session info from db", "error", err)
-	} else {
-		for _, v := range prevSessions {
-			sess := &session{
-				info:       v,
-				finishChan: make(chan rollerProofStatus, proofAndPkBufferSize),
-			}
-			m.sessions[sess.info.ID] = sess
+	// load assigned tasks as sessions
+	var hashes []string
 
-			log.Info("Coordinator restart reload sessions", "session start time", time.Unix(sess.info.StartTimestamp, 0))
-			for _, roller := range sess.info.Rollers {
-				log.Info(
-					"restore roller info for session",
-					"session id", sess.info.ID,
-					"roller name", roller.Name,
-					"public key", roller.PublicKey,
-					"proof status", roller.Status)
-			}
-
-			go m.CollectProofs(sess)
-		}
+	aggTasks, err := m.orm.GetAssignedAggTasks()
+	if err != nil {
+		log.Error("failed to load assigned aggregator tasks from db", "error", err)
+		return
 	}
+	for _, task := range aggTasks {
+		hashes = append(hashes, task.ID)
+	}
+
+	// get all assigned basic task hash
+	batchHashes, err := m.orm.GetAssignedBatchHashes()
+	if err != nil {
+		log.Error("failed to get assigned batch hashes from db", "error", err)
+		return
+	}
+	hashes = append(hashes, batchHashes...)
+
+	// get all assigned sessions by block-traces(basic proving tasks) and agg-proofs(agg proving tasks)
+	prevSessions, err := m.orm.GetSessionInfosByHashes(hashes)
+	if err != nil {
+		log.Error("failed to recover roller session info from db", "error", err)
+		return
+	}
+
+	for _, v := range prevSessions {
+		sess := &session{
+			info:       v,
+			finishChan: make(chan rollerProofStatus, proofAndPkBufferSize),
+		}
+		m.sessions[sess.info.ID] = sess
+
+		log.Info("Coordinator restart reload sessions", "session start time", time.Unix(sess.info.StartTimestamp, 0))
+		for _, roller := range sess.info.Rollers {
+			log.Info(
+				"restore roller info for session",
+				"session id", sess.info.ID,
+				"roller name", roller.Name,
+				"prove type", sess.info.ProveType,
+				"public key", roller.PublicKey,
+				"proof status", roller.Status)
+		}
+
+		go m.CollectProofs(sess)
+	}
+
 }
 
 // HandleZkProof handle a ZkProof submitted from a roller.
@@ -631,7 +657,7 @@ func (m *Manager) GetBlockTraces(taskId string) ([]*geth_types.BlockTrace, error
 	return traces, nil
 }
 
-// DispatchTaskToRoller dispatches task to common/aggregator rollers.
+// DispatchTaskToRoller dispatches task to basic/aggregator rollers.
 func (m *Manager) DispatchTaskToRoller(taskMsg *message.TaskMsg) (map[string]*types.RollerStatus, error) {
 	rollers := make(map[string]*types.RollerStatus)
 	for i := 0; i < int(m.cfg.RollersPerSession); i++ {
