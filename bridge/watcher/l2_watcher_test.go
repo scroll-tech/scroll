@@ -22,6 +22,7 @@ import (
 	"scroll-tech/bridge/watcher"
 
 	cutils "scroll-tech/common/utils"
+
 	"scroll-tech/database"
 	"scroll-tech/database/migrate"
 )

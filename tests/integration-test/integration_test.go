@@ -20,8 +20,9 @@ import (
 	"scroll-tech/common/docker"
 	"scroll-tech/common/utils"
 
-	"scroll-tech/database/migrate"
 	rapp "scroll-tech/roller/cmd/app"
+
+	"scroll-tech/database/migrate"
 
 	capp "scroll-tech/coordinator/cmd/app"
 )
