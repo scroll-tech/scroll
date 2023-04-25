@@ -350,7 +350,7 @@ func (m *Manager) handleZkProof(pk string, msg *message.ProofDetail) error {
 		// TODO: maybe we should use db tx for the whole process?
 		// Roll back current proof's status.
 		if dbErr != nil {
-			if err := m.orm.UpdateProvingStatus(msg.ID, types.ProvingTaskUnassigned); err != nil {
+			if err := m.updateProofStatus(msg.ID, msg.Type, types.ProvingTaskUnassigned, msg.Proof); err != nil {
 				log.Error("fail to reset task status as Unassigned", "msg.ID", msg.ID)
 			}
 		}
@@ -382,7 +382,7 @@ func (m *Manager) handleZkProof(pk string, msg *message.ProofDetail) error {
 		log.Error("failed to store proof into db", "error", dbErr)
 		return dbErr
 	}
-	if dbErr = m.orm.UpdateProvingStatus(msg.ID, types.ProvingTaskProved); dbErr != nil {
+	if dbErr = m.updateProofStatus(msg.ID, msg.Type, types.ProvingTaskProved, msg.Proof); dbErr != nil {
 		log.Error("failed to update task status as proved", "error", dbErr)
 		return dbErr
 	}
@@ -400,10 +400,11 @@ func (m *Manager) handleZkProof(pk string, msg *message.ProofDetail) error {
 	}
 
 	if success {
-		if dbErr = m.orm.UpdateProvingStatus(msg.ID, types.ProvingTaskVerified); dbErr != nil {
+		if dbErr = m.updateProofStatus(msg.ID, msg.Type, types.ProvingTaskVerified, msg.Proof); dbErr != nil {
 			log.Error(
 				"failed to update proving_status",
 				"msg.ID", msg.ID,
+				"prove type", msg.Type,
 				"status", types.ProvingTaskVerified,
 				"error", dbErr)
 			return dbErr
@@ -451,7 +452,7 @@ func (m *Manager) CollectProofs(sess *session) {
 			// Note that this is only a workaround for testnet here.
 			// TODO: In real cases we should reset to orm.ProvingTaskUnassigned
 			// so as to re-distribute the task in the future
-			if err := m.orm.UpdateProvingStatus(sess.info.ID, types.ProvingTaskFailed); err != nil {
+			if err := m.updateProofStatus(sess.info.ID, sess.info.ProveType, types.ProvingTaskFailed, nil); err != nil {
 				log.Error("fail to reset task_status as Unassigned", "id", sess.info.ID, "err", err)
 			}
 			m.mu.Lock()
