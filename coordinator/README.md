@@ -49,20 +49,22 @@ The coordinator behavior can be configured using config.json. Check the code com
 
 ### ./cmd/app/app.go
 
-This file defines the main entry point for the coordinator application, setting up the necessary modules, and handling graceful shutdowns. Upon loading config.json file, the coordinator (./cmd/app/app.go) sets up and starts the HTTP and WebSocket servers using the configured ports and addresses. flags.go is used to parse the flags.
-Then, it creates a new RollerManager (./manager.go) and starts listening.
+This file defines the main entry point for the coordinator application, setting up the necessary modules, and handling graceful shutdowns. Upon loading config.json file, the coordinator (`./cmd/app/app.go`) sets up and starts the HTTP and WebSocket servers using the configured ports and addresses. flags.go is used to parse the flags.
+Then, it creates a new RollerManager (`./manager.go`) and starts listening.
 
 ### ./manager.go
-manager.go calls rollers.go for roller management functions. In the process, rollers.go calls api.go for communications between rollers.go and manager.go. rollers.go also call clients.go to submit proof.
+`manager.go` calls `rollers.go` for roller management functions. In the process, `rollers.go` calls `api.go` for communications between `rollers.go` and `manager.go`. `rollers.go` also call `clients.go` to submit proof.
 
-manager.go uses either verifier.go or mock.go(for test purposes) to verify the proof submitted by rollers. After verification, manager.go will call roller.go to update the state of the roller, then return the result (whether the proof is successful) to the roller.
+`manager.go` uses either `verifier.go` or `mock.go`(for test purposes) to verify the proof submitted by rollers. After verification, `manager.go` will call `roller.go` to update the state of the roller, then return the result (whether the proof is successful) to the roller.
 
+### ./api.go
 
-### ./client/client.go
-
-This file contains the Client struct, which is responsible for communicating with the coordinator through RPC calls. Functions in this file include RequestToken, RegisterAndSubscribe, and SubmitProof.
-
+This file contains the implementation of the RPC API for the coordinator(manager). The API allows roller clients to interact with the coordinator(manager) through functions such as `requestToken`, `register`, and `submitProof`.
 
 ### ./rollers.go
 
-This file contains the logic for handling roller-specific tasks, such as assigning tasks to rollers, handling completed tasks, and managing roller metrics. Key functions include sendTask, reloadRollerAssignedTasks, and handleTask.
+This file contains the logic for handling roller-specific tasks, such as assigning tasks to rollers, handling completed tasks, and managing roller metrics.
+
+### ./client/client.go
+
+This file contains the Client struct, which is callable on the roller side, responsible for communicating with the coordinator through RPC calls. `RequestToken`, `RegisterAndSubscribe`, and `SubmitProof` are used by rollers.go.
