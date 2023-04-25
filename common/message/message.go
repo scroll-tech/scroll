@@ -56,20 +56,23 @@ func GenerateToken() (string, error) {
 	return hex.EncodeToString(b), nil
 }
 
-// Sign auth message
-func (a *AuthMsg) Sign(priv *ecdsa.PrivateKey) error {
+// Sign auth message with private key and set public key in auth message's Identity
+func (a *AuthMsg) SignWithKey(priv *ecdsa.PrivateKey) error {
 	// Hash identity content
-	a.Identity.PublicKey = common.Bytes2Hex(crypto.CompressPubkey(&priv.PublicKey))
 	hash, err := a.Identity.Hash()
 	if err != nil {
 		return err
 	}
+
 	// Sign register message
 	sig, err := crypto.Sign(hash, priv)
 	if err != nil {
 		return err
 	}
 	a.Signature = hexutil.Encode(sig)
+
+	// set public key
+	a.Identity.PublicKey = common.Bytes2Hex(crypto.CompressPubkey(&priv.PublicKey))
 
 	return nil
 }

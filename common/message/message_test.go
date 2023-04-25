@@ -19,7 +19,7 @@ func TestAuthMessageSignAndVerify(t *testing.T) {
 			Timestamp: uint32(time.Now().Unix()),
 		},
 	}
-	assert.NoError(t, authMsg.Sign(privkey))
+	assert.NoError(t, authMsg.SignWithKey(privkey))
 
 	// check public key.
 	pk, err := authMsg.PublicKey()
