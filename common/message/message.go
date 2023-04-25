@@ -106,8 +106,7 @@ func (a *AuthMsg) PublicKey() (string, error) {
 		if err != nil {
 			return "", err
 		}
-		a.Identity.PublicKey = common.Bytes2Hex(crypto.CompressPubkey(pk))
-		return a.Identity.PublicKey, nil
+		return common.Bytes2Hex(crypto.CompressPubkey(pk)), nil
 	}
 
 	return a.Identity.PublicKey, nil

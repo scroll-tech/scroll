@@ -21,6 +21,11 @@ func TestAuthMessageSignAndVerify(t *testing.T) {
 	}
 	assert.NoError(t, authMsg.Sign(privkey))
 
+	// check public key.
+	pk, err := authMsg.PublicKey()
+	assert.NoError(t, err)
+	assert.Equal(t, common.Bytes2Hex(crypto.CompressPubkey(&privkey.PublicKey)), pk)
+
 	ok, err := authMsg.Verify()
 	assert.NoError(t, err)
 	assert.Equal(t, true, ok)
