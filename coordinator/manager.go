@@ -286,9 +286,6 @@ func (m *Manager) handleZkProof(pk string, msg *message.ProofDetail) error {
 	// potential race for channel deletion.
 	m.mu.RLock()
 	defer m.mu.RUnlock()
-	for id, s := range m.sessions {
-		log.Info("---- range sessions", "id", id, "session", s)
-	}
 	sess, ok := m.sessions[msg.ID]
 	if !ok {
 		return fmt.Errorf("proof generation session for id %v does not existID", msg.ID)
@@ -522,19 +519,24 @@ func (m *Manager) APIs() []rpc.API {
 
 // StartProofGenerationSession starts a common proof generation session
 func (m *Manager) StartProofGenerationSession(taskMsg *message.TaskMsg, prevSession *session) (err error) {
-	var taskId string
+	var (
+		taskId        string
+		taskProveType message.ProveType
+	)
 	if taskMsg != nil {
 		taskId = taskMsg.ID
+		taskProveType = taskMsg.Type
 	} else {
 		taskId = prevSession.info.ID
+		taskProveType = prevSession.info.ProveType
 	}
 
 	if m.GetNumberOfIdleRollers(taskMsg.Type) == 0 {
-		log.Warn("no idle roller when starting proof generation session", "id", taskId, "type", taskMsg.Type)
+		log.Warn("no idle roller when starting proof generation session", "id", taskId, "type", taskProveType)
 		return ErrNoIdleRoller
 	}
 
-	log.Info("start proof generation session", "id", taskId, "type", taskMsg.Type)
+	log.Info("start proof generation session", "id", taskId, "type", taskProveType)
 	defer func() {
 		if err != nil {
 			if taskMsg != nil {
@@ -542,7 +544,7 @@ func (m *Manager) StartProofGenerationSession(taskMsg *message.TaskMsg, prevSess
 					log.Error("fail to reset task_status as Unassigned", "id", taskId, "err", err)
 				}
 			} else {
-				prevTaskMsg := &message.TaskMsg{ID: taskId, Type: prevSession.info.ProveType}
+				prevTaskMsg := &message.TaskMsg{ID: taskId, Type: taskProveType}
 				if err := m.updateProofStatus(prevTaskMsg, types.ProvingTaskFailed, nil); err != nil {
 					log.Error("fail to reset task_status as Failed", "id", taskId, "err", err)
 				}
@@ -550,6 +552,7 @@ func (m *Manager) StartProofGenerationSession(taskMsg *message.TaskMsg, prevSess
 		}
 	}()
 
+	// FIXME: when taskMsg is nill, should get traces or aggProofs here.
 	// Dispatch taskMsg to rollers.
 	rollers, err := m.DispatchTaskToRoller(taskMsg)
 	if err != nil {
@@ -565,7 +568,7 @@ func (m *Manager) StartProofGenerationSession(taskMsg *message.TaskMsg, prevSess
 	sess := &session{
 		info: &types.SessionInfo{
 			ID:             taskId,
-			ProveType:      taskMsg.Type,
+			ProveType:      taskProveType,
 			Rollers:        rollers,
 			StartTimestamp: time.Now().Unix(),
 			Attempts:       1,
@@ -593,7 +596,6 @@ func (m *Manager) StartProofGenerationSession(taskMsg *message.TaskMsg, prevSess
 	}
 
 	m.mu.Lock()
-	log.Info("-------- set memory sessions", "taskID", taskId, "session", sess)
 	m.sessions[taskId] = sess
 	m.mu.Unlock()
 	go m.CollectProofs(sess)
@@ -648,7 +650,7 @@ func (m *Manager) DispatchTaskToRoller(taskMsg *message.TaskMsg) (map[string]*ty
 	}
 	// No roller assigned.
 	if len(rollers) == 0 {
-		log.Error("no roller assigned", "id", taskMsg.ID, "type", taskMsg.Type, "number of idle rollers", m.GetNumberOfIdleRollers(message.BasicProve))
+		log.Error("no roller assigned", "id", taskMsg.ID, "type", taskMsg.Type, "number of idle rollers", m.GetNumberOfIdleRollers(taskMsg.Type))
 		return nil, ErrNoIdleRoller
 	}
 	return rollers, nil
