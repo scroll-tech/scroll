@@ -59,6 +59,7 @@ func GenerateToken() (string, error) {
 // Sign auth message
 func (a *AuthMsg) Sign(priv *ecdsa.PrivateKey) error {
 	// Hash identity content
+	a.Identity.PublicKey = common.Bytes2Hex(crypto.CompressPubkey(&priv.PublicKey))
 	hash, err := a.Identity.Hash()
 	if err != nil {
 		return err
