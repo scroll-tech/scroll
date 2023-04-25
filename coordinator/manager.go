@@ -523,7 +523,9 @@ func (m *Manager) APIs() []rpc.API {
 // StartProofGenerationSession starts a common proof generation session
 func (m *Manager) StartProofGenerationSession(taskMsg *message.TaskMsg, prevSession *session) (err error) {
 	var taskId string
-	if taskMsg == nil {
+	if taskMsg != nil {
+		taskId = taskMsg.ID
+	} else {
 		taskId = prevSession.info.ID
 	}
 
@@ -591,7 +593,7 @@ func (m *Manager) StartProofGenerationSession(taskMsg *message.TaskMsg, prevSess
 	}
 
 	m.mu.Lock()
-	log.Info("set memory sessions", "taskID", taskId)
+	log.Info("-------- set memory sessions", "taskID", taskId, "session", sess)
 	m.sessions[taskId] = sess
 	m.mu.Unlock()
 	go m.CollectProofs(sess)
