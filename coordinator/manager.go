@@ -56,6 +56,7 @@ const (
 
 type rollerProofStatus struct {
 	id     string
+	typ    message.ProveType
 	pk     string
 	status types.RollerProveStatus
 }
@@ -359,7 +360,7 @@ func (m *Manager) handleZkProof(pk string, msg *message.ProofDetail) error {
 			status = types.RollerProofValid
 		}
 		// notify the session that the roller finishes the proving process
-		sess.finishChan <- rollerProofStatus{msg.ID, pk, status}
+		sess.finishChan <- rollerProofStatus{msg.ID, msg.Type, pk, status}
 	}()
 
 	if msg.Status != message.StatusOk {
@@ -467,8 +468,8 @@ func (m *Manager) CollectProofs(sess *session) {
 			m.mu.Lock()
 			sess.info.Rollers[ret.pk].Status = ret.status
 			if sess.isSessionFailed() {
-				if err := m.orm.UpdateProvingStatus(ret.id, types.ProvingTaskFailed); err != nil {
-					log.Error("failed to update proving_status as failed", "msg.ID", ret.id, "error", err)
+				if err := m.updateProofStatus(ret.id, ret.typ, types.ProvingTaskFailed, nil); err != nil {
+					log.Error("failed to update proving_status as failed", "msg.ID", ret.id, "prove type", ret.typ, "error", err)
 				}
 				coordinatorSessionsFailedTotalCounter.Inc(1)
 			}
@@ -566,12 +567,11 @@ func (m *Manager) StartProofGenerationSession(taskMsg *message.TaskMsg, prevSess
 	defer func() {
 		if err != nil {
 			if taskMsg != nil {
-				if err := m.updateProofStatus(taskMsg, types.ProvingTaskUnassigned, nil); err != nil {
+				if err := m.updateProofStatus(taskId, taskProveType, types.ProvingTaskUnassigned, nil); err != nil {
 					log.Error("fail to reset task_status as Unassigned", "id", taskId, "err", err)
 				}
 			} else {
-				prevTaskMsg := &message.TaskMsg{ID: taskId, Type: taskProveType}
-				if err := m.updateProofStatus(prevTaskMsg, types.ProvingTaskFailed, nil); err != nil {
+				if err := m.updateProofStatus(taskId, taskProveType, types.ProvingTaskFailed, nil); err != nil {
 					log.Error("fail to reset task_status as Failed", "id", taskId, "err", err)
 				}
 			}
@@ -585,9 +585,8 @@ func (m *Manager) StartProofGenerationSession(taskMsg *message.TaskMsg, prevSess
 		return err
 	}
 
-	// FIXME: same as above
 	// Update session proving status as assigned.
-	if err = m.updateProofStatus(taskMsg, types.ProvingTaskAssigned, nil); err != nil {
+	if err = m.updateProofStatus(taskId, taskProveType, types.ProvingTaskAssigned, nil); err != nil {
 		return err
 	}
 
@@ -689,15 +688,15 @@ func (m *Manager) addFailedSession(sess *session, errMsg string) {
 	m.failedSessionInfos[sess.info.ID] = newSessionInfo(sess, types.ProvingTaskFailed, errMsg, true)
 }
 
-func (m *Manager) updateProofStatus(taskMsg *message.TaskMsg, status types.ProvingStatus, proof *message.AggProof) (err error) {
-	switch taskMsg.Type {
+func (m *Manager) updateProofStatus(taskId string, proveType message.ProveType, status types.ProvingStatus, proof *message.AggProof) (err error) {
+	switch proveType {
 	case message.BasicProve:
-		if err = m.orm.UpdateProvingStatus(taskMsg.ID, status); err != nil {
-			log.Error("failed to update basic taskMsg status", "id", taskMsg.ID, "err", err)
+		if err = m.orm.UpdateProvingStatus(taskId, status); err != nil {
+			log.Error("failed to update basic taskMsg status", "id", taskId, "err", err)
 		}
 	case message.AggregatorProve:
-		if err = m.orm.UpdateAggTaskStatus(taskMsg.ID, status, proof); err != nil {
-			log.Error("failed to update aggregator taskMsg status", "id", taskMsg.ID, "err", err)
+		if err = m.orm.UpdateAggTaskStatus(taskId, status, proof); err != nil {
+			log.Error("failed to update aggregator taskMsg status", "id", taskId, "err", err)
 		}
 	}
 	return

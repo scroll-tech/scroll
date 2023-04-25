@@ -234,6 +234,7 @@ func (r *Roller) prove() error {
 				Status: message.StatusProofError,
 				Error:  err.Error(),
 				ID:     task.Task.ID,
+				Type:   task.Task.Type,
 				Proof:  &message.AggProof{},
 			}
 			log.Error("prove block failed!", "task-id", task.Task.ID)
@@ -241,6 +242,7 @@ func (r *Roller) prove() error {
 			proofMsg = &message.ProofDetail{
 				Status: message.StatusOk,
 				ID:     task.Task.ID,
+				Type:   task.Task.Type,
 				Proof:  proof,
 			}
 			log.Info("prove block successfully!", "task-id", task.Task.ID)
@@ -252,6 +254,7 @@ func (r *Roller) prove() error {
 			Status: message.StatusProofError,
 			Error:  "zk proving panic",
 			ID:     task.Task.ID,
+			Type:   task.Task.Type,
 			Proof:  &message.AggProof{},
 		}
 	}
