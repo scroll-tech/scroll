@@ -234,6 +234,9 @@ func (m *Manager) Loop() {
 }
 
 func (m *Manager) reloadUnassigned() {
+	if m.orm == nil {
+		return
+	}
 	// load unassigned agg tasks into channel
 	unassignedAggs, err := m.orm.GetUnassignedAggTasks()
 	if err != nil {
