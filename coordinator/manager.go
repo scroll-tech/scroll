@@ -531,7 +531,7 @@ func (m *Manager) StartProofGenerationSession(taskMsg *message.TaskMsg, prevSess
 		taskProveType = prevSession.info.ProveType
 	}
 
-	if m.GetNumberOfIdleRollers(taskMsg.Type) == 0 {
+	if m.GetNumberOfIdleRollers(taskProveType) == 0 {
 		log.Warn("no idle roller when starting proof generation session", "id", taskId, "type", taskProveType)
 		return ErrNoIdleRoller
 	}
@@ -559,6 +559,7 @@ func (m *Manager) StartProofGenerationSession(taskMsg *message.TaskMsg, prevSess
 		return err
 	}
 
+	// FIXME: same as above
 	// Update session proving status as assigned.
 	if err = m.updateProofStatus(taskMsg, types.ProvingTaskAssigned, nil); err != nil {
 		return err
