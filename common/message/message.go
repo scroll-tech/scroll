@@ -59,7 +59,6 @@ func GenerateToken() (string, error) {
 // Sign auth message
 func (a *AuthMsg) Sign(priv *ecdsa.PrivateKey) error {
 	// Hash identity content
-	a.Identity.PublicKey = common.Bytes2Hex(crypto.CompressPubkey(&priv.PublicKey))
 	hash, err := a.Identity.Hash()
 	if err != nil {
 		return err
@@ -81,13 +80,14 @@ func (a *AuthMsg) Verify() (bool, error) {
 		return false, err
 	}
 	sig := common.FromHex(a.Signature)
+
 	// recover public key
 	if a.Identity.PublicKey == "" {
 		pk, err := crypto.SigToPub(hash, sig)
 		if err != nil {
 			return false, err
 		}
-		a.Identity.PublicKey = common.Bytes2Hex(crypto.CompressPubkey(pk))
+		return crypto.VerifySignature(crypto.CompressPubkey(pk), hash, sig[:len(sig)-1]), nil
 	}
 
 	return crypto.VerifySignature(common.FromHex(a.Identity.PublicKey), hash, sig[:len(sig)-1]), nil
@@ -106,7 +106,7 @@ func (a *AuthMsg) PublicKey() (string, error) {
 		if err != nil {
 			return "", err
 		}
-		return common.Bytes2Hex(crypto.CompressPubkey(pk)), nil
+		a.Identity.PublicKey = common.Bytes2Hex(crypto.CompressPubkey(pk))
 	}
 
 	return a.Identity.PublicKey, nil
