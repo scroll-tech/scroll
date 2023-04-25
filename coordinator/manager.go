@@ -286,6 +286,9 @@ func (m *Manager) handleZkProof(pk string, msg *message.ProofDetail) error {
 	// potential race for channel deletion.
 	m.mu.RLock()
 	defer m.mu.RUnlock()
+	for id, s := range m.sessions {
+		log.Info("---- range sessions", "id", id, "session", s)
+	}
 	sess, ok := m.sessions[msg.ID]
 	if !ok {
 		return fmt.Errorf("proof generation session for id %v does not existID", msg.ID)
@@ -588,6 +591,7 @@ func (m *Manager) StartProofGenerationSession(taskMsg *message.TaskMsg, prevSess
 	}
 
 	m.mu.Lock()
+	log.Info("set memory sessions", "taskID", taskId)
 	m.sessions[taskId] = sess
 	m.mu.Unlock()
 	go m.CollectProofs(sess)
