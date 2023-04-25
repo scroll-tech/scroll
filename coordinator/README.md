@@ -6,13 +6,9 @@ This repo contains the Scroll coordinator.
 
 ```bash
 make clean
-```
-This will clean up the build artifacts. Always clean before next make.
-
-```bash
 make coordinator
 ```
-This will build the coordinator binary and place it in the build/bin directory.
+The built coordinator binary is in the build/bin directory.
 
 ## Test
 
@@ -50,9 +46,23 @@ The coordinator behavior can be configured using config.json. Check the code com
 * For other usable flags, refer to `./cmd/app/flags.go`.
 
 ## Codeflow
-Upon loading config.json file, the coordinator (./cmd/app/app.go) sets up and starts the HTTP and WebSocket servers using the configured ports and addresses. flags.go is used to parse the flags.
+
+### ./cmd/app/app.go
+
+This file defines the main entry point for the coordinator application, setting up the necessary modules, and handling graceful shutdowns. Upon loading config.json file, the coordinator (./cmd/app/app.go) sets up and starts the HTTP and WebSocket servers using the configured ports and addresses. flags.go is used to parse the flags.
 Then, it creates a new RollerManager (./manager.go) and starts listening.
 
+### ./manager.go
 manager.go calls rollers.go for roller management functions. In the process, rollers.go calls api.go for communications between rollers.go and manager.go. rollers.go also call clients.go to submit proof.
 
 manager.go uses either verifier.go or mock.go(for test purposes) to verify the proof submitted by rollers. After verification, manager.go will call roller.go to update the state of the roller, then return the result (whether the proof is successful) to the roller.
+
+
+### ./client/client.go
+
+This file contains the Client struct, which is responsible for communicating with the coordinator through RPC calls. Functions in this file include RequestToken, RegisterAndSubscribe, and SubmitProof.
+
+
+### ./rollers.go
+
+This file contains the logic for handling roller-specific tasks, such as assigning tasks to rollers, handling completed tasks, and managing roller metrics. Key functions include sendTask, reloadRollerAssignedTasks, and handleTask.
