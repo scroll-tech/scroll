@@ -144,6 +144,9 @@ func (m *Manager) Start() error {
 	}
 
 	m.verifierWorkerPool.Run()
+
+	m.reloadUnassigned()
+
 	m.restorePrevSessions()
 
 	atomic.StoreInt32(&m.running, 1)
@@ -230,15 +233,7 @@ func (m *Manager) Loop() {
 	}
 }
 
-func (m *Manager) restorePrevSessions() {
-	// m.orm may be nil in scroll tests
-	if m.orm == nil {
-		return
-	}
-
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
+func (m *Manager) reloadUnassigned() {
 	// load unassigned agg tasks into channel
 	unassignedAggs, err := m.orm.GetUnassignedAggTasks()
 	if err != nil {
@@ -250,9 +245,22 @@ func (m *Manager) restorePrevSessions() {
 			m.aggTaskChan <- &message.TaskMsg{ID: unassigned.ID, Proofs: unassigned.Proofs}
 		}
 	}()
+}
+
+func (m *Manager) restorePrevSessions() {
+	// m.orm may be nil in scroll tests
+	if m.orm == nil {
+		return
+	}
+
+	m.mu.Lock()
+	defer m.mu.Unlock()
 
 	// load assigned tasks as sessions
-	var hashes []string
+	var (
+		taskIDs  []string
+		taskMsgs []*message.TaskMsg
+	)
 
 	aggTasks, err := m.orm.GetAssignedAggTasks()
 	if err != nil {
@@ -260,24 +268,40 @@ func (m *Manager) restorePrevSessions() {
 		return
 	}
 	for _, task := range aggTasks {
-		hashes = append(hashes, task.ID)
+		taskMsgs = append(taskMsgs, &message.TaskMsg{
+			ID:     task.ID,
+			Type:   message.AggregatorProve,
+			Proofs: task.Proofs,
+		})
+		taskIDs = append(taskIDs, task.ID)
 	}
 
 	// get all assigned basic task hash
 	batchHashes, err := m.orm.GetAssignedBatchHashes()
 	if err != nil {
-		log.Error("failed to get assigned batch hashes from db", "error", err)
+		log.Error("failed to get assigned batch taskMsgs from db", "error", err)
 		return
 	}
-	hashes = append(hashes, batchHashes...)
+	for _, batchHash := range batchHashes {
+		traces, err := m.GetBlockTraces(batchHash)
+		if err != nil {
+			log.Error("failed to get block-traces", "error", err)
+			return
+		}
+		taskMsgs = append(taskMsgs, &message.TaskMsg{
+			ID:     batchHash,
+			Type:   message.BasicProve,
+			Traces: traces,
+		})
+	}
+	taskIDs = append(taskIDs, batchHashes...)
 
 	// get all assigned sessions by block-traces(basic proving tasks) and agg-proofs(agg proving tasks)
-	prevSessions, err := m.orm.GetSessionInfosByHashes(hashes)
+	prevSessions, err := m.orm.GetSessionInfosByHashes(taskIDs)
 	if err != nil {
 		log.Error("failed to recover roller session info from db", "error", err)
 		return
 	}
-
 	for _, v := range prevSessions {
 		sess := &session{
 			info:       v,
@@ -295,10 +319,11 @@ func (m *Manager) restorePrevSessions() {
 				"public key", roller.PublicKey,
 				"proof status", roller.Status)
 		}
-
-		go m.CollectProofs(sess)
 	}
-
+	for _, msg := range taskMsgs {
+		sess := m.sessions[msg.ID]
+		go m.CollectProofs(sess, msg)
+	}
 }
 
 // HandleZkProof handle a ZkProof submitted from a roller.
@@ -423,7 +448,7 @@ func (m *Manager) handleZkProof(pk string, msg *message.ProofDetail) error {
 }
 
 // CollectProofs collects proofs corresponding to a proof generation session.
-func (m *Manager) CollectProofs(sess *session) {
+func (m *Manager) CollectProofs(sess *session, taskMsg *message.TaskMsg) {
 	coordinatorSessionsActiveNumberGauge.Inc(1)
 	defer coordinatorSessionsActiveNumberGauge.Dec(1)
 
@@ -433,7 +458,7 @@ func (m *Manager) CollectProofs(sess *session) {
 		case <-time.After(time.Duration(m.cfg.CollectionTime) * time.Minute):
 			// Check if session can be replayed
 			if sess.info.Attempts < m.cfg.SessionAttempts {
-				err := m.StartProofGenerationSession(nil, sess)
+				err := m.StartProofGenerationSession(taskMsg, sess)
 				if err == nil {
 					m.mu.Lock()
 					for pk := range sess.info.Rollers {
@@ -548,16 +573,9 @@ func (m *Manager) APIs() []rpc.API {
 // StartProofGenerationSession starts a common proof generation session
 func (m *Manager) StartProofGenerationSession(taskMsg *message.TaskMsg, prevSession *session) (err error) {
 	var (
-		taskId        string
-		taskProveType message.ProveType
-	)
-	if taskMsg != nil {
-		taskId = taskMsg.ID
+		taskId        = taskMsg.ID
 		taskProveType = taskMsg.Type
-	} else {
-		taskId = prevSession.info.ID
-		taskProveType = prevSession.info.ProveType
-	}
+	)
 
 	if m.GetNumberOfIdleRollers(taskProveType) == 0 {
 		log.Warn("no idle roller when starting proof generation session", "id", taskId, "type", taskProveType)
@@ -579,7 +597,6 @@ func (m *Manager) StartProofGenerationSession(taskMsg *message.TaskMsg, prevSess
 		}
 	}()
 
-	// FIXME: when taskMsg is nill, should get traces or aggProofs here.
 	// Dispatch taskMsg to rollers.
 	rollers, err := m.DispatchTaskToRoller(taskMsg)
 	if err != nil {
@@ -625,18 +642,18 @@ func (m *Manager) StartProofGenerationSession(taskMsg *message.TaskMsg, prevSess
 	m.mu.Lock()
 	m.sessions[taskId] = sess
 	m.mu.Unlock()
-	go m.CollectProofs(sess)
+	go m.CollectProofs(sess, taskMsg)
 
 	return nil
 }
 
-// GetBlockTraces get L2 block-traces from ethereum.
-func (m *Manager) GetBlockTraces(taskId string) ([]*geth_types.BlockTrace, error) {
-	blockInfos, err := m.orm.GetL2BlockInfos(map[string]interface{}{"batch_hash": taskId})
+// GetBlockTraces get L2 block-traces by batch-hash from ethereum.
+func (m *Manager) GetBlockTraces(batchHash string) ([]*geth_types.BlockTrace, error) {
+	blockInfos, err := m.orm.GetL2BlockInfos(map[string]interface{}{"batch_hash": batchHash})
 	if err != nil {
 		log.Error(
 			"could not GetBlockInfos",
-			"batch_hash", taskId,
+			"batch_hash", batchHash,
 			"error", err,
 		)
 		return nil, err
