@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	sm "github.com/cch123/supermonkey"
+	"github.com/agiledragon/gomonkey/v2"
 	cmap "github.com/orcaman/concurrent-map"
 	"github.com/scroll-tech/go-ethereum/crypto"
 	"github.com/scroll-tech/go-ethereum/rpc"
@@ -40,16 +40,13 @@ func init() {
 }
 
 func TestManager_RequestToken(t *testing.T) {
-	tmpAuthMsg := &message.AuthMsg{
-		Identity: &message.Identity{
-			Name:      "roller_test_request_token",
-			Timestamp: uint32(time.Now().Unix()),
-		},
-	}
-
-	tokenCacheStored := "c393987bb791dd285dd3d8ffbd770ed1"
-
 	convey.Convey("auth msg verify failure", t, func() {
+		tmpAuthMsg := &message.AuthMsg{
+			Identity: &message.Identity{
+				Name:      "roller_test_request_token",
+				Timestamp: uint32(time.Now().Unix()),
+			},
+		}
 		token, err := rollerManager.RequestToken(tmpAuthMsg)
 		assert.Error(t, err)
 		assert.Empty(t, token)
@@ -57,92 +54,89 @@ func TestManager_RequestToken(t *testing.T) {
 
 	convey.Convey("token has already been distributed", t, func() {
 		tmpAuthMsg := geneAuthMsg(t)
-		patchGuard := sm.PatchByFullSymbolName("github.com/patrickmn/go-cache.(*cache).Get", func(ptr uintptr, abc string) (interface{}, bool) {
-			return tokenCacheStored, true
-		})
+		key, _ := tmpAuthMsg.PublicKey()
+		tokenCacheStored := "c393987bb791dd285dd3d8ffbd770ed1"
+		rollerManager.tokenCache.Set(key, tokenCacheStored, time.Hour)
 		token, err := rollerManager.RequestToken(tmpAuthMsg)
 		assert.NoError(t, err)
 		assert.Equal(t, token, tokenCacheStored)
-		patchGuard.Unpatch()
 	})
 
 	convey.Convey("token generation failure", t, func() {
-		tmpAuthMsg = geneAuthMsg(t)
-		patchGuard := sm.Patch(message.GenerateToken, func() (string, error) {
+		tmpAuthMsg := geneAuthMsg(t)
+		patchGuard := gomonkey.ApplyFunc(message.GenerateToken, func() (string, error) {
 			return "", errors.New("token generation failed")
 		})
+		defer patchGuard.Reset()
 		token, err := rollerManager.RequestToken(tmpAuthMsg)
 		assert.Error(t, err)
 		assert.Empty(t, token)
-		patchGuard.Unpatch()
 	})
 
 	convey.Convey("token generation success", t, func() {
-		tmpAuthMsg = geneAuthMsg(t)
-		patchGuard := sm.Patch(message.GenerateToken, func() (string, error) {
+		tmpAuthMsg := geneAuthMsg(t)
+		tokenCacheStored := "c393987bb791dd285dd3d8ffbd770ed1"
+		patchGuard := gomonkey.ApplyFunc(message.GenerateToken, func() (string, error) {
 			return tokenCacheStored, nil
 		})
+		defer patchGuard.Reset()
 		token, err := rollerManager.RequestToken(tmpAuthMsg)
 		assert.NoError(t, err)
 		assert.Equal(t, tokenCacheStored, token)
-		patchGuard.Unpatch()
 	})
 }
 
 func TestManager_Register(t *testing.T) {
-	tmpAuthMsg := &message.AuthMsg{
-		Identity: &message.Identity{
-			Name:      "roller_test_register",
-			Timestamp: uint32(time.Now().Unix()),
-		},
-	}
-
 	convey.Convey("auth msg verify failure", t, func() {
+		tmpAuthMsg := &message.AuthMsg{
+			Identity: &message.Identity{
+				Name:      "roller_test_register",
+				Timestamp: uint32(time.Now().Unix()),
+			},
+		}
 		subscription, err := rollerManager.Register(context.Background(), tmpAuthMsg)
 		assert.Error(t, err)
 		assert.Empty(t, subscription)
 	})
 
 	convey.Convey("verify token failure", t, func() {
-		tmpAuthMsg = geneAuthMsg(t)
-		patchGuard7 := sm.Patch((*Manager).VerifyToken, func(manager *Manager, tmpAuthMsg *message.AuthMsg) (bool, error) {
+		tmpAuthMsg := geneAuthMsg(t)
+		patchGuard := gomonkey.ApplyMethodFunc(rollerManager, "VerifyToken", func(tmpAuthMsg *message.AuthMsg) (bool, error) {
 			return false, errors.New("verify token failure")
 		})
+		defer patchGuard.Reset()
 		subscription, err := rollerManager.Register(context.Background(), tmpAuthMsg)
 		assert.Error(t, err)
 		assert.Empty(t, subscription)
-		patchGuard7.Unpatch()
 	})
 
 	convey.Convey("register failure", t, func() {
-		tmpAuthMsg = geneAuthMsg(t)
-		patchGuard7 := sm.Patch((*Manager).VerifyToken, func(manager *Manager, tmpAuthMsg *message.AuthMsg) (bool, error) {
+		tmpAuthMsg := geneAuthMsg(t)
+		patchGuard := gomonkey.ApplyMethodFunc(rollerManager, "VerifyToken", func(tmpAuthMsg *message.AuthMsg) (bool, error) {
 			return true, nil
 		})
-		patchGuard8 := sm.Patch((*Manager).register, func(*Manager, string, *message.Identity) (<-chan *message.TaskMsg, error) {
+		defer patchGuard.Reset()
+		patchGuard.ApplyPrivateMethod(rollerManager, "register", func(*Manager, string, *message.Identity) (<-chan *message.TaskMsg, error) {
 			return nil, errors.New("register error")
 		})
 		subscription, err := rollerManager.Register(context.Background(), tmpAuthMsg)
 		assert.Error(t, err)
 		assert.Empty(t, subscription)
-		patchGuard8.Unpatch()
-		patchGuard7.Unpatch()
 	})
 
 	convey.Convey("notifier failure", t, func() {
-		tmpAuthMsg = geneAuthMsg(t)
-		patchGuard7 := sm.Patch((*Manager).VerifyToken, func(manager *Manager, tmpAuthMsg *message.AuthMsg) (bool, error) {
+		tmpAuthMsg := geneAuthMsg(t)
+		patchGuard := gomonkey.ApplyMethodFunc(rollerManager, "VerifyToken", func(tmpAuthMsg *message.AuthMsg) (bool, error) {
 			return true, nil
 		})
-		patchGuard8 := sm.Patch(rpc.NotifierFromContext, func(ctx context.Context) (*rpc.Notifier, bool) {
+		defer patchGuard.Reset()
+		patchGuard.ApplyFunc(rpc.NotifierFromContext, func(ctx context.Context) (*rpc.Notifier, bool) {
 			return nil, false
 		})
 		subscription, err := rollerManager.Register(context.Background(), tmpAuthMsg)
 		assert.Error(t, err)
 		assert.Equal(t, err, rpc.ErrNotificationsUnsupported)
 		assert.Equal(t, *subscription, rpc.Subscription{})
-		patchGuard8.Unpatch()
-		patchGuard7.Unpatch()
 	})
 }
 
@@ -161,62 +155,71 @@ func TestManager_SubmitProof(t *testing.T) {
 	rp.TaskIDs.Set(id, id)
 
 	convey.Convey("verify failure", t, func() {
-		patchGuard := sm.Patch((*message.ProofMsg).Verify, func(*message.ProofMsg) (bool, error) {
+		var s *message.ProofMsg
+		patchGuard := gomonkey.ApplyMethodFunc(s, "Verify", func() (bool, error) {
 			return false, errors.New("proof verify error")
 		})
+		defer patchGuard.Reset()
 		isSuccess, err := rollerManager.SubmitProof(proof)
 		assert.False(t, isSuccess)
 		assert.Error(t, err)
-		patchGuard.Unpatch()
 	})
 
 	convey.Convey("existTaskIDForRoller failure", t, func() {
-		patchGuard1 := sm.PatchByFullSymbolName("github.com/orcaman/concurrent-map.(*ConcurrentMap).Get", func(ptr uintptr, key string) (interface{}, bool) {
+		var s *cmap.ConcurrentMap
+		patchGuard := gomonkey.ApplyMethodFunc(s, "Get", func(key string) (interface{}, bool) {
 			return nil, true
 		})
-		patchGuard2 := sm.Patch((*message.ProofMsg).Verify, func(*message.ProofMsg) (bool, error) {
+		defer patchGuard.Reset()
+
+		var pm *message.ProofMsg
+		patchGuard.ApplyMethodFunc(pm, "Verify", func() (bool, error) {
 			return true, nil
 		})
 		isSuccess, err := rollerManager.SubmitProof(proof)
 		assert.False(t, isSuccess)
 		assert.Error(t, err)
-		patchGuard2.Unpatch()
-		patchGuard1.Unpatch()
 	})
 
 	convey.Convey("handleZkProof failure", t, func() {
-		patchGuard51 := sm.Patch((*message.ProofMsg).Verify, func(*message.ProofMsg) (bool, error) {
+		var pm *message.ProofMsg
+		patchGuard := gomonkey.ApplyMethodFunc(pm, "Verify", func() (bool, error) {
 			return true, nil
 		})
-		patchGuard61 := sm.PatchByFullSymbolName("github.com/orcaman/concurrent-map.ConcurrentMap.Get", func(ptr uintptr, key string) (interface{}, bool) {
+		defer patchGuard.Reset()
+
+		var s cmap.ConcurrentMap
+		patchGuard.ApplyMethodFunc(s, "Get", func(key string) (interface{}, bool) {
 			return &rp, true
 		})
-		patchGuard3 := sm.Patch((*Manager).handleZkProof, func(manager *Manager, pk string, msg *message.ProofDetail) error {
+
+		patchGuard.ApplyPrivateMethod(rollerManager, "handleZkProof", func(manager *Manager, pk string, msg *message.ProofDetail) error {
 			return errors.New("handle zk proof error")
 		})
+
 		isSuccess, err := rollerManager.SubmitProof(proof)
 		assert.Error(t, err)
 		assert.False(t, isSuccess)
-		patchGuard3.Unpatch()
-		patchGuard51.Unpatch()
-		patchGuard61.Unpatch()
 	})
 
 	convey.Convey("SubmitProof success", t, func() {
-		patchGuard5 := sm.Patch((*message.ProofMsg).Verify, func(*message.ProofMsg) (bool, error) {
+		var pm *message.ProofMsg
+		patchGuard := gomonkey.ApplyMethodFunc(pm, "Verify", func() (bool, error) {
 			return true, nil
 		})
-		patchGuard6 := sm.PatchByFullSymbolName("github.com/orcaman/concurrent-map.ConcurrentMap.Get", func(ptr uintptr, key string) (interface{}, bool) {
+		defer patchGuard.Reset()
+
+		var s cmap.ConcurrentMap
+		patchGuard.ApplyMethodFunc(s, "Get", func(key string) (interface{}, bool) {
 			return &rp, true
 		})
-		patchGuard7 := sm.Patch((*Manager).handleZkProof, func(manager *Manager, pk string, msg *message.ProofDetail) error {
+
+		patchGuard.ApplyPrivateMethod(rollerManager, "handleZkProof", func(manager *Manager, pk string, msg *message.ProofDetail) error {
 			return nil
 		})
+
 		isSuccess, err := rollerManager.SubmitProof(proof)
 		assert.NoError(t, err)
 		assert.True(t, isSuccess)
-		patchGuard5.Unpatch()
-		patchGuard6.Unpatch()
-		patchGuard7.Unpatch()
 	})
 }

@@ -3,13 +3,13 @@ module scroll-tech/coordinator
 go 1.18
 
 require (
-	github.com/cch123/supermonkey v1.0.1
 	github.com/orcaman/concurrent-map v1.0.0
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/scroll-tech/go-ethereum v1.10.14-0.20230321020420-127af384ed04
 	github.com/stretchr/testify v1.8.2
 	github.com/urfave/cli/v2 v2.17.2-0.20221006022127-8f469abc00aa
 	golang.org/x/sync v0.1.0
+	github.com/agiledragon/gomonkey/v2 v2.9.0
 )
 
 require (
@@ -35,7 +35,6 @@ require (
 	github.com/tklauser/numcpus v0.4.0 // indirect
 	github.com/xrash/smetrics v0.0.0-20201216005158-039620a65673 // indirect
 	github.com/yusufpapurcu/wmi v1.2.2 // indirect
-	golang.org/x/arch v0.0.0-20200826200359-b19915210f00 // indirect
 	golang.org/x/crypto v0.7.0 // indirect
 	golang.org/x/sys v0.6.0 // indirect
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
