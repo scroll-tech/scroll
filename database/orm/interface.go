@@ -51,6 +51,7 @@ type SessionInfoOrm interface {
 type AggTaskOrm interface {
 	GetAssignedAggTasks() ([]*AggTask, error)
 	GetUnassignedAggTasks() ([]*AggTask, error)
+	GetSubProofsByHash(hash string) ([]*message.AggProof, error)
 	InsertAggTask(task *AggTask) error
 	UpdateAggTaskStatus(aggTaskID string, status types.ProvingStatus) error
 	UpdateAggProof(aggTaskID string, proof *message.AggProof) error

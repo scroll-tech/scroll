@@ -26,6 +26,16 @@ func NewAggTaskOrm(db *sqlx.DB) AggTaskOrm {
 	return &aggTaskOrm{db: db}
 }
 
+func (a *aggTaskOrm) GetSubProofsByHash(hash string) ([]*message.AggProof, error) {
+	row := a.db.QueryRow("SELECT task FROM agg_task where hash = ?;", hash)
+	aggTask := new(AggTask)
+	err := row.Scan(aggTask)
+	if err != nil {
+		return nil, err
+	}
+	return aggTask.SubProofs, nil
+}
+
 func (a *aggTaskOrm) GetUnassignedAggTasks() ([]*AggTask, error) {
 	rows, err := a.db.Queryx("SELECT task FROM agg_task where proving_status = 1;")
 	if err != nil {
