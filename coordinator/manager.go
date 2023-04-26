@@ -361,13 +361,21 @@ func (m *Manager) handleZkProof(pk string, msg *message.ProofDetail) error {
 	}
 
 	// store proof content
-	if dbErr = m.orm.UpdateProofByHash(m.ctx, msg.ID, msg.Proof.Proof, msg.Proof.FinalPair, proofTimeSec); dbErr != nil {
-		log.Error("failed to store proof into db", "error", dbErr)
-		return dbErr
+	if msg.Type == message.BasicProve {
+		if dbErr = m.orm.UpdateProofByHash(m.ctx, msg.ID, msg.Proof.Proof, msg.Proof.FinalPair, proofTimeSec); dbErr != nil {
+			log.Error("failed to store basic proof into db", "error", dbErr)
+			return dbErr
+		}
+		if dbErr = m.orm.UpdateProvingStatus(msg.ID, types.ProvingTaskProved); dbErr != nil {
+			log.Error("failed to update task status as proved", "error", dbErr)
+			return dbErr
+		}
 	}
-	if dbErr = m.orm.UpdateProvingStatus(msg.ID, types.ProvingTaskProved); dbErr != nil {
-		log.Error("failed to update task status as proved", "error", dbErr)
-		return dbErr
+	if msg.Type == message.AggregatorProve {
+		if dbErr = m.orm.UpdateAggProof(msg.ID, msg.Proof); dbErr != nil {
+			log.Error("failed to store aggregator proof into db", "error", dbErr)
+			return dbErr
+		}
 	}
 
 	coordinatorProofsReceivedTotalCounter.Inc(1)
@@ -383,14 +391,27 @@ func (m *Manager) handleZkProof(pk string, msg *message.ProofDetail) error {
 	}
 
 	if success {
-		if dbErr = m.orm.UpdateProvingStatus(msg.ID, types.ProvingTaskVerified); dbErr != nil {
-			log.Error(
-				"failed to update proving_status",
-				"msg.ID", msg.ID,
-				"status", types.ProvingTaskVerified,
-				"error", dbErr)
-			return dbErr
+		if msg.Type == message.AggregatorProve {
+			if dbErr = m.orm.UpdateAggTaskStatus(msg.ID, types.ProvingTaskVerified); dbErr != nil {
+				log.Error(
+					"failed to update aggregator proving_status",
+					"msg.ID", msg.ID,
+					"status", types.ProvingTaskVerified,
+					"error", dbErr)
+				return dbErr
+			}
 		}
+		if msg.Type == message.BasicProve {
+			if dbErr = m.orm.UpdateProvingStatus(msg.ID, types.ProvingTaskVerified); dbErr != nil {
+				log.Error(
+					"failed to update basic proving_status",
+					"msg.ID", msg.ID,
+					"status", types.ProvingTaskVerified,
+					"error", dbErr)
+				return dbErr
+			}
+		}
+
 		coordinatorProofsVerifiedSuccessTimeTimer.Update(proofTime)
 		m.updateMetricRollerProofsVerifiedSuccessTimeTimer(roller.PublicKey, proofTime)
 		log.Info("proof verified by coordinator success", "proof id", msg.ID, "roller name", roller.Name,

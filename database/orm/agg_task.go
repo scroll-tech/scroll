@@ -72,7 +72,7 @@ func (a *aggTaskOrm) UpdateAggProof(aggTaskID string, proof *message.AggProof) e
 	if err != nil {
 		return err
 	}
-	_, err = a.db.Exec(a.db.Rebind("update agg_task set proving_status = ?, proof = ? where hash = ?;"), types.ProvingTaskVerified, proofByt, aggTaskID)
+	_, err = a.db.Exec(a.db.Rebind("update agg_task set proving_status = ?, proof = ? where hash = ?;"), types.ProvingTaskProved, proofByt, aggTaskID)
 	return err
 }
 
