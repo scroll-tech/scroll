@@ -88,7 +88,7 @@ func NewRoller(cfg *config.Config) (*Roller, error) {
 
 // Type returns roller type.
 func (r *Roller) Type() message.ProveType {
-	return r.cfg.RollerType
+	return r.cfg.Prover.ProveType
 }
 
 // PublicKey translate public key to hex and return.
@@ -119,7 +119,7 @@ func (r *Roller) Register() error {
 	authMsg := &message.AuthMsg{
 		Identity: &message.Identity{
 			Name:      r.cfg.RollerName,
-			Type:      r.cfg.RollerType,
+			Type:      r.Type(),
 			Timestamp: uint32(timestamp),
 			Version:   version.Version,
 		},
