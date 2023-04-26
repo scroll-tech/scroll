@@ -47,10 +47,6 @@ var (
 	coordinatorSessionsActiveNumberGauge = geth_metrics.NewRegisteredCounter("coordinator/sessions/active/number", metrics.ScrollRegistry)
 )
 
-var (
-	ErrNoIdleRoller = errors.New("no roller idle")
-)
-
 const (
 	proofAndPkBufferSize = 10
 )
@@ -186,11 +182,7 @@ func (m *Manager) Loop() {
 					continue
 				}
 			}
-			for len(aggTasks) > 0 {
-				err := m.StartAggProofGenerationSession(aggTasks[0], nil)
-				if err != nil {
-					break
-				}
+			for len(aggTasks) > 0 && m.StartAggProofGenerationSession(aggTasks[0], nil) {
 				aggTasks = aggTasks[1:]
 			}
 
@@ -211,11 +203,7 @@ func (m *Manager) Loop() {
 				}
 			}
 			// Select roller and send message
-			for len(tasks) > 0 {
-				err := m.StartBasicProofGenerationSession(tasks[0], nil)
-				if err != nil {
-					break
-				}
+			for len(tasks) > 0 && m.StartBasicProofGenerationSession(tasks[0], nil) {
 				tasks = tasks[1:]
 			}
 		case <-m.ctx.Done():
@@ -444,13 +432,13 @@ func (m *Manager) CollectProofs(sess *session) {
 		case <-time.After(time.Duration(m.cfg.CollectionTime) * time.Minute):
 			// Check if session can be replayed
 			if sess.info.Attempts < m.cfg.SessionAttempts {
-				var err error
+				var success bool
 				if sess.info.ProveType == message.AggregatorProve {
-					err = m.StartAggProofGenerationSession(nil, sess)
+					success = m.StartAggProofGenerationSession(nil, sess)
 				} else if sess.info.ProveType == message.BasicProve {
-					err = m.StartBasicProofGenerationSession(nil, sess)
+					success = m.StartBasicProofGenerationSession(nil, sess)
 				}
-				if err == nil {
+				if success {
 					m.mu.Lock()
 					for pk := range sess.info.Rollers {
 						m.freeTaskIDForRoller(pk, sess.info.ID)
@@ -577,8 +565,8 @@ func (m *Manager) APIs() []rpc.API {
 	}
 }
 
-// StartBasicProofGenerationSession starts a common proof generation session
-func (m *Manager) StartBasicProofGenerationSession(task *types.BlockBatch, prevSession *session) (err error) {
+// StartBasicProofGenerationSession starts a basic proof generation session
+func (m *Manager) StartBasicProofGenerationSession(task *types.BlockBatch, prevSession *session) (success bool) {
 	var taskId string
 	if task != nil {
 		taskId = task.Hash
@@ -586,13 +574,13 @@ func (m *Manager) StartBasicProofGenerationSession(task *types.BlockBatch, prevS
 		taskId = prevSession.info.ID
 	}
 	if m.GetNumberOfIdleRollers(message.BasicProve) == 0 {
-		log.Warn("no idle common roller when starting proof generation session", "id", taskId)
-		return ErrNoIdleRoller
+		log.Warn("no idle basic roller when starting proof generation session", "id", taskId)
+		return false
 	}
 
 	log.Info("start proof generation session", "id", taskId)
 	defer func() {
-		if err != nil {
+		if !success {
 			if task != nil {
 				if err := m.orm.UpdateProvingStatus(taskId, types.ProvingTaskUnassigned); err != nil {
 					log.Error("fail to reset task_status as Unassigned", "id", taskId, "err", err)
@@ -613,7 +601,7 @@ func (m *Manager) StartBasicProofGenerationSession(task *types.BlockBatch, prevS
 			"batch_hash", taskId,
 			"error", err,
 		)
-		return err
+		return false
 	}
 	traces := make([]*geth_types.BlockTrace, len(blockInfos))
 	for i, blockInfo := range blockInfos {
@@ -625,7 +613,7 @@ func (m *Manager) StartBasicProofGenerationSession(task *types.BlockBatch, prevS
 				"block hash", blockInfo.Hash,
 				"error", err,
 			)
-			return err
+			return false
 		}
 	}
 
@@ -649,13 +637,13 @@ func (m *Manager) StartBasicProofGenerationSession(task *types.BlockBatch, prevS
 	// No roller assigned.
 	if len(rollers) == 0 {
 		log.Error("no roller assigned", "id", taskId, "number of idle basic rollers", m.GetNumberOfIdleRollers(message.BasicProve))
-		return ErrNoIdleRoller
+		return false
 	}
 
 	// Update session proving status as assigned.
 	if err = m.orm.UpdateProvingStatus(taskId, types.ProvingTaskAssigned); err != nil {
 		log.Error("failed to update task status", "id", taskId, "err", err)
-		return err
+		return false
 	}
 
 	// Create a proof generation session.
@@ -685,7 +673,7 @@ func (m *Manager) StartBasicProofGenerationSession(task *types.BlockBatch, prevS
 	// Store session info.
 	if err = m.orm.SetSessionInfo(sess.info); err != nil {
 		log.Error("db set session info fail", "session id", sess.info.ID, "error", err)
-		return err
+		return false
 	}
 
 	m.mu.Lock()
@@ -693,11 +681,11 @@ func (m *Manager) StartBasicProofGenerationSession(task *types.BlockBatch, prevS
 	m.mu.Unlock()
 	go m.CollectProofs(sess)
 
-	return nil
+	return true
 }
 
 // StartAggProofGenerationSession starts an aggregator proof generation.
-func (m *Manager) StartAggProofGenerationSession(task *orm.AggTask, prevSession *session) (err error) {
+func (m *Manager) StartAggProofGenerationSession(task *orm.AggTask, prevSession *session) (success bool) {
 	var taskId string
 	if task != nil {
 		taskId = task.ID
@@ -706,26 +694,31 @@ func (m *Manager) StartAggProofGenerationSession(task *orm.AggTask, prevSession 
 	}
 	if m.GetNumberOfIdleRollers(message.AggregatorProve) == 0 {
 		log.Warn("no idle common roller when starting proof generation session", "id", taskId)
-		return ErrNoIdleRoller
+		return false
 	}
 	defer func() {
-		if err != nil && task != nil {
-			if err := m.orm.UpdateAggTaskStatus(taskId, types.ProvingTaskUnassigned); err != nil {
-				log.Error("fail to reset task_status as Unassigned", "id", taskId, "err", err)
-			} else if err := m.orm.UpdateAggTaskStatus(taskId, types.ProvingTaskFailed); err != nil {
-				log.Error("fail to reset task_status as Failed", "id", taskId, "err", err)
+		if !success {
+			if task != nil {
+				if err := m.orm.UpdateAggTaskStatus(taskId, types.ProvingTaskUnassigned); err != nil {
+					log.Error("fail to reset task_status as Unassigned", "id", taskId, "err", err)
+				} else if err := m.orm.UpdateAggTaskStatus(taskId, types.ProvingTaskFailed); err != nil {
+					log.Error("fail to reset task_status as Failed", "id", taskId, "err", err)
+				}
 			}
 		}
 
 	}()
 
 	// get agg task from db
-	var subProofs []*message.AggProof
+	var (
+		subProofs []*message.AggProof
+		err       error
+	)
 	if task == nil {
 		subProofs, err = m.orm.GetSubProofsByHash(taskId)
 		if err != nil {
 			log.Error("failed to get aggregator task", "id", taskId, "error", err)
-			return err
+			return false
 		}
 	} else {
 		subProofs = task.SubProofs
@@ -755,13 +748,13 @@ func (m *Manager) StartAggProofGenerationSession(task *orm.AggTask, prevSession 
 	// No roller assigned.
 	if len(rollers) == 0 {
 		log.Error("no roller assigned", "id", taskId, "number of idle aggregator rollers", m.GetNumberOfIdleRollers(message.AggregatorProve))
-		return ErrNoIdleRoller
+		return false
 	}
 
 	// Update session proving status as assigned.
 	if err = m.orm.UpdateAggTaskStatus(taskId, types.ProvingTaskAssigned); err != nil {
 		log.Error("failed to update task status", "id", taskId, "err", err)
-		return err
+		return false
 	}
 
 	// Create a proof generation session.
@@ -791,7 +784,7 @@ func (m *Manager) StartAggProofGenerationSession(task *orm.AggTask, prevSession 
 	// Store session info.
 	if err = m.orm.SetSessionInfo(sess.info); err != nil {
 		log.Error("db set session info fail", "session id", sess.info.ID, "error", err)
-		return err
+		return false
 	}
 
 	m.mu.Lock()
@@ -799,7 +792,7 @@ func (m *Manager) StartAggProofGenerationSession(task *orm.AggTask, prevSession 
 	m.mu.Unlock()
 	go m.CollectProofs(sess)
 
-	return nil
+	return true
 }
 
 // IsRollerIdle determines whether this roller is idle.
