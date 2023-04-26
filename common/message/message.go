@@ -61,8 +61,6 @@ type Identity struct {
 	Type ProveType `json:"type"`
 	// Unverified Unix timestamp of message creation
 	Timestamp uint32 `json:"timestamp"`
-	// Roller public key
-	PublicKey string `json:"publicKey"`
 	// Version is common.Version+ZkVersion. Use the following to check the latest ZkVersion version.
 	// curl -sL https://api.github.com/repos/scroll-tech/scroll-zkevm/commits | jq -r ".[0].sha"
 	Version string `json:"version"`
@@ -79,13 +77,14 @@ func GenerateToken() (string, error) {
 	return hex.EncodeToString(b), nil
 }
 
-// Sign auth message
-func (a *AuthMsg) Sign(priv *ecdsa.PrivateKey) error {
+// SignWithKey auth message with private key and set public key in auth message's Identity
+func (a *AuthMsg) SignWithKey(priv *ecdsa.PrivateKey) error {
 	// Hash identity content
 	hash, err := a.Identity.Hash()
 	if err != nil {
 		return err
 	}
+
 	// Sign register message
 	sig, err := crypto.Sign(hash, priv)
 	if err != nil {
@@ -103,36 +102,27 @@ func (a *AuthMsg) Verify() (bool, error) {
 		return false, err
 	}
 	sig := common.FromHex(a.Signature)
-	// recover public key
-	if a.Identity.PublicKey == "" {
-		pk, err := crypto.SigToPub(hash, sig)
-		if err != nil {
-			return false, err
-		}
-		a.Identity.PublicKey = common.Bytes2Hex(crypto.CompressPubkey(pk))
-	}
 
-	return crypto.VerifySignature(common.FromHex(a.Identity.PublicKey), hash, sig[:len(sig)-1]), nil
+	pk, err := crypto.SigToPub(hash, sig)
+	if err != nil {
+		return false, err
+	}
+	return crypto.VerifySignature(crypto.CompressPubkey(pk), hash, sig[:len(sig)-1]), nil
 }
 
 // PublicKey return public key from signature
 func (a *AuthMsg) PublicKey() (string, error) {
-	if a.Identity.PublicKey == "" {
-		hash, err := a.Identity.Hash()
-		if err != nil {
-			return "", err
-		}
-		sig := common.FromHex(a.Signature)
-		// recover public key
-		pk, err := crypto.SigToPub(hash, sig)
-		if err != nil {
-			return "", err
-		}
-		a.Identity.PublicKey = common.Bytes2Hex(crypto.CompressPubkey(pk))
-		return a.Identity.PublicKey, nil
+	hash, err := a.Identity.Hash()
+	if err != nil {
+		return "", err
 	}
-
-	return a.Identity.PublicKey, nil
+	sig := common.FromHex(a.Signature)
+	// recover public key
+	pk, err := crypto.SigToPub(hash, sig)
+	if err != nil {
+		return "", err
+	}
+	return common.Bytes2Hex(crypto.CompressPubkey(pk)), nil
 }
 
 // Hash returns the hash of the auth message, which should be the message used
