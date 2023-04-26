@@ -22,9 +22,9 @@ import (
 
 	rapp "scroll-tech/roller/cmd/app"
 
-	capp "scroll-tech/coordinator/cmd/app"
-
 	"scroll-tech/database/migrate"
+
+	capp "scroll-tech/coordinator/cmd/app"
 )
 
 var (
