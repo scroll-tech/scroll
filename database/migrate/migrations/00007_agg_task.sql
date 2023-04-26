@@ -5,7 +5,7 @@ create table agg_task
 (
     hash                    VARCHAR NOT NULL,
     task                    BYTEA   NOT NULL,
-    proving_status          INTEGER DEFAULT 1,
+    proving_status          SMALLINT DEFAULT 1,
     proof                   BYTEA DEFAULT NULL
 );
 
