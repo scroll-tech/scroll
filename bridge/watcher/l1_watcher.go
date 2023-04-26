@@ -16,6 +16,7 @@ import (
 
 	"scroll-tech/common/metrics"
 	"scroll-tech/common/types"
+
 	"scroll-tech/database"
 
 	bridge_abi "scroll-tech/bridge/abi"
