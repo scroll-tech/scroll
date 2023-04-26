@@ -57,6 +57,7 @@ const (
 
 type rollerProofStatus struct {
 	id     string
+	typ    message.ProveType
 	pk     string
 	status types.RollerProveStatus
 }
@@ -333,8 +334,15 @@ func (m *Manager) handleZkProof(pk string, msg *message.ProofDetail) error {
 		// TODO: maybe we should use db tx for the whole process?
 		// Roll back current proof's status.
 		if dbErr != nil {
-			if err := m.orm.UpdateProvingStatus(msg.ID, types.ProvingTaskUnassigned); err != nil {
-				log.Error("fail to reset task status as Unassigned", "msg.ID", msg.ID)
+			if msg.Type == message.BasicProve {
+				if err := m.orm.UpdateProvingStatus(msg.ID, types.ProvingTaskUnassigned); err != nil {
+					log.Error("fail to reset basic task status as Unassigned", "msg.ID", msg.ID)
+				}
+			}
+			if msg.Type == message.AggregatorProve {
+				if err := m.orm.UpdateAggTaskStatus(msg.ID, types.ProvingTaskUnassigned); err != nil {
+					log.Error("fail to reset aggregator task status as Unassigned", "msg.ID", msg.ID)
+				}
 			}
 		}
 		// set proof status
@@ -343,7 +351,7 @@ func (m *Manager) handleZkProof(pk string, msg *message.ProofDetail) error {
 			status = types.RollerProofValid
 		}
 		// notify the session that the roller finishes the proving process
-		sess.finishChan <- rollerProofStatus{msg.ID, pk, status}
+		sess.finishChan <- rollerProofStatus{msg.ID, msg.Type, pk, status}
 	}()
 
 	if msg.Status != message.StatusOk {
@@ -460,9 +468,17 @@ func (m *Manager) CollectProofs(sess *session) {
 			// Note that this is only a workaround for testnet here.
 			// TODO: In real cases we should reset to orm.ProvingTaskUnassigned
 			// so as to re-distribute the task in the future
-			if err := m.orm.UpdateProvingStatus(sess.info.ID, types.ProvingTaskFailed); err != nil {
-				log.Error("fail to reset task_status as Unassigned", "id", sess.info.ID, "err", err)
+			if sess.info.ProveType == message.BasicProve {
+				if err := m.orm.UpdateProvingStatus(sess.info.ID, types.ProvingTaskFailed); err != nil {
+					log.Error("fail to reset basic task_status as Unassigned", "id", sess.info.ID, "err", err)
+				}
 			}
+			if sess.info.ProveType == message.AggregatorProve {
+				if err := m.orm.UpdateAggTaskStatus(sess.info.ID, types.ProvingTaskFailed); err != nil {
+					log.Error("fail to reset aggregator task_status as Unassigned", "id", sess.info.ID, "err", err)
+				}
+			}
+
 			m.mu.Lock()
 			for pk := range sess.info.Rollers {
 				m.freeTaskIDForRoller(pk, sess.info.ID)
@@ -477,9 +493,17 @@ func (m *Manager) CollectProofs(sess *session) {
 			m.mu.Lock()
 			sess.info.Rollers[ret.pk].Status = ret.status
 			if sess.isSessionFailed() {
-				if err := m.orm.UpdateProvingStatus(ret.id, types.ProvingTaskFailed); err != nil {
-					log.Error("failed to update proving_status as failed", "msg.ID", ret.id, "error", err)
+				if ret.typ == message.BasicProve {
+					if err := m.orm.UpdateProvingStatus(ret.id, types.ProvingTaskFailed); err != nil {
+						log.Error("failed to update basic proving_status as failed", "msg.ID", ret.id, "error", err)
+					}
 				}
+				if ret.typ == message.AggregatorProve {
+					if err := m.orm.UpdateAggTaskStatus(ret.id, types.ProvingTaskFailed); err != nil {
+						log.Error("failed to update aggregator proving_status as failed", "msg.ID", ret.id, "error", err)
+					}
+				}
+
 				coordinatorSessionsFailedTotalCounter.Inc(1)
 			}
 			if err := m.orm.SetSessionInfo(sess.info); err != nil {
