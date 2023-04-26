@@ -12,20 +12,20 @@ import (
 
 // Config loads roller configuration items.
 type Config struct {
-	RollerType       message.ProveType `json:"roller_type,omitempty"` //  0: basic roller (default type), 1: aggregator roller
-	RollerName       string            `json:"roller_name"`
-	KeystorePath     string            `json:"keystore_path"`
-	KeystorePassword string            `json:"keystore_password"`
-	CoordinatorURL   string            `json:"coordinator_url"`
-	Prover           *ProverConfig     `json:"prover"`
-	DBPath           string            `json:"db_path"`
+	RollerName       string        `json:"roller_name"`
+	KeystorePath     string        `json:"keystore_path"`
+	KeystorePassword string        `json:"keystore_password"`
+	CoordinatorURL   string        `json:"coordinator_url"`
+	Prover           *ProverConfig `json:"prover"`
+	DBPath           string        `json:"db_path"`
 }
 
 // ProverConfig load zk prover config.
 type ProverConfig struct {
-	ParamsPath string `json:"params_path"`
-	SeedPath   string `json:"seed_path"`
-	DumpDir    string `json:"dump_dir,omitempty"`
+	ParamsPath string            `json:"params_path"`
+	SeedPath   string            `json:"seed_path"`
+	ProveType  message.ProveType `json:"prove_type,omitempty"` // 0: basic roller (default type), 1: aggregator roller
+	DumpDir    string            `json:"dump_dir,omitempty"`
 }
 
 // NewConfig returns a new instance of Config.

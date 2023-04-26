@@ -63,7 +63,7 @@ func NewRoller(cfg *config.Config) (*Roller, error) {
 
 	// Create prover instance
 	log.Info("init prover")
-	newProver, err := prover.NewProver(cfg.Prover, cfg.RollerType)
+	newProver, err := prover.NewProver(cfg.Prover)
 	if err != nil {
 		return nil, err
 	}
