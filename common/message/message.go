@@ -202,7 +202,7 @@ func (a *ProofMsg) PublicKey() (string, error) {
 // TaskMsg is a wrapper type around db ProveTask type.
 type TaskMsg struct {
 	ID   string    `json:"id"`
-	Type ProveType `json:"type"`
+	Type ProveType `json:"type,omitempty"`
 	// Only common rollers need traces, aggregator rollers don't!
 	Traces []*types.BlockTrace `json:"blockTraces,omitempty"`
 	// Only aggregator rollers need proofs to aggregate, basic rollers don't!
