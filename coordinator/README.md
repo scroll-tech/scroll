@@ -12,7 +12,7 @@ The built coordinator binary is in the build/bin directory.
 
 ## Test
 
-Notes: our coordinator test codes currently do support Mac M1.
+Notes: our coordinator test codes currently don't support Mac M1.
 
 When developing coordinator, use the following command to mock verifier results and run coordinator tests only:
 
