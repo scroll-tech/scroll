@@ -454,11 +454,11 @@ func testOrmAggTask(t *testing.T) {
 	assert.Equal(t, tasks[1], aggTask2)
 
 	// update agg proof into db
-	err = ormAggTask.UpdateAggTaskStatus(aggTask1.ID, types.ProvingTaskAssigned, nil)
+	err = ormAggTask.UpdateAggTaskStatus(aggTask1.ID, types.ProvingTaskAssigned)
 	assert.NoError(t, err)
-	err = ormAggTask.UpdateAggTaskStatus(aggTask1.ID, types.ProvingTaskProved, nil)
+	err = ormAggTask.UpdateAggTaskStatus(aggTask1.ID, types.ProvingTaskProved)
 	assert.NoError(t, err)
-	err = ormAggTask.UpdateAggTaskStatus(aggTask1.ID, types.ProvingTaskVerified, &message.AggProof{})
+	err = ormAggTask.UpdateAggProof(aggTask1.ID, &message.AggProof{})
 	assert.NoError(t, err)
 
 	// get unassigned task

@@ -52,16 +52,17 @@ func (a *aggTaskOrm) InsertAggTask(task *AggTask) error {
 	return err
 }
 
-func (a *aggTaskOrm) UpdateAggTaskStatus(aggTaskID string, status types.ProvingStatus, proof *message.AggProof) error {
-	if status == types.ProvingTaskVerified {
-		byt, err := json.Marshal(proof)
-		if err != nil {
-			return err
-		}
-		_, err = a.db.Exec(a.db.Rebind("update agg_task set proving_status = ?, proof = ? where hash = ?;"), status, byt, aggTaskID)
+func (a *aggTaskOrm) UpdateAggTaskStatus(aggTaskID string, status types.ProvingStatus) error {
+	_, err := a.db.Exec(a.db.Rebind("update agg_task set proving_status = ? where hash = ?;"), status, aggTaskID)
+	return err
+}
+
+func (a *aggTaskOrm) UpdateAggProof(aggTaskID string, proof *message.AggProof) error {
+	proofByt, err := json.Marshal(proof)
+	if err != nil {
 		return err
 	}
-	_, err := a.db.Exec(a.db.Rebind("update agg_task set proving_status = ? where hash = ?;"), status, aggTaskID)
+	_, err = a.db.Exec(a.db.Rebind("update agg_task set proving_status = ?, proof = ? where hash = ?;"), types.ProvingTaskVerified, proofByt, aggTaskID)
 	return err
 }
 

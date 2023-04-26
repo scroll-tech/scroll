@@ -219,15 +219,10 @@ func (m *Manager) restorePrevSessions() {
 
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	aggTasks, err := m.orm.GetUnassignedAggTasks()
+	aggTasks, err := m.orm.GetAssignedAggTasks()
 	if err != nil {
-		log.Error("failed to load unassigned aggregator tasks from db", "error", err)
+		log.Error("failed to load assigned aggregator tasks from db", "error", err)
 	}
-	go func() {
-		for _, task := range aggTasks {
-			m.aggTaskChan <- &message.TaskMsg{ID: task.ID, SubProofs: task.SubProofs}
-		}
-	}()
 
 	if hashes, err := m.orm.GetAssignedBatchHashes(); err != nil {
 		log.Error("failed to get assigned batch hashes from db", "error", err)
