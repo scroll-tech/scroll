@@ -108,8 +108,6 @@ type Manager struct {
 
 	// Verifier worker pool
 	verifierWorkerPool *workerpool.WorkerPool
-
-	aggTaskChan chan *message.TaskMsg
 }
 
 // New returns a new instance of Manager. The instance will be not fully prepared,
@@ -132,7 +130,6 @@ func New(ctx context.Context, cfg *config.RollerManagerConfig, orm database.OrmF
 		Client:             client,
 		tokenCache:         cache.New(time.Duration(cfg.TokenTimeToLive)*time.Second, 1*time.Hour),
 		verifierWorkerPool: workerpool.NewWorkerPool(cfg.MaxVerifierWorkers),
-		aggTaskChan:        make(chan *message.TaskMsg, 10),
 	}, nil
 }
 
@@ -176,12 +173,8 @@ func (m *Manager) Loop() {
 
 	for {
 		select {
-		case task := <-m.aggTaskChan:
-			if task.SubProofs != nil {
-				m.StartAggProofGenerationSession(task, nil)
-			}
 		case <-tick.C:
-			// TODO: we should use taskChan instead of db directly
+			// TODO: load aggTask from db and StartAggProofGenerationSession()
 			if len(tasks) == 0 && m.orm != nil {
 				var err error
 				// TODO: add cache
