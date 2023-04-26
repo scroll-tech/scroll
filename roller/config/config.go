@@ -12,9 +12,7 @@ import (
 
 // Config loads roller configuration items.
 type Config struct {
-	// Common: 0 (default type)
-	// Aggregator: 1
-	RollerType       message.ProveType `json:"roller_type"`
+	RollerType       message.ProveType `json:"roller_type,omitempty"` //  0: basic roller (default type), 1: aggregator roller
 	RollerName       string            `json:"roller_name"`
 	KeystorePath     string            `json:"keystore_path"`
 	KeystorePassword string            `json:"keystore_password"`
