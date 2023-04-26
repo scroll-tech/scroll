@@ -213,7 +213,7 @@ type TaskMsg struct {
 // the proof generation succeeded, and an error message if proof generation failed.
 type ProofDetail struct {
 	ID     string     `json:"id"`
-	Type   ProveType  `json:"type"`
+	Type   ProveType  `json:"type,omitempty"`
 	Status RespStatus `json:"status"`
 	Proof  *AggProof  `json:"proof"`
 	Error  string     `json:"error,omitempty"`
