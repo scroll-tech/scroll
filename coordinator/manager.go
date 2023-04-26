@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	mathrand "math/rand"
+	"scroll-tech/database/orm"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -166,15 +167,33 @@ func (m *Manager) isRunning() bool {
 // Loop keeps the manager running.
 func (m *Manager) Loop() {
 	var (
-		tick  = time.NewTicker(time.Second * 2)
-		tasks []*types.BlockBatch
+		tick     = time.NewTicker(time.Second * 2)
+		tasks    []*types.BlockBatch
+		aggTasks []*orm.AggTask
 	)
 	defer tick.Stop()
 
 	for {
 		select {
 		case <-tick.C:
-			// TODO: load aggTask from db and StartAggProofGenerationSession()
+			// load and send aggregator tasks
+			if len(aggTasks) == 0 && m.orm != nil {
+				var err error
+				aggTasks, err = m.orm.GetUnassignedAggTasks()
+				if err != nil {
+					log.Error("failed to get unassigned aggregator proving tasks", "error", err)
+					continue
+				}
+			}
+			for len(aggTasks) > 0 {
+				err := m.StartAggProofGenerationSession(aggTasks[0], nil)
+				if err != nil {
+					break
+				}
+				aggTasks = aggTasks[1:]
+			}
+
+			// load and send basic tasks
 			if len(tasks) == 0 && m.orm != nil {
 				var err error
 				// TODO: add cache
@@ -186,12 +205,11 @@ func (m *Manager) Loop() {
 						m.GetNumberOfIdleRollers(message.BasicProve),
 					),
 				); err != nil {
-					log.Error("failed to get unassigned proving tasks", "error", err)
+					log.Error("failed to get unassigned basic proving tasks", "error", err)
 					continue
 				}
 			}
 			// Select roller and send message
-
 			for len(tasks) > 0 {
 				err := m.StartBasicProofGenerationSession(tasks[0], nil)
 				if err != nil {
@@ -634,7 +652,7 @@ func (m *Manager) StartBasicProofGenerationSession(task *types.BlockBatch, prevS
 }
 
 // StartAggProofGenerationSession starts an aggregator proof generation.
-func (m *Manager) StartAggProofGenerationSession(task *message.TaskMsg, prevSession *session) (err error) {
+func (m *Manager) StartAggProofGenerationSession(task *orm.AggTask, prevSession *session) (err error) {
 	var taskId string
 	if task != nil {
 		taskId = task.ID
@@ -657,10 +675,15 @@ func (m *Manager) StartAggProofGenerationSession(task *message.TaskMsg, prevSess
 	}()
 
 	// get agg task from db
-	subProofs, err := m.orm.GetSubProofsByHash(taskId)
-	if err != nil {
-		log.Error("failed to get aggregator task", "id", taskId, "error", err)
-		return err
+	var subProofs []*message.AggProof
+	if task == nil {
+		subProofs, err = m.orm.GetSubProofsByHash(taskId)
+		if err != nil {
+			log.Error("failed to get aggregator task", "id", taskId, "error", err)
+			return err
+		}
+	} else {
+		subProofs = task.SubProofs
 	}
 
 	// Dispatch task to basic rollers.

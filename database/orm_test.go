@@ -74,7 +74,10 @@ var (
 		},
 	}
 
-	aggTask1 = &orm.AggTask{ID: "test-agg-1"}
+	aggTask1 = &orm.AggTask{ID: "test-agg-1", SubProofs: []*message.AggProof{
+		{BlockCount: 1},
+		{BlockCount: 2},
+	}}
 	aggTask2 = &orm.AggTask{ID: "test-agg-2"}
 
 	wrappedBlock *types.WrappedBlock
@@ -448,6 +451,12 @@ func testOrmAggTask(t *testing.T) {
 	err = ormAggTask.InsertAggTask(aggTask2)
 	assert.NoError(t, err)
 
+	// get subProofs by hash
+	subProofs, err := ormAggTask.GetSubProofsByHash(aggTask1.ID)
+	assert.NoError(t, err)
+	assert.Equal(t, aggTask1.SubProofs, subProofs)
+
+	// get unassigned agg tasks
 	tasks, err := ormAggTask.GetUnassignedAggTasks()
 	assert.NoError(t, err)
 	assert.Equal(t, tasks[0], aggTask1)
