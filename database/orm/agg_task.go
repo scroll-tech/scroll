@@ -11,8 +11,8 @@ import (
 
 // AggTask is a wrapper type around db AggProveTask type.
 type AggTask struct {
-	ID     string              `json:"id"`
-	Proofs []*message.AggProof `json:"proofs"`
+	ID        string              `json:"id"`
+	SubProofs []*message.AggProof `json:"sub_proofs"`
 }
 
 type aggTaskOrm struct {

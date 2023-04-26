@@ -181,7 +181,7 @@ func (m *Manager) Loop() {
 	for {
 		select {
 		case taskMsg := <-m.aggTaskChan:
-			if taskMsg.Proofs != nil {
+			if taskMsg.SubProofs != nil {
 				m.StartProofGenerationSession(taskMsg, nil)
 			}
 		case <-tick.C:
@@ -245,7 +245,7 @@ func (m *Manager) reloadUnassigned() {
 	}
 	go func() {
 		for _, unassigned := range unassignedAggs {
-			m.aggTaskChan <- &message.TaskMsg{ID: unassigned.ID, Proofs: unassigned.Proofs}
+			m.aggTaskChan <- &message.TaskMsg{ID: unassigned.ID, SubProofs: unassigned.SubProofs}
 		}
 	}()
 }
@@ -272,9 +272,9 @@ func (m *Manager) restorePrevSessions() {
 	}
 	for _, task := range aggTasks {
 		taskMsgs = append(taskMsgs, &message.TaskMsg{
-			ID:     task.ID,
-			Type:   message.AggregatorProve,
-			Proofs: task.Proofs,
+			ID:        task.ID,
+			Type:      message.AggregatorProve,
+			SubProofs: task.SubProofs,
 		})
 		taskIDs = append(taskIDs, task.ID)
 	}
