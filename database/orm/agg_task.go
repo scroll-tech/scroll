@@ -3,10 +3,10 @@ package orm
 import (
 	"encoding/json"
 
+	"github.com/jmoiron/sqlx"
+
 	"scroll-tech/common/message"
 	"scroll-tech/common/types"
-
-	"github.com/jmoiron/sqlx"
 )
 
 // AggTask is a wrapper type around db AggProveTask type.
