@@ -182,6 +182,7 @@ func (m *Manager) Loop() {
 					continue
 				}
 			}
+			// Select aggregator type roller and send message
 			for len(aggTasks) > 0 && m.StartAggProofGenerationSession(aggTasks[0], nil) {
 				aggTasks = aggTasks[1:]
 			}
