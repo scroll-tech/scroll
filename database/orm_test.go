@@ -451,7 +451,7 @@ func testOrmAggTask(t *testing.T) {
 	assert.NoError(t, err)
 
 	// get subProofs by hash
-	subProofs, err := ormAggTask.GetSubProofsByAggTaskHash(aggTask1.ID)
+	subProofs, err := ormAggTask.GetSubProofsByAggTaskID(aggTask1.ID)
 	assert.NoError(t, err)
 	assert.Equal(t, aggTask1.SubProofs, subProofs)
 

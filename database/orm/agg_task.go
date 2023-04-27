@@ -26,8 +26,8 @@ func NewAggTaskOrm(db *sqlx.DB) AggTaskOrm {
 	return &aggTaskOrm{db: db}
 }
 
-func (a *aggTaskOrm) GetSubProofsByAggTaskHash(hash string) ([]*message.AggProof, error) {
-	row := a.db.QueryRow("SELECT task FROM agg_task where hash = $1", hash)
+func (a *aggTaskOrm) GetSubProofsByAggTaskID(id string) ([]*message.AggProof, error) {
+	row := a.db.QueryRow("SELECT task FROM agg_task where hash = $1", id)
 	var byt []byte
 	err := row.Scan(&byt)
 	if err != nil {

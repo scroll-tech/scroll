@@ -715,7 +715,7 @@ func (m *Manager) StartAggProofGenerationSession(task *orm.AggTask, prevSession 
 		err       error
 	)
 	if task == nil {
-		subProofs, err = m.orm.GetSubProofsByAggTaskHash(taskId)
+		subProofs, err = m.orm.GetSubProofsByAggTaskID(taskId)
 		if err != nil {
 			log.Error("failed to get aggregator task", "id", taskId, "error", err)
 			return false
