@@ -22,13 +22,8 @@ func NewAggTaskOrm(db *sqlx.DB) AggTaskOrm {
 
 func (a *aggTaskOrm) GetSubProofsByAggTaskID(id string) ([][]byte, error) {
 	row := a.db.QueryRowx("SELECT * FROM agg_task where id = $1", id)
-	var byt []byte
-	err := row.Scan(&byt)
-	if err != nil {
-		return nil, err
-	}
 	aggTask := new(types.AggTask)
-	err = json.Unmarshal(byt, aggTask)
+	err := row.StructScan(aggTask)
 	if err != nil {
 		return nil, err
 	}
