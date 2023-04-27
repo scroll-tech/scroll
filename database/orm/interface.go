@@ -5,7 +5,6 @@ import (
 	"database/sql"
 
 	"scroll-tech/common/message"
-
 	"scroll-tech/common/types"
 
 	"github.com/jmoiron/sqlx"
@@ -54,7 +53,7 @@ type AggTaskOrm interface {
 	GetSubProofsByHash(hash string) ([]*message.AggProof, error)
 	InsertAggTask(task *AggTask) error
 	UpdateAggTaskStatus(aggTaskID string, status types.ProvingStatus) error
-	UpdateAggProof(aggTaskID string, proof *message.AggProof) error
+	UpdateProofForAggTask(aggTaskID string, proof *message.AggProof) error
 }
 
 // BlockBatchOrm block_batch operation interface

@@ -9,14 +9,13 @@ import (
 	"testing"
 	"time"
 
-	"scroll-tech/common/message"
-
 	_ "github.com/lib/pq"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/stretchr/testify/assert"
 
 	"scroll-tech/common/docker"
+	"scroll-tech/common/message"
 	"scroll-tech/common/types"
 
 	abi "scroll-tech/bridge/abi"
@@ -471,7 +470,7 @@ func testOrmAggTask(t *testing.T) {
 	assert.Equal(t, assigns[0], aggTask1)
 
 	// insert aggregator proof
-	err = ormAggTask.UpdateAggProof(aggTask1.ID, &message.AggProof{})
+	err = ormAggTask.UpdateProofForAggTask(aggTask1.ID, &message.AggProof{})
 	assert.NoError(t, err)
 	// mark verified
 	err = ormAggTask.UpdateAggTaskStatus(aggTask1.ID, types.ProvingTaskVerified)

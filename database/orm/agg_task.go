@@ -2,11 +2,11 @@ package orm
 
 import (
 	"encoding/json"
+
+	"scroll-tech/common/message"
 	"scroll-tech/common/types"
 
 	"github.com/jmoiron/sqlx"
-
-	"scroll-tech/common/message"
 )
 
 // AggTask is a wrapper type around db AggProveTask type.
@@ -69,7 +69,7 @@ func (a *aggTaskOrm) UpdateAggTaskStatus(aggTaskID string, status types.ProvingS
 	return err
 }
 
-func (a *aggTaskOrm) UpdateAggProof(aggTaskID string, proof *message.AggProof) error {
+func (a *aggTaskOrm) UpdateProofForAggTask(aggTaskID string, proof *message.AggProof) error {
 	proofByt, err := json.Marshal(proof)
 	if err != nil {
 		return err

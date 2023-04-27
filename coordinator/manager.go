@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	mathrand "math/rand"
-	"scroll-tech/database/orm"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -20,6 +19,7 @@ import (
 	"github.com/scroll-tech/go-ethereum/rpc"
 
 	"scroll-tech/database"
+	"scroll-tech/database/orm"
 
 	"scroll-tech/common/message"
 	"scroll-tech/common/metrics"
@@ -368,7 +368,7 @@ func (m *Manager) handleZkProof(pk string, msg *message.ProofDetail) error {
 		}
 	}
 	if msg.Type == message.AggregatorProve {
-		if dbErr = m.orm.UpdateAggProof(msg.ID, msg.Proof); dbErr != nil {
+		if dbErr = m.orm.UpdateProofForAggTask(msg.ID, msg.Proof); dbErr != nil {
 			log.Error("failed to store aggregator proof into db", "error", dbErr)
 			return dbErr
 		}
