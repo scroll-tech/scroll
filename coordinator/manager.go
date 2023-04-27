@@ -582,7 +582,8 @@ func (m *Manager) StartBasicProofGenerationSession(task *types.BlockBatch, prevS
 		return false
 	}
 
-	log.Info("start proof generation session", "id", taskId)
+	log.Info("start basic proof generation session", "id", taskId)
+	
 	defer func() {
 		if !success {
 			if task != nil {
@@ -655,6 +656,7 @@ func (m *Manager) StartBasicProofGenerationSession(task *types.BlockBatch, prevS
 		info: &types.SessionInfo{
 			ID:             taskId,
 			Rollers:        rollers,
+			ProveType:      message.BasicProve,
 			StartTimestamp: time.Now().Unix(),
 			Attempts:       1,
 		},
@@ -700,6 +702,9 @@ func (m *Manager) StartAggProofGenerationSession(task *orm.AggTask, prevSession 
 		log.Warn("no idle common roller when starting proof generation session", "id", taskId)
 		return false
 	}
+
+	log.Info("start aggregator proof generation session", "id", taskId)
+
 	defer func() {
 		if !success {
 			if task != nil {
@@ -766,6 +771,7 @@ func (m *Manager) StartAggProofGenerationSession(task *orm.AggTask, prevSession 
 		info: &types.SessionInfo{
 			ID:             taskId,
 			Rollers:        rollers,
+			ProveType:      message.AggregatorProve,
 			StartTimestamp: time.Now().Unix(),
 			Attempts:       1,
 		},
