@@ -455,11 +455,47 @@ func testOrmAggTask(t *testing.T) {
 	err = ormBatch.NewBatchInDBTx(dbTx, batchData1)
 	assert.NoError(t, err)
 	batchHash1 := batchData1.Hash().Hex()
-	err = ormBatch.UpdateProofByHash(context.Background(), batchHash1, proof1, nil, 1000)
+	err = ormBlock.SetBatchHashForL2BlocksInDBTx(dbTx, []uint64{
+		batchData1.Batch.Blocks[0].BlockNumber}, batchHash1)
+	assert.NoError(t, err)
+	err = ormBatch.NewBatchInDBTx(dbTx, batchData2)
+	assert.NoError(t, err)
+	batchHash2 := batchData2.Hash().Hex()
+	err = ormBlock.SetBatchHashForL2BlocksInDBTx(dbTx, []uint64{
+		batchData2.Batch.Blocks[0].BlockNumber,
+		batchData2.Batch.Blocks[1].BlockNumber}, batchHash2)
+	assert.NoError(t, err)
+	err = dbTx.Commit()
+	assert.NoError(t, err)
+
+	batches, err := ormBatch.GetBlockBatches(map[string]interface{}{})
+	assert.NoError(t, err)
+	assert.Equal(t, int(2), len(batches))
+
+	batcheHashes, err := ormBatch.GetPendingBatches(10)
+	assert.NoError(t, err)
+	assert.Equal(t, int(2), len(batcheHashes))
+	assert.Equal(t, batchHash1, batcheHashes[0])
+	assert.Equal(t, batchHash2, batcheHashes[1])
+
+	err = ormBatch.UpdateCommitTxHashAndRollupStatus(context.Background(), batchHash1, "commit_tx_1", types.RollupCommitted)
+	assert.NoError(t, err)
+
+	batcheHashes, err = ormBatch.GetPendingBatches(10)
+	assert.NoError(t, err)
+	assert.Equal(t, int(1), len(batcheHashes))
+	assert.Equal(t, batchHash2, batcheHashes[0])
+
+	provingStatus, err := ormBatch.GetProvingStatusByHash(batchHash1)
+	assert.NoError(t, err)
+	assert.Equal(t, types.ProvingTaskUnassigned, provingStatus)
+	err = ormBatch.UpdateProofByHash(context.Background(), batchHash1, proof1, []byte{2}, 1200)
 	assert.NoError(t, err)
 	err = ormBatch.UpdateProvingStatus(batchHash1, types.ProvingTaskVerified)
 	assert.NoError(t, err)
-	assert.NoError(t, dbTx.Commit())
+	provingStatus, err = ormBatch.GetProvingStatusByHash(batchHash1)
+	assert.NoError(t, err)
+	assert.Equal(t, types.ProvingTaskVerified, provingStatus)
 
 	// set agg task into db
 	err = ormAggTask.InsertAggTask(aggTask1)
