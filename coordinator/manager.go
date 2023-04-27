@@ -583,7 +583,7 @@ func (m *Manager) StartBasicProofGenerationSession(task *types.BlockBatch, prevS
 	}
 
 	log.Info("start basic proof generation session", "id", taskId)
-	
+
 	defer func() {
 		if !success {
 			if task != nil {
