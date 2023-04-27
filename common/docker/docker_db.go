@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"strings"
-	"testing"
 	"time"
 
 	"github.com/docker/docker/api/types"
@@ -28,7 +27,7 @@ type ImgDB struct {
 }
 
 // NewImgDB return postgres db img instance.
-func NewImgDB(t *testing.T, image, password, dbName string, port int) ImgInstance {
+func NewImgDB(image, password, dbName string, port int) ImgInstance {
 	img := &ImgDB{
 		image:    image,
 		name:     fmt.Sprintf("%s-%s_%d", image, dbName, port),
@@ -36,7 +35,7 @@ func NewImgDB(t *testing.T, image, password, dbName string, port int) ImgInstanc
 		dbName:   dbName,
 		port:     port,
 	}
-	img.cmd = cmd.NewCmd(t, img.name, img.prepare()...)
+	img.cmd = cmd.NewCmd(img.name, img.prepare()...)
 	return img
 }
 
@@ -46,7 +45,6 @@ func (i *ImgDB) Start() error {
 	if id != "" {
 		return fmt.Errorf("container already exist, name: %s", i.name)
 	}
-	i.cmd.RunCmd(true)
 	i.running = i.isOk()
 	if !i.running {
 		_ = i.Stop()
@@ -107,15 +105,21 @@ func (i *ImgDB) isOk() bool {
 		}
 	})
 	defer i.cmd.UnRegistFunc(keyword)
+	// Start cmd in parallel.
+	i.cmd.RunCmd(true)
 
 	select {
 	case <-okCh:
-		utils.TryTimes(3, func() bool {
+		utils.TryTimes(20, func() bool {
 			i.id = GetContainerID(i.name)
 			return i.id != ""
 		})
-		return i.id != ""
+	case err := <-i.cmd.ErrChan:
+		if err != nil {
+			fmt.Printf("failed to start %s, err: %v\n", i.name, err)
+		}
 	case <-time.After(time.Second * 20):
 		return false
 	}
+	return i.id != ""
 }

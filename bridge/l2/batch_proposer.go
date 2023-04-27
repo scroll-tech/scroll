@@ -8,15 +8,27 @@ import (
 	"sync"
 	"time"
 
-	geth_types "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/log"
+	geth_metrics "github.com/scroll-tech/go-ethereum/metrics"
 
+	"scroll-tech/common/metrics"
 	"scroll-tech/common/types"
+	"scroll-tech/common/utils"
 
 	"scroll-tech/database"
 
 	bridgeabi "scroll-tech/bridge/abi"
 	"scroll-tech/bridge/config"
+)
+
+var (
+	bridgeL2BatchesGasOverThresholdTotalCounter = geth_metrics.NewRegisteredCounter("bridge/l2/batches/gas/over/threshold/total", metrics.ScrollRegistry)
+	bridgeL2BatchesTxsOverThresholdTotalCounter = geth_metrics.NewRegisteredCounter("bridge/l2/batches/txs/over/threshold/total", metrics.ScrollRegistry)
+	bridgeL2BatchesCommitTotalCounter           = geth_metrics.NewRegisteredCounter("bridge/l2/batches/commit/total", metrics.ScrollRegistry)
+
+	bridgeL2BatchesCreatedRateMeter    = geth_metrics.NewRegisteredMeter("bridge/l2/batches/blocks/created/rate", metrics.ScrollRegistry)
+	bridgeL2BatchesTxsCreatedRateMeter = geth_metrics.NewRegisteredMeter("bridge/l2/batches/txs/created/rate", metrics.ScrollRegistry)
+	bridgeL2BatchesGasCreatedRateMeter = geth_metrics.NewRegisteredMeter("bridge/l2/batches/gas/created/rate", metrics.ScrollRegistry)
 )
 
 // AddBatchInfoToDB inserts the batch information to the BlockBatch table and updates the batch_hash
@@ -67,6 +79,7 @@ type BatchProposer struct {
 	batchCommitTimeSec       uint64
 	commitCalldataSizeLimit  uint64
 	batchDataBufferSizeLimit uint64
+	commitCalldataMinSize    uint64
 
 	proofGenerationFreq uint64
 	batchDataBuffer     []*types.BatchData
@@ -89,6 +102,7 @@ func NewBatchProposer(ctx context.Context, cfg *config.BatchProposerConfig, rela
 		batchBlocksLimit:         cfg.BatchBlocksLimit,
 		batchCommitTimeSec:       cfg.BatchCommitTimeSec,
 		commitCalldataSizeLimit:  cfg.CommitTxCalldataSizeLimit,
+		commitCalldataMinSize:    cfg.CommitTxCalldataMinSize,
 		batchDataBufferSizeLimit: 100*cfg.CommitTxCalldataSizeLimit + 1*1024*1024, // @todo: determine the value.
 		proofGenerationFreq:      cfg.ProofGenerationFreq,
 		piCfg:                    cfg.PublicInputConfig,
@@ -114,22 +128,10 @@ func (p *BatchProposer) Start() {
 
 		ctx, cancel := context.WithCancel(p.ctx)
 
-		// batch proposer loop
-		go func(ctx context.Context) {
-			ticker := time.NewTicker(2 * time.Second)
-			defer ticker.Stop()
-
-			for {
-				select {
-				case <-ctx.Done():
-					return
-
-				case <-ticker.C:
-					p.tryProposeBatch()
-					p.tryCommitBatches()
-				}
-			}
-		}(ctx)
+		go utils.Loop(ctx, 2*time.Second, func() {
+			p.tryProposeBatch()
+			p.tryCommitBatches()
+		})
 
 		<-p.stopCh
 		cancel()
@@ -216,7 +218,7 @@ func (p *BatchProposer) tryProposeBatch() {
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
 
-	if p.getBatchDataBufferSize() < p.batchDataBufferSizeLimit {
+	for p.getBatchDataBufferSize() < p.batchDataBufferSizeLimit {
 		blocks, err := p.orm.GetUnbatchedL2Blocks(
 			map[string]interface{}{},
 			fmt.Sprintf("order by number ASC LIMIT %d", p.batchBlocksLimit),
@@ -226,7 +228,18 @@ func (p *BatchProposer) tryProposeBatch() {
 			return
 		}
 
-		p.proposeBatch(blocks)
+		batchCreated := p.proposeBatch(blocks)
+
+		// while size of batchDataBuffer < commitCalldataMinSize,
+		// proposer keeps fetching and porposing batches.
+		if p.getBatchDataBufferSize() >= p.commitCalldataMinSize {
+			return
+		}
+
+		if !batchCreated {
+			// wait for watcher to insert l2 traces.
+			time.Sleep(time.Second)
+		}
 	}
 }
 
@@ -270,29 +283,40 @@ func (p *BatchProposer) tryCommitBatches() {
 		log.Error("SendCommitTx failed", "error", err)
 	} else {
 		// pop the processed batches from the buffer
+		bridgeL2BatchesCommitTotalCounter.Inc(1)
 		p.batchDataBuffer = p.batchDataBuffer[index:]
 	}
 }
 
-func (p *BatchProposer) proposeBatch(blocks []*types.BlockInfo) {
+func (p *BatchProposer) proposeBatch(blocks []*types.BlockInfo) bool {
 	if len(blocks) == 0 {
-		return
+		return false
 	}
 
 	if blocks[0].GasUsed > p.batchGasThreshold {
+		bridgeL2BatchesGasOverThresholdTotalCounter.Inc(1)
 		log.Warn("gas overflow even for only 1 block", "height", blocks[0].Number, "gas", blocks[0].GasUsed)
 		if err := p.createBatchForBlocks(blocks[:1]); err != nil {
 			log.Error("failed to create batch", "number", blocks[0].Number, "err", err)
+		} else {
+			bridgeL2BatchesTxsCreatedRateMeter.Mark(int64(blocks[0].TxNum))
+			bridgeL2BatchesGasCreatedRateMeter.Mark(int64(blocks[0].GasUsed))
+			bridgeL2BatchesCreatedRateMeter.Mark(1)
 		}
-		return
+		return true
 	}
 
 	if blocks[0].TxNum > p.batchTxNumThreshold {
+		bridgeL2BatchesTxsOverThresholdTotalCounter.Inc(1)
 		log.Warn("too many txs even for only 1 block", "height", blocks[0].Number, "tx_num", blocks[0].TxNum)
 		if err := p.createBatchForBlocks(blocks[:1]); err != nil {
 			log.Error("failed to create batch", "number", blocks[0].Number, "err", err)
+		} else {
+			bridgeL2BatchesTxsCreatedRateMeter.Mark(int64(blocks[0].TxNum))
+			bridgeL2BatchesGasCreatedRateMeter.Mark(int64(blocks[0].GasUsed))
+			bridgeL2BatchesCreatedRateMeter.Mark(1)
 		}
-		return
+		return true
 	}
 
 	var gasUsed, txNum uint64
@@ -312,12 +336,18 @@ func (p *BatchProposer) proposeBatch(blocks []*types.BlockInfo) {
 	// if it's not old enough we will skip proposing the batch,
 	// otherwise we will still propose a batch
 	if !reachThreshold && blocks[0].BlockTimestamp+p.batchTimeSec > uint64(time.Now().Unix()) {
-		return
+		return false
 	}
 
 	if err := p.createBatchForBlocks(blocks); err != nil {
 		log.Error("failed to create batch", "from", blocks[0].Number, "to", blocks[len(blocks)-1].Number, "err", err)
+	} else {
+		bridgeL2BatchesTxsCreatedRateMeter.Mark(int64(txNum))
+		bridgeL2BatchesGasCreatedRateMeter.Mark(int64(gasUsed))
+		bridgeL2BatchesCreatedRateMeter.Mark(int64(len(blocks)))
 	}
+
+	return true
 }
 
 func (p *BatchProposer) createBatchForBlocks(blocks []*types.BlockInfo) error {
@@ -343,16 +373,16 @@ func (p *BatchProposer) createBatchForBlocks(blocks []*types.BlockInfo) error {
 }
 
 func (p *BatchProposer) generateBatchData(parentBatch *types.BlockBatch, blocks []*types.BlockInfo) (*types.BatchData, error) {
-	var traces []*geth_types.BlockTrace
+	var wrappedBlocks []*types.WrappedBlock
 	for _, block := range blocks {
-		trs, err := p.orm.GetL2BlockTraces(map[string]interface{}{"hash": block.Hash})
+		trs, err := p.orm.GetL2WrappedBlocks(map[string]interface{}{"hash": block.Hash})
 		if err != nil || len(trs) != 1 {
 			log.Error("Failed to GetBlockTraces", "hash", block.Hash, "err", err)
 			return nil, err
 		}
-		traces = append(traces, trs[0])
+		wrappedBlocks = append(wrappedBlocks, trs[0])
 	}
-	return types.NewBatchData(parentBatch, traces, p.piCfg), nil
+	return types.NewBatchData(parentBatch, wrappedBlocks, p.piCfg), nil
 }
 
 func (p *BatchProposer) getBatchDataBufferSize() (size uint64) {

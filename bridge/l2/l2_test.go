@@ -2,12 +2,11 @@ package l2
 
 import (
 	"encoding/json"
-	"fmt"
 	"os"
 	"testing"
 
-	geth_types "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/ethclient"
+	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/stretchr/testify/assert"
 
 	"scroll-tech/common/docker"
@@ -20,17 +19,14 @@ var (
 	// config
 	cfg *config.Config
 
-	// docker consider handler.
-	l1gethImg docker.ImgInstance
-	l2gethImg docker.ImgInstance
-	dbImg     docker.ImgInstance
+	base *docker.App
 
 	// l2geth client
 	l2Cli *ethclient.Client
 
 	// block trace
-	blockTrace1 *geth_types.BlockTrace
-	blockTrace2 *geth_types.BlockTrace
+	wrappedBlock1 *types.WrappedBlock
+	wrappedBlock2 *types.WrappedBlock
 
 	// batch data
 	batchData1 *types.BatchData
@@ -42,22 +38,14 @@ func setupEnv(t *testing.T) (err error) {
 	cfg, err = config.NewConfig("../config.json")
 	assert.NoError(t, err)
 
-	// Create l1geth container.
-	l1gethImg = docker.NewTestL1Docker(t)
-	cfg.L2Config.RelayerConfig.SenderConfig.Endpoint = l1gethImg.Endpoint()
-	cfg.L1Config.Endpoint = l1gethImg.Endpoint()
+	base.RunImages(t)
 
-	// Create l2geth container.
-	l2gethImg = docker.NewTestL2Docker(t)
-	cfg.L1Config.RelayerConfig.SenderConfig.Endpoint = l2gethImg.Endpoint()
-	cfg.L2Config.Endpoint = l2gethImg.Endpoint()
-
-	// Create db container.
-	dbImg = docker.NewTestDBDocker(t, cfg.DBConfig.DriverName)
-	cfg.DBConfig.DSN = dbImg.Endpoint()
+	cfg.L2Config.RelayerConfig.SenderConfig.Endpoint = base.L1GethEndpoint()
+	cfg.L1Config.RelayerConfig.SenderConfig.Endpoint = base.L2GethEndpoint()
+	cfg.DBConfig.DSN = base.DBEndpoint()
 
 	// Create l2geth client.
-	l2Cli, err = ethclient.Dial(cfg.L2Config.Endpoint)
+	l2Cli, err = base.L2Client()
 	assert.NoError(t, err)
 
 	templateBlockTrace1, err := os.ReadFile("../../common/testdata/blockTrace_02.json")
@@ -65,48 +53,44 @@ func setupEnv(t *testing.T) (err error) {
 		return err
 	}
 	// unmarshal blockTrace
-	blockTrace1 = &geth_types.BlockTrace{}
-	if err = json.Unmarshal(templateBlockTrace1, blockTrace1); err != nil {
+	wrappedBlock1 = &types.WrappedBlock{}
+	if err = json.Unmarshal(templateBlockTrace1, wrappedBlock1); err != nil {
 		return err
 	}
-
 	parentBatch1 := &types.BlockBatch{
-		Index: 1,
-		Hash:  "0x0000000000000000000000000000000000000000",
+		Index:     0,
+		Hash:      "0x0cc6b102c2924402c14b2e3a19baccc316252bfdc44d9ec62e942d34e39ec729",
+		StateRoot: "0x2579122e8f9ec1e862e7d415cef2fb495d7698a8e5f0dddc5651ba4236336e7d",
 	}
-	batchData1 = types.NewBatchData(parentBatch1, []*geth_types.BlockTrace{blockTrace1}, nil)
+	batchData1 = types.NewBatchData(parentBatch1, []*types.WrappedBlock{wrappedBlock1}, nil)
 
 	templateBlockTrace2, err := os.ReadFile("../../common/testdata/blockTrace_03.json")
 	if err != nil {
 		return err
 	}
 	// unmarshal blockTrace
-	blockTrace2 = &geth_types.BlockTrace{}
-	if err = json.Unmarshal(templateBlockTrace2, blockTrace2); err != nil {
+	wrappedBlock2 = &types.WrappedBlock{}
+	if err = json.Unmarshal(templateBlockTrace2, wrappedBlock2); err != nil {
 		return err
 	}
 	parentBatch2 := &types.BlockBatch{
-		Index: batchData1.Batch.BatchIndex,
-		Hash:  batchData1.Hash().Hex(),
+		Index:     batchData1.Batch.BatchIndex,
+		Hash:      batchData1.Hash().Hex(),
+		StateRoot: batchData1.Batch.NewStateRoot.String(),
 	}
-	batchData2 = types.NewBatchData(parentBatch2, []*geth_types.BlockTrace{blockTrace2}, nil)
+	batchData2 = types.NewBatchData(parentBatch2, []*types.WrappedBlock{wrappedBlock2}, nil)
 
-	fmt.Printf("batchhash1 = %x\n", batchData1.Hash())
-	fmt.Printf("batchhash2 = %x\n", batchData2.Hash())
+	log.Info("batchHash", "batchhash1", batchData1.Hash().Hex(), "batchhash2", batchData2.Hash().Hex())
 
 	return err
 }
 
-func free(t *testing.T) {
-	if dbImg != nil {
-		assert.NoError(t, dbImg.Stop())
-	}
-	if l1gethImg != nil {
-		assert.NoError(t, l1gethImg.Stop())
-	}
-	if l2gethImg != nil {
-		assert.NoError(t, l2gethImg.Stop())
-	}
+func TestMain(m *testing.M) {
+	base = docker.NewDockerApp()
+
+	m.Run()
+
+	base.Free()
 }
 
 func TestFunction(t *testing.T) {
@@ -129,7 +113,4 @@ func TestFunction(t *testing.T) {
 	t.Run("TestBatchProposerProposeBatch", testBatchProposerProposeBatch)
 	t.Run("TestBatchProposerGracefulRestart", testBatchProposerGracefulRestart)
 
-	t.Cleanup(func() {
-		free(t)
-	})
 }

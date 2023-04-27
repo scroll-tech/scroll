@@ -222,7 +222,7 @@ func (r *Roller) prove() error {
 		// If FFI panic during Prove, the roller will restart and re-enter prove() function,
 		// the proof will not be submitted.
 		var proof *message.AggProof
-		proof, err = r.prover.Prove(traces)
+		proof, err = r.prover.Prove(task.Task)
 		if err != nil {
 			proofMsg = &message.ProofDetail{
 				Status: message.StatusProofError,

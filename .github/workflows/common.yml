@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - staging
+      - develop
       - alpha
     paths:
       - 'common/**'
@@ -13,6 +14,7 @@ on:
     branches:
       - main
       - staging
+      - develop
       - alpha
     paths:
       - 'common/**'
