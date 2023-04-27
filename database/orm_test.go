@@ -73,9 +73,15 @@ var (
 		},
 	}
 
-	subProofs = [][]byte{{1}, {2}, {3}}
-	aggTask1  = &types.AggTask{ID: "test-agg-1"}
-	aggTask2  = &types.AggTask{ID: "test-agg-2"}
+	proof1    = []byte{1}
+	subProofs = [][]byte{proof1}
+
+	aggTask1 = &types.AggTask{
+		ID:              "test-agg-1",
+		StartBatchIndex: batchData1.Batch.BatchIndex,
+		EndBatchIndex:   batchData1.Batch.BatchIndex,
+	}
+	aggTask2 = &types.AggTask{ID: "test-agg-2"}
 
 	wrappedBlock *types.WrappedBlock
 	batchData1   *types.BatchData
@@ -337,7 +343,7 @@ func testOrmBlockBatch(t *testing.T) {
 	provingStatus, err := ormBatch.GetProvingStatusByHash(batchHash1)
 	assert.NoError(t, err)
 	assert.Equal(t, types.ProvingTaskUnassigned, provingStatus)
-	err = ormBatch.UpdateProofByHash(context.Background(), batchHash1, []byte{1}, []byte{2}, 1200)
+	err = ormBatch.UpdateProofByHash(context.Background(), batchHash1, proof1, []byte{2}, 1200)
 	assert.NoError(t, err)
 	err = ormBatch.UpdateProvingStatus(batchHash1, types.ProvingTaskVerified)
 	assert.NoError(t, err)
