@@ -21,6 +21,7 @@ import (
 	"scroll-tech/common/message"
 	"scroll-tech/common/metrics"
 	"scroll-tech/common/types"
+
 	"scroll-tech/database"
 
 	"scroll-tech/common/utils/workerpool"
