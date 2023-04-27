@@ -76,11 +76,7 @@ var (
 	proof1    = []byte{1}
 	subProofs = [][]byte{proof1}
 
-	aggTask1 = &types.AggTask{
-		ID:              "test-agg-1",
-		StartBatchIndex: batchData1.Batch.BatchIndex,
-		EndBatchIndex:   batchData1.Batch.BatchIndex,
-	}
+	aggTask1 = &types.AggTask{ID: "test-agg-1"}
 	aggTask2 = &types.AggTask{ID: "test-agg-2"}
 
 	wrappedBlock *types.WrappedBlock
@@ -129,6 +125,9 @@ func setupEnv(t *testing.T) error {
 		Hash:  "0x0000000000000000000000000000000000000000",
 	}
 	batchData1 = types.NewBatchData(parentBatch, []*types.WrappedBlock{wrappedBlock}, nil)
+
+	aggTask1.StartBatchIndex = batchData1.Batch.BatchIndex
+	aggTask1.EndBatchIndex = batchData1.Batch.BatchIndex
 
 	templateBlockTrace, err = os.ReadFile("../common/testdata/blockTrace_03.json")
 	if err != nil {
