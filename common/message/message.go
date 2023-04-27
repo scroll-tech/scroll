@@ -203,7 +203,7 @@ func (a *ProofMsg) PublicKey() (string, error) {
 type TaskMsg struct {
 	ID   string    `json:"id"`
 	Type ProveType `json:"type,omitempty"`
-	// Only common rollers need traces, aggregator rollers don't!
+	// Only basic rollers need traces, aggregator rollers don't!
 	Traces []*types.BlockTrace `json:"blockTraces,omitempty"`
 	// Only aggregator rollers need proofs to aggregate, basic rollers don't!
 	SubProofs []*AggProof `json:"sub_proofs,omitempty"`
