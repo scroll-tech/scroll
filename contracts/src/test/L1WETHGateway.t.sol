@@ -316,7 +316,14 @@ contract L1WETHGatewayTest is L1GatewayTestBase {
         // emit FinalizeWithdrawERC20 from L1WETHGateway
         {
             hevm.expectEmit(true, true, true, true);
-            emit FinalizeWithdrawERC20(address(l1weth), address(l2weth), sender, address(recipient), amount, dataToCall);
+            emit FinalizeWithdrawERC20(
+                address(l1weth),
+                address(l2weth),
+                sender,
+                address(recipient),
+                amount,
+                dataToCall
+            );
         }
 
         // emit RelayedMessage from L1ScrollMessenger

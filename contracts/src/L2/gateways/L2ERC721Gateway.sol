@@ -44,6 +44,8 @@ contract L2ERC721Gateway is OwnableUpgradeable, ERC721HolderUpgradeable, ScrollG
 
     function initialize(address _counterpart, address _messenger) external initializer {
         OwnableUpgradeable.__Ownable_init();
+        ERC721HolderUpgradeable.__ERC721Holder_init();
+
         ScrollGatewayBase._initialize(_counterpart, address(0), _messenger);
     }
 
@@ -97,6 +99,9 @@ contract L2ERC721Gateway is OwnableUpgradeable, ERC721HolderUpgradeable, ScrollG
         address _to,
         uint256 _tokenId
     ) external override nonReentrant onlyCallByCounterpart {
+        require(_l1Token != address(0), "zero l1 token");
+        require(_l1Token == tokenMapping[_l2Token], "l2 token mismatch");
+
         IScrollERC721(_l2Token).mint(_to, _tokenId);
 
         emit FinalizeDepositERC721(_l1Token, _l2Token, _from, _to, _tokenId);
@@ -110,6 +115,9 @@ contract L2ERC721Gateway is OwnableUpgradeable, ERC721HolderUpgradeable, ScrollG
         address _to,
         uint256[] calldata _tokenIds
     ) external override nonReentrant onlyCallByCounterpart {
+        require(_l1Token != address(0), "zero l1 token");
+        require(_l1Token == tokenMapping[_l2Token], "l2 token mismatch");
+
         for (uint256 i = 0; i < _tokenIds.length; i++) {
             IScrollERC721(_l2Token).mint(_to, _tokenIds[i]);
         }

@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {IERC1155Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC1155/IERC1155Upgradeable.sol";
-import {ERC1155HolderUpgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC1155/utils/ERC1155HolderUpgradeable.sol";
+import {ERC1155HolderUpgradeable, ERC1155ReceiverUpgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC1155/utils/ERC1155HolderUpgradeable.sol";
 
 import {IL2ERC1155Gateway} from "../../L2/gateways/IL2ERC1155Gateway.sol";
 import {IL1ScrollMessenger} from "../IL1ScrollMessenger.sol";
@@ -46,6 +46,9 @@ contract L1ERC1155Gateway is OwnableUpgradeable, ERC1155HolderUpgradeable, Scrol
     /// @param _messenger The address of L1ScrollMessenger.
     function initialize(address _counterpart, address _messenger) external initializer {
         OwnableUpgradeable.__Ownable_init();
+        ERC1155HolderUpgradeable.__ERC1155Holder_init();
+        ERC1155ReceiverUpgradeable.__ERC1155Receiver_init();
+
         ScrollGatewayBase._initialize(_counterpart, address(0), _messenger);
     }
 
@@ -104,6 +107,7 @@ contract L1ERC1155Gateway is OwnableUpgradeable, ERC1155HolderUpgradeable, Scrol
         uint256 _tokenId,
         uint256 _amount
     ) external override nonReentrant onlyCallByCounterpart {
+        require(_l2Token != address(0), "zero l2 token");
         require(_l2Token == tokenMapping[_l1Token], "l2 token mismatch");
 
         IERC1155Upgradeable(_l1Token).safeTransferFrom(address(this), _to, _tokenId, _amount, "");
@@ -120,6 +124,7 @@ contract L1ERC1155Gateway is OwnableUpgradeable, ERC1155HolderUpgradeable, Scrol
         uint256[] calldata _tokenIds,
         uint256[] calldata _amounts
     ) external override nonReentrant onlyCallByCounterpart {
+        require(_l2Token != address(0), "zero l2 token");
         require(_l2Token == tokenMapping[_l1Token], "l2 token mismatch");
 
         IERC1155Upgradeable(_l1Token).safeBatchTransferFrom(address(this), _to, _tokenIds, _amounts, "");

@@ -293,7 +293,14 @@ contract L2StandardERC20GatewayTest is L2GatewayTestBase {
         // emit FinalizeDepositERC20 from L2StandardERC20Gateway
         {
             hevm.expectEmit(true, true, true, true);
-            emit FinalizeDepositERC20(address(l1Token), address(l2Token), sender, address(recipient), amount, dataToCall);
+            emit FinalizeDepositERC20(
+                address(l1Token),
+                address(l2Token),
+                sender,
+                address(recipient),
+                amount,
+                dataToCall
+            );
         }
 
         // emit RelayedMessage from L2ScrollMessenger

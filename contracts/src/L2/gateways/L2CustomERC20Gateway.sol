@@ -75,8 +75,9 @@ contract L2CustomERC20Gateway is OwnableUpgradeable, ScrollGatewayBase, L2ERC20G
         address _to,
         uint256 _amount,
         bytes calldata _data
-    ) external payable override onlyCallByCounterpart {
+    ) external payable override nonReentrant onlyCallByCounterpart {
         require(msg.value == 0, "nonzero msg.value");
+        require(_l1Token != address(0), "zero l1 token");
         require(_l1Token == tokenMapping[_l2Token], "l1 token mismatch");
 
         IScrollStandardERC20(_l2Token).mint(_to, _amount);
@@ -112,7 +113,7 @@ contract L2CustomERC20Gateway is OwnableUpgradeable, ScrollGatewayBase, L2ERC20G
         uint256 _amount,
         bytes memory _data,
         uint256 _gasLimit
-    ) internal virtual override {
+    ) internal virtual override nonReentrant {
         address _l1Token = tokenMapping[_token];
         require(_l1Token != address(0), "no corresponding l1 token");
 

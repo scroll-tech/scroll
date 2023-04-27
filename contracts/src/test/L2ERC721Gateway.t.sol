@@ -224,6 +224,7 @@ contract L2ERC721GatewayTest is DSTestPlus {
         hevm.assume(to.code.length == 0);
 
         tokenId = bound(tokenId, NOT_OWNED_TOKEN_ID + 1, type(uint256).max);
+        gateway.updateTokenMapping(address(token), address(token));
 
         // finalize deposit
         messenger.setXDomainMessageSender(address(counterpart));
