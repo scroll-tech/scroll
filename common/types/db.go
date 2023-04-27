@@ -259,3 +259,16 @@ type BlockBatch struct {
 	CommittedAt         *time.Time      `json:"committed_at" db:"committed_at"`
 	FinalizedAt         *time.Time      `json:"finalized_at" db:"finalized_at"`
 }
+
+// AggTask is a wrapper type around db AggProveTask type.
+type AggTask struct {
+	ID              string        `json:"id" db:"id"`
+	StartBatchIndex uint64        `json:"start_batch_index" db:"start_batch_index"`
+	StartBatchHash  string        `json:"start_batch_hash" db:"start_batch_hash"`
+	EndBatchIndex   uint64        `json:"end_batch_index" db:"end_batch_index"`
+	EndBatchHash    string        `json:"end_batch_hash" db:"end_batch_hash"`
+	ProvingStatus   ProvingStatus `json:"proving_status" db:"proving_status"`
+	Proof           []byte        `json:"proof" db:"proof"`
+	CreatedTime     *time.Time    `json:"created_time" db:"created_time"`
+	UpdatedTime     *time.Time    `json:"updated_time" db:"updated_time"`
+}

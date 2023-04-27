@@ -18,13 +18,11 @@ import (
 	geth_metrics "github.com/scroll-tech/go-ethereum/metrics"
 	"github.com/scroll-tech/go-ethereum/rpc"
 
-	"scroll-tech/database"
-	"scroll-tech/database/orm"
-
 	"scroll-tech/common/message"
 	"scroll-tech/common/metrics"
 	"scroll-tech/common/types"
 	"scroll-tech/common/utils/workerpool"
+	"scroll-tech/database"
 
 	"scroll-tech/coordinator/config"
 	"scroll-tech/coordinator/verifier"
@@ -165,7 +163,7 @@ func (m *Manager) Loop() {
 	var (
 		tick     = time.NewTicker(time.Second * 2)
 		tasks    []*types.BlockBatch
-		aggTasks []*orm.AggTask
+		aggTasks []*types.AggTask
 	)
 	defer tick.Stop()
 
@@ -691,7 +689,7 @@ func (m *Manager) StartBasicProofGenerationSession(task *types.BlockBatch, prevS
 }
 
 // StartAggProofGenerationSession starts an aggregator proof generation.
-func (m *Manager) StartAggProofGenerationSession(task *orm.AggTask, prevSession *session) (success bool) {
+func (m *Manager) StartAggProofGenerationSession(task *types.AggTask, prevSession *session) (success bool) {
 	var taskId string
 	if task != nil {
 		taskId = task.ID
@@ -719,18 +717,10 @@ func (m *Manager) StartAggProofGenerationSession(task *orm.AggTask, prevSession 
 	}()
 
 	// get agg task from db
-	var (
-		subProofs []*message.AggProof
-		err       error
-	)
-	if task == nil {
-		subProofs, err = m.orm.GetSubProofsByAggTaskID(taskId)
-		if err != nil {
-			log.Error("failed to get aggregator task", "id", taskId, "error", err)
-			return false
-		}
-	} else {
-		subProofs = task.SubProofs
+	subProofs, err := m.orm.GetSubProofsByAggTaskID(taskId)
+	if err != nil {
+		log.Error("failed to get sub proofs for aggregator task", "id", taskId, "error", err)
+		return false
 	}
 
 	// Dispatch task to basic rollers.

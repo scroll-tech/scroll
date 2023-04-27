@@ -206,7 +206,7 @@ type TaskMsg struct {
 	// Only basic rollers need traces, aggregator rollers don't!
 	Traces []*types.BlockTrace `json:"blockTraces,omitempty"`
 	// Only aggregator rollers need proofs to aggregate, basic rollers don't!
-	SubProofs []*AggProof `json:"sub_proofs,omitempty"`
+	SubProofs [][]byte `json:"sub_proofs,omitempty"`
 }
 
 // ProofDetail is the message received from rollers that contains zk proof, the status of

@@ -48,10 +48,10 @@ type SessionInfoOrm interface {
 
 // AggTaskOrm is aggregator task
 type AggTaskOrm interface {
-	GetAssignedAggTasks() ([]*AggTask, error)
-	GetUnassignedAggTasks() ([]*AggTask, error)
-	GetSubProofsByAggTaskID(id string) ([]*message.AggProof, error)
-	InsertAggTask(task *AggTask) error
+	GetAssignedAggTasks() ([]*types.AggTask, error)
+	GetUnassignedAggTasks() ([]*types.AggTask, error)
+	GetSubProofsByAggTaskID(id string) ([][]byte, error)
+	InsertAggTask(task *types.AggTask) error
 	UpdateAggTaskStatus(aggTaskID string, status types.ProvingStatus) error
 	UpdateProofForAggTask(aggTaskID string, proof *message.AggProof) error
 }

@@ -9,12 +9,6 @@ import (
 	"scroll-tech/common/types"
 )
 
-// AggTask is a wrapper type around db AggProveTask type.
-type AggTask struct {
-	ID        string              `json:"id"`
-	SubProofs []*message.AggProof `json:"sub_proofs"`
-}
-
 type aggTaskOrm struct {
 	db *sqlx.DB
 }
@@ -26,46 +20,58 @@ func NewAggTaskOrm(db *sqlx.DB) AggTaskOrm {
 	return &aggTaskOrm{db: db}
 }
 
-func (a *aggTaskOrm) GetSubProofsByAggTaskID(id string) ([]*message.AggProof, error) {
-	row := a.db.QueryRow("SELECT task FROM agg_task where hash = $1", id)
+func (a *aggTaskOrm) GetSubProofsByAggTaskID(id string) ([][]byte, error) {
+	row := a.db.QueryRowx("SELECT * FROM agg_task where id = $1", id)
 	var byt []byte
 	err := row.Scan(&byt)
 	if err != nil {
 		return nil, err
 	}
-	aggTask := new(AggTask)
+	aggTask := new(types.AggTask)
 	err = json.Unmarshal(byt, aggTask)
-	return aggTask.SubProofs, err
+	if err != nil {
+		return nil, err
+	}
+	rows, err := a.db.Queryx("SELECT proof FROM block_batch WHERE index IN ($1, $2)", aggTask.StartBatchIndex, aggTask.EndBatchIndex)
+	if err != nil {
+		return nil, err
+	}
+	var subProofs [][]byte
+	for rows.Next() {
+		var proofByt []byte
+		err = rows.Scan(&proofByt)
+		if err != nil {
+			return nil, err
+		}
+		subProofs = append(subProofs, proofByt)
+	}
+	return subProofs, nil
 }
 
-func (a *aggTaskOrm) GetUnassignedAggTasks() ([]*AggTask, error) {
-	rows, err := a.db.Queryx("SELECT task FROM agg_task where proving_status = 1;")
+func (a *aggTaskOrm) GetUnassignedAggTasks() ([]*types.AggTask, error) {
+	rows, err := a.db.Queryx("SELECT * FROM agg_task where proving_status = 1;")
 	if err != nil {
 		return nil, err
 	}
 	return a.rowsToAggTask(rows)
 }
 
-func (a *aggTaskOrm) GetAssignedAggTasks() ([]*AggTask, error) {
-	rows, err := a.db.Queryx(`SELECT task FROM agg_task WHERE proving_status IN ($1, $2)`, types.ProvingTaskAssigned, types.ProvingTaskProved)
+func (a *aggTaskOrm) GetAssignedAggTasks() ([]*types.AggTask, error) {
+	rows, err := a.db.Queryx(`SELECT * FROM agg_task WHERE proving_status IN ($1, $2)`, types.ProvingTaskAssigned, types.ProvingTaskProved)
 	if err != nil {
 		return nil, err
 	}
 	return a.rowsToAggTask(rows)
 }
 
-func (a *aggTaskOrm) InsertAggTask(task *AggTask) error {
-	byt, err := json.Marshal(task)
-	if err != nil {
-		return err
-	}
-	sqlStr := "INSERT INTO agg_task (hash, task) VALUES ($1, $2)"
-	_, err = a.db.Exec(sqlStr, task.ID, byt)
+func (a *aggTaskOrm) InsertAggTask(task *types.AggTask) error {
+	sqlStr := "INSERT INTO agg_task (id, start_batch_index, start_batch_hash, end_batch_index, end_batch_hash) VALUES ($1, $2, $3, $4, $5)"
+	_, err := a.db.Exec(sqlStr, task.ID, task.StartBatchIndex, task.StartBatchHash, task.EndBatchIndex, task.EndBatchHash)
 	return err
 }
 
 func (a *aggTaskOrm) UpdateAggTaskStatus(aggTaskID string, status types.ProvingStatus) error {
-	_, err := a.db.Exec(a.db.Rebind("update agg_task set proving_status = ? where hash = ?;"), status, aggTaskID)
+	_, err := a.db.Exec(a.db.Rebind("update agg_task set proving_status = ? where id = ?;"), status, aggTaskID)
 	return err
 }
 
@@ -74,21 +80,15 @@ func (a *aggTaskOrm) UpdateProofForAggTask(aggTaskID string, proof *message.AggP
 	if err != nil {
 		return err
 	}
-	_, err = a.db.Exec(a.db.Rebind("update agg_task set proving_status = ?, proof = ? where hash = ?;"), types.ProvingTaskProved, proofByt, aggTaskID)
+	_, err = a.db.Exec(a.db.Rebind("update agg_task set proving_status = ?, proof = ? where id = ?;"), types.ProvingTaskProved, proofByt, aggTaskID)
 	return err
 }
 
-func (a *aggTaskOrm) rowsToAggTask(rows *sqlx.Rows) ([]*AggTask, error) {
-	var tasks []*AggTask
+func (a *aggTaskOrm) rowsToAggTask(rows *sqlx.Rows) ([]*types.AggTask, error) {
+	var tasks []*types.AggTask
 	for rows.Next() {
-		var byt []byte
-		err := rows.Scan(&byt)
-		if err != nil {
-			return nil, err
-		}
-
-		task := new(AggTask)
-		err = json.Unmarshal(byt, task)
+		task := new(types.AggTask)
+		err := rows.StructScan(task)
 		if err != nil {
 			return nil, err
 		}
