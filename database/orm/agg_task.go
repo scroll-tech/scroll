@@ -2,6 +2,7 @@ package orm
 
 import (
 	"encoding/json"
+
 	"github.com/jmoiron/sqlx"
 
 	"scroll-tech/common/message"

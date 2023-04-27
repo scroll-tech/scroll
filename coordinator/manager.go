@@ -22,6 +22,7 @@ import (
 	"scroll-tech/common/metrics"
 	"scroll-tech/common/types"
 	"scroll-tech/common/utils/workerpool"
+
 	"scroll-tech/database"
 
 	"scroll-tech/coordinator/config"
