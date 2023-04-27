@@ -377,6 +377,7 @@ func (m *Manager) handleZkProof(pk string, msg *message.ProofDetail) error {
 	coordinatorProofsReceivedTotalCounter.Inc(1)
 
 	var verifyErr error
+	// TODO: wrap both basic verifier and aggregator verifier
 	success, verifyErr = m.verifyProof(msg.Proof)
 	if verifyErr != nil {
 		// TODO: this is only a temp workaround for testnet, we should return err in real cases
