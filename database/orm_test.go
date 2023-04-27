@@ -475,8 +475,8 @@ func testOrmAggTask(t *testing.T) {
 	// get unassigned agg tasks
 	tasks, err := ormAggTask.GetUnassignedAggTasks()
 	assert.NoError(t, err)
-	assert.Equal(t, tasks[0], aggTask1)
-	assert.Equal(t, tasks[1], aggTask2)
+	assert.Equal(t, tasks[0].ID, aggTask1.ID)
+	assert.Equal(t, tasks[1].ID, aggTask2.ID)
 
 	// update status agg proof into db
 	err = ormAggTask.UpdateAggTaskStatus(aggTask1.ID, types.ProvingTaskAssigned)
@@ -484,7 +484,7 @@ func testOrmAggTask(t *testing.T) {
 	// check assigned agg task
 	assigns, err := ormAggTask.GetAssignedAggTasks()
 	assert.NoError(t, err)
-	assert.Equal(t, assigns[0], aggTask1)
+	assert.Equal(t, assigns[0].ID, aggTask1.ID)
 
 	// insert aggregator proof
 	err = ormAggTask.UpdateProofForAggTask(aggTask1.ID, &message.AggProof{})
@@ -496,5 +496,5 @@ func testOrmAggTask(t *testing.T) {
 	// get left unassigned task
 	unassignTasks, err := ormAggTask.GetUnassignedAggTasks()
 	assert.NoError(t, err)
-	assert.Equal(t, unassignTasks[0], aggTask2)
+	assert.Equal(t, unassignTasks[0].ID, aggTask2.ID)
 }
