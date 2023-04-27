@@ -202,7 +202,7 @@ func (m *Manager) Loop() {
 					continue
 				}
 			}
-			// Select roller and send message
+			// Select basic type roller and send message
 			for len(tasks) > 0 && m.StartBasicProofGenerationSession(tasks[0], nil) {
 				tasks = tasks[1:]
 			}
