@@ -2,6 +2,7 @@ package orm
 
 import (
 	"encoding/json"
+	"github.com/scroll-tech/go-ethereum/log"
 
 	"github.com/jmoiron/sqlx"
 
@@ -27,6 +28,7 @@ func (a *aggTaskOrm) GetSubProofsByAggTaskID(id string) ([][]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+	log.Info("------ get aggTask ", "task", aggTask.ID)
 	rows, err := a.db.Queryx("SELECT proof FROM block_batch WHERE index IN ($1, $2)", aggTask.StartBatchIndex, aggTask.EndBatchIndex)
 	if err != nil {
 		return nil, err
