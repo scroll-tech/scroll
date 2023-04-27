@@ -14,7 +14,7 @@ The built coordinator binary is in the build/bin directory.
 
 Notes: our coordinator test codes currently don't support Mac M1.
 
-When developing coordinator, use the following command to mock verifier results and run coordinator tests only:
+When developing coordinator, use the following command to mock verifier results and run coordinator tests:
 
 ```bash
 go test -tags="mock_verifier" -v -race -covermode=atomic scroll-tech/coordinator/...
