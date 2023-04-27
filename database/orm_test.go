@@ -128,6 +128,8 @@ func setupEnv(t *testing.T) error {
 
 	aggTask1.StartBatchIndex = batchData1.Batch.BatchIndex
 	aggTask1.EndBatchIndex = batchData1.Batch.BatchIndex
+	aggTask1.StartBatchHash = batchData1.Hash().Hex()
+	aggTask1.EndBatchHash = batchData1.Hash().Hex()
 
 	templateBlockTrace, err = os.ReadFile("../common/testdata/blockTrace_03.json")
 	if err != nil {
@@ -446,6 +448,18 @@ func testOrmAggTask(t *testing.T) {
 	factory, err := database.NewOrmFactory(base.DBConfig)
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(factory.GetDB().DB))
+
+	// update block_batch with proof bytes
+	dbTx, err := factory.Beginx()
+	assert.NoError(t, err)
+	err = ormBatch.NewBatchInDBTx(dbTx, batchData1)
+	assert.NoError(t, err)
+	batchHash1 := batchData1.Hash().Hex()
+	err = ormBatch.UpdateProofByHash(context.Background(), batchHash1, proof1, nil, 1000)
+	assert.NoError(t, err)
+	err = ormBatch.UpdateProvingStatus(batchHash1, types.ProvingTaskVerified)
+	assert.NoError(t, err)
+	assert.NoError(t, dbTx.Commit())
 
 	// set agg task into db
 	err = ormAggTask.InsertAggTask(aggTask1)
