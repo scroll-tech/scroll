@@ -295,7 +295,7 @@ func (m *Manager) handleZkProof(pk string, msg *message.ProofDetail) error {
 	// Ensure this roller is eligible to participate in the session.
 	roller, ok := sess.info.Rollers[pk]
 	if !ok {
-		return fmt.Errorf("roller %s (%s) is not eligible to partake in proof session %v", roller.Name, roller.PublicKey, msg.ID)
+		return fmt.Errorf("roller %s %s (%s) is not eligible to partake in proof session %v", roller.Name, sess.info.ProveType, roller.PublicKey, msg.ID)
 	}
 	if roller.Status == types.RollerProofValid {
 		// In order to prevent DoS attacks, it is forbidden to repeatedly submit valid proofs.
@@ -306,6 +306,7 @@ func (m *Manager) handleZkProof(pk string, msg *message.ProofDetail) error {
 			"roller has already submitted valid proof in proof session",
 			"roller name", roller.Name,
 			"roller pk", roller.PublicKey,
+			"prove type", sess.info.ProveType,
 			"proof id", msg.ID,
 		)
 		return nil
@@ -315,6 +316,7 @@ func (m *Manager) handleZkProof(pk string, msg *message.ProofDetail) error {
 		"proof id", msg.ID,
 		"roller name", roller.Name,
 		"roller pk", roller.PublicKey,
+		"prove type", sess.info.ProveType,
 		"proof time", proofTimeSec,
 	)
 
@@ -350,6 +352,7 @@ func (m *Manager) handleZkProof(pk string, msg *message.ProofDetail) error {
 			"proof id", msg.ID,
 			"roller name", roller.Name,
 			"roller pk", roller.PublicKey,
+			"prove type", msg.Type,
 			"proof time", proofTimeSec,
 			"error", msg.Error,
 		)
@@ -363,7 +366,7 @@ func (m *Manager) handleZkProof(pk string, msg *message.ProofDetail) error {
 			return dbErr
 		}
 		if dbErr = m.orm.UpdateProvingStatus(msg.ID, types.ProvingTaskProved); dbErr != nil {
-			log.Error("failed to update task status as proved", "error", dbErr)
+			log.Error("failed to update basic task status as proved", "error", dbErr)
 			return dbErr
 		}
 	}
@@ -383,7 +386,7 @@ func (m *Manager) handleZkProof(pk string, msg *message.ProofDetail) error {
 		// TODO: this is only a temp workaround for testnet, we should return err in real cases
 		success = false
 		log.Error("Failed to verify zk proof", "proof id", msg.ID, "roller name", roller.Name,
-			"roller pk", roller.PublicKey, "proof time", proofTimeSec, "error", verifyErr)
+			"roller pk", roller.PublicKey, "prove type", msg.Type, "proof time", proofTimeSec, "error", verifyErr)
 		// TODO: Roller needs to be slashed if proof is invalid.
 	}
 
@@ -412,12 +415,12 @@ func (m *Manager) handleZkProof(pk string, msg *message.ProofDetail) error {
 		coordinatorProofsVerifiedSuccessTimeTimer.Update(proofTime)
 		m.updateMetricRollerProofsVerifiedSuccessTimeTimer(roller.PublicKey, proofTime)
 		log.Info("proof verified by coordinator success", "proof id", msg.ID, "roller name", roller.Name,
-			"roller pk", roller.PublicKey, "proof time", proofTimeSec)
+			"roller pk", roller.PublicKey, "prove type", msg.Type, "proof time", proofTimeSec)
 	} else {
 		coordinatorProofsVerifiedFailedTimeTimer.Update(proofTime)
 		m.updateMetricRollerProofsVerifiedFailedTimeTimer(roller.PublicKey, proofTime)
 		log.Info("proof verified by coordinator failed", "proof id", msg.ID, "roller name", roller.Name,
-			"roller pk", roller.PublicKey, "proof time", proofTimeSec, "error", verifyErr)
+			"roller pk", roller.PublicKey, "prove type", msg.Type, "proof time", proofTimeSec, "error", verifyErr)
 	}
 	return nil
 }
