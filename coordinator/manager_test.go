@@ -32,8 +32,8 @@ import (
 	"scroll-tech/coordinator/verifier"
 
 	"scroll-tech/common/docker"
-	"scroll-tech/common/message"
 	"scroll-tech/common/types"
+	"scroll-tech/common/types/message"
 	"scroll-tech/common/utils"
 )
 

@@ -15,7 +15,7 @@ import (
 	"github.com/scroll-tech/go-ethereum/crypto"
 	"github.com/scroll-tech/go-ethereum/log"
 
-	"scroll-tech/common/message"
+	"scroll-tech/common/types/message"
 	"scroll-tech/common/utils"
 	"scroll-tech/common/version"
 

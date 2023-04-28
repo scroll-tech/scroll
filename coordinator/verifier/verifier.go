@@ -18,7 +18,7 @@ import (
 
 	"scroll-tech/coordinator/config"
 
-	"scroll-tech/common/message"
+	"scroll-tech/common/types/message"
 )
 
 const InvalidTestProof = "this is a invalid proof"
