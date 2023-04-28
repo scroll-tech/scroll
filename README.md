@@ -5,7 +5,7 @@
 ## Prerequisites
 + go1.18
 + rust (version see [rust-toolchain](./common/libzkp/impl/rust-toolchain))
-+ hardhat/foundry
++ hardhat / foundry
 
 ---
 
