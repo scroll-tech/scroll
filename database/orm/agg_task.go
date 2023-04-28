@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"github.com/jmoiron/sqlx"
 
-	"scroll-tech/common/message"
 	"scroll-tech/common/types"
+	"scroll-tech/common/types/message"
 )
 
 type aggTaskOrm struct {

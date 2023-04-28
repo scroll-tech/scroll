@@ -5,7 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"scroll-tech/common/message"
+	"scroll-tech/common/types/message"
 
 	"github.com/scroll-tech/go-ethereum/log"
 )

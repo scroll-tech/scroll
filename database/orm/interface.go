@@ -4,8 +4,8 @@ import (
 	"context"
 	"database/sql"
 
-	"scroll-tech/common/message"
 	"scroll-tech/common/types"
+	"scroll-tech/common/types/message"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/scroll-tech/go-ethereum/common"

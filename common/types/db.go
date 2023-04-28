@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"time"
 
-	"scroll-tech/common/message"
+	"scroll-tech/common/types/message"
 )
 
 // L1BlockStatus represents current l1 block processing status
@@ -269,4 +269,6 @@ type AggTask struct {
 	EndBatchHash    string        `json:"end_batch_hash" db:"end_batch_hash"`
 	ProvingStatus   ProvingStatus `json:"proving_status" db:"proving_status"`
 	Proof           []byte        `json:"proof" db:"proof"`
+	CreatedTime     *time.Time    `json:"created_time" db:"created_time"`
+	UpdatedTime     *time.Time    `json:"updated_time" db:"updated_time"`
 }

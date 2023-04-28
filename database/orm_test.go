@@ -15,8 +15,8 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"scroll-tech/common/docker"
-	"scroll-tech/common/message"
 	"scroll-tech/common/types"
+	"scroll-tech/common/types/message"
 
 	abi "scroll-tech/bridge/abi"
 
