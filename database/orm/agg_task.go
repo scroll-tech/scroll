@@ -27,7 +27,7 @@ func (a *aggTaskOrm) GetSubProofsByAggTaskID(id string) ([][]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	rows, err := a.db.Queryx("SELECT proof FROM block_batch WHERE index IN ($1, $2) and proving_status = $3", aggTask.StartBatchIndex, aggTask.EndBatchIndex, types.ProvingTaskVerified)
+	rows, err := a.db.Queryx("SELECT proof FROM block_batch WHERE index>=$1 AND index<=$2 and proving_status = $3", aggTask.StartBatchIndex, aggTask.EndBatchIndex, types.ProvingTaskVerified)
 	if err != nil {
 		return nil, err
 	}
