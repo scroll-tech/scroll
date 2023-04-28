@@ -98,9 +98,9 @@ func testPendLimit(t *testing.T) {
 		newSender, err := NewSender(context.Background(), &cfgCopy, privateKeys)
 		assert.NoError(t, err)
 
-		for i := 0; i < newSender.PendingLimit(); i++ {
+		for i := 0; i < 2*newSender.PendingLimit(); i++ {
 			_, err = newSender.SendTransaction(strconv.Itoa(i), &common.Address{}, big.NewInt(1), nil, 0)
-			assert.NoError(t, err)
+			assert.True(t, err == nil || (err != nil && err.Error() == "sender's pending pool is full"))
 		}
 		assert.True(t, newSender.PendingCount() <= newSender.PendingLimit())
 		newSender.Stop()

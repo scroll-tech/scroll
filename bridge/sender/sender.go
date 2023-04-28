@@ -170,6 +170,7 @@ func (s *Sender) ConfirmChan() <-chan *Confirmation {
 }
 
 // SendConfirmation sends a confirmation to the confirmation channel.
+// Note: This function is only used in tests.
 func (s *Sender) SendConfirmation(cfm *Confirmation) {
 	s.confirmCh <- cfm
 }
