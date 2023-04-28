@@ -13,7 +13,7 @@ import (
 	"github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 
-	"scroll-tech/common/message"
+	"scroll-tech/common/types/message"
 
 	"scroll-tech/coordinator/config"
 )
