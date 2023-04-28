@@ -498,9 +498,9 @@ func testOrmAggTask(t *testing.T) {
 	assert.Equal(t, types.ProvingTaskVerified, provingStatus)
 
 	// set agg task into db
-	err = ormAggTask.InsertAggTask(aggTask1)
+	err = ormAggTask.InsertAggTask(aggTask1.ID, aggTask1.StartBatchIndex, aggTask1.StartBatchHash, aggTask1.EndBatchIndex, aggTask1.EndBatchHash)
 	assert.NoError(t, err)
-	err = ormAggTask.InsertAggTask(aggTask2)
+	err = ormAggTask.InsertAggTask(aggTask2.ID, aggTask2.StartBatchIndex, aggTask2.StartBatchHash, aggTask2.EndBatchIndex, aggTask2.EndBatchHash)
 	assert.NoError(t, err)
 
 	// get subProofs by hash

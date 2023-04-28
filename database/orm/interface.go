@@ -51,7 +51,7 @@ type AggTaskOrm interface {
 	GetAssignedAggTasks() ([]*types.AggTask, error)
 	GetUnassignedAggTasks() ([]*types.AggTask, error)
 	GetSubProofsByAggTaskID(id string) ([][]byte, error)
-	InsertAggTask(task *types.AggTask) error
+	InsertAggTask(id string, startBatchIndex uint64, startBatchHash string, endBatchIndex uint64, endBatchHash string) error
 	UpdateAggTaskStatus(aggTaskID string, status types.ProvingStatus) error
 	UpdateProofForAggTask(aggTaskID string, proof *message.AggProof) error
 }

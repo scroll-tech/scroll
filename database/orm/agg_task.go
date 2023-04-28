@@ -2,7 +2,6 @@ package orm
 
 import (
 	"encoding/json"
-
 	"github.com/jmoiron/sqlx"
 
 	"scroll-tech/common/message"
@@ -62,9 +61,9 @@ func (a *aggTaskOrm) GetAssignedAggTasks() ([]*types.AggTask, error) {
 	return a.rowsToAggTask(rows)
 }
 
-func (a *aggTaskOrm) InsertAggTask(task *types.AggTask) error {
+func (a *aggTaskOrm) InsertAggTask(id string, startBatchIndex uint64, startBatchHash string, endBatchIndex uint64, endBatchHash string) error {
 	sqlStr := "INSERT INTO agg_task (id, start_batch_index, start_batch_hash, end_batch_index, end_batch_hash) VALUES ($1, $2, $3, $4, $5)"
-	_, err := a.db.Exec(sqlStr, task.ID, task.StartBatchIndex, task.StartBatchHash, task.EndBatchIndex, task.EndBatchHash)
+	_, err := a.db.Exec(sqlStr, id, startBatchIndex, startBatchHash, endBatchIndex, endBatchHash)
 	return err
 }
 
