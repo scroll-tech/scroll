@@ -21,6 +21,7 @@ import (
 	"scroll-tech/common/message"
 	"scroll-tech/common/metrics"
 	"scroll-tech/common/types"
+
 	"scroll-tech/database"
 
 	"scroll-tech/common/utils/workerpool"
@@ -598,23 +599,6 @@ func (m *Manager) StartProofGenerationSession(task *types.BlockBatch, prevSessio
 	m.sessions[taskHash] = sess
 	m.mu.Unlock()
 	go m.CollectProofs(sess)
-
-	return true
-}
-
-// IsRollerIdle determines whether this roller is idle.
-func (m *Manager) IsRollerIdle(hexPk string) bool {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
-	// We need to iterate over all sessions because finished sessions will be deleted until the
-	// timeout. So a busy roller could be marked as idle in a finished session.
-	for _, sess := range m.sessions {
-		for pk, roller := range sess.info.Rollers {
-			if pk == hexPk && roller.Status == types.RollerAssigned {
-				return false
-			}
-		}
-	}
 
 	return true
 }
