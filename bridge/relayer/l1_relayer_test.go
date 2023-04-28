@@ -86,7 +86,7 @@ func testL1RelayerMsgConfirm(t *testing.T) {
 		{MsgHash: "msg-1", QueueIndex: 0}, {MsgHash: "msg-2", QueueIndex: 1},
 	}))
 
-	// Create and set up the Layer2 Relayer.
+	// Create and set up the Layer1 Relayer.
 	l1Cfg := cfg.L1Config
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
