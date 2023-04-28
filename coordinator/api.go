@@ -10,8 +10,8 @@ import (
 	geth_metrics "github.com/scroll-tech/go-ethereum/metrics"
 	"github.com/scroll-tech/go-ethereum/rpc"
 
-	"scroll-tech/common/message"
 	"scroll-tech/common/metrics"
+	"scroll-tech/common/types/message"
 )
 
 var (
