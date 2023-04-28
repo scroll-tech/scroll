@@ -21,18 +21,16 @@ func NewAggTaskOrm(db *sqlx.DB) AggTaskOrm {
 }
 
 func (a *aggTaskOrm) GetSubProofsByAggTaskID(id string) ([][]byte, error) {
-	row := a.db.QueryRowx("SELECT * FROM agg_task where id = $1", id)
-	var aggTaskByt []byte
-	err := row.Scan(&aggTaskByt)
+	var (
+		startIdx uint64
+		endIdx   uint64
+	)
+	row := a.db.QueryRow("SELECT start_batch_index, end_batch_index FROM agg_task where id = $1", id)
+	err := row.Scan(&startIdx, &endIdx)
 	if err != nil {
 		return nil, err
 	}
-	aggTask := new(types.AggTask)
-	err = json.Unmarshal(aggTaskByt, aggTask)
-	if err != nil {
-		return nil, err
-	}
-	rows, err := a.db.Queryx("SELECT proof FROM block_batch WHERE index>=$1 AND index<=$2 and proving_status = $3", aggTask.StartBatchIndex, aggTask.EndBatchIndex, types.ProvingTaskVerified)
+	rows, err := a.db.Queryx("SELECT proof FROM block_batch WHERE index>=$1 AND index<=$2 and proving_status = $3", startIdx, endIdx, types.ProvingTaskVerified)
 	if err != nil {
 		return nil, err
 	}
