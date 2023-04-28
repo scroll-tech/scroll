@@ -1,6 +1,6 @@
 # Coordinator
 
-This repo contains the Scroll Coordinator module.
+This directory contains the Scroll Coordinator module.
 
 
 ## Prerequisites
@@ -14,7 +14,7 @@ See [monorepo prerequisites](../README.md#prerequisites).
 make clean
 make coordinator
 ```
-The built coordinator binary is in the build/bin directory.
+The built coordinator binary is in the `build/bin` directory.
 
 
 ## Test
