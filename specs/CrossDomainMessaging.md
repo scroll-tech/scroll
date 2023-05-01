@@ -29,11 +29,23 @@ Though both L1 and L2 messenger contract support the same interface, the mechani
 
 On the L1, there are three entry points for users and dapps to send a message to L2.
 
-1. We provide a few standard gateway contracts to deposit Ether and several standard tokens such as ERC20, ERC-721, and ERC-1155. You can check out [Deposit](Deposit.md) to find out more details about these gateways. The gateways will encode the deposit to a message and send to `L1ScrollMessenger.sendMessage`.
-2. Users can directly use `L1ScrollMessenger.sendMessage` to send arbitrary messages to L2.
-3. Users can also use `L1MessageQueue.appendEnforcedTransaction` to send enforced transactions to L2.
+- We provide a few standard gateway contracts to deposit Ether and several standard tokens such as ERC20, ERC-721, and ERC-1155. You can check out [Deposit](Deposit.md) to find out more details about these gateways. The gateways will encode the deposit to a message and send to `L1ScrollMessenger.sendMessage`.
+- Users can directly use `L1ScrollMessenger.sendMessage` to send arbitrary messages to L2.
+- Users can also use `L1MessageQueue.appendEnforcedTransaction` to send enforced transactions to L2.
 
-Inside `L1ScrollMessenger`, the `sendMessage` function wraps the user message to the crossdomain calldata and calls `L1MessageQueue.appendCrossDomainMessage` to append the L1 initialized transaction to the `messageQueue`.
+**Send Arbitrary Messages**
+
+In the `L1ScrollMessenger.sendMessage` function, it converts the message to cross domain calldata and passes it to `L1MessageQueue.appendCrossDomainMessage` to append to the `messageQueue`.
+This function also estimates the cross domain message fee (more details in [Cross Domain Message Fee](#cross-domain-message-fee)) and deducts it from the transferred Ether. If the amount cannot cover the fee and value to transfer to L2, the transaction will fail.
+All excess Ether will be refunded to the designated `refundAddress` or sender if not specified.
+
+After entering into `L1MessageQueue` contract, the `appendCrossDomainMessage` function computes the transaction hash given the target address, calldata, and gas limit.
+Note that the transaction hash computed in the contract is the same as the transaction hash of the corresponding L2 transaction for this message.
+In addition, the `appendCrossDomainMessage` function can be only called by `L1ScrollMessenger` because the fee is deducted by the
+
+**Send Enforced Transaction**
+
+TBA
 
 <!--
 Inside the `sendMessage` function, the `L1ScrollMessenger` contract will call into `L1MessageQueue.appendCrossDomainMessage` to append the cross domain message. Then `L1MessageQueue` will emit a `QueueTransaction` event, which is monitored by the Relayer. The Relayer will wait for the confirmation of the blocks in Layer 1. Currently, the Relayer wait for the blocks to become `safe`. After that, the Relayer will initiate a transaction in layer 2, calling function `L2ScrollMessenger.relayMessage` and finally, the message is executed in layer 2.
@@ -44,7 +56,7 @@ In the next version, we will replace the Relayer by the L2 seqeuncer to include 
 
 ### L1 Message Transaction
 
-### Relay Fee
+### Cross Domain Message Fee
 
 ### Address Alias
 
