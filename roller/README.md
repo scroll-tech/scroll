@@ -1,6 +1,6 @@
 # Roller
 
-This repo contains the Scroll roller.
+This directory contains the Scroll roller module.
 
 ## Build
 ```bash
