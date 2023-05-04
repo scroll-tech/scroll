@@ -18,9 +18,10 @@ import (
 	geth_metrics "github.com/scroll-tech/go-ethereum/metrics"
 	"github.com/scroll-tech/go-ethereum/rpc"
 
-	"scroll-tech/common/message"
 	"scroll-tech/common/metrics"
 	"scroll-tech/common/types"
+	"scroll-tech/common/types/message"
+
 	"scroll-tech/database"
 
 	"scroll-tech/common/utils/workerpool"

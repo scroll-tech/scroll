@@ -15,7 +15,7 @@ import (
 	"github.com/scroll-tech/go-ethereum/crypto"
 	"github.com/scroll-tech/go-ethereum/log"
 
-	"scroll-tech/common/message"
+	"scroll-tech/common/types/message"
 	"scroll-tech/common/utils"
 	"scroll-tech/common/version"
 
@@ -115,12 +115,11 @@ func (r *Roller) Register() error {
 		Identity: &message.Identity{
 			Name:      r.cfg.RollerName,
 			Timestamp: uint32(timestamp),
-			PublicKey: r.PublicKey(),
 			Version:   version.Version,
 		},
 	}
 	// Sign request token message
-	if err := authMsg.Sign(r.priv); err != nil {
+	if err := authMsg.SignWithKey(r.priv); err != nil {
 		return fmt.Errorf("sign request token message failed %v", err)
 	}
 
@@ -131,7 +130,7 @@ func (r *Roller) Register() error {
 	authMsg.Identity.Token = token
 
 	// Sign auth message
-	if err = authMsg.Sign(r.priv); err != nil {
+	if err = authMsg.SignWithKey(r.priv); err != nil {
 		return fmt.Errorf("sign auth message failed %v", err)
 	}
 

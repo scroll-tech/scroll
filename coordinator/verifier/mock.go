@@ -3,7 +3,7 @@
 package verifier
 
 import (
-	"scroll-tech/common/message"
+	"scroll-tech/common/types/message"
 
 	"scroll-tech/coordinator/config"
 )

@@ -11,9 +11,9 @@ import (
 	"github.com/scroll-tech/go-ethereum/log"
 	geth_metrics "github.com/scroll-tech/go-ethereum/metrics"
 
-	"scroll-tech/common/message"
 	"scroll-tech/common/metrics"
 	"scroll-tech/common/types"
+	"scroll-tech/common/types/message"
 )
 
 // rollerNode records roller status and send task to connected roller.
