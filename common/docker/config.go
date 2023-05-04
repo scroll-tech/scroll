@@ -28,6 +28,7 @@ type L2Contracts struct {
 	L2StandardERC20Gateway       common.Address `json:"L2StandardERC20Gateway"`
 }
 
+// ContractsList all contracts addresses which are needed to be tested.
 type ContractsList struct {
 	L1Contracts *L1Contracts   `json:"l1_contracts,omitempty"`
 	L2Contracts *L2Contracts   `json:"l2_contracts,omitempty"`
