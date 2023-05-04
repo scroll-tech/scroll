@@ -3,6 +3,7 @@ package docker
 import (
 	"crypto/rand"
 	"database/sql"
+	_ "embed"
 	"encoding/json"
 	"fmt"
 	"math/big"
@@ -25,6 +26,9 @@ var (
 	dbStartPort = 30000
 )
 
+//go:embed contracts_list.json
+var contractsList []byte
+
 // AppAPI app interface.
 type AppAPI interface {
 	WaitResult(t *testing.T, timeout time.Duration, keyword string) bool
@@ -43,6 +47,9 @@ type App struct {
 	DBConfig     *database.DBConfig
 	DBConfigFile string
 
+	// pre deployed contracts' addresses.
+	ContractsList
+
 	// common time stamp.
 	Timestamp int
 }
@@ -56,6 +63,11 @@ func NewDockerApp() *App {
 		L2gethImg:    newTestL2Docker(),
 		DBImg:        newTestDBDocker("postgres"),
 		DBConfigFile: fmt.Sprintf("/tmp/%d_db-config.json", timestamp),
+	}
+
+	// Unmarshal contracts addresses.
+	if err := json.Unmarshal(contractsList, &app.ContractsList); err != nil {
+		panic(err)
 	}
 	if err := app.mockDBConfig(); err != nil {
 		panic(err)

@@ -21,8 +21,8 @@ type MockApp struct {
 
 	mockApps map[utils.MockAppName]docker.AppAPI
 
-	originFile string
-	bridgeFile string
+	originConfigFile string
+	BridgeConfigFile string
 
 	args []string
 }
@@ -32,11 +32,11 @@ func NewBridgeApp(base *docker.App, file string) *MockApp {
 
 	bridgeFile := fmt.Sprintf("/tmp/%d_bridge-config.json", base.Timestamp)
 	bridgeApp := &MockApp{
-		base:       base,
-		mockApps:   make(map[utils.MockAppName]docker.AppAPI),
-		originFile: file,
-		bridgeFile: bridgeFile,
-		args:       []string{"--log.debug", "--config", bridgeFile},
+		base:             base,
+		mockApps:         make(map[utils.MockAppName]docker.AppAPI),
+		originConfigFile: file,
+		BridgeConfigFile: bridgeFile,
+		args:             []string{"--log.debug", "--config", bridgeFile},
 	}
 	if err := bridgeApp.MockConfig(true); err != nil {
 		panic(err)
@@ -75,23 +75,40 @@ func (b *MockApp) WaitExit() {
 // Free stop and release bridge mocked apps.
 func (b *MockApp) Free() {
 	b.WaitExit()
-	_ = os.Remove(b.bridgeFile)
+	_ = os.Remove(b.BridgeConfigFile)
 }
 
 // MockConfig creates a new bridge config.
 func (b *MockApp) MockConfig(store bool) error {
 	base := b.base
 	// Load origin bridge config file.
-	cfg, err := config.NewConfig(b.originFile)
+	cfg, err := config.NewConfig(b.originConfigFile)
 	if err != nil {
 		return err
 	}
 
-	cfg.L1Config.Endpoint = base.L1gethImg.Endpoint()
-	cfg.L2Config.RelayerConfig.SenderConfig.Endpoint = base.L1gethImg.Endpoint()
-	cfg.L2Config.Endpoint = base.L2gethImg.Endpoint()
-	cfg.L1Config.RelayerConfig.SenderConfig.Endpoint = base.L2gethImg.Endpoint()
+	var (
+		l1Cfg, l2Cfg             = cfg.L1Config, cfg.L2Config
+		l1Contracts, l2Contracts = base.L1Contracts, base.L2Contracts
+	)
+	l1Cfg.Confirmations = 0
+
+	// set l1 and l2 chain endpoint.
+	l1Cfg.Endpoint = base.L1gethImg.Endpoint()
+	l2Cfg.RelayerConfig.SenderConfig.Endpoint = base.L1gethImg.Endpoint()
+	l2Cfg.Endpoint = base.L2gethImg.Endpoint()
+	l1Cfg.RelayerConfig.SenderConfig.Endpoint = base.L2gethImg.Endpoint()
 	cfg.DBConfig.DSN = base.DBImg.Endpoint()
+
+	// set l1 scroll contracts addresses.
+	l1Cfg.L1MessageQueueAddress = l1Contracts.L1MessageQueue
+	l1Cfg.ScrollChainContractAddress = l1Contracts.L1WETH
+	l1Cfg.L1MessengerAddress = l1Contracts.L1ScrollMessenger
+
+	// set l2 scroll contracts addresses.
+	l2Cfg.L2MessageQueueAddress = l2Contracts.L2MessageQueue
+	l2Cfg.L2MessengerAddress = l2Contracts.L2ScrollMessenger
+
 	b.Config = cfg
 
 	if !store {
@@ -102,5 +119,5 @@ func (b *MockApp) MockConfig(store bool) error {
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(b.bridgeFile, data, 0600)
+	return os.WriteFile(b.BridgeConfigFile, data, 0600)
 }
