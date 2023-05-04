@@ -59,7 +59,7 @@ func TestERC20(t *testing.T) {
 	token, err := erc20.NewERC20Mock(base.ERC20, l2Cli)
 	assert.NoError(t, err)
 
-	auth, err := bind.NewKeyedTransactorWithChainID(bridgeApp.Config.L2Config.RelayerConfig.MessageSenderPrivateKeys[0], base.L2gethImg.ChainID())
+	auth, err := bind.NewKeyedTransactorWithChainID(bridgeApp.Config.L2Config.RelayerConfig.GasOracleSenderPrivateKeys[0], base.L2gethImg.ChainID())
 	assert.NoError(t, err)
 
 	authBls0, err := token.BalanceOf(nil, auth.From)
@@ -91,7 +91,7 @@ func TestGreeter(t *testing.T) {
 	l2Cli, err := base.L2Client()
 	assert.Nil(t, err)
 
-	auth, err := bind.NewKeyedTransactorWithChainID(bridgeApp.Config.L2Config.RelayerConfig.MessageSenderPrivateKeys[0], base.L2gethImg.ChainID())
+	auth, err := bind.NewKeyedTransactorWithChainID(bridgeApp.Config.L2Config.RelayerConfig.GasOracleSenderPrivateKeys[0], base.L2gethImg.ChainID())
 	assert.NoError(t, err)
 
 	token, err := greeter.NewGreeter(base.Greeter, l2Cli)
@@ -117,7 +117,7 @@ func TestMintERC20(t *testing.T) {
 	L1ERC20, err := erc20.NewERC20Mock(base.L1Contracts.L1WETH, l1Cli)
 	assert.NoError(t, err)
 
-	l1Auth, err := bind.NewKeyedTransactorWithChainID(bridgeApp.Config.L2Config.RelayerConfig.MessageSenderPrivateKeys[0], base.L1gethImg.ChainID())
+	l1Auth, err := bind.NewKeyedTransactorWithChainID(bridgeApp.Config.L2Config.RelayerConfig.GasOracleSenderPrivateKeys[0], base.L1gethImg.ChainID())
 	assert.NoError(t, err)
 
 	// check init balance in erc20 contract.
@@ -173,7 +173,7 @@ func TestStandardERC20Deposit(t *testing.T) {
 
 	l1StandardERC20, err := l1gateways.NewL1StandardERC20Gateway(base.L1Contracts.L1StandardERC20Gateway, l1Cli)
 	assert.NoError(t, err)
-	l1Auth, err := bind.NewKeyedTransactorWithChainID(bridgeApp.Config.L2Config.RelayerConfig.MessageSenderPrivateKeys[0], base.L1gethImg.ChainID())
+	l1Auth, err := bind.NewKeyedTransactorWithChainID(bridgeApp.Config.L2Config.RelayerConfig.GasOracleSenderPrivateKeys[0], base.L1gethImg.ChainID())
 	assert.NoError(t, err)
 
 	// Run event_watcher process.

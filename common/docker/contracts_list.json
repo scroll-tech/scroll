@@ -1,24 +1,24 @@
 {
     "l1_contracts": {
-        "L1WETH": "0x0c64e6f8d51bb1ae0e4ad62b9a1b996e1b2675d3",
-        "L2GasPriceOracle": "0x21cdbd4361a5944e4be5b08723ecc5e2e38a9841",
-        "L1ScrollChain": "0xc4ec73242f4503871186a581964fd89c025b2f93",
-        "L1MessageQueue": "0x73e84e412c96aaa123ed7681e6842c8934b9bc93",
-        "L1ScrollMessenger": "0xd8a8d7045e3490f1d93cc8f429bd490b411a0cea",
-        "L1GatewayRouter": "0x42ef18e1f4cb0307a0e62b1621dbbd1fba4a9ca2",
-        "L1StandardERC20Gateway": "0xd5d311047b70efcb32a5ce5fa161b0ab96e94859"
+        "L1WETH": "0x7ecd3166e45b8fc8ff5b6f88af405f05c84fe28b",
+        "L2GasPriceOracle": "0xf0fb0109ec4c0ffe1c3708010ac39df342ad13c6",
+        "L1ScrollChain": "0x2dfda18f6e0c753f37323a5465a4a2999901f772",
+        "L1MessageQueue": "0x4221e6c50c004a0a6d5b83e17077c2dbaf3be239",
+        "L1ScrollMessenger": "0x5edd6a65e63d4bf5955bf890e1889f5d00d12f4e",
+        "L1GatewayRouter": "0xba3e049c06254d4d02d4895e82a29d56e788a9f0",
+        "L1StandardERC20Gateway": "0x81bfe9f57ef1a68f09c298fc5d756f657a69d809"
     },
     "l2_contracts": {
-        "L1BlockContainer": "0x03f8133dd5ed58838b20af1296f62f44e69baa48",
-        "L1GasPriceOracle": "0x839d089867de1a7ca0a5ab6e66fbf95e3ccff7f6",
-        "L2ProxyAdmin": "0x694e82ec8a481e0e7bceb4fb26a062ca8b8953f6",
-        "L2ScrollStandardERC20Factory": "0xc4ec73242f4503871186a581964fd89c025b2f93",
-        "L2ScrollMessenger": "0xc2a221468974f17bea791c711fe62a011a07bf48",
-        "L2MessageQueue": "0xd8a8d7045e3490f1d93cc8f429bd490b411a0cea",
-        "L2TxFeeVault": "0x42ef18e1f4cb0307a0e62b1621dbbd1fba4a9ca2",
+        "L1BlockContainer": "0xf0fb0109ec4c0ffe1c3708010ac39df342ad13c6",
+        "L1GasPriceOracle": "0x5edd6a65e63d4bf5955bf890e1889f5d00d12f4e",
+        "L2ProxyAdmin": "0x52128e5d5812f699f9ed2f56f744e1eefe78db92",
+        "L2ScrollStandardERC20Factory": "0x6edca115a58590c2b236284a6c62dec3103d8fc4",
+        "L2ScrollMessenger": "0x4221e6c50c004a0a6d5b83e17077c2dbaf3be239",
+        "L2MessageQueue": "0xf86a9a06e2464539d139ec6d3ad3c63e9bb4bd3c",
+        "L2TxFeeVault": "0x81bfe9f57ef1a68f09c298fc5d756f657a69d809",
         "L2GatewayRouter": "0x7363726f6c6c6c02000000000000000000000007",
-        "L2StandardERC20Gateway": "0x9277183827dd57ff462c1c0eb8d4d104bdd1a34a"
+        "L2StandardERC20Gateway": "0x24dd98a7f678bfaa5453130ddba5f7aa1b594df0"
     },
-    "erc20": "0xc1cac328b3c832a2de40a72a5a9c19b0cfc09622",
-    "greeter": "0x21cdbd4361a5944e4be5b08723ecc5e2e38a9841"
+    "erc20": "0xd1c8d1a7bdef9cf9e9d05f01bd36d5f8a7501d3f",
+    "greeter": "0xba3e049c06254d4d02d4895e82a29d56e788a9f0"
 }
