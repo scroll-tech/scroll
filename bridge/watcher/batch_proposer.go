@@ -268,12 +268,12 @@ func (p *BatchProposer) proposeBatch(blocks []*types.BlockInfo) bool {
 	}
 
 	approximatePayloadSize := func(hash string) (uint64, error) {
-		traces, err := p.orm.GetL2WrappedBlocks(map[string]interface{}{"hash": blocks[0].Hash})
+		traces, err := p.orm.GetL2WrappedBlocks(map[string]interface{}{"hash": hash})
 		if err != nil {
 			return 0, err
 		}
 		if len(traces) != 1 {
-			return 0, fmt.Errorf("Unexpected traces length", "expected", 1, "actual", len(traces))
+			return 0, fmt.Errorf("unexpected traces length, expected = 1, actual = %d", len(traces))
 		}
 		size := 0
 		for _, tx := range traces[0].Transactions {
@@ -291,16 +291,14 @@ func (p *BatchProposer) proposeBatch(blocks []*types.BlockInfo) bool {
 	if firstSize > p.commitCalldataSizeLimit {
 		log.Warn("oversized payload even for only 1 block", "height", blocks[0].Number, "size", firstSize)
 		// note: we should probably fail here once we can ensure this will not happen
-
 		if err := p.createBatchForBlocks(blocks[:1]); err != nil {
 			log.Error("failed to create batch", "number", blocks[0].Number, "err", err)
 			return false
-		} else {
-			bridgeL2BatchesTxsCreatedPerBatchGauge.Update(int64(blocks[0].TxNum))
-			bridgeL2BatchesGasCreatedPerBatchGauge.Update(int64(blocks[0].GasUsed))
-			bridgeL2BatchesBlocksCreatedTotalCounter.Inc(1)
-			return true
 		}
+		bridgeL2BatchesTxsCreatedPerBatchGauge.Update(int64(blocks[0].TxNum))
+		bridgeL2BatchesGasCreatedPerBatchGauge.Update(int64(blocks[0].GasUsed))
+		bridgeL2BatchesBlocksCreatedTotalCounter.Inc(1)
+		return true
 	}
 
 	if blocks[0].GasUsed > p.batchGasThreshold {
