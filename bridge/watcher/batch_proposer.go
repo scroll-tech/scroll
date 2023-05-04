@@ -331,9 +331,9 @@ func (p *BatchProposer) proposeBatch(blocks []*types.BlockInfo) bool {
 	reachThreshold := false
 	// add blocks into batch until reach batchGasThreshold
 	for i, block := range blocks {
-		size, err := approximatePayloadSize(blocks[0].Hash)
+		size, err := approximatePayloadSize(block.Hash)
 		if err != nil {
-			log.Error("failed to create batch", "number", blocks[0].Number, "err", err)
+			log.Error("failed to create batch", "number", block.Number, "err", err)
 			return false
 		}
 
