@@ -3,7 +3,7 @@ package docker
 import (
 	"crypto/rand"
 	"database/sql"
-	_ "embed"
+	_ "embed" //nolint:golint
 	"encoding/json"
 	"fmt"
 	"math/big"
