@@ -77,8 +77,13 @@ func TestFunction(t *testing.T) {
 	if err := setupEnv(t); err != nil {
 		t.Fatal(err)
 	}
+
 	// Run l1 watcher test cases.
 	t.Run("TestStartWatcher", testStartWatcher)
+	t.Run("testL1WatcherClientFetchBlockHeader", testL1WatcherClientFetchBlockHeader)
+	t.Run("testL1WatcherClientFetchContractEvent", testL1WatcherClientFetchContractEvent)
+	t.Run("testParseBridgeEventLogs", testParseBridgeEventLogs)
+
 	// Run l2 watcher test cases.
 	t.Run("TestCreateNewWatcherAndStop", testCreateNewWatcherAndStop)
 	t.Run("TestMonitorBridgeContract", testMonitorBridgeContract)
