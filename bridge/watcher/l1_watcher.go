@@ -101,18 +101,22 @@ func NewL1WatcherClient(ctx context.Context, client *ethclient.Client, startHeig
 	}
 }
 
+// ProcessedBlockHeight get processedBlockHeight
 func (w *L1WatcherClient) ProcessedBlockHeight() uint64 {
 	return w.processedBlockHeight
 }
 
+// SetProcessedBlockHeight set SetProcessedBlockHeight for L1WatcherClient
 func (w *L1WatcherClient) SetProcessedBlockHeight(processedBlockHeight uint64) {
 	w.processedBlockHeight = processedBlockHeight
 }
 
+// Confirmations get confirmations
 func (w *L1WatcherClient) Confirmations() rpc.BlockNumber {
 	return w.confirmations
 }
 
+// SetConfirmations set the confirmations for L1WatcherClient
 func (w *L1WatcherClient) SetConfirmations(confirmations rpc.BlockNumber) {
 	w.confirmations = confirmations
 }
