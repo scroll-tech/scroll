@@ -57,8 +57,8 @@ type AuthMsg struct {
 type Identity struct {
 	// Roller name
 	Name string `json:"name"`
-	// Roller Type
-	Type ProveType `json:"type,omitempty"`
+	// Roller RollerType
+	RollerType ProveType `json:"roller_type,omitempty"`
 	// Unverified Unix timestamp of message creation
 	Timestamp uint32 `json:"timestamp"`
 	// Version is common.Version+ZkVersion. Use the following to check the latest ZkVersion version.

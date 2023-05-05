@@ -118,10 +118,10 @@ func (r *Roller) Register() error {
 
 	authMsg := &message.AuthMsg{
 		Identity: &message.Identity{
-			Name:      r.cfg.RollerName,
-			Type:      r.Type(),
-			Timestamp: uint32(timestamp),
-			Version:   version.Version,
+			Name:       r.cfg.RollerName,
+			RollerType: r.Type(),
+			Timestamp:  uint32(timestamp),
+			Version:    version.Version,
 		},
 	}
 	// Sign request token message
