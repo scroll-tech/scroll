@@ -70,10 +70,11 @@ func testL1WatcherClientFetchBlockHeader(t *testing.T) {
 	convey.Convey("insert l1 block error", t, func() {
 		var c *ethclient.Client
 		patchGuard := gomonkey.ApplyMethodFunc(c, "HeaderByNumber", func(ctx context.Context, height *big.Int) (*types.Header, error) {
-			t.Log(height.String())
-			height = big.NewInt(100)
+			if height == nil {
+				height = big.NewInt(100)
+			}
 			return &types.Header{
-				BaseFee: big.NewInt(100),
+				BaseFee: big.NewInt(101),
 			}, nil
 		})
 		defer patchGuard.Reset()
@@ -90,8 +91,9 @@ func testL1WatcherClientFetchBlockHeader(t *testing.T) {
 	convey.Convey("fetch block header success", t, func() {
 		var c *ethclient.Client
 		patchGuard := gomonkey.ApplyMethodFunc(c, "HeaderByNumber", func(ctx context.Context, height *big.Int) (*types.Header, error) {
-			t.Log(height.String())
-			height = big.NewInt(100)
+			if height == nil {
+				height = big.NewInt(100)
+			}
 			return &types.Header{
 				BaseFee: big.NewInt(100),
 			}, nil
@@ -124,8 +126,9 @@ func testL1WatcherClientFetchContractEvent(t *testing.T) {
 
 	var c *ethclient.Client
 	patchGuard := gomonkey.ApplyMethodFunc(c, "HeaderByNumber", func(ctx context.Context, height *big.Int) (*types.Header, error) {
-		t.Log(height.String())
-		height = big.NewInt(100)
+		if height == nil {
+			height = big.NewInt(100)
+		}
 		return &types.Header{
 			Number:  big.NewInt(100),
 			BaseFee: big.NewInt(100),
