@@ -13,12 +13,13 @@ import "C" //nolint:typecheck
 import (
 	"context"
 	"encoding/json"
-	"github.com/scroll-tech/go-ethereum/common"
-	"github.com/scroll-tech/go-ethereum/core/types"
-	"github.com/scroll-tech/go-ethereum/ethclient"
 	"os"
 	"path/filepath"
 	"unsafe"
+
+	"github.com/scroll-tech/go-ethereum/common"
+	"github.com/scroll-tech/go-ethereum/core/types"
+	"github.com/scroll-tech/go-ethereum/ethclient"
 
 	"github.com/scroll-tech/go-ethereum/log"
 

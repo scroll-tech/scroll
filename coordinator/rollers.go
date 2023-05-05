@@ -3,9 +3,10 @@ package coordinator
 import (
 	"crypto/rand"
 	"fmt"
-	"github.com/scroll-tech/go-ethereum/common"
 	"math/big"
 	"time"
+
+	"github.com/scroll-tech/go-ethereum/common"
 
 	cmap "github.com/orcaman/concurrent-map"
 	"github.com/scroll-tech/go-ethereum/log"
