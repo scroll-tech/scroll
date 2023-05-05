@@ -86,6 +86,7 @@ func TestFunction(t *testing.T) {
 	t.Run("TestFetchRunningMissingBlocks", testFetchRunningMissingBlocks)
 
 	// Run batch proposer test cases.
+	t.Run("TestBatchProposerProposeBatch", testBatchProposerProposeBatch)
 	t.Run("TestBatchProposerBatchGeneration", testBatchProposerBatchGeneration)
 	t.Run("TestBatchProposerGracefulRestart", testBatchProposerGracefulRestart)
 }

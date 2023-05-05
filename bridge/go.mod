@@ -3,6 +3,7 @@ module scroll-tech/bridge
 go 1.18
 
 require (
+	github.com/agiledragon/gomonkey/v2 v2.9.0
 	github.com/orcaman/concurrent-map v1.0.0
 	github.com/orcaman/concurrent-map/v2 v2.0.1
 	github.com/scroll-tech/go-ethereum v1.10.14-0.20230321020420-127af384ed04

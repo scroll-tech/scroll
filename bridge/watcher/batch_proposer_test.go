@@ -4,9 +4,13 @@ import (
 	"context"
 	"fmt"
 	"math"
+	"strings"
 	"testing"
+	"time"
 
+	"github.com/agiledragon/gomonkey/v2"
 	"github.com/scroll-tech/go-ethereum/common"
+	geth_types "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/stretchr/testify/assert"
 
 	"scroll-tech/database"
@@ -17,6 +21,70 @@ import (
 
 	"scroll-tech/common/types"
 )
+
+func testBatchProposerProposeBatch(t *testing.T) {
+	// Create db handler and reset db.
+	db, err := database.NewOrmFactory(cfg.DBConfig)
+	assert.NoError(t, err)
+	assert.NoError(t, migrate.ResetDB(db.GetDB().DB))
+	defer db.Close()
+
+	p := &BatchProposer{
+		batchGasThreshold:       1000,
+		batchTxNumThreshold:     10,
+		batchTimeSec:            300,
+		commitCalldataSizeLimit: 500,
+		orm:                     db,
+	}
+	patchGuard1 := gomonkey.ApplyMethodFunc(p.orm, "GetL2WrappedBlocks", func(fields map[string]interface{}, args ...string) ([]*types.WrappedBlock, error) {
+		hash, _ := fields["hash"].(string)
+		if hash == "blockWithLongData" {
+			longData := strings.Repeat("0", 1000)
+			return []*types.WrappedBlock{{
+				Transactions: []*geth_types.TransactionData{{
+					Data: longData,
+				}},
+			}}, nil
+		}
+		return []*types.WrappedBlock{{
+			Transactions: []*geth_types.TransactionData{{
+				Data: "short",
+			}},
+		}}, nil
+	})
+	defer patchGuard1.Reset()
+	patchGuard2 := gomonkey.ApplyPrivateMethod(p, "createBatchForBlocks", func(*BatchProposer, []*types.BlockInfo) error {
+		return nil
+	})
+	defer patchGuard2.Reset()
+
+	block1 := &types.BlockInfo{Number: 1, GasUsed: 100, TxNum: 1, BlockTimestamp: uint64(time.Now().Unix()) - 200}
+	block2 := &types.BlockInfo{Number: 2, GasUsed: 200, TxNum: 2, BlockTimestamp: uint64(time.Now().Unix())}
+	block3 := &types.BlockInfo{Number: 3, GasUsed: 300, TxNum: 11, BlockTimestamp: uint64(time.Now().Unix())}
+	block4 := &types.BlockInfo{Number: 4, GasUsed: 1001, TxNum: 3, BlockTimestamp: uint64(time.Now().Unix())}
+	blockOutdated := &types.BlockInfo{Number: 1, GasUsed: 100, TxNum: 1, BlockTimestamp: uint64(time.Now().Add(-400 * time.Second).Unix())}
+	blockWithLongData := &types.BlockInfo{Hash: "blockWithLongData", Number: 5, GasUsed: 500, TxNum: 1, BlockTimestamp: uint64(time.Now().Unix())}
+
+	testCases := []struct {
+		description string
+		blocks      []*types.BlockInfo
+		expectedRes bool
+	}{
+		{"Empty block list", []*types.BlockInfo{}, false},
+		{"Single block exceeding gas threshold", []*types.BlockInfo{block4}, true},
+		{"Single block exceeding transaction number threshold", []*types.BlockInfo{block3}, true},
+		{"Multiple blocks meeting thresholds", []*types.BlockInfo{block1, block2, block3}, true},
+		{"Multiple blocks not meeting thresholds", []*types.BlockInfo{block1, block2}, false},
+		{"Outdated and valid block", []*types.BlockInfo{blockOutdated, block2}, true},
+		{"Single block with long data", []*types.BlockInfo{blockWithLongData}, true},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			assert.Equal(t, tc.expectedRes, p.proposeBatch(tc.blocks), "Failed on: %s", tc.description)
+		})
+	}
+}
 
 func testBatchProposerBatchGeneration(t *testing.T) {
 	// Create db handler and reset db.
