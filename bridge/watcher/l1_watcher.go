@@ -101,6 +101,22 @@ func NewL1WatcherClient(ctx context.Context, client *ethclient.Client, startHeig
 	}
 }
 
+func (w *L1WatcherClient) ProcessedBlockHeight() uint64 {
+	return w.processedBlockHeight
+}
+
+func (w *L1WatcherClient) SetProcessedBlockHeight(processedBlockHeight uint64) {
+	w.processedBlockHeight = processedBlockHeight
+}
+
+func (w *L1WatcherClient) Confirmations() rpc.BlockNumber {
+	return w.confirmations
+}
+
+func (w *L1WatcherClient) SetConfirmations(confirmations rpc.BlockNumber) {
+	w.confirmations = confirmations
+}
+
 // FetchBlockHeader pull latest L1 blocks and save in DB
 func (w *L1WatcherClient) FetchBlockHeader(blockHeight uint64) error {
 	fromBlock := int64(w.processedBlockHeight) + 1

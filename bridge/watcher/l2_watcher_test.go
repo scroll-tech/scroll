@@ -1,4 +1,4 @@
-package watcher_test
+package watcher
 
 import (
 	"context"
@@ -19,7 +19,6 @@ import (
 
 	"scroll-tech/bridge/mock_bridge"
 	"scroll-tech/bridge/sender"
-	"scroll-tech/bridge/watcher"
 
 	cutils "scroll-tech/common/utils"
 
@@ -40,7 +39,7 @@ func testCreateNewWatcherAndStop(t *testing.T) {
 	}()
 
 	l2cfg := cfg.L2Config
-	rc := watcher.NewL2WatcherClient(context.Background(), l2Cli, l2cfg.Confirmations, l2cfg.L2MessengerAddress, l2cfg.L2MessageQueueAddress, l2cfg.WithdrawTrieRootSlot, l2db)
+	rc := NewL2WatcherClient(context.Background(), l2Cli, l2cfg.Confirmations, l2cfg.L2MessengerAddress, l2cfg.L2MessageQueueAddress, l2cfg.WithdrawTrieRootSlot, l2db)
 	loopToFetchEvent(subCtx, rc)
 
 	l1cfg := cfg.L1Config
@@ -76,7 +75,7 @@ func testMonitorBridgeContract(t *testing.T) {
 	}()
 
 	l2cfg := cfg.L2Config
-	wc := watcher.NewL2WatcherClient(context.Background(), l2Cli, l2cfg.Confirmations, l2cfg.L2MessengerAddress, l2cfg.L2MessageQueueAddress, l2cfg.WithdrawTrieRootSlot, db)
+	wc := NewL2WatcherClient(context.Background(), l2Cli, l2cfg.Confirmations, l2cfg.L2MessengerAddress, l2cfg.L2MessageQueueAddress, l2cfg.WithdrawTrieRootSlot, db)
 	loopToFetchEvent(subCtx, wc)
 
 	previousHeight, err := l2Cli.BlockNumber(context.Background())
@@ -210,9 +209,9 @@ func testFetchMultipleSentMessageInOneBlock(t *testing.T) {
 	assert.Equal(t, 5, len(msgs))
 }
 
-func prepareWatcherClient(l2Cli *ethclient.Client, db database.OrmFactory, contractAddr common.Address) *watcher.L2WatcherClient {
+func prepareWatcherClient(l2Cli *ethclient.Client, db database.OrmFactory, contractAddr common.Address) *L2WatcherClient {
 	confirmations := rpc.LatestBlockNumber
-	return watcher.NewL2WatcherClient(context.Background(), l2Cli, confirmations, contractAddr, contractAddr, common.Hash{}, db)
+	return NewL2WatcherClient(context.Background(), l2Cli, confirmations, contractAddr, contractAddr, common.Hash{}, db)
 }
 
 func prepareAuth(t *testing.T, l2Cli *ethclient.Client, privateKey *ecdsa.PrivateKey) *bind.TransactOpts {
@@ -225,6 +224,6 @@ func prepareAuth(t *testing.T, l2Cli *ethclient.Client, privateKey *ecdsa.Privat
 	return auth
 }
 
-func loopToFetchEvent(subCtx context.Context, watcher *watcher.L2WatcherClient) {
+func loopToFetchEvent(subCtx context.Context, watcher *L2WatcherClient) {
 	go cutils.Loop(subCtx, 2*time.Second, watcher.FetchContractEvent)
 }
