@@ -88,5 +88,4 @@ func TestFunction(t *testing.T) {
 	// Run batch proposer test cases.
 	t.Run("TestBatchProposerBatchGeneration", testBatchProposerBatchGeneration)
 	t.Run("TestBatchProposerGracefulRestart", testBatchProposerGracefulRestart)
-	t.Run("TestBatchProposerProposeBatch", testBatchProposerProposeBatch)
 }

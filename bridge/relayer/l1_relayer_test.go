@@ -82,9 +82,11 @@ func testL1RelayerMsgConfirm(t *testing.T) {
 	defer db.Close()
 
 	// Insert test data.
-	assert.NoError(t, db.SaveL1Messages(context.Background(), []*types.L1Message{
-		{MsgHash: "msg-1", QueueIndex: 0}, {MsgHash: "msg-2", QueueIndex: 1},
-	}))
+	assert.NoError(t, db.SaveL1Messages(context.Background(),
+		[]*types.L1Message{
+			{MsgHash: "msg-1", QueueIndex: 0},
+			{MsgHash: "msg-2", QueueIndex: 1},
+		}))
 
 	// Create and set up the Layer1 Relayer.
 	l1Cfg := cfg.L1Config

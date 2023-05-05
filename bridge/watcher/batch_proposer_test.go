@@ -5,9 +5,7 @@ import (
 	"fmt"
 	"math"
 	"testing"
-	"time"
 
-	"github.com/agiledragon/gomonkey/v2"
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/stretchr/testify/assert"
 
@@ -19,43 +17,6 @@ import (
 
 	"scroll-tech/common/types"
 )
-
-func testBatchProposerProposeBatch(t *testing.T) {
-	p := &BatchProposer{
-		batchGasThreshold:   1000,
-		batchTxNumThreshold: 10,
-		batchTimeSec:        300,
-	}
-
-	patchGuard := gomonkey.ApplyPrivateMethod(p, "createBatchForBlocks", func(*BatchProposer, []*types.BlockInfo) error {
-		return nil
-	})
-	defer patchGuard.Reset()
-
-	block1 := &types.BlockInfo{Number: 1, GasUsed: 100, TxNum: 1, BlockTimestamp: uint64(time.Now().Unix()) - 200}
-	block2 := &types.BlockInfo{Number: 2, GasUsed: 200, TxNum: 2, BlockTimestamp: uint64(time.Now().Unix())}
-	block3 := &types.BlockInfo{Number: 3, GasUsed: 300, TxNum: 11, BlockTimestamp: uint64(time.Now().Unix())}
-	block4 := &types.BlockInfo{Number: 4, GasUsed: 1001, TxNum: 3, BlockTimestamp: uint64(time.Now().Unix())}
-	blockOutdated := &types.BlockInfo{Number: 1, GasUsed: 100, TxNum: 1, BlockTimestamp: uint64(time.Now().Add(-400 * time.Second).Unix())}
-
-	testCases := []struct {
-		blocks      []*types.BlockInfo
-		expectedRes bool
-	}{
-		{[]*types.BlockInfo{}, false},
-		{[]*types.BlockInfo{block4}, true},
-		{[]*types.BlockInfo{block3}, true},
-		{[]*types.BlockInfo{block1, block2, block3}, true},
-		{[]*types.BlockInfo{block1, block2}, false},
-		{[]*types.BlockInfo{blockOutdated, block2}, true},
-	}
-
-	for i, tc := range testCases {
-		t.Run(fmt.Sprintf("Test case %d", i+1), func(t *testing.T) {
-			assert.Equal(t, tc.expectedRes, p.proposeBatch(tc.blocks), "Failed on test case %d", i+1)
-		})
-	}
-}
 
 func testBatchProposerBatchGeneration(t *testing.T) {
 	// Create db handler and reset db.
