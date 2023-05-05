@@ -8,6 +8,7 @@ import (
 
 	"github.com/agiledragon/gomonkey/v2"
 	"github.com/scroll-tech/go-ethereum"
+	"github.com/scroll-tech/go-ethereum/accounts/abi"
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/core/types"
 	geth_types "github.com/scroll-tech/go-ethereum/core/types"
@@ -15,6 +16,9 @@ import (
 	"github.com/scroll-tech/go-ethereum/rpc"
 	"github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
+
+	bridge_abi "scroll-tech/bridge/abi"
+	"scroll-tech/bridge/utils"
 
 	commonTypes "scroll-tech/common/types"
 
@@ -275,6 +279,231 @@ func testL1WatcherClientFetchContractEvent(t *testing.T) {
 	})
 }
 
-func testParseBridgeEventLogs(t *testing.T) {
+func testParseBridgeEventLogsL1QueueTransactionEventSignature(t *testing.T) {
+	watcher, _ := setup(t)
+	logs := []geth_types.Log{
+		{
+			Topics:      []common.Hash{bridge_abi.L1QueueTransactionEventSignature},
+			BlockNumber: 100,
+			TxHash:      common.HexToHash("0x1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347"),
+		},
+	}
 
+	convey.Convey("unpack QueueTransaction log failure", t, func() {
+		targetErr := errors.New("UnpackLog QueueTransaction failure")
+		patchGuard := gomonkey.ApplyFunc(utils.UnpackLog, func(c *abi.ABI, out interface{}, event string, log types.Log) error {
+			return targetErr
+		})
+		defer patchGuard.Reset()
+
+		l2Messages, relayedMessages, rollupEvents, err := watcher.parseBridgeEventLogs(logs)
+		assert.Error(t, err)
+		assert.EqualError(t, err, targetErr.Error())
+		assert.Empty(t, l2Messages)
+		assert.Empty(t, relayedMessages)
+		assert.Empty(t, rollupEvents)
+	})
+
+	convey.Convey("L1QueueTransactionEventSignature success", t, func() {
+		patchGuard := gomonkey.ApplyFunc(utils.UnpackLog, func(c *abi.ABI, out interface{}, event string, log types.Log) error {
+			tmpOut := out.(*bridge_abi.L1QueueTransactionEvent)
+			tmpOut.QueueIndex = big.NewInt(100)
+			tmpOut.Data = []byte("test data")
+
+			tmpSendAddr := common.Address{}
+			tmpSendAddr.SetBytes([]byte("0xb4c11951957c6f8f642c4af61cd6b24640fec6dc7fc607ee8206a99e92410d30"))
+			tmpOut.Sender = tmpSendAddr
+
+			tmpOut.Value = big.NewInt(1000)
+
+			tmpTargetAddr := common.Address{}
+			tmpTargetAddr.SetBytes([]byte("0xad3228b676f7d3cd4284a5443f17f1962b36e491b30a40b2405849e597ba5fb5"))
+			tmpOut.Target = tmpTargetAddr
+
+			tmpOut.GasLimit = big.NewInt(10)
+			return nil
+		})
+		defer patchGuard.Reset()
+
+		l2Messages, relayedMessages, rollupEvents, err := watcher.parseBridgeEventLogs(logs)
+		assert.NoError(t, err)
+		assert.Empty(t, relayedMessages)
+		assert.Empty(t, rollupEvents)
+		assert.Len(t, l2Messages, 1)
+		assert.Equal(t, l2Messages[0].Value, big.NewInt(1000).String())
+	})
+}
+
+func testParseBridgeEventLogsL1RelayedMessageEventSignature(t *testing.T) {
+	watcher, _ := setup(t)
+	logs := []geth_types.Log{
+		{
+			Topics:      []common.Hash{bridge_abi.L1RelayedMessageEventSignature},
+			BlockNumber: 100,
+			TxHash:      common.HexToHash("0x1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347"),
+		},
+	}
+
+	convey.Convey("unpack RelayedMessage log failure", t, func() {
+		targetErr := errors.New("UnpackLog RelayedMessage failure")
+		patchGuard := gomonkey.ApplyFunc(utils.UnpackLog, func(c *abi.ABI, out interface{}, event string, log types.Log) error {
+			return targetErr
+		})
+		defer patchGuard.Reset()
+
+		l2Messages, relayedMessages, rollupEvents, err := watcher.parseBridgeEventLogs(logs)
+		assert.Error(t, err)
+		assert.EqualError(t, err, targetErr.Error())
+		assert.Empty(t, l2Messages)
+		assert.Empty(t, relayedMessages)
+		assert.Empty(t, rollupEvents)
+	})
+
+	convey.Convey("L1RelayedMessageEventSignature success", t, func() {
+		msgHash := common.HexToHash("0xad3228b676f7d3cd4284a5443f17f1962b36e491b30a40b2405849e597ba5fb5")
+		patchGuard := gomonkey.ApplyFunc(utils.UnpackLog, func(c *abi.ABI, out interface{}, event string, log types.Log) error {
+			tmpOut := out.(*bridge_abi.L1RelayedMessageEvent)
+			tmpOut.MessageHash = msgHash
+			return nil
+		})
+		defer patchGuard.Reset()
+
+		l2Messages, relayedMessages, rollupEvents, err := watcher.parseBridgeEventLogs(logs)
+		assert.NoError(t, err)
+		assert.Empty(t, l2Messages)
+		assert.Empty(t, rollupEvents)
+		assert.Len(t, relayedMessages, 1)
+		assert.Equal(t, relayedMessages[0].msgHash, msgHash)
+	})
+}
+
+func testParseBridgeEventLogsL1FailedRelayedMessageEventSignature(t *testing.T) {
+	watcher, _ := setup(t)
+	logs := []geth_types.Log{
+		{
+			Topics:      []common.Hash{bridge_abi.L1FailedRelayedMessageEventSignature},
+			BlockNumber: 100,
+			TxHash:      common.HexToHash("0x1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347"),
+		},
+	}
+
+	convey.Convey("unpack FailedRelayedMessage log failure", t, func() {
+		targetErr := errors.New("UnpackLog FailedRelayedMessage failure")
+		patchGuard := gomonkey.ApplyFunc(utils.UnpackLog, func(c *abi.ABI, out interface{}, event string, log types.Log) error {
+			return targetErr
+		})
+		defer patchGuard.Reset()
+
+		l2Messages, relayedMessages, rollupEvents, err := watcher.parseBridgeEventLogs(logs)
+		assert.Error(t, err)
+		assert.EqualError(t, err, targetErr.Error())
+		assert.Empty(t, l2Messages)
+		assert.Empty(t, relayedMessages)
+		assert.Empty(t, rollupEvents)
+	})
+
+	convey.Convey("L1FailedRelayedMessageEventSignature success", t, func() {
+		msgHash := common.HexToHash("0xad3228b676f7d3cd4284a5443f17f1962b36e491b30a40b2405849e597ba5fb5")
+		patchGuard := gomonkey.ApplyFunc(utils.UnpackLog, func(c *abi.ABI, out interface{}, event string, log types.Log) error {
+			tmpOut := out.(*bridge_abi.L1FailedRelayedMessageEvent)
+			tmpOut.MessageHash = msgHash
+			return nil
+		})
+		defer patchGuard.Reset()
+
+		l2Messages, relayedMessages, rollupEvents, err := watcher.parseBridgeEventLogs(logs)
+		assert.NoError(t, err)
+		assert.Empty(t, l2Messages)
+		assert.Empty(t, rollupEvents)
+		assert.Len(t, relayedMessages, 1)
+		assert.Equal(t, relayedMessages[0].msgHash, msgHash)
+	})
+}
+
+func testParseBridgeEventLogsL1CommitBatchEventSignature(t *testing.T) {
+	watcher, _ := setup(t)
+	logs := []geth_types.Log{
+		{
+			Topics:      []common.Hash{bridge_abi.L1CommitBatchEventSignature},
+			BlockNumber: 100,
+			TxHash:      common.HexToHash("0x1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347"),
+		},
+	}
+
+	convey.Convey("unpack CommitBatch log failure", t, func() {
+		targetErr := errors.New("UnpackLog CommitBatch failure")
+		patchGuard := gomonkey.ApplyFunc(utils.UnpackLog, func(c *abi.ABI, out interface{}, event string, log types.Log) error {
+			return targetErr
+		})
+		defer patchGuard.Reset()
+
+		l2Messages, relayedMessages, rollupEvents, err := watcher.parseBridgeEventLogs(logs)
+		assert.Error(t, err)
+		assert.EqualError(t, err, targetErr.Error())
+		assert.Empty(t, l2Messages)
+		assert.Empty(t, relayedMessages)
+		assert.Empty(t, rollupEvents)
+	})
+
+	convey.Convey("L1CommitBatchEventSignature success", t, func() {
+		msgHash := common.HexToHash("0xad3228b676f7d3cd4284a5443f17f1962b36e491b30a40b2405849e597ba5fb5")
+		patchGuard := gomonkey.ApplyFunc(utils.UnpackLog, func(c *abi.ABI, out interface{}, event string, log types.Log) error {
+			tmpOut := out.(*bridge_abi.L1CommitBatchEvent)
+			tmpOut.BatchHash = msgHash
+			return nil
+		})
+		defer patchGuard.Reset()
+
+		l2Messages, relayedMessages, rollupEvents, err := watcher.parseBridgeEventLogs(logs)
+		assert.NoError(t, err)
+		assert.Empty(t, l2Messages)
+		assert.Empty(t, relayedMessages)
+		assert.Len(t, rollupEvents, 1)
+		assert.Equal(t, rollupEvents[0].batchHash, msgHash)
+		assert.Equal(t, rollupEvents[0].status, commonTypes.RollupCommitted)
+	})
+}
+
+func testParseBridgeEventLogsL1FinalizeBatchEventSignature(t *testing.T) {
+	watcher, _ := setup(t)
+	logs := []geth_types.Log{
+		{
+			Topics:      []common.Hash{bridge_abi.L1FinalizeBatchEventSignature},
+			BlockNumber: 100,
+			TxHash:      common.HexToHash("0x1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347"),
+		},
+	}
+
+	convey.Convey("unpack FinalizeBatch log failure", t, func() {
+		targetErr := errors.New("UnpackLog FinalizeBatch failure")
+		patchGuard := gomonkey.ApplyFunc(utils.UnpackLog, func(c *abi.ABI, out interface{}, event string, log types.Log) error {
+			return targetErr
+		})
+		defer patchGuard.Reset()
+
+		l2Messages, relayedMessages, rollupEvents, err := watcher.parseBridgeEventLogs(logs)
+		assert.Error(t, err)
+		assert.EqualError(t, err, targetErr.Error())
+		assert.Empty(t, l2Messages)
+		assert.Empty(t, relayedMessages)
+		assert.Empty(t, rollupEvents)
+	})
+
+	convey.Convey("L1FinalizeBatchEventSignature success", t, func() {
+		msgHash := common.HexToHash("0xad3228b676f7d3cd4284a5443f17f1962b36e491b30a40b2405849e597ba5fb5")
+		patchGuard := gomonkey.ApplyFunc(utils.UnpackLog, func(c *abi.ABI, out interface{}, event string, log types.Log) error {
+			tmpOut := out.(*bridge_abi.L1FinalizeBatchEvent)
+			tmpOut.BatchHash = msgHash
+			return nil
+		})
+		defer patchGuard.Reset()
+
+		l2Messages, relayedMessages, rollupEvents, err := watcher.parseBridgeEventLogs(logs)
+		assert.NoError(t, err)
+		assert.Empty(t, l2Messages)
+		assert.Empty(t, relayedMessages)
+		assert.Len(t, rollupEvents, 1)
+		assert.Equal(t, rollupEvents[0].batchHash, msgHash)
+		assert.Equal(t, rollupEvents[0].status, commonTypes.RollupFinalized)
+	})
 }

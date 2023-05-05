@@ -82,7 +82,11 @@ func TestFunction(t *testing.T) {
 	t.Run("TestStartWatcher", testStartWatcher)
 	t.Run("testL1WatcherClientFetchBlockHeader", testL1WatcherClientFetchBlockHeader)
 	t.Run("testL1WatcherClientFetchContractEvent", testL1WatcherClientFetchContractEvent)
-	t.Run("testParseBridgeEventLogs", testParseBridgeEventLogs)
+	t.Run("testParseBridgeEventLogsL1QueueTransactionEventSignature", testParseBridgeEventLogsL1QueueTransactionEventSignature)
+	t.Run("testParseBridgeEventLogsL1RelayedMessageEventSignature", testParseBridgeEventLogsL1RelayedMessageEventSignature)
+	t.Run("testParseBridgeEventLogsL1FailedRelayedMessageEventSignature", testParseBridgeEventLogsL1FailedRelayedMessageEventSignature)
+	t.Run("testParseBridgeEventLogsL1CommitBatchEventSignature", testParseBridgeEventLogsL1CommitBatchEventSignature)
+	t.Run("testParseBridgeEventLogsL1FinalizeBatchEventSignature", testParseBridgeEventLogsL1FinalizeBatchEventSignature)
 
 	// Run l2 watcher test cases.
 	t.Run("TestCreateNewWatcherAndStop", testCreateNewWatcherAndStop)
