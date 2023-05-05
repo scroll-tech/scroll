@@ -274,3 +274,7 @@ func testL1WatcherClientFetchContractEvent(t *testing.T) {
 		assert.NoError(t, err)
 	})
 }
+
+func testParseBridgeEventLogs(t *testing.T) {
+
+}
