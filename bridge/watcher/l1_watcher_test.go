@@ -73,8 +73,9 @@ func testL1WatcherClientFetchBlockHeader(t *testing.T) {
 			if height == nil {
 				height = big.NewInt(100)
 			}
+			t.Log(height)
 			return &types.Header{
-				BaseFee: big.NewInt(101),
+				BaseFee: big.NewInt(100),
 			}, nil
 		})
 		defer patchGuard.Reset()
@@ -94,6 +95,7 @@ func testL1WatcherClientFetchBlockHeader(t *testing.T) {
 			if height == nil {
 				height = big.NewInt(100)
 			}
+			t.Log(height)
 			return &types.Header{
 				BaseFee: big.NewInt(100),
 			}, nil
@@ -129,6 +131,7 @@ func testL1WatcherClientFetchContractEvent(t *testing.T) {
 		if height == nil {
 			height = big.NewInt(100)
 		}
+		t.Log(height)
 		return &types.Header{
 			Number:  big.NewInt(100),
 			BaseFee: big.NewInt(100),
