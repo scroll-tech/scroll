@@ -3,11 +3,11 @@ package relayer
 import (
 	"context"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 
 	"scroll-tech/common/types"
+	"scroll-tech/common/utils"
 	"scroll-tech/database/migrate"
 
 	"scroll-tech/bridge/sender"
@@ -105,17 +105,13 @@ func testL1RelayerMsgConfirm(t *testing.T) {
 		IsSuccessful: false,
 	})
 
-	// Wait for relayer to handle the confirmations.
-	time.Sleep(100 * time.Millisecond)
-
-	// Check the database for the updated status.
-	msg1, err := db.GetL1MessageByMsgHash("msg-1")
-	assert.NoError(t, err)
-	assert.Equal(t, types.MsgConfirmed, msg1.Status)
-
-	msg2, err := db.GetL1MessageByMsgHash("msg-2")
-	assert.NoError(t, err)
-	assert.Equal(t, types.MsgRelayFailed, msg2.Status)
+	// Check the database for the updated status using TryTimes.
+	utils.TryTimes(5, func() bool {
+		msg1, err1 := db.GetL1MessageByMsgHash("msg-1")
+		msg2, err2 := db.GetL1MessageByMsgHash("msg-2")
+		return err1 == nil && msg1.Status == types.MsgConfirmed &&
+			err2 == nil && msg2.Status == types.MsgRelayFailed
+	})
 }
 
 func testL1RelayerGasOracleConfirm(t *testing.T) {
@@ -126,9 +122,11 @@ func testL1RelayerGasOracleConfirm(t *testing.T) {
 	defer db.Close()
 
 	// Insert test data.
-	assert.NoError(t, db.InsertL1Blocks(context.Background(), []*types.L1BlockInfo{
-		{Hash: "gas-oracle-1", Number: 0}, {Hash: "gas-oracle-2", Number: 1},
-	}))
+	assert.NoError(t, db.InsertL1Blocks(context.Background(),
+		[]*types.L1BlockInfo{
+			{Hash: "gas-oracle-1", Number: 0},
+			{Hash: "gas-oracle-2", Number: 1},
+		}))
 
 	// Create and set up the Layer2 Relayer.
 	l1Cfg := cfg.L1Config
@@ -147,17 +145,11 @@ func testL1RelayerGasOracleConfirm(t *testing.T) {
 		IsSuccessful: false,
 	})
 
-	// Wait for relayer to handle the confirmations.
-	time.Sleep(100 * time.Millisecond)
-
-	// Check the database for the updated status.
-	msg1, err := db.GetL1BlockInfos(map[string]interface{}{"hash": "gas-oracle-1"})
-	assert.NoError(t, err)
-	assert.Equal(t, 1, len(msg1))
-	assert.Equal(t, types.GasOracleImported, msg1[0].GasOracleStatus)
-
-	msg2, err := db.GetL1BlockInfos(map[string]interface{}{"hash": "gas-oracle-2"})
-	assert.NoError(t, err)
-	assert.Equal(t, 1, len(msg2))
-	assert.Equal(t, types.GasOracleFailed, msg2[0].GasOracleStatus)
+	// Check the database for the updated status using TryTimes.
+	utils.TryTimes(5, func() bool {
+		msg1, err1 := db.GetL1BlockInfos(map[string]interface{}{"hash": "gas-oracle-1"})
+		msg2, err2 := db.GetL1BlockInfos(map[string]interface{}{"hash": "gas-oracle-2"})
+		return err1 == nil && len(msg1) == 1 && msg1[0].GasOracleStatus == types.GasOracleImported &&
+			err2 == nil && len(msg2) == 1 && msg2[0].GasOracleStatus == types.GasOracleFailed
+	})
 }

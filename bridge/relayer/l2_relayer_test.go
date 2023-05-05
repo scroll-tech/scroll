@@ -7,13 +7,13 @@ import (
 	"os"
 	"strconv"
 	"testing"
-	"time"
 
 	"github.com/scroll-tech/go-ethereum/common"
 	geth_types "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/stretchr/testify/assert"
 
 	"scroll-tech/common/types"
+	"scroll-tech/common/utils"
 
 	"scroll-tech/bridge/sender"
 
@@ -239,17 +239,13 @@ func testL2RelayerMsgConfirm(t *testing.T) {
 		IsSuccessful: false,
 	})
 
-	// Wait for relayer to handle the confirmations.
-	time.Sleep(100 * time.Millisecond)
-
-	// Check the database for the updated status.
-	msg1, err := db.GetL2MessageByMsgHash("msg-1")
-	assert.NoError(t, err)
-	assert.Equal(t, types.MsgConfirmed, msg1.Status)
-
-	msg2, err := db.GetL2MessageByMsgHash("msg-2")
-	assert.NoError(t, err)
-	assert.Equal(t, types.MsgRelayFailed, msg2.Status)
+	// Check the database for the updated status using TryTimes.
+	utils.TryTimes(5, func() bool {
+		msg1, err1 := db.GetL2MessageByMsgHash("msg-1")
+		msg2, err2 := db.GetL2MessageByMsgHash("msg-2")
+		return err1 == nil && msg1.Status == types.MsgConfirmed &&
+			err2 == nil && msg2.Status == types.MsgRelayFailed
+	})
 }
 
 func testL2RelayerRollupConfirm(t *testing.T) {
@@ -302,25 +298,25 @@ func testL2RelayerRollupConfirm(t *testing.T) {
 		})
 	}
 
-	// Wait for relayer to handle the confirmations.
-	time.Sleep(time.Second)
+	// Check the database for the updated status using TryTimes.
+	utils.TryTimes(5, func() bool {
+		expectedStatuses := []types.RollupStatus{
+			types.RollupCommitted,
+			types.RollupCommitted,
+			types.RollupCommitFailed,
+			types.RollupCommitFailed,
+			types.RollupFinalized,
+			types.RollupFinalizeFailed,
+		}
 
-	// Check the database for the updated status.
-	expectedStatuses := []types.RollupStatus{
-		types.RollupCommitted,
-		types.RollupCommitted,
-		types.RollupCommitFailed,
-		types.RollupCommitFailed,
-		types.RollupFinalized,
-		types.RollupFinalizeFailed,
-	}
-
-	for i, batch := range batches[:6] {
-		batchInDB, err := db.GetBlockBatches(map[string]interface{}{"hash": batch.Hash().Hex()})
-		assert.NoError(t, err)
-		assert.Equal(t, 1, len(batchInDB))
-		assert.Equal(t, expectedStatuses[i], batchInDB[0].RollupStatus)
-	}
+		for i, batch := range batches[:6] {
+			batchInDB, err := db.GetBlockBatches(map[string]interface{}{"hash": batch.Hash().Hex()})
+			if err != nil || len(batchInDB) != 1 || batchInDB[0].RollupStatus != expectedStatuses[i] {
+				return false
+			}
+		}
+		return true
+	})
 }
 
 func testL2RelayerGasOracleConfirm(t *testing.T) {
@@ -359,18 +355,17 @@ func testL2RelayerGasOracleConfirm(t *testing.T) {
 		})
 	}
 
-	// Wait for relayer to handle the confirmations.
-	time.Sleep(100 * time.Millisecond)
-
-	// Check the database for the updated status.
-	expectedStatuses := []types.GasOracleStatus{types.GasOracleImported, types.GasOracleFailed}
-
-	for i, batch := range batches {
-		gasOracle, err := db.GetBlockBatches(map[string]interface{}{"hash": batch.Hash().Hex()})
-		assert.NoError(t, err)
-		assert.Equal(t, 1, len(gasOracle))
-		assert.Equal(t, expectedStatuses[i], gasOracle[0].OracleStatus)
-	}
+	// Check the database for the updated status using TryTimes.
+	utils.TryTimes(5, func() bool {
+		expectedStatuses := []types.GasOracleStatus{types.GasOracleImported, types.GasOracleFailed}
+		for i, batch := range batches {
+			gasOracle, err := db.GetBlockBatches(map[string]interface{}{"hash": batch.Hash().Hex()})
+			if err != nil || len(gasOracle) != 1 || gasOracle[0].OracleStatus != expectedStatuses[i] {
+				return false
+			}
+		}
+		return true
+	})
 }
 
 func genBatchData(t *testing.T, index uint64) *types.BatchData {
