@@ -60,7 +60,7 @@ type AggTaskOrm interface {
 type BlockBatchOrm interface {
 	GetBlockBatches(fields map[string]interface{}, args ...string) ([]*types.BlockBatch, error)
 	GetProvingStatusByHash(hash string) (types.ProvingStatus, error)
-	GetVerifiedProofAndInstanceByHash(hash string) ([]byte, []byte, error)
+	GetVerifiedProofAndInstanceCommitmentsByHash(hash string) ([]byte, []byte, error)
 	UpdateProofByHash(ctx context.Context, hash string, proof, instanceCommitments []byte, proofTimeSec uint64) error
 	UpdateProvingStatus(hash string, status types.ProvingStatus) error
 	ResetProvingStatusFor(before types.ProvingStatus) error
