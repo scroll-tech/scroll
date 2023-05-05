@@ -3,11 +3,11 @@ package coordinator
 import (
 	"crypto/rand"
 	"fmt"
+	"github.com/scroll-tech/go-ethereum/common"
 	"math/big"
 	"time"
 
 	cmap "github.com/orcaman/concurrent-map"
-	geth_types "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/log"
 	geth_metrics "github.com/scroll-tech/go-ethereum/metrics"
 
@@ -36,11 +36,11 @@ type rollerNode struct {
 	*rollerMetrics
 }
 
-func (r *rollerNode) sendTask(id string, traces []*geth_types.BlockTrace) bool {
+func (r *rollerNode) sendTask(id string, blockHashes []common.Hash) bool {
 	select {
 	case r.taskChan <- &message.TaskMsg{
-		ID:     id,
-		Traces: traces,
+		ID:          id,
+		BlockHashes: blockHashes,
 	}:
 		r.TaskIDs.Set(id, struct{}{})
 	default:

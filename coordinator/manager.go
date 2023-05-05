@@ -12,7 +12,6 @@ import (
 	cmap "github.com/orcaman/concurrent-map"
 	"github.com/patrickmn/go-cache"
 	"github.com/scroll-tech/go-ethereum/common"
-	geth_types "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
 	geth_metrics "github.com/scroll-tech/go-ethereum/metrics"
@@ -516,18 +515,9 @@ func (m *Manager) StartProofGenerationSession(task *types.BlockBatch, prevSessio
 		)
 		return false
 	}
-	traces := make([]*geth_types.BlockTrace, len(blockInfos))
+	blockHashes := make([]common.Hash, len(blockInfos))
 	for i, blockInfo := range blockInfos {
-		traces[i], err = m.Client.GetBlockTraceByHash(m.ctx, common.HexToHash(blockInfo.Hash))
-		if err != nil {
-			log.Error(
-				"could not GetBlockTraceByNumber",
-				"block number", blockInfo.Number,
-				"block hash", blockInfo.Hash,
-				"error", err,
-			)
-			return false
-		}
+		blockHashes[i] = common.HexToHash(blockInfo.Hash)
 	}
 
 	// Dispatch task to rollers.
@@ -540,7 +530,7 @@ func (m *Manager) StartProofGenerationSession(task *types.BlockBatch, prevSessio
 		}
 		log.Info("roller is picked", "session id", taskId, "name", roller.Name, "public key", roller.PublicKey)
 		// send trace to roller
-		if !roller.sendTask(taskId, traces) {
+		if !roller.sendTask(taskId, blockHashes) {
 			log.Error("send task failed", "roller name", roller.Name, "public key", roller.PublicKey, "id", taskId)
 			continue
 		}

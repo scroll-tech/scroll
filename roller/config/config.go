@@ -20,9 +20,10 @@ type Config struct {
 
 // ProverConfig load zk prover config.
 type ProverConfig struct {
-	ParamsPath string `json:"params_path"`
-	SeedPath   string `json:"seed_path"`
-	DumpDir    string `json:"dump_dir,omitempty"`
+	ParamsPath  string `json:"params_path"`
+	SeedPath    string `json:"seed_path"`
+	EthEndpoint string `json:"eth_endpoint"`
+	DumpDir     string `json:"dump_dir,omitempty"`
 }
 
 // NewConfig returns a new instance of Config.

@@ -11,7 +11,11 @@ package prover
 import "C" //nolint:typecheck
 
 import (
+	"context"
 	"encoding/json"
+	"github.com/scroll-tech/go-ethereum/common"
+	"github.com/scroll-tech/go-ethereum/core/types"
+	"github.com/scroll-tech/go-ethereum/ethclient"
 	"os"
 	"path/filepath"
 	"unsafe"
@@ -25,11 +29,17 @@ import (
 
 // Prover sends block-traces to rust-prover through ffi and get back the zk-proof.
 type Prover struct {
-	cfg *config.ProverConfig
+	cfg    *config.ProverConfig
+	ethCli *ethclient.Client
 }
 
 // NewProver inits a Prover object.
 func NewProver(cfg *config.ProverConfig) (*Prover, error) {
+	ethCli, err := ethclient.Dial(cfg.EthEndpoint)
+	if err != nil {
+		return nil, err
+	}
+
 	paramsPathStr := C.CString(cfg.ParamsPath)
 	seedPathStr := C.CString(cfg.SeedPath)
 	defer func() {
@@ -46,12 +56,16 @@ func NewProver(cfg *config.ProverConfig) (*Prover, error) {
 		log.Info("Enabled dump_proof", "dir", cfg.DumpDir)
 	}
 
-	return &Prover{cfg: cfg}, nil
+	return &Prover{cfg: cfg, ethCli: ethCli}, nil
 }
 
 // Prove call rust ffi to generate proof, if first failed, try again.
 func (p *Prover) Prove(task *message.TaskMsg) (*message.AggProof, error) {
-	tracesByt, err := json.Marshal(task.Traces)
+	traces, err := p.getTracesByHashes(task.BlockHashes)
+	if err != nil {
+		return nil, err
+	}
+	tracesByt, err := json.Marshal(traces)
 	if err != nil {
 		return nil, err
 	}
@@ -82,6 +96,18 @@ func (p *Prover) prove(tracesByt []byte) []byte {
 
 	proof := C.GoString(cProof)
 	return []byte(proof)
+}
+
+func (p *Prover) getTracesByHashes(blockHashes []common.Hash) ([]*types.BlockTrace, error) {
+	var traces []*types.BlockTrace
+	for _, blockHash := range blockHashes {
+		trace, err := p.ethCli.GetBlockTraceByHash(context.Background(), blockHash)
+		if err != nil {
+			return nil, err
+		}
+		traces = append(traces, trace)
+	}
+	return traces, nil
 }
 
 func (p *Prover) dumpProof(id string, proofByt []byte) error {

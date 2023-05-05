@@ -7,7 +7,6 @@ import (
 
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/common/hexutil"
-	"github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/crypto"
 	"github.com/scroll-tech/go-ethereum/rlp"
 )
@@ -178,8 +177,8 @@ func (a *ProofMsg) PublicKey() (string, error) {
 
 // TaskMsg is a wrapper type around db ProveTask type.
 type TaskMsg struct {
-	ID     string              `json:"id"`
-	Traces []*types.BlockTrace `json:"blockTraces"`
+	ID          string        `json:"id"`
+	BlockHashes []common.Hash `json:"block_hashes"`
 }
 
 // ProofDetail is the message received from rollers that contains zk proof, the status of

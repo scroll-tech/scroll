@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"math"
-	"sort"
 	"sync/atomic"
 	"time"
 
@@ -209,12 +208,6 @@ func (r *Roller) prove() error {
 		if err = r.stack.UpdateTimes(task, task.Times+1); err != nil {
 			return err
 		}
-
-		// Sort BlockTraces by header number.
-		traces := task.Task.Traces
-		sort.Slice(traces, func(i, j int) bool {
-			return traces[i].Header.Number.Int64() < traces[j].Header.Number.Int64()
-		})
 
 		log.Info("start to prove block", "task-id", task.Task.ID)
 
