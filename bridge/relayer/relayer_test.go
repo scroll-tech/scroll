@@ -102,6 +102,8 @@ func TestFunctions(t *testing.T) {
 	t.Run("TestL1RelayerProcessSaveEvents", testL1RelayerProcessSaveEvents)
 	t.Run("TestL1RelayerMsgConfirm", testL1RelayerMsgConfirm)
 	t.Run("TestL1RelayerGasOracleConfirm", testL1RelayerGasOracleConfirm)
+	t.Run("testProcessGasPriceOracle", testProcessGasPriceOracle)
+
 	// Run l2 relayer test cases.
 	t.Run("TestCreateNewRelayer", testCreateNewRelayer)
 	t.Run("TestL2RelayerProcessSaveEvents", testL2RelayerProcessSaveEvents)

@@ -2,8 +2,13 @@ package relayer
 
 import (
 	"context"
-	"github.com/smartystreets/goconvey/convey"
+	"errors"
+	"math/big"
 	"testing"
+
+	"github.com/agiledragon/gomonkey/v2"
+	"github.com/scroll-tech/go-ethereum/common"
+	"github.com/smartystreets/goconvey/convey"
 
 	"github.com/stretchr/testify/assert"
 
@@ -161,7 +166,95 @@ func testProcessGasPriceOracle(t *testing.T) {
 	assert.NoError(t, migrate.ResetDB(db.GetDB().DB))
 	defer db.Close()
 
+	l1Cfg := cfg.L1Config
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	l1Relayer, err := NewLayer1Relayer(ctx, db, l1Cfg.RelayerConfig)
+	assert.NoError(t, err)
+
 	convey.Convey("GetLatestL1BlockHeight failure", t, func() {
-		
+		targetErr := errors.New("GetLatestL1BlockHeight error")
+		patchGuard := gomonkey.ApplyMethodFunc(db, "GetLatestL1BlockHeight", func() (uint64, error) {
+			return 0, targetErr
+		})
+		defer patchGuard.Reset()
+		l1Relayer.ProcessGasPriceOracle()
 	})
+
+	patchGuard := gomonkey.ApplyMethodFunc(db, "GetLatestL1BlockHeight", func() (uint64, error) {
+		return 100, nil
+	})
+	defer patchGuard.Reset()
+
+	convey.Convey("GetL1BlockInfos failure", t, func() {
+		targetErr := errors.New("GetL1BlockInfos error")
+		patchGuard := gomonkey.ApplyMethodFunc(db, "GetL1BlockInfos", func(fields map[string]interface{}, args ...string) ([]*types.L1BlockInfo, error) {
+			return nil, targetErr
+		})
+		defer patchGuard.Reset()
+		l1Relayer.ProcessGasPriceOracle()
+	})
+
+	convey.Convey("Block not exist", t, func() {
+		patchGuard.ApplyMethodFunc(db, "GetL1BlockInfos", func(fields map[string]interface{}, args ...string) ([]*types.L1BlockInfo, error) {
+			tmpInfo := []*types.L1BlockInfo{
+				{Hash: "gas-oracle-1", Number: 0},
+				{Hash: "gas-oracle-2", Number: 1},
+			}
+			return tmpInfo, nil
+		})
+		l1Relayer.ProcessGasPriceOracle()
+	})
+
+	patchGuard.ApplyMethodFunc(db, "GetL1BlockInfos", func(fields map[string]interface{}, args ...string) ([]*types.L1BlockInfo, error) {
+		tmpInfo := []*types.L1BlockInfo{
+			{
+				Hash:            "gas-oracle-1",
+				Number:          0,
+				GasOracleStatus: types.GasOraclePending,
+			},
+		}
+		return tmpInfo, nil
+	})
+
+	convey.Convey("setL1BaseFee failure", t, func() {
+		targetErr := errors.New("pack setL1BaseFee error")
+		patchGuard := gomonkey.ApplyMethodFunc(l1Relayer.l1GasOracleABI, "Pack", func(name string, args ...interface{}) ([]byte, error) {
+			return nil, targetErr
+		})
+		patchGuard.Reset()
+		l1Relayer.ProcessGasPriceOracle()
+	})
+
+	patchGuard.ApplyMethodFunc(l1Relayer.l1GasOracleABI, "Pack", func(name string, args ...interface{}) ([]byte, error) {
+		return []byte("for test"), nil
+	})
+
+	convey.Convey("send transaction failure", t, func() {
+		targetErr := errors.New("send transaction failure")
+		patchGuard := gomonkey.ApplyMethodFunc(l1Relayer.gasOracleSender, "SendTransaction", func(string, *common.Address, *big.Int, []byte, uint64) (hash common.Hash, err error) {
+			return common.Hash{}, targetErr
+		})
+		patchGuard.Reset()
+		l1Relayer.ProcessGasPriceOracle()
+	})
+
+	patchGuard.ApplyMethodFunc(l1Relayer.gasOracleSender, "SendTransaction", func(string, *common.Address, *big.Int, []byte, uint64) (hash common.Hash, err error) {
+		return common.Hash{}, nil
+	})
+
+	convey.Convey("UpdateL1GasOracleStatusAndOracleTxHash failure", t, func() {
+		targetErr := errors.New("UpdateL1GasOracleStatusAndOracleTxHash failure")
+		patchGuard := gomonkey.ApplyMethodFunc(db, "UpdateL1GasOracleStatusAndOracleTxHash", func(context.Context, string, types.GasOracleStatus, string) error {
+			return targetErr
+		})
+		patchGuard.Reset()
+		l1Relayer.ProcessGasPriceOracle()
+	})
+
+	patchGuard.ApplyMethodFunc(db, "UpdateL1GasOracleStatusAndOracleTxHash", func(context.Context, string, types.GasOracleStatus, string) error {
+		return nil
+	})
+
+	l1Relayer.ProcessGasPriceOracle()
 }
