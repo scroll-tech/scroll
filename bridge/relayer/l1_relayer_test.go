@@ -2,6 +2,7 @@ package relayer
 
 import (
 	"context"
+	"github.com/smartystreets/goconvey/convey"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -151,5 +152,16 @@ func testL1RelayerGasOracleConfirm(t *testing.T) {
 		msg2, err2 := db.GetL1BlockInfos(map[string]interface{}{"hash": "gas-oracle-2"})
 		return err1 == nil && len(msg1) == 1 && msg1[0].GasOracleStatus == types.GasOracleImported &&
 			err2 == nil && len(msg2) == 1 && msg2[0].GasOracleStatus == types.GasOracleFailed
+	})
+}
+
+func testProcessGasPriceOracle(t *testing.T) {
+	db, err := database.NewOrmFactory(cfg.DBConfig)
+	assert.NoError(t, err)
+	assert.NoError(t, migrate.ResetDB(db.GetDB().DB))
+	defer db.Close()
+
+	convey.Convey("GetLatestL1BlockHeight failure", t, func() {
+		
 	})
 }
