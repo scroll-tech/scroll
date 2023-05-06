@@ -32,8 +32,8 @@ import (
 	"scroll-tech/coordinator/verifier"
 
 	"scroll-tech/common/docker"
-	"scroll-tech/common/message"
 	"scroll-tech/common/types"
+	"scroll-tech/common/types/message"
 	"scroll-tech/common/utils"
 )
 
@@ -145,7 +145,7 @@ func testFailedHandshake(t *testing.T) {
 			Timestamp: uint32(time.Now().Unix()),
 		},
 	}
-	assert.NoError(t, authMsg.Sign(privkey))
+	assert.NoError(t, authMsg.SignWithKey(privkey))
 	_, err = client.RegisterAndSubscribe(ctx, make(chan *message.TaskMsg, 4), authMsg)
 	assert.Error(t, err)
 
@@ -163,12 +163,12 @@ func testFailedHandshake(t *testing.T) {
 			Timestamp: uint32(time.Now().Unix()),
 		},
 	}
-	assert.NoError(t, authMsg.Sign(privkey))
+	assert.NoError(t, authMsg.SignWithKey(privkey))
 	token, err := client.RequestToken(ctx, authMsg)
 	assert.NoError(t, err)
 
 	authMsg.Identity.Token = token
-	assert.NoError(t, authMsg.Sign(privkey))
+	assert.NoError(t, authMsg.SignWithKey(privkey))
 
 	<-time.After(6 * time.Second)
 	_, err = client.RegisterAndSubscribe(ctx, make(chan *message.TaskMsg, 4), authMsg)
@@ -742,14 +742,14 @@ func (r *mockRoller) connectToCoordinator() (*client2.Client, ethereum.Subscript
 			Timestamp: uint32(time.Now().Unix()),
 		},
 	}
-	_ = authMsg.Sign(r.privKey)
+	_ = authMsg.SignWithKey(r.privKey)
 
 	token, err := client.RequestToken(context.Background(), authMsg)
 	if err != nil {
 		return nil, nil, err
 	}
 	authMsg.Identity.Token = token
-	_ = authMsg.Sign(r.privKey)
+	_ = authMsg.SignWithKey(r.privKey)
 
 	sub, err := client.RegisterAndSubscribe(context.Background(), r.taskCh, authMsg)
 	if err != nil {

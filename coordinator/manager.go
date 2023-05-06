@@ -20,10 +20,9 @@ import (
 
 	"scroll-tech/database"
 
-	"scroll-tech/common/message"
 	"scroll-tech/common/metrics"
 	"scroll-tech/common/types"
-
+	"scroll-tech/common/types/message"
 	"scroll-tech/common/utils/workerpool"
 
 	"scroll-tech/coordinator/config"

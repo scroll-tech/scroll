@@ -456,12 +456,12 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 			}
 		}()
 
-		proofBuffer, instanceBuffer, err := r.db.GetVerifiedProofAndInstanceByHash(hash)
+		proofBuffer, icBuffer, err := r.db.GetVerifiedProofAndInstanceCommitmentsByHash(hash)
 		if err != nil {
 			log.Warn("fetch get proof by hash failed", "hash", hash, "err", err)
 			return
 		}
-		if proofBuffer == nil || instanceBuffer == nil {
+		if proofBuffer == nil || icBuffer == nil {
 			log.Warn("proof or instance not ready", "hash", hash)
 			return
 		}
@@ -469,13 +469,13 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 			log.Error("proof buffer has wrong length", "hash", hash, "length", len(proofBuffer))
 			return
 		}
-		if len(instanceBuffer)%32 != 0 {
-			log.Warn("instance buffer has wrong length", "hash", hash, "length", len(instanceBuffer))
+		if len(icBuffer)%32 != 0 {
+			log.Warn("instance buffer has wrong length", "hash", hash, "length", len(icBuffer))
 			return
 		}
 
 		proof := utils.BufferToUint256Le(proofBuffer)
-		instance := utils.BufferToUint256Le(instanceBuffer)
+		instance := utils.BufferToUint256Le(icBuffer)
 		data, err := r.l1RollupABI.Pack("finalizeBatchWithProof", common.HexToHash(hash), proof, instance)
 		if err != nil {
 			log.Error("Pack finalizeBatchWithProof failed", "err", err)

@@ -3,7 +3,7 @@ set -uex
 
 profile_name=$1
 
-exclude_dirs=("scroll-tech/bridge/cmd" "scroll-tech/bridge/tests" "scroll-tech/bridge/mock_bridge" "scroll-tech/coordinator/cmd" "scroll-tech/coordinator/config")
+exclude_dirs=("scroll-tech/bridge/cmd" "scroll-tech/bridge/tests" "scroll-tech/bridge/mock_bridge" "scroll-tech/coordinator/cmd")
 
 all_packages=$(go list ./... | grep -v "^scroll-tech/${profile_name}$")
 coverpkg="scroll-tech/${profile_name}"
@@ -23,4 +23,4 @@ for pkg in $all_packages; do
 done
 
 echo "coverage.${profile_name}.txt"
-go test -v -race -coverpkg="$coverpkg" -coverprofile=../coverage.${profile_name}.txt -covermode=atomic ./...
+go test -v -race -gcflags="-l" -ldflags="-s=false" -coverpkg="$coverpkg" -coverprofile=../coverage.${profile_name}.txt -covermode=atomic ./...
