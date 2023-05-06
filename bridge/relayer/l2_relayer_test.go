@@ -1,4 +1,4 @@
-package relayer_test
+package relayer
 
 import (
 	"context"
@@ -13,8 +13,9 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"scroll-tech/common/types"
+	"scroll-tech/common/utils"
 
-	"scroll-tech/bridge/relayer"
+	"scroll-tech/bridge/sender"
 
 	"scroll-tech/database"
 	"scroll-tech/database/migrate"
@@ -41,7 +42,7 @@ func testCreateNewRelayer(t *testing.T) {
 	assert.NoError(t, migrate.ResetDB(db.GetDB().DB))
 	defer db.Close()
 
-	relayer, err := relayer.NewLayer2Relayer(context.Background(), l2Cli, db, cfg.L2Config.RelayerConfig)
+	relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, cfg.L2Config.RelayerConfig)
 	assert.NoError(t, err)
 	assert.NotNil(t, relayer)
 }
@@ -54,7 +55,7 @@ func testL2RelayerProcessSaveEvents(t *testing.T) {
 	defer db.Close()
 
 	l2Cfg := cfg.L2Config
-	relayer, err := relayer.NewLayer2Relayer(context.Background(), l2Cli, db, l2Cfg.RelayerConfig)
+	relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, l2Cfg.RelayerConfig)
 	assert.NoError(t, err)
 
 	err = db.SaveL2Messages(context.Background(), templateL2Message)
@@ -80,8 +81,8 @@ func testL2RelayerProcessSaveEvents(t *testing.T) {
 
 	parentBatch1 := &types.BlockBatch{
 		Index:     0,
-		Hash:      common.Hash{}.String(),
-		StateRoot: common.Hash{}.String(),
+		Hash:      common.Hash{}.Hex(),
+		StateRoot: common.Hash{}.Hex(),
 	}
 	batchData1 := types.NewBatchData(parentBatch1, []*types.WrappedBlock{wrappedBlock1}, nil)
 	dbTx, err := db.Beginx()
@@ -109,13 +110,13 @@ func testL2RelayerProcessCommittedBatches(t *testing.T) {
 	defer db.Close()
 
 	l2Cfg := cfg.L2Config
-	relayer, err := relayer.NewLayer2Relayer(context.Background(), l2Cli, db, l2Cfg.RelayerConfig)
+	relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, l2Cfg.RelayerConfig)
 	assert.NoError(t, err)
 
 	parentBatch1 := &types.BlockBatch{
 		Index:     0,
-		Hash:      common.Hash{}.String(),
-		StateRoot: common.Hash{}.String(),
+		Hash:      common.Hash{}.Hex(),
+		StateRoot: common.Hash{}.Hex(),
 	}
 	batchData1 := types.NewBatchData(parentBatch1, []*types.WrappedBlock{wrappedBlock1}, nil)
 	dbTx, err := db.Beginx()
@@ -150,7 +151,7 @@ func testL2RelayerSkipBatches(t *testing.T) {
 	defer db.Close()
 
 	l2Cfg := cfg.L2Config
-	relayer, err := relayer.NewLayer2Relayer(context.Background(), l2Cli, db, l2Cfg.RelayerConfig)
+	relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, l2Cfg.RelayerConfig)
 	assert.NoError(t, err)
 
 	createBatch := func(rollupStatus types.RollupStatus, provingStatus types.ProvingStatus, index uint64) string {
@@ -205,6 +206,166 @@ func testL2RelayerSkipBatches(t *testing.T) {
 		assert.NoError(t, err)
 		assert.NotEqual(t, types.RollupFinalizationSkipped, status)
 	}
+}
+
+func testL2RelayerMsgConfirm(t *testing.T) {
+	// Set up the database and defer closing it.
+	db, err := database.NewOrmFactory(cfg.DBConfig)
+	assert.NoError(t, err)
+	assert.NoError(t, migrate.ResetDB(db.GetDB().DB))
+	defer db.Close()
+
+	// Insert test data.
+	assert.NoError(t, db.SaveL2Messages(context.Background(), []*types.L2Message{
+		{MsgHash: "msg-1", Nonce: 0}, {MsgHash: "msg-2", Nonce: 1},
+	}))
+
+	// Create and set up the Layer2 Relayer.
+	l2Cfg := cfg.L2Config
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	l2Relayer, err := NewLayer2Relayer(ctx, l2Cli, db, l2Cfg.RelayerConfig)
+	assert.NoError(t, err)
+
+	// Simulate message confirmations.
+	l2Relayer.processingMessage.Store("msg-1", "msg-1")
+	l2Relayer.messageSender.SendConfirmation(&sender.Confirmation{
+		ID:           "msg-1",
+		IsSuccessful: true,
+	})
+	l2Relayer.processingMessage.Store("msg-2", "msg-2")
+	l2Relayer.messageSender.SendConfirmation(&sender.Confirmation{
+		ID:           "msg-2",
+		IsSuccessful: false,
+	})
+
+	// Check the database for the updated status using TryTimes.
+	utils.TryTimes(5, func() bool {
+		msg1, err1 := db.GetL2MessageByMsgHash("msg-1")
+		msg2, err2 := db.GetL2MessageByMsgHash("msg-2")
+		return err1 == nil && msg1.Status == types.MsgConfirmed &&
+			err2 == nil && msg2.Status == types.MsgRelayFailed
+	})
+}
+
+func testL2RelayerRollupConfirm(t *testing.T) {
+	// Set up the database and defer closing it.
+	db, err := database.NewOrmFactory(cfg.DBConfig)
+	assert.NoError(t, err)
+	assert.NoError(t, migrate.ResetDB(db.GetDB().DB))
+	defer db.Close()
+
+	// Insert test data.
+	batches := make([]*types.BatchData, 6)
+	for i := 0; i < 6; i++ {
+		batches[i] = genBatchData(t, uint64(i))
+	}
+
+	dbTx, err := db.Beginx()
+	assert.NoError(t, err)
+	for _, batch := range batches {
+		assert.NoError(t, db.NewBatchInDBTx(dbTx, batch))
+	}
+	assert.NoError(t, dbTx.Commit())
+
+	// Create and set up the Layer2 Relayer.
+	l2Cfg := cfg.L2Config
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	l2Relayer, err := NewLayer2Relayer(ctx, l2Cli, db, l2Cfg.RelayerConfig)
+	assert.NoError(t, err)
+
+	// Simulate message confirmations.
+	processingKeys := []string{"committed-1", "committed-2", "finalized-1", "finalized-2"}
+	isSuccessful := []bool{true, false, true, false}
+
+	for i, key := range processingKeys[:2] {
+		batchHashes := []string{batches[i*2].Hash().Hex(), batches[i*2+1].Hash().Hex()}
+		l2Relayer.processingBatchesCommitment.Store(key, batchHashes)
+		l2Relayer.messageSender.SendConfirmation(&sender.Confirmation{
+			ID:           key,
+			IsSuccessful: isSuccessful[i],
+		})
+	}
+
+	for i, key := range processingKeys[2:] {
+		batchHash := batches[i+4].Hash().Hex()
+		l2Relayer.processingFinalization.Store(key, batchHash)
+		l2Relayer.rollupSender.SendConfirmation(&sender.Confirmation{
+			ID:           key,
+			IsSuccessful: isSuccessful[i+2],
+			TxHash:       common.HexToHash("0x56789abcdef1234"),
+		})
+	}
+
+	// Check the database for the updated status using TryTimes.
+	utils.TryTimes(5, func() bool {
+		expectedStatuses := []types.RollupStatus{
+			types.RollupCommitted,
+			types.RollupCommitted,
+			types.RollupCommitFailed,
+			types.RollupCommitFailed,
+			types.RollupFinalized,
+			types.RollupFinalizeFailed,
+		}
+
+		for i, batch := range batches[:6] {
+			batchInDB, err := db.GetBlockBatches(map[string]interface{}{"hash": batch.Hash().Hex()})
+			if err != nil || len(batchInDB) != 1 || batchInDB[0].RollupStatus != expectedStatuses[i] {
+				return false
+			}
+		}
+		return true
+	})
+}
+
+func testL2RelayerGasOracleConfirm(t *testing.T) {
+	// Set up the database and defer closing it.
+	db, err := database.NewOrmFactory(cfg.DBConfig)
+	assert.NoError(t, err)
+	assert.NoError(t, migrate.ResetDB(db.GetDB().DB))
+	defer db.Close()
+
+	// Insert test data.
+	batches := make([]*types.BatchData, 2)
+	for i := 0; i < 2; i++ {
+		batches[i] = genBatchData(t, uint64(i))
+	}
+
+	dbTx, err := db.Beginx()
+	assert.NoError(t, err)
+	for _, batch := range batches {
+		assert.NoError(t, db.NewBatchInDBTx(dbTx, batch))
+	}
+	assert.NoError(t, dbTx.Commit())
+
+	// Create and set up the Layer2 Relayer.
+	l2Cfg := cfg.L2Config
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	l2Relayer, err := NewLayer2Relayer(ctx, l2Cli, db, l2Cfg.RelayerConfig)
+	assert.NoError(t, err)
+
+	// Simulate message confirmations.
+	isSuccessful := []bool{true, false}
+	for i, batch := range batches {
+		l2Relayer.gasOracleSender.SendConfirmation(&sender.Confirmation{
+			ID:           batch.Hash().Hex(),
+			IsSuccessful: isSuccessful[i],
+		})
+	}
+
+	// Check the database for the updated status using TryTimes.
+	utils.TryTimes(5, func() bool {
+		expectedStatuses := []types.GasOracleStatus{types.GasOracleImported, types.GasOracleFailed}
+		for i, batch := range batches {
+			gasOracle, err := db.GetBlockBatches(map[string]interface{}{"hash": batch.Hash().Hex()})
+			if err != nil || len(gasOracle) != 1 || gasOracle[0].OracleStatus != expectedStatuses[i] {
+				return false
+			}
+		}
+		return true
+	})
 }
 
 func genBatchData(t *testing.T, index uint64) *types.BatchData {
