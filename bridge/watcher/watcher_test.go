@@ -93,6 +93,10 @@ func TestFunction(t *testing.T) {
 	t.Run("TestMonitorBridgeContract", testMonitorBridgeContract)
 	t.Run("TestFetchMultipleSentMessageInOneBlock", testFetchMultipleSentMessageInOneBlock)
 	t.Run("TestFetchRunningMissingBlocks", testFetchRunningMissingBlocks)
+	t.Run("testParseBridgeEventLogsL2SentMessageEventSignature", testParseBridgeEventLogsL2SentMessageEventSignature)
+	t.Run("testParseBridgeEventLogsL2RelayedMessageEventSignature", testParseBridgeEventLogsL2RelayedMessageEventSignature)
+	t.Run("testParseBridgeEventLogsL2FailedRelayedMessageEventSignature", testParseBridgeEventLogsL2FailedRelayedMessageEventSignature)
+	t.Run("testParseBridgeEventLogsL2AppendMessageEventSignature", testParseBridgeEventLogsL2AppendMessageEventSignature)
 
 	// Run batch proposer test cases.
 	t.Run("TestBatchProposerProposeBatch", testBatchProposerProposeBatch)

@@ -26,7 +26,7 @@ import (
 	"scroll-tech/database/migrate"
 )
 
-func setup(t *testing.T) (*L1WatcherClient, database.OrmFactory) {
+func setupL1Watcher(t *testing.T) (*L1WatcherClient, database.OrmFactory) {
 	db, err := database.NewOrmFactory(cfg.DBConfig)
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(db.GetDB().DB))
@@ -43,12 +43,12 @@ func setup(t *testing.T) (*L1WatcherClient, database.OrmFactory) {
 }
 
 func testStartWatcher(t *testing.T) {
-	watcher, _ := setup(t)
+	watcher, _ := setupL1Watcher(t)
 	assert.NoError(t, watcher.FetchContractEvent())
 }
 
 func testL1WatcherClientFetchBlockHeader(t *testing.T) {
-	watcher, db := setup(t)
+	watcher, db := setupL1Watcher(t)
 	convey.Convey("test toBlock < fromBlock", t, func() {
 		blockHeight := watcher.ProcessedBlockHeight() - 1
 		err := watcher.FetchBlockHeader(blockHeight)
@@ -113,7 +113,7 @@ func testL1WatcherClientFetchBlockHeader(t *testing.T) {
 }
 
 func testL1WatcherClientFetchContractEvent(t *testing.T) {
-	watcher, db := setup(t)
+	watcher, db := setupL1Watcher(t)
 
 	watcher.SetConfirmations(rpc.SafeBlockNumber)
 	convey.Convey("get latest confirmed block number failure", t, func() {
@@ -289,7 +289,7 @@ func testL1WatcherClientFetchContractEvent(t *testing.T) {
 }
 
 func testParseBridgeEventLogsL1QueueTransactionEventSignature(t *testing.T) {
-	watcher, _ := setup(t)
+	watcher, _ := setupL1Watcher(t)
 	logs := []geth_types.Log{
 		{
 			Topics:      []common.Hash{bridge_abi.L1QueueTransactionEventSignature},
@@ -344,7 +344,7 @@ func testParseBridgeEventLogsL1QueueTransactionEventSignature(t *testing.T) {
 }
 
 func testParseBridgeEventLogsL1RelayedMessageEventSignature(t *testing.T) {
-	watcher, _ := setup(t)
+	watcher, _ := setupL1Watcher(t)
 	logs := []geth_types.Log{
 		{
 			Topics:      []common.Hash{bridge_abi.L1RelayedMessageEventSignature},
@@ -387,7 +387,7 @@ func testParseBridgeEventLogsL1RelayedMessageEventSignature(t *testing.T) {
 }
 
 func testParseBridgeEventLogsL1FailedRelayedMessageEventSignature(t *testing.T) {
-	watcher, _ := setup(t)
+	watcher, _ := setupL1Watcher(t)
 	logs := []geth_types.Log{
 		{
 			Topics:      []common.Hash{bridge_abi.L1FailedRelayedMessageEventSignature},
@@ -430,7 +430,7 @@ func testParseBridgeEventLogsL1FailedRelayedMessageEventSignature(t *testing.T) 
 }
 
 func testParseBridgeEventLogsL1CommitBatchEventSignature(t *testing.T) {
-	watcher, _ := setup(t)
+	watcher, _ := setupL1Watcher(t)
 	logs := []geth_types.Log{
 		{
 			Topics:      []common.Hash{bridge_abi.L1CommitBatchEventSignature},
@@ -474,7 +474,7 @@ func testParseBridgeEventLogsL1CommitBatchEventSignature(t *testing.T) {
 }
 
 func testParseBridgeEventLogsL1FinalizeBatchEventSignature(t *testing.T) {
-	watcher, _ := setup(t)
+	watcher, _ := setupL1Watcher(t)
 	logs := []geth_types.Log{
 		{
 			Topics:      []common.Hash{bridge_abi.L1FinalizeBatchEventSignature},
