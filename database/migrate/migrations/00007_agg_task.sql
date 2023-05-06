@@ -21,7 +21,7 @@ create unique index agg_task_hash_uindex
 CREATE OR REPLACE FUNCTION update_timestamp()
 RETURNS TRIGGER AS $$
 BEGIN
-   NEW.updated_time = CURRENT_TIMESTAMP;
+   NEW.updated_at = CURRENT_TIMESTAMP;
    RETURN NEW;
 END;
 $$ language 'plpgsql';
