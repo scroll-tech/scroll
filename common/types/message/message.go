@@ -22,6 +22,27 @@ const (
 	StatusProofError
 )
 
+// ProveType represents the type of roller.
+type ProveType uint8
+
+func (r ProveType) String() string {
+	switch r {
+	case BasicProve:
+		return "Basic Prove"
+	case AggregatorProve:
+		return "Aggregator Prove"
+	default:
+		return "Illegal Prove type"
+	}
+}
+
+const (
+	// BasicProve is default roller, it only generates zk proof from traces.
+	BasicProve ProveType = iota
+	// AggregatorProve generates zk proof from other zk proofs and aggregate them into one proof.
+	AggregatorProve
+)
+
 // AuthMsg is the first message exchanged from the Roller to the Sequencer.
 // It effectively acts as a registration, and makes the Roller identification
 // known to the Sequencer.
@@ -36,6 +57,8 @@ type AuthMsg struct {
 type Identity struct {
 	// Roller name
 	Name string `json:"name"`
+	// Roller RollerType
+	RollerType ProveType `json:"roller_type,omitempty"`
 	// Unverified Unix timestamp of message creation
 	Timestamp uint32 `json:"timestamp"`
 	// Version is common.Version+ZkVersion. Use the following to check the latest ZkVersion version.
@@ -178,14 +201,19 @@ func (a *ProofMsg) PublicKey() (string, error) {
 
 // TaskMsg is a wrapper type around db ProveTask type.
 type TaskMsg struct {
-	ID     string              `json:"id"`
-	Traces []*types.BlockTrace `json:"blockTraces"`
+	ID   string    `json:"id"`
+	Type ProveType `json:"type,omitempty"`
+	// Only basic rollers need traces, aggregator rollers don't!
+	Traces []*types.BlockTrace `json:"blockTraces,omitempty"`
+	// Only aggregator rollers need proofs to aggregate, basic rollers don't!
+	SubProofs [][]byte `json:"sub_proofs,omitempty"`
 }
 
 // ProofDetail is the message received from rollers that contains zk proof, the status of
 // the proof generation succeeded, and an error message if proof generation failed.
 type ProofDetail struct {
 	ID     string     `json:"id"`
+	Type   ProveType  `json:"type,omitempty"`
 	Status RespStatus `json:"status"`
 	Proof  *AggProof  `json:"proof"`
 	Error  string     `json:"error,omitempty"`

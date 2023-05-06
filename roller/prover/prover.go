@@ -51,15 +51,20 @@ func NewProver(cfg *config.ProverConfig) (*Prover, error) {
 
 // Prove call rust ffi to generate proof, if first failed, try again.
 func (p *Prover) Prove(task *message.TaskMsg) (*message.AggProof, error) {
-	tracesByt, err := json.Marshal(task.Traces)
-	if err != nil {
-		return nil, err
+	var proofByt []byte
+	if p.cfg.ProveType == message.BasicProve {
+		tracesByt, err := json.Marshal(task.Traces)
+		if err != nil {
+			return nil, err
+		}
+
+		proofByt = p.prove(tracesByt)
+	} else if p.cfg.ProveType == message.AggregatorProve {
+		// TODO: aggregator prove
 	}
 
-	proofByt := p.prove(tracesByt)
-
 	// dump proof
-	err = p.dumpProof(task.ID, proofByt)
+	err := p.dumpProof(task.ID, proofByt)
 	if err != nil {
 		log.Error("Dump proof failed", "task-id", task.ID, "error", err)
 	}
