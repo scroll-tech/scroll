@@ -32,7 +32,7 @@ import (
 	"scroll-tech/database/migrate"
 )
 
-func setupL2Watcher(t *testing.T) (*L2WatcherClient, database.OrmFactory) {
+func setupL2Watcher(t *testing.T) *L2WatcherClient {
 	db, err := database.NewOrmFactory(cfg.DBConfig)
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(db.GetDB().DB))
@@ -40,7 +40,7 @@ func setupL2Watcher(t *testing.T) (*L2WatcherClient, database.OrmFactory) {
 
 	l2cfg := cfg.L2Config
 	watcher := NewL2WatcherClient(context.Background(), l2Cli, l2cfg.Confirmations, l2cfg.L2MessengerAddress, l2cfg.L2MessageQueueAddress, l2cfg.WithdrawTrieRootSlot, db)
-	return watcher, db
+	return watcher
 }
 
 func testCreateNewWatcherAndStop(t *testing.T) {
@@ -273,7 +273,7 @@ func loopToFetchEvent(subCtx context.Context, watcher *L2WatcherClient) {
 }
 
 func testParseBridgeEventLogsL2SentMessageEventSignature(t *testing.T) {
-	watcher, _ := setupL2Watcher(t)
+	watcher := setupL2Watcher(t)
 	logs := []geth_types.Log{
 		{
 			Topics: []common.Hash{
@@ -325,7 +325,7 @@ func testParseBridgeEventLogsL2SentMessageEventSignature(t *testing.T) {
 }
 
 func testParseBridgeEventLogsL2RelayedMessageEventSignature(t *testing.T) {
-	watcher, _ := setupL2Watcher(t)
+	watcher := setupL2Watcher(t)
 	logs := []geth_types.Log{
 		{
 			Topics:      []common.Hash{bridge_abi.L2RelayedMessageEventSignature},
@@ -366,7 +366,7 @@ func testParseBridgeEventLogsL2RelayedMessageEventSignature(t *testing.T) {
 }
 
 func testParseBridgeEventLogsL2FailedRelayedMessageEventSignature(t *testing.T) {
-	watcher, _ := setupL2Watcher(t)
+	watcher := setupL2Watcher(t)
 	logs := []geth_types.Log{
 		{
 			Topics:      []common.Hash{bridge_abi.L2FailedRelayedMessageEventSignature},
@@ -407,7 +407,7 @@ func testParseBridgeEventLogsL2FailedRelayedMessageEventSignature(t *testing.T) 
 }
 
 func testParseBridgeEventLogsL2AppendMessageEventSignature(t *testing.T) {
-	watcher, _ := setupL2Watcher(t)
+	watcher := setupL2Watcher(t)
 	logs := []geth_types.Log{
 		{
 			Topics:      []common.Hash{bridge_abi.L2AppendMessageEventSignature},
