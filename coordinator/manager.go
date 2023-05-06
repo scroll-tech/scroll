@@ -796,23 +796,6 @@ func (m *Manager) StartAggProofGenerationSession(task *types.AggTask, prevSessio
 	return true
 }
 
-// IsRollerIdle determines whether this roller is idle.
-func (m *Manager) IsRollerIdle(hexPk string) bool {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
-	// We need to iterate over all sessions because finished sessions will be deleted until the
-	// timeout. So a busy roller could be marked as idle in a finished session.
-	for _, sess := range m.sessions {
-		for pk, roller := range sess.info.Rollers {
-			if pk == hexPk && roller.Status == types.RollerAssigned {
-				return false
-			}
-		}
-	}
-
-	return true
-}
-
 func (m *Manager) addFailedSession(sess *session, errMsg string) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
