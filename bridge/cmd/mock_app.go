@@ -91,7 +91,6 @@ func (b *MockApp) MockConfig(store bool) error {
 		l1Cfg, l2Cfg             = cfg.L1Config, cfg.L2Config
 		l1Contracts, l2Contracts = base.L1Contracts, base.L2Contracts
 	)
-	l1Cfg.Confirmations = 0
 
 	// set l1 and l2 chain endpoint.
 	l1Cfg.Endpoint = base.L1gethImg.Endpoint()
@@ -102,12 +101,17 @@ func (b *MockApp) MockConfig(store bool) error {
 
 	// set l1 scroll contracts addresses.
 	l1Cfg.L1MessageQueueAddress = l1Contracts.L1MessageQueue
-	l1Cfg.ScrollChainContractAddress = l1Contracts.L1WETH
+	l1Cfg.ScrollChainContractAddress = l1Contracts.L1ScrollChain
 	l1Cfg.L1MessengerAddress = l1Contracts.L1ScrollMessenger
+	l1Cfg.RelayerConfig.MessengerContractAddress = l2Contracts.L2ScrollMessenger
+	l1Cfg.RelayerConfig.GasPriceOracleContractAddress = l2Contracts.L1GasPriceOracle
 
 	// set l2 scroll contracts addresses.
 	l2Cfg.L2MessageQueueAddress = l2Contracts.L2MessageQueue
 	l2Cfg.L2MessengerAddress = l2Contracts.L2ScrollMessenger
+	l2Cfg.RelayerConfig.RollupContractAddress = l1Contracts.L1ScrollChain
+	l2Cfg.RelayerConfig.MessengerContractAddress = l1Contracts.L1ScrollMessenger
+	l2Cfg.RelayerConfig.GasPriceOracleContractAddress = l1Contracts.L2GasPriceOracle
 
 	b.Config = cfg
 

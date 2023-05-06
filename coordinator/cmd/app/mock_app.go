@@ -27,9 +27,9 @@ type CoordinatorApp struct {
 
 	base *docker.App
 
-	originFile      string
-	coordinatorFile string
-	WSPort          int64
+	originFile            string
+	CoordinatorConfigFile string
+	WSPort                int64
 
 	args []string
 	docker.AppAPI
@@ -41,11 +41,11 @@ func NewCoordinatorApp(base *docker.App, file string) *CoordinatorApp {
 	port, _ := rand.Int(rand.Reader, big.NewInt(2000))
 	wsPort := port.Int64() + wsStartPort
 	coordinatorApp := &CoordinatorApp{
-		base:            base,
-		originFile:      file,
-		coordinatorFile: coordinatorFile,
-		WSPort:          wsPort,
-		args:            []string{"--log.debug", "--config", coordinatorFile, "--ws", "--ws.port", strconv.Itoa(int(wsPort))},
+		base:                  base,
+		originFile:            file,
+		CoordinatorConfigFile: coordinatorFile,
+		WSPort:                wsPort,
+		args:                  []string{"--log.debug", "--config", coordinatorFile, "--ws", "--ws.port", strconv.Itoa(int(wsPort))},
 	}
 	if err := coordinatorApp.MockConfig(true); err != nil {
 		panic(err)
@@ -64,7 +64,7 @@ func (c *CoordinatorApp) Free() {
 	if !utils.IsNil(c.AppAPI) {
 		c.AppAPI.WaitExit()
 	}
-	_ = os.Remove(c.coordinatorFile)
+	_ = os.Remove(c.CoordinatorConfigFile)
 }
 
 // WSEndpoint returns ws endpoint.
@@ -99,5 +99,5 @@ func (c *CoordinatorApp) MockConfig(store bool) error {
 		return err
 	}
 
-	return os.WriteFile(c.coordinatorFile, data, 0644)
+	return os.WriteFile(c.CoordinatorConfigFile, data, 0644)
 }

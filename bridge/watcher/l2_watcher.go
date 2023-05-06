@@ -194,6 +194,7 @@ func txsToTxsData(txs geth_types.Transactions) []*geth_types.TransactionData {
 func (w *L2WatcherClient) getAndStoreBlockTraces(ctx context.Context, from, to uint64) error {
 	var blocks []*types.WrappedBlock
 
+	var parentBlock *geth_types.Block
 	for number := from; number <= to; number++ {
 		log.Debug("retrieving block", "height", number)
 		block, err2 := w.BlockByNumber(ctx, big.NewInt(int64(number)))
@@ -202,6 +203,15 @@ func (w *L2WatcherClient) getAndStoreBlockTraces(ctx context.Context, from, to u
 		}
 
 		log.Info("retrieved block", "height", block.Header().Number, "hash", block.Header().Hash().String())
+		if parentBlock == nil {
+			parentBlock = block
+		} else {
+			if parentBlock.Hash() != block.ParentHash() {
+				log.Error("retrieved block", "height", block.Header().Number, "expect parentHash", parentBlock.Hash().String(), "current parentHash", block.ParentHash().String())
+				_, _ = w.BlockByNumber(context.Background(), big.NewInt(0).SetUint64(number))
+			}
+			parentBlock = block
+		}
 
 		withdrawTrieRoot, err3 := w.StorageAt(ctx, w.messageQueueAddress, w.withdrawTrieRootSlot, big.NewInt(int64(number)))
 		if err3 != nil {

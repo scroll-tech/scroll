@@ -36,7 +36,7 @@
     }
   },
   "l2_config": {
-    "confirmations": "0x1",
+    "confirmations": "0x6",
     "endpoint": "/var/lib/jenkins/workspace/SequencerPipeline/MyPrivateNetwork/geth.ipc",
     "l2_messenger_address": "0x0000000000000000000000000000000000000000",
     "l2_message_queue_address": "0x0000000000000000000000000000000000000000",
@@ -53,7 +53,7 @@
         "escalate_multiple_num": 11,
         "escalate_multiple_den": 10,
         "max_gas_price": 10000000000,
-        "tx_type": "LegacyTx",
+        "tx_type": "DynamicFeeTx",
         "min_balance": 100000000000000000000,
         "pending_limit": 10
       },
