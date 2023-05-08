@@ -188,10 +188,9 @@ func testL1RelayerProcessGasPriceOracle(t *testing.T) {
 
 	convey.Convey("GetL1BlockInfos failure", t, func() {
 		targetErr := errors.New("GetL1BlockInfos error")
-		patchGuard := gomonkey.ApplyMethodFunc(db, "GetL1BlockInfos", func(fields map[string]interface{}, args ...string) ([]*types.L1BlockInfo, error) {
+		patchGuard.ApplyMethodFunc(db, "GetL1BlockInfos", func(fields map[string]interface{}, args ...string) ([]*types.L1BlockInfo, error) {
 			return nil, targetErr
 		})
-		defer patchGuard.Reset()
 		l1Relayer.ProcessGasPriceOracle()
 	})
 
@@ -219,10 +218,9 @@ func testL1RelayerProcessGasPriceOracle(t *testing.T) {
 
 	convey.Convey("setL1BaseFee failure", t, func() {
 		targetErr := errors.New("pack setL1BaseFee error")
-		patchGuard := gomonkey.ApplyMethodFunc(l1Relayer.l1GasOracleABI, "Pack", func(name string, args ...interface{}) ([]byte, error) {
+		patchGuard.ApplyMethodFunc(l1Relayer.l1GasOracleABI, "Pack", func(name string, args ...interface{}) ([]byte, error) {
 			return nil, targetErr
 		})
-		patchGuard.Reset()
 		l1Relayer.ProcessGasPriceOracle()
 	})
 
@@ -232,10 +230,9 @@ func testL1RelayerProcessGasPriceOracle(t *testing.T) {
 
 	convey.Convey("send transaction failure", t, func() {
 		targetErr := errors.New("send transaction failure")
-		patchGuard := gomonkey.ApplyMethodFunc(l1Relayer.gasOracleSender, "SendTransaction", func(string, *common.Address, *big.Int, []byte, uint64) (hash common.Hash, err error) {
+		patchGuard.ApplyMethodFunc(l1Relayer.gasOracleSender, "SendTransaction", func(string, *common.Address, *big.Int, []byte, uint64) (hash common.Hash, err error) {
 			return common.Hash{}, targetErr
 		})
-		patchGuard.Reset()
 		l1Relayer.ProcessGasPriceOracle()
 	})
 
@@ -245,10 +242,9 @@ func testL1RelayerProcessGasPriceOracle(t *testing.T) {
 
 	convey.Convey("UpdateL1GasOracleStatusAndOracleTxHash failure", t, func() {
 		targetErr := errors.New("UpdateL1GasOracleStatusAndOracleTxHash failure")
-		patchGuard := gomonkey.ApplyMethodFunc(db, "UpdateL1GasOracleStatusAndOracleTxHash", func(context.Context, string, types.GasOracleStatus, string) error {
+		patchGuard.ApplyMethodFunc(db, "UpdateL1GasOracleStatusAndOracleTxHash", func(context.Context, string, types.GasOracleStatus, string) error {
 			return targetErr
 		})
-		patchGuard.Reset()
 		l1Relayer.ProcessGasPriceOracle()
 	})
 

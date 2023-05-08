@@ -417,10 +417,9 @@ func testLayer2RelayerProcessGasPriceOracle(t *testing.T) {
 
 	convey.Convey("Failed to fetch SuggestGasPrice from l2geth", t, func() {
 		targetErr := errors.New("SuggestGasPrice error")
-		patchGuard := gomonkey.ApplyMethodFunc(relayer.l2Client, "SuggestGasPrice", func(ctx context.Context) (*big.Int, error) {
+		patchGuard.ApplyMethodFunc(relayer.l2Client, "SuggestGasPrice", func(ctx context.Context) (*big.Int, error) {
 			return nil, targetErr
 		})
-		defer patchGuard.Reset()
 		relayer.ProcessGasPriceOracle()
 	})
 
@@ -430,10 +429,9 @@ func testLayer2RelayerProcessGasPriceOracle(t *testing.T) {
 
 	convey.Convey("Failed to pack setL2BaseFee", t, func() {
 		targetErr := errors.New("setL2BaseFee error")
-		patchGuard := gomonkey.ApplyMethodFunc(relayer.l2GasOracleABI, "Pack", func(name string, args ...interface{}) ([]byte, error) {
+		patchGuard.ApplyMethodFunc(relayer.l2GasOracleABI, "Pack", func(name string, args ...interface{}) ([]byte, error) {
 			return nil, targetErr
 		})
-		defer patchGuard.Reset()
 		relayer.ProcessGasPriceOracle()
 	})
 
@@ -443,10 +441,9 @@ func testLayer2RelayerProcessGasPriceOracle(t *testing.T) {
 
 	convey.Convey("Failed to send setL2BaseFee tx to layer2", t, func() {
 		targetErr := errors.New("failed to send setL2BaseFee tx to layer2 error")
-		patchGuard := gomonkey.ApplyMethodFunc(relayer.gasOracleSender, "SendTransaction", func(ID string, target *common.Address, value *big.Int, data []byte, minGasLimit uint64) (hash common.Hash, err error) {
+		patchGuard.ApplyMethodFunc(relayer.gasOracleSender, "SendTransaction", func(ID string, target *common.Address, value *big.Int, data []byte, minGasLimit uint64) (hash common.Hash, err error) {
 			return common.Hash{}, targetErr
 		})
-		defer patchGuard.Reset()
 		relayer.ProcessGasPriceOracle()
 	})
 
@@ -456,10 +453,9 @@ func testLayer2RelayerProcessGasPriceOracle(t *testing.T) {
 
 	convey.Convey("UpdateGasOracleStatusAndOracleTxHash failed", t, func() {
 		targetErr := errors.New("UpdateL2GasOracleStatusAndOracleTxHash error")
-		patchGuard := gomonkey.ApplyMethodFunc(db, "UpdateL2GasOracleStatusAndOracleTxHash", func(ctx context.Context, hash string, status types.GasOracleStatus, txHash string) error {
+		patchGuard.ApplyMethodFunc(db, "UpdateL2GasOracleStatusAndOracleTxHash", func(ctx context.Context, hash string, status types.GasOracleStatus, txHash string) error {
 			return targetErr
 		})
-		defer patchGuard.Reset()
 		relayer.ProcessGasPriceOracle()
 	})
 
@@ -526,10 +522,9 @@ func testLayer2RelayerSendCommitTx(t *testing.T) {
 
 	convey.Convey("Failed to send commitBatches tx to layer1", t, func() {
 		targetErr := errors.New("SendTransaction failure")
-		patchGuard := gomonkey.ApplyMethodFunc(relayer.rollupSender, "SendTransaction", func(ID string, target *common.Address, value *big.Int, data []byte, minGasLimit uint64) (hash common.Hash, err error) {
+		patchGuard.ApplyMethodFunc(relayer.rollupSender, "SendTransaction", func(ID string, target *common.Address, value *big.Int, data []byte, minGasLimit uint64) (hash common.Hash, err error) {
 			return common.Hash{}, targetErr
 		})
-		defer patchGuard.Reset()
 		err := relayer.SendCommitTx(batchDataList)
 		assert.EqualError(t, err, targetErr.Error())
 	})
@@ -540,11 +535,9 @@ func testLayer2RelayerSendCommitTx(t *testing.T) {
 
 	convey.Convey("UpdateCommitTxHashAndRollupStatus failed", t, func() {
 		targetErr := errors.New("UpdateCommitTxHashAndRollupStatus failure")
-		patchGuard := gomonkey.ApplyMethodFunc(db, "UpdateCommitTxHashAndRollupStatus", func(ctx context.Context, hash string, commitTxHash string, status types.RollupStatus) error {
+		patchGuard.ApplyMethodFunc(db, "UpdateCommitTxHashAndRollupStatus", func(ctx context.Context, hash string, commitTxHash string, status types.RollupStatus) error {
 			return targetErr
 		})
-		defer patchGuard.Reset()
-
 		err := relayer.SendCommitTx(batchDataList)
 		assert.NoError(t, err)
 	})
