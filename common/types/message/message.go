@@ -4,6 +4,7 @@ import (
 	"crypto/ecdsa"
 	"crypto/rand"
 	"encoding/hex"
+
 	"github.com/scroll-tech/go-ethereum/core/types"
 
 	"github.com/scroll-tech/go-ethereum/common"
