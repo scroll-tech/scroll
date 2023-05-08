@@ -52,7 +52,7 @@ func testL1WatcherClientFetchBlockHeader(t *testing.T) {
 	defer db.Close()
 	convey.Convey("test toBlock < fromBlock", t, func() {
 		var blockHeight uint64
-		if watcher.ProcessedBlockHeight() < 0 {
+		if watcher.ProcessedBlockHeight() <= 0 {
 			blockHeight = 0
 		} else {
 			blockHeight = watcher.ProcessedBlockHeight() - 1
