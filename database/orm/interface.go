@@ -5,6 +5,7 @@ import (
 	"database/sql"
 
 	"scroll-tech/common/types"
+	"scroll-tech/common/types/message"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/scroll-tech/go-ethereum/common"
@@ -43,6 +44,16 @@ type BlockTraceOrm interface {
 type SessionInfoOrm interface {
 	GetSessionInfosByHashes(hashes []string) ([]*types.SessionInfo, error)
 	SetSessionInfo(rollersInfo *types.SessionInfo) error
+}
+
+// AggTaskOrm is aggregator task
+type AggTaskOrm interface {
+	GetAssignedAggTasks() ([]*types.AggTask, error)
+	GetUnassignedAggTasks() ([]*types.AggTask, error)
+	GetSubProofsByAggTaskID(id string) ([][]byte, error)
+	InsertAggTask(id string, startBatchIndex uint64, startBatchHash string, endBatchIndex uint64, endBatchHash string) error
+	UpdateAggTaskStatus(aggTaskID string, status types.ProvingStatus) error
+	UpdateProofForAggTask(aggTaskID string, proof *message.AggProof) error
 }
 
 // BlockBatchOrm block_batch operation interface

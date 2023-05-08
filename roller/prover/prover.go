@@ -62,19 +62,23 @@ func NewProver(cfg *config.ProverConfig) (*Prover, error) {
 
 // Prove call rust ffi to generate proof, if first failed, try again.
 func (p *Prover) Prove(task *message.TaskMsg) (*message.AggProof, error) {
-	traces, err := p.getTracesByHashes(task.BlockHashes)
-	if err != nil {
-		return nil, err
+	var proofByt []byte
+	if p.cfg.ProveType == message.BasicProve {
+		traces, err := p.getTracesByHashes(task.BlockHashes)
+		if err != nil {
+			return nil, err
+		}
+		tracesByt, err := json.Marshal(traces)
+		if err != nil {
+			return nil, err
+		}
+		proofByt = p.prove(tracesByt)
+	} else if p.cfg.ProveType == message.AggregatorProve {
+		// TODO: aggregator prove
 	}
-	tracesByt, err := json.Marshal(traces)
-	if err != nil {
-		return nil, err
-	}
-
-	proofByt := p.prove(tracesByt)
 
 	// dump proof
-	err = p.dumpProof(task.ID, proofByt)
+	err := p.dumpProof(task.ID, proofByt)
 	if err != nil {
 		log.Error("Dump proof failed", "task-id", task.ID, "error", err)
 	}

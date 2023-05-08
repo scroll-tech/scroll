@@ -15,6 +15,7 @@ type OrmFactory interface {
 	orm.L1MessageOrm
 	orm.L2MessageOrm
 	orm.SessionInfoOrm
+	orm.AggTaskOrm
 	GetDB() *sqlx.DB
 	Beginx() (*sqlx.Tx, error)
 	Close() error
@@ -27,6 +28,7 @@ type ormFactory struct {
 	orm.L1MessageOrm
 	orm.L2MessageOrm
 	orm.SessionInfoOrm
+	orm.AggTaskOrm
 	*sqlx.DB
 }
 
@@ -51,6 +53,7 @@ func NewOrmFactory(cfg *DBConfig) (OrmFactory, error) {
 		L2MessageOrm:   orm.NewL2MessageOrm(db),
 		L1BlockOrm:     orm.NewL1BlockOrm(db),
 		SessionInfoOrm: orm.NewSessionInfoOrm(db),
+		AggTaskOrm:     orm.NewAggTaskOrm(db),
 		DB:             db,
 	}, nil
 }
