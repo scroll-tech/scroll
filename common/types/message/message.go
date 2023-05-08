@@ -203,11 +203,11 @@ func (a *ProofMsg) PublicKey() (string, error) {
 type TaskMsg struct {
 	ID   string    `json:"id"`
 	Type ProveType `json:"type,omitempty"`
-	// Only basic rollers need blockHashes, aggregator rollers don't!
+	// For decentralization, basic rollers will get block hashes from the coordinator. So that they can refer to the block hashes and fetch traces locally. Only applicable for basic rollers.
 	BlockHashes []common.Hash `json:"block_hashes,omitempty"`
 	// For decentralization, basic rollers will get traces locally, instead of getting traces from the coordinator. Only applicable for basic rollers.
 	Traces []*types.BlockTrace `json:"traces,omitempty"`
-	// Only aggregator rollers need proofs to aggregate, basic rollers don't!
+	// Only applicable for aggregator rollers.
 	SubProofs [][]byte `json:"sub_proofs,omitempty"`
 }
 
