@@ -206,7 +206,7 @@ type TaskMsg struct {
 	// Only basic rollers need blockHashes, aggregator rollers don't!
 	BlockHashes []common.Hash `json:"block_hashes,omitempty"`
 	// In BasicProve, we encourage coordinator pass blockHashes to rollers, not traces!
-	Traces []*types.BlockTrace `json:"blockTraces,omitempty"`
+	Traces []*types.BlockTrace `json:"traces,omitempty"`
 	// Only aggregator rollers need proofs to aggregate, basic rollers don't!
 	SubProofs [][]byte `json:"sub_proofs,omitempty"`
 }
