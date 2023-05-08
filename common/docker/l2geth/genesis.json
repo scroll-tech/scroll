@@ -16,7 +16,13 @@
       "period": 3,
       "epoch": 30000
     },
-    "zktrie": true
+    "scroll": {
+      "useZktrie": true,
+      "maxTxPerBlock": 44,
+      "feeVaultAddress": "0x5300000000000000000000000000000000000005",
+      "enableEIP2718": false,
+      "enableEIP1559": false
+    }
   },
   "nonce": "0x0",
   "timestamp": "0x61bc34a0",
@@ -50,5 +56,5 @@
   "number": "0x0",
   "gasUsed": "0x0",
   "parentHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
-  "baseFeePerGas": "0x2710"
+  "baseFeePerGas": null
 }
