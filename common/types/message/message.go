@@ -5,10 +5,9 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 
-	"github.com/scroll-tech/go-ethereum/core/types"
-
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/common/hexutil"
+	"github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/crypto"
 	"github.com/scroll-tech/go-ethereum/rlp"
 )
