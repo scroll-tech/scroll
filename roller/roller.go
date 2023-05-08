@@ -5,7 +5,10 @@ import (
 	"crypto/ecdsa"
 	"errors"
 	"fmt"
+	"github.com/scroll-tech/go-ethereum/core/types"
+	"github.com/scroll-tech/go-ethereum/ethclient"
 	"math"
+	"sort"
 	"sync/atomic"
 	"time"
 
@@ -34,6 +37,7 @@ var (
 type Roller struct {
 	cfg      *config.Config
 	client   *client.Client
+	ethCli   *ethclient.Client
 	stack    *store.Stack
 	prover   *prover.Prover
 	taskChan chan *message.TaskMsg
@@ -60,6 +64,12 @@ func NewRoller(cfg *config.Config) (*Roller, error) {
 		return nil, err
 	}
 
+	// Collect geth node.
+	ethCli, err := ethclient.Dial(cfg.EthEndpoint)
+	if err != nil {
+		return nil, err
+	}
+
 	// Create prover instance
 	log.Info("init prover")
 	newProver, err := prover.NewProver(cfg.Prover)
@@ -76,6 +86,7 @@ func NewRoller(cfg *config.Config) (*Roller, error) {
 	return &Roller{
 		cfg:      cfg,
 		client:   rClient,
+		ethCli:   ethCli,
 		stack:    stackDb,
 		prover:   newProver,
 		sub:      nil,
@@ -217,6 +228,10 @@ func (r *Roller) prove() error {
 
 		log.Info("start to prove block", "task-id", task.Task.ID)
 
+		task.Task.Traces, err = r.getSortedTracesByHashes(task.Task.BlockHashes)
+		if err != nil {
+			return err
+		}
 		// If FFI panic during Prove, the roller will restart and re-enter prove() function,
 		// the proof will not be submitted.
 		var proof *message.AggProof
@@ -286,6 +301,22 @@ func (r *Roller) signAndSubmitProof(msg *message.ProofDetail) {
 		}
 		log.Error("submit proof to coordinator error", "task ID", msg.ID, "error", serr)
 	}
+}
+
+func (r *Roller) getSortedTracesByHashes(blockHashes []common.Hash) ([]*types.BlockTrace, error) {
+	var traces []*types.BlockTrace
+	for _, blockHash := range blockHashes {
+		trace, err := r.ethCli.GetBlockTraceByHash(context.Background(), blockHash)
+		if err != nil {
+			return nil, err
+		}
+		traces = append(traces, trace)
+	}
+	// Sort BlockTraces by header number.
+	sort.Slice(traces, func(i, j int) bool {
+		return traces[i].Header.Number.Int64() < traces[j].Header.Number.Int64()
+	})
+	return traces, nil
 }
 
 // Stop closes the websocket connection.

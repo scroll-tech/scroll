@@ -4,6 +4,7 @@ import (
 	"crypto/ecdsa"
 	"crypto/rand"
 	"encoding/hex"
+	"github.com/scroll-tech/go-ethereum/core/types"
 
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/common/hexutil"
@@ -203,7 +204,9 @@ type TaskMsg struct {
 	ID   string    `json:"id"`
 	Type ProveType `json:"type,omitempty"`
 	// Only basic rollers need blockHashes, aggregator rollers don't!
-	BlockHashes []common.Hash `json:"block_hashes"`
+	BlockHashes []common.Hash `json:"block_hashes,omitempty"`
+	// In BasicProve, we encourage coordinator pass blockHashes to rollers, not traces!
+	Traces []*types.BlockTrace `json:"blockTraces,omitempty"`
 	// Only aggregator rollers need proofs to aggregate, basic rollers don't!
 	SubProofs [][]byte `json:"sub_proofs,omitempty"`
 }
