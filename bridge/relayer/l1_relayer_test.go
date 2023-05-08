@@ -160,7 +160,7 @@ func testL1RelayerGasOracleConfirm(t *testing.T) {
 	})
 }
 
-func testProcessGasPriceOracle(t *testing.T) {
+func testL1RelayerProcessGasPriceOracle(t *testing.T) {
 	db, err := database.NewOrmFactory(cfg.DBConfig)
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(db.GetDB().DB))

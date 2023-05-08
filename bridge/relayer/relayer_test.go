@@ -102,7 +102,7 @@ func TestFunctions(t *testing.T) {
 	t.Run("TestL1RelayerProcessSaveEvents", testL1RelayerProcessSaveEvents)
 	t.Run("TestL1RelayerMsgConfirm", testL1RelayerMsgConfirm)
 	t.Run("TestL1RelayerGasOracleConfirm", testL1RelayerGasOracleConfirm)
-	t.Run("testProcessGasPriceOracle", testProcessGasPriceOracle)
+	t.Run("TestL1RelayerProcessGasPriceOracle", testL1RelayerProcessGasPriceOracle)
 
 	// Run l2 relayer test cases.
 	t.Run("TestCreateNewRelayer", testCreateNewRelayer)
@@ -112,4 +112,6 @@ func TestFunctions(t *testing.T) {
 	t.Run("TestL2RelayerMsgConfirm", testL2RelayerMsgConfirm)
 	t.Run("TestL2RelayerRollupConfirm", testL2RelayerRollupConfirm)
 	t.Run("TestL2RelayerGasOracleConfirm", testL2RelayerGasOracleConfirm)
+	t.Run("TestLayer2RelayerProcessGasPriceOracle", testLayer2RelayerProcessGasPriceOracle)
+	t.Run("TestLayer2RelayerSendCommitTx", testLayer2RelayerSendCommitTx)
 }
