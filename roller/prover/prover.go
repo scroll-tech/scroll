@@ -15,12 +15,12 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"sort"
 	"unsafe"
 
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/ethclient"
-
 	"github.com/scroll-tech/go-ethereum/log"
 
 	"scroll-tech/common/types/message"
@@ -68,6 +68,12 @@ func (p *Prover) Prove(task *message.TaskMsg) (*message.AggProof, error) {
 		if err != nil {
 			return nil, err
 		}
+
+		// Sort BlockTraces by header number.
+		sort.Slice(traces, func(i, j int) bool {
+			return traces[i].Header.Number.Int64() < traces[j].Header.Number.Int64()
+		})
+
 		tracesByt, err := json.Marshal(traces)
 		if err != nil {
 			return nil, err
