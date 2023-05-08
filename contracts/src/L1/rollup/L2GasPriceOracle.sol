@@ -45,12 +45,7 @@ contract L2GasPriceOracle is OwnableUpgradeable, IL2GasPriceOracle {
      *************************/
 
     /// @inheritdoc IL2GasPriceOracle
-    function estimateCrossDomainMessageFee(
-        address,
-        address,
-        bytes memory,
-        uint256 _gasLimit
-    ) external view override returns (uint256) {
+    function estimateCrossDomainMessageFee(uint256 _gasLimit) external view override returns (uint256) {
         return _gasLimit * l2BaseFee;
     }
 
