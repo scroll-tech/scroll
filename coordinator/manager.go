@@ -807,7 +807,7 @@ func (m *Manager) VerifyToken(authMsg *message.AuthMsg) (bool, error) {
 	pubkey, _ := authMsg.PublicKey()
 	// GetValue returns nil if value is expired
 	if token, ok := m.tokenCache.Get(pubkey); !ok || token != authMsg.Identity.Token {
-		return false, errors.New("failed to find corresponding token")
+		return false, fmt.Errorf("failed to find corresponding token. roller name: %v. roller pk: %v.", roller.Name, roller.PublicKey)
 	}
 	return true, nil
 }
