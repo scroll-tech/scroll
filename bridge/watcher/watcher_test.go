@@ -79,24 +79,24 @@ func TestFunction(t *testing.T) {
 	}
 
 	// Run l1 watcher test cases.
-	t.Run("TestStartWatcher", testStartWatcher)
-	t.Run("testL1WatcherClientFetchBlockHeader", testL1WatcherClientFetchBlockHeader)
-	t.Run("testL1WatcherClientFetchContractEvent", testL1WatcherClientFetchContractEvent)
-	t.Run("testParseBridgeEventLogsL1QueueTransactionEventSignature", testParseBridgeEventLogsL1QueueTransactionEventSignature)
-	t.Run("testParseBridgeEventLogsL1RelayedMessageEventSignature", testParseBridgeEventLogsL1RelayedMessageEventSignature)
-	t.Run("testParseBridgeEventLogsL1FailedRelayedMessageEventSignature", testParseBridgeEventLogsL1FailedRelayedMessageEventSignature)
-	t.Run("testParseBridgeEventLogsL1CommitBatchEventSignature", testParseBridgeEventLogsL1CommitBatchEventSignature)
-	t.Run("testParseBridgeEventLogsL1FinalizeBatchEventSignature", testParseBridgeEventLogsL1FinalizeBatchEventSignature)
+	t.Run("TestStartWatcher", testFetchContractEvent)
+	t.Run("TestL1WatcherClientFetchBlockHeader", testL1WatcherClientFetchBlockHeader)
+	t.Run("TestL1WatcherClientFetchContractEvent", testL1WatcherClientFetchContractEvent)
+	t.Run("TestParseBridgeEventLogsL1QueueTransactionEventSignature", testParseBridgeEventLogsL1QueueTransactionEventSignature)
+	t.Run("TestParseBridgeEventLogsL1RelayedMessageEventSignature", testParseBridgeEventLogsL1RelayedMessageEventSignature)
+	t.Run("TestParseBridgeEventLogsL1FailedRelayedMessageEventSignature", testParseBridgeEventLogsL1FailedRelayedMessageEventSignature)
+	t.Run("TestParseBridgeEventLogsL1CommitBatchEventSignature", testParseBridgeEventLogsL1CommitBatchEventSignature)
+	t.Run("TestParseBridgeEventLogsL1FinalizeBatchEventSignature", testParseBridgeEventLogsL1FinalizeBatchEventSignature)
 
 	// Run l2 watcher test cases.
 	t.Run("TestCreateNewWatcherAndStop", testCreateNewWatcherAndStop)
 	t.Run("TestMonitorBridgeContract", testMonitorBridgeContract)
 	t.Run("TestFetchMultipleSentMessageInOneBlock", testFetchMultipleSentMessageInOneBlock)
 	t.Run("TestFetchRunningMissingBlocks", testFetchRunningMissingBlocks)
-	t.Run("testParseBridgeEventLogsL2SentMessageEventSignature", testParseBridgeEventLogsL2SentMessageEventSignature)
-	t.Run("testParseBridgeEventLogsL2RelayedMessageEventSignature", testParseBridgeEventLogsL2RelayedMessageEventSignature)
-	t.Run("testParseBridgeEventLogsL2FailedRelayedMessageEventSignature", testParseBridgeEventLogsL2FailedRelayedMessageEventSignature)
-	t.Run("testParseBridgeEventLogsL2AppendMessageEventSignature", testParseBridgeEventLogsL2AppendMessageEventSignature)
+	t.Run("TestParseBridgeEventLogsL2SentMessageEventSignature", testParseBridgeEventLogsL2SentMessageEventSignature)
+	t.Run("TestParseBridgeEventLogsL2RelayedMessageEventSignature", testParseBridgeEventLogsL2RelayedMessageEventSignature)
+	t.Run("TestParseBridgeEventLogsL2FailedRelayedMessageEventSignature", testParseBridgeEventLogsL2FailedRelayedMessageEventSignature)
+	t.Run("TestParseBridgeEventLogsL2AppendMessageEventSignature", testParseBridgeEventLogsL2AppendMessageEventSignature)
 
 	// Run batch proposer test cases.
 	t.Run("TestBatchProposerProposeBatch", testBatchProposerProposeBatch)

@@ -30,7 +30,6 @@ func setupL1Watcher(t *testing.T) (*L1WatcherClient, database.OrmFactory) {
 	db, err := database.NewOrmFactory(cfg.DBConfig)
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(db.GetDB().DB))
-	defer db.Close()
 
 	client, err := ethclient.Dial(base.L1gethImg.Endpoint())
 	assert.NoError(t, err)
@@ -42,15 +41,22 @@ func setupL1Watcher(t *testing.T) (*L1WatcherClient, database.OrmFactory) {
 	return watcher, db
 }
 
-func testStartWatcher(t *testing.T) {
-	watcher, _ := setupL1Watcher(t)
+func testFetchContractEvent(t *testing.T) {
+	watcher, db := setupL1Watcher(t)
+	defer db.Close()
 	assert.NoError(t, watcher.FetchContractEvent())
 }
 
 func testL1WatcherClientFetchBlockHeader(t *testing.T) {
 	watcher, db := setupL1Watcher(t)
+	defer db.Close()
 	convey.Convey("test toBlock < fromBlock", t, func() {
-		blockHeight := watcher.ProcessedBlockHeight() - 1
+		var blockHeight uint64
+		if watcher.ProcessedBlockHeight() < 0 {
+			blockHeight = 0
+		} else {
+			blockHeight = watcher.ProcessedBlockHeight() - 1
+		}
 		err := watcher.FetchBlockHeader(blockHeight)
 		assert.NoError(t, err)
 	})
@@ -114,6 +120,7 @@ func testL1WatcherClientFetchBlockHeader(t *testing.T) {
 
 func testL1WatcherClientFetchContractEvent(t *testing.T) {
 	watcher, db := setupL1Watcher(t)
+	defer db.Close()
 
 	watcher.SetConfirmations(rpc.SafeBlockNumber)
 	convey.Convey("get latest confirmed block number failure", t, func() {
@@ -149,11 +156,9 @@ func testL1WatcherClientFetchContractEvent(t *testing.T) {
 	})
 
 	patchGuard.ApplyMethodFunc(c, "FilterLogs", func(ctx context.Context, q ethereum.FilterQuery) ([]types.Log, error) {
-		t1 := common.Address{}
-		t1.SetBytes([]byte("0x0000000000000000000000000000000000000000"))
 		return []types.Log{
 			{
-				Address: t1,
+				Address: common.HexToAddress("0x0000000000000000000000000000000000000000"),
 			},
 		}, nil
 	})
@@ -164,7 +169,6 @@ func testL1WatcherClientFetchContractEvent(t *testing.T) {
 			return nil, nil, nil, targetErr
 		})
 		err := watcher.FetchContractEvent()
-		assert.Error(t, err)
 		assert.Equal(t, err.Error(), targetErr.Error())
 	})
 
@@ -191,7 +195,7 @@ func testL1WatcherClientFetchContractEvent(t *testing.T) {
 			{
 				msgHash:      common.HexToHash("0xad3228b676f7d3cd4284a5443f17f1962b36e491b30a40b2405849e597ba5fb5"),
 				txHash:       common.HexToHash("0xb4c11951957c6f8f642c4af61cd6b24640fec6dc7fc607ee8206a99e92410d30"),
-				isSuccessful: true,
+				isSuccessful: false,
 			},
 		}
 		return nil, relayedMessageEvents, rollupEvents, nil
@@ -203,7 +207,6 @@ func testL1WatcherClientFetchContractEvent(t *testing.T) {
 			return nil, targetErr
 		})
 		err := watcher.FetchContractEvent()
-		assert.Error(t, err)
 		assert.Equal(t, err.Error(), targetErr.Error())
 	})
 
@@ -289,7 +292,9 @@ func testL1WatcherClientFetchContractEvent(t *testing.T) {
 }
 
 func testParseBridgeEventLogsL1QueueTransactionEventSignature(t *testing.T) {
-	watcher, _ := setupL1Watcher(t)
+	watcher, db := setupL1Watcher(t)
+	defer db.Close()
+
 	logs := []geth_types.Log{
 		{
 			Topics:      []common.Hash{bridge_abi.L1QueueTransactionEventSignature},
@@ -318,17 +323,9 @@ func testParseBridgeEventLogsL1QueueTransactionEventSignature(t *testing.T) {
 			tmpOut := out.(*bridge_abi.L1QueueTransactionEvent)
 			tmpOut.QueueIndex = big.NewInt(100)
 			tmpOut.Data = []byte("test data")
-
-			tmpSendAddr := common.Address{}
-			tmpSendAddr.SetBytes([]byte("0xb4c11951957c6f8f642c4af61cd6b24640fec6dc7fc607ee8206a99e92410d30"))
-			tmpOut.Sender = tmpSendAddr
-
+			tmpOut.Sender = common.HexToAddress("0xb4c11951957c6f8f642c4af61cd6b24640fec6dc7fc607ee8206a99e92410d30")
 			tmpOut.Value = big.NewInt(1000)
-
-			tmpTargetAddr := common.Address{}
-			tmpTargetAddr.SetBytes([]byte("0xad3228b676f7d3cd4284a5443f17f1962b36e491b30a40b2405849e597ba5fb5"))
-			tmpOut.Target = tmpTargetAddr
-
+			tmpOut.Target = common.HexToAddress("0xad3228b676f7d3cd4284a5443f17f1962b36e491b30a40b2405849e597ba5fb5")
 			tmpOut.GasLimit = big.NewInt(10)
 			return nil
 		})
@@ -344,7 +341,9 @@ func testParseBridgeEventLogsL1QueueTransactionEventSignature(t *testing.T) {
 }
 
 func testParseBridgeEventLogsL1RelayedMessageEventSignature(t *testing.T) {
-	watcher, _ := setupL1Watcher(t)
+	watcher, db := setupL1Watcher(t)
+	defer db.Close()
+
 	logs := []geth_types.Log{
 		{
 			Topics:      []common.Hash{bridge_abi.L1RelayedMessageEventSignature},
@@ -387,7 +386,9 @@ func testParseBridgeEventLogsL1RelayedMessageEventSignature(t *testing.T) {
 }
 
 func testParseBridgeEventLogsL1FailedRelayedMessageEventSignature(t *testing.T) {
-	watcher, _ := setupL1Watcher(t)
+	watcher, db := setupL1Watcher(t)
+	defer db.Close()
+
 	logs := []geth_types.Log{
 		{
 			Topics:      []common.Hash{bridge_abi.L1FailedRelayedMessageEventSignature},
@@ -430,7 +431,9 @@ func testParseBridgeEventLogsL1FailedRelayedMessageEventSignature(t *testing.T) 
 }
 
 func testParseBridgeEventLogsL1CommitBatchEventSignature(t *testing.T) {
-	watcher, _ := setupL1Watcher(t)
+	watcher, db := setupL1Watcher(t)
+	defer db.Close()
+
 	logs := []geth_types.Log{
 		{
 			Topics:      []common.Hash{bridge_abi.L1CommitBatchEventSignature},
@@ -474,7 +477,9 @@ func testParseBridgeEventLogsL1CommitBatchEventSignature(t *testing.T) {
 }
 
 func testParseBridgeEventLogsL1FinalizeBatchEventSignature(t *testing.T) {
-	watcher, _ := setupL1Watcher(t)
+	watcher, db := setupL1Watcher(t)
+	defer db.Close()
+
 	logs := []geth_types.Log{
 		{
 			Topics:      []common.Hash{bridge_abi.L1FinalizeBatchEventSignature},

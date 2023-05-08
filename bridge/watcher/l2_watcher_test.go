@@ -299,10 +299,8 @@ func testParseBridgeEventLogsL2SentMessageEventSignature(t *testing.T) {
 	})
 
 	convey.Convey("L2SentMessageEventSignature success", t, func() {
-		tmpSendAddr := common.Address{}
-		tmpSendAddr.SetBytes([]byte("0xb4c11951957c6f8f642c4af61cd6b24640fec6dc7fc607ee8206a99e92410d30"))
-		tmpTargetAddr := common.Address{}
-		tmpTargetAddr.SetBytes([]byte("0xad3228b676f7d3cd4284a5443f17f1962b36e491b30a40b2405849e597ba5fb5"))
+		tmpSendAddr := common.HexToAddress("0xb4c11951957c6f8f642c4af61cd6b24640fec6dc7fc607ee8206a99e92410d30")
+		tmpTargetAddr := common.HexToAddress("0xad3228b676f7d3cd4284a5443f17f1962b36e491b30a40b2405849e597ba5fb5")
 		tmpValue := big.NewInt(1000)
 		tmpMessageNonce := big.NewInt(100)
 		tmpMessage := []byte("test for L2SentMessageEventSignature")
