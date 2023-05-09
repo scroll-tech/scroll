@@ -36,7 +36,7 @@ func testBatchProposerProposeBatch(t *testing.T) {
 		commitCalldataSizeLimit: 500,
 		orm:                     db,
 	}
-	patchGuard1 := gomonkey.ApplyMethodFunc(p.orm, "GetL2WrappedBlocks", func(fields map[string]interface{}, args ...string) ([]*types.WrappedBlock, error) {
+	patchGuard := gomonkey.ApplyMethodFunc(p.orm, "GetL2WrappedBlocks", func(fields map[string]interface{}, args ...string) ([]*types.WrappedBlock, error) {
 		hash, _ := fields["hash"].(string)
 		if hash == "blockWithLongData" {
 			longData := strings.Repeat("0", 1000)
@@ -52,11 +52,10 @@ func testBatchProposerProposeBatch(t *testing.T) {
 			}},
 		}}, nil
 	})
-	defer patchGuard1.Reset()
-	patchGuard2 := gomonkey.ApplyPrivateMethod(p, "createBatchForBlocks", func(*BatchProposer, []*types.BlockInfo) error {
+	defer patchGuard.Reset()
+	patchGuard.ApplyPrivateMethod(p, "createBatchForBlocks", func(*BatchProposer, []*types.BlockInfo) error {
 		return nil
 	})
-	defer patchGuard2.Reset()
 
 	block1 := &types.BlockInfo{Number: 1, GasUsed: 100, TxNum: 1, BlockTimestamp: uint64(time.Now().Unix()) - 200}
 	block2 := &types.BlockInfo{Number: 2, GasUsed: 200, TxNum: 2, BlockTimestamp: uint64(time.Now().Unix())}
