@@ -5,7 +5,7 @@ pragma solidity ^0.8.0;
 import {ERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 import {ERC20PermitUpgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/draft-ERC20PermitUpgradeable.sol";
 import {IScrollStandardERC20} from "./IScrollStandardERC20.sol";
-import {IERC677Receiver} from "./IERC677Receiver.sol";
+import {IERC677Receiver} from "../callbacks/IERC677Receiver.sol";
 
 contract ScrollStandardERC20 is ERC20PermitUpgradeable, IScrollStandardERC20 {
     /// @inheritdoc IScrollStandardERC20
