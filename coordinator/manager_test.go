@@ -170,11 +170,17 @@ func testFailedHandshake(t *testing.T) {
 	authMsg.Identity.Token = token
 	assert.NoError(t, authMsg.SignWithKey(privkey))
 
-	<-time.After(6 * time.Second)
-	_, err = client.RegisterAndSubscribe(ctx, make(chan *message.TaskMsg, 4), authMsg)
+	var count int
+	utils.TryTimes(12, func() bool {
+		_, err = client.RegisterAndSubscribe(ctx, make(chan *message.TaskMsg, 4), authMsg)
+		if err != nil {
+			return false
+		}
+		count = rollerManager.GetNumberOfIdleRollers(message.BasicProve)
+		return count == 0
+	})
 	assert.Error(t, err)
-
-	assert.Equal(t, 0, rollerManager.GetNumberOfIdleRollers(message.BasicProve))
+	assert.Equal(t, 0, count)
 }
 
 func testSeveralConnections(t *testing.T) {
@@ -430,34 +436,31 @@ func testTimedoutProof(t *testing.T) {
 	}()
 	assert.Equal(t, 1, rollerManager.GetNumberOfIdleRollers(message.BasicProve))
 
-	var hashes = make([]string, 1)
+	var (
+		hashesAssigned = make([]string, 1)
+		hashesVerified = make([]string, 1)
+	)
 	dbTx, err := l2db.Beginx()
 	assert.NoError(t, err)
-	for i := range hashes {
+	for i := range hashesAssigned {
 		assert.NoError(t, l2db.NewBatchInDBTx(dbTx, batchData))
-		hashes[i] = batchData.Hash().Hex()
-
+		hashesAssigned[i] = batchData.Hash().Hex()
+		hashesVerified[i] = batchData.Hash().Hex()
 	}
 	assert.NoError(t, dbTx.Commit())
 
 	// verify proof status, it should be assigned, because roller didn't send any proof
-	var (
-		tick     = time.Tick(500 * time.Millisecond)
-		tickStop = time.Tick(10 * time.Second)
-	)
-	for len(hashes) > 0 {
-		select {
-		case <-tick:
-			status, err := l2db.GetProvingStatusByHash(hashes[0])
-			assert.NoError(t, err)
-			if status == types.ProvingTaskAssigned {
-				hashes = hashes[1:]
-			}
-		case <-tickStop:
-			t.Error("failed to check proof status")
-			return
+	utils.TryTimes(20, func() bool {
+		status, err := l2db.GetProvingStatusByHash(hashesAssigned[0])
+		if err != nil {
+			return false
 		}
-	}
+		if status == types.ProvingTaskAssigned {
+			hashesAssigned = hashesAssigned[1:]
+		}
+		return len(hashesAssigned) == 0
+	})
+	assert.Falsef(t, len(hashesAssigned) != 0, "failed to check proof status")
 
 	// create second mock roller, that will send valid proof.
 	roller2 := newMockRoller(t, "roller_test"+strconv.Itoa(1), wsURL)
@@ -468,23 +471,18 @@ func testTimedoutProof(t *testing.T) {
 	}()
 	assert.Equal(t, 1, rollerManager.GetNumberOfIdleRollers(message.BasicProve))
 
-	// wait manager to finish first CollectProofs
-	<-time.After(60 * time.Second)
-
 	// verify proof status, it should be verified now, because second roller sent valid proof
-	for len(hashes) > 0 {
-		select {
-		case <-tick:
-			status, err := l2db.GetProvingStatusByHash(hashes[0])
-			assert.NoError(t, err)
-			if status == types.ProvingTaskVerified {
-				hashes = hashes[1:]
-			}
-		case <-tickStop:
-			t.Error("failed to check proof status")
-			return
+	utils.TryTimes(120, func() bool {
+		status, err := l2db.GetProvingStatusByHash(hashesVerified[0])
+		if err != nil {
+			return false
 		}
-	}
+		if status == types.ProvingTaskVerified {
+			hashesVerified = hashesVerified[1:]
+		}
+		return len(hashesVerified) == 0
+	})
+	assert.Falsef(t, len(hashesVerified) != 0, "failed to check proof status")
 }
 
 func testIdleRollerSelection(t *testing.T) {
