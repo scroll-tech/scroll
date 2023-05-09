@@ -64,6 +64,7 @@ pipeline {
                 }
                 stage('Race test coordinator package') {
                     steps {
+                        sh "LD_LIBRARY_PATH="$LD_LIBRARY_PATH:./coordinator/verifier/lib""
                         sh "cd ./coordinator && ../build/run_tests.sh coordinator"
                     }
                 }
