@@ -7,7 +7,6 @@ import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/security/
 import {IScrollChain} from "./rollup/IScrollChain.sol";
 import {IL1MessageQueue} from "./rollup/IL1MessageQueue.sol";
 import {IL1ScrollMessenger} from "./IL1ScrollMessenger.sol";
-import {IScrollMessengerCallback} from "../libraries/callbacks/IScrollMessengerCallback.sol";
 import {ScrollConstants} from "../libraries/constants/ScrollConstants.sol";
 import {IScrollMessenger} from "../libraries/IScrollMessenger.sol";
 import {ScrollMessengerBase} from "../libraries/ScrollMessengerBase.sol";
@@ -152,9 +151,7 @@ contract L1ScrollMessenger is PausableUpgradeable, ScrollMessengerBase, IL1Scrol
         require(_from != xDomainMessageSender, "Invalid message sender");
 
         xDomainMessageSender = _from;
-        (bool success, ) = _to.call{value: _value}(
-            abi.encodeWithSelector(IScrollMessengerCallback.onScrollMessengerCallback.selector, _message)
-        );
+        (bool success, ) = _to.call{value: _value}(_message);
         // reset value to refund gas.
         xDomainMessageSender = ScrollConstants.DEFAULT_XDOMAIN_MESSAGE_SENDER;
 
