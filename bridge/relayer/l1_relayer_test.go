@@ -100,6 +100,7 @@ func testL1RelayerMsgConfirm(t *testing.T) {
 	defer cancel()
 	l1Relayer, err := NewLayer1Relayer(ctx, db, l1Cfg.RelayerConfig)
 	assert.NoError(t, err)
+	assert.NotNil(t, l1Relayer)
 
 	// Simulate message confirmations.
 	l1Relayer.messageSender.SendConfirmation(&sender.Confirmation{
@@ -141,6 +142,7 @@ func testL1RelayerGasOracleConfirm(t *testing.T) {
 	defer cancel()
 	l1Relayer, err := NewLayer1Relayer(ctx, db, l1Cfg.RelayerConfig)
 	assert.NoError(t, err)
+	assert.NotNil(t, l1Relayer)
 
 	// Simulate message confirmations.
 	l1Relayer.gasOracleSender.SendConfirmation(&sender.Confirmation{
@@ -173,6 +175,7 @@ func testL1RelayerProcessGasPriceOracle(t *testing.T) {
 	defer cancel()
 	l1Relayer, err := NewLayer1Relayer(ctx, db, l1Cfg.RelayerConfig)
 	assert.NoError(t, err)
+	assert.NotNil(t, l1Relayer)
 
 	convey.Convey("GetLatestL1BlockHeight failure", t, func() {
 		targetErr := errors.New("GetLatestL1BlockHeight error")
