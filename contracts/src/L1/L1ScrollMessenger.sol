@@ -215,6 +215,10 @@ contract L1ScrollMessenger is PausableUpgradeable, ScrollMessengerBase, IL1Scrol
         // compute and deduct the messaging fee to fee vault.
         uint256 _fee = IL1MessageQueue(_messageQueue).estimateCrossDomainMessageFee(_gasLimit);
         require(msg.value >= _fee + _value, "Insufficient msg.value");
+        
+        uint256 intrinsicGas = IL1MessageQueue(_messageQueue).calculateIntrinsicGasFee(_message);
+        require(msg.value >= intrinsicGas + _value, "Insufficient msg.value, intrinsic gas");
+
         if (_fee > 0) {
             (bool _success, ) = feeVault.call{value: _fee}("");
             require(_success, "Failed to deduct the fee");

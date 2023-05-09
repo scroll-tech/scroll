@@ -32,6 +32,12 @@ contract L2GasPriceOracle is OwnableUpgradeable, IL2GasPriceOracle {
     /// @notice The address of whitelist contract.
     IWhitelist public whitelist;
 
+
+    // todo, initialize in constructor
+    uint256 txGas = 21000;
+    uint256 zeroGas = 4;
+    uint256 nonZeroGas = 16;
+
     /***************
      * Constructor *
      ***************/
@@ -45,6 +51,23 @@ contract L2GasPriceOracle is OwnableUpgradeable, IL2GasPriceOracle {
      *************************/
 
     /// @inheritdoc IL2GasPriceOracle
+    function calculateIntrinsicGasFee(bytes memory _message) external view override returns (uint256) {
+        uint256 gas = txGas;
+        if (_message.length > 0) {
+            uint256 nz = 0;
+            for (uint256 i = 0; i < _message.length; i++) {
+                if (_message[i] != 0) {
+                    nz++;
+                }
+            }
+            gas += nz * nonZeroGas;
+            uint256 z = uint256(_message.length) - nz;
+            gas += z * zeroGas;
+        }
+        return uint256(gas);
+    }
+
+    /// @inheritdoc IL2GasPriceOracle
     function estimateCrossDomainMessageFee(uint256 _gasLimit) external view override returns (uint256) {
         return _gasLimit * l2BaseFee;
     }
@@ -52,6 +75,14 @@ contract L2GasPriceOracle is OwnableUpgradeable, IL2GasPriceOracle {
     /*****************************
      * Public Mutating Functions *
      *****************************/
+
+    function setIntrinsicParams(uint256 _txGas, uint256 _zeroGas, uint256 _nonZeroGas) external {
+        require(whitelist.isSenderAllowed(msg.sender), "Not whitelisted sender");
+
+        txGas = _txGas;
+        zeroGas = _zeroGas;
+        nonZeroGas = _nonZeroGas;
+    }
 
     /// @notice Allows the owner to modify the l2 base fee.
     /// @param _l2BaseFee The new l2 base fee.

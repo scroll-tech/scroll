@@ -67,6 +67,12 @@ contract L1MessageQueue is OwnableUpgradeable, IL1MessageQueue {
         return IL2GasPriceOracle(_oracle).estimateCrossDomainMessageFee(_gasLimit);
     }
 
+    function calculateIntrinsicGasFee(bytes memory _message) external view override returns (uint256) {
+        address _oracle = gasOracle;
+        if (_oracle == address(0)) return 0;
+        return IL2GasPriceOracle(_oracle).calculateIntrinsicGasFee(_message);
+    }
+
     /*****************************
      * Public Mutating Functions *
      *****************************/
