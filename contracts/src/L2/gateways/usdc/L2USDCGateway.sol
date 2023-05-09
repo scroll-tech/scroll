@@ -92,6 +92,8 @@ contract L2USDCGateway is OwnableUpgradeable, ScrollGatewayBase, L2ERC20Gateway 
 
         require(IFiatToken(_l2Token).mint(_to, _amount), "mint USDC failed");
 
+        _doCallback(_to, _data);
+
         emit FinalizeDepositERC20(_l1Token, _l2Token, _from, _to, _amount, _data);
     }
 

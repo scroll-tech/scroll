@@ -93,6 +93,8 @@ contract L1USDCGateway is OwnableUpgradeable, ScrollGatewayBase, L1ERC20Gateway 
 
         IERC20Upgradeable(_l1Token).safeTransfer(_to, _amount);
 
+        _doCallback(_to, _data);
+
         emit FinalizeWithdrawERC20(_l1Token, _l2Token, _from, _to, _amount, _data);
     }
 
