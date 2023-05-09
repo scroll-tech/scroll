@@ -37,6 +37,7 @@ contract L2GasPriceOracle is OwnableUpgradeable, IL2GasPriceOracle {
     uint256 txGas = 21000;
     uint256 zeroGas = 4;
     uint256 nonZeroGas = 16;
+    uint256 MAX_UINT_64 = 2**64-1;
 
     /***************
      * Constructor *
@@ -60,8 +61,12 @@ contract L2GasPriceOracle is OwnableUpgradeable, IL2GasPriceOracle {
                     nz++;
                 }
             }
+
+            require((MAX_UINT_64 - txGas) / nonZeroGas > nz, "Intrinsic gas overflows from nonzero bytes cost");
             gas += nz * nonZeroGas;
+            
             uint256 z = uint256(_message.length) - nz;
+            require((MAX_UINT_64 - txGas) / zeroGas > z, "Intrinsic gas overflows from zero bytes cost");
             gas += z * zeroGas;
         }
         return uint256(gas);
