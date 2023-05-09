@@ -106,12 +106,13 @@ func testL1RelayerMsgConfirm(t *testing.T) {
 	})
 
 	// Check the database for the updated status using TryTimes.
-	utils.TryTimes(5, func() bool {
+	ok := utils.TryTimes(5, func() bool {
 		msg1, err1 := db.GetL1MessageByMsgHash("msg-1")
 		msg2, err2 := db.GetL1MessageByMsgHash("msg-2")
 		return err1 == nil && msg1.Status == types.MsgConfirmed &&
 			err2 == nil && msg2.Status == types.MsgRelayFailed
 	})
+	assert.True(t, ok)
 }
 
 func testL1RelayerGasOracleConfirm(t *testing.T) {
@@ -146,10 +147,11 @@ func testL1RelayerGasOracleConfirm(t *testing.T) {
 	})
 
 	// Check the database for the updated status using TryTimes.
-	utils.TryTimes(5, func() bool {
+	ok := utils.TryTimes(5, func() bool {
 		msg1, err1 := db.GetL1BlockInfos(map[string]interface{}{"hash": "gas-oracle-1"})
 		msg2, err2 := db.GetL1BlockInfos(map[string]interface{}{"hash": "gas-oracle-2"})
 		return err1 == nil && len(msg1) == 1 && msg1[0].GasOracleStatus == types.GasOracleImported &&
 			err2 == nil && len(msg2) == 1 && msg2[0].GasOracleStatus == types.GasOracleFailed
 	})
+	assert.True(t, ok)
 }
