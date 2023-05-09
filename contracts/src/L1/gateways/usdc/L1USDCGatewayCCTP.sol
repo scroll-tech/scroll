@@ -6,7 +6,6 @@ import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/Own
 import {IERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import {SafeERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 
-import {IFiatToken} from "../../../interfaces/IFiatToken.sol";
 import {ITokenMessenger} from "../../../interfaces/ITokenMessenger.sol";
 import {IL2ERC20Gateway} from "../../../L2/gateways/IL2ERC20Gateway.sol";
 import {IL1ScrollMessenger} from "../../IL1ScrollMessenger.sol";
@@ -67,6 +66,11 @@ contract L1USDCGatewayCCTP is OwnableUpgradeable, CCTPGatewayBase, L1ERC20Gatewa
 
     /// @notice Relay cross chain message and claim USDC that has been cross chained.
     /// @dev The `_scrollMessage` is actually encoded calldata for `L1ScrollMessenger.relayMessageWithProof`.
+    ///
+    /// @dev This helper function is aimed to claim USDC in single transaction.
+    ///      Normally, an user should call `L1ScrollMessenger.relayMessageWithProof` first,
+    ///      then `L1USDCGatewayCCTP.claimUSDC`.
+    ///
     /// @param _nonce The nonce of the message from CCTP.
     /// @param _cctpMessage The message passed to MessageTransmitter contract in CCTP.
     /// @param _cctpSignature The message passed to MessageTransmitter contract in CCTP.
@@ -81,7 +85,6 @@ contract L1USDCGatewayCCTP is OwnableUpgradeable, CCTPGatewayBase, L1ERC20Gatewa
         // call messenger to set `status[_nonce]` to `CCTPMessageStatus.Pending`.
         (bool _success, ) = messenger.call(_scrollMessage);
         require(_success, "call messenger failed");
-        require(status[_nonce] == CCTPMessageStatus.Pending, "message relay failed");
 
         claimUSDC(_nonce, _cctpMessage, _cctpSignature);
     }

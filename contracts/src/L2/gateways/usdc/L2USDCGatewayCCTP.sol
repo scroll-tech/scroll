@@ -6,7 +6,6 @@ import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/Own
 import {IERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import {SafeERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 
-import {IFiatToken} from "../../../interfaces/IFiatToken.sol";
 import {ITokenMessenger} from "../../../interfaces/ITokenMessenger.sol";
 import {IL1ERC20Gateway} from "../../../L1/gateways/IL1ERC20Gateway.sol";
 import {IL2ScrollMessenger} from "../../IL2ScrollMessenger.sol";
