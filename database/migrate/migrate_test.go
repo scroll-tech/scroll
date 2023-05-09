@@ -19,13 +19,10 @@ var (
 
 func initEnv(t *testing.T) error {
 	// Start db container.
-	base.RunImages(t)
+	base.RunDBImage(t)
 
 	// Create db orm handler.
-	factory, err := database.NewOrmFactory(&database.DBConfig{
-		DriverName: "postgres",
-		DSN:        base.DBEndpoint(),
-	})
+	factory, err := database.NewOrmFactory(base.DBConfig)
 	if err != nil {
 		return err
 	}
@@ -66,7 +63,7 @@ func testResetDB(t *testing.T) {
 	cur, err := Current(pgDB.DB)
 	assert.NoError(t, err)
 	// total number of tables.
-	assert.Equal(t, 6, int(cur))
+	assert.Equal(t, 7, int(cur))
 }
 
 func testMigrate(t *testing.T) {

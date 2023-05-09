@@ -84,11 +84,11 @@ contract L1MessageQueue is OwnableUpgradeable, IL1MessageQueue {
         // We use EIP-2718 to encode the L1 message, and the encoding of the message is
         //      `TransactionType || TransactionPayload`
         // where
-        //  1. `TransactionType` is TBD
+        //  1. `TransactionType` is 0x7E
         //  2. `TransactionPayload` is `rlp([nonce, gasLimit, to, value, data, sender])`
         //
         // The spec of rlp: https://ethereum.org/en/developers/docs/data-structures-and-encoding/rlp/
-        uint256 transactionType = 0x7E; // to change later
+        uint256 transactionType = 0x7E;
         bytes32 hash;
         assembly {
             function get_uint_bytes(v) -> len {

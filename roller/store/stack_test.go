@@ -8,7 +8,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"scroll-tech/common/message"
+	"scroll-tech/common/types/message"
 )
 
 func TestStack(t *testing.T) {

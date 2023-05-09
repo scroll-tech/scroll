@@ -3,10 +3,12 @@
 package verifier
 
 import (
-	"scroll-tech/common/message"
+	"scroll-tech/common/types/message"
 
 	"scroll-tech/coordinator/config"
 )
+
+const InvalidTestProof = "this is a invalid proof"
 
 // Verifier represents a mock halo2 verifier.
 type Verifier struct {
@@ -19,5 +21,8 @@ func NewVerifier(_ *config.VerifierConfig) (*Verifier, error) {
 
 // VerifyProof always return true
 func (v *Verifier) VerifyProof(proof *message.AggProof) (bool, error) {
+	if string(proof.Proof) == InvalidTestProof {
+		return false, nil
+	}
 	return true, nil
 }
