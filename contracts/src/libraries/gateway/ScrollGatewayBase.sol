@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 
 import {IScrollGateway} from "./IScrollGateway.sol";
 import {IScrollMessenger} from "../IScrollMessenger.sol";
+import {IScrollGatewayCallback} from "../callbacks/IScrollGatewayCallback.sol";
 
 abstract contract ScrollGatewayBase is IScrollGateway {
     /*************
@@ -82,5 +83,18 @@ abstract contract ScrollGatewayBase is IScrollGateway {
 
         // for reentrancy guard
         _status = _NOT_ENTERED;
+    }
+
+    /**********************
+     * Internal Functions *
+     **********************/
+
+    /// @dev Internal function to forward calldata to target contract.
+    /// @param _to The address of contract to call.
+    /// @param _data The calldata passed to the contract.
+    function _doCallback(address _to, bytes memory _data) internal {
+        if (_data.length > 0 && _to.code.length > 0) {
+            IScrollGatewayCallback(_to).onScrollGatewayCallback(_data);
+        }
     }
 }

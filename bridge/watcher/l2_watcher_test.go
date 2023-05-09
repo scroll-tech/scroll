@@ -1,4 +1,4 @@
-package watcher_test
+package watcher
 
 import (
 	"context"
@@ -19,9 +19,9 @@ import (
 
 	"scroll-tech/bridge/mock_bridge"
 	"scroll-tech/bridge/sender"
-	"scroll-tech/bridge/watcher"
 
 	cutils "scroll-tech/common/utils"
+
 	"scroll-tech/database"
 	"scroll-tech/database/migrate"
 )
@@ -39,8 +39,8 @@ func testCreateNewWatcherAndStop(t *testing.T) {
 	}()
 
 	l2cfg := cfg.L2Config
-	rc := watcher.NewL2WatcherClient(context.Background(), l2Cli, l2cfg.Confirmations, l2cfg.L2MessengerAddress, l2cfg.L2MessageQueueAddress, l2cfg.WithdrawTrieRootSlot, l2db)
-	loopToFetchEvent(subCtx, rc)
+	wc := NewL2WatcherClient(context.Background(), l2Cli, l2cfg.Confirmations, l2cfg.L2MessengerAddress, l2cfg.L2MessageQueueAddress, l2cfg.WithdrawTrieRootSlot, l2db)
+	loopToFetchEvent(subCtx, wc)
 
 	l1cfg := cfg.L1Config
 	l1cfg.RelayerConfig.SenderConfig.Confirmations = rpc.LatestBlockNumber
@@ -75,7 +75,7 @@ func testMonitorBridgeContract(t *testing.T) {
 	}()
 
 	l2cfg := cfg.L2Config
-	wc := watcher.NewL2WatcherClient(context.Background(), l2Cli, l2cfg.Confirmations, l2cfg.L2MessengerAddress, l2cfg.L2MessageQueueAddress, l2cfg.WithdrawTrieRootSlot, db)
+	wc := NewL2WatcherClient(context.Background(), l2Cli, l2cfg.Confirmations, l2cfg.L2MessengerAddress, l2cfg.L2MessageQueueAddress, l2cfg.WithdrawTrieRootSlot, db)
 	loopToFetchEvent(subCtx, wc)
 
 	previousHeight, err := l2Cli.BlockNumber(context.Background())
@@ -155,8 +155,8 @@ func testFetchMultipleSentMessageInOneBlock(t *testing.T) {
 	address, err := bind.WaitDeployed(context.Background(), l2Cli, trx)
 	assert.NoError(t, err)
 
-	rc := prepareWatcherClient(l2Cli, db, address)
-	loopToFetchEvent(subCtx, rc)
+	wc := prepareWatcherClient(l2Cli, db, address)
+	loopToFetchEvent(subCtx, wc)
 
 	// Call mock_bridge instance sendMessage to trigger emit events multiple times
 	numTransactions := 4
@@ -209,9 +209,36 @@ func testFetchMultipleSentMessageInOneBlock(t *testing.T) {
 	assert.Equal(t, 5, len(msgs))
 }
 
-func prepareWatcherClient(l2Cli *ethclient.Client, db database.OrmFactory, contractAddr common.Address) *watcher.L2WatcherClient {
+func testFetchRunningMissingBlocks(t *testing.T) {
+	// Create db handler and reset db.
+	db, err := database.NewOrmFactory(cfg.DBConfig)
+	assert.NoError(t, err)
+	assert.NoError(t, migrate.ResetDB(db.GetDB().DB))
+	defer db.Close()
+
+	auth := prepareAuth(t, l2Cli, cfg.L2Config.RelayerConfig.MessageSenderPrivateKeys[0])
+
+	// deploy mock bridge
+	_, tx, _, err := mock_bridge.DeployMockBridgeL2(auth, l2Cli)
+	assert.NoError(t, err)
+	address, err := bind.WaitDeployed(context.Background(), l2Cli, tx)
+	assert.NoError(t, err)
+
+	// wait for dealing time
+	<-time.After(3 * time.Second)
+
+	latestHeight, err := l2Cli.BlockNumber(context.Background())
+	assert.NoError(t, err)
+	wc := prepareWatcherClient(l2Cli, db, address)
+	wc.TryFetchRunningMissingBlocks(context.Background(), latestHeight)
+	fetchedHeight, err := db.GetL2BlocksLatestHeight()
+	assert.NoError(t, err)
+	assert.Equal(t, uint64(fetchedHeight), latestHeight)
+}
+
+func prepareWatcherClient(l2Cli *ethclient.Client, db database.OrmFactory, contractAddr common.Address) *L2WatcherClient {
 	confirmations := rpc.LatestBlockNumber
-	return watcher.NewL2WatcherClient(context.Background(), l2Cli, confirmations, contractAddr, contractAddr, common.Hash{}, db)
+	return NewL2WatcherClient(context.Background(), l2Cli, confirmations, contractAddr, contractAddr, common.Hash{}, db)
 }
 
 func prepareAuth(t *testing.T, l2Cli *ethclient.Client, privateKey *ecdsa.PrivateKey) *bind.TransactOpts {
@@ -224,6 +251,6 @@ func prepareAuth(t *testing.T, l2Cli *ethclient.Client, privateKey *ecdsa.Privat
 	return auth
 }
 
-func loopToFetchEvent(subCtx context.Context, watcher *watcher.L2WatcherClient) {
+func loopToFetchEvent(subCtx context.Context, watcher *L2WatcherClient) {
 	go cutils.Loop(subCtx, 2*time.Second, watcher.FetchContractEvent)
 }

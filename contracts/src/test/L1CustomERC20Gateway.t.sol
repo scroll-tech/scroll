@@ -12,6 +12,7 @@ import {AddressAliasHelper} from "../libraries/common/AddressAliasHelper.sol";
 
 import {L1GatewayTestBase} from "./L1GatewayTestBase.t.sol";
 import {MockScrollMessenger} from "./mocks/MockScrollMessenger.sol";
+import {MockGatewayRecipient} from "./mocks/MockGatewayRecipient.sol";
 
 contract L1CustomERC20GatewayTest is L1GatewayTestBase {
     // from L1CustomERC20Gateway
@@ -250,12 +251,10 @@ contract L1CustomERC20GatewayTest is L1GatewayTestBase {
 
     function testFinalizeWithdrawERC20(
         address sender,
-        address recipient,
         uint256 amount,
         bytes memory dataToCall
     ) public {
-        // blacklist some addresses
-        hevm.assume(recipient != address(0));
+        MockGatewayRecipient recipient = new MockGatewayRecipient();
 
         gateway.updateTokenMapping(address(l1Token), address(l2Token));
 
@@ -270,7 +269,7 @@ contract L1CustomERC20GatewayTest is L1GatewayTestBase {
             address(l1Token),
             address(l2Token),
             sender,
-            recipient,
+            address(recipient),
             amount,
             dataToCall
         );
@@ -291,7 +290,7 @@ contract L1CustomERC20GatewayTest is L1GatewayTestBase {
         // emit FinalizeWithdrawERC20 from L1StandardERC20Gateway
         {
             hevm.expectEmit(true, true, true, true);
-            emit FinalizeWithdrawERC20(address(l1Token), address(l2Token), sender, recipient, amount, dataToCall);
+            emit FinalizeWithdrawERC20(address(l1Token), address(l2Token), sender, address(recipient), amount, dataToCall);
         }
 
         // emit RelayedMessage from L1ScrollMessenger
@@ -301,11 +300,11 @@ contract L1CustomERC20GatewayTest is L1GatewayTestBase {
         }
 
         uint256 gatewayBalance = l1Token.balanceOf(address(gateway));
-        uint256 recipientBalance = l1Token.balanceOf(recipient);
+        uint256 recipientBalance = l1Token.balanceOf(address(recipient));
         assertBoolEq(false, l1Messenger.isL2MessageExecuted(keccak256(xDomainCalldata)));
         l1Messenger.relayMessageWithProof(address(counterpartGateway), address(gateway), 0, 0, message, proof);
         assertEq(gatewayBalance - amount, l1Token.balanceOf(address(gateway)));
-        assertEq(recipientBalance + amount, l1Token.balanceOf(recipient));
+        assertEq(recipientBalance + amount, l1Token.balanceOf(address(recipient)));
         assertBoolEq(true, l1Messenger.isL2MessageExecuted(keccak256(xDomainCalldata)));
     }
 
