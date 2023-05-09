@@ -240,12 +240,12 @@ func testL2RelayerMsgConfirm(t *testing.T) {
 	})
 
 	// Check the database for the updated status using TryTimes.
-	utils.TryTimes(5, func() bool {
+	assert.True(t, utils.TryTimes(5, func() bool {
 		msg1, err1 := db.GetL2MessageByMsgHash("msg-1")
 		msg2, err2 := db.GetL2MessageByMsgHash("msg-2")
 		return err1 == nil && msg1.Status == types.MsgConfirmed &&
 			err2 == nil && msg2.Status == types.MsgRelayFailed
-	})
+	}))
 }
 
 func testL2RelayerRollupConfirm(t *testing.T) {
@@ -299,7 +299,7 @@ func testL2RelayerRollupConfirm(t *testing.T) {
 	}
 
 	// Check the database for the updated status using TryTimes.
-	utils.TryTimes(5, func() bool {
+	ok := utils.TryTimes(5, func() bool {
 		expectedStatuses := []types.RollupStatus{
 			types.RollupCommitted,
 			types.RollupCommitted,
@@ -317,6 +317,7 @@ func testL2RelayerRollupConfirm(t *testing.T) {
 		}
 		return true
 	})
+	assert.True(t, ok)
 }
 
 func testL2RelayerGasOracleConfirm(t *testing.T) {
@@ -356,7 +357,7 @@ func testL2RelayerGasOracleConfirm(t *testing.T) {
 	}
 
 	// Check the database for the updated status using TryTimes.
-	utils.TryTimes(5, func() bool {
+	ok := utils.TryTimes(5, func() bool {
 		expectedStatuses := []types.GasOracleStatus{types.GasOracleImported, types.GasOracleFailed}
 		for i, batch := range batches {
 			gasOracle, err := db.GetBlockBatches(map[string]interface{}{"hash": batch.Hash().Hex()})
@@ -366,6 +367,7 @@ func testL2RelayerGasOracleConfirm(t *testing.T) {
 		}
 		return true
 	})
+	assert.True(t, ok)
 }
 
 func genBatchData(t *testing.T, index uint64) *types.BatchData {
