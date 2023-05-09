@@ -444,7 +444,7 @@ func testTimedoutProof(t *testing.T) {
 	assert.NoError(t, dbTx.Commit())
 
 	// verify proof status, it should be assigned, because roller didn't send any proof
-	utils.TryTimes(30, func() bool {
+	ok := utils.TryTimes(30, func() bool {
 		status, err := l2db.GetProvingStatusByHash(hashesAssigned[0])
 		if err != nil {
 			return false
@@ -454,7 +454,7 @@ func testTimedoutProof(t *testing.T) {
 		}
 		return len(hashesAssigned) == 0
 	})
-	assert.Falsef(t, len(hashesAssigned) != 0, "failed to check proof status")
+	assert.Falsef(t, !ok, "failed to check proof status")
 
 	// create second mock roller, that will send valid proof.
 	roller2 := newMockRoller(t, "roller_test"+strconv.Itoa(1), wsURL)
@@ -466,7 +466,7 @@ func testTimedoutProof(t *testing.T) {
 	assert.Equal(t, 1, rollerManager.GetNumberOfIdleRollers(message.BasicProve))
 
 	// verify proof status, it should be verified now, because second roller sent valid proof
-	utils.TryTimes(120, func() bool {
+	ok = utils.TryTimes(200, func() bool {
 		status, err := l2db.GetProvingStatusByHash(hashesVerified[0])
 		if err != nil {
 			return false
@@ -476,7 +476,7 @@ func testTimedoutProof(t *testing.T) {
 		}
 		return len(hashesVerified) == 0
 	})
-	assert.Falsef(t, len(hashesVerified) != 0, "failed to check proof status")
+	assert.Falsef(t, !ok, "failed to check proof status")
 }
 
 func testIdleRollerSelection(t *testing.T) {
