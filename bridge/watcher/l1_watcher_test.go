@@ -147,12 +147,12 @@ func testL1WatcherClientFetchContractEvent(t *testing.T) {
 	defer patchGuard.Reset()
 
 	convey.Convey("filter logs failure", t, func() {
+		targetErr := errors.New("call filter failure")
 		patchGuard.ApplyMethodFunc(c, "FilterLogs", func(ctx context.Context, q ethereum.FilterQuery) ([]types.Log, error) {
-			return nil, errors.New("call filter failure")
+			return nil, targetErr
 		})
 		err := watcher.FetchContractEvent()
-		assert.Error(t, err)
-		assert.Equal(t, err.Error(), "call filter failure")
+		assert.EqualError(t, err, targetErr.Error())
 	})
 
 	patchGuard.ApplyMethodFunc(c, "FilterLogs", func(ctx context.Context, q ethereum.FilterQuery) ([]types.Log, error) {
@@ -235,7 +235,6 @@ func testL1WatcherClientFetchContractEvent(t *testing.T) {
 			return targetErr
 		})
 		err := watcher.FetchContractEvent()
-		assert.Error(t, err)
 		assert.Equal(t, targetErr.Error(), err.Error())
 	})
 
@@ -249,7 +248,6 @@ func testL1WatcherClientFetchContractEvent(t *testing.T) {
 			return targetErr
 		})
 		err := watcher.FetchContractEvent()
-		assert.Error(t, err)
 		assert.Equal(t, targetErr.Error(), err.Error())
 	})
 
@@ -263,7 +261,6 @@ func testL1WatcherClientFetchContractEvent(t *testing.T) {
 			return targetErr
 		})
 		err := watcher.FetchContractEvent()
-		assert.Error(t, err)
 		assert.Equal(t, targetErr.Error(), err.Error())
 	})
 
@@ -277,7 +274,6 @@ func testL1WatcherClientFetchContractEvent(t *testing.T) {
 			return targetErr
 		})
 		err := watcher.FetchContractEvent()
-		assert.Error(t, err)
 		assert.Equal(t, targetErr.Error(), err.Error())
 	})
 
@@ -311,7 +307,6 @@ func testParseBridgeEventLogsL1QueueTransactionEventSignature(t *testing.T) {
 		defer patchGuard.Reset()
 
 		l2Messages, relayedMessages, rollupEvents, err := watcher.parseBridgeEventLogs(logs)
-		assert.Error(t, err)
 		assert.EqualError(t, err, targetErr.Error())
 		assert.Empty(t, l2Messages)
 		assert.Empty(t, relayedMessages)
@@ -360,7 +355,6 @@ func testParseBridgeEventLogsL1RelayedMessageEventSignature(t *testing.T) {
 		defer patchGuard.Reset()
 
 		l2Messages, relayedMessages, rollupEvents, err := watcher.parseBridgeEventLogs(logs)
-		assert.Error(t, err)
 		assert.EqualError(t, err, targetErr.Error())
 		assert.Empty(t, l2Messages)
 		assert.Empty(t, relayedMessages)
@@ -405,7 +399,6 @@ func testParseBridgeEventLogsL1FailedRelayedMessageEventSignature(t *testing.T) 
 		defer patchGuard.Reset()
 
 		l2Messages, relayedMessages, rollupEvents, err := watcher.parseBridgeEventLogs(logs)
-		assert.Error(t, err)
 		assert.EqualError(t, err, targetErr.Error())
 		assert.Empty(t, l2Messages)
 		assert.Empty(t, relayedMessages)
@@ -450,7 +443,6 @@ func testParseBridgeEventLogsL1CommitBatchEventSignature(t *testing.T) {
 		defer patchGuard.Reset()
 
 		l2Messages, relayedMessages, rollupEvents, err := watcher.parseBridgeEventLogs(logs)
-		assert.Error(t, err)
 		assert.EqualError(t, err, targetErr.Error())
 		assert.Empty(t, l2Messages)
 		assert.Empty(t, relayedMessages)
@@ -496,7 +488,6 @@ func testParseBridgeEventLogsL1FinalizeBatchEventSignature(t *testing.T) {
 		defer patchGuard.Reset()
 
 		l2Messages, relayedMessages, rollupEvents, err := watcher.parseBridgeEventLogs(logs)
-		assert.Error(t, err)
 		assert.EqualError(t, err, targetErr.Error())
 		assert.Empty(t, l2Messages)
 		assert.Empty(t, relayedMessages)

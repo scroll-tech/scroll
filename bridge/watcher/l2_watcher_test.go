@@ -292,7 +292,6 @@ func testParseBridgeEventLogsL2SentMessageEventSignature(t *testing.T) {
 		defer patchGuard.Reset()
 
 		l2Messages, relayedMessages, err := watcher.parseBridgeEventLogs(logs)
-		assert.Error(t, err)
 		assert.EqualError(t, err, targetErr.Error())
 		assert.Empty(t, l2Messages)
 		assert.Empty(t, relayedMessages)
@@ -340,7 +339,6 @@ func testParseBridgeEventLogsL2RelayedMessageEventSignature(t *testing.T) {
 		defer patchGuard.Reset()
 
 		l2Messages, relayedMessages, err := watcher.parseBridgeEventLogs(logs)
-		assert.Error(t, err)
 		assert.EqualError(t, err, targetErr.Error())
 		assert.Empty(t, l2Messages)
 		assert.Empty(t, relayedMessages)
@@ -381,7 +379,6 @@ func testParseBridgeEventLogsL2FailedRelayedMessageEventSignature(t *testing.T) 
 		defer patchGuard.Reset()
 
 		l2Messages, relayedMessages, err := watcher.parseBridgeEventLogs(logs)
-		assert.Error(t, err)
 		assert.EqualError(t, err, targetErr.Error())
 		assert.Empty(t, l2Messages)
 		assert.Empty(t, relayedMessages)
@@ -422,7 +419,6 @@ func testParseBridgeEventLogsL2AppendMessageEventSignature(t *testing.T) {
 		defer patchGuard.Reset()
 
 		l2Messages, relayedMessages, err := watcher.parseBridgeEventLogs(logs)
-		assert.Error(t, err)
 		assert.EqualError(t, err, targetErr.Error())
 		assert.Empty(t, l2Messages)
 		assert.Empty(t, relayedMessages)
