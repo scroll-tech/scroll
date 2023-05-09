@@ -114,20 +114,21 @@ func testMonitorBridgeContract(t *testing.T) {
 		t.Fatalf("Call failed")
 	}
 
-	// wait for dealing time
-	<-time.After(6 * time.Second)
-
-	var latestHeight uint64
-	latestHeight, err = l2Cli.BlockNumber(context.Background())
-	assert.NoError(t, err)
-	t.Log("Latest height is", latestHeight)
-
 	// check if we successfully stored events
-	height, err := db.GetLayer2LatestWatchedHeight()
+	var height int64
+	cutils.TryTimes(10, func() bool {
+		height, err = db.GetLayer2LatestWatchedHeight()
+		return err == nil && height > int64(previousHeight)
+	})
 	assert.NoError(t, err)
-	t.Log("Height in DB is", height)
 	assert.Greater(t, height, int64(previousHeight))
-	msgs, err := db.GetL2Messages(map[string]interface{}{"status": types.MsgPending})
+
+	// check l1 messages.
+	var msgs []*types.L2Message
+	cutils.TryTimes(10, func() bool {
+		msgs, err = db.GetL2Messages(map[string]interface{}{"status": types.MsgPending})
+		return err == nil && len(msgs) == 2
+	})
 	assert.NoError(t, err)
 	assert.Equal(t, 2, len(msgs))
 }
@@ -196,15 +197,20 @@ func testFetchMultipleSentMessageInOneBlock(t *testing.T) {
 		t.Fatalf("Call failed")
 	}
 
-	// wait for dealing time
-	<-time.After(6 * time.Second)
-
 	// check if we successfully stored events
-	height, err := db.GetLayer2LatestWatchedHeight()
+	var height int64
+	cutils.TryTimes(10, func() bool {
+		height, err = db.GetLayer2LatestWatchedHeight()
+		return err == nil && height > int64(previousHeight)
+	})
 	assert.NoError(t, err)
-	t.Log("LatestHeight is", height)
 	assert.Greater(t, height, int64(previousHeight)) // height must be greater than previousHeight because confirmations is 0
-	msgs, err := db.GetL2Messages(map[string]interface{}{"status": types.MsgPending})
+
+	var msgs []*types.L2Message
+	cutils.TryTimes(10, func() bool {
+		msgs, err = db.GetL2Messages(map[string]interface{}{"status": types.MsgPending})
+		return err == nil && len(msgs) == 5
+	})
 	assert.NoError(t, err)
 	assert.Equal(t, 5, len(msgs))
 }
@@ -224,14 +230,20 @@ func testFetchRunningMissingBlocks(t *testing.T) {
 	address, err := bind.WaitDeployed(context.Background(), l2Cli, tx)
 	assert.NoError(t, err)
 
-	// wait for dealing time
-	<-time.After(3 * time.Second)
-
-	latestHeight, err := l2Cli.BlockNumber(context.Background())
-	assert.NoError(t, err)
-	wc := prepareWatcherClient(l2Cli, db, address)
-	wc.TryFetchRunningMissingBlocks(context.Background(), latestHeight)
-	fetchedHeight, err := db.GetL2BlocksLatestHeight()
+	var (
+		latestHeight  uint64
+		fetchedHeight int64
+	)
+	cutils.TryTimes(10, func() bool {
+		latestHeight, err = l2Cli.BlockNumber(context.Background())
+		if err != nil {
+			return false
+		}
+		wc := prepareWatcherClient(l2Cli, db, address)
+		wc.TryFetchRunningMissingBlocks(context.Background(), latestHeight)
+		fetchedHeight, err = db.GetL2BlocksLatestHeight()
+		return err == nil && uint64(fetchedHeight) == latestHeight
+	})
 	assert.NoError(t, err)
 	assert.Equal(t, uint64(fetchedHeight), latestHeight)
 }
