@@ -32,8 +32,8 @@ import (
 	"scroll-tech/coordinator/verifier"
 
 	"scroll-tech/common/docker"
-	"scroll-tech/common/message"
 	"scroll-tech/common/types"
+	"scroll-tech/common/types/message"
 	"scroll-tech/common/utils"
 )
 
@@ -111,7 +111,7 @@ func testHandshake(t *testing.T) {
 	roller := newMockRoller(t, "roller_test", wsURL)
 	defer roller.close()
 
-	assert.Equal(t, 1, rollerManager.GetNumberOfIdleRollers())
+	assert.Equal(t, 1, rollerManager.GetNumberOfIdleRollers(message.BasicProve))
 }
 
 func testFailedHandshake(t *testing.T) {
@@ -145,7 +145,7 @@ func testFailedHandshake(t *testing.T) {
 			Timestamp: uint32(time.Now().Unix()),
 		},
 	}
-	assert.NoError(t, authMsg.Sign(privkey))
+	assert.NoError(t, authMsg.SignWithKey(privkey))
 	_, err = client.RegisterAndSubscribe(ctx, make(chan *message.TaskMsg, 4), authMsg)
 	assert.Error(t, err)
 
@@ -163,18 +163,18 @@ func testFailedHandshake(t *testing.T) {
 			Timestamp: uint32(time.Now().Unix()),
 		},
 	}
-	assert.NoError(t, authMsg.Sign(privkey))
+	assert.NoError(t, authMsg.SignWithKey(privkey))
 	token, err := client.RequestToken(ctx, authMsg)
 	assert.NoError(t, err)
 
 	authMsg.Identity.Token = token
-	assert.NoError(t, authMsg.Sign(privkey))
+	assert.NoError(t, authMsg.SignWithKey(privkey))
 
 	<-time.After(6 * time.Second)
 	_, err = client.RegisterAndSubscribe(ctx, make(chan *message.TaskMsg, 4), authMsg)
 	assert.Error(t, err)
 
-	assert.Equal(t, 0, rollerManager.GetNumberOfIdleRollers())
+	assert.Equal(t, 0, rollerManager.GetNumberOfIdleRollers(message.BasicProve))
 }
 
 func testSeveralConnections(t *testing.T) {
@@ -204,7 +204,7 @@ func testSeveralConnections(t *testing.T) {
 	assert.NoError(t, eg.Wait())
 
 	// check roller's idle connections
-	assert.Equal(t, batch, rollerManager.GetNumberOfIdleRollers())
+	assert.Equal(t, batch, rollerManager.GetNumberOfIdleRollers(message.BasicProve))
 
 	// close connection
 	for _, roller := range rollers {
@@ -218,7 +218,7 @@ func testSeveralConnections(t *testing.T) {
 	for {
 		select {
 		case <-tick:
-			if rollerManager.GetNumberOfIdleRollers() == 0 {
+			if rollerManager.GetNumberOfIdleRollers(message.BasicProve) == 0 {
 				return
 			}
 		case <-tickStop:
@@ -260,7 +260,7 @@ func testValidProof(t *testing.T) {
 			roller.close()
 		}
 	}()
-	assert.Equal(t, 3, rollerManager.GetNumberOfIdleRollers())
+	assert.Equal(t, 3, rollerManager.GetNumberOfIdleRollers(message.BasicProve))
 
 	var hashes = make([]string, 1)
 	dbTx, err := l2db.Beginx()
@@ -318,7 +318,7 @@ func testInvalidProof(t *testing.T) {
 			roller.close()
 		}
 	}()
-	assert.Equal(t, 3, rollerManager.GetNumberOfIdleRollers())
+	assert.Equal(t, 3, rollerManager.GetNumberOfIdleRollers(message.BasicProve))
 
 	var hashes = make([]string, 1)
 	dbTx, err := l2db.Beginx()
@@ -376,7 +376,7 @@ func testProofGeneratedFailed(t *testing.T) {
 			roller.close()
 		}
 	}()
-	assert.Equal(t, 3, rollerManager.GetNumberOfIdleRollers())
+	assert.Equal(t, 3, rollerManager.GetNumberOfIdleRollers(message.BasicProve))
 
 	var hashes = make([]string, 1)
 	dbTx, err := l2db.Beginx()
@@ -428,7 +428,7 @@ func testTimedoutProof(t *testing.T) {
 		// close connection
 		roller1.close()
 	}()
-	assert.Equal(t, 1, rollerManager.GetNumberOfIdleRollers())
+	assert.Equal(t, 1, rollerManager.GetNumberOfIdleRollers(message.BasicProve))
 
 	var hashes = make([]string, 1)
 	dbTx, err := l2db.Beginx()
@@ -466,7 +466,7 @@ func testTimedoutProof(t *testing.T) {
 		// close connection
 		roller2.close()
 	}()
-	assert.Equal(t, 1, rollerManager.GetNumberOfIdleRollers())
+	assert.Equal(t, 1, rollerManager.GetNumberOfIdleRollers(message.BasicProve))
 
 	// wait manager to finish first CollectProofs
 	<-time.After(60 * time.Second)
@@ -515,7 +515,7 @@ func testIdleRollerSelection(t *testing.T) {
 		}
 	}()
 
-	assert.Equal(t, len(rollers), rollerManager.GetNumberOfIdleRollers())
+	assert.Equal(t, len(rollers), rollerManager.GetNumberOfIdleRollers(message.BasicProve))
 
 	var hashes = make([]string, 1)
 	dbTx, err := l2db.Beginx()
@@ -742,14 +742,14 @@ func (r *mockRoller) connectToCoordinator() (*client2.Client, ethereum.Subscript
 			Timestamp: uint32(time.Now().Unix()),
 		},
 	}
-	_ = authMsg.Sign(r.privKey)
+	_ = authMsg.SignWithKey(r.privKey)
 
 	token, err := client.RequestToken(context.Background(), authMsg)
 	if err != nil {
 		return nil, nil, err
 	}
 	authMsg.Identity.Token = token
-	_ = authMsg.Sign(r.privKey)
+	_ = authMsg.SignWithKey(r.privKey)
 
 	sub, err := client.RegisterAndSubscribe(context.Background(), r.taskCh, authMsg)
 	if err != nil {

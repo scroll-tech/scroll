@@ -22,6 +22,27 @@ const (
 	StatusProofError
 )
 
+// ProveType represents the type of roller.
+type ProveType uint8
+
+func (r ProveType) String() string {
+	switch r {
+	case BasicProve:
+		return "Basic Prove"
+	case AggregatorProve:
+		return "Aggregator Prove"
+	default:
+		return "Illegal Prove type"
+	}
+}
+
+const (
+	// BasicProve is default roller, it only generates zk proof from traces.
+	BasicProve ProveType = iota
+	// AggregatorProve generates zk proof from other zk proofs and aggregate them into one proof.
+	AggregatorProve
+)
+
 // AuthMsg is the first message exchanged from the Roller to the Sequencer.
 // It effectively acts as a registration, and makes the Roller identification
 // known to the Sequencer.
@@ -36,10 +57,10 @@ type AuthMsg struct {
 type Identity struct {
 	// Roller name
 	Name string `json:"name"`
+	// Roller RollerType
+	RollerType ProveType `json:"roller_type,omitempty"`
 	// Unverified Unix timestamp of message creation
 	Timestamp uint32 `json:"timestamp"`
-	// Roller public key
-	PublicKey string `json:"publicKey"`
 	// Version is common.Version+ZkVersion. Use the following to check the latest ZkVersion version.
 	// curl -sL https://api.github.com/repos/scroll-tech/scroll-zkevm/commits | jq -r ".[0].sha"
 	Version string `json:"version"`
@@ -56,13 +77,14 @@ func GenerateToken() (string, error) {
 	return hex.EncodeToString(b), nil
 }
 
-// Sign auth message
-func (a *AuthMsg) Sign(priv *ecdsa.PrivateKey) error {
+// SignWithKey auth message with private key and set public key in auth message's Identity
+func (a *AuthMsg) SignWithKey(priv *ecdsa.PrivateKey) error {
 	// Hash identity content
 	hash, err := a.Identity.Hash()
 	if err != nil {
 		return err
 	}
+
 	// Sign register message
 	sig, err := crypto.Sign(hash, priv)
 	if err != nil {
@@ -80,36 +102,27 @@ func (a *AuthMsg) Verify() (bool, error) {
 		return false, err
 	}
 	sig := common.FromHex(a.Signature)
-	// recover public key
-	if a.Identity.PublicKey == "" {
-		pk, err := crypto.SigToPub(hash, sig)
-		if err != nil {
-			return false, err
-		}
-		a.Identity.PublicKey = common.Bytes2Hex(crypto.CompressPubkey(pk))
-	}
 
-	return crypto.VerifySignature(common.FromHex(a.Identity.PublicKey), hash, sig[:len(sig)-1]), nil
+	pk, err := crypto.SigToPub(hash, sig)
+	if err != nil {
+		return false, err
+	}
+	return crypto.VerifySignature(crypto.CompressPubkey(pk), hash, sig[:len(sig)-1]), nil
 }
 
 // PublicKey return public key from signature
 func (a *AuthMsg) PublicKey() (string, error) {
-	if a.Identity.PublicKey == "" {
-		hash, err := a.Identity.Hash()
-		if err != nil {
-			return "", err
-		}
-		sig := common.FromHex(a.Signature)
-		// recover public key
-		pk, err := crypto.SigToPub(hash, sig)
-		if err != nil {
-			return "", err
-		}
-		a.Identity.PublicKey = common.Bytes2Hex(crypto.CompressPubkey(pk))
-		return a.Identity.PublicKey, nil
+	hash, err := a.Identity.Hash()
+	if err != nil {
+		return "", err
 	}
-
-	return a.Identity.PublicKey, nil
+	sig := common.FromHex(a.Signature)
+	// recover public key
+	pk, err := crypto.SigToPub(hash, sig)
+	if err != nil {
+		return "", err
+	}
+	return common.Bytes2Hex(crypto.CompressPubkey(pk)), nil
 }
 
 // Hash returns the hash of the auth message, which should be the message used
@@ -188,14 +201,19 @@ func (a *ProofMsg) PublicKey() (string, error) {
 
 // TaskMsg is a wrapper type around db ProveTask type.
 type TaskMsg struct {
-	ID     string              `json:"id"`
-	Traces []*types.BlockTrace `json:"blockTraces"`
+	ID   string    `json:"id"`
+	Type ProveType `json:"type,omitempty"`
+	// Only basic rollers need traces, aggregator rollers don't!
+	Traces []*types.BlockTrace `json:"blockTraces,omitempty"`
+	// Only aggregator rollers need proofs to aggregate, basic rollers don't!
+	SubProofs [][]byte `json:"sub_proofs,omitempty"`
 }
 
 // ProofDetail is the message received from rollers that contains zk proof, the status of
 // the proof generation succeeded, and an error message if proof generation failed.
 type ProofDetail struct {
 	ID     string     `json:"id"`
+	Type   ProveType  `json:"type,omitempty"`
 	Status RespStatus `json:"status"`
 	Proof  *AggProof  `json:"proof"`
 	Error  string     `json:"error,omitempty"`
