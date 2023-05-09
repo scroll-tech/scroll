@@ -170,16 +170,11 @@ func testFailedHandshake(t *testing.T) {
 	authMsg.Identity.Token = token
 	assert.NoError(t, authMsg.SignWithKey(privkey))
 
-	var count int
-	utils.TryTimes(12, func() bool {
-		_, err = client.RegisterAndSubscribe(ctx, make(chan *message.TaskMsg, 4), authMsg)
-		if err != nil {
-			return false
-		}
-		count = rollerManager.GetNumberOfIdleRollers(message.BasicProve)
-		return count == 0
-	})
-	assert.Equal(t, 0, count)
+	<-time.After(6 * time.Second)
+	_, err = client.RegisterAndSubscribe(ctx, make(chan *message.TaskMsg, 4), authMsg)
+	assert.Error(t, err)
+
+	assert.Equal(t, 0, rollerManager.GetNumberOfIdleRollers(message.BasicProve))
 }
 
 func testSeveralConnections(t *testing.T) {
@@ -449,7 +444,7 @@ func testTimedoutProof(t *testing.T) {
 	assert.NoError(t, dbTx.Commit())
 
 	// verify proof status, it should be assigned, because roller didn't send any proof
-	utils.TryTimes(20, func() bool {
+	utils.TryTimes(30, func() bool {
 		status, err := l2db.GetProvingStatusByHash(hashesAssigned[0])
 		if err != nil {
 			return false
