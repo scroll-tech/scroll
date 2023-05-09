@@ -2,7 +2,13 @@ package relayer
 
 import (
 	"context"
+	"errors"
+	"math/big"
 	"testing"
+
+	"github.com/agiledragon/gomonkey/v2"
+	"github.com/scroll-tech/go-ethereum/common"
+	"github.com/smartystreets/goconvey/convey"
 
 	"github.com/stretchr/testify/assert"
 
@@ -94,6 +100,7 @@ func testL1RelayerMsgConfirm(t *testing.T) {
 	defer cancel()
 	l1Relayer, err := NewLayer1Relayer(ctx, db, l1Cfg.RelayerConfig)
 	assert.NoError(t, err)
+	assert.NotNil(t, l1Relayer)
 
 	// Simulate message confirmations.
 	l1Relayer.messageSender.SendConfirmation(&sender.Confirmation{
@@ -106,12 +113,13 @@ func testL1RelayerMsgConfirm(t *testing.T) {
 	})
 
 	// Check the database for the updated status using TryTimes.
-	utils.TryTimes(5, func() bool {
+	ok := utils.TryTimes(5, func() bool {
 		msg1, err1 := db.GetL1MessageByMsgHash("msg-1")
 		msg2, err2 := db.GetL1MessageByMsgHash("msg-2")
 		return err1 == nil && msg1.Status == types.MsgConfirmed &&
 			err2 == nil && msg2.Status == types.MsgRelayFailed
 	})
+	assert.True(t, ok)
 }
 
 func testL1RelayerGasOracleConfirm(t *testing.T) {
@@ -134,6 +142,7 @@ func testL1RelayerGasOracleConfirm(t *testing.T) {
 	defer cancel()
 	l1Relayer, err := NewLayer1Relayer(ctx, db, l1Cfg.RelayerConfig)
 	assert.NoError(t, err)
+	assert.NotNil(t, l1Relayer)
 
 	// Simulate message confirmations.
 	l1Relayer.gasOracleSender.SendConfirmation(&sender.Confirmation{
@@ -146,10 +155,107 @@ func testL1RelayerGasOracleConfirm(t *testing.T) {
 	})
 
 	// Check the database for the updated status using TryTimes.
-	utils.TryTimes(5, func() bool {
+	ok := utils.TryTimes(5, func() bool {
 		msg1, err1 := db.GetL1BlockInfos(map[string]interface{}{"hash": "gas-oracle-1"})
 		msg2, err2 := db.GetL1BlockInfos(map[string]interface{}{"hash": "gas-oracle-2"})
 		return err1 == nil && len(msg1) == 1 && msg1[0].GasOracleStatus == types.GasOracleImported &&
 			err2 == nil && len(msg2) == 1 && msg2[0].GasOracleStatus == types.GasOracleFailed
 	})
+	assert.True(t, ok)
+}
+
+func testL1RelayerProcessGasPriceOracle(t *testing.T) {
+	db, err := database.NewOrmFactory(cfg.DBConfig)
+	assert.NoError(t, err)
+	assert.NoError(t, migrate.ResetDB(db.GetDB().DB))
+	defer db.Close()
+
+	l1Cfg := cfg.L1Config
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	l1Relayer, err := NewLayer1Relayer(ctx, db, l1Cfg.RelayerConfig)
+	assert.NoError(t, err)
+	assert.NotNil(t, l1Relayer)
+
+	convey.Convey("GetLatestL1BlockHeight failure", t, func() {
+		targetErr := errors.New("GetLatestL1BlockHeight error")
+		patchGuard := gomonkey.ApplyMethodFunc(db, "GetLatestL1BlockHeight", func() (uint64, error) {
+			return 0, targetErr
+		})
+		defer patchGuard.Reset()
+		l1Relayer.ProcessGasPriceOracle()
+	})
+
+	patchGuard := gomonkey.ApplyMethodFunc(db, "GetLatestL1BlockHeight", func() (uint64, error) {
+		return 100, nil
+	})
+	defer patchGuard.Reset()
+
+	convey.Convey("GetL1BlockInfos failure", t, func() {
+		targetErr := errors.New("GetL1BlockInfos error")
+		patchGuard.ApplyMethodFunc(db, "GetL1BlockInfos", func(fields map[string]interface{}, args ...string) ([]*types.L1BlockInfo, error) {
+			return nil, targetErr
+		})
+		l1Relayer.ProcessGasPriceOracle()
+	})
+
+	convey.Convey("Block not exist", t, func() {
+		patchGuard.ApplyMethodFunc(db, "GetL1BlockInfos", func(fields map[string]interface{}, args ...string) ([]*types.L1BlockInfo, error) {
+			tmpInfo := []*types.L1BlockInfo{
+				{Hash: "gas-oracle-1", Number: 0},
+				{Hash: "gas-oracle-2", Number: 1},
+			}
+			return tmpInfo, nil
+		})
+		l1Relayer.ProcessGasPriceOracle()
+	})
+
+	patchGuard.ApplyMethodFunc(db, "GetL1BlockInfos", func(fields map[string]interface{}, args ...string) ([]*types.L1BlockInfo, error) {
+		tmpInfo := []*types.L1BlockInfo{
+			{
+				Hash:            "gas-oracle-1",
+				Number:          0,
+				GasOracleStatus: types.GasOraclePending,
+			},
+		}
+		return tmpInfo, nil
+	})
+
+	convey.Convey("setL1BaseFee failure", t, func() {
+		targetErr := errors.New("pack setL1BaseFee error")
+		patchGuard.ApplyMethodFunc(l1Relayer.l1GasOracleABI, "Pack", func(name string, args ...interface{}) ([]byte, error) {
+			return nil, targetErr
+		})
+		l1Relayer.ProcessGasPriceOracle()
+	})
+
+	patchGuard.ApplyMethodFunc(l1Relayer.l1GasOracleABI, "Pack", func(name string, args ...interface{}) ([]byte, error) {
+		return []byte("for test"), nil
+	})
+
+	convey.Convey("send transaction failure", t, func() {
+		targetErr := errors.New("send transaction failure")
+		patchGuard.ApplyMethodFunc(l1Relayer.gasOracleSender, "SendTransaction", func(string, *common.Address, *big.Int, []byte, uint64) (hash common.Hash, err error) {
+			return common.Hash{}, targetErr
+		})
+		l1Relayer.ProcessGasPriceOracle()
+	})
+
+	patchGuard.ApplyMethodFunc(l1Relayer.gasOracleSender, "SendTransaction", func(string, *common.Address, *big.Int, []byte, uint64) (hash common.Hash, err error) {
+		return common.Hash{}, nil
+	})
+
+	convey.Convey("UpdateL1GasOracleStatusAndOracleTxHash failure", t, func() {
+		targetErr := errors.New("UpdateL1GasOracleStatusAndOracleTxHash failure")
+		patchGuard.ApplyMethodFunc(db, "UpdateL1GasOracleStatusAndOracleTxHash", func(context.Context, string, types.GasOracleStatus, string) error {
+			return targetErr
+		})
+		l1Relayer.ProcessGasPriceOracle()
+	})
+
+	patchGuard.ApplyMethodFunc(db, "UpdateL1GasOracleStatusAndOracleTxHash", func(context.Context, string, types.GasOracleStatus, string) error {
+		return nil
+	})
+
+	l1Relayer.ProcessGasPriceOracle()
 }
