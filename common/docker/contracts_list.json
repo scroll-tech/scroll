@@ -2,23 +2,23 @@
   "l1_contracts": {
     "L2GasPriceOracle": "0xf86a9a06e2464539d139ec6d3ad3c63e9bb4bd3c",
     "L1Whitelist": "0xf0fb0109ec4c0ffe1c3708010ac39df342ad13c6",
-    "L1ScrollChain": "0x6edca115a58590c2b236284a6c62dec3103d8fc4",
-    "L1MessageQueue": "0x2dfda18f6e0c753f37323a5465a4a2999901f772",
-    "L1ScrollMessenger": "0x4221e6c50c004a0a6d5b83e17077c2dbaf3be239",
+    "L1ScrollChain": "0x6b43c8778d076435ed90384bacb78546513c153d",
+    "L1MessageQueue": "0x4221e6c50c004a0a6d5b83e17077c2dbaf3be239",
+    "L1ScrollMessenger": "0x24dd98a7f678bfaa5453130ddba5f7aa1b594df0",
     "L1GatewayRouter": "0x6edca115a58590c2b236284a6c62dec3103d8fc4",
-    "L1ETHGateway": "0x6b43c8778d076435ed90384bacb78546513c153d"
+    "L1ETHGateway": "0x2dfda18f6e0c753f37323a5465a4a2999901f772"
   },
   "l2_contracts": {
-    "L1GasPriceOracle": "0x24dd98a7f678bfaa5453130ddba5f7aa1b594df0",
-    "L1BlockContainer": "0xf86a9a06e2464539d139ec6d3ad3c63e9bb4bd3c",
-    "L2Whitelist": "0x5edd6a65e63d4bf5955bf890e1889f5d00d12f4e",
+    "L1GasPriceOracle": "0x5edd6a65e63d4bf5955bf890e1889f5d00d12f4e",
+    "L1BlockContainer": "0xf0fb0109ec4c0ffe1c3708010ac39df342ad13c6",
+    "L2Whitelist": "0xf86a9a06e2464539d139ec6d3ad3c63e9bb4bd3c",
     "L2ProxyAdmin": "0x5edd6a65e63d4bf5955bf890e1889f5d00d12f4e",
-    "L2ScrollMessenger": "0xd1c8d1a7bdef9cf9e9d05f01bd36d5f8a7501d3f",
-    "L2MessageQueue": "0x6b43c8778d076435ed90384bacb78546513c153d",
-    "L2TxFeeVault": "0x52128e5d5812f699f9ed2f56f744e1eefe78db92",
+    "L2ScrollMessenger": "0x52128e5d5812f699f9ed2f56f744e1eefe78db92",
+    "L2MessageQueue": "0x24dd98a7f678bfaa5453130ddba5f7aa1b594df0",
+    "L2TxFeeVault": "0x6b43c8778d076435ed90384bacb78546513c153d",
     "L2GatewayRouter": "0x7363726f6c6c6c02000000000000000000000007",
-    "L2ETHGateway": "0x81bfe9f57ef1a68f09c298fc5d756f657a69d809"
+    "L2ETHGateway": "0x2dfda18f6e0c753f37323a5465a4a2999901f772"
   },
-  "erc20": "0xf0fb0109ec4c0ffe1c3708010ac39df342ad13c6",
-  "greeter": "0x15019c10e2e9ae93fa42a59ffccf049c48a605ef"
+  "erc20": "0xba3e049c06254d4d02d4895e82a29d56e788a9f0",
+  "greeter": "0x27df21e89b02c29013c9a53a76c2b31bfc2a5c71"
 }

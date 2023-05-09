@@ -1,6 +1,6 @@
 {
   "l1_config": {
-    "confirmations": "0x6",
+    "confirmations": "0x1",
     "endpoint": "https://goerli.infura.io/v3/9aa3d95b3bc440fa88ea12eaa4456161",
     "l1_messenger_address": "0x0000000000000000000000000000000000000000",
     "l1_message_queue_address": "0x0000000000000000000000000000000000000000",
@@ -36,7 +36,7 @@
     }
   },
   "l2_config": {
-    "confirmations": "0x6",
+    "confirmations": "0x1",
     "endpoint": "/var/lib/jenkins/workspace/SequencerPipeline/MyPrivateNetwork/geth.ipc",
     "l2_messenger_address": "0x0000000000000000000000000000000000000000",
     "l2_message_queue_address": "0x0000000000000000000000000000000000000000",
@@ -49,7 +49,7 @@
         "check_pending_time": 10,
         "check_balance_time": 100,
         "escalate_blocks": 100,
-        "confirmations": "0x6",
+        "confirmations": "0x1",
         "escalate_multiple_num": 11,
         "escalate_multiple_den": 10,
         "max_gas_price": 10000000000,

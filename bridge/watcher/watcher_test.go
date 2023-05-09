@@ -1,4 +1,4 @@
-package watcher_test
+package watcher
 
 import (
 	"encoding/json"
@@ -83,9 +83,10 @@ func TestFunction(t *testing.T) {
 	t.Run("TestCreateNewWatcherAndStop", testCreateNewWatcherAndStop)
 	t.Run("TestMonitorBridgeContract", testMonitorBridgeContract)
 	t.Run("TestFetchMultipleSentMessageInOneBlock", testFetchMultipleSentMessageInOneBlock)
+	t.Run("TestFetchRunningMissingBlocks", testFetchRunningMissingBlocks)
 
 	// Run batch proposer test cases.
 	t.Run("TestBatchProposerProposeBatch", testBatchProposerProposeBatch)
+	t.Run("TestBatchProposerBatchGeneration", testBatchProposerBatchGeneration)
 	t.Run("TestBatchProposerGracefulRestart", testBatchProposerGracefulRestart)
-
 }
