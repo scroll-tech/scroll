@@ -240,7 +240,7 @@ contract L1ERC1155GatewayTest is L1GatewayTestBase, ERC1155TokenReceiver {
         prepareL2MessageRoot(keccak256(xDomainCalldata));
 
         IL1ScrollMessenger.L2MessageProof memory proof;
-        proof.batchHash = rollup.lastFinalizedBatchHash();
+        proof.batchIndex = rollup.lastFinalizedBatchIndex();
 
         // conterpart is not L2WETHGateway
         // emit FailedRelayedMessage from L1ScrollMessenger
@@ -304,7 +304,7 @@ contract L1ERC1155GatewayTest is L1GatewayTestBase, ERC1155TokenReceiver {
         prepareL2MessageRoot(keccak256(xDomainCalldata));
 
         IL1ScrollMessenger.L2MessageProof memory proof;
-        proof.batchHash = rollup.lastFinalizedBatchHash();
+        proof.batchIndex = rollup.lastFinalizedBatchIndex();
 
         // emit FinalizeWithdrawERC1155 from L1ERC1155Gateway
         {
@@ -431,7 +431,7 @@ contract L1ERC1155GatewayTest is L1GatewayTestBase, ERC1155TokenReceiver {
         prepareL2MessageRoot(keccak256(xDomainCalldata));
 
         IL1ScrollMessenger.L2MessageProof memory proof;
-        proof.batchHash = rollup.lastFinalizedBatchHash();
+        proof.batchIndex = rollup.lastFinalizedBatchIndex();
 
         // conterpart is not L2WETHGateway
         // emit FailedRelayedMessage from L1ScrollMessenger
@@ -507,7 +507,7 @@ contract L1ERC1155GatewayTest is L1GatewayTestBase, ERC1155TokenReceiver {
         prepareL2MessageRoot(keccak256(xDomainCalldata));
 
         IL1ScrollMessenger.L2MessageProof memory proof;
-        proof.batchHash = rollup.lastFinalizedBatchHash();
+        proof.batchIndex = rollup.lastFinalizedBatchIndex();
 
         // emit FinalizeBatchWithdrawERC1155 from L1ERC1155Gateway
         {

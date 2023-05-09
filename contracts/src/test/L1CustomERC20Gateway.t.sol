@@ -226,7 +226,7 @@ contract L1CustomERC20GatewayTest is L1GatewayTestBase {
         prepareL2MessageRoot(keccak256(xDomainCalldata));
 
         IL1ScrollMessenger.L2MessageProof memory proof;
-        proof.batchHash = rollup.lastFinalizedBatchHash();
+        proof.batchIndex = rollup.lastFinalizedBatchIndex();
 
         // conterpart is not L2WETHGateway
         // emit FailedRelayedMessage from L1ScrollMessenger
@@ -285,12 +285,19 @@ contract L1CustomERC20GatewayTest is L1GatewayTestBase {
         prepareL2MessageRoot(keccak256(xDomainCalldata));
 
         IL1ScrollMessenger.L2MessageProof memory proof;
-        proof.batchHash = rollup.lastFinalizedBatchHash();
+        proof.batchIndex = rollup.lastFinalizedBatchIndex();
 
         // emit FinalizeWithdrawERC20 from L1StandardERC20Gateway
         {
             hevm.expectEmit(true, true, true, true);
-            emit FinalizeWithdrawERC20(address(l1Token), address(l2Token), sender, address(recipient), amount, dataToCall);
+            emit FinalizeWithdrawERC20(
+                address(l1Token),
+                address(l2Token),
+                sender,
+                address(recipient),
+                amount,
+                dataToCall
+            );
         }
 
         // emit RelayedMessage from L1ScrollMessenger

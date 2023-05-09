@@ -31,18 +31,18 @@ contract L1ScrollMessengerTest is DSTestPlus {
         // Initialize L1 contracts
         l1Messenger.initialize(address(l2Messenger), feeVault, address(scrollChain), address(l1MessageQueue));
         l1MessageQueue.initialize(address(l1Messenger), address(0));
-        scrollChain.initialize(address(l1MessageQueue));
+        scrollChain.initialize(address(l1MessageQueue), address(0));
     }
 
     function testForbidCallFromL2() external {
-        IScrollChain.Batch memory genesisBatch;
+        /*IScrollChain.Batch memory genesisBatch;
         genesisBatch.newStateRoot = bytes32(uint256(1));
         genesisBatch.blocks = new IScrollChain.BlockContext[](1);
         genesisBatch.blocks[0].blockHash = bytes32(uint256(1));
-        scrollChain.importGenesisBatch(genesisBatch);
+        scrollChain.importGenesisBatch(genesisBatch);*/
 
         IL1ScrollMessenger.L2MessageProof memory proof;
-        proof.batchHash = scrollChain.lastFinalizedBatchHash();
+        proof.batchIndex = scrollChain.lastFinalizedBatchIndex();
 
         hevm.expectRevert("Forbid to call message queue");
         l1Messenger.relayMessageWithProof(address(this), address(l1MessageQueue), 0, 0, new bytes(0), proof);

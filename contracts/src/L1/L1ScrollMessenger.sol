@@ -7,6 +7,7 @@ import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/security/
 import {IScrollChain} from "./rollup/IScrollChain.sol";
 import {IL1MessageQueue} from "./rollup/IL1MessageQueue.sol";
 import {IL1ScrollMessenger} from "./IL1ScrollMessenger.sol";
+import {IScrollMessengerCallback} from "../libraries/callbacks/IScrollMessengerCallback.sol";
 import {ScrollConstants} from "../libraries/constants/ScrollConstants.sol";
 import {IScrollMessenger} from "../libraries/IScrollMessenger.sol";
 import {ScrollMessengerBase} from "../libraries/ScrollMessengerBase.sol";
@@ -135,15 +136,12 @@ contract L1ScrollMessenger is PausableUpgradeable, ScrollMessengerBase, IL1Scrol
 
         {
             address _rollup = rollup;
-            require(IScrollChain(_rollup).isBatchFinalized(_proof.batchHash), "Batch is not finalized");
-            // @note skip verify for now
-            /*
-      bytes32 _messageRoot = IScrollChain(_rollup).getL2MessageRoot(_proof.batchHash);
-      require(
-        WithdrawTrieVerifier.verifyMerkleProof(_messageRoot, _xDomainCalldataHash, _nonce, _proof.merkleProof),
-        "Invalid proof"
-      );
-      */
+            require(IScrollChain(_rollup).isBatchFinalized(_proof.batchIndex), "Batch is not finalized");
+            bytes32 _messageRoot = IScrollChain(_rollup).withdrawRoots(_proof.batchIndex);
+            require(
+                WithdrawTrieVerifier.verifyMerkleProof(_messageRoot, _xDomainCalldataHash, _nonce, _proof.merkleProof),
+                "Invalid proof"
+            );
         }
 
         // @todo check more `_to` address to avoid attack.
@@ -154,7 +152,9 @@ contract L1ScrollMessenger is PausableUpgradeable, ScrollMessengerBase, IL1Scrol
         require(_from != xDomainMessageSender, "Invalid message sender");
 
         xDomainMessageSender = _from;
-        (bool success, ) = _to.call{value: _value}(_message);
+        (bool success, ) = _to.call{value: _value}(
+            abi.encodeWithSelector(IScrollMessengerCallback.onScrollMessengerCallback.selector, _message)
+        );
         // reset value to refund gas.
         xDomainMessageSender = ScrollConstants.DEFAULT_XDOMAIN_MESSAGE_SENDER;
 

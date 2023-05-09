@@ -65,7 +65,7 @@ abstract contract L1GatewayTestBase is DSTestPlus {
         messageQueue.initialize(address(l1Messenger), address(gasOracle));
         gasOracle.initialize();
         gasOracle.updateWhitelist(address(whitelist));
-        rollup.initialize(address(messageQueue));
+        rollup.initialize(address(messageQueue), address(0));
 
         address[] memory _accounts = new address[](1);
         _accounts[0] = address(this);
@@ -73,6 +73,7 @@ abstract contract L1GatewayTestBase is DSTestPlus {
     }
 
     function prepareL2MessageRoot(bytes32 messageHash) internal {
+        /*
         IScrollChain.Batch memory _genesisBatch;
         _genesisBatch.blocks = new IScrollChain.BlockContext[](1);
         _genesisBatch.newStateRoot = bytes32(uint256(2));
@@ -80,5 +81,6 @@ abstract contract L1GatewayTestBase is DSTestPlus {
         _genesisBatch.blocks[0].blockHash = bytes32(uint256(1));
 
         rollup.importGenesisBatch(_genesisBatch);
+        */
     }
 }

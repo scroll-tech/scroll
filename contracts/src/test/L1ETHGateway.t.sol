@@ -164,7 +164,7 @@ contract L1ETHGatewayTest is L1GatewayTestBase {
         prepareL2MessageRoot(keccak256(xDomainCalldata));
 
         IL1ScrollMessenger.L2MessageProof memory proof;
-        proof.batchHash = rollup.lastFinalizedBatchHash();
+        proof.batchIndex = rollup.lastFinalizedBatchIndex();
 
         // conterpart is not L2ETHGateway
         // emit FailedRelayedMessage from L1ScrollMessenger
@@ -219,7 +219,7 @@ contract L1ETHGatewayTest is L1GatewayTestBase {
         prepareL2MessageRoot(keccak256(xDomainCalldata));
 
         IL1ScrollMessenger.L2MessageProof memory proof;
-        proof.batchHash = rollup.lastFinalizedBatchHash();
+        proof.batchIndex = rollup.lastFinalizedBatchIndex();
 
         // emit FinalizeWithdrawETH from L1ETHGateway
         {

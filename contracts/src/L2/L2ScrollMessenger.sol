@@ -10,6 +10,7 @@ import {IL1BlockContainer} from "./predeploys/IL1BlockContainer.sol";
 import {IL1GasPriceOracle} from "./predeploys/IL1GasPriceOracle.sol";
 
 import {PatriciaMerkleTrieVerifier} from "../libraries/verifier/PatriciaMerkleTrieVerifier.sol";
+import {IScrollMessengerCallback} from "../libraries/callbacks/IScrollMessengerCallback.sol";
 import {ScrollConstants} from "../libraries/constants/ScrollConstants.sol";
 import {IScrollMessenger} from "../libraries/IScrollMessenger.sol";
 import {ScrollMessengerBase} from "../libraries/ScrollMessengerBase.sol";
@@ -331,7 +332,9 @@ contract L2ScrollMessenger is ScrollMessengerBase, PausableUpgradeable, IL2Scrol
 
         xDomainMessageSender = _from;
         // solhint-disable-next-line avoid-low-level-calls
-        (bool success, ) = _to.call{value: _value}(_message);
+        (bool success, ) = _to.call{value: _value}(
+            abi.encodeWithSelector(IScrollMessengerCallback.onScrollMessengerCallback.selector, _message)
+        );
         // reset value to refund gas.
         xDomainMessageSender = ScrollConstants.DEFAULT_XDOMAIN_MESSAGE_SENDER;
 
