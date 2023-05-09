@@ -61,15 +61,10 @@ contract L1MessageQueue is OwnableUpgradeable, IL1MessageQueue {
     }
 
     /// @inheritdoc IL1MessageQueue
-    function estimateCrossDomainMessageFee(
-        address _sender,
-        address _target,
-        bytes memory _message,
-        uint256 _gasLimit
-    ) external view override returns (uint256) {
+    function estimateCrossDomainMessageFee(uint256 _gasLimit) external view override returns (uint256) {
         address _oracle = gasOracle;
         if (_oracle == address(0)) return 0;
-        return IL2GasPriceOracle(_oracle).estimateCrossDomainMessageFee(_sender, _target, _message, _gasLimit);
+        return IL2GasPriceOracle(_oracle).estimateCrossDomainMessageFee(_gasLimit);
     }
 
     /*****************************
