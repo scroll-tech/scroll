@@ -42,6 +42,11 @@ contract L2ScrollMessengerTest is DSTestPlus {
         l1GasOracle.updateWhitelist(address(whitelist));
     }
 
+    function testRelayByCounterparty() external {
+        hevm.expectRevert("Caller is not L1ScrollMessenger");
+        l2Messenger.relayMessage(address(this), address(this), 0, 0, new bytes(0));
+    }
+
     function testForbidCallFromL1() external {
         hevm.startPrank(AddressAliasHelper.applyL1ToL2Alias(address(l1Messenger)));
         hevm.expectRevert("Forbid to call message queue");
