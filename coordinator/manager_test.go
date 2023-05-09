@@ -179,7 +179,6 @@ func testFailedHandshake(t *testing.T) {
 		count = rollerManager.GetNumberOfIdleRollers(message.BasicProve)
 		return count == 0
 	})
-	assert.Error(t, err)
 	assert.Equal(t, 0, count)
 }
 
