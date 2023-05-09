@@ -16,6 +16,7 @@ import (
 
 	"scroll-tech/common/docker"
 	"scroll-tech/common/types"
+	"scroll-tech/common/types/message"
 
 	abi "scroll-tech/bridge/abi"
 
@@ -71,6 +72,13 @@ var (
 			Layer2Hash: "hash1",
 		},
 	}
+
+	proof1    = []byte{1}
+	subProofs = [][]byte{proof1}
+
+	aggTask1 = &types.AggTask{ID: "test-agg-1"}
+	aggTask2 = &types.AggTask{ID: "test-agg-2"}
+
 	wrappedBlock *types.WrappedBlock
 	batchData1   *types.BatchData
 	batchData2   *types.BatchData
@@ -81,6 +89,7 @@ var (
 	ormLayer2  orm.L2MessageOrm
 	ormBatch   orm.BlockBatchOrm
 	ormSession orm.SessionInfoOrm
+	ormAggTask orm.AggTaskOrm
 )
 
 func setupEnv(t *testing.T) error {
@@ -99,6 +108,7 @@ func setupEnv(t *testing.T) error {
 	ormLayer2 = orm.NewL2MessageOrm(db)
 	ormBatch = orm.NewBlockBatchOrm(db)
 	ormSession = orm.NewSessionInfoOrm(db)
+	ormAggTask = orm.NewAggTaskOrm(db)
 
 	templateBlockTrace, err := os.ReadFile("../common/testdata/blockTrace_02.json")
 	if err != nil {
@@ -115,6 +125,11 @@ func setupEnv(t *testing.T) error {
 		Hash:  "0x0000000000000000000000000000000000000000",
 	}
 	batchData1 = types.NewBatchData(parentBatch, []*types.WrappedBlock{wrappedBlock}, nil)
+
+	aggTask1.StartBatchIndex = batchData1.Batch.BatchIndex
+	aggTask1.EndBatchIndex = batchData1.Batch.BatchIndex
+	aggTask1.StartBatchHash = batchData1.Hash().Hex()
+	aggTask1.EndBatchHash = batchData1.Hash().Hex()
 
 	templateBlockTrace, err = os.ReadFile("../common/testdata/blockTrace_03.json")
 	if err != nil {
@@ -156,6 +171,7 @@ func TestOrmFactory(t *testing.T) {
 	defer func() {
 		base.Free()
 	}()
+	t.Log("test database DSN is ", base.DBConfig.DSN)
 	if err := setupEnv(t); err != nil {
 		t.Fatal(err)
 	}
@@ -169,6 +185,8 @@ func TestOrmFactory(t *testing.T) {
 	t.Run("testOrmBlockBatch", testOrmBlockBatch)
 
 	t.Run("testOrmSessionInfo", testOrmSessionInfo)
+
+	t.Run("testOrmAggTask", testOrmAggTask)
 }
 
 func testOrmBlockTraces(t *testing.T) {
@@ -326,7 +344,7 @@ func testOrmBlockBatch(t *testing.T) {
 	provingStatus, err := ormBatch.GetProvingStatusByHash(batchHash1)
 	assert.NoError(t, err)
 	assert.Equal(t, types.ProvingTaskUnassigned, provingStatus)
-	err = ormBatch.UpdateProofByHash(context.Background(), batchHash1, []byte{1}, []byte{2}, 1200)
+	err = ormBatch.UpdateProofByHash(context.Background(), batchHash1, proof1, []byte{2}, 1200)
 	assert.NoError(t, err)
 	err = ormBatch.UpdateProvingStatus(batchHash1, types.ProvingTaskVerified)
 	assert.NoError(t, err)
@@ -423,4 +441,96 @@ func testOrmSessionInfo(t *testing.T) {
 	sessionInfos, err = ormSession.GetSessionInfosByHashes(hashes)
 	assert.NoError(t, err)
 	assert.Equal(t, 0, len(sessionInfos))
+}
+
+func testOrmAggTask(t *testing.T) {
+	// Create db handler and reset db.
+	factory, err := database.NewOrmFactory(base.DBConfig)
+	assert.NoError(t, err)
+	assert.NoError(t, migrate.ResetDB(factory.GetDB().DB))
+
+	// update block_batch with proof bytes
+	dbTx, err := factory.Beginx()
+	assert.NoError(t, err)
+	err = ormBatch.NewBatchInDBTx(dbTx, batchData1)
+	assert.NoError(t, err)
+	batchHash1 := batchData1.Hash().Hex()
+	err = ormBlock.SetBatchHashForL2BlocksInDBTx(dbTx, []uint64{
+		batchData1.Batch.Blocks[0].BlockNumber}, batchHash1)
+	assert.NoError(t, err)
+	err = ormBatch.NewBatchInDBTx(dbTx, batchData2)
+	assert.NoError(t, err)
+	batchHash2 := batchData2.Hash().Hex()
+	err = ormBlock.SetBatchHashForL2BlocksInDBTx(dbTx, []uint64{
+		batchData2.Batch.Blocks[0].BlockNumber,
+		batchData2.Batch.Blocks[1].BlockNumber}, batchHash2)
+	assert.NoError(t, err)
+	err = dbTx.Commit()
+	assert.NoError(t, err)
+
+	batches, err := ormBatch.GetBlockBatches(map[string]interface{}{})
+	assert.NoError(t, err)
+	assert.Equal(t, int(2), len(batches))
+
+	batcheHashes, err := ormBatch.GetPendingBatches(10)
+	assert.NoError(t, err)
+	assert.Equal(t, int(2), len(batcheHashes))
+	assert.Equal(t, batchHash1, batcheHashes[0])
+	assert.Equal(t, batchHash2, batcheHashes[1])
+
+	err = ormBatch.UpdateCommitTxHashAndRollupStatus(context.Background(), batchHash1, "commit_tx_1", types.RollupCommitted)
+	assert.NoError(t, err)
+
+	batcheHashes, err = ormBatch.GetPendingBatches(10)
+	assert.NoError(t, err)
+	assert.Equal(t, int(1), len(batcheHashes))
+	assert.Equal(t, batchHash2, batcheHashes[0])
+
+	provingStatus, err := ormBatch.GetProvingStatusByHash(batchHash1)
+	assert.NoError(t, err)
+	assert.Equal(t, types.ProvingTaskUnassigned, provingStatus)
+	err = ormBatch.UpdateProofByHash(context.Background(), batchHash1, proof1, []byte{2}, 1200)
+	assert.NoError(t, err)
+	err = ormBatch.UpdateProvingStatus(batchHash1, types.ProvingTaskVerified)
+	assert.NoError(t, err)
+	provingStatus, err = ormBatch.GetProvingStatusByHash(batchHash1)
+	assert.NoError(t, err)
+	assert.Equal(t, types.ProvingTaskVerified, provingStatus)
+
+	// set agg task into db
+	err = ormAggTask.InsertAggTask(aggTask1.ID, aggTask1.StartBatchIndex, aggTask1.StartBatchHash, aggTask1.EndBatchIndex, aggTask1.EndBatchHash)
+	assert.NoError(t, err)
+	err = ormAggTask.InsertAggTask(aggTask2.ID, aggTask2.StartBatchIndex, aggTask2.StartBatchHash, aggTask2.EndBatchIndex, aggTask2.EndBatchHash)
+	assert.NoError(t, err)
+
+	// get subProofs by hash
+	getsProofs, err := ormAggTask.GetSubProofsByAggTaskID(aggTask1.ID)
+	assert.NoError(t, err)
+	assert.Equal(t, subProofs, getsProofs)
+
+	// get unassigned agg tasks
+	tasks, err := ormAggTask.GetUnassignedAggTasks()
+	assert.NoError(t, err)
+	assert.Equal(t, tasks[0].ID, aggTask1.ID)
+	assert.Equal(t, tasks[1].ID, aggTask2.ID)
+
+	// update status agg proof into db
+	err = ormAggTask.UpdateAggTaskStatus(aggTask1.ID, types.ProvingTaskAssigned)
+	assert.NoError(t, err)
+	// check assigned agg task
+	assigns, err := ormAggTask.GetAssignedAggTasks()
+	assert.NoError(t, err)
+	assert.Equal(t, assigns[0].ID, aggTask1.ID)
+
+	// insert aggregator proof
+	err = ormAggTask.UpdateProofForAggTask(aggTask1.ID, &message.AggProof{})
+	assert.NoError(t, err)
+	// mark verified
+	err = ormAggTask.UpdateAggTaskStatus(aggTask1.ID, types.ProvingTaskVerified)
+	assert.NoError(t, err)
+
+	// get left unassigned task
+	unassignTasks, err := ormAggTask.GetUnassignedAggTasks()
+	assert.NoError(t, err)
+	assert.Equal(t, unassignTasks[0].ID, aggTask2.ID)
 }

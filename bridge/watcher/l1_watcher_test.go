@@ -1,4 +1,4 @@
-package watcher_test
+package watcher
 
 import (
 	"context"
@@ -9,8 +9,6 @@ import (
 
 	"scroll-tech/database"
 	"scroll-tech/database/migrate"
-
-	"scroll-tech/bridge/watcher"
 )
 
 func testStartWatcher(t *testing.T) {
@@ -25,6 +23,6 @@ func testStartWatcher(t *testing.T) {
 
 	l1Cfg := cfg.L1Config
 
-	watcher := watcher.NewL1WatcherClient(context.Background(), client, l1Cfg.StartHeight, l1Cfg.Confirmations, l1Cfg.L1MessengerAddress, l1Cfg.L1MessageQueueAddress, l1Cfg.RelayerConfig.RollupContractAddress, db)
+	watcher := NewL1WatcherClient(context.Background(), client, l1Cfg.StartHeight, l1Cfg.Confirmations, l1Cfg.L1MessengerAddress, l1Cfg.L1MessageQueueAddress, l1Cfg.RelayerConfig.RollupContractAddress, db)
 	assert.NoError(t, watcher.FetchContractEvent())
 }

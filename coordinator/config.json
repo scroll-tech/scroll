@@ -10,7 +10,8 @@
       "params_path": "",
       "agg_vk_path": ""
     },
-    "max_verifier_workers": 10
+    "max_verifier_workers": 10,
+    "order_session": "ASC"
   },
   "db_config": {
     "driver_name": "postgres",
