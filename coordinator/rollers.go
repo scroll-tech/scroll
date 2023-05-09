@@ -7,7 +7,6 @@ import (
 	"time"
 
 	cmap "github.com/orcaman/concurrent-map"
-	geth_types "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/log"
 	geth_metrics "github.com/scroll-tech/go-ethereum/metrics"
 
@@ -20,6 +19,8 @@ import (
 type rollerNode struct {
 	// Roller name
 	Name string
+	// Roller type
+	Type message.ProveType
 	// Roller public key
 	PublicKey string
 	// Roller version
@@ -36,13 +37,10 @@ type rollerNode struct {
 	*rollerMetrics
 }
 
-func (r *rollerNode) sendTask(id string, traces []*geth_types.BlockTrace) bool {
+func (r *rollerNode) sendTask(msg *message.TaskMsg) bool {
 	select {
-	case r.taskChan <- &message.TaskMsg{
-		ID:     id,
-		Traces: traces,
-	}:
-		r.TaskIDs.Set(id, struct{}{})
+	case r.taskChan <- msg:
+		r.TaskIDs.Set(msg.ID, struct{}{})
 	default:
 		log.Warn("roller channel is full", "roller name", r.Name, "public key", r.PublicKey)
 		return false
@@ -77,6 +75,7 @@ func (m *Manager) register(pubkey string, identity *message.Identity) (<-chan *m
 		}
 		node = &rollerNode{
 			Name:          identity.Name,
+			Type:          identity.RollerType,
 			Version:       identity.Version,
 			PublicKey:     pubkey,
 			TaskIDs:       *taskIDs,
@@ -88,7 +87,7 @@ func (m *Manager) register(pubkey string, identity *message.Identity) (<-chan *m
 	roller := node.(*rollerNode)
 	// avoid reconnection too frequently.
 	if time.Since(roller.registerTime) < 60 {
-		log.Warn("roller reconnect too frequently", "roller_name", identity.Name, "public key", pubkey)
+		log.Warn("roller reconnect too frequently", "roller_name", identity.Name, "roller_type", identity.RollerType, "public key", pubkey)
 		return nil, fmt.Errorf("roller reconnect too frequently")
 	}
 	// update register time and status
@@ -117,11 +116,11 @@ func (m *Manager) freeTaskIDForRoller(pk string, id string) {
 }
 
 // GetNumberOfIdleRollers return the count of idle rollers.
-func (m *Manager) GetNumberOfIdleRollers() (count int) {
+func (m *Manager) GetNumberOfIdleRollers(rollerType message.ProveType) (count int) {
 	for _, pk := range m.rollerPool.Keys() {
 		if val, ok := m.rollerPool.Get(pk); ok {
 			r := val.(*rollerNode)
-			if r.TaskIDs.Count() == 0 {
+			if r.TaskIDs.Count() == 0 && r.Type == rollerType {
 				count++
 			}
 		}
@@ -129,13 +128,13 @@ func (m *Manager) GetNumberOfIdleRollers() (count int) {
 	return count
 }
 
-func (m *Manager) selectRoller() *rollerNode {
+func (m *Manager) selectRoller(rollerType message.ProveType) *rollerNode {
 	pubkeys := m.rollerPool.Keys()
 	for len(pubkeys) > 0 {
 		idx, _ := rand.Int(rand.Reader, big.NewInt(int64(len(pubkeys))))
 		if val, ok := m.rollerPool.Get(pubkeys[idx.Int64()]); ok {
 			r := val.(*rollerNode)
-			if r.TaskIDs.Count() == 0 {
+			if r.TaskIDs.Count() == 0 && r.Type == rollerType {
 				return r
 			}
 		}
