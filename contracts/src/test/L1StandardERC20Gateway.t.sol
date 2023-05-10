@@ -364,7 +364,14 @@ contract L1StandardERC20GatewayTest is L1GatewayTestBase {
         // emit FinalizeWithdrawERC20 from L1StandardERC20Gateway
         {
             hevm.expectEmit(true, true, true, true);
-            emit FinalizeWithdrawERC20(address(l1Token), address(l2Token), sender, address(recipient), amount, dataToCall);
+            emit FinalizeWithdrawERC20(
+                address(l1Token),
+                address(l2Token),
+                sender,
+                address(recipient),
+                amount,
+                dataToCall
+            );
         }
 
         // emit RelayedMessage from L1ScrollMessenger
