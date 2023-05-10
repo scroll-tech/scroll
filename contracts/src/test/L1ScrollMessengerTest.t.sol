@@ -34,19 +34,39 @@ contract L1ScrollMessengerTest is DSTestPlus {
         scrollChain.initialize(address(l1MessageQueue), address(0));
     }
 
-    function testForbidCallFromL2() external {
+    function testForbidCallMessageQueueFromL2() external {
         // import genesis batch
         bytes memory _batchHeader = new bytes(161);
         assembly {
             mstore(add(_batchHeader, 57), 1)
         }
-        scrollChain.importGenesisBatch(_batchHeader, bytes32(uint256(1)), bytes32(0));
+        scrollChain.importGenesisBatch(
+            _batchHeader,
+            bytes32(uint256(1)),
+            bytes32(0x3152134c22e545ab5d345248502b4f04ef5b45f735f939c7fe6ddc0ffefc9c52)
+        );
 
         IL1ScrollMessenger.L2MessageProof memory proof;
         proof.batchIndex = scrollChain.lastFinalizedBatchIndex();
 
         hevm.expectRevert("Forbid to call message queue");
         l1Messenger.relayMessageWithProof(address(this), address(l1MessageQueue), 0, 0, new bytes(0), proof);
+    }
+
+    function testForbidCallSelfFromL2() external {
+        // import genesis batch
+        bytes memory _batchHeader = new bytes(161);
+        assembly {
+            mstore(add(_batchHeader, 57), 1)
+        }
+        scrollChain.importGenesisBatch(
+            _batchHeader,
+            bytes32(uint256(1)),
+            bytes32(0xf7c03e2b13c88e3fca1410b228b001dd94e3f5ab4b4a4a6981d09a4eb3e5b631)
+        );
+
+        IL1ScrollMessenger.L2MessageProof memory proof;
+        proof.batchIndex = scrollChain.lastFinalizedBatchIndex();
 
         hevm.expectRevert("Forbid to call self");
         l1Messenger.relayMessageWithProof(address(this), address(l1Messenger), 0, 0, new bytes(0), proof);
