@@ -1,4 +1,4 @@
-.PHONY: check update dev_docker clean
+.PHONY: check update dev_docker test_docker clean
 
 ZKP_VERSION=release-1220
 
@@ -31,6 +31,14 @@ update: ## update dependencies
 dev_docker: ## build docker images for development/testing usages
 	docker build -t scroll_l1geth ./common/docker/l1geth/
 	docker build -t scroll_l2geth ./common/docker/l2geth/
+
+test_docker: ## build and run Docker for local testing on M1/M2 Silicon Mac
+	mkdir empty_directory
+	docker build -t my_scroll_test_image -f ./build/dockerfiles/local_testing.Dockerfile empty_directory
+	rm -rf empty_directory
+	
+	docker run -it --rm --name my_scroll_test_container --network=host -v /var/run/docker.sock:/var/run/docker.sock -v $(PWD):/go/src/app my_scroll_test_image
+
 
 test_zkp: ## Test zkp prove and verify, roller/prover generates the proof and coordinator/verifier verifies it
 	mkdir -p test_params

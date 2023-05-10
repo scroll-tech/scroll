@@ -7,6 +7,25 @@
 + rust (for version, see [rust-toolchain](./common/libzkp/impl/rust-toolchain))
 + hardhat / foundry
 
+## Testing
+
+## Testing on Apple Silicon (M1/M2) Macs
+
+For testing on Apple Silicon Macs, follow these steps:
+
+1. Ensure Docker is installed on your system.
+2. Open a terminal and navigate to the directory where this README.md is located.
+3. Build a Docker image for testing with:
+
+```bash
+make test_docker
+```
+
+This command will build and run a Docker container using the Dockerfile located at `./build/dockerfiles/local_test.Dockerfile`.
+
+The container will have the name `my_scroll_test_image`, and it will provide a compatible testing environment for Apple Silicon Macs.
+
+
 ---
 
 For a more comprehensive doc, see [`docs/`](./docs).

@@ -19,7 +19,8 @@ The built coordinator binary is in the `build/bin` directory.
 
 ## Test
 
-Note: Our coordinator test code doesn't currently support Apple Silicon (M1/M2) chips.
+**Note:** Our test code may not directly support Apple Silicon (M1/M2) chips. However, we've provided a Docker-based solution for local testing on M1/M2 Macs. Please refer to the [Local Testing on M1/M2 Mac](../README.md#local-testing-on-m1m2-mac) section in the main README for details.
+
 
 When developing the coordinator, use the following command to mock verifier results and run coordinator tests:
 
