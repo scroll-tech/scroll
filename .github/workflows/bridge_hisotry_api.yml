@@ -40,10 +40,6 @@ jobs:
         make test
     - name: Upload coverage report
       run: bash <(curl -s https://codecov.io/bash)
-    - name: Lint
-      run: |
-        rm -rf $HOME/.cache/golangci-lint 
-        make lint
   goimports-lint:
     runs-on: ubuntu-latest
     steps:
