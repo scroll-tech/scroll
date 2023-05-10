@@ -31,6 +31,8 @@ type Cmd struct {
 
 	checkFuncs cmap.ConcurrentMap //map[string]checkFunc
 
+	// open log flag.
+	openLog bool
 	// error channel
 	ErrChan chan error
 }
@@ -64,7 +66,7 @@ func (c *Cmd) runCmd() {
 
 // RunCmd parallel running when parallel is true.
 func (c *Cmd) RunCmd(parallel bool) {
-	fmt.Println("cmd: ", c.args)
+	fmt.Println("cmd:", c.args)
 	if parallel {
 		go c.runCmd()
 	} else {
@@ -72,12 +74,17 @@ func (c *Cmd) RunCmd(parallel bool) {
 	}
 }
 
+// OpenLog open cmd log by this api.
+func (c *Cmd) OpenLog(open bool) {
+	c.openLog = open
+}
+
 func (c *Cmd) Write(data []byte) (int, error) {
 	out := string(data)
-	if verbose {
-		fmt.Printf("%s: %v", c.name, out)
+	if verbose || c.openLog {
+		fmt.Printf("%s:\n\t%v", c.name, out)
 	} else if strings.Contains(out, "error") || strings.Contains(out, "warning") {
-		fmt.Printf("%s: %v", c.name, out)
+		fmt.Printf("%s:\n\t%v", c.name, out)
 	}
 	go c.checkFuncs.IterCb(func(_ string, value interface{}) {
 		check := value.(checkFunc)

@@ -8,7 +8,7 @@ import (
 	"os"
 	"testing"
 
-	"scroll-tech/common/message"
+	"scroll-tech/common/types/message"
 
 	"scroll-tech/coordinator/config"
 	"scroll-tech/coordinator/verifier"

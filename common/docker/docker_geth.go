@@ -3,11 +3,13 @@ package docker
 import (
 	"context"
 	"fmt"
+	"math/big"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/docker/docker/api/types"
+	"github.com/scroll-tech/go-ethereum/ethclient"
 
 	"scroll-tech/common/cmd"
 	"scroll-tech/common/utils"
@@ -23,13 +25,14 @@ type ImgGeth struct {
 	ipcPath  string
 	httpPort int
 	wsPort   int
+	chainID  *big.Int
 
 	running bool
 	cmd     *cmd.Cmd
 }
 
 // NewImgGeth return geth img instance.
-func NewImgGeth(image, volume, ipc string, hPort, wPort int) ImgInstance {
+func NewImgGeth(image, volume, ipc string, hPort, wPort int) GethImgInstance {
 	img := &ImgGeth{
 		image:    image,
 		name:     fmt.Sprintf("%s-%d", image, time.Now().Nanosecond()),
@@ -53,14 +56,27 @@ func (i *ImgGeth) Start() error {
 		_ = i.Stop()
 		return fmt.Errorf("failed to start image: %s", i.image)
 	}
+
+	// try 10 times to get chainID until is ok.
+	utils.TryTimes(10, func() bool {
+		client, err := ethclient.Dial(i.Endpoint())
+		if err == nil && client != nil {
+			i.chainID, err = client.ChainID(context.Background())
+			return err == nil && i.chainID != nil
+		}
+		return false
+	})
+
 	return nil
+}
+
+// IsRunning returns docker container's running status.
+func (i *ImgGeth) IsRunning() bool {
+	return i.running
 }
 
 // Endpoint return the connection endpoint.
 func (i *ImgGeth) Endpoint() string {
-	if !i.running {
-		return ""
-	}
 	switch true {
 	case i.httpPort != 0:
 		return fmt.Sprintf("http://127.0.0.1:%d", i.httpPort)
@@ -69,6 +85,11 @@ func (i *ImgGeth) Endpoint() string {
 	default:
 		return i.ipcPath
 	}
+}
+
+// ChainID return chainID.
+func (i *ImgGeth) ChainID() *big.Int {
+	return i.chainID
 }
 
 func (i *ImgGeth) isOk() bool {
@@ -125,7 +146,7 @@ func (i *ImgGeth) Stop() error {
 }
 
 func (i *ImgGeth) prepare() []string {
-	cmds := []string{"docker", "run", "--name", i.name}
+	cmds := []string{"docker", "run", "--rm", "--name", i.name}
 	var ports []string
 	if i.httpPort != 0 {
 		ports = append(ports, []string{"-p", strconv.Itoa(i.httpPort) + ":8545"}...)

@@ -13,7 +13,7 @@ RUN cargo chef cook --release --recipe-path recipe.json
 
 COPY ./common/libzkp/impl .
 RUN cargo build --release
-RUN find ./ | grep libzktrie.so | xargs -i cp {} /app/target/release/
+RUN find ./ | grep libzktrie.so | xargs -I{} cp {} /app/target/release/
 
 
 # Download Go dependencies
@@ -26,6 +26,7 @@ COPY ./coordinator/go.* ./coordinator/
 COPY ./database/go.* ./database/
 COPY ./roller/go.* ./roller/
 COPY ./tests/integration-test/go.* ./tests/integration-test/
+COPY ./bridge-history-api/go.* ./bridge-history-api/
 RUN go mod download -x
 
 

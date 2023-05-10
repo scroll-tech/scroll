@@ -137,14 +137,11 @@ contract L1ScrollMessenger is PausableUpgradeable, ScrollMessengerBase, IL1Scrol
         {
             address _rollup = rollup;
             require(IScrollChain(_rollup).isBatchFinalized(_proof.batchHash), "Batch is not finalized");
-            // @note skip verify for now
-            /*
-      bytes32 _messageRoot = IScrollChain(_rollup).getL2MessageRoot(_proof.batchHash);
-      require(
-        WithdrawTrieVerifier.verifyMerkleProof(_messageRoot, _xDomainCalldataHash, _nonce, _proof.merkleProof),
-        "Invalid proof"
-      );
-      */
+            bytes32 _messageRoot = IScrollChain(_rollup).getL2MessageRoot(_proof.batchHash);
+            require(
+                WithdrawTrieVerifier.verifyMerkleProof(_messageRoot, _xDomainCalldataHash, _nonce, _proof.merkleProof),
+                "Invalid proof"
+            );
         }
 
         // @todo check more `_to` address to avoid attack.
@@ -202,12 +199,7 @@ contract L1ScrollMessenger is PausableUpgradeable, ScrollMessengerBase, IL1Scrol
         );
 
         // compute and deduct the messaging fee to fee vault.
-        uint256 _fee = IL1MessageQueue(_messageQueue).estimateCrossDomainMessageFee(
-            address(this),
-            _counterpart,
-            _xDomainCalldata,
-            _newGasLimit
-        );
+        uint256 _fee = IL1MessageQueue(_messageQueue).estimateCrossDomainMessageFee(_newGasLimit);
 
         // charge relayer fee
         require(msg.value >= _fee, "Insufficient msg.value for fee");
@@ -219,7 +211,7 @@ contract L1ScrollMessenger is PausableUpgradeable, ScrollMessengerBase, IL1Scrol
         // enqueue the new transaction
         IL1MessageQueue(_messageQueue).appendCrossDomainMessage(_counterpart, _newGasLimit, _xDomainCalldata);
 
-        // refund fee to tx.origin
+        // refund fee to `_refundAddress`
         unchecked {
             uint256 _refund = msg.value - _fee;
             if (_refund > 0) {
@@ -263,12 +255,7 @@ contract L1ScrollMessenger is PausableUpgradeable, ScrollMessengerBase, IL1Scrol
         bytes memory _xDomainCalldata = _encodeXDomainCalldata(msg.sender, _to, _value, _messageNonce, _message);
 
         // compute and deduct the messaging fee to fee vault.
-        uint256 _fee = IL1MessageQueue(_messageQueue).estimateCrossDomainMessageFee(
-            address(this),
-            _counterpart,
-            _xDomainCalldata,
-            _gasLimit
-        );
+        uint256 _fee = IL1MessageQueue(_messageQueue).estimateCrossDomainMessageFee(_gasLimit);
         require(msg.value >= _fee + _value, "Insufficient msg.value");
         if (_fee > 0) {
             (bool _success, ) = feeVault.call{value: _fee}("");
@@ -287,7 +274,7 @@ contract L1ScrollMessenger is PausableUpgradeable, ScrollMessengerBase, IL1Scrol
 
         emit SentMessage(msg.sender, _to, _value, _messageNonce, _gasLimit, _message);
 
-        // refund fee to tx.origin
+        // refund fee to `_refundAddress`
         unchecked {
             uint256 _refund = msg.value - _fee - _value;
             if (_refund > 0) {

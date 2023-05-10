@@ -11,7 +11,7 @@ import {AddressAliasHelper} from "../../libraries/common/AddressAliasHelper.sol"
 
 /// @title L1MessageQueue
 /// @notice This contract will hold all L1 to L2 messages.
-/// Each appended message is assigned with a unique and increasing `uint256` index denoting the message nonce.
+/// Each appended message is assigned with a unique and increasing `uint256` index.
 contract L1MessageQueue is OwnableUpgradeable, IL1MessageQueue {
     /**********
      * Events *
@@ -61,21 +61,16 @@ contract L1MessageQueue is OwnableUpgradeable, IL1MessageQueue {
     }
 
     /// @inheritdoc IL1MessageQueue
-    function estimateCrossDomainMessageFee(
-        address _sender,
-        address _target,
-        bytes memory _message,
-        uint256 _gasLimit
-    ) external view override returns (uint256) {
+    function estimateCrossDomainMessageFee(uint256 _gasLimit) external view override returns (uint256) {
         address _oracle = gasOracle;
         if (_oracle == address(0)) return 0;
-        return IL2GasPriceOracle(_oracle).estimateCrossDomainMessageFee(_sender, _target, _message, _gasLimit);
+        return IL2GasPriceOracle(_oracle).estimateCrossDomainMessageFee(_gasLimit);
     }
 
     /// @inheritdoc IL1MessageQueue
     function computeTransactionHash(
         address _sender,
-        uint256 _nonce,
+        uint256 _queueIndex,
         uint256 _value,
         address _target,
         uint256 _gasLimit,
@@ -84,11 +79,11 @@ contract L1MessageQueue is OwnableUpgradeable, IL1MessageQueue {
         // We use EIP-2718 to encode the L1 message, and the encoding of the message is
         //      `TransactionType || TransactionPayload`
         // where
-        //  1. `TransactionType` is TBD
-        //  2. `TransactionPayload` is `rlp([nonce, gasLimit, to, value, data, sender])`
+        //  1. `TransactionType` is 0x7E
+        //  2. `TransactionPayload` is `rlp([queueIndex, gasLimit, to, value, data, sender])`
         //
         // The spec of rlp: https://ethereum.org/en/developers/docs/data-structures-and-encoding/rlp/
-        uint256 transactionType = 0x7E; // to change later
+        uint256 transactionType = 0x7E;
         bytes32 hash;
         assembly {
             function get_uint_bytes(v) -> len {
@@ -137,7 +132,7 @@ contract L1MessageQueue is OwnableUpgradeable, IL1MessageQueue {
             // 4 byte for list payload length
             let start_ptr := add(mload(0x40), 5)
             let ptr := start_ptr
-            ptr := store_uint(ptr, _nonce)
+            ptr := store_uint(ptr, _queueIndex)
             ptr := store_uint(ptr, _gasLimit)
             ptr := store_address(ptr, _target)
             ptr := store_uint(ptr, _value)
