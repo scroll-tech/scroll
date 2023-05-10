@@ -22,14 +22,13 @@ contract ScrollChainTest is DSTestPlus {
 
     function setUp() public {
         messageQueue = new L1MessageQueue();
-        rollup = new ScrollChain(233, 4, 0xb5baa665b2664c3bfed7eb46e00ebc110ecf2ebd257854a9bf2b9dbc9b2c08f6);
+        rollup = new ScrollChain(233);
 
         rollup.initialize(address(messageQueue), address(0));
 
         chain = new MockScrollChain();
     }
 
-    /*
     function testInitialized() public {
         assertEq(address(this), rollup.owner());
         assertEq(rollup.layer2ChainId(), 233);
@@ -38,6 +37,7 @@ contract ScrollChainTest is DSTestPlus {
         rollup.initialize(address(messageQueue), address(0));
     }
 
+    /*
     function testPublicInputHash() public {
         IScrollChain.Batch memory batch;
         batch.prevStateRoot = bytes32(0x000000000000000000000000000000000000000000000000000000000000cafe);

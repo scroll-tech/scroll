@@ -10,7 +10,6 @@ import {IL2ERC20Gateway} from "../../L2/gateways/IL2ERC20Gateway.sol";
 import {IL1ScrollMessenger} from "../IL1ScrollMessenger.sol";
 import {IL1ERC20Gateway} from "./IL1ERC20Gateway.sol";
 
-import {IScrollMessengerCallback} from "../../libraries/callbacks/IScrollMessengerCallback.sol";
 import {ScrollGatewayBase} from "../../libraries/gateway/ScrollGatewayBase.sol";
 import {L1ERC20Gateway} from "./L1ERC20Gateway.sol";
 
@@ -19,7 +18,7 @@ import {L1ERC20Gateway} from "./L1ERC20Gateway.sol";
 /// finalize withdraw the tokens from layer 2.
 /// @dev The deposited tokens are held in this gateway. On finalizing withdraw, the corresponding
 /// tokens will be transfer to the recipient directly.
-contract L1CustomERC20Gateway is OwnableUpgradeable, ScrollGatewayBase, L1ERC20Gateway, IScrollMessengerCallback {
+contract L1CustomERC20Gateway is OwnableUpgradeable, ScrollGatewayBase, L1ERC20Gateway {
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
     /**********

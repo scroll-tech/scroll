@@ -22,17 +22,14 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
     /// @param status The status of the account updated.
     event UpdateSequencer(address indexed account, bool status);
 
+    /// @notice Emitted when the address of rollup verifier is updated.
+    /// @param oldVerifier The address of old rollup verifier.
+    /// @param newVerifier The address of new rollup verifier.
     event UpdateVerifier(address oldVerifier, address newVerifier);
 
     /*************
      * Constants *
      *************/
-
-    /// @dev The maximum number of transaction in on batch.
-    uint256 public immutable maxNumTxInBatch;
-
-    /// @dev The hash used for padding public inputs.
-    bytes32 public immutable paddingTxHash;
 
     /// @notice The chain id of the corresponding layer 2 chain.
     uint256 public immutable layer2ChainId;
@@ -99,14 +96,8 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
      * Constructor *
      ***************/
 
-    constructor(
-        uint256 _chainId,
-        uint256 _maxNumTxInBatch,
-        bytes32 _paddingTxHash
-    ) {
+    constructor(uint256 _chainId) {
         layer2ChainId = _chainId;
-        maxNumTxInBatch = _maxNumTxInBatch;
-        paddingTxHash = _paddingTxHash;
     }
 
     function initialize(address _messageQueue, address _verifier) public initializer {
@@ -131,28 +122,65 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
      * Public Mutating Functions *
      *****************************/
 
-    /*
     /// @notice Import layer 2 genesis block
-    function importGenesisBatch(Batch memory _genesisBatch) external {
-        require(lastFinalizedBatchHash == bytes32(0), "Genesis batch imported");
-        require(_genesisBatch.blocks.length == 1, "Not exact one block in genesis");
-        require(_genesisBatch.prevStateRoot == bytes32(0), "Nonzero prevStateRoot");
+    function importGenesisBatch(
+        bytes calldata _batchHeader,
+        bytes32 _stateRoot,
+        bytes32 _withdrawRoot
+    ) external {
+        // check parent batch length
+        require(_batchHeader.length == 161, "invalid batch header length");
+        require(_stateRoot != bytes32(0), "zero state root");
 
-        BlockContext memory _genesisBlock = _genesisBatch.blocks[0];
+        // check whether the genesis batch is imported
+        require(finalizedStateRoots[0] == bytes32(0), "Genesis batch imported");
 
-        require(_genesisBlock.blockHash != bytes32(0), "Block hash is zero");
-        require(_genesisBlock.blockNumber == 0, "Block is not genesis");
-        require(_genesisBlock.parentHash == bytes32(0), "Parent hash not empty");
+        // load batch header to memory
+        uint256 _batchHeaderOffset;
+        assembly {
+            _batchHeaderOffset := mload(0x40)
+            mstore(0x40, add(_batchHeaderOffset, 161))
+            // copy parent batch header to memory.
+            calldatacopy(_batchHeaderOffset, _batchHeader.offset, 161)
+        }
 
-        bytes32 _batchHash = _commitBatch(_genesisBatch);
+        // check all fields except `dataHash` are zero
+        {
+            uint256 _sumOfFields;
+            bytes32 _dataHash;
+            bytes32 _lastBlockHash;
+            assembly {
+                // load `version` from batch header
+                _sumOfFields := add(_sumOfFields, shr(248, mload(_batchHeaderOffset)))
+                // load `batchIndex` from batch header
+                _sumOfFields := add(_sumOfFields, shr(192, mload(add(_batchHeaderOffset, 1))))
+                // load `l1MessagePopped` from batch header
+                _sumOfFields := add(_sumOfFields, shr(192, mload(add(_batchHeaderOffset, 9))))
+                // load `totalL1MessagePopped` from batch header
+                _sumOfFields := add(_sumOfFields, shr(192, mload(add(_batchHeaderOffset, 17))))
+                // load `dataHash` from batch header
+                _dataHash := mload(add(_batchHeaderOffset, 25))
+                // load `lastBlockHash` from batch header
+                _lastBlockHash := mload(add(_batchHeaderOffset, 57))
+                // store timestamp for current batch header
+                mstore(add(_batchHeaderOffset, 153), shl(192, timestamp()))
+            }
+            require(_sumOfFields == 0, "not all fields are zero");
+            require(_dataHash != bytes32(0), "zero data hash");
+            require(_lastBlockHash == bytes32(0), "nonzero last block hash");
+        }
 
-        lastFinalizedBatchHash = _batchHash;
-        finalizedBatches[0] = _batchHash;
-        batches[_batchHash].finalized = true;
+        // compute parent batch hash and check
+        bytes32 _batchHash = _computeBatchHash(_batchHeaderOffset);
 
-        emit FinalizeBatch(_batchHash);
+        committedBatches[0] = _batchHash;
+        finalizedStateRoots[0] = _stateRoot;
+        withdrawRoots[0] = _withdrawRoot;
+
+        emit CommitBatch(_batchHash);
+
+        emit FinalizeBatch(_batchHash, _stateRoot, _withdrawRoot);
     }
-    */
 
     /// @inheritdoc IScrollChain
     function commitBatch(
@@ -416,6 +444,12 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
         return (_dataHash, _prevBlockHash, _totalNumL1MessagesInChunk);
     }
 
+    /// @dev Internal function to load L1 messages from message queue.
+    /// @param _ptr The memory offset to store the transaction hash.
+    /// @param _numL1Messages The number of L1 messages to load.
+    /// @param _prevTotalL1MessagesPopped The total number of L1 messages to loaded before.
+    /// @param _skippedL1MessageBitmap A bitmap indicates which message is skipped.
+    /// @return uint256 The new memory offset after loading.
     function _loadL1Messages(
         uint256 _ptr,
         uint256 _numL1Messages,

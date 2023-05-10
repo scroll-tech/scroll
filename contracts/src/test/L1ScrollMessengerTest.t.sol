@@ -24,7 +24,7 @@ contract L1ScrollMessengerTest is DSTestPlus {
         l2Messenger = new L2ScrollMessenger(address(0), address(0), address(0));
 
         // Deploy L1 contracts
-        scrollChain = new ScrollChain(0, 0, bytes32(0));
+        scrollChain = new ScrollChain(0);
         l1MessageQueue = new L1MessageQueue();
         l1Messenger = new L1ScrollMessenger();
 
@@ -35,11 +35,12 @@ contract L1ScrollMessengerTest is DSTestPlus {
     }
 
     function testForbidCallFromL2() external {
-        /*IScrollChain.Batch memory genesisBatch;
-        genesisBatch.newStateRoot = bytes32(uint256(1));
-        genesisBatch.blocks = new IScrollChain.BlockContext[](1);
-        genesisBatch.blocks[0].blockHash = bytes32(uint256(1));
-        scrollChain.importGenesisBatch(genesisBatch);*/
+        // import genesis batch
+        bytes memory _batchHeader = new bytes(161);
+        assembly {
+            mstore(add(_batchHeader, 57), 1)
+        }
+        scrollChain.importGenesisBatch(_batchHeader, bytes32(uint256(1)), bytes32(0));
 
         IL1ScrollMessenger.L2MessageProof memory proof;
         proof.batchIndex = scrollChain.lastFinalizedBatchIndex();

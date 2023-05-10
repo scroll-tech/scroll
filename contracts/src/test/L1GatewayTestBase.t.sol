@@ -54,7 +54,7 @@ abstract contract L1GatewayTestBase is DSTestPlus {
         l1Messenger = new L1ScrollMessenger();
         messageQueue = new L1MessageQueue();
         gasOracle = new L2GasPriceOracle();
-        rollup = new ScrollChain(1233, 25, bytes32(0));
+        rollup = new ScrollChain(1233);
         whitelist = new Whitelist(address(this));
 
         // Deploy L2 contracts
@@ -73,14 +73,11 @@ abstract contract L1GatewayTestBase is DSTestPlus {
     }
 
     function prepareL2MessageRoot(bytes32 messageHash) internal {
-        /*
-        IScrollChain.Batch memory _genesisBatch;
-        _genesisBatch.blocks = new IScrollChain.BlockContext[](1);
-        _genesisBatch.newStateRoot = bytes32(uint256(2));
-        _genesisBatch.withdrawTrieRoot = messageHash;
-        _genesisBatch.blocks[0].blockHash = bytes32(uint256(1));
+        bytes memory _batchHeader = new bytes(161);
+        assembly {
+            mstore(add(_batchHeader, 57), 1)
+        }
 
-        rollup.importGenesisBatch(_genesisBatch);
-        */
+        rollup.importGenesisBatch(_batchHeader, bytes32(uint256(1)), messageHash);
     }
 }
