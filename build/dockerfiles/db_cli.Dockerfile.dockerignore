@@ -3,4 +3,5 @@ contracts/
 docs/
 l2geth/
 rpc-gateway/
+bridge-history-api/
 *target/*
