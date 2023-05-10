@@ -47,7 +47,7 @@ jobs:
       uses: actions/setup-go@v2
       with:
         go-version: 1.18.x
-     - name: Lint
+    - name: Lint
       run: |
         rm -rf $HOME/.cache/golangci-lint 
         make lint
