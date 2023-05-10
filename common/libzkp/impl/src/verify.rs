@@ -1,12 +1,11 @@
 use crate::utils::{c_char_to_str, c_char_to_vec};
-use halo2_proofs::SerdeFormat;
 use libc::c_char;
 use std::fs::File;
 use std::io::Read;
 use std::panic;
 use zkevm::circuit::{AGG_DEGREE, DEGREE};
 use zkevm::prover::AggCircuitProof;
-use zkevm::utils::load_params;
+use zkevm::utils::load_or_create_params;
 use zkevm::verifier::Verifier;
 
 static mut VERIFIER: Option<&Verifier> = None;
@@ -21,9 +20,9 @@ pub unsafe extern "C" fn init_verifier(params_path: *const c_char, agg_vk_path: 
     let mut f = File::open(agg_vk_path).unwrap();
     let mut agg_vk = vec![];
     f.read_to_end(&mut agg_vk).unwrap();
-
-    let params = load_params(params_path, *DEGREE, SerdeFormat::RawBytesUnchecked).unwrap();
-    let agg_params = load_params(params_path, *AGG_DEGREE, SerdeFormat::RawBytesUnchecked).unwrap();
+    // FIXME: will use load_params after https://github.com/scroll-tech/scroll-zkevm/pull/135/files
+    let params = load_or_create_params(params_path, *DEGREE).unwrap();
+    let agg_params = load_or_create_params(params_path, *AGG_DEGREE).unwrap();
 
     let v = Box::new(Verifier::from_params(params, agg_params, Some(agg_vk)));
     VERIFIER = Some(Box::leak(v))
