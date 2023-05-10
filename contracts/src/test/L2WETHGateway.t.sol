@@ -276,7 +276,6 @@ contract L2WETHGatewayTest is L2GatewayTestBase {
 
     function testFinalizeDepositERC20(
         address sender,
-        address recipient,
         uint256 amount,
         bytes memory dataToCall
     ) public {

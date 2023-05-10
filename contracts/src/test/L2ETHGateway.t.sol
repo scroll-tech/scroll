@@ -185,7 +185,6 @@ contract L2ETHGatewayTest is L2GatewayTestBase {
 
     function testFinalizeWithdrawETH(
         address sender,
-        address recipient,
         uint256 amount,
         bytes memory dataToCall
     ) public {

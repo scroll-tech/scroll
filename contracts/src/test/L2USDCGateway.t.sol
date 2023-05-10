@@ -8,8 +8,11 @@ import {IL2ERC20Gateway, L2USDCGateway} from "../L2/gateways/usdc/L2USDCGateway.
 
 import {MockERC20} from "../mocks/MockERC20.sol";
 
+import {AddressAliasHelper} from "../libraries/common/AddressAliasHelper.sol";
+
 import {L2GatewayTestBase} from "./L2GatewayTestBase.t.sol";
 import {MockScrollMessenger} from "./mocks/MockScrollMessenger.sol";
+import {MockGatewayRecipient} from "./mocks/MockGatewayRecipient.sol";
 
 contract L2USDCGatewayTest is L2GatewayTestBase {
     // from L2USDCGateway
@@ -280,7 +283,9 @@ contract L2USDCGatewayTest is L2GatewayTestBase {
         uint256 gatewayBalance = l2USDC.balanceOf(address(gateway));
         uint256 recipientBalance = l2USDC.balanceOf(recipient);
         assertBoolEq(false, l2Messenger.isL1MessageExecuted(keccak256(xDomainCalldata)));
+        hevm.startPrank(AddressAliasHelper.applyL1ToL2Alias(address(l1Messenger)));
         l2Messenger.relayMessage(address(uint160(address(counterpartGateway)) + 1), address(gateway), 0, 0, message);
+        hevm.stopPrank();
         assertEq(gatewayBalance, l2USDC.balanceOf(address(gateway)));
         assertEq(recipientBalance, l2USDC.balanceOf(recipient));
         assertBoolEq(false, l2Messenger.isL1MessageExecuted(keccak256(xDomainCalldata)));
@@ -288,12 +293,10 @@ contract L2USDCGatewayTest is L2GatewayTestBase {
 
     function testFinalizeDepositERC20(
         address sender,
-        address recipient,
         uint256 amount,
         bytes memory dataToCall
     ) public {
-        // blacklist some addresses
-        hevm.assume(recipient != address(0));
+        MockGatewayRecipient recipient = new MockGatewayRecipient();
 
         amount = bound(amount, 1, l2USDC.balanceOf(address(this)));
 
@@ -306,7 +309,7 @@ contract L2USDCGatewayTest is L2GatewayTestBase {
             address(l1USDC),
             address(l2USDC),
             sender,
-            recipient,
+            address(recipient),
             amount,
             dataToCall
         );
@@ -322,7 +325,7 @@ contract L2USDCGatewayTest is L2GatewayTestBase {
         // emit FinalizeDepositERC20 from L2USDCGateway
         {
             hevm.expectEmit(true, true, true, true);
-            emit FinalizeDepositERC20(address(l1USDC), address(l2USDC), sender, recipient, amount, dataToCall);
+            emit FinalizeDepositERC20(address(l1USDC), address(l2USDC), sender, address(recipient), amount, dataToCall);
         }
 
         // emit RelayedMessage from L2ScrollMessenger
@@ -332,11 +335,13 @@ contract L2USDCGatewayTest is L2GatewayTestBase {
         }
 
         uint256 gatewayBalance = l2USDC.balanceOf(address(gateway));
-        uint256 recipientBalance = l2USDC.balanceOf(recipient);
+        uint256 recipientBalance = l2USDC.balanceOf(address(recipient));
         assertBoolEq(false, l2Messenger.isL1MessageExecuted(keccak256(xDomainCalldata)));
+        hevm.startPrank(AddressAliasHelper.applyL1ToL2Alias(address(l1Messenger)));
         l2Messenger.relayMessage(address(counterpartGateway), address(gateway), 0, 0, message);
+        hevm.stopPrank();
         assertEq(gatewayBalance, l2USDC.balanceOf(address(gateway)));
-        assertEq(recipientBalance + amount, l2USDC.balanceOf(recipient));
+        assertEq(recipientBalance + amount, l2USDC.balanceOf(address(recipient)));
         assertBoolEq(true, l2Messenger.isL1MessageExecuted(keccak256(xDomainCalldata)));
     }
 
