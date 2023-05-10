@@ -41,14 +41,14 @@ interface IL1MessageQueue {
 
     /// @notice Return the hash of a L1 message.
     /// @param sender The address of sender.
-    /// @param nonce The queue index of this message.
+    /// @param queueIndex The queue index of this message.
     /// @param value The amount of Ether transfer to target.
     /// @param target The address of target.
     /// @param gasLimit The gas limit provided.
     /// @param data The calldata passed to target address.
     function computeTransactionHash(
         address sender,
-        uint256 nonce,
+        uint256 queueIndex,
         uint256 value,
         address target,
         uint256 gasLimit,
