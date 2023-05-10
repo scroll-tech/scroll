@@ -11,7 +11,9 @@ import (
 
 	"golang.org/x/sync/errgroup"
 
+	"github.com/agiledragon/gomonkey/v2"
 	cmap "github.com/orcaman/concurrent-map"
+	"github.com/scroll-tech/go-ethereum/accounts/abi/bind"
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/crypto"
@@ -63,7 +65,8 @@ func TestSender(t *testing.T) {
 	t.Run("test pending limit", testPendLimit)
 
 	t.Run("test min gas limit", testMinGasLimit)
-	t.Run("test resubmit transaction", func(t *testing.T) { testResubmitTransaction(t) })
+	t.Run("test resubmit transaction", testResubmitTransaction)
+	t.Run("test check pending transaction", testCheckPendingTransaction)
 
 	t.Run("test 1 account sender", func(t *testing.T) { testBatchSender(t, 1) })
 	t.Run("test 3 account sender", func(t *testing.T) { testBatchSender(t, 3) })
@@ -148,6 +151,92 @@ func testResubmitTransaction(t *testing.T) {
 		assert.NoError(t, err)
 		_, err = s.resubmitTransaction(feeData, auth, tx)
 		assert.NoError(t, err)
+		s.Stop()
+	}
+}
+
+func testCheckPendingTransaction(t *testing.T) {
+	for _, txType := range txTypes {
+		cfgCopy := *cfg.L1Config.RelayerConfig.SenderConfig
+		cfgCopy.TxType = txType
+		s, err := NewSender(context.Background(), &cfgCopy, privateKeys)
+		assert.NoError(t, err)
+
+		header := &types.Header{Number: big.NewInt(100), BaseFee: big.NewInt(100)}
+		confirmed := uint64(100)
+		receipt := &types.Receipt{Status: types.ReceiptStatusSuccessful, BlockNumber: big.NewInt(90)}
+		auth := s.auths.getAccount()
+		tx := types.NewTransaction(auth.Nonce.Uint64(), common.Address{}, big.NewInt(0), 0, big.NewInt(0), nil)
+
+		patchGuard := gomonkey.NewPatches()
+		defer patchGuard.Reset()
+
+		testCases := []struct {
+			name          string
+			receipt       *types.Receipt
+			receiptErr    error
+			resubmitErr   error
+			expectedCount int
+			expectedFound bool
+		}{
+			{
+				name:          "Normal case, transaction receipt exists and successful",
+				receipt:       receipt,
+				receiptErr:    nil,
+				resubmitErr:   nil,
+				expectedCount: 0,
+				expectedFound: false,
+			},
+			{
+				name:          "Resubmit case, resubmitTransaction error (not nonce) case",
+				receipt:       receipt,
+				receiptErr:    errors.New("receipt error"),
+				resubmitErr:   errors.New("resubmit error"),
+				expectedCount: 1,
+				expectedFound: true,
+			},
+			{
+				name:          "Resubmit case, resubmitTransaction success case",
+				receipt:       receipt,
+				receiptErr:    errors.New("receipt error"),
+				resubmitErr:   nil,
+				expectedCount: 1,
+				expectedFound: true,
+			},
+		}
+
+		for _, tc := range testCases {
+			t.Run(tc.name, func(t *testing.T) {
+				patchGuard.Reset()
+				var c *ethclient.Client
+				patchGuard.ApplyMethodFunc(c, "TransactionReceipt", func(ctx context.Context, txHash common.Hash) (*types.Receipt, error) {
+					return tc.receipt, tc.receiptErr
+				})
+				patchGuard.ApplyPrivateMethod(s, "resubmitTransaction",
+					func(feeData *FeeData, auth *bind.TransactOpts, tx *types.Transaction) (*types.Transaction, error) {
+						return tx, tc.resubmitErr
+					},
+				)
+
+				pendingTx := &PendingTransaction{id: "abc", tx: tx, submitAt: header.Number.Uint64() - s.config.EscalateBlocks - 1}
+				s.pendingTxs.Set(pendingTx.id, pendingTx)
+				s.checkPendingTransaction(header, confirmed)
+
+				if tc.receiptErr == nil {
+					expectedConfirmation := &Confirmation{
+						ID:           pendingTx.id,
+						IsSuccessful: tc.receipt.Status == types.ReceiptStatusSuccessful,
+						TxHash:       pendingTx.tx.Hash(),
+					}
+					actualConfirmation := <-s.confirmCh
+					assert.Equal(t, expectedConfirmation, actualConfirmation)
+				}
+
+				_, found := s.pendingTxs.Get(pendingTx.id)
+				assert.Equal(t, tc.expectedFound, found)
+				assert.Equal(t, tc.expectedCount, s.pendingTxs.Count())
+			})
+		}
 		s.Stop()
 	}
 }

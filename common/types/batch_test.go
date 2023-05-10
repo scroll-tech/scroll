@@ -1,10 +1,12 @@
 package types
 
 import (
+	"encoding/json"
 	"math/big"
+	"os"
 	"testing"
 
-	"gotest.tools/assert"
+	"github.com/stretchr/testify/assert"
 
 	"github.com/scroll-tech/go-ethereum/common"
 	geth_types "github.com/scroll-tech/go-ethereum/core/types"
@@ -88,4 +90,49 @@ func TestNewGenesisBatch(t *testing.T) {
 		"0x65cf210e30f75cf8fd198df124255f73bc08d6324759e828a784fa938e7ac43d",
 		"wrong genesis batch hash",
 	)
+}
+
+func TestNewBatchData(t *testing.T) {
+	templateBlockTrace, err := os.ReadFile("../testdata/blockTrace_02.json")
+	assert.NoError(t, err)
+
+	wrappedBlock := &WrappedBlock{}
+	assert.NoError(t, json.Unmarshal(templateBlockTrace, wrappedBlock))
+
+	parentBatch := &BlockBatch{
+		Index: 1,
+		Hash:  "0x0000000000000000000000000000000000000000",
+	}
+	batchData1 := NewBatchData(parentBatch, []*WrappedBlock{wrappedBlock}, nil)
+	assert.NotNil(t, batchData1)
+	assert.NotNil(t, batchData1.Batch)
+
+	templateBlockTrace, err = os.ReadFile("../testdata/blockTrace_03.json")
+	assert.NoError(t, err)
+
+	wrappedBlock2 := &WrappedBlock{}
+	assert.NoError(t, json.Unmarshal(templateBlockTrace, wrappedBlock2))
+
+	parentBatch2 := &BlockBatch{
+		Index: batchData1.Batch.BatchIndex,
+		Hash:  batchData1.Hash().Hex(),
+	}
+	batchData2 := NewBatchData(parentBatch2, []*WrappedBlock{wrappedBlock2}, nil)
+	assert.NotNil(t, batchData2)
+	assert.NotNil(t, batchData2.Batch)
+}
+
+func TestBatchDataTimestamp(t *testing.T) {
+	// Test case 1: when the batch data contains no blocks.
+	assert.Equal(t, (&BatchData{}).Timestamp(), uint64(0))
+
+	// Test case 2: when the batch data contains blocks.
+	batchData := &BatchData{
+		Batch: abi.IScrollChainBatch{Blocks: []abi.IScrollChainBlockContext{
+			{Timestamp: 123456789},
+			{Timestamp: 234567891},
+		},
+		},
+	}
+	assert.Equal(t, batchData.Timestamp(), uint64(123456789))
 }
