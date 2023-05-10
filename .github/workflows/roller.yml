@@ -45,9 +45,9 @@ jobs:
         workspaces: "common/libzkp/impl -> target"
     - name: Test
       run: |
-        make roller
-        export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:./prover/lib:../prover/lib
+        export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:./prover/lib
         export CHAIN_ID=534353
+        make roller
         go test -v ./...
   check:
     runs-on: ubuntu-latest
