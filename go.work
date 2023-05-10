@@ -2,10 +2,10 @@ go 1.18
 
 use (
 	./bridge
+	./bridge-history-api
 	./common
 	./coordinator
 	./database
 	./roller
 	./tests/integration-test
-	./bridge-history-api
 )
