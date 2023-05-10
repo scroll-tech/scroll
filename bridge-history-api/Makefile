@@ -1,6 +1,12 @@
 REPO_ROOT_DIR=./.
 IMAGE_VERSION=latest
 
+lint: ## Lint the files - used for CI
+	GOBIN=$(PWD)/build/bin go run ../build/lint.go
+
+test:
+	go test -v -race -coverprofile=coverage.txt -covermode=atomic -p 1 $(PWD)/...
+
 backend-db-cli:
 	go build -o $(PWD)/build/bin/backend-db-cli ./cmd/db_cli
 	
