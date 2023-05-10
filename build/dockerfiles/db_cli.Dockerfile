@@ -9,6 +9,7 @@ COPY ./coordinator/go.* ./coordinator/
 COPY ./database/go.* ./database/
 COPY ./roller/go.* ./roller/
 COPY ./tests/integration-test/go.* ./tests/integration-test/
+COPY ./bridge-history-api/go.* ./bridge-history-api/
 RUN go mod download -x
 
 # Build db_cli
