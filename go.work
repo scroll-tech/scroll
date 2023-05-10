@@ -2,7 +2,6 @@ go 1.18
 
 use (
 	./bridge
-	./bridge-history-api
 	./common
 	./coordinator
 	./database
