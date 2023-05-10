@@ -39,6 +39,7 @@ contract L1ScrollMessengerTest is DSTestPlus {
         bytes memory _batchHeader = new bytes(161);
         assembly {
             mstore(add(_batchHeader, 57), 1)
+            mstore(add(_batchHeader, 89), 1)
         }
         scrollChain.importGenesisBatch(
             _batchHeader,
@@ -58,6 +59,7 @@ contract L1ScrollMessengerTest is DSTestPlus {
         bytes memory _batchHeader = new bytes(161);
         assembly {
             mstore(add(_batchHeader, 57), 1)
+            mstore(add(_batchHeader, 89), 1)
         }
         scrollChain.importGenesisBatch(
             _batchHeader,

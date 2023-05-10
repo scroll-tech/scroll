@@ -34,30 +34,6 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
     /// @notice The chain id of the corresponding layer 2 chain.
     uint256 public immutable layer2ChainId;
 
-    /***********
-     * Structs *
-     ***********/
-
-    // subject to change
-    struct BatchStored {
-        // The state root of the last block in this batch.
-        bytes32 newStateRoot;
-        // The withdraw trie root of the last block in this batch.
-        bytes32 withdrawTrieRoot;
-        // The parent batch hash.
-        bytes32 parentBatchHash;
-        // The index of the batch.
-        uint64 batchIndex;
-        // The timestamp of the last block in this batch.
-        uint64 timestamp;
-        // The number of transactions in this batch, both L1 & L2 txs.
-        uint64 numTransactions;
-        // The total number of L1 messages included after this batch.
-        uint64 totalL1Messages;
-        // Whether the batch is finalized.
-        bool finalized;
-    }
-
     /*************
      * Variables *
      *************/
@@ -167,7 +143,7 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
             }
             require(_sumOfFields == 0, "not all fields are zero");
             require(_dataHash != bytes32(0), "zero data hash");
-            require(_lastBlockHash == bytes32(0), "nonzero last block hash");
+            require(_lastBlockHash != bytes32(0), "zero last block hash");
         }
 
         // compute parent batch hash and check
@@ -190,7 +166,7 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
     ) external override OnlySequencer {
         // check whether the batch is empty
         require(_chunks.length > 0, "batch is empty");
-        // check parent batch length
+        // check parent batch header length
         require(_parentBatchHeader.length == 161, "invalid batch header length");
 
         bytes32 _batchHash;
@@ -234,9 +210,11 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
         }
 
         // compute current batch hash
+        bytes32 dataHash;
         assembly {
             _batchIndex := add(_batchIndex, 1)
-            let _dataHash := keccak256(add(_dataHashes, 0x20), mload(_dataHashes))
+            let _dataHash := keccak256(add(_dataHashes, 0x20), mul(mload(_dataHashes), 0x20))
+            dataHash := _dataHash
             // store version for current batch header
             mstore(_batchHeaderOffset, shl(248, _version))
             // store batchIndex for current batch header
@@ -266,6 +244,9 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
         bytes32 _withdrawRoot,
         bytes calldata _aggrProof
     ) external override OnlySequencer {
+        // check batch header length
+        require(_batchHeader.length == 161, "invalid batch header length");
+
         // compute batch hash and verify
         bytes32 _batchHash;
         bytes32 _dataHash;
@@ -296,6 +277,12 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
 
         // verify batch
         IRollupVerifier(verifier).verifyAggregateProof(_aggrProof, _publicInuptHash);
+
+        // update lastFinalizedBatchIndex
+        uint256 _lastFinalizedBatchIndex = lastFinalizedBatchIndex;
+        if (_batchIndex > _lastFinalizedBatchIndex) {
+            lastFinalizedBatchIndex = _batchIndex;
+        }
 
         // record state root and withdraw root
         finalizedStateRoots[_batchIndex] = _newStateRoot;
@@ -357,8 +344,12 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
         assembly {
             _dataPtr := mload(0x40)
             _chunkPtr := add(_chunk, 0x20)
-            _numBlocks := mload(_chunkPtr)
+            _numBlocks := shr(248, mload(_chunkPtr))
+            _chunkPtr := add(_chunkPtr, 1)
         }
+        // should contains at least one block
+        require(_numBlocks > 0, "no block in chunk");
+
         // should contain at least the number of the blocks and block contexts
         require(_chunk.length >= 1 + _numBlocks * 156, "invalid chunk length");
 
@@ -387,7 +378,7 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
         // concatenate tx hashes
         uint256 _txPtr = _chunkPtr;
         assembly {
-            _chunkPtr := add(_chunk, 0x20)
+            _chunkPtr := add(_chunk, 0x21)
         }
         uint256 _totalNumL1MessagesInChunk;
         for (uint256 i = 0; i < _numBlocks; i++) {
