@@ -7,4 +7,5 @@ use (
 	./database
 	./roller
 	./tests/integration-test
+	./bridge-history-api
 )
