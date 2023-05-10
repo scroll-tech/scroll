@@ -2,5 +2,4 @@ assets/
 docs/
 l2geth/
 rpc-gateway/
-bridge-history-api/
 *target/*
