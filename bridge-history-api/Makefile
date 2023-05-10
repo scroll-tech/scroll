@@ -1,3 +1,4 @@
+.PHONY: lint
 REPO_ROOT_DIR=./.
 IMAGE_VERSION=latest
 
