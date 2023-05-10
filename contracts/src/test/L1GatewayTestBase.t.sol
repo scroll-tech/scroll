@@ -63,7 +63,7 @@ abstract contract L1GatewayTestBase is DSTestPlus {
         // Initialize L1 contracts
         l1Messenger.initialize(address(l2Messenger), feeVault, address(rollup), address(messageQueue));
         messageQueue.initialize(address(l1Messenger), address(gasOracle));
-        gasOracle.initialize();
+        gasOracle.initialize(0, 0, 0);
         gasOracle.updateWhitelist(address(whitelist));
         rollup.initialize(address(messageQueue));
 
