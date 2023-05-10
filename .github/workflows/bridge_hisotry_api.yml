@@ -26,6 +26,19 @@ defaults:
 
 jobs:
   check:
+    # runs-on: ubuntu-latest
+    # steps:
+    # - name: Install Go
+    #   uses: actions/setup-go@v2
+    #   with:
+    #     go-version: 1.20.x
+    # - name: Checkout code
+    #   uses: actions/checkout@v2
+    # - name: Lint
+    #   run: |
+    #     rm -rf $HOME/.cache/golangci-lint 
+    #     make lint
+  test:
     runs-on: ubuntu-latest
     steps:
     - name: Install Go
@@ -38,10 +51,6 @@ jobs:
       run: |
         go get ./...
         make test
-    #- name: Lint
-    #  run: |
-    #    rm -rf $HOME/.cache/golangci-lint 
-    #    make lint
   goimports-lint:
     runs-on: ubuntu-latest
     steps:
