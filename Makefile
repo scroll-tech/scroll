@@ -36,9 +36,7 @@ dev_docker: ## build docker images for development/testing usages
 test_docker: ## build and run Docker for local testing on M1/M2 Silicon Mac
 	make dev_docker
 	docker build -t my_scroll_test_image -f ./build/dockerfiles/local_testing.Dockerfile $$(mktemp -d)
-	
 	docker run -it --rm --name my_scroll_test_container --network=host -v /var/run/docker.sock:/var/run/docker.sock -v $(PWD):/go/src/app my_scroll_test_image
-
 
 test_zkp: ## Test zkp prove and verify, roller/prover generates the proof and coordinator/verifier verifies it
 	mkdir -p test_params
