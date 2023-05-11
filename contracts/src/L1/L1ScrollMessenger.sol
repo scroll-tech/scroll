@@ -178,6 +178,10 @@ contract L1ScrollMessenger is PausableUpgradeable, ScrollMessengerBase, IL1Scrol
         uint32 _newGasLimit,
         address _refundAddress
     ) external payable override whenNotPaused {
+        // We will use a different `queueIndex` for the replaced message. However, the original `queueIndex` or `nonce`
+        // is encoded in the `_message`. We will check the `xDomainCalldata` in layer 2 to avoid duplicated execution.
+        // So, only one message will succeed in layer 2. If one of the message is executed successfully, the other one
+        // will revert with "Message was already successfully executed".
         address _messageQueue = messageQueue;
         address _counterpart = counterpart;
         bytes memory _xDomainCalldata = _encodeXDomainCalldata(_from, _to, _value, _queueIndex, _message);
