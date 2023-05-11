@@ -11,6 +11,7 @@ import {IL1GasPriceOracle} from "./predeploys/IL1GasPriceOracle.sol";
 
 import {PatriciaMerkleTrieVerifier} from "../libraries/verifier/PatriciaMerkleTrieVerifier.sol";
 import {ScrollConstants} from "../libraries/constants/ScrollConstants.sol";
+import {AddressAliasHelper} from "../libraries/common/AddressAliasHelper.sol";
 import {IScrollMessenger} from "../libraries/IScrollMessenger.sol";
 import {ScrollMessengerBase} from "../libraries/ScrollMessengerBase.sol";
 
@@ -208,14 +209,9 @@ contract L2ScrollMessenger is ScrollMessengerBase, PausableUpgradeable, IL2Scrol
         uint256 _value,
         uint256 _nonce,
         bytes memory _message
-    ) external override whenNotPaused onlyWhitelistedSender(msg.sender) {
-        // anti reentrance
-        require(
-            xDomainMessageSender == ScrollConstants.DEFAULT_XDOMAIN_MESSAGE_SENDER,
-            "Message is already in execution"
-        );
-
-        // @todo address unalis to check sender is L1ScrollMessenger
+    ) external override whenNotPaused {
+        // It is impossible to deploy a contract with the same address, reentrance is prevented in nature.
+        require(AddressAliasHelper.undoL1ToL2Alias(msg.sender) == counterpart, "Caller is not L1ScrollMessenger");
 
         bytes32 _xDomainCalldataHash = keccak256(_encodeXDomainCalldata(_from, _to, _value, _nonce, _message));
 

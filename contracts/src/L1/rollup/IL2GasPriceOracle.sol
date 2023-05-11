@@ -4,13 +4,6 @@ pragma solidity ^0.8.0;
 
 interface IL2GasPriceOracle {
     /// @notice Estimate fee for cross chain message call.
-    /// @param _sender The address of sender who invoke the call.
-    /// @param _to The target address to receive the call.
-    /// @param _message The message will be passed to the target address.
-    function estimateCrossDomainMessageFee(
-        address _sender,
-        address _to,
-        bytes memory _message,
-        uint256 _gasLimit
-    ) external view returns (uint256);
+    /// @param _gasLimit Gas limit required to complete the message relay on L2.
+    function estimateCrossDomainMessageFee(uint256 _gasLimit) external view returns (uint256);
 }
