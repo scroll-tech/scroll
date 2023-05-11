@@ -29,8 +29,8 @@ contract L2GasPriceOracleTest is DSTestPlus {
     function testCalculateIntrinsicGasFee() external {
         uint256 fee = oracle.calculateIntrinsicGasFee(hex"00");
         assertEq(fee, 0);
-        uint256 zeroGas = 5;
-        uint256 nonZeroGas = 10;
+        uint64 zeroGas = 5;
+        uint64 nonZeroGas = 10;
         oracle.setIntrinsicParams(20000, zeroGas, nonZeroGas);
 
         fee = oracle.calculateIntrinsicGasFee(hex"001122");
@@ -67,4 +67,10 @@ contract L2GasPriceOracleTest is DSTestPlus {
         hevm.expectRevert("Not whitelisted sender");
         oracle.setIntrinsicParams(1, 0, 1);
     }
+
+    // forge t --match-contract L2GasPriceOracleTest --match-test testBenchmark --gas-report
+    // function testBenchmark() external {
+    //     // 50 bytes
+    //     fee = oracle.calculateIntrinsicGasFee(hex"11111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111");
+    // }
 }
