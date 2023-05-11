@@ -3,7 +3,6 @@ package config
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"testing"
 	"time"
@@ -39,23 +38,32 @@ func TestConfig(t *testing.T) {
 	}`
 
 	t.Run("Success Case", func(t *testing.T) {
-		tmpfile, _ := ioutil.TempFile("", "example")
+		tmpFile, err := os.CreateTemp("", "example")
+		assert.NoError(t, err)
+		defer func() {
+			assert.NoError(t, tmpFile.Close())
+			assert.NoError(t, os.Remove(tmpFile.Name()))
+		}()
 		config := fmt.Sprintf(configTemplate, defaultNumberOfSessionRetryAttempts, defaultNumberOfVerifierWorkers, "ASC")
-		_, _ = tmpfile.WriteString(config)
-		defer os.Remove(tmpfile.Name())
-
-		cfg, err := NewConfig(tmpfile.Name())
+		_, err = tmpFile.WriteString(config)
 		assert.NoError(t, err)
 
-		data, _ := json.Marshal(cfg)
-		tmpJSON := fmt.Sprintf("/tmp/%d_config.json", time.Now().Nanosecond())
-		defer os.Remove(tmpJSON)
+		cfg, err := NewConfig(tmpFile.Name())
+		assert.NoError(t, err)
 
-		os.WriteFile(tmpJSON, data, 0644)
+		data, err := json.Marshal(cfg)
+		assert.NoError(t, err)
+		tmpJSON := fmt.Sprintf("/tmp/%d_config.json", time.Now().Nanosecond())
+		defer func() {
+			if _, err := os.Stat(tmpJSON); err == nil {
+				assert.NoError(t, os.Remove(tmpJSON))
+			}
+		}()
+
+		assert.NoError(t, os.WriteFile(tmpJSON, data, 0644))
 
 		cfg2, err := NewConfig(tmpJSON)
 		assert.NoError(t, err)
-
 		assert.Equal(t, cfg, cfg2)
 	})
 
@@ -65,44 +73,64 @@ func TestConfig(t *testing.T) {
 	})
 
 	t.Run("Invalid JSON Content", func(t *testing.T) {
-		tempFile, _ := os.CreateTemp("", "invalid_json_config.json")
-		defer os.Remove(tempFile.Name())
+		tmpFile, err := os.CreateTemp("", "invalid_json_config.json")
+		assert.NoError(t, err)
+		defer func() {
+			assert.NoError(t, tmpFile.Close())
+			assert.NoError(t, os.Remove(tmpFile.Name()))
+		}()
 
-		tempFile.WriteString("{ invalid_json: ")
+		_, err = tmpFile.WriteString("{ invalid_json: ")
+		assert.NoError(t, err)
 
-		_, err := NewConfig(tempFile.Name())
+		_, err = NewConfig(tmpFile.Name())
 		assert.Error(t, err)
 	})
 
 	t.Run("Invalid Order Session", func(t *testing.T) {
-		tmpfile, _ := ioutil.TempFile("", "example")
+		tmpFile, err := os.CreateTemp("", "example")
+		assert.NoError(t, err)
+		defer func() {
+			assert.NoError(t, tmpFile.Close())
+			assert.NoError(t, os.Remove(tmpFile.Name()))
+		}()
 		config := fmt.Sprintf(configTemplate, defaultNumberOfSessionRetryAttempts, defaultNumberOfVerifierWorkers, "INVALID")
-		_, _ = tmpfile.WriteString(config)
-		defer os.Remove(tmpfile.Name())
+		_, err = tmpFile.WriteString(config)
+		assert.NoError(t, err)
 
-		_, err := NewConfig(tmpfile.Name())
+		_, err = NewConfig(tmpFile.Name())
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "roller config's order session is invalid")
 	})
 
 	t.Run("Default MaxVerifierWorkers", func(t *testing.T) {
-		tmpfile, _ := ioutil.TempFile("", "example")
+		tmpFile, err := os.CreateTemp("", "example")
+		assert.NoError(t, err)
+		defer func() {
+			assert.NoError(t, tmpFile.Close())
+			assert.NoError(t, os.Remove(tmpFile.Name()))
+		}()
 		config := fmt.Sprintf(configTemplate, defaultNumberOfSessionRetryAttempts, 0, "ASC")
-		_, _ = tmpfile.WriteString(config)
-		defer os.Remove(tmpfile.Name())
+		_, err = tmpFile.WriteString(config)
+		assert.NoError(t, err)
 
-		cfg, err := NewConfig(tmpfile.Name())
+		cfg, err := NewConfig(tmpFile.Name())
 		assert.NoError(t, err)
 		assert.Equal(t, defaultNumberOfVerifierWorkers, cfg.RollerManagerConfig.MaxVerifierWorkers)
 	})
 
 	t.Run("Default SessionAttempts", func(t *testing.T) {
-		tmpfile, _ := ioutil.TempFile("", "example")
+		tmpFile, err := os.CreateTemp("", "example")
+		assert.NoError(t, err)
+		defer func() {
+			assert.NoError(t, tmpFile.Close())
+			assert.NoError(t, os.Remove(tmpFile.Name()))
+		}()
 		config := fmt.Sprintf(configTemplate, 0, defaultNumberOfVerifierWorkers, "ASC")
-		_, _ = tmpfile.WriteString(config)
-		defer os.Remove(tmpfile.Name())
+		_, err = tmpFile.WriteString(config)
+		assert.NoError(t, err)
 
-		cfg, err := NewConfig(tmpfile.Name())
+		cfg, err := NewConfig(tmpFile.Name())
 		assert.NoError(t, err)
 		assert.Equal(t, uint8(defaultNumberOfSessionRetryAttempts), cfg.RollerManagerConfig.SessionAttempts)
 	})

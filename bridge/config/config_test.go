@@ -13,7 +13,7 @@ import (
 func TestConfig(t *testing.T) {
 	t.Run("Success Case", func(t *testing.T) {
 		cfg, err := NewConfig("../config.json")
-		assert.NoError(t, err, "failed to load config")
+		assert.NoError(t, err)
 
 		assert.Len(t, cfg.L1Config.RelayerConfig.MessageSenderPrivateKeys, 1)
 		assert.Len(t, cfg.L2Config.RelayerConfig.MessageSenderPrivateKeys, 1)
@@ -23,7 +23,11 @@ func TestConfig(t *testing.T) {
 		assert.NoError(t, err)
 
 		tmpJSON := fmt.Sprintf("/tmp/%d_bridge_config.json", time.Now().Nanosecond())
-		defer func() { _ = os.Remove(tmpJSON) }()
+		defer func() {
+			if _, err := os.Stat(tmpJSON); err == nil {
+				assert.NoError(t, os.Remove(tmpJSON))
+			}
+		}()
 
 		assert.NoError(t, os.WriteFile(tmpJSON, data, 0644))
 
@@ -42,14 +46,17 @@ func TestConfig(t *testing.T) {
 
 	t.Run("Invalid JSON Content", func(t *testing.T) {
 		// Create a temporary file with invalid JSON content
-		tempFile, err := os.CreateTemp("", "invalid_json_config.json")
+		tmpFile, err := os.CreateTemp("", "invalid_json_config.json")
 		assert.NoError(t, err)
-		defer os.Remove(tempFile.Name())
+		defer func() {
+			assert.NoError(t, tmpFile.Close())
+			assert.NoError(t, os.Remove(tmpFile.Name()))
+		}()
 
-		_, err = tempFile.WriteString("{ invalid_json: ")
+		_, err = tmpFile.WriteString("{ invalid_json: ")
 		assert.NoError(t, err)
 
-		_, err = NewConfig(tempFile.Name())
+		_, err = NewConfig(tmpFile.Name())
 		assert.Error(t, err)
 	})
 }
