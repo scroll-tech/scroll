@@ -1,100 +1,102 @@
 # Roller
 
-This directory contains the Scroll roller module.
+This directory contains the Scroll prover (aka "roller") module.
+
 
 ## Build
 ```bash
 make clean
 make roller
 ```
-The built roller binary is in the build/bin directory.
+The built prover binary is in the build/bin directory.
+
 
 ## Test
 
-TBD.
+Make sure to lint before testing (or committing):
 
-For current unit tests, run:
-```bash
-make roller
-export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:./prover/lib
-export CHAIN_ID=534353
-go test -v ./...
-```
-
-When you need to mock prover results and run other roller tests:
-```bash
-go test -tags="mock_prover" -v -race -covermode=atomic scroll-tech/roller/...
-```
-It will use [`prover/mock.go`](prover/mock.go) instead of [`prover/prover.go`](prover/prover.go).
-
-Lint the files before testing or committing:
 ```bash
 make lint
 ```
 
-## Configure
+For current unit tests, run:
 
-The roller behavior can be configured using [`config.json`](config.json). Check the code comments of `Config` and `ProverConfig` in [`config/config.go`](config/config.go), and `NewRoller` in [`roller.go`](roller.go) for more details.
-
-## Start
-* Set environment variables
 ```bash
-export CHAIN_ID=534353 # change to correct chain_id
-export RUST_MIN_STACK=100000000 
-export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:./prover/lib:/usr/local/cuda/   # cuda only for GPU machine
+make roller
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:./prover/lib
+export CHAIN_ID=534353 # for Scroll Alpha
+go test -v ./...
 ```
 
-* Using default settings in config.json  
+When you need to mock prover results and run other prover tests (using [`prover/mock.go`](prover/mock.go) instead of [`prover/prover.go`](prover/prover.go)), run:
+
+```bash
+go test -tags="mock_prover" -v -race -covermode=atomic scroll-tech/roller/...
+```
+
+
+## Configure
+
+The prover behavior can be configured using [`config.json`](config.json). Check the code comments of `Config` and `ProverConfig` in [`config/config.go`](config/config.go), and `NewRoller` in [`roller.go`](roller.go#L51) for more details.
+
+
+## Start
+
+1. Set environment variables:
+
+```bash
+export CHAIN_ID=534353 # change to correct chain ID
+export RUST_MIN_STACK=100000000
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:./prover/lib:/usr/local/cuda/ # cuda only needed for a GPU machine
+```
+
+2. Start the module using settings from config.json:
+
 ```bash
 ./build/bin/roller
 ```
 
-## Codeflow
 
-### cmd/app/app.go
+# Flow
 
-This file defines the main entry point for the roller application, initializes roller instances via roller.go, and handling graceful shutdowns. The roller (`cmd/app/app.go`) calls `NewRoller` with config.json parsed and cfg passed to (`roller.go`). It then starts creating new instance of the Roller via `r.Start`, and starting the main processing loop for generating proofs dispatched from the coordinator.
+## `cmd/app/app.go`
 
-Multiple Rollers can be started separately, and registered to the coordinator via coordinator's API.
+This file defines the main entry point for the prover application, initializes prover instances via roller.go, and handles graceful shutdowns. The prover (`cmd/app/app.go`) calls `NewRoller` with config.json parsed and cfg passed to `roller.go`. It then starts creating new instances of provers via `r.Start` and starts the main processing loop for generating proofs dispatched from the coordinator.
 
-### cmd/app/mock_app.go
+Multiple prover can be started separately and registered with the coordinator via its API.
 
-This file wrapped the mock app functions, and is used in the integration-test. (See [integration-test](../tests/integration-test/)
 
-### roller.go
+## `cmd/app/mock_app.go`
 
-roller.go contains the core logic of the Roller, including starting the Roller, registering with the Coordinator, handling tasks from the Coordinator, and proving loop. The Roller interacts with `prover.go` and `stack.go` to perform its functions.
+This file wrapps mock app functions and is used in the [integration test](../tests/integration-test/).
 
-`NewRoller`: A constructor function for creating a new Roller instance. It initializes the Roller with the provided configuration, loads or creates a private key, initializes the Stack and Prover instances, and sets up a client connection to the Coordinator.
 
-`Start`: Starts the Roller by registering with the Coordinator. Contains `Register`, `HandleCoordinator`, and `ProveLoop`.
+## `roller.go`
 
-* `Register` constructs, signs an `AuthMsg` object, and send it to the coordinator. A token is then returned from the coordinator, which is used as challenge-response in `AuthMsg`, to authenticate the Roller in subsequent communications with the Coordinator. The AuthMsg object contains the roller's identity information, such as its name, public key, timestamp, and an one-time token. The last request from the Roller is `RegisterAndSubscribe`, to register and subscribe to the coordinator for receiving tasks. Related functions like `RequestToken` and `RegisterAndSubscribe` are defined in [`../coordinator/client/client.go`](../coordinator/client/client.go).
+This file contains the logic of the `roller`, including starting it, registering with the coordinator, handling tasks from the coordinator, and running the proving loop. The `roller` interacts with `prover` and `stack` to perform its functions.
 
-* `HandleCoordinator` and `ProveLoop` are then started listening in separate goroutines, ready to handle incoming tasks from the Coordinator.
+`NewRoller`: A constructor function for creating a new `Roller` instance. It initializes it with the provided configuration, loads or creates a private key, initializes the `Stack` and `Prover` instances, and sets up a client connection to the coordinator.
 
-* `HandleCoordinator` handles incoming tasks from the Coordinator by pushing them onto the Stack using the `Push` method of the `store.Stack` instance. When the subscription returns an error, the Roller will attempt to re-register and re-subscribe to the Coordinator in `mustRetryCoordinator`.
+`Start`: Starts the prover and registers it with the coordinator. It contains `Register`, `HandleCoordinator` and `ProveLoop`:
 
-* `ProveLoop` pops tasks from the Stack and sends them to the Prover for processing.
-Calling relationship:
-`ProveLoop()`
-    ->`prove()`
-        ->`stack.Peek()`
-        ->`stack.UpdateTimes()`
-        ->`prover.Prove()`
-        ->`stack.Delete()`
-        ->`signAndSubmitProof()`
+* `Register` constructs and signs an `AuthMsg` object, and sends it to the coordinator. A token is then returned from the coordinator that is used as challenge-response in `AuthMsg` in order to authenticate the prover in subsequent communication with the coordinator. The `AuthMsg` object contains prover identity information, such as its name, public key, timestamp, and a one-time token. The last request from the prover is `RegisterAndSubscribe`, to register and subscribe to the coordinator for receiving tasks. Related functions like `RequestToken` and `RegisterAndSubscribe` are defined in [`../coordinator/client/client.go`](../coordinator/client/client.go). `HandleCoordinator` and `ProveLoop` are then started and listen in separate goroutines, ready to handle incoming tasks from the coordinator.
 
-Refer to relative functions in stack, prover, or client module for more detail.
+* `HandleCoordinator` handles incoming tasks from the coordinator by pushing them onto the stack using the `Push` method of the `store.Stack` instance. If the subscription returns an error, the prover will attempt to re-register and re-subscribe to the coordinator in `mustRetryCoordinator`.
 
-### prover/prover.go
+* `ProveLoop` pops tasks from the stack and sends them to the prover for processing. Call order is the following: `ProveLoop()` -> `prove()` -> `stack.Peek()` -> `stack.UpdateTimes()` -> `prover.Prove()` -> `stack.Delete()` -> `signAndSubmitProof()`.
 
-prover.go is a part of the roller package, and it focuses on the go implementation of the Prover struct, which is responsible for proving and generating proofs using the provided tasks from the coordinator. It handles interactions with the rust-prover library via FFI. Refer to `create_agg_proof_multi` in [`../common/libzkp/impl/src/prove.rs`](../common/libzkp/impl/src/prove.rs) for more detail.
+Refer to the functions in `stack`, `prover` and `client` modules for more detail.
 
-### store/stack.go
 
-stack.go is a part of the roller package, and it's responsible for managing the task storage and retrieval for the Roller. It uses [BBolt database](https://github.com/etcd-io/bbolt) to store the tasks and provides various functions like `Push`, `Peek`, `Delete`, and `UpdateTimes`, to interact with the stored tasks.
+## `prover/prover.go`
 
-### roller_metrics.go
+This file focuses on the go implementation of the `Prover` struct which is responsible for generating proofs from tasks provided by the coordinator. It handles interactions with the rust-prover library via FFI. Refer to `create_agg_proof_multi` in [`../common/libzkp/impl/src/prove.rs`](../common/libzkp/impl/src/prove.rs) for more detail.
 
-roller_metrics.go is called in [`../coordinator/manager.go`](../coordinator/manager.go), and is used to collect metrics from the Roller.
+
+## `store/stack.go`
+This file is responsible for managing task storage and retrieval for the prover. It uses a [BBolt database](https://github.com/etcd-io/bbolt) to store tasks and provides various functions like `Push`, `Peek`, `Delete` and `UpdateTimes` in order to interact with them.
+
+
+## `roller_metrics.go`
+
+This file is called from [`../coordinator/manager.go`](../coordinator/manager.go) and is used to collect metrics from the prover.
