@@ -29,10 +29,12 @@ update: ## update dependencies
 	goimports -local $(PWD)/roller/ -w .
 
 dev_docker: ## build docker images for development/testing usages
+	docker pull postgres
 	docker build -t scroll_l1geth ./common/docker/l1geth/
 	docker build -t scroll_l2geth ./common/docker/l2geth/
 
 test_docker: ## build and run Docker for local testing on M1/M2 Silicon Mac
+	make dev_docker
 	docker build -t my_scroll_test_image -f ./build/dockerfiles/local_testing.Dockerfile $$(mktemp -d)
 	
 	docker run -it --rm --name my_scroll_test_container --network=host -v /var/run/docker.sock:/var/run/docker.sock -v $(PWD):/go/src/app my_scroll_test_image
