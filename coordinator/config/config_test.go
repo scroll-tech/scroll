@@ -55,7 +55,7 @@ func TestConfig(t *testing.T) {
 		assert.NoError(t, err)
 		tmpJSON := fmt.Sprintf("/tmp/%d_config.json", time.Now().Nanosecond())
 		defer func() {
-			if _, err := os.Stat(tmpJSON); err == nil {
+			if _, err = os.Stat(tmpJSON); err == nil {
 				assert.NoError(t, os.Remove(tmpJSON))
 			}
 		}()
