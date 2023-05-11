@@ -64,8 +64,7 @@ pipeline {
                 }
                 stage('Race test coordinator package') {
                     steps {
-                        sh "export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:./coordinator/verifier/lib"
-                        sh "cd ./coordinator && ../build/run_tests.sh coordinator"
+                        sh 'cd ./coordinator && go test -exec "env LD_LIBRARY_PATH=./coordinator/verifier/lib" -v -race -gcflags="-l" -ldflags="-s=false" -coverpkg="$coverpkg" -coverprofile=../coverage.$coordinator.txt -covermode=atomic ./...'
                     }
                 }
                 stage('Race test database package') {
