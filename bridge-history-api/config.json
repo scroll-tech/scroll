@@ -1,0 +1,34 @@
+{
+	"l1": {
+		"confirmation": 64,
+		"endpoint": "https://rpc.ankr.com/eth_goerli",
+		"startHeight": 8890194 ,
+		"blockTime": 10,
+		"MessengerAddr": "0x5260e38080BFe97e6C4925d9209eCc5f964373b6",
+		"ETHGatewayAddr": "0x429b73A21cF3BF1f3E696a21A95408161daF311f",
+		"WETHGatewayAddr": "0x8be69E499D8848DfFb4cF9bac909f3e2cF2FeFa0",
+		"StandardERC20Gateway": "0xeF37207c1A1efF6D6a9d7BfF3cF4270e406d319b",
+		"CustomERC20GatewayAddr": "0x920f906B814597cF5DC76F95100F09CBAF9c5748",
+		"ERC721GatewayAddr": "0x1C441Dfc5C2eD7A2AA8636748A664E59CB029157",
+		"ERC1155GatewayAddr": "0xd1bE599aaCBC21448fD6373bbc7c1b4c7806f135"
+	},
+	"l2": {
+		"confirmation": 1,
+		"endpoint": "https://alpha-rpc.scroll.io/l2",
+		"blockTime": 3,
+		"startHeight": 1600068,
+		"CustomERC20GatewayAddr": "0xa07Cb742657294C339fB4d5d6CdF3fdBeE8C1c68",
+		"ERC721GatewayAddr": "0x8Fee20e0C0Ef16f2898a8073531a857D11b9C700",
+		"StandardERC20Gateway": "0xB878F37BB278bf0e4974856fFe86f5e6F66BD725",
+		"MessengerAddr": "0xb75d7e84517e1504C151B270255B087Fd746D34C",
+		"ETHGatewayAddr": "0x32139B5C8838E94fFcD83E60dff95Daa7F0bA14c",
+		"WETHGatewayAddr": "0xBb88bF582F2BBa46702621dae5CB9271057bC85b",
+		"ERC1155GatewayAddr": "0x2946cB860028276b3C4bccE1767841641C2E0828"
+	},
+	"db": {
+		"dsn": "postgres://postgres:1234@localhost:5444/test?sslmode=disable",
+		"driverName": "postgres",
+		"maxOpenNum": 200,
+		"maxIdleNum": 20
+	}
+}

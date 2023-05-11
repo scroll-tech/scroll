@@ -39,9 +39,27 @@ interface IL1MessageQueue {
     /// @param gasLimit Gas limit required to complete the message relay on L2.
     function estimateCrossDomainMessageFee(uint256 gasLimit) external view returns (uint256);
 
+
     /// @notice Return the amount of intrinsic gas fee should pay for cross domain message.
     /// @param _message The message to be relayed on L2.
     function calculateIntrinsicGasFee(bytes memory _message) external view returns (uint256);
+
+    /// @notice Return the hash of a L1 message.
+    /// @param sender The address of sender.
+    /// @param queueIndex The queue index of this message.
+    /// @param value The amount of Ether transfer to target.
+    /// @param target The address of target.
+    /// @param gasLimit The gas limit provided.
+    /// @param data The calldata passed to target address.
+    function computeTransactionHash(
+        address sender,
+        uint256 queueIndex,
+        uint256 value,
+        address target,
+        uint256 gasLimit,
+        bytes calldata data
+    ) external view returns (bytes32);
+
 
     /*****************************
      * Public Mutating Functions *
