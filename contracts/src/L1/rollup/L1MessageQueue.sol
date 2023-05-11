@@ -67,11 +67,11 @@ contract L1MessageQueue is OwnableUpgradeable, IL1MessageQueue {
         return IL2GasPriceOracle(_oracle).estimateCrossDomainMessageFee(_gasLimit);
     }
 
-
     function calculateIntrinsicGasFee(bytes memory _message) external view override returns (uint256) {
         address _oracle = gasOracle;
         if (_oracle == address(0)) return 0;
         return IL2GasPriceOracle(_oracle).calculateIntrinsicGasFee(_message);
+    }
 
     /// @inheritdoc IL1MessageQueue
     function computeTransactionHash(
@@ -203,11 +203,7 @@ contract L1MessageQueue is OwnableUpgradeable, IL1MessageQueue {
      *****************************/
 
     /// @inheritdoc IL1MessageQueue
-    function appendCrossDomainMessage(
-        address _target,
-        uint256 _gasLimit,
-        bytes calldata _data
-    ) external override {
+    function appendCrossDomainMessage(address _target, uint256 _gasLimit, bytes calldata _data) external override {
         require(msg.sender == messenger, "Only callable by the L1ScrollMessenger");
 
         // do address alias to avoid replay attack in L2.
@@ -222,13 +218,7 @@ contract L1MessageQueue is OwnableUpgradeable, IL1MessageQueue {
     }
 
     /// @inheritdoc IL1MessageQueue
-    function appendEnforcedTransaction(
-        address,
-        address,
-        uint256,
-        uint256,
-        bytes calldata
-    ) external override {
+    function appendEnforcedTransaction(address, address, uint256, uint256, bytes calldata) external override {
         // @todo
     }
 
