@@ -8,12 +8,9 @@ import {L2GasPriceOracle} from "../L1/rollup/L2GasPriceOracle.sol";
 import {Whitelist} from "../L2/predeploys/Whitelist.sol";
 
 contract L2GasPriceOracleTest is DSTestPlus {
-    uint256 private constant PRECISION = 1e9;
-    uint256 private constant MAX_OVERHEAD = 30000000 / 16;
-    uint256 private constant MAX_SCALE = 1000 * PRECISION;
-
     L2GasPriceOracle private oracle;
     Whitelist private whitelist;
+    uint fee;
 
     event Log(address addr);
 
@@ -47,7 +44,9 @@ contract L2GasPriceOracleTest is DSTestPlus {
         fee = oracle.calculateIntrinsicGasFee(hex"0011220033");
         // 10000 + 3 nonzero byte * 100 + 2 zero bytes * 50 = 10000 + 300 + 100 = 10400
         assertEq(fee, 10400);
+    }
 
+    function testCalculateIntrinsicGasFeeOverflow() external {
         uint256 MAX_UINT_64 = 2 ** 64 - 1;
 
         oracle.setIntrinsicParams(1, 2 ** 63, 0);
@@ -61,5 +60,11 @@ contract L2GasPriceOracleTest is DSTestPlus {
 
         hevm.expectRevert("Intrinsic gas overflows from nonzero bytes cost");
         fee = oracle.calculateIntrinsicGasFee(hex"11");
+    }
+
+    function testSetIntrinsicParamsAccess() external {
+        hevm.startPrank(address(4));
+        hevm.expectRevert("Not whitelisted sender");
+        oracle.setIntrinsicParams(1, 0, 1);
     }
 }

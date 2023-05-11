@@ -39,7 +39,6 @@ interface IL1MessageQueue {
     /// @param gasLimit Gas limit required to complete the message relay on L2.
     function estimateCrossDomainMessageFee(uint256 gasLimit) external view returns (uint256);
 
-
     /// @notice Return the amount of intrinsic gas fee should pay for cross domain message.
     /// @param _message The message to be relayed on L2.
     function calculateIntrinsicGasFee(bytes memory _message) external view returns (uint256);
@@ -59,7 +58,6 @@ interface IL1MessageQueue {
         uint256 gasLimit,
         bytes calldata data
     ) external view returns (bytes32);
-
 
     /*****************************
      * Public Mutating Functions *
