@@ -36,7 +36,7 @@ jobs:
     - name: Install Go
       uses: actions/setup-go@v2
       with:
-        go-version: 1.18.9
+        go-version: 1.18.x
     - name: Checkout code
       uses: actions/checkout@v2
     - name: Cache cargo
@@ -45,11 +45,8 @@ jobs:
         workspaces: "common/libzkp/impl -> target"
     - name: Test
       run: |
-        go version
-        export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:./prover/lib
-        export CHAIN_ID=534353
         make roller
-        go test -v ./...
+        go test -tags="mock_prover" -v ./...
   check:
     runs-on: ubuntu-latest
     steps:
