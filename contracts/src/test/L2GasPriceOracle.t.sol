@@ -21,7 +21,7 @@ contract L2GasPriceOracleTest is DSTestPlus {
         whitelist = new Whitelist(address(this));
         oracle = new L2GasPriceOracle();
 
-        oracle.initialize(0,0,0);
+        oracle.initialize(0, 0, 0);
         oracle.updateWhitelist(address(whitelist));
 
         address[] memory _accounts = new address[](1);
@@ -47,21 +47,19 @@ contract L2GasPriceOracleTest is DSTestPlus {
         fee = oracle.calculateIntrinsicGasFee(hex"0011220033");
         // 10000 + 3 nonzero byte * 100 + 2 zero bytes * 50 = 10000 + 300 + 100 = 10400
         assertEq(fee, 10400);
-        
 
-        uint256 MAX_UINT_64 = 2**64-1;
+        uint256 MAX_UINT_64 = 2 ** 64 - 1;
 
-        oracle.setIntrinsicParams(1, 2**63, 0);
+        oracle.setIntrinsicParams(1, 2 ** 63, 0);
         fee = oracle.calculateIntrinsicGasFee(hex"11");
 
         hevm.expectRevert("Intrinsic gas overflows from zero bytes cost");
         fee = oracle.calculateIntrinsicGasFee(hex"00");
-    
-        oracle.setIntrinsicParams(1, 0, 2**63);
+
+        oracle.setIntrinsicParams(1, 0, 2 ** 63);
         fee = oracle.calculateIntrinsicGasFee(hex"00");
 
-        hevm.expectRevert("Intrinsic gas overflows from zero bytes cost");
+        hevm.expectRevert("Intrinsic gas overflows from nonzero bytes cost");
         fee = oracle.calculateIntrinsicGasFee(hex"11");
     }
-
 }
