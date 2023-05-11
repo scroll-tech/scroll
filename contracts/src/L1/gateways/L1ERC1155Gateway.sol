@@ -107,7 +107,7 @@ contract L1ERC1155Gateway is OwnableUpgradeable, ERC1155HolderUpgradeable, Scrol
         uint256 _tokenId,
         uint256 _amount
     ) external override nonReentrant onlyCallByCounterpart {
-        require(_l2Token != address(0), "zero l2 token");
+        require(_l2Token != address(0), "L2 token address cannot be 0");
         require(_l2Token == tokenMapping[_l1Token], "l2 token mismatch");
 
         IERC1155Upgradeable(_l1Token).safeTransferFrom(address(this), _to, _tokenId, _amount, "");
@@ -124,7 +124,7 @@ contract L1ERC1155Gateway is OwnableUpgradeable, ERC1155HolderUpgradeable, Scrol
         uint256[] calldata _tokenIds,
         uint256[] calldata _amounts
     ) external override nonReentrant onlyCallByCounterpart {
-        require(_l2Token != address(0), "zero l2 token");
+        require(_l2Token != address(0), "L2 token address cannot be 0");
         require(_l2Token == tokenMapping[_l1Token], "l2 token mismatch");
 
         IERC1155Upgradeable(_l1Token).safeBatchTransferFrom(address(this), _to, _tokenIds, _amounts, "");

@@ -79,7 +79,7 @@ contract L1CustomERC20Gateway is OwnableUpgradeable, ScrollGatewayBase, L1ERC20G
         bytes calldata _data
     ) external payable override nonReentrant onlyCallByCounterpart {
         require(msg.value == 0, "nonzero msg.value");
-        require(_l2Token != address(0), "zero l2 token");
+        require(_l2Token != address(0), "L2 token address cannot be 0");
         require(_l2Token == tokenMapping[_l1Token], "l2 token mismatch");
 
         // @note can possible trigger reentrant call to this contract or messenger,
