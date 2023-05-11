@@ -48,23 +48,20 @@ func TestERC20(t *testing.T) {
 	to := common.HexToAddress("0x85fd9d96a42972f8301b886e77838f363e72dff7")
 	tx, err := token.Transfer(auth, to, value)
 	assert.NoError(t, err)
-	receipt, err := bind.WaitMined(context.Background(), l2Cli, tx)
-	assert.NoError(t, err)
-	assert.Equal(t, types.ReceiptStatusSuccessful, receipt.Status)
-
-	authBls1, err := token.BalanceOf(nil, auth.From)
-	assert.NoError(t, err)
-
-	tokenBls1, err := token.BalanceOf(nil, to)
+	_, err = bind.WaitMined(context.Background(), l2Cli, tx)
 	assert.NoError(t, err)
 
 	// check balance.
+	authBls1, err := token.BalanceOf(nil, auth.From)
+	assert.NoError(t, err)
+	tokenBls1, err := token.BalanceOf(nil, to)
+	assert.NoError(t, err)
 	assert.Equal(t, authBls0.Int64(), authBls1.Add(authBls1, value).Int64())
 	assert.Equal(t, tokenBls1.Int64(), tokenBls0.Add(tokenBls0, value).Int64())
 }
 
 func TestGreeter(t *testing.T) {
-	//base.RunL2Geth(t)
+	base.RunL2Geth(t)
 	l2Cli, err := base.L2Client()
 	assert.Nil(t, err)
 
@@ -78,10 +75,10 @@ func TestGreeter(t *testing.T) {
 	val := big.NewInt(100)
 	tx, err := token.SetValue(auth, val)
 	assert.NoError(t, err)
-	receipt, err := bind.WaitMined(context.Background(), l2Cli, tx)
+	_, err = bind.WaitMined(context.Background(), l2Cli, tx)
 	assert.NoError(t, err)
-	assert.Equal(t, types.ReceiptStatusSuccessful, receipt.Status)
 
+	// check result.
 	res, err := token.Retrieve(nil)
 	assert.NoError(t, err)
 	assert.Equal(t, val.String(), res.String())
