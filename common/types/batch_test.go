@@ -128,10 +128,11 @@ func TestBatchDataTimestamp(t *testing.T) {
 
 	// Test case 2: when the batch data contains blocks.
 	batchData := &BatchData{
-		Batch: abi.IScrollChainBatch{Blocks: []abi.IScrollChainBlockContext{
-			{Timestamp: 123456789},
-			{Timestamp: 234567891},
-		},
+		Batch: abi.IScrollChainBatch{
+			Blocks: []abi.IScrollChainBlockContext{
+				{Timestamp: 123456789},
+				{Timestamp: 234567891},
+			},
 		},
 	}
 	assert.Equal(t, batchData.Timestamp(), uint64(123456789))

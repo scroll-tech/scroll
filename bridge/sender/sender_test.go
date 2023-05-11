@@ -168,9 +168,6 @@ func testCheckPendingTransaction(t *testing.T) {
 		auth := s.auths.getAccount()
 		tx := types.NewTransaction(auth.Nonce.Uint64(), common.Address{}, big.NewInt(0), 0, big.NewInt(0), nil)
 
-		patchGuard := gomonkey.NewPatches()
-		defer patchGuard.Reset()
-
 		testCases := []struct {
 			name          string
 			receipt       *types.Receipt
@@ -207,9 +204,8 @@ func testCheckPendingTransaction(t *testing.T) {
 
 		for _, tc := range testCases {
 			t.Run(tc.name, func(t *testing.T) {
-				patchGuard.Reset()
 				var c *ethclient.Client
-				patchGuard.ApplyMethodFunc(c, "TransactionReceipt", func(ctx context.Context, txHash common.Hash) (*types.Receipt, error) {
+				patchGuard := gomonkey.ApplyMethodFunc(c, "TransactionReceipt", func(ctx context.Context, txHash common.Hash) (*types.Receipt, error) {
 					return tc.receipt, tc.receiptErr
 				})
 				patchGuard.ApplyPrivateMethod(s, "resubmitTransaction",
@@ -235,6 +231,7 @@ func testCheckPendingTransaction(t *testing.T) {
 				_, found := s.pendingTxs.Get(pendingTx.id)
 				assert.Equal(t, tc.expectedFound, found)
 				assert.Equal(t, tc.expectedCount, s.pendingTxs.Count())
+				patchGuard.Reset()
 			})
 		}
 		s.Stop()
