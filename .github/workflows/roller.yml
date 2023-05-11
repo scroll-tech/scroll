@@ -45,6 +45,7 @@ jobs:
         workspaces: "common/libzkp/impl -> target"
     - name: Test
       run: |
+        go version
         export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:./prover/lib
         export CHAIN_ID=534353
         make roller
