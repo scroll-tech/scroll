@@ -50,7 +50,12 @@ make run_test_docker
 
 This command runs a Docker container named `scroll_test_container` from the `scroll_test_image` image. The container uses the host network and has access to the Docker socket and the current directory.
 
-This setup provides a testing environment compatible with Apple Silicon Macs.
+Once the Docker container is running, execute the tests using the following commands:
+
+```bash
+go test -v -race -covermode=atomic scroll-tech/bridge/...
+go test -tags="mock_verifier" -v -race -covermode=atomic scroll-tech/coordinator/...
+```
 
 ## Testing Database & Common
 
