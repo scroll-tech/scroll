@@ -29,14 +29,15 @@ update: ## update dependencies
 	goimports -local $(PWD)/roller/ -w .
 
 dev_docker: ## build docker images for development/testing usages
-	docker pull postgres
 	docker build -t scroll_l1geth ./common/docker/l1geth/
 	docker build -t scroll_l2geth ./common/docker/l2geth/
 
-test_docker: ## build and run Docker for local testing on M1/M2 Silicon Mac
-	make dev_docker
+build_test_docker: ## build Docker image for local testing on M1/M2 Silicon Mac
 	docker build -t scroll_test_image -f ./build/dockerfiles/local_testing.Dockerfile $$(mktemp -d)
-	docker run -it --rm --name my_scroll_test_container --network=host -v /var/run/docker.sock:/var/run/docker.sock -v $(PWD):/go/src/app my_scroll_test_image
+
+run_test_docker: ## run Docker image for local testing on M1/M2 Silicon Mac
+	docker run -it --rm --name scroll_test_container --network=host -v /var/run/docker.sock:/var/run/docker.sock -v $(PWD):/go/src/app scroll_test_image
+
 
 test_zkp: ## Test zkp prove and verify, roller/prover generates the proof and coordinator/verifier verifies it
 	mkdir -p test_params
