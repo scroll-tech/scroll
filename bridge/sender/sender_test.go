@@ -228,6 +228,11 @@ func testCheckPendingTransaction(t *testing.T) {
 					assert.Equal(t, expectedConfirmation, actualConfirmation)
 				}
 
+				if tc.expectedFound && tc.resubmitErr == nil {
+					actualPendingTx, _ := s.pendingTxs.Get(pendingTx.id)
+					assert.Equal(t, header.Number.Uint64(), actualPendingTx.submitAt)
+				}
+
 				_, found := s.pendingTxs.Get(pendingTx.id)
 				assert.Equal(t, tc.expectedFound, found)
 				assert.Equal(t, tc.expectedCount, s.pendingTxs.Count())
