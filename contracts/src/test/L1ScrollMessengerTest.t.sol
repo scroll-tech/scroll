@@ -127,4 +127,24 @@ contract L1ScrollMessengerTest is DSTestPlus {
         assertEq(balanceBefore + exceedValue, refundAddress.balance);
         assertEq(feeVaultBefore + _fee, feeVault.balance);
     }
+
+    function testIntrinsicGasLimit() external {
+        gasOracle.setIntrinsicParams(21000, 53000, 4, 16);
+        uint256 _fee = gasOracle.l2BaseFee() * 24000;
+        uint256 value = 1;
+
+        // _xDomainCalldata contains
+        //   4B function identifier
+        //   20B sender addr
+        //   20B target addr
+        //   32B value
+        //   32B nonce
+        //   message byte array (32B offset + 32B length + bytes)
+        // So the intrinsic gas must be greater than 22000
+        l1Messenger.sendMessage{value: _fee + value}(address(0), value, hex"0011220033", 24000);
+
+        // insufficient intrinsic gas
+        hevm.expectRevert("Insufficient gas limit, must be above intrinsic gas");
+        l1Messenger.sendMessage{value: _fee + value}(address(0), 1, hex"0011220033", 22000);
+    }
 }
