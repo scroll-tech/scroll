@@ -86,7 +86,7 @@ contract L2GasPriceOracle is OwnableUpgradeable, IL2GasPriceOracle {
 
             gas += nz * _nonZeroGas;
             
-            uint64 z = uint64(_message.length) - nz;
+            uint256 z = _message.length - nz;
             
             if (_zeroGas > 0) {
                 require((MAX_UINT_64 - _txGas) / _zeroGas > z, "Intrinsic gas overflows from zero bytes cost");
