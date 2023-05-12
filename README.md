@@ -9,7 +9,7 @@
 
 ## Testing
 
-## Testing on Apple Silicon (M1/M2) Macs
+### Testing on Apple Silicon (M1/M2) Macs
 
 For testing on Apple Silicon Macs, follow these steps:
 
