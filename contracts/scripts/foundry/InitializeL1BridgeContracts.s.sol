@@ -61,7 +61,8 @@ contract InitializeL1BridgeContracts is Script {
     // initialize L1MessageQueue
     L1MessageQueue(L1_MESSAGE_QUEUE_PROXY_ADDR).initialize(
       L1_SCROLL_MESSENGER_PROXY_ADDR,
-      L2_GAS_PRICE_ORACLE_PROXY_ADDR
+      L2_GAS_PRICE_ORACLE_PROXY_ADDR,
+      10000000
     );
 
     // initialize L1ScrollMessenger

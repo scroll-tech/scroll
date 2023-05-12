@@ -35,7 +35,7 @@ contract L1ScrollMessengerTest is DSTestPlus {
 
         // Initialize L1 contracts
         l1Messenger.initialize(address(l2Messenger), feeVault, address(scrollChain), address(l1MessageQueue));
-        l1MessageQueue.initialize(address(l1Messenger), address(gasOracle));
+        l1MessageQueue.initialize(address(l1Messenger), address(gasOracle), 10000000);
         gasOracle.initialize(0, 0, 0, 0);
         scrollChain.initialize(address(l1MessageQueue));
 
@@ -146,5 +146,15 @@ contract L1ScrollMessengerTest is DSTestPlus {
         // insufficient intrinsic gas
         hevm.expectRevert("Insufficient gas limit, must be above intrinsic gas");
         l1Messenger.sendMessage{value: _fee + value}(address(0), 1, hex"0011220033", 22000);
+
+        // gas limit exceeds the max value
+        uint256 gasLimit = 100000000;
+        _fee = gasOracle.l2BaseFee() * gasLimit;
+        hevm.expectRevert("Gas limit must not exceed maxGasLimit");
+        l1Messenger.sendMessage{value: _fee + value}(address(0), value, hex"0011220033", gasLimit);
+
+        // update max gas limit
+        l1MessageQueue.updateMaxGasLimit(gasLimit);
+        l1Messenger.sendMessage{value: _fee + value}(address(0), value, hex"0011220033", gasLimit);
     }
 }

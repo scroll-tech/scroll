@@ -258,10 +258,6 @@ contract L1ScrollMessenger is PausableUpgradeable, ScrollMessengerBase, IL1Scrol
         uint256 _messageNonce = IL1MessageQueue(_messageQueue).nextCrossDomainMessageIndex();
         bytes memory _xDomainCalldata = _encodeXDomainCalldata(msg.sender, _to, _value, _messageNonce, _message);
 
-        // check if the gas limit is above intrinsic gas
-        uint256 intrinsicGas = IL1MessageQueue(_messageQueue).calculateIntrinsicGasFee(_xDomainCalldata);
-        require(_gasLimit >= intrinsicGas, "Insufficient gas limit, must be above intrinsic gas");
-
         // compute and deduct the messaging fee to fee vault.
         uint256 _fee = IL1MessageQueue(_messageQueue).estimateCrossDomainMessageFee(_gasLimit);
         require(msg.value >= _fee + _value, "Insufficient msg.value");
