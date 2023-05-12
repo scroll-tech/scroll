@@ -1,4 +1,4 @@
-package config
+package database
 
 import (
 	"encoding/json"
@@ -11,18 +11,30 @@ import (
 )
 
 func TestConfig(t *testing.T) {
+	configTemplate := `{
+		"dsn": "postgres://postgres:123456@localhost:5444/test?sslmode=disable",
+		"driver_name": "postgres",
+		"maxOpenNum": %d,
+		"maxIdleNum": %d
+	}`
+
 	t.Run("Success Case", func(t *testing.T) {
-		cfg, err := NewConfig("../config.json")
+		tmpFile, err := os.CreateTemp("", "example")
+		assert.NoError(t, err)
+		defer func() {
+			assert.NoError(t, tmpFile.Close())
+			assert.NoError(t, os.Remove(tmpFile.Name()))
+		}()
+		config := fmt.Sprintf(configTemplate, 200, 20)
+		_, err = tmpFile.WriteString(config)
 		assert.NoError(t, err)
 
-		assert.Len(t, cfg.L1Config.RelayerConfig.MessageSenderPrivateKeys, 1)
-		assert.Len(t, cfg.L2Config.RelayerConfig.MessageSenderPrivateKeys, 1)
-		assert.Len(t, cfg.L2Config.RelayerConfig.RollupSenderPrivateKeys, 1)
+		cfg, err := NewConfig(tmpFile.Name())
+		assert.NoError(t, err)
 
 		data, err := json.Marshal(cfg)
 		assert.NoError(t, err)
-
-		tmpJSON := fmt.Sprintf("/tmp/%d_bridge_config.json", time.Now().Nanosecond())
+		tmpJSON := fmt.Sprintf("/tmp/%d_config.json", time.Now().Nanosecond())
 		defer func() {
 			if _, err = os.Stat(tmpJSON); err == nil {
 				assert.NoError(t, os.Remove(tmpJSON))
@@ -33,10 +45,7 @@ func TestConfig(t *testing.T) {
 
 		cfg2, err := NewConfig(tmpJSON)
 		assert.NoError(t, err)
-
-		assert.Equal(t, cfg.L1Config, cfg2.L1Config)
-		assert.Equal(t, cfg.L2Config, cfg2.L2Config)
-		assert.Equal(t, cfg.DBConfig, cfg2.DBConfig)
+		assert.Equal(t, cfg, cfg2)
 	})
 
 	t.Run("File Not Found", func(t *testing.T) {
@@ -45,7 +54,6 @@ func TestConfig(t *testing.T) {
 	})
 
 	t.Run("Invalid JSON Content", func(t *testing.T) {
-		// Create a temporary file with invalid JSON content
 		tmpFile, err := os.CreateTemp("", "invalid_json_config.json")
 		assert.NoError(t, err)
 		defer func() {
