@@ -36,16 +36,8 @@ interface IL1MessageQueue {
     function getCrossDomainMessage(uint256 queueIndex) external view returns (bytes32);
 
     /// @notice Return the amount of ETH should pay for cross domain message.
-    /// @param sender The address of account who initiates the message in L1.
-    /// @param target The address of account who will recieve the message in L2.
-    /// @param message The content of the message.
     /// @param gasLimit Gas limit required to complete the message relay on L2.
-    function estimateCrossDomainMessageFee(
-        address sender,
-        address target,
-        bytes memory message,
-        uint256 gasLimit
-    ) external view returns (uint256);
+    function estimateCrossDomainMessageFee(uint256 gasLimit) external view returns (uint256);
 
     /*****************************
      * Public Mutating Functions *
