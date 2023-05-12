@@ -17,6 +17,7 @@ import (
 	"scroll-tech/common/bytecode/erc20"
 	"scroll-tech/common/bytecode/greeter"
 	l1gateway "scroll-tech/common/bytecode/scroll/L1/gateways"
+	l2gateway "scroll-tech/common/bytecode/scroll/L2/gateways"
 	ctypes "scroll-tech/common/types"
 )
 
@@ -134,4 +135,37 @@ func TestETHDeposit(t *testing.T) {
 	bls, err := l2Cli.BalanceAt(context.Background(), to, nil)
 	assert.NoError(t, err)
 	assert.Equal(t, int64(1), bls.Int64())
+}
+
+func TestETHWithdraw(t *testing.T) {
+	//l1Cli, err := base.L1Client()
+	//assert.NoError(t, err)
+	l2Cli, err := base.L2Client()
+	assert.NoError(t, err)
+
+	l2EthGateway, err := l2gateway.NewL2ETHGateway(base.L2Contracts.L2ETHGateway, l2Cli)
+	assert.NoError(t, err)
+
+	l2ChainID, _ := l2Cli.ChainID(context.Background())
+	l2Auth, err := bind.NewKeyedTransactorWithChainID(bridgeApp.Config.L1Config.RelayerConfig.GasOracleSenderPrivateKeys[0], l2ChainID)
+	assert.NoError(t, err)
+
+	to := common.HexToAddress("0x7363726f6c6c6c02000000000000000000000007")
+	value := big.NewInt(1)
+
+	tx, err := l2EthGateway.WithdrawETH(l2Auth, to, value, big.NewInt(10000))
+	assert.NoError(t, err)
+	receipt, err := bind.WaitMined(context.Background(), l2Cli, tx)
+	assert.NoError(t, err)
+	assert.Equal(t, types.ReceiptStatusSuccessful, receipt.Status)
+}
+
+func TestCC(t *testing.T) {
+	l1Cli, err := base.L1Client()
+	assert.NoError(t, err)
+
+	to := common.HexToAddress("0x7363726f6c6c6c02000000000000000000000007")
+	bls, err := l1Cli.BalanceAt(context.Background(), to, nil)
+	assert.NoError(t, err)
+	t.Log("to balance in l1 chain: ", bls.String())
 }

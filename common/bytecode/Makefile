@@ -1,4 +1,4 @@
-.PHONY: all erc20 greeter scroll
+.PHONY: all erc20 greeter scroll clean
 
 all: erc20 greeter scroll
 
@@ -47,3 +47,6 @@ scroll:
 	#Libraries
 	go run github.com/scroll-tech/go-ethereum/cmd/abigen --combined-json ./scroll/libraries/ScrollStandardERC20.json 			--pkg libraries --out ./scroll/libraries/ScrollStandardERC20.go
 	go run github.com/scroll-tech/go-ethereum/cmd/abigen --combined-json ./scroll/libraries/ScrollStandardERC20Factory.json 	--pkg libraries --out ./scroll/libraries/ScrollStandardERC20Factory.go
+
+clean:
+	find ./ -type f -name "*.go" | xargs rm -r

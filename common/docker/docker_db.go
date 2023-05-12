@@ -18,20 +18,22 @@ type ImgDB struct {
 	name  string
 	id    string
 
+	userName string
+	password string
 	dbName   string
 	port     int
-	password string
 
 	running bool
 	cmd     *cmd.Cmd
 }
 
 // NewImgDB return postgres db img instance.
-func NewImgDB(image, password, dbName string, port int) ImgInstance {
+func NewImgDB(image, userName, password, dbName string, port int) ImgInstance {
 	img := &ImgDB{
 		image:    image,
-		name:     fmt.Sprintf("%s-%s_%d", image, dbName, port),
+		userName: userName,
 		password: password,
+		name:     fmt.Sprintf("%s-%s_%d", image, dbName, port),
 		dbName:   dbName,
 		port:     port,
 	}
@@ -75,7 +77,7 @@ func (i *ImgDB) Stop() error {
 
 // Endpoint return the dsn.
 func (i *ImgDB) Endpoint() string {
-	return fmt.Sprintf("postgres://postgres:%s@localhost:%d/%s?sslmode=disable", i.password, i.port, i.dbName)
+	return fmt.Sprintf("postgres://%s:%s@localhost:%d/%s?sslmode=disable", i.userName, i.password, i.port, i.dbName)
 }
 
 // IsRunning returns docker container's running status.
