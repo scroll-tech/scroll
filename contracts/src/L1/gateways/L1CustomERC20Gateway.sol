@@ -77,8 +77,9 @@ contract L1CustomERC20Gateway is OwnableUpgradeable, ScrollGatewayBase, L1ERC20G
         address _to,
         uint256 _amount,
         bytes calldata _data
-    ) external payable override onlyCallByCounterpart {
+    ) external payable override onlyCallByCounterpart nonReentrant {
         require(msg.value == 0, "nonzero msg.value");
+        require(_l2Token != address(0), "token address cannot be 0");
         require(_l2Token == tokenMapping[_l1Token], "l2 token mismatch");
 
         // @note can possible trigger reentrant call to this contract or messenger,
@@ -98,7 +99,7 @@ contract L1CustomERC20Gateway is OwnableUpgradeable, ScrollGatewayBase, L1ERC20G
     /// @param _l1Token The address of ERC20 token in layer 1.
     /// @param _l2Token The address of corresponding ERC20 token in layer 2.
     function updateTokenMapping(address _l1Token, address _l2Token) external onlyOwner {
-        require(_l2Token != address(0), "map to zero address");
+        require(_l2Token != address(0), "token address cannot be 0");
 
         tokenMapping[_l1Token] = _l2Token;
 

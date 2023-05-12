@@ -27,6 +27,11 @@ contract L1MessageQueue is OwnableUpgradeable, IL1MessageQueue {
     /// @param _newGateway The address of new EnforcedTxGateway contract.
     event UpdateEnforcedTxGateway(address _oldGateway, address _newGateway);
 
+    /// @notice Emitted when owner updates max gas limit.
+    /// @param _oldMaxGasLimit The old max gas limit.
+    /// @param _newMaxGasLimit The new max gas limit.
+    event UpdateMaxGasLimit(uint256 _oldMaxGasLimit, uint256 _newMaxGasLimit);
+
     /*************
      * Variables *
      *************/
@@ -43,15 +48,19 @@ contract L1MessageQueue is OwnableUpgradeable, IL1MessageQueue {
     /// @notice The address EnforcedTxGateway contract.
     address public enforcedTxGateway;
 
+    /// @notice The max gas limit of L1 transactions.
+    uint256 public maxGasLimit;
+
     /***************
      * Constructor *
      ***************/
 
-    function initialize(address _messenger, address _gasOracle) external initializer {
+    function initialize(address _messenger, address _gasOracle, uint256 _maxGasLimit) external initializer {
         OwnableUpgradeable.__Ownable_init();
 
         messenger = _messenger;
         gasOracle = _gasOracle;
+        maxGasLimit = _maxGasLimit;
     }
 
     /*************************
@@ -73,6 +82,13 @@ contract L1MessageQueue is OwnableUpgradeable, IL1MessageQueue {
         address _oracle = gasOracle;
         if (_oracle == address(0)) return 0;
         return IL2GasPriceOracle(_oracle).estimateCrossDomainMessageFee(_gasLimit);
+    }
+
+    /// @inheritdoc IL1MessageQueue
+    function calculateIntrinsicGasFee(bytes memory _calldata) public view override returns (uint256) {
+        address _oracle = gasOracle;
+        if (_oracle == address(0)) return 0;
+        return IL2GasPriceOracle(_oracle).calculateIntrinsicGasFee(_calldata);
     }
 
     /// @inheritdoc IL1MessageQueue
@@ -205,12 +221,11 @@ contract L1MessageQueue is OwnableUpgradeable, IL1MessageQueue {
      *****************************/
 
     /// @inheritdoc IL1MessageQueue
-    function appendCrossDomainMessage(
-        address _target,
-        uint256 _gasLimit,
-        bytes calldata _data
-    ) external override {
+    function appendCrossDomainMessage(address _target, uint256 _gasLimit, bytes calldata _data) external override {
         require(msg.sender == messenger, "Only callable by the L1ScrollMessenger");
+
+        // validate gas limit
+        _validateGasLimit(_gasLimit, _data);
 
         // do address alias to avoid replay attack in L2.
         address _sender = AddressAliasHelper.applyL1ToL2Alias(msg.sender);
@@ -257,6 +272,16 @@ contract L1MessageQueue is OwnableUpgradeable, IL1MessageQueue {
         emit UpdateEnforcedTxGateway(_oldGateway, _newGateway);
     }
 
+    /// @notice Update the max gas limit.
+    /// @dev This function can only called by contract owner.
+    /// @param _newMaxGasLimit The new max gas limit.
+    function updateMaxGasLimit(uint256 _newMaxGasLimit) external onlyOwner {
+        uint256 _oldMaxGasLimit = maxGasLimit;
+        maxGasLimit = _newMaxGasLimit;
+
+        emit UpdateMaxGasLimit(_oldMaxGasLimit, _newMaxGasLimit);
+    }
+
     /**********************
      * Internal Functions *
      **********************/
@@ -281,5 +306,12 @@ contract L1MessageQueue is OwnableUpgradeable, IL1MessageQueue {
 
         // emit event
         emit QueueTransaction(_sender, _target, _value, _queueIndex, _gasLimit, _data);
+    }
+
+    function _validateGasLimit(uint256 _gasLimit, bytes memory _calldata) internal {
+        require(_gasLimit <= maxGasLimit, "Gas limit must not exceed maxGasLimit");
+        // check if the gas limit is above intrinsic gas
+        uint256 intrinsicGas = calculateIntrinsicGasFee(_calldata);
+        require(_gasLimit >= intrinsicGas, "Insufficient gas limit, must be above intrinsic gas");
     }
 }

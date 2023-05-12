@@ -22,15 +22,15 @@ import (
 
 func testRelayL1MessageSucceed(t *testing.T) {
 	// Create db handler and reset db.
-	db, err := database.NewOrmFactory(cfg.DBConfig)
+	db, err := database.NewOrmFactory(base.DBConfig)
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(db.GetDB().DB))
 	defer db.Close()
 
 	prepareContracts(t)
 
-	l1Cfg := cfg.L1Config
-	l2Cfg := cfg.L2Config
+	l1Cfg := bridgeApp.Config.L1Config
+	l2Cfg := bridgeApp.Config.L2Config
 
 	// Create L1Relayer
 	l1Relayer, err := relayer.NewLayer1Relayer(context.Background(), db, l1Cfg.RelayerConfig)

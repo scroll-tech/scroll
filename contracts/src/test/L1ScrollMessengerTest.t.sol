@@ -35,8 +35,8 @@ contract L1ScrollMessengerTest is DSTestPlus {
 
         // Initialize L1 contracts
         l1Messenger.initialize(address(l2Messenger), feeVault, address(scrollChain), address(l1MessageQueue));
-        l1MessageQueue.initialize(address(l1Messenger), address(gasOracle));
-        gasOracle.initialize();
+        l1MessageQueue.initialize(address(l1Messenger), address(gasOracle), 10000000);
+        gasOracle.initialize(0, 0, 0, 0);
         scrollChain.initialize(address(l1MessageQueue));
 
         gasOracle.updateWhitelist(address(whitelist));
@@ -126,5 +126,35 @@ contract L1ScrollMessengerTest is DSTestPlus {
         );
         assertEq(balanceBefore + exceedValue, refundAddress.balance);
         assertEq(feeVaultBefore + _fee, feeVault.balance);
+    }
+
+    function testIntrinsicGasLimit() external {
+        gasOracle.setIntrinsicParams(21000, 53000, 4, 16);
+        uint256 _fee = gasOracle.l2BaseFee() * 24000;
+        uint256 value = 1;
+
+        // _xDomainCalldata contains
+        //   4B function identifier
+        //   20B sender addr
+        //   20B target addr
+        //   32B value
+        //   32B nonce
+        //   message byte array (32B offset + 32B length + bytes)
+        // So the intrinsic gas must be greater than 22000
+        l1Messenger.sendMessage{value: _fee + value}(address(0), value, hex"0011220033", 24000);
+
+        // insufficient intrinsic gas
+        hevm.expectRevert("Insufficient gas limit, must be above intrinsic gas");
+        l1Messenger.sendMessage{value: _fee + value}(address(0), 1, hex"0011220033", 22000);
+
+        // gas limit exceeds the max value
+        uint256 gasLimit = 100000000;
+        _fee = gasOracle.l2BaseFee() * gasLimit;
+        hevm.expectRevert("Gas limit must not exceed maxGasLimit");
+        l1Messenger.sendMessage{value: _fee + value}(address(0), value, hex"0011220033", gasLimit);
+
+        // update max gas limit
+        l1MessageQueue.updateMaxGasLimit(gasLimit);
+        l1Messenger.sendMessage{value: _fee + value}(address(0), value, hex"0011220033", gasLimit);
     }
 }

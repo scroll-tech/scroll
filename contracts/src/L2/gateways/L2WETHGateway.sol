@@ -82,7 +82,7 @@ contract L2WETHGateway is Initializable, ScrollGatewayBase, L2ERC20Gateway {
         address _to,
         uint256 _amount,
         bytes calldata _data
-    ) external payable override onlyCallByCounterpart {
+    ) external payable override onlyCallByCounterpart nonReentrant {
         require(_l1Token == l1WETH, "l1 token not WETH");
         require(_l2Token == WETH, "l2 token not WETH");
         require(_amount == msg.value, "msg.value mismatch");
@@ -106,7 +106,7 @@ contract L2WETHGateway is Initializable, ScrollGatewayBase, L2ERC20Gateway {
         uint256 _amount,
         bytes memory _data,
         uint256 _gasLimit
-    ) internal virtual override {
+    ) internal virtual override nonReentrant {
         require(_amount > 0, "withdraw zero amount");
         require(_token == WETH, "only WETH is allowed");
 
