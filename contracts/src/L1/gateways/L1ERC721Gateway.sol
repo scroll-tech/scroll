@@ -100,7 +100,7 @@ contract L1ERC721Gateway is OwnableUpgradeable, ERC721HolderUpgradeable, ScrollG
         address _from,
         address _to,
         uint256 _tokenId
-    ) external override nonReentrant onlyCallByCounterpart {
+    ) external override onlyCallByCounterpart nonReentrant {
         require(_l2Token != address(0), "L2 token address cannot be 0");
         require(_l2Token == tokenMapping[_l1Token], "l2 token mismatch");
 
@@ -116,7 +116,7 @@ contract L1ERC721Gateway is OwnableUpgradeable, ERC721HolderUpgradeable, ScrollG
         address _from,
         address _to,
         uint256[] calldata _tokenIds
-    ) external override nonReentrant onlyCallByCounterpart {
+    ) external override onlyCallByCounterpart nonReentrant {
         require(_l2Token != address(0), "L2 token address cannot be 0");
         require(_l2Token == tokenMapping[_l1Token], "l2 token mismatch");
 

@@ -67,7 +67,7 @@ contract L2ETHGateway is Initializable, ScrollGatewayBase, IL2ETHGateway {
         address _to,
         uint256 _amount,
         bytes calldata _data
-    ) external payable override nonReentrant onlyCallByCounterpart {
+    ) external payable override onlyCallByCounterpart nonReentrant {
         require(msg.value == _amount, "msg.value mismatch");
 
         // solhint-disable-next-line avoid-low-level-calls

@@ -78,7 +78,7 @@ contract L2StandardERC20Gateway is Initializable, ScrollGatewayBase, L2ERC20Gate
         address _to,
         uint256 _amount,
         bytes calldata _data
-    ) external payable override nonReentrant onlyCallByCounterpart {
+    ) external payable override onlyCallByCounterpart nonReentrant {
         require(msg.value == 0, "nonzero msg.value");
         require(_l1Token != address(0), "zero l1 token");
 
