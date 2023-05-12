@@ -99,7 +99,7 @@ contract L2ERC721Gateway is OwnableUpgradeable, ERC721HolderUpgradeable, ScrollG
         address _to,
         uint256 _tokenId
     ) external override onlyCallByCounterpart nonReentrant {
-        require(_l1Token != address(0), "zero l1 token");
+        require(_l1Token != address(0), "token address cannot be 0");
         require(_l1Token == tokenMapping[_l2Token], "l2 token mismatch");
 
         IScrollERC721(_l2Token).mint(_to, _tokenId);
@@ -115,7 +115,7 @@ contract L2ERC721Gateway is OwnableUpgradeable, ERC721HolderUpgradeable, ScrollG
         address _to,
         uint256[] calldata _tokenIds
     ) external override onlyCallByCounterpart nonReentrant {
-        require(_l1Token != address(0), "zero l1 token");
+        require(_l1Token != address(0), "token address cannot be 0");
         require(_l1Token == tokenMapping[_l2Token], "l2 token mismatch");
 
         for (uint256 i = 0; i < _tokenIds.length; i++) {
@@ -133,7 +133,7 @@ contract L2ERC721Gateway is OwnableUpgradeable, ERC721HolderUpgradeable, ScrollG
     /// @param _l1Token The address of corresponding ERC721 token in layer 2.
     /// @param _l1Token The address of ERC721 token in layer 1.
     function updateTokenMapping(address _l2Token, address _l1Token) external onlyOwner {
-        require(_l1Token != address(0), "map to zero address");
+        require(_l1Token != address(0), "token address cannot be 0");
 
         tokenMapping[_l2Token] = _l1Token;
 
@@ -156,7 +156,7 @@ contract L2ERC721Gateway is OwnableUpgradeable, ERC721HolderUpgradeable, ScrollG
         uint256 _gasLimit
     ) internal nonReentrant {
         address _l1Token = tokenMapping[_token];
-        require(_l1Token != address(0), "token not supported");
+        require(_l1Token != address(0), "no corresponding l1 token");
 
         // 1. burn token
         // @note in case the token has given too much power to the gateway, we check owner here.
@@ -193,7 +193,7 @@ contract L2ERC721Gateway is OwnableUpgradeable, ERC721HolderUpgradeable, ScrollG
         require(_tokenIds.length > 0, "no token to withdraw");
 
         address _l1Token = tokenMapping[_token];
-        require(_l1Token != address(0), "token not supported");
+        require(_l1Token != address(0), "no corresponding l1 token");
 
         // 1. transfer token to this contract
         for (uint256 i = 0; i < _tokenIds.length; i++) {

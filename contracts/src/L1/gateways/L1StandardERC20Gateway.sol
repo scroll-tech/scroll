@@ -94,7 +94,7 @@ contract L1StandardERC20Gateway is Initializable, ScrollGatewayBase, L1ERC20Gate
         bytes calldata _data
     ) external payable override onlyCallByCounterpart nonReentrant {
         require(msg.value == 0, "nonzero msg.value");
-        require(_l2Token != address(0), "L2 token address cannot be 0");
+        require(_l2Token != address(0), "token address cannot be 0");
         require(getL2ERC20Address(_l1Token) == _l2Token, "l2 token mismatch");
 
         // @note can possible trigger reentrant call to messenger,

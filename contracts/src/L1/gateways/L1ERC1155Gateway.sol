@@ -107,7 +107,7 @@ contract L1ERC1155Gateway is OwnableUpgradeable, ERC1155HolderUpgradeable, Scrol
         uint256 _tokenId,
         uint256 _amount
     ) external override onlyCallByCounterpart nonReentrant {
-        require(_l2Token != address(0), "L2 token address cannot be 0");
+        require(_l2Token != address(0), "token address cannot be 0");
         require(_l2Token == tokenMapping[_l1Token], "l2 token mismatch");
 
         IERC1155Upgradeable(_l1Token).safeTransferFrom(address(this), _to, _tokenId, _amount, "");
@@ -124,7 +124,7 @@ contract L1ERC1155Gateway is OwnableUpgradeable, ERC1155HolderUpgradeable, Scrol
         uint256[] calldata _tokenIds,
         uint256[] calldata _amounts
     ) external override onlyCallByCounterpart nonReentrant {
-        require(_l2Token != address(0), "L2 token address cannot be 0");
+        require(_l2Token != address(0), "token address cannot be 0");
         require(_l2Token == tokenMapping[_l1Token], "l2 token mismatch");
 
         IERC1155Upgradeable(_l1Token).safeBatchTransferFrom(address(this), _to, _tokenIds, _amounts, "");
@@ -140,7 +140,7 @@ contract L1ERC1155Gateway is OwnableUpgradeable, ERC1155HolderUpgradeable, Scrol
     /// @param _l1Token The address of ERC1155 token in layer 1.
     /// @param _l1Token The address of corresponding ERC1155 token in layer 2.
     function updateTokenMapping(address _l1Token, address _l2Token) external onlyOwner {
-        require(_l2Token != address(0), "map to zero address");
+        require(_l2Token != address(0), "token address cannot be 0");
 
         tokenMapping[_l1Token] = _l2Token;
 
@@ -167,7 +167,7 @@ contract L1ERC1155Gateway is OwnableUpgradeable, ERC1155HolderUpgradeable, Scrol
         require(_amount > 0, "deposit zero amount");
 
         address _l2Token = tokenMapping[_token];
-        require(_l2Token != address(0), "token not supported");
+        require(_l2Token != address(0), "no corresponding l2 token");
 
         // 1. transfer token to this contract
         IERC1155Upgradeable(_token).safeTransferFrom(msg.sender, address(this), _tokenId, _amount, "");
@@ -210,7 +210,7 @@ contract L1ERC1155Gateway is OwnableUpgradeable, ERC1155HolderUpgradeable, Scrol
         }
 
         address _l2Token = tokenMapping[_token];
-        require(_l2Token != address(0), "token not supported");
+        require(_l2Token != address(0), "no corresponding l2 token");
 
         // 1. transfer token to this contract
         IERC1155Upgradeable(_token).safeBatchTransferFrom(msg.sender, address(this), _tokenIds, _amounts, "");
