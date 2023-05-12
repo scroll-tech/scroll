@@ -36,7 +36,7 @@ contract L1ScrollMessengerTest is DSTestPlus {
         // Initialize L1 contracts
         l1Messenger.initialize(address(l2Messenger), feeVault, address(scrollChain), address(l1MessageQueue));
         l1MessageQueue.initialize(address(l1Messenger), address(gasOracle));
-        gasOracle.initialize();
+        gasOracle.initialize(0, 0, 0, 0);
         scrollChain.initialize(address(l1MessageQueue));
 
         gasOracle.updateWhitelist(address(whitelist));

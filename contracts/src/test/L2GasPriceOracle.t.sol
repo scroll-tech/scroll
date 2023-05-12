@@ -18,7 +18,7 @@ contract L2GasPriceOracleTest is DSTestPlus {
         whitelist = new Whitelist(address(this));
         oracle = new L2GasPriceOracle();
 
-        oracle.initialize(0, 0, 0);
+        oracle.initialize(0, 0, 0, 0);
         oracle.updateWhitelist(address(whitelist));
 
         address[] memory _accounts = new address[](1);
@@ -31,15 +31,15 @@ contract L2GasPriceOracleTest is DSTestPlus {
         assertEq(fee, 0);
         uint64 zeroGas = 5;
         uint64 nonZeroGas = 10;
-        oracle.setIntrinsicParams(20000, zeroGas, nonZeroGas);
+        oracle.setIntrinsicParams(20000, 50000, zeroGas, nonZeroGas);
 
         fee = oracle.calculateIntrinsicGasFee(hex"001122");
-        // 20000 + 1 zero bytes * 5 +2 nonzero byte * 10 = 20025
+        // 20000 + 1 zero bytes * 5 + 2 nonzero byte * 10 = 20025
         assertEq(fee, 20025);
 
         zeroGas = 50;
         nonZeroGas = 100;
-        oracle.setIntrinsicParams(10000, zeroGas, nonZeroGas);
+        oracle.setIntrinsicParams(10000, 20000, zeroGas, nonZeroGas);
 
         fee = oracle.calculateIntrinsicGasFee(hex"0011220033");
         // 10000 + 3 nonzero byte * 100 + 2 zero bytes * 50 = 10000 + 300 + 100 = 10400
@@ -49,13 +49,13 @@ contract L2GasPriceOracleTest is DSTestPlus {
     function testCalculateIntrinsicGasFeeOverflow() external {
         uint256 MAX_UINT_64 = 2 ** 64 - 1;
 
-        oracle.setIntrinsicParams(1, 2 ** 63, 0);
+        oracle.setIntrinsicParams(1, 0, 2 ** 63, 0);
         fee = oracle.calculateIntrinsicGasFee(hex"11");
 
         hevm.expectRevert("Intrinsic gas overflows from zero bytes cost");
         fee = oracle.calculateIntrinsicGasFee(hex"00");
 
-        oracle.setIntrinsicParams(1, 0, 2 ** 63);
+        oracle.setIntrinsicParams(1, 0, 0, 2 ** 63);
         fee = oracle.calculateIntrinsicGasFee(hex"00");
 
         hevm.expectRevert("Intrinsic gas overflows from nonzero bytes cost");
@@ -65,7 +65,7 @@ contract L2GasPriceOracleTest is DSTestPlus {
     function testSetIntrinsicParamsAccess() external {
         hevm.startPrank(address(4));
         hevm.expectRevert("Not whitelisted sender");
-        oracle.setIntrinsicParams(1, 0, 1);
+        oracle.setIntrinsicParams(1, 0, 0, 1);
     }
 
     // forge t --match-contract L2GasPriceOracleTest --match-test testBenchmark --gas-report
