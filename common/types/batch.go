@@ -136,8 +136,8 @@ func NewBatchData(parentBatch *BlockBatch, blocks []*WrappedBlock, piCfg *Public
 		numL1Messages := uint16(0)
 		for _, txData := range block.Transactions {
 			if txData.Type == types.L1MessageTxType {
-				numL1Messages += 1
-				batchData.TotalL1TxNum += 1
+				numL1Messages++
+				batchData.TotalL1TxNum++
 			} else {
 				break
 			}
