@@ -1,12 +1,15 @@
 package types
 
 import (
+	"fmt"
 	"math/big"
 	"testing"
 
 	"gotest.tools/assert"
 
 	"github.com/scroll-tech/go-ethereum/common"
+	"github.com/scroll-tech/go-ethereum/common/hexutil"
+	"github.com/scroll-tech/go-ethereum/core/types"
 	geth_types "github.com/scroll-tech/go-ethereum/core/types"
 
 	abi "scroll-tech/bridge/abi"
@@ -52,6 +55,110 @@ func TestBatchHash(t *testing.T) {
 
 	batchData.hash = nil // clear the cache
 	assert.Equal(t, *batchData.Hash(), common.HexToHash("0x398cb22bbfa1665c1b342b813267538a4c933d7f92d8bd9184aba0dd1122987b"))
+}
+
+func TestBatchHashWithL1Messages(t *testing.T) {
+	zeroAddress := common.HexToAddress("0x0000000000000000000000000000000000000000")
+
+	hexToBig := func(hex string) *hexutil.Big {
+		big, success := new(big.Int).SetString(hex, 16)
+		if !success {
+			panic(fmt.Sprintf("Failed to convert hex string to big int: %s", hex))
+		}
+		return (*hexutil.Big)(big)
+	}
+
+	parentBatch := BlockBatch{
+		Hash:      "0x0000000000000000000000000000000000000000000000000000000000000001",
+		Index:     2,
+		StateRoot: "0x0000000000000000000000000000000000000000000000000000000000000003",
+		// other fields are not used here
+	}
+
+	header := geth_types.Header{
+		UncleHash:   common.HexToHash("0x0000000000000000000000000000000000000000000000000000000000000004"),
+		Root:        common.HexToHash("0x0000000000000000000000000000000000000000000000000000000000000005"),
+		TxHash:      common.HexToHash("0x0000000000000000000000000000000000000000000000000000000000000006"),
+		ReceiptHash: common.HexToHash("0x0000000000000000000000000000000000000000000000000000000000000007"),
+		Difficulty:  big.NewInt(8),
+		Number:      big.NewInt(9),
+		GasLimit:    0xa,
+		GasUsed:     0xb,
+		Time:        0xc,
+		Extra:       common.Hex2Bytes("0x000000000000000000000000000000000000000000000000000000000000000d"),
+		BaseFee:     big.NewInt(0xe),
+	}
+
+	tx0 := types.TransactionData{
+		Type:   geth_types.L1MessageTxType,
+		Nonce:  0,
+		From:   zeroAddress,
+		To:     &zeroAddress,
+		Value:  (*hexutil.Big)(big.NewInt(0)),
+		Data:   "0x1",
+		TxHash: "0x518e760abcf3f88f286153d9a68250640c0cd76a054267a6f4967eae3b17a63e",
+	}
+
+	tx1 := types.TransactionData{
+		Type:   geth_types.L1MessageTxType,
+		Nonce:  1,
+		From:   zeroAddress,
+		To:     &zeroAddress,
+		Value:  (*hexutil.Big)(big.NewInt(0)),
+		Data:   "0x",
+		TxHash: "0x2a618fedf9cb0996adfa285f418658c4b7b97e02daac67a459e9a9848b233179",
+	}
+
+	to := common.HexToAddress("0x6d79aa2e4fbf80cf8543ad97e294861853fb0649")
+
+	tx2 := types.TransactionData{
+		Type:     geth_types.LegacyTxType,
+		Nonce:    0x2,
+		To:       &to,
+		Value:    hexToBig("e23c37ec2147400"),
+		Gas:      0x435db,
+		GasPrice: hexToBig("11490c80"),
+		Data:     "0xc7cdea370000000000000000000000000000000000000000000000000de0b6b3a76400000000000000000000000000000000000000000000000000000000000000027100",
+		V:        hexToBig("104ec5"),
+		R:        hexToBig("546dba2b8b8bd64d2d9891bf33da3d0e0b8da2d0b0f278904a27d243fc84589c"),
+		S:        hexToBig("7f30a2e4d5927c658f80d5de5dfc8f198ff690dd1aaa4343a446a8d57cbf0ba2"),
+		TxHash:   "0x41cd05dea245041442a5dd8b5c66da7e744d47fba4be8acbd5b9852c6eb24411",
+	}
+
+	block := WrappedBlock{
+		Header:           &header,
+		Transactions:     []*types.TransactionData{&tx0, &tx1, &tx2},
+		WithdrawTrieRoot: common.HexToHash("0x000000000000000000000000000000000000000000000000000000000000000f"),
+	}
+
+	blocks := []*WrappedBlock{&block}
+
+	piCfg := &PublicInputHashConfig{
+		MaxTxNum:      4,
+		PaddingTxHash: common.HexToHash("0xb5baa665b2664c3bfed7eb46e00ebc110ecf2ebd257854a9bf2b9dbc9b2c08f6"),
+	}
+
+	// encode batch data
+	batchData := NewBatchData(&parentBatch, blocks, piCfg)
+
+	// tx counts are correct
+	assert.Equal(t, batchData.TotalTxNum, uint64(3))
+	assert.Equal(t, batchData.TotalL1TxNum, uint64(2))
+	assert.Equal(t, len(batchData.Batch.Blocks), 1)
+	assert.Equal(t, batchData.Batch.Blocks[0].NumTransactions, uint16(3))
+	assert.Equal(t, batchData.Batch.Blocks[0].NumL1Messages, uint16(2))
+
+	// TxHashes contains both L1 and L2 hashes
+	expectedHashes := []common.Hash{common.HexToHash(tx0.TxHash), common.HexToHash(tx1.TxHash), common.HexToHash(tx2.TxHash)}
+	for ii := 0; ii < int(batchData.TotalTxNum); ii++ {
+		assert.Equal(t, batchData.TxHashes[ii], expectedHashes[ii])
+	}
+
+	// L2Transactions only contains L2 transaction data
+	assert.Equal(t, common.Bytes2Hex(batchData.Batch.L2Transactions), "000000b6f8b4028411490c80830435db946d79aa2e4fbf80cf8543ad97e294861853fb0649880e23c37ec2147400b844c7cdea370000000000000000000000000000000000000000000000000de0b6b3a7640000000000000000000000000000000000000000000000000000000000000002710083104ec5a0546dba2b8b8bd64d2d9891bf33da3d0e0b8da2d0b0f278904a27d243fc84589ca07f30a2e4d5927c658f80d5de5dfc8f198ff690dd1aaa4343a446a8d57cbf0ba2")
+
+	// batch hash is correct
+	assert.Equal(t, *batchData.Hash(), common.HexToHash("0xf18020568915f64ab24e92195915d1f940a5100fc3499196430a546909b9eca2"))
 }
 
 func TestNewGenesisBatch(t *testing.T) {

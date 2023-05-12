@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/binary"
+	"fmt"
 	"math/big"
 
 	"github.com/scroll-tech/go-ethereum/common"
@@ -130,6 +131,18 @@ func NewBatchData(parentBatch *BlockBatch, blocks []*WrappedBlock, piCfg *Public
 		batchData.TotalTxNum += uint64(len(block.Transactions))
 		batchData.TotalL2Gas += block.Header.GasUsed
 
+		// count L1 message txs
+		// TODO: account for skipped messages.
+		numL1Messages := uint16(0)
+		for _, txData := range block.Transactions {
+			if txData.Type == types.L1MessageTxType {
+				numL1Messages += 1
+				batchData.TotalL1TxNum += 1
+			} else {
+				break
+			}
+		}
+
 		// set baseFee to 0 when it's nil in the block header
 		baseFee := block.Header.BaseFee
 		if baseFee == nil {
@@ -144,12 +157,36 @@ func NewBatchData(parentBatch *BlockBatch, blocks []*WrappedBlock, piCfg *Public
 			BaseFee:         baseFee,
 			GasLimit:        block.Header.GasLimit,
 			NumTransactions: uint16(len(block.Transactions)),
-			NumL1Messages:   0, // TODO: currently use 0, will re-enable after we use l2geth to include L1 messages
+			NumL1Messages:   numL1Messages,
 		}
 
-		// fill in RLP-encoded transactions
-		for _, txData := range block.Transactions {
+		// fill in L1 message hashes
+		// note: this is only used for hashing, not part of the DA calldata
+		for _, txData := range block.Transactions[:numL1Messages] {
 			data, _ := hexutil.Decode(txData.Data)
+			tx := types.NewTx(&types.L1MessageTx{
+				QueueIndex: txData.Nonce,
+				Gas:        txData.Gas,
+				To:         txData.To,
+				Value:      txData.Value.ToInt(),
+				Data:       data,
+				Sender:     txData.From,
+			})
+
+			// sanity check
+			if tx.Hash().String() != txData.TxHash {
+				panic(fmt.Sprintf("unexpected L1MessageTx hash: computed = %v, trace = %v", tx.Hash().String(), txData.TxHash))
+			}
+
+			// append hash
+			// TODO: remove checks and use txData.TxHash in the future
+			batchData.TxHashes = append(batchData.TxHashes, tx.Hash())
+		}
+
+		// fill in RLP-encoded L2 transactions and L2 hashes
+		for _, txData := range block.Transactions[numL1Messages:] {
+			data, _ := hexutil.Decode(txData.Data)
+
 			// right now we only support legacy tx
 			tx := types.NewTx(&types.LegacyTx{
 				Nonce:    txData.Nonce,
@@ -162,12 +199,21 @@ func NewBatchData(parentBatch *BlockBatch, blocks []*WrappedBlock, piCfg *Public
 				R:        txData.R.ToInt(),
 				S:        txData.S.ToInt(),
 			})
+
+			// sanity check
+			if tx.Hash().String() != txData.TxHash {
+				panic(fmt.Sprintf("unexpected L2 tx hash: computed = %v, trace = %v", tx.Hash().String(), txData.TxHash))
+			}
+
+			// append hash
+			batchData.TxHashes = append(batchData.TxHashes, tx.Hash())
+
+			// append rlp-encoded transaction
 			rlpTxData, _ := tx.MarshalBinary()
 			var txLen [4]byte
 			binary.BigEndian.PutUint32(txLen[:], uint32(len(rlpTxData)))
 			_, _ = batchTxDataWriter.Write(txLen[:])
 			_, _ = batchTxDataWriter.Write(rlpTxData)
-			batchData.TxHashes = append(batchData.TxHashes, tx.Hash())
 		}
 
 		if i == 0 {
