@@ -92,6 +92,12 @@ func (b *MockApp) MockConfig(store bool) error {
 		l1Contracts, l2Contracts = base.L1Contracts, base.L2Contracts
 	)
 
+	// set confirms.
+	l1Cfg.Confirmations = 0
+	l1Cfg.RelayerConfig.SenderConfig.Confirmations = 0
+	l2Cfg.Confirmations = 0
+	l2Cfg.RelayerConfig.SenderConfig.Confirmations = 0
+
 	// set l1 and l2 chain endpoint.
 	l1Cfg.Endpoint = base.L1gethImg.Endpoint()
 	l2Cfg.RelayerConfig.SenderConfig.Endpoint = base.L1gethImg.Endpoint()
