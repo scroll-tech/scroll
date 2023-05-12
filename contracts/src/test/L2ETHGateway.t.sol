@@ -125,11 +125,18 @@ contract L2ETHGatewayTest is L2GatewayTestBase {
 
         mockMessenger.setXDomainMessageSender(address(counterpartGateway));
 
-        // ETH transfer failed
-        hevm.expectRevert("ETH transfer failed");
+        // msg.value mismatch
+        hevm.expectRevert("msg.value mismatch");
         mockMessenger.callTarget(
             address(gateway),
             abi.encodeWithSelector(gateway.finalizeDepositETH.selector, sender, recipient, amount, dataToCall)
+        );
+
+        // ETH transfer failed
+        hevm.expectRevert("ETH transfer failed");
+        mockMessenger.callTarget{value: amount}(
+            address(gateway),
+            abi.encodeWithSelector(gateway.finalizeDepositETH.selector, sender, address(this), amount, dataToCall)
         );
     }
 

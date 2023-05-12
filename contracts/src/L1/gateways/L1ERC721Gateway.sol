@@ -46,6 +46,8 @@ contract L1ERC721Gateway is OwnableUpgradeable, ERC721HolderUpgradeable, ScrollG
     /// @param _messenger The address of L1ScrollMessenger.
     function initialize(address _counterpart, address _messenger) external initializer {
         OwnableUpgradeable.__Ownable_init();
+        ERC721HolderUpgradeable.__ERC721Holder_init();
+
         ScrollGatewayBase._initialize(_counterpart, address(0), _messenger);
     }
 
@@ -98,7 +100,8 @@ contract L1ERC721Gateway is OwnableUpgradeable, ERC721HolderUpgradeable, ScrollG
         address _from,
         address _to,
         uint256 _tokenId
-    ) external override nonReentrant onlyCallByCounterpart {
+    ) external override onlyCallByCounterpart nonReentrant {
+        require(_l2Token != address(0), "token address cannot be 0");
         require(_l2Token == tokenMapping[_l1Token], "l2 token mismatch");
 
         IERC721Upgradeable(_l1Token).safeTransferFrom(address(this), _to, _tokenId);
@@ -113,7 +116,8 @@ contract L1ERC721Gateway is OwnableUpgradeable, ERC721HolderUpgradeable, ScrollG
         address _from,
         address _to,
         uint256[] calldata _tokenIds
-    ) external override nonReentrant onlyCallByCounterpart {
+    ) external override onlyCallByCounterpart nonReentrant {
+        require(_l2Token != address(0), "token address cannot be 0");
         require(_l2Token == tokenMapping[_l1Token], "l2 token mismatch");
 
         for (uint256 i = 0; i < _tokenIds.length; i++) {
@@ -131,7 +135,7 @@ contract L1ERC721Gateway is OwnableUpgradeable, ERC721HolderUpgradeable, ScrollG
     /// @param _l1Token The address of ERC721 token in layer 1.
     /// @param _l1Token The address of corresponding ERC721 token in layer 2.
     function updateTokenMapping(address _l1Token, address _l2Token) external onlyOwner {
-        require(_l2Token != address(0), "map to zero address");
+        require(_l2Token != address(0), "token address cannot be 0");
 
         tokenMapping[_l1Token] = _l2Token;
 
@@ -154,7 +158,7 @@ contract L1ERC721Gateway is OwnableUpgradeable, ERC721HolderUpgradeable, ScrollG
         uint256 _gasLimit
     ) internal nonReentrant {
         address _l2Token = tokenMapping[_token];
-        require(_l2Token != address(0), "token not supported");
+        require(_l2Token != address(0), "no corresponding l2 token");
 
         // 1. transfer token to this contract
         IERC721Upgradeable(_token).safeTransferFrom(msg.sender, address(this), _tokenId);
@@ -189,7 +193,7 @@ contract L1ERC721Gateway is OwnableUpgradeable, ERC721HolderUpgradeable, ScrollG
         require(_tokenIds.length > 0, "no token to deposit");
 
         address _l2Token = tokenMapping[_token];
-        require(_l2Token != address(0), "token not supported");
+        require(_l2Token != address(0), "no corresponding l2 token");
 
         // 1. transfer token to this contract
         for (uint256 i = 0; i < _tokenIds.length; i++) {

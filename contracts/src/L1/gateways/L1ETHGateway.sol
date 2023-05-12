@@ -67,8 +67,10 @@ contract L1ETHGateway is Initializable, ScrollGatewayBase, IL1ETHGateway {
         address _to,
         uint256 _amount,
         bytes calldata _data
-    ) external payable override onlyCallByCounterpart {
-        // @note can possible trigger reentrant call to this contract or messenger,
+    ) external payable override onlyCallByCounterpart nonReentrant {
+        require(msg.value == _amount, "msg.value mismatch");
+
+        // @note can possible trigger reentrant call to messenger,
         // but it seems not a big problem.
         // solhint-disable-next-line avoid-low-level-calls
         (bool _success, ) = _to.call{value: _amount}("");
