@@ -46,22 +46,6 @@ contract L2GasPriceOracleTest is DSTestPlus {
         assertEq(fee, 10400);
     }
 
-    function testCalculateIntrinsicGasFeeOverflow() external {
-        uint256 MAX_UINT_64 = 2 ** 64 - 1;
-
-        oracle.setIntrinsicParams(1, 0, 2 ** 63, 0);
-        fee = oracle.calculateIntrinsicGasFee(hex"11");
-
-        hevm.expectRevert("Intrinsic gas overflows from zero bytes cost");
-        fee = oracle.calculateIntrinsicGasFee(hex"00");
-
-        oracle.setIntrinsicParams(1, 0, 0, 2 ** 63);
-        fee = oracle.calculateIntrinsicGasFee(hex"00");
-
-        hevm.expectRevert("Intrinsic gas overflows from nonzero bytes cost");
-        fee = oracle.calculateIntrinsicGasFee(hex"11");
-    }
-
     function testSetIntrinsicParamsAccess() external {
         hevm.startPrank(address(4));
         hevm.expectRevert("Not whitelisted sender");

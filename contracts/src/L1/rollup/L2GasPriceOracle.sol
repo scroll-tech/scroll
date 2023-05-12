@@ -50,8 +50,6 @@ contract L2GasPriceOracle is OwnableUpgradeable, IL2GasPriceOracle {
     /// @notice The intrinsic params for transaction.
     IntrinsicParams public intrinsicParams;
 
-    uint256 immutable MAX_UINT_64 = 2**64-1;
-
     /***************
      * Constructor *
      ***************/
@@ -86,18 +84,7 @@ contract L2GasPriceOracle is OwnableUpgradeable, IL2GasPriceOracle {
                     nz++;
                 }
             }
-            if (_nonZeroGas > 0) {
-                require((MAX_UINT_64 - _txGas) / _nonZeroGas > nz, "Intrinsic gas overflows from nonzero bytes cost");
-            }
-
-            gas += nz * _nonZeroGas;
-
-            uint256 z = _message.length - nz;
-
-            if (_zeroGas > 0) {
-                require((MAX_UINT_64 - _txGas) / _zeroGas > z, "Intrinsic gas overflows from zero bytes cost");
-            }
-            gas += (_message.length - nz) * _zeroGas;
+            gas += nz * _nonZeroGas + (_message.length - nz) * _zeroGas;
         }
         return uint256(gas);
     }
