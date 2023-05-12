@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {IERC1155Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC1155/IERC1155Upgradeable.sol";
-import {ERC1155HolderUpgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC1155/utils/ERC1155HolderUpgradeable.sol";
+import {ERC1155HolderUpgradeable, ERC1155ReceiverUpgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC1155/utils/ERC1155HolderUpgradeable.sol";
 
 import {IL2ERC1155Gateway} from "./IL2ERC1155Gateway.sol";
 import {IL2ScrollMessenger} from "../IL2ScrollMessenger.sol";
@@ -44,6 +44,9 @@ contract L2ERC1155Gateway is OwnableUpgradeable, ERC1155HolderUpgradeable, Scrol
 
     function initialize(address _counterpart, address _messenger) external initializer {
         OwnableUpgradeable.__Ownable_init();
+        ERC1155HolderUpgradeable.__ERC1155Holder_init();
+        ERC1155ReceiverUpgradeable.__ERC1155Receiver_init();
+
         ScrollGatewayBase._initialize(_counterpart, address(0), _messenger);
     }
 
@@ -101,7 +104,10 @@ contract L2ERC1155Gateway is OwnableUpgradeable, ERC1155HolderUpgradeable, Scrol
         address _to,
         uint256 _tokenId,
         uint256 _amount
-    ) external override nonReentrant onlyCallByCounterpart {
+    ) external override onlyCallByCounterpart nonReentrant {
+        require(_l1Token != address(0), "token address cannot be 0");
+        require(_l1Token == tokenMapping[_l2Token], "l2 token mismatch");
+
         IScrollERC1155(_l2Token).mint(_to, _tokenId, _amount, "");
 
         emit FinalizeDepositERC1155(_l1Token, _l2Token, _from, _to, _tokenId, _amount);
@@ -115,7 +121,10 @@ contract L2ERC1155Gateway is OwnableUpgradeable, ERC1155HolderUpgradeable, Scrol
         address _to,
         uint256[] calldata _tokenIds,
         uint256[] calldata _amounts
-    ) external override nonReentrant onlyCallByCounterpart {
+    ) external override onlyCallByCounterpart nonReentrant {
+        require(_l1Token != address(0), "token address cannot be 0");
+        require(_l1Token == tokenMapping[_l2Token], "l2 token mismatch");
+
         IScrollERC1155(_l2Token).batchMint(_to, _tokenIds, _amounts, "");
 
         emit FinalizeBatchDepositERC1155(_l1Token, _l2Token, _from, _to, _tokenIds, _amounts);
@@ -129,7 +138,7 @@ contract L2ERC1155Gateway is OwnableUpgradeable, ERC1155HolderUpgradeable, Scrol
     /// @param _l1Token The address of corresponding ERC1155 token in layer 2.
     /// @param _l1Token The address of ERC1155 token in layer 1.
     function updateTokenMapping(address _l2Token, address _l1Token) external onlyOwner {
-        require(_l1Token != address(0), "map to zero address");
+        require(_l1Token != address(0), "token address cannot be 0");
 
         tokenMapping[_l2Token] = _l1Token;
 
@@ -156,7 +165,7 @@ contract L2ERC1155Gateway is OwnableUpgradeable, ERC1155HolderUpgradeable, Scrol
         require(_amount > 0, "withdraw zero amount");
 
         address _l1Token = tokenMapping[_token];
-        require(_l1Token != address(0), "token not supported");
+        require(_l1Token != address(0), "no corresponding l1 token");
 
         // 1. burn token
         IScrollERC1155(_token).burn(msg.sender, _tokenId, _amount);
@@ -199,7 +208,7 @@ contract L2ERC1155Gateway is OwnableUpgradeable, ERC1155HolderUpgradeable, Scrol
         }
 
         address _l1Token = tokenMapping[_token];
-        require(_l1Token != address(0), "token not supported");
+        require(_l1Token != address(0), "no corresponding l1 token");
 
         // 1. transfer token to this contract
         IScrollERC1155(_token).batchBurn(msg.sender, _tokenIds, _amounts);
