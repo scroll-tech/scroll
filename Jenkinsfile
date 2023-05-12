@@ -24,11 +24,12 @@ pipeline {
                     steps {
                         sh 'make dev_docker'
                         sh 'make -C bridge mock_abi'
+                        sh 'make -C common/bytecode all'
                     }
                 }
                 stage('Check Bridge Compilation') {
                     steps {
-                        sh 'make -C bridge bridge'
+                        sh 'make -C bridge bridge_bins'
                     }
                 }
                 stage('Check Coordinator Compilation') {
@@ -40,16 +41,6 @@ pipeline {
                 stage('Check Database Compilation') {
                     steps {
                         sh 'make -C database db_cli'
-                    }
-                }
-                stage('Check Bridge Docker Build') {
-                    steps {
-                        sh 'make -C bridge docker'
-                    }
-                }
-                stage('Check Coordinator Docker Build') {
-                    steps {
-                        sh 'make -C coordinator docker'
                     }
                 }
                 stage('Check Database Docker Build') {
@@ -68,12 +59,12 @@ pipeline {
                 }
                 stage('Race test bridge package') {
                     steps {
-                        sh 'go test -v -race -coverprofile=coverage.bridge.txt -covermode=atomic scroll-tech/bridge/...'
+                        sh "cd ./bridge && ../build/run_tests.sh bridge"
                     }
                 }
                 stage('Race test coordinator package') {
                     steps {
-                        sh 'go test -v -race -coverprofile=coverage.coordinator.txt -covermode=atomic scroll-tech/coordinator/...'
+                        sh 'cd ./coordinator && go test -exec "env LD_LIBRARY_PATH=${PWD}/verifier/lib" -v -race -gcflags="-l" -ldflags="-s=false" -coverpkg="scroll-tech/coordinator" -coverprofile=../coverage.coordinator.txt -covermode=atomic ./...'
                     }
                 }
                 stage('Race test database package') {

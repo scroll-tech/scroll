@@ -5,6 +5,8 @@ import (
 	"database/sql"
 	"fmt"
 	"time"
+
+	"scroll-tech/common/types/message"
 )
 
 // L1BlockStatus represents current l1 block processing status
@@ -82,6 +84,9 @@ const (
 
 	// MsgExpired represents the from_layer message status is expired
 	MsgExpired
+
+	// MsgRelayFailed represents the from_layer message status is relay failed
+	MsgRelayFailed
 )
 
 // L1Message is structure of stored layer1 bridge message
@@ -159,6 +164,8 @@ type SessionInfo struct {
 	ID             string                   `json:"id"`
 	Rollers        map[string]*RollerStatus `json:"rollers"`
 	StartTimestamp int64                    `json:"start_timestamp"`
+	Attempts       uint8                    `json:"attempts,omitempty"`
+	ProveType      message.ProveType        `json:"prove_type,omitempty"`
 }
 
 // ProvingStatus block_batch proving_status (unassigned, assigned, proved, verified, submitted)
@@ -200,7 +207,7 @@ func (ps ProvingStatus) String() string {
 	}
 }
 
-// RollupStatus block_batch rollup_status (pending, committing, committed, finalizing, finalized)
+// RollupStatus block_batch rollup_status (pending, committing, committed, commit_failed, finalizing, finalized, finalize_skipped, finalize_failed)
 type RollupStatus int
 
 const (
@@ -218,6 +225,10 @@ const (
 	RollupFinalized
 	// RollupFinalizationSkipped : batch finalization is skipped
 	RollupFinalizationSkipped
+	// RollupCommitFailed : rollup commit transaction confirmed but failed
+	RollupCommitFailed
+	// RollupFinalizeFailed : rollup finalize transaction is confirmed but failed
+	RollupFinalizeFailed
 )
 
 // BlockBatch is structure of stored block_batch
@@ -247,4 +258,17 @@ type BlockBatch struct {
 	ProvedAt            *time.Time      `json:"proved_at" db:"proved_at"`
 	CommittedAt         *time.Time      `json:"committed_at" db:"committed_at"`
 	FinalizedAt         *time.Time      `json:"finalized_at" db:"finalized_at"`
+}
+
+// AggTask is a wrapper type around db AggProveTask type.
+type AggTask struct {
+	ID              string        `json:"id" db:"id"`
+	StartBatchIndex uint64        `json:"start_batch_index" db:"start_batch_index"`
+	StartBatchHash  string        `json:"start_batch_hash" db:"start_batch_hash"`
+	EndBatchIndex   uint64        `json:"end_batch_index" db:"end_batch_index"`
+	EndBatchHash    string        `json:"end_batch_hash" db:"end_batch_hash"`
+	ProvingStatus   ProvingStatus `json:"proving_status" db:"proving_status"`
+	Proof           []byte        `json:"proof" db:"proof"`
+	CreatedTime     *time.Time    `json:"created_time" db:"created_time"`
+	UpdatedTime     *time.Time    `json:"updated_time" db:"updated_time"`
 }

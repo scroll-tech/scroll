@@ -3,8 +3,8 @@
 package prover
 
 /*
-#cgo LDFLAGS: ${SRCDIR}/lib/libzkp.a -lm -ldl -lzktrie -L${SRCDIR}/lib/ -Wl,-rpath=${SRCDIR}/lib
-#cgo gpu LDFLAGS: ${SRCDIR}/lib/libzkp.a -lm -ldl -lgmp -lstdc++ -lprocps -lzktrie -L/usr/local/cuda/lib64/ -L${SRCDIR}/lib/ -lcudart -Wl,-rpath=${SRCDIR}/lib
+#cgo LDFLAGS: ${SRCDIR}/lib/libzkp.so -lm -ldl -lzktrie -L${SRCDIR}/lib/ -Wl,-rpath=${SRCDIR}/lib
+#cgo gpu LDFLAGS: ${SRCDIR}/lib/libzkp.so -lm -ldl -lgmp -lstdc++ -lprocps -lzktrie -L/usr/local/cuda/lib64/ -L${SRCDIR}/lib/ -lcudart -Wl,-rpath=${SRCDIR}/lib
 #include <stdlib.h>
 #include "./lib/libzkp.h"
 */
@@ -18,7 +18,7 @@ import (
 
 	"github.com/scroll-tech/go-ethereum/log"
 
-	"scroll-tech/common/message"
+	"scroll-tech/common/types/message"
 
 	"scroll-tech/roller/config"
 )
@@ -51,15 +51,20 @@ func NewProver(cfg *config.ProverConfig) (*Prover, error) {
 
 // Prove call rust ffi to generate proof, if first failed, try again.
 func (p *Prover) Prove(task *message.TaskMsg) (*message.AggProof, error) {
-	tracesByt, err := json.Marshal(task.Traces)
-	if err != nil {
-		return nil, err
+	var proofByt []byte
+	if p.cfg.ProveType == message.BasicProve {
+		tracesByt, err := json.Marshal(task.Traces)
+		if err != nil {
+			return nil, err
+		}
+
+		proofByt = p.prove(tracesByt)
+	} else if p.cfg.ProveType == message.AggregatorProve {
+		// TODO: aggregator prove
 	}
 
-	proofByt := p.prove(tracesByt)
-
 	// dump proof
-	err = p.dumpProof(task.ID, proofByt)
+	err := p.dumpProof(task.ID, proofByt)
 	if err != nil {
 		log.Error("Dump proof failed", "task-id", task.ID, "error", err)
 	}

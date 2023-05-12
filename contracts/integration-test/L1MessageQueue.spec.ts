@@ -22,7 +22,7 @@ describe("L1MessageQueue", async () => {
   it("should succeed", async () => {
     const sender = hexlify(randomBytes(20));
     const target = hexlify(randomBytes(20));
-    const transactionType = "0x33";
+    const transactionType = "0x7E";
 
     for (const nonce of [
       BigNumber.from(0),

@@ -1,7 +1,7 @@
 {
   "l1_config": {
     "confirmations": "0x6",
-    "endpoint": "https://goerli.infura.io/v3/9aa3d95b3bc440fa88ea12eaa4456161",
+    "endpoint": "DUMMY_ENDPOINT",
     "l1_messenger_address": "0x0000000000000000000000000000000000000000",
     "l1_message_queue_address": "0x0000000000000000000000000000000000000000",
     "scroll_chain_address": "0x0000000000000000000000000000000000000000",
@@ -19,7 +19,8 @@
         "escalate_multiple_den": 10,
         "max_gas_price": 10000000000,
         "tx_type": "LegacyTx",
-        "min_balance": 100000000000000000000
+        "min_balance": 100000000000000000000,
+        "pending_limit": 10
       },
       "gas_oracle_config": {
         "min_gas_price": 0,
@@ -44,7 +45,7 @@
       "messenger_contract_address": "0x0000000000000000000000000000000000000000",
       "gas_price_oracle_address": "0x0000000000000000000000000000000000000000",
       "sender_config": {
-        "endpoint": "https://goerli.infura.io/v3/9aa3d95b3bc440fa88ea12eaa4456161",
+        "endpoint": "DUMMY_ENDPOINT",
         "check_pending_time": 10,
         "check_balance_time": 100,
         "escalate_blocks": 100,
@@ -53,7 +54,8 @@
         "escalate_multiple_den": 10,
         "max_gas_price": 10000000000,
         "tx_type": "LegacyTx",
-        "min_balance": 100000000000000000000
+        "min_balance": 100000000000000000000,
+        "pending_limit": 10
       },
       "gas_oracle_config": {
         "min_gas_price": 0,
