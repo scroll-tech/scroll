@@ -17,39 +17,38 @@ make dev_docker
 
 ## Testing Bridge & Coordinator
 
-### Run Tests
+### For Non-Apple Silicon (M1/M2) Macs
+
+Run the tests using the following commands:
 
 ```bash
 go test -v -race -covermode=atomic scroll-tech/bridge/...
 go test -tags="mock_verifier" -v -race -covermode=atomic scroll-tech/coordinator/...
 ```
 
-### Testing Bridge & Coordinator on Apple Silicon (M1/M2) Macs
+### For Apple Silicon (M1/M2) Macs
 
-To conduct tests on Apple Silicon Macs, follow these steps:
-
-Ensure Docker is installed on your system.
-Open a terminal and navigate to the directory where this README.md is located.
+To run tests on Apple Silicon Macs, build and execute the Docker image as outlined below:
 
 #### Build a Docker Image for Testing
 
-Firstly, you need to build a Docker image. You can do this by running the following command:
+Use the following command to build a Docker image:
 
 ```bash
 make build_test_docker
 ```
 
-This command will build a Docker image using the Dockerfile located at `./build/dockerfiles/local_test.Dockerfile`. The image will be named `scroll_test_image`.
+This command builds a Docker image named `scroll_test_image` using the Dockerfile found at `./build/dockerfiles/local_test.Dockerfile`.
 
 #### Run Docker Image
 
-After the image has been built, you can run a Docker container from it:
+After the image is built, run a Docker container from it:
 
 ```bash
 make run_test_docker
 ```
 
-This command will run a Docker container named `scroll_test_container` from the `scroll_test_image` image. The container will use the host network, and it will have access to the Docker socket and the current directory.
+This command runs a Docker container named `scroll_test_container` from the `scroll_test_image` image. The container uses the host network and has access to the Docker socket and the current directory.
 
 This setup provides a testing environment compatible with Apple Silicon Macs.
 

@@ -1,4 +1,4 @@
-.PHONY: check update dev_docker test_docker clean
+.PHONY: check update dev_docker build_test_docker run_test_docker clean
 
 ZKP_VERSION=release-1220
 
