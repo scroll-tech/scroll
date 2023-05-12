@@ -5,10 +5,11 @@ pragma solidity ^0.8.0;
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {ECDSAUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/cryptography/ECDSAUpgradeable.sol";
 import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
+import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 
 import {IL1MessageQueue} from "../rollup/IL1MessageQueue.sol";
 
-contract EnforcedTxGateway is OwnableUpgradeable, ReentrancyGuardUpgradeable {
+contract EnforcedTxGateway is OwnableUpgradeable, ReentrancyGuardUpgradeable, PausableUpgradeable {
     /**********
      * Events *
      **********/
@@ -52,7 +53,7 @@ contract EnforcedTxGateway is OwnableUpgradeable, ReentrancyGuardUpgradeable {
         uint256 _value,
         uint256 _gasLimit,
         bytes calldata _data
-    ) external payable {
+    ) external payable whenNotPaused nonReentrant {
         require(msg.sender == tx.origin, "only EOA");
 
         _sendTransaction(msg.sender, _target, _value, _gasLimit, _data);
@@ -77,7 +78,7 @@ contract EnforcedTxGateway is OwnableUpgradeable, ReentrancyGuardUpgradeable {
         uint8 v,
         bytes32 r,
         bytes32 s
-    ) external payable {
+    ) external payable whenNotPaused nonReentrant {
         address _messageQueue = messageQueue;
         uint256 _queueIndex = IL1MessageQueue(_messageQueue).nextCrossDomainMessageIndex();
         bytes32 _hash = IL1MessageQueue(messageQueue).computeTransactionHash(
@@ -107,6 +108,16 @@ contract EnforcedTxGateway is OwnableUpgradeable, ReentrancyGuardUpgradeable {
         feeVault = _newFeeVault;
 
         emit UpdateFeeVault(_oldFeeVault, _newFeeVault);
+    }
+
+    /// @notice Pause or unpause this contract.
+    /// @param _status Pause this contract if it is true, otherwise unpause this contract.
+    function setPaused(bool _status) external onlyOwner {
+        if (_status) {
+            _pause();
+        } else {
+            _unpause();
+        }
     }
 
     /**********************
