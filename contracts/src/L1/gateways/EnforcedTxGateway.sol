@@ -129,7 +129,7 @@ contract EnforcedTxGateway is OwnableUpgradeable, ReentrancyGuardUpgradeable {
         address _messageQueue = messageQueue;
 
         // charge fee
-        uint256 _fee = IL1MessageQueue(_messageQueue).estimateCrossDomainMessageFee(_sender, _target, _data, _gasLimit);
+        uint256 _fee = IL1MessageQueue(_messageQueue).estimateCrossDomainMessageFee(_gasLimit);
         require(msg.value >= _fee, "insufficient value for fee");
         if (_fee > 0) {
             (bool _success, ) = feeVault.call{value: _fee}("");
