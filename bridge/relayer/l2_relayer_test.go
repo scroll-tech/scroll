@@ -3,13 +3,17 @@ package relayer
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"math/big"
 	"os"
 	"strconv"
 	"testing"
 
+	"github.com/agiledragon/gomonkey/v2"
+	"github.com/scroll-tech/go-ethereum/accounts/abi"
 	"github.com/scroll-tech/go-ethereum/common"
 	geth_types "github.com/scroll-tech/go-ethereum/core/types"
+	"github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 
 	"scroll-tech/common/types"
@@ -240,12 +244,12 @@ func testL2RelayerMsgConfirm(t *testing.T) {
 	})
 
 	// Check the database for the updated status using TryTimes.
-	utils.TryTimes(5, func() bool {
+	assert.True(t, utils.TryTimes(5, func() bool {
 		msg1, err1 := db.GetL2MessageByMsgHash("msg-1")
 		msg2, err2 := db.GetL2MessageByMsgHash("msg-2")
 		return err1 == nil && msg1.Status == types.MsgConfirmed &&
 			err2 == nil && msg2.Status == types.MsgRelayFailed
-	})
+	}))
 }
 
 func testL2RelayerRollupConfirm(t *testing.T) {
@@ -299,7 +303,7 @@ func testL2RelayerRollupConfirm(t *testing.T) {
 	}
 
 	// Check the database for the updated status using TryTimes.
-	utils.TryTimes(5, func() bool {
+	ok := utils.TryTimes(5, func() bool {
 		expectedStatuses := []types.RollupStatus{
 			types.RollupCommitted,
 			types.RollupCommitted,
@@ -317,6 +321,7 @@ func testL2RelayerRollupConfirm(t *testing.T) {
 		}
 		return true
 	})
+	assert.True(t, ok)
 }
 
 func testL2RelayerGasOracleConfirm(t *testing.T) {
@@ -356,7 +361,7 @@ func testL2RelayerGasOracleConfirm(t *testing.T) {
 	}
 
 	// Check the database for the updated status using TryTimes.
-	utils.TryTimes(5, func() bool {
+	ok := utils.TryTimes(5, func() bool {
 		expectedStatuses := []types.GasOracleStatus{types.GasOracleImported, types.GasOracleFailed}
 		for i, batch := range batches {
 			gasOracle, err := db.GetBlockBatches(map[string]interface{}{"hash": batch.Hash().Hex()})
@@ -366,6 +371,7 @@ func testL2RelayerGasOracleConfirm(t *testing.T) {
 		}
 		return true
 	})
+	assert.True(t, ok)
 }
 
 func genBatchData(t *testing.T, index uint64) *types.BatchData {
@@ -381,4 +387,166 @@ func genBatchData(t *testing.T, index uint64) *types.BatchData {
 		Hash:  "0x0000000000000000000000000000000000000000",
 	}
 	return types.NewBatchData(parentBatch, []*types.WrappedBlock{wrappedBlock}, nil)
+}
+
+func testLayer2RelayerProcessGasPriceOracle(t *testing.T) {
+	db, err := database.NewOrmFactory(cfg.DBConfig)
+	assert.NoError(t, err)
+	assert.NoError(t, migrate.ResetDB(db.GetDB().DB))
+	defer db.Close()
+
+	relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, cfg.L2Config.RelayerConfig)
+	assert.NoError(t, err)
+	assert.NotNil(t, relayer)
+
+	convey.Convey("Failed to GetLatestBatch", t, func() {
+		targetErr := errors.New("GetLatestBatch error")
+		patchGuard := gomonkey.ApplyMethodFunc(db, "GetLatestBatch", func() (*types.BlockBatch, error) {
+			return nil, targetErr
+		})
+		defer patchGuard.Reset()
+		relayer.ProcessGasPriceOracle()
+	})
+
+	patchGuard := gomonkey.ApplyMethodFunc(db, "GetLatestBatch", func() (*types.BlockBatch, error) {
+		batch := types.BlockBatch{
+			OracleStatus: types.GasOraclePending,
+			Hash:         "0x0000000000000000000000000000000000000000",
+		}
+		return &batch, nil
+	})
+	defer patchGuard.Reset()
+
+	convey.Convey("Failed to fetch SuggestGasPrice from l2geth", t, func() {
+		targetErr := errors.New("SuggestGasPrice error")
+		patchGuard.ApplyMethodFunc(relayer.l2Client, "SuggestGasPrice", func(ctx context.Context) (*big.Int, error) {
+			return nil, targetErr
+		})
+		relayer.ProcessGasPriceOracle()
+	})
+
+	patchGuard.ApplyMethodFunc(relayer.l2Client, "SuggestGasPrice", func(ctx context.Context) (*big.Int, error) {
+		return big.NewInt(100), nil
+	})
+
+	convey.Convey("Failed to pack setL2BaseFee", t, func() {
+		targetErr := errors.New("setL2BaseFee error")
+		patchGuard.ApplyMethodFunc(relayer.l2GasOracleABI, "Pack", func(name string, args ...interface{}) ([]byte, error) {
+			return nil, targetErr
+		})
+		relayer.ProcessGasPriceOracle()
+	})
+
+	patchGuard.ApplyMethodFunc(relayer.l2GasOracleABI, "Pack", func(name string, args ...interface{}) ([]byte, error) {
+		return nil, nil
+	})
+
+	convey.Convey("Failed to send setL2BaseFee tx to layer2", t, func() {
+		targetErr := errors.New("failed to send setL2BaseFee tx to layer2 error")
+		patchGuard.ApplyMethodFunc(relayer.gasOracleSender, "SendTransaction", func(ID string, target *common.Address, value *big.Int, data []byte, minGasLimit uint64) (hash common.Hash, err error) {
+			return common.Hash{}, targetErr
+		})
+		relayer.ProcessGasPriceOracle()
+	})
+
+	patchGuard.ApplyMethodFunc(relayer.gasOracleSender, "SendTransaction", func(ID string, target *common.Address, value *big.Int, data []byte, minGasLimit uint64) (hash common.Hash, err error) {
+		return common.HexToHash("0x56789abcdef1234"), nil
+	})
+
+	convey.Convey("UpdateGasOracleStatusAndOracleTxHash failed", t, func() {
+		targetErr := errors.New("UpdateL2GasOracleStatusAndOracleTxHash error")
+		patchGuard.ApplyMethodFunc(db, "UpdateL2GasOracleStatusAndOracleTxHash", func(ctx context.Context, hash string, status types.GasOracleStatus, txHash string) error {
+			return targetErr
+		})
+		relayer.ProcessGasPriceOracle()
+	})
+
+	patchGuard.ApplyMethodFunc(db, "UpdateL2GasOracleStatusAndOracleTxHash", func(ctx context.Context, hash string, status types.GasOracleStatus, txHash string) error {
+		return nil
+	})
+	relayer.ProcessGasPriceOracle()
+}
+
+func testLayer2RelayerSendCommitTx(t *testing.T) {
+	db, err := database.NewOrmFactory(cfg.DBConfig)
+	assert.NoError(t, err)
+	assert.NoError(t, migrate.ResetDB(db.GetDB().DB))
+	defer db.Close()
+
+	relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, cfg.L2Config.RelayerConfig)
+	assert.NoError(t, err)
+	assert.NotNil(t, relayer)
+
+	var batchDataList []*types.BatchData
+	convey.Convey("SendCommitTx receives empty batch", t, func() {
+		err = relayer.SendCommitTx(batchDataList)
+		assert.NoError(t, err)
+	})
+
+	parentBatch := &types.BlockBatch{
+		Index: 0,
+		Hash:  "0x0000000000000000000000000000000000000000",
+	}
+
+	traces := []*types.WrappedBlock{
+		{
+			Header: &geth_types.Header{
+				Number:     big.NewInt(1000),
+				ParentHash: common.Hash{},
+				Difficulty: big.NewInt(0),
+				BaseFee:    big.NewInt(0),
+			},
+			Transactions:     nil,
+			WithdrawTrieRoot: common.Hash{},
+		},
+	}
+
+	blocks := []*types.WrappedBlock{traces[0]}
+	tmpBatchData := types.NewBatchData(parentBatch, blocks, cfg.L2Config.BatchProposerConfig.PublicInputConfig)
+	batchDataList = append(batchDataList, tmpBatchData)
+
+	var s abi.ABI
+	convey.Convey("Failed to pack commitBatches", t, func() {
+		targetErr := errors.New("commitBatches error")
+		patchGuard := gomonkey.ApplyMethodFunc(s, "Pack", func(name string, args ...interface{}) ([]byte, error) {
+			return nil, targetErr
+		})
+		defer patchGuard.Reset()
+
+		err = relayer.SendCommitTx(batchDataList)
+		assert.EqualError(t, err, targetErr.Error())
+	})
+
+	patchGuard := gomonkey.ApplyMethodFunc(s, "Pack", func(name string, args ...interface{}) ([]byte, error) {
+		return nil, nil
+	})
+	defer patchGuard.Reset()
+
+	convey.Convey("Failed to send commitBatches tx to layer1", t, func() {
+		targetErr := errors.New("SendTransaction failure")
+		patchGuard.ApplyMethodFunc(relayer.rollupSender, "SendTransaction", func(ID string, target *common.Address, value *big.Int, data []byte, minGasLimit uint64) (hash common.Hash, err error) {
+			return common.Hash{}, targetErr
+		})
+		err = relayer.SendCommitTx(batchDataList)
+		assert.EqualError(t, err, targetErr.Error())
+	})
+
+	patchGuard.ApplyMethodFunc(relayer.rollupSender, "SendTransaction", func(ID string, target *common.Address, value *big.Int, data []byte, minGasLimit uint64) (hash common.Hash, err error) {
+		return common.HexToHash("0x56789abcdef1234"), nil
+	})
+
+	convey.Convey("UpdateCommitTxHashAndRollupStatus failed", t, func() {
+		targetErr := errors.New("UpdateCommitTxHashAndRollupStatus failure")
+		patchGuard.ApplyMethodFunc(db, "UpdateCommitTxHashAndRollupStatus", func(ctx context.Context, hash string, commitTxHash string, status types.RollupStatus) error {
+			return targetErr
+		})
+		err = relayer.SendCommitTx(batchDataList)
+		assert.NoError(t, err)
+	})
+
+	patchGuard.ApplyMethodFunc(db, "UpdateCommitTxHashAndRollupStatus", func(ctx context.Context, hash string, commitTxHash string, status types.RollupStatus) error {
+		return nil
+	})
+	err = relayer.SendCommitTx(batchDataList)
+	assert.NoError(t, err)
 }

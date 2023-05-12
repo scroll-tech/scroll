@@ -46,9 +46,7 @@ jobs:
     - name: Test
       run: |
         make roller
-        export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:./prover/lib
-        export CHAIN_ID=534353
-        go test -v ./...
+        go test -tags="mock_prover" -v ./...
   check:
     runs-on: ubuntu-latest
     steps:
