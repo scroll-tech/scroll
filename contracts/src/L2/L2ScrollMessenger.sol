@@ -127,9 +127,12 @@ contract L2ScrollMessenger is ScrollMessengerBase, PausableUpgradeable, IL2Scrol
         bytes32 _expectedStateRoot = IL1BlockContainer(blockContainer).getStateRoot(_blockHash);
         require(_expectedStateRoot != bytes32(0), "Block is not imported");
 
-        // @todo fix the actual slot later.
         bytes32 _storageKey;
         // `mapping(bytes32 => bool) public isL1MessageSent` is the 105-nd slot of contract `L1ScrollMessenger`.
+        // + 50 from `OwnableUpgradeable`
+        // + 4 from `ScrollMessengerBase`
+        // + 50 from `PausableUpgradeable`
+        // + 2-nd in `L1ScrollMessenger`
         assembly {
             mstore(0x00, _msgHash)
             mstore(0x20, 105)
@@ -159,9 +162,12 @@ contract L2ScrollMessenger is ScrollMessengerBase, PausableUpgradeable, IL2Scrol
         bytes32 _expectedStateRoot = IL1BlockContainer(blockContainer).getStateRoot(_blockHash);
         require(_expectedStateRoot != bytes32(0), "Block not imported");
 
-        // @todo fix the actual slot later.
         bytes32 _storageKey;
         // `mapping(bytes32 => bool) public isL2MessageExecuted` is the 106-th slot of contract `L1ScrollMessenger`.
+        // + 50 from `OwnableUpgradeable`
+        // + 4 from `ScrollMessengerBase`
+        // + 50 from `PausableUpgradeable`
+        // + 3-rd in `L1ScrollMessenger`
         assembly {
             mstore(0x00, _msgHash)
             mstore(0x20, 106)

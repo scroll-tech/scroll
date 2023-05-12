@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"scroll-tech/common/types"
+	"scroll-tech/common/utils"
 
 	"scroll-tech/bridge/relayer"
 	"scroll-tech/bridge/watcher"
@@ -21,7 +22,7 @@ import (
 
 func testCommitBatchAndFinalizeBatch(t *testing.T) {
 	// Create db handler and reset db.
-	db, err := database.NewOrmFactory(cfg.DBConfig)
+	db, err := database.NewOrmFactory(base.DBConfig)
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(db.GetDB().DB))
 	defer db.Close()
@@ -29,12 +30,12 @@ func testCommitBatchAndFinalizeBatch(t *testing.T) {
 	prepareContracts(t)
 
 	// Create L2Relayer
-	l2Cfg := cfg.L2Config
+	l2Cfg := bridgeApp.Config.L2Config
 	l2Relayer, err := relayer.NewLayer2Relayer(context.Background(), l2Client, db, l2Cfg.RelayerConfig)
 	assert.NoError(t, err)
 
 	// Create L1Watcher
-	l1Cfg := cfg.L1Config
+	l1Cfg := bridgeApp.Config.L1Config
 	l1Watcher := watcher.NewL1WatcherClient(context.Background(), l1Client, 0, l1Cfg.Confirmations, l1Cfg.L1MessengerAddress, l1Cfg.L1MessageQueueAddress, l1Cfg.ScrollChainContractAddress, db)
 
 	// add some blocks to db
@@ -63,7 +64,7 @@ func testCommitBatchAndFinalizeBatch(t *testing.T) {
 	batchData := types.NewBatchData(parentBatch, []*types.WrappedBlock{
 		wrappedBlocks[0],
 		wrappedBlocks[1],
-	}, cfg.L2Config.BatchProposerConfig.PublicInputConfig)
+	}, l2Cfg.BatchProposerConfig.PublicInputConfig)
 
 	batchHash := batchData.Hash().String()
 
@@ -80,7 +81,7 @@ func testCommitBatchAndFinalizeBatch(t *testing.T) {
 	assert.NoError(t, dbTx.Commit())
 
 	// process pending batch and check status
-	l2Relayer.SendCommitTx([]*types.BatchData{batchData})
+	assert.NoError(t, l2Relayer.SendCommitTx([]*types.BatchData{batchData}))
 
 	status, err := db.GetRollupStatus(batchHash)
 	assert.NoError(t, err)
@@ -97,9 +98,11 @@ func testCommitBatchAndFinalizeBatch(t *testing.T) {
 	// fetch rollup events
 	err = l1Watcher.FetchContractEvent()
 	assert.NoError(t, err)
-	status, err = db.GetRollupStatus(batchHash)
-	assert.NoError(t, err)
-	assert.Equal(t, types.RollupCommitted, status)
+	ok := utils.TryTimes(20, func() bool {
+		status, err = db.GetRollupStatus(batchHash)
+		return err == nil && status == types.RollupCommitted
+	})
+	assert.True(t, ok)
 
 	// add dummy proof
 	tProof := []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31}
@@ -112,9 +115,12 @@ func testCommitBatchAndFinalizeBatch(t *testing.T) {
 	// process committed batch and check status
 	l2Relayer.ProcessCommittedBatches()
 
-	status, err = db.GetRollupStatus(batchHash)
-	assert.NoError(t, err)
-	assert.Equal(t, types.RollupFinalizing, status)
+	ok = utils.TryTimes(20, func() bool {
+		status, err = db.GetRollupStatus(batchHash)
+		return err == nil && status == types.RollupFinalizing
+	})
+	assert.True(t, ok)
+
 	finalizeTxHash, err := db.GetFinalizeTxHash(batchHash)
 	assert.NoError(t, err)
 	assert.Equal(t, true, finalizeTxHash.Valid)
