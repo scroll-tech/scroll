@@ -78,8 +78,9 @@ contract L2StandardERC20Gateway is Initializable, ScrollGatewayBase, L2ERC20Gate
         address _to,
         uint256 _amount,
         bytes calldata _data
-    ) external payable override onlyCallByCounterpart {
+    ) external payable override onlyCallByCounterpart nonReentrant {
         require(msg.value == 0, "nonzero msg.value");
+        require(_l1Token != address(0), "token address cannot be 0");
 
         {
             // avoid stack too deep
@@ -98,6 +99,7 @@ contract L2StandardERC20Gateway is Initializable, ScrollGatewayBase, L2ERC20Gate
             tokenMapping[_l2Token] = _l1Token;
             (_callData, _deployData) = abi.decode(_data, (bytes, bytes));
         } else {
+            require(tokenMapping[_l2Token] == _l1Token, "token mapping mismatch");
             _callData = _data;
         }
 
@@ -123,7 +125,7 @@ contract L2StandardERC20Gateway is Initializable, ScrollGatewayBase, L2ERC20Gate
         uint256 _amount,
         bytes memory _data,
         uint256 _gasLimit
-    ) internal virtual override {
+    ) internal virtual override nonReentrant {
         require(_amount > 0, "withdraw zero amount");
 
         // 1. Extract real sender if this call is from L2GatewayRouter.
