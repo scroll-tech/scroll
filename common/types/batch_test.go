@@ -128,7 +128,7 @@ func TestNewBatchData(t *testing.T) {
 
 func TestBatchDataTimestamp(t *testing.T) {
 	// Test case 1: when the batch data contains no blocks.
-	assert.Equal(t, (&BatchData{}).Timestamp(), uint64(0))
+	assert.Equal(t, uint64(0), (&BatchData{}).Timestamp())
 
 	// Test case 2: when the batch data contains blocks.
 	batchData := &BatchData{
@@ -139,5 +139,5 @@ func TestBatchDataTimestamp(t *testing.T) {
 			},
 		},
 	}
-	assert.Equal(t, batchData.Timestamp(), uint64(123456789))
+	assert.Equal(t, uint64(123456789), batchData.Timestamp())
 }
