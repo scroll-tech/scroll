@@ -8,6 +8,8 @@ import {IL1ERC20Gateway, L1CustomERC20Gateway} from "../L1/gateways/L1CustomERC2
 import {IL2ERC20Gateway, L2CustomERC20Gateway} from "../L2/gateways/L2CustomERC20Gateway.sol";
 import {L2GatewayRouter} from "../L2/gateways/L2GatewayRouter.sol";
 
+import {AddressAliasHelper} from "../libraries/common/AddressAliasHelper.sol";
+
 import {L2GatewayTestBase} from "./L2GatewayTestBase.t.sol";
 import {MockScrollMessenger} from "./mocks/MockScrollMessenger.sol";
 import {MockGatewayRecipient} from "./mocks/MockGatewayRecipient.sol";
@@ -224,7 +226,9 @@ contract L2CustomERC20GatewayTest is L2GatewayTestBase {
         uint256 gatewayBalance = l2Token.balanceOf(address(gateway));
         uint256 recipientBalance = l2Token.balanceOf(recipient);
         assertBoolEq(false, l2Messenger.isL1MessageExecuted(keccak256(xDomainCalldata)));
+        hevm.startPrank(AddressAliasHelper.applyL1ToL2Alias(address(l1Messenger)));
         l2Messenger.relayMessage(address(uint160(address(counterpartGateway)) + 1), address(gateway), 0, 0, message);
+        hevm.stopPrank();
         assertEq(gatewayBalance, l2Token.balanceOf(address(gateway)));
         assertEq(recipientBalance, l2Token.balanceOf(recipient));
         assertBoolEq(false, l2Messenger.isL1MessageExecuted(keccak256(xDomainCalldata)));
@@ -282,7 +286,9 @@ contract L2CustomERC20GatewayTest is L2GatewayTestBase {
         uint256 gatewayBalance = l2Token.balanceOf(address(gateway));
         uint256 recipientBalance = l2Token.balanceOf(address(recipient));
         assertBoolEq(false, l2Messenger.isL1MessageExecuted(keccak256(xDomainCalldata)));
+        hevm.startPrank(AddressAliasHelper.applyL1ToL2Alias(address(l1Messenger)));
         l2Messenger.relayMessage(address(counterpartGateway), address(gateway), 0, 0, message);
+        hevm.stopPrank();
         assertEq(gatewayBalance, l2Token.balanceOf(address(gateway)));
         assertEq(recipientBalance + amount, l2Token.balanceOf(address(recipient)));
         assertBoolEq(true, l2Messenger.isL1MessageExecuted(keccak256(xDomainCalldata)));

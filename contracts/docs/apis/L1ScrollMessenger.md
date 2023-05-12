@@ -215,7 +215,7 @@ function renounceOwnership() external nonpayable
 ### replayMessage
 
 ```solidity
-function replayMessage(address _from, address _to, uint256 _value, uint256 _queueIndex, bytes _message, uint32 _oldGasLimit, uint32 _newGasLimit) external nonpayable
+function replayMessage(address _from, address _to, uint256 _value, uint256 _queueIndex, bytes _message, uint32 _oldGasLimit, uint32 _newGasLimit, address _refundAddress) external payable
 ```
 
 Replay an exsisting message.
@@ -233,6 +233,7 @@ Replay an exsisting message.
 | _message | bytes | undefined |
 | _oldGasLimit | uint32 | undefined |
 | _newGasLimit | uint32 | undefined |
+| _refundAddress | address | undefined |
 
 ### rollup
 

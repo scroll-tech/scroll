@@ -8,13 +8,14 @@ import (
 )
 
 // TryTimes try run several times until the function return true.
-func TryTimes(times int, run func() bool) {
+func TryTimes(times int, run func() bool) bool {
 	for i := 0; i < times; i++ {
 		if run() {
-			return
+			return true
 		}
 		time.Sleep(time.Millisecond * 500)
 	}
+	return false
 }
 
 // LoopWithContext Run the f func with context periodically.
