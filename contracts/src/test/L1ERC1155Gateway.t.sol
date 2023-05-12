@@ -105,7 +105,7 @@ contract L1ERC1155GatewayTest is L1GatewayTestBase, ERC1155TokenReceiver {
         hevm.stopPrank();
 
         // l2 token is zero, should revert
-        hevm.expectRevert("map to zero address");
+        hevm.expectRevert("token address cannot be 0");
         gateway.updateTokenMapping(token1, address(0));
     }
 
@@ -645,7 +645,7 @@ contract L1ERC1155GatewayTest is L1GatewayTestBase, ERC1155TokenReceiver {
             hevm.expectRevert("deposit zero amount");
             gateway.depositERC1155{value: feeToPay + extraValue}(address(l1Token), tokenId, amount, gasLimit);
         } else {
-            hevm.expectRevert("token not supported");
+            hevm.expectRevert("no corresponding l2 token");
             gateway.depositERC1155(address(l1Token), tokenId, amount, gasLimit);
 
             gateway.updateTokenMapping(address(l1Token), address(l2Token));
@@ -719,7 +719,7 @@ contract L1ERC1155GatewayTest is L1GatewayTestBase, ERC1155TokenReceiver {
                 gasLimit
             );
         } else {
-            hevm.expectRevert("token not supported");
+            hevm.expectRevert("no corresponding l2 token");
             gateway.depositERC1155(address(l1Token), tokenId, amount, gasLimit);
 
             gateway.updateTokenMapping(address(l1Token), address(l2Token));
@@ -786,7 +786,7 @@ contract L1ERC1155GatewayTest is L1GatewayTestBase, ERC1155TokenReceiver {
         hevm.expectRevert("deposit zero amount");
         gateway.batchDepositERC1155(address(l1Token), _tokenIds, new uint256[](tokenCount), gasLimit);
 
-        hevm.expectRevert("token not supported");
+        hevm.expectRevert("no corresponding l2 token");
         gateway.batchDepositERC1155(address(l1Token), _tokenIds, _amounts, gasLimit);
 
         bytes memory message = abi.encodeWithSelector(
@@ -871,7 +871,7 @@ contract L1ERC1155GatewayTest is L1GatewayTestBase, ERC1155TokenReceiver {
         hevm.expectRevert("deposit zero amount");
         gateway.batchDepositERC1155(address(l1Token), recipient, _tokenIds, new uint256[](tokenCount), gasLimit);
 
-        hevm.expectRevert("token not supported");
+        hevm.expectRevert("no corresponding l2 token");
         gateway.batchDepositERC1155(address(l1Token), recipient, _tokenIds, _amounts, gasLimit);
 
         bytes memory message = abi.encodeWithSelector(

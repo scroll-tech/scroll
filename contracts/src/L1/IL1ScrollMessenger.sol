@@ -44,6 +44,7 @@ interface IL1ScrollMessenger is IScrollMessenger {
     /// @param message The content of the message.
     /// @param oldGasLimit Original gas limit used to send the message.
     /// @param newGasLimit New gas limit to be used for this message.
+    /// @param refundAddress The address of account who will receive the refunded fee.
     function replayMessage(
         address from,
         address to,
@@ -51,6 +52,7 @@ interface IL1ScrollMessenger is IScrollMessenger {
         uint256 queueIndex,
         bytes memory message,
         uint32 oldGasLimit,
-        uint32 newGasLimit
-    ) external;
+        uint32 newGasLimit,
+        address refundAddress
+    ) external payable;
 }
