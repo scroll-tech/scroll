@@ -100,12 +100,14 @@ func TestNewBatchData(t *testing.T) {
 	assert.NoError(t, json.Unmarshal(templateBlockTrace, wrappedBlock))
 
 	parentBatch := &BlockBatch{
-		Index: 1,
-		Hash:  "0x0000000000000000000000000000000000000000",
+		Index:     1,
+		Hash:      "0x0000000000000000000000000000000000000000",
+		StateRoot: "0x0000000000000000000000000000000000000000",
 	}
 	batchData1 := NewBatchData(parentBatch, []*WrappedBlock{wrappedBlock}, nil)
 	assert.NotNil(t, batchData1)
 	assert.NotNil(t, batchData1.Batch)
+	assert.Equal(t, "0xac4487c0d8f429dafda3c68cbb8983ac08af83c03c83c365d7df02864f80af37", batchData1.Hash().Hex())
 
 	templateBlockTrace, err = os.ReadFile("../testdata/blockTrace_03.json")
 	assert.NoError(t, err)
@@ -114,12 +116,14 @@ func TestNewBatchData(t *testing.T) {
 	assert.NoError(t, json.Unmarshal(templateBlockTrace, wrappedBlock2))
 
 	parentBatch2 := &BlockBatch{
-		Index: batchData1.Batch.BatchIndex,
-		Hash:  batchData1.Hash().Hex(),
+		Index:     batchData1.Batch.BatchIndex,
+		Hash:      batchData1.Hash().Hex(),
+		StateRoot: batchData1.Batch.NewStateRoot.Hex(),
 	}
 	batchData2 := NewBatchData(parentBatch2, []*WrappedBlock{wrappedBlock2}, nil)
 	assert.NotNil(t, batchData2)
 	assert.NotNil(t, batchData2.Batch)
+	assert.Equal(t, "0x8f1447573740b3e75b979879866b8ad02eecf88e1946275eb8cf14ab95876efc", batchData2.Hash().Hex())
 }
 
 func TestBatchDataTimestamp(t *testing.T) {

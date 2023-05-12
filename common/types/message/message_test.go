@@ -1,6 +1,7 @@
 package message
 
 import (
+	"encoding/hex"
 	"testing"
 	"time"
 
@@ -15,8 +16,10 @@ func TestAuthMessageSignAndVerify(t *testing.T) {
 
 	authMsg := &AuthMsg{
 		Identity: &Identity{
-			Name:      "testRoller",
+			Name:      "testName",
 			Timestamp: uint32(time.Now().Unix()),
+			Version:   "testVersion",
+			Token:     "testToken",
 		},
 	}
 	assert.NoError(t, authMsg.SignWithKey(privkey))
@@ -45,12 +48,17 @@ func TestGenerateToken(t *testing.T) {
 
 func TestIdentityHash(t *testing.T) {
 	identity := &Identity{
-		Name:      "testIdentity",
-		Timestamp: uint32(time.Now().Unix()),
+		Name:       "testName",
+		RollerType: BasicProve,
+		Timestamp:  uint32(1622428800),
+		Version:    "testVersion",
+		Token:      "testToken",
 	}
 	hash, err := identity.Hash()
 	assert.NoError(t, err)
-	assert.NotNil(t, hash)
+
+	expectedHash := "b3f152958dc881446fc131a250526139d909710c6b91b4d3281ceded28ce2e32"
+	assert.Equal(t, expectedHash, hex.EncodeToString(hash))
 }
 
 func TestProofMessageSignVerifyPublicKey(t *testing.T) {
@@ -60,7 +68,16 @@ func TestProofMessageSignVerifyPublicKey(t *testing.T) {
 	proofMsg := &ProofMsg{
 		ProofDetail: &ProofDetail{
 			ID:     "testID",
+			Type:   BasicProve,
 			Status: StatusOk,
+			Proof: &AggProof{
+				Proof:      []byte("testProof"),
+				Instance:   []byte("testInstance"),
+				FinalPair:  []byte("testFinalPair"),
+				Vk:         []byte("testVk"),
+				BlockCount: 1,
+			},
+			Error: "testError",
 		},
 	}
 	assert.NoError(t, proofMsg.Sign(privkey))
@@ -79,11 +96,21 @@ func TestProofMessageSignVerifyPublicKey(t *testing.T) {
 func TestProofDetailHash(t *testing.T) {
 	proofDetail := &ProofDetail{
 		ID:     "testID",
+		Type:   BasicProve,
 		Status: StatusOk,
+		Proof: &AggProof{
+			Proof:      []byte("testProof"),
+			Instance:   []byte("testInstance"),
+			FinalPair:  []byte("testFinalPair"),
+			Vk:         []byte("testVk"),
+			BlockCount: 1,
+		},
+		Error: "testError",
 	}
 	hash, err := proofDetail.Hash()
 	assert.NoError(t, err)
-	assert.NotNil(t, hash)
+	expectedHash := "fdfaae752d6fd72a7fdd2ad034ef504d3acda9e691a799323cfa6e371684ba2b"
+	assert.Equal(t, expectedHash, hex.EncodeToString(hash))
 }
 
 func TestProveTypeString(t *testing.T) {
@@ -104,7 +131,16 @@ func TestProofMsgPublicKey(t *testing.T) {
 	proofMsg := &ProofMsg{
 		ProofDetail: &ProofDetail{
 			ID:     "testID",
+			Type:   BasicProve,
 			Status: StatusOk,
+			Proof: &AggProof{
+				Proof:      []byte("testProof"),
+				Instance:   []byte("testInstance"),
+				FinalPair:  []byte("testFinalPair"),
+				Vk:         []byte("testVk"),
+				BlockCount: 1,
+			},
+			Error: "testError",
 		},
 	}
 	assert.NoError(t, proofMsg.Sign(privkey))
