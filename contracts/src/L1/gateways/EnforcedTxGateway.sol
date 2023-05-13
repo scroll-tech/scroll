@@ -54,7 +54,7 @@ contract EnforcedTxGateway is OwnableUpgradeable, ReentrancyGuardUpgradeable, Pa
         uint256 _gasLimit,
         bytes calldata _data
     ) external payable whenNotPaused nonReentrant {
-        require(msg.sender == tx.origin, "only EOA");
+        require(msg.sender == tx.origin, "Only EOA senders are allowed to send enforced transaction");
 
         _sendTransaction(msg.sender, _target, _value, _gasLimit, _data);
     }
@@ -92,7 +92,7 @@ contract EnforcedTxGateway is OwnableUpgradeable, ReentrancyGuardUpgradeable, Pa
 
         address _signer = ECDSAUpgradeable.recover(_hash, v, r, s);
         // no need to check `_signer != address(0)`, since it is checked in `recover`.
-        require(_signer == _sender, "signer mismatch");
+        require(_signer == _sender, "Incorrect signature");
 
         _sendTransaction(_sender, _target, _value, _gasLimit, _data);
     }
@@ -141,7 +141,7 @@ contract EnforcedTxGateway is OwnableUpgradeable, ReentrancyGuardUpgradeable, Pa
 
         // charge fee
         uint256 _fee = IL1MessageQueue(_messageQueue).estimateCrossDomainMessageFee(_gasLimit);
-        require(msg.value >= _fee, "insufficient value for fee");
+        require(msg.value >= _fee, "Insufficient value for fee");
         if (_fee > 0) {
             (bool _success, ) = feeVault.call{value: _fee}("");
             require(_success, "Failed to deduct the fee");

@@ -55,10 +55,11 @@ contract L1MessageQueue is OwnableUpgradeable, IL1MessageQueue {
      * Constructor *
      ***************/
 
-    function initialize(address _messenger, address _gasOracle, uint256 _maxGasLimit) external initializer {
+    function initialize(address _messenger, address _enforcedTxGateway, address _gasOracle, uint256 _maxGasLimit) external initializer {
         OwnableUpgradeable.__Ownable_init();
 
         messenger = _messenger;
+        enforcedTxGateway = _enforcedTxGateway;
         gasOracle = _gasOracle;
         maxGasLimit = _maxGasLimit;
     }
@@ -244,6 +245,9 @@ contract L1MessageQueue is OwnableUpgradeable, IL1MessageQueue {
         require(msg.sender == enforcedTxGateway, "Only callable by the EnforcedTxGateway");
         // We will check it in EnforcedTxGateway, just in case.
         require(_sender.code.length == 0, "only EOA");
+
+        // validate gas limit
+        _validateGasLimit(_gasLimit, _data);
 
         _queueTransaction(_sender, _target, _value, _gasLimit, _data);
     }
