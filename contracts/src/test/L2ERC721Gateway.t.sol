@@ -50,7 +50,7 @@ contract L2ERC721GatewayTest is DSTestPlus {
         hevm.stopPrank();
 
         // l1 token is zero, should revert
-        hevm.expectRevert("map to zero address");
+        hevm.expectRevert("token address cannot be 0");
         gateway.updateTokenMapping(token1, address(0));
     }
 
@@ -65,7 +65,7 @@ contract L2ERC721GatewayTest is DSTestPlus {
     /// @dev failed to withdraw erc721
     function testWithdrawERC721WithGatewayFailed(address to) public {
         // token not support
-        hevm.expectRevert("token not supported");
+        hevm.expectRevert("no corresponding l1 token");
         if (to == address(0)) {
             gateway.withdrawERC721(address(token), 0, 0);
         } else {
@@ -111,7 +111,7 @@ contract L2ERC721GatewayTest is DSTestPlus {
     /// @dev failed to batch withdraw erc721
     function testBatchWithdrawERC721WithGatewayFailed(address to) public {
         // token not support
-        hevm.expectRevert("token not supported");
+        hevm.expectRevert("no corresponding l1 token");
         if (to == address(0)) {
             gateway.batchWithdrawERC721(address(token), new uint256[](1), 0);
         } else {
@@ -224,6 +224,7 @@ contract L2ERC721GatewayTest is DSTestPlus {
         hevm.assume(to.code.length == 0);
 
         tokenId = bound(tokenId, NOT_OWNED_TOKEN_ID + 1, type(uint256).max);
+        gateway.updateTokenMapping(address(token), address(token));
 
         // finalize deposit
         messenger.setXDomainMessageSender(address(counterpart));

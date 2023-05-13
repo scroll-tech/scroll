@@ -98,7 +98,7 @@ contract L1ERC721GatewayTest is L1GatewayTestBase {
         hevm.stopPrank();
 
         // l2 token is zero, should revert
-        hevm.expectRevert("map to zero address");
+        hevm.expectRevert("token address cannot be 0");
         gateway.updateTokenMapping(token1, address(0));
     }
 
@@ -559,7 +559,7 @@ contract L1ERC721GatewayTest is L1GatewayTestBase {
         gasOracle.setL2BaseFee(feePerGas);
         uint256 feeToPay = feePerGas * gasLimit;
 
-        hevm.expectRevert("token not supported");
+        hevm.expectRevert("no corresponding l2 token");
         gateway.depositERC721(address(l1Token), tokenId, gasLimit);
 
         bytes memory message = abi.encodeWithSelector(
@@ -622,7 +622,7 @@ contract L1ERC721GatewayTest is L1GatewayTestBase {
         gasOracle.setL2BaseFee(feePerGas);
         uint256 feeToPay = feePerGas * gasLimit;
 
-        hevm.expectRevert("token not supported");
+        hevm.expectRevert("no corresponding l2 token");
         gateway.depositERC721(address(l1Token), tokenId, gasLimit);
 
         bytes memory message = abi.encodeWithSelector(
@@ -692,7 +692,7 @@ contract L1ERC721GatewayTest is L1GatewayTestBase {
         hevm.expectRevert("no token to deposit");
         gateway.batchDepositERC721(address(l1Token), new uint256[](0), gasLimit);
 
-        hevm.expectRevert("token not supported");
+        hevm.expectRevert("no corresponding l2 token");
         gateway.batchDepositERC721(address(l1Token), _tokenIds, gasLimit);
 
         bytes memory message = abi.encodeWithSelector(
@@ -767,7 +767,7 @@ contract L1ERC721GatewayTest is L1GatewayTestBase {
         hevm.expectRevert("no token to deposit");
         gateway.batchDepositERC721(address(l1Token), recipient, new uint256[](0), gasLimit);
 
-        hevm.expectRevert("token not supported");
+        hevm.expectRevert("no corresponding l2 token");
         gateway.batchDepositERC721(address(l1Token), recipient, _tokenIds, gasLimit);
 
         bytes memory message = abi.encodeWithSelector(

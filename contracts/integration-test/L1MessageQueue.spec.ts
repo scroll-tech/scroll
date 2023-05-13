@@ -16,7 +16,7 @@ describe("L1MessageQueue", async () => {
     queue = await L1MessageQueue.deploy();
     await queue.deployed();
 
-    await queue.initialize(constants.AddressZero, constants.AddressZero);
+    await queue.initialize(constants.AddressZero, constants.AddressZero, 10000000);
   });
 
   it("should succeed", async () => {

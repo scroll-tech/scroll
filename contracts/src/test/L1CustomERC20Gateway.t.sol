@@ -83,7 +83,7 @@ contract L1CustomERC20GatewayTest is L1GatewayTestBase {
         hevm.stopPrank();
 
         // l2 token is zero, should revert
-        hevm.expectRevert("map to zero address");
+        hevm.expectRevert("token address cannot be 0");
         gateway.updateTokenMapping(token1, address(0));
     }
 
