@@ -27,3 +27,5 @@ block_base_fee_per_gas = 0                                    # the base fee (in
 block_coinbase = '0x0000000000000000000000000000000000000000' # the address of `block.coinbase` in tests
 block_timestamp = 0                                           # the value of `block.timestamp` in tests
 block_difficulty = 0                                          # the value of `block.difficulty` in tests
+
+gas_reports = ["L2GasPriceOracle"]

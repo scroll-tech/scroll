@@ -1,4 +1,4 @@
-package relayer_test
+package relayer
 
 import (
 	"encoding/json"
@@ -40,9 +40,9 @@ func setupEnv(t *testing.T) (err error) {
 
 	base.RunImages(t)
 
-	cfg.L2Config.RelayerConfig.SenderConfig.Endpoint = base.L1GethEndpoint()
-	cfg.L1Config.RelayerConfig.SenderConfig.Endpoint = base.L2GethEndpoint()
-	cfg.DBConfig.DSN = base.DBEndpoint()
+	cfg.L2Config.RelayerConfig.SenderConfig.Endpoint = base.L1gethImg.Endpoint()
+	cfg.L1Config.RelayerConfig.SenderConfig.Endpoint = base.L2gethImg.Endpoint()
+	cfg.DBConfig = base.DBConfig
 
 	// Create l2geth client.
 	l2Cli, err = base.L2Client()
@@ -99,10 +99,19 @@ func TestFunctions(t *testing.T) {
 	}
 	// Run l1 relayer test cases.
 	t.Run("TestCreateNewL1Relayer", testCreateNewL1Relayer)
+	t.Run("TestL1RelayerProcessSaveEvents", testL1RelayerProcessSaveEvents)
+	t.Run("TestL1RelayerMsgConfirm", testL1RelayerMsgConfirm)
+	t.Run("TestL1RelayerGasOracleConfirm", testL1RelayerGasOracleConfirm)
+	t.Run("TestL1RelayerProcessGasPriceOracle", testL1RelayerProcessGasPriceOracle)
+
 	// Run l2 relayer test cases.
 	t.Run("TestCreateNewRelayer", testCreateNewRelayer)
 	t.Run("TestL2RelayerProcessSaveEvents", testL2RelayerProcessSaveEvents)
 	t.Run("TestL2RelayerProcessCommittedBatches", testL2RelayerProcessCommittedBatches)
 	t.Run("TestL2RelayerSkipBatches", testL2RelayerSkipBatches)
-
+	t.Run("TestL2RelayerMsgConfirm", testL2RelayerMsgConfirm)
+	t.Run("TestL2RelayerRollupConfirm", testL2RelayerRollupConfirm)
+	t.Run("TestL2RelayerGasOracleConfirm", testL2RelayerGasOracleConfirm)
+	t.Run("TestLayer2RelayerProcessGasPriceOracle", testLayer2RelayerProcessGasPriceOracle)
+	t.Run("TestLayer2RelayerSendCommitTx", testLayer2RelayerSendCommitTx)
 }

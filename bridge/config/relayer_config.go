@@ -30,7 +30,7 @@ type SenderConfig struct {
 	// The transaction type to use: LegacyTx, AccessListTx, DynamicFeeTx
 	TxType string `json:"tx_type"`
 	// The min balance set for check and set balance for sender's accounts.
-	MinBalance *big.Int `json:"min_balance,omitempty"`
+	MinBalance *big.Int `json:"min_balance"`
 	// The interval (in seconds) to check balance and top up sender's accounts
 	CheckBalanceTime uint64 `json:"check_balance_time"`
 	// The sender's pending count limit.

@@ -8,8 +8,11 @@ import {IL1ERC20Gateway, L1CustomERC20Gateway} from "../L1/gateways/L1CustomERC2
 import {IL2ERC20Gateway, L2CustomERC20Gateway} from "../L2/gateways/L2CustomERC20Gateway.sol";
 import {L2GatewayRouter} from "../L2/gateways/L2GatewayRouter.sol";
 
+import {AddressAliasHelper} from "../libraries/common/AddressAliasHelper.sol";
+
 import {L2GatewayTestBase} from "./L2GatewayTestBase.t.sol";
 import {MockScrollMessenger} from "./mocks/MockScrollMessenger.sol";
+import {MockGatewayRecipient} from "./mocks/MockGatewayRecipient.sol";
 
 contract L2CustomERC20GatewayTest is L2GatewayTestBase {
     // from L1CustomERC20Gateway
@@ -80,7 +83,7 @@ contract L2CustomERC20GatewayTest is L2GatewayTestBase {
         hevm.stopPrank();
 
         // l1 token is zero, should revert
-        hevm.expectRevert("map to zero address");
+        hevm.expectRevert("token address cannot be 0");
         gateway.updateTokenMapping(token2, address(0));
     }
 
@@ -223,7 +226,9 @@ contract L2CustomERC20GatewayTest is L2GatewayTestBase {
         uint256 gatewayBalance = l2Token.balanceOf(address(gateway));
         uint256 recipientBalance = l2Token.balanceOf(recipient);
         assertBoolEq(false, l2Messenger.isL1MessageExecuted(keccak256(xDomainCalldata)));
+        hevm.startPrank(AddressAliasHelper.applyL1ToL2Alias(address(l1Messenger)));
         l2Messenger.relayMessage(address(uint160(address(counterpartGateway)) + 1), address(gateway), 0, 0, message);
+        hevm.stopPrank();
         assertEq(gatewayBalance, l2Token.balanceOf(address(gateway)));
         assertEq(recipientBalance, l2Token.balanceOf(recipient));
         assertBoolEq(false, l2Messenger.isL1MessageExecuted(keccak256(xDomainCalldata)));
@@ -231,13 +236,10 @@ contract L2CustomERC20GatewayTest is L2GatewayTestBase {
 
     function testFinalizeDepositERC20(
         address sender,
-        address recipient,
         uint256 amount,
         bytes memory dataToCall
     ) public {
-        // blacklist some addresses
-        hevm.assume(recipient != address(0));
-        hevm.assume(recipient != address(gateway));
+        MockGatewayRecipient recipient = new MockGatewayRecipient();
 
         gateway.updateTokenMapping(address(l2Token), address(l1Token));
 
@@ -249,7 +251,7 @@ contract L2CustomERC20GatewayTest is L2GatewayTestBase {
             address(l1Token),
             address(l2Token),
             sender,
-            recipient,
+            address(recipient),
             amount,
             dataToCall
         );
@@ -265,7 +267,14 @@ contract L2CustomERC20GatewayTest is L2GatewayTestBase {
         // emit FinalizeDepositERC20 from L2CustomERC20Gateway
         {
             hevm.expectEmit(true, true, true, true);
-            emit FinalizeDepositERC20(address(l1Token), address(l2Token), sender, recipient, amount, dataToCall);
+            emit FinalizeDepositERC20(
+                address(l1Token),
+                address(l2Token),
+                sender,
+                address(recipient),
+                amount,
+                dataToCall
+            );
         }
 
         // emit RelayedMessage from L2ScrollMessenger
@@ -275,11 +284,13 @@ contract L2CustomERC20GatewayTest is L2GatewayTestBase {
         }
 
         uint256 gatewayBalance = l2Token.balanceOf(address(gateway));
-        uint256 recipientBalance = l2Token.balanceOf(recipient);
+        uint256 recipientBalance = l2Token.balanceOf(address(recipient));
         assertBoolEq(false, l2Messenger.isL1MessageExecuted(keccak256(xDomainCalldata)));
+        hevm.startPrank(AddressAliasHelper.applyL1ToL2Alias(address(l1Messenger)));
         l2Messenger.relayMessage(address(counterpartGateway), address(gateway), 0, 0, message);
+        hevm.stopPrank();
         assertEq(gatewayBalance, l2Token.balanceOf(address(gateway)));
-        assertEq(recipientBalance + amount, l2Token.balanceOf(recipient));
+        assertEq(recipientBalance + amount, l2Token.balanceOf(address(recipient)));
         assertBoolEq(true, l2Messenger.isL1MessageExecuted(keccak256(xDomainCalldata)));
     }
 

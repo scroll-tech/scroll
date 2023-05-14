@@ -67,12 +67,14 @@ contract L2ETHGateway is Initializable, ScrollGatewayBase, IL2ETHGateway {
         address _to,
         uint256 _amount,
         bytes calldata _data
-    ) external payable override onlyCallByCounterpart {
+    ) external payable override onlyCallByCounterpart nonReentrant {
+        require(msg.value == _amount, "msg.value mismatch");
+
         // solhint-disable-next-line avoid-low-level-calls
         (bool _success, ) = _to.call{value: _amount}("");
         require(_success, "ETH transfer failed");
 
-        // @todo farward _data to `_to` in near future.
+        _doCallback(_to, _data);
 
         emit FinalizeDepositETH(_from, _to, _amount, _data);
     }

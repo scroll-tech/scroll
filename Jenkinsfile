@@ -24,6 +24,7 @@ pipeline {
                     steps {
                         sh 'make dev_docker'
                         sh 'make -C bridge mock_abi'
+                        sh 'make -C common/bytecode all'
                     }
                 }
                 stage('Check Bridge Compilation') {
@@ -58,12 +59,12 @@ pipeline {
                 }
                 stage('Race test bridge package') {
                     steps {
-                        sh 'go test -v -race -coverprofile=coverage.bridge.txt -covermode=atomic scroll-tech/bridge/...'
+                        sh "cd ./bridge && ../build/run_tests.sh bridge"
                     }
                 }
                 stage('Race test coordinator package') {
                     steps {
-                        sh 'go test -v -race -coverprofile=coverage.coordinator.txt -covermode=atomic scroll-tech/coordinator/...'
+                        sh 'cd ./coordinator && go test -exec "env LD_LIBRARY_PATH=${PWD}/verifier/lib" -v -race -gcflags="-l" -ldflags="-s=false" -coverpkg="scroll-tech/coordinator" -coverprofile=../coverage.coordinator.txt -covermode=atomic ./...'
                     }
                 }
                 stage('Race test database package') {

@@ -82,7 +82,7 @@ contract L1WETHGateway is Initializable, ScrollGatewayBase, L1ERC20Gateway {
         address _to,
         uint256 _amount,
         bytes calldata _data
-    ) external payable override onlyCallByCounterpart {
+    ) external payable override onlyCallByCounterpart nonReentrant {
         require(_l1Token == WETH, "l1 token not WETH");
         require(_l2Token == l2WETH, "l2 token not WETH");
         require(_amount == msg.value, "msg.value mismatch");
@@ -90,7 +90,7 @@ contract L1WETHGateway is Initializable, ScrollGatewayBase, L1ERC20Gateway {
         IWETH(_l1Token).deposit{value: _amount}();
         IERC20(_l1Token).safeTransfer(_to, _amount);
 
-        // @todo forward `_data` to `_to`.
+        _doCallback(_to, _data);
 
         emit FinalizeWithdrawERC20(_l1Token, _l2Token, _from, _to, _amount, _data);
     }

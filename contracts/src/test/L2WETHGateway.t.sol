@@ -8,8 +8,11 @@ import {IL1ERC20Gateway, L1WETHGateway} from "../L1/gateways/L1WETHGateway.sol";
 import {L2GatewayRouter} from "../L2/gateways/L2GatewayRouter.sol";
 import {IL2ERC20Gateway, L2WETHGateway} from "../L2/gateways/L2WETHGateway.sol";
 
+import {AddressAliasHelper} from "../libraries/common/AddressAliasHelper.sol";
+
 import {L2GatewayTestBase} from "./L2GatewayTestBase.t.sol";
 import {MockScrollMessenger} from "./mocks/MockScrollMessenger.sol";
+import {MockGatewayRecipient} from "./mocks/MockGatewayRecipient.sol";
 
 contract L2WETHGatewayTest is L2GatewayTestBase {
     // from L2WETHGateway
@@ -257,6 +260,7 @@ contract L2WETHGatewayTest is L2GatewayTestBase {
         uint256 messengerBalance = address(l2Messenger).balance;
         uint256 recipientBalance = l2weth.balanceOf(recipient);
         assertBoolEq(false, l2Messenger.isL1MessageExecuted(keccak256(xDomainCalldata)));
+        hevm.startPrank(AddressAliasHelper.applyL1ToL2Alias(address(l1Messenger)));
         l2Messenger.relayMessage(
             address(uint160(address(counterpartGateway)) + 1),
             address(gateway),
@@ -264,6 +268,7 @@ contract L2WETHGatewayTest is L2GatewayTestBase {
             0,
             message
         );
+        hevm.stopPrank();
         assertEq(messengerBalance, address(l2Messenger).balance);
         assertEq(recipientBalance, l2weth.balanceOf(recipient));
         assertBoolEq(false, l2Messenger.isL1MessageExecuted(keccak256(xDomainCalldata)));
@@ -275,8 +280,7 @@ contract L2WETHGatewayTest is L2GatewayTestBase {
         uint256 amount,
         bytes memory dataToCall
     ) public {
-        // blacklist some addresses
-        hevm.assume(recipient != address(0));
+        MockGatewayRecipient recipient = new MockGatewayRecipient();
 
         amount = bound(amount, 1, l2weth.balanceOf(address(this)));
 
@@ -289,7 +293,7 @@ contract L2WETHGatewayTest is L2GatewayTestBase {
             address(l1weth),
             address(l2weth),
             sender,
-            recipient,
+            address(recipient),
             amount,
             dataToCall
         );
@@ -305,7 +309,7 @@ contract L2WETHGatewayTest is L2GatewayTestBase {
         // emit FinalizeDepositERC20 from L2WETHGateway
         {
             hevm.expectEmit(true, true, true, true);
-            emit FinalizeDepositERC20(address(l1weth), address(l2weth), sender, recipient, amount, dataToCall);
+            emit FinalizeDepositERC20(address(l1weth), address(l2weth), sender, address(recipient), amount, dataToCall);
         }
 
         // emit RelayedMessage from L2ScrollMessenger
@@ -315,11 +319,13 @@ contract L2WETHGatewayTest is L2GatewayTestBase {
         }
 
         uint256 messengerBalance = address(l2Messenger).balance;
-        uint256 recipientBalance = l2weth.balanceOf(recipient);
+        uint256 recipientBalance = l2weth.balanceOf(address(recipient));
         assertBoolEq(false, l2Messenger.isL1MessageExecuted(keccak256(xDomainCalldata)));
+        hevm.startPrank(AddressAliasHelper.applyL1ToL2Alias(address(l1Messenger)));
         l2Messenger.relayMessage(address(counterpartGateway), address(gateway), amount, 0, message);
+        hevm.stopPrank();
         assertEq(messengerBalance - amount, address(l2Messenger).balance);
-        assertEq(recipientBalance + amount, l2weth.balanceOf(recipient));
+        assertEq(recipientBalance + amount, l2weth.balanceOf(address(recipient)));
         assertBoolEq(true, l2Messenger.isL1MessageExecuted(keccak256(xDomainCalldata)));
     }
 

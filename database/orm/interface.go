@@ -5,6 +5,7 @@ import (
 	"database/sql"
 
 	"scroll-tech/common/types"
+	"scroll-tech/common/types/message"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/scroll-tech/go-ethereum/common"
@@ -45,11 +46,21 @@ type SessionInfoOrm interface {
 	SetSessionInfo(rollersInfo *types.SessionInfo) error
 }
 
+// AggTaskOrm is aggregator task
+type AggTaskOrm interface {
+	GetAssignedAggTasks() ([]*types.AggTask, error)
+	GetUnassignedAggTasks() ([]*types.AggTask, error)
+	GetSubProofsByAggTaskID(id string) ([][]byte, error)
+	InsertAggTask(id string, startBatchIndex uint64, startBatchHash string, endBatchIndex uint64, endBatchHash string) error
+	UpdateAggTaskStatus(aggTaskID string, status types.ProvingStatus) error
+	UpdateProofForAggTask(aggTaskID string, proof *message.AggProof) error
+}
+
 // BlockBatchOrm block_batch operation interface
 type BlockBatchOrm interface {
 	GetBlockBatches(fields map[string]interface{}, args ...string) ([]*types.BlockBatch, error)
 	GetProvingStatusByHash(hash string) (types.ProvingStatus, error)
-	GetVerifiedProofAndInstanceByHash(hash string) ([]byte, []byte, error)
+	GetVerifiedProofAndInstanceCommitmentsByHash(hash string) ([]byte, []byte, error)
 	UpdateProofByHash(ctx context.Context, hash string, proof, instanceCommitments []byte, proofTimeSec uint64) error
 	UpdateProvingStatus(hash string, status types.ProvingStatus) error
 	ResetProvingStatusFor(before types.ProvingStatus) error

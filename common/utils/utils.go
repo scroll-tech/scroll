@@ -3,16 +3,19 @@ package utils
 import (
 	"context"
 	"time"
+
+	"github.com/modern-go/reflect2"
 )
 
 // TryTimes try run several times until the function return true.
-func TryTimes(times int, run func() bool) {
+func TryTimes(times int, run func() bool) bool {
 	for i := 0; i < times; i++ {
 		if run() {
-			return
+			return true
 		}
 		time.Sleep(time.Millisecond * 500)
 	}
+	return false
 }
 
 // LoopWithContext Run the f func with context periodically.
@@ -41,4 +44,9 @@ func Loop(ctx context.Context, period time.Duration, f func()) {
 			f()
 		}
 	}
+}
+
+// IsNil Check if the interface is empty.
+func IsNil(i interface{}) bool {
+	return i == nil || reflect2.IsNil(i)
 }

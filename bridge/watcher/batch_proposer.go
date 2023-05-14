@@ -23,11 +23,11 @@ import (
 var (
 	bridgeL2BatchesGasOverThresholdTotalCounter = geth_metrics.NewRegisteredCounter("bridge/l2/batches/gas/over/threshold/total", metrics.ScrollRegistry)
 	bridgeL2BatchesTxsOverThresholdTotalCounter = geth_metrics.NewRegisteredCounter("bridge/l2/batches/txs/over/threshold/total", metrics.ScrollRegistry)
-	bridgeL2BatchesCommitTotalCounter           = geth_metrics.NewRegisteredCounter("bridge/l2/batches/commit/total", metrics.ScrollRegistry)
+	bridgeL2BatchesBlocksCreatedTotalCounter    = geth_metrics.NewRegisteredCounter("bridge/l2/batches/blocks/created/total", metrics.ScrollRegistry)
+	bridgeL2BatchesCommitsSentTotalCounter      = geth_metrics.NewRegisteredCounter("bridge/l2/batches/commits/sent/total", metrics.ScrollRegistry)
 
-	bridgeL2BatchesCreatedRateMeter    = geth_metrics.NewRegisteredMeter("bridge/l2/batches/blocks/created/rate", metrics.ScrollRegistry)
-	bridgeL2BatchesTxsCreatedRateMeter = geth_metrics.NewRegisteredMeter("bridge/l2/batches/txs/created/rate", metrics.ScrollRegistry)
-	bridgeL2BatchesGasCreatedRateMeter = geth_metrics.NewRegisteredMeter("bridge/l2/batches/gas/created/rate", metrics.ScrollRegistry)
+	bridgeL2BatchesTxsCreatedPerBatchGauge = geth_metrics.NewRegisteredGauge("bridge/l2/batches/txs/created/per/batch", metrics.ScrollRegistry)
+	bridgeL2BatchesGasCreatedPerBatchGauge = geth_metrics.NewRegisteredGauge("bridge/l2/batches/gas/created/per/batch", metrics.ScrollRegistry)
 )
 
 // AddBatchInfoToDB inserts the batch information to the BlockBatch table and updates the batch_hash
@@ -257,7 +257,7 @@ func (p *BatchProposer) TryCommitBatches() {
 		log.Error("SendCommitTx failed", "error", err)
 	} else {
 		// pop the processed batches from the buffer
-		bridgeL2BatchesCommitTotalCounter.Inc(1)
+		bridgeL2BatchesCommitsSentTotalCounter.Inc(1)
 		p.batchDataBuffer = p.batchDataBuffer[index:]
 	}
 }
@@ -267,15 +267,49 @@ func (p *BatchProposer) proposeBatch(blocks []*types.BlockInfo) bool {
 		return false
 	}
 
+	approximatePayloadSize := func(hash string) (uint64, error) {
+		traces, err := p.orm.GetL2WrappedBlocks(map[string]interface{}{"hash": hash})
+		if err != nil {
+			return 0, err
+		}
+		if len(traces) != 1 {
+			return 0, fmt.Errorf("unexpected traces length, expected = 1, actual = %d", len(traces))
+		}
+		size := 0
+		for _, tx := range traces[0].Transactions {
+			size += len(tx.Data)
+		}
+		return uint64(size), nil
+	}
+
+	firstSize, err := approximatePayloadSize(blocks[0].Hash)
+	if err != nil {
+		log.Error("failed to create batch", "number", blocks[0].Number, "err", err)
+		return false
+	}
+
+	if firstSize > p.commitCalldataSizeLimit {
+		log.Warn("oversized payload even for only 1 block", "height", blocks[0].Number, "size", firstSize)
+		// note: we should probably fail here once we can ensure this will not happen
+		if err := p.createBatchForBlocks(blocks[:1]); err != nil {
+			log.Error("failed to create batch", "number", blocks[0].Number, "err", err)
+			return false
+		}
+		bridgeL2BatchesTxsCreatedPerBatchGauge.Update(int64(blocks[0].TxNum))
+		bridgeL2BatchesGasCreatedPerBatchGauge.Update(int64(blocks[0].GasUsed))
+		bridgeL2BatchesBlocksCreatedTotalCounter.Inc(1)
+		return true
+	}
+
 	if blocks[0].GasUsed > p.batchGasThreshold {
 		bridgeL2BatchesGasOverThresholdTotalCounter.Inc(1)
 		log.Warn("gas overflow even for only 1 block", "height", blocks[0].Number, "gas", blocks[0].GasUsed)
 		if err := p.createBatchForBlocks(blocks[:1]); err != nil {
 			log.Error("failed to create batch", "number", blocks[0].Number, "err", err)
 		} else {
-			bridgeL2BatchesTxsCreatedRateMeter.Mark(int64(blocks[0].TxNum))
-			bridgeL2BatchesGasCreatedRateMeter.Mark(int64(blocks[0].GasUsed))
-			bridgeL2BatchesCreatedRateMeter.Mark(1)
+			bridgeL2BatchesTxsCreatedPerBatchGauge.Update(int64(blocks[0].TxNum))
+			bridgeL2BatchesGasCreatedPerBatchGauge.Update(int64(blocks[0].GasUsed))
+			bridgeL2BatchesBlocksCreatedTotalCounter.Inc(1)
 		}
 		return true
 	}
@@ -286,24 +320,31 @@ func (p *BatchProposer) proposeBatch(blocks []*types.BlockInfo) bool {
 		if err := p.createBatchForBlocks(blocks[:1]); err != nil {
 			log.Error("failed to create batch", "number", blocks[0].Number, "err", err)
 		} else {
-			bridgeL2BatchesTxsCreatedRateMeter.Mark(int64(blocks[0].TxNum))
-			bridgeL2BatchesGasCreatedRateMeter.Mark(int64(blocks[0].GasUsed))
-			bridgeL2BatchesCreatedRateMeter.Mark(1)
+			bridgeL2BatchesTxsCreatedPerBatchGauge.Update(int64(blocks[0].TxNum))
+			bridgeL2BatchesGasCreatedPerBatchGauge.Update(int64(blocks[0].GasUsed))
+			bridgeL2BatchesBlocksCreatedTotalCounter.Inc(1)
 		}
 		return true
 	}
 
-	var gasUsed, txNum uint64
+	var gasUsed, txNum, payloadSize uint64
 	reachThreshold := false
 	// add blocks into batch until reach batchGasThreshold
 	for i, block := range blocks {
-		if (gasUsed+block.GasUsed > p.batchGasThreshold) || (txNum+block.TxNum > p.batchTxNumThreshold) {
+		size, err := approximatePayloadSize(block.Hash)
+		if err != nil {
+			log.Error("failed to create batch", "number", block.Number, "err", err)
+			return false
+		}
+
+		if (gasUsed+block.GasUsed > p.batchGasThreshold) || (txNum+block.TxNum > p.batchTxNumThreshold) || (payloadSize+size > p.commitCalldataSizeLimit) {
 			blocks = blocks[:i]
 			reachThreshold = true
 			break
 		}
 		gasUsed += block.GasUsed
 		txNum += block.TxNum
+		payloadSize += size
 	}
 
 	// if too few gas gathered, but we don't want to halt, we then check the first block in the batch:
@@ -316,9 +357,9 @@ func (p *BatchProposer) proposeBatch(blocks []*types.BlockInfo) bool {
 	if err := p.createBatchForBlocks(blocks); err != nil {
 		log.Error("failed to create batch", "from", blocks[0].Number, "to", blocks[len(blocks)-1].Number, "err", err)
 	} else {
-		bridgeL2BatchesTxsCreatedRateMeter.Mark(int64(txNum))
-		bridgeL2BatchesGasCreatedRateMeter.Mark(int64(gasUsed))
-		bridgeL2BatchesCreatedRateMeter.Mark(int64(len(blocks)))
+		bridgeL2BatchesTxsCreatedPerBatchGauge.Update(int64(txNum))
+		bridgeL2BatchesGasCreatedPerBatchGauge.Update(int64(gasUsed))
+		bridgeL2BatchesBlocksCreatedTotalCounter.Inc(int64(len(blocks)))
 	}
 
 	return true

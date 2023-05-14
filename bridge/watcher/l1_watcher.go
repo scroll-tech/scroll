@@ -16,6 +16,7 @@ import (
 
 	"scroll-tech/common/metrics"
 	"scroll-tech/common/types"
+
 	"scroll-tech/database"
 
 	bridge_abi "scroll-tech/bridge/abi"
@@ -100,6 +101,24 @@ func NewL1WatcherClient(ctx context.Context, client *ethclient.Client, startHeig
 	}
 }
 
+// ProcessedBlockHeight get processedBlockHeight
+// Currently only use for unit test
+func (w *L1WatcherClient) ProcessedBlockHeight() uint64 {
+	return w.processedBlockHeight
+}
+
+// Confirmations get confirmations
+// Currently only use for unit test
+func (w *L1WatcherClient) Confirmations() rpc.BlockNumber {
+	return w.confirmations
+}
+
+// SetConfirmations set the confirmations for L1WatcherClient
+// Currently only use for unit test
+func (w *L1WatcherClient) SetConfirmations(confirmations rpc.BlockNumber) {
+	w.confirmations = confirmations
+}
+
 // FetchBlockHeader pull latest L1 blocks and save in DB
 func (w *L1WatcherClient) FetchBlockHeader(blockHeight uint64) error {
 	fromBlock := int64(w.processedBlockHeight) + 1
@@ -121,10 +140,14 @@ func (w *L1WatcherClient) FetchBlockHeader(blockHeight uint64) error {
 			log.Warn("Failed to get block", "height", height, "err", err)
 			break
 		}
+		var baseFee uint64
+		if block.BaseFee != nil {
+			baseFee = block.BaseFee.Uint64()
+		}
 		blocks = append(blocks, &types.L1BlockInfo{
 			Number:  uint64(height),
 			Hash:    block.Hash().String(),
-			BaseFee: block.BaseFee.Uint64(),
+			BaseFee: baseFee,
 		})
 	}
 
