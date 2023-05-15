@@ -55,11 +55,6 @@ Once the Docker container is running, execute the tests using the following comm
 ```bash
 go test -v -race -covermode=atomic scroll-tech/bridge/...
 go test -tags="mock_verifier" -v -race -covermode=atomic scroll-tech/coordinator/...
-```
-
-## Testing Database & Common
-
-```bash
 go test -v -race -covermode=atomic scroll-tech/database/...
 go test -v -race -covermode=atomic scroll-tech/common/...
 ```
@@ -68,4 +63,4 @@ go test -v -race -covermode=atomic scroll-tech/common/...
 
 You can find the unit tests in [`<REPO_DIR>/contracts/src/test/`](../contracts/src/test/), and integration tests in [`<REPO_DIR>/contracts/integration-test/`](../contracts/integration-test/).
 
-For a more comprehensive doc for contracts, see [`docs/`](./docs/contracts).
+For a more comprehensive doc for contracts, see [`docs/contracts`](./docs/contracts).
