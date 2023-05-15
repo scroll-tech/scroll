@@ -9,5 +9,6 @@ bbolt_db
 prover/lib
 
 params/
+seed
 
 keystore
