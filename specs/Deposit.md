@@ -7,8 +7,8 @@ We provide a few standard gateways for different types of tokens, listed in the 
 |--------------------------|--------------------------------------------------------------------|
 | `L1GatewayRouter`        | The gateway router supports the deposit of Ether and ERC20 tokens. |
 | `L1ETHGateway`           | The gateway to deposit Ether.                                      |
-| `L1StandardERC20Gateway` | The gateway for standard ERC20 token deposits.                     |
-| `L1CustomERC20Gateway`   | The gateway for custom ERC20 token deposits.                       |
+| `L1StandardERC20Gateway` | The gateway for standard ERC-20 and ERC-677 token deposits.        |
+| `L1CustomERC20Gateway`   | The gateway for custom ERC-20 and ERC-677 token deposits.          |
 | `L1WETHGateway`          | The gateway for Wrapped Ether deposits.                            |
 | `L1ERC721Gateway`        | The gateway for ERC-721 token deposits.                            |
 | `L1ERC1155Gateway`       | The gateway for ERC-1155 token deposits.                           |
@@ -31,11 +31,11 @@ function depositETHAndCall(address _to, uint256 _amount, bytes calldata _data, u
 
 This transaction will call into `L1ETHGateway` and then `L1EthGateway` will encode the deposit as a message sent to the `L1ScrollMessenger` contract.
 The deposited Ether will be locked in the `L1ScrollMessenger` contract after relay fee is deducted from the total amount.
-In addition, `depositETHAndCall` can transfer Ether and make aditional call at the same time.
+In addition, `depositETHAndCall` can transfer Ether and make additional call at the same time.
 
 After the deposit transaction is finalized on the L1, the sequencer will then include a corresponding L2 transaction in the L2 block that transfers the same amount of Ether to the specified target address.
 The L2 transaction calls `L2ScrollMessenger.relayMessage`, which is then routed to `L2ETHGateway.finalizeDepositETH` with the deposited Ether amount.
-We allocated a sufficient amount of Ether to `L2ScrollMessenger` contract during the genesis so that `L2ScrollMessenger` can transfer Ether without minting to L2 addresses.
+We allocated a sufficient amount of Ether to `L2ScrollMessenger` contract during the genesis so that `L2ScrollMessenger` can transfer native Ether without minting to L2 addresses.
 
 ## Deposit ERC20 Tokens
 
@@ -49,7 +49,7 @@ function depositERC20(address _token, address _to, uint256 _amount, uint256 _gas
 function depositERC20AndCall(address _token, address _to, uint256 _amount, bytes memory _data, uint256 _gasLimit) public payable;
 ```
 
-We use the similar design as [Arbitrum protocol](https://developer.offchainlabs.com/docs/bridging_assets#bridging-erc20-tokens). Several gateway contracts are used to bridge different kinds of ERC20 tokens, such as standard ERC20 tokens, custom ERC20 tokens, and Wrapped Ether.
+We use a similar design as [Arbitrum protocol](https://developer.offchainlabs.com/docs/bridging_assets#bridging-erc20-tokens). Several gateway contracts are used to bridge different kinds of ERC20 tokens, such as standard ERC20 tokens, custom ERC20 tokens, and Wrapped Ether.
 `L1GatewayRouter` records the mapping of ERC20 tokens to the corresponding ERC20 gateway on the L1.
 `L1GatewayRouter` uses `StandardERC20Gateway` as the ERC20 gateway for a new ERC20 token by default unless otherwise specified.
 
