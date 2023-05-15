@@ -1,4 +1,5 @@
 use crate::utils::{c_char_to_str, c_char_to_vec};
+use halo2_proofs::SerdeFormat;
 use libc::c_char;
 use std::fs::File;
 use std::io::Read;
@@ -21,8 +22,8 @@ pub unsafe extern "C" fn init_verifier(params_path: *const c_char, agg_vk_path: 
     let mut agg_vk = vec![];
     f.read_to_end(&mut agg_vk).unwrap();
 
-    let params = load_params(params_path, *DEGREE).unwrap();
-    let agg_params = load_params(params_path, *AGG_DEGREE).unwrap();
+    let params = load_params(params_path, *DEGREE, SerdeFormat::RawBytesUnchecked).unwrap();
+    let agg_params = load_params(params_path, *AGG_DEGREE, SerdeFormat::RawBytesUnchecked).unwrap();
 
     let v = Box::new(Verifier::from_params(params, agg_params, Some(agg_vk)));
     VERIFIER = Some(Box::leak(v))
