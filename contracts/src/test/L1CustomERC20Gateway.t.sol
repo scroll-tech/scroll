@@ -83,7 +83,7 @@ contract L1CustomERC20GatewayTest is L1GatewayTestBase {
         hevm.stopPrank();
 
         // l2 token is zero, should revert
-        hevm.expectRevert("map to zero address");
+        hevm.expectRevert("token address cannot be 0");
         gateway.updateTokenMapping(token1, address(0));
     }
 
@@ -290,7 +290,14 @@ contract L1CustomERC20GatewayTest is L1GatewayTestBase {
         // emit FinalizeWithdrawERC20 from L1StandardERC20Gateway
         {
             hevm.expectEmit(true, true, true, true);
-            emit FinalizeWithdrawERC20(address(l1Token), address(l2Token), sender, address(recipient), amount, dataToCall);
+            emit FinalizeWithdrawERC20(
+                address(l1Token),
+                address(l2Token),
+                sender,
+                address(recipient),
+                amount,
+                dataToCall
+            );
         }
 
         // emit RelayedMessage from L1ScrollMessenger

@@ -20,14 +20,14 @@ import (
 
 func testImportL1GasPrice(t *testing.T) {
 	// Create db handler and reset db.
-	db, err := database.NewOrmFactory(cfg.DBConfig)
+	db, err := database.NewOrmFactory(base.DBConfig)
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(db.GetDB().DB))
 	defer db.Close()
 
 	prepareContracts(t)
 
-	l1Cfg := cfg.L1Config
+	l1Cfg := bridgeApp.Config.L1Config
 
 	// Create L1Relayer
 	l1Relayer, err := relayer.NewLayer1Relayer(context.Background(), db, l1Cfg.RelayerConfig)
@@ -70,14 +70,14 @@ func testImportL1GasPrice(t *testing.T) {
 
 func testImportL2GasPrice(t *testing.T) {
 	// Create db handler and reset db.
-	db, err := database.NewOrmFactory(cfg.DBConfig)
+	db, err := database.NewOrmFactory(base.DBConfig)
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(db.GetDB().DB))
 	defer db.Close()
 
 	prepareContracts(t)
 
-	l2Cfg := cfg.L2Config
+	l2Cfg := bridgeApp.Config.L2Config
 
 	// Create L2Relayer
 	l2Relayer, err := relayer.NewLayer2Relayer(context.Background(), l2Client, db, l2Cfg.RelayerConfig)
@@ -104,7 +104,7 @@ func testImportL2GasPrice(t *testing.T) {
 	}
 	batchData := types.NewBatchData(parentBatch, []*types.WrappedBlock{
 		traces[0],
-	}, cfg.L2Config.BatchProposerConfig.PublicInputConfig)
+	}, l2Cfg.BatchProposerConfig.PublicInputConfig)
 
 	// add fake batch
 	dbTx, err := db.Beginx()

@@ -22,14 +22,14 @@ import (
 
 func testRelayL2MessageSucceed(t *testing.T) {
 	// Create db handler and reset db.
-	db, err := database.NewOrmFactory(cfg.DBConfig)
+	db, err := database.NewOrmFactory(base.DBConfig)
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(db.GetDB().DB))
 	defer db.Close()
 
 	prepareContracts(t)
 
-	l2Cfg := cfg.L2Config
+	l2Cfg := bridgeApp.Config.L2Config
 
 	// Create L2Watcher
 	confirmations := rpc.LatestBlockNumber
@@ -40,7 +40,7 @@ func testRelayL2MessageSucceed(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Create L1Watcher
-	l1Cfg := cfg.L1Config
+	l1Cfg := bridgeApp.Config.L1Config
 	l1Watcher := watcher.NewL1WatcherClient(context.Background(), l1Client, 0, confirmations, l1Cfg.L1MessengerAddress, l1Cfg.L1MessageQueueAddress, l1Cfg.ScrollChainContractAddress, db)
 
 	// send message through l2 messenger contract
@@ -85,7 +85,7 @@ func testRelayL2MessageSucceed(t *testing.T) {
 	}
 	batchData := types.NewBatchData(parentBatch, []*types.WrappedBlock{
 		traces[0],
-	}, cfg.L2Config.BatchProposerConfig.PublicInputConfig)
+	}, l2Cfg.BatchProposerConfig.PublicInputConfig)
 	batchHash := batchData.Hash().String()
 
 	// add fake batch
