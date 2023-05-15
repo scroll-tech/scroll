@@ -21,7 +21,7 @@ func NewL2CrossMsgOrm(db *sqlx.DB) L2CrossMsgOrm {
 
 func (l *l2CrossMsgOrm) GetL2CrossMsgByHash(l2Hash common.Hash) (*CrossMsg, error) {
 	result := &CrossMsg{}
-	row := l.db.QueryRowx(`SELECT * FROM l2_cross_message WHERE layer2_hash = $1 AND is_deleted = 0;`, l2Hash.String())
+	row := l.db.QueryRowx(`SELECT * FROM l2_cross_message WHERE layer2_hash = $1 AND NOT is_deleted;`, l2Hash.String())
 	if err := row.StructScan(result); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil
@@ -36,7 +36,7 @@ func (l *l2CrossMsgOrm) GetL2CrossMsgByHash(l2Hash common.Hash) (*CrossMsg, erro
 func (l *l2CrossMsgOrm) GetL2CrossMsgByAddress(sender common.Address) ([]*CrossMsg, error) {
 	para := sender.String()
 	var results []*CrossMsg
-	rows, err := l.db.Queryx(`SELECT * FROM cross_message WHERE sender = $1 AND msg_type = $2 AND is_deleted = 0;`, para, Layer2Msg)
+	rows, err := l.db.Queryx(`SELECT * FROM cross_message WHERE sender = $1 AND msg_type = $2 AND NOT is_deleted;`, para, Layer2Msg)
 
 	for rows.Next() {
 		msg := &CrossMsg{}
@@ -55,7 +55,7 @@ func (l *l2CrossMsgOrm) GetL2CrossMsgByAddress(sender common.Address) ([]*CrossM
 }
 
 func (l *l2CrossMsgOrm) DeleteL2CrossMsgFromHeightDBTx(dbTx *sqlx.Tx, height int64) error {
-	_, err := dbTx.Exec(`UPDATE cross_message SET is_deleted = 1 where height > $1 AND msg_type = $2 ;`, height, Layer2Msg)
+	_, err := dbTx.Exec(`UPDATE cross_message SET is_deleted = true where height > $1 AND msg_type = $2 ;`, height, Layer2Msg)
 	if err != nil {
 		log.Error("DeleteL1CrossMsgAfterHeightDBTx: failed to delete", "height", height, "err", err)
 		return err
@@ -95,21 +95,21 @@ func (l *l2CrossMsgOrm) BatchInsertL2CrossMsgDBTx(dbTx *sqlx.Tx, messages []*Cro
 }
 
 func (l *l2CrossMsgOrm) UpdateL2CrossMsgHashDBTx(ctx context.Context, dbTx *sqlx.Tx, l2Hash, msgHash common.Hash) error {
-	if _, err := dbTx.ExecContext(ctx, l.db.Rebind("update public.cross_message set msg_hash = ? where layer2_hash = ? AND is_deleted = 0;"), msgHash.String(), l2Hash.String()); err != nil {
+	if _, err := dbTx.ExecContext(ctx, l.db.Rebind("update public.cross_message set msg_hash = ? where layer2_hash = ? AND NOT is_deleted;"), msgHash.String(), l2Hash.String()); err != nil {
 		return err
 	}
 	return nil
 }
 
 func (l *l2CrossMsgOrm) UpdateL2CrossMsgHash(ctx context.Context, l2Hash, msgHash common.Hash) error {
-	if _, err := l.db.ExecContext(ctx, l.db.Rebind("update public.cross_message set msg_hash = ? where layer2_hash = ? AND is_deleted = 0;"), msgHash.String(), l2Hash.String()); err != nil {
+	if _, err := l.db.ExecContext(ctx, l.db.Rebind("update public.cross_message set msg_hash = ? where layer2_hash = ? AND NOT is_deleted;"), msgHash.String(), l2Hash.String()); err != nil {
 		return err
 	}
 	return nil
 }
 
 func (l *l2CrossMsgOrm) GetLatestL2ProcessedHeight() (int64, error) {
-	row := l.db.QueryRowx(`SELECT MAX(height) FROM cross_message WHERE msg_type = $1 AND is_deleted = 0;`, Layer2Msg)
+	row := l.db.QueryRowx(`SELECT MAX(height) FROM cross_message WHERE msg_type = $1 AND NOT is_deleted;`, Layer2Msg)
 	var result sql.NullInt64
 	if err := row.Scan(&result); err != nil {
 		if err == sql.ErrNoRows || !result.Valid {

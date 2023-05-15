@@ -6,7 +6,7 @@ create table relayed_msg
     height       BIGINT NOT NULL,
     layer1_hash  VARCHAR DEFAULT '',
     layer2_hash  VARCHAR DEFAULT '',
-    is_deleted   SMALLINT NOT NULL DEFAULT 0,
+    is_deleted   BOOLEAN NOT NULL DEFAULT FALSE,
     created_at TIMESTAMP(0) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP(0) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     deleted_at TIMESTAMP(0) DEFAULT NULL

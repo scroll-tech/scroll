@@ -57,7 +57,7 @@ type CrossMsg struct {
 	CreatedTime *time.Time `json:"created_at" db:"created_at"`
 	Asset       int        `json:"asset" db:"asset"`
 	MsgType     int        `json:"msg_type" db:"msg_type"`
-	IsDeleted   int        `json:"is_deleted" db:"is_deleted"`
+	IsDeleted   bool       `json:"is_deleted" db:"is_deleted"`
 	UpdatedTime *time.Time `json:"updated_at" db:"updated_at"`
 	DeletedTime *time.Time `json:"deleted_at" db:"deleted_at"`
 }
