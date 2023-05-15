@@ -1,11 +1,13 @@
 package types
 
 import (
+	"encoding/json"
 	"fmt"
 	"math/big"
+	"os"
 	"testing"
 
-	"gotest.tools/assert"
+	"github.com/stretchr/testify/assert"
 
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/common/hexutil"
@@ -195,4 +197,54 @@ func TestNewGenesisBatch(t *testing.T) {
 		"0x65cf210e30f75cf8fd198df124255f73bc08d6324759e828a784fa938e7ac43d",
 		"wrong genesis batch hash",
 	)
+}
+
+func TestNewBatchData(t *testing.T) {
+	templateBlockTrace, err := os.ReadFile("../testdata/blockTrace_02.json")
+	assert.NoError(t, err)
+
+	wrappedBlock := &WrappedBlock{}
+	assert.NoError(t, json.Unmarshal(templateBlockTrace, wrappedBlock))
+
+	parentBatch := &BlockBatch{
+		Index:     1,
+		Hash:      "0x0000000000000000000000000000000000000000",
+		StateRoot: "0x0000000000000000000000000000000000000000",
+	}
+	batchData1 := NewBatchData(parentBatch, []*WrappedBlock{wrappedBlock}, nil)
+	assert.NotNil(t, batchData1)
+	assert.NotNil(t, batchData1.Batch)
+	assert.Equal(t, "0xac4487c0d8f429dafda3c68cbb8983ac08af83c03c83c365d7df02864f80af37", batchData1.Hash().Hex())
+
+	templateBlockTrace, err = os.ReadFile("../testdata/blockTrace_03.json")
+	assert.NoError(t, err)
+
+	wrappedBlock2 := &WrappedBlock{}
+	assert.NoError(t, json.Unmarshal(templateBlockTrace, wrappedBlock2))
+
+	parentBatch2 := &BlockBatch{
+		Index:     batchData1.Batch.BatchIndex,
+		Hash:      batchData1.Hash().Hex(),
+		StateRoot: batchData1.Batch.NewStateRoot.Hex(),
+	}
+	batchData2 := NewBatchData(parentBatch2, []*WrappedBlock{wrappedBlock2}, nil)
+	assert.NotNil(t, batchData2)
+	assert.NotNil(t, batchData2.Batch)
+	assert.Equal(t, "0x8f1447573740b3e75b979879866b8ad02eecf88e1946275eb8cf14ab95876efc", batchData2.Hash().Hex())
+}
+
+func TestBatchDataTimestamp(t *testing.T) {
+	// Test case 1: when the batch data contains no blocks.
+	assert.Equal(t, uint64(0), (&BatchData{}).Timestamp())
+
+	// Test case 2: when the batch data contains blocks.
+	batchData := &BatchData{
+		Batch: abi.IScrollChainBatch{
+			Blocks: []abi.IScrollChainBlockContext{
+				{Timestamp: 123456789},
+				{Timestamp: 234567891},
+			},
+		},
+	}
+	assert.Equal(t, uint64(123456789), batchData.Timestamp())
 }
