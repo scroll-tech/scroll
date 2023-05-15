@@ -15,7 +15,7 @@ create table cross_message
     token_id     BIGINT DEFAULT 0,
     asset        SMALLINT NOT NULL,
     msg_type     SMALLINT NOT NULL,
-    is_deleted   TINYINT NOT NULL DEFAULT 0,
+    is_deleted   SMALLINT NOT NULL DEFAULT 0,
     created_at   TIMESTAMP(0) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at   TIMESTAMP(0) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     deleted_at   TIMESTAMP(0) DEFAULT NULL
@@ -28,7 +28,7 @@ comment
 on column cross_message.msg_type is 'l1msg, l2msg';
 
 comment 
-on column cross_message.is_deleted is "0 not deleted, 1 deleted";
+on column cross_message.is_deleted is 'NotDeleted, Deleted';
 
 CREATE INDEX valid_l1_msg_index ON cross_message (layer1_hash, is_deleted);
 

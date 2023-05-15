@@ -6,14 +6,14 @@ create table relayed_msg
     height       BIGINT NOT NULL,
     layer1_hash  VARCHAR DEFAULT '',
     layer2_hash  VARCHAR DEFAULT '',
-    is_deleted   TINYINT NOT NULL DEFAULT 0,
+    is_deleted   SMALLINT NOT NULL DEFAULT 0,
     created_at TIMESTAMP(0) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP(0) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     deleted_at TIMESTAMP(0) DEFAULT NULL
 );
 
 comment 
-on column relayed_msg.is_deleted is "0 not deleted, 1 deleted";
+on column relayed_msg.is_deleted is 'NotDeleted, Deleted';
 
 create unique index relayed_msg_hash_uindex
 on relayed_msg (msg_hash);
