@@ -38,7 +38,7 @@ var (
 type Roller struct {
 	cfg      *config.Config
 	client   *client.Client
-	ethCli   *ethclient.Client
+	traceCli *ethclient.Client
 	stack    *store.Stack
 	prover   *prover.Prover
 	taskChan chan *message.TaskMsg
@@ -87,7 +87,7 @@ func NewRoller(cfg *config.Config) (*Roller, error) {
 	return &Roller{
 		cfg:      cfg,
 		client:   rClient,
-		ethCli:   ethCli,
+		traceCli: ethCli,
 		stack:    stackDb,
 		prover:   newProver,
 		sub:      nil,
@@ -307,7 +307,7 @@ func (r *Roller) signAndSubmitProof(msg *message.ProofDetail) {
 func (r *Roller) getSortedTracesByHashes(blockHashes []common.Hash) ([]*types.BlockTrace, error) {
 	var traces []*types.BlockTrace
 	for _, blockHash := range blockHashes {
-		trace, err := r.ethCli.GetBlockTraceByHash(context.Background(), blockHash)
+		trace, err := r.traceCli.GetBlockTraceByHash(context.Background(), blockHash)
 		if err != nil {
 			return nil, err
 		}
