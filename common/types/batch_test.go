@@ -60,6 +60,8 @@ func TestBatchHash(t *testing.T) {
 }
 
 func TestBatchHashWithL1Messages(t *testing.T) {
+	// TODO: store an actual trace with L1 messages in `common/testdata`
+
 	zeroAddress := common.HexToAddress("0x0000000000000000000000000000000000000000")
 
 	hexToBig := func(hex string) *hexutil.Big {
