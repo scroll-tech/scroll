@@ -50,7 +50,7 @@ contract L2ERC1155GatewayTest is DSTestPlus, ERC1155TokenReceiver {
         hevm.stopPrank();
 
         // l2 token is zero, should revert
-        hevm.expectRevert("map to zero address");
+        hevm.expectRevert("token address cannot be 0");
         gateway.updateTokenMapping(token1, address(0));
     }
 
@@ -65,7 +65,7 @@ contract L2ERC1155GatewayTest is DSTestPlus, ERC1155TokenReceiver {
     /// @dev failed to withdraw erc1155
     function testWithdrawERC1155WithGatewayFailed(address to) public {
         // token not support
-        hevm.expectRevert("token not supported");
+        hevm.expectRevert("no corresponding l1 token");
         if (to == address(0)) {
             gateway.withdrawERC1155(address(token), 0, 1, 0);
         } else {
@@ -140,7 +140,7 @@ contract L2ERC1155GatewayTest is DSTestPlus, ERC1155TokenReceiver {
 
         // token not support
         amounts[0] = 1;
-        hevm.expectRevert("token not supported");
+        hevm.expectRevert("no corresponding l1 token");
         if (to == address(0)) {
             gateway.batchWithdrawERC1155(address(token), new uint256[](1), amounts, 0);
         } else {
