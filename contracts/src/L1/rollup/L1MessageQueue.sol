@@ -55,7 +55,12 @@ contract L1MessageQueue is OwnableUpgradeable, IL1MessageQueue {
      * Constructor *
      ***************/
 
-    function initialize(address _messenger, address _enforcedTxGateway, address _gasOracle, uint256 _maxGasLimit) external initializer {
+    function initialize(
+        address _messenger,
+        address _enforcedTxGateway,
+        address _gasOracle,
+        uint256 _maxGasLimit
+    ) external initializer {
         OwnableUpgradeable.__Ownable_init();
 
         messenger = _messenger;
@@ -222,7 +227,11 @@ contract L1MessageQueue is OwnableUpgradeable, IL1MessageQueue {
      *****************************/
 
     /// @inheritdoc IL1MessageQueue
-    function appendCrossDomainMessage(address _target, uint256 _gasLimit, bytes calldata _data) external override {
+    function appendCrossDomainMessage(
+        address _target,
+        uint256 _gasLimit,
+        bytes calldata _data
+    ) external override {
         require(msg.sender == messenger, "Only callable by the L1ScrollMessenger");
 
         // validate gas limit
@@ -312,7 +321,7 @@ contract L1MessageQueue is OwnableUpgradeable, IL1MessageQueue {
         emit QueueTransaction(_sender, _target, _value, _queueIndex, _gasLimit, _data);
     }
 
-    function _validateGasLimit(uint256 _gasLimit, bytes memory _calldata) internal {
+    function _validateGasLimit(uint256 _gasLimit, bytes memory _calldata) internal view {
         require(_gasLimit <= maxGasLimit, "Gas limit must not exceed maxGasLimit");
         // check if the gas limit is above intrinsic gas
         uint256 intrinsicGas = calculateIntrinsicGasFee(_calldata);

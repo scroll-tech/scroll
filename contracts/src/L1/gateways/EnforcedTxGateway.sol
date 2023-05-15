@@ -34,6 +34,10 @@ contract EnforcedTxGateway is OwnableUpgradeable, ReentrancyGuardUpgradeable, Pa
      ***************/
 
     function initialize(address _queue, address _feeVault) external initializer {
+        OwnableUpgradeable.__Ownable_init();
+        ReentrancyGuardUpgradeable.__ReentrancyGuard_init();
+        PausableUpgradeable.__Pausable_init();
+
         messageQueue = _queue;
         feeVault = _feeVault;
     }
@@ -53,10 +57,10 @@ contract EnforcedTxGateway is OwnableUpgradeable, ReentrancyGuardUpgradeable, Pa
         uint256 _value,
         uint256 _gasLimit,
         bytes calldata _data
-    ) external payable whenNotPaused nonReentrant {
+    ) external payable whenNotPaused {
         require(msg.sender == tx.origin, "Only EOA senders are allowed to send enforced transaction");
 
-        _sendTransaction(msg.sender, _target, _value, _gasLimit, _data);
+        _sendTransaction(msg.sender, _target, _value, _gasLimit, _data, msg.sender);
     }
 
     /// @notice Add an enforced transaction to L2.
@@ -66,22 +70,20 @@ contract EnforcedTxGateway is OwnableUpgradeable, ReentrancyGuardUpgradeable, Pa
     /// @param _value The value passed
     /// @param _gasLimit The maximum gas should be used for this transaction in L2.
     /// @param _data The calldata passed to target contract.
-    /// @param v The `v` value of signature.
-    /// @param r The `r` value of signature.
-    /// @param s The `s` value of signature.
+    /// @param _signature The signature for the transaction.
+    /// @param _refundAddress The address to refund exceeded fee.
     function sendTransaction(
         address _sender,
         address _target,
         uint256 _value,
         uint256 _gasLimit,
         bytes calldata _data,
-        uint8 v,
-        bytes32 r,
-        bytes32 s
-    ) external payable whenNotPaused nonReentrant {
+        bytes memory _signature,
+        address _refundAddress
+    ) external payable whenNotPaused {
         address _messageQueue = messageQueue;
-        uint256 _queueIndex = IL1MessageQueue(_messageQueue).nextCrossDomainMessageIndex();
-        bytes32 _hash = IL1MessageQueue(messageQueue).computeTransactionHash(
+        uint256 _queueIndex = IL1MessageQueue(messageQueue).nextCrossDomainMessageIndex();
+        bytes32 _txHash = IL1MessageQueue(_messageQueue).computeTransactionHash(
             _sender,
             _queueIndex,
             _value,
@@ -90,11 +92,13 @@ contract EnforcedTxGateway is OwnableUpgradeable, ReentrancyGuardUpgradeable, Pa
             _data
         );
 
-        address _signer = ECDSAUpgradeable.recover(_hash, v, r, s);
+        bytes32 _signHash = ECDSAUpgradeable.toEthSignedMessageHash(_txHash);
+        address _signer = ECDSAUpgradeable.recover(_signHash, _signature);
+
         // no need to check `_signer != address(0)`, since it is checked in `recover`.
         require(_signer == _sender, "Incorrect signature");
 
-        _sendTransaction(_sender, _target, _value, _gasLimit, _data);
+        _sendTransaction(_sender, _target, _value, _gasLimit, _data, _refundAddress);
     }
 
     /************************
@@ -130,12 +134,14 @@ contract EnforcedTxGateway is OwnableUpgradeable, ReentrancyGuardUpgradeable, Pa
     /// @param _value The value passed
     /// @param _gasLimit The maximum gas should be used for this transaction in L2.
     /// @param _data The calldata passed to target contract.
+    /// @param _refundAddress The address to refund exceeded fee.
     function _sendTransaction(
         address _sender,
         address _target,
         uint256 _value,
         uint256 _gasLimit,
-        bytes calldata _data
+        bytes calldata _data,
+        address _refundAddress
     ) internal nonReentrant {
         address _messageQueue = messageQueue;
 
@@ -150,11 +156,11 @@ contract EnforcedTxGateway is OwnableUpgradeable, ReentrancyGuardUpgradeable, Pa
         // append transaction
         IL1MessageQueue(messageQueue).appendEnforcedTransaction(_sender, _target, _value, _gasLimit, _data);
 
-        // refund fee to msg.sender
+        // refund fee to `_refundAddress`
         unchecked {
             uint256 _refund = msg.value - _fee;
             if (_refund > 0) {
-                (bool _success, ) = msg.sender.call{value: _refund}("");
+                (bool _success, ) = _refundAddress.call{value: _refund}("");
                 require(_success, "Failed to refund the fee");
             }
         }

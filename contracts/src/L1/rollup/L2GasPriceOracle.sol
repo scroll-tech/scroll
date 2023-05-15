@@ -39,7 +39,6 @@ contract L2GasPriceOracle is OwnableUpgradeable, IL2GasPriceOracle {
     /// @notice The address of whitelist contract.
     IWhitelist public whitelist;
 
-
     struct IntrinsicParams {
         uint64 txGas;
         uint64 txGasContractCreation;
@@ -54,7 +53,12 @@ contract L2GasPriceOracle is OwnableUpgradeable, IL2GasPriceOracle {
      * Constructor *
      ***************/
 
-    function initialize(uint64 _txGas, uint64 _txGasContractCreation, uint64 _zeroGas, uint64 _nonZeroGas) external initializer {
+    function initialize(
+        uint64 _txGas,
+        uint64 _txGasContractCreation,
+        uint64 _zeroGas,
+        uint64 _nonZeroGas
+    ) external initializer {
         OwnableUpgradeable.__Ownable_init();
 
         intrinsicParams = IntrinsicParams({
@@ -103,7 +107,12 @@ contract L2GasPriceOracle is OwnableUpgradeable, IL2GasPriceOracle {
     /// @param _txGasContractCreation The intrinsic gas for contract creation.
     /// @param _zeroGas The intrinsic gas for each zero byte.
     /// @param _nonZeroGas The intrinsic gas for each nonzero byte.
-    function setIntrinsicParams(uint64 _txGas, uint64 _txGasContractCreation, uint64 _zeroGas, uint64 _nonZeroGas) public {
+    function setIntrinsicParams(
+        uint64 _txGas,
+        uint64 _txGasContractCreation,
+        uint64 _zeroGas,
+        uint64 _nonZeroGas
+    ) public {
         require(whitelist.isSenderAllowed(msg.sender), "Not whitelisted sender");
 
         intrinsicParams = IntrinsicParams({
@@ -113,7 +122,7 @@ contract L2GasPriceOracle is OwnableUpgradeable, IL2GasPriceOracle {
             nonZeroGas: _nonZeroGas
         });
 
-        emit IntrinsicParamsUpdated(_txGas, _txGasContractCreation,  _zeroGas, _nonZeroGas);
+        emit IntrinsicParamsUpdated(_txGas, _txGasContractCreation, _zeroGas, _nonZeroGas);
     }
 
     /// @notice Allows the owner to modify the l2 base fee.
