@@ -10,7 +10,6 @@ import (
 
 type AssetType int
 type MsgType int
-type Status int
 
 func (a AssetType) String() string {
 	switch a {
@@ -40,11 +39,6 @@ const (
 	UnknownMsg MsgType = iota
 	Layer1Msg
 	Layer2Msg
-)
-
-const (
-	NotDeleted Status = iota
-	Deleted
 )
 
 // CrossMsg represents a cross message from layer 1 to layer 2
