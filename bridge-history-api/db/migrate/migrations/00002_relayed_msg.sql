@@ -13,7 +13,7 @@ create table relayed_msg
 );
 
 comment 
-on column relayed_msg.is_deleted is "0 not deleted, 1 deleted"
+on column relayed_msg.is_deleted is "0 not deleted, 1 deleted";
 
 create unique index relayed_msg_hash_uindex
 on relayed_msg (msg_hash);

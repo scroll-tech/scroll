@@ -28,7 +28,7 @@ comment
 on column cross_message.msg_type is 'l1msg, l2msg';
 
 comment 
-on column cross_message.is_deleted is "0 not deleted, 1 deleted"
+on column cross_message.is_deleted is "0 not deleted, 1 deleted";
 
 CREATE INDEX valid_l1_msg_index ON cross_message (layer1_hash, is_deleted);
 
