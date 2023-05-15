@@ -1,6 +1,9 @@
 package db
 
 import (
+	"database/sql"
+	"errors"
+
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq" //nolint:golint
 
@@ -13,6 +16,7 @@ type OrmFactory interface {
 	orm.L1CrossMsgOrm
 	orm.L2CrossMsgOrm
 	orm.RelayedMsgOrm
+	GetCrossMsgsByAddressWithOffset(sender string, offset int64, limit int64) ([]*orm.CrossMsg, error)
 	GetDB() *sqlx.DB
 	Beginx() (*sqlx.Tx, error)
 	Close() error
@@ -53,4 +57,22 @@ func (o *ormFactory) GetDB() *sqlx.DB {
 
 func (o *ormFactory) Beginx() (*sqlx.Tx, error) {
 	return o.DB.Beginx()
+}
+
+func (o *ormFactory) GetCrossMsgsByAddressWithOffset(sender string, offset int64, limit int64) ([]*orm.CrossMsg, error) {
+	para := sender
+	var results []*orm.CrossMsg
+	rows, err := o.DB.Queryx(`SELECT * FROM cross_message WHERE sender = $1 ORDER BY created_time DESC LIMIT $2 OFFSET $3;`, para, limit, offset)
+	for rows.Next() {
+		msg := &orm.CrossMsg{}
+		if err = rows.StructScan(msg); err != nil {
+			break
+		}
+		results = append(results, msg)
+	}
+	if len(results) == 0 && errors.Is(err, sql.ErrNoRows) {
+	} else if err != nil {
+		return nil, err
+	}
+	return results, nil
 }

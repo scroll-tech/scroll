@@ -19,9 +19,9 @@ func NewL1CrossMsgOrm(db *sqlx.DB) L1CrossMsgOrm {
 	return &l1CrossMsgOrm{db: db}
 }
 
-func (l *l1CrossMsgOrm) GetL1CrossMsgByHash(l1Hash common.Hash) (*L1CrossMsg, error) {
-	result := &L1CrossMsg{}
-	row := l.db.QueryRowx(`SELECT * FROM l1_cross_message WHERE layer1_hash = $1;`, l1Hash.String())
+func (l *l1CrossMsgOrm) GetL1CrossMsgByHash(l1Hash common.Hash) (*CrossMsg, error) {
+	result := &CrossMsg{}
+	row := l.db.QueryRowx(`SELECT * FROM cross_message WHERE layer1_hash = $1 AND msg_type = $2;`, l1Hash.String(), LAYER1MSG)
 	if err := row.StructScan(result); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil
@@ -31,12 +31,12 @@ func (l *l1CrossMsgOrm) GetL1CrossMsgByHash(l1Hash common.Hash) (*L1CrossMsg, er
 	return result, nil
 }
 
-func (l *l1CrossMsgOrm) GetL1CrossMsgsByAddressWithOffset(sender common.Address, offset int64, limit int64) ([]*L1CrossMsg, error) {
+func (l *l1CrossMsgOrm) GetL1CrossMsgsByAddressWithOffset(sender common.Address, offset int64, limit int64) ([]*CrossMsg, error) {
 	para := sender.String()
-	var results []*L1CrossMsg
-	rows, err := l.db.Queryx(`SELECT * FROM l1_cross_message WHERE sender = $1 ORDER BY height DESC LIMIT $2 OFFSET $3;`, para, limit, offset)
+	var results []*CrossMsg
+	rows, err := l.db.Queryx(`SELECT * FROM cross_message WHERE sender = $1 AND msg_type = $2 ORDER BY height DESC LIMIT $3 OFFSET $4;`, para, LAYER1MSG, limit, offset)
 	for rows.Next() {
-		msg := &L1CrossMsg{}
+		msg := &CrossMsg{}
 		if err = rows.StructScan(msg); err != nil {
 			break
 		}
@@ -51,13 +51,13 @@ func (l *l1CrossMsgOrm) GetL1CrossMsgsByAddressWithOffset(sender common.Address,
 
 // GetL1CrossMsgsByAddress returns all layer1 cross messages under given address
 // Warning: return empty slice if no data found
-func (l *l1CrossMsgOrm) GetL1CrossMsgsByAddress(sender common.Address) ([]*L1CrossMsg, error) {
+func (l *l1CrossMsgOrm) GetL1CrossMsgsByAddress(sender common.Address) ([]*CrossMsg, error) {
 	para := sender.String()
-	var results []*L1CrossMsg
-	rows, err := l.db.Queryx(`SELECT * FROM l1_cross_message WHERE sender = $1;`, para)
+	var results []*CrossMsg
+	rows, err := l.db.Queryx(`SELECT * FROM cross_message WHERE sender = $1 AND msg_type = 1;`, para, LAYER1MSG)
 
 	for rows.Next() {
-		msg := &L1CrossMsg{}
+		msg := &CrossMsg{}
 		if err = rows.StructScan(msg); err != nil {
 			break
 		}
@@ -70,7 +70,7 @@ func (l *l1CrossMsgOrm) GetL1CrossMsgsByAddress(sender common.Address) ([]*L1Cro
 	return results, nil
 }
 
-func (l *l1CrossMsgOrm) BatchInsertL1CrossMsgDBTx(dbTx *sqlx.Tx, messages []*L1CrossMsg) error {
+func (l *l1CrossMsgOrm) BatchInsertL1CrossMsgDBTx(dbTx *sqlx.Tx, messages []*CrossMsg) error {
 	if len(messages) == 0 {
 		return nil
 	}
@@ -87,9 +87,10 @@ func (l *l1CrossMsgOrm) BatchInsertL1CrossMsgDBTx(dbTx *sqlx.Tx, messages []*L1C
 			"layer1_token": msg.Layer1Token,
 			"layer2_token": msg.Layer2Token,
 			"token_id":     msg.TokenID,
+			"msg_type":     msg.MsgType,
 		}
 
-		_, err := dbTx.NamedExec(`insert into l1_cross_message(height, sender, target, asset, layer1_hash, layer1_token, layer2_token, token_id, amount) values(:height, :sender, :target, :asset, :layer1_hash, :layer1_token, :layer2_token, :token_id, :amount);`, messageMaps[i])
+		_, err := dbTx.NamedExec(`insert into cross_message(height, sender, target, asset, layer1_hash, layer1_token, layer2_token, token_id, amount, msg_type) values(:height, :sender, :target, :asset, :layer1_hash, :layer1_token, :layer2_token, :token_id, :amount, :msg_type) WHERE NOT EXISTS (SELECT 1 FROM cross_message WHERE layer1_hash = :layer1_hash);`, messageMaps[i])
 		if err != nil {
 			log.Error("BatchInsertL1CrossMsgDBTx: failed to insert l1 cross msgs", "l1hashes", msg.Layer1Hash, "heights", msg.Height, "err", err)
 			break
@@ -98,8 +99,9 @@ func (l *l1CrossMsgOrm) BatchInsertL1CrossMsgDBTx(dbTx *sqlx.Tx, messages []*L1C
 	return err
 }
 
+// UpdateL1CrossMsgHashDBTx update l1 cross msg hash in db, no need to check msg_type since layer1_hash wont be empty if its layer1 msg
 func (l *l1CrossMsgOrm) UpdateL1CrossMsgHashDBTx(ctx context.Context, dbTx *sqlx.Tx, l1Hash, msgHash common.Hash) error {
-	if _, err := dbTx.ExecContext(ctx, l.db.Rebind("update public.l1_cross_message set msg_hash = ? where layer1_hash = ?;"), msgHash.String(), l1Hash.String()); err != nil {
+	if _, err := dbTx.ExecContext(ctx, l.db.Rebind("update public.cross_message set msg_hash = ? where layer1_hash = ?;"), msgHash.String(), l1Hash.String()); err != nil {
 		return err
 	}
 	return nil
@@ -115,7 +117,7 @@ func (l *l1CrossMsgOrm) UpdateL1CrossMsgHash(ctx context.Context, l1Hash, msgHas
 }
 
 func (l *l1CrossMsgOrm) GetLatestL1ProcessedHeight() (int64, error) {
-	row := l.db.QueryRowx(`SELECT MAX(height) FROM l1_cross_message;`)
+	row := l.db.QueryRowx(`SELECT MAX(height) FROM cross_message WHERE msg_type = $1;`, LAYER1MSG)
 	var result sql.NullInt64
 	if err := row.Scan(&result); err != nil {
 		if err == sql.ErrNoRows || !result.Valid {
@@ -130,7 +132,7 @@ func (l *l1CrossMsgOrm) GetLatestL1ProcessedHeight() (int64, error) {
 }
 
 func (l *l1CrossMsgOrm) DeleteL1CrossMsgAfterHeightDBTx(dbTx *sqlx.Tx, height int64) error {
-	if _, err := l.db.Exec(`DELETE FROM l1_cross_message WHERE height > $1;`, height); err != nil {
+	if _, err := l.db.Exec(`DELETE FROM l1_cross_message WHERE height > $1 AND msg_type = $2;`, height, LAYER1MSG); err != nil {
 		return err
 	}
 	return nil

@@ -9,6 +9,7 @@ import (
 )
 
 type AssetType int
+type MsgType int
 
 func (a AssetType) String() string {
 	switch a {
@@ -34,8 +35,13 @@ const (
 	WETH
 )
 
-// L1CrossMsg represents a cross message from layer 1 to layer 2
-type L1CrossMsg struct {
+const (
+	LAYER1MSG MsgType = iota
+	LAYER2MSG
+)
+
+// CrossMsg represents a cross message from layer 1 to layer 2
+type CrossMsg struct {
 	MsgHash     string     `json:"msg_hash" db:"msg_hash"`
 	Height      uint64     `json:"height" db:"height"`
 	Sender      string     `json:"sender" db:"sender"`
@@ -48,23 +54,7 @@ type L1CrossMsg struct {
 	TokenID     uint64     `json:"token_id" db:"token_id"`
 	CreatedTime *time.Time `json:"created_time" db:"created_time"`
 	Asset       int        `json:"asset" db:"asset"`
-	UpdatedTime *time.Time `json:"updated_time" db:"updated_time"`
-}
-
-// L2CrossMsg represents a cross message from layer 2 to layer 1
-type L2CrossMsg struct {
-	MsgHash     string     `json:"msg_hash" db:"msg_hash"`
-	Height      uint64     `json:"height" db:"height"`
-	Sender      string     `json:"sender" db:"sender"`
-	Target      string     `json:"target" db:"target"`
-	Amount      string     `json:"value" db:"amount"`
-	Layer1Hash  string     `json:"layer1_hash" db:"layer1_hash"`
-	Layer2Hash  string     `json:"layer2_hash" db:"layer2_hash"`
-	Layer1Token string     `json:"layer1_token" db:"layer1_token"`
-	Layer2Token string     `json:"layer2_token" db:"layer2_token"`
-	TokenID     uint64     `json:"token_id" db:"token_id"`
-	CreatedTime *time.Time `json:"created_time" db:"created_time"`
-	Asset       int        `json:"asset" db:"asset"`
+	MsgType     int        `json:"msg_type" db:"msg_type"`
 	UpdatedTime *time.Time `json:"updated_time" db:"updated_time"`
 }
 
@@ -77,27 +67,27 @@ type RelayedMsg struct {
 
 // L1CrossMsgOrm provides operations on l1_cross_message table
 type L1CrossMsgOrm interface {
-	GetL1CrossMsgByHash(l1Hash common.Hash) (*L1CrossMsg, error)
-	GetL1CrossMsgsByAddress(sender common.Address) ([]*L1CrossMsg, error)
-	BatchInsertL1CrossMsgDBTx(dbTx *sqlx.Tx, messages []*L1CrossMsg) error
+	GetL1CrossMsgByHash(l1Hash common.Hash) (*CrossMsg, error)
+	GetL1CrossMsgsByAddress(sender common.Address) ([]*CrossMsg, error)
+	BatchInsertL1CrossMsgDBTx(dbTx *sqlx.Tx, messages []*CrossMsg) error
 	// UpdateL1CrossMsgHash invoked when SentMessage event is received
 	UpdateL1CrossMsgHashDBTx(ctx context.Context, dbTx *sqlx.Tx, l1Hash, msgHash common.Hash) error
 	UpdateL1CrossMsgHash(ctx context.Context, l1Hash, msgHash common.Hash) error
 	GetLatestL1ProcessedHeight() (int64, error)
 	DeleteL1CrossMsgAfterHeightDBTx(dbTx *sqlx.Tx, height int64) error
-	GetL1CrossMsgsByAddressWithOffset(sender common.Address, offset int64, limit int64) ([]*L1CrossMsg, error)
+	GetL1CrossMsgsByAddressWithOffset(sender common.Address, offset int64, limit int64) ([]*CrossMsg, error)
 }
 
 // L2CrossMsgOrm provides operations on l2_cross_message table
 type L2CrossMsgOrm interface {
-	GetL2CrossMsgByHash(l2Hash common.Hash) (*L2CrossMsg, error)
-	GetL2CrossMsgByAddress(sender common.Address) ([]*L2CrossMsg, error)
-	BatchInsertL2CrossMsgDBTx(dbTx *sqlx.Tx, messages []*L2CrossMsg) error
+	GetL2CrossMsgByHash(l2Hash common.Hash) (*CrossMsg, error)
+	GetL2CrossMsgByAddress(sender common.Address) ([]*CrossMsg, error)
+	BatchInsertL2CrossMsgDBTx(dbTx *sqlx.Tx, messages []*CrossMsg) error
 	// UpdateL2CrossMsgHash invoked when SentMessage event is received
 	UpdateL2CrossMsgHashDBTx(ctx context.Context, dbTx *sqlx.Tx, l2Hash, msgHash common.Hash) error
 	UpdateL2CrossMsgHash(ctx context.Context, l2Hash, msgHash common.Hash) error
 	GetLatestL2ProcessedHeight() (int64, error)
-	GetL2CrossMsgsByAddressWithOffset(sender common.Address, offset int64, limit int64) ([]*L2CrossMsg, error)
+	GetL2CrossMsgsByAddressWithOffset(sender common.Address, offset int64, limit int64) ([]*CrossMsg, error)
 	DeleteL2CrossMsgFromHeightDBTx(dbTx *sqlx.Tx, height int64) error
 }
 
