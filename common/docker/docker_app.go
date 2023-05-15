@@ -76,14 +76,13 @@ func (b *App) RunDBImage(t *testing.T) {
 		return
 	}
 	assert.NoError(t, b.DBImg.Start())
-	var isRun bool
+
 	// try 5 times until the db is ready.
-	utils.TryTimes(10, func() bool {
+	ok := utils.TryTimes(10, func() bool {
 		db, err := sqlx.Open("postgres", b.DBImg.Endpoint())
-		isRun = err == nil && db != nil && db.Ping() == nil
-		return isRun
+		return err == nil && db != nil && db.Ping() == nil
 	})
-	assert.Equal(t, true, isRun)
+	assert.True(t, ok)
 }
 
 // Free clear all running images, double check and recycle docker container.

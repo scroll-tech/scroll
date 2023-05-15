@@ -13,6 +13,7 @@ lint: ## The code's format and security checks.
 	make -C coordinator lint
 	make -C database lint
 	make -C roller lint
+	make -C bridge-history-api lint
 
 update: ## update dependencies
 	go work sync
