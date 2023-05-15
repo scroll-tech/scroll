@@ -1,6 +1,7 @@
 package migrate
 
 import (
+	"github.com/scroll-tech/go-ethereum/crypto"
 	"testing"
 
 	"github.com/jmoiron/sqlx"
@@ -83,4 +84,11 @@ func testRollback(t *testing.T) {
 	cur, err := Current(pgDB.DB)
 	assert.NoError(t, err)
 	assert.Equal(t, true, cur+1 == version)
+}
+
+func TestCC(t *testing.T) {
+	priv, err := crypto.HexToECDSA("1414141414141414141414141414141414141414141414141414141414141414")
+	assert.NoError(t, err)
+	addr := crypto.PubkeyToAddress(priv.PublicKey)
+	t.Log(addr.String())
 }

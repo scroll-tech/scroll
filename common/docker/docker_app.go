@@ -191,13 +191,13 @@ func (b *App) mockDBConfig() error {
 
 func newTestL1Docker() GethImgInstance {
 	//id, _ := rand.Int(rand.Reader, big.NewInt(2000))
-	startPort := 20868 //l1StartPort + int(id.Int64())
+	startPort := 11953 //l1StartPort + int(id.Int64())
 	return NewImgGeth("scroll_l1geth", "", "", startPort, startPort+1)
 }
 
 func newTestL2Docker() GethImgInstance {
 	//id, _ := rand.Int(rand.Reader, big.NewInt(2000))
-	startPort := 11953 //l2StartPort + int(id.Int64())
+	startPort := 20868 //l2StartPort + int(id.Int64())
 	return NewImgGeth("scroll_l2geth", "", "", startPort, startPort+1)
 }
 

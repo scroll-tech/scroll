@@ -49,11 +49,11 @@
         "check_pending_time": 10,
         "check_balance_time": 100,
         "escalate_blocks": 100,
-        "confirmations": "0x1",
+        "confirmations": "0x6",
         "escalate_multiple_num": 11,
         "escalate_multiple_den": 10,
         "max_gas_price": 10000000000,
-        "tx_type": "DynamicFeeTx",
+        "tx_type": "LegacyTx",
         "min_balance": 100000000000000000000,
         "pending_limit": 10
       },
