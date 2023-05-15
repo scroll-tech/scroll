@@ -15,6 +15,13 @@
     "clique": {
       "period": 3,
       "epoch": 30000
+    },
+    "scroll": {
+      "useZktrie": true,
+      "maxTxPerBlock": 44,
+      "feeVaultAddress": "0x5300000000000000000000000000000000000005",
+      "enableEIP2718": false,
+      "enableEIP1559": false
     }
   },
   "nonce": "0x0",
