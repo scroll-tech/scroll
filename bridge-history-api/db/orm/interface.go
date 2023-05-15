@@ -10,6 +10,7 @@ import (
 
 type AssetType int
 type MsgType int
+type Status int
 
 func (a AssetType) String() string {
 	switch a {
@@ -36,12 +37,19 @@ const (
 )
 
 const (
-	LAYER1MSG MsgType = iota
-	LAYER2MSG
+	UnknownMsg MsgType = iota
+	Layer1Msg
+	Layer2Msg
+)
+
+const (
+	NotDeleted Status = iota
+	Deleted
 )
 
 // CrossMsg represents a cross message from layer 1 to layer 2
 type CrossMsg struct {
+	ID          uint64     `json:"id" db:"id"`
 	MsgHash     string     `json:"msg_hash" db:"msg_hash"`
 	Height      uint64     `json:"height" db:"height"`
 	Sender      string     `json:"sender" db:"sender"`
@@ -52,10 +60,12 @@ type CrossMsg struct {
 	Layer1Token string     `json:"layer1_token" db:"layer1_token"`
 	Layer2Token string     `json:"layer2_token" db:"layer2_token"`
 	TokenID     uint64     `json:"token_id" db:"token_id"`
-	CreatedTime *time.Time `json:"created_time" db:"created_time"`
+	CreatedTime *time.Time `json:"created_at" db:"created_at"`
 	Asset       int        `json:"asset" db:"asset"`
 	MsgType     int        `json:"msg_type" db:"msg_type"`
-	UpdatedTime *time.Time `json:"updated_time" db:"updated_time"`
+	IsDeleted   int        `json:"is_deleted" db:"is_deleted"`
+	UpdatedTime *time.Time `json:"updated_at" db:"updated_at"`
+	DeletedTime *time.Time `json:"deleted_at" db:"deleted_at"`
 }
 
 type RelayedMsg struct {
@@ -75,7 +85,6 @@ type L1CrossMsgOrm interface {
 	UpdateL1CrossMsgHash(ctx context.Context, l1Hash, msgHash common.Hash) error
 	GetLatestL1ProcessedHeight() (int64, error)
 	DeleteL1CrossMsgAfterHeightDBTx(dbTx *sqlx.Tx, height int64) error
-	GetL1CrossMsgsByAddressWithOffset(sender common.Address, offset int64, limit int64) ([]*CrossMsg, error)
 }
 
 // L2CrossMsgOrm provides operations on l2_cross_message table
@@ -87,7 +96,6 @@ type L2CrossMsgOrm interface {
 	UpdateL2CrossMsgHashDBTx(ctx context.Context, dbTx *sqlx.Tx, l2Hash, msgHash common.Hash) error
 	UpdateL2CrossMsgHash(ctx context.Context, l2Hash, msgHash common.Hash) error
 	GetLatestL2ProcessedHeight() (int64, error)
-	GetL2CrossMsgsByAddressWithOffset(sender common.Address, offset int64, limit int64) ([]*CrossMsg, error)
 	DeleteL2CrossMsgFromHeightDBTx(dbTx *sqlx.Tx, height int64) error
 }
 

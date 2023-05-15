@@ -62,7 +62,10 @@ func (o *ormFactory) Beginx() (*sqlx.Tx, error) {
 func (o *ormFactory) GetCrossMsgsByAddressWithOffset(sender string, offset int64, limit int64) ([]*orm.CrossMsg, error) {
 	para := sender
 	var results []*orm.CrossMsg
-	rows, err := o.DB.Queryx(`SELECT * FROM cross_message WHERE sender = $1 ORDER BY created_time DESC LIMIT $2 OFFSET $3;`, para, limit, offset)
+	rows, err := o.DB.Queryx(`SELECT * FROM cross_message WHERE sender = $1 ORDER BY created_at DESC LIMIT $2 OFFSET $3;`, para, limit, offset)
+	if err != nil || rows == nil {
+		return nil, err
+	}
 	for rows.Next() {
 		msg := &orm.CrossMsg{}
 		if err = rows.StructScan(msg); err != nil {

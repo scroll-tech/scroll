@@ -80,7 +80,7 @@ func (h *historyBackend) GetTxsByAddress(address common.Address, offset int64, l
 			Hash:        msg.MsgHash,
 			Amount:      msg.Amount,
 			To:          msg.Target,
-			IsL1:        msg.MsgType == int(orm.LAYER1MSG),
+			IsL1:        msg.MsgType == int(orm.Layer1Msg),
 			BlockNumber: msg.Height,
 			CreatedTime: msg.CreatedTime,
 			FinalizeTx: &Finalized{

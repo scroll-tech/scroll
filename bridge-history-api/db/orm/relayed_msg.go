@@ -43,7 +43,7 @@ func (l *relayedMsgOrm) BatchInsertRelayedMsgDBTx(dbTx *sqlx.Tx, messages []*Rel
 
 func (l *relayedMsgOrm) GetRelayedMsgByHash(msg_hash string) (*RelayedMsg, error) {
 	result := &RelayedMsg{}
-	row := l.db.QueryRowx(`SELECT msg_hash, height, layer1_hash, layer2_hash FROM relayed_msg WHERE msg_hash = $1;`, msg_hash)
+	row := l.db.QueryRowx(`SELECT msg_hash, height, layer1_hash, layer2_hash FROM relayed_msg WHERE msg_hash = $1 AND is_deleted = $2;`, msg_hash, NotDeleted)
 	if err := row.StructScan(result); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil
@@ -54,7 +54,7 @@ func (l *relayedMsgOrm) GetRelayedMsgByHash(msg_hash string) (*RelayedMsg, error
 }
 
 func (l *relayedMsgOrm) GetLatestRelayedHeightOnL1() (int64, error) {
-	row := l.db.QueryRow(`SELECT MAX(height) FROM relayed_msg WHERE layer1_hash != '';`)
+	row := l.db.QueryRow(`SELECT MAX(height) FROM relayed_msg WHERE layer1_hash != '' AND is_deleted = $1;`, NotDeleted)
 	var result sql.NullInt64
 	if err := row.Scan(&result); err != nil {
 		if err == sql.ErrNoRows || !result.Valid {
@@ -69,7 +69,7 @@ func (l *relayedMsgOrm) GetLatestRelayedHeightOnL1() (int64, error) {
 }
 
 func (l *relayedMsgOrm) GetLatestRelayedHeightFromL2() (int64, error) {
-	row := l.db.QueryRow(`SELECT MAX(height) FROM relayed_msg WHERE layer2_hash != '';`)
+	row := l.db.QueryRow(`SELECT MAX(height) FROM relayed_msg WHERE layer2_hash != '' AND is_deleted = $1;`, NotDeleted)
 	var result sql.NullInt64
 	if err := row.Scan(&result); err != nil {
 		if err == sql.ErrNoRows || !result.Valid {
@@ -84,11 +84,11 @@ func (l *relayedMsgOrm) GetLatestRelayedHeightFromL2() (int64, error) {
 }
 
 func (l *relayedMsgOrm) DeleteL1RelayedHashFromHeightDBTx(dbTx *sqlx.Tx, height int64) error {
-	_, err := dbTx.Exec(`DELETE FROM relayed_msg WHERE height > $1 AND layer1_hash != '';`, height)
+	_, err := dbTx.Exec(`UPDATE relayed_msg SET is_deleted = $1 WHERE height > $1 AND layer1_hash != '';`, Deleted, height)
 	return err
 }
 
 func (l *relayedMsgOrm) DeleteL2RelayedHashFromHeightDBTx(dbTx *sqlx.Tx, height int64) error {
-	_, err := dbTx.Exec(`DELETE FROM relayed_msg WHERE height > $1 AND layer2_hash != '';`, height)
+	_, err := dbTx.Exec(`UPDATE relayed_msg SET is_deleted = $1 WHERE height > $1 AND layer2_hash != '';`, Deleted, height)
 	return err
 }
