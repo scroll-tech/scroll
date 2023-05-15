@@ -259,7 +259,7 @@ func (r *Roller) prove() error {
 	}
 
 	defer func() {
-		err = r.stack.Delete(task.Task.ID)
+		err = r.stack.Delete(task.Task.ID.Hash)
 		if err != nil {
 			log.Error("roller stack pop failed!", "err", err)
 		}

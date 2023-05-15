@@ -4,7 +4,7 @@ import (
 	"crypto/ecdsa"
 	"crypto/rand"
 	"encoding/hex"
-
+	"fmt"
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/common/hexutil"
 	"github.com/scroll-tech/go-ethereum/core/types"
@@ -201,7 +201,7 @@ func (a *ProofMsg) PublicKey() (string, error) {
 
 // TaskMsg is a wrapper type around db ProveTask type.
 type TaskMsg struct {
-	ID   string    `json:"id"`
+	ID   *TaskID   `json:"id"`
 	Type ProveType `json:"type,omitempty"`
 	// Only basic rollers need traces, aggregator rollers don't!
 	Traces []*types.BlockTrace `json:"blockTraces,omitempty"`
@@ -209,10 +209,20 @@ type TaskMsg struct {
 	SubProofs [][]byte `json:"sub_proofs,omitempty"`
 }
 
+// TaskID contains hash and some other info.
+type TaskID struct {
+	Hash     string `json:"hash"`
+	BatchIdx uint64 `json:"batch_idx"`
+}
+
+func (tid *TaskID) String() string {
+	return fmt.Sprintf("%d-%s", tid.BatchIdx, tid.Hash)
+}
+
 // ProofDetail is the message received from rollers that contains zk proof, the status of
 // the proof generation succeeded, and an error message if proof generation failed.
 type ProofDetail struct {
-	ID     string     `json:"id"`
+	ID     *TaskID    `json:"id"`
 	Type   ProveType  `json:"type,omitempty"`
 	Status RespStatus `json:"status"`
 	Proof  *AggProof  `json:"proof"`

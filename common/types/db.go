@@ -162,10 +162,15 @@ type RollerStatus struct {
 // SessionInfo is assigned rollers info of a block batch (session)
 type SessionInfo struct {
 	ID             string                   `json:"id"`
+	BatchIndex     uint64                   `json:"batch_index"`
 	Rollers        map[string]*RollerStatus `json:"rollers"`
 	StartTimestamp int64                    `json:"start_timestamp"`
 	Attempts       uint8                    `json:"attempts,omitempty"`
 	ProveType      message.ProveType        `json:"prove_type,omitempty"`
+}
+
+func (s *SessionInfo) TaskId() *message.TaskID {
+	return &message.TaskID{Hash: s.ID, BatchIdx: s.BatchIndex}
 }
 
 // ProvingStatus block_batch proving_status (unassigned, assigned, proved, verified, submitted)

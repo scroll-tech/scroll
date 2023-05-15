@@ -51,7 +51,7 @@ func (o *sessionInfoOrm) SetSessionInfo(rollersInfo *types.SessionInfo) error {
 	if err != nil {
 		return err
 	}
-	sqlStr := "INSERT INTO session_info (hash, rollers_info) VALUES ($1, $2) ON CONFLICT (hash) DO UPDATE SET rollers_info = EXCLUDED.rollers_info;"
-	_, err = o.db.Exec(sqlStr, rollersInfo.ID, infoBytes)
+	sqlStr := "INSERT INTO session_info (hash, batch_index, rollers_info) VALUES ($1, $2, $3) ON CONFLICT (hash) DO UPDATE SET rollers_info = EXCLUDED.rollers_info;"
+	_, err = o.db.Exec(sqlStr, rollersInfo.ID, rollersInfo.BatchIndex, infoBytes)
 	return err
 }

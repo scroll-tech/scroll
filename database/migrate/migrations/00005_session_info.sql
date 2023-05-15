@@ -4,6 +4,7 @@
 create table session_info
 (
     hash         VARCHAR NOT NULL,
+    batch_index  BIGINT,
     rollers_info BYTEA   NOT NULL
 );
 

@@ -50,7 +50,7 @@ const (
 )
 
 type rollerProofStatus struct {
-	id     string
+	id     *message.TaskID
 	typ    message.ProveType
 	pk     string
 	status types.RollerProveStatus
@@ -81,7 +81,7 @@ type Manager struct {
 	// A mutex guarding the boolean below.
 	mu sync.RWMutex
 	// A map containing all active proof generation sessions.
-	sessions map[string]*session
+	sessions map[*message.TaskID]*session
 	// A map containing proof failed or verify failed proof.
 	rollerPool cmap.ConcurrentMap
 
@@ -119,7 +119,7 @@ func New(ctx context.Context, cfg *config.RollerManagerConfig, orm database.OrmF
 		ctx:                ctx,
 		cfg:                cfg,
 		rollerPool:         cmap.New(),
-		sessions:           make(map[string]*session),
+		sessions:           make(map[*message.TaskID]*session),
 		failedSessionInfos: make(map[string]*SessionInfo),
 		verifier:           v,
 		orm:                orm,
@@ -254,7 +254,7 @@ func (m *Manager) restorePrevSessions() {
 			info:       v,
 			finishChan: make(chan rollerProofStatus, proofAndPkBufferSize),
 		}
-		m.sessions[sess.info.ID] = sess
+		m.sessions[sess.info.TaskId()] = sess
 
 		log.Info("Coordinator restart reload sessions", "session start time", time.Unix(sess.info.StartTimestamp, 0))
 		for _, roller := range sess.info.Rollers {
@@ -324,12 +324,12 @@ func (m *Manager) handleZkProof(pk string, msg *message.ProofDetail) error {
 		// Roll back current proof's status.
 		if dbErr != nil {
 			if msg.Type == message.BasicProve {
-				if err := m.orm.UpdateProvingStatus(msg.ID, types.ProvingTaskUnassigned); err != nil {
+				if err := m.orm.UpdateProvingStatus(msg.ID.Hash, types.ProvingTaskUnassigned); err != nil {
 					log.Error("fail to reset basic task status as Unassigned", "msg.ID", msg.ID)
 				}
 			}
 			if msg.Type == message.AggregatorProve {
-				if err := m.orm.UpdateAggTaskStatus(msg.ID, types.ProvingTaskUnassigned); err != nil {
+				if err := m.orm.UpdateAggTaskStatus(msg.ID.String(), types.ProvingTaskUnassigned); err != nil {
 					log.Error("fail to reset aggregator task status as Unassigned", "msg.ID", msg.ID)
 				}
 			}
@@ -360,17 +360,17 @@ func (m *Manager) handleZkProof(pk string, msg *message.ProofDetail) error {
 
 	// store proof content
 	if msg.Type == message.BasicProve {
-		if dbErr = m.orm.UpdateProofByHash(m.ctx, msg.ID, msg.Proof.Proof, msg.Proof.FinalPair, proofTimeSec); dbErr != nil {
+		if dbErr = m.orm.UpdateProofByHash(m.ctx, msg.ID.Hash, msg.Proof.Proof, msg.Proof.FinalPair, proofTimeSec); dbErr != nil {
 			log.Error("failed to store basic proof into db", "error", dbErr)
 			return dbErr
 		}
-		if dbErr = m.orm.UpdateProvingStatus(msg.ID, types.ProvingTaskProved); dbErr != nil {
+		if dbErr = m.orm.UpdateProvingStatus(msg.ID.Hash, types.ProvingTaskProved); dbErr != nil {
 			log.Error("failed to update basic task status as proved", "error", dbErr)
 			return dbErr
 		}
 	}
 	if msg.Type == message.AggregatorProve {
-		if dbErr = m.orm.UpdateProofForAggTask(msg.ID, msg.Proof); dbErr != nil {
+		if dbErr = m.orm.UpdateProofForAggTask(msg.ID.Hash, msg.Proof); dbErr != nil {
 			log.Error("failed to store aggregator proof into db", "error", dbErr)
 			return dbErr
 		}
@@ -391,7 +391,7 @@ func (m *Manager) handleZkProof(pk string, msg *message.ProofDetail) error {
 
 	if success {
 		if msg.Type == message.AggregatorProve {
-			if dbErr = m.orm.UpdateAggTaskStatus(msg.ID, types.ProvingTaskVerified); dbErr != nil {
+			if dbErr = m.orm.UpdateAggTaskStatus(msg.ID.Hash, types.ProvingTaskVerified); dbErr != nil {
 				log.Error(
 					"failed to update aggregator proving_status",
 					"msg.ID", msg.ID,
@@ -401,7 +401,7 @@ func (m *Manager) handleZkProof(pk string, msg *message.ProofDetail) error {
 			}
 		}
 		if msg.Type == message.BasicProve {
-			if dbErr = m.orm.UpdateProvingStatus(msg.ID, types.ProvingTaskVerified); dbErr != nil {
+			if dbErr = m.orm.UpdateProvingStatus(msg.ID.Hash, types.ProvingTaskVerified); dbErr != nil {
 				log.Error(
 					"failed to update basic proving_status",
 					"msg.ID", msg.ID,
@@ -474,7 +474,7 @@ func (m *Manager) CollectProofs(sess *session) {
 			for pk := range sess.info.Rollers {
 				m.freeTaskIDForRoller(pk, sess.info.ID)
 			}
-			delete(m.sessions, sess.info.ID)
+			delete(m.sessions, sess.info.TaskId())
 			m.mu.Unlock()
 			coordinatorSessionsTimeoutTotalCounter.Inc(1)
 			return
@@ -485,12 +485,12 @@ func (m *Manager) CollectProofs(sess *session) {
 			sess.info.Rollers[ret.pk].Status = ret.status
 			if sess.isSessionFailed() {
 				if ret.typ == message.BasicProve {
-					if err := m.orm.UpdateProvingStatus(ret.id, types.ProvingTaskFailed); err != nil {
+					if err := m.orm.UpdateProvingStatus(ret.id.Hash, types.ProvingTaskFailed); err != nil {
 						log.Error("failed to update basic proving_status as failed", "msg.ID", ret.id, "error", err)
 					}
 				}
 				if ret.typ == message.AggregatorProve {
-					if err := m.orm.UpdateAggTaskStatus(ret.id, types.ProvingTaskFailed); err != nil {
+					if err := m.orm.UpdateAggTaskStatus(ret.id.Hash, types.ProvingTaskFailed); err != nil {
 						log.Error("failed to update aggregator proving_status as failed", "msg.ID", ret.id, "error", err)
 					}
 				}
@@ -513,7 +513,7 @@ func (m *Manager) CollectProofs(sess *session) {
 				for pk := range sess.info.Rollers {
 					m.freeTaskIDForRoller(pk, sess.info.ID)
 				}
-				delete(m.sessions, sess.info.ID)
+				delete(m.sessions, sess.info.TaskId())
 				m.mu.Unlock()
 
 				coordinatorSessionsSuccessTotalCounter.Inc(1)
@@ -570,11 +570,11 @@ func (m *Manager) APIs() []rpc.API {
 
 // StartBasicProofGenerationSession starts a basic proof generation session
 func (m *Manager) StartBasicProofGenerationSession(task *types.BlockBatch, prevSession *session) (success bool) {
-	var taskId string
+	var taskId *message.TaskID
 	if task != nil {
-		taskId = task.Hash
+		taskId = &message.TaskID{Hash: task.Hash, BatchIdx: task.Index}
 	} else {
-		taskId = prevSession.info.ID
+		taskId = prevSession.info.TaskId()
 	}
 	if m.GetNumberOfIdleRollers(message.BasicProve) == 0 {
 		log.Warn("no idle basic roller when starting proof generation session", "id", taskId)
@@ -586,11 +586,11 @@ func (m *Manager) StartBasicProofGenerationSession(task *types.BlockBatch, prevS
 	defer func() {
 		if !success {
 			if task != nil {
-				if err := m.orm.UpdateProvingStatus(taskId, types.ProvingTaskUnassigned); err != nil {
+				if err := m.orm.UpdateProvingStatus(taskId.Hash, types.ProvingTaskUnassigned); err != nil {
 					log.Error("fail to reset task_status as Unassigned", "id", taskId, "err", err)
 				}
 			} else {
-				if err := m.orm.UpdateProvingStatus(taskId, types.ProvingTaskFailed); err != nil {
+				if err := m.orm.UpdateProvingStatus(taskId.Hash, types.ProvingTaskFailed); err != nil {
 					log.Error("fail to reset task_status as Failed", "id", taskId, "err", err)
 				}
 			}
@@ -645,7 +645,7 @@ func (m *Manager) StartBasicProofGenerationSession(task *types.BlockBatch, prevS
 	}
 
 	// Update session proving status as assigned.
-	if err = m.orm.UpdateProvingStatus(taskId, types.ProvingTaskAssigned); err != nil {
+	if err = m.orm.UpdateProvingStatus(taskId.Hash, types.ProvingTaskAssigned); err != nil {
 		log.Error("failed to update task status", "id", taskId, "err", err)
 		return false
 	}
@@ -653,7 +653,7 @@ func (m *Manager) StartBasicProofGenerationSession(task *types.BlockBatch, prevS
 	// Create a proof generation session.
 	sess := &session{
 		info: &types.SessionInfo{
-			ID:             taskId,
+			ID:             taskId.String(),
 			Rollers:        rollers,
 			ProveType:      message.BasicProve,
 			StartTimestamp: time.Now().Unix(),
@@ -691,11 +691,11 @@ func (m *Manager) StartBasicProofGenerationSession(task *types.BlockBatch, prevS
 
 // StartAggProofGenerationSession starts an aggregator proof generation.
 func (m *Manager) StartAggProofGenerationSession(task *types.AggTask, prevSession *session) (success bool) {
-	var taskId string
+	var taskId *message.TaskID
 	if task != nil {
-		taskId = task.ID
+		taskId = &message.TaskID{Hash: task.ID}
 	} else {
-		taskId = prevSession.info.ID
+		taskId = &message.TaskID{Hash: prevSession.info.ID}
 	}
 	if m.GetNumberOfIdleRollers(message.AggregatorProve) == 0 {
 		log.Warn("no idle common roller when starting proof generation session", "id", taskId)
@@ -707,9 +707,9 @@ func (m *Manager) StartAggProofGenerationSession(task *types.AggTask, prevSessio
 	defer func() {
 		if !success {
 			if task != nil {
-				if err := m.orm.UpdateAggTaskStatus(taskId, types.ProvingTaskUnassigned); err != nil {
+				if err := m.orm.UpdateAggTaskStatus(taskId.Hash, types.ProvingTaskUnassigned); err != nil {
 					log.Error("fail to reset task_status as Unassigned", "id", taskId, "err", err)
-				} else if err := m.orm.UpdateAggTaskStatus(taskId, types.ProvingTaskFailed); err != nil {
+				} else if err := m.orm.UpdateAggTaskStatus(taskId.Hash, types.ProvingTaskFailed); err != nil {
 					log.Error("fail to reset task_status as Failed", "id", taskId, "err", err)
 				}
 			}
@@ -718,7 +718,7 @@ func (m *Manager) StartAggProofGenerationSession(task *types.AggTask, prevSessio
 	}()
 
 	// get agg task from db
-	subProofs, err := m.orm.GetSubProofsByAggTaskID(taskId)
+	subProofs, err := m.orm.GetSubProofsByAggTaskID(taskId.Hash)
 	if err != nil {
 		log.Error("failed to get sub proofs for aggregator task", "id", taskId, "error", err)
 		return false
@@ -752,7 +752,7 @@ func (m *Manager) StartAggProofGenerationSession(task *types.AggTask, prevSessio
 	}
 
 	// Update session proving status as assigned.
-	if err = m.orm.UpdateAggTaskStatus(taskId, types.ProvingTaskAssigned); err != nil {
+	if err = m.orm.UpdateAggTaskStatus(taskId.Hash, types.ProvingTaskAssigned); err != nil {
 		log.Error("failed to update task status", "id", taskId, "err", err)
 		return false
 	}
@@ -760,7 +760,8 @@ func (m *Manager) StartAggProofGenerationSession(task *types.AggTask, prevSessio
 	// Create a proof generation session.
 	sess := &session{
 		info: &types.SessionInfo{
-			ID:             taskId,
+			ID:             taskId.Hash,
+			BatchIndex:     taskId.BatchIdx,
 			Rollers:        rollers,
 			ProveType:      message.AggregatorProve,
 			StartTimestamp: time.Now().Unix(),

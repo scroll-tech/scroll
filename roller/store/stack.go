@@ -52,7 +52,7 @@ func (s *Stack) Push(task *ProvingTask) error {
 	if err != nil {
 		return err
 	}
-	key := []byte(task.Task.ID)
+	key := []byte(task.Task.ID.Hash)
 	return s.Update(func(tx *bbolt.Tx) error {
 		return tx.Bucket(bucket).Put(key, byt)
 	})
@@ -96,7 +96,7 @@ func (s *Stack) UpdateTimes(task *ProvingTask, udpateTimes int) error {
 	if err != nil {
 		return err
 	}
-	key := []byte(task.Task.ID)
+	key := []byte(task.Task.ID.Hash)
 	return s.Update(func(tx *bbolt.Tx) error {
 		bu := tx.Bucket(bucket)
 		c := bu.Cursor()
