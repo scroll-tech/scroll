@@ -66,7 +66,7 @@ func NewRoller(cfg *config.Config) (*Roller, error) {
 	}
 
 	// Collect geth node.
-	ethCli, err := ethclient.Dial(cfg.EthEndpoint)
+	ethCli, err := ethclient.Dial(cfg.TraceEndpoint)
 	if err != nil {
 		return nil, err
 	}
