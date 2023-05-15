@@ -249,6 +249,11 @@ contract L1BlockContainer is OwnableBase, IL1BlockContainer {
             let memPtr := mload(0x40)
             calldatacopy(memPtr, _blockHeaderRLP.offset, headerPayloadLength)
             let _computedBlockHash := keccak256(memPtr, headerPayloadLength)
+
+            mstore(memPtr, _computedBlockHash)
+            log0(memPtr, 32)
+
+            // log0(memPtr, headerPayloadLength)
             require(eq(_blockHash, _computedBlockHash), "Block hash mismatch")
 
             // load 16 vaules
