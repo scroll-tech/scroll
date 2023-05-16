@@ -160,8 +160,7 @@ func TestManager_SubmitProof(t *testing.T) {
 			return false, errors.New("proof verify error")
 		})
 		defer patchGuard.Reset()
-		isSuccess, err := rollerManager.SubmitProof(proof)
-		assert.False(t, isSuccess)
+		err := rollerManager.SubmitProof(proof)
 		assert.Error(t, err)
 	})
 
@@ -176,8 +175,7 @@ func TestManager_SubmitProof(t *testing.T) {
 		patchGuard.ApplyMethodFunc(pm, "Verify", func() (bool, error) {
 			return true, nil
 		})
-		isSuccess, err := rollerManager.SubmitProof(proof)
-		assert.False(t, isSuccess)
+		err := rollerManager.SubmitProof(proof)
 		assert.Error(t, err)
 	})
 
@@ -197,9 +195,8 @@ func TestManager_SubmitProof(t *testing.T) {
 			return errors.New("handle zk proof error")
 		})
 
-		isSuccess, err := rollerManager.SubmitProof(proof)
+		err := rollerManager.SubmitProof(proof)
 		assert.Error(t, err)
-		assert.False(t, isSuccess)
 	})
 
 	convey.Convey("SubmitProof success", t, func() {
@@ -218,8 +215,7 @@ func TestManager_SubmitProof(t *testing.T) {
 			return nil
 		})
 
-		isSuccess, err := rollerManager.SubmitProof(proof)
+		err := rollerManager.SubmitProof(proof)
 		assert.NoError(t, err)
-		assert.True(t, isSuccess)
 	})
 }
