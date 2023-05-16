@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 
 import {DSTestPlus} from "solmate/test/utils/DSTestPlus.sol";
 
+import {EnforcedTxGateway} from "../L1/gateways/EnforcedTxGateway.sol";
 import {L1MessageQueue} from "../L1/rollup/L1MessageQueue.sol";
 import {L2GasPriceOracle} from "../L1/rollup/L2GasPriceOracle.sol";
 import {IScrollChain, ScrollChain} from "../L1/rollup/ScrollChain.sol";
@@ -20,6 +21,7 @@ contract L1ScrollMessengerTest is DSTestPlus {
     ScrollChain internal scrollChain;
     L1MessageQueue internal l1MessageQueue;
     L2GasPriceOracle internal gasOracle;
+    EnforcedTxGateway internal enforcedTxGateway;
     Whitelist internal whitelist;
 
     function setUp() public {
@@ -31,11 +33,12 @@ contract L1ScrollMessengerTest is DSTestPlus {
         l1MessageQueue = new L1MessageQueue();
         l1Messenger = new L1ScrollMessenger();
         gasOracle = new L2GasPriceOracle();
+        enforcedTxGateway = new EnforcedTxGateway();
         whitelist = new Whitelist(address(this));
 
         // Initialize L1 contracts
         l1Messenger.initialize(address(l2Messenger), feeVault, address(scrollChain), address(l1MessageQueue));
-        l1MessageQueue.initialize(address(l1Messenger), address(gasOracle), 10000000);
+        l1MessageQueue.initialize(address(l1Messenger), address(enforcedTxGateway), address(gasOracle), 10000000);
         gasOracle.initialize(0, 0, 0, 0);
         scrollChain.initialize(address(l1MessageQueue));
 
