@@ -22,12 +22,12 @@ func TestWorkerPool(t *testing.T) {
 		atomic.AddInt32(&cnt, -1)
 	}
 
-	go vwp.AddTask(task)
-	go vwp.AddTask(task)
-	go vwp.AddTask(task)
-
+	vwp.AddTask(task)
+	vwp.AddTask(task)
+	
 	time.Sleep(600 * time.Millisecond)
 	as.Equal(int32(1), atomic.LoadInt32(&cnt))
+	vwp.AddTask(task)
 	vwp.Stop()
 	as.Equal(int32(0), atomic.LoadInt32(&cnt))
 
