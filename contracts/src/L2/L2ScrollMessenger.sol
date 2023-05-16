@@ -11,6 +11,7 @@ import {IL1GasPriceOracle} from "./predeploys/IL1GasPriceOracle.sol";
 
 import {PatriciaMerkleTrieVerifier} from "../libraries/verifier/PatriciaMerkleTrieVerifier.sol";
 import {ScrollConstants} from "../libraries/constants/ScrollConstants.sol";
+import {AddressAliasHelper} from "../libraries/common/AddressAliasHelper.sol";
 import {IScrollMessenger} from "../libraries/IScrollMessenger.sol";
 import {ScrollMessengerBase} from "../libraries/ScrollMessengerBase.sol";
 
@@ -126,9 +127,12 @@ contract L2ScrollMessenger is ScrollMessengerBase, PausableUpgradeable, IL2Scrol
         bytes32 _expectedStateRoot = IL1BlockContainer(blockContainer).getStateRoot(_blockHash);
         require(_expectedStateRoot != bytes32(0), "Block is not imported");
 
-        // @todo fix the actual slot later.
         bytes32 _storageKey;
         // `mapping(bytes32 => bool) public isL1MessageSent` is the 105-nd slot of contract `L1ScrollMessenger`.
+        // + 50 from `OwnableUpgradeable`
+        // + 4 from `ScrollMessengerBase`
+        // + 50 from `PausableUpgradeable`
+        // + 2-nd in `L1ScrollMessenger`
         assembly {
             mstore(0x00, _msgHash)
             mstore(0x20, 105)
@@ -158,9 +162,12 @@ contract L2ScrollMessenger is ScrollMessengerBase, PausableUpgradeable, IL2Scrol
         bytes32 _expectedStateRoot = IL1BlockContainer(blockContainer).getStateRoot(_blockHash);
         require(_expectedStateRoot != bytes32(0), "Block not imported");
 
-        // @todo fix the actual slot later.
         bytes32 _storageKey;
         // `mapping(bytes32 => bool) public isL2MessageExecuted` is the 106-th slot of contract `L1ScrollMessenger`.
+        // + 50 from `OwnableUpgradeable`
+        // + 4 from `ScrollMessengerBase`
+        // + 50 from `PausableUpgradeable`
+        // + 3-rd in `L1ScrollMessenger`
         assembly {
             mstore(0x00, _msgHash)
             mstore(0x20, 106)
@@ -208,14 +215,9 @@ contract L2ScrollMessenger is ScrollMessengerBase, PausableUpgradeable, IL2Scrol
         uint256 _value,
         uint256 _nonce,
         bytes memory _message
-    ) external override whenNotPaused onlyWhitelistedSender(msg.sender) {
-        // anti reentrance
-        require(
-            xDomainMessageSender == ScrollConstants.DEFAULT_XDOMAIN_MESSAGE_SENDER,
-            "Message is already in execution"
-        );
-
-        // @todo address unalis to check sender is L1ScrollMessenger
+    ) external override whenNotPaused {
+        // It is impossible to deploy a contract with the same address, reentrance is prevented in nature.
+        require(AddressAliasHelper.undoL1ToL2Alias(msg.sender) == counterpart, "Caller is not L1ScrollMessenger");
 
         bytes32 _xDomainCalldataHash = keccak256(_encodeXDomainCalldata(_from, _to, _value, _nonce, _message));
 

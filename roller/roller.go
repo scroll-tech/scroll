@@ -86,6 +86,11 @@ func NewRoller(cfg *config.Config) (*Roller, error) {
 	}, nil
 }
 
+// Type returns roller type.
+func (r *Roller) Type() message.ProveType {
+	return r.cfg.Prover.ProveType
+}
+
 // PublicKey translate public key to hex and return.
 func (r *Roller) PublicKey() string {
 	return common.Bytes2Hex(crypto.CompressPubkey(&r.priv.PublicKey))
@@ -113,9 +118,10 @@ func (r *Roller) Register() error {
 
 	authMsg := &message.AuthMsg{
 		Identity: &message.Identity{
-			Name:      r.cfg.RollerName,
-			Timestamp: uint32(timestamp),
-			Version:   version.Version,
+			Name:       r.cfg.RollerName,
+			RollerType: r.Type(),
+			Timestamp:  uint32(timestamp),
+			Version:    version.Version,
 		},
 	}
 	// Sign request token message
@@ -227,6 +233,7 @@ func (r *Roller) prove() error {
 				Status: message.StatusProofError,
 				Error:  err.Error(),
 				ID:     task.Task.ID,
+				Type:   task.Task.Type,
 				Proof:  &message.AggProof{},
 			}
 			log.Error("prove block failed!", "task-id", task.Task.ID)
@@ -234,6 +241,7 @@ func (r *Roller) prove() error {
 			proofMsg = &message.ProofDetail{
 				Status: message.StatusOk,
 				ID:     task.Task.ID,
+				Type:   task.Task.Type,
 				Proof:  proof,
 			}
 			log.Info("prove block successfully!", "task-id", task.Task.ID)
@@ -245,6 +253,7 @@ func (r *Roller) prove() error {
 			Status: message.StatusProofError,
 			Error:  "zk proving panic",
 			ID:     task.Task.ID,
+			Type:   task.Task.Type,
 			Proof:  &message.AggProof{},
 		}
 	}
@@ -274,11 +283,7 @@ func (r *Roller) signAndSubmitProof(msg *message.ProofDetail) {
 		for atomic.LoadInt64(&r.isDisconnected) == 1 {
 			time.Sleep(retryWait)
 		}
-		ok, serr := r.client.SubmitProof(context.Background(), authZkProof)
-		if !ok {
-			log.Error("submit proof to coordinator failed", "task ID", msg.ID)
-			return
-		}
+		serr := r.client.SubmitProof(context.Background(), authZkProof)
 		if serr == nil {
 			return
 		}

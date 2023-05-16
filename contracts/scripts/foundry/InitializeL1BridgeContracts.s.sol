@@ -55,13 +55,14 @@ contract InitializeL1BridgeContracts is Script {
     ScrollChain(L1_ZK_ROLLUP_PROXY_ADDR).updateSequencer(L1_ROLLUP_OPERATOR_ADDR, true);
 
     // initialize L2GasPriceOracle
-    L2GasPriceOracle(L2_GAS_PRICE_ORACLE_PROXY_ADDR).initialize();
+    L2GasPriceOracle(L2_GAS_PRICE_ORACLE_PROXY_ADDR).initialize(0, 0, 0, 0);
     L2GasPriceOracle(L2_GAS_PRICE_ORACLE_PROXY_ADDR).updateWhitelist(L1_WHITELIST_ADDR);
 
     // initialize L1MessageQueue
     L1MessageQueue(L1_MESSAGE_QUEUE_PROXY_ADDR).initialize(
       L1_SCROLL_MESSENGER_PROXY_ADDR,
-      L2_GAS_PRICE_ORACLE_PROXY_ADDR
+      L2_GAS_PRICE_ORACLE_PROXY_ADDR,
+      10000000
     );
 
     // initialize L1ScrollMessenger
