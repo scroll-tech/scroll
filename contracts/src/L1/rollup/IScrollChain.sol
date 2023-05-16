@@ -11,6 +11,10 @@ interface IScrollChain {
     /// @param batchHash The hash of the batch.
     event CommitBatch(bytes32 indexed batchHash);
 
+    /// @notice revert a pending batch.
+    /// @param batchHash The hash of the batch
+    event RevertBatch(bytes32 indexed batchHash);
+
     /// @notice Emitted when a batch is finalized.
     /// @param batchHash The hash of the batch
     /// @param stateRoot The state root in layer 2 after this batch.
@@ -43,18 +47,17 @@ interface IScrollChain {
 
     /// @notice commit a batch in layer 1
     ///
-    /// @dev Below is the encoding for `BatchHeader`, total 161 bytes.
+    /// @dev Below is the encoding for `BatchHeader`, total 121 + ceil(l1MessagePopped / 256) * 32 bytes.
     /// ```text
-    ///   * Field                   Bytes      Type       Index  Comments
-    ///   * version                 1          uint8      0      The batch version
-    ///   * batchIndex              8          uint64     1      The index of the batch
-    ///   * l1MessagePopped         8          uint64     9      Number of L1 message popped in the batch
-    ///   * totalL1MessagePopped    8          uint64     17     Number of total L1 message popped after the batch
-    ///   * dataHash                32         bytes32    25     The data hash of the batch
-    ///   * lastBlockHash           32         bytes32    57     The block hash of the last block in the batch
-    ///   * skippedL1MessageBitmap  32         bytes32    89     A bitmap to indicate if L1 messages are skipped in the batch
-    ///   * parentBatchHash         32         bytes32    121    The parent batch hash
-    ///   * timestamp               8          uint64     153    The block timestamp when this bath committed.
+    ///   * Field                   Bytes       Type        Index   Comments
+    ///   * version                 1           uint8       0       The batch version
+    ///   * batchIndex              8           uint64      1       The index of the batch
+    ///   * l1MessagePopped         8           uint64      9       Number of L1 message popped in the batch
+    ///   * totalL1MessagePopped    8           uint64      17      Number of total L1 message popped after the batch
+    ///   * dataHash                32          bytes32     25      The data hash of the batch
+    ///   * lastBlockHash           32          bytes32     57      The block hash of the last block in the batch
+    ///   * parentBatchHash         32          bytes32     89      The parent batch hash
+    ///   * skippedL1MessageBitmap  dynamic     uint256[]   121     A bitmap to indicate if L1 messages are skipped in the batch
     /// ```
     ///
     /// @dev Below is the encoding for `Chunk`, total 156*n+1+m bytes.
@@ -91,6 +94,11 @@ interface IScrollChain {
         bytes calldata parentBatchHeader,
         bytes[] memory chunks
     ) external;
+
+    /// @notice Revert a pending batch.
+    /// @dev one can only revert unfinalized batches.
+    /// @param batchHeader The header of current batch, see the encoding in comments of `commitBatch.
+    function revertBatch(bytes calldata batchHeader) external;
 
     /// @notice Finalize commited batch in layer 1
     /// @param batchHeader The header of current batch, see the encoding in comments of `commitBatch.

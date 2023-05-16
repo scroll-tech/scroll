@@ -2,10 +2,12 @@
 
 pragma solidity ^0.8.0;
 
+import {console2} from "forge-std/console2.sol";
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
 import {IL1MessageQueue} from "./IL1MessageQueue.sol";
 import {IScrollChain} from "./IScrollChain.sol";
+import {BatchHeaderV0Codec} from "../../libraries/codec/BatchHeaderV0Codec.sol";
 import {IRollupVerifier} from "../../libraries/verifier/IRollupVerifier.sol";
 
 // solhint-disable reason-string
@@ -99,55 +101,31 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
      *****************************/
 
     /// @notice Import layer 2 genesis block
+    /// @dev Although `_withdrawRoot` is always zero, we add this parameterfor the convenience of unit testing.
     function importGenesisBatch(
         bytes calldata _batchHeader,
         bytes32 _stateRoot,
         bytes32 _withdrawRoot
     ) external {
-        // check parent batch length
-        require(_batchHeader.length == 161, "invalid batch header length");
+        // check genesis batch header length
         require(_stateRoot != bytes32(0), "zero state root");
 
         // check whether the genesis batch is imported
         require(finalizedStateRoots[0] == bytes32(0), "Genesis batch imported");
 
-        // load batch header to memory
-        uint256 _batchHeaderOffset;
-        assembly {
-            _batchHeaderOffset := mload(0x40)
-            mstore(0x40, add(_batchHeaderOffset, 161))
-            // copy parent batch header to memory.
-            calldatacopy(_batchHeaderOffset, _batchHeader.offset, 161)
-        }
+        (uint256 memPtr, bytes32 _batchHash) = _loadBatchHeader(_batchHeader);
 
-        // check all fields except `dataHash` are zero
-        {
-            uint256 _sumOfFields;
-            bytes32 _dataHash;
-            bytes32 _lastBlockHash;
-            assembly {
-                // load `version` from batch header
-                _sumOfFields := add(_sumOfFields, shr(248, mload(_batchHeaderOffset)))
-                // load `batchIndex` from batch header
-                _sumOfFields := add(_sumOfFields, shr(192, mload(add(_batchHeaderOffset, 1))))
-                // load `l1MessagePopped` from batch header
-                _sumOfFields := add(_sumOfFields, shr(192, mload(add(_batchHeaderOffset, 9))))
-                // load `totalL1MessagePopped` from batch header
-                _sumOfFields := add(_sumOfFields, shr(192, mload(add(_batchHeaderOffset, 17))))
-                // load `dataHash` from batch header
-                _dataHash := mload(add(_batchHeaderOffset, 25))
-                // load `lastBlockHash` from batch header
-                _lastBlockHash := mload(add(_batchHeaderOffset, 57))
-                // store timestamp for current batch header
-                mstore(add(_batchHeaderOffset, 153), shl(192, timestamp()))
-            }
-            require(_sumOfFields == 0, "not all fields are zero");
-            require(_dataHash != bytes32(0), "zero data hash");
-            require(_lastBlockHash != bytes32(0), "zero last block hash");
+        // check all fields except `dataHash` and `lastBlockHash` are zero
+        unchecked {
+            uint256 sums = BatchHeaderV0Codec.version(memPtr) +
+                BatchHeaderV0Codec.batchIndex(memPtr) +
+                BatchHeaderV0Codec.l1MessagePopped(memPtr) +
+                BatchHeaderV0Codec.totalL1MessagePopped(memPtr);
+            require(sums == 0, "not all fields are zero");
         }
-
-        // compute parent batch hash and check
-        bytes32 _batchHash = _computeBatchHash(_batchHeaderOffset);
+        require(BatchHeaderV0Codec.dataHash(memPtr) != bytes32(0), "zero data hash");
+        require(BatchHeaderV0Codec.lastBlockHash(memPtr) != bytes32(0), "zero last block hash");
+        require(BatchHeaderV0Codec.parentBatchHash(memPtr) == bytes32(0), "nonzero parent batch hash");
 
         committedBatches[0] = _batchHash;
         finalizedStateRoots[0] = _stateRoot;
@@ -165,75 +143,89 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
         bytes[] memory _chunks
     ) external override OnlySequencer {
         // check whether the batch is empty
-        require(_chunks.length > 0, "batch is empty");
-        // check parent batch header length
-        require(_parentBatchHeader.length == 161, "invalid batch header length");
+        uint256 _chunksLength = _chunks.length;
+        require(_chunksLength > 0, "batch is empty");
 
-        bytes32 _batchHash;
-        uint256 _batchIndex;
-        uint256 _totalL1MessagePopped;
-        bytes32 _parantBlockHash;
+        // The variable `memPtr` will be reused for other purposes later.
+        (uint256 memPtr, bytes32 _parentBatchHash) = _loadBatchHeader(_parentBatchHeader);
 
-        // @note This memory is first used to store parent batch header and then current batch header
-        uint256 _batchHeaderOffset;
-        assembly {
-            _batchHeaderOffset := mload(0x40)
-            mstore(0x40, add(_batchHeaderOffset, 161))
-            // copy parent batch header to memory.
-            calldatacopy(_batchHeaderOffset, _parentBatchHeader.offset, 161)
-            // load parent batch index from parent batch header
-            _batchIndex := shr(192, mload(add(_batchHeaderOffset, 1)))
-            // load total l1 message popped from parent batch header
-            _totalL1MessagePopped := shr(192, mload(add(_batchHeaderOffset, 17)))
-            // load parent block hash from parent batch header
-            _parantBlockHash := mload(add(_batchHeaderOffset, 57))
-        }
-
-        // compute parent batch hash and check
-        _batchHash = _computeBatchHash(_batchHeaderOffset);
-        require(committedBatches[_batchIndex] == _batchHash, "incorrect parent batch bash");
+        uint256 _batchIndex = BatchHeaderV0Codec.batchIndex(memPtr);
+        uint256 _totalL1MessagePopped = BatchHeaderV0Codec.totalL1MessagePopped(memPtr);
+        bytes32 _parentBlockHash = BatchHeaderV0Codec.lastBlockHash(memPtr);
+        require(committedBatches[_batchIndex] == _parentBatchHash, "incorrect parent batch bash");
 
         // compute data hash for each chunk
-        bytes32[] memory _dataHashes = new bytes32[](_chunks.length);
-        uint256 _l1MessagePopped;
-        for (uint256 i = 0; i < _chunks.length; i++) {
-            uint256 _numPopped;
-            (_dataHashes[i], _parantBlockHash, _numPopped) = _commitChunk(
+        // The list of data hashes are stored in memory start with `memPtr`.
+        // The bitmap of all skipped messages are stored in memory start with `bitmapPtr`.
+        uint256 bitmapPtr;
+        assembly {
+            memPtr := mload(0x40)
+            mstore(0x40, add(memPtr, mul(_chunksLength, 32)))
+            bitmapPtr := mload(0x40)
+            mstore(0x40, add(bitmapPtr, mul(_chunksLength, 32)))
+            mstore(bitmapPtr, 0) // clear memory entry
+        }
+
+        uint256 _numL1MessagesInBatch;
+        for (uint256 i = 0; i < _chunksLength; i++) {
+            uint256 _numL1MessagesInChunk;
+            (_parentBlockHash, _numL1MessagesInChunk) = _commitChunk(
+                memPtr,
+                bitmapPtr,
+                _numL1MessagesInBatch % 256,
                 _chunks[i],
-                _parantBlockHash,
+                _parentBlockHash,
                 _totalL1MessagePopped
             );
-            unchecked {
-                _l1MessagePopped += _numPopped;
-                _totalL1MessagePopped += _numPopped;
+
+            // load `numL1Messages` from memory
+            assembly {
+                _numL1MessagesInBatch := add(_numL1MessagesInBatch, _numL1MessagesInChunk)
+                _totalL1MessagePopped := add(_totalL1MessagePopped, _numL1MessagesInChunk)
+                memPtr := add(memPtr, 32)
             }
         }
 
         // compute current batch hash
-        bytes32 dataHash;
+        bytes32 _dataHash;
         assembly {
+            memPtr := sub(memPtr, mul(_chunksLength, 0x20))
+            _dataHash := keccak256(memPtr, mul(_chunksLength, 0x20))
+            memPtr := mload(0x20)
             _batchIndex := add(_batchIndex, 1)
-            let _dataHash := keccak256(add(_dataHashes, 0x20), mul(mload(_dataHashes), 0x20))
-            dataHash := _dataHash
-            // store version for current batch header
-            mstore(_batchHeaderOffset, shl(248, _version))
-            // store batchIndex for current batch header
-            mstore(add(_batchHeaderOffset, 1), shl(192, _batchIndex))
-            // store l1MessagePopped for current batch header
-            mstore(add(_batchHeaderOffset, 9), shl(192, _l1MessagePopped))
-            // store totalL1MessagePopped for current batch header
-            mstore(add(_batchHeaderOffset, 17), shl(192, _totalL1MessagePopped))
-            // store dataHash for current batch header
-            mstore(add(_batchHeaderOffset, 25), _dataHash)
-            // store lastBlockHash for current batch header
-            mstore(add(_batchHeaderOffset, 57), _parantBlockHash)
-            // store timestamp for current batch header
-            mstore(add(_batchHeaderOffset, 153), shl(192, timestamp()))
         }
-        _batchHash = _computeBatchHash(_batchHeaderOffset);
+
+        // store entries
+        BatchHeaderV0Codec.storeVersion(memPtr, _version);
+        BatchHeaderV0Codec.storeBatchIndex(memPtr, _batchIndex);
+        BatchHeaderV0Codec.storeL1MessagePopped(memPtr, _numL1MessagesInBatch);
+        BatchHeaderV0Codec.storeTotalL1MessagePopped(memPtr, _totalL1MessagePopped);
+        BatchHeaderV0Codec.storeDataHash(memPtr, _dataHash);
+        BatchHeaderV0Codec.storeLastBlockHash(memPtr, _parentBlockHash);
+        BatchHeaderV0Codec.storeParentBatchHash(memPtr, _parentBatchHash);
+        BatchHeaderV0Codec.storeBitMap(memPtr, bitmapPtr);
+
+        // compute batch hash
+        bytes32 _batchHash = _computeBatchHash(memPtr, 121 + ((_numL1MessagesInBatch + 255) / 256) * 32);
 
         committedBatches[_batchIndex] = _batchHash;
         emit CommitBatch(_batchHash);
+    }
+
+    /// @inheritdoc IScrollChain
+    function revertBatch(bytes calldata _batchHeader) external OnlySequencer {
+        (uint256 memPtr, bytes32 _batchHash) = _loadBatchHeader(_batchHeader);
+
+        // check batch hash
+        uint256 _batchIndex = BatchHeaderV0Codec.batchIndex(memPtr);
+        require(committedBatches[_batchIndex] == _batchHash, "incorrect batch bash");
+
+        // check finalization
+        require(_batchIndex > lastFinalizedBatchIndex, "can only revert unfinalized batch");
+
+        committedBatches[_batchIndex] = bytes32(0);
+
+        emit RevertBatch(_batchHash);
     }
 
     /// @inheritdoc IScrollChain
@@ -244,27 +236,12 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
         bytes32 _withdrawRoot,
         bytes calldata _aggrProof
     ) external override OnlySequencer {
-        // check batch header length
-        require(_batchHeader.length == 161, "invalid batch header length");
-
         // compute batch hash and verify
-        bytes32 _batchHash;
-        bytes32 _dataHash;
-        uint256 _batchIndex;
-        {
-            uint256 _offset;
-            assembly {
-                _offset := mload(0x40)
-                // copy parent batch header to memory.
-                calldatacopy(_offset, _batchHeader.offset, 161)
-                // load parent batch index.
-                _batchIndex := shr(192, mload(add(_offset, 1)))
-                // load data hash
-                _dataHash := mload(add(_offset, 25))
-            }
-            _batchHash = _computeBatchHash(_offset);
-            require(committedBatches[_batchIndex] == _batchHash, "incorrect batch bash");
-        }
+        (uint256 memPtr, bytes32 _batchHash) = _loadBatchHeader(_batchHeader);
+
+        bytes32 _dataHash = BatchHeaderV0Codec.dataHash(memPtr);
+        uint256 _batchIndex = BatchHeaderV0Codec.batchIndex(memPtr);
+        require(committedBatches[_batchIndex] == _batchHash, "incorrect batch bash");
 
         // verify previous state root.
         require(finalizedStateRoots[_batchIndex - 1] == _prevStateRoot, "incorrect previous state root");
@@ -273,20 +250,23 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
         require(finalizedStateRoots[_batchIndex] == bytes32(0), "batch already verified");
 
         // compute public input hash
-        bytes32 _publicInuptHash = keccak256(abi.encode(_prevStateRoot, _newStateRoot, _withdrawRoot, _dataHash));
+        bytes32 _publicInputHash = keccak256(abi.encode(_prevStateRoot, _newStateRoot, _withdrawRoot, _dataHash));
 
         // verify batch
-        IRollupVerifier(verifier).verifyAggregateProof(_aggrProof, _publicInuptHash);
+        IRollupVerifier(verifier).verifyAggregateProof(_aggrProof, _publicInputHash);
 
-        // update lastFinalizedBatchIndex
-        uint256 _lastFinalizedBatchIndex = lastFinalizedBatchIndex;
-        if (_batchIndex > _lastFinalizedBatchIndex) {
+        // check and update lastFinalizedBatchIndex
+        unchecked {
+            uint256 _lastFinalizedBatchIndex = lastFinalizedBatchIndex;
+            require(_lastFinalizedBatchIndex + 1 == _batchIndex, "incorrect batch index");
             lastFinalizedBatchIndex = _batchIndex;
         }
 
         // record state root and withdraw root
         finalizedStateRoots[_batchIndex] = _newStateRoot;
         withdrawRoots[_batchIndex] = _withdrawRoot;
+
+        // @todo pop finalized and non-skipped message from L1MessageQueue.
 
         emit FinalizeBatch(_batchHash, _newStateRoot, _withdrawRoot);
     }
@@ -318,36 +298,49 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
      * Internal Functions *
      **********************/
 
+    /// @dev Internal function to load batch header from calldata to memory.
+    /// @param _batchHeader The batch header in calldata.
+    /// @return memPtr The start memory offset of loaded batch header.
+    /// @return _batchHash The hash of the loaded batch header.
+    function _loadBatchHeader(bytes calldata _batchHeader) internal view returns (uint256 memPtr, bytes32 _batchHash) {
+        // load to memory
+        uint256 _length;
+        (memPtr, _length) = BatchHeaderV0Codec.loadAndValidate(_batchHeader);
+
+        // compute batch hash
+        _batchHash = _computeBatchHash(memPtr, _length);
+    }
+
     /// @dev Internal function to commit a chunk.
+    /// @param memPtr The start memory offset to store `dataHash`.
+    /// @param bitmapPtr The start memory offset to store skippedL1MessageBitmap.
+    /// @param bitmapBits The number of bits of the bitmap in memory `bitmapPtr`.
     /// @param _chunk The encoded chunk to commit.
     /// @param _prevBlockHash The block hash of parent block.
-    /// @param _prevTotalL1MessagesPopped The total number of L1 message popped before.
+    /// @param _prevTotalL1MessagesPopped The total number of L1 message popped before current chunk.
+    /// @return bytes32 The parent block hash.
+    /// @return uint256 The total number of L1 message popped in current chunk
     function _commitChunk(
+        uint256 memPtr,
+        uint256 bitmapPtr,
+        uint256 bitmapBits,
         bytes memory _chunk,
         bytes32 _prevBlockHash,
         uint256 _prevTotalL1MessagesPopped
-    )
-        internal
-        view
-        returns (
-            bytes32,
-            bytes32,
-            uint256
-        )
-    {
+    ) internal view returns (bytes32, uint256) {
         // should contain at least the number of the blocks
         require(_chunk.length > 0, "chunk length too small");
 
-        uint256 _chunkPtr;
+        uint256 chunkPtr;
+        uint256 dataPtr;
         uint256 _numBlocks;
-        uint256 _dataPtr;
         assembly {
-            _dataPtr := mload(0x40)
-            _chunkPtr := add(_chunk, 0x20)
-            _numBlocks := shr(248, mload(_chunkPtr))
-            _chunkPtr := add(_chunkPtr, 1)
+            dataPtr := mload(0x40)
+            chunkPtr := add(_chunk, 0x20)
+            _numBlocks := shr(248, mload(chunkPtr))
+            chunkPtr := add(chunkPtr, 1)
         }
-        // should contains at least one block
+        // should contain at least one block
         require(_numBlocks > 0, "no block in chunk");
 
         // should contain at least the number of the blocks and block contexts
@@ -357,82 +350,99 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
         for (uint256 i = 0; i < _numBlocks; i++) {
             bytes32 _parentHash;
             assembly {
-                _parentHash := mload(add(_chunkPtr, 0x20))
+                _parentHash := mload(add(chunkPtr, 0x20))
             }
-            require(_parentHash == _prevBlockHash, "incorrect parent hash");
+            require(_parentHash == _prevBlockHash, "incorrect parent block hash");
 
             assembly {
-                _prevBlockHash := mload(_chunkPtr)
+                _prevBlockHash := mload(chunkPtr)
                 for {
                     let j := 0
                 } lt(j, 156) {
                     j := add(j, 0x20)
                 } {
-                    mstore(add(_dataPtr, j), mload(add(_chunkPtr, j)))
+                    mstore(add(dataPtr, j), mload(add(chunkPtr, j)))
                 }
-                _dataPtr := add(_dataPtr, 156)
-                _chunkPtr := add(_chunkPtr, 156)
+                dataPtr := add(dataPtr, 156)
+                chunkPtr := add(chunkPtr, 156)
             }
         }
 
         // concatenate tx hashes
-        uint256 _txPtr = _chunkPtr;
+        uint256 txPtr = chunkPtr;
         assembly {
-            _chunkPtr := add(_chunk, 0x21)
+            chunkPtr := add(_chunk, 0x21)
         }
         uint256 _totalNumL1MessagesInChunk;
         for (uint256 i = 0; i < _numBlocks; i++) {
-            uint256 _numTransactionsInBlock;
             uint256 _numL1MessagesInBlock;
-            uint256 _skippedL1MessageBitmap;
+            uint256 _skippedL1MessageBitmapInBlock;
             assembly {
-                _numTransactionsInBlock := shr(240, mload(add(_chunkPtr, 120)))
-                _numL1MessagesInBlock := shr(240, mload(add(_chunkPtr, 122)))
-                _skippedL1MessageBitmap := mload(add(_chunkPtr, 124))
-                _chunkPtr := add(_chunkPtr, 156)
+                _numL1MessagesInBlock := shr(240, mload(add(chunkPtr, 122)))
+                _skippedL1MessageBitmapInBlock := mload(add(chunkPtr, 124))
             }
-            require(_numL1MessagesInBlock <= 256, "include too much L1 messages");
+            require(_numL1MessagesInBlock <= 256, "block includes too much L1 messages");
 
             // concatenate l1 messages
-            _dataPtr = _loadL1Messages(
-                _dataPtr,
+            dataPtr = _loadL1Messages(
+                dataPtr,
                 _numL1MessagesInBlock,
                 _prevTotalL1MessagesPopped,
-                _skippedL1MessageBitmap
+                _skippedL1MessageBitmapInBlock
             );
-            unchecked {
-                _totalNumL1MessagesInChunk += _numL1MessagesInBlock;
-                _prevTotalL1MessagesPopped += _numL1MessagesInBlock;
+
+            // update local chunk state variable
+            assembly {
+                // update bitmap entry
+                mstore(bitmapPtr, or(mload(bitmapPtr), shl(bitmapBits, _skippedL1MessageBitmapInBlock)))
+                bitmapBits := add(bitmapBits, _numL1MessagesInBlock)
+                if gt(bitmapBits, 256) {
+                    // cannot fit in single uint256, store extra parts to next entry
+                    bitmapPtr := add(bitmapPtr, 32)
+                    bitmapBits := sub(bitmapBits, 256)
+                    mstore(bitmapPtr, shr(sub(_numL1MessagesInBlock, bitmapBits), _skippedL1MessageBitmapInBlock))
+                }
+
+                // update counts
+                _totalNumL1MessagesInChunk := add(_totalNumL1MessagesInChunk, _numL1MessagesInBlock)
+                _prevTotalL1MessagesPopped := add(_prevTotalL1MessagesPopped, _numL1MessagesInBlock)
+            }
+
+            uint256 _numTransactionsInBlock;
+            assembly {
+                _numTransactionsInBlock := shr(240, mload(add(chunkPtr, 120)))
+                chunkPtr := add(chunkPtr, 156)
             }
 
             // concatenate l2 transactions
             for (uint256 j = _numL1MessagesInBlock; j < _numTransactionsInBlock; j++) {
                 assembly {
                     // first 4 bytes indicate the length
-                    let txPayloadLength := shr(224, mload(_txPtr))
-                    _txPtr := add(_txPtr, 4)
-                    _txPtr := add(_txPtr, txPayloadLength)
-                    let txHash := keccak256(sub(_txPtr, txPayloadLength), txPayloadLength)
-                    mstore(_dataPtr, txHash)
-                    _dataPtr := add(_dataPtr, 0x20)
+                    let txPayloadLength := shr(224, mload(txPtr))
+                    txPtr := add(txPtr, 4)
+                    txPtr := add(txPtr, txPayloadLength)
+                    let txHash := keccak256(sub(txPtr, txPayloadLength), txPayloadLength)
+                    mstore(dataPtr, txHash)
+                    dataPtr := add(dataPtr, 0x20)
                 }
             }
         }
 
         // check chunk has correct length
         assembly {
-            _chunkPtr := add(_chunk, 0x20)
+            chunkPtr := add(_chunk, 0x20)
         }
-        require(_txPtr - _chunkPtr == _chunk.length, "chunk length mismatch");
+        require(txPtr - chunkPtr == _chunk.length, "chunk length mismatch");
 
-        // compute data hash
-        bytes32 _dataHash;
+        // compute data hash and store to memory
         assembly {
-            let _startPtr := mload(0x40)
-            _dataHash := keccak256(_startPtr, sub(_dataPtr, _startPtr))
+            let startPtr := mload(0x40)
+            let dataHash := keccak256(startPtr, sub(dataPtr, startPtr))
+
+            mstore(memPtr, dataHash)
         }
 
-        return (_dataHash, _prevBlockHash, _totalNumL1MessagesInChunk);
+        return (_prevBlockHash, _totalNumL1MessagesInChunk);
     }
 
     /// @dev Internal function to load L1 messages from message queue.
@@ -466,15 +476,12 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
     /// Caller should make sure that the encoded batch header is correct.
     ///
     /// @param _offset The memory offset of the encoded batch header.
+    /// @param _length The length of the batch.
     /// @return _batchHash The hash of the corresponding batch.
-    function _computeBatchHash(uint256 _offset) internal pure returns (bytes32 _batchHash) {
+    function _computeBatchHash(uint256 _offset, uint256 _length) internal pure returns (bytes32 _batchHash) {
+        // in current version, the hash is: keccak(BatchHeader without timestamp)
         assembly {
-            // mstore: batch hash without timestamp, 89 = 1 + 8 + 8 + 8 + 32 + 32
-            mstore(0x00, keccak256(_offset, 89))
-            // mstore: block timestamp of the batch
-            mstore(0x20, shr(192, mload(add(_offset, 153))))
-            // compute batch hash
-            _batchHash := keccak256(0x00, 0x40)
+            _batchHash := keccak256(_offset, _length)
         }
     }
 }

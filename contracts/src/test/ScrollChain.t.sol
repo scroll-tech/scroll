@@ -71,7 +71,7 @@ contract ScrollChainTest is DSTestPlus {
     */
 
     function testCommitBatch() public {
-        bytes memory batchHeader0 = new bytes(161);
+        bytes memory batchHeader0 = new bytes(121);
 
         // import genesis batch first
         assembly {
@@ -79,9 +79,6 @@ contract ScrollChainTest is DSTestPlus {
             mstore(add(batchHeader0, add(0x20, 57)), 1)
         }
         rollup.importGenesisBatch(batchHeader0, bytes32(uint256(1)), bytes32(uint256(0)));
-        assembly {
-            mstore(add(batchHeader0, 185), shl(192, timestamp()))
-        }
 
         // caller not sequencer, revert
         hevm.expectRevert("caller not sequencer");
@@ -93,11 +90,13 @@ contract ScrollChainTest is DSTestPlus {
         hevm.expectRevert("batch is empty");
         rollup.commitBatch(0, batchHeader0, new bytes[](0));
 
-        // invalid batch header length, revert
-        hevm.expectRevert("invalid batch header length");
-        rollup.commitBatch(0, new bytes(160), new bytes[](1));
-        hevm.expectRevert("invalid batch header length");
-        rollup.commitBatch(0, new bytes(162), new bytes[](1));
+        // batch header length too small, revert
+        hevm.expectRevert("batch header length too small");
+        rollup.commitBatch(0, new bytes(120), new bytes[](1));
+
+        // wrong bitmap length, revert
+        hevm.expectRevert("wrong bitmap length");
+        rollup.commitBatch(0, new bytes(122), new bytes[](1));
 
         // incorrect parent batch bash, revert
         assembly {
@@ -129,7 +128,7 @@ contract ScrollChainTest is DSTestPlus {
         hevm.expectRevert("invalid chunk length");
         rollup.commitBatch(0, batchHeader0, chunks);
 
-        // incorrect parent hash, revert
+        // incorrect parent block hash, revert
         chunk0 = new bytes(1 + 156);
         chunk0[0] = bytes1(uint8(1)); // one block in this chunk
         assembly {
@@ -137,7 +136,7 @@ contract ScrollChainTest is DSTestPlus {
             mstore(add(chunk0, 65), 2) // parentHash = 2
         }
         chunks[0] = chunk0;
-        hevm.expectRevert("incorrect parent hash");
+        hevm.expectRevert("incorrect parent block hash");
         rollup.commitBatch(0, batchHeader0, chunks);
 
         chunk0 = new bytes(1 + 156 * 2);
@@ -150,7 +149,7 @@ contract ScrollChainTest is DSTestPlus {
             mstore(add(chunk0, 221), 1) // parentHash = 1
         }
         chunks[0] = chunk0;
-        hevm.expectRevert("incorrect parent hash");
+        hevm.expectRevert("incorrect parent block hash");
         rollup.commitBatch(0, batchHeader0, chunks);
 
         // chunk length mismatch, revert
@@ -183,7 +182,7 @@ contract ScrollChainTest is DSTestPlus {
 
         rollup.updateSequencer(address(this), true);
 
-        bytes memory batchHeader0 = new bytes(161);
+        bytes memory batchHeader0 = new bytes(121);
 
         // import genesis batch
         assembly {
@@ -191,9 +190,6 @@ contract ScrollChainTest is DSTestPlus {
             mstore(add(batchHeader0, add(0x20, 57)), 1)
         }
         rollup.importGenesisBatch(batchHeader0, bytes32(uint256(1)), bytes32(uint256(0)));
-        assembly {
-            mstore(add(batchHeader0, 185), shl(192, timestamp()))
-        }
         bytes32 batchHash0 = rollup.committedBatches(0);
 
         bytes[] memory chunks = new bytes[](1);
@@ -210,7 +206,7 @@ contract ScrollChainTest is DSTestPlus {
         rollup.commitBatch(0, batchHeader0, chunks);
         assertGt(uint256(rollup.committedBatches(1)), 0);
 
-        bytes memory batchHeader1 = new bytes(161);
+        bytes memory batchHeader1 = new bytes(121);
         assembly {
             mstore(add(batchHeader1, 0x20), 0) // version
             mstore(add(batchHeader1, add(0x20, 1)), shl(192, 1)) // batchIndex
@@ -218,34 +214,34 @@ contract ScrollChainTest is DSTestPlus {
             mstore(add(batchHeader1, add(0x20, 17)), 0) // totalL1MessagePopped
             mstore(add(batchHeader1, add(0x20, 25)), 0x657b9e1f6ba0dfc7f88bd8eaedb28b65d347e30236e8e114035499177418b318) // dataHash
             mstore(add(batchHeader1, add(0x20, 57)), 2) // lastBlockHash
-            mstore(add(batchHeader1, add(0x20, 89)), 0) // skippedL1MessageBitmap
-            mstore(add(batchHeader1, add(0x20, 121)), batchHash0) // parentBatchHash
-            mstore(add(batchHeader1, add(0x20, 153)), shl(192, timestamp())) // timestamp
+            mstore(add(batchHeader1, add(0x20, 89)), batchHash0) // parentBatchHash
         }
-
-        // invalid batch header length, revert
-        hevm.expectRevert("invalid batch header length");
-        rollup.finalizeBatchWithProof(
-            new bytes(160),
-            bytes32(uint256(1)),
-            bytes32(uint256(2)),
-            bytes32(0),
-            new bytes(0)
-        );
-        hevm.expectRevert("invalid batch header length");
-        rollup.finalizeBatchWithProof(
-            new bytes(162),
-            bytes32(uint256(1)),
-            bytes32(uint256(2)),
-            bytes32(0),
-            new bytes(0)
-        );
 
         // incorrect batch bash, revert
         hevm.expectRevert("incorrect batch bash");
         batchHeader1[0] = bytes1(uint8(1)); // change version to 1
         rollup.finalizeBatchWithProof(batchHeader1, bytes32(uint256(1)), bytes32(uint256(2)), bytes32(0), new bytes(0));
         batchHeader1[0] = bytes1(uint8(0)); // change back
+
+        // batch header length too small, revert
+        hevm.expectRevert("batch header length too small");
+        rollup.finalizeBatchWithProof(
+            new bytes(120),
+            bytes32(uint256(1)),
+            bytes32(uint256(2)),
+            bytes32(0),
+            new bytes(0)
+        );
+
+        // wrong bitmap length, revert
+        hevm.expectRevert("wrong bitmap length");
+        rollup.finalizeBatchWithProof(
+            new bytes(122),
+            bytes32(uint256(1)),
+            bytes32(uint256(2)),
+            bytes32(0),
+            new bytes(0)
+        );
 
         // incorrect previous state root, revert
         hevm.expectRevert("incorrect previous state root");
@@ -316,50 +312,65 @@ contract ScrollChainTest is DSTestPlus {
     function testImportGenesisBlock() public {
         bytes memory batchHeader;
 
-        // invalid batch header length, revert
-        batchHeader = new bytes(160);
-        hevm.expectRevert("invalid batch header length");
-        rollup.importGenesisBatch(batchHeader, bytes32(0), bytes32(0));
-
         // zero state root, revert
-        batchHeader = new bytes(161);
+        batchHeader = new bytes(121);
         hevm.expectRevert("zero state root");
         rollup.importGenesisBatch(batchHeader, bytes32(0), bytes32(0));
 
+        // batch header length too small, revert
+        batchHeader = new bytes(120);
+        hevm.expectRevert("batch header length too small");
+        rollup.importGenesisBatch(batchHeader, bytes32(uint256(1)), bytes32(0));
+
+        // wrong bitmap length, revert
+        batchHeader = new bytes(122);
+        hevm.expectRevert("wrong bitmap length");
+        rollup.importGenesisBatch(batchHeader, bytes32(uint256(1)), bytes32(0));
+
         // not all fields are zero, revert
-        batchHeader = new bytes(161);
+        batchHeader = new bytes(121);
         batchHeader[0] = bytes1(uint8(1)); // version not zero
         hevm.expectRevert("not all fields are zero");
         rollup.importGenesisBatch(batchHeader, bytes32(uint256(1)), bytes32(0));
 
-        batchHeader = new bytes(161);
+        batchHeader = new bytes(121);
         batchHeader[1] = bytes1(uint8(1)); // batchIndex not zero
         hevm.expectRevert("not all fields are zero");
         rollup.importGenesisBatch(batchHeader, bytes32(uint256(1)), bytes32(0));
 
-        batchHeader = new bytes(161);
-        batchHeader[9] = bytes1(uint8(1)); // l1MessagePopped not zero
+        batchHeader = new bytes(121 + 32);
+        assembly {
+            mstore(add(batchHeader, add(0x20, 9)), shl(192, 1))
+        }
         hevm.expectRevert("not all fields are zero");
         rollup.importGenesisBatch(batchHeader, bytes32(uint256(1)), bytes32(0));
 
-        batchHeader = new bytes(161);
+        batchHeader = new bytes(121);
         batchHeader[17] = bytes1(uint8(1)); // totalL1MessagePopped not zero
         hevm.expectRevert("not all fields are zero");
         rollup.importGenesisBatch(batchHeader, bytes32(uint256(1)), bytes32(0));
 
         // zero data hash, revert
-        batchHeader = new bytes(161);
+        batchHeader = new bytes(121);
         hevm.expectRevert("zero data hash");
         rollup.importGenesisBatch(batchHeader, bytes32(uint256(1)), bytes32(0));
 
-        // nonzero last block hash, revert
-        batchHeader = new bytes(161);
+        // zero last block hash, revert
+        batchHeader = new bytes(121);
         batchHeader[25] = bytes1(uint8(1)); // dataHash not zero
         hevm.expectRevert("zero last block hash");
         rollup.importGenesisBatch(batchHeader, bytes32(uint256(1)), bytes32(0));
 
+        // nonzero parent batch hash, revert
+        batchHeader = new bytes(121);
+        batchHeader[25] = bytes1(uint8(1)); // dataHash not zero
+        batchHeader[57] = bytes1(uint8(1)); // lastBlockHash not zero
+        batchHeader[89] = bytes1(uint8(1)); // parentBatchHash not zero
+        hevm.expectRevert("nonzero parent batch hash");
+        rollup.importGenesisBatch(batchHeader, bytes32(uint256(1)), bytes32(0));
+
         // import correctly
-        batchHeader = new bytes(161);
+        batchHeader = new bytes(121);
         batchHeader[25] = bytes1(uint8(1)); // dataHash not zero
         batchHeader[57] = bytes1(uint8(1)); // lastBlockHash not zero
         assertEq(rollup.finalizedStateRoots(0), bytes32(0));

@@ -73,7 +73,7 @@ abstract contract L1GatewayTestBase is DSTestPlus {
     }
 
     function prepareL2MessageRoot(bytes32 messageHash) internal {
-        bytes memory _batchHeader = new bytes(161);
+        bytes memory _batchHeader = new bytes(121);
         assembly {
             mstore(add(_batchHeader, 57), 1)
             mstore(add(_batchHeader, 89), 1)
