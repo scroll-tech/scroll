@@ -24,7 +24,7 @@ func TestWorkerPool(t *testing.T) {
 
 	vwp.AddTask(task)
 	vwp.AddTask(task)
-	
+
 	time.Sleep(600 * time.Millisecond)
 	as.Equal(int32(1), atomic.LoadInt32(&cnt))
 	vwp.AddTask(task)
