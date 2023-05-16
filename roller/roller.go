@@ -283,11 +283,7 @@ func (r *Roller) signAndSubmitProof(msg *message.ProofDetail) {
 		for atomic.LoadInt64(&r.isDisconnected) == 1 {
 			time.Sleep(retryWait)
 		}
-		ok, serr := r.client.SubmitProof(context.Background(), authZkProof)
-		if !ok {
-			log.Error("submit proof to coordinator failed", "task ID", msg.ID)
-			return
-		}
+		serr := r.client.SubmitProof(context.Background(), authZkProof)
 		if serr == nil {
 			return
 		}
