@@ -3,6 +3,7 @@ package integration_test
 import (
 	"context"
 	"math/big"
+	"scroll-tech/common/bytecode/scroll/L1/rollup"
 	"scroll-tech/common/utils"
 	"scroll-tech/database"
 	"scroll-tech/database/migrate"
@@ -143,6 +144,8 @@ func TestETHWithdraw(t *testing.T) {
 	l2Cli, err := base.L2Client()
 	assert.NoError(t, err)
 	t.Log("bridge config: ", bridgeApp.BridgeConfigFile)
+	t.Log("coordinator config: ", coordinatorApp.CoordinatorConfigFile)
+	t.Log("roller config: ", rollerApp.RollerConfigFile)
 
 	l2EthGateway, err := l2gateway.NewL2ETHGateway(base.L2Contracts.L2ETHGateway, l2Cli)
 	assert.NoError(t, err)
@@ -167,19 +170,65 @@ func TestETHWithdraw(t *testing.T) {
 	assert.Equal(t, types.ReceiptStatusSuccessful, receipt.Status)
 }
 
-/*
 func TestCC(t *testing.T) {
 	l1Cli, err := base.L1Client()
 	assert.NoError(t, err)
-	l2Cli, err := base.L2Client()
-	assert.NoError(t, err)
+	//l2Cli, err := base.L2Client()
+	//assert.NoError(t, err)
 
 	to := common.HexToAddress("0x7363726f6c6c6c02000000000000000000000007")
 	bls, err := l1Cli.BalanceAt(context.Background(), to, nil)
 	assert.NoError(t, err)
 	t.Log("to balance in l1 chain: ", bls.String())
-
-	l2GasOracle, err := predeploys.NewL1GasPriceOracle(base.L2Contracts.L1GasPriceOracle, l2Cli)
-	assert.NoError(t, err)
 }
-*/
+
+func TestImportGenesisBatch(t *testing.T) {
+	l1Cli, err := base.L1Client()
+	assert.NoError(t, err)
+	l2Cli, err := base.L2Client()
+	assert.NoError(t, err)
+
+	l1ChainID, err := l1Cli.ChainID(context.Background())
+	assert.NoError(t, err)
+	l1Auth, err := bind.NewKeyedTransactorWithChainID(bridgeApp.Config.L2Config.RelayerConfig.GasOracleSenderPrivateKeys[0], l1ChainID)
+	assert.NoError(t, err)
+
+	scrollChain, err := rollup.NewScrollChain(base.L1Contracts.L1ScrollChain, l1Cli)
+	assert.NoError(t, err)
+
+	header, err := l2Cli.HeaderByNumber(context.Background(), big.NewInt(0))
+	assert.NoError(t, err)
+	batchData := rollup.IScrollChainBatch{
+		Blocks: []rollup.IScrollChainBlockContext{
+			{
+				BlockHash:       header.Hash(),
+				ParentHash:      header.ParentHash,
+				BlockNumber:     header.Number.Uint64(),
+				Timestamp:       header.Time,
+				BaseFee:         header.BaseFee,
+				GasLimit:        header.GasLimit,
+				NumTransactions: 0,
+				NumL1Messages:   0,
+			},
+		},
+		BatchIndex:   0,
+		NewStateRoot: header.Root,
+	}
+	tx, err := scrollChain.ImportGenesisBatch(l1Auth, batchData)
+	assert.NoError(t, err)
+	receipt, err := bind.WaitMined(context.Background(), l1Cli, tx)
+	assert.NoError(t, err)
+	assert.Equal(t, types.ReceiptStatusSuccessful, receipt.Status)
+}
+
+func TestCheckGenesisBatch(t *testing.T) {
+	l2Cli, err := base.L2Client()
+	assert.NoError(t, err)
+
+	/*scrollChain, err := rollup.NewScrollChain(base.L1Contracts.L1ScrollChain, l1Cli)
+	assert.NoError(t, err)*/
+
+	header, err := l2Cli.HeaderByNumber(context.Background(), big.NewInt(0))
+	assert.NoError(t, err)
+	t.Log(header.Root.Hex())
+}

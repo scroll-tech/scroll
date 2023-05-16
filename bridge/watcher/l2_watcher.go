@@ -95,11 +95,9 @@ func NewL2WatcherClient(ctx context.Context, client *ethclient.Client, confirmat
 }
 
 func (w *L2WatcherClient) initializeGenesis() error {
-	if count, err := w.orm.GetBatchCount(); err != nil {
+	count, err := w.orm.GetBatchCount()
+	if err != nil {
 		return fmt.Errorf("failed to get batch count: %v", err)
-	} else if count > 0 {
-		log.Info("genesis already imported")
-		return nil
 	}
 
 	genesis, err := w.HeaderByNumber(w.ctx, big.NewInt(0))
@@ -112,12 +110,17 @@ func (w *L2WatcherClient) initializeGenesis() error {
 	blockTrace := &types.WrappedBlock{Header: genesis, Transactions: nil, WithdrawTrieRoot: common.Hash{}}
 	batchData := types.NewGenesisBatchData(blockTrace)
 
+	batchHash := batchData.Hash().Hex()
+	log.Info("initializeGenesis message", "batchHash", batchHash, "stateRoot", batchData.Batch.NewStateRoot.Hex())
+	if count > 0 {
+		log.Info("genesis already imported")
+		return nil
+	}
+
 	if err = AddBatchInfoToDB(w.orm, batchData); err != nil {
 		log.Error("failed to add batch info to DB", "BatchHash", batchData.Hash(), "error", err)
 		return err
 	}
-
-	batchHash := batchData.Hash().Hex()
 
 	if err = w.orm.UpdateProvingStatus(batchHash, types.ProvingTaskProved); err != nil {
 		return fmt.Errorf("failed to update genesis batch proving status: %v", err)
