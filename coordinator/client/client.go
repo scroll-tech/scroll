@@ -46,7 +46,6 @@ func (c *Client) RegisterAndSubscribe(ctx context.Context, taskCh chan *message.
 }
 
 // SubmitProof get proof from roller.
-func (c *Client) SubmitProof(ctx context.Context, proof *message.ProofMsg) (bool, error) {
-	var ok bool
-	return ok, c.client.CallContext(ctx, &ok, "roller_submitProof", proof)
+func (c *Client) SubmitProof(ctx context.Context, proof *message.ProofMsg) error {
+	return c.client.CallContext(ctx, nil, "roller_submitProof", proof)
 }
