@@ -2,14 +2,15 @@
 -- +goose StatementBegin
 create table relayed_msg
 (
-    msg_hash     VARCHAR NOT NULL,
-    height       BIGINT NOT NULL,
-    layer1_hash  VARCHAR DEFAULT '',
-    layer2_hash  VARCHAR DEFAULT '',
-    is_deleted   BOOLEAN NOT NULL DEFAULT FALSE,
-    created_at TIMESTAMP(0) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP(0) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    deleted_at TIMESTAMP(0) DEFAULT NULL
+    id          BIGSERIAL PRIMARY KEY,
+    msg_hash    VARCHAR NOT NULL,
+    height      BIGINT NOT NULL,
+    layer1_hash VARCHAR DEFAULT '',
+    layer2_hash VARCHAR DEFAULT '',
+    is_deleted  BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at  TIMESTAMP(0) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at  TIMESTAMP(0) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    deleted_at  TIMESTAMP(0) DEFAULT NULL
 );
 
 comment 

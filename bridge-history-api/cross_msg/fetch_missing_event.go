@@ -106,24 +106,24 @@ func L1FetchAndSaveEvents(ctx context.Context, client *ethclient.Client, databas
 	}
 	dbTx, err := database.Beginx()
 	if err != nil {
-		log.Error("l2FetchAndSaveEvents: Failed to begin db transaction", "err", err)
-		return err
+		dbTx.Rollback()
+		log.Crit("l2FetchAndSaveEvents: Failed to begin db transaction", "err", err)
 	}
 	err = database.BatchInsertL1CrossMsgDBTx(dbTx, depositL1CrossMsgs)
 	if err != nil {
-		log.Error("l1FetchAndSaveEvents: Failed to insert cross msg event logs", "err", err)
-		return err
+		dbTx.Rollback()
+		log.Crit("l1FetchAndSaveEvents: Failed to insert cross msg event logs", "err", err)
 	}
 
 	err = database.BatchInsertRelayedMsgDBTx(dbTx, relayedMsg)
 	if err != nil {
-		log.Error("l1FetchAndSaveEvents: Failed to insert relayed message event logs", "err", err)
-		return err
+		dbTx.Rollback()
+		log.Crit("l1FetchAndSaveEvents: Failed to insert relayed message event logs", "err", err)
 	}
 	err = updateL1CrossMsgMsgHash(ctx, dbTx, database, msgHashes)
 	if err != nil {
-		log.Error("l1FetchAndSaveEvents: Failed to update msgHash in L1 cross msg", "err", err)
-		return err
+		dbTx.Rollback()
+		log.Crit("l1FetchAndSaveEvents: Failed to update msgHash in L1 cross msg", "err", err)
 	}
 	err = dbTx.Commit()
 	if err != nil {
@@ -162,24 +162,24 @@ func L2FetchAndSaveEvents(ctx context.Context, client *ethclient.Client, databas
 	}
 	dbTx, err := database.Beginx()
 	if err != nil {
-		log.Error("l2FetchAndSaveEvents: Failed to begin db transaction", "err", err)
-		return err
+		dbTx.Rollback()
+		log.Crit("l2FetchAndSaveEvents: Failed to begin db transaction", "err", err)
 	}
 	err = database.BatchInsertL2CrossMsgDBTx(dbTx, depositL2CrossMsgs)
 	if err != nil {
-		log.Error("l2FetchAndSaveEvents: Failed to insert cross msg event logs", "err", err)
-		return err
+		dbTx.Rollback()
+		log.Crit("l2FetchAndSaveEvents: Failed to insert cross msg event logs", "err", err)
 	}
 
 	err = database.BatchInsertRelayedMsgDBTx(dbTx, relayedMsg)
 	if err != nil {
-		log.Error("l2FetchAndSaveEvents: Failed to insert relayed message event logs", "err", err)
-		return err
+		dbTx.Rollback()
+		log.Crit("l2FetchAndSaveEvents: Failed to insert relayed message event logs", "err", err)
 	}
 	err = updateL2CrossMsgMsgHash(ctx, dbTx, database, msgHashes)
 	if err != nil {
-		log.Error("l2FetchAndSaveEvents: Failed to update msgHash in L2 cross msg", "err", err)
-		return err
+		dbTx.Rollback()
+		log.Crit("l2FetchAndSaveEvents: Failed to update msgHash in L2 cross msg", "err", err)
 	}
 	err = dbTx.Commit()
 	if err != nil {

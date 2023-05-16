@@ -61,14 +61,17 @@ func L1ReorgHandling(ctx context.Context, reorgHeight int64, db db.OrmFactory) {
 	}
 	err = db.DeleteL1CrossMsgAfterHeightDBTx(dbTx, reorgHeight)
 	if err != nil {
+		dbTx.Rollback()
 		log.Crit("delete l1 cross msg from height", "height", reorgHeight, "err", err)
 	}
 	err = db.DeleteL1RelayedHashFromHeightDBTx(dbTx, reorgHeight)
 	if err != nil {
+		dbTx.Rollback()
 		log.Crit("delete l1 relayed hash from height", "height", reorgHeight, "err", err)
 	}
 	err = dbTx.Commit()
 	if err != nil {
+		dbTx.Rollback()
 		log.Crit("commit tx failed", "err", err)
 	}
 }
