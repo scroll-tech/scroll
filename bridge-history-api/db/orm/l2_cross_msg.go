@@ -109,7 +109,7 @@ func (l *l2CrossMsgOrm) UpdateL2CrossMsgHash(ctx context.Context, l2Hash, msgHas
 }
 
 func (l *l2CrossMsgOrm) GetLatestL2ProcessedHeight() (int64, error) {
-	row := l.db.QueryRowx(`SELECT MAX(height) FROM cross_message WHERE msg_type = $1 AND NOT is_deleted;`, Layer2Msg)
+	row := l.db.QueryRowx(`SELECT height FROM cross_message WHERE msg_type = $1 AND NOT is_deleted ORDER BY id DESC LIMIT 1;`, Layer2Msg)
 	var result sql.NullInt64
 	if err := row.Scan(&result); err != nil {
 		if err == sql.ErrNoRows || !result.Valid {

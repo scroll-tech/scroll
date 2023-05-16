@@ -54,7 +54,7 @@ func (l *relayedMsgOrm) GetRelayedMsgByHash(msg_hash string) (*RelayedMsg, error
 }
 
 func (l *relayedMsgOrm) GetLatestRelayedHeightOnL1() (int64, error) {
-	row := l.db.QueryRow(`SELECT MAX(height) FROM relayed_msg WHERE layer1_hash != '' AND NOT is_deleted;`)
+	row := l.db.QueryRow(`SELECT height FROM relayed_msg WHERE layer1_hash != '' AND NOT is_deleted ORDER BY id DESC LIMIT 1;`)
 	var result sql.NullInt64
 	if err := row.Scan(&result); err != nil {
 		if err == sql.ErrNoRows || !result.Valid {
@@ -69,7 +69,7 @@ func (l *relayedMsgOrm) GetLatestRelayedHeightOnL1() (int64, error) {
 }
 
 func (l *relayedMsgOrm) GetLatestRelayedHeightFromL2() (int64, error) {
-	row := l.db.QueryRow(`SELECT MAX(height) FROM relayed_msg WHERE layer2_hash != '' AND NOT is_deleted;`)
+	row := l.db.QueryRow(`SELECT height FROM relayed_msg WHERE layer2_hash != '' AND NOT is_deleted ORDER BY id DESC LIMIT 1;`)
 	var result sql.NullInt64
 	if err := row.Scan(&result); err != nil {
 		if err == sql.ErrNoRows || !result.Valid {
