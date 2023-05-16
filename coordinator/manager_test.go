@@ -811,9 +811,7 @@ func (r *mockRoller) loop(t *testing.T, client *client2.Client, proofTime time.D
 				proof.ProofDetail.Proof.Proof = []byte(verifier.InvalidTestProof)
 			}
 			assert.NoError(t, proof.Sign(r.privKey))
-			ok, err := client.SubmitProof(context.Background(), proof)
-			assert.NoError(t, err)
-			assert.Equal(t, true, ok)
+			assert.NoError(t, client.SubmitProof(context.Background(), proof))
 		case <-stopCh:
 			return
 		}
