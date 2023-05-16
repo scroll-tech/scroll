@@ -30,6 +30,27 @@ func TestWorkerPool(t *testing.T) {
 	vwp.AddTask(task)
 	vwp.Stop()
 	as.Equal(int32(0), atomic.LoadInt32(&cnt))
+}
+
+func TestWorkerPoolMaxWorkers(t *testing.T) {
+	as := assert.New(t)
+
+	vwp := workerpool.NewWorkerPool(2)
+	vwp.Run()
+	var cnt int32 = 3
+
+	task := func() {
+		time.Sleep(500 * time.Millisecond)
+		atomic.AddInt32(&cnt, -1)
+	}
+
+	time1 := time.Now()
+	vwp.AddTask(task)
+	vwp.AddTask(task)
+	vwp.AddTask(task)
+	vwp.Stop()
+	time2 := time.Now()
+	as.Greater(time2.Sub(time1), time.Second*1)
 
 }
 
