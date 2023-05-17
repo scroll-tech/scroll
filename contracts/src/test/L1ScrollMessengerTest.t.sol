@@ -29,7 +29,7 @@ contract L1ScrollMessengerTest is DSTestPlus {
         l2Messenger = new L2ScrollMessenger(address(0), address(0), address(0));
 
         // Deploy L1 contracts
-        scrollChain = new ScrollChain(0);
+        scrollChain = new ScrollChain(0, 44);
         l1MessageQueue = new L1MessageQueue();
         l1Messenger = new L1ScrollMessenger();
         gasOracle = new L2GasPriceOracle();

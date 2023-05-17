@@ -35,6 +35,9 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
     /// @notice The chain id of the corresponding layer 2 chain.
     uint256 public immutable layer2ChainId;
 
+    /// @notice The maximum number of transactions allowed in each chunk.
+    uint256 public immutable maxNumL2TxInChunk;
+
     /*************
      * Variables *
      *************/
@@ -74,8 +77,9 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
      * Constructor *
      ***************/
 
-    constructor(uint256 _chainId) {
+    constructor(uint256 _chainId, uint256 _maxNumL2TxInChunk) {
         layer2ChainId = _chainId;
+        maxNumL2TxInChunk = _maxNumL2TxInChunk;
     }
 
     function initialize(address _messageQueue, address _verifier) public initializer {
@@ -427,6 +431,7 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
                 }
             }
         }
+        require(_totalNumL1MessagesInChunk <= maxNumL2TxInChunk, "too many tx in one chunk");
 
         // check chunk has correct length
         assembly {

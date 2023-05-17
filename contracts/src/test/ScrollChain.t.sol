@@ -25,7 +25,7 @@ contract ScrollChainTest is DSTestPlus {
 
     function setUp() public {
         messageQueue = new L1MessageQueue();
-        rollup = new ScrollChain(233);
+        rollup = new ScrollChain(233, 44);
         verifier = new MockRollupVerifier();
 
         rollup.initialize(address(messageQueue), address(verifier));

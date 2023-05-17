@@ -24,7 +24,7 @@ describe("ScrollChain", async () => {
       signer: deployer,
       libraries: { RollupVerifier: verifier.address },
     });
-    chain = await ScrollChain.deploy(0);
+    chain = await ScrollChain.deploy(0, 44);
     await chain.deployed();
 
     await chain.initialize(queue.address, constants.AddressZero);

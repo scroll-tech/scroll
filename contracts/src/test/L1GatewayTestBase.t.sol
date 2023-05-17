@@ -56,7 +56,7 @@ abstract contract L1GatewayTestBase is DSTestPlus {
         l1Messenger = new L1ScrollMessenger();
         messageQueue = new L1MessageQueue();
         gasOracle = new L2GasPriceOracle();
-        rollup = new ScrollChain(1233);
+        rollup = new ScrollChain(1233, 44);
         enforcedTxGateway = new EnforcedTxGateway();
         whitelist = new Whitelist(address(this));
 
