@@ -34,7 +34,7 @@ describe("EnforcedTxGateway.spec", async () => {
     caller = await MockCaller.deploy();
     await caller.deployed();
 
-    await queue.initialize(constants.AddressZero, gateway.address, oracle.address, 10000000);
+    await queue.initialize(constants.AddressZero, constants.AddressZero, gateway.address, oracle.address, 10000000);
     await gateway.initialize(queue.address, feeVault.address);
     await oracle.initialize(21000, 0, 8, 16);
 

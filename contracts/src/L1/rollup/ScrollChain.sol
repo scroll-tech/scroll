@@ -207,7 +207,7 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
         BatchHeaderV0Codec.storeDataHash(memPtr, _dataHash);
         BatchHeaderV0Codec.storeLastBlockHash(memPtr, _parentBlockHash);
         BatchHeaderV0Codec.storeParentBatchHash(memPtr, _parentBatchHash);
-        BatchHeaderV0Codec.storeBitMap(memPtr, bitmapPtr);
+        BatchHeaderV0Codec.storeSkippedBitmap(memPtr, bitmapPtr);
 
         // compute batch hash
         bytes32 _batchHash = _computeBatchHash(memPtr, 121 + ((_numL1MessagesInBatch + 255) / 256) * 32);
@@ -270,7 +270,26 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
         finalizedStateRoots[_batchIndex] = _newStateRoot;
         withdrawRoots[_batchIndex] = _withdrawRoot;
 
-        // @todo pop finalized and non-skipped message from L1MessageQueue.
+        // Pop finalized and non-skipped message from L1MessageQueue.
+        uint256 _l1MessagePopped = BatchHeaderV0Codec.l1MessagePopped(memPtr);
+        if (_l1MessagePopped > 0) {
+            IL1MessageQueue _queue = IL1MessageQueue(messageQueue);
+            uint256 _startIndex = BatchHeaderV0Codec.totalL1MessagePopped(memPtr);
+
+            unchecked {
+                for (uint256 i = 0; i < _l1MessagePopped; i += 256) {
+                    uint256 _count = 256;
+                    if (_l1MessagePopped - i < _count) {
+                        _count = _l1MessagePopped - i;
+                    }
+                    uint256 _skippedBitmap = BatchHeaderV0Codec.skippedBitmap(memPtr, i / 256);
+
+                    _queue.popCrossDomainMessage(_startIndex, _count, _skippedBitmap);
+
+                    _startIndex += 256;
+                }
+            }
+        }
 
         emit FinalizeBatch(_batchHash, _newStateRoot, _withdrawRoot);
     }
@@ -306,7 +325,7 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
     /// @param _batchHeader The batch header in calldata.
     /// @return memPtr The start memory offset of loaded batch header.
     /// @return _batchHash The hash of the loaded batch header.
-    function _loadBatchHeader(bytes calldata _batchHeader) internal view returns (uint256 memPtr, bytes32 _batchHash) {
+    function _loadBatchHeader(bytes calldata _batchHeader) internal pure returns (uint256 memPtr, bytes32 _batchHash) {
         // load to memory
         uint256 _length;
         (memPtr, _length) = BatchHeaderV0Codec.loadAndValidate(_batchHeader);

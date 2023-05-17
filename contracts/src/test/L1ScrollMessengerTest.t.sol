@@ -38,7 +38,13 @@ contract L1ScrollMessengerTest is DSTestPlus {
 
         // Initialize L1 contracts
         l1Messenger.initialize(address(l2Messenger), feeVault, address(scrollChain), address(l1MessageQueue));
-        l1MessageQueue.initialize(address(l1Messenger), address(enforcedTxGateway), address(gasOracle), 10000000);
+        l1MessageQueue.initialize(
+            address(l1Messenger),
+            address(scrollChain),
+            address(enforcedTxGateway),
+            address(gasOracle),
+            10000000
+        );
         gasOracle.initialize(0, 0, 0, 0);
         scrollChain.initialize(address(l1MessageQueue), address(0));
 
@@ -115,12 +121,12 @@ contract L1ScrollMessengerTest is DSTestPlus {
 
         // Provided message has not been enqueued
         hevm.expectRevert("Provided message has not been enqueued");
-        l1Messenger.replayMessage(address(this), address(0), 101, 0, new bytes(0), 0, 1, refundAddress);
+        l1Messenger.replayMessage(address(this), address(0), 101, 0, new bytes(0), 1, refundAddress);
 
         gasOracle.setL2BaseFee(1);
         // Insufficient msg.value
         hevm.expectRevert("Insufficient msg.value for fee");
-        l1Messenger.replayMessage(address(this), address(0), 100, 0, new bytes(0), 0, 1, refundAddress);
+        l1Messenger.replayMessage(address(this), address(0), 100, 0, new bytes(0), 1, refundAddress);
 
         uint256 _fee = gasOracle.l2BaseFee() * 100;
 
@@ -133,7 +139,6 @@ contract L1ScrollMessengerTest is DSTestPlus {
             100,
             0,
             new bytes(0),
-            0,
             100,
             refundAddress
         );

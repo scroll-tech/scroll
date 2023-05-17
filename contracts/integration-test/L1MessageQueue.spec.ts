@@ -9,6 +9,7 @@ import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 
 describe("L1MessageQueue", async () => {
   let deployer: SignerWithAddress;
+  let scrollChain: SignerWithAddress;
   let messenger: SignerWithAddress;
   let gateway: SignerWithAddress;
   let signer: SignerWithAddress;
@@ -17,7 +18,7 @@ describe("L1MessageQueue", async () => {
   let queue: L1MessageQueue;
 
   beforeEach(async () => {
-    [deployer, messenger, gateway, signer] = await ethers.getSigners();
+    [deployer, scrollChain, messenger, gateway, signer] = await ethers.getSigners();
 
     const L1MessageQueue = await ethers.getContractFactory("L1MessageQueue", deployer);
     queue = await L1MessageQueue.deploy();
@@ -27,7 +28,7 @@ describe("L1MessageQueue", async () => {
     oracle = await L2GasPriceOracle.deploy();
 
     await oracle.initialize(21000, 0, 8, 16);
-    await queue.initialize(messenger.address, gateway.address, oracle.address, 10000000);
+    await queue.initialize(messenger.address, scrollChain.address, gateway.address, oracle.address, 10000000);
   });
 
   context("auth", async () => {
@@ -41,7 +42,7 @@ describe("L1MessageQueue", async () => {
 
     it("should revert, when initlaize again", async () => {
       await expect(
-        queue.initialize(constants.AddressZero, constants.AddressZero, constants.AddressZero, 0)
+        queue.initialize(constants.AddressZero, constants.AddressZero, constants.AddressZero, constants.AddressZero, 0)
       ).to.revertedWith("Initializable: contract is already initialized");
     });
 

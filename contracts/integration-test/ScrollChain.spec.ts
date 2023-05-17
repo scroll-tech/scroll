@@ -29,7 +29,13 @@ describe("ScrollChain", async () => {
 
     await chain.initialize(queue.address, constants.AddressZero);
     await chain.updateSequencer(deployer.address, true);
-    await queue.initialize(constants.AddressZero, constants.AddressZero, constants.AddressZero, 10000000);
+    await queue.initialize(
+      constants.AddressZero,
+      chain.address,
+      constants.AddressZero,
+      constants.AddressZero,
+      10000000
+    );
   });
 
   // @note skip this benchmark tests

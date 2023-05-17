@@ -76,6 +76,13 @@ library BatchHeaderV0Codec {
         }
     }
 
+    function skippedBitmap(uint256 memPtr, uint256 index) internal pure returns (uint256 _bitmap) {
+        assembly {
+            memPtr := add(memPtr, 121)
+            _bitmap := mload(add(memPtr, mul(index, 32)))
+        }
+    }
+
     function storeVersion(uint256 memPtr, uint256 _version) internal pure {
         assembly {
             mstore(memPtr, shl(248, _version))
@@ -118,7 +125,7 @@ library BatchHeaderV0Codec {
         }
     }
 
-    function storeBitMap(uint256 memPtr, uint256 bitmapPtr) internal pure {
+    function storeSkippedBitmap(uint256 memPtr, uint256 bitmapPtr) internal pure {
         uint256 _l1MessagePopped = l1MessagePopped(memPtr);
 
         assembly {
