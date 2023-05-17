@@ -64,7 +64,7 @@ pipeline {
                 }
                 stage('Race test coordinator package') {
                     steps {
-                        sh "cd ./coordinator && ../build/run_tests.sh coordinator"
+                        sh 'cd ./coordinator && go test -exec "env LD_LIBRARY_PATH=${PWD}/verifier/lib" -v -race -gcflags="-l" -ldflags="-s=false" -coverpkg="scroll-tech/coordinator" -coverprofile=../coverage.coordinator.txt -covermode=atomic ./...'
                     }
                 }
                 stage('Race test database package') {

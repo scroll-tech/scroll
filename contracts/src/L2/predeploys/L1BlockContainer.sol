@@ -42,8 +42,6 @@ contract L1BlockContainer is OwnableBase, IL1BlockContainer {
     /// @notice The address of whitelist contract.
     IWhitelist public whitelist;
 
-    // @todo change to ring buffer to save gas usage.
-
     /// @inheritdoc IL1BlockContainer
     bytes32 public override latestBlockHash;
 
@@ -117,7 +115,6 @@ contract L1BlockContainer is OwnableBase, IL1BlockContainer {
         bytes calldata _blockHeaderRLP,
         bool _updateGasPriceOracle
     ) external {
-        // @todo remove this when ETH 2.0 signature verification is ready.
         {
             IWhitelist _whitelist = whitelist;
             require(
