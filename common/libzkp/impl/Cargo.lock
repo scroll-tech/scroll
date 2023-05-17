@@ -5051,7 +5051,7 @@ checksum = "dcf81ac59edc17cc8697ff311e8f5ef2d99fcbd9817b34cec66f90b6c3dfd987"
 [[package]]
 name = "types"
 version = "0.3.0"
-source = "git+https://github.com/scroll-tech/scroll-zkevm?rev=78ab7a7#78ab7a770f7753fa88c8aab4969296f06e1c811a"
+source = "git+https://github.com/scroll-tech/scroll-zkevm?branch=v0.3#825fb744a5e63c675b9de63c299b367f008f3584"
 dependencies = [
  "base64 0.13.0",
  "blake2",
@@ -5727,7 +5727,7 @@ dependencies = [
 [[package]]
 name = "zkevm"
 version = "0.3.0"
-source = "git+https://github.com/scroll-tech/scroll-zkevm?rev=78ab7a7#78ab7a770f7753fa88c8aab4969296f06e1c811a"
+source = "git+https://github.com/scroll-tech/scroll-zkevm?branch=v0.3#825fb744a5e63c675b9de63c299b367f008f3584"
 dependencies = [
  "anyhow",
  "blake2",
