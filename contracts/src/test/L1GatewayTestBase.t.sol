@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 
 import {DSTestPlus} from "solmate/test/utils/DSTestPlus.sol";
 
+import {EnforcedTxGateway} from "../L1/gateways/EnforcedTxGateway.sol";
 import {L1MessageQueue} from "../L1/rollup/L1MessageQueue.sol";
 import {L2GasPriceOracle} from "../L1/rollup/L2GasPriceOracle.sol";
 import {ScrollChain, IScrollChain} from "../L1/rollup/ScrollChain.sol";
@@ -40,6 +41,7 @@ abstract contract L1GatewayTestBase is DSTestPlus {
     L1ScrollMessenger internal l1Messenger;
     L1MessageQueue internal messageQueue;
     L2GasPriceOracle internal gasOracle;
+    EnforcedTxGateway internal enforcedTxGateway;
     ScrollChain internal rollup;
 
     address internal feeVault;
@@ -54,6 +56,7 @@ abstract contract L1GatewayTestBase is DSTestPlus {
         l1Messenger = new L1ScrollMessenger();
         messageQueue = new L1MessageQueue();
         gasOracle = new L2GasPriceOracle();
+        enforcedTxGateway = new EnforcedTxGateway();
         rollup = new ScrollChain(1233, 25, bytes32(0));
         whitelist = new Whitelist(address(this));
 
@@ -62,7 +65,7 @@ abstract contract L1GatewayTestBase is DSTestPlus {
 
         // Initialize L1 contracts
         l1Messenger.initialize(address(l2Messenger), feeVault, address(rollup), address(messageQueue));
-        messageQueue.initialize(address(l1Messenger), address(gasOracle), 10000000);
+        messageQueue.initialize(address(l1Messenger), address(enforcedTxGateway), address(gasOracle), 10000000);
         gasOracle.initialize(0, 0, 0, 0);
         gasOracle.updateWhitelist(address(whitelist));
         rollup.initialize(address(messageQueue));

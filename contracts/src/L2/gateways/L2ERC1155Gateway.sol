@@ -19,7 +19,6 @@ import {IScrollERC1155} from "../../libraries/token/IScrollERC1155.sol";
 /// NFT will be minted and transfered to the recipient.
 ///
 /// This will be changed if we have more specific scenarios.
-// @todo Current implementation doesn't support calling from `L2GatewayRouter`.
 contract L2ERC1155Gateway is OwnableUpgradeable, ERC1155HolderUpgradeable, ScrollGatewayBase, IL2ERC1155Gateway {
     /**********
      * Events *
