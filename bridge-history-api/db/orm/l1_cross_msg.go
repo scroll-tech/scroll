@@ -34,9 +34,8 @@ func (l *l1CrossMsgOrm) GetL1CrossMsgByHash(l1Hash common.Hash) (*CrossMsg, erro
 // GetL1CrossMsgsByAddress returns all layer1 cross messages under given address
 // Warning: return empty slice if no data found
 func (l *l1CrossMsgOrm) GetL1CrossMsgsByAddress(sender common.Address) ([]*CrossMsg, error) {
-	para := sender.String()
 	var results []*CrossMsg
-	rows, err := l.db.Queryx(`SELECT * FROM cross_message WHERE sender = $1 AND msg_type = 1 AND NOT is_deleted;`, para, Layer1Msg)
+	rows, err := l.db.Queryx(`SELECT * FROM cross_message WHERE sender = $1 AND msg_type = 1 AND NOT is_deleted;`, sender.String(), Layer1Msg)
 
 	for rows.Next() {
 		msg := &CrossMsg{}
@@ -114,7 +113,7 @@ func (l *l1CrossMsgOrm) GetLatestL1ProcessedHeight() (int64, error) {
 }
 
 func (l *l1CrossMsgOrm) DeleteL1CrossMsgAfterHeightDBTx(dbTx *sqlx.Tx, height int64) error {
-	if _, err := l.db.Exec(`UPDATE cross_message SET is_deleted = true WHERE height > $1 AND msg_type < $2;`, height, Layer1Msg); err != nil {
+	if _, err := l.db.Exec(`UPDATE cross_message SET is_deleted = true WHERE height > $1 AND msg_type = $2;`, height, Layer1Msg); err != nil {
 		return err
 	}
 	return nil

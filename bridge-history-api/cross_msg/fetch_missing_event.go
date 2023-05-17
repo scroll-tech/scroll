@@ -65,7 +65,7 @@ func GetLatestL2ProcessedHeight(db db.OrmFactory) (int64, error) {
 		log.Error("failed to get L2 cross message processed height", "err", err)
 		return 0, err
 	}
-	relayedHeight, err := db.GetLatestRelayedHeightFromL2()
+	relayedHeight, err := db.GetLatestRelayedHeightOnL2()
 	if err != nil {
 		log.Error("failed to get L2 relayed message processed height", "err", err)
 		return 0, err

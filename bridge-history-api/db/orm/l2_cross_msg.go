@@ -34,9 +34,8 @@ func (l *l2CrossMsgOrm) GetL2CrossMsgByHash(l2Hash common.Hash) (*CrossMsg, erro
 // GetL2CrossMsgsByAddress returns all layer2 cross messages under given address
 // Warning: return empty slice if no data found
 func (l *l2CrossMsgOrm) GetL2CrossMsgByAddress(sender common.Address) ([]*CrossMsg, error) {
-	para := sender.String()
 	var results []*CrossMsg
-	rows, err := l.db.Queryx(`SELECT * FROM cross_message WHERE sender = $1 AND msg_type = $2 AND NOT is_deleted;`, para, Layer2Msg)
+	rows, err := l.db.Queryx(`SELECT * FROM cross_message WHERE sender = $1 AND msg_type = $2 AND NOT is_deleted;`, sender.String(), Layer2Msg)
 
 	for rows.Next() {
 		msg := &CrossMsg{}
