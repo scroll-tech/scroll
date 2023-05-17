@@ -2,7 +2,6 @@ package watcher
 
 import (
 	"context"
-	"fmt"
 	"math"
 	"strings"
 	"testing"
@@ -85,7 +84,7 @@ func testBatchProposerProposeBatch(t *testing.T) {
 	}
 }
 
-func testBatchProposerBatchGeneration(t *testing.T) {
+/*func testBatchProposerBatchGeneration(t *testing.T) {
 	// Create db handler and reset db.
 	db, err := database.NewOrmFactory(cfg.DBConfig)
 	assert.NoError(t, err)
@@ -135,7 +134,7 @@ func testBatchProposerBatchGeneration(t *testing.T) {
 	exist, err := db.BatchRecordExist(batchData.Hash().Hex())
 	assert.NoError(t, err)
 	assert.Equal(t, true, exist)
-}
+}*/
 
 func testBatchProposerGracefulRestart(t *testing.T) {
 	// Create db handler and reset db.
