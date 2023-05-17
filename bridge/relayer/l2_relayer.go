@@ -309,7 +309,7 @@ func (r *Layer2Relayer) ProcessGasPriceOracle() {
 // ImportGenesisBatch imports genesisBash.
 func (r *Layer2Relayer) ImportGenesisBatch(batchData *types.BatchData) error {
 	if batchData == nil {
-		log.Error("ImportGenesisBatch receives empty batch")
+		return fmt.Errorf("ImportGenesisBatch receives empty batch")
 	}
 
 	calldata, err := r.l1RollupABI.Pack("importGenesisBatch", batchData.Batch)
