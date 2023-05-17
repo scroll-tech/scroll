@@ -7,9 +7,9 @@ create table cross_message
     height       BIGINT  NOT NULL,
     sender       VARCHAR NOT NULL,
     target       VARCHAR NOT NULL,
-    amount       VARCHAR NOT NULL,
-    layer1_hash  VARCHAR DEFAULT '',
-    layer2_hash  VARCHAR DEFAULT '',
+    amount       BIGINT NOT NULL,
+    layer1_hash  VARCHAR NOT NULL DEFAULT '',
+    layer2_hash  VARCHAR NOT NULL DEFAULT '',
     layer1_token VARCHAR DEFAULT '',
     layer2_token VARCHAR DEFAULT '',
     token_id     BIGINT DEFAULT 0,
@@ -22,13 +22,13 @@ create table cross_message
 );
 
 comment
-on column cross_message.asset is 'ETH, ERC20, ERC721, ERC1155, WETH';
+on column cross_message.asset is 'ETH, ERC20, ERC721, ERC1155';
 
 comment
-on column cross_message.msg_type is 'l1msg, l2msg';
+on column cross_message.msg_type is 'unknown, l1msg, l2msg';
 
 comment 
-on column cross_message.is_deleted is 'NotDeleted 0, Deleted 1';
+on column cross_message.is_deleted is 'NotDeleted false, Deleted true';
 
 CREATE INDEX valid_l1_msg_index ON cross_message (layer1_hash, is_deleted);
 

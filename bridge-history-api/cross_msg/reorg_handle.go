@@ -71,7 +71,6 @@ func L1ReorgHandling(ctx context.Context, reorgHeight int64, db db.OrmFactory) {
 	}
 	err = dbTx.Commit()
 	if err != nil {
-		dbTx.Rollback()
 		log.Crit("commit tx failed", "err", err)
 	}
 }
