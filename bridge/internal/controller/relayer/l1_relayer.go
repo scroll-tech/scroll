@@ -135,11 +135,11 @@ func (r *Layer1Relayer) ProcessSavedEvents() {
 func (r *Layer1Relayer) processSavedEvent(msg *orm.L1Message) error {
 	calldata := common.Hex2Bytes(msg.Calldata)
 	hash, err := r.messageSender.SendTransaction(msg.MsgHash, &r.cfg.MessengerContractAddress, big.NewInt(0), calldata, r.minGasLimitForMessageRelay)
-	if err != nil && err.Error() == "execution reverted: Message expired" {
+	if err != nil && errors.Is(err, ErrExecutionRevertedMessageExpired) {
 		return r.l1MessageOrm.UpdateLayer1Status(r.ctx, msg.MsgHash, types.MsgExpired)
 	}
 
-	if err != nil && err.Error() == "execution reverted: Message was already successfully executed" {
+	if err != nil && errors.Is(err, ErrExecutionRevertedAlreadySuccessExecuted) {
 		return r.l1MessageOrm.UpdateLayer1Status(r.ctx, msg.MsgHash, types.MsgConfirmed)
 	}
 	if err != nil {

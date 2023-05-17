@@ -204,7 +204,7 @@ func (r *Layer2Relayer) processSavedEvent(msg *orm.L2Message) error {
 	log.Info("Processing L2 Message", "msg.nonce", msg.Nonce, "msg.height", msg.Height)
 
 	// Get the block info that contains the message
-	blockInfos, err := r.blockTraceOrm.GetL2BlockInfos(map[string]interface{}{"number": msg.Height})
+	blockInfos, err := r.blockTraceOrm.GetL2BlockInfos(map[string]interface{}{"number": msg.Height}, nil, 0)
 	if err != nil {
 		log.Error("Failed to GetL2BlockInfos from DB", "number", msg.Height)
 	}
@@ -236,10 +236,10 @@ func (r *Layer2Relayer) processSavedEvent(msg *orm.L2Message) error {
 	}
 
 	hash, err := r.messageSender.SendTransaction(msg.MsgHash, &r.cfg.MessengerContractAddress, big.NewInt(0), data, r.minGasLimitForMessageRelay)
-	if err != nil && err.Error() == "execution reverted: Message expired" {
+	if err != nil && errors.Is(err, ErrExecutionRevertedMessageExpired) {
 		return r.l2MessageOrm.UpdateLayer2Status(r.ctx, msg.MsgHash, types.MsgExpired)
 	}
-	if err != nil && err.Error() == "execution reverted: Message was already successfully executed" {
+	if err != nil && errors.Is(err, ErrExecutionRevertedAlreadySuccessExecuted) {
 		return r.l2MessageOrm.UpdateLayer2Status(r.ctx, msg.MsgHash, types.MsgConfirmed)
 	}
 	if err != nil {
