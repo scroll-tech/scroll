@@ -128,7 +128,9 @@ func L1FetchAndSaveEvents(ctx context.Context, client *ethclient.Client, databas
 	err = dbTx.Commit()
 	if err != nil {
 		// if we can not insert into DB, there must something wrong, need a on-call member handle the dababase manually
-		log.Crit("l1FetchAndSaveEvents: Failed to commit db transaction", "err", err)
+		dbTx.Rollback()
+		log.Error("l1FetchAndSaveEvents: Failed to commit db transaction", "err", err)
+		return err
 	}
 
 	return nil
@@ -184,7 +186,9 @@ func L2FetchAndSaveEvents(ctx context.Context, client *ethclient.Client, databas
 	err = dbTx.Commit()
 	if err != nil {
 		// if we can not insert into DB, there must something wrong, need a on-call member handle the dababase manually
-		log.Crit("l2FetchAndSaveEvents: Failed to commit db transaction", "err", err)
+		dbTx.Rollback()
+		log.Error("l2FetchAndSaveEvents: Failed to commit db transaction", "err", err)
+		return err
 	}
 
 	return nil
