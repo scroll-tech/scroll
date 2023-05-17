@@ -15,9 +15,10 @@ npm install @scroll-tech/contracts
 Once installed, you can use the contracts in the library by importing them:
 
 ```solidity
-pragma solidity ^0.8.0;
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.20;
 
-import "@scroll-tech/contracts/L1CustomERC20Gateway.sol";
+import "@scroll-tech/contracts/L1/gateways/IL1ETHGateway.sol";
 
 contract MyContract {
     function bridgeETH(address scrollBridge, uint gasLimit) public payable {
