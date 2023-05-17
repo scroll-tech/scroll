@@ -4,7 +4,7 @@
     "version": "0.0.3",
     "repository": {
       "type": "git",
-      "url": "https://github.com/scroll-tech/scroll-contracts.git"
+      "url": "https://github.com/scroll-tech/scroll.git"
     },
     "files": [
         "L1/gateways",
