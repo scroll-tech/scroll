@@ -32,7 +32,7 @@ abstract contract AppendOnlyMerkleTree {
         uint256 _currentMessageIndex = nextMessageIndex;
         bytes32 _hash = _messageHash;
         uint256 _height = 0;
-        // @todo it can be optimized, since we only need the newly added branch.
+
         while (_currentMessageIndex != 0) {
             if (_currentMessageIndex % 2 == 0) {
                 // it may be used in next round.

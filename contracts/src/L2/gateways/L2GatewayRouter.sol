@@ -32,8 +32,6 @@ contract L2GatewayRouter is OwnableUpgradeable, IL2GatewayRouter {
     // solhint-disable-next-line var-name-mixedcase
     mapping(address => address) public ERC20Gateway;
 
-    // @todo: add ERC721/ERC1155 Gateway mapping.
-
     /***************
      * Constructor *
      ***************/
