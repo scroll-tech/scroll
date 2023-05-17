@@ -30,7 +30,6 @@ contract L2WETHGateway is Initializable, ScrollGatewayBase, L2ERC20Gateway {
     address public immutable l1WETH;
 
     /// @notice The address of L2 WETH address.
-    // @todo It should be predeployed in L2 and make it a constant.
     // solhint-disable-next-line var-name-mixedcase
     address public immutable WETH;
 

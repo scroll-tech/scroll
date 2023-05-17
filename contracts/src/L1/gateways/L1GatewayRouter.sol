@@ -31,8 +31,6 @@ contract L1GatewayRouter is OwnableUpgradeable, IL1GatewayRouter {
     // solhint-disable-next-line var-name-mixedcase
     mapping(address => address) public ERC20Gateway;
 
-    // @todo: add ERC721/ERC1155 Gateway mapping.
-
     /***************
      * Constructor *
      ***************/
