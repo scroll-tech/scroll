@@ -81,7 +81,7 @@ func testCommitBatchAndFinalizeBatch(t *testing.T) {
 	assert.NoError(t, dbTx.Commit())
 
 	// process pending batch and check status
-	assert.NoError(t, l2Relayer.SendCommitTx([]*types.BatchData{batchData}))
+	assert.NoError(t, l2Relayer.CommitBatches([]*types.BatchData{batchData}))
 
 	status, err := db.GetRollupStatus(batchHash)
 	assert.NoError(t, err)

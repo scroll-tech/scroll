@@ -4,21 +4,23 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"golang.org/x/sync/errgroup"
 	"math/big"
 	"runtime"
 	"sync"
 
 	"github.com/scroll-tech/go-ethereum/accounts/abi"
 	"github.com/scroll-tech/go-ethereum/common"
+	types2 "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/crypto"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
 	geth_metrics "github.com/scroll-tech/go-ethereum/metrics"
-	"golang.org/x/sync/errgroup"
 	"modernc.org/mathutil"
 
 	"scroll-tech/common/metrics"
 	"scroll-tech/common/types"
+	utils2 "scroll-tech/common/utils"
 
 	"scroll-tech/database"
 
@@ -47,6 +49,7 @@ var (
 type Layer2Relayer struct {
 	ctx context.Context
 
+	l1Client *ethclient.Client
 	l2Client *ethclient.Client
 
 	db  database.OrmFactory
@@ -101,6 +104,11 @@ func NewLayer2Relayer(ctx context.Context, l2Client *ethclient.Client, db databa
 		return nil, err
 	}
 
+	l1Client, err := ethclient.Dial(cfg.SenderConfig.Endpoint)
+	if err != nil {
+		return nil, err
+	}
+
 	var minGasPrice uint64
 	var gasPriceDiff uint64
 	if cfg.GasOracleConfig != nil {
@@ -120,6 +128,7 @@ func NewLayer2Relayer(ctx context.Context, l2Client *ethclient.Client, db databa
 		ctx: ctx,
 		db:  db,
 
+		l1Client: l1Client,
 		l2Client: l2Client,
 
 		messageSender:  messageSender,
@@ -297,10 +306,46 @@ func (r *Layer2Relayer) ProcessGasPriceOracle() {
 	}
 }
 
-// SendCommitTx sends commitBatches tx to L1.
-func (r *Layer2Relayer) SendCommitTx(batchData []*types.BatchData) error {
+// ImportGenesisBatch imports genesisBash.
+func (r *Layer2Relayer) ImportGenesisBatch(batchData *types.BatchData) error {
+	if batchData == nil {
+		log.Error("ImportGenesisBatch receives empty batch")
+	}
+
+	calldata, err := r.l1RollupABI.Pack("importGenesisBatch", batchData.Batch)
+	if err != nil {
+		log.Error("Failed to pack ImportGenesisBatch", "err", err)
+		return err
+	}
+
+	batchHash := batchData.Hash().String()
+	txHash, err := r.rollupSender.SendTransaction(batchHash, &r.cfg.RollupContractAddress, big.NewInt(0), calldata, 0)
+	if err != nil {
+		if !errors.Is(err, sender.ErrNoAvailableAccount) && !errors.Is(err, sender.ErrFullPending) {
+			log.Error("Failed to send importGenesisBatch tx to layer1 ", "err", err)
+		}
+		return err
+	}
+	bridgeL2BatchesCommittedTotalCounter.Inc(1)
+
+	// check receipt status is committed.
+	var receipt *types2.Receipt
+	utils2.TryTimes(50, func() bool {
+		receipt, err = r.l1Client.TransactionReceipt(r.ctx, txHash)
+		return err == nil
+	})
+	if receipt.Status != types2.ReceiptStatusSuccessful {
+		return fmt.Errorf("ImportGenesisBatch tx status is failed, txHash: %s", txHash.Hex())
+	}
+	log.Info("Sent the ImportGenesisBatch tx to layer1", "tx_hash", txHash.Hex(), "batch_index", batchData.Batch.BatchIndex)
+
+	return nil
+}
+
+// CommitBatches sends commitBatches tx to L1.
+func (r *Layer2Relayer) CommitBatches(batchData []*types.BatchData) error {
 	if len(batchData) == 0 {
-		log.Error("SendCommitTx receives empty batch")
+		log.Error("CommitBatches receives empty batch")
 		return nil
 	}
 

@@ -478,8 +478,8 @@ func testLayer2RelayerSendCommitTx(t *testing.T) {
 	assert.NotNil(t, relayer)
 
 	var batchDataList []*types.BatchData
-	convey.Convey("SendCommitTx receives empty batch", t, func() {
-		err = relayer.SendCommitTx(batchDataList)
+	convey.Convey("CommitBatches receives empty batch", t, func() {
+		err = relayer.CommitBatches(batchDataList)
 		assert.NoError(t, err)
 	})
 
@@ -513,7 +513,7 @@ func testLayer2RelayerSendCommitTx(t *testing.T) {
 		})
 		defer patchGuard.Reset()
 
-		err = relayer.SendCommitTx(batchDataList)
+		err = relayer.CommitBatches(batchDataList)
 		assert.EqualError(t, err, targetErr.Error())
 	})
 
@@ -527,7 +527,7 @@ func testLayer2RelayerSendCommitTx(t *testing.T) {
 		patchGuard.ApplyMethodFunc(relayer.rollupSender, "SendTransaction", func(ID string, target *common.Address, value *big.Int, data []byte, minGasLimit uint64) (hash common.Hash, err error) {
 			return common.Hash{}, targetErr
 		})
-		err = relayer.SendCommitTx(batchDataList)
+		err = relayer.CommitBatches(batchDataList)
 		assert.EqualError(t, err, targetErr.Error())
 	})
 
@@ -540,13 +540,13 @@ func testLayer2RelayerSendCommitTx(t *testing.T) {
 		patchGuard.ApplyMethodFunc(db, "UpdateCommitTxHashAndRollupStatus", func(ctx context.Context, hash string, commitTxHash string, status types.RollupStatus) error {
 			return targetErr
 		})
-		err = relayer.SendCommitTx(batchDataList)
+		err = relayer.CommitBatches(batchDataList)
 		assert.NoError(t, err)
 	})
 
 	patchGuard.ApplyMethodFunc(db, "UpdateCommitTxHashAndRollupStatus", func(ctx context.Context, hash string, commitTxHash string, status types.RollupStatus) error {
 		return nil
 	})
-	err = relayer.SendCommitTx(batchDataList)
+	err = relayer.CommitBatches(batchDataList)
 	assert.NoError(t, err)
 }

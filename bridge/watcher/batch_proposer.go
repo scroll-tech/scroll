@@ -4,9 +4,12 @@ import (
 	"context"
 	"fmt"
 	"math"
+	"math/big"
 	"sync"
 	"time"
 
+	"github.com/scroll-tech/go-ethereum"
+	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/log"
 	geth_metrics "github.com/scroll-tech/go-ethereum/metrics"
 
@@ -113,6 +116,48 @@ func NewBatchProposer(ctx context.Context, cfg *config.BatchProposerConfig, rela
 	p.TryCommitBatches()
 
 	return p
+}
+
+// InitializeGenesis init db and contract.
+func (p *BatchProposer) InitializeGenesis(client ethereum.ChainReader) error {
+	if count, err := p.orm.GetBatchCount(); err != nil {
+		return fmt.Errorf("failed to get batch count: %v", err)
+	} else if count > 0 {
+		log.Info("genesis already imported")
+		return nil
+	}
+
+	genesis, err := client.HeaderByNumber(p.ctx, big.NewInt(0))
+	if err != nil {
+		return fmt.Errorf("failed to retrieve L2 genesis header: %v", err)
+	}
+
+	log.Info("retrieved L2 genesis header", "hash", genesis.Hash().String())
+
+	blockTrace := &types.WrappedBlock{Header: genesis, Transactions: nil, WithdrawTrieRoot: common.Hash{}}
+	batchData := types.NewGenesisBatchData(blockTrace)
+
+	// Init scrollChain contract in l1chain.
+	if err = p.relayer.ImportGenesisBatch(batchData); err != nil {
+		return err
+	}
+	log.Info("successfully imported genesis batch")
+
+	if err = AddBatchInfoToDB(p.orm, batchData); err != nil {
+		log.Error("failed to add batch info to DB", "BatchHash", batchData.Hash(), "error", err)
+		return err
+	}
+
+	batchHash := batchData.Hash().Hex()
+	if err = p.orm.UpdateProvingStatus(batchHash, types.ProvingTaskProved); err != nil {
+		return fmt.Errorf("failed to update genesis batch proving status: %v", err)
+	}
+
+	if err = p.orm.UpdateRollupStatus(p.ctx, batchHash, types.RollupFinalized); err != nil {
+		return fmt.Errorf("failed to update genesis batch rollup status: %v", err)
+	}
+
+	return nil
 }
 
 func (p *BatchProposer) recoverBatchDataBuffer() {
@@ -251,10 +296,10 @@ func (p *BatchProposer) TryCommitBatches() {
 	// Send commit tx for batchDataBuffer[0:index]
 	log.Info("Commit batches", "start_index", p.batchDataBuffer[0].Batch.BatchIndex,
 		"end_index", p.batchDataBuffer[index-1].Batch.BatchIndex)
-	err := p.relayer.SendCommitTx(p.batchDataBuffer[:index])
+	err := p.relayer.CommitBatches(p.batchDataBuffer[:index])
 	if err != nil {
 		// leave the retry to the next ticker
-		log.Error("SendCommitTx failed", "error", err)
+		log.Error("CommitBatches failed", "error", err)
 	} else {
 		// pop the processed batches from the buffer
 		bridgeL2BatchesCommitsSentTotalCounter.Inc(1)

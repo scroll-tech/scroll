@@ -86,50 +86,7 @@ func NewL2WatcherClient(ctx context.Context, client *ethclient.Client, confirmat
 		stopped: 0,
 	}
 
-	// Initialize genesis before we do anything else
-	if err := w.initializeGenesis(); err != nil {
-		panic(fmt.Sprintf("failed to initialize L2 genesis batch, err: %v", err))
-	}
-
 	return &w
-}
-
-func (w *L2WatcherClient) initializeGenesis() error {
-	if count, err := w.orm.GetBatchCount(); err != nil {
-		return fmt.Errorf("failed to get batch count: %v", err)
-	} else if count > 0 {
-		log.Info("genesis already imported")
-		return nil
-	}
-
-	genesis, err := w.HeaderByNumber(w.ctx, big.NewInt(0))
-	if err != nil {
-		return fmt.Errorf("failed to retrieve L2 genesis header: %v", err)
-	}
-
-	log.Info("retrieved L2 genesis header", "hash", genesis.Hash().String())
-
-	blockTrace := &types.WrappedBlock{Header: genesis, Transactions: nil, WithdrawTrieRoot: common.Hash{}}
-	batchData := types.NewGenesisBatchData(blockTrace)
-
-	if err = AddBatchInfoToDB(w.orm, batchData); err != nil {
-		log.Error("failed to add batch info to DB", "BatchHash", batchData.Hash(), "error", err)
-		return err
-	}
-
-	batchHash := batchData.Hash().Hex()
-
-	if err = w.orm.UpdateProvingStatus(batchHash, types.ProvingTaskProved); err != nil {
-		return fmt.Errorf("failed to update genesis batch proving status: %v", err)
-	}
-
-	if err = w.orm.UpdateRollupStatus(w.ctx, batchHash, types.RollupFinalized); err != nil {
-		return fmt.Errorf("failed to update genesis batch rollup status: %v", err)
-	}
-
-	log.Info("successfully imported genesis batch")
-
-	return nil
 }
 
 const blockTracesFetchLimit = uint64(10)

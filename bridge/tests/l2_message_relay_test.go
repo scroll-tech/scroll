@@ -109,7 +109,7 @@ func testRelayL2MessageSucceed(t *testing.T) {
 	assert.NoError(t, err)
 
 	// process pending batch and check status
-	l2Relayer.SendCommitTx([]*types.BatchData{batchData})
+	l2Relayer.CommitBatches([]*types.BatchData{batchData})
 	status, err := db.GetRollupStatus(batchHash)
 	assert.NoError(t, err)
 	assert.Equal(t, types.RollupCommitting, status)

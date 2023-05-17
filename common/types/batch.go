@@ -135,7 +135,6 @@ func NewBatchData(parentBatch *BlockBatch, blocks []*WrappedBlock, piCfg *Public
 		if baseFee == nil {
 			baseFee = big.NewInt(0)
 		}
-
 		batch.Blocks[i] = abi.IScrollChainBlockContext{
 			BlockHash:       block.Header.Hash(),
 			ParentHash:      block.Header.ParentHash,
@@ -208,13 +207,18 @@ func NewGenesisBatchData(genesisBlockTrace *WrappedBlock) *BatchData {
 	// PrevStateRoot, WithdrawTrieRoot, ParentBatchHash should all be 0
 	// L2Transactions should be empty
 
+	// set baseFee to 0 when it's nil in the block header
+	baseFee := header.BaseFee
+	if baseFee == nil {
+		baseFee = big.NewInt(0)
+	}
 	// fill in block context
 	batch.Blocks[0] = abi.IScrollChainBlockContext{
 		BlockHash:       header.Hash(),
 		ParentHash:      header.ParentHash,
 		BlockNumber:     header.Number.Uint64(),
 		Timestamp:       header.Time,
-		BaseFee:         header.BaseFee,
+		BaseFee:         baseFee,
 		GasLimit:        header.GasLimit,
 		NumTransactions: 0,
 		NumL1Messages:   0,
