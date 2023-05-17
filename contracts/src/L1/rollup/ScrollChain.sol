@@ -65,6 +65,7 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
      **********************/
 
     modifier OnlySequencer() {
+        // @note In the decentralized mode, it should be only called by a list of validator.
         require(isSequencer[msg.sender], "caller not sequencer");
         _;
     }
