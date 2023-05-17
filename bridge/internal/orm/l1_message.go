@@ -1,6 +1,7 @@
 package orm
 
 import (
+	"context"
 	"errors"
 	"time"
 
@@ -63,12 +64,12 @@ func (m *L1Message) GetLayer1LatestWatchedHeight() (uint64, error) {
 }
 
 // SaveL1Messages batch save a list of layer1 messages
-func (m *L1Message) SaveL1Messages(messages []*L1Message) error {
+func (m *L1Message) SaveL1Messages(ctx context.Context, messages []*L1Message) error {
 	if len(messages) == 0 {
 		return nil
 	}
 
-	err := m.db.Create(&messages).Error
+	err := m.db.WithContext(ctx).Create(&messages).Error
 	if err != nil {
 		queueIndices := make([]uint64, 0, len(messages))
 		heights := make([]uint64, 0, len(messages))
@@ -82,20 +83,20 @@ func (m *L1Message) SaveL1Messages(messages []*L1Message) error {
 }
 
 // UpdateLayer1Status updates message stauts, given message hash
-func (m *L1Message) UpdateLayer1Status(msgHash string, status types.MsgStatus) error {
-	if err := m.db.Model(&L1Message{}).Where("msg_hash", msgHash).Update("status", status).Error; err != nil {
+func (m *L1Message) UpdateLayer1Status(ctx context.Context, msgHash string, status types.MsgStatus) error {
+	if err := m.db.Model(&L1Message{}).WithContext(ctx).Where("msg_hash", msgHash).Update("status", status).Error; err != nil {
 		return err
 	}
 	return nil
 }
 
 // UpdateLayer1StatusAndLayer2Hash updates message status and layer2 transaction hash, given message hash
-func (m *L1Message) UpdateLayer1StatusAndLayer2Hash(msgHash string, status types.MsgStatus, layer2Hash string) error {
+func (m *L1Message) UpdateLayer1StatusAndLayer2Hash(ctx context.Context, msgHash string, status types.MsgStatus, layer2Hash string) error {
 	updateFields := map[string]interface{}{
 		"status":      status,
 		"layer2_hash": layer2Hash,
 	}
-	if err := m.db.Model(&L1Message{}).Where("msg_hash", msgHash).Updates(updateFields).Error; err != nil {
+	if err := m.db.Model(&L1Message{}).WithContext(ctx).Where("msg_hash", msgHash).Updates(updateFields).Error; err != nil {
 		return err
 	}
 	return nil

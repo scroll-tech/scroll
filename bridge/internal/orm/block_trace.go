@@ -3,7 +3,6 @@ package orm
 import (
 	"encoding/json"
 	"errors"
-
 	"github.com/scroll-tech/go-ethereum/log"
 	"gorm.io/gorm"
 
@@ -66,12 +65,21 @@ func (o *BlockTrace) GetL2WrappedBlocks(fields map[string]interface{}) ([]*types
 }
 
 // GetL2BlockInfos get l2 block infos
-func (o *BlockTrace) GetL2BlockInfos(fields map[string]interface{}) ([]BlockTrace, error) {
+func (o *BlockTrace) GetL2BlockInfos(fields map[string]interface{}, orderByList []string, limit int) ([]BlockTrace, error) {
 	var blockTraces []BlockTrace
 	db := o.db.Select("number, hash, parent_hash, batch_hash, tx_num, gas_used, block_timestamp")
 	for key, value := range fields {
 		db.Where(key, value)
 	}
+
+	for _, orderBy := range orderByList {
+		db.Order(orderBy)
+	}
+
+	if limit != 0 {
+		db.Limit(limit)
+	}
+
 	if err := db.Find(&blockTraces).Error; err != nil {
 		return nil, err
 	}
@@ -79,7 +87,7 @@ func (o *BlockTrace) GetL2BlockInfos(fields map[string]interface{}) ([]BlockTrac
 }
 
 // GetUnbatchedL2Blocks get unbatched l2 blocks
-func (o *BlockTrace) GetUnbatchedL2Blocks(fields map[string]interface{}) ([]BlockTrace, error) {
+func (o *BlockTrace) GetUnbatchedL2Blocks(fields map[string]interface{}, orderByList []string, limit int) ([]BlockTrace, error) {
 	var unbatchedBlockTraces []BlockTrace
 	db := o.db.Select("number, hash, parent_hash, batch_hash, tx_num, gas_used, block_timestamp").Where("batch_hash is NULL")
 	for key, value := range fields {
@@ -121,6 +129,22 @@ func (o *BlockTrace) InsertWrappedBlocks(blocks []*types.WrappedBlock) error {
 
 	if err := o.db.Create(&blockTraces).Error; err != nil {
 		log.Error("failed to insert blockTraces", "err", err)
+		return err
+	}
+	return nil
+}
+
+// UpdateBatchHashForL2Blocks update the batch_hash of block trace
+func (o *BlockTrace) UpdateBatchHashForL2Blocks(tx *gorm.DB, numbers []uint64, batchHash string) error {
+	var db *gorm.DB
+	if tx != nil {
+		db = tx
+	} else {
+		db = o.db
+	}
+
+	err := db.Model(&BlockTrace{}).Where("number IN (?)", numbers).Update("batch_hash", batchHash).Error
+	if err != nil {
 		return err
 	}
 	return nil

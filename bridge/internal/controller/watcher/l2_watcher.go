@@ -4,37 +4,37 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"gorm.io/gorm"
 	"math/big"
+	"scroll-tech/bridge/internal/orm"
 
 	geth "github.com/scroll-tech/go-ethereum"
 	"github.com/scroll-tech/go-ethereum/accounts/abi"
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/common/hexutil"
-	geth_types "github.com/scroll-tech/go-ethereum/core/types"
+	gethTypes "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/event"
 	"github.com/scroll-tech/go-ethereum/log"
-	geth_metrics "github.com/scroll-tech/go-ethereum/metrics"
+	gethMetrics "github.com/scroll-tech/go-ethereum/metrics"
 	"github.com/scroll-tech/go-ethereum/rpc"
 
 	"scroll-tech/common/metrics"
 	"scroll-tech/common/types"
 
-	"scroll-tech/database"
-
-	bridge_abi "scroll-tech/bridge/abi"
-	"scroll-tech/bridge/utils"
+	bridgeAbi "scroll-tech/bridge/internal/abi"
+	bridgeTypes "scroll-tech/bridge/internal/types"
+	"scroll-tech/bridge/internal/utils"
 )
 
 // Metrics
 var (
-	bridgeL2MsgsSyncHeightGauge      = geth_metrics.NewRegisteredGauge("bridge/l2/msgs/sync/height", metrics.ScrollRegistry)
-	bridgeL2BlocksFetchedHeightGauge = geth_metrics.NewRegisteredGauge("bridge/l2/blocks/fetched/height", metrics.ScrollRegistry)
-	bridgeL2BlocksFetchedGapGauge    = geth_metrics.NewRegisteredGauge("bridge/l2/blocks/fetched/gap", metrics.ScrollRegistry)
-
-	bridgeL2MsgsSentEventsTotalCounter    = geth_metrics.NewRegisteredCounter("bridge/l2/msgs/sent/events/total", metrics.ScrollRegistry)
-	bridgeL2MsgsAppendEventsTotalCounter  = geth_metrics.NewRegisteredCounter("bridge/l2/msgs/append/events/total", metrics.ScrollRegistry)
-	bridgeL2MsgsRelayedEventsTotalCounter = geth_metrics.NewRegisteredCounter("bridge/l2/msgs/relayed/events/total", metrics.ScrollRegistry)
+	bridgeL2MsgsSyncHeightGauge           = gethMetrics.NewRegisteredGauge("bridge/l2/msgs/sync/height", metrics.ScrollRegistry)
+	bridgeL2BlocksFetchedHeightGauge      = gethMetrics.NewRegisteredGauge("bridge/l2/blocks/fetched/height", metrics.ScrollRegistry)
+	bridgeL2BlocksFetchedGapGauge         = gethMetrics.NewRegisteredGauge("bridge/l2/blocks/fetched/gap", metrics.ScrollRegistry)
+	bridgeL2MsgsSentEventsTotalCounter    = gethMetrics.NewRegisteredCounter("bridge/l2/msgs/sent/events/total", metrics.ScrollRegistry)
+	bridgeL2MsgsAppendEventsTotalCounter  = gethMetrics.NewRegisteredCounter("bridge/l2/msgs/append/events/total", metrics.ScrollRegistry)
+	bridgeL2MsgsRelayedEventsTotalCounter = gethMetrics.NewRegisteredCounter("bridge/l2/msgs/relayed/events/total", metrics.ScrollRegistry)
 )
 
 // L2WatcherClient provide APIs which support others to subscribe to various event from l2geth
@@ -44,7 +44,11 @@ type L2WatcherClient struct {
 
 	*ethclient.Client
 
-	orm database.OrmFactory
+	db            *gorm.DB
+	blockBatchOrm *orm.BlockBatch
+	blockTrace    *orm.BlockTrace
+	l1MessageOrm  *orm.L1Message
+	l2MessageOrm  *orm.L2Message
 
 	confirmations rpc.BlockNumber
 
@@ -62,25 +66,31 @@ type L2WatcherClient struct {
 }
 
 // NewL2WatcherClient take a l2geth instance to generate a l2watcherclient instance
-func NewL2WatcherClient(ctx context.Context, client *ethclient.Client, confirmations rpc.BlockNumber, messengerAddress, messageQueueAddress common.Address, withdrawTrieRootSlot common.Hash, orm database.OrmFactory) *L2WatcherClient {
-	savedHeight, err := orm.GetLayer2LatestWatchedHeight()
+func NewL2WatcherClient(ctx context.Context, client *ethclient.Client, confirmations rpc.BlockNumber, messengerAddress, messageQueueAddress common.Address, withdrawTrieRootSlot common.Hash, db *gorm.DB) *L2WatcherClient {
+	l2MessageOrm := orm.NewL2Message(db)
+	savedHeight, err := l2MessageOrm.GetLayer2LatestWatchedHeight()
 	if err != nil {
 		log.Warn("fetch height from db failed", "err", err)
 		savedHeight = 0
 	}
 
 	w := L2WatcherClient{
-		ctx:                ctx,
-		Client:             client,
-		orm:                orm,
-		processedMsgHeight: uint64(savedHeight),
+		ctx:    ctx,
+		db:     db,
+		Client: client,
+
+		blockBatchOrm:      orm.NewBlockBatch(db),
+		blockTrace:         orm.NewBlockTrace(db),
+		l1MessageOrm:       orm.NewL1Message(db),
+		l2MessageOrm:       l2MessageOrm,
+		processedMsgHeight: savedHeight,
 		confirmations:      confirmations,
 
 		messengerAddress: messengerAddress,
-		messengerABI:     bridge_abi.L2ScrollMessengerABI,
+		messengerABI:     bridgeAbi.L2ScrollMessengerABI,
 
 		messageQueueAddress:  messageQueueAddress,
-		messageQueueABI:      bridge_abi.L2MessageQueueABI,
+		messageQueueABI:      bridgeAbi.L2MessageQueueABI,
 		withdrawTrieRootSlot: withdrawTrieRootSlot,
 
 		stopped: 0,
@@ -95,7 +105,7 @@ func NewL2WatcherClient(ctx context.Context, client *ethclient.Client, confirmat
 }
 
 func (w *L2WatcherClient) initializeGenesis() error {
-	if count, err := w.orm.GetBatchCount(); err != nil {
+	if count, err := w.blockBatchOrm.GetBatchCount(); err != nil {
 		return fmt.Errorf("failed to get batch count: %v", err)
 	} else if count > 0 {
 		log.Info("genesis already imported")
@@ -109,21 +119,25 @@ func (w *L2WatcherClient) initializeGenesis() error {
 
 	log.Info("retrieved L2 genesis header", "hash", genesis.Hash().String())
 
-	blockTrace := &types.WrappedBlock{Header: genesis, Transactions: nil, WithdrawTrieRoot: common.Hash{}}
-	batchData := types.NewGenesisBatchData(blockTrace)
+	blockTrace := &bridgeTypes.WrappedBlock{
+		Header:           genesis,
+		Transactions:     nil,
+		WithdrawTrieRoot: common.Hash{},
+	}
+	batchData := bridgeTypes.NewGenesisBatchData(blockTrace)
 
-	if err = AddBatchInfoToDB(w.orm, batchData); err != nil {
+	if err = orm.AddBatchInfoToDB(w.db, batchData); err != nil {
 		log.Error("failed to add batch info to DB", "BatchHash", batchData.Hash(), "error", err)
 		return err
 	}
 
 	batchHash := batchData.Hash().Hex()
 
-	if err = w.orm.UpdateProvingStatus(batchHash, types.ProvingTaskProved); err != nil {
+	if err = w.blockBatchOrm.UpdateProvingStatus(batchHash, types.ProvingTaskProved); err != nil {
 		return fmt.Errorf("failed to update genesis batch proving status: %v", err)
 	}
 
-	if err = w.orm.UpdateRollupStatus(w.ctx, batchHash, types.RollupFinalized); err != nil {
+	if err = w.blockBatchOrm.UpdateRollupStatus(w.ctx, batchHash, types.RollupFinalized); err != nil {
 		return fmt.Errorf("failed to update genesis batch rollup status: %v", err)
 	}
 
@@ -139,7 +153,7 @@ func (w *L2WatcherClient) TryFetchRunningMissingBlocks(ctx context.Context, bloc
 	// Get newest block in DB. must have blocks at that time.
 	// Don't use "block_trace" table "trace" column's BlockTrace.Number,
 	// because it might be empty if the corresponding rollup_result is finalized/finalization_skipped
-	heightInDB, err := w.orm.GetL2BlocksLatestHeight()
+	heightInDB, err := w.blockTrace.GetL2BlocksLatestHeight()
 	if err != nil {
 		log.Error("failed to GetL2BlocksLatestHeight", "err", err)
 		return
@@ -168,11 +182,11 @@ func (w *L2WatcherClient) TryFetchRunningMissingBlocks(ctx context.Context, bloc
 	}
 }
 
-func txsToTxsData(txs geth_types.Transactions) []*geth_types.TransactionData {
-	txsData := make([]*geth_types.TransactionData, len(txs))
+func txsToTxsData(txs gethTypes.Transactions) []*gethTypes.TransactionData {
+	txsData := make([]*gethTypes.TransactionData, len(txs))
 	for i, tx := range txs {
 		v, r, s := tx.RawSignatureValues()
-		txsData[i] = &geth_types.TransactionData{
+		txsData[i] = &gethTypes.TransactionData{
 			Type:     tx.Type(),
 			TxHash:   tx.Hash().String(),
 			Nonce:    tx.Nonce(),
@@ -192,8 +206,7 @@ func txsToTxsData(txs geth_types.Transactions) []*geth_types.TransactionData {
 }
 
 func (w *L2WatcherClient) getAndStoreBlockTraces(ctx context.Context, from, to uint64) error {
-	var blocks []*types.WrappedBlock
-
+	var blocks []*bridgeTypes.WrappedBlock
 	for number := from; number <= to; number++ {
 		log.Debug("retrieving block", "height", number)
 		block, err2 := w.BlockByNumber(ctx, big.NewInt(int64(number)))
@@ -208,7 +221,7 @@ func (w *L2WatcherClient) getAndStoreBlockTraces(ctx context.Context, from, to u
 			return fmt.Errorf("failed to get withdrawTrieRoot: %v. number: %v", err3, number)
 		}
 
-		blocks = append(blocks, &types.WrappedBlock{
+		blocks = append(blocks, &bridgeTypes.WrappedBlock{
 			Header:           block.Header(),
 			Transactions:     txsToTxsData(block.Transactions()),
 			WithdrawTrieRoot: common.BytesToHash(withdrawTrieRoot),
@@ -216,7 +229,7 @@ func (w *L2WatcherClient) getAndStoreBlockTraces(ctx context.Context, from, to u
 	}
 
 	if len(blocks) > 0 {
-		if err := w.orm.InsertWrappedBlocks(blocks); err != nil {
+		if err := w.blockTrace.InsertWrappedBlocks(blocks); err != nil {
 			return fmt.Errorf("failed to batch insert BlockTraces: %v", err)
 		}
 	}
@@ -257,10 +270,10 @@ func (w *L2WatcherClient) FetchContractEvent() {
 			Topics: make([][]common.Hash, 1),
 		}
 		query.Topics[0] = make([]common.Hash, 4)
-		query.Topics[0][0] = bridge_abi.L2SentMessageEventSignature
-		query.Topics[0][1] = bridge_abi.L2RelayedMessageEventSignature
-		query.Topics[0][2] = bridge_abi.L2FailedRelayedMessageEventSignature
-		query.Topics[0][3] = bridge_abi.L2AppendMessageEventSignature
+		query.Topics[0][0] = bridgeAbi.L2SentMessageEventSignature
+		query.Topics[0][1] = bridgeAbi.L2RelayedMessageEventSignature
+		query.Topics[0][2] = bridgeAbi.L2FailedRelayedMessageEventSignature
+		query.Topics[0][3] = bridgeAbi.L2AppendMessageEventSignature
 
 		logs, err := w.FilterLogs(w.ctx, query)
 		if err != nil {
@@ -295,13 +308,13 @@ func (w *L2WatcherClient) FetchContractEvent() {
 			} else {
 				msgStatus = types.MsgFailed
 			}
-			if err = w.orm.UpdateLayer1StatusAndLayer2Hash(w.ctx, msg.msgHash.String(), msgStatus, msg.txHash.String()); err != nil {
+			if err = w.l1MessageOrm.UpdateLayer1StatusAndLayer2Hash(w.ctx, msg.msgHash.String(), msgStatus, msg.txHash.String()); err != nil {
 				log.Error("Failed to update layer1 status and layer2 hash", "err", err)
 				return
 			}
 		}
 
-		if err = w.orm.SaveL2Messages(w.ctx, sentMessageEvents); err != nil {
+		if err = w.l2MessageOrm.SaveL2Messages(w.ctx, sentMessageEvents); err != nil {
 			log.Error("failed to save l2 messages", "err", err)
 			return
 		}
@@ -311,18 +324,18 @@ func (w *L2WatcherClient) FetchContractEvent() {
 	}
 }
 
-func (w *L2WatcherClient) parseBridgeEventLogs(logs []geth_types.Log) ([]*types.L2Message, []relayedMessage, error) {
+func (w *L2WatcherClient) parseBridgeEventLogs(logs []gethTypes.Log) ([]orm.L2Message, []relayedMessage, error) {
 	// Need use contract abi to parse event Log
 	// Can only be tested after we have our contracts set up
 
-	var l2Messages []*types.L2Message
+	var l2Messages []orm.L2Message
 	var relayedMessages []relayedMessage
 	var lastAppendMsgHash common.Hash
 	var lastAppendMsgNonce uint64
 	for _, vLog := range logs {
 		switch vLog.Topics[0] {
-		case bridge_abi.L2SentMessageEventSignature:
-			event := bridge_abi.L2SentMessageEvent{}
+		case bridgeAbi.L2SentMessageEventSignature:
+			event := bridgeAbi.L2SentMessageEvent{}
 			err := utils.UnpackLog(w.messengerABI, &event, "SentMessage", vLog)
 			if err != nil {
 				log.Error("failed to unpack layer2 SentMessage event", "err", err)
@@ -350,7 +363,7 @@ func (w *L2WatcherClient) parseBridgeEventLogs(logs []geth_types.Log) ([]*types.
 				return l2Messages, relayedMessages, errors.New(errMsg)
 			}
 
-			l2Messages = append(l2Messages, &types.L2Message{
+			l2Messages = append(l2Messages, orm.L2Message{
 				Nonce:      event.MessageNonce.Uint64(),
 				MsgHash:    computedMsgHash.String(),
 				Height:     vLog.BlockNumber,
@@ -360,8 +373,8 @@ func (w *L2WatcherClient) parseBridgeEventLogs(logs []geth_types.Log) ([]*types.
 				Calldata:   common.Bytes2Hex(event.Message),
 				Layer2Hash: vLog.TxHash.Hex(),
 			})
-		case bridge_abi.L2RelayedMessageEventSignature:
-			event := bridge_abi.L2RelayedMessageEvent{}
+		case bridgeAbi.L2RelayedMessageEventSignature:
+			event := bridgeAbi.L2RelayedMessageEvent{}
 			err := utils.UnpackLog(w.messengerABI, &event, "RelayedMessage", vLog)
 			if err != nil {
 				log.Warn("Failed to unpack layer2 RelayedMessage event", "err", err)
@@ -373,8 +386,8 @@ func (w *L2WatcherClient) parseBridgeEventLogs(logs []geth_types.Log) ([]*types.
 				txHash:       vLog.TxHash,
 				isSuccessful: true,
 			})
-		case bridge_abi.L2FailedRelayedMessageEventSignature:
-			event := bridge_abi.L2FailedRelayedMessageEvent{}
+		case bridgeAbi.L2FailedRelayedMessageEventSignature:
+			event := bridgeAbi.L2FailedRelayedMessageEvent{}
 			err := utils.UnpackLog(w.messengerABI, &event, "FailedRelayedMessage", vLog)
 			if err != nil {
 				log.Warn("Failed to unpack layer2 FailedRelayedMessage event", "err", err)
@@ -386,8 +399,8 @@ func (w *L2WatcherClient) parseBridgeEventLogs(logs []geth_types.Log) ([]*types.
 				txHash:       vLog.TxHash,
 				isSuccessful: false,
 			})
-		case bridge_abi.L2AppendMessageEventSignature:
-			event := bridge_abi.L2AppendMessageEvent{}
+		case bridgeAbi.L2AppendMessageEventSignature:
+			event := bridgeAbi.L2AppendMessageEvent{}
 			err := utils.UnpackLog(w.messageQueueABI, &event, "AppendMessage", vLog)
 			if err != nil {
 				log.Warn("Failed to unpack layer2 AppendMessage event", "err", err)

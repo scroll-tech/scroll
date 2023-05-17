@@ -5,7 +5,7 @@ import (
 
 	"github.com/scroll-tech/go-ethereum/common"
 
-	"scroll-tech/common/types"
+	"scroll-tech/bridge/internal/types"
 )
 
 // L2Config loads l2geth configuration items.

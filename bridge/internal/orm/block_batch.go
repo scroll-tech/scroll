@@ -2,6 +2,8 @@ package orm
 
 import (
 	"context"
+	"github.com/scroll-tech/go-ethereum/log"
+	bridgeTypes "scroll-tech/bridge/internal/types"
 	"time"
 
 	"gorm.io/gorm"
@@ -59,12 +61,21 @@ func (o *BlockBatch) GetBatchCount() (int64, error) {
 }
 
 // GetBlockBatches get the select block batches
-func (o *BlockBatch) GetBlockBatches(fields map[string]interface{}) ([]BlockBatch, error) {
+func (o *BlockBatch) GetBlockBatches(fields map[string]interface{}, orderByList []string, limit int) ([]BlockBatch, error) {
 	var blockBatches []BlockBatch
 	db := o.db
 	for key, value := range fields {
 		db.Where(key, value)
 	}
+
+	for _, orderBy := range orderByList {
+		db.Order(orderBy)
+	}
+
+	if limit != 0 {
+		db.Limit(limit)
+	}
+
 	if err := db.Find(&blockBatches).Error; err != nil {
 		return nil, err
 	}
@@ -118,29 +129,6 @@ func (o *BlockBatch) GetLatestBatchByRollupStatus(rollupStatuses []types.RollupS
 	return &blockBatch, nil
 }
 
-//// GetLatestFinalizedBatch get the latest finalized batch
-//// Need to optimize the query.
-//func (o *BlockBatch) GetLatestFinalizedBatch() (*BlockBatch, error) {
-//	var blockBatch BlockBatch
-//	subQuery := o.db.Table("block_batch").Select("max(index)").Where("rollup_status", types.RollupFinalized)
-//	err := o.db.Where("index", subQuery).Find(&blockBatch).Error
-//	if err != nil {
-//		return nil, err
-//	}
-//	return &blockBatch, nil
-//}
-//
-//// GetLatestFinalizingOrFinalizedBatch get the latest finalizing or finalized batch
-//func (o *BlockBatch) GetLatestFinalizingOrFinalizedBatch() (*BlockBatch, error) {
-//	var blockBatch BlockBatch
-//	subQuery := o.db.Table("block_batch").Select("max(index)").Where("rollup_status IN (?)", []interface{}{types.RollupFinalizing, types.RollupFinalized})
-//	err := o.db.Where("index", subQuery).Find(&blockBatch).Error
-//	if err != nil {
-//		return nil, err
-//	}
-//	return &blockBatch, nil
-//}
-
 // GetCommittedBatches get the committed block batches
 func (o *BlockBatch) GetCommittedBatches(limit int) ([]string, error) {
 	var blockBatches []BlockBatch
@@ -173,6 +161,38 @@ func (o *BlockBatch) GetRollupStatusByHashList(hashes []string) ([]types.RollupS
 		statuses = append(statuses, types.RollupStatus(v.RollupStatus))
 	}
 	return statuses, nil
+}
+
+// InsertBlockBatchByBatchData insert a block batch data by the BatchData
+func (o *BlockBatch) InsertBlockBatchByBatchData(tx *gorm.DB, batchData *bridgeTypes.BatchData) (int64, error) {
+	var db *gorm.DB
+	if tx != nil {
+		db = tx
+	} else {
+		db = o.db
+	}
+
+	numBlocks := len(batchData.Batch.Blocks)
+	insertBlockBatch := BlockBatch{
+		Hash:             batchData.Hash().Hex(),
+		Index:            batchData.Batch.BatchIndex,
+		StartBlockNumber: batchData.Batch.Blocks[0].BlockNumber,
+		StartBlockHash:   batchData.Batch.Blocks[0].BlockHash.Hex(),
+		EndBlockNumber:   batchData.Batch.Blocks[numBlocks-1].BlockNumber,
+		EndBlockHash:     batchData.Batch.Blocks[numBlocks-1].BlockHash.Hex(),
+		ParentHash:       batchData.Batch.ParentBatchHash.Hex(),
+		StateRoot:        batchData.Batch.NewStateRoot.Hex(),
+		TotalTxNum:       batchData.TotalTxNum,
+		TotalL1TxNum:     batchData.TotalL1TxNum,
+		TotalL2Gas:       batchData.TotalL2Gas,
+		CreatedAt:        time.Now(),
+	}
+	result := db.Create(&insertBlockBatch)
+	if result.Error != nil {
+		log.Error("failed to insert block batch by batchData", "err", result.Error)
+		return 0, result.Error
+	}
+	return result.RowsAffected, nil
 }
 
 // UpdateProvingStatus update the proving status

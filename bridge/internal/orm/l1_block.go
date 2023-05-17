@@ -58,12 +58,12 @@ func (l *L1Block) GetL1BlockInfos(fields map[string]interface{}) ([]L1Block, err
 }
 
 // InsertL1Blocks batch insert l1 blocks
-func (l *L1Block) InsertL1Blocks(blocks []L1Block) error {
+func (l *L1Block) InsertL1Blocks(ctx context.Context, blocks []L1Block) error {
 	if len(blocks) == 0 {
 		return nil
 	}
 
-	err := l.db.Create(&blocks).Error
+	err := l.db.WithContext(ctx).Create(&blocks).Error
 	if err != nil {
 		log.Error("failed to insert L1 Blocks", "err", err)
 	}

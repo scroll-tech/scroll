@@ -6,27 +6,25 @@ import (
 	"math/big"
 
 	// not sure if this will make problems when relay with l1geth
-
 	"github.com/scroll-tech/go-ethereum/accounts/abi"
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/crypto"
 	"github.com/scroll-tech/go-ethereum/log"
-	geth_metrics "github.com/scroll-tech/go-ethereum/metrics"
-
-	"scroll-tech/common/types"
-
-	"scroll-tech/database"
+	gethMetrics "github.com/scroll-tech/go-ethereum/metrics"
+	"gorm.io/gorm"
 
 	"scroll-tech/common/metrics"
+	"scroll-tech/common/types"
 
-	bridge_abi "scroll-tech/bridge/abi"
-	"scroll-tech/bridge/config"
-	"scroll-tech/bridge/sender"
+	bridgeAbi "scroll-tech/bridge/internal/abi"
+	"scroll-tech/bridge/internal/config"
+	"scroll-tech/bridge/internal/controller/sender"
+	"scroll-tech/bridge/internal/orm"
 )
 
 var (
-	bridgeL1MsgsRelayedTotalCounter          = geth_metrics.NewRegisteredCounter("bridge/l1/msgs/relayed/total", metrics.ScrollRegistry)
-	bridgeL1MsgsRelayedConfirmedTotalCounter = geth_metrics.NewRegisteredCounter("bridge/l1/msgs/relayed/confirmed/total", metrics.ScrollRegistry)
+	bridgeL1MsgsRelayedTotalCounter          = gethMetrics.NewRegisteredCounter("bridge/l1/msgs/relayed/total", metrics.ScrollRegistry)
+	bridgeL1MsgsRelayedConfirmedTotalCounter = gethMetrics.NewRegisteredCounter("bridge/l1/msgs/relayed/confirmed/total", metrics.ScrollRegistry)
 )
 
 // Layer1Relayer is responsible for
@@ -38,7 +36,6 @@ var (
 type Layer1Relayer struct {
 	ctx context.Context
 
-	db  database.OrmFactory
 	cfg *config.RelayerConfig
 
 	// channel used to communicate with transaction sender
@@ -53,10 +50,13 @@ type Layer1Relayer struct {
 	lastGasPrice uint64
 	minGasPrice  uint64
 	gasPriceDiff uint64
+
+	l1MessageOrm *orm.L1Message
+	l1Block      *orm.L1Block
 }
 
 // NewLayer1Relayer will return a new instance of Layer1RelayerClient
-func NewLayer1Relayer(ctx context.Context, db database.OrmFactory, cfg *config.RelayerConfig) (*Layer1Relayer, error) {
+func NewLayer1Relayer(ctx context.Context, db *gorm.DB, cfg *config.RelayerConfig) (*Layer1Relayer, error) {
 	messageSender, err := sender.NewSender(ctx, cfg.SenderConfig, cfg.MessageSenderPrivateKeys)
 	if err != nil {
 		addr := crypto.PubkeyToAddress(cfg.MessageSenderPrivateKeys[0].PublicKey)
@@ -88,21 +88,21 @@ func NewLayer1Relayer(ctx context.Context, db database.OrmFactory, cfg *config.R
 	}
 
 	l1Relayer := &Layer1Relayer{
-		ctx: ctx,
-		db:  db,
+		cfg:          cfg,
+		ctx:          ctx,
+		l1MessageOrm: orm.NewL1Message(db),
+		l1Block:      orm.NewL1Block(db),
 
 		messageSender:  messageSender,
-		l2MessengerABI: bridge_abi.L2ScrollMessengerABI,
+		l2MessengerABI: bridgeAbi.L2ScrollMessengerABI,
 
 		gasOracleSender: gasOracleSender,
-		l1GasOracleABI:  bridge_abi.L1GasPriceOracleABI,
+		l1GasOracleABI:  bridgeAbi.L1GasPriceOracleABI,
 
 		minGasLimitForMessageRelay: minGasLimitForMessageRelay,
 
 		minGasPrice:  minGasPrice,
 		gasPriceDiff: gasPriceDiff,
-
-		cfg: cfg,
 	}
 
 	go l1Relayer.handleConfirmLoop(ctx)
@@ -112,7 +112,7 @@ func NewLayer1Relayer(ctx context.Context, db database.OrmFactory, cfg *config.R
 // ProcessSavedEvents relays saved un-processed cross-domain transactions to desired blockchain
 func (r *Layer1Relayer) ProcessSavedEvents() {
 	// msgs are sorted by nonce in increasing order
-	msgs, err := r.db.GetL1MessagesByStatus(types.MsgPending, 100)
+	msgs, err := r.l1MessageOrm.GetL1MessagesByStatus(types.MsgPending, 100)
 	if err != nil {
 		log.Error("Failed to fetch unprocessed L1 messages", "err", err)
 		return
@@ -123,7 +123,7 @@ func (r *Layer1Relayer) ProcessSavedEvents() {
 	}
 
 	for _, msg := range msgs {
-		if err = r.processSavedEvent(msg); err != nil {
+		if err = r.processSavedEvent(&msg); err != nil {
 			if !errors.Is(err, sender.ErrNoAvailableAccount) && !errors.Is(err, sender.ErrFullPending) {
 				log.Error("failed to process event", "msg.msgHash", msg.MsgHash, "err", err)
 			}
@@ -132,15 +132,15 @@ func (r *Layer1Relayer) ProcessSavedEvents() {
 	}
 }
 
-func (r *Layer1Relayer) processSavedEvent(msg *types.L1Message) error {
+func (r *Layer1Relayer) processSavedEvent(msg *orm.L1Message) error {
 	calldata := common.Hex2Bytes(msg.Calldata)
-
 	hash, err := r.messageSender.SendTransaction(msg.MsgHash, &r.cfg.MessengerContractAddress, big.NewInt(0), calldata, r.minGasLimitForMessageRelay)
 	if err != nil && err.Error() == "execution reverted: Message expired" {
-		return r.db.UpdateLayer1Status(r.ctx, msg.MsgHash, types.MsgExpired)
+		return r.l1MessageOrm.UpdateLayer1Status(r.ctx, msg.MsgHash, types.MsgExpired)
 	}
+
 	if err != nil && err.Error() == "execution reverted: Message was already successfully executed" {
-		return r.db.UpdateLayer1Status(r.ctx, msg.MsgHash, types.MsgConfirmed)
+		return r.l1MessageOrm.UpdateLayer1Status(r.ctx, msg.MsgHash, types.MsgConfirmed)
 	}
 	if err != nil {
 		return err
@@ -148,7 +148,7 @@ func (r *Layer1Relayer) processSavedEvent(msg *types.L1Message) error {
 	bridgeL1MsgsRelayedTotalCounter.Inc(1)
 	log.Info("relayMessage to layer2", "msg hash", msg.MsgHash, "tx hash", hash)
 
-	err = r.db.UpdateLayer1StatusAndLayer2Hash(r.ctx, msg.MsgHash, types.MsgSubmitted, hash.String())
+	err = r.l1MessageOrm.UpdateLayer1StatusAndLayer2Hash(r.ctx, msg.MsgHash, types.MsgSubmitted, hash.String())
 	if err != nil {
 		log.Error("UpdateLayer1StatusAndLayer2Hash failed", "msg.msgHash", msg.MsgHash, "msg.height", msg.Height, "err", err)
 	}
@@ -157,13 +157,13 @@ func (r *Layer1Relayer) processSavedEvent(msg *types.L1Message) error {
 
 // ProcessGasPriceOracle imports gas price to layer2
 func (r *Layer1Relayer) ProcessGasPriceOracle() {
-	latestBlockHeight, err := r.db.GetLatestL1BlockHeight()
+	latestBlockHeight, err := r.l1Block.GetLatestL1BlockHeight()
 	if err != nil {
 		log.Warn("Failed to fetch latest L1 block height from db", "err", err)
 		return
 	}
 
-	blocks, err := r.db.GetL1BlockInfos(map[string]interface{}{
+	blocks, err := r.l1Block.GetL1BlockInfos(map[string]interface{}{
 		"number": latestBlockHeight,
 	})
 	if err != nil {
@@ -176,7 +176,7 @@ func (r *Layer1Relayer) ProcessGasPriceOracle() {
 	}
 	block := blocks[0]
 
-	if block.GasOracleStatus == types.GasOraclePending {
+	if types.GasOracleStatus(block.GasOracleStatus) == types.GasOraclePending {
 		expectedDelta := r.lastGasPrice * r.gasPriceDiff / gasPriceDiffPrecision
 		// last is undefine or (block.BaseFee >= minGasPrice && exceed diff)
 		if r.lastGasPrice == 0 || (block.BaseFee >= r.minGasPrice && (block.BaseFee >= r.lastGasPrice+expectedDelta || block.BaseFee <= r.lastGasPrice-expectedDelta)) {
@@ -195,7 +195,7 @@ func (r *Layer1Relayer) ProcessGasPriceOracle() {
 				return
 			}
 
-			err = r.db.UpdateL1GasOracleStatusAndOracleTxHash(r.ctx, block.Hash, types.GasOracleImporting, hash.String())
+			err = r.l1Block.UpdateL1GasOracleStatusAndOracleTxHash(r.ctx, block.Hash, types.GasOracleImporting, hash.String())
 			if err != nil {
 				log.Error("UpdateGasOracleStatusAndOracleTxHash failed", "block.Hash", block.Hash, "block.Height", block.Number, "err", err)
 				return
@@ -214,14 +214,14 @@ func (r *Layer1Relayer) handleConfirmLoop(ctx context.Context) {
 		case cfm := <-r.messageSender.ConfirmChan():
 			bridgeL1MsgsRelayedConfirmedTotalCounter.Inc(1)
 			if !cfm.IsSuccessful {
-				err := r.db.UpdateLayer1StatusAndLayer2Hash(r.ctx, cfm.ID, types.MsgRelayFailed, cfm.TxHash.String())
+				err := r.l1MessageOrm.UpdateLayer1StatusAndLayer2Hash(r.ctx, cfm.ID, types.MsgRelayFailed, cfm.TxHash.String())
 				if err != nil {
 					log.Warn("UpdateLayer1StatusAndLayer2Hash failed", "err", err)
 				}
 				log.Warn("transaction confirmed but failed in layer2", "confirmation", cfm)
 			} else {
 				// @todo handle db error
-				err := r.db.UpdateLayer1StatusAndLayer2Hash(r.ctx, cfm.ID, types.MsgConfirmed, cfm.TxHash.String())
+				err := r.l1MessageOrm.UpdateLayer1StatusAndLayer2Hash(r.ctx, cfm.ID, types.MsgConfirmed, cfm.TxHash.String())
 				if err != nil {
 					log.Warn("UpdateLayer1StatusAndLayer2Hash failed", "err", err)
 				}
@@ -230,14 +230,14 @@ func (r *Layer1Relayer) handleConfirmLoop(ctx context.Context) {
 		case cfm := <-r.gasOracleSender.ConfirmChan():
 			if !cfm.IsSuccessful {
 				// @discuss: maybe make it pending again?
-				err := r.db.UpdateL1GasOracleStatusAndOracleTxHash(r.ctx, cfm.ID, types.GasOracleFailed, cfm.TxHash.String())
+				err := r.l1Block.UpdateL1GasOracleStatusAndOracleTxHash(r.ctx, cfm.ID, types.GasOracleFailed, cfm.TxHash.String())
 				if err != nil {
 					log.Warn("UpdateL1GasOracleStatusAndOracleTxHash failed", "err", err)
 				}
 				log.Warn("transaction confirmed but failed in layer2", "confirmation", cfm)
 			} else {
 				// @todo handle db error
-				err := r.db.UpdateL1GasOracleStatusAndOracleTxHash(r.ctx, cfm.ID, types.GasOracleImported, cfm.TxHash.String())
+				err := r.l1Block.UpdateL1GasOracleStatusAndOracleTxHash(r.ctx, cfm.ID, types.GasOracleImported, cfm.TxHash.String())
 				if err != nil {
 					log.Warn("UpdateGasOracleStatusAndOracleTxHash failed", "err", err)
 				}
