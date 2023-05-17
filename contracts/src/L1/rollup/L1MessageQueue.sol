@@ -235,11 +235,7 @@ contract L1MessageQueue is OwnableUpgradeable, IL1MessageQueue {
      *****************************/
 
     /// @inheritdoc IL1MessageQueue
-    function appendCrossDomainMessage(
-        address _target,
-        uint256 _gasLimit,
-        bytes calldata _data
-    ) external override {
+    function appendCrossDomainMessage(address _target, uint256 _gasLimit, bytes calldata _data) external override {
         require(msg.sender == messenger, "Only callable by the L1ScrollMessenger");
 
         // validate gas limit
@@ -270,21 +266,20 @@ contract L1MessageQueue is OwnableUpgradeable, IL1MessageQueue {
     }
 
     /// @inheritdoc IL1MessageQueue
-    function popCrossDomainMessage(
-        uint256 _startIndex,
-        uint256 _count,
-        uint256 _skippedBitmap
-    ) external {
-        require(_count <= 256, "pop too much messages");
+    function popCrossDomainMessage(uint256 _startIndex, uint256 _count, uint256 _skippedBitmap) external {
+        require(_count <= 256, "pop too many messages");
+        require(pendingQueueIndex == _startIndex, "start index mismatch");
 
-        for (uint256 i = 0; i < _count; i++) {
-            if (_skippedBitmap & 1 == 0) {
-                messageQueue[_startIndex + i] = bytes32(0);
+        unchecked {
+            for (uint256 i = 0; i < _count; i++) {
+                if (_skippedBitmap & 1 == 0) {
+                    messageQueue[_startIndex + i] = bytes32(0);
+                }
+                _skippedBitmap >>= 1;
             }
-            _skippedBitmap >>= 1;
-        }
 
-        pendingQueueIndex = _startIndex + _count;
+            pendingQueueIndex = _startIndex + _count;
+        }
 
         emit DequeueTransaction(_startIndex, _count, _skippedBitmap);
     }
