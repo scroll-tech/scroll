@@ -106,11 +106,7 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
 
     /// @notice Import layer 2 genesis block
     /// @dev Although `_withdrawRoot` is always zero, we add this parameterfor the convenience of unit testing.
-    function importGenesisBatch(
-        bytes calldata _batchHeader,
-        bytes32 _stateRoot,
-        bytes32 _withdrawRoot
-    ) external {
+    function importGenesisBatch(bytes calldata _batchHeader, bytes32 _stateRoot, bytes32 _withdrawRoot) external {
         // check genesis batch header length
         require(_stateRoot != bytes32(0), "zero state root");
 
@@ -378,66 +374,68 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
             chunkPtr := add(_chunk, 0x21)
         }
         uint256 _totalNumL1MessagesInChunk;
-        uint256 _totalTransactionsInChunk;
-        while (_numBlocks > 0) {
-            uint256 _numL1MessagesInBlock;
-            uint256 _skippedL1MessageBitmapInBlock;
-            assembly {
-                _numL1MessagesInBlock := shr(240, mload(add(chunkPtr, 122)))
-                _skippedL1MessageBitmapInBlock := mload(add(chunkPtr, 124))
-            }
-            require(_numL1MessagesInBlock <= 256, "block includes too much L1 messages");
-
-            // concatenate l1 messages
-            dataPtr = _loadL1Messages(
-                dataPtr,
-                _numL1MessagesInBlock,
-                _prevTotalL1MessagesPopped,
-                _skippedL1MessageBitmapInBlock
-            );
-
-            // update local chunk state variable
-            assembly {
-                // update bitmap entry
-                mstore(bitmapPtr, or(mload(bitmapPtr), shl(bitmapBits, _skippedL1MessageBitmapInBlock)))
-                bitmapBits := add(bitmapBits, _numL1MessagesInBlock)
-                if gt(bitmapBits, 256) {
-                    // cannot fit in single uint256, store extra parts to next entry
-                    bitmapPtr := add(bitmapPtr, 32)
-                    bitmapBits := sub(bitmapBits, 256)
-                    mstore(bitmapPtr, shr(sub(_numL1MessagesInBlock, bitmapBits), _skippedL1MessageBitmapInBlock))
-                }
-
-                // update counts
-                _totalNumL1MessagesInChunk := add(_totalNumL1MessagesInChunk, _numL1MessagesInBlock)
-                _prevTotalL1MessagesPopped := add(_prevTotalL1MessagesPopped, _numL1MessagesInBlock)
-            }
-
-            uint256 _numTransactionsInBlock;
-            assembly {
-                _numTransactionsInBlock := shr(240, mload(add(chunkPtr, 120)))
-                _totalTransactionsInChunk := add(_totalTransactionsInChunk, _numTransactionsInBlock)
-                chunkPtr := add(chunkPtr, 156)
-            }
-
-            // concatenate l2 transactions
-            for (uint256 j = _numL1MessagesInBlock; j < _numTransactionsInBlock; j++) {
+        { // avoid stack too deep on forge coverage
+            uint256 _totalTransactionsInChunk;
+            while (_numBlocks > 0) {
+                uint256 _numL1MessagesInBlock;
+                uint256 _skippedL1MessageBitmapInBlock;
                 assembly {
-                    // first 4 bytes indicate the length
-                    let txPayloadLength := shr(224, mload(txPtr))
-                    txPtr := add(txPtr, 4)
-                    txPtr := add(txPtr, txPayloadLength)
-                    let txHash := keccak256(sub(txPtr, txPayloadLength), txPayloadLength)
-                    mstore(dataPtr, txHash)
-                    dataPtr := add(dataPtr, 0x20)
+                    _numL1MessagesInBlock := shr(240, mload(add(chunkPtr, 122)))
+                    _skippedL1MessageBitmapInBlock := mload(add(chunkPtr, 124))
+                }
+                require(_numL1MessagesInBlock <= 256, "block includes too much L1 messages");
+
+                // concatenate l1 messages
+                dataPtr = _loadL1Messages(
+                    dataPtr,
+                    _numL1MessagesInBlock,
+                    _prevTotalL1MessagesPopped,
+                    _skippedL1MessageBitmapInBlock
+                );
+
+                // update local chunk state variable
+                assembly {
+                    // update bitmap entry
+                    mstore(bitmapPtr, or(mload(bitmapPtr), shl(bitmapBits, _skippedL1MessageBitmapInBlock)))
+                    bitmapBits := add(bitmapBits, _numL1MessagesInBlock)
+                    if gt(bitmapBits, 256) {
+                        // cannot fit in single uint256, store extra parts to next entry
+                        bitmapPtr := add(bitmapPtr, 32)
+                        bitmapBits := sub(bitmapBits, 256)
+                        mstore(bitmapPtr, shr(sub(_numL1MessagesInBlock, bitmapBits), _skippedL1MessageBitmapInBlock))
+                    }
+
+                    // update counts
+                    _totalNumL1MessagesInChunk := add(_totalNumL1MessagesInChunk, _numL1MessagesInBlock)
+                    _prevTotalL1MessagesPopped := add(_prevTotalL1MessagesPopped, _numL1MessagesInBlock)
+                }
+
+                uint256 _numTransactionsInBlock;
+                assembly {
+                    _numTransactionsInBlock := shr(240, mload(add(chunkPtr, 120)))
+                    _totalTransactionsInChunk := add(_totalTransactionsInChunk, _numTransactionsInBlock)
+                    chunkPtr := add(chunkPtr, 156)
+                }
+
+                // concatenate l2 transactions
+                for (uint256 j = _numL1MessagesInBlock; j < _numTransactionsInBlock; j++) {
+                    assembly {
+                        // first 4 bytes indicate the length
+                        let txPayloadLength := shr(224, mload(txPtr))
+                        txPtr := add(txPtr, 4)
+                        txPtr := add(txPtr, txPayloadLength)
+                        let txHash := keccak256(sub(txPtr, txPayloadLength), txPayloadLength)
+                        mstore(dataPtr, txHash)
+                        dataPtr := add(dataPtr, 0x20)
+                    }
+                }
+
+                unchecked {
+                    _numBlocks -= 1;
                 }
             }
-
-            unchecked {
-                _numBlocks -= 1;
-            }
+            require(_totalTransactionsInChunk <= maxNumL2TxInChunk, "too many tx in one chunk");
         }
-        require(_totalTransactionsInChunk <= maxNumL2TxInChunk, "too many tx in one chunk");
 
         // check chunk has correct length
         assembly {
