@@ -10,7 +10,7 @@ import (
 	"bridge-history-api/db"
 )
 
-type ReorgHandling func(ctx context.Context, reorgHeight int64, db db.OrmFactory)
+type ReorgHandling func(ctx context.Context, reorgHeight int64, db db.OrmFactory) error
 
 func reverseArray(arr []*types.Header) []*types.Header {
 	for i := 0; i < len(arr)/2; i++ {
@@ -54,7 +54,7 @@ func BackwardFindReorgBlock(ctx context.Context, headers []*types.Header, client
 	return -1, false, nil
 }
 
-func L1ReorgHandling(ctx context.Context, reorgHeight int64, db db.OrmFactory) {
+func L1ReorgHandling(ctx context.Context, reorgHeight int64, db db.OrmFactory) error {
 	dbTx, err := db.Beginx()
 	if err != nil {
 		log.Crit("begin db tx failed", "err", err)
@@ -71,25 +71,34 @@ func L1ReorgHandling(ctx context.Context, reorgHeight int64, db db.OrmFactory) {
 	}
 	err = dbTx.Commit()
 	if err != nil {
-		log.Crit("commit tx failed", "err", err)
+		dbTx.Rollback()
+		log.Error("commit tx failed", "err", err)
+		return err
 	}
+	return nil
 }
 
-func L2ReorgHandling(ctx context.Context, reorgHeight int64, db db.OrmFactory) {
+func L2ReorgHandling(ctx context.Context, reorgHeight int64, db db.OrmFactory) error {
 	dbTx, err := db.Beginx()
 	if err != nil {
+		dbTx.Rollback()
 		log.Crit("begin db tx failed", "err", err)
 	}
 	err = db.DeleteL2CrossMsgFromHeightDBTx(dbTx, reorgHeight)
 	if err != nil {
+		dbTx.Rollback()
 		log.Crit("delete l2 cross msg from height", "height", reorgHeight, "err", err)
 	}
 	err = db.DeleteL2RelayedHashAfterHeightDBTx(dbTx, reorgHeight)
 	if err != nil {
+		dbTx.Rollback()
 		log.Crit("delete l2 relayed hash from height", "height", reorgHeight, "err", err)
 	}
 	err = dbTx.Commit()
 	if err != nil {
-		log.Crit("commit tx failed", "err", err)
+		dbTx.Rollback()
+		log.Error("commit tx failed", "err", err)
+		return err
 	}
+	return nil
 }
