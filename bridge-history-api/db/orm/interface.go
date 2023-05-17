@@ -45,7 +45,7 @@ type CrossMsg struct {
 	Height      uint64     `json:"height" db:"height"`
 	Sender      string     `json:"sender" db:"sender"`
 	Target      string     `json:"target" db:"target"`
-	Amount      uint64     `json:"amount" db:"amount"`
+	Amount      string     `json:"amount" db:"amount"`
 	Layer1Hash  string     `json:"layer1_hash" db:"layer1_hash"`
 	Layer2Hash  string     `json:"layer2_hash" db:"layer2_hash"`
 	Layer1Token string     `json:"layer1_token" db:"layer1_token"`

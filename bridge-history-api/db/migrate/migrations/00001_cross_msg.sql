@@ -7,7 +7,7 @@ create table cross_message
     height       BIGINT  NOT NULL,
     sender       VARCHAR NOT NULL,
     target       VARCHAR NOT NULL,
-    amount       BIGINT NOT NULL,
+    amount       VARCHAR NOT NULL,
     layer1_hash  VARCHAR NOT NULL DEFAULT '',
     layer2_hash  VARCHAR NOT NULL DEFAULT '',
     layer1_token VARCHAR DEFAULT '',

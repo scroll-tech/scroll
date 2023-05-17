@@ -210,7 +210,7 @@ func parseBackendL1EventLogs(logs []types.Log) ([]*orm.CrossMsg, []msgHashWrappe
 				Height:     vlog.BlockNumber,
 				Sender:     event.From.String(),
 				Target:     event.To.String(),
-				Amount:     event.Amount.Uint64(),
+				Amount:     event.Amount.String(),
 				Asset:      int(orm.ETH),
 				Layer1Hash: vlog.TxHash.Hex(),
 			})
@@ -225,7 +225,7 @@ func parseBackendL1EventLogs(logs []types.Log) ([]*orm.CrossMsg, []msgHashWrappe
 				Height:      vlog.BlockNumber,
 				Sender:      event.From.String(),
 				Target:      event.To.String(),
-				Amount:      event.Amount.Uint64(),
+				Amount:      event.Amount.String(),
 				Asset:       int(orm.ERC20),
 				Layer1Hash:  vlog.TxHash.Hex(),
 				Layer1Token: event.L1Token.Hex(),
@@ -264,7 +264,7 @@ func parseBackendL1EventLogs(logs []types.Log) ([]*orm.CrossMsg, []msgHashWrappe
 				Layer1Token: event.L1Token.Hex(),
 				Layer2Token: event.L2Token.Hex(),
 				TokenID:     event.TokenID.Uint64(),
-				Amount:      event.Amount.Uint64(),
+				Amount:      event.Amount.String(),
 			})
 		case backendabi.L1SentMessageEventSignature:
 			event := backendabi.L1SentMessageEvent{}
@@ -316,7 +316,7 @@ func parseBackendL2EventLogs(logs []types.Log) ([]*orm.CrossMsg, []msgHashWrappe
 				Height:     vlog.BlockNumber,
 				Sender:     event.From.String(),
 				Target:     event.To.String(),
-				Amount:     event.Amount.Uint64(),
+				Amount:     event.Amount.String(),
 				Asset:      int(orm.ETH),
 				Layer2Hash: vlog.TxHash.Hex(),
 			})
@@ -331,7 +331,7 @@ func parseBackendL2EventLogs(logs []types.Log) ([]*orm.CrossMsg, []msgHashWrappe
 				Height:      vlog.BlockNumber,
 				Sender:      event.From.String(),
 				Target:      event.To.String(),
-				Amount:      event.Amount.Uint64(),
+				Amount:      event.Amount.String(),
 				Asset:       int(orm.ERC20),
 				Layer2Hash:  vlog.TxHash.Hex(),
 				Layer1Token: event.L1Token.Hex(),
@@ -370,7 +370,7 @@ func parseBackendL2EventLogs(logs []types.Log) ([]*orm.CrossMsg, []msgHashWrappe
 				Layer1Token: event.L1Token.Hex(),
 				Layer2Token: event.L2Token.Hex(),
 				TokenID:     event.TokenID.Uint64(),
-				Amount:      event.Amount.Uint64(),
+				Amount:      event.Amount.String(),
 			})
 		case backendabi.L2SentMessageEventSignature:
 			event := backendabi.L2SentMessageEvent{}

@@ -32,7 +32,7 @@ func (l *relayedMsgOrm) BatchInsertRelayedMsgDBTx(dbTx *sqlx.Tx, messages []*Rel
 			"layer2_hash": msg.Layer2Hash,
 		}
 
-		_, err := dbTx.NamedExec(`insert into relayed_msg(msg_hash, height, layer1_hash, layer2_hash) values(:msg_hash, :height, :layer1_hash, :layer2_hash);`, messageMaps[i])
+		_, err = dbTx.NamedExec(`insert into relayed_msg(msg_hash, height, layer1_hash, layer2_hash) values(:msg_hash, :height, :layer1_hash, :layer2_hash);`, messageMaps[i])
 		if err != nil && !strings.Contains(err.Error(), "pq: duplicate key value violates unique constraint \"relayed_msg_hash_uindex") {
 			log.Error("BatchInsertRelayedMsgDBTx: failed to insert l1 cross msgs", "msg_Hashe", msg.MsgHash, "height", msg.Height, "err", err)
 			break
