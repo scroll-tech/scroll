@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"golang.org/x/sync/errgroup"
 	"math/big"
 	"runtime"
 	"sync"
@@ -16,6 +15,7 @@ import (
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
 	geth_metrics "github.com/scroll-tech/go-ethereum/metrics"
+	"golang.org/x/sync/errgroup"
 	"modernc.org/mathutil"
 
 	"scroll-tech/common/metrics"
