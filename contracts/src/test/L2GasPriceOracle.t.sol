@@ -10,7 +10,7 @@ import {Whitelist} from "../L2/predeploys/Whitelist.sol";
 contract L2GasPriceOracleTest is DSTestPlus {
     L2GasPriceOracle private oracle;
     Whitelist private whitelist;
-    uint fee;
+    uint256 fee;
 
     event Log(address addr);
 
