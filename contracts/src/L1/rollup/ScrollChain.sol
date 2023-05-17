@@ -397,7 +397,8 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
             chunkPtr := add(_chunk, 0x21)
         }
         uint256 _totalNumL1MessagesInChunk;
-        for (uint256 i = 0; i < _numBlocks; i++) {
+        uint256 _totalTransactionsInChunk;
+        while (_numBlocks > 0) {
             uint256 _numL1MessagesInBlock;
             uint256 _skippedL1MessageBitmapInBlock;
             assembly {
@@ -434,6 +435,7 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
             uint256 _numTransactionsInBlock;
             assembly {
                 _numTransactionsInBlock := shr(240, mload(add(chunkPtr, 120)))
+                _totalTransactionsInChunk := add(_totalTransactionsInChunk, _numTransactionsInBlock)
                 chunkPtr := add(chunkPtr, 156)
             }
 
@@ -449,8 +451,12 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
                     dataPtr := add(dataPtr, 0x20)
                 }
             }
+
+            unchecked {
+                _numBlocks -= 1;
+            }
         }
-        require(_totalNumL1MessagesInChunk <= maxNumL2TxInChunk, "too many tx in one chunk");
+        require(_totalTransactionsInChunk <= maxNumL2TxInChunk, "too many tx in one chunk");
 
         // check chunk has correct length
         assembly {
