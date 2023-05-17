@@ -2,7 +2,6 @@
 
 pragma solidity ^0.8.0;
 
-import {console2} from "forge-std/console2.sol";
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
 import {IL1MessageQueue} from "./IL1MessageQueue.sol";
