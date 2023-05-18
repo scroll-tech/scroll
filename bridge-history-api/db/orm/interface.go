@@ -54,9 +54,9 @@ type CrossMsg struct {
 	Asset       int        `json:"asset" db:"asset"`
 	MsgType     int        `json:"msg_type" db:"msg_type"`
 	IsDeleted   bool       `json:"is_deleted" db:"is_deleted"`
-	CreatedTime *time.Time `json:"created_at" db:"created_at"`
-	UpdatedTime *time.Time `json:"updated_at" db:"updated_at"`
-	DeletedTime *time.Time `json:"deleted_at" db:"deleted_at"`
+	CreatedAt   *time.Time `json:"created_at" db:"created_at"`
+	UpdatedAt   *time.Time `json:"updated_at" db:"updated_at"`
+	DeletedAt   *time.Time `json:"deleted_at" db:"deleted_at"`
 }
 
 type RelayedMsg struct {
