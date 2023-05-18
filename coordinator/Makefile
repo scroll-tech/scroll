@@ -1,4 +1,4 @@
-.PHONY: lint docker clean coordinator mock_coordinator
+.PHONY: lint docker clean coordinator
 
 IMAGE_NAME=coordinator
 IMAGE_VERSION=latest
@@ -20,9 +20,6 @@ libzkp:
 
 coordinator: libzkp ## Builds the Coordinator instance.
 	go build -ldflags "-X scroll-tech/common/version.ZkVersion=${ZK_VERSION}" -o $(PWD)/build/bin/coordinator ./cmd
-
-mock_coordinator: ## Builds the Coordinator instance.
-	go build -tags="mock_prover mock_verifier" -o $(PWD)/build/bin/coordinator ./cmd
 
 test-verifier: libzkp
 	go test -tags ffi -timeout 0 -v ./verifier

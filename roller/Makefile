@@ -1,4 +1,4 @@
-.PHONY: lint docker clean roller mock_roller
+.PHONY: lint docker clean roller
 
 IMAGE_NAME=go-roller
 IMAGE_VERSION=latest
@@ -16,9 +16,6 @@ libzkp:
 
 roller: libzkp ## Build the Roller instance.
 	GOBIN=$(PWD)/build/bin go build -ldflags "-X scroll-tech/common/version.ZkVersion=${ZK_VERSION}" -o $(PWD)/build/bin/roller ./cmd
-
-mock_roller:
-	GOBIN=$(PWD)/build/bin go build -tags="mock_prover mock_verifier" -o $(PWD)/build/bin/roller ./cmd
 
 gpu-roller: libzkp ## Build the GPU Roller instance.
 	GOBIN=$(PWD)/build/bin go build -ldflags "-X scroll-tech/common/version.ZkVersion=${ZK_VERSION}" -tags gpu -o $(PWD)/build/bin/roller ./cmd
