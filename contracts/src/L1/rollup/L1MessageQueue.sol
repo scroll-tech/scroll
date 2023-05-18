@@ -235,7 +235,11 @@ contract L1MessageQueue is OwnableUpgradeable, IL1MessageQueue {
      *****************************/
 
     /// @inheritdoc IL1MessageQueue
-    function appendCrossDomainMessage(address _target, uint256 _gasLimit, bytes calldata _data) external override {
+    function appendCrossDomainMessage(
+        address _target,
+        uint256 _gasLimit,
+        bytes calldata _data
+    ) external override {
         require(msg.sender == messenger, "Only callable by the L1ScrollMessenger");
 
         // validate gas limit
@@ -266,7 +270,11 @@ contract L1MessageQueue is OwnableUpgradeable, IL1MessageQueue {
     }
 
     /// @inheritdoc IL1MessageQueue
-    function popCrossDomainMessage(uint256 _startIndex, uint256 _count, uint256 _skippedBitmap) external {
+    function popCrossDomainMessage(
+        uint256 _startIndex,
+        uint256 _count,
+        uint256 _skippedBitmap
+    ) external {
         require(msg.sender == scrollChain, "Only callable by the ScrollChain");
 
         require(_count <= 256, "pop too many messages");

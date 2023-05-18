@@ -56,10 +56,9 @@ contract L1ScrollMessengerTest is DSTestPlus {
 
     function testForbidCallMessageQueueFromL2() external {
         // import genesis batch
-        bytes memory _batchHeader = new bytes(121);
+        bytes memory _batchHeader = new bytes(89);
         assembly {
-            mstore(add(_batchHeader, 57), 1)
-            mstore(add(_batchHeader, 89), 1)
+            mstore(add(_batchHeader, add(0x20, 25)), 1)
         }
         scrollChain.importGenesisBatch(
             _batchHeader,
@@ -76,10 +75,9 @@ contract L1ScrollMessengerTest is DSTestPlus {
 
     function testForbidCallSelfFromL2() external {
         // import genesis batch
-        bytes memory _batchHeader = new bytes(121);
+        bytes memory _batchHeader = new bytes(89);
         assembly {
             mstore(add(_batchHeader, 57), 1)
-            mstore(add(_batchHeader, 89), 1)
         }
         scrollChain.importGenesisBatch(
             _batchHeader,
