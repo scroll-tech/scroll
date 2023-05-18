@@ -267,15 +267,16 @@ contract L1MessageQueue is OwnableUpgradeable, IL1MessageQueue {
 
     /// @inheritdoc IL1MessageQueue
     function popCrossDomainMessage(uint256 _startIndex, uint256 _count, uint256 _skippedBitmap) external {
+        require(msg.sender == scrollChain, "Only callable by the ScrollChain");
+
         require(_count <= 256, "pop too many messages");
         require(pendingQueueIndex == _startIndex, "start index mismatch");
 
         unchecked {
             for (uint256 i = 0; i < _count; i++) {
-                if (_skippedBitmap & 1 == 0) {
+                if ((_skippedBitmap >> i) & 1 == 0) {
                     messageQueue[_startIndex + i] = bytes32(0);
                 }
-                _skippedBitmap >>= 1;
             }
 
             pendingQueueIndex = _startIndex + _count;
