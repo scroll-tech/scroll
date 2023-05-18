@@ -74,6 +74,18 @@ func (m *L2Message) GetLayer2LatestWatchedHeight() (uint64, error) {
 	return L2Msg.Height, nil
 }
 
+// GetL2MessageByNonce fetch message by nonce
+// for unit test
+func (m *L2Message) GetL2MessageByNonce(nonce uint64) (*L2Message, error) {
+	var msg L2Message
+	selectFields := "nonce, msg_hash, height, sender, target, value, calldata, layer2_hash, status"
+	err := m.db.Select(selectFields).Where("nonce", nonce).First(&msg).Error
+	if err != nil {
+		return nil, err
+	}
+	return &msg, nil
+}
+
 // SaveL2Messages batch save a list of layer2 messages
 func (m *L2Message) SaveL2Messages(ctx context.Context, messages []L2Message) error {
 	if len(messages) == 0 {

@@ -162,7 +162,7 @@ func (r *Layer2Relayer) ProcessSavedEvents() {
 	}
 
 	// msgs are sorted by nonce in increasing order
-	fileds := map[string]interface{}{
+	fields := map[string]interface{}{
 		"status":   types.MsgPending,
 		"height<=": batch.EndBlockNumber,
 	}
@@ -171,7 +171,7 @@ func (r *Layer2Relayer) ProcessSavedEvents() {
 	}
 	limit := processMsgLimit
 
-	msgs, err := r.l2MessageOrm.GetL2Messages(fileds, orderByList, limit)
+	msgs, err := r.l2MessageOrm.GetL2Messages(fields, orderByList, limit)
 	if err != nil {
 		log.Error("Failed to fetch unprocessed L2 messages", "err", err)
 		return

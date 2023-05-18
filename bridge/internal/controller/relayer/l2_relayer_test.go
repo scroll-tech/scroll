@@ -3,26 +3,29 @@ package relayer
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"gorm.io/gorm"
 	"math/big"
 	"os"
 	"strconv"
 	"testing"
 
 	"github.com/scroll-tech/go-ethereum/common"
-	geth_types "github.com/scroll-tech/go-ethereum/core/types"
+	gethTypes "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/stretchr/testify/assert"
 
 	"scroll-tech/common/types"
 	"scroll-tech/common/utils"
 
-	"scroll-tech/bridge/sender"
-
-	"scroll-tech/database"
-	"scroll-tech/database/migrate"
+	"scroll-tech/bridge/internal/controller/sender"
+	"scroll-tech/bridge/internal/orm"
+	"scroll-tech/bridge/internal/orm/migrate"
+	bridgeTypes "scroll-tech/bridge/internal/types"
+	bridgeUtils "scroll-tech/bridge/internal/utils"
 )
 
 var (
-	templateL2Message = []*types.L2Message{
+	templateL2Message = []orm.L2Message{
 		{
 			Nonce:      1,
 			Height:     1,
@@ -35,144 +38,169 @@ var (
 	}
 )
 
-func testCreateNewRelayer(t *testing.T) {
-	// Create db handler and reset db.
-	db, err := database.NewOrmFactory(cfg.DBConfig)
+func setupL2RelayerDB(t *testing.T) *gorm.DB {
+	db, err := bridgeUtils.InitDB(cfg.DBConfig)
 	assert.NoError(t, err)
-	assert.NoError(t, migrate.ResetDB(db.GetDB().DB))
-	defer db.Close()
+	sqlDB, err := db.DB()
+	assert.NoError(t, err)
+	assert.NoError(t, migrate.ResetDB(sqlDB))
+	return db
+}
 
+func testCreateNewRelayer(t *testing.T) {
+	db := setupL2RelayerDB(t)
+	defer bridgeUtils.CloseDB(db)
 	relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, cfg.L2Config.RelayerConfig)
 	assert.NoError(t, err)
 	assert.NotNil(t, relayer)
 }
 
 func testL2RelayerProcessSaveEvents(t *testing.T) {
-	// Create db handler and reset db.
-	db, err := database.NewOrmFactory(cfg.DBConfig)
-	assert.NoError(t, err)
-	assert.NoError(t, migrate.ResetDB(db.GetDB().DB))
-	defer db.Close()
-
+	db := setupL2RelayerDB(t)
+	defer bridgeUtils.CloseDB(db)
 	l2Cfg := cfg.L2Config
 	relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, l2Cfg.RelayerConfig)
 	assert.NoError(t, err)
 
-	err = db.SaveL2Messages(context.Background(), templateL2Message)
+	l2MessageOrm := orm.NewL2Message(db)
+	err = l2MessageOrm.SaveL2Messages(context.Background(), templateL2Message)
 	assert.NoError(t, err)
 
-	traces := []*types.WrappedBlock{
+	traces := []*bridgeTypes.WrappedBlock{
 		{
-			Header: &geth_types.Header{
+			Header: &gethTypes.Header{
 				Number: big.NewInt(int64(templateL2Message[0].Height)),
 			},
 			Transactions:     nil,
 			WithdrawTrieRoot: common.Hash{},
 		},
 		{
-			Header: &geth_types.Header{
+			Header: &gethTypes.Header{
 				Number: big.NewInt(int64(templateL2Message[0].Height + 1)),
 			},
 			Transactions:     nil,
 			WithdrawTrieRoot: common.Hash{},
 		},
 	}
-	assert.NoError(t, db.InsertWrappedBlocks(traces))
 
-	parentBatch1 := &types.BlockBatch{
+	blockTraceOrm := orm.NewBlockTrace(db)
+	assert.NoError(t, blockTraceOrm.InsertWrappedBlocks(traces))
+	blockBatchOrm := orm.NewBlockBatch(db)
+	parentBatch1 := &orm.BlockBatch{
 		Index:     0,
 		Hash:      common.Hash{}.Hex(),
 		StateRoot: common.Hash{}.Hex(),
 	}
-	batchData1 := types.NewBatchData(parentBatch1, []*types.WrappedBlock{wrappedBlock1}, nil)
-	dbTx, err := db.Beginx()
-	assert.NoError(t, err)
-	assert.NoError(t, db.NewBatchInDBTx(dbTx, batchData1))
+	batchData1 := bridgeTypes.NewBatchData(parentBatch1, []*bridgeTypes.WrappedBlock{wrappedBlock1}, nil)
 	batchHash := batchData1.Hash().Hex()
-	assert.NoError(t, db.SetBatchHashForL2BlocksInDBTx(dbTx, []uint64{1}, batchHash))
-	assert.NoError(t, dbTx.Commit())
+	err = db.Transaction(func(tx *gorm.DB) error {
+		rowsAffected, dbTxErr := blockBatchOrm.InsertBlockBatchByBatchData(tx, batchData1)
+		if dbTxErr != nil {
+			return dbTxErr
+		}
+		if rowsAffected != 1 {
+			dbTxErr = errors.New("the InsertBlockBatchByBatchData affected row is not 1")
+			return dbTxErr
+		}
+		dbTxErr = blockTraceOrm.UpdateBatchHashForL2Blocks(tx, []uint64{1}, batchHash)
+		if dbTxErr != nil {
+			return dbTxErr
+		}
+		return nil
+	})
+	assert.NoError(t, err)
 
-	err = db.UpdateRollupStatus(context.Background(), batchHash, types.RollupFinalized)
+	err = blockBatchOrm.UpdateRollupStatus(context.Background(), batchHash, types.RollupFinalized)
 	assert.NoError(t, err)
 
 	relayer.ProcessSavedEvents()
 
-	msg, err := db.GetL2MessageByNonce(templateL2Message[0].Nonce)
+	msg, err := l2MessageOrm.GetL2MessageByNonce(templateL2Message[0].Nonce)
 	assert.NoError(t, err)
 	assert.Equal(t, types.MsgSubmitted, msg.Status)
 }
 
 func testL2RelayerProcessCommittedBatches(t *testing.T) {
-	// Create db handler and reset db.
-	db, err := database.NewOrmFactory(cfg.DBConfig)
-	assert.NoError(t, err)
-	assert.NoError(t, migrate.ResetDB(db.GetDB().DB))
-	defer db.Close()
+	db := setupL2RelayerDB(t)
+	defer bridgeUtils.CloseDB(db)
 
 	l2Cfg := cfg.L2Config
 	relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, l2Cfg.RelayerConfig)
 	assert.NoError(t, err)
 
-	parentBatch1 := &types.BlockBatch{
+	parentBatch1 := &orm.BlockBatch{
 		Index:     0,
 		Hash:      common.Hash{}.Hex(),
 		StateRoot: common.Hash{}.Hex(),
 	}
-	batchData1 := types.NewBatchData(parentBatch1, []*types.WrappedBlock{wrappedBlock1}, nil)
-	dbTx, err := db.Beginx()
-	assert.NoError(t, err)
-	assert.NoError(t, db.NewBatchInDBTx(dbTx, batchData1))
+
+	blockBatchOrm := orm.NewBlockBatch(db)
+	batchData1 := bridgeTypes.NewBatchData(parentBatch1, []*bridgeTypes.WrappedBlock{wrappedBlock1}, nil)
 	batchHash := batchData1.Hash().Hex()
-	err = dbTx.Commit()
+	err = db.Transaction(func(tx *gorm.DB) error {
+		rowsAffected, dbTxErr := blockBatchOrm.InsertBlockBatchByBatchData(tx, batchData1)
+		if dbTxErr != nil {
+			return dbTxErr
+		}
+		if rowsAffected != 1 {
+			dbTxErr = errors.New("the InsertBlockBatchByBatchData affected row is not 1")
+			return dbTxErr
+		}
+		return nil
+	})
 	assert.NoError(t, err)
 
-	err = db.UpdateRollupStatus(context.Background(), batchHash, types.RollupCommitted)
+	err = blockBatchOrm.UpdateRollupStatus(context.Background(), batchHash, types.RollupCommitted)
 	assert.NoError(t, err)
 
 	tProof := []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31}
 	tInstanceCommitments := []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31}
-	err = db.UpdateProofByHash(context.Background(), batchHash, tProof, tInstanceCommitments, 100)
+	err = blockBatchOrm.UpdateProofByHash(context.Background(), batchHash, tProof, tInstanceCommitments, 100)
 	assert.NoError(t, err)
-	err = db.UpdateProvingStatus(batchHash, types.ProvingTaskVerified)
+	err = blockBatchOrm.UpdateProvingStatus(batchHash, types.ProvingTaskVerified)
 	assert.NoError(t, err)
 
 	relayer.ProcessCommittedBatches()
 
-	status, err := db.GetRollupStatus(batchHash)
+	status, err := blockBatchOrm.GetRollupStatusByHashList([]string{batchHash})
 	assert.NoError(t, err)
 	assert.Equal(t, types.RollupFinalizing, status)
 }
 
 func testL2RelayerSkipBatches(t *testing.T) {
-	// Create db handler and reset db.
-	db, err := database.NewOrmFactory(cfg.DBConfig)
-	assert.NoError(t, err)
-	assert.NoError(t, migrate.ResetDB(db.GetDB().DB))
-	defer db.Close()
+	db := setupL2RelayerDB(t)
+	defer bridgeUtils.CloseDB(db)
 
 	l2Cfg := cfg.L2Config
 	relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, l2Cfg.RelayerConfig)
 	assert.NoError(t, err)
 
+	blockBatchOrm := orm.NewBlockBatch(db)
 	createBatch := func(rollupStatus types.RollupStatus, provingStatus types.ProvingStatus, index uint64) string {
-		dbTx, err := db.Beginx()
-		assert.NoError(t, err)
 		batchData := genBatchData(t, index)
-		assert.NoError(t, db.NewBatchInDBTx(dbTx, batchData))
-		batchHash := batchData.Hash().Hex()
-		err = dbTx.Commit()
-		assert.NoError(t, err)
+		err = db.Transaction(func(tx *gorm.DB) error {
+			rowsAffected, dbTxErr := blockBatchOrm.InsertBlockBatchByBatchData(tx, batchData)
+			if dbTxErr != nil {
+				return dbTxErr
+			}
+			if rowsAffected != 1 {
+				dbTxErr = errors.New("the InsertBlockBatchByBatchData affected row is not 1")
+				return dbTxErr
+			}
+			return nil
+		})
 
-		err = db.UpdateRollupStatus(context.Background(), batchHash, rollupStatus)
+		batchHash := batchData.Hash().Hex()
+		assert.NoError(t, err)
+		err = blockBatchOrm.UpdateRollupStatus(context.Background(), batchHash, rollupStatus)
 		assert.NoError(t, err)
 
 		tProof := []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31}
 		tInstanceCommitments := []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31}
-		err = db.UpdateProofByHash(context.Background(), batchHash, tProof, tInstanceCommitments, 100)
+		err = blockBatchOrm.UpdateProofByHash(context.Background(), batchHash, tProof, tInstanceCommitments, 100)
 		assert.NoError(t, err)
-		err = db.UpdateProvingStatus(batchHash, provingStatus)
+		err = blockBatchOrm.UpdateProvingStatus(batchHash, provingStatus)
 		assert.NoError(t, err)
-
 		return batchHash
 	}
 
@@ -196,29 +224,28 @@ func testL2RelayerSkipBatches(t *testing.T) {
 	relayer.ProcessCommittedBatches()
 
 	for _, id := range skipped {
-		status, err := db.GetRollupStatus(id)
+		status, err := blockBatchOrm.GetRollupStatusByHashList([]string{id})
 		assert.NoError(t, err)
 		assert.Equal(t, types.RollupFinalizationSkipped, status)
 	}
 
 	for _, id := range notSkipped {
-		status, err := db.GetRollupStatus(id)
+		status, err := blockBatchOrm.GetRollupStatusByHashList([]string{id})
 		assert.NoError(t, err)
 		assert.NotEqual(t, types.RollupFinalizationSkipped, status)
 	}
 }
 
 func testL2RelayerMsgConfirm(t *testing.T) {
-	// Set up the database and defer closing it.
-	db, err := database.NewOrmFactory(cfg.DBConfig)
+	db := setupL2RelayerDB(t)
+	defer bridgeUtils.CloseDB(db)
+	l2MessageOrm := orm.NewL2Message(db)
+	insertL2Mssages := []orm.L2Message{
+		{MsgHash: "msg-1", Nonce: 0},
+		{MsgHash: "msg-2", Nonce: 1},
+	}
+	err := l2MessageOrm.SaveL2Messages(context.Background(), insertL2Mssages)
 	assert.NoError(t, err)
-	assert.NoError(t, migrate.ResetDB(db.GetDB().DB))
-	defer db.Close()
-
-	// Insert test data.
-	assert.NoError(t, db.SaveL2Messages(context.Background(), []*types.L2Message{
-		{MsgHash: "msg-1", Nonce: 0}, {MsgHash: "msg-2", Nonce: 1},
-	}))
 
 	// Create and set up the Layer2 Relayer.
 	l2Cfg := cfg.L2Config
@@ -241,32 +268,46 @@ func testL2RelayerMsgConfirm(t *testing.T) {
 
 	// Check the database for the updated status using TryTimes.
 	assert.True(t, utils.TryTimes(5, func() bool {
-		msg1, err1 := db.GetL2MessageByMsgHash("msg-1")
-		msg2, err2 := db.GetL2MessageByMsgHash("msg-2")
-		return err1 == nil && msg1.Status == types.MsgConfirmed &&
-			err2 == nil && msg2.Status == types.MsgRelayFailed
+		fields1 := map[string]interface{}{"msg_hash": "msg-1"}
+		msg1, err1 := l2MessageOrm.GetL2Messages(fields1, nil, 0)
+		if len(msg1) != 1 {
+			return false
+		}
+		fields2 := map[string]interface{}{"msg_hash": "msg-2"}
+		msg2, err2 := l2MessageOrm.GetL2Messages(fields2, nil, 0)
+		if len(msg2) != 1 {
+			return false
+		}
+		return err1 == nil && types.MsgStatus(msg1[0].Status) == types.MsgConfirmed &&
+			err2 == nil && types.MsgStatus(msg2[0].Status) == types.MsgRelayFailed
 	}))
 }
 
 func testL2RelayerRollupConfirm(t *testing.T) {
-	// Set up the database and defer closing it.
-	db, err := database.NewOrmFactory(cfg.DBConfig)
-	assert.NoError(t, err)
-	assert.NoError(t, migrate.ResetDB(db.GetDB().DB))
-	defer db.Close()
+	db := setupL2RelayerDB(t)
+	defer bridgeUtils.CloseDB(db)
 
 	// Insert test data.
-	batches := make([]*types.BatchData, 6)
+	batches := make([]*bridgeTypes.BatchData, 6)
 	for i := 0; i < 6; i++ {
 		batches[i] = genBatchData(t, uint64(i))
 	}
 
-	dbTx, err := db.Beginx()
+	blockBatchOrm := orm.NewBlockBatch(db)
+	err := db.Transaction(func(tx *gorm.DB) error {
+		for _, batch := range batches {
+			rowsAffected, dbTxErr := blockBatchOrm.InsertBlockBatchByBatchData(tx, batch)
+			if dbTxErr != nil {
+				return dbTxErr
+			}
+			if rowsAffected != 1 {
+				dbTxErr = errors.New("the InsertBlockBatchByBatchData affected row is not 1")
+				return dbTxErr
+			}
+		}
+		return nil
+	})
 	assert.NoError(t, err)
-	for _, batch := range batches {
-		assert.NoError(t, db.NewBatchInDBTx(dbTx, batch))
-	}
-	assert.NoError(t, dbTx.Commit())
 
 	// Create and set up the Layer2 Relayer.
 	l2Cfg := cfg.L2Config
@@ -310,8 +351,8 @@ func testL2RelayerRollupConfirm(t *testing.T) {
 		}
 
 		for i, batch := range batches[:6] {
-			batchInDB, err := db.GetBlockBatches(map[string]interface{}{"hash": batch.Hash().Hex()})
-			if err != nil || len(batchInDB) != 1 || batchInDB[0].RollupStatus != expectedStatuses[i] {
+			batchInDB, err := blockBatchOrm.GetBlockBatches(map[string]interface{}{"hash": batch.Hash().Hex()}, nil, 0)
+			if err != nil || len(batchInDB) != 1 || types.RollupStatus(batchInDB[0].RollupStatus) != expectedStatuses[i] {
 				return false
 			}
 		}
@@ -321,24 +362,30 @@ func testL2RelayerRollupConfirm(t *testing.T) {
 }
 
 func testL2RelayerGasOracleConfirm(t *testing.T) {
-	// Set up the database and defer closing it.
-	db, err := database.NewOrmFactory(cfg.DBConfig)
-	assert.NoError(t, err)
-	assert.NoError(t, migrate.ResetDB(db.GetDB().DB))
-	defer db.Close()
+	db := setupL2RelayerDB(t)
+	defer bridgeUtils.CloseDB(db)
 
 	// Insert test data.
-	batches := make([]*types.BatchData, 2)
+	batches := make([]*bridgeTypes.BatchData, 2)
 	for i := 0; i < 2; i++ {
 		batches[i] = genBatchData(t, uint64(i))
 	}
 
-	dbTx, err := db.Beginx()
+	blockBatchOrm := orm.NewBlockBatch(db)
+	err := db.Transaction(func(tx *gorm.DB) error {
+		for _, batch := range batches {
+			rowsAffected, dbTxErr := blockBatchOrm.InsertBlockBatchByBatchData(tx, batch)
+			if dbTxErr != nil {
+				return dbTxErr
+			}
+			if rowsAffected != 1 {
+				dbTxErr = errors.New("the InsertBlockBatchByBatchData affected row is not 1")
+				return dbTxErr
+			}
+		}
+		return nil
+	})
 	assert.NoError(t, err)
-	for _, batch := range batches {
-		assert.NoError(t, db.NewBatchInDBTx(dbTx, batch))
-	}
-	assert.NoError(t, dbTx.Commit())
 
 	// Create and set up the Layer2 Relayer.
 	l2Cfg := cfg.L2Config
@@ -360,8 +407,8 @@ func testL2RelayerGasOracleConfirm(t *testing.T) {
 	ok := utils.TryTimes(5, func() bool {
 		expectedStatuses := []types.GasOracleStatus{types.GasOracleImported, types.GasOracleFailed}
 		for i, batch := range batches {
-			gasOracle, err := db.GetBlockBatches(map[string]interface{}{"hash": batch.Hash().Hex()})
-			if err != nil || len(gasOracle) != 1 || gasOracle[0].OracleStatus != expectedStatuses[i] {
+			gasOracle, err := blockBatchOrm.GetBlockBatches(map[string]interface{}{"hash": batch.Hash().Hex()}, nil, 0)
+			if err != nil || len(gasOracle) != 1 || types.GasOracleStatus(gasOracle[0].OracleStatus) != expectedStatuses[i] {
 				return false
 			}
 		}
@@ -370,17 +417,17 @@ func testL2RelayerGasOracleConfirm(t *testing.T) {
 	assert.True(t, ok)
 }
 
-func genBatchData(t *testing.T, index uint64) *types.BatchData {
-	templateBlockTrace, err := os.ReadFile("../../common/testdata/blockTrace_02.json")
+func genBatchData(t *testing.T, index uint64) *bridgeTypes.BatchData {
+	templateBlockTrace, err := os.ReadFile("../../../testdata/blockTrace_02.json")
 	assert.NoError(t, err)
 	// unmarshal blockTrace
-	wrappedBlock := &types.WrappedBlock{}
+	wrappedBlock := &bridgeTypes.WrappedBlock{}
 	err = json.Unmarshal(templateBlockTrace, wrappedBlock)
 	assert.NoError(t, err)
 	wrappedBlock.Header.ParentHash = common.HexToHash("0x" + strconv.FormatUint(index+1, 16))
-	parentBatch := &types.BlockBatch{
+	parentBatch := &orm.BlockBatch{
 		Index: index,
 		Hash:  "0x0000000000000000000000000000000000000000",
 	}
-	return types.NewBatchData(parentBatch, []*types.WrappedBlock{wrappedBlock}, nil)
+	return bridgeTypes.NewBatchData(parentBatch, []*bridgeTypes.WrappedBlock{wrappedBlock}, nil)
 }

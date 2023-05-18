@@ -2,8 +2,11 @@ package watcher
 
 import (
 	"context"
-	"fmt"
+	"gorm.io/gorm"
 	"math"
+	"scroll-tech/bridge/internal/orm"
+	bridgeTypes "scroll-tech/bridge/internal/types"
+	bridgeUtils "scroll-tech/bridge/internal/utils"
 	"strings"
 	"testing"
 	"time"
@@ -13,30 +16,23 @@ import (
 	geth_types "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/stretchr/testify/assert"
 
-	"scroll-tech/database"
-	"scroll-tech/database/migrate"
-
-	"scroll-tech/bridge/config"
-	"scroll-tech/bridge/relayer"
-
+	"scroll-tech/bridge/internal/config"
+	"scroll-tech/bridge/internal/controller/relayer"
 	"scroll-tech/common/types"
 )
 
 func testBatchProposerProposeBatch(t *testing.T) {
-	// Create db handler and reset db.
-	db, err := database.NewOrmFactory(cfg.DBConfig)
-	assert.NoError(t, err)
-	assert.NoError(t, migrate.ResetDB(db.GetDB().DB))
-	defer db.Close()
+	db := setupDB(t)
+	defer bridgeUtils.CloseDB(db)
 
 	p := &BatchProposer{
 		batchGasThreshold:       1000,
 		batchTxNumThreshold:     10,
 		batchTimeSec:            300,
 		commitCalldataSizeLimit: 500,
-		orm:                     db,
 	}
-	patchGuard := gomonkey.ApplyMethodFunc(p.orm, "GetL2WrappedBlocks", func(fields map[string]interface{}, args ...string) ([]*types.WrappedBlock, error) {
+
+	patchGuard := gomonkey.ApplyMethodFunc(db, "GetL2WrappedBlocks", func(fields map[string]interface{}, args ...string) ([]*types.WrappedBlock, error) {
 		hash, _ := fields["hash"].(string)
 		if hash == "blockWithLongData" {
 			longData := strings.Repeat("0", 1000)
@@ -57,25 +53,25 @@ func testBatchProposerProposeBatch(t *testing.T) {
 		return nil
 	})
 
-	block1 := &types.BlockInfo{Number: 1, GasUsed: 100, TxNum: 1, BlockTimestamp: uint64(time.Now().Unix()) - 200}
-	block2 := &types.BlockInfo{Number: 2, GasUsed: 200, TxNum: 2, BlockTimestamp: uint64(time.Now().Unix())}
-	block3 := &types.BlockInfo{Number: 3, GasUsed: 300, TxNum: 11, BlockTimestamp: uint64(time.Now().Unix())}
-	block4 := &types.BlockInfo{Number: 4, GasUsed: 1001, TxNum: 3, BlockTimestamp: uint64(time.Now().Unix())}
-	blockOutdated := &types.BlockInfo{Number: 1, GasUsed: 100, TxNum: 1, BlockTimestamp: uint64(time.Now().Add(-400 * time.Second).Unix())}
-	blockWithLongData := &types.BlockInfo{Hash: "blockWithLongData", Number: 5, GasUsed: 500, TxNum: 1, BlockTimestamp: uint64(time.Now().Unix())}
+	block1 := orm.BlockTrace{Number: 1, GasUsed: 100, TxNum: 1, BlockTimestamp: uint64(time.Now().Unix()) - 200}
+	block2 := orm.BlockTrace{Number: 2, GasUsed: 200, TxNum: 2, BlockTimestamp: uint64(time.Now().Unix())}
+	block3 := orm.BlockTrace{Number: 3, GasUsed: 300, TxNum: 11, BlockTimestamp: uint64(time.Now().Unix())}
+	block4 := orm.BlockTrace{Number: 4, GasUsed: 1001, TxNum: 3, BlockTimestamp: uint64(time.Now().Unix())}
+	blockOutdated := orm.BlockTrace{Number: 1, GasUsed: 100, TxNum: 1, BlockTimestamp: uint64(time.Now().Add(-400 * time.Second).Unix())}
+	blockWithLongData := orm.BlockTrace{Hash: "blockWithLongData", Number: 5, GasUsed: 500, TxNum: 1, BlockTimestamp: uint64(time.Now().Unix())}
 
 	testCases := []struct {
 		description string
-		blocks      []*types.BlockInfo
+		blocks      []orm.BlockTrace
 		expectedRes bool
 	}{
-		{"Empty block list", []*types.BlockInfo{}, false},
-		{"Single block exceeding gas threshold", []*types.BlockInfo{block4}, true},
-		{"Single block exceeding transaction number threshold", []*types.BlockInfo{block3}, true},
-		{"Multiple blocks meeting thresholds", []*types.BlockInfo{block1, block2, block3}, true},
-		{"Multiple blocks not meeting thresholds", []*types.BlockInfo{block1, block2}, false},
-		{"Outdated and valid block", []*types.BlockInfo{blockOutdated, block2}, true},
-		{"Single block with long data", []*types.BlockInfo{blockWithLongData}, true},
+		{"Empty block list", []orm.BlockTrace{}, false},
+		{"Single block exceeding gas threshold", []orm.BlockTrace{block4}, true},
+		{"Single block exceeding transaction number threshold", []orm.BlockTrace{block3}, true},
+		{"Multiple blocks meeting thresholds", []orm.BlockTrace{block1, block2, block3}, true},
+		{"Multiple blocks not meeting thresholds", []orm.BlockTrace{block1, block2}, false},
+		{"Outdated and valid block", []orm.BlockTrace{blockOutdated, block2}, true},
+		{"Single block with long data", []orm.BlockTrace{blockWithLongData}, true},
 	}
 
 	for _, tc := range testCases {
@@ -86,34 +82,30 @@ func testBatchProposerProposeBatch(t *testing.T) {
 }
 
 func testBatchProposerBatchGeneration(t *testing.T) {
-	// Create db handler and reset db.
-	db, err := database.NewOrmFactory(cfg.DBConfig)
-	assert.NoError(t, err)
-	assert.NoError(t, migrate.ResetDB(db.GetDB().DB))
-	ctx := context.Background()
-	subCtx, cancel := context.WithCancel(ctx)
-
+	db := setupDB(t)
+	subCtx, cancel := context.WithCancel(context.Background())
 	defer func() {
+		bridgeUtils.CloseDB(db)
 		cancel()
-		db.Close()
 	}()
-
+	blockTraceOrm := orm.NewBlockTrace(db)
 	// Insert traces into db.
-	assert.NoError(t, db.InsertWrappedBlocks([]*types.WrappedBlock{wrappedBlock1}))
+	assert.NoError(t, blockTraceOrm.InsertWrappedBlocks([]*bridgeTypes.WrappedBlock{wrappedBlock1}))
 
 	l2cfg := cfg.L2Config
 	wc := NewL2WatcherClient(context.Background(), l2Cli, l2cfg.Confirmations, l2cfg.L2MessengerAddress, l2cfg.L2MessageQueueAddress, l2cfg.WithdrawTrieRootSlot, db)
 	loopToFetchEvent(subCtx, wc)
 
-	batch, err := db.GetLatestBatch()
+	blockBatchOrm := orm.NewBlockBatch(db)
+	batch, err := blockBatchOrm.GetLatestBatch()
 	assert.NoError(t, err)
 
 	// Create a new batch.
-	batchData := types.NewBatchData(&types.BlockBatch{
+	batchData := bridgeTypes.NewBatchData(&orm.BlockBatch{
 		Index:     0,
 		Hash:      batch.Hash,
 		StateRoot: batch.StateRoot,
-	}, []*types.WrappedBlock{wrappedBlock1}, nil)
+	}, []*bridgeTypes.WrappedBlock{wrappedBlock1}, nil)
 
 	relayer, err := relayer.NewLayer2Relayer(context.Background(), l2Cli, db, cfg.L2Config.RelayerConfig)
 	assert.NoError(t, err)
@@ -127,56 +119,70 @@ func testBatchProposerBatchGeneration(t *testing.T) {
 	}, relayer, db)
 	proposer.TryProposeBatch()
 
-	infos, err := db.GetUnbatchedL2Blocks(map[string]interface{}{},
-		fmt.Sprintf("order by number ASC LIMIT %d", 100))
+	infos, err := blockTraceOrm.GetUnbatchedL2Blocks(map[string]interface{}{}, []string{"number ASC"}, 100)
 	assert.NoError(t, err)
 	assert.Equal(t, 0, len(infos))
 
-	exist, err := db.BatchRecordExist(batchData.Hash().Hex())
+	batches, err := blockBatchOrm.GetBlockBatches(map[string]interface{}{"hash": batchData.Hash().Hex()}, nil, 1)
 	assert.NoError(t, err)
-	assert.Equal(t, true, exist)
+	assert.Equal(t, 1, len(batches))
 }
 
 func testBatchProposerGracefulRestart(t *testing.T) {
-	// Create db handler and reset db.
-	db, err := database.NewOrmFactory(cfg.DBConfig)
-	assert.NoError(t, err)
-	assert.NoError(t, migrate.ResetDB(db.GetDB().DB))
-	defer db.Close()
+	db := setupDB(t)
+	defer bridgeUtils.CloseDB(db)
 
 	relayer, err := relayer.NewLayer2Relayer(context.Background(), l2Cli, db, cfg.L2Config.RelayerConfig)
 	assert.NoError(t, err)
 
+	blockTraceOrm := orm.NewBlockTrace(db)
 	// Insert traces into db.
-	assert.NoError(t, db.InsertWrappedBlocks([]*types.WrappedBlock{wrappedBlock2}))
+	assert.NoError(t, blockTraceOrm.InsertWrappedBlocks([]*bridgeTypes.WrappedBlock{wrappedBlock2}))
 
 	// Insert block batch into db.
-	batchData1 := types.NewBatchData(&types.BlockBatch{
+	insertBlockBatch := &orm.BlockBatch{
 		Index:     0,
 		Hash:      common.Hash{}.String(),
 		StateRoot: common.Hash{}.String(),
-	}, []*types.WrappedBlock{wrappedBlock1}, nil)
+	}
+	wrapperBlock := []*bridgeTypes.WrappedBlock{wrappedBlock1}
+	batchData1 := bridgeTypes.NewBatchData(insertBlockBatch, wrapperBlock, nil)
 
-	parentBatch2 := &types.BlockBatch{
+	parentBatch2 := &orm.BlockBatch{
 		Index:     batchData1.Batch.BatchIndex,
 		Hash:      batchData1.Hash().Hex(),
 		StateRoot: batchData1.Batch.NewStateRoot.String(),
 	}
-	batchData2 := types.NewBatchData(parentBatch2, []*types.WrappedBlock{wrappedBlock2}, nil)
+	batchData2 := bridgeTypes.NewBatchData(parentBatch2, []*bridgeTypes.WrappedBlock{wrappedBlock2}, nil)
 
-	dbTx, err := db.Beginx()
+	blockBatchOrm := orm.NewBlockBatch(db)
+	err = db.Transaction(func(tx *gorm.DB) error {
+		_, dbTxErr := blockBatchOrm.InsertBlockBatchByBatchData(tx, batchData1)
+		if dbTxErr != nil {
+			return dbTxErr
+		}
+		_, dbTxErr = blockBatchOrm.InsertBlockBatchByBatchData(tx, batchData2)
+		if dbTxErr != nil {
+			return dbTxErr
+		}
+		numbers1 := []uint64{batchData1.Batch.Blocks[0].BlockNumber}
+		hash1 := batchData1.Hash().Hex()
+		dbTxErr = blockTraceOrm.UpdateBatchHashForL2Blocks(tx, numbers1, hash1)
+		if dbTxErr != nil {
+			return dbTxErr
+		}
+		numbers2 := []uint64{batchData2.Batch.Blocks[0].BlockNumber}
+		hash2 := batchData2.Hash().Hex()
+		dbTxErr = blockTraceOrm.UpdateBatchHashForL2Blocks(tx, numbers2, hash2)
+		if dbTxErr != nil {
+			return dbTxErr
+		}
+		return nil
+	})
 	assert.NoError(t, err)
-	assert.NoError(t, db.NewBatchInDBTx(dbTx, batchData1))
-	assert.NoError(t, db.NewBatchInDBTx(dbTx, batchData2))
-	assert.NoError(t, db.SetBatchHashForL2BlocksInDBTx(dbTx, []uint64{
-		batchData1.Batch.Blocks[0].BlockNumber}, batchData1.Hash().Hex()))
-	assert.NoError(t, db.SetBatchHashForL2BlocksInDBTx(dbTx, []uint64{
-		batchData2.Batch.Blocks[0].BlockNumber}, batchData2.Hash().Hex()))
-	assert.NoError(t, dbTx.Commit())
-
-	assert.NoError(t, db.UpdateRollupStatus(context.Background(), batchData1.Hash().Hex(), types.RollupFinalized))
-
-	batchHashes, err := db.GetPendingBatches(math.MaxInt32)
+	err = blockBatchOrm.UpdateRollupStatus(context.Background(), batchData1.Hash().Hex(), types.RollupFinalized)
+	assert.NoError(t, err)
+	batchHashes, err := blockBatchOrm.GetPendingBatches(math.MaxInt32)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(batchHashes))
 	assert.Equal(t, batchData2.Hash().Hex(), batchHashes[0])
@@ -189,11 +195,11 @@ func testBatchProposerGracefulRestart(t *testing.T) {
 		BatchBlocksLimit:    100,
 	}, relayer, db)
 
-	batchHashes, err = db.GetPendingBatches(math.MaxInt32)
+	batchHashes, err = blockBatchOrm.GetPendingBatches(math.MaxInt32)
 	assert.NoError(t, err)
 	assert.Equal(t, 0, len(batchHashes))
 
-	exist, err := db.BatchRecordExist(batchData2.Hash().Hex())
+	batches, err := blockBatchOrm.GetBlockBatches(map[string]interface{}{"hash": batchData2.Hash().Hex()}, nil, 1)
 	assert.NoError(t, err)
-	assert.Equal(t, true, exist)
+	assert.Equal(t, 1, len(batches))
 }

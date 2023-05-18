@@ -10,9 +10,10 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"scroll-tech/common/docker"
-	"scroll-tech/common/types"
 
-	"scroll-tech/bridge/config"
+	"scroll-tech/bridge/internal/config"
+	"scroll-tech/bridge/internal/orm"
+	bridgeTypes "scroll-tech/bridge/internal/types"
 )
 
 var (
@@ -25,12 +26,12 @@ var (
 	l2Cli *ethclient.Client
 
 	// block trace
-	wrappedBlock1 *types.WrappedBlock
-	wrappedBlock2 *types.WrappedBlock
+	wrappedBlock1 *bridgeTypes.WrappedBlock
+	wrappedBlock2 *bridgeTypes.WrappedBlock
 
 	// batch data
-	batchData1 *types.BatchData
-	batchData2 *types.BatchData
+	batchData1 *bridgeTypes.BatchData
+	batchData2 *bridgeTypes.BatchData
 )
 
 func setupEnv(t *testing.T) (err error) {
@@ -42,43 +43,48 @@ func setupEnv(t *testing.T) (err error) {
 
 	cfg.L2Config.RelayerConfig.SenderConfig.Endpoint = base.L1gethImg.Endpoint()
 	cfg.L1Config.RelayerConfig.SenderConfig.Endpoint = base.L2gethImg.Endpoint()
-	cfg.DBConfig = base.DBConfig
+	cfg.DBConfig = &bridgeTypes.DBConfig{
+		DSN:        base.DBConfig.DSN,
+		DriverName: base.DBConfig.DriverName,
+		MaxOpenNum: base.DBConfig.MaxOpenNum,
+		MaxIdleNum: base.DBConfig.MaxIdleNum,
+	}
 
 	// Create l2geth client.
 	l2Cli, err = base.L2Client()
 	assert.NoError(t, err)
 
-	templateBlockTrace1, err := os.ReadFile("../../common/testdata/blockTrace_02.json")
+	templateBlockTrace1, err := os.ReadFile("../../../testdata/blockTrace_02.json")
 	if err != nil {
 		return err
 	}
 	// unmarshal blockTrace
-	wrappedBlock1 = &types.WrappedBlock{}
+	wrappedBlock1 = &bridgeTypes.WrappedBlock{}
 	if err = json.Unmarshal(templateBlockTrace1, wrappedBlock1); err != nil {
 		return err
 	}
-	parentBatch1 := &types.BlockBatch{
+	parentBatch1 := &orm.BlockBatch{
 		Index:     0,
 		Hash:      "0x0cc6b102c2924402c14b2e3a19baccc316252bfdc44d9ec62e942d34e39ec729",
 		StateRoot: "0x2579122e8f9ec1e862e7d415cef2fb495d7698a8e5f0dddc5651ba4236336e7d",
 	}
-	batchData1 = types.NewBatchData(parentBatch1, []*types.WrappedBlock{wrappedBlock1}, nil)
+	batchData1 = bridgeTypes.NewBatchData(parentBatch1, []*bridgeTypes.WrappedBlock{wrappedBlock1}, nil)
 
-	templateBlockTrace2, err := os.ReadFile("../../common/testdata/blockTrace_03.json")
+	templateBlockTrace2, err := os.ReadFile("../../../testdata/blockTrace_03.json")
 	if err != nil {
 		return err
 	}
 	// unmarshal blockTrace
-	wrappedBlock2 = &types.WrappedBlock{}
+	wrappedBlock2 = &bridgeTypes.WrappedBlock{}
 	if err = json.Unmarshal(templateBlockTrace2, wrappedBlock2); err != nil {
 		return err
 	}
-	parentBatch2 := &types.BlockBatch{
+	parentBatch2 := &orm.BlockBatch{
 		Index:     batchData1.Batch.BatchIndex,
 		Hash:      batchData1.Hash().Hex(),
 		StateRoot: batchData1.Batch.NewStateRoot.String(),
 	}
-	batchData2 = types.NewBatchData(parentBatch2, []*types.WrappedBlock{wrappedBlock2}, nil)
+	batchData2 = bridgeTypes.NewBatchData(parentBatch2, []*bridgeTypes.WrappedBlock{wrappedBlock2}, nil)
 
 	log.Info("batchHash", "batchhash1", batchData1.Hash().Hex(), "batchhash2", batchData2.Hash().Hex())
 

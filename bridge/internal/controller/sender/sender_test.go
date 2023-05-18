@@ -9,8 +9,6 @@ import (
 	"testing"
 	"time"
 
-	"golang.org/x/sync/errgroup"
-
 	cmap "github.com/orcaman/concurrent-map"
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/core/types"
@@ -18,10 +16,11 @@ import (
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/rpc"
 	"github.com/stretchr/testify/assert"
+	"golang.org/x/sync/errgroup"
 
 	"scroll-tech/common/docker"
 
-	"scroll-tech/bridge/config"
+	"scroll-tech/bridge/internal/config"
 )
 
 const TXBatch = 50

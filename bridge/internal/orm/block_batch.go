@@ -284,3 +284,17 @@ func (o *BlockBatch) UpdateL2GasOracleStatusAndOracleTxHash(ctx context.Context,
 	}
 	return nil
 }
+
+// UpdateProofByHash update the block batch proof by hash
+// for unit test
+func (o *BlockBatch) UpdateProofByHash(ctx context.Context, hash string, proof, instanceCommitments []byte, proofTimeSec uint64) error {
+	updateFields := make(map[string]interface{})
+	updateFields["proof"] = proof
+	updateFields["instance_commitments"] = instanceCommitments
+	updateFields["proof_time_sec"] = proofTimeSec
+	err := o.db.WithContext(ctx).Model(&BlockBatch{}).Where("hash", hash).Updates(updateFields).Error
+	if err != nil {
+		log.Error("failed to update proof", "err", err)
+	}
+	return err
+}

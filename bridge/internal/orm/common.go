@@ -14,9 +14,7 @@ func AddBatchInfoToDB(db *gorm.DB, batchData *bridgeTypes.BatchData) error {
 	blockBatch := NewBlockBatch(db)
 	blockTrace := NewBlockTrace(db)
 	err := db.Transaction(func(tx *gorm.DB) error {
-		var dbTxErr error
-		var rowsAffected int64
-		rowsAffected, dbTxErr = blockBatch.InsertBlockBatchByBatchData(tx, batchData)
+		rowsAffected, dbTxErr := blockBatch.InsertBlockBatchByBatchData(tx, batchData)
 		if dbTxErr != nil {
 			return dbTxErr
 		}

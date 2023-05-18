@@ -7,11 +7,13 @@ import (
 
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/stretchr/testify/assert"
+	"gorm.io/gorm"
 
+	"scroll-tech/bridge/internal/config"
+	"scroll-tech/bridge/internal/orm/migrate"
+	bridgeTypes "scroll-tech/bridge/internal/types"
+	"scroll-tech/bridge/internal/utils"
 	"scroll-tech/common/docker"
-	"scroll-tech/common/types"
-
-	"scroll-tech/bridge/config"
 )
 
 var (
@@ -24,8 +26,8 @@ var (
 	l2Cli *ethclient.Client
 
 	// block trace
-	wrappedBlock1 *types.WrappedBlock
-	wrappedBlock2 *types.WrappedBlock
+	wrappedBlock1 *bridgeTypes.WrappedBlock
+	wrappedBlock2 *bridgeTypes.WrappedBlock
 )
 
 func setupEnv(t *testing.T) (err error) {
@@ -37,32 +39,46 @@ func setupEnv(t *testing.T) (err error) {
 
 	cfg.L2Config.RelayerConfig.SenderConfig.Endpoint = base.L1gethImg.Endpoint()
 	cfg.L1Config.RelayerConfig.SenderConfig.Endpoint = base.L2gethImg.Endpoint()
-	cfg.DBConfig = base.DBConfig
+	cfg.DBConfig = &bridgeTypes.DBConfig{
+		DSN:        base.DBConfig.DSN,
+		DriverName: base.DBConfig.DriverName,
+		MaxOpenNum: base.DBConfig.MaxOpenNum,
+		MaxIdleNum: base.DBConfig.MaxIdleNum,
+	}
 
 	// Create l2geth client.
 	l2Cli, err = base.L2Client()
 	assert.NoError(t, err)
 
-	templateBlockTrace1, err := os.ReadFile("../../common/testdata/blockTrace_02.json")
+	templateBlockTrace1, err := os.ReadFile("../../../testdata/blockTrace_02.json")
 	if err != nil {
 		return err
 	}
 	// unmarshal blockTrace
-	wrappedBlock1 = &types.WrappedBlock{}
+	wrappedBlock1 = &bridgeTypes.WrappedBlock{}
 	if err = json.Unmarshal(templateBlockTrace1, wrappedBlock1); err != nil {
 		return err
 	}
 
-	templateBlockTrace2, err := os.ReadFile("../../common/testdata/blockTrace_03.json")
+	templateBlockTrace2, err := os.ReadFile("../../../testdata/blockTrace_03.json")
 	if err != nil {
 		return err
 	}
 	// unmarshal blockTrace
-	wrappedBlock2 = &types.WrappedBlock{}
+	wrappedBlock2 = &bridgeTypes.WrappedBlock{}
 	if err = json.Unmarshal(templateBlockTrace2, wrappedBlock2); err != nil {
 		return err
 	}
 	return err
+}
+
+func setupDB(t *testing.T) *gorm.DB {
+	db, err := utils.InitDB(cfg.DBConfig)
+	assert.NoError(t, err)
+	sqlDB, err := db.DB()
+	assert.NoError(t, err)
+	assert.NoError(t, migrate.ResetDB(sqlDB))
+	return db
 }
 
 func TestMain(m *testing.M) {
