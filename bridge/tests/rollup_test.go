@@ -140,7 +140,7 @@ func testCommitBatchAndFinalizeBatch(t *testing.T) {
 	assert.Equal(t, 1, len(blockBatches))
 	assert.NotNil(t, blockBatches[0].FinalizeTxHash)
 
-	finalizeTx, _, err := l1Client.TransactionByHash(context.Background(), common.HexToHash(finalizeTxHash.String))
+	finalizeTx, _, err := l1Client.TransactionByHash(context.Background(), common.HexToHash(blockBatches[0].FinalizeTxHash))
 	assert.NoError(t, err)
 	finalizeTxReceipt, err := bind.WaitMined(context.Background(), l1Client, finalizeTx)
 	assert.NoError(t, err)
