@@ -10,7 +10,7 @@ pragma solidity ^0.8.0;
 ///   * ......
 ///   * block[i]        60          BlockContext    60*i+1     The first block in this chunk
 ///   * ......
-///   * block[n-1]      60          BlockContext    60*n-155   The last block in this chunk
+///   * block[n-1]      60          BlockContext    60*n-59   The last block in this chunk
 ///   * l2Transactions  dynamic     bytes           60*n+1
 /// ```
 ///

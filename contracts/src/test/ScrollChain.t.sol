@@ -25,10 +25,11 @@ contract ScrollChainTest is DSTestPlus {
 
     function setUp() public {
         messageQueue = new L1MessageQueue();
-        rollup = new ScrollChain(233, 44);
+        rollup = new ScrollChain(233, 100);
         verifier = new MockRollupVerifier();
 
         rollup.initialize(address(messageQueue), address(verifier));
+        messageQueue.initialize(address(this), address(rollup), address(0), address(0), 1000000);
 
         chain = new MockScrollChain();
     }
@@ -227,6 +228,165 @@ contract ScrollChainTest is DSTestPlus {
             bytes32(uint256(3)),
             new bytes(0)
         );
+    }
+
+    function testCommitAndFinalizeWithL1Messages() public {
+        rollup.updateSequencer(address(this), true);
+
+        // import 300 L1 messages
+        for (uint256 i = 0; i < 300; i++) {
+            messageQueue.appendCrossDomainMessage(address(this), 1000000, new bytes(0));
+        }
+
+        // import genesis batch first
+        bytes memory batchHeader0 = new bytes(89);
+        assembly {
+            mstore(add(batchHeader0, add(0x20, 25)), 1)
+        }
+        rollup.importGenesisBatch(batchHeader0, bytes32(uint256(1)), bytes32(uint256(0)));
+        bytes32 batchHash0 = rollup.committedBatches(0);
+
+        bytes memory bitmap;
+        bytes[] memory chunks;
+        bytes memory chunk0;
+        bytes memory chunk1;
+
+        // commit batch1, one chunk with one block, 1 tx, 1 L1 message, no skip
+        bytes memory batchHeader1 = new bytes(89 + 32);
+        assembly {
+            mstore(add(batchHeader1, 0x20), 0) // version
+            mstore(add(batchHeader1, add(0x20, 1)), shl(192, 1)) // batchIndex = 1
+            mstore(add(batchHeader1, add(0x20, 9)), shl(192, 1)) // l1MessagePopped = 1
+            mstore(add(batchHeader1, add(0x20, 17)), shl(192, 1)) // totalL1MessagePopped = 1
+            mstore(add(batchHeader1, add(0x20, 25)), 0xcbbf37dbec3800d2de0098248d3328dee065ec7d647858cffcfbbfacc56bb4d0) // dataHash
+            mstore(add(batchHeader1, add(0x20, 57)), batchHash0) // parentBatchHash
+            mstore(add(batchHeader1, add(0x20, 89)), 0) // bitmap0
+        }
+        chunk0 = new bytes(1 + 60);
+        assembly {
+            mstore(add(chunk0, 0x20), shl(248, 1)) // numBlocks = 1
+            mstore(add(chunk0, add(0x21, 56)), shl(240, 1)) // numTransactions = 1
+            mstore(add(chunk0, add(0x21, 58)), shl(240, 1)) // numL1Messages = 1
+        }
+        chunks = new bytes[](1);
+        chunks[0] = chunk0;
+        bitmap = new bytes(32);
+        rollup.commitBatch(0, batchHeader0, chunks, bitmap);
+        assertGt(uint256(rollup.committedBatches(1)), 0);
+        assertBoolEq(rollup.isBatchFinalized(1), false);
+        bytes32 batchHash1 = rollup.committedBatches(1);
+
+        // finalize batch1
+        rollup.finalizeBatchWithProof(
+            batchHeader1,
+            bytes32(uint256(1)),
+            bytes32(uint256(2)),
+            bytes32(uint256(3)),
+            new bytes(0)
+        );
+        assertBoolEq(rollup.isBatchFinalized(1), true);
+        assertEq(rollup.finalizedStateRoots(1), bytes32(uint256(2)));
+        assertEq(rollup.withdrawRoots(1), bytes32(uint256(3)));
+        assertEq(rollup.lastFinalizedBatchIndex(), 1);
+        assertEq(messageQueue.getCrossDomainMessage(0), bytes32(0));
+        assertEq(messageQueue.pendingQueueIndex(), 1);
+
+        // commit batch2 with two chunks, correctly
+        // 1. chunk0 has one block, 3 tx, no L1 messages
+        // 2. chunk1 has three blocks
+        //   2.1 block0 has 5 tx, 3 L1 messages, no skips
+        //   2.2 block1 has 10 tx, 5 L1 messages, even is skipped.
+        //   2.2 block1 has 300 tx, 256 L1 messages, odd position is skipped.
+        bytes memory batchHeader2 = new bytes(89 + 32 + 32);
+        assembly {
+            mstore(add(batchHeader2, 0x20), 0) // version
+            mstore(add(batchHeader2, add(0x20, 1)), shl(192, 2)) // batchIndex = 2
+            mstore(add(batchHeader2, add(0x20, 9)), shl(192, 264)) // l1MessagePopped = 264
+            mstore(add(batchHeader2, add(0x20, 17)), shl(192, 265)) // totalL1MessagePopped = 265
+            mstore(add(batchHeader2, add(0x20, 25)), 0xae4e61947ed564cdd007d8fe984292b7a87d4f3759a85439ba7a27926f6bc7b5) // dataHash
+            mstore(add(batchHeader2, add(0x20, 57)), batchHash1) // parentBatchHash
+            mstore(
+                add(batchHeader2, add(0x20, 89)),
+                77194726158210796949047323339125271902179989777093709359638389338608753093288
+            ) // bitmap0
+            mstore(add(batchHeader2, add(0x20, 121)), 170) // bitmap1
+        }
+        chunk0 = new bytes(1 + 60 + 3 * 5);
+        assembly {
+            mstore(add(chunk0, 0x20), shl(248, 1)) // numBlocks = 1
+            mstore(add(chunk0, add(0x21, 56)), shl(240, 3)) // numTransactions = 3
+            mstore(add(chunk0, add(0x21, 58)), shl(240, 0)) // numL1Messages = 0
+        }
+        for (uint256 i = 0; i < 3; i++) {
+            assembly {
+                mstore(add(chunk0, add(93, mul(i, 5))), shl(224, 1)) // tx = "0x00"
+            }
+        }
+        chunk1 = new bytes(1 + 60 * 3 + 51 * 5);
+        assembly {
+            mstore(add(chunk1, 0x20), shl(248, 3)) // numBlocks = 3
+            mstore(add(chunk1, add(33, 56)), shl(240, 5)) // block0.numTransactions = 5
+            mstore(add(chunk1, add(33, 58)), shl(240, 3)) // block0.numL1Messages = 3
+            mstore(add(chunk1, add(93, 56)), shl(240, 10)) // block1.numTransactions = 10
+            mstore(add(chunk1, add(93, 58)), shl(240, 5)) // block1.numL1Messages = 5
+            mstore(add(chunk1, add(153, 56)), shl(240, 300)) // block1.numTransactions = 300
+            mstore(add(chunk1, add(153, 58)), shl(240, 256)) // block1.numL1Messages = 256
+        }
+        for (uint256 i = 0; i < 51; i++) {
+            assembly {
+                mstore(add(chunk1, add(213, mul(i, 5))), shl(224, 1)) // tx = "0x00"
+            }
+        }
+        chunks = new bytes[](2);
+        chunks[0] = chunk0;
+        chunks[1] = chunk1;
+        bitmap = new bytes(64);
+        assembly {
+            mstore(
+                add(bitmap, add(0x20, 0)),
+                77194726158210796949047323339125271902179989777093709359638389338608753093288
+            ) // bitmap0
+            mstore(add(bitmap, add(0x20, 32)), 170) // bitmap1
+        }
+
+        rollup.commitBatch(0, batchHeader1, chunks, bitmap);
+        assertGt(uint256(rollup.committedBatches(2)), 0);
+        assertBoolEq(rollup.isBatchFinalized(2), false);
+        bytes32 batchHash2 = rollup.committedBatches(2);
+
+        // verify committed batch correctly
+        rollup.finalizeBatchWithProof(
+            batchHeader2,
+            bytes32(uint256(2)),
+            bytes32(uint256(4)),
+            bytes32(uint256(5)),
+            new bytes(0)
+        );
+        assertBoolEq(rollup.isBatchFinalized(2), true);
+        assertEq(rollup.finalizedStateRoots(2), bytes32(uint256(4)));
+        assertEq(rollup.withdrawRoots(2), bytes32(uint256(5)));
+        assertEq(rollup.lastFinalizedBatchIndex(), 2);
+        assertEq(messageQueue.pendingQueueIndex(), 265);
+        // 1 ~ 4, zero
+        for (uint256 i = 1; i < 4; i++) {
+            assertEq(messageQueue.getCrossDomainMessage(i), bytes32(0));
+        }
+        // 4 ~ 9, even is nonzero, odd is zero
+        for (uint256 i = 4; i < 9; i++) {
+            if (i % 2 == 1) {
+                assertEq(messageQueue.getCrossDomainMessage(i), bytes32(0));
+            } else {
+                assertGt(uint256(messageQueue.getCrossDomainMessage(i)), 0);
+            }
+        }
+        // 9 ~ 265, even is nonzero, odd is zero
+        for (uint256 i = 9; i < 265; i++) {
+            if (i % 2 == 1) {
+                assertEq(messageQueue.getCrossDomainMessage(i), bytes32(0));
+            } else {
+                assertGt(uint256(messageQueue.getCrossDomainMessage(i)), 0);
+            }
+        }
     }
 
     function testRevertBatch() public {

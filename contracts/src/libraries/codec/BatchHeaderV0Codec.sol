@@ -161,7 +161,7 @@ library BatchHeaderV0Codec {
     /// @param _skippedL1MessageBitmap The skipped L1 message bitmap.
     function storeSkippedBitmap(uint256 memPtr, bytes calldata _skippedL1MessageBitmap) internal pure {
         assembly {
-            calldatacopy(add(memPtr, 89), add(_skippedL1MessageBitmap.offset, 0x20), _skippedL1MessageBitmap.length)
+            calldatacopy(add(memPtr, 89), _skippedL1MessageBitmap.offset, _skippedL1MessageBitmap.length)
         }
     }
 
