@@ -4,7 +4,9 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"errors"
+	"gorm.io/gorm"
 	"math/big"
+	"scroll-tech/bridge/internal/orm"
 	"strconv"
 	"testing"
 	"time"
@@ -13,7 +15,7 @@ import (
 	"github.com/scroll-tech/go-ethereum/accounts/abi"
 	"github.com/scroll-tech/go-ethereum/accounts/abi/bind"
 	"github.com/scroll-tech/go-ethereum/common"
-	geth_types "github.com/scroll-tech/go-ethereum/core/types"
+	gethTypes "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/rpc"
 	"github.com/smartystreets/goconvey/convey"
@@ -21,42 +23,29 @@ import (
 
 	"scroll-tech/common/types"
 
-	bridge_abi "scroll-tech/bridge/abi"
+	bridgeAbi "scroll-tech/bridge/internal/abi"
+	"scroll-tech/bridge/internal/controller/sender"
+	"scroll-tech/bridge/internal/utils"
 	"scroll-tech/bridge/mock_bridge"
-	"scroll-tech/bridge/sender"
-	"scroll-tech/bridge/utils"
 
 	cutils "scroll-tech/common/utils"
-
-	"scroll-tech/database"
-	"scroll-tech/database/migrate"
 )
 
-func setupL2Watcher(t *testing.T) *L2WatcherClient {
-	db, err := database.NewOrmFactory(cfg.DBConfig)
-	assert.NoError(t, err)
-	assert.NoError(t, migrate.ResetDB(db.GetDB().DB))
-	defer db.Close()
-
+func setupL2Watcher(t *testing.T) (*L2WatcherClient, *gorm.DB) {
+	db := setupDB(t)
 	l2cfg := cfg.L2Config
 	watcher := NewL2WatcherClient(context.Background(), l2Cli, l2cfg.Confirmations, l2cfg.L2MessengerAddress, l2cfg.L2MessageQueueAddress, l2cfg.WithdrawTrieRootSlot, db)
-	return watcher
+	return watcher, db
 }
 
 func testCreateNewWatcherAndStop(t *testing.T) {
-	// Create db handler and reset db.
-	l2db, err := database.NewOrmFactory(cfg.DBConfig)
-	assert.NoError(t, err)
-	assert.NoError(t, migrate.ResetDB(l2db.GetDB().DB))
-	ctx := context.Background()
-	subCtx, cancel := context.WithCancel(ctx)
+	wc, db := setupL2Watcher(t)
+	subCtx, cancel := context.WithCancel(context.Background())
 	defer func() {
 		cancel()
-		l2db.Close()
+		defer utils.CloseDB(db)
 	}()
 
-	l2cfg := cfg.L2Config
-	wc := NewL2WatcherClient(context.Background(), l2Cli, l2cfg.Confirmations, l2cfg.L2MessengerAddress, l2cfg.L2MessageQueueAddress, l2cfg.WithdrawTrieRootSlot, l2db)
 	loopToFetchEvent(subCtx, wc)
 
 	l1cfg := cfg.L1Config
@@ -79,20 +68,13 @@ func testCreateNewWatcherAndStop(t *testing.T) {
 }
 
 func testMonitorBridgeContract(t *testing.T) {
-	// Create db handler and reset db.
-	db, err := database.NewOrmFactory(cfg.DBConfig)
-	assert.NoError(t, err)
-	assert.NoError(t, migrate.ResetDB(db.GetDB().DB))
-	ctx := context.Background()
-	subCtx, cancel := context.WithCancel(ctx)
-
+	wc, db := setupL2Watcher(t)
+	subCtx, cancel := context.WithCancel(context.Background())
 	defer func() {
 		cancel()
-		db.Close()
+		defer utils.CloseDB(db)
 	}()
 
-	l2cfg := cfg.L2Config
-	wc := NewL2WatcherClient(context.Background(), l2Cli, l2cfg.Confirmations, l2cfg.L2MessengerAddress, l2cfg.L2MessageQueueAddress, l2cfg.WithdrawTrieRootSlot, db)
 	loopToFetchEvent(subCtx, wc)
 
 	previousHeight, err := l2Cli.BlockNumber(context.Background())
@@ -117,7 +99,7 @@ func testMonitorBridgeContract(t *testing.T) {
 	tx, err = instance.SendMessage(auth, toAddress, fee, message, gasLimit)
 	assert.NoError(t, err)
 	receipt, err := bind.WaitMined(context.Background(), l2Cli, tx)
-	if receipt.Status != geth_types.ReceiptStatusSuccessful || err != nil {
+	if receipt.Status != gethTypes.ReceiptStatusSuccessful || err != nil {
 		t.Fatalf("Call failed")
 	}
 
@@ -127,34 +109,30 @@ func testMonitorBridgeContract(t *testing.T) {
 	tx, err = instance.SendMessage(auth, toAddress, fee, message, gasLimit)
 	assert.NoError(t, err)
 	receipt, err = bind.WaitMined(context.Background(), l2Cli, tx)
-	if receipt.Status != geth_types.ReceiptStatusSuccessful || err != nil {
+	if receipt.Status != gethTypes.ReceiptStatusSuccessful || err != nil {
 		t.Fatalf("Call failed")
 	}
 
+	l2MessageOrm := orm.NewL2Message(db)
 	// check if we successfully stored events
 	assert.True(t, cutils.TryTimes(10, func() bool {
-		height, err := db.GetLayer2LatestWatchedHeight()
-		return err == nil && height > int64(previousHeight)
+		height, err := l2MessageOrm.GetLayer2LatestWatchedHeight()
+		return err == nil && height > previousHeight
 	}))
 
 	// check l1 messages.
 	assert.True(t, cutils.TryTimes(10, func() bool {
-		msgs, err := db.GetL2Messages(map[string]interface{}{"status": types.MsgPending})
+		msgs, err := l2MessageOrm.GetL2Messages(map[string]interface{}{"status": types.MsgPending}, nil, 0)
 		return err == nil && len(msgs) == 2
 	}))
 }
 
 func testFetchMultipleSentMessageInOneBlock(t *testing.T) {
-	// Create db handler and reset db.
-	db, err := database.NewOrmFactory(cfg.DBConfig)
-	assert.NoError(t, err)
-	assert.NoError(t, migrate.ResetDB(db.GetDB().DB))
-	ctx := context.Background()
-	subCtx, cancel := context.WithCancel(ctx)
-
+	_, db := setupL2Watcher(t)
+	subCtx, cancel := context.WithCancel(context.Background())
 	defer func() {
 		cancel()
-		db.Close()
+		defer utils.CloseDB(db)
 	}()
 
 	previousHeight, err := l2Cli.BlockNumber(context.Background()) // shallow the global previousHeight
@@ -172,8 +150,7 @@ func testFetchMultipleSentMessageInOneBlock(t *testing.T) {
 
 	// Call mock_bridge instance sendMessage to trigger emit events multiple times
 	numTransactions := 4
-	var tx *geth_types.Transaction
-
+	var tx *gethTypes.Transaction
 	for i := 0; i < numTransactions; i++ {
 		addr := common.HexToAddress("0x1c5a77d9fa7ef466951b2f01f724bca3a5820b63")
 		nonce, nounceErr := l2Cli.PendingNonceAt(context.Background(), addr)
@@ -188,7 +165,7 @@ func testFetchMultipleSentMessageInOneBlock(t *testing.T) {
 	}
 
 	receipt, err := bind.WaitMined(context.Background(), l2Cli, tx)
-	if receipt.Status != geth_types.ReceiptStatusSuccessful || err != nil {
+	if receipt.Status != gethTypes.ReceiptStatusSuccessful || err != nil {
 		t.Fatalf("Call failed")
 	}
 
@@ -204,28 +181,26 @@ func testFetchMultipleSentMessageInOneBlock(t *testing.T) {
 	tx, err = instance.SendMessage(auth, toAddress, fee, message, gasLimit)
 	assert.NoError(t, err)
 	receipt, err = bind.WaitMined(context.Background(), l2Cli, tx)
-	if receipt.Status != geth_types.ReceiptStatusSuccessful || err != nil {
+	if receipt.Status != gethTypes.ReceiptStatusSuccessful || err != nil {
 		t.Fatalf("Call failed")
 	}
 
+	l2MessageOrm := orm.NewL2Message(db)
 	// check if we successfully stored events
 	assert.True(t, cutils.TryTimes(10, func() bool {
-		height, err := db.GetLayer2LatestWatchedHeight()
-		return err == nil && height > int64(previousHeight)
+		height, err := l2MessageOrm.GetLayer2LatestWatchedHeight()
+		return err == nil && height > previousHeight
 	}))
 
 	assert.True(t, cutils.TryTimes(10, func() bool {
-		msgs, err := db.GetL2Messages(map[string]interface{}{"status": types.MsgPending})
+		msgs, err := l2MessageOrm.GetL2Messages(map[string]interface{}{"status": types.MsgPending}, nil, 0)
 		return err == nil && len(msgs) == 5
 	}))
 }
 
 func testFetchRunningMissingBlocks(t *testing.T) {
-	// Create db handler and reset db.
-	db, err := database.NewOrmFactory(cfg.DBConfig)
-	assert.NoError(t, err)
-	assert.NoError(t, migrate.ResetDB(db.GetDB().DB))
-	defer db.Close()
+	_, db := setupL2Watcher(t)
+	defer utils.CloseDB(db)
 
 	auth := prepareAuth(t, l2Cli, cfg.L2Config.RelayerConfig.MessageSenderPrivateKeys[0])
 
@@ -235,6 +210,7 @@ func testFetchRunningMissingBlocks(t *testing.T) {
 	address, err := bind.WaitDeployed(context.Background(), l2Cli, tx)
 	assert.NoError(t, err)
 
+	blockTraceOrm := orm.NewBlockTrace(db)
 	ok := cutils.TryTimes(10, func() bool {
 		latestHeight, err := l2Cli.BlockNumber(context.Background())
 		if err != nil {
@@ -242,13 +218,13 @@ func testFetchRunningMissingBlocks(t *testing.T) {
 		}
 		wc := prepareWatcherClient(l2Cli, db, address)
 		wc.TryFetchRunningMissingBlocks(context.Background(), latestHeight)
-		fetchedHeight, err := db.GetL2BlocksLatestHeight()
-		return err == nil && uint64(fetchedHeight) == latestHeight
+		fetchedHeight, err := blockTraceOrm.GetL2BlocksLatestHeight()
+		return err == nil && fetchedHeight == latestHeight
 	})
 	assert.True(t, ok)
 }
 
-func prepareWatcherClient(l2Cli *ethclient.Client, db database.OrmFactory, contractAddr common.Address) *L2WatcherClient {
+func prepareWatcherClient(l2Cli *ethclient.Client, db *gorm.DB, contractAddr common.Address) *L2WatcherClient {
 	confirmations := rpc.LatestBlockNumber
 	return NewL2WatcherClient(context.Background(), l2Cli, confirmations, contractAddr, contractAddr, common.Hash{}, db)
 }
@@ -268,11 +244,13 @@ func loopToFetchEvent(subCtx context.Context, watcher *L2WatcherClient) {
 }
 
 func testParseBridgeEventLogsL2SentMessageEventSignature(t *testing.T) {
-	watcher := setupL2Watcher(t)
-	logs := []geth_types.Log{
+	watcher, db := setupL2Watcher(t)
+	defer utils.CloseDB(db)
+
+	logs := []gethTypes.Log{
 		{
 			Topics: []common.Hash{
-				bridge_abi.L2SentMessageEventSignature,
+				bridgeAbi.L2SentMessageEventSignature,
 			},
 			BlockNumber: 100,
 			TxHash:      common.HexToHash("0x1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347"),
@@ -281,7 +259,7 @@ func testParseBridgeEventLogsL2SentMessageEventSignature(t *testing.T) {
 
 	convey.Convey("unpack SentMessage log failure", t, func() {
 		targetErr := errors.New("UnpackLog SentMessage failure")
-		patchGuard := gomonkey.ApplyFunc(utils.UnpackLog, func(c *abi.ABI, out interface{}, event string, log geth_types.Log) error {
+		patchGuard := gomonkey.ApplyFunc(utils.UnpackLog, func(c *abi.ABI, out interface{}, event string, log gethTypes.Log) error {
 			return targetErr
 		})
 		defer patchGuard.Reset()
@@ -298,8 +276,8 @@ func testParseBridgeEventLogsL2SentMessageEventSignature(t *testing.T) {
 		tmpValue := big.NewInt(1000)
 		tmpMessageNonce := big.NewInt(100)
 		tmpMessage := []byte("test for L2SentMessageEventSignature")
-		patchGuard := gomonkey.ApplyFunc(utils.UnpackLog, func(c *abi.ABI, out interface{}, event string, log geth_types.Log) error {
-			tmpOut := out.(*bridge_abi.L2SentMessageEvent)
+		patchGuard := gomonkey.ApplyFunc(utils.UnpackLog, func(c *abi.ABI, out interface{}, event string, log gethTypes.Log) error {
+			tmpOut := out.(*bridgeAbi.L2SentMessageEvent)
 			tmpOut.Sender = tmpSendAddr
 			tmpOut.Value = tmpValue
 			tmpOut.Target = tmpTargetAddr
@@ -317,10 +295,12 @@ func testParseBridgeEventLogsL2SentMessageEventSignature(t *testing.T) {
 }
 
 func testParseBridgeEventLogsL2RelayedMessageEventSignature(t *testing.T) {
-	watcher := setupL2Watcher(t)
-	logs := []geth_types.Log{
+	watcher, db := setupL2Watcher(t)
+	defer utils.CloseDB(db)
+
+	logs := []gethTypes.Log{
 		{
-			Topics:      []common.Hash{bridge_abi.L2RelayedMessageEventSignature},
+			Topics:      []common.Hash{bridgeAbi.L2RelayedMessageEventSignature},
 			BlockNumber: 100,
 			TxHash:      common.HexToHash("0x1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347"),
 		},
@@ -328,7 +308,7 @@ func testParseBridgeEventLogsL2RelayedMessageEventSignature(t *testing.T) {
 
 	convey.Convey("unpack RelayedMessage log failure", t, func() {
 		targetErr := errors.New("UnpackLog RelayedMessage failure")
-		patchGuard := gomonkey.ApplyFunc(utils.UnpackLog, func(c *abi.ABI, out interface{}, event string, log geth_types.Log) error {
+		patchGuard := gomonkey.ApplyFunc(utils.UnpackLog, func(c *abi.ABI, out interface{}, event string, log gethTypes.Log) error {
 			return targetErr
 		})
 		defer patchGuard.Reset()
@@ -341,8 +321,8 @@ func testParseBridgeEventLogsL2RelayedMessageEventSignature(t *testing.T) {
 
 	convey.Convey("L2RelayedMessageEventSignature success", t, func() {
 		msgHash := common.HexToHash("0xad3228b676f7d3cd4284a5443f17f1962b36e491b30a40b2405849e597ba5fb5")
-		patchGuard := gomonkey.ApplyFunc(utils.UnpackLog, func(c *abi.ABI, out interface{}, event string, log geth_types.Log) error {
-			tmpOut := out.(*bridge_abi.L2RelayedMessageEvent)
+		patchGuard := gomonkey.ApplyFunc(utils.UnpackLog, func(c *abi.ABI, out interface{}, event string, log gethTypes.Log) error {
+			tmpOut := out.(*bridgeAbi.L2RelayedMessageEvent)
 			tmpOut.MessageHash = msgHash
 			return nil
 		})
@@ -357,10 +337,12 @@ func testParseBridgeEventLogsL2RelayedMessageEventSignature(t *testing.T) {
 }
 
 func testParseBridgeEventLogsL2FailedRelayedMessageEventSignature(t *testing.T) {
-	watcher := setupL2Watcher(t)
-	logs := []geth_types.Log{
+	watcher, db := setupL2Watcher(t)
+	defer utils.CloseDB(db)
+
+	logs := []gethTypes.Log{
 		{
-			Topics:      []common.Hash{bridge_abi.L2FailedRelayedMessageEventSignature},
+			Topics:      []common.Hash{bridgeAbi.L2FailedRelayedMessageEventSignature},
 			BlockNumber: 100,
 			TxHash:      common.HexToHash("0x1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347"),
 		},
@@ -368,7 +350,7 @@ func testParseBridgeEventLogsL2FailedRelayedMessageEventSignature(t *testing.T) 
 
 	convey.Convey("unpack FailedRelayedMessage log failure", t, func() {
 		targetErr := errors.New("UnpackLog FailedRelayedMessage failure")
-		patchGuard := gomonkey.ApplyFunc(utils.UnpackLog, func(c *abi.ABI, out interface{}, event string, log geth_types.Log) error {
+		patchGuard := gomonkey.ApplyFunc(utils.UnpackLog, func(c *abi.ABI, out interface{}, event string, log gethTypes.Log) error {
 			return targetErr
 		})
 		defer patchGuard.Reset()
@@ -381,8 +363,8 @@ func testParseBridgeEventLogsL2FailedRelayedMessageEventSignature(t *testing.T) 
 
 	convey.Convey("L2FailedRelayedMessageEventSignature success", t, func() {
 		msgHash := common.HexToHash("0xad3228b676f7d3cd4284a5443f17f1962b36e491b30a40b2405849e597ba5fb5")
-		patchGuard := gomonkey.ApplyFunc(utils.UnpackLog, func(c *abi.ABI, out interface{}, event string, log geth_types.Log) error {
-			tmpOut := out.(*bridge_abi.L2FailedRelayedMessageEvent)
+		patchGuard := gomonkey.ApplyFunc(utils.UnpackLog, func(c *abi.ABI, out interface{}, event string, log gethTypes.Log) error {
+			tmpOut := out.(*bridgeAbi.L2FailedRelayedMessageEvent)
 			tmpOut.MessageHash = msgHash
 			return nil
 		})
@@ -397,10 +379,11 @@ func testParseBridgeEventLogsL2FailedRelayedMessageEventSignature(t *testing.T) 
 }
 
 func testParseBridgeEventLogsL2AppendMessageEventSignature(t *testing.T) {
-	watcher := setupL2Watcher(t)
-	logs := []geth_types.Log{
+	watcher, db := setupL2Watcher(t)
+	defer utils.CloseDB(db)
+	logs := []gethTypes.Log{
 		{
-			Topics:      []common.Hash{bridge_abi.L2AppendMessageEventSignature},
+			Topics:      []common.Hash{bridgeAbi.L2AppendMessageEventSignature},
 			BlockNumber: 100,
 			TxHash:      common.HexToHash("0x1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347"),
 		},
@@ -408,7 +391,7 @@ func testParseBridgeEventLogsL2AppendMessageEventSignature(t *testing.T) {
 
 	convey.Convey("unpack AppendMessage log failure", t, func() {
 		targetErr := errors.New("UnpackLog AppendMessage failure")
-		patchGuard := gomonkey.ApplyFunc(utils.UnpackLog, func(c *abi.ABI, out interface{}, event string, log geth_types.Log) error {
+		patchGuard := gomonkey.ApplyFunc(utils.UnpackLog, func(c *abi.ABI, out interface{}, event string, log gethTypes.Log) error {
 			return targetErr
 		})
 		defer patchGuard.Reset()
@@ -421,8 +404,8 @@ func testParseBridgeEventLogsL2AppendMessageEventSignature(t *testing.T) {
 
 	convey.Convey("L2AppendMessageEventSignature success", t, func() {
 		msgHash := common.HexToHash("0xad3228b676f7d3cd4284a5443f17f1962b36e491b30a40b2405849e597ba5fb5")
-		patchGuard := gomonkey.ApplyFunc(utils.UnpackLog, func(c *abi.ABI, out interface{}, event string, log geth_types.Log) error {
-			tmpOut := out.(*bridge_abi.L2AppendMessageEvent)
+		patchGuard := gomonkey.ApplyFunc(utils.UnpackLog, func(c *abi.ABI, out interface{}, event string, log gethTypes.Log) error {
+			tmpOut := out.(*bridgeAbi.L2AppendMessageEvent)
 			tmpOut.MessageHash = msgHash
 			tmpOut.Index = big.NewInt(100)
 			return nil

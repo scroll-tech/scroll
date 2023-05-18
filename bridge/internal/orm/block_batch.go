@@ -226,7 +226,7 @@ func (o *BlockBatch) UpdateRollupStatus(ctx context.Context, hash string, status
 	case types.RollupFinalized:
 		updateFields["finalized_at"] = time.Now()
 	}
-	if err := o.db.Model(&BlockBatch{}).Where("hash", hash).Updates(updateFields).Error; err != nil {
+	if err := o.db.Model(&BlockBatch{}).WithContext(ctx).Where("hash", hash).Updates(updateFields).Error; err != nil {
 		return err
 	}
 	return nil

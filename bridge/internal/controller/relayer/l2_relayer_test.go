@@ -162,9 +162,10 @@ func testL2RelayerProcessCommittedBatches(t *testing.T) {
 
 	relayer.ProcessCommittedBatches()
 
-	status, err := blockBatchOrm.GetRollupStatusByHashList([]string{batchHash})
+	statuses, err := blockBatchOrm.GetRollupStatusByHashList([]string{batchHash})
 	assert.NoError(t, err)
-	assert.Equal(t, types.RollupFinalizing, status)
+	assert.Equal(t, 1, len(statuses))
+	assert.Equal(t, types.RollupFinalizing, statuses[0])
 }
 
 func testL2RelayerSkipBatches(t *testing.T) {
@@ -224,15 +225,17 @@ func testL2RelayerSkipBatches(t *testing.T) {
 	relayer.ProcessCommittedBatches()
 
 	for _, id := range skipped {
-		status, err := blockBatchOrm.GetRollupStatusByHashList([]string{id})
+		statuses, err := blockBatchOrm.GetRollupStatusByHashList([]string{id})
 		assert.NoError(t, err)
-		assert.Equal(t, types.RollupFinalizationSkipped, status)
+		assert.Equal(t, 1, len(statuses))
+		assert.Equal(t, types.RollupFinalizationSkipped, statuses[0])
 	}
 
 	for _, id := range notSkipped {
-		status, err := blockBatchOrm.GetRollupStatusByHashList([]string{id})
+		statuses, err := blockBatchOrm.GetRollupStatusByHashList([]string{id})
 		assert.NoError(t, err)
-		assert.NotEqual(t, types.RollupFinalizationSkipped, status)
+		assert.Equal(t, 1, len(statuses))
+		assert.NotEqual(t, types.RollupFinalizationSkipped, statuses[0])
 	}
 }
 

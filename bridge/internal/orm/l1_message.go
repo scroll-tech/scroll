@@ -67,7 +67,7 @@ func (m *L1Message) GetL1MessagesByStatus(status types.MsgStatus, limit uint64) 
 // for unit test
 func (m *L1Message) GetL1MessageByQueueIndex(queueIndex uint64) (*L1Message, error) {
 	var msg L1Message
-	selectFields := "queue_index, msg_hash, height, sender, target, value, calldata, layer1_hash, status"
+	selectFields := "queue_index, msg_hash, height, sender, target, value, calldata, layer1_hash, layer2_hash, status"
 	err := m.db.Select(selectFields).Where("queue_index", queueIndex).First(&msg).Error
 	if err != nil {
 		return nil, err

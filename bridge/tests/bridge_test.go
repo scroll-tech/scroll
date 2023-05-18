@@ -3,6 +3,7 @@ package tests
 import (
 	"context"
 	"crypto/ecdsa"
+	"gorm.io/gorm"
 	"math/big"
 	"testing"
 
@@ -14,10 +15,13 @@ import (
 	"github.com/scroll-tech/go-ethereum/rpc"
 	"github.com/stretchr/testify/assert"
 
-	"scroll-tech/bridge/config"
-	"scroll-tech/bridge/mock_bridge"
-
 	"scroll-tech/common/docker"
+
+	"scroll-tech/bridge/internal/config"
+	"scroll-tech/bridge/internal/orm/migrate"
+	bridgeTypes "scroll-tech/bridge/internal/types"
+	"scroll-tech/bridge/internal/utils"
+	"scroll-tech/bridge/mock_bridge"
 )
 
 var (
@@ -48,6 +52,15 @@ var (
 	l2MessengerInstance *mock_bridge.MockBridgeL2
 	l2MessengerAddress  common.Address
 )
+
+func setupDB(t *testing.T) *gorm.DB {
+	db, err := utils.InitDB(cfg.DBConfig)
+	assert.NoError(t, err)
+	sqlDB, err := db.DB()
+	assert.NoError(t, err)
+	assert.NoError(t, migrate.ResetDB(sqlDB))
+	return db
+}
 
 func TestMain(m *testing.M) {
 	base = docker.NewDockerApp()
@@ -90,7 +103,12 @@ func setupEnv(t *testing.T) {
 	cfg.L2Config.Endpoint = base.L2gethImg.Endpoint()
 
 	// Create db container.
-	cfg.DBConfig = base.DBConfig
+	cfg.DBConfig = &bridgeTypes.DBConfig{
+		DSN:        base.DBConfig.DSN,
+		DriverName: base.DBConfig.DriverName,
+		MaxOpenNum: base.DBConfig.MaxOpenNum,
+		MaxIdleNum: base.DBConfig.MaxIdleNum,
+	}
 
 	// Create l1geth and l2geth client.
 	l1Client, err = ethclient.Dial(cfg.L1Config.Endpoint)

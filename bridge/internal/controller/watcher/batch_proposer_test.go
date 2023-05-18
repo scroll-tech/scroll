@@ -2,23 +2,24 @@ package watcher
 
 import (
 	"context"
-	"gorm.io/gorm"
 	"math"
-	"scroll-tech/bridge/internal/orm"
-	bridgeTypes "scroll-tech/bridge/internal/types"
-	bridgeUtils "scroll-tech/bridge/internal/utils"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/agiledragon/gomonkey/v2"
 	"github.com/scroll-tech/go-ethereum/common"
-	geth_types "github.com/scroll-tech/go-ethereum/core/types"
+	gethTtypes "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/stretchr/testify/assert"
+	"gorm.io/gorm"
+
+	"scroll-tech/common/types"
 
 	"scroll-tech/bridge/internal/config"
 	"scroll-tech/bridge/internal/controller/relayer"
-	"scroll-tech/common/types"
+	"scroll-tech/bridge/internal/orm"
+	bridgeTypes "scroll-tech/bridge/internal/types"
+	bridgeUtils "scroll-tech/bridge/internal/utils"
 )
 
 func testBatchProposerProposeBatch(t *testing.T) {
@@ -37,13 +38,13 @@ func testBatchProposerProposeBatch(t *testing.T) {
 		if hash == "blockWithLongData" {
 			longData := strings.Repeat("0", 1000)
 			return []*types.WrappedBlock{{
-				Transactions: []*geth_types.TransactionData{{
+				Transactions: []*gethTtypes.TransactionData{{
 					Data: longData,
 				}},
 			}}, nil
 		}
 		return []*types.WrappedBlock{{
-			Transactions: []*geth_types.TransactionData{{
+			Transactions: []*gethTtypes.TransactionData{{
 				Data: "short",
 			}},
 		}}, nil
