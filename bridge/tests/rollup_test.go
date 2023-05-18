@@ -5,9 +5,6 @@ import (
 	"errors"
 	"gorm.io/gorm"
 	"math/big"
-	"scroll-tech/bridge/internal/orm"
-	bridgeTypes "scroll-tech/bridge/internal/types"
-	"scroll-tech/bridge/internal/utils"
 	"testing"
 
 	"github.com/scroll-tech/go-ethereum/accounts/abi/bind"
@@ -19,6 +16,9 @@ import (
 
 	"scroll-tech/bridge/internal/controller/relayer"
 	"scroll-tech/bridge/internal/controller/watcher"
+	"scroll-tech/bridge/internal/orm"
+	bridgeTypes "scroll-tech/bridge/internal/types"
+	"scroll-tech/bridge/internal/utils"
 )
 
 func testCommitBatchAndFinalizeBatch(t *testing.T) {
