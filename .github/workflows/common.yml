@@ -33,6 +33,17 @@ jobs:
         toolchain: nightly-2022-12-10
         override: true
         components: rustfmt, clippy
+    - name: Install Solc
+      uses: supplypike/setup-bin@v3
+      with:
+        uri: 'https://github.com/ethereum/solidity/releases/download/v0.8.16/solc-static-linux'
+        name: 'solc'
+        version: '0.8.16'
+    - name: Install Geth Tools
+      uses: gacts/install-geth-tools@v1
+    - name: Lint
+      run: |
+        make -C bytecode all
     - name: Install Go
       uses: actions/setup-go@v2
       with:
