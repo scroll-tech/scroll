@@ -1,13 +1,13 @@
 package service
 
 import (
-	"sort"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/log"
 
 	"bridge-history-api/db"
+	"bridge-history-api/db/orm"
 )
 
 type Finalized struct {
@@ -71,53 +71,24 @@ func updateCrossTxHash(msgHash string, txInfo *TxHistoryInfo, db db.OrmFactory) 
 
 func (h *historyBackend) GetTxsByAddress(address common.Address, offset int64, limit int64) ([]*TxHistoryInfo, error) {
 	txHistories := make([]*TxHistoryInfo, 0)
-	result, err := h.db.GetL1CrossMsgsByAddressWithOffset(address, offset, limit)
+	result, err := h.db.GetCrossMsgsByAddressWithOffset(address.String(), offset, limit)
 	if err != nil {
 		return nil, err
 	}
-	if len(result) > 0 {
-		for _, r := range result {
-			txHistory := &TxHistoryInfo{
-				Hash:        r.Layer1Hash,
-				Amount:      r.Amount,
-				To:          r.Target,
-				IsL1:        true,
-				BlockNumber: r.Height,
-				CreatedTime: r.CreatedTime,
-				FinalizeTx: &Finalized{
-					Hash: "",
-				},
-			}
-			// update relayed info into results
-			updateCrossTxHash(r.MsgHash, txHistory, h.db)
-			txHistories = append(txHistories, txHistory)
+	for _, msg := range result {
+		txHistory := &TxHistoryInfo{
+			Hash:        msg.MsgHash,
+			Amount:      msg.Amount,
+			To:          msg.Target,
+			IsL1:        msg.MsgType == int(orm.Layer1Msg),
+			BlockNumber: msg.Height,
+			CreatedTime: msg.CreatedTime,
+			FinalizeTx: &Finalized{
+				Hash: "",
+			},
 		}
-	}
-	l2Result, err := h.db.GetL2CrossMsgsByAddressWithOffset(address, offset, limit)
-	if err != nil {
-		return nil, err
-	}
-	if len(l2Result) > 0 {
-		for _, r := range l2Result {
-			txHistory := &TxHistoryInfo{
-				Hash:        r.Layer2Hash,
-				Amount:      r.Amount,
-				To:          r.Target,
-				IsL1:        false,
-				BlockNumber: r.Height,
-				CreatedTime: r.CreatedTime,
-				FinalizeTx: &Finalized{
-					Hash: "",
-				},
-			}
-			updateCrossTxHash(r.MsgHash, txHistory, h.db)
-			txHistories = append(txHistories, txHistory)
-		}
-	}
-	if len(txHistories) > 0 {
-		sort.Slice(txHistories, func(i, j int) bool {
-			return txHistories[i].CreatedTime.Second() > txHistories[j].CreatedTime.Second()
-		})
+		updateCrossTxHash(msg.MsgHash, txHistory, h.db)
+		txHistories = append(txHistories, txHistory)
 	}
 	return txHistories, nil
 }
