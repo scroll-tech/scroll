@@ -110,6 +110,9 @@ func (w *L2WatcherClient) initializeGenesis() error {
 	blockTrace := &types.WrappedBlock{Header: genesis, Transactions: nil, WithdrawTrieRoot: common.Hash{}}
 	batchData := types.NewGenesisBatchData(blockTrace)
 
+	fmt.Println("genesis hash: ", genesis.Hash().String())
+	fmt.Println("batch hash: ", batchData.Hash().String())
+
 	batchHash := batchData.Hash().Hex()
 	log.Info("initializeGenesis message", "batchHash", batchHash, "stateRoot", batchData.Batch.NewStateRoot.Hex())
 	if count > 0 {

@@ -97,6 +97,7 @@ func (b *MockApp) MockConfig(store bool) error {
 	l1Cfg.RelayerConfig.SenderConfig.Confirmations = 0
 	l2Cfg.Confirmations = 0
 	l2Cfg.RelayerConfig.SenderConfig.Confirmations = 0
+	l2Cfg.BatchProposerConfig.CommitTxCalldataSizeLimit = 1
 
 	// set l1 and l2 chain endpoint.
 	l1Cfg.Endpoint = base.L1gethImg.Endpoint()

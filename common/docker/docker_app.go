@@ -1,10 +1,12 @@
 package docker
 
 import (
+	"crypto/rand"
 	"database/sql"
 	_ "embed" //nolint:golint
 	"encoding/json"
 	"fmt"
+	"math/big"
 	"os"
 	"testing"
 	"time"
@@ -190,18 +192,18 @@ func (b *App) mockDBConfig() error {
 }
 
 func newTestL1Docker() GethImgInstance {
-	//id, _ := rand.Int(rand.Reader, big.NewInt(2000))
-	startPort := 11953 //l1StartPort + int(id.Int64())
+	id, _ := rand.Int(rand.Reader, big.NewInt(2000))
+	startPort := l1StartPort + int(id.Int64())
 	return NewImgGeth("scroll_l1geth", "", "", startPort, startPort+1)
 }
 
 func newTestL2Docker() GethImgInstance {
-	//id, _ := rand.Int(rand.Reader, big.NewInt(2000))
-	startPort := 20868 //l2StartPort + int(id.Int64())
+	id, _ := rand.Int(rand.Reader, big.NewInt(2000))
+	startPort := l2StartPort + int(id.Int64())
 	return NewImgGeth("scroll_l2geth", "", "", startPort, startPort+1)
 }
 
 func newTestDBDocker(driverName string) ImgInstance {
-	//id, _ := rand.Int(rand.Reader, big.NewInt(2000))
-	return NewImgDB(driverName, "maskpp", "123456", "postgres", 5432 /*dbStartPort+int(id.Int64())*/)
+	id, _ := rand.Int(rand.Reader, big.NewInt(2000))
+	return NewImgDB(driverName, "postgres", "123456", "test_db", dbStartPort+int(id.Int64()))
 }

@@ -3,11 +3,6 @@ package integration_test
 import (
 	"context"
 	"math/big"
-	"scroll-tech/common/bytecode/scroll/L1/rollup"
-	"scroll-tech/common/utils"
-	"scroll-tech/database"
-	"scroll-tech/database/migrate"
-	"scroll-tech/database/orm"
 	"testing"
 
 	"github.com/scroll-tech/go-ethereum/accounts/abi/bind"
@@ -15,11 +10,17 @@ import (
 	"github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/stretchr/testify/assert"
 
+	"scroll-tech/database"
+	"scroll-tech/database/migrate"
+	"scroll-tech/database/orm"
+
 	"scroll-tech/common/bytecode/erc20"
 	"scroll-tech/common/bytecode/greeter"
 	l1gateway "scroll-tech/common/bytecode/scroll/L1/gateways"
+	"scroll-tech/common/bytecode/scroll/L1/rollup"
 	l2gateway "scroll-tech/common/bytecode/scroll/L2/gateways"
 	ctypes "scroll-tech/common/types"
+	"scroll-tech/common/utils"
 )
 
 var (
@@ -86,33 +87,85 @@ func TestGreeter(t *testing.T) {
 	assert.Equal(t, val.String(), res.String())
 }
 
-func TestETHDeposit(t *testing.T) {
+func TestDepositAndWithdraw(t *testing.T) {
 	base.RunImages(t)
-	// Reset db.
 	assert.NoError(t, migrate.ResetDB(base.DBClient(t)))
 
+	// Run bridge apps.
+	bridgeApp.RunApp(t, utils.EventWatcherApp)
+	bridgeApp.RunApp(t, utils.GasOracleApp)
+	bridgeApp.RunApp(t, utils.MessageRelayerApp)
+	bridgeApp.RunApp(t, utils.RollupRelayerApp)
+
+	// Run coordinator app.
+	coordinatorApp.RunApp(t)
+	// Run roller app.
+	rollerApp.RunApp(t)
+
+	t.Run("TestGenesisBatch", testGenesisBatch)
+	t.Run("TestETHDeposit", testETHDeposit)
+	t.Run("TestETHWithdraw", testETHWithdraw)
+
+	// Free apps.
+	bridgeApp.WaitExit()
+	rollerApp.WaitExit()
+	coordinatorApp.WaitExit()
+}
+
+func testGenesisBatch(t *testing.T) {
 	l1Cli, err := base.L1Client()
 	assert.NoError(t, err)
 	l2Cli, err := base.L2Client()
 	assert.NoError(t, err)
 
-	// Start event watcher.
-	bridgeApp.RunApp(t, utils.EventWatcherApp)
-	// Start gas price oracle.
-	bridgeApp.RunApp(t, utils.GasOracleApp)
-	// Start message relayer.
-	bridgeApp.RunApp(t, utils.MessageRelayerApp)
+	scrollChain, err := rollup.NewScrollChain(base.L1Contracts.L1ScrollChain, l1Cli)
+	assert.NoError(t, err)
+
+	// Create genesis batch.
+	genesis, err := l2Cli.HeaderByNumber(context.Background(), big.NewInt(0))
+	assert.NoError(t, err)
+	batchData0 := ctypes.NewGenesisBatchData(&ctypes.WrappedBlock{Header: genesis, WithdrawTrieRoot: common.Hash{}})
+
+	// Check genesis batch is imported or not.
+	expectBatch, err := scrollChain.Batches(nil, *batchData0.Hash())
+	assert.NoError(t, err)
+	if expectBatch.NewStateRoot == batchData0.Batch.NewStateRoot {
+		return
+	}
+
+	// Import genesis batch.
+	l1ChainID, _ := l1Cli.ChainID(context.Background())
+	l1Auth, err := bind.NewKeyedTransactorWithChainID(bridgeApp.Config.L2Config.RelayerConfig.GasOracleSenderPrivateKeys[0], l1ChainID)
+	assert.NoError(t, err)
+	tx, err := scrollChain.ImportGenesisBatch(l1Auth, translateBatch(batchData0))
+	assert.NoError(t, err)
+	receipt, err := bind.WaitMined(context.Background(), l1Cli, tx)
+	assert.NoError(t, err)
+	assert.Equal(t, types.ReceiptStatusSuccessful, receipt.Status)
+
+	// Make sure genesis batch is exist.
+	expectBatch, err = scrollChain.Batches(nil, *batchData0.Hash())
+	assert.NoError(t, err)
+	assert.Equal(t, batchData0.Batch.NewStateRoot, common.BytesToHash(expectBatch.NewStateRoot[:]))
+}
+
+func testETHDeposit(t *testing.T) {
+	l1Cli, err := base.L1Client()
+	assert.NoError(t, err)
+	l2Cli, err := base.L2Client()
+	assert.NoError(t, err)
 
 	l1ChainID, _ := l1Cli.ChainID(context.Background())
 	l1Auth, err := bind.NewKeyedTransactorWithChainID(bridgeApp.Config.L2Config.RelayerConfig.GasOracleSenderPrivateKeys[0], l1ChainID)
 	assert.NoError(t, err)
+	l1Auth.Value = ether
 
 	l1EthGateway, err := l1gateway.NewL1ETHGateway(base.L1Contracts.L1ETHGateway, l1Cli)
 	assert.NoError(t, err)
 
-	l1Auth.Value = ether
+	value := big.NewInt(100)
 	to := common.HexToAddress("0x7363726f6c6c6c02000000000000000000000007")
-	tx, err := l1EthGateway.DepositETH0(l1Auth, to, big.NewInt(1), big.NewInt(10000))
+	tx, err := l1EthGateway.DepositETH0(l1Auth, to, value, big.NewInt(10000))
 	assert.NoError(t, err)
 	receipt, err := bind.WaitMined(context.Background(), l1Cli, tx)
 	assert.NoError(t, err)
@@ -122,113 +175,86 @@ func TestETHDeposit(t *testing.T) {
 	assert.NoError(t, err)
 	l1MsgOrm := db.(orm.L1MessageOrm)
 
-	var msgs []*ctypes.L1Message
 	// l1 message wait result.
-	utils.TryTimes(60, func() bool {
-		msgs, err = l1MsgOrm.GetL1MessagesByStatus(ctypes.MsgConfirmed, 1)
+	ok := utils.TryTimes(60, func() bool {
+		msgs, err := l1MsgOrm.GetL1MessagesByStatus(ctypes.MsgConfirmed, 1)
 		return err == nil && len(msgs) == 1
 	})
-	assert.NoError(t, err)
-	assert.Equal(t, 1, len(msgs))
-	assert.Equal(t, tx.Hash().String(), msgs[0].Layer1Hash)
+	assert.True(t, ok)
 
 	// Check to address balance in l2 chain.
-	bls, err := l2Cli.BalanceAt(context.Background(), to, nil)
-	assert.NoError(t, err)
-	assert.Equal(t, int64(1), bls.Int64())
+	ok = utils.TryTimes(10, func() bool {
+		bls, err := l2Cli.BalanceAt(context.Background(), to, nil)
+		return err == nil && bls.Cmp(value) >= 0
+	})
+	assert.True(t, ok)
 }
 
-func TestETHWithdraw(t *testing.T) {
-	//l1Cli, err := base.L1Client()
-	//assert.NoError(t, err)
+func testETHWithdraw(t *testing.T) {
+	l1Cli, err := base.L1Client()
+	assert.NoError(t, err)
 	l2Cli, err := base.L2Client()
 	assert.NoError(t, err)
-	t.Log("bridge config: ", bridgeApp.BridgeConfigFile)
-	t.Log("coordinator config: ", coordinatorApp.CoordinatorConfigFile)
-	t.Log("roller config: ", rollerApp.RollerConfigFile)
 
 	l2EthGateway, err := l2gateway.NewL2ETHGateway(base.L2Contracts.L2ETHGateway, l2Cli)
 	assert.NoError(t, err)
 
-	l2ChainID, err := l2Cli.ChainID(context.Background())
-	assert.NoError(t, err)
+	l2ChainID, _ := l2Cli.ChainID(context.Background())
 	l2Auth, err := bind.NewKeyedTransactorWithChainID(bridgeApp.Config.L1Config.RelayerConfig.GasOracleSenderPrivateKeys[0], l2ChainID)
 	assert.NoError(t, err)
+	l2Auth.Value = ether
+
+	bls, err := l2Cli.BalanceAt(context.Background(), common.HexToAddress("0x7363726f6c6c6c02000000000000000000000007"), nil)
+	assert.NoError(t, err)
+	t.Log("balance in l2chain: ", bls.String())
 
 	to := common.HexToAddress("0x7363726f6c6c6c02000000000000000000000007")
-	value := big.NewInt(1)
-
-	bls, err := l2Cli.BalanceAt(context.Background(), l2Auth.From, nil)
-	assert.NoError(t, err)
-	t.Log(bls.String())
-
-	l2Auth.Value = ether
+	value := big.NewInt(20)
 	tx, err := l2EthGateway.WithdrawETH(l2Auth, to, value, big.NewInt(1000000))
 	assert.NoError(t, err)
 	receipt, err := bind.WaitMined(context.Background(), l2Cli, tx)
 	assert.NoError(t, err)
 	assert.Equal(t, types.ReceiptStatusSuccessful, receipt.Status)
+
+	db, err := database.NewOrmFactory(base.DBConfig)
+	assert.NoError(t, err)
+	l2MsgOrm := db.(orm.L2MessageOrm)
+
+	// l1 message wait result.
+	ok := utils.TryTimes(80, func() bool {
+		msgs, err := l2MsgOrm.GetL2Messages(map[string]interface{}{"status": ctypes.MsgConfirmed}, "ORDER BY nonce", "LIMIT 1")
+		return err == nil && len(msgs) == 1
+	})
+	assert.True(t, ok)
+
+	// Check to address balance in l2 chain.
+	bls, err = l1Cli.BalanceAt(context.Background(), to, nil)
+	assert.NoError(t, err)
+	assert.True(t, bls.Cmp(value) >= 0)
 }
 
-func TestCC(t *testing.T) {
-	l1Cli, err := base.L1Client()
-	assert.NoError(t, err)
-	//l2Cli, err := base.L2Client()
-	//assert.NoError(t, err)
-
-	to := common.HexToAddress("0x7363726f6c6c6c02000000000000000000000007")
-	bls, err := l1Cli.BalanceAt(context.Background(), to, nil)
-	assert.NoError(t, err)
-	t.Log("to balance in l1 chain: ", bls.String())
-}
-
-func TestImportGenesisBatch(t *testing.T) {
-	l1Cli, err := base.L1Client()
-	assert.NoError(t, err)
-	l2Cli, err := base.L2Client()
-	assert.NoError(t, err)
-
-	l1ChainID, err := l1Cli.ChainID(context.Background())
-	assert.NoError(t, err)
-	l1Auth, err := bind.NewKeyedTransactorWithChainID(bridgeApp.Config.L2Config.RelayerConfig.GasOracleSenderPrivateKeys[0], l1ChainID)
-	assert.NoError(t, err)
-
-	scrollChain, err := rollup.NewScrollChain(base.L1Contracts.L1ScrollChain, l1Cli)
-	assert.NoError(t, err)
-
-	header, err := l2Cli.HeaderByNumber(context.Background(), big.NewInt(0))
-	assert.NoError(t, err)
-	batchData := rollup.IScrollChainBatch{
-		Blocks: []rollup.IScrollChainBlockContext{
-			{
-				BlockHash:       header.Hash(),
-				ParentHash:      header.ParentHash,
-				BlockNumber:     header.Number.Uint64(),
-				Timestamp:       header.Time,
-				BaseFee:         header.BaseFee,
-				GasLimit:        header.GasLimit,
-				NumTransactions: 0,
-				NumL1Messages:   0,
-			},
-		},
-		BatchIndex:   0,
-		NewStateRoot: header.Root,
+func translateBatch(batchData *ctypes.BatchData) rollup.IScrollChainBatch {
+	batch := batchData.Batch
+	iBatchData := rollup.IScrollChainBatch{
+		Blocks:           make([]rollup.IScrollChainBlockContext, len(batch.Blocks)),
+		PrevStateRoot:    batch.PrevStateRoot,
+		NewStateRoot:     batch.NewStateRoot,
+		WithdrawTrieRoot: batch.WithdrawTrieRoot,
+		BatchIndex:       batch.BatchIndex,
+		ParentBatchHash:  batch.ParentBatchHash,
+		L2Transactions:   batch.L2Transactions,
 	}
-	tx, err := scrollChain.ImportGenesisBatch(l1Auth, batchData)
-	assert.NoError(t, err)
-	receipt, err := bind.WaitMined(context.Background(), l1Cli, tx)
-	assert.NoError(t, err)
-	assert.Equal(t, types.ReceiptStatusSuccessful, receipt.Status)
-}
-
-func TestCheckGenesisBatch(t *testing.T) {
-	l2Cli, err := base.L2Client()
-	assert.NoError(t, err)
-
-	/*scrollChain, err := rollup.NewScrollChain(base.L1Contracts.L1ScrollChain, l1Cli)
-	assert.NoError(t, err)*/
-
-	header, err := l2Cli.HeaderByNumber(context.Background(), big.NewInt(0))
-	assert.NoError(t, err)
-	t.Log(header.Root.Hex())
+	for i, block0 := range batch.Blocks {
+		iBatchData.Blocks[i] = rollup.IScrollChainBlockContext{
+			BlockHash:       block0.BlockHash,
+			ParentHash:      block0.ParentHash,
+			BlockNumber:     block0.BlockNumber,
+			Timestamp:       block0.Timestamp,
+			BaseFee:         block0.BaseFee,
+			GasLimit:        block0.GasLimit,
+			NumTransactions: block0.NumTransactions,
+			NumL1Messages:   block0.NumL1Messages,
+		}
+	}
+	return iBatchData
 }

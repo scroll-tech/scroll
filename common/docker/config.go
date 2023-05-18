@@ -11,7 +11,6 @@ type L1Contracts struct {
 	L1ScrollChain     common.Address `json:"L1ScrollChain"`
 	L1MessageQueue    common.Address `json:"L1MessageQueue"`
 	L1ScrollMessenger common.Address `json:"L1ScrollMessenger"`
-	L1GatewayRouter   common.Address `json:"L1GatewayRouter"`
 	L1ETHGateway      common.Address `json:"L1ETHGateway"`
 }
 
@@ -24,7 +23,6 @@ type L2Contracts struct {
 	L2ScrollMessenger common.Address `json:"L2ScrollMessenger"`
 	L2MessageQueue    common.Address `json:"L2MessageQueue"`
 	L2TxFeeVault      common.Address `json:"L2TxFeeVault"`
-	L2GatewayRouter   common.Address `json:"L2GatewayRouter"`
 	L2ETHGateway      common.Address `json:"L2ETHGateway"`
 }
 
