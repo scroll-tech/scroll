@@ -289,10 +289,10 @@ contract L2ScrollMessenger is ScrollMessengerBase, PausableUpgradeable, IL2Scrol
         uint256 _gasLimit,
         address _refundAddress
     ) internal nonReentrant {
+        require(msg.value >= _value, "Insufficient msg.value");
+
         uint256 _nonce = L2MessageQueue(messageQueue).nextMessageIndex();
         bytes32 _xDomainCalldataHash = keccak256(_encodeXDomainCalldata(msg.sender, _to, _value, _nonce, _message));
-
-        require(msg.value >= _value, "Insufficient msg.value");
 
         // normally this won't happen, since each message has different nonce, but just in case.
         require(!isL2MessageSent[_xDomainCalldataHash], "Duplicated message");
@@ -300,7 +300,9 @@ contract L2ScrollMessenger is ScrollMessengerBase, PausableUpgradeable, IL2Scrol
 
         L2MessageQueue(messageQueue).appendMessage(_xDomainCalldataHash);
 
-        // refund fee to tx.origin
+        emit SentMessage(msg.sender, _to, _value, _nonce, _gasLimit, _message);
+
+        // refund fee to `_refundAddress`.
         unchecked {
             uint256 _refund = msg.value - _value;
             if (_refund > 0) {
@@ -308,8 +310,6 @@ contract L2ScrollMessenger is ScrollMessengerBase, PausableUpgradeable, IL2Scrol
                 require(_success, "Failed to refund the fee");
             }
         }
-
-        emit SentMessage(msg.sender, _to, _value, _nonce, _gasLimit, _message);
     }
 
     /// @dev Internal function to execute a L1 => L2 message.
