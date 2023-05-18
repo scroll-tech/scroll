@@ -99,4 +99,4 @@ This file is responsible for managing task storage and retrieval for the prover.
 
 ## `roller_metrics.go`
 
-This file is called from [`../coordinator/manager.go`](../coordinator/manager.go) and is used to collect metrics from the prover.
+This file is called from [`../coordinator/roller_metrics.go`](../coordinator/roller_metrics.go) and is used to collect metrics from the prover.
