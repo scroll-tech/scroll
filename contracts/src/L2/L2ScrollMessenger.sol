@@ -37,8 +37,6 @@ contract L2ScrollMessenger is ScrollMessengerBase, PausableUpgradeable, IL2Scrol
      * Constants *
      *************/
 
-    uint256 private constant MIN_GAS_LIMIT = 21000;
-
     /// @notice The contract contains the list of L1 blocks.
     address public immutable blockContainer;
 
@@ -266,6 +264,9 @@ contract L2ScrollMessenger is ScrollMessengerBase, PausableUpgradeable, IL2Scrol
         }
     }
 
+    /// @notice Update max failed execution times.
+    /// @dev This function can only called by contract owner.
+    /// @param _maxFailedExecutionTimes The new max failed execution times.
     function updateMaxFailedExecutionTimes(uint256 _maxFailedExecutionTimes) external onlyOwner {
         maxFailedExecutionTimes = _maxFailedExecutionTimes;
 
@@ -276,6 +277,11 @@ contract L2ScrollMessenger is ScrollMessengerBase, PausableUpgradeable, IL2Scrol
      * Internal Functions *
      **********************/
 
+    /// @dev Internal function to send cross domain message.
+    /// @param _to The address of account who receive the message.
+    /// @param _value The amount of ether passed when call target contract.
+    /// @param _message The content of the message.
+    /// @param _gasLimit Optional gas limit to complete the message relay on corresponding chain.
     function _sendMessage(
         address _to,
         uint256 _value,
@@ -283,21 +289,10 @@ contract L2ScrollMessenger is ScrollMessengerBase, PausableUpgradeable, IL2Scrol
         uint256 _gasLimit,
         address _refundAddress
     ) internal nonReentrant {
-        // by pass fee vault relay
-        if (feeVault != msg.sender) {
-            require(_gasLimit >= MIN_GAS_LIMIT, "gas limit too small");
-        }
-
-        // compute and deduct the messaging fee to fee vault.
-        uint256 _fee = _gasLimit * IL1GasPriceOracle(gasOracle).l1BaseFee();
-        require(msg.value >= _value + _fee, "Insufficient msg.value");
-        if (_fee > 0) {
-            (bool _success, ) = feeVault.call{value: _fee}("");
-            require(_success, "Failed to deduct the fee");
-        }
-
         uint256 _nonce = L2MessageQueue(messageQueue).nextMessageIndex();
         bytes32 _xDomainCalldataHash = keccak256(_encodeXDomainCalldata(msg.sender, _to, _value, _nonce, _message));
+
+        require(msg.value >= _value, "Insufficient msg.value");
 
         // normally this won't happen, since each message has different nonce, but just in case.
         require(!isL2MessageSent[_xDomainCalldataHash], "Duplicated message");
@@ -305,18 +300,24 @@ contract L2ScrollMessenger is ScrollMessengerBase, PausableUpgradeable, IL2Scrol
 
         L2MessageQueue(messageQueue).appendMessage(_xDomainCalldataHash);
 
-        emit SentMessage(msg.sender, _to, _value, _nonce, _gasLimit, _message);
-
         // refund fee to tx.origin
         unchecked {
-            uint256 _refund = msg.value - _fee - _value;
+            uint256 _refund = msg.value - _value;
             if (_refund > 0) {
                 (bool _success, ) = _refundAddress.call{value: _refund}("");
                 require(_success, "Failed to refund the fee");
             }
         }
+
+        emit SentMessage(msg.sender, _to, _value, _nonce, _gasLimit, _message);
     }
 
+    /// @dev Internal function to execute a L1 => L2 message.
+    /// @param _from The address of the sender of the message.
+    /// @param _to The address of the recipient of the message.
+    /// @param _value The msg.value passed to the message call.
+    /// @param _message The content of the message.
+    /// @param _xDomainCalldataHash The hash of the message.
     function _executeMessage(
         address _from,
         address _to,

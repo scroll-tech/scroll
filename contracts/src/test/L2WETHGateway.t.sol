@@ -337,7 +337,7 @@ contract L2WETHGatewayTest is L2GatewayTestBase {
     ) private {
         amount = bound(amount, 0, l2weth.balanceOf(address(this)));
         gasLimit = bound(gasLimit, 21000, 1000000);
-        feePerGas = bound(feePerGas, 0, 1000);
+        feePerGas = 0;
 
         setL1BaseFee(feePerGas);
 
@@ -411,7 +411,7 @@ contract L2WETHGatewayTest is L2GatewayTestBase {
     ) private {
         amount = bound(amount, 0, l1weth.balanceOf(address(this)));
         gasLimit = bound(gasLimit, 21000, 1000000);
-        feePerGas = bound(feePerGas, 0, 1000);
+        feePerGas = 0;
 
         setL1BaseFee(feePerGas);
 
@@ -486,7 +486,7 @@ contract L2WETHGatewayTest is L2GatewayTestBase {
     ) private {
         amount = bound(amount, 0, l1weth.balanceOf(address(this)));
         gasLimit = bound(gasLimit, 21000, 1000000);
-        feePerGas = bound(feePerGas, 0, 1000);
+        feePerGas = 0;
 
         setL1BaseFee(feePerGas);
 

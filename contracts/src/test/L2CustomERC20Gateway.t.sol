@@ -302,7 +302,7 @@ contract L2CustomERC20GatewayTest is L2GatewayTestBase {
     ) private {
         amount = bound(amount, 0, l2Token.balanceOf(address(this)));
         gasLimit = bound(gasLimit, 21000, 1000000);
-        feePerGas = bound(feePerGas, 0, 1000);
+        feePerGas = 0;
 
         setL1BaseFee(feePerGas);
 
@@ -380,7 +380,7 @@ contract L2CustomERC20GatewayTest is L2GatewayTestBase {
     ) private {
         amount = bound(amount, 0, l2Token.balanceOf(address(this)));
         gasLimit = bound(gasLimit, 21000, 1000000);
-        feePerGas = bound(feePerGas, 0, 1000);
+        feePerGas = 0;
 
         setL1BaseFee(feePerGas);
 
@@ -459,7 +459,7 @@ contract L2CustomERC20GatewayTest is L2GatewayTestBase {
     ) private {
         amount = bound(amount, 0, l2Token.balanceOf(address(this)));
         gasLimit = bound(gasLimit, 21000, 1000000);
-        feePerGas = bound(feePerGas, 0, 1000);
+        feePerGas = 0;
 
         setL1BaseFee(feePerGas);
 

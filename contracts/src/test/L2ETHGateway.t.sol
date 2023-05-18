@@ -251,7 +251,7 @@ contract L2ETHGatewayTest is L2GatewayTestBase {
     ) private {
         amount = bound(amount, 0, address(this).balance / 2);
         gasLimit = bound(gasLimit, 21000, 1000000);
-        feePerGas = bound(feePerGas, 0, 1000);
+        feePerGas = 0;
 
         setL1BaseFee(feePerGas);
 
@@ -319,7 +319,7 @@ contract L2ETHGatewayTest is L2GatewayTestBase {
     ) private {
         amount = bound(amount, 0, address(this).balance / 2);
         gasLimit = bound(gasLimit, 21000, 1000000);
-        feePerGas = bound(feePerGas, 0, 1000);
+        feePerGas = 0;
 
         setL1BaseFee(feePerGas);
 
@@ -388,7 +388,7 @@ contract L2ETHGatewayTest is L2GatewayTestBase {
     ) private {
         amount = bound(amount, 0, address(this).balance / 2);
         gasLimit = bound(gasLimit, 21000, 1000000);
-        feePerGas = bound(feePerGas, 0, 1000);
+        feePerGas = 0;
 
         setL1BaseFee(feePerGas);
 

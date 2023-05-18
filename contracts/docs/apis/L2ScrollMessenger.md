@@ -374,15 +374,15 @@ Update fee vault contract.
 function updateMaxFailedExecutionTimes(uint256 _maxFailedExecutionTimes) external nonpayable
 ```
 
+Update max failed execution times.
 
-
-
+*This function can only called by contract owner.*
 
 #### Parameters
 
 | Name | Type | Description |
 |---|---|---|
-| _maxFailedExecutionTimes | uint256 | undefined |
+| _maxFailedExecutionTimes | uint256 | The new max failed execution times. |
 
 ### updateWhitelist
 
