@@ -260,6 +260,28 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2dabbe35f96fb9507f7330793dc490461b2962659ac5d427181e451a623751d1"
 
 [[package]]
+name = "bin"
+version = "0.3.0"
+dependencies = [
+ "anyhow",
+ "clap",
+ "dotenv",
+ "env_logger",
+ "ethers-providers 1.0.2",
+ "itertools",
+ "log",
+ "rand 0.8.5",
+ "rand_xorshift",
+ "reqwest",
+ "serde",
+ "serde_derive",
+ "serde_json",
+ "tokio",
+ "types",
+ "zkevm",
+]
+
+[[package]]
 name = "bincode"
 version = "1.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -411,8 +433,8 @@ version = "0.1.0"
 source = "git+https://github.com/scroll-tech/zkevm-circuits.git?branch=v0.3#c1c400436fd60b2e80e223e4c10cbff38d41e307"
 dependencies = [
  "eth-types",
- "ethers-core",
- "ethers-providers",
+ "ethers-core 0.17.0",
+ "ethers-providers 0.17.0",
  "ethers-signers",
  "fp-evm",
  "gadgets",
@@ -1146,7 +1168,7 @@ name = "eth-types"
 version = "0.1.0"
 source = "git+https://github.com/scroll-tech/zkevm-circuits.git?branch=v0.3#c1c400436fd60b2e80e223e4c10cbff38d41e307"
 dependencies = [
- "ethers-core",
+ "ethers-core 0.17.0",
  "ethers-signers",
  "halo2_proofs",
  "hex",
@@ -1174,6 +1196,23 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e4966fba78396ff92db3b817ee71143eccd98acf0f876b8d600e585a670c5d1b"
 dependencies = [
  "ethereum-types 0.13.1",
+ "hex",
+ "once_cell",
+ "regex",
+ "serde",
+ "serde_json",
+ "sha3 0.10.1",
+ "thiserror",
+ "uint",
+]
+
+[[package]]
+name = "ethabi"
+version = "18.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7413c5f74cc903ea37386a8965a936cbeb334bd270862fdece542c1b2dcbc898"
+dependencies = [
+ "ethereum-types 0.14.1",
  "hex",
  "once_cell",
  "regex",
@@ -1271,7 +1310,7 @@ dependencies = [
  "chrono",
  "convert_case",
  "elliptic-curve",
- "ethabi",
+ "ethabi 17.2.0",
  "fastrlp",
  "generic-array 0.14.6",
  "hex",
@@ -1291,6 +1330,32 @@ dependencies = [
 ]
 
 [[package]]
+name = "ethers-core"
+version = "1.0.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ade3e9c97727343984e1ceada4fdab11142d2ee3472d2c67027d56b1251d4f15"
+dependencies = [
+ "arrayvec 0.7.2",
+ "bytes",
+ "chrono",
+ "elliptic-curve",
+ "ethabi 18.0.0",
+ "generic-array 0.14.6",
+ "hex",
+ "k256",
+ "open-fastrlp",
+ "rand 0.8.5",
+ "rlp",
+ "rlp-derive",
+ "serde",
+ "serde_json",
+ "strum",
+ "thiserror",
+ "tiny-keccak",
+ "unicode-xid",
+]
+
+[[package]]
 name = "ethers-providers"
 version = "0.17.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1299,7 +1364,44 @@ dependencies = [
  "async-trait",
  "auto_impl",
  "base64 0.13.0",
- "ethers-core",
+ "ethers-core 0.17.0",
+ "futures-channel",
+ "futures-core",
+ "futures-timer",
+ "futures-util",
+ "getrandom 0.2.7",
+ "hashers",
+ "hex",
+ "http",
+ "once_cell",
+ "parking_lot 0.11.2",
+ "pin-project",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "tokio",
+ "tokio-tungstenite",
+ "tracing",
+ "tracing-futures",
+ "url",
+ "wasm-bindgen",
+ "wasm-bindgen-futures",
+ "wasm-timer",
+ "web-sys",
+ "ws_stream_wasm",
+]
+
+[[package]]
+name = "ethers-providers"
+version = "1.0.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a1a9e0597aa6b2fdc810ff58bc95e4eeaa2c219b3e615ed025106ecb027407d8"
+dependencies = [
+ "async-trait",
+ "auto_impl",
+ "base64 0.13.0",
+ "ethers-core 1.0.2",
  "futures-channel",
  "futures-core",
  "futures-timer",
@@ -1338,7 +1440,7 @@ dependencies = [
  "coins-bip39",
  "elliptic-curve",
  "eth-keystore",
- "ethers-core",
+ "ethers-core 0.17.0",
  "hex",
  "rand 0.8.5",
  "sha2 0.10.2",
@@ -1474,6 +1576,21 @@ dependencies = [
  "bitvec 1.0.1",
  "rand_core 0.6.3",
  "subtle",
+]
+
+[[package]]
+name = "ffi"
+version = "0.3.0"
+dependencies = [
+ "env_logger",
+ "libc",
+ "log",
+ "once_cell",
+ "serde",
+ "serde_derive",
+ "serde_json",
+ "types",
+ "zkevm",
 ]
 
 [[package]]
@@ -1826,6 +1943,34 @@ name = "gimli"
 version = "0.27.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "dec7af912d60cdbd3677c1af9352ebae6fb8394d165568a2234df0fa00f87793"
+
+[[package]]
+name = "git-version"
+version = "0.3.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f6b0decc02f4636b9ccad390dcbe77b722a77efedfa393caf8379a51d5c61899"
+dependencies = [
+ "git-version-macro",
+ "proc-macro-hack",
+]
+
+[[package]]
+name = "git-version-macro"
+version = "0.3.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fe69f1cbdb6e28af2bac214e943b99ce8a0a06b447d15d3e61161b0423139f3f"
+dependencies = [
+ "proc-macro-hack",
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
+name = "glob"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9b919933a397b79c37e33b77bb2aa3dc8eb6e165ad809e58ff75bc7db2e34574"
 
 [[package]]
 name = "globset"
@@ -2718,7 +2863,7 @@ version = "0.1.0"
 source = "git+https://github.com/scroll-tech/zkevm-circuits.git?branch=v0.3#c1c400436fd60b2e80e223e4c10cbff38d41e307"
 dependencies = [
  "eth-types",
- "ethers-core",
+ "ethers-core 0.17.0",
  "ethers-signers",
  "external-tracer",
  "itertools",
@@ -2883,6 +3028,31 @@ name = "opaque-debug"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "624a8340c38c1b80fd549087862da4ba43e08858af025b236e509b6649fc13d5"
+
+[[package]]
+name = "open-fastrlp"
+version = "0.1.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "786393f80485445794f6043fd3138854dd109cc6c4bd1a6383db304c9ce9b9ce"
+dependencies = [
+ "arrayvec 0.7.2",
+ "auto_impl",
+ "bytes",
+ "ethereum-types 0.14.1",
+ "open-fastrlp-derive",
+]
+
+[[package]]
+name = "open-fastrlp-derive"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "003b2be5c6c53c1cfeb0a238b8a1c3915cd410feb684457a36c10038f764bb1c"
+dependencies = [
+ "bytes",
+ "proc-macro2",
+ "quote",
+ "syn",
+]
 
 [[package]]
 name = "os_str_bytes"
@@ -3326,6 +3496,12 @@ dependencies = [
  "quote",
  "version_check",
 ]
+
+[[package]]
+name = "proc-macro-hack"
+version = "0.5.19"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "dbf0c48bc1d91375ae5c3cd81e3722dff1abcf81a30960240640d223f59fe0e5"
 
 [[package]]
 name = "proc-macro2"
@@ -4078,6 +4254,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "signal-hook-registry"
+version = "1.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d8229b473baa5980ac72ef434c4415e70c4b5e71b423043adb4ba059f89c99a1"
+dependencies = [
+ "libc",
+]
+
+[[package]]
 name = "signature"
 version = "1.6.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4817,10 +5002,25 @@ dependencies = [
  "libc",
  "memchr",
  "mio",
+ "num_cpus",
  "once_cell",
+ "parking_lot 0.12.1",
  "pin-project-lite",
+ "signal-hook-registry",
  "socket2",
+ "tokio-macros",
  "winapi",
+]
+
+[[package]]
+name = "tokio-macros"
+version = "1.8.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d266c00fde287f55d3f1c3e96c500c362a2b8c695076ec180f27918820bc6df8"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
 ]
 
 [[package]]
@@ -5051,12 +5251,11 @@ checksum = "dcf81ac59edc17cc8697ff311e8f5ef2d99fcbd9817b34cec66f90b6c3dfd987"
 [[package]]
 name = "types"
 version = "0.3.0"
-source = "git+https://github.com/scroll-tech/scroll-zkevm?branch=v0.3#825fb744a5e63c675b9de63c299b367f008f3584"
 dependencies = [
  "base64 0.13.0",
  "blake2",
  "eth-types",
- "ethers-core",
+ "ethers-core 0.17.0",
  "serde",
  "serde_derive",
  "serde_json",
@@ -5727,7 +5926,6 @@ dependencies = [
 [[package]]
 name = "zkevm"
 version = "0.3.0"
-source = "git+https://github.com/scroll-tech/scroll-zkevm?branch=v0.3#825fb744a5e63c675b9de63c299b367f008f3584"
 dependencies = [
  "anyhow",
  "blake2",
@@ -5736,7 +5934,9 @@ dependencies = [
  "dotenv",
  "env_logger",
  "eth-types",
- "ethers-core",
+ "ethers-core 0.17.0",
+ "git-version",
+ "glob",
  "halo2-snark-aggregator-api",
  "halo2-snark-aggregator-circuit",
  "halo2-snark-aggregator-solidity",
@@ -5770,7 +5970,7 @@ dependencies = [
  "bus-mapping",
  "env_logger",
  "eth-types",
- "ethers-core",
+ "ethers-core 0.17.0",
  "ethers-signers",
  "gadgets",
  "halo2_base",
@@ -5797,22 +5997,6 @@ dependencies = [
  "strum",
  "strum_macros",
  "subtle",
-]
-
-[[package]]
-name = "zkp"
-version = "0.1.0"
-dependencies = [
- "env_logger",
- "halo2_proofs",
- "libc",
- "log",
- "once_cell",
- "serde",
- "serde_derive",
- "serde_json",
- "types",
- "zkevm",
 ]
 
 [[package]]
