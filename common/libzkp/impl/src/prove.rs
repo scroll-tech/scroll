@@ -1,4 +1,5 @@
 use crate::utils::{c_char_to_str, c_char_to_vec, vec_to_c_char};
+use halo2_proofs::SerdeFormat;
 use libc::c_char;
 use std::cell::OnceCell;
 use std::panic;
@@ -17,8 +18,8 @@ pub unsafe extern "C" fn init_prover(params_path: *const c_char, seed_path: *con
 
     let params_path = c_char_to_str(params_path);
     let seed_path = c_char_to_str(seed_path);
-    let params = load_params(params_path, *DEGREE).unwrap();
-    let agg_params = load_params(params_path, *AGG_DEGREE).unwrap();
+    let params = load_params(params_path, *DEGREE, SerdeFormat::RawBytesUnchecked).unwrap();
+    let agg_params = load_params(params_path, *AGG_DEGREE, SerdeFormat::RawBytesUnchecked).unwrap();
     let seed = load_seed(seed_path).unwrap();
     let p = Prover::from_params_and_seed(params, agg_params, seed);
     PROVER.set(p).unwrap();
