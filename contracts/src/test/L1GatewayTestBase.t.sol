@@ -76,10 +76,9 @@ abstract contract L1GatewayTestBase is DSTestPlus {
     }
 
     function prepareL2MessageRoot(bytes32 messageHash) internal {
-        bytes memory _batchHeader = new bytes(121);
+        bytes memory _batchHeader = new bytes(89);
         assembly {
-            mstore(add(_batchHeader, 57), 1)
-            mstore(add(_batchHeader, 89), 1)
+            mstore(add(_batchHeader, add(0x20, 25)), 1)
         }
 
         rollup.importGenesisBatch(_batchHeader, bytes32(uint256(1)), messageHash);

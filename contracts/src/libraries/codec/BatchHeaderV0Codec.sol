@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.0;
 
-/// @dev Below is the encoding for `BatchHeader` V0, total 121 + ceil(l1MessagePopped / 256) * 32 bytes.
+/// @dev Below is the encoding for `BatchHeader` V0, total 89 + ceil(l1MessagePopped / 256) * 32 bytes.
 /// ```text
 ///   * Field                   Bytes       Type        Index   Comments
 ///   * version                 1           uint8       0       The batch version
@@ -10,14 +10,13 @@ pragma solidity ^0.8.0;
 ///   * l1MessagePopped         8           uint64      9       Number of L1 message popped in the batch
 ///   * totalL1MessagePopped    8           uint64      17      Number of total L1 message popped after the batch
 ///   * dataHash                32          bytes32     25      The data hash of the batch
-///   * lastBlockHash           32          bytes32     57      The block hash of the last block in the batch
-///   * parentBatchHash         32          bytes32     89      The parent batch hash
-///   * skippedL1MessageBitmap  dynamic     uint256[]   121     A bitmap to indicate if L1 messages are skipped in the batch
+///   * parentBatchHash         32          bytes32     57      The parent batch hash
+///   * skippedL1MessageBitmap  dynamic     uint256[]   89     A bitmap to indicate if L1 messages are skipped in the batch
 /// ```
 library BatchHeaderV0Codec {
     function loadAndValidate(bytes calldata _batchHeader) internal pure returns (uint256 memPtr, uint256 length) {
         length = _batchHeader.length;
-        require(length >= 121, "batch header length too small");
+        require(length >= 89, "batch header length too small");
 
         // copy batch header to memory.
         assembly {
@@ -30,7 +29,7 @@ library BatchHeaderV0Codec {
         uint256 _l1MessagePopped = BatchHeaderV0Codec.l1MessagePopped(memPtr);
 
         unchecked {
-            require(length == 121 + ((_l1MessagePopped + 255) / 256) * 32, "wrong bitmap length");
+            require(length == 89 + ((_l1MessagePopped + 255) / 256) * 32, "wrong bitmap length");
         }
     }
 
@@ -64,15 +63,9 @@ library BatchHeaderV0Codec {
         }
     }
 
-    function lastBlockHash(uint256 memPtr) internal pure returns (bytes32 _lastBlockHash) {
-        assembly {
-            _lastBlockHash := mload(add(memPtr, 57))
-        }
-    }
-
     function parentBatchHash(uint256 memPtr) internal pure returns (bytes32 _parentBatchHash) {
         assembly {
-            _parentBatchHash := mload(add(memPtr, 89))
+            _parentBatchHash := mload(add(memPtr, 57))
         }
     }
 
@@ -106,32 +99,28 @@ library BatchHeaderV0Codec {
         }
     }
 
-    function storeLastBlockHash(uint256 memPtr, bytes32 _lastBlockHash) internal pure {
-        assembly {
-            mstore(add(memPtr, 57), _lastBlockHash)
-        }
-    }
-
     function storeParentBatchHash(uint256 memPtr, bytes32 _parentBatchHash) internal pure {
         assembly {
-            mstore(add(memPtr, 89), _parentBatchHash)
+            mstore(add(memPtr, 57), _parentBatchHash)
         }
     }
 
-    function storeBitMap(uint256 memPtr, uint256 bitmapPtr) internal pure {
-        uint256 _l1MessagePopped = l1MessagePopped(memPtr);
-
+    function storeBitMap(uint256 memPtr, bytes calldata _skippedL1MessageBitmap) internal pure {
         assembly {
-            memPtr := add(memPtr, 121)
-            for {
-                let i := 0
-            } lt(i, _l1MessagePopped) {
-                i := add(i, 256)
-            } {
-                mstore(memPtr, bitmapPtr)
-                memPtr := add(memPtr, 0x20)
-                bitmapPtr := add(bitmapPtr, 0x20)
-            }
+            calldatacopy(add(memPtr, 89), _skippedL1MessageBitmap.offset, _skippedL1MessageBitmap.length)
+        }
+    }
+
+    /// @notice Compute the batch hash.
+    /// @dev Caller should make sure that the encoded batch header is correct.
+    ///
+    /// @param memPtr The memory offset of the encoded batch header.
+    /// @param length The length of the batch.
+    /// @return _batchHash The hash of the corresponding batch.
+    function computeBatchHash(uint256 memPtr, uint256 length) internal pure returns (bytes32 _batchHash) {
+        // in current version, the hash is: keccak(BatchHeader without timestamp)
+        assembly {
+            _batchHash := keccak256(memPtr, length)
         }
     }
 }

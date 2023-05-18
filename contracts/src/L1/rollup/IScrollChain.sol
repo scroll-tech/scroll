@@ -47,52 +47,15 @@ interface IScrollChain {
 
     /// @notice commit a batch in layer 1
     ///
-    /// @dev Below is the encoding for `BatchHeader`, total 121 + ceil(l1MessagePopped / 256) * 32 bytes.
-    /// ```text
-    ///   * Field                   Bytes       Type        Index   Comments
-    ///   * version                 1           uint8       0       The batch version
-    ///   * batchIndex              8           uint64      1       The index of the batch
-    ///   * l1MessagePopped         8           uint64      9       Number of L1 message popped in the batch
-    ///   * totalL1MessagePopped    8           uint64      17      Number of total L1 message popped after the batch
-    ///   * dataHash                32          bytes32     25      The data hash of the batch
-    ///   * lastBlockHash           32          bytes32     57      The block hash of the last block in the batch
-    ///   * parentBatchHash         32          bytes32     89      The parent batch hash
-    ///   * skippedL1MessageBitmap  dynamic     uint256[]   121     A bitmap to indicate if L1 messages are skipped in the batch
-    /// ```
-    ///
-    /// @dev Below is the encoding for `Chunk`, total 156*n+1+m bytes.
-    /// ```text
-    ///   * Field           Bytes       Type            Index       Comments
-    ///   * numBlocks       1           uint8           0           The number of blocks in this chunk
-    ///   * block[0]        156         BlockContext    1           The first block in this chunk
-    ///   * ......
-    ///   * block[i]        156         BlockContext    156*i+1     The first block in this chunk
-    ///   * ......
-    ///   * block[n-1]      156         BlockContext    156*n-155   The last block in this chunk
-    ///   * l2Transactions  dynamic     bytes           156*n+1
-    /// ```
-    ///
-    /// @dev Below is the encoding for `BlockContext`, total 156 bytes.
-    /// ```text
-    ///   * Field                   Bytes      Type         Index  Comments
-    ///   * blockHash               32         bytes32      0      The hash of this block.
-    ///   * parentHash              32         bytes32      32     The parent hash of this block.
-    ///   * blockNumber             8          uint64       64     The height of this block.
-    ///   * timestamp               8          uint64       72     The timestamp of this block.
-    ///   * baseFee                 32         uint256      80     The base fee of this block. Currently, it is not used, because we disable EIP-1559.
-    ///   * gasLimit                8          uint64       112    The gas limit of this block.
-    ///   * numTransactions         2          uint16       120    The number of transactions in this block, both L1 & L2 txs.
-    ///   * numL1Messages           2          uint16       122    The number of l1 messages in this block.
-    ///   * skippedL1MessageBitmap  32         uint256      124    A bitmap to indicate if L1 messages are skipped in the block
-    /// ```
-    ///
     /// @param version The version of current batch.
-    /// @param parentBatchHeader The header of parent batch, see the encoding above.
-    /// @param chunks The list of encoded chunks, see the encoding above.
+    /// @param parentBatchHeader The header of parent batch, see the comments of `BatchHeaderV0Codec`.
+    /// @param chunks The list of encoded chunks, see the comments of `ChunkCodec`.
+    /// @param skippedL1MessageBitmap The bitmap indicates whether each L1 message is skipped or not.
     function commitBatch(
         uint8 version,
         bytes calldata parentBatchHeader,
-        bytes[] memory chunks
+        bytes[] memory chunks,
+        bytes calldata skippedL1MessageBitmap
     ) external;
 
     /// @notice Revert a pending batch.
@@ -105,7 +68,7 @@ interface IScrollChain {
     /// @param prevStateRoot The state root of parent batch.
     /// @param newStateRoot The state root of current batch.
     /// @param withdrawRoot The withdraw trie root of current batch.
-    /// @param aggrProof The aggregated proof for current batch.
+    /// @param aggrProof The aggregation proof for current batch.
     function finalizeBatchWithProof(
         bytes calldata batchHeader,
         bytes32 prevStateRoot,
