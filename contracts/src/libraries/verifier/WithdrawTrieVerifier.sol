@@ -9,8 +9,8 @@ library WithdrawTrieVerifier {
         uint256 _nonce,
         bytes memory _proof
     ) internal pure returns (bool) {
-        require(_proof.length % 256 == 0, "Invalid proof");
-        uint256 _length = _proof.length / 256;
+        require(_proof.length % 32 == 0, "Invalid proof");
+        uint256 _length = _proof.length / 32;
 
         for (uint256 i = 0; i < _length; i++) {
             bytes32 item;
