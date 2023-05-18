@@ -21,8 +21,8 @@ type MockApp struct {
 
 	mockApps map[utils.MockAppName]docker.AppAPI
 
-	originConfigFile string
-	BridgeConfigFile string
+	originFile string
+	bridgeFile string
 
 	args []string
 }
@@ -32,11 +32,11 @@ func NewBridgeApp(base *docker.App, file string) *MockApp {
 
 	bridgeFile := fmt.Sprintf("/tmp/%d_bridge-config.json", base.Timestamp)
 	bridgeApp := &MockApp{
-		base:             base,
-		mockApps:         make(map[utils.MockAppName]docker.AppAPI),
-		originConfigFile: file,
-		BridgeConfigFile: bridgeFile,
-		args:             []string{"--log.debug", "--config", bridgeFile},
+		base:       base,
+		mockApps:   make(map[utils.MockAppName]docker.AppAPI),
+		originFile: file,
+		bridgeFile: bridgeFile,
+		args:       []string{"--log.debug", "--config", bridgeFile},
 	}
 	if err := bridgeApp.MockConfig(true); err != nil {
 		panic(err)
@@ -75,14 +75,14 @@ func (b *MockApp) WaitExit() {
 // Free stop and release bridge mocked apps.
 func (b *MockApp) Free() {
 	b.WaitExit()
-	_ = os.Remove(b.BridgeConfigFile)
+	_ = os.Remove(b.bridgeFile)
 }
 
 // MockConfig creates a new bridge config.
 func (b *MockApp) MockConfig(store bool) error {
 	base := b.base
 	// Load origin bridge config file.
-	cfg, err := config.NewConfig(b.originConfigFile)
+	cfg, err := config.NewConfig(b.originFile)
 	if err != nil {
 		return err
 	}
@@ -130,5 +130,5 @@ func (b *MockApp) MockConfig(store bool) error {
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(b.BridgeConfigFile, data, 0600)
+	return os.WriteFile(b.bridgeFile, data, 0600)
 }

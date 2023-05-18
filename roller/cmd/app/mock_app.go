@@ -32,10 +32,10 @@ type RollerApp struct {
 
 	base *docker.App
 
-	originFile       string
-	RollerConfigFile string
-	bboltDB          string
-	keystore         string
+	originFile string
+	rollerFile string
+	bboltDB    string
+	keystore   string
 
 	index int
 	name  string
@@ -47,13 +47,13 @@ type RollerApp struct {
 func NewRollerApp(base *docker.App, file string, wsUrl string) *RollerApp {
 	rollerFile := fmt.Sprintf("/tmp/%d_roller-config.json", base.Timestamp)
 	rollerApp := &RollerApp{
-		base:             base,
-		originFile:       file,
-		RollerConfigFile: rollerFile,
-		bboltDB:          fmt.Sprintf("/tmp/%d_bbolt_db", base.Timestamp),
-		index:            getIndex(),
-		name:             string(utils.RollerApp),
-		args:             []string{"--log.debug", "--config", rollerFile},
+		base:       base,
+		originFile: file,
+		rollerFile: rollerFile,
+		bboltDB:    fmt.Sprintf("/tmp/%d_bbolt_db", base.Timestamp),
+		index:      getIndex(),
+		name:       string(utils.RollerApp),
+		args:       []string{"--log.debug", "--config", rollerFile},
 	}
 	if err := rollerApp.MockConfig(true, wsUrl); err != nil {
 		panic(err)
@@ -72,7 +72,7 @@ func (r *RollerApp) Free() {
 	if !utils.IsNil(r.AppAPI) {
 		r.AppAPI.WaitExit()
 	}
-	_ = os.Remove(r.RollerConfigFile)
+	_ = os.Remove(r.rollerFile)
 	_ = os.Remove(r.Config.KeystorePath)
 	_ = os.Remove(r.bboltDB)
 }
@@ -104,7 +104,7 @@ func (r *RollerApp) MockConfig(store bool, wsUrl string) error {
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(r.RollerConfigFile, data, 0644)
+	return os.WriteFile(r.rollerFile, data, 0644)
 }
 
 // RollerApps rollerApp list.
