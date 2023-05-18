@@ -27,7 +27,7 @@ type TxHistoryInfo struct {
 	BlockNumber    uint64     `json:"blockNumber"`
 	BlockTimestamp *time.Time `json:"blockTimestamp"` // useless
 	FinalizeTx     *Finalized `json:"finalizeTx"`
-	CreatedTime    *time.Time `json:"createdTime"`
+	CreatedAt      *time.Time `json:"createdAt"`
 }
 
 // HistoryService example service.
@@ -82,7 +82,7 @@ func (h *historyBackend) GetTxsByAddress(address common.Address, offset int64, l
 			To:          msg.Target,
 			IsL1:        msg.MsgType == int(orm.Layer1Msg),
 			BlockNumber: msg.Height,
-			CreatedTime: msg.CreatedTime,
+			CreatedAt:   msg.CreatedAt,
 			FinalizeTx: &Finalized{
 				Hash: "",
 			},
@@ -107,7 +107,7 @@ func (h *historyBackend) GetTxsByHashes(hashes []string) ([]*TxHistoryInfo, erro
 				To:          l1result.Target,
 				IsL1:        true,
 				BlockNumber: l1result.Height,
-				CreatedTime: l1result.CreatedTime,
+				CreatedAt:   l1result.CreatedAt,
 				FinalizeTx: &Finalized{
 					Hash: "",
 				},
@@ -127,7 +127,7 @@ func (h *historyBackend) GetTxsByHashes(hashes []string) ([]*TxHistoryInfo, erro
 				To:          l2result.Target,
 				IsL1:        false,
 				BlockNumber: l2result.Height,
-				CreatedTime: l2result.CreatedTime,
+				CreatedAt:   l2result.CreatedAt,
 				FinalizeTx: &Finalized{
 					Hash: "",
 				},
