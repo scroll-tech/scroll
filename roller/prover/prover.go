@@ -57,7 +57,7 @@ func (p *Prover) Prove(task *message.TaskMsg) (*message.AggProof, error) {
 		if err != nil {
 			return nil, err
 		}
-		println("json marshal  task trace!!!!")
+
 		proofByt = p.prove(tracesByt)
 	} else if p.cfg.ProveType == message.AggregatorProve {
 		// TODO: aggregator prove
