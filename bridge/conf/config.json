@@ -90,6 +90,8 @@
     "driver_name": "postgres",
     "dsn": "postgres://admin:123456@localhost/test?sslmode=disable",
     "maxOpenNum": 200,
-    "maxIdleNum": 20
+    "maxIdleNum": 20,
+    "slow_sql_threshold": "3s",
+    "is_show_sql": true
   }
 }

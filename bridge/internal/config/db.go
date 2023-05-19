@@ -1,9 +1,10 @@
-package types
+package config
 
 import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"time"
 )
 
 // DBConfig db config
@@ -14,10 +15,13 @@ type DBConfig struct {
 
 	MaxOpenNum int `json:"maxOpenNum"`
 	MaxIdleNum int `json:"maxIdleNum"`
+
+	SlowSqlThreshold time.Duration `json:"slow_sql_threshold"`
+	ShowSql          bool          `json:"show_sql"`
 }
 
-// NewConfig returns a new instance of Config.
-func NewConfig(file string) (*DBConfig, error) {
+// NewDBConfig returns a new instance of Config.
+func NewDBConfig(file string) (*DBConfig, error) {
 	buf, err := os.ReadFile(filepath.Clean(file))
 	if err != nil {
 		return nil, err

@@ -1,14 +1,32 @@
 package utils
 
 import (
+	"log"
+	"os"
+
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
 
-	"scroll-tech/bridge/internal/types"
+	"scroll-tech/bridge/internal/config"
 )
 
-func InitDB(config *types.DBConfig) (*gorm.DB, error) {
-	db, err := gorm.Open(postgres.Open(config.DSN), &gorm.Config{})
+func InitDB(config *config.DBConfig) (*gorm.DB, error) {
+	logLevel := logger.Silent
+	if config.ShowSql {
+		logLevel = logger.Info
+	}
+	newLogger := logger.New(
+		log.New(os.Stdout, "\r\n", log.LstdFlags), // io writer
+		logger.Config{
+			SlowThreshold: config.SlowSqlThreshold, // Slow SQL threshold
+			LogLevel:      logLevel,                // Log level
+		},
+	)
+
+	db, err := gorm.Open(postgres.Open(config.DSN), &gorm.Config{
+		Logger: newLogger,
+	})
 	if err != nil {
 		return nil, err
 	}
