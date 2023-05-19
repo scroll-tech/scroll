@@ -10,7 +10,7 @@ pragma solidity ^0.8.0;
 ///   * ......
 ///   * block[i]        60          BlockContext    60*i+1      The first block in this chunk
 ///   * ......
-///   * block[n-1]      60          BlockContext    60*n-155    The last block in this chunk
+///   * block[n-1]      60          BlockContext    60*n-59   The last block in this chunk
 ///   * l2Transactions  dynamic     bytes           60*n+1
 /// ```
 ///
@@ -27,6 +27,10 @@ pragma solidity ^0.8.0;
 library ChunkCodec {
     uint256 internal constant BLOCK_CONTEXT_LENGTH = 60;
 
+    /// @notice Validate the length of chunk.
+    /// @param chunkPtr The start memory offset of the chunk in memory.
+    /// @param _length The length of the chunk.
+    /// @return _numBlocks The number of blocks in current chunk.
     function validateChunkLength(uint256 chunkPtr, uint256 _length) internal pure returns (uint256 _numBlocks) {
         _numBlocks = numBlocks(chunkPtr);
 
@@ -37,18 +41,30 @@ library ChunkCodec {
         require(_length >= 1 + _numBlocks * BLOCK_CONTEXT_LENGTH, "invalid chunk length");
     }
 
+    /// @notice Return the start memory offset of `l2Transactions`.
+    /// @param chunkPtr The start memory offset of the chunk in memory.
+    /// @param _numBlocks The number of blocks in current chunk.
+    /// @return _l2TxPtr the start memory offset of `l2Transactions`.
     function l2TxPtr(uint256 chunkPtr, uint256 _numBlocks) internal pure returns (uint256 _l2TxPtr) {
         unchecked {
             _l2TxPtr = chunkPtr + 1 + _numBlocks * BLOCK_CONTEXT_LENGTH;
         }
     }
 
+    /// @notice Return the number of blocks in current chunk.
+    /// @param chunkPtr The start memory offset of the chunk in memory.
+    /// @return _numBlocks The number of blocks in current chunk.
     function numBlocks(uint256 chunkPtr) internal pure returns (uint256 _numBlocks) {
         assembly {
             _numBlocks := shr(248, mload(chunkPtr))
         }
     }
 
+    /// @notice Copy the block context to another memory.
+    /// @param chunkPtr The start memory offset of the chunk in memory.
+    /// @param dstPtr The destination memory offset to store the block context.
+    /// @param index The index of block context to copy.
+    /// @return uint256 The new destination memory offset after copy.
     function copyBlockContext(
         uint256 chunkPtr,
         uint256 dstPtr,
@@ -69,19 +85,30 @@ library ChunkCodec {
         return dstPtr;
     }
 
+    /// @notice Return the number of transactions in current block.
+    /// @param chunkPtr The start memory offset of the block context in memory.
+    /// @return _numTransactions The number of transactions in current block.
     function numTransactions(uint256 chunkPtr) internal pure returns (uint256 _numTransactions) {
         assembly {
             _numTransactions := shr(240, mload(add(chunkPtr, 56)))
         }
     }
 
+    /// @notice Return the number of L1 messages in current block.
+    /// @param chunkPtr The start memory offset of the block context in memory.
+    /// @return _numL1Messages The number of L1 messages in current block.
     function numL1Messages(uint256 chunkPtr) internal pure returns (uint256 _numL1Messages) {
         assembly {
             _numL1Messages := shr(240, mload(add(chunkPtr, 58)))
         }
     }
 
-    function loadL2TxHash(uint256 _l2TxPtr) internal pure returns (bytes32 txHash, uint256) {
+    /// @notice Compute and load the transaction hash.
+    /// @param _l2TxPtr The start memory offset of the transaction in memory.
+    /// @return bytes32 The transaction hash of the transaction.
+    /// @return uint256 The start memory offset of the next transaction in memory.
+    function loadL2TxHash(uint256 _l2TxPtr) internal pure returns (bytes32, uint256) {
+        bytes32 txHash;
         assembly {
             // first 4 bytes indicate the length
             let txPayloadLength := shr(224, mload(_l2TxPtr))

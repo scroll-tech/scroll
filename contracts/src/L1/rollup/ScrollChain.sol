@@ -177,7 +177,6 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
                 _skippedL1MessageBitmap
             );
 
-            // load `numL1Messages` from memory
             unchecked {
                 _totalL1MessagesPoppedInBatch += _totalNumL1MessagesInChunk;
                 _totalL1MessagesPoppedOverall += _totalNumL1MessagesInChunk;
@@ -185,6 +184,7 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
             }
         }
 
+        // check the length of bitmap
         unchecked {
             require(
                 ((_totalL1MessagesPoppedInBatch + 255) / 256) * 32 == _skippedL1MessageBitmap.length,
@@ -195,20 +195,21 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
         // compute current batch hash
         bytes32 _dataHash;
         assembly {
-            memPtr := sub(memPtr, mul(_chunksLength, 0x20))
-            _dataHash := keccak256(memPtr, mul(_chunksLength, 0x20))
-            memPtr := mload(0x20)
-            _batchIndex := add(_batchIndex, 1)
+            let dataLen := mul(_chunksLength, 0x20)
+            _dataHash := keccak256(sub(memPtr, dataLen), dataLen)
+
+            memPtr := mload(0x40) // reset memPtr
+            _batchIndex := add(_batchIndex, 1) // increase batch index
         }
 
-        // store entries
+        // store entries, the order matters
         BatchHeaderV0Codec.storeVersion(memPtr, _version);
         BatchHeaderV0Codec.storeBatchIndex(memPtr, _batchIndex);
         BatchHeaderV0Codec.storeL1MessagePopped(memPtr, _totalL1MessagesPoppedInBatch);
         BatchHeaderV0Codec.storeTotalL1MessagePopped(memPtr, _totalL1MessagesPoppedOverall);
         BatchHeaderV0Codec.storeDataHash(memPtr, _dataHash);
         BatchHeaderV0Codec.storeParentBatchHash(memPtr, _parentBatchHash);
-        BatchHeaderV0Codec.storeBitMap(memPtr, _skippedL1MessageBitmap);
+        BatchHeaderV0Codec.storeSkippedBitmap(memPtr, _skippedL1MessageBitmap);
 
         // compute batch hash
         bytes32 _batchHash = BatchHeaderV0Codec.computeBatchHash(memPtr, 89 + _skippedL1MessageBitmap.length);
@@ -271,7 +272,27 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
         finalizedStateRoots[_batchIndex] = _newStateRoot;
         withdrawRoots[_batchIndex] = _withdrawRoot;
 
-        // @todo pop finalized and non-skipped message from L1MessageQueue.
+        // Pop finalized and non-skipped message from L1MessageQueue.
+        uint256 _l1MessagePopped = BatchHeaderV0Codec.l1MessagePopped(memPtr);
+        if (_l1MessagePopped > 0) {
+            IL1MessageQueue _queue = IL1MessageQueue(messageQueue);
+
+            unchecked {
+                uint256 _startIndex = BatchHeaderV0Codec.totalL1MessagePopped(memPtr) - _l1MessagePopped;
+
+                for (uint256 i = 0; i < _l1MessagePopped; i += 256) {
+                    uint256 _count = 256;
+                    if (_l1MessagePopped - i < _count) {
+                        _count = _l1MessagePopped - i;
+                    }
+                    uint256 _skippedBitmap = BatchHeaderV0Codec.skippedBitmap(memPtr, i / 256);
+
+                    _queue.popCrossDomainMessage(_startIndex, _count, _skippedBitmap);
+
+                    _startIndex += 256;
+                }
+            }
+        }
 
         emit FinalizeBatch(_batchHash, _newStateRoot, _withdrawRoot);
     }
@@ -423,28 +444,32 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
         if (_numL1Messages == 0) return _ptr;
         IL1MessageQueue _messageQueue = IL1MessageQueue(messageQueue);
 
-        for (uint256 j = 0; j < _numL1Messages; j++) {
-            uint256 _skipped;
-            assembly {
-                // compute the position in bitmap
-                let index := add(_totalL1MessagesPoppedInBatch, j)
-                let r := and(index, 0xff)
-                index := shr(8, index)
+        unchecked {
+            uint256 _bitmap;
+            for (uint256 i = 0; i < _numL1Messages; i++) {
+                uint256 quo = _totalL1MessagesPoppedInBatch >> 8;
+                uint256 rem = _totalL1MessagesPoppedInBatch & 0xff;
 
-                // load the corresponding bit
-                _skipped := calldataload(add(_skippedL1MessageBitmap.offset, add(0x20, mul(index, 0x20))))
-                _skipped := and(1, shr(r, _skipped))
-            }
-
-            if (_skipped == 0) {
-                // message not skipped
-                bytes32 _hash = _messageQueue.getCrossDomainMessage(_totalL1MessagesPoppedOverall + j);
-                assembly {
-                    mstore(_ptr, _hash)
-                    _ptr := add(_ptr, 0x20)
+                // load bitmap every 256 bits
+                if (i == 0 || rem == 0) {
+                    assembly {
+                        _bitmap := calldataload(add(_skippedL1MessageBitmap.offset, mul(0x20, quo)))
+                    }
                 }
+                if (((_bitmap >> rem) & 1) == 0) {
+                    // message not skipped
+                    bytes32 _hash = _messageQueue.getCrossDomainMessage(_totalL1MessagesPoppedOverall);
+                    assembly {
+                        mstore(_ptr, _hash)
+                        _ptr := add(_ptr, 0x20)
+                    }
+                }
+
+                _totalL1MessagesPoppedInBatch += 1;
+                _totalL1MessagesPoppedOverall += 1;
             }
         }
+
         return _ptr;
     }
 }
