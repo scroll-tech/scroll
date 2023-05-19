@@ -27,8 +27,8 @@ type BlockBatch struct {
 	TotalL1TxNum        uint64     `json:"total_l1_tx_num" gorm:"column:total_l1_tx_num"`
 	TotalL2Gas          uint64     `json:"total_l2_gas" gorm:"column:total_l2_gas"`
 	ProvingStatus       int        `json:"proving_status" gorm:"column:proving_status;default:1"`
-	Proof               string     `json:"proof" gorm:"column:proof"`
-	InstanceCommitments string     `json:"instance_commitments" gorm:"column:instance_commitments"`
+	Proof               []byte     `json:"proof" gorm:"column:proof"`
+	InstanceCommitments []byte     `json:"instance_commitments" gorm:"column:instance_commitments"`
 	ProofTimeSec        uint64     `json:"proof_time_sec" gorm:"column:proof_time_sec;default:0"`
 	RollupStatus        int        `json:"rollup_status" gorm:"column:rollup_status;default:1"`
 	CommitTxHash        string     `json:"commit_tx_hash" gorm:"column:commit_tx_hash"`
@@ -86,7 +86,7 @@ func (o *BlockBatch) GetBlockBatches(fields map[string]interface{}, orderByList 
 // GetVerifiedProofAndInstanceCommitmentsByHash get verified proof and instance comments by hash
 func (o *BlockBatch) GetVerifiedProofAndInstanceCommitmentsByHash(hash string) ([]byte, []byte, error) {
 	var blockBatch BlockBatch
-	err := o.db.Select("proof, instance_commitments").Where("hash", hash).Where("proving_status").Find(&blockBatch).Error
+	err := o.db.Select("proof, instance_commitments").Where("hash", hash).Where("proving_status", int(types.ProvingTaskVerified)).Find(&blockBatch).Error
 	if err != nil {
 		return nil, nil, err
 	}
@@ -96,7 +96,7 @@ func (o *BlockBatch) GetVerifiedProofAndInstanceCommitmentsByHash(hash string) (
 // GetPendingBatches get the pending batches
 func (o *BlockBatch) GetPendingBatches(limit int) ([]string, error) {
 	var blockBatches []BlockBatch
-	err := o.db.Select("hash").Where("rollup_status", types.RollupPending).Order("index ASC").Limit(limit).Error
+	err := o.db.Select("hash").Where("rollup_status", int(types.RollupPending)).Order("index ASC").Limit(limit).Error
 	if err != nil {
 		return nil, err
 	}
@@ -137,7 +137,7 @@ func (o *BlockBatch) GetLatestBatchByRollupStatus(rollupStatuses []types.RollupS
 // GetCommittedBatches get the committed block batches
 func (o *BlockBatch) GetCommittedBatches(limit int) ([]string, error) {
 	var blockBatches []BlockBatch
-	err := o.db.Select("hash").Where("rollup_status", types.RollupCommitted).Order("index ASC").Limit(limit).Error
+	err := o.db.Select("hash").Where("rollup_status", int(types.RollupCommitted)).Order("index ASC").Limit(limit).Find(&blockBatches).Error
 	if err != nil {
 		return nil, err
 	}
@@ -240,11 +240,11 @@ func (o *BlockBatch) UpdateRollupStatus(ctx context.Context, hash string, status
 // UpdateSkippedBatches update the skipped batches
 func (o *BlockBatch) UpdateSkippedBatches() (int64, error) {
 	provingStatusList := []interface{}{
-		types.ProvingTaskSkipped,
-		types.ProvingTaskFailed,
+		int(types.ProvingTaskSkipped),
+		int(types.ProvingTaskFailed),
 	}
-	result := o.db.Model(&BlockBatch{}).Where("rollup_status", types.RollupCommitted).
-		Where("proving_status IN (?)", provingStatusList).Update("rollup_status", types.RollupFinalizationSkipped)
+	result := o.db.Model(&BlockBatch{}).Where("rollup_status", int(types.RollupCommitted)).
+		Where("proving_status IN (?)", provingStatusList).Update("rollup_status", int(types.RollupFinalizationSkipped))
 	if result.Error != nil {
 		return 0, result.Error
 	}
