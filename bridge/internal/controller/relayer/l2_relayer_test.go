@@ -446,18 +446,19 @@ func testLayer2RelayerProcessGasPriceOracle(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, relayer)
 
+	var blockBatchOrm *orm.BlockBatch
 	convey.Convey("Failed to GetLatestBatch", t, func() {
 		targetErr := errors.New("GetLatestBatch error")
-		patchGuard := gomonkey.ApplyMethodFunc(db, "GetLatestBatch", func() (*types.BlockBatch, error) {
+		patchGuard := gomonkey.ApplyMethodFunc(blockBatchOrm, "GetLatestBatch", func() (*orm.BlockBatch, error) {
 			return nil, targetErr
 		})
 		defer patchGuard.Reset()
 		relayer.ProcessGasPriceOracle()
 	})
 
-	patchGuard := gomonkey.ApplyMethodFunc(db, "GetLatestBatch", func() (*types.BlockBatch, error) {
-		batch := types.BlockBatch{
-			OracleStatus: types.GasOraclePending,
+	patchGuard := gomonkey.ApplyMethodFunc(blockBatchOrm, "GetLatestBatch", func() (*orm.BlockBatch, error) {
+		batch := orm.BlockBatch{
+			OracleStatus: int(types.GasOraclePending),
 			Hash:         "0x0000000000000000000000000000000000000000",
 		}
 		return &batch, nil
@@ -502,13 +503,13 @@ func testLayer2RelayerProcessGasPriceOracle(t *testing.T) {
 
 	convey.Convey("UpdateGasOracleStatusAndOracleTxHash failed", t, func() {
 		targetErr := errors.New("UpdateL2GasOracleStatusAndOracleTxHash error")
-		patchGuard.ApplyMethodFunc(db, "UpdateL2GasOracleStatusAndOracleTxHash", func(ctx context.Context, hash string, status types.GasOracleStatus, txHash string) error {
+		patchGuard.ApplyMethodFunc(blockBatchOrm, "UpdateL2GasOracleStatusAndOracleTxHash", func(ctx context.Context, hash string, status types.GasOracleStatus, txHash string) error {
 			return targetErr
 		})
 		relayer.ProcessGasPriceOracle()
 	})
 
-	patchGuard.ApplyMethodFunc(db, "UpdateL2GasOracleStatusAndOracleTxHash", func(ctx context.Context, hash string, status types.GasOracleStatus, txHash string) error {
+	patchGuard.ApplyMethodFunc(blockBatchOrm, "UpdateL2GasOracleStatusAndOracleTxHash", func(ctx context.Context, hash string, status types.GasOracleStatus, txHash string) error {
 		return nil
 	})
 	relayer.ProcessGasPriceOracle()
@@ -580,16 +581,17 @@ func testLayer2RelayerSendCommitTx(t *testing.T) {
 		return common.HexToHash("0x56789abcdef1234"), nil
 	})
 
+	var blockBatchOrm *orm.BlockBatch
 	convey.Convey("UpdateCommitTxHashAndRollupStatus failed", t, func() {
 		targetErr := errors.New("UpdateCommitTxHashAndRollupStatus failure")
-		patchGuard.ApplyMethodFunc(db, "UpdateCommitTxHashAndRollupStatus", func(ctx context.Context, hash string, commitTxHash string, status types.RollupStatus) error {
+		patchGuard.ApplyMethodFunc(blockBatchOrm, "UpdateCommitTxHashAndRollupStatus", func(ctx context.Context, hash string, commitTxHash string, status types.RollupStatus) error {
 			return targetErr
 		})
 		err = relayer.SendCommitTx(batchDataList)
 		assert.NoError(t, err)
 	})
 
-	patchGuard.ApplyMethodFunc(db, "UpdateCommitTxHashAndRollupStatus", func(ctx context.Context, hash string, commitTxHash string, status types.RollupStatus) error {
+	patchGuard.ApplyMethodFunc(blockBatchOrm, "UpdateCommitTxHashAndRollupStatus", func(ctx context.Context, hash string, commitTxHash string, status types.RollupStatus) error {
 		return nil
 	})
 	err = relayer.SendCommitTx(batchDataList)
