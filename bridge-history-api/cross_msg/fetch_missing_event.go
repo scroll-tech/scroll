@@ -65,7 +65,7 @@ func GetLatestL2ProcessedHeight(db db.OrmFactory) (int64, error) {
 		log.Error("failed to get L2 cross message processed height", "err", err)
 		return 0, err
 	}
-	relayedHeight, err := db.GetLatestRelayedHeightFromL2()
+	relayedHeight, err := db.GetLatestRelayedHeightOnL2()
 	if err != nil {
 		log.Error("failed to get L2 relayed message processed height", "err", err)
 		return 0, err
@@ -111,24 +111,26 @@ func L1FetchAndSaveEvents(ctx context.Context, client *ethclient.Client, databas
 	}
 	err = database.BatchInsertL1CrossMsgDBTx(dbTx, depositL1CrossMsgs)
 	if err != nil {
-		log.Error("l1FetchAndSaveEvents: Failed to insert cross msg event logs", "err", err)
-		return err
+		dbTx.Rollback()
+		log.Crit("l1FetchAndSaveEvents: Failed to insert cross msg event logs", "err", err)
 	}
 
 	err = database.BatchInsertRelayedMsgDBTx(dbTx, relayedMsg)
 	if err != nil {
-		log.Error("l1FetchAndSaveEvents: Failed to insert relayed message event logs", "err", err)
-		return err
+		dbTx.Rollback()
+		log.Crit("l1FetchAndSaveEvents: Failed to insert relayed message event logs", "err", err)
 	}
 	err = updateL1CrossMsgMsgHash(ctx, dbTx, database, msgHashes)
 	if err != nil {
-		log.Error("l1FetchAndSaveEvents: Failed to update msgHash in L1 cross msg", "err", err)
-		return err
+		dbTx.Rollback()
+		log.Crit("l1FetchAndSaveEvents: Failed to update msgHash in L1 cross msg", "err", err)
 	}
 	err = dbTx.Commit()
 	if err != nil {
 		// if we can not insert into DB, there must something wrong, need a on-call member handle the dababase manually
-		log.Crit("l1FetchAndSaveEvents: Failed to commit db transaction", "err", err)
+		dbTx.Rollback()
+		log.Error("l1FetchAndSaveEvents: Failed to commit db transaction", "err", err)
+		return err
 	}
 
 	return nil
@@ -167,34 +169,36 @@ func L2FetchAndSaveEvents(ctx context.Context, client *ethclient.Client, databas
 	}
 	err = database.BatchInsertL2CrossMsgDBTx(dbTx, depositL2CrossMsgs)
 	if err != nil {
-		log.Error("l2FetchAndSaveEvents: Failed to insert cross msg event logs", "err", err)
-		return err
+		dbTx.Rollback()
+		log.Crit("l2FetchAndSaveEvents: Failed to insert cross msg event logs", "err", err)
 	}
 
 	err = database.BatchInsertRelayedMsgDBTx(dbTx, relayedMsg)
 	if err != nil {
-		log.Error("l2FetchAndSaveEvents: Failed to insert relayed message event logs", "err", err)
-		return err
+		dbTx.Rollback()
+		log.Crit("l2FetchAndSaveEvents: Failed to insert relayed message event logs", "err", err)
 	}
 	err = updateL2CrossMsgMsgHash(ctx, dbTx, database, msgHashes)
 	if err != nil {
-		log.Error("l2FetchAndSaveEvents: Failed to update msgHash in L2 cross msg", "err", err)
-		return err
+		dbTx.Rollback()
+		log.Crit("l2FetchAndSaveEvents: Failed to update msgHash in L2 cross msg", "err", err)
 	}
 	err = dbTx.Commit()
 	if err != nil {
 		// if we can not insert into DB, there must something wrong, need a on-call member handle the dababase manually
-		log.Crit("l2FetchAndSaveEvents: Failed to commit db transaction", "err", err)
+		dbTx.Rollback()
+		log.Error("l2FetchAndSaveEvents: Failed to commit db transaction", "err", err)
+		return err
 	}
 
 	return nil
 }
 
-func parseBackendL1EventLogs(logs []types.Log) ([]*orm.L1CrossMsg, []msgHashWrapper, []*orm.RelayedMsg, error) {
+func parseBackendL1EventLogs(logs []types.Log) ([]*orm.CrossMsg, []msgHashWrapper, []*orm.RelayedMsg, error) {
 	// Need use contract abi to parse event Log
 	// Can only be tested after we have our contracts set up
 
-	var l1CrossMsg []*orm.L1CrossMsg
+	var l1CrossMsg []*orm.CrossMsg
 	var relayedMsgs []*orm.RelayedMsg
 	var msgHashes []msgHashWrapper
 	for _, vlog := range logs {
@@ -206,27 +210,12 @@ func parseBackendL1EventLogs(logs []types.Log) ([]*orm.L1CrossMsg, []msgHashWrap
 				log.Warn("Failed to unpack DepositETH event", "err", err)
 				return l1CrossMsg, msgHashes, relayedMsgs, err
 			}
-			l1CrossMsg = append(l1CrossMsg, &orm.L1CrossMsg{
+			l1CrossMsg = append(l1CrossMsg, &orm.CrossMsg{
 				Height:     vlog.BlockNumber,
 				Sender:     event.From.String(),
 				Target:     event.To.String(),
 				Amount:     event.Amount.String(),
 				Asset:      int(orm.ETH),
-				Layer1Hash: vlog.TxHash.Hex(),
-			})
-		case backendabi.L1DepositWETHSig:
-			event := backendabi.ERC20MessageEvent{}
-			err := utils.UnpackLog(backendabi.L1WETHGatewayABI, &event, "DepositERC20", vlog)
-			if err != nil {
-				log.Warn("Failed to unpack DepositWETH event", "err", err)
-				return l1CrossMsg, msgHashes, relayedMsgs, err
-			}
-			l1CrossMsg = append(l1CrossMsg, &orm.L1CrossMsg{
-				Height:     vlog.BlockNumber,
-				Sender:     event.From.String(),
-				Target:     event.To.String(),
-				Amount:     event.Amount.String(),
-				Asset:      int(orm.WETH),
 				Layer1Hash: vlog.TxHash.Hex(),
 			})
 		case backendabi.L1DepositERC20Sig:
@@ -236,24 +225,7 @@ func parseBackendL1EventLogs(logs []types.Log) ([]*orm.L1CrossMsg, []msgHashWrap
 				log.Warn("Failed to unpack DepositERC20 event", "err", err)
 				return l1CrossMsg, msgHashes, relayedMsgs, err
 			}
-			l1CrossMsg = append(l1CrossMsg, &orm.L1CrossMsg{
-				Height:      vlog.BlockNumber,
-				Sender:      event.From.String(),
-				Target:      event.To.String(),
-				Amount:      event.Amount.String(),
-				Asset:       int(orm.ERC20),
-				Layer1Hash:  vlog.TxHash.Hex(),
-				Layer1Token: event.L1Token.Hex(),
-				Layer2Token: event.L2Token.Hex(),
-			})
-		case backendabi.L1DepositCustomERC20Sig:
-			event := backendabi.ERC20MessageEvent{}
-			err := utils.UnpackLog(backendabi.L1CustomERC20GatewayABI, &event, "DepositERC20", vlog)
-			if err != nil {
-				log.Warn("Failed to unpack DepositCustomERC20 event", "err", err)
-				return l1CrossMsg, msgHashes, relayedMsgs, err
-			}
-			l1CrossMsg = append(l1CrossMsg, &orm.L1CrossMsg{
+			l1CrossMsg = append(l1CrossMsg, &orm.CrossMsg{
 				Height:      vlog.BlockNumber,
 				Sender:      event.From.String(),
 				Target:      event.To.String(),
@@ -270,7 +242,7 @@ func parseBackendL1EventLogs(logs []types.Log) ([]*orm.L1CrossMsg, []msgHashWrap
 				log.Warn("Failed to unpack DepositERC721 event", "err", err)
 				return l1CrossMsg, msgHashes, relayedMsgs, err
 			}
-			l1CrossMsg = append(l1CrossMsg, &orm.L1CrossMsg{
+			l1CrossMsg = append(l1CrossMsg, &orm.CrossMsg{
 				Height:      vlog.BlockNumber,
 				Sender:      event.From.String(),
 				Target:      event.To.String(),
@@ -287,7 +259,7 @@ func parseBackendL1EventLogs(logs []types.Log) ([]*orm.L1CrossMsg, []msgHashWrap
 				log.Warn("Failed to unpack DepositERC1155 event", "err", err)
 				return l1CrossMsg, msgHashes, relayedMsgs, err
 			}
-			l1CrossMsg = append(l1CrossMsg, &orm.L1CrossMsg{
+			l1CrossMsg = append(l1CrossMsg, &orm.CrossMsg{
 				Height:      vlog.BlockNumber,
 				Sender:      event.From.String(),
 				Target:      event.To.String(),
@@ -328,11 +300,11 @@ func parseBackendL1EventLogs(logs []types.Log) ([]*orm.L1CrossMsg, []msgHashWrap
 	return l1CrossMsg, msgHashes, relayedMsgs, nil
 }
 
-func parseBackendL2EventLogs(logs []types.Log) ([]*orm.L2CrossMsg, []msgHashWrapper, []*orm.RelayedMsg, error) {
+func parseBackendL2EventLogs(logs []types.Log) ([]*orm.CrossMsg, []msgHashWrapper, []*orm.RelayedMsg, error) {
 	// Need use contract abi to parse event Log
 	// Can only be tested after we have our contracts set up
 
-	var l2CrossMsg []*orm.L2CrossMsg
+	var l2CrossMsg []*orm.CrossMsg
 	var relayedMsgs []*orm.RelayedMsg
 	var msgHashes []msgHashWrapper
 	for _, vlog := range logs {
@@ -344,27 +316,12 @@ func parseBackendL2EventLogs(logs []types.Log) ([]*orm.L2CrossMsg, []msgHashWrap
 				log.Warn("Failed to unpack WithdrawETH event", "err", err)
 				return l2CrossMsg, msgHashes, relayedMsgs, err
 			}
-			l2CrossMsg = append(l2CrossMsg, &orm.L2CrossMsg{
+			l2CrossMsg = append(l2CrossMsg, &orm.CrossMsg{
 				Height:     vlog.BlockNumber,
 				Sender:     event.From.String(),
 				Target:     event.To.String(),
 				Amount:     event.Amount.String(),
 				Asset:      int(orm.ETH),
-				Layer2Hash: vlog.TxHash.Hex(),
-			})
-		case backendabi.L2WithdrawWETHSig:
-			event := backendabi.ERC20MessageEvent{}
-			err := utils.UnpackLog(backendabi.L2WETHGatewayABI, &event, "WithdrawERC20", vlog)
-			if err != nil {
-				log.Warn("Failed to unpack WithdrawWETH event", "err", err)
-				return l2CrossMsg, msgHashes, relayedMsgs, err
-			}
-			l2CrossMsg = append(l2CrossMsg, &orm.L2CrossMsg{
-				Height:     vlog.BlockNumber,
-				Sender:     event.From.String(),
-				Target:     event.To.String(),
-				Amount:     event.Amount.String(),
-				Asset:      int(orm.WETH),
 				Layer2Hash: vlog.TxHash.Hex(),
 			})
 		case backendabi.L2WithdrawERC20Sig:
@@ -374,24 +331,7 @@ func parseBackendL2EventLogs(logs []types.Log) ([]*orm.L2CrossMsg, []msgHashWrap
 				log.Warn("Failed to unpack WithdrawERC20 event", "err", err)
 				return l2CrossMsg, msgHashes, relayedMsgs, err
 			}
-			l2CrossMsg = append(l2CrossMsg, &orm.L2CrossMsg{
-				Height:      vlog.BlockNumber,
-				Sender:      event.From.String(),
-				Target:      event.To.String(),
-				Amount:      event.Amount.String(),
-				Asset:       int(orm.ERC20),
-				Layer2Hash:  vlog.TxHash.Hex(),
-				Layer1Token: event.L1Token.Hex(),
-				Layer2Token: event.L2Token.Hex(),
-			})
-		case backendabi.L2WithdrawCustomERC20Sig:
-			event := backendabi.ERC20MessageEvent{}
-			err := utils.UnpackLog(backendabi.L2CustomERC20GatewayABI, &event, "WithdrawERC20", vlog)
-			if err != nil {
-				log.Warn("Failed to unpack DepositCustomERC20 event", "err", err)
-				return l2CrossMsg, msgHashes, relayedMsgs, err
-			}
-			l2CrossMsg = append(l2CrossMsg, &orm.L2CrossMsg{
+			l2CrossMsg = append(l2CrossMsg, &orm.CrossMsg{
 				Height:      vlog.BlockNumber,
 				Sender:      event.From.String(),
 				Target:      event.To.String(),
@@ -408,7 +348,7 @@ func parseBackendL2EventLogs(logs []types.Log) ([]*orm.L2CrossMsg, []msgHashWrap
 				log.Warn("Failed to unpack WithdrawERC721 event", "err", err)
 				return l2CrossMsg, msgHashes, relayedMsgs, err
 			}
-			l2CrossMsg = append(l2CrossMsg, &orm.L2CrossMsg{
+			l2CrossMsg = append(l2CrossMsg, &orm.CrossMsg{
 				Height:      vlog.BlockNumber,
 				Sender:      event.From.String(),
 				Target:      event.To.String(),
@@ -425,7 +365,7 @@ func parseBackendL2EventLogs(logs []types.Log) ([]*orm.L2CrossMsg, []msgHashWrap
 				log.Warn("Failed to unpack WithdrawERC1155 event", "err", err)
 				return l2CrossMsg, msgHashes, relayedMsgs, err
 			}
-			l2CrossMsg = append(l2CrossMsg, &orm.L2CrossMsg{
+			l2CrossMsg = append(l2CrossMsg, &orm.CrossMsg{
 				Height:      vlog.BlockNumber,
 				Sender:      event.From.String(),
 				Target:      event.To.String(),
