@@ -16,9 +16,9 @@ import (
 
 	"scroll-tech/common/bytecode/erc20"
 	"scroll-tech/common/bytecode/greeter"
-	l1gateway "scroll-tech/common/bytecode/scroll/L1/gateways"
-	"scroll-tech/common/bytecode/scroll/L1/rollup"
-	l2gateway "scroll-tech/common/bytecode/scroll/L2/gateways"
+	l1gateway "scroll-tech/common/bytecode/scroll/L1/ethgateway"
+	"scroll-tech/common/bytecode/scroll/L1/scrollchain"
+	l2gateway "scroll-tech/common/bytecode/scroll/L2/ethgateway"
 	ctypes "scroll-tech/common/types"
 	"scroll-tech/common/utils"
 )
@@ -118,7 +118,7 @@ func testGenesisBatch(t *testing.T) {
 	l2Cli, err := base.L2Client()
 	assert.NoError(t, err)
 
-	scrollChain, err := rollup.NewScrollChain(base.L1Contracts.L1ScrollChain, l1Cli)
+	scrollChain, err := scrollchain.NewScrollChain(base.L1Contracts.L1ScrollChain, l1Cli)
 	assert.NoError(t, err)
 
 	// Create genesis batch.
@@ -233,10 +233,10 @@ func testETHWithdraw(t *testing.T) {
 	assert.True(t, bls.Cmp(value) >= 0)
 }
 
-func translateBatch(batchData *ctypes.BatchData) rollup.IScrollChainBatch {
+func translateBatch(batchData *ctypes.BatchData) scrollchain.IScrollChainBatch {
 	batch := batchData.Batch
-	iBatchData := rollup.IScrollChainBatch{
-		Blocks:           make([]rollup.IScrollChainBlockContext, len(batch.Blocks)),
+	iBatchData := scrollchain.IScrollChainBatch{
+		Blocks:           make([]scrollchain.IScrollChainBlockContext, len(batch.Blocks)),
 		PrevStateRoot:    batch.PrevStateRoot,
 		NewStateRoot:     batch.NewStateRoot,
 		WithdrawTrieRoot: batch.WithdrawTrieRoot,
@@ -245,7 +245,7 @@ func translateBatch(batchData *ctypes.BatchData) rollup.IScrollChainBatch {
 		L2Transactions:   batch.L2Transactions,
 	}
 	for i, block0 := range batch.Blocks {
-		iBatchData.Blocks[i] = rollup.IScrollChainBlockContext{
+		iBatchData.Blocks[i] = scrollchain.IScrollChainBlockContext{
 			BlockHash:       block0.BlockHash,
 			ParentHash:      block0.ParentHash,
 			BlockNumber:     block0.BlockNumber,
