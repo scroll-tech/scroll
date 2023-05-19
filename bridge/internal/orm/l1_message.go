@@ -3,8 +3,6 @@ package orm
 import (
 	"context"
 	"errors"
-	"time"
-
 	"github.com/scroll-tech/go-ethereum/log"
 	"gorm.io/gorm"
 
@@ -15,19 +13,17 @@ import (
 type L1Message struct {
 	db *gorm.DB `gorm:"column:-"`
 
-	QueueIndex  uint64    `json:"queue_index" gorm:"column:queue_index"`
-	MsgHash     string    `json:"msg_hash" gorm:"column:msg_hash"`
-	Height      uint64    `json:"height" gorm:"column:height"`
-	GasLimit    uint64    `json:"gas_limit" gorm:"column:gas_limit"`
-	Sender      string    `json:"sender" gorm:"column:sender"`
-	Target      string    `json:"target" gorm:"column:target"`
-	Value       string    `json:"value" gorm:"column:value"`
-	Calldata    string    `json:"calldata" gorm:"column:calldata"`
-	Layer1Hash  string    `json:"layer1_hash" gorm:"column:layer1_hash"`
-	Layer2Hash  string    `json:"layer2_hash" gorm:"column:layer2_hash"`
-	Status      int       `json:"status" gorm:"column:status"`
-	CreatedTime time.Time `json:"created_time" gorm:"column:created_time"`
-	UpdatedTime time.Time `json:"updated_time" gorm:"column:updated_time"`
+	QueueIndex uint64 `json:"queue_index" gorm:"column:queue_index"`
+	MsgHash    string `json:"msg_hash" gorm:"column:msg_hash"`
+	Height     uint64 `json:"height" gorm:"column:height"`
+	GasLimit   uint64 `json:"gas_limit" gorm:"column:gas_limit"`
+	Sender     string `json:"sender" gorm:"column:sender"`
+	Target     string `json:"target" gorm:"column:target"`
+	Value      string `json:"value" gorm:"column:value"`
+	Calldata   string `json:"calldata" gorm:"column:calldata"`
+	Layer1Hash string `json:"layer1_hash" gorm:"column:layer1_hash"`
+	Layer2Hash string `json:"layer2_hash" gorm:"column:layer2_hash"`
+	Status     int    `json:"status" gorm:"column:status;default:1"`
 }
 
 // NewL1Message create an L1MessageOrm instance
@@ -56,7 +52,7 @@ func (m *L1Message) GetLayer1LatestWatchedHeight() (uint64, error) {
 func (m *L1Message) GetL1MessagesByStatus(status types.MsgStatus, limit uint64) ([]L1Message, error) {
 	var msgs []L1Message
 	fields := "queue_index, msg_hash, height, sender, target, value, calldata, layer1_hash, status"
-	err := m.db.Select(fields).Where("status", status).Order("queue_index ASC").Limit(int(limit)).Find(&msgs).Error
+	err := m.db.Select(fields).Where("status", int(status)).Order("queue_index ASC").Limit(int(limit)).Find(&msgs).Error
 	if err != nil {
 		return nil, err
 	}

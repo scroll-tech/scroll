@@ -26,13 +26,13 @@ type BlockBatch struct {
 	TotalTxNum          uint64    `json:"total_tx_num" gorm:"column:total_tx_num"`
 	TotalL1TxNum        uint64    `json:"total_l1_tx_num" gorm:"column:total_l1_tx_num"`
 	TotalL2Gas          uint64    `json:"total_l2_gas" gorm:"column:total_l2_gas"`
-	ProvingStatus       int       `json:"proving_status" gorm:"column:proving_status"`
+	ProvingStatus       int       `json:"proving_status" gorm:"column:proving_status,default:1"`
 	Proof               string    `json:"proof" gorm:"column:proof"`
 	InstanceCommitments string    `json:"instance_commitments" gorm:"column:instance_commitments"`
-	ProofTimeSec        uint64    `json:"proof_time_sec" gorm:"column:proof_time_sec"`
-	RollupStatus        int       `json:"rollup_status" gorm:"column:rollup_status"`
+	ProofTimeSec        uint64    `json:"proof_time_sec" gorm:"column:proof_time_sec;default:0"`
+	RollupStatus        int       `json:"rollup_status" gorm:"column:rollup_status;default:1"`
 	CommitTxHash        string    `json:"commit_tx_hash" gorm:"column:commit_tx_hash"`
-	OracleStatus        int       `json:"oracle_status" gorm:"column:oracle_status"`
+	OracleStatus        int       `json:"oracle_status" gorm:"column:oracle_status;default:1"`
 	OracleTxHash        string    `json:"oracle_tx_hash" gorm:"column:oracle_tx_hash"`
 	FinalizeTxHash      string    `json:"finalize_tx_hash" gorm:"column:finalize_tx_hash"`
 	CreatedAt           time.Time `json:"created_at" gorm:"column:created_at"`
