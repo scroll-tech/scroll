@@ -258,7 +258,7 @@ contract ScrollChainTest is DSTestPlus {
             mstore(add(batchHeader1, add(0x20, 1)), shl(192, 1)) // batchIndex = 1
             mstore(add(batchHeader1, add(0x20, 9)), shl(192, 1)) // l1MessagePopped = 1
             mstore(add(batchHeader1, add(0x20, 17)), shl(192, 1)) // totalL1MessagePopped = 1
-            mstore(add(batchHeader1, add(0x20, 25)), 0xcbbf37dbec3800d2de0098248d3328dee065ec7d647858cffcfbbfacc56bb4d0) // dataHash
+            mstore(add(batchHeader1, add(0x20, 25)), 0x2089999f9e8d1336c061443453ce1a1eace2c89a691e3e221f1d106d755e5e3c) // dataHash
             mstore(add(batchHeader1, add(0x20, 57)), batchHash0) // parentBatchHash
             mstore(add(batchHeader1, add(0x20, 89)), 0) // bitmap0
         }
@@ -303,7 +303,7 @@ contract ScrollChainTest is DSTestPlus {
             mstore(add(batchHeader2, add(0x20, 1)), shl(192, 2)) // batchIndex = 2
             mstore(add(batchHeader2, add(0x20, 9)), shl(192, 264)) // l1MessagePopped = 264
             mstore(add(batchHeader2, add(0x20, 17)), shl(192, 265)) // totalL1MessagePopped = 265
-            mstore(add(batchHeader2, add(0x20, 25)), 0xae4e61947ed564cdd007d8fe984292b7a87d4f3759a85439ba7a27926f6bc7b5) // dataHash
+            mstore(add(batchHeader2, add(0x20, 25)), 0x7acd2dca70958259b010b04a600fb0e11fc1f7384fe1f42062dee9fd98844ae2) // dataHash
             mstore(add(batchHeader2, add(0x20, 57)), batchHash1) // parentBatchHash
             mstore(
                 add(batchHeader2, add(0x20, 89)),
