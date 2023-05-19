@@ -87,8 +87,8 @@ library ChunkCodec {
             // first 4 bytes indicate the length
             let txPayloadLength := shr(224, mload(ptr))
             ptr := add(ptr, 4)
+            txHash := keccak256(ptr, txPayloadLength)
             ptr := add(ptr, txPayloadLength)
-            txHash := keccak256(sub(ptr, txPayloadLength), txPayloadLength)
         }
 
         return (txHash, ptr);
