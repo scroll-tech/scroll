@@ -37,7 +37,7 @@ func NewL1Message(db *gorm.DB) *L1Message {
 
 // TableName define the L1Message table name
 func (*L1Message) TableName() string {
-	return "l2_message"
+	return "l1_message"
 }
 
 // GetLayer1LatestWatchedHeight returns latest height stored in the table

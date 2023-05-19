@@ -36,7 +36,7 @@ func NewL2Message(db *gorm.DB) *L2Message {
 
 // TableName define the L1Message table name
 func (*L2Message) TableName() string {
-	return "l1_message"
+	return "l2_message"
 }
 
 // GetL2Messages fetch list of messages given msg status

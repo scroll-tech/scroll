@@ -73,6 +73,7 @@ func testL1RelayerProcessSaveEvents(t *testing.T) {
 	l1Cfg := cfg.L1Config
 	relayer, err := NewLayer1Relayer(context.Background(), db, l1Cfg.RelayerConfig)
 	assert.NoError(t, err)
+	assert.NotNil(t, relayer)
 	assert.NoError(t, l1MessageOrm.SaveL1Messages(context.Background(), templateL1Message))
 	relayer.ProcessSavedEvents()
 	msg1, err := l1MessageOrm.GetL1MessageByQueueIndex(1)
