@@ -11,7 +11,7 @@ import (
 	gethMetrics "github.com/scroll-tech/go-ethereum/metrics"
 	"gorm.io/gorm"
 
-	bridgeAbi "scroll-tech/bridge/internal/abi"
+	bridgeAbi "scroll-tech/bridge/abi"
 	"scroll-tech/bridge/internal/config"
 	"scroll-tech/bridge/internal/controller/relayer"
 	"scroll-tech/bridge/internal/orm"
@@ -379,7 +379,13 @@ func (p *BatchProposer) generateBatchData(parentBatch *orm.BlockBatch, blocks []
 		}
 		wrappedBlocks = append(wrappedBlocks, &tmpWrappedBlock)
 	}
-	return bridgeTypes.NewBatchData(parentBatch, wrappedBlocks, p.piCfg), nil
+
+	wrappedBlockBatches := bridgeTypes.WrappedBlockBatch{
+		Index:     parentBatch.Index,
+		Hash:      parentBatch.Hash,
+		StateRoot: parentBatch.StateRoot,
+	}
+	return bridgeTypes.NewBatchData(&wrappedBlockBatches, wrappedBlocks, p.piCfg), nil
 }
 
 func (p *BatchProposer) getBatchDataBufferSize() (size uint64) {

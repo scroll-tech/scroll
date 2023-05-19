@@ -2,13 +2,14 @@ package orm
 
 import (
 	"context"
-	"github.com/scroll-tech/go-ethereum/log"
-	bridgeTypes "scroll-tech/bridge/internal/types"
 	"time"
 
+	"github.com/scroll-tech/go-ethereum/log"
 	"gorm.io/gorm"
 
 	"scroll-tech/common/types"
+
+	bridgeTypes "scroll-tech/bridge/internal/types"
 )
 
 type BlockBatch struct {

@@ -12,3 +12,10 @@ type WrappedBlock struct {
 	Transactions     []*types.TransactionData `json:"transactions"`
 	WithdrawTrieRoot common.Hash              `json:"withdraw_trie_root,omitempty"`
 }
+
+// WrappedBlockBatch contains the BlockBatch's part
+type WrappedBlockBatch struct {
+	Index     uint64 `json:"index"`
+	Hash      string `json:"hash"`
+	StateRoot string `json:"state_root"`
+}

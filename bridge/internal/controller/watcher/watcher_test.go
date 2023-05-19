@@ -33,7 +33,7 @@ var (
 
 func setupEnv(t *testing.T) (err error) {
 	// Load config.
-	cfg, err = config.NewConfig("../config.json")
+	cfg, err = config.NewConfig("../../../conf/config.json")
 	assert.NoError(t, err)
 
 	base.RunImages(t)

@@ -21,7 +21,7 @@ import (
 	"scroll-tech/common/metrics"
 	"scroll-tech/common/types"
 
-	bridgeAbi "scroll-tech/bridge/internal/abi"
+	bridgeAbi "scroll-tech/bridge/abi"
 	"scroll-tech/bridge/internal/orm"
 	bridgeTypes "scroll-tech/bridge/internal/types"
 	"scroll-tech/bridge/internal/utils"

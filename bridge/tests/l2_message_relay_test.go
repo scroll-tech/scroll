@@ -81,11 +81,11 @@ func testRelayL2MessageSucceed(t *testing.T) {
 	}
 	assert.NoError(t, blockTraceOrm.InsertWrappedBlocks(traces))
 
-	parentBatch := &orm.BlockBatch{
+	parentBatch := &bridgeTypes.WrappedBlockBatch{
 		Index: 0,
 		Hash:  "0x0000000000000000000000000000000000000000",
 	}
-	batchData := bridgeTypes.NewBatchData(parentBatch, []*bridgeTypes.WrappedBlock{traces[0]}, cfg.L2Config.BatchProposerConfig.PublicInputConfig)
+	batchData := bridgeTypes.NewBatchData(parentBatch, []*bridgeTypes.WrappedBlock{traces[0]}, l2Cfg.BatchProposerConfig.PublicInputConfig)
 	batchHash := batchData.Hash().String()
 	// add fake batch
 	err = db.Transaction(func(tx *gorm.DB) error {

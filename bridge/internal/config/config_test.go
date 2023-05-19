@@ -12,7 +12,7 @@ import (
 
 func TestConfig(t *testing.T) {
 	t.Run("Success Case", func(t *testing.T) {
-		cfg, err := NewConfig("../config.json")
+		cfg, err := NewConfig("../../conf/config.json")
 		assert.NoError(t, err)
 
 		assert.Len(t, cfg.L1Config.RelayerConfig.MessageSenderPrivateKeys, 1)

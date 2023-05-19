@@ -4,17 +4,16 @@ import (
 	"math/big"
 	"testing"
 
-	"gotest.tools/assert"
-
 	"github.com/scroll-tech/go-ethereum/common"
-	geth_types "github.com/scroll-tech/go-ethereum/core/types"
+	gethTypes "github.com/scroll-tech/go-ethereum/core/types"
+	"github.com/stretchr/testify/assert"
 
 	abi "scroll-tech/bridge/abi"
 )
 
 func TestBatchHash(t *testing.T) {
 	txBytes := common.Hex2Bytes("02f8710582fd14808506e38dccc9825208944d496ccc28058b1d74b7a19541663e21154f9c848801561db11e24a43380c080a0d890606d7a35b2ab0f9b866d62c092d5b163f3e6a55537ae1485aac08c3f8ff7a023997be2d32f53e146b160fff0ba81e81dbb4491c865ab174d15c5b3d28c41ae")
-	tx := new(geth_types.Transaction)
+	tx := new(gethTypes.Transaction)
 	if err := tx.UnmarshalBinary(txBytes); err != nil {
 		t.Fatalf("invalid tx hex string: %s", err)
 	}
@@ -44,7 +43,7 @@ func TestBatchHash(t *testing.T) {
 
 	// use a different tx hash
 	txBytes = common.Hex2Bytes("f8628001830f424094000000000000000000000000000000000000bbbb8080820a97a064e07cd8f939e2117724bdcbadc80dda421381cbc2a1f4e0d093d9cc5c5cf68ea03e264227f80852d88743cd9e43998f2746b619180366a87e4531debf9c3fa5dc")
-	tx = new(geth_types.Transaction)
+	tx = new(gethTypes.Transaction)
 	if err := tx.UnmarshalBinary(txBytes); err != nil {
 		t.Fatalf("invalid tx hex string: %s", err)
 	}
@@ -55,7 +54,7 @@ func TestBatchHash(t *testing.T) {
 }
 
 func TestNewGenesisBatch(t *testing.T) {
-	genesisBlock := &geth_types.Header{
+	genesisBlock := &gethTypes.Header{
 		UncleHash:   common.HexToHash("0x1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347"),
 		Root:        common.HexToHash("0x1b186a7a90ec3b41a2417062fe44dce8ce82ae76bfbb09eae786a4f1be1895f5"),
 		TxHash:      common.HexToHash("0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421"),

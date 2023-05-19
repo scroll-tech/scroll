@@ -87,7 +87,7 @@ func testImportL2GasPrice(t *testing.T) {
 	blockTraceOrm := orm.NewBlockTrace(db)
 	assert.NoError(t, blockTraceOrm.InsertWrappedBlocks(traces))
 
-	parentBatch := &orm.BlockBatch{
+	parentBatch := &bridgeTypes.WrappedBlockBatch{
 		Index: 0,
 		Hash:  "0x0000000000000000000000000000000000000000",
 	}

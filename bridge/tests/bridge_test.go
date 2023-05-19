@@ -62,7 +62,7 @@ func setupDB(t *testing.T) *gorm.DB {
 
 func TestMain(m *testing.M) {
 	base = docker.NewDockerApp()
-	bridgeApp = bcmd.NewBridgeApp(base, "../config.json")
+	bridgeApp = bcmd.NewBridgeApp(base, "../conf/config.json")
 	m.Run()
 	bridgeApp.Free()
 	base.Free()

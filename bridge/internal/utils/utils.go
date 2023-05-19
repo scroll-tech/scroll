@@ -9,7 +9,7 @@ import (
 	"github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/crypto"
 
-	bridgeAbi "scroll-tech/bridge/internal/abi"
+	bridgeAbi "scroll-tech/bridge/abi"
 )
 
 // Keccak2 compute the keccack256 of two concatenations of bytes32

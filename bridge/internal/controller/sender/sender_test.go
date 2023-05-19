@@ -44,7 +44,7 @@ func TestMain(m *testing.M) {
 
 func setupEnv(t *testing.T) {
 	var err error
-	cfg, err = config.NewConfig("../config.json")
+	cfg, err = config.NewConfig("../../../conf/config.json")
 	assert.NoError(t, err)
 	base.RunImages(t)
 	priv, err := crypto.HexToECDSA("1212121212121212121212121212121212121212121212121212121212121212")

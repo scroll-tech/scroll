@@ -23,7 +23,7 @@ import (
 	"scroll-tech/common/types"
 	cutils "scroll-tech/common/utils"
 
-	bridgeAbi "scroll-tech/bridge/internal/abi"
+	bridgeAbi "scroll-tech/bridge/abi"
 	"scroll-tech/bridge/internal/controller/sender"
 	"scroll-tech/bridge/internal/orm"
 	"scroll-tech/bridge/internal/utils"
