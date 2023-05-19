@@ -73,7 +73,7 @@ func (l *L1Block) InsertL1Blocks(ctx context.Context, blocks []L1Block) error {
 // UpdateL1GasOracleStatusAndOracleTxHash update l1 gas oracle status and oracle tx hash
 func (l *L1Block) UpdateL1GasOracleStatusAndOracleTxHash(ctx context.Context, blockHash string, status types.GasOracleStatus, txHash string) error {
 	updateFields := map[string]interface{}{
-		"oracle_status":  status,
+		"oracle_status":  int(status),
 		"oracle_tx_hash": txHash,
 	}
 	if err := l.db.WithContext(ctx).Model(&L1Block{}).Where("hash", blockHash).Updates(updateFields).Error; err != nil {

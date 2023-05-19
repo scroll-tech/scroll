@@ -104,7 +104,7 @@ func (m *L1Message) SaveL1Messages(ctx context.Context, messages []*L1Message) e
 
 // UpdateLayer1Status updates message stauts, given message hash
 func (m *L1Message) UpdateLayer1Status(ctx context.Context, msgHash string, status types.MsgStatus) error {
-	if err := m.db.Model(&L1Message{}).WithContext(ctx).Where("msg_hash", msgHash).Update("status", status).Error; err != nil {
+	if err := m.db.Model(&L1Message{}).WithContext(ctx).Where("msg_hash", msgHash).Update("status", int(status)).Error; err != nil {
 		return err
 	}
 	return nil
@@ -113,7 +113,7 @@ func (m *L1Message) UpdateLayer1Status(ctx context.Context, msgHash string, stat
 // UpdateLayer1StatusAndLayer2Hash updates message status and layer2 transaction hash, given message hash
 func (m *L1Message) UpdateLayer1StatusAndLayer2Hash(ctx context.Context, msgHash string, status types.MsgStatus, layer2Hash string) error {
 	updateFields := map[string]interface{}{
-		"status":      status,
+		"status":      int(status),
 		"layer2_hash": layer2Hash,
 	}
 	if err := m.db.Model(&L1Message{}).WithContext(ctx).Where("msg_hash", msgHash).Updates(updateFields).Error; err != nil {

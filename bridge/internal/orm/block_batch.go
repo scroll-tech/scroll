@@ -203,7 +203,7 @@ func (o *BlockBatch) InsertBlockBatchByBatchData(tx *gorm.DB, batchData *bridgeT
 // UpdateProvingStatus update the proving status
 func (o *BlockBatch) UpdateProvingStatus(hash string, status types.ProvingStatus) error {
 	updateFields := make(map[string]interface{})
-	updateFields["proving_status"] = status
+	updateFields["proving_status"] = int(status)
 
 	switch status {
 	case types.ProvingTaskAssigned:
@@ -223,7 +223,7 @@ func (o *BlockBatch) UpdateProvingStatus(hash string, status types.ProvingStatus
 // UpdateRollupStatus update the rollup status
 func (o *BlockBatch) UpdateRollupStatus(ctx context.Context, hash string, status types.RollupStatus) error {
 	updateFields := make(map[string]interface{})
-	updateFields["rollup_status"] = status
+	updateFields["rollup_status"] = int(status)
 
 	switch status {
 	case types.RollupCommitted:
@@ -255,7 +255,7 @@ func (o *BlockBatch) UpdateSkippedBatches() (int64, error) {
 func (o *BlockBatch) UpdateCommitTxHashAndRollupStatus(ctx context.Context, hash string, commitTxHash string, status types.RollupStatus) error {
 	updateFields := make(map[string]interface{})
 	updateFields["commit_tx_hash"] = commitTxHash
-	updateFields["rollup_status"] = status
+	updateFields["rollup_status"] = int(status)
 	if status == types.RollupCommitted {
 		updateFields["committed_at"] = time.Now()
 	}
@@ -269,7 +269,7 @@ func (o *BlockBatch) UpdateCommitTxHashAndRollupStatus(ctx context.Context, hash
 func (o *BlockBatch) UpdateFinalizeTxHashAndRollupStatus(ctx context.Context, hash string, finalizeTxHash string, status types.RollupStatus) error {
 	updateFields := make(map[string]interface{})
 	updateFields["finalize_tx_hash"] = finalizeTxHash
-	updateFields["rollup_status"] = status
+	updateFields["rollup_status"] = int(status)
 	if status == types.RollupFinalized {
 		updateFields["finalized_at"] = time.Now()
 	}
@@ -282,7 +282,7 @@ func (o *BlockBatch) UpdateFinalizeTxHashAndRollupStatus(ctx context.Context, ha
 // UpdateL2GasOracleStatusAndOracleTxHash update the l2 gas oracle status and oracle tx hash
 func (o *BlockBatch) UpdateL2GasOracleStatusAndOracleTxHash(ctx context.Context, hash string, status types.GasOracleStatus, txHash string) error {
 	updateFields := make(map[string]interface{})
-	updateFields["oracle_status"] = status
+	updateFields["oracle_status"] = int(status)
 	updateFields["oracle_tx_hash"] = txHash
 	if err := o.db.WithContext(ctx).Model(&BlockBatch{}).Where("hash", hash).Updates(updateFields).Error; err != nil {
 		return err

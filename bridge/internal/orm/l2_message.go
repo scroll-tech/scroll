@@ -38,7 +38,7 @@ func (*L2Message) TableName() string {
 // GetL2Messages fetch list of messages given msg status
 func (m *L2Message) GetL2Messages(fields map[string]interface{}, orderByList []string, limit int) ([]L2Message, error) {
 	var l2MsgList []L2Message
-	selectFields := "nonce, msg_hash, height, sender, target, value, calldata, layer2_hash"
+	selectFields := "nonce, msg_hash, height, sender, target, value, calldata, layer2_hash, status"
 	db := m.db.Select(selectFields)
 	for key, value := range fields {
 		db.Where(key, value)
@@ -103,7 +103,7 @@ func (m *L2Message) SaveL2Messages(ctx context.Context, messages []L2Message) er
 
 // UpdateLayer2Status updates message stauts, given message hash
 func (m *L2Message) UpdateLayer2Status(ctx context.Context, msgHash string, status types.MsgStatus) error {
-	err := m.db.Model(&L2Message{}).WithContext(ctx).Where("msg_hash", msgHash).Update("status", status).Error
+	err := m.db.Model(&L2Message{}).WithContext(ctx).Where("msg_hash", msgHash).Update("status", int(status)).Error
 	if err != nil {
 		return err
 	}
@@ -113,7 +113,7 @@ func (m *L2Message) UpdateLayer2Status(ctx context.Context, msgHash string, stat
 // UpdateLayer2StatusAndLayer1Hash updates message stauts and layer1 transaction hash, given message hash
 func (m *L2Message) UpdateLayer2StatusAndLayer1Hash(ctx context.Context, msgHash string, status types.MsgStatus, layer1Hash string) error {
 	updateFields := map[string]interface{}{
-		"status":      status,
+		"status":      int(status),
 		"layer1_hash": layer1Hash,
 	}
 	err := m.db.Model(&L2Message{}).WithContext(ctx).Where("msg_hash", msgHash).Updates(updateFields).Error
