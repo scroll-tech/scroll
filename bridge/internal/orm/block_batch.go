@@ -15,31 +15,31 @@ import (
 type BlockBatch struct {
 	db *gorm.DB `gorm:"column:-"`
 
-	Hash                string    `json:"hash" gorm:"column:hash"`
-	Index               uint64    `json:"index" gorm:"column:index"`
-	StartBlockNumber    uint64    `json:"start_block_number" gorm:"column:start_block_number"`
-	StartBlockHash      string    `json:"start_block_hash" gorm:"column:start_block_hash"`
-	EndBlockNumber      uint64    `json:"end_block_number" gorm:"column:end_block_number"`
-	EndBlockHash        string    `json:"end_block_hash" gorm:"column:end_block_hash"`
-	ParentHash          string    `json:"parent_hash" gorm:"column:parent_hash"`
-	StateRoot           string    `json:"state_root" gorm:"column:state_root"`
-	TotalTxNum          uint64    `json:"total_tx_num" gorm:"column:total_tx_num"`
-	TotalL1TxNum        uint64    `json:"total_l1_tx_num" gorm:"column:total_l1_tx_num"`
-	TotalL2Gas          uint64    `json:"total_l2_gas" gorm:"column:total_l2_gas"`
-	ProvingStatus       int       `json:"proving_status" gorm:"column:proving_status;default:1"`
-	Proof               string    `json:"proof" gorm:"column:proof"`
-	InstanceCommitments string    `json:"instance_commitments" gorm:"column:instance_commitments"`
-	ProofTimeSec        uint64    `json:"proof_time_sec" gorm:"column:proof_time_sec;default:0"`
-	RollupStatus        int       `json:"rollup_status" gorm:"column:rollup_status;default:1"`
-	CommitTxHash        string    `json:"commit_tx_hash" gorm:"column:commit_tx_hash"`
-	OracleStatus        int       `json:"oracle_status" gorm:"column:oracle_status;default:1"`
-	OracleTxHash        string    `json:"oracle_tx_hash" gorm:"column:oracle_tx_hash"`
-	FinalizeTxHash      string    `json:"finalize_tx_hash" gorm:"column:finalize_tx_hash"`
-	CreatedAt           time.Time `json:"created_at" gorm:"column:created_at"`
-	ProverAssignedAt    time.Time `json:"prover_assigned_at" gorm:"column:prover_assigned_at"`
-	ProvedAt            time.Time `json:"proved_at" gorm:"column:proved_at"`
-	CommittedAt         time.Time `json:"committed_at" gorm:"column:committed_at"`
-	FinalizedAt         time.Time `json:"finalized_at" gorm:"column:finalized_at"`
+	Hash                string     `json:"hash" gorm:"column:hash"`
+	Index               uint64     `json:"index" gorm:"column:index"`
+	StartBlockNumber    uint64     `json:"start_block_number" gorm:"column:start_block_number"`
+	StartBlockHash      string     `json:"start_block_hash" gorm:"column:start_block_hash"`
+	EndBlockNumber      uint64     `json:"end_block_number" gorm:"column:end_block_number"`
+	EndBlockHash        string     `json:"end_block_hash" gorm:"column:end_block_hash"`
+	ParentHash          string     `json:"parent_hash" gorm:"column:parent_hash"`
+	StateRoot           string     `json:"state_root" gorm:"column:state_root"`
+	TotalTxNum          uint64     `json:"total_tx_num" gorm:"column:total_tx_num"`
+	TotalL1TxNum        uint64     `json:"total_l1_tx_num" gorm:"column:total_l1_tx_num"`
+	TotalL2Gas          uint64     `json:"total_l2_gas" gorm:"column:total_l2_gas"`
+	ProvingStatus       int        `json:"proving_status" gorm:"column:proving_status;default:1"`
+	Proof               string     `json:"proof" gorm:"column:proof"`
+	InstanceCommitments string     `json:"instance_commitments" gorm:"column:instance_commitments"`
+	ProofTimeSec        uint64     `json:"proof_time_sec" gorm:"column:proof_time_sec;default:0"`
+	RollupStatus        int        `json:"rollup_status" gorm:"column:rollup_status;default:1"`
+	CommitTxHash        string     `json:"commit_tx_hash" gorm:"column:commit_tx_hash"`
+	OracleStatus        int        `json:"oracle_status" gorm:"column:oracle_status;default:1"`
+	OracleTxHash        string     `json:"oracle_tx_hash" gorm:"column:oracle_tx_hash"`
+	FinalizeTxHash      string     `json:"finalize_tx_hash" gorm:"column:finalize_tx_hash"`
+	CreatedAt           time.Time  `json:"created_at" gorm:"column:created_at;default:CURRENT_TIMESTAMP()"`
+	ProverAssignedAt    *time.Time `json:"prover_assigned_at" gorm:"column:prover_assigned_at"`
+	ProvedAt            *time.Time `json:"proved_at" gorm:"column:proved_at"`
+	CommittedAt         *time.Time `json:"committed_at" gorm:"column:committed_at"`
+	FinalizedAt         *time.Time `json:"finalized_at" gorm:"column:finalized_at"`
 }
 
 // NewBlockBatch create an blockBatchOrm instance
