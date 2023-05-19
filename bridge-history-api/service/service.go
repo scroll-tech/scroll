@@ -27,7 +27,7 @@ type TxHistoryInfo struct {
 	BlockNumber    uint64     `json:"blockNumber"`
 	BlockTimestamp *time.Time `json:"blockTimestamp"` // useless
 	FinalizeTx     *Finalized `json:"finalizeTx"`
-	CreatedAt      *time.Time `json:"createdAt"`
+	CreatedAt      *time.Time `json:"createdTime"`
 }
 
 // HistoryService example service.
