@@ -26,7 +26,7 @@ type BlockBatch struct {
 	TotalTxNum          uint64    `json:"total_tx_num" gorm:"column:total_tx_num"`
 	TotalL1TxNum        uint64    `json:"total_l1_tx_num" gorm:"column:total_l1_tx_num"`
 	TotalL2Gas          uint64    `json:"total_l2_gas" gorm:"column:total_l2_gas"`
-	ProvingStatus       int       `json:"proving_status" gorm:"column:proving_status,default:1"`
+	ProvingStatus       int       `json:"proving_status" gorm:"column:proving_status;default:1"`
 	Proof               string    `json:"proof" gorm:"column:proof"`
 	InstanceCommitments string    `json:"instance_commitments" gorm:"column:instance_commitments"`
 	ProofTimeSec        uint64    `json:"proof_time_sec" gorm:"column:proof_time_sec;default:0"`
@@ -122,8 +122,12 @@ func (o *BlockBatch) GetLatestBatch() (*BlockBatch, error) {
 
 func (o *BlockBatch) GetLatestBatchByRollupStatus(rollupStatuses []types.RollupStatus) (*BlockBatch, error) {
 	var blockBatch BlockBatch
-	subQuery := o.db.Table("block_batch").Select("max(index)").Where("rollup_status IN (?)", rollupStatuses)
-	err := o.db.Where("index", subQuery).Find(&blockBatch).Error
+	var tmpRollupStatus []int
+	for _, v := range rollupStatuses {
+		tmpRollupStatus = append(tmpRollupStatus, int(v))
+	}
+	subQuery := o.db.Table("block_batch").Select("max(index)").Where("rollup_status IN (?)", tmpRollupStatus)
+	err := o.db.Where("index = (?)", subQuery).Find(&blockBatch).Error
 	if err != nil {
 		return nil, err
 	}

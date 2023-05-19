@@ -120,7 +120,7 @@ func testL2RelayerProcessSaveEvents(t *testing.T) {
 
 	msg, err := l2MessageOrm.GetL2MessageByNonce(templateL2Message[0].Nonce)
 	assert.NoError(t, err)
-	assert.Equal(t, types.MsgSubmitted, msg.Status)
+	assert.Equal(t, types.MsgSubmitted, types.MsgStatus(msg.Status))
 }
 
 func testL2RelayerProcessCommittedBatches(t *testing.T) {

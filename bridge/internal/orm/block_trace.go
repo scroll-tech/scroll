@@ -102,7 +102,7 @@ func (o *BlockTrace) GetUnbatchedL2Blocks(fields map[string]interface{}, orderBy
 
 // InsertWrappedBlocks insert block to block trace
 func (o *BlockTrace) InsertWrappedBlocks(blocks []*types.WrappedBlock) error {
-	blockTraces := make([]BlockTrace, len(blocks))
+	var blockTraces []BlockTrace
 	for _, block := range blocks {
 		number := block.Header.Number.Uint64()
 		hash := block.Header.Hash().String()

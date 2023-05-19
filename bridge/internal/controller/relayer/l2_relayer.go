@@ -163,8 +163,8 @@ func (r *Layer2Relayer) ProcessSavedEvents() {
 
 	// msgs are sorted by nonce in increasing order
 	fields := map[string]interface{}{
-		"status":   types.MsgPending,
-		"height<=": batch.EndBlockNumber,
+		"status":        types.MsgPending,
+		"height <= (?)": batch.EndBlockNumber,
 	}
 	orderByList := []string{
 		"nonce ASC",
