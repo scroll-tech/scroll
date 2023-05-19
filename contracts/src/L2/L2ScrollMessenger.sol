@@ -324,7 +324,7 @@ contract L2ScrollMessenger is ScrollMessengerBase, PausableUpgradeable, IL2Scrol
         bytes memory _message,
         bytes32 _xDomainCalldataHash
     ) internal {
-        // @todo check more `_to` address to avoid attack.
+        // @note check more `_to` address to avoid attack in the future when we add more gateways.
         require(_to != messageQueue, "Forbid to call message queue");
         require(_to != address(this), "Forbid to call self");
 

@@ -92,7 +92,7 @@ abstract contract ScrollMessengerBase is OwnableUpgradeable, IScrollMessenger {
     /// @dev This function can only called by contract owner.
     /// @param _newFeeVault The address of new fee vault contract.
     function updateFeeVault(address _newFeeVault) external onlyOwner {
-        address _oldFeeVault = whitelist;
+        address _oldFeeVault = feeVault;
 
         feeVault = _newFeeVault;
         emit UpdateFeeVault(_oldFeeVault, _newFeeVault);
