@@ -48,9 +48,9 @@ func (l *L1Block) GetL1BlockInfos(fields map[string]interface{}) ([]L1Block, err
 	selectFileds := "number, hash, header_rlp, base_fee, block_status, oracle_status, import_tx_hash, oracle_tx_hash"
 	db := l.db.Select(selectFileds)
 	for key, value := range fields {
-		db.Where(key, value)
+		db = db.Where(key, value)
 	}
-	db.Order("number ASC")
+	db = db.Order("number ASC")
 	if err := db.Find(&l1Blocks).Error; err != nil {
 		return nil, err
 	}

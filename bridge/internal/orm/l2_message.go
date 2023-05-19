@@ -41,15 +41,15 @@ func (m *L2Message) GetL2Messages(fields map[string]interface{}, orderByList []s
 	selectFields := "nonce, msg_hash, height, sender, target, value, calldata, layer2_hash, status"
 	db := m.db.Select(selectFields)
 	for key, value := range fields {
-		db.Where(key, value)
+		db = db.Where(key, value)
 	}
 
 	for _, orderBy := range orderByList {
-		db.Order(orderBy)
+		db = db.Order(orderBy)
 	}
 
 	if limit != 0 {
-		db.Limit(limit)
+		db = db.Limit(limit)
 	}
 
 	if err := db.Find(&l2MsgList).Error; err != nil {

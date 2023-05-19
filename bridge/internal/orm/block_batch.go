@@ -66,15 +66,15 @@ func (o *BlockBatch) GetBlockBatches(fields map[string]interface{}, orderByList 
 	var blockBatches []BlockBatch
 	db := o.db
 	for key, value := range fields {
-		db.Where(key, value)
+		db = db.Where(key, value)
 	}
 
 	for _, orderBy := range orderByList {
-		db.Order(orderBy)
+		db = db.Order(orderBy)
 	}
 
 	if limit != 0 {
-		db.Limit(limit)
+		db = db.Limit(limit)
 	}
 
 	if err := db.Find(&blockBatches).Error; err != nil {

@@ -48,7 +48,7 @@ func (o *BlockTrace) GetL2WrappedBlocks(fields map[string]interface{}) ([]*types
 	var blockTraces []BlockTrace
 	db := o.db.Select("trace")
 	for key, value := range fields {
-		db.Where(key, value)
+		db = db.Where(key, value)
 	}
 	if err := db.Find(&blockTraces).Error; err != nil {
 		return nil, err
@@ -70,15 +70,15 @@ func (o *BlockTrace) GetL2BlockInfos(fields map[string]interface{}, orderByList 
 	var blockTraces []BlockTrace
 	db := o.db.Select("number, hash, parent_hash, batch_hash, tx_num, gas_used, block_timestamp")
 	for key, value := range fields {
-		db.Where(key, value)
+		db = db.Where(key, value)
 	}
 
 	for _, orderBy := range orderByList {
-		db.Order(orderBy)
+		db = db.Order(orderBy)
 	}
 
 	if limit != 0 {
-		db.Limit(limit)
+		db = db.Limit(limit)
 	}
 
 	if err := db.Find(&blockTraces).Error; err != nil {
@@ -92,7 +92,7 @@ func (o *BlockTrace) GetUnbatchedL2Blocks(fields map[string]interface{}, orderBy
 	var unbatchedBlockTraces []BlockTrace
 	db := o.db.Select("number, hash, parent_hash, batch_hash, tx_num, gas_used, block_timestamp").Where("batch_hash is NULL")
 	for key, value := range fields {
-		db.Where(key, value)
+		db = db.Where(key, value)
 	}
 	if err := db.Find(&unbatchedBlockTraces).Error; err != nil {
 		return nil, err
