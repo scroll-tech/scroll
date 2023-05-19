@@ -88,7 +88,6 @@ func NewLayer1Relayer(ctx context.Context, db *gorm.DB, cfg *config.RelayerConfi
 	}
 
 	l1Relayer := &Layer1Relayer{
-		cfg:          cfg,
 		ctx:          ctx,
 		l1MessageOrm: orm.NewL1Message(db),
 		l1Block:      orm.NewL1Block(db),
@@ -103,6 +102,8 @@ func NewLayer1Relayer(ctx context.Context, db *gorm.DB, cfg *config.RelayerConfi
 
 		minGasPrice:  minGasPrice,
 		gasPriceDiff: gasPriceDiff,
+
+		cfg: cfg,
 	}
 
 	go l1Relayer.handleConfirmLoop(ctx)
