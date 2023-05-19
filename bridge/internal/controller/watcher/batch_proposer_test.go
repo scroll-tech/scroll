@@ -33,17 +33,18 @@ func testBatchProposerProposeBatch(t *testing.T) {
 		commitCalldataSizeLimit: 500,
 	}
 
-	patchGuard := gomonkey.ApplyMethodFunc(db, "GetL2WrappedBlocks", func(fields map[string]interface{}, args ...string) ([]*types.WrappedBlock, error) {
+	var blockTrace *orm.BlockTrace
+	patchGuard := gomonkey.ApplyMethodFunc(blockTrace, "GetL2WrappedBlocks", func(fields map[string]interface{}) ([]*bridgeTypes.WrappedBlock, error) {
 		hash, _ := fields["hash"].(string)
 		if hash == "blockWithLongData" {
 			longData := strings.Repeat("0", 1000)
-			return []*types.WrappedBlock{{
+			return []*bridgeTypes.WrappedBlock{{
 				Transactions: []*gethTtypes.TransactionData{{
 					Data: longData,
 				}},
 			}}, nil
 		}
-		return []*types.WrappedBlock{{
+		return []*bridgeTypes.WrappedBlock{{
 			Transactions: []*gethTtypes.TransactionData{{
 				Data: "short",
 			}},

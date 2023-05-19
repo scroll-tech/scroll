@@ -3,6 +3,7 @@ package orm
 import (
 	"database/sql"
 	"encoding/json"
+
 	"github.com/scroll-tech/go-ethereum/log"
 	"gorm.io/gorm"
 

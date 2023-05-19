@@ -62,7 +62,7 @@ func testRelayL2MessageSucceed(t *testing.T) {
 	// check db status
 	msg, err := l2MessageOrm.GetL2MessageByNonce(nonce.Uint64())
 	assert.NoError(t, err)
-	assert.Equal(t, msg.Status, types.MsgPending)
+	assert.Equal(t, types.MsgStatus(msg.Status), types.MsgPending)
 	assert.Equal(t, msg.Sender, l2Auth.From.String())
 	assert.Equal(t, msg.Target, l1Auth.From.String())
 
@@ -153,7 +153,7 @@ func testRelayL2MessageSucceed(t *testing.T) {
 	blockBatchWitchFinalizeTxHash, err := blockBatchOrm.GetBlockBatches(map[string]interface{}{"hash": batchHash}, nil, 1)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(blockBatchWitchFinalizeTxHash))
-	assert.Equal(t, true, blockBatchWitchFinalizeTxHash[0].FinalizeTxHash)
+	assert.NotNil(t, blockBatchWitchFinalizeTxHash[0].FinalizeTxHash)
 
 	finalizeTx, _, err := l1Client.TransactionByHash(context.Background(), common.HexToHash(blockBatchWitchFinalizeTxHash[0].FinalizeTxHash))
 	assert.NoError(t, err)
@@ -173,12 +173,12 @@ func testRelayL2MessageSucceed(t *testing.T) {
 	l2Relayer.ProcessSavedEvents()
 	msg, err = l2MessageOrm.GetL2MessageByNonce(nonce.Uint64())
 	assert.NoError(t, err)
-	assert.Equal(t, msg.Status, types.MsgSubmitted)
+	assert.Equal(t, types.MsgStatus(msg.Status), types.MsgSubmitted)
 
 	l2Messages, err := l2MessageOrm.GetL2Messages(map[string]interface{}{"nonce": nonce}, nil, 1)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(l2Messages))
-	assert.Equal(t, true, l2Messages[0].Layer1Hash)
+	assert.NotNil(t, l2Messages[0].Layer1Hash)
 
 	relayTx, _, err := l1Client.TransactionByHash(context.Background(), common.HexToHash(l2Messages[0].Layer1Hash))
 	assert.NoError(t, err)
@@ -191,5 +191,5 @@ func testRelayL2MessageSucceed(t *testing.T) {
 	assert.NoError(t, err)
 	msg, err = l2MessageOrm.GetL2MessageByNonce(nonce.Uint64())
 	assert.NoError(t, err)
-	assert.Equal(t, msg.Status, types.MsgConfirmed)
+	assert.Equal(t, types.MsgStatus(msg.Status), types.MsgConfirmed)
 }

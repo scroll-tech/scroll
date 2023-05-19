@@ -113,7 +113,7 @@ func (o *BlockBatch) GetPendingBatches(limit int) ([]string, error) {
 func (o *BlockBatch) GetLatestBatch() (*BlockBatch, error) {
 	var blockBatch BlockBatch
 	subQuery := o.db.Table("block_batch").Select("max(index)")
-	err := o.db.Where("index", subQuery).Find(&blockBatch).Error
+	err := o.db.Where("index = (?)", subQuery).Find(&blockBatch).Error
 	if err != nil {
 		return nil, err
 	}

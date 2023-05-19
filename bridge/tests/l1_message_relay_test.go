@@ -56,14 +56,14 @@ func testRelayL1MessageSucceed(t *testing.T) {
 	// check db status
 	msg, err := l1MessageOrm.GetL1MessageByQueueIndex(nonce.Uint64())
 	assert.NoError(t, err)
-	assert.Equal(t, msg.Status, types.MsgPending)
+	assert.Equal(t, types.MsgStatus(msg.Status), types.MsgPending)
 	assert.Equal(t, msg.Target, l2Auth.From.String())
 
 	// process l1 messages
 	l1Relayer.ProcessSavedEvents()
 	msg, err = l1MessageOrm.GetL1MessageByQueueIndex(nonce.Uint64())
 	assert.NoError(t, err)
-	assert.Equal(t, msg.Status, types.MsgSubmitted)
+	assert.Equal(t, types.MsgStatus(msg.Status), types.MsgSubmitted)
 	l1Message, err := l1MessageOrm.GetL1MessageByQueueIndex(nonce.Uint64())
 	assert.NoError(t, err)
 	assert.NotNil(t, l1Message.Layer2Hash)
@@ -77,5 +77,5 @@ func testRelayL1MessageSucceed(t *testing.T) {
 	l2Watcher.FetchContractEvent()
 	msg, err = l1MessageOrm.GetL1MessageByQueueIndex(nonce.Uint64())
 	assert.NoError(t, err)
-	assert.Equal(t, msg.Status, types.MsgConfirmed)
+	assert.Equal(t, types.MsgStatus(msg.Status), types.MsgConfirmed)
 }
