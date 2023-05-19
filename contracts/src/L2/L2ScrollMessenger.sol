@@ -192,7 +192,7 @@ contract L2ScrollMessenger is ScrollMessengerBase, PausableUpgradeable, IL2Scrol
         bytes memory _message,
         uint256 _gasLimit
     ) external payable override whenNotPaused {
-        _sendMessage(_to, _value, _message, _gasLimit, tx.origin);
+        _sendMessage(_to, _value, _message, _gasLimit);
     }
 
     /// @inheritdoc IScrollMessenger
@@ -201,9 +201,9 @@ contract L2ScrollMessenger is ScrollMessengerBase, PausableUpgradeable, IL2Scrol
         uint256 _value,
         bytes calldata _message,
         uint256 _gasLimit,
-        address _refundAddress
+        address
     ) external payable override whenNotPaused {
-        _sendMessage(_to, _value, _message, _gasLimit, _refundAddress);
+        _sendMessage(_to, _value, _message, _gasLimit);
     }
 
     /// @inheritdoc IL2ScrollMessenger
@@ -286,10 +286,9 @@ contract L2ScrollMessenger is ScrollMessengerBase, PausableUpgradeable, IL2Scrol
         address _to,
         uint256 _value,
         bytes memory _message,
-        uint256 _gasLimit,
-        address _refundAddress
+        uint256 _gasLimit
     ) internal nonReentrant {
-        require(msg.value >= _value, "Insufficient msg.value");
+        require(msg.value == _value, "msg.value mismatch");
 
         uint256 _nonce = L2MessageQueue(messageQueue).nextMessageIndex();
         bytes32 _xDomainCalldataHash = keccak256(_encodeXDomainCalldata(msg.sender, _to, _value, _nonce, _message));
@@ -301,15 +300,6 @@ contract L2ScrollMessenger is ScrollMessengerBase, PausableUpgradeable, IL2Scrol
         L2MessageQueue(messageQueue).appendMessage(_xDomainCalldataHash);
 
         emit SentMessage(msg.sender, _to, _value, _nonce, _gasLimit, _message);
-
-        // refund fee to `_refundAddress`.
-        unchecked {
-            uint256 _refund = msg.value - _value;
-            if (_refund > 0) {
-                (bool _success, ) = _refundAddress.call{value: _refund}("");
-                require(_success, "Failed to refund the fee");
-            }
-        }
     }
 
     /// @dev Internal function to execute a L1 => L2 message.

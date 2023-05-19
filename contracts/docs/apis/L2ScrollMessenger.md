@@ -284,7 +284,7 @@ function retryMessageWithProof(address _from, address _to, uint256 _value, uint2
 ### sendMessage
 
 ```solidity
-function sendMessage(address _to, uint256 _value, bytes _message, uint256 _gasLimit, address _refundAddress) external payable
+function sendMessage(address _to, uint256 _value, bytes _message, uint256 _gasLimit, address) external payable
 ```
 
 Send cross chain message from L1 to L2 or L2 to L1.
@@ -299,7 +299,7 @@ Send cross chain message from L1 to L2 or L2 to L1.
 | _value | uint256 | undefined |
 | _message | bytes | undefined |
 | _gasLimit | uint256 | undefined |
-| _refundAddress | address | undefined |
+| _4 | address | undefined |
 
 ### sendMessage
 
