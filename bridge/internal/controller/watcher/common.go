@@ -1,8 +1,6 @@
 package watcher
 
-import (
-	"github.com/scroll-tech/go-ethereum/common"
-)
+import "github.com/scroll-tech/go-ethereum/common"
 
 const contractEventsBlocksFetchLimit = int64(10)
 

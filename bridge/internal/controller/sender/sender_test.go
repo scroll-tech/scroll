@@ -64,7 +64,7 @@ func TestSender(t *testing.T) {
 	t.Run("test pending limit", testPendLimit)
 
 	t.Run("test min gas limit", testMinGasLimit)
-	t.Run("test resubmit transaction", func(t *testing.T) { testResubmitTransaction(t) })
+	t.Run("test resubmit transaction", testResubmitTransaction)
 	t.Run("test check pending transaction", testCheckPendingTransaction)
 
 	t.Run("test 1 account sender", func(t *testing.T) { testBatchSender(t, 1) })
