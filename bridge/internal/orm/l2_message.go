@@ -63,7 +63,7 @@ func (m *L2Message) GetLayer2LatestWatchedHeight() (uint64, error) {
 	// @note It's not correct, since we may don't have message in some blocks.
 	// But it will only be called at start, some redundancy is acceptable.
 	var L2Msg L2Message
-	err := m.db.Select("COALESCE(MAX(height), -1)").First(&L2Msg).Error
+	err := m.db.Select("COALESCE(MAX(height), -1)").Find(&L2Msg).Error
 	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 		return 0, err
 	}

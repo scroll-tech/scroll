@@ -71,8 +71,8 @@ func NewL1WatcherClient(ctx context.Context, client *ethclient.Client, startHeig
 		log.Warn("Failed to fetch height from db", "err", err)
 		savedHeight = 0
 	}
-	if savedHeight < startHeight {
-		savedHeight = startHeight
+	if savedHeight < int64(startHeight) {
+		savedHeight = int64(startHeight)
 	}
 
 	l1BlockOrm := orm.NewL1Block(db)
@@ -81,8 +81,8 @@ func NewL1WatcherClient(ctx context.Context, client *ethclient.Client, startHeig
 		log.Warn("Failed to fetch latest L1 block height from db", "err", err)
 		savedL1BlockHeight = 0
 	}
-	if savedL1BlockHeight < startHeight {
-		savedL1BlockHeight = startHeight
+	if savedL1BlockHeight < int64(startHeight) {
+		savedL1BlockHeight = int64(startHeight)
 	}
 
 	return &L1WatcherClient{
@@ -104,7 +104,7 @@ func NewL1WatcherClient(ctx context.Context, client *ethclient.Client, startHeig
 		scrollChainABI:     bridgeAbi.ScrollChainABI,
 
 		processedMsgHeight:   uint64(savedHeight),
-		processedBlockHeight: savedL1BlockHeight,
+		processedBlockHeight: uint64(savedL1BlockHeight),
 	}
 }
 

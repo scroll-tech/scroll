@@ -21,6 +21,7 @@ import (
 	commonTypes "scroll-tech/common/types"
 
 	bridgeAbi "scroll-tech/bridge/abi"
+	"scroll-tech/bridge/internal/orm"
 	"scroll-tech/bridge/internal/utils"
 )
 
@@ -66,6 +67,7 @@ func testL1WatcherClientFetchBlockHeader(t *testing.T) {
 		assert.Error(t, err)
 	})
 
+	var l1BlockOrm *orm.L1Block
 	convey.Convey("insert l1 block error", t, func() {
 		var c *ethclient.Client
 		patchGuard := gomonkey.ApplyMethodFunc(c, "HeaderByNumber", func(ctx context.Context, height *big.Int) (*types.Header, error) {
@@ -79,7 +81,7 @@ func testL1WatcherClientFetchBlockHeader(t *testing.T) {
 		})
 		defer patchGuard.Reset()
 
-		patchGuard.ApplyMethodFunc(db, "InsertL1Blocks", func(ctx context.Context, blocks []*commonTypes.L1BlockInfo) error {
+		patchGuard.ApplyMethodFunc(l1BlockOrm, "InsertL1Blocks", func(ctx context.Context, blocks []*commonTypes.L1BlockInfo) error {
 			return errors.New("insert failed")
 		})
 
@@ -101,7 +103,7 @@ func testL1WatcherClientFetchBlockHeader(t *testing.T) {
 		})
 		defer patchGuard.Reset()
 
-		patchGuard.ApplyMethodFunc(db, "InsertL1Blocks", func(ctx context.Context, blocks []*commonTypes.L1BlockInfo) error {
+		patchGuard.ApplyMethodFunc(l1BlockOrm, "InsertL1Blocks", func(ctx context.Context, blocks []*commonTypes.L1BlockInfo) error {
 			return nil
 		})
 
@@ -194,9 +196,10 @@ func testL1WatcherClientFetchContractEvent(t *testing.T) {
 		return nil, relayedMessageEvents, rollupEvents, nil
 	})
 
+	var blockBatchOrm *orm.BlockBatch
 	convey.Convey("db get rollup status by hash list failure", t, func() {
 		targetErr := errors.New("get db failure")
-		patchGuard.ApplyMethodFunc(db, "GetRollupStatusByHashList", func(hashes []string) ([]commonTypes.RollupStatus, error) {
+		patchGuard.ApplyMethodFunc(blockBatchOrm, "GetRollupStatusByHashList", func(hashes []string) ([]commonTypes.RollupStatus, error) {
 			return nil, targetErr
 		})
 		err := watcher.FetchContractEvent()
@@ -204,7 +207,7 @@ func testL1WatcherClientFetchContractEvent(t *testing.T) {
 	})
 
 	convey.Convey("rollup status mismatch batch hashes length", t, func() {
-		patchGuard.ApplyMethodFunc(db, "GetRollupStatusByHashList", func(hashes []string) ([]commonTypes.RollupStatus, error) {
+		patchGuard.ApplyMethodFunc(blockBatchOrm, "GetRollupStatusByHashList", func(hashes []string) ([]commonTypes.RollupStatus, error) {
 			s := []commonTypes.RollupStatus{
 				commonTypes.RollupFinalized,
 			}
@@ -214,7 +217,7 @@ func testL1WatcherClientFetchContractEvent(t *testing.T) {
 		assert.NoError(t, err)
 	})
 
-	patchGuard.ApplyMethodFunc(db, "GetRollupStatusByHashList", func(hashes []string) ([]commonTypes.RollupStatus, error) {
+	patchGuard.ApplyMethodFunc(blockBatchOrm, "GetRollupStatusByHashList", func(hashes []string) ([]commonTypes.RollupStatus, error) {
 		s := []commonTypes.RollupStatus{
 			commonTypes.RollupPending,
 			commonTypes.RollupCommitting,
@@ -224,53 +227,55 @@ func testL1WatcherClientFetchContractEvent(t *testing.T) {
 
 	convey.Convey("db update RollupFinalized status failure", t, func() {
 		targetErr := errors.New("UpdateFinalizeTxHashAndRollupStatus RollupFinalized failure")
-		patchGuard.ApplyMethodFunc(db, "UpdateFinalizeTxHashAndRollupStatus", func(context.Context, string, string, commonTypes.RollupStatus) error {
+		patchGuard.ApplyMethodFunc(blockBatchOrm, "UpdateFinalizeTxHashAndRollupStatus", func(context.Context, string, string, commonTypes.RollupStatus) error {
 			return targetErr
 		})
 		err := watcher.FetchContractEvent()
 		assert.Equal(t, targetErr.Error(), err.Error())
 	})
 
-	patchGuard.ApplyMethodFunc(db, "UpdateFinalizeTxHashAndRollupStatus", func(context.Context, string, string, commonTypes.RollupStatus) error {
+	patchGuard.ApplyMethodFunc(blockBatchOrm, "UpdateFinalizeTxHashAndRollupStatus", func(context.Context, string, string, commonTypes.RollupStatus) error {
 		return nil
 	})
 
 	convey.Convey("db update RollupCommitted status failure", t, func() {
 		targetErr := errors.New("UpdateCommitTxHashAndRollupStatus RollupCommitted failure")
-		patchGuard.ApplyMethodFunc(db, "UpdateCommitTxHashAndRollupStatus", func(context.Context, string, string, commonTypes.RollupStatus) error {
+		patchGuard.ApplyMethodFunc(blockBatchOrm, "UpdateCommitTxHashAndRollupStatus", func(context.Context, string, string, commonTypes.RollupStatus) error {
 			return targetErr
 		})
 		err := watcher.FetchContractEvent()
 		assert.Equal(t, targetErr.Error(), err.Error())
 	})
 
-	patchGuard.ApplyMethodFunc(db, "UpdateCommitTxHashAndRollupStatus", func(context.Context, string, string, commonTypes.RollupStatus) error {
+	patchGuard.ApplyMethodFunc(blockBatchOrm, "UpdateCommitTxHashAndRollupStatus", func(context.Context, string, string, commonTypes.RollupStatus) error {
 		return nil
 	})
 
+	var l2MessageOrm *orm.L2Message
 	convey.Convey("db update layer2 status and layer1 hash failure", t, func() {
 		targetErr := errors.New("UpdateLayer2StatusAndLayer1Hash failure")
-		patchGuard.ApplyMethodFunc(db, "UpdateLayer2StatusAndLayer1Hash", func(context.Context, string, commonTypes.MsgStatus, string) error {
+		patchGuard.ApplyMethodFunc(l2MessageOrm, "UpdateLayer2StatusAndLayer1Hash", func(context.Context, string, commonTypes.MsgStatus, string) error {
 			return targetErr
 		})
 		err := watcher.FetchContractEvent()
 		assert.Equal(t, targetErr.Error(), err.Error())
 	})
 
-	patchGuard.ApplyMethodFunc(db, "UpdateLayer2StatusAndLayer1Hash", func(context.Context, string, commonTypes.MsgStatus, string) error {
+	patchGuard.ApplyMethodFunc(l2MessageOrm, "UpdateLayer2StatusAndLayer1Hash", func(context.Context, string, commonTypes.MsgStatus, string) error {
 		return nil
 	})
 
+	var l1MessageOrm *orm.L1Message
 	convey.Convey("db save l1 message failure", t, func() {
 		targetErr := errors.New("SaveL1Messages failure")
-		patchGuard.ApplyMethodFunc(db, "SaveL1Messages", func(context.Context, []*commonTypes.L1Message) error {
+		patchGuard.ApplyMethodFunc(l1MessageOrm, "SaveL1Messages", func(context.Context, []*commonTypes.L1Message) error {
 			return targetErr
 		})
 		err := watcher.FetchContractEvent()
 		assert.Equal(t, targetErr.Error(), err.Error())
 	})
 
-	patchGuard.ApplyMethodFunc(db, "SaveL1Messages", func(context.Context, []*commonTypes.L1Message) error {
+	patchGuard.ApplyMethodFunc(l1MessageOrm, "SaveL1Messages", func(context.Context, []*commonTypes.L1Message) error {
 		return nil
 	})
 

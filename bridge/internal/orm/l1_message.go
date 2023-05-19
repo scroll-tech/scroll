@@ -2,7 +2,7 @@ package orm
 
 import (
 	"context"
-	"errors"
+	"database/sql"
 	"github.com/scroll-tech/go-ethereum/log"
 	"gorm.io/gorm"
 
@@ -37,15 +37,18 @@ func (*L1Message) TableName() string {
 }
 
 // GetLayer1LatestWatchedHeight returns latest height stored in the table
-func (m *L1Message) GetLayer1LatestWatchedHeight() (uint64, error) {
+func (m *L1Message) GetLayer1LatestWatchedHeight() (int64, error) {
 	// @note It's not correct, since we may don't have message in some blocks.
 	// But it will only be called at start, some redundancy is acceptable.
-	var msg L1Message
-	err := m.db.Select("MAX(height)").First(&msg).Error
-	if err != nil && errors.Is(err, gorm.ErrRecordNotFound) {
-		return 0, err
+	var maxHeight sql.NullInt64
+	result := m.db.Model(&L1Message{}).Select("MAX(height)").Scan(&maxHeight)
+	if result.Error != nil {
+		return -1, result.Error
 	}
-	return msg.Height, nil
+	if maxHeight.Valid {
+		return maxHeight.Int64, nil
+	}
+	return -1, nil
 }
 
 // GetL1MessagesByStatus fetch list of unprocessed messages given msg status

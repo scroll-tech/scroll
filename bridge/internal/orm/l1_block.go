@@ -2,6 +2,7 @@ package orm
 
 import (
 	"context"
+	"database/sql"
 
 	"github.com/scroll-tech/go-ethereum/log"
 	"gorm.io/gorm"
@@ -33,13 +34,16 @@ func (*L1Block) TableName() string {
 }
 
 // GetLatestL1BlockHeight get the latest l1 block height
-func (l *L1Block) GetLatestL1BlockHeight() (uint64, error) {
-	var block L1Block
-	err := l.db.Select("COALESCE(MAX(number), 0)").First(&block).Error
-	if err != nil {
-		return 0, err
+func (l *L1Block) GetLatestL1BlockHeight() (int64, error) {
+	var maxNumber sql.NullInt64
+	result := l.db.Model(&L1Block{}).Select("COALESCE(MAX(number), 0)").Scan(&maxNumber)
+	if result.Error != nil {
+		return -1, result.Error
 	}
-	return block.Number, nil
+	if maxNumber.Valid {
+		return maxNumber.Int64, nil
+	}
+	return -1, nil
 }
 
 // GetL1BlockInfos get the l1 block infos
