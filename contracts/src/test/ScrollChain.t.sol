@@ -124,11 +124,11 @@ contract ScrollChainTest is DSTestPlus {
         hevm.expectRevert("invalid chunk length");
         rollup.commitBatch(0, batchHeader0, chunks, new bytes(0));
 
-        // chunk length mismatch, revert
+        // incomplete l2 transaction data, revert
         chunk0 = new bytes(1 + 60 + 1);
         chunk0[0] = bytes1(uint8(1)); // one block in this chunk
         chunks[0] = chunk0;
-        hevm.expectRevert("chunk length mismatch");
+        hevm.expectRevert("incomplete l2 transaction data");
         rollup.commitBatch(0, batchHeader0, chunks, new bytes(0));
 
         // commit batch with one chunk, no tx, correctly
@@ -258,7 +258,7 @@ contract ScrollChainTest is DSTestPlus {
             mstore(add(batchHeader1, add(0x20, 1)), shl(192, 1)) // batchIndex = 1
             mstore(add(batchHeader1, add(0x20, 9)), shl(192, 1)) // l1MessagePopped = 1
             mstore(add(batchHeader1, add(0x20, 17)), shl(192, 1)) // totalL1MessagePopped = 1
-            mstore(add(batchHeader1, add(0x20, 25)), 0x2089999f9e8d1336c061443453ce1a1eace2c89a691e3e221f1d106d755e5e3c) // dataHash
+            mstore(add(batchHeader1, add(0x20, 25)), 0xfe21c37fa013c76f86b8593ddf15d685a04b55061d06797597ee866f6ff2edf8) // dataHash
             mstore(add(batchHeader1, add(0x20, 57)), batchHash0) // parentBatchHash
             mstore(add(batchHeader1, add(0x20, 89)), 0) // bitmap0
         }
@@ -303,7 +303,7 @@ contract ScrollChainTest is DSTestPlus {
             mstore(add(batchHeader2, add(0x20, 1)), shl(192, 2)) // batchIndex = 2
             mstore(add(batchHeader2, add(0x20, 9)), shl(192, 264)) // l1MessagePopped = 264
             mstore(add(batchHeader2, add(0x20, 17)), shl(192, 265)) // totalL1MessagePopped = 265
-            mstore(add(batchHeader2, add(0x20, 25)), 0x7acd2dca70958259b010b04a600fb0e11fc1f7384fe1f42062dee9fd98844ae2) // dataHash
+            mstore(add(batchHeader2, add(0x20, 25)), 0xa447b3c80bc6c3ee1aebc1af746c7c6b35a05c4a7af89d2103e9e0788b54375c) // dataHash
             mstore(add(batchHeader2, add(0x20, 57)), batchHash1) // parentBatchHash
             mstore(
                 add(batchHeader2, add(0x20, 89)),

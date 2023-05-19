@@ -45,7 +45,7 @@ interface IScrollChain {
      * Public Mutating Functions *
      *****************************/
 
-    /// @notice commit a batch in layer 1
+    /// @notice Commit a batch of transactions on layer 1.
     ///
     /// @param version The version of current batch.
     /// @param parentBatchHeader The header of parent batch, see the comments of `BatchHeaderV0Codec`.
@@ -60,10 +60,10 @@ interface IScrollChain {
 
     /// @notice Revert a pending batch.
     /// @dev one can only revert unfinalized batches.
-    /// @param batchHeader The header of current batch, see the encoding in comments of `commitBatch.
+    /// @param batchHeader The header of current batch, see the encoding in comments of `commitBatch`.
     function revertBatch(bytes calldata batchHeader) external;
 
-    /// @notice Finalize commited batch in layer 1
+    /// @notice Finalize a commited batch on layer 1.
     /// @param batchHeader The header of current batch, see the encoding in comments of `commitBatch.
     /// @param prevStateRoot The state root of parent batch.
     /// @param newStateRoot The state root of current batch.
