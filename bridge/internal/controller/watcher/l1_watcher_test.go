@@ -81,7 +81,7 @@ func testL1WatcherClientFetchBlockHeader(t *testing.T) {
 		})
 		defer patchGuard.Reset()
 
-		patchGuard.ApplyMethodFunc(l1BlockOrm, "InsertL1Blocks", func(ctx context.Context, blocks []*commonTypes.L1BlockInfo) error {
+		patchGuard.ApplyMethodFunc(l1BlockOrm, "InsertL1Blocks", func(ctx context.Context, blocks []orm.L1Block) error {
 			return errors.New("insert failed")
 		})
 
@@ -103,7 +103,7 @@ func testL1WatcherClientFetchBlockHeader(t *testing.T) {
 		})
 		defer patchGuard.Reset()
 
-		patchGuard.ApplyMethodFunc(l1BlockOrm, "InsertL1Blocks", func(ctx context.Context, blocks []*commonTypes.L1BlockInfo) error {
+		patchGuard.ApplyMethodFunc(l1BlockOrm, "InsertL1Blocks", func(ctx context.Context, blocks []orm.L1Block) error {
 			return nil
 		})
 
@@ -160,14 +160,14 @@ func testL1WatcherClientFetchContractEvent(t *testing.T) {
 
 	convey.Convey("parse bridge event logs failure", t, func() {
 		targetErr := errors.New("parse log failure")
-		patchGuard.ApplyPrivateMethod(watcher, "parseBridgeEventLogs", func(*L1WatcherClient, []gethTypes.Log) ([]*commonTypes.L1Message, []relayedMessage, []rollupEvent, error) {
+		patchGuard.ApplyPrivateMethod(watcher, "parseBridgeEventLogs", func(*L1WatcherClient, []gethTypes.Log) ([]*orm.L1Message, []relayedMessage, []rollupEvent, error) {
 			return nil, nil, nil, targetErr
 		})
 		err := watcher.FetchContractEvent()
 		assert.Equal(t, err.Error(), targetErr.Error())
 	})
 
-	patchGuard.ApplyPrivateMethod(watcher, "parseBridgeEventLogs", func(*L1WatcherClient, []gethTypes.Log) ([]*commonTypes.L1Message, []relayedMessage, []rollupEvent, error) {
+	patchGuard.ApplyPrivateMethod(watcher, "parseBridgeEventLogs", func(*L1WatcherClient, []gethTypes.Log) ([]*orm.L1Message, []relayedMessage, []rollupEvent, error) {
 		rollupEvents := []rollupEvent{
 			{
 				batchHash: common.HexToHash("0x1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347"),
@@ -268,14 +268,14 @@ func testL1WatcherClientFetchContractEvent(t *testing.T) {
 	var l1MessageOrm *orm.L1Message
 	convey.Convey("db save l1 message failure", t, func() {
 		targetErr := errors.New("SaveL1Messages failure")
-		patchGuard.ApplyMethodFunc(l1MessageOrm, "SaveL1Messages", func(context.Context, []*commonTypes.L1Message) error {
+		patchGuard.ApplyMethodFunc(l1MessageOrm, "SaveL1Messages", func(context.Context, []*orm.L1Message) error {
 			return targetErr
 		})
 		err := watcher.FetchContractEvent()
 		assert.Equal(t, targetErr.Error(), err.Error())
 	})
 
-	patchGuard.ApplyMethodFunc(l1MessageOrm, "SaveL1Messages", func(context.Context, []*commonTypes.L1Message) error {
+	patchGuard.ApplyMethodFunc(l1MessageOrm, "SaveL1Messages", func(context.Context, []*orm.L1Message) error {
 		return nil
 	})
 

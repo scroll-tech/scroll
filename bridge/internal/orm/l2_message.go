@@ -2,7 +2,7 @@ package orm
 
 import (
 	"context"
-	"errors"
+	"database/sql"
 	"github.com/scroll-tech/go-ethereum/log"
 	"gorm.io/gorm"
 
@@ -59,15 +59,18 @@ func (m *L2Message) GetL2Messages(fields map[string]interface{}, orderByList []s
 }
 
 // GetLayer2LatestWatchedHeight returns latest height stored in the table
-func (m *L2Message) GetLayer2LatestWatchedHeight() (uint64, error) {
+func (m *L2Message) GetLayer2LatestWatchedHeight() (int64, error) {
 	// @note It's not correct, since we may don't have message in some blocks.
 	// But it will only be called at start, some redundancy is acceptable.
-	var L2Msg L2Message
-	err := m.db.Select("COALESCE(MAX(height), -1)").Find(&L2Msg).Error
-	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
-		return 0, err
+	var maxHeight sql.NullInt64
+	result := m.db.Model(&L2Message{}).Select("COALESCE(MAX(height), -1)").Scan(&maxHeight)
+	if result.Error != nil {
+		return -1, result.Error
 	}
-	return L2Msg.Height, nil
+	if maxHeight.Valid {
+		return maxHeight.Int64, nil
+	}
+	return -1, nil
 }
 
 // GetL2MessageByNonce fetch message by nonce

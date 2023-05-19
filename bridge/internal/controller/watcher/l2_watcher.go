@@ -83,7 +83,7 @@ func NewL2WatcherClient(ctx context.Context, client *ethclient.Client, confirmat
 		blockTrace:         orm.NewBlockTrace(db),
 		l1MessageOrm:       orm.NewL1Message(db),
 		l2MessageOrm:       l2MessageOrm,
-		processedMsgHeight: savedHeight,
+		processedMsgHeight: uint64(savedHeight),
 		confirmations:      confirmations,
 
 		messengerAddress: messengerAddress,

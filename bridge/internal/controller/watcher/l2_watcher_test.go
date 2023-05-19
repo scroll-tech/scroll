@@ -116,7 +116,7 @@ func testMonitorBridgeContract(t *testing.T) {
 	// check if we successfully stored events
 	assert.True(t, cutils.TryTimes(10, func() bool {
 		height, err := l2MessageOrm.GetLayer2LatestWatchedHeight()
-		return err == nil && height > previousHeight
+		return err == nil && height > int64(previousHeight)
 	}))
 
 	// check l1 messages.
@@ -188,7 +188,7 @@ func testFetchMultipleSentMessageInOneBlock(t *testing.T) {
 	// check if we successfully stored events
 	assert.True(t, cutils.TryTimes(10, func() bool {
 		height, err := l2MessageOrm.GetLayer2LatestWatchedHeight()
-		return err == nil && height > previousHeight
+		return err == nil && height > int64(previousHeight)
 	}))
 
 	assert.True(t, cutils.TryTimes(10, func() bool {
