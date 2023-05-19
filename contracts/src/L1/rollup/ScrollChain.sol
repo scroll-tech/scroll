@@ -159,7 +159,9 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
         require(committedBatches[_batchIndex] == _parentBatchHash, "incorrect parent batch bash");
 
         // compute data hash for each chunk
-        // The list of data hashes are stored in memory start with `memPtr`.
+        // We will store `_chunksLength` number of keccak hash digests starting at `memPtr`,
+        // each of which is the data hash of the corresponding chunk. So we reserve the memory
+        // region from `memPtr` to `memPtr + _chunkLength * 32` for chunk data hashes.
         assembly {
             memPtr := mload(0x40)
             mstore(0x40, add(memPtr, mul(_chunksLength, 32)))
@@ -391,7 +393,7 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
         assembly {
             chunkPtr := add(_chunk, 0x20)
         }
-        require(l2TxPtr - chunkPtr == _chunk.length, "chunk length mismatch");
+        require(l2TxPtr - chunkPtr == _chunk.length, "incomplete l2 transaction data");
 
         // compute data hash and store to memory
         assembly {

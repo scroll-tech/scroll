@@ -14,113 +14,113 @@ pragma solidity ^0.8.0;
 ///   * skippedL1MessageBitmap  dynamic     uint256[]   89     A bitmap to indicate if L1 messages are skipped in the batch
 /// ```
 library BatchHeaderV0Codec {
-    function loadAndValidate(bytes calldata _batchHeader) internal pure returns (uint256 memPtr, uint256 length) {
+    function loadAndValidate(bytes calldata _batchHeader) internal pure returns (uint256 batchPtr, uint256 length) {
         length = _batchHeader.length;
         require(length >= 89, "batch header length too small");
 
         // copy batch header to memory.
         assembly {
-            memPtr := mload(0x40)
-            calldatacopy(memPtr, _batchHeader.offset, length)
-            mstore(0x40, add(memPtr, length))
+            batchPtr := mload(0x40)
+            calldatacopy(batchPtr, _batchHeader.offset, length)
+            mstore(0x40, add(batchPtr, length))
         }
 
         // check batch header length
-        uint256 _l1MessagePopped = BatchHeaderV0Codec.l1MessagePopped(memPtr);
+        uint256 _l1MessagePopped = BatchHeaderV0Codec.l1MessagePopped(batchPtr);
 
         unchecked {
             require(length == 89 + ((_l1MessagePopped + 255) / 256) * 32, "wrong bitmap length");
         }
     }
 
-    function version(uint256 memPtr) internal pure returns (uint256 _version) {
+    function version(uint256 batchPtr) internal pure returns (uint256 _version) {
         assembly {
-            _version := shr(248, mload(memPtr))
+            _version := shr(248, mload(batchPtr))
         }
     }
 
-    function batchIndex(uint256 memPtr) internal pure returns (uint256 _batchIndex) {
+    function batchIndex(uint256 batchPtr) internal pure returns (uint256 _batchIndex) {
         assembly {
-            _batchIndex := shr(192, mload(add(memPtr, 1)))
+            _batchIndex := shr(192, mload(add(batchPtr, 1)))
         }
     }
 
-    function l1MessagePopped(uint256 memPtr) internal pure returns (uint256 _l1MessagePopped) {
+    function l1MessagePopped(uint256 batchPtr) internal pure returns (uint256 _l1MessagePopped) {
         assembly {
-            _l1MessagePopped := shr(192, mload(add(memPtr, 9)))
+            _l1MessagePopped := shr(192, mload(add(batchPtr, 9)))
         }
     }
 
-    function totalL1MessagePopped(uint256 memPtr) internal pure returns (uint256 _totalL1MessagePopped) {
+    function totalL1MessagePopped(uint256 batchPtr) internal pure returns (uint256 _totalL1MessagePopped) {
         assembly {
-            _totalL1MessagePopped := shr(192, mload(add(memPtr, 17)))
+            _totalL1MessagePopped := shr(192, mload(add(batchPtr, 17)))
         }
     }
 
-    function dataHash(uint256 memPtr) internal pure returns (bytes32 _dataHash) {
+    function dataHash(uint256 batchPtr) internal pure returns (bytes32 _dataHash) {
         assembly {
-            _dataHash := mload(add(memPtr, 25))
+            _dataHash := mload(add(batchPtr, 25))
         }
     }
 
-    function parentBatchHash(uint256 memPtr) internal pure returns (bytes32 _parentBatchHash) {
+    function parentBatchHash(uint256 batchPtr) internal pure returns (bytes32 _parentBatchHash) {
         assembly {
-            _parentBatchHash := mload(add(memPtr, 57))
+            _parentBatchHash := mload(add(batchPtr, 57))
         }
     }
 
-    function storeVersion(uint256 memPtr, uint256 _version) internal pure {
+    function storeVersion(uint256 batchPtr, uint256 _version) internal pure {
         assembly {
-            mstore(memPtr, shl(248, _version))
+            mstore(batchPtr, shl(248, _version))
         }
     }
 
-    function storeBatchIndex(uint256 memPtr, uint256 _batchIndex) internal pure {
+    function storeBatchIndex(uint256 batchPtr, uint256 _batchIndex) internal pure {
         assembly {
-            mstore(add(memPtr, 1), shl(192, _batchIndex))
+            mstore(add(batchPtr, 1), shl(192, _batchIndex))
         }
     }
 
-    function storeL1MessagePopped(uint256 memPtr, uint256 _l1MessagePopped) internal pure {
+    function storeL1MessagePopped(uint256 batchPtr, uint256 _l1MessagePopped) internal pure {
         assembly {
-            mstore(add(memPtr, 9), shl(192, _l1MessagePopped))
+            mstore(add(batchPtr, 9), shl(192, _l1MessagePopped))
         }
     }
 
-    function storeTotalL1MessagePopped(uint256 memPtr, uint256 _totalL1MessagePopped) internal pure {
+    function storeTotalL1MessagePopped(uint256 batchPtr, uint256 _totalL1MessagePopped) internal pure {
         assembly {
-            mstore(add(memPtr, 17), shl(192, _totalL1MessagePopped))
+            mstore(add(batchPtr, 17), shl(192, _totalL1MessagePopped))
         }
     }
 
-    function storeDataHash(uint256 memPtr, bytes32 _dataHash) internal pure {
+    function storeDataHash(uint256 batchPtr, bytes32 _dataHash) internal pure {
         assembly {
-            mstore(add(memPtr, 25), _dataHash)
+            mstore(add(batchPtr, 25), _dataHash)
         }
     }
 
-    function storeParentBatchHash(uint256 memPtr, bytes32 _parentBatchHash) internal pure {
+    function storeParentBatchHash(uint256 batchPtr, bytes32 _parentBatchHash) internal pure {
         assembly {
-            mstore(add(memPtr, 57), _parentBatchHash)
+            mstore(add(batchPtr, 57), _parentBatchHash)
         }
     }
 
-    function storeBitMap(uint256 memPtr, bytes calldata _skippedL1MessageBitmap) internal pure {
+    function storeBitMap(uint256 batchPtr, bytes calldata _skippedL1MessageBitmap) internal pure {
         assembly {
-            calldatacopy(add(memPtr, 89), _skippedL1MessageBitmap.offset, _skippedL1MessageBitmap.length)
+            calldatacopy(add(batchPtr, 89), _skippedL1MessageBitmap.offset, _skippedL1MessageBitmap.length)
         }
     }
 
     /// @notice Compute the batch hash.
     /// @dev Caller should make sure that the encoded batch header is correct.
     ///
-    /// @param memPtr The memory offset of the encoded batch header.
+    /// @param batchPtr The memory offset of the encoded batch header.
     /// @param length The length of the batch.
     /// @return _batchHash The hash of the corresponding batch.
-    function computeBatchHash(uint256 memPtr, uint256 length) internal pure returns (bytes32 _batchHash) {
+    function computeBatchHash(uint256 batchPtr, uint256 length) internal pure returns (bytes32 _batchHash) {
         // in current version, the hash is: keccak(BatchHeader without timestamp)
         assembly {
-            _batchHash := keccak256(memPtr, length)
+            _batchHash := keccak256(batchPtr, length)
         }
     }
 }

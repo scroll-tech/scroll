@@ -60,7 +60,7 @@ library ChunkCodec {
             mstore(dstPtr, mload(chunkPtr)) // first 32 bytes
             mstore(
                 add(dstPtr, 0x20),
-                and(add(chunkPtr, 0x20), 0xffffffffffffffffffffffffffffffffffffffffffffffffffff000000000000)
+                and(mload(add(chunkPtr, 0x20)), 0xffffffffffffffffffffffffffffffffffffffffffffffffffff000000000000)
             ) // next 26 bytes
 
             dstPtr := add(dstPtr, 58)

@@ -123,11 +123,11 @@ contract ScrollChainTest is DSTestPlus {
         hevm.expectRevert("invalid chunk length");
         rollup.commitBatch(0, batchHeader0, chunks, new bytes(0));
 
-        // chunk length mismatch, revert
+        // incomplete l2 transaction data, revert
         chunk0 = new bytes(1 + 60 + 1);
         chunk0[0] = bytes1(uint8(1)); // one block in this chunk
         chunks[0] = chunk0;
-        hevm.expectRevert("chunk length mismatch");
+        hevm.expectRevert("incomplete l2 transaction data");
         rollup.commitBatch(0, batchHeader0, chunks, new bytes(0));
 
         // commit batch with one chunk, no tx, correctly
