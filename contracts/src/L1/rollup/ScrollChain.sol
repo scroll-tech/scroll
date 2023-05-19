@@ -147,6 +147,8 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
         bytes[] memory _chunks,
         bytes calldata _skippedL1MessageBitmap
     ) external override OnlySequencer {
+        require(_version == 0, "invalid version");
+
         // check whether the batch is empty
         uint256 _chunksLength = _chunks.length;
         require(_chunksLength > 0, "batch is empty");

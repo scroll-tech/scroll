@@ -86,6 +86,10 @@ contract ScrollChainTest is DSTestPlus {
 
         rollup.updateSequencer(address(this), true);
 
+        // invalid version, revert
+        hevm.expectRevert("invalid version");
+        rollup.commitBatch(1, batchHeader0, new bytes[](0), new bytes(0));
+    
         // batch is empty, revert
         hevm.expectRevert("batch is empty");
         rollup.commitBatch(0, batchHeader0, new bytes[](0), new bytes(0));
