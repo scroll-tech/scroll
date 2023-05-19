@@ -8,21 +8,21 @@ pragma solidity ^0.8.0;
 ///   * numBlocks       1           uint8           0           The number of blocks in this chunk
 ///   * block[0]        60          BlockContext    1           The first block in this chunk
 ///   * ......
-///   * block[i]        60          BlockContext    60*i+1     The first block in this chunk
+///   * block[i]        60          BlockContext    60*i+1      The first block in this chunk
 ///   * ......
-///   * block[n-1]      60          BlockContext    60*n-155   The last block in this chunk
+///   * block[n-1]      60          BlockContext    60*n-155    The last block in this chunk
 ///   * l2Transactions  dynamic     bytes           60*n+1
 /// ```
 ///
 /// @dev Below is the encoding for `BlockContext`, total 60 bytes.
 /// ```text
 ///   * Field                   Bytes      Type         Index  Comments
-///   * blockNumber             8          uint64       0     The height of this block.
-///   * timestamp               8          uint64       8     The timestamp of this block.
+///   * blockNumber             8          uint64       0      The height of this block.
+///   * timestamp               8          uint64       8      The timestamp of this block.
 ///   * baseFee                 32         uint256      16     The base fee of this block. Currently, it is always 0, because we disable EIP-1559.
-///   * gasLimit                8          uint64       48    The gas limit of this block.
-///   * numTransactions         2          uint16       56    The number of transactions in this block, both L1 & L2 txs.
-///   * numL1Messages           2          uint16       58    The number of l1 messages in this block.
+///   * gasLimit                8          uint64       48     The gas limit of this block.
+///   * numTransactions         2          uint16       56     The number of transactions in this block, both L1 & L2 txs.
+///   * numL1Messages           2          uint16       58     The number of l1 messages in this block.
 /// ```
 library ChunkCodec {
     uint256 internal constant BLOCK_CONTEXT_LENGTH = 60;
@@ -69,28 +69,27 @@ library ChunkCodec {
         return dstPtr;
     }
 
-    function numTransactions(uint256 ptr) internal pure returns (uint256 _numTransactions) {
+    function numTransactions(uint256 chunkPtr) internal pure returns (uint256 _numTransactions) {
         assembly {
-            _numTransactions := shr(240, mload(add(ptr, 56)))
+            _numTransactions := shr(240, mload(add(chunkPtr, 56)))
         }
     }
 
-    function numL1Messages(uint256 ptr) internal pure returns (uint256 _numL1Messages) {
+    function numL1Messages(uint256 chunkPtr) internal pure returns (uint256 _numL1Messages) {
         assembly {
-            _numL1Messages := shr(240, mload(add(ptr, 58)))
+            _numL1Messages := shr(240, mload(add(chunkPtr, 58)))
         }
     }
 
-    function loadL2TxHash(uint256 ptr) internal pure returns (bytes32, uint256) {
-        bytes32 txHash;
+    function loadL2TxHash(uint256 _l2TxPtr) internal pure returns (bytes32 txHash, uint256) {
         assembly {
             // first 4 bytes indicate the length
-            let txPayloadLength := shr(224, mload(ptr))
-            ptr := add(ptr, 4)
-            txHash := keccak256(ptr, txPayloadLength)
-            ptr := add(ptr, txPayloadLength)
+            let txPayloadLength := shr(224, mload(_l2TxPtr))
+            _l2TxPtr := add(_l2TxPtr, 4)
+            txHash := keccak256(_l2TxPtr, txPayloadLength)
+            _l2TxPtr := add(_l2TxPtr, txPayloadLength)
         }
 
-        return (txHash, ptr);
+        return (txHash, _l2TxPtr);
     }
 }
