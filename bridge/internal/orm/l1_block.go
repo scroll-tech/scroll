@@ -10,16 +10,16 @@ import (
 )
 
 type L1Block struct {
-	db *gorm.DB `gorm:"-"`
+	db *gorm.DB `gorm:"column:-"`
 
-	Number          uint64 `json:"number" gorm:"number"`
-	Hash            string `json:"hash" gorm:"hash"`
-	HeaderRLP       string `json:"header_rlp" gorm:"header_rlp"`
-	BaseFee         uint64 `json:"base_fee" gorm:"base_fee"`
-	BlockStatus     int    `json:"block_status" gorm:"block_status"`
-	GasOracleStatus int    `json:"oracle_status" gorm:"oracle_status"`
-	ImportTxHash    string `json:"import_tx_hash" gorm:"import_tx_hash"`
-	OracleTxHash    string `json:"oracle_tx_hash" gorm:"oracle_tx_hash"`
+	Number          uint64 `json:"number" gorm:"column:number"`
+	Hash            string `json:"hash" gorm:"column:hash"`
+	HeaderRLP       string `json:"header_rlp" gorm:"column:header_rlp"`
+	BaseFee         uint64 `json:"base_fee" gorm:"column:base_fee"`
+	BlockStatus     int    `json:"block_status" gorm:"column:block_status"`
+	ImportTxHash    string `json:"import_tx_hash" gorm:"column:import_tx_hash"`
+	GasOracleStatus int    `json:"oracle_status" gorm:"column:oracle_status"`
+	OracleTxHash    string `json:"oracle_tx_hash" gorm:"column:oracle_tx_hash"`
 }
 
 // NewL1Block create an l1Block instance

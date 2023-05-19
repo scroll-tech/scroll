@@ -3,7 +3,7 @@ package orm
 import (
 	"encoding/json"
 	"errors"
-	
+
 	"github.com/scroll-tech/go-ethereum/log"
 	"gorm.io/gorm"
 
@@ -11,12 +11,12 @@ import (
 )
 
 type BlockTrace struct {
-	db *gorm.DB `gorm:"-"`
+	db *gorm.DB `gorm:"column:-"`
 
 	Number         uint64 `json:"number" db:"number"`
 	Hash           string `json:"hash" db:"hash"`
 	ParentHash     string `json:"parent_hash" db:"parent_hash"`
-	Trace          string `json:"trace" gorm:"trace"`
+	Trace          string `json:"trace" gorm:"column:trace"`
 	BatchHash      string `json:"batch_hash" db:"batch_hash"`
 	TxNum          uint64 `json:"tx_num" db:"tx_num"`
 	GasUsed        uint64 `json:"gas_used" db:"gas_used"`

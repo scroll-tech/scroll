@@ -12,21 +12,21 @@ import (
 )
 
 type L2Message struct {
-	db *gorm.DB `gorm:"-"`
+	db *gorm.DB `gorm:"column:-"`
 
-	Nonce       uint64    `json:"nonce" gorm:"nonce"`
-	MsgHash     string    `json:"msg_hash" gorm:"msg_hash"`
-	Height      uint64    `json:"height" gorm:"height"`
-	Sender      string    `json:"sender" gorm:"sender"`
-	Value       string    `json:"value" gorm:"value"`
-	Target      string    `json:"target" gorm:"target"`
-	Calldata    string    `json:"calldata" gorm:"calldata"`
-	Layer2Hash  string    `json:"layer2_hash" gorm:"layer2_hash"`
-	Layer1Hash  string    `json:"layer1_hash" gorm:"layer1_hash"`
-	Proof       string    `json:"proof" gorm:"proof"`
-	Status      int       `json:"status" gorm:"status"`
-	CreatedTime time.Time `json:"created_time" gorm:"created_time"`
-	UpdatedTime time.Time `json:"updated_time" gorm:"updated_time"`
+	Nonce       uint64    `json:"nonce" gorm:"column:nonce"`
+	MsgHash     string    `json:"msg_hash" gorm:"column:msg_hash"`
+	Height      uint64    `json:"height" gorm:"column:height"`
+	Sender      string    `json:"sender" gorm:"column:sender"`
+	Value       string    `json:"value" gorm:"column:value"`
+	Target      string    `json:"target" gorm:"column:target"`
+	Calldata    string    `json:"calldata" gorm:"column:calldata"`
+	Layer2Hash  string    `json:"layer2_hash" gorm:"column:layer2_hash"`
+	Layer1Hash  string    `json:"layer1_hash" gorm:"column:layer1_hash"`
+	Proof       string    `json:"proof" gorm:"column:proof"`
+	Status      int       `json:"status" gorm:"column:status"`
+	CreatedTime time.Time `json:"created_time" gorm:"column:created_time"`
+	UpdatedTime time.Time `json:"updated_time" gorm:"column:updated_time"`
 }
 
 // NewL2Message create an L2Message instance

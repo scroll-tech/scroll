@@ -13,21 +13,21 @@ import (
 
 // L1Message is structure of stored layer1 bridge message
 type L1Message struct {
-	db *gorm.DB `gorm:"-"`
+	db *gorm.DB `gorm:"column:-"`
 
-	QueueIndex  uint64    `json:"queue_index" gorm:"queue_index"`
-	MsgHash     string    `json:"msg_hash" gorm:"msg_hash"`
-	Height      uint64    `json:"height" gorm:"height"`
-	GasLimit    uint64    `json:"gas_limit" gorm:"gas_limit"`
-	Sender      string    `json:"sender" gorm:"sender"`
-	Target      string    `json:"target" gorm:"target"`
-	Value       string    `json:"value" gorm:"value"`
-	Calldata    string    `json:"calldata" gorm:"calldata"`
-	Layer1Hash  string    `json:"layer1_hash" gorm:"layer1_hash"`
-	Layer2Hash  string    `json:"layer2_hash" gorm:"layer2_hash"`
-	Status      int       `json:"status" gorm:"status"`
-	CreatedTime time.Time `json:"created_time" gorm:"created_time"`
-	UpdatedTime time.Time `json:"updated_time" gorm:"updated_time"`
+	QueueIndex  uint64    `json:"queue_index" gorm:"column:queue_index"`
+	MsgHash     string    `json:"msg_hash" gorm:"column:msg_hash"`
+	Height      uint64    `json:"height" gorm:"column:height"`
+	GasLimit    uint64    `json:"gas_limit" gorm:"column:gas_limit"`
+	Sender      string    `json:"sender" gorm:"column:sender"`
+	Target      string    `json:"target" gorm:"column:target"`
+	Value       string    `json:"value" gorm:"column:value"`
+	Calldata    string    `json:"calldata" gorm:"column:calldata"`
+	Layer1Hash  string    `json:"layer1_hash" gorm:"column:layer1_hash"`
+	Layer2Hash  string    `json:"layer2_hash" gorm:"column:layer2_hash"`
+	Status      int       `json:"status" gorm:"column:status"`
+	CreatedTime time.Time `json:"created_time" gorm:"column:created_time"`
+	UpdatedTime time.Time `json:"updated_time" gorm:"column:updated_time"`
 }
 
 // NewL1Message create an L1MessageOrm instance

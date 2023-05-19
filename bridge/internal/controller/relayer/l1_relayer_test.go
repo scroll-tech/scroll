@@ -78,10 +78,10 @@ func testL1RelayerProcessSaveEvents(t *testing.T) {
 	relayer.ProcessSavedEvents()
 	msg1, err := l1MessageOrm.GetL1MessageByQueueIndex(1)
 	assert.NoError(t, err)
-	assert.Equal(t, msg1.Status, types.MsgSubmitted)
+	assert.Equal(t, types.MsgStatus(msg1.Status), types.MsgSubmitted)
 	msg2, err := l1MessageOrm.GetL1MessageByQueueIndex(2)
 	assert.NoError(t, err)
-	assert.Equal(t, msg2.Status, types.MsgSubmitted)
+	assert.Equal(t, types.MsgStatus(msg2.Status), types.MsgSubmitted)
 }
 
 func testL1RelayerMsgConfirm(t *testing.T) {
