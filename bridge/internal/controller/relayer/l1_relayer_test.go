@@ -174,14 +174,14 @@ func testL1RelayerProcessGasPriceOracle(t *testing.T) {
 	var l1BlockOrm *orm.L1Block
 	convey.Convey("GetLatestL1BlockHeight failure", t, func() {
 		targetErr := errors.New("GetLatestL1BlockHeight error")
-		patchGuard := gomonkey.ApplyMethodFunc(l1BlockOrm, "GetLatestL1BlockHeight", func() (uint64, error) {
+		patchGuard := gomonkey.ApplyMethodFunc(l1BlockOrm, "GetLatestL1BlockHeight", func() (int64, error) {
 			return 0, targetErr
 		})
 		defer patchGuard.Reset()
 		l1Relayer.ProcessGasPriceOracle()
 	})
 
-	patchGuard := gomonkey.ApplyMethodFunc(l1BlockOrm, "GetLatestL1BlockHeight", func() (uint64, error) {
+	patchGuard := gomonkey.ApplyMethodFunc(l1BlockOrm, "GetLatestL1BlockHeight", func() (int64, error) {
 		return 100, nil
 	})
 	defer patchGuard.Reset()
