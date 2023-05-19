@@ -19,7 +19,7 @@ pragma solidity ^0.8.0;
 ///   * Field                   Bytes      Type         Index  Comments
 ///   * blockNumber             8          uint64       0     The height of this block.
 ///   * timestamp               8          uint64       8     The timestamp of this block.
-///   * baseFee                 32         uint256      16     The base fee of this block. Currently, it is not used, because we disable EIP-1559.
+///   * baseFee                 32         uint256      16     The base fee of this block. Currently, it is always 0, because we disable EIP-1559.
 ///   * gasLimit                8          uint64       48    The gas limit of this block.
 ///   * numTransactions         2          uint16       56    The number of transactions in this block, both L1 & L2 txs.
 ///   * numL1Messages           2          uint16       58    The number of l1 messages in this block.
@@ -70,12 +70,16 @@ library ChunkCodec {
         uint256 dstPtr,
         uint256 index
     ) internal pure returns (uint256) {
+        // only first 58 bytes is needed.
         assembly {
             chunkPtr := add(chunkPtr, add(1, mul(BLOCK_CONTEXT_LENGTH, index)))
             mstore(dstPtr, mload(chunkPtr)) // first 32 bytes
-            mstore(add(dstPtr, 0x20), add(chunkPtr, 0x20)) // next 28 bytes
+            mstore(
+                add(dstPtr, 0x20),
+                and(add(chunkPtr, 0x20), 0xffffffffffffffffffffffffffffffffffffffffffffffffffff000000000000)
+            ) // next 26 bytes
 
-            dstPtr := add(dstPtr, BLOCK_CONTEXT_LENGTH)
+            dstPtr := add(dstPtr, 58)
         }
 
         return dstPtr;
