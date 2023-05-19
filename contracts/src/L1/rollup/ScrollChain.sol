@@ -13,7 +13,7 @@ import {IRollupVerifier} from "../../libraries/verifier/IRollupVerifier.sol";
 // solhint-disable reason-string
 
 /// @title ScrollChain
-/// @notice This contract maintains essential data for scroll rollup.
+/// @notice This contract maintains data for the Scroll rollup.
 contract ScrollChain is OwnableUpgradeable, IScrollChain {
     /**********
      * Events *
@@ -106,7 +106,7 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
      *****************************/
 
     /// @notice Import layer 2 genesis block
-    /// @dev Although `_withdrawRoot` is always zero, we add this parameterfor the convenience of unit testing.
+    /// @dev Although `_withdrawRoot` is always zero, we add this parameter for the convenience of unit testing.
     function importGenesisBatch(
         bytes calldata _batchHeader,
         bytes32 _stateRoot,
@@ -122,11 +122,11 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
 
         // check all fields except `dataHash` and `lastBlockHash` are zero
         unchecked {
-            uint256 sums = BatchHeaderV0Codec.version(memPtr) +
+            uint256 sum = BatchHeaderV0Codec.version(memPtr) +
                 BatchHeaderV0Codec.batchIndex(memPtr) +
                 BatchHeaderV0Codec.l1MessagePopped(memPtr) +
                 BatchHeaderV0Codec.totalL1MessagePopped(memPtr);
-            require(sums == 0, "not all fields are zero");
+            require(sum == 0, "not all fields are zero");
         }
         require(BatchHeaderV0Codec.dataHash(memPtr) != bytes32(0), "zero data hash");
         require(BatchHeaderV0Codec.parentBatchHash(memPtr) == bytes32(0), "nonzero parent batch hash");
@@ -136,7 +136,6 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
         withdrawRoots[0] = _withdrawRoot;
 
         emit CommitBatch(_batchHash);
-
         emit FinalizeBatch(_batchHash, _stateRoot, _withdrawRoot);
     }
 
@@ -158,7 +157,7 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
 
         uint256 _batchIndex = BatchHeaderV0Codec.batchIndex(memPtr);
         uint256 _totalL1MessagesPoppedOverall = BatchHeaderV0Codec.totalL1MessagePopped(memPtr);
-        require(committedBatches[_batchIndex] == _parentBatchHash, "incorrect parent batch bash");
+        require(committedBatches[_batchIndex] == _parentBatchHash, "incorrect parent batch hash");
 
         // compute data hash for each chunk
         // We will store `_chunksLength` number of keccak hash digests starting at `memPtr`,
@@ -226,7 +225,7 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
 
         // check batch hash
         uint256 _batchIndex = BatchHeaderV0Codec.batchIndex(memPtr);
-        require(committedBatches[_batchIndex] == _batchHash, "incorrect batch bash");
+        require(committedBatches[_batchIndex] == _batchHash, "incorrect batch hash");
 
         // check finalization
         require(_batchIndex > lastFinalizedBatchIndex, "can only revert unfinalized batch");
@@ -249,7 +248,7 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
 
         bytes32 _dataHash = BatchHeaderV0Codec.dataHash(memPtr);
         uint256 _batchIndex = BatchHeaderV0Codec.batchIndex(memPtr);
-        require(committedBatches[_batchIndex] == _batchHash, "incorrect batch bash");
+        require(committedBatches[_batchIndex] == _batchHash, "incorrect batch hash");
 
         // verify previous state root.
         require(finalizedStateRoots[_batchIndex - 1] == _prevStateRoot, "incorrect previous state root");
@@ -376,7 +375,7 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
         // avoid stack too deep on forge coverage
         uint256 _totalTransactionsInChunk;
         while (_numBlocks > 0) {
-            // concatenate l1 messages
+            // concatenate l1 message hashes
             uint256 _numL1MessagesInBlock = ChunkCodec.numL1Messages(chunkPtr);
             dataPtr = _loadL1Messages(
                 dataPtr,
@@ -386,7 +385,7 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
                 _skippedL1MessageBitmap
             );
 
-            // concatenate l2 transactions
+            // concatenate l2 transaction hashes
             uint256 _numTransactionsInBlock = ChunkCodec.numTransactions(chunkPtr);
             for (uint256 j = _numL1MessagesInBlock; j < _numTransactionsInBlock; j++) {
                 bytes32 txHash;
@@ -407,6 +406,8 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
                 chunkPtr += ChunkCodec.BLOCK_CONTEXT_LENGTH;
             }
         }
+
+        // check the number of L2 transactions in the chunk
         require(
             _totalTransactionsInChunk - _totalNumL1MessagesInChunk <= maxNumL2TxInChunk,
             "too many L2 txs in one chunk"

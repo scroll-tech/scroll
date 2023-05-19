@@ -102,11 +102,11 @@ contract ScrollChainTest is DSTestPlus {
         hevm.expectRevert("wrong bitmap length");
         rollup.commitBatch(0, new bytes(90), new bytes[](1), new bytes(0));
 
-        // incorrect parent batch bash, revert
+        // incorrect parent batch hash, revert
         assembly {
             mstore(add(batchHeader0, add(0x20, 25)), 2) // change data hash for batch0
         }
-        hevm.expectRevert("incorrect parent batch bash");
+        hevm.expectRevert("incorrect parent batch hash");
         rollup.commitBatch(0, batchHeader0, new bytes[](1), new bytes(0));
         assembly {
             mstore(add(batchHeader0, add(0x20, 25)), 1) // change back
@@ -179,8 +179,8 @@ contract ScrollChainTest is DSTestPlus {
             mstore(add(batchHeader1, add(0x20, 57)), batchHash0) // parentBatchHash
         }
 
-        // incorrect batch bash, revert
-        hevm.expectRevert("incorrect batch bash");
+        // incorrect batch hash, revert
+        hevm.expectRevert("incorrect batch hash");
         batchHeader1[0] = bytes1(uint8(1)); // change version to 1
         rollup.finalizeBatchWithProof(batchHeader1, bytes32(uint256(1)), bytes32(uint256(2)), bytes32(0), new bytes(0));
         batchHeader1[0] = bytes1(uint8(0)); // change back
@@ -429,8 +429,8 @@ contract ScrollChainTest is DSTestPlus {
             mstore(add(batchHeader1, add(0x20, 57)), batchHash0) // parentBatchHash
         }
 
-        // incorrect batch bash, revert
-        hevm.expectRevert("incorrect batch bash");
+        // incorrect batch hash, revert
+        hevm.expectRevert("incorrect batch hash");
         batchHeader1[0] = bytes1(uint8(1)); // change version to 1
         rollup.revertBatch(batchHeader1);
         batchHeader1[0] = bytes1(uint8(0)); // change back

@@ -7,11 +7,11 @@ pragma solidity ^0.8.0;
 ///   * Field                   Bytes       Type        Index   Comments
 ///   * version                 1           uint8       0       The batch version
 ///   * batchIndex              8           uint64      1       The index of the batch
-///   * l1MessagePopped         8           uint64      9       Number of L1 message popped in the batch
+///   * l1MessagePopped         8           uint64      9       Number of L1 messages popped in the batch
 ///   * totalL1MessagePopped    8           uint64      17      Number of total L1 message popped after the batch
 ///   * dataHash                32          bytes32     25      The data hash of the batch
 ///   * parentBatchHash         32          bytes32     57      The parent batch hash
-///   * skippedL1MessageBitmap  dynamic     uint256[]   89     A bitmap to indicate if L1 messages are skipped in the batch
+///   * skippedL1MessageBitmap  dynamic     uint256[]   89      A bitmap to indicate which L1 messages are skipped in the batch
 /// ```
 library BatchHeaderV0Codec {
     /// @notice Load batch header in calldata to memory.
@@ -172,7 +172,7 @@ library BatchHeaderV0Codec {
     /// @param length The length of the batch.
     /// @return _batchHash The hash of the corresponding batch.
     function computeBatchHash(uint256 batchPtr, uint256 length) internal pure returns (bytes32 _batchHash) {
-        // in current version, the hash is: keccak(BatchHeader without timestamp)
+        // in the current version, the hash is: keccak(BatchHeader without timestamp)
         assembly {
             _batchHash := keccak256(batchPtr, length)
         }
