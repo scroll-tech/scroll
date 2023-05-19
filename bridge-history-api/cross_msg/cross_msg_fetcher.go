@@ -190,15 +190,21 @@ func (c *CrossMsgFetcher) fetchMissingLatestHeaders() {
 					log.Crit("Can not get safe number during reorg, quit the process", "err", err)
 				}
 				// clear all our saved data, because no data is safe now
-				c.reorgHandling(c.ctx, int64(num), c.db)
-				c.cachedHeaders = c.cachedHeaders[:0]
+				err = c.reorgHandling(c.ctx, int64(num), c.db)
+				// if handling success then we can update the cachedHeaders
+				if err == nil {
+					c.cachedHeaders = c.cachedHeaders[:0]
+				}
 				c.mu.Unlock()
 				c.reorgEndCh <- struct{}{}
 				return
 			}
-			c.reorgHandling(c.ctx, c.cachedHeaders[index].Number.Int64(), c.db)
-			c.cachedHeaders = c.cachedHeaders[:index+1]
-			c.cachedHeaders = MergeAddIntoHeaderList(c.cachedHeaders, validHeaders, int(c.config.Confirmation))
+			err = c.reorgHandling(c.ctx, c.cachedHeaders[index].Number.Int64(), c.db)
+			// if handling success then we can update the cachedHeaders
+			if err == nil {
+				c.cachedHeaders = c.cachedHeaders[:index+1]
+				c.cachedHeaders = MergeAddIntoHeaderList(c.cachedHeaders, validHeaders, int(c.config.Confirmation))
+			}
 			c.mu.Unlock()
 			c.reorgEndCh <- struct{}{}
 		}

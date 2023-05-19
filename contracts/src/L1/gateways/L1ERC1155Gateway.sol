@@ -19,7 +19,6 @@ import {ScrollGatewayBase} from "../../libraries/gateway/ScrollGatewayBase.sol";
 /// NFT will be transfer to the recipient directly.
 ///
 /// This will be changed if we have more specific scenarios.
-// @todo Current implementation doesn't support calling from `L1GatewayRouter`.
 contract L1ERC1155Gateway is OwnableUpgradeable, ERC1155HolderUpgradeable, ScrollGatewayBase, IL1ERC1155Gateway {
     /**********
      * Events *
