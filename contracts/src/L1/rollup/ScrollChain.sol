@@ -264,8 +264,7 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
 
         // check and update lastFinalizedBatchIndex
         unchecked {
-            uint256 _lastFinalizedBatchIndex = lastFinalizedBatchIndex;
-            require(_lastFinalizedBatchIndex + 1 == _batchIndex, "incorrect batch index");
+            require(lastFinalizedBatchIndex + 1 == _batchIndex, "incorrect batch index");
             lastFinalizedBatchIndex = _batchIndex;
         }
 
