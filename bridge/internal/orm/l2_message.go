@@ -10,6 +10,7 @@ import (
 	"scroll-tech/common/types"
 )
 
+// L2Message is structure of stored layer2 bridge message
 type L2Message struct {
 	db *gorm.DB `gorm:"column:-"`
 

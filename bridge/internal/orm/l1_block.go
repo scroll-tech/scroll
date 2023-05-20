@@ -10,6 +10,7 @@ import (
 	"scroll-tech/common/types"
 )
 
+// L1Block is structure of stored l1 block message
 type L1Block struct {
 	db *gorm.DB `gorm:"column:-"`
 

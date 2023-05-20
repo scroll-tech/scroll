@@ -12,6 +12,7 @@ import (
 	bridgeTypes "scroll-tech/bridge/internal/types"
 )
 
+// BlockBatch is structure of stored block batch message
 type BlockBatch struct {
 	db *gorm.DB `gorm:"column:-"`
 
@@ -90,7 +91,7 @@ func (o *BlockBatch) GetVerifiedProofAndInstanceCommitmentsByHash(hash string) (
 	if err != nil {
 		return nil, nil, err
 	}
-	return []byte(blockBatch.Proof), []byte(blockBatch.InstanceCommitments), nil
+	return blockBatch.Proof, blockBatch.InstanceCommitments, nil
 }
 
 // GetPendingBatches get the pending batches

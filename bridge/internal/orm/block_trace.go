@@ -10,6 +10,7 @@ import (
 	"scroll-tech/bridge/internal/types"
 )
 
+// BlockTrace is structure of stored block trace message
 type BlockTrace struct {
 	db *gorm.DB `gorm:"column:-"`
 

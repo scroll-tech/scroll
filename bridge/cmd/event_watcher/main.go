@@ -54,7 +54,7 @@ func action(ctx *cli.Context) error {
 	}
 	defer func() {
 		cancel()
-		if err := utils.CloseDB(db); err != nil {
+		if err = utils.CloseDB(db); err != nil {
 			log.Error("can not close ormFactory", "error", err)
 		}
 	}()

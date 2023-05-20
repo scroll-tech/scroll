@@ -13,6 +13,8 @@ const (
 )
 
 var (
-	ErrExecutionRevertedMessageExpired         = errors.New("execution reverted: Message expired")
+	// ErrExecutionRevertedMessageExpired error of Message expired
+	ErrExecutionRevertedMessageExpired = errors.New("execution reverted: Message expired")
+	// ErrExecutionRevertedAlreadySuccessExecuted error of Message was already successfully executed
 	ErrExecutionRevertedAlreadySuccessExecuted = errors.New("execution reverted: Message was already successfully executed")
 )
