@@ -12,10 +12,10 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	bcmd "scroll-tech/bridge/cmd"
-	_ "scroll-tech/bridge/cmd/event_watcher"
-	_ "scroll-tech/bridge/cmd/gas_oracle"
-	_ "scroll-tech/bridge/cmd/msg_relayer"
-	_ "scroll-tech/bridge/cmd/rollup_relayer"
+	_ "scroll-tech/bridge/cmd/event_watcher/app"
+	_ "scroll-tech/bridge/cmd/gas_oracle/app"
+	_ "scroll-tech/bridge/cmd/msg_relayer/app"
+	_ "scroll-tech/bridge/cmd/rollup_relayer/app"
 
 	"scroll-tech/common/docker"
 	"scroll-tech/common/utils"
