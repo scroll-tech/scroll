@@ -18,15 +18,6 @@ jobs:
       with:
         username: ${{ secrets.DOCKERHUB_USERNAME }}
         password: ${{ secrets.DOCKERHUB_TOKEN }}
-    - name: Build and push coordinator docker
-      uses: docker/build-push-action@v2
-      with:
-        context: .
-        file: ./build/dockerfiles/coordinator.Dockerfile
-        push: true
-        tags: scrolltech/coordinator:${{github.ref_name}}
-        # cache-from: type=gha,scope=${{ github.workflow }}
-        # cache-to: type=gha,scope=${{ github.workflow }}
     - name: Build and push event_watcher docker
       uses: docker/build-push-action@v2
       with:
@@ -79,5 +70,14 @@ jobs:
         file: ./build/dockerfiles/bridgehistoryapi-server.Dockerfile
         push: true
         tags: scrolltech/bridgehistoryapi-server:${{github.ref_name}}
+        # cache-from: type=gha,scope=${{ github.workflow }}
+        # cache-to: type=gha,scope=${{ github.workflow }}
+    - name: Build and push coordinator docker
+      uses: docker/build-push-action@v2
+      with:
+        context: .
+        file: ./build/dockerfiles/coordinator.Dockerfile
+        push: true
+        tags: scrolltech/coordinator:${{github.ref_name}}
         # cache-from: type=gha,scope=${{ github.workflow }}
         # cache-to: type=gha,scope=${{ github.workflow }}
