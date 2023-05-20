@@ -38,7 +38,7 @@ func (*L2Message) TableName() string {
 // GetL2Messages fetch list of messages given msg status
 func (m *L2Message) GetL2Messages(fields map[string]interface{}, orderByList []string, limit int) ([]L2Message, error) {
 	var l2MsgList []L2Message
-	selectFields := "nonce, msg_hash, height, sender, target, value, calldata, layer2_hash, status"
+	selectFields := "nonce, msg_hash, height, sender, target, value, calldata, layer2_hash, layer1_hash, status"
 	db := m.db.Select(selectFields)
 	for key, value := range fields {
 		db = db.Where(key, value)
@@ -77,7 +77,7 @@ func (m *L2Message) GetLayer2LatestWatchedHeight() (int64, error) {
 // for unit test
 func (m *L2Message) GetL2MessageByNonce(nonce uint64) (*L2Message, error) {
 	var msg L2Message
-	selectFields := "nonce, msg_hash, height, sender, target, value, calldata, layer2_hash, status"
+	selectFields := "nonce, msg_hash, height, sender, target, value, calldata, layer2_hash, layer1_hash, status"
 	err := m.db.Select(selectFields).Where("nonce", nonce).First(&msg).Error
 	if err != nil {
 		return nil, err

@@ -175,7 +175,7 @@ func testRelayL2MessageSucceed(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, types.MsgStatus(msg.Status), types.MsgSubmitted)
 
-	l2Messages, err := l2MessageOrm.GetL2Messages(map[string]interface{}{"nonce": nonce}, nil, 1)
+	l2Messages, err := l2MessageOrm.GetL2Messages(map[string]interface{}{"nonce": nonce.Uint64()}, nil, 1)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(l2Messages))
 	assert.NotNil(t, l2Messages[0].Layer1Hash)
