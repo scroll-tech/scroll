@@ -253,6 +253,9 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
         bytes32 _withdrawRoot,
         bytes calldata _aggrProof
     ) external override OnlySequencer {
+        require(_prevStateRoot != bytes32(0), "previous state root is zero");
+        require(_newStateRoot != bytes32(0), "new state root is zero");
+
         // compute batch hash and verify
         (uint256 memPtr, bytes32 _batchHash) = _loadBatchHeader(_batchHeader);
 
