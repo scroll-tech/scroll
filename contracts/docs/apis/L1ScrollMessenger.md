@@ -339,39 +339,6 @@ Update fee vault contract.
 |---|---|---|
 | _newFeeVault | address | The address of new fee vault contract. |
 
-### updateWhitelist
-
-```solidity
-function updateWhitelist(address _newWhitelist) external nonpayable
-```
-
-Update whitelist contract.
-
-*This function can only called by contract owner.*
-
-#### Parameters
-
-| Name | Type | Description |
-|---|---|---|
-| _newWhitelist | address | The address of new whitelist contract. |
-
-### whitelist
-
-```solidity
-function whitelist() external view returns (address)
-```
-
-The whitelist contract to track the sender who can call `sendMessage` in ScrollMessenger.
-
-
-
-
-#### Returns
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | address | undefined |
-
 ### xDomainMessageSender
 
 ```solidity
@@ -511,23 +478,6 @@ Emitted when owner updates fee vault contract.
 |---|---|---|
 | _oldFeeVault  | address | undefined |
 | _newFeeVault  | address | undefined |
-
-### UpdateWhitelist
-
-```solidity
-event UpdateWhitelist(address _oldWhitelist, address _newWhitelist)
-```
-
-Emitted when owner updates whitelist contract.
-
-
-
-#### Parameters
-
-| Name | Type | Description |
-|---|---|---|
-| _oldWhitelist  | address | undefined |
-| _newWhitelist  | address | undefined |
 
 
 
