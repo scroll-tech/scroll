@@ -1,12 +1,6 @@
 # Cross Domain Messaging
 
-Scroll builds an arbitrary message passing bridge that enables the token transfer and allows dapps to communicate between layer 1 and layer 2. In such way, dapps on layer 1 can trigger contract functions on layer 2, and vice versa. Next, we will explain how the messages are relayed between layer 1 and layer 2.
-
-<!--
-In essence, the protocol implements two core contracts `L1ScrollMessenger` and `L2ScrollMessenger` to enable the cross domain messaging. The entry point to send cross domain messages is to call the `sendMessage` function in both contracts:
-
-
-Though both L1 and L2 messenger contract support the same interface, the mechanism behind the message relay from L1 to L2 and from L2 to L1 works differently. The subsequent sections will describe the detailed workflow. -->
+Scroll has an arbitrary message passing bridge that enables the token transfers and allows dapps to communicate between layer 1 and layer 2. This means that dapps on layer 1 can trigger contract functions on layer 2, and vice versa. Next, we will explain how the messages are relayed between layer 1 and layer 2.
 
 ## Send Message from L1 to L2
 
@@ -17,7 +11,7 @@ Though both L1 and L2 messenger contract support the same interface, the mechani
 
 On the L1, there are two approaches to send a message to L2: sending arbitrary messages via `L1ScrollMessenger` and sending enforced transactions via `EnforcedTxGateway`.
 The difference between these two methods is that the sender of arbitrary message transactions is `L1ScrollMessenger` while the sender of enforced transactions is an EOA account.
-In addition to the `L1ScrollMessenger`, we provide several standard token gateways to make users easier to deposit Ether and other standard tokens including ERC-20, ERC-677, ERC-721, and ERC-1155.
+In addition to the `L1ScrollMessenger`, we provide several standard token gateways to make users easier to deposit ETH and other standard tokens including ERC-20, ERC-677, ERC-721, and ERC-1155.
 Basically gateways encode deposits to a message and send to `L1ScrollMessenger`.
 You can find more details about token gateways in the [Deposit Tokens](Deposit.md).
 
@@ -30,17 +24,19 @@ function appendEnforcedTransaction(address sender, address target, uint256 value
 ```
 
 Both functions then construct a L1-initiated transaction with a new transaction type `L1MessageTx` introduced in the Scroll chain and computes the transaction hash (see more details in the [L1 Message Transaction](#l1-message-transaction)).
-Note that `appendCrossDomainMessage` uses the [aliased](#address-alias) address of `msg.sender`, which is `L1ScrollMessenger`, as the transaction sender.
-In comparison, `appendEnforcedTransaction` uses `sender` from the argument as the transaction sender.
 `L1MessageQueue` appends the transaction hash to the message queue, and emits the event `QueueTransaction(sender, target, value, queueIndex, gasLimit, calldata)`.
+The difference between `appendCrossDomainMessage` and `appendEnforcedTransaction` when constructing the L1 message transactions is:
+- `appendCrossDomainMessage` uses the [aliased](#address-alias) address of `msg.sender`, which must be the address of `L1ScrollMessenger`, as the transaction sender.
+- `appendEnforcedTransaction` uses `sender` from the argument as the transaction sender. This allows users to enforce a withdrawal or transfer of ETH from their L2 accounts via L1 transactions.
 
-The watcher in the Scroll sequencer monitors the `QueueTransaction` event from the `L1MessageQueue` contract.
-Once it detects a new event, the sequencer generates a new `L1MessageTx` transaction and adds to the L1 transaction queue.
-Note that the L1 message transactions will be included in the L2 blocks sequentially based on the order in the message queue in the `L1MessageQueue`.
+After the transaction is successfully executed on the L1, the watcher in the Scroll sequencer that monitors the `L1MessageQueue` contract will detect the new `QueueTransaction` events from L1 blocks.
+The sequencer then generates a new `L1MessageTx` transaction per event and adds to the L1 transaction queue in the sequencer.
+Later when it's the block time, the sequencer will include the transactions from both L1 transaction queue and L2 mempool to construct a new L2 block.
+Note that the L1 message transactions must be included sequentially based on the L1 message queue order in the `L1MessageQueue` contract.
 `L1MessageTx` transactions always come first in the L2 blocks followed by L2 transactions.
-Currently, we limit the number of `L1MessageTx` transactions in a L2 block to `MAX_NUM_L1_MESSAGES` (TBD, maybe 20).
+Currently, we limit the number of `L1MessageTx` transactions in a L2 block to `MAX_NUM_L1_MESSAGES` (TBD, likely 20).
 
-After the explanation of the L1 to L2 message relay workflow, we will expand on how to send arbitrary messages via `L1ScrollMessenger` and send enforced transaction via `EnforcedTxGateway`.
+Next, we will expand the details about how to send arbitrary messages via `L1ScrollMessenger` and send enforced transaction via `EnforcedTxGateway`.
 
 ### Send Arbitrary Messages
 
@@ -78,15 +74,15 @@ abi.encodeWithSignature(
 ```
 
 The function calculates the message relay fee (see calculation method in the [Cross Domain Message Relay Fee](#cross-domain-message-relay-fee)) and deposit the fee to a `feeVault` account.
-If `value` in the `sendMessage` is not zero, `L1ScrollMessenger` will freeze `value` amount of Ether in itself and refund the excess amount to the designated `refundAddress` or the transaction sender otherwise.
-If the amount of Ether in the message cannot cover the fee and deposit value, the transaction will fail.
+If `value` in the `sendMessage` is not zero, `L1ScrollMessenger` will freeze `value` amount of ETH in the contract and refund the excess amount to the designated `refundAddress` or the transaction sender otherwise.
+If the amount of ETH in the message cannot cover the fee and deposit amount, the transaction will fail.
 `L1ScrollMessenger` then appends the cross-domain message to `L1MessageQueue` via `appendCrossDomainMessage` method.
 
 Todo: describe the replay message in case of failure due to too little gas limit.
 
 ### Send Enforced Transaction
 
-The `EnforcedTxGateway` contract provides two functions listed below to send enforced transactions.
+The `EnforcedTxGateway` contract provides two functions to send enforced transactions listed below.
 
 ```solidity
 function sendTransaction(
@@ -106,6 +102,19 @@ function sendTransaction(
     address refundAddress
 ) external payable;
 ```
+
+In the first function, the sender of the generated L1 message transaction is the transaction sender.
+On the other hand, the second function uses the passed `sender` address as the sender of the L1 message transaction.
+This allows a third party to send an enforced transaction on behalf of the user and pay the relay fee.
+Note that the second function requires to provide a signature of the generated L1 message transaction that can recover the same address as `sender`.
+Both `sendTransaction` functions enforce the sender must be an EOA account.
+
+Similar to arbitrary message relaying, `sendTransaction` estimates the message relay fee and deduct the fee to a `feeVault` account.
+But differently, the `value` passed to the function indicates the amount of ETH to transfer from the L2 account.
+Hence, the `msg.value` only needs to cover the message relay fee.
+If the amount of ETH in the message cannot cover the fee, the transaction will fail.
+The excess fee is refunded to the transaction sender in the first function and to the `refundAddress` in the second function.
+At last, `EnforcedTxGateway` calls `L1MessageQueue.appendEnforcedTransaction` to append the transaction to the message queue.
 
 ### L1 Message Transaction
 

@@ -4,9 +4,10 @@ The Token Bridge of Scroll Protocol offers a way to move assets from layer 1 to 
 
 The Ether and ERC20 tokens can be deposited or withdrawn using one single contract `GatewayRouter` (`L1GatewayRouter` in layer 1 and `L2GatewayRouter` in layer 2). The ERC-721 tokens and ERC-1155 tokens can be deposited or withdrawn using the corresponding `ERC1155Gateway` and `ERC721Gateway` in layer 1 or layer 2 (They may be integrated into `GatewayRouter` in the future).
 
-## Bridge Ether
+## Bridge ETH
 
-To bridge Ether from layer 1 to layer 2, one can use `L1GatewayRouter.depositETH` and `L1GatewayRouter.depositETHAndCall`. This will transfer ethers to the `L1ScrollMessenger` contract on the layer 1 and credits the same amount of ether to you in layer 2 at the specified address, while `depositETHAndCall` can transfer ether and make aditional call at the same time.
+To bridge ETH from layer 1 to layer 2, one can use `L1GatewayRouter.depositETH` and `L1GatewayRouter.depositETHAndCall`.
+These will transfer ETH to the `L1ScrollMessenger` contract on the layer 1 and credit the same amount of ETH to you in layer 2 at the specified address, while `depositETHAndCall` can transfer ETH and execute a contract call at the same time.
 
 ```solidity
 function depositETH(uint256 _amount, uint256 _gasLimit) external payable;
