@@ -69,8 +69,14 @@ contract L1GasPriceOracle is OwnableBase, IL1GasPriceOracle {
     }
 
     /// @inheritdoc IL1GasPriceOracle
-    /// @dev See the comments in `OVM_GasPriceOracle1` for more details
-    ///      https://github.com/ethereum-optimism/optimism/blob/develop/packages/contracts/contracts/L2/predeploys/OVM_GasPriceOracle.sol
+    /// @dev The extra 74 bytes on top of the RLP encoded unsigned transaction data consist of
+    ///   4 bytes   Add 4 bytes in the beginning for transaction data length
+    ///   1 byte    RLP V prefix
+    ///   3 bytes   V
+    ///   1 bytes   RLP R prefix
+    ///   32 bytes  R
+    ///   1 bytes   RLP S prefix
+    ///   32 bytes  S
     function getL1GasUsed(bytes memory _data) public view override returns (uint256) {
         uint256 _total = 0;
         uint256 _length = _data.length;
@@ -83,7 +89,7 @@ contract L1GasPriceOracle is OwnableBase, IL1GasPriceOracle {
                 }
             }
             uint256 _unsigned = _total + overhead;
-            return _unsigned + (68 * 16);
+            return _unsigned + (74 * 16);
         }
     }
 
