@@ -21,6 +21,7 @@ require (
 	github.com/google/uuid v1.3.0 // indirect
 	github.com/gorilla/websocket v1.4.2 // indirect
 	github.com/huin/goupnp v1.0.3 // indirect
+	github.com/golang/snappy v0.0.5-0.20220116011046-fa5810519dcb // indirect
 	github.com/iden3/go-iden3-crypto v0.0.15 // indirect
 	github.com/jackpal/go-nat-pmp v1.0.2 // indirect
 	github.com/kr/pretty v0.3.1 // indirect
