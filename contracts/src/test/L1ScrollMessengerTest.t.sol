@@ -29,7 +29,7 @@ contract L1ScrollMessengerTest is DSTestPlus {
         l2Messenger = new L2ScrollMessenger(address(0), address(0), address(0));
 
         // Deploy L1 contracts
-        scrollChain = new ScrollChain(0, 44);
+        scrollChain = new ScrollChain(0);
         l1MessageQueue = new L1MessageQueue();
         l1Messenger = new L1ScrollMessenger();
         gasOracle = new L2GasPriceOracle();
@@ -46,7 +46,7 @@ contract L1ScrollMessengerTest is DSTestPlus {
             10000000
         );
         gasOracle.initialize(0, 0, 0, 0);
-        scrollChain.initialize(address(l1MessageQueue), address(0));
+        scrollChain.initialize(address(l1MessageQueue), address(0), 44);
 
         gasOracle.updateWhitelist(address(whitelist));
         address[] memory _accounts = new address[](1);

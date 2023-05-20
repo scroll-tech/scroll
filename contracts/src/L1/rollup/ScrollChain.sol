@@ -29,6 +29,11 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
     /// @param newVerifier The address of new rollup verifier.
     event UpdateVerifier(address oldVerifier, address newVerifier);
 
+    /// @notice Emitted when the value of `maxNumL2TxInChunk` is updated.
+    /// @param oldMaxNumL2TxInChunk The old value of `maxNumL2TxInChunk`.
+    /// @param newMaxNumL2TxInChunk The new value of `maxNumL2TxInChunk`.
+    event UpdateMaxNumL2TxInChunk(uint256 oldMaxNumL2TxInChunk, uint256 newMaxNumL2TxInChunk);
+
     /*************
      * Constants *
      *************/
@@ -36,12 +41,12 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
     /// @notice The chain id of the corresponding layer 2 chain.
     uint256 public immutable layer2ChainId;
 
-    /// @notice The maximum number of transactions allowed in each chunk.
-    uint256 public immutable maxNumL2TxInChunk;
-
     /*************
      * Variables *
      *************/
+
+    /// @notice The maximum number of transactions allowed in each chunk.
+    uint256 public maxNumL2TxInChunk;
 
     /// @notice The address of L1MessageQueue.
     address public messageQueue;
@@ -78,18 +83,23 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
      * Constructor *
      ***************/
 
-    constructor(uint256 _chainId, uint256 _maxNumL2TxInChunk) {
+    constructor(uint256 _chainId) {
         layer2ChainId = _chainId;
-        maxNumL2TxInChunk = _maxNumL2TxInChunk;
     }
 
-    function initialize(address _messageQueue, address _verifier) public initializer {
+    function initialize(
+        address _messageQueue,
+        address _verifier,
+        uint256 _maxNumL2TxInChunk
+    ) public initializer {
         OwnableUpgradeable.__Ownable_init();
 
         messageQueue = _messageQueue;
         verifier = _verifier;
+        maxNumL2TxInChunk = _maxNumL2TxInChunk;
 
         emit UpdateVerifier(address(0), _verifier);
+        emit UpdateMaxNumL2TxInChunk(0, _maxNumL2TxInChunk);
     }
 
     /*************************
@@ -318,6 +328,15 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
         verifier = _newVerifier;
 
         emit UpdateVerifier(_oldVerifier, _newVerifier);
+    }
+
+    /// @notice Update the value of `maxNumL2TxInChunk`.
+    /// @param _maxNumL2TxInChunk The new value of `maxNumL2TxInChunk`.
+    function updateMaxNumL2TxInChunk(uint256 _maxNumL2TxInChunk) external onlyOwner {
+        uint256 _oldMaxNumL2TxInChunk = maxNumL2TxInChunk;
+        maxNumL2TxInChunk = _maxNumL2TxInChunk;
+
+        emit UpdateMaxNumL2TxInChunk(_oldMaxNumL2TxInChunk, _maxNumL2TxInChunk);
     }
 
     /**********************

@@ -25,10 +25,10 @@ contract ScrollChainTest is DSTestPlus {
 
     function setUp() public {
         messageQueue = new L1MessageQueue();
-        rollup = new ScrollChain(233, 100);
+        rollup = new ScrollChain(233);
         verifier = new MockRollupVerifier();
 
-        rollup.initialize(address(messageQueue), address(verifier));
+        rollup.initialize(address(messageQueue), address(verifier), 100);
         messageQueue.initialize(address(this), address(rollup), address(0), address(0), 1000000);
 
         chain = new MockScrollChain();
@@ -39,7 +39,7 @@ contract ScrollChainTest is DSTestPlus {
         assertEq(rollup.layer2ChainId(), 233);
 
         hevm.expectRevert("Initializable: contract is already initialized");
-        rollup.initialize(address(messageQueue), address(0));
+        rollup.initialize(address(messageQueue), address(0), 100);
     }
 
     /*
@@ -89,7 +89,7 @@ contract ScrollChainTest is DSTestPlus {
         // invalid version, revert
         hevm.expectRevert("invalid version");
         rollup.commitBatch(1, batchHeader0, new bytes[](0), new bytes(0));
-    
+
         // batch is empty, revert
         hevm.expectRevert("batch is empty");
         rollup.commitBatch(0, batchHeader0, new bytes[](0), new bytes(0));

@@ -56,7 +56,7 @@ abstract contract L1GatewayTestBase is DSTestPlus {
         l1Messenger = new L1ScrollMessenger();
         messageQueue = new L1MessageQueue();
         gasOracle = new L2GasPriceOracle();
-        rollup = new ScrollChain(1233, 44);
+        rollup = new ScrollChain(1233);
         enforcedTxGateway = new EnforcedTxGateway();
         whitelist = new Whitelist(address(this));
 
@@ -74,7 +74,7 @@ abstract contract L1GatewayTestBase is DSTestPlus {
         );
         gasOracle.initialize(0, 0, 0, 0);
         gasOracle.updateWhitelist(address(whitelist));
-        rollup.initialize(address(messageQueue), address(0));
+        rollup.initialize(address(messageQueue), address(0), 44);
 
         address[] memory _accounts = new address[](1);
         _accounts[0] = address(this);
