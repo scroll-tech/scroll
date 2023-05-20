@@ -75,7 +75,6 @@ contract InitializeL1BridgeContracts is Script {
             L1_ZK_ROLLUP_PROXY_ADDR,
             L1_MESSAGE_QUEUE_PROXY_ADDR
         );
-        L1ScrollMessenger(payable(L1_SCROLL_MESSENGER_PROXY_ADDR)).updateWhitelist(L1_WHITELIST_ADDR);
 
         // initialize EnforcedTxGateway
         EnforcedTxGateway(payable(ENFORCED_TX_GATEWAY_PROXY_ADDR)).initialize(

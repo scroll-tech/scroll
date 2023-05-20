@@ -284,7 +284,7 @@ function retryMessageWithProof(address _from, address _to, uint256 _value, uint2
 ### sendMessage
 
 ```solidity
-function sendMessage(address _to, uint256 _value, bytes _message, uint256 _gasLimit, address _refundAddress) external payable
+function sendMessage(address _to, uint256 _value, bytes _message, uint256 _gasLimit, address) external payable
 ```
 
 Send cross chain message from L1 to L2 or L2 to L1.
@@ -299,7 +299,7 @@ Send cross chain message from L1 to L2 or L2 to L1.
 | _value | uint256 | undefined |
 | _message | bytes | undefined |
 | _gasLimit | uint256 | undefined |
-| _refundAddress | address | undefined |
+| _4 | address | undefined |
 
 ### sendMessage
 
@@ -374,23 +374,7 @@ Update fee vault contract.
 function updateMaxFailedExecutionTimes(uint256 _maxFailedExecutionTimes) external nonpayable
 ```
 
-
-
-
-
-#### Parameters
-
-| Name | Type | Description |
-|---|---|---|
-| _maxFailedExecutionTimes | uint256 | undefined |
-
-### updateWhitelist
-
-```solidity
-function updateWhitelist(address _newWhitelist) external nonpayable
-```
-
-Update whitelist contract.
+Update max failed execution times.
 
 *This function can only called by contract owner.*
 
@@ -398,7 +382,7 @@ Update whitelist contract.
 
 | Name | Type | Description |
 |---|---|---|
-| _newWhitelist | address | The address of new whitelist contract. |
+| _maxFailedExecutionTimes | uint256 | The new max failed execution times. |
 
 ### verifyMessageExecutionStatus
 
@@ -447,23 +431,6 @@ Check whether the l1 message is included in the corresponding L1 block.
 | Name | Type | Description |
 |---|---|---|
 | _0 | bool | bool Return true is the message is included in L1, otherwise return false. |
-
-### whitelist
-
-```solidity
-function whitelist() external view returns (address)
-```
-
-The whitelist contract to track the sender who can call `sendMessage` in ScrollMessenger.
-
-
-
-
-#### Returns
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | address | undefined |
 
 ### xDomainMessageSender
 
@@ -620,23 +587,6 @@ Emitted when the maximum number of times each message can fail in L2 is updated.
 | Name | Type | Description |
 |---|---|---|
 | maxFailedExecutionTimes  | uint256 | The new maximum number of times each message can fail in L2. |
-
-### UpdateWhitelist
-
-```solidity
-event UpdateWhitelist(address _oldWhitelist, address _newWhitelist)
-```
-
-Emitted when owner updates whitelist contract.
-
-
-
-#### Parameters
-
-| Name | Type | Description |
-|---|---|---|
-| _oldWhitelist  | address | undefined |
-| _newWhitelist  | address | undefined |
 
 
 
