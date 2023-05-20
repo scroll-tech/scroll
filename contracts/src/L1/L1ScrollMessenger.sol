@@ -125,7 +125,7 @@ contract L1ScrollMessenger is PausableUpgradeable, ScrollMessengerBase, IL1Scrol
         uint256 _nonce,
         bytes memory _message,
         L2MessageProof memory _proof
-    ) external override whenNotPaused onlyWhitelistedSender(msg.sender) {
+    ) external override whenNotPaused {
         require(
             xDomainMessageSender == ScrollConstants.DEFAULT_XDOMAIN_MESSAGE_SENDER,
             "Message is already in execution"

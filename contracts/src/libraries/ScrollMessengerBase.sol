@@ -4,7 +4,6 @@ pragma solidity ^0.8.0;
 
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
-import {IWhitelist} from "./common/IWhitelist.sol";
 import {ScrollConstants} from "./constants/ScrollConstants.sol";
 import {IScrollMessenger} from "./IScrollMessenger.sol";
 
@@ -12,11 +11,6 @@ abstract contract ScrollMessengerBase is OwnableUpgradeable, IScrollMessenger {
     /**********
      * Events *
      **********/
-
-    /// @notice Emitted when owner updates whitelist contract.
-    /// @param _oldWhitelist The address of old whitelist contract.
-    /// @param _newWhitelist The address of new whitelist contract.
-    event UpdateWhitelist(address _oldWhitelist, address _newWhitelist);
 
     /// @notice Emitted when owner updates fee vault contract.
     /// @param _oldFeeVault The address of old fee vault contract.
@@ -38,24 +32,11 @@ abstract contract ScrollMessengerBase is OwnableUpgradeable, IScrollMessenger {
     /// @notice See {IScrollMessenger-xDomainMessageSender}
     address public override xDomainMessageSender;
 
-    /// @notice The whitelist contract to track the sender who can call `sendMessage` in ScrollMessenger.
-    address public whitelist;
-
     /// @notice The address of counterpart ScrollMessenger contract in L1/L2.
     address public counterpart;
 
     /// @notice The address of fee vault, collecting cross domain messaging fee.
     address public feeVault;
-
-    /**********************
-     * Function Modifiers *
-     **********************/
-
-    modifier onlyWhitelistedSender(address _sender) {
-        address _whitelist = whitelist;
-        require(_whitelist == address(0) || IWhitelist(_whitelist).isSenderAllowed(_sender), "sender not whitelisted");
-        _;
-    }
 
     /***************
      * Constructor *
@@ -77,16 +58,6 @@ abstract contract ScrollMessengerBase is OwnableUpgradeable, IScrollMessenger {
     /************************
      * Restricted Functions *
      ************************/
-
-    /// @notice Update whitelist contract.
-    /// @dev This function can only called by contract owner.
-    /// @param _newWhitelist The address of new whitelist contract.
-    function updateWhitelist(address _newWhitelist) external onlyOwner {
-        address _oldWhitelist = whitelist;
-
-        whitelist = _newWhitelist;
-        emit UpdateWhitelist(_oldWhitelist, _newWhitelist);
-    }
 
     /// @notice Update fee vault contract.
     /// @dev This function can only called by contract owner.
