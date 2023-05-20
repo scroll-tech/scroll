@@ -384,22 +384,6 @@ Update max failed execution times.
 |---|---|---|
 | _maxFailedExecutionTimes | uint256 | The new max failed execution times. |
 
-### updateWhitelist
-
-```solidity
-function updateWhitelist(address _newWhitelist) external nonpayable
-```
-
-Update whitelist contract.
-
-*This function can only called by contract owner.*
-
-#### Parameters
-
-| Name | Type | Description |
-|---|---|---|
-| _newWhitelist | address | The address of new whitelist contract. |
-
 ### verifyMessageExecutionStatus
 
 ```solidity
@@ -447,23 +431,6 @@ Check whether the l1 message is included in the corresponding L1 block.
 | Name | Type | Description |
 |---|---|---|
 | _0 | bool | bool Return true is the message is included in L1, otherwise return false. |
-
-### whitelist
-
-```solidity
-function whitelist() external view returns (address)
-```
-
-The whitelist contract to track the sender who can call `sendMessage` in ScrollMessenger.
-
-
-
-
-#### Returns
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | address | undefined |
 
 ### xDomainMessageSender
 
@@ -620,23 +587,6 @@ Emitted when the maximum number of times each message can fail in L2 is updated.
 | Name | Type | Description |
 |---|---|---|
 | maxFailedExecutionTimes  | uint256 | The new maximum number of times each message can fail in L2. |
-
-### UpdateWhitelist
-
-```solidity
-event UpdateWhitelist(address _oldWhitelist, address _newWhitelist)
-```
-
-Emitted when owner updates whitelist contract.
-
-
-
-#### Parameters
-
-| Name | Type | Description |
-|---|---|---|
-| _oldWhitelist  | address | undefined |
-| _newWhitelist  | address | undefined |
 
 
 
