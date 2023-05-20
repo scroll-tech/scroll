@@ -4,11 +4,12 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"errors"
-	"gorm.io/gorm"
 	"math/big"
 	"strconv"
 	"testing"
 	"time"
+
+	"gorm.io/gorm"
 
 	"github.com/agiledragon/gomonkey/v2"
 	"github.com/scroll-tech/go-ethereum/accounts/abi"

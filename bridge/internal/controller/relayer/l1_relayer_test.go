@@ -3,11 +3,11 @@ package relayer
 import (
 	"context"
 	"errors"
-	"github.com/scroll-tech/go-ethereum/common"
 	"math/big"
 	"testing"
 
 	"github.com/agiledragon/gomonkey/v2"
+	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	"gorm.io/gorm"

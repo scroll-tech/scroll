@@ -3,7 +3,6 @@ package relayer
 import (
 	"context"
 	"errors"
-	"gorm.io/gorm"
 	"math/big"
 	"runtime"
 	"sync"
@@ -15,6 +14,7 @@ import (
 	"github.com/scroll-tech/go-ethereum/log"
 	gethMetrics "github.com/scroll-tech/go-ethereum/metrics"
 	"golang.org/x/sync/errgroup"
+	"gorm.io/gorm"
 	"modernc.org/mathutil"
 
 	"scroll-tech/common/metrics"

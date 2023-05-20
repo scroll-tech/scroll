@@ -11,12 +11,13 @@ import (
 	gethMetrics "github.com/scroll-tech/go-ethereum/metrics"
 	"gorm.io/gorm"
 
+	"scroll-tech/common/metrics"
+
 	bridgeAbi "scroll-tech/bridge/abi"
 	"scroll-tech/bridge/internal/config"
 	"scroll-tech/bridge/internal/controller/relayer"
 	"scroll-tech/bridge/internal/orm"
 	bridgeTypes "scroll-tech/bridge/internal/types"
-	"scroll-tech/common/metrics"
 )
 
 var (

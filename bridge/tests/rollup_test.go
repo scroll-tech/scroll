@@ -3,7 +3,6 @@ package tests
 import (
 	"context"
 	"errors"
-	"gorm.io/gorm"
 	"math/big"
 	"testing"
 
@@ -11,6 +10,7 @@ import (
 	"github.com/scroll-tech/go-ethereum/common"
 	gethTypes "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/stretchr/testify/assert"
+	"gorm.io/gorm"
 
 	"scroll-tech/common/types"
 
