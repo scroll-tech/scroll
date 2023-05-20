@@ -40,7 +40,7 @@ interface IL1GasPriceOracle {
 
     /// @notice Computes the amount of L1 gas used for a transaction. Adds the overhead which
     ///         represents the per-transaction gas overhead of posting the transaction and state
-    ///         roots to L1. Adds 68 bytes of padding to account for the fact that the input does
+    ///         roots to L1. Adds 74 bytes of padding to account for the fact that the input does
     ///         not have a signature.
     /// @param data Unsigned fully RLP-encoded transaction to get the L1 gas for.
     /// @return Amount of L1 gas used to publish the transaction.
