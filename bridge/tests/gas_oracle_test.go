@@ -47,18 +47,18 @@ func testImportL1GasPrice(t *testing.T) {
 	// check db status
 	latestBlockHeight, err := l1BlockOrm.GetLatestL1BlockHeight()
 	assert.NoError(t, err)
-	assert.Equal(t, number, latestBlockHeight)
+	assert.Equal(t, int64(number), latestBlockHeight)
 	blocks, err := l1BlockOrm.GetL1BlockInfos(map[string]interface{}{"number": latestBlockHeight})
 	assert.NoError(t, err)
 	assert.Equal(t, len(blocks), 1)
-	assert.Equal(t, blocks[0].GasOracleStatus, types.GasOraclePending)
+	assert.Equal(t, types.GasOracleStatus(blocks[0].GasOracleStatus), types.GasOraclePending)
 
 	// relay gas price
 	l1Relayer.ProcessGasPriceOracle()
 	blocks, err = l1BlockOrm.GetL1BlockInfos(map[string]interface{}{"number": latestBlockHeight})
 	assert.NoError(t, err)
 	assert.Equal(t, len(blocks), 1)
-	assert.Equal(t, blocks[0].GasOracleStatus, types.GasOracleImporting)
+	assert.Equal(t, types.GasOracleStatus(blocks[0].GasOracleStatus), types.GasOracleImporting)
 }
 
 func testImportL2GasPrice(t *testing.T) {
@@ -105,11 +105,11 @@ func testImportL2GasPrice(t *testing.T) {
 	// check db status
 	batch, err := blockBatchOrm.GetLatestBatch()
 	assert.NoError(t, err)
-	assert.Equal(t, batch.OracleStatus, types.GasOraclePending)
+	assert.Equal(t, types.GasOracleStatus(batch.OracleStatus), types.GasOraclePending)
 
 	// relay gas price
 	l2Relayer.ProcessGasPriceOracle()
 	batch, err = blockBatchOrm.GetLatestBatch()
 	assert.NoError(t, err)
-	assert.Equal(t, batch.OracleStatus, types.GasOracleImporting)
+	assert.Equal(t, types.GasOracleStatus(batch.OracleStatus), types.GasOracleImporting)
 }
