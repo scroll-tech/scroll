@@ -121,6 +121,7 @@ func (o *BlockBatch) GetLatestBatch() (*BlockBatch, error) {
 	return &blockBatch, nil
 }
 
+// GetLatestBatchByRollupStatus get the latest block batch by rollup status
 func (o *BlockBatch) GetLatestBatchByRollupStatus(rollupStatuses []types.RollupStatus) (*BlockBatch, error) {
 	var blockBatch BlockBatch
 	var tmpRollupStatus []int

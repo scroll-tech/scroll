@@ -8,6 +8,7 @@ import (
 	"scroll-tech/bridge/internal/config"
 )
 
+// InitDB init the db handler
 func InitDB(config *config.DBConfig) (*gorm.DB, error) {
 	db, err := gorm.Open(postgres.Open(config.DSN), &gorm.Config{
 		Logger: logger.Default.LogMode(logger.Info),
@@ -29,6 +30,7 @@ func InitDB(config *config.DBConfig) (*gorm.DB, error) {
 	return db, nil
 }
 
+// CloseDB close the db handler. notice the db handler only can close when then program exit.
 func CloseDB(db *gorm.DB) error {
 	sqlDB, err := db.DB()
 	if err != nil {
