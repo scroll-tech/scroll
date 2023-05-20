@@ -96,7 +96,7 @@ func (o *BlockBatch) GetVerifiedProofAndInstanceCommitmentsByHash(hash string) (
 // GetPendingBatches get the pending batches
 func (o *BlockBatch) GetPendingBatches(limit int) ([]string, error) {
 	var blockBatches []BlockBatch
-	err := o.db.Select("hash").Where("rollup_status", int(types.RollupPending)).Order("index ASC").Limit(limit).Error
+	err := o.db.Select("hash").Where("rollup_status", int(types.RollupPending)).Order("index ASC").Limit(limit).Find(&blockBatches).Error
 	if err != nil {
 		return nil, err
 	}

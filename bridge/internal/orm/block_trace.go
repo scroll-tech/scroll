@@ -13,14 +13,14 @@ import (
 type BlockTrace struct {
 	db *gorm.DB `gorm:"column:-"`
 
-	Number         uint64 `json:"number" db:"number"`
-	Hash           string `json:"hash" db:"hash"`
-	ParentHash     string `json:"parent_hash" db:"parent_hash"`
+	Number         uint64 `json:"number" gorm:"number"`
+	Hash           string `json:"hash" gorm:"hash"`
+	ParentHash     string `json:"parent_hash" gorm:"parent_hash"`
 	Trace          string `json:"trace" gorm:"column:trace"`
-	BatchHash      string `json:"batch_hash" db:"batch_hash"`
-	TxNum          uint64 `json:"tx_num" db:"tx_num"`
-	GasUsed        uint64 `json:"gas_used" db:"gas_used"`
-	BlockTimestamp uint64 `json:"block_timestamp" db:"block_timestamp"`
+	BatchHash      string `json:"batch_hash" gorm:"batch_hash;default:NULL"`
+	TxNum          uint64 `json:"tx_num" gorm:"tx_num"`
+	GasUsed        uint64 `json:"gas_used" gorm:"gas_used"`
+	BlockTimestamp uint64 `json:"block_timestamp" gorm:"block_timestamp"`
 }
 
 // NewBlockTrace create an blockTraceOrm instance
