@@ -67,7 +67,6 @@ contract InitializeL2BridgeContracts is Script {
             L1_SCROLL_MESSENGER_PROXY_ADDR,
             L2_TX_FEE_VAULT_ADDR
         );
-        L2ScrollMessenger(payable(L2_SCROLL_MESSENGER_PROXY_ADDR)).updateWhitelist(L2_WHITELIST_ADDR);
 
         // initialize L2GatewayRouter
         L2GatewayRouter(L2_GATEWAY_ROUTER_PROXY_ADDR).initialize(
