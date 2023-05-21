@@ -162,6 +162,20 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
         uint256 _chunksLength = _chunks.length;
         require(_chunksLength > 0, "batch is empty");
 
+        // The overall memory layout in this function is organized as follows
+        // +---------------------+-------------------+------------------+
+        // | parent batch header | chunk data hashes | new batch header |
+        // +---------------------+-------------------+------------------+
+        // ^                     ^                   ^
+        // batchPtr              dataPtr             newBatchPtr (re-use var batchPtr)
+        //
+        // 1. We copy the parent batch header from calldata to memory starting at batchPtr
+        // 2. We store `_chunksLength` number of Keccak hashes starting at `dataPtr`. Each Keccak
+        //    hash corresponds to the data hash of a chunk. So we reserve the memory region from
+        //    `dataPtr` to `dataPtr + _chunkLength * 32` for the chunk data hashes.
+        // 3. The memory starting at `newBatchPtr` is used to store the new batch header and compute
+        //    the batch hash.
+
         // the variable `batchPtr` will be reused later for the current batch
         (uint256 batchPtr, bytes32 _parentBatchHash) = _loadBatchHeader(_parentBatchHeader);
 
@@ -169,16 +183,14 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
         uint256 _totalL1MessagesPoppedOverall = BatchHeaderV0Codec.totalL1MessagePopped(batchPtr);
         require(committedBatches[_batchIndex] == _parentBatchHash, "incorrect parent batch hash");
 
-        // compute the data hash for each chunk
-        // We will store `_chunksLength` number of keccak hash digests starting at `dataPtr`,
-        // each of which is the data hash of the corresponding chunk. So we reserve the memory
-        // region from `dataPtr` to `dataPtr + _chunkLength * 32` for the chunk data hashes.
+        // load `dataPtr` and reserve the memory region for chunk data hashes
         uint256 dataPtr;
         assembly {
             dataPtr := mload(0x40)
             mstore(0x40, add(dataPtr, mul(_chunksLength, 32)))
         }
 
+        // compute the data hash for each chunk
         uint256 _totalL1MessagesPoppedInBatch;
         for (uint256 i = 0; i < _chunksLength; i++) {
             uint256 _totalNumL1MessagesInChunk = _commitChunk(
@@ -204,7 +216,7 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
             );
         }
 
-        // compute current batch hash
+        // compute the data hash for current batch
         bytes32 _dataHash;
         assembly {
             let dataLen := mul(_chunksLength, 0x20)
