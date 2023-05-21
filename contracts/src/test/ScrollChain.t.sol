@@ -394,9 +394,11 @@ contract ScrollChainTest is DSTestPlus {
     }
 
     function testRevertBatch() public {
-        // caller not sequencer, revert
-        hevm.expectRevert("caller not sequencer");
+        // caller not owner, revert
+        hevm.startPrank(address(1));
+        hevm.expectRevert("Ownable: caller is not the owner");
         rollup.revertBatch(new bytes(89));
+        hevm.stopPrank();
 
         rollup.updateSequencer(address(this), true);
 

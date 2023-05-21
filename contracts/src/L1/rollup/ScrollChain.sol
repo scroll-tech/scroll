@@ -230,7 +230,7 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
     }
 
     /// @inheritdoc IScrollChain
-    function revertBatch(bytes calldata _batchHeader) external OnlyOwner {
+    function revertBatch(bytes calldata _batchHeader) external onlyOwner {
         (uint256 memPtr, bytes32 _batchHash) = _loadBatchHeader(_batchHeader);
 
         // check batch hash
