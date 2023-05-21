@@ -162,26 +162,27 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
         uint256 _chunksLength = _chunks.length;
         require(_chunksLength > 0, "batch is empty");
 
-        // The variable `memPtr` will be reused for other purposes later.
-        (uint256 memPtr, bytes32 _parentBatchHash) = _loadBatchHeader(_parentBatchHeader);
+        // the variable `batchPtr` will be reused later for the current batch
+        (uint256 batchPtr, bytes32 _parentBatchHash) = _loadBatchHeader(_parentBatchHeader);
 
-        uint256 _batchIndex = BatchHeaderV0Codec.batchIndex(memPtr);
-        uint256 _totalL1MessagesPoppedOverall = BatchHeaderV0Codec.totalL1MessagePopped(memPtr);
+        uint256 _batchIndex = BatchHeaderV0Codec.batchIndex(batchPtr);
+        uint256 _totalL1MessagesPoppedOverall = BatchHeaderV0Codec.totalL1MessagePopped(batchPtr);
         require(committedBatches[_batchIndex] == _parentBatchHash, "incorrect parent batch hash");
 
-        // compute data hash for each chunk
-        // We will store `_chunksLength` number of keccak hash digests starting at `memPtr`,
+        // compute the data hash for each chunk
+        // We will store `_chunksLength` number of keccak hash digests starting at `dataPtr`,
         // each of which is the data hash of the corresponding chunk. So we reserve the memory
-        // region from `memPtr` to `memPtr + _chunkLength * 32` for chunk data hashes.
+        // region from `dataPtr` to `dataPtr + _chunkLength * 32` for the chunk data hashes.
+        uint256 dataPtr;
         assembly {
-            memPtr := mload(0x40)
-            mstore(0x40, add(memPtr, mul(_chunksLength, 32)))
+            dataPtr := mload(0x40)
+            mstore(0x40, add(dataPtr, mul(_chunksLength, 32)))
         }
 
         uint256 _totalL1MessagesPoppedInBatch;
         for (uint256 i = 0; i < _chunksLength; i++) {
             uint256 _totalNumL1MessagesInChunk = _commitChunk(
-                memPtr,
+                dataPtr,
                 _chunks[i],
                 _totalL1MessagesPoppedInBatch,
                 _totalL1MessagesPoppedOverall,
@@ -191,7 +192,7 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
             unchecked {
                 _totalL1MessagesPoppedInBatch += _totalNumL1MessagesInChunk;
                 _totalL1MessagesPoppedOverall += _totalNumL1MessagesInChunk;
-                memPtr += 32;
+                dataPtr += 32;
             }
         }
 
@@ -207,23 +208,23 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
         bytes32 _dataHash;
         assembly {
             let dataLen := mul(_chunksLength, 0x20)
-            _dataHash := keccak256(sub(memPtr, dataLen), dataLen)
+            _dataHash := keccak256(sub(dataPtr, dataLen), dataLen)
 
-            memPtr := mload(0x40) // reset memPtr
+            batchPtr := mload(0x40) // reset batchPtr
             _batchIndex := add(_batchIndex, 1) // increase batch index
         }
 
         // store entries, the order matters
-        BatchHeaderV0Codec.storeVersion(memPtr, _version);
-        BatchHeaderV0Codec.storeBatchIndex(memPtr, _batchIndex);
-        BatchHeaderV0Codec.storeL1MessagePopped(memPtr, _totalL1MessagesPoppedInBatch);
-        BatchHeaderV0Codec.storeTotalL1MessagePopped(memPtr, _totalL1MessagesPoppedOverall);
-        BatchHeaderV0Codec.storeDataHash(memPtr, _dataHash);
-        BatchHeaderV0Codec.storeParentBatchHash(memPtr, _parentBatchHash);
-        BatchHeaderV0Codec.storeSkippedBitmap(memPtr, _skippedL1MessageBitmap);
+        BatchHeaderV0Codec.storeVersion(batchPtr, _version);
+        BatchHeaderV0Codec.storeBatchIndex(batchPtr, _batchIndex);
+        BatchHeaderV0Codec.storeL1MessagePopped(batchPtr, _totalL1MessagesPoppedInBatch);
+        BatchHeaderV0Codec.storeTotalL1MessagePopped(batchPtr, _totalL1MessagesPoppedOverall);
+        BatchHeaderV0Codec.storeDataHash(batchPtr, _dataHash);
+        BatchHeaderV0Codec.storeParentBatchHash(batchPtr, _parentBatchHash);
+        BatchHeaderV0Codec.storeSkippedBitmap(batchPtr, _skippedL1MessageBitmap);
 
         // compute batch hash
-        bytes32 _batchHash = BatchHeaderV0Codec.computeBatchHash(memPtr, 89 + _skippedL1MessageBitmap.length);
+        bytes32 _batchHash = BatchHeaderV0Codec.computeBatchHash(batchPtr, 89 + _skippedL1MessageBitmap.length);
 
         committedBatches[_batchIndex] = _batchHash;
         emit CommitBatch(_batchHash);
@@ -375,9 +376,12 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
     ) internal view returns (uint256 _totalNumL1MessagesInChunk) {
         uint256 chunkPtr;
         uint256 dataPtr;
+        uint256 blockPtr;
+
         assembly {
             dataPtr := mload(0x40)
             chunkPtr := add(_chunk, 0x20) // skip chunkLength
+            blockPtr := add(chunkPtr, 1) // skip numBlocks
         }
 
         uint256 _numBlocks = ChunkCodec.validateChunkLength(chunkPtr, _chunk.length);
@@ -389,16 +393,13 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
 
         // concatenate tx hashes
         uint256 l2TxPtr = ChunkCodec.l2TxPtr(chunkPtr, _numBlocks);
-        unchecked {
-            chunkPtr += 1; // skip numBlocks
-        }
 
         // avoid stack too deep on forge coverage
         uint256 _totalTransactionsInChunk;
         while (_numBlocks > 0) {
             // concatenate l1 message hashes
-            uint256 _numL1MessagesInBlock = ChunkCodec.numL1Messages(chunkPtr);
-            dataPtr = _loadL1Messages(
+            uint256 _numL1MessagesInBlock = ChunkCodec.numL1Messages(blockPtr);
+            dataPtr = _loadL1MessageHashes(
                 dataPtr,
                 _numL1MessagesInBlock,
                 _totalL1MessagesPoppedInBatch,
@@ -407,7 +408,7 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
             );
 
             // concatenate l2 transaction hashes
-            uint256 _numTransactionsInBlock = ChunkCodec.numTransactions(chunkPtr);
+            uint256 _numTransactionsInBlock = ChunkCodec.numTransactions(blockPtr);
             for (uint256 j = _numL1MessagesInBlock; j < _numTransactionsInBlock; j++) {
                 bytes32 txHash;
                 (txHash, l2TxPtr) = ChunkCodec.loadL2TxHash(l2TxPtr);
@@ -424,7 +425,7 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
                 _totalL1MessagesPoppedOverall += _numL1MessagesInBlock;
 
                 _numBlocks -= 1;
-                chunkPtr += ChunkCodec.BLOCK_CONTEXT_LENGTH;
+                blockPtr += ChunkCodec.BLOCK_CONTEXT_LENGTH;
             }
         }
 
@@ -435,9 +436,6 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
         );
 
         // check chunk has correct length
-        assembly {
-            chunkPtr := add(_chunk, 0x20)
-        }
         require(l2TxPtr - chunkPtr == _chunk.length, "incomplete l2 transaction data");
 
         // compute data hash and store to memory
@@ -451,14 +449,14 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
         return _totalNumL1MessagesInChunk;
     }
 
-    /// @dev Internal function to load L1 messages from message queue.
+    /// @dev Internal function to load L1 message hashes from the message queue.
     /// @param _ptr The memory offset to store the transaction hash.
     /// @param _numL1Messages The number of L1 messages to load.
     /// @param _totalL1MessagesPoppedInBatch The total number of L1 messages popped in current batch.
     /// @param _totalL1MessagesPoppedOverall The total number of L1 messages popped in all batches including current batch.
     /// @param _skippedL1MessageBitmap The bitmap indicates whether each L1 message is skipped or not.
     /// @return uint256 The new memory offset after loading.
-    function _loadL1Messages(
+    function _loadL1MessageHashes(
         uint256 _ptr,
         uint256 _numL1Messages,
         uint256 _totalL1MessagesPoppedInBatch,
