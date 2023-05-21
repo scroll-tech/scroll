@@ -4,14 +4,14 @@ pragma solidity ^0.8.0;
 
 import {ERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 import {ERC20PermitUpgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/draft-ERC20PermitUpgradeable.sol";
-import {IScrollStandardERC20} from "./IScrollStandardERC20.sol";
+import {IScrollStandardERC20Upgradeable} from "./IScrollStandardERC20Upgradeable.sol";
 import {IERC677Receiver} from "../callbacks/IERC677Receiver.sol";
 
-contract ScrollStandardERC20 is ERC20PermitUpgradeable, IScrollStandardERC20 {
-    /// @inheritdoc IScrollStandardERC20
+contract ScrollStandardERC20 is ERC20PermitUpgradeable, IScrollStandardERC20Upgradeable {
+    /// @inheritdoc IScrollStandardERC20Upgradeable
     address public override gateway;
 
-    /// @inheritdoc IScrollStandardERC20
+    /// @inheritdoc IScrollStandardERC20Upgradeable
     address public override counterpart;
 
     uint8 private decimals_;
@@ -73,18 +73,12 @@ contract ScrollStandardERC20 is ERC20PermitUpgradeable, IScrollStandardERC20 {
         return length > 0;
     }
 
-    /// @notice Mint some token to recipient's account.
-    /// @dev Gateway Utilities, only gateway contract can call
-    /// @param _to The address of recipient.
-    /// @param _amount The amount of token to mint.
+    /// @inheritdoc IScrollStandardERC20Upgradeable
     function mint(address _to, uint256 _amount) external onlyGateway {
         _mint(_to, _amount);
     }
 
-    /// @notice Mint some token from account.
-    /// @dev Gateway Utilities, only gateway contract can call
-    /// @param _from The address of account to burn token.
-    /// @param _amount The amount of token to mint.
+    /// @inheritdoc IScrollStandardERC20Upgradeable
     function burn(address _from, uint256 _amount) external onlyGateway {
         _burn(_from, _amount);
     }
