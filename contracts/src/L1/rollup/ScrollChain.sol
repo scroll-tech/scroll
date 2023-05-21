@@ -182,6 +182,7 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
         uint256 _batchIndex = BatchHeaderV0Codec.batchIndex(batchPtr);
         uint256 _totalL1MessagesPoppedOverall = BatchHeaderV0Codec.totalL1MessagePopped(batchPtr);
         require(committedBatches[_batchIndex] == _parentBatchHash, "incorrect parent batch hash");
+        require(committedBatches[_batchIndex + 1] == 0, "batch already committed");
 
         // load `dataPtr` and reserve the memory region for chunk data hashes
         uint256 dataPtr;

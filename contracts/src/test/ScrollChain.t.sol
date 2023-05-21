@@ -141,6 +141,10 @@ contract ScrollChainTest is DSTestPlus {
         chunks[0] = chunk0;
         rollup.commitBatch(0, batchHeader0, chunks, new bytes(0));
         assertGt(uint256(rollup.committedBatches(1)), 0);
+
+        // batch is already committed, revert
+        hevm.expectRevert("batch already committed");
+        rollup.commitBatch(0, batchHeader0, chunks, new bytes(0));
     }
 
     function testFinalizeBatchWithProof() public {
