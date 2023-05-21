@@ -1,5 +1,7 @@
 # Scroll Contracts
 
+(For a more comprehensive doc, see [`docs/`](./docs).)
+
 ## Directory Structure
 
 ```
