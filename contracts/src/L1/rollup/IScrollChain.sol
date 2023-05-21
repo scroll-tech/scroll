@@ -66,13 +66,13 @@ interface IScrollChain {
     /// @notice Finalize a committed batch on layer 1.
     /// @param batchHeader The header of current batch, see the encoding in comments of `commitBatch.
     /// @param prevStateRoot The state root of parent batch.
-    /// @param newStateRoot The state root of current batch.
+    /// @param postStateRoot The state root of current batch.
     /// @param withdrawRoot The withdraw trie root of current batch.
     /// @param aggrProof The aggregation proof for current batch.
     function finalizeBatchWithProof(
         bytes calldata batchHeader,
         bytes32 prevStateRoot,
-        bytes32 newStateRoot,
+        bytes32 postStateRoot,
         bytes32 withdrawRoot,
         bytes calldata aggrProof
     ) external;

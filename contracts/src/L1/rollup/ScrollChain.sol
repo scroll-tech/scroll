@@ -262,12 +262,12 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
     function finalizeBatchWithProof(
         bytes calldata _batchHeader,
         bytes32 _prevStateRoot,
-        bytes32 _newStateRoot,
+        bytes32 _postStateRoot,
         bytes32 _withdrawRoot,
         bytes calldata _aggrProof
     ) external override OnlySequencer {
         require(_prevStateRoot != bytes32(0), "previous state root is zero");
-        require(_newStateRoot != bytes32(0), "new state root is zero");
+        require(_postStateRoot != bytes32(0), "new state root is zero");
 
         // compute batch hash and verify
         (uint256 memPtr, bytes32 _batchHash) = _loadBatchHeader(_batchHeader);
@@ -283,7 +283,7 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
         require(finalizedStateRoots[_batchIndex] == bytes32(0), "batch already verified");
 
         // compute public input hash
-        bytes32 _publicInputHash = keccak256(abi.encode(_prevStateRoot, _newStateRoot, _withdrawRoot, _dataHash));
+        bytes32 _publicInputHash = keccak256(abi.encode(_prevStateRoot, _postStateRoot, _withdrawRoot, _dataHash));
 
         // verify batch
         IRollupVerifier(verifier).verifyAggregateProof(_aggrProof, _publicInputHash);
@@ -295,7 +295,7 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
         }
 
         // record state root and withdraw root
-        finalizedStateRoots[_batchIndex] = _newStateRoot;
+        finalizedStateRoots[_batchIndex] = _postStateRoot;
         withdrawRoots[_batchIndex] = _withdrawRoot;
 
         // Pop finalized and non-skipped message from L1MessageQueue.
@@ -320,7 +320,7 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
             }
         }
 
-        emit FinalizeBatch(_batchHash, _newStateRoot, _withdrawRoot);
+        emit FinalizeBatch(_batchHash, _postStateRoot, _withdrawRoot);
     }
 
     /************************
