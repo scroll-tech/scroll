@@ -107,11 +107,13 @@ library BatchHeaderV0Codec {
     /// @param _version The version of batch header.
     function storeVersion(uint256 batchPtr, uint256 _version) internal pure {
         assembly {
-            mstore(batchPtr, shl(248, _version))
+            mstore8(batchPtr, _version)
         }
     }
 
     /// @notice Store the batch index of batch header.
+    /// @dev Because this function can overwrite the subsequent fields, it must be called before
+    ///     `storeL1MessagePopped`, `storeTotalL1MessagePopped`, and `storeDataHash`.
     /// @param batchPtr The start memory offset of the batch header in memory.
     /// @param _batchIndex The batch index.
     function storeBatchIndex(uint256 batchPtr, uint256 _batchIndex) internal pure {
@@ -121,6 +123,8 @@ library BatchHeaderV0Codec {
     }
 
     /// @notice Store the number of L1 messages popped in current batch to batch header.
+    /// @dev Because this function can overwrite the subsequent fields, it must be called before
+    ///     `storeTotalL1MessagePopped` and `storeDataHash`.
     /// @param batchPtr The start memory offset of the batch header in memory.
     /// @param _l1MessagePopped The number of L1 messages popped in current batch.
     function storeL1MessagePopped(uint256 batchPtr, uint256 _l1MessagePopped) internal pure {
@@ -130,6 +134,8 @@ library BatchHeaderV0Codec {
     }
 
     /// @notice Store the total number of L1 messages popped after current batch to batch header.
+    /// @dev Because this function can overwrite the subsequent fields, it must be called before
+    ///     `storeDataHash`.
     /// @param batchPtr The start memory offset of the batch header in memory.
     /// @param _totalL1MessagePopped The total number of L1 messages popped after current batch.
     function storeTotalL1MessagePopped(uint256 batchPtr, uint256 _totalL1MessagePopped) internal pure {
