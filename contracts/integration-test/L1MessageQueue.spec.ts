@@ -41,7 +41,7 @@ describe("L1MessageQueue", async () => {
       expect(await queue.maxGasLimit()).to.eq(10000000);
     });
 
-    it("should revert, when initlaize again", async () => {
+    it("should revert, when initialize again", async () => {
       await expect(
         queue.initialize(constants.AddressZero, constants.AddressZero, constants.AddressZero, constants.AddressZero, 0)
       ).to.revertedWith("Initializable: contract is already initialized");

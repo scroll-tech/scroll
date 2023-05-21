@@ -233,8 +233,8 @@ contract L1StandardERC20GatewayTest is L1GatewayTestBase {
             address(factory)
         );
 
-        // only call by conterpart
-        hevm.expectRevert("only call by conterpart");
+        // only call by counterpart
+        hevm.expectRevert("only call by counterpart");
         mockMessenger.callTarget(
             address(gateway),
             abi.encodeWithSelector(
@@ -304,7 +304,7 @@ contract L1StandardERC20GatewayTest is L1GatewayTestBase {
         IL1ScrollMessenger.L2MessageProof memory proof;
         proof.batchIndex = rollup.lastFinalizedBatchIndex();
 
-        // conterpart is not L2WETHGateway
+        // counterpart is not L2WETHGateway
         // emit FailedRelayedMessage from L1ScrollMessenger
         hevm.expectEmit(true, false, false, true);
         emit FailedRelayedMessage(keccak256(xDomainCalldata));

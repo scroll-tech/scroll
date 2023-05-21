@@ -55,7 +55,7 @@ describe("EnforcedTxGateway.spec", async () => {
       expect(await gateway.paused()).to.eq(false);
     });
 
-    it("should revert, when initlaize again", async () => {
+    it("should revert, when initialize again", async () => {
       await expect(gateway.initialize(constants.AddressZero, constants.AddressZero)).to.revertedWith(
         "Initializable: contract is already initialized"
       );
@@ -195,7 +195,7 @@ describe("EnforcedTxGateway.spec", async () => {
       ).to.revertedWith("Pausable: paused");
     });
 
-    it("should revert, when signatue is wrong", async () => {
+    it("should revert, when signature is wrong", async () => {
       const signature = await signer.signMessage("0x00");
       await expect(
         gateway

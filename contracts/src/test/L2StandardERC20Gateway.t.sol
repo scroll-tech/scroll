@@ -174,8 +174,8 @@ contract L2StandardERC20GatewayTest is L2GatewayTestBase {
         gateway = new L2StandardERC20Gateway();
         gateway.initialize(address(counterpartGateway), address(router), address(mockMessenger), address(factory));
 
-        // only call by conterpart
-        hevm.expectRevert("only call by conterpart");
+        // only call by counterpart
+        hevm.expectRevert("only call by counterpart");
         mockMessenger.callTarget(
             address(gateway),
             abi.encodeWithSelector(
@@ -252,7 +252,7 @@ contract L2StandardERC20GatewayTest is L2GatewayTestBase {
             message
         );
 
-        // conterpart is not L2WETHGateway
+        // counterpart is not L2WETHGateway
         // emit FailedRelayedMessage from L1ScrollMessenger
         hevm.expectEmit(true, false, false, true);
         emit FailedRelayedMessage(keccak256(xDomainCalldata));
