@@ -269,6 +269,6 @@ type AggTask struct {
 	EndBatchHash    string        `json:"end_batch_hash" db:"end_batch_hash"`
 	ProvingStatus   ProvingStatus `json:"proving_status" db:"proving_status"`
 	Proof           []byte        `json:"proof" db:"proof"`
-	CreatedTime     *time.Time    `json:"created_time" db:"created_time"`
-	UpdatedTime     *time.Time    `json:"updated_time" db:"updated_time"`
+	CreatedAt       *time.Time    `json:"created_at" db:"created_at"`
+	UpdatedAt       *time.Time    `json:"updated_at" db:"updated_at"`
 }
