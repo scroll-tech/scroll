@@ -116,8 +116,8 @@ contract L2ETHGatewayTest is L2GatewayTestBase {
         gateway = new L2ETHGateway();
         gateway.initialize(address(counterpartGateway), address(router), address(mockMessenger));
 
-        // only call by conterpart
-        hevm.expectRevert("only call by conterpart");
+        // only call by counterpart
+        hevm.expectRevert("only call by counterpart");
         mockMessenger.callTarget(
             address(gateway),
             abi.encodeWithSelector(gateway.finalizeDepositETH.selector, sender, recipient, amount, dataToCall)
@@ -168,7 +168,7 @@ contract L2ETHGatewayTest is L2GatewayTestBase {
             message
         );
 
-        // conterpart is not L1ETHGateway
+        // counterpart is not L1ETHGateway
         // emit FailedRelayedMessage from L2ScrollMessenger
         hevm.expectEmit(true, false, false, true);
         emit FailedRelayedMessage(keccak256(xDomainCalldata));
