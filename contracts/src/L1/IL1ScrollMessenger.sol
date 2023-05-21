@@ -36,7 +36,7 @@ interface IL1ScrollMessenger is IScrollMessenger {
         L2MessageProof memory proof
     ) external;
 
-    /// @notice Replay an exsisting message.
+    /// @notice Replay an existing message.
     /// @param from The address of the sender of the message.
     /// @param to The address of the recipient of the message.
     /// @param value The msg.value passed to the message call.

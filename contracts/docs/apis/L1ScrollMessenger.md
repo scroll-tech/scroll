@@ -218,7 +218,7 @@ function renounceOwnership() external nonpayable
 function replayMessage(address _from, address _to, uint256 _value, uint256 _queueIndex, bytes _message, uint32 _newGasLimit, address _refundAddress) external payable
 ```
 
-Replay an exsisting message.
+Replay an existing message.
 
 
 

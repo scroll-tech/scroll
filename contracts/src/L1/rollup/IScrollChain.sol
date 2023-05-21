@@ -7,7 +7,7 @@ interface IScrollChain {
      * Events *
      **********/
 
-    /// @notice Emitted when a new batch is commited.
+    /// @notice Emitted when a new batch is committed.
     /// @param batchHash The hash of the batch.
     event CommitBatch(bytes32 indexed batchHash);
 
@@ -63,7 +63,7 @@ interface IScrollChain {
     /// @param batchHeader The header of current batch, see the encoding in comments of `commitBatch`.
     function revertBatch(bytes calldata batchHeader) external;
 
-    /// @notice Finalize a commited batch on layer 1.
+    /// @notice Finalize a committed batch on layer 1.
     /// @param batchHeader The header of current batch, see the encoding in comments of `commitBatch.
     /// @param prevStateRoot The state root of parent batch.
     /// @param newStateRoot The state root of current batch.
