@@ -69,6 +69,7 @@ jobs:
           exit 1
         fi
   # docker-build:
+  #   if: github.event.pull_request.draft == false
   #   runs-on: ubuntu-latest
   #   steps:
   #   - name: Checkout code
