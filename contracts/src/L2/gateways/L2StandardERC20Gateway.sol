@@ -10,7 +10,7 @@ import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 import {IL2ERC20Gateway, L2ERC20Gateway} from "./L2ERC20Gateway.sol";
 import {IL2ScrollMessenger} from "../IL2ScrollMessenger.sol";
 import {IL1ERC20Gateway} from "../../L1/gateways/IL1ERC20Gateway.sol";
-import {IScrollStandardERC20} from "../../libraries/token/IScrollStandardERC20.sol";
+import {IScrollERC20} from "../../libraries/token/IScrollERC20.sol";
 import {ScrollStandardERC20} from "../../libraries/token/ScrollStandardERC20.sol";
 import {IScrollStandardERC20Factory} from "../../libraries/token/IScrollStandardERC20Factory.sol";
 import {ScrollGatewayBase, IScrollGateway} from "../../libraries/gateway/ScrollGatewayBase.sol";
@@ -107,7 +107,7 @@ contract L2StandardERC20Gateway is Initializable, ScrollGatewayBase, L2ERC20Gate
             _deployL2Token(_deployData, _l1Token);
         }
 
-        IScrollStandardERC20(_l2Token).mint(_to, _amount);
+        IScrollERC20(_l2Token).mint(_to, _amount);
 
         _doCallback(_to, _callData);
 
@@ -138,7 +138,7 @@ contract L2StandardERC20Gateway is Initializable, ScrollGatewayBase, L2ERC20Gate
         require(_l1Token != address(0), "no corresponding l1 token");
 
         // 2. Burn token.
-        IScrollStandardERC20(_token).burn(_from, _amount);
+        IScrollERC20(_token).burn(_from, _amount);
 
         // 3. Generate message passed to L1StandardERC20Gateway.
         bytes memory _message = abi.encodeWithSelector(
