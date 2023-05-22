@@ -20,12 +20,14 @@ contract InitializeL1BridgeContracts is Script {
     uint256 L1_DEPLOYER_PRIVATE_KEY = vm.envUint("L1_DEPLOYER_PRIVATE_KEY");
 
     uint256 CHAIN_ID_L2 = vm.envUint("CHAIN_ID_L2");
+    uint256 MAX_L2_TX_IN_CHUNK = vm.envOr("MAX_L2_TX_IN_CHUNK", uint256(44));
     address L1_ROLLUP_OPERATOR_ADDR = vm.envAddress("L1_ROLLUP_OPERATOR_ADDR");
 
     address L1_FEE_VAULT_ADDR = vm.envAddress("L1_FEE_VAULT_ADDR");
 
     address L1_WHITELIST_ADDR = vm.envAddress("L1_WHITELIST_ADDR");
     address L1_ZK_ROLLUP_PROXY_ADDR = vm.envAddress("L1_ZK_ROLLUP_PROXY_ADDR");
+    address L1_ROLLUP_VERIFIER_ADDR = vm.envAddress("L1_ROLLUP_VERIFIER_ADDR");
     address L1_MESSAGE_QUEUE_PROXY_ADDR = vm.envAddress("L1_MESSAGE_QUEUE_PROXY_ADDR");
     address L2_GAS_PRICE_ORACLE_PROXY_ADDR = vm.envAddress("L2_GAS_PRICE_ORACLE_PROXY_ADDR");
     address L1_SCROLL_MESSENGER_PROXY_ADDR = vm.envAddress("L1_SCROLL_MESSENGER_PROXY_ADDR");
@@ -53,7 +55,7 @@ contract InitializeL1BridgeContracts is Script {
         vm.startBroadcast(L1_DEPLOYER_PRIVATE_KEY);
 
         // initialize ScrollChain
-        ScrollChain(L1_ZK_ROLLUP_PROXY_ADDR).initialize(L1_MESSAGE_QUEUE_PROXY_ADDR);
+        ScrollChain(L1_ZK_ROLLUP_PROXY_ADDR).initialize(L1_MESSAGE_QUEUE_PROXY_ADDR, L1_ROLLUP_VERIFIER_ADDR, MAX_L2_TX_IN_CHUNK);
         ScrollChain(L1_ZK_ROLLUP_PROXY_ADDR).updateSequencer(L1_ROLLUP_OPERATOR_ADDR, true);
 
         // initialize L2GasPriceOracle
@@ -63,6 +65,7 @@ contract InitializeL1BridgeContracts is Script {
         // initialize L1MessageQueue
         L1MessageQueue(L1_MESSAGE_QUEUE_PROXY_ADDR).initialize(
             L1_SCROLL_MESSENGER_PROXY_ADDR,
+            L1_ZK_ROLLUP_PROXY_ADDR,
             ENFORCED_TX_GATEWAY_PROXY_ADDR,
             L2_GAS_PRICE_ORACLE_PROXY_ADDR,
             10000000

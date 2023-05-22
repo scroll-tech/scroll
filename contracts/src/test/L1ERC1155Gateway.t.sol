@@ -172,8 +172,8 @@ contract L1ERC1155GatewayTest is L1GatewayTestBase, ERC1155TokenReceiver {
         gateway = new L1ERC1155Gateway();
         gateway.initialize(address(counterpartGateway), address(mockMessenger));
 
-        // only call by conterpart
-        hevm.expectRevert("only call by conterpart");
+        // only call by counterpart
+        hevm.expectRevert("only call by counterpart");
         mockMessenger.callTarget(
             address(gateway),
             abi.encodeWithSelector(
@@ -240,9 +240,9 @@ contract L1ERC1155GatewayTest is L1GatewayTestBase, ERC1155TokenReceiver {
         prepareL2MessageRoot(keccak256(xDomainCalldata));
 
         IL1ScrollMessenger.L2MessageProof memory proof;
-        proof.batchHash = rollup.lastFinalizedBatchHash();
+        proof.batchIndex = rollup.lastFinalizedBatchIndex();
 
-        // conterpart is not L2WETHGateway
+        // counterpart is not L2WETHGateway
         // emit FailedRelayedMessage from L1ScrollMessenger
         hevm.expectEmit(true, false, false, true);
         emit FailedRelayedMessage(keccak256(xDomainCalldata));
@@ -304,7 +304,7 @@ contract L1ERC1155GatewayTest is L1GatewayTestBase, ERC1155TokenReceiver {
         prepareL2MessageRoot(keccak256(xDomainCalldata));
 
         IL1ScrollMessenger.L2MessageProof memory proof;
-        proof.batchHash = rollup.lastFinalizedBatchHash();
+        proof.batchIndex = rollup.lastFinalizedBatchIndex();
 
         // emit FinalizeWithdrawERC1155 from L1ERC1155Gateway
         {
@@ -357,8 +357,8 @@ contract L1ERC1155GatewayTest is L1GatewayTestBase, ERC1155TokenReceiver {
         gateway = new L1ERC1155Gateway();
         gateway.initialize(address(counterpartGateway), address(mockMessenger));
 
-        // only call by conterpart
-        hevm.expectRevert("only call by conterpart");
+        // only call by counterpart
+        hevm.expectRevert("only call by counterpart");
         mockMessenger.callTarget(
             address(gateway),
             abi.encodeWithSelector(
@@ -431,9 +431,9 @@ contract L1ERC1155GatewayTest is L1GatewayTestBase, ERC1155TokenReceiver {
         prepareL2MessageRoot(keccak256(xDomainCalldata));
 
         IL1ScrollMessenger.L2MessageProof memory proof;
-        proof.batchHash = rollup.lastFinalizedBatchHash();
+        proof.batchIndex = rollup.lastFinalizedBatchIndex();
 
-        // conterpart is not L2WETHGateway
+        // counterpart is not L2WETHGateway
         // emit FailedRelayedMessage from L1ScrollMessenger
         hevm.expectEmit(true, false, false, true);
         emit FailedRelayedMessage(keccak256(xDomainCalldata));
@@ -507,7 +507,7 @@ contract L1ERC1155GatewayTest is L1GatewayTestBase, ERC1155TokenReceiver {
         prepareL2MessageRoot(keccak256(xDomainCalldata));
 
         IL1ScrollMessenger.L2MessageProof memory proof;
-        proof.batchHash = rollup.lastFinalizedBatchHash();
+        proof.batchIndex = rollup.lastFinalizedBatchIndex();
 
         // emit FinalizeBatchWithdrawERC1155 from L1ERC1155Gateway
         {
