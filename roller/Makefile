@@ -11,7 +11,7 @@ else
 	HALO2_VERSION=$(shell grep -m 1 "halo2.git" ../common/libzkp/impl/Cargo.lock | cut -d "\#" -f2 | cut -c-7)
 endif
 
-HALO2_GPU_VERSION=$(shell chmod +x ./halo2gpu_version.sh && ./halo2gpu_version.sh | sed -n '2p')
+HALO2_GPU_VERSION=$(shell ./halo2gpu_version.sh | sed -n '2p')
 
 ifeq ($HALO2_GPU_VERSION,)
 	# use halo2_proofs with CPU
