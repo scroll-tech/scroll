@@ -9,7 +9,7 @@ interface IL1MessageQueue {
 
     /// @notice Emitted when a new L1 => L2 transaction is appended to the queue.
     /// @param sender The address of account who initiates the transaction.
-    /// @param target The address of account who will recieve the transaction.
+    /// @param target The address of account who will receive the transaction.
     /// @param value The value passed with the transaction.
     /// @param queueIndex The index of this transaction in the queue.
     /// @param gasLimit Gas limit required to complete the message relay on L2.
@@ -23,9 +23,18 @@ interface IL1MessageQueue {
         bytes data
     );
 
+    /// @notice Emitted when some L1 => L2 transactions are included in L1.
+    /// @param startIndex The start index of messages popped.
+    /// @param count The number of messages popped.
+    /// @param skippedBitmap A bitmap indicates whether a message is skipped.
+    event DequeueTransaction(uint256 startIndex, uint256 count, uint256 skippedBitmap);
+
     /*************************
      * Public View Functions *
      *************************/
+
+    /// @notice The start index of all pending inclusion messages.
+    function pendingQueueIndex() external view returns (uint256);
 
     /// @notice Return the index of next appended message.
     /// @dev Also the total number of appended messages.
@@ -86,5 +95,19 @@ interface IL1MessageQueue {
         uint256 value,
         uint256 gasLimit,
         bytes calldata data
+    ) external;
+
+    /// @notice Pop finalized messages from queue.
+    ///
+    /// @dev We can pop at most 256 messages each time. And if the message is not skipped,
+    ///      the corresponding entry will be cleared.
+    ///
+    /// @param startIndex The start index to pop.
+    /// @param count The number of messages to pop.
+    /// @param skippedBitmap A bitmap indicates whether a message is skipped.
+    function popCrossDomainMessage(
+        uint256 startIndex,
+        uint256 count,
+        uint256 skippedBitmap
     ) external;
 }

@@ -215,10 +215,10 @@ function renounceOwnership() external nonpayable
 ### replayMessage
 
 ```solidity
-function replayMessage(address _from, address _to, uint256 _value, uint256 _queueIndex, bytes _message, uint32 _oldGasLimit, uint32 _newGasLimit, address _refundAddress) external payable
+function replayMessage(address _from, address _to, uint256 _value, uint256 _queueIndex, bytes _message, uint32 _newGasLimit, address _refundAddress) external payable
 ```
 
-Replay an exsisting message.
+Replay an existing message.
 
 
 
@@ -231,7 +231,6 @@ Replay an exsisting message.
 | _value | uint256 | undefined |
 | _queueIndex | uint256 | undefined |
 | _message | bytes | undefined |
-| _oldGasLimit | uint32 | undefined |
 | _newGasLimit | uint32 | undefined |
 | _refundAddress | address | undefined |
 
@@ -338,39 +337,6 @@ Update fee vault contract.
 | Name | Type | Description |
 |---|---|---|
 | _newFeeVault | address | The address of new fee vault contract. |
-
-### updateWhitelist
-
-```solidity
-function updateWhitelist(address _newWhitelist) external nonpayable
-```
-
-Update whitelist contract.
-
-*This function can only called by contract owner.*
-
-#### Parameters
-
-| Name | Type | Description |
-|---|---|---|
-| _newWhitelist | address | The address of new whitelist contract. |
-
-### whitelist
-
-```solidity
-function whitelist() external view returns (address)
-```
-
-The whitelist contract to track the sender who can call `sendMessage` in ScrollMessenger.
-
-
-
-
-#### Returns
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | address | undefined |
 
 ### xDomainMessageSender
 
@@ -511,23 +477,6 @@ Emitted when owner updates fee vault contract.
 |---|---|---|
 | _oldFeeVault  | address | undefined |
 | _newFeeVault  | address | undefined |
-
-### UpdateWhitelist
-
-```solidity
-event UpdateWhitelist(address _oldWhitelist, address _newWhitelist)
-```
-
-Emitted when owner updates whitelist contract.
-
-
-
-#### Parameters
-
-| Name | Type | Description |
-|---|---|---|
-| _oldWhitelist  | address | undefined |
-| _newWhitelist  | address | undefined |
 
 
 
