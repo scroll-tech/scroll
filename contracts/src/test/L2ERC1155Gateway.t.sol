@@ -203,7 +203,7 @@ contract L2ERC1155GatewayTest is DSTestPlus, ERC1155TokenReceiver {
         gateway.finalizeDepositERC1155(address(0), address(0), address(0), address(0), 0, 1);
 
         // should revert, called by messenger, xDomainMessageSender not set
-        hevm.expectRevert("only call by conterpart");
+        hevm.expectRevert("only call by counterpart");
         messenger.callTarget(
             address(gateway),
             abi.encodeWithSelector(
@@ -219,7 +219,7 @@ contract L2ERC1155GatewayTest is DSTestPlus, ERC1155TokenReceiver {
 
         // should revert, called by messenger, xDomainMessageSender set wrong
         messenger.setXDomainMessageSender(address(2));
-        hevm.expectRevert("only call by conterpart");
+        hevm.expectRevert("only call by counterpart");
         messenger.callTarget(
             address(gateway),
             abi.encodeWithSelector(
@@ -279,7 +279,7 @@ contract L2ERC1155GatewayTest is DSTestPlus, ERC1155TokenReceiver {
         );
 
         // should revert, called by messenger, xDomainMessageSender not set
-        hevm.expectRevert("only call by conterpart");
+        hevm.expectRevert("only call by counterpart");
         messenger.callTarget(
             address(gateway),
             abi.encodeWithSelector(
@@ -295,7 +295,7 @@ contract L2ERC1155GatewayTest is DSTestPlus, ERC1155TokenReceiver {
 
         // should revert, called by messenger, xDomainMessageSender set wrong
         messenger.setXDomainMessageSender(address(2));
-        hevm.expectRevert("only call by conterpart");
+        hevm.expectRevert("only call by counterpart");
         messenger.callTarget(
             address(gateway),
             abi.encodeWithSelector(

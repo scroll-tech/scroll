@@ -8,7 +8,7 @@ import {IERC20PermitUpgradeable} from "@openzeppelin/contracts-upgradeable/token
 // The recommended ERC20 implementation for bridge token.
 // deployed in L2 when original token is on L1
 // deployed in L1 when original token is on L2
-interface IScrollStandardERC20 is IERC20Upgradeable, IERC20PermitUpgradeable {
+interface IScrollERC20Upgradeable is IERC20Upgradeable, IERC20PermitUpgradeable {
     /// @notice Return the address of Gateway the token belongs to.
     function gateway() external view returns (address);
 

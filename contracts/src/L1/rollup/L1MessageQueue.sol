@@ -39,14 +39,20 @@ contract L1MessageQueue is OwnableUpgradeable, IL1MessageQueue {
     /// @notice The address of L1ScrollMessenger contract.
     address public messenger;
 
+    /// @notice The address of ScrollChain contract.
+    address public scrollChain;
+
+    /// @notice The address EnforcedTxGateway contract.
+    address public enforcedTxGateway;
+
     /// @notice The address of GasOracle contract.
     address public gasOracle;
 
     /// @notice The list of queued cross domain messages.
     bytes32[] public messageQueue;
 
-    /// @notice The address EnforcedTxGateway contract.
-    address public enforcedTxGateway;
+    /// @inheritdoc IL1MessageQueue
+    uint256 public pendingQueueIndex;
 
     /// @notice The max gas limit of L1 transactions.
     uint256 public maxGasLimit;
@@ -57,6 +63,7 @@ contract L1MessageQueue is OwnableUpgradeable, IL1MessageQueue {
 
     function initialize(
         address _messenger,
+        address _scrollChain,
         address _enforcedTxGateway,
         address _gasOracle,
         uint256 _maxGasLimit
@@ -64,6 +71,7 @@ contract L1MessageQueue is OwnableUpgradeable, IL1MessageQueue {
         OwnableUpgradeable.__Ownable_init();
 
         messenger = _messenger;
+        scrollChain = _scrollChain;
         enforcedTxGateway = _enforcedTxGateway;
         gasOracle = _gasOracle;
         maxGasLimit = _maxGasLimit;
@@ -259,6 +267,30 @@ contract L1MessageQueue is OwnableUpgradeable, IL1MessageQueue {
         _validateGasLimit(_gasLimit, _data);
 
         _queueTransaction(_sender, _target, _value, _gasLimit, _data);
+    }
+
+    /// @inheritdoc IL1MessageQueue
+    function popCrossDomainMessage(
+        uint256 _startIndex,
+        uint256 _count,
+        uint256 _skippedBitmap
+    ) external {
+        require(msg.sender == scrollChain, "Only callable by the ScrollChain");
+
+        require(_count <= 256, "pop too many messages");
+        require(pendingQueueIndex == _startIndex, "start index mismatch");
+
+        unchecked {
+            for (uint256 i = 0; i < _count; i++) {
+                if ((_skippedBitmap >> i) & 1 == 0) {
+                    messageQueue[_startIndex + i] = bytes32(0);
+                }
+            }
+
+            pendingQueueIndex = _startIndex + _count;
+        }
+
+        emit DequeueTransaction(_startIndex, _count, _skippedBitmap);
     }
 
     /************************
