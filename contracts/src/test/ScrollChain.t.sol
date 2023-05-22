@@ -423,7 +423,6 @@ contract ScrollChainTest is DSTestPlus {
         chunk0[0] = bytes1(uint8(1)); // one block in this chunk
         chunks[0] = chunk0;
         rollup.commitBatch(0, batchHeader0, chunks, new bytes(0));
-        assertGt(uint256(rollup.committedBatches(1)), 0);
 
         bytes memory batchHeader1 = new bytes(89);
         assembly {
@@ -435,6 +434,9 @@ contract ScrollChainTest is DSTestPlus {
             mstore(add(batchHeader1, add(0x20, 57)), batchHash0) // parentBatchHash
         }
 
+        // commit another batch
+        rollup.commitBatch(0, batchHeader1, chunks, new bytes(0));
+
         // incorrect batch hash, revert
         hevm.expectRevert("incorrect batch hash");
         batchHeader1[0] = bytes1(uint8(1)); // change version to 1
@@ -445,9 +447,12 @@ contract ScrollChainTest is DSTestPlus {
         hevm.expectRevert("can only revert unfinalized batch");
         rollup.revertBatch(batchHeader0);
 
-        // succeed
+        // succeed to revert next two pending batches.
+        assertGt(uint256(rollup.committedBatches(1)), 0);
+        assertGt(uint256(rollup.committedBatches(2)), 0);
         rollup.revertBatch(batchHeader1);
         assertEq(uint256(rollup.committedBatches(1)), 0);
+        assertEq(uint256(rollup.committedBatches(2)), 0);
     }
 
     function testUpdateSequencer(address _sequencer) public {

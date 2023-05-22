@@ -254,9 +254,17 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
         // check finalization
         require(_batchIndex > lastFinalizedBatchIndex, "can only revert unfinalized batch");
 
-        committedBatches[_batchIndex] = bytes32(0);
+        while (true) {
+            committedBatches[_batchIndex] = bytes32(0);
+            unchecked {
+                _batchIndex += 1;
+            }
 
-        emit RevertBatch(_batchHash);
+            emit RevertBatch(_batchHash);
+
+            _batchHash = committedBatches[_batchIndex];
+            if (_batchHash == bytes32(0)) break;
+        }
     }
 
     /// @inheritdoc IScrollChain
