@@ -12,8 +12,8 @@ var commit = func() string {
 		for _, setting := range info.Settings {
 			if setting.Key == "vcs.revision" {
 				value := setting.Value
-				if len(value) >= 8 {
-					return value[:8]
+				if len(value) >= 7 {
+					return value[:7]
 				}
 				return value
 			}
