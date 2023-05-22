@@ -244,7 +244,9 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
     }
 
     /// @inheritdoc IScrollChain
-    function revertBatch(bytes calldata _batchHeader) external onlyOwner {
+    function revertBatch(bytes calldata _batchHeader, uint256 _count) external onlyOwner {
+        require(_count > 0, "count must be nonzero");
+
         (uint256 memPtr, bytes32 _batchHash) = _loadBatchHeader(_batchHeader);
 
         // check batch hash
@@ -254,10 +256,11 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
         // check finalization
         require(_batchIndex > lastFinalizedBatchIndex, "can only revert unfinalized batch");
 
-        while (true) {
+        while (_count > 0) {
             committedBatches[_batchIndex] = bytes32(0);
             unchecked {
                 _batchIndex += 1;
+                _count -= 1;
             }
 
             emit RevertBatch(_batchHash);
