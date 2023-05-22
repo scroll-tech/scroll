@@ -34,7 +34,7 @@ describe("EnforcedTxGateway.spec", async () => {
     caller = await MockCaller.deploy();
     await caller.deployed();
 
-    await queue.initialize(constants.AddressZero, gateway.address, oracle.address, 10000000);
+    await queue.initialize(constants.AddressZero, constants.AddressZero, gateway.address, oracle.address, 10000000);
     await gateway.initialize(queue.address, feeVault.address);
     await oracle.initialize(21000, 0, 8, 16);
 
@@ -55,7 +55,7 @@ describe("EnforcedTxGateway.spec", async () => {
       expect(await gateway.paused()).to.eq(false);
     });
 
-    it("should revert, when initlaize again", async () => {
+    it("should revert, when initialize again", async () => {
       await expect(gateway.initialize(constants.AddressZero, constants.AddressZero)).to.revertedWith(
         "Initializable: contract is already initialized"
       );
@@ -195,7 +195,7 @@ describe("EnforcedTxGateway.spec", async () => {
       ).to.revertedWith("Pausable: paused");
     });
 
-    it("should revert, when signatue is wrong", async () => {
+    it("should revert, when signature is wrong", async () => {
       const signature = await signer.signMessage("0x00");
       await expect(
         gateway

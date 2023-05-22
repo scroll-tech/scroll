@@ -29,7 +29,7 @@ contract L1ScrollMessengerTest is DSTestPlus {
         l2Messenger = new L2ScrollMessenger(address(0), address(0), address(0));
 
         // Deploy L1 contracts
-        scrollChain = new ScrollChain(0, 0, bytes32(0));
+        scrollChain = new ScrollChain(0);
         l1MessageQueue = new L1MessageQueue();
         l1Messenger = new L1ScrollMessenger();
         gasOracle = new L2GasPriceOracle();
@@ -38,9 +38,15 @@ contract L1ScrollMessengerTest is DSTestPlus {
 
         // Initialize L1 contracts
         l1Messenger.initialize(address(l2Messenger), feeVault, address(scrollChain), address(l1MessageQueue));
-        l1MessageQueue.initialize(address(l1Messenger), address(enforcedTxGateway), address(gasOracle), 10000000);
+        l1MessageQueue.initialize(
+            address(l1Messenger),
+            address(scrollChain),
+            address(enforcedTxGateway),
+            address(gasOracle),
+            10000000
+        );
         gasOracle.initialize(0, 0, 0, 0);
-        scrollChain.initialize(address(l1MessageQueue));
+        scrollChain.initialize(address(l1MessageQueue), address(0), 44);
 
         gasOracle.updateWhitelist(address(whitelist));
         address[] memory _accounts = new address[](1);
@@ -49,30 +55,38 @@ contract L1ScrollMessengerTest is DSTestPlus {
     }
 
     function testForbidCallMessageQueueFromL2() external {
-        IScrollChain.Batch memory genesisBatch;
-        genesisBatch.newStateRoot = bytes32(uint256(1));
-        genesisBatch.withdrawTrieRoot = 0x35626eedbe5d8fb495fd20259ecb6c9a5574babab0b9ada1e93652baf717b085;
-        genesisBatch.blocks = new IScrollChain.BlockContext[](1);
-        genesisBatch.blocks[0].blockHash = bytes32(uint256(1));
-        scrollChain.importGenesisBatch(genesisBatch);
+        // import genesis batch
+        bytes memory _batchHeader = new bytes(89);
+        assembly {
+            mstore(add(_batchHeader, add(0x20, 25)), 1)
+        }
+        scrollChain.importGenesisBatch(
+            _batchHeader,
+            bytes32(uint256(1)),
+            bytes32(0x3152134c22e545ab5d345248502b4f04ef5b45f735f939c7fe6ddc0ffefc9c52)
+        );
 
         IL1ScrollMessenger.L2MessageProof memory proof;
-        proof.batchHash = scrollChain.lastFinalizedBatchHash();
+        proof.batchIndex = scrollChain.lastFinalizedBatchIndex();
 
         hevm.expectRevert("Forbid to call message queue");
         l1Messenger.relayMessageWithProof(address(this), address(l1MessageQueue), 0, 0, new bytes(0), proof);
     }
 
     function testForbidCallSelfFromL2() external {
-        IScrollChain.Batch memory genesisBatch;
-        genesisBatch.newStateRoot = bytes32(uint256(1));
-        genesisBatch.withdrawTrieRoot = 0x6e17d04543a7177b7ab3c42130fef5a10e6f47e9dfbd4ed577706ffb9d9273cc;
-        genesisBatch.blocks = new IScrollChain.BlockContext[](1);
-        genesisBatch.blocks[0].blockHash = bytes32(uint256(1));
-        scrollChain.importGenesisBatch(genesisBatch);
+        // import genesis batch
+        bytes memory _batchHeader = new bytes(89);
+        assembly {
+            mstore(add(_batchHeader, 57), 1)
+        }
+        scrollChain.importGenesisBatch(
+            _batchHeader,
+            bytes32(uint256(1)),
+            bytes32(0xf7c03e2b13c88e3fca1410b228b001dd94e3f5ab4b4a4a6981d09a4eb3e5b631)
+        );
 
         IL1ScrollMessenger.L2MessageProof memory proof;
-        proof.batchHash = scrollChain.lastFinalizedBatchHash();
+        proof.batchIndex = scrollChain.lastFinalizedBatchIndex();
 
         hevm.expectRevert("Forbid to call self");
         l1Messenger.relayMessageWithProof(address(this), address(l1Messenger), 0, 0, new bytes(0), proof);
@@ -105,12 +119,12 @@ contract L1ScrollMessengerTest is DSTestPlus {
 
         // Provided message has not been enqueued
         hevm.expectRevert("Provided message has not been enqueued");
-        l1Messenger.replayMessage(address(this), address(0), 101, 0, new bytes(0), 0, 1, refundAddress);
+        l1Messenger.replayMessage(address(this), address(0), 101, 0, new bytes(0), 1, refundAddress);
 
         gasOracle.setL2BaseFee(1);
         // Insufficient msg.value
         hevm.expectRevert("Insufficient msg.value for fee");
-        l1Messenger.replayMessage(address(this), address(0), 100, 0, new bytes(0), 0, 1, refundAddress);
+        l1Messenger.replayMessage(address(this), address(0), 100, 0, new bytes(0), 1, refundAddress);
 
         uint256 _fee = gasOracle.l2BaseFee() * 100;
 
@@ -123,7 +137,6 @@ contract L1ScrollMessengerTest is DSTestPlus {
             100,
             0,
             new bytes(0),
-            0,
             100,
             refundAddress
         );
