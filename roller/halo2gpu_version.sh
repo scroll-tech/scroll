@@ -14,4 +14,4 @@ commit_hash=$(git log --pretty=format:%h -n 1)
 echo "${commit_hash:0:7}"
 
 popd
-Ï
+
