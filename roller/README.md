@@ -47,7 +47,7 @@ The prover behavior can be configured using [`config.json`](config.json). Check 
 ```bash
 export CHAIN_ID=534353 # change to correct chain ID
 export RUST_MIN_STACK=100000000
-export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:./prover/lib:/usr/local/cuda/
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:./prover/lib
 ```
 
 2. Start the module using settings from config.json:
