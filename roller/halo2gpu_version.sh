@@ -2,6 +2,10 @@
 
 config_file="$HOME/.cargo/config"
 
+if [ ! -e "$config_file" ]; then
+    exit 0
+fi
+
 if [[ $(head -n 1 "$config_file") == "#"* ]]; then
   exit 0
 fi
