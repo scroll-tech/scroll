@@ -155,8 +155,8 @@ contract L2WETHGatewayTest is L2GatewayTestBase {
         gateway = new L2WETHGateway(address(l2weth), address(l1weth));
         gateway.initialize(address(counterpartGateway), address(router), address(mockMessenger));
 
-        // only call by conterpart
-        hevm.expectRevert("only call by conterpart");
+        // only call by counterpart
+        hevm.expectRevert("only call by counterpart");
         mockMessenger.callTarget(
             address(gateway),
             abi.encodeWithSelector(
@@ -252,7 +252,7 @@ contract L2WETHGatewayTest is L2GatewayTestBase {
             message
         );
 
-        // conterpart is not L1WETHGateway
+        // counterpart is not L1WETHGateway
         // emit FailedRelayedMessage from L2ScrollMessenger
         hevm.expectEmit(true, false, false, true);
         emit FailedRelayedMessage(keccak256(xDomainCalldata));

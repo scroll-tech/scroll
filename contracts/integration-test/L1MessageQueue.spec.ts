@@ -9,6 +9,7 @@ import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 
 describe("L1MessageQueue", async () => {
   let deployer: SignerWithAddress;
+  let scrollChain: SignerWithAddress;
   let messenger: SignerWithAddress;
   let gateway: SignerWithAddress;
   let signer: SignerWithAddress;
@@ -17,7 +18,7 @@ describe("L1MessageQueue", async () => {
   let queue: L1MessageQueue;
 
   beforeEach(async () => {
-    [deployer, messenger, gateway, signer] = await ethers.getSigners();
+    [deployer, scrollChain, messenger, gateway, signer] = await ethers.getSigners();
 
     const L1MessageQueue = await ethers.getContractFactory("L1MessageQueue", deployer);
     queue = await L1MessageQueue.deploy();
@@ -27,21 +28,22 @@ describe("L1MessageQueue", async () => {
     oracle = await L2GasPriceOracle.deploy();
 
     await oracle.initialize(21000, 0, 8, 16);
-    await queue.initialize(messenger.address, gateway.address, oracle.address, 10000000);
+    await queue.initialize(messenger.address, scrollChain.address, gateway.address, oracle.address, 10000000);
   });
 
   context("auth", async () => {
     it("should initialize correctly", async () => {
       expect(await queue.owner()).to.eq(deployer.address);
       expect(await queue.messenger()).to.eq(messenger.address);
+      expect(await queue.scrollChain()).to.eq(scrollChain.address);
       expect(await queue.enforcedTxGateway()).to.eq(gateway.address);
       expect(await queue.gasOracle()).to.eq(oracle.address);
       expect(await queue.maxGasLimit()).to.eq(10000000);
     });
 
-    it("should revert, when initlaize again", async () => {
+    it("should revert, when initialize again", async () => {
       await expect(
-        queue.initialize(constants.AddressZero, constants.AddressZero, constants.AddressZero, 0)
+        queue.initialize(constants.AddressZero, constants.AddressZero, constants.AddressZero, constants.AddressZero, 0)
       ).to.revertedWith("Initializable: contract is already initialized");
     });
 
@@ -215,6 +217,61 @@ describe("L1MessageQueue", async () => {
         .withArgs(sender, signer.address, 200, 0, 100000, "0x01");
       expect(await queue.nextCrossDomainMessageIndex()).to.eq(constants.One);
       expect(await queue.getCrossDomainMessage(0)).to.eq(hash);
+    });
+  });
+
+  context("#popCrossDomainMessage", async () => {
+    it("should revert, when non-scrollChain call", async () => {
+      await expect(queue.connect(signer).popCrossDomainMessage(0, 0, 0)).to.revertedWith(
+        "Only callable by the ScrollChain"
+      );
+    });
+
+    it("should revert, when pop too many messages", async () => {
+      await expect(queue.connect(scrollChain).popCrossDomainMessage(0, 257, 0)).to.revertedWith(
+        "pop too many messages"
+      );
+    });
+
+    it("should revert, when start index mismatch", async () => {
+      await expect(queue.connect(scrollChain).popCrossDomainMessage(1, 256, 0)).to.revertedWith("start index mismatch");
+    });
+
+    it("should succeed", async () => {
+      // append 100 messages
+      for (let i = 0; i < 100; i++) {
+        await queue.connect(messenger).appendCrossDomainMessage(constants.AddressZero, 1000000, "0x");
+      }
+
+      // pop 50 messages with no skip
+      await expect(queue.connect(scrollChain).popCrossDomainMessage(0, 50, 0))
+        .to.emit(queue, "DequeueTransaction")
+        .withArgs(0, 50, 0);
+      for (let i = 0; i < 50; i++) {
+        expect(await queue.getCrossDomainMessage(i)).to.eq(constants.HashZero);
+      }
+      expect(await queue.pendingQueueIndex()).to.eq(50);
+
+      // pop 10 messages all skip
+      await expect(queue.connect(scrollChain).popCrossDomainMessage(50, 10, 1023))
+        .to.emit(queue, "DequeueTransaction")
+        .withArgs(50, 10, 1023);
+      expect(await queue.pendingQueueIndex()).to.eq(60);
+      for (let i = 50; i < 60; i++) {
+        expect(BigNumber.from(await queue.getCrossDomainMessage(i))).to.gt(constants.Zero);
+      }
+
+      // pop 20 messages, skip first 5
+      await expect(queue.connect(scrollChain).popCrossDomainMessage(60, 20, 31))
+        .to.emit(queue, "DequeueTransaction")
+        .withArgs(60, 20, 31);
+      expect(await queue.pendingQueueIndex()).to.eq(80);
+      for (let i = 60; i < 65; i++) {
+        expect(BigNumber.from(await queue.getCrossDomainMessage(i))).to.gt(constants.Zero);
+      }
+      for (let i = 65; i < 80; i++) {
+        expect(await queue.getCrossDomainMessage(i)).to.eq(constants.HashZero);
+      }
     });
   });
 });
