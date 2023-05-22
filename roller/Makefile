@@ -13,7 +13,7 @@ endif
 
 HALO2_GPU_VERSION=$(shell ./halo2gpu_version.sh | sed -n '2p')
 
-ifeq ($HALO2_GPU_VERSION,)
+ifeq (${HALO2_GPU_VERSION},)
 	# use halo2_proofs with CPU
 	ZK_VERSION=${ZKEVM_VERSION}-${HALO2_VERSION}
 else
