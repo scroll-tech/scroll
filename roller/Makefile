@@ -14,9 +14,8 @@ endif
 HALO2_GPU_VERSION=$(shell ./halo2gpu_version.sh)
 
 ifeq ($HALO2_GPU_VERSION,)
-	$(info halo2_proofs with CPU)
+	# use halo2_proofs with CPU
 else
-	$(info halo2_proofs with GPU)
 	HALO2_VERSION=$HALO2_GPU_VERSION
 endif
 
