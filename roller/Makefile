@@ -15,11 +15,11 @@ HALO2_GPU_VERSION=$(shell chmod +x ./halo2gpu_version.sh && ./halo2gpu_version.s
 
 ifeq ($HALO2_GPU_VERSION,)
 	# use halo2_proofs with CPU
+	ZK_VERSION=${ZKEVM_VERSION}-${HALO2_VERSION}
 else
-	HALO2_VERSION=$(HALO2_GPU_VERSION)
+	# use halo2_gpu
+	ZK_VERSION=${ZKEVM_VERSION}-${HALO2_GPU_VERSION}
 endif
-
-ZK_VERSION=${ZKEVM_VERSION}-${HALO2_VERSION}
 
 libzkp:
 	cd ../common/libzkp/impl && cargo clean && cargo build --release && cp ./target/release/libzkp.so ../interface/
