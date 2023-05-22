@@ -56,8 +56,8 @@ abstract contract L1GatewayTestBase is DSTestPlus {
         l1Messenger = new L1ScrollMessenger();
         messageQueue = new L1MessageQueue();
         gasOracle = new L2GasPriceOracle();
+        rollup = new ScrollChain(1233);
         enforcedTxGateway = new EnforcedTxGateway();
-        rollup = new ScrollChain(1233, 25, bytes32(0));
         whitelist = new Whitelist(address(this));
 
         // Deploy L2 contracts
@@ -65,10 +65,16 @@ abstract contract L1GatewayTestBase is DSTestPlus {
 
         // Initialize L1 contracts
         l1Messenger.initialize(address(l2Messenger), feeVault, address(rollup), address(messageQueue));
-        messageQueue.initialize(address(l1Messenger), address(enforcedTxGateway), address(gasOracle), 10000000);
+        messageQueue.initialize(
+            address(l1Messenger),
+            address(rollup),
+            address(enforcedTxGateway),
+            address(gasOracle),
+            10000000
+        );
         gasOracle.initialize(0, 0, 0, 0);
         gasOracle.updateWhitelist(address(whitelist));
-        rollup.initialize(address(messageQueue));
+        rollup.initialize(address(messageQueue), address(0), 44);
 
         address[] memory _accounts = new address[](1);
         _accounts[0] = address(this);
@@ -76,12 +82,11 @@ abstract contract L1GatewayTestBase is DSTestPlus {
     }
 
     function prepareL2MessageRoot(bytes32 messageHash) internal {
-        IScrollChain.Batch memory _genesisBatch;
-        _genesisBatch.blocks = new IScrollChain.BlockContext[](1);
-        _genesisBatch.newStateRoot = bytes32(uint256(2));
-        _genesisBatch.withdrawTrieRoot = messageHash;
-        _genesisBatch.blocks[0].blockHash = bytes32(uint256(1));
+        bytes memory _batchHeader = new bytes(89);
+        assembly {
+            mstore(add(_batchHeader, add(0x20, 25)), 1)
+        }
 
-        rollup.importGenesisBatch(_genesisBatch);
+        rollup.importGenesisBatch(_batchHeader, bytes32(uint256(1)), messageHash);
     }
 }
