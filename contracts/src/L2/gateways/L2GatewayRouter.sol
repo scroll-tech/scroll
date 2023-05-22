@@ -10,7 +10,6 @@ import {IL2ERC20Gateway} from "./IL2ERC20Gateway.sol";
 import {IL2ScrollMessenger} from "../IL2ScrollMessenger.sol";
 import {IL1ETHGateway} from "../../L1/gateways/IL1ETHGateway.sol";
 import {IScrollGateway} from "../../libraries/gateway/IScrollGateway.sol";
-import {IScrollStandardERC20} from "../../libraries/token/IScrollStandardERC20.sol";
 
 /// @title L2GatewayRouter
 /// @notice The `L2GatewayRouter` is the main entry for withdrawing Ether and ERC20 tokens.

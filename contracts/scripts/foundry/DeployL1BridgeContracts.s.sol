@@ -27,11 +27,6 @@ contract DeployL1BridgeContracts is Script {
 
     uint256 CHAIN_ID_L2 = vm.envUint("CHAIN_ID_L2");
 
-    uint256 MAX_TX_IN_ONE_BATCH = vm.envOr("MAX_TX_IN_ONE_BATCH", uint256(44));
-
-    bytes32 PADDING_TX_HASH =
-        vm.envOr("PADDING_TX_HASH", bytes32(0x0000000000000000000000000000000000000000000000000000000000000000));
-
     address L1_WETH_ADDR = vm.envAddress("L1_WETH_ADDR");
     address L2_WETH_ADDR = vm.envAddress("L2_WETH_ADDR");
 
@@ -74,7 +69,7 @@ contract DeployL1BridgeContracts is Script {
     }
 
     function deployScrollChain() internal {
-        ScrollChain impl = new ScrollChain(CHAIN_ID_L2, MAX_TX_IN_ONE_BATCH, PADDING_TX_HASH);
+        ScrollChain impl = new ScrollChain(CHAIN_ID_L2);
         TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(
             address(impl),
             address(proxyAdmin),

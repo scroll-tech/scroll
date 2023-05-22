@@ -57,7 +57,7 @@ abstract contract ScrollGatewayBase is IScrollGateway {
     modifier onlyCallByCounterpart() {
         address _messenger = messenger; // gas saving
         require(msg.sender == _messenger, "only messenger can call");
-        require(counterpart == IScrollMessenger(_messenger).xDomainMessageSender(), "only call by conterpart");
+        require(counterpart == IScrollMessenger(_messenger).xDomainMessageSender(), "only call by counterpart");
         _;
     }
 
