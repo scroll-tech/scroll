@@ -1,6 +1,6 @@
 #!/bin/bash
 
-config_file="~/.cargo/config"
+config_file="$HOME/.cargo/config"
 
 if [[ $(head -n 1 "$config_file") == "#"* ]]; then
   exit 0
