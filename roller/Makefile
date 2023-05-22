@@ -16,7 +16,7 @@ HALO2_GPU_VERSION=$(shell ./halo2gpu_version.sh)
 ifeq ($HALO2_GPU_VERSION,)
 	# use halo2_proofs with CPU
 else
-	HALO2_VERSION=$HALO2_GPU_VERSION
+	HALO2_VERSION=$(HALO2_GPU_VERSION)
 endif
 
 ZK_VERSION=${ZKEVM_VERSION}-${HALO2_VERSION}
