@@ -11,11 +11,11 @@ on:
       - 'coordinator/**'
       - '.github/workflows/coordinator.yml'
   pull_request:
-    branches:
-      - main
-      - staging
-      - develop
-      - alpha
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - ready_for_review
     paths:
       - 'coordinator/**'
       - '.github/workflows/coordinator.yml'
