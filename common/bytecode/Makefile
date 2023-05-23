@@ -1,6 +1,6 @@
 .PHONY: all erc20 greeter scroll scroll_sol clean
 
-all: erc20 greeter scroll_sol scroll
+all: erc20 greeter scroll
 
 erc20:
 	go run github.com/scroll-tech/go-ethereum/cmd/abigen@develop --sol erc20/ERC20Mock.sol 		--pkg erc20 --out erc20/ERC20Mock.go --contract ERC20Mock
@@ -8,6 +8,7 @@ erc20:
 greeter:
 	go run github.com/scroll-tech/go-ethereum/cmd/abigen@develop --sol ./greeter/Greeter.sol 	--pkg greeter --out ./greeter/Greeter.go --contract Greeter
 
+# TODO: This cmd can just used in local env, and it's not suitable used in automatic process. Because bridge's update can't keep consistent with contracts' update.
 scroll_sol:
 	cd ../../contracts && forge install
 	forge flatten --root ../../contracts  ../../contracts/src/L1/L1ScrollMessenger.sol 					| sed '/SPDX-License-Identifier/d' > ./scroll/L1/L1ScrollMessenger.sol
@@ -50,3 +51,4 @@ scroll:
 
 clean:
 	find ./ -type f -name "*.go" | xargs rm -r
+	find scroll/ -type f -name "*.sol" | xargs rm -f
