@@ -47,7 +47,7 @@ func testImportL1GasPrice(t *testing.T) {
 	// check db status
 	latestBlockHeight, err := l1BlockOrm.GetLatestL1BlockHeight()
 	assert.NoError(t, err)
-	assert.Equal(t, int64(number), latestBlockHeight)
+	assert.Equal(t, number, latestBlockHeight)
 	blocks, err := l1BlockOrm.GetL1BlockInfos(map[string]interface{}{"number": latestBlockHeight})
 	assert.NoError(t, err)
 	assert.Equal(t, len(blocks), 1)
