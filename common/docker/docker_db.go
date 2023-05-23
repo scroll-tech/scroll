@@ -43,19 +43,14 @@ func NewImgDB(password, dbName string, port int) ImgInstance {
 	}
 	img.cmd = cmd.NewCmd(img.name, img.prepare()...)
 
-	// If exist exited container, handle it's id and try to reuse it later.
-	id, exist := getSpecifiedContainer(image, "postgres-test_db_")
-	if exist {
-		img.id = id
-	}
-
 	return img
 }
 
 // Start postgres db container.
 func (i *ImgDB) Start() error {
-	// If id is not null, try to reuse it.
-	if i.id != "" {
+	// If exist exited container, handle it's id and try to reuse it.
+	id, exist := getSpecifiedContainer(i.image, "postgres-test_db_")
+	if exist {
 		closer, port, err := startContainer(i.id, i.cmd)
 		if err != nil { // If start a exist container failed, log error message then create and start a new one.
 			fmt.Printf("failed to start a exist container, id: %s, err: %v\n", i.id, err)
@@ -64,12 +59,13 @@ func (i *ImgDB) Start() error {
 			i.running = true
 			i.port = int(port)
 			i.closer = closer
+			i.id = id
 			return nil
 		}
 	}
 
 	// Create and start a new container.
-	id := GetContainerID(i.name)
+	id = GetContainerID(i.name)
 	if id != "" {
 		return fmt.Errorf("container already exist, name: %s", i.name)
 	}
