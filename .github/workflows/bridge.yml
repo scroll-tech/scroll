@@ -11,11 +11,11 @@ on:
       - 'bridge/**'
       - '.github/workflows/bridge.yml'
   pull_request:
-    branches:
-      - main
-      - staging
-      - develop
-      - alpha
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - ready_for_review
     paths:
       - 'bridge/**'
       - '.github/workflows/bridge.yml'
