@@ -104,7 +104,7 @@ func NewL1WatcherClient(ctx context.Context, client *ethclient.Client, startHeig
 		scrollChainABI:     bridgeAbi.ScrollChainABI,
 
 		processedMsgHeight:   uint64(savedHeight),
-		processedBlockHeight: uint64(savedL1BlockHeight),
+		processedBlockHeight: savedL1BlockHeight,
 	}
 }
 
