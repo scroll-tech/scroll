@@ -7,7 +7,6 @@ import (
 
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/common/hexutil"
-	"github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/crypto"
 	"github.com/scroll-tech/go-ethereum/rlp"
 )
@@ -205,8 +204,6 @@ type TaskMsg struct {
 	Type ProveType `json:"type,omitempty"`
 	// For decentralization, basic rollers will get block hashes from the coordinator. So that they can refer to the block hashes and fetch traces locally. Only applicable for basic rollers.
 	BlockHashes []common.Hash `json:"block_hashes,omitempty"`
-	// For decentralization, basic rollers will get traces locally, instead of getting traces from the coordinator. Only applicable for basic rollers.
-	Traces []*types.BlockTrace `json:"traces,omitempty"`
 	// Only applicable for aggregator rollers.
 	SubProofs [][]byte `json:"sub_proofs,omitempty"`
 }

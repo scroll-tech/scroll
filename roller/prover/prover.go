@@ -12,6 +12,7 @@ import "C" //nolint:typecheck
 
 import (
 	"encoding/json"
+	"github.com/scroll-tech/go-ethereum/core/types"
 	"os"
 	"path/filepath"
 	"unsafe"
@@ -50,10 +51,10 @@ func NewProver(cfg *config.ProverConfig) (*Prover, error) {
 }
 
 // Prove call rust ffi to generate proof, if first failed, try again.
-func (p *Prover) Prove(task *message.TaskMsg) (*message.AggProof, error) {
+func (p *Prover) Prove(taskID string, traces []*types.BlockTrace) (*message.AggProof, error) {
 	var proofByt []byte
 	if p.cfg.ProveType == message.BasicProve {
-		tracesByt, err := json.Marshal(task.Traces)
+		tracesByt, err := json.Marshal(traces)
 		if err != nil {
 			return nil, err
 		}
@@ -63,9 +64,9 @@ func (p *Prover) Prove(task *message.TaskMsg) (*message.AggProof, error) {
 	}
 
 	// dump proof
-	err := p.dumpProof(task.ID, proofByt)
+	err := p.dumpProof(taskID, proofByt)
 	if err != nil {
-		log.Error("Dump proof failed", "task-id", task.ID, "error", err)
+		log.Error("Dump proof failed", "task-id", taskID, "error", err)
 	}
 
 	zkProof := &message.AggProof{}

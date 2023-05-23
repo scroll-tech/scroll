@@ -229,14 +229,14 @@ func (r *Roller) prove() error {
 
 		log.Info("start to prove block", "task-id", task.Task.ID)
 
-		task.Task.Traces, err = r.getSortedTracesByHashes(task.Task.BlockHashes)
+		traces, err := r.getSortedTracesByHashes(task.Task.BlockHashes)
 		if err != nil {
 			return err
 		}
 		// If FFI panic during Prove, the roller will restart and re-enter prove() function,
 		// the proof will not be submitted.
 		var proof *message.AggProof
-		proof, err = r.prover.Prove(task.Task)
+		proof, err = r.prover.Prove(task.Task.ID, traces)
 		if err != nil {
 			proofMsg = &message.ProofDetail{
 				Status: message.StatusProofError,
