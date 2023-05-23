@@ -35,14 +35,14 @@ func (*L1Block) TableName() string {
 }
 
 // GetLatestL1BlockHeight get the latest l1 block height
-func (l *L1Block) GetLatestL1BlockHeight() (int64, error) {
+func (l *L1Block) GetLatestL1BlockHeight() (uint64, error) {
 	var maxNumber sql.NullInt64
 	result := l.db.Model(&L1Block{}).Select("COALESCE(MAX(number), 0)").Scan(&maxNumber)
 	if result.Error != nil {
 		return -1, result.Error
 	}
 	if maxNumber.Valid {
-		return maxNumber.Int64, nil
+		return uint64(maxNumber.Int64), nil
 	}
 	return -1, nil
 }

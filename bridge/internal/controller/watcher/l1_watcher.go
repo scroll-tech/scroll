@@ -81,8 +81,8 @@ func NewL1WatcherClient(ctx context.Context, client *ethclient.Client, startHeig
 		log.Warn("Failed to fetch latest L1 block height from db", "err", err)
 		savedL1BlockHeight = 0
 	}
-	if savedL1BlockHeight < int64(startHeight) {
-		savedL1BlockHeight = int64(startHeight)
+	if savedL1BlockHeight < startHeight {
+		savedL1BlockHeight = startHeight
 	}
 
 	return &L1WatcherClient{
