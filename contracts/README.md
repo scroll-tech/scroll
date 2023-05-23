@@ -1,5 +1,8 @@
 # Scroll Contracts
 
+Note: For more comprehensive documentation, see [`./docs/`](./docs).
+
+
 ## Directory Structure
 
 ```
@@ -21,7 +24,9 @@ remappings.txt - "foundry dependency mappings"
 ...
 ```
 
-## Dependency
+
+## Dependencies
+
 
 ### Foundry
 
@@ -37,11 +42,13 @@ Then, run `foundryup` in a new terminal session or after reloading your `PATH`.
 
 Other ways to install Foundry can be found [here](https://github.com/foundry-rs/foundry#installation).
 
+
 ### Hardhat
 
 ```
 yarn install
 ```
+
 
 ## Build
 
@@ -52,6 +59,7 @@ yarn install
 + Run `npx hardhat compile` to compile with hardhat.
 + Run `forge test -vvv` to run foundry units tests. It will compile all contracts before running the unit tests.
 + Run `npx hardhat test` to run integration tests. It may not compile all contracts before running, it's better to run `npx hardhat compile` first.
+
 
 ## TODO
 
