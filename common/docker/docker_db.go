@@ -53,8 +53,7 @@ func (i *ImgDB) Start() error {
 	if exist {
 		closer, port, err := startContainer(i.id, i.cmd)
 		if err != nil { // If start a exist container failed, log error message then create and start a new one.
-			fmt.Printf("failed to start a exist container, id: %s, err: %v\n", i.id, err)
-			i.id = ""
+			fmt.Printf("failed to start a exist container, id: %s, err: %v\n", id, err)
 		} else {
 			i.running = true
 			i.port = int(port)
@@ -170,31 +169,25 @@ func getSpecifiedContainer(image string, keyword string) (string, bool) {
 			container.State == string(runningState) {
 			continue
 		}
-		ID = container.ID
 		// If the container is not running, just choose it.
 		if container.State == string(exitedState) {
+			ID = container.ID
 			break
 		}
 	}
+
 	return ID, ID != ""
 }
 
 func startContainer(id string, stdout io.Writer) (io.Closer, uint16, error) {
-	// Get container is used for checking state.
-	ct, err := getContainerByID(id)
+	// Start the exist container.
+	err := cli.ContainerStart(context.Background(), id, types.ContainerStartOptions{})
 	if err != nil {
 		return nil, 0, err
 	}
 
-	if ct.State != string(runningState) {
-		err = cli.ContainerStart(context.Background(), id, types.ContainerStartOptions{})
-		if err != nil {
-			return nil, 0, err
-		}
-	}
-
 	// Get container again, check state and handle public port.
-	ct, err = getContainerByID(id)
+	ct, err := getContainerByID(id)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -225,7 +218,6 @@ func getContainerByID(id string) (*types.Container, error) {
 	filter := filters.NewArgs()
 	filter.Add("id", id)
 	lst, err := cli.ContainerList(context.Background(), types.ContainerListOptions{
-		All:     true,
 		Filters: filter,
 	})
 
