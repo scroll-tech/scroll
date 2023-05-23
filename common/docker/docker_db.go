@@ -154,6 +154,14 @@ func (i *ImgDB) isOk() bool {
 	return i.id != ""
 }
 
+// Container state.
+type dockerState string
+
+var (
+	runningState dockerState = "running"
+	exitedState  dockerState = "exited"
+)
+
 func getSpecifiedContainer(image string, keyword string) (string, bool) {
 	containers, _ := cli.ContainerList(context.Background(), types.ContainerListOptions{
 		All: true,
@@ -163,12 +171,12 @@ func getSpecifiedContainer(image string, keyword string) (string, bool) {
 		// Just use the exited container.
 		if container.Image != image ||
 			!strings.Contains(container.Names[0], keyword) ||
-			container.State == "running" {
+			container.State == string(runningState) {
 			continue
 		}
 		ID = container.ID
 		// If the container is not running, just choose it.
-		if container.State == "exited" {
+		if container.State == string(exitedState) {
 			break
 		}
 	}
@@ -182,7 +190,7 @@ func startContainer(id string, stdout io.Writer) (io.Closer, uint16, error) {
 		return nil, 0, err
 	}
 
-	if ct.State != "running" {
+	if ct.State != string(runningState) {
 		err = cli.ContainerStart(context.Background(), id, types.ContainerStartOptions{})
 		if err != nil {
 			return nil, 0, err
@@ -194,7 +202,7 @@ func startContainer(id string, stdout io.Writer) (io.Closer, uint16, error) {
 	if err != nil {
 		return nil, 0, err
 	}
-	if ct.State != "running" {
+	if ct.State != string(runningState) {
 		return nil, 0, fmt.Errorf("container state is not running, id: %s", id)
 	}
 
