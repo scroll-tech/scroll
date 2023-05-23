@@ -5,6 +5,8 @@ package prover
 import (
 	"scroll-tech/common/types/message"
 
+	"github.com/scroll-tech/go-ethereum/core/types"
+
 	"scroll-tech/roller/config"
 )
 
