@@ -52,7 +52,3 @@ func TestL2Geth(t *testing.T) {
 	assert.NoError(t, err)
 	t.Logf("chainId: %s", chainID.String())
 }
-
-func TestPP(t *testing.T) {
-	base.RunDBImage(t)
-}
