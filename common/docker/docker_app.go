@@ -54,7 +54,7 @@ func NewDockerApp() *App {
 		Timestamp:    timestamp,
 		L1gethImg:    newTestL1Docker(),
 		L2gethImg:    newTestL2Docker(),
-		DBImg:        newTestDBDocker("postgres"),
+		DBImg:        newTestDBDocker(),
 		DBConfigFile: fmt.Sprintf("/tmp/%d_db-config.json", timestamp),
 	}
 	if err := app.mockDBConfig(); err != nil {
@@ -189,7 +189,7 @@ func newTestL2Docker() GethImgInstance {
 	return NewImgGeth("scroll_l2geth", "", "", 0, l2StartPort+int(id.Int64()))
 }
 
-func newTestDBDocker(driverName string) ImgInstance {
+func newTestDBDocker() ImgInstance {
 	id, _ := rand.Int(rand.Reader, big.NewInt(2000))
-	return NewImgDB(driverName, "123456", "test_db", dbStartPort+int(id.Int64()))
+	return NewImgDB("123456", "test_db", dbStartPort+int(id.Int64()))
 }
