@@ -17,7 +17,6 @@ import (
 	"unsafe"
 
 	"github.com/scroll-tech/go-ethereum/core/types"
-
 	"github.com/scroll-tech/go-ethereum/log"
 
 	"scroll-tech/common/types/message"
