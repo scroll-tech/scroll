@@ -126,7 +126,6 @@ func (o *BlockBatch) GetLatestBatchByRollupStatus(rollupStatuses []types.RollupS
 	for _, v := range rollupStatuses {
 		tmpRollupStatus = append(tmpRollupStatus, int(v))
 	}
-
 	var blockBatch BlockBatch
 	err := o.db.Where("rollup_status IN (?)", tmpRollupStatus).Order("index DESC").Limit(1).First(&blockBatch).Error
 	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
