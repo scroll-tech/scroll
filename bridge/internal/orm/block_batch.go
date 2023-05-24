@@ -2,6 +2,7 @@ package orm
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/scroll-tech/go-ethereum/log"
@@ -113,7 +114,7 @@ func (o *BlockBatch) GetVerifiedProofAndInstanceCommitmentsByHash(hash string) (
 func (o *BlockBatch) GetLatestBatch() (*BlockBatch, error) {
 	var blockBatch BlockBatch
 	err := o.db.Order("index DESC").Limit(1).First(&blockBatch).Error
-	if err != nil {
+	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, err
 	}
 	return &blockBatch, nil
@@ -128,7 +129,7 @@ func (o *BlockBatch) GetLatestBatchByRollupStatus(rollupStatuses []types.RollupS
 
 	var blockBatch BlockBatch
 	err := o.db.Where("rollup_status IN (?)", tmpRollupStatus).Order("index DESC").Limit(1).First(&blockBatch).Error
-	if err != nil {
+	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, err
 	}
 	return &blockBatch, nil
