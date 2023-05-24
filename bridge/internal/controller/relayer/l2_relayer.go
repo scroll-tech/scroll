@@ -213,6 +213,11 @@ func (r *Layer2Relayer) processSavedEvent(msg *orm.L2Message) error {
 	}
 
 	blockInfo := blockInfos[0]
+	if blockInfo.BatchHash == "" {
+		log.Error("Block has not been batched yet", "number", blockInfo.Number, "msg.nonce", msg.Nonce)
+		return nil
+	}
+
 	// TODO: rebuild the withdraw trie to generate the merkle proof
 	proof := bridgeAbi.IL1ScrollMessengerL2MessageProof{
 		BatchHash:   common.HexToHash(blockInfo.BatchHash),
