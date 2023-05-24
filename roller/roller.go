@@ -36,13 +36,13 @@ var (
 
 // Roller contains websocket conn to coordinator, Stack, unix-socket to ipc-prover.
 type Roller struct {
-	cfg      *config.Config
-	client   *client.Client
-	traceCli *ethclient.Client
-	stack    *store.Stack
-	prover   *prover.Prover
-	taskChan chan *message.TaskMsg
-	sub      ethereum.Subscription
+	cfg         *config.Config
+	client      *client.Client
+	traceClient *ethclient.Client
+	stack       *store.Stack
+	prover      *prover.Prover
+	taskChan    chan *message.TaskMsg
+	sub         ethereum.Subscription
 
 	isDisconnected int64
 	isClosed       int64
@@ -85,15 +85,15 @@ func NewRoller(cfg *config.Config) (*Roller, error) {
 	}
 
 	return &Roller{
-		cfg:      cfg,
-		client:   rClient,
-		traceCli: ethCli,
-		stack:    stackDb,
-		prover:   newProver,
-		sub:      nil,
-		taskChan: make(chan *message.TaskMsg, 10),
-		stopChan: make(chan struct{}),
-		priv:     priv,
+		cfg:         cfg,
+		client:      rClient,
+		traceClient: ethCli,
+		stack:       stackDb,
+		prover:      newProver,
+		sub:         nil,
+		taskChan:    make(chan *message.TaskMsg, 10),
+		stopChan:    make(chan struct{}),
+		priv:        priv,
 	}, nil
 }
 
@@ -303,13 +303,14 @@ func (r *Roller) signAndSubmitProof(msg *message.ProofDetail) {
 func (r *Roller) getSortedTracesByHashes(blockHashes []common.Hash) ([]*types.BlockTrace, error) {
 	var traces []*types.BlockTrace
 	for _, blockHash := range blockHashes {
-		trace, err := r.traceCli.GetBlockTraceByHash(context.Background(), blockHash)
+		trace, err := r.traceClient.GetBlockTraceByHash(context.Background(), blockHash)
 		if err != nil {
 			return nil, err
 		}
 		traces = append(traces, trace)
 	}
 	// Sort BlockTraces by header number.
+	// TODO: we should check that the number range here is continuous.
 	sort.Slice(traces, func(i, j int) bool {
 		return traces[i].Header.Number.Int64() < traces[j].Header.Number.Int64()
 	})
