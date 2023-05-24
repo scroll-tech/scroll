@@ -46,7 +46,7 @@ type L2WatcherClient struct {
 
 	db            *gorm.DB
 	blockBatchOrm *orm.BlockBatch
-	blockTrace    *orm.BlockTrace
+	blockTraceOrm *orm.BlockTrace
 	l1MessageOrm  *orm.L1Message
 	l2MessageOrm  *orm.L2Message
 
@@ -80,7 +80,7 @@ func NewL2WatcherClient(ctx context.Context, client *ethclient.Client, confirmat
 		Client: client,
 
 		blockBatchOrm:      orm.NewBlockBatch(db),
-		blockTrace:         orm.NewBlockTrace(db),
+		blockTraceOrm:      orm.NewBlockTrace(db),
 		l1MessageOrm:       orm.NewL1Message(db),
 		l2MessageOrm:       l2MessageOrm,
 		processedMsgHeight: uint64(savedHeight),
@@ -153,7 +153,7 @@ func (w *L2WatcherClient) TryFetchRunningMissingBlocks(ctx context.Context, bloc
 	// Get newest block in DB. must have blocks at that time.
 	// Don't use "block_trace" table "trace" column's BlockTrace.Number,
 	// because it might be empty if the corresponding rollup_result is finalized/finalization_skipped
-	heightInDB, err := w.blockTrace.GetL2BlocksLatestHeight()
+	heightInDB, err := w.blockTraceOrm.GetL2BlocksLatestHeight()
 	if err != nil {
 		log.Error("failed to GetL2BlocksLatestHeight", "err", err)
 		return
@@ -229,7 +229,7 @@ func (w *L2WatcherClient) getAndStoreBlockTraces(ctx context.Context, from, to u
 	}
 
 	if len(blocks) > 0 {
-		if err := w.blockTrace.InsertWrappedBlocks(blocks); err != nil {
+		if err := w.blockTraceOrm.InsertWrappedBlocks(blocks); err != nil {
 			return fmt.Errorf("failed to batch insert BlockTraces: %v", err)
 		}
 	}

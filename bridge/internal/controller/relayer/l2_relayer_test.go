@@ -246,11 +246,11 @@ func testL2RelayerMsgConfirm(t *testing.T) {
 	db := setupL2RelayerDB(t)
 	defer bridgeUtils.CloseDB(db)
 	l2MessageOrm := orm.NewL2Message(db)
-	insertL2Mssages := []orm.L2Message{
+	insertL2Messages := []orm.L2Message{
 		{MsgHash: "msg-1", Nonce: 0},
 		{MsgHash: "msg-2", Nonce: 1},
 	}
-	err := l2MessageOrm.SaveL2Messages(context.Background(), insertL2Mssages)
+	err := l2MessageOrm.SaveL2Messages(context.Background(), insertL2Messages)
 	assert.NoError(t, err)
 
 	// Create and set up the Layer2 Relayer.
