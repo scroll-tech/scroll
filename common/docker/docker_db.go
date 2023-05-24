@@ -10,6 +10,7 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/pkg/stdcopy"
+	"github.com/scroll-tech/go-ethereum/log"
 
 	"scroll-tech/common/cmd"
 	"scroll-tech/common/utils"
@@ -52,7 +53,7 @@ func (i *ImgDB) Start() error {
 	utils.TryTimes(3, func() bool {
 		id, exist := getSpecifiedContainer(i.image, "postgres-test_db_")
 		if exist {
-			closer, port, err := startContainer(i.id, i.cmd)
+			closer, port, err := startContainer(id, i.cmd)
 			if err == nil {
 				i.running = true
 				i.port = int(port)
@@ -60,21 +61,20 @@ func (i *ImgDB) Start() error {
 				i.id = id
 				return true
 			}
-			fmt.Printf("failed to start a exist container, id: %s, err: %v\n", id, err)
+			log.Warn("failed to start a exist container", "name", i.image, "id", id, "err", err)
 		}
-		return false
+		return !exist
 	})
 
 	// Create and start a new container.
-	id := GetContainerID(i.name)
-	if id != "" {
-		return fmt.Errorf("container already exist, name: %s", i.name)
+	if !i.IsRunning() {
+		i.running = i.isOk()
+		if !i.running {
+			_ = i.Stop()
+			return fmt.Errorf("failed to start image: %s", i.image)
+		}
 	}
-	i.running = i.isOk()
-	if !i.running {
-		_ = i.Stop()
-		return fmt.Errorf("failed to start image: %s", i.image)
-	}
+
 	return nil
 }
 
@@ -229,6 +229,7 @@ func getContainerByID(id string) (*types.Container, error) {
 	filter := filters.NewArgs()
 	filter.Add("id", id)
 	lst, err := cli.ContainerList(context.Background(), types.ContainerListOptions{
+		All:     true,
 		Filters: filter,
 	})
 
