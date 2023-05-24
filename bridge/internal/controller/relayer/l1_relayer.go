@@ -169,7 +169,7 @@ func (r *Layer1Relayer) ProcessGasPriceOracle() {
 		"number": latestBlockHeight,
 	})
 	if err != nil {
-		log.Error("Failed to GetL1BlockInfos from db", "height", latestBlockHeight, "err", err)
+		log.Error("Failed to GetL1Blocks from db", "height", latestBlockHeight, "err", err)
 		return
 	}
 	if len(blocks) != 1 {
