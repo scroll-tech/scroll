@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	
+
 	coordinatorConfig "scroll-tech/coordinator/config"
 
 	"scroll-tech/common/cmd"
