@@ -1,4 +1,4 @@
-.PHONY: lint docker clean roller
+.PHONY: lint docker clean roller mock_roller
 
 IMAGE_NAME=go-roller
 IMAGE_VERSION=latest
