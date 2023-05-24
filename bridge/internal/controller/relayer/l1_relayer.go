@@ -124,7 +124,8 @@ func (r *Layer1Relayer) ProcessSavedEvents() {
 	}
 
 	for _, msg := range msgs {
-		if err = r.processSavedEvent(&msg); err != nil {
+		tmpMsg := msg
+		if err = r.processSavedEvent(&tmpMsg); err != nil {
 			if !errors.Is(err, sender.ErrNoAvailableAccount) && !errors.Is(err, sender.ErrFullPending) {
 				log.Error("failed to process event", "msg.msgHash", msg.MsgHash, "err", err)
 			}
