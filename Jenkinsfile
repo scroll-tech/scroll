@@ -24,7 +24,7 @@ pipeline {
                     steps {
                         sh 'make dev_docker'
                         sh 'make -C bridge mock_abi'
-                        sh 'make -C common clean'
+                        sh "docker ps -a | grep Exited | awk '{print $1}' | xargs docker stop && docker container prune -f"
                         sh 'make -C common/bytecode all'
                     }
                 }
