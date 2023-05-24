@@ -49,22 +49,24 @@ func NewImgDB(password, dbName string, port int) ImgInstance {
 // Start postgres db container.
 func (i *ImgDB) Start() error {
 	// If exist exited container, handle it's id and try to reuse it.
-	id, exist := getSpecifiedContainer(i.image, "postgres-test_db_")
-	if exist {
-		closer, port, err := startContainer(i.id, i.cmd)
-		if err != nil { // If start a exist container failed, log error message then create and start a new one.
+	utils.TryTimes(3, func() bool {
+		id, exist := getSpecifiedContainer(i.image, "postgres-test_db_")
+		if exist {
+			closer, port, err := startContainer(i.id, i.cmd)
+			if err == nil {
+				i.running = true
+				i.port = int(port)
+				i.closer = closer
+				i.id = id
+				return true
+			}
 			fmt.Printf("failed to start a exist container, id: %s, err: %v\n", id, err)
-		} else {
-			i.running = true
-			i.port = int(port)
-			i.closer = closer
-			i.id = id
-			return nil
 		}
-	}
+		return false
+	})
 
 	// Create and start a new container.
-	id = GetContainerID(i.name)
+	id := GetContainerID(i.name)
 	if id != "" {
 		return fmt.Errorf("container already exist, name: %s", i.name)
 	}
@@ -180,14 +182,23 @@ func getSpecifiedContainer(image string, keyword string) (string, bool) {
 }
 
 func startContainer(id string, stdout io.Writer) (io.Closer, uint16, error) {
+	// Get container again, check state and handle public port.
+	ct, err := getContainerByID(id)
+	if err != nil {
+		return nil, 0, err
+	}
+	if ct.State != string(exitedState) {
+		return nil, 0, fmt.Errorf("the container is occupied, id: %s, state: %s", ct.State, ct.State)
+	}
+
 	// Start the exist container.
-	err := cli.ContainerStart(context.Background(), id, types.ContainerStartOptions{})
+	err = cli.ContainerStart(context.Background(), id, types.ContainerStartOptions{})
 	if err != nil {
 		return nil, 0, err
 	}
 
 	// Get container again, check state and handle public port.
-	ct, err := getContainerByID(id)
+	ct, err = getContainerByID(id)
 	if err != nil {
 		return nil, 0, err
 	}
