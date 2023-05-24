@@ -7,6 +7,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+
 	"scroll-tech/common/cmd"
 	"scroll-tech/common/docker"
 	"scroll-tech/common/utils"
@@ -21,6 +23,7 @@ type MockApp struct {
 
 	mockApps map[utils.MockAppName]docker.AppAPI
 
+	isStored   bool
 	originFile string
 	bridgeFile string
 
@@ -29,7 +32,6 @@ type MockApp struct {
 
 // NewBridgeApp return a new bridgeApp manager, name mush be one them.
 func NewBridgeApp(base *docker.App, file string) *MockApp {
-
 	bridgeFile := fmt.Sprintf("/tmp/%d_bridge-config.json", base.Timestamp)
 	bridgeApp := &MockApp{
 		base:       base,
@@ -38,7 +40,7 @@ func NewBridgeApp(base *docker.App, file string) *MockApp {
 		bridgeFile: bridgeFile,
 		args:       []string{"--log.debug", "--config", bridgeFile},
 	}
-	if err := bridgeApp.MockConfig(true); err != nil {
+	if err := bridgeApp.MockConfig(false); err != nil {
 		panic(err)
 	}
 	return bridgeApp
@@ -53,6 +55,9 @@ func (b *MockApp) RunApp(t *testing.T, name utils.MockAppName, args ...string) {
 		t.Errorf(fmt.Sprintf("Don't support the mock app, name: %s", name))
 		return
 	}
+
+	// Store bridge config file.
+	assert.NoError(t, b.MockConfig(true))
 
 	if app, ok := b.mockApps[name]; ok {
 		t.Logf(fmt.Sprintf("%s already exist, free the current and recreate again", string(name)))
@@ -81,22 +86,25 @@ func (b *MockApp) Free() {
 // MockConfig creates a new bridge config.
 func (b *MockApp) MockConfig(store bool) error {
 	base := b.base
-	// Load origin bridge config file.
-	cfg, err := config.NewConfig(b.originFile)
-	if err != nil {
-		return err
+	if b.Config == nil {
+		// Load origin bridge config file.
+		cfg, err := config.NewConfig(b.originFile)
+		if err != nil {
+			return err
+		}
+		cfg.L1Config.Endpoint = base.L1gethImg.Endpoint()
+		cfg.L2Config.RelayerConfig.SenderConfig.Endpoint = base.L1gethImg.Endpoint()
+		cfg.L2Config.Endpoint = base.L2gethImg.Endpoint()
+		cfg.L1Config.RelayerConfig.SenderConfig.Endpoint = base.L2gethImg.Endpoint()
+		cfg.DBConfig = base.DBConfig
+		b.Config = cfg
 	}
 
-	cfg.L1Config.Endpoint = base.L1gethImg.Endpoint()
-	cfg.L2Config.RelayerConfig.SenderConfig.Endpoint = base.L1gethImg.Endpoint()
-	cfg.L2Config.Endpoint = base.L2gethImg.Endpoint()
-	cfg.L1Config.RelayerConfig.SenderConfig.Endpoint = base.L2gethImg.Endpoint()
-	cfg.DBConfig.DSN = base.DBImg.Endpoint()
-	b.Config = cfg
-
-	if !store {
+	if !store || b.isStored {
 		return nil
 	}
+	b.isStored = true
+
 	// Store changed bridge config into a temp file.
 	data, err := json.Marshal(b.Config)
 	if err != nil {

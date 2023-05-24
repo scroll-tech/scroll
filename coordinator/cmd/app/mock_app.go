@@ -10,6 +10,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+	
 	coordinatorConfig "scroll-tech/coordinator/config"
 
 	"scroll-tech/common/cmd"
@@ -27,6 +29,7 @@ type CoordinatorApp struct {
 
 	base *docker.App
 
+	isStored        bool
 	originFile      string
 	coordinatorFile string
 	WSPort          int64
@@ -47,7 +50,7 @@ func NewCoordinatorApp(base *docker.App, file string) *CoordinatorApp {
 		WSPort:          wsPort,
 		args:            []string{"--log.debug", "--config", coordinatorFile, "--ws", "--ws.port", strconv.Itoa(int(wsPort))},
 	}
-	if err := coordinatorApp.MockConfig(true); err != nil {
+	if err := coordinatorApp.MockConfig(false); err != nil {
 		panic(err)
 	}
 	return coordinatorApp
@@ -55,6 +58,7 @@ func NewCoordinatorApp(base *docker.App, file string) *CoordinatorApp {
 
 // RunApp run coordinator-test child process by multi parameters.
 func (c *CoordinatorApp) RunApp(t *testing.T, args ...string) {
+	assert.NoError(t, c.MockConfig(true))
 	c.AppAPI = cmd.NewCmd(string(utils.CoordinatorApp), append(c.args, args...)...)
 	c.AppAPI.RunApp(func() bool { return c.AppAPI.WaitResult(t, time.Second*20, "Start coordinator successfully") })
 }
@@ -75,24 +79,27 @@ func (c *CoordinatorApp) WSEndpoint() string {
 // MockConfig creates a new coordinator config.
 func (c *CoordinatorApp) MockConfig(store bool) error {
 	base := c.base
-	cfg, err := coordinatorConfig.NewConfig(c.originFile)
-	if err != nil {
-		return err
+	if c.Config == nil {
+		cfg, err := coordinatorConfig.NewConfig(c.originFile)
+		if err != nil {
+			return err
+		}
+		// Reset roller manager config for manager test cases.
+		cfg.RollerManagerConfig = &coordinatorConfig.RollerManagerConfig{
+			RollersPerSession: 1,
+			Verifier:          &coordinatorConfig.VerifierConfig{MockMode: true},
+			CollectionTime:    1,
+			TokenTimeToLive:   1,
+		}
+		cfg.DBConfig = base.DBConfig
+		cfg.L2Config.Endpoint = base.L2gethImg.Endpoint()
+		c.Config = cfg
 	}
-	// Reset roller manager config for manager test cases.
-	cfg.RollerManagerConfig = &coordinatorConfig.RollerManagerConfig{
-		RollersPerSession: 1,
-		Verifier:          &coordinatorConfig.VerifierConfig{MockMode: true},
-		CollectionTime:    1,
-		TokenTimeToLive:   1,
-	}
-	cfg.DBConfig.DSN = base.DBImg.Endpoint()
-	cfg.L2Config.Endpoint = base.L2gethImg.Endpoint()
-	c.Config = cfg
 
-	if !store {
+	if !store || c.isStored {
 		return nil
 	}
+	c.isStored = true
 
 	data, err := json.Marshal(c.Config)
 	if err != nil {

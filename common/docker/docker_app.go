@@ -51,14 +51,17 @@ type App struct {
 func NewDockerApp() *App {
 	timestamp := time.Now().Nanosecond()
 	app := &App{
-		Timestamp:    timestamp,
-		L1gethImg:    newTestL1Docker(),
-		L2gethImg:    newTestL2Docker(),
-		DBImg:        newTestDBDocker(),
+		Timestamp: timestamp,
+		L1gethImg: newTestL1Docker(),
+		L2gethImg: newTestL2Docker(),
+		DBImg:     newTestDBDocker(),
+		DBConfig: &database.DBConfig{
+			DSN:        "",
+			DriverName: "postgres",
+			MaxOpenNum: 200,
+			MaxIdleNum: 20,
+		},
 		DBConfigFile: fmt.Sprintf("/tmp/%d_db-config.json", timestamp),
-	}
-	if err := app.mockDBConfig(); err != nil {
-		panic(err)
 	}
 	return app
 }
@@ -76,6 +79,11 @@ func (b *App) RunDBImage(t *testing.T) {
 		return
 	}
 	assert.NoError(t, b.DBImg.Start())
+
+	// Set db config.
+	if err := b.mockDBConfig(); err != nil {
+		panic(err)
+	}
 
 	// try 5 times until the db is ready.
 	ok := utils.TryTimes(10, func() bool {
@@ -161,13 +169,6 @@ func (b *App) DBClient(t *testing.T) *sql.DB {
 }
 
 func (b *App) mockDBConfig() error {
-	b.DBConfig = &database.DBConfig{
-		DSN:        "",
-		DriverName: "postgres",
-		MaxOpenNum: 200,
-		MaxIdleNum: 20,
-	}
-
 	if b.DBImg != nil {
 		b.DBConfig.DSN = b.DBImg.Endpoint()
 	}

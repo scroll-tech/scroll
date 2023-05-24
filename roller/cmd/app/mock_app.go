@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"golang.org/x/sync/errgroup"
 
 	rollerConfig "scroll-tech/roller/config"
@@ -32,6 +33,7 @@ type RollerApp struct {
 
 	base *docker.App
 
+	isStored   bool
 	originFile string
 	rollerFile string
 	bboltDB    string
@@ -55,7 +57,7 @@ func NewRollerApp(base *docker.App, file string, wsUrl string) *RollerApp {
 		name:       string(utils.RollerApp),
 		args:       []string{"--log.debug", "--config", rollerFile},
 	}
-	if err := rollerApp.MockConfig(true, wsUrl); err != nil {
+	if err := rollerApp.MockConfig(false, wsUrl); err != nil {
 		panic(err)
 	}
 	return rollerApp
@@ -63,6 +65,7 @@ func NewRollerApp(base *docker.App, file string, wsUrl string) *RollerApp {
 
 // RunApp run roller-test child process by multi parameters.
 func (r *RollerApp) RunApp(t *testing.T, args ...string) {
+	assert.NoError(t, r.MockConfig(true, r.Config.CoordinatorURL))
 	r.AppAPI = cmd.NewCmd(r.name, append(r.args, args...)...)
 	r.AppAPI.RunApp(func() bool { return r.AppAPI.WaitResult(t, time.Second*40, "roller start successfully") })
 }
@@ -79,26 +82,29 @@ func (r *RollerApp) Free() {
 
 // MockConfig creates a new roller config.
 func (r *RollerApp) MockConfig(store bool, wsUrl string) error {
-	cfg, err := rollerConfig.NewConfig(r.originFile)
-	if err != nil {
-		return err
+	if r.Config == nil {
+		cfg, err := rollerConfig.NewConfig(r.originFile)
+		if err != nil {
+			return err
+		}
+		cfg.RollerName = fmt.Sprintf("%s_%d", r.name, r.index)
+		cfg.KeystorePath = fmt.Sprintf("/tmp/%d_%s.json", r.base.Timestamp, cfg.RollerName)
+		// Reuse l1geth's keystore file
+		cfg.KeystorePassword = "scrolltest"
+		cfg.DBPath = r.bboltDB
+		// Create keystore file.
+		_, err = utils.LoadOrCreateKey(cfg.KeystorePath, cfg.KeystorePassword)
+		if err != nil {
+			return err
+		}
+		cfg.CoordinatorURL = wsUrl
+		r.Config = cfg
 	}
-	cfg.RollerName = fmt.Sprintf("%s_%d", r.name, r.index)
-	cfg.KeystorePath = fmt.Sprintf("/tmp/%d_%s.json", r.base.Timestamp, cfg.RollerName)
-	// Reuse l1geth's keystore file
-	cfg.KeystorePassword = "scrolltest"
-	cfg.DBPath = r.bboltDB
-	// Create keystore file.
-	_, err = utils.LoadOrCreateKey(cfg.KeystorePath, cfg.KeystorePassword)
-	if err != nil {
-		return err
-	}
-	cfg.CoordinatorURL = wsUrl
-	r.Config = cfg
 
-	if !store {
+	if !store || r.isStored {
 		return nil
 	}
+	r.isStored = true
 
 	data, err := json.Marshal(r.Config)
 	if err != nil {
