@@ -26,7 +26,6 @@ func init() {
 
 // Migrate migrate db
 func Migrate(db *sql.DB) error {
-	//return goose.Up(db, MIGRATIONS_DIR, goose.WithAllowMissing())
 	return goose.Up(db, MigrationsDir, goose.WithAllowMissing())
 }
 
