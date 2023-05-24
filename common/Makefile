@@ -1,4 +1,4 @@
-.PHONY: lint clean
+.PHONY: lint
 
 test:
 	go test -v -race -coverprofile=coverage.txt -covermode=atomic -p 1 $(PWD)/...
