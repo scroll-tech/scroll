@@ -12,6 +12,7 @@ import (
 	"gorm.io/gorm"
 
 	"scroll-tech/common/metrics"
+	"scroll-tech/common/types"
 
 	bridgeAbi "scroll-tech/bridge/abi"
 	"scroll-tech/bridge/internal/config"
@@ -88,7 +89,7 @@ func NewBatchProposer(ctx context.Context, cfg *config.BatchProposerConfig, rela
 
 func (p *BatchProposer) recoverBatchDataBuffer() {
 	// batches are sorted by batch index in increasing order
-	batchHashes, err := p.blockBatchOrm.GetPendingBatches(math.MaxInt32)
+	batchHashes, err := p.blockBatchOrm.GetBlockBatchesHashByRollupStatus(types.RollupPending, math.MaxInt32)
 	if err != nil {
 		log.Crit("Failed to fetch pending L2 batches", "err", err)
 	}

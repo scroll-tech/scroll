@@ -1,7 +1,6 @@
 package orm
 
 import (
-	"database/sql"
 	"encoding/json"
 
 	"github.com/scroll-tech/go-ethereum/log"
@@ -29,22 +28,22 @@ func NewBlockTrace(db *gorm.DB) *BlockTrace {
 	return &BlockTrace{db: db}
 }
 
-// TableName define the L1Message table name
+// TableName define the BlockTrace table name
 func (*BlockTrace) TableName() string {
 	return "block_trace"
 }
 
 // GetL2BlocksLatestHeight get the l2 blocks latest height
 func (o *BlockTrace) GetL2BlocksLatestHeight() (int64, error) {
-	var maxNumber sql.NullInt64
-	result := o.db.Model(&BlockTrace{}).Select("COALESCE(MAX(number), -1)").Scan(&maxNumber)
-	if result.Error != nil {
-		return -1, result.Error
+	result := o.db.Model(&BlockTrace{}).Select("COALESCE(MAX(number), -1)").Row()
+	if result.Err() != nil {
+		return -1, result.Err()
 	}
-	if maxNumber.Valid {
-		return maxNumber.Int64, nil
+	var maxNumber int64
+	if err := result.Scan(&maxNumber); err != nil {
+		return -1, err
 	}
-	return -1, nil
+	return maxNumber, nil
 }
 
 // GetL2WrappedBlocks get the l2 wrapped blocks

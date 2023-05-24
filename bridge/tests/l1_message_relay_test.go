@@ -66,7 +66,7 @@ func testRelayL1MessageSucceed(t *testing.T) {
 	assert.Equal(t, types.MsgStatus(msg.Status), types.MsgSubmitted)
 	l1Message, err := l1MessageOrm.GetL1MessageByQueueIndex(nonce.Uint64())
 	assert.NoError(t, err)
-	assert.NotNil(t, l1Message.Layer2Hash)
+	assert.NotEmpty(t, l1Message.Layer2Hash)
 	relayTx, _, err := l2Client.TransactionByHash(context.Background(), common.HexToHash(l1Message.Layer2Hash))
 	assert.NoError(t, err)
 	relayTxReceipt, err := bind.WaitMined(context.Background(), l2Client, relayTx)

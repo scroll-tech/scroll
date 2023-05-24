@@ -371,7 +371,7 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 	}
 
 	// batches are sorted by batch index in increasing order
-	batchHashes, err := r.blockBatchOrm.GetCommittedBatches(1)
+	batchHashes, err := r.blockBatchOrm.GetBlockBatchesHashByRollupStatus(types.RollupCommitted, 1)
 	if err != nil {
 		log.Error("Failed to fetch committed L2 batches", "err", err)
 		return

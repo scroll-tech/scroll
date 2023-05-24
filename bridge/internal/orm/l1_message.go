@@ -23,7 +23,7 @@ type L1Message struct {
 	Value      string `json:"value" gorm:"column:value"`
 	Calldata   string `json:"calldata" gorm:"column:calldata"`
 	Layer1Hash string `json:"layer1_hash" gorm:"column:layer1_hash"`
-	Layer2Hash string `json:"layer2_hash" gorm:"column:layer2_hash"`
+	Layer2Hash string `json:"layer2_hash" gorm:"column:layer2_hash;default:NULL"`
 	Status     int    `json:"status" gorm:"column:status;default:1"`
 }
 
@@ -55,8 +55,7 @@ func (m *L1Message) GetLayer1LatestWatchedHeight() (int64, error) {
 // GetL1MessagesByStatus fetch list of unprocessed messages given msg status
 func (m *L1Message) GetL1MessagesByStatus(status types.MsgStatus, limit uint64) ([]L1Message, error) {
 	var msgs []L1Message
-	fields := "queue_index, msg_hash, height, sender, target, value, calldata, layer1_hash, status"
-	err := m.db.Select(fields).Where("status", int(status)).Order("queue_index ASC").Limit(int(limit)).Find(&msgs).Error
+	err := m.db.Where("status", int(status)).Order("queue_index ASC").Limit(int(limit)).Find(&msgs).Error
 	if err != nil {
 		return nil, err
 	}
@@ -67,8 +66,7 @@ func (m *L1Message) GetL1MessagesByStatus(status types.MsgStatus, limit uint64) 
 // for unit test
 func (m *L1Message) GetL1MessageByQueueIndex(queueIndex uint64) (*L1Message, error) {
 	var msg L1Message
-	selectFields := "queue_index, msg_hash, height, sender, target, value, calldata, layer1_hash, layer2_hash, status"
-	err := m.db.Select(selectFields).Where("queue_index", queueIndex).First(&msg).Error
+	err := m.db.Where("queue_index", queueIndex).First(&msg).Error
 	if err != nil {
 		return nil, err
 	}
@@ -79,8 +77,7 @@ func (m *L1Message) GetL1MessageByQueueIndex(queueIndex uint64) (*L1Message, err
 // for unit test
 func (m *L1Message) GetL1MessageByMsgHash(msgHash string) (*L1Message, error) {
 	var msg L1Message
-	selectFileds := "queue_index, msg_hash, height, sender, target, value, gas_limit, calldata, layer1_hash, status"
-	err := m.db.Select(selectFileds).Where("msg_hash", msgHash).First(&msg).Error
+	err := m.db.Where("msg_hash", msgHash).First(&msg).Error
 	if err != nil {
 		return nil, err
 	}

@@ -2,8 +2,6 @@ package orm
 
 import (
 	"context"
-	"database/sql"
-
 	"github.com/scroll-tech/go-ethereum/log"
 	"gorm.io/gorm"
 
@@ -22,8 +20,8 @@ type L2Message struct {
 	Target     string `json:"target" gorm:"column:target"`
 	Calldata   string `json:"calldata" gorm:"column:calldata"`
 	Layer2Hash string `json:"layer2_hash" gorm:"column:layer2_hash"`
-	Layer1Hash string `json:"layer1_hash" gorm:"column:layer1_hash"`
-	Proof      string `json:"proof" gorm:"column:proof"`
+	Layer1Hash string `json:"layer1_hash" gorm:"column:layer1_hash;default:NULL"`
+	Proof      string `json:"proof" gorm:"column:proof;default:NULL"`
 	Status     int    `json:"status" gorm:"column:status;default:1"`
 }
 
@@ -32,7 +30,7 @@ func NewL2Message(db *gorm.DB) *L2Message {
 	return &L2Message{db: db}
 }
 
-// TableName define the L1Message table name
+// TableName define the L2Message table name
 func (*L2Message) TableName() string {
 	return "l2_message"
 }
@@ -40,8 +38,7 @@ func (*L2Message) TableName() string {
 // GetL2Messages fetch list of messages given msg status
 func (m *L2Message) GetL2Messages(fields map[string]interface{}, orderByList []string, limit int) ([]L2Message, error) {
 	var l2MsgList []L2Message
-	selectFields := "nonce, msg_hash, height, sender, target, value, calldata, layer2_hash, layer1_hash, status"
-	db := m.db.Select(selectFields)
+	db := m.db
 	for key, value := range fields {
 		db = db.Where(key, value)
 	}
@@ -64,23 +61,23 @@ func (m *L2Message) GetL2Messages(fields map[string]interface{}, orderByList []s
 func (m *L2Message) GetLayer2LatestWatchedHeight() (int64, error) {
 	// @note It's not correct, since we may don't have message in some blocks.
 	// But it will only be called at start, some redundancy is acceptable.
-	var maxHeight sql.NullInt64
-	result := m.db.Model(&L2Message{}).Select("COALESCE(MAX(height), -1)").Scan(&maxHeight)
-	if result.Error != nil {
-		return -1, result.Error
+	result := m.db.Model(&L2Message{}).Select("COALESCE(MAX(height), -1)").Row()
+	if result.Err() != nil {
+		return -1, result.Err()
 	}
-	if maxHeight.Valid {
-		return maxHeight.Int64, nil
+
+	var maxNumber int64
+	if err := result.Scan(&maxNumber); err != nil {
+		return 0, err
 	}
-	return -1, nil
+	return maxNumber, nil
 }
 
 // GetL2MessageByNonce fetch message by nonce
 // for unit test
 func (m *L2Message) GetL2MessageByNonce(nonce uint64) (*L2Message, error) {
 	var msg L2Message
-	selectFields := "nonce, msg_hash, height, sender, target, value, calldata, layer2_hash, layer1_hash, status"
-	err := m.db.Select(selectFields).Where("nonce", nonce).First(&msg).Error
+	err := m.db.Where("nonce", nonce).First(&msg).Error
 	if err != nil {
 		return nil, err
 	}

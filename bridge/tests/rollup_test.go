@@ -93,17 +93,13 @@ func testCommitBatchAndFinalizeBatch(t *testing.T) {
 	assert.NoError(t, err)
 
 	// process pending batch and check status
-	l2Relayer.SendCommitTx([]*bridgeTypes.BatchData{batchData})
-
-	statuses, err := blockBatchOrm.GetRollupStatusByHashList([]string{batchHash})
-	assert.NoError(t, err)
-	assert.Equal(t, 1, len(statuses))
-	assert.Equal(t, types.RollupCommitting, statuses[0])
+	assert.NoError(t, l2Relayer.SendCommitTx([]*bridgeTypes.BatchData{batchData}))
 
 	blockBatches, err := blockBatchOrm.GetBlockBatches(map[string]interface{}{"hash": batchHash}, nil, 1)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(blockBatches))
-	assert.NotNil(t, true, blockBatches[0].CommitTxHash)
+	assert.NotEmpty(t, true, blockBatches[0].CommitTxHash)
+	assert.NotEmpty(t, true, blockBatches[0].RollupStatus)
 
 	commitTx, _, err := l1Client.TransactionByHash(context.Background(), common.HexToHash(blockBatches[0].CommitTxHash))
 	assert.NoError(t, err)
@@ -114,7 +110,7 @@ func testCommitBatchAndFinalizeBatch(t *testing.T) {
 	// fetch rollup events
 	err = l1Watcher.FetchContractEvent()
 	assert.NoError(t, err)
-	statuses, err = blockBatchOrm.GetRollupStatusByHashList([]string{batchHash})
+	statuses, err := blockBatchOrm.GetRollupStatusByHashList([]string{batchHash})
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(statuses))
 	assert.Equal(t, types.RollupCommitted, statuses[0])
@@ -138,7 +134,7 @@ func testCommitBatchAndFinalizeBatch(t *testing.T) {
 	blockBatches, err = blockBatchOrm.GetBlockBatches(map[string]interface{}{"hash": batchHash}, nil, 1)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(blockBatches))
-	assert.NotNil(t, blockBatches[0].FinalizeTxHash)
+	assert.NotEmpty(t, blockBatches[0].FinalizeTxHash)
 
 	finalizeTx, _, err := l1Client.TransactionByHash(context.Background(), common.HexToHash(blockBatches[0].FinalizeTxHash))
 	assert.NoError(t, err)

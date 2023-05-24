@@ -184,7 +184,7 @@ func testBatchProposerGracefulRestart(t *testing.T) {
 	assert.NoError(t, err)
 	err = blockBatchOrm.UpdateRollupStatus(context.Background(), batchData1.Hash().Hex(), types.RollupFinalized)
 	assert.NoError(t, err)
-	batchHashes, err := blockBatchOrm.GetPendingBatches(math.MaxInt32)
+	batchHashes, err := blockBatchOrm.GetBlockBatchesHashByRollupStatus(types.RollupPending, math.MaxInt32)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(batchHashes))
 	assert.Equal(t, batchData2.Hash().Hex(), batchHashes[0])
@@ -197,7 +197,7 @@ func testBatchProposerGracefulRestart(t *testing.T) {
 		BatchBlocksLimit:    100,
 	}, relayer, db)
 
-	batchHashes, err = blockBatchOrm.GetPendingBatches(math.MaxInt32)
+	batchHashes, err = blockBatchOrm.GetBlockBatchesHashByRollupStatus(types.RollupPending, math.MaxInt32)
 	assert.NoError(t, err)
 	assert.Equal(t, 0, len(batchHashes))
 

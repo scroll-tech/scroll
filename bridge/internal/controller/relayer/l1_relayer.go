@@ -124,8 +124,7 @@ func (r *Layer1Relayer) ProcessSavedEvents() {
 	}
 
 	for _, msg := range msgs {
-		tmpMsg := msg
-		if err = r.processSavedEvent(&tmpMsg); err != nil {
+		if err = r.processSavedEvent(&msg); err != nil {
 			if !errors.Is(err, sender.ErrNoAvailableAccount) && !errors.Is(err, sender.ErrFullPending) {
 				log.Error("failed to process event", "msg.msgHash", msg.MsgHash, "err", err)
 			}
@@ -165,7 +164,7 @@ func (r *Layer1Relayer) ProcessGasPriceOracle() {
 		return
 	}
 
-	blocks, err := r.l1Block.GetL1BlockInfos(map[string]interface{}{
+	blocks, err := r.l1Block.GetL1Blocks(map[string]interface{}{
 		"number": latestBlockHeight,
 	})
 	if err != nil {

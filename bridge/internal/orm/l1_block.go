@@ -2,8 +2,6 @@ package orm
 
 import (
 	"context"
-	"database/sql"
-
 	"github.com/scroll-tech/go-ethereum/log"
 	"gorm.io/gorm"
 
@@ -19,9 +17,9 @@ type L1Block struct {
 	HeaderRLP       string `json:"header_rlp" gorm:"column:header_rlp"`
 	BaseFee         uint64 `json:"base_fee" gorm:"column:base_fee"`
 	BlockStatus     int    `json:"block_status" gorm:"column:block_status;default:1"`
-	ImportTxHash    string `json:"import_tx_hash" gorm:"column:import_tx_hash"`
+	ImportTxHash    string `json:"import_tx_hash" gorm:"column:import_tx_hash;default:NULL"`
 	GasOracleStatus int    `json:"oracle_status" gorm:"column:oracle_status;default:1"`
-	OracleTxHash    string `json:"oracle_tx_hash" gorm:"column:oracle_tx_hash"`
+	OracleTxHash    string `json:"oracle_tx_hash" gorm:"column:oracle_tx_hash;default:NULL"`
 }
 
 // NewL1Block create an l1Block instance
@@ -29,29 +27,29 @@ func NewL1Block(db *gorm.DB) *L1Block {
 	return &L1Block{db: db}
 }
 
-// TableName define the L1Message table name
+// TableName define the L1Block table name
 func (*L1Block) TableName() string {
 	return "l1_block"
 }
 
 // GetLatestL1BlockHeight get the latest l1 block height
 func (l *L1Block) GetLatestL1BlockHeight() (uint64, error) {
-	var maxNumber sql.NullInt64
-	result := l.db.Model(&L1Block{}).Select("COALESCE(MAX(number), 0)").Scan(&maxNumber)
-	if result.Error != nil {
-		return 0, result.Error
+	result := l.db.Model(&L1Block{}).Select("COALESCE(MAX(number), 0)").Row()
+	if result.Err() != nil {
+		return 0, result.Err()
 	}
-	if maxNumber.Valid {
-		return uint64(maxNumber.Int64), nil
+
+	var maxNumber uint64
+	if err := result.Scan(&maxNumber); err != nil {
+		return 0, err
 	}
-	return 0, nil
+	return maxNumber, nil
 }
 
-// GetL1BlockInfos get the l1 block infos
-func (l *L1Block) GetL1BlockInfos(fields map[string]interface{}) ([]L1Block, error) {
+// GetL1Blocks get the l1 block infos
+func (l *L1Block) GetL1Blocks(fields map[string]interface{}) ([]L1Block, error) {
 	var l1Blocks []L1Block
-	selectFileds := "number, hash, header_rlp, base_fee, block_status, oracle_status, import_tx_hash, oracle_tx_hash"
-	db := l.db.Select(selectFileds)
+	db := l.db
 	for key, value := range fields {
 		db = db.Where(key, value)
 	}

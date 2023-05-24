@@ -118,16 +118,13 @@ func testRelayL2MessageSucceed(t *testing.T) {
 	assert.NoError(t, err)
 
 	// process pending batch and check status
-	l2Relayer.SendCommitTx([]*bridgeTypes.BatchData{batchData})
-	statuses, err := blockBatchOrm.GetRollupStatusByHashList([]string{batchHash})
-	assert.NoError(t, err)
-	assert.Equal(t, 1, len(statuses))
-	assert.Equal(t, types.RollupCommitting, statuses[0])
+	assert.NoError(t, l2Relayer.SendCommitTx([]*bridgeTypes.BatchData{batchData}))
 
 	blockBatches, err := blockBatchOrm.GetBlockBatches(map[string]interface{}{"hash": batchHash}, nil, 1)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(blockBatches))
-	assert.NotNil(t, blockBatches[0].CommitTxHash)
+	assert.NotEmpty(t, blockBatches[0].CommitTxHash)
+	assert.Equal(t, types.RollupCommitting, types.RollupStatus(blockBatches[0].RollupStatus))
 
 	commitTx, _, err := l1Client.TransactionByHash(context.Background(), common.HexToHash(blockBatches[0].CommitTxHash))
 	assert.NoError(t, err)
@@ -138,24 +135,21 @@ func testRelayL2MessageSucceed(t *testing.T) {
 	// fetch CommitBatch rollup events
 	err = l1Watcher.FetchContractEvent()
 	assert.NoError(t, err)
-	statuses, err = blockBatchOrm.GetRollupStatusByHashList([]string{batchHash})
+	statuses, err := blockBatchOrm.GetRollupStatusByHashList([]string{batchHash})
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(statuses))
 	assert.Equal(t, types.RollupCommitted, statuses[0])
 
 	// process committed batch and check status
 	l2Relayer.ProcessCommittedBatches()
-	statuses, err = blockBatchOrm.GetRollupStatusByHashList([]string{batchHash})
-	assert.NoError(t, err)
-	assert.Equal(t, 1, len(statuses))
-	assert.Equal(t, types.RollupFinalizing, statuses[0])
 
-	blockBatchWitchFinalizeTxHash, err := blockBatchOrm.GetBlockBatches(map[string]interface{}{"hash": batchHash}, nil, 1)
+	blockBatchWithFinalizeTxHash, err := blockBatchOrm.GetBlockBatches(map[string]interface{}{"hash": batchHash}, nil, 1)
 	assert.NoError(t, err)
-	assert.Equal(t, 1, len(blockBatchWitchFinalizeTxHash))
-	assert.NotNil(t, blockBatchWitchFinalizeTxHash[0].FinalizeTxHash)
+	assert.Equal(t, 1, len(blockBatchWithFinalizeTxHash))
+	assert.NotEmpty(t, blockBatchWithFinalizeTxHash[0].FinalizeTxHash)
+	assert.Equal(t, types.RollupFinalizing, types.RollupStatus(blockBatchWithFinalizeTxHash[0].RollupStatus))
 
-	finalizeTx, _, err := l1Client.TransactionByHash(context.Background(), common.HexToHash(blockBatchWitchFinalizeTxHash[0].FinalizeTxHash))
+	finalizeTx, _, err := l1Client.TransactionByHash(context.Background(), common.HexToHash(blockBatchWithFinalizeTxHash[0].FinalizeTxHash))
 	assert.NoError(t, err)
 	finalizeTxReceipt, err := bind.WaitMined(context.Background(), l1Client, finalizeTx)
 	assert.NoError(t, err)
@@ -171,14 +165,12 @@ func testRelayL2MessageSucceed(t *testing.T) {
 
 	// process l2 messages
 	l2Relayer.ProcessSavedEvents()
-	msg, err = l2MessageOrm.GetL2MessageByNonce(nonce.Uint64())
-	assert.NoError(t, err)
-	assert.Equal(t, types.MsgStatus(msg.Status), types.MsgSubmitted)
 
 	l2Messages, err := l2MessageOrm.GetL2Messages(map[string]interface{}{"nonce": nonce.Uint64()}, nil, 1)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(l2Messages))
-	assert.NotNil(t, l2Messages[0].Layer1Hash)
+	assert.NotEmpty(t, l2Messages[0].Layer1Hash)
+	assert.Equal(t, types.MsgStatus(l2Messages[0].Status), types.MsgSubmitted)
 
 	relayTx, _, err := l1Client.TransactionByHash(context.Background(), common.HexToHash(l2Messages[0].Layer1Hash))
 	assert.NoError(t, err)
