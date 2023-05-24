@@ -365,7 +365,7 @@ func (p *BatchProposer) proposeBatch(blocks []*types.BlockInfo) bool {
 	} else {
 		bridgeL2BatchesTxsCreatedPerBatchGauge.Update(int64(txNum))
 		bridgeL2BatchesGasCreatedPerBatchGauge.Update(int64(gasUsed))
-		bridgeL2BatchesPayloadSizePerBatchGauge.Update(int64(firstSize))
+		bridgeL2BatchesPayloadSizePerBatchGauge.Update(int64(payloadSize))
 		bridgeL2BatchesBlocksCreatedTotalCounter.Inc(int64(len(blocks)))
 	}
 
