@@ -81,7 +81,7 @@ func testRelayL2MessageSucceed(t *testing.T) {
 	}
 	assert.NoError(t, blockTraceOrm.InsertWrappedBlocks(traces))
 
-	parentBatch := &bridgeTypes.WrappedBlockBatch{
+	parentBatch := &bridgeTypes.BatchInfo{
 		Index: 0,
 		Hash:  "0x0000000000000000000000000000000000000000",
 	}

@@ -47,7 +47,7 @@ func (l *L1Block) GetLatestL1BlockHeight() (uint64, error) {
 	return maxNumber, nil
 }
 
-// GetL1Blocks get the l1 block infos
+// GetL1Blocks get the l1 blocks
 func (l *L1Block) GetL1Blocks(fields map[string]interface{}) ([]L1Block, error) {
 	var l1Blocks []L1Block
 	db := l.db

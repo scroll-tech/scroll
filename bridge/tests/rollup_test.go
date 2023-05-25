@@ -57,7 +57,7 @@ func testCommitBatchAndFinalizeBatch(t *testing.T) {
 	}
 	assert.NoError(t, blockTraceOrm.InsertWrappedBlocks(wrappedBlocks))
 
-	parentBatch := &bridgeTypes.WrappedBlockBatch{
+	parentBatch := &bridgeTypes.BatchInfo{
 		Index: 0,
 		Hash:  "0x0000000000000000000000000000000000000000",
 	}
