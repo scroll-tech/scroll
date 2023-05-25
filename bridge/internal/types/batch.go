@@ -12,6 +12,7 @@ import (
 	"github.com/scroll-tech/go-ethereum/crypto"
 
 	abi "scroll-tech/bridge/abi"
+	"scroll-tech/bridge/internal/orm"
 )
 
 // PublicInputHashConfig is the configuration of how to compute the public input hash.
