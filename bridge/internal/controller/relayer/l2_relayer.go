@@ -442,7 +442,7 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 		}
 
 		// handle unexpected db error
-		if err != nil && err.Error() != "sql: no rows in result set" {
+		if err != nil && errors.Is(err, gorm.ErrRecordNotFound) {
 			log.Error("Failed to get latest finalized batch", "err", err)
 			return
 		}

@@ -111,6 +111,7 @@ func (o *BlockBatch) GetVerifiedProofAndInstanceCommitmentsByHash(hash string) (
 }
 
 // GetLatestBatch get the latest batch
+// because we will `initializeGenesis()` when we start the `L2Watcher`, so a batch must exist.
 func (o *BlockBatch) GetLatestBatch() (*BlockBatch, error) {
 	var blockBatch BlockBatch
 	err := o.db.Order("index DESC").Limit(1).First(&blockBatch).Error
@@ -128,7 +129,7 @@ func (o *BlockBatch) GetLatestBatchByRollupStatus(rollupStatuses []types.RollupS
 	}
 	var blockBatch BlockBatch
 	err := o.db.Where("rollup_status IN (?)", tmpRollupStatus).Order("index DESC").Limit(1).First(&blockBatch).Error
-	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+	if err != nil {
 		return nil, err
 	}
 	return &blockBatch, nil
