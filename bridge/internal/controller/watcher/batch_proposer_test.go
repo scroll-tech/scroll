@@ -103,7 +103,7 @@ func testBatchProposerBatchGeneration(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Create a new batch.
-	batchData := bridgeTypes.NewBatchData(&bridgeTypes.WrappedBlockBatch{
+	batchData := bridgeTypes.NewBatchData(&bridgeTypes.BatchInfo{
 		Index:     0,
 		Hash:      batch.Hash,
 		StateRoot: batch.StateRoot,
@@ -142,15 +142,14 @@ func testBatchProposerGracefulRestart(t *testing.T) {
 	assert.NoError(t, blockTraceOrm.InsertWrappedBlocks([]*bridgeTypes.WrappedBlock{wrappedBlock2}))
 
 	// Insert block batch into db.
-	insertBlockBatch := &bridgeTypes.WrappedBlockBatch{
+	parentBatch1 := &bridgeTypes.BatchInfo{
 		Index:     0,
 		Hash:      common.Hash{}.String(),
 		StateRoot: common.Hash{}.String(),
 	}
-	wrapperBlock := []*bridgeTypes.WrappedBlock{wrappedBlock1}
-	batchData1 := bridgeTypes.NewBatchData(insertBlockBatch, wrapperBlock, nil)
+	batchData1 := bridgeTypes.NewBatchData(parentBatch1, []*bridgeTypes.WrappedBlock{wrappedBlock1}, nil)
 
-	parentBatch2 := &bridgeTypes.WrappedBlockBatch{
+	parentBatch2 := &bridgeTypes.BatchInfo{
 		Index:     batchData1.Batch.BatchIndex,
 		Hash:      batchData1.Hash().Hex(),
 		StateRoot: batchData1.Batch.NewStateRoot.String(),

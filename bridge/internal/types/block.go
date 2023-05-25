@@ -13,8 +13,8 @@ type WrappedBlock struct {
 	WithdrawTrieRoot common.Hash              `json:"withdraw_trie_root,omitempty"`
 }
 
-// WrappedBlockBatch contains the BlockBatch's part
-type WrappedBlockBatch struct {
+// BatchInfo contains the BlockBatch's main info
+type BatchInfo struct {
 	Index     uint64 `json:"index"`
 	Hash      string `json:"hash"`
 	StateRoot string `json:"state_root"`
