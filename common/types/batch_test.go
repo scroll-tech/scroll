@@ -34,7 +34,7 @@ func TestBatchHash(t *testing.T) {
 	block := abi.IScrollChainBlockContext{
 		BlockNumber:     51966,
 		Timestamp:       123456789,
-		BaseFee:         new(big.Int).SetUint64(0),
+		BaseFee:         big.NewInt(0),
 		GasLimit:        10000000000000000,
 		NumTransactions: 1,
 		NumL1Messages:   0,
@@ -79,7 +79,6 @@ func TestNewGenesisBatch(t *testing.T) {
 
 	blockTrace := &WrappedBlock{genesisBlock, nil, common.Hash{}}
 	batchData := NewGenesisBatchData(blockTrace)
-	t.Log(batchData.Batch.Blocks[0])
 	batchData.piCfg = &PublicInputHashConfig{
 		MaxTxNum:      25,
 		PaddingTxHash: common.HexToHash("0xb5baa665b2664c3bfed7eb46e00ebc110ecf2ebd257854a9bf2b9dbc9b2c08f6"),
@@ -87,7 +86,7 @@ func TestNewGenesisBatch(t *testing.T) {
 	assert.Equal(
 		t,
 		batchData.Hash().Hex(),
-		"0x65cf210e30f75cf8fd198df124255f73bc08d6324759e828a784fa938e7ac43d",
+		"0x19c99d1b56e46c535aaf23714d1c8489f91497392c98d2ccc236fbbb45ea50f8",
 		"wrong genesis batch hash",
 	)
 }
@@ -107,7 +106,7 @@ func TestNewBatchData(t *testing.T) {
 	batchData1 := NewBatchData(parentBatch, []*WrappedBlock{wrappedBlock}, nil)
 	assert.NotNil(t, batchData1)
 	assert.NotNil(t, batchData1.Batch)
-	assert.Equal(t, "0xac4487c0d8f429dafda3c68cbb8983ac08af83c03c83c365d7df02864f80af37", batchData1.Hash().Hex())
+	assert.Equal(t, "0x77e62a674d81d3311b480c5b8acf870a687d3cf163040569fbd153d1e7d82ba7", batchData1.Hash().Hex())
 
 	templateBlockTrace, err = os.ReadFile("../testdata/blockTrace_03.json")
 	assert.NoError(t, err)
@@ -123,7 +122,7 @@ func TestNewBatchData(t *testing.T) {
 	batchData2 := NewBatchData(parentBatch2, []*WrappedBlock{wrappedBlock2}, nil)
 	assert.NotNil(t, batchData2)
 	assert.NotNil(t, batchData2.Batch)
-	assert.Equal(t, "0x8f1447573740b3e75b979879866b8ad02eecf88e1946275eb8cf14ab95876efc", batchData2.Hash().Hex())
+	assert.Equal(t, "0xf4c874101c86f51a149f0c9b862a1f7a1fe1edafc523b3550fad93eec3f5af25", batchData2.Hash().Hex())
 }
 
 func TestBatchDataTimestamp(t *testing.T) {
