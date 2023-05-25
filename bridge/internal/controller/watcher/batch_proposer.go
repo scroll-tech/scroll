@@ -374,12 +374,7 @@ func (p *BatchProposer) generateBatchData(parentBatch *orm.BlockBatch, blocks []
 			return nil, err
 		}
 
-		tmpWrappedBlock := bridgeTypes.WrappedBlock{
-			Header:           trs[0].Header,
-			Transactions:     trs[0].Transactions,
-			WithdrawTrieRoot: trs[0].WithdrawTrieRoot,
-		}
-		wrappedBlocks = append(wrappedBlocks, &tmpWrappedBlock)
+		wrappedBlocks = append(wrappedBlocks, trs[0])
 	}
 
 	parentBatchInfo := bridgeTypes.BatchInfo{
