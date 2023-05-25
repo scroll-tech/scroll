@@ -28,9 +28,11 @@ var (
 	bridgeL2BatchesTxsOverThresholdTotalCounter = geth_metrics.NewRegisteredCounter("bridge/l2/batches/txs/over/threshold/total", metrics.ScrollRegistry)
 	bridgeL2BatchesBlocksCreatedTotalCounter    = geth_metrics.NewRegisteredCounter("bridge/l2/batches/blocks/created/total", metrics.ScrollRegistry)
 	bridgeL2BatchesCommitsSentTotalCounter      = geth_metrics.NewRegisteredCounter("bridge/l2/batches/commits/sent/total", metrics.ScrollRegistry)
+	bridgeL2BatchesOversizedTotalCounter        = geth_metrics.NewRegisteredCounter("bridge/l2/batches/oversized/total", metrics.ScrollRegistry)
 
-	bridgeL2BatchesTxsCreatedPerBatchGauge = geth_metrics.NewRegisteredGauge("bridge/l2/batches/txs/created/per/batch", metrics.ScrollRegistry)
-	bridgeL2BatchesGasCreatedPerBatchGauge = geth_metrics.NewRegisteredGauge("bridge/l2/batches/gas/created/per/batch", metrics.ScrollRegistry)
+	bridgeL2BatchesTxsCreatedPerBatchGauge  = geth_metrics.NewRegisteredGauge("bridge/l2/batches/txs/created/per/batch", metrics.ScrollRegistry)
+	bridgeL2BatchesGasCreatedPerBatchGauge  = geth_metrics.NewRegisteredGauge("bridge/l2/batches/gas/created/per/batch", metrics.ScrollRegistry)
+	bridgeL2BatchesPayloadSizePerBatchGauge = geth_metrics.NewRegisteredGauge("bridge/l2/batches/payload/size/per/batch", metrics.ScrollRegistry)
 )
 
 // AddBatchInfoToDB inserts the batch information to the BlockBatch table and updates the batch_hash
@@ -342,7 +344,9 @@ func (p *BatchProposer) proposeBatch(blocks []*types.BlockInfo) bool {
 		}
 		bridgeL2BatchesTxsCreatedPerBatchGauge.Update(int64(blocks[0].TxNum))
 		bridgeL2BatchesGasCreatedPerBatchGauge.Update(int64(blocks[0].GasUsed))
+		bridgeL2BatchesPayloadSizePerBatchGauge.Update(int64(firstSize))
 		bridgeL2BatchesBlocksCreatedTotalCounter.Inc(1)
+		bridgeL2BatchesOversizedTotalCounter.Inc(1)
 		return true
 	}
 
@@ -354,6 +358,7 @@ func (p *BatchProposer) proposeBatch(blocks []*types.BlockInfo) bool {
 		} else {
 			bridgeL2BatchesTxsCreatedPerBatchGauge.Update(int64(blocks[0].TxNum))
 			bridgeL2BatchesGasCreatedPerBatchGauge.Update(int64(blocks[0].GasUsed))
+			bridgeL2BatchesPayloadSizePerBatchGauge.Update(int64(firstSize))
 			bridgeL2BatchesBlocksCreatedTotalCounter.Inc(1)
 		}
 		return true
@@ -367,6 +372,7 @@ func (p *BatchProposer) proposeBatch(blocks []*types.BlockInfo) bool {
 		} else {
 			bridgeL2BatchesTxsCreatedPerBatchGauge.Update(int64(blocks[0].TxNum))
 			bridgeL2BatchesGasCreatedPerBatchGauge.Update(int64(blocks[0].GasUsed))
+			bridgeL2BatchesPayloadSizePerBatchGauge.Update(int64(firstSize))
 			bridgeL2BatchesBlocksCreatedTotalCounter.Inc(1)
 		}
 		return true
@@ -404,6 +410,7 @@ func (p *BatchProposer) proposeBatch(blocks []*types.BlockInfo) bool {
 	} else {
 		bridgeL2BatchesTxsCreatedPerBatchGauge.Update(int64(txNum))
 		bridgeL2BatchesGasCreatedPerBatchGauge.Update(int64(gasUsed))
+		bridgeL2BatchesPayloadSizePerBatchGauge.Update(int64(payloadSize))
 		bridgeL2BatchesBlocksCreatedTotalCounter.Inc(int64(len(blocks)))
 	}
 

@@ -10,6 +10,9 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/scroll-tech/go-ethereum/core/types"
+	"github.com/scroll-tech/go-ethereum/ethclient"
+
 	"github.com/scroll-tech/go-ethereum"
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/crypto"
@@ -33,12 +36,13 @@ var (
 
 // Roller contains websocket conn to coordinator, Stack, unix-socket to ipc-prover.
 type Roller struct {
-	cfg      *config.Config
-	client   *client.Client
-	stack    *store.Stack
-	prover   *prover.Prover
-	taskChan chan *message.TaskMsg
-	sub      ethereum.Subscription
+	cfg         *config.Config
+	client      *client.Client
+	traceClient *ethclient.Client
+	stack       *store.Stack
+	prover      *prover.Prover
+	taskChan    chan *message.TaskMsg
+	sub         ethereum.Subscription
 
 	isDisconnected int64
 	isClosed       int64
@@ -61,6 +65,12 @@ func NewRoller(cfg *config.Config) (*Roller, error) {
 		return nil, err
 	}
 
+	// Collect geth node.
+	traceClient, err := ethclient.Dial(cfg.TraceEndpoint)
+	if err != nil {
+		return nil, err
+	}
+
 	// Create prover instance
 	log.Info("init prover")
 	newProver, err := prover.NewProver(cfg.Prover)
@@ -75,14 +85,15 @@ func NewRoller(cfg *config.Config) (*Roller, error) {
 	}
 
 	return &Roller{
-		cfg:      cfg,
-		client:   rClient,
-		stack:    stackDb,
-		prover:   newProver,
-		sub:      nil,
-		taskChan: make(chan *message.TaskMsg, 10),
-		stopChan: make(chan struct{}),
-		priv:     priv,
+		cfg:         cfg,
+		client:      rClient,
+		traceClient: traceClient,
+		stack:       stackDb,
+		prover:      newProver,
+		sub:         nil,
+		taskChan:    make(chan *message.TaskMsg, 10),
+		stopChan:    make(chan struct{}),
+		priv:        priv,
 	}, nil
 }
 
@@ -216,18 +227,16 @@ func (r *Roller) prove() error {
 			return err
 		}
 
-		// Sort BlockTraces by header number.
-		traces := task.Task.Traces
-		sort.Slice(traces, func(i, j int) bool {
-			return traces[i].Header.Number.Int64() < traces[j].Header.Number.Int64()
-		})
-
 		log.Info("start to prove block", "task-id", task.Task.ID)
 
+		traces, err := r.getSortedTracesByHashes(task.Task.BlockHashes)
+		if err != nil {
+			return err
+		}
 		// If FFI panic during Prove, the roller will restart and re-enter prove() function,
 		// the proof will not be submitted.
 		var proof *message.AggProof
-		proof, err = r.prover.Prove(task.Task)
+		proof, err = r.prover.Prove(task.Task.ID, traces)
 		if err != nil {
 			proofMsg = &message.ProofDetail{
 				Status: message.StatusProofError,
@@ -289,6 +298,23 @@ func (r *Roller) signAndSubmitProof(msg *message.ProofDetail) {
 		}
 		log.Error("submit proof to coordinator error", "task ID", msg.ID, "error", serr)
 	}
+}
+
+func (r *Roller) getSortedTracesByHashes(blockHashes []common.Hash) ([]*types.BlockTrace, error) {
+	var traces []*types.BlockTrace
+	for _, blockHash := range blockHashes {
+		trace, err := r.traceClient.GetBlockTraceByHash(context.Background(), blockHash)
+		if err != nil {
+			return nil, err
+		}
+		traces = append(traces, trace)
+	}
+	// Sort BlockTraces by header number.
+	// TODO: we should check that the number range here is continuous.
+	sort.Slice(traces, func(i, j int) bool {
+		return traces[i].Header.Number.Int64() < traces[j].Header.Number.Int64()
+	})
+	return traces, nil
 }
 
 // Stop closes the websocket connection.
