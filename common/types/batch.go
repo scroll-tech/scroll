@@ -135,7 +135,7 @@ func NewBatchData(parentBatch *BlockBatch, blocks []*WrappedBlock, piCfg *Public
 			ParentHash:      block.Header.ParentHash,
 			BlockNumber:     block.Header.Number.Uint64(),
 			Timestamp:       block.Header.Time,
-			BaseFee:         big.NewInt(0),
+			BaseFee:         big.NewInt(0), // BaseFee is not used in scroll contract and nil value will lead to panic when pack batch, so let's set it zero value.
 			GasLimit:        block.Header.GasLimit,
 			NumTransactions: uint16(len(block.Transactions)),
 			NumL1Messages:   0, // TODO: currently use 0, will re-enable after we use l2geth to include L1 messages
@@ -208,7 +208,7 @@ func NewGenesisBatchData(genesisBlockTrace *WrappedBlock) *BatchData {
 		ParentHash:      header.ParentHash,
 		BlockNumber:     header.Number.Uint64(),
 		Timestamp:       header.Time,
-		BaseFee:         big.NewInt(0),
+		BaseFee:         big.NewInt(0), // BaseFee is not used in scroll contract and nil value will lead to panic when pack batch, so let's set it zero value.
 		GasLimit:        header.GasLimit,
 		NumTransactions: 0,
 		NumL1Messages:   0,
