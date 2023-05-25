@@ -12,14 +12,13 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"scroll-tech/database"
 	"scroll-tech/database/migrate"
 
 	"scroll-tech/common/types"
 	"scroll-tech/common/utils"
 
 	"scroll-tech/bridge/sender"
-
-	"scroll-tech/database"
 )
 
 var (
