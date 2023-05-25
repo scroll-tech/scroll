@@ -382,12 +382,7 @@ func (p *BatchProposer) generateBatchData(parentBatch *orm.BlockBatch, blocks []
 		wrappedBlocks = append(wrappedBlocks, &tmpWrappedBlock)
 	}
 
-	wrappedBlockBatches := bridgeTypes.WrappedBlockBatch{
-		Index:     parentBatch.Index,
-		Hash:      parentBatch.Hash,
-		StateRoot: parentBatch.StateRoot,
-	}
-	return bridgeTypes.NewBatchData(&wrappedBlockBatches, wrappedBlocks, p.piCfg), nil
+	return bridgeTypes.NewBatchData(parentBatch, wrappedBlocks, p.piCfg), nil
 }
 
 func (p *BatchProposer) getBatchDataBufferSize() (size uint64) {

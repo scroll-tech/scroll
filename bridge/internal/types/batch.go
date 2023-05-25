@@ -114,7 +114,7 @@ func (b *BatchData) Hash() *common.Hash {
 
 // NewBatchData creates a BatchData given the parent batch information and the traces of the blocks
 // included in this batch
-func NewBatchData(parentBatch *WrappedBlockBatch, blocks []*WrappedBlock, piCfg *PublicInputHashConfig) *BatchData {
+func NewBatchData(parentBatch *orm.BlockBatch, blocks []*WrappedBlock, piCfg *PublicInputHashConfig) *BatchData {
 	batchData := new(BatchData)
 	batch := &batchData.Batch
 

@@ -89,7 +89,7 @@ func testL2RelayerProcessSaveEvents(t *testing.T) {
 	blockTraceOrm := orm.NewBlockTrace(db)
 	assert.NoError(t, blockTraceOrm.InsertWrappedBlocks(traces))
 	blockBatchOrm := orm.NewBlockBatch(db)
-	parentBatch1 := &bridgeTypes.WrappedBlockBatch{
+	parentBatch1 := &orm.BlockBatch{
 		Index:     0,
 		Hash:      common.Hash{}.Hex(),
 		StateRoot: common.Hash{}.Hex(),
@@ -131,7 +131,7 @@ func testL2RelayerProcessCommittedBatches(t *testing.T) {
 	relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, l2Cfg.RelayerConfig)
 	assert.NoError(t, err)
 
-	parentBatch1 := &bridgeTypes.WrappedBlockBatch{
+	parentBatch1 := &orm.BlockBatch{
 		Index:     0,
 		Hash:      common.Hash{}.Hex(),
 		StateRoot: common.Hash{}.Hex(),
@@ -431,7 +431,7 @@ func genBatchData(t *testing.T, index uint64) *bridgeTypes.BatchData {
 	err = json.Unmarshal(templateBlockTrace, wrappedBlock)
 	assert.NoError(t, err)
 	wrappedBlock.Header.ParentHash = common.HexToHash("0x" + strconv.FormatUint(index+1, 16))
-	parentBatch := &bridgeTypes.WrappedBlockBatch{
+	parentBatch := &orm.BlockBatch{
 		Index: index,
 		Hash:  "0x0000000000000000000000000000000000000000",
 	}
@@ -529,7 +529,7 @@ func testLayer2RelayerSendCommitTx(t *testing.T) {
 		assert.NoError(t, err)
 	})
 
-	parentBatch := &bridgeTypes.WrappedBlockBatch{
+	parentBatch := &orm.BlockBatch{
 		Index: 0,
 		Hash:  "0x0000000000000000000000000000000000000000",
 	}

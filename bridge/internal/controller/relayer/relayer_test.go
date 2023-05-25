@@ -12,6 +12,7 @@ import (
 	"scroll-tech/common/docker"
 
 	"scroll-tech/bridge/internal/config"
+	"scroll-tech/bridge/internal/orm"
 	bridgeTypes "scroll-tech/bridge/internal/types"
 )
 
@@ -62,7 +63,7 @@ func setupEnv(t *testing.T) (err error) {
 	if err = json.Unmarshal(templateBlockTrace1, wrappedBlock1); err != nil {
 		return err
 	}
-	parentBatch1 := &bridgeTypes.WrappedBlockBatch{
+	parentBatch1 := &orm.BlockBatch{
 		Index:     0,
 		Hash:      "0x0cc6b102c2924402c14b2e3a19baccc316252bfdc44d9ec62e942d34e39ec729",
 		StateRoot: "0x2579122e8f9ec1e862e7d415cef2fb495d7698a8e5f0dddc5651ba4236336e7d",
@@ -78,7 +79,7 @@ func setupEnv(t *testing.T) (err error) {
 	if err = json.Unmarshal(templateBlockTrace2, wrappedBlock2); err != nil {
 		return err
 	}
-	parentBatch2 := &bridgeTypes.WrappedBlockBatch{
+	parentBatch2 := &orm.BlockBatch{
 		Index:     batchData1.Batch.BatchIndex,
 		Hash:      batchData1.Hash().Hex(),
 		StateRoot: batchData1.Batch.NewStateRoot.String(),
