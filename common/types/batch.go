@@ -130,12 +130,17 @@ func NewBatchData(parentBatch *BlockBatch, blocks []*WrappedBlock, piCfg *Public
 		batchData.TotalTxNum += uint64(len(block.Transactions))
 		batchData.TotalL2Gas += block.Header.GasUsed
 
+		// set baseFee to 0 when it's nil in the block header
+		baseFee := block.Header.BaseFee
+		if baseFee == nil {
+			baseFee = big.NewInt(0)
+		}
 		batch.Blocks[i] = abi.IScrollChainBlockContext{
 			BlockHash:       block.Header.Hash(),
 			ParentHash:      block.Header.ParentHash,
 			BlockNumber:     block.Header.Number.Uint64(),
 			Timestamp:       block.Header.Time,
-			BaseFee:         big.NewInt(0),
+			BaseFee:         baseFee,
 			GasLimit:        block.Header.GasLimit,
 			NumTransactions: uint16(len(block.Transactions)),
 			NumL1Messages:   0, // TODO: currently use 0, will re-enable after we use l2geth to include L1 messages
@@ -202,13 +207,18 @@ func NewGenesisBatchData(genesisBlockTrace *WrappedBlock) *BatchData {
 	// PrevStateRoot, WithdrawTrieRoot, ParentBatchHash should all be 0
 	// L2Transactions should be empty
 
+	// set baseFee to 0 when it's nil in the block header
+	baseFee := header.BaseFee
+	if baseFee == nil {
+		baseFee = big.NewInt(0)
+	}
 	// fill in block context
 	batch.Blocks[0] = abi.IScrollChainBlockContext{
 		BlockHash:       header.Hash(),
 		ParentHash:      header.ParentHash,
 		BlockNumber:     header.Number.Uint64(),
 		Timestamp:       header.Time,
-		BaseFee:         big.NewInt(0),
+		BaseFee:         baseFee,
 		GasLimit:        header.GasLimit,
 		NumTransactions: 0,
 		NumL1Messages:   0,
