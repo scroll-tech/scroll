@@ -193,9 +193,9 @@ func testL2RelayerSkipBatches(t *testing.T) {
 			}
 			return nil
 		})
+		assert.NoError(t, err)
 
 		batchHash := batchData.Hash().Hex()
-		assert.NoError(t, err)
 		err = blockBatchOrm.UpdateRollupStatus(context.Background(), batchHash, rollupStatus)
 		assert.NoError(t, err)
 

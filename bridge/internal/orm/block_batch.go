@@ -41,7 +41,7 @@ type BlockBatch struct {
 	ProverAssignedAt    *time.Time `json:"prover_assigned_at" gorm:"column:prover_assigned_at"`
 	ProvedAt            *time.Time `json:"proved_at" gorm:"column:proved_at"`
 	CommittedAt         *time.Time `json:"committed_at" gorm:"column:committed_at"`
-	FinalizedAt         *time.Time `json:"finalized_at" gorm:"column:finalized_at"`
+	FinalizedAt         *time.Time `json:"finalized_at" gorm:"column:finalized_at;default:NULL"`
 }
 
 // NewBlockBatch create an blockBatchOrm instance
