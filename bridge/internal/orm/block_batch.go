@@ -38,9 +38,9 @@ type BlockBatch struct {
 	OracleTxHash        string     `json:"oracle_tx_hash" gorm:"column:oracle_tx_hash;default:NULL"`
 	FinalizeTxHash      string     `json:"finalize_tx_hash" gorm:"column:finalize_tx_hash;default:NULL"`
 	CreatedAt           time.Time  `json:"created_at" gorm:"column:created_at;default:CURRENT_TIMESTAMP()"`
-	ProverAssignedAt    *time.Time `json:"prover_assigned_at" gorm:"column:prover_assigned_at"`
-	ProvedAt            *time.Time `json:"proved_at" gorm:"column:proved_at"`
-	CommittedAt         *time.Time `json:"committed_at" gorm:"column:committed_at"`
+	ProverAssignedAt    *time.Time `json:"prover_assigned_at" gorm:"column:prover_assigned_at;default:NULL"`
+	ProvedAt            *time.Time `json:"proved_at" gorm:"column:proved_at;default:NULL"`
+	CommittedAt         *time.Time `json:"committed_at" gorm:"column:committed_at;default:NULL"`
 	FinalizedAt         *time.Time `json:"finalized_at" gorm:"column:finalized_at;default:NULL"`
 }
 
