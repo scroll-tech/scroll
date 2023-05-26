@@ -10,6 +10,7 @@ import {BatchHeaderV0Codec} from "../../libraries/codec/BatchHeaderV0Codec.sol";
 import {ChunkCodec} from "../../libraries/codec/ChunkCodec.sol";
 import {IRollupVerifier} from "../../libraries/verifier/IRollupVerifier.sol";
 
+// solhint-disable no-inline-assembly
 // solhint-disable reason-string
 
 /// @title ScrollChain
@@ -39,7 +40,7 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
      *************/
 
     /// @notice The chain id of the corresponding layer 2 chain.
-    uint256 public immutable layer2ChainId;
+    uint32 public immutable layer2ChainId;
 
     /*************
      * Variables *
@@ -83,7 +84,7 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
      * Constructor *
      ***************/
 
-    constructor(uint256 _chainId) {
+    constructor(uint32 _chainId) {
         layer2ChainId = _chainId;
     }
 
@@ -295,7 +296,9 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
         require(finalizedStateRoots[_batchIndex] == bytes32(0), "batch already verified");
 
         // compute public input hash
-        bytes32 _publicInputHash = keccak256(abi.encode(_prevStateRoot, _postStateRoot, _withdrawRoot, _dataHash));
+        bytes32 _publicInputHash = keccak256(
+            abi.encodePacked(layer2ChainId, _prevStateRoot, _postStateRoot, _withdrawRoot, _dataHash)
+        );
 
         // verify batch
         IRollupVerifier(verifier).verifyAggregateProof(_aggrProof, _publicInputHash);
