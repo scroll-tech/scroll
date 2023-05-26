@@ -6,24 +6,22 @@ import (
 	"testing"
 
 	"github.com/scroll-tech/go-ethereum/common"
-	geth_types "github.com/scroll-tech/go-ethereum/core/types"
+	gethTypes "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/stretchr/testify/assert"
+	"gorm.io/gorm"
 
 	"scroll-tech/common/types"
 
-	"scroll-tech/bridge/relayer"
-	"scroll-tech/bridge/watcher"
-
-	"scroll-tech/database"
-	"scroll-tech/database/migrate"
+	"scroll-tech/bridge/internal/controller/relayer"
+	"scroll-tech/bridge/internal/controller/watcher"
+	"scroll-tech/bridge/internal/orm"
+	bridgeTypes "scroll-tech/bridge/internal/types"
+	"scroll-tech/bridge/internal/utils"
 )
 
 func testImportL1GasPrice(t *testing.T) {
-	// Create db handler and reset db.
-	db, err := database.NewOrmFactory(base.DBConfig)
-	assert.NoError(t, err)
-	assert.NoError(t, migrate.ResetDB(db.GetDB().DB))
-	defer db.Close()
+	db := setupDB(t)
+	defer utils.CloseDB(db)
 
 	prepareContracts(t)
 
@@ -45,48 +43,39 @@ func testImportL1GasPrice(t *testing.T) {
 	err = l1Watcher.FetchBlockHeader(number)
 	assert.NoError(t, err)
 
+	l1BlockOrm := orm.NewL1Block(db)
 	// check db status
-	latestBlockHeight, err := db.GetLatestL1BlockHeight()
+	latestBlockHeight, err := l1BlockOrm.GetLatestL1BlockHeight()
 	assert.NoError(t, err)
 	assert.Equal(t, number, latestBlockHeight)
-	blocks, err := db.GetL1BlockInfos(map[string]interface{}{
-		"number": latestBlockHeight,
-	})
+	blocks, err := l1BlockOrm.GetL1Blocks(map[string]interface{}{"number": latestBlockHeight})
 	assert.NoError(t, err)
 	assert.Equal(t, len(blocks), 1)
-	assert.Equal(t, blocks[0].GasOracleStatus, types.GasOraclePending)
-	assert.Equal(t, blocks[0].OracleTxHash.Valid, false)
+	assert.Empty(t, blocks[0].OracleTxHash)
+	assert.Equal(t, types.GasOracleStatus(blocks[0].GasOracleStatus), types.GasOraclePending)
 
 	// relay gas price
 	l1Relayer.ProcessGasPriceOracle()
-	blocks, err = db.GetL1BlockInfos(map[string]interface{}{
-		"number": latestBlockHeight,
-	})
+	blocks, err = l1BlockOrm.GetL1Blocks(map[string]interface{}{"number": latestBlockHeight})
 	assert.NoError(t, err)
 	assert.Equal(t, len(blocks), 1)
-	assert.Equal(t, blocks[0].GasOracleStatus, types.GasOracleImporting)
-	assert.Equal(t, blocks[0].OracleTxHash.Valid, true)
+	assert.NotEmpty(t, blocks[0].OracleTxHash)
+	assert.Equal(t, types.GasOracleStatus(blocks[0].GasOracleStatus), types.GasOracleImporting)
 }
 
 func testImportL2GasPrice(t *testing.T) {
-	// Create db handler and reset db.
-	db, err := database.NewOrmFactory(base.DBConfig)
-	assert.NoError(t, err)
-	assert.NoError(t, migrate.ResetDB(db.GetDB().DB))
-	defer db.Close()
-
+	db := setupDB(t)
+	defer utils.CloseDB(db)
 	prepareContracts(t)
 
 	l2Cfg := bridgeApp.Config.L2Config
-
-	// Create L2Relayer
 	l2Relayer, err := relayer.NewLayer2Relayer(context.Background(), l2Client, db, l2Cfg.RelayerConfig)
 	assert.NoError(t, err)
 
 	// add fake blocks
-	traces := []*types.WrappedBlock{
+	traces := []*bridgeTypes.WrappedBlock{
 		{
-			Header: &geth_types.Header{
+			Header: &gethTypes.Header{
 				Number:     big.NewInt(1),
 				ParentHash: common.Hash{},
 				Difficulty: big.NewInt(0),
@@ -96,32 +85,35 @@ func testImportL2GasPrice(t *testing.T) {
 			WithdrawTrieRoot: common.Hash{},
 		},
 	}
-	assert.NoError(t, db.InsertWrappedBlocks(traces))
 
-	parentBatch := &types.BlockBatch{
+	blockTraceOrm := orm.NewBlockTrace(db)
+	assert.NoError(t, blockTraceOrm.InsertWrappedBlocks(traces))
+
+	parentBatch := &bridgeTypes.BatchInfo{
 		Index: 0,
 		Hash:  "0x0000000000000000000000000000000000000000",
 	}
-	batchData := types.NewBatchData(parentBatch, []*types.WrappedBlock{
-		traces[0],
-	}, l2Cfg.BatchProposerConfig.PublicInputConfig)
-
-	// add fake batch
-	dbTx, err := db.Beginx()
+	batchData := bridgeTypes.NewBatchData(parentBatch, []*bridgeTypes.WrappedBlock{traces[0]}, l2Cfg.BatchProposerConfig.PublicInputConfig)
+	blockBatchOrm := orm.NewBlockBatch(db)
+	err = db.Transaction(func(tx *gorm.DB) error {
+		_, dbTxErr := blockBatchOrm.InsertBlockBatchByBatchData(tx, batchData)
+		if dbTxErr != nil {
+			return dbTxErr
+		}
+		return nil
+	})
 	assert.NoError(t, err)
-	assert.NoError(t, db.NewBatchInDBTx(dbTx, batchData))
-	assert.NoError(t, dbTx.Commit())
 
 	// check db status
-	batch, err := db.GetLatestBatch()
+	batch, err := blockBatchOrm.GetLatestBatch()
 	assert.NoError(t, err)
-	assert.Equal(t, batch.OracleStatus, types.GasOraclePending)
-	assert.Equal(t, batch.OracleTxHash.Valid, false)
+	assert.Empty(t, batch.OracleTxHash)
+	assert.Equal(t, types.GasOracleStatus(batch.OracleStatus), types.GasOraclePending)
 
 	// relay gas price
 	l2Relayer.ProcessGasPriceOracle()
-	batch, err = db.GetLatestBatch()
+	batch, err = blockBatchOrm.GetLatestBatch()
 	assert.NoError(t, err)
-	assert.Equal(t, batch.OracleStatus, types.GasOracleImporting)
-	assert.Equal(t, batch.OracleTxHash.Valid, true)
+	assert.NotEmpty(t, batch.OracleTxHash)
+	assert.Equal(t, types.GasOracleStatus(batch.OracleStatus), types.GasOracleImporting)
 }

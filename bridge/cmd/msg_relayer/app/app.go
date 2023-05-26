@@ -11,25 +11,20 @@ import (
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/urfave/cli/v2"
 
-	"scroll-tech/database"
-
 	"scroll-tech/common/metrics"
+	cutils "scroll-tech/common/utils"
 	"scroll-tech/common/version"
 
-	"scroll-tech/bridge/config"
-	"scroll-tech/bridge/relayer"
-
-	cutils "scroll-tech/common/utils"
+	"scroll-tech/bridge/internal/config"
+	"scroll-tech/bridge/internal/controller/relayer"
+	"scroll-tech/bridge/internal/utils"
 )
 
-var (
-	app *cli.App
-)
+var app *cli.App
 
 func init() {
 	// Set up message-relayer app info.
 	app = cli.NewApp()
-
 	app.Action = action
 	app.Name = "message-relayer"
 	app.Usage = "The Scroll Message Relayer"
@@ -37,11 +32,9 @@ func init() {
 	app.Version = version.Version
 	app.Flags = append(app.Flags, cutils.CommonFlags...)
 	app.Commands = []*cli.Command{}
-
 	app.Before = func(ctx *cli.Context) error {
 		return cutils.LogSetup(ctx)
 	}
-
 	// Register `message-relayer-test` app for integration-test.
 	cutils.RegisterSimulation(app, cutils.MessageRelayerApp)
 }
@@ -53,18 +46,16 @@ func action(ctx *cli.Context) error {
 	if err != nil {
 		log.Crit("failed to load config file", "config file", cfgFile, "error", err)
 	}
-	subCtx, cancel := context.WithCancel(ctx.Context)
 
+	subCtx, cancel := context.WithCancel(ctx.Context)
 	// Init db connection
-	var ormFactory database.OrmFactory
-	if ormFactory, err = database.NewOrmFactory(cfg.DBConfig); err != nil {
+	db, err := utils.InitDB(cfg.DBConfig)
+	if err != nil {
 		log.Crit("failed to init db connection", "err", err)
 	}
-
 	defer func() {
 		cancel()
-		err = ormFactory.Close()
-		if err != nil {
+		if err = utils.CloseDB(db); err != nil {
 			log.Error("can not close ormFactory", "error", err)
 		}
 	}()
@@ -79,12 +70,12 @@ func action(ctx *cli.Context) error {
 		return err
 	}
 
-	l1relayer, err := relayer.NewLayer1Relayer(ctx.Context, ormFactory, cfg.L1Config.RelayerConfig)
+	l1relayer, err := relayer.NewLayer1Relayer(ctx.Context, db, cfg.L1Config.RelayerConfig)
 	if err != nil {
 		log.Error("failed to create new l1 relayer", "config file", cfgFile, "error", err)
 		return err
 	}
-	l2relayer, err := relayer.NewLayer2Relayer(ctx.Context, l2client, ormFactory, cfg.L2Config.RelayerConfig)
+	l2relayer, err := relayer.NewLayer2Relayer(ctx.Context, l2client, db, cfg.L2Config.RelayerConfig)
 	if err != nil {
 		log.Error("failed to create new l2 relayer", "config file", cfgFile, "error", err)
 		return err
