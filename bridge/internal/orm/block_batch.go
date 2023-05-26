@@ -2,6 +2,7 @@ package orm
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"time"
 
@@ -9,6 +10,7 @@ import (
 	"gorm.io/gorm"
 
 	"scroll-tech/common/types"
+	"scroll-tech/common/types/message"
 
 	bridgeTypes "scroll-tech/bridge/internal/types"
 )
@@ -17,31 +19,30 @@ import (
 type BlockBatch struct {
 	db *gorm.DB `gorm:"column:-"`
 
-	Hash                string     `json:"hash" gorm:"column:hash"`
-	Index               uint64     `json:"index" gorm:"column:index"`
-	StartBlockNumber    uint64     `json:"start_block_number" gorm:"column:start_block_number"`
-	StartBlockHash      string     `json:"start_block_hash" gorm:"column:start_block_hash"`
-	EndBlockNumber      uint64     `json:"end_block_number" gorm:"column:end_block_number"`
-	EndBlockHash        string     `json:"end_block_hash" gorm:"column:end_block_hash"`
-	ParentHash          string     `json:"parent_hash" gorm:"column:parent_hash"`
-	StateRoot           string     `json:"state_root" gorm:"column:state_root"`
-	TotalTxNum          uint64     `json:"total_tx_num" gorm:"column:total_tx_num"`
-	TotalL1TxNum        uint64     `json:"total_l1_tx_num" gorm:"column:total_l1_tx_num"`
-	TotalL2Gas          uint64     `json:"total_l2_gas" gorm:"column:total_l2_gas"`
-	ProvingStatus       int        `json:"proving_status" gorm:"column:proving_status;default:1"`
-	Proof               []byte     `json:"proof" gorm:"column:proof"`
-	InstanceCommitments []byte     `json:"instance_commitments" gorm:"column:instance_commitments"`
-	ProofTimeSec        uint64     `json:"proof_time_sec" gorm:"column:proof_time_sec;default:0"`
-	RollupStatus        int        `json:"rollup_status" gorm:"column:rollup_status;default:1"`
-	CommitTxHash        string     `json:"commit_tx_hash" gorm:"column:commit_tx_hash;default:NULL"`
-	OracleStatus        int        `json:"oracle_status" gorm:"column:oracle_status;default:1"`
-	OracleTxHash        string     `json:"oracle_tx_hash" gorm:"column:oracle_tx_hash;default:NULL"`
-	FinalizeTxHash      string     `json:"finalize_tx_hash" gorm:"column:finalize_tx_hash;default:NULL"`
-	CreatedAt           time.Time  `json:"created_at" gorm:"column:created_at;default:CURRENT_TIMESTAMP()"`
-	ProverAssignedAt    *time.Time `json:"prover_assigned_at" gorm:"column:prover_assigned_at;default:NULL"`
-	ProvedAt            *time.Time `json:"proved_at" gorm:"column:proved_at;default:NULL"`
-	CommittedAt         *time.Time `json:"committed_at" gorm:"column:committed_at;default:NULL"`
-	FinalizedAt         *time.Time `json:"finalized_at" gorm:"column:finalized_at;default:NULL"`
+	Hash             string     `json:"hash" gorm:"column:hash"`
+	Index            uint64     `json:"index" gorm:"column:index"`
+	StartBlockNumber uint64     `json:"start_block_number" gorm:"column:start_block_number"`
+	StartBlockHash   string     `json:"start_block_hash" gorm:"column:start_block_hash"`
+	EndBlockNumber   uint64     `json:"end_block_number" gorm:"column:end_block_number"`
+	EndBlockHash     string     `json:"end_block_hash" gorm:"column:end_block_hash"`
+	ParentHash       string     `json:"parent_hash" gorm:"column:parent_hash"`
+	StateRoot        string     `json:"state_root" gorm:"column:state_root"`
+	TotalTxNum       uint64     `json:"total_tx_num" gorm:"column:total_tx_num"`
+	TotalL1TxNum     uint64     `json:"total_l1_tx_num" gorm:"column:total_l1_tx_num"`
+	TotalL2Gas       uint64     `json:"total_l2_gas" gorm:"column:total_l2_gas"`
+	ProvingStatus    int        `json:"proving_status" gorm:"column:proving_status;default:1"`
+	Proof            []byte     `json:"proof" gorm:"column:proof"`
+	ProofTimeSec     uint64     `json:"proof_time_sec" gorm:"column:proof_time_sec;default:0"`
+	RollupStatus     int        `json:"rollup_status" gorm:"column:rollup_status;default:1"`
+	CommitTxHash     string     `json:"commit_tx_hash" gorm:"column:commit_tx_hash;default:NULL"`
+	OracleStatus     int        `json:"oracle_status" gorm:"column:oracle_status;default:1"`
+	OracleTxHash     string     `json:"oracle_tx_hash" gorm:"column:oracle_tx_hash;default:NULL"`
+	FinalizeTxHash   string     `json:"finalize_tx_hash" gorm:"column:finalize_tx_hash;default:NULL"`
+	CreatedAt        time.Time  `json:"created_at" gorm:"column:created_at;default:CURRENT_TIMESTAMP()"`
+	ProverAssignedAt *time.Time `json:"prover_assigned_at" gorm:"column:prover_assigned_at;default:NULL"`
+	ProvedAt         *time.Time `json:"proved_at" gorm:"column:proved_at;default:NULL"`
+	CommittedAt      *time.Time `json:"committed_at" gorm:"column:committed_at;default:NULL"`
+	FinalizedAt      *time.Time `json:"finalized_at" gorm:"column:finalized_at;default:NULL"`
 }
 
 // NewBlockBatch create an blockBatchOrm instance
@@ -100,14 +101,20 @@ func (o *BlockBatch) GetBlockBatchesHashByRollupStatus(status types.RollupStatus
 	return hashes, nil
 }
 
-// GetVerifiedProofAndInstanceCommitmentsByHash get verified proof and instance comments by hash
-func (o *BlockBatch) GetVerifiedProofAndInstanceCommitmentsByHash(hash string) ([]byte, []byte, error) {
-	var blockBatch BlockBatch
-	err := o.db.Select("proof, instance_commitments").Where("hash", hash).Where("proving_status", int(types.ProvingTaskVerified)).Find(&blockBatch).Error
+// GetVerifiedProofByHash get verified proof and instance comments by hash
+func (o *BlockBatch) GetVerifiedProofByHash(hash string) (*message.AggProof, error) {
+	var proofBytes []byte
+	err := o.db.Model(&BlockBatch{}).Select("proof").Where("hash", hash).Where("proving_status", int(types.ProvingTaskVerified)).Scan(&proofBytes).Error
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
-	return blockBatch.Proof, blockBatch.InstanceCommitments, nil
+
+	var proof message.AggProof
+	if err := json.Unmarshal(proofBytes, &proof); err != nil {
+		return nil, err
+	}
+
+	return &proof, nil
 }
 
 // GetLatestBatch get the latest batch
@@ -279,12 +286,16 @@ func (o *BlockBatch) UpdateL2GasOracleStatusAndOracleTxHash(ctx context.Context,
 
 // UpdateProofByHash update the block batch proof by hash
 // for unit test
-func (o *BlockBatch) UpdateProofByHash(ctx context.Context, hash string, proof, instanceCommitments []byte, proofTimeSec uint64) error {
+func (o *BlockBatch) UpdateProofByHash(ctx context.Context, hash string, proof *message.AggProof, proofTimeSec uint64) error {
+	proofBytes, err := json.Marshal(proof)
+	if err != nil {
+		return err
+	}
+
 	updateFields := make(map[string]interface{})
-	updateFields["proof"] = proof
-	updateFields["instance_commitments"] = instanceCommitments
+	updateFields["proof"] = proofBytes
 	updateFields["proof_time_sec"] = proofTimeSec
-	err := o.db.WithContext(ctx).Model(&BlockBatch{}).Where("hash", hash).Updates(updateFields).Error
+	err = o.db.WithContext(ctx).Model(&BlockBatch{}).Where("hash", hash).Updates(updateFields).Error
 	if err != nil {
 		log.Error("failed to update proof", "err", err)
 	}
