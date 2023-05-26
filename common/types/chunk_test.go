@@ -43,5 +43,5 @@ func TestChunkEncode(t *testing.T) {
 	}
 	bytes, err = chunk.Encode()
 	assert.NoError(t, err)
-	assert.Equal(t, 61, len(bytes))
+	assert.Equal(t, 299, len(bytes))
 }

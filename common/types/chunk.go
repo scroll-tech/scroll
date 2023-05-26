@@ -1,14 +1,19 @@
 package types
 
 import (
+	"bufio"
+	"bytes"
+	"encoding/binary"
 	"errors"
 	"fmt"
 
 	"github.com/scroll-tech/go-ethereum/common"
+	"github.com/scroll-tech/go-ethereum/common/hexutil"
+	"github.com/scroll-tech/go-ethereum/core/types"
 )
 
 type Chunk struct {
-	Blocks []*WrappedBlock
+	Blocks []*WrappedBlock `json:"blocks"`
 }
 
 // encode chunk
@@ -22,8 +27,11 @@ func (c *Chunk) Encode() ([]byte, error) {
 		return nil, errors.New("number of blocks is 0")
 	}
 
-	bytes := make([]byte, 0)
-	bytes = append(bytes, byte(numBlocks))
+	chunkBytes := make([]byte, 0)
+	chunkBytes = append(chunkBytes, byte(numBlocks))
+
+	var batchTxDataBuf bytes.Buffer
+	batchTxDataWriter := bufio.NewWriter(&batchTxDataBuf)
 
 	for _, block := range c.Blocks {
 		blockBytes, err := block.Encode()
@@ -35,12 +43,37 @@ func (c *Chunk) Encode() ([]byte, error) {
 				return nil, fmt.Errorf("block encoding is not 60 bytes long %x", len(blockBytes))
 		}
 
-		bytes = append(bytes, blockBytes...)
+		chunkBytes = append(chunkBytes, blockBytes...)
+
+		for _, txData := range block.Transactions {
+			data, _ := hexutil.Decode(txData.Data)
+			// right now we only support legacy tx
+			tx := types.NewTx(&types.LegacyTx{
+				Nonce:    txData.Nonce,
+				To:       txData.To,
+				Value:    txData.Value.ToInt(),
+				Gas:      txData.Gas,
+				GasPrice: txData.GasPrice.ToInt(),
+				Data:     data,
+				V:        txData.V.ToInt(),
+				R:        txData.R.ToInt(),
+				S:        txData.S.ToInt(),
+			})
+			rlpTxData, _ := tx.MarshalBinary()
+			var txLen [4]byte
+			binary.BigEndian.PutUint32(txLen[:], uint32(len(rlpTxData)))
+			_, _ = batchTxDataWriter.Write(txLen[:])
+			_, _ = batchTxDataWriter.Write(rlpTxData)
+		}
 	}
 
-	// TODO: add raw rlp encoded L2 Txs
+	if err := batchTxDataWriter.Flush(); err != nil {
+		panic("Buffered I/O flush failed")
+	}
 
-	return bytes, nil
+	chunkBytes = append(chunkBytes, batchTxDataBuf.Bytes()...)
+
+	return chunkBytes, nil
 }
 
 // decode chunk

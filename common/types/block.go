@@ -24,29 +24,19 @@ func(w *WrappedBlock) Encode() ([]byte, error) {
 		return nil, errors.New("block number is not uint64")
 	}
 
-	println("bytes: ", bytes)
-
 	numberBytes := make([]byte, 8)
 	binary.BigEndian.PutUint64(numberBytes, w.Header.Number.Uint64())
 	bytes = append(bytes, numberBytes...)
-
-	println("bytes: ", bytes)
 
 	timeBytes := make([]byte, 8)
 	binary.BigEndian.PutUint64(timeBytes, w.Header.Time)
 	bytes = append(bytes, timeBytes...)
 
-	println("bytes: ", bytes)
-
 	bytes = append(bytes, make([]byte, 32)...) // Currently, baseFee is 0
-
-	println("bytes: ", bytes)
 
 	gasLimitBytes := make([]byte, 8)
 	binary.BigEndian.PutUint64(gasLimitBytes, w.Header.GasLimit)
 	bytes = append(bytes, gasLimitBytes...)
-
-	println("bytes: ", bytes)
 
 	if len(w.Transactions) > math.MaxUint16 {
 		return nil, errors.New("number of transactions exceeds max uint16")
@@ -56,11 +46,7 @@ func(w *WrappedBlock) Encode() ([]byte, error) {
 	binary.BigEndian.PutUint16(numTransactionsBytes, uint16(len(w.Transactions)))
 	bytes = append(bytes, numTransactionsBytes...)
 
-	println("bytes: ", bytes)
-
 	bytes = append(bytes, 0,0) // Currently, numL1Messages is 0
-
-	println("bytes: ", bytes)
 	
 	return bytes, nil
 }
