@@ -79,7 +79,7 @@ type BlockBatchOrm interface {
 	UpdateFinalizeTxHashAndRollupStatus(ctx context.Context, hash string, finalizeTxHash string, status types.RollupStatus) error
 	GetAssignedBatchHashes() ([]string, error)
 	UpdateSkippedBatches() (int64, error)
-	GetBatchCount() (int64, error)
+	GetBatchCount() (uint64, error)
 
 	UpdateL2OracleTxHash(ctx context.Context, hash, txHash string) error
 	UpdateL2GasOracleStatus(ctx context.Context, hash string, status types.GasOracleStatus) error

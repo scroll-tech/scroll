@@ -56,9 +56,13 @@ func (*BlockBatch) TableName() string {
 }
 
 // GetBatchCount get the batch count
-func (o *BlockBatch) GetBatchCount() (int64, error) {
-	var count int64
-	if err := o.db.Model(&BlockBatch{}).Count(&count).Error; err != nil {
+func (o *BlockBatch) GetBatchCount() (uint64, error) {
+	result := o.db.Model(&BlockTrace{}).Select("count(index)").Row()
+	if result.Err() != nil {
+		return 0, result.Err()
+	}
+	var count uint64
+	if err := result.Scan(&count); err != nil {
 		return 0, err
 	}
 	return count, nil

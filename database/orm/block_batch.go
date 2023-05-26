@@ -353,9 +353,9 @@ func (o *blockBatchOrm) GetAssignedBatchHashes() ([]string, error) {
 	return hashes, rows.Close()
 }
 
-func (o *blockBatchOrm) GetBatchCount() (int64, error) {
+func (o *blockBatchOrm) GetBatchCount() (uint64, error) {
 	row := o.db.QueryRow(`select count(*) from block_batch`)
-	var count int64
+	var count uint64
 	if err := row.Scan(&count); err != nil {
 		return -1, err
 	}
