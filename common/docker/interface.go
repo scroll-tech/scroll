@@ -3,6 +3,7 @@ package docker
 import (
 	"context"
 	"math/big"
+	"path/filepath"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/filters"
@@ -10,7 +11,8 @@ import (
 )
 
 var (
-	cli *client.Client
+	cli     *client.Client
+	absPath string
 )
 
 func init() {
@@ -20,6 +22,8 @@ func init() {
 		panic(err)
 	}
 	cli.NegotiateAPIVersion(context.Background())
+
+	absPath, _ = filepath.Abs("./")
 }
 
 // ImgInstance is an img instance.

@@ -27,15 +27,17 @@ type ImgDB struct {
 }
 
 // NewImgDB return postgres db img instance.
-func NewImgDB(image, password, dbName string, port int) ImgInstance {
+func NewImgDB(password string, port int) ImgInstance {
+	image := "postgres"
+	dbName := "test_db"
 	img := &ImgDB{
 		image:    image,
-		name:     fmt.Sprintf("%s-%s_%d", image, dbName, port),
+		name:     fmt.Sprintf("%s-v1-%s_%d", image, dbName, port),
 		password: password,
 		dbName:   dbName,
 		port:     port,
 	}
-	img.cmd = cmd.NewCmd(img.name, img.prepare()...)
+	//img.cmd = cmd.NewCmd(img.name, img.prepare()...)
 	return img
 }
 
@@ -84,10 +86,15 @@ func (i *ImgDB) IsRunning() bool {
 }
 
 func (i *ImgDB) prepare() []string {
-	cmd := []string{"docker", "run", "--rm", "--name", i.name, "-p", fmt.Sprintf("%d:5432", i.port)}
+	cmd := []string{"docker", "run", "--rm", "-v", fmt.Sprintf("%s/pg-init-scripts:/docker-entrypoint-initdb.d", absPath), "--name", i.name, "-p", fmt.Sprintf("%d:5432", i.port)}
+
+	dbNames := i.dbName + "_0"
+	for idx := 1; idx < 10; idx++ {
+		dbNames += fmt.Sprintf(",%s_%d", i.dbName, idx)
+	}
 	envs := []string{
 		"-e", "POSTGRES_PASSWORD=" + i.password,
-		"-e", fmt.Sprintf("POSTGRES_DB=%s", i.dbName),
+		"-e", fmt.Sprintf("POSTGRES_MULTIPLE_DATABASES=%s", dbNames),
 	}
 
 	cmd = append(cmd, envs...)
