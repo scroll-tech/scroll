@@ -13,8 +13,8 @@ create table l2_message
     layer1_hash  VARCHAR DEFAULT NULL,
     proof        TEXT    DEFAULT NULL,
     status       INTEGER  DEFAULT 1,
-    created_time TIMESTAMP(0) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_time TIMESTAMP(0) NOT NULL DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP(0) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP(0) NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 comment
