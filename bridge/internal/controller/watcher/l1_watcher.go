@@ -43,7 +43,7 @@ type L1WatcherClient struct {
 	l1MessageOrm *orm.L1Message
 	l2MessageOrm *orm.L2Message
 	l1BlockOrm   *orm.L1Block
-	l1BatchOrm   *orm.BlockBatch
+	l1BatchOrm   *orm.BlockBatch // TODO(colinlyguo): change to chunk orm.
 
 	// The number of new blocks to wait for a block to be confirmed
 	confirmations rpc.BlockNumber

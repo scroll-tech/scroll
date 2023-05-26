@@ -6,7 +6,6 @@ create table l1_block
     number                  BIGINT          NOT NULL,
     hash                    VARCHAR         NOT NULL,
     header_rlp              TEXT            NOT NULL,
-    base_fee                BIGINT          NOT NULL,
     block_status            INTEGER         DEFAULT 1,
     import_tx_hash          VARCHAR         DEFAULT NULL,
     oracle_status           INTEGER         DEFAULT 1,

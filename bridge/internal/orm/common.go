@@ -12,7 +12,7 @@ import (
 // in all blocks included in the batch.
 func AddBatchInfoToDB(db *gorm.DB, batchData *bridgeTypes.BatchData) error {
 	blockBatch := NewBlockBatch(db)
-	blockTrace := NewBlockTrace(db)
+	blockTx := NewBlockTx(db)
 	err := db.Transaction(func(tx *gorm.DB) error {
 		rowsAffected, dbTxErr := blockBatch.InsertBlockBatchByBatchData(tx, batchData)
 		if dbTxErr != nil {
@@ -28,7 +28,7 @@ func AddBatchInfoToDB(db *gorm.DB, batchData *bridgeTypes.BatchData) error {
 			blockIDs[i] = block.BlockNumber
 		}
 
-		dbTxErr = blockTrace.UpdateBatchHashForL2Blocks(tx, blockIDs, batchData.Hash().Hex())
+		dbTxErr = blockTx.UpdateBatchHashForL2Blocks(tx, blockIDs, batchData.Hash().Hex())
 		if dbTxErr != nil {
 			return dbTxErr
 		}

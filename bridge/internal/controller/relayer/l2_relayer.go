@@ -49,7 +49,7 @@ type Layer2Relayer struct {
 
 	l2Client *ethclient.Client
 
-	blockBatchOrm *orm.BlockBatch
+	blockBatchOrm *orm.BlockContext // TODO(colinlyguo): change to chunk orm.
 	blockTraceOrm *orm.BlockTrace
 	l2MessageOrm  *orm.L2Message
 
@@ -220,7 +220,7 @@ func (r *Layer2Relayer) processSavedEvent(msg *orm.L2Message) error {
 
 	// TODO: rebuild the withdraw trie to generate the merkle proof
 	proof := bridgeAbi.IL1ScrollMessengerL2MessageProof{
-		BatchHash:   common.HexToHash(blockInfo.BatchHash),
+		BatchHash:   common.HexToHash(blockInfo.BatchHash), // change to BatchIndex
 		MerkleProof: make([]byte, 0),
 	}
 	from := common.HexToAddress(msg.Sender)

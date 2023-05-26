@@ -51,7 +51,6 @@ type BatchProposer struct {
 	batchDataBuffer     []*bridgeTypes.BatchData
 	relayer             *relayer.Layer2Relayer
 
-	blockBatchOrm *orm.BlockBatch
 	blockTraceOrm *orm.BlockTrace
 
 	piCfg *bridgeTypes.PublicInputHashConfig
@@ -63,7 +62,6 @@ func NewBatchProposer(ctx context.Context, cfg *config.BatchProposerConfig, rela
 		mutex:                    sync.Mutex{},
 		ctx:                      ctx,
 		db:                       db,
-		blockBatchOrm:            orm.NewBlockBatch(db),
 		blockTraceOrm:            orm.NewBlockTrace(db),
 		batchTimeSec:             cfg.BatchTimeSec,
 		batchGasThreshold:        cfg.BatchGasThreshold,

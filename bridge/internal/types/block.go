@@ -1,6 +1,10 @@
 package types
 
 import (
+	"encoding/binary"
+	"errors"
+	"math"
+
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/core/types"
 )
@@ -13,9 +17,29 @@ type WrappedBlock struct {
 	WithdrawTrieRoot common.Hash              `json:"withdraw_trie_root,omitempty"`
 }
 
-// BatchInfo contains the BlockBatch's main info
-type BatchInfo struct {
-	Index     uint64 `json:"index"`
-	Hash      string `json:"hash"`
-	StateRoot string `json:"state_root"`
+// Encode encodes the WrappedBlock into RollupV2 BlockContext Encoding.
+func (w *WrappedBlock) Encode() ([]byte, error) {
+	bytes := make([]byte, 60)
+
+	if !w.Header.Number.IsUint64() {
+		return nil, errors.New("block number is not uint64")
+	}
+
+	if len(w.Transactions) > math.MaxUint16 {
+		return nil, errors.New("number of transactions exceeds max uint16")
+	}
+
+	binary.BigEndian.PutUint64(bytes[0:], w.Header.Number.Uint64())
+
+	binary.BigEndian.PutUint64(bytes[8:], w.Header.Time)
+
+	// TODO: Currently, baseFee is 0
+
+	binary.BigEndian.PutUint64(bytes[48:], w.Header.GasLimit)
+
+	binary.BigEndian.PutUint16(bytes[56:], uint16(len(w.Transactions)))
+
+	// TODO: set numL1Messages properly
+
+	return bytes, nil
 }
