@@ -16,10 +16,10 @@ type AggTask struct {
 	StartBatchHash  string    `json:"start_batch_hash" gorm:"start_batch_hash"`
 	EndBatchIndex   uint64    `json:"end_batch_index" gorm:"end_batch_index"`
 	EndBatchHash    string    `json:"end_batch_hash" gorm:"end_batch_hash"`
-	ProvingStatus   int       `json:"proving_status" gorm:"proving_status"`
-	Proof           []byte    `json:"proof" gorm:"proof"`
-	CreatedTime     time.Time `json:"created_time" gorm:"created_time"`
-	UpdatedTime     time.Time `json:"updated_time" gorm:"updated_time"`
+	ProvingStatus   int       `json:"proving_status" gorm:"proving_status;default:1"`
+	Proof           []byte    `json:"proof" gorm:"proof;default:NULL"`
+	CreatedTime     time.Time `json:"created_time" gorm:"created_time;default:CURRENT_TIMESTAMP()"`
+	UpdatedTime     time.Time `json:"updated_time" gorm:"updated_time;default:CURRENT_TIMESTAMP()"`
 }
 
 // NewAggTask creates an AggTaskOrm instance

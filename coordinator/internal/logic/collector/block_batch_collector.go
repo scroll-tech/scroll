@@ -142,8 +142,9 @@ func (bbc *BlockBatchCollector) sendTask(ctx context.Context, hash string) (map[
 	rollers := make(map[string]*coordinatorType.RollerStatus)
 	for i := 0; i < int(bbc.cfg.RollerManagerConfig.RollersPerSession); i++ {
 		sendMsg := &message.TaskMsg{
-			ID:   hash,
-			Type: message.BasicProve,
+			ID:          hash,
+			Type:        message.BasicProve,
+			BlockHashes: traces,
 		}
 
 		rollerPubKey, rollerName, sendErr := roller_manager.Manager.SendTask(message.BasicProve, sendMsg)

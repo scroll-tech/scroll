@@ -20,6 +20,11 @@ func NewSessionInfo(db *gorm.DB) *SessionInfo {
 	return &SessionInfo{db: db}
 }
 
+// TableName define the SessionInfo table name
+func (*SessionInfo) TableName() string {
+	return "session_info"
+}
+
 // GetSessionInfosByHashes get the rollers info of session info by hash list
 func (o *SessionInfo) GetSessionInfosByHashes(hashes []string) ([]types.RollersInfo, error) {
 	if len(hashes) == 0 {
