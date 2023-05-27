@@ -64,18 +64,18 @@ func (m *ProofReceiver) HandleZkProof(ctx context.Context, proofMsg *message.Pro
 	proofTime := time.Since(time.Unix(rollerInfo.StartTimestamp, 0))
 	proofTimeSec := uint64(proofTime.Seconds())
 
+	proofByt, err := json.Marshal(proofMsg.Proof)
+	if err != nil {
+		return err
+	}
 	// store proof content
 	switch proofMsg.Type {
 	case message.BasicProve:
-		if dbErr := m.blockBatchOrm.UpdateProofAndHashByHash(ctx, proofMsg.ID, proofMsg.Proof.Proof, proofMsg.Proof.FinalPair, proofTimeSec, types.ProvingTaskProved); dbErr != nil {
+		if dbErr := m.blockBatchOrm.UpdateProofAndHashByHash(ctx, proofMsg.ID, proofByt, proofTimeSec, types.ProvingTaskProved); dbErr != nil {
 			log.Error("failed to store basic proof into db", "error", dbErr)
 			return dbErr
 		}
 	case message.AggregatorProve:
-		proofByt, err := json.Marshal(proofMsg.Proof)
-		if err != nil {
-			return err
-		}
 		if dbErr := m.aggTaskOrm.UpdateProofForAggTask(proofMsg.ID, proofByt); dbErr != nil {
 			log.Error("failed to store aggregator proof into db", "error", dbErr)
 			return dbErr

@@ -111,10 +111,9 @@ func (o *BlockBatch) provingStatus(status types.ProvingStatus) map[string]interf
 }
 
 // UpdateProofAndHashByHash update the block batch proof by hash
-func (o *BlockBatch) UpdateProofAndHashByHash(ctx context.Context, hash string, proof, instanceCommitments []byte, proofTimeSec uint64, status types.ProvingStatus) error {
+func (o *BlockBatch) UpdateProofAndHashByHash(ctx context.Context, hash string, proof []byte, proofTimeSec uint64, status types.ProvingStatus) error {
 	updateFields := o.provingStatus(status)
 	updateFields["proof"] = proof
-	updateFields["instance_commitments"] = instanceCommitments
 	updateFields["proof_time_sec"] = proofTimeSec
 	err := o.db.WithContext(ctx).Model(&BlockBatch{}).Where("hash", hash).Updates(updateFields).Error
 	if err != nil {

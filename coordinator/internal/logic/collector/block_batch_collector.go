@@ -8,7 +8,6 @@ import (
 
 	"github.com/patrickmn/go-cache"
 	"github.com/scroll-tech/go-ethereum/common"
-	gethTypes "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
 	"gorm.io/gorm"
@@ -133,14 +132,9 @@ func (bbc *BlockBatchCollector) sendTask(ctx context.Context, hash string) (map[
 		return nil, err
 	}
 
-	var traces []*gethTypes.BlockTrace
+	var traces []common.Hash
 	for _, blockTraceInfo := range blockTraceInfos {
-		tmpTrace, err := bbc.l2gethClient.GetBlockTraceByHash(ctx, common.HexToHash(blockTraceInfo.Hash))
-		if err != nil {
-			log.Error("could not GetBlockTraceByNumber", "block number", blockTraceInfo.Number, "block hash", blockTraceInfo.Hash, "error", err)
-			return nil, err
-		}
-		traces = append(traces, tmpTrace)
+		traces = append(traces, common.HexToHash(blockTraceInfo.Hash))
 	}
 
 	// Dispatch task to basic rollers.
