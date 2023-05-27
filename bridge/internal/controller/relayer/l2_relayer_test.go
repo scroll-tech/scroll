@@ -18,6 +18,7 @@ import (
 	"gorm.io/gorm"
 
 	"scroll-tech/common/types"
+	"scroll-tech/common/types/message"
 	"scroll-tech/common/utils"
 
 	"scroll-tech/bridge/internal/controller/sender"
@@ -156,9 +157,11 @@ func testL2RelayerProcessCommittedBatches(t *testing.T) {
 	err = blockBatchOrm.UpdateRollupStatus(context.Background(), batchHash, types.RollupCommitted)
 	assert.NoError(t, err)
 
-	tProof := []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31}
-	tInstanceCommitments := []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31}
-	err = blockBatchOrm.UpdateProofByHash(context.Background(), batchHash, tProof, tInstanceCommitments, 100)
+	proof := &message.AggProof{
+		Proof:     []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31},
+		FinalPair: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31},
+	}
+	err = blockBatchOrm.UpdateProofByHash(context.Background(), batchHash, proof, 100)
 	assert.NoError(t, err)
 	err = blockBatchOrm.UpdateProvingStatus(batchHash, types.ProvingTaskVerified)
 	assert.NoError(t, err)
@@ -199,9 +202,11 @@ func testL2RelayerSkipBatches(t *testing.T) {
 		err = blockBatchOrm.UpdateRollupStatus(context.Background(), batchHash, rollupStatus)
 		assert.NoError(t, err)
 
-		tProof := []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31}
-		tInstanceCommitments := []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31}
-		err = blockBatchOrm.UpdateProofByHash(context.Background(), batchHash, tProof, tInstanceCommitments, 100)
+		proof := &message.AggProof{
+			Proof:     []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31},
+			FinalPair: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31},
+		}
+		err = blockBatchOrm.UpdateProofByHash(context.Background(), batchHash, proof, 100)
 		assert.NoError(t, err)
 		err = blockBatchOrm.UpdateProvingStatus(batchHash, provingStatus)
 		assert.NoError(t, err)

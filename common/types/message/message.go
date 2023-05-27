@@ -4,6 +4,8 @@ import (
 	"crypto/ecdsa"
 	"crypto/rand"
 	"encoding/hex"
+	"errors"
+	"fmt"
 
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/common/hexutil"
@@ -205,7 +207,7 @@ type TaskMsg struct {
 	// For decentralization, basic rollers will get block hashes from the coordinator. So that they can refer to the block hashes and fetch traces locally. Only applicable for basic rollers.
 	BlockHashes []common.Hash `json:"block_hashes,omitempty"`
 	// Only applicable for aggregator rollers.
-	SubProofs [][]byte `json:"sub_proofs,omitempty"`
+	SubProofs []*AggProof `json:"sub_proofs,omitempty"`
 }
 
 // ProofDetail is the message received from rollers that contains zk proof, the status of
@@ -236,4 +238,27 @@ type AggProof struct {
 	FinalPair  []byte `json:"final_pair"`
 	Vk         []byte `json:"vk"`
 	BlockCount uint   `json:"block_count"`
+}
+
+// SanityCheck checks whether an AggProof is in a legal format
+// TODO: change to check Proof&Instance when upgrading to snark verifier v0.4
+func (ap *AggProof) SanityCheck() error {
+	if ap == nil {
+		return errors.New("agg_proof is nil")
+	}
+
+	if len(ap.Proof) == 0 {
+		return errors.New("proof not ready")
+	}
+	if len(ap.FinalPair) == 0 {
+		return errors.New("final_pair not ready")
+	}
+	if len(ap.Proof)%32 != 0 {
+		return fmt.Errorf("proof buffer has wrong length, expected: 32, got: %d", len(ap.Proof))
+	}
+	if len(ap.FinalPair)%32 != 0 {
+		return fmt.Errorf("final_pair buffer has wrong length, expected: 32, got: %d", len(ap.FinalPair))
+	}
+
+	return nil
 }
