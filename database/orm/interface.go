@@ -4,11 +4,11 @@ import (
 	"context"
 	"database/sql"
 
-	"scroll-tech/common/types"
-	"scroll-tech/common/types/message"
-
 	"github.com/jmoiron/sqlx"
 	"github.com/scroll-tech/go-ethereum/common"
+
+	"scroll-tech/common/types"
+	"scroll-tech/common/types/message"
 )
 
 // L1BlockOrm l1_block operation interface
@@ -50,7 +50,7 @@ type SessionInfoOrm interface {
 type AggTaskOrm interface {
 	GetAssignedAggTasks() ([]*types.AggTask, error)
 	GetUnassignedAggTasks() ([]*types.AggTask, error)
-	GetSubProofsByAggTaskID(id string) ([][]byte, error)
+	GetSubProofsByAggTaskID(id string) ([]*message.AggProof, error)
 	InsertAggTask(id string, startBatchIndex uint64, startBatchHash string, endBatchIndex uint64, endBatchHash string) error
 	UpdateAggTaskStatus(aggTaskID string, status types.ProvingStatus) error
 	UpdateProofForAggTask(aggTaskID string, proof *message.AggProof) error
@@ -60,8 +60,8 @@ type AggTaskOrm interface {
 type BlockBatchOrm interface {
 	GetBlockBatches(fields map[string]interface{}, args ...string) ([]*types.BlockBatch, error)
 	GetProvingStatusByHash(hash string) (types.ProvingStatus, error)
-	GetVerifiedProofAndInstanceCommitmentsByHash(hash string) ([]byte, []byte, error)
-	UpdateProofByHash(ctx context.Context, hash string, proof, instanceCommitments []byte, proofTimeSec uint64) error
+	GetVerifiedProofByHash(hash string) (*message.AggProof, error)
+	UpdateProofByHash(ctx context.Context, hash string, proof *message.AggProof, proofTimeSec uint64) error
 	UpdateProvingStatus(hash string, status types.ProvingStatus) error
 	ResetProvingStatusFor(before types.ProvingStatus) error
 	NewBatchInDBTx(dbTx *sqlx.Tx, batchData *types.BatchData) error

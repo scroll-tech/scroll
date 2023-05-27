@@ -457,27 +457,20 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 			}
 		}()
 
-		proofBuffer, icBuffer, err := r.blockBatchOrm.GetVerifiedProofAndInstanceCommitmentsByHash(hash)
+		aggProof, err := r.blockBatchOrm.GetVerifiedProofByHash(hash)
 		if err != nil {
-			log.Warn("fetch get proof by hash failed", "hash", hash, "err", err)
-			return
-		}
-		if proofBuffer == nil || icBuffer == nil {
-			log.Warn("proof or instance not ready", "hash", hash)
-			return
-		}
-		if len(proofBuffer)%32 != 0 {
-			log.Error("proof buffer has wrong length", "hash", hash, "length", len(proofBuffer))
-			return
-		}
-		if len(icBuffer)%32 != 0 {
-			log.Warn("instance buffer has wrong length", "hash", hash, "length", len(icBuffer))
+			log.Warn("get verified proof by hash failed", "hash", hash, "err", err)
 			return
 		}
 
-		proof := utils.BufferToUint256Le(proofBuffer)
-		instance := utils.BufferToUint256Le(icBuffer)
-		data, err := r.l1RollupABI.Pack("finalizeBatchWithProof", common.HexToHash(hash), proof, instance)
+		if err = aggProof.SanityCheck(); err != nil {
+			log.Warn("agg_proof sanity check fails", "hash", hash, "error", err)
+			return
+		}
+
+		proof := utils.BufferToUint256Le(aggProof.Proof)
+		finalPair := utils.BufferToUint256Le(aggProof.FinalPair)
+		data, err := r.l1RollupABI.Pack("finalizeBatchWithProof", common.HexToHash(hash), proof, finalPair)
 		if err != nil {
 			log.Error("Pack finalizeBatchWithProof failed", "err", err)
 			return

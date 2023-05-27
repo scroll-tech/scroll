@@ -16,7 +16,6 @@ create table block_batch
     total_l2_gas            BIGINT          NOT NULL,
     proving_status          INTEGER         DEFAULT 1,
     proof                   BYTEA           DEFAULT NULL,
-    instance_commitments    BYTEA           DEFAULT NULL,
     proof_time_sec          INTEGER         DEFAULT 0,
     rollup_status           INTEGER         DEFAULT 1,
     commit_tx_hash          VARCHAR         DEFAULT NULL,
