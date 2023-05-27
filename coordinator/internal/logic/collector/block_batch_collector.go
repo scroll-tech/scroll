@@ -17,6 +17,7 @@ import (
 	"scroll-tech/common/types/message"
 
 	"scroll-tech/coordinator/internal/config"
+	"scroll-tech/coordinator/internal/logic/roller_manager"
 	"scroll-tech/coordinator/internal/orm"
 	coordinatorType "scroll-tech/coordinator/internal/types"
 )
@@ -28,7 +29,7 @@ type BlockBatchCollector struct {
 	sessionInfoOrm *orm.SessionInfo
 	l2gethClient   *ethclient.Client
 
-	cfg   *config.RollerManagerConfig
+	cfg   *config.Config
 	cache *cache.Cache
 }
 
@@ -85,7 +86,7 @@ func (bbc *BlockBatchCollector) Collect(ctx context.Context) error {
 	blockBatch := blockBatches[0]
 	log.Info("start basic proof generation session", "id", blockBatch.Hash)
 
-	if roller.TaskManager.GetNumberOfIdleRollers(message.BasicProve) == 0 {
+	if roller_manager.Manager.GetNumberOfIdleRollers(message.BasicProve) == 0 {
 		err = fmt.Errorf("no idle basic roller when starting proof generation session")
 		log.Error(err.Error())
 		return err
@@ -145,13 +146,13 @@ func (bbc *BlockBatchCollector) sendTask(ctx context.Context, hash string) (map[
 	// Dispatch task to basic rollers.
 	var err1 error
 	rollers := make(map[string]*coordinatorType.RollerStatus)
-	for i := 0; i < int(bbc.cfg.RollersPerSession); i++ {
+	for i := 0; i < int(bbc.cfg.RollerManagerConfig.RollersPerSession); i++ {
 		sendMsg := &message.TaskMsg{
 			ID:   hash,
 			Type: message.BasicProve,
 		}
 
-		rollerPubKey, rollerName, sendErr := roller.TaskManager.SendTask(message.BasicProve, sendMsg)
+		rollerPubKey, rollerName, sendErr := roller_manager.Manager.SendTask(message.BasicProve, sendMsg)
 		if err != nil {
 			err = sendErr
 			continue
@@ -171,7 +172,7 @@ func (bbc *BlockBatchCollector) sendTask(ctx context.Context, hash string) (map[
 			Attempts:       1,
 		}
 
-		roller.TaskManager.AddRollerInfo(rollersInfo)
+		roller_manager.Manager.AddRollerInfo(rollersInfo)
 
 		rollers[rollerPubKey] = rollerStatus
 	}

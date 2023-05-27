@@ -8,6 +8,7 @@ import (
 	"os/signal"
 	"scroll-tech/coordinator/internal/controller/api"
 	"scroll-tech/coordinator/internal/controller/cron"
+	"scroll-tech/coordinator/internal/logic/roller_manager"
 
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
@@ -72,6 +73,8 @@ func action(ctx *cli.Context) error {
 	}
 
 	proofCollector := cron.NewCollector(subCtx, db, client, cfg)
+
+	roller_manager.InitRollerManager()
 
 	defer func() {
 		proofCollector.Stop()
