@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"gorm.io/gorm"
 	"time"
 
 	"github.com/patrickmn/go-cache"
@@ -22,9 +23,11 @@ type RollerController struct {
 	taskWorker    *proof.TaskWorker
 }
 
-func NewRoller(cfg *config.Config) *RollerController {
+func NewRoller(cfg *config.Config, db *gorm.DB) *RollerController {
 	return &RollerController{
-		tokenCache: cache.New(time.Duration(cfg.RollerManagerConfig.TokenTimeToLive)*time.Second, 1*time.Hour),
+		proofReceiver: proof.NewProofReceiver(cfg, db),
+		taskWorker:    proof.NewTaskWorker(),
+		tokenCache:    cache.New(time.Duration(cfg.RollerManagerConfig.TokenTimeToLive)*time.Second, 1*time.Hour),
 	}
 }
 

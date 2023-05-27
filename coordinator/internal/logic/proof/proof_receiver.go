@@ -35,10 +35,10 @@ type ProofReceiver struct {
 	sessionInfoOrm *orm.SessionInfo
 
 	verifier verifier.Verifier
-	cfg      *config.RollerManagerConfig
+	cfg      *config.Config
 }
 
-func NewProofReceiver(cfg *config.RollerManagerConfig, db *gorm.DB) *ProofReceiver {
+func NewProofReceiver(cfg *config.Config, db *gorm.DB) *ProofReceiver {
 	return &ProofReceiver{
 		cfg:            cfg,
 		blockBatchOrm:  orm.NewBlockBatch(db),

@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/scroll-tech/go-ethereum/rpc"
+	"gorm.io/gorm"
 
 	"scroll-tech/common/types/message"
 
@@ -26,11 +27,11 @@ type RollerDebugAPI interface {
 }
 
 // APIs register api for coordinator
-func APIs(cfg *config.Config) []rpc.API {
+func APIs(cfg *config.Config, db *gorm.DB) []rpc.API {
 	return []rpc.API{
 		{
 			Namespace: "roller",
-			Service:   RollerAPI(NewRoller(cfg)),
+			Service:   RollerAPI(NewRoller(cfg, db)),
 			Public:    true,
 		},
 		//{

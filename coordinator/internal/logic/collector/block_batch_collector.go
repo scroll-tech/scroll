@@ -28,12 +28,14 @@ type BlockBatchCollector struct {
 	sessionInfoOrm *orm.SessionInfo
 	l2gethClient   *ethclient.Client
 
+	ctx   context.Context
 	cfg   *config.Config
 	cache *cache.Cache
 }
 
 func NewBlockBatchCollector(ctx context.Context, cfg *config.Config, db *gorm.DB, l2gethClient *ethclient.Client) *BlockBatchCollector {
 	bbc := &BlockBatchCollector{
+		ctx:           ctx,
 		cfg:           cfg,
 		blockBatchOrm: orm.NewBlockBatch(db),
 		blockTraceOrm: orm.NewBlockTrace(db),

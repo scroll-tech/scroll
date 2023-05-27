@@ -18,6 +18,10 @@ var coordinatorRollersDisconnectsTotalCounter = gethMetrics.NewRegisteredCounter
 type TaskWorker struct {
 }
 
+func NewTaskWorker() *TaskWorker {
+	return &TaskWorker{}
+}
+
 func (t *TaskWorker) AllocTaskWorker(ctx context.Context, authMsg *message.AuthMsg) (*rpc.Subscription, error) {
 	notifier, supported := rpc.NotifierFromContext(ctx)
 	if !supported {
