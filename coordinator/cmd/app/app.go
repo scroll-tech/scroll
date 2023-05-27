@@ -6,9 +6,6 @@ import (
 	_ "net/http/pprof"
 	"os"
 	"os/signal"
-	"scroll-tech/coordinator/internal/controller/api"
-	"scroll-tech/coordinator/internal/controller/cron"
-	"scroll-tech/coordinator/internal/logic/roller_manager"
 
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
@@ -19,6 +16,9 @@ import (
 	"scroll-tech/common/version"
 
 	"scroll-tech/coordinator/internal/config"
+	"scroll-tech/coordinator/internal/controller/api"
+	"scroll-tech/coordinator/internal/controller/cron"
+	"scroll-tech/coordinator/internal/logic/roller_manager"
 	coordinatorUtils "scroll-tech/coordinator/internal/utils"
 )
 
