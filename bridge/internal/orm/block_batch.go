@@ -103,9 +103,13 @@ func (o *BlockBatch) GetBlockBatchesHashByRollupStatus(status types.RollupStatus
 
 // GetVerifiedProofByHash get verified proof and instance comments by hash
 func (o *BlockBatch) GetVerifiedProofByHash(hash string) (*message.AggProof, error) {
+	result := o.db.Model(&BlockBatch{}).Select("proof").Where("hash", hash).Where("proving_status", int(types.ProvingTaskVerified)).Row()
+	if result.Err() != nil {
+		return nil, result.Err()
+	}
+
 	var proofBytes []byte
-	err := o.db.Model(&BlockBatch{}).Select("proof").Where("hash", hash).Where("proving_status", int(types.ProvingTaskVerified)).Scan(&proofBytes).Error
-	if err != nil {
+	if err := result.Scan(&proofBytes); err != nil {
 		return nil, err
 	}
 
