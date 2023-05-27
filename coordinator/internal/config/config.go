@@ -6,8 +6,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-
-	db_config "scroll-tech/database"
 )
 
 const (
@@ -44,7 +42,7 @@ type L2Config struct {
 // Config load configuration items.
 type Config struct {
 	RollerManagerConfig *RollerManagerConfig `json:"roller_manager_config"`
-	DBConfig            *db_config.DBConfig  `json:"db_config"`
+	DBConfig            *DBConfig            `json:"db_config"`
 	L2Config            *L2Config            `json:"l2_config"`
 }
 

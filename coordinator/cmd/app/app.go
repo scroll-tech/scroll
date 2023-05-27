@@ -3,22 +3,22 @@ package app
 import (
 	"context"
 	"fmt"
+	_ "net/http/pprof"
 	"os"
 	"os/signal"
+	"scroll-tech/coordinator/internal/controller/api"
+	"scroll-tech/coordinator/internal/controller/cron"
 
 	"github.com/scroll-tech/go-ethereum/ethclient"
-
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/urfave/cli/v2"
-
-	"scroll-tech/database"
 
 	"scroll-tech/common/metrics"
 	"scroll-tech/common/utils"
 	"scroll-tech/common/version"
 
-	"scroll-tech/coordinator"
-	"scroll-tech/coordinator/config"
+	"scroll-tech/coordinator/internal/config"
+	coordinatorUtils "scroll-tech/coordinator/internal/utils"
 )
 
 var (
@@ -53,37 +53,35 @@ func action(ctx *cli.Context) error {
 
 	// Start metrics server.
 	metrics.Serve(context.Background(), ctx)
-
-	// init db connection
-	var ormFactory database.OrmFactory
-	if ormFactory, err = database.NewOrmFactory(cfg.DBConfig); err != nil {
+	subCtx, cancel := context.WithCancel(ctx.Context)
+	// Init db connection
+	db, err := coordinatorUtils.InitDB(cfg.DBConfig)
+	if err != nil {
 		log.Crit("failed to init db connection", "err", err)
 	}
+	defer func() {
+		cancel()
+		if err = coordinatorUtils.CloseDB(db); err != nil {
+			log.Error("can not close ormFactory", "error", err)
+		}
+	}()
 
 	client, err := ethclient.Dial(cfg.L2Config.Endpoint)
 	if err != nil {
 		return err
 	}
 
-	// Initialize all coordinator modules.
-	rollerManager, err := coordinator.New(ctx.Context, cfg.RollerManagerConfig, ormFactory, client)
-	if err != nil {
-		return err
-	}
+	proofCollector := cron.NewCollector(subCtx, db, client, cfg)
+
 	defer func() {
-		rollerManager.Stop()
-		err = ormFactory.Close()
-		if err != nil {
+		proofCollector.Stop()
+		cancel()
+		if err = coordinatorUtils.CloseDB(db); err != nil {
 			log.Error("can not close ormFactory", "error", err)
 		}
 	}()
 
-	// Start all modules.
-	if err = rollerManager.Start(); err != nil {
-		log.Crit("couldn't start roller manager", "error", err)
-	}
-
-	apis := rollerManager.APIs()
+	apis := api.APIs(cfg)
 	// Register api and start rpc service.
 	if ctx.Bool(httpEnabledFlag.Name) {
 		handler, addr, err := utils.StartHTTPEndpoint(
