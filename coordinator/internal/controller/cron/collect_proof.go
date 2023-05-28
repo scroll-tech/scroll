@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
 	"gorm.io/gorm"
 
@@ -23,14 +22,14 @@ type Collector struct {
 }
 
 // NewCollector create a collector to cron collect the data to send to prover
-func NewCollector(ctx context.Context, db *gorm.DB, l2gethClient *ethclient.Client, cfg *config.Config) *Collector {
+func NewCollector(ctx context.Context, db *gorm.DB, cfg *config.Config) *Collector {
 	c := &Collector{
 		cfg:      cfg,
 		ctx:      ctx,
 		stopChan: make(chan struct{}),
 	}
 
-	c.collectors = append(c.collectors, collector.NewBlockBatchCollector(ctx, cfg, db, l2gethClient))
+	c.collectors = append(c.collectors, collector.NewBlockBatchCollector(cfg, db))
 	//c.collectors = append(c.collectors, collector.NewAggTaskCollector(ctx))
 
 	go c.run()

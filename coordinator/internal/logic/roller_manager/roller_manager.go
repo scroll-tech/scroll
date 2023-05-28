@@ -97,7 +97,6 @@ func (r *rollerManager) SendTask(rollerType message.ProveType, msg *message.Task
 
 	select {
 	case tmpRoller.taskChan <- msg:
-		tmpRoller.TaskIDs.Set(msg.ID, struct{}{})
 	default:
 		err := fmt.Errorf("roller channel is full, rollerName:%s, publicKey:%s", tmpRoller.Name, tmpRoller.PublicKey)
 		return "", "", err

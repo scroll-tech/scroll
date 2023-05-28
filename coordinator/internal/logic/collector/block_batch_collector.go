@@ -2,13 +2,11 @@ package collector
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"time"
 
 	"github.com/patrickmn/go-cache"
 	"github.com/scroll-tech/go-ethereum/common"
-	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
 	"gorm.io/gorm"
 
@@ -23,50 +21,23 @@ import (
 
 // BlockBatchCollector the block batch collector
 type BlockBatchCollector struct {
-	blockBatchOrm  *orm.BlockBatch
-	blockTraceOrm  *orm.BlockTrace
-	sessionInfoOrm *orm.SessionInfo
-	l2gethClient   *ethclient.Client
-
-	ctx   context.Context
-	cfg   *config.Config
-	cache *cache.Cache
+	BasicCollector
 }
 
-func NewBlockBatchCollector(ctx context.Context, cfg *config.Config, db *gorm.DB, l2gethClient *ethclient.Client) *BlockBatchCollector {
+func NewBlockBatchCollector(cfg *config.Config, db *gorm.DB) *BlockBatchCollector {
 	bbc := &BlockBatchCollector{
-		ctx:           ctx,
-		cfg:           cfg,
-		blockBatchOrm: orm.NewBlockBatch(db),
-		blockTraceOrm: orm.NewBlockTrace(db),
-		l2gethClient:  l2gethClient,
-		cache:         cache.New(10*time.Minute, time.Hour),
+		BasicCollector: BasicCollector{
+			cache:         cache.New(10*time.Minute, time.Hour),
+			cfg:           cfg,
+			blockBatchOrm: orm.NewBlockBatch(db),
+			blockTraceOrm: orm.NewBlockTrace(db),
+		},
 	}
-
-	go bbc.Recover()
-
 	return bbc
 }
 
 func (bbc *BlockBatchCollector) Name() string {
 	return BlockBatchCollectorName
-}
-
-func (bbc *BlockBatchCollector) Recover() {
-	defer func() {
-		if err := recover(); err != nil {
-			nerr := fmt.Errorf("blockBatchCollector Recover panic err:%w", err)
-			log.Warn(nerr.Error())
-		}
-	}()
-
-	ticker := time.NewTicker(10 * time.Second)
-	for {
-		select {
-		case <-ticker.C:
-			// deal the times reach
-		}
-	}
 }
 
 func (bbc *BlockBatchCollector) Collect(ctx context.Context) error {
@@ -80,12 +51,16 @@ func (bbc *BlockBatchCollector) Collect(ctx context.Context) error {
 	}
 
 	if len(blockBatches) != 1 {
-		err = errors.New("get unassigned basic proving task len not 1")
-		log.Error(err.Error())
+		log.Error("get unassigned basic proving task len not 1")
 		return err
 	}
+
 	blockBatch := blockBatches[0]
 	log.Info("start basic proof generation session", "id", blockBatch.Hash)
+
+	if !bbc.checkAttempts(blockBatch.Hash) {
+		return fmt.Errorf("the session id:%s check attempts error", blockBatch.Hash)
+	}
 
 	if roller_manager.Manager.GetNumberOfIdleRollers(message.BasicProve) == 0 {
 		err = fmt.Errorf("no idle basic roller when starting proof generation session")
@@ -93,7 +68,7 @@ func (bbc *BlockBatchCollector) Collect(ctx context.Context) error {
 		return err
 	}
 
-	rollers, err := bbc.sendTask(ctx, blockBatch.Hash)
+	rollers, err := bbc.sendTask(blockBatch.Hash)
 	if err != nil {
 		log.Error("send task error, id", blockBatch.Hash)
 		return err
@@ -111,7 +86,6 @@ func (bbc *BlockBatchCollector) Collect(ctx context.Context) error {
 		Rollers:        rollers,
 		ProveType:      message.BasicProve,
 		StartTimestamp: time.Now().Unix(),
-		Attempts:       1,
 	}
 
 	for _, roller := range info.Rollers {
@@ -127,7 +101,7 @@ func (bbc *BlockBatchCollector) Collect(ctx context.Context) error {
 	return nil
 }
 
-func (bbc *BlockBatchCollector) sendTask(ctx context.Context, hash string) (map[string]*coordinatorType.RollerStatus, error) {
+func (bbc *BlockBatchCollector) sendTask(hash string) (map[string]*coordinatorType.RollerStatus, error) {
 	blockTraceInfos, err := bbc.blockTraceOrm.GetL2BlockInfos(map[string]interface{}{"batch_hash": hash}, nil, 0)
 	if err != nil {
 		log.Error("could not GetBlockInfos batch_hash:%s err:%v", hash, err)
@@ -160,18 +134,23 @@ func (bbc *BlockBatchCollector) sendTask(ctx context.Context, hash string) (map[
 			Name:      rollerName,
 			Status:    types.RollerAssigned,
 		}
-
-		rollersInfo := &coordinatorType.RollersInfo{
-			ID:             hash,
-			Rollers:        rollers,
-			ProveType:      message.BasicProve,
-			StartTimestamp: time.Now().Unix(),
-			Attempts:       1,
-		}
-
-		roller_manager.Manager.AddRollerInfo(rollersInfo)
-
 		rollers[rollerPubKey] = rollerStatus
+
+		if val, ok := bbc.cache.Get(hash); ok {
+			if hashTaskPk, isHashTaskPk := val.(*HashTaskPublicKey); !isHashTaskPk {
+				hashTaskPk.PubKey = rollerPubKey
+				bbc.cache.SetDefault(hash, hashTaskPk)
+			}
+		}
 	}
+
+	rollersInfo := &coordinatorType.RollersInfo{
+		ID:             hash,
+		Rollers:        rollers,
+		ProveType:      message.BasicProve,
+		StartTimestamp: time.Now().Unix(),
+	}
+	roller_manager.Manager.AddRollerInfo(rollersInfo)
+
 	return rollers, err1
 }

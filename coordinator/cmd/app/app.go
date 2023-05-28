@@ -7,7 +7,6 @@ import (
 	"os"
 	"os/signal"
 
-	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/urfave/cli/v2"
 
@@ -67,12 +66,12 @@ func action(ctx *cli.Context) error {
 		}
 	}()
 
-	client, err := ethclient.Dial(cfg.L2Config.Endpoint)
-	if err != nil {
-		return err
-	}
+	//client, err := ethclient.Dial(cfg.L2Config.Endpoint)
+	//if err != nil {
+	//	return err
+	//}
 
-	proofCollector := cron.NewCollector(subCtx, db, client, cfg)
+	proofCollector := cron.NewCollector(subCtx, db, cfg)
 
 	roller_manager.InitRollerManager()
 
