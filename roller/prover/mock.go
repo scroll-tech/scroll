@@ -3,11 +3,12 @@
 package prover
 
 import (
-	"github.com/scroll-tech/go-ethereum/common"
 	"math/big"
-	"scroll-tech/common/types/message"
 
+	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/core/types"
+
+	"scroll-tech/common/types/message"
 
 	"scroll-tech/roller/config"
 )
