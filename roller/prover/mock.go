@@ -22,9 +22,11 @@ func NewProver(cfg *config.ProverConfig) (*Prover, error) {
 
 // Prove call rust ffi to generate proof, if first failed, try again.
 func (p *Prover) Prove(taskID string, traces []*types.BlockTrace) (*message.AggProof, error) {
-	return &message.AggProof{
+	aggProof := &message.AggProof{
 		Proof:     []byte{},
 		Instance:  []byte{},
 		FinalPair: []byte{},
-	}, nil
+	}
+	aggProof.MockProof()
+	return aggProof, nil
 }
