@@ -1,4 +1,4 @@
-.PHONY: lint docker clean coordinator
+.PHONY: lint docker clean coordinator mock_coordinator
 
 IMAGE_NAME=coordinator
 IMAGE_VERSION=latest
