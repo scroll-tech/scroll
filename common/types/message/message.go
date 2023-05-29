@@ -6,8 +6,6 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"math/big"
-
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/common/hexutil"
 	"github.com/scroll-tech/go-ethereum/crypto"
@@ -239,16 +237,6 @@ type AggProof struct {
 	FinalPair  []byte `json:"final_pair"`
 	Vk         []byte `json:"vk"`
 	BlockCount uint   `json:"block_count"`
-}
-
-// MockProof let's mock agg proof content.
-func (ap *AggProof) MockProof() {
-	if ap == nil {
-		return
-	}
-	_empty := common.BigToHash(big.NewInt(0))
-	ap.Proof = _empty[:]
-	ap.FinalPair = _empty[:]
 }
 
 // SanityCheck checks whether an AggProof is in a legal format
