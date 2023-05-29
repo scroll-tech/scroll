@@ -30,7 +30,7 @@ func NewCollector(ctx context.Context, db *gorm.DB, cfg *config.Config) *Collect
 	}
 
 	c.collectors = append(c.collectors, collector.NewBlockBatchCollector(cfg, db))
-	//c.collectors = append(c.collectors, collector.NewAggTaskCollector(ctx))
+	c.collectors = append(c.collectors, collector.NewAggTaskCollector(cfg, db))
 
 	go c.run()
 

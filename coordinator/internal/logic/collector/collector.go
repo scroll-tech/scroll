@@ -2,17 +2,21 @@ package collector
 
 import (
 	"context"
+	"time"
 
 	"github.com/patrickmn/go-cache"
+	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/log"
 	gethMetrics "github.com/scroll-tech/go-ethereum/metrics"
 
 	"scroll-tech/common/metrics"
 	"scroll-tech/common/types"
+	"scroll-tech/common/types/message"
 
 	"scroll-tech/coordinator/internal/config"
 	"scroll-tech/coordinator/internal/logic/roller_manager"
 	"scroll-tech/coordinator/internal/orm"
+	coordinatorType "scroll-tech/coordinator/internal/types"
 )
 
 const (
@@ -33,16 +37,17 @@ type HashTaskPublicKey struct {
 	PubKey  string
 }
 
-type BasicCollector struct {
+type BaseCollector struct {
 	cfg   *config.Config
 	cache *cache.Cache
 
+	aggTaskOrm     *orm.AggTask
 	blockBatchOrm  *orm.BlockBatch
 	blockTraceOrm  *orm.BlockTrace
 	sessionInfoOrm *orm.SessionInfo
 }
 
-func (b *BasicCollector) checkAttempts(hash string) bool {
+func (b *BaseCollector) checkAttempts(hash string) bool {
 	val, ok := b.cache.Get(hash)
 	if !ok {
 		hashPk := &HashTaskPublicKey{
@@ -75,4 +80,49 @@ func (b *BasicCollector) checkAttempts(hash string) bool {
 	hashTaskPk.Attempt += 1
 	b.cache.SetDefault(hash, hashTaskPk)
 	return true
+}
+
+func (b *BaseCollector) sendTask(proveType message.ProveType, taskId string, traces []common.Hash, subProofs []*message.AggProof) (map[string]*coordinatorType.RollerStatus, error) {
+	var err1 error
+	rollers := make(map[string]*coordinatorType.RollerStatus)
+	for i := 0; i < int(b.cfg.RollerManagerConfig.RollersPerSession); i++ {
+		sendMsg := &message.TaskMsg{
+			ID:          taskId,
+			Type:        proveType,
+			BlockHashes: traces,
+			SubProofs:   subProofs,
+		}
+
+		rollerPubKey, rollerName, sendErr := roller_manager.Manager.SendTask(proveType, sendMsg)
+		if sendErr != nil {
+			err1 = sendErr
+			continue
+		}
+
+		roller_manager.Manager.UpdateMetricRollerProofsLastAssignedTimestampGauge(rollerPubKey)
+
+		rollerStatus := &coordinatorType.RollerStatus{
+			PublicKey: rollerPubKey,
+			Name:      rollerName,
+			Status:    types.RollerAssigned,
+		}
+		rollers[rollerPubKey] = rollerStatus
+
+		if val, ok := b.cache.Get(taskId); ok {
+			if hashTaskPk, isHashTaskPk := val.(*HashTaskPublicKey); !isHashTaskPk {
+				hashTaskPk.PubKey = rollerPubKey
+				b.cache.SetDefault(taskId, hashTaskPk)
+			}
+		}
+	}
+
+	rollersInfo := &coordinatorType.RollersInfo{
+		ID:             taskId,
+		Rollers:        rollers,
+		ProveType:      message.BasicProve,
+		StartTimestamp: time.Now().Unix(),
+	}
+	roller_manager.Manager.AddRollerInfo(rollersInfo)
+
+	return rollers, err1
 }

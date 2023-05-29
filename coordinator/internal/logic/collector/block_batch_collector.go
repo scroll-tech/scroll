@@ -21,16 +21,17 @@ import (
 
 // BlockBatchCollector the block batch collector
 type BlockBatchCollector struct {
-	BasicCollector
+	BaseCollector
 }
 
 func NewBlockBatchCollector(cfg *config.Config, db *gorm.DB) *BlockBatchCollector {
 	bbc := &BlockBatchCollector{
-		BasicCollector: BasicCollector{
-			cache:         cache.New(10*time.Minute, time.Hour),
-			cfg:           cfg,
-			blockBatchOrm: orm.NewBlockBatch(db),
-			blockTraceOrm: orm.NewBlockTrace(db),
+		BaseCollector: BaseCollector{
+			cache:          cache.New(10*time.Minute, time.Hour),
+			cfg:            cfg,
+			blockBatchOrm:  orm.NewBlockBatch(db),
+			blockTraceOrm:  orm.NewBlockTrace(db),
+			sessionInfoOrm: orm.NewSessionInfo(db),
 		},
 	}
 	return bbc
@@ -45,8 +46,7 @@ func (bbc *BlockBatchCollector) Collect(ctx context.Context) error {
 	orderByList := []string{"index ASC"}
 	blockBatches, err := bbc.blockBatchOrm.GetBlockBatches(whereField, orderByList, 1)
 	if err != nil {
-		err = fmt.Errorf("failed to unassigned basic proving tasks err:%w", err)
-		log.Error(err.Error())
+		log.Error("failed to unassigned basic proving tasks err:", err)
 		return err
 	}
 
@@ -63,7 +63,7 @@ func (bbc *BlockBatchCollector) Collect(ctx context.Context) error {
 	}
 
 	if roller_manager.Manager.GetNumberOfIdleRollers(message.BasicProve) == 0 {
-		err = fmt.Errorf("no idle basic roller when starting proof generation session")
+		err = fmt.Errorf("no idle basic roller when starting proof generation session, id:%s", blockBatch.Hash)
 		log.Error(err.Error())
 		return err
 	}
@@ -113,44 +113,5 @@ func (bbc *BlockBatchCollector) sendTask(hash string) (map[string]*coordinatorTy
 		traces = append(traces, common.HexToHash(blockTraceInfo.Hash))
 	}
 
-	// Dispatch task to basic rollers.
-	var err1 error
-	rollers := make(map[string]*coordinatorType.RollerStatus)
-	for i := 0; i < int(bbc.cfg.RollerManagerConfig.RollersPerSession); i++ {
-		sendMsg := &message.TaskMsg{
-			ID:          hash,
-			Type:        message.BasicProve,
-			BlockHashes: traces,
-		}
-
-		rollerPubKey, rollerName, sendErr := roller_manager.Manager.SendTask(message.BasicProve, sendMsg)
-		if err != nil {
-			err = sendErr
-			continue
-		}
-
-		rollerStatus := &coordinatorType.RollerStatus{
-			PublicKey: rollerPubKey,
-			Name:      rollerName,
-			Status:    types.RollerAssigned,
-		}
-		rollers[rollerPubKey] = rollerStatus
-
-		if val, ok := bbc.cache.Get(hash); ok {
-			if hashTaskPk, isHashTaskPk := val.(*HashTaskPublicKey); !isHashTaskPk {
-				hashTaskPk.PubKey = rollerPubKey
-				bbc.cache.SetDefault(hash, hashTaskPk)
-			}
-		}
-	}
-
-	rollersInfo := &coordinatorType.RollersInfo{
-		ID:             hash,
-		Rollers:        rollers,
-		ProveType:      message.BasicProve,
-		StartTimestamp: time.Now().Unix(),
-	}
-	roller_manager.Manager.AddRollerInfo(rollersInfo)
-
-	return rollers, err1
+	return bbc.BaseCollector.sendTask(message.BasicProve, hash, traces, nil)
 }

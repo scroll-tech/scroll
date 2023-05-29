@@ -32,6 +32,28 @@ func (*AggTask) TableName() string {
 	return "agg_task"
 }
 
+// GetAggTasks get the agg tasks by specified fields
+func (a *AggTask) GetAggTasks(fields map[string]interface{}, orderByList []string, limit int) ([]AggTask, error) {
+	var aggTasks []AggTask
+	db := a.db
+	for k, v := range fields {
+		db = db.Where(k, v)
+	}
+
+	for _, v := range orderByList {
+		db = db.Order(v)
+	}
+
+	if limit != 0 {
+		db = db.Limit(limit)
+	}
+
+	if err := db.Find(&aggTasks).Error; err != nil {
+		return nil, err
+	}
+	return aggTasks, nil
+}
+
 // GetSubProofsByAggTaskID get sub proof by agg task id
 func (a *AggTask) GetSubProofsByAggTaskID(id string) ([][]byte, error) {
 	var aggTask AggTask
