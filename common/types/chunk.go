@@ -7,9 +7,9 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/common/hexutil"
 	"github.com/scroll-tech/go-ethereum/core/types"
+	"github.com/scroll-tech/go-ethereum/crypto"
 )
 
 type Chunk struct {
@@ -77,11 +77,58 @@ func (c *Chunk) Encode() ([]byte, error) {
 }
 
 // decode chunk
-func DecodeChunk([]byte) (*Chunk, error) {
+func DecodeChunk(data []byte) (*Chunk, error) {
 	return nil, nil
 }
 
 // calculate chunk data hash
-func (c *Chunk) Hash() *common.Hash {
-	return nil
+func (c *Chunk) Hash() ([]byte, error) {
+	chunkCodec, err := c.Encode()
+
+	if err != nil {
+		return nil, err
+	}
+
+	numBlocks := chunkCodec[0]
+
+	// concatenate block contexts
+	dataBytes := chunkCodec[1: 60*numBlocks+1]
+
+	// retrieve block context start index
+	blockIndex := 1
+
+	// retrieve l2 tx start index
+	l2TxIndex := uint32(60*numBlocks + 1)
+
+	for numBlocks > 0 {
+		// TODO: concatenate l1 message hashes
+
+		// concatenate l2 txs hashes
+		// retrieve the number of transactions in current block.
+		numTransactionsIndex := blockIndex + 56
+		numTxsInBlock := binary.BigEndian.Uint16(chunkCodec[numTransactionsIndex: numTransactionsIndex+2])
+
+		for numTxsInBlock > 0 {
+			l2TxLen := binary.BigEndian.Uint32(chunkCodec[l2TxIndex: l2TxIndex+4])
+			l2TxIndex += 4
+			txPayload := chunkCodec[l2TxIndex: l2TxIndex+l2TxLen]
+			txHash := crypto.Keccak256Hash(txPayload).Bytes()
+			l2TxIndex += l2TxLen
+		
+			dataBytes = append(dataBytes, txHash...)
+			numTxsInBlock--
+		}
+
+		numBlocks--
+		blockIndex += 60
+	}
+
+	// TODO: check the number of L2 transactions in the chunk
+
+	// TODO: check chunk has correct length
+
+	// hash data bytes
+	hash := crypto.Keccak256Hash(dataBytes).Bytes()
+
+	return hash, nil
 }
