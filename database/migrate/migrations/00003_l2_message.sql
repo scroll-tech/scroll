@@ -13,8 +13,8 @@ create table l2_message
     layer1_hash  VARCHAR DEFAULT NULL,
     proof        TEXT    DEFAULT NULL,
     status       INTEGER  DEFAULT 1,
-    created_time TIMESTAMP(0) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_time TIMESTAMP(0) NOT NULL DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP(0) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP(0) NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 comment
@@ -32,7 +32,7 @@ create index l2_message_height_index
 CREATE OR REPLACE FUNCTION update_timestamp()
 RETURNS TRIGGER AS $$
 BEGIN
-   NEW.updated_time = CURRENT_TIMESTAMP;
+   NEW.updated_at = CURRENT_TIMESTAMP;
    RETURN NEW;
 END;
 $$ language 'plpgsql';
