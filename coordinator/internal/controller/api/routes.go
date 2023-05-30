@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"scroll-tech/coordinator/internal/controller/cron"
 
 	"github.com/scroll-tech/go-ethereum/rpc"
 	"gorm.io/gorm"
@@ -19,8 +20,8 @@ type RollerAPI interface {
 }
 
 type CoordinatorAPI interface {
-	StartSendTask() error
-	StopSendTask() error
+	StartSendTask(typ message.ProveType) error
+	PauseSendTask(typ message.ProveType) error
 }
 
 // RollerDebugAPI roller api interface in order go get debug message.
@@ -32,11 +33,16 @@ type RollerDebugAPI interface {
 }
 
 // APIs register api for coordinator
-func APIs(cfg *config.Config, db *gorm.DB) []rpc.API {
+func APIs(cfg *config.Config, collector *cron.Collector, db *gorm.DB) []rpc.API {
 	return []rpc.API{
 		{
 			Namespace: "roller",
 			Service:   RollerAPI(NewRollerController(cfg, db)),
+			Public:    true,
+		},
+		{
+			Namespace: "coordinator",
+			Service:   CoordinatorAPI(NewCoordinatorController(collector)),
 			Public:    true,
 		},
 		//{

@@ -83,7 +83,7 @@ func action(ctx *cli.Context) error {
 		}
 	}()
 
-	apis := api.APIs(cfg, db)
+	apis := api.APIs(cfg, proofCollector, db)
 	// Register api and start rpc service.
 	if ctx.Bool(httpEnabledFlag.Name) {
 		handler, addr, err := utils.StartHTTPEndpoint(
