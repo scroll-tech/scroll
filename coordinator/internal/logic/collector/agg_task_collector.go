@@ -103,10 +103,10 @@ func (atc *AggTaskCollector) Collect(ctx context.Context) error {
 	return nil
 }
 
-func (atc *AggTaskCollector) sendTask(taskId string) (map[string]*coordinatorType.RollerStatus, error) {
-	subProofBytes, err := atc.aggTaskOrm.GetSubProofsByAggTaskID(taskId)
+func (atc *AggTaskCollector) sendTask(taskID string) (map[string]*coordinatorType.RollerStatus, error) {
+	subProofBytes, err := atc.aggTaskOrm.GetSubProofsByAggTaskID(taskID)
 	if err != nil {
-		log.Error("failed to get sub proofs for aggregator task", "id", taskId, "error", err)
+		log.Error("failed to get sub proofs for aggregator task", "id", taskID, "error", err)
 		return nil, err
 	}
 
@@ -118,5 +118,5 @@ func (atc *AggTaskCollector) sendTask(taskId string) (map[string]*coordinatorTyp
 		}
 		subProofs = append(subProofs, &proof)
 	}
-	return atc.BaseCollector.sendTask(message.AggregatorProve, taskId, nil, subProofs)
+	return atc.BaseCollector.sendTask(message.AggregatorProve, taskID, nil, subProofs)
 }
