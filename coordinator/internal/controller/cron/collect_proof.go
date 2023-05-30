@@ -3,6 +3,7 @@ package cron
 import (
 	"context"
 	"fmt"
+	"scroll-tech/common/types/message"
 	"time"
 
 	"github.com/scroll-tech/go-ethereum/log"
@@ -18,19 +19,20 @@ type Collector struct {
 
 	ctx        context.Context
 	stopChan   chan struct{}
-	collectors []collector.Collector
+	collectors map[message.ProveType]collector.Collector
 }
 
 // NewCollector create a collector to cron collect the data to send to prover
 func NewCollector(ctx context.Context, db *gorm.DB, cfg *config.Config) *Collector {
 	c := &Collector{
-		cfg:      cfg,
-		ctx:      ctx,
-		stopChan: make(chan struct{}),
+		cfg:        cfg,
+		ctx:        ctx,
+		stopChan:   make(chan struct{}),
+		collectors: make(map[message.ProveType]collector.Collector),
 	}
 
-	c.collectors = append(c.collectors, collector.NewBlockBatchCollector(cfg, db))
-	c.collectors = append(c.collectors, collector.NewAggTaskCollector(cfg, db))
+	c.collectors[message.BasicProve] = collector.NewBlockBatchCollector(cfg, db)
+	c.collectors[message.AggregatorProve] = collector.NewAggTaskCollector(cfg, db)
 
 	go c.run()
 
@@ -40,6 +42,22 @@ func NewCollector(ctx context.Context, db *gorm.DB, cfg *config.Config) *Collect
 // Stop all the collector
 func (c *Collector) Stop() {
 	c.stopChan <- struct{}{}
+}
+
+func (c *Collector) Start(collectorType message.ProveType) {
+	co, ok := c.collectors[collectorType]
+	if !ok {
+		log.Warn("no collector type", "collector", collectorType)
+	}
+	co.Start()
+}
+
+func (c *Collector) Pause(collectorType message.ProveType) {
+	co, ok := c.collectors[collectorType]
+	if !ok {
+		log.Warn("no collector type", "collector", collectorType)
+	}
+	co.Pause()
 }
 
 // run loop and cron collect
@@ -58,7 +76,7 @@ func (c *Collector) run() {
 		case <-ticker.C:
 			for _, tmpCollector := range c.collectors {
 				if err := tmpCollector.Collect(c.ctx); err != nil {
-					log.Warn("%s collect data to prover failure:%v", tmpCollector.Name(), err)
+					log.Warn("%s collect data to prover failure:%v", tmpCollector.Type(), err)
 				}
 			}
 		case <-c.ctx.Done():

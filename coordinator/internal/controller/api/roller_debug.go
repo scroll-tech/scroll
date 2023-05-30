@@ -26,7 +26,7 @@ package api
 //		}
 //		roller := node.(*rollerNode)
 //		info := &RollerInfo{
-//			Name:      roller.Name,
+//			Type:      roller.Type,
 //			Version:   roller.Version,
 //			PublicKey: pk,
 //		}
@@ -47,7 +47,7 @@ package api
 //	now := time.Now()
 //	var nameList []string
 //	for pk := range sess.info.Rollers {
-//		nameList = append(nameList, sess.info.Rollers[pk].Name)
+//		nameList = append(nameList, sess.info.Rollers[pk].Type)
 //	}
 //	info := SessionInfo{
 //		ID:              sess.info.ID,

@@ -37,9 +37,9 @@ func NewAggTaskCollector(cfg *config.Config, db *gorm.DB) *AggTaskCollector {
 	return atc
 }
 
-// Name return the AggTaskCollector name
-func (atc *AggTaskCollector) Name() string {
-	return AggTaskCollectorName
+// Type return the AggTaskCollector name
+func (atc *AggTaskCollector) Type() message.ProveType {
+	return message.AggregatorProve
 }
 
 // Collect the agg task which need to prove

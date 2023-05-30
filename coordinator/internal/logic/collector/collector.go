@@ -2,6 +2,7 @@ package collector
 
 import (
 	"context"
+	"sync/atomic"
 	"time"
 
 	"github.com/patrickmn/go-cache"
@@ -19,17 +20,15 @@ import (
 	coordinatorType "scroll-tech/coordinator/internal/types"
 )
 
-const (
-	AggTaskCollectorName    = "agg_task_collector"
-	BlockBatchCollectorName = "block_batch_collector"
-)
-
 var coordinatorSessionsTimeoutTotalCounter = gethMetrics.NewRegisteredCounter("coordinator/sessions/timeout/total", metrics.ScrollRegistry)
 
 // Collector the interface of a collector who send data to prover
 type Collector interface {
-	Name() string
+	Type() message.ProveType
 	Collect(ctx context.Context) error
+	Start()
+	Pause()
+	IsPause() bool
 }
 
 // HashTaskPublicKey hash public key pair
@@ -43,10 +42,24 @@ type BaseCollector struct {
 	cfg   *config.Config
 	cache *cache.Cache
 
+	isPause atomic.Bool
+
 	aggTaskOrm     *orm.AggTask
 	blockBatchOrm  *orm.BlockBatch
 	blockTraceOrm  *orm.BlockTrace
 	sessionInfoOrm *orm.SessionInfo
+}
+
+func (b *BaseCollector) Start() {
+	b.isPause.Store(false)
+}
+
+func (b *BaseCollector) Pause() {
+	b.isPause.Store(true)
+}
+
+func (b *BaseCollector) IsPause() bool {
+	return b.isPause.Load()
 }
 
 func (b *BaseCollector) checkAttempts(hash string) bool {

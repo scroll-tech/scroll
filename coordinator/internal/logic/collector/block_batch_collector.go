@@ -3,7 +3,6 @@ package collector
 import (
 	"context"
 	"fmt"
-	"sync/atomic"
 	"time"
 
 	"github.com/patrickmn/go-cache"
@@ -23,7 +22,6 @@ import (
 // BlockBatchCollector the block batch collector
 type BlockBatchCollector struct {
 	BaseCollector
-	isStop *atomic.Bool
 }
 
 // NewBlockBatchCollector new a BlockBatch collector
@@ -36,23 +34,18 @@ func NewBlockBatchCollector(cfg *config.Config, db *gorm.DB) *BlockBatchCollecto
 			blockTraceOrm:  orm.NewBlockTrace(db),
 			sessionInfoOrm: orm.NewSessionInfo(db),
 		},
-		isStop: new(atomic.Bool),
 	}
 	return bbc
 }
 
-func (bbc *BlockBatchCollector) Stop() {
-	bbc.isStop.Store(true)
-}
-
-// Name return a block batch collector name
-func (bbc *BlockBatchCollector) Name() string {
-	return BlockBatchCollectorName
+// Type return a block batch collector name
+func (bbc *BlockBatchCollector) Type() message.ProveType {
+	return message.BasicProve
 }
 
 // Collect the block batch which need to prove
 func (bbc *BlockBatchCollector) Collect(ctx context.Context) error {
-	if bbc.isStop.Load() {
+	if bbc.IsPause() {
 		return nil
 	}
 	whereField := map[string]interface{}{"proving_status": types.ProvingTaskUnassigned}
