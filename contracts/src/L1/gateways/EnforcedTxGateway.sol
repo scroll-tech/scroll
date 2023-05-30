@@ -143,10 +143,8 @@ contract EnforcedTxGateway is OwnableUpgradeable, ReentrancyGuardUpgradeable, Pa
         bytes calldata _data,
         address _refundAddress
     ) internal nonReentrant {
-        address _messageQueue = messageQueue;
-
         // charge fee
-        uint256 _fee = IL1MessageQueue(_messageQueue).estimateCrossDomainMessageFee(_gasLimit);
+        uint256 _fee = IL1MessageQueue(messageQueue).estimateCrossDomainMessageFee(_gasLimit);
         require(msg.value >= _fee, "Insufficient value for fee");
         if (_fee > 0) {
             (bool _success, ) = feeVault.call{value: _fee}("");
