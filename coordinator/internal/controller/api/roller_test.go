@@ -18,7 +18,7 @@ import (
 
 	"scroll-tech/coordinator/internal/config"
 	"scroll-tech/coordinator/internal/logic/proof"
-	"scroll-tech/coordinator/internal/logic/roller_manager"
+	"scroll-tech/coordinator/internal/logic/rollermanager"
 	"scroll-tech/coordinator/internal/logic/verifier"
 	"scroll-tech/coordinator/internal/orm"
 	coordinatorType "scroll-tech/coordinator/internal/types"
@@ -181,11 +181,11 @@ func TestManager_SubmitProof(t *testing.T) {
 		},
 	}
 
-	roller_manager.InitRollerManager()
+	rollermanager.InitRollerManager()
 	pubKey, err := tmpAuthMsg.PublicKey()
 	assert.NoError(t, err)
 
-	taskChan, err := roller_manager.Manager.Register(pubKey, tmpAuthMsg.Identity)
+	taskChan, err := rollermanager.Manager.Register(pubKey, tmpAuthMsg.Identity)
 	assert.NotNil(t, taskChan)
 	assert.NoError(t, err)
 
@@ -224,7 +224,7 @@ func TestManager_SubmitProof(t *testing.T) {
 		StartTimestamp: time.Now().Unix(),
 		ProveType:      message.BasicProve,
 	}
-	roller_manager.Manager.AddRollerInfo(rollersInfo)
+	rollermanager.Manager.AddRollerInfo(rollersInfo)
 
 	convey.Convey("get none rollers of rollersInfo", t, func() {
 		tmpProof1 := &message.ProofMsg{

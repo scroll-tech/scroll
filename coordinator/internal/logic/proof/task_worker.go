@@ -7,10 +7,10 @@ import (
 	gethMetrics "github.com/scroll-tech/go-ethereum/metrics"
 	"github.com/scroll-tech/go-ethereum/rpc"
 
+	"scroll-tech/coordinator/internal/logic/rollermanager"
+
 	"scroll-tech/common/metrics"
 	"scroll-tech/common/types/message"
-
-	"scroll-tech/coordinator/internal/logic/roller_manager"
 )
 
 var coordinatorRollersDisconnectsTotalCounter = gethMetrics.NewRegisteredCounter("coordinator/rollers/disconnects/total", metrics.ScrollRegistry)
@@ -32,7 +32,7 @@ func (t *TaskWorker) AllocTaskWorker(ctx context.Context, authMsg *message.AuthM
 	identity := authMsg.Identity
 
 	// create or get the roller message channel
-	taskCh, err := roller_manager.Manager.Register(pubKey, identity)
+	taskCh, err := rollermanager.Manager.Register(pubKey, identity)
 	if err != nil {
 		return nil, err
 	}
@@ -52,7 +52,7 @@ func (t *TaskWorker) worker(rpcSub *rpc.Subscription, notifier *rpc.Notifier, pu
 			log.Error("task worker subId:%d panic for:%v", err)
 		}
 
-		roller_manager.Manager.FreeRoller(pubKey)
+		rollermanager.Manager.FreeRoller(pubKey)
 		log.Info("roller unregister", "name", identity.Name, "pubKey", pubKey)
 	}()
 

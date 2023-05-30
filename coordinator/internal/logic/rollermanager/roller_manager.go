@@ -1,4 +1,4 @@
-package roller_manager
+package rollermanager
 
 import (
 	"errors"
@@ -7,8 +7,6 @@ import (
 	"sync"
 	"time"
 
-	coordinatorType "scroll-tech/coordinator/internal/types"
-
 	cmap "github.com/orcaman/concurrent-map"
 	"github.com/scroll-tech/go-ethereum/log"
 	gethMetrics "github.com/scroll-tech/go-ethereum/metrics"
@@ -16,6 +14,8 @@ import (
 	"scroll-tech/common/metrics"
 	"scroll-tech/common/types"
 	"scroll-tech/common/types/message"
+
+	coordinatorType "scroll-tech/coordinator/internal/types"
 )
 
 var (
@@ -49,6 +49,7 @@ type rollerManager struct {
 	rollerPool cmap.ConcurrentMap
 }
 
+// InitRollerManager init a roller manager
 func InitRollerManager() {
 	once.Do(func() {
 		Manager = &rollerManager{
@@ -57,6 +58,7 @@ func InitRollerManager() {
 	})
 }
 
+// Register the identity message to roller manager with the public key
 func (r *rollerManager) Register(pubkey string, identity *message.Identity) (<-chan *message.TaskMsg, error) {
 	node, ok := r.rollerPool.Get(pubkey)
 	if !ok {
@@ -90,6 +92,7 @@ func (r *rollerManager) Register(pubkey string, identity *message.Identity) (<-c
 	return roller.taskChan, nil
 }
 
+// SendTask send the need proved message to roller
 func (r *rollerManager) SendTask(rollerType message.ProveType, msg *message.TaskMsg) (string, string, error) {
 	tmpRoller := r.selectRoller(rollerType)
 	if tmpRoller == nil {
@@ -108,6 +111,7 @@ func (r *rollerManager) SendTask(rollerType message.ProveType, msg *message.Task
 	return tmpRoller.PublicKey, tmpRoller.Name, nil
 }
 
+// AddRollerInfo add a rollers info to the roller manager
 func (r *rollerManager) AddRollerInfo(rollersInfo *coordinatorType.RollersInfo) bool {
 	for pk, roller := range rollersInfo.Rollers {
 		taskIds, exist := r.rollerPool.Get(pk)
@@ -128,6 +132,7 @@ func (r *rollerManager) AddRollerInfo(rollersInfo *coordinatorType.RollersInfo) 
 	return true
 }
 
+// RollersInfo get a rollers info by pk, id
 func (r *rollerManager) RollersInfo(pk string, id string) (*coordinatorType.RollersInfo, bool) {
 	node, ok := r.rollerPool.Get(pk)
 	if !ok {
@@ -147,6 +152,7 @@ func (r *rollerManager) RollersInfo(pk string, id string) (*coordinatorType.Roll
 	return rollersInfo, true
 }
 
+// ExistTaskIDForRoller check the task exist
 func (r *rollerManager) ExistTaskIDForRoller(pk string, id string) bool {
 	node, ok := r.rollerPool.Get(pk)
 	if !ok {
@@ -156,10 +162,12 @@ func (r *rollerManager) ExistTaskIDForRoller(pk string, id string) bool {
 	return roller.TaskIDs.Has(id)
 }
 
+// FreeRoller free the roller with the pk key
 func (r *rollerManager) FreeRoller(pk string) {
 	r.rollerPool.Pop(pk)
 }
 
+// FreeTaskIDForRoller free a task of the pk roller
 func (r *rollerManager) FreeTaskIDForRoller(pk string, id string) {
 	if node, ok := r.rollerPool.Get(pk); ok {
 		roller := node.(*rollerNode)

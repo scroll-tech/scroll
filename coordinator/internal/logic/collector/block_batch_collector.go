@@ -15,7 +15,7 @@ import (
 	"scroll-tech/common/types/message"
 
 	"scroll-tech/coordinator/internal/config"
-	"scroll-tech/coordinator/internal/logic/roller_manager"
+	"scroll-tech/coordinator/internal/logic/rollermanager"
 	"scroll-tech/coordinator/internal/orm"
 	coordinatorType "scroll-tech/coordinator/internal/types"
 )
@@ -26,6 +26,7 @@ type BlockBatchCollector struct {
 	isStop *atomic.Bool
 }
 
+// NewBlockBatchCollector new a BlockBatch collector
 func NewBlockBatchCollector(cfg *config.Config, db *gorm.DB) *BlockBatchCollector {
 	bbc := &BlockBatchCollector{
 		BaseCollector: BaseCollector{
@@ -44,10 +45,12 @@ func (bbc *BlockBatchCollector) Stop() {
 	bbc.isStop.Store(true)
 }
 
+// Name return a block batch collector name
 func (bbc *BlockBatchCollector) Name() string {
 	return BlockBatchCollectorName
 }
 
+// Collect the block batch which need to prove
 func (bbc *BlockBatchCollector) Collect(ctx context.Context) error {
 	if bbc.isStop.Load() {
 		return nil
@@ -72,7 +75,7 @@ func (bbc *BlockBatchCollector) Collect(ctx context.Context) error {
 		return fmt.Errorf("the session id:%s check attempts error", blockBatch.Hash)
 	}
 
-	if roller_manager.Manager.GetNumberOfIdleRollers(message.BasicProve) == 0 {
+	if rollermanager.Manager.GetNumberOfIdleRollers(message.BasicProve) == 0 {
 		err = fmt.Errorf("no idle basic roller when starting proof generation session, id:%s", blockBatch.Hash)
 		log.Error(err.Error())
 		return err

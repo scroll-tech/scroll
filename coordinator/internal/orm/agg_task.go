@@ -8,6 +8,7 @@ import (
 	"scroll-tech/common/types"
 )
 
+// AggTask is structure of agg task message
 type AggTask struct {
 	db *gorm.DB `gorm:"-"`
 
