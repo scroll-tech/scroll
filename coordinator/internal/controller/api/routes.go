@@ -18,6 +18,11 @@ type RollerAPI interface {
 	SubmitProof(proof *message.ProofMsg) error
 }
 
+type CoordinatorAPI interface {
+	StartSendTask() error
+	StopSendTask() error
+}
+
 // RollerDebugAPI roller api interface in order go get debug message.
 type RollerDebugAPI interface {
 	// ListRollers returns all live rollers
