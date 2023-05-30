@@ -16,6 +16,7 @@ create table cross_message
     asset        SMALLINT NOT NULL,
     msg_type     SMALLINT NOT NULL,
     is_deleted   BOOLEAN NOT NULL DEFAULT FALSE,
+    blocktimestamp TIMESTAMP(0) DEFAULT NULL,
     created_at   TIMESTAMP(0) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at   TIMESTAMP(0) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     deleted_at   TIMESTAMP(0) DEFAULT NULL
