@@ -99,5 +99,5 @@ func (c *CoordinatorApp) MockConfig(store bool) error {
 		return err
 	}
 
-	return os.WriteFile(c.coordinatorFile, data, 0644)
+	return os.WriteFile(c.coordinatorFile, data, 0600)
 }

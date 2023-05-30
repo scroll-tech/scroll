@@ -35,6 +35,7 @@ test-gpu-verifier: libzkp
 	go test -tags="gpu ffi" -timeout 0 -v ./verifier
 
 lint: ## Lint the files - used for CI
+	cp -r ../common/libzkp/interface ./verifier/lib
 	GOBIN=$(PWD)/build/bin go run ../build/lint.go
 
 clean: ## Empty out the bin folder

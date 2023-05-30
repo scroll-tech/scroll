@@ -45,6 +45,7 @@ lastest-zk-version:
 	curl -sL https://api.github.com/repos/scroll-tech/scroll-zkevm/commits | jq -r ".[0].sha"
 
 lint: ## Lint the files - used for CI
+	cp -r ../common/libzkp/interface ./prover/lib
 	GOBIN=$(PWD)/build/bin go run ../build/lint.go
 
 clean: ## Empty out the bin folder

@@ -229,7 +229,8 @@ func (r *Roller) prove() error {
 
 		log.Info("start to prove block", "task-id", task.Task.ID)
 
-		traces, err := r.getSortedTracesByHashes(task.Task.BlockHashes)
+		var traces []*types.BlockTrace
+		traces, err = r.getSortedTracesByHashes(task.Task.BlockHashes)
 		if err != nil {
 			return err
 		}
