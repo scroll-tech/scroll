@@ -4,12 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"gorm.io/gorm"
 	"time"
 
 	"github.com/patrickmn/go-cache"
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/scroll-tech/go-ethereum/rpc"
+	"gorm.io/gorm"
 
 	"scroll-tech/common/types/message"
 
@@ -23,7 +23,7 @@ type RollerController struct {
 	taskWorker    *proof.TaskWorker
 }
 
-func NewRoller(cfg *config.Config, db *gorm.DB) *RollerController {
+func NewRollerController(cfg *config.Config, db *gorm.DB) *RollerController {
 	return &RollerController{
 		proofReceiver: proof.NewProofReceiver(cfg, db),
 		taskWorker:    proof.NewTaskWorker(),

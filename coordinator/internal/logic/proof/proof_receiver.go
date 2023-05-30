@@ -124,20 +124,12 @@ func (m *ProofReceiver) HandleZkProof(ctx context.Context, proofMsg *message.Pro
 
 func (m *ProofReceiver) validator(pk string, rollersInfo *coordinatorType.RollersInfo, proofMsg *message.ProofMsg) error {
 	pubKey, _ := proofMsg.PublicKey()
-	// Only allow registered pub-key.
-	if !roller_manager.Manager.ExistTaskIDForRoller(pubKey, proofMsg.ID) {
-		return fmt.Errorf("the roller or session id doesn't exist, pubkey: %s, ID: %s", pubKey, proofMsg.ID)
-	}
-
 	roller_manager.Manager.UpdateMetricRollerProofsLastFinishedTimestampGauge(pubKey)
 
-	proofTime := time.Since(time.Unix(rollersInfo.StartTimestamp, 0))
-	proofTimeSec := uint64(proofTime.Seconds())
 	// Ensure this roller is eligible to participate in the session.
 	rollers, ok := rollersInfo.Rollers[pk]
 	if !ok {
-		return fmt.Errorf("roller %s %s (%s) is not eligible to partake in proof session %v", rollers.Name,
-			rollersInfo.ProveType, rollers.PublicKey, proofMsg.ID)
+		return fmt.Errorf("get none rollers for the proof key:%s id:%s", rollers.PublicKey, proofMsg.ID)
 	}
 
 	if rollers.Status == types.RollerProofValid {
@@ -149,6 +141,9 @@ func (m *ProofReceiver) validator(pk string, rollersInfo *coordinatorType.Roller
 			rollers.PublicKey, "prove type", rollersInfo.ProveType, "proof id", proofMsg.ID)
 		return nil
 	}
+
+	proofTime := time.Since(time.Unix(rollersInfo.StartTimestamp, 0))
+	proofTimeSec := uint64(proofTime.Seconds())
 
 	log.Info("handling zk proof", "proof id", proofMsg.ID, "roller name", rollers.Name, "roller pk", rollers.PublicKey,
 		"prove type", rollersInfo.ProveType, "proof time", proofTimeSec)

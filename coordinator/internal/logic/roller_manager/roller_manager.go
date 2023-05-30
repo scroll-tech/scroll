@@ -139,11 +139,11 @@ func (r *rollerManager) RollersInfo(pk string, id string) (*coordinatorType.Roll
 		return nil, false
 	}
 
-	sessionInfo, isSessionInfo := data.(*coordinatorType.RollersInfo)
-	if !isSessionInfo {
+	rollersInfo, isRollersInfo := data.(*coordinatorType.RollersInfo)
+	if !isRollersInfo {
 		return nil, false
 	}
-	return sessionInfo, true
+	return rollersInfo, true
 }
 
 func (r *rollerManager) ExistTaskIDForRoller(pk string, id string) bool {
