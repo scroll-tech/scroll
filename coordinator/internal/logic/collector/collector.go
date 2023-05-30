@@ -20,7 +20,9 @@ import (
 )
 
 const (
-	AggTaskCollectorName    = "agg_task_collector"
+	// AggTaskCollectorName the name of agg task collector
+	AggTaskCollectorName = "agg_task_collector"
+	// BlockBatchCollectorName the name of block batch collector
 	BlockBatchCollectorName = "block_batch_collector"
 )
 

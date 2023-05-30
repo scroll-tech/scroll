@@ -19,7 +19,8 @@ import (
 )
 
 var (
-	once    sync.Once
+	once sync.Once
+	// Manager the global roller manager
 	Manager *rollerManager
 )
 
