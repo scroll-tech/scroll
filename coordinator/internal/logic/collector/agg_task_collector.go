@@ -10,12 +10,13 @@ import (
 	"github.com/scroll-tech/go-ethereum/log"
 	"gorm.io/gorm"
 
-	"scroll-tech/common/types"
-	"scroll-tech/common/types/message"
 	"scroll-tech/coordinator/internal/config"
 	"scroll-tech/coordinator/internal/logic/roller_manager"
 	"scroll-tech/coordinator/internal/orm"
 	coordinatorType "scroll-tech/coordinator/internal/types"
+
+	"scroll-tech/common/types"
+	"scroll-tech/common/types/message"
 )
 
 type AggTaskCollector struct {

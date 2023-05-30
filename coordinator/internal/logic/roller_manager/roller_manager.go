@@ -7,10 +7,11 @@ import (
 	"sync"
 	"time"
 
+	coordinatorType "scroll-tech/coordinator/internal/types"
+
 	cmap "github.com/orcaman/concurrent-map"
 	"github.com/scroll-tech/go-ethereum/log"
 	gethMetrics "github.com/scroll-tech/go-ethereum/metrics"
-	coordinatorType "scroll-tech/coordinator/internal/types"
 
 	"scroll-tech/common/metrics"
 	"scroll-tech/common/types"
