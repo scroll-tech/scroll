@@ -7,6 +7,8 @@ import (
 	gethMetrics "github.com/scroll-tech/go-ethereum/metrics"
 	"github.com/scroll-tech/go-ethereum/rpc"
 
+	"scroll-tech/coordinator/internal/logic/rollermanager"
+
 	"scroll-tech/common/metrics"
 	"scroll-tech/common/types/message"
 )

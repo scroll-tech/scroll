@@ -2,7 +2,6 @@ package collector
 
 import (
 	"context"
-	"scroll-tech/coordinator/internal/logic/rollermanager"
 	"time"
 
 	"github.com/patrickmn/go-cache"
@@ -15,6 +14,7 @@ import (
 	"scroll-tech/common/types/message"
 
 	"scroll-tech/coordinator/internal/config"
+	"scroll-tech/coordinator/internal/logic/rollermanager"
 	"scroll-tech/coordinator/internal/orm"
 	coordinatorType "scroll-tech/coordinator/internal/types"
 )

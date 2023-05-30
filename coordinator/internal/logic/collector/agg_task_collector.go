@@ -4,19 +4,19 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"scroll-tech/coordinator/internal/logic/rollermanager"
 	"time"
 
 	"github.com/patrickmn/go-cache"
 	"github.com/scroll-tech/go-ethereum/log"
 	"gorm.io/gorm"
 
-	"scroll-tech/coordinator/internal/config"
-	"scroll-tech/coordinator/internal/orm"
-	coordinatorType "scroll-tech/coordinator/internal/types"
-
 	"scroll-tech/common/types"
 	"scroll-tech/common/types/message"
+
+	"scroll-tech/coordinator/internal/config"
+	"scroll-tech/coordinator/internal/logic/rollermanager"
+	"scroll-tech/coordinator/internal/orm"
+	coordinatorType "scroll-tech/coordinator/internal/types"
 )
 
 // AggTaskCollector agg task collector is collector implement
