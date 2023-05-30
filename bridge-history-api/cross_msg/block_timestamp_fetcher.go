@@ -44,15 +44,15 @@ func (b *BlocktimestampFetcher) Start() {
 				if err != nil {
 					continue
 				}
-				processed_height, err := b.g()
+				start_height, err := b.g()
 				if err != nil {
-					log.Error("Can not get latest record with block timestamp: ", err)
+					log.Error("Can not get latest record without block timestamp: ", err)
 				}
-				if processed_height <= 0 || int64(number-(uint64(b.confirmation))) < int64(processed_height) {
+				if start_height <= 0 || int64(number-(uint64(b.confirmation))) < int64(start_height) {
 					continue
 				}
-				for i := processed_height; i <= uint64(number-(uint64(b.confirmation))); i++ {
-					block, err := b.client.BlockByNumber(b.ctx, big.NewInt(int64(processed_height)))
+				for i := start_height; i <= uint64(number-(uint64(b.confirmation))); {
+					block, err := b.client.BlockByNumber(b.ctx, big.NewInt(int64(start_height)))
 					if err != nil {
 						log.Error("Can not get block by number: ", err)
 						break
@@ -60,6 +60,12 @@ func (b *BlocktimestampFetcher) Start() {
 					err = b.u(i, time.Unix(int64(block.Time()), 0))
 					if err != nil {
 						log.Error("Can not update blocktimstamp into DB: ", err)
+						break
+					}
+					i, err = b.g()
+					if err != nil {
+						log.Error("Can not get latest record without block timestamp: ", err)
+						break
 					}
 				}
 			}
