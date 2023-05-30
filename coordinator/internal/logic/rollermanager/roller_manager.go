@@ -1,9 +1,10 @@
 package rollermanager
 
 import (
+	"crypto/rand"
 	"errors"
 	"fmt"
-	"math/rand"
+	"math/big"
 	"sync"
 	"time"
 
@@ -190,16 +191,16 @@ func (r *rollerManager) GetNumberOfIdleRollers(rollerType message.ProveType) (co
 func (r *rollerManager) selectRoller(rollerType message.ProveType) *rollerNode {
 	pubKeys := r.rollerPool.Keys()
 	for len(pubKeys) > 0 {
-		idx := rand.Intn(len(pubKeys))
-		if val, ok := r.rollerPool.Get(pubKeys[idx]); ok {
+		idx, _ := rand.Int(rand.Reader, big.NewInt(int64(len(pubKeys))))
+		if val, ok := r.rollerPool.Get(pubKeys[idx.Int64()]); ok {
 			roller := val.(*rollerNode)
 			if roller.TaskIDs.Count() == 0 && roller.Type == rollerType {
 				return roller
 			}
 		}
 		// remove index idx
-		pubKeys = append(pubKeys, pubKeys[:idx]...)
-		pubKeys = append(pubKeys, pubKeys[idx+1:]...)
+		pubKeys = append(pubKeys, pubKeys[:idx.Int64()]...)
+		pubKeys = append(pubKeys, pubKeys[idx.Int64()+1:]...)
 	}
 	return nil
 }
