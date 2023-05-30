@@ -1,4 +1,4 @@
-package roller_manager
+package rollermanager
 
 import (
 	"time"

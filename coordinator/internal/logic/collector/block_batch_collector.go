@@ -3,6 +3,7 @@ package collector
 import (
 	"context"
 	"fmt"
+	"scroll-tech/coordinator/internal/logic/rollermanager"
 	"time"
 
 	"github.com/patrickmn/go-cache"
@@ -14,7 +15,6 @@ import (
 	"scroll-tech/common/types/message"
 
 	"scroll-tech/coordinator/internal/config"
-	"scroll-tech/coordinator/internal/logic/roller_manager"
 	"scroll-tech/coordinator/internal/orm"
 	coordinatorType "scroll-tech/coordinator/internal/types"
 )
@@ -24,6 +24,7 @@ type BlockBatchCollector struct {
 	BaseCollector
 }
 
+// NewBlockBatchCollector new a BlockBatch collector
 func NewBlockBatchCollector(cfg *config.Config, db *gorm.DB) *BlockBatchCollector {
 	bbc := &BlockBatchCollector{
 		BaseCollector: BaseCollector{
@@ -37,10 +38,12 @@ func NewBlockBatchCollector(cfg *config.Config, db *gorm.DB) *BlockBatchCollecto
 	return bbc
 }
 
+// Name return a block batch collector name
 func (bbc *BlockBatchCollector) Name() string {
 	return BlockBatchCollectorName
 }
 
+// Collect the block batch which need to prove
 func (bbc *BlockBatchCollector) Collect(ctx context.Context) error {
 	whereField := map[string]interface{}{"proving_status": types.ProvingTaskUnassigned}
 	orderByList := []string{"index ASC"}
@@ -62,7 +65,7 @@ func (bbc *BlockBatchCollector) Collect(ctx context.Context) error {
 		return fmt.Errorf("the session id:%s check attempts error", blockBatch.Hash)
 	}
 
-	if roller_manager.Manager.GetNumberOfIdleRollers(message.BasicProve) == 0 {
+	if rollermanager.Manager.GetNumberOfIdleRollers(message.BasicProve) == 0 {
 		err = fmt.Errorf("no idle basic roller when starting proof generation session, id:%s", blockBatch.Hash)
 		log.Error(err.Error())
 		return err

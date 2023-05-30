@@ -8,6 +8,7 @@ import (
 	"scroll-tech/coordinator/internal/types"
 )
 
+// SessionInfo is structure of agg task message
 type SessionInfo struct {
 	db *gorm.DB `gorm:"-"`
 

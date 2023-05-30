@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"scroll-tech/coordinator/internal/logic/rollermanager"
 	"time"
 
 	"github.com/patrickmn/go-cache"
@@ -11,7 +12,6 @@ import (
 	"gorm.io/gorm"
 
 	"scroll-tech/coordinator/internal/config"
-	"scroll-tech/coordinator/internal/logic/roller_manager"
 	"scroll-tech/coordinator/internal/orm"
 	coordinatorType "scroll-tech/coordinator/internal/types"
 
@@ -19,10 +19,12 @@ import (
 	"scroll-tech/common/types/message"
 )
 
+// AggTaskCollector agg task collector is collector implement
 type AggTaskCollector struct {
 	BaseCollector
 }
 
+// NewAggTaskCollector new a AggTaskCollector
 func NewAggTaskCollector(cfg *config.Config, db *gorm.DB) *AggTaskCollector {
 	atc := &AggTaskCollector{
 		BaseCollector: BaseCollector{
@@ -35,10 +37,12 @@ func NewAggTaskCollector(cfg *config.Config, db *gorm.DB) *AggTaskCollector {
 	return atc
 }
 
+// Name return the AggTaskCollector name
 func (atc *AggTaskCollector) Name() string {
 	return AggTaskCollectorName
 }
 
+// Collect the agg task which need to prove
 func (atc *AggTaskCollector) Collect(ctx context.Context) error {
 	whereField := map[string]interface{}{"proving_status": types.ProvingTaskUnassigned}
 	orderByList := []string{"id ASC"}
@@ -60,7 +64,7 @@ func (atc *AggTaskCollector) Collect(ctx context.Context) error {
 		return fmt.Errorf("the agg task idid:%s check attempts error", aggTask.ID)
 	}
 
-	if roller_manager.Manager.GetNumberOfIdleRollers(message.AggregatorProve) == 0 {
+	if rollermanager.Manager.GetNumberOfIdleRollers(message.AggregatorProve) == 0 {
 		err = fmt.Errorf("no idle agg task roller when starting proof generation session, id:%s", aggTask.ID)
 		log.Error(err.Error())
 		return err

@@ -17,7 +17,7 @@ import (
 	"scroll-tech/coordinator/internal/config"
 	"scroll-tech/coordinator/internal/controller/api"
 	"scroll-tech/coordinator/internal/controller/cron"
-	"scroll-tech/coordinator/internal/logic/roller_manager"
+	"scroll-tech/coordinator/internal/logic/rollermanager"
 	coordinatorUtils "scroll-tech/coordinator/internal/utils"
 )
 
@@ -73,7 +73,7 @@ func action(ctx *cli.Context) error {
 
 	proofCollector := cron.NewCollector(subCtx, db, cfg)
 
-	roller_manager.InitRollerManager()
+	rollermanager.InitRollerManager()
 
 	defer func() {
 		proofCollector.Stop()

@@ -37,6 +37,7 @@ func NewCollector(ctx context.Context, db *gorm.DB, cfg *config.Config) *Collect
 	return c
 }
 
+// Stop all the collector
 func (c *Collector) Stop() {
 	c.stopChan <- struct{}{}
 }
@@ -45,7 +46,7 @@ func (c *Collector) Stop() {
 func (c *Collector) run() {
 	defer func() {
 		if err := recover(); err != nil {
-			nerr := fmt.Errorf("collector panic err:%w", err)
+			nerr := fmt.Errorf("collector panic error:%v", err)
 			log.Warn(nerr.Error())
 		}
 	}()
