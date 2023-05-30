@@ -27,10 +27,15 @@ func (o *sessionInfoOrm) GetSessionInfosByHashes(hashes []string) ([]*types.Sess
 	if err != nil {
 		return nil, err
 	}
-	rows, err := o.db.Queryx(o.db.Rebind(query), args...)
-	if err != nil {
-		return nil, err
+	rows, errRows := o.db.Queryx(o.db.Rebind(query), args...)
+	if errRows != nil {
+		return nil, errRows
 	}
+	if errRows = rows.Err(); errRows != nil {
+		return nil, errRows
+	}
+	defer func() { _ = rows.Close() }()
+
 	var sessionInfos []*types.SessionInfo
 	for rows.Next() {
 		var infoBytes []byte

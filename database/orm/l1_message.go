@@ -52,6 +52,7 @@ func (m *l1MessageOrm) GetL1MessagesByStatus(status types.MsgStatus, limit uint6
 	if err != nil {
 		return nil, err
 	}
+	defer func() { _ = rows.Close() }()
 
 	var msgs []*types.L1Message
 	for rows.Next() {
@@ -67,7 +68,7 @@ func (m *l1MessageOrm) GetL1MessagesByStatus(status types.MsgStatus, limit uint6
 		return nil, err
 	}
 
-	return msgs, rows.Close()
+	return msgs, nil
 }
 
 // GetL1ProcessedQueueIndex fetch latest processed message queue_index

@@ -34,6 +34,8 @@ func (a *aggTaskOrm) GetSubProofsByAggTaskID(id string) ([]*message.AggProof, er
 	if err != nil {
 		return nil, err
 	}
+	defer func() { _ = rows.Close() }()
+
 	var subProofs []*message.AggProof
 	for rows.Next() {
 		var proofByt []byte
