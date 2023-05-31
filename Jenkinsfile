@@ -7,10 +7,11 @@ pipeline {
         timeout (20)
     }
     tools {
-        go 'go-1.18'
         nodejs "nodejs"
+        go 'go-1.18'
     }
     environment {
+        GOBIN = '/home/ubuntu/go/bin/'
         GO111MODULE = 'on'
         PATH="/home/ubuntu/.cargo/bin:$PATH"
         LD_LIBRARY_PATH="$LD_LIBRARY_PATH:./coordinator/verifier/lib"
@@ -81,7 +82,7 @@ pipeline {
         }
         stage('Compare Coverage') {
             steps {
-                sh "./build/post-test-report-coverage.sh"
+                sh './build/post-test-report-coverage.sh'
                 script {
                     currentBuild.result = 'SUCCESS'
                 }
