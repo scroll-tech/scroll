@@ -7,7 +7,7 @@ pipeline {
         timeout (20)
     }
     tools {
-        go 'go-1.19'
+        go 'go-1.18'
         nodejs "nodejs"
     }
     environment {
