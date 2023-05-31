@@ -15,11 +15,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"gorm.io/gorm"
 
-	"scroll-tech/database/migrate"
-
 	"scroll-tech/common/docker"
 	"scroll-tech/common/types/message"
 	"scroll-tech/common/utils"
+	"scroll-tech/database/migrate"
 
 	"scroll-tech/coordinator/internal/config"
 	"scroll-tech/coordinator/internal/controller/api"
