@@ -18,6 +18,11 @@ pipeline {
         // LOG_DOCKER = 'true'
     }
     stages {
+        stage('Install gocover-cobertura') {
+            steps {
+                sh 'go get github.com/t-yuki/gocover-cobertura'
+            }
+        }
         stage('Build') {
             parallel {
                 stage('Build Prerequisite') {
