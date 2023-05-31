@@ -11,6 +11,7 @@ pipeline {
         nodejs "nodejs"
     }
     environment {
+        GOBIN = "$GOROOT/bin"
         GO111MODULE = 'on'
         PATH="/home/ubuntu/.cargo/bin:$PATH"
         LD_LIBRARY_PATH="$LD_LIBRARY_PATH:./coordinator/verifier/lib"
