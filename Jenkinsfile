@@ -11,6 +11,7 @@ pipeline {
         go 'go-1.18'
     }
     environment {
+        GOBIN = '/home/ubuntu/go/bin/'
         GO111MODULE = 'on'
         PATH="/home/ubuntu/.cargo/bin:$PATH"
         LD_LIBRARY_PATH="$LD_LIBRARY_PATH:./coordinator/verifier/lib"
