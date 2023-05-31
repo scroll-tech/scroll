@@ -21,10 +21,7 @@ import (
 	coordinatorUtils "scroll-tech/coordinator/internal/utils"
 )
 
-var (
-	// Set up Coordinator app info.
-	app *cli.App
-)
+var app *cli.App
 
 func init() {
 	app = cli.NewApp()
