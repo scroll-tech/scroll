@@ -3,4 +3,3 @@
 
 cd contracts
 yarn lint-staged
-#  && forge build && npx hardhat compile
