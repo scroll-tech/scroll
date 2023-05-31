@@ -54,7 +54,7 @@ pipeline {
             parallel{
                 stage('Race test common package') {
                     steps {
-                        sh 'go test -v -race -coverprofile=coverage.common.txt -covermode=atomic scroll-tech/common/...'
+                        sh 'go test -v -race -coverprofile=coverage.common.txt -covermode=count scroll-tech/common/...'
                     }
                 }
                 stage('Race test bridge package') {
@@ -64,12 +64,12 @@ pipeline {
                 }
                 stage('Race test coordinator package') {
                     steps {
-                        sh 'cd ./coordinator && go test -exec "env LD_LIBRARY_PATH=${PWD}/verifier/lib" -v -race -gcflags="-l" -ldflags="-s=false" -coverpkg="scroll-tech/coordinator" -coverprofile=../coverage.coordinator.txt -covermode=atomic ./...'
+                        sh 'cd ./coordinator && go test -exec "env LD_LIBRARY_PATH=${PWD}/verifier/lib" -v -race -gcflags="-l" -ldflags="-s=false" -coverpkg="scroll-tech/coordinator" -coverprofile=../coverage.coordinator.txt -covermode=count ./...'
                     }
                 }
                 stage('Race test database package') {
                     steps {
-                        sh 'go test -v -race -coverprofile=coverage.db.txt -covermode=atomic scroll-tech/database/...'
+                        sh 'go test -v -race -coverprofile=coverage.db.txt -covermode=count scroll-tech/database/...'
                     }
                 }
                 stage('Integration test') {
@@ -81,13 +81,8 @@ pipeline {
         }
         stage('Compare Coverage') {
             steps {
-                sh 'export GOBIN=$GOROOT/bin'
                 sh '$GOROOT/bin/go install github.com/t-yuki/gocover-cobertura@latest'
-                sh 'echo $GOROOT'
-                sh 'echo $GOBIN'
-                sh 'ls $GOROOT'
-                sh 'ls $GOROOT/bin/'
-                sh "./build/post-test-report-coverage.sh"
+                sh './build/post-test-report-coverage.sh'
                 script {
                     currentBuild.result = 'SUCCESS'
                 }
