@@ -83,6 +83,7 @@ pipeline {
             steps {
                 sh '$GOROOT/bin/go install github.com/t-yuki/gocover-cobertura@latest'
                 sh 'echo $GOROOT'
+                sh 'echo $GOBIN'
                 sh 'ls $GOROOT'
                 sh 'ls $GOROOT/bin/'
                 sh "./build/post-test-report-coverage.sh"
