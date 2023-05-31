@@ -45,7 +45,7 @@ func (bbc *BlockBatchCollector) Type() message.ProveType {
 
 // Collect the block batch which need to prove
 func (bbc *BlockBatchCollector) Collect(ctx context.Context) error {
-	if bbc.IsPause() {
+	if bbc.IsPaused() {
 		return nil
 	}
 	whereField := map[string]interface{}{"proving_status": types.ProvingTaskUnassigned}

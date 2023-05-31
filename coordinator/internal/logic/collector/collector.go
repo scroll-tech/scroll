@@ -28,7 +28,7 @@ type Collector interface {
 	Collect(ctx context.Context) error
 	Start()
 	Pause()
-	IsPause() bool
+	IsPaused() bool
 }
 
 // HashTaskPublicKey hash public key pair
@@ -42,7 +42,7 @@ type BaseCollector struct {
 	cfg   *config.Config
 	cache *cache.Cache
 
-	isPause atomic.Bool
+	isPaused atomic.Bool
 
 	aggTaskOrm     *orm.AggTask
 	blockBatchOrm  *orm.BlockBatch
@@ -51,15 +51,15 @@ type BaseCollector struct {
 }
 
 func (b *BaseCollector) Start() {
-	b.isPause.Store(false)
+	b.isPaused.Store(false)
 }
 
 func (b *BaseCollector) Pause() {
-	b.isPause.Store(true)
+	b.isPaused.Store(true)
 }
 
-func (b *BaseCollector) IsPause() bool {
-	return b.isPause.Load()
+func (b *BaseCollector) IsPaused() bool {
+	return b.isPaused.Load()
 }
 
 func (b *BaseCollector) checkAttempts(hash string) bool {
