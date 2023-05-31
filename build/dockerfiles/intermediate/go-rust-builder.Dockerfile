@@ -27,8 +27,8 @@ RUN rm -rf /usr/local/go
 # for 1.17
 # RUN wget https://go.dev/dl/go1.17.13.linux-amd64.tar.gz
 # RUN tar -C /usr/local -xzf go1.17.13.linux-amd64.tar.gz
-# for 1.19
-RUN wget https://go.dev/dl/go1.19.9.linux-amd64.tar.gz
-RUN tar -C /usr/local -xzf go1.19.9.linux-amd64.tar.gz
+# for 1.18
+RUN wget https://go.dev/dl/go1.18.9.linux-amd64.tar.gz
+RUN tar -C /usr/local -xzf go1.18.9.linux-amd64.tar.gz
 
 ENV PATH="/usr/local/go/bin:${PATH}"
