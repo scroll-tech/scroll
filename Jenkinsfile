@@ -81,7 +81,7 @@ pipeline {
         }
         stage('Compare Coverage') {
             steps {
-                sh 'go install github.com/t-yuki/gocover-cobertura@latest'
+                sh '$GOROOT/bin/go install github.com/t-yuki/gocover-cobertura@latest'
                 sh 'echo $GOROOT'
                 sh 'ls $GOROOT'
                 sh 'ls $GOROOT/bin/'
