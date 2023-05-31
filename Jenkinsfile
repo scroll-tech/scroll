@@ -81,7 +81,7 @@ pipeline {
         }
         stage('Compare Coverage') {
             steps {
-                sh 'export $GOBIN=$GOROOT/bin'
+                sh 'export GOBIN=$GOROOT/bin'
                 sh '$GOROOT/bin/go install github.com/t-yuki/gocover-cobertura@latest'
                 sh 'echo $GOROOT'
                 sh 'echo $GOBIN'
