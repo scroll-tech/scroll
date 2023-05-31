@@ -82,6 +82,9 @@ pipeline {
         stage('Compare Coverage') {
             steps {
                 sh 'go install github.com/t-yuki/gocover-cobertura@latest'
+                sh 'echo $GOROOT'
+                sh 'ls $GOROOT'
+                sh 'ls $GOROOT/bin/'
                 sh "./build/post-test-report-coverage.sh"
                 script {
                     currentBuild.result = 'SUCCESS'
