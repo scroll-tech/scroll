@@ -11,7 +11,7 @@ pipeline {
         nodejs "nodejs"
     }
     environment {
-        GOBIN = "/usr/local/go/bin"
+        GOBIN = "/var/lib/jenkins/tools/org.jenkinsci.plugins.golang.GolangInstallation/go-1.18/bin"
         GO111MODULE = 'on'
         PATH="/home/ubuntu/.cargo/bin:$PATH"
         LD_LIBRARY_PATH="$LD_LIBRARY_PATH:./coordinator/verifier/lib"
