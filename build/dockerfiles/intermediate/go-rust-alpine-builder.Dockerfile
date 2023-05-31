@@ -1,4 +1,4 @@
-FROM golang:1.18-alpine
+FROM golang:1.19-alpine
 ARG CARGO_CHEF_TAG=0.1.41
 ARG DEFAULT_RUST_TOOLCHAIN=nightly-2022-12-10
 

@@ -1,6 +1,6 @@
 module scroll-tech/roller
 
-go 1.18
+go 1.19
 
 require (
 	github.com/scroll-tech/go-ethereum v1.10.14-0.20230508165858-27a3830afa61

@@ -1,6 +1,6 @@
 module scroll-tech/bridge
 
-go 1.18
+go 1.19
 
 require (
 	github.com/agiledragon/gomonkey/v2 v2.9.0
