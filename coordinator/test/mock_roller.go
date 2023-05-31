@@ -3,15 +3,18 @@ package test
 import (
 	"context"
 	"crypto/ecdsa"
-	"github.com/scroll-tech/go-ethereum"
-	"github.com/scroll-tech/go-ethereum/crypto"
-	"github.com/stretchr/testify/assert"
-	"scroll-tech/common/types/message"
-	client2 "scroll-tech/coordinator/client"
-	"scroll-tech/coordinator/internal/logic/verifier"
 	"sync"
 	"testing"
 	"time"
+
+	client2 "scroll-tech/coordinator/client"
+	"scroll-tech/coordinator/internal/logic/verifier"
+
+	"scroll-tech/common/types/message"
+
+	"github.com/scroll-tech/go-ethereum"
+	"github.com/scroll-tech/go-ethereum/crypto"
+	"github.com/stretchr/testify/assert"
 )
 
 type proofStatus uint32
