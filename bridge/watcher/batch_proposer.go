@@ -231,7 +231,10 @@ func (p *BatchProposer) TryCommitBatches() {
 	index := 0
 	commit := false
 	calldataByteLen := uint64(0)
-	for ; index < len(p.batchDataBuffer); index++ {
+	// allow at most 30 batches to be committed in a single transaction
+	// note: we need a more fine-tuned approach, the batch proposer
+	// must break up a transaction if we run into "exceeds block gas limit"
+	for ; index < len(p.batchDataBuffer) && index < 30; index++ {
 		calldataByteLen += bridgeabi.GetBatchCalldataLength(&p.batchDataBuffer[index].Batch)
 		if calldataByteLen > p.commitCalldataSizeLimit {
 			commit = true
