@@ -19,6 +19,11 @@ pipeline {
         // LOG_DOCKER = 'true'
     }
     stages {
+        stage('INFO') {
+            steps {
+                sh 'ls ../'
+            }
+        }
         stage('Build') {
             parallel {
                 stage('Build Prerequisite') {
@@ -82,7 +87,6 @@ pipeline {
         }
         stage('Compare Coverage') {
             steps {
-                sh '$GOROOT/bin/go install github.com/t-yuki/gocover-cobertura@latest'
                 sh './build/post-test-report-coverage.sh'
                 script {
                     currentBuild.result = 'SUCCESS'
