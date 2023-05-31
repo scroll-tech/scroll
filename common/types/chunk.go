@@ -36,11 +36,11 @@ func (c *Chunk) Encode() ([]byte, error) {
 	for _, block := range c.Blocks {
 		blockBytes, err := block.Encode()
 		if err != nil {
-				return nil, fmt.Errorf("failed to encode block: %v", err)
+			return nil, fmt.Errorf("failed to encode block: %v", err)
 		}
 
 		if len(blockBytes) != 60 {
-				return nil, fmt.Errorf("block encoding is not 60 bytes long %x", len(blockBytes))
+			return nil, fmt.Errorf("block encoding is not 60 bytes long %x", len(blockBytes))
 		}
 
 		chunkBytes = append(chunkBytes, blockBytes...)
@@ -76,11 +76,6 @@ func (c *Chunk) Encode() ([]byte, error) {
 	return chunkBytes, nil
 }
 
-// decode chunk
-func DecodeChunk(data []byte) (*Chunk, error) {
-	return nil, nil
-}
-
 // calculate chunk data hash
 func (c *Chunk) Hash() ([]byte, error) {
 	chunkCodec, err := c.Encode()
@@ -92,7 +87,7 @@ func (c *Chunk) Hash() ([]byte, error) {
 	numBlocks := chunkCodec[0]
 
 	// concatenate block contexts
-	dataBytes := chunkCodec[1: 60*numBlocks+1]
+	dataBytes := chunkCodec[1 : 60*numBlocks+1]
 
 	// retrieve block context start index
 	blockIndex := 1
@@ -100,28 +95,32 @@ func (c *Chunk) Hash() ([]byte, error) {
 	// retrieve l2 tx start index
 	l2TxIndex := uint32(60*numBlocks + 1)
 
+	// l2 tx hashes
+	l2TxHashes := make([]byte, 0)
+
 	for numBlocks > 0 {
 		// TODO: concatenate l1 message hashes
 
 		// concatenate l2 txs hashes
 		// retrieve the number of transactions in current block.
 		numTransactionsIndex := blockIndex + 56
-		numTxsInBlock := binary.BigEndian.Uint16(chunkCodec[numTransactionsIndex: numTransactionsIndex+2])
+		numTxsInBlock := binary.BigEndian.Uint16(chunkCodec[numTransactionsIndex : numTransactionsIndex+2])
 
 		for numTxsInBlock > 0 {
-			l2TxLen := binary.BigEndian.Uint32(chunkCodec[l2TxIndex: l2TxIndex+4])
+			l2TxLen := binary.BigEndian.Uint32(chunkCodec[l2TxIndex : l2TxIndex+4])
 			l2TxIndex += 4
-			txPayload := chunkCodec[l2TxIndex: l2TxIndex+l2TxLen]
+			txPayload := chunkCodec[l2TxIndex : l2TxIndex+l2TxLen]
 			txHash := crypto.Keccak256Hash(txPayload).Bytes()
 			l2TxIndex += l2TxLen
-		
-			dataBytes = append(dataBytes, txHash...)
+
+			l2TxHashes = append(l2TxHashes, txHash...)
 			numTxsInBlock--
 		}
 
 		numBlocks--
 		blockIndex += 60
 	}
+	dataBytes = append(dataBytes, l2TxHashes...)
 
 	// TODO: check the number of L2 transactions in the chunk
 
