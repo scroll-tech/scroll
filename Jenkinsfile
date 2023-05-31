@@ -19,11 +19,6 @@ pipeline {
         // LOG_DOCKER = 'true'
     }
     stages {
-        stage('INFO') {
-            steps {
-                sh 'ls ../'
-            }
-        }
         stage('Build') {
             parallel {
                 stage('Build Prerequisite') {
