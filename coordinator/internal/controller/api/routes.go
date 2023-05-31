@@ -20,8 +20,7 @@ type RollerAPI interface {
 }
 
 type CoordinatorAPI interface {
-	StartSendTask(typ message.ProveType) error
-	PauseSendTask(typ message.ProveType) error
+	SetSendTaskStatus(typ message.ProveType, status int) error
 }
 
 // RollerDebugAPI roller api interface in order go get debug message.

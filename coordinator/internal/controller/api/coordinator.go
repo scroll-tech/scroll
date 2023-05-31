@@ -1,6 +1,7 @@
 package api
 
 import (
+	"errors"
 	"scroll-tech/common/types/message"
 	"scroll-tech/coordinator/internal/controller/cron"
 )
@@ -13,12 +14,14 @@ func NewCoordinatorController(co *cron.Collector) *CoordinatorController {
 	return &CoordinatorController{co: co}
 }
 
-func (c *CoordinatorController) StartSendTask(typ message.ProveType) error {
-	c.co.Start(typ)
-	return nil
-}
-
-func (c *CoordinatorController) PauseSendTask(typ message.ProveType) error {
-	c.co.Pause(typ)
+func (c *CoordinatorController) SetSendTaskStatus(typ message.ProveType, status int) error {
+	switch status {
+	case 0:
+		c.co.Pause(typ)
+	case 1:
+		c.co.Start(typ)
+	default:
+		return errors.New("invalid status code")
+	}
 	return nil
 }
