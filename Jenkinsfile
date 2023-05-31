@@ -81,8 +81,8 @@ pipeline {
         }
         stage('Compare Coverage') {
             steps {
-                sh 'go install code.google.com/p/go.tools/cmd/cover'
-                sh 'go install github.com/t-yuki/gocover-cobertura'
+                sh 'go get code.google.com/p/go.tools/cmd/cover'
+                sh 'go get github.com/t-yuki/gocover-cobertura'
                 sh "./build/post-test-report-coverage.sh"
                 script {
                     currentBuild.result = 'SUCCESS'
