@@ -8,6 +8,11 @@ import (
 	"scroll-tech/coordinator/internal/controller/cron"
 )
 
+const (
+	StatusPause = iota
+	StatusStart
+)
+
 type CoordinatorController struct {
 	co *cron.Collector
 }
@@ -18,9 +23,9 @@ func NewCoordinatorController(co *cron.Collector) *CoordinatorController {
 
 func (c *CoordinatorController) SetSendTaskStatus(typ message.ProveType, status int) error {
 	switch status {
-	case 0:
+	case StatusPause:
 		c.co.Pause(typ)
-	case 1:
+	case StatusStart:
 		c.co.Start(typ)
 	default:
 		return errors.New("invalid status code")
