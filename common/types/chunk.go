@@ -9,11 +9,12 @@ import (
 	"github.com/scroll-tech/go-ethereum/core/types"
 )
 
+// Chunk contains blocks to be encoded
 type Chunk struct {
 	Blocks []*WrappedBlock `json:"blocks"`
 }
 
-// encode chunk
+// Encode encodes the Chunk into RollupV2 Chunk Encoding.
 func (c *Chunk) Encode() ([]byte, error) {
 	numBlocks := len(c.Blocks)
 

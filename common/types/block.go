@@ -17,6 +17,7 @@ type WrappedBlock struct {
 	WithdrawTrieRoot common.Hash              `json:"withdraw_trie_root,omitempty"`
 }
 
+// Encode encodes the WrappedBlock into RollupV2 BlockContext Encoding.
 func (w *WrappedBlock) Encode() ([]byte, error) {
 	bytes := make([]byte, 60)
 
