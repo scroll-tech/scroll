@@ -118,17 +118,18 @@ func (r *rollerManager) AddRollerInfo(rollersInfo *coordinatorType.RollersInfo) 
 	for pk, roller := range rollersInfo.Rollers {
 		taskIds, exist := r.rollerPool.Get(pk)
 		if !exist {
-			taskIds = cmap.New()
-			r.rollerPool.Set(pk, taskIds)
+			log.Warn("pk", pk, "is not exist, add roller info failure")
+			return false
 		}
 
-		m, ok := taskIds.(cmap.ConcurrentMap)
-		if !ok {
+		tmpRollerNode, ok := taskIds.(*rollerNode)
+		if tmpRollerNode == nil || !ok {
+			log.Warn("pk", pk, "get roller node failure")
 			return false
 		}
 
 		if roller.Status == types.RollerAssigned {
-			m.Set(rollersInfo.ID, rollersInfo)
+			tmpRollerNode.TaskIDs.Set(rollersInfo.ID, rollersInfo)
 		}
 	}
 	return true
@@ -189,18 +190,16 @@ func (r *rollerManager) GetNumberOfIdleRollers(rollerType message.ProveType) (co
 }
 
 func (r *rollerManager) selectRoller(rollerType message.ProveType) *rollerNode {
-	pubKeys := r.rollerPool.Keys()
-	for len(pubKeys) > 0 {
-		idx, _ := rand.Int(rand.Reader, big.NewInt(int64(len(pubKeys))))
-		if val, ok := r.rollerPool.Get(pubKeys[idx.Int64()]); ok {
-			roller := val.(*rollerNode)
-			if roller.TaskIDs.Count() == 0 && roller.Type == rollerType {
-				return roller
+	pubkeys := r.rollerPool.Keys()
+	for len(pubkeys) > 0 {
+		idx, _ := rand.Int(rand.Reader, big.NewInt(int64(len(pubkeys))))
+		if val, ok := r.rollerPool.Get(pubkeys[idx.Int64()]); ok {
+			rn := val.(*rollerNode)
+			if rn.TaskIDs.Count() == 0 && rn.Type == rollerType {
+				return rn
 			}
 		}
-		// remove index idx
-		pubKeys = append(pubKeys, pubKeys[:idx.Int64()]...)
-		pubKeys = append(pubKeys, pubKeys[idx.Int64()+1:]...)
+		pubkeys[idx.Int64()], pubkeys = pubkeys[0], pubkeys[1:]
 	}
 	return nil
 }

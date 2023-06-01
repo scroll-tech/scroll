@@ -47,7 +47,7 @@ func (r *RollerController) RequestToken(authMsg *message.AuthMsg) (string, error
 	if err != nil {
 		return "", errors.New("token generation failed")
 	}
-	r.tokenCache.Set(pubkey, token, cache.DefaultExpiration)
+	r.tokenCache.SetDefault(pubkey, token)
 	return token, nil
 }
 

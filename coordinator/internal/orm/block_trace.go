@@ -47,3 +47,19 @@ func (o *BlockTrace) GetL2BlockInfos(fields map[string]interface{}, orderByList 
 	}
 	return blockTraces, nil
 }
+
+// UpdateBatchHashForL2Blocks update the batch_hash of block trace
+func (o *BlockTrace) UpdateBatchHashForL2Blocks(tx *gorm.DB, numbers []uint64, batchHash string) error {
+	var db *gorm.DB
+	if tx != nil {
+		db = tx
+	} else {
+		db = o.db
+	}
+
+	err := db.Model(&BlockTrace{}).Where("number IN (?)", numbers).Update("batch_hash", batchHash).Error
+	if err != nil {
+		return err
+	}
+	return nil
+}
