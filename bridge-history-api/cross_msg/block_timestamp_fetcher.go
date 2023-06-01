@@ -28,7 +28,8 @@ func NewBlocktimestampFetcher(ctx context.Context, confirmation uint, blockTimeI
 		blockTimeInSec: blockTimeInSec,
 		client:         client,
 		g:              g,
-		u:              u}
+		u:              u,
+	}
 }
 
 func (b *BlocktimestampFetcher) Start() {
@@ -42,27 +43,29 @@ func (b *BlocktimestampFetcher) Start() {
 			case <-tick.C:
 				number, err := b.client.BlockNumber(b.ctx)
 				if err != nil {
+					log.Error("Can not get latest block number: ", err)
 					continue
 				}
 				start_height, err := b.g()
 				if err != nil {
 					log.Error("Can not get latest record without block timestamp: ", err)
-				}
-				if start_height <= 0 || int64(number-(uint64(b.confirmation))) < int64(start_height) {
 					continue
 				}
-				for i := start_height; i <= uint64(number-(uint64(b.confirmation))) && i > 0; {
-					block, err := b.client.BlockByNumber(b.ctx, big.NewInt(int64(start_height)))
+				if start_height <= 0 || number < start_height+uint64(b.confirmation) {
+					continue
+				}
+				for height := start_height; number >= height+uint64(b.confirmation) && height > 0; {
+					block, err := b.client.HeaderByNumber(b.ctx, big.NewInt(int64(start_height)))
 					if err != nil {
 						log.Error("Can not get block by number: ", err)
 						break
 					}
-					err = b.u(i, time.Unix(int64(block.Time()), 0))
+					err = b.u(height, time.Unix(int64(block.Time), 0))
 					if err != nil {
 						log.Error("Can not update blocktimstamp into DB: ", err)
 						break
 					}
-					i, err = b.g()
+					height, err = b.g()
 					if err != nil {
 						log.Error("Can not get latest record without block timestamp: ", err)
 						break
