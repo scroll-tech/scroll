@@ -2,7 +2,6 @@ package api
 
 import (
 	"context"
-	"scroll-tech/coordinator/internal/controller/cron"
 
 	"github.com/scroll-tech/go-ethereum/rpc"
 	"gorm.io/gorm"
@@ -10,6 +9,7 @@ import (
 	"scroll-tech/common/types/message"
 
 	"scroll-tech/coordinator/internal/config"
+	"scroll-tech/coordinator/internal/controller/cron"
 )
 
 // RollerAPI for rollers inorder to register and submit proof
