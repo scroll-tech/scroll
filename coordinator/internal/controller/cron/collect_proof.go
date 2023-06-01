@@ -48,6 +48,7 @@ func (c *Collector) Start(collectorType message.ProveType) {
 	co, ok := c.collectors[collectorType]
 	if !ok {
 		log.Warn("no collector type", "collector", collectorType)
+		return
 	}
 	co.Start()
 }
@@ -56,6 +57,7 @@ func (c *Collector) Pause(collectorType message.ProveType) {
 	co, ok := c.collectors[collectorType]
 	if !ok {
 		log.Warn("no collector type", "collector", collectorType)
+		return
 	}
 	co.Pause()
 }
