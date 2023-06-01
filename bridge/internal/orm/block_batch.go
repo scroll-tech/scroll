@@ -158,10 +158,17 @@ func (o *BlockBatch) GetRollupStatusByHashList(hashes []string) ([]types.RollupS
 		return nil, err
 	}
 
-	var statuses []types.RollupStatus
-	for _, v := range blockBatches {
-		statuses = append(statuses, types.RollupStatus(v.RollupStatus))
+	var (
+		statuses   []types.RollupStatus
+		_statusMap = make(map[string]types.RollupStatus, len(hashes))
+	)
+	for _, _batch := range blockBatches {
+		_statusMap[_batch.Hash] = types.RollupStatus(_batch.RollupStatus)
 	}
+	for _, _hash := range hashes {
+		statuses = append(statuses, _statusMap[_hash])
+	}
+
 	return statuses, nil
 }
 

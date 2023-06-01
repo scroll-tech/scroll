@@ -29,11 +29,11 @@ libzkp:
 roller: libzkp ## Build the Roller instance.
 	GOBIN=$(PWD)/build/bin go build -ldflags "-X scroll-tech/common/version.ZkVersion=${ZK_VERSION}" -o $(PWD)/build/bin/roller ./cmd
 
+mock_roller: ## Build the mocked Roller instance.
+	GOBIN=$(PWD)/build/bin go build -tags="mock_prover mock_verifier" -o $(PWD)/build/bin/roller ./cmd
+
 gpu-roller: libzkp ## Build the GPU Roller instance.
 	GOBIN=$(PWD)/build/bin go build -ldflags "-X scroll-tech/common/version.ZkVersion=${ZK_VERSION}" -tags gpu -o $(PWD)/build/bin/roller ./cmd
-
-mock_roller:
-	GOBIN=$(PWD)/build/bin go build -tags mock_prover -o $(PWD)/build/bin/roller $(PWD)/cmd
 
 test-prover: libzkp
 	go test -tags ffi -timeout 0 -v ./prover
