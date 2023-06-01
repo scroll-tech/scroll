@@ -55,7 +55,7 @@ func (b *BlocktimestampFetcher) Start() {
 					continue
 				}
 				for height := start_height; number >= height+uint64(b.confirmation) && height > 0; {
-					block, err := b.client.HeaderByNumber(b.ctx, big.NewInt(int64(start_height)))
+					block, err := b.client.HeaderByNumber(b.ctx, new(big.Int).SetUint64(height))
 					if err != nil {
 						log.Error("Can not get block by number: ", err)
 						break
