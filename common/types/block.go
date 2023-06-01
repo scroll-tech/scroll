@@ -17,36 +17,28 @@ type WrappedBlock struct {
 	WithdrawTrieRoot common.Hash              `json:"withdraw_trie_root,omitempty"`
 }
 
-func(w *WrappedBlock) Encode() ([]byte, error) {
-	bytes := make([]byte, 0)
+func (w *WrappedBlock) Encode() ([]byte, error) {
+	bytes := make([]byte, 60)
 
 	if !w.Header.Number.IsUint64() {
 		return nil, errors.New("block number is not uint64")
 	}
 
-	numberBytes := make([]byte, 8)
-	binary.BigEndian.PutUint64(numberBytes, w.Header.Number.Uint64())
-	bytes = append(bytes, numberBytes...)
-
-	timeBytes := make([]byte, 8)
-	binary.BigEndian.PutUint64(timeBytes, w.Header.Time)
-	bytes = append(bytes, timeBytes...)
-
-	bytes = append(bytes, make([]byte, 32)...) // Currently, baseFee is 0
-
-	gasLimitBytes := make([]byte, 8)
-	binary.BigEndian.PutUint64(gasLimitBytes, w.Header.GasLimit)
-	bytes = append(bytes, gasLimitBytes...)
-
 	if len(w.Transactions) > math.MaxUint16 {
 		return nil, errors.New("number of transactions exceeds max uint16")
 	}
 
-	numTransactionsBytes := make([]byte, 2)
-	binary.BigEndian.PutUint16(numTransactionsBytes, uint16(len(w.Transactions)))
-	bytes = append(bytes, numTransactionsBytes...)
+	binary.BigEndian.PutUint64(bytes[0:], w.Header.Number.Uint64())
 
-	bytes = append(bytes, 0,0) // Currently, numL1Messages is 0
-	
+	binary.BigEndian.PutUint64(bytes[8:], w.Header.Time)
+
+	// TODO: Currently, baseFee is 0
+
+	binary.BigEndian.PutUint64(bytes[48:], w.Header.GasLimit)
+
+	binary.BigEndian.PutUint16(bytes[56:], uint16(len(w.Transactions)))
+
+	// TODO: set numL1Messages properly
+
 	return bytes, nil
 }
