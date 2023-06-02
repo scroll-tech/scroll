@@ -42,7 +42,7 @@ type BaseCollector struct {
 	cfg   *config.Config
 	cache *cache.Cache
 
-	isPaused atomic.Bool
+	isPaused atomic.Bool //nolint:typecheck
 
 	aggTaskOrm     *orm.AggTask
 	blockBatchOrm  *orm.BlockBatch
