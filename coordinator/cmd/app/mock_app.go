@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	coordinatorConfig "scroll-tech/coordinator/config"
+	coordinatorConfig "scroll-tech/coordinator/internal/config"
 
 	"scroll-tech/common/cmd"
 	"scroll-tech/common/docker"
