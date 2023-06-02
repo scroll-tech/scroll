@@ -4,7 +4,6 @@ pragma solidity ^0.8.10;
 import {Script} from "forge-std/Script.sol";
 import {console} from "forge-std/console.sol";
 
-import {ProxyAdmin} from "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 import {TransparentUpgradeableProxy} from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 
 import {L2CustomERC20Gateway} from "../../src/L2/gateways/L2CustomERC20Gateway.sol";
@@ -30,10 +29,12 @@ contract DeployL2BridgeContracts is Script {
     address L1_WETH_ADDR = vm.envAddress("L1_WETH_ADDR");
     address L2_WETH_ADDR = vm.envAddress("L2_WETH_ADDR");
 
+    // scroll admin (timelocked) or security council
+    address FORWARDER = vm.envAddress("L2_FORWARDER");
+
     L1GasPriceOracle oracle;
     L1BlockContainer container;
     L2MessageQueue queue;
-    ProxyAdmin proxyAdmin;
 
     // predeploy contracts
     address L1_BLOCK_CONTAINER_PREDEPLOY_ADDR = vm.envOr("L1_BLOCK_CONTAINER_PREDEPLOY_ADDR", address(0));
@@ -53,7 +54,6 @@ contract DeployL2BridgeContracts is Script {
         deployL2Whitelist();
 
         // upgradable
-        deployProxyAdmin();
         deployL2ScrollMessenger();
         deployL2ETHGateway();
         deployL2WETHGateway();
@@ -130,17 +130,11 @@ contract DeployL2BridgeContracts is Script {
         logAddress("L2_WHITELIST_ADDR", address(whitelist));
     }
 
-    function deployProxyAdmin() internal {
-        proxyAdmin = new ProxyAdmin();
-
-        logAddress("L2_PROXY_ADMIN_ADDR", address(proxyAdmin));
-    }
-
     function deployL2ScrollMessenger() internal {
         L2ScrollMessenger impl = new L2ScrollMessenger(address(container), address(oracle), address(queue));
         TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(
             address(impl),
-            address(proxyAdmin),
+            FORWARDER,
             new bytes(0)
         );
 
@@ -152,7 +146,7 @@ contract DeployL2BridgeContracts is Script {
         L2StandardERC20Gateway impl = new L2StandardERC20Gateway();
         TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(
             address(impl),
-            address(proxyAdmin),
+            FORWARDER,
             new bytes(0)
         );
 
@@ -164,7 +158,7 @@ contract DeployL2BridgeContracts is Script {
         L2ETHGateway impl = new L2ETHGateway();
         TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(
             address(impl),
-            address(proxyAdmin),
+            FORWARDER,
             new bytes(0)
         );
 
@@ -176,7 +170,7 @@ contract DeployL2BridgeContracts is Script {
         L2WETHGateway impl = new L2WETHGateway(L2_WETH_ADDR, L1_WETH_ADDR);
         TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(
             address(impl),
-            address(proxyAdmin),
+            FORWARDER,
             new bytes(0)
         );
 
@@ -188,7 +182,7 @@ contract DeployL2BridgeContracts is Script {
         L2GatewayRouter impl = new L2GatewayRouter();
         TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(
             address(impl),
-            address(proxyAdmin),
+            FORWARDER,
             new bytes(0)
         );
 
@@ -208,7 +202,7 @@ contract DeployL2BridgeContracts is Script {
         L2CustomERC20Gateway impl = new L2CustomERC20Gateway();
         TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(
             address(impl),
-            address(proxyAdmin),
+            FORWARDER,
             new bytes(0)
         );
 
@@ -220,7 +214,7 @@ contract DeployL2BridgeContracts is Script {
         L2ERC721Gateway impl = new L2ERC721Gateway();
         TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(
             address(impl),
-            address(proxyAdmin),
+            FORWARDER,
             new bytes(0)
         );
 
@@ -232,7 +226,7 @@ contract DeployL2BridgeContracts is Script {
         L2ERC1155Gateway impl = new L2ERC1155Gateway();
         TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(
             address(impl),
-            address(proxyAdmin),
+            FORWARDER,
             new bytes(0)
         );
 

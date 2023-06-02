@@ -4,8 +4,8 @@ pragma solidity ^0.8.10;
 import {Script} from "forge-std/Script.sol";
 import {console} from "forge-std/console.sol";
 
-import {ProxyAdmin} from "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 import {TransparentUpgradeableProxy} from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+import {TimelockController} from "@openzeppelin/contracts/governance/TimelockController.sol";
 
 import {L1CustomERC20Gateway} from "../../src/L1/gateways/L1CustomERC20Gateway.sol";
 import {L1ERC1155Gateway} from "../../src/L1/gateways/L1ERC1155Gateway.sol";
@@ -22,6 +22,7 @@ import {L2GasPriceOracle} from "../../src/L1/rollup/L2GasPriceOracle.sol";
 import {ScrollChain} from "../../src/L1/rollup/ScrollChain.sol";
 import {Whitelist} from "../../src/L2/predeploys/Whitelist.sol";
 
+
 contract DeployL1BridgeContracts is Script {
     uint256 L1_DEPLOYER_PRIVATE_KEY = vm.envUint("L1_DEPLOYER_PRIVATE_KEY");
 
@@ -30,14 +31,14 @@ contract DeployL1BridgeContracts is Script {
     address L1_WETH_ADDR = vm.envAddress("L1_WETH_ADDR");
     address L2_WETH_ADDR = vm.envAddress("L2_WETH_ADDR");
 
-    ProxyAdmin proxyAdmin;
+    // scroll admin (timelocked) or security council
+    address FORWARDER = vm.envAddress("L1_FORWARDER");
 
     function run() external {
         vm.startBroadcast(L1_DEPLOYER_PRIVATE_KEY);
 
         // note: the RollupVerifier library is deployed implicitly
 
-        deployProxyAdmin();
         deployL1Whitelist();
         deployL1MessageQueue();
         deployL2GasPriceOracle();
@@ -55,12 +56,6 @@ contract DeployL1BridgeContracts is Script {
         vm.stopBroadcast();
     }
 
-    function deployProxyAdmin() internal {
-        proxyAdmin = new ProxyAdmin();
-
-        logAddress("L1_PROXY_ADMIN_ADDR", address(proxyAdmin));
-    }
-
     function deployL1Whitelist() internal {
         address owner = vm.addr(L1_DEPLOYER_PRIVATE_KEY);
         Whitelist whitelist = new Whitelist(owner);
@@ -72,7 +67,7 @@ contract DeployL1BridgeContracts is Script {
         ScrollChain impl = new ScrollChain(CHAIN_ID_L2);
         TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(
             address(impl),
-            address(proxyAdmin),
+            FORWARDER,
             new bytes(0)
         );
 
@@ -84,7 +79,7 @@ contract DeployL1BridgeContracts is Script {
         L1MessageQueue impl = new L1MessageQueue();
         TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(
             address(impl),
-            address(proxyAdmin),
+            FORWARDER,
             new bytes(0)
         );
         logAddress("L1_MESSAGE_QUEUE_IMPLEMENTATION_ADDR", address(impl));
@@ -95,7 +90,7 @@ contract DeployL1BridgeContracts is Script {
         L2GasPriceOracle impl = new L2GasPriceOracle();
         TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(
             address(impl),
-            address(proxyAdmin),
+            FORWARDER,
             new bytes(0)
         );
         logAddress("L2_GAS_PRICE_ORACLE_IMPLEMENTATION_ADDR", address(impl));
@@ -106,7 +101,7 @@ contract DeployL1BridgeContracts is Script {
         L1StandardERC20Gateway impl = new L1StandardERC20Gateway();
         TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(
             address(impl),
-            address(proxyAdmin),
+            FORWARDER,
             new bytes(0)
         );
 
@@ -118,7 +113,7 @@ contract DeployL1BridgeContracts is Script {
         L1ETHGateway impl = new L1ETHGateway();
         TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(
             address(impl),
-            address(proxyAdmin),
+            FORWARDER,
             new bytes(0)
         );
 
@@ -130,7 +125,7 @@ contract DeployL1BridgeContracts is Script {
         L1WETHGateway impl = new L1WETHGateway(L1_WETH_ADDR, L2_WETH_ADDR);
         TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(
             address(impl),
-            address(proxyAdmin),
+            FORWARDER,
             new bytes(0)
         );
 
@@ -142,7 +137,7 @@ contract DeployL1BridgeContracts is Script {
         L1GatewayRouter impl = new L1GatewayRouter();
         TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(
             address(impl),
-            address(proxyAdmin),
+            FORWARDER,
             new bytes(0)
         );
 
@@ -154,7 +149,7 @@ contract DeployL1BridgeContracts is Script {
         L1ScrollMessenger impl = new L1ScrollMessenger();
         TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(
             address(impl),
-            address(proxyAdmin),
+            FORWARDER,
             new bytes(0)
         );
 
@@ -166,7 +161,7 @@ contract DeployL1BridgeContracts is Script {
         EnforcedTxGateway impl = new EnforcedTxGateway();
         TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(
             address(impl),
-            address(proxyAdmin),
+            FORWARDER,
             new bytes(0)
         );
 
@@ -178,7 +173,7 @@ contract DeployL1BridgeContracts is Script {
         L1CustomERC20Gateway impl = new L1CustomERC20Gateway();
         TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(
             address(impl),
-            address(proxyAdmin),
+            FORWARDER,
             new bytes(0)
         );
 
@@ -190,7 +185,7 @@ contract DeployL1BridgeContracts is Script {
         L1ERC721Gateway impl = new L1ERC721Gateway();
         TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(
             address(impl),
-            address(proxyAdmin),
+            FORWARDER,
             new bytes(0)
         );
 
@@ -202,7 +197,7 @@ contract DeployL1BridgeContracts is Script {
         L1ERC1155Gateway impl = new L1ERC1155Gateway();
         TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(
             address(impl),
-            address(proxyAdmin),
+            FORWARDER,
             new bytes(0)
         );
 
