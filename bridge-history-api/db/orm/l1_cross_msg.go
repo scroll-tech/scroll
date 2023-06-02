@@ -127,17 +127,14 @@ func (l *l1CrossMsgOrm) UpdateL1Blocktimestamp(height uint64, timestamp time.Tim
 	return nil
 }
 
-func (l *l1CrossMsgOrm) GetL1LatestNoBlocktimestampHeight() (uint64, error) {
+func (l *l1CrossMsgOrm) GetL1EarliestNoBlocktimestampHeight() (uint64, error) {
 	row := l.db.QueryRowx(`SELECT height FROM cross_message WHERE blocktimestamp IS NULL AND msg_type = $1 AND NOT is_deleted ORDER BY height ASC LIMIT 1;`, Layer1Msg)
-	var result sql.NullInt64
+	var result uint64
 	if err := row.Scan(&result); err != nil {
-		if err == sql.ErrNoRows || !result.Valid {
+		if err == sql.ErrNoRows {
 			return 0, nil
 		}
 		return 0, err
 	}
-	if result.Valid {
-		return uint64(result.Int64), nil
-	}
-	return 0, nil
+	return result, nil
 }

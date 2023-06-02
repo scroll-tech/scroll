@@ -78,7 +78,7 @@ type L1CrossMsgOrm interface {
 	GetLatestL1ProcessedHeight() (int64, error)
 	DeleteL1CrossMsgAfterHeightDBTx(dbTx *sqlx.Tx, height int64) error
 	UpdateL1Blocktimestamp(height uint64, timestamp time.Time) error
-	GetL1LatestNoBlocktimestampHeight() (uint64, error)
+	GetL1EarliestNoBlocktimestampHeight() (uint64, error)
 }
 
 // L2CrossMsgOrm provides operations on l2_cross_message table
@@ -92,7 +92,7 @@ type L2CrossMsgOrm interface {
 	GetLatestL2ProcessedHeight() (int64, error)
 	DeleteL2CrossMsgFromHeightDBTx(dbTx *sqlx.Tx, height int64) error
 	UpdateL2Blocktimestamp(height uint64, timestamp time.Time) error
-	GetL2LatestNoBlocktimestampHeight() (uint64, error)
+	GetL2EarliestNoBlocktimestampHeight() (uint64, error)
 }
 
 type RelayedMsgOrm interface {
