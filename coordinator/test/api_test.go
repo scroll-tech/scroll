@@ -19,11 +19,12 @@ import (
 	"golang.org/x/sync/errgroup"
 	"gorm.io/gorm"
 
+	"scroll-tech/database/migrate"
+
 	"scroll-tech/common/docker"
 	"scroll-tech/common/types"
 	"scroll-tech/common/types/message"
 	"scroll-tech/common/utils"
-	"scroll-tech/database/migrate"
 
 	client2 "scroll-tech/coordinator/client"
 	"scroll-tech/coordinator/internal/config"

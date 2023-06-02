@@ -3,11 +3,12 @@ package docker
 import (
 	"context"
 	"fmt"
-	"github.com/docker/docker/api/types/container"
 	"math/big"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/docker/docker/api/types/container"
 
 	"github.com/docker/docker/api/types"
 	"github.com/scroll-tech/go-ethereum/ethclient"
