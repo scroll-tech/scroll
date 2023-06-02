@@ -3,9 +3,10 @@ package docker
 import (
 	"context"
 	"fmt"
-	"github.com/docker/docker/api/types/container"
 	"strings"
 	"time"
+
+	"github.com/docker/docker/api/types/container"
 
 	"github.com/docker/docker/api/types"
 
