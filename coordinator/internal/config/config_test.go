@@ -132,6 +132,6 @@ func TestConfig(t *testing.T) {
 
 		cfg, err := NewConfig(tmpFile.Name())
 		assert.NoError(t, err)
-		assert.Equal(t, uint8(defaultNumberOfSessionRetryAttempts), cfg.RollerManagerConfig.SessionAttempts)
+		assert.Equal(t, defaultNumberOfSessionRetryAttempts, cfg.RollerManagerConfig.SessionAttempts)
 	})
 }
