@@ -22,4 +22,32 @@ interface IL1GatewayRouter is IL1ETHGateway, IL1ERC20Gateway {
     /// @param token The address of token updated.
     /// @param gateway The corresponding address of gateway updated.
     event SetERC20Gateway(address indexed token, address indexed gateway);
+
+    /*************************
+     * Public View Functions *
+     *************************/
+
+    /// @notice Return the corresponding gateway address for given token address.
+    /// @param _token The address of token to query.
+    function getERC20Gateway(address _token) external view returns (address);
+
+    /************************
+     * Restricted Functions *
+     ************************/
+
+    /// @notice Update the address of ETH gateway contract.
+    /// @dev This function should only be called by contract owner.
+    /// @param _ethGateway The address to update.
+    function setETHGateway(address _ethGateway) external;
+
+    /// @notice Update the address of default ERC20 gateway contract.
+    /// @dev This function should only be called by contract owner.
+    /// @param _defaultERC20Gateway The address to update.
+    function setDefaultERC20Gateway(address _defaultERC20Gateway) external;
+
+    /// @notice Update the mapping from token address to gateway address.
+    /// @dev This function should only be called by contract owner.
+    /// @param _tokens The list of addresses of tokens to update.
+    /// @param _gateways The list of addresses of gateways to update.
+    function setERC20Gateway(address[] memory _tokens, address[] memory _gateways) external;
 }
