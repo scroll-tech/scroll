@@ -3,6 +3,7 @@ package docker
 import (
 	"context"
 	"fmt"
+	"github.com/docker/docker/api/types/container"
 	"strings"
 	"time"
 
@@ -65,8 +66,12 @@ func (i *ImgDB) Stop() error {
 	if i.id == "" {
 		i.id = GetContainerID(i.name)
 	}
-	timeout := time.Second * 3
-	if err := cli.ContainerStop(ctx, i.id, &timeout); err != nil {
+
+	timeoutSec := 3
+	timeout := container.StopOptions{
+		Timeout: &timeoutSec,
+	}
+	if err := cli.ContainerStop(ctx, i.id, timeout); err != nil {
 		return err
 	}
 	// remove the stopped container.

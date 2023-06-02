@@ -71,11 +71,12 @@ func (c *Collector) run() {
 		}
 	}()
 
-	ticker := time.NewTicker(time.Duration(c.cfg.RollerManagerConfig.CollectionTime) * time.Minute)
+	ticker := time.NewTicker(time.Duration(c.cfg.RollerManagerConfig.CollectionTime*10) * time.Second)
 
 	for {
 		select {
 		case <-ticker.C:
+			log.Info("star collecting..")
 			for _, tmpCollector := range c.collectors {
 				if err := tmpCollector.Collect(c.ctx); err != nil {
 					log.Warn("%s collect data to prover failure:%v", tmpCollector.Type(), err)

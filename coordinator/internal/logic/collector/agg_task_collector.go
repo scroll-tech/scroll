@@ -52,6 +52,10 @@ func (atc *AggTaskCollector) Collect(ctx context.Context) error {
 		return err
 	}
 
+	if len(aggTasks) == 0 {
+		return nil
+	}
+
 	if len(aggTasks) != 1 {
 		log.Error("get unassigned agg proving task len not 1")
 		return err

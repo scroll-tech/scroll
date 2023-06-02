@@ -41,7 +41,9 @@ var rollerController *RollerController
 
 func init() {
 	conf := &config.Config{}
-	conf.RollerManagerConfig = &config.RollerManagerConfig{}
+	conf.RollerManagerConfig = &config.RollerManagerConfig{
+		TokenTimeToLive: 120,
+	}
 	conf.RollerManagerConfig.Verifier = &config.VerifierConfig{MockMode: true}
 	rollerController = NewRollerController(conf, nil)
 }

@@ -56,6 +56,10 @@ func (bbc *BlockBatchCollector) Collect(ctx context.Context) error {
 		return err
 	}
 
+	if len(blockBatches) == 0 {
+		return nil
+	}
+
 	if len(blockBatches) != 1 {
 		log.Error("get unassigned basic proving task len not 1")
 		return err

@@ -8,6 +8,8 @@ import (
 	"gorm.io/gorm"
 
 	"scroll-tech/common/types"
+
+	coordinatorType "scroll-tech/coordinator/internal/types"
 )
 
 // BlockBatch is structure of stored block batch message
@@ -84,6 +86,38 @@ func (o *BlockBatch) GetAssignedBatchHashes() ([]string, error) {
 		hashes = append(hashes, blockBatch.Hash)
 	}
 	return hashes, nil
+}
+
+// InsertBlockBatchByBatchData insert a block batch data by the BatchData
+func (o *BlockBatch) InsertBlockBatchByBatchData(tx *gorm.DB, batchData *coordinatorType.BatchData) (int64, error) {
+	var db *gorm.DB
+	if tx != nil {
+		db = tx
+	} else {
+		db = o.db
+	}
+
+	numBlocks := len(batchData.Batch.Blocks)
+	insertBlockBatch := BlockBatch{
+		Hash:             batchData.Hash().Hex(),
+		Index:            batchData.Batch.BatchIndex,
+		StartBlockNumber: batchData.Batch.Blocks[0].BlockNumber,
+		StartBlockHash:   batchData.Batch.Blocks[0].BlockHash.Hex(),
+		EndBlockNumber:   batchData.Batch.Blocks[numBlocks-1].BlockNumber,
+		EndBlockHash:     batchData.Batch.Blocks[numBlocks-1].BlockHash.Hex(),
+		ParentHash:       batchData.Batch.ParentBatchHash.Hex(),
+		StateRoot:        batchData.Batch.NewStateRoot.Hex(),
+		TotalTxNum:       batchData.TotalTxNum,
+		TotalL1TxNum:     batchData.TotalL1TxNum,
+		TotalL2Gas:       batchData.TotalL2Gas,
+		CreatedAt:        time.Now(),
+	}
+	result := db.Create(&insertBlockBatch)
+	if result.Error != nil {
+		log.Error("failed to insert block batch by batchData", "err", result.Error)
+		return 0, result.Error
+	}
+	return result.RowsAffected, nil
 }
 
 // UpdateProvingStatus update the proving status
