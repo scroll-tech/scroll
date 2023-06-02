@@ -13,6 +13,7 @@ require (
 	github.com/smartystreets/goconvey v1.8.0
 	github.com/stretchr/testify v1.8.2
 	github.com/urfave/cli/v2 v2.17.2-0.20221006022127-8f469abc00aa
+	golang.org/x/sync v0.1.0
 	gorm.io/driver/postgres v1.5.2
 	gorm.io/gorm v1.25.1
 )
