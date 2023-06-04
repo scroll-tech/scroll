@@ -1,9 +1,9 @@
-## 1. Purpose or design rationale of this PR
+### Purpose or design rationale of this PR
 
-...
+*Describe your change. Make sure to answer these three questions: What does this PR do? Why does it do it? How does it do it?*
 
 
-## 2. PR title
+### PR title
 
 Your PR title must follow [conventional commits](https://www.conventionalcommits.org/en/v1.0.0/#summary) (as we are doing squash merge for each PR), so it must start with one of the following [types](https://github.com/angular/angular/blob/22b96b9/CONTRIBUTING.md#type):
 
@@ -18,17 +18,17 @@ Your PR title must follow [conventional commits](https://www.conventionalcommits
 - [ ] test: Adding missing tests or correcting existing tests
 
 
-## 3. Deployment tag versioning
+### Deployment tag versioning
 
 Has `tag` in `common/version.go` been updated?
 
-- [ ] This PR doesn't involve a new deployment, git tag, docker image tag
+- [ ] No, this PR doesn't involve a new deployment, git tag, docker image tag
 - [ ] Yes
 
 
-## 4. Breaking change label
+### Breaking change label
 
 Does this PR have the `breaking-change` label?
 
-- [ ] This PR is not a breaking change
+- [ ] No, this PR is not a breaking change
 - [ ] Yes
