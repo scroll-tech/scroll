@@ -2,26 +2,31 @@
 
 pragma solidity ^0.8.0;
 
-import {ERC2771ContextUpgradeable} from "@openzeppelin/contracts-upgradeable/metatx/ERC2771ContextUpgradeable.sol";
-import {IERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
-import {SafeERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
-import {IERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
-import {IERC20PermitUpgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/draft-IERC20PermitUpgradeable.sol";
+import {ERC2771Context} from "@openzeppelin/contracts/metatx/ERC2771Context.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {IERC20Permit} from "@openzeppelin/contracts/token/ERC20/extensions/draft-IERC20Permit.sol";
 
 import {OwnableBase} from "../libraries/common/OwnableBase.sol";
 
 // solhint-disable no-empty-blocks
 
-contract GasSwap is ERC2771ContextUpgradeable, OwnableBase {
-    using SafeERC20Upgradeable for IERC20Upgradeable;
+contract GasSwap is ERC2771Context, OwnableBase {
+    using SafeERC20 for IERC20;
 
     /**********
      * Events *
      **********/
 
     /// @notice Emitted when the fee ratio is updated.
-    /// @param fee The new fee ratio, multiplied by 1e18.
-    event UpdateFee(uint256 fee);
+    /// @param feeRatio The new fee ratio, multiplied by 1e18.
+    event UpdateFeeRatio(uint256 feeRatio);
+
+    /// @notice Emitted when the status of target is updated.
+    /// @param target The address of target contract.
+    /// @param status The status updated.
+    event UpdateApprovedTarget(address target, bool status);
 
     /*************
      * Constants *
@@ -64,15 +69,13 @@ contract GasSwap is ERC2771ContextUpgradeable, OwnableBase {
     mapping(address => bool) public approvedTargets;
 
     /// @notice The fee ratio charged for each swap, multiplied by 1e18.
-    uint256 public fee;
+    uint256 public feeRatio;
 
     /***************
      * Constructor *
      ***************/
 
-    constructor(address trustedForwarder) ERC2771ContextUpgradeable(trustedForwarder) {}
-
-    function initialize() external initializer {
+    constructor(address trustedForwarder) ERC2771Context(trustedForwarder) {
         owner = msg.sender;
     }
 
@@ -89,7 +92,7 @@ contract GasSwap is ERC2771ContextUpgradeable, OwnableBase {
         require(approvedTargets[_swap.target], "target not approved");
 
         // do permit
-        IERC20PermitUpgradeable(_permit.token).permit(
+        IERC20Permit(_permit.token).permit(
             _msgSender(),
             address(this),
             _permit.value,
@@ -100,11 +103,11 @@ contract GasSwap is ERC2771ContextUpgradeable, OwnableBase {
         );
 
         // transfer token
-        IERC20Upgradeable(_permit.token).safeTransferFrom(_msgSender(), address(this), _permit.value);
+        IERC20(_permit.token).safeTransferFrom(_msgSender(), address(this), _permit.value);
 
         // approve
-        IERC20Upgradeable(_permit.token).safeApprove(_swap.target, 0);
-        IERC20Upgradeable(_permit.token).safeApprove(_swap.target, _permit.value);
+        IERC20(_permit.token).safeApprove(_swap.target, 0);
+        IERC20(_permit.token).safeApprove(_swap.target, _permit.value);
 
         // do swap
         uint256 _outputTokenAmount = address(this).balance;
@@ -116,7 +119,7 @@ contract GasSwap is ERC2771ContextUpgradeable, OwnableBase {
         require(_outputTokenAmount >= _swap.minOutput, "insufficient output amount");
 
         // take fee and tranfer ETH
-        uint256 _fee = (_outputTokenAmount * fee) / PRECISION;
+        uint256 _fee = (_outputTokenAmount * feeRatio) / PRECISION;
         (_success, ) = _msgSender().call{value: _outputTokenAmount - _fee}("");
         require(_success, "transfer ETH failed");
     }
@@ -133,16 +136,25 @@ contract GasSwap is ERC2771ContextUpgradeable, OwnableBase {
             (bool success, ) = msg.sender.call{value: _amount}("");
             require(success, "ETH transfer failed");
         } else {
-            IERC20Upgradeable(_token).safeTransfer(msg.sender, _amount);
+            IERC20(_token).safeTransfer(msg.sender, _amount);
         }
     }
 
     /// @notice Update the fee ratio.
-    /// @param _fee The new fee ratio.
-    function updateFee(uint256 _fee) external onlyOwner {
-        fee = _fee;
+    /// @param _feeRatio The new fee ratio.
+    function updateFeeRatio(uint256 _feeRatio) external onlyOwner {
+        feeRatio = _feeRatio;
 
-        emit UpdateFee(_fee);
+        emit UpdateFeeRatio(_feeRatio);
+    }
+
+    /// @notice Update the status of a target address.
+    /// @param _target The address of target to update.
+    /// @param _status The new status.
+    function updateApprovedTarget(address _target, bool _status) external onlyOwner {
+        approvedTargets[_target] = _status;
+
+        emit UpdateApprovedTarget(_target, _status);
     }
 
     /**********************
