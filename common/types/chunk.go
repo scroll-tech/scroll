@@ -7,6 +7,7 @@ import (
 
 	"github.com/scroll-tech/go-ethereum/common/hexutil"
 	"github.com/scroll-tech/go-ethereum/core/types"
+	"github.com/scroll-tech/go-ethereum/crypto"
 )
 
 // Chunk contains blocks to be encoded
@@ -71,4 +72,52 @@ func (c *Chunk) Encode() ([]byte, error) {
 	chunkBytes = append(chunkBytes, l2TxDataBytes...)
 
 	return chunkBytes, nil
+}
+
+// Hash hashes the Chunk into RollupV2 Chunk Hash
+func (c *Chunk) Hash() ([]byte, error) {
+	chunkBytes, err := c.Encode()
+	if err != nil {
+		return nil, err
+	}
+	numBlocks := chunkBytes[0]
+
+	// concatenate block contexts
+	// only first 58 bytes is needed
+	dataBytes := make([]byte, 0)
+	for i := 0; i < int(numBlocks); i++ {
+		dataBytes = append(dataBytes, chunkBytes[60*i+1:60*i+59]...)
+	}
+
+	// concatenate l1 and l2 tx hashes
+	l2TxHashes := make([]byte, 0)
+	for _, block := range c.Blocks {
+		for _, txData := range block.Transactions {
+			// TODO: concatenate l1 message hashes
+			if txData.Type == 0x7E {
+				continue
+			}
+			// concatenate l2 txs hashes
+			// retrieve the number of transactions in current block.
+			data, _ := hexutil.Decode(txData.Data)
+			// right now we only support legacy tx
+			tx := types.NewTx(&types.LegacyTx{
+				Nonce:    txData.Nonce,
+				To:       txData.To,
+				Value:    txData.Value.ToInt(),
+				Gas:      txData.Gas,
+				GasPrice: txData.GasPrice.ToInt(),
+				Data:     data,
+				V:        txData.V.ToInt(),
+				R:        txData.R.ToInt(),
+				S:        txData.S.ToInt(),
+			})
+			txHash := tx.Hash().Bytes()
+			l2TxHashes = append(l2TxHashes, txHash...)
+		}
+	}
+
+	dataBytes = append(dataBytes, l2TxHashes...)
+	hash := crypto.Keccak256Hash(dataBytes).Bytes()
+	return hash, nil
 }
