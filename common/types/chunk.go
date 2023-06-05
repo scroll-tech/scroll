@@ -2,8 +2,10 @@ package types
 
 import (
 	"encoding/binary"
+	"encoding/hex"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/scroll-tech/go-ethereum/common/hexutil"
 	"github.com/scroll-tech/go-ethereum/core/types"
@@ -99,21 +101,13 @@ func (c *Chunk) Hash() ([]byte, error) {
 			}
 			// concatenate l2 txs hashes
 			// retrieve the number of transactions in current block.
-			data, _ := hexutil.Decode(txData.Data)
-			// right now we only support legacy tx
-			tx := types.NewTx(&types.LegacyTx{
-				Nonce:    txData.Nonce,
-				To:       txData.To,
-				Value:    txData.Value.ToInt(),
-				Gas:      txData.Gas,
-				GasPrice: txData.GasPrice.ToInt(),
-				Data:     data,
-				V:        txData.V.ToInt(),
-				R:        txData.R.ToInt(),
-				S:        txData.S.ToInt(),
-			})
-			txHash := tx.Hash().Bytes()
-			l2TxHashes = append(l2TxHashes, txHash...)
+			txHash := txData.TxHash
+			txHash = strings.TrimPrefix(txHash, "0x")
+			hashBytes, err := hex.DecodeString(txHash)
+			if err != nil {
+				return nil, err
+			}
+			l2TxHashes = append(l2TxHashes, hashBytes...)
 		}
 	}
 
