@@ -9,19 +9,19 @@ import (
 	"github.com/ethereum/go-ethereum/log"
 )
 
-type GetEarliestNoBlocktimestampHeight func() (uint64, error)
-type BlocktimestampUpdater func(height uint64, timestamp time.Time) error
+type GetEarliestNoBlocktimestampHeightFunc func() (uint64, error)
+type UpdateBlocktimestampFunc func(height uint64, timestamp time.Time) error
 
 type BlocktimestampFetcher struct {
 	ctx                                   context.Context
 	confirmation                          uint
 	blockTimeInSec                        int
 	client                                *ethclient.Client
-	updateBlocktimestampFunc              BlocktimestampUpdater
-	getEarliestNoBlocktimestampHeightFunc GetEarliestNoBlocktimestampHeight
+	updateBlocktimestampFunc              UpdateBlocktimestampFunc
+	getEarliestNoBlocktimestampHeightFunc GetEarliestNoBlocktimestampHeightFunc
 }
 
-func NewBlocktimestampFetcher(ctx context.Context, confirmation uint, blockTimeInSec int, client *ethclient.Client, updateBlocktimestampFunc BlocktimestampUpdater, getEarliestNoBlocktimestampHeightFunc GetEarliestNoBlocktimestampHeight) *BlocktimestampFetcher {
+func NewBlocktimestampFetcher(ctx context.Context, confirmation uint, blockTimeInSec int, client *ethclient.Client, updateBlocktimestampFunc UpdateBlocktimestampFunc, getEarliestNoBlocktimestampHeightFunc GetEarliestNoBlocktimestampHeightFunc) *BlocktimestampFetcher {
 	return &BlocktimestampFetcher{
 		ctx:                                   ctx,
 		confirmation:                          confirmation,
@@ -46,15 +46,12 @@ func (b *BlocktimestampFetcher) Start() {
 					log.Error("Can not get latest block number: ", err)
 					continue
 				}
-				start_height, err := b.getEarliestNoBlocktimestampHeightFunc()
+				startHeight, err := b.getEarliestNoBlocktimestampHeightFunc()
 				if err != nil {
 					log.Error("Can not get latest record without block timestamp: ", err)
 					continue
 				}
-				if start_height <= 0 || number < start_height+uint64(b.confirmation) {
-					continue
-				}
-				for height := start_height; number >= height+uint64(b.confirmation) && height > 0; {
+				for height := startHeight; number >= height+uint64(b.confirmation) && height > 0; {
 					block, err := b.client.HeaderByNumber(b.ctx, new(big.Int).SetUint64(height))
 					if err != nil {
 						log.Error("Can not get block by number: ", err)
