@@ -16,4 +16,5 @@ func TestKeccak2(t *testing.T) {
 	assert.NotEmpty(t, c)
 	assert.NotEqual(t, a, c)
 	assert.NotEqual(t, b, c)
+	assert.Equal(t, "0xc0ffbd7f501bd3d49721b0724b2bff657cb2378f15d5a9b97cd7ea5bf630d512", c.Hex())
 }
