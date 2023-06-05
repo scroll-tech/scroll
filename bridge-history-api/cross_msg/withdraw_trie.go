@@ -1,9 +1,9 @@
 package cross_msg
 
 import (
-	"bridge-history-api/utils"
-
 	"github.com/ethereum/go-ethereum/common"
+
+	"bridge-history-api/utils"
 )
 
 // MaxHeight is the maixium possible height of withdraw trie
