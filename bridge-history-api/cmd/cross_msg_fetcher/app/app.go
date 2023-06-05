@@ -98,6 +98,14 @@ func action(ctx *cli.Context) error {
 	go l2crossMsgFetcher.Start()
 	defer l2crossMsgFetcher.Stop()
 
+	l1BlocktimeFetcher := cross_msg.NewBlocktimestampFetcher(subCtx, uint(cfg.L1.Confirmation), int(cfg.L1.BlockTime), l1client, db.UpdateL1Blocktimestamp, db.GetL1EarliestNoBlocktimestampHeight)
+	go l1BlocktimeFetcher.Start()
+	defer l1BlocktimeFetcher.Stop()
+
+	l2BlocktimeFetcher := cross_msg.NewBlocktimestampFetcher(subCtx, uint(cfg.L2.Confirmation), int(cfg.L2.BlockTime), l2client, db.UpdateL2Blocktimestamp, db.GetL2EarliestNoBlocktimestampHeight)
+	go l2BlocktimeFetcher.Start()
+	defer l2BlocktimeFetcher.Stop()
+
 	// Catch CTRL-C to ensure a graceful shutdown.
 	interrupt := make(chan os.Signal, 1)
 	signal.Notify(interrupt, os.Interrupt)
