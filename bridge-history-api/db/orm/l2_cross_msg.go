@@ -124,7 +124,7 @@ func (l *l2CrossMsgOrm) GetLatestL2ProcessedHeight() (int64, error) {
 }
 
 func (l *l2CrossMsgOrm) UpdateL2Blocktimestamp(height uint64, timestamp time.Time) error {
-	if _, err := l.db.Exec(`UPDATE cross_message SET blocktimestamp = $1 where height = $2 AND msg_type = $3 is_deleted = false`, timestamp, height, Layer2Msg); err != nil {
+	if _, err := l.db.Exec(`UPDATE cross_message SET blocktimestamp = $1 where height = $2 AND msg_type = $3 AND NOT is_deleted`, timestamp, height, Layer2Msg); err != nil {
 		return err
 	}
 	return nil
