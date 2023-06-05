@@ -88,7 +88,8 @@ func (c *Chunk) Hash() ([]byte, error) {
 	// only first 58 bytes is needed
 	dataBytes := make([]byte, 0)
 	for i := 0; i < int(numBlocks); i++ {
-		dataBytes = append(dataBytes, chunkBytes[60*i+1:60*i+59]...)
+		// only first 58 bytes is needed
+		dataBytes = append(dataBytes, chunkBytes[1+60*i:60*i+59]...)
 	}
 
 	// concatenate l1 and l2 tx hashes
