@@ -86,14 +86,14 @@ func (c *Chunk) Hash() ([]byte, error) {
 
 	// concatenate block contexts
 	// only first 58 bytes is needed
-	dataBytes := make([]byte, 0)
+	var dataBytes []byte
 	for i := 0; i < int(numBlocks); i++ {
 		// only first 58 bytes is needed
 		dataBytes = append(dataBytes, chunkBytes[1+60*i:60*i+59]...)
 	}
 
 	// concatenate l1 and l2 tx hashes
-	l2TxHashes := make([]byte, 0)
+	var l2TxHashes []byte
 	for _, block := range c.Blocks {
 		for _, txData := range block.Transactions {
 			// TODO: concatenate l1 message hashes
