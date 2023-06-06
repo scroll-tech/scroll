@@ -1,7 +1,6 @@
 package cross_msg_test
 
 import (
-	"bridge-history-api/cross_msg"
 	"crypto/rand"
 	"math/big"
 	"testing"
@@ -9,6 +8,8 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/stretchr/testify/assert"
+
+	"bridge-history-api/cross_msg"
 )
 
 func TestMergeIntoList(t *testing.T) {

@@ -14,6 +14,11 @@ import (
 	backendabi "bridge-history-api/abi"
 )
 
+// Keccak2 compute the keccack256 of two concatenations of bytes32
+func Keccak2(a common.Hash, b common.Hash) common.Hash {
+	return common.BytesToHash(crypto.Keccak256(append(a.Bytes()[:], b.Bytes()[:]...)))
+}
+
 func GetSafeBlockNumber(ctx context.Context, client *ethclient.Client, confirmations uint64) (uint64, error) {
 	number, err := client.BlockNumber(ctx)
 	if err != nil || number <= confirmations {
