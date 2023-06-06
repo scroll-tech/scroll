@@ -2,23 +2,24 @@
 -- +goose StatementBegin
 create table cross_message
 (
-    id           BIGSERIAL PRIMARY KEY,
-    msg_hash     VARCHAR NOT NULL DEFAULT '',
-    height       BIGINT  NOT NULL,
-    sender       VARCHAR NOT NULL,
-    target       VARCHAR NOT NULL,
-    amount       VARCHAR NOT NULL,
-    layer1_hash  VARCHAR NOT NULL DEFAULT '',
-    layer2_hash  VARCHAR NOT NULL DEFAULT '',
-    layer1_token VARCHAR NOT NULL DEFAULT '',
-    layer2_token VARCHAR NOT NULL DEFAULT '',
-    token_id     BIGINT NOT NULL DEFAULT 0,
-    asset        SMALLINT NOT NULL,
-    msg_type     SMALLINT NOT NULL,
-    is_deleted   BOOLEAN NOT NULL DEFAULT FALSE,
-    created_at   TIMESTAMP(0) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at   TIMESTAMP(0) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    deleted_at   TIMESTAMP(0) DEFAULT NULL
+    id              BIGSERIAL PRIMARY KEY,
+    msg_hash        VARCHAR NOT NULL DEFAULT '',
+    height          BIGINT  NOT NULL,
+    sender          VARCHAR NOT NULL,
+    target          VARCHAR NOT NULL,
+    amount          VARCHAR NOT NULL,
+    layer1_hash     VARCHAR NOT NULL DEFAULT '',
+    layer2_hash     VARCHAR NOT NULL DEFAULT '',
+    layer1_token    VARCHAR NOT NULL DEFAULT '',
+    layer2_token    VARCHAR NOT NULL DEFAULT '',
+    token_id        BIGINT NOT NULL DEFAULT 0,
+    asset           SMALLINT NOT NULL,
+    msg_type        SMALLINT NOT NULL,
+    is_deleted      BOOLEAN NOT NULL DEFAULT FALSE,
+    block_timestamp TIMESTAMP(0) DEFAULT NULL,
+    created_at      TIMESTAMP(0) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at      TIMESTAMP(0) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    deleted_at      TIMESTAMP(0) DEFAULT NULL
 );
 
 comment
