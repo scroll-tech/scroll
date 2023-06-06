@@ -1,4 +1,6 @@
-FROM golang:1.18-alpine
+ARG GO_VERSION=1.19
+
+FROM golang:${GO_VERSION}-alpine
 
 # ENV GOPROXY https://goproxy.cn,direct
 

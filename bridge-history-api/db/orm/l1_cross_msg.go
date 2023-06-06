@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"time"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/log"
@@ -117,4 +118,23 @@ func (l *l1CrossMsgOrm) DeleteL1CrossMsgAfterHeightDBTx(dbTx *sqlx.Tx, height in
 		return err
 	}
 	return nil
+}
+
+func (l *l1CrossMsgOrm) UpdateL1Blocktimestamp(height uint64, timestamp time.Time) error {
+	if _, err := l.db.Exec(`UPDATE cross_message SET blocktimestamp = $1 where height = $2 AND msg_type = $3 AND NOT is_deleted`, timestamp, height, Layer1Msg); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (l *l1CrossMsgOrm) GetL1EarliestNoBlocktimestampHeight() (uint64, error) {
+	row := l.db.QueryRowx(`SELECT height FROM cross_message WHERE blocktimestamp IS NULL AND msg_type = $1 AND NOT is_deleted ORDER BY height ASC LIMIT 1;`, Layer1Msg)
+	var result uint64
+	if err := row.Scan(&result); err != nil {
+		if err == sql.ErrNoRows {
+			return 0, nil
+		}
+		return 0, err
+	}
+	return result, nil
 }
