@@ -2,8 +2,10 @@ package types
 
 import (
 	"encoding/binary"
+	"encoding/hex"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/scroll-tech/go-ethereum/common/hexutil"
 	"github.com/scroll-tech/go-ethereum/core/types"
@@ -26,10 +28,10 @@ func (c *Chunk) Encode() ([]byte, error) {
 		return nil, errors.New("number of blocks is 0")
 	}
 
-	chunkBytes := make([]byte, 0)
+	var chunkBytes []byte
 	chunkBytes = append(chunkBytes, byte(numBlocks))
 
-	l2TxDataBytes := make([]byte, 0)
+	var l2TxDataBytes []byte
 
 	for _, block := range c.Blocks {
 		blockBytes, err := block.Encode()
@@ -84,13 +86,14 @@ func (c *Chunk) Hash() ([]byte, error) {
 
 	// concatenate block contexts
 	// only first 58 bytes is needed
-	dataBytes := make([]byte, 0)
+	var dataBytes []byte
 	for i := 0; i < int(numBlocks); i++ {
-		dataBytes = append(dataBytes, chunkBytes[60*i+1:60*i+59]...)
+		// only first 58 bytes is needed
+		dataBytes = append(dataBytes, chunkBytes[1+60*i:60*i+59]...)
 	}
 
 	// concatenate l1 and l2 tx hashes
-	l2TxHashes := make([]byte, 0)
+	var l2TxHashes []byte
 	for _, block := range c.Blocks {
 		for _, txData := range block.Transactions {
 			// TODO: concatenate l1 message hashes
@@ -99,21 +102,12 @@ func (c *Chunk) Hash() ([]byte, error) {
 			}
 			// concatenate l2 txs hashes
 			// retrieve the number of transactions in current block.
-			data, _ := hexutil.Decode(txData.Data)
-			// right now we only support legacy tx
-			tx := types.NewTx(&types.LegacyTx{
-				Nonce:    txData.Nonce,
-				To:       txData.To,
-				Value:    txData.Value.ToInt(),
-				Gas:      txData.Gas,
-				GasPrice: txData.GasPrice.ToInt(),
-				Data:     data,
-				V:        txData.V.ToInt(),
-				R:        txData.R.ToInt(),
-				S:        txData.S.ToInt(),
-			})
-			txHash := tx.Hash().Bytes()
-			l2TxHashes = append(l2TxHashes, txHash...)
+			txHash := strings.TrimPrefix(txData.TxHash, "0x")
+			hashBytes, err := hex.DecodeString(txHash)
+			if err != nil {
+				return nil, err
+			}
+			l2TxHashes = append(l2TxHashes, hashBytes...)
 		}
 	}
 
