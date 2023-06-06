@@ -21,7 +21,7 @@ import (
 	"scroll-tech/common/types/message"
 )
 
-// InvalidTestProof invalid error message.
+// InvalidTestProof invalid proof used in tests
 const InvalidTestProof = "this is a invalid proof"
 
 // Verifier represents a rust ffi to a halo2 verifier.
