@@ -68,10 +68,6 @@ func testCreateNewWatcherAndStop(t *testing.T) {
 }
 
 func testMonitorBridgeContract(t *testing.T) {
-	// Open l2chain log.
-	base.L2gethImg.OpenLog(true)
-	defer base.L2gethImg.OpenLog(false)
-
 	wc, db := setupL2Watcher(t)
 	subCtx, cancel := context.WithCancel(context.Background())
 	defer func() {

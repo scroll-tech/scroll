@@ -36,6 +36,8 @@ func setupEnv(t *testing.T) (err error) {
 	cfg, err = config.NewConfig("../../../conf/config.json")
 	assert.NoError(t, err)
 
+	// Open l2chain log.
+	base.L2gethImg.OpenLog(true)
 	base.RunImages(t)
 
 	// set confirms.
