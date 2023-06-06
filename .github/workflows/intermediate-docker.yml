@@ -1,0 +1,39 @@
+name: Intermediate Docker
+
+on:
+  workflow_dispatch:
+    inputs:
+      GO_VERSION:
+        description: 'Go version'
+        required: true
+        type: string
+        default: '1.19'
+      RUST_VERSION:
+        description: 'Rust toolchain version'
+        required: true
+        type: string
+        default: 'nightly-2022-12-10'
+
+defaults:
+  run:
+    working-directory: 'build/dockerfiles/intermediate'
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v2
+    - name: Login to Docker Hub
+      uses: docker/login-action@v2
+      with:
+        username: ${{ secrets.DOCKERHUB_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_TOKEN }}
+    - name: Build
+      run: |
+        make all
+    - name: Publish
+      run: |
+        make publish
