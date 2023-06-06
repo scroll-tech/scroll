@@ -11,11 +11,11 @@ on:
       - 'common/**'
       - '.github/workflows/common.yml'
   pull_request:
-    branches:
-      - main
-      - staging
-      - develop
-      - alpha
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - ready_for_review
     paths:
       - 'common/**'
       - '.github/workflows/common.yml'
@@ -26,6 +26,7 @@ defaults:
 
 jobs:
   check:
+    if: github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     steps:
     - uses: actions-rs/toolchain@v1
@@ -45,9 +46,10 @@ jobs:
         workspaces: "common/libzkp/impl -> target"
     - name: Lint
       run: |
-        rm -rf $HOME/.cache/golangci-lint 
+        rm -rf $HOME/.cache/golangci-lint
         make lint
   goimports-lint:
+    if: github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     steps:
     - name: Install Go

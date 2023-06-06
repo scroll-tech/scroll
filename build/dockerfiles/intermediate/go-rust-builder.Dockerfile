@@ -1,3 +1,6 @@
+ARG GO_VERSION=1.19
+ARG RUST_VERSION=nightly-2022-12-10
+
 FROM ubuntu:20.04
 
 RUN apt-get update && ln -fs /usr/share/zoneinfo/America/New_York /etc/localtime
@@ -14,7 +17,8 @@ ENV PATH="/root/.cargo/bin:${PATH}"
 ENV CARGO_HOME=/root/.cargo
 
 # Add Toolchain
-RUN rustup toolchain install nightly-2022-12-10
+ARG RUST_VERSION
+RUN rustup toolchain install ${RUST_VERSION}
 
 # TODO: make this ARG
 ENV CARGO_CHEF_TAG=0.1.41
@@ -23,12 +27,9 @@ RUN cargo install cargo-chef --locked --version ${CARGO_CHEF_TAG} \
     && rm -rf $CARGO_HOME/registry/
 
 # Install Go
+ARG GO_VERSION
 RUN rm -rf /usr/local/go
-# for 1.17
-# RUN wget https://go.dev/dl/go1.17.13.linux-amd64.tar.gz
-# RUN tar -C /usr/local -xzf go1.17.13.linux-amd64.tar.gz
-# for 1.18
-RUN wget https://go.dev/dl/go1.18.9.linux-amd64.tar.gz
-RUN tar -C /usr/local -xzf go1.18.9.linux-amd64.tar.gz
+RUN wget https://go.dev/dl/go${GO_VERSION}.1.linux-amd64.tar.gz
+RUN tar -C /usr/local -xzf go${GO_VERSION}.1.linux-amd64.tar.gz
 
 ENV PATH="/usr/local/go/bin:${PATH}"

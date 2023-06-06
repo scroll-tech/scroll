@@ -20,7 +20,7 @@ func NewAggTaskOrm(db *sqlx.DB) AggTaskOrm {
 	return &aggTaskOrm{db: db}
 }
 
-func (a *aggTaskOrm) GetSubProofsByAggTaskID(id string) ([][]byte, error) {
+func (a *aggTaskOrm) GetSubProofsByAggTaskID(id string) ([]*message.AggProof, error) {
 	var (
 		startIdx uint64
 		endIdx   uint64
@@ -34,14 +34,20 @@ func (a *aggTaskOrm) GetSubProofsByAggTaskID(id string) ([][]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	var subProofs [][]byte
+	var subProofs []*message.AggProof
 	for rows.Next() {
 		var proofByt []byte
 		err = rows.Scan(&proofByt)
 		if err != nil {
 			return nil, err
 		}
-		subProofs = append(subProofs, proofByt)
+
+		var proof message.AggProof
+		if err := json.Unmarshal(proofByt, &proof); err != nil {
+			return nil, err
+		}
+
+		subProofs = append(subProofs, &proof)
 	}
 	return subProofs, nil
 }

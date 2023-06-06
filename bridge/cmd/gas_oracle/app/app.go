@@ -11,27 +11,21 @@ import (
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/urfave/cli/v2"
 
-	"scroll-tech/database"
-
 	"scroll-tech/common/metrics"
+	cutils "scroll-tech/common/utils"
 	"scroll-tech/common/version"
 
-	"scroll-tech/bridge/config"
-	"scroll-tech/bridge/relayer"
-	"scroll-tech/bridge/utils"
-	"scroll-tech/bridge/watcher"
-
-	cutils "scroll-tech/common/utils"
+	"scroll-tech/bridge/internal/config"
+	"scroll-tech/bridge/internal/controller/relayer"
+	"scroll-tech/bridge/internal/controller/watcher"
+	"scroll-tech/bridge/internal/utils"
 )
 
-var (
-	app *cli.App
-)
+var app *cli.App
 
 func init() {
 	// Set up gas-oracle app info.
 	app = cli.NewApp()
-
 	app.Action = action
 	app.Name = "gas-oracle"
 	app.Usage = "The Scroll Gas Oracle"
@@ -39,11 +33,9 @@ func init() {
 	app.Version = version.Version
 	app.Flags = append(app.Flags, cutils.CommonFlags...)
 	app.Commands = []*cli.Command{}
-
 	app.Before = func(ctx *cli.Context) error {
 		return cutils.LogSetup(ctx)
 	}
-
 	// Register `gas-oracle-test` app for integration-test.
 	cutils.RegisterSimulation(app, cutils.GasOracleApp)
 }
@@ -57,18 +49,17 @@ func action(ctx *cli.Context) error {
 	}
 	subCtx, cancel := context.WithCancel(ctx.Context)
 	// Init db connection
-	var ormFactory database.OrmFactory
-	if ormFactory, err = database.NewOrmFactory(cfg.DBConfig); err != nil {
+	db, err := utils.InitDB(cfg.DBConfig)
+	if err != nil {
 		log.Crit("failed to init db connection", "err", err)
 	}
-
 	defer func() {
 		cancel()
-		err = ormFactory.Close()
-		if err != nil {
+		if err = utils.CloseDB(db); err != nil {
 			log.Error("can not close ormFactory", "error", err)
 		}
 	}()
+
 	// Start metrics server.
 	metrics.Serve(subCtx, ctx)
 
@@ -85,14 +76,14 @@ func action(ctx *cli.Context) error {
 		return err
 	}
 
-	l1watcher := watcher.NewL1WatcherClient(ctx.Context, l1client, cfg.L1Config.StartHeight, cfg.L1Config.Confirmations, cfg.L1Config.L1MessengerAddress, cfg.L1Config.L1MessageQueueAddress, cfg.L1Config.ScrollChainContractAddress, ormFactory)
+	l1watcher := watcher.NewL1WatcherClient(ctx.Context, l1client, cfg.L1Config.StartHeight, cfg.L1Config.Confirmations, cfg.L1Config.L1MessengerAddress, cfg.L1Config.L1MessageQueueAddress, cfg.L1Config.ScrollChainContractAddress, db)
 
-	l1relayer, err := relayer.NewLayer1Relayer(ctx.Context, ormFactory, cfg.L1Config.RelayerConfig)
+	l1relayer, err := relayer.NewLayer1Relayer(ctx.Context, db, cfg.L1Config.RelayerConfig)
 	if err != nil {
 		log.Error("failed to create new l1 relayer", "config file", cfgFile, "error", err)
 		return err
 	}
-	l2relayer, err := relayer.NewLayer2Relayer(ctx.Context, l2client, ormFactory, cfg.L2Config.RelayerConfig)
+	l2relayer, err := relayer.NewLayer2Relayer(ctx.Context, l2client, db, cfg.L2Config.RelayerConfig)
 	if err != nil {
 		log.Error("failed to create new l2 relayer", "config file", cfgFile, "error", err)
 		return err

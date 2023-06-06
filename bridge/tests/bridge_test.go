@@ -9,11 +9,15 @@ import (
 	"github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/stretchr/testify/assert"
-
-	bcmd "scroll-tech/bridge/cmd"
-	"scroll-tech/bridge/mock_bridge"
+	"gorm.io/gorm"
 
 	"scroll-tech/common/docker"
+
+	bcmd "scroll-tech/bridge/cmd"
+	"scroll-tech/bridge/internal/config"
+	"scroll-tech/bridge/internal/orm/migrate"
+	"scroll-tech/bridge/internal/utils"
+	"scroll-tech/bridge/mock_bridge"
 )
 
 var (
@@ -41,9 +45,24 @@ var (
 	l2MessengerAddress  common.Address
 )
 
+func setupDB(t *testing.T) *gorm.DB {
+	cfg := &config.DBConfig{
+		DSN:        base.DBConfig.DSN,
+		DriverName: base.DBConfig.DriverName,
+		MaxOpenNum: base.DBConfig.MaxOpenNum,
+		MaxIdleNum: base.DBConfig.MaxIdleNum,
+	}
+	db, err := utils.InitDB(cfg)
+	assert.NoError(t, err)
+	sqlDB, err := db.DB()
+	assert.NoError(t, err)
+	assert.NoError(t, migrate.ResetDB(sqlDB))
+	return db
+}
+
 func TestMain(m *testing.M) {
 	base = docker.NewDockerApp()
-	bridgeApp = bcmd.NewBridgeApp(base, "../config.json")
+	bridgeApp = bcmd.NewBridgeApp(base, "../conf/config.json")
 	m.Run()
 	bridgeApp.Free()
 	base.Free()

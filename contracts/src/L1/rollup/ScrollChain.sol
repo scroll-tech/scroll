@@ -10,6 +10,7 @@ import {BatchHeaderV0Codec} from "../../libraries/codec/BatchHeaderV0Codec.sol";
 import {ChunkCodec} from "../../libraries/codec/ChunkCodec.sol";
 import {IRollupVerifier} from "../../libraries/verifier/IRollupVerifier.sol";
 
+// solhint-disable no-inline-assembly
 // solhint-disable reason-string
 
 /// @title ScrollChain
@@ -39,7 +40,7 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
      *************/
 
     /// @notice The chain id of the corresponding layer 2 chain.
-    uint256 public immutable layer2ChainId;
+    uint32 public immutable layer2ChainId;
 
     /*************
      * Variables *
@@ -83,7 +84,7 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
      * Constructor *
      ***************/
 
-    constructor(uint256 _chainId) {
+    constructor(uint32 _chainId) {
         layer2ChainId = _chainId;
     }
 
@@ -244,7 +245,9 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
     }
 
     /// @inheritdoc IScrollChain
-    function revertBatch(bytes calldata _batchHeader) external onlyOwner {
+    function revertBatch(bytes calldata _batchHeader, uint256 _count) external onlyOwner {
+        require(_count > 0, "count must be nonzero");
+
         (uint256 memPtr, bytes32 _batchHash) = _loadBatchHeader(_batchHeader);
 
         // check batch hash
@@ -254,9 +257,18 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
         // check finalization
         require(_batchIndex > lastFinalizedBatchIndex, "can only revert unfinalized batch");
 
-        committedBatches[_batchIndex] = bytes32(0);
+        while (_count > 0) {
+            committedBatches[_batchIndex] = bytes32(0);
+            unchecked {
+                _batchIndex += 1;
+                _count -= 1;
+            }
 
-        emit RevertBatch(_batchHash);
+            emit RevertBatch(_batchHash);
+
+            _batchHash = committedBatches[_batchIndex];
+            if (_batchHash == bytes32(0)) break;
+        }
     }
 
     /// @inheritdoc IScrollChain
@@ -284,7 +296,9 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
         require(finalizedStateRoots[_batchIndex] == bytes32(0), "batch already verified");
 
         // compute public input hash
-        bytes32 _publicInputHash = keccak256(abi.encode(_prevStateRoot, _postStateRoot, _withdrawRoot, _dataHash));
+        bytes32 _publicInputHash = keccak256(
+            abi.encodePacked(layer2ChainId, _prevStateRoot, _postStateRoot, _withdrawRoot, _dataHash)
+        );
 
         // verify batch
         IRollupVerifier(verifier).verifyAggregateProof(_aggrProof, _publicInputHash);

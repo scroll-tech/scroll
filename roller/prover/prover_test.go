@@ -12,8 +12,6 @@ import (
 	"github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/stretchr/testify/assert"
 
-	"scroll-tech/common/types/message"
-
 	"scroll-tech/roller/config"
 	"scroll-tech/roller/prover"
 )
@@ -51,8 +49,7 @@ func TestFFI(t *testing.T) {
 		as.NoError(json.Unmarshal(byt, trace))
 		traces = append(traces, trace)
 	}
-	task := &message.TaskMsg{ID: "test", Traces: traces}
-	proof, err := prover.Prove(task)
+	proof, err := prover.Prove("test", traces)
 	as.NoError(err)
 	t.Log("prove success")
 

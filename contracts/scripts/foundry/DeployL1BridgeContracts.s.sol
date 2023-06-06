@@ -25,7 +25,7 @@ import {Whitelist} from "../../src/L2/predeploys/Whitelist.sol";
 contract DeployL1BridgeContracts is Script {
     uint256 L1_DEPLOYER_PRIVATE_KEY = vm.envUint("L1_DEPLOYER_PRIVATE_KEY");
 
-    uint256 CHAIN_ID_L2 = vm.envUint("CHAIN_ID_L2");
+    uint32 CHAIN_ID_L2 = uint32(vm.envUint("CHAIN_ID_L2"));
 
     address L1_WETH_ADDR = vm.envAddress("L1_WETH_ADDR");
     address L2_WETH_ADDR = vm.envAddress("L2_WETH_ADDR");

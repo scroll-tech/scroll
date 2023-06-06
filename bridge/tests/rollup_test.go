@@ -2,30 +2,29 @@ package tests
 
 import (
 	"context"
+	"errors"
 	"math/big"
 	"testing"
 
 	"github.com/scroll-tech/go-ethereum/accounts/abi/bind"
 	"github.com/scroll-tech/go-ethereum/common"
-	geth_types "github.com/scroll-tech/go-ethereum/core/types"
+	gethTypes "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/stretchr/testify/assert"
+	"gorm.io/gorm"
 
 	"scroll-tech/common/types"
-	"scroll-tech/common/utils"
+	"scroll-tech/common/types/message"
 
-	"scroll-tech/bridge/relayer"
-	"scroll-tech/bridge/watcher"
-
-	"scroll-tech/database"
-	"scroll-tech/database/migrate"
+	"scroll-tech/bridge/internal/controller/relayer"
+	"scroll-tech/bridge/internal/controller/watcher"
+	"scroll-tech/bridge/internal/orm"
+	bridgeTypes "scroll-tech/bridge/internal/types"
+	"scroll-tech/bridge/internal/utils"
 )
 
 func testCommitBatchAndFinalizeBatch(t *testing.T) {
-	// Create db handler and reset db.
-	db, err := database.NewOrmFactory(base.DBConfig)
-	assert.NoError(t, err)
-	assert.NoError(t, migrate.ResetDB(db.GetDB().DB))
-	defer db.Close()
+	db := setupDB(t)
+	defer utils.CloseDB(db)
 
 	prepareContracts(t)
 
@@ -38,58 +37,73 @@ func testCommitBatchAndFinalizeBatch(t *testing.T) {
 	l1Cfg := bridgeApp.Config.L1Config
 	l1Watcher := watcher.NewL1WatcherClient(context.Background(), l1Client, 0, l1Cfg.Confirmations, l1Cfg.L1MessengerAddress, l1Cfg.L1MessageQueueAddress, l1Cfg.ScrollChainContractAddress, db)
 
+	blockTraceOrm := orm.NewBlockTrace(db)
+
 	// add some blocks to db
-	var wrappedBlocks []*types.WrappedBlock
+	var wrappedBlocks []*bridgeTypes.WrappedBlock
 	var parentHash common.Hash
 	for i := 1; i <= 10; i++ {
-		header := geth_types.Header{
+		header := gethTypes.Header{
 			Number:     big.NewInt(int64(i)),
 			ParentHash: parentHash,
 			Difficulty: big.NewInt(0),
 			BaseFee:    big.NewInt(0),
 		}
-		wrappedBlocks = append(wrappedBlocks, &types.WrappedBlock{
+		wrappedBlocks = append(wrappedBlocks, &bridgeTypes.WrappedBlock{
 			Header:           &header,
 			Transactions:     nil,
 			WithdrawTrieRoot: common.Hash{},
 		})
 		parentHash = header.Hash()
 	}
-	assert.NoError(t, db.InsertWrappedBlocks(wrappedBlocks))
+	assert.NoError(t, blockTraceOrm.InsertWrappedBlocks(wrappedBlocks))
 
-	parentBatch := &types.BlockBatch{
+	parentBatch := &bridgeTypes.BatchInfo{
 		Index: 0,
 		Hash:  "0x0000000000000000000000000000000000000000",
 	}
-	batchData := types.NewBatchData(parentBatch, []*types.WrappedBlock{
+
+	tmpWrapBlocks := []*bridgeTypes.WrappedBlock{
 		wrappedBlocks[0],
 		wrappedBlocks[1],
-	}, l2Cfg.BatchProposerConfig.PublicInputConfig)
+	}
+	batchData := bridgeTypes.NewBatchData(parentBatch, tmpWrapBlocks, l2Cfg.BatchProposerConfig.PublicInputConfig)
 
 	batchHash := batchData.Hash().String()
 
-	// add one batch to db
-	dbTx, err := db.Beginx()
+	blockBatchOrm := orm.NewBlockBatch(db)
+	err = db.Transaction(func(tx *gorm.DB) error {
+		rowsAffected, dbTxErr := blockBatchOrm.InsertBlockBatchByBatchData(tx, batchData)
+		if dbTxErr != nil {
+			return dbTxErr
+		}
+		if rowsAffected != 1 {
+			dbTxErr = errors.New("the InsertBlockBatchByBatchData affected row is not 1")
+			return dbTxErr
+		}
+		var blockIDs = make([]uint64, len(batchData.Batch.Blocks))
+		for i, block := range batchData.Batch.Blocks {
+			blockIDs[i] = block.BlockNumber
+		}
+		dbTxErr = blockTraceOrm.UpdateBatchHashForL2Blocks(tx, blockIDs, batchHash)
+		if dbTxErr != nil {
+			return dbTxErr
+		}
+		return nil
+	})
 	assert.NoError(t, err)
-	assert.NoError(t, db.NewBatchInDBTx(dbTx, batchData))
-	var blockIDs = make([]uint64, len(batchData.Batch.Blocks))
-	for i, block := range batchData.Batch.Blocks {
-		blockIDs[i] = block.BlockNumber
-	}
-	err = db.SetBatchHashForL2BlocksInDBTx(dbTx, blockIDs, batchHash)
-	assert.NoError(t, err)
-	assert.NoError(t, dbTx.Commit())
 
 	// process pending batch and check status
-	assert.NoError(t, l2Relayer.SendCommitTx([]*types.BatchData{batchData}))
+	assert.NoError(t, l2Relayer.SendCommitTx([]*bridgeTypes.BatchData{batchData}))
 
-	status, err := db.GetRollupStatus(batchHash)
+	blockBatches, err := blockBatchOrm.GetBlockBatches(map[string]interface{}{"hash": batchHash}, nil, 1)
 	assert.NoError(t, err)
-	assert.Equal(t, types.RollupCommitting, status)
-	commitTxHash, err := db.GetCommitTxHash(batchHash)
-	assert.NoError(t, err)
-	assert.Equal(t, true, commitTxHash.Valid)
-	commitTx, _, err := l1Client.TransactionByHash(context.Background(), common.HexToHash(commitTxHash.String))
+	assert.Equal(t, 1, len(blockBatches))
+	assert.NotEmpty(t, true, blockBatches[0].CommitTxHash)
+	assert.NotEmpty(t, true, blockBatches[0].RollupStatus)
+	assert.Equal(t, types.RollupStatus(blockBatches[0].RollupStatus), types.RollupCommitting)
+
+	commitTx, _, err := l1Client.TransactionByHash(context.Background(), common.HexToHash(blockBatches[0].CommitTxHash))
 	assert.NoError(t, err)
 	commitTxReceipt, err := bind.WaitMined(context.Background(), l1Client, commitTx)
 	assert.NoError(t, err)
@@ -98,33 +112,35 @@ func testCommitBatchAndFinalizeBatch(t *testing.T) {
 	// fetch rollup events
 	err = l1Watcher.FetchContractEvent()
 	assert.NoError(t, err)
-	ok := utils.TryTimes(20, func() bool {
-		status, err = db.GetRollupStatus(batchHash)
-		return err == nil && status == types.RollupCommitted
-	})
-	assert.True(t, ok)
+	statuses, err := blockBatchOrm.GetRollupStatusByHashList([]string{batchHash})
+	assert.NoError(t, err)
+	assert.Equal(t, 1, len(statuses))
+	assert.Equal(t, types.RollupCommitted, statuses[0])
 
 	// add dummy proof
-	tProof := []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31}
-	tInstanceCommitments := []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31}
-	err = db.UpdateProofByHash(context.Background(), batchHash, tProof, tInstanceCommitments, 100)
+	proof := &message.AggProof{
+		Proof:     []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31},
+		FinalPair: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31},
+	}
+	err = blockBatchOrm.UpdateProofByHash(context.Background(), batchHash, proof, 100)
 	assert.NoError(t, err)
-	err = db.UpdateProvingStatus(batchHash, types.ProvingTaskVerified)
+	err = blockBatchOrm.UpdateProvingStatus(batchHash, types.ProvingTaskVerified)
 	assert.NoError(t, err)
 
 	// process committed batch and check status
 	l2Relayer.ProcessCommittedBatches()
 
-	ok = utils.TryTimes(20, func() bool {
-		status, err = db.GetRollupStatus(batchHash)
-		return err == nil && status == types.RollupFinalizing
-	})
-	assert.True(t, ok)
-
-	finalizeTxHash, err := db.GetFinalizeTxHash(batchHash)
+	statuses, err = blockBatchOrm.GetRollupStatusByHashList([]string{batchHash})
 	assert.NoError(t, err)
-	assert.Equal(t, true, finalizeTxHash.Valid)
-	finalizeTx, _, err := l1Client.TransactionByHash(context.Background(), common.HexToHash(finalizeTxHash.String))
+	assert.Equal(t, 1, len(statuses))
+	assert.Equal(t, types.RollupFinalizing, statuses[0])
+
+	blockBatches, err = blockBatchOrm.GetBlockBatches(map[string]interface{}{"hash": batchHash}, nil, 1)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, len(blockBatches))
+	assert.NotEmpty(t, blockBatches[0].FinalizeTxHash)
+
+	finalizeTx, _, err := l1Client.TransactionByHash(context.Background(), common.HexToHash(blockBatches[0].FinalizeTxHash))
 	assert.NoError(t, err)
 	finalizeTxReceipt, err := bind.WaitMined(context.Background(), l1Client, finalizeTx)
 	assert.NoError(t, err)
@@ -133,7 +149,8 @@ func testCommitBatchAndFinalizeBatch(t *testing.T) {
 	// fetch rollup events
 	err = l1Watcher.FetchContractEvent()
 	assert.NoError(t, err)
-	status, err = db.GetRollupStatus(batchHash)
+	statuses, err = blockBatchOrm.GetRollupStatusByHashList([]string{batchHash})
 	assert.NoError(t, err)
-	assert.Equal(t, types.RollupFinalized, status)
+	assert.Equal(t, 1, len(statuses))
+	assert.Equal(t, types.RollupFinalized, statuses[0])
 }

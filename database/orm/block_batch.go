@@ -3,6 +3,7 @@ package orm
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -12,6 +13,7 @@ import (
 	"github.com/scroll-tech/go-ethereum/log"
 
 	"scroll-tech/common/types"
+	"scroll-tech/common/types/message"
 )
 
 type blockBatchOrm struct {
@@ -62,22 +64,31 @@ func (o *blockBatchOrm) GetProvingStatusByHash(hash string) (types.ProvingStatus
 	return status, nil
 }
 
-func (o *blockBatchOrm) GetVerifiedProofAndInstanceCommitmentsByHash(hash string) ([]byte, []byte, error) {
-	var proof []byte
-	var instanceCommitments []byte
-	row := o.db.QueryRow(`SELECT proof, instance_commitments FROM block_batch WHERE hash = $1 and proving_status = $2`, hash, types.ProvingTaskVerified)
-
-	if err := row.Scan(&proof, &instanceCommitments); err != nil {
-		return nil, nil, err
+func (o *blockBatchOrm) GetVerifiedProofByHash(hash string) (*message.AggProof, error) {
+	var proofBytes []byte
+	row := o.db.QueryRow(`SELECT proof FROM block_batch WHERE hash = $1 and proving_status = $2`, hash, types.ProvingTaskVerified)
+	if err := row.Scan(&proofBytes); err != nil {
+		return nil, err
 	}
-	return proof, instanceCommitments, nil
+
+	var proof message.AggProof
+	if err := json.Unmarshal(proofBytes, &proof); err != nil {
+		return nil, err
+	}
+
+	return &proof, nil
 }
 
-func (o *blockBatchOrm) UpdateProofByHash(ctx context.Context, hash string, proof, instanceCommitments []byte, proofTimeSec uint64) error {
+func (o *blockBatchOrm) UpdateProofByHash(ctx context.Context, hash string, proof *message.AggProof, proofTimeSec uint64) error {
+	proofBytes, err := json.Marshal(proof)
+	if err != nil {
+		return err
+	}
+
 	db := o.db
 	if _, err := db.ExecContext(ctx,
-		db.Rebind(`UPDATE block_batch set proof = ?, instance_commitments = ?, proof_time_sec = ? where hash = ?;`),
-		proof, instanceCommitments, proofTimeSec, hash,
+		db.Rebind(`UPDATE block_batch set proof = ?, proof_time_sec = ? where hash = ?;`),
+		proofBytes, proofTimeSec, hash,
 	); err != nil {
 		log.Error("failed to update proof", "err", err)
 	}

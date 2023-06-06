@@ -65,4 +65,4 @@ go test -v -race -covermode=atomic scroll-tech/common/...
 
 You can find the unit tests in [`<REPO_DIR>/contracts/src/test/`](/contracts/src/test/), and integration tests in [`<REPO_DIR>/contracts/integration-test/`](/contracts/integration-test/).
 
-For a more comprehensive doc for contracts, see [`docs/contracts`](/docs/contracts).
+For more details on contracts, see [`/contracts`](/contracts).

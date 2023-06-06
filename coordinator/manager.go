@@ -12,7 +12,6 @@ import (
 	cmap "github.com/orcaman/concurrent-map"
 	"github.com/patrickmn/go-cache"
 	"github.com/scroll-tech/go-ethereum/common"
-	geth_types "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
 	geth_metrics "github.com/scroll-tech/go-ethereum/metrics"
@@ -360,7 +359,7 @@ func (m *Manager) handleZkProof(pk string, msg *message.ProofDetail) error {
 
 	// store proof content
 	if msg.Type == message.BasicProve {
-		if dbErr = m.orm.UpdateProofByHash(m.ctx, msg.ID, msg.Proof.Proof, msg.Proof.FinalPair, proofTimeSec); dbErr != nil {
+		if dbErr = m.orm.UpdateProofByHash(m.ctx, msg.ID, msg.Proof, proofTimeSec); dbErr != nil {
 			log.Error("failed to store basic proof into db", "error", dbErr)
 			return dbErr
 		}
@@ -607,18 +606,9 @@ func (m *Manager) StartBasicProofGenerationSession(task *types.BlockBatch, prevS
 		)
 		return false
 	}
-	traces := make([]*geth_types.BlockTrace, len(blockInfos))
+	blockHashes := make([]common.Hash, len(blockInfos))
 	for i, blockInfo := range blockInfos {
-		traces[i], err = m.Client.GetBlockTraceByHash(m.ctx, common.HexToHash(blockInfo.Hash))
-		if err != nil {
-			log.Error(
-				"could not GetBlockTraceByNumber",
-				"block number", blockInfo.Number,
-				"block hash", blockInfo.Hash,
-				"error", err,
-			)
-			return false
-		}
+		blockHashes[i] = common.HexToHash(blockInfo.Hash)
 	}
 
 	// Dispatch task to basic rollers.
@@ -631,7 +621,7 @@ func (m *Manager) StartBasicProofGenerationSession(task *types.BlockBatch, prevS
 		}
 		log.Info("roller is picked", "session id", taskId, "name", roller.Name, "public key", roller.PublicKey)
 		// send trace to roller
-		if !roller.sendTask(&message.TaskMsg{ID: taskId, Type: message.BasicProve, Traces: traces}) {
+		if !roller.sendTask(&message.TaskMsg{ID: taskId, Type: message.BasicProve, BlockHashes: blockHashes}) {
 			log.Error("send task failed", "roller name", roller.Name, "public key", roller.PublicKey, "id", taskId)
 			continue
 		}

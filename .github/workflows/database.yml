@@ -11,11 +11,11 @@ on:
       - 'database/**'
       - '.github/workflows/database.yml'
   pull_request:
-    branches:
-      - main
-      - staging
-      - develop
-      - alpha
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - ready_for_review
     paths:
       - 'database/**'
       - '.github/workflows/database.yml'
@@ -26,6 +26,7 @@ defaults:
 
 jobs:
   check:
+    if: github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     steps:
     - name: Install Go
@@ -36,9 +37,10 @@ jobs:
       uses: actions/checkout@v2
     - name: Lint
       run: |
-        rm -rf $HOME/.cache/golangci-lint 
+        rm -rf $HOME/.cache/golangci-lint
         make lint
   goimports-lint:
+    if: github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     steps:
     - name: Install Go

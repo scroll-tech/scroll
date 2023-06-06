@@ -13,19 +13,15 @@ import (
 
 	"scroll-tech/common/types"
 
-	"scroll-tech/bridge/relayer"
-	"scroll-tech/bridge/watcher"
-
-	"scroll-tech/database"
-	"scroll-tech/database/migrate"
+	"scroll-tech/bridge/internal/controller/relayer"
+	"scroll-tech/bridge/internal/controller/watcher"
+	"scroll-tech/bridge/internal/orm"
+	"scroll-tech/bridge/internal/utils"
 )
 
 func testRelayL1MessageSucceed(t *testing.T) {
-	// Create db handler and reset db.
-	db, err := database.NewOrmFactory(base.DBConfig)
-	assert.NoError(t, err)
-	assert.NoError(t, migrate.ResetDB(db.GetDB().DB))
-	defer db.Close()
+	db := setupDB(t)
+	defer utils.CloseDB(db)
 
 	prepareContracts(t)
 
@@ -56,21 +52,22 @@ func testRelayL1MessageSucceed(t *testing.T) {
 	// l1 watch process events
 	l1Watcher.FetchContractEvent()
 
+	l1MessageOrm := orm.NewL1Message(db)
 	// check db status
-	msg, err := db.GetL1MessageByQueueIndex(nonce.Uint64())
+	msg, err := l1MessageOrm.GetL1MessageByQueueIndex(nonce.Uint64())
 	assert.NoError(t, err)
-	assert.Equal(t, msg.Status, types.MsgPending)
+	assert.Equal(t, types.MsgStatus(msg.Status), types.MsgPending)
 	assert.Equal(t, msg.Target, l2Auth.From.String())
 
 	// process l1 messages
 	l1Relayer.ProcessSavedEvents()
-	msg, err = db.GetL1MessageByQueueIndex(nonce.Uint64())
+
+	l1Message, err := l1MessageOrm.GetL1MessageByQueueIndex(nonce.Uint64())
 	assert.NoError(t, err)
-	assert.Equal(t, msg.Status, types.MsgSubmitted)
-	relayTxHash, err := db.GetRelayL1MessageTxHash(nonce.Uint64())
-	assert.NoError(t, err)
-	assert.Equal(t, true, relayTxHash.Valid)
-	relayTx, _, err := l2Client.TransactionByHash(context.Background(), common.HexToHash(relayTxHash.String))
+	assert.NotEmpty(t, l1Message.Layer2Hash)
+	assert.Equal(t, types.MsgStatus(l1Message.Status), types.MsgSubmitted)
+
+	relayTx, _, err := l2Client.TransactionByHash(context.Background(), common.HexToHash(l1Message.Layer2Hash))
 	assert.NoError(t, err)
 	relayTxReceipt, err := bind.WaitMined(context.Background(), l2Client, relayTx)
 	assert.NoError(t, err)
@@ -78,7 +75,7 @@ func testRelayL1MessageSucceed(t *testing.T) {
 
 	// fetch message relayed events
 	l2Watcher.FetchContractEvent()
-	msg, err = db.GetL1MessageByQueueIndex(nonce.Uint64())
+	msg, err = l1MessageOrm.GetL1MessageByQueueIndex(nonce.Uint64())
 	assert.NoError(t, err)
-	assert.Equal(t, msg.Status, types.MsgConfirmed)
+	assert.Equal(t, types.MsgStatus(msg.Status), types.MsgConfirmed)
 }

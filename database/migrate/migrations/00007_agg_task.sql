@@ -10,8 +10,8 @@ create table agg_task
     end_batch_hash         VARCHAR  NOT NULL,
     proving_status         SMALLINT DEFAULT 1,
     proof                  BYTEA DEFAULT NULL,
-    created_time           TIMESTAMP(0)    NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_time           TIMESTAMP(0)    DEFAULT CURRENT_TIMESTAMP
+    created_at           TIMESTAMP(0)    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at           TIMESTAMP(0)    DEFAULT CURRENT_TIMESTAMP
 );
 
 create unique index agg_task_hash_uindex
@@ -21,7 +21,7 @@ create unique index agg_task_hash_uindex
 CREATE OR REPLACE FUNCTION update_timestamp()
 RETURNS TRIGGER AS $$
 BEGIN
-   NEW.updated_time = CURRENT_TIMESTAMP;
+   NEW.updated_at = CURRENT_TIMESTAMP;
    RETURN NEW;
 END;
 $$ language 'plpgsql';

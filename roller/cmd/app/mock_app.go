@@ -85,6 +85,7 @@ func (r *RollerApp) MockConfig(store bool, wsUrl string) error {
 	}
 	cfg.RollerName = fmt.Sprintf("%s_%d", r.name, r.index)
 	cfg.KeystorePath = fmt.Sprintf("/tmp/%d_%s.json", r.base.Timestamp, cfg.RollerName)
+	cfg.TraceEndpoint = r.base.L2gethImg.Endpoint()
 	// Reuse l1geth's keystore file
 	cfg.KeystorePassword = "scrolltest"
 	cfg.DBPath = r.bboltDB

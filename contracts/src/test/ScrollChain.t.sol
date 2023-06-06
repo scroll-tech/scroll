@@ -401,7 +401,7 @@ contract ScrollChainTest is DSTestPlus {
         // caller not owner, revert
         hevm.startPrank(address(1));
         hevm.expectRevert("Ownable: caller is not the owner");
-        rollup.revertBatch(new bytes(89));
+        rollup.revertBatch(new bytes(89), 1);
         hevm.stopPrank();
 
         rollup.updateSequencer(address(this), true);
@@ -423,7 +423,6 @@ contract ScrollChainTest is DSTestPlus {
         chunk0[0] = bytes1(uint8(1)); // one block in this chunk
         chunks[0] = chunk0;
         rollup.commitBatch(0, batchHeader0, chunks, new bytes(0));
-        assertGt(uint256(rollup.committedBatches(1)), 0);
 
         bytes memory batchHeader1 = new bytes(89);
         assembly {
@@ -435,19 +434,29 @@ contract ScrollChainTest is DSTestPlus {
             mstore(add(batchHeader1, add(0x20, 57)), batchHash0) // parentBatchHash
         }
 
+        // commit another batch
+        rollup.commitBatch(0, batchHeader1, chunks, new bytes(0));
+
+        // count must be nonzero, revert
+        hevm.expectRevert("count must be nonzero");
+        rollup.revertBatch(batchHeader0, 0);
+
         // incorrect batch hash, revert
         hevm.expectRevert("incorrect batch hash");
         batchHeader1[0] = bytes1(uint8(1)); // change version to 1
-        rollup.revertBatch(batchHeader1);
+        rollup.revertBatch(batchHeader1, 1);
         batchHeader1[0] = bytes1(uint8(0)); // change back
 
         // can only revert unfinalized batch, revert
         hevm.expectRevert("can only revert unfinalized batch");
-        rollup.revertBatch(batchHeader0);
+        rollup.revertBatch(batchHeader0, 1);
 
-        // succeed
-        rollup.revertBatch(batchHeader1);
+        // succeed to revert next two pending batches.
+        assertGt(uint256(rollup.committedBatches(1)), 0);
+        assertGt(uint256(rollup.committedBatches(2)), 0);
+        rollup.revertBatch(batchHeader1, 2);
         assertEq(uint256(rollup.committedBatches(1)), 0);
+        assertEq(uint256(rollup.committedBatches(2)), 0);
     }
 
     function testUpdateSequencer(address _sequencer) public {

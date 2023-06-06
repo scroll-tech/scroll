@@ -2,10 +2,20 @@ name: Contracts
 
 on:
   push:
+    branches:
+      - main
+      - staging
+      - develop
+      - alpha
     paths:
       - 'contracts/**'
       - '.github/workflows/contracts.yaml'
   pull_request:
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - ready_for_review
     paths:
       - 'contracts/**'
       - '.github/workflows/contracts.yaml'
@@ -16,6 +26,7 @@ defaults:
 
 jobs:
   foundry:
+    if: github.event.pull_request.draft == false
     runs-on: ubuntu-latest
 
     steps:
@@ -28,7 +39,7 @@ jobs:
         uses: foundry-rs/foundry-toolchain@v1
         with:
           version: nightly
-      
+
       - name: Setup LCOV
         uses: hrishikesh-kadam/setup-lcov@v1
 
@@ -84,6 +95,7 @@ jobs:
           update-comment: true
 
   hardhat:
+    if: github.event.pull_request.draft == false
     runs-on: ubuntu-latest
 
     steps:

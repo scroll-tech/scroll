@@ -5,15 +5,15 @@ import (
 	"runtime/debug"
 )
 
-var tag = "v3.0.21"
+var tag = "v3.3.2"
 
 var commit = func() string {
 	if info, ok := debug.ReadBuildInfo(); ok {
 		for _, setting := range info.Settings {
 			if setting.Key == "vcs.revision" {
 				value := setting.Value
-				if len(value) >= 8 {
-					return value[:8]
+				if len(value) >= 7 {
+					return value[:7]
 				}
 				return value
 			}
