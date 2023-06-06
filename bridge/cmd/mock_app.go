@@ -87,6 +87,14 @@ func (b *MockApp) MockConfig(store bool) error {
 		return err
 	}
 
+	// set confirms.
+	l1Cfg, l2Cfg := cfg.L1Config, cfg.L2Config
+	l1Cfg.Confirmations = 0
+	l1Cfg.RelayerConfig.SenderConfig.Confirmations = 0
+	l2Cfg.Confirmations = 0
+	l2Cfg.RelayerConfig.SenderConfig.Confirmations = 0
+	l2Cfg.BatchProposerConfig.CommitTxCalldataSizeLimit = 1
+
 	cfg.L1Config.Endpoint = base.L1gethImg.Endpoint()
 	cfg.L2Config.RelayerConfig.SenderConfig.Endpoint = base.L1gethImg.Endpoint()
 	cfg.L2Config.Endpoint = base.L2gethImg.Endpoint()

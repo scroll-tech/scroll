@@ -38,8 +38,16 @@ func setupEnv(t *testing.T) (err error) {
 
 	base.RunImages(t)
 
-	cfg.L2Config.RelayerConfig.SenderConfig.Endpoint = base.L1gethImg.Endpoint()
-	cfg.L1Config.RelayerConfig.SenderConfig.Endpoint = base.L2gethImg.Endpoint()
+	// set confirms.
+	l1Cfg, l2Cfg := cfg.L1Config, cfg.L2Config
+	l1Cfg.Confirmations = 0
+	l1Cfg.RelayerConfig.SenderConfig.Confirmations = 0
+	l2Cfg.Confirmations = 0
+	l2Cfg.RelayerConfig.SenderConfig.Confirmations = 0
+	l2Cfg.BatchProposerConfig.CommitTxCalldataSizeLimit = 1
+
+	l2Cfg.RelayerConfig.SenderConfig.Endpoint = base.L1gethImg.Endpoint()
+	l1Cfg.RelayerConfig.SenderConfig.Endpoint = base.L2gethImg.Endpoint()
 	cfg.DBConfig = &config.DBConfig{
 		DSN:        base.DBConfig.DSN,
 		DriverName: base.DBConfig.DriverName,
