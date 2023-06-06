@@ -34,6 +34,12 @@ jobs:
     - name: Build
       run: |
         make all
+      environment:
+        GO_VERSION: ${{ inputs.GO_VERSION }}
+        RUST_VERSION: ${{ inputs.RUST_VERSION }}
     - name: Publish
       run: |
         make publish
+      environment:
+        GO_VERSION: ${{ inputs.GO_VERSION }}
+        RUST_VERSION: ${{ inputs.RUST_VERSION }}
