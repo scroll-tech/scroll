@@ -28,10 +28,10 @@ func (c *Chunk) Encode() ([]byte, error) {
 		return nil, errors.New("number of blocks is 0")
 	}
 
-	chunkBytes := make([]byte, 0)
+	var chunkBytes []byte
 	chunkBytes = append(chunkBytes, byte(numBlocks))
 
-	l2TxDataBytes := make([]byte, 0)
+	var l2TxDataBytes []byte
 
 	for _, block := range c.Blocks {
 		blockBytes, err := block.Encode()
@@ -102,8 +102,7 @@ func (c *Chunk) Hash() ([]byte, error) {
 			}
 			// concatenate l2 txs hashes
 			// retrieve the number of transactions in current block.
-			txHash := txData.TxHash
-			txHash = strings.TrimPrefix(txHash, "0x")
+			txHash := strings.TrimPrefix(txData.TxHash, "0x")
 			hashBytes, err := hex.DecodeString(txHash)
 			if err != nil {
 				return nil, err
