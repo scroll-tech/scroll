@@ -2,11 +2,14 @@ package types
 
 import (
 	"encoding/binary"
+	"encoding/hex"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/scroll-tech/go-ethereum/common/hexutil"
 	"github.com/scroll-tech/go-ethereum/core/types"
+	"github.com/scroll-tech/go-ethereum/crypto"
 )
 
 // Chunk contains blocks to be encoded
@@ -25,10 +28,10 @@ func (c *Chunk) Encode() ([]byte, error) {
 		return nil, errors.New("number of blocks is 0")
 	}
 
-	chunkBytes := make([]byte, 0)
+	var chunkBytes []byte
 	chunkBytes = append(chunkBytes, byte(numBlocks))
 
-	l2TxDataBytes := make([]byte, 0)
+	var l2TxDataBytes []byte
 
 	for _, block := range c.Blocks {
 		blockBytes, err := block.Encode()
@@ -71,4 +74,44 @@ func (c *Chunk) Encode() ([]byte, error) {
 	chunkBytes = append(chunkBytes, l2TxDataBytes...)
 
 	return chunkBytes, nil
+}
+
+// Hash hashes the Chunk into RollupV2 Chunk Hash
+func (c *Chunk) Hash() ([]byte, error) {
+	chunkBytes, err := c.Encode()
+	if err != nil {
+		return nil, err
+	}
+	numBlocks := chunkBytes[0]
+
+	// concatenate block contexts
+	// only first 58 bytes is needed
+	var dataBytes []byte
+	for i := 0; i < int(numBlocks); i++ {
+		// only first 58 bytes is needed
+		dataBytes = append(dataBytes, chunkBytes[1+60*i:60*i+59]...)
+	}
+
+	// concatenate l1 and l2 tx hashes
+	var l2TxHashes []byte
+	for _, block := range c.Blocks {
+		for _, txData := range block.Transactions {
+			// TODO: concatenate l1 message hashes
+			if txData.Type == 0x7E {
+				continue
+			}
+			// concatenate l2 txs hashes
+			// retrieve the number of transactions in current block.
+			txHash := strings.TrimPrefix(txData.TxHash, "0x")
+			hashBytes, err := hex.DecodeString(txHash)
+			if err != nil {
+				return nil, err
+			}
+			l2TxHashes = append(l2TxHashes, hashBytes...)
+		}
+	}
+
+	dataBytes = append(dataBytes, l2TxHashes...)
+	hash := crypto.Keccak256Hash(dataBytes).Bytes()
+	return hash, nil
 }
