@@ -75,6 +75,11 @@ func (i *ImgGeth) IsRunning() bool {
 	return i.running
 }
 
+// OpenLog prints all output messages.
+func (i *ImgGeth) OpenLog(open bool) {
+	i.cmd.OpenLog(open)
+}
+
 // Endpoint return the connection endpoint.
 func (i *ImgGeth) Endpoint() string {
 	switch true {

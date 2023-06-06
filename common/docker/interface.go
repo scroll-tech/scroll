@@ -28,6 +28,7 @@ type ImgInstance interface {
 	Stop() error
 	Endpoint() string
 	IsRunning() bool
+	OpenLog(open bool)
 }
 
 // GethImgInstance based on ImgInstance and add chainID interface.
