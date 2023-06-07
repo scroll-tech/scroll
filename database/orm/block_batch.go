@@ -261,8 +261,8 @@ func (o *blockBatchOrm) GetRollupStatusByHashList(hashes []string) ([]types.Roll
 	// sqlx.In returns queries with the `?` bindvar, we can rebind it for our backend
 	query = o.db.Rebind(query)
 
-	rows, errQuery := o.db.Query(query, args...)
-	if errQuery != nil {
+	rows, err := o.db.Query(query, args...)
+	if err != nil {
 		return nil, err
 	}
 	defer func() { _ = rows.Close() }()
@@ -276,8 +276,8 @@ func (o *blockBatchOrm) GetRollupStatusByHashList(hashes []string) ([]types.Roll
 		}
 		statusMap[hash] = status
 	}
-	if errRow := rows.Err(); errRow != nil {
-		return nil, errRow
+	if err = rows.Err(); err != nil {
+		return nil, err
 	}
 
 	var statuses []types.RollupStatus
