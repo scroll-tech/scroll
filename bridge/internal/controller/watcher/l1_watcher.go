@@ -147,14 +147,9 @@ func (w *L1WatcherClient) FetchBlockHeader(blockHeight uint64) error {
 			log.Warn("Failed to get block", "height", height, "err", err)
 			break
 		}
-		var baseFee uint64
-		if block.BaseFee != nil {
-			baseFee = block.BaseFee.Uint64()
-		}
 		blocks = append(blocks, orm.L1Block{
-			Number:  uint64(height),
-			Hash:    block.Hash().String(),
-			BaseFee: baseFee,
+			Number: uint64(height),
+			Hash:   block.Hash().String(),
 		})
 	}
 
