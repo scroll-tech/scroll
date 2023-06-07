@@ -17,7 +17,7 @@ type BlockTx struct {
 	Hash           string `json:"hash" gorm:"hash"`
 	ParentHash     string `json:"parent_hash" gorm:"parent_hash"`
 	Tx             string `json:"tx" gorm:"column:tx"`
-	BatchHash      string `json:"batch_hash" gorm:"batch_hash;default:NULL"`
+	ChunkHash      string `json:"chunk_hash" gorm:"chunk_hash;default:NULL"`
 	TxNum          uint64 `json:"tx_num" gorm:"tx_num"`
 	GasUsed        uint64 `json:"gas_used" gorm:"gas_used"`
 	BlockTimestamp uint64 `json:"block_timestamp" gorm:"block_timestamp"`

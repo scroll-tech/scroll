@@ -9,7 +9,7 @@ create table block_tx
     hash                    VARCHAR         NOT NULL,
     parent_hash             VARCHAR         NOT NULL,
     tx                      JSON            NOT NULL,
-    batch_hash              VARCHAR         DEFAULT NULL,
+    chunk_hash              VARCHAR         DEFAULT NULL,
     tx_num                  INTEGER         NOT NULL,
     gas_used                BIGINT          NOT NULL,
     block_timestamp         NUMERIC         NOT NULL

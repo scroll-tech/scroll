@@ -44,12 +44,12 @@ type L2WatcherClient struct {
 
 	*ethclient.Client
 
-	db            *gorm.DB
-	blockTxOrm    *orm.BlockTx
-	chunkOrm      *orm.Chunk
-	chunkBatchOrm *orm.ChunkBatch
-	l1MessageOrm  *orm.L1Message
-	l2MessageOrm  *orm.L2Message
+	db           *gorm.DB
+	blockTxOrm   *orm.BlockTx
+	chunkOrm     *orm.Chunk
+	batchOrm     *orm.Batch
+	l1MessageOrm *orm.L1Message
+	l2MessageOrm *orm.L2Message
 
 	confirmations rpc.BlockNumber
 
@@ -82,7 +82,7 @@ func NewL2WatcherClient(ctx context.Context, client *ethclient.Client, confirmat
 
 		blockTxOrm:         orm.NewBlockTx(db),
 		chunkOrm:           orm.NewChunk(db),
-		chunkBatchOrm:      orm.NewChunkBatch(db),
+		batchOrm:           orm.NewBatch(db),
 		l1MessageOrm:       orm.NewL1Message(db),
 		l2MessageOrm:       l2MessageOrm,
 		processedMsgHeight: uint64(savedHeight),
@@ -107,7 +107,7 @@ func NewL2WatcherClient(ctx context.Context, client *ethclient.Client, confirmat
 }
 
 func (w *L2WatcherClient) initializeGenesis() error {
-	if count, err := w.chunkBatchOrm.GetBatchCount(w.ctx); err != nil {
+	if count, err := w.batchOrm.GetBatchCount(w.ctx); err != nil {
 		return fmt.Errorf("failed to get batch count: %v", err)
 	} else if count > 0 {
 		log.Info("genesis already imported")
@@ -150,8 +150,6 @@ func (w *L2WatcherClient) initializeGenesis() error {
 			return fmt.Errorf("failed to insert chunk: %v", err)
 		}
 
-		// TODO: chunk_batch
-
 		// Update proving status of the chunk
 		if err := w.chunkOrm.UpdateChunk(w.ctx, chunkHash, map[string]interface{}{
 			"proving_status": types.ProvingTaskVerified,
@@ -160,14 +158,14 @@ func (w *L2WatcherClient) initializeGenesis() error {
 		}
 
 		// Update proving status of the batch
-		if err := w.chunkBatchOrm.UpdateChunkBatch(w.ctx, batchHash, map[string]interface{}{
+		if err := w.batchOrm.UpdateChunkBatch(w.ctx, batchHash, map[string]interface{}{
 			"proving_status": types.ProvingTaskVerified,
 		}, tx); err != nil {
 			return fmt.Errorf("failed to update genesis batch proving status: %v", err)
 		}
 
 		// Update rollup status of the batch
-		if err := w.chunkBatchOrm.UpdateChunkBatch(w.ctx, batchHash, map[string]interface{}{
+		if err := w.batchOrm.UpdateChunkBatch(w.ctx, batchHash, map[string]interface{}{
 			"rollup_status": types.RollupFinalized,
 		}, tx); err != nil {
 			return fmt.Errorf("failed to update genesis batch rollup status: %v", err)
