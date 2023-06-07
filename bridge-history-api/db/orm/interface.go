@@ -25,6 +25,21 @@ func (a AssetType) String() string {
 	return "Unknown Asset Type"
 }
 
+func NewAssetType(s string) AssetType {
+	switch s {
+	case "ETH":
+		return ETH
+	case "ERC20":
+		return ERC20
+	case "ERC1155":
+		return ERC1155
+	case "ERC721":
+		return ERC721
+	default:
+		return ETH
+	}
+}
+
 const (
 	ETH AssetType = iota
 	ERC20
@@ -40,24 +55,25 @@ const (
 
 // CrossMsg represents a cross message from layer 1 to layer 2
 type CrossMsg struct {
-	ID          uint64     `json:"id" db:"id"`
-	MsgHash     string     `json:"msg_hash" db:"msg_hash"`
-	Height      uint64     `json:"height" db:"height"`
-	Sender      string     `json:"sender" db:"sender"`
-	Target      string     `json:"target" db:"target"`
-	Amount      string     `json:"amount" db:"amount"`
-	Layer1Hash  string     `json:"layer1_hash" db:"layer1_hash"`
-	Layer2Hash  string     `json:"layer2_hash" db:"layer2_hash"`
-	Layer1Token string     `json:"layer1_token" db:"layer1_token"`
-	Layer2Token string     `json:"layer2_token" db:"layer2_token"`
-	TokenID     uint64     `json:"token_id" db:"token_id"`
-	Asset       int        `json:"asset" db:"asset"`
-	MsgType     int        `json:"msg_type" db:"msg_type"`
-	IsDeleted   bool       `json:"is_deleted" db:"is_deleted"`
-	Timestamp   *time.Time `json:"timestamp" db:"block_timestamp"`
-	CreatedAt   *time.Time `json:"created_at" db:"created_at"`
-	UpdatedAt   *time.Time `json:"updated_at" db:"updated_at"`
-	DeletedAt   *time.Time `json:"deleted_at" db:"deleted_at"`
+	ID           uint64     `json:"id" db:"id"`
+	MsgHash      string     `json:"msg_hash" db:"msg_hash"`
+	Height       uint64     `json:"height" db:"height"`
+	Sender       string     `json:"sender" db:"sender"`
+	Target       string     `json:"target" db:"target"`
+	Amount       string     `json:"amount" db:"amount"`
+	Layer1Hash   string     `json:"layer1_hash" db:"layer1_hash"`
+	Layer2Hash   string     `json:"layer2_hash" db:"layer2_hash"`
+	Layer1Token  string     `json:"layer1_token" db:"layer1_token"`
+	Layer2Token  string     `json:"layer2_token" db:"layer2_token"`
+	TokenIDs     []int64    `json:"token_ids" db:"token_ids"`
+	TokenAmounts []int64    `json:"token_amounts" db:"token_amounts"`
+	Asset        int        `json:"asset" db:"asset"`
+	MsgType      int        `json:"msg_type" db:"msg_type"`
+	IsDeleted    bool       `json:"is_deleted" db:"is_deleted"`
+	Timestamp    *time.Time `json:"timestamp" db:"block_timestamp"`
+	CreatedAt    *time.Time `json:"created_at" db:"created_at"`
+	UpdatedAt    *time.Time `json:"updated_at" db:"updated_at"`
+	DeletedAt    *time.Time `json:"deleted_at" db:"deleted_at"`
 }
 
 type RelayedMsg struct {

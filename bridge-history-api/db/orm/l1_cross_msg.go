@@ -60,19 +60,20 @@ func (l *l1CrossMsgOrm) BatchInsertL1CrossMsgDBTx(dbTx *sqlx.Tx, messages []*Cro
 	messageMaps := make([]map[string]interface{}, len(messages))
 	for i, msg := range messages {
 		messageMaps[i] = map[string]interface{}{
-			"height":       msg.Height,
-			"sender":       msg.Sender,
-			"target":       msg.Target,
-			"amount":       msg.Amount,
-			"asset":        msg.Asset,
-			"layer1_hash":  msg.Layer1Hash,
-			"layer1_token": msg.Layer1Token,
-			"layer2_token": msg.Layer2Token,
-			"token_id":     msg.TokenID,
-			"msg_type":     Layer1Msg,
+			"height":        msg.Height,
+			"sender":        msg.Sender,
+			"target":        msg.Target,
+			"amount":        msg.Amount,
+			"asset":         msg.Asset,
+			"layer1_hash":   msg.Layer1Hash,
+			"layer1_token":  msg.Layer1Token,
+			"layer2_token":  msg.Layer2Token,
+			"token_ids":     msg.TokenIDs,
+			"token_amounts": msg.TokenAmounts,
+			"msg_type":      Layer1Msg,
 		}
 
-		_, err = dbTx.NamedExec(`insert into cross_message(height, sender, target, asset, layer1_hash, layer1_token, layer2_token, token_id, amount, msg_type) select :height, :sender, :target, :asset, :layer1_hash, :layer1_token, :layer2_token, :token_id, :amount, :msg_type WHERE NOT EXISTS (SELECT 1 FROM cross_message WHERE layer1_hash = :layer1_hash AND NOT is_deleted);`, messageMaps[i])
+		_, err = dbTx.NamedExec(`insert into cross_message(height, sender, target, asset, layer1_hash, layer1_token, layer2_token, token_ids, token_amounts, amount, msg_type) select :height, :sender, :target, :asset, :layer1_hash, :layer1_token, :layer2_token, :token_ids, :token_amounts, :amount, :msg_type WHERE NOT EXISTS (SELECT 1 FROM cross_message WHERE layer1_hash = :layer1_hash AND NOT is_deleted);`, messageMaps[i])
 		if err != nil {
 			log.Error("BatchInsertL1CrossMsgDBTx: failed to insert l1 cross msgs", "l1hashes", msg.Layer1Hash, "heights", msg.Height, "err", err)
 			break

@@ -26,18 +26,22 @@ var (
 	L2StandardERC20GatewayABI *abi.ABI
 	L2ERC1155GatewayABI       *abi.ABI
 
-	L1DepositETHSig          common.Hash
-	L1DepositWETHSig         common.Hash
-	L1DepositERC20Sig        common.Hash
-	L1DepositERC1155Sig      common.Hash
-	L2WithdrawETHSig         common.Hash
-	L2WithdrawWETHSig        common.Hash
-	L2WithdrawERC20Sig       common.Hash
-	L1DepositCustomERC20Sig  common.Hash
-	L1DepositERC721Sig       common.Hash
-	L2WithdrawCustomERC20Sig common.Hash
-	L2WithdrawERC721Sig      common.Hash
-	L2WithdrawERC1155Sig     common.Hash
+	L1DepositETHSig           common.Hash
+	L1DepositWETHSig          common.Hash
+	L1DepositERC20Sig         common.Hash
+	L1DepositERC721Sig        common.Hash
+	L1BatchDepositERC721Sig   common.Hash
+	L1DepositERC1155Sig       common.Hash
+	L1BatchDepositERC1155Sig  common.Hash
+	L2WithdrawETHSig          common.Hash
+	L2WithdrawWETHSig         common.Hash
+	L2WithdrawERC20Sig        common.Hash
+	L1DepositCustomERC20Sig   common.Hash
+	L2WithdrawCustomERC20Sig  common.Hash
+	L2WithdrawERC721Sig       common.Hash
+	L2BatchWithdrawERC721Sig  common.Hash
+	L2WithdrawERC1155Sig      common.Hash
+	L2BatchWithdrawERC1155Sig common.Hash
 
 	// scroll mono repo
 
@@ -89,6 +93,7 @@ var (
 )
 
 func init() {
+	// L1 Sigs
 	L1ETHGatewayABI, _ = L1ETHGatewayMetaData.GetAbi()
 	L1DepositETHSig = L1ETHGatewayABI.Events["DepositETH"].ID
 	L1WETHGatewayABI, _ = L1WETHGatewayMetaData.GetAbi()
@@ -99,8 +104,12 @@ func init() {
 	L1DepositCustomERC20Sig = L1CustomERC20GatewayABI.Events["DepositERC20"].ID
 	L1ERC721GatewayABI, _ = L1ERC721GatewayMetaData.GetAbi()
 	L1DepositERC721Sig = L1ERC721GatewayABI.Events["DepositERC721"].ID
+	L1BatchDepositERC721Sig = L1ERC721GatewayABI.Events["BatchDepositERC721"].ID
 	L1ERC1155GatewayABI, _ = L1ERC1155GatewayMetaData.GetAbi()
 	L1DepositERC1155Sig = L1ERC1155GatewayABI.Events["DepositERC1155"].ID
+	L1BatchDepositERC1155Sig = L1ERC1155GatewayABI.Events["BatchDepositERC1155"].ID
+
+	// L2 Sigs
 	L2ETHGatewayABI, _ = L2ETHGatewayMetaData.GetAbi()
 	L2WithdrawETHSig = L2ETHGatewayABI.Events["WithdrawETH"].ID
 	L2WETHGatewayABI, _ = L2WETHGatewayMetaData.GetAbi()
@@ -111,8 +120,10 @@ func init() {
 	L2WithdrawCustomERC20Sig = L2CustomERC20GatewayABI.Events["WithdrawERC20"].ID
 	L2ERC721GatewayABI, _ = L2ERC721GatewayMetaData.GetAbi()
 	L2WithdrawERC721Sig = L2ERC721GatewayABI.Events["WithdrawERC721"].ID
+	L2BatchWithdrawERC721Sig = L2ERC721GatewayABI.Events["BatchWithdrawERC721"].ID
 	L2ERC1155GatewayABI, _ = L2ERC1155GatewayMetaData.GetAbi()
 	L2WithdrawERC1155Sig = L2ERC1155GatewayABI.Events["WithdrawERC1155"].ID
+	L2BatchWithdrawERC1155Sig = L2ERC1155GatewayABI.Events["BatchWithdrawERC1155"].ID
 
 	// scroll monorepo
 	ScrollChainABI, _ = ScrollChainMetaData.GetAbi()
@@ -255,8 +266,6 @@ type ERC721MessageEvent struct {
 	L2Token common.Address
 	From    common.Address
 	To      common.Address
-	Amount  *big.Int
-	Data    []byte
 	TokenID *big.Int
 }
 
@@ -267,6 +276,24 @@ type ERC1155MessageEvent struct {
 	To      common.Address
 	TokenID *big.Int
 	Amount  *big.Int
+}
+
+type BatchERC721MessageEvent struct {
+	L1Token      common.Address
+	L2Token      common.Address
+	From         common.Address
+	To           common.Address
+	TokenIDs     []*big.Int
+	TokenAmounts []*big.Int
+}
+
+type BatchERC1155MessageEvent struct {
+	L1Token      common.Address
+	L2Token      common.Address
+	From         common.Address
+	To           common.Address
+	TokenIDs     []*big.Int
+	TokenAmounts []*big.Int
 }
 
 // scroll monorepo

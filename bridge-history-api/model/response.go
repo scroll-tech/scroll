@@ -1,10 +1,8 @@
 package model
 
-import "bridge-history-api/service"
-
 type Data struct {
-	Result []*service.TxHistoryInfo `json:"result"`
-	Total  int                      `json:"total"`
+	Result []interface{} `json:"result"`
+	Total  int           `json:"total"`
 }
 
 type QueryByAddressResponse struct {
