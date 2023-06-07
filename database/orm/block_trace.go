@@ -63,6 +63,7 @@ func (o *blockTraceOrm) GetL2WrappedBlocks(fields map[string]interface{}, args .
 	if err != nil {
 		return nil, err
 	}
+	defer func() { _ = rows.Close() }()
 
 	var wrappedBlocks []*types.WrappedBlock
 	for rows.Next() {
@@ -81,7 +82,7 @@ func (o *blockTraceOrm) GetL2WrappedBlocks(fields map[string]interface{}, args .
 		return nil, err
 	}
 
-	return wrappedBlocks, rows.Close()
+	return wrappedBlocks, nil
 }
 
 func (o *blockTraceOrm) GetL2BlockInfos(fields map[string]interface{}, args ...string) ([]*types.BlockInfo, error) {
@@ -96,6 +97,7 @@ func (o *blockTraceOrm) GetL2BlockInfos(fields map[string]interface{}, args ...s
 	if err != nil {
 		return nil, err
 	}
+	defer func() { _ = rows.Close() }()
 
 	var blocks []*types.BlockInfo
 	for rows.Next() {
@@ -109,7 +111,7 @@ func (o *blockTraceOrm) GetL2BlockInfos(fields map[string]interface{}, args ...s
 		return nil, err
 	}
 
-	return blocks, rows.Close()
+	return blocks, nil
 }
 
 func (o *blockTraceOrm) GetUnbatchedL2Blocks(fields map[string]interface{}, args ...string) ([]*types.BlockInfo, error) {
@@ -124,6 +126,7 @@ func (o *blockTraceOrm) GetUnbatchedL2Blocks(fields map[string]interface{}, args
 	if err != nil {
 		return nil, err
 	}
+	defer func() { _ = rows.Close() }()
 
 	var blocks []*types.BlockInfo
 	for rows.Next() {
@@ -137,7 +140,7 @@ func (o *blockTraceOrm) GetUnbatchedL2Blocks(fields map[string]interface{}, args
 		return nil, err
 	}
 
-	return blocks, rows.Close()
+	return blocks, nil
 }
 
 func (o *blockTraceOrm) GetL2BlockHashByNumber(number uint64) (*common.Hash, error) {

@@ -8,7 +8,7 @@ pipeline {
     }
     tools {
         nodejs "nodejs"
-        go 'go-1.18'
+        go 'go-1.19'
     }
     environment {
         GOBIN = '/home/ubuntu/go/bin/'
