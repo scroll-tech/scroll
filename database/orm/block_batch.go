@@ -265,9 +265,6 @@ func (o *blockBatchOrm) GetRollupStatusByHashList(hashes []string) ([]types.Roll
 	if errRows != nil {
 		return nil, err
 	}
-	if errRows = rows.Err(); errRows != nil {
-		return nil, errRows
-	}
 	defer func() { _ = rows.Close() }()
 
 	statusMap := make(map[string]types.RollupStatus)
@@ -279,6 +276,10 @@ func (o *blockBatchOrm) GetRollupStatusByHashList(hashes []string) ([]types.Roll
 		}
 		statusMap[hash] = status
 	}
+	if errRows = rows.Err(); errRows != nil {
+		return nil, errRows
+	}
+
 	var statuses []types.RollupStatus
 	if err != nil {
 		return statuses, err

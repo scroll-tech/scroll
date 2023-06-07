@@ -31,9 +31,6 @@ func (o *sessionInfoOrm) GetSessionInfosByHashes(hashes []string) ([]*types.Sess
 	if errRows != nil {
 		return nil, errRows
 	}
-	if errRows = rows.Err(); errRows != nil {
-		return nil, errRows
-	}
 	defer func() { _ = rows.Close() }()
 
 	var sessionInfos []*types.SessionInfo
@@ -48,6 +45,10 @@ func (o *sessionInfoOrm) GetSessionInfosByHashes(hashes []string) ([]*types.Sess
 		}
 		sessionInfos = append(sessionInfos, sessionInfo)
 	}
+	if errRows = rows.Err(); errRows != nil {
+		return nil, errRows
+	}
+
 	return sessionInfos, nil
 }
 
