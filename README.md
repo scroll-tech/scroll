@@ -1,7 +1,7 @@
 # Scroll Monorepo
 
 ## Prerequisites
-+ Go 1.18
++ Go 1.19
 + Rust (for version, see [rust-toolchain](./common/libzkp/impl/rust-toolchain))
 + Hardhat / Foundry
 + Docker

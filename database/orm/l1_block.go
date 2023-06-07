@@ -37,6 +37,7 @@ func (l *l1BlockOrm) GetL1BlockInfos(fields map[string]interface{}, args ...stri
 	if err != nil {
 		return nil, err
 	}
+	defer func() { _ = rows.Close() }()
 
 	var blocks []*types.L1BlockInfo
 	for rows.Next() {
@@ -50,7 +51,7 @@ func (l *l1BlockOrm) GetL1BlockInfos(fields map[string]interface{}, args ...stri
 		return nil, err
 	}
 
-	return blocks, rows.Close()
+	return blocks, nil
 }
 
 func (l *l1BlockOrm) InsertL1Blocks(ctx context.Context, blocks []*types.L1BlockInfo) error {
