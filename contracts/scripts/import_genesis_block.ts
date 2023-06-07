@@ -19,7 +19,7 @@ async function main() {
   console.log("Using rollup proxy address:", rollupAddr);
 
   const ScrollChain = await ethers.getContractAt("ScrollChain", rollupAddr, deployer);
-  const genesis = JSON.parse(fs.readFileSync(GENESIS_FILE_PATH, 'utf8'));
+  const genesis = JSON.parse(fs.readFileSync(GENESIS_FILE_PATH, "utf8"));
   console.log("Using genesis block:", genesis.blockHash);
 
   const tx = await ScrollChain.importGenesisBatch(genesis);
