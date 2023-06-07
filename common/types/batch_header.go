@@ -10,8 +10,6 @@ import (
 
 // BatchHeader contains batch header info to be committed.
 type BatchHeader struct {
-	lastBatchQueueIndex uint64 // queue index of the last L1 message included in the previous batch (last chunk)
-
 	// Encoded in BatchHeaderV0Codec
 	version                uint8
 	batchIndex             uint64
@@ -23,12 +21,12 @@ type BatchHeader struct {
 }
 
 // NewBatchHeader creates a new BatchHeader
-func NewBatchHeader(version uint8, batchIndex, totalL1MessagePoppedBefore uint64, parentBatchHeader *BatchHeader, chunks []*Chunk) (*BatchHeader, error) {
-	// TODO calculate `lastBatchQueueIndex`, `l1MessagePopped`, `totalL1MessagePopped`, and `skippedL1MessageBitmap` based on `chunks`
+func NewBatchHeader(version uint8, batchIndex, totalL1MessagePoppedBefore uint64, parentBatchHash common.Hash, chunks []*Chunk) (*BatchHeader, error) {
+	// TODO calculate `l1MessagePopped`, `totalL1MessagePopped`, and `skippedL1MessageBitmap` based on `chunks`
 	var dataBytes []byte
 	for _, chunk := range chunks {
 		// Build dataHash
-		chunkBytes, err := chunk.Encode()
+		chunkBytes, err := chunk.Hash()
 		if err != nil {
 			return nil, err
 		}
@@ -38,13 +36,12 @@ func NewBatchHeader(version uint8, batchIndex, totalL1MessagePoppedBefore uint64
 	dataHash := crypto.Keccak256Hash(dataBytes)
 
 	return &BatchHeader{
-		lastBatchQueueIndex:    0, // TODO
 		version:                version,
 		batchIndex:             batchIndex,
 		l1MessagePopped:        0,                          // TODO
 		totalL1MessagePopped:   totalL1MessagePoppedBefore, // TODO
 		dataHash:               dataHash,
-		parentBatchHash:        parentBatchHeader.Hash(),
+		parentBatchHash:        parentBatchHash,
 		skippedL1MessageBitmap: nil, // TODO
 	}, nil
 }
