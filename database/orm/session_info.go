@@ -45,8 +45,8 @@ func (o *sessionInfoOrm) GetSessionInfosByHashes(hashes []string) ([]*types.Sess
 		}
 		sessionInfos = append(sessionInfos, sessionInfo)
 	}
-	if errQuery = rows.Err(); errQuery != nil {
-		return nil, errQuery
+	if errRow := rows.Err(); errRow != nil {
+		return nil, errRow
 	}
 
 	return sessionInfos, nil

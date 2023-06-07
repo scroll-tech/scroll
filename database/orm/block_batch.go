@@ -276,8 +276,8 @@ func (o *blockBatchOrm) GetRollupStatusByHashList(hashes []string) ([]types.Roll
 		}
 		statusMap[hash] = status
 	}
-	if errQuery = rows.Err(); errQuery != nil {
-		return nil, errQuery
+	if errRow := rows.Err(); errRow != nil {
+		return nil, errRow
 	}
 
 	var statuses []types.RollupStatus
