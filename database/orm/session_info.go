@@ -27,9 +27,9 @@ func (o *sessionInfoOrm) GetSessionInfosByHashes(hashes []string) ([]*types.Sess
 	if err != nil {
 		return nil, err
 	}
-	rows, errRows := o.db.Queryx(o.db.Rebind(query), args...)
-	if errRows != nil {
-		return nil, errRows
+	rows, errQuery := o.db.Queryx(o.db.Rebind(query), args...)
+	if errQuery != nil {
+		return nil, errQuery
 	}
 	defer func() { _ = rows.Close() }()
 
@@ -45,8 +45,8 @@ func (o *sessionInfoOrm) GetSessionInfosByHashes(hashes []string) ([]*types.Sess
 		}
 		sessionInfos = append(sessionInfos, sessionInfo)
 	}
-	if errRows = rows.Err(); errRows != nil {
-		return nil, errRows
+	if errQuery = rows.Err(); errQuery != nil {
+		return nil, errQuery
 	}
 
 	return sessionInfos, nil
