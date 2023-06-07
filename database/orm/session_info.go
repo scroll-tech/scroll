@@ -31,18 +31,24 @@ func (o *sessionInfoOrm) GetSessionInfosByHashes(hashes []string) ([]*types.Sess
 	if err != nil {
 		return nil, err
 	}
+	defer func() { _ = rows.Close() }()
+
 	var sessionInfos []*types.SessionInfo
 	for rows.Next() {
 		var infoBytes []byte
-		if err := rows.Scan(&infoBytes); err != nil {
+		if err = rows.Scan(&infoBytes); err != nil {
 			return nil, err
 		}
 		sessionInfo := &types.SessionInfo{}
-		if err := json.Unmarshal(infoBytes, sessionInfo); err != nil {
+		if err = json.Unmarshal(infoBytes, sessionInfo); err != nil {
 			return nil, err
 		}
 		sessionInfos = append(sessionInfos, sessionInfo)
 	}
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+
 	return sessionInfos, nil
 }
 
