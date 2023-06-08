@@ -99,6 +99,7 @@ func testMonitorBridgeContract(t *testing.T) {
 	tx, err = instance.SendMessage(auth, toAddress, fee, message, gasLimit)
 	assert.NoError(t, err)
 	receipt, err := bind.WaitMined(context.Background(), l2Cli, tx)
+	assert.NoError(t, err)
 	if receipt.Status != gethTypes.ReceiptStatusSuccessful || err != nil {
 		t.Fatalf("Call failed")
 	}
@@ -109,6 +110,7 @@ func testMonitorBridgeContract(t *testing.T) {
 	tx, err = instance.SendMessage(auth, toAddress, fee, message, gasLimit)
 	assert.NoError(t, err)
 	receipt, err = bind.WaitMined(context.Background(), l2Cli, tx)
+	assert.NoError(t, err)
 	if receipt.Status != gethTypes.ReceiptStatusSuccessful || err != nil {
 		t.Fatalf("Call failed")
 	}
