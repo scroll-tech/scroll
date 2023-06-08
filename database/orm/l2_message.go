@@ -103,6 +103,7 @@ func (m *layer2MessageOrm) GetL2Messages(fields map[string]interface{}, args ...
 	if err != nil {
 		return nil, err
 	}
+	defer func() { _ = rows.Close() }()
 
 	var msgs []*types.L2Message
 	for rows.Next() {
@@ -118,7 +119,7 @@ func (m *layer2MessageOrm) GetL2Messages(fields map[string]interface{}, args ...
 		return nil, err
 	}
 
-	return msgs, rows.Close()
+	return msgs, nil
 }
 
 // SaveL2Messages batch save a list of layer2 messages
