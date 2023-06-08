@@ -2,10 +2,12 @@ package app
 
 import (
 	"encoding/json"
-	"github.com/scroll-tech/go-ethereum/core/types"
-	"github.com/urfave/cli/v2"
 	"io"
 	"os"
+
+	"github.com/scroll-tech/go-ethereum/core/types"
+	"github.com/urfave/cli/v2"
+
 	"scroll-tech/roller/config"
 	"scroll-tech/roller/prover"
 )
