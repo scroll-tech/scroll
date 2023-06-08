@@ -3,8 +3,8 @@
 
 create table chunk
 (
-    chunk_index             SERIAL          NOT NULL,
-    chunk_hash              VARCHAR         NOT NULL,
+    index                   SERIAL          NOT NULL,
+    hash                    VARCHAR         NOT NULL,
     start_block_number      BIGINT          NOT NULL,
     start_block_hash        VARCHAR         NOT NULL,
     end_block_number        BIGINT          NOT NULL,
@@ -25,10 +25,10 @@ comment
 on column chunk.proving_status is 'undefined, unassigned, skipped, assigned, proved, verified, failed';
 
 create unique index chunk_index_uindex
-on chunk (chunk_index);
+on chunk (index);
 
 create unique index chunk_hash_uindex
-on chunk (chunk_hash);
+on chunk (hash);
 
 create index batch_index_index
 on chunk (batch_index);

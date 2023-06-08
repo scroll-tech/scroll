@@ -9,7 +9,7 @@ create table batch
     start_chunk_hash        VARCHAR         NOT NULL,
     end_chunk_index         INTEGER         NOT NULL,
     end_chunk_hash          VARCHAR         NOT NULL,
-    agg_proof               BYTEA           DEFAULT NULL,
+    proof                   BYTEA           DEFAULT NULL,
     proving_status          INTEGER         DEFAULT 1,
     proof_time_sec          INTEGER         DEFAULT 0,
     rollup_status           INTEGER         DEFAULT 1,

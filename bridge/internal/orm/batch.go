@@ -19,7 +19,7 @@ type Batch struct {
 	StartChunkHash   string     `json:"start_chunk_hash" gorm:"column:start_chunk_hash"`
 	EndChunkIndex    int        `json:"end_chunk_index" gorm:"column:end_chunk_index"`
 	EndChunkHash     string     `json:"end_chunk_hash" gorm:"column:end_chunk_hash"`
-	AggProof         []byte     `json:"agg_proof" gorm:"column:agg_proof"`
+	Proof            []byte     `json:"proof" gorm:"column:proof"`
 	ProvingStatus    int        `json:"proving_status" gorm:"column:proving_status"`
 	ProofTimeSec     int        `json:"proof_time_sec" gorm:"column:proof_time_sec"`
 	RollupStatus     int        `json:"rollup_status" gorm:"column:rollup_status"`

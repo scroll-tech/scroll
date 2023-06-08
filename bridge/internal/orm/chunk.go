@@ -14,7 +14,7 @@ import (
 type Chunk struct {
 	db *gorm.DB `gorm:"-"`
 
-	ChunkHash        string     `json:"chunk_hash" gorm:"column:chunk_hash"`
+	Hash             string     `json:"hash" gorm:"column:hash"`
 	StartBlockNumber uint64     `json:"start_block_number" gorm:"column:start_block_number"`
 	StartBlockHash   string     `json:"start_block_hash" gorm:"column:start_block_hash"`
 	EndBlockNumber   uint64     `json:"end_block_number" gorm:"column:end_block_number"`
@@ -39,9 +39,9 @@ func (*Chunk) TableName() string {
 	return "chunk"
 }
 
-func (c *Chunk) GetChunk(ctx context.Context, chunkHash string) (*Chunk, error) {
+func (c *Chunk) GetChunk(ctx context.Context, hash string) (*Chunk, error) {
 	var chunk Chunk
-	err := c.db.WithContext(ctx).Where("chunk_hash", chunkHash).First(&chunk).Error
+	err := c.db.WithContext(ctx).Where("hash", hash).First(&chunk).Error
 	if err != nil {
 		return nil, err
 	}
@@ -54,7 +54,7 @@ func (c *Chunk) InsertChunk(ctx context.Context, chunk *types.Chunk, tx ...*gorm
 		db = tx[0]
 	}
 
-	chunkHash, err := chunk.Hash()
+	hash, err := chunk.Hash()
 	if err != nil {
 		log.Error("failed to get chunk hash", "err", err)
 		return err
@@ -66,7 +66,7 @@ func (c *Chunk) InsertChunk(ctx context.Context, chunk *types.Chunk, tx ...*gorm
 	}
 
 	tmpChunk := Chunk{
-		ChunkHash:        hex.EncodeToString(chunkHash),
+		Hash:             hex.EncodeToString(hash),
 		StartBlockNumber: chunk.Blocks[0].Header.Number.Uint64(),
 		StartBlockHash:   chunk.Blocks[0].Header.Hash().Hex(),
 		EndBlockNumber:   chunk.Blocks[numBlocks-1].Header.Number.Uint64(),
@@ -74,17 +74,17 @@ func (c *Chunk) InsertChunk(ctx context.Context, chunk *types.Chunk, tx ...*gorm
 	}
 
 	if err := db.WithContext(ctx).Create(&tmpChunk).Error; err != nil {
-		log.Error("failed to insert chunk", "chunk hash", chunkHash, "err", err)
+		log.Error("failed to insert chunk", "hash", hash, "err", err)
 		return err
 	}
 	return nil
 }
 
-func (c *Chunk) UpdateChunk(ctx context.Context, chunkHash string, updateFields map[string]interface{}, tx ...*gorm.DB) error {
+func (c *Chunk) UpdateChunk(ctx context.Context, hash string, updateFields map[string]interface{}, tx ...*gorm.DB) error {
 	db := c.db
 	if len(tx) > 0 && tx[0] != nil {
 		db = tx[0]
 	}
-	err := db.Model(&Chunk{}).WithContext(ctx).Where("chunk_hash", chunkHash).Updates(updateFields).Error
+	err := db.Model(&Chunk{}).WithContext(ctx).Where("hash", hash).Updates(updateFields).Error
 	return err
 }
