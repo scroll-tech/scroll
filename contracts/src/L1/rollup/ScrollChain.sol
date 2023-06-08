@@ -402,11 +402,13 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
         bytes calldata _skippedL1MessageBitmap
     ) internal view returns (uint256 _totalNumL1MessagesInChunk) {
         uint256 chunkPtr;
+        uint256 startDataPtr;
         uint256 dataPtr;
         uint256 blockPtr;
 
         assembly {
             dataPtr := mload(0x40)
+            startDataPtr := dataPtr
             chunkPtr := add(_chunk, 0x20) // skip chunkLength
             blockPtr := add(chunkPtr, 1) // skip numBlocks
         }
@@ -414,15 +416,23 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
         uint256 _numBlocks = ChunkCodec.validateChunkLength(chunkPtr, _chunk.length);
 
         // concatenate block contexts
+        uint256 _totalTransactionsInChunk;
         for (uint256 i = 0; i < _numBlocks; i++) {
             dataPtr = ChunkCodec.copyBlockContext(chunkPtr, dataPtr, i);
+            uint256 _numTransactionsInBlock = ChunkCodec.numTransactions(blockPtr);
+            unchecked {
+                _totalTransactionsInChunk += _numTransactionsInBlock;
+                blockPtr += ChunkCodec.BLOCK_CONTEXT_LENGTH;
+            }
+        }
+
+        assembly {
+            mstore(0x40, add(dataPtr, mul(_totalTransactionsInChunk, 0x20))) // reserve memory for tx hashes
+            blockPtr := add(chunkPtr, 1) // reset block ptr
         }
 
         // concatenate tx hashes
         uint256 l2TxPtr = ChunkCodec.l2TxPtr(chunkPtr, _numBlocks);
-
-        // avoid stack too deep on forge coverage
-        uint256 _totalTransactionsInChunk;
         while (_numBlocks > 0) {
             // concatenate l1 message hashes
             uint256 _numL1MessagesInBlock = ChunkCodec.numL1Messages(blockPtr);
@@ -446,7 +456,6 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
             }
 
             unchecked {
-                _totalTransactionsInChunk += _numTransactionsInBlock;
                 _totalNumL1MessagesInChunk += _numL1MessagesInBlock;
                 _totalL1MessagesPoppedInBatch += _numL1MessagesInBlock;
                 _totalL1MessagesPoppedOverall += _numL1MessagesInBlock;
@@ -467,9 +476,7 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
 
         // compute data hash and store to memory
         assembly {
-            let startPtr := mload(0x40)
-            let dataHash := keccak256(startPtr, sub(dataPtr, startPtr))
-
+            let dataHash := keccak256(startDataPtr, sub(dataPtr, startDataPtr))
             mstore(memPtr, dataHash)
         }
 
