@@ -6,8 +6,8 @@ create table l2_block
     number                  BIGINT          NOT NULL,
     hash                    VARCHAR         NOT NULL,
     parent_hash             VARCHAR         NOT NULL,
-    header                  JSON            NOT NULL
-    transactions            JSON            NOT NULL,
+    header                  TEXT            NOT NULL,
+    transactions            TEXT            NOT NULL,
     withdraw_trie_root      VARCHAR         DEFAULT NULL,
     tx_num                  INTEGER         NOT NULL,
     gas_used                BIGINT          NOT NULL,

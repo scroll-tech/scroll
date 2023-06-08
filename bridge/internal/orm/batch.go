@@ -14,7 +14,7 @@ import (
 type Batch struct {
 	db *gorm.DB `gorm:"column:-"`
 
-	BatchHash        string     `json:"batch_hash" gorm:"column:batch_hash"`
+	Hash             string     `json:"hash" gorm:"column:hash"`
 	StartChunkIndex  int        `json:"start_chunk_index" gorm:"column:start_chunk_index"`
 	StartChunkHash   string     `json:"start_chunk_hash" gorm:"column:start_chunk_hash"`
 	EndChunkIndex    int        `json:"end_chunk_index" gorm:"column:end_chunk_index"`
@@ -42,9 +42,9 @@ func (*Batch) TableName() string {
 	return "batch"
 }
 
-func (c *Batch) GetChunkBatch(ctx context.Context, batchHash string) (*Batch, error) {
+func (c *Batch) GetChunkBatch(ctx context.Context, hash string) (*Batch, error) {
 	var chunkBatch Batch
-	err := c.db.WithContext(ctx).Where("batch_hash", batchHash).First(&chunkBatch).Error
+	err := c.db.WithContext(ctx).Where("hash", hash).First(&chunkBatch).Error
 	if err != nil {
 		return nil, err
 	}
@@ -89,11 +89,11 @@ func (c *Batch) InsertChunkBatch(ctx context.Context, batch *types.Batch, tx ...
 	return err
 }
 
-func (c *Batch) UpdateChunkBatch(ctx context.Context, batchHash string, updateFields map[string]interface{}, tx ...*gorm.DB) error {
+func (c *Batch) UpdateChunkBatch(ctx context.Context, hash string, updateFields map[string]interface{}, tx ...*gorm.DB) error {
 	db := c.db
 	if len(tx) > 0 && tx[0] != nil {
 		db = tx[0]
 	}
-	err := db.Model(&Batch{}).WithContext(ctx).Where("batch_hash", batchHash).Updates(updateFields).Error
+	err := db.Model(&Batch{}).WithContext(ctx).Where("hash", hash).Updates(updateFields).Error
 	return err
 }

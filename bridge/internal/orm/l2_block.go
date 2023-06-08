@@ -16,15 +16,15 @@ import (
 type L2Block struct {
 	db *gorm.DB `gorm:"column:-"`
 
-	Number           uint64          `json:"number" gorm:"number"`
-	Hash             string          `json:"hash" gorm:"hash"`
-	ParentHash       string          `json:"parent_hash" gorm:"parent_hash"`
-	Header           json.RawMessage `json:"header" gorm:"header"`
-	Transactions     json.RawMessage `json:"transactions" gorm:"transactions"`
-	WithdrawTrieRoot string          `json:"withdraw_trie_root" gorm:"withdraw_trie_root"`
-	TxNum            uint64          `json:"tx_num" gorm:"tx_num"`
-	GasUsed          uint64          `json:"gas_used" gorm:"gas_used"`
-	BlockTimestamp   uint64          `json:"block_timestamp" gorm:"block_timestamp"`
+	Number           uint64 `json:"number" gorm:"number"`
+	Hash             string `json:"hash" gorm:"hash"`
+	ParentHash       string `json:"parent_hash" gorm:"parent_hash"`
+	Header           string `json:"header" gorm:"header"`
+	Transactions     string `json:"transactions" gorm:"transactions"`
+	WithdrawTrieRoot string `json:"withdraw_trie_root" gorm:"withdraw_trie_root"`
+	TxNum            uint64 `json:"tx_num" gorm:"tx_num"`
+	GasUsed          uint64 `json:"gas_used" gorm:"gas_used"`
+	BlockTimestamp   uint64 `json:"block_timestamp" gorm:"block_timestamp"`
 }
 
 // NewL2Block creates a new L2Block instance
@@ -54,9 +54,11 @@ func (o *L2Block) GetL2BlocksLatestHeight() (int64, error) {
 func (o *L2Block) GetL2WrappedBlocks(fields map[string]interface{}) ([]*types.WrappedBlock, error) {
 	var l2Blocks []L2Block
 	db := o.db.Select("header, transactions, withdraw_trie_root")
+
 	for key, value := range fields {
 		db = db.Where(key, value)
 	}
+
 	if err := db.Find(&l2Blocks).Error; err != nil {
 		return nil, err
 	}
@@ -64,16 +66,20 @@ func (o *L2Block) GetL2WrappedBlocks(fields map[string]interface{}) ([]*types.Wr
 	var wrappedBlocks []*types.WrappedBlock
 	for _, v := range l2Blocks {
 		var wrappedBlock types.WrappedBlock
-		if err := json.Unmarshal(v.Transactions, &wrappedBlock.Transactions); err != nil {
-			break
+
+		if err := json.Unmarshal([]byte(v.Transactions), &wrappedBlock.Transactions); err != nil {
+			return nil, err
 		}
+
 		wrappedBlock.Header = &gethTypes.Header{}
-		if err := json.Unmarshal(v.Header, wrappedBlock.Header); err != nil {
-			break
+		if err := json.Unmarshal([]byte(v.Header), wrappedBlock.Header); err != nil {
+			return nil, err
 		}
+
 		wrappedBlock.WithdrawTrieRoot = common.HexToHash(v.WithdrawTrieRoot)
 		wrappedBlocks = append(wrappedBlocks, &wrappedBlock)
 	}
+
 	return wrappedBlocks, nil
 }
 

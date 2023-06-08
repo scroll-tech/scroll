@@ -3,8 +3,8 @@
 
 create table batch
 (
-    batch_index             SERIAL          NOT NULL,
-    batch_hash              VARCHAR         NOT NULL,
+    index                   SERIAL          NOT NULL,
+    hash                    VARCHAR         NOT NULL,
     start_chunk_index       INTEGER         NOT NULL,
     start_chunk_hash        VARCHAR         NOT NULL,
     end_chunk_index         INTEGER         NOT NULL,
@@ -25,10 +25,10 @@ create table batch
 );
 
 create unique index batch_index_uindex
-on batch (batch_index);
+on batch (index);
 
 create unique index batch_hash_uindex
-on batch (batch_hash);
+on batch (hash);
 
 comment
 on column batch.proving_status is 'undefined, unassigned, skipped, assigned, proved, verified, failed';
