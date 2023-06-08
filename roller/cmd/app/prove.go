@@ -11,20 +11,23 @@ import (
 )
 
 var (
+	// ProveFlags is only used for prove sub command.
 	ProveFlags = []cli.Flag{&ParamsDirFlag, &SeedFlag, &TraceFlag}
-
+	// ParamsDirFlag is params dir for params files.
 	ParamsDirFlag = cli.StringFlag{
 		Name:    "params",
 		Aliases: []string{"p"},
 		Usage:   "params dir",
 		Value:   "./params",
 	}
+	// SeedFlag is seed file name.
 	SeedFlag = cli.StringFlag{
 		Name:    "seed",
 		Aliases: []string{"s"},
 		Usage:   "seed file path",
 		Value:   "seed",
 	}
+	// TraceFlag is trace file name.
 	TraceFlag = cli.StringFlag{
 		Name:    "traces",
 		Aliases: []string{"t"},
@@ -46,7 +49,7 @@ func Prove(ctx *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	f, err := os.Open(tracePath)
+	f, err := os.Open(tracePath) //nolint:gosec
 	if err != nil {
 		return err
 	}
