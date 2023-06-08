@@ -36,7 +36,7 @@ var (
 	}
 )
 
-func Prove(ctx *cli.Context) error {
+func prove(ctx *cli.Context) error {
 	paramsDir := ctx.String(ParamsDirFlag.Name)
 	seedPath := ctx.String(SeedFlag.Name)
 	tracePath := ctx.String(TraceFlag.Name)

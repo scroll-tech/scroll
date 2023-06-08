@@ -32,7 +32,7 @@ func init() {
 		{
 			Name:   "prove",
 			Usage:  "generate zk proof from trace",
-			Action: Prove,
+			Action: prove,
 			Flags:  ProveFlags,
 		},
 	}
