@@ -28,6 +28,14 @@ func init() {
 	app.Before = func(ctx *cli.Context) error {
 		return utils.LogSetup(ctx)
 	}
+	app.Commands = []*cli.Command{
+		{
+			Name:   "prove",
+			Usage:  "generate zk proof from trace",
+			Action: Prove,
+			Flags:  ProveFlags,
+		},
+	}
 
 	// Register `roller-test` app for integration-test.
 	utils.RegisterSimulation(app, utils.RollerApp)
