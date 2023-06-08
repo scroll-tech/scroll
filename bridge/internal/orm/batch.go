@@ -15,19 +15,23 @@ type Batch struct {
 	db *gorm.DB `gorm:"column:-"`
 
 	BatchHash        string     `json:"batch_hash" gorm:"column:batch_hash"`
+	StartChunkIndex  int        `json:"start_chunk_index" gorm:"column:start_chunk_index"`
 	StartChunkHash   string     `json:"start_chunk_hash" gorm:"column:start_chunk_hash"`
+	EndChunkIndex    int        `json:"end_chunk_index" gorm:"column:end_chunk_index"`
 	EndChunkHash     string     `json:"end_chunk_hash" gorm:"column:end_chunk_hash"`
-	AggProof         []byte     `json:"agg_proof" gorm:"column:agg_proof;default:NULL"`
-	ProvingStatus    int        `json:"proving_status" gorm:"column:proving_status;default:1"`
-	ProofTimeSec     int        `json:"proof_time_sec" gorm:"column:proof_time_sec;default:0"`
-	RollupStatus     int        `json:"rollup_status" gorm:"column:rollup_status;default:1"`
-	CommitTxHash     string     `json:"commit_tx_hash" gorm:"column:commit_tx_hash;default:NULL"`
-	FinalizeTxHash   string     `json:"finalize_tx_hash" gorm:"column:finalize_tx_hash;default:NULL"`
-	ProverAssignedAt *time.Time `json:"prover_assigned_at" gorm:"column:prover_assigned_at;default:NULL"`
-	ProvedAt         *time.Time `json:"proved_at" gorm:"column:proved_at;default:NULL"`
-	CommittedAt      *time.Time `json:"committed_at" gorm:"column:committed_at;default:NULL"`
-	FinalizedAt      *time.Time `json:"finalized_at" gorm:"column:finalized_at;default:NULL"`
+	AggProof         []byte     `json:"agg_proof" gorm:"column:agg_proof"`
+	ProvingStatus    int        `json:"proving_status" gorm:"column:proving_status"`
+	ProofTimeSec     int        `json:"proof_time_sec" gorm:"column:proof_time_sec"`
+	RollupStatus     int        `json:"rollup_status" gorm:"column:rollup_status"`
+	CommitTxHash     string     `json:"commit_tx_hash" gorm:"column:commit_tx_hash"`
+	FinalizeTxHash   string     `json:"finalize_tx_hash" gorm:"column:finalize_tx_hash"`
+	ProverAssignedAt *time.Time `json:"prover_assigned_at" gorm:"column:prover_assigned_at"`
+	ProvedAt         *time.Time `json:"proved_at" gorm:"column:proved_at"`
+	CommittedAt      *time.Time `json:"committed_at" gorm:"column:committed_at"`
+	FinalizedAt      *time.Time `json:"finalized_at" gorm:"column:finalized_at"`
 	CreatedAt        time.Time  `json:"created_at" gorm:"column:created_at"`
+	UpdatedAt        time.Time  `json:"updated_at" gorm:"column:updated_at"`
+	DeletedAt        *time.Time `json:"deleted_at" gorm:"column:deleted_at"`
 }
 
 func NewBatch(db *gorm.DB) *Batch {

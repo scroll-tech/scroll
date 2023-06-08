@@ -12,18 +12,23 @@ import (
 )
 
 type Chunk struct {
-	db *gorm.DB `gorm:"column:-"`
+	db *gorm.DB `gorm:"-"`
 
 	ChunkHash        string     `json:"chunk_hash" gorm:"column:chunk_hash"`
 	StartBlockNumber uint64     `json:"start_block_number" gorm:"column:start_block_number"`
 	StartBlockHash   string     `json:"start_block_hash" gorm:"column:start_block_hash"`
 	EndBlockNumber   uint64     `json:"end_block_number" gorm:"column:end_block_number"`
 	EndBlockHash     string     `json:"end_block_hash" gorm:"column:end_block_hash"`
-	ChunkProof       []byte     `json:"chunk_proof" gorm:"column:chunk_proof;default:NULL"`
-	ProofTimeSec     int        `json:"proof_time_sec" gorm:"column:proof_time_sec;default:0"`
-	ProverAssignedAt *time.Time `json:"prover_assigned_at" gorm:"column:prover_assigned_at;default:NULL"`
-	ProvedAt         *time.Time `json:"proved_at" gorm:"column:proved_at;default:NULL"`
-	CreatedAt        time.Time  `json:"created_at" gorm:"column:created_at;default:CURRENT_TIMESTAMP()"`
+	ChunkProof       []byte     `json:"chunk_proof" gorm:"column:chunk_proof"`
+	ProofTimeSec     int        `json:"proof_time_sec" gorm:"column:proof_time_sec"`
+	ProverAssignedAt *time.Time `json:"prover_assigned_at" gorm:"column:prover_assigned_at"`
+	ProvingStatus    int        `json:"proving_status" gorm:"column:proving_status"`
+	ProvedAt         *time.Time `json:"proved_at" gorm:"column:proved_at"`
+	BatchIndex       int        `json:"batch_index" gorm:"column:batch_index"`
+	BatchHash        string     `json:"batch_hash" gorm:"column:batch_hash"`
+	CreatedAt        time.Time  `json:"created_at" gorm:"column:created_at"`
+	UpdatedAt        time.Time  `json:"updated_at" gorm:"column:updated_at"`
+	DeletedAt        *time.Time `json:"deleted_at" gorm:"column:deleted_at"`
 }
 
 func NewChunk(db *gorm.DB) *Chunk {

@@ -47,9 +47,9 @@ func TestPackCommitBatch(t *testing.T) {
 	assert.NoError(err)
 
 	version := uint8(1)
-	parentBatchHeader := []byte{0}
-	chunks := [][]byte{{0}}
-	skippedL1MessageBitmap := []byte{0}
+	var parentBatchHeader []byte
+	var chunks [][]byte
+	var skippedL1MessageBitmap []byte
 
 	_, err = scrollChainABI.Pack("commitBatch", version, parentBatchHeader, chunks, skippedL1MessageBitmap)
 	assert.NoError(err)

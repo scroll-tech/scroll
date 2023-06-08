@@ -20,6 +20,8 @@ create table batch
     committed_at            TIMESTAMP(0)    DEFAULT NULL,
     finalized_at            TIMESTAMP(0)    DEFAULT NULL,
     created_at              TIMESTAMP(0)    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at              TIMESTAMP(0)    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    deleted_at              TIMESTAMP(0)    DEFAULT NULL,
 );
 
 create unique index batch_index_uindex
@@ -33,6 +35,18 @@ on column batch.proving_status is 'undefined, unassigned, skipped, assigned, pro
 
 comment
 on column batch.rollup_status is 'undefined, pending, committing, committed, finalizing, finalized, finalization_skipped, commit_failed, finalize_failed';
+
+create or replace function update_timestamp()
+returns trigger as $$
+begin
+   NEW.updated_at = current_timestamp;
+   return NEW;
+end;
+$$ language 'plpgsql';
+
+create trigger update_timestamp before update
+on batch for each row execute procedure
+update_timestamp();
 
 -- +goose StatementEnd
 

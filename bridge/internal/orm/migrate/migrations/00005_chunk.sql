@@ -17,6 +17,8 @@ create table chunk
     batch_index             INTEGER         DEFAULT NULL,
     batch_hash              VARCHAR         DEFAULT NULL,
     created_at              TIMESTAMP(0)    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at              TIMESTAMP(0)    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    deleted_at              TIMESTAMP(0)    DEFAULT NULL,
 );
 
 comment
@@ -33,6 +35,18 @@ on chunk (batch_index);
 
 create index batch_hash_index
 on chunk (batch_hash);
+
+create or replace function update_timestamp()
+returns trigger as $$
+begin
+   NEW.updated_at = current_timestamp;
+   return NEW;
+end;
+$$ language 'plpgsql';
+
+create trigger update_timestamp before update
+on chunk for each row execute procedure
+update_timestamp();
 
 -- +goose StatementEnd
 

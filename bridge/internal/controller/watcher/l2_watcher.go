@@ -150,25 +150,21 @@ func (w *L2WatcherClient) initializeGenesis() error {
 			return fmt.Errorf("failed to insert chunk: %v", err)
 		}
 
-		// Update proving status of the chunk
-		if err := w.chunkOrm.UpdateChunk(w.ctx, chunkHash, map[string]interface{}{
+		// Update proving status of the batch
+		updateField := map[string]interface{}{
 			"proving_status": types.ProvingTaskVerified,
-		}, tx); err != nil {
+		}
+		if err := w.chunkOrm.UpdateChunk(w.ctx, chunkHash, updateField, tx); err != nil {
 			return fmt.Errorf("failed to update genesis chunk proving status: %v", err)
 		}
 
-		// Update proving status of the batch
-		if err := w.batchOrm.UpdateChunkBatch(w.ctx, batchHash, map[string]interface{}{
+		// Update proving status and rollup status of the batch
+		updateField = map[string]interface{}{
 			"proving_status": types.ProvingTaskVerified,
-		}, tx); err != nil {
-			return fmt.Errorf("failed to update genesis batch proving status: %v", err)
+			"rollup_status":  types.RollupFinalized,
 		}
-
-		// Update rollup status of the batch
-		if err := w.batchOrm.UpdateChunkBatch(w.ctx, batchHash, map[string]interface{}{
-			"rollup_status": types.RollupFinalized,
-		}, tx); err != nil {
-			return fmt.Errorf("failed to update genesis batch rollup status: %v", err)
+		if err := w.batchOrm.UpdateChunkBatch(w.ctx, batchHash, updateField, tx); err != nil {
+			return fmt.Errorf("failed to update genesis batch proving status: %v", err)
 		}
 
 		return nil
