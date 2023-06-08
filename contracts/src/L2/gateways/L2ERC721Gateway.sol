@@ -153,7 +153,7 @@ contract L2ERC721Gateway is OwnableUpgradeable, ERC721HolderUpgradeable, ScrollG
         address _to,
         uint256 _tokenId,
         uint256 _gasLimit
-    ) internal nonReentrant {
+    ) internal virtual nonReentrant {
         address _l1Token = tokenMapping[_token];
         require(_l1Token != address(0), "no corresponding l1 token");
 
@@ -188,7 +188,7 @@ contract L2ERC721Gateway is OwnableUpgradeable, ERC721HolderUpgradeable, ScrollG
         address _to,
         uint256[] calldata _tokenIds,
         uint256 _gasLimit
-    ) internal nonReentrant {
+    ) internal virtual nonReentrant {
         require(_tokenIds.length > 0, "no token to withdraw");
 
         address _l1Token = tokenMapping[_token];

@@ -160,7 +160,7 @@ contract L2ERC1155Gateway is OwnableUpgradeable, ERC1155HolderUpgradeable, Scrol
         uint256 _tokenId,
         uint256 _amount,
         uint256 _gasLimit
-    ) internal nonReentrant {
+    ) internal virtual nonReentrant {
         require(_amount > 0, "withdraw zero amount");
 
         address _l1Token = tokenMapping[_token];
@@ -198,7 +198,7 @@ contract L2ERC1155Gateway is OwnableUpgradeable, ERC1155HolderUpgradeable, Scrol
         uint256[] calldata _tokenIds,
         uint256[] calldata _amounts,
         uint256 _gasLimit
-    ) internal nonReentrant {
+    ) internal virtual nonReentrant {
         require(_tokenIds.length > 0, "no token to withdraw");
         require(_tokenIds.length == _amounts.length, "length mismatch");
 
