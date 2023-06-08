@@ -101,6 +101,7 @@ func testMonitorBridgeContract(t *testing.T) {
 	receipt, err := bind.WaitMined(context.Background(), l2Cli, tx)
 	assert.NoError(t, err)
 	if receipt.Status != gethTypes.ReceiptStatusSuccessful || err != nil {
+		t.Logf("hhh--> status:%d", receipt.Status)
 		t.Fatalf("Call failed")
 	}
 
@@ -112,6 +113,7 @@ func testMonitorBridgeContract(t *testing.T) {
 	receipt, err = bind.WaitMined(context.Background(), l2Cli, tx)
 	assert.NoError(t, err)
 	if receipt.Status != gethTypes.ReceiptStatusSuccessful || err != nil {
+		t.Logf("hhh--> status:%d", receipt.Status)
 		t.Fatalf("Call failed")
 	}
 
