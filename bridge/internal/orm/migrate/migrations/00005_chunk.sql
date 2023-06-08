@@ -14,6 +14,8 @@ create table chunk
     prover_assigned_at      TIMESTAMP(0)    DEFAULT NULL,
     proving_status          INTEGER         DEFAULT 1,
     proved_at               TIMESTAMP(0)    DEFAULT NULL,
+    batch_index             INTEGER         DEFAULT NULL,
+    batch_hash              VARCHAR         DEFAULT NULL,
     created_at              TIMESTAMP(0)    NOT NULL DEFAULT CURRENT_TIMESTAMP,
 );
 

@@ -16,15 +16,15 @@ import (
 type L2Block struct {
 	db *gorm.DB `gorm:"column:-"`
 
-	Number           uint64 `json:"number" gorm:"number"`
-	Hash             string `json:"hash" gorm:"hash"`
-	ParentHash       string `json:"parent_hash" gorm:"parent_hash"`
-	Header           string `json:"header" gorm:"header"`
-	Transactions     string `json:"transactions" gorm:"transactions"`
-	WithdrawTrieRoot string `json:"withdraw_trie_root" gorm:"withdraw_trie_root"`
-	TxNum            uint64 `json:"tx_num" gorm:"tx_num"`
-	GasUsed          uint64 `json:"gas_used" gorm:"gas_used"`
-	BlockTimestamp   uint64 `json:"block_timestamp" gorm:"block_timestamp"`
+	Number           uint64          `json:"number" gorm:"number"`
+	Hash             string          `json:"hash" gorm:"hash"`
+	ParentHash       string          `json:"parent_hash" gorm:"parent_hash"`
+	Header           json.RawMessage `json:"header" gorm:"header"`
+	Transactions     json.RawMessage `json:"transactions" gorm:"transactions"`
+	WithdrawTrieRoot string          `json:"withdraw_trie_root" gorm:"withdraw_trie_root"`
+	TxNum            uint64          `json:"tx_num" gorm:"tx_num"`
+	GasUsed          uint64          `json:"gas_used" gorm:"gas_used"`
+	BlockTimestamp   uint64          `json:"block_timestamp" gorm:"block_timestamp"`
 }
 
 // NewL2Block creates a new L2Block instance
@@ -64,11 +64,11 @@ func (o *L2Block) GetL2WrappedBlocks(fields map[string]interface{}) ([]*types.Wr
 	var wrappedBlocks []*types.WrappedBlock
 	for _, v := range l2Blocks {
 		var wrappedBlock types.WrappedBlock
-		if err := json.Unmarshal([]byte(v.Transactions), &wrappedBlock.Transactions); err != nil {
+		if err := json.Unmarshal(v.Transactions, &wrappedBlock.Transactions); err != nil {
 			break
 		}
 		wrappedBlock.Header = &gethTypes.Header{}
-		if err := json.Unmarshal([]byte(v.Header), wrappedBlock.Header); err != nil {
+		if err := json.Unmarshal(v.Header, wrappedBlock.Header); err != nil {
 			break
 		}
 		wrappedBlock.WithdrawTrieRoot = common.HexToHash(v.WithdrawTrieRoot)
@@ -119,12 +119,12 @@ func (o *L2Block) InsertL2Blocks(blocks []*types.WrappedBlock) error {
 			Number:           block.Header.Number.Uint64(),
 			Hash:             block.Header.Hash().String(),
 			ParentHash:       block.Header.ParentHash.String(),
-			Transactions:     string(txs),
+			Transactions:     txs,
 			WithdrawTrieRoot: block.WithdrawTrieRoot.Hex(),
 			TxNum:            uint64(len(block.Transactions)),
 			GasUsed:          block.Header.GasUsed,
 			BlockTimestamp:   block.Header.Time,
-			Header:           string(header),
+			Header:           header,
 		}
 		l2Blocks = append(l2Blocks, l2Block)
 	}

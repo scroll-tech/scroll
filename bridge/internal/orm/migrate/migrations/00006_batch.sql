@@ -5,7 +5,9 @@ create table batch
 (
     batch_index             SERIAL          NOT NULL,
     batch_hash              VARCHAR         NOT NULL,
+    start_chunk_index       INTEGER         NOT NULL,
     start_chunk_hash        VARCHAR         NOT NULL,
+    end_chunk_index         INTEGER         NOT NULL,
     end_chunk_hash          VARCHAR         NOT NULL,
     agg_proof               BYTEA           DEFAULT NULL,
     proving_status          INTEGER         DEFAULT 1,
@@ -21,10 +23,10 @@ create table batch
 );
 
 create unique index batch_index_uindex
-on chunk (batch_index);
+on batch (batch_index);
 
 create unique index batch_hash_uindex
-on chunk (batch_hash);
+on batch (batch_hash);
 
 comment
 on column batch.proving_status is 'undefined, unassigned, skipped, assigned, proved, verified, failed';
