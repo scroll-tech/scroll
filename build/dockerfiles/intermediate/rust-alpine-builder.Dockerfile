@@ -1,8 +1,8 @@
-ARG RUST_VERSION=nightly-2022-12-10
-
 ARG ALPINE_VERSION=3.15
-FROM alpine:${ALPINE_VERSION}
+ARG RUST_VERSION=nightly-2022-12-10
 ARG CARGO_CHEF_TAG=0.1.41
+
+FROM alpine:${ALPINE_VERSION}
 
 RUN apk add --no-cache \
         ca-certificates \
@@ -36,5 +36,6 @@ RUN ./rustup-init -y --no-modify-path --default-toolchain ${RUST_VERSION}; \
     cargo --version; \
     rustc --version;
 
+ARG CARGO_CHEF_TAG
 RUN cargo install cargo-chef --locked --version ${CARGO_CHEF_TAG} \
     && rm -rf $CARGO_HOME/registry/
