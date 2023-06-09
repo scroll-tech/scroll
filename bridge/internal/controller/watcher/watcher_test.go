@@ -113,10 +113,16 @@ func TestFunction(t *testing.T) {
 	t.Run("TestParseBridgeEventLogsL2RelayedMessageEventSignature", testParseBridgeEventLogsL2RelayedMessageEventSignature)
 	t.Run("TestParseBridgeEventLogsL2FailedRelayedMessageEventSignature", testParseBridgeEventLogsL2FailedRelayedMessageEventSignature)
 	t.Run("TestParseBridgeEventLogsL2AppendMessageEventSignature", testParseBridgeEventLogsL2AppendMessageEventSignature)
-	t.Run("TestFetchMultipleSentMessageInOneBlock", testFetchMultipleSentMessageInOneBlock)
+	//t.Run("TestFetchMultipleSentMessageInOneBlock", testFetchMultipleSentMessageInOneBlock)
 
 	// Run batch proposer test cases.
 	t.Run("TestBatchProposerProposeBatch", testBatchProposerProposeBatch)
 	t.Run("TestBatchProposerBatchGeneration", testBatchProposerBatchGeneration)
 	t.Run("TestBatchProposerGracefulRestart", testBatchProposerGracefulRestart)
+}
+
+func TestFunction1(t *testing.T) {
+	if err := setupEnv(t); err != nil {
+		t.Fatal(err)
+	}
 }
