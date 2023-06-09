@@ -221,7 +221,7 @@ func (r *Layer2Relayer) processSavedEvent(msg *orm.L2Message) error {
 	// TODO: rebuild the withdraw trie to generate the merkle proof
 	proof := bridgeAbi.IL1ScrollMessengerL2MessageProof{
 		BatchHash:   common.HexToHash(blockInfo.BatchHash), // change to BatchIndex
-		MerkleProof: make([]byte, 0),
+		MerkleProof: []byte{},
 	}
 	from := common.HexToAddress(msg.Sender)
 	target := common.HexToAddress(msg.Target)

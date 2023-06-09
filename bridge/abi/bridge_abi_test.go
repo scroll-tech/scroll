@@ -34,9 +34,9 @@ func TestPackRelayL2MessageWithProof(t *testing.T) {
 
 	proof := IL1ScrollMessengerL2MessageProof{
 		BatchIndex:  big.NewInt(0),
-		MerkleProof: make([]byte, 0),
+		MerkleProof: []byte{},
 	}
-	_, err = l1MessengerABI.Pack("relayMessageWithProof", common.Address{}, common.Address{}, big.NewInt(0), big.NewInt(0), make([]byte, 0), proof)
+	_, err = l1MessengerABI.Pack("relayMessageWithProof", common.Address{}, common.Address{}, big.NewInt(0), big.NewInt(0), []byte{}, proof)
 	assert.NoError(err)
 }
 
@@ -77,7 +77,7 @@ func TestPackRelayL1Message(t *testing.T) {
 	l2MessengerABI, err := L2ScrollMessengerMetaData.GetAbi()
 	assert.NoError(err)
 
-	_, err = l2MessengerABI.Pack("relayMessage", common.Address{}, common.Address{}, big.NewInt(0), big.NewInt(0), make([]byte, 0))
+	_, err = l2MessengerABI.Pack("relayMessage", common.Address{}, common.Address{}, big.NewInt(0), big.NewInt(0), []byte{})
 	assert.NoError(err)
 }
 
@@ -108,6 +108,6 @@ func TestPackImportBlock(t *testing.T) {
 
 	l1BlockContainerABI := L1BlockContainerABI
 
-	_, err := l1BlockContainerABI.Pack("importBlockHeader", common.Hash{}, make([]byte, 0), false)
+	_, err := l1BlockContainerABI.Pack("importBlockHeader", common.Hash{}, []byte{}, false)
 	assert.NoError(err)
 }

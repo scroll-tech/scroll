@@ -16,6 +16,7 @@ type L1Block struct {
 	Number          uint64 `json:"number" gorm:"column:number"`
 	Hash            string `json:"hash" gorm:"column:hash"`
 	HeaderRLP       string `json:"header_rlp" gorm:"column:header_rlp"`
+	BaseFee         uint64 `json:"base_fee" gorm:"column:base_fee"`
 	BlockStatus     int    `json:"block_status" gorm:"column:block_status;default:1"`
 	ImportTxHash    string `json:"import_tx_hash" gorm:"column:import_tx_hash;default:NULL"`
 	GasOracleStatus int    `json:"oracle_status" gorm:"column:oracle_status;default:1"`
