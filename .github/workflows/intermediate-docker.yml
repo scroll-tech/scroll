@@ -13,6 +13,16 @@ on:
         required: true
         type: string
         default: 'nightly-2022-12-10'
+      PYTHON_VERSION:
+        description: 'Python version'
+        required: false
+        type: string
+        default: '3.10'
+      CUDA_VERSION:
+        description: 'Cuda version'
+        required: false
+        type: string
+        default: '11.7.1'
 
 defaults:
   run:
@@ -37,9 +47,13 @@ jobs:
       env:
         GO_VERSION: ${{ inputs.GO_VERSION }}
         RUST_VERSION: ${{ inputs.RUST_VERSION }}
+        PYTHON_VERSION: ${{ inputs.PYTHON_VERSION }}
+        CUDA_VERSION: ${{ inputs.CUDA_VERSION }}
     - name: Publish
       run: |
         make publish
       env:
         GO_VERSION: ${{ inputs.GO_VERSION }}
         RUST_VERSION: ${{ inputs.RUST_VERSION }}
+        PYTHON_VERSION: ${{ inputs.PYTHON_VERSION }}
+        CUDA_VERSION: ${{ inputs.CUDA_VERSION }}
