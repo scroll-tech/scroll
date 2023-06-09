@@ -32,7 +32,7 @@ go-rust-alpine-builder:
 	docker build -t scrolltech/go-rust-alpine-builder:go-$(GO_VERSION)-rust-$(RUST_VERSION) -f go-rust-alpine-builder.Dockerfile ./ --build-arg GO_VERSION=$(GO_VERSION) --build-arg RUST_VERSION=$(RUST_VERSION)
 
 py-runner:
-	docker build -t scrolltech/py-runner:$(PYTHON_VERSION) -f py-runner.Dockerfile ./
+	docker build -t scrolltech/py-runner:$(PYTHON_VERSION) -f py-runner.Dockerfile ./ --build-arg PYTHON_VERSION=$(PYTHON_VERSION)
 
 all: go-alpine-builder rust-builder rust-alpine-builder go-rust-alpine-builder go-rust-builder cuda-go-rust-builder py-runner
 
@@ -42,4 +42,5 @@ publish:
 	docker push scrolltech/rust-alpine-builder:$(RUST_VERSION)
 	docker push scrolltech/go-rust-alpine-builder:go-$(GO_VERSION)-rust-$(RUST_VERSION)
 	docker push scrolltech/go-rust-builder:go-$(GO_VERSION)-rust-$(RUST_VERSION)
+	docker push scrolltech/cuda-go-rust-builder:cuda-$(CUDA_VERSION)-go-$(GO_VERSION)-rust-$(RUST_VERSION)
 	docker push scrolltech/py-runner:$(PYTHON_VERSION)
