@@ -269,7 +269,7 @@ func (r *Layer2Relayer) processSavedEvent(msg *orm.L2Message) error {
 
 // ProcessGasPriceOracle imports gas price to layer1
 func (r *Layer2Relayer) ProcessGasPriceOracle() {
-	batch, err := r.batchOrm.GetLatestBatch()
+	batch, err := r.batchOrm.GetLatestBatch(r.ctx)
 	if err != nil {
 		log.Error("Failed to GetLatestBatch", "err", err)
 		return
