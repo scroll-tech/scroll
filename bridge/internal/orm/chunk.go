@@ -25,7 +25,6 @@ type Chunk struct {
 	ProvingStatus    int        `json:"proving_status" gorm:"column:proving_status"`
 	ProvedAt         *time.Time `json:"proved_at" gorm:"column:proved_at"`
 	BatchIndex       int        `json:"batch_index" gorm:"column:batch_index"`
-	BatchHash        string     `json:"batch_hash" gorm:"column:batch_hash"`
 	CreatedAt        time.Time  `json:"created_at" gorm:"column:created_at"`
 	UpdatedAt        time.Time  `json:"updated_at" gorm:"column:updated_at"`
 	DeletedAt        *time.Time `json:"deleted_at" gorm:"column:deleted_at"`
