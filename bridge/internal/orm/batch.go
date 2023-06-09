@@ -3,12 +3,14 @@ package orm
 import (
 	"context"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
 
 	bridgeTypes "scroll-tech/bridge/internal/types"
 	"scroll-tech/common/types"
+	"scroll-tech/common/types/message"
 
 	"github.com/scroll-tech/go-ethereum/log"
 	"gorm.io/gorm"
@@ -45,6 +47,51 @@ func NewBatch(db *gorm.DB) *Batch {
 
 func (*Batch) TableName() string {
 	return "batch"
+}
+
+// GetBatches retrieves selected batches from the database
+func (c *Batch) GetBatches(ctx context.Context, fields map[string]interface{}, orderByList []string, limit int) ([]*Batch, error) {
+	db := c.db.WithContext(ctx)
+
+	for key, value := range fields {
+		db = db.Where(key, value)
+	}
+
+	for _, orderBy := range orderByList {
+		db = db.Order(orderBy)
+	}
+
+	if limit > 0 {
+		db = db.Limit(limit)
+	}
+
+	var batches []*Batch
+	if err := db.Find(&batches).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return batches, nil
+}
+
+func (c *Batch) GetVerifiedProofByHash(ctx context.Context, hash string) (*message.AggProof, error) {
+	var batch Batch
+	err := c.db.WithContext(ctx).Where("hash = ? AND proving_status = ?", hash, types.ProvingTaskVerified).First(&batch).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	var proof message.AggProof
+	err = json.Unmarshal(batch.Proof, &proof)
+	if err != nil {
+		return nil, err
+	}
+
+	return &proof, nil
 }
 
 func (c *Batch) GetLatestBatch(ctx context.Context) (*Batch, error) {
@@ -154,4 +201,16 @@ func (c *Batch) UpdateChunkBatch(ctx context.Context, hash string, updateFields 
 	}
 	err := db.Model(&Batch{}).WithContext(ctx).Where("hash", hash).Updates(updateFields).Error
 	return err
+}
+
+func (c *Batch) UpdateSkippedBatches(ctx context.Context) (int64, error) {
+	res := c.db.Exec(`UPDATE batch SET rollup_status = ? WHERE
+		(proving_status = ? OR proving_status = ?) AND rollup_status = ?`,
+		types.RollupFinalizationSkipped, types.ProvingTaskSkipped, types.ProvingTaskFailed, types.RollupCommitted)
+
+	if res.Error != nil {
+		return 0, res.Error
+	}
+
+	return res.RowsAffected, nil
 }

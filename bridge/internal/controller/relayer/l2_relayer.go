@@ -371,7 +371,7 @@ func (r *Layer2Relayer) SendCommitTx(batchData []*bridgeTypes.BatchData) error {
 // ProcessCommittedBatches submit proof to layer 1 rollup contract
 func (r *Layer2Relayer) ProcessCommittedBatches() {
 	// set skipped batches in a single db operation
-	if count, err := r.batchOrm.UpdateSkippedBatches(); err != nil {
+	if count, err := r.batchOrm.UpdateSkippedBatches(r.ctx); err != nil {
 		log.Error("UpdateSkippedBatches failed", "err", err)
 		// continue anyway
 	} else if count > 0 {
@@ -379,29 +379,22 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 		log.Info("Skipping batches", "count", count)
 	}
 
-	// batches are sorted by batch index in increasing order
-	batchHashes, err := r.batchOrm.GetBlockBatchesHashByRollupStatus(types.RollupCommitted, 1)
+	fields := map[string]interface{}{
+		"rollup_status": types.RollupCommitted,
+	}
+	orderByList := []string{"index ASC"}
+	batches, err := r.batchOrm.GetBatches(r.ctx, fields, orderByList, 1)
 	if err != nil {
 		log.Error("Failed to fetch committed L2 batches", "err", err)
 		return
 	}
-	if len(batchHashes) == 0 {
-		return
-	}
-	hash := batchHashes[0]
-	// @todo add support to relay multiple batches
-
-	batches, err := r.batchOrm.GetBlockBatches(map[string]interface{}{"hash": hash}, nil, 1)
-	if err != nil {
-		log.Error("Failed to fetch committed L2 batch", "hash", hash, "err", err)
-		return
-	}
 	if len(batches) == 0 {
-		log.Error("Unexpected result for GetBlockBatches", "hash", hash, "len", 0)
+		log.Error("Unexpected result for GetBlockBatches", "len", 0)
 		return
 	}
 
 	batch := batches[0]
+	hash := batch.Hash
 	status := types.ProvingStatus(batch.ProvingStatus)
 	switch status {
 	case types.ProvingTaskUnassigned, types.ProvingTaskAssigned:
@@ -413,8 +406,11 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 		return
 	case types.ProvingTaskFailed, types.ProvingTaskSkipped:
 		// note: this is covered by UpdateSkippedBatches, but we keep it for completeness's sake
-		if err = r.batchOrm.UpdateRollupStatus(r.ctx, hash, types.RollupFinalizationSkipped); err != nil {
-			log.Warn("UpdateRollupStatus failed", "hash", hash, "err", err)
+		updateFields := map[string]interface{}{
+			"rollup_status": types.RollupFinalizationSkipped,
+		}
+		if err = r.batchOrm.UpdateChunkBatch(r.ctx, hash, updateFields); err != nil {
+			log.Warn("UpdateChunkBatch failed", "hash", hash, "err", err)
 		}
 	case types.ProvingTaskVerified:
 		log.Info("Start to roll up zk proof", "hash", hash)
@@ -436,8 +432,11 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 				"lastFinalizingCreatedAt", previousBatch.CreatedAt,
 			)
 
-			if err = r.batchOrm.UpdateRollupStatus(r.ctx, hash, types.RollupFinalizationSkipped); err != nil {
-				log.Warn("UpdateRollupStatus failed", "hash", hash, "err", err)
+			updateFields := map[string]interface{}{
+				"rollup_status": types.RollupFinalizationSkipped,
+			}
+			if err = r.batchOrm.UpdateChunkBatch(r.ctx, hash, updateFields); err != nil {
+				log.Warn("UpdateChunkBatch failed", "hash", hash, "err", err)
 			} else {
 				success = true
 			}
@@ -455,13 +454,16 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 			// TODO: need to revisit this and have a more fine-grained error handling
 			if !success {
 				log.Info("Failed to upload the proof, change rollup status to FinalizationSkipped", "hash", hash)
-				if err = r.batchOrm.UpdateRollupStatus(r.ctx, hash, types.RollupFinalizationSkipped); err != nil {
-					log.Warn("UpdateRollupStatus failed", "hash", hash, "err", err)
+				updateFields := map[string]interface{}{
+					"rollup_status": types.RollupFinalizationSkipped,
+				}
+				if err = r.batchOrm.UpdateChunkBatch(r.ctx, hash, updateFields); err != nil {
+					log.Warn("UpdateChunkBatch failed", "hash", hash, "err", err)
 				}
 			}
 		}()
 
-		aggProof, err := r.batchOrm.GetVerifiedProofByHash(hash)
+		aggProof, err := r.batchOrm.GetVerifiedProofByHash(r.ctx, hash)
 		if err != nil {
 			log.Warn("get verified proof by hash failed", "hash", hash, "err", err)
 			return
@@ -494,9 +496,12 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 		log.Info("finalizeBatchWithProof in layer1", "batch_hash", hash, "tx_hash", hash)
 
 		// record and sync with db, @todo handle db error
-		err = r.batchOrm.UpdateFinalizeTxHashAndRollupStatus(r.ctx, hash, finalizeTxHash.String(), types.RollupFinalizing)
-		if err != nil {
-			log.Warn("UpdateFinalizeTxHashAndRollupStatus failed", "batch_hash", hash, "err", err)
+		updateFields := map[string]interface{}{
+			"finalize_tx_hash": finalizeTxHash.String(),
+			"rollup_status":    types.RollupFinalizing,
+		}
+		if err = r.batchOrm.UpdateChunkBatch(r.ctx, hash, updateFields); err != nil {
+			log.Warn("UpdateChunkBatch failed", "batch_hash", hash, "err", err)
 		}
 		success = true
 		r.processingFinalization.Store(txID, hash)
