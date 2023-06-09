@@ -22,10 +22,10 @@ async function main() {
   const ZKRollupAddress = addressFile.get("ZKRollup.proxy");
 
   // if ((await L1ScrollMessenger.rollup()) === constants.AddressZero) {
-    const tx = await L1ScrollMessenger.initialize(ZKRollupAddress);
-    console.log("initialize L1StandardERC20Gateway, hash:", tx.hash);
-    const receipt = await tx.wait();
-    console.log(`✅ Done, gas used: ${receipt.gasUsed}`);
+  const tx = await L1ScrollMessenger.initialize(ZKRollupAddress);
+  console.log("initialize L1StandardERC20Gateway, hash:", tx.hash);
+  const receipt = await tx.wait();
+  console.log(`✅ Done, gas used: ${receipt.gasUsed}`);
   // }
 }
 

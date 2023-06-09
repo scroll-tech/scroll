@@ -46,6 +46,7 @@ type BatchProposer struct {
 	commitCalldataSizeLimit  uint64
 	batchDataBufferSizeLimit uint64
 	commitCalldataMinSize    uint64
+	commitBatchCountLimit    int
 
 	proofGenerationFreq uint64
 	batchDataBuffer     []*bridgeTypes.BatchData
@@ -72,6 +73,7 @@ func NewBatchProposer(ctx context.Context, cfg *config.BatchProposerConfig, rela
 		batchCommitTimeSec:       cfg.BatchCommitTimeSec,
 		commitCalldataSizeLimit:  cfg.CommitTxCalldataSizeLimit,
 		commitCalldataMinSize:    cfg.CommitTxCalldataMinSize,
+		commitBatchCountLimit:    int(cfg.CommitTxBatchCountLimit),
 		batchDataBufferSizeLimit: 100*cfg.CommitTxCalldataSizeLimit + 1*1024*1024, // @todo: determine the value.
 		proofGenerationFreq:      cfg.ProofGenerationFreq,
 		piCfg:                    cfg.PublicInputConfig,
@@ -202,7 +204,7 @@ func (p *BatchProposer) TryCommitBatches() {
 	index := 0
 	commit := false
 	calldataByteLen := uint64(0)
-	for ; index < len(p.batchDataBuffer); index++ {
+	for ; index < len(p.batchDataBuffer) && index < p.commitBatchCountLimit; index++ {
 		calldataByteLen += bridgeAbi.GetBatchCalldataLength(&p.batchDataBuffer[index].Batch)
 		if calldataByteLen > p.commitCalldataSizeLimit {
 			commit = true

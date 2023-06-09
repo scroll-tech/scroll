@@ -35,7 +35,6 @@ type RollerApp struct {
 	originFile string
 	rollerFile string
 	bboltDB    string
-	keystore   string
 
 	index int
 	name  string
@@ -44,7 +43,7 @@ type RollerApp struct {
 }
 
 // NewRollerApp return a new rollerApp manager.
-func NewRollerApp(base *docker.App, file string, wsUrl string) *RollerApp {
+func NewRollerApp(base *docker.App, file string, wsURL string) *RollerApp {
 	rollerFile := fmt.Sprintf("/tmp/%d_roller-config.json", base.Timestamp)
 	rollerApp := &RollerApp{
 		base:       base,
@@ -55,7 +54,7 @@ func NewRollerApp(base *docker.App, file string, wsUrl string) *RollerApp {
 		name:       string(utils.RollerApp),
 		args:       []string{"--log.debug", "--config", rollerFile},
 	}
-	if err := rollerApp.MockConfig(true, wsUrl); err != nil {
+	if err := rollerApp.MockConfig(true, wsURL); err != nil {
 		panic(err)
 	}
 	return rollerApp
@@ -78,7 +77,7 @@ func (r *RollerApp) Free() {
 }
 
 // MockConfig creates a new roller config.
-func (r *RollerApp) MockConfig(store bool, wsUrl string) error {
+func (r *RollerApp) MockConfig(store bool, wsURL string) error {
 	cfg, err := rollerConfig.NewConfig(r.originFile)
 	if err != nil {
 		return err
@@ -94,7 +93,7 @@ func (r *RollerApp) MockConfig(store bool, wsUrl string) error {
 	if err != nil {
 		return err
 	}
-	cfg.CoordinatorURL = wsUrl
+	cfg.CoordinatorURL = wsURL
 	r.Config = cfg
 
 	if !store {
@@ -105,7 +104,7 @@ func (r *RollerApp) MockConfig(store bool, wsUrl string) error {
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(r.rollerFile, data, 0644)
+	return os.WriteFile(r.rollerFile, data, 0600)
 }
 
 // RollerApps rollerApp list.
@@ -125,12 +124,12 @@ func (r RollerApps) RunApps(t *testing.T, args ...string) {
 }
 
 // MockConfigs creates all the rollerApps' configs.
-func (r RollerApps) MockConfigs(store bool, wsUrl string) error {
+func (r RollerApps) MockConfigs(store bool, wsURL string) error {
 	var eg errgroup.Group
 	for _, roller := range r {
 		roller := roller
 		eg.Go(func() error {
-			return roller.MockConfig(store, wsUrl)
+			return roller.MockConfig(store, wsURL)
 		})
 	}
 	return eg.Wait()
