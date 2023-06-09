@@ -19,6 +19,8 @@ create table batch
     proved_at               TIMESTAMP(0)    DEFAULT NULL,
     committed_at            TIMESTAMP(0)    DEFAULT NULL,
     finalized_at            TIMESTAMP(0)    DEFAULT NULL,
+    oracle_status           INTEGER         DEFAULT 1,
+    oracle_tx_hash          VARCHAR         DEFAULT NULL,
     created_at              TIMESTAMP(0)    NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at              TIMESTAMP(0)    NOT NULL DEFAULT CURRENT_TIMESTAMP,
     deleted_at              TIMESTAMP(0)    DEFAULT NULL,

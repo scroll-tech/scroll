@@ -25,6 +25,7 @@ type L2Block struct {
 	TxNum            uint64 `json:"tx_num" gorm:"tx_num"`
 	GasUsed          uint64 `json:"gas_used" gorm:"gas_used"`
 	BlockTimestamp   uint64 `json:"block_timestamp" gorm:"block_timestamp"`
+	BatchIndex       uint64 `json:"batch_index" gorm:"batch_index"`
 }
 
 // NewL2Block creates a new L2Block instance
@@ -125,12 +126,12 @@ func (o *L2Block) InsertL2Blocks(blocks []*types.WrappedBlock) error {
 			Number:           block.Header.Number.Uint64(),
 			Hash:             block.Header.Hash().String(),
 			ParentHash:       block.Header.ParentHash.String(),
-			Transactions:     txs,
+			Transactions:     string(txs),
 			WithdrawTrieRoot: block.WithdrawTrieRoot.Hex(),
 			TxNum:            uint64(len(block.Transactions)),
 			GasUsed:          block.Header.GasUsed,
 			BlockTimestamp:   block.Header.Time,
-			Header:           header,
+			Header:           string(header),
 		}
 		l2Blocks = append(l2Blocks, l2Block)
 	}

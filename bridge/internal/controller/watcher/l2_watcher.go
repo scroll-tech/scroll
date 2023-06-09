@@ -45,7 +45,7 @@ type L2WatcherClient struct {
 	*ethclient.Client
 
 	db           *gorm.DB
-	blockTxOrm   *orm.BlockTx
+	l2BlockOrm   *orm.L2Block
 	chunkOrm     *orm.Chunk
 	batchOrm     *orm.Batch
 	l1MessageOrm *orm.L1Message
@@ -80,7 +80,7 @@ func NewL2WatcherClient(ctx context.Context, client *ethclient.Client, confirmat
 		db:     db,
 		Client: client,
 
-		blockTxOrm:         orm.NewBlockTx(db),
+		l2BlockOrm:         orm.NewL2Block(db),
 		chunkOrm:           orm.NewChunk(db),
 		batchOrm:           orm.NewBatch(db),
 		l1MessageOrm:       orm.NewL1Message(db),
@@ -141,7 +141,7 @@ func (w *L2WatcherClient) initializeGenesis() error {
 
 	err = w.db.Transaction(func(tx *gorm.DB) error {
 		// Insert block_tx
-		if err := w.blockTxOrm.UpdateBatchHashForL2Blocks([]uint64{genesis.Number.Uint64()}, batchHash, tx); err != nil {
+		if err := w.l2BlockOrm.UpdateBatchHashForL2Blocks([]uint64{genesis.Number.Uint64()}, batchHash, tx); err != nil {
 			return fmt.Errorf("failed to update batch hash for L2 blocks: %v", err)
 		}
 
@@ -186,7 +186,7 @@ func (w *L2WatcherClient) TryFetchRunningMissingBlocks(ctx context.Context, bloc
 	// Get newest block in DB. must have blocks at that time.
 	// Don't use "block_trace" table "trace" column's BlockTrace.Number,
 	// because it might be empty if the corresponding rollup_result is finalized/finalization_skipped
-	heightInDB, err := w.blockTxOrm.GetL2BlocksLatestHeight()
+	heightInDB, err := w.l2BlockOrm.GetL2BlocksLatestHeight()
 	if err != nil {
 		log.Error("failed to GetL2BlocksLatestHeight", "err", err)
 		return
@@ -262,7 +262,7 @@ func (w *L2WatcherClient) getAndStoreBlockTraces(ctx context.Context, from, to u
 	}
 
 	if len(blocks) > 0 {
-		if err := w.blockTxOrm.InsertWrappedBlocks(blocks); err != nil {
+		if err := w.l2BlockOrm.InsertL2Blocks(blocks); err != nil {
 			return fmt.Errorf("failed to batch insert BlockTraces: %v", err)
 		}
 	}

@@ -4,8 +4,11 @@ import (
 	"context"
 	"encoding/hex"
 	"errors"
-	"scroll-tech/bridge/internal/types"
+	"fmt"
 	"time"
+
+	bridgeTypes "scroll-tech/bridge/internal/types"
+	"scroll-tech/common/types"
 
 	"github.com/scroll-tech/go-ethereum/log"
 	"gorm.io/gorm"
@@ -29,6 +32,8 @@ type Batch struct {
 	ProvedAt         *time.Time `json:"proved_at" gorm:"column:proved_at"`
 	CommittedAt      *time.Time `json:"committed_at" gorm:"column:committed_at"`
 	FinalizedAt      *time.Time `json:"finalized_at" gorm:"column:finalized_at"`
+	OracleStatus     int        `json:"oracle_status" gorm:"column:oracle_status"`
+	OracleTxHash     string     `json:"oracle_tx_hash" gorm:"column:oracle_tx_hash"`
 	CreatedAt        time.Time  `json:"created_at" gorm:"column:created_at"`
 	UpdatedAt        time.Time  `json:"updated_at" gorm:"column:updated_at"`
 	DeletedAt        *time.Time `json:"deleted_at" gorm:"column:deleted_at"`
@@ -40,6 +45,31 @@ func NewBatch(db *gorm.DB) *Batch {
 
 func (*Batch) TableName() string {
 	return "batch"
+}
+
+func (c *Batch) GetLatestBatch(ctx context.Context) (*Batch, error) {
+	var latestBatch Batch
+	err := c.db.WithContext(ctx).Order("index DESC").First(&latestBatch).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &latestBatch, nil
+}
+
+func (c *Batch) GetLatestBatchByRollupStatus(statuses []types.RollupStatus) (*Batch, error) {
+	var batch Batch
+	interfaceStatuses := make([]interface{}, len(statuses))
+	for i, v := range statuses {
+		interfaceStatuses[i] = v
+	}
+	err := c.db.Where("rollup_status IN ?", interfaceStatuses).Order("index desc").First(&batch).Error
+	if err != nil {
+		return nil, err
+	}
+	return &batch, nil
 }
 
 func (c *Batch) GetChunkBatch(ctx context.Context, hash string) (*Batch, error) {
@@ -57,7 +87,35 @@ func (c *Batch) GetBatchCount(ctx context.Context) (int64, error) {
 	return count, err
 }
 
-func (c *Batch) InsertChunkBatch(ctx context.Context, batch *types.Batch, tx ...*gorm.DB) error {
+func (c *Batch) GetRollupStatusByHashList(ctx context.Context, hashes []string) ([]types.RollupStatus, error) {
+	if len(hashes) == 0 {
+		return []types.RollupStatus{}, nil
+	}
+
+	var batches []Batch
+	err := c.db.WithContext(ctx).Where("hash IN ?", hashes).Find(&batches).Error
+	if err != nil {
+		return nil, err
+	}
+
+	hashToStatusMap := make(map[string]types.RollupStatus)
+	for _, batch := range batches {
+		hashToStatusMap[batch.Hash] = types.RollupStatus(batch.RollupStatus)
+	}
+
+	var statuses []types.RollupStatus
+	for _, hash := range hashes {
+		status, ok := hashToStatusMap[hash]
+		if !ok {
+			return nil, fmt.Errorf("hash not found in database: %s", hash)
+		}
+		statuses = append(statuses, status)
+	}
+
+	return statuses, nil
+}
+
+func (c *Batch) InsertChunkBatch(ctx context.Context, batch *bridgeTypes.Batch, tx ...*gorm.DB) error {
 	db := c.db
 	if len(tx) > 0 && tx[0] != nil {
 		db = tx[0]
