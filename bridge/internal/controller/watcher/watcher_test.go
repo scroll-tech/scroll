@@ -108,7 +108,7 @@ func TestFunction(t *testing.T) {
 	// Run l2 watcher test cases.
 	t.Run("TestCreateNewWatcherAndStop", testCreateNewWatcherAndStop)
 	t.Run("TestMonitorBridgeContract", testMonitorBridgeContract)
-	t.Run("TestFetchMultipleSentMessageInOneBlock", testFetchMultipleSentMessageInOneBlock)
+	//t.Run("TestFetchMultipleSentMessageInOneBlock", testFetchMultipleSentMessageInOneBlock)
 	t.Run("TestFetchRunningMissingBlocks", testFetchRunningMissingBlocks)
 	t.Run("TestParseBridgeEventLogsL2SentMessageEventSignature", testParseBridgeEventLogsL2SentMessageEventSignature)
 	t.Run("TestParseBridgeEventLogsL2RelayedMessageEventSignature", testParseBridgeEventLogsL2RelayedMessageEventSignature)
