@@ -90,10 +90,11 @@ contract GasSwap is ERC2771Context, OwnableBase {
     /// @param _swap The swap data, see comments from `SwapData`.
     function swap(PermitData memory _permit, SwapData memory _swap) external {
         require(approvedTargets[_swap.target], "target not approved");
+        address _sender = _msgSender();
 
         // do permit
         IERC20Permit(_permit.token).permit(
-            _msgSender(),
+            _sender,
             address(this),
             _permit.value,
             _permit.deadline,
@@ -103,7 +104,7 @@ contract GasSwap is ERC2771Context, OwnableBase {
         );
 
         // transfer token
-        IERC20(_permit.token).safeTransferFrom(_msgSender(), address(this), _permit.value);
+        IERC20(_permit.token).safeTransferFrom(_sender, address(this), _permit.value);
 
         // approve
         IERC20(_permit.token).safeApprove(_swap.target, 0);
@@ -120,8 +121,14 @@ contract GasSwap is ERC2771Context, OwnableBase {
 
         // take fee and tranfer ETH
         uint256 _fee = (_outputTokenAmount * feeRatio) / PRECISION;
-        (_success, ) = _msgSender().call{value: _outputTokenAmount - _fee}("");
+        (_success, ) = _sender.call{value: _outputTokenAmount - _fee}("");
         require(_success, "transfer ETH failed");
+
+        // refund rest token
+        uint256 _dust = IERC20(_permit.token).balanceOf(address(this));
+        if (_dust > 0) {
+            IERC20(_permit.token).safeTransfer(_sender, _dust);
+        }
     }
 
     /************************

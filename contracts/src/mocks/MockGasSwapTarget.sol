@@ -11,6 +11,8 @@ contract MockGasSwapTarget {
 
     uint256 public amountIn;
 
+    uint256 public refund;
+
     receive() external payable {}
 
     function setToken(address _token) external {
@@ -21,9 +23,14 @@ contract MockGasSwapTarget {
         amountIn = _amountIn;
     }
 
+    function setRefund(uint256 _refund) external {
+        refund = _refund;
+    }
+
     function swap() external {
         IERC20(token).transferFrom(msg.sender, address(this), amountIn);
         (bool success, ) = msg.sender.call{value: address(this).balance}("");
         require(success, "transfer ETH failed");
+        IERC20(token).transfer(msg.sender, refund);
     }
 }

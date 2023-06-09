@@ -197,124 +197,130 @@ describe("GasSwap.spec", async () => {
       ).to.revertedWith("insufficient output amount");
     });
 
-    for (const feeRatio of ["0", "5", "50"]) {
-      it(`should succeed, when swap by signer directly, with feeRatio[${feeRatio}%]`, async () => {
-        const amountIn = ethers.utils.parseEther("1");
-        const amountOut = ethers.utils.parseEther("2");
-        await token.mint(signer.address, amountIn);
-        await deployer.sendTransaction({ to: target.address, value: amountOut });
-        const signature = await permit(amountIn);
+    for (const refundRatio of ["0", "1", "5"]) {
+      for (const feeRatio of ["0", "5", "50"]) {
+        it(`should succeed, when swap by signer directly, with feeRatio[${feeRatio}%] refundRatio[${refundRatio}%]`, async () => {
+          const amountIn = ethers.utils.parseEther("1");
+          const amountOut = ethers.utils.parseEther("2");
+          await token.mint(signer.address, amountIn);
+          await deployer.sendTransaction({ to: target.address, value: amountOut });
+          const signature = await permit(amountIn);
 
-        await target.setToken(token.address);
-        await target.setAmountIn(amountIn);
+          await target.setToken(token.address);
+          await target.setAmountIn(amountIn);
+          await target.setRefund(amountIn.mul(refundRatio).div(100));
 
-        await swap.updateApprovedTarget(target.address, true);
-        await swap.updateFeeRatio(ethers.utils.parseEther(feeRatio).div(100));
-        const fee = amountOut.mul(feeRatio).div(100);
+          await swap.updateApprovedTarget(target.address, true);
+          await swap.updateFeeRatio(ethers.utils.parseEther(feeRatio).div(100));
+          const fee = amountOut.mul(feeRatio).div(100);
 
-        const balanceBefore = await signer.getBalance();
-        const tx = await swap.connect(signer).swap(
-          {
-            token: token.address,
-            value: amountIn,
-            deadline: constants.MaxUint256,
-            r: signature.r,
-            s: signature.s,
-            v: signature.v,
-          },
-          {
-            target: target.address,
-            data: "0x8119c065",
-            minOutput: amountOut,
-          }
-        );
-        const receipt = await tx.wait();
-        const balanceAfter = await signer.getBalance();
-        expect(balanceAfter.sub(balanceBefore)).to.eq(
-          amountOut.sub(fee).sub(receipt.gasUsed.mul(receipt.effectiveGasPrice))
-        );
-      });
-
-      it(`should succeed, when swap by signer with forwarder, with feeRatio[${feeRatio}%]`, async () => {
-        const amountIn = ethers.utils.parseEther("1");
-        const amountOut = ethers.utils.parseEther("2");
-        await token.mint(signer.address, amountIn);
-        await deployer.sendTransaction({ to: target.address, value: amountOut });
-        const permitSignature = await permit(amountIn);
-
-        await target.setToken(token.address);
-        await target.setAmountIn(amountIn);
-
-        await swap.updateApprovedTarget(target.address, true);
-        await swap.updateFeeRatio(ethers.utils.parseEther(feeRatio).div(100));
-        const fee = amountOut.mul(feeRatio).div(100);
-
-        const req = {
-          from: signer.address,
-          to: swap.address,
-          value: constants.Zero,
-          gas: 1000000,
-          nonce: 0,
-          data: swap.interface.encodeFunctionData("swap", [
+          const balanceBefore = await signer.getBalance();
+          const tx = await swap.connect(signer).swap(
             {
               token: token.address,
               value: amountIn,
               deadline: constants.MaxUint256,
-              r: permitSignature.r,
-              s: permitSignature.s,
-              v: permitSignature.v,
+              r: signature.r,
+              s: signature.s,
+              v: signature.v,
             },
             {
               target: target.address,
               data: "0x8119c065",
               minOutput: amountOut,
+            }
+          );
+          const receipt = await tx.wait();
+          const balanceAfter = await signer.getBalance();
+          expect(balanceAfter.sub(balanceBefore)).to.eq(
+            amountOut.sub(fee).sub(receipt.gasUsed.mul(receipt.effectiveGasPrice))
+          );
+          expect(await token.balanceOf(signer.address)).to.eq(amountIn.mul(refundRatio).div(100));
+        });
+
+        it(`should succeed, when swap by signer with forwarder, with feeRatio[${feeRatio}%] refundRatio[${refundRatio}%]`, async () => {
+          const amountIn = ethers.utils.parseEther("1");
+          const amountOut = ethers.utils.parseEther("2");
+          await token.mint(signer.address, amountIn);
+          await deployer.sendTransaction({ to: target.address, value: amountOut });
+          const permitSignature = await permit(amountIn);
+
+          await target.setToken(token.address);
+          await target.setAmountIn(amountIn);
+          await target.setRefund(amountIn.mul(refundRatio).div(100));
+
+          await swap.updateApprovedTarget(target.address, true);
+          await swap.updateFeeRatio(ethers.utils.parseEther(feeRatio).div(100));
+          const fee = amountOut.mul(feeRatio).div(100);
+
+          const req = {
+            from: signer.address,
+            to: swap.address,
+            value: constants.Zero,
+            gas: 1000000,
+            nonce: 0,
+            data: swap.interface.encodeFunctionData("swap", [
+              {
+                token: token.address,
+                value: amountIn,
+                deadline: constants.MaxUint256,
+                r: permitSignature.r,
+                s: permitSignature.s,
+                v: permitSignature.v,
+              },
+              {
+                target: target.address,
+                data: "0x8119c065",
+                minOutput: amountOut,
+              },
+            ]),
+          };
+
+          const signature = await signer._signTypedData(
+            {
+              name: "MinimalForwarder",
+              version: "0.0.1",
+              chainId: (await ethers.provider.getNetwork()).chainId,
+              verifyingContract: forwarder.address,
             },
-          ]),
-        };
+            {
+              ForwardRequest: [
+                {
+                  name: "from",
+                  type: "address",
+                },
+                {
+                  name: "to",
+                  type: "address",
+                },
+                {
+                  name: "value",
+                  type: "uint256",
+                },
+                {
+                  name: "gas",
+                  type: "uint256",
+                },
+                {
+                  name: "nonce",
+                  type: "uint256",
+                },
+                {
+                  name: "data",
+                  type: "bytes",
+                },
+              ],
+            },
+            req
+          );
 
-        const signature = await signer._signTypedData(
-          {
-            name: "MinimalForwarder",
-            version: "0.0.1",
-            chainId: (await ethers.provider.getNetwork()).chainId,
-            verifyingContract: forwarder.address,
-          },
-          {
-            ForwardRequest: [
-              {
-                name: "from",
-                type: "address",
-              },
-              {
-                name: "to",
-                type: "address",
-              },
-              {
-                name: "value",
-                type: "uint256",
-              },
-              {
-                name: "gas",
-                type: "uint256",
-              },
-              {
-                name: "nonce",
-                type: "uint256",
-              },
-              {
-                name: "data",
-                type: "bytes",
-              },
-            ],
-          },
-          req
-        );
-
-        const balanceBefore = await signer.getBalance();
-        await forwarder.execute(req, signature);
-        const balanceAfter = await signer.getBalance();
-        expect(balanceAfter.sub(balanceBefore)).to.eq(amountOut.sub(fee));
-      });
+          const balanceBefore = await signer.getBalance();
+          await forwarder.execute(req, signature);
+          const balanceAfter = await signer.getBalance();
+          expect(balanceAfter.sub(balanceBefore)).to.eq(amountOut.sub(fee));
+          expect(await token.balanceOf(signer.address)).to.eq(amountIn.mul(refundRatio).div(100));
+        });
+      }
     }
   });
 });
