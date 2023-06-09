@@ -45,7 +45,7 @@ func (c *Chunk) Encode() ([]byte, error) {
 
 		chunkBytes = append(chunkBytes, blockBytes...)
 
-		// Append l2Tx Hashes
+		// Append rlp-encoded l2Txs
 		for _, txData := range block.Transactions {
 			if txData.Type == 0x7E {
 				continue
@@ -85,7 +85,6 @@ func (c *Chunk) Hash() ([]byte, error) {
 	numBlocks := chunkBytes[0]
 
 	// concatenate block contexts
-	// only first 58 bytes is needed
 	var dataBytes []byte
 	for i := 0; i < int(numBlocks); i++ {
 		// only first 58 bytes is needed
@@ -93,11 +92,18 @@ func (c *Chunk) Hash() ([]byte, error) {
 	}
 
 	// concatenate l1 and l2 tx hashes
+	var l1TxHashes []byte
 	var l2TxHashes []byte
 	for _, block := range c.Blocks {
 		for _, txData := range block.Transactions {
-			// TODO: concatenate l1 message hashes
+			// concatenate l1 message hashes
 			if txData.Type == 0x7E {
+				txHash := strings.TrimPrefix(txData.TxHash, "0x")
+				hashBytes, err := hex.DecodeString(txHash)
+				if err != nil {
+					return nil, err
+				}
+				l1TxHashes = append(l1TxHashes, hashBytes...)
 				continue
 			}
 			// concatenate l2 txs hashes
@@ -111,6 +117,7 @@ func (c *Chunk) Hash() ([]byte, error) {
 		}
 	}
 
+	dataBytes = append(dataBytes, l1TxHashes...)
 	dataBytes = append(dataBytes, l2TxHashes...)
 	hash := crypto.Keccak256Hash(dataBytes).Bytes()
 	return hash, nil
