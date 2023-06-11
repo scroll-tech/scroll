@@ -24,7 +24,6 @@ import (
 	"scroll-tech/bridge/internal/config"
 	"scroll-tech/bridge/internal/controller/sender"
 	"scroll-tech/bridge/internal/orm"
-	bridgeTypes "scroll-tech/bridge/internal/types"
 	"scroll-tech/bridge/internal/utils"
 )
 
@@ -316,55 +315,70 @@ func (r *Layer2Relayer) ProcessGasPriceOracle() {
 }
 
 // SendCommitTx sends commitBatches tx to L1.
-func (r *Layer2Relayer) SendCommitTx(batchData []*bridgeTypes.BatchData) error {
+func (r *Layer2Relayer) SendCommitTx(batchData []*types.BatchHeader, chunks [][]*types.Chunk) error {
 	if len(batchData) == 0 {
 		log.Error("SendCommitTx receives empty batch")
 		return nil
 	}
 
 	// pack calldata
-	commitBatches := make([]bridgeAbi.IScrollChainBatch, len(batchData))
+	parentBatchHeaders := make([][]byte, len(batchData))
+	encodedChunks := make([][][]byte, len(chunks))
 	for i, batch := range batchData {
-		commitBatches[i] = batch.Batch
-	}
-	calldata, err := r.l1RollupABI.Pack("commitBatches", commitBatches)
-	if err != nil {
-		log.Error("Failed to pack commitBatches",
-			"error", err,
-			"start_batch_index", commitBatches[0].BatchIndex,
-			"end_batch_index", commitBatches[len(commitBatches)-1].BatchIndex)
-		return err
+		parentBatchHeaders[i] = batch.Encode()
+		encodedChunks[i] = make([][]byte, len(chunks[i]))
+		for j, chunk := range chunks[i] {
+			chunkBytes, err := chunk.Encode()
+			if err != nil {
+				log.Error("Failed to encode chunk",
+					"error", err)
+				return err
+			}
+			encodedChunks[i][j] = chunkBytes
+		}
 	}
 
-	// generate a unique txID and send transaction
 	var bytes []byte
 	for _, batch := range batchData {
 		bytes = append(bytes, batch.Hash().Bytes()...)
 	}
 	txID := crypto.Keccak256Hash(bytes).String()
-	txHash, err := r.rollupSender.SendTransaction(txID, &r.cfg.RollupContractAddress, big.NewInt(0), calldata, 0)
-	if err != nil {
-		if !errors.Is(err, sender.ErrNoAvailableAccount) && !errors.Is(err, sender.ErrFullPending) {
-			log.Error("Failed to send commitBatches tx to layer1 ", "err", err)
-		}
-		return err
-	}
-	bridgeL2BatchesCommittedTotalCounter.Inc(int64(len(commitBatches)))
-	log.Info("Sent the commitBatches tx to layer1",
-		"tx_hash", txHash.Hex(),
-		"start_batch_index", commitBatches[0].BatchIndex,
-		"end_batch_index", commitBatches[len(commitBatches)-1].BatchIndex)
 
-	// record and sync with db, @todo handle db error
-	batchHashes := make([]string, len(batchData))
-	for i, batch := range batchData {
-		batchHashes[i] = batch.Hash().Hex()
-		err = r.batchOrm.UpdateCommitTxHashAndRollupStatus(r.ctx, batchHashes[i], txHash.String(), types.RollupCommitting)
+	for i, parentBatchHeader := range parentBatchHeaders {
+		skippedL1MessageBitmap := make([][]byte, len(batchData[i].SkippedL1MessageBitmap))
+		for j, bitmap := range batchData[i].SkippedL1MessageBitmap {
+			skippedL1MessageBitmap[j] = bitmap.Bytes()
+		}
+
+		calldata, err := r.l1RollupABI.Pack("commitBatch", batchData[i].Version, parentBatchHeader, encodedChunks[i], skippedL1MessageBitmap)
 		if err != nil {
-			log.Error("UpdateCommitTxHashAndRollupStatus failed", "hash", batchHashes[i], "index", batch.Batch.BatchIndex, "err", err)
+			log.Error("Failed to pack commitBatch",
+				"error", err,
+				"batch_index", batchData[i].BatchIndex)
+			return err
+		}
+
+		// send transaction
+		txHash, err := r.rollupSender.SendTransaction(txID, &r.cfg.RollupContractAddress, big.NewInt(0), calldata, 0)
+		if err != nil {
+			if !errors.Is(err, sender.ErrNoAvailableAccount) && !errors.Is(err, sender.ErrFullPending) {
+				log.Error("Failed to send commitBatch tx to layer1 ", "err", err)
+			}
+			return err
+		}
+		bridgeL2BatchesCommittedTotalCounter.Inc(int64(len(encodedChunks[i])))
+		log.Info("Sent the commitBatch tx to layer1",
+			"tx_hash", txHash.Hex(),
+			"batch_index", batchData[i].BatchIndex)
+		// update the tx hash and rollup status in the database
+		batchHash := batchData[i].Hash().Hex()
+		err = r.batchOrm.UpdateCommitTxHashAndRollupStatus(r.ctx, batchHash, txHash.String(), types.RollupCommitting)
+		if err != nil {
+			log.Error("UpdateCommitTxHashAndRollupStatus failed", "hash", batchHash, "index", batchData[i].BatchIndex, "err", err)
 		}
 	}
-	r.processingBatchesCommitment.Store(txID, batchHashes)
+
+	r.processingBatchesCommitment.Store(txID, parentBatchHeaders)
 	return nil
 }
 
