@@ -25,6 +25,8 @@ type Batch struct {
 	StartChunkHash   string     `json:"start_chunk_hash" gorm:"column:start_chunk_hash"`
 	EndChunkIndex    int        `json:"end_chunk_index" gorm:"column:end_chunk_index"`
 	EndChunkHash     string     `json:"end_chunk_hash" gorm:"column:end_chunk_hash"`
+	StateRoot        string     `json:"state_root" gorm:"column:state_root"`
+	WithdrawRoot     string     `json:"withdraw_root" gorm:"column:withdraw_root"`
 	Proof            []byte     `json:"proof" gorm:"column:proof"`
 	ProvingStatus    int        `json:"proving_status" gorm:"column:proving_status"`
 	ProofTimeSec     int        `json:"proof_time_sec" gorm:"column:proof_time_sec"`
@@ -174,7 +176,6 @@ func (c *Batch) InsertBatch(ctx context.Context, chunks []*bridgeTypes.Chunk, tx
 		return errors.New("Batch must contain at least one chunk")
 	}
 
-	// assuming that Chunk has a method `Hash() ([]byte, error)`
 	startChunkHash, err := chunks[0].Hash()
 	if err != nil {
 		log.Error("failed to get start chunk hash", "err", err)
@@ -187,9 +188,12 @@ func (c *Batch) InsertBatch(ctx context.Context, chunks []*bridgeTypes.Chunk, tx
 		return err
 	}
 
+	lastChunkBlockNum := len(chunks[numChunks-1].Blocks)
 	tmpBatch := Batch{
 		StartChunkHash: hex.EncodeToString(startChunkHash),
 		EndChunkHash:   hex.EncodeToString(endChunkHash),
+		StateRoot:      chunks[numChunks-1].Blocks[lastChunkBlockNum-1].Header.Root.Hex(),
+		WithdrawRoot:   chunks[numChunks-1].Blocks[lastChunkBlockNum-1].WithdrawTrieRoot.Hex(),
 	}
 
 	err = db.WithContext(ctx).Create(&tmpBatch).Error

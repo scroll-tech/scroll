@@ -465,12 +465,16 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 			return
 		}
 
+		// TODO: You need to get and encode the BatchHeader to bytes.
+		// Here, I'm just using an empty byte slice as a placeholder.
+		batchHeaderBytes := []byte{}
+
 		data, err := r.l1RollupABI.Pack(
 			"finalizeBatchWithProof",
-			//batchHeader,
-			//prevStateRoot,
-			//postStateRoot,
-			//withdrawRoot,
+			batchHeaderBytes,
+			common.HexToHash(previousBatch.StateRoot),
+			common.HexToHash(batch.StateRoot),
+			common.HexToHash(batch.WithdrawRoot),
 			aggProof.Proof,
 		)
 		if err != nil {
@@ -614,4 +618,36 @@ func (r *Layer2Relayer) handleConfirmLoop(ctx context.Context) {
 			}
 		}
 	}
+}
+
+func getBatchHeaderForBatch(batch *orm.Batch) (*bridgeTypes.BatchHeader, error) {
+	chunks, err := getChunksForBatch(batch)
+	if err != nil {
+		return nil, err
+	}
+
+	version := uint8(0)
+	batchIndex := uint64(batch.Index)
+	totalL1MessagePoppedBefore, err := getTotalL1MessagesPoppedBefore(batchIndex)
+	if err != nil {
+		return nil, err
+	}
+
+	// Fetch the parent batch's hash, if applicable
+	var parentBatchHash common.Hash
+	if batchIndex > 0 {
+		parentBatch, err := getBatchByIndex(batchIndex - 1)
+		if err != nil {
+			return nil, err
+		}
+		parentBatchHash = common.HexToHash(parentBatch.Hash)
+	}
+
+	// Create new batch header
+	batchHeader, err := bridgeTypes.NewBatchHeader(version, batchIndex, totalL1MessagePoppedBefore, parentBatchHash, chunks)
+	if err != nil {
+		return nil, err
+	}
+
+	return batchHeader, nil
 }
