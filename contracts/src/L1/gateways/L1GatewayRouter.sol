@@ -68,8 +68,7 @@ contract L1GatewayRouter is OwnableUpgradeable, IL1GatewayRouter {
         return IL1ERC20Gateway(_gateway).getL2ERC20Address(_l1Address);
     }
 
-    /// @notice Return the corresponding gateway address for given token address.
-    /// @param _token The address of token to query.
+    /// @inheritdoc IL1GatewayRouter
     function getERC20Gateway(address _token) public view returns (address) {
         address _gateway = ERC20Gateway[_token];
         if (_gateway == address(0)) {
@@ -178,28 +177,21 @@ contract L1GatewayRouter is OwnableUpgradeable, IL1GatewayRouter {
      * Restricted Functions *
      ************************/
 
-    /// @notice Update the address of ETH gateway contract.
-    /// @dev This function should only be called by contract owner.
-    /// @param _ethGateway The address to update.
+    /// @inheritdoc IL1GatewayRouter
     function setETHGateway(address _ethGateway) external onlyOwner {
         ethGateway = _ethGateway;
 
         emit SetETHGateway(_ethGateway);
     }
 
-    /// @notice Update the address of default ERC20 gateway contract.
-    /// @dev This function should only be called by contract owner.
-    /// @param _defaultERC20Gateway The address to update.
+    /// @inheritdoc IL1GatewayRouter
     function setDefaultERC20Gateway(address _defaultERC20Gateway) external onlyOwner {
         defaultERC20Gateway = _defaultERC20Gateway;
 
         emit SetDefaultERC20Gateway(_defaultERC20Gateway);
     }
 
-    /// @notice Update the mapping from token address to gateway address.
-    /// @dev This function should only be called by contract owner.
-    /// @param _tokens The list of addresses of tokens to update.
-    /// @param _gateways The list of addresses of gateways to update.
+    /// @inheritdoc IL1GatewayRouter
     function setERC20Gateway(address[] memory _tokens, address[] memory _gateways) external onlyOwner {
         require(_tokens.length == _gateways.length, "length mismatch");
 

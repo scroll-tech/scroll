@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	mathrand "math/rand"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -16,6 +15,7 @@ import (
 	"github.com/scroll-tech/go-ethereum/log"
 	geth_metrics "github.com/scroll-tech/go-ethereum/metrics"
 	"github.com/scroll-tech/go-ethereum/rpc"
+	"golang.org/x/exp/rand"
 
 	"scroll-tech/common/metrics"
 	"scroll-tech/common/types"
@@ -505,7 +505,7 @@ func (m *Manager) CollectProofs(sess *session) {
 			//When all rollers have finished submitting their tasks, select a winner within rollers with valid proof, and return, terminate the for loop.
 			if finished && len(validRollers) > 0 {
 				//Select a random index for this slice.
-				randIndex := mathrand.Intn(len(validRollers))
+				randIndex := rand.Int63n(int64(len(validRollers)))
 				_ = validRollers[randIndex]
 				// TODO: reward winner
 
@@ -569,39 +569,39 @@ func (m *Manager) APIs() []rpc.API {
 
 // StartBasicProofGenerationSession starts a basic proof generation session
 func (m *Manager) StartBasicProofGenerationSession(task *types.BlockBatch, prevSession *session) (success bool) {
-	var taskId string
+	var taskID string
 	if task != nil {
-		taskId = task.Hash
+		taskID = task.Hash
 	} else {
-		taskId = prevSession.info.ID
+		taskID = prevSession.info.ID
 	}
 	if m.GetNumberOfIdleRollers(message.BasicProve) == 0 {
-		log.Warn("no idle basic roller when starting proof generation session", "id", taskId)
+		log.Warn("no idle basic roller when starting proof generation session", "id", taskID)
 		return false
 	}
 
-	log.Info("start basic proof generation session", "id", taskId)
+	log.Info("start basic proof generation session", "id", taskID)
 
 	defer func() {
 		if !success {
 			if task != nil {
-				if err := m.orm.UpdateProvingStatus(taskId, types.ProvingTaskUnassigned); err != nil {
-					log.Error("fail to reset task_status as Unassigned", "id", taskId, "err", err)
+				if err := m.orm.UpdateProvingStatus(taskID, types.ProvingTaskUnassigned); err != nil {
+					log.Error("fail to reset task_status as Unassigned", "id", taskID, "err", err)
 				}
 			} else {
-				if err := m.orm.UpdateProvingStatus(taskId, types.ProvingTaskFailed); err != nil {
-					log.Error("fail to reset task_status as Failed", "id", taskId, "err", err)
+				if err := m.orm.UpdateProvingStatus(taskID, types.ProvingTaskFailed); err != nil {
+					log.Error("fail to reset task_status as Failed", "id", taskID, "err", err)
 				}
 			}
 		}
 	}()
 
 	// Get block traces.
-	blockInfos, err := m.orm.GetL2BlockInfos(map[string]interface{}{"batch_hash": taskId})
+	blockInfos, err := m.orm.GetL2BlockInfos(map[string]interface{}{"batch_hash": taskID})
 	if err != nil {
 		log.Error(
 			"could not GetBlockInfos",
-			"batch_hash", taskId,
+			"batch_hash", taskID,
 			"error", err,
 		)
 		return false
@@ -619,10 +619,10 @@ func (m *Manager) StartBasicProofGenerationSession(task *types.BlockBatch, prevS
 			log.Info("selectRoller returns nil")
 			break
 		}
-		log.Info("roller is picked", "session id", taskId, "name", roller.Name, "public key", roller.PublicKey)
+		log.Info("roller is picked", "session id", taskID, "name", roller.Name, "public key", roller.PublicKey)
 		// send trace to roller
-		if !roller.sendTask(&message.TaskMsg{ID: taskId, Type: message.BasicProve, BlockHashes: blockHashes}) {
-			log.Error("send task failed", "roller name", roller.Name, "public key", roller.PublicKey, "id", taskId)
+		if !roller.sendTask(&message.TaskMsg{ID: taskID, Type: message.BasicProve, BlockHashes: blockHashes}) {
+			log.Error("send task failed", "roller name", roller.Name, "public key", roller.PublicKey, "id", taskID)
 			continue
 		}
 		m.updateMetricRollerProofsLastAssignedTimestampGauge(roller.PublicKey)
@@ -630,20 +630,20 @@ func (m *Manager) StartBasicProofGenerationSession(task *types.BlockBatch, prevS
 	}
 	// No roller assigned.
 	if len(rollers) == 0 {
-		log.Error("no roller assigned", "id", taskId, "number of idle basic rollers", m.GetNumberOfIdleRollers(message.BasicProve))
+		log.Error("no roller assigned", "id", taskID, "number of idle basic rollers", m.GetNumberOfIdleRollers(message.BasicProve))
 		return false
 	}
 
 	// Update session proving status as assigned.
-	if err = m.orm.UpdateProvingStatus(taskId, types.ProvingTaskAssigned); err != nil {
-		log.Error("failed to update task status", "id", taskId, "err", err)
+	if err = m.orm.UpdateProvingStatus(taskID, types.ProvingTaskAssigned); err != nil {
+		log.Error("failed to update task status", "id", taskID, "err", err)
 		return false
 	}
 
 	// Create a proof generation session.
 	sess := &session{
 		info: &types.SessionInfo{
-			ID:             taskId,
+			ID:             taskID,
 			Rollers:        rollers,
 			ProveType:      message.BasicProve,
 			StartTimestamp: time.Now().Unix(),
@@ -672,7 +672,7 @@ func (m *Manager) StartBasicProofGenerationSession(task *types.BlockBatch, prevS
 	}
 
 	m.mu.Lock()
-	m.sessions[taskId] = sess
+	m.sessions[taskID] = sess
 	m.mu.Unlock()
 	go m.CollectProofs(sess)
 
@@ -681,26 +681,26 @@ func (m *Manager) StartBasicProofGenerationSession(task *types.BlockBatch, prevS
 
 // StartAggProofGenerationSession starts an aggregator proof generation.
 func (m *Manager) StartAggProofGenerationSession(task *types.AggTask, prevSession *session) (success bool) {
-	var taskId string
+	var taskID string
 	if task != nil {
-		taskId = task.ID
+		taskID = task.ID
 	} else {
-		taskId = prevSession.info.ID
+		taskID = prevSession.info.ID
 	}
 	if m.GetNumberOfIdleRollers(message.AggregatorProve) == 0 {
-		log.Warn("no idle common roller when starting proof generation session", "id", taskId)
+		log.Warn("no idle common roller when starting proof generation session", "id", taskID)
 		return false
 	}
 
-	log.Info("start aggregator proof generation session", "id", taskId)
+	log.Info("start aggregator proof generation session", "id", taskID)
 
 	defer func() {
 		if !success {
 			if task != nil {
-				if err := m.orm.UpdateAggTaskStatus(taskId, types.ProvingTaskUnassigned); err != nil {
-					log.Error("fail to reset task_status as Unassigned", "id", taskId, "err", err)
-				} else if err := m.orm.UpdateAggTaskStatus(taskId, types.ProvingTaskFailed); err != nil {
-					log.Error("fail to reset task_status as Failed", "id", taskId, "err", err)
+				if err := m.orm.UpdateAggTaskStatus(taskID, types.ProvingTaskUnassigned); err != nil {
+					log.Error("fail to reset task_status as Unassigned", "id", taskID, "err", err)
+				} else if err := m.orm.UpdateAggTaskStatus(taskID, types.ProvingTaskFailed); err != nil {
+					log.Error("fail to reset task_status as Failed", "id", taskID, "err", err)
 				}
 			}
 		}
@@ -708,9 +708,9 @@ func (m *Manager) StartAggProofGenerationSession(task *types.AggTask, prevSessio
 	}()
 
 	// get agg task from db
-	subProofs, err := m.orm.GetSubProofsByAggTaskID(taskId)
+	subProofs, err := m.orm.GetSubProofsByAggTaskID(taskID)
 	if err != nil {
-		log.Error("failed to get sub proofs for aggregator task", "id", taskId, "error", err)
+		log.Error("failed to get sub proofs for aggregator task", "id", taskID, "error", err)
 		return false
 	}
 
@@ -722,14 +722,14 @@ func (m *Manager) StartAggProofGenerationSession(task *types.AggTask, prevSessio
 			log.Info("selectRoller returns nil")
 			break
 		}
-		log.Info("roller is picked", "session id", taskId, "name", roller.Name, "type", roller.Type, "public key", roller.PublicKey)
+		log.Info("roller is picked", "session id", taskID, "name", roller.Name, "type", roller.Type, "public key", roller.PublicKey)
 		// send trace to roller
 		if !roller.sendTask(&message.TaskMsg{
-			ID:        taskId,
+			ID:        taskID,
 			Type:      message.AggregatorProve,
 			SubProofs: subProofs,
 		}) {
-			log.Error("send task failed", "roller name", roller.Name, "public key", roller.PublicKey, "id", taskId)
+			log.Error("send task failed", "roller name", roller.Name, "public key", roller.PublicKey, "id", taskID)
 			continue
 		}
 		m.updateMetricRollerProofsLastAssignedTimestampGauge(roller.PublicKey)
@@ -737,20 +737,20 @@ func (m *Manager) StartAggProofGenerationSession(task *types.AggTask, prevSessio
 	}
 	// No roller assigned.
 	if len(rollers) == 0 {
-		log.Error("no roller assigned", "id", taskId, "number of idle aggregator rollers", m.GetNumberOfIdleRollers(message.AggregatorProve))
+		log.Error("no roller assigned", "id", taskID, "number of idle aggregator rollers", m.GetNumberOfIdleRollers(message.AggregatorProve))
 		return false
 	}
 
 	// Update session proving status as assigned.
-	if err = m.orm.UpdateAggTaskStatus(taskId, types.ProvingTaskAssigned); err != nil {
-		log.Error("failed to update task status", "id", taskId, "err", err)
+	if err = m.orm.UpdateAggTaskStatus(taskID, types.ProvingTaskAssigned); err != nil {
+		log.Error("failed to update task status", "id", taskID, "err", err)
 		return false
 	}
 
 	// Create a proof generation session.
 	sess := &session{
 		info: &types.SessionInfo{
-			ID:             taskId,
+			ID:             taskID,
 			Rollers:        rollers,
 			ProveType:      message.AggregatorProve,
 			StartTimestamp: time.Now().Unix(),
@@ -779,7 +779,7 @@ func (m *Manager) StartAggProofGenerationSession(task *types.AggTask, prevSessio
 	}
 
 	m.mu.Lock()
-	m.sessions[taskId] = sess
+	m.sessions[taskID] = sess
 	m.mu.Unlock()
 	go m.CollectProofs(sess)
 
@@ -797,7 +797,7 @@ func (m *Manager) VerifyToken(authMsg *message.AuthMsg) (bool, error) {
 	pubkey, _ := authMsg.PublicKey()
 	// GetValue returns nil if value is expired
 	if token, ok := m.tokenCache.Get(pubkey); !ok || token != authMsg.Identity.Token {
-		return false, fmt.Errorf("failed to find corresponding token. roller name: %s. roller pk: %s.", authMsg.Identity.Name, pubkey)
+		return false, fmt.Errorf("failed to find corresponding token. roller name: %s. roller pk: %s", authMsg.Identity.Name, pubkey)
 	}
 	return true, nil
 }
@@ -816,8 +816,8 @@ func (m *Manager) verifyProof(proof *message.AggProof) (bool, error) {
 		return false, errors.New("coordinator has stopped before verification")
 	}
 	verifyResultChan := m.addVerifyTask(proof)
-	verifyResult := <-verifyResultChan
-	return verifyResult.result, verifyResult.err
+	result := <-verifyResultChan
+	return result.result, result.err
 }
 
 type verifyResult struct {

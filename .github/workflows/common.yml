@@ -20,10 +20,6 @@ on:
       - 'common/**'
       - '.github/workflows/common.yml'
 
-defaults:
-  run:
-    working-directory: 'common'
-
 jobs:
   check:
     if: github.event.pull_request.draft == false
@@ -43,7 +39,7 @@ jobs:
     - name: Install Go
       uses: actions/setup-go@v2
       with:
-        go-version: 1.18.x
+        go-version: 1.19.x
     - name: Checkout code
       uses: actions/checkout@v2
     - name: Cache cargo
@@ -51,6 +47,7 @@ jobs:
       with:
         workspaces: "common/libzkp/impl -> target"
     - name: Lint
+      working-directory: 'common'
       run: |
         rm -rf $HOME/.cache/golangci-lint
         make lint
@@ -61,16 +58,46 @@ jobs:
     - name: Install Go
       uses: actions/setup-go@v2
       with:
-        go-version: 1.18.x
+        go-version: 1.19.x
     - name: Checkout code
       uses: actions/checkout@v2
     - name: Install goimports
       run: go install golang.org/x/tools/cmd/goimports
-    - run: goimports -local scroll-tech/common/ -w .
-    - run: go mod tidy
+    - name: Run goimports lint
+      working-directory: 'common'
+      run: goimports -local scroll-tech/common/ -w .
+    - name: Run go mod tidy
+      working-directory: 'common'
+      run: go mod tidy
     # If there are any diffs from goimports or go mod tidy, fail.
     - name: Verify no changes from goimports and go mod tidy
+      working-directory: 'common'
       run: |
         if [ -n "$(git status --porcelain)" ]; then
           exit 1
         fi
+  tests:
+    if: github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    steps:
+    - name: Install Go
+      uses: actions/setup-go@v2
+      with:
+        go-version: 1.18.x
+    - name: Checkout code
+      uses: actions/checkout@v2
+    - name: Install Solc
+      uses: supplypike/setup-bin@v3
+      with:
+        uri: 'https://github.com/ethereum/solidity/releases/download/v0.8.16/solc-static-linux'
+        name: 'solc'
+        version: '0.8.16'
+    - name: Install Geth Tools
+      uses: gacts/install-geth-tools@v1
+    - name: Build prerequisites
+      run: |
+        make dev_docker
+    - name: Test common packages
+      working-directory: 'common'
+      run: |
+        go test -v -race -gcflags="-l" -ldflags="-s=false" -covermode=atomic ./...
