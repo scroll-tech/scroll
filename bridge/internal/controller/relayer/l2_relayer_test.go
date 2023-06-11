@@ -333,7 +333,7 @@ func testL2RelayerRollupConfirm(t *testing.T) {
 
 	for i, key := range processingKeys[:2] {
 		batchHashes := []string{batches[i*2].Hash().Hex(), batches[i*2+1].Hash().Hex()}
-		l2Relayer.processingBatchesCommitment.Store(key, batchHashes)
+		l2Relayer.processingBatchCommitment.Store(key, batchHashes)
 		l2Relayer.messageSender.SendConfirmation(&sender.Confirmation{
 			ID:           key,
 			IsSuccessful: isSuccessful[i],

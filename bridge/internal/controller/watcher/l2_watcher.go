@@ -163,7 +163,7 @@ func (w *L2WatcherClient) initializeGenesis() error {
 			"proving_status": types.ProvingTaskVerified,
 			"rollup_status":  types.RollupFinalized,
 		}
-		if err := w.batchOrm.UpdateChunkBatch(w.ctx, batchHash, updateField, tx); err != nil {
+		if err := w.batchOrm.UpdateBatch(w.ctx, batchHash, updateField, tx); err != nil {
 			return fmt.Errorf("failed to update genesis batch proving status: %v", err)
 		}
 

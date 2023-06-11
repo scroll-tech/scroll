@@ -9,7 +9,6 @@ import (
 
 	"github.com/scroll-tech/go-ethereum/accounts/abi"
 	"github.com/scroll-tech/go-ethereum/common"
-	"github.com/scroll-tech/go-ethereum/crypto"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
 	gethMetrics "github.com/scroll-tech/go-ethereum/metrics"
@@ -24,7 +23,7 @@ import (
 	"scroll-tech/bridge/internal/config"
 	"scroll-tech/bridge/internal/controller/sender"
 	"scroll-tech/bridge/internal/orm"
-	"scroll-tech/bridge/internal/utils"
+	bridgeTypes "scroll-tech/bridge/internal/types"
 )
 
 var (
@@ -74,8 +73,8 @@ type Layer2Relayer struct {
 	processingMessage sync.Map
 
 	// A list of processing batches commitment.
-	// key(string): confirmation ID, value([]string): batch hashes.
-	processingBatchesCommitment sync.Map
+	// key(string): confirmation ID, value(string): batch hash.
+	processingBatchCommitment sync.Map
 
 	// A list of processing batch finalization.
 	// key(string): confirmation ID, value(string): batch hash.
@@ -141,10 +140,10 @@ func NewLayer2Relayer(ctx context.Context, l2Client *ethclient.Client, db *gorm.
 		minGasPrice:  minGasPrice,
 		gasPriceDiff: gasPriceDiff,
 
-		cfg:                         cfg,
-		processingMessage:           sync.Map{},
-		processingBatchesCommitment: sync.Map{},
-		processingFinalization:      sync.Map{},
+		cfg:                       cfg,
+		processingMessage:         sync.Map{},
+		processingBatchCommitment: sync.Map{},
+		processingFinalization:    sync.Map{},
 	}
 	go layer2Relayer.handleConfirmLoop(ctx)
 	return layer2Relayer, nil
@@ -303,7 +302,7 @@ func (r *Layer2Relayer) ProcessGasPriceOracle() {
 				"oracle_status":  types.GasOracleImporting,
 				"oracle_tx_hash": hash.String(),
 			}
-			if err := r.batchOrm.UpdateChunkBatch(r.ctx, batch.Hash, updateFields); err != nil {
+			if err := r.batchOrm.UpdateBatch(r.ctx, batch.Hash, updateFields); err != nil {
 				log.Error("Failed to update gas oracle status and oracle tx hash", "batch.Hash", batch.Hash, "err", err)
 				return
 			}
@@ -315,70 +314,48 @@ func (r *Layer2Relayer) ProcessGasPriceOracle() {
 }
 
 // SendCommitTx sends commitBatches tx to L1.
-func (r *Layer2Relayer) SendCommitTx(batchData []*types.BatchHeader, chunks [][]*types.Chunk) error {
-	if len(batchData) == 0 {
-		log.Error("SendCommitTx receives empty batch")
-		return nil
-	}
-
+func (r *Layer2Relayer) SendCommitTx(parentHeader *bridgeTypes.BatchHeader, header *bridgeTypes.BatchHeader, chunks []*bridgeTypes.Chunk) error {
 	// pack calldata
-	parentBatchHeaders := make([][]byte, len(batchData))
-	encodedChunks := make([][][]byte, len(chunks))
-	for i, batch := range batchData {
-		parentBatchHeaders[i] = batch.Encode()
-		encodedChunks[i] = make([][]byte, len(chunks[i]))
-		for j, chunk := range chunks[i] {
-			chunkBytes, err := chunk.Encode()
-			if err != nil {
-				log.Error("Failed to encode chunk",
-					"error", err)
-				return err
-			}
-			encodedChunks[i][j] = chunkBytes
-		}
-	}
-
-	var bytes []byte
-	for _, batch := range batchData {
-		bytes = append(bytes, batch.Hash().Bytes()...)
-	}
-	txID := crypto.Keccak256Hash(bytes).String()
-
-	for i, parentBatchHeader := range parentBatchHeaders {
-		skippedL1MessageBitmap := make([][]byte, len(batchData[i].SkippedL1MessageBitmap))
-		for j, bitmap := range batchData[i].SkippedL1MessageBitmap {
-			skippedL1MessageBitmap[j] = bitmap.Bytes()
-		}
-
-		calldata, err := r.l1RollupABI.Pack("commitBatch", batchData[i].Version, parentBatchHeader, encodedChunks[i], skippedL1MessageBitmap)
+	parentBatchHeader := parentHeader.Encode()
+	encodedChunks := make([][]byte, len(chunks))
+	for i, chunk := range chunks {
+		chunkBytes, err := chunk.Encode()
 		if err != nil {
-			log.Error("Failed to pack commitBatch",
-				"error", err,
-				"batch_index", batchData[i].BatchIndex)
+			log.Error("Failed to encode chunk", "error", err)
 			return err
 		}
+		encodedChunks[i] = chunkBytes
+	}
+	skippedL1MessageBitmapBytes := header.EncodeSkippedL1MessageBitmap()
 
-		// send transaction
-		txHash, err := r.rollupSender.SendTransaction(txID, &r.cfg.RollupContractAddress, big.NewInt(0), calldata, 0)
-		if err != nil {
-			if !errors.Is(err, sender.ErrNoAvailableAccount) && !errors.Is(err, sender.ErrFullPending) {
-				log.Error("Failed to send commitBatch tx to layer1 ", "err", err)
-			}
-			return err
-		}
-		bridgeL2BatchesCommittedTotalCounter.Inc(int64(len(encodedChunks[i])))
-		log.Info("Sent the commitBatch tx to layer1",
-			"tx_hash", txHash.Hex(),
-			"batch_index", batchData[i].BatchIndex)
-		// update the tx hash and rollup status in the database
-		batchHash := batchData[i].Hash().Hex()
-		err = r.batchOrm.UpdateCommitTxHashAndRollupStatus(r.ctx, batchHash, txHash.String(), types.RollupCommitting)
-		if err != nil {
-			log.Error("UpdateCommitTxHashAndRollupStatus failed", "hash", batchHash, "index", batchData[i].BatchIndex, "err", err)
-		}
+	calldata, err := r.l1RollupABI.Pack("commitBatch", header.Version(), parentBatchHeader, encodedChunks, skippedL1MessageBitmapBytes)
+	if err != nil {
+		log.Error("Failed to pack commitBatch", "batch_index", header.BatchIndex(), "error", err)
+		return err
 	}
 
-	r.processingBatchesCommitment.Store(txID, parentBatchHeaders)
+	// send transaction
+	txID := header.Hash().Hex() + "-commit"
+	txHash, err := r.rollupSender.SendTransaction(txID, &r.cfg.RollupContractAddress, big.NewInt(0), calldata, 0)
+	if err != nil {
+		if !errors.Is(err, sender.ErrNoAvailableAccount) && !errors.Is(err, sender.ErrFullPending) {
+			log.Error("Failed to send commitBatch tx to layer1 ", "err", err)
+		}
+		return err
+	}
+	bridgeL2BatchesCommittedTotalCounter.Inc(1)
+	log.Info("Sent the commitBatch tx to layer1", "tx_hash", txHash.Hex(), "batch_index", header.BatchIndex())
+
+	updateFields := map[string]interface{}{
+		"commit_tx_hash": txHash.Hex(),
+		"rollup_status":  types.RollupCommitting,
+	}
+	err = r.batchOrm.UpdateBatch(r.ctx, header.Hash().Hex(), updateFields)
+	if err != nil {
+		log.Error("UpdateBatch failed", "hash", header.Hash().Hex(), "index", header.BatchIndex, "err", err)
+	}
+
+	r.processingBatchCommitment.Store(txID, parentBatchHeader)
 	return nil
 }
 
@@ -423,8 +400,8 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 		updateFields := map[string]interface{}{
 			"rollup_status": types.RollupFinalizationSkipped,
 		}
-		if err = r.batchOrm.UpdateChunkBatch(r.ctx, hash, updateFields); err != nil {
-			log.Warn("UpdateChunkBatch failed", "hash", hash, "err", err)
+		if err = r.batchOrm.UpdateBatch(r.ctx, hash, updateFields); err != nil {
+			log.Warn("UpdateBatch failed", "hash", hash, "err", err)
 		}
 	case types.ProvingTaskVerified:
 		log.Info("Start to roll up zk proof", "hash", hash)
@@ -449,8 +426,8 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 			updateFields := map[string]interface{}{
 				"rollup_status": types.RollupFinalizationSkipped,
 			}
-			if err = r.batchOrm.UpdateChunkBatch(r.ctx, hash, updateFields); err != nil {
-				log.Warn("UpdateChunkBatch failed", "hash", hash, "err", err)
+			if err = r.batchOrm.UpdateBatch(r.ctx, hash, updateFields); err != nil {
+				log.Warn("UpdateBatch failed", "hash", hash, "err", err)
 			} else {
 				success = true
 			}
@@ -471,8 +448,8 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 				updateFields := map[string]interface{}{
 					"rollup_status": types.RollupFinalizationSkipped,
 				}
-				if err = r.batchOrm.UpdateChunkBatch(r.ctx, hash, updateFields); err != nil {
-					log.Warn("UpdateChunkBatch failed", "hash", hash, "err", err)
+				if err = r.batchOrm.UpdateBatch(r.ctx, hash, updateFields); err != nil {
+					log.Warn("UpdateBatch failed", "hash", hash, "err", err)
 				}
 			}
 		}()
@@ -488,9 +465,14 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 			return
 		}
 
-		proof := utils.BufferToUint256Le(aggProof.Proof)
-		finalPair := utils.BufferToUint256Le(aggProof.FinalPair)
-		data, err := r.l1RollupABI.Pack("finalizeBatchWithProof", common.HexToHash(hash), proof, finalPair)
+		data, err := r.l1RollupABI.Pack(
+			"finalizeBatchWithProof",
+			//batchHeader,
+			//prevStateRoot,
+			//postStateRoot,
+			//withdrawRoot,
+			aggProof.Proof,
+		)
 		if err != nil {
 			log.Error("Pack finalizeBatchWithProof failed", "err", err)
 			return
@@ -514,8 +496,8 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 			"finalize_tx_hash": finalizeTxHash.String(),
 			"rollup_status":    types.RollupFinalizing,
 		}
-		if err = r.batchOrm.UpdateChunkBatch(r.ctx, hash, updateFields); err != nil {
-			log.Warn("UpdateChunkBatch failed", "batch_hash", hash, "err", err)
+		if err = r.batchOrm.UpdateBatch(r.ctx, hash, updateFields); err != nil {
+			log.Warn("UpdateBatch failed", "batch_hash", hash, "err", err)
 		}
 		success = true
 		r.processingFinalization.Store(txID, hash)
@@ -544,16 +526,16 @@ func (r *Layer2Relayer) handleConfirmation(confirmation *sender.Confirmation) {
 			"commit_tx_hash": confirmation.TxHash.String(),
 			"rollup_status":  status,
 		}
-		err := r.batchOrm.UpdateChunkBatch(r.ctx, msgHash.(string), updateFields)
+		err := r.batchOrm.UpdateBatch(r.ctx, msgHash.(string), updateFields)
 		if err != nil {
-			log.Warn("UpdateChunkBatch failed", "msgHash", msgHash.(string), "err", err)
+			log.Warn("UpdateBatch failed", "msgHash", msgHash.(string), "err", err)
 		}
 		bridgeL2MsgsRelayedConfirmedTotalCounter.Inc(1)
 		r.processingMessage.Delete(confirmation.ID)
 	}
 
 	// check whether it is CommitBatches transaction
-	if batchBatches, ok := r.processingBatchesCommitment.Load(confirmation.ID); ok {
+	if batchBatches, ok := r.processingBatchCommitment.Load(confirmation.ID); ok {
 		transactionType = "BatchesCommitment"
 		batchHashes := batchBatches.([]string)
 		var status types.RollupStatus
@@ -568,13 +550,13 @@ func (r *Layer2Relayer) handleConfirmation(confirmation *sender.Confirmation) {
 				"finalize_tx_hash": confirmation.TxHash.String(),
 				"rollup_status":    status,
 			}
-			err := r.batchOrm.UpdateChunkBatch(r.ctx, batchHash, updateFields)
+			err := r.batchOrm.UpdateBatch(r.ctx, batchHash, updateFields)
 			if err != nil {
-				log.Warn("UpdateChunkBatch failed", "batch_hash", batchHash, "err", err)
+				log.Warn("UpdateBatch failed", "batch_hash", batchHash, "err", err)
 			}
 		}
 		bridgeL2BatchesCommittedConfirmedTotalCounter.Inc(int64(len(batchHashes)))
-		r.processingBatchesCommitment.Delete(confirmation.ID)
+		r.processingBatchCommitment.Delete(confirmation.ID)
 	}
 
 	// check whether it is proof finalization transaction
@@ -592,9 +574,9 @@ func (r *Layer2Relayer) handleConfirmation(confirmation *sender.Confirmation) {
 			"finalize_tx_hash": confirmation.TxHash.String(),
 			"rollup_status":    status,
 		}
-		err := r.batchOrm.UpdateChunkBatch(r.ctx, batchHash.(string), updateFields)
+		err := r.batchOrm.UpdateBatch(r.ctx, batchHash.(string), updateFields)
 		if err != nil {
-			log.Warn("UpdateChunkBatch failed", "batch_hash", batchHash.(string), "err", err)
+			log.Warn("UpdateBatch failed", "batch_hash", batchHash.(string), "err", err)
 		}
 		bridgeL2BatchesFinalizedConfirmedTotalCounter.Inc(1)
 		r.processingFinalization.Delete(confirmation.ID)
@@ -618,15 +600,15 @@ func (r *Layer2Relayer) handleConfirmLoop(ctx context.Context) {
 			if !cfm.IsSuccessful {
 				// @discuss: maybe make it pending again?
 				updateFields["oracle_status"] = types.GasOracleFailed
-				if err := r.batchOrm.UpdateChunkBatch(r.ctx, cfm.ID, updateFields); err != nil {
-					log.Warn("UpdateChunkBatch failed", "err", err)
+				if err := r.batchOrm.UpdateBatch(r.ctx, cfm.ID, updateFields); err != nil {
+					log.Warn("UpdateBatch failed", "err", err)
 				}
 				log.Warn("transaction confirmed but failed in layer1", "confirmation", cfm)
 			} else {
 				// @todo handle db error
 				updateFields["oracle_status"] = types.GasOracleImported
-				if err := r.batchOrm.UpdateChunkBatch(r.ctx, cfm.ID, updateFields); err != nil {
-					log.Warn("UpdateChunkBatch failed", "err", err)
+				if err := r.batchOrm.UpdateBatch(r.ctx, cfm.ID, updateFields); err != nil {
+					log.Warn("UpdateBatch failed", "err", err)
 				}
 				log.Info("transaction confirmed in layer1", "confirmation", cfm)
 			}

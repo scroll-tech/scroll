@@ -46,6 +46,23 @@ func NewBatchHeader(version uint8, batchIndex, totalL1MessagePoppedBefore uint64
 	}, nil
 }
 
+func (b *BatchHeader) Version() uint8 {
+	return b.version
+}
+
+func (b *BatchHeader) BatchIndex() uint64 {
+	return b.batchIndex
+}
+
+// EncodeSkippedL1MessageBitmap encodes the SkippedL1MessageBitmap into bytes.
+func (b *BatchHeader) EncodeSkippedL1MessageBitmap() [][]byte {
+	skippedL1MessageBitmapBytes := make([][]byte, len(b.skippedL1MessageBitmap))
+	for i, bitmap := range b.skippedL1MessageBitmap {
+		skippedL1MessageBitmapBytes[i] = bitmap.Bytes()
+	}
+	return skippedL1MessageBitmapBytes
+}
+
 // Encode encodes the BatchHeader into RollupV2 BatchHeaderV0Codec Encoding.
 func (b *BatchHeader) Encode() []byte {
 	batchBytes := make([]byte, 89)

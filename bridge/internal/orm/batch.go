@@ -19,6 +19,7 @@ import (
 type Batch struct {
 	db *gorm.DB `gorm:"column:-"`
 
+	Index            int        `json:"index" gorm:"column:index"`
 	Hash             string     `json:"hash" gorm:"column:hash"`
 	StartChunkIndex  int        `json:"start_chunk_index" gorm:"column:start_chunk_index"`
 	StartChunkHash   string     `json:"start_chunk_hash" gorm:"column:start_chunk_hash"`
@@ -119,13 +120,13 @@ func (c *Batch) GetLatestBatchByRollupStatus(statuses []types.RollupStatus) (*Ba
 	return &batch, nil
 }
 
-func (c *Batch) GetChunkBatch(ctx context.Context, hash string) (*Batch, error) {
-	var chunkBatch Batch
-	err := c.db.WithContext(ctx).Where("hash", hash).First(&chunkBatch).Error
+func (c *Batch) GetBatch(ctx context.Context, hash string) (*Batch, error) {
+	var batch Batch
+	err := c.db.WithContext(ctx).Where("hash", hash).First(&batch).Error
 	if err != nil {
 		return nil, err
 	}
-	return &chunkBatch, nil
+	return &batch, nil
 }
 
 func (c *Batch) GetBatchCount(ctx context.Context) (int64, error) {
@@ -162,39 +163,40 @@ func (c *Batch) GetRollupStatusByHashList(ctx context.Context, hashes []string) 
 	return statuses, nil
 }
 
-func (c *Batch) InsertChunkBatch(ctx context.Context, batch *bridgeTypes.Batch, tx ...*gorm.DB) error {
+func (c *Batch) InsertBatch(ctx context.Context, chunks []*bridgeTypes.Chunk, tx ...*gorm.DB) error {
 	db := c.db
 	if len(tx) > 0 && tx[0] != nil {
 		db = tx[0]
 	}
 
-	numChunks := len(batch.Chunks)
+	numChunks := len(chunks)
 	if numChunks == 0 {
-		return errors.New("chunkBatch must contain at least one chunk")
+		return errors.New("Batch must contain at least one chunk")
 	}
 
-	startChunkHash, err := batch.Chunks[0].Hash()
+	// assuming that Chunk has a method `Hash() ([]byte, error)`
+	startChunkHash, err := chunks[0].Hash()
 	if err != nil {
 		log.Error("failed to get start chunk hash", "err", err)
 		return err
 	}
 
-	endChunkHash, err := batch.Chunks[numChunks-1].Hash()
+	endChunkHash, err := chunks[numChunks-1].Hash()
 	if err != nil {
 		log.Error("failed to get end chunk hash", "err", err)
 		return err
 	}
 
-	tmpChunkBatch := Batch{
+	tmpBatch := Batch{
 		StartChunkHash: hex.EncodeToString(startChunkHash),
 		EndChunkHash:   hex.EncodeToString(endChunkHash),
 	}
 
-	err = db.WithContext(ctx).Create(&tmpChunkBatch).Error
+	err = db.WithContext(ctx).Create(&tmpBatch).Error
 	return err
 }
 
-func (c *Batch) UpdateChunkBatch(ctx context.Context, hash string, updateFields map[string]interface{}, tx ...*gorm.DB) error {
+func (c *Batch) UpdateBatch(ctx context.Context, hash string, updateFields map[string]interface{}, tx ...*gorm.DB) error {
 	db := c.db
 	if len(tx) > 0 && tx[0] != nil {
 		db = tx[0]
