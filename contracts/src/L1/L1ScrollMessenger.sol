@@ -42,28 +42,6 @@ contract L1ScrollMessenger is PausableUpgradeable, ScrollMessengerBase, IL1Scrol
     /// @notice The address of L1MessageQueue contract.
     address public messageQueue;
 
-    // @note move to ScrollMessengerBase in next big refactor
-    /// @dev The status of for non-reentrant check.
-    uint256 private _lock_status;
-
-    /**********************
-     * Function Modifiers *
-     **********************/
-
-    modifier nonReentrant() {
-        // On the first call to nonReentrant, _notEntered will be true
-        require(_lock_status != _ENTERED, "ReentrancyGuard: reentrant call");
-
-        // Any calls to nonReentrant after this point will fail
-        _lock_status = _ENTERED;
-
-        _;
-
-        // By storing the original value once again, a refund is triggered (see
-        // https://eips.ethereum.org/EIPS/eip-2200)
-        _lock_status = _NOT_ENTERED;
-    }
-
     /***************
      * Constructor *
      ***************/
