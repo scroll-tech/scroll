@@ -68,21 +68,6 @@ func (l *relayedMsgOrm) GetLatestRelayedHeightOnL1() (int64, error) {
 	return 0, nil
 }
 
-func (l *relayedMsgOrm) GetLatestRelayedHeightOnL2() (int64, error) {
-	row := l.db.QueryRow(`SELECT height FROM relayed_msg WHERE layer2_hash != '' AND NOT is_deleted ORDER BY height DESC LIMIT 1;`)
-	var result sql.NullInt64
-	if err := row.Scan(&result); err != nil {
-		if err == sql.ErrNoRows || !result.Valid {
-			return -1, nil
-		}
-		return 0, err
-	}
-	if result.Valid {
-		return result.Int64, nil
-	}
-	return 0, nil
-}
-
 func (l *relayedMsgOrm) DeleteL1RelayedHashAfterHeightDBTx(dbTx *sqlx.Tx, height int64) error {
 	_, err := dbTx.Exec(`UPDATE relayed_msg SET is_deleted = true WHERE height > $1 AND layer1_hash != '';`, height)
 	return err

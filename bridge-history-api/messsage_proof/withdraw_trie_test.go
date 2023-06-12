@@ -1,4 +1,4 @@
-package cross_msg_test
+package message_proof_test
 
 import (
 	"math/big"
@@ -7,7 +7,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/stretchr/testify/assert"
 
-	"bridge-history-api/cross_msg"
+	message_proof "bridge-history-api/messsage_proof"
 	"bridge-history-api/utils"
 )
 
@@ -19,29 +19,29 @@ func TestUpdateBranchWithNewMessage(t *testing.T) {
 		zeroes[i] = utils.Keccak2(zeroes[i-1], zeroes[i-1])
 	}
 
-	cross_msg.UpdateBranchWithNewMessage(zeroes, branches, 0, common.HexToHash("0x0000000000000000000000000000000000000000000000000000000000000001"))
+	message_proof.UpdateBranchWithNewMessage(zeroes, branches, 0, common.HexToHash("0x0000000000000000000000000000000000000000000000000000000000000001"))
 	if branches[0] != common.HexToHash("0x0000000000000000000000000000000000000000000000000000000000000001") {
 		t.Fatalf("Invalid root, want %s, got %s", "0x0000000000000000000000000000000000000000000000000000000000000001", branches[0].Hex())
 	}
 
-	cross_msg.UpdateBranchWithNewMessage(zeroes, branches, 1, common.HexToHash("0x0000000000000000000000000000000000000000000000000000000000000002"))
+	message_proof.UpdateBranchWithNewMessage(zeroes, branches, 1, common.HexToHash("0x0000000000000000000000000000000000000000000000000000000000000002"))
 	if branches[1] != common.HexToHash("0xe90b7bceb6e7df5418fb78d8ee546e97c83a08bbccc01a0644d599ccd2a7c2e0") {
 		t.Fatalf("Invalid root, want %s, got %s", "0xe90b7bceb6e7df5418fb78d8ee546e97c83a08bbccc01a0644d599ccd2a7c2e0", branches[1].Hex())
 	}
 
-	cross_msg.UpdateBranchWithNewMessage(zeroes, branches, 2, common.HexToHash("0x0000000000000000000000000000000000000000000000000000000000000003"))
+	message_proof.UpdateBranchWithNewMessage(zeroes, branches, 2, common.HexToHash("0x0000000000000000000000000000000000000000000000000000000000000003"))
 	if branches[2] != common.HexToHash("0x222ff5e0b5877792c2bc1670e2ccd0c2c97cd7bb1672a57d598db05092d3d72c") {
 		t.Fatalf("Invalid root, want %s, got %s", "0x222ff5e0b5877792c2bc1670e2ccd0c2c97cd7bb1672a57d598db05092d3d72c", branches[2].Hex())
 	}
 
-	cross_msg.UpdateBranchWithNewMessage(zeroes, branches, 3, common.HexToHash("0x0000000000000000000000000000000000000000000000000000000000000004"))
+	message_proof.UpdateBranchWithNewMessage(zeroes, branches, 3, common.HexToHash("0x0000000000000000000000000000000000000000000000000000000000000004"))
 	if branches[2] != common.HexToHash("0xa9bb8c3f1f12e9aa903a50c47f314b57610a3ab32f2d463293f58836def38d36") {
 		t.Fatalf("Invalid root, want %s, got %s", "0xa9bb8c3f1f12e9aa903a50c47f314b57610a3ab32f2d463293f58836def38d36", branches[2].Hex())
 	}
 }
 
 func TestDecodeEncodeMerkleProof(t *testing.T) {
-	proof := cross_msg.DecodeBytesToMerkleProof(common.Hex2Bytes("2ebffc1a6671c51e30777a680904b103992630ec995b6e6ff76a04d5259d49012ebffc1a6671c51e30777a680904b103992630ec995b6e6ff76a04d5259d49022ebffc1a6671c51e30777a680904b103992630ec995b6e6ff76a04d5259d49032ebffc1a6671c51e30777a680904b103992630ec995b6e6ff76a04d5259d4904"))
+	proof := message_proof.DecodeBytesToMerkleProof(common.Hex2Bytes("2ebffc1a6671c51e30777a680904b103992630ec995b6e6ff76a04d5259d49012ebffc1a6671c51e30777a680904b103992630ec995b6e6ff76a04d5259d49022ebffc1a6671c51e30777a680904b103992630ec995b6e6ff76a04d5259d49032ebffc1a6671c51e30777a680904b103992630ec995b6e6ff76a04d5259d4904"))
 	if len(proof) != 4 {
 		t.Fatalf("proof length mismatch, want %d, got %d", 4, len(proof))
 	}
@@ -58,7 +58,7 @@ func TestDecodeEncodeMerkleProof(t *testing.T) {
 		t.Fatalf("proof[3] mismatch, want %s, got %s", "0x2ebffc1a6671c51e30777a680904b103992630ec995b6e6ff76a04d5259d4904", proof[0].Hex())
 	}
 
-	bytes := cross_msg.EncodeMerkleProofToBytes(proof)
+	bytes := message_proof.EncodeMerkleProofToBytes(proof)
 	if common.Bytes2Hex(bytes) != "2ebffc1a6671c51e30777a680904b103992630ec995b6e6ff76a04d5259d49012ebffc1a6671c51e30777a680904b103992630ec995b6e6ff76a04d5259d49022ebffc1a6671c51e30777a680904b103992630ec995b6e6ff76a04d5259d49032ebffc1a6671c51e30777a680904b103992630ec995b6e6ff76a04d5259d4904" {
 		t.Fatalf("wrong encoded bytes")
 	}
@@ -72,32 +72,32 @@ func TestRecoverBranchFromProof(t *testing.T) {
 		zeroes[i] = utils.Keccak2(zeroes[i-1], zeroes[i-1])
 	}
 
-	proof := cross_msg.UpdateBranchWithNewMessage(zeroes, branches, 0, common.HexToHash("0x0000000000000000000000000000000000000000000000000000000000000001"))
-	tmpBranches := cross_msg.RecoverBranchFromProof(proof, 0, common.HexToHash("0x0000000000000000000000000000000000000000000000000000000000000001"))
+	proof := message_proof.UpdateBranchWithNewMessage(zeroes, branches, 0, common.HexToHash("0x0000000000000000000000000000000000000000000000000000000000000001"))
+	tmpBranches := message_proof.RecoverBranchFromProof(proof, 0, common.HexToHash("0x0000000000000000000000000000000000000000000000000000000000000001"))
 	for i := 0; i < 64; i++ {
 		if tmpBranches[i] != branches[i] {
 			t.Fatalf("Invalid branch, want %s, got %s", branches[i].Hex(), tmpBranches[i].Hex())
 		}
 	}
 
-	proof = cross_msg.UpdateBranchWithNewMessage(zeroes, branches, 1, common.HexToHash("0x0000000000000000000000000000000000000000000000000000000000000002"))
-	tmpBranches = cross_msg.RecoverBranchFromProof(proof, 1, common.HexToHash("0x0000000000000000000000000000000000000000000000000000000000000002"))
+	proof = message_proof.UpdateBranchWithNewMessage(zeroes, branches, 1, common.HexToHash("0x0000000000000000000000000000000000000000000000000000000000000002"))
+	tmpBranches = message_proof.RecoverBranchFromProof(proof, 1, common.HexToHash("0x0000000000000000000000000000000000000000000000000000000000000002"))
 	for i := 0; i < 64; i++ {
 		if tmpBranches[i] != branches[i] {
 			t.Fatalf("Invalid branch, want %s, got %s", branches[i].Hex(), tmpBranches[i].Hex())
 		}
 	}
 
-	proof = cross_msg.UpdateBranchWithNewMessage(zeroes, branches, 2, common.HexToHash("0x0000000000000000000000000000000000000000000000000000000000000003"))
-	tmpBranches = cross_msg.RecoverBranchFromProof(proof, 2, common.HexToHash("0x0000000000000000000000000000000000000000000000000000000000000003"))
+	proof = message_proof.UpdateBranchWithNewMessage(zeroes, branches, 2, common.HexToHash("0x0000000000000000000000000000000000000000000000000000000000000003"))
+	tmpBranches = message_proof.RecoverBranchFromProof(proof, 2, common.HexToHash("0x0000000000000000000000000000000000000000000000000000000000000003"))
 	for i := 0; i < 64; i++ {
 		if tmpBranches[i] != branches[i] {
 			t.Fatalf("Invalid branch, want %s, got %s", branches[i].Hex(), tmpBranches[i].Hex())
 		}
 	}
 
-	proof = cross_msg.UpdateBranchWithNewMessage(zeroes, branches, 3, common.HexToHash("0x0000000000000000000000000000000000000000000000000000000000000004"))
-	tmpBranches = cross_msg.RecoverBranchFromProof(proof, 3, common.HexToHash("0x0000000000000000000000000000000000000000000000000000000000000004"))
+	proof = message_proof.UpdateBranchWithNewMessage(zeroes, branches, 3, common.HexToHash("0x0000000000000000000000000000000000000000000000000000000000000004"))
+	tmpBranches = message_proof.RecoverBranchFromProof(proof, 3, common.HexToHash("0x0000000000000000000000000000000000000000000000000000000000000004"))
 	for i := 0; i < 64; i++ {
 		if tmpBranches[i] != branches[i] {
 			t.Fatalf("Invalid branch, want %s, got %s", branches[i].Hex(), tmpBranches[i].Hex())
@@ -107,7 +107,7 @@ func TestRecoverBranchFromProof(t *testing.T) {
 
 func TestWithdrawTrieOneByOne(t *testing.T) {
 	for initial := 0; initial < 128; initial++ {
-		withdrawTrie := cross_msg.NewWithdrawTrie()
+		withdrawTrie := message_proof.NewWithdrawTrie()
 		var hashes []common.Hash
 		for i := 0; i < initial; i++ {
 			hash := common.BigToHash(big.NewInt(int64(i + 1)))
@@ -126,7 +126,7 @@ func TestWithdrawTrieOneByOne(t *testing.T) {
 			})
 			assert.Equal(t, withdrawTrie.NextMessageNonce, uint64(i+1))
 			assert.Equal(t, expectedRoot.String(), withdrawTrie.MessageRoot().String())
-			proof := cross_msg.DecodeBytesToMerkleProof(proofBytes[0])
+			proof := message_proof.DecodeBytesToMerkleProof(proofBytes[0])
 			verifiedRoot := verifyMerkleProof(uint64(i), hash, proof)
 			assert.Equal(t, expectedRoot.String(), verifiedRoot.String())
 		}
@@ -153,7 +153,7 @@ func TestWithdrawTrieMultiple(t *testing.T) {
 		}
 
 		for finish := initial; finish < 100; finish++ {
-			withdrawTrie := cross_msg.NewWithdrawTrie()
+			withdrawTrie := message_proof.NewWithdrawTrie()
 			withdrawTrie.AppendMessages(hashes)
 
 			var newHashes []common.Hash
@@ -167,7 +167,7 @@ func TestWithdrawTrieMultiple(t *testing.T) {
 
 			for i := initial; i <= finish; i++ {
 				hash := common.BigToHash(big.NewInt(int64(i + 1)))
-				proof := cross_msg.DecodeBytesToMerkleProof(proofBytes[i-initial])
+				proof := message_proof.DecodeBytesToMerkleProof(proofBytes[i-initial])
 				verifiedRoot := verifyMerkleProof(uint64(i), hash, proof)
 				assert.Equal(t, expectedRoots[finish].String(), verifiedRoot.String())
 			}
