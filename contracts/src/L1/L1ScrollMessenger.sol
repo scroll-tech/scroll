@@ -30,9 +30,6 @@ contract L1ScrollMessenger is PausableUpgradeable, ScrollMessengerBase, IL1Scrol
      * Variables *
      *************/
 
-    /// @notice Mapping from relay id to relay status.
-    mapping(bytes32 => bool) public isL1MessageRelayed;
-
     /// @notice Mapping from L1 message hash to sent status.
     mapping(bytes32 => bool) public isL1MessageSent;
 
@@ -162,9 +159,6 @@ contract L1ScrollMessenger is PausableUpgradeable, ScrollMessengerBase, IL1Scrol
         } else {
             emit FailedRelayedMessage(_xDomainCalldataHash);
         }
-
-        bytes32 _relayId = keccak256(abi.encodePacked(_xDomainCalldataHash, msg.sender, block.number));
-        isL1MessageRelayed[_relayId] = true;
     }
 
     /// @inheritdoc IL1ScrollMessenger
