@@ -25,7 +25,7 @@ Both approaches allow users to initiate a L2 transaction on L1 and call arbitrar
 The difference is that the sender of the L2 transactions for arbitrary messages and enforced transactions are the aliased `L1ScrollMessenger` contract address and an EOA account correspondingly.
 In addition, we provide several standard token gateways to make users easier to deposit ETH and other standard tokens including ERC-20, ERC-677, ERC-721, and ERC-1155.
 In essence, these gateways encode token deposits to a message and send it to the `L1ScrollMessenger` contract.
-You can find more details about L1 token gateways in the [Deposit](Deposit.md) doc.
+You can find more details about L1 token gateways in the [Deposit](Deposit.md) page.
 
 As depicted in the Figure 1, both arbitrary messages and enforced transactions are appended to message queue stored in the `L1MessageQueue`.
 The `L1MessageQueue` contract provides two function `appendCrossDomainMessage` and `appendEnforcedTransaction` for appending arbitrary messages and enforced transactions correspondingly.
@@ -194,7 +194,7 @@ The aliased sender address of the L1 message transaction is `l1_contract_address
 <figcaption><b>Figure 2. L2 to L1 message relay workflow</b></figcaption>
 </figure>
 
-On L2, users can send arbitrary messages through `L2ScrollMessenger` to withdraw tokens and call L1 contracts. Similar to L1, we have built several standard token gateways to make it easier to initialize token withdrawals. For more details about L2 token gateways, please refer to [Withdraw](Withdraw.md).
+On L2, users can send arbitrary messages through `L2ScrollMessenger` to withdraw tokens and call L1 contracts. Similar to L1, we have built several standard token gateways to make it easier to initialize token withdrawals. For more details about L2 token gateways, please refer to [Withdraw](Withdraw.md) page.
 
 `L2ScrollMessenger` contract also provides a `sendMessage` function. The difference from the `L1ScrollMessenger.sendMessage` is that the `gasLimit` parameter is ignored in the function because the withdrawal execution transaction on L1 is submitted by users and the transaction fee is paid on L1 directly.
 Thus, the `sendMessage` function requires `msg.value` equal to parameter `value`
