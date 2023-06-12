@@ -100,15 +100,11 @@ func action(ctx *cli.Context) error {
 		l2watcher.TryFetchRunningMissingBlocks(ctx, number)
 	})
 
-	// Chunk proposer loop
-	go cutils.Loop(subCtx, 2*time.Second, func() {
-		chunkProposer.TryProposeChunk()
-	})
+	go cutils.Loop(subCtx, 2*time.Second, chunkProposer.TryProposeChunk)
 
-	// Batch proposer loop
-	go cutils.Loop(subCtx, 2*time.Second, func() {
-		batchProposer.TryProposeBatch()
-	})
+	go cutils.Loop(subCtx, 2*time.Second, batchProposer.TryProposeBatch)
+
+	go cutils.Loop(subCtx, 2*time.Second, l2relayer.ProcessPendingBatches)
 
 	go cutils.Loop(subCtx, 2*time.Second, l2relayer.ProcessCommittedBatches)
 

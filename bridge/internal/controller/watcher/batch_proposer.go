@@ -2,8 +2,8 @@ package watcher
 
 import (
 	"context"
-	"fmt"
 
+	"github.com/scroll-tech/go-ethereum/log"
 	"gorm.io/gorm"
 
 	"scroll-tech/bridge/internal/orm"
@@ -33,17 +33,19 @@ func NewBatchProposer(ctx context.Context, db *gorm.DB) *BatchProposer {
 	return p
 }
 
-func (p *BatchProposer) TryProposeBatch() error {
+func (p *BatchProposer) TryProposeBatch() {
 	dbChunks, err := p.chunkOrm.GetUnbatchedChunks(p.ctx)
 	if err != nil {
-		return fmt.Errorf("failed to get unbatched chunks: %w", err)
+		log.Error("failed to get unbatched chunks: %w", err)
+		return
 	}
 
 	chunks := make([]*bridgeTypes.Chunk, len(dbChunks))
 	for i, chunk := range dbChunks {
 		wrappedBlocks, err := p.l2BlockOrm.GetL2WrappedBlocksRange(chunk.StartBlockNumber, chunk.EndBlockNumber)
 		if err != nil {
-			return fmt.Errorf("failed to get wrapped blocks for chunk: %w", err)
+			log.Error("failed to get wrapped blocks for chunk: %w", err)
+			return
 		}
 
 		chunks[i] = &bridgeTypes.Chunk{
@@ -52,8 +54,8 @@ func (p *BatchProposer) TryProposeBatch() error {
 	}
 
 	if err := p.batchOrm.InsertBatch(p.ctx, chunks, p.chunkOrm, p.l2BlockOrm); err != nil {
-		return fmt.Errorf("failed to insert chunks into batch: %w", err)
+		log.Error("failed to insert chunks into batch: %w", err)
+		return
 	}
-
-	return nil
+	return
 }
