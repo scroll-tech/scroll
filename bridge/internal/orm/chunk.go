@@ -47,6 +47,26 @@ func (c *Chunk) GetChunk(ctx context.Context, hash string) (*Chunk, error) {
 	return &chunk, nil
 }
 
+func (c *Chunk) GetChunksInRange(ctx context.Context, startIndex int, endIndex int) ([]*Chunk, error) {
+	if startIndex > endIndex {
+		return nil, errors.New("start index should be less than or equal to end index")
+	}
+
+	var chunks []*Chunk
+	db := c.db.WithContext(ctx)
+	db = db.Where("index >= ? AND index <= ?", startIndex, endIndex)
+
+	if err := db.Find(&chunks).Error; err != nil {
+		return nil, err
+	}
+
+	if len(chunks) != endIndex-startIndex+1 {
+		return nil, errors.New("number of chunks not expected in the specified range")
+	}
+
+	return chunks, nil
+}
+
 func (c *Chunk) GetUnbatchedChunks(ctx context.Context) ([]*Chunk, error) {
 	var chunks []*Chunk
 	err := c.db.WithContext(ctx).

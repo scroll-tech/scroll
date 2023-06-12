@@ -94,9 +94,7 @@ func (b *Batch) GetBatchCount(ctx context.Context) (int64, error) {
 func (o *L2Block) GetL2WrappedBlocksRange(startBlockNumber, endBlockNumber uint64) ([]*bridgeTypes.WrappedBlock, error) {
 	var l2Blocks []L2Block
 	db := o.db.Select("header, transactions, withdraw_trie_root")
-
 	db = db.Where("number >= ? AND number <= ?", startBlockNumber, endBlockNumber)
-
 	db = db.Order("number asc")
 
 	if err := db.Find(&l2Blocks).Error; err != nil {
@@ -195,7 +193,49 @@ func (c *Batch) GetRollupStatusByHashList(ctx context.Context, hashes []string) 
 	return statuses, nil
 }
 
-func (c *Batch) InsertBatch(ctx context.Context, chunks []*bridgeTypes.Chunk, chunkOrm *Chunk, dbTX ...*gorm.DB) error {
+func (b *Batch) GetPendingBatches(ctx context.Context, limit int) ([]*Batch, error) {
+	if limit <= 0 {
+		return nil, errors.New("limit must be greater than zero")
+	}
+
+	var batches []*Batch
+	db := b.db.WithContext(ctx)
+
+	db = db.Where("rollup_status = ?", types.RollupPending).Order("index ASC").Limit(limit)
+
+	if err := db.Find(&batches).Error; err != nil {
+		return nil, err
+	}
+
+	if len(batches) == 0 {
+		log.Warn("no pending batches in db")
+		return nil, nil
+	}
+
+	return batches, nil
+}
+
+// GetBatchHeader retrieves the header of a batch with a given index
+func (c *Batch) GetBatchHeader(ctx context.Context, index int) (*bridgeTypes.BatchHeader, error) {
+	var batch Batch
+	err := c.db.WithContext(ctx).Where("index = ?", index).First(&batch).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	var batchHeader bridgeTypes.BatchHeader
+	err = json.Unmarshal(batch.BatchHeader, &batchHeader)
+	if err != nil {
+		return nil, err
+	}
+
+	return &batchHeader, nil
+}
+
+func (c *Batch) InsertBatch(ctx context.Context, chunks []*bridgeTypes.Chunk, chunkOrm *Chunk, l2BlockOrm *L2Block, dbTX ...*gorm.DB) error {
 	db := c.db
 	if len(dbTX) > 0 && dbTX[0] != nil {
 		db = dbTX[0]
@@ -239,15 +279,26 @@ func (c *Batch) InsertBatch(ctx context.Context, chunks []*bridgeTypes.Chunk, ch
 		return err
 	}
 
+	var blockNumbers []uint64
 	chunkHashes := make([]string, numChunks)
 	for i, chunk := range chunks {
 		b, _ := chunk.Hash()
 		chunkHashes[i] = hex.EncodeToString(b)
+		for _, block := range chunk.Blocks {
+			blockNumbers = append(blockNumbers, block.Header.Number.Uint64())
+		}
 	}
 
 	err = chunkOrm.UpdateBatchHashForChunks(chunkHashes, tmpBatch.Hash, tx)
 	if err != nil {
 		log.Error("failed to update batch hash for chunks", "err", err)
+		tx.Rollback()
+		return err
+	}
+
+	err = l2BlockOrm.UpdateBatchIndexForL2Blocks(blockNumbers, tmpBatch.Index, tx)
+	if err != nil {
+		log.Error("failed to update batch index for l2 blocks", "err", err)
 		tx.Rollback()
 		return err
 	}

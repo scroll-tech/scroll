@@ -1,7 +1,9 @@
 package orm
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 
 	"github.com/scroll-tech/go-ethereum/common"
 	gethTypes "github.com/scroll-tech/go-ethereum/core/types"
@@ -26,6 +28,7 @@ type L2Block struct {
 	GasUsed          uint64 `json:"gas_used" gorm:"gas_used"`
 	BlockTimestamp   uint64 `json:"block_timestamp" gorm:"block_timestamp"`
 	ChunkHash        string `json:"chunk_hash" gorm:"chunk_hash"`
+	BatchIndex       int    `json:"batch_index" gorm:"batch_index"`
 }
 
 // NewL2Block creates a new L2Block instance
@@ -144,6 +147,44 @@ func (o *L2Block) GetL2Blocks(fields map[string]interface{}, orderByList []strin
 	return l2Blocks, nil
 }
 
+// GetL2BlocksInRange retrieves the L2 blocks within the specified range.
+func (o *L2Block) GetL2BlocksInRange(ctx context.Context, startBlockNumber uint64, endBlockNumber uint64) ([]*types.WrappedBlock, error) {
+	if startBlockNumber > endBlockNumber {
+		return nil, errors.New("start block number should be less than or equal to end block number")
+	}
+
+	var l2Blocks []L2Block
+	db := o.db.WithContext(ctx)
+	db = db.Where("number >= ? AND number <= ?", startBlockNumber, endBlockNumber)
+
+	if err := db.Find(&l2Blocks).Error; err != nil {
+		return nil, err
+	}
+
+	if uint64(len(l2Blocks)) != endBlockNumber-startBlockNumber+1 {
+		return nil, errors.New("number of blocks not expected in the specified range")
+	}
+
+	var wrappedBlocks []*types.WrappedBlock
+	for _, v := range l2Blocks {
+		var wrappedBlock types.WrappedBlock
+
+		if err := json.Unmarshal([]byte(v.Transactions), &wrappedBlock.Transactions); err != nil {
+			return nil, err
+		}
+
+		wrappedBlock.Header = &gethTypes.Header{}
+		if err := json.Unmarshal([]byte(v.Header), wrappedBlock.Header); err != nil {
+			return nil, err
+		}
+
+		wrappedBlock.WithdrawTrieRoot = common.HexToHash(v.WithdrawTrieRoot)
+		wrappedBlocks = append(wrappedBlocks, &wrappedBlock)
+	}
+
+	return wrappedBlocks, nil
+}
+
 // InsertL2Blocks inserts l2 blocks into the "l2_block" table.
 func (o *L2Block) InsertL2Blocks(blocks []*types.WrappedBlock) error {
 	var l2Blocks []L2Block
@@ -189,5 +230,16 @@ func (o *L2Block) UpdateChunkHashForL2Blocks(blockNumbers []uint64, chunkHash st
 	}
 
 	err := db.Model(&L2Block{}).Where("number IN (?)", blockNumbers).Update("chunk_hash", chunkHash).Error
+	return err
+}
+
+// UpdateBatchIndexForL2Blocks updates the batch_index of blocks in the database
+func (o *L2Block) UpdateBatchIndexForL2Blocks(blockNumbers []uint64, batchIndex int, dbTX ...*gorm.DB) error {
+	db := o.db
+	if len(dbTX) > 0 && dbTX[0] != nil {
+		db = dbTX[0]
+	}
+
+	err := db.Model(&L2Block{}).Where("number IN (?)", blockNumbers).Update("batch_index", batchIndex).Error
 	return err
 }
