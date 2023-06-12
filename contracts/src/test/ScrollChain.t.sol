@@ -51,7 +51,7 @@ contract ScrollChainTest is DSTestPlus {
         assembly {
             mstore(add(batchHeader0, add(0x20, 25)), 1)
         }
-        rollup.importGenesisBatch(batchHeader0, bytes32(uint256(1)), bytes32(uint256(0)));
+        rollup.importGenesisBatch(batchHeader0, bytes32(uint256(1)));
 
         // caller not sequencer, revert
         hevm.expectRevert("caller not sequencer");
@@ -133,7 +133,7 @@ contract ScrollChainTest is DSTestPlus {
         assembly {
             mstore(add(batchHeader0, add(0x20, 25)), 1)
         }
-        rollup.importGenesisBatch(batchHeader0, bytes32(uint256(1)), bytes32(uint256(0)));
+        rollup.importGenesisBatch(batchHeader0, bytes32(uint256(1)));
         bytes32 batchHash0 = rollup.committedBatches(0);
 
         bytes[] memory chunks = new bytes[](1);
@@ -224,7 +224,7 @@ contract ScrollChainTest is DSTestPlus {
         assembly {
             mstore(add(batchHeader0, add(0x20, 25)), 1)
         }
-        rollup.importGenesisBatch(batchHeader0, bytes32(uint256(1)), bytes32(uint256(0)));
+        rollup.importGenesisBatch(batchHeader0, bytes32(uint256(1)));
         bytes32 batchHash0 = rollup.committedBatches(0);
 
         bytes memory bitmap;
@@ -239,28 +239,28 @@ contract ScrollChainTest is DSTestPlus {
         //   0000000000000000000000000000000000000000000000000000000000000000
         //   0000000000000000
         //   0001
-        //   50c3caa727394b95dc4885b7d25033ed22ac772b985fb274f2a7c0699a11346d
+        //   a2277fd30bbbe74323309023b56035b376d7768ad237ae4fc46ead7dc9591ae1
         // => data hash for chunk0
-        //   bb88f47194a07d59ed17bc9b2015f83d0afea8f7892d9c5f0b6565563bf06b26
+        //   9ef1e5694bdb014a1eea42be756a8f63bfd8781d6332e9ef3b5126d90c62f110
         // => data hash for all chunks
-        //   038433daac85a0b03cd443ed50bc85e832c883061651ae2182b2984751e0b340
+        //   d9cb6bf9264006fcea490d5c261f7453ab95b1b26033a3805996791b8e3a62f3
         // => payload for batch header
         //   00
-        //   0000000000000002
         //   0000000000000001
         //   0000000000000001
-        //   038433daac85a0b03cd443ed50bc85e832c883061651ae2182b2984751e0b340
+        //   0000000000000001
+        //   d9cb6bf9264006fcea490d5c261f7453ab95b1b26033a3805996791b8e3a62f3
         //   119b828c2a2798d2c957228ebeaff7e10bb099ae0d4e224f3eeb779ff61cba61
         //   0000000000000000000000000000000000000000000000000000000000000000
         // => hash for batch header
-        //   cef70bf80683c4d9b8b2813e90c314e8c56648e231300b8cfed9d666b0caf14e
+        //   00847173b29b238cf319cde79512b7c213e5a8b4138daa7051914c4592b6dfc7
         bytes memory batchHeader1 = new bytes(89 + 32);
         assembly {
             mstore(add(batchHeader1, 0x20), 0) // version
             mstore(add(batchHeader1, add(0x20, 1)), shl(192, 1)) // batchIndex = 1
             mstore(add(batchHeader1, add(0x20, 9)), shl(192, 1)) // l1MessagePopped = 1
             mstore(add(batchHeader1, add(0x20, 17)), shl(192, 1)) // totalL1MessagePopped = 1
-            mstore(add(batchHeader1, add(0x20, 25)), 0x038433daac85a0b03cd443ed50bc85e832c883061651ae2182b2984751e0b340) // dataHash
+            mstore(add(batchHeader1, add(0x20, 25)), 0xd9cb6bf9264006fcea490d5c261f7453ab95b1b26033a3805996791b8e3a62f3) // dataHash
             mstore(add(batchHeader1, add(0x20, 57)), batchHash0) // parentBatchHash
             mstore(add(batchHeader1, add(0x20, 89)), 0) // bitmap0
         }
@@ -276,7 +276,7 @@ contract ScrollChainTest is DSTestPlus {
         rollup.commitBatch(0, batchHeader0, chunks, bitmap);
         assertBoolEq(rollup.isBatchFinalized(1), false);
         bytes32 batchHash1 = rollup.committedBatches(1);
-        assertEq(batchHash1, bytes32(0xcef70bf80683c4d9b8b2813e90c314e8c56648e231300b8cfed9d666b0caf14e));
+        assertEq(batchHash1, bytes32(0x00847173b29b238cf319cde79512b7c213e5a8b4138daa7051914c4592b6dfc7));
 
         // finalize batch1
         rollup.finalizeBatchWithProof(
@@ -326,26 +326,26 @@ contract ScrollChainTest is DSTestPlus {
         //    012c
         //    ... (some tx hashes)
         //   => data hash for chunk2
-        //    5c91563ee8be18cb94accfc83728f883ff5e3aa600fd0799e0a4e39afc7970b9
+        //    0520f1fbe159af97fdf1d6cfcfe7605f99f7bfe3ed876e87b64250b1810df00b
         // => data hash for all chunks
-        //   bf38f308e0a87ed7bf92fa2da038fa1d59a7b9801eb0f6d487f8eef528632145
+        //   f52343299f6379fd15b20b23d51fc61b9b357b124be112686626b6278bcffa83
         // => payload for batch header
         //  00
         //  0000000000000002
         //  0000000000000108
         //  0000000000000109
-        //  bf38f308e0a87ed7bf92fa2da038fa1d59a7b9801eb0f6d487f8eef528632145
+        //  f52343299f6379fd15b20b23d51fc61b9b357b124be112686626b6278bcffa83
         //  cef70bf80683c4d9b8b2813e90c314e8c56648e231300b8cfed9d666b0caf14e
         //  aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa800000000000000000000000000000000000000000000000000000000000000aa
         // => hash for batch header
-        //  17fe6c12739f3a6261ae6db6486f41758dbd5d0508f19a5ca9ac37df67bbfec2
+        //  2231cf185a5c07931584f970738b4cd2ae4fb39e2d90853b26746c7616ea71b9
         bytes memory batchHeader2 = new bytes(89 + 32 + 32);
         assembly {
             mstore(add(batchHeader2, 0x20), 0) // version
             mstore(add(batchHeader2, add(0x20, 1)), shl(192, 2)) // batchIndex = 2
             mstore(add(batchHeader2, add(0x20, 9)), shl(192, 264)) // l1MessagePopped = 264
             mstore(add(batchHeader2, add(0x20, 17)), shl(192, 265)) // totalL1MessagePopped = 265
-            mstore(add(batchHeader2, add(0x20, 25)), 0xbf38f308e0a87ed7bf92fa2da038fa1d59a7b9801eb0f6d487f8eef528632145) // dataHash
+            mstore(add(batchHeader2, add(0x20, 25)), 0xf52343299f6379fd15b20b23d51fc61b9b357b124be112686626b6278bcffa83) // dataHash
             mstore(add(batchHeader2, add(0x20, 57)), batchHash1) // parentBatchHash
             mstore(
                 add(batchHeader2, add(0x20, 89)),
@@ -394,7 +394,7 @@ contract ScrollChainTest is DSTestPlus {
         rollup.commitBatch(0, batchHeader1, chunks, bitmap);
         assertBoolEq(rollup.isBatchFinalized(2), false);
         bytes32 batchHash2 = rollup.committedBatches(2);
-        assertEq(batchHash2, bytes32(0x17fe6c12739f3a6261ae6db6486f41758dbd5d0508f19a5ca9ac37df67bbfec2));
+        assertEq(batchHash2, bytes32(0x2231cf185a5c07931584f970738b4cd2ae4fb39e2d90853b26746c7616ea71b9));
 
         // verify committed batch correctly
         rollup.finalizeBatchWithProof(
@@ -446,7 +446,7 @@ contract ScrollChainTest is DSTestPlus {
         assembly {
             mstore(add(batchHeader0, add(0x20, 25)), 1)
         }
-        rollup.importGenesisBatch(batchHeader0, bytes32(uint256(1)), bytes32(uint256(0)));
+        rollup.importGenesisBatch(batchHeader0, bytes32(uint256(1)));
         bytes32 batchHash0 = rollup.committedBatches(0);
 
         bytes[] memory chunks = new bytes[](1);
@@ -536,52 +536,52 @@ contract ScrollChainTest is DSTestPlus {
         // zero state root, revert
         batchHeader = new bytes(89);
         hevm.expectRevert("zero state root");
-        rollup.importGenesisBatch(batchHeader, bytes32(0), bytes32(0));
+        rollup.importGenesisBatch(batchHeader, bytes32(0));
 
         // batch header length too small, revert
         batchHeader = new bytes(88);
         hevm.expectRevert("batch header length too small");
-        rollup.importGenesisBatch(batchHeader, bytes32(uint256(1)), bytes32(0));
+        rollup.importGenesisBatch(batchHeader, bytes32(uint256(1)));
 
         // wrong bitmap length, revert
         batchHeader = new bytes(90);
         hevm.expectRevert("wrong bitmap length");
-        rollup.importGenesisBatch(batchHeader, bytes32(uint256(1)), bytes32(0));
+        rollup.importGenesisBatch(batchHeader, bytes32(uint256(1)));
 
         // not all fields are zero, revert
         batchHeader = new bytes(89);
         batchHeader[0] = bytes1(uint8(1)); // version not zero
         hevm.expectRevert("not all fields are zero");
-        rollup.importGenesisBatch(batchHeader, bytes32(uint256(1)), bytes32(0));
+        rollup.importGenesisBatch(batchHeader, bytes32(uint256(1)));
 
         batchHeader = new bytes(89);
         batchHeader[1] = bytes1(uint8(1)); // batchIndex not zero
         hevm.expectRevert("not all fields are zero");
-        rollup.importGenesisBatch(batchHeader, bytes32(uint256(1)), bytes32(0));
+        rollup.importGenesisBatch(batchHeader, bytes32(uint256(1)));
 
         batchHeader = new bytes(89 + 32);
         assembly {
             mstore(add(batchHeader, add(0x20, 9)), shl(192, 1)) // l1MessagePopped not zero
         }
         hevm.expectRevert("not all fields are zero");
-        rollup.importGenesisBatch(batchHeader, bytes32(uint256(1)), bytes32(0));
+        rollup.importGenesisBatch(batchHeader, bytes32(uint256(1)));
 
         batchHeader = new bytes(89);
         batchHeader[17] = bytes1(uint8(1)); // totalL1MessagePopped not zero
         hevm.expectRevert("not all fields are zero");
-        rollup.importGenesisBatch(batchHeader, bytes32(uint256(1)), bytes32(0));
+        rollup.importGenesisBatch(batchHeader, bytes32(uint256(1)));
 
         // zero data hash, revert
         batchHeader = new bytes(89);
         hevm.expectRevert("zero data hash");
-        rollup.importGenesisBatch(batchHeader, bytes32(uint256(1)), bytes32(0));
+        rollup.importGenesisBatch(batchHeader, bytes32(uint256(1)));
 
         // nonzero parent batch hash, revert
         batchHeader = new bytes(89);
         batchHeader[25] = bytes1(uint8(1)); // dataHash not zero
         batchHeader[57] = bytes1(uint8(1)); // parentBatchHash not zero
         hevm.expectRevert("nonzero parent batch hash");
-        rollup.importGenesisBatch(batchHeader, bytes32(uint256(1)), bytes32(0));
+        rollup.importGenesisBatch(batchHeader, bytes32(uint256(1)));
 
         // import correctly
         batchHeader = new bytes(89);
@@ -589,13 +589,13 @@ contract ScrollChainTest is DSTestPlus {
         assertEq(rollup.finalizedStateRoots(0), bytes32(0));
         assertEq(rollup.withdrawRoots(0), bytes32(0));
         assertEq(rollup.committedBatches(0), bytes32(0));
-        rollup.importGenesisBatch(batchHeader, bytes32(uint256(1)), bytes32(uint256(2)));
+        rollup.importGenesisBatch(batchHeader, bytes32(uint256(1)));
         assertEq(rollup.finalizedStateRoots(0), bytes32(uint256(1)));
-        assertEq(rollup.withdrawRoots(0), bytes32(uint256(2)));
+        assertEq(rollup.withdrawRoots(0), bytes32(0));
         assertGt(uint256(rollup.committedBatches(0)), 0);
 
         // Genesis batch imported, revert
         hevm.expectRevert("Genesis batch imported");
-        rollup.importGenesisBatch(batchHeader, bytes32(uint256(1)), bytes32(uint256(2)));
+        rollup.importGenesisBatch(batchHeader, bytes32(uint256(1)));
     }
 }
