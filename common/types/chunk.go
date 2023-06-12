@@ -92,33 +92,25 @@ func (c *Chunk) Hash() ([]byte, error) {
 	}
 
 	// concatenate l1 and l2 tx hashes
-	var l1TxHashes []byte
-	var l2TxHashes []byte
 	for _, block := range c.Blocks {
+		var l1TxHashes []byte
+		var l2TxHashes []byte
 		for _, txData := range block.Transactions {
-			// concatenate l1 message hashes
-			if txData.Type == 0x7E {
-				txHash := strings.TrimPrefix(txData.TxHash, "0x")
-				hashBytes, err := hex.DecodeString(txHash)
-				if err != nil {
-					return nil, err
-				}
-				l1TxHashes = append(l1TxHashes, hashBytes...)
-				continue
-			}
-			// concatenate l2 txs hashes
-			// retrieve the number of transactions in current block.
 			txHash := strings.TrimPrefix(txData.TxHash, "0x")
 			hashBytes, err := hex.DecodeString(txHash)
 			if err != nil {
 				return nil, err
 			}
-			l2TxHashes = append(l2TxHashes, hashBytes...)
+			if txData.Type == 0x7E {
+				l1TxHashes = append(l1TxHashes, hashBytes...)
+			} else {
+				l2TxHashes = append(l2TxHashes, hashBytes...)
+			}
 		}
+		dataBytes = append(dataBytes, l1TxHashes...)
+		dataBytes = append(dataBytes, l2TxHashes...)
 	}
 
-	dataBytes = append(dataBytes, l1TxHashes...)
-	dataBytes = append(dataBytes, l2TxHashes...)
 	hash := crypto.Keccak256Hash(dataBytes).Bytes()
 	return hash, nil
 }
