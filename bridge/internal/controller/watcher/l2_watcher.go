@@ -121,14 +121,12 @@ func (w *L2WatcherClient) initializeGenesis() error {
 
 	log.Info("retrieved L2 genesis header", "hash", genesis.Hash().String())
 
-	// Create a chunk with no transactions and a batch containing this chunk
-	block := &bridgeTypes.WrappedBlock{
-		Header:           genesis,
-		Transactions:     nil,
-		WithdrawTrieRoot: common.Hash{},
-	}
 	chunk := &bridgeTypes.Chunk{
-		Blocks: []*bridgeTypes.WrappedBlock{block},
+		Blocks: []*bridgeTypes.WrappedBlock{{
+			Header:           genesis,
+			Transactions:     nil,
+			WithdrawTrieRoot: common.Hash{},
+		}},
 	}
 
 	chunkHashBytes, err := chunk.Hash()
@@ -136,21 +134,21 @@ func (w *L2WatcherClient) initializeGenesis() error {
 		return fmt.Errorf("failed to get L2 genesis chunk hash: %v", err)
 	}
 	chunkHash := string(chunkHashBytes)
-	batch := bridgeTypes.NewBatch(0, 0, 0, common.Hash{}, []*bridgeTypes.Chunk{chunk})
+	batch, err := bridgeTypes.NewBatchHeader(0, 0, 0, common.Hash{}, []*bridgeTypes.Chunk{chunk})
+	if err != nil {
+		return fmt.Errorf("failed to get L2 genesis batch header: %v", err)
+	}
 	batchHash := batch.Hash().Hex()
 
 	err = w.db.Transaction(func(tx *gorm.DB) error {
-		// Insert block_tx
 		if err := w.l2BlockOrm.UpdateChunkHashForL2Blocks([]uint64{genesis.Number.Uint64()}, batchHash, tx); err != nil {
 			return fmt.Errorf("failed to update batch hash for L2 blocks: %v", err)
 		}
 
-		// Insert chunk
-		if err := w.chunkOrm.InsertChunk(w.ctx, chunk, tx); err != nil {
+		if err := w.chunkOrm.InsertChunk(w.ctx, chunk, w.l2BlockOrm, tx); err != nil {
 			return fmt.Errorf("failed to insert chunk: %v", err)
 		}
 
-		// Update proving status of the batch
 		updateField := map[string]interface{}{
 			"proving_status": types.ProvingTaskVerified,
 		}
@@ -158,7 +156,6 @@ func (w *L2WatcherClient) initializeGenesis() error {
 			return fmt.Errorf("failed to update genesis chunk proving status: %v", err)
 		}
 
-		// Update proving status and rollup status of the batch
 		updateField = map[string]interface{}{
 			"proving_status": types.ProvingTaskVerified,
 			"rollup_status":  types.RollupFinalized,

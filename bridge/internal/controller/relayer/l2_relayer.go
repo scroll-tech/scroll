@@ -306,7 +306,6 @@ func (r *Layer2Relayer) ProcessGasPriceOracle() {
 				log.Error("Failed to update gas oracle status and oracle tx hash", "batch.Hash", batch.Hash, "err", err)
 				return
 			}
-
 			r.lastGasPrice = suggestGasPriceUint64
 			log.Info("Update l2 gas price", "txHash", hash.String(), "GasPrice", suggestGasPrice)
 		}
@@ -550,8 +549,7 @@ func (r *Layer2Relayer) handleConfirmation(confirmation *sender.Confirmation) {
 				"finalize_tx_hash": confirmation.TxHash.String(),
 				"rollup_status":    status,
 			}
-			err := r.batchOrm.UpdateBatch(r.ctx, batchHash, updateFields)
-			if err != nil {
+			if err := r.batchOrm.UpdateBatch(r.ctx, batchHash, updateFields); err != nil {
 				log.Warn("UpdateBatch failed", "batch_hash", batchHash, "err", err)
 			}
 		}
@@ -574,8 +572,7 @@ func (r *Layer2Relayer) handleConfirmation(confirmation *sender.Confirmation) {
 			"finalize_tx_hash": confirmation.TxHash.String(),
 			"rollup_status":    status,
 		}
-		err := r.batchOrm.UpdateBatch(r.ctx, batchHash.(string), updateFields)
-		if err != nil {
+		if err := r.batchOrm.UpdateBatch(r.ctx, batchHash.(string), updateFields); err != nil {
 			log.Warn("UpdateBatch failed", "batch_hash", batchHash.(string), "err", err)
 		}
 		bridgeL2BatchesFinalizedConfirmedTotalCounter.Inc(1)
@@ -614,36 +611,4 @@ func (r *Layer2Relayer) handleConfirmLoop(ctx context.Context) {
 			}
 		}
 	}
-}
-
-func getBatchHeaderForBatch(batch *orm.Batch) (*bridgeTypes.BatchHeader, error) {
-	chunks, err := getChunksForBatch(batch)
-	if err != nil {
-		return nil, err
-	}
-
-	version := uint8(0)
-	batchIndex := uint64(batch.Index)
-	totalL1MessagePoppedBefore, err := getTotalL1MessagesPoppedBefore(batchIndex)
-	if err != nil {
-		return nil, err
-	}
-
-	// Fetch the parent batch's hash, if applicable
-	var parentBatchHash common.Hash
-	if batchIndex > 0 {
-		parentBatch, err := getBatchByIndex(batchIndex - 1)
-		if err != nil {
-			return nil, err
-		}
-		parentBatchHash = common.HexToHash(parentBatch.Hash)
-	}
-
-	// Create new batch header
-	batchHeader, err := bridgeTypes.NewBatchHeader(version, batchIndex, totalL1MessagePoppedBefore, parentBatchHash, chunks)
-	if err != nil {
-		return nil, err
-	}
-
-	return batchHeader, nil
 }

@@ -182,10 +182,10 @@ func (o *L2Block) InsertL2Blocks(blocks []*types.WrappedBlock) error {
 }
 
 // UpdateChunkHashForL2Blocks update the chunk_hash of block tx
-func (o *L2Block) UpdateChunkHashForL2Blocks(blockNumbers []uint64, chunkHash string, tx ...*gorm.DB) error {
+func (o *L2Block) UpdateChunkHashForL2Blocks(blockNumbers []uint64, chunkHash string, dbTX ...*gorm.DB) error {
 	db := o.db
-	if len(tx) > 0 && tx[0] != nil {
-		db = tx[0]
+	if len(dbTX) > 0 && dbTX[0] != nil {
+		db = dbTX[0]
 	}
 
 	err := db.Model(&L2Block{}).Where("number IN (?)", blockNumbers).Update("chunk_hash", chunkHash).Error

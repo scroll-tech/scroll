@@ -81,6 +81,15 @@ func (c *Batch) GetBatches(ctx context.Context, fields map[string]interface{}, o
 	return batches, nil
 }
 
+func (b *Batch) GetBatchCount(ctx context.Context) (int64, error) {
+	var count int64
+	err := b.db.WithContext(ctx).Model(&Batch{}).Count(&count).Error
+	if err != nil {
+		return 0, err
+	}
+	return count, nil
+}
+
 // GetL2WrappedBlocksRange get the l2 wrapped blocks in a specific range
 func (o *L2Block) GetL2WrappedBlocksRange(startBlockNumber, endBlockNumber uint64) ([]*bridgeTypes.WrappedBlock, error) {
 	var l2Blocks []L2Block

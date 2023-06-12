@@ -39,19 +39,19 @@ func (p *BatchProposer) TryProposeBatch() error {
 		return fmt.Errorf("failed to get unbatched chunks: %w", err)
 	}
 
-	bridgeChunks := make([]*bridgeTypes.Chunk, len(dbChunks))
+	chunks := make([]*bridgeTypes.Chunk, len(dbChunks))
 	for i, chunk := range dbChunks {
 		wrappedBlocks, err := p.l2BlockOrm.GetL2WrappedBlocksRange(chunk.StartBlockNumber, chunk.EndBlockNumber)
 		if err != nil {
 			return fmt.Errorf("failed to get wrapped blocks for chunk: %w", err)
 		}
 
-		bridgeChunks[i] = &bridgeTypes.Chunk{
+		chunks[i] = &bridgeTypes.Chunk{
 			Blocks: wrappedBlocks,
 		}
 	}
 
-	if err := p.batchOrm.InsertBatch(p.ctx, bridgeChunks, p.chunkOrm); err != nil {
+	if err := p.batchOrm.InsertBatch(p.ctx, chunks, p.chunkOrm); err != nil {
 		return fmt.Errorf("failed to insert chunks into batch: %w", err)
 	}
 

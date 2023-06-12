@@ -147,9 +147,14 @@ func (w *L1WatcherClient) FetchBlockHeader(blockHeight uint64) error {
 			log.Warn("Failed to get block", "height", height, "err", err)
 			break
 		}
+		var baseFee uint64
+		if block.BaseFee != nil {
+			baseFee = block.BaseFee.Uint64()
+		}
 		blocks = append(blocks, orm.L1Block{
-			Number: uint64(height),
-			Hash:   block.Hash().String(),
+			Number:  uint64(height),
+			Hash:    block.Hash().String(),
+			BaseFee: baseFee,
 		})
 	}
 
@@ -260,15 +265,14 @@ func (w *L1WatcherClient) FetchContractEvent() error {
 						"finalize_tx_hash": event.txHash.String(),
 						"rollup_status":    types.RollupFinalized,
 					}
-					err = w.l1BatchOrm.UpdateChunkBatch(w.ctx, batchHash, updateFields)
+					err = w.l1BatchOrm.UpdateBatch(w.ctx, batchHash, updateFields)
 				} else if event.status == types.RollupCommitted {
 					updateFields := map[string]interface{}{
 						"commit_tx_hash": event.txHash.String(),
 						"rollup_status":  types.RollupCommitted,
 					}
-					err = w.l1BatchOrm.UpdateChunkBatch(w.ctx, batchHash, updateFields)
+					err = w.l1BatchOrm.UpdateBatch(w.ctx, batchHash, updateFields)
 				}
-
 				if err != nil {
 					log.Error("Failed to update Rollup/Finalize TxHash and Status", "err", err)
 					return err
