@@ -25,6 +25,7 @@ type Batch struct {
 	StartChunkHash   string     `json:"start_chunk_hash" gorm:"column:start_chunk_hash"`
 	EndChunkIndex    int        `json:"end_chunk_index" gorm:"column:end_chunk_index"`
 	EndChunkHash     string     `json:"end_chunk_hash" gorm:"column:end_chunk_hash"`
+	BatchHeader      []byte     `json:"batch_header" gorm:"column:batch_header"`
 	StateRoot        string     `json:"state_root" gorm:"column:state_root"`
 	WithdrawRoot     string     `json:"withdraw_root" gorm:"column:withdraw_root"`
 	Proof            []byte     `json:"proof" gorm:"column:proof"`
@@ -120,21 +121,6 @@ func (c *Batch) GetLatestBatchByRollupStatus(statuses []types.RollupStatus) (*Ba
 		return nil, err
 	}
 	return &batch, nil
-}
-
-func (c *Batch) GetBatch(ctx context.Context, hash string) (*Batch, error) {
-	var batch Batch
-	err := c.db.WithContext(ctx).Where("hash", hash).First(&batch).Error
-	if err != nil {
-		return nil, err
-	}
-	return &batch, nil
-}
-
-func (c *Batch) GetBatchCount(ctx context.Context) (int64, error) {
-	var count int64
-	err := c.db.WithContext(ctx).Model(&Batch{}).Count(&count).Error
-	return count, err
 }
 
 func (c *Batch) GetRollupStatusByHashList(ctx context.Context, hashes []string) ([]types.RollupStatus, error) {

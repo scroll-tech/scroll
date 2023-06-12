@@ -465,13 +465,9 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 			return
 		}
 
-		// TODO: You need to get and encode the BatchHeader to bytes.
-		// Here, I'm just using an empty byte slice as a placeholder.
-		batchHeaderBytes := []byte{}
-
 		data, err := r.l1RollupABI.Pack(
 			"finalizeBatchWithProof",
-			batchHeaderBytes,
+			batch.BatchHeader,
 			common.HexToHash(previousBatch.StateRoot),
 			common.HexToHash(batch.StateRoot),
 			common.HexToHash(batch.WithdrawRoot),
