@@ -23,9 +23,11 @@ type BatchProposer struct {
 // NewBatchProposer will return a new instance of BatchProposer.
 func NewBatchProposer(ctx context.Context, db *gorm.DB) *BatchProposer {
 	p := &BatchProposer{
-		ctx:      ctx,
-		db:       db,
-		batchOrm: orm.NewBatch(db),
+		ctx:        ctx,
+		db:         db,
+		batchOrm:   orm.NewBatch(db),
+		l2BlockOrm: orm.NewL2Block(db),
+		chunkOrm:   orm.NewChunk(db),
 	}
 
 	return p
@@ -49,11 +51,9 @@ func (p *BatchProposer) TryProposeBatch() error {
 		}
 	}
 
-	if err := p.batchOrm.InsertBatch(p.ctx, bridgeChunks); err != nil {
+	if err := p.batchOrm.InsertBatch(p.ctx, bridgeChunks, p.chunkOrm); err != nil {
 		return fmt.Errorf("failed to insert chunks into batch: %w", err)
 	}
-
-	// TODO: fill l2_block's batch index.
 
 	return nil
 }

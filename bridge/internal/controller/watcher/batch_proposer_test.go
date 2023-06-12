@@ -169,13 +169,13 @@ func testBatchProposerGracefulRestart(t *testing.T) {
 		}
 		numbers1 := []uint64{batchData1.Batch.Blocks[0].BlockNumber}
 		hash1 := batchData1.Hash().Hex()
-		dbTxErr = blockTraceOrm.UpdateBatchHashForL2Blocks(tx, numbers1, hash1)
+		dbTxErr = blockTraceOrm.UpdateChunkHashForL2Blocks(tx, numbers1, hash1)
 		if dbTxErr != nil {
 			return dbTxErr
 		}
 		numbers2 := []uint64{batchData2.Batch.Blocks[0].BlockNumber}
 		hash2 := batchData2.Hash().Hex()
-		dbTxErr = blockTraceOrm.UpdateBatchHashForL2Blocks(tx, numbers2, hash2)
+		dbTxErr = blockTraceOrm.UpdateChunkHashForL2Blocks(tx, numbers2, hash2)
 		if dbTxErr != nil {
 			return dbTxErr
 		}

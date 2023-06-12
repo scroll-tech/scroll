@@ -59,10 +59,10 @@ func (c *Chunk) GetUnbatchedChunks(ctx context.Context) ([]*Chunk, error) {
 	return chunks, nil
 }
 
-func (c *Chunk) InsertChunk(ctx context.Context, chunk *types.Chunk, tx ...*gorm.DB) error {
+func (c *Chunk) InsertChunk(ctx context.Context, chunk *types.Chunk, l2BlockOrm *L2Block, dbTX ...*gorm.DB) error {
 	db := c.db
-	if len(tx) > 0 && tx[0] != nil {
-		db = tx[0]
+	if len(dbTX) > 0 && dbTX[0] != nil {
+		db = dbTX[0]
 	}
 
 	hash, err := chunk.Hash()
@@ -84,18 +84,54 @@ func (c *Chunk) InsertChunk(ctx context.Context, chunk *types.Chunk, tx ...*gorm
 		EndBlockHash:     chunk.Blocks[numBlocks-1].Header.Hash().Hex(),
 	}
 
-	if err := db.WithContext(ctx).Create(&tmpChunk).Error; err != nil {
+	// Start a new transaction
+	tx := db.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	if err := tx.Create(&tmpChunk).Error; err != nil {
 		log.Error("failed to insert chunk", "hash", hash, "err", err)
+		tx.Rollback()
 		return err
 	}
+
+	blockNumbers := make([]uint64, numBlocks)
+	for i, block := range chunk.Blocks {
+		blockNumbers[i] = block.Header.Number.Uint64()
+	}
+
+	// Update the chunk_hash for all blocks in the chunk
+	if err := l2BlockOrm.UpdateChunkHashForL2Blocks(blockNumbers, tmpChunk.Hash, tx); err != nil {
+		log.Error("failed to update chunk_hash for l2_blocks", "chunk_hash", tmpChunk.Hash, "block_numbers", blockNumbers, "err", err)
+		tx.Rollback()
+		return err
+	}
+
+	// If all operations succeed, then commit the transaction
+	tx.Commit()
 	return nil
 }
 
-func (c *Chunk) UpdateChunk(ctx context.Context, hash string, updateFields map[string]interface{}, tx ...*gorm.DB) error {
+func (c *Chunk) UpdateChunk(ctx context.Context, hash string, updateFields map[string]interface{}, dbTX ...*gorm.DB) error {
 	db := c.db
-	if len(tx) > 0 && tx[0] != nil {
-		db = tx[0]
+	if len(dbTX) > 0 && dbTX[0] != nil {
+		db = dbTX[0]
 	}
 	err := db.Model(&Chunk{}).WithContext(ctx).Where("hash", hash).Updates(updateFields).Error
+	return err
+}
+
+func (c *Chunk) UpdateBatchHashForChunks(chunkHashes []string, batchHash string, dbTX *gorm.DB) error {
+	err := dbTX.Model(&Chunk{}).
+		Where("hash IN ?", chunkHashes).
+		Update("batch_hash", batchHash).
+		Error
+
+	if err != nil {
+		log.Error("failed to update batch_hash for chunks", "err", err)
+	}
 	return err
 }

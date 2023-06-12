@@ -85,7 +85,7 @@ func testCommitBatchAndFinalizeBatch(t *testing.T) {
 		for i, block := range batchData.Batch.Blocks {
 			blockIDs[i] = block.BlockNumber
 		}
-		dbTxErr = blockTraceOrm.UpdateBatchHashForL2Blocks(tx, blockIDs, batchHash)
+		dbTxErr = blockTraceOrm.UpdateChunkHashForL2Blocks(tx, blockIDs, batchHash)
 		if dbTxErr != nil {
 			return dbTxErr
 		}

@@ -186,10 +186,10 @@ func (c *Batch) GetRollupStatusByHashList(ctx context.Context, hashes []string) 
 	return statuses, nil
 }
 
-func (c *Batch) InsertBatch(ctx context.Context, chunks []*bridgeTypes.Chunk, tx ...*gorm.DB) error {
+func (c *Batch) InsertBatch(ctx context.Context, chunks []*bridgeTypes.Chunk, chunkOrm *Chunk, dbTX ...*gorm.DB) error {
 	db := c.db
-	if len(tx) > 0 && tx[0] != nil {
-		db = tx[0]
+	if len(dbTX) > 0 && dbTX[0] != nil {
+		db = dbTX[0]
 	}
 
 	numChunks := len(chunks)
@@ -217,14 +217,40 @@ func (c *Batch) InsertBatch(ctx context.Context, chunks []*bridgeTypes.Chunk, tx
 		WithdrawRoot:   chunks[numChunks-1].Blocks[lastChunkBlockNum-1].WithdrawTrieRoot.Hex(),
 	}
 
-	err = db.WithContext(ctx).Create(&tmpBatch).Error
-	return err
+	tx := db.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	if err := tx.WithContext(ctx).Create(&tmpBatch).Error; err != nil {
+		log.Error("failed to insert batch", "err", err)
+		tx.Rollback()
+		return err
+	}
+
+	chunkHashes := make([]string, numChunks)
+	for i, chunk := range chunks {
+		b, _ := chunk.Hash()
+		chunkHashes[i] = hex.EncodeToString(b)
+	}
+
+	err = chunkOrm.UpdateBatchHashForChunks(chunkHashes, tmpBatch.Hash, tx)
+	if err != nil {
+		log.Error("failed to update batch hash for chunks", "err", err)
+		tx.Rollback()
+		return err
+	}
+
+	tx.Commit()
+	return nil
 }
 
-func (c *Batch) UpdateBatch(ctx context.Context, hash string, updateFields map[string]interface{}, tx ...*gorm.DB) error {
+func (c *Batch) UpdateBatch(ctx context.Context, hash string, updateFields map[string]interface{}, dbTX ...*gorm.DB) error {
 	db := c.db
-	if len(tx) > 0 && tx[0] != nil {
-		db = tx[0]
+	if len(dbTX) > 0 && dbTX[0] != nil {
+		db = dbTX[0]
 	}
 	err := db.Model(&Batch{}).WithContext(ctx).Where("hash", hash).Updates(updateFields).Error
 	return err

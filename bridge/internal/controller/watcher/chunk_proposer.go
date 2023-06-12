@@ -27,22 +27,18 @@ func NewChunkProposer(ctx context.Context, db *gorm.DB) *ChunkProposer {
 	}
 }
 
-func (c *ChunkProposer) TryProposeChunk() {
+func (p *ChunkProposer) TryProposeChunk() {
 	// TODO: refine strategy
-	wrappedBlocks, err := c.l2BlockOrm.GetUnchunkedBlocks()
+	wrappedBlocks, err := p.l2BlockOrm.GetUnchunkedBlocks()
 	if err != nil {
 		log.Error("GetUnchunkedBlocks", "err", err)
 		return
 	}
 
-	if err := c.chunkOrm.InsertChunk(c.ctx, &types.Chunk{
-		Blocks: wrappedBlocks,
-	}); err != nil {
+	if err := p.chunkOrm.InsertChunk(p.ctx, &types.Chunk{Blocks: wrappedBlocks}, p.l2BlockOrm); err != nil {
 		log.Error("InsertChunk failed", "err", err)
 		return
 	}
-
-	// TODO: fill chunk hash
 
 	return
 }

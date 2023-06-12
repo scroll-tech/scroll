@@ -28,7 +28,7 @@ func AddBatchInfoToDB(db *gorm.DB, batchData *bridgeTypes.BatchData) error {
 			blockIDs[i] = block.BlockNumber
 		}
 
-		dbTxErr = blockTx.UpdateBatchHashForL2Blocks(tx, blockIDs, batchData.Hash().Hex())
+		dbTxErr = blockTx.UpdateChunkHashForL2Blocks(tx, blockIDs, batchData.Hash().Hex())
 		if dbTxErr != nil {
 			return dbTxErr
 		}

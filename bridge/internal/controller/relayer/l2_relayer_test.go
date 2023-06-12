@@ -106,7 +106,7 @@ func testL2RelayerProcessSaveEvents(t *testing.T) {
 			dbTxErr = errors.New("the InsertBlockBatchByBatchData affected row is not 1")
 			return dbTxErr
 		}
-		dbTxErr = blockTraceOrm.UpdateBatchHashForL2Blocks(tx, []uint64{1}, batchHash)
+		dbTxErr = blockTraceOrm.UpdateChunkHashForL2Blocks(tx, []uint64{1}, batchHash)
 		if dbTxErr != nil {
 			return dbTxErr
 		}
