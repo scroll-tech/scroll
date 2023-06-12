@@ -52,12 +52,20 @@ func (o *L2Block) GetL2BlocksLatestHeight() (int64, error) {
 }
 
 // GetL2WrappedBlocks get the l2 wrapped blocks
-func (o *L2Block) GetL2WrappedBlocks(fields map[string]interface{}) ([]*types.WrappedBlock, error) {
+func (o *L2Block) GetL2WrappedBlocks(fields map[string]interface{}, orderByList []string, limit int) ([]*types.WrappedBlock, error) {
 	var l2Blocks []L2Block
 	db := o.db.Select("header, transactions, withdraw_trie_root")
 
 	for key, value := range fields {
 		db = db.Where(key, value)
+	}
+
+	for _, orderBy := range orderByList {
+		db = db.Order(orderBy)
+	}
+
+	if limit != 0 {
+		db = db.Limit(limit)
 	}
 
 	if err := db.Find(&l2Blocks).Error; err != nil {

@@ -76,6 +76,12 @@ func action(ctx *cli.Context) error {
 		return err
 	}
 
+	chunkProposer := watcher.NewChunkProposer(subCtx, db)
+	if err != nil {
+		log.Error("failed to create chunkProposer", "error", err)
+		return err
+	}
+
 	batchProposer := watcher.NewBatchProposer(subCtx, cfg.L2Config.BatchProposerConfig, l2relayer, db)
 	if err != nil {
 		log.Error("failed to create batchProposer", "config file", cfgFile, "error", err)
@@ -92,6 +98,11 @@ func action(ctx *cli.Context) error {
 			return
 		}
 		l2watcher.TryFetchRunningMissingBlocks(ctx, number)
+	})
+
+	// Chunk proposer loop
+	go cutils.Loop(subCtx, 2*time.Second, func() {
+		chunkProposer.TryProposeChunk()
 	})
 
 	// Batch proposer loop
