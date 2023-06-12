@@ -44,6 +44,8 @@ type BatchProposerConfig struct {
 	CommitTxCalldataSizeLimit uint64 `json:"commit_tx_calldata_size_limit"`
 	// Commit tx calldata min size limit in bytes
 	CommitTxCalldataMinSize uint64 `json:"commit_tx_calldata_min_size,omitempty"`
+	// Max number of batches in a commit transaction
+	CommitTxBatchCountLimit uint64 `json:"commit_tx_batch_count_limit"`
 	// The public input hash config
 	PublicInputConfig *types.PublicInputHashConfig `json:"public_input_config"`
 }
