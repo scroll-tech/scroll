@@ -80,6 +80,7 @@
       "batch_commit_time_sec": 1200,
       "batch_blocks_limit": 100,
       "commit_tx_calldata_size_limit": 200000,
+      "commit_tx_batch_count_limit": 30,
       "public_input_config": {
         "max_tx_num": 44,
         "padding_tx_hash": "0x0000000000000000000000000000000000000000000000000000000000000000"

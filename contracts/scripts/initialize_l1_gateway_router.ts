@@ -24,14 +24,14 @@ async function main() {
   const L2GatewayRouterAddress = process.env.L2_GATEWAY_ROUTER_PROXY_ADDR!;
 
   // if ((await L1GatewayRouter.counterpart()) === constants.AddressZero) {
-    const tx = await L1GatewayRouter.initialize(
-      L1StandardERC20GatewayAddress,
-      L2GatewayRouterAddress,
-      L1ScrollMessengerAddress
-    );
-    console.log("initialize L1StandardERC20Gateway, hash:", tx.hash);
-    const receipt = await tx.wait();
-    console.log(`✅ Done, gas used: ${receipt.gasUsed}`);
+  const tx = await L1GatewayRouter.initialize(
+    L1StandardERC20GatewayAddress,
+    L2GatewayRouterAddress,
+    L1ScrollMessengerAddress
+  );
+  console.log("initialize L1StandardERC20Gateway, hash:", tx.hash);
+  const receipt = await tx.wait();
+  console.log(`✅ Done, gas used: ${receipt.gasUsed}`);
   // }
 }
 

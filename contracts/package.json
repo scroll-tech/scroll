@@ -11,7 +11,8 @@
     "lint:sol": "./node_modules/.bin/prettier --write 'src/**/*.sol'",
     "lint:ts": "./node_modules/.bin/prettier --write 'integration-test/**/*.ts' 'scripts/**/*.ts' *.ts",
     "lint": "yarn lint:ts && yarn lint:sol",
-    "coverage": "hardhat coverage"
+    "coverage": "hardhat coverage",
+    "prepare": "cd .. && husky install contracts/.husky"
   },
   "devDependencies": {
     "@nomiclabs/hardhat-ethers": "^2.0.0",
