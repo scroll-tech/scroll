@@ -139,18 +139,27 @@ contract L1MessageQueue is OwnableUpgradeable, IL1MessageQueue {
                 }
             }
 
-            function store_uint(_ptr, v) -> ptr {
+            // This is used for both store uint and single byte.
+            // Integer zero is special handled by geth to encode as `0x80`
+            function store_uint_or_byte(_ptr, v, is_uint) -> ptr {
                 ptr := _ptr
                 switch lt(v, 128)
                 case 1 {
-                    // single byte in the [0x00, 0x7f]
-                    mstore(ptr, shl(248, v))
+                    switch and(iszero(v), is_uint)
+                    case 1 {
+                        // integer 0
+                        mstore8(ptr, 0x80)
+                    }
+                    default {
+                        // single byte in the [0x00, 0x7f]
+                        mstore8(ptr, v)
+                    }
                     ptr := add(ptr, 1)
                 }
                 default {
                     // 1-32 bytes long
                     let len := get_uint_bytes(v)
-                    mstore(ptr, shl(248, add(len, 0x80)))
+                    mstore8(ptr, add(len, 0x80))
                     ptr := add(ptr, 1)
                     mstore(ptr, shl(mul(8, sub(32, len)), v))
                     ptr := add(ptr, len)
@@ -160,7 +169,7 @@ contract L1MessageQueue is OwnableUpgradeable, IL1MessageQueue {
             function store_address(_ptr, v) -> ptr {
                 ptr := _ptr
                 // 20 bytes long
-                mstore(ptr, shl(248, 0x94)) // 0x80 + 0x14
+                mstore8(ptr, 0x94) // 0x80 + 0x14
                 ptr := add(ptr, 1)
                 mstore(ptr, shl(96, v))
                 ptr := add(ptr, 0x14)
@@ -170,21 +179,21 @@ contract L1MessageQueue is OwnableUpgradeable, IL1MessageQueue {
             // 4 byte for list payload length
             let start_ptr := add(mload(0x40), 5)
             let ptr := start_ptr
-            ptr := store_uint(ptr, _queueIndex)
-            ptr := store_uint(ptr, _gasLimit)
+            ptr := store_uint_or_byte(ptr, _queueIndex, 1)
+            ptr := store_uint_or_byte(ptr, _gasLimit, 1)
             ptr := store_address(ptr, _target)
-            ptr := store_uint(ptr, _value)
+            ptr := store_uint_or_byte(ptr, _value, 1)
 
             switch eq(_data.length, 1)
             case 1 {
                 // single byte
-                ptr := store_uint(ptr, shr(248, calldataload(_data.offset)))
+                ptr := store_uint_or_byte(ptr, byte(0, calldataload(_data.offset)), 0)
             }
             default {
                 switch lt(_data.length, 56)
                 case 1 {
                     // a string is 0-55 bytes long
-                    mstore(ptr, shl(248, add(0x80, _data.length)))
+                    mstore8(ptr, add(0x80, _data.length))
                     ptr := add(ptr, 1)
                     calldatacopy(ptr, _data.offset, _data.length)
                     ptr := add(ptr, _data.length)
@@ -192,7 +201,7 @@ contract L1MessageQueue is OwnableUpgradeable, IL1MessageQueue {
                 default {
                     // a string is more than 55 bytes long
                     let len_bytes := get_uint_bytes(_data.length)
-                    mstore(ptr, shl(248, add(0xb7, len_bytes)))
+                    mstore8(ptr, add(0xb7, len_bytes))
                     ptr := add(ptr, 1)
                     mstore(ptr, shl(mul(8, sub(32, len_bytes)), _data.length))
                     ptr := add(ptr, len_bytes)
