@@ -12,6 +12,8 @@ import (
 	"scroll-tech/common/types"
 	"scroll-tech/common/types/message"
 
+	"github.com/scroll-tech/go-ethereum/common"
+	gethTypes "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/log"
 	"gorm.io/gorm"
 )
@@ -77,6 +79,39 @@ func (c *Batch) GetBatches(ctx context.Context, fields map[string]interface{}, o
 		return nil, err
 	}
 	return batches, nil
+}
+
+// GetL2WrappedBlocksRange get the l2 wrapped blocks in a specific range
+func (o *L2Block) GetL2WrappedBlocksRange(startBlockNumber, endBlockNumber uint64) ([]*bridgeTypes.WrappedBlock, error) {
+	var l2Blocks []L2Block
+	db := o.db.Select("header, transactions, withdraw_trie_root")
+
+	db = db.Where("number >= ? AND number <= ?", startBlockNumber, endBlockNumber)
+
+	db = db.Order("number asc")
+
+	if err := db.Find(&l2Blocks).Error; err != nil {
+		return nil, err
+	}
+
+	var wrappedBlocks []*bridgeTypes.WrappedBlock
+	for _, v := range l2Blocks {
+		var wrappedBlock bridgeTypes.WrappedBlock
+
+		if err := json.Unmarshal([]byte(v.Transactions), &wrappedBlock.Transactions); err != nil {
+			return nil, err
+		}
+
+		wrappedBlock.Header = &gethTypes.Header{}
+		if err := json.Unmarshal([]byte(v.Header), wrappedBlock.Header); err != nil {
+			return nil, err
+		}
+
+		wrappedBlock.WithdrawTrieRoot = common.HexToHash(v.WithdrawTrieRoot)
+		wrappedBlocks = append(wrappedBlocks, &wrappedBlock)
+	}
+
+	return wrappedBlocks, nil
 }
 
 func (c *Batch) GetVerifiedProofByHash(ctx context.Context, hash string) (*message.AggProof, error) {

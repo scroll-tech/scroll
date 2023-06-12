@@ -29,18 +29,9 @@ func NewChunkProposer(ctx context.Context, db *gorm.DB) *ChunkProposer {
 
 func (c *ChunkProposer) TryProposeChunk() {
 	// TODO: refine strategy
-	// Fetch the latest 10 blocks
-	var fields map[string]interface{}
-	orderByList := []string{"number DESC"}
-	limit := 10
-	wrappedBlocks, err := c.l2BlockOrm.GetL2WrappedBlocks(fields, orderByList, limit)
+	wrappedBlocks, err := c.l2BlockOrm.GetUnchunkedBlocks()
 	if err != nil {
-		log.Error("GetL2WrappedBlocks", "err", err)
-		return
-	}
-
-	if len(wrappedBlocks) != limit {
-		log.Info("Not enough block", "num", len(wrappedBlocks))
+		log.Error("GetUnchunkedBlocks", "err", err)
 		return
 	}
 
@@ -50,6 +41,8 @@ func (c *ChunkProposer) TryProposeChunk() {
 		log.Error("InsertChunk failed", "err", err)
 		return
 	}
+
+	// TODO: fill chunk hash
 
 	return
 }

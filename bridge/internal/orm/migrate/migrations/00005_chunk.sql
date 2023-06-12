@@ -14,7 +14,7 @@ create table chunk
     prover_assigned_at      TIMESTAMP(0)    DEFAULT NULL,
     proving_status          INTEGER         NOT NULL DEFAULT 1,
     proved_at               TIMESTAMP(0)    DEFAULT NULL,
-    batch_index             INTEGER         DEFAULT NULL,
+    batch_hash              VARCHAR         DEFAULT NULL,
     created_at              TIMESTAMP(0)    NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at              TIMESTAMP(0)    NOT NULL DEFAULT CURRENT_TIMESTAMP,
     deleted_at              TIMESTAMP(0)    DEFAULT NULL,
@@ -29,8 +29,8 @@ on chunk (index);
 create unique index chunk_hash_uindex
 on chunk (hash);
 
-create index batch_index_index
-on chunk (batch_index);
+create index batch_hash_index
+on chunk (batch_hash);
 
 create or replace function update_timestamp()
 returns trigger as $$

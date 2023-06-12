@@ -24,7 +24,7 @@ type Chunk struct {
 	ProverAssignedAt *time.Time `json:"prover_assigned_at" gorm:"column:prover_assigned_at"`
 	ProvingStatus    int        `json:"proving_status" gorm:"column:proving_status"`
 	ProvedAt         *time.Time `json:"proved_at" gorm:"column:proved_at"`
-	BatchIndex       int        `json:"batch_index" gorm:"column:batch_index"`
+	BatchHash        string     `json:"batch_hash" gorm:"column:batch_hash"`
 	CreatedAt        time.Time  `json:"created_at" gorm:"column:created_at"`
 	UpdatedAt        time.Time  `json:"updated_at" gorm:"column:updated_at"`
 	DeletedAt        *time.Time `json:"deleted_at" gorm:"column:deleted_at"`
@@ -45,6 +45,18 @@ func (c *Chunk) GetChunk(ctx context.Context, hash string) (*Chunk, error) {
 		return nil, err
 	}
 	return &chunk, nil
+}
+
+func (c *Chunk) GetUnbatchedChunks(ctx context.Context) ([]*Chunk, error) {
+	var chunks []*Chunk
+	err := c.db.WithContext(ctx).
+		Where("batch_hash IS NULL OR batch_hash = ''").
+		Order("start_block_number asc").
+		Find(&chunks).Error
+	if err != nil {
+		return nil, err
+	}
+	return chunks, nil
 }
 
 func (c *Chunk) InsertChunk(ctx context.Context, chunk *types.Chunk, tx ...*gorm.DB) error {

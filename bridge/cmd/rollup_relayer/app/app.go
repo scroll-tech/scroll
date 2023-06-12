@@ -82,9 +82,9 @@ func action(ctx *cli.Context) error {
 		return err
 	}
 
-	batchProposer := watcher.NewBatchProposer(subCtx, cfg.L2Config.BatchProposerConfig, l2relayer, db)
+	batchProposer := watcher.NewBatchProposer(subCtx, db)
 	if err != nil {
-		log.Error("failed to create batchProposer", "config file", cfgFile, "error", err)
+		log.Error("failed to create batchProposer", "error", err)
 		return err
 	}
 
@@ -108,7 +108,6 @@ func action(ctx *cli.Context) error {
 	// Batch proposer loop
 	go cutils.Loop(subCtx, 2*time.Second, func() {
 		batchProposer.TryProposeBatch()
-		batchProposer.TryCommitBatches()
 	})
 
 	go cutils.Loop(subCtx, 2*time.Second, l2relayer.ProcessCommittedBatches)

@@ -25,7 +25,7 @@ type L2Block struct {
 	TxNum            uint64 `json:"tx_num" gorm:"tx_num"`
 	GasUsed          uint64 `json:"gas_used" gorm:"gas_used"`
 	BlockTimestamp   uint64 `json:"block_timestamp" gorm:"block_timestamp"`
-	BatchIndex       uint64 `json:"batch_index" gorm:"batch_index"`
+	ChunkHash        string `json:"chunk_hash" gorm:"chunk_hash"`
 }
 
 // NewL2Block creates a new L2Block instance
@@ -49,6 +49,36 @@ func (o *L2Block) GetL2BlocksLatestHeight() (int64, error) {
 		return -1, err
 	}
 	return maxNumber, nil
+}
+
+// GetUnchunkedBlocks get the l2 blocks that have not been put into a chunk
+func (o *L2Block) GetUnchunkedBlocks() ([]*types.WrappedBlock, error) {
+	var l2Blocks []L2Block
+	db := o.db.Select("header, transactions, withdraw_trie_root")
+	db = db.Where("chunk_hash IS NULL")
+
+	if err := db.Find(&l2Blocks).Error; err != nil {
+		return nil, err
+	}
+
+	var wrappedBlocks []*types.WrappedBlock
+	for _, v := range l2Blocks {
+		var wrappedBlock types.WrappedBlock
+
+		if err := json.Unmarshal([]byte(v.Transactions), &wrappedBlock.Transactions); err != nil {
+			return nil, err
+		}
+
+		wrappedBlock.Header = &gethTypes.Header{}
+		if err := json.Unmarshal([]byte(v.Header), wrappedBlock.Header); err != nil {
+			return nil, err
+		}
+
+		wrappedBlock.WithdrawTrieRoot = common.HexToHash(v.WithdrawTrieRoot)
+		wrappedBlocks = append(wrappedBlocks, &wrappedBlock)
+	}
+
+	return wrappedBlocks, nil
 }
 
 // GetL2WrappedBlocks get the l2 wrapped blocks
