@@ -67,6 +67,16 @@ type RelayedMsg struct {
 	Layer2Hash string `json:"layer2_hash" db:"layer2_hash"`
 }
 
+type L2SentMsg struct {
+	MsgHash         string `json:"msg_hash" db:"msg_hash"`
+	Height          uint64 `json:"height" db:"height"`
+	FinalizedHeight uint64 `json:"finalized_height" db:"finalized_height"`
+	Layer1Hash      string `json:"layer1_hash" db:"layer1_hash"`
+	BatchIndex      uint64 `json:"batch_index" db:"batch_index"`
+	MsgProof        string `json:"msg_proof" db:"msg_proof"`
+	MsgData         string `json:"msg_data" db:"msg_data"`
+}
+
 // L1CrossMsgOrm provides operations on l1_cross_message table
 type L1CrossMsgOrm interface {
 	GetL1CrossMsgByHash(l1Hash common.Hash) (*CrossMsg, error)
@@ -99,7 +109,24 @@ type RelayedMsgOrm interface {
 	BatchInsertRelayedMsgDBTx(dbTx *sqlx.Tx, messages []*RelayedMsg) error
 	GetRelayedMsgByHash(msg_hash string) (*RelayedMsg, error)
 	GetLatestRelayedHeightOnL1() (int64, error)
-	GetLatestRelayedHeightOnL2() (int64, error)
 	DeleteL1RelayedHashAfterHeightDBTx(dbTx *sqlx.Tx, height int64) error
 	DeleteL2RelayedHashAfterHeightDBTx(dbTx *sqlx.Tx, height int64) error
+}
+
+type L2SentMsgOrm interface {
+	BatchInsertL2SentMsgDBTx(dbTx *sqlx.Tx, messages []*L2SentMsg) error
+	GetL2SentMsgByHash(l2Hash string) (*L2SentMsg, error)
+	GetLatestSentMsgHeightOnL2() (int64, error)
+	GetL2SentMsgMsgHashByHeightRange(startHeight, endHeight uint64) ([]*L2SentMsg, error)
+	UpdateL2SentMsgL1HashDBTx(ctx context.Context, dbTx *sqlx.Tx, l1Hash, msgHash common.Hash) error
+	GetLatestL2SentMsgBactchIndex() (uint64, error)
+	DeleteL2SentMsgAfterHeightDBTx(dbTx *sqlx.Tx, height int64) error
+	DeleteL2SentMsgL1HashAfterHeightDBTx(dbTx *sqlx.Tx, height int64) error
+}
+
+type BridgeBatchOrm interface {
+	GetLatestBridgeBatch() (*BridgeBatch, error)
+	GetBridgeBatchByBlock(height uint64) (*BridgeBatch, error)
+	GetBridgeBatchByIndex(index uint64) (*BridgeBatch, error)
+	IsBlockInBatch(batchIndex uint64, height uint64) (bool, error)
 }
