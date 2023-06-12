@@ -258,12 +258,42 @@ func (c *Batch) InsertBatch(ctx context.Context, chunks []*bridgeTypes.Chunk, ch
 		return err
 	}
 
+	var parentBatchHash common.Hash
+	var totalL1MessagePoppedBefore uint64
+	lastBatch, err := c.GetLatestBatch(ctx)
+	if err != nil {
+		log.Error("failed to get the latest batch", "err", err)
+		return err
+	}
+	if lastBatch != nil {
+		parentBatchHash = common.HexToHash(lastBatch.Hash)
+		parentHeader, err := c.GetBatchHeader(ctx, lastBatch.Index)
+		if err != nil {
+			log.Error("failed to get parent batch header", "err", err)
+			return err
+		}
+		totalL1MessagePoppedBefore = parentHeader.TotalL1MessagePopped()
+	}
+
+	batchHeader, err := bridgeTypes.NewBatchHeader(0, uint64(lastBatch.Index), totalL1MessagePoppedBefore, parentBatchHash, chunks)
+	if err != nil {
+		log.Error("failed to create batch header", "err", err)
+		return err
+	}
+
+	batchHeaderBytes, err := json.Marshal(batchHeader)
+	if err != nil {
+		log.Error("failed to marshal batch header", "err", err)
+		return err
+	}
+
 	lastChunkBlockNum := len(chunks[numChunks-1].Blocks)
 	tmpBatch := Batch{
 		StartChunkHash: hex.EncodeToString(startChunkHash),
 		EndChunkHash:   hex.EncodeToString(endChunkHash),
 		StateRoot:      chunks[numChunks-1].Blocks[lastChunkBlockNum-1].Header.Root.Hex(),
 		WithdrawRoot:   chunks[numChunks-1].Blocks[lastChunkBlockNum-1].WithdrawTrieRoot.Hex(),
+		BatchHeader:    batchHeaderBytes,
 	}
 
 	tx := db.Begin()

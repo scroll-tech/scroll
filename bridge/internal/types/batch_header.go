@@ -54,6 +54,10 @@ func (b *BatchHeader) BatchIndex() uint64 {
 	return b.batchIndex
 }
 
+func (b *BatchHeader) TotalL1MessagePopped() uint64 {
+	return b.totalL1MessagePopped
+}
+
 // EncodeSkippedL1MessageBitmap encodes the SkippedL1MessageBitmap into bytes.
 func (b *BatchHeader) EncodeSkippedL1MessageBitmap() [][]byte {
 	skippedL1MessageBitmapBytes := make([][]byte, len(b.skippedL1MessageBitmap))
