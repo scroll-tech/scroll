@@ -177,6 +177,8 @@ func testFetchMultipleSentMessageInOneBlock(t *testing.T) {
 		t.Fatalf("Call failed")
 	}
 
+	time.Sleep(time.Second * 5)
+
 	// extra block mined
 	addr := common.HexToAddress("0x1c5a77d9fa7ef466951b2f01f724bca3a5820b63")
 	nonce, nounceErr := l2Cli.PendingNonceAt(context.Background(), addr)
