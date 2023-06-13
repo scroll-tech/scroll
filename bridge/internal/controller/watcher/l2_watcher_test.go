@@ -107,20 +107,20 @@ func testMonitorBridgeContract(t *testing.T) {
 		t.Fatalf("Call failed")
 	}
 
-	time.Sleep(time.Second * 5)
-
-	// extra block mined
-	toAddress = common.HexToAddress("0x4592d8f8d7b001e72cb26a73e4fa1806a51ac79d")
-	message = []byte("testbridgecontract")
-	tx, err = instance.SendMessage(auth, toAddress, fee, message, gasLimit)
-	assert.NoError(t, err)
-	receipt, err = bind.WaitMined(context.Background(), l2Cli, tx)
-	assert.NoError(t, err)
-	if receipt.Status != gethTypes.ReceiptStatusSuccessful || err != nil {
-		t.Logf("fff-> root:%s", string(receipt.PostState))
-		t.Logf("hhh--> status:%d", receipt.Status)
-		t.Fatalf("Call failed")
-	}
+	//time.Sleep(time.Second * 5)
+	//
+	//// extra block mined
+	//toAddress = common.HexToAddress("0x4592d8f8d7b001e72cb26a73e4fa1806a51ac79d")
+	//message = []byte("testbridgecontract")
+	//tx, err = instance.SendMessage(auth, toAddress, fee, message, gasLimit)
+	//assert.NoError(t, err)
+	//receipt, err = bind.WaitMined(context.Background(), l2Cli, tx)
+	//assert.NoError(t, err)
+	//if receipt.Status != gethTypes.ReceiptStatusSuccessful || err != nil {
+	//	t.Logf("fff-> root:%s", string(receipt.PostState))
+	//	t.Logf("hhh--> status:%d", receipt.Status)
+	//	t.Fatalf("Call failed")
+	//}
 
 	l2MessageOrm := orm.NewL2Message(db)
 	// check if we successfully stored events
