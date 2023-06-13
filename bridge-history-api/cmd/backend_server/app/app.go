@@ -78,7 +78,7 @@ func action(ctx *cli.Context) error {
 	mvc.Configure(bridgeApp.Party("/api/txsbyhashes"), setupQueryByHashHandler)
 
 	// TODO: make debug mode configurable
-	err = bridgeApp.Listen(":8080", iris.WithLogLevel("debug"))
+	err = bridgeApp.Listen(cfg.Server.HostPort, iris.WithLogLevel("debug"))
 	if err != nil {
 		log.Crit("can not start server", "err", err)
 	}

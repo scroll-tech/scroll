@@ -30,6 +30,10 @@ type LayerConfig struct {
 	CustomERC20GatewayAddr string `json:"CustomERC20GatewayAddr"`
 }
 
+type ServerConfig struct {
+	HostPort string `json:"hostPort"`
+}
+
 // Config is the configuration of the bridge history backend
 type Config struct {
 	// chain config
@@ -37,7 +41,8 @@ type Config struct {
 	L2 *LayerConfig `json:"l2"`
 
 	// data source name
-	DB *DBConfig `json:"db"`
+	DB     *DBConfig     `json:"db"`
+	Server *ServerConfig `json:"server"`
 }
 
 // NewConfig returns a new instance of Config.
