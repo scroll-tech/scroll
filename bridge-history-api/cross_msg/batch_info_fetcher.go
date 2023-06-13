@@ -1,12 +1,13 @@
 package cross_msg
 
 import (
-	"bridge-history-api/db"
 	"context"
 	"time"
 
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/log"
+
+	"bridge-history-api/db"
 )
 
 type BatchInfoFetcher struct {
@@ -43,7 +44,7 @@ func (b *BatchInfoFetcher) Start() {
 				}
 				latestBatch, err := b.db.GetLatestBridgeBatch()
 				if err != nil {
-					log.Error("Can not get latest record without block timestamp: ", err)
+					log.Error("Can not get latest BatchInfo: ", err)
 					continue
 				}
 				startHeight := latestBatch.EndBlockNumber + 1

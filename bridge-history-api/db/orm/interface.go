@@ -125,7 +125,7 @@ type L2SentMsgOrm interface {
 	UpdateL2MessageProofInDbTx(ctx context.Context, dbTx *sqlx.Tx, msgHash string, proof string, batch_index uint64) error
 	GetLatestL2SentMsgBactchIndex() (uint64, error)
 	DeleteL2SentMsgAfterHeightDBTx(dbTx *sqlx.Tx, height int64) error
-	DeleteL2SentMsgL1HashAfterHeightDBTx(dbTx *sqlx.Tx, height int64) error
+	ResetL2SentMsgL1HashAfterHeightDBTx(dbTx *sqlx.Tx, height int64) error
 }
 
 type BridgeBatchOrm interface {

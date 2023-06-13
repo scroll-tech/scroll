@@ -129,7 +129,7 @@ func (l *l2SentMsgOrm) DeleteL2SentMsgAfterHeightDBTx(dbTx *sqlx.Tx, height int6
 	return err
 }
 
-func (l *l2SentMsgOrm) DeleteL2SentMsgL1HashAfterHeightDBTx(dbTx *sqlx.Tx, height int64) error {
+func (l *l2SentMsgOrm) ResetL2SentMsgL1HashAfterHeightDBTx(dbTx *sqlx.Tx, height int64) error {
 	_, err := dbTx.Exec(`UPDATE l2_sent_msg SET layer1_hash = '' WHERE height > $1  AND NOT is_deleted;`, height)
 	return err
 }
