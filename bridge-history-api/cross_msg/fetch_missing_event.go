@@ -150,7 +150,7 @@ func L2FetchAndSaveEvents(ctx context.Context, client *ethclient.Client, databas
 		log.Warn("Failed to get l2 event logs", "err", err)
 		return err
 	}
-	depositL2CrossMsgs, msgHashes, relayedMsg, err := utils.ParseBackendL2EventLogs(logs)
+	depositL2CrossMsgs, msgHashes, relayedMsg, _, err := utils.ParseBackendL2EventLogs(logs)
 	if err != nil {
 		log.Error("l2FetchAndSaveEvents: Failed to parse cross msg event logs", "err", err)
 		return err

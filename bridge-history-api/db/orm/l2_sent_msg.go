@@ -38,6 +38,7 @@ func (l *l2SentMsgOrm) BatchInsertL2SentMsgDBTx(dbTx *sqlx.Tx, messages []*L2Sen
 		messageMaps[i] = map[string]interface{}{
 			"msg_hash":         msg.MsgHash,
 			"height":           msg.Height,
+			"nonce":            msg.Nonce,
 			"finalized_height": msg.FinalizedHeight,
 			"layer1_hash":      msg.Layer1Hash,
 			"batch_index":      msg.BatchIndex,
@@ -45,7 +46,7 @@ func (l *l2SentMsgOrm) BatchInsertL2SentMsgDBTx(dbTx *sqlx.Tx, messages []*L2Sen
 			"msg_data":         msg.MsgData,
 		}
 
-		_, err = dbTx.NamedExec(`insert into l2_sent_msg(msg_hash, height, finalized_height, layer1_hash, batch_index, msg_proof, msg_data) values(:msg_hash, :height, :layer1_hash, :finalized_height, :batch_index, :msg_proof, :msg_data);`, messageMaps[i])
+		_, err = dbTx.NamedExec(`insert into l2_sent_msg(msg_hash, height, nonce, finalized_height, layer1_hash, batch_index, msg_proof, msg_data) values(:msg_hash, :height, :nonce, :layer1_hash, :finalized_height, :batch_index, :msg_proof, :msg_data);`, messageMaps[i])
 		if err != nil && !strings.Contains(err.Error(), "pq: duplicate key value violates unique constraint \"l2_sent_msg_hash_uindex") {
 			log.Error("BatchInsertL2SentMsgDBTx: failed to insert l2 sent msgs", "msg_Hash", msg.MsgHash, "height", msg.Height, "err", err)
 			break
@@ -55,7 +56,7 @@ func (l *l2SentMsgOrm) BatchInsertL2SentMsgDBTx(dbTx *sqlx.Tx, messages []*L2Sen
 }
 
 func (l *l2SentMsgOrm) GetLatestSentMsgHeightOnL2() (int64, error) {
-	row := l.db.QueryRow(`SELECT height FROM l2_sent_msg WHERE layer2_hash != '' AND NOT is_deleted ORDER BY height DESC LIMIT 1;`)
+	row := l.db.QueryRow(`SELECT height FROM l2_sent_msg WHERE layer2_hash != '' AND NOT is_deleted ORDER BY nonce DESC LIMIT 1;`)
 	var result sql.NullInt64
 	if err := row.Scan(&result); err != nil {
 		if err == sql.ErrNoRows || !result.Valid {
@@ -70,7 +71,14 @@ func (l *l2SentMsgOrm) GetLatestSentMsgHeightOnL2() (int64, error) {
 }
 
 func (l *l2SentMsgOrm) UpdateL2SentMsgL1HashDBTx(ctx context.Context, dbTx *sqlx.Tx, l1Hash, msgHash common.Hash) error {
-	if _, err := dbTx.ExecContext(ctx, l.db.Rebind("update public.l2_sent_msg set layer1_hash = ? where msg_hash = ? NOT is_deleted;"), l1Hash.String(), msgHash.String()); err != nil {
+	if _, err := dbTx.ExecContext(ctx, l.db.Rebind("update public.l2_sent_msg set layer1_hash = ? where msg_hash = ? AMD NOT is_deleted;"), l1Hash.String(), msgHash.String()); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (l *l2SentMsgOrm) UpdateL2MessageProofInDbTx(ctx context.Context, dbTx *sqlx.Tx, msgHash string, proof string, batch_index uint64) error {
+	if _, err := dbTx.ExecContext(ctx, l.db.Rebind("update public.l2_sent_msg set msg_proof = ?, batch_index = ? where msg_hash = ? AND NOT is_deleted;"), proof, batch_index, msgHash); err != nil {
 		return err
 	}
 	return nil
@@ -93,11 +101,27 @@ func (l *l2SentMsgOrm) GetLatestL2SentMsgBactchIndex() (uint64, error) {
 
 func (l *l2SentMsgOrm) GetL2SentMsgMsgHashByHeightRange(startHeight, endHeight uint64) ([]*L2SentMsg, error) {
 	var result []*L2SentMsg
-	err := l.db.Select(&result, `SELECT * FROM l2_sent_msg WHERE height >= $1 AND height <= $2 AND NOT is_deleted ORDERED BY id;`, startHeight, endHeight)
+	err := l.db.Select(&result, `SELECT * FROM l2_sent_msg WHERE height >= $1 AND height <= $2 AND NOT is_deleted ORDERED BY nonce ASC;`, startHeight, endHeight)
 	if err != nil {
 		return nil, err
 	}
 	return result, nil
+}
+
+func (l *l2SentMsgOrm) GetL2SentMessageByNonce(nonce uint64) (*L2SentMsg, error) {
+	var result *L2SentMsg
+	err := l.db.Select(&result, `SELECT * FROM l2_sent_msg WHERE nonce = $1 AND NOT is_deleted;`, nonce)
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+func (l *l2SentMsgOrm) GetLastL2MessageNonceLEHeight(endBlockNumber uint64) (sql.NullInt64, error) {
+	row := l.db.QueryRow(`SELECT MAX(nonce) FROM l2_message WHERE height <= $1;`, endBlockNumber)
+	var nonce sql.NullInt64
+	err := row.Scan(&nonce)
+	return nonce, err
 }
 
 func (l *l2SentMsgOrm) DeleteL2SentMsgAfterHeightDBTx(dbTx *sqlx.Tx, height int64) error {

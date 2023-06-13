@@ -2,6 +2,7 @@ package orm
 
 import (
 	"context"
+	"database/sql"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -70,6 +71,7 @@ type RelayedMsg struct {
 type L2SentMsg struct {
 	MsgHash         string `json:"msg_hash" db:"msg_hash"`
 	Height          uint64 `json:"height" db:"height"`
+	Nonce           uint64 `json:"nonce" db:"nonce"`
 	FinalizedHeight uint64 `json:"finalized_height" db:"finalized_height"`
 	Layer1Hash      string `json:"layer1_hash" db:"layer1_hash"`
 	BatchIndex      uint64 `json:"batch_index" db:"batch_index"`
@@ -109,7 +111,6 @@ type RelayedMsgOrm interface {
 	BatchInsertRelayedMsgDBTx(dbTx *sqlx.Tx, messages []*RelayedMsg) error
 	GetRelayedMsgByHash(msg_hash string) (*RelayedMsg, error)
 	GetLatestRelayedHeightOnL1() (int64, error)
-	DeleteL1RelayedHashAfterHeightDBTx(dbTx *sqlx.Tx, height int64) error
 	DeleteL2RelayedHashAfterHeightDBTx(dbTx *sqlx.Tx, height int64) error
 }
 
@@ -117,8 +118,11 @@ type L2SentMsgOrm interface {
 	BatchInsertL2SentMsgDBTx(dbTx *sqlx.Tx, messages []*L2SentMsg) error
 	GetL2SentMsgByHash(l2Hash string) (*L2SentMsg, error)
 	GetLatestSentMsgHeightOnL2() (int64, error)
+	GetL2SentMessageByNonce(nonce uint64) (*L2SentMsg, error)
+	GetLastL2MessageNonceLEHeight(endBlockNumber uint64) (sql.NullInt64, error)
 	GetL2SentMsgMsgHashByHeightRange(startHeight, endHeight uint64) ([]*L2SentMsg, error)
 	UpdateL2SentMsgL1HashDBTx(ctx context.Context, dbTx *sqlx.Tx, l1Hash, msgHash common.Hash) error
+	UpdateL2MessageProofInDbTx(ctx context.Context, dbTx *sqlx.Tx, msgHash string, proof string, batch_index uint64) error
 	GetLatestL2SentMsgBactchIndex() (uint64, error)
 	DeleteL2SentMsgAfterHeightDBTx(dbTx *sqlx.Tx, height int64) error
 	DeleteL2SentMsgL1HashAfterHeightDBTx(dbTx *sqlx.Tx, height int64) error
