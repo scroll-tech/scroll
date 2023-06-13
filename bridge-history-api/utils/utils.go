@@ -2,6 +2,7 @@ package utils
 
 import (
 	"context"
+	"encoding/binary"
 	"fmt"
 	"math/big"
 
@@ -58,4 +59,46 @@ func ComputeMessageHash(
 ) common.Hash {
 	data, _ := backendabi.L2ScrollMessengerABI.Pack("relayMessage", sender, target, value, messageNonce, message)
 	return common.BytesToHash(crypto.Keccak256(data))
+}
+
+// L1CommitBatchEvent represents a CommitBatch event raised by the ScrollChain contract.
+type CommitBatchArgs struct {
+	Version                uint8
+	ParentBatchHeader      []byte
+	Chunks                 [][]byte
+	SkippedL1MessageBitmap []byte
+}
+
+// GetBatchRangeFromCalldata find the block range from calldata, both inclusive.
+func GetBatchRangeFromCalldata(calldata []byte) (uint64, uint64, error) {
+	method := backendabi.ScrollChainABI.Methods["commitBatch"]
+	values, err := method.Inputs.Unpack(calldata[4:])
+	if err != nil {
+		return 0, 0, err
+	}
+	args := CommitBatchArgs{}
+	err = method.Inputs.Copy(args, values)
+	if err != nil {
+		return 0, 0, err
+	}
+
+	var startBlock uint64
+	var finishBlock uint64
+
+	// decode blocks from chunk
+	// |   1 byte   | 60 bytes | ... | 60 bytes |
+	// | num blocks |  block 1 | ... |  block n |
+	for i := 0; i < len(args.Chunks); i++ {
+		numBlock := int(args.Chunks[i][0])
+		for j := 0; j < numBlock; j++ {
+			block := args.Chunks[i][1+j*60 : 61+j*60]
+			// first 8 bytes are blockNumber
+			blockNumber := binary.LittleEndian.Uint64(block[0:8])
+			if startBlock == 0 {
+				startBlock = blockNumber
+			}
+			finishBlock = blockNumber
+		}
+	}
+	return startBlock, finishBlock, err
 }
