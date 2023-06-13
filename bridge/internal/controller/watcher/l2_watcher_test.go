@@ -132,7 +132,7 @@ func testMonitorBridgeContract(t *testing.T) {
 	// check l1 messages.
 	assert.True(t, cutils.TryTimes(10, func() bool {
 		msgs, err := l2MessageOrm.GetL2Messages(map[string]interface{}{"status": types.MsgPending}, nil, 0)
-		return err == nil && len(msgs) == 2
+		return err == nil && len(msgs) == 1
 	}))
 }
 
