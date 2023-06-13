@@ -188,6 +188,28 @@ func L2FetchAndSaveEvents(ctx context.Context, client *ethclient.Client, databas
 	return nil
 }
 
+func FetchAndSaveBatchIndex(ctx context.Context, client *ethclient.Client, dbTx *sqlx.Tx, database db.OrmFactory, from int64, to int64, scrollChainAddr common.Address) error {
+	query := geth.FilterQuery{
+		FromBlock: big.NewInt(from), // inclusive
+		ToBlock:   big.NewInt(to),   // inclusive
+		Addresses: []common.Address{scrollChainAddr},
+		Topics:    make([][]common.Hash, 1),
+	}
+	query.Topics[0] = make([]common.Hash, 1)
+	query.Topics[0][0] = backendabi.L1CommitBatchEventSignature
+	logs, err := client.FilterLogs(ctx, query)
+	if err != nil {
+		log.Warn("Failed to get l2 event logs", "err", err)
+		return err
+	}
+	_, _, _, l2sentMsgs, err := utils.ParseBackendL2EventLogs(logs)
+	if err != nil {
+		log.Error("FetchAndSaveBatchIndex: Failed to parse batch commit msg event logs", "err", err)
+		return err
+	}
+	return nil
+}
+
 func updateL1CrossMsgMsgHash(ctx context.Context, dbTx *sqlx.Tx, database db.OrmFactory, msgHashes []utils.MsgHashWrapper) error {
 	for _, msgHash := range msgHashes {
 		err := database.UpdateL1CrossMsgHashDBTx(ctx, dbTx, msgHash.TxHash, msgHash.MsgHash)

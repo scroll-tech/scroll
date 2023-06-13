@@ -11,20 +11,22 @@ import (
 )
 
 type BatchInfoFetcher struct {
-	ctx            context.Context
-	confirmation   uint
-	blockTimeInSec int
-	client         *ethclient.Client
-	db             db.OrmFactory
+	ctx                  context.Context
+	batchInfoStartNumber uint64
+	confirmation         uint
+	blockTimeInSec       int
+	client               *ethclient.Client
+	db                   db.OrmFactory
 }
 
-func NewBatchInfoFetcher(ctx context.Context, confirmation uint, blockTimeInSec int, client *ethclient.Client, db db.OrmFactory) *BatchInfoFetcher {
+func NewBatchInfoFetcher(ctx context.Context, batchInfoStartNumber uint64, confirmation uint, blockTimeInSec int, client *ethclient.Client, db db.OrmFactory) *BatchInfoFetcher {
 	return &BatchInfoFetcher{
-		ctx:            ctx,
-		confirmation:   confirmation,
-		blockTimeInSec: blockTimeInSec,
-		client:         client,
-		db:             db,
+		ctx:                  ctx,
+		batchInfoStartNumber: batchInfoStartNumber,
+		confirmation:         confirmation,
+		blockTimeInSec:       blockTimeInSec,
+		client:               client,
+		db:                   db,
 	}
 }
 
@@ -47,7 +49,12 @@ func (b *BatchInfoFetcher) Start() {
 					log.Error("Can not get latest BatchInfo: ", err)
 					continue
 				}
-				startHeight := latestBatch.EndBlockNumber + 1
+				var startHeight uint64
+				if latestBatch == nil {
+					startHeight = b.batchInfoStartNumber
+				} else {
+					startHeight = latestBatch.EndBlockNumber + 1
+				}
 				for height := startHeight; number >= height+uint64(b.confirmation); height += uint64(FETCH_LIMIT) {
 					iter_end := height + uint64(FETCH_LIMIT) - 1
 					if iter_end > number {
