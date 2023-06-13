@@ -2,6 +2,7 @@ package utils
 
 import (
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/log"
 
@@ -120,7 +121,7 @@ func ParseBackendL1EventLogs(logs []types.Log) ([]*orm.CrossMsg, []MsgHashWrappe
 	return l1CrossMsg, msgHashes, relayedMsgs, nil
 }
 
-func ParseBackendL2EventLogs(logs []types.Log) ([]*orm.CrossMsg, []MsgHashWrapper, []*orm.RelayedMsg, error) {
+func ParseBackendL2EventLogs(logs []types.Log) ([]*orm.CrossMsg, []MsgHashWrapper, []*orm.RelayedMsg, []*orm.L2SentMsg, error) {
 	// Need use contract abi to parse event Log
 	// Can only be tested after we have our contracts set up
 
@@ -136,7 +137,7 @@ func ParseBackendL2EventLogs(logs []types.Log) ([]*orm.CrossMsg, []MsgHashWrappe
 			err := UnpackLog(backendabi.L2ETHGatewayABI, &event, "WithdrawETH", vlog)
 			if err != nil {
 				log.Warn("Failed to unpack WithdrawETH event", "err", err)
-				return l2CrossMsg, msgHashes, relayedMsgs, err
+				return l2CrossMsg, msgHashes, relayedMsgs, l2SentMsg, err
 			}
 			l2CrossMsg = append(l2CrossMsg, &orm.CrossMsg{
 				Height:     vlog.BlockNumber,
@@ -151,7 +152,7 @@ func ParseBackendL2EventLogs(logs []types.Log) ([]*orm.CrossMsg, []MsgHashWrappe
 			err := UnpackLog(backendabi.L2StandardERC20GatewayABI, &event, "WithdrawERC20", vlog)
 			if err != nil {
 				log.Warn("Failed to unpack WithdrawERC20 event", "err", err)
-				return l2CrossMsg, msgHashes, relayedMsgs, err
+				return l2CrossMsg, msgHashes, relayedMsgs, l2SentMsg, err
 			}
 			l2CrossMsg = append(l2CrossMsg, &orm.CrossMsg{
 				Height:      vlog.BlockNumber,
@@ -168,7 +169,7 @@ func ParseBackendL2EventLogs(logs []types.Log) ([]*orm.CrossMsg, []MsgHashWrappe
 			err := UnpackLog(backendabi.L2ERC721GatewayABI, &event, "WithdrawERC721", vlog)
 			if err != nil {
 				log.Warn("Failed to unpack WithdrawERC721 event", "err", err)
-				return l2CrossMsg, msgHashes, relayedMsgs, err
+				return l2CrossMsg, msgHashes, relayedMsgs, l2SentMsg, err
 			}
 			l2CrossMsg = append(l2CrossMsg, &orm.CrossMsg{
 				Height:      vlog.BlockNumber,
@@ -185,7 +186,7 @@ func ParseBackendL2EventLogs(logs []types.Log) ([]*orm.CrossMsg, []MsgHashWrappe
 			err := UnpackLog(backendabi.L2ERC1155GatewayABI, &event, "WithdrawERC1155", vlog)
 			if err != nil {
 				log.Warn("Failed to unpack WithdrawERC1155 event", "err", err)
-				return l2CrossMsg, msgHashes, relayedMsgs, err
+				return l2CrossMsg, msgHashes, relayedMsgs, l2SentMsg, err
 			}
 			l2CrossMsg = append(l2CrossMsg, &orm.CrossMsg{
 				Height:      vlog.BlockNumber,
@@ -203,18 +204,21 @@ func ParseBackendL2EventLogs(logs []types.Log) ([]*orm.CrossMsg, []MsgHashWrappe
 			err := UnpackLog(backendabi.L2ScrollMessengerABI, &event, "SentMessage", vlog)
 			if err != nil {
 				log.Warn("Failed to unpack SentMessage event", "err", err)
-				return l2CrossMsg, msgHashes, relayedMsgs, err
+				return l2CrossMsg, msgHashes, relayedMsgs, l2SentMsg, err
 			}
 			msgHash := ComputeMessageHash(event.Sender, event.Target, event.Value, event.MessageNonce, event.Message)
-			msgHashes = append(msgHashes, MsgHashWrapper{
-				MsgHash: msgHash,
-				TxHash:  vlog.TxHash})
+			l2SentMsg = append(l2SentMsg, &orm.L2SentMsg{
+				MsgHash: msgHash.Hex(),
+				Height:  vlog.BlockNumber,
+				Nonce:   event.MessageNonce.Uint64(),
+				MsgData: hexutil.Encode(event.Message),
+			})
 		case backendabi.L2RelayedMessageEventSignature:
 			event := backendabi.L2RelayedMessageEvent{}
 			err := UnpackLog(backendabi.L2ScrollMessengerABI, &event, "RelayedMessage", vlog)
 			if err != nil {
 				log.Warn("Failed to unpack RelayedMessage event", "err", err)
-				return l2CrossMsg, msgHashes, relayedMsgs, err
+				return l2CrossMsg, msgHashes, relayedMsgs, l2SentMsg, err
 			}
 			relayedMsgs = append(relayedMsgs, &orm.RelayedMsg{
 				MsgHash:    event.MessageHash.String(),
@@ -223,7 +227,6 @@ func ParseBackendL2EventLogs(logs []types.Log) ([]*orm.CrossMsg, []MsgHashWrappe
 			})
 
 		}
-
 	}
-	return l2CrossMsg, msgHashes, relayedMsgs, nil
+	return l2CrossMsg, msgHashes, relayedMsgs, l2SentMsg, nil
 }
