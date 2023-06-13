@@ -76,7 +76,7 @@ func action(ctx *cli.Context) error {
 		return err
 	}
 
-	chunkProposer := watcher.NewChunkProposer(subCtx, db)
+	chunkProposer := watcher.NewChunkProposer(subCtx, cfg.L2Config.ChunkProposerConfig, db)
 	if err != nil {
 		log.Error("failed to create chunkProposer", "error", err)
 		return err

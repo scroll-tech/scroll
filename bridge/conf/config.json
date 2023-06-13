@@ -71,20 +71,6 @@
       "rollup_sender_private_keys": [
         "1414141414141414141414141414141414141414141414141414141414141414"
       ]
-    },
-    "batch_proposer_config": {
-      "proof_generation_freq": 1,
-      "batch_gas_threshold": 3000000,
-      "batch_tx_num_threshold": 44,
-      "batch_time_sec": 300,
-      "batch_commit_time_sec": 1200,
-      "batch_blocks_limit": 100,
-      "commit_tx_calldata_size_limit": 200000,
-      "commit_tx_batch_count_limit": 30,
-      "public_input_config": {
-        "max_tx_num": 44,
-        "padding_tx_hash": "0x0000000000000000000000000000000000000000000000000000000000000000"
-      }
     }
   },
   "db_config": {
