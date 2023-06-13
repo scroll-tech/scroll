@@ -64,6 +64,12 @@ interface IL1ERC721Gateway {
         uint256[] _tokenIds
     );
 
+    /// @notice Emitted when some ERC721 token is refuned.
+    /// @param token The address of the token in L1.
+    /// @param recipient The address of receiver in L1.
+    /// @param tokenId The id of token refuned.
+    event RefundERC721(address indexed token, address indexed recipient, uint256 tokenId);
+
     /*****************************
      * Public Mutating Functions *
      *****************************/

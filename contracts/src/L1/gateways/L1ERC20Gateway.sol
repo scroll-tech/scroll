@@ -2,11 +2,22 @@
 
 pragma solidity ^0.8.0;
 
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+
 import {IL1ERC20Gateway} from "./IL1ERC20Gateway.sol";
+
+import {IL2ERC20Gateway} from "../../L2/gateways/IL2ERC20Gateway.sol";
+import {IScrollMessenger} from "../../libraries/IScrollMessenger.sol";
+import {ScrollConstants} from "../../libraries/constants/ScrollConstants.sol";
+import {ScrollGatewayBase} from "../../libraries/gateway/ScrollGatewayBase.sol";
+import {IMessageDropCallback} from "../../libraries/callbacks/IMessageDropCallback.sol";
 
 // solhint-disable no-empty-blocks
 
-abstract contract L1ERC20Gateway is IL1ERC20Gateway {
+abstract contract L1ERC20Gateway is IL1ERC20Gateway, IMessageDropCallback, ScrollGatewayBase {
+    using SafeERC20 for IERC20;
+
     /*****************************
      * Public Mutating Functions *
      *****************************/
@@ -41,9 +52,38 @@ abstract contract L1ERC20Gateway is IL1ERC20Gateway {
         _deposit(_token, _to, _amount, _data, _gasLimit);
     }
 
+    /// @inheritdoc IMessageDropCallback
+    function onDropMessage(bytes calldata _message) external payable virtual onlyInDropContext nonReentrant {
+        // _message should start with 0x8431f5c1  =>  finalizeDepositERC20(address,address,address,address,uint256,bytes)
+        require(bytes4(_message[0:4]) == IL2ERC20Gateway.finalizeDepositERC20.selector, "invalid selector");
+
+        // decode (token, receiver, amount)
+        (address _token, , address _receiver, , uint256 _amount, ) = abi.decode(
+            _message[4:],
+            (address, address, address, address, uint256, bytes)
+        );
+
+        // do dome check for each custom gateway
+        _beforeDropMessage(_token, _receiver, _amount);
+
+        IERC20(_token).safeTransfer(_receiver, _amount);
+
+        emit RefundERC20(_token, _receiver, _amount);
+    }
+
     /**********************
      * Internal Functions *
      **********************/
+
+    /// @dev Internal function to some actions before dropping the message.
+    /// @param _token The address of token to refund in L1.
+    /// @param _receiver The address of recipient in L1.
+    /// @param _amount The amount of token to refund.
+    function _beforeDropMessage(
+        address _token,
+        address _receiver,
+        uint256 _amount
+    ) internal virtual;
 
     /// @dev Internal function to do all the deposit operations.
     ///

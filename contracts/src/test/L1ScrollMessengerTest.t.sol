@@ -128,6 +128,12 @@ contract L1ScrollMessengerTest is DSTestPlus {
 
         uint256 _fee = gasOracle.l2BaseFee() * 100;
 
+        // Exceed maximum replay times
+        hevm.expectRevert("Exceed maximum replay times");
+        l1Messenger.replayMessage{value: _fee}(address(this), address(0), 100, 0, new bytes(0), 100, refundAddress);
+
+        l1Messenger.updateMaxReplayTimes(1);
+
         // refund exceed fee
         uint256 balanceBefore = refundAddress.balance;
         uint256 feeVaultBefore = feeVault.balance;

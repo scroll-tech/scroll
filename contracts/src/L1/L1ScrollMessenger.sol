@@ -13,7 +13,10 @@ import {ScrollMessengerBase} from "../libraries/ScrollMessengerBase.sol";
 import {AddressAliasHelper} from "../libraries/common/AddressAliasHelper.sol";
 import {WithdrawTrieVerifier} from "../libraries/verifier/WithdrawTrieVerifier.sol";
 
+import {IMessageDropCallback} from "../libraries/callbacks/IMessageDropCallback.sol";
+
 // solhint-disable avoid-low-level-calls
+// solhint-disable reason-string
 
 /// @title L1ScrollMessenger
 /// @notice The `L1ScrollMessenger` contract can:
@@ -26,6 +29,14 @@ import {WithdrawTrieVerifier} from "../libraries/verifier/WithdrawTrieVerifier.s
 /// @dev All deposited Ether (including `WETH` deposited throng `L1WETHGateway`) will locked in
 /// this contract.
 contract L1ScrollMessenger is PausableUpgradeable, ScrollMessengerBase, IL1ScrollMessenger {
+    /**********
+     * Events *
+     **********/
+
+    /// @notice Emitted when the maximum number of times each message can be replayed is updated.
+    /// @param maxReplayTimes The new maximum number of times each message can be replayed.
+    event UpdateMaxReplayTimes(uint256 maxReplayTimes);
+
     /*************
      * Variables *
      *************/
@@ -39,11 +50,30 @@ contract L1ScrollMessenger is PausableUpgradeable, ScrollMessengerBase, IL1Scrol
     /// @notice Mapping from L2 message hash to a boolean value indicating if the message has been successfully executed.
     mapping(bytes32 => bool) public isL2MessageExecuted;
 
+    /// @notice Mappging from L1 message hash to drop status.
+    mapping(bytes32 => bool) public isL1MessageDropped;
+
     /// @notice The address of Rollup contract.
     address public rollup;
 
     /// @notice The address of L1MessageQueue contract.
     address public messageQueue;
+
+    /// @notice The maximum number of times each L1 message can be replayed.
+    uint256 public maxReplayTimes;
+
+    /// @notice Mapping from L1 message hash to the number of replayed times.
+    mapping(bytes32 => uint256) public replayTimes;
+
+    /// @notice Mapping from L1 message hash to the queue index of lastest replayed one.
+    /// @dev If it is zero, it means the message has not been replayed.
+    mapping(bytes32 => uint256) public lastReplayIndex;
+
+    /// @notice Mapping from queue index to previous replay queue index.
+    /// @dev If a message `x` was replayed 3 times with index `q1`, `q2` and `q3`, the
+    /// value of `prevReplayIndex` and `lastReplayIndex` will be `lastReplayIndex[hash(x)] = q3`,
+    /// `prevReplayIndex[q3] = q2`, `prevReplayIndex[q2] = q1` and `prevReplayIndex[q1] = x`.
+    mapping(uint256 => uint256) public prevReplayIndex;
 
     // @note move to ScrollMessengerBase in next big refactor
     /// @dev The status of for non-reentrant check.
@@ -177,6 +207,9 @@ contract L1ScrollMessenger is PausableUpgradeable, ScrollMessengerBase, IL1Scrol
         uint32 _newGasLimit,
         address _refundAddress
     ) external payable override whenNotPaused {
+        // only replay when no other malicious action is ongoing
+        require(xDomainMessageSender == ScrollConstants.DEFAULT_XDOMAIN_MESSAGE_SENDER, "message in some context");
+
         // We will use a different `queueIndex` for the replaced message. However, the original `queueIndex` or `nonce`
         // is encoded in the `_message`. We will check the `xDomainCalldata` in layer 2 to avoid duplicated execution.
         // So, only one message will succeed in layer 2. If one of the message is executed successfully, the other one
@@ -187,6 +220,8 @@ contract L1ScrollMessenger is PausableUpgradeable, ScrollMessengerBase, IL1Scrol
         bytes32 _xDomainCalldataHash = keccak256(_xDomainCalldata);
 
         require(isL1MessageSent[_xDomainCalldataHash], "Provided message has not been enqueued");
+        // cannot replay dropped message
+        require(!isL1MessageDropped[_xDomainCalldataHash], "Message already dropped");
 
         // compute and deduct the messaging fee to fee vault.
         uint256 _fee = IL1MessageQueue(_messageQueue).estimateCrossDomainMessageFee(_newGasLimit);
@@ -199,7 +234,25 @@ contract L1ScrollMessenger is PausableUpgradeable, ScrollMessengerBase, IL1Scrol
         }
 
         // enqueue the new transaction
+        uint256 _nextQueueIndex = IL1MessageQueue(_messageQueue).nextCrossDomainMessageIndex();
         IL1MessageQueue(_messageQueue).appendCrossDomainMessage(_counterpart, _newGasLimit, _xDomainCalldata);
+
+        // update the replayed message chain.
+        uint256 _lastIndex = lastReplayIndex[_xDomainCalldataHash];
+        if (_lastIndex == 0) {
+            // the message has not been replayed before.
+            prevReplayIndex[_nextQueueIndex] = _queueIndex;
+        } else {
+            prevReplayIndex[_nextQueueIndex] = _lastIndex;
+        }
+        lastReplayIndex[_xDomainCalldataHash] = _nextQueueIndex;
+
+        // update replay times
+        uint256 _replayedTimes = replayTimes[_xDomainCalldataHash];
+        require(_replayedTimes < maxReplayTimes, "Exceed maximum replay times");
+        unchecked {
+            replayTimes[_xDomainCalldataHash] = _replayedTimes + 1;
+        }
 
         // refund fee to `_refundAddress`
         unchecked {
@@ -209,6 +262,58 @@ contract L1ScrollMessenger is PausableUpgradeable, ScrollMessengerBase, IL1Scrol
                 require(_success, "Failed to refund the fee");
             }
         }
+    }
+
+    /// @inheritdoc IL1ScrollMessenger
+    function dropMessage(
+        address _from,
+        address _to,
+        uint256 _value,
+        uint256 _queueIndex,
+        bytes memory _message
+    ) external override whenNotPaused {
+        // The criterions for drop a message.
+        // 1. The message is a L1 message.
+        // 2. The message has not been dropped before.
+        // 3. the message and all of its replacement are finalized in L1.
+        // 4. the message and all of its replacement are skipped.
+        //
+        // Possible denial of service attack:
+        // + replayMessage is called every time someone want to drop the message.
+        // + replayMessage is called so many times for a skipped message, thus results a long list.
+        //
+        // We limit the number of `replayMessage` calls of each message, which may solve the above problem.
+
+        address _messageQueue = messageQueue;
+
+        // check message exists
+        bytes memory _xDomainCalldata = _encodeXDomainCalldata(_from, _to, _value, _queueIndex, _message);
+        bytes32 _xDomainCalldataHash = keccak256(_xDomainCalldata);
+        require(isL1MessageSent[_xDomainCalldataHash], "Provided message has not been enqueued");
+
+        // check message not dropped
+        require(!isL1MessageDropped[_xDomainCalldataHash], "Message already dropped");
+
+        // check message is finalized
+        uint256 _lastIndex = lastReplayIndex[_xDomainCalldataHash];
+        if (_lastIndex == 0) _lastIndex = _queueIndex;
+        require(IL1MessageQueue(_messageQueue).pendingQueueIndex() > _lastIndex, "Message not finalized");
+
+        // check message is skipped and drop it.
+        // @note If the list is very long, the message may never be dropped.
+        while (true) {
+            IL1MessageQueue(_messageQueue).dropCrossDomainMessage(_lastIndex);
+            _lastIndex = prevReplayIndex[_lastIndex];
+            if (_lastIndex == 0) break;
+        }
+
+        isL1MessageDropped[_xDomainCalldataHash] = true;
+
+        // set execution context
+        xDomainMessageSender = ScrollConstants.DROP_XDOMAIN_MESSAGE_SENDER;
+        IMessageDropCallback(_from).onDropMessage{value: _value}(_message);
+        // clear execution context
+        xDomainMessageSender = ScrollConstants.DEFAULT_XDOMAIN_MESSAGE_SENDER;
     }
 
     /************************
@@ -224,6 +329,15 @@ contract L1ScrollMessenger is PausableUpgradeable, ScrollMessengerBase, IL1Scrol
         } else {
             _unpause();
         }
+    }
+
+    /// @notice Update max replay times.
+    /// @dev This function can only called by contract owner.
+    /// @param _maxReplayTimes The new max replay times.
+    function updateMaxReplayTimes(uint256 _maxReplayTimes) external onlyOwner {
+        maxReplayTimes = _maxReplayTimes;
+
+        emit UpdateMaxReplayTimes(_maxReplayTimes);
     }
 
     /**********************

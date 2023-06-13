@@ -100,6 +100,18 @@ contract L1WETHGateway is Initializable, ScrollGatewayBase, L1ERC20Gateway {
      **********************/
 
     /// @inheritdoc L1ERC20Gateway
+    function _beforeDropMessage(
+        address _token,
+        address,
+        uint256 _amount
+    ) internal virtual override {
+        require(_token == WETH, "token not WETH");
+        require(_amount == msg.value, "msg.value mismatch");
+
+        IWETH(_token).deposit{value: _amount}();
+    }
+
+    /// @inheritdoc L1ERC20Gateway
     function _deposit(
         address _token,
         address _to,

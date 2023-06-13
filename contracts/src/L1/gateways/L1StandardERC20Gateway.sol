@@ -111,6 +111,15 @@ contract L1StandardERC20Gateway is Initializable, ScrollGatewayBase, L1ERC20Gate
      **********************/
 
     /// @inheritdoc L1ERC20Gateway
+    function _beforeDropMessage(
+        address,
+        address,
+        uint256
+    ) internal virtual override {
+        require(msg.value == 0, "nonzero msg.value");
+    }
+
+    /// @inheritdoc L1ERC20Gateway
     function _deposit(
         address _token,
         address _to,

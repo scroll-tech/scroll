@@ -53,4 +53,13 @@ interface IL1ScrollMessenger is IScrollMessenger {
         uint32 newGasLimit,
         address refundAddress
     ) external payable;
+
+    /// @notice Drop a skipped message.
+    function dropMessage(
+        address from,
+        address to,
+        uint256 value,
+        uint256 queueIndex,
+        bytes memory message
+    ) external;
 }

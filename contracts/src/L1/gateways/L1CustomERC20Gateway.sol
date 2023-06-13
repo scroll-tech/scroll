@@ -111,6 +111,15 @@ contract L1CustomERC20Gateway is OwnableUpgradeable, ScrollGatewayBase, L1ERC20G
      **********************/
 
     /// @inheritdoc L1ERC20Gateway
+    function _beforeDropMessage(
+        address,
+        address,
+        uint256
+    ) internal virtual override {
+        require(msg.value == 0, "nonzero msg.value");
+    }
+
+    /// @inheritdoc L1ERC20Gateway
     function _deposit(
         address _token,
         address _to,
