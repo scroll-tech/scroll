@@ -150,7 +150,7 @@ func L2FetchAndSaveEvents(ctx context.Context, client *ethclient.Client, databas
 		log.Warn("Failed to get l2 event logs", "err", err)
 		return err
 	}
-	depositL2CrossMsgs, msgHashes, relayedMsg, _, err := utils.ParseBackendL2EventLogs(logs)
+	depositL2CrossMsgs, msgHashes, relayedMsg, l2sentMsgs, err := utils.ParseBackendL2EventLogs(logs)
 	if err != nil {
 		log.Error("l2FetchAndSaveEvents: Failed to parse cross msg event logs", "err", err)
 		return err
@@ -177,6 +177,13 @@ func L2FetchAndSaveEvents(ctx context.Context, client *ethclient.Client, databas
 		dbTx.Rollback()
 		log.Crit("l2FetchAndSaveEvents: Failed to update msgHash in L2 cross msg", "err", err)
 	}
+
+	err = database.BatchInsertL2SentMsgDBTx(dbTx, l2sentMsgs)
+	if err != nil {
+		dbTx.Rollback()
+		log.Crit("l2FetchAndSaveEvents: Failed to indert l2 sent message", "err", err)
+	}
+
 	err = dbTx.Commit()
 	if err != nil {
 		// if we can not insert into DB, there must something wrong, need a on-call member handle the dababase manually
@@ -202,7 +209,7 @@ func FetchAndSaveBatchIndex(ctx context.Context, client *ethclient.Client, dbTx 
 		log.Warn("Failed to get l2 event logs", "err", err)
 		return err
 	}
-	_, _, _, l2sentMsgs, err := utils.ParseBackendL2EventLogs(logs)
+	bridgeBatches, err := utils.ParseBatchInfoFromScrollChain(ctx, client, logs)
 	if err != nil {
 		log.Error("FetchAndSaveBatchIndex: Failed to parse batch commit msg event logs", "err", err)
 		return err

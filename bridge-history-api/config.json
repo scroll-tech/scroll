@@ -2,8 +2,9 @@
 	"l1": {
 		"confirmation": 64,
 		"endpoint": "https://rpc.ankr.com/eth_goerli",
-		"startHeight": 9890194 ,
+		"startHeight": 9090194 ,
 		"blockTime": 10,
+		"batchIndexStartBlock": 9090194,
 		"MessengerAddr": "0x5260e38080BFe97e6C4925d9209eCc5f964373b6",
 		"ETHGatewayAddr": "0x429b73A21cF3BF1f3E696a21A95408161daF311f",
 		"WETHGatewayAddr": "0x8be69E499D8848DfFb4cF9bac909f3e2cF2FeFa0",

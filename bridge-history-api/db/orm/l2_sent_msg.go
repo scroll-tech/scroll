@@ -86,7 +86,7 @@ func (l *l2SentMsgOrm) UpdateL2MessageProofInDbTx(ctx context.Context, dbTx *sql
 }
 
 func (l *l2SentMsgOrm) GetLatestL2SentMsgBactchIndex() (uint64, error) {
-	row := l.db.QueryRow(`SELECT batch_index FROM l2_sent_msg WHERE msg_proof != null AND batch_index != null AND is_deleted ORDER BY batch_index DESC LIMIT 1;`)
+	row := l.db.QueryRow(`SELECT batch_index FROM l2_sent_msg WHERE msg_proof != null AND batch_index != null AND NOT is_deleted ORDER BY batch_index DESC LIMIT 1;`)
 	var result sql.NullInt64
 	if err := row.Scan(&result); err != nil {
 		if err == sql.ErrNoRows || !result.Valid {
@@ -119,7 +119,7 @@ func (l *l2SentMsgOrm) GetL2SentMessageByNonce(nonce uint64) (*L2SentMsg, error)
 }
 
 func (l *l2SentMsgOrm) GetLastL2MessageNonceLEHeight(endBlockNumber uint64) (sql.NullInt64, error) {
-	row := l.db.QueryRow(`SELECT MAX(nonce) FROM l2_message WHERE height <= $1;`, endBlockNumber)
+	row := l.db.QueryRow(`SELECT MAX(nonce) FROM l2_message WHERE height <= $1 AND NOT is_deleted;`, endBlockNumber)
 	var nonce sql.NullInt64
 	err := row.Scan(&nonce)
 	return nonce, err

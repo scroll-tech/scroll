@@ -1,9 +1,12 @@
 package utils
 
 import (
+	"context"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/log"
 
 	backendabi "bridge-history-api/abi"
@@ -229,4 +232,28 @@ func ParseBackendL2EventLogs(logs []types.Log) ([]*orm.CrossMsg, []MsgHashWrappe
 		}
 	}
 	return l2CrossMsg, msgHashes, relayedMsgs, l2SentMsg, nil
+}
+
+func ParseBatchInfoFromScrollChain(ctx context.Context, client *ethclient.Client, logs []types.Log) ([]*orm.L2SentMsg, error) {
+	var l2SentMsg []*orm.L2SentMsg
+	for _, vlog := range logs {
+		switch vlog.Topics[0] {
+		case backendabi.L1CommitBatchEventSignature:
+			event := backendabi.L1CommitBatchEvent{}
+			err := UnpackLog(backendabi.L1ScrollMessengerABI, &event, "CommitBatch", vlog)
+			if err != nil {
+				log.Warn("Failed to unpack CommitBatch event", "err", err)
+				return l2SentMsg, err
+			}
+			commitTx, is_pending, err := client.TransactionByHash(ctx, vlog.TxHash)
+			if err != nil || is_pending {
+				log.Warn("Failed to get commit Batch tx receipt or the tx is still pending", "err", err)
+				return l2SentMsg, err
+			}
+			startBlcock, endBlockNumber := GetBatchRangeFromCalldata(commitTx.Data())
+		default:
+			continue
+		}
+	}
+	return l2SentMsg, nil
 }

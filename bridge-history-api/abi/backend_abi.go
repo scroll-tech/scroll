@@ -325,3 +325,8 @@ type L2FailedRelayedMessageEvent struct {
 type L2RelayedMessageEvent struct {
 	MessageHash common.Hash
 }
+
+// L1CommitBatchEvent represents a CommitBatch event raised by the ScrollChain contract.
+type L1CommitBatchEvent struct {
+	BatchHash common.Hash
+}

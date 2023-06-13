@@ -21,6 +21,7 @@ type LayerConfig struct {
 	Endpoint               string `json:"endpoint"`
 	StartHeight            uint64 `json:"startHeight"`
 	BlockTime              int64  `json:"blockTime"`
+	BatchIndexStartBlock   uint64 `json:"batchIndexStartBlock"`
 	MessengerAddr          string `json:"MessengerAddr"`
 	ETHGatewayAddr         string `json:"ETHGatewayAddr"`
 	WETHGatewayAddr        string `json:"WETHGatewayAddr"`
