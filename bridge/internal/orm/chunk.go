@@ -20,6 +20,9 @@ type Chunk struct {
 	EndBlockNumber   uint64     `json:"end_block_number" gorm:"column:end_block_number"`
 	EndBlockHash     string     `json:"end_block_hash" gorm:"column:end_block_hash"`
 	ChunkProof       []byte     `json:"chunk_proof" gorm:"column:chunk_proof"`
+	TotalGasUsed     uint64     `json:"total_gas_used" gorm:"column:total_gas_used"`
+	TotalTxNum       uint64     `json:"total_tx_num" gorm:"column:total_tx_num"`
+	TotalPayloadSize uint64     `json:"total_payload_size" gorm:"column:total_payload_size"`
 	ProofTimeSec     int        `json:"proof_time_sec" gorm:"column:proof_time_sec"`
 	ProverAssignedAt *time.Time `json:"prover_assigned_at" gorm:"column:prover_assigned_at"`
 	ProvingStatus    int        `json:"proving_status" gorm:"column:proving_status"`
@@ -87,15 +90,28 @@ func (c *Chunk) InsertChunk(ctx context.Context, chunk *types.Chunk, l2BlockOrm 
 		return errors.New("chunk must contain at least one block")
 	}
 
+	var totalGasUsed uint64
+	var totalTxNum uint64
+	var totalPayloadSize uint64
+	for _, block := range chunk.Blocks {
+		totalGasUsed += block.Header.GasUsed
+		totalTxNum += uint64(len(block.Transactions))
+		for _, tx := range block.Transactions {
+			totalPayloadSize += uint64(len(tx.Data))
+		}
+	}
+
 	tmpChunk := Chunk{
 		Hash:             hex.EncodeToString(hash),
 		StartBlockNumber: chunk.Blocks[0].Header.Number.Uint64(),
 		StartBlockHash:   chunk.Blocks[0].Header.Hash().Hex(),
 		EndBlockNumber:   chunk.Blocks[numBlocks-1].Header.Number.Uint64(),
 		EndBlockHash:     chunk.Blocks[numBlocks-1].Header.Hash().Hex(),
+		TotalGasUsed:     totalGasUsed,
+		TotalTxNum:       totalTxNum,
+		TotalPayloadSize: totalPayloadSize,
 	}
 
-	// Start a new transaction
 	tx := db.Begin()
 	defer func() {
 		if r := recover(); r != nil {
@@ -114,14 +130,12 @@ func (c *Chunk) InsertChunk(ctx context.Context, chunk *types.Chunk, l2BlockOrm 
 		blockNumbers[i] = block.Header.Number.Uint64()
 	}
 
-	// Update the chunk_hash for all blocks in the chunk
 	if err := l2BlockOrm.UpdateChunkHashForL2Blocks(blockNumbers, tmpChunk.Hash, tx); err != nil {
 		log.Error("failed to update chunk_hash for l2_blocks", "chunk_hash", tmpChunk.Hash, "block_numbers", blockNumbers, "err", err)
 		tx.Rollback()
 		return err
 	}
 
-	// If all operations succeed, then commit the transaction
 	tx.Commit()
 	return nil
 }

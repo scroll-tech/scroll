@@ -36,26 +36,26 @@ func NewBatchProposer(ctx context.Context, db *gorm.DB) *BatchProposer {
 func (p *BatchProposer) TryProposeBatch() {
 	dbChunks, err := p.chunkOrm.GetUnbatchedChunks(p.ctx)
 	if err != nil {
-		log.Error("failed to get unbatched chunks: %w", err)
+		log.Error("Failed to get unbatched chunks", "error", err)
 		return
 	}
 
-	chunks := make([]*bridgeTypes.Chunk, len(dbChunks))
-	for i, chunk := range dbChunks {
+	if len(dbChunks) == 0 {
+		log.Warn("No unbatched chunks found")
+		return
+	}
+
+	chunks := make([]*bridgeTypes.Chunk, 0, len(dbChunks))
+	for _, chunk := range dbChunks {
 		wrappedBlocks, err := p.l2BlockOrm.RangeGetL2WrappedBlocks(chunk.StartBlockNumber, chunk.EndBlockNumber)
 		if err != nil {
-			log.Error("failed to get wrapped blocks for chunk: %w", err)
+			log.Error("Failed to get wrapped blocks for chunk", "error", err)
 			return
 		}
-
-		chunks[i] = &bridgeTypes.Chunk{
-			Blocks: wrappedBlocks,
-		}
+		chunks = append(chunks, &bridgeTypes.Chunk{Blocks: wrappedBlocks})
 	}
 
 	if err := p.batchOrm.InsertBatch(p.ctx, chunks, p.chunkOrm, p.l2BlockOrm); err != nil {
-		log.Error("failed to insert chunks into batch: %w", err)
-		return
+		log.Error("Failed to insert chunks into batch", "error", err)
 	}
-	return
 }
