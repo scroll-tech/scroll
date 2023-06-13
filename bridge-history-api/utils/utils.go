@@ -61,8 +61,7 @@ func ComputeMessageHash(
 	return common.BytesToHash(crypto.Keccak256(data))
 }
 
-// L1CommitBatchEvent represents a CommitBatch event raised by the ScrollChain contract.
-type CommitBatchArgs struct {
+type commitBatchArgs struct {
 	Version                uint8
 	ParentBatchHeader      []byte
 	Chunks                 [][]byte
@@ -72,12 +71,12 @@ type CommitBatchArgs struct {
 // GetBatchRangeFromCalldata find the block range from calldata, both inclusive.
 func GetBatchRangeFromCalldata(calldata []byte) (uint64, uint64, error) {
 	method := backendabi.ScrollChainABI.Methods["commitBatch"]
-	values, err := method.Inputs.Unpack(calldata[4:])
+	values, err := method.Inputs.Unpack(calldata[4:len(calldata)])
 	if err != nil {
 		return 0, 0, err
 	}
-	args := CommitBatchArgs{}
-	err = method.Inputs.Copy(args, values)
+	args := commitBatchArgs{}
+	err = method.Inputs.Copy(&args, values)
 	if err != nil {
 		return 0, 0, err
 	}
@@ -93,7 +92,7 @@ func GetBatchRangeFromCalldata(calldata []byte) (uint64, uint64, error) {
 		for j := 0; j < numBlock; j++ {
 			block := args.Chunks[i][1+j*60 : 61+j*60]
 			// first 8 bytes are blockNumber
-			blockNumber := binary.LittleEndian.Uint64(block[0:8])
+			blockNumber := binary.BigEndian.Uint64(block[0:8])
 			if startBlock == 0 {
 				startBlock = blockNumber
 			}
