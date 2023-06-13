@@ -41,12 +41,12 @@ func (b *BatchInfoFetcher) Start() {
 			case <-tick.C:
 				number, err := b.client.BlockNumber(b.ctx)
 				if err != nil {
-					log.Error("Can not get latest block number: ", err)
+					log.Error("Can not get latest block number: ", "err", err)
 					continue
 				}
 				latestBatch, err := b.db.GetLatestBridgeBatch()
 				if err != nil {
-					log.Error("Can not get latest BatchInfo: ", err)
+					log.Error("Can not get latest BatchInfo: ", "err", err)
 					continue
 				}
 				var startHeight uint64

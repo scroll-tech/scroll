@@ -48,19 +48,19 @@ func (m *MsgProofUpdater) Start() {
 			case <-tick.C:
 				latestBatch, err := m.db.GetLatestBridgeBatch()
 				if err != nil {
-					log.Error("Can not get latest BridgeBatch: ", err)
+					log.Error("Can not get latest BridgeBatch: ", "err", err)
 					continue
 				}
 				latestBatchHasProof, err := m.db.GetLatestL2SentMsgBactchIndex()
 				if err != nil {
-					log.Error("Can not get latest L2SentMsgBatchIndex: ", err)
+					log.Error("Can not get latest L2SentMsgBatchIndex: ", "err", err)
 					continue
 				}
 				if latestBatchHasProof < latestBatch.BatchIndex {
 					for start := latestBatchHasProof + 1; start <= latestBatch.BatchIndex; start++ {
 						batch, err := m.db.GetBridgeBatchByIndex(start)
 						if err != nil {
-							log.Error("Can not get BridgeBatch: ", err)
+							log.Error("Can not get BridgeBatch: ", "err", err)
 							break
 						}
 						// but this should never happen
