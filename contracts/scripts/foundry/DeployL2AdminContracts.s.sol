@@ -5,7 +5,23 @@ import {Script} from "forge-std/Script.sol";
 import {console} from "forge-std/console.sol";
 
 import {Safe} from "safe-contracts/Safe.sol";
+import {SafeProxy} from "safe-contracts/proxies/SafeProxy.sol";
 import {TimelockController} from "@openzeppelin/contracts/governance/TimelockController.sol";
+import {Forwarder} from "../../src/misc/Forwarder.sol";
+import {MockTarget} from "../../src/mocks/MockTarget.sol";
+
+interface ISafe {
+    function setup(
+        address[] calldata _owners,
+        uint256 _threshold,
+        address to,
+        bytes calldata data,
+        address fallbackHandler,
+        address paymentToken,
+        uint256 payment,
+        address payable paymentReceiver
+    ) external;
+}
 
 contract DeployL2AdminContracts is Script {
     uint256 L2_DEPLOYER_PRIVATE_KEY = vm.envUint("L2_DEPLOYER_PRIVATE_KEY");
@@ -21,13 +37,24 @@ contract DeployL2AdminContracts is Script {
         logAddress("L2_COUNCIL_TIMELOCK_ADDR", address(council_timelock));
 
         address scroll_safe = deploySafe();
-        // TODO: get timelock delay from env. for now just use 2 days
-        address scroll_timelock = deployTimelockController(scroll_safe, 2 days);
+        // TODO: get timelock delay from env. for now just use 0
+        address scroll_timelock = deployTimelockController(scroll_safe, 0);
         
         logAddress("L2_SCROLL_SAFE_ADDR", address(scroll_safe));
         logAddress("L2_SCROLL_TIMELOCK_ADDR", address(scroll_timelock));
 
+        address forwarder = deployForwarder(address(council_safe), address(scroll_safe));
+        logAddress("L1_FORWARDER_ADDR", address(forwarder));
+
+        MockTarget target = new MockTarget();
+        logAddress("L2_TARGET_ADDR", address(target));
+
         vm.stopBroadcast();
+    }
+
+    function deployForwarder(address admin, address superAdmin) internal returns (address) {
+        Forwarder forwarder = new Forwarder(admin, superAdmin);
+        return address(forwarder);
     }
 
     function deploySafe() internal returns (address) {
@@ -35,10 +62,11 @@ contract DeployL2AdminContracts is Script {
         // TODO: get safe signers from env
 
         Safe safe = new Safe();
+        SafeProxy proxy = new SafeProxy(address(safe));
         address[] memory owners = new address[](1);
         owners[0] = owner;
         // deployer 1/1. no gas refunds for now
-        safe.setup(
+        ISafe(address(proxy)).setup(
             owners,
             1,
             address(0),
@@ -48,7 +76,8 @@ contract DeployL2AdminContracts is Script {
             0,
             payable(address(0))
         );
-        return address(safe);
+
+        return address(proxy);
     }
 
     function deployTimelockController(address safe, uint delay) internal returns(address) {
@@ -66,6 +95,14 @@ contract DeployL2AdminContracts is Script {
         timelock.revokeRole(TIMELOCK_ADMIN_ROLE, deployer);
 
         return address(timelock);
+    }
+
+    function logBytes32(string memory name, bytes32 value) internal view {
+        console.log(string(abi.encodePacked(name, "=", vm.toString(bytes32(value)))));
+    }
+
+    function logUint(string memory name, uint value) internal view {
+        console.log(string(abi.encodePacked(name, "=", vm.toString(uint(value)))));
     }
 
     function logAddress(string memory name, address addr) internal view {

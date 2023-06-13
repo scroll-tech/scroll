@@ -6,6 +6,7 @@ import {console} from "forge-std/console.sol";
 
 import {Safe} from "safe-contracts/Safe.sol";
 import {TimelockController} from "@openzeppelin/contracts/governance/TimelockController.sol";
+import {Forwarder} from "../../src/misc/Forwarder.sol";
 
 contract DeployL1AdminContracts is Script {
     uint256 L1_DEPLOYER_PRIVATE_KEY = vm.envUint("L1_DEPLOYER_PRIVATE_KEY");
@@ -27,7 +28,15 @@ contract DeployL1AdminContracts is Script {
         logAddress("L1_SCROLL_SAFE_ADDR", address(scroll_safe));
         logAddress("L1_SCROLL_TIMELOCK_ADDR", address(scroll_timelock));
 
+        address forwarder = deployForwarder(address(council_safe), address(scroll_safe));
+        logAddress("L1_FORWARDER_ADDR", address(forwarder));
+
         vm.stopBroadcast();
+    }
+
+    function deployForwarder(address admin, address superAdmin) internal returns (address) {
+        Forwarder forwarder = new Forwarder(admin, superAdmin);
+        return address(forwarder);
     }
 
     function deploySafe() internal returns (address) {
