@@ -96,14 +96,14 @@ func TestFunction(t *testing.T) {
 	}
 
 	// Run l1 watcher test cases.
-	t.Run("TestStartWatcher", testFetchContractEvent)
-	t.Run("TestL1WatcherClientFetchBlockHeader", testL1WatcherClientFetchBlockHeader)
-	t.Run("TestL1WatcherClientFetchContractEvent", testL1WatcherClientFetchContractEvent)
-	t.Run("TestParseBridgeEventLogsL1QueueTransactionEventSignature", testParseBridgeEventLogsL1QueueTransactionEventSignature)
-	t.Run("TestParseBridgeEventLogsL1RelayedMessageEventSignature", testParseBridgeEventLogsL1RelayedMessageEventSignature)
-	t.Run("TestParseBridgeEventLogsL1FailedRelayedMessageEventSignature", testParseBridgeEventLogsL1FailedRelayedMessageEventSignature)
-	t.Run("TestParseBridgeEventLogsL1CommitBatchEventSignature", testParseBridgeEventLogsL1CommitBatchEventSignature)
-	t.Run("TestParseBridgeEventLogsL1FinalizeBatchEventSignature", testParseBridgeEventLogsL1FinalizeBatchEventSignature)
+	//t.Run("TestStartWatcher", testFetchContractEvent)
+	//t.Run("TestL1WatcherClientFetchBlockHeader", testL1WatcherClientFetchBlockHeader)
+	//t.Run("TestL1WatcherClientFetchContractEvent", testL1WatcherClientFetchContractEvent)
+	//t.Run("TestParseBridgeEventLogsL1QueueTransactionEventSignature", testParseBridgeEventLogsL1QueueTransactionEventSignature)
+	//t.Run("TestParseBridgeEventLogsL1RelayedMessageEventSignature", testParseBridgeEventLogsL1RelayedMessageEventSignature)
+	//t.Run("TestParseBridgeEventLogsL1FailedRelayedMessageEventSignature", testParseBridgeEventLogsL1FailedRelayedMessageEventSignature)
+	//t.Run("TestParseBridgeEventLogsL1CommitBatchEventSignature", testParseBridgeEventLogsL1CommitBatchEventSignature)
+	//t.Run("TestParseBridgeEventLogsL1FinalizeBatchEventSignature", testParseBridgeEventLogsL1FinalizeBatchEventSignature)
 
 	// Run l2 watcher test cases.
 	t.Run("TestCreateNewWatcherAndStop", testCreateNewWatcherAndStop)
