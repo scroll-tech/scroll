@@ -51,12 +51,12 @@ func (p *ChunkProposer) TryProposeChunk() {
 }
 
 func (p *ChunkProposer) proposeChunk() (*bridgeTypes.Chunk, error) {
-	unchunkedBlocks, err := p.l2BlockOrm.GetUnchunkedBlocks()
+	blocks, err := p.l2BlockOrm.GetUnchunkedBlocks()
 	if err != nil {
 		return nil, err
 	}
 
-	if len(unchunkedBlocks) == 0 {
+	if len(blocks) == 0 {
 		return nil, errors.New("No Unchunked Blocks")
 	}
 
@@ -67,7 +67,7 @@ func (p *ChunkProposer) proposeChunk() (*bridgeTypes.Chunk, error) {
 		return
 	}
 
-	firstBlock := unchunkedBlocks[0]
+	firstBlock := blocks[0]
 	totalGasUsed := firstBlock.Header.GasUsed
 	totalTxNum := uint64(len(firstBlock.Transactions))
 	totalPayloadSize := approximatePayloadSize(firstBlock)
@@ -75,23 +75,23 @@ func (p *ChunkProposer) proposeChunk() (*bridgeTypes.Chunk, error) {
 	// Use the first block to propose a chunk if it exceeds any limits
 	if totalGasUsed > p.maxGasPerChunk {
 		log.Warn("The first block exceeds the max gas limit", "block number", firstBlock.Header.Number, "gas used", totalGasUsed, "max gas limit", p.maxGasPerChunk)
-		return &bridgeTypes.Chunk{Blocks: unchunkedBlocks[:1]}, nil
+		return &bridgeTypes.Chunk{Blocks: blocks[:1]}, nil
 	}
 	if totalTxNum > p.maxTxNumPerChunk {
 		log.Warn("The first block exceeds the max transaction number limit", "block number", firstBlock.Header.Number, "number of transactions", totalTxNum, "max transaction number limit", p.maxTxNumPerChunk)
-		return &bridgeTypes.Chunk{Blocks: unchunkedBlocks[:1]}, nil
+		return &bridgeTypes.Chunk{Blocks: blocks[:1]}, nil
 	}
 	if totalPayloadSize > p.maxPayloadSizePerChunk {
 		log.Warn("The first block exceeds the max calldata size limit", "block number", firstBlock.Header.Number, "calldata size", totalPayloadSize, "max calldata size limit", p.maxPayloadSizePerChunk)
-		return &bridgeTypes.Chunk{Blocks: unchunkedBlocks[:1]}, nil
+		return &bridgeTypes.Chunk{Blocks: blocks[:1]}, nil
 	}
 
-	for i, block := range unchunkedBlocks[1:] {
+	for i, block := range blocks[1:] {
 		blockGasUsed := block.Header.GasUsed
 		blockCalldataSize := approximatePayloadSize(block)
 		blockTxNum := uint64(len(block.Transactions))
 		if (totalGasUsed+blockGasUsed > p.maxGasPerChunk) || (totalTxNum+blockTxNum > p.maxTxNumPerChunk) || (totalPayloadSize+blockCalldataSize > p.maxPayloadSizePerChunk) {
-			unchunkedBlocks = unchunkedBlocks[:i]
+			blocks = blocks[:i]
 			break
 		}
 		totalGasUsed += blockGasUsed
@@ -103,5 +103,5 @@ func (p *ChunkProposer) proposeChunk() (*bridgeTypes.Chunk, error) {
 		errMsg := fmt.Sprintf("The calldata size of the chunk is less than the minimum limit", "calldata size", totalPayloadSize)
 		return nil, errors.New(errMsg)
 	}
-	return &bridgeTypes.Chunk{Blocks: unchunkedBlocks}, nil
+	return &bridgeTypes.Chunk{Blocks: blocks}, nil
 }

@@ -22,6 +22,8 @@ type L2Config struct {
 	RelayerConfig *RelayerConfig `json:"relayer_config"`
 	// The chunk_proposer config
 	ChunkProposerConfig *ChunkProposerConfig `json:"chunk_proposer_config"`
+	// The batch_proposer config
+	BatchProposerConfig *BatchProposerConfig `json:"batch_proposer_config"`
 }
 
 // ChunkProposerConfig loads chunk_proposer configuration items.
@@ -30,4 +32,12 @@ type ChunkProposerConfig struct {
 	MaxTxNumPerChunk       uint64 `json:"max_tx_num_chunk"`
 	MaxPayloadSizePerChunk uint64 `json:"max_payload_size_per_chunk"`
 	MinPayloadSizePerChunk uint64 `json:"min_payload_size_per_chunk"`
+}
+
+// BatchProposerConfig loads batch_proposer configuration items.
+type BatchProposerConfig struct {
+	MaxGasPerBatch         uint64 `json:"max_gas_per_chunk"`
+	MaxTxNumPerBatch       uint64 `json:"max_tx_num_chunk"`
+	MaxPayloadSizePerBatch uint64 `json:"max_payload_size_per_chunk"`
+	MinPayloadSizePerBatch uint64 `json:"min_payload_size_per_chunk"`
 }
