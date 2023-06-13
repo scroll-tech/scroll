@@ -87,20 +87,17 @@ func (p *ChunkProposer) proposeChunk() (*bridgeTypes.Chunk, error) {
 	}
 
 	for i, block := range blocks[1:] {
-		blockGasUsed := block.Header.GasUsed
-		blockCalldataSize := approximatePayloadSize(block)
-		blockTxNum := uint64(len(block.Transactions))
-		if (totalGasUsed+blockGasUsed > p.maxGasPerChunk) || (totalTxNum+blockTxNum > p.maxTxNumPerChunk) || (totalPayloadSize+blockCalldataSize > p.maxPayloadSizePerChunk) {
-			blocks = blocks[:i]
+		totalGasUsed += block.Header.GasUsed
+		totalTxNum += uint64(len(block.Transactions))
+		totalPayloadSize += approximatePayloadSize(block)
+		if (totalGasUsed > p.maxGasPerChunk) || (totalTxNum > p.maxTxNumPerChunk) || (totalPayloadSize > p.maxPayloadSizePerChunk) {
+			blocks = blocks[:i+1]
 			break
 		}
-		totalGasUsed += blockGasUsed
-		totalTxNum += blockTxNum
-		totalPayloadSize += blockCalldataSize
 	}
 
 	if totalPayloadSize < p.minPayloadSizePerChunk {
-		errMsg := fmt.Sprintf("The calldata size of the chunk is less than the minimum limit", "calldata size", totalPayloadSize)
+		errMsg := fmt.Sprintf("The calldata size of the chunk is less than the minimum limit: %d", totalPayloadSize)
 		return nil, errors.New(errMsg)
 	}
 	return &bridgeTypes.Chunk{Blocks: blocks}, nil

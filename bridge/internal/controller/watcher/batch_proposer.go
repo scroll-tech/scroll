@@ -69,34 +69,33 @@ func (p *BatchProposer) proposeBatchChunks() ([]*bridgeTypes.Chunk, error) {
 
 	if totalGasUsed > p.maxGasPerBatch {
 		log.Warn("The first chunk exceeds the max gas limit", "total gas used", totalGasUsed, "max gas limit", p.maxGasPerBatch)
-		return convertToBridgeBlock(dbChunks[:1])
+		return p.convertToBridgeBlock(dbChunks[:1])
 	}
 
 	if totalTxNum > p.maxTxNumPerBatch {
 		log.Warn("The first chunk exceeds the max transaction number limit", "total transaction number", totalTxNum, "max transaction number limit", p.maxTxNumPerBatch)
-		return convertToBridgeBlock(dbChunks[:1])
+		return p.convertToBridgeBlock(dbChunks[:1])
 	}
 
 	if totalPayloadSize > p.maxPayloadSizePerBatch {
 		log.Warn("The first chunk exceeds the max payload size limit", "total payload size", totalPayloadSize, "max payload size limit", p.maxPayloadSizePerBatch)
-		return convertToBridgeBlock(dbChunks[:1])
+		return p.convertToBridgeBlock(dbChunks[:1])
 	}
 
 	for i, chunk := range dbChunks[1:] {
-		if (totalGasUsed+chunk.TotalGasUsed > p.maxGasPerBatch) || (totalTxNum+chunk.TotalTxNum > p.maxTxNumPerBatch) || (totalPayloadSize+chunk.TotalPayloadSize > p.maxPayloadSizePerBatch) {
-			dbChunks = dbChunks[:i]
-			break
-		}
 		totalGasUsed += chunk.TotalGasUsed
 		totalTxNum += chunk.TotalTxNum
 		totalPayloadSize += chunk.TotalPayloadSize
+		if (totalGasUsed > p.maxGasPerBatch) || (totalTxNum > p.maxTxNumPerBatch) || (totalPayloadSize > p.maxPayloadSizePerBatch) {
+			return p.convertToBridgeBlock(dbChunks[:i+1])
+		}
 	}
 
 	if totalPayloadSize < p.minPayloadSizePerBatch {
-		errMsg := fmt.Sprintf("The payload size of the batch is less than the minimum limit", "payload size", totalPayloadSize)
+		errMsg := fmt.Sprintf("The payload size of the batch is less than the minimum limit: %d", totalPayloadSize)
 		return nil, errors.New(errMsg)
 	}
-	return convertToBridgeBlock(dbChunks)
+	return p.convertToBridgeBlock(dbChunks)
 }
 
 func (p *BatchProposer) convertToBridgeBlock(dbChunks []*orm.Chunk) ([]*bridgeTypes.Chunk, error) {
