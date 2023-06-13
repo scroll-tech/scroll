@@ -64,10 +64,10 @@ func L1ReorgHandling(ctx context.Context, reorgHeight int64, db db.OrmFactory) e
 		dbTx.Rollback()
 		log.Crit("delete l1 cross msg from height", "height", reorgHeight, "err", err)
 	}
-	err = db.ResetL2SentMsgL1HashAfterHeightDBTx(dbTx, reorgHeight)
+	err = db.DeleteL1RelayedHashAfterHeightDBTx(dbTx, reorgHeight)
 	if err != nil {
 		dbTx.Rollback()
-		log.Crit("delete l1 relayed finalized l2 tx hash from height", "height", reorgHeight, "err", err)
+		log.Crit("delete l1 relayed hash from height", "height", reorgHeight, "err", err)
 	}
 	err = dbTx.Commit()
 	if err != nil {

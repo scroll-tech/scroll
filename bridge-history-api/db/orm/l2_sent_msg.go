@@ -36,17 +36,18 @@ func (l *l2SentMsgOrm) BatchInsertL2SentMsgDBTx(dbTx *sqlx.Tx, messages []*L2Sen
 	messageMaps := make([]map[string]interface{}, len(messages))
 	for i, msg := range messages {
 		messageMaps[i] = map[string]interface{}{
-			"msg_hash":         msg.MsgHash,
-			"height":           msg.Height,
-			"nonce":            msg.Nonce,
-			"finalized_height": msg.FinalizedHeight,
-			"layer1_hash":      msg.Layer1Hash,
-			"batch_index":      msg.BatchIndex,
-			"msg_proof":        msg.MsgProof,
-			"msg_data":         msg.MsgData,
+			"sender":      msg.Sender,
+			"target":      msg.Target,
+			"value":       msg.Value,
+			"msg_hash":    msg.MsgHash,
+			"height":      msg.Height,
+			"nonce":       msg.Nonce,
+			"batch_index": msg.BatchIndex,
+			"msg_proof":   msg.MsgProof,
+			"msg_data":    msg.MsgData,
 		}
 
-		_, err = dbTx.NamedExec(`insert into l2_sent_msg(msg_hash, height, nonce, finalized_height, layer1_hash, batch_index, msg_proof, msg_data) values(:msg_hash, :height, :nonce, :layer1_hash, :finalized_height, :batch_index, :msg_proof, :msg_data);`, messageMaps[i])
+		_, err = dbTx.NamedExec(`insert into l2_sent_msg(sender, target, value, msg_hash, height, nonce, batch_index, msg_proof, msg_data) values(:sender, :target, :value, :msg_hash, :height, :nonce, :batch_index, :msg_proof, :msg_data);`, messageMaps[i])
 		if err != nil && !strings.Contains(err.Error(), "pq: duplicate key value violates unique constraint \"l2_sent_msg_hash_uindex") {
 			log.Error("BatchInsertL2SentMsgDBTx: failed to insert l2 sent msgs", "msg_Hash", msg.MsgHash, "height", msg.Height, "err", err)
 			break

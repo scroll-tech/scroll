@@ -68,6 +68,11 @@ func (l *relayedMsgOrm) GetLatestRelayedHeightOnL1() (int64, error) {
 	return 0, nil
 }
 
+func (l *relayedMsgOrm) DeleteL1RelayedHashAfterHeightDBTx(dbTx *sqlx.Tx, height int64) error {
+	_, err := dbTx.Exec(`UPDATE relayed_msg SET is_deleted = true WHERE height > $1 AND layer1_hash != '';`, height)
+	return err
+}
+
 func (l *relayedMsgOrm) DeleteL2RelayedHashAfterHeightDBTx(dbTx *sqlx.Tx, height int64) error {
 	_, err := dbTx.Exec(`UPDATE relayed_msg SET is_deleted = true WHERE height > $1 AND layer2_hash != '';`, height)
 	return err

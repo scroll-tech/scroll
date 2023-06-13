@@ -3,14 +3,15 @@
 create table l2_sent_msg
 (
     id               BIGSERIAL PRIMARY KEY,
+    sender           VARCHAR NOT NULL,
+    target           VARCHAR NOT NULL,
+    value            VARCHAR NOT NULL,
     msg_hash         VARCHAR NOT NULL,
     height           BIGINT NOT NULL,
     nonce            BIGINT NOT NULL,
-    finalized_height BIGINT DEFAULT NULL,
-    layer1_hash      VARCHAR NOT NULL DEFAULT '',
     batch_index      BIGINT DEFAULT NULL,
     msg_proof        TEXT DEFAULT '',
-    msg_data         VARCHAR DEFAULT '',
+    msg_data         TEXT DEFAULT '',
     is_deleted       BOOLEAN NOT NULL DEFAULT FALSE,
     created_at       TIMESTAMP(0) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at       TIMESTAMP(0) NOT NULL DEFAULT CURRENT_TIMESTAMP,
