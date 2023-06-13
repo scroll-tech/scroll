@@ -101,7 +101,7 @@ func (l *l2SentMsgOrm) GetLatestL2SentMsgBactchIndex() (uint64, error) {
 
 func (l *l2SentMsgOrm) GetL2SentMsgMsgHashByHeightRange(startHeight, endHeight uint64) ([]*L2SentMsg, error) {
 	var result []*L2SentMsg
-	err := l.db.Select(&result, `SELECT * FROM l2_sent_msg WHERE height >= $1 AND height <= $2 AND NOT is_deleted ORDERED BY nonce ASC;`, startHeight, endHeight)
+	err := l.db.Select(&result, `SELECT * FROM l2_sent_msg WHERE height >= $1 AND height <= $2 AND NOT is_deleted ORDER BY nonce ASC;`, startHeight, endHeight)
 	if err != nil {
 		return nil, err
 	}

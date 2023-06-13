@@ -1,8 +1,6 @@
 package orm
 
 import (
-	"scroll-tech/common/types"
-
 	"github.com/jmoiron/sqlx"
 )
 
@@ -11,7 +9,7 @@ type bridgeBatchOrm struct {
 }
 
 type BridgeBatch struct {
-	Index            uint64 `db:"index"`
+	BatchIndex       uint64 `db:"batch_index"`
 	StartBlockNumber uint64 `db:"start_block_number"`
 	EndBlockNumber   uint64 `db:"end_block_number"`
 }
@@ -23,7 +21,7 @@ func NewBridgeBatchOrm(db *sqlx.DB) BridgeBatchOrm {
 
 func (b *bridgeBatchOrm) GetLatestBridgeBatch() (*BridgeBatch, error) {
 	result := &BridgeBatch{}
-	row := b.db.QueryRowx(`SELECT (index, start_block_number, end_block_number) FROM bridge_batch WHERE status = $1 DESC LIMIT 1;`, types.ProvingTaskVerified)
+	row := b.db.QueryRowx(`SELECT (index, start_block_number, end_block_number) FROM bridge_batch WHERE status = $1 ORDER BY batch_index DESC LIMIT 1;`)
 	if err := row.StructScan(result); err != nil {
 		return nil, err
 	}
@@ -32,7 +30,7 @@ func (b *bridgeBatchOrm) GetLatestBridgeBatch() (*BridgeBatch, error) {
 
 func (b *bridgeBatchOrm) GetBridgeBatchByBlock(height uint64) (*BridgeBatch, error) {
 	result := &BridgeBatch{}
-	row := b.db.QueryRowx(`SELECT (index, start_block_number, end_block_number) FROM bridge_batch WHERE start_block_number <= $1 AND end_block_number >= $1 AND status = $2;`, height, types.ProvingTaskVerified)
+	row := b.db.QueryRowx(`SELECT (index, start_block_number, end_block_number) FROM bridge_batch WHERE start_block_number <= $1 AND end_block_number >= $1;`, height)
 	if err := row.StructScan(result); err != nil {
 		return nil, err
 	}
