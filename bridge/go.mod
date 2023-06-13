@@ -9,7 +9,7 @@ require (
 	github.com/orcaman/concurrent-map v1.0.0
 	github.com/orcaman/concurrent-map/v2 v2.0.1
 	github.com/pressly/goose/v3 v3.7.0
-	github.com/scroll-tech/go-ethereum v1.10.14-0.20230508165858-27a3830afa61
+	github.com/scroll-tech/go-ethereum v1.10.14-0.20230613025759-f055f50f9d56
 	github.com/smartystreets/goconvey v1.8.0
 	github.com/stretchr/testify v1.8.2
 	github.com/urfave/cli/v2 v2.17.2-0.20221006022127-8f469abc00aa
@@ -63,7 +63,7 @@ require (
 	github.com/xrash/smetrics v0.0.0-20201216005158-039620a65673 // indirect
 	github.com/yusufpapurcu/wmi v1.2.2 // indirect
 	golang.org/x/crypto v0.9.0 // indirect
-	golang.org/x/sys v0.8.0 // indirect
+	golang.org/x/sys v0.9.0 // indirect
 	golang.org/x/text v0.9.0 // indirect
 	golang.org/x/time v0.3.0 // indirect
 	golang.org/x/tools v0.8.0 // indirect
