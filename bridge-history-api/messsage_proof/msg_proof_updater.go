@@ -56,8 +56,8 @@ func (m *MsgProofUpdater) Start() {
 					log.Error("Can not get latest L2SentMsgBatchIndex: ", err)
 					continue
 				}
-				if latestBatchHasProof < latestBatch.Index {
-					for start := latestBatchHasProof + 1; start <= latestBatch.Index; start++ {
+				if latestBatchHasProof < latestBatch.BatchIndex {
+					for start := latestBatchHasProof + 1; start <= latestBatch.BatchIndex; start++ {
 						batch, err := m.db.GetBridgeBatchByIndex(start)
 						if err != nil {
 							log.Error("Can not get BridgeBatch: ", err)
@@ -73,7 +73,7 @@ func (m *MsgProofUpdater) Start() {
 						if err != nil {
 							break
 						}
-						err = m.updateMsgProof(msgs, proofs, batch.Index)
+						err = m.updateMsgProof(msgs, proofs, batch.BatchIndex)
 						if err != nil {
 							break
 						}
@@ -109,7 +109,7 @@ func (m *MsgProofUpdater) initializeWithdrawTrie() error {
 	}
 
 	var batches []*orm.BridgeBatch
-	batchIndex := batch.Index
+	batchIndex := batch.BatchIndex
 	for {
 		var nonce sql.NullInt64
 		// find last message nonce in before or in this batch
@@ -153,7 +153,7 @@ func (m *MsgProofUpdater) initializeWithdrawTrie() error {
 			return err
 		}
 
-		err = m.updateMsgProof(msgs, proofs, batch.Index)
+		err = m.updateMsgProof(msgs, proofs, batch.BatchIndex)
 		if err != nil {
 			return err
 		}
