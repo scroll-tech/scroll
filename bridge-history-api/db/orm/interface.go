@@ -69,14 +69,20 @@ type RelayedMsg struct {
 }
 
 type L2SentMsg struct {
-	MsgHash         string `json:"msg_hash" db:"msg_hash"`
-	Height          uint64 `json:"height" db:"height"`
-	Nonce           uint64 `json:"nonce" db:"nonce"`
-	FinalizedHeight uint64 `json:"finalized_height" db:"finalized_height"`
-	Layer1Hash      string `json:"layer1_hash" db:"layer1_hash"`
-	BatchIndex      uint64 `json:"batch_index" db:"batch_index"`
-	MsgProof        string `json:"msg_proof" db:"msg_proof"`
-	MsgData         string `json:"msg_data" db:"msg_data"`
+	ID         uint64     `json:"id" db:"id"`
+	MsgHash    string     `json:"msg_hash" db:"msg_hash"`
+	Sender     string     `json:"sender" db:"sender"`
+	Target     string     `json:"target" db:"target"`
+	Value      string     `json:"value" db:"value"`
+	Height     uint64     `json:"height" db:"height"`
+	Nonce      uint64     `json:"nonce" db:"nonce"`
+	BatchIndex uint64     `json:"batch_index" db:"batch_index"`
+	MsgProof   string     `json:"msg_proof" db:"msg_proof"`
+	MsgData    string     `json:"msg_data" db:"msg_data"`
+	IsDeleted  bool       `json:"is_deleted" db:"is_deleted"`
+	CreatedAt  *time.Time `json:"created_at" db:"created_at"`
+	UpdatedAt  *time.Time `json:"updated_at" db:"updated_at"`
+	DeletedAt  *time.Time `json:"deleted_at" db:"deleted_at"`
 }
 
 // L1CrossMsgOrm provides operations on l1_cross_message table
@@ -111,6 +117,7 @@ type RelayedMsgOrm interface {
 	BatchInsertRelayedMsgDBTx(dbTx *sqlx.Tx, messages []*RelayedMsg) error
 	GetRelayedMsgByHash(msg_hash string) (*RelayedMsg, error)
 	GetLatestRelayedHeightOnL1() (int64, error)
+	DeleteL1RelayedHashAfterHeightDBTx(dbTx *sqlx.Tx, height int64) error
 	DeleteL2RelayedHashAfterHeightDBTx(dbTx *sqlx.Tx, height int64) error
 }
 

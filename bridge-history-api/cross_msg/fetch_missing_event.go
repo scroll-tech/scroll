@@ -171,6 +171,7 @@ func L2FetchAndSaveEvents(ctx context.Context, client *ethclient.Client, databas
 		dbTx.Rollback()
 		log.Crit("l2FetchAndSaveEvents: Failed to insert relayed message event logs", "err", err)
 	}
+
 	err = updateL2CrossMsgMsgHash(ctx, dbTx, database, msgHashes)
 	if err != nil {
 		dbTx.Rollback()
