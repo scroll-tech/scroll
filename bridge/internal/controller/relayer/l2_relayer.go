@@ -320,68 +320,78 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 		log.Error("Failed to fetch pending L2 batches", "err", err)
 		return
 	}
-	batch := pendingBatches[0]
+	for _, batch := range pendingBatches {
+		// get the chunks for the batch
+		startChunkIndex := batch.StartChunkIndex
+		endChunkIndex := batch.EndChunkIndex
 
-	// get the chunks for the batch
-	startChunkIndex := batch.StartChunkIndex
-	endChunkIndex := batch.EndChunkIndex
-
-	dbChunks, err := r.chunkOrm.GetChunksInRange(r.ctx, startChunkIndex, endChunkIndex)
-	if err != nil {
-		log.Error("Failed to fetch chunks", "error", err)
-		return
-	}
-
-	chunks := make([]*bridgeTypes.Chunk, len(dbChunks))
-	for i, c := range dbChunks {
-		wrappedBlocks, err := r.l2BlockOrm.GetL2BlocksInRange(r.ctx, c.StartBlockNumber, c.EndBlockNumber)
+		dbChunks, err := r.chunkOrm.GetChunksInRange(r.ctx, startChunkIndex, endChunkIndex)
 		if err != nil {
-			log.Error("Failed to fetch wrapped blocks", "error", err)
+			log.Error("Failed to fetch chunks", "error", err)
 			return
 		}
-		chunks[i].Blocks = wrappedBlocks
-	}
 
-	// get current header and parent header.
-	currentHeader, err := r.batchOrm.GetBatchHeader(r.ctx, batch.Index)
-	if err != nil {
-		log.Error("Failed to get batch header", "error", err)
-		return
-	}
-	parentBatchHeader, err := r.batchOrm.GetBatchHeader(r.ctx, batch.Index-1)
-	if err != nil {
-		log.Error("Failed to get parent batch header", "error", err)
-		return
-	}
+		chunks := make([]*bridgeTypes.Chunk, len(dbChunks))
+		for i, c := range dbChunks {
+			wrappedBlocks, err := r.l2BlockOrm.GetL2BlocksInRange(r.ctx, c.StartBlockNumber, c.EndBlockNumber)
+			if err != nil {
+				log.Error("Failed to fetch wrapped blocks", "error", err)
+				return
+			}
+			chunks[i].Blocks = wrappedBlocks
+		}
 
-	// pack calldata
-	encodedChunks := make([][]byte, len(chunks))
-	for i, chunk := range chunks {
-		chunkBytes, err := chunk.Encode()
+		// get current header and parent header.
+		currentHeader, err := r.batchOrm.GetBatchHeader(r.ctx, batch.Index)
 		if err != nil {
-			log.Error("Failed to encode chunk", "error", err)
+			log.Error("Failed to get batch header", "error", err)
 			return
 		}
-		encodedChunks[i] = chunkBytes
-	}
-	skippedL1MessageBitmapBytes := currentHeader.EncodeSkippedL1MessageBitmap()
-	calldata, err := r.l1RollupABI.Pack("commitBatch", currentHeader.Version(), parentBatchHeader, encodedChunks, skippedL1MessageBitmapBytes)
-	if err != nil {
-		log.Error("Failed to pack commitBatch", "batch_index", batch.Index, "error", err)
-		return
-	}
-
-	// send transaction
-	txID := batch.Hash + "-commit"
-	txHash, err := r.rollupSender.SendTransaction(txID, &r.cfg.RollupContractAddress, big.NewInt(0), calldata, 0)
-	if err != nil {
-		if !errors.Is(err, sender.ErrNoAvailableAccount) && !errors.Is(err, sender.ErrFullPending) {
-			log.Error("Failed to send commitBatch tx to layer1 ", "err", err)
+		parentBatchHeader, err := r.batchOrm.GetBatchHeader(r.ctx, batch.Index-1)
+		if err != nil {
+			log.Error("Failed to get parent batch header", "error", err)
+			return
 		}
-		return
+
+		// pack calldata
+		encodedChunks := make([][]byte, len(chunks))
+		for i, chunk := range chunks {
+			chunkBytes, err := chunk.Encode()
+			if err != nil {
+				log.Error("Failed to encode chunk", "error", err)
+				return
+			}
+			encodedChunks[i] = chunkBytes
+		}
+		skippedL1MessageBitmapBytes := currentHeader.EncodeSkippedL1MessageBitmap()
+		calldata, err := r.l1RollupABI.Pack("commitBatch", currentHeader.Version(), parentBatchHeader, encodedChunks, skippedL1MessageBitmapBytes)
+		if err != nil {
+			log.Error("Failed to pack commitBatch", "batch_index", batch.Index, "error", err)
+			return
+		}
+
+		// send transaction
+		txID := batch.Hash + "-commit"
+		txHash, err := r.rollupSender.SendTransaction(txID, &r.cfg.RollupContractAddress, big.NewInt(0), calldata, 0)
+		if err != nil {
+			if !errors.Is(err, sender.ErrNoAvailableAccount) && !errors.Is(err, sender.ErrFullPending) {
+				log.Error("Failed to send commitBatch tx to layer1 ", "err", err)
+			}
+			return
+		}
+
+		updateFields := map[string]interface{}{
+			"commit_tx_hash": txHash.String(),
+			"rollup_status":  types.RollupCommitting,
+		}
+		if err := r.batchOrm.UpdateBatch(r.ctx, batch.Hash, updateFields); err != nil {
+			log.Error("UpdateBatch failed", "hash", batch.Hash, "index", batch.Index, "err", err)
+			return
+		}
+		bridgeL2BatchesCommittedTotalCounter.Inc(1)
+		r.processingBatchCommitment.Store(txID, batch.Hash)
+		log.Info("Sent the commitBatch tx to layer1", "tx_hash", txHash.Hex(), "batch_index", batch.Index)
 	}
-	bridgeL2BatchesCommittedTotalCounter.Inc(1)
-	log.Info("Sent the commitBatch tx to layer1", "tx_hash", txHash.Hex(), "batch_index", batch.Index)
 }
 
 // ProcessCommittedBatches submit proof to layer 1 rollup contract
