@@ -87,6 +87,7 @@ func testMonitorBridgeContract(t *testing.T) {
 	assert.NoError(t, err)
 	address, err := bind.WaitDeployed(context.Background(), l2Cli, tx)
 	assert.NoError(t, err)
+	t.Logf("hhhhh--->address:%s", address.Hash())
 
 	rc := prepareWatcherClient(l2Cli, db, address)
 	loopToFetchEvent(subCtx, rc)
