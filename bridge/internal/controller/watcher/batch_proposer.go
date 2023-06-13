@@ -42,7 +42,7 @@ func (p *BatchProposer) TryProposeBatch() {
 
 	chunks := make([]*bridgeTypes.Chunk, len(dbChunks))
 	for i, chunk := range dbChunks {
-		wrappedBlocks, err := p.l2BlockOrm.GetL2WrappedBlocksRange(chunk.StartBlockNumber, chunk.EndBlockNumber)
+		wrappedBlocks, err := p.l2BlockOrm.RangeGetL2WrappedBlocks(chunk.StartBlockNumber, chunk.EndBlockNumber)
 		if err != nil {
 			log.Error("failed to get wrapped blocks for chunk: %w", err)
 			return

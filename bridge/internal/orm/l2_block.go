@@ -147,8 +147,8 @@ func (o *L2Block) GetL2Blocks(fields map[string]interface{}, orderByList []strin
 	return l2Blocks, nil
 }
 
-// GetL2BlocksInRange retrieves the L2 blocks within the specified range.
-func (o *L2Block) GetL2BlocksInRange(ctx context.Context, startBlockNumber uint64, endBlockNumber uint64) ([]*types.WrappedBlock, error) {
+// RangeGetL2Blocks retrieves the L2 blocks within the specified range.
+func (o *L2Block) RangeGetL2Blocks(ctx context.Context, startBlockNumber uint64, endBlockNumber uint64) ([]*types.WrappedBlock, error) {
 	if startBlockNumber > endBlockNumber {
 		return nil, errors.New("start block number should be less than or equal to end block number")
 	}

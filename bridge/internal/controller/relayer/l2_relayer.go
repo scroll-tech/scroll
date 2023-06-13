@@ -325,7 +325,7 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 		startChunkIndex := batch.StartChunkIndex
 		endChunkIndex := batch.EndChunkIndex
 
-		dbChunks, err := r.chunkOrm.GetChunksInRange(r.ctx, startChunkIndex, endChunkIndex)
+		dbChunks, err := r.chunkOrm.RangeGetChunks(r.ctx, startChunkIndex, endChunkIndex)
 		if err != nil {
 			log.Error("Failed to fetch chunks", "error", err)
 			return
@@ -333,7 +333,7 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 
 		chunks := make([]*bridgeTypes.Chunk, len(dbChunks))
 		for i, c := range dbChunks {
-			wrappedBlocks, err := r.l2BlockOrm.GetL2BlocksInRange(r.ctx, c.StartBlockNumber, c.EndBlockNumber)
+			wrappedBlocks, err := r.l2BlockOrm.RangeGetL2Blocks(r.ctx, c.StartBlockNumber, c.EndBlockNumber)
 			if err != nil {
 				log.Error("Failed to fetch wrapped blocks", "error", err)
 				return
@@ -409,7 +409,8 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 		"rollup_status": types.RollupCommitted,
 	}
 	orderByList := []string{"index ASC"}
-	batches, err := r.batchOrm.GetBatches(r.ctx, fields, orderByList, 1)
+	limit := 1
+	batches, err := r.batchOrm.GetBatches(r.ctx, fields, orderByList, limit)
 	if err != nil {
 		log.Error("Failed to fetch committed L2 batches", "err", err)
 		return
@@ -489,7 +490,7 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 			}
 		}()
 
-		aggProof, err := r.batchOrm.GetVerifiedProofByHash(r.ctx, hash)
+		aggProof, err := r.batchOrm.GetProofByHash(r.ctx, hash)
 		if err != nil {
 			log.Warn("get verified proof by hash failed", "hash", hash, "err", err)
 			return

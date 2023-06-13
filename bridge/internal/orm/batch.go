@@ -90,8 +90,8 @@ func (b *Batch) GetBatchCount(ctx context.Context) (int64, error) {
 	return count, nil
 }
 
-// GetL2WrappedBlocksRange get the l2 wrapped blocks in a specific range
-func (o *L2Block) GetL2WrappedBlocksRange(startBlockNumber, endBlockNumber uint64) ([]*bridgeTypes.WrappedBlock, error) {
+// RangeGetL2WrappedBlocks get the l2 wrapped blocks in a specific range
+func (o *L2Block) RangeGetL2WrappedBlocks(startBlockNumber, endBlockNumber uint64) ([]*bridgeTypes.WrappedBlock, error) {
 	var l2Blocks []L2Block
 	db := o.db.Select("header, transactions, withdraw_trie_root")
 	db = db.Where("number >= ? AND number <= ?", startBlockNumber, endBlockNumber)
@@ -121,7 +121,7 @@ func (o *L2Block) GetL2WrappedBlocksRange(startBlockNumber, endBlockNumber uint6
 	return wrappedBlocks, nil
 }
 
-func (c *Batch) GetVerifiedProofByHash(ctx context.Context, hash string) (*message.AggProof, error) {
+func (c *Batch) GetProofByHash(ctx context.Context, hash string) (*message.AggProof, error) {
 	var batch Batch
 	err := c.db.WithContext(ctx).Where("hash = ? AND proving_status = ?", hash, types.ProvingTaskVerified).First(&batch).Error
 	if err != nil {

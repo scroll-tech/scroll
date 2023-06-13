@@ -38,16 +38,7 @@ func (*Chunk) TableName() string {
 	return "chunk"
 }
 
-func (c *Chunk) GetChunk(ctx context.Context, hash string) (*Chunk, error) {
-	var chunk Chunk
-	err := c.db.WithContext(ctx).Where("hash", hash).First(&chunk).Error
-	if err != nil {
-		return nil, err
-	}
-	return &chunk, nil
-}
-
-func (c *Chunk) GetChunksInRange(ctx context.Context, startIndex int, endIndex int) ([]*Chunk, error) {
+func (c *Chunk) RangeGetChunks(ctx context.Context, startIndex int, endIndex int) ([]*Chunk, error) {
 	if startIndex > endIndex {
 		return nil, errors.New("start index should be less than or equal to end index")
 	}

@@ -110,7 +110,7 @@ func (w *L2WatcherClient) initializeGenesis() error {
 	if count, err := w.batchOrm.GetBatchCount(w.ctx); err != nil {
 		return fmt.Errorf("failed to get batch count: %v", err)
 	} else if count > 0 {
-		log.Info("genesis already imported")
+		log.Info("genesis already imported", "batch count", count)
 		return nil
 	}
 
