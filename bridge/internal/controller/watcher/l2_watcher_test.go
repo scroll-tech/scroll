@@ -192,6 +192,8 @@ func testFetchMultipleSentMessageInOneBlock(t *testing.T) {
 	assert.NoError(t, err)
 	receipt, err = bind.WaitMined(context.Background(), l2Cli, tx)
 	if receipt.Status != gethTypes.ReceiptStatusSuccessful || err != nil {
+		t.Logf("fff-> root:%s", string(receipt.PostState))
+		t.Logf("hhh--> status:%d", receipt.Status)
 		t.Fatalf("Call failed")
 	}
 
