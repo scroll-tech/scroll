@@ -3,8 +3,9 @@
 pragma solidity ^0.8.0;
 
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import {IERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
+import {SafeERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 
-import {IL2GatewayRouter} from "../../L2/gateways/IL2GatewayRouter.sol";
 import {IScrollGateway} from "../../libraries/gateway/IScrollGateway.sol";
 import {IL1ScrollMessenger} from "../IL1ScrollMessenger.sol";
 import {IL1ETHGateway} from "./IL1ETHGateway.sol";
@@ -17,6 +18,8 @@ import {IL1GatewayRouter} from "./IL1GatewayRouter.sol";
 /// @dev One can also use this contract to query L1/L2 token address mapping.
 /// In the future, ERC-721 and ERC-1155 tokens will be added to the router too.
 contract L1GatewayRouter is OwnableUpgradeable, IL1GatewayRouter {
+    using SafeERC20Upgradeable for IERC20Upgradeable;
+
     /*************
      * Variables *
      *************/
@@ -30,6 +33,23 @@ contract L1GatewayRouter is OwnableUpgradeable, IL1GatewayRouter {
     /// @notice Mapping from ERC20 token address to corresponding L1ERC20Gateway.
     // solhint-disable-next-line var-name-mixedcase
     mapping(address => address) public ERC20Gateway;
+
+    /// @notice The address of gateway in current execution context.
+    address public gatewayInContext;
+
+    /**********************
+     * Function Modifiers *
+     **********************/
+
+    modifier onlyNotInContext() {
+        require(gatewayInContext == address(0), "Only not in context");
+        _;
+    }
+
+    modifier onlyInContext() {
+        require(msg.sender == gatewayInContext, "Only in deposit/withdraw context");
+        _;
+    }
 
     /***************
      * Constructor *
@@ -77,6 +97,23 @@ contract L1GatewayRouter is OwnableUpgradeable, IL1GatewayRouter {
         return _gateway;
     }
 
+    /*****************************
+     * Public Mutating Functions *
+     *****************************/
+
+    /// @inheritdoc IL1GatewayRouter
+    /// @dev All the gateways should have reentrant guard to prevent potential attack though this function.
+    function requestERC20(
+        address _sender,
+        address _token,
+        uint256 _amount
+    ) external onlyInContext returns (uint256) {
+        uint256 _balance = IERC20Upgradeable(_token).balanceOf(msg.sender);
+        IERC20Upgradeable(_token).safeTransferFrom(_sender, msg.sender, _amount);
+        _amount = IERC20Upgradeable(_token).balanceOf(msg.sender) - _balance;
+        return _amount;
+    }
+
     /*************************************************
      * Public Mutating Functions from L1ERC20Gateway *
      *************************************************/
@@ -107,14 +144,20 @@ contract L1GatewayRouter is OwnableUpgradeable, IL1GatewayRouter {
         uint256 _amount,
         bytes memory _data,
         uint256 _gasLimit
-    ) public payable override {
+    ) public payable override onlyNotInContext {
         address _gateway = getERC20Gateway(_token);
         require(_gateway != address(0), "no gateway available");
+
+        // enter deposit context
+        gatewayInContext = _gateway;
 
         // encode msg.sender with _data
         bytes memory _routerData = abi.encode(msg.sender, _data);
 
         IL1ERC20Gateway(_gateway).depositERC20AndCall{value: msg.value}(_token, _to, _amount, _routerData, _gasLimit);
+
+        // leave deposit context
+        gatewayInContext = address(0);
     }
 
     /// @inheritdoc IL1ERC20Gateway
@@ -153,7 +196,7 @@ contract L1GatewayRouter is OwnableUpgradeable, IL1GatewayRouter {
         uint256 _amount,
         bytes memory _data,
         uint256 _gasLimit
-    ) public payable override {
+    ) public payable override onlyNotInContext {
         address _gateway = ethGateway;
         require(_gateway != address(0), "eth gateway available");
 
