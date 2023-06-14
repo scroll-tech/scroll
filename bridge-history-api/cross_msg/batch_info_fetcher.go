@@ -8,8 +8,8 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/log"
 
+	"bridge-history-api/cross_msg/message_proof"
 	"bridge-history-api/db"
-	"bridge-history-api/message_proof"
 )
 
 type BatchInfoFetcher struct {

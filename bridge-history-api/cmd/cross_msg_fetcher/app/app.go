@@ -13,8 +13,8 @@ import (
 
 	"bridge-history-api/config"
 	"bridge-history-api/cross_msg"
+	"bridge-history-api/cross_msg/message_proof"
 	"bridge-history-api/db"
-	message_proof "bridge-history-api/message_proof"
 	cutils "bridge-history-api/utils"
 )
 
