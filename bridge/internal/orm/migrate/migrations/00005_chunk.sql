@@ -9,7 +9,7 @@ create table chunk
     start_block_hash        VARCHAR         NOT NULL,
     end_block_number        BIGINT          NOT NULL,
     end_block_hash          VARCHAR         NOT NULL,
-    chunk_proof             BYTEA           DEFAULT NULL,
+    proof                   BYTEA           DEFAULT NULL,
     total_gas_used          BIGINT          NOT NULL,
 	total_tx_num            BIGINT          NOT NULL,
     total_payload_size      BIGINT          NOT NULL,

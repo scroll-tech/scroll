@@ -21,10 +21,9 @@ var (
 	base *docker.App
 
 	db         *gorm.DB
-	batchOrm   *Batch
-	chunkOrm   *Chunk
-	l1BlockOrm *L1Block
 	l2BlockOrm *L2Block
+	chunkOrm   *Chunk
+	batchOrm   *Batch
 
 	wrappedBlock1 *types.WrappedBlock
 	wrappedBlock2 *types.WrappedBlock
@@ -58,7 +57,6 @@ func setupEnv(t *testing.T) {
 
 	batchOrm = NewBatch(db)
 	chunkOrm = NewChunk(db)
-	l1BlockOrm = NewL1Block(db)
 	l2BlockOrm = NewL2Block(db)
 
 	templateBlockTrace, err := os.ReadFile("../../../common/testdata/blockTrace_02.json")
@@ -180,4 +178,20 @@ func TestChunkOrm(t *testing.T) {
 	assert.NoError(t, err)
 	chunks, err = chunkOrm.GetUnbatchedChunks(context.Background())
 	assert.Len(t, chunks, 2)
+}
+
+func TestBatchOrm(t *testing.T) {
+	sqlDB, err := db.DB()
+	assert.NoError(t, err)
+	assert.NoError(t, migrate.ResetDB(sqlDB))
+
+	err = batchOrm.InsertBatch(context.Background(), []*types.Chunk{chunk1}, chunkOrm, l2BlockOrm)
+	assert.NoError(t, err)
+
+	err = batchOrm.InsertBatch(context.Background(), []*types.Chunk{chunk2}, chunkOrm, l2BlockOrm)
+	assert.NoError(t, err)
+
+	count, err := batchOrm.GetBatchCount(context.Background())
+	assert.NoError(t, err)
+	assert.Equal(t, int64(2), count)
 }

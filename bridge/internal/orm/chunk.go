@@ -20,7 +20,7 @@ type Chunk struct {
 	StartBlockHash   string     `json:"start_block_hash" gorm:"column:start_block_hash"`
 	EndBlockNumber   uint64     `json:"end_block_number" gorm:"column:end_block_number"`
 	EndBlockHash     string     `json:"end_block_hash" gorm:"column:end_block_hash"`
-	ChunkProof       []byte     `json:"chunk_proof" gorm:"column:chunk_proof"`
+	Proof            []byte     `json:"proof" gorm:"column:proof"`
 	TotalGasUsed     uint64     `json:"total_gas_used" gorm:"column:total_gas_used"`
 	TotalTxNum       uint64     `json:"total_tx_num" gorm:"column:total_tx_num"`
 	TotalPayloadSize uint64     `json:"total_payload_size" gorm:"column:total_payload_size"`

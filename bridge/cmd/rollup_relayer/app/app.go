@@ -82,7 +82,7 @@ func action(ctx *cli.Context) error {
 		return err
 	}
 
-	batchProposer := watcher.NewBatchProposer(subCtx, db)
+	batchProposer := watcher.NewBatchProposer(subCtx, cfg.L2Config.BatchProposerConfig, db)
 	if err != nil {
 		log.Error("failed to create batchProposer", "error", err)
 		return err

@@ -274,11 +274,10 @@ func (c *Batch) InsertBatch(ctx context.Context, chunks []*bridgeTypes.Chunk, ch
 			return err
 		}
 		totalL1MessagePoppedBefore = parentHeader.TotalL1MessagePopped()
-	} else {
 		batchIndex = lastBatch.Index + 1
 	}
 
-	batchHeader, err := bridgeTypes.NewBatchHeader(0, uint64(lastBatch.Index), totalL1MessagePoppedBefore, parentBatchHash, chunks)
+	batchHeader, err := bridgeTypes.NewBatchHeader(0, batchIndex, totalL1MessagePoppedBefore, parentBatchHash, chunks)
 	if err != nil {
 		log.Error("failed to create batch header", "err", err)
 		return err
@@ -293,6 +292,7 @@ func (c *Batch) InsertBatch(ctx context.Context, chunks []*bridgeTypes.Chunk, ch
 	lastChunkBlockNum := len(chunks[numChunks-1].Blocks)
 	tmpBatch := Batch{
 		Index:          batchIndex,
+		Hash:           batchHeader.Hash().Hex(),
 		StartChunkHash: hex.EncodeToString(startChunkHash),
 		EndChunkHash:   hex.EncodeToString(endChunkHash),
 		StateRoot:      chunks[numChunks-1].Blocks[lastChunkBlockNum-1].Header.Root.Hex(),
