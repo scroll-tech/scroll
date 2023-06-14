@@ -17,6 +17,8 @@ type WrappedBlock struct {
 	WithdrawTrieRoot common.Hash              `json:"withdraw_trie_root,omitempty"`
 }
 
+// NumL1Messages returns the number of L1 messages in this block.
+// This number is the sum of included and skipped L1 messages.
 func (w *WrappedBlock) NumL1Messages(totalL1MessagePoppedBefore uint64) uint64 {
 	var lastQueueIndex *uint64
 	for _, txData := range w.Transactions {

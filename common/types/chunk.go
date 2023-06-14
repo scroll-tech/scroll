@@ -17,6 +17,8 @@ type Chunk struct {
 	Blocks []*WrappedBlock `json:"blocks"`
 }
 
+// NumL1Messages returns the number of L1 messages in this chunk.
+// This number is the sum of included and skipped L1 messages.
 func (c *Chunk) NumL1Messages(totalL1MessagePoppedBefore uint64) uint64 {
 	var numL1Messages uint64
 	for _, block := range c.Blocks {
