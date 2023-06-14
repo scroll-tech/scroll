@@ -80,7 +80,7 @@ func (b *BatchInfoFetcher) fetchBatchInfo() error {
 	if latestBatch == nil {
 		startHeight = b.batchInfoStartNumber
 	} else {
-		startHeight = latestBatch.EndBlockNumber + 1
+		startHeight = latestBatch.Height + 1
 	}
 	for height := startHeight; number >= height+uint64(b.confirmation); height += uint64(FETCH_LIMIT) {
 		iter_end := height + uint64(FETCH_LIMIT) - 1
