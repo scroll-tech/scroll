@@ -17,8 +17,19 @@ type Chunk struct {
 	Blocks []*WrappedBlock `json:"blocks"`
 }
 
+func (c *Chunk) NumL1Messages(totalL1MessagePoppedBefore uint64) uint64 {
+	var numL1Messages uint64
+	for _, block := range c.Blocks {
+		numL1MessagesInBlock := block.NumL1Messages(totalL1MessagePoppedBefore)
+		numL1Messages += numL1MessagesInBlock
+		totalL1MessagePoppedBefore += numL1MessagesInBlock
+	}
+	// TODO: cache results
+	return numL1Messages
+}
+
 // Encode encodes the Chunk into RollupV2 Chunk Encoding.
-func (c *Chunk) Encode() ([]byte, error) {
+func (c *Chunk) Encode(totalL1MessagePoppedBefore uint64) ([]byte, error) {
 	numBlocks := len(c.Blocks)
 
 	if numBlocks > 255 {
@@ -34,10 +45,11 @@ func (c *Chunk) Encode() ([]byte, error) {
 	var l2TxDataBytes []byte
 
 	for _, block := range c.Blocks {
-		blockBytes, err := block.Encode()
+		blockBytes, err := block.Encode(totalL1MessagePoppedBefore)
 		if err != nil {
 			return nil, fmt.Errorf("failed to encode block: %v", err)
 		}
+		totalL1MessagePoppedBefore += block.NumL1Messages(totalL1MessagePoppedBefore)
 
 		if len(blockBytes) != 60 {
 			return nil, fmt.Errorf("block encoding is not 60 bytes long %x", len(blockBytes))
@@ -77,8 +89,8 @@ func (c *Chunk) Encode() ([]byte, error) {
 }
 
 // Hash hashes the Chunk into RollupV2 Chunk Hash
-func (c *Chunk) Hash() ([]byte, error) {
-	chunkBytes, err := c.Encode()
+func (c *Chunk) Hash(totalL1MessagePoppedBefore uint64) ([]byte, error) {
+	chunkBytes, err := c.Encode(totalL1MessagePoppedBefore)
 	if err != nil {
 		return nil, err
 	}
