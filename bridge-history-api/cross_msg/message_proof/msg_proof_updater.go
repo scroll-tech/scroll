@@ -44,7 +44,7 @@ func (m *MsgProofUpdater) Start() {
 			case <-tick.C:
 				latestBatch, err := m.db.GetLatestBridgeBatch()
 				if err != nil {
-					log.Error("MsgProofUpdater: Can not get latest BridgeBatch: ", "err", err)
+					log.Warn("MsgProofUpdater: Can not get latest BridgeBatch: ", "err", err)
 					continue
 				}
 				if latestBatch == nil {
@@ -57,29 +57,25 @@ func (m *MsgProofUpdater) Start() {
 				}
 				var start uint64
 				if latestBatchHasProof < 0 {
-					start = 0
+					start = 1
 				} else {
 					start = uint64(latestBatchHasProof) + 1
 				}
-
-				for i := start; start <= latestBatch.BatchIndex; i++ {
+				for i := start; i <= latestBatch.BatchIndex; i++ {
 					batch, err := m.db.GetBridgeBatchByIndex(i)
 					if err != nil {
-						log.Error("MsgProofUpdater: Can not get BridgeBatch: ", "err", err)
-						break
-					}
-					// but this should never happen
-					if batch == nil {
-						log.Error("MsgProofUpdater: No BridgeBatch found: ", "index", i)
-						break
+						log.Error("MsgProofUpdater: Can not get BridgeBatch: ", "err", err, "index", i)
+						continue
 					}
 					// get all l2 messages in this batch
 					msgs, proofs, err := m.appendL2Messages(batch.StartBlockNumber, batch.EndBlockNumber)
 					if err != nil {
+						log.Error("MsgProofUpdater: can not append l2messages", "startBlockNumber", batch.StartBlockNumber, "endBlockNumber", batch.EndBlockNumber, "err", err)
 						break
 					}
 					err = m.updateMsgProof(msgs, proofs, batch.BatchIndex)
 					if err != nil {
+						log.Error("MsgProofUpdater: can not update msg proof", "err", err)
 						break
 					}
 				}
@@ -103,6 +99,8 @@ func (m *MsgProofUpdater) initialize(ctx context.Context) {
 			err := m.initializeWithdrawTrie()
 			if err != nil {
 				log.Error("can not initialize withdraw trie", "err", err)
+				// give it some time to retry
+				time.Sleep(10 * time.Second)
 				continue
 			}
 			return
@@ -111,73 +109,74 @@ func (m *MsgProofUpdater) initialize(ctx context.Context) {
 }
 
 func (m *MsgProofUpdater) initializeWithdrawTrie() error {
-	var batches []*orm.BridgeBatch
+	var batch *orm.BridgeBatch
 	firstMsg, err := m.db.GetL2SentMessageByNonce(0)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return fmt.Errorf("failed to get first l2 message: %v", err)
 	}
-	//  no l2 message in db
+	// no l2 message
+	// 	TO DO: check if we realy dont have l2 sent message with nonce 0
 	if firstMsg == nil {
 		log.Info("No first l2sentmsg in db")
 		return nil
 	}
 
 	// batch will never be empty, since we always have genesis batch in db
-	endBatch, err := m.db.GetLatestBridgeBatch()
+	batch, err = m.db.GetLatestBridgeBatch()
 	if err != nil {
 		return fmt.Errorf("failed to get latest batch: %v", err)
 	}
-	if endBatch == nil {
+	if batch == nil {
 		return fmt.Errorf("no batch found")
 	}
-	var startIndex uint64
-	startBatch, err := m.db.GetLatestBridgeBatchWithProof()
-	if err != nil {
-		return fmt.Errorf("failed to get latest batch with proof: %v", err)
-	}
-	if startBatch == nil {
-		startBatch, err = m.db.GetBridgeBatchByIndex(1)
+
+	var batches []*orm.BridgeBatch
+	batchIndex := batch.BatchIndex
+	for {
+		var msg *orm.L2SentMsg
+		msg, err = m.db.GetLatestL2SentMsgLEHeight(batch.EndBlockNumber)
 		if err != nil {
-			return fmt.Errorf("failed to get batch by index 1: %v", err)
+			log.Warn("failed to get l2 sent message less than height", "endBlocknum", batch.EndBlockNumber, "err", err)
 		}
-	} else {
-		startIndex = startBatch.BatchIndex
-	}
+		if msg != nil && msg.MsgProof != "" {
+			log.Info("Found latest l2 sent msg with proof: ", "msg_proof", msg.MsgProof, "height", msg.Height, "msg_hash", msg.MsgHash)
+			// initialize withdrawTrie
+			proofBytes := common.Hex2Bytes(msg.MsgProof)
+			m.withdrawTrie.Initialize(msg.Nonce, common.HexToHash(msg.MsgHash), proofBytes)
+			break
+		}
 
-	msg, err := m.db.GetL2SentMsgMsgHashByHeightRange(startBatch.StartBlockNumber, startBatch.EndBlockNumber)
-	if err != nil {
-		return fmt.Errorf("failed to get latest l2 sent msg le height %d: %v", startBatch.EndBlockNumber, err)
-	}
-	last := msg[len(msg)-1]
-	if last.MsgProof != "" {
-		// already have proof
-		// initialize withdrawTrie
-		proofBytes := common.Hex2Bytes(last.MsgProof)
-		m.withdrawTrie.Initialize(last.Nonce, common.HexToHash(last.MsgHash), proofBytes)
-	} else {
-		batches = append(batches, startBatch)
-	}
+		// append unprocessed batch
+		batches = append(batches, batch)
 
-	for i := startIndex + 1; i <= endBatch.BatchIndex; i++ {
-		iterBatch, err := m.db.GetBridgeBatchByIndex(i)
+		if batchIndex == 1 {
+			// otherwise overflow
+			break
+		}
+		// iterate for next batch
+		batchIndex--
+
+		batch, err = m.db.GetBridgeBatchByIndex(batchIndex)
 		if err != nil {
-			return fmt.Errorf("failed to get batch by index %d: %v", i, err)
+			return fmt.Errorf("failed to get block batch %v: %v", batchIndex, err)
 		}
-		batches = append(batches, iterBatch)
-
 	}
+
 	log.Info("Build withdraw trie with pending messages")
-	for _, b := range batches {
+	for i := len(batches) - 1; i >= 0; i-- {
+		b := batches[i]
 		msgs, proofs, err := m.appendL2Messages(b.StartBlockNumber, b.EndBlockNumber)
 		if err != nil {
 			return err
 		}
-		err = m.updateMsgProof(msgs, proofs, b.BatchIndex)
+
+		err = m.updateMsgProof(msgs, proofs, b.ID)
 		if err != nil {
 			return err
 		}
 	}
 	log.Info("Build withdraw trie finished")
+
 	return nil
 }
 
@@ -189,14 +188,6 @@ func (m *MsgProofUpdater) updateMsgProof(msgs []*orm.L2SentMsg, proofs [][]byte,
 	dbTx, err := m.db.Beginx()
 	if err != nil {
 		return err
-	}
-
-	dbTxErr := m.db.UpdateBridgeBatchStatusDBTx(dbTx, batchIndex, orm.BatchWithProof)
-	if dbTxErr != nil {
-		if err := dbTx.Rollback(); err != nil {
-			log.Error("dbTx.Rollback()", "err", err)
-		}
-		return dbTxErr
 	}
 
 	for i, msg := range msgs {
@@ -223,8 +214,11 @@ func (m *MsgProofUpdater) appendL2Messages(firstBlock, lastBlock uint64) ([]*orm
 	var msgProofs [][]byte
 	messages, err := m.db.GetL2SentMsgMsgHashByHeightRange(firstBlock, lastBlock)
 	if err != nil {
-		log.Error("GetL2SentMsgMsgHashByHeightRange failed", "error", err)
+		log.Error("GetL2SentMsgMsgHashByHeightRange failed", "error", err, "firstBlock", firstBlock, "lastBlock", lastBlock)
 		return messages, msgProofs, err
+	}
+	if len(messages) == 0 {
+		return messages, msgProofs, nil
 	}
 
 	// double check whether nonce is matched

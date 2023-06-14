@@ -122,7 +122,5 @@ type BridgeBatchOrm interface {
 	GetLatestBridgeBatch() (*BridgeBatch, error)
 	GetBridgeBatchByBlock(height uint64) (*BridgeBatch, error)
 	GetBridgeBatchByIndex(index uint64) (*BridgeBatch, error)
-	GetLatestBridgeBatchWithProof() (*BridgeBatch, error)
-	UpdateBridgeBatchStatusDBTx(dbTx *sqlx.Tx, batchID uint64, status BatchStatus) error
 	BatchInsertBridgeBatchDBTx(dbTx *sqlx.Tx, messages []*BridgeBatch) error
 }

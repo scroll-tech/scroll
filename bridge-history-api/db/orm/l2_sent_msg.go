@@ -3,7 +3,7 @@ package orm
 import (
 	"context"
 	"database/sql"
-	"strings"
+	"fmt"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -37,9 +37,9 @@ func NewL2SentMsgOrm(db *sqlx.DB) L2SentMsgOrm {
 	return &l2SentMsgOrm{db: db}
 }
 
-func (l *l2SentMsgOrm) GetL2SentMsgByHash(l2Hash string) (*L2SentMsg, error) {
+func (l *l2SentMsgOrm) GetL2SentMsgByHash(msgHash string) (*L2SentMsg, error) {
 	result := &L2SentMsg{}
-	row := l.db.QueryRowx(`SELECT * FROM l2_sent_msg WHERE layer2_hash = $1 AND NOT is_deleted;`, l2Hash)
+	row := l.db.QueryRowx(`SELECT * FROM l2_sent_msg WHERE msg_hash = $1 AND NOT is_deleted;`, msgHash)
 	if err := row.StructScan(result); err != nil {
 		return nil, err
 	}
@@ -64,9 +64,17 @@ func (l *l2SentMsgOrm) BatchInsertL2SentMsgDBTx(dbTx *sqlx.Tx, messages []*L2Sen
 			"msg_proof":   msg.MsgProof,
 			"msg_data":    msg.MsgData,
 		}
+		var exists bool
+		err := dbTx.QueryRow(`SELECT EXISTS(SELECT 1 FROM l2_sent_msg WHERE (msg_hash = $1 OR nonce = $2) AND NOT is_deleted)`, msg.MsgHash, msg.Nonce).Scan(&exists)
+		if err != nil {
+			return err
+		}
+		if exists {
+			return fmt.Errorf("BatchInsertL2SentMsgDBTx: l2 sent msg_hash %v already exists at height %v", msg.MsgHash, msg.Height)
+		}
 
 		_, err = dbTx.NamedExec(`insert into l2_sent_msg(sender, target, value, msg_hash, height, nonce, batch_index, msg_proof, msg_data) values(:sender, :target, :value, :msg_hash, :height, :nonce, :batch_index, :msg_proof, :msg_data);`, messageMaps[i])
-		if err != nil && !strings.Contains(err.Error(), "pq: duplicate key value violates unique constraint \"l2_sent_msg_hash_uindex") {
+		if err != nil {
 			log.Error("BatchInsertL2SentMsgDBTx: failed to insert l2 sent msgs", "msg_Hash", msg.MsgHash, "height", msg.Height, "err", err)
 			break
 		}
@@ -75,7 +83,7 @@ func (l *l2SentMsgOrm) BatchInsertL2SentMsgDBTx(dbTx *sqlx.Tx, messages []*L2Sen
 }
 
 func (l *l2SentMsgOrm) GetLatestSentMsgHeightOnL2() (int64, error) {
-	row := l.db.QueryRow(`SELECT height FROM l2_sent_msg WHERE layer2_hash != '' AND NOT is_deleted ORDER BY nonce DESC LIMIT 1;`)
+	row := l.db.QueryRow(`SELECT height FROM l2_sent_msg WHERE msg_hash != '' AND NOT is_deleted ORDER BY nonce DESC LIMIT 1;`)
 	var result sql.NullInt64
 	if err := row.Scan(&result); err != nil {
 		if err == sql.ErrNoRows || !result.Valid {
@@ -104,7 +112,7 @@ func (l *l2SentMsgOrm) UpdateL2MessageProofInDbTx(ctx context.Context, dbTx *sql
 }
 
 func (l *l2SentMsgOrm) GetLatestL2SentMsgBactchIndex() (int64, error) {
-	row := l.db.QueryRow(`SELECT batch_index FROM l2_sent_msg WHERE msg_proof != null AND batch_index != null AND NOT is_deleted ORDER BY batch_index DESC LIMIT 1;`)
+	row := l.db.QueryRow(`SELECT batch_index FROM l2_sent_msg WHERE msg_proof != '' AND NOT is_deleted ORDER BY batch_index DESC LIMIT 1;`)
 	var result sql.NullInt64
 	if err := row.Scan(&result); err != nil {
 		if err == sql.ErrNoRows || !result.Valid {
@@ -119,19 +127,25 @@ func (l *l2SentMsgOrm) GetLatestL2SentMsgBactchIndex() (int64, error) {
 }
 
 func (l *l2SentMsgOrm) GetL2SentMsgMsgHashByHeightRange(startHeight, endHeight uint64) ([]*L2SentMsg, error) {
-	var result []*L2SentMsg
-	row := l.db.QueryRow(`SELECT * FROM l2_sent_msg WHERE height >= $1 AND height <= $2 AND NOT is_deleted ORDER BY nonce ASC;`, startHeight, endHeight)
-	err := row.Scan(&result)
+	var results []*L2SentMsg
+	rows, err := l.db.Queryx(`SELECT * FROM l2_sent_msg WHERE height >= $1 AND height <= $2 AND NOT is_deleted ORDER BY nonce ASC;`, startHeight, endHeight)
 	if err != nil {
 		return nil, err
 	}
-	return result, nil
+	for rows.Next() {
+		msg := &L2SentMsg{}
+		if err = rows.StructScan(msg); err != nil {
+			break
+		}
+		results = append(results, msg)
+	}
+	return results, err
 }
 
 func (l *l2SentMsgOrm) GetL2SentMessageByNonce(nonce uint64) (*L2SentMsg, error) {
-	var result *L2SentMsg
-	row := l.db.QueryRow(`SELECT * FROM l2_sent_msg WHERE nonce = $1 AND NOT is_deleted LIMIT 1;`, nonce)
-	err := row.Scan(&result)
+	result := &L2SentMsg{}
+	row := l.db.QueryRowx(`SELECT * FROM l2_sent_msg WHERE nonce = $1 AND NOT is_deleted;`, nonce)
+	err := row.StructScan(result)
 	if err != nil {
 		return nil, err
 	}
@@ -139,9 +153,9 @@ func (l *l2SentMsgOrm) GetL2SentMessageByNonce(nonce uint64) (*L2SentMsg, error)
 }
 
 func (l *l2SentMsgOrm) GetLatestL2SentMsgLEHeight(endBlockNumber uint64) (*L2SentMsg, error) {
-	var result *L2SentMsg
-	row := l.db.QueryRowx(`select * from l2_sent_msg where height <= $1 AND NOT is_deleted order by nonce limit 1`)
-	err := row.StructScan(&result)
+	result := &L2SentMsg{}
+	row := l.db.QueryRowx(`select * from l2_sent_msg where height <= $1 AND NOT is_deleted order by nonce desc limit 1`, endBlockNumber)
+	err := row.StructScan(result)
 	if err != nil {
 		return nil, err
 	}

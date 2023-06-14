@@ -224,19 +224,19 @@ func FetchAndSaveBatchIndex(ctx context.Context, client *ethclient.Client, datab
 	}
 	dbTx, err := database.Beginx()
 	if err != nil {
-		log.Error("l2FetchAndSaveEvents: Failed to begin db transaction", "err", err)
+		log.Error("FetchAndSaveBatchIndex: Failed to begin db transaction", "err", err)
 		return err
 	}
 	err = database.BatchInsertBridgeBatchDBTx(dbTx, bridgeBatches)
 	if err != nil {
 		dbTx.Rollback()
-		log.Crit("l2FetchAndSaveEvents: Failed to insert batch commit msg event logs", "err", err)
+		log.Crit("FetchAndSaveBatchIndex: Failed to insert batch commit msg event logs", "err", err)
 	}
 	err = dbTx.Commit()
 	if err != nil {
 		// if we can not insert into DB, there must something wrong, need a on-call member handle the dababase manually
 		dbTx.Rollback()
-		log.Error("l2FetchAndSaveEvents: Failed to commit db transaction", "err", err)
+		log.Error("FetchAndSaveBatchIndex: Failed to commit db transaction", "err", err)
 		return err
 	}
 	return nil

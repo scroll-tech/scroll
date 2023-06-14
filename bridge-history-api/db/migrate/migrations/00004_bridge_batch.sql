@@ -9,12 +9,11 @@ create table bridge_batch
     end_block_number    BIGINT NOT NULL,
     batch_hash          VARCHAR NOT NULL,
     status              SMALLINT DEFAULT 0,
+    is_deleted          BOOLEAN NOT NULL DEFAULT FALSE,
     created_at          TIMESTAMP(0) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at          TIMESTAMP(0) NOT NULL DEFAULT CURRENT_TIMESTAMP
+    updated_at          TIMESTAMP(0) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    deleted_at          TIMESTAMP(0) DEFAULT NULL
 );
-
-create unique index bridge_batch_index_uindex
-on bridge_batch (batch_index);
 
 comment 
 on column bridge_batch.status is 'BatchNoProof, BatchWithProof';
@@ -30,6 +29,21 @@ $$ language 'plpgsql';
 CREATE TRIGGER update_timestamp BEFORE UPDATE
 ON bridge_batch FOR EACH ROW EXECUTE PROCEDURE
 update_timestamp();
+
+CREATE OR REPLACE FUNCTION deleted_at_trigger()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF NEW.is_deleted AND OLD.is_deleted != NEW.is_deleted THEN
+        UPDATE bridge_batch SET deleted_at = NOW() WHERE id = NEW.id;
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER deleted_at_trigger
+AFTER UPDATE ON bridge_batch
+FOR EACH ROW
+EXECUTE FUNCTION deleted_at_trigger();
 
 -- +goose StatementEnd
 

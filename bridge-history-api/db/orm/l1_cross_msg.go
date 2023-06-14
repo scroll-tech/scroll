@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -71,8 +72,16 @@ func (l *l1CrossMsgOrm) BatchInsertL1CrossMsgDBTx(dbTx *sqlx.Tx, messages []*Cro
 			"token_id":     msg.TokenID,
 			"msg_type":     Layer1Msg,
 		}
+		var exists bool
+		err := dbTx.QueryRow(`SELECT EXISTS(SELECT 1 FROM cross_message WHERE layer1_hash = $1 AND NOT is_deleted)`, msg.Layer1Hash).Scan(&exists)
+		if err != nil {
+			return err
+		}
+		if exists {
+			return fmt.Errorf("BatchInsertL1CrossMsgDBTx: l1 cross msg layer1Hash %v already exists at height %v", msg.Layer1Hash, msg.Height)
+		}
 
-		_, err = dbTx.NamedExec(`insert into cross_message(height, sender, target, asset, layer1_hash, layer1_token, layer2_token, token_id, amount, msg_type) select :height, :sender, :target, :asset, :layer1_hash, :layer1_token, :layer2_token, :token_id, :amount, :msg_type WHERE NOT EXISTS (SELECT 1 FROM cross_message WHERE layer1_hash = :layer1_hash AND NOT is_deleted);`, messageMaps[i])
+		_, err = dbTx.NamedExec(`insert into cross_message(height, sender, target, asset, layer1_hash, layer1_token, layer2_token, token_id, amount, msg_type) values(:height, :sender, :target, :asset, :layer1_hash, :layer1_token, :layer2_token, :token_id, :amount, :msg_type);`, messageMaps[i])
 		if err != nil {
 			log.Error("BatchInsertL1CrossMsgDBTx: failed to insert l1 cross msgs", "l1hashes", msg.Layer1Hash, "heights", msg.Height, "err", err)
 			break

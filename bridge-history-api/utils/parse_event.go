@@ -18,6 +18,13 @@ type MsgHashWrapper struct {
 	TxHash  common.Hash
 }
 
+type CachedParsedTxCalldata struct {
+	CallDataIndex uint64
+	BatchIndices  []uint64
+	StartBlocks   []uint64
+	FinishBlocks  []uint64
+}
+
 func ParseBackendL1EventLogs(logs []types.Log) ([]*orm.CrossMsg, []MsgHashWrapper, []*orm.RelayedMsg, error) {
 	// Need use contract abi to parse event Log
 	// Can only be tested after we have our contracts set up
@@ -239,6 +246,7 @@ func ParseBackendL2EventLogs(logs []types.Log) ([]*orm.CrossMsg, []MsgHashWrappe
 
 func ParseBatchInfoFromScrollChain(ctx context.Context, client *ethclient.Client, logs []types.Log) ([]*orm.BridgeBatch, error) {
 	var bridgeBatches []*orm.BridgeBatch
+	cache := make(map[string]CachedParsedTxCalldata)
 	for _, vlog := range logs {
 		switch vlog.Topics[0] {
 		case backendabi.L1CommitBatchEventSignature:
@@ -248,6 +256,20 @@ func ParseBatchInfoFromScrollChain(ctx context.Context, client *ethclient.Client
 				log.Warn("Failed to unpack CommitBatch event", "err", err)
 				return bridgeBatches, err
 			}
+			if _, ok := cache[vlog.TxHash.Hex()]; ok {
+				c := cache[vlog.TxHash.Hex()]
+				c.CallDataIndex++
+				bridgeBatches = append(bridgeBatches, &orm.BridgeBatch{
+					Height:           vlog.BlockNumber,
+					BatchIndex:       c.BatchIndices[c.CallDataIndex],
+					BatchHash:        event.BatchHash.Hex(),
+					StartBlockNumber: c.StartBlocks[c.CallDataIndex],
+					EndBlockNumber:   c.FinishBlocks[c.CallDataIndex],
+				})
+				cache[vlog.TxHash.Hex()] = c
+				continue
+			}
+
 			commitTx, is_pending, err := client.TransactionByHash(ctx, vlog.TxHash)
 			if err != nil || is_pending {
 				log.Warn("Failed to get commit Batch tx receipt or the tx is still pending", "err", err)
@@ -255,17 +277,23 @@ func ParseBatchInfoFromScrollChain(ctx context.Context, client *ethclient.Client
 			}
 			indices, startBlcock, endBlockNumber, err := GetBatchRangeFromCalldataOldVersion(commitTx.Data())
 			if err != nil {
-				log.Warn("Failed to get batch range from calldata", "hash", commitTx.Hash().Hex())
+				log.Warn("Failed to get batch range from calldata", "hash", commitTx.Hash().Hex(), "height", vlog.BlockNumber)
 				return bridgeBatches, err
 			}
-			for i, _ := range indices {
-				bridgeBatches = append(bridgeBatches, &orm.BridgeBatch{
-					Height:           vlog.BlockNumber,
-					BatchHash:        event.BatchHash.Hex(),
-					StartBlockNumber: startBlcock[i],
-					EndBlockNumber:   endBlockNumber[i],
-				})
+			cache[vlog.TxHash.Hex()] = CachedParsedTxCalldata{
+				CallDataIndex: 0,
+				BatchIndices:  indices,
+				StartBlocks:   startBlcock,
+				FinishBlocks:  endBlockNumber,
 			}
+			bridgeBatches = append(bridgeBatches, &orm.BridgeBatch{
+				Height:           vlog.BlockNumber,
+				BatchIndex:       indices[0],
+				BatchHash:        event.BatchHash.Hex(),
+				StartBlockNumber: startBlcock[0],
+				EndBlockNumber:   endBlockNumber[0],
+			})
+
 		default:
 			continue
 		}

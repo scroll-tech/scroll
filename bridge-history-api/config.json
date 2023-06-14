@@ -1,6 +1,6 @@
 {
 	"batch": {
-		"batchIndexStartBlock": 9090194,
+		"batchIndexStartBlock": 9091265,
 		"ScrollChainAddr": "0xcD00DB804C819175B381b2B44Aa16A391c8a01D6"
 	},
 	"l1": {
@@ -21,7 +21,7 @@
 		"confirmation": 1,
 		"endpoint": "http://staging-l2geth-rpc0.scroll.tech:8545",
 		"blockTime": 3,
-		"startHeight": 1900068,
+		"startHeight": 0,
 		"CustomERC20GatewayAddr": "0x905db21f836749fEeD12de781afc4A5Ab4Dd0d51",
 		"ERC721GatewayAddr": "0xC53D835514780664BCd7eCfcE7c2E5d9554dc41B",
 		"StandardERC20Gateway": "0x90271634BCB020e06ea4840C3f7aa61b8F860651",
