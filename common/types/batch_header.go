@@ -23,15 +23,13 @@ type BatchHeader struct {
 // NewBatchHeader creates a new BatchHeader
 func NewBatchHeader(version uint8, batchIndex, totalL1MessagePoppedBefore uint64, parentBatchHash common.Hash, chunks []*Chunk) (*BatchHeader, error) {
 	var dataBytes []byte
-	var l1MessagePopped uint64 = 0
+	var l1MessagePopped uint64
 	var skippedL1MessageBitmap []*big.Int
 
-	// previous queue index which represents a bitmap border
-	lastBitmapIndex := totalL1MessagePoppedBefore
-	// bitmap index offset
-	var bitmapIndexOffset uint64
-	// initialize uint256 bitmap
-	bitmap := big.NewInt(0)
+	// Starting queue index for whole batch
+	lastBatchIndex := totalL1MessagePoppedBefore + 1
+	// Previous queue index which popped
+	lastPoppedIndex := totalL1MessagePoppedBefore
 	for _, chunk := range chunks {
 		for _, block := range chunk.Blocks {
 			for _, tx := range block.Transactions {
@@ -39,46 +37,23 @@ func NewBatchHeader(version uint8, batchIndex, totalL1MessagePoppedBefore uint64
 					continue
 				}
 
-				queueIndex := tx.Nonce
-				bitmapIndexOffset = queueIndex - lastBitmapIndex - 1
-				newSize := int(bitmapIndexOffset / 255)
-				newBitmaps := newSize - len(skippedL1MessageBitmap)
-
-				// Check if offset exceeds 256 msgs, create new bitmap
-				if newBitmaps > 0 {
-					for newBitmaps > 0 {
-						flippedBitmap := new(big.Int)
-						for i := 0; i < 256; i++ {
-							bit := bitmap.Bit(i)
-							flippedBit := bit ^ 1
-							flippedBitmap.SetBit(flippedBitmap, i, flippedBit)
-						}
-						skippedL1MessageBitmap = append(skippedL1MessageBitmap, flippedBitmap)
-						bitmap = big.NewInt(0) // reinitialize bitmap
-						newBitmaps--
+				for skippedMsg := lastPoppedIndex + 1; skippedMsg < tx.Nonce; skippedMsg++ {
+					offset := int((skippedMsg - lastBatchIndex) / 256)
+					for offset >= len(skippedL1MessageBitmap) {
+						bitmap := big.NewInt(0)
+						skippedL1MessageBitmap = append(skippedL1MessageBitmap, bitmap)
 					}
-					// account for the skipped msgs in the new bitmap
-					bitmapIndexOffset = bitmapIndexOffset - 255
-					lastBitmapIndex = queueIndex - bitmapIndexOffset
+					rem := int((skippedMsg - lastBatchIndex) % 256)
+					skippedL1MessageBitmap[offset].SetBit(skippedL1MessageBitmap[offset], rem, 1)
 				}
-
-				bitmap.SetBit(bitmap, int(bitmapIndexOffset), 1)
+				lastPoppedIndex = tx.Nonce
 				l1MessagePopped++
+				offset := int(lastPoppedIndex-lastBatchIndex) / 256
+				for offset >= len(skippedL1MessageBitmap) {
+					bitmap := big.NewInt(0)
+					skippedL1MessageBitmap = append(skippedL1MessageBitmap, bitmap)
+				}
 			}
-		}
-
-		// edge case: if skippedL1MessageBitmap length is 0 and bitmap is 0,
-		// then we don't need to append skippedL1MessageBitmap
-		if len(skippedL1MessageBitmap) != 0 || bitmap.BitLen() != 0 {
-			// Append last bitmap
-			flippedBitmap := new(big.Int)
-			// Flipping up to the last popped index, leaving remaining bits as 0
-			for i := 0; i < bitmap.BitLen(); i++ {
-				bit := bitmap.Bit(i)
-				flippedBit := bit ^ 1
-				flippedBitmap.SetBit(flippedBitmap, i, flippedBit)
-			}
-			skippedL1MessageBitmap = append(skippedL1MessageBitmap, flippedBitmap)
 		}
 
 		// Build dataHash
