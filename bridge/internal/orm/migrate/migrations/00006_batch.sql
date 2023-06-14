@@ -3,7 +3,7 @@
 
 create table batch
 (
-    index                   SERIAL          NOT NULL,
+    index                   BIGINT          NOT NULL,
     hash                    VARCHAR         NOT NULL,
     start_chunk_index       INTEGER         NOT NULL,
     start_chunk_hash        VARCHAR         NOT NULL,

@@ -2,6 +2,7 @@ package orm
 
 import (
 	"context"
+	"encoding/hex"
 	"encoding/json"
 	"os"
 	"testing"
@@ -19,15 +20,18 @@ import (
 var (
 	base *docker.App
 
-	db           *gorm.DB
-	batchOrm     *Batch
-	l1MessageOrm *L1Message
-	l2MessageOrm *L2Message
-	l1BlockOrm   *L1Block
-	l2BlockOrm   *L2Block
+	db         *gorm.DB
+	batchOrm   *Batch
+	chunkOrm   *Chunk
+	l1BlockOrm *L1Block
+	l2BlockOrm *L2Block
 
 	wrappedBlock1 *types.WrappedBlock
 	wrappedBlock2 *types.WrappedBlock
+	chunk1        *types.Chunk
+	chunk2        *types.Chunk
+	chunkHash1    string
+	chunkHash2    string
 )
 
 func TestMain(m *testing.M) {
@@ -53,8 +57,7 @@ func setupEnv(t *testing.T) {
 	assert.NoError(t, migrate.ResetDB(sqlDB))
 
 	batchOrm = NewBatch(db)
-	l1MessageOrm = NewL1Message(db)
-	l2MessageOrm = NewL2Message(db)
+	chunkOrm = NewChunk(db)
 	l1BlockOrm = NewL1Block(db)
 	l2BlockOrm = NewL2Block(db)
 
@@ -75,11 +78,24 @@ func setupEnv(t *testing.T) {
 	if err = json.Unmarshal(templateBlockTrace, wrappedBlock2); err != nil {
 		t.Fatalf("failed to unmarshal block trace: %v", err)
 	}
+
+	chunk1 = &types.Chunk{Blocks: []*types.WrappedBlock{wrappedBlock1}}
+	chunkHashBytes1, err := chunk1.Hash()
+	assert.NoError(t, err)
+	chunkHash1 = hex.EncodeToString(chunkHashBytes1)
+
+	chunk2 = &types.Chunk{Blocks: []*types.WrappedBlock{wrappedBlock2}}
+	chunkHashBytes2, err := chunk2.Hash()
+	assert.NoError(t, err)
+	chunkHash2 = hex.EncodeToString(chunkHashBytes2)
 }
 
-func TestL2Block(t *testing.T) {
-	testBlocks := []*types.WrappedBlock{wrappedBlock1, wrappedBlock2}
-	err := l2BlockOrm.InsertL2Blocks(testBlocks)
+func TestL2BlockOrm(t *testing.T) {
+	sqlDB, err := db.DB()
+	assert.NoError(t, err)
+	assert.NoError(t, migrate.ResetDB(sqlDB))
+
+	err = l2BlockOrm.InsertL2Blocks([]*types.WrappedBlock{wrappedBlock1, wrappedBlock2})
 	if err != nil {
 		t.Fatalf("failed to insert blocks: %v", err)
 	}
@@ -100,7 +116,7 @@ func TestL2Block(t *testing.T) {
 	assert.Equal(t, wrappedBlock1, blocks[0])
 	assert.Equal(t, wrappedBlock2, blocks[1])
 
-	err = l2BlockOrm.UpdateChunkHashForL2Blocks([]uint64{2}, "test_hash")
+	err = l2BlockOrm.UpdateChunkHashForL2Blocks([]uint64{2}, "test hash")
 	assert.NoError(t, err)
 	err = l2BlockOrm.UpdateBatchIndexForL2Blocks([]uint64{2, 3}, 1)
 	assert.NoError(t, err)
@@ -112,11 +128,56 @@ func TestL2Block(t *testing.T) {
 	blockInfos, err := l2BlockOrm.GetL2Blocks(map[string]interface{}{"number": 2}, nil, 0)
 	assert.NoError(t, err)
 	assert.Len(t, blockInfos, 1)
-	assert.Equal(t, "test_hash", blockInfos[0].ChunkHash)
+	assert.Equal(t, "test hash", blockInfos[0].ChunkHash)
 
 	err = l2BlockOrm.UpdateBatchIndexForL2Blocks([]uint64{2, 3}, 1)
 	assert.NoError(t, err)
 	blockInfos, err = l2BlockOrm.GetL2Blocks(map[string]interface{}{"batch_index": 1}, nil, 0)
 	assert.NoError(t, err)
 	assert.Len(t, blockInfos, 2)
+}
+
+func TestChunkOrm(t *testing.T) {
+	sqlDB, err := db.DB()
+	assert.NoError(t, err)
+	assert.NoError(t, migrate.ResetDB(sqlDB))
+
+	err = l2BlockOrm.InsertL2Blocks([]*types.WrappedBlock{wrappedBlock1, wrappedBlock2})
+	if err != nil {
+		t.Fatalf("failed to insert blocks: %v", err)
+	}
+
+	err = chunkOrm.InsertChunk(context.Background(), chunk1, l2BlockOrm)
+	assert.NoError(t, err)
+	blocks, err := l2BlockOrm.GetUnchunkedBlocks()
+	assert.NoError(t, err)
+	assert.Len(t, blocks, 1)
+	assert.Equal(t, wrappedBlock2, blocks[0])
+
+	err = chunkOrm.InsertChunk(context.Background(), chunk2, l2BlockOrm)
+	blocks, err = l2BlockOrm.GetUnchunkedBlocks()
+	assert.NoError(t, err)
+	assert.Len(t, blocks, 0)
+
+	chunks, err := chunkOrm.GetUnbatchedChunks(context.Background())
+	assert.NoError(t, err)
+	assert.Len(t, chunks, 2)
+	assert.Equal(t, chunkHash1, chunks[0].Hash)
+	assert.Equal(t, chunkHash2, chunks[1].Hash)
+
+	chunks, err = chunkOrm.RangeGetChunks(context.Background(), 0, 1)
+	assert.NoError(t, err)
+	assert.Len(t, chunks, 2)
+	assert.Equal(t, chunkHash1, chunks[0].Hash)
+	assert.Equal(t, chunkHash2, chunks[1].Hash)
+
+	err = chunkOrm.UpdateChunk(context.Background(), chunkHash1, map[string]interface{}{"batch_hash": "hash"})
+	assert.NoError(t, err)
+	chunks, err = chunkOrm.GetUnbatchedChunks(context.Background())
+	assert.NoError(t, err)
+	assert.Len(t, chunks, 1)
+	err = chunkOrm.UpdateBatchHashForChunks([]string{chunkHash1}, "", chunkOrm.db)
+	assert.NoError(t, err)
+	chunks, err = chunkOrm.GetUnbatchedChunks(context.Background())
+	assert.Len(t, chunks, 2)
 }

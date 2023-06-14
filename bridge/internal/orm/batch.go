@@ -21,7 +21,7 @@ import (
 type Batch struct {
 	db *gorm.DB `gorm:"column:-"`
 
-	Index            int        `json:"index" gorm:"column:index"`
+	Index            uint64     `json:"index" gorm:"column:index"`
 	Hash             string     `json:"hash" gorm:"column:hash"`
 	StartChunkIndex  int        `json:"start_chunk_index" gorm:"column:start_chunk_index"`
 	StartChunkHash   string     `json:"start_chunk_hash" gorm:"column:start_chunk_hash"`
@@ -216,7 +216,7 @@ func (b *Batch) GetPendingBatches(ctx context.Context, limit int) ([]*Batch, err
 }
 
 // GetBatchHeader retrieves the header of a batch with a given index
-func (c *Batch) GetBatchHeader(ctx context.Context, index int) (*bridgeTypes.BatchHeader, error) {
+func (c *Batch) GetBatchHeader(ctx context.Context, index uint64) (*bridgeTypes.BatchHeader, error) {
 	var batch Batch
 	err := c.db.WithContext(ctx).Where("index = ?", index).First(&batch).Error
 	if err != nil {
@@ -265,6 +265,7 @@ func (c *Batch) InsertBatch(ctx context.Context, chunks []*bridgeTypes.Chunk, ch
 		log.Error("failed to get the latest batch", "err", err)
 		return err
 	}
+	var batchIndex uint64
 	if lastBatch != nil {
 		parentBatchHash = common.HexToHash(lastBatch.Hash)
 		parentHeader, err := c.GetBatchHeader(ctx, lastBatch.Index)
@@ -273,6 +274,8 @@ func (c *Batch) InsertBatch(ctx context.Context, chunks []*bridgeTypes.Chunk, ch
 			return err
 		}
 		totalL1MessagePoppedBefore = parentHeader.TotalL1MessagePopped()
+	} else {
+		batchIndex = lastBatch.Index + 1
 	}
 
 	batchHeader, err := bridgeTypes.NewBatchHeader(0, uint64(lastBatch.Index), totalL1MessagePoppedBefore, parentBatchHash, chunks)
@@ -289,6 +292,7 @@ func (c *Batch) InsertBatch(ctx context.Context, chunks []*bridgeTypes.Chunk, ch
 
 	lastChunkBlockNum := len(chunks[numChunks-1].Blocks)
 	tmpBatch := Batch{
+		Index:          batchIndex,
 		StartChunkHash: hex.EncodeToString(startChunkHash),
 		EndChunkHash:   hex.EncodeToString(endChunkHash),
 		StateRoot:      chunks[numChunks-1].Blocks[lastChunkBlockNum-1].Header.Root.Hex(),

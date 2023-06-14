@@ -3,7 +3,7 @@
 
 create table chunk
 (
-    index                   SERIAL          NOT NULL,
+    index                   BIGINT          NOT NULL,
     hash                    VARCHAR         NOT NULL,
     start_block_number      BIGINT          NOT NULL,
     start_block_hash        VARCHAR         NOT NULL,

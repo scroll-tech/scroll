@@ -194,7 +194,7 @@ func (o *L2Block) UpdateChunkHashForL2Blocks(blockNumbers []uint64, chunkHash st
 }
 
 // UpdateBatchIndexForL2Blocks updates the batch_index of blocks in the database
-func (o *L2Block) UpdateBatchIndexForL2Blocks(blockNumbers []uint64, batchIndex int, dbTX ...*gorm.DB) error {
+func (o *L2Block) UpdateBatchIndexForL2Blocks(blockNumbers []uint64, batchIndex uint64, dbTX ...*gorm.DB) error {
 	db := o.db
 	if len(dbTX) > 0 && dbTX[0] != nil {
 		db = dbTX[0]

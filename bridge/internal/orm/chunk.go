@@ -14,6 +14,7 @@ import (
 type Chunk struct {
 	db *gorm.DB `gorm:"-"`
 
+	Index            uint64     `json:"index" gorm:"column:index"`
 	Hash             string     `json:"hash" gorm:"column:hash"`
 	StartBlockNumber uint64     `json:"start_block_number" gorm:"column:start_block_number"`
 	StartBlockHash   string     `json:"start_block_hash" gorm:"column:start_block_hash"`
@@ -101,7 +102,18 @@ func (c *Chunk) InsertChunk(ctx context.Context, chunk *types.Chunk, l2BlockOrm 
 		}
 	}
 
+	var chunkIndex uint64
+	var lastChunk Chunk
+	if err := db.Order("index desc").First(&lastChunk).Error; err != nil {
+		if err != gorm.ErrRecordNotFound {
+			return err
+		}
+	} else {
+		chunkIndex = lastChunk.Index + 1
+	}
+
 	tmpChunk := Chunk{
+		Index:            chunkIndex,
 		Hash:             hex.EncodeToString(hash),
 		StartBlockNumber: chunk.Blocks[0].Header.Number.Uint64(),
 		StartBlockHash:   chunk.Blocks[0].Header.Hash().Hex(),
