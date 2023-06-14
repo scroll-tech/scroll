@@ -21,10 +21,9 @@ type BatchProposer struct {
 	chunkOrm *orm.Chunk
 	l2Block  *orm.L2Block
 
-	maxGasPerBatch         uint64
-	maxTxNumPerBatch       uint64
 	maxPayloadSizePerBatch uint64
 	minPayloadSizePerBatch uint64
+	maxChunkNumPerBatch    uint64
 }
 
 func NewBatchProposer(ctx context.Context, cfg *config.BatchProposerConfig, db *gorm.DB) *BatchProposer {
@@ -34,10 +33,9 @@ func NewBatchProposer(ctx context.Context, cfg *config.BatchProposerConfig, db *
 		batchOrm:               orm.NewBatch(db),
 		chunkOrm:               orm.NewChunk(db),
 		l2Block:                orm.NewL2Block(db),
-		maxGasPerBatch:         cfg.MaxGasPerBatch,
-		maxTxNumPerBatch:       cfg.MaxTxNumPerBatch,
 		maxPayloadSizePerBatch: cfg.MaxPayloadSizePerBatch,
 		minPayloadSizePerBatch: cfg.MinPayloadSizePerBatch,
+		maxChunkNumPerBatch:    cfg.MaxChunkNumPerBatch,
 	}
 }
 
@@ -63,19 +61,7 @@ func (p *BatchProposer) proposeBatchChunks() ([]*bridgeTypes.Chunk, error) {
 	}
 
 	firstChunk := dbChunks[0]
-	totalGasUsed := firstChunk.TotalGasUsed
-	totalTxNum := firstChunk.TotalTxNum
 	totalPayloadSize := firstChunk.TotalPayloadSize
-
-	if totalGasUsed > p.maxGasPerBatch {
-		log.Warn("The first chunk exceeds the max gas limit", "total gas used", totalGasUsed, "max gas limit", p.maxGasPerBatch)
-		return p.convertToBridgeBlock(dbChunks[:1])
-	}
-
-	if totalTxNum > p.maxTxNumPerBatch {
-		log.Warn("The first chunk exceeds the max transaction number limit", "total transaction number", totalTxNum, "max transaction number limit", p.maxTxNumPerBatch)
-		return p.convertToBridgeBlock(dbChunks[:1])
-	}
 
 	if totalPayloadSize > p.maxPayloadSizePerBatch {
 		log.Warn("The first chunk exceeds the max payload size limit", "total payload size", totalPayloadSize, "max payload size limit", p.maxPayloadSizePerBatch)
@@ -83,10 +69,8 @@ func (p *BatchProposer) proposeBatchChunks() ([]*bridgeTypes.Chunk, error) {
 	}
 
 	for i, chunk := range dbChunks[1:] {
-		totalGasUsed += chunk.TotalGasUsed
-		totalTxNum += chunk.TotalTxNum
 		totalPayloadSize += chunk.TotalPayloadSize
-		if (totalGasUsed > p.maxGasPerBatch) || (totalTxNum > p.maxTxNumPerBatch) || (totalPayloadSize > p.maxPayloadSizePerBatch) {
+		if totalPayloadSize > p.maxPayloadSizePerBatch {
 			return p.convertToBridgeBlock(dbChunks[:i+1])
 		}
 	}

@@ -29,15 +29,14 @@ type L2Config struct {
 // ChunkProposerConfig loads chunk_proposer configuration items.
 type ChunkProposerConfig struct {
 	MaxGasPerChunk         uint64 `json:"max_gas_per_chunk"`
-	MaxTxNumPerChunk       uint64 `json:"max_tx_num_chunk"`
+	MaxL2TxNumPerChunk     uint64 `json:"max_l2tx_num_chunk"`
 	MaxPayloadSizePerChunk uint64 `json:"max_payload_size_per_chunk"`
 	MinPayloadSizePerChunk uint64 `json:"min_payload_size_per_chunk"`
 }
 
 // BatchProposerConfig loads batch_proposer configuration items.
 type BatchProposerConfig struct {
-	MaxGasPerBatch         uint64 `json:"max_gas_per_chunk"`
-	MaxTxNumPerBatch       uint64 `json:"max_tx_num_chunk"`
-	MaxPayloadSizePerBatch uint64 `json:"max_payload_size_per_chunk"`
-	MinPayloadSizePerBatch uint64 `json:"min_payload_size_per_chunk"`
+	MaxPayloadSizePerBatch uint64 `json:"max_payload_size_per_batch"`
+	MinPayloadSizePerBatch uint64 `json:"min_payload_size_per_batch"`
+	MaxChunkNumPerBatch    uint64 `json:"max_chunk_num_per_batch"`
 }

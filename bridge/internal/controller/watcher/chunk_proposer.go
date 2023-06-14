@@ -21,7 +21,7 @@ type ChunkProposer struct {
 	l2BlockOrm *orm.L2Block
 
 	maxGasPerChunk         uint64
-	maxTxNumPerChunk       uint64
+	maxL2TxNumPerChunk     uint64
 	maxPayloadSizePerChunk uint64
 	minPayloadSizePerChunk uint64
 }
@@ -33,7 +33,7 @@ func NewChunkProposer(ctx context.Context, cfg *config.ChunkProposerConfig, db *
 		chunkOrm:               orm.NewChunk(db),
 		l2BlockOrm:             orm.NewL2Block(db),
 		maxGasPerChunk:         cfg.MaxGasPerChunk,
-		maxTxNumPerChunk:       cfg.MaxTxNumPerChunk,
+		maxL2TxNumPerChunk:     cfg.MaxL2TxNumPerChunk,
 		maxPayloadSizePerChunk: cfg.MaxPayloadSizePerChunk,
 		minPayloadSizePerChunk: cfg.MinPayloadSizePerChunk,
 	}
@@ -61,6 +61,7 @@ func (p *ChunkProposer) proposeChunk() (*bridgeTypes.Chunk, error) {
 	}
 
 	approximatePayloadSize := func(block *bridgeTypes.WrappedBlock) (size uint64) {
+		// TODO: implement an exact calculation.
 		for _, tx := range block.Transactions {
 			size += uint64(len(tx.Data))
 		}
@@ -77,8 +78,8 @@ func (p *ChunkProposer) proposeChunk() (*bridgeTypes.Chunk, error) {
 		log.Warn("The first block exceeds the max gas limit", "block number", firstBlock.Header.Number, "gas used", totalGasUsed, "max gas limit", p.maxGasPerChunk)
 		return &bridgeTypes.Chunk{Blocks: blocks[:1]}, nil
 	}
-	if totalTxNum > p.maxTxNumPerChunk {
-		log.Warn("The first block exceeds the max transaction number limit", "block number", firstBlock.Header.Number, "number of transactions", totalTxNum, "max transaction number limit", p.maxTxNumPerChunk)
+	if totalTxNum > p.maxL2TxNumPerChunk {
+		log.Warn("The first block exceeds the max transaction number limit", "block number", firstBlock.Header.Number, "number of transactions", totalTxNum, "max transaction number limit", p.maxL2TxNumPerChunk)
 		return &bridgeTypes.Chunk{Blocks: blocks[:1]}, nil
 	}
 	if totalPayloadSize > p.maxPayloadSizePerChunk {
@@ -90,7 +91,7 @@ func (p *ChunkProposer) proposeChunk() (*bridgeTypes.Chunk, error) {
 		totalGasUsed += block.Header.GasUsed
 		totalTxNum += uint64(len(block.Transactions))
 		totalPayloadSize += approximatePayloadSize(block)
-		if (totalGasUsed > p.maxGasPerChunk) || (totalTxNum > p.maxTxNumPerChunk) || (totalPayloadSize > p.maxPayloadSizePerChunk) {
+		if (totalGasUsed > p.maxGasPerChunk) || (totalTxNum > p.maxL2TxNumPerChunk) || (totalPayloadSize > p.maxPayloadSizePerChunk) {
 			blocks = blocks[:i+1]
 			break
 		}
