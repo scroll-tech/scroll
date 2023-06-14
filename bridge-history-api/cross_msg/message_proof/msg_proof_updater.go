@@ -62,7 +62,7 @@ func (m *MsgProofUpdater) Start() {
 					start = uint64(latestBatchHasProof) + 1
 				}
 
-				for i := start; start <= latestBatch.ID; i++ {
+				for i := start; start <= latestBatch.BatchIndex; i++ {
 					batch, err := m.db.GetBridgeBatchByIndex(i)
 					if err != nil {
 						log.Error("MsgProofUpdater: Can not get BridgeBatch: ", "err", err)
@@ -78,7 +78,7 @@ func (m *MsgProofUpdater) Start() {
 					if err != nil {
 						break
 					}
-					err = m.updateMsgProof(msgs, proofs, batch.ID)
+					err = m.updateMsgProof(msgs, proofs, batch.BatchIndex)
 					if err != nil {
 						break
 					}
@@ -141,7 +141,7 @@ func (m *MsgProofUpdater) initializeWithdrawTrie() error {
 			return fmt.Errorf("failed to get batch by index 1: %v", err)
 		}
 	} else {
-		startIndex = startBatch.ID
+		startIndex = startBatch.BatchIndex
 	}
 
 	msg, err := m.db.GetL2SentMsgMsgHashByHeightRange(startBatch.StartBlockNumber, startBatch.EndBlockNumber)
@@ -158,7 +158,7 @@ func (m *MsgProofUpdater) initializeWithdrawTrie() error {
 		batches = append(batches, startBatch)
 	}
 
-	for i := startIndex + 1; i <= endBatch.ID; i++ {
+	for i := startIndex + 1; i <= endBatch.BatchIndex; i++ {
 		iterBatch, err := m.db.GetBridgeBatchByIndex(i)
 		if err != nil {
 			return fmt.Errorf("failed to get batch by index %d: %v", i, err)
@@ -172,7 +172,7 @@ func (m *MsgProofUpdater) initializeWithdrawTrie() error {
 		if err != nil {
 			return err
 		}
-		err = m.updateMsgProof(msgs, proofs, b.ID)
+		err = m.updateMsgProof(msgs, proofs, b.BatchIndex)
 		if err != nil {
 			return err
 		}

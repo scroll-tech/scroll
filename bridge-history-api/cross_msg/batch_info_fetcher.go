@@ -91,7 +91,7 @@ func (b *BatchInfoFetcher) fetchBatchInfo() error {
 		// filerlog to update bridge batch
 		err = FetchAndSaveBatchIndex(b.ctx, b.client, b.db, int64(height), int64(iter_end), b.scrollChainAddr)
 		if err != nil {
-			log.Error("Can not fetch and ssave from chain: ", "err", err)
+			log.Error("Can not fetch and save from chain: ", "err", err)
 			return err
 		}
 	}

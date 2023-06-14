@@ -243,7 +243,7 @@ func ParseBatchInfoFromScrollChain(ctx context.Context, client *ethclient.Client
 		switch vlog.Topics[0] {
 		case backendabi.L1CommitBatchEventSignature:
 			event := backendabi.L1CommitBatchEvent{}
-			err := UnpackLog(backendabi.L1ScrollMessengerABI, &event, "CommitBatch", vlog)
+			err := UnpackLog(backendabi.ScrollChainABI, &event, "CommitBatch", vlog)
 			if err != nil {
 				log.Warn("Failed to unpack CommitBatch event", "err", err)
 				return bridgeBatches, err
@@ -253,17 +253,19 @@ func ParseBatchInfoFromScrollChain(ctx context.Context, client *ethclient.Client
 				log.Warn("Failed to get commit Batch tx receipt or the tx is still pending", "err", err)
 				return bridgeBatches, err
 			}
-			startBlcock, endBlockNumber, err := GetBatchRangeFromCalldata(commitTx.Data())
+			indices, startBlcock, endBlockNumber, err := GetBatchRangeFromCalldataOldVersion(commitTx.Data())
 			if err != nil {
-				log.Warn("Failed to get batch range from calldata", "err", err)
+				log.Warn("Failed to get batch range from calldata", "hash", commitTx.Hash().Hex())
 				return bridgeBatches, err
 			}
-			bridgeBatches = append(bridgeBatches, &orm.BridgeBatch{
-				Height:           vlog.BlockNumber,
-				BatchHash:        event.BatchHash.Hex(),
-				StartBlockNumber: startBlcock,
-				EndBlockNumber:   endBlockNumber,
-			})
+			for i, _ := range indices {
+				bridgeBatches = append(bridgeBatches, &orm.BridgeBatch{
+					Height:           vlog.BlockNumber,
+					BatchHash:        event.BatchHash.Hex(),
+					StartBlockNumber: startBlcock[i],
+					EndBlockNumber:   endBlockNumber[i],
+				})
+			}
 		default:
 			continue
 		}

@@ -3,14 +3,18 @@
 create table bridge_batch
 (
     id                  BIGSERIAL PRIMARY KEY,
+    batch_index         BIGINT NOT NULL,
     height              BIGINT NOT NULL,
     start_block_number  BIGINT NOT NULL,
     end_block_number    BIGINT NOT NULL,
     batch_hash          VARCHAR NOT NULL,
-    status              TINYINT DEFAULT 0,
+    status              SMALLINT DEFAULT 0,
     created_at          TIMESTAMP(0) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at          TIMESTAMP(0) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at          TIMESTAMP(0) NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+
+create unique index bridge_batch_index_uindex
+on bridge_batch (batch_index);
 
 comment 
 on column bridge_batch.status is 'BatchNoProof, BatchWithProof';
