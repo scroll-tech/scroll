@@ -7,7 +7,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/stretchr/testify/assert"
 
-	message_proof "bridge-history-api/messsage_proof"
+	message_proof "bridge-history-api/message_proof"
 	"bridge-history-api/utils"
 )
 

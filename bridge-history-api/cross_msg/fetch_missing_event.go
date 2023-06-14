@@ -203,7 +203,7 @@ func L2FetchAndSaveEvents(ctx context.Context, client *ethclient.Client, databas
 	return nil
 }
 
-func FetchAndSaveBatchIndex(ctx context.Context, client *ethclient.Client, dbTx *sqlx.Tx, database db.OrmFactory, from int64, to int64, scrollChainAddr common.Address) error {
+func FetchAndSaveBatchIndex(ctx context.Context, client *ethclient.Client, database db.OrmFactory, from int64, to int64, scrollChainAddr common.Address) error {
 	query := geth.FilterQuery{
 		FromBlock: big.NewInt(from), // inclusive
 		ToBlock:   big.NewInt(to),   // inclusive
@@ -220,6 +220,23 @@ func FetchAndSaveBatchIndex(ctx context.Context, client *ethclient.Client, dbTx 
 	bridgeBatches, err := utils.ParseBatchInfoFromScrollChain(ctx, client, logs)
 	if err != nil {
 		log.Error("FetchAndSaveBatchIndex: Failed to parse batch commit msg event logs", "err", err)
+		return err
+	}
+	dbTx, err := database.Beginx()
+	if err != nil {
+		log.Error("l2FetchAndSaveEvents: Failed to begin db transaction", "err", err)
+		return err
+	}
+	err = database.BatchInsertBridgeBatchDBTx(dbTx, bridgeBatches)
+	if err != nil {
+		dbTx.Rollback()
+		log.Crit("l2FetchAndSaveEvents: Failed to insert batch commit msg event logs", "err", err)
+	}
+	err = dbTx.Commit()
+	if err != nil {
+		// if we can not insert into DB, there must something wrong, need a on-call member handle the dababase manually
+		dbTx.Rollback()
+		log.Error("l2FetchAndSaveEvents: Failed to commit db transaction", "err", err)
 		return err
 	}
 	return nil

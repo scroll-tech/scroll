@@ -56,16 +56,22 @@ func (m *MsgProofUpdater) Start() {
 					log.Error("Can not get latest L2SentMsgBatchIndex: ", "err", err)
 					continue
 				}
-				if latestBatchHasProof < int64(latestBatch.BatchIndex) {
-					for start := latestBatchHasProof + 1; start <= int64(latestBatch.BatchIndex); start++ {
-						batch, err := m.db.GetBridgeBatchByIndex(start)
+				var start uint64
+				if latestBatchHasProof < 0 {
+					start = 0
+				} else {
+					start = uint64(latestBatchHasProof) + 1
+				}
+				if latestBatchHasProof < int64(latestBatch.ID) {
+					for i := start; start <= latestBatch.ID; i++ {
+						batch, err := m.db.GetBridgeBatchByIndex(i)
 						if err != nil {
 							log.Error("Can not get BridgeBatch: ", "err", err)
 							break
 						}
 						// but this should never happen
 						if batch == nil {
-							log.Error("No BridgeBatch found: ", "index", start)
+							log.Error("No BridgeBatch found: ", "index", i)
 							break
 						}
 						// get all l2 messages in this batch
@@ -73,7 +79,7 @@ func (m *MsgProofUpdater) Start() {
 						if err != nil {
 							break
 						}
-						err = m.updateMsgProof(msgs, proofs, batch.BatchIndex)
+						err = m.updateMsgProof(msgs, proofs, batch.ID)
 						if err != nil {
 							break
 						}
@@ -111,7 +117,7 @@ func (m *MsgProofUpdater) initializeWithdrawTrie() error {
 	}
 
 	var batches []*orm.BridgeBatch
-	batchIndex := batch.BatchIndex
+	batchIndex := batch.ID
 	for {
 		var nonce sql.NullInt64
 		// find last message nonce in before or in this batch
@@ -141,7 +147,7 @@ func (m *MsgProofUpdater) initializeWithdrawTrie() error {
 
 		// iterate for next batch
 		batchIndex--
-		batch, err = m.db.GetBridgeBatchByIndex(int64(batchIndex))
+		batch, err = m.db.GetBridgeBatchByIndex(batchIndex)
 		if err != nil {
 			return fmt.Errorf("failed to get block batch %v: %v", batchIndex, err)
 		}
@@ -155,7 +161,7 @@ func (m *MsgProofUpdater) initializeWithdrawTrie() error {
 			return err
 		}
 
-		err = m.updateMsgProof(msgs, proofs, batch.BatchIndex)
+		err = m.updateMsgProof(msgs, proofs, batch.ID)
 		if err != nil {
 			return err
 		}

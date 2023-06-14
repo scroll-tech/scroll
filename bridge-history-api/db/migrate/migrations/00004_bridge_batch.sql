@@ -3,10 +3,9 @@
 create table bridge_batch
 (
     id                  BIGSERIAL PRIMARY KEY,
-    batch_index         BIGINT NOT NULL,
     height              BIGINT NOT NULL,
-    start_block_number   VARCHAR NOT NULL DEFAULT '',
-    end_block_number     VARCHAR NOT NULL DEFAULT '',
+    start_block_number  VARCHAR NOT NULL DEFAULT '',
+    end_block_number    VARCHAR NOT NULL DEFAULT '',
     is_deleted          BOOLEAN NOT NULL DEFAULT FALSE,
     created_at          TIMESTAMP(0) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at          TIMESTAMP(0) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -15,9 +14,6 @@ create table bridge_batch
 
 comment 
 on column bridge_batch.is_deleted is 'NotDeleted, Deleted';
-
-create unique index bridge_batch_index_uindex
-on bridge_batch (batch_index);
 
 CREATE OR REPLACE FUNCTION update_timestamp()
 RETURNS TRIGGER AS $$

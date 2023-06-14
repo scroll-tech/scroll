@@ -237,8 +237,8 @@ func ParseBackendL2EventLogs(logs []types.Log) ([]*orm.CrossMsg, []MsgHashWrappe
 	return l2CrossMsg, msgHashes, relayedMsgs, l2SentMsg, nil
 }
 
-func ParseBatchInfoFromScrollChain(ctx context.Context, client *ethclient.Client, logs []types.Log) ([]*orm.L2SentMsg, error) {
-	var l2SentMsg []*orm.L2SentMsg
+func ParseBatchInfoFromScrollChain(ctx context.Context, client *ethclient.Client, logs []types.Log) ([]*orm.BridgeBatch, error) {
+	var bridgeBatches []*orm.BridgeBatch
 	for _, vlog := range logs {
 		switch vlog.Topics[0] {
 		case backendabi.L1CommitBatchEventSignature:
@@ -246,17 +246,22 @@ func ParseBatchInfoFromScrollChain(ctx context.Context, client *ethclient.Client
 			err := UnpackLog(backendabi.L1ScrollMessengerABI, &event, "CommitBatch", vlog)
 			if err != nil {
 				log.Warn("Failed to unpack CommitBatch event", "err", err)
-				return l2SentMsg, err
+				return bridgeBatches, err
 			}
 			commitTx, is_pending, err := client.TransactionByHash(ctx, vlog.TxHash)
 			if err != nil || is_pending {
 				log.Warn("Failed to get commit Batch tx receipt or the tx is still pending", "err", err)
-				return l2SentMsg, err
+				return bridgeBatches, err
 			}
 			startBlcock, endBlockNumber := GetBatchRangeFromCalldata(commitTx.Data())
+			bridgeBatches = append(bridgeBatches, &orm.BridgeBatch{
+				Height:           vlog.BlockNumber,
+				StartBlockNumber: startBlcock,
+				EndBlockNumber:   endBlockNumber,
+			})
 		default:
 			continue
 		}
 	}
-	return l2SentMsg, nil
+	return bridgeBatches, nil
 }
