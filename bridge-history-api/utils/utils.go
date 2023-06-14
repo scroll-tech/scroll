@@ -1,7 +1,9 @@
 package utils
 
 import (
+	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"math/big"
 
@@ -58,4 +60,49 @@ func ComputeMessageHash(
 ) common.Hash {
 	data, _ := backendabi.L2ScrollMessengerABI.Pack("relayMessage", sender, target, value, messageNonce, message)
 	return common.BytesToHash(crypto.Keccak256(data))
+}
+
+// GetBatchRangeFromCalldataOldVersion find the block range from calldata, both inclusive.
+func GetBatchRangeFromCalldataOldVersion(calldata []byte) ([]uint64, []uint64, []uint64, error) {
+	var batchIndices []uint64
+	var startBlocks []uint64
+	var finishBlocks []uint64
+	if bytes.Equal(calldata[0:4], common.Hex2Bytes("cb905499")) {
+		// commitBatches
+		method := backendabi.ScrollChainABI.Methods["commitBatches"]
+		values, err := method.Inputs.Unpack(calldata[4:])
+		if err != nil {
+			return batchIndices, startBlocks, finishBlocks, err
+		}
+		args := make([]backendabi.IScrollChainBatch, len(values))
+		err = method.Inputs.Copy(&args, values)
+		if err != nil {
+			return batchIndices, startBlocks, finishBlocks, err
+		}
+
+		for i := 0; i < len(args); i++ {
+			batchIndices = append(batchIndices, args[i].BatchIndex)
+			startBlocks = append(startBlocks, args[i].Blocks[0].BlockNumber)
+			finishBlocks = append(finishBlocks, args[i].Blocks[len(args[i].Blocks)-1].BlockNumber)
+		}
+	} else if bytes.Equal(calldata[0:4], common.Hex2Bytes("8c73235d")) {
+		// commitBatch
+		method := backendabi.ScrollChainABI.Methods["commitBatch"]
+		values, err := method.Inputs.Unpack(calldata[4:])
+		if err != nil {
+			return batchIndices, startBlocks, finishBlocks, err
+		}
+
+		args := backendabi.IScrollChainBatch{}
+		err = method.Inputs.Copy(&args, values)
+		if err != nil {
+			return batchIndices, startBlocks, finishBlocks, err
+		}
+		batchIndices = append(batchIndices, args.BatchIndex)
+		startBlocks = append(startBlocks, args.Blocks[0].BlockNumber)
+		finishBlocks = append(finishBlocks, args.Blocks[len(args.Blocks)-1].BlockNumber)
+	} else {
+		return batchIndices, startBlocks, finishBlocks, errors.New("invalid selector")
+	}
+	return batchIndices, startBlocks, finishBlocks, nil
 }
