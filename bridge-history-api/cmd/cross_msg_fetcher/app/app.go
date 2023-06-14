@@ -14,7 +14,7 @@ import (
 	"bridge-history-api/config"
 	"bridge-history-api/cross_msg"
 	"bridge-history-api/db"
-	message_proof "bridge-history-api/messsage_proof"
+	message_proof "bridge-history-api/message_proof"
 	cutils "bridge-history-api/utils"
 )
 
@@ -111,6 +111,9 @@ func action(ctx *cli.Context) error {
 
 	// Withdrawal proof fetcher for l1 and l2
 	l2msgPoorfUpdater := message_proof.NewMsgProofUpdater(subCtx, l1client, cfg.L1.Confirmation, cfg.L1.BatchIndexStartBlock, db)
+	l2BatchFetcher := cross_msg.NewBatchInfoFetcher(subCtx, common.HexToAddress(cfg.Batch.ScrollChainAddr), cfg.Batch.BatchIndexStartBlock, uint(cfg.L1.Confirmation), int(cfg.L1.BlockTime), l1client, db, l2msgPoorfUpdater)
+	go l2BatchFetcher.Start()
+	defer l2BatchFetcher.Stop()
 
 	// Catch CTRL-C to ensure a graceful shutdown.
 	interrupt := make(chan os.Signal, 1)

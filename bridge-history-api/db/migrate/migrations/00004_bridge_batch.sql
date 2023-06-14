@@ -4,8 +4,8 @@ create table bridge_batch
 (
     id                  BIGSERIAL PRIMARY KEY,
     height              BIGINT NOT NULL,
-    start_block_number  VARCHAR NOT NULL DEFAULT '',
-    end_block_number    VARCHAR NOT NULL DEFAULT '',
+    start_block_number  BIGINT NOT NULL,
+    end_block_number    BIGINT NOT NULL,
     is_deleted          BOOLEAN NOT NULL DEFAULT FALSE,
     created_at          TIMESTAMP(0) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at          TIMESTAMP(0) NOT NULL DEFAULT CURRENT_TIMESTAMP,

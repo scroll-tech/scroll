@@ -6,6 +6,11 @@ import (
 	"path/filepath"
 )
 
+type BatchConfig struct {
+	BatchIndexStartBlock uint64 `json:"batchIndexStartBlock"`
+	ScrollChainAddr      string `json:"ScrollChainAddr"`
+}
+
 // DBConfig db config
 type DBConfig struct {
 	// data source name
@@ -44,6 +49,7 @@ type Config struct {
 	// data source name
 	DB     *DBConfig     `json:"db"`
 	Server *ServerConfig `json:"server"`
+	Batch  *BatchConfig  `json:"batch"`
 }
 
 // NewConfig returns a new instance of Config.

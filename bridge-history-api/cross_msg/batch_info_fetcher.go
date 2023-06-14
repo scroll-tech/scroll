@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/log"
 
@@ -13,6 +14,7 @@ import (
 
 type BatchInfoFetcher struct {
 	ctx                  context.Context
+	scrollChainAddr      common.Address
 	batchInfoStartNumber uint64
 	confirmation         uint
 	blockTimeInSec       int
@@ -21,9 +23,10 @@ type BatchInfoFetcher struct {
 	msgProofUpdater      *message_proof.MsgProofUpdater
 }
 
-func NewBatchInfoFetcher(ctx context.Context, batchInfoStartNumber uint64, confirmation uint, blockTimeInSec int, client *ethclient.Client, db db.OrmFactory, msgProofUpdater *message_proof.MsgProofUpdater) *BatchInfoFetcher {
+func NewBatchInfoFetcher(ctx context.Context, scrollChainAddr common.Address, batchInfoStartNumber uint64, confirmation uint, blockTimeInSec int, client *ethclient.Client, db db.OrmFactory, msgProofUpdater *message_proof.MsgProofUpdater) *BatchInfoFetcher {
 	return &BatchInfoFetcher{
 		ctx:                  ctx,
+		scrollChainAddr:      scrollChainAddr,
 		batchInfoStartNumber: batchInfoStartNumber,
 		confirmation:         confirmation,
 		blockTimeInSec:       blockTimeInSec,
@@ -34,6 +37,7 @@ func NewBatchInfoFetcher(ctx context.Context, batchInfoStartNumber uint64, confi
 }
 
 func (b *BatchInfoFetcher) Start() {
+	log.Info("BatchInfoFetcher Start")
 	err := b.fetchBatchInfo()
 	if err != nil {
 		log.Error("fetch batch info at begining failed: ", "err", err)
@@ -84,7 +88,11 @@ func (b *BatchInfoFetcher) fetchBatchInfo() error {
 			iter_end = number
 		}
 		// filerlog to update bridge batch
-
+		err = FetchAndSaveBatchIndex(b.ctx, b.client, b.db, int64(height), int64(iter_end), b.scrollChainAddr)
+		if err != nil {
+			log.Error("Can not fetch and ssave from chain: ", "err", err)
+			return err
+		}
 	}
 	return nil
 }

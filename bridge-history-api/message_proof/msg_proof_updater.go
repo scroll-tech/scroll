@@ -16,12 +16,10 @@ import (
 )
 
 type MsgProofUpdater struct {
-	ctx           context.Context
-	client        *ethclient.Client
-	confirmations uint64
-	startBlock    uint64
-	db            db.OrmFactory
-	withdrawTrie  *WithdrawTrie
+	ctx          context.Context
+	client       *ethclient.Client
+	db           db.OrmFactory
+	withdrawTrie *WithdrawTrie
 }
 
 func NewMsgProofUpdater(ctx context.Context, client *ethclient.Client, confirmations uint64, startBlock uint64, db db.OrmFactory) *MsgProofUpdater {
@@ -34,6 +32,7 @@ func NewMsgProofUpdater(ctx context.Context, client *ethclient.Client, confirmat
 }
 
 func (m *MsgProofUpdater) Start() {
+	log.Info("MsgProofUpdater Start")
 	err := m.initializeWithdrawTrie()
 	if err != nil {
 		log.Crit("can not initialize withdraw trie", "err", err)
@@ -48,12 +47,15 @@ func (m *MsgProofUpdater) Start() {
 			case <-tick.C:
 				latestBatch, err := m.db.GetLatestBridgeBatch()
 				if err != nil {
-					log.Error("Can not get latest BridgeBatch: ", "err", err)
+					log.Error("MsgProofUpdater: Can not get latest BridgeBatch: ", "err", err)
+					continue
+				}
+				if latestBatch == nil {
 					continue
 				}
 				latestBatchHasProof, err := m.db.GetLatestL2SentMsgBactchIndex()
 				if err != nil {
-					log.Error("Can not get latest L2SentMsgBatchIndex: ", "err", err)
+					log.Error("MsgProofUpdater: Can not get latest L2SentMsgBatchIndex: ", "err", err)
 					continue
 				}
 				var start uint64
@@ -66,12 +68,12 @@ func (m *MsgProofUpdater) Start() {
 					for i := start; start <= latestBatch.ID; i++ {
 						batch, err := m.db.GetBridgeBatchByIndex(i)
 						if err != nil {
-							log.Error("Can not get BridgeBatch: ", "err", err)
+							log.Error("MsgProofUpdater: Can not get BridgeBatch: ", "err", err)
 							break
 						}
 						// but this should never happen
 						if batch == nil {
-							log.Error("No BridgeBatch found: ", "index", i)
+							log.Error("MsgProofUpdater: No BridgeBatch found: ", "index", i)
 							break
 						}
 						// get all l2 messages in this batch
@@ -103,7 +105,9 @@ func (m *MsgProofUpdater) initializeWithdrawTrie() error {
 		return fmt.Errorf("failed to get first l2 message: %v", err)
 	}
 	// no l2 message
+	// 	TO DO: check if we realy dont have l2 sent message with nonce 0
 	if firstMsg == nil {
+		log.Info("No first l2sentmsg in db")
 		return nil
 	}
 

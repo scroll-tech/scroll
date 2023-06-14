@@ -1,4 +1,8 @@
 {
+	"batch": {
+		"batchIndexStartBlock": 9090194,
+		"ScrollChainAddr": ""
+	},
 	"l1": {
 		"confirmation": 64,
 		"endpoint": "https://rpc.ankr.com/eth_goerli",
