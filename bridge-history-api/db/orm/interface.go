@@ -131,7 +131,7 @@ type L2SentMsgOrm interface {
 	GetL2SentMsgMsgHashByHeightRange(startHeight, endHeight uint64) ([]*L2SentMsg, error)
 	UpdateL2SentMsgL1HashDBTx(ctx context.Context, dbTx *sqlx.Tx, l1Hash, msgHash common.Hash) error
 	UpdateL2MessageProofInDbTx(ctx context.Context, dbTx *sqlx.Tx, msgHash string, proof string, batch_index uint64) error
-	GetLatestL2SentMsgBactchIndex() (uint64, error)
+	GetLatestL2SentMsgBactchIndex() (int64, error)
 	DeleteL2SentMsgAfterHeightDBTx(dbTx *sqlx.Tx, height int64) error
 	ResetL2SentMsgL1HashAfterHeightDBTx(dbTx *sqlx.Tx, height int64) error
 }
@@ -139,6 +139,6 @@ type L2SentMsgOrm interface {
 type BridgeBatchOrm interface {
 	GetLatestBridgeBatch() (*BridgeBatch, error)
 	GetBridgeBatchByBlock(height uint64) (*BridgeBatch, error)
-	GetBridgeBatchByIndex(index uint64) (*BridgeBatch, error)
+	GetBridgeBatchByIndex(index int64) (*BridgeBatch, error)
 	IsBlockInBatch(batchIndex uint64, height uint64) (bool, error)
 }

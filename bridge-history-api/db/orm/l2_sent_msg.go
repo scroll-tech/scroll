@@ -85,19 +85,19 @@ func (l *l2SentMsgOrm) UpdateL2MessageProofInDbTx(ctx context.Context, dbTx *sql
 	return nil
 }
 
-func (l *l2SentMsgOrm) GetLatestL2SentMsgBactchIndex() (uint64, error) {
+func (l *l2SentMsgOrm) GetLatestL2SentMsgBactchIndex() (int64, error) {
 	row := l.db.QueryRow(`SELECT batch_index FROM l2_sent_msg WHERE msg_proof != null AND batch_index != null AND NOT is_deleted ORDER BY batch_index DESC LIMIT 1;`)
 	var result sql.NullInt64
 	if err := row.Scan(&result); err != nil {
 		if err == sql.ErrNoRows || !result.Valid {
-			return 0, nil
+			return -1, nil
 		}
-		return 0, err
+		return -1, err
 	}
 	if result.Valid {
-		return uint64(result.Int64), nil
+		return result.Int64, nil
 	}
-	return 0, nil
+	return -1, nil
 }
 
 func (l *l2SentMsgOrm) GetL2SentMsgMsgHashByHeightRange(startHeight, endHeight uint64) ([]*L2SentMsg, error) {

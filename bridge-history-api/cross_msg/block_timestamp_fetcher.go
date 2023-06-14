@@ -75,5 +75,4 @@ func (b *BlocktimestampFetcher) Start() {
 
 func (b *BlocktimestampFetcher) Stop() {
 	log.Info("BlocktimestampFetcher Stop")
-	b.ctx.Done()
 }

@@ -48,7 +48,7 @@ func (b *bridgeBatchOrm) IsBlockInBatch(batchIndex uint64, height uint64) (bool,
 	return exists, nil
 }
 
-func (b *bridgeBatchOrm) GetBridgeBatchByIndex(index uint64) (*BridgeBatch, error) {
+func (b *bridgeBatchOrm) GetBridgeBatchByIndex(index int64) (*BridgeBatch, error) {
 	result := &BridgeBatch{}
 	row := b.db.QueryRowx(`SELECT (index, start_block_number, end_block_number) FROM bridge_batch WHERE index = $1;`, index)
 	if err := row.StructScan(result); err != nil {

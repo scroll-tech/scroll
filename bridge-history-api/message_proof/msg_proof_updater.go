@@ -39,7 +39,7 @@ func (m *MsgProofUpdater) Start() {
 		log.Crit("can not initialize withdraw trie", "err", err)
 	}
 	go func() {
-		tick := time.NewTicker(time.Duration(12) * time.Second)
+		tick := time.NewTicker(time.Duration(10) * time.Second)
 		for {
 			select {
 			case <-m.ctx.Done():
@@ -56,8 +56,8 @@ func (m *MsgProofUpdater) Start() {
 					log.Error("Can not get latest L2SentMsgBatchIndex: ", "err", err)
 					continue
 				}
-				if latestBatchHasProof < latestBatch.BatchIndex {
-					for start := latestBatchHasProof + 1; start <= latestBatch.BatchIndex; start++ {
+				if latestBatchHasProof < int64(latestBatch.BatchIndex) {
+					for start := latestBatchHasProof + 1; start <= int64(latestBatch.BatchIndex); start++ {
 						batch, err := m.db.GetBridgeBatchByIndex(start)
 						if err != nil {
 							log.Error("Can not get BridgeBatch: ", "err", err)
@@ -88,7 +88,6 @@ func (m *MsgProofUpdater) Start() {
 
 func (m *MsgProofUpdater) Stop() {
 	log.Info("MsgProofUpdater Stop")
-	m.ctx.Done()
 }
 
 func (m *MsgProofUpdater) initializeWithdrawTrie() error {
@@ -106,6 +105,9 @@ func (m *MsgProofUpdater) initializeWithdrawTrie() error {
 	batch, err = m.db.GetLatestBridgeBatch()
 	if err != nil {
 		return fmt.Errorf("failed to get latest batch: %v", err)
+	}
+	if batch == nil {
+		return fmt.Errorf("no batch found")
 	}
 
 	var batches []*orm.BridgeBatch
@@ -139,7 +141,7 @@ func (m *MsgProofUpdater) initializeWithdrawTrie() error {
 
 		// iterate for next batch
 		batchIndex--
-		batch, err = m.db.GetBridgeBatchByIndex(batchIndex)
+		batch, err = m.db.GetBridgeBatchByIndex(int64(batchIndex))
 		if err != nil {
 			return fmt.Errorf("failed to get block batch %v: %v", batchIndex, err)
 		}

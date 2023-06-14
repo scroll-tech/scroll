@@ -55,6 +55,7 @@ func action(ctx *cli.Context) error {
 		log.Crit("failed to connect l2 geth", "config file", cfgFile, "error", err)
 	}
 	db, err := db.NewOrmFactory(cfg)
+	defer db.Close()
 	if err != nil {
 		log.Crit("failed to connect to db", "config file", cfgFile, "error", err)
 	}
@@ -109,9 +110,7 @@ func action(ctx *cli.Context) error {
 	defer l2BlocktimeFetcher.Stop()
 
 	// Withdrawal proof fetcher for l1 and l2
-	l2BatchInfoFetcher := message_proof.NewMsgProofUpdater(subCtx, l1client, cfg.L1.Confirmation, cfg.L1.BatchIndexStartBlock, db)
-	go l2BatchInfoFetcher.Start()
-	defer l2BatchInfoFetcher.Stop()
+	l2msgPoorfUpdater := message_proof.NewMsgProofUpdater(subCtx, l1client, cfg.L1.Confirmation, cfg.L1.BatchIndexStartBlock, db)
 
 	// Catch CTRL-C to ensure a graceful shutdown.
 	interrupt := make(chan os.Signal, 1)

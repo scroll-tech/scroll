@@ -97,7 +97,6 @@ func (c *CrossMsgFetcher) Start() {
 }
 
 func (c *CrossMsgFetcher) Stop() {
-	c.db.Close()
 	log.Info("CrossMsgFetcher Stop")
 }
 
