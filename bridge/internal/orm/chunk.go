@@ -24,9 +24,9 @@ type Chunk struct {
 	TotalGasUsed     uint64     `json:"total_gas_used" gorm:"column:total_gas_used"`
 	TotalTxNum       uint64     `json:"total_tx_num" gorm:"column:total_tx_num"`
 	TotalPayloadSize uint64     `json:"total_payload_size" gorm:"column:total_payload_size"`
-	ProofTimeSec     int        `json:"proof_time_sec" gorm:"column:proof_time_sec"`
+	ProofTimeSec     int16      `json:"proof_time_sec" gorm:"column:proof_time_sec"`
 	ProverAssignedAt *time.Time `json:"prover_assigned_at" gorm:"column:prover_assigned_at"`
-	ProvingStatus    int        `json:"proving_status" gorm:"column:proving_status"`
+	ProvingStatus    int16      `json:"proving_status" gorm:"column:proving_status"`
 	ProvedAt         *time.Time `json:"proved_at" gorm:"column:proved_at"`
 	BatchHash        string     `json:"batch_hash" gorm:"column:batch_hash"`
 	CreatedAt        time.Time  `json:"created_at" gorm:"column:created_at"`

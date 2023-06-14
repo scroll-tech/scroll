@@ -43,7 +43,7 @@ type L1WatcherClient struct {
 	l1MessageOrm *orm.L1Message
 	l2MessageOrm *orm.L2Message
 	l1BlockOrm   *orm.L1Block
-	l1BatchOrm   *orm.Batch
+	batchOrm     *orm.Batch
 
 	// The number of new blocks to wait for a block to be confirmed
 	confirmations rpc.BlockNumber
@@ -90,7 +90,7 @@ func NewL1WatcherClient(ctx context.Context, client *ethclient.Client, startHeig
 		client:        client,
 		l1MessageOrm:  l1MessageOrm,
 		l1BlockOrm:    l1BlockOrm,
-		l1BatchOrm:    orm.NewBatch(db),
+		batchOrm:      orm.NewBatch(db),
 		l2MessageOrm:  orm.NewL2Message(db),
 		confirmations: confirmations,
 
@@ -245,7 +245,7 @@ func (w *L1WatcherClient) FetchContractEvent() error {
 		for _, event := range rollupEvents {
 			batchHashes = append(batchHashes, event.batchHash.String())
 		}
-		statuses, err := w.l1BatchOrm.GetRollupStatusByHashList(w.ctx, batchHashes)
+		statuses, err := w.batchOrm.GetRollupStatusByHashList(w.ctx, batchHashes)
 		if err != nil {
 			log.Error("Failed to GetRollupStatusByHashList", "err", err)
 			return err
@@ -265,13 +265,13 @@ func (w *L1WatcherClient) FetchContractEvent() error {
 						"finalize_tx_hash": event.txHash.String(),
 						"rollup_status":    types.RollupFinalized,
 					}
-					err = w.l1BatchOrm.UpdateBatch(w.ctx, batchHash, updateFields)
+					err = w.batchOrm.UpdateBatch(w.ctx, batchHash, updateFields)
 				} else if event.status == types.RollupCommitted {
 					updateFields := map[string]interface{}{
 						"commit_tx_hash": event.txHash.String(),
 						"rollup_status":  types.RollupCommitted,
 					}
-					err = w.l1BatchOrm.UpdateBatch(w.ctx, batchHash, updateFields)
+					err = w.batchOrm.UpdateBatch(w.ctx, batchHash, updateFields)
 				}
 				if err != nil {
 					log.Error("Failed to update Rollup/Finalize TxHash and Status", "err", err)

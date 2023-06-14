@@ -31,16 +31,16 @@ type Batch struct {
 	StateRoot        string     `json:"state_root" gorm:"column:state_root"`
 	WithdrawRoot     string     `json:"withdraw_root" gorm:"column:withdraw_root"`
 	Proof            []byte     `json:"proof" gorm:"column:proof"`
-	ProvingStatus    int        `json:"proving_status" gorm:"column:proving_status"`
+	ProvingStatus    int16      `json:"proving_status" gorm:"column:proving_status"`
 	ProofTimeSec     int        `json:"proof_time_sec" gorm:"column:proof_time_sec"`
-	RollupStatus     int        `json:"rollup_status" gorm:"column:rollup_status"`
+	RollupStatus     int16      `json:"rollup_status" gorm:"column:rollup_status"`
 	CommitTxHash     string     `json:"commit_tx_hash" gorm:"column:commit_tx_hash"`
 	FinalizeTxHash   string     `json:"finalize_tx_hash" gorm:"column:finalize_tx_hash"`
 	ProverAssignedAt *time.Time `json:"prover_assigned_at" gorm:"column:prover_assigned_at"`
 	ProvedAt         *time.Time `json:"proved_at" gorm:"column:proved_at"`
 	CommittedAt      *time.Time `json:"committed_at" gorm:"column:committed_at"`
 	FinalizedAt      *time.Time `json:"finalized_at" gorm:"column:finalized_at"`
-	OracleStatus     int        `json:"oracle_status" gorm:"column:oracle_status"`
+	OracleStatus     int16      `json:"oracle_status" gorm:"column:oracle_status"`
 	OracleTxHash     string     `json:"oracle_tx_hash" gorm:"column:oracle_tx_hash"`
 	CreatedAt        time.Time  `json:"created_at" gorm:"column:created_at"`
 	UpdatedAt        time.Time  `json:"updated_at" gorm:"column:updated_at"`

@@ -81,6 +81,9 @@ var (
 	// L2FailedRelayedMessageEventSignature = keccak256("FailedRelayedMessage(bytes32)")
 	L2FailedRelayedMessageEventSignature common.Hash
 
+	// L2ImportBlockEventSignature = keccak256("ImportBlock(bytes32,uint256,uint256,uint256,bytes32)")
+	L2ImportBlockEventSignature common.Hash
+
 	// L2AppendMessageEventSignature = keccak256("AppendMessage(uint256,bytes32)")
 	L2AppendMessageEventSignature common.Hash
 )
@@ -134,6 +137,8 @@ func init() {
 	L2SentMessageEventSignature = L2ScrollMessengerABI.Events["SentMessage"].ID
 	L2RelayedMessageEventSignature = L2ScrollMessengerABI.Events["RelayedMessage"].ID
 	L2FailedRelayedMessageEventSignature = L2ScrollMessengerABI.Events["FailedRelayedMessage"].ID
+
+	L2ImportBlockEventSignature = L1BlockContainerABI.Events["ImportBlock"].ID
 
 	L2AppendMessageEventSignature = L2MessageQueueABI.Events["AppendMessage"].ID
 

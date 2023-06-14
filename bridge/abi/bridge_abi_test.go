@@ -24,6 +24,8 @@ func TestEventSignature(t *testing.T) {
 	assert.Equal(L2RelayedMessageEventSignature, common.HexToHash("4641df4a962071e12719d8c8c8e5ac7fc4d97b927346a3d7a335b1f7517e133c"))
 	assert.Equal(L2FailedRelayedMessageEventSignature, common.HexToHash("99d0e048484baa1b1540b1367cb128acd7ab2946d1ed91ec10e3c85e4bf51b8f"))
 
+	assert.Equal(L2ImportBlockEventSignature, common.HexToHash("a7823f45e1ee21f9530b77959b57507ad515a14fa9fa24d262ee80e79b2b5745"))
+
 	assert.Equal(L2AppendMessageEventSignature, common.HexToHash("faa617c2d8ce12c62637dbce76efcc18dae60574aa95709bdcedce7e76071693"))
 }
 
