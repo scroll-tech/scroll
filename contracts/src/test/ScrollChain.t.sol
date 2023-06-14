@@ -15,7 +15,9 @@ import {MockRollupVerifier} from "./mocks/MockRollupVerifier.sol";
 contract ScrollChainTest is DSTestPlus {
     // from ScrollChain
     event UpdateSequencer(address indexed account, bool status);
+    event UpdateProver(address indexed account, bool status);
     event UpdateVerifier(address oldVerifier, address newVerifier);
+    event UpdateMaxNumL2TxInChunk(uint256 oldMaxNumL2TxInChunk, uint256 newMaxNumL2TxInChunk);
 
     event CommitBatch(bytes32 indexed batchHash);
     event FinalizeBatch(bytes32 indexed batchHash, bytes32 stateRoot, bytes32 withdrawRoot);
@@ -121,10 +123,11 @@ contract ScrollChainTest is DSTestPlus {
     }
 
     function testFinalizeBatchWithProof() public {
-        // caller not sequencer, revert
-        hevm.expectRevert("caller not sequencer");
+        // caller not prover, revert
+        hevm.expectRevert("caller not prover");
         rollup.finalizeBatchWithProof(new bytes(0), bytes32(0), bytes32(0), bytes32(0), new bytes(0));
 
+        rollup.updateProver(address(this), true);
         rollup.updateSequencer(address(this), true);
 
         bytes memory batchHeader0 = new bytes(89);
@@ -213,6 +216,7 @@ contract ScrollChainTest is DSTestPlus {
 
     function testCommitAndFinalizeWithL1Messages() public {
         rollup.updateSequencer(address(this), true);
+        rollup.updateProver(address(this), true);
 
         // import 300 L1 messages
         for (uint256 i = 0; i < 300; i++) {
@@ -514,6 +518,27 @@ contract ScrollChainTest is DSTestPlus {
         assertBoolEq(rollup.isSequencer(_sequencer), false);
     }
 
+    function testUpdateProver(address _prover) public {
+        // set by non-owner, should revert
+        hevm.startPrank(address(1));
+        hevm.expectRevert("Ownable: caller is not the owner");
+        rollup.updateProver(_prover, true);
+        hevm.stopPrank();
+
+        // change to random operator
+        hevm.expectEmit(true, false, false, true);
+        emit UpdateProver(_prover, true);
+
+        assertBoolEq(rollup.isProver(_prover), false);
+        rollup.updateProver(_prover, true);
+        assertBoolEq(rollup.isProver(_prover), true);
+
+        hevm.expectEmit(true, false, false, true);
+        emit UpdateProver(_prover, false);
+        rollup.updateProver(_prover, false);
+        assertBoolEq(rollup.isProver(_prover), false);
+    }
+
     function testUpdateVerifier(address _newVerifier) public {
         // set by non-owner, should revert
         hevm.startPrank(address(1));
@@ -528,6 +553,22 @@ contract ScrollChainTest is DSTestPlus {
         assertEq(rollup.verifier(), address(verifier));
         rollup.updateVerifier(_newVerifier);
         assertEq(rollup.verifier(), _newVerifier);
+    }
+
+    function testUpdateMaxNumL2TxInChunk(uint256 _maxNumL2TxInChunk) public {
+        // set by non-owner, should revert
+        hevm.startPrank(address(1));
+        hevm.expectRevert("Ownable: caller is not the owner");
+        rollup.updateMaxNumL2TxInChunk(_maxNumL2TxInChunk);
+        hevm.stopPrank();
+
+        // change to random operator
+        hevm.expectEmit(false, false, false, true);
+        emit UpdateMaxNumL2TxInChunk(100, _maxNumL2TxInChunk);
+
+        assertEq(rollup.maxNumL2TxInChunk(), 100);
+        rollup.updateMaxNumL2TxInChunk(_maxNumL2TxInChunk);
+        assertEq(rollup.maxNumL2TxInChunk(), _maxNumL2TxInChunk);
     }
 
     function testImportGenesisBlock() public {
