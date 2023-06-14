@@ -117,6 +117,7 @@ type RelayedMsgOrm interface {
 	BatchInsertRelayedMsgDBTx(dbTx *sqlx.Tx, messages []*RelayedMsg) error
 	GetRelayedMsgByHash(msg_hash string) (*RelayedMsg, error)
 	GetLatestRelayedHeightOnL1() (int64, error)
+	GetLatestRelayedHeightOnL2() (int64, error)
 	DeleteL1RelayedHashAfterHeightDBTx(dbTx *sqlx.Tx, height int64) error
 	DeleteL2RelayedHashAfterHeightDBTx(dbTx *sqlx.Tx, height int64) error
 }

@@ -58,16 +58,24 @@ func GetLatestL2ProcessedHeight(db db.OrmFactory) (int64, error) {
 		log.Error("failed to get L2 cross message processed height", "err", err)
 		return 0, err
 	}
-	relayedHeight, err := db.GetLatestSentMsgHeightOnL2()
+	relayedHeight, err := db.GetLatestRelayedHeightOnL2()
+	if err != nil {
+		log.Error("failed to get L2 relayed message processed height", "err", err)
+		return 0, err
+	}
+	l2SentHeight, err := db.GetLatestSentMsgHeightOnL2()
 	if err != nil {
 		log.Error("failed to get L2 sent message processed height", "err", err)
 		return 0, err
 	}
-	if crossHeight > relayedHeight {
-		return crossHeight, nil
-	} else {
-		return relayedHeight, nil
+	maxHeight := crossHeight
+	if maxHeight < relayedHeight {
+		maxHeight = relayedHeight
 	}
+	if maxHeight < l2SentHeight {
+		maxHeight = l2SentHeight
+	}
+	return maxHeight, nil
 }
 
 func L1FetchAndSaveEvents(ctx context.Context, client *ethclient.Client, database db.OrmFactory, from int64, to int64, addrList []common.Address) error {
