@@ -20,7 +20,7 @@ create table chunk
     batch_hash              VARCHAR         DEFAULT NULL,
     created_at              TIMESTAMP(0)    NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at              TIMESTAMP(0)    NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    deleted_at              TIMESTAMP(0)    DEFAULT NULL,
+    deleted_at              TIMESTAMP(0)    DEFAULT NULL
 );
 
 comment

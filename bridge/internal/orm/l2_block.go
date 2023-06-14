@@ -58,48 +58,8 @@ func (o *L2Block) GetL2BlocksLatestHeight() (int64, error) {
 func (o *L2Block) GetUnchunkedBlocks() ([]*types.WrappedBlock, error) {
 	var l2Blocks []L2Block
 	db := o.db.Select("header, transactions, withdraw_trie_root")
-	db = db.Where("chunk_hash IS NULL")
-
-	if err := db.Find(&l2Blocks).Error; err != nil {
-		return nil, err
-	}
-
-	var wrappedBlocks []*types.WrappedBlock
-	for _, v := range l2Blocks {
-		var wrappedBlock types.WrappedBlock
-
-		if err := json.Unmarshal([]byte(v.Transactions), &wrappedBlock.Transactions); err != nil {
-			return nil, err
-		}
-
-		wrappedBlock.Header = &gethTypes.Header{}
-		if err := json.Unmarshal([]byte(v.Header), wrappedBlock.Header); err != nil {
-			return nil, err
-		}
-
-		wrappedBlock.WithdrawTrieRoot = common.HexToHash(v.WithdrawTrieRoot)
-		wrappedBlocks = append(wrappedBlocks, &wrappedBlock)
-	}
-
-	return wrappedBlocks, nil
-}
-
-// GetL2WrappedBlocks get the l2 wrapped blocks
-func (o *L2Block) GetL2WrappedBlocks(fields map[string]interface{}, orderByList []string, limit int) ([]*types.WrappedBlock, error) {
-	var l2Blocks []L2Block
-	db := o.db.Select("header, transactions, withdraw_trie_root")
-
-	for key, value := range fields {
-		db = db.Where(key, value)
-	}
-
-	for _, orderBy := range orderByList {
-		db = db.Order(orderBy)
-	}
-
-	if limit != 0 {
-		db = db.Limit(limit)
-	}
+	db = db.Where("chunk_hash IS NULL OR chunk_hash = ''")
+	db = db.Order("number asc")
 
 	if err := db.Find(&l2Blocks).Error; err != nil {
 		return nil, err

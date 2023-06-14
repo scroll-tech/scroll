@@ -26,7 +26,7 @@ create table batch
     oracle_tx_hash          VARCHAR         DEFAULT NULL,
     created_at              TIMESTAMP(0)    NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at              TIMESTAMP(0)    NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    deleted_at              TIMESTAMP(0)    DEFAULT NULL,
+    deleted_at              TIMESTAMP(0)    DEFAULT NULL
 );
 
 create unique index batch_index_uindex
