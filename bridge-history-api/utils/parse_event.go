@@ -260,6 +260,7 @@ func ParseBatchInfoFromScrollChain(ctx context.Context, client *ethclient.Client
 			}
 			bridgeBatches = append(bridgeBatches, &orm.BridgeBatch{
 				Height:           vlog.BlockNumber,
+				BatchHash:        event.BatchHash.Hex(),
 				StartBlockNumber: startBlcock,
 				EndBlockNumber:   endBlockNumber,
 			})

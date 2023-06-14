@@ -6,12 +6,14 @@ create table bridge_batch
     height              BIGINT NOT NULL,
     start_block_number  BIGINT NOT NULL,
     end_block_number    BIGINT NOT NULL,
+    batch_hash          VARCHAR NOT NULL,
+    status              TINYINT DEFAULT 0,
     created_at          TIMESTAMP(0) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at          TIMESTAMP(0) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 );
 
 comment 
-on column bridge_batch.is_deleted is 'NotDeleted, Deleted';
+on column bridge_batch.status is 'BatchNoProof, BatchWithProof';
 
 CREATE OR REPLACE FUNCTION update_timestamp()
 RETURNS TRIGGER AS $$

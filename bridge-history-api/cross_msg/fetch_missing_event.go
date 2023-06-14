@@ -18,7 +18,7 @@ import (
 // Todo : read from config
 var (
 	// the number of blocks fetch per round
-	FETCH_LIMIT = int64(3000)
+	fetchLimit = int64(3000)
 )
 
 // FetchAndSave is a function type that fetches events from blockchain and saves them to database

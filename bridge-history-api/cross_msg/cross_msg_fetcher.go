@@ -128,8 +128,8 @@ func (c *CrossMsgFetcher) forwardFetchAndSaveMissingEvents(confirmation uint64) 
 	} else {
 		processed_height += 1
 	}
-	for n := processed_height; n <= int64(number); n += FETCH_LIMIT {
-		iter_end := n + FETCH_LIMIT - 1
+	for n := processed_height; n <= int64(number); n += fetchLimit {
+		iter_end := n + fetchLimit - 1
 		if iter_end > int64(number) {
 			iter_end = int64(number)
 		}

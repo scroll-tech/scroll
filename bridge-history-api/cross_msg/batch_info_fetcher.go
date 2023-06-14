@@ -42,6 +42,7 @@ func (b *BatchInfoFetcher) Start() {
 	if err != nil {
 		log.Error("fetch batch info at begining failed: ", "err", err)
 	}
+	// start msg proof updater after we have some bridge batch
 	go b.msgProofUpdater.Start()
 	go func() {
 		tick := time.NewTicker(time.Duration(b.blockTimeInSec) * time.Second)
@@ -82,8 +83,8 @@ func (b *BatchInfoFetcher) fetchBatchInfo() error {
 	} else {
 		startHeight = latestBatch.Height + 1
 	}
-	for height := startHeight; number >= height+uint64(b.confirmation); height += uint64(FETCH_LIMIT) {
-		iter_end := height + uint64(FETCH_LIMIT) - 1
+	for height := startHeight; number >= height+uint64(b.confirmation); height += uint64(fetchLimit) {
+		iter_end := height + uint64(fetchLimit) - 1
 		if iter_end > number {
 			iter_end = number
 		}

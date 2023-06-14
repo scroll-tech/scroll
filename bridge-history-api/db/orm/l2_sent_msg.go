@@ -4,11 +4,29 @@ import (
 	"context"
 	"database/sql"
 	"strings"
+	"time"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/jmoiron/sqlx"
 )
+
+type L2SentMsg struct {
+	ID         uint64     `json:"id" db:"id"`
+	MsgHash    string     `json:"msg_hash" db:"msg_hash"`
+	Sender     string     `json:"sender" db:"sender"`
+	Target     string     `json:"target" db:"target"`
+	Value      string     `json:"value" db:"value"`
+	Height     uint64     `json:"height" db:"height"`
+	Nonce      uint64     `json:"nonce" db:"nonce"`
+	BatchIndex uint64     `json:"batch_index" db:"batch_index"`
+	MsgProof   string     `json:"msg_proof" db:"msg_proof"`
+	MsgData    string     `json:"msg_data" db:"msg_data"`
+	IsDeleted  bool       `json:"is_deleted" db:"is_deleted"`
+	CreatedAt  *time.Time `json:"created_at" db:"created_at"`
+	UpdatedAt  *time.Time `json:"updated_at" db:"updated_at"`
+	DeletedAt  *time.Time `json:"deleted_at" db:"deleted_at"`
+}
 
 type l2SentMsgOrm struct {
 	db *sqlx.DB
@@ -120,11 +138,14 @@ func (l *l2SentMsgOrm) GetL2SentMessageByNonce(nonce uint64) (*L2SentMsg, error)
 	return result, nil
 }
 
-func (l *l2SentMsgOrm) GetLastL2MessageNonceLEHeight(endBlockNumber uint64) (sql.NullInt64, error) {
-	row := l.db.QueryRow(`SELECT MAX(nonce) FROM l2_message WHERE height <= $1 AND NOT is_deleted;`, endBlockNumber)
-	var nonce sql.NullInt64
-	err := row.Scan(&nonce)
-	return nonce, err
+func (l *l2SentMsgOrm) GetLatestL2SentMsgLEHeight(endBlockNumber uint64) (*L2SentMsg, error) {
+	var result *L2SentMsg
+	row := l.db.QueryRowx(`select * from l2_sent_msg where height <= $1 AND NOT is_deleted order by nonce limit 1`)
+	err := row.StructScan(&result)
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
 }
 
 func (l *l2SentMsgOrm) DeleteL2SentMsgAfterHeightDBTx(dbTx *sqlx.Tx, height int64) error {

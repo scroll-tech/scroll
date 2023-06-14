@@ -2,7 +2,6 @@ package orm
 
 import (
 	"context"
-	"database/sql"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -68,23 +67,6 @@ type RelayedMsg struct {
 	Layer2Hash string `json:"layer2_hash" db:"layer2_hash"`
 }
 
-type L2SentMsg struct {
-	ID         uint64     `json:"id" db:"id"`
-	MsgHash    string     `json:"msg_hash" db:"msg_hash"`
-	Sender     string     `json:"sender" db:"sender"`
-	Target     string     `json:"target" db:"target"`
-	Value      string     `json:"value" db:"value"`
-	Height     uint64     `json:"height" db:"height"`
-	Nonce      uint64     `json:"nonce" db:"nonce"`
-	BatchIndex uint64     `json:"batch_index" db:"batch_index"`
-	MsgProof   string     `json:"msg_proof" db:"msg_proof"`
-	MsgData    string     `json:"msg_data" db:"msg_data"`
-	IsDeleted  bool       `json:"is_deleted" db:"is_deleted"`
-	CreatedAt  *time.Time `json:"created_at" db:"created_at"`
-	UpdatedAt  *time.Time `json:"updated_at" db:"updated_at"`
-	DeletedAt  *time.Time `json:"deleted_at" db:"deleted_at"`
-}
-
 // L1CrossMsgOrm provides operations on l1_cross_message table
 type L1CrossMsgOrm interface {
 	GetL1CrossMsgByHash(l1Hash common.Hash) (*CrossMsg, error)
@@ -127,7 +109,7 @@ type L2SentMsgOrm interface {
 	GetL2SentMsgByHash(l2Hash string) (*L2SentMsg, error)
 	GetLatestSentMsgHeightOnL2() (int64, error)
 	GetL2SentMessageByNonce(nonce uint64) (*L2SentMsg, error)
-	GetLastL2MessageNonceLEHeight(endBlockNumber uint64) (sql.NullInt64, error)
+	GetLatestL2SentMsgLEHeight(endBlockNumber uint64) (*L2SentMsg, error)
 	GetL2SentMsgMsgHashByHeightRange(startHeight, endHeight uint64) ([]*L2SentMsg, error)
 	UpdateL2SentMsgL1HashDBTx(ctx context.Context, dbTx *sqlx.Tx, l1Hash, msgHash common.Hash) error
 	UpdateL2MessageProofInDbTx(ctx context.Context, dbTx *sqlx.Tx, msgHash string, proof string, batch_index uint64) error
@@ -140,6 +122,7 @@ type BridgeBatchOrm interface {
 	GetLatestBridgeBatch() (*BridgeBatch, error)
 	GetBridgeBatchByBlock(height uint64) (*BridgeBatch, error)
 	GetBridgeBatchByIndex(index uint64) (*BridgeBatch, error)
+	GetLatestBridgeBatchWithProof() (*BridgeBatch, error)
+	UpdateBridgeBatchStatusDBTx(dbTx *sqlx.Tx, batchID uint64, status BatchStatus) error
 	BatchInsertBridgeBatchDBTx(dbTx *sqlx.Tx, messages []*BridgeBatch) error
-	IsBlockInBatch(batchIndex uint64, height uint64) (bool, error)
 }
