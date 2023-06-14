@@ -22,15 +22,70 @@ type BatchHeader struct {
 
 // NewBatchHeader creates a new BatchHeader
 func NewBatchHeader(version uint8, batchIndex, totalL1MessagePoppedBefore uint64, parentBatchHash common.Hash, chunks []*Chunk) (*BatchHeader, error) {
-	// TODO calculate `l1MessagePopped`, `totalL1MessagePopped`, and `skippedL1MessageBitmap` based on `chunks`
 	var dataBytes []byte
+	var l1MessagePopped uint64 = 0
+	var skippedL1MessageBitmap []*big.Int
+
+	// previous queue index which represents a bitmap border
+	lastBitmapIndex := totalL1MessagePoppedBefore
+	// bitmap index offset
+	var bitmapIndexOffset uint64
+	// initialize uint256 bitmap
+	bitmap := big.NewInt(0)
 	for _, chunk := range chunks {
+		for _, block := range chunk.Blocks {
+			for _, tx := range block.Transactions {
+				if tx.Type != 0x7E {
+					continue
+				}
+
+				queueIndex := tx.Nonce
+				bitmapIndexOffset = queueIndex - lastBitmapIndex - 1
+				newSize := int(bitmapIndexOffset / 255)
+				newBitmaps := newSize - len(skippedL1MessageBitmap)
+
+				// Check if offset exceeds 256 msgs, create new bitmap
+				if newBitmaps > 0 {
+					for newBitmaps > 0 {
+						flippedBitmap := new(big.Int)
+						for i := 0; i < 256; i++ {
+							bit := bitmap.Bit(i)
+							flippedBit := bit ^ 1
+							flippedBitmap.SetBit(flippedBitmap, i, flippedBit)
+						}
+						skippedL1MessageBitmap = append(skippedL1MessageBitmap, flippedBitmap)
+						bitmap = big.NewInt(0) // reinitialize bitmap
+						newBitmaps--
+					}
+					// account for the skipped msgs in the new bitmap
+					bitmapIndexOffset = bitmapIndexOffset - 255
+					lastBitmapIndex = queueIndex - bitmapIndexOffset
+				}
+
+				bitmap.SetBit(bitmap, int(bitmapIndexOffset), 1)
+				l1MessagePopped++
+			}
+		}
+
+		// edge case: if skippedL1MessageBitmap length is 0 and bitmap is 0,
+		// then we don't need to append skippedL1MessageBitmap
+		if len(skippedL1MessageBitmap) != 0 || bitmap.BitLen() != 0 {
+			// Append last bitmap
+			flippedBitmap := new(big.Int)
+			// Flipping up to the last popped index, leaving remaining bits as 0
+			for i := 0; i < bitmap.BitLen(); i++ {
+				bit := bitmap.Bit(i)
+				flippedBit := bit ^ 1
+				flippedBitmap.SetBit(flippedBitmap, i, flippedBit)
+			}
+			skippedL1MessageBitmap = append(skippedL1MessageBitmap, flippedBitmap)
+		}
+
 		// Build dataHash
 		chunkBytes, err := chunk.Hash()
 		if err != nil {
 			return nil, err
 		}
-
 		dataBytes = append(dataBytes, chunkBytes...)
 	}
 	dataHash := crypto.Keccak256Hash(dataBytes)
@@ -38,11 +93,11 @@ func NewBatchHeader(version uint8, batchIndex, totalL1MessagePoppedBefore uint64
 	return &BatchHeader{
 		version:                version,
 		batchIndex:             batchIndex,
-		l1MessagePopped:        0,                          // TODO
-		totalL1MessagePopped:   totalL1MessagePoppedBefore, // TODO
+		l1MessagePopped:        l1MessagePopped,
+		totalL1MessagePopped:   totalL1MessagePoppedBefore + l1MessagePopped,
 		dataHash:               dataHash,
 		parentBatchHash:        parentBatchHash,
-		skippedL1MessageBitmap: nil, // TODO
+		skippedL1MessageBitmap: skippedL1MessageBitmap,
 	}, nil
 }
 
@@ -55,7 +110,15 @@ func (b *BatchHeader) Encode() []byte {
 	binary.BigEndian.PutUint64(batchBytes[17:], b.totalL1MessagePopped)
 	copy(batchBytes[25:], b.dataHash[:])
 	copy(batchBytes[57:], b.parentBatchHash[:])
-	// TODO: encode skippedL1MessageBitmap
+	for _, num := range b.skippedL1MessageBitmap {
+		numBytes := num.Bytes()
+		// Big Endian padding
+		if len(numBytes) < 32 {
+			padding := make([]byte, 32-len(numBytes))
+			numBytes = append(padding, numBytes...)
+		}
+		batchBytes = append(batchBytes, numBytes...)
+	}
 
 	return batchBytes
 }
