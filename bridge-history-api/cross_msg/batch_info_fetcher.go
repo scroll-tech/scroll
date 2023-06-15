@@ -38,12 +38,15 @@ func NewBatchInfoFetcher(ctx context.Context, scrollChainAddr common.Address, ba
 
 func (b *BatchInfoFetcher) Start() {
 	log.Info("BatchInfoFetcher Start")
+	// Fetch batch info at begining
+	// Then start msg proof updater after db have some bridge batch
 	err := b.fetchBatchInfo()
 	if err != nil {
 		log.Error("fetch batch info at begining failed: ", "err", err)
 	}
-	// start msg proof updater after we have some bridge batch
+
 	go b.msgProofUpdater.Start()
+
 	go func() {
 		tick := time.NewTicker(time.Duration(b.blockTimeInSec) * time.Second)
 		for {

@@ -110,7 +110,7 @@ func action(ctx *cli.Context) error {
 	defer l2BlocktimeFetcher.Stop()
 
 	// Withdrawal proof fetcher for l1 and l2
-	l2msgPoorfUpdater := message_proof.NewMsgProofUpdater(subCtx, l1client, cfg.L1.Confirmation, cfg.L1.BatchIndexStartBlock, db)
+	l2msgPoorfUpdater := message_proof.NewMsgProofUpdater(subCtx, l1client, cfg.L1.Confirmation, cfg.Batch.BatchIndexStartBlock, db)
 	l2BatchFetcher := cross_msg.NewBatchInfoFetcher(subCtx, common.HexToAddress(cfg.Batch.ScrollChainAddr), cfg.Batch.BatchIndexStartBlock, uint(cfg.L1.Confirmation), int(cfg.L1.BlockTime), l1client, db, l2msgPoorfUpdater)
 	go l2BatchFetcher.Start()
 	defer l2BatchFetcher.Stop()
