@@ -94,4 +94,10 @@ jobs:
     - name: Test common packages
       working-directory: 'common'
       run: |
-        go test -v -race -gcflags="-l" -ldflags="-s=false" -covermode=atomic ./...
+        go test -v -race -gcflags="-l" -ldflags="-s=false" -coverprofile=coverage.txt -covermode=atomic ./...
+    - name: Upload coverage reports to Codecov
+      uses: codecov/codecov-action@v3
+      env:
+        CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+      with:
+        flags: common

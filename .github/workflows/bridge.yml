@@ -108,6 +108,8 @@ jobs:
       uses: codecov/codecov-action@v3
       env:
         CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+      with:
+        flags: bridge
   # docker-build:
   #   if: github.event.pull_request.draft == false
   #   runs-on: ubuntu-latest

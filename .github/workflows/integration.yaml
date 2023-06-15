@@ -40,4 +40,10 @@ jobs:
         make -C common/bytecode all
     - name: Run integration tests
       run: |
-        go test -v -tags="mock_prover mock_verifier" -p 1 scroll-tech/integration-test/...
+        go test -v -tags="mock_prover mock_verifier" -p 1 -coverprofile=coverage.txt scroll-tech/integration-test/...
+    - name: Upload coverage reports to Codecov
+      uses: codecov/codecov-action@v3
+      env:
+        CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+      with:
+        flags: integration
