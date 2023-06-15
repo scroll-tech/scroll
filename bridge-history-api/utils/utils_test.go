@@ -25,7 +25,7 @@ func TestGetBatchRangeFromCalldataOldVersion(t *testing.T) {
 	assert.NoError(t, err)
 
 	// multiple batches
-	batchIndices, startBlocks, finishBlocks, err := utils.GetBatchRangeFromCalldataOldVersion(common.Hex2Bytes(string(calldata[:])))
+	batchIndices, startBlocks, finishBlocks, err := utils.GetBatchRangeFromCalldataV1(common.Hex2Bytes(string(calldata[:])))
 	assert.NoError(t, err)
 	assert.Equal(t, len(batchIndices), 5)
 	assert.Equal(t, len(startBlocks), 5)

@@ -62,8 +62,8 @@ func ComputeMessageHash(
 	return common.BytesToHash(crypto.Keccak256(data))
 }
 
-// GetBatchRangeFromCalldataOldVersion find the block range from calldata, both inclusive.
-func GetBatchRangeFromCalldataOldVersion(calldata []byte) ([]uint64, []uint64, []uint64, error) {
+// GetBatchRangeFromCalldataV1 find the block range from calldata, both inclusive.
+func GetBatchRangeFromCalldataV1(calldata []byte) ([]uint64, []uint64, []uint64, error) {
 	var batchIndices []uint64
 	var startBlocks []uint64
 	var finishBlocks []uint64
