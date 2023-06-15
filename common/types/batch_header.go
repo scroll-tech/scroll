@@ -33,6 +33,9 @@ func NewBatchHeader(version uint8, batchIndex, totalL1MessagePoppedBefore uint64
 	// the next queue index that we need to process
 	nextIndex := totalL1MessagePoppedBefore
 
+	// the number of L1 messages processed up until the current chunk
+	totalL1MessagePoppedBeforeChunk := totalL1MessagePoppedBefore
+
 	for _, chunk := range chunks {
 		for _, block := range chunk.Blocks {
 			for _, tx := range block.Transactions {
@@ -69,11 +72,12 @@ func NewBatchHeader(version uint8, batchIndex, totalL1MessagePoppedBefore uint64
 		}
 
 		// build data hash
-		chunkBytes, err := chunk.Hash()
+		chunkBytes, err := chunk.Hash(totalL1MessagePoppedBeforeChunk)
 		if err != nil {
 			return nil, err
 		}
 		dataBytes = append(dataBytes, chunkBytes...)
+		totalL1MessagePoppedBeforeChunk += chunk.NumL1Messages(totalL1MessagePoppedBeforeChunk)
 	}
 	dataHash := crypto.Keccak256Hash(dataBytes)
 
