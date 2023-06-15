@@ -3,6 +3,7 @@
 
 create table chunk
 (
+-- block
     index                   BIGINT          NOT NULL,
     hash                    VARCHAR         NOT NULL,
     start_block_number      BIGINT          NOT NULL,
@@ -12,12 +13,18 @@ create table chunk
     total_gas_used          BIGINT          NOT NULL,
 	total_tx_num            BIGINT          NOT NULL,
     total_payload_size      BIGINT          NOT NULL,
+
+-- proof
+    proving_status          SMALLINT        NOT NULL DEFAULT 1,
     proof                   BYTEA           DEFAULT NULL,
     proof_time_sec          SMALLINT        DEFAULT NULL,
     prover_assigned_at      TIMESTAMP(0)    DEFAULT NULL,
-    proving_status          SMALLINT        NOT NULL DEFAULT 1,
     proved_at               TIMESTAMP(0)    DEFAULT NULL,
+
+-- batch
     batch_hash              VARCHAR         DEFAULT NULL,
+
+-- metadata
     created_at              TIMESTAMP(0)    NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at              TIMESTAMP(0)    NOT NULL DEFAULT CURRENT_TIMESTAMP,
     deleted_at              TIMESTAMP(0)    DEFAULT NULL

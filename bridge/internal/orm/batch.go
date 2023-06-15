@@ -22,32 +22,41 @@ const defaultBatchHeaderVersion = 0
 type Batch struct {
 	db *gorm.DB `gorm:"column:-"`
 
+	// batch
+	Index                uint64 `json:"index" gorm:"column:index"`
+	Hash                 string `json:"hash" gorm:"column:hash"`
+	StartChunkIndex      uint64 `json:"start_chunk_index" gorm:"column:start_chunk_index"`
+	StartChunkHash       string `json:"start_chunk_hash" gorm:"column:start_chunk_hash"`
+	EndChunkIndex        uint64 `json:"end_chunk_index" gorm:"column:end_chunk_index"`
+	EndChunkHash         string `json:"end_chunk_hash" gorm:"column:end_chunk_hash"`
+	StateRoot            string `json:"state_root" gorm:"column:state_root"`
+	WithdrawRoot         string `json:"withdraw_root" gorm:"column:withdraw_root"`
+	BatchHeaderVersion   uint8  `json:"batch_header_version" gorm:"column:batch_header_version"`
+	TotalL1MessagePopped uint64 `json:"total_l1_message_popped" gorm:"column:total_l1_message_popped"`
+
+	// proof
 	// TODO(colinlyguo): sync with database block_batch.go, ProverAssignedAt not updated.
-	Index                uint64         `json:"index" gorm:"column:index"`
-	Hash                 string         `json:"hash" gorm:"column:hash"`
-	StartChunkIndex      uint64         `json:"start_chunk_index" gorm:"column:start_chunk_index"`
-	StartChunkHash       string         `json:"start_chunk_hash" gorm:"column:start_chunk_hash"`
-	EndChunkIndex        uint64         `json:"end_chunk_index" gorm:"column:end_chunk_index"`
-	EndChunkHash         string         `json:"end_chunk_hash" gorm:"column:end_chunk_hash"`
-	TotalL1MessagePopped uint64         `json:"total_l1_message_popped" gorm:"column:total_l1_message_popped"`
-	BatchHeaderVersion   uint8          `json:"batch_header_version" gorm:"column:batch_header_version"`
-	StateRoot            string         `json:"state_root" gorm:"column:state_root"`
-	WithdrawRoot         string         `json:"withdraw_root" gorm:"column:withdraw_root"`
-	Proof                []byte         `json:"proof" gorm:"column:proof;default:NULL"`
-	ProvingStatus        int16          `json:"proving_status" gorm:"column:proving_status;default:1"`
-	ProofTimeSec         int            `json:"proof_time_sec" gorm:"column:proof_time_sec;default:NULL"`
-	RollupStatus         int16          `json:"rollup_status" gorm:"column:rollup_status;default:1"`
-	CommitTxHash         string         `json:"commit_tx_hash" gorm:"column:commit_tx_hash;default:NULL"`
-	FinalizeTxHash       string         `json:"finalize_tx_hash" gorm:"column:finalize_tx_hash;default:NULL"`
-	ProverAssignedAt     *time.Time     `json:"prover_assigned_at" gorm:"column:prover_assigned_at;default:NULL"`
-	ProvedAt             *time.Time     `json:"proved_at" gorm:"column:proved_at;default:NULL"`
-	CommittedAt          *time.Time     `json:"committed_at" gorm:"column:committed_at;default:NULL"`
-	FinalizedAt          *time.Time     `json:"finalized_at" gorm:"column:finalized_at;default:NULL"`
-	OracleStatus         int16          `json:"oracle_status" gorm:"column:oracle_status;default:1"`
-	OracleTxHash         string         `json:"oracle_tx_hash" gorm:"column:oracle_tx_hash;default:NULL"`
-	CreatedAt            time.Time      `json:"created_at" gorm:"column:created_at"`
-	UpdatedAt            time.Time      `json:"updated_at" gorm:"column:updated_at"`
-	DeletedAt            gorm.DeletedAt `json:"deleted_at" gorm:"column:deleted_at;default:NULL"`
+	ProvingStatus    int16      `json:"proving_status" gorm:"column:proving_status;default:1"`
+	Proof            []byte     `json:"proof" gorm:"column:proof;default:NULL"`
+	ProverAssignedAt *time.Time `json:"prover_assigned_at" gorm:"column:prover_assigned_at;default:NULL"`
+	ProvedAt         *time.Time `json:"proved_at" gorm:"column:proved_at;default:NULL"`
+	ProofTimeSec     int        `json:"proof_time_sec" gorm:"column:proof_time_sec;default:NULL"`
+
+	// rollup
+	RollupStatus   int16      `json:"rollup_status" gorm:"column:rollup_status;default:1"`
+	CommitTxHash   string     `json:"commit_tx_hash" gorm:"column:commit_tx_hash;default:NULL"`
+	CommittedAt    *time.Time `json:"committed_at" gorm:"column:committed_at;default:NULL"`
+	FinalizeTxHash string     `json:"finalize_tx_hash" gorm:"column:finalize_tx_hash;default:NULL"`
+	FinalizedAt    *time.Time `json:"finalized_at" gorm:"column:finalized_at;default:NULL"`
+
+	// gas oracle
+	OracleStatus int16  `json:"oracle_status" gorm:"column:oracle_status;default:1"`
+	OracleTxHash string `json:"oracle_tx_hash" gorm:"column:oracle_tx_hash;default:NULL"`
+
+	// metadata
+	CreatedAt time.Time      `json:"created_at" gorm:"column:created_at"`
+	UpdatedAt time.Time      `json:"updated_at" gorm:"column:updated_at"`
+	DeletedAt gorm.DeletedAt `json:"deleted_at" gorm:"column:deleted_at;default:NULL"`
 }
 
 func NewBatch(db *gorm.DB) *Batch {

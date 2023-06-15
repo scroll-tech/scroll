@@ -3,28 +3,37 @@
 
 create table batch
 (
+-- batch
     index                   BIGINT          NOT NULL,
     hash                    VARCHAR         NOT NULL,
-    start_chunk_index       BIGINT         NOT NULL,
+    start_chunk_index       BIGINT          NOT NULL,
     start_chunk_hash        VARCHAR         NOT NULL,
-    end_chunk_index         BIGINT         NOT NULL,
+    end_chunk_index         BIGINT          NOT NULL,
     end_chunk_hash          VARCHAR         NOT NULL,
-    batch_header_version    SMALLINT        NOT NULL,
-    total_l1_message_popped BIGINT          NOT NULL,
     state_root              VARCHAR         NOT NULL,
     withdraw_root           VARCHAR         NOT NULL,
-    proof                   BYTEA           DEFAULT NULL,
+    batch_header_version    SMALLINT        NOT NULL,
+    total_l1_message_popped BIGINT          NOT NULL,
+
+-- proof
     proving_status          SMALLINT        NOT NULL DEFAULT 1,
-    proof_time_sec          INTEGER         DEFAULT NULL,
-    rollup_status           SMALLINT        NOT NULL DEFAULT 1,
-    commit_tx_hash          VARCHAR         DEFAULT NULL,
-    finalize_tx_hash        VARCHAR         DEFAULT NULL,
+    proof                   BYTEA           DEFAULT NULL,
     prover_assigned_at      TIMESTAMP(0)    DEFAULT NULL,
     proved_at               TIMESTAMP(0)    DEFAULT NULL,
+    proof_time_sec          INTEGER         DEFAULT NULL,
+
+-- rollup
+    rollup_status           SMALLINT        NOT NULL DEFAULT 1,
+    commit_tx_hash          VARCHAR         DEFAULT NULL,
     committed_at            TIMESTAMP(0)    DEFAULT NULL,
+    finalize_tx_hash        VARCHAR         DEFAULT NULL,
     finalized_at            TIMESTAMP(0)    DEFAULT NULL,
+
+-- gas oracle
     oracle_status           SMALLINT        NOT NULL DEFAULT 1,
     oracle_tx_hash          VARCHAR         DEFAULT NULL,
+
+-- metadata
     created_at              TIMESTAMP(0)    NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at              TIMESTAMP(0)    NOT NULL DEFAULT CURRENT_TIMESTAMP,
     deleted_at              TIMESTAMP(0)    DEFAULT NULL
