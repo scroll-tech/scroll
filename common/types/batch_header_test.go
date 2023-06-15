@@ -63,7 +63,7 @@ func TestNewBatchHeader(t *testing.T) {
 			wrappedBlock3,
 		},
 	}
-	batchHeader, err = NewBatchHeader(1, 1, 36, parentBatchHeader.Hash(), []*Chunk{chunk})
+	batchHeader, err = NewBatchHeader(1, 1, 37, parentBatchHeader.Hash(), []*Chunk{chunk})
 	assert.NoError(t, err)
 	assert.NotNil(t, batchHeader)
 	assert.Equal(t, uint64(5), batchHeader.l1MessagePopped)
@@ -80,10 +80,10 @@ func TestNewBatchHeader(t *testing.T) {
 	batchHeader, err = NewBatchHeader(1, 1, 0, parentBatchHeader.Hash(), []*Chunk{chunk})
 	assert.NoError(t, err)
 	assert.NotNil(t, batchHeader)
-	assert.Equal(t, uint64(5), batchHeader.l1MessagePopped)
+	assert.Equal(t, uint64(42), batchHeader.l1MessagePopped)
 	assert.Equal(t, 1, len(batchHeader.skippedL1MessageBitmap))
 	expectedBitmap = new(big.Int)
-	expectedBitmap.SetString("fffffffff", 16)
+	expectedBitmap.SetString("000001111111111111111111111111111111111111", 2)
 	assert.Equal(t, 0, batchHeader.skippedL1MessageBitmap[0].Cmp(expectedBitmap))
 
 	// many sparse L1 Msgs in 1 bitmap
@@ -100,10 +100,10 @@ func TestNewBatchHeader(t *testing.T) {
 	batchHeader, err = NewBatchHeader(1, 1, 0, parentBatchHeader.Hash(), []*Chunk{chunk})
 	assert.NoError(t, err)
 	assert.NotNil(t, batchHeader)
-	assert.Equal(t, uint64(3), batchHeader.l1MessagePopped)
+	assert.Equal(t, uint64(10), batchHeader.l1MessagePopped)
 	assert.Equal(t, 1, len(batchHeader.skippedL1MessageBitmap))
 	expectedBitmap = new(big.Int)
-	expectedBitmap.SetString("ee", 16)
+	expectedBitmap.SetString("0111011101", 2)
 	assert.Equal(t, 0, batchHeader.skippedL1MessageBitmap[0].Cmp(expectedBitmap))
 
 	// many L1 Msgs in each of 2 bitmaps
@@ -120,10 +120,10 @@ func TestNewBatchHeader(t *testing.T) {
 	batchHeader, err = NewBatchHeader(1, 1, 0, parentBatchHeader.Hash(), []*Chunk{chunk})
 	assert.NoError(t, err)
 	assert.NotNil(t, batchHeader)
-	assert.Equal(t, uint64(2), batchHeader.l1MessagePopped)
+	assert.Equal(t, uint64(257), batchHeader.l1MessagePopped)
 	assert.Equal(t, 2, len(batchHeader.skippedL1MessageBitmap))
 	expectedBitmap = new(big.Int)
-	expectedBitmap.SetString("fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffe", 16)
+	expectedBitmap.SetString("fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffd", 16)
 	assert.Equal(t, 0, batchHeader.skippedL1MessageBitmap[0].Cmp(expectedBitmap))
 	expectedBitmap = big.NewInt(0) // all bits are popped, so none are skipped
 	assert.Equal(t, 0, batchHeader.skippedL1MessageBitmap[1].Cmp(expectedBitmap))

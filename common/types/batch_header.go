@@ -2,6 +2,7 @@ package types
 
 import (
 	"encoding/binary"
+	"fmt"
 	"math/big"
 
 	"github.com/scroll-tech/go-ethereum/common"
@@ -24,39 +25,50 @@ type BatchHeader struct {
 func NewBatchHeader(version uint8, batchIndex, totalL1MessagePoppedBefore uint64, parentBatchHash common.Hash, chunks []*Chunk) (*BatchHeader, error) {
 	var dataBytes []byte
 	var l1MessagePopped uint64
-	var skippedL1MessageBitmap []*big.Int
+	var skippedBitmap []*big.Int
 
-	// Starting queue index for whole batch
-	lastBatchIndex := totalL1MessagePoppedBefore + 1
-	// Previous queue index which popped
-	lastPoppedIndex := totalL1MessagePoppedBefore
+	// the first queue index that belongs to this batch
+	baseIndex := totalL1MessagePoppedBefore
+
+	// the next queue index that we need to process
+	nextIndex := totalL1MessagePoppedBefore
+
 	for _, chunk := range chunks {
 		for _, block := range chunk.Blocks {
 			for _, tx := range block.Transactions {
 				if tx.Type != 0x7E {
 					continue
 				}
+				currentIndex := tx.Nonce
 
-				for skippedMsg := lastPoppedIndex + 1; skippedMsg < tx.Nonce; skippedMsg++ {
-					offset := int((skippedMsg - lastBatchIndex) / 256)
-					for offset >= len(skippedL1MessageBitmap) {
+				if currentIndex < nextIndex {
+					return nil, fmt.Errorf("unexpected batch payload, expected queue index: %d, got: %d", nextIndex, currentIndex)
+				}
+
+				// mark skipped messages
+				for skippedIndex := nextIndex; skippedIndex < currentIndex; skippedIndex++ {
+					quo := int((skippedIndex - baseIndex) / 256)
+					rem := int((skippedIndex - baseIndex) % 256)
+					for len(skippedBitmap) <= quo {
 						bitmap := big.NewInt(0)
-						skippedL1MessageBitmap = append(skippedL1MessageBitmap, bitmap)
+						skippedBitmap = append(skippedBitmap, bitmap)
 					}
-					rem := int((skippedMsg - lastBatchIndex) % 256)
-					skippedL1MessageBitmap[offset].SetBit(skippedL1MessageBitmap[offset], rem, 1)
+					skippedBitmap[quo].SetBit(skippedBitmap[quo], rem, 1)
 				}
-				lastPoppedIndex = tx.Nonce
-				l1MessagePopped++
-				offset := int(lastPoppedIndex-lastBatchIndex) / 256
-				for offset >= len(skippedL1MessageBitmap) {
+
+				// process included message
+				quo := int((currentIndex - baseIndex) / 256)
+				for len(skippedBitmap) <= quo {
 					bitmap := big.NewInt(0)
-					skippedL1MessageBitmap = append(skippedL1MessageBitmap, bitmap)
+					skippedBitmap = append(skippedBitmap, bitmap)
 				}
+
+				nextIndex = currentIndex + 1
+				l1MessagePopped = currentIndex - totalL1MessagePoppedBefore + 1
 			}
 		}
 
-		// Build dataHash
+		// build data hash
 		chunkBytes, err := chunk.Hash()
 		if err != nil {
 			return nil, err
@@ -72,7 +84,7 @@ func NewBatchHeader(version uint8, batchIndex, totalL1MessagePoppedBefore uint64
 		totalL1MessagePopped:   totalL1MessagePoppedBefore + l1MessagePopped,
 		dataHash:               dataHash,
 		parentBatchHash:        parentBatchHash,
-		skippedL1MessageBitmap: skippedL1MessageBitmap,
+		skippedL1MessageBitmap: skippedBitmap,
 	}, nil
 }
 
