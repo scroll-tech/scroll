@@ -31,11 +31,6 @@ flag_management:
         - type: project
           target: auto
           threshold: 1%
-    - name: integration
-      statuses:
-        - type: project
-          target: auto
-          threshold: 1%
     - name: roller
       statuses:
         - type: project
