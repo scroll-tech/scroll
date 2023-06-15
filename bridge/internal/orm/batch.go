@@ -253,7 +253,7 @@ func (c *Batch) InsertBatch(ctx context.Context, chunks []*bridgeTypes.Chunk, ch
 
 	numChunks := len(chunks)
 	if numChunks == 0 {
-		return errors.New("Batch must contain at least one chunk")
+		return nil
 	}
 
 	startChunkHashBytes, err := chunks[0].Hash()

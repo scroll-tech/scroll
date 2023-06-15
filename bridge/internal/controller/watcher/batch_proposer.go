@@ -57,7 +57,8 @@ func (p *BatchProposer) proposeBatchChunks() ([]*bridgeTypes.Chunk, error) {
 	}
 
 	if len(dbChunks) == 0 {
-		return nil, errors.New("No Unbatched Chunks")
+		log.Warn("No Unbatched Chunks")
+		return nil, nil
 	}
 
 	firstChunk := dbChunks[0]
