@@ -12,8 +12,7 @@ create table l2_block
     tx_num                  INTEGER         NOT NULL,
     gas_used                BIGINT          NOT NULL,
     block_timestamp         NUMERIC         NOT NULL,
-    chunk_hash              VARCHAR         DEFAULT NULL,
-    batch_index             INTEGER         DEFAULT NULL
+    chunk_hash              VARCHAR         DEFAULT NULL
 );
 
 create unique index l2_block_hash_uindex

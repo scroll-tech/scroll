@@ -118,8 +118,6 @@ func TestL2BlockOrm(t *testing.T) {
 
 	err = l2BlockOrm.UpdateChunkHashForL2Blocks([]uint64{2}, "test hash")
 	assert.NoError(t, err)
-	err = l2BlockOrm.UpdateBatchIndexForL2Blocks([]uint64{2, 3}, 1)
-	assert.NoError(t, err)
 
 	blocks, err = l2BlockOrm.GetUnchunkedBlocks()
 	assert.NoError(t, err)
@@ -129,12 +127,6 @@ func TestL2BlockOrm(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Len(t, blockInfos, 1)
 	assert.Equal(t, "test hash", blockInfos[0].ChunkHash)
-
-	err = l2BlockOrm.UpdateBatchIndexForL2Blocks([]uint64{2, 3}, 1)
-	assert.NoError(t, err)
-	blockInfos, err = l2BlockOrm.GetL2Blocks(map[string]interface{}{"batch_index": 1}, nil, 0)
-	assert.NoError(t, err)
-	assert.Len(t, blockInfos, 2)
 }
 
 func TestChunkOrm(t *testing.T) {
@@ -194,10 +186,10 @@ func TestBatchOrm(t *testing.T) {
 	err = chunkOrm.InsertChunk(context.Background(), chunk2, l2BlockOrm)
 	assert.NoError(t, err)
 
-	err = batchOrm.InsertBatch(context.Background(), []*bridgeTypes.Chunk{chunk1}, chunkOrm, l2BlockOrm)
+	err = batchOrm.InsertBatch(context.Background(), []*bridgeTypes.Chunk{chunk1}, chunkOrm)
 	assert.NoError(t, err)
 
-	err = batchOrm.InsertBatch(context.Background(), []*bridgeTypes.Chunk{chunk2}, chunkOrm, l2BlockOrm)
+	err = batchOrm.InsertBatch(context.Background(), []*bridgeTypes.Chunk{chunk2}, chunkOrm)
 	assert.NoError(t, err)
 
 	count, err := batchOrm.GetBatchCount(context.Background())

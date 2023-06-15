@@ -245,7 +245,7 @@ func (c *Batch) GetBatchHeader(ctx context.Context, index uint64, chunkOrm *Chun
 	return batchHeader, nil
 }
 
-func (c *Batch) InsertBatch(ctx context.Context, chunks []*bridgeTypes.Chunk, chunkOrm *Chunk, l2BlockOrm *L2Block, dbTX ...*gorm.DB) error {
+func (c *Batch) InsertBatch(ctx context.Context, chunks []*bridgeTypes.Chunk, chunkOrm *Chunk, dbTX ...*gorm.DB) error {
 	db := c.db
 	if len(dbTX) > 0 && dbTX[0] != nil {
 		db = dbTX[0]
@@ -344,13 +344,6 @@ func (c *Batch) InsertBatch(ctx context.Context, chunks []*bridgeTypes.Chunk, ch
 	err = chunkOrm.UpdateBatchHashForChunks(chunkHashes, tmpBatch.Hash, tx)
 	if err != nil {
 		log.Error("failed to update batch hash for chunks", "err", err)
-		tx.Rollback()
-		return err
-	}
-
-	err = l2BlockOrm.UpdateBatchIndexForL2Blocks(blockNumbers, tmpBatch.Index, tx)
-	if err != nil {
-		log.Error("failed to update batch index for l2 blocks", "err", err)
 		tx.Rollback()
 		return err
 	}

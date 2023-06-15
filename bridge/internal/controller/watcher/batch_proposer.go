@@ -45,7 +45,7 @@ func (p *BatchProposer) TryProposeBatch() {
 		log.Error("proposeBatch failed", "err", err)
 		return
 	}
-	if err := p.batchOrm.InsertBatch(p.ctx, batchChunks, p.chunkOrm, p.l2Block); err != nil {
+	if err := p.batchOrm.InsertBatch(p.ctx, batchChunks, p.chunkOrm); err != nil {
 		log.Error("InsertBatch failed", "err", err)
 	}
 }
