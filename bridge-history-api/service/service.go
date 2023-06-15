@@ -77,12 +77,13 @@ func (h *historyBackend) GetTxsByAddress(address common.Address, offset int64, l
 	}
 	for _, msg := range result {
 		txHistory := &TxHistoryInfo{
-			Hash:        msg.MsgHash,
-			Amount:      msg.Amount,
-			To:          msg.Target,
-			IsL1:        msg.MsgType == int(orm.Layer1Msg),
-			BlockNumber: msg.Height,
-			CreatedAt:   msg.CreatedAt,
+			Hash:           msg.MsgHash,
+			Amount:         msg.Amount,
+			To:             msg.Target,
+			IsL1:           msg.MsgType == int(orm.Layer1Msg),
+			BlockNumber:    msg.Height,
+			BlockTimestamp: msg.Timestamp,
+			CreatedAt:      msg.CreatedAt,
 			FinalizeTx: &Finalized{
 				Hash: "",
 			},
@@ -102,12 +103,13 @@ func (h *historyBackend) GetTxsByHashes(hashes []string) ([]*TxHistoryInfo, erro
 		}
 		if l1result != nil {
 			txHistory := &TxHistoryInfo{
-				Hash:        l1result.Layer1Hash,
-				Amount:      l1result.Amount,
-				To:          l1result.Target,
-				IsL1:        true,
-				BlockNumber: l1result.Height,
-				CreatedAt:   l1result.CreatedAt,
+				Hash:           l1result.Layer1Hash,
+				Amount:         l1result.Amount,
+				To:             l1result.Target,
+				IsL1:           true,
+				BlockNumber:    l1result.Height,
+				BlockTimestamp: l1result.Timestamp,
+				CreatedAt:      l1result.CreatedAt,
 				FinalizeTx: &Finalized{
 					Hash: "",
 				},
@@ -122,12 +124,13 @@ func (h *historyBackend) GetTxsByHashes(hashes []string) ([]*TxHistoryInfo, erro
 		}
 		if l2result != nil {
 			txHistory := &TxHistoryInfo{
-				Hash:        l2result.Layer2Hash,
-				Amount:      l2result.Amount,
-				To:          l2result.Target,
-				IsL1:        false,
-				BlockNumber: l2result.Height,
-				CreatedAt:   l2result.CreatedAt,
+				Hash:           l2result.Layer2Hash,
+				Amount:         l2result.Amount,
+				To:             l2result.Target,
+				IsL1:           false,
+				BlockNumber:    l2result.Height,
+				BlockTimestamp: l2result.Timestamp,
+				CreatedAt:      l2result.CreatedAt,
 				FinalizeTx: &Finalized{
 					Hash: "",
 				},

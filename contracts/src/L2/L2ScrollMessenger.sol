@@ -62,28 +62,6 @@ contract L2ScrollMessenger is ScrollMessengerBase, PausableUpgradeable, IL2Scrol
     /// @notice The maximum number of times each L1 message can fail on L2.
     uint256 public maxFailedExecutionTimes;
 
-    // @note move to ScrollMessengerBase in next big refactor
-    /// @dev The status of for non-reentrant check.
-    uint256 private _lock_status;
-
-    /**********************
-     * Function Modifiers *
-     **********************/
-
-    modifier nonReentrant() {
-        // On the first call to nonReentrant, _notEntered will be true
-        require(_lock_status != _ENTERED, "ReentrancyGuard: reentrant call");
-
-        // Any calls to nonReentrant after this point will fail
-        _lock_status = _ENTERED;
-
-        _;
-
-        // By storing the original value once again, a refund is triggered (see
-        // https://eips.ethereum.org/EIPS/eip-2200)
-        _lock_status = _NOT_ENTERED;
-    }
-
     /***************
      * Constructor *
      ***************/
@@ -126,14 +104,16 @@ contract L2ScrollMessenger is ScrollMessengerBase, PausableUpgradeable, IL2Scrol
         require(_expectedStateRoot != bytes32(0), "Block is not imported");
 
         bytes32 _storageKey;
-        // `mapping(bytes32 => bool) public isL1MessageSent` is the 105-nd slot of contract `L1ScrollMessenger`.
+        // `mapping(bytes32 => bool) public isL1MessageSent` is the 155-th slot of contract `L1ScrollMessenger`.
+        // + 1 from `Initializable`
         // + 50 from `OwnableUpgradeable`
+        // + 50 from `ContextUpgradeable`
         // + 4 from `ScrollMessengerBase`
         // + 50 from `PausableUpgradeable`
-        // + 2-nd in `L1ScrollMessenger`
+        // + 1-st in `L1ScrollMessenger`
         assembly {
             mstore(0x00, _msgHash)
-            mstore(0x20, 105)
+            mstore(0x20, 155)
             _storageKey := keccak256(0x00, 0x40)
         }
 
@@ -161,14 +141,16 @@ contract L2ScrollMessenger is ScrollMessengerBase, PausableUpgradeable, IL2Scrol
         require(_expectedStateRoot != bytes32(0), "Block not imported");
 
         bytes32 _storageKey;
-        // `mapping(bytes32 => bool) public isL2MessageExecuted` is the 106-th slot of contract `L1ScrollMessenger`.
+        // `mapping(bytes32 => bool) public isL2MessageExecuted` is the 156-th slot of contract `L1ScrollMessenger`.
+        // + 1 from `Initializable`
         // + 50 from `OwnableUpgradeable`
+        // + 50 from `ContextUpgradeable`
         // + 4 from `ScrollMessengerBase`
         // + 50 from `PausableUpgradeable`
-        // + 3-rd in `L1ScrollMessenger`
+        // + 2-nd in `L1ScrollMessenger`
         assembly {
             mstore(0x00, _msgHash)
-            mstore(0x20, 106)
+            mstore(0x20, 156)
             _storageKey := keccak256(0x00, 0x40)
         }
 

@@ -25,6 +25,11 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
     /// @param status The status of the account updated.
     event UpdateSequencer(address indexed account, bool status);
 
+    /// @notice Emitted when owner updates the status of prover.
+    /// @param account The address of account updated.
+    /// @param status The status of the account updated.
+    event UpdateProver(address indexed account, bool status);
+
     /// @notice Emitted when the address of rollup verifier is updated.
     /// @param oldVerifier The address of old rollup verifier.
     /// @param newVerifier The address of new rollup verifier.
@@ -58,6 +63,9 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
     /// @notice Whether an account is a sequencer.
     mapping(address => bool) public isSequencer;
 
+    /// @notice Whether an account is a prover.
+    mapping(address => bool) public isProver;
+
     /// @notice The latest finalized batch index.
     uint256 public lastFinalizedBatchIndex;
 
@@ -77,6 +85,11 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
     modifier OnlySequencer() {
         // @note In the decentralized mode, it should be only called by a list of validator.
         require(isSequencer[msg.sender], "caller not sequencer");
+        _;
+    }
+
+    modifier OnlyProver() {
+        require(isProver[msg.sender], "caller not prover");
         _;
     }
 
@@ -117,12 +130,7 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
      *****************************/
 
     /// @notice Import layer 2 genesis block
-    /// @dev Although `_withdrawRoot` is always zero, we add this parameter for the convenience of unit testing.
-    function importGenesisBatch(
-        bytes calldata _batchHeader,
-        bytes32 _stateRoot,
-        bytes32 _withdrawRoot
-    ) external {
+    function importGenesisBatch(bytes calldata _batchHeader, bytes32 _stateRoot) external {
         // check genesis batch header length
         require(_stateRoot != bytes32(0), "zero state root");
 
@@ -144,10 +152,9 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
 
         committedBatches[0] = _batchHash;
         finalizedStateRoots[0] = _stateRoot;
-        withdrawRoots[0] = _withdrawRoot;
 
         emit CommitBatch(_batchHash);
-        emit FinalizeBatch(_batchHash, _stateRoot, _withdrawRoot);
+        emit FinalizeBatch(_batchHash, _stateRoot, bytes32(0));
     }
 
     /// @inheritdoc IScrollChain
@@ -278,7 +285,7 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
         bytes32 _postStateRoot,
         bytes32 _withdrawRoot,
         bytes calldata _aggrProof
-    ) external override OnlySequencer {
+    ) external override OnlyProver {
         require(_prevStateRoot != bytes32(0), "previous state root is zero");
         require(_postStateRoot != bytes32(0), "new state root is zero");
 
@@ -350,6 +357,16 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
         isSequencer[_account] = _status;
 
         emit UpdateSequencer(_account, _status);
+    }
+
+    /// @notice Update the status of prover.
+    /// @dev This function can only called by contract owner.
+    /// @param _account The address of account to update.
+    /// @param _status The status of the account to update.
+    function updateProver(address _account, bool _status) external onlyOwner {
+        isProver[_account] = _status;
+
+        emit UpdateProver(_account, _status);
     }
 
     /// @notice Update the address verifier contract.
