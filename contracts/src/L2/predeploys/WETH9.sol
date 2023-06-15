@@ -51,7 +51,8 @@ contract WETH9 {
             balanceOf[msg.sender] -= wad;
         }
 
-        payable(msg.sender).transfer(wad);
+        (bool success, ) = msg.sender.call{value:wad}("");
+        require(success, "withdraw ETH failed");
 
         emit Withdrawal(msg.sender, wad);
     }

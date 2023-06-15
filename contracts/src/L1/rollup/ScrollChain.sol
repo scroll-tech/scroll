@@ -130,12 +130,7 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
      *****************************/
 
     /// @notice Import layer 2 genesis block
-    /// @dev Although `_withdrawRoot` is always zero, we add this parameter for the convenience of unit testing.
-    function importGenesisBatch(
-        bytes calldata _batchHeader,
-        bytes32 _stateRoot,
-        bytes32 _withdrawRoot
-    ) external {
+    function importGenesisBatch(bytes calldata _batchHeader, bytes32 _stateRoot) external {
         // check genesis batch header length
         require(_stateRoot != bytes32(0), "zero state root");
 
@@ -157,10 +152,9 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
 
         committedBatches[0] = _batchHash;
         finalizedStateRoots[0] = _stateRoot;
-        withdrawRoots[0] = _withdrawRoot;
 
         emit CommitBatch(_batchHash);
-        emit FinalizeBatch(_batchHash, _stateRoot, _withdrawRoot);
+        emit FinalizeBatch(_batchHash, _stateRoot, bytes32(0));
     }
 
     /// @inheritdoc IScrollChain
