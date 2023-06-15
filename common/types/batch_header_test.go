@@ -2,7 +2,6 @@ package types
 
 import (
 	"encoding/json"
-	"math/big"
 	"os"
 	"testing"
 
@@ -50,7 +49,7 @@ func TestNewBatchHeader(t *testing.T) {
 	batchHeader, err = NewBatchHeader(1, 1, 0, parentBatchHeader.Hash(), []*Chunk{chunk})
 	assert.NoError(t, err)
 	assert.NotNil(t, batchHeader)
-	assert.Equal(t, 1, len(batchHeader.skippedL1MessageBitmap))
+	assert.Equal(t, 32, len(batchHeader.skippedL1MessageBitmap))
 
 	// many consecutive L1 Msgs in 1 bitmap, no leading skipped msgs
 	templateBlockTrace3, err := os.ReadFile("../testdata/blockTrace_05.json")
@@ -67,9 +66,9 @@ func TestNewBatchHeader(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, batchHeader)
 	assert.Equal(t, uint64(5), batchHeader.l1MessagePopped)
-	assert.Equal(t, 1, len(batchHeader.skippedL1MessageBitmap))
-	expectedBitmap := big.NewInt(0) // all bits are popped, so none are skipped
-	assert.Equal(t, 0, batchHeader.skippedL1MessageBitmap[0].Cmp(expectedBitmap))
+	assert.Equal(t, 32, len(batchHeader.skippedL1MessageBitmap))
+	expectedBitmap := "0000000000000000000000000000000000000000000000000000000000000000" // all bits are included, so none are skipped
+	assert.Equal(t, expectedBitmap, common.Bytes2Hex(batchHeader.skippedL1MessageBitmap))
 
 	// many consecutive L1 Msgs in 1 bitmap, with leading skipped msgs
 	chunk = &Chunk{
@@ -81,10 +80,9 @@ func TestNewBatchHeader(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, batchHeader)
 	assert.Equal(t, uint64(42), batchHeader.l1MessagePopped)
-	assert.Equal(t, 1, len(batchHeader.skippedL1MessageBitmap))
-	expectedBitmap = new(big.Int)
-	expectedBitmap.SetString("000001111111111111111111111111111111111111", 2)
-	assert.Equal(t, 0, batchHeader.skippedL1MessageBitmap[0].Cmp(expectedBitmap))
+	assert.Equal(t, 32, len(batchHeader.skippedL1MessageBitmap))
+	expectedBitmap = "0000000000000000000000000000000000000000000000000000001fffffffff" // skipped the first 37 messages
+	assert.Equal(t, expectedBitmap, common.Bytes2Hex(batchHeader.skippedL1MessageBitmap))
 
 	// many sparse L1 Msgs in 1 bitmap
 	templateBlockTrace4, err := os.ReadFile("../testdata/blockTrace_06.json")
@@ -101,10 +99,9 @@ func TestNewBatchHeader(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, batchHeader)
 	assert.Equal(t, uint64(10), batchHeader.l1MessagePopped)
-	assert.Equal(t, 1, len(batchHeader.skippedL1MessageBitmap))
-	expectedBitmap = new(big.Int)
-	expectedBitmap.SetString("0111011101", 2)
-	assert.Equal(t, 0, batchHeader.skippedL1MessageBitmap[0].Cmp(expectedBitmap))
+	assert.Equal(t, 32, len(batchHeader.skippedL1MessageBitmap))
+	expectedBitmap = "00000000000000000000000000000000000000000000000000000000000001dd" // 0111011101
+	assert.Equal(t, expectedBitmap, common.Bytes2Hex(batchHeader.skippedL1MessageBitmap))
 
 	// many L1 Msgs in each of 2 bitmaps
 	templateBlockTrace5, err := os.ReadFile("../testdata/blockTrace_07.json")
@@ -121,12 +118,9 @@ func TestNewBatchHeader(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, batchHeader)
 	assert.Equal(t, uint64(257), batchHeader.l1MessagePopped)
-	assert.Equal(t, 2, len(batchHeader.skippedL1MessageBitmap))
-	expectedBitmap = new(big.Int)
-	expectedBitmap.SetString("fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffd", 16)
-	assert.Equal(t, 0, batchHeader.skippedL1MessageBitmap[0].Cmp(expectedBitmap))
-	expectedBitmap = big.NewInt(0) // all bits are popped, so none are skipped
-	assert.Equal(t, 0, batchHeader.skippedL1MessageBitmap[1].Cmp(expectedBitmap))
+	assert.Equal(t, 64, len(batchHeader.skippedL1MessageBitmap))
+	expectedBitmap = "fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffd0000000000000000000000000000000000000000000000000000000000000000"
+	assert.Equal(t, expectedBitmap, common.Bytes2Hex(batchHeader.skippedL1MessageBitmap))
 }
 
 func TestBatchHeaderEncode(t *testing.T) {

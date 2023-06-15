@@ -18,7 +18,7 @@ type BatchHeader struct {
 	totalL1MessagePopped   uint64
 	dataHash               common.Hash
 	parentBatchHash        common.Hash
-	skippedL1MessageBitmap []*big.Int // LSB is the first L1 message
+	skippedL1MessageBitmap []byte
 }
 
 // NewBatchHeader creates a new BatchHeader
@@ -82,6 +82,18 @@ func NewBatchHeader(version uint8, batchIndex, totalL1MessagePoppedBefore uint64
 	// compute data hash
 	dataHash := crypto.Keccak256Hash(dataBytes)
 
+	// compute skipped bitmap
+	bitmapBytes := make([]byte, 0, len(skippedBitmap)*32)
+	for _, num := range skippedBitmap {
+		numBytes := num.Bytes()
+		// prepend big-endian padding
+		if len(numBytes) < 32 {
+			padding := make([]byte, 32-len(numBytes))
+			numBytes = append(padding, numBytes...)
+		}
+		bitmapBytes = append(bitmapBytes, numBytes...)
+	}
+
 	return &BatchHeader{
 		version:                version,
 		batchIndex:             batchIndex,
@@ -89,7 +101,7 @@ func NewBatchHeader(version uint8, batchIndex, totalL1MessagePoppedBefore uint64
 		totalL1MessagePopped:   nextIndex,
 		dataHash:               dataHash,
 		parentBatchHash:        parentBatchHash,
-		skippedL1MessageBitmap: skippedBitmap,
+		skippedL1MessageBitmap: bitmapBytes,
 	}, nil
 }
 
@@ -102,16 +114,7 @@ func (b *BatchHeader) Encode() []byte {
 	binary.BigEndian.PutUint64(batchBytes[17:], b.totalL1MessagePopped)
 	copy(batchBytes[25:], b.dataHash[:])
 	copy(batchBytes[57:], b.parentBatchHash[:])
-	for _, num := range b.skippedL1MessageBitmap {
-		numBytes := num.Bytes()
-		// Big Endian padding
-		if len(numBytes) < 32 {
-			padding := make([]byte, 32-len(numBytes))
-			numBytes = append(padding, numBytes...)
-		}
-		batchBytes = append(batchBytes, numBytes...)
-	}
-
+	batchBytes = append(batchBytes, b.skippedL1MessageBitmap...)
 	return batchBytes
 }
 
