@@ -134,6 +134,7 @@ func (w *L2WatcherClient) initializeGenesis() error {
 		return fmt.Errorf("failed to get L2 genesis chunk hash: %v", err)
 	}
 	chunkHash := string(chunkHashBytes)
+
 	batch, err := bridgeTypes.NewBatchHeader(0, 0, 0, common.Hash{}, []*bridgeTypes.Chunk{chunk})
 	if err != nil {
 		return fmt.Errorf("failed to get L2 genesis batch header: %v", err)
