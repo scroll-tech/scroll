@@ -174,10 +174,10 @@ func TestChunkOrm(t *testing.T) {
 	chunks, err = chunkOrm.GetUnbatchedChunks(context.Background())
 	assert.NoError(t, err)
 	assert.Len(t, chunks, 1)
-	err = chunkOrm.UpdateBatchHashForChunks([]string{chunkHash1}, "", chunkOrm.db)
+	err = chunkOrm.UpdateBatchHashForChunks([]string{chunkHash2}, "", chunkOrm.db)
 	assert.NoError(t, err)
 	chunks, err = chunkOrm.GetUnbatchedChunks(context.Background())
-	assert.Len(t, chunks, 2)
+	assert.Len(t, chunks, 0)
 }
 
 func TestBatchOrm(t *testing.T) {
@@ -194,4 +194,12 @@ func TestBatchOrm(t *testing.T) {
 	count, err := batchOrm.GetBatchCount(context.Background())
 	assert.NoError(t, err)
 	assert.Equal(t, int64(2), count)
+
+	latestBatch, err := batchOrm.GetLatestBatch(context.Background())
+	assert.NoError(t, err)
+	assert.Equal(t, uint64(1), latestBatch.Index)
+
+	pendingBatches, err := batchOrm.GetPendingBatches(context.Background(), 100)
+	assert.NoError(t, err)
+	assert.Equal(t, 2, len(pendingBatches))
 }

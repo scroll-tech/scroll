@@ -9,9 +9,10 @@ create table batch
     start_chunk_hash        VARCHAR         NOT NULL,
     end_chunk_index         INTEGER         NOT NULL,
     end_chunk_hash          VARCHAR         NOT NULL,
-    batch_header            BYTEA           DEFAULT NULL,
-    state_root              VARCHAR         DEFAULT NULL,
-    withdraw_root           VARCHAR         DEFAULT NULL,
+    batch_header_version    SMALLINT        NOT NULL,
+    total_l1_message_popped BIGINT          NOT NULL,
+    state_root              VARCHAR         NOT NULL,
+    withdraw_root           VARCHAR         NOT NULL,
     proof                   BYTEA           DEFAULT NULL,
     proving_status          SMALLINT        NOT NULL DEFAULT 1,
     proof_time_sec          INTEGER         DEFAULT NULL,
@@ -40,18 +41,6 @@ on column batch.proving_status is 'undefined, unassigned, skipped, assigned, pro
 
 comment
 on column batch.rollup_status is 'undefined, pending, committing, committed, finalizing, finalized, finalization_skipped, commit_failed, finalize_failed';
-
-create or replace function update_timestamp()
-returns trigger as $$
-begin
-   NEW.updated_at = current_timestamp;
-   return NEW;
-end;
-$$ language 'plpgsql';
-
-create trigger update_timestamp before update
-on batch for each row execute procedure
-update_timestamp();
 
 -- +goose StatementEnd
 

@@ -20,18 +20,18 @@ type Chunk struct {
 	StartBlockHash   string     `json:"start_block_hash" gorm:"column:start_block_hash"`
 	EndBlockNumber   uint64     `json:"end_block_number" gorm:"column:end_block_number"`
 	EndBlockHash     string     `json:"end_block_hash" gorm:"column:end_block_hash"`
-	Proof            []byte     `json:"proof" gorm:"column:proof"`
 	TotalGasUsed     uint64     `json:"total_gas_used" gorm:"column:total_gas_used"`
 	TotalTxNum       uint64     `json:"total_tx_num" gorm:"column:total_tx_num"`
 	TotalPayloadSize uint64     `json:"total_payload_size" gorm:"column:total_payload_size"`
-	ProofTimeSec     int16      `json:"proof_time_sec" gorm:"column:proof_time_sec"`
-	ProverAssignedAt *time.Time `json:"prover_assigned_at" gorm:"column:prover_assigned_at"`
-	ProvingStatus    int16      `json:"proving_status" gorm:"column:proving_status"`
-	ProvedAt         *time.Time `json:"proved_at" gorm:"column:proved_at"`
-	BatchHash        string     `json:"batch_hash" gorm:"column:batch_hash"`
+	Proof            []byte     `json:"proof" gorm:"column:proof;default:NULL"`
+	ProofTimeSec     int16      `json:"proof_time_sec" gorm:"column:proof_time_sec;default:NULL"`
+	ProverAssignedAt *time.Time `json:"prover_assigned_at" gorm:"column:prover_assigned_at;default:NULL"`
+	ProvingStatus    int16      `json:"proving_status" gorm:"column:proving_status;default:1"`
+	ProvedAt         *time.Time `json:"proved_at" gorm:"column:proved_at;default:NULL"`
+	BatchHash        string     `json:"batch_hash" gorm:"column:batch_hash;default:NULL"`
 	CreatedAt        time.Time  `json:"created_at" gorm:"column:created_at"`
 	UpdatedAt        time.Time  `json:"updated_at" gorm:"column:updated_at"`
-	DeletedAt        *time.Time `json:"deleted_at" gorm:"column:deleted_at"`
+	DeletedAt        *time.Time `json:"deleted_at" gorm:"column:deleted_at;default:NULL"`
 }
 
 func NewChunk(db *gorm.DB) *Chunk {
@@ -65,7 +65,7 @@ func (c *Chunk) RangeGetChunks(ctx context.Context, startIndex int, endIndex int
 func (c *Chunk) GetUnbatchedChunks(ctx context.Context) ([]*Chunk, error) {
 	var chunks []*Chunk
 	err := c.db.WithContext(ctx).
-		Where("batch_hash IS NULL OR batch_hash = ''").
+		Where("batch_hash IS NULL").
 		Order("start_block_number asc").
 		Find(&chunks).Error
 	if err != nil {

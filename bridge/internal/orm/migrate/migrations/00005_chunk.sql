@@ -9,10 +9,10 @@ create table chunk
     start_block_hash        VARCHAR         NOT NULL,
     end_block_number        BIGINT          NOT NULL,
     end_block_hash          VARCHAR         NOT NULL,
-    proof                   BYTEA           DEFAULT NULL,
     total_gas_used          BIGINT          NOT NULL,
 	total_tx_num            BIGINT          NOT NULL,
     total_payload_size      BIGINT          NOT NULL,
+    proof                   BYTEA           DEFAULT NULL,
     proof_time_sec          SMALLINT        DEFAULT NULL,
     prover_assigned_at      TIMESTAMP(0)    DEFAULT NULL,
     proving_status          SMALLINT        NOT NULL DEFAULT 1,
@@ -34,18 +34,6 @@ on chunk (hash);
 
 create index batch_hash_index
 on chunk (batch_hash);
-
-create or replace function update_timestamp()
-returns trigger as $$
-begin
-   NEW.updated_at = current_timestamp;
-   return NEW;
-end;
-$$ language 'plpgsql';
-
-create trigger update_timestamp before update
-on chunk for each row execute procedure
-update_timestamp();
 
 -- +goose StatementEnd
 

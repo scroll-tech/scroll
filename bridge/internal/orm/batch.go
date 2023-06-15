@@ -18,33 +18,36 @@ import (
 	"gorm.io/gorm"
 )
 
+const defaultBatchHeaderVersion = 0
+
 type Batch struct {
 	db *gorm.DB `gorm:"column:-"`
 
-	Index            uint64     `json:"index" gorm:"column:index"`
-	Hash             string     `json:"hash" gorm:"column:hash"`
-	StartChunkIndex  int        `json:"start_chunk_index" gorm:"column:start_chunk_index"`
-	StartChunkHash   string     `json:"start_chunk_hash" gorm:"column:start_chunk_hash"`
-	EndChunkIndex    int        `json:"end_chunk_index" gorm:"column:end_chunk_index"`
-	EndChunkHash     string     `json:"end_chunk_hash" gorm:"column:end_chunk_hash"`
-	BatchHeader      []byte     `json:"batch_header" gorm:"column:batch_header"`
-	StateRoot        string     `json:"state_root" gorm:"column:state_root"`
-	WithdrawRoot     string     `json:"withdraw_root" gorm:"column:withdraw_root"`
-	Proof            []byte     `json:"proof" gorm:"column:proof"`
-	ProvingStatus    int16      `json:"proving_status" gorm:"column:proving_status"`
-	ProofTimeSec     int        `json:"proof_time_sec" gorm:"column:proof_time_sec"`
-	RollupStatus     int16      `json:"rollup_status" gorm:"column:rollup_status"`
-	CommitTxHash     string     `json:"commit_tx_hash" gorm:"column:commit_tx_hash"`
-	FinalizeTxHash   string     `json:"finalize_tx_hash" gorm:"column:finalize_tx_hash"`
-	ProverAssignedAt *time.Time `json:"prover_assigned_at" gorm:"column:prover_assigned_at"`
-	ProvedAt         *time.Time `json:"proved_at" gorm:"column:proved_at"`
-	CommittedAt      *time.Time `json:"committed_at" gorm:"column:committed_at"`
-	FinalizedAt      *time.Time `json:"finalized_at" gorm:"column:finalized_at"`
-	OracleStatus     int16      `json:"oracle_status" gorm:"column:oracle_status"`
-	OracleTxHash     string     `json:"oracle_tx_hash" gorm:"column:oracle_tx_hash"`
-	CreatedAt        time.Time  `json:"created_at" gorm:"column:created_at"`
-	UpdatedAt        time.Time  `json:"updated_at" gorm:"column:updated_at"`
-	DeletedAt        *time.Time `json:"deleted_at" gorm:"column:deleted_at"`
+	Index                uint64     `json:"index" gorm:"column:index"`
+	Hash                 string     `json:"hash" gorm:"column:hash"`
+	StartChunkIndex      int        `json:"start_chunk_index" gorm:"column:start_chunk_index"`
+	StartChunkHash       string     `json:"start_chunk_hash" gorm:"column:start_chunk_hash"`
+	EndChunkIndex        int        `json:"end_chunk_index" gorm:"column:end_chunk_index"`
+	EndChunkHash         string     `json:"end_chunk_hash" gorm:"column:end_chunk_hash"`
+	TotalL1MessagePopped uint64     `json:"total_l1_message_popped" gorm:"column:total_l1_message_popped"`
+	BatchHeaderVersion   uint8      `json:"batch_header_version" gorm:"column:batch_header_version"`
+	StateRoot            string     `json:"state_root" gorm:"column:state_root"`
+	WithdrawRoot         string     `json:"withdraw_root" gorm:"column:withdraw_root"`
+	Proof                []byte     `json:"proof" gorm:"column:proof;default:NULL"`
+	ProvingStatus        int16      `json:"proving_status" gorm:"column:proving_status;default:1"`
+	ProofTimeSec         int        `json:"proof_time_sec" gorm:"column:proof_time_sec;default:NULL"`
+	RollupStatus         int16      `json:"rollup_status" gorm:"column:rollup_status;default:1"`
+	CommitTxHash         string     `json:"commit_tx_hash" gorm:"column:commit_tx_hash;default:NULL"`
+	FinalizeTxHash       string     `json:"finalize_tx_hash" gorm:"column:finalize_tx_hash;default:NULL"`
+	ProverAssignedAt     *time.Time `json:"prover_assigned_at" gorm:"column:prover_assigned_at;default:NULL"`
+	ProvedAt             *time.Time `json:"proved_at" gorm:"column:proved_at;default:NULL"`
+	CommittedAt          *time.Time `json:"committed_at" gorm:"column:committed_at;default:NULL"`
+	FinalizedAt          *time.Time `json:"finalized_at" gorm:"column:finalized_at;default:NULL"`
+	OracleStatus         int16      `json:"oracle_status" gorm:"column:oracle_status;default:1"`
+	OracleTxHash         string     `json:"oracle_tx_hash" gorm:"column:oracle_tx_hash;default:NULL"`
+	CreatedAt            time.Time  `json:"created_at" gorm:"column:created_at"`
+	UpdatedAt            time.Time  `json:"updated_at" gorm:"column:updated_at"`
+	DeletedAt            *time.Time `json:"deleted_at" gorm:"column:deleted_at;default:NULL"`
 }
 
 func NewBatch(db *gorm.DB) *Batch {
@@ -216,7 +219,7 @@ func (b *Batch) GetPendingBatches(ctx context.Context, limit int) ([]*Batch, err
 }
 
 // GetBatchHeader retrieves the header of a batch with a given index
-func (c *Batch) GetBatchHeader(ctx context.Context, index uint64) (*bridgeTypes.BatchHeader, error) {
+func (c *Batch) GetBatchHeader(ctx context.Context, index uint64, chunkOrm *Chunk, l2BlockOrm *L2Block) (*bridgeTypes.BatchHeader, error) {
 	var batch Batch
 	err := c.db.WithContext(ctx).Where("index = ?", index).First(&batch).Error
 	if err != nil {
@@ -226,13 +229,46 @@ func (c *Batch) GetBatchHeader(ctx context.Context, index uint64) (*bridgeTypes.
 		return nil, err
 	}
 
-	var batchHeader bridgeTypes.BatchHeader
-	err = json.Unmarshal(batch.BatchHeader, &batchHeader)
+	var parentBatchHash string
+	if index > 0 {
+		parentBatches, err := c.GetBatches(ctx, map[string]interface{}{"index": index - 1}, nil, 1)
+		if err != nil {
+			log.Error("failed to get parent batch", "err", err)
+			return nil, err
+		}
+		if len(parentBatches) == 1 {
+			parentBatchHash = parentBatches[0].Hash
+		} else {
+			log.Error("Unexpected batch length", "length", len(parentBatches))
+		}
+	}
+
+	startChunkIndex := batch.StartChunkIndex
+	endChunkIndex := batch.EndChunkIndex
+
+	dbChunks, err := chunkOrm.RangeGetChunks(ctx, startChunkIndex, endChunkIndex)
 	if err != nil {
+		log.Error("Failed to fetch chunks", "error", err)
 		return nil, err
 	}
 
-	return &batchHeader, nil
+	chunks := make([]*bridgeTypes.Chunk, len(dbChunks))
+	for i, c := range dbChunks {
+		wrappedBlocks, err := l2BlockOrm.RangeGetL2Blocks(ctx, c.StartBlockNumber, c.EndBlockNumber)
+		if err != nil {
+			log.Error("Failed to fetch wrapped blocks", "error", err)
+			return nil, err
+		}
+		chunks[i].Blocks = wrappedBlocks
+	}
+
+	batchHeader, err := bridgeTypes.NewBatchHeader(batch.BatchHeaderVersion, batch.Index, batch.TotalL1MessagePopped, common.HexToHash(parentBatchHash), chunks)
+	if err != nil {
+		log.Error("failed to create batch header", "err", err)
+		return nil, err
+	}
+
+	return batchHeader, nil
 }
 
 func (c *Batch) InsertBatch(ctx context.Context, chunks []*bridgeTypes.Chunk, chunkOrm *Chunk, l2BlockOrm *L2Block, dbTX ...*gorm.DB) error {
@@ -266,38 +302,30 @@ func (c *Batch) InsertBatch(ctx context.Context, chunks []*bridgeTypes.Chunk, ch
 		return err
 	}
 	var batchIndex uint64
+	var version uint8 = defaultBatchHeaderVersion
 	if lastBatch != nil {
 		parentBatchHash = common.HexToHash(lastBatch.Hash)
-		parentHeader, err := c.GetBatchHeader(ctx, lastBatch.Index)
-		if err != nil {
-			log.Error("failed to get parent batch header", "err", err)
-			return err
-		}
-		totalL1MessagePoppedBefore = parentHeader.TotalL1MessagePopped()
+		totalL1MessagePoppedBefore = lastBatch.TotalL1MessagePopped
 		batchIndex = lastBatch.Index + 1
+		version = lastBatch.BatchHeaderVersion
 	}
 
-	batchHeader, err := bridgeTypes.NewBatchHeader(0, batchIndex, totalL1MessagePoppedBefore, parentBatchHash, chunks)
+	batchHeader, err := bridgeTypes.NewBatchHeader(version, batchIndex, totalL1MessagePoppedBefore, parentBatchHash, chunks)
 	if err != nil {
 		log.Error("failed to create batch header", "err", err)
 		return err
 	}
 
-	batchHeaderBytes, err := json.Marshal(batchHeader)
-	if err != nil {
-		log.Error("failed to marshal batch header", "err", err)
-		return err
-	}
-
 	lastChunkBlockNum := len(chunks[numChunks-1].Blocks)
 	tmpBatch := Batch{
-		Index:          batchIndex,
-		Hash:           batchHeader.Hash().Hex(),
-		StartChunkHash: hex.EncodeToString(startChunkHash),
-		EndChunkHash:   hex.EncodeToString(endChunkHash),
-		StateRoot:      chunks[numChunks-1].Blocks[lastChunkBlockNum-1].Header.Root.Hex(),
-		WithdrawRoot:   chunks[numChunks-1].Blocks[lastChunkBlockNum-1].WithdrawTrieRoot.Hex(),
-		BatchHeader:    batchHeaderBytes,
+		Index:                batchIndex,
+		Hash:                 batchHeader.Hash().Hex(),
+		StartChunkHash:       hex.EncodeToString(startChunkHash),
+		EndChunkHash:         hex.EncodeToString(endChunkHash),
+		BatchHeaderVersion:   batchHeader.Version(),
+		TotalL1MessagePopped: batchHeader.TotalL1MessagePopped(),
+		StateRoot:            chunks[numChunks-1].Blocks[lastChunkBlockNum-1].Header.Root.Hex(),
+		WithdrawRoot:         chunks[numChunks-1].Blocks[lastChunkBlockNum-1].WithdrawTrieRoot.Hex(),
 	}
 
 	tx := db.Begin()

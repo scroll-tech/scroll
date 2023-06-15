@@ -27,8 +27,8 @@ type L2Block struct {
 	TxNum            uint64 `json:"tx_num" gorm:"tx_num"`
 	GasUsed          uint64 `json:"gas_used" gorm:"gas_used"`
 	BlockTimestamp   uint64 `json:"block_timestamp" gorm:"block_timestamp"`
-	ChunkHash        string `json:"chunk_hash" gorm:"chunk_hash"`
-	BatchIndex       int    `json:"batch_index" gorm:"batch_index"`
+	ChunkHash        string `json:"chunk_hash" gorm:"chunk_hash;default:NULL"`
+	BatchIndex       int    `json:"batch_index" gorm:"batch_index;default:NULL"`
 }
 
 // NewL2Block creates a new L2Block instance
@@ -58,7 +58,7 @@ func (o *L2Block) GetL2BlocksLatestHeight() (int64, error) {
 func (o *L2Block) GetUnchunkedBlocks() ([]*types.WrappedBlock, error) {
 	var l2Blocks []L2Block
 	db := o.db.Select("header, transactions, withdraw_trie_root")
-	db = db.Where("chunk_hash IS NULL OR chunk_hash = ''")
+	db = db.Where("chunk_hash IS NULL")
 	db = db.Order("number asc")
 
 	if err := db.Find(&l2Blocks).Error; err != nil {
