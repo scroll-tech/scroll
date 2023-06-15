@@ -23,8 +23,10 @@ type BatchHeader struct {
 
 // NewBatchHeader creates a new BatchHeader
 func NewBatchHeader(version uint8, batchIndex, totalL1MessagePoppedBefore uint64, parentBatchHash common.Hash, chunks []*Chunk) (*BatchHeader, error) {
+	// buffer for storing chunk hashes in order to compute the batch data hash
 	var dataBytes []byte
-	var l1MessagePopped uint64
+
+	// skipped L1 message bitmap, an array of 256-bit bitmaps
 	var skippedBitmap []*big.Int
 
 	// the first queue index that belongs to this batch
@@ -33,10 +35,16 @@ func NewBatchHeader(version uint8, batchIndex, totalL1MessagePoppedBefore uint64
 	// the next queue index that we need to process
 	nextIndex := totalL1MessagePoppedBefore
 
-	// the number of L1 messages processed up until the current chunk
-	totalL1MessagePoppedBeforeChunk := totalL1MessagePoppedBefore
-
 	for _, chunk := range chunks {
+		// build data hash
+		totalL1MessagePoppedBeforeChunk := nextIndex
+		chunkBytes, err := chunk.Hash(totalL1MessagePoppedBeforeChunk)
+		if err != nil {
+			return nil, err
+		}
+		dataBytes = append(dataBytes, chunkBytes...)
+
+		// build skip bitmap
 		for _, block := range chunk.Blocks {
 			for _, tx := range block.Transactions {
 				if tx.Type != 0x7E {
@@ -67,25 +75,18 @@ func NewBatchHeader(version uint8, batchIndex, totalL1MessagePoppedBefore uint64
 				}
 
 				nextIndex = currentIndex + 1
-				l1MessagePopped = currentIndex - totalL1MessagePoppedBefore + 1
 			}
 		}
-
-		// build data hash
-		chunkBytes, err := chunk.Hash(totalL1MessagePoppedBeforeChunk)
-		if err != nil {
-			return nil, err
-		}
-		dataBytes = append(dataBytes, chunkBytes...)
-		totalL1MessagePoppedBeforeChunk += chunk.NumL1Messages(totalL1MessagePoppedBeforeChunk)
 	}
+
+	// compute data hash
 	dataHash := crypto.Keccak256Hash(dataBytes)
 
 	return &BatchHeader{
 		version:                version,
 		batchIndex:             batchIndex,
-		l1MessagePopped:        l1MessagePopped,
-		totalL1MessagePopped:   totalL1MessagePoppedBefore + l1MessagePopped,
+		l1MessagePopped:        nextIndex - totalL1MessagePoppedBefore,
+		totalL1MessagePopped:   nextIndex,
 		dataHash:               dataHash,
 		parentBatchHash:        parentBatchHash,
 		skippedL1MessageBitmap: skippedBitmap,
