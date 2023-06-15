@@ -90,6 +90,7 @@ abstract contract L1GatewayTestBase is DSTestPlus {
 
     function prepareL2MessageRoot(bytes32 messageHash) internal {
         rollup.updateSequencer(address(this), true);
+        rollup.updateProver(address(this), true);
 
         // import genesis batch
         bytes memory batchHeader0 = new bytes(89);
