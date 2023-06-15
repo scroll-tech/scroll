@@ -196,7 +196,7 @@ func (r *Layer2Relayer) ProcessGasPriceOracle() {
 
 func (r *Layer2Relayer) ProcessPendingBatches() {
 	// get pending batch from database
-	pendingBatches, err := r.batchOrm.GetPendingBatches(r.ctx, 1)
+	pendingBatches, err := r.batchOrm.GetPendingBatches(r.ctx, 10)
 	if err != nil || len(pendingBatches) == 0 {
 		log.Error("Failed to fetch pending L2 batches", "err", err)
 		return
