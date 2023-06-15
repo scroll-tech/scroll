@@ -3,6 +3,7 @@
 pragma solidity ^0.8.0;
 
 import {ERC2771Context} from "@openzeppelin/contracts/metatx/ERC2771Context.sol";
+import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -12,7 +13,7 @@ import {OwnableBase} from "../libraries/common/OwnableBase.sol";
 
 // solhint-disable no-empty-blocks
 
-contract GasSwap is ERC2771Context, OwnableBase {
+contract GasSwap is ERC2771Context, ReentrancyGuard, OwnableBase {
     using SafeERC20 for IERC20;
 
     /**********
@@ -88,7 +89,7 @@ contract GasSwap is ERC2771Context, OwnableBase {
     /// @notice Swap some token for ether.
     /// @param _permit The permit data, see comments from `PermitData`.
     /// @param _swap The swap data, see comments from `SwapData`.
-    function swap(PermitData memory _permit, SwapData memory _swap) external {
+    function swap(PermitData memory _permit, SwapData memory _swap) external nonReentrant {
         require(approvedTargets[_swap.target], "target not approved");
         address _sender = _msgSender();
 
@@ -117,11 +118,13 @@ contract GasSwap is ERC2771Context, OwnableBase {
         require(_success, string(concat(bytes("swap failed: "), bytes(getRevertMsg(_res)))));
         _outputTokenAmount = address(this).balance - _outputTokenAmount;
 
+        // take fee
+        uint256 _fee = (_outputTokenAmount * feeRatio) / PRECISION;
+        _outputTokenAmount = _outputTokenAmount - _fee;
         require(_outputTokenAmount >= _swap.minOutput, "insufficient output amount");
 
-        // take fee and tranfer ETH
-        uint256 _fee = (_outputTokenAmount * feeRatio) / PRECISION;
-        (_success, ) = _sender.call{value: _outputTokenAmount - _fee}("");
+        // tranfer ETH to sender
+        (_success, ) = _sender.call{value: _outputTokenAmount}("");
         require(_success, "transfer ETH failed");
 
         // refund rest token

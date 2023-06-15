@@ -227,7 +227,7 @@ describe("GasSwap.spec", async () => {
             {
               target: target.address,
               data: "0x8119c065",
-              minOutput: amountOut,
+              minOutput: amountOut.sub(fee),
             }
           );
           const receipt = await tx.wait();
@@ -271,7 +271,7 @@ describe("GasSwap.spec", async () => {
               {
                 target: target.address,
                 data: "0x8119c065",
-                minOutput: amountOut,
+                minOutput: amountOut.sub(fee),
               },
             ]),
           };
