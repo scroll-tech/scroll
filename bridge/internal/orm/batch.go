@@ -76,9 +76,6 @@ func (c *Batch) GetBatches(ctx context.Context, fields map[string]interface{}, o
 
 	var batches []*Batch
 	if err := db.Find(&batches).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, nil
-		}
 		return nil, err
 	}
 	return batches, nil
