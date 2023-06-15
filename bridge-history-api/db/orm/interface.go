@@ -81,7 +81,7 @@ type L1CrossMsgOrm interface {
 	GetL1EarliestNoBlocktimestampHeight() (uint64, error)
 }
 
-// L2CrossMsgOrm provides operations on l2_cross_message table
+// L2CrossMsgOrm provides operations on cross_message table
 type L2CrossMsgOrm interface {
 	GetL2CrossMsgByHash(l2Hash common.Hash) (*CrossMsg, error)
 	GetL2CrossMsgByAddress(sender common.Address) ([]*CrossMsg, error)
