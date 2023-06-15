@@ -261,17 +261,9 @@ func (w *L1WatcherClient) FetchContractEvent() error {
 			// only update when db status is before event status
 			if event.status > status {
 				if event.status == types.RollupFinalized {
-					updateFields := map[string]interface{}{
-						"finalize_tx_hash": event.txHash.String(),
-						"rollup_status":    types.RollupFinalized,
-					}
-					err = w.batchOrm.UpdateBatch(w.ctx, batchHash, updateFields)
+					err = w.batchOrm.UpdateFinalizeTxHashAndRollupStatus(w.ctx, batchHash, event.txHash.String(), event.status)
 				} else if event.status == types.RollupCommitted {
-					updateFields := map[string]interface{}{
-						"commit_tx_hash": event.txHash.String(),
-						"rollup_status":  types.RollupCommitted,
-					}
-					err = w.batchOrm.UpdateBatch(w.ctx, batchHash, updateFields)
+					err = w.batchOrm.UpdateCommitTxHashAndRollupStatus(w.ctx, batchHash, event.txHash.String(), event.status)
 				}
 				if err != nil {
 					log.Error("Failed to update Rollup/Finalize TxHash and Status", "err", err)

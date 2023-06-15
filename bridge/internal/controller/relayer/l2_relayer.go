@@ -180,12 +180,9 @@ func (r *Layer2Relayer) ProcessGasPriceOracle() {
 				return
 			}
 
-			updateFields := map[string]interface{}{
-				"oracle_status":  types.GasOracleImporting,
-				"oracle_tx_hash": hash.String(),
-			}
-			if err := r.batchOrm.UpdateBatch(r.ctx, batch.Hash, updateFields); err != nil {
-				log.Error("Failed to update gas oracle status and oracle tx hash", "batch.Hash", batch.Hash, "err", err)
+			err = r.batchOrm.UpdateL2GasOracleStatusAndOracleTxHash(r.ctx, batch.Hash, types.GasOracleImporting, hash.String())
+			if err != nil {
+				log.Error("UpdateGasOracleStatusAndOracleTxHash failed", "batch.Hash", batch.Hash, "err", err)
 				return
 			}
 			r.lastGasPrice = suggestGasPriceUint64
@@ -259,12 +256,9 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 			return
 		}
 
-		updateFields := map[string]interface{}{
-			"commit_tx_hash": txHash.String(),
-			"rollup_status":  types.RollupCommitting,
-		}
-		if err := r.batchOrm.UpdateBatch(r.ctx, batch.Hash, updateFields); err != nil {
-			log.Error("UpdateBatch failed", "hash", batch.Hash, "index", batch.Index, "err", err)
+		err = r.batchOrm.UpdateCommitTxHashAndRollupStatus(r.ctx, batch.Hash, txHash.String(), types.RollupCommitting)
+		if err != nil {
+			log.Error("UpdateCommitTxHashAndRollupStatus failed", "hash", batch.Hash, "index", batch.Index, "err", err)
 			return
 		}
 		bridgeL2BatchesCommittedTotalCounter.Inc(1)
@@ -312,11 +306,8 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 		return
 	case types.ProvingTaskFailed, types.ProvingTaskSkipped:
 		// note: this is covered by UpdateSkippedBatches, but we keep it for completeness's sake
-		updateFields := map[string]interface{}{
-			"rollup_status": types.RollupFinalizationSkipped,
-		}
-		if err = r.batchOrm.UpdateBatch(r.ctx, hash, updateFields); err != nil {
-			log.Warn("UpdateBatch failed", "hash", hash, "err", err)
+		if err = r.batchOrm.UpdateRollupStatus(r.ctx, hash, types.RollupFinalizationSkipped); err != nil {
+			log.Warn("UpdateRollupStatus failed", "hash", hash, "err", err)
 		}
 	case types.ProvingTaskVerified:
 		log.Info("Start to roll up zk proof", "hash", hash)
@@ -338,11 +329,8 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 				"lastFinalizingCreatedAt", previousBatch.CreatedAt,
 			)
 
-			updateFields := map[string]interface{}{
-				"rollup_status": types.RollupFinalizationSkipped,
-			}
-			if err = r.batchOrm.UpdateBatch(r.ctx, hash, updateFields); err != nil {
-				log.Warn("UpdateBatch failed", "hash", hash, "err", err)
+			if err = r.batchOrm.UpdateRollupStatus(r.ctx, hash, types.RollupFinalizationSkipped); err != nil {
+				log.Warn("UpdateRollupStatus failed", "hash", hash, "err", err)
 			} else {
 				success = true
 			}
@@ -360,11 +348,8 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 			// TODO: need to revisit this and have a more fine-grained error handling
 			if !success {
 				log.Info("Failed to upload the proof, change rollup status to FinalizationSkipped", "hash", hash)
-				updateFields := map[string]interface{}{
-					"rollup_status": types.RollupFinalizationSkipped,
-				}
-				if err = r.batchOrm.UpdateBatch(r.ctx, hash, updateFields); err != nil {
-					log.Warn("UpdateBatch failed", "hash", hash, "err", err)
+				if err = r.batchOrm.UpdateRollupStatus(r.ctx, hash, types.RollupFinalizationSkipped); err != nil {
+					log.Warn("UpdateRollupStatus failed", "hash", hash, "err", err)
 				}
 			}
 		}()
@@ -413,12 +398,9 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 		log.Info("finalizeBatchWithProof in layer1", "batch_hash", hash, "tx_hash", hash)
 
 		// record and sync with db, @todo handle db error
-		updateFields := map[string]interface{}{
-			"finalize_tx_hash": finalizeTxHash.String(),
-			"rollup_status":    types.RollupFinalizing,
-		}
-		if err = r.batchOrm.UpdateBatch(r.ctx, hash, updateFields); err != nil {
-			log.Warn("UpdateBatch failed", "batch_hash", hash, "err", err)
+		err = r.batchOrm.UpdateFinalizeTxHashAndRollupStatus(r.ctx, hash, finalizeTxHash.String(), types.RollupFinalizing)
+		if err != nil {
+			log.Warn("UpdateFinalizeTxHashAndRollupStatus failed", "batch_hash", hash, "err", err)
 		}
 		success = true
 		r.processingFinalization.Store(txID, hash)
@@ -443,13 +425,10 @@ func (r *Layer2Relayer) handleConfirmation(confirmation *sender.Confirmation) {
 			log.Warn("transaction confirmed but failed in layer1", "confirmation", confirmation)
 		}
 
-		updateFields := map[string]interface{}{
-			"commit_tx_hash": confirmation.TxHash.String(),
-			"rollup_status":  status,
-		}
-		err := r.batchOrm.UpdateBatch(r.ctx, msgHash.(string), updateFields)
+		// @todo handle db error
+		err := r.l2MessageOrm.UpdateLayer2StatusAndLayer1Hash(r.ctx, msgHash.(string), status, confirmation.TxHash.String())
 		if err != nil {
-			log.Warn("UpdateBatch failed", "msgHash", msgHash.(string), "err", err)
+			log.Warn("UpdateLayer2StatusAndLayer1Hash failed", "msgHash", msgHash.(string), "err", err)
 		}
 		bridgeL2MsgsRelayedConfirmedTotalCounter.Inc(1)
 		r.processingMessage.Delete(confirmation.ID)
@@ -467,12 +446,10 @@ func (r *Layer2Relayer) handleConfirmation(confirmation *sender.Confirmation) {
 			log.Warn("transaction confirmed but failed in layer1", "confirmation", confirmation)
 		}
 		for _, batchHash := range batchHashes {
-			updateFields := map[string]interface{}{
-				"finalize_tx_hash": confirmation.TxHash.String(),
-				"rollup_status":    status,
-			}
-			if err := r.batchOrm.UpdateBatch(r.ctx, batchHash, updateFields); err != nil {
-				log.Warn("UpdateBatch failed", "batch_hash", batchHash, "err", err)
+			// @todo handle db error
+			err := r.batchOrm.UpdateCommitTxHashAndRollupStatus(r.ctx, batchHash, confirmation.TxHash.String(), status)
+			if err != nil {
+				log.Warn("UpdateCommitTxHashAndRollupStatus failed", "batch_hash", batchHash, "err", err)
 			}
 		}
 		bridgeL2BatchesCommittedConfirmedTotalCounter.Inc(int64(len(batchHashes)))
@@ -490,12 +467,10 @@ func (r *Layer2Relayer) handleConfirmation(confirmation *sender.Confirmation) {
 			log.Warn("transaction confirmed but failed in layer1", "confirmation", confirmation)
 		}
 
-		updateFields := map[string]interface{}{
-			"finalize_tx_hash": confirmation.TxHash.String(),
-			"rollup_status":    status,
-		}
-		if err := r.batchOrm.UpdateBatch(r.ctx, batchHash.(string), updateFields); err != nil {
-			log.Warn("UpdateBatch failed", "batch_hash", batchHash.(string), "err", err)
+		// @todo handle db error
+		err := r.batchOrm.UpdateFinalizeTxHashAndRollupStatus(r.ctx, batchHash.(string), confirmation.TxHash.String(), status)
+		if err != nil {
+			log.Warn("UpdateFinalizeTxHashAndRollupStatus failed", "batch_hash", batchHash.(string), "err", err)
 		}
 		bridgeL2BatchesFinalizedConfirmedTotalCounter.Inc(1)
 		r.processingFinalization.Delete(confirmation.ID)
@@ -513,21 +488,18 @@ func (r *Layer2Relayer) handleConfirmLoop(ctx context.Context) {
 		case confirmation := <-r.rollupSender.ConfirmChan():
 			r.handleConfirmation(confirmation)
 		case cfm := <-r.gasOracleSender.ConfirmChan():
-			updateFields := map[string]interface{}{
-				"oracle_tx_hash": cfm.TxHash.String(),
-			}
 			if !cfm.IsSuccessful {
 				// @discuss: maybe make it pending again?
-				updateFields["oracle_status"] = types.GasOracleFailed
-				if err := r.batchOrm.UpdateBatch(r.ctx, cfm.ID, updateFields); err != nil {
-					log.Warn("UpdateBatch failed", "err", err)
+				err := r.batchOrm.UpdateL2GasOracleStatusAndOracleTxHash(r.ctx, cfm.ID, types.GasOracleFailed, cfm.TxHash.String())
+				if err != nil {
+					log.Warn("UpdateL2GasOracleStatusAndOracleTxHash failed", "err", err)
 				}
 				log.Warn("transaction confirmed but failed in layer1", "confirmation", cfm)
 			} else {
 				// @todo handle db error
-				updateFields["oracle_status"] = types.GasOracleImported
-				if err := r.batchOrm.UpdateBatch(r.ctx, cfm.ID, updateFields); err != nil {
-					log.Warn("UpdateBatch failed", "err", err)
+				err := r.batchOrm.UpdateL2GasOracleStatusAndOracleTxHash(r.ctx, cfm.ID, types.GasOracleImported, cfm.TxHash.String())
+				if err != nil {
+					log.Warn("UpdateL2GasOracleStatusAndOracleTxHash failed", "err", err)
 				}
 				log.Info("transaction confirmed in layer1", "confirmation", cfm)
 			}
