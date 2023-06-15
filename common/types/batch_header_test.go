@@ -50,6 +50,8 @@ func TestNewBatchHeader(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, batchHeader)
 	assert.Equal(t, 32, len(batchHeader.skippedL1MessageBitmap))
+	expectedBitmap := "00000000000000000000000000000000000000000000000000000000000003ff" // skip first 10
+	assert.Equal(t, expectedBitmap, common.Bytes2Hex(batchHeader.skippedL1MessageBitmap))
 
 	// many consecutive L1 Msgs in 1 bitmap, no leading skipped msgs
 	templateBlockTrace3, err := os.ReadFile("../testdata/blockTrace_05.json")
@@ -67,7 +69,7 @@ func TestNewBatchHeader(t *testing.T) {
 	assert.NotNil(t, batchHeader)
 	assert.Equal(t, uint64(5), batchHeader.l1MessagePopped)
 	assert.Equal(t, 32, len(batchHeader.skippedL1MessageBitmap))
-	expectedBitmap := "0000000000000000000000000000000000000000000000000000000000000000" // all bits are included, so none are skipped
+	expectedBitmap = "0000000000000000000000000000000000000000000000000000000000000000" // all bits are included, so none are skipped
 	assert.Equal(t, expectedBitmap, common.Bytes2Hex(batchHeader.skippedL1MessageBitmap))
 
 	// many consecutive L1 Msgs in 1 bitmap, with leading skipped msgs
@@ -167,7 +169,7 @@ func TestBatchHeaderEncode(t *testing.T) {
 	assert.NotNil(t, batchHeader)
 	bytes = batchHeader.Encode()
 	assert.Equal(t, 121, len(bytes))
-	assert.Equal(t, "01000000000000000100000000000000010000000000000001457a9e90e8e51ba2de2f66c6b589540b88cf594dac7fa7d04b99cdcfecf24e384136709aabc8a23aa17fbcc833da2f7857d3c2884feec9aae73429c135f9498500000000000000000000000000000000000000000000000000000000000001ff", common.Bytes2Hex(bytes))
+	assert.Equal(t, "010000000000000001000000000000000b000000000000000b457a9e90e8e51ba2de2f66c6b589540b88cf594dac7fa7d04b99cdcfecf24e384136709aabc8a23aa17fbcc833da2f7857d3c2884feec9aae73429c135f9498500000000000000000000000000000000000000000000000000000000000003ff", common.Bytes2Hex(bytes))
 }
 
 func TestBatchHeaderHash(t *testing.T) {
@@ -228,5 +230,5 @@ func TestBatchHeaderHash(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, batchHeader)
 	hash = batchHeader.Hash()
-	assert.Equal(t, "260f91c0e3f285a3c2c93ab233552b3cb372ed8e5b6b3a3603112ea6c5a1a9ee", common.Bytes2Hex(hash.Bytes()))
+	assert.Equal(t, "0ec9547c6645d5f0c1254e121f49e93f54525cfda5bfb2236440fb3470f48902", common.Bytes2Hex(hash.Bytes()))
 }
