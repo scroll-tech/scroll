@@ -2,8 +2,6 @@ package watcher
 
 import (
 	"context"
-	"errors"
-	"fmt"
 
 	"github.com/scroll-tech/go-ethereum/log"
 	"gorm.io/gorm"
@@ -65,7 +63,10 @@ func (p *BatchProposer) proposeBatchChunks() ([]*bridgeTypes.Chunk, error) {
 	totalPayloadSize := firstChunk.TotalPayloadSize
 
 	if totalPayloadSize > p.maxPayloadSizePerBatch {
-		log.Warn("The first chunk exceeds the max payload size limit", "total payload size", totalPayloadSize, "max payload size limit", p.maxPayloadSizePerBatch)
+		log.Warn("The first chunk exceeds the max payload size limit",
+			"total payload size", totalPayloadSize,
+			"max payload size limit", p.maxPayloadSizePerBatch,
+		)
 		return p.dbChunksToBridgeChunks(dbChunks[:1])
 	}
 
@@ -77,8 +78,11 @@ func (p *BatchProposer) proposeBatchChunks() ([]*bridgeTypes.Chunk, error) {
 	}
 
 	if totalPayloadSize < p.minPayloadSizePerBatch {
-		errMsg := fmt.Sprintf("The payload size of the batch is less than the minimum limit: %d", totalPayloadSize)
-		return nil, errors.New(errMsg)
+		log.Warn("The payload size of the batch is less than the minimum limit",
+			"totalPayloadSize", totalPayloadSize,
+			"minPayloadSizePerBatch", p.minPayloadSizePerBatch,
+		)
+		return nil, nil
 	}
 	return p.dbChunksToBridgeChunks(dbChunks)
 }
