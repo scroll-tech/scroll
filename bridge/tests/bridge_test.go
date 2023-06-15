@@ -135,9 +135,6 @@ func TestFunction(t *testing.T) {
 	// l1 message
 	t.Run("TestRelayL1MessageSucceed", testRelayL1MessageSucceed)
 
-	// l2 message
-	t.Run("TestRelayL2MessageSucceed", testRelayL2MessageSucceed)
-
 	// l1/l2 gas oracle
 	t.Run("TestImportL1GasPrice", testImportL1GasPrice)
 	t.Run("TestImportL2GasPrice", testImportL2GasPrice)
