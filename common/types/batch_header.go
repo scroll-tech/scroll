@@ -83,15 +83,11 @@ func NewBatchHeader(version uint8, batchIndex, totalL1MessagePoppedBefore uint64
 	dataHash := crypto.Keccak256Hash(dataBytes)
 
 	// compute skipped bitmap
-	bitmapBytes := make([]byte, 0, len(skippedBitmap)*32)
-	for _, num := range skippedBitmap {
-		numBytes := num.Bytes()
-		// prepend big-endian padding
-		if len(numBytes) < 32 {
-			padding := make([]byte, 32-len(numBytes))
-			numBytes = append(padding, numBytes...)
-		}
-		bitmapBytes = append(bitmapBytes, numBytes...)
+	bitmapBytes := make([]byte, len(skippedBitmap)*32)
+	for ii, num := range skippedBitmap {
+		bytes := num.Bytes()
+		padding := 32 - len(bytes)
+		copy(bitmapBytes[32*ii+padding:], bytes)
 	}
 
 	return &BatchHeader{
