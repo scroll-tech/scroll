@@ -28,20 +28,6 @@ import (
 	bridgeUtils "scroll-tech/bridge/internal/utils"
 )
 
-var (
-	templateL2Message = []orm.L2Message{
-		{
-			Nonce:      1,
-			Height:     1,
-			Sender:     "0x596a746661dbed76a84556111c2872249b070e15",
-			Value:      "100",
-			Target:     "0x2c73620b223808297ea734d946813f0dd78eb8f7",
-			Calldata:   "testdata",
-			Layer2Hash: "hash0",
-		},
-	}
-)
-
 func setupL2RelayerDB(t *testing.T) *gorm.DB {
 	db, err := bridgeUtils.InitDB(cfg.DBConfig)
 	assert.NoError(t, err)
