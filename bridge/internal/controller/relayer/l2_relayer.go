@@ -202,27 +202,6 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 		return
 	}
 	for _, batch := range pendingBatches {
-		// get the chunks for the batch
-		startChunkIndex := batch.StartChunkIndex
-		endChunkIndex := batch.EndChunkIndex
-
-		dbChunks, err := r.chunkOrm.RangeGetChunks(r.ctx, startChunkIndex, endChunkIndex)
-		if err != nil {
-			log.Error("Failed to fetch chunks", "error", err)
-			return
-		}
-
-		chunks := make([]*bridgeTypes.Chunk, len(dbChunks))
-		for i, c := range dbChunks {
-			wrappedBlocks, err := r.l2BlockOrm.RangeGetL2Blocks(r.ctx, c.StartBlockNumber, c.EndBlockNumber)
-			if err != nil {
-				log.Error("Failed to fetch wrapped blocks", "error", err)
-				return
-			}
-			chunks[i] = &bridgeTypes.Chunk{
-				Blocks: wrappedBlocks,
-			}
-		}
 
 		// get current header and parent header.
 		currentBatchHeader, err := r.batchOrm.GetBatchHeader(r.ctx, batch.Index, r.chunkOrm, r.l2BlockOrm)
@@ -230,15 +209,32 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 			log.Error("Failed to get batch header", "error", err)
 			return
 		}
+		// batch.Index > 0 since we have imported genesis batch.
 		parentBatchHeader, err := r.batchOrm.GetBatchHeader(r.ctx, batch.Index-1, r.chunkOrm, r.l2BlockOrm)
 		if err != nil {
 			log.Error("Failed to get parent batch header", "error", err)
 			return
 		}
 
-		// pack calldata
-		encodedChunks := make([][]byte, len(chunks))
-		for i, chunk := range chunks {
+		// get the chunks for the batch
+		startChunkIndex := batch.StartChunkIndex
+		endChunkIndex := batch.EndChunkIndex
+		dbChunks, err := r.chunkOrm.RangeGetChunks(r.ctx, startChunkIndex, endChunkIndex)
+		if err != nil {
+			log.Error("Failed to fetch chunks", "error", err)
+			return
+		}
+
+		encodedChunks := make([][]byte, len(dbChunks))
+		for i, c := range dbChunks {
+			wrappedBlocks, err := r.l2BlockOrm.RangeGetL2Blocks(r.ctx, c.StartBlockNumber, c.EndBlockNumber)
+			if err != nil {
+				log.Error("Failed to fetch wrapped blocks", "error", err)
+				return
+			}
+			chunk := &bridgeTypes.Chunk{
+				Blocks: wrappedBlocks,
+			}
 			chunkBytes, err := chunk.Encode()
 			if err != nil {
 				log.Error("Failed to encode chunk", "error", err)
@@ -246,6 +242,7 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 			}
 			encodedChunks[i] = chunkBytes
 		}
+
 		calldata, err := r.l1RollupABI.Pack("commitBatch", currentBatchHeader.Version(), parentBatchHeader.Encode(), encodedChunks, currentBatchHeader.EncodeSkippedL1MessageBitmap())
 		if err != nil {
 			log.Error("Failed to pack commitBatch", "batch_index", batch.Index, "error", err)
