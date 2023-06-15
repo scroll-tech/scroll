@@ -47,7 +47,7 @@ contract L1GatewayRouter is OwnableUpgradeable, IL1GatewayRouter {
     }
 
     modifier onlyInContext() {
-        require(msg.sender == gatewayInContext, "Only in deposit/withdraw context");
+        require(msg.sender == gatewayInContext, "Only in deposit context");
         _;
     }
 
