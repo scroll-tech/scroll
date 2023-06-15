@@ -20,7 +20,7 @@ func TestKeccak2(t *testing.T) {
 	assert.Equal(t, "0xc0ffbd7f501bd3d49721b0724b2bff657cb2378f15d5a9b97cd7ea5bf630d512", c.Hex())
 }
 
-func TestGetBatchRangeFromCalldataOldVersion(t *testing.T) {
+func TestGetBatchRangeFromCalldataV1(t *testing.T) {
 	calldata, err := os.ReadFile("../testdata/commit-batches-0x3095e91db7ba4a6fbf4654d607db322e58ff5579c502219c8024acaea74cf311.txt")
 	assert.NoError(t, err)
 
