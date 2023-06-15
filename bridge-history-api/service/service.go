@@ -45,7 +45,7 @@ type TxHistoryInfo struct {
 
 // HistoryService example service.
 type HistoryService interface {
-	GetTxsByAddress(address common.Address, offset int64, limit int64) ([]*TxHistoryInfo, error)
+	GetTxsByAddress(address common.Address, offset int64, limit int64) ([]*TxHistoryInfo, uint64, error)
 	GetTxsByHashes(hashes []string) ([]*TxHistoryInfo, error)
 }
 
@@ -106,15 +106,23 @@ func updateCrossTxHash(msgHash string, txInfo *TxHistoryInfo, db db.OrmFactory) 
 
 }
 
-func (h *historyBackend) GetTxsByAddress(address common.Address, offset int64, limit int64) ([]*TxHistoryInfo, error) {
+func (h *historyBackend) GetTxsByAddress(address common.Address, offset int64, limit int64) ([]*TxHistoryInfo, uint64, error) {
 	txHistories := make([]*TxHistoryInfo, 0)
-	result, err := h.db.GetCrossMsgsByAddressWithOffset(address.String(), offset, limit)
+	total, err := h.db.GetTotalCrossMsgCountByAddress(address.String())
 	if err != nil {
-		return nil, err
+		return txHistories, 0, err
+	}
+	if total == 0 {
+		return txHistories, 0, nil
+	}
+	result, err := h.db.GetCrossMsgsByAddressWithOffset(address.String(), offset, limit)
+
+	if err != nil {
+		return nil, 0, err
 	}
 	for _, msg := range result {
 		txHistory := &TxHistoryInfo{
-			Hash:           msg.MsgHash,
+			Hash:           msg.Layer1Hash + msg.Layer2Hash,
 			Amount:         msg.Amount,
 			To:             msg.Target,
 			IsL1:           msg.MsgType == int(orm.Layer1Msg),
@@ -129,7 +137,7 @@ func (h *historyBackend) GetTxsByAddress(address common.Address, offset int64, l
 		updateCrossTxHash(msg.MsgHash, txHistory, h.db)
 		txHistories = append(txHistories, txHistory)
 	}
-	return txHistories, nil
+	return txHistories, total, nil
 }
 
 func (h *historyBackend) GetTxsByHashes(hashes []string) ([]*TxHistoryInfo, error) {

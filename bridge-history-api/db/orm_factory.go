@@ -18,6 +18,7 @@ type OrmFactory interface {
 	orm.RelayedMsgOrm
 	orm.L2SentMsgOrm
 	orm.BridgeBatchOrm
+	GetTotalCrossMsgCountByAddress(sender string) (uint64, error)
 	GetCrossMsgsByAddressWithOffset(sender string, offset int64, limit int64) ([]*orm.CrossMsg, error)
 	GetDB() *sqlx.DB
 	Beginx() (*sqlx.Tx, error)
@@ -63,6 +64,18 @@ func (o *ormFactory) GetDB() *sqlx.DB {
 
 func (o *ormFactory) Beginx() (*sqlx.Tx, error) {
 	return o.DB.Beginx()
+}
+
+func (o *ormFactory) GetTotalCrossMsgCountByAddress(sender string) (uint64, error) {
+	var count uint64
+	row := o.DB.QueryRowx(`SELECT COUNT(*) FROM cross_message WHERE sender = $1 AND NOT is_deleted;`, sender)
+	if err := row.Scan(&count); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return 0, nil
+		}
+		return 0, err
+	}
+	return count, nil
 }
 
 func (o *ormFactory) GetCrossMsgsByAddressWithOffset(sender string, offset int64, limit int64) ([]*orm.CrossMsg, error) {
