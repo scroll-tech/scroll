@@ -72,7 +72,7 @@ func (b *bridgeBatchOrm) GetLatestBridgeBatch() (*BridgeBatch, error) {
 
 func (b *bridgeBatchOrm) GetBridgeBatchByIndex(index uint64) (*BridgeBatch, error) {
 	result := &BridgeBatch{}
-	row := b.db.QueryRowx(`SELECT id, batch_index, height, start_block_number, end_block_number FROM bridge_batch WHERE batch_index = $1;`, index)
+	row := b.db.QueryRowx(`SELECT id, batch_index, batch_hash, height, start_block_number, end_block_number FROM bridge_batch WHERE batch_index = $1;`, index)
 	if err := row.StructScan(result); err != nil {
 		return nil, err
 	}

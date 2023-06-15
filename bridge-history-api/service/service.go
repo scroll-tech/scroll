@@ -21,12 +21,14 @@ type Finalized struct {
 }
 
 type UserClaimInfo struct {
-	From    string `json:"from"`
-	To      string `json:"to"`
-	Value   string `json:"value"`
-	Nonce   string `json:"nonce"`
-	Message string `json:"message"`
-	Proof   string `json:"proof"`
+	From       string `json:"from"`
+	To         string `json:"to"`
+	Value      string `json:"value"`
+	Nonce      string `json:"nonce"`
+	BatchHash  string `json:"batch_hash"`
+	Message    string `json:"message"`
+	Proof      string `json:"proof"`
+	BatchIndex uint64 `json:"batch_index"`
 }
 
 type TxHistoryInfo struct {
@@ -64,13 +66,20 @@ func GetCrossTxClaimInfo(msgHash string, db db.OrmFactory) *UserClaimInfo {
 		log.Debug("GetCrossTxClaimInfo failed", "error", err)
 		return &UserClaimInfo{}
 	}
+	batch, err := db.GetBridgeBatchByIndex(l2sentMsg.BatchIndex)
+	if err != nil {
+		log.Debug("GetCrossTxClaimInfo failed", "error", err)
+		return &UserClaimInfo{}
+	}
 	return &UserClaimInfo{
-		From:    l2sentMsg.Sender,
-		To:      l2sentMsg.Target,
-		Value:   l2sentMsg.Value,
-		Nonce:   strconv.FormatUint(l2sentMsg.Nonce, 10),
-		Message: l2sentMsg.MsgData,
-		Proof:   l2sentMsg.MsgProof,
+		From:       l2sentMsg.Sender,
+		To:         l2sentMsg.Target,
+		Value:      l2sentMsg.Value,
+		Nonce:      strconv.FormatUint(l2sentMsg.Nonce, 10),
+		Message:    l2sentMsg.MsgData,
+		Proof:      l2sentMsg.MsgProof,
+		BatchHash:  batch.BatchHash,
+		BatchIndex: l2sentMsg.BatchIndex,
 	}
 
 }

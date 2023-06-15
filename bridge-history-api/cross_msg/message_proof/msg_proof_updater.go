@@ -172,7 +172,7 @@ func (m *MsgProofUpdater) initializeWithdrawTrie() error {
 			return err
 		}
 
-		err = m.updateMsgProof(msgs, proofs, b.ID)
+		err = m.updateMsgProof(msgs, proofs, b.BatchIndex)
 		if err != nil {
 			return err
 		}
@@ -193,7 +193,8 @@ func (m *MsgProofUpdater) updateMsgProof(msgs []*orm.L2SentMsg, proofs [][]byte,
 	}
 
 	for i, msg := range msgs {
-		if dbTxErr := m.db.UpdateL2MessageProofInDbTx(context.Background(), dbTx, msg.MsgHash, common.Bytes2Hex(proofs[i]), batchIndex); dbTxErr != nil {
+		log.Debug("updateMsgProof", "msgHash", msg.MsgHash, "batchIndex", batchIndex, "proof", common.Bytes2Hex(proofs[i]))
+		if dbTxErr := m.db.UpdateL2MessageProofInDbTx(m.ctx, dbTx, msg.MsgHash, common.Bytes2Hex(proofs[i]), batchIndex); dbTxErr != nil {
 			if err := dbTx.Rollback(); err != nil {
 				log.Error("dbTx.Rollback()", "err", err)
 			}
