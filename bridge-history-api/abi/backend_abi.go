@@ -326,7 +326,30 @@ type L2RelayedMessageEvent struct {
 	MessageHash common.Hash
 }
 
+// IScrollChainBatch is an auto generated low-level Go binding around an user-defined struct.
+type IScrollChainBatch struct {
+	Blocks           []IScrollChainBlockContext
+	PrevStateRoot    common.Hash
+	NewStateRoot     common.Hash
+	WithdrawTrieRoot common.Hash
+	BatchIndex       uint64
+	ParentBatchHash  common.Hash
+	L2Transactions   []byte
+}
+
 // L1CommitBatchEvent represents a CommitBatch event raised by the ScrollChain contract.
 type L1CommitBatchEvent struct {
 	BatchHash common.Hash
+}
+
+// IScrollChainBlockContext is an auto generated low-level Go binding around an user-defined struct.
+type IScrollChainBlockContext struct {
+	BlockHash       common.Hash
+	ParentHash      common.Hash
+	BlockNumber     uint64
+	Timestamp       uint64
+	BaseFee         *big.Int
+	GasLimit        uint64
+	NumTransactions uint16
+	NumL1Messages   uint16
 }
