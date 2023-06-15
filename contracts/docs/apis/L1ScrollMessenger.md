@@ -63,28 +63,6 @@ Initialize the storage of L1ScrollMessenger.
 | _rollup | address | The address of ScrollChain contract. |
 | _messageQueue | address | The address of L1MessageQueue contract. |
 
-### isL1MessageRelayed
-
-```solidity
-function isL1MessageRelayed(bytes32) external view returns (bool)
-```
-
-Mapping from relay id to relay status.
-
-
-
-#### Parameters
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | bytes32 | undefined |
-
-#### Returns
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | bool | undefined |
-
 ### isL1MessageSent
 
 ```solidity
