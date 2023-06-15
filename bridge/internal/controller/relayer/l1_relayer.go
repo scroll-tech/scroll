@@ -3,6 +3,7 @@ package relayer
 import (
 	"context"
 	"errors"
+	"fmt"
 	"math/big"
 
 	// not sure if this will make problems when relay with l1geth
@@ -53,6 +54,10 @@ type Layer1Relayer struct {
 
 	l1MessageOrm *orm.L1Message
 	l1Block      *orm.L1Block
+}
+
+func init() {
+	fmt.Println("init")
 }
 
 // NewLayer1Relayer will return a new instance of Layer1RelayerClient
