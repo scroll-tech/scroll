@@ -104,6 +104,8 @@ jobs:
       working-directory: 'bridge'
       run: |
         go test -v -race -gcflags="-l" -ldflags="-s=false" -covermode=atomic ./...
+    - name: Upload coverage reports to Codecov with GitHub Action
+      uses: codecov/codecov-action@v3
   # docker-build:
   #   if: github.event.pull_request.draft == false
   #   runs-on: ubuntu-latest
