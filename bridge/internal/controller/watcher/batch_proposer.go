@@ -65,13 +65,13 @@ func (p *BatchProposer) proposeBatchChunks() ([]*bridgeTypes.Chunk, error) {
 
 	if totalPayloadSize > p.maxPayloadSizePerBatch {
 		log.Warn("The first chunk exceeds the max payload size limit", "total payload size", totalPayloadSize, "max payload size limit", p.maxPayloadSizePerBatch)
-		return p.convertToBridgeBlock(dbChunks[:1])
+		return p.dbChunksToBridgeChunks(dbChunks[:1])
 	}
 
 	for i, chunk := range dbChunks[1:] {
 		totalPayloadSize += chunk.TotalPayloadSize
 		if totalPayloadSize > p.maxPayloadSizePerBatch {
-			return p.convertToBridgeBlock(dbChunks[:i+1])
+			return p.dbChunksToBridgeChunks(dbChunks[:i+1])
 		}
 	}
 
@@ -79,10 +79,10 @@ func (p *BatchProposer) proposeBatchChunks() ([]*bridgeTypes.Chunk, error) {
 		errMsg := fmt.Sprintf("The payload size of the batch is less than the minimum limit: %d", totalPayloadSize)
 		return nil, errors.New(errMsg)
 	}
-	return p.convertToBridgeBlock(dbChunks)
+	return p.dbChunksToBridgeChunks(dbChunks)
 }
 
-func (p *BatchProposer) convertToBridgeBlock(dbChunks []*orm.Chunk) ([]*bridgeTypes.Chunk, error) {
+func (p *BatchProposer) dbChunksToBridgeChunks(dbChunks []*orm.Chunk) ([]*bridgeTypes.Chunk, error) {
 	chunks := make([]*bridgeTypes.Chunk, len(dbChunks))
 	for i, c := range dbChunks {
 		wrappedBlocks, err := p.l2Block.RangeGetL2Blocks(p.ctx, c.StartBlockNumber, c.EndBlockNumber)

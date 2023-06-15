@@ -342,7 +342,7 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 		}
 
 		// get current header and parent header.
-		currentHeader, err := r.batchOrm.GetBatchHeader(r.ctx, batch.Index, r.chunkOrm, r.l2BlockOrm)
+		currentBatchHeader, err := r.batchOrm.GetBatchHeader(r.ctx, batch.Index, r.chunkOrm, r.l2BlockOrm)
 		if err != nil {
 			log.Error("Failed to get batch header", "error", err)
 			return
@@ -363,7 +363,7 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 			}
 			encodedChunks[i] = chunkBytes
 		}
-		calldata, err := r.l1RollupABI.Pack("commitBatch", currentHeader.Version(), parentBatchHeader.Encode(), encodedChunks, currentHeader.EncodeSkippedL1MessageBitmap())
+		calldata, err := r.l1RollupABI.Pack("commitBatch", currentBatchHeader.Version(), parentBatchHeader.Encode(), encodedChunks, currentBatchHeader.EncodeSkippedL1MessageBitmap())
 		if err != nil {
 			log.Error("Failed to pack commitBatch", "batch_index", batch.Index, "error", err)
 			return
