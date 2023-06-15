@@ -151,6 +151,8 @@ func (m *MsgProofUpdater) initializeWithdrawTrie() error {
 
 		if batchIndex == 1 {
 			// otherwise overflow
+			// and batchIndex 0 is not in DB
+			// To Do: check if we dont have batch with index 0 in future
 			break
 		}
 		// iterate for next batch

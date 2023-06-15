@@ -120,7 +120,6 @@ type L2SentMsgOrm interface {
 
 type BridgeBatchOrm interface {
 	GetLatestBridgeBatch() (*BridgeBatch, error)
-	GetBridgeBatchByBlock(height uint64) (*BridgeBatch, error)
 	GetBridgeBatchByIndex(index uint64) (*BridgeBatch, error)
 	BatchInsertBridgeBatchDBTx(dbTx *sqlx.Tx, messages []*BridgeBatch) error
 }
