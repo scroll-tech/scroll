@@ -278,7 +278,7 @@ func ParseBatchInfoFromScrollChain(ctx context.Context, client *ethclient.Client
 				log.Warn("Failed to get commit Batch tx receipt or the tx is still pending", "err", err)
 				return bridgeBatches, err
 			}
-			indices, startBlcock, endBlockNumber, err := GetBatchRangeFromCalldataOldVersion(commitTx.Data())
+			indices, startBlcock, endBlockNumber, err := GetBatchRangeFromCalldataV1(commitTx.Data())
 			if err != nil {
 				log.Warn("Failed to get batch range from calldata", "hash", commitTx.Hash().Hex(), "height", vlog.BlockNumber)
 				return bridgeBatches, err
