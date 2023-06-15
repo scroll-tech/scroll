@@ -111,7 +111,6 @@ func TestFunctions(t *testing.T) {
 
 	// Run l2 relayer test cases.
 	t.Run("TestCreateNewRelayer", testCreateNewRelayer)
-	t.Run("TestL2RelayerProcessSaveEvents", testL2RelayerProcessSaveEvents)
 	t.Run("TestL2RelayerProcessCommittedBatches", testL2RelayerProcessCommittedBatches)
 	t.Run("TestL2RelayerSkipBatches", testL2RelayerSkipBatches)
 	t.Run("TestL2RelayerMsgConfirm", testL2RelayerMsgConfirm)
