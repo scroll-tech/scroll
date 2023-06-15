@@ -1,8 +1,8 @@
 ARG GO_VERSION=1.19
 ARG RUST_VERSION=nightly-2022-12-10
+ARG CARGO_CHEF_TAG=0.1.41
 
 FROM golang:${GO_VERSION}-alpine
-ARG CARGO_CHEF_TAG=0.1.41
 
 RUN apk add --no-cache gcc musl-dev linux-headers git ca-certificates openssl-dev
 
@@ -34,5 +34,6 @@ RUN ./rustup-init -y --no-modify-path --default-toolchain ${RUST_VERSION}; \
     cargo --version; \
     rustc --version;
 
+ARG CARGO_CHEF_TAG
 RUN cargo install cargo-chef --locked --version ${CARGO_CHEF_TAG} \
     && rm -rf $CARGO_HOME/registry/
