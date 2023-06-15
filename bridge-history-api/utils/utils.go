@@ -68,21 +68,24 @@ type commitBatchArgs struct {
 	SkippedL1MessageBitmap []byte
 }
 
-// GetBatchRangeFromCalldata find the block range from calldata, both inclusive.
-func GetBatchRangeFromCalldata(calldata []byte) (uint64, uint64, error) {
+// GetBatchRangeFromCalldataV2 find the block range from calldata, both inclusive.
+func GetBatchRangeFromCalldataV2(calldata []byte) (uint64, uint64, uint64, error) {
 	method := backendabi.ScrollChainABI.Methods["commitBatch"]
-	values, err := method.Inputs.Unpack(calldata[4:len(calldata)])
+	values, err := method.Inputs.Unpack(calldata[4:])
 	if err != nil {
-		return 0, 0, err
+		return 0, 0, 0, err
 	}
 	args := commitBatchArgs{}
 	err = method.Inputs.Copy(&args, values)
 	if err != nil {
-		return 0, 0, err
+		return 0, 0, 0, err
 	}
 
 	var startBlock uint64
 	var finishBlock uint64
+
+	// decode batchIndex from ParentBatchHeader
+	batchIndex := binary.BigEndian.Uint64(args.ParentBatchHeader[1:9]) + 1
 
 	// decode blocks from chunk
 	// |   1 byte   | 60 bytes | ... | 60 bytes |
@@ -99,5 +102,5 @@ func GetBatchRangeFromCalldata(calldata []byte) (uint64, uint64, error) {
 			finishBlock = blockNumber
 		}
 	}
-	return startBlock, finishBlock, err
+	return batchIndex, startBlock, finishBlock, err
 }
