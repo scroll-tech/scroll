@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 )
 
-type BatchConfig struct {
+type BatchInfoFetcherConfig struct {
 	BatchIndexStartBlock uint64 `json:"batchIndexStartBlock"`
 	ScrollChainAddr      string `json:"ScrollChainAddr"`
 }
@@ -46,9 +46,9 @@ type Config struct {
 	L2 *LayerConfig `json:"l2"`
 
 	// data source name
-	DB     *DBConfig     `json:"db"`
-	Server *ServerConfig `json:"server"`
-	Batch  *BatchConfig  `json:"batch"`
+	DB               *DBConfig               `json:"db"`
+	Server           *ServerConfig           `json:"server"`
+	BatchInfoFetcher *BatchInfoFetcherConfig `json:"batchInfoFetcher"`
 }
 
 // NewConfig returns a new instance of Config.
