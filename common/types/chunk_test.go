@@ -14,7 +14,7 @@ func TestChunkEncode(t *testing.T) {
 	chunk := &Chunk{
 		Blocks: []*WrappedBlock{},
 	}
-	bytes, err := chunk.Encode()
+	bytes, err := chunk.Encode(0)
 	assert.Nil(t, bytes)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "number of blocks is 0")
@@ -26,7 +26,7 @@ func TestChunkEncode(t *testing.T) {
 	for i := 0; i < 256; i++ {
 		chunk.Blocks = append(chunk.Blocks, &WrappedBlock{})
 	}
-	bytes, err = chunk.Encode()
+	bytes, err = chunk.Encode(0)
 	assert.Nil(t, bytes)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "number of blocks exceeds 1 byte")
@@ -37,12 +37,13 @@ func TestChunkEncode(t *testing.T) {
 
 	wrappedBlock := &WrappedBlock{}
 	assert.NoError(t, json.Unmarshal(templateBlockTrace, wrappedBlock))
+	assert.Equal(t, uint64(0), wrappedBlock.NumL1Messages(0))
 	chunk = &Chunk{
 		Blocks: []*WrappedBlock{
 			wrappedBlock,
 		},
 	}
-	bytes, err = chunk.Encode()
+	bytes, err = chunk.Encode(0)
 	hexString := hex.EncodeToString(bytes)
 	assert.NoError(t, err)
 	assert.Equal(t, 299, len(bytes))
@@ -54,16 +55,17 @@ func TestChunkEncode(t *testing.T) {
 
 	wrappedBlock2 := &WrappedBlock{}
 	assert.NoError(t, json.Unmarshal(templateBlockTrace2, wrappedBlock2))
+	assert.Equal(t, uint64(11), wrappedBlock2.NumL1Messages(0)) // 0..=9 skipped, 10 included
 	chunk = &Chunk{
 		Blocks: []*WrappedBlock{
 			wrappedBlock2,
 		},
 	}
-	bytes, err = chunk.Encode()
+	bytes, err = chunk.Encode(0)
 	hexString = hex.EncodeToString(bytes)
 	assert.NoError(t, err)
 	assert.Equal(t, 97, len(bytes))
-	assert.Equal(t, "01000000000000000d00000000646b6e13000000000000000000000000000000000000000000000000000000000000000000000000007a12000002000100000020df0b80825dc0941a258d17bf244c4df02d40343a7626a9d321e1058080808080", hexString)
+	assert.Equal(t, "01000000000000000d00000000646b6e13000000000000000000000000000000000000000000000000000000000000000000000000007a12000002000b00000020df0b80825dc0941a258d17bf244c4df02d40343a7626a9d321e1058080808080", hexString)
 
 	// Test case 5: when the chunk contains two blocks each with 1 L1MsgTx
 	chunk = &Chunk{
@@ -72,11 +74,11 @@ func TestChunkEncode(t *testing.T) {
 			wrappedBlock2,
 		},
 	}
-	bytes, err = chunk.Encode()
+	bytes, err = chunk.Encode(0)
 	hexString = hex.EncodeToString(bytes)
 	assert.NoError(t, err)
 	assert.Equal(t, 193, len(bytes))
-	assert.Equal(t, "02000000000000000d00000000646b6e13000000000000000000000000000000000000000000000000000000000000000000000000007a120000020001000000000000000d00000000646b6e13000000000000000000000000000000000000000000000000000000000000000000000000007a12000002000100000020df0b80825dc0941a258d17bf244c4df02d40343a7626a9d321e105808080808000000020df0b80825dc0941a258d17bf244c4df02d40343a7626a9d321e1058080808080", hexString)
+	assert.Equal(t, "02000000000000000d00000000646b6e13000000000000000000000000000000000000000000000000000000000000000000000000007a12000002000b000000000000000d00000000646b6e13000000000000000000000000000000000000000000000000000000000000000000000000007a12000002000000000020df0b80825dc0941a258d17bf244c4df02d40343a7626a9d321e105808080808000000020df0b80825dc0941a258d17bf244c4df02d40343a7626a9d321e1058080808080", hexString)
 }
 
 func TestChunkHash(t *testing.T) {
@@ -84,7 +86,7 @@ func TestChunkHash(t *testing.T) {
 	chunk := &Chunk{
 		Blocks: []*WrappedBlock{},
 	}
-	bytes, err := chunk.Hash()
+	bytes, err := chunk.Hash(0)
 	assert.Nil(t, bytes)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "number of blocks is 0")
@@ -99,7 +101,7 @@ func TestChunkHash(t *testing.T) {
 			wrappedBlock,
 		},
 	}
-	bytes, err = chunk.Hash()
+	bytes, err = chunk.Hash(0)
 	hexString := hex.EncodeToString(bytes)
 	assert.NoError(t, err)
 	assert.Equal(t, "78c839dfc494396c16b40946f32b3f4c3e8c2d4bfd04aefcf235edec474482f8", hexString)
@@ -115,7 +117,7 @@ func TestChunkHash(t *testing.T) {
 			wrappedBlock1,
 		},
 	}
-	bytes, err = chunk.Hash()
+	bytes, err = chunk.Hash(0)
 	hexString = hex.EncodeToString(bytes)
 	assert.NoError(t, err)
 	assert.Equal(t, "aa9e494f72bc6965857856f0fae6916f27b2a6591c714a573b2fab46df03b8ae", hexString)
@@ -131,7 +133,7 @@ func TestChunkHash(t *testing.T) {
 			wrappedBlock2,
 		},
 	}
-	bytes, err = chunk.Hash()
+	bytes, err = chunk.Hash(0)
 	hexString = hex.EncodeToString(bytes)
 	assert.NoError(t, err)
 	assert.Equal(t, "42967825696a129e7a83f082097aca982747480956dcaa448c9296e795c9a91a", hexString)
