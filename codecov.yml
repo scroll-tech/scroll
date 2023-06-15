@@ -2,54 +2,42 @@ coverage:
   status:
     project: off
     patch: off
-
 flag_management:
   default_rules:
     carryforward: true
   individual_flags:
     - name: bridge
-      paths:
-        - abi/
-        - internal/
-        - tests/
       statuses:
         - type: project
           target: auto
           threshold: 1%
-    - name: bridge-history-api
-      paths:
-        - controller/
-        - cross_msg/
-        - db/
-        - model/
-        - service/
-        - utils
-      statuses:
-        - type: project
-          target: auto
-          threshold: 1%
-    - name: common
-      statuses:
-        - type: project
-          target: auto
-          threshold: 1%
-    - name: coordinator
-      statuses:
-        - type: project
-          target: auto
-          threshold: 1%
-    - name: database
-      statuses:
-        - type: project
-          target: auto
-          threshold: 1%
-    - name: integration
-      statuses:
-        - type: project
-          target: auto
-          threshold: 1%
-    - name: roller
-      statuses:
-        - type: project
-          target: auto
-          threshold: 1%
+#    - name: bridge-history-api
+#      statuses:
+#        - type: project
+#          target: auto
+#          threshold: 1%
+#    - name: common
+#      statuses:
+#        - type: project
+#          target: auto
+#          threshold: 1%
+#    - name: coordinator
+#      statuses:
+#        - type: project
+#          target: auto
+#          threshold: 1%
+#    - name: database
+#      statuses:
+#        - type: project
+#          target: auto
+#          threshold: 1%
+#    - name: integration
+#      statuses:
+#        - type: project
+#          target: auto
+#          threshold: 1%
+#    - name: roller
+#      statuses:
+#        - type: project
+#          target: auto
+#          threshold: 1%
