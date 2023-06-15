@@ -103,8 +103,8 @@ jobs:
     - name: Test bridge packages
       working-directory: 'bridge'
       run: |
-        go test -v -race -gcflags="-l" -ldflags="-s=false" -covermode=atomic ./...
-    - name: Upload coverage reports to Codecov with GitHub Action
+        go test -v -race -gcflags="-l" -ldflags="-s=false" -coverprofile=coverage.txt -covermode=atomic ./...
+    - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v3
   # docker-build:
   #   if: github.event.pull_request.draft == false
