@@ -338,7 +338,9 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 				log.Error("Failed to fetch wrapped blocks", "error", err)
 				return
 			}
-			chunks[i].Blocks = wrappedBlocks
+			chunks[i] = &bridgeTypes.Chunk{
+				Blocks: wrappedBlocks,
+			}
 		}
 
 		// get current header and parent header.
@@ -489,7 +491,7 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 			}
 		}()
 
-		aggProof, err := r.batchOrm.GetProofByHash(r.ctx, hash)
+		aggProof, err := r.batchOrm.GetVerifiedProofByHash(r.ctx, hash)
 		if err != nil {
 			log.Warn("get verified proof by hash failed", "hash", hash, "err", err)
 			return

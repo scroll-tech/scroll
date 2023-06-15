@@ -12,9 +12,11 @@ import (
 
 	"scroll-tech/bridge/internal/config"
 	"scroll-tech/bridge/internal/orm/migrate"
-	"scroll-tech/bridge/internal/types"
+	bridgeTypes "scroll-tech/bridge/internal/types"
 	"scroll-tech/bridge/internal/utils"
 	"scroll-tech/common/docker"
+	"scroll-tech/common/types"
+	"scroll-tech/common/types/message"
 )
 
 var (
@@ -25,10 +27,10 @@ var (
 	chunkOrm   *Chunk
 	batchOrm   *Batch
 
-	wrappedBlock1 *types.WrappedBlock
-	wrappedBlock2 *types.WrappedBlock
-	chunk1        *types.Chunk
-	chunk2        *types.Chunk
+	wrappedBlock1 *bridgeTypes.WrappedBlock
+	wrappedBlock2 *bridgeTypes.WrappedBlock
+	chunk1        *bridgeTypes.Chunk
+	chunk2        *bridgeTypes.Chunk
 	chunkHash1    string
 	chunkHash2    string
 )
@@ -63,7 +65,7 @@ func setupEnv(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to read file: %v", err)
 	}
-	wrappedBlock1 = &types.WrappedBlock{}
+	wrappedBlock1 = &bridgeTypes.WrappedBlock{}
 	if err = json.Unmarshal(templateBlockTrace, wrappedBlock1); err != nil {
 		t.Fatalf("failed to unmarshal block trace: %v", err)
 	}
@@ -72,17 +74,17 @@ func setupEnv(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to read file: %v", err)
 	}
-	wrappedBlock2 = &types.WrappedBlock{}
+	wrappedBlock2 = &bridgeTypes.WrappedBlock{}
 	if err = json.Unmarshal(templateBlockTrace, wrappedBlock2); err != nil {
 		t.Fatalf("failed to unmarshal block trace: %v", err)
 	}
 
-	chunk1 = &types.Chunk{Blocks: []*types.WrappedBlock{wrappedBlock1}}
+	chunk1 = &bridgeTypes.Chunk{Blocks: []*bridgeTypes.WrappedBlock{wrappedBlock1}}
 	chunkHashBytes1, err := chunk1.Hash()
 	assert.NoError(t, err)
 	chunkHash1 = hex.EncodeToString(chunkHashBytes1)
 
-	chunk2 = &types.Chunk{Blocks: []*types.WrappedBlock{wrappedBlock2}}
+	chunk2 = &bridgeTypes.Chunk{Blocks: []*bridgeTypes.WrappedBlock{wrappedBlock2}}
 	chunkHashBytes2, err := chunk2.Hash()
 	assert.NoError(t, err)
 	chunkHash2 = hex.EncodeToString(chunkHashBytes2)
@@ -93,7 +95,7 @@ func TestL2BlockOrm(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(sqlDB))
 
-	err = l2BlockOrm.InsertL2Blocks([]*types.WrappedBlock{wrappedBlock1, wrappedBlock2})
+	err = l2BlockOrm.InsertL2Blocks([]*bridgeTypes.WrappedBlock{wrappedBlock1, wrappedBlock2})
 	if err != nil {
 		t.Fatalf("failed to insert blocks: %v", err)
 	}
@@ -140,10 +142,8 @@ func TestChunkOrm(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(sqlDB))
 
-	err = l2BlockOrm.InsertL2Blocks([]*types.WrappedBlock{wrappedBlock1, wrappedBlock2})
-	if err != nil {
-		t.Fatalf("failed to insert blocks: %v", err)
-	}
+	err = l2BlockOrm.InsertL2Blocks([]*bridgeTypes.WrappedBlock{wrappedBlock1, wrappedBlock2})
+	assert.NoError(t, err)
 
 	err = chunkOrm.InsertChunk(context.Background(), chunk1, l2BlockOrm)
 	assert.NoError(t, err)
@@ -185,15 +185,24 @@ func TestBatchOrm(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(sqlDB))
 
-	err = batchOrm.InsertBatch(context.Background(), []*types.Chunk{chunk1}, chunkOrm, l2BlockOrm)
+	err = l2BlockOrm.InsertL2Blocks([]*bridgeTypes.WrappedBlock{wrappedBlock1, wrappedBlock2})
 	assert.NoError(t, err)
 
-	err = batchOrm.InsertBatch(context.Background(), []*types.Chunk{chunk2}, chunkOrm, l2BlockOrm)
+	err = chunkOrm.InsertChunk(context.Background(), chunk1, l2BlockOrm)
+	assert.NoError(t, err)
+
+	err = chunkOrm.InsertChunk(context.Background(), chunk2, l2BlockOrm)
+	assert.NoError(t, err)
+
+	err = batchOrm.InsertBatch(context.Background(), []*bridgeTypes.Chunk{chunk1}, chunkOrm, l2BlockOrm)
+	assert.NoError(t, err)
+
+	err = batchOrm.InsertBatch(context.Background(), []*bridgeTypes.Chunk{chunk2}, chunkOrm, l2BlockOrm)
 	assert.NoError(t, err)
 
 	count, err := batchOrm.GetBatchCount(context.Background())
 	assert.NoError(t, err)
-	assert.Equal(t, int64(2), count)
+	assert.Equal(t, uint64(2), count)
 
 	latestBatch, err := batchOrm.GetLatestBatch(context.Background())
 	assert.NoError(t, err)
@@ -202,4 +211,57 @@ func TestBatchOrm(t *testing.T) {
 	pendingBatches, err := batchOrm.GetPendingBatches(context.Background(), 100)
 	assert.NoError(t, err)
 	assert.Equal(t, 2, len(pendingBatches))
+
+	batchHeader1, err := batchOrm.GetBatchHeader(context.Background(), 0, chunkOrm, l2BlockOrm)
+	assert.NoError(t, err)
+	batchHash1 := batchHeader1.Hash().Hex()
+
+	batchHeader2, err := batchOrm.GetBatchHeader(context.Background(), 1, chunkOrm, l2BlockOrm)
+	assert.NoError(t, err)
+	batchHash2 := batchHeader2.Hash().Hex()
+
+	rollupStatus, err := batchOrm.GetRollupStatusByHashList(context.Background(), []string{batchHash1, batchHash2})
+	assert.NoError(t, err)
+	assert.Equal(t, 2, len(rollupStatus))
+	assert.Equal(t, types.RollupPending, rollupStatus[0])
+	assert.Equal(t, types.RollupPending, rollupStatus[1])
+
+	err = batchOrm.UpdateBatch(context.Background(), batchHash1, map[string]interface{}{
+		"rollup_status":  types.RollupCommitted,
+		"proving_status": types.ProvingTaskSkipped,
+	})
+	assert.NoError(t, err)
+
+	err = batchOrm.UpdateBatch(context.Background(), batchHash2, map[string]interface{}{
+		"rollup_status":  types.RollupCommitted,
+		"proving_status": types.ProvingTaskFailed,
+	})
+	assert.NoError(t, err)
+
+	count, err = batchOrm.UpdateSkippedBatches(context.Background())
+	assert.NoError(t, err)
+	assert.Equal(t, uint64(2), count)
+
+	count, err = batchOrm.UpdateSkippedBatches(context.Background())
+	assert.NoError(t, err)
+	assert.Equal(t, uint64(0), count)
+
+	latestBatch, err = batchOrm.GetLatestBatchByRollupStatus([]types.RollupStatus{types.RollupFinalizationSkipped})
+	assert.NoError(t, err)
+	assert.Equal(t, uint64(1), latestBatch.Index)
+
+	proof := &message.AggProof{
+		Proof:     []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31},
+		FinalPair: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31},
+	}
+	err = batchOrm.UpdateProofByHash(context.Background(), batchHash1, proof, 1200)
+	assert.NoError(t, err)
+	err = batchOrm.UpdateBatch(context.Background(), batchHash1, map[string]interface{}{
+		"proving_status": types.ProvingTaskVerified,
+	})
+	assert.NoError(t, err)
+
+	dbProof, err := batchOrm.GetVerifiedProofByHash(context.Background(), batchHash1)
+	assert.NoError(t, err)
+	assert.Equal(t, proof, dbProof)
 }

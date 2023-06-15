@@ -13,7 +13,6 @@ import (
 	"scroll-tech/common/types/message"
 
 	"github.com/scroll-tech/go-ethereum/common"
-	gethTypes "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/log"
 	"gorm.io/gorm"
 )
@@ -23,11 +22,12 @@ const defaultBatchHeaderVersion = 0
 type Batch struct {
 	db *gorm.DB `gorm:"column:-"`
 
+	// TODO(colinlyguo): sync with database block_batch.go, ProverAssignedAt not updated.
 	Index                uint64         `json:"index" gorm:"column:index"`
 	Hash                 string         `json:"hash" gorm:"column:hash"`
-	StartChunkIndex      int            `json:"start_chunk_index" gorm:"column:start_chunk_index"`
+	StartChunkIndex      uint64         `json:"start_chunk_index" gorm:"column:start_chunk_index"`
 	StartChunkHash       string         `json:"start_chunk_hash" gorm:"column:start_chunk_hash"`
-	EndChunkIndex        int            `json:"end_chunk_index" gorm:"column:end_chunk_index"`
+	EndChunkIndex        uint64         `json:"end_chunk_index" gorm:"column:end_chunk_index"`
 	EndChunkHash         string         `json:"end_chunk_hash" gorm:"column:end_chunk_hash"`
 	TotalL1MessagePopped uint64         `json:"total_l1_message_popped" gorm:"column:total_l1_message_popped"`
 	BatchHeaderVersion   uint8          `json:"batch_header_version" gorm:"column:batch_header_version"`
@@ -81,47 +81,16 @@ func (c *Batch) GetBatches(ctx context.Context, fields map[string]interface{}, o
 	return batches, nil
 }
 
-func (b *Batch) GetBatchCount(ctx context.Context) (int64, error) {
+func (b *Batch) GetBatchCount(ctx context.Context) (uint64, error) {
 	var count int64
 	err := b.db.WithContext(ctx).Model(&Batch{}).Count(&count).Error
 	if err != nil {
 		return 0, err
 	}
-	return count, nil
+	return uint64(count), nil
 }
 
-// RangeGetL2WrappedBlocks get the l2 wrapped blocks in a specific range
-func (o *L2Block) RangeGetL2WrappedBlocks(startBlockNumber, endBlockNumber uint64) ([]*bridgeTypes.WrappedBlock, error) {
-	var l2Blocks []L2Block
-	db := o.db.Select("header, transactions, withdraw_trie_root")
-	db = db.Where("number >= ? AND number <= ?", startBlockNumber, endBlockNumber)
-	db = db.Order("number asc")
-
-	if err := db.Find(&l2Blocks).Error; err != nil {
-		return nil, err
-	}
-
-	var wrappedBlocks []*bridgeTypes.WrappedBlock
-	for _, v := range l2Blocks {
-		var wrappedBlock bridgeTypes.WrappedBlock
-
-		if err := json.Unmarshal([]byte(v.Transactions), &wrappedBlock.Transactions); err != nil {
-			return nil, err
-		}
-
-		wrappedBlock.Header = &gethTypes.Header{}
-		if err := json.Unmarshal([]byte(v.Header), wrappedBlock.Header); err != nil {
-			return nil, err
-		}
-
-		wrappedBlock.WithdrawTrieRoot = common.HexToHash(v.WithdrawTrieRoot)
-		wrappedBlocks = append(wrappedBlocks, &wrappedBlock)
-	}
-
-	return wrappedBlocks, nil
-}
-
-func (c *Batch) GetProofByHash(ctx context.Context, hash string) (*message.AggProof, error) {
+func (c *Batch) GetVerifiedProofByHash(ctx context.Context, hash string) (*message.AggProof, error) {
 	var batch Batch
 	err := c.db.WithContext(ctx).Where("hash = ? AND proving_status = ?", hash, types.ProvingTaskVerified).First(&batch).Error
 	if err != nil {
@@ -226,18 +195,15 @@ func (c *Batch) GetBatchHeader(ctx context.Context, index uint64, chunkOrm *Chun
 		return nil, err
 	}
 
-	var parentBatchHash string
+	var parentBatchHash common.Hash
 	if index > 0 {
-		parentBatches, err := c.GetBatches(ctx, map[string]interface{}{"index": index - 1}, nil, 1)
+		var parentBatchHashStr string
+		err = c.db.WithContext(ctx).Model(&batch).Where("index = ?", index-1).Pluck("hash", &parentBatchHashStr).Error
 		if err != nil {
-			log.Error("failed to get parent batch", "err", err)
+			log.Error("failed to get parent batch hash", "err", err)
 			return nil, err
 		}
-		if len(parentBatches) == 1 {
-			parentBatchHash = parentBatches[0].Hash
-		} else {
-			log.Error("Unexpected batch length", "length", len(parentBatches))
-		}
+		parentBatchHash = common.HexToHash(parentBatchHashStr)
 	}
 
 	startChunkIndex := batch.StartChunkIndex
@@ -256,10 +222,12 @@ func (c *Batch) GetBatchHeader(ctx context.Context, index uint64, chunkOrm *Chun
 			log.Error("Failed to fetch wrapped blocks", "error", err)
 			return nil, err
 		}
-		chunks[i].Blocks = wrappedBlocks
+		chunks[i] = &bridgeTypes.Chunk{
+			Blocks: wrappedBlocks,
+		}
 	}
 
-	batchHeader, err := bridgeTypes.NewBatchHeader(batch.BatchHeaderVersion, batch.Index, batch.TotalL1MessagePopped, common.HexToHash(parentBatchHash), chunks)
+	batchHeader, err := bridgeTypes.NewBatchHeader(batch.BatchHeaderVersion, batch.Index, batch.TotalL1MessagePopped, parentBatchHash, chunks)
 	if err != nil {
 		log.Error("failed to create batch header", "err", err)
 		return nil, err
@@ -279,15 +247,29 @@ func (c *Batch) InsertBatch(ctx context.Context, chunks []*bridgeTypes.Chunk, ch
 		return errors.New("Batch must contain at least one chunk")
 	}
 
-	startChunkHash, err := chunks[0].Hash()
+	startChunkHashBytes, err := chunks[0].Hash()
 	if err != nil {
 		log.Error("failed to get start chunk hash", "err", err)
 		return err
 	}
+	startChunkHash := hex.EncodeToString(startChunkHashBytes)
 
-	endChunkHash, err := chunks[numChunks-1].Hash()
+	endChunkHashBytes, err := chunks[numChunks-1].Hash()
 	if err != nil {
 		log.Error("failed to get end chunk hash", "err", err)
+		return err
+	}
+	endChunkHash := hex.EncodeToString(endChunkHashBytes)
+
+	startChunkIndex, err := chunkOrm.GetChunkIndexByHash(startChunkHash)
+	if err != nil {
+		log.Error("failed to get start chunk index", "err", err)
+		return err
+	}
+
+	endChunkIndex, err := chunkOrm.GetChunkIndexByHash(endChunkHash)
+	if err != nil {
+		log.Error("failed to get end chunk index", "err", err)
 		return err
 	}
 
@@ -317,8 +299,10 @@ func (c *Batch) InsertBatch(ctx context.Context, chunks []*bridgeTypes.Chunk, ch
 	tmpBatch := Batch{
 		Index:                batchIndex,
 		Hash:                 batchHeader.Hash().Hex(),
-		StartChunkHash:       hex.EncodeToString(startChunkHash),
-		EndChunkHash:         hex.EncodeToString(endChunkHash),
+		StartChunkHash:       startChunkHash,
+		StartChunkIndex:      startChunkIndex,
+		EndChunkHash:         endChunkHash,
+		EndChunkIndex:        endChunkIndex,
 		BatchHeaderVersion:   batchHeader.Version(),
 		TotalL1MessagePopped: batchHeader.TotalL1MessagePopped(),
 		StateRoot:            chunks[numChunks-1].Blocks[lastChunkBlockNum-1].Header.Root.Hex(),
@@ -375,7 +359,7 @@ func (c *Batch) UpdateBatch(ctx context.Context, hash string, updateFields map[s
 	return err
 }
 
-func (c *Batch) UpdateSkippedBatches(ctx context.Context) (int64, error) {
+func (c *Batch) UpdateSkippedBatches(ctx context.Context) (uint64, error) {
 	res := c.db.Exec(`UPDATE batch SET rollup_status = ? WHERE
 		(proving_status = ? OR proving_status = ?) AND rollup_status = ?`,
 		types.RollupFinalizationSkipped, types.ProvingTaskSkipped, types.ProvingTaskFailed, types.RollupCommitted)
@@ -384,5 +368,23 @@ func (c *Batch) UpdateSkippedBatches(ctx context.Context) (int64, error) {
 		return 0, res.Error
 	}
 
-	return res.RowsAffected, nil
+	return uint64(res.RowsAffected), nil
+}
+
+// UpdateProofByHash update the block batch proof by hash
+// for unit test
+func (o *Batch) UpdateProofByHash(ctx context.Context, hash string, proof *message.AggProof, proofTimeSec uint64) error {
+	proofBytes, err := json.Marshal(proof)
+	if err != nil {
+		return err
+	}
+
+	updateFields := make(map[string]interface{})
+	updateFields["proof"] = proofBytes
+	updateFields["proof_time_sec"] = proofTimeSec
+	err = o.db.WithContext(ctx).Model(&Batch{}).Where("hash", hash).Updates(updateFields).Error
+	if err != nil {
+		log.Error("failed to update proof", "err", err)
+	}
+	return err
 }

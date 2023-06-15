@@ -5,9 +5,9 @@ create table batch
 (
     index                   BIGINT          NOT NULL,
     hash                    VARCHAR         NOT NULL,
-    start_chunk_index       INTEGER         NOT NULL,
+    start_chunk_index       BIGINT         NOT NULL,
     start_chunk_hash        VARCHAR         NOT NULL,
-    end_chunk_index         INTEGER         NOT NULL,
+    end_chunk_index         BIGINT         NOT NULL,
     end_chunk_hash          VARCHAR         NOT NULL,
     batch_header_version    SMALLINT        NOT NULL,
     total_l1_message_popped BIGINT          NOT NULL,

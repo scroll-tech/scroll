@@ -116,6 +116,7 @@ func (o *L2Block) RangeGetL2Blocks(ctx context.Context, startBlockNumber uint64,
 	var l2Blocks []L2Block
 	db := o.db.WithContext(ctx)
 	db = db.Where("number >= ? AND number <= ?", startBlockNumber, endBlockNumber)
+	db = db.Order("number ASC")
 
 	if err := db.Find(&l2Blocks).Error; err != nil {
 		return nil, err

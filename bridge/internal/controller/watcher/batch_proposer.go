@@ -90,7 +90,9 @@ func (p *BatchProposer) dbChunksToBridgeChunks(dbChunks []*orm.Chunk) ([]*bridge
 			log.Error("Failed to fetch wrapped blocks", "error", err)
 			return nil, err
 		}
-		chunks[i].Blocks = wrappedBlocks
+		chunks[i] = &bridgeTypes.Chunk{
+			Blocks: wrappedBlocks,
+		}
 	}
 	return chunks, nil
 }
