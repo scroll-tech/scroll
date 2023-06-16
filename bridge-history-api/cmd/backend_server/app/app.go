@@ -62,9 +62,10 @@ func init() {
 
 func action(ctx *cli.Context) error {
 	corsOptions := cors.New(cors.Options{
-		AllowedOrigins: []string{"*"},
-		AllowedMethods: []string{"GET", "POST", "PUT", "DELETE"},
-		AllowedHeaders: []string{"Content-Type", "Authorization"},
+		AllowedOrigins:   []string{"*"},
+		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE"},
+		AllowedHeaders:   []string{"Content-Type", "Authorization"},
+		AllowCredentials: true,
 	})
 	// Load config file.
 	cfgFile := ctx.String(cutils.ConfigFileFlag.Name)
