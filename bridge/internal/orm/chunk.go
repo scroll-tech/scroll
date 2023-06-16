@@ -239,7 +239,6 @@ func (o *Chunk) RangeUpdateBatchHashes(ctx context.Context, startIndex uint64, e
 	if len(dbTX) > 0 && dbTX[0] != nil {
 		db = dbTX[0]
 	}
-
 	db = db.Model(&Chunk{}).Where("index >= ? AND index <= ?", startIndex, endIndex)
 
 	if err := db.Update("batch_hash", batchHash).Error; err != nil {
