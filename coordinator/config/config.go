@@ -17,8 +17,9 @@ const (
 
 // RollerManagerConfig loads sequencer configuration items.
 type RollerManagerConfig struct {
-	PauseSendTask    bool `json:"pause_send_task"`
-	CompressionLevel int  `json:"compression_level,omitempty"`
+	PauseSendTask      bool   `json:"pause_send_task"`
+	PauseSendTaskUntil uint64 `json:"pause_send_task_until"`
+	CompressionLevel   int    `json:"compression_level,omitempty"`
 	// asc or desc (default: asc)
 	OrderSession string `json:"order_session,omitempty"`
 	// The amount of rollers to pick per proof generation session.
