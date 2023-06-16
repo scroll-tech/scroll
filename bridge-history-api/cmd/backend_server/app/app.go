@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/ethereum/go-ethereum/log"
+	"github.com/iris-contrib/middleware/cors"
 	"github.com/kataras/iris/v12"
 	"github.com/kataras/iris/v12/mvc"
 	"github.com/urfave/cli/v2"
@@ -60,6 +61,11 @@ func init() {
 }
 
 func action(ctx *cli.Context) error {
+	corsOptions := cors.New(cors.Options{
+		AllowedOrigins: []string{"*"},
+		AllowedMethods: []string{"GET", "POST", "PUT", "DELETE"},
+		AllowedHeaders: []string{"Content-Type", "Authorization"},
+	})
 	// Load config file.
 	cfgFile := ctx.String(cutils.ConfigFileFlag.Name)
 	cfg, err := config.NewConfig(cfgFile)
@@ -72,6 +78,7 @@ func action(ctx *cli.Context) error {
 	}
 	defer database.Close()
 	bridgeApp := iris.New()
+	bridgeApp.UseRouter(corsOptions)
 	bridgeApp.Get("/ping", pong).Describe("healthcheck")
 
 	mvc.Configure(bridgeApp.Party("/api/txs"), setupQueryByAddressHandler)

@@ -32,6 +32,6 @@
 		"maxIdleNum": 20
 	},
 	"server": {
-		"hostPort": "0.0.0.0:20006"
+		"hostPort": "127.0.0.1:8080"
 	}
 }
