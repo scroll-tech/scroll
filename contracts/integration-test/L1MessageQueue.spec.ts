@@ -2,7 +2,16 @@
 /* eslint-disable node/no-missing-import */
 import { expect } from "chai";
 import { BigNumber, constants } from "ethers";
-import { concat, getAddress, hexlify, keccak256, randomBytes, RLP } from "ethers/lib/utils";
+import {
+  concat,
+  getAddress,
+  hexlify,
+  keccak256,
+  randomBytes,
+  RLP,
+  stripZeros,
+  TransactionTypes,
+} from "ethers/lib/utils";
 import { ethers } from "hardhat";
 import { L1MessageQueue, L2GasPriceOracle } from "../typechain";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
@@ -94,8 +103,8 @@ describe("L1MessageQueue", async () => {
 
   context("#computeTransactionHash", async () => {
     it("should succeed", async () => {
-      const sender = hexlify(randomBytes(20));
-      const target = hexlify(randomBytes(20));
+      const sender = "0xb2a70fab1a45b1b9be443b6567849a1702bc1232";
+      const target = "0xcb18150e4efefb6786130e289a5f61a82a5b86d7";
       const transactionType = "0x7E";
 
       for (const nonce of [
@@ -123,19 +132,30 @@ describe("L1MessageQueue", async () => {
             constants.MaxUint256,
           ]) {
             for (const dataLen of [0, 1, 2, 3, 4, 55, 56, 100]) {
-              const data = randomBytes(dataLen);
-              const transactionPayload = RLP.encode([
-                nonce.toHexString(),
-                gasLimit.toHexString(),
-                target,
-                value.toHexString(),
-                data,
-                sender,
-              ]);
-              const payload = concat([transactionType, transactionPayload]);
-              const expectedHash = keccak256(payload);
-              const computedHash = await queue.computeTransactionHash(sender, nonce, value, target, gasLimit, data);
-              expect(expectedHash).to.eq(computedHash);
+              const tests = [randomBytes(dataLen)];
+              if (dataLen === 1) {
+                for (const byte of [0, 1, 127, 128]) {
+                  tests.push(Uint8Array.from([byte]));
+                }
+              }
+              for (const data of tests) {
+                const transactionPayload = RLP.encode([
+                  stripZeros(nonce.toHexString()),
+                  stripZeros(gasLimit.toHexString()),
+                  target,
+                  stripZeros(value.toHexString()),
+                  data,
+                  sender,
+                ]);
+                const payload = concat([transactionType, transactionPayload]);
+                const expectedHash = keccak256(payload);
+                const computedHash = await queue.computeTransactionHash(sender, nonce, value, target, gasLimit, data);
+                if (computedHash !== expectedHash) {
+                  console.log(hexlify(transactionPayload));
+                  console.log(nonce, gasLimit, target, value, data, sender);
+                }
+                expect(expectedHash).to.eq(computedHash);
+              }
             }
           }
         }

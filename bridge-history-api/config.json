@@ -2,7 +2,7 @@
 	"l1": {
 		"confirmation": 64,
 		"endpoint": "https://rpc.ankr.com/eth_goerli",
-		"startHeight": 8890194 ,
+		"startHeight": 9890194 ,
 		"blockTime": 10,
 		"MessengerAddr": "0x5260e38080BFe97e6C4925d9209eCc5f964373b6",
 		"ETHGatewayAddr": "0x429b73A21cF3BF1f3E696a21A95408161daF311f",
@@ -16,7 +16,7 @@
 		"confirmation": 1,
 		"endpoint": "https://alpha-rpc.scroll.io/l2",
 		"blockTime": 3,
-		"startHeight": 1600068,
+		"startHeight": 1900068,
 		"CustomERC20GatewayAddr": "0xa07Cb742657294C339fB4d5d6CdF3fdBeE8C1c68",
 		"ERC721GatewayAddr": "0x8Fee20e0C0Ef16f2898a8073531a857D11b9C700",
 		"StandardERC20Gateway": "0xB878F37BB278bf0e4974856fFe86f5e6F66BD725",
@@ -30,5 +30,8 @@
 		"driverName": "postgres",
 		"maxOpenNum": 200,
 		"maxIdleNum": 20
+	},
+	"server": {
+		"hostPort": "0.0.0.0:20006"
 	}
 }

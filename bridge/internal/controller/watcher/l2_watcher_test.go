@@ -236,6 +236,7 @@ func prepareAuth(t *testing.T, l2Cli *ethclient.Client, privateKey *ecdsa.Privat
 	assert.NoError(t, err)
 	auth.GasPrice, err = l2Cli.SuggestGasPrice(context.Background())
 	assert.NoError(t, err)
+	auth.GasLimit = 500000
 	return auth
 }
 
