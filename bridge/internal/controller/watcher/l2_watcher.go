@@ -129,7 +129,7 @@ func (w *L2WatcherClient) initializeGenesis() error {
 		}},
 	}
 
-	chunkHashBytes, err := chunk.Hash()
+	chunkHashBytes, err := chunk.Hash(0)
 	if err != nil {
 		return fmt.Errorf("failed to get L2 genesis chunk hash: %v", err)
 	}

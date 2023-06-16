@@ -16,15 +16,17 @@ type Chunk struct {
 	db *gorm.DB `gorm:"-"`
 
 	// block
-	Index            uint64 `json:"index" gorm:"column:index"`
-	Hash             string `json:"hash" gorm:"column:hash"`
-	StartBlockNumber uint64 `json:"start_block_number" gorm:"column:start_block_number"`
-	StartBlockHash   string `json:"start_block_hash" gorm:"column:start_block_hash"`
-	EndBlockNumber   uint64 `json:"end_block_number" gorm:"column:end_block_number"`
-	EndBlockHash     string `json:"end_block_hash" gorm:"column:end_block_hash"`
-	TotalGasUsed     uint64 `json:"total_gas_used" gorm:"column:total_gas_used"`
-	TotalTxNum       uint64 `json:"total_tx_num" gorm:"column:total_tx_num"`
-	TotalPayloadSize uint64 `json:"total_payload_size" gorm:"column:total_payload_size"`
+	Index                      uint64 `json:"index" gorm:"column:index"`
+	Hash                       string `json:"hash" gorm:"column:hash"`
+	StartBlockNumber           uint64 `json:"start_block_number" gorm:"column:start_block_number"`
+	StartBlockHash             string `json:"start_block_hash" gorm:"column:start_block_hash"`
+	EndBlockNumber             uint64 `json:"end_block_number" gorm:"column:end_block_number"`
+	EndBlockHash               string `json:"end_block_hash" gorm:"column:end_block_hash"`
+	TotalGasUsed               uint64 `json:"total_gas_used" gorm:"column:total_gas_used"`
+	TotalTxNum                 uint64 `json:"total_tx_num" gorm:"column:total_tx_num"`
+	TotalPayloadSize           uint64 `json:"total_payload_size" gorm:"column:total_payload_size"`
+	TotalL1MessagePoppedBefore uint64 `json:"total_l1_messages_popped_before" gorm:"column:total_l1_messages_popped_before"`
+	TotalL1Messages            uint64 `json:"total_l1_messages" gorm:"column:total_l1_messages"`
 
 	// proof
 	ProvingStatus    int16      `json:"proving_status" gorm:"column:proving_status;default:1"`
@@ -71,12 +73,12 @@ func (o *Chunk) RangeGetChunks(ctx context.Context, startIndex uint64, endIndex 
 	return chunks, nil
 }
 
-func (o *Chunk) GetChunkIndexByHash(chunkHash string) (uint64, error) {
+func (o *Chunk) GetChunkByStartBlockIndex(ctx context.Context, startBlockNumber uint64) (*Chunk, error) {
 	var chunk Chunk
-	if err := o.db.Where("hash = ?", chunkHash).First(&chunk).Error; err != nil {
-		return 0, err
+	if err := o.db.Where("start_block_number = ?", startBlockNumber).First(&chunk).Error; err != nil {
+		return nil, err
 	}
-	return chunk.Index, nil
+	return &chunk, nil
 }
 
 func (o *Chunk) GetUnbatchedChunks(ctx context.Context) ([]*Chunk, error) {
@@ -91,21 +93,52 @@ func (o *Chunk) GetUnbatchedChunks(ctx context.Context) ([]*Chunk, error) {
 	return chunks, nil
 }
 
+func (o *Chunk) GetTotalL1MessagePoppedByEndBlockNumber(ctx context.Context, endBlockNumber uint64) (uint64, error) {
+	var chunk Chunk
+	if err := o.db.Where("endBlockNumber = ?", endBlockNumber).First(&chunk).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return 0, nil
+		}
+		return 0, err
+	}
+	return chunk.TotalL1MessagePoppedBefore + chunk.TotalL1Messages, nil
+}
+
+func (o *Chunk) GetLatestChunk(ctx context.Context) (*Chunk, error) {
+	var latestChunk Chunk
+	err := o.db.WithContext(ctx).Order("index DESC").First(&latestChunk).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &latestChunk, nil
+}
+
 func (o *Chunk) InsertChunk(ctx context.Context, chunk *bridgeTypes.Chunk, l2BlockOrm *L2Block, dbTX ...*gorm.DB) error {
+	if chunk == nil || len(chunk.Blocks) == 0 || l2BlockOrm == nil {
+		return errors.New("invalid args")
+	}
+
 	db := o.db
 	if len(dbTX) > 0 && dbTX[0] != nil {
 		db = dbTX[0]
 	}
 
-	hash, err := chunk.Hash()
+	var totalL1MessagePoppedBefore uint64
+	parentChunk, err := o.GetLatestChunk(ctx)
+	if err != nil {
+		log.Error("failed to get latest chunk", "err", err)
+		return err
+	}
+	if parentChunk != nil {
+		totalL1MessagePoppedBefore = parentChunk.TotalL1MessagePoppedBefore + parentChunk.TotalL1Messages
+	}
+	hash, err := chunk.Hash(totalL1MessagePoppedBefore)
 	if err != nil {
 		log.Error("failed to get chunk hash", "err", err)
 		return err
-	}
-
-	numBlocks := len(chunk.Blocks)
-	if numBlocks == 0 {
-		return errors.New("chunk must contain at least one block")
 	}
 
 	var totalGasUsed uint64
@@ -129,16 +162,19 @@ func (o *Chunk) InsertChunk(ctx context.Context, chunk *bridgeTypes.Chunk, l2Blo
 		chunkIndex = lastChunk.Index + 1
 	}
 
+	numBlocks := len(chunk.Blocks)
 	tmpChunk := Chunk{
-		Index:            chunkIndex,
-		Hash:             hex.EncodeToString(hash),
-		StartBlockNumber: chunk.Blocks[0].Header.Number.Uint64(),
-		StartBlockHash:   chunk.Blocks[0].Header.Hash().Hex(),
-		EndBlockNumber:   chunk.Blocks[numBlocks-1].Header.Number.Uint64(),
-		EndBlockHash:     chunk.Blocks[numBlocks-1].Header.Hash().Hex(),
-		TotalGasUsed:     totalGasUsed,
-		TotalTxNum:       totalTxNum,
-		TotalPayloadSize: totalPayloadSize,
+		Index:                      chunkIndex,
+		Hash:                       hex.EncodeToString(hash),
+		StartBlockNumber:           chunk.Blocks[0].Header.Number.Uint64(),
+		StartBlockHash:             chunk.Blocks[0].Header.Hash().Hex(),
+		EndBlockNumber:             chunk.Blocks[numBlocks-1].Header.Number.Uint64(),
+		EndBlockHash:               chunk.Blocks[numBlocks-1].Header.Hash().Hex(),
+		TotalGasUsed:               totalGasUsed,
+		TotalTxNum:                 totalTxNum,
+		TotalPayloadSize:           totalPayloadSize,
+		TotalL1MessagePoppedBefore: totalL1MessagePoppedBefore,
+		TotalL1Messages:            chunk.NumL1Messages(totalL1MessagePoppedBefore),
 	}
 
 	tx := db.Begin()
@@ -165,7 +201,10 @@ func (o *Chunk) InsertChunk(ctx context.Context, chunk *bridgeTypes.Chunk, l2Blo
 		return err
 	}
 
-	tx.Commit()
+	if err := tx.Commit().Error; err != nil {
+		log.Error("failed to commit transaction", "err", err)
+		return err
+	}
 	return nil
 }
 
@@ -195,14 +234,17 @@ func (o *Chunk) UpdateProvingStatus(ctx context.Context, hash string, status typ
 	return nil
 }
 
-func (o *Chunk) UpdateBatchHashForChunks(chunkHashes []string, batchHash string, dbTX *gorm.DB) error {
-	err := dbTX.Model(&Chunk{}).
-		Where("hash IN ?", chunkHashes).
-		Update("batch_hash", batchHash).
-		Error
-
-	if err != nil {
-		log.Error("failed to update batch_hash for chunks", "err", err)
+func (o *Chunk) RangeUpdateBatchHashes(ctx context.Context, startIndex uint64, endIndex uint64, batchHash string, dbTX ...*gorm.DB) error {
+	db := o.db
+	if len(dbTX) > 0 && dbTX[0] != nil {
+		db = dbTX[0]
 	}
-	return err
+
+	db = db.Model(&Chunk{}).Where("index >= ? AND index <= ?", startIndex, endIndex)
+
+	if err := db.Update("batch_hash", batchHash).Error; err != nil {
+		log.Error("failed to update batch_hash for chunks", "err", err)
+		return err
+	}
+	return nil
 }

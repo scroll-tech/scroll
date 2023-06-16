@@ -81,12 +81,12 @@ func setupEnv(t *testing.T) {
 	}
 
 	chunk1 = &bridgeTypes.Chunk{Blocks: []*bridgeTypes.WrappedBlock{wrappedBlock1}}
-	chunkHashBytes1, err := chunk1.Hash()
+	chunkHashBytes1, err := chunk1.Hash(0)
 	assert.NoError(t, err)
 	chunkHash1 = hex.EncodeToString(chunkHashBytes1)
 
 	chunk2 = &bridgeTypes.Chunk{Blocks: []*bridgeTypes.WrappedBlock{wrappedBlock2}}
-	chunkHashBytes2, err := chunk2.Hash()
+	chunkHashBytes2, err := chunk2.Hash(chunk1.NumL1Messages(0))
 	assert.NoError(t, err)
 	chunkHash2 = hex.EncodeToString(chunkHashBytes2)
 }
@@ -176,7 +176,7 @@ func TestChunkOrm(t *testing.T) {
 	assert.Equal(t, types.ProvingTaskVerified, types.ProvingStatus(chunks[0].ProvingStatus))
 	assert.Equal(t, types.ProvingTaskAssigned, types.ProvingStatus(chunks[1].ProvingStatus))
 
-	err = chunkOrm.UpdateBatchHashForChunks([]string{chunkHash2}, "", chunkOrm.db)
+	err = chunkOrm.RangeUpdateBatchHashes(context.Background(), 0, 0, "test hash")
 	assert.NoError(t, err)
 	chunks, err = chunkOrm.GetUnbatchedChunks(context.Background())
 	assert.Len(t, chunks, 1)

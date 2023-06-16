@@ -2,7 +2,6 @@ package orm
 
 import (
 	"context"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -255,29 +254,21 @@ func (o *Batch) InsertBatch(ctx context.Context, chunks []*bridgeTypes.Chunk, ch
 		return nil
 	}
 
-	startChunkHashBytes, err := chunks[0].Hash()
+	startDBChunk, err := chunkOrm.GetChunkByStartBlockIndex(ctx, chunks[0].Blocks[0].Header.Number.Uint64())
 	if err != nil {
-		log.Error("failed to get start chunk hash", "err", err)
-		return err
-	}
-	startChunkHash := hex.EncodeToString(startChunkHashBytes)
-
-	endChunkHashBytes, err := chunks[numChunks-1].Hash()
-	if err != nil {
-		log.Error("failed to get end chunk hash", "err", err)
-		return err
-	}
-	endChunkHash := hex.EncodeToString(endChunkHashBytes)
-
-	startChunkIndex, err := chunkOrm.GetChunkIndexByHash(startChunkHash)
-	if err != nil {
-		log.Error("failed to get start chunk index", "err", err)
+		log.Error("failed to get db chunk",
+			"block number", chunks[0].Blocks[0].Header.Number.Uint64(),
+			"err", err,
+		)
 		return err
 	}
 
-	endChunkIndex, err := chunkOrm.GetChunkIndexByHash(endChunkHash)
+	endDBChunk, err := chunkOrm.GetChunkByStartBlockIndex(ctx, chunks[numChunks-1].Blocks[0].Header.Number.Uint64())
 	if err != nil {
-		log.Error("failed to get end chunk index", "err", err)
+		log.Error("failed to get db chunk",
+			"block number", chunks[numChunks-1].Blocks[0].Header.Number.Uint64(),
+			"err", err,
+		)
 		return err
 	}
 
@@ -307,10 +298,10 @@ func (o *Batch) InsertBatch(ctx context.Context, chunks []*bridgeTypes.Chunk, ch
 	tmpBatch := Batch{
 		Index:                batchIndex,
 		Hash:                 batchHeader.Hash().Hex(),
-		StartChunkHash:       startChunkHash,
-		StartChunkIndex:      startChunkIndex,
-		EndChunkHash:         endChunkHash,
-		EndChunkIndex:        endChunkIndex,
+		StartChunkHash:       startDBChunk.Hash,
+		StartChunkIndex:      startDBChunk.Index,
+		EndChunkHash:         endDBChunk.Hash,
+		EndChunkIndex:        endDBChunk.Index,
 		BatchHeaderVersion:   batchHeader.Version(),
 		TotalL1MessagePopped: batchHeader.TotalL1MessagePopped(),
 		StateRoot:            chunks[numChunks-1].Blocks[lastChunkBlockNum-1].Header.Root.Hex(),
@@ -330,24 +321,17 @@ func (o *Batch) InsertBatch(ctx context.Context, chunks []*bridgeTypes.Chunk, ch
 		return err
 	}
 
-	var blockNumbers []uint64
-	chunkHashes := make([]string, numChunks)
-	for i, chunk := range chunks {
-		b, _ := chunk.Hash()
-		chunkHashes[i] = hex.EncodeToString(b)
-		for _, block := range chunk.Blocks {
-			blockNumbers = append(blockNumbers, block.Header.Number.Uint64())
-		}
-	}
-
-	err = chunkOrm.UpdateBatchHashForChunks(chunkHashes, tmpBatch.Hash, tx)
+	err = chunkOrm.RangeUpdateBatchHashes(ctx, tmpBatch.StartChunkIndex, tmpBatch.EndChunkIndex, tmpBatch.Hash, tx)
 	if err != nil {
 		log.Error("failed to update batch hash for chunks", "err", err)
 		tx.Rollback()
 		return err
 	}
 
-	tx.Commit()
+	if err := tx.Commit().Error; err != nil {
+		log.Error("failed to commit transaction", "err", err)
+		return err
+	}
 	return nil
 }
 

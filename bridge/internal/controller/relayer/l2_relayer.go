@@ -240,7 +240,7 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 			encodedChunks[i] = chunkBytes
 		}
 
-		calldata, err := r.l1RollupABI.Pack("commitBatch", currentBatchHeader.Version(), parentBatchHeader.Encode(), encodedChunks, currentBatchHeader.EncodeSkippedL1MessageBitmap())
+		calldata, err := r.l1RollupABI.Pack("commitBatch", currentBatchHeader.Version(), parentBatchHeader.Encode(), encodedChunks, currentBatchHeader.SkippedL1MessageBitmap())
 		if err != nil {
 			log.Error("Failed to pack commitBatch", "batch_index", batch.Index, "error", err)
 			return
