@@ -24,12 +24,14 @@ type BatchHeader struct {
 func NewBatchHeader(version uint8, batchIndex, totalL1MessagePoppedBefore uint64, parentBatchHash common.Hash, chunks []*Chunk) (*BatchHeader, error) {
 	// TODO calculate `l1MessagePopped`, `totalL1MessagePopped`, and `skippedL1MessageBitmap` based on `chunks`
 	var dataBytes []byte
+	totalL1MessagePoppedBeforeChunk := totalL1MessagePoppedBefore
 	for _, chunk := range chunks {
 		// Build dataHash
-		chunkBytes, err := chunk.Hash()
+		chunkBytes, err := chunk.Hash(totalL1MessagePoppedBeforeChunk)
 		if err != nil {
 			return nil, err
 		}
+		totalL1MessagePoppedBeforeChunk += chunk.NumL1Messages(totalL1MessagePoppedBeforeChunk)
 
 		dataBytes = append(dataBytes, chunkBytes...)
 	}
