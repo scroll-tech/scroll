@@ -107,13 +107,10 @@ func updateCrossTxHash(msgHash string, txInfo *TxHistoryInfo, db db.OrmFactory) 
 }
 
 func (h *historyBackend) GetTxsByAddress(address common.Address, offset int64, limit int64) ([]*TxHistoryInfo, uint64, error) {
-	txHistories := make([]*TxHistoryInfo, 0)
+	var txHistories []*TxHistoryInfo
 	total, err := h.db.GetTotalCrossMsgCountByAddress(address.String())
-	if err != nil {
+	if err != nil || total == 0 {
 		return txHistories, 0, err
-	}
-	if total == 0 {
-		return txHistories, 0, nil
 	}
 	result, err := h.db.GetCrossMsgsByAddressWithOffset(address.String(), offset, limit)
 
