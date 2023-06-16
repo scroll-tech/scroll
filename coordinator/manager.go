@@ -75,7 +75,8 @@ type Manager struct {
 	cfg *config.RollerManagerConfig
 
 	// The indicator whether the backend is running or not.
-	running int32
+	running        int32
+	sendTaskPaused atomic.Bool //nolint:typecheck
 
 	// A mutex guarding the boolean below.
 	mu sync.RWMutex
@@ -201,6 +202,9 @@ func (m *Manager) Loop() {
 				}
 			}
 			// Select basic type roller and send message
+			if m.isSendTaskPaused() {
+				continue
+			}
 			for len(tasks) > 0 && m.StartBasicProofGenerationSession(tasks[0], nil) {
 				tasks = tasks[1:]
 			}
@@ -560,11 +564,28 @@ func (m *Manager) APIs() []rpc.API {
 			Public:    true,
 		},
 		{
+			Namespace: "coordinator",
+			Service:   CoordinatorAPI(m),
+			Public:    true,
+		},
+		{
 			Namespace: "debug",
 			Public:    true,
 			Service:   RollerDebugAPI(m),
 		},
 	}
+}
+
+func (m *Manager) StartSendTask() {
+	m.sendTaskPaused.Store(false)
+}
+
+func (m *Manager) PauseSendTask() {
+	m.sendTaskPaused.Store(true)
+}
+
+func (m *Manager) isSendTaskPaused() bool {
+	return m.sendTaskPaused.Load()
 }
 
 // StartBasicProofGenerationSession starts a basic proof generation session

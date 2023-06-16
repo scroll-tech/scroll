@@ -25,6 +25,12 @@ type RollerAPI interface {
 	SubmitProof(proof *message.ProofMsg) error
 }
 
+// CoordinatorAPI for Coordinator in order to manage process.
+type CoordinatorAPI interface {
+	StartSend()
+	PauseSend()
+}
+
 // RequestToken generates and sends back register token for roller
 func (m *Manager) RequestToken(authMsg *message.AuthMsg) (string, error) {
 	if ok, err := authMsg.Verify(); !ok {
@@ -126,4 +132,14 @@ func (m *Manager) SubmitProof(proof *message.ProofMsg) error {
 	defer m.freeTaskIDForRoller(pubkey, proof.ID)
 
 	return nil
+}
+
+// StartSend starts to send basic tasks.
+func (m *Manager) StartSend() {
+	m.StartSendTask()
+}
+
+// PauseSend pauses to send basic tasks.
+func (m *Manager) PauseSend() {
+	m.PauseSendTask()
 }
