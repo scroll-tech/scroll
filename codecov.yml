@@ -2,6 +2,8 @@ coverage:
   status:
     project: off
     patch: off
+comment:
+  layout: "reach,diff,flags,tree,betaprofiling"
 flag_management:
   individual_flags:
     - name: bridge
