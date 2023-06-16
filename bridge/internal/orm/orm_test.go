@@ -35,8 +35,10 @@ var (
 )
 
 func TestMain(m *testing.M) {
-	setupEnv(&testing.T{})
-	os.Exit(m.Run())
+	t := &testing.T{}
+	setupEnv(t)
+	m.Run()
+	tearDownEnv(t)
 }
 
 func setupEnv(t *testing.T) {
@@ -87,6 +89,13 @@ func setupEnv(t *testing.T) {
 	chunkHashBytes2, err := chunk2.Hash()
 	assert.NoError(t, err)
 	chunkHash2 = hex.EncodeToString(chunkHashBytes2)
+}
+
+func tearDownEnv(t *testing.T) {
+	sqlDB, err := db.DB()
+	assert.NoError(t, err)
+	sqlDB.Close()
+	base.Free()
 }
 
 func TestL2BlockOrm(t *testing.T) {
