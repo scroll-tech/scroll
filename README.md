@@ -1,5 +1,7 @@
 # Scroll Monorepo
 
+[![codecov](https://codecov.io/gh/scroll-tech/scroll/branch/develop/graph/badge.svg?token=VJVHNQWGGW)](https://codecov.io/gh/scroll-tech/scroll)
+
 ## Prerequisites
 + Go 1.19
 + Rust (for version, see [rust-toolchain](./common/libzkp/impl/rust-toolchain))
