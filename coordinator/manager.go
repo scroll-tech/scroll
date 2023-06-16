@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	cmap "github.com/orcaman/concurrent-map"
@@ -15,6 +14,7 @@ import (
 	"github.com/scroll-tech/go-ethereum/log"
 	geth_metrics "github.com/scroll-tech/go-ethereum/metrics"
 	"github.com/scroll-tech/go-ethereum/rpc"
+	"go.uber.org/atomic"
 	"golang.org/x/exp/rand"
 
 	"scroll-tech/common/metrics"
