@@ -64,9 +64,6 @@ func (o *ormFactory) GetTotalCrossMsgCountByAddress(sender string) (uint64, erro
 	var count uint64
 	row := o.DB.QueryRowx(`SELECT COUNT(*) FROM cross_message WHERE sender = $1 AND NOT is_deleted;`, sender)
 	if err := row.Scan(&count); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return 0, nil
-		}
 		return 0, err
 	}
 	return count, nil
