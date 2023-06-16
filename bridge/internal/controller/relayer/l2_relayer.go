@@ -28,7 +28,6 @@ import (
 var (
 	bridgeL2BatchesFinalizedTotalCounter          = gethMetrics.NewRegisteredCounter("bridge/l2/batches/finalized/total", metrics.ScrollRegistry)
 	bridgeL2BatchesCommittedTotalCounter          = gethMetrics.NewRegisteredCounter("bridge/l2/batches/committed/total", metrics.ScrollRegistry)
-	bridgeL2MsgsRelayedConfirmedTotalCounter      = gethMetrics.NewRegisteredCounter("bridge/l2/msgs/relayed/confirmed/total", metrics.ScrollRegistry)
 	bridgeL2BatchesFinalizedConfirmedTotalCounter = gethMetrics.NewRegisteredCounter("bridge/l2/batches/finalized/confirmed/total", metrics.ScrollRegistry)
 	bridgeL2BatchesCommittedConfirmedTotalCounter = gethMetrics.NewRegisteredCounter("bridge/l2/batches/committed/confirmed/total", metrics.ScrollRegistry)
 	bridgeL2BatchesSkippedTotalCounter            = gethMetrics.NewRegisteredCounter("bridge/l2/batches/skipped/total", metrics.ScrollRegistry)
@@ -47,7 +46,6 @@ type Layer2Relayer struct {
 
 	blockBatchOrm *orm.BlockBatch
 	blockTraceOrm *orm.BlockTrace
-	l2MessageOrm  *orm.L2Message
 
 	cfg *config.RelayerConfig
 
@@ -119,7 +117,6 @@ func NewLayer2Relayer(ctx context.Context, l2Client *ethclient.Client, db *gorm.
 		ctx: ctx,
 
 		blockBatchOrm: orm.NewBlockBatch(db),
-		l2MessageOrm:  orm.NewL2Message(db),
 		blockTraceOrm: orm.NewBlockTrace(db),
 
 		l2Client: l2Client,
@@ -386,25 +383,6 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 
 func (r *Layer2Relayer) handleConfirmation(confirmation *sender.Confirmation) {
 	transactionType := "Unknown"
-	// check whether it is message relay transaction
-	if msgHash, ok := r.processingMessage.Load(confirmation.ID); ok {
-		transactionType = "MessageRelay"
-		var status types.MsgStatus
-		if confirmation.IsSuccessful {
-			status = types.MsgConfirmed
-		} else {
-			status = types.MsgRelayFailed
-			log.Warn("transaction confirmed but failed in layer1", "confirmation", confirmation)
-		}
-		// @todo handle db error
-		err := r.l2MessageOrm.UpdateLayer2StatusAndLayer1Hash(r.ctx, msgHash.(string), status, confirmation.TxHash.String())
-		if err != nil {
-			log.Warn("UpdateLayer2StatusAndLayer1Hash failed", "msgHash", msgHash.(string), "err", err)
-		}
-		bridgeL2MsgsRelayedConfirmedTotalCounter.Inc(1)
-		r.processingMessage.Delete(confirmation.ID)
-	}
-
 	// check whether it is CommitBatches transaction
 	if batchBatches, ok := r.processingBatchesCommitment.Load(confirmation.ID); ok {
 		transactionType = "BatchesCommitment"

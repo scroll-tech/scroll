@@ -168,53 +168,6 @@ func testL2RelayerSkipBatches(t *testing.T) {
 	}
 }
 
-func testL2RelayerMsgConfirm(t *testing.T) {
-	db := setupL2RelayerDB(t)
-	defer bridgeUtils.CloseDB(db)
-	l2MessageOrm := orm.NewL2Message(db)
-	insertL2Messages := []orm.L2Message{
-		{MsgHash: "msg-1", Nonce: 0},
-		{MsgHash: "msg-2", Nonce: 1},
-	}
-	err := l2MessageOrm.SaveL2Messages(context.Background(), insertL2Messages)
-	assert.NoError(t, err)
-
-	// Create and set up the Layer2 Relayer.
-	l2Cfg := cfg.L2Config
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	l2Relayer, err := NewLayer2Relayer(ctx, l2Cli, db, l2Cfg.RelayerConfig)
-	assert.NoError(t, err)
-
-	// Simulate message confirmations.
-	l2Relayer.processingMessage.Store("msg-1", "msg-1")
-	l2Relayer.messageSender.SendConfirmation(&sender.Confirmation{
-		ID:           "msg-1",
-		IsSuccessful: true,
-	})
-	l2Relayer.processingMessage.Store("msg-2", "msg-2")
-	l2Relayer.messageSender.SendConfirmation(&sender.Confirmation{
-		ID:           "msg-2",
-		IsSuccessful: false,
-	})
-
-	// Check the database for the updated status using TryTimes.
-	assert.True(t, utils.TryTimes(5, func() bool {
-		fields1 := map[string]interface{}{"msg_hash": "msg-1"}
-		msg1, err1 := l2MessageOrm.GetL2Messages(fields1, nil, 0)
-		if len(msg1) != 1 {
-			return false
-		}
-		fields2 := map[string]interface{}{"msg_hash": "msg-2"}
-		msg2, err2 := l2MessageOrm.GetL2Messages(fields2, nil, 0)
-		if len(msg2) != 1 {
-			return false
-		}
-		return err1 == nil && types.MsgStatus(msg1[0].Status) == types.MsgConfirmed &&
-			err2 == nil && types.MsgStatus(msg2[0].Status) == types.MsgRelayFailed
-	}))
-}
-
 func testL2RelayerRollupConfirm(t *testing.T) {
 	db := setupL2RelayerDB(t)
 	defer bridgeUtils.CloseDB(db)

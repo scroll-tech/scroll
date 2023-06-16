@@ -113,7 +113,6 @@ func TestFunctions(t *testing.T) {
 	t.Run("TestCreateNewRelayer", testCreateNewRelayer)
 	t.Run("TestL2RelayerProcessCommittedBatches", testL2RelayerProcessCommittedBatches)
 	t.Run("TestL2RelayerSkipBatches", testL2RelayerSkipBatches)
-	t.Run("TestL2RelayerMsgConfirm", testL2RelayerMsgConfirm)
 	t.Run("TestL2RelayerRollupConfirm", testL2RelayerRollupConfirm)
 	t.Run("TestL2RelayerGasOracleConfirm", testL2RelayerGasOracleConfirm)
 	t.Run("TestLayer2RelayerProcessGasPriceOracle", testLayer2RelayerProcessGasPriceOracle)

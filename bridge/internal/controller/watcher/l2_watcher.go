@@ -48,7 +48,6 @@ type L2WatcherClient struct {
 	blockBatchOrm *orm.BlockBatch
 	blockTraceOrm *orm.BlockTrace
 	l1MessageOrm  *orm.L1Message
-	l2MessageOrm  *orm.L2Message
 
 	confirmations rpc.BlockNumber
 
@@ -82,7 +81,6 @@ func NewL2WatcherClient(ctx context.Context, client *ethclient.Client, confirmat
 		blockBatchOrm:      orm.NewBlockBatch(db),
 		blockTraceOrm:      orm.NewBlockTrace(db),
 		l1MessageOrm:       orm.NewL1Message(db),
-		l2MessageOrm:       l2MessageOrm,
 		processedMsgHeight: uint64(savedHeight),
 		confirmations:      confirmations,
 
