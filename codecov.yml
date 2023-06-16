@@ -11,10 +11,15 @@ flag_management:
         - type: project
           target: auto
           threshold: 1%
+    - name: bridge-history-api
+      statuses:
+        - type: project
+          target: auto
+          threshold: 1%
     - name: common
       statuses:
         - type: project
-          target: 0
+          target: auto
           threshold: 1%
     - name: coordinator
       statuses:
