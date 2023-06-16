@@ -9,6 +9,7 @@ require (
 	github.com/scroll-tech/go-ethereum v1.10.14-0.20230508165858-27a3830afa61
 	github.com/stretchr/testify v1.8.2
 	github.com/urfave/cli/v2 v2.17.2-0.20221006022127-8f469abc00aa
+	go.uber.org/atomic v1.11.0
 	golang.org/x/exp v0.0.0-20230206171751-46f607a40771
 	golang.org/x/sync v0.1.0
 )
