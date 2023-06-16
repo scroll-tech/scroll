@@ -16,7 +16,7 @@ type QueryHashController struct {
 }
 
 func (c *QueryAddressController) Get(req model.QueryByAddressRequest) (*model.QueryByAddressResponse, error) {
-	message, err := c.Service.GetTxsByAddress(common.HexToAddress(req.Address), int64(req.Offset), int64(req.Limit))
+	message, total, err := c.Service.GetTxsByAddress(common.HexToAddress(req.Address), int64(req.Offset), int64(req.Limit))
 	if err != nil {
 		return &model.QueryByAddressResponse{Message: "500", Data: &model.Data{}}, err
 	}
@@ -24,7 +24,7 @@ func (c *QueryAddressController) Get(req model.QueryByAddressRequest) (*model.Qu
 	return &model.QueryByAddressResponse{Message: "ok",
 		Data: &model.Data{
 			Result: message,
-			Total:  len(message),
+			Total:  total,
 		}}, nil
 }
 
