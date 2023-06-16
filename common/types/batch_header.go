@@ -103,14 +103,14 @@ func NewBatchHeader(version uint8, batchIndex, totalL1MessagePoppedBefore uint64
 
 // Encode encodes the BatchHeader into RollupV2 BatchHeaderV0Codec Encoding.
 func (b *BatchHeader) Encode() []byte {
-	batchBytes := make([]byte, 89)
+	batchBytes := make([]byte, 89+len(b.skippedL1MessageBitmap))
 	batchBytes[0] = b.version
 	binary.BigEndian.PutUint64(batchBytes[1:], b.batchIndex)
 	binary.BigEndian.PutUint64(batchBytes[9:], b.l1MessagePopped)
 	binary.BigEndian.PutUint64(batchBytes[17:], b.totalL1MessagePopped)
 	copy(batchBytes[25:], b.dataHash[:])
 	copy(batchBytes[57:], b.parentBatchHash[:])
-	batchBytes = append(batchBytes, b.skippedL1MessageBitmap...)
+	copy(batchBytes[89:], b.skippedL1MessageBitmap[:])
 	return batchBytes
 }
 
