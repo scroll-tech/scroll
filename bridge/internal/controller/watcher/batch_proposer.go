@@ -2,6 +2,7 @@ package watcher
 
 import (
 	"context"
+	"time"
 
 	"github.com/scroll-tech/go-ethereum/log"
 	"gorm.io/gorm"
@@ -19,6 +20,7 @@ type BatchProposer struct {
 	chunkOrm *orm.Chunk
 	l2Block  *orm.L2Block
 
+	batchTimeoutSec        uint64
 	maxPayloadSizePerBatch uint64
 	minPayloadSizePerBatch uint64
 }
@@ -30,6 +32,7 @@ func NewBatchProposer(ctx context.Context, cfg *config.BatchProposerConfig, db *
 		batchOrm:               orm.NewBatch(db),
 		chunkOrm:               orm.NewChunk(db),
 		l2Block:                orm.NewL2Block(db),
+		batchTimeoutSec:        cfg.BatchTimeoutSec,
 		maxPayloadSizePerBatch: cfg.MaxPayloadSizePerBatch,
 		minPayloadSizePerBatch: cfg.MinPayloadSizePerBatch,
 	}
@@ -75,7 +78,19 @@ func (p *BatchProposer) proposeBatchChunks() ([]*bridgeTypes.Chunk, error) {
 		}
 	}
 
-	if totalPayloadSize < p.minPayloadSizePerBatch {
+	var hasChunkTimeout bool
+	currentTimeSec := uint64(time.Now().Unix())
+	earliestBlockTime, err := p.l2Block.GetBlockTimestamp(dbChunks[0].StartBlockNumber)
+	if err != nil {
+		log.Error("GetBlockTimestamp failed", "block number", dbChunks[0].StartBlockNumber, "err", err)
+		return nil, err
+	}
+	if earliestBlockTime+p.batchTimeoutSec > currentTimeSec {
+		log.Warn("first block timeout", "block number", dbChunks[0].StartBlockNumber, "block timestamp", earliestBlockTime, "chunk time limit", currentTimeSec)
+		hasChunkTimeout = true
+	}
+
+	if !hasChunkTimeout && totalPayloadSize < p.minPayloadSizePerBatch {
 		log.Warn("The payload size of the batch is less than the minimum limit",
 			"totalPayloadSize", totalPayloadSize,
 			"minPayloadSizePerBatch", p.minPayloadSizePerBatch,

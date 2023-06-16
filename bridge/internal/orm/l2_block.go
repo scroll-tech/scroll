@@ -106,6 +106,16 @@ func (o *L2Block) GetL2Blocks(fields map[string]interface{}, orderByList []strin
 	return l2Blocks, nil
 }
 
+// GetBlockTimestamp returns the timestamp of the block with the given block number
+func (o *L2Block) GetBlockTimestamp(blockNumber uint64) (uint64, error) {
+	var l2Block L2Block
+	err := o.db.Select("block_timestamp").Where("number = ?", blockNumber).First(&l2Block).Error
+	if err != nil {
+		return 0, err
+	}
+	return l2Block.BlockTimestamp, nil
+}
+
 // RangeGetL2Blocks retrieves the L2 blocks within the specified range.
 func (o *L2Block) RangeGetL2Blocks(ctx context.Context, startBlockNumber uint64, endBlockNumber uint64) ([]*types.WrappedBlock, error) {
 	if startBlockNumber > endBlockNumber {

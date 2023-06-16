@@ -28,6 +28,7 @@ type L2Config struct {
 
 // ChunkProposerConfig loads chunk_proposer configuration items.
 type ChunkProposerConfig struct {
+	ChunkTimeoutSec        uint64 `json:"chunk_timeout_sec"`
 	MaxGasPerChunk         uint64 `json:"max_gas_per_chunk"`
 	MaxL2TxNumPerChunk     uint64 `json:"max_l2tx_num_chunk"`
 	MaxPayloadSizePerChunk uint64 `json:"max_payload_size_per_chunk"`
@@ -36,6 +37,7 @@ type ChunkProposerConfig struct {
 
 // BatchProposerConfig loads batch_proposer configuration items.
 type BatchProposerConfig struct {
+	BatchTimeoutSec        uint64 `json:"batch_timeout_sec"`
 	MaxPayloadSizePerBatch uint64 `json:"max_payload_size_per_batch"`
 	MinPayloadSizePerBatch uint64 `json:"min_payload_size_per_batch"`
 	MaxChunkNumPerBatch    uint64 `json:"max_chunk_num_per_batch"`

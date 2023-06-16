@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/log"
@@ -21,6 +22,7 @@ type ChunkProposer struct {
 	chunkOrm   *orm.Chunk
 	l2BlockOrm *orm.L2Block
 
+	chunkTimeoutSec        uint64
 	maxGasPerChunk         uint64
 	maxL2TxNumPerChunk     uint64
 	maxPayloadSizePerChunk uint64
@@ -33,6 +35,7 @@ func NewChunkProposer(ctx context.Context, cfg *config.ChunkProposerConfig, db *
 		db:                     db,
 		chunkOrm:               orm.NewChunk(db),
 		l2BlockOrm:             orm.NewL2Block(db),
+		chunkTimeoutSec:        cfg.ChunkTimeoutSec,
 		maxGasPerChunk:         cfg.MaxGasPerChunk,
 		maxL2TxNumPerChunk:     cfg.MaxL2TxNumPerChunk,
 		maxPayloadSizePerChunk: cfg.MaxPayloadSizePerChunk,
@@ -105,7 +108,14 @@ func (p *ChunkProposer) proposeChunk() (*bridgeTypes.Chunk, error) {
 		}
 	}
 
-	if totalPayloadSize < p.minPayloadSizePerChunk {
+	var hasBlockTimeout bool
+	currentTimeSec := uint64(time.Now().Unix())
+	if blocks[0].Header.Time+p.chunkTimeoutSec > currentTimeSec {
+		log.Warn("first block timeout", "block number", blocks[0].Header.Number, "block timestamp", blocks[0].Header.Time, "chunk time limit", currentTimeSec)
+		hasBlockTimeout = true
+	}
+
+	if !hasBlockTimeout && totalPayloadSize < p.minPayloadSizePerChunk {
 		log.Warn("The calldata size of the chunk is less than the minimum limit",
 			"totalPayloadSize", totalPayloadSize,
 			"minPayloadSizePerChunk", p.minPayloadSizePerChunk,
