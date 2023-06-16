@@ -22,24 +22,26 @@ type ChunkProposer struct {
 	chunkOrm   *orm.Chunk
 	l2BlockOrm *orm.L2Block
 
-	chunkTimeoutSec        uint64
-	maxGasPerChunk         uint64
-	maxL2TxNumPerChunk     uint64
-	maxPayloadSizePerChunk uint64
-	minPayloadSizePerChunk uint64
+	chunkTimeoutSec         uint64
+	maxGasPerChunk          uint64
+	maxL2TxNumPerChunk      uint64
+	maxCalldataGasPerChunk  uint64
+	maxCalldataSizePerChunk uint64
+	minCalldataSizePerChunk uint64
 }
 
 func NewChunkProposer(ctx context.Context, cfg *config.ChunkProposerConfig, db *gorm.DB) *ChunkProposer {
 	return &ChunkProposer{
-		ctx:                    ctx,
-		db:                     db,
-		chunkOrm:               orm.NewChunk(db),
-		l2BlockOrm:             orm.NewL2Block(db),
-		chunkTimeoutSec:        cfg.ChunkTimeoutSec,
-		maxGasPerChunk:         cfg.MaxGasPerChunk,
-		maxL2TxNumPerChunk:     cfg.MaxL2TxNumPerChunk,
-		maxPayloadSizePerChunk: cfg.MaxPayloadSizePerChunk,
-		minPayloadSizePerChunk: cfg.MinPayloadSizePerChunk,
+		ctx:                     ctx,
+		db:                      db,
+		chunkOrm:                orm.NewChunk(db),
+		l2BlockOrm:              orm.NewL2Block(db),
+		chunkTimeoutSec:         cfg.ChunkTimeoutSec,
+		maxGasPerChunk:          cfg.MaxGasPerChunk,
+		maxL2TxNumPerChunk:      cfg.MaxL2TxNumPerChunk,
+		maxCalldataGasPerChunk:  cfg.MaxCalldataGasPerChunk,
+		maxCalldataSizePerChunk: cfg.MaxCalldataSizePerChunk,
+		minCalldataSizePerChunk: cfg.MinCalldataSizePerChunk,
 	}
 }
 

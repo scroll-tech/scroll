@@ -75,14 +75,16 @@
     "chunk_proposer_config": {
       "chunk_timeout_sec": 300,
       "max_gas_per_chunk": 1000000,
-      "max_l2tx_num_chunk": 1000,
-      "max_payload_size_per_chunk": 100000,
-      "min_payload_size_per_chunk": 10000
+      "max_l2_tx_num_per_chunk": 1000,
+      "max_calldata_gas_per_chunk": 1000000,
+      "max_calldata_size_per_chunk": 100000,
+      "min_calldata_size_per_chunk": 10000
     },
     "batch_proposer_config": {
       "batch_timeout_sec": 600,
-      "max_payload_size_per_batch": 1000000,
-      "min_payload_size_per_batch": 100000
+      "max_calldata_gas_per_batch": 10000000,
+      "max_calldata_size_per_batch": 1000000,
+      "min_calldata_size_per_batch": 100000
     }
   },
   "db_config": {

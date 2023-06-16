@@ -141,6 +141,7 @@ func (o *Chunk) InsertChunk(ctx context.Context, chunk *bridgeTypes.Chunk, l2Blo
 		return err
 	}
 
+	// TODO: implement an exact calculation.
 	var totalGasUsed uint64
 	var totalTxNum uint64
 	var totalPayloadSize uint64

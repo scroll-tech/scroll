@@ -20,21 +20,23 @@ type BatchProposer struct {
 	chunkOrm *orm.Chunk
 	l2Block  *orm.L2Block
 
-	batchTimeoutSec        uint64
-	maxPayloadSizePerBatch uint64
-	minPayloadSizePerBatch uint64
+	batchTimeoutSec         uint64
+	maxCalldataGasPerChunk  uint64
+	maxCalldataSizePerBatch uint64
+	minCalldataSizePerBatch uint64
 }
 
 func NewBatchProposer(ctx context.Context, cfg *config.BatchProposerConfig, db *gorm.DB) *BatchProposer {
 	return &BatchProposer{
-		ctx:                    ctx,
-		db:                     db,
-		batchOrm:               orm.NewBatch(db),
-		chunkOrm:               orm.NewChunk(db),
-		l2Block:                orm.NewL2Block(db),
-		batchTimeoutSec:        cfg.BatchTimeoutSec,
-		maxPayloadSizePerBatch: cfg.MaxPayloadSizePerBatch,
-		minPayloadSizePerBatch: cfg.MinPayloadSizePerBatch,
+		ctx:                     ctx,
+		db:                      db,
+		batchOrm:                orm.NewBatch(db),
+		chunkOrm:                orm.NewChunk(db),
+		l2Block:                 orm.NewL2Block(db),
+		batchTimeoutSec:         cfg.BatchTimeoutSec,
+		maxCalldataGasPerChunk:  cfg.MaxCalldataGasPerChunk,
+		maxCalldataSizePerBatch: cfg.MaxCalldataSizePerBatch,
+		minCalldataSizePerBatch: cfg.MinCalldataSizePerBatch,
 	}
 }
 
