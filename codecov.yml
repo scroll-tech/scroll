@@ -11,11 +11,11 @@ flag_management:
         - type: project
           target: auto
           threshold: 1%
-    # - name: common
-    #  statuses:
-    #    - type: project
-    #      target: auto
-    #      threshold: 1%
+    - name: common
+      statuses:
+        - type: project
+          target: 0
+          threshold: 1%
     - name: coordinator
       statuses:
         - type: project

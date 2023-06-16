@@ -64,12 +64,12 @@ func GetCrossTxClaimInfo(msgHash string, db db.OrmFactory) *UserClaimInfo {
 	l2sentMsg, err := db.GetL2SentMsgByHash(msgHash)
 	if err != nil {
 		log.Debug("GetCrossTxClaimInfo failed", "error", err)
-		return nil
+		return &UserClaimInfo{}
 	}
 	batch, err := db.GetBridgeBatchByIndex(l2sentMsg.BatchIndex)
 	if err != nil {
 		log.Debug("GetCrossTxClaimInfo failed", "error", err)
-		return nil
+		return &UserClaimInfo{}
 	}
 	return &UserClaimInfo{
 		From:       l2sentMsg.Sender,
