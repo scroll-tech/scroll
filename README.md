@@ -1,5 +1,3 @@
-[![codecov](https://codecov.io/gh/scroll-tech/scroll/branch/staging/graph/badge.svg?token=VJVHNQWGGW)](https://codecov.io/gh/scroll-tech/scroll)
-
 # Scroll Monorepo
 
 ## Prerequisites
