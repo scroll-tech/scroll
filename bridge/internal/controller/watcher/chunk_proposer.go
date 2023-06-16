@@ -106,8 +106,11 @@ func (p *ChunkProposer) proposeChunk() (*bridgeTypes.Chunk, error) {
 	}
 
 	if totalPayloadSize < p.minPayloadSizePerChunk {
-		errMsg := fmt.Sprintf("The calldata size of the chunk is less than the minimum limit: %d", totalPayloadSize)
-		return nil, errors.New(errMsg)
+		log.Warn("The calldata size of the chunk is less than the minimum limit",
+			"totalPayloadSize", totalPayloadSize,
+			"minPayloadSizePerChunk", p.minPayloadSizePerChunk,
+		)
+		return nil, nil
 	}
 	return &bridgeTypes.Chunk{Blocks: blocks}, nil
 }

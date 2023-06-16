@@ -21,7 +21,6 @@ type BatchProposer struct {
 
 	maxPayloadSizePerBatch uint64
 	minPayloadSizePerBatch uint64
-	maxChunkNumPerBatch    uint64
 }
 
 func NewBatchProposer(ctx context.Context, cfg *config.BatchProposerConfig, db *gorm.DB) *BatchProposer {
@@ -33,7 +32,6 @@ func NewBatchProposer(ctx context.Context, cfg *config.BatchProposerConfig, db *
 		l2Block:                orm.NewL2Block(db),
 		maxPayloadSizePerBatch: cfg.MaxPayloadSizePerBatch,
 		minPayloadSizePerBatch: cfg.MinPayloadSizePerBatch,
-		maxChunkNumPerBatch:    cfg.MaxChunkNumPerBatch,
 	}
 }
 
