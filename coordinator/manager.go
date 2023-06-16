@@ -565,7 +565,7 @@ func (m *Manager) APIs() []rpc.API {
 			Public:    true,
 		},
 		{
-			Namespace: "coordinator",
+			Namespace: "admin",
 			Service:   AdminAPI(m),
 			Public:    true,
 		},
