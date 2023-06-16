@@ -29,6 +29,7 @@ type RollerAPI interface {
 type AdminAPI interface {
 	StartSend()
 	PauseSend()
+	PauseSendUntil(batchIdx uint64)
 }
 
 // RequestToken generates and sends back register token for roller
@@ -142,4 +143,9 @@ func (m *Manager) StartSend() {
 // PauseSend pauses to send basic tasks.
 func (m *Manager) PauseSend() {
 	m.PauseSendTask()
+}
+
+// PauseSendUntil pause to send basic tasks until batchIdx.
+func (m *Manager) PauseSendUntil(batchIdx uint64) {
+	m.PauseSendTaskUntil(batchIdx)
 }

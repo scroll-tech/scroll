@@ -76,8 +76,9 @@ type Manager struct {
 	cfg *config.RollerManagerConfig
 
 	// The indicator whether the backend is running or not.
-	running        int32
-	sendTaskPaused *uatomic.Bool //nolint:typecheck
+	running            int32
+	sendTaskPaused     *uatomic.Bool
+	pauseUntilBatchIdx atomic.Uint64
 
 	// A mutex guarding the boolean below.
 	mu sync.RWMutex
@@ -204,10 +205,13 @@ func (m *Manager) Loop() {
 				}
 			}
 			// Select basic type roller and send message
-			if m.isSendTaskPaused() {
-				continue
-			}
-			for len(tasks) > 0 && m.StartBasicProofGenerationSession(tasks[0], nil) {
+			for len(tasks) > 0 {
+				if m.isSendTaskPaused(tasks[0].Index) {
+					break
+				}
+				if !m.StartBasicProofGenerationSession(tasks[0], nil) {
+					break
+				}
 				tasks = tasks[1:]
 			}
 		case <-m.ctx.Done():
@@ -588,8 +592,14 @@ func (m *Manager) PauseSendTask() {
 	m.sendTaskPaused.Store(true)
 }
 
-func (m *Manager) isSendTaskPaused() bool {
-	return m.sendTaskPaused.Load()
+// PauseSendTaskUntil pauses to send basic tasks loop until batchIdx.
+func (m *Manager) PauseSendTaskUntil(batchIdx uint64) {
+	m.PauseSendTask()
+	m.pauseUntilBatchIdx.Store(batchIdx)
+}
+
+func (m *Manager) isSendTaskPaused(batchIdx uint64) bool {
+	return m.sendTaskPaused.Load() && m.pauseUntilBatchIdx.Load() > batchIdx
 }
 
 // StartBasicProofGenerationSession starts a basic proof generation session
