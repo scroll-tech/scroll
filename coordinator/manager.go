@@ -77,7 +77,7 @@ type Manager struct {
 
 	// The indicator whether the backend is running or not.
 	running        int32
-	sendTaskPaused uatomic.Bool //nolint:typecheck
+	sendTaskPaused *uatomic.Bool //nolint:typecheck
 
 	// A mutex guarding the boolean below.
 	mu sync.RWMutex
@@ -119,6 +119,7 @@ func New(ctx context.Context, cfg *config.RollerManagerConfig, orm database.OrmF
 	return &Manager{
 		ctx:                ctx,
 		cfg:                cfg,
+		sendTaskPaused:     uatomic.NewBool(cfg.PauseSendTask),
 		rollerPool:         cmap.New(),
 		sessions:           make(map[string]*session),
 		failedSessionInfos: make(map[string]*SessionInfo),
