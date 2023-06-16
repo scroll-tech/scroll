@@ -25,8 +25,8 @@ type RollerAPI interface {
 	SubmitProof(proof *message.ProofMsg) error
 }
 
-// CoordinatorAPI for Coordinator in order to manage process.
-type CoordinatorAPI interface {
+// AdminAPI for Coordinator in order to manage process.
+type AdminAPI interface {
 	StartSend()
 	PauseSend()
 }

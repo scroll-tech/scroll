@@ -565,7 +565,7 @@ func (m *Manager) APIs() []rpc.API {
 		},
 		{
 			Namespace: "coordinator",
-			Service:   CoordinatorAPI(m),
+			Service:   AdminAPI(m),
 			Public:    true,
 		},
 		{
@@ -576,10 +576,12 @@ func (m *Manager) APIs() []rpc.API {
 	}
 }
 
+// StartSendTask starts to send basic tasks loop.
 func (m *Manager) StartSendTask() {
 	m.sendTaskPaused.Store(false)
 }
 
+// PauseSendTask pauses to send basic tasks loop.
 func (m *Manager) PauseSendTask() {
 	m.sendTaskPaused.Store(true)
 }
