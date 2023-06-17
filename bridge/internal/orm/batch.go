@@ -216,7 +216,7 @@ func (o *Batch) GetBatchHeader(ctx context.Context, index uint64, chunkOrm *Chun
 	startChunkIndex := batch.StartChunkIndex
 	endChunkIndex := batch.EndChunkIndex
 
-	dbChunks, err := chunkOrm.RangeGetChunks(ctx, startChunkIndex, endChunkIndex)
+	dbChunks, err := chunkOrm.GetChunksInClosedRange(ctx, startChunkIndex, endChunkIndex)
 	if err != nil {
 		log.Error("Failed to fetch chunks", "error", err)
 		return nil, err
@@ -224,7 +224,7 @@ func (o *Batch) GetBatchHeader(ctx context.Context, index uint64, chunkOrm *Chun
 
 	chunks := make([]*bridgeTypes.Chunk, len(dbChunks))
 	for i, c := range dbChunks {
-		wrappedBlocks, err := l2BlockOrm.RangeGetL2Blocks(ctx, c.StartBlockNumber, c.EndBlockNumber)
+		wrappedBlocks, err := l2BlockOrm.GetL2BlocksInClosedRange(ctx, c.StartBlockNumber, c.EndBlockNumber)
 		if err != nil {
 			log.Error("Failed to fetch wrapped blocks", "error", err)
 			return nil, err
@@ -321,7 +321,7 @@ func (o *Batch) InsertBatch(ctx context.Context, chunks []*bridgeTypes.Chunk, ch
 		return err
 	}
 
-	err = chunkOrm.RangeUpdateBatchHashes(ctx, tmpBatch.StartChunkIndex, tmpBatch.EndChunkIndex, tmpBatch.Hash, tx)
+	err = chunkOrm.UpdateBatchHashInClosedRange(ctx, tmpBatch.StartChunkIndex, tmpBatch.EndChunkIndex, tmpBatch.Hash, tx)
 	if err != nil {
 		log.Error("failed to update batch hash for chunks", "err", err)
 		tx.Rollback()

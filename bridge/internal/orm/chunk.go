@@ -52,7 +52,7 @@ func (*Chunk) TableName() string {
 	return "chunk"
 }
 
-func (o *Chunk) RangeGetChunks(ctx context.Context, startIndex uint64, endIndex uint64) ([]*Chunk, error) {
+func (o *Chunk) GetChunksInClosedRange(ctx context.Context, startIndex uint64, endIndex uint64) ([]*Chunk, error) {
 	if startIndex > endIndex {
 		return nil, errors.New("start index should be less than or equal to end index")
 	}
@@ -191,13 +191,12 @@ func (o *Chunk) InsertChunk(ctx context.Context, chunk *bridgeTypes.Chunk, l2Blo
 		return err
 	}
 
-	blockNumbers := make([]uint64, numBlocks)
-	for i, block := range chunk.Blocks {
-		blockNumbers[i] = block.Header.Number.Uint64()
-	}
-
-	if err := l2BlockOrm.UpdateChunkHashForL2Blocks(blockNumbers, tmpChunk.Hash, tx); err != nil {
-		log.Error("failed to update chunk_hash for l2_blocks", "chunk_hash", tmpChunk.Hash, "block_numbers", blockNumbers, "err", err)
+	if err := l2BlockOrm.UpdateChunkHashInClosedRange(tmpChunk.StartBlockNumber, tmpChunk.EndBlockNumber, tmpChunk.Hash, tx); err != nil {
+		log.Error("failed to update chunk_hash for l2_blocks",
+			"chunk_hash", tmpChunk.Hash,
+			"start block", tmpChunk.StartBlockNumber,
+			"end block", tmpChunk.EndBlockNumber,
+			"err", err)
 		tx.Rollback()
 		return err
 	}
@@ -235,7 +234,7 @@ func (o *Chunk) UpdateProvingStatus(ctx context.Context, hash string, status typ
 	return nil
 }
 
-func (o *Chunk) RangeUpdateBatchHashes(ctx context.Context, startIndex uint64, endIndex uint64, batchHash string, dbTX ...*gorm.DB) error {
+func (o *Chunk) UpdateBatchHashInClosedRange(ctx context.Context, startIndex uint64, endIndex uint64, batchHash string, dbTX ...*gorm.DB) error {
 	db := o.db
 	if len(dbTX) > 0 && dbTX[0] != nil {
 		db = dbTX[0]

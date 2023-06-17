@@ -216,7 +216,7 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 		// get the chunks for the batch
 		startChunkIndex := batch.StartChunkIndex
 		endChunkIndex := batch.EndChunkIndex
-		dbChunks, err := r.chunkOrm.RangeGetChunks(r.ctx, startChunkIndex, endChunkIndex)
+		dbChunks, err := r.chunkOrm.GetChunksInClosedRange(r.ctx, startChunkIndex, endChunkIndex)
 		if err != nil {
 			log.Error("Failed to fetch chunks", "error", err)
 			return
@@ -224,7 +224,7 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 
 		encodedChunks := make([][]byte, len(dbChunks))
 		for i, c := range dbChunks {
-			wrappedBlocks, err := r.l2BlockOrm.RangeGetL2Blocks(r.ctx, c.StartBlockNumber, c.EndBlockNumber)
+			wrappedBlocks, err := r.l2BlockOrm.GetL2BlocksInClosedRange(r.ctx, c.StartBlockNumber, c.EndBlockNumber)
 			if err != nil {
 				log.Error("Failed to fetch wrapped blocks", "error", err)
 				return

@@ -116,8 +116,8 @@ func (o *L2Block) GetBlockTimestamp(blockNumber uint64) (uint64, error) {
 	return l2Block.BlockTimestamp, nil
 }
 
-// RangeGetL2Blocks retrieves the L2 blocks within the specified range.
-func (o *L2Block) RangeGetL2Blocks(ctx context.Context, startBlockNumber uint64, endBlockNumber uint64) ([]*types.WrappedBlock, error) {
+// GetL2BlocksInClosedRange retrieves the L2 blocks within the specified range.
+func (o *L2Block) GetL2BlocksInClosedRange(ctx context.Context, startBlockNumber uint64, endBlockNumber uint64) ([]*types.WrappedBlock, error) {
 	if startBlockNumber > endBlockNumber {
 		return nil, errors.New("start block number should be less than or equal to end block number")
 	}
@@ -192,13 +192,14 @@ func (o *L2Block) InsertL2Blocks(blocks []*types.WrappedBlock) error {
 	return nil
 }
 
-// UpdateChunkHashForL2Blocks update the chunk_hash of block tx
-func (o *L2Block) UpdateChunkHashForL2Blocks(blockNumbers []uint64, chunkHash string, dbTX ...*gorm.DB) error {
+// UpdateChunkHashInClosedRange update the chunk_hash of block tx
+func (o *L2Block) UpdateChunkHashInClosedRange(startIndex uint64, endIndex uint64, chunkHash string, dbTX ...*gorm.DB) error {
 	db := o.db
 	if len(dbTX) > 0 && dbTX[0] != nil {
 		db = dbTX[0]
 	}
 
-	err := db.Model(&L2Block{}).Where("number IN (?)", blockNumbers).Update("chunk_hash", chunkHash).Error
+	db = db.Model(&L2Block{}).Where("number >= ? AND number <= ?", startIndex, endIndex)
+	err := db.Update("chunk_hash", chunkHash).Error
 	return err
 }

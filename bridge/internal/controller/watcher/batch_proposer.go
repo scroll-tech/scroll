@@ -105,7 +105,7 @@ func (p *BatchProposer) proposeBatchChunks() ([]*bridgeTypes.Chunk, error) {
 func (p *BatchProposer) dbChunksToBridgeChunks(dbChunks []*orm.Chunk) ([]*bridgeTypes.Chunk, error) {
 	chunks := make([]*bridgeTypes.Chunk, len(dbChunks))
 	for i, c := range dbChunks {
-		wrappedBlocks, err := p.l2Block.RangeGetL2Blocks(p.ctx, c.StartBlockNumber, c.EndBlockNumber)
+		wrappedBlocks, err := p.l2Block.GetL2BlocksInClosedRange(p.ctx, c.StartBlockNumber, c.EndBlockNumber)
 		if err != nil {
 			log.Error("Failed to fetch wrapped blocks", "error", err)
 			return nil, err

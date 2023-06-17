@@ -102,7 +102,7 @@ func testRelayL2MessageSucceed(t *testing.T) {
 		for i, block := range batchData.Batch.Blocks {
 			blockIDs[i] = block.BlockNumber
 		}
-		dbTxErr = blockTraceOrm.UpdateChunkHashForL2Blocks(tx, blockIDs, batchHash)
+		dbTxErr = blockTraceOrm.UpdateChunkHashInClosedRange(tx, blockIDs, batchHash)
 		if dbTxErr != nil {
 			return dbTxErr
 		}

@@ -142,7 +142,7 @@ func (w *L2WatcherClient) initializeGenesis() error {
 	batchHash := batch.Hash().Hex()
 
 	err = w.db.Transaction(func(dbTX *gorm.DB) error {
-		if err := w.l2BlockOrm.UpdateChunkHashForL2Blocks([]uint64{genesis.Number.Uint64()}, batchHash, dbTX); err != nil {
+		if err := w.l2BlockOrm.UpdateChunkHashInClosedRange([]uint64{genesis.Number.Uint64()}, batchHash, dbTX); err != nil {
 			return fmt.Errorf("failed to update batch hash for L2 blocks: %v", err)
 		}
 
