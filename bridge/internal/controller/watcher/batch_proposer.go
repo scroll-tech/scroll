@@ -20,23 +20,25 @@ type BatchProposer struct {
 	chunkOrm *orm.Chunk
 	l2Block  *orm.L2Block
 
-	batchTimeoutSec         uint64
-	maxCalldataGasPerChunk  uint64
-	maxCalldataSizePerBatch uint64
-	minCalldataSizePerBatch uint64
+	maxChunkNumPerBatch             uint64
+	maxL1CommitGasPerBatch          uint64
+	maxL1CommitCalldataSizePerBatch uint64
+	minChunkNumPerBatch             uint64
+	batchTimeoutSec                 uint64
 }
 
 func NewBatchProposer(ctx context.Context, cfg *config.BatchProposerConfig, db *gorm.DB) *BatchProposer {
 	return &BatchProposer{
-		ctx:                     ctx,
-		db:                      db,
-		batchOrm:                orm.NewBatch(db),
-		chunkOrm:                orm.NewChunk(db),
-		l2Block:                 orm.NewL2Block(db),
-		batchTimeoutSec:         cfg.BatchTimeoutSec,
-		maxCalldataGasPerChunk:  cfg.MaxCalldataGasPerChunk,
-		maxCalldataSizePerBatch: cfg.MaxCalldataSizePerBatch,
-		minCalldataSizePerBatch: cfg.MinCalldataSizePerBatch,
+		ctx:                             ctx,
+		db:                              db,
+		batchOrm:                        orm.NewBatch(db),
+		chunkOrm:                        orm.NewChunk(db),
+		l2Block:                         orm.NewL2Block(db),
+		maxChunkNumPerBatch:             cfg.MaxChunkNumPerBatch,
+		maxL1CommitGasPerBatch:          cfg.MaxL1CommitGasPerBatch,
+		maxL1CommitCalldataSizePerBatch: cfg.MaxL1CommitCalldataSizePerBatch,
+		minChunkNumPerBatch:             cfg.MinChunkNumPerBatch,
+		batchTimeoutSec:                 cfg.BatchTimeoutSec,
 	}
 }
 
@@ -65,17 +67,17 @@ func (p *BatchProposer) proposeBatchChunks() ([]*bridgeTypes.Chunk, error) {
 	firstChunk := dbChunks[0]
 	totalPayloadSize := firstChunk.TotalPayloadSize
 
-	if totalPayloadSize > p.maxPayloadSizePerBatch {
+	if totalPayloadSize > p.maxL1CommitCalldataSizePerBatch {
 		log.Warn("The first chunk exceeds the max payload size limit",
 			"total payload size", totalPayloadSize,
-			"max payload size limit", p.maxPayloadSizePerBatch,
+			"max payload size limit", p.maxL1CommitCalldataSizePerBatch,
 		)
 		return p.dbChunksToBridgeChunks(dbChunks[:1])
 	}
 
 	for i, chunk := range dbChunks[1:] {
 		totalPayloadSize += chunk.TotalPayloadSize
-		if totalPayloadSize > p.maxPayloadSizePerBatch {
+		if totalPayloadSize > p.maxL1CommitCalldataSizePerBatch {
 			return p.dbChunksToBridgeChunks(dbChunks[:i+1])
 		}
 	}
@@ -92,10 +94,9 @@ func (p *BatchProposer) proposeBatchChunks() ([]*bridgeTypes.Chunk, error) {
 		hasChunkTimeout = true
 	}
 
-	if !hasChunkTimeout && totalPayloadSize < p.minPayloadSizePerBatch {
+	if !hasChunkTimeout && uint64(len(dbChunks)) < p.minChunkNumPerBatch {
 		log.Warn("The payload size of the batch is less than the minimum limit",
-			"totalPayloadSize", totalPayloadSize,
-			"minPayloadSizePerBatch", p.minPayloadSizePerBatch,
+			"chunk num", len(dbChunks), "minChunkNumPerBatch", p.minChunkNumPerBatch,
 		)
 		return nil, nil
 	}

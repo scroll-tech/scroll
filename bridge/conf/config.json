@@ -73,18 +73,19 @@
       ]
     },
     "chunk_proposer_config": {
-      "chunk_timeout_sec": 300,
-      "max_gas_per_chunk": 1000000,
-      "max_l2_tx_num_per_chunk": 1000,
-      "max_calldata_gas_per_chunk": 1000000,
-      "max_calldata_size_per_chunk": 100000,
-      "min_calldata_size_per_chunk": 10000
+      "max_l2_tx_gas_per_chunk": 1123456,
+      "max_l2_tx_num_per_chunk": 1123,
+      "max_l1_commit_gas_per_chunk": 11234567,
+      "max_l1_commit_calldata_size_per_chunk": 112345,
+      "min_l1_commit_calldata_size_per_chunk": 11234,
+      "chunk_timeout_sec": 300
     },
     "batch_proposer_config": {
-      "batch_timeout_sec": 600,
-      "max_calldata_gas_per_batch": 10000000,
-      "max_calldata_size_per_batch": 1000000,
-      "min_calldata_size_per_batch": 100000
+      "max_chunk_num_per_batch": 112,
+      "max_l1_commit_gas_per_batch": 11234567,
+      "max_l1_commit_calldata_size_per_batch": 112345,
+      "min_chunk_num_per_batch": 11,
+      "batch_timeout_sec": 300
     }
   },
   "db_config": {

@@ -22,26 +22,26 @@ type ChunkProposer struct {
 	chunkOrm   *orm.Chunk
 	l2BlockOrm *orm.L2Block
 
-	chunkTimeoutSec         uint64
-	maxGasPerChunk          uint64
-	maxL2TxNumPerChunk      uint64
-	maxCalldataGasPerChunk  uint64
-	maxCalldataSizePerChunk uint64
-	minCalldataSizePerChunk uint64
+	maxL2TxGasPerChunk              uint64
+	maxL2TxNumPerChunk              uint64
+	maxL1CommitGasPerChunk          uint64
+	maxL1CommitCalldataSizePerChunk uint64
+	minL1CommitCalldataSizePerChunk uint64
+	chunkTimeoutSec                 uint64
 }
 
 func NewChunkProposer(ctx context.Context, cfg *config.ChunkProposerConfig, db *gorm.DB) *ChunkProposer {
 	return &ChunkProposer{
-		ctx:                     ctx,
-		db:                      db,
-		chunkOrm:                orm.NewChunk(db),
-		l2BlockOrm:              orm.NewL2Block(db),
-		chunkTimeoutSec:         cfg.ChunkTimeoutSec,
-		maxGasPerChunk:          cfg.MaxGasPerChunk,
-		maxL2TxNumPerChunk:      cfg.MaxL2TxNumPerChunk,
-		maxCalldataGasPerChunk:  cfg.MaxCalldataGasPerChunk,
-		maxCalldataSizePerChunk: cfg.MaxCalldataSizePerChunk,
-		minCalldataSizePerChunk: cfg.MinCalldataSizePerChunk,
+		ctx:                             ctx,
+		db:                              db,
+		chunkOrm:                        orm.NewChunk(db),
+		l2BlockOrm:                      orm.NewL2Block(db),
+		maxL2TxGasPerChunk:              cfg.MaxL2TxGasPerChunk,
+		maxL2TxNumPerChunk:              cfg.MaxL2TxNumPerChunk,
+		maxL1CommitGasPerChunk:          cfg.MaxL1CommitGasPerChunk,
+		maxL1CommitCalldataSizePerChunk: cfg.MaxL1CommitCalldataSizePerChunk,
+		minL1CommitCalldataSizePerChunk: cfg.MinL1CommitCalldataSizePerChunk,
+		chunkTimeoutSec:                 cfg.ChunkTimeoutSec,
 	}
 }
 
@@ -112,12 +112,12 @@ func (p *ChunkProposer) proposeChunk() (*bridgeTypes.Chunk, error) {
 	}
 
 	// Use the first block to propose a chunk if it exceeds any limits
-	if totalGasUsed > p.maxGasPerChunk {
-		log.Warn("The first block exceeds the max gas limit", "block number", firstBlock.Header.Number, "gas used", totalGasUsed, "max gas limit", p.maxGasPerChunk)
+	if totalGasUsed > p.maxL2TxGasPerChunk {
+		log.Warn("The first block exceeds the max gas limit", "block number", firstBlock.Header.Number, "gas used", totalGasUsed, "max gas limit", p.maxL2TxGasPerChunk)
 		return &bridgeTypes.Chunk{Blocks: blocks[:1]}, nil
 	}
-	if totalPayloadSize > p.maxPayloadSizePerChunk {
-		log.Warn("The first block exceeds the max calldata size limit", "block number", firstBlock.Header.Number, "calldata size", totalPayloadSize, "max calldata size limit", p.maxPayloadSizePerChunk)
+	if totalPayloadSize > p.maxL1CommitCalldataSizePerChunk {
+		log.Warn("The first block exceeds the max calldata size limit", "block number", firstBlock.Header.Number, "calldata size", totalPayloadSize, "max calldata size limit", p.maxL1CommitCalldataSizePerChunk)
 		return &bridgeTypes.Chunk{Blocks: blocks[:1]}, nil
 	}
 
@@ -125,7 +125,7 @@ func (p *ChunkProposer) proposeChunk() (*bridgeTypes.Chunk, error) {
 		totalGasUsed += block.Header.GasUsed
 		totalL2TxNum += getL2TxsNum(block.Transactions)
 		totalPayloadSize += approximatePayloadSize(block)
-		if (totalGasUsed > p.maxGasPerChunk) || (totalL2TxNum > p.maxL2TxNumPerChunk) || (totalPayloadSize > p.maxPayloadSizePerChunk) {
+		if (totalGasUsed > p.maxL2TxGasPerChunk) || (totalL2TxNum > p.maxL2TxNumPerChunk) || (totalPayloadSize > p.maxL1CommitCalldataSizePerChunk) {
 			blocks = blocks[:i+1]
 			break
 		}
@@ -138,10 +138,10 @@ func (p *ChunkProposer) proposeChunk() (*bridgeTypes.Chunk, error) {
 		hasBlockTimeout = true
 	}
 
-	if !hasBlockTimeout && totalPayloadSize < p.minPayloadSizePerChunk {
+	if !hasBlockTimeout && totalPayloadSize < p.minL1CommitCalldataSizePerChunk {
 		log.Warn("The calldata size of the chunk is less than the minimum limit",
 			"totalPayloadSize", totalPayloadSize,
-			"minPayloadSizePerChunk", p.minPayloadSizePerChunk,
+			"minL1CommitCalldataSizePerChunk", p.minL1CommitCalldataSizePerChunk,
 		)
 		return nil, nil
 	}

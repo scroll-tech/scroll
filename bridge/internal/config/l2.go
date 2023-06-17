@@ -28,18 +28,19 @@ type L2Config struct {
 
 // ChunkProposerConfig loads chunk_proposer configuration items.
 type ChunkProposerConfig struct {
-	ChunkTimeoutSec         uint64 `json:"chunk_timeout_sec"`
-	MaxGasPerChunk          uint64 `json:"max_gas_per_chunk"`
-	MaxL2TxNumPerChunk      uint64 `json:"max_l2_tx_num_per_chunk"` // TODO: could this be replaced with MaxCalldataGasPerChunk?
-	MaxCalldataGasPerChunk  uint64 `json:"max_calldata_gas_per_chunk"`
-	MaxCalldataSizePerChunk uint64 `json:"max_calldata_size_per_chunk"`
-	MinCalldataSizePerChunk uint64 `json:"min_calldata_size_per_chunk"`
+	MaxL2TxGasPerChunk              uint64 `json:"max_l2_tx_gas_per_chunk"`
+	MaxL2TxNumPerChunk              uint64 `json:"max_l2_tx_num_per_chunk"`
+	MaxL1CommitGasPerChunk          uint64 `json:"max_l1_commit_gas_per_chunk"`
+	MaxL1CommitCalldataSizePerChunk uint64 `json:"max_l1_commit_calldata_size_per_chunk"`
+	MinL1CommitCalldataSizePerChunk uint64 `json:"min_l1_commit_calldata_size_per_chunk"`
+	ChunkTimeoutSec                 uint64 `json:"chunk_timeout_sec"`
 }
 
 // BatchProposerConfig loads batch_proposer configuration items.
 type BatchProposerConfig struct {
-	BatchTimeoutSec         uint64 `json:"batch_timeout_sec"`
-	MaxCalldataGasPerBatch  uint64 `json:"max_calldata_gas_per_batch"`
-	MaxCalldataSizePerBatch uint64 `json:"max_calldata_size_per_batch"`
-	MinCalldataSizePerBatch uint64 `json:"min_calldata_size_per_batch"`
+	MaxChunkNumPerBatch             uint64 `json:"max_chunk_num_per_batch"`
+	MaxL1CommitGasPerBatch          uint64 `json:"max_l1_commit_gas_per_batch"`
+	MaxL1CommitCalldataSizePerBatch uint64 `json:"max_l1_commit_calldata_size_per_batch"`
+	MinChunkNumPerBatch             uint64 `json:"min_chunk_num_per_batch"`
+	BatchTimeoutSec                 uint64 `json:"batch_timeout_sec"`
 }
