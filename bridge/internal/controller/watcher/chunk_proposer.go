@@ -102,7 +102,7 @@ func (p *ChunkProposer) proposeChunk() (*bridgeTypes.Chunk, error) {
 	// In such a scenario, manual intervention is needed to resolve the issue.
 	// This should not happen in practice because l2geth enforces the same limit.
 	if totalL2TxNum > p.maxL2TxNumPerChunk {
-		errMsg := fmt.Sprintln("The first block exceeds the max transaction number limit", "block number", firstBlock.Header.Number, "number of transactions", totalTxNum, "max transaction number limit", p.maxL2TxNumPerChunk)
+		errMsg := fmt.Sprintln("The first block exceeds the max transaction number limit", "block number", firstBlock.Header.Number, "number of transactions", totalL2TxNum, "max transaction number limit", p.maxL2TxNumPerChunk)
 		log.Error(errMsg)
 		return nil, errors.New(errMsg)
 	}

@@ -2,6 +2,7 @@ package watcher
 
 import (
 	"context"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"math/big"
@@ -133,7 +134,7 @@ func (w *L2WatcherClient) initializeGenesis() error {
 	if err != nil {
 		return fmt.Errorf("failed to get L2 genesis chunk hash: %v", err)
 	}
-	chunkHash := string(chunkHashBytes)
+	chunkHash := hex.EncodeToString(chunkHashBytes)
 
 	batch, err := bridgeTypes.NewBatchHeader(0, 0, 0, common.Hash{}, []*bridgeTypes.Chunk{chunk})
 	if err != nil {
