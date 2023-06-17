@@ -48,12 +48,33 @@ func NewChunkProposer(ctx context.Context, cfg *config.ChunkProposerConfig, db *
 func (p *ChunkProposer) TryProposeChunk() {
 	proposedChunk, err := p.proposeChunk()
 	if err != nil {
-		log.Error("proposeChunk failed", "err", err)
+		log.Error("propose new chunk failed", "err", err)
 		return
 	}
-	if err := p.chunkOrm.InsertChunk(p.ctx, proposedChunk, p.l2BlockOrm); err != nil {
-		log.Error("InsertChunk failed", "err", err)
+	err = p.updateChunkInfoInOrm(proposedChunk)
+	if err != nil {
+		log.Error("update chunk info in orm failed", "err", err)
 	}
+}
+
+func (p *ChunkProposer) updateChunkInfoInOrm(chunk *bridgeTypes.Chunk) error {
+	err := p.db.Transaction(func(dbTX *gorm.DB) error {
+		if err := p.chunkOrm.InsertChunk(p.ctx, chunk); err != nil {
+			return err
+		}
+		startBlockNum := chunk.Blocks[0].Header.Number.Uint64()
+		endBlockNum := startBlockNum + uint64(len(chunk.Blocks))
+		dbChunk, err := p.chunkOrm.GetLatestChunk(p.ctx)
+		if err != nil {
+			return err
+		}
+		if err := p.l2BlockOrm.UpdateChunkHashInClosedRange(startBlockNum, endBlockNum, dbChunk.Hash); err != nil {
+			log.Error("failed to update chunk_hash for l2_blocks", "chunk hash", dbChunk.Hash, "start block", 0, "end block", 0, "err", err)
+			return err
+		}
+		return nil
+	})
+	return err
 }
 
 func (p *ChunkProposer) proposeChunk() (*bridgeTypes.Chunk, error) {

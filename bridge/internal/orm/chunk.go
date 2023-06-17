@@ -116,8 +116,8 @@ func (o *Chunk) GetLatestChunk(ctx context.Context) (*Chunk, error) {
 	return &latestChunk, nil
 }
 
-func (o *Chunk) InsertChunk(ctx context.Context, chunk *bridgeTypes.Chunk, l2BlockOrm *L2Block, dbTX ...*gorm.DB) error {
-	if chunk == nil || len(chunk.Blocks) == 0 || l2BlockOrm == nil {
+func (o *Chunk) InsertChunk(ctx context.Context, chunk *bridgeTypes.Chunk, dbTX ...*gorm.DB) error {
+	if chunk == nil || len(chunk.Blocks) == 0 {
 		return errors.New("invalid args")
 	}
 
@@ -141,7 +141,7 @@ func (o *Chunk) InsertChunk(ctx context.Context, chunk *bridgeTypes.Chunk, l2Blo
 		return err
 	}
 
-	// TODO: implement an exact calculation.
+	// TODO: implement an exact payload size calculation.
 	var totalGasUsed uint64
 	var totalTxNum uint64
 	var totalPayloadSize uint64
@@ -178,31 +178,8 @@ func (o *Chunk) InsertChunk(ctx context.Context, chunk *bridgeTypes.Chunk, l2Blo
 		TotalL1Messages:            chunk.NumL1Messages(totalL1MessagePoppedBefore),
 	}
 
-	tx := db.Begin()
-	defer func() {
-		if r := recover(); r != nil {
-			tx.Rollback()
-		}
-	}()
-
-	if err := tx.Create(&tmpChunk).Error; err != nil {
+	if err := db.Create(&tmpChunk).Error; err != nil {
 		log.Error("failed to insert chunk", "hash", hash, "err", err)
-		tx.Rollback()
-		return err
-	}
-
-	if err := l2BlockOrm.UpdateChunkHashInClosedRange(tmpChunk.StartBlockNumber, tmpChunk.EndBlockNumber, tmpChunk.Hash, tx); err != nil {
-		log.Error("failed to update chunk_hash for l2_blocks",
-			"chunk_hash", tmpChunk.Hash,
-			"start block", tmpChunk.StartBlockNumber,
-			"end block", tmpChunk.EndBlockNumber,
-			"err", err)
-		tx.Rollback()
-		return err
-	}
-
-	if err := tx.Commit().Error; err != nil {
-		log.Error("failed to commit transaction", "err", err)
 		return err
 	}
 	return nil

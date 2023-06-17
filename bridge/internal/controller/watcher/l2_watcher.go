@@ -142,12 +142,18 @@ func (w *L2WatcherClient) initializeGenesis() error {
 	batchHash := batch.Hash().Hex()
 
 	err = w.db.Transaction(func(dbTX *gorm.DB) error {
-		if err := w.l2BlockOrm.UpdateChunkHashInClosedRange([]uint64{genesis.Number.Uint64()}, batchHash, dbTX); err != nil {
+		if err := w.l2BlockOrm.UpdateChunkHashInClosedRange(0, 0, batchHash, dbTX); err != nil {
 			return fmt.Errorf("failed to update batch hash for L2 blocks: %v", err)
 		}
 
-		if err := w.chunkOrm.InsertChunk(w.ctx, chunk, w.l2BlockOrm, dbTX); err != nil {
+		if err := w.chunkOrm.InsertChunk(w.ctx, chunk, dbTX); err != nil {
 			return fmt.Errorf("failed to insert chunk: %v", err)
+		}
+
+		if err := w.l2BlockOrm.UpdateChunkHashInClosedRange(0, 0, chunkHash, dbTX); err != nil {
+			log.Error("failed to update chunk_hash for l2_blocks",
+				"chunk_hash", chunkHash, "start block", 0, "end block", 0, "err", err)
+			return err
 		}
 
 		if err = w.chunkOrm.UpdateProvingStatus(w.ctx, chunkHash, types.ProvingTaskVerified, dbTX); err != nil {

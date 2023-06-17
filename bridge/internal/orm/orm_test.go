@@ -145,17 +145,11 @@ func TestChunkOrm(t *testing.T) {
 	err = l2BlockOrm.InsertL2Blocks([]*bridgeTypes.WrappedBlock{wrappedBlock1, wrappedBlock2})
 	assert.NoError(t, err)
 
-	err = chunkOrm.InsertChunk(context.Background(), chunk1, l2BlockOrm)
+	err = chunkOrm.InsertChunk(context.Background(), chunk1)
 	assert.NoError(t, err)
-	blocks, err := l2BlockOrm.GetUnchunkedBlocks()
-	assert.NoError(t, err)
-	assert.Len(t, blocks, 1)
-	assert.Equal(t, wrappedBlock2, blocks[0])
 
-	err = chunkOrm.InsertChunk(context.Background(), chunk2, l2BlockOrm)
-	blocks, err = l2BlockOrm.GetUnchunkedBlocks()
+	err = chunkOrm.InsertChunk(context.Background(), chunk2)
 	assert.NoError(t, err)
-	assert.Len(t, blocks, 0)
 
 	chunks, err := chunkOrm.GetUnbatchedChunks(context.Background())
 	assert.NoError(t, err)
@@ -190,10 +184,10 @@ func TestBatchOrm(t *testing.T) {
 	err = l2BlockOrm.InsertL2Blocks([]*bridgeTypes.WrappedBlock{wrappedBlock1, wrappedBlock2})
 	assert.NoError(t, err)
 
-	err = chunkOrm.InsertChunk(context.Background(), chunk1, l2BlockOrm)
+	err = chunkOrm.InsertChunk(context.Background(), chunk1)
 	assert.NoError(t, err)
 
-	err = chunkOrm.InsertChunk(context.Background(), chunk2, l2BlockOrm)
+	err = chunkOrm.InsertChunk(context.Background(), chunk2)
 	assert.NoError(t, err)
 
 	err = batchOrm.InsertBatch(context.Background(), []*bridgeTypes.Chunk{chunk1}, chunkOrm)
