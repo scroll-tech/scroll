@@ -14,14 +14,14 @@ type UpdateBlocktimestampFunc func(height uint64, timestamp time.Time) error
 
 type BlocktimestampFetcher struct {
 	ctx                                   context.Context
-	confirmation                          uint
+	confirmation                          uint64
 	blockTimeInSec                        int
 	client                                *ethclient.Client
 	updateBlocktimestampFunc              UpdateBlocktimestampFunc
 	getEarliestNoBlocktimestampHeightFunc GetEarliestNoBlocktimestampHeightFunc
 }
 
-func NewBlocktimestampFetcher(ctx context.Context, confirmation uint, blockTimeInSec int, client *ethclient.Client, updateBlocktimestampFunc UpdateBlocktimestampFunc, getEarliestNoBlocktimestampHeightFunc GetEarliestNoBlocktimestampHeightFunc) *BlocktimestampFetcher {
+func NewBlocktimestampFetcher(ctx context.Context, confirmation uint64, blockTimeInSec int, client *ethclient.Client, updateBlocktimestampFunc UpdateBlocktimestampFunc, getEarliestNoBlocktimestampHeightFunc GetEarliestNoBlocktimestampHeightFunc) *BlocktimestampFetcher {
 	return &BlocktimestampFetcher{
 		ctx:                                   ctx,
 		confirmation:                          confirmation,

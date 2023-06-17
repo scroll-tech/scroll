@@ -4,7 +4,7 @@ create table bridge_batch
 (
     id                  BIGSERIAL PRIMARY KEY,
     batch_index         BIGINT NOT NULL,
-    height              BIGINT NOT NULL,
+    commit_height       BIGINT NOT NULL,
     start_block_number  BIGINT NOT NULL,
     end_block_number    BIGINT NOT NULL,
     batch_hash          VARCHAR NOT NULL,

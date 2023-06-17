@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/jmoiron/sqlx"
 )
@@ -83,7 +82,7 @@ func (l *l2SentMsgOrm) BatchInsertL2SentMsgDBTx(dbTx *sqlx.Tx, messages []*L2Sen
 }
 
 func (l *l2SentMsgOrm) GetLatestSentMsgHeightOnL2() (int64, error) {
-	row := l.db.QueryRow(`SELECT height FROM l2_sent_msg WHERE msg_hash != '' AND NOT is_deleted ORDER BY nonce DESC LIMIT 1;`)
+	row := l.db.QueryRow(`SELECT height FROM l2_sent_msg WHERE NOT is_deleted ORDER BY nonce DESC LIMIT 1;`)
 	var result sql.NullInt64
 	if err := row.Scan(&result); err != nil {
 		if err == sql.ErrNoRows || !result.Valid {
@@ -97,15 +96,8 @@ func (l *l2SentMsgOrm) GetLatestSentMsgHeightOnL2() (int64, error) {
 	return 0, nil
 }
 
-func (l *l2SentMsgOrm) UpdateL2SentMsgL1HashDBTx(ctx context.Context, dbTx *sqlx.Tx, l1Hash, msgHash common.Hash) error {
-	if _, err := dbTx.ExecContext(ctx, l.db.Rebind("update public.l2_sent_msg set layer1_hash = ? where msg_hash = ? AMD NOT is_deleted;"), l1Hash.String(), msgHash.String()); err != nil {
-		return err
-	}
-	return nil
-}
-
 func (l *l2SentMsgOrm) UpdateL2MessageProofInDbTx(ctx context.Context, dbTx *sqlx.Tx, msgHash string, proof string, batch_index uint64) error {
-	if _, err := dbTx.ExecContext(ctx, l.db.Rebind("update public.l2_sent_msg set msg_proof = ?, batch_index = ? where msg_hash = ? AND NOT is_deleted;"), proof, batch_index, msgHash); err != nil {
+	if _, err := dbTx.ExecContext(ctx, l.db.Rebind("update l2_sent_msg set msg_proof = ?, batch_index = ? where msg_hash = ? AND NOT is_deleted;"), proof, batch_index, msgHash); err != nil {
 		return err
 	}
 	return nil
@@ -163,7 +155,7 @@ func (l *l2SentMsgOrm) GetLatestL2SentMsgLEHeight(endBlockNumber uint64) (*L2Sen
 }
 
 func (l *l2SentMsgOrm) DeleteL2SentMsgAfterHeightDBTx(dbTx *sqlx.Tx, height int64) error {
-	_, err := dbTx.Exec(`UPDATE l2_sent_msg SET is_deleted = true WHERE height > $1 AND layer1_hash != '';`, height)
+	_, err := dbTx.Exec(`UPDATE l2_sent_msg SET is_deleted = true WHERE height > $1;`, height)
 	return err
 }
 

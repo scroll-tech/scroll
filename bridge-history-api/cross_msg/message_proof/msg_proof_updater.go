@@ -44,27 +44,27 @@ func (m *MsgProofUpdater) Start() {
 			case <-tick.C:
 				latestBatch, err := m.db.GetLatestBridgeBatch()
 				if err != nil {
-					log.Warn("MsgProofUpdater: Can not get latest BridgeBatch: ", "err", err)
+					log.Warn("MsgProofUpdater: Can not get latest RollupBatch: ", "err", err)
 					continue
 				}
 				if latestBatch == nil {
 					continue
 				}
-				latestBatchHasProof, err := m.db.GetLatestL2SentMsgBactchIndex()
+				latestBatchIndexWithProof, err := m.db.GetLatestL2SentMsgBactchIndex()
 				if err != nil {
 					log.Error("MsgProofUpdater: Can not get latest L2SentMsgBatchIndex: ", "err", err)
 					continue
 				}
 				var start uint64
-				if latestBatchHasProof < 0 {
+				if latestBatchIndexWithProof < 0 {
 					start = 1
 				} else {
-					start = uint64(latestBatchHasProof) + 1
+					start = uint64(latestBatchIndexWithProof) + 1
 				}
 				for i := start; i <= latestBatch.BatchIndex; i++ {
 					batch, err := m.db.GetBridgeBatchByIndex(i)
 					if err != nil {
-						log.Error("MsgProofUpdater: Can not get BridgeBatch: ", "err", err, "index", i)
+						log.Error("MsgProofUpdater: Can not get RollupBatch: ", "err", err, "index", i)
 						continue
 					}
 					// get all l2 messages in this batch
@@ -109,7 +109,7 @@ func (m *MsgProofUpdater) initialize(ctx context.Context) {
 }
 
 func (m *MsgProofUpdater) initializeWithdrawTrie() error {
-	var batch *orm.BridgeBatch
+	var batch *orm.RollupBatch
 	firstMsg, err := m.db.GetL2SentMessageByNonce(0)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return fmt.Errorf("failed to get first l2 message: %v", err)
@@ -121,7 +121,7 @@ func (m *MsgProofUpdater) initializeWithdrawTrie() error {
 		return nil
 	}
 
-	// batch will never be empty, since we always have genesis batch in db
+	// if no batch, return and wait for next try round
 	batch, err = m.db.GetLatestBridgeBatch()
 	if err != nil {
 		return fmt.Errorf("failed to get latest batch: %v", err)
@@ -130,7 +130,7 @@ func (m *MsgProofUpdater) initializeWithdrawTrie() error {
 		return fmt.Errorf("no batch found")
 	}
 
-	var batches []*orm.BridgeBatch
+	var batches []*orm.RollupBatch
 	batchIndex := batch.BatchIndex
 	for {
 		var msg *orm.L2SentMsg
@@ -226,7 +226,7 @@ func (m *MsgProofUpdater) appendL2Messages(firstBlock, lastBlock uint64) ([]*orm
 
 	// double check whether nonce is matched
 	if messages[0].Nonce != m.withdrawTrie.NextMessageNonce {
-		log.Error("L2 message nonce mismatch", "expected", messages[0].Nonce, "found", m.withdrawTrie.NextMessageNonce)
+		log.Error("L2 message nonce mismatch", "expected", m.withdrawTrie.NextMessageNonce, "found", messages[0].Nonce)
 		return messages, msgProofs, fmt.Errorf("l2 message nonce mismatch, expected: %v, found: %v", messages[0].Nonce, m.withdrawTrie.NextMessageNonce)
 	}
 

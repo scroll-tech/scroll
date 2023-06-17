@@ -189,7 +189,7 @@ func L2FetchAndSaveEvents(ctx context.Context, client *ethclient.Client, databas
 	err = database.BatchInsertL2SentMsgDBTx(dbTx, l2sentMsgs)
 	if err != nil {
 		dbTx.Rollback()
-		log.Crit("l2FetchAndSaveEvents: Failed to indert l2 sent message", "err", err)
+		log.Crit("l2FetchAndSaveEvents: Failed to insert l2 sent message", "err", err)
 	}
 
 	err = dbTx.Commit()
