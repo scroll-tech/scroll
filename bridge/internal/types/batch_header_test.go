@@ -232,3 +232,20 @@ func TestBatchHeaderHash(t *testing.T) {
 	hash = batchHeader.Hash()
 	assert.Equal(t, "0ec9547c6645d5f0c1254e121f49e93f54525cfda5bfb2236440fb3470f48902", common.Bytes2Hex(hash.Bytes()))
 }
+
+func TestBatchHeaderDecode(t *testing.T) {
+	header := &BatchHeader{
+		version:                1,
+		batchIndex:             10,
+		l1MessagePopped:        20,
+		totalL1MessagePopped:   30,
+		dataHash:               common.HexToHash("0x01"),
+		parentBatchHash:        common.HexToHash("0x02"),
+		skippedL1MessageBitmap: []byte{0x01, 0x02, 0x03},
+	}
+
+	encoded := header.Encode()
+	decoded, err := DecodeBatchHeader(encoded)
+	assert.NoError(t, err)
+	assert.Equal(t, header, decoded)
+}

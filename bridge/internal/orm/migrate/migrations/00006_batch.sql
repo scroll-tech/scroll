@@ -12,8 +12,7 @@ create table batch
     end_chunk_hash          VARCHAR         NOT NULL,
     state_root              VARCHAR         NOT NULL,
     withdraw_root           VARCHAR         NOT NULL,
-    batch_header_version    SMALLINT        NOT NULL,
-    total_l1_message_popped BIGINT          NOT NULL,
+    batch_header            BYTEA           NOT NULL,
 
 -- proof
     proving_status          SMALLINT        NOT NULL DEFAULT 1,

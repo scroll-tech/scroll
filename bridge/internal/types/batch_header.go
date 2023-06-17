@@ -134,3 +134,20 @@ func (b *BatchHeader) Encode() []byte {
 func (b *BatchHeader) Hash() common.Hash {
 	return crypto.Keccak256Hash(b.Encode())
 }
+
+// DecodeBatchHeader attempts to decode the given byte slice into a BatchHeader.
+func DecodeBatchHeader(data []byte) (*BatchHeader, error) {
+	if len(data) < 89 {
+		return nil, fmt.Errorf("insufficient data for BatchHeader")
+	}
+	b := &BatchHeader{
+		version:                data[0],
+		batchIndex:             binary.BigEndian.Uint64(data[1:9]),
+		l1MessagePopped:        binary.BigEndian.Uint64(data[9:17]),
+		totalL1MessagePopped:   binary.BigEndian.Uint64(data[17:25]),
+		dataHash:               common.BytesToHash(data[25:57]),
+		parentBatchHash:        common.BytesToHash(data[57:89]),
+		skippedL1MessageBitmap: data[89:],
+	}
+	return b, nil
+}

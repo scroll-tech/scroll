@@ -22,16 +22,15 @@ type Batch struct {
 	db *gorm.DB `gorm:"column:-"`
 
 	// batch
-	Index                uint64 `json:"index" gorm:"column:index"`
-	Hash                 string `json:"hash" gorm:"column:hash"`
-	StartChunkIndex      uint64 `json:"start_chunk_index" gorm:"column:start_chunk_index"`
-	StartChunkHash       string `json:"start_chunk_hash" gorm:"column:start_chunk_hash"`
-	EndChunkIndex        uint64 `json:"end_chunk_index" gorm:"column:end_chunk_index"`
-	EndChunkHash         string `json:"end_chunk_hash" gorm:"column:end_chunk_hash"`
-	StateRoot            string `json:"state_root" gorm:"column:state_root"`
-	WithdrawRoot         string `json:"withdraw_root" gorm:"column:withdraw_root"`
-	BatchHeaderVersion   uint8  `json:"batch_header_version" gorm:"column:batch_header_version"`
-	TotalL1MessagePopped uint64 `json:"total_l1_message_popped" gorm:"column:total_l1_message_popped"`
+	Index           uint64 `json:"index" gorm:"column:index"`
+	Hash            string `json:"hash" gorm:"column:hash"`
+	StartChunkIndex uint64 `json:"start_chunk_index" gorm:"column:start_chunk_index"`
+	StartChunkHash  string `json:"start_chunk_hash" gorm:"column:start_chunk_hash"`
+	EndChunkIndex   uint64 `json:"end_chunk_index" gorm:"column:end_chunk_index"`
+	EndChunkHash    string `json:"end_chunk_hash" gorm:"column:end_chunk_hash"`
+	StateRoot       string `json:"state_root" gorm:"column:state_root"`
+	WithdrawRoot    string `json:"withdraw_root" gorm:"column:withdraw_root"`
+	BatchHeader     []byte `json:"batch_header" gorm:"column:batch_header"`
 
 	// proof
 	ProvingStatus    int16      `json:"proving_status" gorm:"column:proving_status;default:1"`
@@ -192,7 +191,7 @@ func (o *Batch) GetPendingBatches(ctx context.Context, limit int) ([]*Batch, err
 }
 
 // GetBatchHeader retrieves the header of a batch with a given index
-func (o *Batch) GetBatchHeader(ctx context.Context, index uint64, chunkOrm *Chunk, l2BlockOrm *L2Block) (*bridgeTypes.BatchHeader, error) {
+func (o *Batch) GetBatchHeader(ctx context.Context, index uint64) (*bridgeTypes.BatchHeader, error) {
 	var batch Batch
 	err := o.db.WithContext(ctx).Where("index = ?", index).First(&batch).Error
 	if err != nil {
@@ -201,45 +200,10 @@ func (o *Batch) GetBatchHeader(ctx context.Context, index uint64, chunkOrm *Chun
 		}
 		return nil, err
 	}
-
-	var parentBatchHash common.Hash
-	if index > 0 {
-		var parentBatchHashStr string
-		err = o.db.WithContext(ctx).Model(&batch).Where("index = ?", index-1).Pluck("hash", &parentBatchHashStr).Error
-		if err != nil {
-			log.Error("failed to get parent batch hash", "err", err)
-			return nil, err
-		}
-		parentBatchHash = common.HexToHash(parentBatchHashStr)
-	}
-
-	startChunkIndex := batch.StartChunkIndex
-	endChunkIndex := batch.EndChunkIndex
-
-	dbChunks, err := chunkOrm.GetChunksInClosedRange(ctx, startChunkIndex, endChunkIndex)
+	batchHeader, err := bridgeTypes.DecodeBatchHeader(batch.BatchHeader)
 	if err != nil {
-		log.Error("Failed to fetch chunks", "error", err)
 		return nil, err
 	}
-
-	chunks := make([]*bridgeTypes.Chunk, len(dbChunks))
-	for i, c := range dbChunks {
-		wrappedBlocks, err := l2BlockOrm.GetL2BlocksInClosedRange(ctx, c.StartBlockNumber, c.EndBlockNumber)
-		if err != nil {
-			log.Error("Failed to fetch wrapped blocks", "error", err)
-			return nil, err
-		}
-		chunks[i] = &bridgeTypes.Chunk{
-			Blocks: wrappedBlocks,
-		}
-	}
-
-	batchHeader, err := bridgeTypes.NewBatchHeader(batch.BatchHeaderVersion, batch.Index, batch.TotalL1MessagePopped, parentBatchHash, chunks)
-	if err != nil {
-		log.Error("failed to create batch header", "err", err)
-		return nil, err
-	}
-
 	return batchHeader, nil
 }
 
@@ -272,20 +236,24 @@ func (o *Batch) InsertBatch(ctx context.Context, chunks []*bridgeTypes.Chunk, ch
 		return err
 	}
 
-	var parentBatchHash common.Hash
-	var totalL1MessagePoppedBefore uint64
 	lastBatch, err := o.GetLatestBatch(ctx)
 	if err != nil {
 		log.Error("failed to get the latest batch", "err", err)
 		return err
 	}
 	var batchIndex uint64
+	var parentBatchHash common.Hash
+	var totalL1MessagePoppedBefore uint64
 	var version uint8 = defaultBatchHeaderVersion
 	if lastBatch != nil {
-		parentBatchHash = common.HexToHash(lastBatch.Hash)
-		totalL1MessagePoppedBefore = lastBatch.TotalL1MessagePopped
 		batchIndex = lastBatch.Index + 1
-		version = lastBatch.BatchHeaderVersion
+		parentBatchHash = common.HexToHash(lastBatch.Hash)
+		lastBatchHeader, err := bridgeTypes.DecodeBatchHeader(lastBatch.BatchHeader)
+		if err != nil {
+			return err
+		}
+		totalL1MessagePoppedBefore = lastBatchHeader.TotalL1MessagePopped()
+		version = lastBatchHeader.Version()
 	}
 
 	batchHeader, err := bridgeTypes.NewBatchHeader(version, batchIndex, totalL1MessagePoppedBefore, parentBatchHash, chunks)
@@ -296,16 +264,15 @@ func (o *Batch) InsertBatch(ctx context.Context, chunks []*bridgeTypes.Chunk, ch
 
 	lastChunkBlockNum := len(chunks[numChunks-1].Blocks)
 	tmpBatch := Batch{
-		Index:                batchIndex,
-		Hash:                 batchHeader.Hash().Hex(),
-		StartChunkHash:       startDBChunk.Hash,
-		StartChunkIndex:      startDBChunk.Index,
-		EndChunkHash:         endDBChunk.Hash,
-		EndChunkIndex:        endDBChunk.Index,
-		BatchHeaderVersion:   batchHeader.Version(),
-		TotalL1MessagePopped: batchHeader.TotalL1MessagePopped(),
-		StateRoot:            chunks[numChunks-1].Blocks[lastChunkBlockNum-1].Header.Root.Hex(),
-		WithdrawRoot:         chunks[numChunks-1].Blocks[lastChunkBlockNum-1].WithdrawTrieRoot.Hex(),
+		Index:           batchIndex,
+		Hash:            batchHeader.Hash().Hex(),
+		StartChunkHash:  startDBChunk.Hash,
+		StartChunkIndex: startDBChunk.Index,
+		EndChunkHash:    endDBChunk.Hash,
+		EndChunkIndex:   endDBChunk.Index,
+		StateRoot:       chunks[numChunks-1].Blocks[lastChunkBlockNum-1].Header.Root.Hex(),
+		WithdrawRoot:    chunks[numChunks-1].Blocks[lastChunkBlockNum-1].WithdrawTrieRoot.Hex(),
+		BatchHeader:     batchHeader.Encode(),
 	}
 
 	tx := db.Begin()

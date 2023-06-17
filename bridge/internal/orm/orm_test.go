@@ -210,11 +210,11 @@ func TestBatchOrm(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 2, len(pendingBatches))
 
-	batchHeader1, err := batchOrm.GetBatchHeader(context.Background(), 0, chunkOrm, l2BlockOrm)
+	batchHeader1, err := batchOrm.GetBatchHeader(context.Background(), 0)
 	assert.NoError(t, err)
 	batchHash1 := batchHeader1.Hash().Hex()
 
-	batchHeader2, err := batchOrm.GetBatchHeader(context.Background(), 1, chunkOrm, l2BlockOrm)
+	batchHeader2, err := batchOrm.GetBatchHeader(context.Background(), 1)
 	assert.NoError(t, err)
 	batchHash2 := batchHeader2.Hash().Hex()
 

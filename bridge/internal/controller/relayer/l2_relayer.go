@@ -201,13 +201,13 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 	for _, batch := range pendingBatches {
 
 		// get current header and parent header.
-		currentBatchHeader, err := r.batchOrm.GetBatchHeader(r.ctx, batch.Index, r.chunkOrm, r.l2BlockOrm)
+		currentBatchHeader, err := r.batchOrm.GetBatchHeader(r.ctx, batch.Index)
 		if err != nil {
 			log.Error("Failed to get batch header", "error", err)
 			return
 		}
 		// batch.Index > 0 since we have imported genesis batch.
-		parentBatchHeader, err := r.batchOrm.GetBatchHeader(r.ctx, batch.Index-1, r.chunkOrm, r.l2BlockOrm)
+		parentBatchHeader, err := r.batchOrm.GetBatchHeader(r.ctx, batch.Index-1)
 		if err != nil {
 			log.Error("Failed to get parent batch header", "error", err)
 			return
@@ -365,9 +365,9 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 			return
 		}
 
-		batchHeader, err := r.batchOrm.GetBatchHeader(r.ctx, batch.Index, r.chunkOrm, r.l2BlockOrm)
+		batchHeader, err := r.batchOrm.GetBatchHeader(r.ctx, batch.Index)
 		if err != nil {
-			log.Error("GetBatchHeader failed", "index", batch.Index, "err", err)
+			log.Error("get batch header failed", "index", batch.Index, "err", err)
 			return
 		}
 
