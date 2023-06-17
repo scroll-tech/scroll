@@ -116,9 +116,9 @@ func (o *Chunk) GetLatestChunk(ctx context.Context) (*Chunk, error) {
 	return &latestChunk, nil
 }
 
-func (o *Chunk) InsertChunk(ctx context.Context, chunk *bridgeTypes.Chunk, dbTX ...*gorm.DB) error {
+func (o *Chunk) InsertChunk(ctx context.Context, chunk *bridgeTypes.Chunk, dbTX ...*gorm.DB) (string, error) {
 	if chunk == nil || len(chunk.Blocks) == 0 {
-		return errors.New("invalid args")
+		return "", errors.New("invalid args")
 	}
 
 	db := o.db
@@ -130,7 +130,7 @@ func (o *Chunk) InsertChunk(ctx context.Context, chunk *bridgeTypes.Chunk, dbTX 
 	parentChunk, err := o.GetLatestChunk(ctx)
 	if err != nil {
 		log.Error("failed to get latest chunk", "err", err)
-		return err
+		return "", err
 	}
 	if parentChunk != nil {
 		totalL1MessagePoppedBefore = parentChunk.TotalL1MessagePoppedBefore + parentChunk.TotalL1Messages
@@ -138,7 +138,7 @@ func (o *Chunk) InsertChunk(ctx context.Context, chunk *bridgeTypes.Chunk, dbTX 
 	hash, err := chunk.Hash(totalL1MessagePoppedBefore)
 	if err != nil {
 		log.Error("failed to get chunk hash", "err", err)
-		return err
+		return "", err
 	}
 
 	// TODO: implement an exact payload size calculation.
@@ -157,14 +157,14 @@ func (o *Chunk) InsertChunk(ctx context.Context, chunk *bridgeTypes.Chunk, dbTX 
 	var lastChunk Chunk
 	if err := db.Order("index desc").First(&lastChunk).Error; err != nil {
 		if err != gorm.ErrRecordNotFound {
-			return err
+			return "", err
 		}
 	} else {
 		chunkIndex = lastChunk.Index + 1
 	}
 
 	numBlocks := len(chunk.Blocks)
-	tmpChunk := Chunk{
+	newChunk := Chunk{
 		Index:                      chunkIndex,
 		Hash:                       hex.EncodeToString(hash),
 		StartBlockNumber:           chunk.Blocks[0].Header.Number.Uint64(),
@@ -178,11 +178,11 @@ func (o *Chunk) InsertChunk(ctx context.Context, chunk *bridgeTypes.Chunk, dbTX 
 		TotalL1Messages:            chunk.NumL1Messages(totalL1MessagePoppedBefore),
 	}
 
-	if err := db.Create(&tmpChunk).Error; err != nil {
+	if err := db.Create(&newChunk).Error; err != nil {
 		log.Error("failed to insert chunk", "hash", hash, "err", err)
-		return err
+		return "", err
 	}
-	return nil
+	return newChunk.Hash, nil
 }
 
 // UpdateProvingStatus update the proving status

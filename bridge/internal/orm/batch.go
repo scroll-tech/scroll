@@ -207,39 +207,20 @@ func (o *Batch) GetBatchHeader(ctx context.Context, index uint64) (*bridgeTypes.
 	return batchHeader, nil
 }
 
-func (o *Batch) InsertBatch(ctx context.Context, chunks []*bridgeTypes.Chunk, chunkOrm *Chunk, dbTX ...*gorm.DB) error {
+func (o *Batch) InsertBatch(ctx context.Context, startChunkIndex, endChunkIndex uint64, startChunkHash, endChunkHash string, chunks []*bridgeTypes.Chunk, dbTX ...*gorm.DB) (string, error) {
+	if chunks == nil || len(chunks) == 0 {
+		return "", errors.New("invalid args")
+	}
+
 	db := o.db
 	if len(dbTX) > 0 && dbTX[0] != nil {
 		db = dbTX[0]
 	}
 
-	numChunks := len(chunks)
-	if numChunks == 0 {
-		return nil
-	}
-
-	startDBChunk, err := chunkOrm.GetChunkByStartBlockIndex(ctx, chunks[0].Blocks[0].Header.Number.Uint64())
-	if err != nil {
-		log.Error("failed to get db chunk",
-			"block number", chunks[0].Blocks[0].Header.Number.Uint64(),
-			"err", err,
-		)
-		return err
-	}
-
-	endDBChunk, err := chunkOrm.GetChunkByStartBlockIndex(ctx, chunks[numChunks-1].Blocks[0].Header.Number.Uint64())
-	if err != nil {
-		log.Error("failed to get db chunk",
-			"block number", chunks[numChunks-1].Blocks[0].Header.Number.Uint64(),
-			"err", err,
-		)
-		return err
-	}
-
 	lastBatch, err := o.GetLatestBatch(ctx)
 	if err != nil {
 		log.Error("failed to get the latest batch", "err", err)
-		return err
+		return "", err
 	}
 	var batchIndex uint64
 	var parentBatchHash common.Hash
@@ -250,7 +231,7 @@ func (o *Batch) InsertBatch(ctx context.Context, chunks []*bridgeTypes.Chunk, ch
 		parentBatchHash = common.HexToHash(lastBatch.Hash)
 		lastBatchHeader, err := bridgeTypes.DecodeBatchHeader(lastBatch.BatchHeader)
 		if err != nil {
-			return err
+			return "", err
 		}
 		totalL1MessagePoppedBefore = lastBatchHeader.TotalL1MessagePopped()
 		version = lastBatchHeader.Version()
@@ -259,47 +240,28 @@ func (o *Batch) InsertBatch(ctx context.Context, chunks []*bridgeTypes.Chunk, ch
 	batchHeader, err := bridgeTypes.NewBatchHeader(version, batchIndex, totalL1MessagePoppedBefore, parentBatchHash, chunks)
 	if err != nil {
 		log.Error("failed to create batch header", "err", err)
-		return err
+		return "", err
 	}
 
+	numChunks := len(chunks)
 	lastChunkBlockNum := len(chunks[numChunks-1].Blocks)
-	tmpBatch := Batch{
+	newBatch := Batch{
 		Index:           batchIndex,
 		Hash:            batchHeader.Hash().Hex(),
-		StartChunkHash:  startDBChunk.Hash,
-		StartChunkIndex: startDBChunk.Index,
-		EndChunkHash:    endDBChunk.Hash,
-		EndChunkIndex:   endDBChunk.Index,
+		StartChunkHash:  startChunkHash,
+		StartChunkIndex: startChunkIndex,
+		EndChunkHash:    endChunkHash,
+		EndChunkIndex:   endChunkIndex,
 		StateRoot:       chunks[numChunks-1].Blocks[lastChunkBlockNum-1].Header.Root.Hex(),
 		WithdrawRoot:    chunks[numChunks-1].Blocks[lastChunkBlockNum-1].WithdrawTrieRoot.Hex(),
 		BatchHeader:     batchHeader.Encode(),
 	}
 
-	tx := db.Begin()
-	defer func() {
-		if r := recover(); r != nil {
-			tx.Rollback()
-		}
-	}()
-
-	if err := tx.WithContext(ctx).Create(&tmpBatch).Error; err != nil {
+	if err := db.WithContext(ctx).Create(&newBatch).Error; err != nil {
 		log.Error("failed to insert batch", "err", err)
-		tx.Rollback()
-		return err
+		return "", err
 	}
-
-	err = chunkOrm.UpdateBatchHashInClosedRange(ctx, tmpBatch.StartChunkIndex, tmpBatch.EndChunkIndex, tmpBatch.Hash, tx)
-	if err != nil {
-		log.Error("failed to update batch hash for chunks", "err", err)
-		tx.Rollback()
-		return err
-	}
-
-	if err := tx.Commit().Error; err != nil {
-		log.Error("failed to commit transaction", "err", err)
-		return err
-	}
-	return nil
+	return newBatch.Hash, nil
 }
 
 // UpdateSkippedBatches update the skipped batches

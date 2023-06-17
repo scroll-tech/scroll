@@ -2,6 +2,7 @@ package watcher
 
 import (
 	"context"
+	"encoding/hex"
 	"time"
 
 	"github.com/scroll-tech/go-ethereum/log"
@@ -48,9 +49,52 @@ func (p *BatchProposer) TryProposeBatch() {
 		log.Error("proposeBatch failed", "err", err)
 		return
 	}
-	if err := p.batchOrm.InsertBatch(p.ctx, batchChunks, p.chunkOrm); err != nil {
-		log.Error("InsertBatch failed", "err", err)
+	if err := p.updateBatchInfoInDB(batchChunks); err != nil {
+		log.Error("update batch info in db failed", "err", err)
 	}
+}
+
+func (p *BatchProposer) updateBatchInfoInDB(chunks []*bridgeTypes.Chunk) error {
+	numChunks := len(chunks)
+	if numChunks <= 0 {
+		return nil
+	}
+	startDBChunk, err := p.chunkOrm.GetChunkByStartBlockIndex(p.ctx, chunks[0].Blocks[0].Header.Number.Uint64())
+	if err != nil {
+		return err
+	}
+	startChunkIndex := startDBChunk.Index
+
+	endDBChunk, err := p.chunkOrm.GetChunkByStartBlockIndex(p.ctx, chunks[numChunks-1].Blocks[0].Header.Number.Uint64())
+	if err != nil {
+		return err
+	}
+	endChunkIndex := endDBChunk.Index
+
+	startChunkHashBytes, err := chunks[0].Hash(startDBChunk.TotalL1MessagePoppedBefore)
+	if err != nil {
+		return err
+	}
+	startChunkHash := hex.EncodeToString(startChunkHashBytes)
+
+	endChunkHashBytes, err := chunks[numChunks-1].Hash(endDBChunk.TotalL1MessagePoppedBefore)
+	if err != nil {
+		return err
+	}
+	endChunkHash := hex.EncodeToString(endChunkHashBytes)
+
+	err = p.db.Transaction(func(dbTX *gorm.DB) error {
+		batchHash, err := p.batchOrm.InsertBatch(p.ctx, startChunkIndex, endChunkIndex, startChunkHash, endChunkHash, chunks, dbTX)
+		if err != nil {
+			return err
+		}
+		err = p.chunkOrm.UpdateBatchHashInClosedRange(p.ctx, startChunkIndex, endChunkIndex, batchHash, dbTX)
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+	return err
 }
 
 func (p *BatchProposer) proposeBatchChunks() ([]*bridgeTypes.Chunk, error) {

@@ -145,11 +145,13 @@ func TestChunkOrm(t *testing.T) {
 	err = l2BlockOrm.InsertL2Blocks([]*bridgeTypes.WrappedBlock{wrappedBlock1, wrappedBlock2})
 	assert.NoError(t, err)
 
-	err = chunkOrm.InsertChunk(context.Background(), chunk1)
+	hash1, err := chunkOrm.InsertChunk(context.Background(), chunk1)
 	assert.NoError(t, err)
+	assert.Equal(t, hash1, chunkHash1)
 
-	err = chunkOrm.InsertChunk(context.Background(), chunk2)
+	hash2, err := chunkOrm.InsertChunk(context.Background(), chunk2)
 	assert.NoError(t, err)
+	assert.Equal(t, hash2, chunkHash2)
 
 	chunks, err := chunkOrm.GetUnbatchedChunks(context.Background())
 	assert.NoError(t, err)
@@ -184,17 +186,29 @@ func TestBatchOrm(t *testing.T) {
 	err = l2BlockOrm.InsertL2Blocks([]*bridgeTypes.WrappedBlock{wrappedBlock1, wrappedBlock2})
 	assert.NoError(t, err)
 
-	err = chunkOrm.InsertChunk(context.Background(), chunk1)
+	hash1, err := chunkOrm.InsertChunk(context.Background(), chunk1)
+	assert.NoError(t, err)
+	assert.Equal(t, hash1, chunkHash1)
+
+	hash2, err := chunkOrm.InsertChunk(context.Background(), chunk2)
+	assert.NoError(t, err)
+	assert.Equal(t, hash2, chunkHash2)
+
+	hash1, err = batchOrm.InsertBatch(context.Background(), 0, 0, chunkHash1, chunkHash1, []*bridgeTypes.Chunk{chunk1})
 	assert.NoError(t, err)
 
-	err = chunkOrm.InsertChunk(context.Background(), chunk2)
+	batchHeader1, err := batchOrm.GetBatchHeader(context.Background(), 0)
+	assert.NoError(t, err)
+	batchHash1 := batchHeader1.Hash().Hex()
+	assert.Equal(t, hash1, batchHash1)
+
+	hash2, err = batchOrm.InsertBatch(context.Background(), 1, 1, chunkHash2, chunkHash2, []*bridgeTypes.Chunk{chunk2})
 	assert.NoError(t, err)
 
-	err = batchOrm.InsertBatch(context.Background(), []*bridgeTypes.Chunk{chunk1}, chunkOrm)
+	batchHeader2, err := batchOrm.GetBatchHeader(context.Background(), 1)
 	assert.NoError(t, err)
-
-	err = batchOrm.InsertBatch(context.Background(), []*bridgeTypes.Chunk{chunk2}, chunkOrm)
-	assert.NoError(t, err)
+	batchHash2 := batchHeader2.Hash().Hex()
+	assert.Equal(t, hash2, batchHash2)
 
 	count, err := batchOrm.GetBatchCount(context.Background())
 	assert.NoError(t, err)
@@ -203,14 +217,6 @@ func TestBatchOrm(t *testing.T) {
 	pendingBatches, err := batchOrm.GetPendingBatches(context.Background(), 100)
 	assert.NoError(t, err)
 	assert.Equal(t, 2, len(pendingBatches))
-
-	batchHeader1, err := batchOrm.GetBatchHeader(context.Background(), 0)
-	assert.NoError(t, err)
-	batchHash1 := batchHeader1.Hash().Hex()
-
-	batchHeader2, err := batchOrm.GetBatchHeader(context.Background(), 1)
-	assert.NoError(t, err)
-	batchHash2 := batchHeader2.Hash().Hex()
 
 	rollupStatus, err := batchOrm.GetRollupStatusByHashList(context.Background(), []string{batchHash1, batchHash2})
 	assert.NoError(t, err)
