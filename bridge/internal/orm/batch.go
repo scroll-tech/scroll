@@ -364,3 +364,21 @@ func (o *Batch) UpdateFinalizeTxHashAndRollupStatus(ctx context.Context, hash st
 	}
 	return nil
 }
+
+// UpdateProofByHash update the block batch proof by hash
+// for unit test
+func (o *Batch) UpdateProofByHash(ctx context.Context, hash string, proof *message.AggProof, proofTimeSec uint64) error {
+	proofBytes, err := json.Marshal(proof)
+	if err != nil {
+		return err
+	}
+
+	updateFields := make(map[string]interface{})
+	updateFields["proof"] = proofBytes
+	updateFields["proof_time_sec"] = proofTimeSec
+	err = o.db.WithContext(ctx).Model(&Batch{}).Where("hash", hash).Updates(updateFields).Error
+	if err != nil {
+		log.Error("failed to update proof", "err", err)
+	}
+	return err
+}

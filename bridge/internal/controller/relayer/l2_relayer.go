@@ -72,7 +72,7 @@ type Layer2Relayer struct {
 
 	// A list of processing batches commitment.
 	// key(string): confirmation ID, value(string): batch hash.
-	processingBatchCommitment sync.Map
+	processingCommitment sync.Map
 
 	// A list of processing batch finalization.
 	// key(string): confirmation ID, value(string): batch hash.
@@ -138,10 +138,10 @@ func NewLayer2Relayer(ctx context.Context, l2Client *ethclient.Client, db *gorm.
 		minGasPrice:  minGasPrice,
 		gasPriceDiff: gasPriceDiff,
 
-		cfg:                       cfg,
-		processingMessage:         sync.Map{},
-		processingBatchCommitment: sync.Map{},
-		processingFinalization:    sync.Map{},
+		cfg:                    cfg,
+		processingMessage:      sync.Map{},
+		processingCommitment:   sync.Map{},
+		processingFinalization: sync.Map{},
 	}
 	go layer2Relayer.handleConfirmLoop(ctx)
 	return layer2Relayer, nil
@@ -232,7 +232,7 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 			chunk := &bridgeTypes.Chunk{
 				Blocks: wrappedBlocks,
 			}
-			chunkBytes, err := chunk.Encode()
+			chunkBytes, err := chunk.Encode(dbChunks[i].TotalL1MessagePoppedBefore)
 			if err != nil {
 				log.Error("Failed to encode chunk", "error", err)
 				return
@@ -262,7 +262,7 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 			return
 		}
 		bridgeL2BatchesCommittedTotalCounter.Inc(1)
-		r.processingBatchCommitment.Store(txID, batch.Hash)
+		r.processingCommitment.Store(txID, batch.Hash)
 		log.Info("Sent the commitBatch tx to layer1", "tx_hash", txHash.Hex(), "batch_index", batch.Index)
 	}
 }
@@ -317,7 +317,11 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 			types.RollupFinalizing,
 			types.RollupFinalized,
 		}
+		var parentBatchStateRoot string
 		previousBatch, err := r.batchOrm.GetLatestBatchByRollupStatus(rollupStatues)
+		if err == nil {
+			parentBatchStateRoot = previousBatch.StateRoot
+		}
 		// skip submitting proof
 		if err == nil && uint64(batch.CreatedAt.Sub(previousBatch.CreatedAt).Seconds()) < r.cfg.FinalizeBatchIntervalSec {
 			log.Info(
@@ -373,8 +377,8 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 
 		data, err := r.l1RollupABI.Pack(
 			"finalizeBatchWithProof",
-			batchHeader,
-			common.HexToHash(previousBatch.StateRoot),
+			batchHeader.Encode(),
+			common.HexToHash(parentBatchStateRoot),
 			common.HexToHash(batch.StateRoot),
 			common.HexToHash(batch.WithdrawRoot),
 			aggProof.Proof,
@@ -414,30 +418,10 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 
 func (r *Layer2Relayer) handleConfirmation(confirmation *sender.Confirmation) {
 	transactionType := "Unknown"
-	// check whether it is message relay transaction
-	if msgHash, ok := r.processingMessage.Load(confirmation.ID); ok {
-		transactionType = "MessageRelay"
-		var status types.MsgStatus
-		if confirmation.IsSuccessful {
-			status = types.MsgConfirmed
-		} else {
-			status = types.MsgRelayFailed
-			log.Warn("transaction confirmed but failed in layer1", "confirmation", confirmation)
-		}
-
-		// @todo handle db error
-		err := r.l2MessageOrm.UpdateLayer2StatusAndLayer1Hash(r.ctx, msgHash.(string), status, confirmation.TxHash.String())
-		if err != nil {
-			log.Warn("UpdateLayer2StatusAndLayer1Hash failed", "msgHash", msgHash.(string), "err", err)
-		}
-		bridgeL2MsgsRelayedConfirmedTotalCounter.Inc(1)
-		r.processingMessage.Delete(confirmation.ID)
-	}
 
 	// check whether it is CommitBatches transaction
-	if batchBatches, ok := r.processingBatchCommitment.Load(confirmation.ID); ok {
+	if batchHash, ok := r.processingCommitment.Load(confirmation.ID); ok {
 		transactionType = "BatchesCommitment"
-		batchHashes := batchBatches.([]string)
 		var status types.RollupStatus
 		if confirmation.IsSuccessful {
 			status = types.RollupCommitted
@@ -445,15 +429,13 @@ func (r *Layer2Relayer) handleConfirmation(confirmation *sender.Confirmation) {
 			status = types.RollupCommitFailed
 			log.Warn("transaction confirmed but failed in layer1", "confirmation", confirmation)
 		}
-		for _, batchHash := range batchHashes {
-			// @todo handle db error
-			err := r.batchOrm.UpdateCommitTxHashAndRollupStatus(r.ctx, batchHash, confirmation.TxHash.String(), status)
-			if err != nil {
-				log.Warn("UpdateCommitTxHashAndRollupStatus failed", "batch_hash", batchHash, "err", err)
-			}
+		// @todo handle db error
+		err := r.batchOrm.UpdateCommitTxHashAndRollupStatus(r.ctx, batchHash.(string), confirmation.TxHash.String(), status)
+		if err != nil {
+			log.Warn("UpdateCommitTxHashAndRollupStatus failed", "batch_hash", batchHash, "err", err)
 		}
-		bridgeL2BatchesCommittedConfirmedTotalCounter.Inc(int64(len(batchHashes)))
-		r.processingBatchCommitment.Delete(confirmation.ID)
+		bridgeL2BatchesCommittedConfirmedTotalCounter.Inc(1)
+		r.processingCommitment.Delete(confirmation.ID)
 	}
 
 	// check whether it is proof finalization transaction
