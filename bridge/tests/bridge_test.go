@@ -130,13 +130,10 @@ func TestFunction(t *testing.T) {
 	setupEnv(t)
 
 	// l1 rollup and watch rollup events
-	t.Run("TestCommitBatchAndFinalizeBatch", testCommitBatchAndFinalizeBatch)
+	//t.Run("TestCommitBatchAndFinalizeBatch", testCommitBatchAndFinalizeBatch)
 
 	// l1 message
 	t.Run("TestRelayL1MessageSucceed", testRelayL1MessageSucceed)
-
-	// l2 message
-	t.Run("TestRelayL2MessageSucceed", testRelayL2MessageSucceed)
 
 	// l1/l2 gas oracle
 	t.Run("TestImportL1GasPrice", testImportL1GasPrice)

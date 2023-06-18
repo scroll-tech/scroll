@@ -3,7 +3,6 @@ package relayer
 import (
 	"context"
 	"errors"
-	"log"
 	"math/big"
 	"testing"
 
@@ -22,20 +21,6 @@ import (
 	"scroll-tech/bridge/internal/orm/migrate"
 	bridgeTypes "scroll-tech/bridge/internal/types"
 	bridgeUtils "scroll-tech/bridge/internal/utils"
-)
-
-var (
-	templateL2Message = []orm.L2Message{
-		{
-			Nonce:      1,
-			Height:     1,
-			Sender:     "0x596a746661dbed76a84556111c2872249b070e15",
-			Value:      "100",
-			Target:     "0x2c73620b223808297ea734d946813f0dd78eb8f7",
-			Calldata:   "testdata",
-			Layer2Hash: "hash0",
-		},
-	}
 )
 
 func setupL2RelayerDB(t *testing.T) *gorm.DB {
@@ -209,11 +194,6 @@ func testL2RelayerRollupConfirm(t *testing.T) {
 		for i, batchHash := range batchHashes {
 			batchInDB, err := batchOrm.GetBatches(context.Background(), map[string]interface{}{"hash": batchHash}, nil, 0)
 			if err != nil || len(batchInDB) != 1 || types.RollupStatus(batchInDB[0].RollupStatus) != expectedStatuses[i] {
-				log.Println("i", i, "err", err, "len(batchInDB)", len(batchInDB), "types.RollupStatus(batchInDB[0].RollupStatus)", types.RollupStatus(batchInDB[0].RollupStatus), "expectedStatuses[i]", expectedStatuses[i])
-				log.Println("i", i, "err", err, "len(batchInDB)", len(batchInDB), "types.RollupStatus(batchInDB[0].RollupStatus)", types.RollupStatus(batchInDB[0].RollupStatus), "expectedStatuses[i]", expectedStatuses[i])
-				log.Println("i", i, "err", err, "len(batchInDB)", len(batchInDB), "types.RollupStatus(batchInDB[0].RollupStatus)", types.RollupStatus(batchInDB[0].RollupStatus), "expectedStatuses[i]", expectedStatuses[i])
-				log.Println("i", i, "err", err, "len(batchInDB)", len(batchInDB), "types.RollupStatus(batchInDB[0].RollupStatus)", types.RollupStatus(batchInDB[0].RollupStatus), "expectedStatuses[i]", expectedStatuses[i])
-				log.Println("i", i, "err", err, "len(batchInDB)", len(batchInDB), "types.RollupStatus(batchInDB[0].RollupStatus)", types.RollupStatus(batchInDB[0].RollupStatus), "expectedStatuses[i]", expectedStatuses[i])
 				return false
 			}
 		}
