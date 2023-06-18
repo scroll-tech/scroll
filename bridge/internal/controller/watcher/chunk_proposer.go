@@ -15,7 +15,7 @@ import (
 	bridgeTypes "scroll-tech/bridge/internal/types"
 )
 
-// ChunkProposer proposes chunks based on available un-chunked blocks.
+// ChunkProposer proposes chunks based on available unchunked blocks.
 type ChunkProposer struct {
 	ctx context.Context
 	db  *gorm.DB
