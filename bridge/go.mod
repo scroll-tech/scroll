@@ -16,7 +16,6 @@ require (
 	golang.org/x/sync v0.1.0
 	gorm.io/driver/postgres v1.5.0
 	gorm.io/gorm v1.25.1
-	modernc.org/mathutil v1.4.1
 )
 
 require (
@@ -48,7 +47,6 @@ require (
 	github.com/mattn/go-runewidth v0.0.14 // indirect
 	github.com/mattn/go-sqlite3 v1.14.14 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
-	github.com/remyoudompheng/bigfft v0.0.0-20200410134404-eec4a21b6bb0 // indirect
 	github.com/rivo/uniseg v0.4.4 // indirect
 	github.com/rjeczalik/notify v0.9.1 // indirect
 	github.com/rogpeppe/go-internal v1.10.0 // indirect
