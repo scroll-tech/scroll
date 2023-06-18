@@ -9,7 +9,7 @@ create table l2_sent_msg
     msg_hash         VARCHAR NOT NULL,
     height           BIGINT NOT NULL,
     nonce            BIGINT NOT NULL,
-    batch_index      BIGINT DEFAULT NULL,
+    batch_index      BIGINT DEFAULT 0,
     msg_proof        TEXT DEFAULT '',
     msg_data         TEXT DEFAULT '',
     is_deleted       BOOLEAN NOT NULL DEFAULT FALSE,
