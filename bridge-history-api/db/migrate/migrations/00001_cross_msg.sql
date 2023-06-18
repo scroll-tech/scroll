@@ -20,6 +20,7 @@ create table cross_message
     created_at      TIMESTAMP(0) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at      TIMESTAMP(0) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     deleted_at      TIMESTAMP(0) DEFAULT NULL
+    CONSTRAINT      uq_layer1_hash_layer2_hash UNIQUE (layer1_hash, layer2_hash)
 );
 
 comment
