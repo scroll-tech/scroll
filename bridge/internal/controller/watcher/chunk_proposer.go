@@ -15,6 +15,7 @@ import (
 	bridgeTypes "scroll-tech/bridge/internal/types"
 )
 
+// ChunkProposer proposes chunks based on available un-chunked blocks.
 type ChunkProposer struct {
 	ctx context.Context
 	db  *gorm.DB
@@ -30,6 +31,7 @@ type ChunkProposer struct {
 	chunkTimeoutSec                 uint64
 }
 
+// NewChunkProposer creates a new ChunkProposer instance.
 func NewChunkProposer(ctx context.Context, cfg *config.ChunkProposerConfig, db *gorm.DB) *ChunkProposer {
 	return &ChunkProposer{
 		ctx:                             ctx,
@@ -45,6 +47,7 @@ func NewChunkProposer(ctx context.Context, cfg *config.ChunkProposerConfig, db *
 	}
 }
 
+// TryProposeChunk tries to propose a new chunk.
 func (p *ChunkProposer) TryProposeChunk() {
 	proposedChunk, err := p.proposeChunk()
 	if err != nil {
@@ -148,7 +151,7 @@ func getL2TxsNum(txs []*types.TransactionData) (count uint64) {
 	for _, tx := range txs {
 		// TODO(colinlyguo): replace with L1MessageTxType after upgrading github.com/scroll-tech/go-ethereum version in go.mod.
 		if tx.Type == types.LegacyTxType || tx.Type == types.AccessListTxType || tx.Type == types.DynamicFeeTxType {
-			count += 1
+			count++
 		}
 	}
 	return

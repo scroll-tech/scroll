@@ -14,6 +14,7 @@ import (
 	"gorm.io/gorm"
 )
 
+// Chunk represents a chunk of blocks in the database.
 type Chunk struct {
 	db *gorm.DB `gorm:"-"`
 
@@ -46,14 +47,17 @@ type Chunk struct {
 	DeletedAt gorm.DeletedAt `json:"deleted_at" gorm:"column:deleted_at;default:NULL"`
 }
 
+// NewChunk creates a new Chunk database instance.
 func NewChunk(db *gorm.DB) *Chunk {
 	return &Chunk{db: db}
 }
 
+// TableName returns the table name for the chunk model.
 func (*Chunk) TableName() string {
 	return "chunk"
 }
 
+// GetChunksInClosedRange retrieves chunks within the specified index range from the database.
 func (o *Chunk) GetChunksInClosedRange(ctx context.Context, startIndex uint64, endIndex uint64) ([]*Chunk, error) {
 	if startIndex > endIndex {
 		return nil, errors.New("start index should be less than or equal to end index")
@@ -74,6 +78,7 @@ func (o *Chunk) GetChunksInClosedRange(ctx context.Context, startIndex uint64, e
 	return chunks, nil
 }
 
+// GetChunkByStartBlockIndex retrieves a chunk from the database based on the start block number.
 func (o *Chunk) GetChunkByStartBlockIndex(ctx context.Context, startBlockNumber uint64) (*Chunk, error) {
 	var chunk Chunk
 	if err := o.db.Where("start_block_number = ?", startBlockNumber).First(&chunk).Error; err != nil {
@@ -82,6 +87,7 @@ func (o *Chunk) GetChunkByStartBlockIndex(ctx context.Context, startBlockNumber 
 	return &chunk, nil
 }
 
+// GetUnbatchedChunks retrieves unbatched chunks from the database.
 func (o *Chunk) GetUnbatchedChunks(ctx context.Context) ([]*Chunk, error) {
 	var chunks []*Chunk
 	err := o.db.WithContext(ctx).
@@ -94,6 +100,7 @@ func (o *Chunk) GetUnbatchedChunks(ctx context.Context) ([]*Chunk, error) {
 	return chunks, nil
 }
 
+// GetTotalL1MessagePoppedByEndBlockNumber retrieves the total number of L1 messages popped by the end block number.
 func (o *Chunk) GetTotalL1MessagePoppedByEndBlockNumber(ctx context.Context, endBlockNumber uint64) (uint64, error) {
 	var chunk Chunk
 	if err := o.db.Where("endBlockNumber = ?", endBlockNumber).First(&chunk).Error; err != nil {
@@ -105,6 +112,7 @@ func (o *Chunk) GetTotalL1MessagePoppedByEndBlockNumber(ctx context.Context, end
 	return chunk.TotalL1MessagePoppedBefore + chunk.TotalL1Messages, nil
 }
 
+// GetLatestChunk retrieves the latest chunk from the database.
 func (o *Chunk) GetLatestChunk(ctx context.Context) (*Chunk, error) {
 	var latestChunk Chunk
 	err := o.db.WithContext(ctx).Order("index DESC").First(&latestChunk).Error
@@ -117,6 +125,7 @@ func (o *Chunk) GetLatestChunk(ctx context.Context) (*Chunk, error) {
 	return &latestChunk, nil
 }
 
+// InsertChunk inserts a new chunk into the database.
 func (o *Chunk) InsertChunk(ctx context.Context, chunk *bridgeTypes.Chunk, dbTX ...*gorm.DB) (string, error) {
 	if chunk == nil || len(chunk.Blocks) == 0 {
 		return "", errors.New("invalid args")
@@ -186,7 +195,7 @@ func (o *Chunk) InsertChunk(ctx context.Context, chunk *bridgeTypes.Chunk, dbTX 
 	return newChunk.Hash, nil
 }
 
-// UpdateProvingStatus update the proving status
+// UpdateProvingStatus updates the proving status of a chunk.
 func (o *Chunk) UpdateProvingStatus(ctx context.Context, hash string, status types.ProvingStatus, dbTX ...*gorm.DB) error {
 	db := o.db
 	if len(dbTX) > 0 && dbTX[0] != nil {
@@ -212,6 +221,7 @@ func (o *Chunk) UpdateProvingStatus(ctx context.Context, hash string, status typ
 	return nil
 }
 
+// UpdateBatchHashInClosedRange updates the batch hash for chunks within the specified index range.
 func (o *Chunk) UpdateBatchHashInClosedRange(ctx context.Context, startIndex uint64, endIndex uint64, batchHash string, dbTX ...*gorm.DB) error {
 	db := o.db
 	if len(dbTX) > 0 && dbTX[0] != nil {

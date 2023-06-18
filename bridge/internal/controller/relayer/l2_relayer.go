@@ -24,10 +24,8 @@ import (
 )
 
 var (
-	bridgeL2MsgsRelayedTotalCounter               = gethMetrics.NewRegisteredCounter("bridge/l2/msgs/relayed/total", metrics.ScrollRegistry)
 	bridgeL2BatchesFinalizedTotalCounter          = gethMetrics.NewRegisteredCounter("bridge/l2/batches/finalized/total", metrics.ScrollRegistry)
 	bridgeL2BatchesCommittedTotalCounter          = gethMetrics.NewRegisteredCounter("bridge/l2/batches/committed/total", metrics.ScrollRegistry)
-	bridgeL2MsgsRelayedConfirmedTotalCounter      = gethMetrics.NewRegisteredCounter("bridge/l2/msgs/relayed/confirmed/total", metrics.ScrollRegistry)
 	bridgeL2BatchesFinalizedConfirmedTotalCounter = gethMetrics.NewRegisteredCounter("bridge/l2/batches/finalized/confirmed/total", metrics.ScrollRegistry)
 	bridgeL2BatchesCommittedConfirmedTotalCounter = gethMetrics.NewRegisteredCounter("bridge/l2/batches/committed/confirmed/total", metrics.ScrollRegistry)
 	bridgeL2BatchesSkippedTotalCounter            = gethMetrics.NewRegisteredCounter("bridge/l2/batches/skipped/total", metrics.ScrollRegistry)
@@ -192,6 +190,7 @@ func (r *Layer2Relayer) ProcessGasPriceOracle() {
 	}
 }
 
+// ProcessPendingBatches processes the pending batches by sending commitBatch transactions to layer 1.
 func (r *Layer2Relayer) ProcessPendingBatches() {
 	// get pending batch from database
 	pendingBatches, err := r.batchOrm.GetPendingBatches(r.ctx, 10)
@@ -227,7 +226,8 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 
 		encodedChunks := make([][]byte, len(dbChunks))
 		for i, c := range dbChunks {
-			wrappedBlocks, err := r.l2BlockOrm.GetL2BlocksInClosedRange(r.ctx, c.StartBlockNumber, c.EndBlockNumber)
+			var wrappedBlocks []*bridgeTypes.WrappedBlock
+			wrappedBlocks, err = r.l2BlockOrm.GetL2BlocksInClosedRange(r.ctx, c.StartBlockNumber, c.EndBlockNumber)
 			if err != nil {
 				log.Error("Failed to fetch wrapped blocks", "error", err)
 				return
@@ -235,7 +235,8 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 			chunk := &bridgeTypes.Chunk{
 				Blocks: wrappedBlocks,
 			}
-			chunkBytes, err := chunk.Encode(dbChunks[i].TotalL1MessagePoppedBefore)
+			var chunkBytes []byte
+			chunkBytes, err = chunk.Encode(dbChunks[i].TotalL1MessagePoppedBefore)
 			if err != nil {
 				log.Error("Failed to encode chunk", "error", err)
 				return

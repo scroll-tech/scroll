@@ -13,6 +13,7 @@ import (
 	bridgeTypes "scroll-tech/bridge/internal/types"
 )
 
+// BatchProposer proposes batches based on available unbatched chunks.
 type BatchProposer struct {
 	ctx context.Context
 	db  *gorm.DB
@@ -28,6 +29,7 @@ type BatchProposer struct {
 	batchTimeoutSec                 uint64
 }
 
+// NewBatchProposer creates a new BatchProposer instance.
 func NewBatchProposer(ctx context.Context, cfg *config.BatchProposerConfig, db *gorm.DB) *BatchProposer {
 	return &BatchProposer{
 		ctx:                             ctx,
@@ -43,6 +45,7 @@ func NewBatchProposer(ctx context.Context, cfg *config.BatchProposerConfig, db *
 	}
 }
 
+// TryProposeBatch tries to propose a new batches.
 func (p *BatchProposer) TryProposeBatch() {
 	batchChunks, err := p.proposeBatchChunks()
 	if err != nil {
@@ -84,7 +87,8 @@ func (p *BatchProposer) updateBatchInfoInDB(chunks []*bridgeTypes.Chunk) error {
 	endChunkHash := hex.EncodeToString(endChunkHashBytes)
 
 	err = p.db.Transaction(func(dbTX *gorm.DB) error {
-		batchHash, err := p.batchOrm.InsertBatch(p.ctx, startChunkIndex, endChunkIndex, startChunkHash, endChunkHash, chunks, dbTX)
+		var batchHash string
+		batchHash, err = p.batchOrm.InsertBatch(p.ctx, startChunkIndex, endChunkIndex, startChunkHash, endChunkHash, chunks, dbTX)
 		if err != nil {
 			return err
 		}

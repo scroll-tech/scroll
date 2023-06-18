@@ -174,6 +174,7 @@ func TestChunkOrm(t *testing.T) {
 	err = chunkOrm.UpdateBatchHashInClosedRange(context.Background(), 0, 0, "test hash")
 	assert.NoError(t, err)
 	chunks, err = chunkOrm.GetUnbatchedChunks(context.Background())
+	assert.NoError(t, err)
 	assert.Len(t, chunks, 1)
 }
 

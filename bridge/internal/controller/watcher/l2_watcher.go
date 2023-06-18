@@ -143,19 +143,19 @@ func (w *L2WatcherClient) initializeGenesis() error {
 	batchHash := batch.Hash().Hex()
 
 	err = w.db.Transaction(func(dbTX *gorm.DB) error {
-		if _, err := w.batchOrm.InsertBatch(w.ctx, 0, 0, chunkHash, chunkHash, []*bridgeTypes.Chunk{chunk}); err != nil {
+		if _, err = w.batchOrm.InsertBatch(w.ctx, 0, 0, chunkHash, chunkHash, []*bridgeTypes.Chunk{chunk}); err != nil {
 			return fmt.Errorf("failed to insert batch: %v", err)
 		}
 
-		if err := w.l2BlockOrm.UpdateChunkHashInClosedRange(0, 0, batchHash, dbTX); err != nil {
+		if err = w.l2BlockOrm.UpdateChunkHashInClosedRange(0, 0, batchHash, dbTX); err != nil {
 			return fmt.Errorf("failed to update batch hash for L2 blocks: %v", err)
 		}
 
-		if _, err := w.chunkOrm.InsertChunk(w.ctx, chunk); err != nil {
+		if _, err = w.chunkOrm.InsertChunk(w.ctx, chunk); err != nil {
 			return fmt.Errorf("failed to insert chunk: %v", err)
 		}
 
-		if err := w.l2BlockOrm.UpdateChunkHashInClosedRange(0, 0, chunkHash, dbTX); err != nil {
+		if err = w.l2BlockOrm.UpdateChunkHashInClosedRange(0, 0, chunkHash, dbTX); err != nil {
 			log.Error("failed to update chunk_hash for l2_blocks",
 				"chunk_hash", chunkHash, "start block", 0, "end block", 0, "err", err)
 			return err
