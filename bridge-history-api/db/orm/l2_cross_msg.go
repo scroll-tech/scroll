@@ -22,7 +22,7 @@ func NewL2CrossMsgOrm(db *sqlx.DB) L2CrossMsgOrm {
 
 func (l *l2CrossMsgOrm) GetL2CrossMsgByHash(l2Hash common.Hash) (*CrossMsg, error) {
 	result := &CrossMsg{}
-	row := l.db.QueryRowx(`SELECT * FROM l2_cross_message WHERE layer2_hash = $1 AND NOT is_deleted;`, l2Hash.String())
+	row := l.db.QueryRowx(`SELECT * FROM cross_message WHERE layer2_hash = $1 AND NOT is_deleted;`, l2Hash.String())
 	if err := row.StructScan(result); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil
