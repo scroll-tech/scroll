@@ -2,7 +2,6 @@ package watcher
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"math/big"
 
@@ -66,11 +65,20 @@ type L2WatcherClient struct {
 
 // NewL2WatcherClient take a l2geth instance to generate a l2watcherclient instance
 func NewL2WatcherClient(ctx context.Context, client *ethclient.Client, confirmations rpc.BlockNumber, messengerAddress, messageQueueAddress common.Address, withdrawTrieRootSlot common.Hash, db *gorm.DB) *L2WatcherClient {
-	l2MessageOrm := orm.NewL2Message(db)
-	savedHeight, err := l2MessageOrm.GetLayer2LatestWatchedHeight()
-	if err != nil {
+	l1MessageOrm := orm.NewL1Message(db)
+	var savedHeight uint64
+	l1msg, err := l1MessageOrm.GetLayer1LatestMessageWithLayer2Hash()
+	if err != nil || l1msg == nil {
 		log.Warn("fetch height from db failed", "err", err)
 		savedHeight = 0
+	} else {
+		receipt, err := client.TransactionReceipt(ctx, common.HexToHash(l1msg.Layer2Hash))
+		if err != nil || receipt == nil {
+			log.Warn("get tx from l2 failed", "err", err)
+			savedHeight = 0
+		} else {
+			savedHeight = receipt.BlockNumber.Uint64()
+		}
 	}
 
 	w := L2WatcherClient{
@@ -285,17 +293,15 @@ func (w *L2WatcherClient) FetchContractEvent() {
 		}
 		log.Info("received new L2 messages", "fromBlock", from, "toBlock", to, "cnt", len(logs))
 
-		sentMessageEvents, relayedMessageEvents, err := w.parseBridgeEventLogs(logs)
+		relayedMessageEvents, err := w.parseBridgeEventLogs(logs)
 		if err != nil {
 			log.Error("failed to parse emitted event log", "err", err)
 			return
 		}
 
-		sentMessageCount := int64(len(sentMessageEvents))
 		relayedMessageCount := int64(len(relayedMessageEvents))
-		bridgeL2MsgsSentEventsTotalCounter.Inc(sentMessageCount)
 		bridgeL2MsgsRelayedEventsTotalCounter.Inc(relayedMessageCount)
-		log.Info("L2 events types", "SentMessageCount", sentMessageCount, "RelayedMessageCount", relayedMessageCount)
+		log.Info("L2 events types", "RelayedMessageCount", relayedMessageCount)
 
 		// Update relayed message first to make sure we don't forget to update submited message.
 		// Since, we always start sync from the latest unprocessed message.
@@ -312,71 +318,24 @@ func (w *L2WatcherClient) FetchContractEvent() {
 			}
 		}
 
-		if err = w.l2MessageOrm.SaveL2Messages(w.ctx, sentMessageEvents); err != nil {
-			log.Error("failed to save l2 messages", "err", err)
-			return
-		}
-
 		w.processedMsgHeight = uint64(to)
 		bridgeL2MsgsSyncHeightGauge.Update(to)
 	}
 }
 
-func (w *L2WatcherClient) parseBridgeEventLogs(logs []gethTypes.Log) ([]orm.L2Message, []relayedMessage, error) {
+func (w *L2WatcherClient) parseBridgeEventLogs(logs []gethTypes.Log) ([]relayedMessage, error) {
 	// Need use contract abi to parse event Log
 	// Can only be tested after we have our contracts set up
 
-	var l2Messages []orm.L2Message
 	var relayedMessages []relayedMessage
-	var lastAppendMsgHash common.Hash
-	var lastAppendMsgNonce uint64
 	for _, vLog := range logs {
 		switch vLog.Topics[0] {
-		case bridgeAbi.L2SentMessageEventSignature:
-			event := bridgeAbi.L2SentMessageEvent{}
-			err := utils.UnpackLog(w.messengerABI, &event, "SentMessage", vLog)
-			if err != nil {
-				log.Error("failed to unpack layer2 SentMessage event", "err", err)
-				return l2Messages, relayedMessages, err
-			}
-
-			computedMsgHash := utils.ComputeMessageHash(
-				event.Sender,
-				event.Target,
-				event.Value,
-				event.MessageNonce,
-				event.Message,
-			)
-
-			// `AppendMessage` event is always emitted before `SentMessage` event
-			// So they should always match, just double check
-			if event.MessageNonce.Uint64() != lastAppendMsgNonce {
-				errMsg := fmt.Sprintf("l2 message nonces mismatch: AppendMessage.nonce=%v, SentMessage.nonce=%v, tx_hash=%v",
-					lastAppendMsgNonce, event.MessageNonce.Uint64(), vLog.TxHash.Hex())
-				return l2Messages, relayedMessages, errors.New(errMsg)
-			}
-			if computedMsgHash != lastAppendMsgHash {
-				errMsg := fmt.Sprintf("l2 message hashes mismatch: AppendMessage.msg_hash=%v, SentMessage.msg_hash=%v, tx_hash=%v",
-					lastAppendMsgHash.Hex(), computedMsgHash.Hex(), vLog.TxHash.Hex())
-				return l2Messages, relayedMessages, errors.New(errMsg)
-			}
-
-			l2Messages = append(l2Messages, orm.L2Message{
-				Nonce:      event.MessageNonce.Uint64(),
-				MsgHash:    computedMsgHash.String(),
-				Height:     vLog.BlockNumber,
-				Sender:     event.Sender.String(),
-				Value:      event.Value.String(),
-				Target:     event.Target.String(),
-				Calldata:   common.Bytes2Hex(event.Message),
-				Layer2Hash: vLog.TxHash.Hex(),
-			})
 		case bridgeAbi.L2RelayedMessageEventSignature:
 			event := bridgeAbi.L2RelayedMessageEvent{}
 			err := utils.UnpackLog(w.messengerABI, &event, "RelayedMessage", vLog)
 			if err != nil {
 				log.Warn("Failed to unpack layer2 RelayedMessage event", "err", err)
-				return l2Messages, relayedMessages, err
+				return relayedMessages, err
 			}
 
 			relayedMessages = append(relayedMessages, relayedMessage{
@@ -389,7 +348,7 @@ func (w *L2WatcherClient) parseBridgeEventLogs(logs []gethTypes.Log) ([]orm.L2Me
 			err := utils.UnpackLog(w.messengerABI, &event, "FailedRelayedMessage", vLog)
 			if err != nil {
 				log.Warn("Failed to unpack layer2 FailedRelayedMessage event", "err", err)
-				return l2Messages, relayedMessages, err
+				return relayedMessages, err
 			}
 
 			relayedMessages = append(relayedMessages, relayedMessage{
@@ -397,21 +356,9 @@ func (w *L2WatcherClient) parseBridgeEventLogs(logs []gethTypes.Log) ([]orm.L2Me
 				txHash:       vLog.TxHash,
 				isSuccessful: false,
 			})
-		case bridgeAbi.L2AppendMessageEventSignature:
-			event := bridgeAbi.L2AppendMessageEvent{}
-			err := utils.UnpackLog(w.messageQueueABI, &event, "AppendMessage", vLog)
-			if err != nil {
-				log.Warn("Failed to unpack layer2 AppendMessage event", "err", err)
-				return l2Messages, relayedMessages, err
-			}
-
-			lastAppendMsgHash = event.MessageHash
-			lastAppendMsgNonce = event.Index.Uint64()
-			bridgeL2MsgsAppendEventsTotalCounter.Inc(1)
-		default:
 			log.Error("Unknown event", "topic", vLog.Topics[0], "txHash", vLog.TxHash)
 		}
 	}
 
-	return l2Messages, relayedMessages, nil
+	return relayedMessages, nil
 }

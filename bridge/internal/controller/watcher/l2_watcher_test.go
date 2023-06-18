@@ -21,7 +21,6 @@ import (
 	"github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 
-	"scroll-tech/common/types"
 	cutils "scroll-tech/common/utils"
 
 	bridgeAbi "scroll-tech/bridge/abi"
@@ -65,137 +64,6 @@ func testCreateNewWatcherAndStop(t *testing.T) {
 	blockNum, err := l2Cli.BlockNumber(context.Background())
 	assert.NoError(t, err)
 	assert.GreaterOrEqual(t, blockNum, uint64(numTransactions))
-}
-
-func testMonitorBridgeContract(t *testing.T) {
-	wc, db := setupL2Watcher(t)
-	subCtx, cancel := context.WithCancel(context.Background())
-	defer func() {
-		cancel()
-		defer utils.CloseDB(db)
-	}()
-
-	loopToFetchEvent(subCtx, wc)
-
-	previousHeight, err := l2Cli.BlockNumber(context.Background())
-	assert.NoError(t, err)
-
-	auth := prepareAuth(t, l2Cli, cfg.L2Config.RelayerConfig.MessageSenderPrivateKeys[0])
-
-	// deploy mock bridge
-	_, tx, instance, err := mock_bridge.DeployMockBridgeL2(auth, l2Cli)
-	assert.NoError(t, err)
-	address, err := bind.WaitDeployed(context.Background(), l2Cli, tx)
-	assert.NoError(t, err)
-
-	rc := prepareWatcherClient(l2Cli, db, address)
-	loopToFetchEvent(subCtx, rc)
-	// Call mock_bridge instance sendMessage to trigger emit events
-	toAddress := common.HexToAddress("0x4592d8f8d7b001e72cb26a73e4fa1806a51ac79d")
-	message := []byte("testbridgecontract")
-	fee := big.NewInt(0)
-	gasLimit := big.NewInt(1)
-
-	tx, err = instance.SendMessage(auth, toAddress, fee, message, gasLimit)
-	assert.NoError(t, err)
-	receipt, err := bind.WaitMined(context.Background(), l2Cli, tx)
-	if receipt.Status != gethTypes.ReceiptStatusSuccessful || err != nil {
-		t.Fatalf("Call failed")
-	}
-
-	// extra block mined
-	toAddress = common.HexToAddress("0x4592d8f8d7b001e72cb26a73e4fa1806a51ac79d")
-	message = []byte("testbridgecontract")
-	tx, err = instance.SendMessage(auth, toAddress, fee, message, gasLimit)
-	assert.NoError(t, err)
-	receipt, err = bind.WaitMined(context.Background(), l2Cli, tx)
-	if receipt.Status != gethTypes.ReceiptStatusSuccessful || err != nil {
-		t.Fatalf("Call failed")
-	}
-
-	l2MessageOrm := orm.NewL2Message(db)
-	// check if we successfully stored events
-	assert.True(t, cutils.TryTimes(10, func() bool {
-		height, err := l2MessageOrm.GetLayer2LatestWatchedHeight()
-		return err == nil && height > int64(previousHeight)
-	}))
-
-	// check l1 messages.
-	assert.True(t, cutils.TryTimes(10, func() bool {
-		msgs, err := l2MessageOrm.GetL2Messages(map[string]interface{}{"status": types.MsgPending}, nil, 0)
-		return err == nil && len(msgs) == 2
-	}))
-}
-
-func testFetchMultipleSentMessageInOneBlock(t *testing.T) {
-	_, db := setupL2Watcher(t)
-	subCtx, cancel := context.WithCancel(context.Background())
-	defer func() {
-		cancel()
-		defer utils.CloseDB(db)
-	}()
-
-	previousHeight, err := l2Cli.BlockNumber(context.Background()) // shallow the global previousHeight
-	assert.NoError(t, err)
-
-	auth := prepareAuth(t, l2Cli, cfg.L2Config.RelayerConfig.MessageSenderPrivateKeys[0])
-
-	_, trx, instance, err := mock_bridge.DeployMockBridgeL2(auth, l2Cli)
-	assert.NoError(t, err)
-	address, err := bind.WaitDeployed(context.Background(), l2Cli, trx)
-	assert.NoError(t, err)
-
-	wc := prepareWatcherClient(l2Cli, db, address)
-	loopToFetchEvent(subCtx, wc)
-
-	// Call mock_bridge instance sendMessage to trigger emit events multiple times
-	numTransactions := 4
-	var tx *gethTypes.Transaction
-	for i := 0; i < numTransactions; i++ {
-		addr := common.HexToAddress("0x1c5a77d9fa7ef466951b2f01f724bca3a5820b63")
-		nonce, nounceErr := l2Cli.PendingNonceAt(context.Background(), addr)
-		assert.NoError(t, nounceErr)
-		auth.Nonce = big.NewInt(int64(nonce))
-		toAddress := common.HexToAddress("0x4592d8f8d7b001e72cb26a73e4fa1806a51ac79d")
-		message := []byte("testbridgecontract")
-		fee := big.NewInt(0)
-		gasLimit := big.NewInt(1)
-		tx, err = instance.SendMessage(auth, toAddress, fee, message, gasLimit)
-		assert.NoError(t, err)
-	}
-
-	receipt, err := bind.WaitMined(context.Background(), l2Cli, tx)
-	if receipt.Status != gethTypes.ReceiptStatusSuccessful || err != nil {
-		t.Fatalf("Call failed")
-	}
-
-	// extra block mined
-	addr := common.HexToAddress("0x1c5a77d9fa7ef466951b2f01f724bca3a5820b63")
-	nonce, nounceErr := l2Cli.PendingNonceAt(context.Background(), addr)
-	assert.NoError(t, nounceErr)
-	auth.Nonce = big.NewInt(int64(nonce))
-	toAddress := common.HexToAddress("0x4592d8f8d7b001e72cb26a73e4fa1806a51ac79d")
-	message := []byte("testbridgecontract")
-	fee := big.NewInt(0)
-	gasLimit := big.NewInt(1)
-	tx, err = instance.SendMessage(auth, toAddress, fee, message, gasLimit)
-	assert.NoError(t, err)
-	receipt, err = bind.WaitMined(context.Background(), l2Cli, tx)
-	if receipt.Status != gethTypes.ReceiptStatusSuccessful || err != nil {
-		t.Fatalf("Call failed")
-	}
-
-	l2MessageOrm := orm.NewL2Message(db)
-	// check if we successfully stored events
-	assert.True(t, cutils.TryTimes(10, func() bool {
-		height, err := l2MessageOrm.GetLayer2LatestWatchedHeight()
-		return err == nil && height > int64(previousHeight)
-	}))
-
-	assert.True(t, cutils.TryTimes(10, func() bool {
-		msgs, err := l2MessageOrm.GetL2Messages(map[string]interface{}{"status": types.MsgPending}, nil, 0)
-		return err == nil && len(msgs) == 5
-	}))
 }
 
 func testFetchRunningMissingBlocks(t *testing.T) {
@@ -265,9 +133,8 @@ func testParseBridgeEventLogsL2SentMessageEventSignature(t *testing.T) {
 		})
 		defer patchGuard.Reset()
 
-		l2Messages, relayedMessages, err := watcher.parseBridgeEventLogs(logs)
+		relayedMessages, err := watcher.parseBridgeEventLogs(logs)
 		assert.EqualError(t, err, targetErr.Error())
-		assert.Empty(t, l2Messages)
 		assert.Empty(t, relayedMessages)
 	})
 
@@ -288,10 +155,9 @@ func testParseBridgeEventLogsL2SentMessageEventSignature(t *testing.T) {
 		})
 		defer patchGuard.Reset()
 
-		l2Messages, relayedMessages, err := watcher.parseBridgeEventLogs(logs)
+		relayedMessages, err := watcher.parseBridgeEventLogs(logs)
 		assert.Error(t, err)
 		assert.Empty(t, relayedMessages)
-		assert.Empty(t, l2Messages)
 	})
 }
 
@@ -314,9 +180,8 @@ func testParseBridgeEventLogsL2RelayedMessageEventSignature(t *testing.T) {
 		})
 		defer patchGuard.Reset()
 
-		l2Messages, relayedMessages, err := watcher.parseBridgeEventLogs(logs)
+		relayedMessages, err := watcher.parseBridgeEventLogs(logs)
 		assert.EqualError(t, err, targetErr.Error())
-		assert.Empty(t, l2Messages)
 		assert.Empty(t, relayedMessages)
 	})
 
@@ -329,9 +194,8 @@ func testParseBridgeEventLogsL2RelayedMessageEventSignature(t *testing.T) {
 		})
 		defer patchGuard.Reset()
 
-		l2Messages, relayedMessages, err := watcher.parseBridgeEventLogs(logs)
+		relayedMessages, err := watcher.parseBridgeEventLogs(logs)
 		assert.NoError(t, err)
-		assert.Empty(t, l2Messages)
 		assert.Len(t, relayedMessages, 1)
 		assert.Equal(t, relayedMessages[0].msgHash, msgHash)
 	})
@@ -356,9 +220,8 @@ func testParseBridgeEventLogsL2FailedRelayedMessageEventSignature(t *testing.T) 
 		})
 		defer patchGuard.Reset()
 
-		l2Messages, relayedMessages, err := watcher.parseBridgeEventLogs(logs)
+		relayedMessages, err := watcher.parseBridgeEventLogs(logs)
 		assert.EqualError(t, err, targetErr.Error())
-		assert.Empty(t, l2Messages)
 		assert.Empty(t, relayedMessages)
 	})
 
@@ -371,9 +234,8 @@ func testParseBridgeEventLogsL2FailedRelayedMessageEventSignature(t *testing.T) 
 		})
 		defer patchGuard.Reset()
 
-		l2Messages, relayedMessages, err := watcher.parseBridgeEventLogs(logs)
+		relayedMessages, err := watcher.parseBridgeEventLogs(logs)
 		assert.NoError(t, err)
-		assert.Empty(t, l2Messages)
 		assert.Len(t, relayedMessages, 1)
 		assert.Equal(t, relayedMessages[0].msgHash, msgHash)
 	})
@@ -397,9 +259,8 @@ func testParseBridgeEventLogsL2AppendMessageEventSignature(t *testing.T) {
 		})
 		defer patchGuard.Reset()
 
-		l2Messages, relayedMessages, err := watcher.parseBridgeEventLogs(logs)
+		relayedMessages, err := watcher.parseBridgeEventLogs(logs)
 		assert.EqualError(t, err, targetErr.Error())
-		assert.Empty(t, l2Messages)
 		assert.Empty(t, relayedMessages)
 	})
 
@@ -413,9 +274,8 @@ func testParseBridgeEventLogsL2AppendMessageEventSignature(t *testing.T) {
 		})
 		defer patchGuard.Reset()
 
-		l2Messages, relayedMessages, err := watcher.parseBridgeEventLogs(logs)
+		relayedMessages, err := watcher.parseBridgeEventLogs(logs)
 		assert.NoError(t, err)
-		assert.Empty(t, l2Messages)
 		assert.Empty(t, relayedMessages)
 	})
 }
