@@ -24,10 +24,9 @@ import (
 )
 
 var (
-	bridgeL1MsgsSyncHeightGauge           = gethMetrics.NewRegisteredGauge("bridge/l1/msgs/sync/height", metrics.ScrollRegistry)
-	bridgeL1MsgsSentEventsTotalCounter    = gethMetrics.NewRegisteredCounter("bridge/l1/msgs/sent/events/total", metrics.ScrollRegistry)
-	bridgeL1MsgsRelayedEventsTotalCounter = gethMetrics.NewRegisteredCounter("bridge/l1/msgs/relayed/events/total", metrics.ScrollRegistry)
-	bridgeL1MsgsRollupEventsTotalCounter  = gethMetrics.NewRegisteredCounter("bridge/l1/msgs/rollup/events/total", metrics.ScrollRegistry)
+	bridgeL1MsgsSyncHeightGauge          = gethMetrics.NewRegisteredGauge("bridge/l1/msgs/sync/height", metrics.ScrollRegistry)
+	bridgeL1MsgsSentEventsTotalCounter   = gethMetrics.NewRegisteredCounter("bridge/l1/msgs/sent/events/total", metrics.ScrollRegistry)
+	bridgeL1MsgsRollupEventsTotalCounter = gethMetrics.NewRegisteredCounter("bridge/l1/msgs/rollup/events/total", metrics.ScrollRegistry)
 )
 
 type rollupEvent struct {

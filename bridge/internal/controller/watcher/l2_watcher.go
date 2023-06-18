@@ -31,8 +31,6 @@ var (
 	bridgeL2MsgsSyncHeightGauge           = gethMetrics.NewRegisteredGauge("bridge/l2/msgs/sync/height", metrics.ScrollRegistry)
 	bridgeL2BlocksFetchedHeightGauge      = gethMetrics.NewRegisteredGauge("bridge/l2/blocks/fetched/height", metrics.ScrollRegistry)
 	bridgeL2BlocksFetchedGapGauge         = gethMetrics.NewRegisteredGauge("bridge/l2/blocks/fetched/gap", metrics.ScrollRegistry)
-	bridgeL2MsgsSentEventsTotalCounter    = gethMetrics.NewRegisteredCounter("bridge/l2/msgs/sent/events/total", metrics.ScrollRegistry)
-	bridgeL2MsgsAppendEventsTotalCounter  = gethMetrics.NewRegisteredCounter("bridge/l2/msgs/append/events/total", metrics.ScrollRegistry)
 	bridgeL2MsgsRelayedEventsTotalCounter = gethMetrics.NewRegisteredCounter("bridge/l2/msgs/relayed/events/total", metrics.ScrollRegistry)
 )
 
@@ -89,7 +87,7 @@ func NewL2WatcherClient(ctx context.Context, client *ethclient.Client, confirmat
 		blockBatchOrm:      orm.NewBlockBatch(db),
 		blockTraceOrm:      orm.NewBlockTrace(db),
 		l1MessageOrm:       orm.NewL1Message(db),
-		processedMsgHeight: uint64(savedHeight),
+		processedMsgHeight: savedHeight,
 		confirmations:      confirmations,
 
 		messengerAddress: messengerAddress,

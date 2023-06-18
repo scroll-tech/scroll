@@ -159,14 +159,14 @@ func testL1WatcherClientFetchContractEvent(t *testing.T) {
 
 	convey.Convey("parse bridge event logs failure", t, func() {
 		targetErr := errors.New("parse log failure")
-		patchGuard.ApplyPrivateMethod(watcher, "parseBridgeEventLogs", func(*L1WatcherClient, []types.Log) ([]*orm.L1Message, []relayedMessage, []rollupEvent, error) {
-			return nil, nil, nil, targetErr
+		patchGuard.ApplyPrivateMethod(watcher, "parseBridgeEventLogs", func(*L1WatcherClient, []types.Log) ([]*orm.L1Message, []rollupEvent, error) {
+			return nil, nil, targetErr
 		})
 		err := watcher.FetchContractEvent()
 		assert.Equal(t, err.Error(), targetErr.Error())
 	})
 
-	patchGuard.ApplyPrivateMethod(watcher, "parseBridgeEventLogs", func(*L1WatcherClient, []types.Log) ([]*orm.L1Message, []relayedMessage, []rollupEvent, error) {
+	patchGuard.ApplyPrivateMethod(watcher, "parseBridgeEventLogs", func(*L1WatcherClient, []types.Log) ([]*orm.L1Message, []rollupEvent, error) {
 		rollupEvents := []rollupEvent{
 			{
 				batchHash: common.HexToHash("0x1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347"),
@@ -179,20 +179,7 @@ func testL1WatcherClientFetchContractEvent(t *testing.T) {
 				status:    commonTypes.RollupCommitted,
 			},
 		}
-
-		relayedMessageEvents := []relayedMessage{
-			{
-				msgHash:      common.HexToHash("0x1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347"),
-				txHash:       common.HexToHash("0xad3228b676f7d3cd4284a5443f17f1962b36e491b30a40b2405849e597ba5fb5"),
-				isSuccessful: true,
-			},
-			{
-				msgHash:      common.HexToHash("0xad3228b676f7d3cd4284a5443f17f1962b36e491b30a40b2405849e597ba5fb5"),
-				txHash:       common.HexToHash("0xb4c11951957c6f8f642c4af61cd6b24640fec6dc7fc607ee8206a99e92410d30"),
-				isSuccessful: false,
-			},
-		}
-		return nil, relayedMessageEvents, rollupEvents, nil
+		return nil, rollupEvents, nil
 	})
 
 	var blockBatchOrm *orm.BlockBatch
