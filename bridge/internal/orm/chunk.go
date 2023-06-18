@@ -4,9 +4,11 @@ import (
 	"context"
 	"encoding/hex"
 	"errors"
-	bridgeTypes "scroll-tech/bridge/internal/types"
-	"scroll-tech/common/types"
 	"time"
+
+	"scroll-tech/common/types"
+
+	bridgeTypes "scroll-tech/bridge/internal/types"
 
 	"github.com/scroll-tech/go-ethereum/log"
 	"gorm.io/gorm"

@@ -7,9 +7,10 @@ import (
 	"fmt"
 	"time"
 
-	bridgeTypes "scroll-tech/bridge/internal/types"
 	"scroll-tech/common/types"
 	"scroll-tech/common/types/message"
+
+	bridgeTypes "scroll-tech/bridge/internal/types"
 
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/log"
