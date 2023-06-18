@@ -70,7 +70,7 @@ func testCommitBatchAndFinalizeBatch(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(batches))
 	assert.NotEmpty(t, batches[0].CommitTxHash)
-	assert.Equal(t, types.RollupStatus(batches[0].RollupStatus), types.RollupCommitting)
+	assert.Equal(t, types.RollupCommitting, types.RollupStatus(batches[0].RollupStatus))
 
 	assert.NoError(t, err)
 	commitTx, _, err := l1Client.TransactionByHash(context.Background(), common.HexToHash(batches[0].CommitTxHash))

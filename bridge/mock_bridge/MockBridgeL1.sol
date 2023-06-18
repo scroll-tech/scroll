@@ -139,12 +139,10 @@ contract MockBridgeL1 {
     require(_chunksLength > 0, "batch is empty");
 
     // the variable `batchPtr` will be reused later for the current batch
-    (uint256 batchPtr, bytes32 _parentBatchHash) = _loadBatchHeader(parentBatchHeader);
+    (uint256 batchPtr,) = _loadBatchHeader(parentBatchHeader);
 
     uint256 _batchIndex = BatchHeaderV0Codec.batchIndex(batchPtr);
     bytes32 _batchHash = bytes32(_batchIndex + 1);
-    require(committedBatches[_batchIndex] == _parentBatchHash, "incorrect parent batch hash");
-    require(committedBatches[_batchIndex + 1] == 0, "batch already committed");
 
     committedBatches[_batchIndex] = _batchHash;
     emit CommitBatch(_batchHash);
