@@ -63,9 +63,9 @@ func setupDB(t *testing.T) *gorm.DB {
 func TestMain(m *testing.M) {
 	base = docker.NewDockerApp()
 	bridgeApp = bcmd.NewBridgeApp(base, "../conf/config.json")
+	defer bridgeApp.Free()
+	defer base.Free()
 	m.Run()
-	bridgeApp.Free()
-	base.Free()
 }
 
 func setupEnv(t *testing.T) {
@@ -130,7 +130,7 @@ func TestFunction(t *testing.T) {
 	setupEnv(t)
 
 	// l1 rollup and watch rollup events
-	//t.Run("TestCommitBatchAndFinalizeBatch", testCommitBatchAndFinalizeBatch)
+	t.Run("TestCommitBatchAndFinalizeBatch", testCommitBatchAndFinalizeBatch)
 
 	// l1 message
 	t.Run("TestRelayL1MessageSucceed", testRelayL1MessageSucceed)

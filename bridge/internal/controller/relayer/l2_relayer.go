@@ -121,6 +121,7 @@ func NewLayer2Relayer(ctx context.Context, l2Client *ethclient.Client, db *gorm.
 		batchOrm:     orm.NewBatch(db),
 		l2MessageOrm: orm.NewL2Message(db),
 		l2BlockOrm:   orm.NewL2Block(db),
+		chunkOrm:     orm.NewChunk(db),
 
 		l2Client: l2Client,
 
@@ -199,7 +200,6 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 		return
 	}
 	for _, batch := range pendingBatches {
-
 		// get current header and parent header.
 		currentBatchHeader, err := r.batchOrm.GetBatchHeader(r.ctx, batch.Index)
 		if err != nil {
@@ -207,10 +207,13 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 			return
 		}
 		// batch.Index > 0 since we have imported genesis batch.
-		parentBatchHeader, err := r.batchOrm.GetBatchHeader(r.ctx, batch.Index-1)
-		if err != nil {
-			log.Error("Failed to get parent batch header", "error", err)
-			return
+		parentBatchHeader := &bridgeTypes.BatchHeader{}
+		if batch.Index > 0 {
+			parentBatchHeader, err = r.batchOrm.GetBatchHeader(r.ctx, batch.Index-1)
+			if err != nil {
+				log.Error("Failed to get parent batch header", "error", err)
+				return
+			}
 		}
 
 		// get the chunks for the batch

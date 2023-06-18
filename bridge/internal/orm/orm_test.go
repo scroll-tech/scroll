@@ -105,9 +105,7 @@ func TestL2BlockOrm(t *testing.T) {
 	assert.NoError(t, migrate.ResetDB(sqlDB))
 
 	err = l2BlockOrm.InsertL2Blocks([]*bridgeTypes.WrappedBlock{wrappedBlock1, wrappedBlock2})
-	if err != nil {
-		t.Fatalf("failed to insert blocks: %v", err)
-	}
+	assert.NoError(t, err)
 
 	height, err := l2BlockOrm.GetL2BlocksLatestHeight()
 	assert.NoError(t, err)

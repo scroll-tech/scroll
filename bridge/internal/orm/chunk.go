@@ -60,8 +60,7 @@ func (o *Chunk) GetChunksInClosedRange(ctx context.Context, startIndex uint64, e
 	}
 
 	var chunks []*Chunk
-	db := o.db.WithContext(ctx)
-	db = db.Where("index >= ? AND index <= ?", startIndex, endIndex)
+	db := o.db.WithContext(ctx).Where("index >= ? AND index <= ?", startIndex, endIndex)
 	db = db.Order("index ASC")
 
 	if err := db.Find(&chunks).Error; err != nil {
