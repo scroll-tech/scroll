@@ -1,6 +1,7 @@
 .PHONY: check update dev_docker build_test_docker run_test_docker clean
 
-ZKP_VERSION=release-1220
+PARAMS_VERSION=params-0320
+VK_VERSION=release-v0.3
 
 help: ## Display this help message
 	@grep -h \
@@ -43,12 +44,11 @@ run_test_docker: ## run Docker image for local testing on M1/M2 Silicon Mac
 
 test_zkp: ## Test zkp prove and verify, roller/prover generates the proof and coordinator/verifier verifies it
 	mkdir -p test_params
-	wget https://circuit-release.s3.us-west-2.amazonaws.com/circuit-release/${ZKP_VERSION}/test_params/params19 -O ./test_params/params19
-	wget https://circuit-release.s3.us-west-2.amazonaws.com/circuit-release/${ZKP_VERSION}/test_params/params26 -O ./test_params/params26
-	wget https://circuit-release.s3.us-west-2.amazonaws.com/circuit-release/${ZKP_VERSION}/test_seed -O test_seed
-	rm -rf ./roller/assets/test_params && mv test_params ./roller/assets/ && mv test_seed ./roller/assets/
+	wget https://circuit-release.s3.us-west-2.amazonaws.com/circuit-release/${PARAMS_VERSION}/params20 -O ./test_params/params19
+	wget https://circuit-release.s3.us-west-2.amazonaws.com/circuit-release/${PARAMS_VERSION}/params26 -O ./test_params/params26
+	wget https://circuit-release.s3.us-west-2.amazonaws.com/circuit-release/release-1220/test_seed -O test_seed
+	wget https://circuit-release.s3.us-west-2.amazonaws.com/circuit-release/${VK_VERSION}/verify_circuit.vkey -O ./agg_vk
 	cd ./roller && make test-gpu-prover
-	rm -rf ./coordinator/assets/test_params && mv ./roller/assets/test_params ./coordinator/assets/ && mv ./roller/assets/agg_proof ./coordinator/assets/
 	cd ./coordinator && make test-gpu-verifier
 
 clean: ## Empty out the bin folder
