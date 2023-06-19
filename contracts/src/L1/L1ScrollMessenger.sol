@@ -124,7 +124,7 @@ contract L1ScrollMessenger is PausableUpgradeable, ScrollMessengerBase, IL1Scrol
         uint256 _nonce,
         bytes memory _message,
         L2MessageProof memory _proof
-    ) external override whenNotPaused onlyWhitelistedSender(msg.sender) {
+    ) external override whenNotPaused {
         require(
             xDomainMessageSender == ScrollConstants.DEFAULT_XDOMAIN_MESSAGE_SENDER,
             "Message is already in execution"
@@ -137,13 +137,13 @@ contract L1ScrollMessenger is PausableUpgradeable, ScrollMessengerBase, IL1Scrol
             address _rollup = rollup;
             require(IScrollChain(_rollup).isBatchFinalized(_proof.batchHash), "Batch is not finalized");
             // @note skip verify for now
-            /*
-      bytes32 _messageRoot = IScrollChain(_rollup).getL2MessageRoot(_proof.batchHash);
-      require(
-        WithdrawTrieVerifier.verifyMerkleProof(_messageRoot, _xDomainCalldataHash, _nonce, _proof.merkleProof),
-        "Invalid proof"
-      );
-      */
+            
+        bytes32 _messageRoot = IScrollChain(_rollup).getL2MessageRoot(_proof.batchHash);
+        require(
+            WithdrawTrieVerifier.verifyMerkleProof(_messageRoot, _xDomainCalldataHash, _nonce, _proof.merkleProof),
+            "Invalid proof"
+        );
+      
         }
 
         // @todo check more `_to` address to avoid attack.
