@@ -32,18 +32,18 @@ contract DeployL2AdminContracts is Script {
         address council_safe = deploySafe();
         // deploy timelock with no delay, just to keep council and scroll admin flows be parallel
         address council_timelock = deployTimelockController(council_safe, 0);
-        
+
         logAddress("L2_COUNCIL_SAFE_ADDR", address(council_safe));
         logAddress("L2_COUNCIL_TIMELOCK_ADDR", address(council_timelock));
 
         address scroll_safe = deploySafe();
         // TODO: get timelock delay from env. for now just use 0
         address scroll_timelock = deployTimelockController(scroll_safe, 0);
-        
+
         logAddress("L2_SCROLL_SAFE_ADDR", address(scroll_safe));
         logAddress("L2_SCROLL_TIMELOCK_ADDR", address(scroll_timelock));
 
-        address forwarder = deployForwarder(address(council_safe), address(scroll_safe));
+        address forwarder = deployForwarder(address(council_timelock), address(scroll_timelock));
         logAddress("L1_FORWARDER_ADDR", address(forwarder));
 
         MockTarget target = new MockTarget();
@@ -80,13 +80,16 @@ contract DeployL2AdminContracts is Script {
         return address(proxy);
     }
 
-    function deployTimelockController(address safe, uint delay) internal returns(address) {
+    function deployTimelockController(address safe, uint256 delay) internal returns (address) {
         address deployer = vm.addr(L2_DEPLOYER_PRIVATE_KEY);
 
         address[] memory proposers = new address[](1);
         proposers[0] = safe;
+
+        address[] memory executors = new address[](1);
+        executors[0] = address(0);
         // add SAFE as the only proposer, anyone can execute
-        TimelockController timelock = new TimelockController(delay, proposers, new address[](0));
+        TimelockController timelock = new TimelockController(delay, proposers, executors);
 
         bytes32 TIMELOCK_ADMIN_ROLE = keccak256("TIMELOCK_ADMIN_ROLE");
 
@@ -101,8 +104,8 @@ contract DeployL2AdminContracts is Script {
         console.log(string(abi.encodePacked(name, "=", vm.toString(bytes32(value)))));
     }
 
-    function logUint(string memory name, uint value) internal view {
-        console.log(string(abi.encodePacked(name, "=", vm.toString(uint(value)))));
+    function logUint(string memory name, uint256 value) internal view {
+        console.log(string(abi.encodePacked(name, "=", vm.toString(uint256(value)))));
     }
 
     function logAddress(string memory name, address addr) internal view {
