@@ -2,6 +2,8 @@
 pragma solidity ^0.8.0;
 
 import {BatchHeaderV0Codec} from "../../contracts/src/libraries/codec/BatchHeaderV0Codec.sol";
+import {ChunkCodec} from "../../contracts/src/libraries/codec/ChunkCodec.sol";
+import {IL1MessageQueue} from "../../contracts/src/L1/rollup/IL1MessageQueue.sol";
 
 contract MockBridgeL1 {
   /******************************
@@ -130,7 +132,7 @@ contract MockBridgeL1 {
     uint8 version,
     bytes calldata parentBatchHeader,
     bytes[] memory chunks,
-    bytes calldata /* skippedL1MessageBitmap */
+    bytes calldata skippedL1MessageBitmap
   ) external {
     require(version == 0, "invalid version");
 
@@ -139,10 +141,59 @@ contract MockBridgeL1 {
     require(_chunksLength > 0, "batch is empty");
 
     // the variable `batchPtr` will be reused later for the current batch
-    (uint256 batchPtr,) = _loadBatchHeader(parentBatchHeader);
+    (uint256 batchPtr, bytes32 _parentBatchHash) = _loadBatchHeader(parentBatchHeader);
 
     uint256 _batchIndex = BatchHeaderV0Codec.batchIndex(batchPtr);
-    bytes32 _batchHash = bytes32(_batchIndex + 1);
+    uint256 _totalL1MessagesPoppedOverall = BatchHeaderV0Codec.totalL1MessagePopped(batchPtr);
+
+    uint256 dataPtr;
+    assembly {
+      dataPtr := mload(0x40)
+      mstore(0x40, add(dataPtr, mul(_chunksLength, 32)))
+    }
+
+    uint256 _totalL1MessagesPoppedInBatch;
+    for (uint256 i = 0; i < _chunksLength; i++) {
+      uint256 _totalNumL1MessagesInChunk = _commitChunk(
+        dataPtr,
+        chunks[i],
+        _totalL1MessagesPoppedInBatch,
+        _totalL1MessagesPoppedOverall,
+        skippedL1MessageBitmap
+      );
+
+      unchecked {
+        _totalL1MessagesPoppedInBatch += _totalNumL1MessagesInChunk;
+        _totalL1MessagesPoppedOverall += _totalNumL1MessagesInChunk;
+        dataPtr += 32;
+      }
+    }
+
+    unchecked {
+      require(
+        ((_totalL1MessagesPoppedInBatch + 255) / 256) * 32 == skippedL1MessageBitmap.length,
+          "wrong bitmap length"
+      );
+    }
+
+    bytes32 _dataHash;
+    assembly {
+      let dataLen := mul(_chunksLength, 0x20)
+      _dataHash := keccak256(sub(dataPtr, dataLen), dataLen)
+
+      batchPtr := mload(0x40) // reset batchPtr
+      _batchIndex := add(_batchIndex, 1) // increase batch index
+    }
+
+    BatchHeaderV0Codec.storeVersion(batchPtr, version);
+    BatchHeaderV0Codec.storeBatchIndex(batchPtr, _batchIndex);
+    BatchHeaderV0Codec.storeL1MessagePopped(batchPtr, _totalL1MessagesPoppedInBatch);
+    BatchHeaderV0Codec.storeTotalL1MessagePopped(batchPtr, _totalL1MessagesPoppedOverall);
+    BatchHeaderV0Codec.storeDataHash(batchPtr, _dataHash);
+    BatchHeaderV0Codec.storeParentBatchHash(batchPtr, _parentBatchHash);
+    BatchHeaderV0Codec.storeSkippedBitmap(batchPtr, skippedL1MessageBitmap);
+
+    bytes32 _batchHash = BatchHeaderV0Codec.computeBatchHash(batchPtr, 89 + skippedL1MessageBitmap.length);
 
     committedBatches[_batchIndex] = _batchHash;
     emit CommitBatch(_batchHash);
@@ -210,5 +261,74 @@ contract MockBridgeL1 {
 
     uint256 _batchIndex = BatchHeaderV0Codec.batchIndex(memPtr);
     _batchHash = bytes32(_batchIndex + 1);
+  }
+
+  function _commitChunk(
+    uint256 memPtr,
+    bytes memory _chunk,
+    uint256,
+    uint256,
+    bytes calldata
+  ) internal pure returns (uint256 _totalNumL1MessagesInChunk) {
+    uint256 chunkPtr;
+    uint256 startDataPtr;
+    uint256 dataPtr;
+    uint256 blockPtr;
+
+    assembly {
+      dataPtr := mload(0x40)
+      startDataPtr := dataPtr
+      chunkPtr := add(_chunk, 0x20) // skip chunkLength
+      blockPtr := add(chunkPtr, 1) // skip numBlocks
+    }
+
+    uint256 _numBlocks = ChunkCodec.validateChunkLength(chunkPtr, _chunk.length);
+
+    // concatenate block contexts
+    uint256 _totalTransactionsInChunk;
+    for (uint256 i = 0; i < _numBlocks; i++) {
+      dataPtr = ChunkCodec.copyBlockContext(chunkPtr, dataPtr, i);
+      uint256 _numTransactionsInBlock = ChunkCodec.numTransactions(blockPtr);
+      unchecked {
+        _totalTransactionsInChunk += _numTransactionsInBlock;
+        blockPtr += ChunkCodec.BLOCK_CONTEXT_LENGTH;
+      }
+    }
+
+    assembly {
+      mstore(0x40, add(dataPtr, mul(_totalTransactionsInChunk, 0x20))) // reserve memory for tx hashes
+      blockPtr := add(chunkPtr, 1) // reset block ptr
+    }
+
+    // concatenate tx hashes
+    uint256 l2TxPtr = ChunkCodec.l2TxPtr(chunkPtr, _numBlocks);
+    while (_numBlocks > 0) {
+      // concatenate l2 transaction hashes
+      uint256 _numTransactionsInBlock = ChunkCodec.numTransactions(blockPtr);
+      for (uint256 j = 0; j < _numTransactionsInBlock; j++) {
+        bytes32 txHash;
+        (txHash, l2TxPtr) = ChunkCodec.loadL2TxHash(l2TxPtr);
+        assembly {
+          mstore(dataPtr, txHash)
+          dataPtr := add(dataPtr, 0x20)
+        }
+      }
+
+      unchecked {
+        _numBlocks -= 1;
+        blockPtr += ChunkCodec.BLOCK_CONTEXT_LENGTH;
+      }
+    }
+
+    // check chunk has correct length
+    require(l2TxPtr - chunkPtr == _chunk.length, "incomplete l2 transaction data");
+
+    // compute data hash and store to memory
+    assembly {
+      let dataHash := keccak256(startDataPtr, sub(dataPtr, startDataPtr))
+      mstore(memPtr, dataHash)
+    }
+
+    return _totalNumL1MessagesInChunk;
   }
 }
