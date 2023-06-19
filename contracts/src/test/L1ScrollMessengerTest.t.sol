@@ -12,81 +12,47 @@ import {Whitelist} from "../L2/predeploys/Whitelist.sol";
 import {IL1ScrollMessenger, L1ScrollMessenger} from "../L1/L1ScrollMessenger.sol";
 import {L2ScrollMessenger} from "../L2/L2ScrollMessenger.sol";
 
-contract L1ScrollMessengerTest is DSTestPlus {
-    L2ScrollMessenger internal l2Messenger;
+import {L1GatewayTestBase} from "./L1GatewayTestBase.t.sol";
 
-    address internal feeVault;
-
-    L1ScrollMessenger internal l1Messenger;
-    ScrollChain internal scrollChain;
-    L1MessageQueue internal l1MessageQueue;
-    L2GasPriceOracle internal gasOracle;
-    EnforcedTxGateway internal enforcedTxGateway;
-    Whitelist internal whitelist;
-
+contract L1ScrollMessengerTest is L1GatewayTestBase {
     function setUp() public {
-        // Deploy L2 contracts
-        l2Messenger = new L2ScrollMessenger(address(0), address(0), address(0));
-
-        // Deploy L1 contracts
-        scrollChain = new ScrollChain(0);
-        l1MessageQueue = new L1MessageQueue();
-        l1Messenger = new L1ScrollMessenger();
-        gasOracle = new L2GasPriceOracle();
-        enforcedTxGateway = new EnforcedTxGateway();
-        whitelist = new Whitelist(address(this));
-
-        // Initialize L1 contracts
-        l1Messenger.initialize(address(l2Messenger), feeVault, address(scrollChain), address(l1MessageQueue));
-        l1MessageQueue.initialize(
-            address(l1Messenger),
-            address(scrollChain),
-            address(enforcedTxGateway),
-            address(gasOracle),
-            10000000
-        );
-        gasOracle.initialize(0, 0, 0, 0);
-        scrollChain.initialize(address(l1MessageQueue), address(0), 44);
-
-        gasOracle.updateWhitelist(address(whitelist));
-        address[] memory _accounts = new address[](1);
-        _accounts[0] = address(this);
-        whitelist.updateWhitelistStatus(_accounts, true);
+        L1GatewayTestBase.setUpBase();
     }
 
     function testForbidCallMessageQueueFromL2() external {
-        // import genesis batch
-        bytes memory _batchHeader = new bytes(89);
-        assembly {
-            mstore(add(_batchHeader, add(0x20, 25)), 1)
-        }
-        scrollChain.importGenesisBatch(
-            _batchHeader,
-            bytes32(uint256(1)),
-            bytes32(0x3152134c22e545ab5d345248502b4f04ef5b45f735f939c7fe6ddc0ffefc9c52)
+        bytes32 _xDomainCalldataHash = keccak256(
+            abi.encodeWithSignature(
+                "relayMessage(address,address,uint256,uint256,bytes)",
+                address(this),
+                address(messageQueue),
+                0,
+                0,
+                new bytes(0)
+            )
         );
+        prepareL2MessageRoot(_xDomainCalldataHash);
 
         IL1ScrollMessenger.L2MessageProof memory proof;
-        proof.batchIndex = scrollChain.lastFinalizedBatchIndex();
+        proof.batchIndex = rollup.lastFinalizedBatchIndex();
 
         hevm.expectRevert("Forbid to call message queue");
-        l1Messenger.relayMessageWithProof(address(this), address(l1MessageQueue), 0, 0, new bytes(0), proof);
+        l1Messenger.relayMessageWithProof(address(this), address(messageQueue), 0, 0, new bytes(0), proof);
     }
 
     function testForbidCallSelfFromL2() external {
-        // import genesis batch
-        bytes memory _batchHeader = new bytes(89);
-        assembly {
-            mstore(add(_batchHeader, 57), 1)
-        }
-        scrollChain.importGenesisBatch(
-            _batchHeader,
-            bytes32(uint256(1)),
-            bytes32(0xf7c03e2b13c88e3fca1410b228b001dd94e3f5ab4b4a4a6981d09a4eb3e5b631)
+        bytes32 _xDomainCalldataHash = keccak256(
+            abi.encodeWithSignature(
+                "relayMessage(address,address,uint256,uint256,bytes)",
+                address(this),
+                address(l1Messenger),
+                0,
+                0,
+                new bytes(0)
+            )
         );
-
+        prepareL2MessageRoot(_xDomainCalldataHash);
         IL1ScrollMessenger.L2MessageProof memory proof;
-        proof.batchIndex = scrollChain.lastFinalizedBatchIndex();
+        proof.batchIndex = rollup.lastFinalizedBatchIndex();
 
         hevm.expectRevert("Forbid to call self");
         l1Messenger.relayMessageWithProof(address(this), address(l1Messenger), 0, 0, new bytes(0), proof);
@@ -110,7 +76,9 @@ contract L1ScrollMessengerTest is DSTestPlus {
 
     function testReplayMessage(uint256 exceedValue, address refundAddress) external {
         hevm.assume(refundAddress.code.length == 0);
-        hevm.assume(uint256(uint160(refundAddress)) > 100); // ignore some precompile contracts
+        hevm.assume(uint256(uint160(refundAddress)) > uint256(100)); // ignore some precompile contracts
+        hevm.assume(refundAddress != feeVault);
+        hevm.assume(refundAddress != address(0x000000000000000000636F6e736F6c652e6c6f67)); // ignore console/console2
 
         exceedValue = bound(exceedValue, 1, address(this).balance / 2);
 
@@ -176,7 +144,7 @@ contract L1ScrollMessengerTest is DSTestPlus {
         l1Messenger.sendMessage{value: _fee + value}(address(0), value, hex"0011220033", gasLimit);
 
         // update max gas limit
-        l1MessageQueue.updateMaxGasLimit(gasLimit);
+        messageQueue.updateMaxGasLimit(gasLimit);
         l1Messenger.sendMessage{value: _fee + value}(address(0), value, hex"0011220033", gasLimit);
     }
 }

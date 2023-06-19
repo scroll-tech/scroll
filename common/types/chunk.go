@@ -17,8 +17,21 @@ type Chunk struct {
 	Blocks []*WrappedBlock `json:"blocks"`
 }
 
+// NumL1Messages returns the number of L1 messages in this chunk.
+// This number is the sum of included and skipped L1 messages.
+func (c *Chunk) NumL1Messages(totalL1MessagePoppedBefore uint64) uint64 {
+	var numL1Messages uint64
+	for _, block := range c.Blocks {
+		numL1MessagesInBlock := block.NumL1Messages(totalL1MessagePoppedBefore)
+		numL1Messages += numL1MessagesInBlock
+		totalL1MessagePoppedBefore += numL1MessagesInBlock
+	}
+	// TODO: cache results
+	return numL1Messages
+}
+
 // Encode encodes the Chunk into RollupV2 Chunk Encoding.
-func (c *Chunk) Encode() ([]byte, error) {
+func (c *Chunk) Encode(totalL1MessagePoppedBefore uint64) ([]byte, error) {
 	numBlocks := len(c.Blocks)
 
 	if numBlocks > 255 {
@@ -34,10 +47,11 @@ func (c *Chunk) Encode() ([]byte, error) {
 	var l2TxDataBytes []byte
 
 	for _, block := range c.Blocks {
-		blockBytes, err := block.Encode()
+		blockBytes, err := block.Encode(totalL1MessagePoppedBefore)
 		if err != nil {
 			return nil, fmt.Errorf("failed to encode block: %v", err)
 		}
+		totalL1MessagePoppedBefore += block.NumL1Messages(totalL1MessagePoppedBefore)
 
 		if len(blockBytes) != 60 {
 			return nil, fmt.Errorf("block encoding is not 60 bytes long %x", len(blockBytes))
@@ -45,7 +59,7 @@ func (c *Chunk) Encode() ([]byte, error) {
 
 		chunkBytes = append(chunkBytes, blockBytes...)
 
-		// Append l2Tx Hashes
+		// Append rlp-encoded l2Txs
 		for _, txData := range block.Transactions {
 			if txData.Type == 0x7E {
 				continue
@@ -77,15 +91,14 @@ func (c *Chunk) Encode() ([]byte, error) {
 }
 
 // Hash hashes the Chunk into RollupV2 Chunk Hash
-func (c *Chunk) Hash() ([]byte, error) {
-	chunkBytes, err := c.Encode()
+func (c *Chunk) Hash(totalL1MessagePoppedBefore uint64) ([]byte, error) {
+	chunkBytes, err := c.Encode(totalL1MessagePoppedBefore)
 	if err != nil {
 		return nil, err
 	}
 	numBlocks := chunkBytes[0]
 
 	// concatenate block contexts
-	// only first 58 bytes is needed
 	var dataBytes []byte
 	for i := 0; i < int(numBlocks); i++ {
 		// only first 58 bytes is needed
@@ -93,25 +106,25 @@ func (c *Chunk) Hash() ([]byte, error) {
 	}
 
 	// concatenate l1 and l2 tx hashes
-	var l2TxHashes []byte
 	for _, block := range c.Blocks {
+		var l1TxHashes []byte
+		var l2TxHashes []byte
 		for _, txData := range block.Transactions {
-			// TODO: concatenate l1 message hashes
-			if txData.Type == 0x7E {
-				continue
-			}
-			// concatenate l2 txs hashes
-			// retrieve the number of transactions in current block.
 			txHash := strings.TrimPrefix(txData.TxHash, "0x")
 			hashBytes, err := hex.DecodeString(txHash)
 			if err != nil {
 				return nil, err
 			}
-			l2TxHashes = append(l2TxHashes, hashBytes...)
+			if txData.Type == 0x7E {
+				l1TxHashes = append(l1TxHashes, hashBytes...)
+			} else {
+				l2TxHashes = append(l2TxHashes, hashBytes...)
+			}
 		}
+		dataBytes = append(dataBytes, l1TxHashes...)
+		dataBytes = append(dataBytes, l2TxHashes...)
 	}
 
-	dataBytes = append(dataBytes, l2TxHashes...)
 	hash := crypto.Keccak256Hash(dataBytes).Bytes()
 	return hash, nil
 }

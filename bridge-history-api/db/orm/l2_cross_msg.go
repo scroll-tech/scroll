@@ -22,7 +22,7 @@ func NewL2CrossMsgOrm(db *sqlx.DB) L2CrossMsgOrm {
 
 func (l *l2CrossMsgOrm) GetL2CrossMsgByHash(l2Hash common.Hash) (*CrossMsg, error) {
 	result := &CrossMsg{}
-	row := l.db.QueryRowx(`SELECT * FROM l2_cross_message WHERE layer2_hash = $1 AND NOT is_deleted;`, l2Hash.String())
+	row := l.db.QueryRowx(`SELECT * FROM cross_message WHERE layer2_hash = $1 AND NOT is_deleted;`, l2Hash.String())
 	if err := row.StructScan(result); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil
@@ -124,14 +124,14 @@ func (l *l2CrossMsgOrm) GetLatestL2ProcessedHeight() (int64, error) {
 }
 
 func (l *l2CrossMsgOrm) UpdateL2Blocktimestamp(height uint64, timestamp time.Time) error {
-	if _, err := l.db.Exec(`UPDATE cross_message SET blocktimestamp = $1 where height = $2 AND msg_type = $3 AND NOT is_deleted`, timestamp, height, Layer2Msg); err != nil {
+	if _, err := l.db.Exec(`UPDATE cross_message SET block_timestamp = $1 where height = $2 AND msg_type = $3 AND NOT is_deleted`, timestamp, height, Layer2Msg); err != nil {
 		return err
 	}
 	return nil
 }
 
 func (l *l2CrossMsgOrm) GetL2EarliestNoBlocktimestampHeight() (uint64, error) {
-	row := l.db.QueryRowx(`SELECT height FROM cross_message WHERE blocktimestamp IS NULL AND msg_type = $1 AND NOT is_deleted ORDER BY height ASC LIMIT 1;`, Layer2Msg)
+	row := l.db.QueryRowx(`SELECT height FROM cross_message WHERE block_timestamp IS NULL AND msg_type = $1 AND NOT is_deleted ORDER BY height ASC LIMIT 1;`, Layer2Msg)
 	var result uint64
 	if err := row.Scan(&result); err != nil {
 		if err == sql.ErrNoRows {
