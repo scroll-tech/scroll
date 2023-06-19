@@ -4,6 +4,7 @@ go 1.19
 
 require (
 	github.com/ethereum/go-ethereum v1.12.0
+	github.com/iris-contrib/middleware/cors v0.0.0-20230531125531-980d3a09a458
 	github.com/jmoiron/sqlx v1.3.5
 	github.com/kataras/iris/v12 v12.2.0
 	github.com/lib/pq v1.10.7

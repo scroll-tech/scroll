@@ -49,20 +49,20 @@ CREATE TRIGGER update_timestamp BEFORE UPDATE
 ON cross_message FOR EACH ROW EXECUTE PROCEDURE
 update_timestamp();
 
-CREATE OR REPLACE FUNCTION delete_at_trigger()
+CREATE OR REPLACE FUNCTION deleted_at_trigger()
 RETURNS TRIGGER AS $$
 BEGIN
     IF NEW.is_deleted AND OLD.is_deleted != NEW.is_deleted THEN
-        UPDATE cross_message SET delete_at = NOW() WHERE id = NEW.id;
+        UPDATE cross_message SET deleted_at = NOW() WHERE id = NEW.id;
     END IF;
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER delete_at_trigger
+CREATE TRIGGER deleted_at_trigger
 AFTER UPDATE ON cross_message
 FOR EACH ROW
-EXECUTE FUNCTION delete_at_trigger();
+EXECUTE FUNCTION deleted_at_trigger();
 
 
 -- +goose StatementEnd

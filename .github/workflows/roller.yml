@@ -47,7 +47,13 @@ jobs:
     - name: Test
       run: |
         make roller
-        go test -tags="mock_prover" -v ./...
+        go test -tags="mock_prover" -v -coverprofile=coverage.txt ./...
+    - name: Upload coverage reports to Codecov
+      uses: codecov/codecov-action@v3
+      env:
+        CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+      with:
+        flags: roller
   check:
     if: github.event.pull_request.draft == false
     runs-on: ubuntu-latest
