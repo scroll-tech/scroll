@@ -102,7 +102,7 @@ contract L1GatewayRouter is OwnableUpgradeable, IL1GatewayRouter {
      *****************************/
 
     /// @inheritdoc IL1GatewayRouter
-    /// @dev All the gateways should have reentrant guard to prevent potential attack though this function.
+    /// @dev All the gateways should have reentrancy guard to prevent potential attack though this function.
     function requestERC20(
         address _sender,
         address _token,
