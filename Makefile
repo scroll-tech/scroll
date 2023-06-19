@@ -48,8 +48,7 @@ test_zkp: ## Test zkp prove and verify, roller/prover generates the proof and co
 	wget https://circuit-release.s3.us-west-2.amazonaws.com/circuit-release/${PARAMS_VERSION}/params26 -O ./test_params/params26
 	wget https://circuit-release.s3.us-west-2.amazonaws.com/circuit-release/release-1220/test_seed -O test_seed
 	wget https://circuit-release.s3.us-west-2.amazonaws.com/circuit-release/${VK_VERSION}/verify_circuit.vkey -O ./agg_vk
-	cd ./roller && make test-gpu-prover
-	cd ./coordinator && make test-gpu-verifier
+	docker run -v ./assets:/scroll/assets
 
 clean: ## Empty out the bin folder
 	@rm -rf build/bin
