@@ -51,7 +51,7 @@ func (b *BlocktimestampFetcher) Start() {
 					log.Error("Can not get latest record without block timestamp", "err", err)
 					continue
 				}
-				for height := startHeight; number >= height+uint64(b.confirmation) && height > 0; {
+				for height := startHeight; number >= height+b.confirmation && height > 0; {
 					block, err := b.client.HeaderByNumber(b.ctx, new(big.Int).SetUint64(height))
 					if err != nil {
 						log.Error("Can not get block by number", "err", err)
