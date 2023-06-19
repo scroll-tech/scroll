@@ -129,22 +129,14 @@ contract MockBridgeL1 {
    ******************************/
 
   function commitBatch(
-    uint8 version,
-    bytes calldata parentBatchHeader,
+    uint8 /*version*/,
+    bytes calldata /*parentBatchHeader*/,
     bytes[] memory chunks,
-    bytes calldata skippedL1MessageBitmap
+    bytes calldata /*skippedL1MessageBitmap*/
   ) external {
-    require(version == 0, "invalid version");
-
     // check whether the batch is empty
     uint256 _chunksLength = chunks.length;
     require(_chunksLength > 0, "batch is empty");
-
-    // the variable `batchPtr` will be reused later for the current batch
-    (uint256 batchPtr, bytes32 _parentBatchHash) = _loadBatchHeader(parentBatchHeader);
-
-    uint256 _batchIndex = BatchHeaderV0Codec.batchIndex(batchPtr);
-    uint256 _totalL1MessagesPoppedOverall = BatchHeaderV0Codec.totalL1MessagePopped(batchPtr);
 
     uint256 dataPtr;
     assembly {
@@ -152,61 +144,42 @@ contract MockBridgeL1 {
       mstore(0x40, add(dataPtr, mul(_chunksLength, 32)))
     }
 
-    uint256 _totalL1MessagesPoppedInBatch;
     for (uint256 i = 0; i < _chunksLength; i++) {
-      uint256 _totalNumL1MessagesInChunk = _commitChunk(
-        dataPtr,
-        chunks[i],
-        _totalL1MessagesPoppedInBatch,
-        _totalL1MessagesPoppedOverall,
-        skippedL1MessageBitmap
-      );
+      _commitChunk(dataPtr, chunks[i]);
 
       unchecked {
-        _totalL1MessagesPoppedInBatch += _totalNumL1MessagesInChunk;
-        _totalL1MessagesPoppedOverall += _totalNumL1MessagesInChunk;
         dataPtr += 32;
       }
-    }
-
-    unchecked {
-      require(
-        ((_totalL1MessagesPoppedInBatch + 255) / 256) * 32 == skippedL1MessageBitmap.length,
-          "wrong bitmap length"
-      );
     }
 
     bytes32 _dataHash;
     assembly {
       let dataLen := mul(_chunksLength, 0x20)
       _dataHash := keccak256(sub(dataPtr, dataLen), dataLen)
-
-      batchPtr := mload(0x40) // reset batchPtr
-      _batchIndex := add(_batchIndex, 1) // increase batch index
     }
 
-    BatchHeaderV0Codec.storeVersion(batchPtr, version);
-    BatchHeaderV0Codec.storeBatchIndex(batchPtr, _batchIndex);
-    BatchHeaderV0Codec.storeL1MessagePopped(batchPtr, _totalL1MessagesPoppedInBatch);
-    BatchHeaderV0Codec.storeTotalL1MessagePopped(batchPtr, _totalL1MessagesPoppedOverall);
-    BatchHeaderV0Codec.storeDataHash(batchPtr, _dataHash);
-    BatchHeaderV0Codec.storeParentBatchHash(batchPtr, _parentBatchHash);
-    BatchHeaderV0Codec.storeSkippedBitmap(batchPtr, skippedL1MessageBitmap);
+    bytes memory paddedData = new bytes(89);
+    assembly {
+      mstore(add(paddedData, 57), _dataHash)
+    }
 
-    bytes32 _batchHash = BatchHeaderV0Codec.computeBatchHash(batchPtr, 89 + skippedL1MessageBitmap.length);
-
-    committedBatches[_batchIndex] = _batchHash;
+    uint256 batchPtr;
+    assembly {
+      batchPtr := add(paddedData, 32)
+    }
+    bytes32 _batchHash = BatchHeaderV0Codec.computeBatchHash(batchPtr, 89);
+    committedBatches[0] = _batchHash;
     emit CommitBatch(_batchHash);
   }
 
   function finalizeBatchWithProof(
-    bytes calldata batchHeader,
+    bytes calldata /*batchHeader*/,
     bytes32 /*prevStateRoot*/,
     bytes32 postStateRoot,
     bytes32 withdrawRoot,
     bytes calldata /*aggrProof*/
   ) external {
-    (, bytes32 _batchHash) = _loadBatchHeader(batchHeader);
+    bytes32 _batchHash = committedBatches[0];
     emit FinalizeBatch(_batchHash, postStateRoot, withdrawRoot);
   }
 
@@ -250,26 +223,10 @@ contract MockBridgeL1 {
     }
   }
 
-  /// @dev Internal function to load batch header from calldata to memory.
-  /// @param _batchHeader The batch header in calldata.
-  /// @return memPtr The start memory offset of loaded batch header.
-  /// @return _batchHash The hash of the loaded batch header.
-  function _loadBatchHeader(bytes calldata _batchHeader) internal pure returns (uint256 memPtr, bytes32 _batchHash) {
-    // load to memory
-    uint256 _length;
-    (memPtr, _length) = BatchHeaderV0Codec.loadAndValidate(_batchHeader);
-
-    uint256 _batchIndex = BatchHeaderV0Codec.batchIndex(memPtr);
-    _batchHash = bytes32(_batchIndex + 1);
-  }
-
   function _commitChunk(
     uint256 memPtr,
-    bytes memory _chunk,
-    uint256,
-    uint256,
-    bytes calldata
-  ) internal pure returns (uint256 _totalNumL1MessagesInChunk) {
+    bytes memory _chunk
+  ) internal pure {
     uint256 chunkPtr;
     uint256 startDataPtr;
     uint256 dataPtr;
@@ -328,7 +285,5 @@ contract MockBridgeL1 {
       let dataHash := keccak256(startDataPtr, sub(dataPtr, startDataPtr))
       mstore(memPtr, dataHash)
     }
-
-    return _totalNumL1MessagesInChunk;
   }
 }

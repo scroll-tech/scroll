@@ -163,7 +163,9 @@ type L1CommitBatchEvent struct {
 
 // L1FinalizeBatchEvent represents a FinalizeBatch event raised by the ScrollChain contract.
 type L1FinalizeBatchEvent struct {
-	BatchHash common.Hash
+	BatchHash    common.Hash
+	StateRoot    common.Hash
+	WithdrawRoot common.Hash
 }
 
 // L1RevertBatchEvent represents a RevertBatch event raised by the ScrollChain contract.
