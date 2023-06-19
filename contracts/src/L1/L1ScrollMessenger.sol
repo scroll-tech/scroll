@@ -37,6 +37,17 @@ contract L1ScrollMessenger is PausableUpgradeable, ScrollMessengerBase, IL1Scrol
     /// @param maxReplayTimes The new maximum number of times each message can be replayed.
     event UpdateMaxReplayTimes(uint256 maxReplayTimes);
 
+    /***********
+     * Structs *
+     ***********/
+
+    struct ReplayState {
+        // The number of replayed times.
+        uint128 times;
+        // The queue index of lastest replayed one. If it is zero, it means the message has not been replayed.
+        uint256 lastIndex;
+    }
+
     /*************
      * Variables *
      *************/
@@ -62,17 +73,14 @@ contract L1ScrollMessenger is PausableUpgradeable, ScrollMessengerBase, IL1Scrol
     /// @notice The maximum number of times each L1 message can be replayed.
     uint256 public maxReplayTimes;
 
-    /// @notice Mapping from L1 message hash to the number of replayed times.
-    mapping(bytes32 => uint256) public replayTimes;
-
-    /// @notice Mapping from L1 message hash to the queue index of lastest replayed one.
-    /// @dev If it is zero, it means the message has not been replayed.
-    mapping(bytes32 => uint256) public lastReplayIndex;
+    /// @notice Mapping from L1 message hash to replay state.
+    mapping(bytes32 => ReplayState) public replayStates;
 
     /// @notice Mapping from queue index to previous replay queue index.
     /// @dev If a message `x` was replayed 3 times with index `q1`, `q2` and `q3`, the
-    /// value of `prevReplayIndex` and `lastReplayIndex` will be `lastReplayIndex[hash(x)] = q3`,
-    /// `prevReplayIndex[q3] = q2`, `prevReplayIndex[q2] = q1` and `prevReplayIndex[q1] = x`.
+    /// value of `prevReplayIndex` and `replayStates` will be `replayStates[hash(x)].lastIndex = q3`,
+    /// `replayStates[hash(x)].times = 3`, `prevReplayIndex[q3] = q2`, `prevReplayIndex[q2] = q1`
+    /// and `prevReplayIndex[q1] = x`.
     mapping(uint256 => uint256) public prevReplayIndex;
 
     // @note move to ScrollMessengerBase in next big refactor
@@ -237,22 +245,22 @@ contract L1ScrollMessenger is PausableUpgradeable, ScrollMessengerBase, IL1Scrol
         uint256 _nextQueueIndex = IL1MessageQueue(_messageQueue).nextCrossDomainMessageIndex();
         IL1MessageQueue(_messageQueue).appendCrossDomainMessage(_counterpart, _newGasLimit, _xDomainCalldata);
 
+        ReplayState memory _replayState = replayStates[_xDomainCalldataHash];
         // update the replayed message chain.
-        uint256 _lastIndex = lastReplayIndex[_xDomainCalldataHash];
-        if (_lastIndex == 0) {
+        if (_replayState.lastIndex == 0) {
             // the message has not been replayed before.
             prevReplayIndex[_nextQueueIndex] = _queueIndex;
         } else {
-            prevReplayIndex[_nextQueueIndex] = _lastIndex;
+            prevReplayIndex[_nextQueueIndex] = _replayState.lastIndex;
         }
-        lastReplayIndex[_xDomainCalldataHash] = _nextQueueIndex;
+        _replayState.lastIndex = uint128(_nextQueueIndex);
 
         // update replay times
-        uint256 _replayedTimes = replayTimes[_xDomainCalldataHash];
-        require(_replayedTimes < maxReplayTimes, "Exceed maximum replay times");
+        require(_replayState.times < maxReplayTimes, "Exceed maximum replay times");
         unchecked {
-            replayTimes[_xDomainCalldataHash] = _replayedTimes + 1;
+            _replayState.times += 1;
         }
+        replayStates[_xDomainCalldataHash] = _replayState;
 
         // refund fee to `_refundAddress`
         unchecked {
@@ -272,7 +280,7 @@ contract L1ScrollMessenger is PausableUpgradeable, ScrollMessengerBase, IL1Scrol
         uint256 _queueIndex,
         bytes memory _message
     ) external override whenNotPaused {
-        // The criterions for drop a message.
+        // The criteria for dropping a message:
         // 1. The message is a L1 message.
         // 2. The message has not been dropped before.
         // 3. the message and all of its replacement are finalized in L1.
@@ -295,7 +303,7 @@ contract L1ScrollMessenger is PausableUpgradeable, ScrollMessengerBase, IL1Scrol
         require(!isL1MessageDropped[_xDomainCalldataHash], "Message already dropped");
 
         // check message is finalized
-        uint256 _lastIndex = lastReplayIndex[_xDomainCalldataHash];
+        uint256 _lastIndex = replayStates[_xDomainCalldataHash].lastIndex;
         if (_lastIndex == 0) _lastIndex = _queueIndex;
         require(IL1MessageQueue(_messageQueue).pendingQueueIndex() > _lastIndex, "Message not finalized");
 
