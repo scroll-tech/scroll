@@ -5,6 +5,14 @@ pragma solidity ^0.8.0;
 import {IScrollMessenger} from "../libraries/IScrollMessenger.sol";
 
 interface IL1ScrollMessenger is IScrollMessenger {
+    /**********
+     * Events *
+     **********/
+
+    /// @notice Emitted when the maximum number of times each message can be replayed is updated.
+    /// @param maxReplayTimes The new maximum number of times each message can be replayed.
+    event UpdateMaxReplayTimes(uint256 maxReplayTimes);
+
     /***********
      * Structs *
      ***********/
@@ -55,11 +63,10 @@ interface IL1ScrollMessenger is IScrollMessenger {
     ) external payable;
 
     /// @notice Drop a skipped message.
-    function dropMessage(
-        address from,
-        address to,
-        uint256 value,
-        uint256 queueIndex,
-        bytes memory message
-    ) external;
+    /// @param from The address of the sender of the message.
+    /// @param to The address of the recipient of the message.
+    /// @param value The msg.value passed to the message call.
+    /// @param queueIndex The queue index for the message to replay.
+    /// @param message The content of the message.
+    function dropMessage(address from, address to, uint256 value, uint256 queueIndex, bytes memory message) external;
 }

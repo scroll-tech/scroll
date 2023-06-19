@@ -29,14 +29,6 @@ import {IMessageDropCallback} from "../libraries/callbacks/IMessageDropCallback.
 /// @dev All deposited Ether (including `WETH` deposited throng `L1WETHGateway`) will locked in
 /// this contract.
 contract L1ScrollMessenger is PausableUpgradeable, ScrollMessengerBase, IL1ScrollMessenger {
-    /**********
-     * Events *
-     **********/
-
-    /// @notice Emitted when the maximum number of times each message can be replayed is updated.
-    /// @param maxReplayTimes The new maximum number of times each message can be replayed.
-    event UpdateMaxReplayTimes(uint256 maxReplayTimes);
-
     /***********
      * Structs *
      ***********/
