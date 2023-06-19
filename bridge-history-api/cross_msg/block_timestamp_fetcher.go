@@ -12,7 +12,7 @@ import (
 type GetEarliestNoBlocktimestampHeightFunc func() (uint64, error)
 type UpdateBlocktimestampFunc func(height uint64, timestamp time.Time) error
 
-type BlocktimestampFetcher struct {
+type BlockTimestampFetcher struct {
 	ctx                                   context.Context
 	confirmation                          uint64
 	blockTimeInSec                        int
@@ -21,8 +21,8 @@ type BlocktimestampFetcher struct {
 	getEarliestNoBlocktimestampHeightFunc GetEarliestNoBlocktimestampHeightFunc
 }
 
-func NewBlocktimestampFetcher(ctx context.Context, confirmation uint64, blockTimeInSec int, client *ethclient.Client, updateBlocktimestampFunc UpdateBlocktimestampFunc, getEarliestNoBlocktimestampHeightFunc GetEarliestNoBlocktimestampHeightFunc) *BlocktimestampFetcher {
-	return &BlocktimestampFetcher{
+func NewBlockTimestampFetcher(ctx context.Context, confirmation uint64, blockTimeInSec int, client *ethclient.Client, updateBlocktimestampFunc UpdateBlocktimestampFunc, getEarliestNoBlocktimestampHeightFunc GetEarliestNoBlocktimestampHeightFunc) *BlockTimestampFetcher {
+	return &BlockTimestampFetcher{
 		ctx:                                   ctx,
 		confirmation:                          confirmation,
 		blockTimeInSec:                        blockTimeInSec,
@@ -32,7 +32,7 @@ func NewBlocktimestampFetcher(ctx context.Context, confirmation uint64, blockTim
 	}
 }
 
-func (b *BlocktimestampFetcher) Start() {
+func (b *BlockTimestampFetcher) Start() {
 	go func() {
 		tick := time.NewTicker(time.Duration(b.blockTimeInSec) * time.Second)
 		for {
@@ -73,6 +73,6 @@ func (b *BlocktimestampFetcher) Start() {
 	}()
 }
 
-func (b *BlocktimestampFetcher) Stop() {
-	log.Info("BlocktimestampFetcher Stop")
+func (b *BlockTimestampFetcher) Stop() {
+	log.Info("BlockTimestampFetcher Stop")
 }
