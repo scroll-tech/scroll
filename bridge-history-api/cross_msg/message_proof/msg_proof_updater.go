@@ -50,7 +50,7 @@ func (m *MsgProofUpdater) Start() {
 				if latestBatch == nil {
 					continue
 				}
-				latestBatchIndexWithProof, err := m.db.GetLatestL2SentMsgBactchIndex()
+				latestBatchIndexWithProof, err := m.db.GetLatestL2SentMsgBatchIndex()
 				if err != nil {
 					log.Error("MsgProofUpdater: Can not get latest L2SentMsgBatchIndex: ", "err", err)
 					continue

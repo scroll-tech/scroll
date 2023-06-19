@@ -72,13 +72,13 @@ type L1CrossMsgOrm interface {
 	GetL1CrossMsgByHash(l1Hash common.Hash) (*CrossMsg, error)
 	GetL1CrossMsgsByAddress(sender common.Address) ([]*CrossMsg, error)
 	BatchInsertL1CrossMsgDBTx(dbTx *sqlx.Tx, messages []*CrossMsg) error
-	// UpdateL1CrossMsgHash invoked when SentMessage event is received
+	// UpdateL1CrossMsgHashDBTx invoked when SentMessage event is received
 	UpdateL1CrossMsgHashDBTx(ctx context.Context, dbTx *sqlx.Tx, l1Hash, msgHash common.Hash) error
 	UpdateL1CrossMsgHash(ctx context.Context, l1Hash, msgHash common.Hash) error
 	GetLatestL1ProcessedHeight() (int64, error)
 	DeleteL1CrossMsgAfterHeightDBTx(dbTx *sqlx.Tx, height int64) error
-	UpdateL1Blocktimestamp(height uint64, timestamp time.Time) error
-	GetL1EarliestNoBlocktimestampHeight() (uint64, error)
+	UpdateL1BlockTimestamp(height uint64, timestamp time.Time) error
+	GetL1EarliestNoBlockTimestampHeight() (uint64, error)
 }
 
 // L2CrossMsgOrm provides operations on cross_message table
@@ -86,13 +86,13 @@ type L2CrossMsgOrm interface {
 	GetL2CrossMsgByHash(l2Hash common.Hash) (*CrossMsg, error)
 	GetL2CrossMsgByAddress(sender common.Address) ([]*CrossMsg, error)
 	BatchInsertL2CrossMsgDBTx(dbTx *sqlx.Tx, messages []*CrossMsg) error
-	// UpdateL2CrossMsgHash invoked when SentMessage event is received
+	// UpdateL2CrossMsgHashDBTx invoked when SentMessage event is received
 	UpdateL2CrossMsgHashDBTx(ctx context.Context, dbTx *sqlx.Tx, l2Hash, msgHash common.Hash) error
 	UpdateL2CrossMsgHash(ctx context.Context, l2Hash, msgHash common.Hash) error
 	GetLatestL2ProcessedHeight() (int64, error)
 	DeleteL2CrossMsgFromHeightDBTx(dbTx *sqlx.Tx, height int64) error
-	UpdateL2Blocktimestamp(height uint64, timestamp time.Time) error
-	GetL2EarliestNoBlocktimestampHeight() (uint64, error)
+	UpdateL2BlockTimestamp(height uint64, timestamp time.Time) error
+	GetL2EarliestNoBlockTimestampHeight() (uint64, error)
 }
 
 type RelayedMsgOrm interface {
@@ -112,7 +112,7 @@ type L2SentMsgOrm interface {
 	GetLatestL2SentMsgLEHeight(endBlockNumber uint64) (*L2SentMsg, error)
 	GetL2SentMsgMsgHashByHeightRange(startHeight, endHeight uint64) ([]*L2SentMsg, error)
 	UpdateL2MessageProofInDBTx(ctx context.Context, dbTx *sqlx.Tx, msgHash string, proof string, batch_index uint64) error
-	GetLatestL2SentMsgBactchIndex() (int64, error)
+	GetLatestL2SentMsgBatchIndex() (int64, error)
 	DeleteL2SentMsgAfterHeightDBTx(dbTx *sqlx.Tx, height int64) error
 	ResetL2SentMsgL1HashAfterHeightDBTx(dbTx *sqlx.Tx, height int64) error
 }

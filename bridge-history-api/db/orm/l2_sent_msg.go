@@ -31,7 +31,7 @@ type l2SentMsgOrm struct {
 	db *sqlx.DB
 }
 
-// NewBridgeBatchOrm create an NewBridgeBatchOrm instance
+// NewL2SentMsgOrm create an NewBridgeBatchOrm instance
 func NewL2SentMsgOrm(db *sqlx.DB) L2SentMsgOrm {
 	return &l2SentMsgOrm{db: db}
 }
@@ -102,7 +102,7 @@ func (l *l2SentMsgOrm) UpdateL2MessageProofInDBTx(ctx context.Context, dbTx *sql
 	return nil
 }
 
-func (l *l2SentMsgOrm) GetLatestL2SentMsgBactchIndex() (int64, error) {
+func (l *l2SentMsgOrm) GetLatestL2SentMsgBatchIndex() (int64, error) {
 	row := l.db.QueryRow(`SELECT batch_index FROM l2_sent_msg WHERE msg_proof != '' AND NOT is_deleted ORDER BY batch_index DESC LIMIT 1;`)
 	var result sql.NullInt64
 	if err := row.Scan(&result); err != nil {
