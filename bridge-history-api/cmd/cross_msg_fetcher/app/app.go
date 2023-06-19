@@ -101,11 +101,11 @@ func action(ctx *cli.Context) error {
 	defer l2crossMsgFetcher.Stop()
 
 	// BlockTimestamp fetcher for l1 and l2
-	l1BlockTimeFetcher := cross_msg.NewBlockTimestampFetcher(subCtx, cfg.L1.Confirmation, int(cfg.L1.BlockTime), l1client, db.UpdateL1Blocktimestamp, db.GetL1EarliestNoBlocktimestampHeight)
+	l1BlockTimeFetcher := cross_msg.NewBlockTimestampFetcher(subCtx, cfg.L1.Confirmation, int(cfg.L1.BlockTime), l1client, db.UpdateL1BlockTimestamp, db.GetL1EarliestNoBlockTimestampHeight)
 	go l1BlockTimeFetcher.Start()
 	defer l1BlockTimeFetcher.Stop()
 
-	l2BlockTimeFetcher := cross_msg.NewBlockTimestampFetcher(subCtx, cfg.L2.Confirmation, int(cfg.L2.BlockTime), l2client, db.UpdateL2Blocktimestamp, db.GetL2EarliestNoBlocktimestampHeight)
+	l2BlockTimeFetcher := cross_msg.NewBlockTimestampFetcher(subCtx, cfg.L2.Confirmation, int(cfg.L2.BlockTime), l2client, db.UpdateL2BlockTimestamp, db.GetL2EarliestNoBlockTimestampHeight)
 	go l2BlockTimeFetcher.Start()
 	defer l2BlockTimeFetcher.Stop()
 
