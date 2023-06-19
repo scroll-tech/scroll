@@ -308,7 +308,7 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
         );
 
         // verify batch
-        IRollupVerifier(verifier).verifyAggregateProof(_aggrProof, _publicInputHash);
+        IRollupVerifier(verifier).verifyAggregateProof(_batchIndex, _aggrProof, _publicInputHash);
 
         // check and update lastFinalizedBatchIndex
         unchecked {

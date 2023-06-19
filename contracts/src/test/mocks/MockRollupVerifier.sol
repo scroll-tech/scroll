@@ -6,5 +6,9 @@ import {IRollupVerifier} from "../../libraries/verifier/IRollupVerifier.sol";
 
 contract MockRollupVerifier is IRollupVerifier {
     /// @inheritdoc IRollupVerifier
-    function verifyAggregateProof(bytes calldata, bytes32) external view {}
+    function verifyAggregateProof(
+        uint256,
+        bytes calldata,
+        bytes32
+    ) external view {}
 }
