@@ -111,7 +111,7 @@ type L2SentMsgOrm interface {
 	GetL2SentMessageByNonce(nonce uint64) (*L2SentMsg, error)
 	GetLatestL2SentMsgLEHeight(endBlockNumber uint64) (*L2SentMsg, error)
 	GetL2SentMsgMsgHashByHeightRange(startHeight, endHeight uint64) ([]*L2SentMsg, error)
-	UpdateL2MessageProofInDbTx(ctx context.Context, dbTx *sqlx.Tx, msgHash string, proof string, batch_index uint64) error
+	UpdateL2MessageProofInDBTx(ctx context.Context, dbTx *sqlx.Tx, msgHash string, proof string, batch_index uint64) error
 	GetLatestL2SentMsgBactchIndex() (int64, error)
 	DeleteL2SentMsgAfterHeightDBTx(dbTx *sqlx.Tx, height int64) error
 	ResetL2SentMsgL1HashAfterHeightDBTx(dbTx *sqlx.Tx, height int64) error

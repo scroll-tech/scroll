@@ -86,21 +86,20 @@ func (l *l2CrossMsgOrm) BatchInsertL2CrossMsgDBTx(dbTx *sqlx.Tx, messages []*Cro
 			"msg_type":     Layer2Msg,
 		}
 		var exists bool
-		err := dbTx.QueryRow(`SELECT EXISTS(SELECT 1 FROM cross_message WHERE layer2_hash = $1 AND NOT is_deleted)`, msg.Layer2Hash).Scan(&exists)
+		err = dbTx.QueryRow(`SELECT EXISTS(SELECT 1 FROM cross_message WHERE layer2_hash = $1 AND NOT is_deleted)`, msg.Layer2Hash).Scan(&exists)
 		if err != nil {
 			return err
 		}
 		if exists {
 			return fmt.Errorf("BatchInsertL2CrossMsgDBTx: l2 cross msg layer2Hash %v already exists at height %v", msg.Layer2Hash, msg.Height)
 		}
-
-		_, err = dbTx.NamedExec(`insert into cross_message(height, sender, target, asset, layer2_hash, layer1_token, layer2_token, token_id, amount, msg_type) values(:height, :sender, :target, :asset, :layer2_hash, :layer1_token, :layer2_token, :token_id, :amount, :msg_type);`, messageMaps[i])
-		if err != nil {
-			log.Error("BatchInsertL2CrossMsgDBTx: failed to insert l2 cross msgs", "layer2hash", msg.Layer2Hash, "heights", msg.Height, "err", err)
-			break
-		}
 	}
-	return err
+	_, err = dbTx.NamedExec(`insert into cross_message(height, sender, target, asset, layer2_hash, layer1_token, layer2_token, token_id, amount, msg_type) values(:height, :sender, :target, :asset, :layer2_hash, :layer1_token, :layer2_token, :token_id, :amount, :msg_type);`, messageMaps)
+	if err != nil {
+		log.Error("BatchInsertL2CrossMsgDBTx: failed to insert l2 cross msgs", "err", err)
+		return err
+	}
+	return nil
 }
 
 func (l *l2CrossMsgOrm) UpdateL2CrossMsgHashDBTx(ctx context.Context, dbTx *sqlx.Tx, l2Hash, msgHash common.Hash) error {

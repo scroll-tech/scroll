@@ -186,7 +186,10 @@ func (m *MsgProofUpdater) updateMsgProof(msgs []*orm.L2SentMsg, proofs [][]byte,
 	if len(msgs) == 0 {
 		return nil
 	}
-
+	// this should not happend, but double checked
+	if len(msgs) != len(proofs) {
+		return fmt.Errorf("illegal state: len(msgs) != len(proofs)")
+	}
 	dbTx, err := m.db.Beginx()
 	if err != nil {
 		return err
@@ -194,7 +197,7 @@ func (m *MsgProofUpdater) updateMsgProof(msgs []*orm.L2SentMsg, proofs [][]byte,
 
 	for i, msg := range msgs {
 		log.Debug("updateMsgProof", "msgHash", msg.MsgHash, "batchIndex", batchIndex, "proof", common.Bytes2Hex(proofs[i]))
-		if dbTxErr := m.db.UpdateL2MessageProofInDbTx(m.ctx, dbTx, msg.MsgHash, common.Bytes2Hex(proofs[i]), batchIndex); dbTxErr != nil {
+		if dbTxErr := m.db.UpdateL2MessageProofInDBTx(m.ctx, dbTx, msg.MsgHash, common.Bytes2Hex(proofs[i]), batchIndex); dbTxErr != nil {
 			if err := dbTx.Rollback(); err != nil {
 				log.Error("dbTx.Rollback()", "err", err)
 			}
