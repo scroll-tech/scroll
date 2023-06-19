@@ -91,7 +91,7 @@ func (b *BatchInfoFetcher) fetchBatchInfo() error {
 		// if number - confirmation can never less than 0 since the for loop condition
 		// but watch out the overflow
 		if to > number-uint64(b.confirmation) {
-			to = number
+			to = number - uint64(b.confirmation)
 		}
 		// filter logs to fetch batches
 		err = FetchAndSaveBatchIndex(b.ctx, b.client, b.db, int64(from), int64(to), b.scrollChainAddr)
