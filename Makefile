@@ -43,12 +43,12 @@ run_test_docker: ## run Docker image for local testing on M1/M2 Silicon Mac
 
 
 test_zkp: ## Test zkp prove and verify, roller/prover generates the proof and coordinator/verifier verifies it
+	docker build -t test_zkp:1.0 -f ./build/dockerfiles/test_zkp.Dockerfile ..
 	mkdir -p ./assets/test_params
 	wget https://circuit-release.s3.us-west-2.amazonaws.com/circuit-release/${PARAMS_VERSION}/params20 -O ./assets/test_params/params20
 	wget https://circuit-release.s3.us-west-2.amazonaws.com/circuit-release/${PARAMS_VERSION}/params26 -O ./assets/test_params/params26
 	wget https://circuit-release.s3.us-west-2.amazonaws.com/circuit-release/release-1220/test_seed -O ./assets/test_seed
 	wget https://circuit-release.s3.us-west-2.amazonaws.com/circuit-release/${VK_VERSION}/verify_circuit.vkey -O ./assets/agg_vk
-	docker build -t test_zkp:1.0 -f ./build/dockerfiles/test_zkp.Dockerfile .
 	docker run -v ./assets:/scroll/assets test_zkp:1.0
 
 clean: ## Empty out the bin folder
