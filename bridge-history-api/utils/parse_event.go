@@ -273,8 +273,8 @@ func ParseBatchInfoFromScrollChain(ctx context.Context, client *ethclient.Client
 				continue
 			}
 
-			commitTx, is_pending, err := client.TransactionByHash(ctx, vlog.TxHash)
-			if err != nil || is_pending {
+			commitTx, isPending, err := client.TransactionByHash(ctx, vlog.TxHash)
+			if err != nil || isPending {
 				log.Warn("Failed to get commit Batch tx receipt or the tx is still pending", "err", err)
 				return bridgeBatches, err
 			}

@@ -41,21 +41,20 @@ func (b *bridgeBatchOrm) BatchInsertBridgeBatchDBTx(dbTx *sqlx.Tx, batches []*Ro
 			"end_block_number":   msg.EndBlockNumber,
 		}
 		var exists bool
-		err := dbTx.QueryRow(`SELECT EXISTS(SELECT 1 FROM bridge_batch WHERE batch_index = $1 AND NOT is_deleted)`, msg.BatchIndex).Scan(&exists)
+		err = dbTx.QueryRow(`SELECT EXISTS(SELECT 1 FROM bridge_batch WHERE batch_index = $1 AND NOT is_deleted)`, msg.BatchIndex).Scan(&exists)
 		if err != nil {
 			return err
 		}
 		if exists {
 			return fmt.Errorf("BatchInsertBridgeBatchDBTx: batch index %v already exists at height %v", msg.BatchIndex, msg.CommitHeight)
 		}
-
-		_, err = dbTx.NamedExec(`insert into bridge_batch(commit_height, batch_index, batch_hash, start_block_number, end_block_number) values(:commit_height, :batch_index, :batch_hash, :start_block_number, :end_block_number);`, messageMaps[i])
-		if err != nil {
-			log.Error("BatchInsertBridgeBatchDBTx: failed to insert batch event msgs", "height", msg.CommitHeight, "batch_index", msg.BatchIndex, "batch_hash", msg.BatchHash, "start_block_number", msg.StartBlockNumber, "end_block_number", msg.EndBlockNumber)
-			break
-		}
 	}
-	return err
+	_, err = dbTx.NamedExec(`insert into bridge_batch(commit_height, batch_index, batch_hash, start_block_number, end_block_number) values(:commit_height, :batch_index, :batch_hash, :start_block_number, :end_block_number);`, messageMaps)
+	if err != nil {
+		log.Error("BatchInsertBridgeBatchDBTx: failed to insert batch event msgs", "err", err)
+		return err
+	}
+	return nil
 }
 
 func (b *bridgeBatchOrm) GetLatestBridgeBatch() (*RollupBatch, error) {

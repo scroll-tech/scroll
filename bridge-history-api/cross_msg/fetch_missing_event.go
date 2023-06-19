@@ -214,7 +214,7 @@ func FetchAndSaveBatchIndex(ctx context.Context, client *ethclient.Client, datab
 	query.Topics[0][0] = backendabi.L1CommitBatchEventSignature
 	logs, err := client.FilterLogs(ctx, query)
 	if err != nil {
-		log.Warn("Failed to get l2 event logs", "err", err)
+		log.Warn("Failed to get batch commit event logs", "err", err)
 		return err
 	}
 	bridgeBatches, err := utils.ParseBatchInfoFromScrollChain(ctx, client, logs)
