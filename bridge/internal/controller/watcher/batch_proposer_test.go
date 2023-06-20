@@ -2,7 +2,6 @@ package watcher
 
 import (
 	"context"
-	"encoding/hex"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -13,7 +12,7 @@ import (
 	"scroll-tech/bridge/internal/utils"
 )
 
-func testChunkProposer(t *testing.T) {
+func testBatchProposer(t *testing.T) {
 	db := setupDB(t)
 	defer utils.CloseDB(db)
 
@@ -31,16 +30,23 @@ func testChunkProposer(t *testing.T) {
 	}, db)
 	cp.TryProposeChunk()
 
-	expectedChunk := &bridgeTypes.Chunk{
-		Blocks: []*bridgeTypes.WrappedBlock{wrappedBlock1, wrappedBlock2},
-	}
-	hashBytes, err := expectedChunk.Hash(0)
-	assert.NoError(t, err)
-	expectedHash := hex.EncodeToString(hashBytes)
+	bp := NewBatchProposer(context.Background(), &config.BatchProposerConfig{
+		MaxChunkNumPerBatch:             10,
+		MaxL1CommitGasPerBatch:          50000000000,
+		MaxL1CommitCalldataSizePerBatch: 1000000,
+		MinChunkNumPerBatch:             1,
+		BatchTimeoutSec:                 300,
+	}, db)
+	bp.TryProposeBatch()
 
 	chunkOrm := orm.NewChunk(db)
 	chunks, err := chunkOrm.GetUnbatchedChunks(context.Background())
 	assert.NoError(t, err)
-	assert.Len(t, chunks, 1)
-	assert.Equal(t, expectedHash, chunks[0].Hash)
+	assert.Empty(t, chunks)
+
+	batchOrm := orm.NewBatch(db)
+	batch, err := batchOrm.GetLatestBatch(context.Background())
+	assert.NoError(t, err)
+	assert.Equal(t, uint64(0), batch.StartChunkIndex)
+	assert.Equal(t, uint64(0), batch.EndChunkIndex)
 }

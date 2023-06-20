@@ -120,16 +120,6 @@ func (p *BatchProposer) proposeBatchChunks() ([]*bridgeTypes.Chunk, error) {
 
 	// Check if the first chunk breaks hard limits.
 	// If so, it indicates there are bugs in chunk-proposer, manual fix is needed.
-	if totalL1CommitCalldataSize > p.maxL1CommitCalldataSizePerBatch {
-		return nil, fmt.Errorf(
-			"the first chunk exceeds l1 commit calldata size limit; start block number: %v, end block number %v, calldata size: %v, max calldata size limit: %v",
-			firstChunk.StartBlockNumber,
-			firstChunk.EndBlockNumber,
-			totalL1CommitCalldataSize,
-			p.maxL1CommitCalldataSizePerBatch,
-		)
-	}
-
 	if totalL1CommitGas > p.maxL1CommitGasPerBatch {
 		return nil, fmt.Errorf(
 			"the first chunk exceeds l1 commit gas limit; start block number: %v, end block number: %v, commit gas: %v, max commit gas limit: %v",
@@ -137,6 +127,16 @@ func (p *BatchProposer) proposeBatchChunks() ([]*bridgeTypes.Chunk, error) {
 			firstChunk.EndBlockNumber,
 			totalL1CommitGas,
 			p.maxL1CommitGasPerBatch,
+		)
+	}
+
+	if totalL1CommitCalldataSize > p.maxL1CommitCalldataSizePerBatch {
+		return nil, fmt.Errorf(
+			"the first chunk exceeds l1 commit calldata size limit; start block number: %v, end block number %v, calldata size: %v, max calldata size limit: %v",
+			firstChunk.StartBlockNumber,
+			firstChunk.EndBlockNumber,
+			totalL1CommitCalldataSize,
+			p.maxL1CommitCalldataSizePerBatch,
 		)
 	}
 
