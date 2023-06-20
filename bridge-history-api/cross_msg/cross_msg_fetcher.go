@@ -27,13 +27,12 @@ type CrossMsgFetcher struct {
 	reorgHandling ReorgHandling
 	addressList   []common.Address
 	cachedHeaders []*types.Header
-	mu            *sync.Mutex
+	mu            sync.Mutex
 	reorgStartCh  chan struct{}
 	reorgEndCh    chan struct{}
 }
 
 func NewCrossMsgFetcher(ctx context.Context, config *config.LayerConfig, db db.OrmFactory, client *ethclient.Client, worker *FetchEventWorker, addressList []common.Address, reorg ReorgHandling) (*CrossMsgFetcher, error) {
-	newMU := &sync.Mutex{}
 	crossMsgFetcher := &CrossMsgFetcher{
 		ctx:           ctx,
 		config:        config,
@@ -41,7 +40,6 @@ func NewCrossMsgFetcher(ctx context.Context, config *config.LayerConfig, db db.O
 		client:        client,
 		worker:        worker,
 		reorgHandling: reorg,
-		mu:            newMU,
 		addressList:   addressList,
 		cachedHeaders: make([]*types.Header, 0),
 		reorgStartCh:  make(chan struct{}),
@@ -105,7 +103,7 @@ func (c *CrossMsgFetcher) forwardFetchAndSaveMissingEvents(confirmation uint64) 
 	// if we fetch to the latest block, shall not exceed cachedHeaders
 	var number uint64
 	var err error
-	if len(c.cachedHeaders) != 0 && confirmation <= 0 {
+	if len(c.cachedHeaders) != 0 && confirmation == 0 {
 		number = c.cachedHeaders[len(c.cachedHeaders)-1].Number.Uint64() - 1
 	} else {
 		number, err = utils.GetSafeBlockNumber(c.ctx, c.client, confirmation)
@@ -118,22 +116,22 @@ func (c *CrossMsgFetcher) forwardFetchAndSaveMissingEvents(confirmation uint64) 
 		log.Error(fmt.Sprintf("%s: invalid get/fetch function", c.worker.Name))
 		return
 	}
-	processed_height, err := c.worker.G(c.db)
+	processedHeight, err := c.worker.G(c.db)
 	if err != nil {
 		log.Error(fmt.Sprintf("%s: can not get latest processed block height", c.worker.Name))
 	}
-	log.Info(fmt.Sprintf("%s: ", c.worker.Name), "height", processed_height)
-	if processed_height <= 0 || processed_height < int64(c.config.StartHeight) {
-		processed_height = int64(c.config.StartHeight)
+	log.Info(fmt.Sprintf("%s: ", c.worker.Name), "height", processedHeight)
+	if processedHeight <= 0 || processedHeight < int64(c.config.StartHeight) {
+		processedHeight = int64(c.config.StartHeight)
 	} else {
-		processed_height += 1
+		processedHeight += 1
 	}
-	for n := processed_height; n <= int64(number); n += fetchLimit {
-		iter_end := n + fetchLimit - 1
-		if iter_end > int64(number) {
-			iter_end = int64(number)
+	for from := processedHeight; from <= int64(number); from += fetchLimit {
+		to := from + fetchLimit - 1
+		if to > int64(number) {
+			to = int64(number)
 		}
-		err := c.worker.F(c.ctx, c.client, c.db, n, iter_end, c.addressList)
+		err := c.worker.F(c.ctx, c.client, c.db, from, to, c.addressList)
 		if err != nil {
 			log.Error(fmt.Sprintf("%s: failed!", c.worker.Name), "err", err)
 			break
