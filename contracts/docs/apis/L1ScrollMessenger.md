@@ -27,6 +27,26 @@ The address of counterpart ScrollMessenger contract in L1/L2.
 |---|---|---|
 | _0 | address | undefined |
 
+### dropMessage
+
+```solidity
+function dropMessage(address _from, address _to, uint256 _value, uint256 _queueIndex, bytes _message) external nonpayable
+```
+
+Drop a skipped message.
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| _from | address | undefined |
+| _to | address | undefined |
+| _value | uint256 | undefined |
+| _queueIndex | uint256 | undefined |
+| _message | bytes | undefined |
+
 ### feeVault
 
 ```solidity
@@ -62,6 +82,28 @@ Initialize the storage of L1ScrollMessenger.
 | _feeVault | address | The address of fee vault, which will be used to collect relayer fee. |
 | _rollup | address | The address of ScrollChain contract. |
 | _messageQueue | address | The address of L1MessageQueue contract. |
+
+### isL1MessageDropped
+
+```solidity
+function isL1MessageDropped(bytes32) external view returns (bool)
+```
+
+Mappging from L1 message hash to drop status.
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| _0 | bytes32 | undefined |
+
+#### Returns
+
+| Name | Type | Description |
+|---|---|---|
+| _0 | bool | undefined |
 
 ### isL1MessageSent
 
@@ -106,6 +148,23 @@ Mapping from L2 message hash to a boolean value indicating if the message has be
 | Name | Type | Description |
 |---|---|---|
 | _0 | bool | undefined |
+
+### maxReplayTimes
+
+```solidity
+function maxReplayTimes() external view returns (uint256)
+```
+
+The maximum number of times each L1 message can be replayed.
+
+
+
+
+#### Returns
+
+| Name | Type | Description |
+|---|---|---|
+| _0 | uint256 | undefined |
 
 ### messageQueue
 
@@ -157,6 +216,28 @@ function paused() external view returns (bool)
 | Name | Type | Description |
 |---|---|---|
 | _0 | bool | undefined |
+
+### prevReplayIndex
+
+```solidity
+function prevReplayIndex(uint256) external view returns (uint256)
+```
+
+Mapping from queue index to previous replay queue index.
+
+*If a message `x` was replayed 3 times with index `q1`, `q2` and `q3`, the value of `prevReplayIndex` and `replayStates` will be `replayStates[hash(x)].lastIndex = q3`, `replayStates[hash(x)].times = 3`, `prevReplayIndex[q3] = q2`, `prevReplayIndex[q2] = q1` and `prevReplayIndex[q1] = x`.*
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| _0 | uint256 | undefined |
+
+#### Returns
+
+| Name | Type | Description |
+|---|---|---|
+| _0 | uint256 | undefined |
 
 ### relayMessageWithProof
 
@@ -211,6 +292,29 @@ Replay an existing message.
 | _message | bytes | undefined |
 | _newGasLimit | uint32 | undefined |
 | _refundAddress | address | undefined |
+
+### replayStates
+
+```solidity
+function replayStates(bytes32) external view returns (uint128 times, uint256 lastIndex)
+```
+
+Mapping from L1 message hash to replay state.
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| _0 | bytes32 | undefined |
+
+#### Returns
+
+| Name | Type | Description |
+|---|---|---|
+| times | uint128 | undefined |
+| lastIndex | uint256 | undefined |
 
 ### rollup
 
@@ -315,6 +419,22 @@ Update fee vault contract.
 | Name | Type | Description |
 |---|---|---|
 | _newFeeVault | address | The address of new fee vault contract. |
+
+### updateMaxReplayTimes
+
+```solidity
+function updateMaxReplayTimes(uint256 _maxReplayTimes) external nonpayable
+```
+
+Update max replay times.
+
+*This function can only called by contract owner.*
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| _maxReplayTimes | uint256 | The new max replay times. |
 
 ### xDomainMessageSender
 
@@ -455,6 +575,22 @@ Emitted when owner updates fee vault contract.
 |---|---|---|
 | _oldFeeVault  | address | undefined |
 | _newFeeVault  | address | undefined |
+
+### UpdateMaxReplayTimes
+
+```solidity
+event UpdateMaxReplayTimes(uint256 maxReplayTimes)
+```
+
+Emitted when the maximum number of times each message can be replayed is updated.
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| maxReplayTimes  | uint256 | undefined |
 
 
 

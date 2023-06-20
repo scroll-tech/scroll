@@ -472,6 +472,41 @@ event OwnershipTransferred(address indexed previousOwner, address indexed newOwn
 | previousOwner `indexed` | address | undefined |
 | newOwner `indexed` | address | undefined |
 
+### RefundERC20
+
+```solidity
+event RefundERC20(address indexed token, address indexed recipient, uint256 amount)
+```
+
+Emitted when some ERC20 token is refuned.
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| token `indexed` | address | undefined |
+| recipient `indexed` | address | undefined |
+| amount  | uint256 | undefined |
+
+### RefundETH
+
+```solidity
+event RefundETH(address indexed recipient, uint256 amount)
+```
+
+Emitted when some ETH is refuned.
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| recipient `indexed` | address | undefined |
+| amount  | uint256 | undefined |
+
 ### SetDefaultERC20Gateway
 
 ```solidity

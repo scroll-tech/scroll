@@ -269,7 +269,6 @@ contract L1ScrollMessenger is PausableUpgradeable, ScrollMessengerBase, IL1Scrol
         // check message is finalized
         uint256 _lastIndex = replayStates[_xDomainCalldataHash].lastIndex;
         if (_lastIndex == 0) _lastIndex = _queueIndex;
-        require(IL1MessageQueue(_messageQueue).pendingQueueIndex() > _lastIndex, "Message not finalized");
 
         // check message is skipped and drop it.
         // @note If the list is very long, the message may never be dropped.

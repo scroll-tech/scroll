@@ -9,6 +9,8 @@ import {IL1MessageQueue} from "./IL1MessageQueue.sol";
 
 import {AddressAliasHelper} from "../../libraries/common/AddressAliasHelper.sol";
 
+// solhint-disable no-empty-blocks
+// solhint-disable no-inline-assembly
 // solhint-disable reason-string
 
 /// @title L1MessageQueue
@@ -312,8 +314,8 @@ contract L1MessageQueue is OwnableUpgradeable, IL1MessageQueue {
     }
 
     /// @inheritdoc IL1MessageQueue
-    /// @dev We will trust the call and don't check `_index` agaist `pendingQueueIndex`.
     function dropCrossDomainMessage(uint256 _index) external onlyMessenger {
+        require(_index < pendingQueueIndex, "cannot drop pending message");
         require(messageQueue[_index] != bytes32(0), "message already dropped or executed");
 
         messageQueue[_index] = bytes32(0);

@@ -198,6 +198,22 @@ The address of corresponding L1ScrollMessenger/L2ScrollMessenger contract.
 |---|---|---|
 | _0 | address | undefined |
 
+### onDropMessage
+
+```solidity
+function onDropMessage(bytes _message) external payable
+```
+
+
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| _message | bytes | undefined |
+
 ### router
 
 ```solidity
@@ -260,6 +276,24 @@ Emitted when ERC20 token is withdrawn from L2 to L1 and transfer to recipient.
 | to  | address | undefined |
 | amount  | uint256 | undefined |
 | data  | bytes | undefined |
+
+### RefundERC20
+
+```solidity
+event RefundERC20(address indexed token, address indexed recipient, uint256 amount)
+```
+
+Emitted when some ERC20 token is refuned.
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| token `indexed` | address | undefined |
+| recipient `indexed` | address | undefined |
+| amount  | uint256 | undefined |
 
 
 
