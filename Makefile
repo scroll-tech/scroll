@@ -49,7 +49,7 @@ test_zkp: ## Test zkp prove and verify, roller/prover generates the proof and co
 	wget https://circuit-release.s3.us-west-2.amazonaws.com/circuit-release/${PARAMS_VERSION}/params26 -O ./assets/test_params/params26
 	wget https://circuit-release.s3.us-west-2.amazonaws.com/circuit-release/release-1220/test_seed -O ./assets/test_seed
 	wget https://circuit-release.s3.us-west-2.amazonaws.com/circuit-release/${VK_VERSION}/verify_circuit.vkey -O ./assets/agg_vk
-	docker run -v ./assets:/scroll/assets test_zkp:1.0
+	docker run -v assets:/scroll/assets test_zkp:1.0
 
 clean: ## Empty out the bin folder
 	@rm -rf build/bin
