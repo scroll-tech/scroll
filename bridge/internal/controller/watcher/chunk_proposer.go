@@ -112,21 +112,21 @@ func (p *ChunkProposer) proposeChunk() (*bridgeTypes.Chunk, error) {
 		)
 	}
 
-	if totalL1CommitCalldataSize > p.maxL1CommitCalldataSizePerChunk {
-		return nil, fmt.Errorf(
-			"the first block exceeds l1 commit calldata size limit; block number: %v, calldata size: %v, max calldata size limit: %v",
-			firstBlock.Header.Number,
-			totalL1CommitCalldataSize,
-			p.maxL1CommitCalldataSizePerChunk,
-		)
-	}
-
 	if totalL1CommitGas > p.maxL1CommitGasPerChunk {
 		return nil, fmt.Errorf(
 			"the first block exceeds l1 commit gas limit; block number: %v, commit gas: %v, max commit gas limit: %v",
 			firstBlock.Header.Number,
 			totalL1CommitGas,
 			p.maxL1CommitGasPerChunk,
+		)
+	}
+
+	if totalL1CommitCalldataSize > p.maxL1CommitCalldataSizePerChunk {
+		return nil, fmt.Errorf(
+			"the first block exceeds l1 commit calldata size limit; block number: %v, calldata size: %v, max calldata size limit: %v",
+			firstBlock.Header.Number,
+			totalL1CommitCalldataSize,
+			p.maxL1CommitCalldataSizePerChunk,
 		)
 	}
 
