@@ -19,17 +19,21 @@ type Chunk struct {
 	db *gorm.DB `gorm:"-"`
 
 	// block
-	Index                      uint64 `json:"index" gorm:"column:index"`
-	Hash                       string `json:"hash" gorm:"column:hash"`
-	StartBlockNumber           uint64 `json:"start_block_number" gorm:"column:start_block_number"`
-	StartBlockHash             string `json:"start_block_hash" gorm:"column:start_block_hash"`
-	EndBlockNumber             uint64 `json:"end_block_number" gorm:"column:end_block_number"`
-	EndBlockHash               string `json:"end_block_hash" gorm:"column:end_block_hash"`
-	TotalGasUsed               uint64 `json:"total_gas_used" gorm:"column:total_gas_used"`
-	TotalTxNum                 uint64 `json:"total_tx_num" gorm:"column:total_tx_num"`
-	TotalPayloadSize           uint64 `json:"total_payload_size" gorm:"column:total_payload_size"`
-	TotalL1MessagePoppedBefore uint64 `json:"total_l1_messages_popped_before" gorm:"column:total_l1_messages_popped_before"`
-	TotalL1Messages            uint64 `json:"total_l1_messages" gorm:"column:total_l1_messages"`
+	Index                     uint64 `json:"index" gorm:"column:index"`
+	Hash                      string `json:"hash" gorm:"column:hash"`
+	StartBlockNumber          uint64 `json:"start_block_number" gorm:"column:start_block_number"`
+	StartBlockHash            string `json:"start_block_hash" gorm:"column:start_block_hash"`
+	EndBlockNumber            uint64 `json:"end_block_number" gorm:"column:end_block_number"`
+	EndBlockHash              string `json:"end_block_hash" gorm:"column:end_block_hash"`
+	TotalL2TxGas              uint64 `json:"total_l2_tx_gas" gorm:"column:total_l2_tx_gas"`
+	TotalL2TxNum              uint64 `json:"total_l2_tx_num" gorm:"column:total_l2_tx_num"`
+	TotalL1CommitCalldataSize uint64 `json:"total_l1_commit_calldata_size" gorm:"column:total_l1_commit_calldata_size"`
+	TotalL1CommitGas          uint64 `json:"total_l1_commit_gas" gorm:"column:total_l1_commit_gas"`
+	StartBlockTime            uint64 `json:"start_block_time" gorm:"column:start_block_time"`
+
+	// chunk
+	TotalL1MessagesPoppedBefore uint64 `json:"total_l1_messages_popped_before" gorm:"column:total_l1_messages_popped_before"`
+	TotalL1MessagesPopped       uint64 `json:"total_l1_messages_popped" gorm:"column:total_l1_messages_popped"`
 
 	// proof
 	ProvingStatus    int16      `json:"proving_status" gorm:"column:proving_status;default:1"`
@@ -109,7 +113,7 @@ func (o *Chunk) GetTotalL1MessagePoppedByEndBlockNumber(ctx context.Context, end
 		}
 		return 0, err
 	}
-	return chunk.TotalL1MessagePoppedBefore + chunk.TotalL1Messages, nil
+	return chunk.TotalL1MessagesPoppedBefore + chunk.TotalL1MessagesPopped, nil
 }
 
 // GetLatestChunk retrieves the latest chunk from the database.
@@ -143,7 +147,7 @@ func (o *Chunk) InsertChunk(ctx context.Context, chunk *bridgeTypes.Chunk, dbTX 
 		return "", err
 	}
 	if parentChunk != nil {
-		totalL1MessagePoppedBefore = parentChunk.TotalL1MessagePoppedBefore + parentChunk.TotalL1Messages
+		totalL1MessagePoppedBefore = parentChunk.TotalL1MessagesPoppedBefore + parentChunk.TotalL1MessagesPopped
 	}
 	hash, err := chunk.Hash(totalL1MessagePoppedBefore)
 	if err != nil {
@@ -151,16 +155,15 @@ func (o *Chunk) InsertChunk(ctx context.Context, chunk *bridgeTypes.Chunk, dbTX 
 		return "", err
 	}
 
-	// TODO: implement an exact payload size calculation.
-	var totalGasUsed uint64
-	var totalTxNum uint64
-	var totalPayloadSize uint64
+	var totalL2TxGas uint64
+	var totalL2TxNum uint64
+	var totalL1CommitCalldataSize uint64
+	var totalL1CommitGas uint64
 	for _, block := range chunk.Blocks {
-		totalGasUsed += block.Header.GasUsed
-		totalTxNum += uint64(len(block.Transactions))
-		for _, tx := range block.Transactions {
-			totalPayloadSize += uint64(len(tx.Data))
-		}
+		totalL2TxGas += block.Header.GasUsed
+		totalL2TxNum += uint64(len(block.Transactions))
+		totalL1CommitCalldataSize += block.ApproximateL1CommitCalldataSize()
+		totalL1CommitGas += block.ApproximateL1CommitGas()
 	}
 
 	var chunkIndex uint64
@@ -175,17 +178,19 @@ func (o *Chunk) InsertChunk(ctx context.Context, chunk *bridgeTypes.Chunk, dbTX 
 
 	numBlocks := len(chunk.Blocks)
 	newChunk := Chunk{
-		Index:                      chunkIndex,
-		Hash:                       hex.EncodeToString(hash),
-		StartBlockNumber:           chunk.Blocks[0].Header.Number.Uint64(),
-		StartBlockHash:             chunk.Blocks[0].Header.Hash().Hex(),
-		EndBlockNumber:             chunk.Blocks[numBlocks-1].Header.Number.Uint64(),
-		EndBlockHash:               chunk.Blocks[numBlocks-1].Header.Hash().Hex(),
-		TotalGasUsed:               totalGasUsed,
-		TotalTxNum:                 totalTxNum,
-		TotalPayloadSize:           totalPayloadSize,
-		TotalL1MessagePoppedBefore: totalL1MessagePoppedBefore,
-		TotalL1Messages:            chunk.NumL1Messages(totalL1MessagePoppedBefore),
+		Index:                       chunkIndex,
+		Hash:                        hex.EncodeToString(hash),
+		StartBlockNumber:            chunk.Blocks[0].Header.Number.Uint64(),
+		StartBlockHash:              chunk.Blocks[0].Header.Hash().Hex(),
+		EndBlockNumber:              chunk.Blocks[numBlocks-1].Header.Number.Uint64(),
+		EndBlockHash:                chunk.Blocks[numBlocks-1].Header.Hash().Hex(),
+		TotalL2TxGas:                totalL2TxGas,
+		TotalL2TxNum:                totalL2TxNum,
+		TotalL1CommitCalldataSize:   totalL1CommitCalldataSize,
+		TotalL1CommitGas:            totalL1CommitGas,
+		StartBlockTime:              chunk.Blocks[0].Header.Time,
+		TotalL1MessagesPoppedBefore: totalL1MessagePoppedBefore,
+		TotalL1MessagesPopped:       chunk.NumL1Messages(totalL1MessagePoppedBefore),
 	}
 
 	if err := db.Create(&newChunk).Error; err != nil {

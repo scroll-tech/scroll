@@ -2,12 +2,10 @@ package watcher
 
 import (
 	"context"
-	"encoding/binary"
 	"errors"
 	"fmt"
 	"time"
 
-	"github.com/scroll-tech/go-ethereum/common/hexutil"
 	"github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/log"
 	"gorm.io/gorm"
@@ -88,64 +86,14 @@ func (p *ChunkProposer) proposeChunk() (*bridgeTypes.Chunk, error) {
 		return nil, errors.New("No Unchunked Blocks")
 	}
 
-	approximateL1CommitCalldataSize := func(block *bridgeTypes.WrappedBlock) (size uint64) {
-		for _, tx := range block.Transactions {
-			size += uint64(len(tx.Data))
-		}
-		return
-	}
-
-	approximateL1CommitGas := func(block *bridgeTypes.WrappedBlock) (total uint64) {
-		const nonZeroByteGas uint64 = 16
-		const zeroByteGas uint64 = 4
-
-		for _, txData := range block.Transactions {
-			if txData.Type == bridgeTypes.L1MessageTxType {
-				continue
-			}
-			data, _ := hexutil.Decode(txData.Data)
-			tx := types.NewTx(&types.LegacyTx{
-				Nonce:    txData.Nonce,
-				To:       txData.To,
-				Value:    txData.Value.ToInt(),
-				Gas:      txData.Gas,
-				GasPrice: txData.GasPrice.ToInt(),
-				Data:     data,
-				V:        txData.V.ToInt(),
-				R:        txData.R.ToInt(),
-				S:        txData.S.ToInt(),
-			})
-			rlpTxData, _ := tx.MarshalBinary()
-
-			for _, b := range rlpTxData {
-				if b == 0 {
-					total += zeroByteGas
-				} else {
-					total += nonZeroByteGas
-				}
-			}
-
-			var txLen [4]byte
-			binary.BigEndian.PutUint32(txLen[:], uint32(len(rlpTxData)))
-
-			for _, b := range txLen {
-				if b == 0 {
-					total += zeroByteGas
-				} else {
-					total += nonZeroByteGas
-				}
-			}
-		}
-		return
-	}
-
 	firstBlock := blocks[0]
 	totalL2TxGasUsed := firstBlock.Header.GasUsed
 	totalL2TxNum := getL2TxsNum(firstBlock.Transactions)
-	totalL1CommitCalldataSize := approximateL1CommitCalldataSize(firstBlock)
-	totalL1CommitGas := approximateL1CommitGas(firstBlock)
+	totalL1CommitCalldataSize := firstBlock.ApproximateL1CommitCalldataSize()
+	totalL1CommitGas := firstBlock.ApproximateL1CommitGas()
 
-	// check if the first block breaks hard limits.
+	// Check if the first block breaks hard limits.
+	// If so, it indicates there are bugs in sequencer, manual fix is needed.
 	if totalL2TxNum > p.maxL2TxNumPerChunk {
 		return nil, fmt.Errorf(
 			"the first block exceeds l2 tx number limit; block number: %v, number of transactions: %v, max transaction number limit: %v",
@@ -185,8 +133,8 @@ func (p *ChunkProposer) proposeChunk() (*bridgeTypes.Chunk, error) {
 	for i, block := range blocks[1:] {
 		totalL2TxGasUsed += block.Header.GasUsed
 		totalL2TxNum += getL2TxsNum(block.Transactions)
-		totalL1CommitCalldataSize += approximateL1CommitCalldataSize(block)
-		totalL1CommitGas += approximateL1CommitGas(block)
+		totalL1CommitCalldataSize += block.ApproximateL1CommitCalldataSize()
+		totalL1CommitGas += block.ApproximateL1CommitGas()
 		if totalL2TxGasUsed > p.maxL2TxGasPerChunk ||
 			totalL2TxNum > p.maxL2TxNumPerChunk ||
 			totalL1CommitCalldataSize > p.maxL1CommitCalldataSizePerChunk ||
@@ -199,7 +147,11 @@ func (p *ChunkProposer) proposeChunk() (*bridgeTypes.Chunk, error) {
 	var hasBlockTimeout bool
 	currentTimeSec := uint64(time.Now().Unix())
 	if blocks[0].Header.Time+p.chunkTimeoutSec > currentTimeSec {
-		log.Warn("first block timeout", "block number", blocks[0].Header.Number, "block timestamp", blocks[0].Header.Time, "chunk time limit", currentTimeSec)
+		log.Warn("first block timeout",
+			"block number", blocks[0].Header.Number,
+			"block timestamp", blocks[0].Header.Time,
+			"block outdated time threshold", currentTimeSec,
+		)
 		hasBlockTimeout = true
 	}
 

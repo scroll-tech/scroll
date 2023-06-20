@@ -6,6 +6,7 @@ import (
 	"math"
 
 	"github.com/scroll-tech/go-ethereum/common"
+	"github.com/scroll-tech/go-ethereum/common/hexutil"
 	"github.com/scroll-tech/go-ethereum/core/types"
 )
 
@@ -62,4 +63,57 @@ func (w *WrappedBlock) Encode(totalL1MessagePoppedBefore uint64) ([]byte, error)
 	binary.BigEndian.PutUint16(bytes[58:], uint16(numL1Messages))
 
 	return bytes, nil
+}
+
+// ApproximateL1CommitCalldataSize calculates the calldata size in l1 commit approximately.
+func (w *WrappedBlock) ApproximateL1CommitCalldataSize() (size uint64) {
+	for _, tx := range w.Transactions {
+		size += uint64(len(tx.Data))
+	}
+	return
+}
+
+const nonZeroByteGas uint64 = 16
+const zeroByteGas uint64 = 4
+
+// ApproximateL1CommitGas calculates the calldata gas in l1 commit approximately.
+func (w *WrappedBlock) ApproximateL1CommitGas() (total uint64) {
+	for _, txData := range w.Transactions {
+		if txData.Type == L1MessageTxType {
+			continue
+		}
+		data, _ := hexutil.Decode(txData.Data)
+		tx := types.NewTx(&types.LegacyTx{
+			Nonce:    txData.Nonce,
+			To:       txData.To,
+			Value:    txData.Value.ToInt(),
+			Gas:      txData.Gas,
+			GasPrice: txData.GasPrice.ToInt(),
+			Data:     data,
+			V:        txData.V.ToInt(),
+			R:        txData.R.ToInt(),
+			S:        txData.S.ToInt(),
+		})
+		rlpTxData, _ := tx.MarshalBinary()
+
+		for _, b := range rlpTxData {
+			if b == 0 {
+				total += zeroByteGas
+			} else {
+				total += nonZeroByteGas
+			}
+		}
+
+		var txLen [4]byte
+		binary.BigEndian.PutUint32(txLen[:], uint32(len(rlpTxData)))
+
+		for _, b := range txLen {
+			if b == 0 {
+				total += zeroByteGas
+			} else {
+				total += nonZeroByteGas
+			}
+		}
+	}
+	return
 }
