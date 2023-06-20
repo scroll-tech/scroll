@@ -14,5 +14,5 @@ ENV LD_LIBRARY_PATH /usr/local/cuda/lib64:$LD_LIBRARY_PATH \
     RUST_MIN_STACK 100000000 \
     CHAIN_ID 534353 \
     RUST_LOG debug
-RUN make -C roller test-gpu-prover
-ENTRYPOINT ["make -C coordinator test-gpu-verifier"]
+RUN cd scroll && make -C roller test-gpu-prover
+ENTRYPOINT ["cd scroll && make -C coordinator test-gpu-verifier"]
