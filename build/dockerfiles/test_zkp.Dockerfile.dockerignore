@@ -1,5 +1,6 @@
-contracts/
-docs/
-l2geth/
-rpc-gateway/
+*assets/*
+*contracts/*
+*docs/*
+*l2geth/*
+*rpc-gateway/*
 *target/*
