@@ -96,10 +96,10 @@ func TestFunctions(t *testing.T) {
 
 	// Run l2 relayer test cases.
 	t.Run("TestCreateNewRelayer", testCreateNewRelayer)
+	t.Run("TestL2RelayerProcessPendingBatches", testL2RelayerProcessPendingBatches)
 	t.Run("TestL2RelayerProcessCommittedBatches", testL2RelayerProcessCommittedBatches)
 	t.Run("TestL2RelayerSkipBatches", testL2RelayerSkipBatches)
 	t.Run("TestL2RelayerRollupConfirm", testL2RelayerRollupConfirm)
 	t.Run("TestL2RelayerGasOracleConfirm", testL2RelayerGasOracleConfirm)
 	t.Run("TestLayer2RelayerProcessGasPriceOracle", testLayer2RelayerProcessGasPriceOracle)
-	// TODO(colinlyguo): add ProcessPendingBatches test.
 }
