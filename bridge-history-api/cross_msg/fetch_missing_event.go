@@ -79,7 +79,6 @@ func GetLatestL2ProcessedHeight(db db.OrmFactory) (int64, error) {
 }
 
 func L1FetchAndSaveEvents(ctx context.Context, client *ethclient.Client, database db.OrmFactory, from int64, to int64, addrList []common.Address) error {
-
 	query := geth.FilterQuery{
 		FromBlock: big.NewInt(from), // inclusive
 		ToBlock:   big.NewInt(to),   // inclusive
