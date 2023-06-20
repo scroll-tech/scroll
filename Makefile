@@ -43,6 +43,7 @@ run_test_docker: ## run Docker image for local testing on M1/M2 Silicon Mac
 
 
 test_zkp: ## Test zkp prove and verify, roller/prover generates the proof and coordinator/verifier verifies it
+	rm -rf ./assets/test_params ./assets/agg_vk ./assets/test_seed
 	docker build -t test_zkp:1.0 -f ./build/dockerfiles/test_zkp.Dockerfile ..
 	mkdir -p ./assets/test_params
 	wget https://circuit-release.s3.us-west-2.amazonaws.com/circuit-release/${PARAMS_VERSION}/params20 -O ./assets/test_params/params20
