@@ -9,6 +9,10 @@ import (
 	"github.com/scroll-tech/go-ethereum/core/types"
 )
 
+// L1MessageTxType represents l2geth's l1 message tx type.
+// TODO: replace this with geth version after new version is released.
+const L1MessageTxType = 0x7E
+
 // WrappedBlock contains the block's Header, Transactions and WithdrawTrieRoot hash.
 type WrappedBlock struct {
 	Header *types.Header `json:"header"`
@@ -22,7 +26,7 @@ type WrappedBlock struct {
 func (w *WrappedBlock) NumL1Messages(totalL1MessagePoppedBefore uint64) uint64 {
 	var lastQueueIndex *uint64
 	for _, txData := range w.Transactions {
-		if txData.Type == 0x7E {
+		if txData.Type == L1MessageTxType {
 			lastQueueIndex = &txData.Nonce
 		}
 	}

@@ -2,10 +2,12 @@ package watcher
 
 import (
 	"context"
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"time"
 
+	"github.com/scroll-tech/go-ethereum/common/hexutil"
 	"github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/log"
 	"gorm.io/gorm"
@@ -86,45 +88,109 @@ func (p *ChunkProposer) proposeChunk() (*bridgeTypes.Chunk, error) {
 		return nil, errors.New("No Unchunked Blocks")
 	}
 
-	approximatePayloadSize := func(block *bridgeTypes.WrappedBlock) (size uint64) {
-		// TODO: implement an exact calculation.
+	approximateL1CommitCalldataSize := func(block *bridgeTypes.WrappedBlock) (size uint64) {
 		for _, tx := range block.Transactions {
 			size += uint64(len(tx.Data))
 		}
 		return
 	}
 
+	approximateL1CommitGas := func(block *bridgeTypes.WrappedBlock) (total uint64) {
+		const nonZeroByteGas uint64 = 16
+		const zeroByteGas uint64 = 4
+
+		for _, txData := range block.Transactions {
+			if txData.Type == bridgeTypes.L1MessageTxType {
+				continue
+			}
+			data, _ := hexutil.Decode(txData.Data)
+			tx := types.NewTx(&types.LegacyTx{
+				Nonce:    txData.Nonce,
+				To:       txData.To,
+				Value:    txData.Value.ToInt(),
+				Gas:      txData.Gas,
+				GasPrice: txData.GasPrice.ToInt(),
+				Data:     data,
+				V:        txData.V.ToInt(),
+				R:        txData.R.ToInt(),
+				S:        txData.S.ToInt(),
+			})
+			rlpTxData, _ := tx.MarshalBinary()
+
+			for _, b := range rlpTxData {
+				if b == 0 {
+					total += zeroByteGas
+				} else {
+					total += nonZeroByteGas
+				}
+			}
+
+			var txLen [4]byte
+			binary.BigEndian.PutUint32(txLen[:], uint32(len(rlpTxData)))
+
+			for _, b := range txLen {
+				if b == 0 {
+					total += zeroByteGas
+				} else {
+					total += nonZeroByteGas
+				}
+			}
+		}
+		return
+	}
+
 	firstBlock := blocks[0]
-	totalGasUsed := firstBlock.Header.GasUsed
+	totalL2TxGasUsed := firstBlock.Header.GasUsed
 	totalL2TxNum := getL2TxsNum(firstBlock.Transactions)
-	totalPayloadSize := approximatePayloadSize(firstBlock)
+	totalL1CommitCalldataSize := approximateL1CommitCalldataSize(firstBlock)
+	totalL1CommitGas := approximateL1CommitGas(firstBlock)
 
-	// If the total number of L2 transactions in a single block exceeds
-	// the maximum limit set per chunk, the chunk proposer will get stuck
-	// and keep returning an error.
-	// In such a scenario, manual intervention is needed to resolve the issue.
-	// This should not happen in practice because l2geth enforces the same limit.
+	// check if the first block breaks hard limits.
 	if totalL2TxNum > p.maxL2TxNumPerChunk {
-		errMsg := fmt.Sprintln("The first block exceeds the max transaction number limit", "block number", firstBlock.Header.Number, "number of transactions", totalL2TxNum, "max transaction number limit", p.maxL2TxNumPerChunk)
-		log.Error(errMsg)
-		return nil, errors.New(errMsg)
+		return nil, fmt.Errorf(
+			"the first block exceeds l2 tx number limit; block number: %v, number of transactions: %v, max transaction number limit: %v",
+			firstBlock.Header.Number,
+			totalL2TxNum,
+			p.maxL2TxNumPerChunk,
+		)
 	}
 
-	// Use the first block to propose a chunk if it exceeds any limits
-	if totalGasUsed > p.maxL2TxGasPerChunk {
-		log.Warn("The first block exceeds the max gas limit", "block number", firstBlock.Header.Number, "gas used", totalGasUsed, "max gas limit", p.maxL2TxGasPerChunk)
-		return &bridgeTypes.Chunk{Blocks: blocks[:1]}, nil
+	if totalL2TxGasUsed > p.maxL2TxGasPerChunk {
+		return nil, fmt.Errorf(
+			"the first block exceeds l2 tx gas limit; block number: %v, gas used: %v, max gas limit: %v",
+			firstBlock.Header.Number,
+			totalL2TxGasUsed,
+			p.maxL2TxGasPerChunk,
+		)
 	}
-	if totalPayloadSize > p.maxL1CommitCalldataSizePerChunk {
-		log.Warn("The first block exceeds the max calldata size limit", "block number", firstBlock.Header.Number, "calldata size", totalPayloadSize, "max calldata size limit", p.maxL1CommitCalldataSizePerChunk)
-		return &bridgeTypes.Chunk{Blocks: blocks[:1]}, nil
+
+	if totalL1CommitCalldataSize > p.maxL1CommitCalldataSizePerChunk {
+		return nil, fmt.Errorf(
+			"the first block exceeds l1 commit calldata size limit; block number: %v, calldata size: %v, max calldata size limit: %v",
+			firstBlock.Header.Number,
+			totalL1CommitCalldataSize,
+			p.maxL1CommitCalldataSizePerChunk,
+		)
+	}
+
+	if totalL1CommitGas > p.maxL1CommitGasPerChunk {
+		return nil, fmt.Errorf(
+			"the first block exceeds l1 commit gas limit; block number: %v, commit gas: %v, max commit gas limit: %v",
+			firstBlock.Header.Number,
+			totalL1CommitGas,
+			p.maxL1CommitGasPerChunk,
+		)
 	}
 
 	for i, block := range blocks[1:] {
-		totalGasUsed += block.Header.GasUsed
+		totalL2TxGasUsed += block.Header.GasUsed
 		totalL2TxNum += getL2TxsNum(block.Transactions)
-		totalPayloadSize += approximatePayloadSize(block)
-		if (totalGasUsed > p.maxL2TxGasPerChunk) || (totalL2TxNum > p.maxL2TxNumPerChunk) || (totalPayloadSize > p.maxL1CommitCalldataSizePerChunk) {
+		totalL1CommitCalldataSize += approximateL1CommitCalldataSize(block)
+		totalL1CommitGas += approximateL1CommitGas(block)
+		if totalL2TxGasUsed > p.maxL2TxGasPerChunk ||
+			totalL2TxNum > p.maxL2TxNumPerChunk ||
+			totalL1CommitCalldataSize > p.maxL1CommitCalldataSizePerChunk ||
+			totalL1CommitGas > p.maxL1CommitGasPerChunk {
 			blocks = blocks[:i+1]
 			break
 		}
@@ -137,9 +203,9 @@ func (p *ChunkProposer) proposeChunk() (*bridgeTypes.Chunk, error) {
 		hasBlockTimeout = true
 	}
 
-	if !hasBlockTimeout && totalPayloadSize < p.minL1CommitCalldataSizePerChunk {
+	if !hasBlockTimeout && totalL1CommitCalldataSize < p.minL1CommitCalldataSizePerChunk {
 		log.Warn("The calldata size of the chunk is less than the minimum limit",
-			"totalPayloadSize", totalPayloadSize,
+			"totalL1CommitCalldataSize", totalL1CommitCalldataSize,
 			"minL1CommitCalldataSizePerChunk", p.minL1CommitCalldataSizePerChunk,
 		)
 		return nil, nil
@@ -149,8 +215,7 @@ func (p *ChunkProposer) proposeChunk() (*bridgeTypes.Chunk, error) {
 
 func getL2TxsNum(txs []*types.TransactionData) (count uint64) {
 	for _, tx := range txs {
-		// TODO(colinlyguo): replace with L1MessageTxType after upgrading github.com/scroll-tech/go-ethereum version in go.mod.
-		if tx.Type == types.LegacyTxType || tx.Type == types.AccessListTxType || tx.Type == types.DynamicFeeTxType {
+		if tx.Type == bridgeTypes.L1MessageTxType {
 			count++
 		}
 	}
