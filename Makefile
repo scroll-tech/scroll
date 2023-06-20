@@ -43,14 +43,14 @@ run_test_docker: ## run Docker image for local testing on M1/M2 Silicon Mac
 
 
 test_zkp: ## Test zkp prove and verify, roller/prover generates the proof and coordinator/verifier verifies it
-	rm -rf ./assets/test_params ./assets/agg_vk ./assets/test_seed
+	rm -rf ./assets/zkp/test_params ./assets/zkp/agg_vk ./assets/zkp/test_seed
 	docker build -t test_zkp:1.0 -f ./build/dockerfiles/test_zkp.Dockerfile ..
-	mkdir -p ./assets/test_params
-	wget https://circuit-release.s3.us-west-2.amazonaws.com/circuit-release/${PARAMS_VERSION}/params20 -O ./assets/test_params/params20
-	wget https://circuit-release.s3.us-west-2.amazonaws.com/circuit-release/${PARAMS_VERSION}/params26 -O ./assets/test_params/params26
-	wget https://circuit-release.s3.us-west-2.amazonaws.com/circuit-release/release-1220/test_seed -O ./assets/test_seed
-	wget https://circuit-release.s3.us-west-2.amazonaws.com/circuit-release/${VK_VERSION}/verify_circuit.vkey -O ./assets/agg_vk
-	docker run -v assets:/scroll/assets test_zkp:1.0 /bin/bash -c "cd /scroll && make -C roller test-gpu-prover && make -C coordinator test-gpu-verifier"
+	mkdir -p ./assets/zkp/test_params
+	wget https://circuit-release.s3.us-west-2.amazonaws.com/circuit-release/${PARAMS_VERSION}/params20 -O ./assets/zkp/test_params/params20
+	wget https://circuit-release.s3.us-west-2.amazonaws.com/circuit-release/${PARAMS_VERSION}/params26 -O ./assets/zkp/test_params/params26
+	wget https://circuit-release.s3.us-west-2.amazonaws.com/circuit-release/release-1220/test_seed -O ./assets/zkp/test_seed
+	wget https://circuit-release.s3.us-west-2.amazonaws.com/circuit-release/${VK_VERSION}/verify_circuit.vkey -O ./assets/zkp/agg_vk
+	docker run -v assets/zkp:/scroll/assets/zkp test_zkp:1.0 /bin/bash -c "cd /scroll && make -C roller test-gpu-prover && make -C coordinator test-gpu-verifier"
 
 clean: ## Empty out the bin folder
 	@rm -rf build/bin

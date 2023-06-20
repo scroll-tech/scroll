@@ -18,10 +18,10 @@ import (
 
 // These files should be in scroll/assets/...
 const (
-	paramsPath    = "../assets/test_params"
-	seedPath      = "../assets/test_seed"
+	paramsPath    = "../assets/zkp/test_params"
+	seedPath      = "../assets/zkp/test_seed"
 	tracesPath    = "../assets/traces"
-	proofDumpPath = "../assets/agg_proof"
+	proofDumpPath = "../assets/zkp/agg_proof"
 )
 
 func TestFFI(t *testing.T) {
