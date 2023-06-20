@@ -18,9 +18,9 @@ import (
 
 // These files should be in scroll/assets/...
 const (
-	paramsPath = "../assets/zkp/test_params"
-	aggVkPath  = "../assets/zkp/agg_vk"
-	proofPath  = "../assets/zkp/agg_proof"
+	paramsPath = "../assets/test_params"
+	aggVkPath  = "../assets/agg_vk"
+	proofPath  = "../assets/agg_proof"
 )
 
 func TestFFI(t *testing.T) {
