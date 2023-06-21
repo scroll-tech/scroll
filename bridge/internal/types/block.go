@@ -79,9 +79,6 @@ const zeroByteGas uint64 = 4
 // ApproximateL1CommitGas calculates the calldata gas in l1 commit approximately.
 func (w *WrappedBlock) ApproximateL1CommitGas() (total uint64) {
 	for _, txData := range w.Transactions {
-		if txData.Type == L1MessageTxType {
-			continue
-		}
 		data, _ := hexutil.Decode(txData.Data)
 		tx := types.NewTx(&types.LegacyTx{
 			Nonce:    txData.Nonce,
