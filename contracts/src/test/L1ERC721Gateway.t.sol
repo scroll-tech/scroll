@@ -3,17 +3,19 @@
 pragma solidity ^0.8.0;
 
 import {MockERC721} from "solmate/test/utils/mocks/MockERC721.sol";
+import {ERC721TokenReceiver} from "solmate/tokens/ERC721.sol";
 
 import {IL1ERC721Gateway, L1ERC721Gateway} from "../L1/gateways/L1ERC721Gateway.sol";
 import {IL1ScrollMessenger} from "../L1/IL1ScrollMessenger.sol";
 import {IL2ERC721Gateway, L2ERC721Gateway} from "../L2/gateways/L2ERC721Gateway.sol";
 import {AddressAliasHelper} from "../libraries/common/AddressAliasHelper.sol";
+import {ScrollConstants} from "../libraries/constants/ScrollConstants.sol";
 
 import {L1GatewayTestBase} from "./L1GatewayTestBase.t.sol";
 import {MockScrollMessenger} from "./mocks/MockScrollMessenger.sol";
 import {MockERC721Recipient} from "./mocks/MockERC721Recipient.sol";
 
-contract L1ERC721GatewayTest is L1GatewayTestBase {
+contract L1ERC721GatewayTest is L1GatewayTestBase, ERC721TokenReceiver {
     // from L1ERC721Gateway
     event FinalizeWithdrawERC721(
         address indexed _l1Token,
@@ -43,6 +45,7 @@ contract L1ERC721GatewayTest is L1GatewayTestBase {
         address _to,
         uint256[] _tokenIds
     );
+    event RefundERC721(address indexed token, address indexed recipient, uint256 tokenId);
 
     uint256 private constant TOKEN_COUNT = 100;
 
@@ -143,6 +146,115 @@ contract L1ERC721GatewayTest is L1GatewayTestBase {
         uint256 feePerGas
     ) public {
         _testBatchDepositERC721WithRecipient(tokenCount, recipient, gasLimit, feePerGas);
+    }
+
+    function testDropMessageMocking() public {
+        MockScrollMessenger mockMessenger = new MockScrollMessenger();
+        gateway = new L1ERC721Gateway();
+        gateway.initialize(address(counterpartGateway), address(mockMessenger));
+
+        // only messenger can call, revert
+        hevm.expectRevert("only messenger can call");
+        gateway.onDropMessage(new bytes(0));
+
+        // only called in drop context, revert
+        hevm.expectRevert("only called in drop context");
+        mockMessenger.callTarget(
+            address(gateway),
+            abi.encodeWithSelector(gateway.onDropMessage.selector, new bytes(0))
+        );
+
+        mockMessenger.setXDomainMessageSender(ScrollConstants.DROP_XDOMAIN_MESSAGE_SENDER);
+
+        // invalid selector, revert
+        hevm.expectRevert("invalid selector");
+        mockMessenger.callTarget(
+            address(gateway),
+            abi.encodeWithSelector(gateway.onDropMessage.selector, new bytes(4))
+        );
+
+        bytes memory message = abi.encodeWithSelector(
+            IL2ERC721Gateway.finalizeDepositERC721.selector,
+            address(l1Token),
+            address(l2Token),
+            address(this),
+            address(this),
+            0
+        );
+
+        // nonzero msg.value, revert
+        hevm.expectRevert("nonzero msg.value");
+        mockMessenger.callTarget{value: 1}(
+            address(gateway),
+            abi.encodeWithSelector(gateway.onDropMessage.selector, message)
+        );
+    }
+
+    function testDropMessage(uint256 tokenId) public {
+        gateway.updateTokenMapping(address(l1Token), address(l2Token));
+
+        tokenId = bound(tokenId, 0, TOKEN_COUNT - 1);
+        bytes memory message = abi.encodeWithSelector(
+            IL2ERC721Gateway.finalizeDepositERC721.selector,
+            address(l1Token),
+            address(l2Token),
+            address(this),
+            address(this),
+            tokenId
+        );
+        gateway.depositERC721(address(l1Token), tokenId, 0);
+
+        // skip message 0
+        hevm.startPrank(address(rollup));
+        messageQueue.popCrossDomainMessage(0, 1, 0x1);
+        assertEq(messageQueue.pendingQueueIndex(), 1);
+        hevm.stopPrank();
+
+        // drop message 0
+        hevm.expectEmit(true, true, false, true);
+        emit RefundERC721(address(l1Token), address(this), tokenId);
+
+        assertEq(l1Token.ownerOf(tokenId), address(gateway));
+        l1Messenger.dropMessage(address(gateway), address(counterpartGateway), 0, 0, message);
+        assertEq(l1Token.ownerOf(tokenId), address(this));
+    }
+
+    function testDropMessageBatch(uint256 tokenCount) public {
+        tokenCount = bound(tokenCount, 1, TOKEN_COUNT);
+        gateway.updateTokenMapping(address(l1Token), address(l2Token));
+
+        uint256[] memory _tokenIds = new uint256[](tokenCount);
+        for (uint256 i = 0; i < tokenCount; i++) {
+            _tokenIds[i] = i;
+        }
+
+        bytes memory message = abi.encodeWithSelector(
+            IL2ERC721Gateway.finalizeBatchDepositERC721.selector,
+            address(l1Token),
+            address(l2Token),
+            address(this),
+            address(this),
+            _tokenIds
+        );
+        gateway.batchDepositERC721(address(l1Token), _tokenIds, 0);
+
+        // skip message 0
+        hevm.startPrank(address(rollup));
+        messageQueue.popCrossDomainMessage(0, 1, 0x1);
+        assertEq(messageQueue.pendingQueueIndex(), 1);
+        hevm.stopPrank();
+
+        // drop message 0
+        for (uint256 i = 0; i < tokenCount; i++) {
+            hevm.expectEmit(true, true, false, true);
+            emit RefundERC721(address(l1Token), address(this), _tokenIds[i]);
+            assertEq(l1Token.ownerOf(_tokenIds[i]), address(gateway));
+        }
+
+        l1Messenger.dropMessage(address(gateway), address(counterpartGateway), 0, 0, message);
+        for (uint256 i = 0; i < tokenCount; i++) {
+            assertEq(l1Token.ownerOf(_tokenIds[i]), address(this));
+        }
     }
 
     function testFinalizeWithdrawERC721FailedMocking(

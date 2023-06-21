@@ -9,6 +9,7 @@ import {IL1ERC20Gateway, L1WETHGateway} from "../L1/gateways/L1WETHGateway.sol";
 import {IL1ScrollMessenger} from "../L1/IL1ScrollMessenger.sol";
 import {IL2ERC20Gateway, L2WETHGateway} from "../L2/gateways/L2WETHGateway.sol";
 import {AddressAliasHelper} from "../libraries/common/AddressAliasHelper.sol";
+import {ScrollConstants} from "../libraries/constants/ScrollConstants.sol";
 
 import {L1GatewayTestBase} from "./L1GatewayTestBase.t.sol";
 import {MockScrollMessenger} from "./mocks/MockScrollMessenger.sol";
@@ -17,21 +18,22 @@ import {MockGatewayRecipient} from "./mocks/MockGatewayRecipient.sol";
 contract L1WETHGatewayTest is L1GatewayTestBase {
     // from L1WETHGateway
     event FinalizeWithdrawERC20(
-        address indexed _l1Token,
-        address indexed _l2Token,
+        address indexed _l1weth,
+        address indexed _l2weth,
         address indexed _from,
         address _to,
         uint256 _amount,
         bytes _data
     );
     event DepositERC20(
-        address indexed _l1Token,
-        address indexed _l2Token,
+        address indexed _l1weth,
+        address indexed _l2weth,
         address indexed _from,
         address _to,
         uint256 _amount,
         bytes _data
     );
+    event RefundERC20(address indexed token, address indexed recipient, uint256 amount);
 
     WETH private l1weth;
     WETH private l2weth;
@@ -136,6 +138,99 @@ contract L1WETHGatewayTest is L1GatewayTestBase {
         uint256 feePerGas
     ) public {
         _depositERC20WithRecipientAndCalldata(true, amount, recipient, dataToCall, gasLimit, feePerGas);
+    }
+
+    function testDropMessageMocking() public {
+        MockScrollMessenger mockMessenger = new MockScrollMessenger();
+        gateway = new L1WETHGateway(address(l1weth), address(l2weth));
+        gateway.initialize(address(counterpartGateway), address(router), address(mockMessenger));
+
+        // only messenger can call, revert
+        hevm.expectRevert("only messenger can call");
+        gateway.onDropMessage(new bytes(0));
+
+        // only called in drop context, revert
+        hevm.expectRevert("only called in drop context");
+        mockMessenger.callTarget(
+            address(gateway),
+            abi.encodeWithSelector(gateway.onDropMessage.selector, new bytes(0))
+        );
+
+        mockMessenger.setXDomainMessageSender(ScrollConstants.DROP_XDOMAIN_MESSAGE_SENDER);
+
+        // invalid selector, revert
+        hevm.expectRevert("invalid selector");
+        mockMessenger.callTarget(
+            address(gateway),
+            abi.encodeWithSelector(gateway.onDropMessage.selector, new bytes(4))
+        );
+
+        bytes memory message = abi.encodeWithSelector(
+            IL2ERC20Gateway.finalizeDepositERC20.selector,
+            address(l1weth),
+            address(l2weth),
+            address(this),
+            address(this),
+            100,
+            new bytes(0)
+        );
+
+        // token not WETH, revert
+        hevm.expectRevert("token not WETH");
+        mockMessenger.callTarget(
+            address(gateway),
+            abi.encodeWithSelector(
+                gateway.onDropMessage.selector,
+                abi.encodeWithSelector(
+                    IL2ERC20Gateway.finalizeDepositERC20.selector,
+                    address(l2weth),
+                    address(l2weth),
+                    address(this),
+                    address(this),
+                    100,
+                    new bytes(0)
+                )
+            )
+        );
+
+        // msg.value mismatch, revert
+        hevm.expectRevert("msg.value mismatch");
+        mockMessenger.callTarget{value: 99}(
+            address(gateway),
+            abi.encodeWithSelector(gateway.onDropMessage.selector, message)
+        );
+    }
+
+    function testDropMessage(
+        uint256 amount,
+        address recipient,
+        bytes memory dataToCall
+    ) public {
+        amount = bound(amount, 1, l1weth.balanceOf(address(this)));
+        bytes memory message = abi.encodeWithSelector(
+            IL2ERC20Gateway.finalizeDepositERC20.selector,
+            address(l1weth),
+            address(l2weth),
+            address(this),
+            recipient,
+            amount,
+            dataToCall
+        );
+        gateway.depositERC20AndCall(address(l1weth), recipient, amount, dataToCall, 0);
+
+        // skip message 0
+        hevm.startPrank(address(rollup));
+        messageQueue.popCrossDomainMessage(0, 1, 0x1);
+        assertEq(messageQueue.pendingQueueIndex(), 1);
+        hevm.stopPrank();
+
+        // drop message 0
+        hevm.expectEmit(true, true, false, true);
+        emit RefundERC20(address(l1weth), address(this), amount);
+
+        uint256 balance = l1weth.balanceOf(address(this));
+        l1Messenger.dropMessage(address(gateway), address(counterpartGateway), amount, 0, message);
+        assertEq(balance + amount, l1weth.balanceOf(address(this)));
     }
 
     function testFinalizeWithdrawERC20FailedMocking(
