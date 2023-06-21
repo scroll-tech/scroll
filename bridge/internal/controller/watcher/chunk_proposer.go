@@ -83,7 +83,7 @@ func (p *ChunkProposer) proposeChunk() (*bridgeTypes.Chunk, error) {
 	}
 
 	if len(blocks) == 0 {
-		return nil, errors.New("No Unchunked Blocks")
+		return nil, errors.New("no un-chunked blocks")
 	}
 
 	firstBlock := blocks[0]

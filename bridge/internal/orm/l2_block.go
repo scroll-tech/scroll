@@ -56,11 +56,10 @@ func (o *L2Block) GetL2BlocksLatestHeight() (int64, error) {
 // GetUnchunkedBlocks get the l2 blocks that have not been put into a chunk
 func (o *L2Block) GetUnchunkedBlocks() ([]*types.WrappedBlock, error) {
 	var l2Blocks []L2Block
-	db := o.db.Select("header, transactions, withdraw_trie_root")
-	db = db.Where("chunk_hash IS NULL")
-	db = db.Order("number asc")
-
-	if err := db.Find(&l2Blocks).Error; err != nil {
+	if err := o.db.Select("header, transactions, withdraw_trie_root").
+		Where("chunk_hash IS NULL").
+		Order("number asc").
+		Find(&l2Blocks).Error; err != nil {
 		return nil, err
 	}
 
