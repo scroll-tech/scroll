@@ -1,6 +1,6 @@
 # Scroll Overview
 
-## Components
+## Architecture
 
 * L2 sequencer: The sequencer is
 * Data committer
@@ -9,8 +9,3 @@
 * Prover
 * Bridge and Rollup Contract on L1
 
-## Protocol Workflow
-
-![Protocol workflow](assets/rollup.png)
-
-1. User

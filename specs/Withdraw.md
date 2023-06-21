@@ -1,7 +1,14 @@
 # Withdraw Tokens from L2 to L1
 
-This section describes how users and developers withdraw tokens from L2 to L1. The deposit transaction is initialized from L2 by calling into the gateway contracts.
-We provide a few standard gateways for different types of tokens, listed in the table below.
+**Table of Contents**
+* [Withdraw ETH](#withdraw-eth)
+* [Withdraw ERC20 Tokens](#withdraw-erc20-tokens)
+    * [Standard and Custom ERC20 Token](#standard-and-custom-erc20-token)
+    * [WETH Token](#weth-token)
+* [Withdraw ERC-721/ERC-1155 Tokens](#withdraw-erc-721erc-1155-tokens)
+
+This document describes how users and developers can utilize gateways to withdraw tokens from L2 to L1.
+We provide several gateways for standard tokens and a gateway router on L2, listed in the table below.
 
 | Gateway Contract         | Description                                                        |
 |--------------------------|--------------------------------------------------------------------|
@@ -60,7 +67,7 @@ The withdraw of ERC20 tokens works as follows.
 
 2. Based on the mapping from ERC20 tokens to gateway, the `L2GatewayRouter` calls to the corresponding gateway, `L2StandardERC20Gateway`, `L2CustomERC20Gateway`, or `L2WETHGateway`. The remaining of steps will be described separately.
 
-### Withdraw Standard and Custom ERC20 Token
+### Standard and Custom ERC20 Token
 
 The withdrawal of standard and custom ERC20 tokens works in the same way as follows.
 
@@ -72,7 +79,7 @@ The withdrawal of standard and custom ERC20 tokens works in the same way as foll
 
 6. If the user calls `withdrawERC20AndCall` on L2, the gateways will call the target L1 contract with additional data.
 
-### Withdraw WETH Token
+### WETH Token
 
 We provide a custom gateway `L2WETHGateway` for Wrapped ETH token  on L2 and record the gateway address in the `L2GatewayRouter`. The withdrawal of WETH token works as follows.
 

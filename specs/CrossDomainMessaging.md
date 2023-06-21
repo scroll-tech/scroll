@@ -6,6 +6,7 @@ Scroll has an arbitrary message passing bridge that enables the token transfers 
 * [Send Message from L1 to L2](#send-message-from-l1-to-l2)
     * [Send Arbitrary Messages](#arbitrary-messages)
     * [Send Enforced Transaction](#send-enforced-transaction)
+    * [Retry Failed Messages](#retry-failed-messages)
     * [L1 Message Transaction](#l1-message-transaction)
     * [Message Relay Fee](#message-relay-fee)
     * [Address Alias](#address-alias)
@@ -86,7 +87,11 @@ function sendMessage(
 </details>
 <br>
 
-In the `sendMessage` function, it encodes the arguments to a cross-domain message (see the code snippet below), where the message nonce is the next queue index of the L1 message queue. The encoded data is then used as calldata in the `L1MessageTx` transaction. Note that the cross-domain message calls the `relayMessage` function in the `L2ScrollMessenger` contract.
+Both functions require users to provide a gas limit for the corresponding `L1MessageTx` transaction on L2 and prepay the [message relay fee](#message-relay-fee) on L1, which is calculated based on the gas limit amount.
+The fee is collected to a `feeVault` contract on L1.
+In case that a user doesn't set the correct gas limit for this message that leads to the transaction failure on L2, the user can replay the same message with a higher gas limit. You can find more details in the [Retry failed messages](#retry-failed-messages) section.
+
+The `sendMessage` functions encode the arguments to a cross-domain message (see the code snippet below), where the message nonce is the next queue index of the L1 message queue. The encoded data is then used as calldata in the `L1MessageTx` transaction. Note that the cross-domain message calls the `relayMessage` function in the `L2ScrollMessenger` contract.
 
 ```solidity
 abi.encodeWithSignature(
@@ -99,12 +104,10 @@ abi.encodeWithSignature(
 )
 ```
 
-The function estimates the [message relay fee](#message-relay-fee) and transfers the fee to a `feeVault` contract on L1.
-After the fee is deducted from `msg.value`, if `value` in the `sendMessage` is non-zero, `L1ScrollMessenger` will freeze `value` amount of ETH in the contract and refund the excessive amount to the designated `refundAddress` or the transaction sender otherwise.
-If the amount of ETH in the message cannot cover the fee and `value` amount, the transaction will be reverted.
-`L1ScrollMessenger` then appends the cross-domain message to `L1MessageQueue` via `appendCrossDomainMessage` method.
-
-Todo: describe the replay message in case of failure due to too little gas limit.
+The deposited ETH of `value` amount is frozen in the `L1ScrollMessenger` contract.
+If the amount of ETH in the message cannot cover the message relay fee and deposited amount, the transaction will be reverted.
+`L1ScrollMessenger` contract will refund the excessive amount to the designated `refundAddress` or the transaction sender otherwise.
+Finally, `L1ScrollMessenger` appends the cross-domain message to `L1MessageQueue` via `appendCrossDomainMessage` method.
 
 ### Send Enforced Transaction
 
@@ -156,6 +159,57 @@ Hence, the `msg.value` only needs to cover the [message relay fee](#message-rela
 If the amount of ETH in the message cannot cover the fee, the transaction will fail.
 The excess fee is refunded to the transaction sender in the first function and to the `refundAddress` in the second function.
 At last, `EnforcedTxGateway` calls `L1MessageQueue.appendEnforcedTransaction` to append the transaction to the message queue.
+
+### Retry Failed Messages
+
+In the case of the failure of `L1MessageTx` transactions due to insufficient, users can replay the message with a higher gas limit.
+There are two methods to replay the failed messages:
+- On L1, `L1ScrollMessenger` provides a function `replayMessage` that allows users to send the same information as the previous failed message and a new gas limit. This message will become a new `L2MessageTx` transaction on L2. Note that we won't refund the gas fee for the previous failed transaction as it is already processed on L2.
+
+    <details><summary>Function signature</summary>
+
+    ```
+    /// @param from The address of the sender of the message.
+    /// @param to The address of the recipient of the message.
+    /// @param value The msg.value passed to the message call.
+    /// @param queueIndex The queue index for the message to replay.
+    /// @param message The content of the message.
+    /// @param newGasLimit New gas limit to be used for this message.
+    /// @param refundAddress The address of account who will receive the refunded fee.
+    function replayMessage(
+        address from,
+        address to,
+        uint256 value,
+        uint256 queueIndex,
+        bytes memory message,
+        uint32 newGasLimit,
+        address refundAddress
+    ) external payable;
+    ```
+    </details>
+- On L2, `L2ScrollMessenger` also provides a retry function `retryMessageWithProof`. Similar to the `replayMessage` in the `L1ScrollMessenger`, users need to provide the same information as the original message. Differently, users also need to need to provide a Merkle Inclusion Proof (MIP) of the original message that proves its inclusion in the storage slot of the `L1ScrollMessenger` and a MIP of the `L1ScrollMessenger` contract to a valid state root of Ethereum.
+
+    <details><summary>Function signature</summary>
+
+    ```
+    /// @param from The address of the sender of the message.
+    /// @param to The address of the recipient of the message.
+    /// @param value The msg.value passed to the message call.
+    /// @param nonce The nonce of the message to avoid replay attack.
+    /// @param message The content of the message.
+    /// @param proof The message proof.
+    function retryMessageWithProof(
+        address from,
+        address to,
+        uint256 value,
+        uint256 nonce,
+        bytes calldata message,
+        L1MessageProof calldata proof
+    ) external;
+    ```
+    </details>
+
+Because the `L2ScrollMessenger` contract records all successful relayed L1 messages, the transaction of the replayed or retried message will be reverted on L2 if the original message succeeded before.
 
 ### L1 Message Transaction
 

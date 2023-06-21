@@ -1,7 +1,16 @@
 # Deposit Tokens from L1 to L2
 
-This section describes how users and developers deposit tokens from L1 to L2. The deposit transaction is initialized from L1 by calling into the gateway contracts.
-We provide a few standard gateways for different types of tokens, listed in the table below.
+**Table of Contents**
+* [Deposit ETH](#deposit-eth)
+* [Deposit ERC20 Tokens](#deposit-erc20-tokens)
+    * [Standard ERC20 Token](#standard-erc20-token)
+    * [Custom ERC20 Token](#custom-erc20-token)
+    * [WETH Token](#weth-token)
+* [Deposit ERC-721/ERC-1155 Tokens](#deposit-erc-721erc-1155-tokens)
+
+
+This document describes how users and developers can utilize gateways to deposit tokens from L1 to L2.
+We provide several gateways for standard tokens and a gateway router on L1, listed in the table below.
 
 | Gateway Contract         | Description                                                        |
 |--------------------------|--------------------------------------------------------------------|
@@ -64,7 +73,7 @@ The deposit of ERC20 tokens works as follows.
 
 2. Based on the mapping from ERC20 tokens to gateway, the `L1GatewayRouter` calls to the corresponding gateway, `L1StandardERC20Gateway`, `L1CustomERC20Gateway`, or `L1WETHGateway`. The remaining of steps will be described separately.
 
-### Deposit Standard ERC20 Token
+### Standard ERC20 Token
 
 For standard ERC20 tokens, their L2 ERC20 token contracts are created by `L2StandardERC20Gateway`. The remaining steps for standard ERC20 token deposit are:
 
@@ -83,7 +92,7 @@ If it's not the first time, `L1StandardERC20Gateway` directly fetch the L2 token
 
 9. If the user calls `depositERC20AndCall` on L1, the `L2StandardERC20Gateway` will call the target L2 contract with additional data.
 
-### Deposit Custom ERC20 Token
+### Custom ERC20 Token
 
 In comparison to standard ERC20 tokens, the L2 contract of custom ERC20 tokens are deployed by the token owner. The remaining steps for custom ERC20 token deposit are:
 
@@ -97,7 +106,7 @@ In comparison to standard ERC20 tokens, the L2 contract of custom ERC20 tokens a
 
 7. If the user calls `depositERC20AndCall` on L1, the `L2CustomERC20Gateway` will call the target L2 contract with additional data.
 
-### Deposit WETH Token
+### WETH Token
 
 We provide a custom gateway `L1WETHGateway` for Wrapped ETH token  on L1 and record the gateway address in the `L1GatewayRouter`. The deposit of WETH token works as follows.
 
