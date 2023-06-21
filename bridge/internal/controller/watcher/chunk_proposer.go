@@ -167,7 +167,7 @@ func (p *ChunkProposer) proposeChunk() (*bridgeTypes.Chunk, error) {
 
 func getL2TxsNum(txs []*types.TransactionData) (count uint64) {
 	for _, tx := range txs {
-		if tx.Type == bridgeTypes.L1MessageTxType {
+		if tx.Type != bridgeTypes.L1MessageTxType {
 			count++
 		}
 	}
