@@ -47,7 +47,7 @@ func NewBatchHeader(version uint8, batchIndex, totalL1MessagePoppedBefore uint64
 		// build skip bitmap
 		for _, block := range chunk.Blocks {
 			for _, tx := range block.Transactions {
-				if tx.Type != 0x7E {
+				if tx.Type != L1MessageTxType {
 					continue
 				}
 				currentIndex := tx.Nonce

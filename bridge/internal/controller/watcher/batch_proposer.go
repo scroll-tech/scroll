@@ -3,6 +3,7 @@ package watcher
 import (
 	"context"
 	"encoding/hex"
+	"fmt"
 	"time"
 
 	"github.com/scroll-tech/go-ethereum/log"
@@ -74,13 +75,13 @@ func (p *BatchProposer) updateBatchInfoInDB(chunks []*bridgeTypes.Chunk) error {
 	}
 	endChunkIndex := endDBChunk.Index
 
-	startChunkHashBytes, err := chunks[0].Hash(startDBChunk.TotalL1MessagePoppedBefore)
+	startChunkHashBytes, err := chunks[0].Hash(startDBChunk.TotalL1MessagesPoppedBefore)
 	if err != nil {
 		return err
 	}
 	startChunkHash := hex.EncodeToString(startChunkHashBytes)
 
-	endChunkHashBytes, err := chunks[numChunks-1].Hash(endDBChunk.TotalL1MessagePoppedBefore)
+	endChunkHashBytes, err := chunks[numChunks-1].Hash(endDBChunk.TotalL1MessagesPoppedBefore)
 	if err != nil {
 		return err
 	}
@@ -113,32 +114,51 @@ func (p *BatchProposer) proposeBatchChunks() ([]*bridgeTypes.Chunk, error) {
 	}
 
 	firstChunk := dbChunks[0]
-	totalPayloadSize := firstChunk.TotalPayloadSize
+	totalL1CommitCalldataSize := firstChunk.TotalL1CommitCalldataSize
+	totalL1CommitGas := firstChunk.TotalL1CommitGas
+	var totalChunks uint64 = 1
 
-	if totalPayloadSize > p.maxL1CommitCalldataSizePerBatch {
-		log.Warn("The first chunk exceeds the max payload size limit",
-			"total payload size", totalPayloadSize,
-			"max payload size limit", p.maxL1CommitCalldataSizePerBatch,
+	// Check if the first chunk breaks hard limits.
+	// If so, it indicates there are bugs in chunk-proposer, manual fix is needed.
+	if totalL1CommitGas > p.maxL1CommitGasPerBatch {
+		return nil, fmt.Errorf(
+			"the first chunk exceeds l1 commit gas limit; start block number: %v, end block number: %v, commit gas: %v, max commit gas limit: %v",
+			firstChunk.StartBlockNumber,
+			firstChunk.EndBlockNumber,
+			totalL1CommitGas,
+			p.maxL1CommitGasPerBatch,
 		)
-		return p.dbChunksToBridgeChunks(dbChunks[:1])
+	}
+
+	if totalL1CommitCalldataSize > p.maxL1CommitCalldataSizePerBatch {
+		return nil, fmt.Errorf(
+			"the first chunk exceeds l1 commit calldata size limit; start block number: %v, end block number %v, calldata size: %v, max calldata size limit: %v",
+			firstChunk.StartBlockNumber,
+			firstChunk.EndBlockNumber,
+			totalL1CommitCalldataSize,
+			p.maxL1CommitCalldataSizePerBatch,
+		)
 	}
 
 	for i, chunk := range dbChunks[1:] {
-		totalPayloadSize += chunk.TotalPayloadSize
-		if totalPayloadSize > p.maxL1CommitCalldataSizePerBatch {
+		totalChunks++
+		totalL1CommitCalldataSize += chunk.TotalL1CommitCalldataSize
+		totalL1CommitGas += chunk.TotalL1CommitGas
+		if totalChunks > p.maxChunkNumPerBatch ||
+			totalL1CommitCalldataSize > p.maxL1CommitCalldataSizePerBatch ||
+			totalL1CommitGas > p.maxL1CommitGasPerBatch {
 			return p.dbChunksToBridgeChunks(dbChunks[:i+1])
 		}
 	}
 
 	var hasChunkTimeout bool
 	currentTimeSec := uint64(time.Now().Unix())
-	earliestBlockTime, err := p.l2Block.GetBlockTimestamp(dbChunks[0].StartBlockNumber)
-	if err != nil {
-		log.Error("GetBlockTimestamp failed", "block number", dbChunks[0].StartBlockNumber, "err", err)
-		return nil, err
-	}
-	if earliestBlockTime+p.batchTimeoutSec > currentTimeSec {
-		log.Warn("first block timeout", "block number", dbChunks[0].StartBlockNumber, "block timestamp", earliestBlockTime, "chunk time limit", currentTimeSec)
+	if dbChunks[0].StartBlockTime+p.batchTimeoutSec > currentTimeSec {
+		log.Warn("first block timeout",
+			"start block number", dbChunks[0].StartBlockNumber,
+			"first block timestamp", dbChunks[0].StartBlockTime,
+			"chunk outdated time threshold", currentTimeSec,
+		)
 		hasChunkTimeout = true
 	}
 

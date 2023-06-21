@@ -40,6 +40,34 @@ func testCreateNewRelayer(t *testing.T) {
 	assert.NotNil(t, relayer)
 }
 
+func testL2RelayerProcessPendingBatches(t *testing.T) {
+	db := setupL2RelayerDB(t)
+	defer bridgeUtils.CloseDB(db)
+
+	l2Cfg := cfg.L2Config
+	relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, l2Cfg.RelayerConfig)
+	assert.NoError(t, err)
+
+	l2BlockOrm := orm.NewL2Block(db)
+	err = l2BlockOrm.InsertL2Blocks([]*bridgeTypes.WrappedBlock{wrappedBlock1, wrappedBlock2})
+	assert.NoError(t, err)
+	chunkOrm := orm.NewChunk(db)
+	hash1, err := chunkOrm.InsertChunk(context.Background(), chunk1)
+	assert.NoError(t, err)
+	hash2, err := chunkOrm.InsertChunk(context.Background(), chunk2)
+	assert.NoError(t, err)
+	batchOrm := orm.NewBatch(db)
+	batchHash, err := batchOrm.InsertBatch(context.Background(), 0, 1, hash1, hash2, []*bridgeTypes.Chunk{chunk1, chunk2})
+	assert.NoError(t, err)
+
+	relayer.ProcessPendingBatches()
+
+	statuses, err := batchOrm.GetRollupStatusByHashList(context.Background(), []string{batchHash})
+	assert.NoError(t, err)
+	assert.Equal(t, 1, len(statuses))
+	assert.Equal(t, types.RollupCommitting, statuses[0])
+}
+
 func testL2RelayerProcessCommittedBatches(t *testing.T) {
 	db := setupL2RelayerDB(t)
 	defer bridgeUtils.CloseDB(db)

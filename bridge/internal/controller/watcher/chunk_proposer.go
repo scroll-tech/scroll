@@ -86,45 +86,59 @@ func (p *ChunkProposer) proposeChunk() (*bridgeTypes.Chunk, error) {
 		return nil, errors.New("No Unchunked Blocks")
 	}
 
-	approximatePayloadSize := func(block *bridgeTypes.WrappedBlock) (size uint64) {
-		// TODO: implement an exact calculation.
-		for _, tx := range block.Transactions {
-			size += uint64(len(tx.Data))
-		}
-		return
-	}
-
 	firstBlock := blocks[0]
-	totalGasUsed := firstBlock.Header.GasUsed
+	totalL2TxGasUsed := firstBlock.Header.GasUsed
 	totalL2TxNum := getL2TxsNum(firstBlock.Transactions)
-	totalPayloadSize := approximatePayloadSize(firstBlock)
+	totalL1CommitCalldataSize := firstBlock.ApproximateL1CommitCalldataSize()
+	totalL1CommitGas := firstBlock.ApproximateL1CommitGas()
 
-	// If the total number of L2 transactions in a single block exceeds
-	// the maximum limit set per chunk, the chunk proposer will get stuck
-	// and keep returning an error.
-	// In such a scenario, manual intervention is needed to resolve the issue.
-	// This should not happen in practice because l2geth enforces the same limit.
+	// Check if the first block breaks hard limits.
+	// If so, it indicates there are bugs in sequencer, manual fix is needed.
 	if totalL2TxNum > p.maxL2TxNumPerChunk {
-		errMsg := fmt.Sprintln("The first block exceeds the max transaction number limit", "block number", firstBlock.Header.Number, "number of transactions", totalL2TxNum, "max transaction number limit", p.maxL2TxNumPerChunk)
-		log.Error(errMsg)
-		return nil, errors.New(errMsg)
+		return nil, fmt.Errorf(
+			"the first block exceeds l2 tx number limit; block number: %v, number of transactions: %v, max transaction number limit: %v",
+			firstBlock.Header.Number,
+			totalL2TxNum,
+			p.maxL2TxNumPerChunk,
+		)
 	}
 
-	// Use the first block to propose a chunk if it exceeds any limits
-	if totalGasUsed > p.maxL2TxGasPerChunk {
-		log.Warn("The first block exceeds the max gas limit", "block number", firstBlock.Header.Number, "gas used", totalGasUsed, "max gas limit", p.maxL2TxGasPerChunk)
-		return &bridgeTypes.Chunk{Blocks: blocks[:1]}, nil
+	if totalL2TxGasUsed > p.maxL2TxGasPerChunk {
+		return nil, fmt.Errorf(
+			"the first block exceeds l2 tx gas limit; block number: %v, gas used: %v, max gas limit: %v",
+			firstBlock.Header.Number,
+			totalL2TxGasUsed,
+			p.maxL2TxGasPerChunk,
+		)
 	}
-	if totalPayloadSize > p.maxL1CommitCalldataSizePerChunk {
-		log.Warn("The first block exceeds the max calldata size limit", "block number", firstBlock.Header.Number, "calldata size", totalPayloadSize, "max calldata size limit", p.maxL1CommitCalldataSizePerChunk)
-		return &bridgeTypes.Chunk{Blocks: blocks[:1]}, nil
+
+	if totalL1CommitGas > p.maxL1CommitGasPerChunk {
+		return nil, fmt.Errorf(
+			"the first block exceeds l1 commit gas limit; block number: %v, commit gas: %v, max commit gas limit: %v",
+			firstBlock.Header.Number,
+			totalL1CommitGas,
+			p.maxL1CommitGasPerChunk,
+		)
+	}
+
+	if totalL1CommitCalldataSize > p.maxL1CommitCalldataSizePerChunk {
+		return nil, fmt.Errorf(
+			"the first block exceeds l1 commit calldata size limit; block number: %v, calldata size: %v, max calldata size limit: %v",
+			firstBlock.Header.Number,
+			totalL1CommitCalldataSize,
+			p.maxL1CommitCalldataSizePerChunk,
+		)
 	}
 
 	for i, block := range blocks[1:] {
-		totalGasUsed += block.Header.GasUsed
+		totalL2TxGasUsed += block.Header.GasUsed
 		totalL2TxNum += getL2TxsNum(block.Transactions)
-		totalPayloadSize += approximatePayloadSize(block)
-		if (totalGasUsed > p.maxL2TxGasPerChunk) || (totalL2TxNum > p.maxL2TxNumPerChunk) || (totalPayloadSize > p.maxL1CommitCalldataSizePerChunk) {
+		totalL1CommitCalldataSize += block.ApproximateL1CommitCalldataSize()
+		totalL1CommitGas += block.ApproximateL1CommitGas()
+		if totalL2TxGasUsed > p.maxL2TxGasPerChunk ||
+			totalL2TxNum > p.maxL2TxNumPerChunk ||
+			totalL1CommitCalldataSize > p.maxL1CommitCalldataSizePerChunk ||
+			totalL1CommitGas > p.maxL1CommitGasPerChunk {
 			blocks = blocks[:i+1]
 			break
 		}
@@ -133,13 +147,17 @@ func (p *ChunkProposer) proposeChunk() (*bridgeTypes.Chunk, error) {
 	var hasBlockTimeout bool
 	currentTimeSec := uint64(time.Now().Unix())
 	if blocks[0].Header.Time+p.chunkTimeoutSec > currentTimeSec {
-		log.Warn("first block timeout", "block number", blocks[0].Header.Number, "block timestamp", blocks[0].Header.Time, "chunk time limit", currentTimeSec)
+		log.Warn("first block timeout",
+			"block number", blocks[0].Header.Number,
+			"block timestamp", blocks[0].Header.Time,
+			"block outdated time threshold", currentTimeSec,
+		)
 		hasBlockTimeout = true
 	}
 
-	if !hasBlockTimeout && totalPayloadSize < p.minL1CommitCalldataSizePerChunk {
+	if !hasBlockTimeout && totalL1CommitCalldataSize < p.minL1CommitCalldataSizePerChunk {
 		log.Warn("The calldata size of the chunk is less than the minimum limit",
-			"totalPayloadSize", totalPayloadSize,
+			"totalL1CommitCalldataSize", totalL1CommitCalldataSize,
 			"minL1CommitCalldataSizePerChunk", p.minL1CommitCalldataSizePerChunk,
 		)
 		return nil, nil
@@ -149,8 +167,7 @@ func (p *ChunkProposer) proposeChunk() (*bridgeTypes.Chunk, error) {
 
 func getL2TxsNum(txs []*types.TransactionData) (count uint64) {
 	for _, tx := range txs {
-		// TODO(colinlyguo): replace with L1MessageTxType after upgrading github.com/scroll-tech/go-ethereum version in go.mod.
-		if tx.Type == types.LegacyTxType || tx.Type == types.AccessListTxType || tx.Type == types.DynamicFeeTxType {
+		if tx.Type == bridgeTypes.L1MessageTxType {
 			count++
 		}
 	}

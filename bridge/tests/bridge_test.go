@@ -129,6 +129,10 @@ func prepareContracts(t *testing.T) {
 func TestFunction(t *testing.T) {
 	setupEnv(t)
 
+	// process start test
+	t.Run("TestProcessStart", testProcessStart)
+	t.Run("TestProcessStartEnableMetrics", testProcessStartEnableMetrics)
+
 	// l1 rollup and watch rollup events
 	t.Run("TestCommitBatchAndFinalizeBatch", testCommitBatchAndFinalizeBatch)
 

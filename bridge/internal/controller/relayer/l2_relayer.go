@@ -236,7 +236,7 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 				Blocks: wrappedBlocks,
 			}
 			var chunkBytes []byte
-			chunkBytes, err = chunk.Encode(dbChunks[i].TotalL1MessagePoppedBefore)
+			chunkBytes, err = chunk.Encode(dbChunks[i].TotalL1MessagesPoppedBefore)
 			if err != nil {
 				log.Error("Failed to encode chunk", "error", err)
 				return
