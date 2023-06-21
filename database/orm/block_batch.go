@@ -39,6 +39,7 @@ func (o *blockBatchOrm) GetBlockBatches(fields map[string]interface{}, args ...s
 	if err != nil {
 		return nil, err
 	}
+	defer func() { _ = rows.Close() }()
 
 	var batches []*types.BlockBatch
 	for rows.Next() {
@@ -52,7 +53,7 @@ func (o *blockBatchOrm) GetBlockBatches(fields map[string]interface{}, args ...s
 		return nil, err
 	}
 
-	return batches, rows.Close()
+	return batches, nil
 }
 
 func (o *blockBatchOrm) GetProvingStatusByHash(hash string) (types.ProvingStatus, error) {
@@ -160,6 +161,7 @@ func (o *blockBatchOrm) GetPendingBatches(limit uint64) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer func() { _ = rows.Close() }()
 
 	var hashes []string
 	for rows.Next() {
@@ -175,7 +177,7 @@ func (o *blockBatchOrm) GetPendingBatches(limit uint64) ([]string, error) {
 		return nil, err
 	}
 
-	return hashes, rows.Close()
+	return hashes, nil
 }
 
 func (o *blockBatchOrm) GetLatestBatch() (*types.BlockBatch, error) {
@@ -219,6 +221,7 @@ func (o *blockBatchOrm) GetCommittedBatches(limit uint64) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer func() { _ = rows.Close() }()
 
 	var hashes []string
 	for rows.Next() {
@@ -234,7 +237,7 @@ func (o *blockBatchOrm) GetCommittedBatches(limit uint64) ([]string, error) {
 		return nil, err
 	}
 
-	return hashes, rows.Close()
+	return hashes, nil
 }
 
 func (o *blockBatchOrm) GetRollupStatus(hash string) (types.RollupStatus, error) {
@@ -259,6 +262,10 @@ func (o *blockBatchOrm) GetRollupStatusByHashList(hashes []string) ([]types.Roll
 	query = o.db.Rebind(query)
 
 	rows, err := o.db.Query(query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
 
 	statusMap := make(map[string]types.RollupStatus)
 	for rows.Next() {
@@ -269,6 +276,10 @@ func (o *blockBatchOrm) GetRollupStatusByHashList(hashes []string) ([]types.Roll
 		}
 		statusMap[hash] = status
 	}
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+
 	var statuses []types.RollupStatus
 	if err != nil {
 		return statuses, err
@@ -340,6 +351,7 @@ func (o *blockBatchOrm) GetAssignedBatchHashes() ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer func() { _ = rows.Close() }()
 
 	var hashes []string
 	for rows.Next() {
@@ -350,7 +362,7 @@ func (o *blockBatchOrm) GetAssignedBatchHashes() ([]string, error) {
 		hashes = append(hashes, hash)
 	}
 
-	return hashes, rows.Close()
+	return hashes, nil
 }
 
 func (o *blockBatchOrm) GetBatchCount() (int64, error) {

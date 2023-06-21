@@ -43,28 +43,28 @@ func (b *BlocktimestampFetcher) Start() {
 			case <-tick.C:
 				number, err := b.client.BlockNumber(b.ctx)
 				if err != nil {
-					log.Error("Can not get latest block number: ", err)
+					log.Error("Can not get latest block number", "err", err)
 					continue
 				}
 				startHeight, err := b.getEarliestNoBlocktimestampHeightFunc()
 				if err != nil {
-					log.Error("Can not get latest record without block timestamp: ", err)
+					log.Error("Can not get latest record without block timestamp", "err", err)
 					continue
 				}
 				for height := startHeight; number >= height+uint64(b.confirmation) && height > 0; {
 					block, err := b.client.HeaderByNumber(b.ctx, new(big.Int).SetUint64(height))
 					if err != nil {
-						log.Error("Can not get block by number: ", err)
+						log.Error("Can not get block by number", "err", err)
 						break
 					}
 					err = b.updateBlocktimestampFunc(height, time.Unix(int64(block.Time), 0))
 					if err != nil {
-						log.Error("Can not update blocktimstamp into DB: ", err)
+						log.Error("Can not update blocktimstamp into DB ", "err", err)
 						break
 					}
 					height, err = b.getEarliestNoBlocktimestampHeightFunc()
 					if err != nil {
-						log.Error("Can not get latest record without block timestamp: ", err)
+						log.Error("Can not get latest record without block timestamp", "err", err)
 						break
 					}
 				}

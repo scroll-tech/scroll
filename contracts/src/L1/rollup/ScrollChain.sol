@@ -25,6 +25,11 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
     /// @param status The status of the account updated.
     event UpdateSequencer(address indexed account, bool status);
 
+    /// @notice Emitted when owner updates the status of prover.
+    /// @param account The address of account updated.
+    /// @param status The status of the account updated.
+    event UpdateProver(address indexed account, bool status);
+
     /// @notice Emitted when the address of rollup verifier is updated.
     /// @param oldVerifier The address of old rollup verifier.
     /// @param newVerifier The address of new rollup verifier.
@@ -58,6 +63,9 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
     /// @notice Whether an account is a sequencer.
     mapping(address => bool) public isSequencer;
 
+    /// @notice Whether an account is a prover.
+    mapping(address => bool) public isProver;
+
     /// @notice The latest finalized batch index.
     uint256 public lastFinalizedBatchIndex;
 
@@ -77,6 +85,11 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
     modifier OnlySequencer() {
         // @note In the decentralized mode, it should be only called by a list of validator.
         require(isSequencer[msg.sender], "caller not sequencer");
+        _;
+    }
+
+    modifier OnlyProver() {
+        require(isProver[msg.sender], "caller not prover");
         _;
     }
 
@@ -117,12 +130,7 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
      *****************************/
 
     /// @notice Import layer 2 genesis block
-    /// @dev Although `_withdrawRoot` is always zero, we add this parameter for the convenience of unit testing.
-    function importGenesisBatch(
-        bytes calldata _batchHeader,
-        bytes32 _stateRoot,
-        bytes32 _withdrawRoot
-    ) external {
+    function importGenesisBatch(bytes calldata _batchHeader, bytes32 _stateRoot) external {
         // check genesis batch header length
         require(_stateRoot != bytes32(0), "zero state root");
 
@@ -144,10 +152,9 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
 
         committedBatches[0] = _batchHash;
         finalizedStateRoots[0] = _stateRoot;
-        withdrawRoots[0] = _withdrawRoot;
 
         emit CommitBatch(_batchHash);
-        emit FinalizeBatch(_batchHash, _stateRoot, _withdrawRoot);
+        emit FinalizeBatch(_batchHash, _stateRoot, bytes32(0));
     }
 
     /// @inheritdoc IScrollChain
@@ -278,7 +285,7 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
         bytes32 _postStateRoot,
         bytes32 _withdrawRoot,
         bytes calldata _aggrProof
-    ) external override OnlySequencer {
+    ) external override OnlyProver {
         require(_prevStateRoot != bytes32(0), "previous state root is zero");
         require(_postStateRoot != bytes32(0), "new state root is zero");
 
@@ -301,7 +308,7 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
         );
 
         // verify batch
-        IRollupVerifier(verifier).verifyAggregateProof(_aggrProof, _publicInputHash);
+        IRollupVerifier(verifier).verifyAggregateProof(_batchIndex, _aggrProof, _publicInputHash);
 
         // check and update lastFinalizedBatchIndex
         unchecked {
@@ -350,6 +357,16 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
         isSequencer[_account] = _status;
 
         emit UpdateSequencer(_account, _status);
+    }
+
+    /// @notice Update the status of prover.
+    /// @dev This function can only called by contract owner.
+    /// @param _account The address of account to update.
+    /// @param _status The status of the account to update.
+    function updateProver(address _account, bool _status) external onlyOwner {
+        isProver[_account] = _status;
+
+        emit UpdateProver(_account, _status);
     }
 
     /// @notice Update the address verifier contract.
@@ -402,11 +419,13 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
         bytes calldata _skippedL1MessageBitmap
     ) internal view returns (uint256 _totalNumL1MessagesInChunk) {
         uint256 chunkPtr;
+        uint256 startDataPtr;
         uint256 dataPtr;
         uint256 blockPtr;
 
         assembly {
             dataPtr := mload(0x40)
+            startDataPtr := dataPtr
             chunkPtr := add(_chunk, 0x20) // skip chunkLength
             blockPtr := add(chunkPtr, 1) // skip numBlocks
         }
@@ -414,15 +433,23 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
         uint256 _numBlocks = ChunkCodec.validateChunkLength(chunkPtr, _chunk.length);
 
         // concatenate block contexts
+        uint256 _totalTransactionsInChunk;
         for (uint256 i = 0; i < _numBlocks; i++) {
             dataPtr = ChunkCodec.copyBlockContext(chunkPtr, dataPtr, i);
+            uint256 _numTransactionsInBlock = ChunkCodec.numTransactions(blockPtr);
+            unchecked {
+                _totalTransactionsInChunk += _numTransactionsInBlock;
+                blockPtr += ChunkCodec.BLOCK_CONTEXT_LENGTH;
+            }
+        }
+
+        assembly {
+            mstore(0x40, add(dataPtr, mul(_totalTransactionsInChunk, 0x20))) // reserve memory for tx hashes
+            blockPtr := add(chunkPtr, 1) // reset block ptr
         }
 
         // concatenate tx hashes
         uint256 l2TxPtr = ChunkCodec.l2TxPtr(chunkPtr, _numBlocks);
-
-        // avoid stack too deep on forge coverage
-        uint256 _totalTransactionsInChunk;
         while (_numBlocks > 0) {
             // concatenate l1 message hashes
             uint256 _numL1MessagesInBlock = ChunkCodec.numL1Messages(blockPtr);
@@ -446,7 +473,6 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
             }
 
             unchecked {
-                _totalTransactionsInChunk += _numTransactionsInBlock;
                 _totalNumL1MessagesInChunk += _numL1MessagesInBlock;
                 _totalL1MessagesPoppedInBatch += _numL1MessagesInBlock;
                 _totalL1MessagesPoppedOverall += _numL1MessagesInBlock;
@@ -467,9 +493,7 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
 
         // compute data hash and store to memory
         assembly {
-            let startPtr := mload(0x40)
-            let dataHash := keccak256(startPtr, sub(dataPtr, startPtr))
-
+            let dataHash := keccak256(startDataPtr, sub(dataPtr, startDataPtr))
             mstore(memPtr, dataHash)
         }
 

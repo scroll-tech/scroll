@@ -32,7 +32,7 @@ type TxHistoryInfo struct {
 
 // HistoryService example service.
 type HistoryService interface {
-	GetTxsByAddress(address common.Address, offset int64, limit int64) ([]*TxHistoryInfo, error)
+	GetTxsByAddress(address common.Address, offset int64, limit int64) ([]*TxHistoryInfo, uint64, error)
 	GetTxsByHashes(hashes []string) ([]*TxHistoryInfo, error)
 }
 
@@ -69,20 +69,25 @@ func updateCrossTxHash(msgHash string, txInfo *TxHistoryInfo, db db.OrmFactory) 
 
 }
 
-func (h *historyBackend) GetTxsByAddress(address common.Address, offset int64, limit int64) ([]*TxHistoryInfo, error) {
-	txHistories := make([]*TxHistoryInfo, 0)
+func (h *historyBackend) GetTxsByAddress(address common.Address, offset int64, limit int64) ([]*TxHistoryInfo, uint64, error) {
+	var txHistories []*TxHistoryInfo
+	total, err := h.db.GetTotalCrossMsgCountByAddress(address.String())
+	if err != nil || total == 0 {
+		return txHistories, 0, err
+	}
 	result, err := h.db.GetCrossMsgsByAddressWithOffset(address.String(), offset, limit)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	for _, msg := range result {
 		txHistory := &TxHistoryInfo{
-			Hash:        msg.MsgHash,
-			Amount:      msg.Amount,
-			To:          msg.Target,
-			IsL1:        msg.MsgType == int(orm.Layer1Msg),
-			BlockNumber: msg.Height,
-			CreatedAt:   msg.CreatedAt,
+			Hash:           msg.Layer1Hash + msg.Layer2Hash,
+			Amount:         msg.Amount,
+			To:             msg.Target,
+			IsL1:           msg.MsgType == int(orm.Layer1Msg),
+			BlockNumber:    msg.Height,
+			BlockTimestamp: msg.Timestamp,
+			CreatedAt:      msg.CreatedAt,
 			FinalizeTx: &Finalized{
 				Hash: "",
 			},
@@ -90,7 +95,7 @@ func (h *historyBackend) GetTxsByAddress(address common.Address, offset int64, l
 		updateCrossTxHash(msg.MsgHash, txHistory, h.db)
 		txHistories = append(txHistories, txHistory)
 	}
-	return txHistories, nil
+	return txHistories, total, nil
 }
 
 func (h *historyBackend) GetTxsByHashes(hashes []string) ([]*TxHistoryInfo, error) {
@@ -102,12 +107,13 @@ func (h *historyBackend) GetTxsByHashes(hashes []string) ([]*TxHistoryInfo, erro
 		}
 		if l1result != nil {
 			txHistory := &TxHistoryInfo{
-				Hash:        l1result.Layer1Hash,
-				Amount:      l1result.Amount,
-				To:          l1result.Target,
-				IsL1:        true,
-				BlockNumber: l1result.Height,
-				CreatedAt:   l1result.CreatedAt,
+				Hash:           l1result.Layer1Hash,
+				Amount:         l1result.Amount,
+				To:             l1result.Target,
+				IsL1:           true,
+				BlockNumber:    l1result.Height,
+				BlockTimestamp: l1result.Timestamp,
+				CreatedAt:      l1result.CreatedAt,
 				FinalizeTx: &Finalized{
 					Hash: "",
 				},
@@ -122,12 +128,13 @@ func (h *historyBackend) GetTxsByHashes(hashes []string) ([]*TxHistoryInfo, erro
 		}
 		if l2result != nil {
 			txHistory := &TxHistoryInfo{
-				Hash:        l2result.Layer2Hash,
-				Amount:      l2result.Amount,
-				To:          l2result.Target,
-				IsL1:        false,
-				BlockNumber: l2result.Height,
-				CreatedAt:   l2result.CreatedAt,
+				Hash:           l2result.Layer2Hash,
+				Amount:         l2result.Amount,
+				To:             l2result.Target,
+				IsL1:           false,
+				BlockNumber:    l2result.Height,
+				BlockTimestamp: l2result.Timestamp,
+				CreatedAt:      l2result.CreatedAt,
 				FinalizeTx: &Finalized{
 					Hash: "",
 				},

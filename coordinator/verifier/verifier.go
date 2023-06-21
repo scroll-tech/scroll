@@ -3,8 +3,8 @@
 package verifier
 
 /*
-#cgo LDFLAGS: -L${SRCDIR}/lib/ -lzkp -lm -ldl -lzktrie -L${SRCDIR}/lib/ -Wl,-rpath=${SRCDIR}/lib
-#cgo gpu LDFLAGS: -L${SRCDIR}/lib/ -lzkp -lm -ldl -lgmp -lstdc++ -lprocps -lzktrie -L/usr/local/cuda/lib64/ -L${SRCDIR}/lib/ -lcudart -Wl,-rpath=${SRCDIR}/lib
+#cgo LDFLAGS: -lzkp -lm -ldl -lzktrie -L${SRCDIR}/lib/ -Wl,-rpath=${SRCDIR}/lib
+#cgo gpu LDFLAGS: -lzkp -lm -ldl -lgmp -lstdc++ -lprocps -lzktrie -L/usr/local/cuda/lib64/ -lcudart -L${SRCDIR}/lib/ -Wl,-rpath=${SRCDIR}/lib
 #include <stdlib.h>
 #include "./lib/libzkp.h"
 */
@@ -21,6 +21,7 @@ import (
 	"scroll-tech/common/types/message"
 )
 
+// InvalidTestProof invalid proof used in tests
 const InvalidTestProof = "this is a invalid proof"
 
 // Verifier represents a rust ffi to a halo2 verifier.

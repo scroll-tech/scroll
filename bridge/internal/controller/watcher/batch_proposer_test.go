@@ -113,11 +113,12 @@ func testBatchProposerBatchGeneration(t *testing.T) {
 	assert.NoError(t, err)
 
 	proposer := NewBatchProposer(context.Background(), &config.BatchProposerConfig{
-		ProofGenerationFreq: 1,
-		BatchGasThreshold:   3000000,
-		BatchTxNumThreshold: 135,
-		BatchTimeSec:        1,
-		BatchBlocksLimit:    100,
+		ProofGenerationFreq:     1,
+		BatchGasThreshold:       3000000,
+		BatchTxNumThreshold:     135,
+		BatchTimeSec:            1,
+		BatchBlocksLimit:        100,
+		CommitTxBatchCountLimit: 30,
 	}, relayer, db)
 	proposer.TryProposeBatch()
 
@@ -189,11 +190,12 @@ func testBatchProposerGracefulRestart(t *testing.T) {
 	assert.Equal(t, batchData2.Hash().Hex(), batchHashes[0])
 	// test p.recoverBatchDataBuffer().
 	_ = NewBatchProposer(context.Background(), &config.BatchProposerConfig{
-		ProofGenerationFreq: 1,
-		BatchGasThreshold:   3000000,
-		BatchTxNumThreshold: 135,
-		BatchTimeSec:        1,
-		BatchBlocksLimit:    100,
+		ProofGenerationFreq:     1,
+		BatchGasThreshold:       3000000,
+		BatchTxNumThreshold:     135,
+		BatchTimeSec:            1,
+		BatchBlocksLimit:        100,
+		CommitTxBatchCountLimit: 30,
 	}, relayer, db)
 
 	batchHashes, err = blockBatchOrm.GetBlockBatchesHashByRollupStatus(types.RollupPending, math.MaxInt32)

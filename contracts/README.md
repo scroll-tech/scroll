@@ -34,9 +34,7 @@ This directory contains the solidity code for Scroll L1 bridge and rollup contra
 ...
 </pre>
 
-
 ## Dependencies
-
 
 ### Foundry
 
@@ -52,20 +50,19 @@ Then, run `foundryup` in a new terminal session or after reloading your `PATH`.
 
 Other ways to install Foundry can be found [here](https://github.com/foundry-rs/foundry#installation).
 
-
 ### Hardhat
 
 ```
 yarn install
 ```
 
-
 ## Build
 
-+ Run `git submodule update --init --recursive` to initialise git submodules.
-+ Run `yarn prettier:solidity` to run linting in fix mode, will auto-format all solidity codes.
-+ Run `yarn prettier` to run linting in fix mode, will auto-format all typescript codes.
-+ Run `forge build` to compile contracts with foundry.
-+ Run `npx hardhat compile` to compile with hardhat.
-+ Run `forge test -vvv` to run foundry units tests. It will compile all contracts before running the unit tests.
-+ Run `npx hardhat test` to run integration tests. It may not compile all contracts before running, it's better to run `npx hardhat compile` first.
+- Run `git submodule update --init --recursive` to initialize git submodules.
+- Run `yarn prettier:solidity` to run linting in fix mode, will auto-format all solidity codes.
+- Run `yarn prettier` to run linting in fix mode, will auto-format all typescript codes.
+- Run `yarn prepare` to install the precommit linting hook.
+- Run `forge build` to compile contracts with foundry.
+- Run `npx hardhat compile` to compile with hardhat.
+- Run `forge test -vvv` to run foundry units tests. It will compile all contracts before running the unit tests.
+- Run `npx hardhat test` to run integration tests. It may not compile all contracts before running, it's better to run `npx hardhat compile` first.
