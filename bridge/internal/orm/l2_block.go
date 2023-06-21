@@ -87,20 +87,19 @@ func (o *L2Block) GetUnchunkedBlocks() ([]*types.WrappedBlock, error) {
 // GetL2Blocks get l2 blocks
 func (o *L2Block) GetL2Blocks(fields map[string]interface{}, orderByList []string, limit int) ([]L2Block, error) {
 	var l2Blocks []L2Block
-	db := o.db.Select("number, hash, parent_hash, chunk_hash, tx_num, gas_used, block_timestamp")
 	for key, value := range fields {
-		db = db.Where(key, value)
+		o.db = o.db.Where(key, value)
 	}
 
 	for _, orderBy := range orderByList {
-		db = db.Order(orderBy)
+		o.db = o.db.Order(orderBy)
 	}
 
 	if limit != 0 {
-		db = db.Limit(limit)
+		o.db = o.db.Limit(limit)
 	}
 
-	if err := db.Find(&l2Blocks).Error; err != nil {
+	if err := o.db.Find(&l2Blocks).Error; err != nil {
 		return nil, err
 	}
 	return l2Blocks, nil
