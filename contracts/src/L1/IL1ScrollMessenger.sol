@@ -68,5 +68,11 @@ interface IL1ScrollMessenger is IScrollMessenger {
     /// @param value The msg.value passed to the message call.
     /// @param queueIndex The queue index for the message to replay.
     /// @param message The content of the message.
-    function dropMessage(address from, address to, uint256 value, uint256 queueIndex, bytes memory message) external;
+    function dropMessage(
+        address from,
+        address to,
+        uint256 value,
+        uint256 queueIndex,
+        bytes memory message
+    ) external;
 }

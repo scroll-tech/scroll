@@ -52,6 +52,26 @@ abstract contract L1ERC20Gateway is IL1ERC20Gateway, IMessageDropCallback, Scrol
         _deposit(_token, _to, _amount, _data, _gasLimit);
     }
 
+    /// @inheritdoc IL1ERC20Gateway
+    function finalizeWithdrawERC20(
+        address _l1Token,
+        address _l2Token,
+        address _from,
+        address _to,
+        uint256 _amount,
+        bytes calldata _data
+    ) external payable override onlyCallByCounterpart nonReentrant {
+        _beforeFinalizeWithdrawERC20(_l1Token, _l2Token, _from, _to, _amount, _data);
+
+        // @note can possible trigger reentrant call to this contract or messenger,
+        // but it seems not a big problem.
+        IERC20(_l1Token).safeTransfer(_to, _amount);
+
+        _doCallback(_to, _data);
+
+        emit FinalizeWithdrawERC20(_l1Token, _l2Token, _from, _to, _amount, _data);
+    }
+
     /// @inheritdoc IMessageDropCallback
     function onDropMessage(bytes calldata _message) external payable virtual onlyInDropContext nonReentrant {
         // _message should start with 0x8431f5c1  =>  finalizeDepositERC20(address,address,address,address,uint256,bytes)
@@ -74,6 +94,16 @@ abstract contract L1ERC20Gateway is IL1ERC20Gateway, IMessageDropCallback, Scrol
     /**********************
      * Internal Functions *
      **********************/
+
+    /// @dev Internal function to some actions before finalize the withdraw.
+    function _beforeFinalizeWithdrawERC20(
+        address _l1Token,
+        address _l2Token,
+        address _from,
+        address _to,
+        uint256 _amount,
+        bytes calldata _data
+    ) internal virtual;
 
     /// @dev Internal function to some actions before dropping the message.
     /// @param _token The address of token to refund in L1.
