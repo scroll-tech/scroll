@@ -16,11 +16,11 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// These files should be in scroll/assets/...
+// These files should be in docker:/assets/...
 const (
-	paramsPath = "../../assets/test_params"
-	aggVkPath  = "../../assets/agg_vk"
-	proofPath  = "../../assets/agg_proof"
+	paramsPath = "/assets/test_params"
+	aggVkPath  = "/assets/agg_vk"
+	proofPath  = "/assets/agg_proof"
 )
 
 func TestFFI(t *testing.T) {

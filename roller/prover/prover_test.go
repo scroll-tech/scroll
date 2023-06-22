@@ -16,12 +16,12 @@ import (
 	"scroll-tech/roller/prover"
 )
 
-// These files should be in scroll/assets/...
+// These files should be in docker:/assets/...
 const (
-	paramsPath    = "../../assets/test_params"
-	seedPath      = "../../assets/test_seed"
-	tracesPath    = "../../assets/traces"
-	proofDumpPath = "../../assets/agg_proof"
+	paramsPath    = "/assets/test_params"
+	seedPath      = "/assets/test_seed"
+	tracesPath    = "/assets/traces"
+	proofDumpPath = "/assets/agg_proof"
 )
 
 func TestFFI(t *testing.T) {
