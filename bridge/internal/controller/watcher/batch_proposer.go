@@ -2,7 +2,6 @@ package watcher
 
 import (
 	"context"
-	"encoding/hex"
 	"fmt"
 	"time"
 
@@ -63,33 +62,31 @@ func (p *BatchProposer) updateBatchInfoInDB(chunks []*bridgeTypes.Chunk) error {
 	if numChunks <= 0 {
 		return nil
 	}
-	startDBChunk, err := p.chunkOrm.GetChunkByStartBlockIndex(p.ctx, chunks[0].Blocks[0].Header.Number.Uint64())
+	startDBChunk, err := p.chunkOrm.GetChunkByStartBlockNumber(p.ctx, chunks[0].Blocks[0].Header.Number.Uint64())
 	if err != nil {
 		return err
 	}
 	startChunkIndex := startDBChunk.Index
 
-	endDBChunk, err := p.chunkOrm.GetChunkByStartBlockIndex(p.ctx, chunks[numChunks-1].Blocks[0].Header.Number.Uint64())
+	endDBChunk, err := p.chunkOrm.GetChunkByStartBlockNumber(p.ctx, chunks[numChunks-1].Blocks[0].Header.Number.Uint64())
 	if err != nil {
 		return err
 	}
 	endChunkIndex := endDBChunk.Index
 
-	startChunkHashBytes, err := chunks[0].Hash(startDBChunk.TotalL1MessagesPoppedBefore)
+	startChunkHash, err := chunks[0].Hash(startDBChunk.TotalL1MessagesPoppedBefore)
 	if err != nil {
 		return err
 	}
-	startChunkHash := hex.EncodeToString(startChunkHashBytes)
 
-	endChunkHashBytes, err := chunks[numChunks-1].Hash(endDBChunk.TotalL1MessagesPoppedBefore)
+	endChunkHash, err := chunks[numChunks-1].Hash(endDBChunk.TotalL1MessagesPoppedBefore)
 	if err != nil {
 		return err
 	}
-	endChunkHash := hex.EncodeToString(endChunkHashBytes)
 
 	err = p.db.Transaction(func(dbTX *gorm.DB) error {
 		var batchHash string
-		batchHash, err = p.batchOrm.InsertBatch(p.ctx, startChunkIndex, endChunkIndex, startChunkHash, endChunkHash, chunks, dbTX)
+		batchHash, err = p.batchOrm.InsertBatch(p.ctx, startChunkIndex, endChunkIndex, startChunkHash.Hex(), endChunkHash.Hex(), chunks, dbTX)
 		if err != nil {
 			return err
 		}

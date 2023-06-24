@@ -2,7 +2,6 @@ package watcher
 
 import (
 	"context"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"math/big"
@@ -130,11 +129,10 @@ func (w *L2WatcherClient) initializeGenesis() error {
 		}},
 	}
 
-	chunkHashBytes, err := chunk.Hash(0)
+	chunkHash, err := chunk.Hash(0)
 	if err != nil {
 		return fmt.Errorf("failed to get L2 genesis chunk hash: %v", err)
 	}
-	chunkHash := hex.EncodeToString(chunkHashBytes)
 
 	batch, err := bridgeTypes.NewBatchHeader(0, 0, 0, common.Hash{}, []*bridgeTypes.Chunk{chunk})
 	if err != nil {
@@ -143,7 +141,7 @@ func (w *L2WatcherClient) initializeGenesis() error {
 	batchHash := batch.Hash().Hex()
 
 	err = w.db.Transaction(func(dbTX *gorm.DB) error {
-		if _, err = w.batchOrm.InsertBatch(w.ctx, 0, 0, chunkHash, chunkHash, []*bridgeTypes.Chunk{chunk}); err != nil {
+		if _, err = w.batchOrm.InsertBatch(w.ctx, 0, 0, chunkHash.Hex(), chunkHash.Hex(), []*bridgeTypes.Chunk{chunk}); err != nil {
 			return fmt.Errorf("failed to insert batch: %v", err)
 		}
 
@@ -155,13 +153,13 @@ func (w *L2WatcherClient) initializeGenesis() error {
 			return fmt.Errorf("failed to insert chunk: %v", err)
 		}
 
-		if err = w.l2BlockOrm.UpdateChunkHashInRange(w.ctx, 0, 0, chunkHash, dbTX); err != nil {
+		if err = w.l2BlockOrm.UpdateChunkHashInRange(w.ctx, 0, 0, chunkHash.Hex(), dbTX); err != nil {
 			log.Error("failed to update chunk_hash for l2_blocks",
 				"chunk_hash", chunkHash, "start block", 0, "end block", 0, "err", err)
 			return err
 		}
 
-		if err = w.chunkOrm.UpdateProvingStatus(w.ctx, chunkHash, types.ProvingTaskVerified, dbTX); err != nil {
+		if err = w.chunkOrm.UpdateProvingStatus(w.ctx, chunkHash.Hex(), types.ProvingTaskVerified, dbTX); err != nil {
 			return fmt.Errorf("failed to update genesis chunk proving status: %v", err)
 		}
 

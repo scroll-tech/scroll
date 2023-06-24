@@ -2,7 +2,6 @@ package orm
 
 import (
 	"context"
-	"encoding/hex"
 	"errors"
 	"time"
 
@@ -32,8 +31,8 @@ type Chunk struct {
 	StartBlockTime            uint64 `json:"start_block_time" gorm:"column:start_block_time"`
 
 	// chunk
-	TotalL1MessagesPoppedBefore uint64 `json:"total_l1_messages_popped_before" gorm:"column:total_l1_messages_popped_before"`
-	TotalL1MessagesPopped       uint64 `json:"total_l1_messages_popped" gorm:"column:total_l1_messages_popped"`
+	TotalL1MessagesPoppedBefore  uint64 `json:"total_l1_messages_popped_before" gorm:"column:total_l1_messages_popped_before"`
+	TotalL1MessagesPoppedInChunk uint64 `json:"total_l1_messages_popped" gorm:"column:total_l1_messages_popped"`
 
 	// proof
 	ProvingStatus    int16      `json:"proving_status" gorm:"column:proving_status;default:1"`
@@ -83,8 +82,8 @@ func (o *Chunk) GetChunksInRange(ctx context.Context, startIndex uint64, endInde
 	return chunks, nil
 }
 
-// GetChunkByStartBlockIndex retrieves a chunk from the database based on the start block number.
-func (o *Chunk) GetChunkByStartBlockIndex(ctx context.Context, startBlockNumber uint64) (*Chunk, error) {
+// GetChunkByStartBlockNumber retrieves a chunk from the database based on the start block number.
+func (o *Chunk) GetChunkByStartBlockNumber(ctx context.Context, startBlockNumber uint64) (*Chunk, error) {
 	var chunk Chunk
 	if err := o.db.Where("start_block_number = ?", startBlockNumber).First(&chunk).Error; err != nil {
 		return nil, err
@@ -97,24 +96,12 @@ func (o *Chunk) GetUnbatchedChunks(ctx context.Context) ([]*Chunk, error) {
 	var chunks []*Chunk
 	err := o.db.WithContext(ctx).
 		Where("batch_hash IS NULL").
-		Order("start_block_number asc").
+		Order("index asc").
 		Find(&chunks).Error
 	if err != nil {
 		return nil, err
 	}
 	return chunks, nil
-}
-
-// GetTotalL1MessagePoppedByEndBlockNumber retrieves the total number of L1 messages popped by the end block number.
-func (o *Chunk) GetTotalL1MessagePoppedByEndBlockNumber(ctx context.Context, endBlockNumber uint64) (uint64, error) {
-	var chunk Chunk
-	if err := o.db.Where("endBlockNumber = ?", endBlockNumber).First(&chunk).Error; err != nil {
-		if err == gorm.ErrRecordNotFound {
-			return 0, nil
-		}
-		return 0, err
-	}
-	return chunk.TotalL1MessagesPoppedBefore + chunk.TotalL1MessagesPopped, nil
 }
 
 // GetLatestChunk retrieves the latest chunk from the database.
@@ -148,7 +135,7 @@ func (o *Chunk) InsertChunk(ctx context.Context, chunk *bridgeTypes.Chunk, dbTX 
 		return "", err
 	}
 	if parentChunk != nil {
-		totalL1MessagePoppedBefore = parentChunk.TotalL1MessagesPoppedBefore + parentChunk.TotalL1MessagesPopped
+		totalL1MessagePoppedBefore = parentChunk.TotalL1MessagesPoppedBefore + parentChunk.TotalL1MessagesPoppedInChunk
 	}
 	hash, err := chunk.Hash(totalL1MessagePoppedBefore)
 	if err != nil {
@@ -179,19 +166,19 @@ func (o *Chunk) InsertChunk(ctx context.Context, chunk *bridgeTypes.Chunk, dbTX 
 
 	numBlocks := len(chunk.Blocks)
 	newChunk := Chunk{
-		Index:                       chunkIndex,
-		Hash:                        hex.EncodeToString(hash),
-		StartBlockNumber:            chunk.Blocks[0].Header.Number.Uint64(),
-		StartBlockHash:              chunk.Blocks[0].Header.Hash().Hex(),
-		EndBlockNumber:              chunk.Blocks[numBlocks-1].Header.Number.Uint64(),
-		EndBlockHash:                chunk.Blocks[numBlocks-1].Header.Hash().Hex(),
-		TotalL2TxGas:                totalL2TxGas,
-		TotalL2TxNum:                totalL2TxNum,
-		TotalL1CommitCalldataSize:   totalL1CommitCalldataSize,
-		TotalL1CommitGas:            totalL1CommitGas,
-		StartBlockTime:              chunk.Blocks[0].Header.Time,
-		TotalL1MessagesPoppedBefore: totalL1MessagePoppedBefore,
-		TotalL1MessagesPopped:       chunk.NumL1Messages(totalL1MessagePoppedBefore),
+		Index:                        chunkIndex,
+		Hash:                         hash.Hex(),
+		StartBlockNumber:             chunk.Blocks[0].Header.Number.Uint64(),
+		StartBlockHash:               chunk.Blocks[0].Header.Hash().Hex(),
+		EndBlockNumber:               chunk.Blocks[numBlocks-1].Header.Number.Uint64(),
+		EndBlockHash:                 chunk.Blocks[numBlocks-1].Header.Hash().Hex(),
+		TotalL2TxGas:                 totalL2TxGas,
+		TotalL2TxNum:                 totalL2TxNum,
+		TotalL1CommitCalldataSize:    totalL1CommitCalldataSize,
+		TotalL1CommitGas:             totalL1CommitGas,
+		StartBlockTime:               chunk.Blocks[0].Header.Time,
+		TotalL1MessagesPoppedBefore:  totalL1MessagePoppedBefore,
+		TotalL1MessagesPoppedInChunk: chunk.NumL1Messages(totalL1MessagePoppedBefore),
 	}
 
 	if err := db.Create(&newChunk).Error; err != nil {

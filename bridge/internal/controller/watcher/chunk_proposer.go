@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/log"
 	"gorm.io/gorm"
 
@@ -88,7 +87,7 @@ func (p *ChunkProposer) proposeChunk() (*bridgeTypes.Chunk, error) {
 
 	firstBlock := blocks[0]
 	totalL2TxGasUsed := firstBlock.Header.GasUsed
-	totalL2TxNum := getL2TxsNum(firstBlock.Transactions)
+	totalL2TxNum := firstBlock.GetL2TxsNum()
 	totalL1CommitCalldataSize := firstBlock.ApproximateL1CommitCalldataSize()
 	totalL1CommitGas := firstBlock.ApproximateL1CommitGas()
 
@@ -132,7 +131,7 @@ func (p *ChunkProposer) proposeChunk() (*bridgeTypes.Chunk, error) {
 
 	for i, block := range blocks[1:] {
 		totalL2TxGasUsed += block.Header.GasUsed
-		totalL2TxNum += getL2TxsNum(block.Transactions)
+		totalL2TxNum += block.GetL2TxsNum()
 		totalL1CommitCalldataSize += block.ApproximateL1CommitCalldataSize()
 		totalL1CommitGas += block.ApproximateL1CommitGas()
 		if totalL2TxGasUsed > p.maxL2TxGasPerChunk ||
@@ -163,13 +162,4 @@ func (p *ChunkProposer) proposeChunk() (*bridgeTypes.Chunk, error) {
 		return nil, nil
 	}
 	return &bridgeTypes.Chunk{Blocks: blocks}, nil
-}
-
-func getL2TxsNum(txs []*types.TransactionData) (count uint64) {
-	for _, tx := range txs {
-		if tx.Type != bridgeTypes.L1MessageTxType {
-			count++
-		}
-	}
-	return
 }

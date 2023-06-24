@@ -2,7 +2,6 @@ package watcher
 
 import (
 	"context"
-	"encoding/hex"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -34,13 +33,12 @@ func testChunkProposer(t *testing.T) {
 	expectedChunk := &bridgeTypes.Chunk{
 		Blocks: []*bridgeTypes.WrappedBlock{wrappedBlock1, wrappedBlock2},
 	}
-	hashBytes, err := expectedChunk.Hash(0)
+	expectedHash, err := expectedChunk.Hash(0)
 	assert.NoError(t, err)
-	expectedHash := hex.EncodeToString(hashBytes)
 
 	chunkOrm := orm.NewChunk(db)
 	chunks, err := chunkOrm.GetUnbatchedChunks(context.Background())
 	assert.NoError(t, err)
 	assert.Len(t, chunks, 1)
-	assert.Equal(t, expectedHash, chunks[0].Hash)
+	assert.Equal(t, expectedHash.Hex(), chunks[0].Hash)
 }

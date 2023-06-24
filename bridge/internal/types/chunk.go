@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/common/hexutil"
 	"github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/crypto"
@@ -61,7 +62,7 @@ func (c *Chunk) Encode(totalL1MessagePoppedBefore uint64) ([]byte, error) {
 
 		// Append rlp-encoded l2Txs
 		for _, txData := range block.Transactions {
-			if txData.Type == 0x7E {
+			if txData.Type == L1MessageTxType {
 				continue
 			}
 			data, _ := hexutil.Decode(txData.Data)
@@ -91,10 +92,10 @@ func (c *Chunk) Encode(totalL1MessagePoppedBefore uint64) ([]byte, error) {
 }
 
 // Hash hashes the Chunk into RollupV2 Chunk Hash
-func (c *Chunk) Hash(totalL1MessagePoppedBefore uint64) ([]byte, error) {
+func (c *Chunk) Hash(totalL1MessagePoppedBefore uint64) (common.Hash, error) {
 	chunkBytes, err := c.Encode(totalL1MessagePoppedBefore)
 	if err != nil {
-		return nil, err
+		return common.Hash{}, err
 	}
 	numBlocks := chunkBytes[0]
 
@@ -113,9 +114,9 @@ func (c *Chunk) Hash(totalL1MessagePoppedBefore uint64) ([]byte, error) {
 			txHash := strings.TrimPrefix(txData.TxHash, "0x")
 			hashBytes, err := hex.DecodeString(txHash)
 			if err != nil {
-				return nil, err
+				return common.Hash{}, err
 			}
-			if txData.Type == 0x7E {
+			if txData.Type == L1MessageTxType {
 				l1TxHashes = append(l1TxHashes, hashBytes...)
 			} else {
 				l2TxHashes = append(l2TxHashes, hashBytes...)
@@ -125,6 +126,6 @@ func (c *Chunk) Hash(totalL1MessagePoppedBefore uint64) ([]byte, error) {
 		dataBytes = append(dataBytes, l2TxHashes...)
 	}
 
-	hash := crypto.Keccak256Hash(dataBytes).Bytes()
+	hash := crypto.Keccak256Hash(dataBytes)
 	return hash, nil
 }

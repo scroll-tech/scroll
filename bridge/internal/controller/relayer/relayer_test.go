@@ -1,11 +1,11 @@
 package relayer
 
 import (
-	"encoding/hex"
 	"encoding/json"
 	"os"
 	"testing"
 
+	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/stretchr/testify/assert"
 
@@ -31,8 +31,8 @@ var (
 	// chunk
 	chunk1     *bridgeTypes.Chunk
 	chunk2     *bridgeTypes.Chunk
-	chunkHash1 string
-	chunkHash2 string
+	chunkHash1 common.Hash
+	chunkHash2 common.Hash
 )
 
 func setupEnv(t *testing.T) {
@@ -62,9 +62,8 @@ func setupEnv(t *testing.T) {
 	err = json.Unmarshal(templateBlockTrace1, wrappedBlock1)
 	assert.NoError(t, err)
 	chunk1 = &bridgeTypes.Chunk{Blocks: []*bridgeTypes.WrappedBlock{wrappedBlock1}}
-	chunkHashBytes1, err := chunk1.Hash(0)
+	chunkHash1, err = chunk1.Hash(0)
 	assert.NoError(t, err)
-	chunkHash1 = hex.EncodeToString(chunkHashBytes1)
 
 	templateBlockTrace2, err := os.ReadFile("../../../testdata/blockTrace_03.json")
 	assert.NoError(t, err)
@@ -72,9 +71,8 @@ func setupEnv(t *testing.T) {
 	err = json.Unmarshal(templateBlockTrace2, wrappedBlock2)
 	assert.NoError(t, err)
 	chunk2 = &bridgeTypes.Chunk{Blocks: []*bridgeTypes.WrappedBlock{wrappedBlock2}}
-	chunkHashBytes2, err := chunk2.Hash(chunk1.NumL1Messages(0))
+	chunkHash2, err = chunk2.Hash(chunk1.NumL1Messages(0))
 	assert.NoError(t, err)
-	chunkHash2 = hex.EncodeToString(chunkHashBytes2)
 }
 
 func TestMain(m *testing.M) {

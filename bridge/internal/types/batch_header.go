@@ -38,11 +38,11 @@ func NewBatchHeader(version uint8, batchIndex, totalL1MessagePoppedBefore uint64
 	for _, chunk := range chunks {
 		// build data hash
 		totalL1MessagePoppedBeforeChunk := nextIndex
-		chunkBytes, err := chunk.Hash(totalL1MessagePoppedBeforeChunk)
+		chunkHash, err := chunk.Hash(totalL1MessagePoppedBeforeChunk)
 		if err != nil {
 			return nil, err
 		}
-		dataBytes = append(dataBytes, chunkBytes...)
+		dataBytes = append(dataBytes, chunkHash.Bytes()...)
 
 		// build skip bitmap
 		for _, block := range chunk.Blocks {

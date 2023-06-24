@@ -66,19 +66,29 @@ func (w *WrappedBlock) Encode(totalL1MessagePoppedBefore uint64) ([]byte, error)
 }
 
 // ApproximateL1CommitCalldataSize calculates the calldata size in l1 commit approximately.
-func (w *WrappedBlock) ApproximateL1CommitCalldataSize() (size uint64) {
+// TODO: The calculation could be more accurate by using 58 + len(l2TxDataBytes) (see Chunk).
+// This needs to be adjusted in the future.
+func (w *WrappedBlock) ApproximateL1CommitCalldataSize() uint64 {
+	var size uint64
 	for _, tx := range w.Transactions {
 		size += uint64(len(tx.Data))
 	}
-	return
+	return size
 }
 
 const nonZeroByteGas uint64 = 16
 const zeroByteGas uint64 = 4
 
 // ApproximateL1CommitGas calculates the calldata gas in l1 commit approximately.
-func (w *WrappedBlock) ApproximateL1CommitGas() (total uint64) {
+// TODO: This will need to be adjusted.
+// The part added here is only the calldata cost,
+// but we have execution cost for verifying blocks / chunks / batches and storing the batch hash.
+func (w *WrappedBlock) ApproximateL1CommitGas() uint64 {
+	var total uint64
 	for _, txData := range w.Transactions {
+		if txData.Type == L1MessageTxType {
+			continue
+		}
 		data, _ := hexutil.Decode(txData.Data)
 		tx := types.NewTx(&types.LegacyTx{
 			Nonce:    txData.Nonce,
@@ -112,5 +122,16 @@ func (w *WrappedBlock) ApproximateL1CommitGas() (total uint64) {
 			}
 		}
 	}
-	return
+	return total
+}
+
+// GetL2TxsNum calculates the number of l2 txs.
+func (w *WrappedBlock) GetL2TxsNum() uint64 {
+	var count uint64
+	for _, txData := range w.Transactions {
+		if txData.Type != L1MessageTxType {
+			count++
+		}
+	}
+	return count
 }

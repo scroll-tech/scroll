@@ -2,7 +2,6 @@ package tests
 
 import (
 	"context"
-	"encoding/hex"
 	"math/big"
 	"testing"
 
@@ -87,12 +86,11 @@ func testImportL2GasPrice(t *testing.T) {
 			},
 		},
 	}
-	chunkHashBytes, err := chunk.Hash(0)
+	chunkHash, err := chunk.Hash(0)
 	assert.NoError(t, err)
-	chunkHash := hex.EncodeToString(chunkHashBytes)
 
 	batchOrm := orm.NewBatch(db)
-	_, err = batchOrm.InsertBatch(context.Background(), 0, 0, chunkHash, chunkHash, []*bridgeTypes.Chunk{chunk})
+	_, err = batchOrm.InsertBatch(context.Background(), 0, 0, chunkHash.Hex(), chunkHash.Hex(), []*bridgeTypes.Chunk{chunk})
 	assert.NoError(t, err)
 
 	// check db status

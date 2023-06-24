@@ -2,11 +2,11 @@ package orm
 
 import (
 	"context"
-	"encoding/hex"
 	"encoding/json"
 	"os"
 	"testing"
 
+	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/stretchr/testify/assert"
 	"gorm.io/gorm"
 
@@ -31,8 +31,8 @@ var (
 	wrappedBlock2 *bridgeTypes.WrappedBlock
 	chunk1        *bridgeTypes.Chunk
 	chunk2        *bridgeTypes.Chunk
-	chunkHash1    string
-	chunkHash2    string
+	chunkHash1    common.Hash
+	chunkHash2    common.Hash
 )
 
 func TestMain(m *testing.M) {
@@ -82,14 +82,12 @@ func setupEnv(t *testing.T) {
 	}
 
 	chunk1 = &bridgeTypes.Chunk{Blocks: []*bridgeTypes.WrappedBlock{wrappedBlock1}}
-	chunkHashBytes1, err := chunk1.Hash(0)
+	chunkHash1, err = chunk1.Hash(0)
 	assert.NoError(t, err)
-	chunkHash1 = hex.EncodeToString(chunkHashBytes1)
 
 	chunk2 = &bridgeTypes.Chunk{Blocks: []*bridgeTypes.WrappedBlock{wrappedBlock2}}
-	chunkHashBytes2, err := chunk2.Hash(chunk1.NumL1Messages(0))
+	chunkHash2, err = chunk2.Hash(chunk1.NumL1Messages(0))
 	assert.NoError(t, err)
-	chunkHash2 = hex.EncodeToString(chunkHashBytes2)
 }
 
 func tearDownEnv(t *testing.T) {
@@ -154,9 +152,9 @@ func TestChunkOrm(t *testing.T) {
 	assert.Equal(t, chunkHash1, chunks[0].Hash)
 	assert.Equal(t, chunkHash2, chunks[1].Hash)
 
-	err = chunkOrm.UpdateProvingStatus(context.Background(), chunkHash1, types.ProvingTaskVerified)
+	err = chunkOrm.UpdateProvingStatus(context.Background(), chunkHash1.Hex(), types.ProvingTaskVerified)
 	assert.NoError(t, err)
-	err = chunkOrm.UpdateProvingStatus(context.Background(), chunkHash2, types.ProvingTaskAssigned)
+	err = chunkOrm.UpdateProvingStatus(context.Background(), chunkHash2.Hex(), types.ProvingTaskAssigned)
 	assert.NoError(t, err)
 
 	chunks, err = chunkOrm.GetChunksInRange(context.Background(), 0, 1)
@@ -190,7 +188,7 @@ func TestBatchOrm(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, hash2, chunkHash2)
 
-	hash1, err = batchOrm.InsertBatch(context.Background(), 0, 0, chunkHash1, chunkHash1, []*bridgeTypes.Chunk{chunk1})
+	hash1, err = batchOrm.InsertBatch(context.Background(), 0, 0, chunkHash1.Hex(), chunkHash1.Hex(), []*bridgeTypes.Chunk{chunk1})
 	assert.NoError(t, err)
 
 	batchHeader1, err := batchOrm.GetBatchHeader(context.Background(), 0)
@@ -198,7 +196,7 @@ func TestBatchOrm(t *testing.T) {
 	batchHash1 := batchHeader1.Hash().Hex()
 	assert.Equal(t, hash1, batchHash1)
 
-	hash2, err = batchOrm.InsertBatch(context.Background(), 1, 1, chunkHash2, chunkHash2, []*bridgeTypes.Chunk{chunk2})
+	hash2, err = batchOrm.InsertBatch(context.Background(), 1, 1, chunkHash2.Hex(), chunkHash2.Hex(), []*bridgeTypes.Chunk{chunk2})
 	assert.NoError(t, err)
 
 	batchHeader2, err := batchOrm.GetBatchHeader(context.Background(), 1)
