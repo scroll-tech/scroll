@@ -53,7 +53,7 @@ func testCommitBatchAndFinalizeBatch(t *testing.T) {
 	}
 
 	l2BlockOrm := orm.NewL2Block(db)
-	err = l2BlockOrm.InsertL2Blocks(wrappedBlocks)
+	err = l2BlockOrm.InsertL2Blocks(context.Background(), wrappedBlocks)
 	assert.NoError(t, err)
 
 	cp := watcher.NewChunkProposer(context.Background(), &config.ChunkProposerConfig{

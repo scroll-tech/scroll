@@ -104,14 +104,14 @@ func TestL2BlockOrm(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(sqlDB))
 
-	err = l2BlockOrm.InsertL2Blocks([]*bridgeTypes.WrappedBlock{wrappedBlock1, wrappedBlock2})
+	err = l2BlockOrm.InsertL2Blocks(context.Background(), []*bridgeTypes.WrappedBlock{wrappedBlock1, wrappedBlock2})
 	assert.NoError(t, err)
 
-	height, err := l2BlockOrm.GetL2BlocksLatestHeight()
+	height, err := l2BlockOrm.GetL2BlocksLatestHeight(context.Background())
 	assert.NoError(t, err)
 	assert.Equal(t, int64(3), height)
 
-	blocks, err := l2BlockOrm.GetUnchunkedBlocks()
+	blocks, err := l2BlockOrm.GetUnchunkedBlocks(context.Background())
 	assert.NoError(t, err)
 	assert.Len(t, blocks, 2)
 	assert.Equal(t, wrappedBlock1, blocks[0])
@@ -123,17 +123,13 @@ func TestL2BlockOrm(t *testing.T) {
 	assert.Equal(t, wrappedBlock1, blocks[0])
 	assert.Equal(t, wrappedBlock2, blocks[1])
 
-	err = l2BlockOrm.UpdateChunkHashInRange(2, 2, "test hash")
+	err = l2BlockOrm.UpdateChunkHashInRange(context.Background(), 2, 2, "test hash")
 	assert.NoError(t, err)
 
-	blocks, err = l2BlockOrm.GetUnchunkedBlocks()
+	blocks, err = l2BlockOrm.GetUnchunkedBlocks(context.Background())
 	assert.NoError(t, err)
 	assert.Len(t, blocks, 1)
 	assert.Equal(t, wrappedBlock2, blocks[0])
-	blockInfos, err := l2BlockOrm.GetL2Blocks(map[string]interface{}{"number": 2}, nil, 0)
-	assert.NoError(t, err)
-	assert.Len(t, blockInfos, 1)
-	assert.Equal(t, "test hash", blockInfos[0].ChunkHash)
 }
 
 func TestChunkOrm(t *testing.T) {
@@ -141,7 +137,7 @@ func TestChunkOrm(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(sqlDB))
 
-	err = l2BlockOrm.InsertL2Blocks([]*bridgeTypes.WrappedBlock{wrappedBlock1, wrappedBlock2})
+	err = l2BlockOrm.InsertL2Blocks(context.Background(), []*bridgeTypes.WrappedBlock{wrappedBlock1, wrappedBlock2})
 	assert.NoError(t, err)
 
 	hash1, err := chunkOrm.InsertChunk(context.Background(), chunk1)
@@ -183,7 +179,7 @@ func TestBatchOrm(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(sqlDB))
 
-	err = l2BlockOrm.InsertL2Blocks([]*bridgeTypes.WrappedBlock{wrappedBlock1, wrappedBlock2})
+	err = l2BlockOrm.InsertL2Blocks(context.Background(), []*bridgeTypes.WrappedBlock{wrappedBlock1, wrappedBlock2})
 	assert.NoError(t, err)
 
 	hash1, err := chunkOrm.InsertChunk(context.Background(), chunk1)

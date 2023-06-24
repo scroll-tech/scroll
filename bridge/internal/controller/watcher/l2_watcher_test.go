@@ -218,7 +218,7 @@ func testFetchRunningMissingBlocks(t *testing.T) {
 		}
 		wc := prepareWatcherClient(l2Cli, db, address)
 		wc.TryFetchRunningMissingBlocks(context.Background(), latestHeight)
-		fetchedHeight, err := l2BlockOrm.GetL2BlocksLatestHeight()
+		fetchedHeight, err := l2BlockOrm.GetL2BlocksLatestHeight(context.Background())
 		return err == nil && uint64(fetchedHeight) == latestHeight
 	})
 	assert.True(t, ok)

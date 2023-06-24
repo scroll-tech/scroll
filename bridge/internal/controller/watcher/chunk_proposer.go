@@ -67,7 +67,7 @@ func (p *ChunkProposer) updateChunkInfoInDB(chunk *bridgeTypes.Chunk) error {
 		}
 		startBlockNum := chunk.Blocks[0].Header.Number.Uint64()
 		endBlockNum := chunk.Blocks[len(chunk.Blocks)-1].Header.Number.Uint64()
-		if err := p.l2BlockOrm.UpdateChunkHashInRange(startBlockNum, endBlockNum, chunkHash); err != nil {
+		if err := p.l2BlockOrm.UpdateChunkHashInRange(p.ctx, startBlockNum, endBlockNum, chunkHash); err != nil {
 			log.Error("failed to update chunk_hash for l2_blocks", "chunk hash", chunkHash, "start block", 0, "end block", 0, "err", err)
 			return err
 		}
@@ -77,7 +77,7 @@ func (p *ChunkProposer) updateChunkInfoInDB(chunk *bridgeTypes.Chunk) error {
 }
 
 func (p *ChunkProposer) proposeChunk() (*bridgeTypes.Chunk, error) {
-	blocks, err := p.l2BlockOrm.GetUnchunkedBlocks()
+	blocks, err := p.l2BlockOrm.GetUnchunkedBlocks(p.ctx)
 	if err != nil {
 		return nil, err
 	}

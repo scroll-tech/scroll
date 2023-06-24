@@ -147,7 +147,7 @@ func (w *L2WatcherClient) initializeGenesis() error {
 			return fmt.Errorf("failed to insert batch: %v", err)
 		}
 
-		if err = w.l2BlockOrm.UpdateChunkHashInRange(0, 0, batchHash, dbTX); err != nil {
+		if err = w.l2BlockOrm.UpdateChunkHashInRange(w.ctx, 0, 0, batchHash, dbTX); err != nil {
 			return fmt.Errorf("failed to update batch hash for L2 blocks: %v", err)
 		}
 
@@ -155,7 +155,7 @@ func (w *L2WatcherClient) initializeGenesis() error {
 			return fmt.Errorf("failed to insert chunk: %v", err)
 		}
 
-		if err = w.l2BlockOrm.UpdateChunkHashInRange(0, 0, chunkHash, dbTX); err != nil {
+		if err = w.l2BlockOrm.UpdateChunkHashInRange(w.ctx, 0, 0, chunkHash, dbTX); err != nil {
 			log.Error("failed to update chunk_hash for l2_blocks",
 				"chunk_hash", chunkHash, "start block", 0, "end block", 0, "err", err)
 			return err
@@ -192,7 +192,7 @@ func (w *L2WatcherClient) TryFetchRunningMissingBlocks(ctx context.Context, bloc
 	// Get newest block in DB. must have blocks at that time.
 	// Don't use "block_trace" table "trace" column's BlockTrace.Number,
 	// because it might be empty if the corresponding rollup_result is finalized/finalization_skipped
-	heightInDB, err := w.l2BlockOrm.GetL2BlocksLatestHeight()
+	heightInDB, err := w.l2BlockOrm.GetL2BlocksLatestHeight(w.ctx)
 	if err != nil {
 		log.Error("failed to GetL2BlocksLatestHeight", "err", err)
 		return
@@ -268,7 +268,7 @@ func (w *L2WatcherClient) getAndStoreBlockTraces(ctx context.Context, from, to u
 	}
 
 	if len(blocks) > 0 {
-		if err := w.l2BlockOrm.InsertL2Blocks(blocks); err != nil {
+		if err := w.l2BlockOrm.InsertL2Blocks(w.ctx, blocks); err != nil {
 			return fmt.Errorf("failed to batch insert BlockTraces: %v", err)
 		}
 	}
