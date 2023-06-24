@@ -153,7 +153,7 @@ func (p *BatchProposer) proposeBatchChunks() ([]*bridgeTypes.Chunk, error) {
 
 	var hasChunkTimeout bool
 	currentTimeSec := uint64(time.Now().Unix())
-	if dbChunks[0].StartBlockTime+p.batchTimeoutSec > currentTimeSec {
+	if dbChunks[0].StartBlockTime+p.batchTimeoutSec < currentTimeSec {
 		log.Warn("first block timeout",
 			"start block number", dbChunks[0].StartBlockNumber,
 			"first block timestamp", dbChunks[0].StartBlockTime,

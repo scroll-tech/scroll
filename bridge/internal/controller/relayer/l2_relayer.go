@@ -194,7 +194,7 @@ func (r *Layer2Relayer) ProcessGasPriceOracle() {
 func (r *Layer2Relayer) ProcessPendingBatches() {
 	// get pending batch from database
 	pendingBatches, err := r.batchOrm.GetPendingBatches(r.ctx, 10)
-	if err != nil || len(pendingBatches) == 0 {
+	if err != nil {
 		log.Error("Failed to fetch pending L2 batches", "err", err)
 		return
 	}
@@ -292,7 +292,7 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 		return
 	}
 	if len(batches) == 0 {
-		log.Error("Unexpected result for GetBlockBatches", "len", 0)
+		log.Warn("Unexpected result for GetBlockBatches", "len", 0)
 		return
 	}
 
@@ -324,25 +324,6 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 		previousBatch, err := r.batchOrm.GetLatestBatchByRollupStatus(rollupStatues)
 		if err == nil {
 			parentBatchStateRoot = previousBatch.StateRoot
-		}
-		// skip submitting proof
-		if err == nil && uint64(batch.CreatedAt.Sub(previousBatch.CreatedAt).Seconds()) < r.cfg.FinalizeBatchIntervalSec {
-			log.Info(
-				"Not enough time passed, skipping",
-				"hash", hash,
-				"createdAt", batch.CreatedAt,
-				"lastFinalizingHash", previousBatch.Hash,
-				"lastFinalizingStatus", previousBatch.RollupStatus,
-				"lastFinalizingCreatedAt", previousBatch.CreatedAt,
-			)
-
-			if err = r.batchOrm.UpdateRollupStatus(r.ctx, hash, types.RollupFinalizationSkipped); err != nil {
-				log.Warn("UpdateRollupStatus failed", "hash", hash, "err", err)
-			} else {
-				success = true
-			}
-
-			return
 		}
 
 		// handle unexpected db error

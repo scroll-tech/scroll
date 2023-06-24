@@ -66,7 +66,7 @@ func (p *ChunkProposer) updateChunkInfoInDB(chunk *bridgeTypes.Chunk) error {
 			return err
 		}
 		startBlockNum := chunk.Blocks[0].Header.Number.Uint64()
-		endBlockNum := startBlockNum + uint64(len(chunk.Blocks))
+		endBlockNum := chunk.Blocks[len(chunk.Blocks)-1].Header.Number.Uint64()
 		if err := p.l2BlockOrm.UpdateChunkHashInRange(startBlockNum, endBlockNum, chunkHash); err != nil {
 			log.Error("failed to update chunk_hash for l2_blocks", "chunk hash", chunkHash, "start block", 0, "end block", 0, "err", err)
 			return err
@@ -146,7 +146,7 @@ func (p *ChunkProposer) proposeChunk() (*bridgeTypes.Chunk, error) {
 
 	var hasBlockTimeout bool
 	currentTimeSec := uint64(time.Now().Unix())
-	if blocks[0].Header.Time+p.chunkTimeoutSec > currentTimeSec {
+	if blocks[0].Header.Time+p.chunkTimeoutSec < currentTimeSec {
 		log.Warn("first block timeout",
 			"block number", blocks[0].Header.Number,
 			"block timestamp", blocks[0].Header.Time,
