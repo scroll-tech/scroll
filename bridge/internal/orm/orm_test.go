@@ -117,13 +117,13 @@ func TestL2BlockOrm(t *testing.T) {
 	assert.Equal(t, wrappedBlock1, blocks[0])
 	assert.Equal(t, wrappedBlock2, blocks[1])
 
-	blocks, err = l2BlockOrm.GetL2BlocksInClosedRange(context.Background(), 2, 3)
+	blocks, err = l2BlockOrm.GetL2BlocksInRange(context.Background(), 2, 3)
 	assert.NoError(t, err)
 	assert.Len(t, blocks, 2)
 	assert.Equal(t, wrappedBlock1, blocks[0])
 	assert.Equal(t, wrappedBlock2, blocks[1])
 
-	err = l2BlockOrm.UpdateChunkHashInClosedRange(2, 2, "test hash")
+	err = l2BlockOrm.UpdateChunkHashInRange(2, 2, "test hash")
 	assert.NoError(t, err)
 
 	blocks, err = l2BlockOrm.GetUnchunkedBlocks()
@@ -163,7 +163,7 @@ func TestChunkOrm(t *testing.T) {
 	err = chunkOrm.UpdateProvingStatus(context.Background(), chunkHash2, types.ProvingTaskAssigned)
 	assert.NoError(t, err)
 
-	chunks, err = chunkOrm.GetChunksInClosedRange(context.Background(), 0, 1)
+	chunks, err = chunkOrm.GetChunksInRange(context.Background(), 0, 1)
 	assert.NoError(t, err)
 	assert.Len(t, chunks, 2)
 	assert.Equal(t, chunkHash1, chunks[0].Hash)

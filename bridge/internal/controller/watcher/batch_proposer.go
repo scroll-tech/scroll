@@ -93,7 +93,7 @@ func (p *BatchProposer) updateBatchInfoInDB(chunks []*bridgeTypes.Chunk) error {
 		if err != nil {
 			return err
 		}
-		err = p.chunkOrm.UpdateBatchHashInClosedRange(p.ctx, startChunkIndex, endChunkIndex, batchHash, dbTX)
+		err = p.chunkOrm.UpdateBatchHashInRange(p.ctx, startChunkIndex, endChunkIndex, batchHash, dbTX)
 		if err != nil {
 			return err
 		}

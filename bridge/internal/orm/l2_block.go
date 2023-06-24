@@ -114,8 +114,9 @@ func (o *L2Block) GetBlockTimestamp(blockNumber uint64) (uint64, error) {
 	return l2Block.BlockTimestamp, nil
 }
 
-// GetL2BlocksInClosedRange retrieves the L2 blocks within the specified range.
-func (o *L2Block) GetL2BlocksInClosedRange(ctx context.Context, startBlockNumber uint64, endBlockNumber uint64) ([]*types.WrappedBlock, error) {
+// GetL2BlocksInRange retrieves the L2 blocks within the specified range (inclusive).
+// The range is closed, i.e., it includes both start and end block numbers.
+func (o *L2Block) GetL2BlocksInRange(ctx context.Context, startBlockNumber uint64, endBlockNumber uint64) ([]*types.WrappedBlock, error) {
 	if startBlockNumber > endBlockNumber {
 		return nil, errors.New("start block number should be less than or equal to end block number")
 	}
@@ -190,8 +191,9 @@ func (o *L2Block) InsertL2Blocks(blocks []*types.WrappedBlock) error {
 	return nil
 }
 
-// UpdateChunkHashInClosedRange update the chunk_hash of block tx
-func (o *L2Block) UpdateChunkHashInClosedRange(startIndex uint64, endIndex uint64, chunkHash string, dbTX ...*gorm.DB) error {
+// UpdateChunkHashInRange updates the chunk_hash of block tx within the specified range (inclusive).
+// The range is closed, i.e., it includes both start and end indices.
+func (o *L2Block) UpdateChunkHashInRange(startIndex uint64, endIndex uint64, chunkHash string, dbTX ...*gorm.DB) error {
 	db := o.db
 	if len(dbTX) > 0 && dbTX[0] != nil {
 		db = dbTX[0]

@@ -67,7 +67,7 @@ func (p *ChunkProposer) updateChunkInfoInDB(chunk *bridgeTypes.Chunk) error {
 		}
 		startBlockNum := chunk.Blocks[0].Header.Number.Uint64()
 		endBlockNum := startBlockNum + uint64(len(chunk.Blocks))
-		if err := p.l2BlockOrm.UpdateChunkHashInClosedRange(startBlockNum, endBlockNum, chunkHash); err != nil {
+		if err := p.l2BlockOrm.UpdateChunkHashInRange(startBlockNum, endBlockNum, chunkHash); err != nil {
 			log.Error("failed to update chunk_hash for l2_blocks", "chunk hash", chunkHash, "start block", 0, "end block", 0, "err", err)
 			return err
 		}

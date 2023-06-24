@@ -205,7 +205,6 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 			log.Error("Failed to get batch header", "error", err)
 			return
 		}
-		// batch.Index > 0 since we have imported genesis batch.
 		parentBatchHeader := &bridgeTypes.BatchHeader{}
 		if batch.Index > 0 {
 			parentBatchHeader, err = r.batchOrm.GetBatchHeader(r.ctx, batch.Index-1)
@@ -218,7 +217,7 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 		// get the chunks for the batch
 		startChunkIndex := batch.StartChunkIndex
 		endChunkIndex := batch.EndChunkIndex
-		dbChunks, err := r.chunkOrm.GetChunksInClosedRange(r.ctx, startChunkIndex, endChunkIndex)
+		dbChunks, err := r.chunkOrm.GetChunksInRange(r.ctx, startChunkIndex, endChunkIndex)
 		if err != nil {
 			log.Error("Failed to fetch chunks", "error", err)
 			return
@@ -227,7 +226,7 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 		encodedChunks := make([][]byte, len(dbChunks))
 		for i, c := range dbChunks {
 			var wrappedBlocks []*bridgeTypes.WrappedBlock
-			wrappedBlocks, err = r.l2BlockOrm.GetL2BlocksInClosedRange(r.ctx, c.StartBlockNumber, c.EndBlockNumber)
+			wrappedBlocks, err = r.l2BlockOrm.GetL2BlocksInRange(r.ctx, c.StartBlockNumber, c.EndBlockNumber)
 			if err != nil {
 				log.Error("Failed to fetch wrapped blocks", "error", err)
 				return

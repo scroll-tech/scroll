@@ -61,8 +61,9 @@ func (*Chunk) TableName() string {
 	return "chunk"
 }
 
-// GetChunksInClosedRange retrieves chunks within the specified index range from the database.
-func (o *Chunk) GetChunksInClosedRange(ctx context.Context, startIndex uint64, endIndex uint64) ([]*Chunk, error) {
+// GetChunksInRange retrieves chunks within a given range (inclusive) from the database.
+// The range is closed, i.e., it includes both start and end indices.
+func (o *Chunk) GetChunksInRange(ctx context.Context, startIndex uint64, endIndex uint64) ([]*Chunk, error) {
 	if startIndex > endIndex {
 		return nil, errors.New("start index should be less than or equal to end index")
 	}
