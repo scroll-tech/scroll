@@ -316,20 +316,16 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 		log.Info("Start to roll up zk proof", "hash", hash)
 		success := false
 
-		rollupStatues := []types.RollupStatus{
-			types.RollupFinalizing,
-			types.RollupFinalized,
-		}
 		var parentBatchStateRoot string
-		previousBatch, err := r.batchOrm.GetLatestBatchByRollupStatus(rollupStatues)
-		if err == nil {
-			parentBatchStateRoot = previousBatch.StateRoot
-		}
-
-		// handle unexpected db error
-		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
-			log.Error("Failed to get latest finalized batch", "err", err)
-			return
+		if batch.Index > 0 {
+			var parentBatch *orm.Batch
+			parentBatch, err = r.batchOrm.GetBatchByIndex(r.ctx, batch.Index-1)
+			// handle unexpected db error
+			if err != nil {
+				log.Error("Failed to get batch", "index", batch.Index-1, "err", err)
+				return
+			}
+			parentBatchStateRoot = parentBatch.StateRoot
 		}
 
 		defer func() {

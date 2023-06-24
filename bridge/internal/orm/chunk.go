@@ -80,15 +80,6 @@ func (o *Chunk) GetChunksInRange(ctx context.Context, startIndex uint64, endInde
 	return chunks, nil
 }
 
-// GetChunkByStartBlockNumber retrieves a chunk from the database based on the start block number.
-func (o *Chunk) GetChunkByStartBlockNumber(ctx context.Context, startBlockNumber uint64) (*Chunk, error) {
-	var chunk Chunk
-	if err := o.db.Where("start_block_number = ?", startBlockNumber).First(&chunk).Error; err != nil {
-		return nil, err
-	}
-	return &chunk, nil
-}
-
 // GetUnbatchedChunks retrieves unbatched chunks from the database.
 func (o *Chunk) GetUnbatchedChunks(ctx context.Context) ([]*Chunk, error) {
 	var chunks []*Chunk

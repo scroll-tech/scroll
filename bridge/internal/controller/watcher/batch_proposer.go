@@ -47,46 +47,33 @@ func NewBatchProposer(ctx context.Context, cfg *config.BatchProposerConfig, db *
 
 // TryProposeBatch tries to propose a new batches.
 func (p *BatchProposer) TryProposeBatch() {
-	batchChunks, err := p.proposeBatchChunks()
+	dbChunks, err := p.proposeBatchChunks()
 	if err != nil {
 		log.Error("proposeBatch failed", "err", err)
 		return
 	}
-	if err := p.updateBatchInfoInDB(batchChunks); err != nil {
+	if err := p.updateBatchInfoInDB(dbChunks); err != nil {
 		log.Error("update batch info in db failed", "err", err)
 	}
 }
 
-func (p *BatchProposer) updateBatchInfoInDB(chunks []*bridgeTypes.Chunk) error {
-	numChunks := len(chunks)
+func (p *BatchProposer) updateBatchInfoInDB(dbChunks []*orm.Chunk) error {
+	numChunks := len(dbChunks)
 	if numChunks <= 0 {
 		return nil
 	}
-	startDBChunk, err := p.chunkOrm.GetChunkByStartBlockNumber(p.ctx, chunks[0].Blocks[0].Header.Number.Uint64())
-	if err != nil {
-		return err
-	}
-	startChunkIndex := startDBChunk.Index
-
-	endDBChunk, err := p.chunkOrm.GetChunkByStartBlockNumber(p.ctx, chunks[numChunks-1].Blocks[0].Header.Number.Uint64())
-	if err != nil {
-		return err
-	}
-	endChunkIndex := endDBChunk.Index
-
-	startChunkHash, err := chunks[0].Hash(startDBChunk.TotalL1MessagesPoppedBefore)
+	chunks, err := p.dbChunksToBridgeChunks(dbChunks)
 	if err != nil {
 		return err
 	}
 
-	endChunkHash, err := chunks[numChunks-1].Hash(endDBChunk.TotalL1MessagesPoppedBefore)
-	if err != nil {
-		return err
-	}
-
+	startChunkIndex := dbChunks[0].Index
+	startChunkHash := dbChunks[0].Hash
+	endChunkIndex := dbChunks[numChunks-1].Index
+	endChunkHash := dbChunks[numChunks-1].Hash
 	err = p.db.Transaction(func(dbTX *gorm.DB) error {
 		var batchHash string
-		batchHash, err = p.batchOrm.InsertBatch(p.ctx, startChunkIndex, endChunkIndex, startChunkHash.Hex(), endChunkHash.Hex(), chunks, dbTX)
+		batchHash, err = p.batchOrm.InsertBatch(p.ctx, startChunkIndex, endChunkIndex, startChunkHash, endChunkHash, chunks, dbTX)
 		if err != nil {
 			return err
 		}
@@ -99,7 +86,7 @@ func (p *BatchProposer) updateBatchInfoInDB(chunks []*bridgeTypes.Chunk) error {
 	return err
 }
 
-func (p *BatchProposer) proposeBatchChunks() ([]*bridgeTypes.Chunk, error) {
+func (p *BatchProposer) proposeBatchChunks() ([]*orm.Chunk, error) {
 	dbChunks, err := p.chunkOrm.GetUnbatchedChunks(p.ctx)
 	if err != nil {
 		return nil, err
@@ -144,7 +131,7 @@ func (p *BatchProposer) proposeBatchChunks() ([]*bridgeTypes.Chunk, error) {
 		if totalChunks > p.maxChunkNumPerBatch ||
 			totalL1CommitCalldataSize > p.maxL1CommitCalldataSizePerBatch ||
 			totalL1CommitGas > p.maxL1CommitGasPerBatch {
-			return p.dbChunksToBridgeChunks(dbChunks[:i+1])
+			return dbChunks[:i+1], nil
 		}
 	}
 
@@ -165,7 +152,7 @@ func (p *BatchProposer) proposeBatchChunks() ([]*bridgeTypes.Chunk, error) {
 		)
 		return nil, nil
 	}
-	return p.dbChunksToBridgeChunks(dbChunks)
+	return dbChunks, nil
 }
 
 func (p *BatchProposer) dbChunksToBridgeChunks(dbChunks []*orm.Chunk) ([]*bridgeTypes.Chunk, error) {

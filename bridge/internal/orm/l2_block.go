@@ -83,6 +83,17 @@ func (o *L2Block) GetUnchunkedBlocks(ctx context.Context) ([]*types.WrappedBlock
 	return wrappedBlocks, nil
 }
 
+// GetBatchByIndex retrieves a batch from the database by its index
+func (o *Batch) GetBatchByIndex(ctx context.Context, index uint64) (*Batch, error) {
+	db := o.db.WithContext(ctx)
+
+	var batch Batch
+	if err := db.Where("index = ?", index).First(&batch).Error; err != nil {
+		return nil, err
+	}
+	return &batch, nil
+}
+
 // GetL2BlocksInRange retrieves the L2 blocks within the specified range (inclusive).
 // The range is closed, i.e., it includes both start and end block numbers.
 func (o *L2Block) GetL2BlocksInRange(ctx context.Context, startBlockNumber uint64, endBlockNumber uint64) ([]*types.WrappedBlock, error) {
