@@ -21,7 +21,7 @@ type ChunkProposer struct {
 	chunkOrm   *orm.Chunk
 	l2BlockOrm *orm.L2Block
 
-	maxL2TxGasPerChunk              uint64
+	maxTxGasPerChunk                uint64
 	maxL2TxNumPerChunk              uint64
 	maxL1CommitGasPerChunk          uint64
 	maxL1CommitCalldataSizePerChunk uint64
@@ -36,7 +36,7 @@ func NewChunkProposer(ctx context.Context, cfg *config.ChunkProposerConfig, db *
 		db:                              db,
 		chunkOrm:                        orm.NewChunk(db),
 		l2BlockOrm:                      orm.NewL2Block(db),
-		maxL2TxGasPerChunk:              cfg.MaxL2TxGasPerChunk,
+		maxTxGasPerChunk:                cfg.MaxTxGasPerChunk,
 		maxL2TxNumPerChunk:              cfg.MaxL2TxNumPerChunk,
 		maxL1CommitGasPerChunk:          cfg.MaxL1CommitGasPerChunk,
 		maxL1CommitCalldataSizePerChunk: cfg.MaxL1CommitCalldataSizePerChunk,
@@ -91,7 +91,7 @@ func (p *ChunkProposer) proposeChunk() (*bridgeTypes.Chunk, error) {
 	}
 
 	firstBlock := blocks[0]
-	totalL2TxGasUsed := firstBlock.Header.GasUsed
+	totalTxGasUsed := firstBlock.Header.GasUsed
 	totalL2TxNum := firstBlock.GetL2TxsNum()
 	totalL1CommitCalldataSize := firstBlock.ApproximateL1CommitCalldataSize()
 	totalL1CommitGas := firstBlock.ApproximateL1CommitGas()
@@ -107,12 +107,12 @@ func (p *ChunkProposer) proposeChunk() (*bridgeTypes.Chunk, error) {
 		)
 	}
 
-	if totalL2TxGasUsed > p.maxL2TxGasPerChunk {
+	if totalTxGasUsed > p.maxTxGasPerChunk {
 		return nil, fmt.Errorf(
 			"the first block exceeds l2 tx gas limit; block number: %v, gas used: %v, max gas limit: %v",
 			firstBlock.Header.Number,
-			totalL2TxGasUsed,
-			p.maxL2TxGasPerChunk,
+			totalTxGasUsed,
+			p.maxTxGasPerChunk,
 		)
 	}
 
@@ -135,11 +135,11 @@ func (p *ChunkProposer) proposeChunk() (*bridgeTypes.Chunk, error) {
 	}
 
 	for i, block := range blocks[1:] {
-		totalL2TxGasUsed += block.Header.GasUsed
+		totalTxGasUsed += block.Header.GasUsed
 		totalL2TxNum += block.GetL2TxsNum()
 		totalL1CommitCalldataSize += block.ApproximateL1CommitCalldataSize()
 		totalL1CommitGas += block.ApproximateL1CommitGas()
-		if totalL2TxGasUsed > p.maxL2TxGasPerChunk ||
+		if totalTxGasUsed > p.maxTxGasPerChunk ||
 			totalL2TxNum > p.maxL2TxNumPerChunk ||
 			totalL1CommitCalldataSize > p.maxL1CommitCalldataSizePerChunk ||
 			totalL1CommitGas > p.maxL1CommitGasPerChunk {

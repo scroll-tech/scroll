@@ -17,16 +17,14 @@ import (
 type Chunk struct {
 	db *gorm.DB `gorm:"-"`
 
-	// block
-	Index            uint64 `json:"index" gorm:"column:index"`
-	Hash             string `json:"hash" gorm:"column:hash"`
-	StartBlockNumber uint64 `json:"start_block_number" gorm:"column:start_block_number"`
-	StartBlockHash   string `json:"start_block_hash" gorm:"column:start_block_hash"`
-	EndBlockNumber   uint64 `json:"end_block_number" gorm:"column:end_block_number"`
-	EndBlockHash     string `json:"end_block_hash" gorm:"column:end_block_hash"`
-	StartBlockTime   uint64 `json:"start_block_time" gorm:"column:start_block_time"`
-
 	// chunk
+	Index                        uint64 `json:"index" gorm:"column:index"`
+	Hash                         string `json:"hash" gorm:"column:hash"`
+	StartBlockNumber             uint64 `json:"start_block_number" gorm:"column:start_block_number"`
+	StartBlockHash               string `json:"start_block_hash" gorm:"column:start_block_hash"`
+	EndBlockNumber               uint64 `json:"end_block_number" gorm:"column:end_block_number"`
+	EndBlockHash                 string `json:"end_block_hash" gorm:"column:end_block_hash"`
+	StartBlockTime               uint64 `json:"start_block_time" gorm:"column:start_block_time"`
 	TotalL1MessagesPoppedBefore  uint64 `json:"total_l1_messages_popped_before" gorm:"column:total_l1_messages_popped_before"`
 	TotalL1MessagesPoppedInChunk uint64 `json:"total_l1_messages_popped_in_chunk" gorm:"column:total_l1_messages_popped_in_chunk"`
 
@@ -206,8 +204,9 @@ func (o *Chunk) UpdateProvingStatus(ctx context.Context, hash string, status typ
 	return nil
 }
 
-// UpdateBatchHashInClosedRange updates the batch hash for chunks within the specified index range.
-func (o *Chunk) UpdateBatchHashInClosedRange(ctx context.Context, startIndex uint64, endIndex uint64, batchHash string, dbTX ...*gorm.DB) error {
+// UpdateBatchHashInRange updates the batch_hash for chunks within the specified range (inclusive).
+// The range is closed, i.e., it includes both start and end indices.
+func (o *Chunk) UpdateBatchHashInRange(ctx context.Context, startIndex uint64, endIndex uint64, batchHash string, dbTX ...*gorm.DB) error {
 	db := o.db
 	if len(dbTX) > 0 && dbTX[0] != nil {
 		db = dbTX[0]

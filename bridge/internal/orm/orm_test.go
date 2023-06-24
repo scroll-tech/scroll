@@ -165,7 +165,7 @@ func TestChunkOrm(t *testing.T) {
 	assert.Equal(t, types.ProvingTaskVerified, types.ProvingStatus(chunks[0].ProvingStatus))
 	assert.Equal(t, types.ProvingTaskAssigned, types.ProvingStatus(chunks[1].ProvingStatus))
 
-	err = chunkOrm.UpdateBatchHashInClosedRange(context.Background(), 0, 0, "test hash")
+	err = chunkOrm.UpdateBatchHashInRange(context.Background(), 0, 0, "test hash")
 	assert.NoError(t, err)
 	chunks, err = chunkOrm.GetUnbatchedChunks(context.Background())
 	assert.NoError(t, err)
