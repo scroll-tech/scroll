@@ -140,17 +140,17 @@ func TestChunkOrm(t *testing.T) {
 
 	hash1, err := chunkOrm.InsertChunk(context.Background(), chunk1)
 	assert.NoError(t, err)
-	assert.Equal(t, hash1, chunkHash1)
+	assert.Equal(t, hash1, chunkHash1.Hex())
 
 	hash2, err := chunkOrm.InsertChunk(context.Background(), chunk2)
 	assert.NoError(t, err)
-	assert.Equal(t, hash2, chunkHash2)
+	assert.Equal(t, hash2, chunkHash2.Hex())
 
 	chunks, err := chunkOrm.GetUnbatchedChunks(context.Background())
 	assert.NoError(t, err)
 	assert.Len(t, chunks, 2)
-	assert.Equal(t, chunkHash1, chunks[0].Hash)
-	assert.Equal(t, chunkHash2, chunks[1].Hash)
+	assert.Equal(t, chunkHash1.Hex(), chunks[0].Hash)
+	assert.Equal(t, chunkHash2.Hex(), chunks[1].Hash)
 
 	err = chunkOrm.UpdateProvingStatus(context.Background(), chunkHash1.Hex(), types.ProvingTaskVerified)
 	assert.NoError(t, err)
@@ -160,8 +160,8 @@ func TestChunkOrm(t *testing.T) {
 	chunks, err = chunkOrm.GetChunksInRange(context.Background(), 0, 1)
 	assert.NoError(t, err)
 	assert.Len(t, chunks, 2)
-	assert.Equal(t, chunkHash1, chunks[0].Hash)
-	assert.Equal(t, chunkHash2, chunks[1].Hash)
+	assert.Equal(t, chunkHash1.Hex(), chunks[0].Hash)
+	assert.Equal(t, chunkHash2.Hex(), chunks[1].Hash)
 	assert.Equal(t, types.ProvingTaskVerified, types.ProvingStatus(chunks[0].ProvingStatus))
 	assert.Equal(t, types.ProvingTaskAssigned, types.ProvingStatus(chunks[1].ProvingStatus))
 
@@ -182,11 +182,11 @@ func TestBatchOrm(t *testing.T) {
 
 	hash1, err := chunkOrm.InsertChunk(context.Background(), chunk1)
 	assert.NoError(t, err)
-	assert.Equal(t, hash1, chunkHash1)
+	assert.Equal(t, hash1, chunkHash1.Hex())
 
 	hash2, err := chunkOrm.InsertChunk(context.Background(), chunk2)
 	assert.NoError(t, err)
-	assert.Equal(t, hash2, chunkHash2)
+	assert.Equal(t, hash2, chunkHash2.Hex())
 
 	hash1, err = batchOrm.InsertBatch(context.Background(), 0, 0, chunkHash1.Hex(), chunkHash1.Hex(), []*bridgeTypes.Chunk{chunk1})
 	assert.NoError(t, err)
