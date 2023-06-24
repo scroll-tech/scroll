@@ -10,6 +10,7 @@ import (
 
 	"bridge-history-api/cross_msg/message_proof"
 	"bridge-history-api/db"
+	"bridge-history-api/utils"
 )
 
 type BatchInfoFetcher struct {
@@ -38,7 +39,7 @@ func NewBatchInfoFetcher(ctx context.Context, scrollChainAddr common.Address, ba
 
 func (b *BatchInfoFetcher) Start() {
 	log.Info("BatchInfoFetcher Start")
-	// Fetch batch info at begining
+	// Fetch batch info at beginning
 	// Then start msg proof updater after db have some bridge batch
 	err := b.fetchBatchInfo()
 	if err != nil {
@@ -70,7 +71,7 @@ func (b *BatchInfoFetcher) Stop() {
 }
 
 func (b *BatchInfoFetcher) fetchBatchInfo() error {
-	number, err := b.client.BlockNumber(b.ctx)
+	number, err := utils.GetSafeBlockNumber(b.ctx, b.client, b.confirmation)
 	if err != nil {
 		log.Error("Can not get latest block number: ", "err", err)
 		return err
@@ -86,12 +87,12 @@ func (b *BatchInfoFetcher) fetchBatchInfo() error {
 	} else {
 		startHeight = latestBatch.CommitHeight + 1
 	}
-	for from := startHeight; number >= from+b.confirmation; from += uint64(fetchLimit) {
+	for from := startHeight; number >= from; from += uint64(fetchLimit) {
 		to := from + uint64(fetchLimit) - 1
 		// number - confirmation can never less than 0 since the for loop condition
 		// but watch out the overflow
-		if to > number-b.confirmation {
-			to = number - b.confirmation
+		if to > number {
+			to = number
 		}
 		// filter logs to fetch batches
 		err = FetchAndSaveBatchIndex(b.ctx, b.client, b.db, int64(from), int64(to), b.scrollChainAddr)

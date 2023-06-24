@@ -114,11 +114,10 @@ type L2SentMsgOrm interface {
 	UpdateL2MessageProofInDBTx(ctx context.Context, dbTx *sqlx.Tx, msgHash string, proof string, batch_index uint64) error
 	GetLatestL2SentMsgBatchIndex() (int64, error)
 	DeleteL2SentMsgAfterHeightDBTx(dbTx *sqlx.Tx, height int64) error
-	ResetL2SentMsgL1HashAfterHeightDBTx(dbTx *sqlx.Tx, height int64) error
 }
 
 type BridgeBatchOrm interface {
 	GetLatestBridgeBatch() (*RollupBatch, error)
 	GetBridgeBatchByIndex(index uint64) (*RollupBatch, error)
-	BatchInsertBridgeBatchDBTx(dbTx *sqlx.Tx, messages []*RollupBatch) error
+	BatchInsertRollupBatchDBTx(dbTx *sqlx.Tx, messages []*RollupBatch) error
 }

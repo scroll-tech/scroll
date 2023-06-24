@@ -26,7 +26,7 @@ func NewBridgeBatchOrm(db *sqlx.DB) BridgeBatchOrm {
 	return &bridgeBatchOrm{db: db}
 }
 
-func (b *bridgeBatchOrm) BatchInsertBridgeBatchDBTx(dbTx *sqlx.Tx, batches []*RollupBatch) error {
+func (b *bridgeBatchOrm) BatchInsertRollupBatchDBTx(dbTx *sqlx.Tx, batches []*RollupBatch) error {
 	if len(batches) == 0 {
 		return nil
 	}
@@ -46,12 +46,12 @@ func (b *bridgeBatchOrm) BatchInsertBridgeBatchDBTx(dbTx *sqlx.Tx, batches []*Ro
 			return err
 		}
 		if exists {
-			return fmt.Errorf("BatchInsertBridgeBatchDBTx: batch index %v already exists at height %v", msg.BatchIndex, msg.CommitHeight)
+			return fmt.Errorf("BatchInsertRollupBatchDBTx: batch index %v already exists at height %v", msg.BatchIndex, msg.CommitHeight)
 		}
 	}
 	_, err = dbTx.NamedExec(`insert into bridge_batch(commit_height, batch_index, batch_hash, start_block_number, end_block_number) values(:commit_height, :batch_index, :batch_hash, :start_block_number, :end_block_number);`, messageMaps)
 	if err != nil {
-		log.Error("BatchInsertBridgeBatchDBTx: failed to insert batch event msgs", "err", err)
+		log.Error("BatchInsertRollupBatchDBTx: failed to insert batch event msgs", "err", err)
 		return err
 	}
 	return nil

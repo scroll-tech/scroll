@@ -278,7 +278,7 @@ func ParseBatchInfoFromScrollChain(ctx context.Context, client *ethclient.Client
 				log.Warn("Failed to get commit Batch tx receipt or the tx is still pending", "err", err)
 				return bridgeBatches, err
 			}
-			indices, startBlcocks, endBlocks, err := GetBatchRangeFromCalldataV1(commitTx.Data())
+			indices, startBlocks, endBlocks, err := GetBatchRangeFromCalldataV1(commitTx.Data())
 			if err != nil {
 				log.Warn("Failed to get batch range from calldata", "hash", commitTx.Hash().Hex(), "height", vlog.BlockNumber)
 				return bridgeBatches, err
@@ -286,14 +286,14 @@ func ParseBatchInfoFromScrollChain(ctx context.Context, client *ethclient.Client
 			cache[vlog.TxHash.Hex()] = CachedParsedTxCalldata{
 				CallDataIndex: 0,
 				BatchIndices:  indices,
-				StartBlocks:   startBlcocks,
+				StartBlocks:   startBlocks,
 				EndBlocks:     endBlocks,
 			}
 			bridgeBatches = append(bridgeBatches, &orm.RollupBatch{
 				CommitHeight:     vlog.BlockNumber,
 				BatchIndex:       indices[0],
 				BatchHash:        event.BatchHash.Hex(),
-				StartBlockNumber: startBlcocks[0],
+				StartBlockNumber: startBlocks[0],
 				EndBlockNumber:   endBlocks[0],
 			})
 

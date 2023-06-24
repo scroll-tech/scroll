@@ -111,9 +111,9 @@ func action(ctx *cli.Context) error {
 
 	// Proof updater and batch fetcher
 	l2msgProofUpdater := message_proof.NewMsgProofUpdater(subCtx, l1client, cfg.L1.Confirmation, cfg.BatchInfoFetcher.BatchIndexStartBlock, db)
-	l2BatchFetcher := cross_msg.NewBatchInfoFetcher(subCtx, common.HexToAddress(cfg.BatchInfoFetcher.ScrollChainAddr), cfg.BatchInfoFetcher.BatchIndexStartBlock, cfg.L1.Confirmation, int(cfg.L1.BlockTime), l1client, db, l2msgProofUpdater)
-	go l2BatchFetcher.Start()
-	defer l2BatchFetcher.Stop()
+	batchFetcher := cross_msg.NewBatchInfoFetcher(subCtx, common.HexToAddress(cfg.BatchInfoFetcher.ScrollChainAddr), cfg.BatchInfoFetcher.BatchIndexStartBlock, cfg.L1.Confirmation, int(cfg.L1.BlockTime), l1client, db, l2msgProofUpdater)
+	go batchFetcher.Start()
+	defer batchFetcher.Stop()
 
 	// Catch CTRL-C to ensure a graceful shutdown.
 	interrupt := make(chan os.Signal, 1)

@@ -226,7 +226,7 @@ func FetchAndSaveBatchIndex(ctx context.Context, client *ethclient.Client, datab
 		log.Error("FetchAndSaveBatchIndex: Failed to begin db transaction", "err", err)
 		return err
 	}
-	err = database.BatchInsertBridgeBatchDBTx(dbTx, bridgeBatches)
+	err = database.BatchInsertRollupBatchDBTx(dbTx, bridgeBatches)
 	if err != nil {
 		dbTx.Rollback()
 		log.Crit("FetchAndSaveBatchIndex: Failed to insert batch commit msg event logs", "err", err)

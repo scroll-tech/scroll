@@ -17,7 +17,6 @@ import (
 
 type MsgProofUpdater struct {
 	ctx          context.Context
-	client       *ethclient.Client
 	db           db.OrmFactory
 	withdrawTrie *WithdrawTrie
 }
@@ -25,7 +24,6 @@ type MsgProofUpdater struct {
 func NewMsgProofUpdater(ctx context.Context, client *ethclient.Client, confirmations uint64, startBlock uint64, db db.OrmFactory) *MsgProofUpdater {
 	return &MsgProofUpdater{
 		ctx:          ctx,
-		client:       client,
 		db:           db,
 		withdrawTrie: NewWithdrawTrie(),
 	}
@@ -65,7 +63,7 @@ func (m *MsgProofUpdater) Start() {
 					batch, err := m.db.GetBridgeBatchByIndex(i)
 					if err != nil {
 						log.Error("MsgProofUpdater: Can not get RollupBatch: ", "err", err, "index", i)
-						continue
+						break
 					}
 					// get all l2 messages in this batch
 					msgs, proofs, err := m.appendL2Messages(batch.StartBlockNumber, batch.EndBlockNumber)
@@ -196,8 +194,9 @@ func (m *MsgProofUpdater) updateMsgProof(msgs []*orm.L2SentMsg, proofs [][]byte,
 	}
 
 	for i, msg := range msgs {
-		log.Debug("updateMsgProof", "msgHash", msg.MsgHash, "batchIndex", batchIndex, "proof", common.Bytes2Hex(proofs[i]))
-		if dbTxErr := m.db.UpdateL2MessageProofInDBTx(m.ctx, dbTx, msg.MsgHash, common.Bytes2Hex(proofs[i]), batchIndex); dbTxErr != nil {
+		proofHex := common.Bytes2Hex(proofs[i])
+		log.Debug("updateMsgProof", "msgHash", msg.MsgHash, "batchIndex", batchIndex, "proof", proofHex)
+		if dbTxErr := m.db.UpdateL2MessageProofInDBTx(m.ctx, dbTx, msg.MsgHash, proofHex, batchIndex); dbTxErr != nil {
 			if err := dbTx.Rollback(); err != nil {
 				log.Error("dbTx.Rollback()", "err", err)
 			}
@@ -230,7 +229,7 @@ func (m *MsgProofUpdater) appendL2Messages(firstBlock, lastBlock uint64) ([]*orm
 	// double check whether nonce is matched
 	if messages[0].Nonce != m.withdrawTrie.NextMessageNonce {
 		log.Error("L2 message nonce mismatch", "expected", m.withdrawTrie.NextMessageNonce, "found", messages[0].Nonce)
-		return messages, msgProofs, fmt.Errorf("l2 message nonce mismatch, expected: %v, found: %v", messages[0].Nonce, m.withdrawTrie.NextMessageNonce)
+		return messages, msgProofs, fmt.Errorf("l2 message nonce mismatch, expected: %v, found: %v", m.withdrawTrie.NextMessageNonce, messages[0].Nonce)
 	}
 
 	var hashes []common.Hash
