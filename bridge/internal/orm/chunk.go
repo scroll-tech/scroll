@@ -128,6 +128,7 @@ func (o *Chunk) InsertChunk(ctx context.Context, chunk *bridgeTypes.Chunk, dbTX 
 		db = dbTX[0]
 	}
 
+	var chunkIndex uint64
 	var totalL1MessagePoppedBefore uint64
 	parentChunk, err := o.GetLatestChunk(ctx)
 	if err != nil {
@@ -135,6 +136,7 @@ func (o *Chunk) InsertChunk(ctx context.Context, chunk *bridgeTypes.Chunk, dbTX 
 		return "", err
 	}
 	if parentChunk != nil {
+		chunkIndex = parentChunk.Index + 1
 		totalL1MessagePoppedBefore = parentChunk.TotalL1MessagesPoppedBefore + parentChunk.TotalL1MessagesPoppedInChunk
 	}
 	hash, err := chunk.Hash(totalL1MessagePoppedBefore)
@@ -149,19 +151,9 @@ func (o *Chunk) InsertChunk(ctx context.Context, chunk *bridgeTypes.Chunk, dbTX 
 	var totalL1CommitGas uint64
 	for _, block := range chunk.Blocks {
 		totalL2TxGas += block.Header.GasUsed
-		totalL2TxNum += uint64(len(block.Transactions))
+		totalL2TxNum += block.GetL2TxsNum()
 		totalL1CommitCalldataSize += block.ApproximateL1CommitCalldataSize()
 		totalL1CommitGas += block.ApproximateL1CommitGas()
-	}
-
-	var chunkIndex uint64
-	var lastChunk Chunk
-	if err := db.Order("index desc").First(&lastChunk).Error; err != nil {
-		if err != gorm.ErrRecordNotFound {
-			return "", err
-		}
-	} else {
-		chunkIndex = lastChunk.Index + 1
 	}
 
 	numBlocks := len(chunk.Blocks)
