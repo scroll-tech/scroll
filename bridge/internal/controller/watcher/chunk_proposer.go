@@ -2,7 +2,6 @@ package watcher
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"time"
 
@@ -53,6 +52,11 @@ func (p *ChunkProposer) TryProposeChunk() {
 		log.Error("propose new chunk failed", "err", err)
 		return
 	}
+	if proposedChunk == nil {
+		log.Warn("proposed chunk is nil, cannot update in DB")
+		return
+	}
+
 	if err := p.updateChunkInfoInDB(proposedChunk); err != nil {
 		log.Error("update chunk info in orm failed", "err", err)
 	}
@@ -82,7 +86,8 @@ func (p *ChunkProposer) proposeChunk() (*bridgeTypes.Chunk, error) {
 	}
 
 	if len(blocks) == 0 {
-		return nil, errors.New("no un-chunked blocks")
+		log.Warn("no un-chunked blocks")
+		return nil, nil
 	}
 
 	firstBlock := blocks[0]
