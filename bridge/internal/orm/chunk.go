@@ -18,21 +18,17 @@ type Chunk struct {
 	db *gorm.DB `gorm:"-"`
 
 	// block
-	Index                     uint64 `json:"index" gorm:"column:index"`
-	Hash                      string `json:"hash" gorm:"column:hash"`
-	StartBlockNumber          uint64 `json:"start_block_number" gorm:"column:start_block_number"`
-	StartBlockHash            string `json:"start_block_hash" gorm:"column:start_block_hash"`
-	EndBlockNumber            uint64 `json:"end_block_number" gorm:"column:end_block_number"`
-	EndBlockHash              string `json:"end_block_hash" gorm:"column:end_block_hash"`
-	TotalL2TxGas              uint64 `json:"total_l2_tx_gas" gorm:"column:total_l2_tx_gas"`
-	TotalL2TxNum              uint64 `json:"total_l2_tx_num" gorm:"column:total_l2_tx_num"`
-	TotalL1CommitCalldataSize uint64 `json:"total_l1_commit_calldata_size" gorm:"column:total_l1_commit_calldata_size"`
-	TotalL1CommitGas          uint64 `json:"total_l1_commit_gas" gorm:"column:total_l1_commit_gas"`
-	StartBlockTime            uint64 `json:"start_block_time" gorm:"column:start_block_time"`
+	Index            uint64 `json:"index" gorm:"column:index"`
+	Hash             string `json:"hash" gorm:"column:hash"`
+	StartBlockNumber uint64 `json:"start_block_number" gorm:"column:start_block_number"`
+	StartBlockHash   string `json:"start_block_hash" gorm:"column:start_block_hash"`
+	EndBlockNumber   uint64 `json:"end_block_number" gorm:"column:end_block_number"`
+	EndBlockHash     string `json:"end_block_hash" gorm:"column:end_block_hash"`
+	StartBlockTime   uint64 `json:"start_block_time" gorm:"column:start_block_time"`
 
 	// chunk
 	TotalL1MessagesPoppedBefore  uint64 `json:"total_l1_messages_popped_before" gorm:"column:total_l1_messages_popped_before"`
-	TotalL1MessagesPoppedInChunk uint64 `json:"total_l1_messages_popped" gorm:"column:total_l1_messages_popped"`
+	TotalL1MessagesPoppedInChunk uint64 `json:"total_l1_messages_popped_in_chunk" gorm:"column:total_l1_messages_popped_in_chunk"`
 
 	// proof
 	ProvingStatus    int16      `json:"proving_status" gorm:"column:proving_status;default:1"`
@@ -45,9 +41,13 @@ type Chunk struct {
 	BatchHash string `json:"batch_hash" gorm:"column:batch_hash;default:NULL"`
 
 	// metadata
-	CreatedAt time.Time      `json:"created_at" gorm:"column:created_at"`
-	UpdatedAt time.Time      `json:"updated_at" gorm:"column:updated_at"`
-	DeletedAt gorm.DeletedAt `json:"deleted_at" gorm:"column:deleted_at;default:NULL"`
+	TotalL2TxGas              uint64         `json:"total_l2_tx_gas" gorm:"column:total_l2_tx_gas"`
+	TotalL2TxNum              uint64         `json:"total_l2_tx_num" gorm:"column:total_l2_tx_num"`
+	TotalL1CommitCalldataSize uint64         `json:"total_l1_commit_calldata_size" gorm:"column:total_l1_commit_calldata_size"`
+	TotalL1CommitGas          uint64         `json:"total_l1_commit_gas" gorm:"column:total_l1_commit_gas"`
+	CreatedAt                 time.Time      `json:"created_at" gorm:"column:created_at"`
+	UpdatedAt                 time.Time      `json:"updated_at" gorm:"column:updated_at"`
+	DeletedAt                 gorm.DeletedAt `json:"deleted_at" gorm:"column:deleted_at;default:NULL"`
 }
 
 // NewChunk creates a new Chunk database instance.
