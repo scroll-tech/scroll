@@ -2,7 +2,6 @@ package orm
 
 import (
 	"context"
-	"encoding/hex"
 	"errors"
 	"time"
 
@@ -18,22 +17,16 @@ import (
 type Chunk struct {
 	db *gorm.DB `gorm:"-"`
 
-	// block
-	Index                     uint64 `json:"index" gorm:"column:index"`
-	Hash                      string `json:"hash" gorm:"column:hash"`
-	StartBlockNumber          uint64 `json:"start_block_number" gorm:"column:start_block_number"`
-	StartBlockHash            string `json:"start_block_hash" gorm:"column:start_block_hash"`
-	EndBlockNumber            uint64 `json:"end_block_number" gorm:"column:end_block_number"`
-	EndBlockHash              string `json:"end_block_hash" gorm:"column:end_block_hash"`
-	TotalL2TxGas              uint64 `json:"total_l2_tx_gas" gorm:"column:total_l2_tx_gas"`
-	TotalL2TxNum              uint64 `json:"total_l2_tx_num" gorm:"column:total_l2_tx_num"`
-	TotalL1CommitCalldataSize uint64 `json:"total_l1_commit_calldata_size" gorm:"column:total_l1_commit_calldata_size"`
-	TotalL1CommitGas          uint64 `json:"total_l1_commit_gas" gorm:"column:total_l1_commit_gas"`
-	StartBlockTime            uint64 `json:"start_block_time" gorm:"column:start_block_time"`
-
 	// chunk
-	TotalL1MessagesPoppedBefore uint64 `json:"total_l1_messages_popped_before" gorm:"column:total_l1_messages_popped_before"`
-	TotalL1MessagesPopped       uint64 `json:"total_l1_messages_popped" gorm:"column:total_l1_messages_popped"`
+	Index                        uint64 `json:"index" gorm:"column:index"`
+	Hash                         string `json:"hash" gorm:"column:hash"`
+	StartBlockNumber             uint64 `json:"start_block_number" gorm:"column:start_block_number"`
+	StartBlockHash               string `json:"start_block_hash" gorm:"column:start_block_hash"`
+	EndBlockNumber               uint64 `json:"end_block_number" gorm:"column:end_block_number"`
+	EndBlockHash                 string `json:"end_block_hash" gorm:"column:end_block_hash"`
+	StartBlockTime               uint64 `json:"start_block_time" gorm:"column:start_block_time"`
+	TotalL1MessagesPoppedBefore  uint64 `json:"total_l1_messages_popped_before" gorm:"column:total_l1_messages_popped_before"`
+	TotalL1MessagesPoppedInChunk uint64 `json:"total_l1_messages_popped_in_chunk" gorm:"column:total_l1_messages_popped_in_chunk"`
 
 	// proof
 	ProvingStatus    int16      `json:"proving_status" gorm:"column:proving_status;default:1"`
@@ -46,9 +39,13 @@ type Chunk struct {
 	BatchHash string `json:"batch_hash" gorm:"column:batch_hash;default:NULL"`
 
 	// metadata
-	CreatedAt time.Time      `json:"created_at" gorm:"column:created_at"`
-	UpdatedAt time.Time      `json:"updated_at" gorm:"column:updated_at"`
-	DeletedAt gorm.DeletedAt `json:"deleted_at" gorm:"column:deleted_at;default:NULL"`
+	TotalL2TxGas              uint64         `json:"total_l2_tx_gas" gorm:"column:total_l2_tx_gas"`
+	TotalL2TxNum              uint64         `json:"total_l2_tx_num" gorm:"column:total_l2_tx_num"`
+	TotalL1CommitCalldataSize uint64         `json:"total_l1_commit_calldata_size" gorm:"column:total_l1_commit_calldata_size"`
+	TotalL1CommitGas          uint64         `json:"total_l1_commit_gas" gorm:"column:total_l1_commit_gas"`
+	CreatedAt                 time.Time      `json:"created_at" gorm:"column:created_at"`
+	UpdatedAt                 time.Time      `json:"updated_at" gorm:"column:updated_at"`
+	DeletedAt                 gorm.DeletedAt `json:"deleted_at" gorm:"column:deleted_at;default:NULL"`
 }
 
 // NewChunk creates a new Chunk database instance.
@@ -61,8 +58,9 @@ func (*Chunk) TableName() string {
 	return "chunk"
 }
 
-// GetChunksInClosedRange retrieves chunks within the specified index range from the database.
-func (o *Chunk) GetChunksInClosedRange(ctx context.Context, startIndex uint64, endIndex uint64) ([]*Chunk, error) {
+// GetChunksInRange retrieves chunks within a given range (inclusive) from the database.
+// The range is closed, i.e., it includes both start and end indices.
+func (o *Chunk) GetChunksInRange(ctx context.Context, startIndex uint64, endIndex uint64) ([]*Chunk, error) {
 	if startIndex > endIndex {
 		return nil, errors.New("start index should be less than or equal to end index")
 	}
@@ -82,38 +80,17 @@ func (o *Chunk) GetChunksInClosedRange(ctx context.Context, startIndex uint64, e
 	return chunks, nil
 }
 
-// GetChunkByStartBlockIndex retrieves a chunk from the database based on the start block number.
-func (o *Chunk) GetChunkByStartBlockIndex(ctx context.Context, startBlockNumber uint64) (*Chunk, error) {
-	var chunk Chunk
-	if err := o.db.Where("start_block_number = ?", startBlockNumber).First(&chunk).Error; err != nil {
-		return nil, err
-	}
-	return &chunk, nil
-}
-
 // GetUnbatchedChunks retrieves unbatched chunks from the database.
 func (o *Chunk) GetUnbatchedChunks(ctx context.Context) ([]*Chunk, error) {
 	var chunks []*Chunk
 	err := o.db.WithContext(ctx).
 		Where("batch_hash IS NULL").
-		Order("start_block_number asc").
+		Order("index asc").
 		Find(&chunks).Error
 	if err != nil {
 		return nil, err
 	}
 	return chunks, nil
-}
-
-// GetTotalL1MessagePoppedByEndBlockNumber retrieves the total number of L1 messages popped by the end block number.
-func (o *Chunk) GetTotalL1MessagePoppedByEndBlockNumber(ctx context.Context, endBlockNumber uint64) (uint64, error) {
-	var chunk Chunk
-	if err := o.db.Where("endBlockNumber = ?", endBlockNumber).First(&chunk).Error; err != nil {
-		if err == gorm.ErrRecordNotFound {
-			return 0, nil
-		}
-		return 0, err
-	}
-	return chunk.TotalL1MessagesPoppedBefore + chunk.TotalL1MessagesPopped, nil
 }
 
 // GetLatestChunk retrieves the latest chunk from the database.
@@ -140,6 +117,7 @@ func (o *Chunk) InsertChunk(ctx context.Context, chunk *bridgeTypes.Chunk, dbTX 
 		db = dbTX[0]
 	}
 
+	var chunkIndex uint64
 	var totalL1MessagePoppedBefore uint64
 	parentChunk, err := o.GetLatestChunk(ctx)
 	if err != nil {
@@ -147,7 +125,8 @@ func (o *Chunk) InsertChunk(ctx context.Context, chunk *bridgeTypes.Chunk, dbTX 
 		return "", err
 	}
 	if parentChunk != nil {
-		totalL1MessagePoppedBefore = parentChunk.TotalL1MessagesPoppedBefore + parentChunk.TotalL1MessagesPopped
+		chunkIndex = parentChunk.Index + 1
+		totalL1MessagePoppedBefore = parentChunk.TotalL1MessagesPoppedBefore + parentChunk.TotalL1MessagesPoppedInChunk
 	}
 	hash, err := chunk.Hash(totalL1MessagePoppedBefore)
 	if err != nil {
@@ -161,36 +140,26 @@ func (o *Chunk) InsertChunk(ctx context.Context, chunk *bridgeTypes.Chunk, dbTX 
 	var totalL1CommitGas uint64
 	for _, block := range chunk.Blocks {
 		totalL2TxGas += block.Header.GasUsed
-		totalL2TxNum += uint64(len(block.Transactions))
+		totalL2TxNum += block.GetL2TxsNum()
 		totalL1CommitCalldataSize += block.ApproximateL1CommitCalldataSize()
 		totalL1CommitGas += block.ApproximateL1CommitGas()
 	}
 
-	var chunkIndex uint64
-	var lastChunk Chunk
-	if err := db.Order("index desc").First(&lastChunk).Error; err != nil {
-		if err != gorm.ErrRecordNotFound {
-			return "", err
-		}
-	} else {
-		chunkIndex = lastChunk.Index + 1
-	}
-
 	numBlocks := len(chunk.Blocks)
 	newChunk := Chunk{
-		Index:                       chunkIndex,
-		Hash:                        hex.EncodeToString(hash),
-		StartBlockNumber:            chunk.Blocks[0].Header.Number.Uint64(),
-		StartBlockHash:              chunk.Blocks[0].Header.Hash().Hex(),
-		EndBlockNumber:              chunk.Blocks[numBlocks-1].Header.Number.Uint64(),
-		EndBlockHash:                chunk.Blocks[numBlocks-1].Header.Hash().Hex(),
-		TotalL2TxGas:                totalL2TxGas,
-		TotalL2TxNum:                totalL2TxNum,
-		TotalL1CommitCalldataSize:   totalL1CommitCalldataSize,
-		TotalL1CommitGas:            totalL1CommitGas,
-		StartBlockTime:              chunk.Blocks[0].Header.Time,
-		TotalL1MessagesPoppedBefore: totalL1MessagePoppedBefore,
-		TotalL1MessagesPopped:       chunk.NumL1Messages(totalL1MessagePoppedBefore),
+		Index:                        chunkIndex,
+		Hash:                         hash.Hex(),
+		StartBlockNumber:             chunk.Blocks[0].Header.Number.Uint64(),
+		StartBlockHash:               chunk.Blocks[0].Header.Hash().Hex(),
+		EndBlockNumber:               chunk.Blocks[numBlocks-1].Header.Number.Uint64(),
+		EndBlockHash:                 chunk.Blocks[numBlocks-1].Header.Hash().Hex(),
+		TotalL2TxGas:                 totalL2TxGas,
+		TotalL2TxNum:                 totalL2TxNum,
+		TotalL1CommitCalldataSize:    totalL1CommitCalldataSize,
+		TotalL1CommitGas:             totalL1CommitGas,
+		StartBlockTime:               chunk.Blocks[0].Header.Time,
+		TotalL1MessagesPoppedBefore:  totalL1MessagePoppedBefore,
+		TotalL1MessagesPoppedInChunk: chunk.NumL1Messages(totalL1MessagePoppedBefore),
 	}
 
 	if err := db.Create(&newChunk).Error; err != nil {
@@ -226,8 +195,9 @@ func (o *Chunk) UpdateProvingStatus(ctx context.Context, hash string, status typ
 	return nil
 }
 
-// UpdateBatchHashInClosedRange updates the batch hash for chunks within the specified index range.
-func (o *Chunk) UpdateBatchHashInClosedRange(ctx context.Context, startIndex uint64, endIndex uint64, batchHash string, dbTX ...*gorm.DB) error {
+// UpdateBatchHashInRange updates the batch_hash for chunks within the specified range (inclusive).
+// The range is closed, i.e., it includes both start and end indices.
+func (o *Chunk) UpdateBatchHashInRange(ctx context.Context, startIndex uint64, endIndex uint64, batchHash string, dbTX ...*gorm.DB) error {
 	db := o.db
 	if len(dbTX) > 0 && dbTX[0] != nil {
 		db = dbTX[0]

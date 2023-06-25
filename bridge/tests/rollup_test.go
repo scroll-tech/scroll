@@ -13,6 +13,7 @@ import (
 	"scroll-tech/common/types"
 	"scroll-tech/common/types/message"
 
+	"scroll-tech/bridge/internal/config"
 	"scroll-tech/bridge/internal/controller/relayer"
 	"scroll-tech/bridge/internal/controller/watcher"
 	"scroll-tech/bridge/internal/orm"
@@ -52,28 +53,44 @@ func testCommitBatchAndFinalizeBatch(t *testing.T) {
 	}
 
 	l2BlockOrm := orm.NewL2Block(db)
-	err = l2BlockOrm.InsertL2Blocks(wrappedBlocks)
+	err = l2BlockOrm.InsertL2Blocks(context.Background(), wrappedBlocks)
 	assert.NoError(t, err)
+
+	cp := watcher.NewChunkProposer(context.Background(), &config.ChunkProposerConfig{
+		MaxTxGasPerChunk:                1000000000,
+		MaxL2TxNumPerChunk:              10000,
+		MaxL1CommitGasPerChunk:          50000000000,
+		MaxL1CommitCalldataSizePerChunk: 1000000,
+		MinL1CommitCalldataSizePerChunk: 0,
+		ChunkTimeoutSec:                 300,
+	}, db)
+	cp.TryProposeChunk()
 
 	chunkOrm := orm.NewChunk(db)
-	chunk := &bridgeTypes.Chunk{Blocks: wrappedBlocks}
-	chunkHash, err := chunkOrm.InsertChunk(context.Background(), chunk)
+	chunks, err := chunkOrm.GetUnbatchedChunks(context.Background())
 	assert.NoError(t, err)
+	assert.Len(t, chunks, 1)
 
-	batchOrm := orm.NewBatch(db)
-	batchHash, err := batchOrm.InsertBatch(context.Background(), 0, 0, chunkHash, chunkHash, []*bridgeTypes.Chunk{chunk})
-	assert.NoError(t, err)
+	bp := watcher.NewBatchProposer(context.Background(), &config.BatchProposerConfig{
+		MaxChunkNumPerBatch:             10,
+		MaxL1CommitGasPerBatch:          50000000000,
+		MaxL1CommitCalldataSizePerBatch: 1000000,
+		MinChunkNumPerBatch:             1,
+		BatchTimeoutSec:                 300,
+	}, db)
+	bp.TryProposeBatch()
 
 	l2Relayer.ProcessPendingBatches()
 
-	batches, err := batchOrm.GetBatches(context.Background(), map[string]interface{}{"hash": batchHash}, nil, 0)
+	batchOrm := orm.NewBatch(db)
+	batch, err := batchOrm.GetLatestBatch(context.Background())
 	assert.NoError(t, err)
-	assert.Equal(t, 1, len(batches))
-	assert.NotEmpty(t, batches[0].CommitTxHash)
-	assert.Equal(t, types.RollupCommitting, types.RollupStatus(batches[0].RollupStatus))
+	batchHash := batch.Hash
+	assert.NotEmpty(t, batch.CommitTxHash)
+	assert.Equal(t, types.RollupCommitting, types.RollupStatus(batch.RollupStatus))
 
 	assert.NoError(t, err)
-	commitTx, _, err := l1Client.TransactionByHash(context.Background(), common.HexToHash(batches[0].CommitTxHash))
+	commitTx, _, err := l1Client.TransactionByHash(context.Background(), common.HexToHash(batch.CommitTxHash))
 	assert.NoError(t, err)
 	commitTxReceipt, err := bind.WaitMined(context.Background(), l1Client, commitTx)
 	assert.NoError(t, err)
@@ -105,12 +122,11 @@ func testCommitBatchAndFinalizeBatch(t *testing.T) {
 	assert.Equal(t, 1, len(statuses))
 	assert.Equal(t, types.RollupFinalizing, statuses[0])
 
-	batches, err = batchOrm.GetBatches(context.Background(), map[string]interface{}{"hash": batchHash}, nil, 1)
+	batch, err = batchOrm.GetLatestBatch(context.Background())
 	assert.NoError(t, err)
-	assert.Equal(t, 1, len(batches))
-	assert.NotEmpty(t, batches[0].FinalizeTxHash)
+	assert.NotEmpty(t, batch.FinalizeTxHash)
 
-	finalizeTx, _, err := l1Client.TransactionByHash(context.Background(), common.HexToHash(batches[0].FinalizeTxHash))
+	finalizeTx, _, err := l1Client.TransactionByHash(context.Background(), common.HexToHash(batch.FinalizeTxHash))
 	assert.NoError(t, err)
 	finalizeTxReceipt, err := bind.WaitMined(context.Background(), l1Client, finalizeTx)
 	assert.NoError(t, err)

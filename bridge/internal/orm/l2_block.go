@@ -41,7 +41,7 @@ func (*L2Block) TableName() string {
 }
 
 // GetL2BlocksLatestHeight get the l2 blocks latest height
-func (o *L2Block) GetL2BlocksLatestHeight() (int64, error) {
+func (o *L2Block) GetL2BlocksLatestHeight(ctx context.Context) (int64, error) {
 	result := o.db.Model(&L2Block{}).Select("COALESCE(MAX(number), -1)").Row()
 	if result.Err() != nil {
 		return -1, result.Err()
@@ -54,13 +54,12 @@ func (o *L2Block) GetL2BlocksLatestHeight() (int64, error) {
 }
 
 // GetUnchunkedBlocks get the l2 blocks that have not been put into a chunk
-func (o *L2Block) GetUnchunkedBlocks() ([]*types.WrappedBlock, error) {
+func (o *L2Block) GetUnchunkedBlocks(ctx context.Context) ([]*types.WrappedBlock, error) {
 	var l2Blocks []L2Block
-	db := o.db.Select("header, transactions, withdraw_trie_root")
-	db = db.Where("chunk_hash IS NULL")
-	db = db.Order("number asc")
-
-	if err := db.Find(&l2Blocks).Error; err != nil {
+	if err := o.db.Select("header, transactions, withdraw_trie_root").
+		Where("chunk_hash IS NULL").
+		Order("number asc").
+		Find(&l2Blocks).Error; err != nil {
 		return nil, err
 	}
 
@@ -84,40 +83,20 @@ func (o *L2Block) GetUnchunkedBlocks() ([]*types.WrappedBlock, error) {
 	return wrappedBlocks, nil
 }
 
-// GetL2Blocks get l2 blocks
-func (o *L2Block) GetL2Blocks(fields map[string]interface{}, orderByList []string, limit int) ([]L2Block, error) {
-	var l2Blocks []L2Block
-	db := o.db.Select("number, hash, parent_hash, chunk_hash, tx_num, gas_used, block_timestamp")
-	for key, value := range fields {
-		db = db.Where(key, value)
-	}
+// GetBatchByIndex retrieves a batch from the database by its index
+func (o *Batch) GetBatchByIndex(ctx context.Context, index uint64) (*Batch, error) {
+	db := o.db.WithContext(ctx)
 
-	for _, orderBy := range orderByList {
-		db = db.Order(orderBy)
-	}
-
-	if limit != 0 {
-		db = db.Limit(limit)
-	}
-
-	if err := db.Find(&l2Blocks).Error; err != nil {
+	var batch Batch
+	if err := db.Where("index = ?", index).First(&batch).Error; err != nil {
 		return nil, err
 	}
-	return l2Blocks, nil
+	return &batch, nil
 }
 
-// GetBlockTimestamp returns the timestamp of the block with the given block number
-func (o *L2Block) GetBlockTimestamp(blockNumber uint64) (uint64, error) {
-	var l2Block L2Block
-	err := o.db.Select("block_timestamp").Where("number = ?", blockNumber).First(&l2Block).Error
-	if err != nil {
-		return 0, err
-	}
-	return l2Block.BlockTimestamp, nil
-}
-
-// GetL2BlocksInClosedRange retrieves the L2 blocks within the specified range.
-func (o *L2Block) GetL2BlocksInClosedRange(ctx context.Context, startBlockNumber uint64, endBlockNumber uint64) ([]*types.WrappedBlock, error) {
+// GetL2BlocksInRange retrieves the L2 blocks within the specified range (inclusive).
+// The range is closed, i.e., it includes both start and end block numbers.
+func (o *L2Block) GetL2BlocksInRange(ctx context.Context, startBlockNumber uint64, endBlockNumber uint64) ([]*types.WrappedBlock, error) {
 	if startBlockNumber > endBlockNumber {
 		return nil, errors.New("start block number should be less than or equal to end block number")
 	}
@@ -156,7 +135,7 @@ func (o *L2Block) GetL2BlocksInClosedRange(ctx context.Context, startBlockNumber
 }
 
 // InsertL2Blocks inserts l2 blocks into the "l2_block" table.
-func (o *L2Block) InsertL2Blocks(blocks []*types.WrappedBlock) error {
+func (o *L2Block) InsertL2Blocks(ctx context.Context, blocks []*types.WrappedBlock) error {
 	var l2Blocks []L2Block
 	for _, block := range blocks {
 		header, err := json.Marshal(block.Header)
@@ -192,8 +171,9 @@ func (o *L2Block) InsertL2Blocks(blocks []*types.WrappedBlock) error {
 	return nil
 }
 
-// UpdateChunkHashInClosedRange update the chunk_hash of block tx
-func (o *L2Block) UpdateChunkHashInClosedRange(startIndex uint64, endIndex uint64, chunkHash string, dbTX ...*gorm.DB) error {
+// UpdateChunkHashInRange updates the chunk_hash of block tx within the specified range (inclusive).
+// The range is closed, i.e., it includes both start and end indices.
+func (o *L2Block) UpdateChunkHashInRange(ctx context.Context, startIndex uint64, endIndex uint64, chunkHash string, dbTX ...*gorm.DB) error {
 	db := o.db
 	if len(dbTX) > 0 && dbTX[0] != nil {
 		db = dbTX[0]

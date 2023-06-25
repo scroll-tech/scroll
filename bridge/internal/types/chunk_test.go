@@ -86,9 +86,9 @@ func TestChunkHash(t *testing.T) {
 	chunk := &Chunk{
 		Blocks: []*WrappedBlock{},
 	}
-	bytes, err := chunk.Hash(0)
-	assert.Nil(t, bytes)
+	hash, err := chunk.Hash(0)
 	assert.Error(t, err)
+	assert.Equal(t, "0x0000000000000000000000000000000000000000000000000000000000000000", hash.Hex())
 	assert.Contains(t, err.Error(), "number of blocks is 0")
 
 	// Test case 2: successfully hashing a chunk on one block
@@ -101,10 +101,9 @@ func TestChunkHash(t *testing.T) {
 			wrappedBlock,
 		},
 	}
-	bytes, err = chunk.Hash(0)
-	hexString := hex.EncodeToString(bytes)
+	hash, err = chunk.Hash(0)
 	assert.NoError(t, err)
-	assert.Equal(t, "78c839dfc494396c16b40946f32b3f4c3e8c2d4bfd04aefcf235edec474482f8", hexString)
+	assert.Equal(t, "0x78c839dfc494396c16b40946f32b3f4c3e8c2d4bfd04aefcf235edec474482f8", hash.Hex())
 
 	// Test case 3: successfully hashing a chunk on two blocks
 	templateBlockTrace1, err := os.ReadFile("../../../common/testdata/blockTrace_03.json")
@@ -117,10 +116,9 @@ func TestChunkHash(t *testing.T) {
 			wrappedBlock1,
 		},
 	}
-	bytes, err = chunk.Hash(0)
-	hexString = hex.EncodeToString(bytes)
+	hash, err = chunk.Hash(0)
 	assert.NoError(t, err)
-	assert.Equal(t, "aa9e494f72bc6965857856f0fae6916f27b2a6591c714a573b2fab46df03b8ae", hexString)
+	assert.Equal(t, "0xaa9e494f72bc6965857856f0fae6916f27b2a6591c714a573b2fab46df03b8ae", hash.Hex())
 
 	// Test case 4: successfully hashing a chunk on two blocks each with L1 and L2 txs
 	templateBlockTrace2, err := os.ReadFile("../../../common/testdata/blockTrace_04.json")
@@ -133,8 +131,7 @@ func TestChunkHash(t *testing.T) {
 			wrappedBlock2,
 		},
 	}
-	bytes, err = chunk.Hash(0)
-	hexString = hex.EncodeToString(bytes)
+	hash, err = chunk.Hash(0)
 	assert.NoError(t, err)
-	assert.Equal(t, "42967825696a129e7a83f082097aca982747480956dcaa448c9296e795c9a91a", hexString)
+	assert.Equal(t, "0x42967825696a129e7a83f082097aca982747480956dcaa448c9296e795c9a91a", hash.Hex())
 }

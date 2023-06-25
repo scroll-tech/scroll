@@ -2,11 +2,9 @@ package watcher
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"time"
 
-	"github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/log"
 	"gorm.io/gorm"
 
@@ -23,7 +21,7 @@ type ChunkProposer struct {
 	chunkOrm   *orm.Chunk
 	l2BlockOrm *orm.L2Block
 
-	maxL2TxGasPerChunk              uint64
+	maxTxGasPerChunk                uint64
 	maxL2TxNumPerChunk              uint64
 	maxL1CommitGasPerChunk          uint64
 	maxL1CommitCalldataSizePerChunk uint64
@@ -38,7 +36,7 @@ func NewChunkProposer(ctx context.Context, cfg *config.ChunkProposerConfig, db *
 		db:                              db,
 		chunkOrm:                        orm.NewChunk(db),
 		l2BlockOrm:                      orm.NewL2Block(db),
-		maxL2TxGasPerChunk:              cfg.MaxL2TxGasPerChunk,
+		maxTxGasPerChunk:                cfg.MaxTxGasPerChunk,
 		maxL2TxNumPerChunk:              cfg.MaxL2TxNumPerChunk,
 		maxL1CommitGasPerChunk:          cfg.MaxL1CommitGasPerChunk,
 		maxL1CommitCalldataSizePerChunk: cfg.MaxL1CommitCalldataSizePerChunk,
@@ -54,6 +52,11 @@ func (p *ChunkProposer) TryProposeChunk() {
 		log.Error("propose new chunk failed", "err", err)
 		return
 	}
+	if proposedChunk == nil {
+		log.Warn("proposed chunk is nil, cannot update in DB")
+		return
+	}
+
 	if err := p.updateChunkInfoInDB(proposedChunk); err != nil {
 		log.Error("update chunk info in orm failed", "err", err)
 	}
@@ -66,8 +69,8 @@ func (p *ChunkProposer) updateChunkInfoInDB(chunk *bridgeTypes.Chunk) error {
 			return err
 		}
 		startBlockNum := chunk.Blocks[0].Header.Number.Uint64()
-		endBlockNum := startBlockNum + uint64(len(chunk.Blocks))
-		if err := p.l2BlockOrm.UpdateChunkHashInClosedRange(startBlockNum, endBlockNum, chunkHash); err != nil {
+		endBlockNum := chunk.Blocks[len(chunk.Blocks)-1].Header.Number.Uint64()
+		if err := p.l2BlockOrm.UpdateChunkHashInRange(p.ctx, startBlockNum, endBlockNum, chunkHash); err != nil {
 			log.Error("failed to update chunk_hash for l2_blocks", "chunk hash", chunkHash, "start block", 0, "end block", 0, "err", err)
 			return err
 		}
@@ -77,18 +80,19 @@ func (p *ChunkProposer) updateChunkInfoInDB(chunk *bridgeTypes.Chunk) error {
 }
 
 func (p *ChunkProposer) proposeChunk() (*bridgeTypes.Chunk, error) {
-	blocks, err := p.l2BlockOrm.GetUnchunkedBlocks()
+	blocks, err := p.l2BlockOrm.GetUnchunkedBlocks(p.ctx)
 	if err != nil {
 		return nil, err
 	}
 
 	if len(blocks) == 0 {
-		return nil, errors.New("No Unchunked Blocks")
+		log.Warn("no un-chunked blocks")
+		return nil, nil
 	}
 
 	firstBlock := blocks[0]
-	totalL2TxGasUsed := firstBlock.Header.GasUsed
-	totalL2TxNum := getL2TxsNum(firstBlock.Transactions)
+	totalTxGasUsed := firstBlock.Header.GasUsed
+	totalL2TxNum := firstBlock.GetL2TxsNum()
 	totalL1CommitCalldataSize := firstBlock.ApproximateL1CommitCalldataSize()
 	totalL1CommitGas := firstBlock.ApproximateL1CommitGas()
 
@@ -103,12 +107,12 @@ func (p *ChunkProposer) proposeChunk() (*bridgeTypes.Chunk, error) {
 		)
 	}
 
-	if totalL2TxGasUsed > p.maxL2TxGasPerChunk {
+	if totalTxGasUsed > p.maxTxGasPerChunk {
 		return nil, fmt.Errorf(
 			"the first block exceeds l2 tx gas limit; block number: %v, gas used: %v, max gas limit: %v",
 			firstBlock.Header.Number,
-			totalL2TxGasUsed,
-			p.maxL2TxGasPerChunk,
+			totalTxGasUsed,
+			p.maxTxGasPerChunk,
 		)
 	}
 
@@ -131,11 +135,11 @@ func (p *ChunkProposer) proposeChunk() (*bridgeTypes.Chunk, error) {
 	}
 
 	for i, block := range blocks[1:] {
-		totalL2TxGasUsed += block.Header.GasUsed
-		totalL2TxNum += getL2TxsNum(block.Transactions)
+		totalTxGasUsed += block.Header.GasUsed
+		totalL2TxNum += block.GetL2TxsNum()
 		totalL1CommitCalldataSize += block.ApproximateL1CommitCalldataSize()
 		totalL1CommitGas += block.ApproximateL1CommitGas()
-		if totalL2TxGasUsed > p.maxL2TxGasPerChunk ||
+		if totalTxGasUsed > p.maxTxGasPerChunk ||
 			totalL2TxNum > p.maxL2TxNumPerChunk ||
 			totalL1CommitCalldataSize > p.maxL1CommitCalldataSizePerChunk ||
 			totalL1CommitGas > p.maxL1CommitGasPerChunk {
@@ -146,7 +150,7 @@ func (p *ChunkProposer) proposeChunk() (*bridgeTypes.Chunk, error) {
 
 	var hasBlockTimeout bool
 	currentTimeSec := uint64(time.Now().Unix())
-	if blocks[0].Header.Time+p.chunkTimeoutSec > currentTimeSec {
+	if blocks[0].Header.Time+p.chunkTimeoutSec < currentTimeSec {
 		log.Warn("first block timeout",
 			"block number", blocks[0].Header.Number,
 			"block timestamp", blocks[0].Header.Time,
@@ -163,13 +167,4 @@ func (p *ChunkProposer) proposeChunk() (*bridgeTypes.Chunk, error) {
 		return nil, nil
 	}
 	return &bridgeTypes.Chunk{Blocks: blocks}, nil
-}
-
-func getL2TxsNum(txs []*types.TransactionData) (count uint64) {
-	for _, tx := range txs {
-		if tx.Type != bridgeTypes.L1MessageTxType {
-			count++
-		}
-	}
-	return
 }

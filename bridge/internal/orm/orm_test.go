@@ -2,11 +2,11 @@ package orm
 
 import (
 	"context"
-	"encoding/hex"
 	"encoding/json"
 	"os"
 	"testing"
 
+	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/stretchr/testify/assert"
 	"gorm.io/gorm"
 
@@ -31,8 +31,8 @@ var (
 	wrappedBlock2 *bridgeTypes.WrappedBlock
 	chunk1        *bridgeTypes.Chunk
 	chunk2        *bridgeTypes.Chunk
-	chunkHash1    string
-	chunkHash2    string
+	chunkHash1    common.Hash
+	chunkHash2    common.Hash
 )
 
 func TestMain(m *testing.M) {
@@ -82,14 +82,12 @@ func setupEnv(t *testing.T) {
 	}
 
 	chunk1 = &bridgeTypes.Chunk{Blocks: []*bridgeTypes.WrappedBlock{wrappedBlock1}}
-	chunkHashBytes1, err := chunk1.Hash(0)
+	chunkHash1, err = chunk1.Hash(0)
 	assert.NoError(t, err)
-	chunkHash1 = hex.EncodeToString(chunkHashBytes1)
 
 	chunk2 = &bridgeTypes.Chunk{Blocks: []*bridgeTypes.WrappedBlock{wrappedBlock2}}
-	chunkHashBytes2, err := chunk2.Hash(chunk1.NumL1Messages(0))
+	chunkHash2, err = chunk2.Hash(chunk1.NumL1Messages(0))
 	assert.NoError(t, err)
-	chunkHash2 = hex.EncodeToString(chunkHashBytes2)
 }
 
 func tearDownEnv(t *testing.T) {
@@ -104,36 +102,32 @@ func TestL2BlockOrm(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(sqlDB))
 
-	err = l2BlockOrm.InsertL2Blocks([]*bridgeTypes.WrappedBlock{wrappedBlock1, wrappedBlock2})
+	err = l2BlockOrm.InsertL2Blocks(context.Background(), []*bridgeTypes.WrappedBlock{wrappedBlock1, wrappedBlock2})
 	assert.NoError(t, err)
 
-	height, err := l2BlockOrm.GetL2BlocksLatestHeight()
+	height, err := l2BlockOrm.GetL2BlocksLatestHeight(context.Background())
 	assert.NoError(t, err)
 	assert.Equal(t, int64(3), height)
 
-	blocks, err := l2BlockOrm.GetUnchunkedBlocks()
+	blocks, err := l2BlockOrm.GetUnchunkedBlocks(context.Background())
 	assert.NoError(t, err)
 	assert.Len(t, blocks, 2)
 	assert.Equal(t, wrappedBlock1, blocks[0])
 	assert.Equal(t, wrappedBlock2, blocks[1])
 
-	blocks, err = l2BlockOrm.GetL2BlocksInClosedRange(context.Background(), 2, 3)
+	blocks, err = l2BlockOrm.GetL2BlocksInRange(context.Background(), 2, 3)
 	assert.NoError(t, err)
 	assert.Len(t, blocks, 2)
 	assert.Equal(t, wrappedBlock1, blocks[0])
 	assert.Equal(t, wrappedBlock2, blocks[1])
 
-	err = l2BlockOrm.UpdateChunkHashInClosedRange(2, 2, "test hash")
+	err = l2BlockOrm.UpdateChunkHashInRange(context.Background(), 2, 2, "test hash")
 	assert.NoError(t, err)
 
-	blocks, err = l2BlockOrm.GetUnchunkedBlocks()
+	blocks, err = l2BlockOrm.GetUnchunkedBlocks(context.Background())
 	assert.NoError(t, err)
 	assert.Len(t, blocks, 1)
 	assert.Equal(t, wrappedBlock2, blocks[0])
-	blockInfos, err := l2BlockOrm.GetL2Blocks(map[string]interface{}{"number": 2}, nil, 0)
-	assert.NoError(t, err)
-	assert.Len(t, blockInfos, 1)
-	assert.Equal(t, "test hash", blockInfos[0].ChunkHash)
 }
 
 func TestChunkOrm(t *testing.T) {
@@ -141,37 +135,37 @@ func TestChunkOrm(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(sqlDB))
 
-	err = l2BlockOrm.InsertL2Blocks([]*bridgeTypes.WrappedBlock{wrappedBlock1, wrappedBlock2})
+	err = l2BlockOrm.InsertL2Blocks(context.Background(), []*bridgeTypes.WrappedBlock{wrappedBlock1, wrappedBlock2})
 	assert.NoError(t, err)
 
 	hash1, err := chunkOrm.InsertChunk(context.Background(), chunk1)
 	assert.NoError(t, err)
-	assert.Equal(t, hash1, chunkHash1)
+	assert.Equal(t, hash1, chunkHash1.Hex())
 
 	hash2, err := chunkOrm.InsertChunk(context.Background(), chunk2)
 	assert.NoError(t, err)
-	assert.Equal(t, hash2, chunkHash2)
+	assert.Equal(t, hash2, chunkHash2.Hex())
 
 	chunks, err := chunkOrm.GetUnbatchedChunks(context.Background())
 	assert.NoError(t, err)
 	assert.Len(t, chunks, 2)
-	assert.Equal(t, chunkHash1, chunks[0].Hash)
-	assert.Equal(t, chunkHash2, chunks[1].Hash)
+	assert.Equal(t, chunkHash1.Hex(), chunks[0].Hash)
+	assert.Equal(t, chunkHash2.Hex(), chunks[1].Hash)
 
-	err = chunkOrm.UpdateProvingStatus(context.Background(), chunkHash1, types.ProvingTaskVerified)
+	err = chunkOrm.UpdateProvingStatus(context.Background(), chunkHash1.Hex(), types.ProvingTaskVerified)
 	assert.NoError(t, err)
-	err = chunkOrm.UpdateProvingStatus(context.Background(), chunkHash2, types.ProvingTaskAssigned)
+	err = chunkOrm.UpdateProvingStatus(context.Background(), chunkHash2.Hex(), types.ProvingTaskAssigned)
 	assert.NoError(t, err)
 
-	chunks, err = chunkOrm.GetChunksInClosedRange(context.Background(), 0, 1)
+	chunks, err = chunkOrm.GetChunksInRange(context.Background(), 0, 1)
 	assert.NoError(t, err)
 	assert.Len(t, chunks, 2)
-	assert.Equal(t, chunkHash1, chunks[0].Hash)
-	assert.Equal(t, chunkHash2, chunks[1].Hash)
+	assert.Equal(t, chunkHash1.Hex(), chunks[0].Hash)
+	assert.Equal(t, chunkHash2.Hex(), chunks[1].Hash)
 	assert.Equal(t, types.ProvingTaskVerified, types.ProvingStatus(chunks[0].ProvingStatus))
 	assert.Equal(t, types.ProvingTaskAssigned, types.ProvingStatus(chunks[1].ProvingStatus))
 
-	err = chunkOrm.UpdateBatchHashInClosedRange(context.Background(), 0, 0, "test hash")
+	err = chunkOrm.UpdateBatchHashInRange(context.Background(), 0, 0, "test hash")
 	assert.NoError(t, err)
 	chunks, err = chunkOrm.GetUnbatchedChunks(context.Background())
 	assert.NoError(t, err)
@@ -183,18 +177,18 @@ func TestBatchOrm(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(sqlDB))
 
-	err = l2BlockOrm.InsertL2Blocks([]*bridgeTypes.WrappedBlock{wrappedBlock1, wrappedBlock2})
+	err = l2BlockOrm.InsertL2Blocks(context.Background(), []*bridgeTypes.WrappedBlock{wrappedBlock1, wrappedBlock2})
 	assert.NoError(t, err)
 
 	hash1, err := chunkOrm.InsertChunk(context.Background(), chunk1)
 	assert.NoError(t, err)
-	assert.Equal(t, hash1, chunkHash1)
+	assert.Equal(t, hash1, chunkHash1.Hex())
 
 	hash2, err := chunkOrm.InsertChunk(context.Background(), chunk2)
 	assert.NoError(t, err)
-	assert.Equal(t, hash2, chunkHash2)
+	assert.Equal(t, hash2, chunkHash2.Hex())
 
-	hash1, err = batchOrm.InsertBatch(context.Background(), 0, 0, chunkHash1, chunkHash1, []*bridgeTypes.Chunk{chunk1})
+	hash1, err = batchOrm.InsertBatch(context.Background(), 0, 0, chunkHash1.Hex(), chunkHash1.Hex(), []*bridgeTypes.Chunk{chunk1})
 	assert.NoError(t, err)
 
 	batchHeader1, err := batchOrm.GetBatchHeader(context.Background(), 0)
@@ -202,7 +196,7 @@ func TestBatchOrm(t *testing.T) {
 	batchHash1 := batchHeader1.Hash().Hex()
 	assert.Equal(t, hash1, batchHash1)
 
-	hash2, err = batchOrm.InsertBatch(context.Background(), 1, 1, chunkHash2, chunkHash2, []*bridgeTypes.Chunk{chunk2})
+	hash2, err = batchOrm.InsertBatch(context.Background(), 1, 1, chunkHash2.Hex(), chunkHash2.Hex(), []*bridgeTypes.Chunk{chunk2})
 	assert.NoError(t, err)
 
 	batchHeader2, err := batchOrm.GetBatchHeader(context.Background(), 1)

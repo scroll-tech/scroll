@@ -194,7 +194,7 @@ func (r *Layer2Relayer) ProcessGasPriceOracle() {
 func (r *Layer2Relayer) ProcessPendingBatches() {
 	// get pending batch from database
 	pendingBatches, err := r.batchOrm.GetPendingBatches(r.ctx, 10)
-	if err != nil || len(pendingBatches) == 0 {
+	if err != nil {
 		log.Error("Failed to fetch pending L2 batches", "err", err)
 		return
 	}
@@ -205,7 +205,6 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 			log.Error("Failed to get batch header", "error", err)
 			return
 		}
-		// batch.Index > 0 since we have imported genesis batch.
 		parentBatchHeader := &bridgeTypes.BatchHeader{}
 		if batch.Index > 0 {
 			parentBatchHeader, err = r.batchOrm.GetBatchHeader(r.ctx, batch.Index-1)
@@ -218,7 +217,7 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 		// get the chunks for the batch
 		startChunkIndex := batch.StartChunkIndex
 		endChunkIndex := batch.EndChunkIndex
-		dbChunks, err := r.chunkOrm.GetChunksInClosedRange(r.ctx, startChunkIndex, endChunkIndex)
+		dbChunks, err := r.chunkOrm.GetChunksInRange(r.ctx, startChunkIndex, endChunkIndex)
 		if err != nil {
 			log.Error("Failed to fetch chunks", "error", err)
 			return
@@ -227,7 +226,7 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 		encodedChunks := make([][]byte, len(dbChunks))
 		for i, c := range dbChunks {
 			var wrappedBlocks []*bridgeTypes.WrappedBlock
-			wrappedBlocks, err = r.l2BlockOrm.GetL2BlocksInClosedRange(r.ctx, c.StartBlockNumber, c.EndBlockNumber)
+			wrappedBlocks, err = r.l2BlockOrm.GetL2BlocksInRange(r.ctx, c.StartBlockNumber, c.EndBlockNumber)
 			if err != nil {
 				log.Error("Failed to fetch wrapped blocks", "error", err)
 				return
@@ -293,7 +292,7 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 		return
 	}
 	if len(batches) == 0 {
-		log.Error("Unexpected result for GetBlockBatches", "len", 0)
+		log.Warn("Unexpected result for GetBlockBatches", "len", 0)
 		return
 	}
 
@@ -317,39 +316,16 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 		log.Info("Start to roll up zk proof", "hash", hash)
 		success := false
 
-		rollupStatues := []types.RollupStatus{
-			types.RollupFinalizing,
-			types.RollupFinalized,
-		}
 		var parentBatchStateRoot string
-		previousBatch, err := r.batchOrm.GetLatestBatchByRollupStatus(rollupStatues)
-		if err == nil {
-			parentBatchStateRoot = previousBatch.StateRoot
-		}
-		// skip submitting proof
-		if err == nil && uint64(batch.CreatedAt.Sub(previousBatch.CreatedAt).Seconds()) < r.cfg.FinalizeBatchIntervalSec {
-			log.Info(
-				"Not enough time passed, skipping",
-				"hash", hash,
-				"createdAt", batch.CreatedAt,
-				"lastFinalizingHash", previousBatch.Hash,
-				"lastFinalizingStatus", previousBatch.RollupStatus,
-				"lastFinalizingCreatedAt", previousBatch.CreatedAt,
-			)
-
-			if err = r.batchOrm.UpdateRollupStatus(r.ctx, hash, types.RollupFinalizationSkipped); err != nil {
-				log.Warn("UpdateRollupStatus failed", "hash", hash, "err", err)
-			} else {
-				success = true
+		if batch.Index > 0 {
+			var parentBatch *orm.Batch
+			parentBatch, err = r.batchOrm.GetBatchByIndex(r.ctx, batch.Index-1)
+			// handle unexpected db error
+			if err != nil {
+				log.Error("Failed to get batch", "index", batch.Index-1, "err", err)
+				return
 			}
-
-			return
-		}
-
-		// handle unexpected db error
-		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
-			log.Error("Failed to get latest finalized batch", "err", err)
-			return
+			parentBatchStateRoot = parentBatch.StateRoot
 		}
 
 		defer func() {
