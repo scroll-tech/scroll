@@ -93,7 +93,7 @@ func (p *ChunkProposer) proposeChunk() (*bridgeTypes.Chunk, error) {
 	firstBlock := blocks[0]
 	totalTxGasUsed := firstBlock.Header.GasUsed
 	totalL2TxNum := firstBlock.GetL2TxsNum()
-	totalL1CommitCalldataSize := firstBlock.ApproximateL1CommitCalldataSize()
+	totalL1CommitCalldataSize := firstBlock.EstimateL1CommitCalldataSize()
 	totalL1CommitGas := firstBlock.ApproximateL1CommitGas()
 
 	// Check if the first block breaks hard limits.
@@ -137,7 +137,7 @@ func (p *ChunkProposer) proposeChunk() (*bridgeTypes.Chunk, error) {
 	for i, block := range blocks[1:] {
 		totalTxGasUsed += block.Header.GasUsed
 		totalL2TxNum += block.GetL2TxsNum()
-		totalL1CommitCalldataSize += block.ApproximateL1CommitCalldataSize()
+		totalL1CommitCalldataSize += block.EstimateL1CommitCalldataSize()
 		totalL1CommitGas += block.ApproximateL1CommitGas()
 		if totalTxGasUsed > p.maxTxGasPerChunk ||
 			totalL2TxNum > p.maxL2TxNumPerChunk ||

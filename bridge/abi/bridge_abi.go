@@ -228,8 +228,3 @@ type L2FailedRelayedMessageEvent struct {
 type L2RelayedMessageEvent struct {
 	MessageHash common.Hash
 }
-
-// GetBatchCalldataLength gets the calldata bytelen of IScrollChainBatch.
-func GetBatchCalldataLength(batch *IScrollChainBatch) uint64 {
-	return uint64(5*32 + len(batch.L2Transactions) + len(batch.Blocks)*8*32)
-}

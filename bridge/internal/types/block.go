@@ -67,10 +67,10 @@ func (w *WrappedBlock) Encode(totalL1MessagePoppedBefore uint64) ([]byte, error)
 	return bytes, nil
 }
 
-// ApproximateL1CommitCalldataSize calculates the calldata size in l1 commit approximately.
+// EstimateL1CommitCalldataSize calculates the calldata size in l1 commit approximately.
 // TODO: The calculation could be more accurate by using 58 + len(l2TxDataBytes) (see Chunk).
 // This needs to be adjusted in the future.
-func (w *WrappedBlock) ApproximateL1CommitCalldataSize() uint64 {
+func (w *WrappedBlock) EstimateL1CommitCalldataSize() uint64 {
 	var size uint64
 	for _, txData := range w.Transactions {
 		if txData.Type == L1MessageTxType {
