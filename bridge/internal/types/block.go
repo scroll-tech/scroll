@@ -13,6 +13,8 @@ import (
 // L1MessageTxType represents l2geth's l1 message tx type.
 // TODO: replace this with geth version after new version is released.
 const L1MessageTxType = 0x7E
+const nonZeroByteGas uint64 = 16
+const zeroByteGas uint64 = 4
 
 // WrappedBlock contains the block's Header, Transactions and WithdrawTrieRoot hash.
 type WrappedBlock struct {
@@ -70,14 +72,14 @@ func (w *WrappedBlock) Encode(totalL1MessagePoppedBefore uint64) ([]byte, error)
 // This needs to be adjusted in the future.
 func (w *WrappedBlock) ApproximateL1CommitCalldataSize() uint64 {
 	var size uint64
-	for _, tx := range w.Transactions {
-		size += uint64(len(tx.Data))
+	for _, txData := range w.Transactions {
+		if txData.Type == L1MessageTxType {
+			continue
+		}
+		size += uint64(len(txData.Data))
 	}
 	return size
 }
-
-const nonZeroByteGas uint64 = 16
-const zeroByteGas uint64 = 4
 
 // ApproximateL1CommitGas calculates the calldata gas in l1 commit approximately.
 // TODO: This will need to be adjusted.
