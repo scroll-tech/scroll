@@ -97,7 +97,7 @@ func action(ctx *cli.Context) error {
 			log.Error("failed to get block number", "err", loopErr)
 			return
 		}
-		l2watcher.TryFetchRunningMissingBlocks(ctx, number)
+		l2watcher.TryFetchRunningMissingBlocks(number)
 	})
 
 	go cutils.Loop(subCtx, 2*time.Second, chunkProposer.TryProposeChunk)

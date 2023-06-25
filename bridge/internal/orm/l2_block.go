@@ -42,7 +42,7 @@ func (*L2Block) TableName() string {
 
 // GetL2BlocksLatestHeight get the l2 blocks latest height
 func (o *L2Block) GetL2BlocksLatestHeight(ctx context.Context) (int64, error) {
-	result := o.db.Model(&L2Block{}).Select("COALESCE(MAX(number), -1)").Row()
+	result := o.db.WithContext(ctx).Model(&L2Block{}).Select("COALESCE(MAX(number), -1)").Row()
 	if result.Err() != nil {
 		return -1, result.Err()
 	}
@@ -56,7 +56,7 @@ func (o *L2Block) GetL2BlocksLatestHeight(ctx context.Context) (int64, error) {
 // GetUnchunkedBlocks get the l2 blocks that have not been put into a chunk
 func (o *L2Block) GetUnchunkedBlocks(ctx context.Context) ([]*types.WrappedBlock, error) {
 	var l2Blocks []L2Block
-	if err := o.db.Select("header, transactions, withdraw_trie_root").
+	if err := o.db.WithContext(ctx).Select("header, transactions, withdraw_trie_root").
 		Where("chunk_hash IS NULL").
 		Order("number asc").
 		Find(&l2Blocks).Error; err != nil {
@@ -85,10 +85,8 @@ func (o *L2Block) GetUnchunkedBlocks(ctx context.Context) ([]*types.WrappedBlock
 
 // GetBatchByIndex retrieves a batch from the database by its index
 func (o *Batch) GetBatchByIndex(ctx context.Context, index uint64) (*Batch, error) {
-	db := o.db.WithContext(ctx)
-
 	var batch Batch
-	if err := db.Where("index = ?", index).First(&batch).Error; err != nil {
+	if err := o.db.WithContext(ctx).Where("index = ?", index).First(&batch).Error; err != nil {
 		return nil, err
 	}
 	return &batch, nil
@@ -164,7 +162,7 @@ func (o *L2Block) InsertL2Blocks(ctx context.Context, blocks []*types.WrappedBlo
 		l2Blocks = append(l2Blocks, l2Block)
 	}
 
-	if err := o.db.Create(&l2Blocks).Error; err != nil {
+	if err := o.db.WithContext(ctx).Create(&l2Blocks).Error; err != nil {
 		log.Error("failed to insert l2Blocks", "err", err)
 		return err
 	}
@@ -179,7 +177,7 @@ func (o *L2Block) UpdateChunkHashInRange(ctx context.Context, startIndex uint64,
 		db = dbTX[0]
 	}
 
-	db = db.Model(&L2Block{}).Where("number >= ? AND number <= ?", startIndex, endIndex)
+	db = db.WithContext(ctx).Model(&L2Block{}).Where("number >= ? AND number <= ?", startIndex, endIndex)
 	err := db.Update("chunk_hash", chunkHash).Error
 	return err
 }

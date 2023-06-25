@@ -191,12 +191,6 @@ func (o *Batch) GetPendingBatches(ctx context.Context, limit int) ([]*Batch, err
 	if err := db.Find(&batches).Error; err != nil {
 		return nil, err
 	}
-
-	if len(batches) == 0 {
-		log.Warn("no pending batches in db")
-		return nil, nil
-	}
-
 	return batches, nil
 }
 
