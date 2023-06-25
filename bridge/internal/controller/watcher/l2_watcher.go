@@ -185,31 +185,22 @@ func (w *L2WatcherClient) initializeGenesis() error {
 
 const blockTracesFetchLimit = uint64(10)
 
-// TryFetchRunningMissingBlocks try fetch missing blocks if inconsistent
+// TryFetchRunningMissingBlocks attempts to fetch and store block traces for any missing blocks.
 func (w *L2WatcherClient) TryFetchRunningMissingBlocks(blockHeight uint64) {
-	// Get newest block in DB. must have blocks at that time.
-	// Don't use "block_trace" table "trace" column's BlockTrace.Number,
-	// because it might be empty if the corresponding rollup_result is finalized/finalization_skipped
 	heightInDB, err := w.l2BlockOrm.GetL2BlocksLatestHeight(w.ctx)
 	if err != nil {
 		log.Error("failed to GetL2BlocksLatestHeight", "err", err)
 		return
 	}
 
-	// Can't get trace from genesis block, so the default start number is 1.
-	var from = uint64(1)
-	if heightInDB > 0 {
-		from = uint64(heightInDB) + 1
-	}
-
-	for ; from <= blockHeight; from += blockTracesFetchLimit {
+	// Fetch and store block traces for missing blocks
+	for from := uint64(heightInDB) + 1; from <= blockHeight; from += blockTracesFetchLimit {
 		to := from + blockTracesFetchLimit - 1
 
 		if to > blockHeight {
 			to = blockHeight
 		}
 
-		// Get block traces and insert into db.
 		if err = w.getAndStoreBlockTraces(w.ctx, from, to); err != nil {
 			log.Error("fail to getAndStoreBlockTraces", "from", from, "to", to, "err", err)
 			return
