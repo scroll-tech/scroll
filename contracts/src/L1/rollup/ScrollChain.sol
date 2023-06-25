@@ -45,7 +45,7 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
      *************/
 
     /// @notice The chain id of the corresponding layer 2 chain.
-    uint32 public immutable layer2ChainId;
+    uint64 public immutable layer2ChainId;
 
     /*************
      * Variables *
@@ -97,7 +97,7 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
      * Constructor *
      ***************/
 
-    constructor(uint32 _chainId) {
+    constructor(uint64 _chainId) {
         layer2ChainId = _chainId;
     }
 
@@ -308,7 +308,7 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
         );
 
         // verify batch
-        IRollupVerifier(verifier).verifyAggregateProof(_aggrProof, _publicInputHash);
+        IRollupVerifier(verifier).verifyAggregateProof(_batchIndex, _aggrProof, _publicInputHash);
 
         // check and update lastFinalizedBatchIndex
         unchecked {
