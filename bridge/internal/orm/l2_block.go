@@ -40,16 +40,17 @@ func (*L2Block) TableName() string {
 	return "l2_block"
 }
 
-// GetL2BlocksLatestHeight get the l2 blocks latest height
+// GetL2BlocksLatestHeight get the l2 blocks latest height.
+// If table l2_block is empty, the return value is set as 0 (genesis block height).
 func (o *L2Block) GetL2BlocksLatestHeight(ctx context.Context) (int64, error) {
-	result := o.db.WithContext(ctx).Model(&L2Block{}).Select("COALESCE(MAX(number), -1)").Row()
-	if result.Err() != nil {
-		return -1, result.Err()
-	}
 	var maxNumber int64
-	if err := result.Scan(&maxNumber); err != nil {
+	if err := o.db.WithContext(ctx).Model(&L2Block{}).Select("MAX(number)").Row().Scan(&maxNumber); err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return 0, nil
+		}
 		return -1, err
 	}
+
 	return maxNumber, nil
 }
 
