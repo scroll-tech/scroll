@@ -64,13 +64,13 @@ func (p *ChunkProposer) TryProposeChunk() {
 
 func (p *ChunkProposer) updateChunkInfoInDB(chunk *bridgeTypes.Chunk) error {
 	err := p.db.Transaction(func(dbTX *gorm.DB) error {
-		chunkHash, err := p.chunkOrm.InsertChunk(p.ctx, chunk)
+		chunkHash, err := p.chunkOrm.InsertChunk(p.ctx, chunk, dbTX)
 		if err != nil {
 			return err
 		}
 		startBlockNum := chunk.Blocks[0].Header.Number.Uint64()
 		endBlockNum := chunk.Blocks[len(chunk.Blocks)-1].Header.Number.Uint64()
-		if err := p.l2BlockOrm.UpdateChunkHashInRange(p.ctx, startBlockNum, endBlockNum, chunkHash); err != nil {
+		if err := p.l2BlockOrm.UpdateChunkHashInRange(p.ctx, startBlockNum, endBlockNum, chunkHash, dbTX); err != nil {
 			log.Error("failed to update chunk_hash for l2_blocks", "chunk hash", chunkHash, "start block", 0, "end block", 0, "err", err)
 			return err
 		}
