@@ -1,8 +1,5 @@
 .PHONY: check update dev_docker build_test_docker run_test_docker clean
 
-PARAMS_VERSION=params-0320
-VK_VERSION=release-v0.3
-
 help: ## Display this help message
 	@grep -h \
 		-E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
