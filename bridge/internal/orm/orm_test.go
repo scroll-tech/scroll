@@ -138,13 +138,13 @@ func TestChunkOrm(t *testing.T) {
 	err = l2BlockOrm.InsertL2Blocks(context.Background(), []*bridgeTypes.WrappedBlock{wrappedBlock1, wrappedBlock2})
 	assert.NoError(t, err)
 
-	hash1, err := chunkOrm.InsertChunk(context.Background(), chunk1)
+	dbChunk1, err := chunkOrm.InsertChunk(context.Background(), chunk1)
 	assert.NoError(t, err)
-	assert.Equal(t, hash1, chunkHash1.Hex())
+	assert.Equal(t, dbChunk1.Hash, chunkHash1.Hex())
 
-	hash2, err := chunkOrm.InsertChunk(context.Background(), chunk2)
+	dbChunk2, err := chunkOrm.InsertChunk(context.Background(), chunk2)
 	assert.NoError(t, err)
-	assert.Equal(t, hash2, chunkHash2.Hex())
+	assert.Equal(t, dbChunk2.Hash, chunkHash2.Hex())
 
 	chunks, err := chunkOrm.GetUnbatchedChunks(context.Background())
 	assert.NoError(t, err)
@@ -180,15 +180,15 @@ func TestBatchOrm(t *testing.T) {
 	err = l2BlockOrm.InsertL2Blocks(context.Background(), []*bridgeTypes.WrappedBlock{wrappedBlock1, wrappedBlock2})
 	assert.NoError(t, err)
 
-	hash1, err := chunkOrm.InsertChunk(context.Background(), chunk1)
+	dbChunk1, err := chunkOrm.InsertChunk(context.Background(), chunk1)
 	assert.NoError(t, err)
-	assert.Equal(t, hash1, chunkHash1.Hex())
+	assert.Equal(t, dbChunk1.Hash, chunkHash1.Hex())
 
-	hash2, err := chunkOrm.InsertChunk(context.Background(), chunk2)
+	dbChunk2, err := chunkOrm.InsertChunk(context.Background(), chunk2)
 	assert.NoError(t, err)
-	assert.Equal(t, hash2, chunkHash2.Hex())
+	assert.Equal(t, dbChunk2.Hash, chunkHash2.Hex())
 
-	hash1, err = batchOrm.InsertBatch(context.Background(), 0, 0, chunkHash1.Hex(), chunkHash1.Hex(), []*bridgeTypes.Chunk{chunk1})
+	hash1, err := batchOrm.InsertBatch(context.Background(), 0, 0, chunkHash1.Hex(), chunkHash1.Hex(), []*bridgeTypes.Chunk{chunk1})
 	assert.NoError(t, err)
 
 	batchHeader1, err := batchOrm.GetBatchHeader(context.Background(), 0)
@@ -196,7 +196,7 @@ func TestBatchOrm(t *testing.T) {
 	batchHash1 := batchHeader1.Hash().Hex()
 	assert.Equal(t, hash1, batchHash1)
 
-	hash2, err = batchOrm.InsertBatch(context.Background(), 1, 1, chunkHash2.Hex(), chunkHash2.Hex(), []*bridgeTypes.Chunk{chunk2})
+	hash2, err := batchOrm.InsertBatch(context.Background(), 1, 1, chunkHash2.Hex(), chunkHash2.Hex(), []*bridgeTypes.Chunk{chunk2})
 	assert.NoError(t, err)
 
 	batchHeader2, err := batchOrm.GetBatchHeader(context.Background(), 1)

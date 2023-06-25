@@ -107,9 +107,9 @@ func (o *Chunk) GetLatestChunk(ctx context.Context) (*Chunk, error) {
 }
 
 // InsertChunk inserts a new chunk into the database.
-func (o *Chunk) InsertChunk(ctx context.Context, chunk *bridgeTypes.Chunk, dbTX ...*gorm.DB) (string, error) {
+func (o *Chunk) InsertChunk(ctx context.Context, chunk *bridgeTypes.Chunk, dbTX ...*gorm.DB) (*Chunk, error) {
 	if chunk == nil || len(chunk.Blocks) == 0 {
-		return "", errors.New("invalid args")
+		return nil, errors.New("invalid args")
 	}
 
 	db := o.db
@@ -122,7 +122,7 @@ func (o *Chunk) InsertChunk(ctx context.Context, chunk *bridgeTypes.Chunk, dbTX 
 	parentChunk, err := o.GetLatestChunk(ctx)
 	if err != nil {
 		log.Error("failed to get latest chunk", "err", err)
-		return "", err
+		return nil, err
 	}
 	if parentChunk != nil {
 		chunkIndex = parentChunk.Index + 1
@@ -131,7 +131,7 @@ func (o *Chunk) InsertChunk(ctx context.Context, chunk *bridgeTypes.Chunk, dbTX 
 	hash, err := chunk.Hash(totalL1MessagePoppedBefore)
 	if err != nil {
 		log.Error("failed to get chunk hash", "err", err)
-		return "", err
+		return nil, err
 	}
 
 	var totalL2TxGas uint64
@@ -164,9 +164,9 @@ func (o *Chunk) InsertChunk(ctx context.Context, chunk *bridgeTypes.Chunk, dbTX 
 
 	if err := db.Create(&newChunk).Error; err != nil {
 		log.Error("failed to insert chunk", "hash", hash, "err", err)
-		return "", err
+		return nil, err
 	}
-	return newChunk.Hash, nil
+	return &newChunk, nil
 }
 
 // UpdateProvingStatus updates the proving status of a chunk.

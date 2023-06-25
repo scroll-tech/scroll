@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 
 	"github.com/scroll-tech/go-ethereum/common"
 	gethTypes "github.com/scroll-tech/go-ethereum/core/types"
@@ -170,6 +171,8 @@ func (o *L2Block) InsertL2Blocks(ctx context.Context, blocks []*types.WrappedBlo
 
 // UpdateChunkHashInRange updates the chunk_hash of block tx within the specified range (inclusive).
 // The range is closed, i.e., it includes both start and end indices.
+// This function ensures the number of rows updated must equal to (endIndex - startIndex + 1).
+// If the rows affected do not match this expectation, an error is returned.
 func (o *L2Block) UpdateChunkHashInRange(ctx context.Context, startIndex uint64, endIndex uint64, chunkHash string, dbTX ...*gorm.DB) error {
 	db := o.db
 	if len(dbTX) > 0 && dbTX[0] != nil {
@@ -177,6 +180,11 @@ func (o *L2Block) UpdateChunkHashInRange(ctx context.Context, startIndex uint64,
 	}
 
 	db = db.WithContext(ctx).Model(&L2Block{}).Where("number >= ? AND number <= ?", startIndex, endIndex)
-	err := db.Update("chunk_hash", chunkHash).Error
-	return err
+	tx := db.Update("chunk_hash", chunkHash)
+
+	if tx.RowsAffected != int64(endIndex-startIndex+1) {
+		return fmt.Errorf("expected %d rows to be updated, got %d", endIndex-startIndex+1, tx.RowsAffected)
+	}
+
+	return tx.Error
 }
