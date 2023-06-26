@@ -37,7 +37,7 @@ contract L1ScrollMessenger is PausableUpgradeable, ScrollMessengerBase, IL1Scrol
         // The number of replayed times.
         uint128 times;
         // The queue index of lastest replayed one. If it is zero, it means the message has not been replayed.
-        uint256 lastIndex;
+        uint128 lastIndex;
     }
 
     /*************
@@ -92,9 +92,6 @@ contract L1ScrollMessenger is PausableUpgradeable, ScrollMessengerBase, IL1Scrol
 
         rollup = _rollup;
         messageQueue = _messageQueue;
-
-        // initialize to a nonzero value
-        xDomainMessageSender = ScrollConstants.DEFAULT_XDOMAIN_MESSAGE_SENDER;
     }
 
     /*****************************
@@ -130,12 +127,7 @@ contract L1ScrollMessenger is PausableUpgradeable, ScrollMessengerBase, IL1Scrol
         uint256 _nonce,
         bytes memory _message,
         L2MessageProof memory _proof
-    ) external override whenNotPaused {
-        require(
-            xDomainMessageSender == ScrollConstants.DEFAULT_XDOMAIN_MESSAGE_SENDER,
-            "Message is already in execution"
-        );
-
+    ) external override whenNotPaused notInExecution {
         bytes32 _xDomainCalldataHash = keccak256(_encodeXDomainCalldata(_from, _to, _value, _nonce, _message));
         require(!isL2MessageExecuted[_xDomainCalldataHash], "Message was already successfully executed");
 
@@ -178,10 +170,7 @@ contract L1ScrollMessenger is PausableUpgradeable, ScrollMessengerBase, IL1Scrol
         bytes memory _message,
         uint32 _newGasLimit,
         address _refundAddress
-    ) external payable override whenNotPaused {
-        // only replay when no other malicious action is ongoing
-        require(xDomainMessageSender == ScrollConstants.DEFAULT_XDOMAIN_MESSAGE_SENDER, "message in some context");
-
+    ) external payable override whenNotPaused notInExecution {
         // We will use a different `queueIndex` for the replaced message. However, the original `queueIndex` or `nonce`
         // is encoded in the `_message`. We will check the `xDomainCalldata` in layer 2 to avoid duplicated execution.
         // So, only one message will succeed in layer 2. If one of the message is executed successfully, the other one
@@ -243,7 +232,7 @@ contract L1ScrollMessenger is PausableUpgradeable, ScrollMessengerBase, IL1Scrol
         uint256 _value,
         uint256 _queueIndex,
         bytes memory _message
-    ) external override whenNotPaused {
+    ) external override whenNotPaused notInExecution {
         // The criteria for dropping a message:
         // 1. The message is a L1 message.
         // 2. The message has not been dropped before.

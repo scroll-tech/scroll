@@ -143,21 +143,21 @@ contract L1ERC1155Gateway is
         require(msg.value == 0, "nonzero msg.value");
 
         if (bytes4(_message[0:4]) == IL2ERC1155Gateway.finalizeDepositERC1155.selector) {
-            (address _token, , address _receiver, , uint256 _tokenId, uint256 _amount) = abi.decode(
+            (address _token, , address _sender, , uint256 _tokenId, uint256 _amount) = abi.decode(
                 _message[4:],
                 (address, address, address, address, uint256, uint256)
             );
-            IERC1155Upgradeable(_token).safeTransferFrom(address(this), _receiver, _tokenId, _amount, "");
+            IERC1155Upgradeable(_token).safeTransferFrom(address(this), _sender, _tokenId, _amount, "");
 
-            emit RefundERC1155(_token, _receiver, _tokenId, _amount);
+            emit RefundERC1155(_token, _sender, _tokenId, _amount);
         } else if (bytes4(_message[0:4]) == IL2ERC1155Gateway.finalizeBatchDepositERC1155.selector) {
-            (address _token, , address _receiver, , uint256[] memory _tokenIds, uint256[] memory _amounts) = abi.decode(
+            (address _token, , address _sender, , uint256[] memory _tokenIds, uint256[] memory _amounts) = abi.decode(
                 _message[4:],
                 (address, address, address, address, uint256[], uint256[])
             );
-            IERC1155Upgradeable(_token).safeBatchTransferFrom(address(this), _receiver, _tokenIds, _amounts, "");
+            IERC1155Upgradeable(_token).safeBatchTransferFrom(address(this), _sender, _tokenIds, _amounts, "");
 
-            emit BatchRefundERC1155(_token, _receiver, _tokenIds, _amounts);
+            emit BatchRefundERC1155(_token, _sender, _tokenIds, _amounts);
         } else {
             revert("invalid selector");
         }

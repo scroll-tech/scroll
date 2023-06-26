@@ -402,7 +402,7 @@ Emitted when the ERC1155 NFT is batch deposited to gateway in layer 1.
 event BatchRefundERC1155(address indexed token, address indexed recipient, uint256[] tokenIds, uint256[] amounts)
 ```
 
-Emitted when some ERC1155 token is refuned.
+Emitted when some ERC1155 token is refunded.
 
 
 
@@ -501,7 +501,7 @@ event OwnershipTransferred(address indexed previousOwner, address indexed newOwn
 event RefundERC1155(address indexed token, address indexed recipient, uint256 tokenId, uint256 amount)
 ```
 
-Emitted when some ERC1155 token is refuned.
+Emitted when some ERC1155 token is refunded.
 
 
 

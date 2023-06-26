@@ -296,7 +296,7 @@ Replay an existing message.
 ### replayStates
 
 ```solidity
-function replayStates(bytes32) external view returns (uint128 times, uint256 lastIndex)
+function replayStates(bytes32) external view returns (uint128 times, uint128 lastIndex)
 ```
 
 Mapping from L1 message hash to replay state.
@@ -314,7 +314,7 @@ Mapping from L1 message hash to replay state.
 | Name | Type | Description |
 |---|---|---|
 | times | uint128 | undefined |
-| lastIndex | uint256 | undefined |
+| lastIndex | uint128 | undefined |
 
 ### rollup
 
