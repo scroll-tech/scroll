@@ -200,9 +200,9 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 	}
 	for _, batch := range pendingBatches {
 		// get current header and parent header.
-		currentBatchHeader, err := r.batchOrm.GetBatchHeader(r.ctx, batch.Index)
+		currentBatchHeader, err := bridgeTypes.DecodeBatchHeader(batch.BatchHeader)
 		if err != nil {
-			log.Error("Failed to get batch header", "error", err)
+			log.Error("Failed to decode batch header", "error", err)
 			return
 		}
 		parentBatchHeader := &bridgeTypes.BatchHeader{}
