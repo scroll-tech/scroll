@@ -129,38 +129,25 @@ func (w *L2WatcherClient) initializeGenesis() error {
 		}},
 	}
 
-	chunkHash, err := chunk.Hash(0)
-	if err != nil {
-		return fmt.Errorf("failed to get L2 genesis chunk hash: %v", err)
-	}
-
-	batch, err := bridgeTypes.NewBatchHeader(0, 0, 0, common.Hash{}, []*bridgeTypes.Chunk{chunk})
-	if err != nil {
-		return fmt.Errorf("failed to get L2 genesis batch header: %v", err)
-	}
-	batchHash := batch.Hash().Hex()
-
 	err = w.db.Transaction(func(dbTX *gorm.DB) error {
-		if _, err = w.batchOrm.InsertBatch(w.ctx, 0, 0, chunkHash.Hex(), chunkHash.Hex(), []*bridgeTypes.Chunk{chunk}); err != nil {
+		var dbChunk *orm.Chunk
+		dbChunk, err = w.chunkOrm.InsertChunk(w.ctx, chunk, dbTX)
+		if err != nil {
+			return fmt.Errorf("failed to insert chunk: %v", err)
+		}
+
+		if err = w.chunkOrm.UpdateProvingStatus(w.ctx, dbChunk.Hash, types.ProvingTaskVerified, dbTX); err != nil {
+			return fmt.Errorf("failed to update genesis chunk proving status: %v", err)
+		}
+
+		var batchHash string
+		batchHash, err = w.batchOrm.InsertBatch(w.ctx, 0, 0, dbChunk.Hash, dbChunk.Hash, []*bridgeTypes.Chunk{chunk}, dbTX)
+		if err != nil {
 			return fmt.Errorf("failed to insert batch: %v", err)
 		}
 
 		if err = w.chunkOrm.UpdateBatchHashInRange(w.ctx, 0, 0, batchHash, dbTX); err != nil {
 			return fmt.Errorf("failed to update batch hash for L2 blocks: %v", err)
-		}
-
-		if _, err = w.chunkOrm.InsertChunk(w.ctx, chunk); err != nil {
-			return fmt.Errorf("failed to insert chunk: %v", err)
-		}
-
-		if err = w.l2BlockOrm.UpdateChunkHashInRange(w.ctx, 0, 0, chunkHash.Hex(), dbTX); err != nil {
-			log.Error("failed to update chunk_hash for l2_blocks",
-				"chunk_hash", chunkHash, "start block", 0, "end block", 0, "err", err)
-			return err
-		}
-
-		if err = w.chunkOrm.UpdateProvingStatus(w.ctx, chunkHash.Hex(), types.ProvingTaskVerified, dbTX); err != nil {
-			return fmt.Errorf("failed to update genesis chunk proving status: %v", err)
 		}
 
 		if err = w.batchOrm.UpdateProvingStatus(w.ctx, batchHash, types.ProvingTaskVerified, dbTX); err != nil {
