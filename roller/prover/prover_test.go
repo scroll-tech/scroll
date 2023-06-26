@@ -16,7 +16,6 @@ import (
 	"scroll-tech/roller/prover"
 )
 
-// These files should be in docker:/assets/...
 const (
 	paramsPath    = "/assets/test_params"
 	seedPath      = "/assets/test_seed"
