@@ -6,11 +6,12 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"scroll-tech/common/types"
+
 	"scroll-tech/bridge/internal/config"
 	"scroll-tech/bridge/internal/orm"
 	bridgeTypes "scroll-tech/bridge/internal/types"
 	"scroll-tech/bridge/internal/utils"
-	"scroll-tech/common/types"
 )
 
 func testBatchProposer(t *testing.T) {

@@ -108,9 +108,6 @@ func (o *Batch) GetVerifiedProofByHash(ctx context.Context, hash string) (*messa
 	var batch Batch
 	err := o.db.WithContext(ctx).Where("hash = ? AND proving_status = ?", hash, types.ProvingTaskVerified).First(&batch).Error
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, nil
-		}
 		return nil, err
 	}
 
@@ -126,11 +123,8 @@ func (o *Batch) GetVerifiedProofByHash(ctx context.Context, hash string) (*messa
 // GetLatestBatch retrieves the latest batch from the database.
 func (o *Batch) GetLatestBatch(ctx context.Context) (*Batch, error) {
 	var latestBatch Batch
-	err := o.db.WithContext(ctx).Order("index DESC").First(&latestBatch).Error
+	err := o.db.WithContext(ctx).Order("index desc").First(&latestBatch).Error
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, nil
-		}
 		return nil, err
 	}
 	return &latestBatch, nil
@@ -201,9 +195,6 @@ func (o *Batch) GetBatchHeader(ctx context.Context, index uint64) (*bridgeTypes.
 	var batch Batch
 	err := o.db.WithContext(ctx).Where("index = ?", index).First(&batch).Error
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, nil
-		}
 		return nil, err
 	}
 	batchHeader, err := bridgeTypes.DecodeBatchHeader(batch.BatchHeader)
