@@ -190,18 +190,14 @@ func (o *Batch) GetPendingBatches(ctx context.Context, limit int) ([]*Batch, err
 	return batches, nil
 }
 
-// GetBatchHeader retrieves the header of a batch with the given index.
-func (o *Batch) GetBatchHeader(ctx context.Context, index uint64) (*bridgeTypes.BatchHeader, error) {
+// GetBatchByIndex retrieves the batch by the given index.
+func (o *Batch) GetBatchByIndex(ctx context.Context, index uint64) (*Batch, error) {
 	var batch Batch
 	err := o.db.WithContext(ctx).Where("index = ?", index).First(&batch).Error
 	if err != nil {
 		return nil, err
 	}
-	batchHeader, err := bridgeTypes.DecodeBatchHeader(batch.BatchHeader)
-	if err != nil {
-		return nil, err
-	}
-	return batchHeader, nil
+	return &batch, nil
 }
 
 // InsertBatch inserts a new batch into the database.

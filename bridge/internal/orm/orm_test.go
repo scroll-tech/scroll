@@ -191,7 +191,9 @@ func TestBatchOrm(t *testing.T) {
 	hash1, err := batchOrm.InsertBatch(context.Background(), 0, 0, chunkHash1.Hex(), chunkHash1.Hex(), []*bridgeTypes.Chunk{chunk1})
 	assert.NoError(t, err)
 
-	batchHeader1, err := batchOrm.GetBatchHeader(context.Background(), 0)
+	batch1, err := batchOrm.GetBatchByIndex(context.Background(), 0)
+	assert.NoError(t, err)
+	batchHeader1, err := bridgeTypes.DecodeBatchHeader(batch1.BatchHeader)
 	assert.NoError(t, err)
 	batchHash1 := batchHeader1.Hash().Hex()
 	assert.Equal(t, hash1, batchHash1)
@@ -199,7 +201,9 @@ func TestBatchOrm(t *testing.T) {
 	hash2, err := batchOrm.InsertBatch(context.Background(), 1, 1, chunkHash2.Hex(), chunkHash2.Hex(), []*bridgeTypes.Chunk{chunk2})
 	assert.NoError(t, err)
 
-	batchHeader2, err := batchOrm.GetBatchHeader(context.Background(), 1)
+	batch2, err := batchOrm.GetBatchByIndex(context.Background(), 1)
+	assert.NoError(t, err)
+	batchHeader2, err := bridgeTypes.DecodeBatchHeader(batch2.BatchHeader)
 	assert.NoError(t, err)
 	batchHash2 := batchHeader2.Hash().Hex()
 	assert.Equal(t, hash2, batchHash2)

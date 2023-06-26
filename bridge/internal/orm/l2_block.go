@@ -83,15 +83,6 @@ func (o *L2Block) GetUnchunkedBlocks(ctx context.Context) ([]*types.WrappedBlock
 	return wrappedBlocks, nil
 }
 
-// GetBatchByIndex retrieves a batch from the database by its index
-func (o *Batch) GetBatchByIndex(ctx context.Context, index uint64) (*Batch, error) {
-	var batch Batch
-	if err := o.db.WithContext(ctx).Where("index = ?", index).First(&batch).Error; err != nil {
-		return nil, err
-	}
-	return &batch, nil
-}
-
 // GetL2Blocks retrieves selected L2Blocks from the database
 func (o *L2Block) GetL2Blocks(ctx context.Context, fields map[string]interface{}, orderByList []string, limit int) ([]*L2Block, error) {
 	db := o.db.WithContext(ctx)

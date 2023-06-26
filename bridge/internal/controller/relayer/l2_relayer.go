@@ -205,9 +205,9 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 			log.Error("Failed to decode batch header", "error", err)
 			return
 		}
-		parentBatchHeader := &bridgeTypes.BatchHeader{}
+		parentBatch := &orm.Batch{}
 		if batch.Index > 0 {
-			parentBatchHeader, err = r.batchOrm.GetBatchHeader(r.ctx, batch.Index-1)
+			parentBatch, err = r.batchOrm.GetBatchByIndex(r.ctx, batch.Index-1)
 			if err != nil {
 				log.Error("Failed to get parent batch header", "error", err)
 				return
@@ -243,7 +243,7 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 			encodedChunks[i] = chunkBytes
 		}
 
-		calldata, err := r.l1RollupABI.Pack("commitBatch", currentBatchHeader.Version(), parentBatchHeader.Encode(), encodedChunks, currentBatchHeader.SkippedL1MessageBitmap())
+		calldata, err := r.l1RollupABI.Pack("commitBatch", currentBatchHeader.Version(), parentBatch.BatchHeader, encodedChunks, currentBatchHeader.SkippedL1MessageBitmap())
 		if err != nil {
 			log.Error("Failed to pack commitBatch", "batch_index", batch.Index, "error", err)
 			return
@@ -349,15 +349,9 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 			return
 		}
 
-		batchHeader, err := r.batchOrm.GetBatchHeader(r.ctx, batch.Index)
-		if err != nil {
-			log.Error("get batch header failed", "index", batch.Index, "err", err)
-			return
-		}
-
 		data, err := r.l1RollupABI.Pack(
 			"finalizeBatchWithProof",
-			batchHeader.Encode(),
+			batch.BatchHeader,
 			common.HexToHash(parentBatchStateRoot),
 			common.HexToHash(batch.StateRoot),
 			common.HexToHash(batch.WithdrawRoot),
