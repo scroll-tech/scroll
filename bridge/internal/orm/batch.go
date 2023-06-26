@@ -84,6 +84,8 @@ func (o *Batch) GetBatches(ctx context.Context, fields map[string]interface{}, o
 		db = db.Limit(limit)
 	}
 
+	db = db.Order("index ASC")
+
 	var batches []*Batch
 	if err := db.Find(&batches).Error; err != nil {
 		return nil, err
