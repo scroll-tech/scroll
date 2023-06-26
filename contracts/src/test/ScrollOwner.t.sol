@@ -85,13 +85,13 @@ contract ScrollOwnerTest is DSTestPlus {
         owner.governaceExecute(address(this), 0, abi.encodeWithSelector(ScrollOwnerTest.revertOnCall.selector));
         hevm.stopPrank();
 
-        owner.grantRole(owner.GOVERNACE_ROLE(), address(this));
+        owner.grantRole(owner.GOVERNANCE_ROLE(), address(this));
 
         // no access, revert
         hevm.expectRevert("no access");
         owner.governaceExecute(address(this), 0, abi.encodeWithSelector(ScrollOwnerTest.revertOnCall.selector));
 
-        owner.updateAccess(address(this), _selectors, owner.GOVERNACE_ROLE(), true);
+        owner.updateAccess(address(this), _selectors, owner.GOVERNANCE_ROLE(), true);
 
         // call with revert
         hevm.expectRevert("Called");

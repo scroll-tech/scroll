@@ -15,7 +15,7 @@ contract ScrollOwner is AccessControlEnumerable {
      *************/
 
     /// @notice The role for governance.
-    bytes32 public constant GOVERNACE_ROLE = keccak256("Governance");
+    bytes32 public constant GOVERNANCE_ROLE = keccak256("Governance");
 
     /// @notice The role for owner.
     bytes32 public constant OWNER_ROLE = keccak256("Owner");
@@ -89,7 +89,7 @@ contract ScrollOwner is AccessControlEnumerable {
         uint256 _value,
         bytes calldata _data
     ) external payable {
-        execute(_target, _value, _data, GOVERNACE_ROLE);
+        execute(_target, _value, _data, GOVERNANCE_ROLE);
     }
 
     /// @notice Perform a function call from arbitrary role.
@@ -106,7 +106,7 @@ contract ScrollOwner is AccessControlEnumerable {
         _execute(_target, _value, _data);
     }
 
-    // allow others to send ether to messenger
+    // allow others to send ether to this contract.
     receive() external payable {}
 
     /************************
