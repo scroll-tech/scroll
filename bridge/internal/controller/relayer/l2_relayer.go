@@ -205,7 +205,7 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 			log.Error("Failed to decode batch header", "error", err)
 			return
 		}
-		var parentBatchHeader *bridgeTypes.BatchHeader
+		parentBatchHeader := &bridgeTypes.BatchHeader{}
 		if batch.Index > 0 {
 			parentBatchHeader, err = r.batchOrm.GetBatchHeader(r.ctx, batch.Index-1)
 			if err != nil {
