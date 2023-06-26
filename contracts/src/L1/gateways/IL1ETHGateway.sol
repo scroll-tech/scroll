@@ -21,9 +21,9 @@ interface IL1ETHGateway {
     /// @param data The optional calldata passed to recipient in L2.
     event DepositETH(address indexed from, address indexed to, uint256 amount, bytes data);
 
-    /// @notice Emitted when some ETH is refuned.
+    /// @notice Emitted when some ETH is refunded.
     /// @param recipient The address of receiver in L1.
-    /// @param amount The amount of ETH refuned to receiver.
+    /// @param amount The amount of ETH refunded to receiver.
     event RefundETH(address indexed recipient, uint256 amount);
 
     /*****************************

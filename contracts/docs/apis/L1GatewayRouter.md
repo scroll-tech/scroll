@@ -478,7 +478,7 @@ event OwnershipTransferred(address indexed previousOwner, address indexed newOwn
 event RefundERC20(address indexed token, address indexed recipient, uint256 amount)
 ```
 
-Emitted when some ERC20 token is refuned.
+Emitted when some ERC20 token is refunded.
 
 
 
@@ -496,7 +496,7 @@ Emitted when some ERC20 token is refuned.
 event RefundETH(address indexed recipient, uint256 amount)
 ```
 
-Emitted when some ETH is refuned.
+Emitted when some ETH is refunded.
 
 
 

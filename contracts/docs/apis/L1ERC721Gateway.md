@@ -423,7 +423,7 @@ event OwnershipTransferred(address indexed previousOwner, address indexed newOwn
 event RefundERC721(address indexed token, address indexed recipient, uint256 tokenId)
 ```
 
-Emitted when some ERC721 token is refuned.
+Emitted when some ERC721 token is refunded.
 
 
 
