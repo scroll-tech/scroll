@@ -81,11 +81,11 @@ func (w *WrappedBlock) EstimateL1CommitCalldataSize() uint64 {
 	return size
 }
 
-// ApproximateL1CommitGas calculates the calldata gas in l1 commit approximately.
+// EstimateL1CommitGas calculates the calldata gas in l1 commit approximately.
 // TODO: This will need to be adjusted.
 // The part added here is only the calldata cost,
 // but we have execution cost for verifying blocks / chunks / batches and storing the batch hash.
-func (w *WrappedBlock) ApproximateL1CommitGas() uint64 {
+func (w *WrappedBlock) EstimateL1CommitGas() uint64 {
 	var total uint64
 	for _, txData := range w.Transactions {
 		if txData.Type == L1MessageTxType {
@@ -127,8 +127,8 @@ func (w *WrappedBlock) ApproximateL1CommitGas() uint64 {
 	return total
 }
 
-// GetL2TxsNum calculates the number of l2 txs.
-func (w *WrappedBlock) GetL2TxsNum() uint64 {
+// L2TxsNum calculates the number of l2 txs.
+func (w *WrappedBlock) L2TxsNum() uint64 {
 	var count uint64
 	for _, txData := range w.Transactions {
 		if txData.Type != L1MessageTxType {
