@@ -216,7 +216,7 @@ func (o *Batch) InsertBatch(ctx context.Context, startChunkIndex, endChunkIndex 
 	}
 
 	lastBatch, err := o.GetLatestBatch(ctx)
-	if err != nil {
+	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 		log.Error("failed to get the latest batch", "err", err)
 		return "", err
 	}
