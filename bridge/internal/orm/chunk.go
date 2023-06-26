@@ -140,9 +140,9 @@ func (o *Chunk) InsertChunk(ctx context.Context, chunk *bridgeTypes.Chunk, dbTX 
 	var totalL1CommitGas uint64
 	for _, block := range chunk.Blocks {
 		totalL2TxGas += block.Header.GasUsed
-		totalL2TxNum += block.GetL2TxsNum()
+		totalL2TxNum += block.L2TxsNum()
 		totalL1CommitCalldataSize += block.EstimateL1CommitCalldataSize()
-		totalL1CommitGas += block.ApproximateL1CommitGas()
+		totalL1CommitGas += block.EstimateL1CommitGas()
 	}
 
 	numBlocks := len(chunk.Blocks)

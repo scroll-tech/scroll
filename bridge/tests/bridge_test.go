@@ -139,6 +139,9 @@ func TestFunction(t *testing.T) {
 	// l1 message
 	t.Run("TestRelayL1MessageSucceed", testRelayL1MessageSucceed)
 
+	// l2 message
+	// TODO: add a "user relay l2msg Succeed" test
+
 	// l1/l2 gas oracle
 	t.Run("TestImportL1GasPrice", testImportL1GasPrice)
 	t.Run("TestImportL2GasPrice", testImportL2GasPrice)
