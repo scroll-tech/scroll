@@ -41,7 +41,7 @@ func (b *rollupBatchOrm) BatchInsertRollupBatchDBTx(dbTx *sqlx.Tx, batches []*Ro
 			"end_block_number":   msg.EndBlockNumber,
 		}
 		var exists bool
-		err = dbTx.QueryRow(`SELECT EXISTS(SELECT 1 FROM bridge_batch WHERE batch_index = $1 AND NOT is_deleted)`, msg.BatchIndex).Scan(&exists)
+		err = dbTx.QueryRow(`SELECT EXISTS(SELECT 1 FROM rollup_batch WHERE batch_index = $1 AND NOT is_deleted)`, msg.BatchIndex).Scan(&exists)
 		if err != nil {
 			return err
 		}
@@ -49,7 +49,7 @@ func (b *rollupBatchOrm) BatchInsertRollupBatchDBTx(dbTx *sqlx.Tx, batches []*Ro
 			return fmt.Errorf("BatchInsertRollupBatchDBTx: batch index %v already exists at height %v", msg.BatchIndex, msg.CommitHeight)
 		}
 	}
-	_, err = dbTx.NamedExec(`insert into bridge_batch(commit_height, batch_index, batch_hash, start_block_number, end_block_number) values(:commit_height, :batch_index, :batch_hash, :start_block_number, :end_block_number);`, messageMaps)
+	_, err = dbTx.NamedExec(`insert into rollup_batch(commit_height, batch_index, batch_hash, start_block_number, end_block_number) values(:commit_height, :batch_index, :batch_hash, :start_block_number, :end_block_number);`, messageMaps)
 	if err != nil {
 		log.Error("BatchInsertRollupBatchDBTx: failed to insert batch event msgs", "err", err)
 		return err
@@ -59,7 +59,7 @@ func (b *rollupBatchOrm) BatchInsertRollupBatchDBTx(dbTx *sqlx.Tx, batches []*Ro
 
 func (b *rollupBatchOrm) GetLatestRollupBatch() (*RollupBatch, error) {
 	result := &RollupBatch{}
-	row := b.db.QueryRowx(`SELECT id, batch_index, commit_height, batch_hash, start_block_number, end_block_number FROM bridge_batch ORDER BY batch_index DESC LIMIT 1;`)
+	row := b.db.QueryRowx(`SELECT id, batch_index, commit_height, batch_hash, start_block_number, end_block_number FROM rollup_batch ORDER BY batch_index DESC LIMIT 1;`)
 	if err := row.StructScan(result); err != nil {
 		if err == sql.ErrNoRows {
 			return nil, nil
@@ -71,7 +71,7 @@ func (b *rollupBatchOrm) GetLatestRollupBatch() (*RollupBatch, error) {
 
 func (b *rollupBatchOrm) GetRollupBatchByIndex(index uint64) (*RollupBatch, error) {
 	result := &RollupBatch{}
-	row := b.db.QueryRowx(`SELECT id, batch_index, batch_hash, commit_height, start_block_number, end_block_number FROM bridge_batch WHERE batch_index = $1;`, index)
+	row := b.db.QueryRowx(`SELECT id, batch_index, batch_hash, commit_height, start_block_number, end_block_number FROM rollup_batch WHERE batch_index = $1;`, index)
 	if err := row.StructScan(result); err != nil {
 		return nil, err
 	}
