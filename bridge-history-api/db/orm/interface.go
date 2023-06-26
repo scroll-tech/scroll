@@ -116,8 +116,8 @@ type L2SentMsgOrm interface {
 	DeleteL2SentMsgAfterHeightDBTx(dbTx *sqlx.Tx, height int64) error
 }
 
-type BridgeBatchOrm interface {
-	GetLatestBridgeBatch() (*RollupBatch, error)
-	GetBridgeBatchByIndex(index uint64) (*RollupBatch, error)
+type RollupBatchOrm interface {
+	GetLatestRollupBatch() (*RollupBatch, error)
+	GetRollupBatchByIndex(index uint64) (*RollupBatch, error)
 	BatchInsertRollupBatchDBTx(dbTx *sqlx.Tx, messages []*RollupBatch) error
 }

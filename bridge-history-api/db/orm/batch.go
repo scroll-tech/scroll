@@ -8,7 +8,7 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
-type bridgeBatchOrm struct {
+type rollupBatchOrm struct {
 	db *sqlx.DB
 }
 
@@ -21,12 +21,12 @@ type RollupBatch struct {
 	EndBlockNumber   uint64 `json:"end_block_number" db:"end_block_number"`
 }
 
-// NewBridgeBatchOrm create an NewBridgeBatchOrm instance
-func NewBridgeBatchOrm(db *sqlx.DB) BridgeBatchOrm {
-	return &bridgeBatchOrm{db: db}
+// NewRollupBatchOrm create an NewRollupBatchOrm instance
+func NewRollupBatchOrm(db *sqlx.DB) RollupBatchOrm {
+	return &rollupBatchOrm{db: db}
 }
 
-func (b *bridgeBatchOrm) BatchInsertRollupBatchDBTx(dbTx *sqlx.Tx, batches []*RollupBatch) error {
+func (b *rollupBatchOrm) BatchInsertRollupBatchDBTx(dbTx *sqlx.Tx, batches []*RollupBatch) error {
 	if len(batches) == 0 {
 		return nil
 	}
@@ -57,7 +57,7 @@ func (b *bridgeBatchOrm) BatchInsertRollupBatchDBTx(dbTx *sqlx.Tx, batches []*Ro
 	return nil
 }
 
-func (b *bridgeBatchOrm) GetLatestBridgeBatch() (*RollupBatch, error) {
+func (b *rollupBatchOrm) GetLatestRollupBatch() (*RollupBatch, error) {
 	result := &RollupBatch{}
 	row := b.db.QueryRowx(`SELECT id, batch_index, commit_height, batch_hash, start_block_number, end_block_number FROM bridge_batch ORDER BY batch_index DESC LIMIT 1;`)
 	if err := row.StructScan(result); err != nil {
@@ -69,7 +69,7 @@ func (b *bridgeBatchOrm) GetLatestBridgeBatch() (*RollupBatch, error) {
 	return result, nil
 }
 
-func (b *bridgeBatchOrm) GetBridgeBatchByIndex(index uint64) (*RollupBatch, error) {
+func (b *rollupBatchOrm) GetRollupBatchByIndex(index uint64) (*RollupBatch, error) {
 	result := &RollupBatch{}
 	row := b.db.QueryRowx(`SELECT id, batch_index, batch_hash, commit_height, start_block_number, end_block_number FROM bridge_batch WHERE batch_index = $1;`, index)
 	if err := row.StructScan(result); err != nil {

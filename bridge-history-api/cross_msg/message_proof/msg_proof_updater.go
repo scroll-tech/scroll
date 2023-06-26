@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/log"
 
 	"bridge-history-api/db"
@@ -21,7 +20,7 @@ type MsgProofUpdater struct {
 	withdrawTrie *WithdrawTrie
 }
 
-func NewMsgProofUpdater(ctx context.Context, client *ethclient.Client, confirmations uint64, startBlock uint64, db db.OrmFactory) *MsgProofUpdater {
+func NewMsgProofUpdater(ctx context.Context, confirmations uint64, startBlock uint64, db db.OrmFactory) *MsgProofUpdater {
 	return &MsgProofUpdater{
 		ctx:          ctx,
 		db:           db,
@@ -40,7 +39,7 @@ func (m *MsgProofUpdater) Start() {
 				tick.Stop()
 				return
 			case <-tick.C:
-				latestBatch, err := m.db.GetLatestBridgeBatch()
+				latestBatch, err := m.db.GetLatestRollupBatch()
 				if err != nil {
 					log.Warn("MsgProofUpdater: Can not get latest RollupBatch: ", "err", err)
 					continue
@@ -60,7 +59,7 @@ func (m *MsgProofUpdater) Start() {
 					start = uint64(latestBatchIndexWithProof) + 1
 				}
 				for i := start; i <= latestBatch.BatchIndex; i++ {
-					batch, err := m.db.GetBridgeBatchByIndex(i)
+					batch, err := m.db.GetRollupBatchByIndex(i)
 					if err != nil {
 						log.Error("MsgProofUpdater: Can not get RollupBatch: ", "err", err, "index", i)
 						break
@@ -120,7 +119,7 @@ func (m *MsgProofUpdater) initializeWithdrawTrie() error {
 	}
 
 	// if no batch, return and wait for next try round
-	batch, err = m.db.GetLatestBridgeBatch()
+	batch, err = m.db.GetLatestRollupBatch()
 	if err != nil {
 		return fmt.Errorf("failed to get latest batch: %v", err)
 	}
@@ -156,7 +155,7 @@ func (m *MsgProofUpdater) initializeWithdrawTrie() error {
 		// iterate for next batch
 		batchIndex--
 
-		batch, err = m.db.GetBridgeBatchByIndex(batchIndex)
+		batch, err = m.db.GetRollupBatchByIndex(batchIndex)
 		if err != nil {
 			return fmt.Errorf("failed to get block batch %v: %v", batchIndex, err)
 		}

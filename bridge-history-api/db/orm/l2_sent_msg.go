@@ -31,7 +31,7 @@ type l2SentMsgOrm struct {
 	db *sqlx.DB
 }
 
-// NewL2SentMsgOrm create an NewBridgeBatchOrm instance
+// NewL2SentMsgOrm create an NewRollupBatchOrm instance
 func NewL2SentMsgOrm(db *sqlx.DB) L2SentMsgOrm {
 	return &l2SentMsgOrm{db: db}
 }

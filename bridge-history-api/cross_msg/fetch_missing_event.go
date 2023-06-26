@@ -216,7 +216,7 @@ func FetchAndSaveBatchIndex(ctx context.Context, client *ethclient.Client, datab
 		log.Warn("Failed to get batch commit event logs", "err", err)
 		return err
 	}
-	bridgeBatches, err := utils.ParseBatchInfoFromScrollChain(ctx, client, logs)
+	rollupBatches, err := utils.ParseBatchInfoFromScrollChain(ctx, client, logs)
 	if err != nil {
 		log.Error("FetchAndSaveBatchIndex: Failed to parse batch commit msg event logs", "err", err)
 		return err
@@ -226,7 +226,7 @@ func FetchAndSaveBatchIndex(ctx context.Context, client *ethclient.Client, datab
 		log.Error("FetchAndSaveBatchIndex: Failed to begin db transaction", "err", err)
 		return err
 	}
-	err = database.BatchInsertRollupBatchDBTx(dbTx, bridgeBatches)
+	err = database.BatchInsertRollupBatchDBTx(dbTx, rollupBatches)
 	if err != nil {
 		dbTx.Rollback()
 		log.Crit("FetchAndSaveBatchIndex: Failed to insert batch commit msg event logs", "err", err)

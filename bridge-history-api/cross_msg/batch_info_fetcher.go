@@ -76,7 +76,7 @@ func (b *BatchInfoFetcher) fetchBatchInfo() error {
 		log.Error("Can not get latest block number: ", "err", err)
 		return err
 	}
-	latestBatch, err := b.db.GetLatestBridgeBatch()
+	latestBatch, err := b.db.GetLatestRollupBatch()
 	if err != nil {
 		log.Error("Can not get latest BatchInfo: ", "err", err)
 		return err
