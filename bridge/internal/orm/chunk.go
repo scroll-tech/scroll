@@ -159,7 +159,7 @@ func (o *Chunk) InsertChunk(ctx context.Context, chunk *bridgeTypes.Chunk, dbTX 
 		StartBlockTime:               chunk.Blocks[0].Header.Time,
 		TotalL1MessagesPoppedBefore:  totalL1MessagePoppedBefore,
 		TotalL1MessagesPoppedInChunk: chunk.NumL1Messages(totalL1MessagePoppedBefore),
-		ProvingStatus:                1, // ProvingTaskUnassigned
+		ProvingStatus:                int16(types.ProvingTaskUnassigned),
 	}
 
 	if err := db.Create(&newChunk).Error; err != nil {
