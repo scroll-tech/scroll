@@ -261,6 +261,8 @@ func (o *Batch) InsertBatch(ctx context.Context, startChunkIndex, endChunkIndex 
 		StateRoot:       chunks[numChunks-1].Blocks[lastChunkBlockNum-1].Header.Root.Hex(),
 		WithdrawRoot:    chunks[numChunks-1].Blocks[lastChunkBlockNum-1].WithdrawTrieRoot.Hex(),
 		BatchHeader:     batchHeader.Encode(),
+		ProvingStatus:   1, // ProvingTaskUnassigned
+		RollupStatus:    1, // RollupPending
 	}
 
 	if err := db.WithContext(ctx).Create(&newBatch).Error; err != nil {
