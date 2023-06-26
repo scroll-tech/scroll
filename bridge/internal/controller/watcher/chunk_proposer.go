@@ -52,6 +52,7 @@ func (p *ChunkProposer) TryProposeChunk() {
 		log.Error("propose new chunk failed", "err", err)
 		return
 	}
+
 	if proposedChunk == nil {
 		log.Warn("proposed chunk is nil, cannot update in DB")
 		return

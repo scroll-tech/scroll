@@ -102,7 +102,7 @@ func (c *Chunk) Hash(totalL1MessagePoppedBefore uint64) (common.Hash, error) {
 	// concatenate block contexts
 	var dataBytes []byte
 	for i := 0; i < int(numBlocks); i++ {
-		// only first 58 bytes is needed
+		// only the first 58 bytes of each BlockContext are needed for the hashing process
 		dataBytes = append(dataBytes, chunkBytes[1+60*i:60*i+59]...)
 	}
 
