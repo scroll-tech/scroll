@@ -65,7 +65,10 @@ func (c *Chunk) Encode(totalL1MessagePoppedBefore uint64) ([]byte, error) {
 			if txData.Type == L1MessageTxType {
 				continue
 			}
-			data, _ := hexutil.Decode(txData.Data)
+			data, err := hexutil.Decode(txData.Data)
+			if err != nil {
+				return nil, err
+			}
 			// right now we only support legacy tx
 			tx := types.NewTx(&types.LegacyTx{
 				Nonce:    txData.Nonce,
@@ -78,7 +81,10 @@ func (c *Chunk) Encode(totalL1MessagePoppedBefore uint64) ([]byte, error) {
 				R:        txData.R.ToInt(),
 				S:        txData.S.ToInt(),
 			})
-			rlpTxData, _ := tx.MarshalBinary()
+			rlpTxData, err := tx.MarshalBinary()
+			if err != nil {
+				return nil, err
+			}
 			var txLen [4]byte
 			binary.BigEndian.PutUint32(txLen[:], uint32(len(rlpTxData)))
 			l2TxDataBytes = append(l2TxDataBytes, txLen[:]...)
@@ -94,7 +100,7 @@ func (c *Chunk) Encode(totalL1MessagePoppedBefore uint64) ([]byte, error) {
 // Hash hashes the Chunk into RollupV2 Chunk Hash
 func (c *Chunk) Hash(totalL1MessagePoppedBefore uint64) (common.Hash, error) {
 	chunkBytes, err := c.Encode(totalL1MessagePoppedBefore)
-	if err != nil {
+	if err != nil || len(chunkBytes) == 0 {
 		return common.Hash{}, err
 	}
 	numBlocks := chunkBytes[0]
