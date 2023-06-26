@@ -100,7 +100,7 @@ func (c *Chunk) Encode(totalL1MessagePoppedBefore uint64) ([]byte, error) {
 // Hash hashes the Chunk into RollupV2 Chunk Hash
 func (c *Chunk) Hash(totalL1MessagePoppedBefore uint64) (common.Hash, error) {
 	chunkBytes, err := c.Encode(totalL1MessagePoppedBefore)
-	if err != nil || len(chunkBytes) == 0 {
+	if err != nil {
 		return common.Hash{}, err
 	}
 	numBlocks := chunkBytes[0]
