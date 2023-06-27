@@ -147,7 +147,7 @@ func (w *L2WatcherClient) initializeGenesis() error {
 		}
 
 		if err = w.chunkOrm.UpdateBatchHashInRange(w.ctx, 0, 0, batchHash, dbTX); err != nil {
-			return fmt.Errorf("failed to update batch hash for L2 blocks: %v", err)
+			return fmt.Errorf("failed to update batch hash for chunks: %v", err)
 		}
 
 		if err = w.batchOrm.UpdateProvingStatus(w.ctx, batchHash, types.ProvingTaskVerified, dbTX); err != nil {

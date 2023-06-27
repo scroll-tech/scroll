@@ -96,11 +96,10 @@ func (o *Chunk) GetUnbatchedChunks(ctx context.Context) ([]*Chunk, error) {
 // GetLatestChunk retrieves the latest chunk from the database.
 func (o *Chunk) GetLatestChunk(ctx context.Context) (*Chunk, error) {
 	var latestChunk Chunk
-	err := o.db.WithContext(ctx).Order("index DESC").First(&latestChunk).Error
+	err := o.db.WithContext(ctx).
+		Order("index desc").
+		First(&latestChunk).Error
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, nil
-		}
 		return nil, err
 	}
 	return &latestChunk, nil
@@ -120,11 +119,11 @@ func (o *Chunk) InsertChunk(ctx context.Context, chunk *bridgeTypes.Chunk, dbTX 
 	var chunkIndex uint64
 	var totalL1MessagePoppedBefore uint64
 	parentChunk, err := o.GetLatestChunk(ctx)
-	if err != nil {
+	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 		log.Error("failed to get latest chunk", "err", err)
 		return nil, err
 	}
-	if parentChunk != nil {
+	if !errors.Is(err, gorm.ErrRecordNotFound) {
 		chunkIndex = parentChunk.Index + 1
 		totalL1MessagePoppedBefore = parentChunk.TotalL1MessagesPoppedBefore + parentChunk.TotalL1MessagesPoppedInChunk
 	}
@@ -160,7 +159,7 @@ func (o *Chunk) InsertChunk(ctx context.Context, chunk *bridgeTypes.Chunk, dbTX 
 		StartBlockTime:               chunk.Blocks[0].Header.Time,
 		TotalL1MessagesPoppedBefore:  totalL1MessagePoppedBefore,
 		TotalL1MessagesPoppedInChunk: chunk.NumL1Messages(totalL1MessagePoppedBefore),
-		ProvingStatus:                1, // ProvingTaskUnassigned
+		ProvingStatus:                int16(types.ProvingTaskUnassigned),
 	}
 
 	if err := db.Create(&newChunk).Error; err != nil {

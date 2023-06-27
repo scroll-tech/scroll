@@ -84,6 +84,8 @@ func (o *Batch) GetBatches(ctx context.Context, fields map[string]interface{}, o
 		db = db.Limit(limit)
 	}
 
+	db = db.Order("index ASC")
+
 	var batches []*Batch
 	if err := db.Find(&batches).Error; err != nil {
 		return nil, err
@@ -106,9 +108,6 @@ func (o *Batch) GetVerifiedProofByHash(ctx context.Context, hash string) (*messa
 	var batch Batch
 	err := o.db.WithContext(ctx).Where("hash = ? AND proving_status = ?", hash, types.ProvingTaskVerified).First(&batch).Error
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, nil
-		}
 		return nil, err
 	}
 
@@ -124,11 +123,8 @@ func (o *Batch) GetVerifiedProofByHash(ctx context.Context, hash string) (*messa
 // GetLatestBatch retrieves the latest batch from the database.
 func (o *Batch) GetLatestBatch(ctx context.Context) (*Batch, error) {
 	var latestBatch Batch
-	err := o.db.WithContext(ctx).Order("index DESC").First(&latestBatch).Error
+	err := o.db.WithContext(ctx).Order("index desc").First(&latestBatch).Error
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, nil
-		}
 		return nil, err
 	}
 	return &latestBatch, nil
@@ -194,21 +190,14 @@ func (o *Batch) GetPendingBatches(ctx context.Context, limit int) ([]*Batch, err
 	return batches, nil
 }
 
-// GetBatchHeader retrieves the header of a batch with the given index.
-func (o *Batch) GetBatchHeader(ctx context.Context, index uint64) (*bridgeTypes.BatchHeader, error) {
+// GetBatchByIndex retrieves the batch by the given index.
+func (o *Batch) GetBatchByIndex(ctx context.Context, index uint64) (*Batch, error) {
 	var batch Batch
 	err := o.db.WithContext(ctx).Where("index = ?", index).First(&batch).Error
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, nil
-		}
 		return nil, err
 	}
-	batchHeader, err := bridgeTypes.DecodeBatchHeader(batch.BatchHeader)
-	if err != nil {
-		return nil, err
-	}
-	return batchHeader, nil
+	return &batch, nil
 }
 
 // InsertBatch inserts a new batch into the database.
@@ -223,7 +212,7 @@ func (o *Batch) InsertBatch(ctx context.Context, startChunkIndex, endChunkIndex 
 	}
 
 	lastBatch, err := o.GetLatestBatch(ctx)
-	if err != nil {
+	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 		log.Error("failed to get the latest batch", "err", err)
 		return "", err
 	}
@@ -261,8 +250,8 @@ func (o *Batch) InsertBatch(ctx context.Context, startChunkIndex, endChunkIndex 
 		StateRoot:       chunks[numChunks-1].Blocks[lastChunkBlockNum-1].Header.Root.Hex(),
 		WithdrawRoot:    chunks[numChunks-1].Blocks[lastChunkBlockNum-1].WithdrawTrieRoot.Hex(),
 		BatchHeader:     batchHeader.Encode(),
-		ProvingStatus:   1, // ProvingTaskUnassigned
-		RollupStatus:    1, // RollupPending
+		ProvingStatus:   int16(types.ProvingTaskUnassigned),
+		RollupStatus:    int16(types.RollupPending),
 	}
 
 	if err := db.WithContext(ctx).Create(&newBatch).Error; err != nil {

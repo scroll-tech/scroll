@@ -6,6 +6,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"scroll-tech/common/types"
+
 	"scroll-tech/bridge/internal/config"
 	"scroll-tech/bridge/internal/orm"
 	bridgeTypes "scroll-tech/bridge/internal/types"
@@ -45,8 +47,25 @@ func testBatchProposer(t *testing.T) {
 	assert.Empty(t, chunks)
 
 	batchOrm := orm.NewBatch(db)
-	batch, err := batchOrm.GetLatestBatch(context.Background())
+	// get all batches.
+	batches, err := batchOrm.GetBatches(context.Background(), map[string]interface{}{}, []string{}, 0)
 	assert.NoError(t, err)
-	assert.Equal(t, uint64(0), batch.StartChunkIndex)
-	assert.Equal(t, uint64(0), batch.EndChunkIndex)
+	assert.Len(t, batches, 1)
+	assert.Equal(t, uint64(0), batches[0].StartChunkIndex)
+	assert.Equal(t, uint64(0), batches[0].EndChunkIndex)
+	assert.Equal(t, types.RollupPending, types.RollupStatus(batches[0].RollupStatus))
+	assert.Equal(t, types.ProvingTaskUnassigned, types.ProvingStatus(batches[0].ProvingStatus))
+
+	dbChunks, err := chunkOrm.GetChunksInRange(context.Background(), 0, 0)
+	assert.NoError(t, err)
+	assert.Len(t, batches, 1)
+	assert.Equal(t, batches[0].Hash, dbChunks[0].BatchHash)
+	assert.Equal(t, types.ProvingTaskUnassigned, types.ProvingStatus(dbChunks[0].ProvingStatus))
+
+	blockOrm := orm.NewL2Block(db)
+	blocks, err := blockOrm.GetL2Blocks(context.Background(), map[string]interface{}{}, []string{}, 0)
+	assert.NoError(t, err)
+	assert.Len(t, blocks, 2)
+	assert.Equal(t, dbChunks[0].Hash, blocks[0].ChunkHash)
+	assert.Equal(t, dbChunks[0].Hash, blocks[1].ChunkHash)
 }
