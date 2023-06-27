@@ -120,14 +120,12 @@ func (o *Chunk) InsertChunk(ctx context.Context, chunk *bridgeTypes.Chunk, dbTX 
 	var chunkIndex uint64
 	var totalL1MessagePoppedBefore uint64
 	parentChunk, err := o.GetLatestChunk(ctx)
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			log.Info("no chunk in db. inserting genesis chunk")
-		} else {
-			log.Error("failed to get latest chunk", "err", err)
-			return nil, err
-		}
-	} else {
+	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+		log.Error("failed to get latest chunk", "err", err)
+		return nil, err
+	}
+
+	if parentChunk != nil { // err == gorm.ErrRecordNotFound
 		chunkIndex = parentChunk.Index + 1
 		totalL1MessagePoppedBefore = parentChunk.TotalL1MessagesPoppedBefore + parentChunk.TotalL1MessagesPoppedInChunk
 	}

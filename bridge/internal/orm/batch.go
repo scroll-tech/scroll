@@ -200,11 +200,9 @@ func (o *Batch) InsertBatch(ctx context.Context, startChunkIndex, endChunkIndex 
 	}
 
 	lastBatch, err := o.GetLatestBatch(ctx)
-	if err != nil {
-		if !errors.Is(err, gorm.ErrRecordNotFound) {
-			log.Error("failed to get the latest batch", "err", err)
-			return "", err
-		}
+	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+		log.Error("failed to get the latest batch", "err", err)
+		return "", err
 	}
 
 	var batchIndex uint64
@@ -212,7 +210,7 @@ func (o *Batch) InsertBatch(ctx context.Context, startChunkIndex, endChunkIndex 
 	var totalL1MessagePoppedBefore uint64
 	var version uint8 = defaultBatchHeaderVersion
 
-	if lastBatch != nil {
+	if lastBatch != nil { // err == gorm.ErrRecordNotFound
 		batchIndex = lastBatch.Index + 1
 		parentBatchHash = common.HexToHash(lastBatch.Hash)
 

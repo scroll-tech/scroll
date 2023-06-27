@@ -21,7 +21,7 @@ contract MockBridgeL1 {
     address indexed sender,
     address indexed target,
     uint256 value,
-    uint256 queueIndex,
+    uint64 queueIndex,
     uint256 gasLimit,
     bytes data
   );
@@ -104,7 +104,7 @@ contract MockBridgeL1 {
     bytes memory _xDomainCalldata = _encodeXDomainCalldata(msg.sender, target, value, messageNonce, message);
     {
       address _sender = applyL1ToL2Alias(address(this));
-      emit QueueTransaction(_sender, target, 0, messageNonce, gasLimit, _xDomainCalldata);
+      emit QueueTransaction(_sender, target, 0, uint64(messageNonce), gasLimit, _xDomainCalldata);
     }
 
     emit SentMessage(msg.sender, target, value, messageNonce, gasLimit, message);

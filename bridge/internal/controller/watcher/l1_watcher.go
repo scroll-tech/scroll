@@ -317,7 +317,7 @@ func (w *L1WatcherClient) parseBridgeEventLogs(logs []gethTypes.Log) ([]*orm.L1M
 			msgHash := common.BytesToHash(crypto.Keccak256(event.Data))
 
 			l1Messages = append(l1Messages, &orm.L1Message{
-				QueueIndex: event.QueueIndex.Uint64(),
+				QueueIndex: event.QueueIndex,
 				MsgHash:    msgHash.String(),
 				Height:     vLog.BlockNumber,
 				Sender:     event.Sender.String(),

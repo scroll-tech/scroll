@@ -313,7 +313,7 @@ func testParseBridgeEventLogsL1QueueTransactionEventSignature(t *testing.T) {
 	convey.Convey("L1QueueTransactionEventSignature success", t, func() {
 		patchGuard := gomonkey.ApplyFunc(utils.UnpackLog, func(c *abi.ABI, out interface{}, event string, log types.Log) error {
 			tmpOut := out.(*bridgeAbi.L1QueueTransactionEvent)
-			tmpOut.QueueIndex = big.NewInt(100)
+			tmpOut.QueueIndex = 100
 			tmpOut.Data = []byte("test data")
 			tmpOut.Sender = common.HexToAddress("0xb4c11951957c6f8f642c4af61cd6b24640fec6dc7fc607ee8206a99e92410d30")
 			tmpOut.Value = big.NewInt(1000)
