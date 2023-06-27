@@ -87,23 +87,26 @@ func GetBatchRangeFromCalldataV2(calldata []byte) (uint64, uint64, uint64, error
 	var finishBlock uint64
 
 	// decode batchIndex from ParentBatchHeader
+	if len(args.ParentBatchHeader) < 9 {
+		return 0, 0, 0, errors.New("invalid parent batch header")
+	}
 	batchIndex := binary.BigEndian.Uint64(args.ParentBatchHeader[1:9]) + 1
 
-	// decode blocks from chunk
+	// decode blocks from chunk and assume that there's no empty chunk
 	// |   1 byte   | 60 bytes | ... | 60 bytes |
 	// | num blocks |  block 1 | ... |  block n |
-	for i := 0; i < len(args.Chunks); i++ {
-		numBlock := int(args.Chunks[i][0])
-		for j := 0; j < numBlock; j++ {
-			block := args.Chunks[i][1+j*60 : 61+j*60]
-			// first 8 bytes are blockNumber
-			blockNumber := binary.BigEndian.Uint64(block[0:8])
-			if startBlock == 0 {
-				startBlock = blockNumber
-			}
-			finishBlock = blockNumber
-		}
+	if len(args.Chunks) == 0 {
+		return 0, 0, 0, errors.New("invalid chunks")
 	}
+	chunk := args.Chunks[0]
+	block := chunk[1:61] // first block in chunk
+	startBlock = binary.BigEndian.Uint64(block[0:8])
+
+	chunk = args.Chunks[len(args.Chunks)-1]
+	lastBlockIndex := int(chunk[0]) - 1
+	block = chunk[1+lastBlockIndex*60 : 1+lastBlockIndex*60+60] // last block in chunk
+	finishBlock = binary.BigEndian.Uint64(block[0:8])
+
 	return batchIndex, startBlock, finishBlock, err
 }
 
