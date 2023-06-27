@@ -32,21 +32,21 @@ func (b *rollupBatchOrm) BatchInsertRollupBatchDBTx(dbTx *sqlx.Tx, batches []*Ro
 	}
 	var err error
 	batchMaps := make([]map[string]interface{}, len(batches))
-	for i, batchMsg := range batches {
+	for i, batch := range batches {
 		batchMaps[i] = map[string]interface{}{
-			"commit_height":      batchMsg.CommitHeight,
-			"batch_index":        batchMsg.BatchIndex,
-			"batch_hash":         batchMsg.BatchHash,
-			"start_block_number": batchMsg.StartBlockNumber,
-			"end_block_number":   batchMsg.EndBlockNumber,
+			"commit_height":      batch.CommitHeight,
+			"batch_index":        batch.BatchIndex,
+			"batch_hash":         batch.BatchHash,
+			"start_block_number": batch.StartBlockNumber,
+			"end_block_number":   batch.EndBlockNumber,
 		}
 		var exists bool
-		err = dbTx.QueryRow(`SELECT EXISTS(SELECT 1 FROM rollup_batch WHERE batch_index = $1 AND NOT is_deleted)`, batchMsg.BatchIndex).Scan(&exists)
+		err = dbTx.QueryRow(`SELECT EXISTS(SELECT 1 FROM rollup_batch WHERE batch_index = $1 AND NOT is_deleted)`, batch.BatchIndex).Scan(&exists)
 		if err != nil {
 			return err
 		}
 		if exists {
-			return fmt.Errorf("BatchInsertRollupBatchDBTx: batch index %v already exists at height %v", batchMsg.BatchIndex, batchMsg.CommitHeight)
+			return fmt.Errorf("BatchInsertRollupBatchDBTx: batch index %v already exists at height %v", batch.BatchIndex, batch.CommitHeight)
 		}
 	}
 	_, err = dbTx.NamedExec(`insert into rollup_batch(commit_height, batch_index, batch_hash, start_block_number, end_block_number) values(:commit_height, :batch_index, :batch_hash, :start_block_number, :end_block_number);`, batchMaps)
