@@ -105,7 +105,7 @@ contract L1ERC1155Gateway is OwnableUpgradeable, ERC1155HolderUpgradeable, Scrol
         address _to,
         uint256 _tokenId,
         uint256 _amount
-    ) external override onlyCallByCounterpart nonReentrant {
+    ) external virtual onlyCallByCounterpart nonReentrant {
         require(_l2Token != address(0), "token address cannot be 0");
         require(_l2Token == tokenMapping[_l1Token], "l2 token mismatch");
 
@@ -122,7 +122,7 @@ contract L1ERC1155Gateway is OwnableUpgradeable, ERC1155HolderUpgradeable, Scrol
         address _to,
         uint256[] calldata _tokenIds,
         uint256[] calldata _amounts
-    ) external override onlyCallByCounterpart nonReentrant {
+    ) external virtual onlyCallByCounterpart nonReentrant {
         require(_l2Token != address(0), "token address cannot be 0");
         require(_l2Token == tokenMapping[_l1Token], "l2 token mismatch");
 
