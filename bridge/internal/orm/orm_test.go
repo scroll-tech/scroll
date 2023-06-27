@@ -239,9 +239,9 @@ func TestBatchOrm(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, uint64(0), count)
 
-	latestBatch, err := batchOrm.GetLatestBatchByRollupStatus([]types.RollupStatus{types.RollupFinalizationSkipped})
+	batch, err := batchOrm.GetBatchByIndex(context.Background(), 1)
 	assert.NoError(t, err)
-	assert.Equal(t, uint64(1), latestBatch.Index)
+	assert.Equal(t, types.RollupFinalizationSkipped, types.RollupStatus(batch.RollupStatus))
 
 	err = batchOrm.UpdateProvingStatus(context.Background(), batchHash2, types.ProvingTaskVerified)
 	assert.NoError(t, err)

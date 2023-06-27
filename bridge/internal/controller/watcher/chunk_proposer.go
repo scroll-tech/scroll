@@ -53,17 +53,17 @@ func (p *ChunkProposer) TryProposeChunk() {
 		return
 	}
 
-	if proposedChunk == nil {
-		log.Warn("proposed chunk is nil, cannot update in DB")
-		return
-	}
-
 	if err := p.updateChunkInfoInDB(proposedChunk); err != nil {
 		log.Error("update chunk info in orm failed", "err", err)
 	}
 }
 
 func (p *ChunkProposer) updateChunkInfoInDB(chunk *bridgeTypes.Chunk) error {
+	if chunk == nil {
+		log.Warn("proposed chunk is nil, cannot update in DB")
+		return nil
+	}
+
 	err := p.db.Transaction(func(dbTX *gorm.DB) error {
 		dbChunk, err := p.chunkOrm.InsertChunk(p.ctx, chunk, dbTX)
 		if err != nil {

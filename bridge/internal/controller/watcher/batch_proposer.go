@@ -49,7 +49,7 @@ func NewBatchProposer(ctx context.Context, cfg *config.BatchProposerConfig, db *
 func (p *BatchProposer) TryProposeBatch() {
 	dbChunks, err := p.proposeBatchChunks()
 	if err != nil {
-		log.Error("proposeBatch failed", "err", err)
+		log.Error("proposeBatchChunks failed", "err", err)
 		return
 	}
 	if err := p.updateBatchInfoInDB(dbChunks); err != nil {
@@ -160,7 +160,8 @@ func (p *BatchProposer) dbChunksToBridgeChunks(dbChunks []*orm.Chunk) ([]*bridge
 	for i, c := range dbChunks {
 		wrappedBlocks, err := p.l2Block.GetL2BlocksInRange(p.ctx, c.StartBlockNumber, c.EndBlockNumber)
 		if err != nil {
-			log.Error("Failed to fetch wrapped blocks", "error", err)
+			log.Error("Failed to fetch wrapped blocks",
+				"start number", c.StartBlockNumber, "end number", c.EndBlockNumber, "error", err)
 			return nil, err
 		}
 		chunks[i] = &bridgeTypes.Chunk{

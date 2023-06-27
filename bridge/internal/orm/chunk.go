@@ -60,6 +60,7 @@ func (*Chunk) TableName() string {
 
 // GetChunksInRange retrieves chunks within a given range (inclusive) from the database.
 // The range is closed, i.e., it includes both start and end indices.
+// The returned chunks are sorted in ascending order by their index.
 func (o *Chunk) GetChunksInRange(ctx context.Context, startIndex uint64, endIndex uint64) ([]*Chunk, error) {
 	if startIndex > endIndex {
 		return nil, errors.New("start index should be less than or equal to end index")
@@ -210,7 +211,6 @@ func (o *Chunk) UpdateBatchHashInRange(ctx context.Context, startIndex uint64, e
 	db = db.Model(&Chunk{}).Where("index >= ? AND index <= ?", startIndex, endIndex)
 
 	if err := db.Update("batch_hash", batchHash).Error; err != nil {
-		log.Error("failed to update batch_hash for chunks", "err", err)
 		return err
 	}
 	return nil

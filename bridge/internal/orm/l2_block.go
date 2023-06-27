@@ -14,8 +14,7 @@ import (
 	"scroll-tech/bridge/internal/types"
 )
 
-// L2Block is structure of stored l2 block message
-// L2Block represents a row in the "l2_block" table.
+// L2Block represents a l2 block in the database.
 type L2Block struct {
 	db *gorm.DB `gorm:"column:-"`
 
@@ -53,7 +52,8 @@ func (o *L2Block) GetL2BlocksLatestHeight(ctx context.Context) (int64, error) {
 	return maxNumber, nil
 }
 
-// GetUnchunkedBlocks get the l2 blocks that have not been put into a chunk
+// GetUnchunkedBlocks get the l2 blocks that have not been put into a chunk.
+// The returned blocks are sorted in ascending order by their block number.
 func (o *L2Block) GetUnchunkedBlocks(ctx context.Context) ([]*types.WrappedBlock, error) {
 	var l2Blocks []L2Block
 	if err := o.db.WithContext(ctx).Select("header, transactions, withdraw_trie_root").
@@ -83,7 +83,8 @@ func (o *L2Block) GetUnchunkedBlocks(ctx context.Context) ([]*types.WrappedBlock
 	return wrappedBlocks, nil
 }
 
-// GetL2Blocks retrieves selected L2Blocks from the database
+// GetL2Blocks retrieves selected L2Blocks from the database.
+// The returned L2Blocks are sorted in ascending order by their block number.
 func (o *L2Block) GetL2Blocks(ctx context.Context, fields map[string]interface{}, orderByList []string, limit int) ([]*L2Block, error) {
 	db := o.db.WithContext(ctx)
 
@@ -110,6 +111,7 @@ func (o *L2Block) GetL2Blocks(ctx context.Context, fields map[string]interface{}
 
 // GetL2BlocksInRange retrieves the L2 blocks within the specified range (inclusive).
 // The range is closed, i.e., it includes both start and end block numbers.
+// The returned blocks are sorted in ascending order by their block number.
 func (o *L2Block) GetL2BlocksInRange(ctx context.Context, startBlockNumber uint64, endBlockNumber uint64) ([]*types.WrappedBlock, error) {
 	if startBlockNumber > endBlockNumber {
 		return nil, errors.New("start block number should be less than or equal to end block number")

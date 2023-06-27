@@ -68,7 +68,8 @@ func (*Batch) TableName() string {
 	return "batch"
 }
 
-// GetBatches retrieves selected batches from the database
+// GetBatches retrieves selected batches from the database.
+// The returned batches are sorted in ascending order by their index.
 func (o *Batch) GetBatches(ctx context.Context, fields map[string]interface{}, orderByList []string, limit int) ([]*Batch, error) {
 	db := o.db.WithContext(ctx)
 
@@ -130,20 +131,6 @@ func (o *Batch) GetLatestBatch(ctx context.Context) (*Batch, error) {
 	return &latestBatch, nil
 }
 
-// GetLatestBatchByRollupStatus retrieves the latest batch with a specific rollup status.
-func (o *Batch) GetLatestBatchByRollupStatus(statuses []types.RollupStatus) (*Batch, error) {
-	var batch Batch
-	interfaceStatuses := make([]interface{}, len(statuses))
-	for i, v := range statuses {
-		interfaceStatuses[i] = v
-	}
-	err := o.db.Where("rollup_status IN ?", interfaceStatuses).Order("index desc").First(&batch).Error
-	if err != nil {
-		return nil, err
-	}
-	return &batch, nil
-}
-
 // GetRollupStatusByHashList retrieves the rollup statuses for a list of batch hashes.
 func (o *Batch) GetRollupStatusByHashList(ctx context.Context, hashes []string) ([]types.RollupStatus, error) {
 	if len(hashes) == 0 {
@@ -174,6 +161,7 @@ func (o *Batch) GetRollupStatusByHashList(ctx context.Context, hashes []string) 
 }
 
 // GetPendingBatches retrieves pending batches up to the specified limit.
+// The returned batches are sorted in ascending order by their index.
 func (o *Batch) GetPendingBatches(ctx context.Context, limit int) ([]*Batch, error) {
 	if limit <= 0 {
 		return nil, errors.New("limit must be greater than zero")
@@ -217,7 +205,6 @@ func (o *Batch) InsertBatch(ctx context.Context, startChunkIndex, endChunkIndex 
 			log.Error("failed to get the latest batch", "err", err)
 			return "", err
 		}
-		log.Info("no batch in db. use default empty value for genesis batch")
 	}
 
 	var batchIndex uint64
@@ -232,7 +219,7 @@ func (o *Batch) InsertBatch(ctx context.Context, startChunkIndex, endChunkIndex 
 		var lastBatchHeader *bridgeTypes.BatchHeader
 		lastBatchHeader, err = bridgeTypes.DecodeBatchHeader(lastBatch.BatchHeader)
 		if err != nil {
-			log.Error("failed to decode batch header", "err", err)
+			log.Error("failed to decode parent batch header", "index", lastBatch.Index, "hash", lastBatch.Hash, "err", err)
 			return "", err
 		}
 
@@ -242,7 +229,9 @@ func (o *Batch) InsertBatch(ctx context.Context, startChunkIndex, endChunkIndex 
 
 	batchHeader, err := bridgeTypes.NewBatchHeader(version, batchIndex, totalL1MessagePoppedBefore, parentBatchHash, chunks)
 	if err != nil {
-		log.Error("failed to create batch header", "err", err)
+		log.Error("failed to create batch header",
+			"index", batchIndex, "total l1 message popped before", totalL1MessagePoppedBefore,
+			"parent hash", parentBatchHash, "number of chunks", len(chunks), "err", err)
 		return "", err
 	}
 
@@ -264,7 +253,7 @@ func (o *Batch) InsertBatch(ctx context.Context, startChunkIndex, endChunkIndex 
 	}
 
 	if err := db.WithContext(ctx).Create(&newBatch).Error; err != nil {
-		log.Error("failed to insert batch", "err", err)
+		log.Error("failed to insert batch", "batch", newBatch, "err", err)
 		return "", err
 	}
 
@@ -384,8 +373,5 @@ func (o *Batch) UpdateProofByHash(ctx context.Context, hash string, proof *messa
 	updateFields["proof"] = proofBytes
 	updateFields["proof_time_sec"] = proofTimeSec
 	err = o.db.WithContext(ctx).Model(&Batch{}).Where("hash", hash).Updates(updateFields).Error
-	if err != nil {
-		log.Error("failed to update proof", "err", err)
-	}
 	return err
 }

@@ -192,7 +192,7 @@ func (r *Layer2Relayer) ProcessGasPriceOracle() {
 
 // ProcessPendingBatches processes the pending batches by sending commitBatch transactions to layer 1.
 func (r *Layer2Relayer) ProcessPendingBatches() {
-	// get pending batch from database
+	// get pending batches from database in ascending order by their index.
 	pendingBatches, err := r.batchOrm.GetPendingBatches(r.ctx, 10)
 	if err != nil {
 		log.Error("Failed to fetch pending L2 batches", "err", err)
@@ -202,14 +202,14 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 		// get current header and parent header.
 		currentBatchHeader, err := bridgeTypes.DecodeBatchHeader(batch.BatchHeader)
 		if err != nil {
-			log.Error("Failed to decode batch header", "error", err)
+			log.Error("Failed to decode batch header", "index", batch.Index, "error", err)
 			return
 		}
 		parentBatch := &orm.Batch{}
 		if batch.Index > 0 {
 			parentBatch, err = r.batchOrm.GetBatchByIndex(r.ctx, batch.Index-1)
 			if err != nil {
-				log.Error("Failed to get parent batch header", "error", err)
+				log.Error("Failed to get parent batch header", "index", batch.Index-1, "error", err)
 				return
 			}
 		}
@@ -219,7 +219,9 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 		endChunkIndex := batch.EndChunkIndex
 		dbChunks, err := r.chunkOrm.GetChunksInRange(r.ctx, startChunkIndex, endChunkIndex)
 		if err != nil {
-			log.Error("Failed to fetch chunks", "error", err)
+			log.Error("Failed to fetch chunks",
+				"start index", startChunkIndex,
+				"end index", endChunkIndex, "error", err)
 			return
 		}
 
@@ -228,7 +230,9 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 			var wrappedBlocks []*bridgeTypes.WrappedBlock
 			wrappedBlocks, err = r.l2BlockOrm.GetL2BlocksInRange(r.ctx, c.StartBlockNumber, c.EndBlockNumber)
 			if err != nil {
-				log.Error("Failed to fetch wrapped blocks", "error", err)
+				log.Error("Failed to fetch wrapped blocks",
+					"start number", c.StartBlockNumber,
+					"end number", c.EndBlockNumber, "error", err)
 				return
 			}
 			chunk := &bridgeTypes.Chunk{
@@ -245,7 +249,7 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 
 		calldata, err := r.l1RollupABI.Pack("commitBatch", currentBatchHeader.Version(), parentBatch.BatchHeader, encodedChunks, currentBatchHeader.SkippedL1MessageBitmap())
 		if err != nil {
-			log.Error("Failed to pack commitBatch", "batch_index", batch.Index, "error", err)
+			log.Error("Failed to pack commitBatch", "index", batch.Index, "error", err)
 			return
 		}
 
@@ -266,7 +270,7 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 		}
 		bridgeL2BatchesCommittedTotalCounter.Inc(1)
 		r.processingCommitment.Store(txID, batch.Hash)
-		log.Info("Sent the commitBatch tx to layer1", "tx_hash", txHash.Hex(), "batch_index", batch.Index)
+		log.Info("Sent the commitBatch tx to layer1", "batch index", batch.Index, "batch hash", batch.Hash, "tx hash", txHash.Hex())
 	}
 }
 
@@ -281,6 +285,7 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 		log.Info("Skipping batches", "count", count)
 	}
 
+	// retrieves the earliest batch whose rollup status is 'committed'
 	fields := map[string]interface{}{
 		"rollup_status": types.RollupCommitted,
 	}
@@ -291,8 +296,8 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 		log.Error("Failed to fetch committed L2 batches", "err", err)
 		return
 	}
-	if len(batches) == 0 {
-		log.Warn("Unexpected result for GetBlockBatches", "len", 0)
+	if len(batches) != 1 {
+		log.Warn("Unexpected result for GetBlockBatches", "number of batches", len(batches))
 		return
 	}
 
@@ -368,17 +373,20 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 		finalizeTxHash := &txHash
 		if err != nil {
 			if !errors.Is(err, sender.ErrNoAvailableAccount) && !errors.Is(err, sender.ErrFullPending) {
-				log.Error("finalizeBatchWithProof in layer1 failed", "hash", hash, "err", err)
+				log.Error("finalizeBatchWithProof in layer1 failed",
+					"index", batch.Index, "hash", batch.Hash, "err", err)
 			}
 			return
 		}
 		bridgeL2BatchesFinalizedTotalCounter.Inc(1)
-		log.Info("finalizeBatchWithProof in layer1", "batch_hash", hash, "tx_hash", hash)
+		log.Info("finalizeBatchWithProof in layer1", "index", batch.Index, "batch hash", batch.Hash, "tx hash", hash)
 
 		// record and sync with db, @todo handle db error
 		err = r.batchOrm.UpdateFinalizeTxHashAndRollupStatus(r.ctx, hash, finalizeTxHash.String(), types.RollupFinalizing)
 		if err != nil {
-			log.Warn("UpdateFinalizeTxHashAndRollupStatus failed", "batch_hash", hash, "err", err)
+			log.Warn("UpdateFinalizeTxHashAndRollupStatus failed",
+				"index", batch.Index, "batch hash", batch.Hash,
+				"tx hash", finalizeTxHash.String(), "err", err)
 		}
 		success = true
 		r.processingFinalization.Store(txID, hash)
@@ -406,7 +414,9 @@ func (r *Layer2Relayer) handleConfirmation(confirmation *sender.Confirmation) {
 		// @todo handle db error
 		err := r.batchOrm.UpdateCommitTxHashAndRollupStatus(r.ctx, batchHash.(string), confirmation.TxHash.String(), status)
 		if err != nil {
-			log.Warn("UpdateCommitTxHashAndRollupStatus failed", "batch_hash", batchHash, "err", err)
+			log.Warn("UpdateCommitTxHashAndRollupStatus failed",
+				"batch hash", batchHash.(string),
+				"tx hash", confirmation.TxHash.String(), "err", err)
 		}
 		bridgeL2BatchesCommittedConfirmedTotalCounter.Inc(1)
 		r.processingCommitment.Delete(confirmation.ID)
@@ -426,7 +436,9 @@ func (r *Layer2Relayer) handleConfirmation(confirmation *sender.Confirmation) {
 		// @todo handle db error
 		err := r.batchOrm.UpdateFinalizeTxHashAndRollupStatus(r.ctx, batchHash.(string), confirmation.TxHash.String(), status)
 		if err != nil {
-			log.Warn("UpdateFinalizeTxHashAndRollupStatus failed", "batch_hash", batchHash.(string), "err", err)
+			log.Warn("UpdateFinalizeTxHashAndRollupStatus failed",
+				"batch hash", batchHash.(string),
+				"tx hash", confirmation.TxHash.String(), "err", err)
 		}
 		bridgeL2BatchesFinalizedConfirmedTotalCounter.Inc(1)
 		r.processingFinalization.Delete(confirmation.ID)
