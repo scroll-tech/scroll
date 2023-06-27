@@ -27,13 +27,13 @@ func TestFFI(t *testing.T) {
 	as := assert.New(t)
 	cfg := &config.VerifierConfig{
 		MockMode:   false,
-		ParamsPath: paramsPath,
-		AggVkPath:  aggVkPath,
+		ParamsPath: *paramsPath,
+		AggVkPath:  *aggVkPath,
 	}
 	v, err := verifier.NewVerifier(cfg)
 	as.NoError(err)
 
-	f, err := os.Open(proofPath)
+	f, err := os.Open(*proofPath)
 	as.NoError(err)
 	byt, err := io.ReadAll(f)
 	as.NoError(err)

@@ -27,13 +27,13 @@ var (
 func TestFFI(t *testing.T) {
 	as := assert.New(t)
 	cfg := &config.ProverConfig{
-		ParamsPath: paramsPath,
-		SeedPath:   seedPath,
+		ParamsPath: *paramsPath,
+		SeedPath:   *seedPath,
 	}
 	prover, err := prover.NewProver(cfg)
 	as.NoError(err)
 
-	files, err := os.ReadDir(tracesPath)
+	files, err := os.ReadDir(*tracesPath)
 	as.NoError(err)
 
 	traces := make([]*types.BlockTrace, 0)
@@ -42,7 +42,7 @@ func TestFFI(t *testing.T) {
 			f   *os.File
 			byt []byte
 		)
-		f, err = os.Open(filepath.Join(tracesPath, file.Name()))
+		f, err = os.Open(filepath.Join(*tracesPath, file.Name()))
 		as.NoError(err)
 		byt, err = io.ReadAll(f)
 		as.NoError(err)
@@ -55,10 +55,10 @@ func TestFFI(t *testing.T) {
 	t.Log("prove success")
 
 	// dump the proof
-	os.RemoveAll(proofDumpPath)
+	os.RemoveAll(*proofDumpPath)
 	proofByt, err := json.Marshal(proof)
 	as.NoError(err)
-	proofFile, err := os.Create(proofDumpPath)
+	proofFile, err := os.Create(*proofDumpPath)
 	as.NoError(err)
 	_, err = proofFile.Write(proofByt)
 	as.NoError(err)
