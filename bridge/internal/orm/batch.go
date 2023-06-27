@@ -212,24 +212,30 @@ func (o *Batch) InsertBatch(ctx context.Context, startChunkIndex, endChunkIndex 
 	}
 
 	lastBatch, err := o.GetLatestBatch(ctx)
-	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
-		log.Error("failed to get the latest batch", "err", err)
-		return "", err
+	if err != nil {
+		if !errors.Is(err, gorm.ErrRecordNotFound) {
+			log.Error("failed to get the latest batch", "err", err)
+			return "", err
+		}
+		log.Info("no batch in db. use default empty value for genesis batch")
 	}
+
 	var batchIndex uint64
 	var parentBatchHash common.Hash
 	var totalL1MessagePoppedBefore uint64
 	var version uint8 = defaultBatchHeaderVersion
-	if lastBatch == nil { // err is gorm.ErrRecordNotFound
-		log.Info("no batch in db. use default empty value for genesis batch")
-	} else {
+
+	if lastBatch != nil {
 		batchIndex = lastBatch.Index + 1
 		parentBatchHash = common.HexToHash(lastBatch.Hash)
+
 		var lastBatchHeader *bridgeTypes.BatchHeader
 		lastBatchHeader, err = bridgeTypes.DecodeBatchHeader(lastBatch.BatchHeader)
 		if err != nil {
+			log.Error("failed to decode batch header", "err", err)
 			return "", err
 		}
+
 		totalL1MessagePoppedBefore = lastBatchHeader.TotalL1MessagePopped()
 		version = lastBatchHeader.Version()
 	}
@@ -242,6 +248,7 @@ func (o *Batch) InsertBatch(ctx context.Context, startChunkIndex, endChunkIndex 
 
 	numChunks := len(chunks)
 	lastChunkBlockNum := len(chunks[numChunks-1].Blocks)
+
 	newBatch := Batch{
 		Index:           batchIndex,
 		Hash:            batchHeader.Hash().Hex(),
@@ -260,6 +267,7 @@ func (o *Batch) InsertBatch(ctx context.Context, startChunkIndex, endChunkIndex 
 		log.Error("failed to insert batch", "err", err)
 		return "", err
 	}
+
 	return newBatch.Hash, nil
 }
 

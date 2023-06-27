@@ -119,15 +119,18 @@ func (o *Chunk) InsertChunk(ctx context.Context, chunk *bridgeTypes.Chunk, dbTX 
 	var chunkIndex uint64
 	var totalL1MessagePoppedBefore uint64
 	parentChunk, err := o.GetLatestChunk(ctx)
-	if err == nil {
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			log.Info("no chunk in db. inserting genesis chunk")
+		} else {
+			log.Error("failed to get latest chunk", "err", err)
+			return nil, err
+		}
+	} else {
 		chunkIndex = parentChunk.Index + 1
 		totalL1MessagePoppedBefore = parentChunk.TotalL1MessagesPoppedBefore + parentChunk.TotalL1MessagesPoppedInChunk
-	} else if errors.Is(err, gorm.ErrRecordNotFound) {
-		log.Info("no chunk in db. inserting genesis chunk")
-	} else {
-		log.Error("failed to get latest chunk", "err", err)
-		return nil, err
 	}
+
 	hash, err := chunk.Hash(totalL1MessagePoppedBefore)
 	if err != nil {
 		log.Error("failed to get chunk hash", "err", err)
@@ -167,6 +170,7 @@ func (o *Chunk) InsertChunk(ctx context.Context, chunk *bridgeTypes.Chunk, dbTX 
 		log.Error("failed to insert chunk", "hash", hash, "err", err)
 		return nil, err
 	}
+
 	return &newChunk, nil
 }
 
