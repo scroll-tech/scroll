@@ -31,25 +31,25 @@ func (b *rollupBatchOrm) BatchInsertRollupBatchDBTx(dbTx *sqlx.Tx, batches []*Ro
 		return nil
 	}
 	var err error
-	messageMaps := make([]map[string]interface{}, len(batches))
-	for i, msg := range batches {
-		messageMaps[i] = map[string]interface{}{
-			"commit_height":      msg.CommitHeight,
-			"batch_index":        msg.BatchIndex,
-			"batch_hash":         msg.BatchHash,
-			"start_block_number": msg.StartBlockNumber,
-			"end_block_number":   msg.EndBlockNumber,
+	batchMaps := make([]map[string]interface{}, len(batches))
+	for i, batchMsg := range batches {
+		batchMaps[i] = map[string]interface{}{
+			"commit_height":      batchMsg.CommitHeight,
+			"batch_index":        batchMsg.BatchIndex,
+			"batch_hash":         batchMsg.BatchHash,
+			"start_block_number": batchMsg.StartBlockNumber,
+			"end_block_number":   batchMsg.EndBlockNumber,
 		}
 		var exists bool
-		err = dbTx.QueryRow(`SELECT EXISTS(SELECT 1 FROM rollup_batch WHERE batch_index = $1 AND NOT is_deleted)`, msg.BatchIndex).Scan(&exists)
+		err = dbTx.QueryRow(`SELECT EXISTS(SELECT 1 FROM rollup_batch WHERE batch_index = $1 AND NOT is_deleted)`, batchMsg.BatchIndex).Scan(&exists)
 		if err != nil {
 			return err
 		}
 		if exists {
-			return fmt.Errorf("BatchInsertRollupBatchDBTx: batch index %v already exists at height %v", msg.BatchIndex, msg.CommitHeight)
+			return fmt.Errorf("BatchInsertRollupBatchDBTx: batch index %v already exists at height %v", batchMsg.BatchIndex, batchMsg.CommitHeight)
 		}
 	}
-	_, err = dbTx.NamedExec(`insert into rollup_batch(commit_height, batch_index, batch_hash, start_block_number, end_block_number) values(:commit_height, :batch_index, :batch_hash, :start_block_number, :end_block_number);`, messageMaps)
+	_, err = dbTx.NamedExec(`insert into rollup_batch(commit_height, batch_index, batch_hash, start_block_number, end_block_number) values(:commit_height, :batch_index, :batch_hash, :start_block_number, :end_block_number);`, batchMaps)
 	if err != nil {
 		log.Error("BatchInsertRollupBatchDBTx: failed to insert batch event msgs", "err", err)
 		return err
