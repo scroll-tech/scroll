@@ -4,6 +4,7 @@ package prover_test
 
 import (
 	"encoding/json"
+	"flag"
 	"io"
 	"os"
 	"path/filepath"
@@ -16,11 +17,11 @@ import (
 	"scroll-tech/roller/prover"
 )
 
-const (
-	paramsPath    = "/assets/test_params"
-	seedPath      = "/assets/test_seed"
-	tracesPath    = "/assets/traces"
-	proofDumpPath = "/assets/agg_proof"
+var (
+	paramsPath    = flag.String("params", "/assets/test_params", "params dir")
+	seedPath      = flag.String("seed", "/assets/test_seed", "seed path")
+	tracesPath    = flag.String("traces", "/assets/traces", "traces dir")
+	proofDumpPath = flag.String("dump", "/assets/agg_proof", "the path proof dumps")
 )
 
 func TestFFI(t *testing.T) {

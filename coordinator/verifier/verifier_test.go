@@ -4,6 +4,7 @@ package verifier_test
 
 import (
 	"encoding/json"
+	"flag"
 	"io"
 	"os"
 	"testing"
@@ -16,10 +17,10 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-const (
-	paramsPath = "/assets/test_params"
-	aggVkPath  = "/assets/agg_vk"
-	proofPath  = "/assets/agg_proof"
+var (
+	paramsPath = flag.String("params", "/assets/test_params", "params dir")
+	aggVkPath  = flag.String("vk", "/assets/agg_vk", "aggregator verify key")
+	proofPath  = flag.String("proof", "/assets/agg_proof", "aggregator proof")
 )
 
 func TestFFI(t *testing.T) {
