@@ -15,12 +15,12 @@ lint: ## The code's format and security checks.
 
 update: ## update dependencies
 	go work sync
-	cd $(PWD)/bridge/ && go get -u github.com/scroll-tech/go-ethereum@scroll-v3.1.12 && go mod tidy
+	cd $(PWD)/bridge/ && go get -u github.com/scroll-tech/go-ethereum@scroll-v4.1.0 && go mod tidy
 	cd $(PWD)/bridge-history-api/ && go get -u github.com/ethereum/go-ethereum@latest && go mod tidy
-	cd $(PWD)/common/ && go get -u github.com/scroll-tech/go-ethereum@scroll-v3.1.12 && go mod tidy
-	cd $(PWD)/coordinator/ && go get -u github.com/scroll-tech/go-ethereum@scroll-v3.1.12 && go mod tidy
-	cd $(PWD)/database/ && go get -u github.com/scroll-tech/go-ethereum@scroll-v3.1.12 && go mod tidy
-	cd $(PWD)/roller/ && go get -u github.com/scroll-tech/go-ethereum@scroll-v3.1.12 && go mod tidy
+	cd $(PWD)/common/ && go get -u github.com/scroll-tech/go-ethereum@scroll-v4.1.0 && go mod tidy
+	cd $(PWD)/coordinator/ && go get -u github.com/scroll-tech/go-ethereum@scroll-v4.1.0 && go mod tidy
+	cd $(PWD)/database/ && go get -u github.com/scroll-tech/go-ethereum@scroll-v4.1.0 && go mod tidy
+	cd $(PWD)/roller/ && go get -u github.com/scroll-tech/go-ethereum@scroll-v4.1.0 && go mod tidy
 	goimports -local $(PWD)/bridge/ -w .
 	goimports -local $(PWD)/bridge-history-api/ -w .
 	goimports -local $(PWD)/common/ -w .
