@@ -28,7 +28,7 @@ type UserClaimInfo struct {
 	BatchHash  string `json:"batch_hash"`
 	Message    string `json:"message"`
 	Proof      string `json:"proof"`
-	BatchIndex uint64 `json:"batch_index"`
+	BatchIndex string `json:"batch_index"`
 }
 
 type TxHistoryInfo struct {
@@ -79,7 +79,7 @@ func GetCrossTxClaimInfo(msgHash string, db db.OrmFactory) *UserClaimInfo {
 		Message:    l2sentMsg.MsgData,
 		Proof:      l2sentMsg.MsgProof,
 		BatchHash:  batch.BatchHash,
-		BatchIndex: l2sentMsg.BatchIndex,
+		BatchIndex: strconv.FormatUint(l2sentMsg.BatchIndex, 10),
 	}
 
 }
