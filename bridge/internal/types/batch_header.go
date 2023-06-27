@@ -6,6 +6,7 @@ import (
 	"math/big"
 
 	"github.com/scroll-tech/go-ethereum/common"
+	"github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/crypto"
 )
 
@@ -47,7 +48,7 @@ func NewBatchHeader(version uint8, batchIndex, totalL1MessagePoppedBefore uint64
 		// build skip bitmap
 		for _, block := range chunk.Blocks {
 			for _, tx := range block.Transactions {
-				if tx.Type != L1MessageTxType {
+				if tx.Type != types.L1MessageTxType {
 					continue
 				}
 				currentIndex := tx.Nonce

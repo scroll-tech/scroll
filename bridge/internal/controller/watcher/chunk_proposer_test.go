@@ -12,6 +12,7 @@ import (
 	"scroll-tech/bridge/internal/utils"
 )
 
+// TODO: Add unit tests that the limits are enforced correctly.
 func testChunkProposer(t *testing.T) {
 	db := setupDB(t)
 	defer utils.CloseDB(db)

@@ -220,7 +220,9 @@ func (o *Batch) InsertBatch(ctx context.Context, startChunkIndex, endChunkIndex 
 	var parentBatchHash common.Hash
 	var totalL1MessagePoppedBefore uint64
 	var version uint8 = defaultBatchHeaderVersion
-	if lastBatch != nil {
+	if lastBatch == nil { // err is gorm.ErrRecordNotFound
+		log.Info("no batch in db. use default empty value for genesis batch")
+	} else {
 		batchIndex = lastBatch.Index + 1
 		parentBatchHash = common.HexToHash(lastBatch.Hash)
 		var lastBatchHeader *bridgeTypes.BatchHeader

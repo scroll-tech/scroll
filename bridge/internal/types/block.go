@@ -10,9 +10,6 @@ import (
 	"github.com/scroll-tech/go-ethereum/core/types"
 )
 
-// L1MessageTxType represents l2geth's l1 message tx type.
-// TODO: replace this with geth version after new version is released.
-const L1MessageTxType = 0x7E
 const nonZeroByteGas uint64 = 16
 const zeroByteGas uint64 = 4
 
@@ -29,7 +26,7 @@ type WrappedBlock struct {
 func (w *WrappedBlock) NumL1Messages(totalL1MessagePoppedBefore uint64) uint64 {
 	var lastQueueIndex *uint64
 	for _, txData := range w.Transactions {
-		if txData.Type == L1MessageTxType {
+		if txData.Type == types.L1MessageTxType {
 			lastQueueIndex = &txData.Nonce
 		}
 	}
@@ -73,7 +70,7 @@ func (w *WrappedBlock) Encode(totalL1MessagePoppedBefore uint64) ([]byte, error)
 func (w *WrappedBlock) EstimateL1CommitCalldataSize() uint64 {
 	var size uint64
 	for _, txData := range w.Transactions {
-		if txData.Type == L1MessageTxType {
+		if txData.Type == types.L1MessageTxType {
 			continue
 		}
 		size += uint64(len(txData.Data))
@@ -88,7 +85,7 @@ func (w *WrappedBlock) EstimateL1CommitCalldataSize() uint64 {
 func (w *WrappedBlock) EstimateL1CommitGas() uint64 {
 	var total uint64
 	for _, txData := range w.Transactions {
-		if txData.Type == L1MessageTxType {
+		if txData.Type == types.L1MessageTxType {
 			continue
 		}
 		data, _ := hexutil.Decode(txData.Data)
@@ -131,7 +128,7 @@ func (w *WrappedBlock) EstimateL1CommitGas() uint64 {
 func (w *WrappedBlock) L2TxsNum() uint64 {
 	var count uint64
 	for _, txData := range w.Transactions {
-		if txData.Type != L1MessageTxType {
+		if txData.Type != types.L1MessageTxType {
 			count++
 		}
 	}

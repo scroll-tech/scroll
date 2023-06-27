@@ -62,7 +62,7 @@ func (c *Chunk) Encode(totalL1MessagePoppedBefore uint64) ([]byte, error) {
 
 		// Append rlp-encoded l2Txs
 		for _, txData := range block.Transactions {
-			if txData.Type == L1MessageTxType {
+			if txData.Type == types.L1MessageTxType {
 				continue
 			}
 			data, err := hexutil.Decode(txData.Data)
@@ -122,7 +122,7 @@ func (c *Chunk) Hash(totalL1MessagePoppedBefore uint64) (common.Hash, error) {
 			if err != nil {
 				return common.Hash{}, err
 			}
-			if txData.Type == L1MessageTxType {
+			if txData.Type == types.L1MessageTxType {
 				l1TxHashes = append(l1TxHashes, hashBytes...)
 			} else {
 				l2TxHashes = append(l2TxHashes, hashBytes...)
