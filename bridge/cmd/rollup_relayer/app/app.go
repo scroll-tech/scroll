@@ -31,6 +31,7 @@ func init() {
 	app.Usage = "The Scroll Rollup Relayer"
 	app.Version = version.Version
 	app.Flags = append(app.Flags, cutils.CommonFlags...)
+	app.Flags = append(app.Flags, cutils.RollupRelayerFlags...)
 	app.Commands = []*cli.Command{}
 	app.Before = func(ctx *cli.Context) error {
 		return cutils.LogSetup(ctx)
@@ -70,7 +71,8 @@ func action(ctx *cli.Context) error {
 		return err
 	}
 
-	l2relayer, err := relayer.NewLayer2Relayer(ctx.Context, l2client, db, cfg.L2Config.RelayerConfig, true /* initGenesis */)
+	initGenesis := ctx.Bool(cutils.ImportGenesisFlag.Name)
+	l2relayer, err := relayer.NewLayer2Relayer(ctx.Context, l2client, db, cfg.L2Config.RelayerConfig, initGenesis)
 	if err != nil {
 		log.Error("failed to create l2 relayer", "config file", cfgFile, "error", err)
 		return err
