@@ -104,6 +104,13 @@ func L1FetchAndSaveEvents(ctx context.Context, client *ethclient.Client, databas
 		log.Error("l1FetchAndSaveEvents: Failed to parse cross msg event logs", "err", err)
 		return err
 	}
+	for _, msgHash := range msgHashes {
+		for i := range depositL1CrossMsgs {
+			if msgHash.TxHash.Hex() == depositL1CrossMsgs[i].Layer1Hash {
+				depositL1CrossMsgs[i].MsgHash = msgHash.MsgHash.Hex()
+			}
+		}
+	}
 	dbTx, err := database.Beginx()
 	if err != nil {
 		log.Error("l2FetchAndSaveEvents: Failed to begin db transaction", "err", err)
@@ -119,11 +126,6 @@ func L1FetchAndSaveEvents(ctx context.Context, client *ethclient.Client, databas
 	if err != nil {
 		dbTx.Rollback()
 		log.Crit("l1FetchAndSaveEvents: Failed to insert relayed message event logs", "err", err)
-	}
-	err = updateL1CrossMsgMsgHash(ctx, dbTx, database, msgHashes)
-	if err != nil {
-		dbTx.Rollback()
-		log.Crit("l1FetchAndSaveEvents: Failed to update msgHash in L1 cross msg", "err", err)
 	}
 	err = dbTx.Commit()
 	if err != nil {
@@ -162,6 +164,13 @@ func L2FetchAndSaveEvents(ctx context.Context, client *ethclient.Client, databas
 		log.Error("l2FetchAndSaveEvents: Failed to parse cross msg event logs", "err", err)
 		return err
 	}
+	for _, msgHash := range msgHashes {
+		for i := range depositL2CrossMsgs {
+			if msgHash.TxHash.Hex() == depositL2CrossMsgs[i].Layer2Hash {
+				depositL2CrossMsgs[i].MsgHash = msgHash.MsgHash.Hex()
+			}
+		}
+	}
 	dbTx, err := database.Beginx()
 	if err != nil {
 		log.Error("l2FetchAndSaveEvents: Failed to begin db transaction", "err", err)
@@ -177,12 +186,6 @@ func L2FetchAndSaveEvents(ctx context.Context, client *ethclient.Client, databas
 	if err != nil {
 		dbTx.Rollback()
 		log.Crit("l2FetchAndSaveEvents: Failed to insert relayed message event logs", "err", err)
-	}
-
-	err = updateL2CrossMsgMsgHash(ctx, dbTx, database, msgHashes)
-	if err != nil {
-		dbTx.Rollback()
-		log.Crit("l2FetchAndSaveEvents: Failed to update msgHash in L2 cross msg", "err", err)
 	}
 
 	err = database.BatchInsertL2SentMsgDBTx(dbTx, l2sentMsgs)
