@@ -125,6 +125,9 @@ func (o *Chunk) InsertChunk(ctx context.Context, chunk *bridgeTypes.Chunk, dbTX 
 		return nil, err
 	}
 
+	// if parentChunk==nil then err==gorm.ErrRecordNotFound, which means there's
+	// not chunk record in the db, we then use default empty values for the creating chunk;
+	// if parentChunk!=nil then err=nil, then we fill the parentChunk-related data into the creating chunk
 	if parentChunk != nil {
 		chunkIndex = parentChunk.Index + 1
 		totalL1MessagePoppedBefore = parentChunk.TotalL1MessagesPoppedBefore + parentChunk.TotalL1MessagesPoppedInChunk

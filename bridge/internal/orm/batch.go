@@ -199,7 +199,7 @@ func (o *Batch) InsertBatch(ctx context.Context, startChunkIndex, endChunkIndex 
 		db = dbTX[0]
 	}
 
-	lastBatch, err := o.GetLatestBatch(ctx)
+	parentBatch, err := o.GetLatestBatch(ctx)
 	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 		log.Error("failed to get the latest batch", "err", err)
 		return "", err
@@ -210,19 +210,22 @@ func (o *Batch) InsertBatch(ctx context.Context, startChunkIndex, endChunkIndex 
 	var totalL1MessagePoppedBefore uint64
 	var version uint8 = defaultBatchHeaderVersion
 
-	if lastBatch != nil {
-		batchIndex = lastBatch.Index + 1
-		parentBatchHash = common.HexToHash(lastBatch.Hash)
+	// if parentBatch==nil then err==gorm.ErrRecordNotFound, which means there's
+	// not batch record in the db, we then use default empty values for the creating batch;
+	// if parentBatch!=nil then err=nil, then we fill the parentBatch-related data into the creating batch
+	if parentBatch != nil {
+		batchIndex = parentBatch.Index + 1
+		parentBatchHash = common.HexToHash(parentBatch.Hash)
 
-		var lastBatchHeader *bridgeTypes.BatchHeader
-		lastBatchHeader, err = bridgeTypes.DecodeBatchHeader(lastBatch.BatchHeader)
+		var parentBatchHeader *bridgeTypes.BatchHeader
+		parentBatchHeader, err = bridgeTypes.DecodeBatchHeader(parentBatch.BatchHeader)
 		if err != nil {
-			log.Error("failed to decode parent batch header", "index", lastBatch.Index, "hash", lastBatch.Hash, "err", err)
+			log.Error("failed to decode parent batch header", "index", parentBatch.Index, "hash", parentBatch.Hash, "err", err)
 			return "", err
 		}
 
-		totalL1MessagePoppedBefore = lastBatchHeader.TotalL1MessagePopped()
-		version = lastBatchHeader.Version()
+		totalL1MessagePoppedBefore = parentBatchHeader.TotalL1MessagePopped()
+		version = parentBatchHeader.Version()
 	}
 
 	batchHeader, err := bridgeTypes.NewBatchHeader(version, batchIndex, totalL1MessagePoppedBefore, parentBatchHash, chunks)
