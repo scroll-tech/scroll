@@ -20,14 +20,13 @@ contract InitializeL1BridgeContracts is Script {
     uint256 L1_DEPLOYER_PRIVATE_KEY = vm.envUint("L1_DEPLOYER_PRIVATE_KEY");
 
     uint256 CHAIN_ID_L2 = vm.envUint("CHAIN_ID_L2");
-    uint256 MAX_L2_TX_IN_CHUNK = vm.envOr("MAX_L2_TX_IN_CHUNK", uint256(44));
+    uint256 MAX_L2_TX_IN_CHUNK = vm.envUint("MAX_L2_TX_IN_CHUNK");
     address L1_ROLLUP_OPERATOR_ADDR = vm.envAddress("L1_ROLLUP_OPERATOR_ADDR");
 
     address L1_FEE_VAULT_ADDR = vm.envAddress("L1_FEE_VAULT_ADDR");
 
     address L1_WHITELIST_ADDR = vm.envAddress("L1_WHITELIST_ADDR");
     address L1_SCROLL_CHAIN_PROXY_ADDR = vm.envAddress("L1_SCROLL_CHAIN_PROXY_ADDR");
-    address L1_ROLLUP_VERIFIER_ADDR = vm.envAddress("L1_ROLLUP_VERIFIER_ADDR");
     address L1_MESSAGE_QUEUE_PROXY_ADDR = vm.envAddress("L1_MESSAGE_QUEUE_PROXY_ADDR");
     address L2_GAS_PRICE_ORACLE_PROXY_ADDR = vm.envAddress("L2_GAS_PRICE_ORACLE_PROXY_ADDR");
     address L1_SCROLL_MESSENGER_PROXY_ADDR = vm.envAddress("L1_SCROLL_MESSENGER_PROXY_ADDR");
