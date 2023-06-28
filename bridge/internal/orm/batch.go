@@ -210,7 +210,7 @@ func (o *Batch) InsertBatch(ctx context.Context, startChunkIndex, endChunkIndex 
 	var totalL1MessagePoppedBefore uint64
 	var version uint8 = defaultBatchHeaderVersion
 
-	if lastBatch != nil { // err == gorm.ErrRecordNotFound
+	if lastBatch != nil {
 		batchIndex = lastBatch.Index + 1
 		parentBatchHash = common.HexToHash(lastBatch.Hash)
 
