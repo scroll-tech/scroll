@@ -22,7 +22,7 @@ abstract contract L1GatewayTestBase is DSTestPlus {
         address indexed sender,
         address indexed target,
         uint256 value,
-        uint256 queueIndex,
+        uint64 queueIndex,
         uint256 gasLimit,
         bytes data
     );

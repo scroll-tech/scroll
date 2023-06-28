@@ -345,6 +345,11 @@ type IScrollChainBatch struct {
 	L2Transactions   []byte
 }
 
+// L1CommitBatchEvent represents a CommitBatch event raised by the ScrollChain contract.
+type L1CommitBatchEvent struct {
+	BatchHash common.Hash
+}
+
 // IScrollChainBlockContext is an auto generated low-level Go binding around an user-defined struct.
 type IScrollChainBlockContext struct {
 	BlockHash       common.Hash

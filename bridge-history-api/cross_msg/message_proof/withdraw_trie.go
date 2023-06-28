@@ -1,4 +1,4 @@
-package cross_msg
+package message_proof
 
 import (
 	"github.com/ethereum/go-ethereum/common"
@@ -42,7 +42,6 @@ func NewWithdrawTrie() *WithdrawTrie {
 func (w *WithdrawTrie) Initialize(currentMessageNonce uint64, msgHash common.Hash, proofBytes []byte) {
 	proof := DecodeBytesToMerkleProof(proofBytes)
 	branches := RecoverBranchFromProof(proof, currentMessageNonce, msgHash)
-
 	w.height = len(proof)
 	w.branches = branches
 	w.NextMessageNonce = currentMessageNonce + 1
