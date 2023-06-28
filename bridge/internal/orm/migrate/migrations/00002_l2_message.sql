@@ -29,19 +29,6 @@ on l2_message (nonce);
 create index l2_message_height_index
     on l2_message (height);
 
-CREATE OR REPLACE FUNCTION update_timestamp()
-RETURNS TRIGGER AS $$
-BEGIN
-   NEW.updated_at = CURRENT_TIMESTAMP;
-   RETURN NEW;
-END;
-$$ language 'plpgsql';
-
-CREATE TRIGGER update_timestamp BEFORE UPDATE
-ON l2_message FOR EACH ROW EXECUTE PROCEDURE
-update_timestamp();
-
-
 -- +goose StatementEnd
 
 -- +goose Down
