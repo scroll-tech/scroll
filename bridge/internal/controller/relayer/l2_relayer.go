@@ -3,8 +3,10 @@ package relayer
 import (
 	"context"
 	"errors"
+	"fmt"
 	"math/big"
 	"sync"
+	"time"
 
 	"github.com/scroll-tech/go-ethereum/accounts/abi"
 	"github.com/scroll-tech/go-ethereum/common"
@@ -42,6 +44,7 @@ type Layer2Relayer struct {
 
 	l2Client *ethclient.Client
 
+	db           *gorm.DB
 	batchOrm     *orm.Batch
 	chunkOrm     *orm.Chunk
 	l2BlockOrm   *orm.L2Block
@@ -115,6 +118,7 @@ func NewLayer2Relayer(ctx context.Context, l2Client *ethclient.Client, db *gorm.
 
 	layer2Relayer := &Layer2Relayer{
 		ctx: ctx,
+		db:  db,
 
 		batchOrm:     orm.NewBatch(db),
 		l2MessageOrm: orm.NewL2Message(db),
@@ -142,8 +146,126 @@ func NewLayer2Relayer(ctx context.Context, l2Client *ethclient.Client, db *gorm.
 		processingCommitment:   sync.Map{},
 		processingFinalization: sync.Map{},
 	}
+
+	// Initialize genesis before we do anything else
+	if err := layer2Relayer.initializeGenesis(); err != nil {
+		return nil, fmt.Errorf("failed to initialize L2 genesis batch, err: %v", err)
+	}
+
 	go layer2Relayer.handleConfirmLoop(ctx)
 	return layer2Relayer, nil
+}
+
+func (r *Layer2Relayer) initializeGenesis() error {
+	if count, err := r.batchOrm.GetBatchCount(r.ctx); err != nil {
+		return fmt.Errorf("failed to get batch count: %v", err)
+	} else if count > 0 {
+		log.Info("genesis already imported", "batch count", count)
+		return nil
+	}
+
+	genesis, err := r.l2Client.HeaderByNumber(r.ctx, big.NewInt(0))
+	if err != nil {
+		return fmt.Errorf("failed to retrieve L2 genesis header: %v", err)
+	}
+
+	log.Info("retrieved L2 genesis header", "hash", genesis.Hash().String())
+
+	chunk := &bridgeTypes.Chunk{
+		Blocks: []*bridgeTypes.WrappedBlock{{
+			Header:           genesis,
+			Transactions:     nil,
+			WithdrawTrieRoot: common.Hash{},
+		}},
+	}
+
+	err = r.db.Transaction(func(dbTX *gorm.DB) error {
+		var dbChunk *orm.Chunk
+		dbChunk, err = r.chunkOrm.InsertChunk(r.ctx, chunk, dbTX)
+		if err != nil {
+			return fmt.Errorf("failed to insert chunk: %v", err)
+		}
+
+		if err = r.chunkOrm.UpdateProvingStatus(r.ctx, dbChunk.Hash, types.ProvingTaskVerified, dbTX); err != nil {
+			return fmt.Errorf("failed to update genesis chunk proving status: %v", err)
+		}
+
+		batch, err := r.batchOrm.InsertBatch(r.ctx, 0, 0, dbChunk.Hash, dbChunk.Hash, []*bridgeTypes.Chunk{chunk}, dbTX)
+		if err != nil {
+			return fmt.Errorf("failed to insert batch: %v", err)
+		}
+
+		if err = r.chunkOrm.UpdateBatchHashInRange(r.ctx, 0, 0, batch.Hash, dbTX); err != nil {
+			return fmt.Errorf("failed to update batch hash for chunks: %v", err)
+		}
+
+		if err = r.batchOrm.UpdateProvingStatus(r.ctx, batch.Hash, types.ProvingTaskVerified, dbTX); err != nil {
+			return fmt.Errorf("failed to update genesis batch proving status: %v", err)
+		}
+
+		if err = r.batchOrm.UpdateRollupStatus(r.ctx, batch.Hash, types.RollupFinalized, dbTX); err != nil {
+			return fmt.Errorf("failed to update genesis batch rollup status: %v", err)
+		}
+
+		// commit genesis batch on L1
+		// note: we do this inside the DB transaction so that we can revert all DB changes if this step fails
+		if err := r.commitGenesisBatch(batch.Hash, batch.BatchHeader, batch.StateRoot); err != nil {
+			return err
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		return fmt.Errorf("update genesis transaction failed: %v", err)
+	}
+
+	log.Info("successfully imported genesis chunk and batch")
+
+	return nil
+}
+
+func (r *Layer2Relayer) commitGenesisBatch(batchHash string, batchHeader []byte, stateRoot string) error {
+	// encode "importGenesisBatch" transaction calldata
+	calldata, err := r.l1RollupABI.Pack("importGenesisBatch", batchHeader, stateRoot)
+	if err != nil {
+		return fmt.Errorf("failed to pack importGenesisBatch with batch header: %v and state root: %v. error: %v", common.Bytes2Hex(batchHeader), stateRoot, err)
+	}
+
+	// submit genesis batch to L1 rollup contract
+	txHash, err := r.rollupSender.SendTransaction(batchHash, &r.cfg.RollupContractAddress, big.NewInt(0), calldata, 0)
+	if err != nil {
+		return fmt.Errorf("Failed to send import genesis batch tx to L1, error: %v", err)
+	}
+	log.Info("importGenesisBatch transaction sent", "contract", r.cfg.RollupContractAddress, "txHash", txHash, "batchHash", batchHash)
+
+	// wait for confirmation
+	// we assume that no other transactions are sent before initializeGenesis completes
+	ticker := time.NewTicker(10 * time.Second)
+	defer ticker.Stop()
+
+	for {
+		select {
+		// print progress
+		case <-ticker.C:
+			log.Info("Waiting for confirmation, pending count: %d", r.rollupSender.PendingCount())
+
+		// timeout
+		case <-time.After(5 * time.Minute):
+			return fmt.Errorf("import genesis timeout after 5 minutes, original txHash: %v", txHash)
+
+		// handle confirmation
+		case confirmation := <-r.rollupSender.ConfirmChan():
+			if confirmation.ID != batchHash {
+				return fmt.Errorf("unexpected import genesis confirmation id. expected: %v, got: %v", batchHash, confirmation.ID)
+			}
+			if !confirmation.IsSuccessful {
+				return fmt.Errorf("import genesis batch tx failed")
+			}
+			log.Info("Successfully imported genesis batch", "txHash", confirmation.TxHash)
+			return nil
+		}
+	}
 }
 
 // ProcessGasPriceOracle imports gas price to layer1
