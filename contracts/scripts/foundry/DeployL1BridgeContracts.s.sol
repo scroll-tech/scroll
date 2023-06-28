@@ -7,18 +7,18 @@ import {console} from "forge-std/console.sol";
 import {ProxyAdmin} from "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 import {TransparentUpgradeableProxy} from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 
+import {EnforcedTxGateway} from "../../src/L1/gateways/EnforcedTxGateway.sol";
 import {L1CustomERC20Gateway} from "../../src/L1/gateways/L1CustomERC20Gateway.sol";
 import {L1ERC1155Gateway} from "../../src/L1/gateways/L1ERC1155Gateway.sol";
 import {L1ERC721Gateway} from "../../src/L1/gateways/L1ERC721Gateway.sol";
 import {L1ETHGateway} from "../../src/L1/gateways/L1ETHGateway.sol";
 import {L1GatewayRouter} from "../../src/L1/gateways/L1GatewayRouter.sol";
+import {L1MessageQueue} from "../../src/L1/rollup/L1MessageQueue.sol";
 import {L1ScrollMessenger} from "../../src/L1/L1ScrollMessenger.sol";
 import {L1StandardERC20Gateway} from "../../src/L1/gateways/L1StandardERC20Gateway.sol";
 import {L1WETHGateway} from "../../src/L1/gateways/L1WETHGateway.sol";
-import {EnforcedTxGateway} from "../../src/L1/gateways/EnforcedTxGateway.sol";
-import {RollupVerifier} from "../../src/libraries/verifier/RollupVerifier.sol";
-import {L1MessageQueue} from "../../src/L1/rollup/L1MessageQueue.sol";
 import {L2GasPriceOracle} from "../../src/L1/rollup/L2GasPriceOracle.sol";
+import {MultipleVersionRollupVerifier} from "../../src/L1/rollup/MultipleVersionRollupVerifier.sol";
 import {ScrollChain} from "../../src/L1/rollup/ScrollChain.sol";
 import {Whitelist} from "../../src/L2/predeploys/Whitelist.sol";
 
@@ -29,14 +29,14 @@ contract DeployL1BridgeContracts is Script {
 
     address L1_WETH_ADDR = vm.envAddress("L1_WETH_ADDR");
     address L2_WETH_ADDR = vm.envAddress("L2_WETH_ADDR");
+    address L1_ZKEVM_VERIFIER_ADDR = vm.envAddress("L1_ZKEVM_VERIFIER_ADDR");
 
     ProxyAdmin proxyAdmin;
 
     function run() external {
         vm.startBroadcast(L1_DEPLOYER_PRIVATE_KEY);
 
-        // note: the RollupVerifier library is deployed implicitly
-
+        deployMultipleVersionRollupVerifier();
         deployProxyAdmin();
         deployL1Whitelist();
         deployL1MessageQueue();
@@ -53,6 +53,12 @@ contract DeployL1BridgeContracts is Script {
         deployL1ERC1155Gateway();
 
         vm.stopBroadcast();
+    }
+
+    function deployMultipleVersionRollupVerifier() internal {
+        MultipleVersionRollupVerifier rollupVerifier = new MultipleVersionRollupVerifier(L1_ZKEVM_VERIFIER_ADDR);
+
+        logAddress("L1_MULTIPLE_VERSION_ROLLUP_VERIFIER_ADDR", address(rollupVerifier));
     }
 
     function deployProxyAdmin() internal {
@@ -76,8 +82,8 @@ contract DeployL1BridgeContracts is Script {
             new bytes(0)
         );
 
-        logAddress("L1_ZK_ROLLUP_IMPLEMENTATION_ADDR", address(impl));
-        logAddress("L1_ZK_ROLLUP_PROXY_ADDR", address(proxy));
+        logAddress("L1_SCROLL_CHAIN_IMPLEMENTATION_ADDR", address(impl));
+        logAddress("L1_SCROLL_CHAIN_PROXY_ADDR", address(proxy));
     }
 
     function deployL1MessageQueue() internal {
@@ -170,8 +176,8 @@ contract DeployL1BridgeContracts is Script {
             new bytes(0)
         );
 
-        logAddress("ENFORCED_TX_GATEWAY_IMPLEMENTATION_ADDR", address(impl));
-        logAddress("ENFORCED_TX_GATEWAY_PROXY_ADDR", address(proxy));
+        logAddress("L1_ENFORCED_TX_GATEWAY_IMPLEMENTATION_ADDR", address(impl));
+        logAddress("L1_ENFORCED_TX_GATEWAY_PROXY_ADDR", address(proxy));
     }
 
     function deployL1CustomERC20Gateway() internal {
