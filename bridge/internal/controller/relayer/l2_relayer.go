@@ -42,9 +42,9 @@ type Layer2Relayer struct {
 
 	l2Client *ethclient.Client
 
-	batchOrm     *orm.Batch
-	chunkOrm     *orm.Chunk
-	l2BlockOrm   *orm.L2Block
+	batchOrm   *orm.Batch
+	chunkOrm   *orm.Chunk
+	l2BlockOrm *orm.L2Block
 
 	cfg *config.RelayerConfig
 
@@ -115,9 +115,9 @@ func NewLayer2Relayer(ctx context.Context, l2Client *ethclient.Client, db *gorm.
 	layer2Relayer := &Layer2Relayer{
 		ctx: ctx,
 
-		batchOrm:     orm.NewBatch(db),
-		l2BlockOrm:   orm.NewL2Block(db),
-		chunkOrm:     orm.NewChunk(db),
+		batchOrm:   orm.NewBatch(db),
+		l2BlockOrm: orm.NewL2Block(db),
+		chunkOrm:   orm.NewChunk(db),
 
 		l2Client: l2Client,
 
