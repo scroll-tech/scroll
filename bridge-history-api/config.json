@@ -1,4 +1,8 @@
 {
+	"batchInfoFetcher": {
+		"batchIndexStartBlock": 9091265,
+		"ScrollChainAddr": "0xcD00DB804C819175B381b2B44Aa16A391c8a01D6"
+	},
 	"l1": {
 		"confirmation": 64,
 		"endpoint": "https://rpc.ankr.com/eth_goerli",
