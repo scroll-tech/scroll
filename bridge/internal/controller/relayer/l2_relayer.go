@@ -150,7 +150,7 @@ func NewLayer2Relayer(ctx context.Context, l2Client *ethclient.Client, db *gorm.
 	// Initialize genesis before we do anything else
 	if initGenesis {
 		if err := layer2Relayer.initializeGenesis(); err != nil {
-			return nil, fmt.Errorf("failed to initialize L2 genesis batch, err: %v", err)
+			return nil, fmt.Errorf("failed to initialize and commit genesis batch, err: %v", err)
 		}
 	}
 
@@ -237,7 +237,7 @@ func (r *Layer2Relayer) commitGenesisBatch(batchHash string, batchHeader []byte,
 	// submit genesis batch to L1 rollup contract
 	txHash, err := r.rollupSender.SendTransaction(batchHash, &r.cfg.RollupContractAddress, big.NewInt(0), calldata, 0)
 	if err != nil {
-		return fmt.Errorf("Failed to send import genesis batch tx to L1, error: %v", err)
+		return fmt.Errorf("failed to send import genesis batch tx to L1, error: %v", err)
 	}
 	log.Info("importGenesisBatch transaction sent", "contract", r.cfg.RollupContractAddress, "txHash", txHash, "batchHash", batchHash)
 
@@ -259,12 +259,12 @@ func (r *Layer2Relayer) commitGenesisBatch(batchHash string, batchHeader []byte,
 		// handle confirmation
 		case confirmation := <-r.rollupSender.ConfirmChan():
 			if confirmation.ID != batchHash {
-				return fmt.Errorf("unexpected import genesis confirmation id. expected: %v, got: %v", batchHash, confirmation.ID)
+				return fmt.Errorf("unexpected import genesis confirmation id, expected: %v, got: %v", batchHash, confirmation.ID)
 			}
 			if !confirmation.IsSuccessful {
 				return fmt.Errorf("import genesis batch tx failed")
 			}
-			log.Info("Successfully imported genesis batch", "txHash", confirmation.TxHash)
+			log.Info("Successfully committed genesis batch on L1", "txHash", confirmation.TxHash)
 			return nil
 		}
 	}
