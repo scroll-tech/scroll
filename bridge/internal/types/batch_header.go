@@ -6,6 +6,7 @@ import (
 	"math/big"
 
 	"github.com/scroll-tech/go-ethereum/common"
+	"github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/crypto"
 )
 
@@ -38,16 +39,16 @@ func NewBatchHeader(version uint8, batchIndex, totalL1MessagePoppedBefore uint64
 	for _, chunk := range chunks {
 		// build data hash
 		totalL1MessagePoppedBeforeChunk := nextIndex
-		chunkBytes, err := chunk.Hash(totalL1MessagePoppedBeforeChunk)
+		chunkHash, err := chunk.Hash(totalL1MessagePoppedBeforeChunk)
 		if err != nil {
 			return nil, err
 		}
-		dataBytes = append(dataBytes, chunkBytes...)
+		dataBytes = append(dataBytes, chunkHash.Bytes()...)
 
 		// build skip bitmap
 		for _, block := range chunk.Blocks {
 			for _, tx := range block.Transactions {
-				if tx.Type != 0x7E {
+				if tx.Type != types.L1MessageTxType {
 					continue
 				}
 				currentIndex := tx.Nonce
@@ -101,6 +102,26 @@ func NewBatchHeader(version uint8, batchIndex, totalL1MessagePoppedBefore uint64
 	}, nil
 }
 
+// Version returns the version of the BatchHeader.
+func (b *BatchHeader) Version() uint8 {
+	return b.version
+}
+
+// BatchIndex returns the batch index of the BatchHeader.
+func (b *BatchHeader) BatchIndex() uint64 {
+	return b.batchIndex
+}
+
+// TotalL1MessagePopped returns the total number of L1 messages popped in the BatchHeader.
+func (b *BatchHeader) TotalL1MessagePopped() uint64 {
+	return b.totalL1MessagePopped
+}
+
+// SkippedL1MessageBitmap returns the skipped L1 message bitmap in the BatchHeader.
+func (b *BatchHeader) SkippedL1MessageBitmap() []byte {
+	return b.skippedL1MessageBitmap
+}
+
 // Encode encodes the BatchHeader into RollupV2 BatchHeaderV0Codec Encoding.
 func (b *BatchHeader) Encode() []byte {
 	batchBytes := make([]byte, 89+len(b.skippedL1MessageBitmap))
@@ -117,4 +138,21 @@ func (b *BatchHeader) Encode() []byte {
 // Hash calculates the hash of the batch header.
 func (b *BatchHeader) Hash() common.Hash {
 	return crypto.Keccak256Hash(b.Encode())
+}
+
+// DecodeBatchHeader attempts to decode the given byte slice into a BatchHeader.
+func DecodeBatchHeader(data []byte) (*BatchHeader, error) {
+	if len(data) < 89 {
+		return nil, fmt.Errorf("insufficient data for BatchHeader")
+	}
+	b := &BatchHeader{
+		version:                data[0],
+		batchIndex:             binary.BigEndian.Uint64(data[1:9]),
+		l1MessagePopped:        binary.BigEndian.Uint64(data[9:17]),
+		totalL1MessagePopped:   binary.BigEndian.Uint64(data[17:25]),
+		dataHash:               common.BytesToHash(data[25:57]),
+		parentBatchHash:        common.BytesToHash(data[57:89]),
+		skippedL1MessageBitmap: data[89:],
+	}
+	return b, nil
 }

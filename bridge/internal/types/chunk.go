@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/common/hexutil"
 	"github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/crypto"
@@ -61,10 +62,13 @@ func (c *Chunk) Encode(totalL1MessagePoppedBefore uint64) ([]byte, error) {
 
 		// Append rlp-encoded l2Txs
 		for _, txData := range block.Transactions {
-			if txData.Type == 0x7E {
+			if txData.Type == types.L1MessageTxType {
 				continue
 			}
-			data, _ := hexutil.Decode(txData.Data)
+			data, err := hexutil.Decode(txData.Data)
+			if err != nil {
+				return nil, err
+			}
 			// right now we only support legacy tx
 			tx := types.NewTx(&types.LegacyTx{
 				Nonce:    txData.Nonce,
@@ -77,7 +81,10 @@ func (c *Chunk) Encode(totalL1MessagePoppedBefore uint64) ([]byte, error) {
 				R:        txData.R.ToInt(),
 				S:        txData.S.ToInt(),
 			})
-			rlpTxData, _ := tx.MarshalBinary()
+			rlpTxData, err := tx.MarshalBinary()
+			if err != nil {
+				return nil, err
+			}
 			var txLen [4]byte
 			binary.BigEndian.PutUint32(txLen[:], uint32(len(rlpTxData)))
 			l2TxDataBytes = append(l2TxDataBytes, txLen[:]...)
@@ -91,17 +98,17 @@ func (c *Chunk) Encode(totalL1MessagePoppedBefore uint64) ([]byte, error) {
 }
 
 // Hash hashes the Chunk into RollupV2 Chunk Hash
-func (c *Chunk) Hash(totalL1MessagePoppedBefore uint64) ([]byte, error) {
+func (c *Chunk) Hash(totalL1MessagePoppedBefore uint64) (common.Hash, error) {
 	chunkBytes, err := c.Encode(totalL1MessagePoppedBefore)
 	if err != nil {
-		return nil, err
+		return common.Hash{}, err
 	}
 	numBlocks := chunkBytes[0]
 
 	// concatenate block contexts
 	var dataBytes []byte
 	for i := 0; i < int(numBlocks); i++ {
-		// only first 58 bytes is needed
+		// only the first 58 bytes of each BlockContext are needed for the hashing process
 		dataBytes = append(dataBytes, chunkBytes[1+60*i:60*i+59]...)
 	}
 
@@ -113,9 +120,9 @@ func (c *Chunk) Hash(totalL1MessagePoppedBefore uint64) ([]byte, error) {
 			txHash := strings.TrimPrefix(txData.TxHash, "0x")
 			hashBytes, err := hex.DecodeString(txHash)
 			if err != nil {
-				return nil, err
+				return common.Hash{}, err
 			}
-			if txData.Type == 0x7E {
+			if txData.Type == types.L1MessageTxType {
 				l1TxHashes = append(l1TxHashes, hashBytes...)
 			} else {
 				l2TxHashes = append(l2TxHashes, hashBytes...)
@@ -125,6 +132,6 @@ func (c *Chunk) Hash(totalL1MessagePoppedBefore uint64) ([]byte, error) {
 		dataBytes = append(dataBytes, l2TxHashes...)
 	}
 
-	hash := crypto.Keccak256Hash(dataBytes).Bytes()
+	hash := crypto.Keccak256Hash(dataBytes)
 	return hash, nil
 }
