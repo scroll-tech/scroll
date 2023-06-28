@@ -1,0 +1,19 @@
+{
+  "name": "admin-cli",
+  "bin": {
+    "admin-cli": "./bin/index.js"
+  },
+  "main": "bin/index.js",
+  "scripts": {
+    "build": "tsc",
+    "prepublishOnly": "npm run build"
+  },
+  "dependencies": {
+    "ethers": "^6.6.1",
+    "yargs": "^17.7.2"
+  },
+  "devDependencies": {
+    "@typechain/ethers-v6": "^0.4.0",
+    "@types/yargs": "^17.0.24"
+  }
+}
