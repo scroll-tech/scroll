@@ -163,7 +163,7 @@ func testL1WatcherClientFetchContractEvent(t *testing.T) {
 			return nil, nil, targetErr
 		})
 		err := watcher.FetchContractEvent()
-		assert.Equal(t, err.Error(), targetErr.Error())
+		assert.EqualError(t, err, targetErr.Error())
 	})
 
 	patchGuard.ApplyPrivateMethod(watcher, "parseBridgeEventLogs", func(*L1WatcherClient, []types.Log) ([]*orm.L1Message, []rollupEvent, error) {
@@ -182,10 +182,10 @@ func testL1WatcherClientFetchContractEvent(t *testing.T) {
 		return nil, rollupEvents, nil
 	})
 
-	var blockBatchOrm *orm.BlockBatch
+	var batchOrm *orm.Batch
 	convey.Convey("db get rollup status by hash list failure", t, func() {
 		targetErr := errors.New("get db failure")
-		patchGuard.ApplyMethodFunc(blockBatchOrm, "GetRollupStatusByHashList", func(hashes []string) ([]commonTypes.RollupStatus, error) {
+		patchGuard.ApplyMethodFunc(batchOrm, "GetRollupStatusByHashList", func(context.Context, []string) ([]commonTypes.RollupStatus, error) {
 			return nil, targetErr
 		})
 		err := watcher.FetchContractEvent()
@@ -193,7 +193,7 @@ func testL1WatcherClientFetchContractEvent(t *testing.T) {
 	})
 
 	convey.Convey("rollup status mismatch batch hashes length", t, func() {
-		patchGuard.ApplyMethodFunc(blockBatchOrm, "GetRollupStatusByHashList", func(hashes []string) ([]commonTypes.RollupStatus, error) {
+		patchGuard.ApplyMethodFunc(batchOrm, "GetRollupStatusByHashList", func(context.Context, []string) ([]commonTypes.RollupStatus, error) {
 			s := []commonTypes.RollupStatus{
 				commonTypes.RollupFinalized,
 			}
@@ -203,7 +203,7 @@ func testL1WatcherClientFetchContractEvent(t *testing.T) {
 		assert.NoError(t, err)
 	})
 
-	patchGuard.ApplyMethodFunc(blockBatchOrm, "GetRollupStatusByHashList", func(hashes []string) ([]commonTypes.RollupStatus, error) {
+	patchGuard.ApplyMethodFunc(batchOrm, "GetRollupStatusByHashList", func(context.Context, []string) ([]commonTypes.RollupStatus, error) {
 		s := []commonTypes.RollupStatus{
 			commonTypes.RollupPending,
 			commonTypes.RollupCommitting,
@@ -213,27 +213,27 @@ func testL1WatcherClientFetchContractEvent(t *testing.T) {
 
 	convey.Convey("db update RollupFinalized status failure", t, func() {
 		targetErr := errors.New("UpdateFinalizeTxHashAndRollupStatus RollupFinalized failure")
-		patchGuard.ApplyMethodFunc(blockBatchOrm, "UpdateFinalizeTxHashAndRollupStatus", func(context.Context, string, string, commonTypes.RollupStatus) error {
+		patchGuard.ApplyMethodFunc(batchOrm, "UpdateFinalizeTxHashAndRollupStatus", func(context.Context, string, string, commonTypes.RollupStatus) error {
 			return targetErr
 		})
 		err := watcher.FetchContractEvent()
 		assert.Equal(t, targetErr.Error(), err.Error())
 	})
 
-	patchGuard.ApplyMethodFunc(blockBatchOrm, "UpdateFinalizeTxHashAndRollupStatus", func(context.Context, string, string, commonTypes.RollupStatus) error {
+	patchGuard.ApplyMethodFunc(batchOrm, "UpdateFinalizeTxHashAndRollupStatus", func(context.Context, string, string, commonTypes.RollupStatus) error {
 		return nil
 	})
 
 	convey.Convey("db update RollupCommitted status failure", t, func() {
 		targetErr := errors.New("UpdateCommitTxHashAndRollupStatus RollupCommitted failure")
-		patchGuard.ApplyMethodFunc(blockBatchOrm, "UpdateCommitTxHashAndRollupStatus", func(context.Context, string, string, commonTypes.RollupStatus) error {
+		patchGuard.ApplyMethodFunc(batchOrm, "UpdateCommitTxHashAndRollupStatus", func(context.Context, string, string, commonTypes.RollupStatus) error {
 			return targetErr
 		})
 		err := watcher.FetchContractEvent()
 		assert.Equal(t, targetErr.Error(), err.Error())
 	})
 
-	patchGuard.ApplyMethodFunc(blockBatchOrm, "UpdateCommitTxHashAndRollupStatus", func(context.Context, string, string, commonTypes.RollupStatus) error {
+	patchGuard.ApplyMethodFunc(batchOrm, "UpdateCommitTxHashAndRollupStatus", func(context.Context, string, string, commonTypes.RollupStatus) error {
 		return nil
 	})
 
@@ -285,7 +285,7 @@ func testParseBridgeEventLogsL1QueueTransactionEventSignature(t *testing.T) {
 	convey.Convey("L1QueueTransactionEventSignature success", t, func() {
 		patchGuard := gomonkey.ApplyFunc(utils.UnpackLog, func(c *abi.ABI, out interface{}, event string, log types.Log) error {
 			tmpOut := out.(*bridgeAbi.L1QueueTransactionEvent)
-			tmpOut.QueueIndex = big.NewInt(100)
+			tmpOut.QueueIndex = 100
 			tmpOut.Data = []byte("test data")
 			tmpOut.Sender = common.HexToAddress("0xb4c11951957c6f8f642c4af61cd6b24640fec6dc7fc607ee8206a99e92410d30")
 			tmpOut.Value = big.NewInt(1000)

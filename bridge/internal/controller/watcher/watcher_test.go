@@ -109,8 +109,9 @@ func TestFunction(t *testing.T) {
 	t.Run("TestParseBridgeEventLogsL2RelayedMessageEventSignature", testParseBridgeEventLogsL2RelayedMessageEventSignature)
 	t.Run("TestParseBridgeEventLogsL2FailedRelayedMessageEventSignature", testParseBridgeEventLogsL2FailedRelayedMessageEventSignature)
 
-	// Run batch proposer test cases.
-	t.Run("TestBatchProposerProposeBatch", testBatchProposerProposeBatch)
-	t.Run("TestBatchProposerBatchGeneration", testBatchProposerBatchGeneration)
-	t.Run("TestBatchProposerGracefulRestart", testBatchProposerGracefulRestart)
+	// Run chunk-proposer test cases.
+	t.Run("TestChunkProposer", testChunkProposer)
+
+	// Run batch-proposer test cases.
+	t.Run("TestBatchProposer", testBatchProposer)
 }

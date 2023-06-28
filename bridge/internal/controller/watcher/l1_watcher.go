@@ -41,7 +41,7 @@ type L1WatcherClient struct {
 	client       *ethclient.Client
 	l1MessageOrm *orm.L1Message
 	l1BlockOrm   *orm.L1Block
-	l1BatchOrm   *orm.BlockBatch
+	batchOrm     *orm.Batch
 
 	// The number of new blocks to wait for a block to be confirmed
 	confirmations rpc.BlockNumber
@@ -88,7 +88,7 @@ func NewL1WatcherClient(ctx context.Context, client *ethclient.Client, startHeig
 		client:        client,
 		l1MessageOrm:  l1MessageOrm,
 		l1BlockOrm:    l1BlockOrm,
-		l1BatchOrm:    orm.NewBlockBatch(db),
+		batchOrm:      orm.NewBatch(db),
 		confirmations: confirmations,
 
 		messengerAddress: messengerAddress,
@@ -240,7 +240,7 @@ func (w *L1WatcherClient) FetchContractEvent() error {
 		for _, event := range rollupEvents {
 			batchHashes = append(batchHashes, event.batchHash.String())
 		}
-		statuses, err := w.l1BatchOrm.GetRollupStatusByHashList(batchHashes)
+		statuses, err := w.batchOrm.GetRollupStatusByHashList(w.ctx, batchHashes)
 		if err != nil {
 			log.Error("Failed to GetRollupStatusByHashList", "err", err)
 			return err
@@ -256,9 +256,9 @@ func (w *L1WatcherClient) FetchContractEvent() error {
 			// only update when db status is before event status
 			if event.status > status {
 				if event.status == types.RollupFinalized {
-					err = w.l1BatchOrm.UpdateFinalizeTxHashAndRollupStatus(w.ctx, batchHash, event.txHash.String(), event.status)
+					err = w.batchOrm.UpdateFinalizeTxHashAndRollupStatus(w.ctx, batchHash, event.txHash.String(), event.status)
 				} else if event.status == types.RollupCommitted {
-					err = w.l1BatchOrm.UpdateCommitTxHashAndRollupStatus(w.ctx, batchHash, event.txHash.String(), event.status)
+					err = w.batchOrm.UpdateCommitTxHashAndRollupStatus(w.ctx, batchHash, event.txHash.String(), event.status)
 				}
 				if err != nil {
 					log.Error("Failed to update Rollup/Finalize TxHash and Status", "err", err)
@@ -296,7 +296,7 @@ func (w *L1WatcherClient) parseBridgeEventLogs(logs []gethTypes.Log) ([]*orm.L1M
 			msgHash := common.BytesToHash(crypto.Keccak256(event.Data))
 
 			l1Messages = append(l1Messages, &orm.L1Message{
-				QueueIndex: event.QueueIndex.Uint64(),
+				QueueIndex: event.QueueIndex,
 				MsgHash:    msgHash.String(),
 				Height:     vLog.BlockNumber,
 				Sender:     event.Sender.String(),

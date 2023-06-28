@@ -5,8 +5,8 @@ import (
 	"os"
 	"testing"
 
+	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/ethclient"
-	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/stretchr/testify/assert"
 
 	"scroll-tech/common/docker"
@@ -24,17 +24,20 @@ var (
 	// l2geth client
 	l2Cli *ethclient.Client
 
-	// block trace
+	// l2 block
 	wrappedBlock1 *bridgeTypes.WrappedBlock
 	wrappedBlock2 *bridgeTypes.WrappedBlock
 
-	// batch data
-	batchData1 *bridgeTypes.BatchData
-	batchData2 *bridgeTypes.BatchData
+	// chunk
+	chunk1     *bridgeTypes.Chunk
+	chunk2     *bridgeTypes.Chunk
+	chunkHash1 common.Hash
+	chunkHash2 common.Hash
 )
 
-func setupEnv(t *testing.T) (err error) {
+func setupEnv(t *testing.T) {
 	// Load config.
+	var err error
 	cfg, err = config.NewConfig("../../../conf/config.json")
 	assert.NoError(t, err)
 
@@ -54,40 +57,22 @@ func setupEnv(t *testing.T) (err error) {
 	assert.NoError(t, err)
 
 	templateBlockTrace1, err := os.ReadFile("../../../testdata/blockTrace_02.json")
-	if err != nil {
-		return err
-	}
-	// unmarshal blockTrace
+	assert.NoError(t, err)
 	wrappedBlock1 = &bridgeTypes.WrappedBlock{}
-	if err = json.Unmarshal(templateBlockTrace1, wrappedBlock1); err != nil {
-		return err
-	}
-	parentBatch1 := &bridgeTypes.BatchInfo{
-		Index:     0,
-		Hash:      "0x0cc6b102c2924402c14b2e3a19baccc316252bfdc44d9ec62e942d34e39ec729",
-		StateRoot: "0x2579122e8f9ec1e862e7d415cef2fb495d7698a8e5f0dddc5651ba4236336e7d",
-	}
-	batchData1 = bridgeTypes.NewBatchData(parentBatch1, []*bridgeTypes.WrappedBlock{wrappedBlock1}, nil)
+	err = json.Unmarshal(templateBlockTrace1, wrappedBlock1)
+	assert.NoError(t, err)
+	chunk1 = &bridgeTypes.Chunk{Blocks: []*bridgeTypes.WrappedBlock{wrappedBlock1}}
+	chunkHash1, err = chunk1.Hash(0)
+	assert.NoError(t, err)
 
 	templateBlockTrace2, err := os.ReadFile("../../../testdata/blockTrace_03.json")
-	if err != nil {
-		return err
-	}
-	// unmarshal blockTrace
+	assert.NoError(t, err)
 	wrappedBlock2 = &bridgeTypes.WrappedBlock{}
-	if err = json.Unmarshal(templateBlockTrace2, wrappedBlock2); err != nil {
-		return err
-	}
-	parentBatch2 := &bridgeTypes.BatchInfo{
-		Index:     batchData1.Batch.BatchIndex,
-		Hash:      batchData1.Hash().Hex(),
-		StateRoot: batchData1.Batch.NewStateRoot.String(),
-	}
-	batchData2 = bridgeTypes.NewBatchData(parentBatch2, []*bridgeTypes.WrappedBlock{wrappedBlock2}, nil)
-
-	log.Info("batchHash", "batchhash1", batchData1.Hash().Hex(), "batchhash2", batchData2.Hash().Hex())
-
-	return err
+	err = json.Unmarshal(templateBlockTrace2, wrappedBlock2)
+	assert.NoError(t, err)
+	chunk2 = &bridgeTypes.Chunk{Blocks: []*bridgeTypes.WrappedBlock{wrappedBlock2}}
+	chunkHash2, err = chunk2.Hash(chunk1.NumL1Messages(0))
+	assert.NoError(t, err)
 }
 
 func TestMain(m *testing.M) {
@@ -99,9 +84,7 @@ func TestMain(m *testing.M) {
 }
 
 func TestFunctions(t *testing.T) {
-	if err := setupEnv(t); err != nil {
-		t.Fatal(err)
-	}
+	setupEnv(t)
 	// Run l1 relayer test cases.
 	t.Run("TestCreateNewL1Relayer", testCreateNewL1Relayer)
 	t.Run("TestL1RelayerProcessSaveEvents", testL1RelayerProcessSaveEvents)
@@ -111,10 +94,10 @@ func TestFunctions(t *testing.T) {
 
 	// Run l2 relayer test cases.
 	t.Run("TestCreateNewRelayer", testCreateNewRelayer)
+	t.Run("TestL2RelayerProcessPendingBatches", testL2RelayerProcessPendingBatches)
 	t.Run("TestL2RelayerProcessCommittedBatches", testL2RelayerProcessCommittedBatches)
 	t.Run("TestL2RelayerSkipBatches", testL2RelayerSkipBatches)
 	t.Run("TestL2RelayerRollupConfirm", testL2RelayerRollupConfirm)
 	t.Run("TestL2RelayerGasOracleConfirm", testL2RelayerGasOracleConfirm)
 	t.Run("TestLayer2RelayerProcessGasPriceOracle", testLayer2RelayerProcessGasPriceOracle)
-	t.Run("TestLayer2RelayerSendCommitTx", testLayer2RelayerSendCommitTx)
 }
