@@ -22,7 +22,7 @@ func NewL2CrossMsgOrm(db *sqlx.DB) L2CrossMsgOrm {
 
 func (l *l2CrossMsgOrm) GetL2CrossMsgByHash(l2Hash common.Hash) (*CrossMsg, error) {
 	result := &CrossMsg{}
-	row := l.db.QueryRowx(`SELECT * FROM cross_message WHERE layer2_hash = $1 AND deleted_at IS NOT NULL;`, l2Hash.String())
+	row := l.db.QueryRowx(`SELECT * FROM cross_message WHERE layer2_hash = $1 AND deleted_at IS NULL;`, l2Hash.String())
 	if err := row.StructScan(result); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil
@@ -36,7 +36,7 @@ func (l *l2CrossMsgOrm) GetL2CrossMsgByHash(l2Hash common.Hash) (*CrossMsg, erro
 // Warning: return empty slice if no data found
 func (l *l2CrossMsgOrm) GetL2CrossMsgByAddress(sender common.Address) ([]*CrossMsg, error) {
 	var results []*CrossMsg
-	rows, err := l.db.Queryx(`SELECT * FROM cross_message WHERE sender = $1 AND msg_type = $2 AND deleted_at IS NOT NULL;`, sender.String(), Layer2Msg)
+	rows, err := l.db.Queryx(`SELECT * FROM cross_message WHERE sender = $1 AND msg_type = $2 AND deleted_at IS NULL;`, sender.String(), Layer2Msg)
 
 	for rows.Next() {
 		msg := &CrossMsg{}
@@ -94,21 +94,21 @@ func (l *l2CrossMsgOrm) BatchInsertL2CrossMsgDBTx(dbTx *sqlx.Tx, messages []*Cro
 }
 
 func (l *l2CrossMsgOrm) UpdateL2CrossMsgHashDBTx(ctx context.Context, dbTx *sqlx.Tx, l2Hash, msgHash common.Hash) error {
-	if _, err := dbTx.ExecContext(ctx, l.db.Rebind("update cross_message set msg_hash = ? where layer2_hash = ? AND deleted_at IS NOT NULL;"), msgHash.String(), l2Hash.String()); err != nil {
+	if _, err := dbTx.ExecContext(ctx, l.db.Rebind("update cross_message set msg_hash = ? where layer2_hash = ? AND deleted_at IS NULL;"), msgHash.String(), l2Hash.String()); err != nil {
 		return err
 	}
 	return nil
 }
 
 func (l *l2CrossMsgOrm) UpdateL2CrossMsgHash(ctx context.Context, l2Hash, msgHash common.Hash) error {
-	if _, err := l.db.ExecContext(ctx, l.db.Rebind("update cross_message set msg_hash = ? where layer2_hash = ? AND deleted_at IS NOT NULL;"), msgHash.String(), l2Hash.String()); err != nil {
+	if _, err := l.db.ExecContext(ctx, l.db.Rebind("update cross_message set msg_hash = ? where layer2_hash = ? AND deleted_at IS NULL;"), msgHash.String(), l2Hash.String()); err != nil {
 		return err
 	}
 	return nil
 }
 
 func (l *l2CrossMsgOrm) GetLatestL2ProcessedHeight() (int64, error) {
-	row := l.db.QueryRowx(`SELECT height FROM cross_message WHERE msg_type = $1 AND deleted_at IS NOT NULL ORDER BY id DESC LIMIT 1;`, Layer2Msg)
+	row := l.db.QueryRowx(`SELECT height FROM cross_message WHERE msg_type = $1 AND deleted_at IS NULL ORDER BY id DESC LIMIT 1;`, Layer2Msg)
 	var result sql.NullInt64
 	if err := row.Scan(&result); err != nil {
 		if err == sql.ErrNoRows || !result.Valid {
@@ -123,14 +123,14 @@ func (l *l2CrossMsgOrm) GetLatestL2ProcessedHeight() (int64, error) {
 }
 
 func (l *l2CrossMsgOrm) UpdateL2BlockTimestamp(height uint64, timestamp time.Time) error {
-	if _, err := l.db.Exec(`UPDATE cross_message SET block_timestamp = $1 where height = $2 AND msg_type = $3 AND deleted_at IS NOT NULL`, timestamp, height, Layer2Msg); err != nil {
+	if _, err := l.db.Exec(`UPDATE cross_message SET block_timestamp = $1 where height = $2 AND msg_type = $3 AND deleted_at IS NULL`, timestamp, height, Layer2Msg); err != nil {
 		return err
 	}
 	return nil
 }
 
 func (l *l2CrossMsgOrm) GetL2EarliestNoBlockTimestampHeight() (uint64, error) {
-	row := l.db.QueryRowx(`SELECT height FROM cross_message WHERE block_timestamp IS NULL AND msg_type = $1 AND deleted_at IS NOT NULL ORDER BY height ASC LIMIT 1;`, Layer2Msg)
+	row := l.db.QueryRowx(`SELECT height FROM cross_message WHERE block_timestamp IS NULL AND msg_type = $1 AND deleted_at IS NULL ORDER BY height ASC LIMIT 1;`, Layer2Msg)
 	var result uint64
 	if err := row.Scan(&result); err != nil {
 		if err == sql.ErrNoRows {
