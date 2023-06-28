@@ -1,36 +1,36 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.10;
 
-import { Script } from "forge-std/Script.sol";
-import { console } from "forge-std/console.sol";
+import {Script} from "forge-std/Script.sol";
+import {console} from "forge-std/console.sol";
 
-import { ScrollChainCommitmentVerifier } from "../../src/L1/rollup/ScrollChainCommitmentVerifier.sol";
+import {ScrollChainCommitmentVerifier} from "../../src/L1/rollup/ScrollChainCommitmentVerifier.sol";
 
 contract DeployScrollChainCommitmentVerifier is Script {
-  uint256 L1_DEPLOYER_PRIVATE_KEY = vm.envUint("L1_DEPLOYER_PRIVATE_KEY");
+    uint256 L1_DEPLOYER_PRIVATE_KEY = vm.envUint("L1_DEPLOYER_PRIVATE_KEY");
 
-  address L1_ZK_ROLLUP_PROXY_ADDR = vm.envAddress("L1_ZK_ROLLUP_PROXY_ADDR");
+    address L1_SCROLL_CHAIN_PROXY_ADDR = vm.envAddress("L1_SCROLL_CHAIN_PROXY_ADDR");
 
-  address POSEIDON_UNIT2_ADDR = vm.envAddress("POSEIDON_UNIT2_ADDR");
+    address POSEIDON_UNIT2_ADDR = vm.envAddress("POSEIDON_UNIT2_ADDR");
 
-  function run() external {
-    vm.startBroadcast(L1_DEPLOYER_PRIVATE_KEY);
+    function run() external {
+        vm.startBroadcast(L1_DEPLOYER_PRIVATE_KEY);
 
-    deployScrollChainCommitmentVerifier();
+        deployScrollChainCommitmentVerifier();
 
-    vm.stopBroadcast();
-  }
+        vm.stopBroadcast();
+    }
 
-  function deployScrollChainCommitmentVerifier() internal {
-    ScrollChainCommitmentVerifier verifier = new ScrollChainCommitmentVerifier(
-      POSEIDON_UNIT2_ADDR,
-      L1_ZK_ROLLUP_PROXY_ADDR
-    );
+    function deployScrollChainCommitmentVerifier() internal {
+        ScrollChainCommitmentVerifier verifier = new ScrollChainCommitmentVerifier(
+            POSEIDON_UNIT2_ADDR,
+            L1_SCROLL_CHAIN_PROXY_ADDR
+        );
 
-    logAddress("L1_SCROLL_CHAIN_COMMITMENT_VERIFIER", address(verifier));
-  }
+        logAddress("L1_SCROLL_CHAIN_COMMITMENT_VERIFIER", address(verifier));
+    }
 
-  function logAddress(string memory name, address addr) internal view {
-    console.log(string(abi.encodePacked(name, "=", vm.toString(address(addr)))));
-  }
+    function logAddress(string memory name, address addr) internal view {
+        console.log(string(abi.encodePacked(name, "=", vm.toString(address(addr)))));
+    }
 }
