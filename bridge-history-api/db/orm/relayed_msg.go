@@ -8,6 +8,13 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
+type RelayedMsg struct {
+	MsgHash    string `json:"msg_hash" db:"msg_hash"`
+	Height     uint64 `json:"height" db:"height"`
+	Layer1Hash string `json:"layer1_hash" db:"layer1_hash"`
+	Layer2Hash string `json:"layer2_hash" db:"layer2_hash"`
+}
+
 type relayedMsgOrm struct {
 	db *sqlx.DB
 }
@@ -41,7 +48,7 @@ func (l *relayedMsgOrm) BatchInsertRelayedMsgDBTx(dbTx *sqlx.Tx, messages []*Rel
 
 func (l *relayedMsgOrm) GetRelayedMsgByHash(msg_hash string) (*RelayedMsg, error) {
 	result := &RelayedMsg{}
-	row := l.db.QueryRowx(`SELECT msg_hash, height, layer1_hash, layer2_hash FROM relayed_msg WHERE msg_hash = $1 AND NOT is_deleted;`, msg_hash)
+	row := l.db.QueryRowx(`SELECT msg_hash, height, layer1_hash, layer2_hash FROM relayed_msg WHERE msg_hash = $1 AND deleted_at IS NOT NULL;`, msg_hash)
 	if err := row.StructScan(result); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil
@@ -52,7 +59,7 @@ func (l *relayedMsgOrm) GetRelayedMsgByHash(msg_hash string) (*RelayedMsg, error
 }
 
 func (l *relayedMsgOrm) GetLatestRelayedHeightOnL1() (int64, error) {
-	row := l.db.QueryRow(`SELECT height FROM relayed_msg WHERE layer1_hash != '' AND NOT is_deleted ORDER BY height DESC LIMIT 1;`)
+	row := l.db.QueryRow(`SELECT height FROM relayed_msg WHERE layer1_hash != '' AND deleted_at IS NOT NULL ORDER BY height DESC LIMIT 1;`)
 	var result sql.NullInt64
 	if err := row.Scan(&result); err != nil {
 		if err == sql.ErrNoRows || !result.Valid {
@@ -67,7 +74,7 @@ func (l *relayedMsgOrm) GetLatestRelayedHeightOnL1() (int64, error) {
 }
 
 func (l *relayedMsgOrm) GetLatestRelayedHeightOnL2() (int64, error) {
-	row := l.db.QueryRow(`SELECT height FROM relayed_msg WHERE layer2_hash != '' AND NOT is_deleted ORDER BY height DESC LIMIT 1;`)
+	row := l.db.QueryRow(`SELECT height FROM relayed_msg WHERE layer2_hash != '' AND deleted_at IS NOT NULL ORDER BY height DESC LIMIT 1;`)
 	var result sql.NullInt64
 	if err := row.Scan(&result); err != nil {
 		if err == sql.ErrNoRows || !result.Valid {
@@ -82,11 +89,11 @@ func (l *relayedMsgOrm) GetLatestRelayedHeightOnL2() (int64, error) {
 }
 
 func (l *relayedMsgOrm) DeleteL1RelayedHashAfterHeightDBTx(dbTx *sqlx.Tx, height int64) error {
-	_, err := dbTx.Exec(`UPDATE relayed_msg SET is_deleted = true WHERE height > $1 AND layer1_hash != '';`, height)
+	_, err := dbTx.Exec(`UPDATE relayed_msg SET deleted_at = current_timestamp WHERE height > $1 AND layer1_hash != '';`, height)
 	return err
 }
 
 func (l *relayedMsgOrm) DeleteL2RelayedHashAfterHeightDBTx(dbTx *sqlx.Tx, height int64) error {
-	_, err := dbTx.Exec(`UPDATE relayed_msg SET is_deleted = true WHERE height > $1 AND layer2_hash != '';`, height)
+	_, err := dbTx.Exec(`UPDATE relayed_msg SET deleted_at = current_timestamp WHERE height > $1 AND layer2_hash != '';`, height)
 	return err
 }

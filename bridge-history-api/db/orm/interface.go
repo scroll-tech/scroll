@@ -53,18 +53,10 @@ type CrossMsg struct {
 	TokenID     uint64     `json:"token_id" db:"token_id"`
 	Asset       int        `json:"asset" db:"asset"`
 	MsgType     int        `json:"msg_type" db:"msg_type"`
-	IsDeleted   bool       `json:"is_deleted" db:"is_deleted"`
 	Timestamp   *time.Time `json:"timestamp" db:"block_timestamp"`
 	CreatedAt   *time.Time `json:"created_at" db:"created_at"`
 	UpdatedAt   *time.Time `json:"updated_at" db:"updated_at"`
 	DeletedAt   *time.Time `json:"deleted_at" db:"deleted_at"`
-}
-
-type RelayedMsg struct {
-	MsgHash    string `json:"msg_hash" db:"msg_hash"`
-	Height     uint64 `json:"height" db:"height"`
-	Layer1Hash string `json:"layer1_hash" db:"layer1_hash"`
-	Layer2Hash string `json:"layer2_hash" db:"layer2_hash"`
 }
 
 // L1CrossMsgOrm provides operations on l1_cross_message table

@@ -2,7 +2,6 @@ package orm
 
 import (
 	"database/sql"
-	"fmt"
 
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/jmoiron/sqlx"
@@ -39,14 +38,6 @@ func (b *rollupBatchOrm) BatchInsertRollupBatchDBTx(dbTx *sqlx.Tx, batches []*Ro
 			"batch_hash":         batch.BatchHash,
 			"start_block_number": batch.StartBlockNumber,
 			"end_block_number":   batch.EndBlockNumber,
-		}
-		var exists bool
-		err = dbTx.QueryRow(`SELECT EXISTS(SELECT 1 FROM rollup_batch WHERE batch_index = $1 AND NOT is_deleted)`, batch.BatchIndex).Scan(&exists)
-		if err != nil {
-			return err
-		}
-		if exists {
-			return fmt.Errorf("BatchInsertRollupBatchDBTx: batch index %v already exists at height %v", batch.BatchIndex, batch.CommitHeight)
 		}
 	}
 	_, err = dbTx.NamedExec(`insert into rollup_batch(commit_height, batch_index, batch_hash, start_block_number, end_block_number) values(:commit_height, :batch_index, :batch_hash, :start_block_number, :end_block_number);`, batchMaps)
