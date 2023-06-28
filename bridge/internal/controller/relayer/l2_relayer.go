@@ -81,7 +81,7 @@ type Layer2Relayer struct {
 }
 
 // NewLayer2Relayer will return a new instance of Layer2RelayerClient
-func NewLayer2Relayer(ctx context.Context, l2Client *ethclient.Client, db *gorm.DB, cfg *config.RelayerConfig) (*Layer2Relayer, error) {
+func NewLayer2Relayer(ctx context.Context, l2Client *ethclient.Client, db *gorm.DB, cfg *config.RelayerConfig, initGenesis bool) (*Layer2Relayer, error) {
 	// @todo use different sender for relayer, block commit and proof finalize
 	messageSender, err := sender.NewSender(ctx, cfg.SenderConfig, cfg.MessageSenderPrivateKeys)
 	if err != nil {
@@ -148,8 +148,10 @@ func NewLayer2Relayer(ctx context.Context, l2Client *ethclient.Client, db *gorm.
 	}
 
 	// Initialize genesis before we do anything else
-	if err := layer2Relayer.initializeGenesis(); err != nil {
-		return nil, fmt.Errorf("failed to initialize L2 genesis batch, err: %v", err)
+	if initGenesis {
+		if err := layer2Relayer.initializeGenesis(); err != nil {
+			return nil, fmt.Errorf("failed to initialize L2 genesis batch, err: %v", err)
+		}
 	}
 
 	go layer2Relayer.handleConfirmLoop(ctx)

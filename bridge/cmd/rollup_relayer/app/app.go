@@ -70,7 +70,7 @@ func action(ctx *cli.Context) error {
 		return err
 	}
 
-	l2relayer, err := relayer.NewLayer2Relayer(ctx.Context, l2client, db, cfg.L2Config.RelayerConfig)
+	l2relayer, err := relayer.NewLayer2Relayer(ctx.Context, l2client, db, cfg.L2Config.RelayerConfig, true /* initGenesis */)
 	if err != nil {
 		log.Error("failed to create l2 relayer", "config file", cfgFile, "error", err)
 		return err

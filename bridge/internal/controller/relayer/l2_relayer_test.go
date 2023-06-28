@@ -35,7 +35,7 @@ func setupL2RelayerDB(t *testing.T) *gorm.DB {
 func testCreateNewRelayer(t *testing.T) {
 	db := setupL2RelayerDB(t)
 	defer bridgeUtils.CloseDB(db)
-	relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, cfg.L2Config.RelayerConfig)
+	relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, cfg.L2Config.RelayerConfig, false)
 	assert.NoError(t, err)
 	assert.NotNil(t, relayer)
 }
@@ -45,7 +45,7 @@ func testL2RelayerProcessPendingBatches(t *testing.T) {
 	defer bridgeUtils.CloseDB(db)
 
 	l2Cfg := cfg.L2Config
-	relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, l2Cfg.RelayerConfig)
+	relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, l2Cfg.RelayerConfig, false)
 	assert.NoError(t, err)
 
 	l2BlockOrm := orm.NewL2Block(db)
@@ -73,7 +73,7 @@ func testL2RelayerProcessCommittedBatches(t *testing.T) {
 	defer bridgeUtils.CloseDB(db)
 
 	l2Cfg := cfg.L2Config
-	relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, l2Cfg.RelayerConfig)
+	relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, l2Cfg.RelayerConfig, false)
 	assert.NoError(t, err)
 	batchOrm := orm.NewBatch(db)
 	batch, err := batchOrm.InsertBatch(context.Background(), 0, 1, chunkHash1.Hex(), chunkHash2.Hex(), []*bridgeTypes.Chunk{chunk1, chunk2})
@@ -113,7 +113,7 @@ func testL2RelayerSkipBatches(t *testing.T) {
 	defer bridgeUtils.CloseDB(db)
 
 	l2Cfg := cfg.L2Config
-	relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, l2Cfg.RelayerConfig)
+	relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, l2Cfg.RelayerConfig, false)
 	assert.NoError(t, err)
 
 	batchOrm := orm.NewBatch(db)
@@ -177,7 +177,7 @@ func testL2RelayerRollupConfirm(t *testing.T) {
 	l2Cfg := cfg.L2Config
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	l2Relayer, err := NewLayer2Relayer(ctx, l2Cli, db, l2Cfg.RelayerConfig)
+	l2Relayer, err := NewLayer2Relayer(ctx, l2Cli, db, l2Cfg.RelayerConfig, false)
 	assert.NoError(t, err)
 
 	// Simulate message confirmations.
@@ -245,7 +245,7 @@ func testL2RelayerGasOracleConfirm(t *testing.T) {
 	l2Cfg := cfg.L2Config
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	l2Relayer, err := NewLayer2Relayer(ctx, l2Cli, db, l2Cfg.RelayerConfig)
+	l2Relayer, err := NewLayer2Relayer(ctx, l2Cli, db, l2Cfg.RelayerConfig, false)
 	assert.NoError(t, err)
 
 	// Simulate message confirmations.
@@ -283,7 +283,7 @@ func testLayer2RelayerProcessGasPriceOracle(t *testing.T) {
 	db := setupL2RelayerDB(t)
 	defer bridgeUtils.CloseDB(db)
 
-	relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, cfg.L2Config.RelayerConfig)
+	relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, cfg.L2Config.RelayerConfig, false)
 	assert.NoError(t, err)
 	assert.NotNil(t, relayer)
 
