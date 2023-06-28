@@ -72,19 +72,20 @@
         "1414141414141414141414141414141414141414141414141414141414141414"
       ]
     },
+    "chunk_proposer_config": {
+      "max_tx_gas_per_chunk": 1123456,
+      "max_l2_tx_num_per_chunk": 1123,
+      "max_l1_commit_gas_per_chunk": 11234567,
+      "max_l1_commit_calldata_size_per_chunk": 112345,
+      "min_l1_commit_calldata_size_per_chunk": 11234,
+      "chunk_timeout_sec": 300
+    },
     "batch_proposer_config": {
-      "proof_generation_freq": 1,
-      "batch_gas_threshold": 3000000,
-      "batch_tx_num_threshold": 44,
-      "batch_time_sec": 300,
-      "batch_commit_time_sec": 1200,
-      "batch_blocks_limit": 100,
-      "commit_tx_calldata_size_limit": 200000,
-      "commit_tx_batch_count_limit": 30,
-      "public_input_config": {
-        "max_tx_num": 44,
-        "padding_tx_hash": "0x0000000000000000000000000000000000000000000000000000000000000000"
-      }
+      "max_chunk_num_per_batch": 112,
+      "max_l1_commit_gas_per_batch": 11234567,
+      "max_l1_commit_calldata_size_per_batch": 112345,
+      "min_chunk_num_per_batch": 11,
+      "batch_timeout_sec": 300
     }
   },
   "db_config": {

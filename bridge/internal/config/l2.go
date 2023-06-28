@@ -4,8 +4,6 @@ import (
 	"github.com/scroll-tech/go-ethereum/rpc"
 
 	"github.com/scroll-tech/go-ethereum/common"
-
-	"scroll-tech/bridge/internal/types"
 )
 
 // L2Config loads l2geth configuration items.
@@ -22,30 +20,27 @@ type L2Config struct {
 	WithdrawTrieRootSlot common.Hash `json:"withdraw_trie_root_slot,omitempty"`
 	// The relayer config
 	RelayerConfig *RelayerConfig `json:"relayer_config"`
+	// The chunk_proposer config
+	ChunkProposerConfig *ChunkProposerConfig `json:"chunk_proposer_config"`
 	// The batch_proposer config
 	BatchProposerConfig *BatchProposerConfig `json:"batch_proposer_config"`
 }
 
-// BatchProposerConfig loads l2watcher batch_proposer configuration items.
+// ChunkProposerConfig loads chunk_proposer configuration items.
+type ChunkProposerConfig struct {
+	MaxTxGasPerChunk                uint64 `json:"max_tx_gas_per_chunk"`
+	MaxL2TxNumPerChunk              uint64 `json:"max_l2_tx_num_per_chunk"`
+	MaxL1CommitGasPerChunk          uint64 `json:"max_l1_commit_gas_per_chunk"`
+	MaxL1CommitCalldataSizePerChunk uint64 `json:"max_l1_commit_calldata_size_per_chunk"`
+	MinL1CommitCalldataSizePerChunk uint64 `json:"min_l1_commit_calldata_size_per_chunk"`
+	ChunkTimeoutSec                 uint64 `json:"chunk_timeout_sec"`
+}
+
+// BatchProposerConfig loads batch_proposer configuration items.
 type BatchProposerConfig struct {
-	// Proof generation frequency, generating proof every k blocks
-	ProofGenerationFreq uint64 `json:"proof_generation_freq"`
-	// Txnum threshold in a batch
-	BatchTxNumThreshold uint64 `json:"batch_tx_num_threshold"`
-	// Gas threshold in a batch
-	BatchGasThreshold uint64 `json:"batch_gas_threshold"`
-	// Time waited to generate a batch even if gas_threshold not met
-	BatchTimeSec uint64 `json:"batch_time_sec"`
-	// Time waited to commit batches before the calldata met CommitTxCalldataSizeLimit
-	BatchCommitTimeSec uint64 `json:"batch_commit_time_sec"`
-	// Max number of blocks in a batch
-	BatchBlocksLimit uint64 `json:"batch_blocks_limit"`
-	// Commit tx calldata size limit in bytes, target to cap the gas use of commit tx at 2M gas
-	CommitTxCalldataSizeLimit uint64 `json:"commit_tx_calldata_size_limit"`
-	// Commit tx calldata min size limit in bytes
-	CommitTxCalldataMinSize uint64 `json:"commit_tx_calldata_min_size,omitempty"`
-	// Max number of batches in a commit transaction
-	CommitTxBatchCountLimit uint64 `json:"commit_tx_batch_count_limit"`
-	// The public input hash config
-	PublicInputConfig *types.PublicInputHashConfig `json:"public_input_config"`
+	MaxChunkNumPerBatch             uint64 `json:"max_chunk_num_per_batch"`
+	MaxL1CommitGasPerBatch          uint64 `json:"max_l1_commit_gas_per_batch"`
+	MaxL1CommitCalldataSizePerBatch uint64 `json:"max_l1_commit_calldata_size_per_batch"`
+	MinChunkNumPerBatch             uint64 `json:"min_chunk_num_per_batch"`
+	BatchTimeoutSec                 uint64 `json:"batch_timeout_sec"`
 }

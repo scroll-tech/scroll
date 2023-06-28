@@ -44,11 +44,12 @@ type L2WatcherClient struct {
 
 	*ethclient.Client
 
-	db            *gorm.DB
-	blockBatchOrm *orm.BlockBatch
-	blockTraceOrm *orm.BlockTrace
-	l1MessageOrm  *orm.L1Message
-	l2MessageOrm  *orm.L2Message
+	db           *gorm.DB
+	l2BlockOrm   *orm.L2Block
+	chunkOrm     *orm.Chunk
+	batchOrm     *orm.Batch
+	l1MessageOrm *orm.L1Message
+	l2MessageOrm *orm.L2Message
 
 	confirmations rpc.BlockNumber
 
@@ -79,8 +80,9 @@ func NewL2WatcherClient(ctx context.Context, client *ethclient.Client, confirmat
 		db:     db,
 		Client: client,
 
-		blockBatchOrm:      orm.NewBlockBatch(db),
-		blockTraceOrm:      orm.NewBlockTrace(db),
+		l2BlockOrm:         orm.NewL2Block(db),
+		chunkOrm:           orm.NewChunk(db),
+		batchOrm:           orm.NewBatch(db),
 		l1MessageOrm:       orm.NewL1Message(db),
 		l2MessageOrm:       l2MessageOrm,
 		processedMsgHeight: uint64(savedHeight),
@@ -105,10 +107,10 @@ func NewL2WatcherClient(ctx context.Context, client *ethclient.Client, confirmat
 }
 
 func (w *L2WatcherClient) initializeGenesis() error {
-	if count, err := w.blockBatchOrm.GetBatchCount(); err != nil {
+	if count, err := w.batchOrm.GetBatchCount(w.ctx); err != nil {
 		return fmt.Errorf("failed to get batch count: %v", err)
 	} else if count > 0 {
-		log.Info("genesis already imported")
+		log.Info("genesis already imported", "batch count", count)
 		return nil
 	}
 
@@ -119,61 +121,74 @@ func (w *L2WatcherClient) initializeGenesis() error {
 
 	log.Info("retrieved L2 genesis header", "hash", genesis.Hash().String())
 
-	blockTrace := &bridgeTypes.WrappedBlock{
-		Header:           genesis,
-		Transactions:     nil,
-		WithdrawTrieRoot: common.Hash{},
-	}
-	batchData := bridgeTypes.NewGenesisBatchData(blockTrace)
-
-	if err = orm.AddBatchInfoToDB(w.db, batchData); err != nil {
-		log.Error("failed to add batch info to DB", "BatchHash", batchData.Hash(), "error", err)
-		return err
+	chunk := &bridgeTypes.Chunk{
+		Blocks: []*bridgeTypes.WrappedBlock{{
+			Header:           genesis,
+			Transactions:     nil,
+			WithdrawTrieRoot: common.Hash{},
+		}},
 	}
 
-	batchHash := batchData.Hash().Hex()
+	err = w.db.Transaction(func(dbTX *gorm.DB) error {
+		var dbChunk *orm.Chunk
+		dbChunk, err = w.chunkOrm.InsertChunk(w.ctx, chunk, dbTX)
+		if err != nil {
+			return fmt.Errorf("failed to insert chunk: %v", err)
+		}
 
-	if err = w.blockBatchOrm.UpdateProvingStatus(batchHash, types.ProvingTaskProved); err != nil {
-		return fmt.Errorf("failed to update genesis batch proving status: %v", err)
+		if err = w.chunkOrm.UpdateProvingStatus(w.ctx, dbChunk.Hash, types.ProvingTaskVerified, dbTX); err != nil {
+			return fmt.Errorf("failed to update genesis chunk proving status: %v", err)
+		}
+
+		var batchHash string
+		batchHash, err = w.batchOrm.InsertBatch(w.ctx, 0, 0, dbChunk.Hash, dbChunk.Hash, []*bridgeTypes.Chunk{chunk}, dbTX)
+		if err != nil {
+			return fmt.Errorf("failed to insert batch: %v", err)
+		}
+
+		if err = w.chunkOrm.UpdateBatchHashInRange(w.ctx, 0, 0, batchHash, dbTX); err != nil {
+			return fmt.Errorf("failed to update batch hash for chunks: %v", err)
+		}
+
+		if err = w.batchOrm.UpdateProvingStatus(w.ctx, batchHash, types.ProvingTaskVerified, dbTX); err != nil {
+			return fmt.Errorf("failed to update genesis batch proving status: %v", err)
+		}
+
+		if err = w.batchOrm.UpdateRollupStatus(w.ctx, batchHash, types.RollupFinalized, dbTX); err != nil {
+			return fmt.Errorf("failed to update genesis batch rollup status: %v", err)
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		return fmt.Errorf("update genesis transaction failed: %v", err)
 	}
 
-	if err = w.blockBatchOrm.UpdateRollupStatus(w.ctx, batchHash, types.RollupFinalized); err != nil {
-		return fmt.Errorf("failed to update genesis batch rollup status: %v", err)
-	}
-
-	log.Info("successfully imported genesis batch")
+	log.Info("successfully imported genesis chunk and batch")
 
 	return nil
 }
 
 const blockTracesFetchLimit = uint64(10)
 
-// TryFetchRunningMissingBlocks try fetch missing blocks if inconsistent
-func (w *L2WatcherClient) TryFetchRunningMissingBlocks(ctx context.Context, blockHeight uint64) {
-	// Get newest block in DB. must have blocks at that time.
-	// Don't use "block_trace" table "trace" column's BlockTrace.Number,
-	// because it might be empty if the corresponding rollup_result is finalized/finalization_skipped
-	heightInDB, err := w.blockTraceOrm.GetL2BlocksLatestHeight()
+// TryFetchRunningMissingBlocks attempts to fetch and store block traces for any missing blocks.
+func (w *L2WatcherClient) TryFetchRunningMissingBlocks(blockHeight uint64) {
+	heightInDB, err := w.l2BlockOrm.GetL2BlocksLatestHeight(w.ctx)
 	if err != nil {
 		log.Error("failed to GetL2BlocksLatestHeight", "err", err)
 		return
 	}
 
-	// Can't get trace from genesis block, so the default start number is 1.
-	var from = uint64(1)
-	if heightInDB > 0 {
-		from = uint64(heightInDB) + 1
-	}
-
-	for ; from <= blockHeight; from += blockTracesFetchLimit {
+	// Fetch and store block traces for missing blocks
+	for from := uint64(heightInDB) + 1; from <= blockHeight; from += blockTracesFetchLimit {
 		to := from + blockTracesFetchLimit - 1
 
 		if to > blockHeight {
 			to = blockHeight
 		}
 
-		// Get block traces and insert into db.
-		if err = w.getAndStoreBlockTraces(ctx, from, to); err != nil {
+		if err = w.getAndStoreBlockTraces(w.ctx, from, to); err != nil {
 			log.Error("fail to getAndStoreBlockTraces", "from", from, "to", to, "err", err)
 			return
 		}
@@ -229,7 +244,7 @@ func (w *L2WatcherClient) getAndStoreBlockTraces(ctx context.Context, from, to u
 	}
 
 	if len(blocks) > 0 {
-		if err := w.blockTraceOrm.InsertWrappedBlocks(blocks); err != nil {
+		if err := w.l2BlockOrm.InsertL2Blocks(w.ctx, blocks); err != nil {
 			return fmt.Errorf("failed to batch insert BlockTraces: %v", err)
 		}
 	}
