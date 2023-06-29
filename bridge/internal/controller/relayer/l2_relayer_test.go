@@ -12,15 +12,14 @@ import (
 	"github.com/stretchr/testify/assert"
 	"gorm.io/gorm"
 
+	"scroll-tech/bridge/internal/controller/sender"
+	"scroll-tech/bridge/internal/orm"
+	bridgeTypes "scroll-tech/bridge/internal/types"
+	bridgeUtils "scroll-tech/bridge/internal/utils"
 	"scroll-tech/common/types"
 	"scroll-tech/common/types/message"
 	"scroll-tech/common/utils"
-
-	"scroll-tech/bridge/internal/controller/sender"
-	"scroll-tech/bridge/internal/orm"
-	"scroll-tech/bridge/internal/orm/migrate"
-	bridgeTypes "scroll-tech/bridge/internal/types"
-	bridgeUtils "scroll-tech/bridge/internal/utils"
+	"scroll-tech/database/migrate"
 )
 
 func setupL2RelayerDB(t *testing.T) *gorm.DB {

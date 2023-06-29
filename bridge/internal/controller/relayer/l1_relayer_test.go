@@ -12,13 +12,12 @@ import (
 	"github.com/stretchr/testify/assert"
 	"gorm.io/gorm"
 
-	"scroll-tech/common/types"
-	"scroll-tech/common/utils"
-
 	"scroll-tech/bridge/internal/controller/sender"
 	"scroll-tech/bridge/internal/orm"
-	"scroll-tech/bridge/internal/orm/migrate"
 	bridgeUtils "scroll-tech/bridge/internal/utils"
+	"scroll-tech/common/types"
+	"scroll-tech/common/utils"
+	"scroll-tech/database/migrate"
 )
 
 var (

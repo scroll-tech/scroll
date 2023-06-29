@@ -11,13 +11,12 @@ import (
 	"github.com/stretchr/testify/assert"
 	"gorm.io/gorm"
 
-	"scroll-tech/common/docker"
-
 	bcmd "scroll-tech/bridge/cmd"
 	"scroll-tech/bridge/internal/config"
-	"scroll-tech/bridge/internal/orm/migrate"
 	"scroll-tech/bridge/internal/utils"
 	"scroll-tech/bridge/mock_bridge"
+	"scroll-tech/common/docker"
+	"scroll-tech/database/migrate"
 )
 
 var (
