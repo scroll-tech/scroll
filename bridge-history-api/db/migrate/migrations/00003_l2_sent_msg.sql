@@ -17,7 +17,7 @@ create table l2_sent_msg
     deleted_at       TIMESTAMP(0) DEFAULT NULL
 );
 
-create unique index uq_msg_hash
+create unique index uk_msg_hash
 on l2_sent_msg (msg_hash) where deleted_at IS NULL;
 
 CREATE OR REPLACE FUNCTION update_timestamp()

@@ -12,7 +12,7 @@ create table relayed_msg
     deleted_at  TIMESTAMP(0) DEFAULT NULL
 );
 
-create unique index relayed_msg_hash_uindex
+create unique index uk_msg_hash
 on relayed_msg (msg_hash);
 
 CREATE OR REPLACE FUNCTION update_timestamp()

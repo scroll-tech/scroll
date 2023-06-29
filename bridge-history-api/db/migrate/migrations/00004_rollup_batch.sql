@@ -14,7 +14,7 @@ create table rollup_batch
     
 );
 
-create unique index uq_batch_index
+create unique index uk_batch_index
 on rollup_batch (batch_index) where deleted_at IS NULL;
 
 CREATE OR REPLACE FUNCTION update_timestamp()
