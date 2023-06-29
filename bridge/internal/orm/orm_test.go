@@ -188,20 +188,22 @@ func TestBatchOrm(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, dbChunk2.Hash, chunkHash2.Hex())
 
-	hash1, err := batchOrm.InsertBatch(context.Background(), 0, 0, chunkHash1.Hex(), chunkHash1.Hex(), []*bridgeTypes.Chunk{chunk1})
+	batch1, err := batchOrm.InsertBatch(context.Background(), 0, 0, chunkHash1.Hex(), chunkHash1.Hex(), []*bridgeTypes.Chunk{chunk1})
 	assert.NoError(t, err)
+	hash1 := batch1.Hash
 
-	batch1, err := batchOrm.GetBatchByIndex(context.Background(), 0)
+	batch1, err = batchOrm.GetBatchByIndex(context.Background(), 0)
 	assert.NoError(t, err)
 	batchHeader1, err := bridgeTypes.DecodeBatchHeader(batch1.BatchHeader)
 	assert.NoError(t, err)
 	batchHash1 := batchHeader1.Hash().Hex()
 	assert.Equal(t, hash1, batchHash1)
 
-	hash2, err := batchOrm.InsertBatch(context.Background(), 1, 1, chunkHash2.Hex(), chunkHash2.Hex(), []*bridgeTypes.Chunk{chunk2})
+	batch2, err := batchOrm.InsertBatch(context.Background(), 1, 1, chunkHash2.Hex(), chunkHash2.Hex(), []*bridgeTypes.Chunk{chunk2})
 	assert.NoError(t, err)
+	hash2 := batch2.Hash
 
-	batch2, err := batchOrm.GetBatchByIndex(context.Background(), 1)
+	batch2, err = batchOrm.GetBatchByIndex(context.Background(), 1)
 	assert.NoError(t, err)
 	batchHeader2, err := bridgeTypes.DecodeBatchHeader(batch2.BatchHeader)
 	assert.NoError(t, err)
