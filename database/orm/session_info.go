@@ -2,8 +2,10 @@ package orm
 
 import (
 	"context"
-	"github.com/jmoiron/sqlx"
+
 	"scroll-tech/common/types"
+
+	"github.com/jmoiron/sqlx"
 )
 
 type sessionInfoOrm struct {
