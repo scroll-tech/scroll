@@ -21,7 +21,7 @@ var (
 	paramsPath    = flag.String("params", "/assets/test_params", "params dir")
 	seedPath      = flag.String("seed", "/assets/test_seed", "seed path")
 	tracesPath    = flag.String("traces", "/assets/traces", "traces dir")
-	proofDumpPath = flag.String("dump", "/assets/agg_proof", "the path proof dumps")
+	proofDumpPath = flag.String("dump", "/assets/agg_proof", "the path proofs dump to")
 )
 
 func TestFFI(t *testing.T) {

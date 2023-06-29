@@ -19,8 +19,8 @@ import (
 
 var (
 	paramsPath = flag.String("params", "/assets/test_params", "params dir")
-	aggVkPath  = flag.String("vk", "/assets/agg_vk", "aggregator verify key")
-	proofPath  = flag.String("proof", "/assets/agg_proof", "aggregator proof")
+	aggVkPath  = flag.String("vk", "/assets/agg_vk", "aggregation proof verification key")
+	proofPath  = flag.String("proof", "/assets/agg_proof", "aggregation proof path saves to")
 )
 
 func TestFFI(t *testing.T) {
