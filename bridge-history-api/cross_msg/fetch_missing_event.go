@@ -165,10 +165,11 @@ func L2FetchAndSaveEvents(ctx context.Context, client *ethclient.Client, databas
 		log.Error("l2FetchAndSaveEvents: Failed to parse cross msg event logs", "err", err)
 		return err
 	}
-	for _, msgHash := range msgHashes {
-		for i := range depositL2CrossMsgs {
-			if msgHash.TxHash.Hex() == depositL2CrossMsgs[i].Layer2Hash {
+	for i := range depositL2CrossMsgs {
+		for _, msgHash := range msgHashes {
+			if depositL2CrossMsgs[i].Layer2Hash == msgHash.TxHash.Hex() {
 				depositL2CrossMsgs[i].MsgHash = msgHash.MsgHash.Hex()
+				break
 			}
 		}
 	}
