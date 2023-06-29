@@ -13,6 +13,7 @@ import (
 
 	"bridge-history-api/config"
 	"bridge-history-api/cross_msg"
+	"bridge-history-api/cross_msg/message_proof"
 	"bridge-history-api/db"
 	cutils "bridge-history-api/utils"
 )
@@ -54,6 +55,7 @@ func action(ctx *cli.Context) error {
 		log.Crit("failed to connect l2 geth", "config file", cfgFile, "error", err)
 	}
 	db, err := db.NewOrmFactory(cfg)
+	defer db.Close()
 	if err != nil {
 		log.Crit("failed to connect to db", "config file", cfgFile, "error", err)
 	}
@@ -98,13 +100,20 @@ func action(ctx *cli.Context) error {
 	go l2crossMsgFetcher.Start()
 	defer l2crossMsgFetcher.Stop()
 
-	l1BlocktimeFetcher := cross_msg.NewBlocktimestampFetcher(subCtx, uint(cfg.L1.Confirmation), int(cfg.L1.BlockTime), l1client, db.UpdateL1Blocktimestamp, db.GetL1EarliestNoBlocktimestampHeight)
-	go l1BlocktimeFetcher.Start()
-	defer l1BlocktimeFetcher.Stop()
+	// BlockTimestamp fetcher for l1 and l2
+	l1BlockTimeFetcher := cross_msg.NewBlockTimestampFetcher(subCtx, cfg.L1.Confirmation, int(cfg.L1.BlockTime), l1client, db.UpdateL1BlockTimestamp, db.GetL1EarliestNoBlockTimestampHeight)
+	go l1BlockTimeFetcher.Start()
+	defer l1BlockTimeFetcher.Stop()
 
-	l2BlocktimeFetcher := cross_msg.NewBlocktimestampFetcher(subCtx, uint(cfg.L2.Confirmation), int(cfg.L2.BlockTime), l2client, db.UpdateL2Blocktimestamp, db.GetL2EarliestNoBlocktimestampHeight)
-	go l2BlocktimeFetcher.Start()
-	defer l2BlocktimeFetcher.Stop()
+	l2BlockTimeFetcher := cross_msg.NewBlockTimestampFetcher(subCtx, cfg.L2.Confirmation, int(cfg.L2.BlockTime), l2client, db.UpdateL2BlockTimestamp, db.GetL2EarliestNoBlockTimestampHeight)
+	go l2BlockTimeFetcher.Start()
+	defer l2BlockTimeFetcher.Stop()
+
+	// Proof updater and batch fetcher
+	l2msgProofUpdater := message_proof.NewMsgProofUpdater(subCtx, cfg.L1.Confirmation, cfg.BatchInfoFetcher.BatchIndexStartBlock, db)
+	batchFetcher := cross_msg.NewBatchInfoFetcher(subCtx, common.HexToAddress(cfg.BatchInfoFetcher.ScrollChainAddr), cfg.BatchInfoFetcher.BatchIndexStartBlock, cfg.L1.Confirmation, int(cfg.L1.BlockTime), l1client, db, l2msgProofUpdater)
+	go batchFetcher.Start()
+	defer batchFetcher.Stop()
 
 	// Catch CTRL-C to ensure a graceful shutdown.
 	interrupt := make(chan os.Signal, 1)

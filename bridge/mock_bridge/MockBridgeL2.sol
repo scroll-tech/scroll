@@ -11,24 +11,6 @@ contract MockBridgeL2 {
   /// @param messageHash The hash of the corresponding message.
   event AppendMessage(uint256 index, bytes32 messageHash);
 
-  /********************************
-   * Events from L1BlockContainer *
-   ********************************/
-
-  /// @notice Emitted when a block is imported.
-  /// @param blockHash The hash of the imported block.
-  /// @param blockHeight The height of the imported block.
-  /// @param blockTimestamp The timestamp of the imported block.
-  /// @param baseFee The base fee of the imported block.
-  /// @param stateRoot The state root of the imported block.
-  event ImportBlock(
-    bytes32 indexed blockHash,
-    uint256 blockHeight,
-    uint256 blockTimestamp,
-    uint256 baseFee,
-    bytes32 stateRoot
-  );
-
   /*********************************
    * Events from L2ScrollMessenger *
    *********************************/

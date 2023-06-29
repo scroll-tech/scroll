@@ -3,7 +3,7 @@ module scroll-tech/roller
 go 1.19
 
 require (
-	github.com/scroll-tech/go-ethereum v1.10.14-0.20230607142419-983d63024433
+	github.com/scroll-tech/go-ethereum v1.10.14-0.20230613025759-f055f50f9d56
 	github.com/stretchr/testify v1.8.2
 	github.com/urfave/cli/v2 v2.17.2-0.20221006022127-8f469abc00aa
 	go.etcd.io/bbolt v1.3.7

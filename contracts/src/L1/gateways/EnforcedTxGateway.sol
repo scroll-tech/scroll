@@ -154,7 +154,7 @@ contract EnforcedTxGateway is OwnableUpgradeable, ReentrancyGuardUpgradeable, Pa
         }
 
         // append transaction
-        IL1MessageQueue(messageQueue).appendEnforcedTransaction(_sender, _target, _value, _gasLimit, _data);
+        IL1MessageQueue(_messageQueue).appendEnforcedTransaction(_sender, _target, _value, _gasLimit, _data);
 
         // refund fee to `_refundAddress`
         unchecked {
