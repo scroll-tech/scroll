@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"time"
 
 	"scroll-tech/common/types"
@@ -66,59 +65,6 @@ func (*Batch) TableName() string {
 	return "batch"
 }
 
-// GetBatches retrieves selected batches from the database.
-// The returned batches are sorted in ascending order by their index.
-func (o *Batch) GetBatches(ctx context.Context, fields map[string]interface{}, orderByList []string, limit int) ([]*Batch, error) {
-	db := o.db.WithContext(ctx)
-
-	for key, value := range fields {
-		db = db.Where(key, value)
-	}
-
-	for _, orderBy := range orderByList {
-		db = db.Order(orderBy)
-	}
-
-	if limit > 0 {
-		db = db.Limit(limit)
-	}
-
-	db = db.Order("index ASC")
-
-	var batches []*Batch
-	if err := db.Find(&batches).Error; err != nil {
-		return nil, err
-	}
-	return batches, nil
-}
-
-// GetBatchCount retrieves the total number of batches in the database.
-func (o *Batch) GetBatchCount(ctx context.Context) (uint64, error) {
-	var count int64
-	err := o.db.WithContext(ctx).Model(&Batch{}).Count(&count).Error
-	if err != nil {
-		return 0, err
-	}
-	return uint64(count), nil
-}
-
-// GetVerifiedProofByHash retrieves the verified aggregate proof for a batch with the given hash.
-func (o *Batch) GetVerifiedProofByHash(ctx context.Context, hash string) (*message.AggProof, error) {
-	var batch Batch
-	err := o.db.WithContext(ctx).Where("hash = ? AND proving_status = ?", hash, types.ProvingTaskVerified).First(&batch).Error
-	if err != nil {
-		return nil, err
-	}
-
-	var proof message.AggProof
-	err = json.Unmarshal(batch.Proof, &proof)
-	if err != nil {
-		return nil, err
-	}
-
-	return &proof, nil
-}
-
 // GetLatestBatch retrieves the latest batch from the database.
 func (o *Batch) GetLatestBatch(ctx context.Context) (*Batch, error) {
 	var latestBatch Batch
@@ -129,47 +75,13 @@ func (o *Batch) GetLatestBatch(ctx context.Context) (*Batch, error) {
 	return &latestBatch, nil
 }
 
-// GetRollupStatusByHashList retrieves the rollup statuses for a list of batch hashes.
-func (o *Batch) GetRollupStatusByHashList(ctx context.Context, hashes []string) ([]types.RollupStatus, error) {
-	if len(hashes) == 0 {
-		return []types.RollupStatus{}, nil
-	}
-
-	var batches []Batch
-	err := o.db.WithContext(ctx).Where("hash IN ?", hashes).Find(&batches).Error
-	if err != nil {
-		return nil, err
-	}
-
-	hashToStatusMap := make(map[string]types.RollupStatus)
-	for _, batch := range batches {
-		hashToStatusMap[batch.Hash] = types.RollupStatus(batch.RollupStatus)
-	}
-
-	var statuses []types.RollupStatus
-	for _, hash := range hashes {
-		status, ok := hashToStatusMap[hash]
-		if !ok {
-			return nil, fmt.Errorf("hash not found in database: %s", hash)
-		}
-		statuses = append(statuses, status)
-	}
-
-	return statuses, nil
-}
-
 // GetPendingBatches retrieves all or limited number of pending batches based on the specified limit.
-// If the limit is set to 0, it retrieves all pending batches.
 // The returned batches are sorted in ascending order by their index.
-func (o *Batch) GetPendingBatches(ctx context.Context, limit int) ([]*Batch, error) {
-	if limit <= 0 {
-		return nil, errors.New("limit must be greater than zero")
-	}
-
+func (o *Batch) GetPendingBatches(ctx context.Context) ([]*Batch, error) {
 	var batches []*Batch
 	db := o.db.WithContext(ctx)
 
-	db = db.Where("rollup_status = ?", types.RollupPending).Order("index ASC").Limit(limit)
+	db = db.Where("rollup_status = ?", types.RollupPending).Order("index ASC")
 
 	if err := db.Find(&batches).Error; err != nil {
 		return nil, err
@@ -177,20 +89,22 @@ func (o *Batch) GetPendingBatches(ctx context.Context, limit int) ([]*Batch, err
 	return batches, nil
 }
 
-// GetBatchByIndex retrieves the batch by the given index.
-func (o *Batch) GetBatchByIndex(ctx context.Context, index uint64) (*Batch, error) {
-	var batch Batch
-	err := o.db.WithContext(ctx).Where("index = ?", index).First(&batch).Error
+// GetAssignedBatches retrieves all batches whose proving_status is either types.ProvingTaskAssigned or types.ProvingTaskProved.
+func (o *Batch) GetAssignedBatches(ctx context.Context) ([]*Batch, error) {
+	var assignedBatches []*Batch
+	err := o.db.WithContext(ctx).
+		Where("proving_status IN (?)", []int{int(types.ProvingTaskAssigned), int(types.ProvingTaskProved)}).
+		Find(&assignedBatches).Error
 	if err != nil {
 		return nil, err
 	}
-	return &batch, nil
+	return assignedBatches, nil
 }
 
 // InsertBatch inserts a new batch into the database.
-func (o *Batch) InsertBatch(ctx context.Context, startChunkIndex, endChunkIndex uint64, startChunkHash, endChunkHash string, chunks []*types.Chunk, dbTX ...*gorm.DB) (*Batch, error) {
+func (o *Batch) InsertBatch(ctx context.Context, startChunkIndex, endChunkIndex uint64, startChunkHash, endChunkHash string, chunks []*types.Chunk, dbTX ...*gorm.DB) (string, error) {
 	if len(chunks) == 0 {
-		return nil, errors.New("invalid args")
+		return "", errors.New("invalid args")
 	}
 
 	db := o.db
@@ -201,7 +115,7 @@ func (o *Batch) InsertBatch(ctx context.Context, startChunkIndex, endChunkIndex 
 	parentBatch, err := o.GetLatestBatch(ctx)
 	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 		log.Error("failed to get the latest batch", "err", err)
-		return nil, err
+		return "", err
 	}
 
 	var batchIndex uint64
@@ -220,7 +134,7 @@ func (o *Batch) InsertBatch(ctx context.Context, startChunkIndex, endChunkIndex 
 		parentBatchHeader, err = types.DecodeBatchHeader(parentBatch.BatchHeader)
 		if err != nil {
 			log.Error("failed to decode parent batch header", "index", parentBatch.Index, "hash", parentBatch.Hash, "err", err)
-			return nil, err
+			return "", err
 		}
 
 		totalL1MessagePoppedBefore = parentBatchHeader.TotalL1MessagePopped()
@@ -232,7 +146,7 @@ func (o *Batch) InsertBatch(ctx context.Context, startChunkIndex, endChunkIndex 
 		log.Error("failed to create batch header",
 			"index", batchIndex, "total l1 message popped before", totalL1MessagePoppedBefore,
 			"parent hash", parentBatchHash, "number of chunks", len(chunks), "err", err)
-		return nil, err
+		return "", err
 	}
 
 	numChunks := len(chunks)
@@ -254,35 +168,10 @@ func (o *Batch) InsertBatch(ctx context.Context, startChunkIndex, endChunkIndex 
 
 	if err := db.WithContext(ctx).Create(&newBatch).Error; err != nil {
 		log.Error("failed to insert batch", "batch", newBatch, "err", err)
-		return nil, err
+		return "", err
 	}
 
-	return &newBatch, nil
-}
-
-// UpdateSkippedBatches updates the skipped batches in the database.
-func (o *Batch) UpdateSkippedBatches(ctx context.Context) (uint64, error) {
-	provingStatusList := []interface{}{
-		int(types.ProvingTaskSkipped),
-		int(types.ProvingTaskFailed),
-	}
-	result := o.db.Model(&Batch{}).Where("rollup_status", int(types.RollupCommitted)).
-		Where("proving_status IN (?)", provingStatusList).Update("rollup_status", int(types.RollupFinalizationSkipped))
-	if result.Error != nil {
-		return 0, result.Error
-	}
-	return uint64(result.RowsAffected), nil
-}
-
-// UpdateL2GasOracleStatusAndOracleTxHash updates the L2 gas oracle status and transaction hash for a batch.
-func (o *Batch) UpdateL2GasOracleStatusAndOracleTxHash(ctx context.Context, hash string, status types.GasOracleStatus, txHash string) error {
-	updateFields := make(map[string]interface{})
-	updateFields["oracle_status"] = int(status)
-	updateFields["oracle_tx_hash"] = txHash
-	if err := o.db.WithContext(ctx).Model(&Batch{}).Where("hash", hash).Updates(updateFields).Error; err != nil {
-		return err
-	}
-	return nil
+	return newBatch.Hash, nil
 }
 
 // UpdateProvingStatus updates the proving status of a batch.
@@ -311,58 +200,7 @@ func (o *Batch) UpdateProvingStatus(ctx context.Context, hash string, status typ
 	return nil
 }
 
-// UpdateRollupStatus updates the rollup status of a batch.
-func (o *Batch) UpdateRollupStatus(ctx context.Context, hash string, status types.RollupStatus, dbTX ...*gorm.DB) error {
-	db := o.db
-	if len(dbTX) > 0 && dbTX[0] != nil {
-		db = dbTX[0]
-	}
-
-	updateFields := make(map[string]interface{})
-	updateFields["rollup_status"] = int(status)
-
-	switch status {
-	case types.RollupCommitted:
-		updateFields["committed_at"] = time.Now()
-	case types.RollupFinalized:
-		updateFields["finalized_at"] = time.Now()
-	}
-	if err := db.Model(&Batch{}).WithContext(ctx).Where("hash", hash).Updates(updateFields).Error; err != nil {
-		return err
-	}
-	return nil
-}
-
-// UpdateCommitTxHashAndRollupStatus updates the commit transaction hash and rollup status for a batch.
-func (o *Batch) UpdateCommitTxHashAndRollupStatus(ctx context.Context, hash string, commitTxHash string, status types.RollupStatus) error {
-	updateFields := make(map[string]interface{})
-	updateFields["commit_tx_hash"] = commitTxHash
-	updateFields["rollup_status"] = int(status)
-	if status == types.RollupCommitted {
-		updateFields["committed_at"] = time.Now()
-	}
-	if err := o.db.WithContext(ctx).Model(&Batch{}).Where("hash", hash).Updates(updateFields).Error; err != nil {
-		return err
-	}
-	return nil
-}
-
-// UpdateFinalizeTxHashAndRollupStatus updates the finalize transaction hash and rollup status for a batch.
-func (o *Batch) UpdateFinalizeTxHashAndRollupStatus(ctx context.Context, hash string, finalizeTxHash string, status types.RollupStatus) error {
-	updateFields := make(map[string]interface{})
-	updateFields["finalize_tx_hash"] = finalizeTxHash
-	updateFields["rollup_status"] = int(status)
-	if status == types.RollupFinalized {
-		updateFields["finalized_at"] = time.Now()
-	}
-	if err := o.db.WithContext(ctx).Model(&Batch{}).Where("hash", hash).Updates(updateFields).Error; err != nil {
-		return err
-	}
-	return nil
-}
-
-// UpdateProofByHash updates the block batch proof by hash.
-// for unit test.
+// UpdateProofByHash updates the batch proof by hash.
 func (o *Batch) UpdateProofByHash(ctx context.Context, hash string, proof *message.AggProof, proofTimeSec uint64) error {
 	proofBytes, err := json.Marshal(proof)
 	if err != nil {

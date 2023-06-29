@@ -6,9 +6,9 @@ create table session_info
     id                  BIGSERIAL      PRIMARY KEY,
     task_id             VARCHAR        NOT NULL,
     roller_public_key   VARCHAR        NOT NULL,
-    prove_type          SMALLINT       DEFAULT 0,
     roller_name         VARCHAR        NOT NULL,
-    proving_status      SMALLINT       DEFAULT 1,
+    prove_type          SMALLINT       DEFAULT 0,
+    proving_status      SMALLINT       DEFAULT 0,
     failure_type        SMALLINT       DEFAULT 0,
     reward              BIGINT         DEFAULT 0,
     proof               BYTEA          DEFAULT NULL,
@@ -18,6 +18,9 @@ create table session_info
 
     CONSTRAINT uk_session_unique UNIQUE (task_id, roller_public_key)
 );
+
+comment
+on column batch.proving_status is 'roller assigned, roller proof valid, roller proof invalid';
 
 -- +goose StatementEnd
 

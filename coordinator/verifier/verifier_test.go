@@ -11,7 +11,7 @@ import (
 
 	"scroll-tech/common/types/message"
 
-	"scroll-tech/coordinator/config"
+	"scroll-tech/coordinator/internal/config"
 	"scroll-tech/coordinator/verifier"
 
 	"github.com/stretchr/testify/assert"

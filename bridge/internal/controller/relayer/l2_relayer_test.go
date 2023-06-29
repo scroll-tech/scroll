@@ -16,10 +16,10 @@ import (
 	"scroll-tech/common/types/message"
 	"scroll-tech/common/utils"
 
+	"scroll-tech/database/migrate"
+
 	"scroll-tech/bridge/internal/controller/sender"
 	"scroll-tech/bridge/internal/orm"
-	"scroll-tech/bridge/internal/orm/migrate"
-	bridgeTypes "scroll-tech/bridge/internal/types"
 	bridgeUtils "scroll-tech/bridge/internal/utils"
 )
 
@@ -49,7 +49,7 @@ func testL2RelayerProcessPendingBatches(t *testing.T) {
 	assert.NoError(t, err)
 
 	l2BlockOrm := orm.NewL2Block(db)
-	err = l2BlockOrm.InsertL2Blocks(context.Background(), []*bridgeTypes.WrappedBlock{wrappedBlock1, wrappedBlock2})
+	err = l2BlockOrm.InsertL2Blocks(context.Background(), []*types.WrappedBlock{wrappedBlock1, wrappedBlock2})
 	assert.NoError(t, err)
 	chunkOrm := orm.NewChunk(db)
 	dbChunk1, err := chunkOrm.InsertChunk(context.Background(), chunk1)
@@ -57,7 +57,7 @@ func testL2RelayerProcessPendingBatches(t *testing.T) {
 	dbChunk2, err := chunkOrm.InsertChunk(context.Background(), chunk2)
 	assert.NoError(t, err)
 	batchOrm := orm.NewBatch(db)
-	batch, err := batchOrm.InsertBatch(context.Background(), 0, 1, dbChunk1.Hash, dbChunk2.Hash, []*bridgeTypes.Chunk{chunk1, chunk2})
+	batch, err := batchOrm.InsertBatch(context.Background(), 0, 1, dbChunk1.Hash, dbChunk2.Hash, []*types.Chunk{chunk1, chunk2})
 	assert.NoError(t, err)
 
 	relayer.ProcessPendingBatches()
@@ -76,7 +76,7 @@ func testL2RelayerProcessCommittedBatches(t *testing.T) {
 	relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, l2Cfg.RelayerConfig, false)
 	assert.NoError(t, err)
 	batchOrm := orm.NewBatch(db)
-	batch, err := batchOrm.InsertBatch(context.Background(), 0, 1, chunkHash1.Hex(), chunkHash2.Hex(), []*bridgeTypes.Chunk{chunk1, chunk2})
+	batch, err := batchOrm.InsertBatch(context.Background(), 0, 1, chunkHash1.Hex(), chunkHash2.Hex(), []*types.Chunk{chunk1, chunk2})
 	assert.NoError(t, err)
 
 	err = batchOrm.UpdateRollupStatus(context.Background(), batch.Hash, types.RollupCommitted)
@@ -118,7 +118,7 @@ func testL2RelayerSkipBatches(t *testing.T) {
 
 	batchOrm := orm.NewBatch(db)
 	createBatch := func(rollupStatus types.RollupStatus, provingStatus types.ProvingStatus) string {
-		batch, err := batchOrm.InsertBatch(context.Background(), 0, 1, chunkHash1.Hex(), chunkHash2.Hex(), []*bridgeTypes.Chunk{chunk1, chunk2})
+		batch, err := batchOrm.InsertBatch(context.Background(), 0, 1, chunkHash1.Hex(), chunkHash2.Hex(), []*types.Chunk{chunk1, chunk2})
 		assert.NoError(t, err)
 
 		err = batchOrm.UpdateRollupStatus(context.Background(), batch.Hash, rollupStatus)
@@ -187,7 +187,7 @@ func testL2RelayerRollupConfirm(t *testing.T) {
 	batchOrm := orm.NewBatch(db)
 	batchHashes := make([]string, len(processingKeys))
 	for i := range batchHashes {
-		batch, err := batchOrm.InsertBatch(context.Background(), 0, 1, chunkHash1.Hex(), chunkHash2.Hex(), []*bridgeTypes.Chunk{chunk1, chunk2})
+		batch, err := batchOrm.InsertBatch(context.Background(), 0, 1, chunkHash1.Hex(), chunkHash2.Hex(), []*types.Chunk{chunk1, chunk2})
 		assert.NoError(t, err)
 		batchHashes[i] = batch.Hash
 	}
@@ -235,10 +235,10 @@ func testL2RelayerGasOracleConfirm(t *testing.T) {
 	defer bridgeUtils.CloseDB(db)
 
 	batchOrm := orm.NewBatch(db)
-	batch1, err := batchOrm.InsertBatch(context.Background(), 0, 0, chunkHash1.Hex(), chunkHash1.Hex(), []*bridgeTypes.Chunk{chunk1})
+	batch1, err := batchOrm.InsertBatch(context.Background(), 0, 0, chunkHash1.Hex(), chunkHash1.Hex(), []*types.Chunk{chunk1})
 	assert.NoError(t, err)
 
-	batch2, err := batchOrm.InsertBatch(context.Background(), 1, 1, chunkHash2.Hex(), chunkHash2.Hex(), []*bridgeTypes.Chunk{chunk2})
+	batch2, err := batchOrm.InsertBatch(context.Background(), 1, 1, chunkHash2.Hex(), chunkHash2.Hex(), []*types.Chunk{chunk2})
 	assert.NoError(t, err)
 
 	// Create and set up the Layer2 Relayer.
