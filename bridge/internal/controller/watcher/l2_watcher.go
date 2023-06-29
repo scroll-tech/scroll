@@ -41,10 +41,7 @@ type L2WatcherClient struct {
 
 	*ethclient.Client
 
-	db           *gorm.DB
 	l2BlockOrm   *orm.L2Block
-	chunkOrm     *orm.Chunk
-	batchOrm     *orm.Batch
 	l1MessageOrm *orm.L1Message
 
 	confirmations rpc.BlockNumber
@@ -82,12 +79,9 @@ func NewL2WatcherClient(ctx context.Context, client *ethclient.Client, confirmat
 
 	w := L2WatcherClient{
 		ctx:    ctx,
-		db:     db,
 		Client: client,
 
 		l2BlockOrm:         orm.NewL2Block(db),
-		chunkOrm:           orm.NewChunk(db),
-		batchOrm:           orm.NewBatch(db),
 		l1MessageOrm:       orm.NewL1Message(db),
 		processedMsgHeight: savedHeight,
 		confirmations:      confirmations,
@@ -102,76 +96,7 @@ func NewL2WatcherClient(ctx context.Context, client *ethclient.Client, confirmat
 		stopped: 0,
 	}
 
-	// Initialize genesis before we do anything else
-	if err := w.initializeGenesis(); err != nil {
-		panic(fmt.Sprintf("failed to initialize L2 genesis batch, err: %v", err))
-	}
-
 	return &w
-}
-
-func (w *L2WatcherClient) initializeGenesis() error {
-	if count, err := w.batchOrm.GetBatchCount(w.ctx); err != nil {
-		return fmt.Errorf("failed to get batch count: %v", err)
-	} else if count > 0 {
-		log.Info("genesis already imported", "batch count", count)
-		return nil
-	}
-
-	genesis, err := w.HeaderByNumber(w.ctx, big.NewInt(0))
-	if err != nil {
-		return fmt.Errorf("failed to retrieve L2 genesis header: %v", err)
-	}
-
-	log.Info("retrieved L2 genesis header", "hash", genesis.Hash().String())
-
-	chunk := &bridgeTypes.Chunk{
-		Blocks: []*bridgeTypes.WrappedBlock{{
-			Header:           genesis,
-			Transactions:     nil,
-			WithdrawTrieRoot: common.Hash{},
-		}},
-	}
-
-	err = w.db.Transaction(func(dbTX *gorm.DB) error {
-		var dbChunk *orm.Chunk
-		dbChunk, err = w.chunkOrm.InsertChunk(w.ctx, chunk, dbTX)
-		if err != nil {
-			return fmt.Errorf("failed to insert chunk: %v", err)
-		}
-
-		if err = w.chunkOrm.UpdateProvingStatus(w.ctx, dbChunk.Hash, types.ProvingTaskVerified, dbTX); err != nil {
-			return fmt.Errorf("failed to update genesis chunk proving status: %v", err)
-		}
-
-		var batchHash string
-		batchHash, err = w.batchOrm.InsertBatch(w.ctx, 0, 0, dbChunk.Hash, dbChunk.Hash, []*bridgeTypes.Chunk{chunk}, dbTX)
-		if err != nil {
-			return fmt.Errorf("failed to insert batch: %v", err)
-		}
-
-		if err = w.chunkOrm.UpdateBatchHashInRange(w.ctx, 0, 0, batchHash, dbTX); err != nil {
-			return fmt.Errorf("failed to update batch hash for chunks: %v", err)
-		}
-
-		if err = w.batchOrm.UpdateProvingStatus(w.ctx, batchHash, types.ProvingTaskVerified, dbTX); err != nil {
-			return fmt.Errorf("failed to update genesis batch proving status: %v", err)
-		}
-
-		if err = w.batchOrm.UpdateRollupStatus(w.ctx, batchHash, types.RollupFinalized, dbTX); err != nil {
-			return fmt.Errorf("failed to update genesis batch rollup status: %v", err)
-		}
-
-		return nil
-	})
-
-	if err != nil {
-		return fmt.Errorf("update genesis transaction failed: %v", err)
-	}
-
-	log.Info("successfully imported genesis chunk and batch")
-
-	return nil
 }
 
 const blockTracesFetchLimit = uint64(10)
