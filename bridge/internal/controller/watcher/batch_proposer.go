@@ -72,14 +72,13 @@ func (p *BatchProposer) updateBatchInfoInDB(dbChunks []*orm.Chunk) error {
 	endChunkIndex := dbChunks[numChunks-1].Index
 	endChunkHash := dbChunks[numChunks-1].Hash
 	err = p.db.Transaction(func(dbTX *gorm.DB) error {
-		var batchHash string
-		batchHash, err = p.batchOrm.InsertBatch(p.ctx, startChunkIndex, endChunkIndex, startChunkHash, endChunkHash, chunks, dbTX)
-		if err != nil {
-			return err
+		batch, dbErr := p.batchOrm.InsertBatch(p.ctx, startChunkIndex, endChunkIndex, startChunkHash, endChunkHash, chunks, dbTX)
+		if dbErr != nil {
+			return dbErr
 		}
-		err = p.chunkOrm.UpdateBatchHashInRange(p.ctx, startChunkIndex, endChunkIndex, batchHash, dbTX)
-		if err != nil {
-			return err
+		dbErr = p.chunkOrm.UpdateBatchHashInRange(p.ctx, startChunkIndex, endChunkIndex, batch.Hash, dbTX)
+		if dbErr != nil {
+			return dbErr
 		}
 		return nil
 	})
