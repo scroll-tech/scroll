@@ -73,6 +73,19 @@ func TestPackFinalizeBatchWithProof(t *testing.T) {
 	assert.NoError(err)
 }
 
+func TestPackImportGenesisBatch(t *testing.T) {
+	assert := assert.New(t)
+
+	l1RollupABI, err := ScrollChainMetaData.GetAbi()
+	assert.NoError(err)
+
+	batchHeader := []byte{}
+	stateRoot := common.Hash{}
+
+	_, err = l1RollupABI.Pack("importGenesisBatch", batchHeader, stateRoot)
+	assert.NoError(err)
+}
+
 func TestPackRelayL1Message(t *testing.T) {
 	assert := assert.New(t)
 
