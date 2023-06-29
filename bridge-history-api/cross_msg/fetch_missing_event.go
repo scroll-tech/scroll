@@ -104,8 +104,8 @@ func L1FetchAndSaveEvents(ctx context.Context, client *ethclient.Client, databas
 		log.Error("l1FetchAndSaveEvents: Failed to parse cross msg event logs", "err", err)
 		return err
 	}
-        for i := range depositL1CrossMsgs {
-	        for _, msgHash := range msgHashes {
+	for i := range depositL1CrossMsgs {
+		for _, msgHash := range msgHashes {
 			if depositL1CrossMsgs[i].Layer1Hash == msgHash.TxHash.Hex() {
 				depositL1CrossMsgs[i].MsgHash = msgHash.MsgHash.Hex()
 				break
