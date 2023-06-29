@@ -15,10 +15,10 @@ var (
 )
 
 func TestFFI(t *testing.T) {
-	t.Log("paramsPath: ", paramsPath)
-	t.Log("seedPath", seedPath)
-	t.Log("tracesPath", tracesPath)
-	t.Log("proofDump", proofDumpPath)
+	t.Log("paramsPath: ", *paramsPath)
+	t.Log("seedPath", *seedPath)
+	t.Log("tracesPath", *tracesPath)
+	t.Log("proofDump", *proofDumpPath)
 	//as := assert.New(t)
 	//cfg := &config.ProverConfig{
 	//	ParamsPath: *paramsPath,

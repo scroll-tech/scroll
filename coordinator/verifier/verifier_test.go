@@ -14,9 +14,9 @@ var (
 )
 
 func TestFFI(t *testing.T) {
-	t.Log("paramsPath: ", paramsPath)
-	t.Log("aggVkPath", aggVkPath)
-	t.Log("proofPath", proofPath)
+	t.Log("paramsPath ", *paramsPath)
+	t.Log("aggVkPath", *aggVkPath)
+	t.Log("proofPath", *proofPath)
 	//as := assert.New(t)
 	//cfg := &config.VerifierConfig{
 	//	MockMode:   false,
