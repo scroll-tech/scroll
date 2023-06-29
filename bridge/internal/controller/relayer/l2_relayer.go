@@ -236,7 +236,7 @@ func (r *Layer2Relayer) commitGenesisBatch(batchHash string, batchHeader []byte,
 	if err != nil {
 		return fmt.Errorf("failed to send import genesis batch tx to L1, error: %v", err)
 	}
-	log.Info("importGenesisBatch transaction sent", "contract", r.cfg.RollupContractAddress, "txHash", txHash, "batchHash", batchHash)
+	log.Info("importGenesisBatch transaction sent", "contract", r.cfg.RollupContractAddress, "txHash", txHash.String(), "batchHash", batchHash)
 
 	// wait for confirmation
 	// we assume that no other transactions are sent before initializeGenesis completes
@@ -247,11 +247,11 @@ func (r *Layer2Relayer) commitGenesisBatch(batchHash string, batchHeader []byte,
 		select {
 		// print progress
 		case <-ticker.C:
-			log.Info("Waiting for confirmation, pending count: %d", r.rollupSender.PendingCount())
+			log.Info("Waiting for confirmation", "pending count", r.rollupSender.PendingCount())
 
 		// timeout
 		case <-time.After(5 * time.Minute):
-			return fmt.Errorf("import genesis timeout after 5 minutes, original txHash: %v", txHash)
+			return fmt.Errorf("import genesis timeout after 5 minutes, original txHash: %v", txHash.String())
 
 		// handle confirmation
 		case confirmation := <-r.rollupSender.ConfirmChan():
@@ -261,7 +261,7 @@ func (r *Layer2Relayer) commitGenesisBatch(batchHash string, batchHeader []byte,
 			if !confirmation.IsSuccessful {
 				return fmt.Errorf("import genesis batch tx failed")
 			}
-			log.Info("Successfully committed genesis batch on L1", "txHash", confirmation.TxHash)
+			log.Info("Successfully committed genesis batch on L1", "txHash", confirmation.TxHash.String())
 			return nil
 		}
 	}
