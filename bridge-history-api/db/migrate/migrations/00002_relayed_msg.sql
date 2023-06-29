@@ -13,7 +13,7 @@ create table relayed_msg
 );
 
 create unique index uk_msg_hash
-on relayed_msg (msg_hash);
+on relayed_msg (msg_hash) where deleted_at IS NULL;
 
 CREATE OR REPLACE FUNCTION update_timestamp()
 RETURNS TRIGGER AS $$
