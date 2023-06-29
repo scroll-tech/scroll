@@ -20,6 +20,9 @@ create table l2_sent_msg
 create unique index uk_msg_hash
 on l2_sent_msg (msg_hash) where deleted_at IS NULL;
 
+create unique index uk_nonce
+on l2_sent_msg (nonce) where deleted_at IS NULL;
+
 CREATE OR REPLACE FUNCTION update_timestamp()
 RETURNS TRIGGER AS $$
 BEGIN

@@ -11,11 +11,13 @@ create table rollup_batch
     created_at          TIMESTAMP(0) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at          TIMESTAMP(0) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     deleted_at          TIMESTAMP(0) DEFAULT NULL
-    
 );
 
 create unique index uk_batch_index
 on rollup_batch (batch_index) where deleted_at IS NULL;
+
+create unique index uk_batch_hash
+on rollup_batch (batch_hash) where deleted_at IS NULL;
 
 CREATE OR REPLACE FUNCTION update_timestamp()
 RETURNS TRIGGER AS $$

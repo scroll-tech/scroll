@@ -81,7 +81,7 @@ func ParseBackendL1EventLogs(logs []types.Log) ([]*orm.CrossMsg, []MsgHashWrappe
 				Layer1Hash:  vlog.TxHash.Hex(),
 				Layer1Token: event.L1Token.Hex(),
 				Layer2Token: event.L2Token.Hex(),
-				TokenID:     event.TokenID.Uint64(),
+				TokenIDs:    []string{event.TokenID.String()},
 			})
 		case backendabi.L1DepositERC1155Sig:
 			event := backendabi.ERC1155MessageEvent{}
@@ -98,7 +98,7 @@ func ParseBackendL1EventLogs(logs []types.Log) ([]*orm.CrossMsg, []MsgHashWrappe
 				Layer1Hash:  vlog.TxHash.Hex(),
 				Layer1Token: event.L1Token.Hex(),
 				Layer2Token: event.L2Token.Hex(),
-				TokenID:     event.TokenID.Uint64(),
+				TokenIDs:    []string{event.TokenID.String()},
 				Amount:      event.Amount.String(),
 			})
 		case backendabi.L1SentMessageEventSignature:
@@ -189,7 +189,7 @@ func ParseBackendL2EventLogs(logs []types.Log) ([]*orm.CrossMsg, []MsgHashWrappe
 				Layer2Hash:  vlog.TxHash.Hex(),
 				Layer1Token: event.L1Token.Hex(),
 				Layer2Token: event.L2Token.Hex(),
-				TokenID:     event.TokenID.Uint64(),
+				TokenIDs:    []string{event.TokenID.String()},
 			})
 		case backendabi.L2WithdrawERC1155Sig:
 			event := backendabi.ERC1155MessageEvent{}
@@ -206,7 +206,7 @@ func ParseBackendL2EventLogs(logs []types.Log) ([]*orm.CrossMsg, []MsgHashWrappe
 				Layer2Hash:  vlog.TxHash.Hex(),
 				Layer1Token: event.L1Token.Hex(),
 				Layer2Token: event.L2Token.Hex(),
-				TokenID:     event.TokenID.Uint64(),
+				TokenIDs:    []string{event.TokenID.String()},
 				Amount:      event.Amount.String(),
 			})
 		case backendabi.L2SentMessageEventSignature:
