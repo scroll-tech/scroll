@@ -13,9 +13,10 @@ import (
 
 	"scroll-tech/common/docker"
 
+	"scroll-tech/database/migrate"
+
 	bcmd "scroll-tech/bridge/cmd"
 	"scroll-tech/bridge/internal/config"
-	"scroll-tech/bridge/internal/orm/migrate"
 	"scroll-tech/bridge/internal/utils"
 	"scroll-tech/bridge/mock_bridge"
 )

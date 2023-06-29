@@ -11,7 +11,7 @@ import (
 	"github.com/scroll-tech/go-ethereum/log"
 	"gorm.io/gorm"
 
-	"scroll-tech/bridge/internal/types"
+	"scroll-tech/common/types"
 )
 
 // L2Block represents a l2 block in the database.

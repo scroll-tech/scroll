@@ -11,20 +11,19 @@ import (
 	cmap "github.com/orcaman/concurrent-map"
 	"github.com/patrickmn/go-cache"
 	"github.com/scroll-tech/go-ethereum/common"
-	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
 	geth_metrics "github.com/scroll-tech/go-ethereum/metrics"
 	"github.com/scroll-tech/go-ethereum/rpc"
 	"golang.org/x/exp/rand"
+	"gorm.io/gorm"
 
 	"scroll-tech/common/metrics"
 	"scroll-tech/common/types"
 	"scroll-tech/common/types/message"
 	"scroll-tech/common/utils/workerpool"
 
-	"scroll-tech/database"
-
-	"scroll-tech/coordinator/config"
+	"scroll-tech/coordinator/internal/config"
+	"scroll-tech/coordinator/internal/orm"
 	"scroll-tech/coordinator/verifier"
 )
 
@@ -91,11 +90,10 @@ type Manager struct {
 	// incoming proofs.
 	verifier *verifier.Verifier
 
-	// db interface
-	orm database.OrmFactory
-
-	// l2geth client
-	*ethclient.Client
+	// orm interface
+	l2BlockOrm *orm.L2Block
+	chunkOrm   *orm.Chunk
+	batchOrm   *orm.Batch
 
 	// Token cache
 	tokenCache *cache.Cache
@@ -108,7 +106,7 @@ type Manager struct {
 
 // New returns a new instance of Manager. The instance will be not fully prepared,
 // and still needs to be finalized and ran by calling `manager.Start`.
-func New(ctx context.Context, cfg *config.RollerManagerConfig, orm database.OrmFactory, client *ethclient.Client) (*Manager, error) {
+func New(ctx context.Context, cfg *config.RollerManagerConfig, db *gorm.DB) (*Manager, error) {
 	v, err := verifier.NewVerifier(cfg.Verifier)
 	if err != nil {
 		return nil, err
@@ -122,8 +120,9 @@ func New(ctx context.Context, cfg *config.RollerManagerConfig, orm database.OrmF
 		sessions:           make(map[string]*session),
 		failedSessionInfos: make(map[string]*SessionInfo),
 		verifier:           v,
-		orm:                orm,
-		Client:             client,
+		l2BlockOrm:         orm.NewL2Block(db),
+		chunkOrm:           orm.NewChunk(db),
+		batchOrm:           orm.NewBatch(db),
 		tokenCache:         cache.New(time.Duration(cfg.TokenTimeToLive)*time.Second, 1*time.Hour),
 		verifierWorkerPool: workerpool.NewWorkerPool(cfg.MaxVerifierWorkers),
 	}, nil
@@ -136,7 +135,6 @@ func (m *Manager) Start() error {
 	}
 
 	m.verifierWorkerPool.Run()
-	m.restorePrevSessions()
 
 	atomic.StoreInt32(&m.running, 1)
 
@@ -162,9 +160,9 @@ func (m *Manager) isRunning() bool {
 // Loop keeps the manager running.
 func (m *Manager) Loop() {
 	var (
-		tick     = time.NewTicker(time.Second * 2)
-		tasks    []*types.BlockBatch
-		aggTasks []*types.AggTask
+		tick       = time.NewTicker(time.Second * 2)
+		chunkTasks []*orm.Chunk
+		batchTasks []*orm.Batch
 	)
 	defer tick.Stop()
 
@@ -172,38 +170,32 @@ func (m *Manager) Loop() {
 		select {
 		case <-tick.C:
 			// load and send aggregator tasks
-			if len(aggTasks) == 0 && m.orm != nil {
+			if len(batchTasks) == 0 {
 				var err error
-				aggTasks, err = m.orm.GetUnassignedAggTasks()
+				batchTasks, err = m.batchOrm.GetPendingBatches(m.ctx)
 				if err != nil {
 					log.Error("failed to get unassigned aggregator proving tasks", "error", err)
 					continue
 				}
 			}
 			// Select aggregator type roller and send message
-			for len(aggTasks) > 0 && m.StartAggProofGenerationSession(aggTasks[0], nil) {
-				aggTasks = aggTasks[1:]
+			for len(batchTasks) > 0 && m.StartAggProofGenerationSession(batchTasks[0], nil) {
+				batchTasks = batchTasks[1:]
 			}
 
 			// load and send basic tasks
-			if len(tasks) == 0 && m.orm != nil {
-				var err error
+			if len(chunkTasks) == 0 {
 				// TODO: add cache
-				if tasks, err = m.orm.GetBlockBatches(
-					map[string]interface{}{"proving_status": types.ProvingTaskUnassigned},
-					fmt.Sprintf(
-						"ORDER BY index %s LIMIT %d;",
-						m.cfg.OrderSession,
-						m.GetNumberOfIdleRollers(message.BasicProve),
-					),
-				); err != nil {
+				var err error
+				chunkTasks, err = m.chunkOrm.GetUnassignedChunks(m.ctx)
+				if err != nil {
 					log.Error("failed to get unassigned basic proving tasks", "error", err)
 					continue
 				}
 			}
 			// Select basic type roller and send message
-			for len(tasks) > 0 && m.StartBasicProofGenerationSession(tasks[0], nil) {
-				tasks = tasks[1:]
+			for len(chunkTasks) > 0 && m.StartBasicProofGenerationSession(chunkTasks[0], nil) {
+				chunkTasks = chunkTasks[1:]
 			}
 		case <-m.ctx.Done():
 			if m.ctx.Err() != nil {
@@ -215,58 +207,6 @@ func (m *Manager) Loop() {
 			return
 		}
 	}
-}
-
-func (m *Manager) restorePrevSessions() {
-	// m.orm may be nil in scroll tests
-	if m.orm == nil {
-		return
-	}
-
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	var hashes []string
-	// load assigned aggregator tasks from db
-	aggTasks, err := m.orm.GetAssignedAggTasks()
-	if err != nil {
-		log.Error("failed to load assigned aggregator tasks from db", "error", err)
-		return
-	}
-	for _, aggTask := range aggTasks {
-		hashes = append(hashes, aggTask.ID)
-	}
-	// load assigned basic tasks from db
-	batchHashes, err := m.orm.GetAssignedBatchHashes()
-	if err != nil {
-		log.Error("failed to get assigned batch batchHashes from db", "error", err)
-		return
-	}
-	hashes = append(hashes, batchHashes...)
-
-	prevSessions, err := m.orm.GetSessionInfosByHashes(hashes)
-	if err != nil {
-		log.Error("failed to recover roller session info from db", "error", err)
-		return
-	}
-
-	sessionInfosMaps := make(map[string][]*types.SessionInfo)
-	for _, v := range prevSessions {
-		log.Info("restore roller info for session", "session start time", v.CreatedAt, "session id", v.TaskID, "roller name",
-			v.RollerName, "prove type", v.ProveType, "public key", v.RollerPublicKey, "proof status", v.ProvingStatus)
-		sessionInfosMaps[v.TaskID] = append(sessionInfosMaps[v.TaskID], v)
-	}
-
-	for taskID, sessionInfos := range sessionInfosMaps {
-		sess := &session{
-			taskID:       taskID,
-			sessionInfos: sessionInfos,
-			finishChan:   make(chan rollerProofStatus, proofAndPkBufferSize),
-		}
-		m.sessions[taskID] = sess
-		go m.CollectProofs(sess)
-	}
-
 }
 
 // HandleZkProof handle a ZkProof submitted from a roller.
@@ -325,12 +265,12 @@ func (m *Manager) handleZkProof(pk string, msg *message.ProofDetail) error {
 		// Roll back current proof's status.
 		if dbErr != nil {
 			if msg.Type == message.BasicProve {
-				if err := m.orm.UpdateProvingStatus(msg.ID, types.ProvingTaskUnassigned); err != nil {
+				if err := m.chunkOrm.UpdateProvingStatus(m.ctx, msg.ID, types.ProvingTaskUnassigned); err != nil {
 					log.Error("fail to reset basic task status as Unassigned", "msg.ID", msg.ID)
 				}
 			}
 			if msg.Type == message.AggregatorProve {
-				if err := m.orm.UpdateAggTaskStatus(msg.ID, types.ProvingTaskUnassigned); err != nil {
+				if err := m.batchOrm.UpdateProvingStatus(m.ctx, msg.ID, types.ProvingTaskUnassigned); err != nil {
 					log.Error("fail to reset aggregator task status as Unassigned", "msg.ID", msg.ID)
 				}
 			}
@@ -361,18 +301,22 @@ func (m *Manager) handleZkProof(pk string, msg *message.ProofDetail) error {
 
 	// store proof content
 	if msg.Type == message.BasicProve {
-		if dbErr = m.orm.UpdateProofByHash(m.ctx, msg.ID, msg.Proof, proofTimeSec); dbErr != nil {
+		if dbErr = m.chunkOrm.UpdateProofByHash(m.ctx, msg.ID, msg.Proof, proofTimeSec); dbErr != nil {
 			log.Error("failed to store basic proof into db", "error", dbErr)
 			return dbErr
 		}
-		if dbErr = m.orm.UpdateProvingStatus(msg.ID, types.ProvingTaskProved); dbErr != nil {
+		if dbErr = m.chunkOrm.UpdateProvingStatus(m.ctx, msg.ID, types.ProvingTaskProved); dbErr != nil {
 			log.Error("failed to update basic task status as proved", "error", dbErr)
 			return dbErr
 		}
 	}
 	if msg.Type == message.AggregatorProve {
-		if dbErr = m.orm.UpdateProofForAggTask(msg.ID, msg.Proof); dbErr != nil {
+		if dbErr = m.batchOrm.UpdateProofByHash(m.ctx, msg.ID, msg.Proof, proofTimeSec); dbErr != nil {
 			log.Error("failed to store aggregator proof into db", "error", dbErr)
+			return dbErr
+		}
+		if dbErr = m.batchOrm.UpdateProvingStatus(m.ctx, msg.ID, types.ProvingTaskProved); dbErr != nil {
+			log.Error("failed to update basic task status as proved", "error", dbErr)
 			return dbErr
 		}
 	}
@@ -391,20 +335,20 @@ func (m *Manager) handleZkProof(pk string, msg *message.ProofDetail) error {
 	}
 
 	if success {
-		if msg.Type == message.AggregatorProve {
-			if dbErr = m.orm.UpdateAggTaskStatus(msg.ID, types.ProvingTaskVerified); dbErr != nil {
+		if msg.Type == message.BasicProve {
+			if dbErr = m.chunkOrm.UpdateProvingStatus(m.ctx, msg.ID, types.ProvingTaskVerified); dbErr != nil {
 				log.Error(
-					"failed to update aggregator proving_status",
+					"failed to update basic proving_status",
 					"msg.ID", msg.ID,
 					"status", types.ProvingTaskVerified,
 					"error", dbErr)
 				return dbErr
 			}
 		}
-		if msg.Type == message.BasicProve {
-			if dbErr = m.orm.UpdateProvingStatus(msg.ID, types.ProvingTaskVerified); dbErr != nil {
+		if msg.Type == message.AggregatorProve {
+			if dbErr = m.batchOrm.UpdateProvingStatus(m.ctx, msg.ID, types.ProvingTaskVerified); dbErr != nil {
 				log.Error(
-					"failed to update basic proving_status",
+					"failed to update aggregator proving_status",
 					"msg.ID", msg.ID,
 					"status", types.ProvingTaskVerified,
 					"error", dbErr)
@@ -473,14 +417,14 @@ func (m *Manager) CollectProofs(sess *session) {
 			// Note that this is only a workaround for testnet here.
 			// TODO: In real cases we should reset to orm.ProvingTaskUnassigned
 			// so as to re-distribute the task in the future
-			if message.ProveType(sess.sessionInfos[0].ProveType) == message.BasicProve {
-				if err := m.orm.UpdateProvingStatus(sess.taskID, types.ProvingTaskFailed); err != nil {
-					log.Error("fail to reset basic task_status as Unassigned", "id", sess.taskID, "err", err)
+			if sess.info.ProveType == message.BasicProve {
+				if err := m.chunkOrm.UpdateProvingStatus(m.ctx, sess.info.ID, types.ProvingTaskFailed); err != nil {
+					log.Error("fail to reset basic task_status as Unassigned", "id", sess.info.ID, "err", err)
 				}
 			}
-			if message.ProveType(sess.sessionInfos[0].ProveType) == message.AggregatorProve {
-				if err := m.orm.UpdateAggTaskStatus(sess.taskID, types.ProvingTaskFailed); err != nil {
-					log.Error("fail to reset aggregator task_status as Unassigned", "id", sess.taskID, "err", err)
+			if sess.info.ProveType == message.AggregatorProve {
+				if err := m.batchOrm.UpdateProvingStatus(m.ctx, sess.info.ID, types.ProvingTaskFailed); err != nil {
+					log.Error("fail to reset aggregator task_status as Unassigned", "id", sess.info.ID, "err", err)
 				}
 			}
 
@@ -504,22 +448,17 @@ func (m *Manager) CollectProofs(sess *session) {
 
 			if sess.isSessionFailed() {
 				if ret.typ == message.BasicProve {
-					if err := m.orm.UpdateProvingStatus(ret.id, types.ProvingTaskFailed); err != nil {
+					if err := m.chunkOrm.UpdateProvingStatus(m.ctx, ret.id, types.ProvingTaskFailed); err != nil {
 						log.Error("failed to update basic proving_status as failed", "msg.ID", ret.id, "error", err)
 					}
 				}
 				if ret.typ == message.AggregatorProve {
-					if err := m.orm.UpdateAggTaskStatus(ret.id, types.ProvingTaskFailed); err != nil {
+					if err := m.batchOrm.UpdateProvingStatus(m.ctx, ret.id, types.ProvingTaskFailed); err != nil {
 						log.Error("failed to update aggregator proving_status as failed", "msg.ID", ret.id, "error", err)
 					}
 				}
 				coordinatorSessionsFailedTotalCounter.Inc(1)
 			}
-
-			if err := m.orm.UpdateSessionInfoProvingStatus(m.ctx, ret.typ, ret.id, ret.pk, ret.status); err != nil {
-				log.Error("db set session info fail", "pk", ret.pk, "error", err)
-			}
-
 			//Check if all rollers have finished their tasks, and rollers with valid results are indexed by public key.
 			finished, validRollers := sess.isRollersFinished()
 
@@ -590,7 +529,7 @@ func (m *Manager) APIs() []rpc.API {
 }
 
 // StartBasicProofGenerationSession starts a basic proof generation session
-func (m *Manager) StartBasicProofGenerationSession(task *types.BlockBatch, prevSession *session) (success bool) {
+func (m *Manager) StartBasicProofGenerationSession(task *orm.Chunk, prevSession *session) (success bool) {
 	var taskID string
 	if task != nil {
 		taskID = task.Hash
@@ -607,30 +546,30 @@ func (m *Manager) StartBasicProofGenerationSession(task *types.BlockBatch, prevS
 	defer func() {
 		if !success {
 			if task != nil {
-				if err := m.orm.UpdateProvingStatus(taskID, types.ProvingTaskUnassigned); err != nil {
+				if err := m.chunkOrm.UpdateProvingStatus(m.ctx, taskID, types.ProvingTaskUnassigned); err != nil {
 					log.Error("fail to reset task_status as Unassigned", "id", taskID, "err", err)
 				}
 			} else {
-				if err := m.orm.UpdateProvingStatus(taskID, types.ProvingTaskFailed); err != nil {
+				if err := m.chunkOrm.UpdateProvingStatus(m.ctx, taskID, types.ProvingTaskFailed); err != nil {
 					log.Error("fail to reset task_status as Failed", "id", taskID, "err", err)
 				}
 			}
 		}
 	}()
 
-	// Get block traces.
-	blockInfos, err := m.orm.GetL2BlockInfos(map[string]interface{}{"batch_hash": taskID})
+	// Get block hashes.
+	wrappedBlocks, err := m.l2BlockOrm.GetL2BlocksByChunkHash(m.ctx, taskID)
 	if err != nil {
 		log.Error(
-			"could not GetBlockInfos",
-			"batch_hash", taskID,
+			"Failed to fetch wrapped blocks",
+			"batch hash", taskID,
 			"error", err,
 		)
 		return false
 	}
-	blockHashes := make([]common.Hash, len(blockInfos))
-	for i, blockInfo := range blockInfos {
-		blockHashes[i] = common.HexToHash(blockInfo.Hash)
+	blockHashes := make([]common.Hash, len(wrappedBlocks))
+	for i, wrappedBlock := range wrappedBlocks {
+		blockHashes[i] = wrappedBlock.Header.Hash()
 	}
 
 	// Dispatch task to basic rollers.
@@ -674,16 +613,34 @@ func (m *Manager) StartBasicProofGenerationSession(task *types.BlockBatch, prevS
 	}
 
 	// Update session proving status as assigned.
-	if err = m.orm.UpdateProvingStatus(taskID, types.ProvingTaskAssigned); err != nil {
+	if err = m.chunkOrm.UpdateProvingStatus(m.ctx, taskID, types.ProvingTaskAssigned); err != nil {
 		log.Error("failed to update task status", "id", taskID, "err", err)
 		return false
 	}
 
 	// Create a proof generation session.
 	sess := &session{
-		taskID:       taskID,
-		sessionInfos: sessionInfos,
-		finishChan:   make(chan rollerProofStatus, proofAndPkBufferSize),
+		info: &types.SessionInfo{
+			ID:             taskID,
+			Rollers:        rollers,
+			ProveType:      message.BasicProve,
+			StartTimestamp: time.Now().Unix(),
+			Attempts:       1,
+		},
+		finishChan: make(chan rollerProofStatus, proofAndPkBufferSize),
+	}
+	if prevSession != nil {
+		sess.info.Attempts += prevSession.info.Attempts
+	}
+
+	for _, roller := range sess.info.Rollers {
+		log.Info(
+			"assigned proof to roller",
+			"session id", sess.info.ID,
+			"session type", sess.info.ProveType,
+			"roller name", roller.Name,
+			"roller pk", roller.PublicKey,
+			"proof status", roller.Status)
 	}
 
 	m.mu.Lock()
@@ -695,10 +652,10 @@ func (m *Manager) StartBasicProofGenerationSession(task *types.BlockBatch, prevS
 }
 
 // StartAggProofGenerationSession starts an aggregator proof generation.
-func (m *Manager) StartAggProofGenerationSession(task *types.AggTask, prevSession *session) (success bool) {
+func (m *Manager) StartAggProofGenerationSession(task *orm.Batch, prevSession *session) (success bool) {
 	var taskID string
 	if task != nil {
-		taskID = task.ID
+		taskID = task.Hash
 	} else {
 		taskID = prevSession.taskID
 	}
@@ -712,9 +669,9 @@ func (m *Manager) StartAggProofGenerationSession(task *types.AggTask, prevSessio
 	defer func() {
 		if !success {
 			if task != nil {
-				if err := m.orm.UpdateAggTaskStatus(taskID, types.ProvingTaskUnassigned); err != nil {
+				if err := m.batchOrm.UpdateProvingStatus(m.ctx, taskID, types.ProvingTaskUnassigned); err != nil {
 					log.Error("fail to reset task_status as Unassigned", "id", taskID, "err", err)
-				} else if err := m.orm.UpdateAggTaskStatus(taskID, types.ProvingTaskFailed); err != nil {
+				} else if err := m.batchOrm.UpdateProvingStatus(m.ctx, taskID, types.ProvingTaskFailed); err != nil {
 					log.Error("fail to reset task_status as Failed", "id", taskID, "err", err)
 				}
 			}
@@ -722,10 +679,10 @@ func (m *Manager) StartAggProofGenerationSession(task *types.AggTask, prevSessio
 
 	}()
 
-	// get agg task from db
-	subProofs, err := m.orm.GetSubProofsByAggTaskID(taskID)
+	// get zkevm proofs (for chunks) from db
+	subProofs, err := m.chunkOrm.GetProofsByBatchHash(m.ctx, taskID)
 	if err != nil {
-		log.Error("failed to get sub proofs for aggregator task", "id", taskID, "error", err)
+		log.Error("failed to get sub proofs for aggregator task", "session id", taskID, "error", err)
 		return false
 	}
 
@@ -775,16 +732,34 @@ func (m *Manager) StartAggProofGenerationSession(task *types.AggTask, prevSessio
 	}
 
 	// Update session proving status as assigned.
-	if err = m.orm.UpdateAggTaskStatus(taskID, types.ProvingTaskAssigned); err != nil {
+	if err = m.batchOrm.UpdateProvingStatus(m.ctx, taskID, types.ProvingTaskAssigned); err != nil {
 		log.Error("failed to update task status", "id", taskID, "err", err)
 		return false
 	}
 
 	// Create a proof generation session.
 	sess := &session{
-		taskID:       taskID,
-		sessionInfos: sessionInfos,
-		finishChan:   make(chan rollerProofStatus, proofAndPkBufferSize),
+		info: &types.SessionInfo{
+			ID:             taskID,
+			Rollers:        rollers,
+			ProveType:      message.AggregatorProve,
+			StartTimestamp: time.Now().Unix(),
+			Attempts:       1,
+		},
+		finishChan: make(chan rollerProofStatus, proofAndPkBufferSize),
+	}
+	if prevSession != nil {
+		sess.info.Attempts += prevSession.info.Attempts
+	}
+
+	for _, roller := range sess.info.Rollers {
+		log.Info(
+			"assigned proof to roller",
+			"session id", sess.info.ID,
+			"session type", sess.info.ProveType,
+			"roller name", roller.Name,
+			"roller pk", roller.PublicKey,
+			"proof status", roller.Status)
 	}
 
 	m.mu.Lock()

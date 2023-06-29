@@ -34,7 +34,7 @@ type rollerNode struct {
 	// Time of message creation
 	registerTime time.Time
 
-	*rollerMetrics
+	metrics *rollerMetrics
 }
 
 func (r *rollerNode) sendTask(msg *message.TaskMsg) bool {
@@ -74,13 +74,13 @@ func (m *Manager) register(pubkey string, identity *message.Identity) (<-chan *m
 			rollerProofsLastFinishedTimestampGauge: geth_metrics.GetOrRegisterGauge(fmt.Sprintf("roller/proofs/last/finished/timestamp/%s", pubkey), metrics.ScrollRegistry),
 		}
 		node = &rollerNode{
-			Name:          identity.Name,
-			Type:          identity.RollerType,
-			Version:       identity.Version,
-			PublicKey:     pubkey,
-			TaskIDs:       *taskIDs,
-			taskChan:      make(chan *message.TaskMsg, 4),
-			rollerMetrics: rMs,
+			Name:      identity.Name,
+			Type:      identity.RollerType,
+			Version:   identity.Version,
+			PublicKey: pubkey,
+			TaskIDs:   *taskIDs,
+			taskChan:  make(chan *message.TaskMsg, 4),
+			metrics:   rMs,
 		}
 		m.rollerPool.Set(pubkey, node)
 	}

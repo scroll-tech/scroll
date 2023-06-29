@@ -2,10 +2,12 @@ package orm
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"time"
 
 	"scroll-tech/common/types"
+	"scroll-tech/common/types/message"
 
 	"github.com/scroll-tech/go-ethereum/log"
 	"gorm.io/gorm"
@@ -56,40 +58,66 @@ func (*Chunk) TableName() string {
 	return "chunk"
 }
 
-// GetChunksInRange retrieves chunks within a given range (inclusive) from the database.
-// The range is closed, i.e., it includes both start and end indices.
+// GetChunks retrieves selected chunks from the database.
 // The returned chunks are sorted in ascending order by their index.
-func (o *Chunk) GetChunksInRange(ctx context.Context, startIndex uint64, endIndex uint64) ([]*Chunk, error) {
-	if startIndex > endIndex {
-		return nil, errors.New("start index should be less than or equal to end index")
+func (o *Chunk) GetChunks(ctx context.Context, fields map[string]interface{}, orderByList []string, limit int) ([]*Chunk, error) {
+	db := o.db.WithContext(ctx)
+
+	for key, value := range fields {
+		db = db.Where(key, value)
 	}
 
-	var chunks []*Chunk
-	db := o.db.WithContext(ctx).Where("index >= ? AND index <= ?", startIndex, endIndex)
+	for _, orderBy := range orderByList {
+		db = db.Order(orderBy)
+	}
+
+	if limit > 0 {
+		db = db.Limit(limit)
+	}
+
 	db = db.Order("index ASC")
+
+	var chunks []*Chunk
+	if err := db.Find(&chunks).Error; err != nil {
+		return nil, err
+	}
+	return chunks, nil
+}
+
+// GetUnassignedChunks retrieves all or limited number of unassigned chunks based on the specified limit.
+// The returned chunks are sorted in ascending order by their index.
+func (o *Chunk) GetUnassignedChunks(ctx context.Context) ([]*Chunk, error) {
+	var chunks []*Chunk
+	db := o.db.WithContext(ctx)
+	db = db.Where("proving_status = ?", types.ProvingTaskUnassigned).Order("index ASC")
 
 	if err := db.Find(&chunks).Error; err != nil {
 		return nil, err
 	}
-
-	if startIndex+uint64(len(chunks)) != endIndex+1 {
-		return nil, errors.New("number of chunks not expected in the specified range")
-	}
-
 	return chunks, nil
 }
 
-// GetUnbatchedChunks retrieves unbatched chunks from the database.
-func (o *Chunk) GetUnbatchedChunks(ctx context.Context) ([]*Chunk, error) {
-	var chunks []*Chunk
-	err := o.db.WithContext(ctx).
-		Where("batch_hash IS NULL").
-		Order("index asc").
-		Find(&chunks).Error
+// GetProofsByBatchHash retrieves the proofs associated with a specific batch hash.
+// It returns a slice of decoded proofs (message.AggProof) obtained from the database.
+// The returned proofs are sorted in ascending order by their associated chunk index.
+func (o *Chunk) GetProofsByBatchHash(ctx context.Context, batchHash string) ([]*message.AggProof, error) {
+	// The returned chunks are sorted in ascending order by their index.
+	chunks, err := o.GetChunks(ctx, map[string]interface{}{"batch_hash": batchHash}, nil, 0)
 	if err != nil {
 		return nil, err
 	}
-	return chunks, nil
+
+	var proofs []*message.AggProof
+	for _, chunk := range chunks {
+		var proof message.AggProof
+		if err := json.Unmarshal(chunk.Proof, &proof); err != nil {
+			return nil, err
+		}
+
+		proofs = append(proofs, &proof)
+	}
+
+	return proofs, nil
 }
 
 // GetLatestChunk retrieves the latest chunk from the database.
@@ -102,6 +130,16 @@ func (o *Chunk) GetLatestChunk(ctx context.Context) (*Chunk, error) {
 		return nil, err
 	}
 	return &latestChunk, nil
+}
+
+// GetProvingStatusByHash retrieves the proving status of a chunk given its hash.
+func (o *Chunk) GetProvingStatusByHash(ctx context.Context, hash string) (types.ProvingStatus, error) {
+	var chunk Chunk
+	err := o.db.WithContext(ctx).Where("hash = ?", hash).First(&chunk).Error
+	if err != nil {
+		return types.ProvingStatusUndefined, err
+	}
+	return types.ProvingStatus(chunk.ProvingStatus), nil
 }
 
 // InsertChunk inserts a new chunk into the database.
@@ -200,17 +238,16 @@ func (o *Chunk) UpdateProvingStatus(ctx context.Context, hash string, status typ
 	return nil
 }
 
-// UpdateBatchHashInRange updates the batch_hash for chunks within the specified range (inclusive).
-// The range is closed, i.e., it includes both start and end indices.
-func (o *Chunk) UpdateBatchHashInRange(ctx context.Context, startIndex uint64, endIndex uint64, batchHash string, dbTX ...*gorm.DB) error {
-	db := o.db
-	if len(dbTX) > 0 && dbTX[0] != nil {
-		db = dbTX[0]
-	}
-	db = db.Model(&Chunk{}).Where("index >= ? AND index <= ?", startIndex, endIndex)
-
-	if err := db.Update("batch_hash", batchHash).Error; err != nil {
+// UpdateProofByHash updates the chunk proof by hash.
+func (o *Chunk) UpdateProofByHash(ctx context.Context, hash string, proof *message.AggProof, proofTimeSec uint64) error {
+	proofBytes, err := json.Marshal(proof)
+	if err != nil {
 		return err
 	}
-	return nil
+
+	updateFields := make(map[string]interface{})
+	updateFields["proof"] = proofBytes
+	updateFields["proof_time_sec"] = proofTimeSec
+	err = o.db.WithContext(ctx).Model(&Batch{}).Where("hash", hash).Updates(updateFields).Error
+	return err
 }
