@@ -106,15 +106,6 @@ func (p *ChunkProposer) proposeChunk() (*bridgeTypes.Chunk, error) {
 		)
 	}
 
-	if totalTxGasUsed > p.maxTxGasPerChunk {
-		return nil, fmt.Errorf(
-			"the first block exceeds l2 tx gas limit; block number: %v, gas used: %v, max gas limit: %v",
-			firstBlock.Header.Number,
-			totalTxGasUsed,
-			p.maxTxGasPerChunk,
-		)
-	}
-
 	if totalL1CommitGas > p.maxL1CommitGasPerChunk {
 		return nil, fmt.Errorf(
 			"the first block exceeds l1 commit gas limit; block number: %v, commit gas: %v, max commit gas limit: %v",
@@ -130,6 +121,16 @@ func (p *ChunkProposer) proposeChunk() (*bridgeTypes.Chunk, error) {
 			firstBlock.Header.Number,
 			totalL1CommitCalldataSize,
 			p.maxL1CommitCalldataSizePerChunk,
+		)
+	}
+
+	// Check if the first block breaks any soft limits.
+	if totalTxGasUsed > p.maxTxGasPerChunk {
+		log.Warn(
+			"The first block in chunk exceeds l2 tx gas limit",
+			"block number", firstBlock.Header.Number,
+			"gas used", totalTxGasUsed,
+			"max gas limit", p.maxTxGasPerChunk,
 		)
 	}
 
