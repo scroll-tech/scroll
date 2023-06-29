@@ -44,6 +44,7 @@ type BlockTraceOrm interface {
 type SessionInfoOrm interface {
 	GetSessionInfosByHashes(hashes []string) ([]*types.SessionInfo, error)
 	SetSessionInfo(rollersInfo *types.SessionInfo) error
+	UpdateSessionInfoProvingStatus(ctx context.Context, dbTx *sqlx.Tx, hash string, pk string, status types.ProvingStatus) error
 }
 
 // AggTaskOrm is aggregator task
