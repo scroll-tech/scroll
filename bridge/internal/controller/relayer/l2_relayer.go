@@ -212,11 +212,7 @@ func (r *Layer2Relayer) initializeGenesis() error {
 
 		// commit genesis batch on L1
 		// note: we do this inside the DB transaction so that we can revert all DB changes if this step fails
-		if err = r.commitGenesisBatch(batch.Hash, batch.BatchHeader, common.HexToHash(batch.StateRoot)); err != nil {
-			return err
-		}
-
-		return nil
+		return r.commitGenesisBatch(batch.Hash, batch.BatchHeader, common.HexToHash(batch.StateRoot))
 	})
 
 	if err != nil {
