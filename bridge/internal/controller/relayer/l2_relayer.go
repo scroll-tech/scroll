@@ -44,7 +44,7 @@ type Layer2Relayer struct {
 
 	l2Client *ethclient.Client
 
-  db           *gorm.DB
+	db         *gorm.DB
 	batchOrm   *orm.Batch
 	chunkOrm   *orm.Chunk
 	l2BlockOrm *orm.L2Block
