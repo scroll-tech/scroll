@@ -36,7 +36,7 @@ func NewBatchHeader(version uint8, batchIndex, totalL1MessagePoppedBefore uint64
 	// the next queue index that we need to process
 	nextIndex := totalL1MessagePoppedBefore
 
-	for chunkId, chunk := range chunks {
+	for chunkID, chunk := range chunks {
 		// build data hash
 		totalL1MessagePoppedBeforeChunk := nextIndex
 		chunkHash, err := chunk.Hash(totalL1MessagePoppedBeforeChunk)
@@ -46,7 +46,7 @@ func NewBatchHeader(version uint8, batchIndex, totalL1MessagePoppedBefore uint64
 		dataBytes = append(dataBytes, chunkHash.Bytes()...)
 
 		// build skip bitmap
-		for blockId, block := range chunk.Blocks {
+		for blockID, block := range chunk.Blocks {
 			for _, tx := range block.Transactions {
 				if tx.Type != types.L1MessageTxType {
 					continue
@@ -54,7 +54,7 @@ func NewBatchHeader(version uint8, batchIndex, totalL1MessagePoppedBefore uint64
 				currentIndex := tx.Nonce
 
 				if currentIndex < nextIndex {
-					return nil, fmt.Errorf("unexpected batch payload, expected queue index: %d, got: %d. Batch index: %d, chunk index in batch: %d, block index in chunk: %d, block hash: %v, transaction hash: %v", nextIndex, currentIndex, batchIndex, chunkId, blockId, block.Header.Hash(), tx.TxHash)
+					return nil, fmt.Errorf("unexpected batch payload, expected queue index: %d, got: %d. Batch index: %d, chunk index in batch: %d, block index in chunk: %d, block hash: %v, transaction hash: %v", nextIndex, currentIndex, batchIndex, chunkID, blockID, block.Header.Hash(), tx.TxHash)
 				}
 
 				// mark skipped messages
