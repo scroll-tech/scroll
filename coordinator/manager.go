@@ -432,9 +432,9 @@ func (m *Manager) checkAttempts(hash string) bool {
 	}
 
 	if len(sessionInfos) >= int(m.cfg.SessionAttempts) {
-		return false
+		return true
 	}
-	return true
+	return false
 }
 
 // CollectProofs collects proofs corresponding to a proof generation session.
