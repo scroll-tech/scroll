@@ -132,6 +132,10 @@ func txsToTxsData(txs gethTypes.Transactions) []*gethTypes.TransactionData {
 		v, r, s := tx.RawSignatureValues()
 
 		nonce := tx.Nonce()
+
+		// We need QueueIndex in `NewBatchHeader`. However, `TransactionData`
+		// does not have this field. Since `L1MessageTx` do not have a nonce,
+		// we reuse this field for storing the queue index.
 		if msg := tx.AsL1MessageTx(); msg != nil {
 			nonce = msg.QueueIndex
 		}
