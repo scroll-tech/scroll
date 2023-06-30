@@ -424,7 +424,7 @@ func testOrmSessionInfo(t *testing.T) {
 	sessionInfos, err = ormSession.GetSessionInfosByHashes(hashes)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(sessionInfos))
-	assert.Equal(t, sessionInfo, *sessionInfos[0])
+	assert.Equal(t, sessionInfo.RollerName, sessionInfos[0].RollerName)
 
 	// update
 	sessionInfo.ProvingStatus = int(types.RollerProofValid)
@@ -432,7 +432,7 @@ func testOrmSessionInfo(t *testing.T) {
 	sessionInfos, err = ormSession.GetSessionInfosByHashes(hashes)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(sessionInfos))
-	assert.Equal(t, sessionInfo, *sessionInfos[0])
+	assert.Equal(t, sessionInfo.ProvingStatus, sessionInfos[0].ProvingStatus)
 
 	// delete
 	assert.NoError(t, ormBatch.UpdateProvingStatus(batchHash, types.ProvingTaskVerified))

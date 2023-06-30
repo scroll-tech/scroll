@@ -2,7 +2,6 @@ package orm
 
 import (
 	"context"
-
 	"scroll-tech/common/types"
 
 	"github.com/jmoiron/sqlx"
@@ -23,7 +22,7 @@ func (o *sessionInfoOrm) GetSessionInfosByHashes(hashes []string) ([]*types.Sess
 	if len(hashes) == 0 {
 		return nil, nil
 	}
-	query, args, err := sqlx.In("SELECT * FROM session_info WHERE hash IN (?);", hashes)
+	query, args, err := sqlx.In("SELECT * FROM session_info WHERE task_id IN (?);", hashes)
 	if err != nil {
 		return nil, err
 	}
@@ -49,14 +48,14 @@ func (o *sessionInfoOrm) GetSessionInfosByHashes(hashes []string) ([]*types.Sess
 }
 
 func (o *sessionInfoOrm) SetSessionInfo(rollersInfo *types.SessionInfo) error {
-	sqlStr := "INSERT INTO session_info (task_id, roller_public_key, prove_type, roller_name, proving_status) VALUES ($1, $2, $3, $4, $5) ON CONFLICT (hash, roller_public_key) DO UPDATE SET proving_status = EXCLUDED.proving_status;"
+	sqlStr := "INSERT INTO session_info (task_id, roller_public_key, prove_type, roller_name, proving_status) VALUES ($1, $2, $3, $4, $5) ON CONFLICT (task_id, roller_public_key) DO UPDATE SET proving_status = EXCLUDED.proving_status;"
 	_, err := o.db.Exec(sqlStr, rollersInfo.TaskID, rollersInfo.RollerPublicKey, rollersInfo.ProveType, rollersInfo.RollerName, rollersInfo.ProvingStatus)
 	return err
 }
 
 // UpdateSessionInfoProvingStatus update the session info proving status
 func (o *sessionInfoOrm) UpdateSessionInfoProvingStatus(ctx context.Context, dbTx *sqlx.Tx, hash string, pk string, status types.ProvingStatus) error {
-	if _, err := dbTx.ExecContext(ctx, o.db.Rebind("update session_info set proving_status = ? where hash = ? and roller_public_key = ?;"), int(status), hash, pk); err != nil {
+	if _, err := dbTx.ExecContext(ctx, o.db.Rebind("update session_info set proving_status = ? where task_id = ? and roller_public_key = ?;"), int(status), hash, pk); err != nil {
 		return err
 	}
 	return nil
