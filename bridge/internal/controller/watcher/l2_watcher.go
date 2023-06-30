@@ -130,10 +130,20 @@ func txsToTxsData(txs gethTypes.Transactions) []*gethTypes.TransactionData {
 	txsData := make([]*gethTypes.TransactionData, len(txs))
 	for i, tx := range txs {
 		v, r, s := tx.RawSignatureValues()
+
+		nonce := tx.Nonce()
+
+		// We need QueueIndex in `NewBatchHeader`. However, `TransactionData`
+		// does not have this field. Since `L1MessageTx` do not have a nonce,
+		// we reuse this field for storing the queue index.
+		if msg := tx.AsL1MessageTx(); msg != nil {
+			nonce = msg.QueueIndex
+		}
+
 		txsData[i] = &gethTypes.TransactionData{
 			Type:     tx.Type(),
 			TxHash:   tx.Hash().String(),
-			Nonce:    tx.Nonce(),
+			Nonce:    nonce,
 			ChainId:  (*hexutil.Big)(tx.ChainId()),
 			Gas:      tx.Gas(),
 			GasPrice: (*hexutil.Big)(tx.GasPrice()),
