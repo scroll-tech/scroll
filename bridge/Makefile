@@ -1,7 +1,7 @@
 .PHONY: lint docker clean bridge
 
 IMAGE_NAME=bridge
-IMAGE_VERSION=latest
+IMAGE_VERSION=v9.9
 REPO_ROOT_DIR=./..
 
 mock_abi:
