@@ -16,7 +16,7 @@ create table session_info
     updated_at          TIMESTAMP(0)   NOT NULL DEFAULT CURRENT_TIMESTAMP,
     deleted_at          TIMESTAMP(0)   DEFAULT NULL,
 
-    CONSTRAINT idx_session_unique UNIQUE (hash, roller_public_key)
+    CONSTRAINT uk_session_unique UNIQUE (task_id, roller_public_key)
 );
 
 -- +goose StatementEnd
