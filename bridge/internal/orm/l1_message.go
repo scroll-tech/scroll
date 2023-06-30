@@ -55,7 +55,7 @@ func (m *L1Message) GetLayer1LatestWatchedHeight() (int64, error) {
 // GetLayer1LatestMessageWithLayer2Hash returns latest l1 message with layer2 hash
 func (m *L1Message) GetLayer1LatestMessageWithLayer2Hash() (*L1Message, error) {
 	var msg *L1Message
-	err := m.db.Where("layer2_hash IS NOT NULL").Order("height DESC").First(&msg).Error
+	err := m.db.Where("layer2_hash IS NOT NULL").Order("queue_index DESC").First(&msg).Error
 	if err != nil {
 		return nil, err
 	}
