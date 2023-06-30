@@ -11,6 +11,7 @@ import (
 
 type L2SentMsg struct {
 	ID         uint64     `json:"id" db:"id"`
+	TxSender   string     `json:"tx_sender" db:"tx_sender"`
 	MsgHash    string     `json:"msg_hash" db:"msg_hash"`
 	Sender     string     `json:"sender" db:"sender"`
 	Target     string     `json:"target" db:"target"`
@@ -51,6 +52,7 @@ func (l *l2SentMsgOrm) BatchInsertL2SentMsgDBTx(dbTx *sqlx.Tx, messages []*L2Sen
 	messageMaps := make([]map[string]interface{}, len(messages))
 	for i, msg := range messages {
 		messageMaps[i] = map[string]interface{}{
+			"tx_sender":   msg.TxSender,
 			"sender":      msg.Sender,
 			"target":      msg.Target,
 			"value":       msg.Value,
@@ -62,7 +64,7 @@ func (l *l2SentMsgOrm) BatchInsertL2SentMsgDBTx(dbTx *sqlx.Tx, messages []*L2Sen
 			"msg_data":    msg.MsgData,
 		}
 	}
-	_, err = dbTx.NamedExec(`insert into l2_sent_msg(sender, target, value, msg_hash, height, nonce, batch_index, msg_proof, msg_data) values(:sender, :target, :value, :msg_hash, :height, :nonce, :batch_index, :msg_proof, :msg_data);`, messageMaps)
+	_, err = dbTx.NamedExec(`insert into l2_sent_msg(tx_sender, sender, target, value, msg_hash, height, nonce, batch_index, msg_proof, msg_data) values(:tx_sender, :sender, :target, :value, :msg_hash, :height, :nonce, :batch_index, :msg_proof, :msg_data);`, messageMaps)
 	if err != nil {
 		log.Error("BatchInsertL2SentMsgDBTx: failed to insert l2 sent msgs", "msg_Hash", "err", err)
 		return err
