@@ -500,6 +500,12 @@ func (m *Manager) CollectProofs(sess *session) {
 		//Execute after one of the roller finishes sending proof, return early if all rollers had sent results.
 		case ret := <-sess.finishChan:
 			m.mu.Lock()
+			for idx := range sess.sessionInfos {
+				if sess.sessionInfos[idx].RollerPublicKey == ret.pk {
+					sess.sessionInfos[idx].ProvingStatus = int(ret.status)
+				}
+			}
+
 			if sess.isSessionFailed() {
 				if ret.typ == message.BasicProve {
 					if err := m.orm.UpdateProvingStatus(ret.id, types.ProvingTaskFailed); err != nil {
@@ -514,11 +520,8 @@ func (m *Manager) CollectProofs(sess *session) {
 				coordinatorSessionsFailedTotalCounter.Inc(1)
 			}
 
-			for _, sessionInfo := range sess.sessionInfos {
-				sessionInfo.ProvingStatus = int(ret.status)
-				if err := m.orm.SetSessionInfo(sessionInfo); err != nil {
-					log.Error("db set session info fail", "pk", ret.pk, "error", err)
-				}
+			if err := m.orm.UpdateSessionInfoProvingStatus(m.ctx, ret.id, ret.pk, ret.status); err != nil {
+				log.Error("db set session info fail", "pk", ret.pk, "error", err)
 			}
 
 			//Check if all rollers have finished their tasks, and rollers with valid results are indexed by public key.

@@ -55,8 +55,8 @@ func (o *sessionInfoOrm) SetSessionInfo(rollersInfo *types.SessionInfo) error {
 }
 
 // UpdateSessionInfoProvingStatus update the session info proving status
-func (o *sessionInfoOrm) UpdateSessionInfoProvingStatus(ctx context.Context, dbTx *sqlx.Tx, hash string, pk string, status types.ProvingStatus) error {
-	if _, err := dbTx.ExecContext(ctx, o.db.Rebind("update session_info set proving_status = ? where task_id = ? and roller_public_key = ?;"), int(status), hash, pk); err != nil {
+func (o *sessionInfoOrm) UpdateSessionInfoProvingStatus(ctx context.Context, taskID string, pk string, status types.RollerProveStatus) error {
+	if _, err := o.db.ExecContext(ctx, o.db.Rebind("update session_info set proving_status = ? where task_id = ? and roller_public_key = ?;"), int(status), taskID, pk); err != nil {
 		return err
 	}
 	return nil
