@@ -94,6 +94,11 @@ func L2ReorgHandling(ctx context.Context, reorgHeight int64, db db.OrmFactory) e
 		dbTx.Rollback()
 		log.Crit("delete l2 relayed hash from height", "height", reorgHeight, "err", err)
 	}
+	err = db.DeleteL2SentMsgAfterHeightDBTx(dbTx, reorgHeight)
+	if err != nil {
+		dbTx.Rollback()
+		log.Crit("delete l2 sent msg from height", "height", reorgHeight, "err", err)
+	}
 	err = dbTx.Commit()
 	if err != nil {
 		dbTx.Rollback()
