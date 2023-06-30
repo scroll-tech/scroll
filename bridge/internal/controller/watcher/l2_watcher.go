@@ -130,10 +130,16 @@ func txsToTxsData(txs gethTypes.Transactions) []*gethTypes.TransactionData {
 	txsData := make([]*gethTypes.TransactionData, len(txs))
 	for i, tx := range txs {
 		v, r, s := tx.RawSignatureValues()
+
+		nonce := tx.Nonce()
+		if msg := tx.AsL1MessageTx(); msg != nil {
+			nonce = msg.QueueIndex
+		}
+
 		txsData[i] = &gethTypes.TransactionData{
 			Type:     tx.Type(),
 			TxHash:   tx.Hash().String(),
-			Nonce:    tx.Nonce(),
+			Nonce:    nonce,
 			ChainId:  (*hexutil.Big)(tx.ChainId()),
 			Gas:      tx.Gas(),
 			GasPrice: (*hexutil.Big)(tx.GasPrice()),
