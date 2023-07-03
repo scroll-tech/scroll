@@ -410,31 +410,29 @@ func testOrmSessionInfo(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 0, len(sessionInfos))
 
+	now := time.Now()
 	sessionInfo := types.SessionInfo{
-		ID: batchHash,
-		Rollers: map[string]*types.RollerStatus{
-			"0": {
-				PublicKey: "0",
-				Name:      "roller-0",
-				Status:    types.RollerAssigned,
-			},
-		},
-		StartTimestamp: time.Now().Unix()}
+		TaskID:          batchHash,
+		RollerName:      "roller-0",
+		RollerPublicKey: "0",
+		ProvingStatus:   int(types.RollerAssigned),
+		CreatedAt:       &now,
+	}
 
 	// insert
 	assert.NoError(t, ormSession.SetSessionInfo(&sessionInfo))
 	sessionInfos, err = ormSession.GetSessionInfosByHashes(hashes)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(sessionInfos))
-	assert.Equal(t, sessionInfo, *sessionInfos[0])
+	assert.Equal(t, sessionInfo.RollerName, sessionInfos[0].RollerName)
 
 	// update
-	sessionInfo.Rollers["0"].Status = types.RollerProofValid
+	sessionInfo.ProvingStatus = int(types.RollerProofValid)
 	assert.NoError(t, ormSession.SetSessionInfo(&sessionInfo))
 	sessionInfos, err = ormSession.GetSessionInfosByHashes(hashes)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(sessionInfos))
-	assert.Equal(t, sessionInfo, *sessionInfos[0])
+	assert.Equal(t, sessionInfo.ProvingStatus, sessionInfos[0].ProvingStatus)
 
 	// delete
 	assert.NoError(t, ormBatch.UpdateProvingStatus(batchHash, types.ProvingTaskVerified))

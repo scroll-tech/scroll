@@ -1,11 +1,11 @@
 package orm
 
 import (
-	"encoding/json"
-
-	"github.com/jmoiron/sqlx"
+	"context"
 
 	"scroll-tech/common/types"
+
+	"github.com/jmoiron/sqlx"
 )
 
 type sessionInfoOrm struct {
@@ -23,7 +23,7 @@ func (o *sessionInfoOrm) GetSessionInfosByHashes(hashes []string) ([]*types.Sess
 	if len(hashes) == 0 {
 		return nil, nil
 	}
-	query, args, err := sqlx.In("SELECT rollers_info FROM session_info WHERE hash IN (?);", hashes)
+	query, args, err := sqlx.In("SELECT * FROM session_info WHERE task_id IN (?);", hashes)
 	if err != nil {
 		return nil, err
 	}
@@ -35,15 +35,11 @@ func (o *sessionInfoOrm) GetSessionInfosByHashes(hashes []string) ([]*types.Sess
 
 	var sessionInfos []*types.SessionInfo
 	for rows.Next() {
-		var infoBytes []byte
-		if err = rows.Scan(&infoBytes); err != nil {
+		var sessionInfo types.SessionInfo
+		if err = rows.StructScan(&sessionInfo); err != nil {
 			return nil, err
 		}
-		sessionInfo := &types.SessionInfo{}
-		if err = json.Unmarshal(infoBytes, sessionInfo); err != nil {
-			return nil, err
-		}
-		sessionInfos = append(sessionInfos, sessionInfo)
+		sessionInfos = append(sessionInfos, &sessionInfo)
 	}
 	if err = rows.Err(); err != nil {
 		return nil, err
@@ -53,11 +49,15 @@ func (o *sessionInfoOrm) GetSessionInfosByHashes(hashes []string) ([]*types.Sess
 }
 
 func (o *sessionInfoOrm) SetSessionInfo(rollersInfo *types.SessionInfo) error {
-	infoBytes, err := json.Marshal(rollersInfo)
-	if err != nil {
+	sqlStr := "INSERT INTO session_info (task_id, roller_public_key, prove_type, roller_name, proving_status) VALUES ($1, $2, $3, $4, $5) ON CONFLICT (task_id, roller_public_key) DO UPDATE SET proving_status = EXCLUDED.proving_status;"
+	_, err := o.db.Exec(sqlStr, rollersInfo.TaskID, rollersInfo.RollerPublicKey, rollersInfo.ProveType, rollersInfo.RollerName, rollersInfo.ProvingStatus)
+	return err
+}
+
+// UpdateSessionInfoProvingStatus update the session info proving status
+func (o *sessionInfoOrm) UpdateSessionInfoProvingStatus(ctx context.Context, taskID string, pk string, status types.RollerProveStatus) error {
+	if _, err := o.db.ExecContext(ctx, o.db.Rebind("update session_info set proving_status = ? where task_id = ? and roller_public_key = ?;"), int(status), taskID, pk); err != nil {
 		return err
 	}
-	sqlStr := "INSERT INTO session_info (hash, rollers_info) VALUES ($1, $2) ON CONFLICT (hash) DO UPDATE SET rollers_info = EXCLUDED.rollers_info;"
-	_, err = o.db.Exec(sqlStr, rollersInfo.ID, infoBytes)
-	return err
+	return nil
 }

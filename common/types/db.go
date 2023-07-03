@@ -5,8 +5,6 @@ import (
 	"database/sql"
 	"fmt"
 	"time"
-
-	"scroll-tech/common/types/message"
 )
 
 // L1BlockStatus represents current l1 block processing status
@@ -161,11 +159,18 @@ type RollerStatus struct {
 
 // SessionInfo is assigned rollers info of a block batch (session)
 type SessionInfo struct {
-	ID             string                   `json:"id"`
-	Rollers        map[string]*RollerStatus `json:"rollers"`
-	StartTimestamp int64                    `json:"start_timestamp"`
-	Attempts       uint8                    `json:"attempts,omitempty"`
-	ProveType      message.ProveType        `json:"prove_type,omitempty"`
+	ID              int        `json:"id" db:"id"`
+	TaskID          string     `json:"task_id" db:"task_id"`
+	RollerPublicKey string     `json:"roller_public_key" db:"roller_public_key"`
+	ProveType       int        `json:"prove_type" db:"prove_type"`
+	RollerName      string     `json:"roller_name" db:"roller_name"`
+	ProvingStatus   int        `json:"proving_status" db:"proving_status"`
+	FailureType     int        `json:"failure_type" db:"failure_type"`
+	Reward          uint64     `json:"reward" db:"reward"`
+	Proof           []byte     `json:"proof" db:"proof"`
+	CreatedAt       *time.Time `json:"created_at" db:"created_at"`
+	UpdatedAt       *time.Time `json:"updated_at" db:"updated_at"`
+	DeletedAt       *time.Time `json:"deleted_at" db:"deleted_at"`
 }
 
 // ProvingStatus block_batch proving_status (unassigned, assigned, proved, verified, submitted)
