@@ -162,7 +162,7 @@ type SessionInfo struct {
 	ID              int        `json:"id" db:"id"`
 	TaskID          string     `json:"task_id" db:"task_id"`
 	RollerPublicKey string     `json:"roller_public_key" db:"roller_public_key"`
-	ProveType       int        `json:"prove_type" db:"prove_type"`
+	ProveType       int16      `json:"prove_type" db:"prove_type"`
 	RollerName      string     `json:"roller_name" db:"roller_name"`
 	ProvingStatus   int        `json:"proving_status" db:"proving_status"`
 	FailureType     int        `json:"failure_type" db:"failure_type"`
