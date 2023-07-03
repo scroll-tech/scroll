@@ -16,6 +16,8 @@ type OrmFactory interface {
 	orm.L1CrossMsgOrm
 	orm.L2CrossMsgOrm
 	orm.RelayedMsgOrm
+	orm.L2SentMsgOrm
+	orm.RollupBatchOrm
 	GetTotalCrossMsgCountByAddress(sender string) (uint64, error)
 	GetCrossMsgsByAddressWithOffset(sender string, offset int64, limit int64) ([]*orm.CrossMsg, error)
 	GetDB() *sqlx.DB
@@ -27,6 +29,8 @@ type ormFactory struct {
 	orm.L1CrossMsgOrm
 	orm.L2CrossMsgOrm
 	orm.RelayedMsgOrm
+	orm.L2SentMsgOrm
+	orm.RollupBatchOrm
 	*sqlx.DB
 }
 
@@ -45,10 +49,12 @@ func NewOrmFactory(cfg *config.Config) (OrmFactory, error) {
 	}
 
 	return &ormFactory{
-		L1CrossMsgOrm: orm.NewL1CrossMsgOrm(db),
-		L2CrossMsgOrm: orm.NewL2CrossMsgOrm(db),
-		RelayedMsgOrm: orm.NewRelayedMsgOrm(db),
-		DB:            db,
+		L1CrossMsgOrm:  orm.NewL1CrossMsgOrm(db),
+		L2CrossMsgOrm:  orm.NewL2CrossMsgOrm(db),
+		RelayedMsgOrm:  orm.NewRelayedMsgOrm(db),
+		L2SentMsgOrm:   orm.NewL2SentMsgOrm(db),
+		RollupBatchOrm: orm.NewRollupBatchOrm(db),
+		DB:             db,
 	}, nil
 }
 

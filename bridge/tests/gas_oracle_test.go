@@ -8,7 +8,6 @@ import (
 	"github.com/scroll-tech/go-ethereum/common"
 	gethTypes "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/stretchr/testify/assert"
-	"gorm.io/gorm"
 
 	"scroll-tech/common/types"
 
@@ -69,50 +68,40 @@ func testImportL2GasPrice(t *testing.T) {
 	prepareContracts(t)
 
 	l2Cfg := bridgeApp.Config.L2Config
-	l2Relayer, err := relayer.NewLayer2Relayer(context.Background(), l2Client, db, l2Cfg.RelayerConfig)
+	l2Relayer, err := relayer.NewLayer2Relayer(context.Background(), l2Client, db, l2Cfg.RelayerConfig, false)
 	assert.NoError(t, err)
 
-	// add fake blocks
-	traces := []*bridgeTypes.WrappedBlock{
-		{
-			Header: &gethTypes.Header{
-				Number:     big.NewInt(1),
-				ParentHash: common.Hash{},
-				Difficulty: big.NewInt(0),
-				BaseFee:    big.NewInt(0),
+	// add fake chunk
+	chunk := &bridgeTypes.Chunk{
+		Blocks: []*bridgeTypes.WrappedBlock{
+			{
+				Header: &gethTypes.Header{
+					Number:     big.NewInt(1),
+					ParentHash: common.Hash{},
+					Difficulty: big.NewInt(0),
+					BaseFee:    big.NewInt(0),
+				},
+				Transactions:     nil,
+				WithdrawTrieRoot: common.Hash{},
 			},
-			Transactions:     nil,
-			WithdrawTrieRoot: common.Hash{},
 		},
 	}
+	chunkHash, err := chunk.Hash(0)
+	assert.NoError(t, err)
 
-	blockTraceOrm := orm.NewBlockTrace(db)
-	assert.NoError(t, blockTraceOrm.InsertWrappedBlocks(traces))
-
-	parentBatch := &bridgeTypes.BatchInfo{
-		Index: 0,
-		Hash:  "0x0000000000000000000000000000000000000000",
-	}
-	batchData := bridgeTypes.NewBatchData(parentBatch, []*bridgeTypes.WrappedBlock{traces[0]}, l2Cfg.BatchProposerConfig.PublicInputConfig)
-	blockBatchOrm := orm.NewBlockBatch(db)
-	err = db.Transaction(func(tx *gorm.DB) error {
-		_, dbTxErr := blockBatchOrm.InsertBlockBatchByBatchData(tx, batchData)
-		if dbTxErr != nil {
-			return dbTxErr
-		}
-		return nil
-	})
+	batchOrm := orm.NewBatch(db)
+	_, err = batchOrm.InsertBatch(context.Background(), 0, 0, chunkHash.Hex(), chunkHash.Hex(), []*bridgeTypes.Chunk{chunk})
 	assert.NoError(t, err)
 
 	// check db status
-	batch, err := blockBatchOrm.GetLatestBatch()
+	batch, err := batchOrm.GetLatestBatch(context.Background())
 	assert.NoError(t, err)
 	assert.Empty(t, batch.OracleTxHash)
 	assert.Equal(t, types.GasOracleStatus(batch.OracleStatus), types.GasOraclePending)
 
 	// relay gas price
 	l2Relayer.ProcessGasPriceOracle()
-	batch, err = blockBatchOrm.GetLatestBatch()
+	batch, err = batchOrm.GetLatestBatch(context.Background())
 	assert.NoError(t, err)
 	assert.NotEmpty(t, batch.OracleTxHash)
 	assert.Equal(t, types.GasOracleStatus(batch.OracleStatus), types.GasOracleImporting)
