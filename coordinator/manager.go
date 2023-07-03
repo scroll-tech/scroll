@@ -448,7 +448,7 @@ func (m *Manager) CollectProofs(sess *session) {
 		select {
 		//Execute after timeout, set in config.json. Consider all rollers failed.
 		case <-time.After(time.Duration(m.cfg.CollectionTime) * time.Minute):
-			if !m.checkAttempts(sess.taskID) {
+			if !m.checkAttemptsExceeded(sess.taskID) {
 				var success bool
 				if message.ProveType(sess.sessionInfos[0].ProveType) == message.AggregatorProve {
 					success = m.StartAggProofGenerationSession(nil, sess)
