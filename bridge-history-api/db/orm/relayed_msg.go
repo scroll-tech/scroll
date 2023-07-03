@@ -40,7 +40,7 @@ func (l *relayedMsgOrm) BatchInsertRelayedMsgDBTx(dbTx *sqlx.Tx, messages []*Rel
 	}
 	_, err = dbTx.NamedExec(`insert into relayed_msg(msg_hash, height, layer1_hash, layer2_hash) values(:msg_hash, :height, :layer1_hash, :layer2_hash);`, messageMaps)
 	if err != nil {
-		log.Error("BatchInsertRelayedMsgDBTx: failed to insert l1 cross msgs", "msg_Hashe", "err", err)
+		log.Error("BatchInsertRelayedMsgDBTx: failed to insert relayed msgs", "err", err)
 		return err
 	}
 	return nil

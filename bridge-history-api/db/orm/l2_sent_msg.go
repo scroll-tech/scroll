@@ -66,7 +66,7 @@ func (l *l2SentMsgOrm) BatchInsertL2SentMsgDBTx(dbTx *sqlx.Tx, messages []*L2Sen
 	}
 	_, err = dbTx.NamedExec(`insert into l2_sent_msg(tx_sender, sender, target, value, msg_hash, height, nonce, batch_index, msg_proof, msg_data) values(:tx_sender, :sender, :target, :value, :msg_hash, :height, :nonce, :batch_index, :msg_proof, :msg_data);`, messageMaps)
 	if err != nil {
-		log.Error("BatchInsertL2SentMsgDBTx: failed to insert l2 sent msgs", "msg_Hash", "err", err)
+		log.Error("BatchInsertL2SentMsgDBTx: failed to insert l2 sent msgs", "err", err)
 		return err
 	}
 	return err
