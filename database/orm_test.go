@@ -415,7 +415,7 @@ func testOrmSessionInfo(t *testing.T) {
 		TaskID:          batchHash,
 		RollerName:      "roller-0",
 		RollerPublicKey: "0",
-		ProvingStatus:   int(types.RollerAssigned),
+		ProvingStatus:   int16(types.RollerAssigned),
 		CreatedAt:       &now,
 	}
 
@@ -427,7 +427,7 @@ func testOrmSessionInfo(t *testing.T) {
 	assert.Equal(t, sessionInfo.RollerName, sessionInfos[0].RollerName)
 
 	// update
-	sessionInfo.ProvingStatus = int(types.RollerProofValid)
+	sessionInfo.ProvingStatus = int16(types.RollerProofValid)
 	assert.NoError(t, ormSession.SetSessionInfo(&sessionInfo))
 	sessionInfos, err = ormSession.GetSessionInfosByHashes(hashes)
 	assert.NoError(t, err)
