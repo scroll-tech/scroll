@@ -3,6 +3,7 @@ package utils
 import (
 	"bytes"
 	"context"
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"math/big"
@@ -60,6 +61,53 @@ func ComputeMessageHash(
 ) common.Hash {
 	data, _ := backendabi.L2ScrollMessengerABI.Pack("relayMessage", sender, target, value, messageNonce, message)
 	return common.BytesToHash(crypto.Keccak256(data))
+}
+
+type commitBatchArgs struct {
+	Version                uint8
+	ParentBatchHeader      []byte
+	Chunks                 [][]byte
+	SkippedL1MessageBitmap []byte
+}
+
+// GetBatchRangeFromCalldataV2 find the block range from calldata, both inclusive.
+func GetBatchRangeFromCalldataV2(calldata []byte) (uint64, uint64, uint64, error) {
+	method := backendabi.ScrollChainV2ABI.Methods["commitBatch"]
+	values, err := method.Inputs.Unpack(calldata[4:])
+	if err != nil {
+		return 0, 0, 0, err
+	}
+	args := commitBatchArgs{}
+	err = method.Inputs.Copy(&args, values)
+	if err != nil {
+		return 0, 0, 0, err
+	}
+
+	var startBlock uint64
+	var finishBlock uint64
+
+	// decode batchIndex from ParentBatchHeader
+	if len(args.ParentBatchHeader) < 9 {
+		return 0, 0, 0, errors.New("invalid parent batch header")
+	}
+	batchIndex := binary.BigEndian.Uint64(args.ParentBatchHeader[1:9]) + 1
+
+	// decode blocks from chunk and assume that there's no empty chunk
+	// |   1 byte   | 60 bytes | ... | 60 bytes |
+	// | num blocks |  block 1 | ... |  block n |
+	if len(args.Chunks) == 0 {
+		return 0, 0, 0, errors.New("invalid chunks")
+	}
+	chunk := args.Chunks[0]
+	block := chunk[1:61] // first block in chunk
+	startBlock = binary.BigEndian.Uint64(block[0:8])
+
+	chunk = args.Chunks[len(args.Chunks)-1]
+	lastBlockIndex := int(chunk[0]) - 1
+	block = chunk[1+lastBlockIndex*60 : 1+lastBlockIndex*60+60] // last block in chunk
+	finishBlock = binary.BigEndian.Uint64(block[0:8])
+
+	return batchIndex, startBlock, finishBlock, err
 }
 
 // GetBatchRangeFromCalldataV1 find the block range from calldata, both inclusive.

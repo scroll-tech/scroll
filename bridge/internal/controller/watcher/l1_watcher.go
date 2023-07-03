@@ -24,10 +24,9 @@ import (
 )
 
 var (
-	bridgeL1MsgsSyncHeightGauge           = gethMetrics.NewRegisteredGauge("bridge/l1/msgs/sync/height", metrics.ScrollRegistry)
-	bridgeL1MsgsSentEventsTotalCounter    = gethMetrics.NewRegisteredCounter("bridge/l1/msgs/sent/events/total", metrics.ScrollRegistry)
-	bridgeL1MsgsRelayedEventsTotalCounter = gethMetrics.NewRegisteredCounter("bridge/l1/msgs/relayed/events/total", metrics.ScrollRegistry)
-	bridgeL1MsgsRollupEventsTotalCounter  = gethMetrics.NewRegisteredCounter("bridge/l1/msgs/rollup/events/total", metrics.ScrollRegistry)
+	bridgeL1MsgsSyncHeightGauge          = gethMetrics.NewRegisteredGauge("bridge/l1/msgs/sync/height", metrics.ScrollRegistry)
+	bridgeL1MsgsSentEventsTotalCounter   = gethMetrics.NewRegisteredCounter("bridge/l1/msgs/sent/events/total", metrics.ScrollRegistry)
+	bridgeL1MsgsRollupEventsTotalCounter = gethMetrics.NewRegisteredCounter("bridge/l1/msgs/rollup/events/total", metrics.ScrollRegistry)
 )
 
 type rollupEvent struct {
@@ -41,9 +40,8 @@ type L1WatcherClient struct {
 	ctx          context.Context
 	client       *ethclient.Client
 	l1MessageOrm *orm.L1Message
-	l2MessageOrm *orm.L2Message
 	l1BlockOrm   *orm.L1Block
-	l1BatchOrm   *orm.BlockBatch
+	batchOrm     *orm.Batch
 
 	// The number of new blocks to wait for a block to be confirmed
 	confirmations rpc.BlockNumber
@@ -90,8 +88,7 @@ func NewL1WatcherClient(ctx context.Context, client *ethclient.Client, startHeig
 		client:        client,
 		l1MessageOrm:  l1MessageOrm,
 		l1BlockOrm:    l1BlockOrm,
-		l1BatchOrm:    orm.NewBlockBatch(db),
-		l2MessageOrm:  orm.NewL2Message(db),
+		batchOrm:      orm.NewBatch(db),
 		confirmations: confirmations,
 
 		messengerAddress: messengerAddress,
@@ -227,25 +224,23 @@ func (w *L1WatcherClient) FetchContractEvent() error {
 		}
 		log.Info("Received new L1 events", "fromBlock", from, "toBlock", to, "cnt", len(logs))
 
-		sentMessageEvents, relayedMessageEvents, rollupEvents, err := w.parseBridgeEventLogs(logs)
+		sentMessageEvents, rollupEvents, err := w.parseBridgeEventLogs(logs)
 		if err != nil {
 			log.Error("Failed to parse emitted events log", "err", err)
 			return err
 		}
 		sentMessageCount := int64(len(sentMessageEvents))
-		relayedMessageCount := int64(len(relayedMessageEvents))
 		rollupEventCount := int64(len(rollupEvents))
 		bridgeL1MsgsSentEventsTotalCounter.Inc(sentMessageCount)
-		bridgeL1MsgsRelayedEventsTotalCounter.Inc(relayedMessageCount)
 		bridgeL1MsgsRollupEventsTotalCounter.Inc(rollupEventCount)
-		log.Info("L1 events types", "SentMessageCount", sentMessageCount, "RelayedMessageCount", relayedMessageCount, "RollupEventCount", rollupEventCount)
+		log.Info("L1 events types", "SentMessageCount", sentMessageCount, "RollupEventCount", rollupEventCount)
 
 		// use rollup event to update rollup results db status
 		var batchHashes []string
 		for _, event := range rollupEvents {
 			batchHashes = append(batchHashes, event.batchHash.String())
 		}
-		statuses, err := w.l1BatchOrm.GetRollupStatusByHashList(batchHashes)
+		statuses, err := w.batchOrm.GetRollupStatusByHashList(w.ctx, batchHashes)
 		if err != nil {
 			log.Error("Failed to GetRollupStatusByHashList", "err", err)
 			return err
@@ -261,29 +256,14 @@ func (w *L1WatcherClient) FetchContractEvent() error {
 			// only update when db status is before event status
 			if event.status > status {
 				if event.status == types.RollupFinalized {
-					err = w.l1BatchOrm.UpdateFinalizeTxHashAndRollupStatus(w.ctx, batchHash, event.txHash.String(), event.status)
+					err = w.batchOrm.UpdateFinalizeTxHashAndRollupStatus(w.ctx, batchHash, event.txHash.String(), event.status)
 				} else if event.status == types.RollupCommitted {
-					err = w.l1BatchOrm.UpdateCommitTxHashAndRollupStatus(w.ctx, batchHash, event.txHash.String(), event.status)
+					err = w.batchOrm.UpdateCommitTxHashAndRollupStatus(w.ctx, batchHash, event.txHash.String(), event.status)
 				}
 				if err != nil {
 					log.Error("Failed to update Rollup/Finalize TxHash and Status", "err", err)
 					return err
 				}
-			}
-		}
-
-		// Update relayed message first to make sure we don't forget to update submitted message.
-		// Since, we always start sync from the latest unprocessed message.
-		for _, msg := range relayedMessageEvents {
-			var msgStatus types.MsgStatus
-			if msg.isSuccessful {
-				msgStatus = types.MsgConfirmed
-			} else {
-				msgStatus = types.MsgFailed
-			}
-			if err = w.l2MessageOrm.UpdateLayer2StatusAndLayer1Hash(w.ctx, msg.msgHash.String(), msgStatus, msg.txHash.String()); err != nil {
-				log.Error("Failed to update layer1 status and layer2 hash", "err", err)
-				return err
 			}
 		}
 
@@ -298,11 +278,10 @@ func (w *L1WatcherClient) FetchContractEvent() error {
 	return nil
 }
 
-func (w *L1WatcherClient) parseBridgeEventLogs(logs []gethTypes.Log) ([]*orm.L1Message, []relayedMessage, []rollupEvent, error) {
+func (w *L1WatcherClient) parseBridgeEventLogs(logs []gethTypes.Log) ([]*orm.L1Message, []rollupEvent, error) {
 	// Need use contract abi to parse event Log
 	// Can only be tested after we have our contracts set up
 	var l1Messages []*orm.L1Message
-	var relayedMessages []relayedMessage
 	var rollupEvents []rollupEvent
 	for _, vLog := range logs {
 		switch vLog.Topics[0] {
@@ -311,13 +290,13 @@ func (w *L1WatcherClient) parseBridgeEventLogs(logs []gethTypes.Log) ([]*orm.L1M
 			err := utils.UnpackLog(w.messageQueueABI, &event, "QueueTransaction", vLog)
 			if err != nil {
 				log.Warn("Failed to unpack layer1 QueueTransaction event", "err", err)
-				return l1Messages, relayedMessages, rollupEvents, err
+				return l1Messages, rollupEvents, err
 			}
 
 			msgHash := common.BytesToHash(crypto.Keccak256(event.Data))
 
 			l1Messages = append(l1Messages, &orm.L1Message{
-				QueueIndex: event.QueueIndex.Uint64(),
+				QueueIndex: event.QueueIndex,
 				MsgHash:    msgHash.String(),
 				Height:     vLog.BlockNumber,
 				Sender:     event.Sender.String(),
@@ -327,38 +306,12 @@ func (w *L1WatcherClient) parseBridgeEventLogs(logs []gethTypes.Log) ([]*orm.L1M
 				GasLimit:   event.GasLimit.Uint64(),
 				Layer1Hash: vLog.TxHash.Hex(),
 			})
-		case bridgeAbi.L1RelayedMessageEventSignature:
-			event := bridgeAbi.L1RelayedMessageEvent{}
-			err := utils.UnpackLog(w.messengerABI, &event, "RelayedMessage", vLog)
-			if err != nil {
-				log.Warn("Failed to unpack layer1 RelayedMessage event", "err", err)
-				return l1Messages, relayedMessages, rollupEvents, err
-			}
-
-			relayedMessages = append(relayedMessages, relayedMessage{
-				msgHash:      event.MessageHash,
-				txHash:       vLog.TxHash,
-				isSuccessful: true,
-			})
-		case bridgeAbi.L1FailedRelayedMessageEventSignature:
-			event := bridgeAbi.L1FailedRelayedMessageEvent{}
-			err := utils.UnpackLog(w.messengerABI, &event, "FailedRelayedMessage", vLog)
-			if err != nil {
-				log.Warn("Failed to unpack layer1 FailedRelayedMessage event", "err", err)
-				return l1Messages, relayedMessages, rollupEvents, err
-			}
-
-			relayedMessages = append(relayedMessages, relayedMessage{
-				msgHash:      event.MessageHash,
-				txHash:       vLog.TxHash,
-				isSuccessful: false,
-			})
 		case bridgeAbi.L1CommitBatchEventSignature:
 			event := bridgeAbi.L1CommitBatchEvent{}
 			err := utils.UnpackLog(w.scrollChainABI, &event, "CommitBatch", vLog)
 			if err != nil {
 				log.Warn("Failed to unpack layer1 CommitBatch event", "err", err)
-				return l1Messages, relayedMessages, rollupEvents, err
+				return l1Messages, rollupEvents, err
 			}
 
 			rollupEvents = append(rollupEvents, rollupEvent{
@@ -371,7 +324,7 @@ func (w *L1WatcherClient) parseBridgeEventLogs(logs []gethTypes.Log) ([]*orm.L1M
 			err := utils.UnpackLog(w.scrollChainABI, &event, "FinalizeBatch", vLog)
 			if err != nil {
 				log.Warn("Failed to unpack layer1 FinalizeBatch event", "err", err)
-				return l1Messages, relayedMessages, rollupEvents, err
+				return l1Messages, rollupEvents, err
 			}
 
 			rollupEvents = append(rollupEvents, rollupEvent{
@@ -384,5 +337,5 @@ func (w *L1WatcherClient) parseBridgeEventLogs(logs []gethTypes.Log) ([]*orm.L1M
 		}
 	}
 
-	return l1Messages, relayedMessages, rollupEvents, nil
+	return l1Messages, rollupEvents, nil
 }
