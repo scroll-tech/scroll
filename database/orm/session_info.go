@@ -3,11 +3,10 @@ package orm
 import (
 	"context"
 
-	"scroll-tech/common/types/message"
+	"github.com/jmoiron/sqlx"
 
 	"scroll-tech/common/types"
-
-	"github.com/jmoiron/sqlx"
+	"scroll-tech/common/types/message"
 )
 
 type sessionInfoOrm struct {
