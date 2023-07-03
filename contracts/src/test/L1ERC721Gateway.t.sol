@@ -46,6 +46,7 @@ contract L1ERC721GatewayTest is L1GatewayTestBase, ERC721TokenReceiver {
         uint256[] _tokenIds
     );
     event RefundERC721(address indexed token, address indexed recipient, uint256 tokenId);
+    event BatchRefundERC721(address indexed token, address indexed recipient, uint256[] tokenIds);
 
     uint256 private constant TOKEN_COUNT = 100;
 
@@ -245,9 +246,9 @@ contract L1ERC721GatewayTest is L1GatewayTestBase, ERC721TokenReceiver {
         hevm.stopPrank();
 
         // drop message 0
+        hevm.expectEmit(true, true, false, true);
+        emit BatchRefundERC721(address(l1Token), address(this), _tokenIds);
         for (uint256 i = 0; i < tokenCount; i++) {
-            hevm.expectEmit(true, true, false, true);
-            emit RefundERC721(address(l1Token), address(this), _tokenIds[i]);
             assertEq(l1Token.ownerOf(_tokenIds[i]), address(gateway));
         }
 

@@ -340,6 +340,24 @@ Emitted when the ERC721 NFT is batch deposited to gateway in layer 1.
 | _to  | address | undefined |
 | _tokenIds  | uint256[] | undefined |
 
+### BatchRefundERC721
+
+```solidity
+event BatchRefundERC721(address indexed token, address indexed recipient, uint256[] tokenIds)
+```
+
+Emitted when a batch of ERC721 tokens are refunded.
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| token `indexed` | address | undefined |
+| recipient `indexed` | address | undefined |
+| tokenIds  | uint256[] | undefined |
+
 ### DepositERC721
 
 ```solidity

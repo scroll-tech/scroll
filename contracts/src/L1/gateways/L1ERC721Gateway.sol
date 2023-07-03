@@ -153,8 +153,8 @@ contract L1ERC721Gateway is
             for (uint256 i = 0; i < _tokenIds.length; i++) {
                 IERC721Upgradeable(_token).safeTransferFrom(address(this), _receiver, _tokenIds[i]);
 
-                emit RefundERC721(_token, _receiver, _tokenIds[i]);
             }
+            emit BatchRefundERC721(_token, _receiver, _tokenIds);
         } else {
             revert("invalid selector");
         }
