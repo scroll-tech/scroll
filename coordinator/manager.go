@@ -57,6 +57,7 @@ type rollerProofStatus struct {
 
 // Contains all the information on an ongoing proof generation session.
 type session struct {
+	taskID       string
 	sessionInfos []*types.SessionInfo
 	// finish channel is used to pass the public key of the rollers who finished proving process.
 	finishChan chan rollerProofStatus
@@ -258,6 +259,7 @@ func (m *Manager) restorePrevSessions() {
 
 	for taskID, sessionInfos := range sessionInfosMaps {
 		sess := &session{
+			taskID:       taskID,
 			sessionInfos: sessionInfos,
 			finishChan:   make(chan rollerProofStatus, proofAndPkBufferSize),
 		}
@@ -446,13 +448,7 @@ func (m *Manager) CollectProofs(sess *session) {
 		select {
 		//Execute after timeout, set in config.json. Consider all rollers failed.
 		case <-time.After(time.Duration(m.cfg.CollectionTime) * time.Minute):
-			// Check if session can be replayed
-			if len(sess.sessionInfos) == 0 {
-				log.Error("there is no session info in session")
-				return
-			}
-
-			if !m.checkAttempts(sess.sessionInfos[0].TaskID) {
+			if !m.checkAttempts(sess.taskID) {
 				var success bool
 				if message.ProveType(sess.sessionInfos[0].ProveType) == message.AggregatorProve {
 					success = m.StartAggProofGenerationSession(nil, sess)
@@ -465,26 +461,26 @@ func (m *Manager) CollectProofs(sess *session) {
 						m.freeTaskIDForRoller(v.RollerPublicKey, v.TaskID)
 					}
 					m.mu.Unlock()
-					log.Info("Retrying session", "session id:", sess.sessionInfos[0].TaskID)
+					log.Info("Retrying session", "session id:", sess.taskID)
 					return
 				}
 			}
 			// record failed session.
 			errMsg := "proof generation session ended without receiving any valid proofs"
 			m.addFailedSession(sess, errMsg)
-			log.Warn(errMsg, "session id", sess.sessionInfos[0].TaskID)
+			log.Warn(errMsg, "session id", sess.taskID)
 			// Set status as skipped.
 			// Note that this is only a workaround for testnet here.
 			// TODO: In real cases we should reset to orm.ProvingTaskUnassigned
 			// so as to re-distribute the task in the future
 			if message.ProveType(sess.sessionInfos[0].ProveType) == message.BasicProve {
-				if err := m.orm.UpdateProvingStatus(sess.sessionInfos[0].TaskID, types.ProvingTaskFailed); err != nil {
-					log.Error("fail to reset basic task_status as Unassigned", "id", sess.sessionInfos[0].TaskID, "err", err)
+				if err := m.orm.UpdateProvingStatus(sess.taskID, types.ProvingTaskFailed); err != nil {
+					log.Error("fail to reset basic task_status as Unassigned", "id", sess.taskID, "err", err)
 				}
 			}
 			if message.ProveType(sess.sessionInfos[0].ProveType) == message.AggregatorProve {
-				if err := m.orm.UpdateAggTaskStatus(sess.sessionInfos[0].TaskID, types.ProvingTaskFailed); err != nil {
-					log.Error("fail to reset aggregator task_status as Unassigned", "id", sess.sessionInfos[0].TaskID, "err", err)
+				if err := m.orm.UpdateAggTaskStatus(sess.taskID, types.ProvingTaskFailed); err != nil {
+					log.Error("fail to reset aggregator task_status as Unassigned", "id", sess.taskID, "err", err)
 				}
 			}
 
@@ -492,7 +488,7 @@ func (m *Manager) CollectProofs(sess *session) {
 			for _, v := range sess.sessionInfos {
 				m.freeTaskIDForRoller(v.RollerPublicKey, v.TaskID)
 			}
-			delete(m.sessions, sess.sessionInfos[0].TaskID)
+			delete(m.sessions, sess.taskID)
 			m.mu.Unlock()
 			coordinatorSessionsTimeoutTotalCounter.Inc(1)
 			return
@@ -520,7 +516,7 @@ func (m *Manager) CollectProofs(sess *session) {
 				coordinatorSessionsFailedTotalCounter.Inc(1)
 			}
 
-			if err := m.orm.UpdateSessionInfoProvingStatus(m.ctx, ret.id, ret.pk, ret.status); err != nil {
+			if err := m.orm.UpdateSessionInfoProvingStatus(m.ctx, ret.typ, ret.id, ret.pk, ret.status); err != nil {
 				log.Error("db set session info fail", "pk", ret.pk, "error", err)
 			}
 
@@ -600,7 +596,7 @@ func (m *Manager) StartBasicProofGenerationSession(task *types.BlockBatch, prevS
 		taskID = task.Hash
 	} else {
 		if len(prevSession.sessionInfos) != 0 {
-			taskID = prevSession.sessionInfos[0].TaskID
+			taskID = prevSession.taskID
 		}
 	}
 	if m.GetNumberOfIdleRollers(message.BasicProve) == 0 {
@@ -687,6 +683,7 @@ func (m *Manager) StartBasicProofGenerationSession(task *types.BlockBatch, prevS
 
 	// Create a proof generation session.
 	sess := &session{
+		taskID:       taskID,
 		sessionInfos: sessionInfos,
 		finishChan:   make(chan rollerProofStatus, proofAndPkBufferSize),
 	}
@@ -706,7 +703,7 @@ func (m *Manager) StartAggProofGenerationSession(task *types.AggTask, prevSessio
 		taskID = task.ID
 	} else {
 		if len(prevSession.sessionInfos) > 0 {
-			taskID = prevSession.sessionInfos[0].TaskID
+			taskID = prevSession.taskID
 		}
 	}
 	if m.GetNumberOfIdleRollers(message.AggregatorProve) == 0 {
@@ -789,6 +786,7 @@ func (m *Manager) StartAggProofGenerationSession(task *types.AggTask, prevSessio
 
 	// Create a proof generation session.
 	sess := &session{
+		taskID:       taskID,
 		sessionInfos: sessionInfos,
 		finishChan:   make(chan rollerProofStatus, proofAndPkBufferSize),
 	}
@@ -808,7 +806,7 @@ func (m *Manager) addFailedSession(sess *session, errMsg string) {
 		log.Error("add failed session to manager failure as the empty session info")
 		return
 	}
-	m.failedSessionInfos[sess.sessionInfos[0].TaskID] = newSessionInfo(sess, types.ProvingTaskFailed, errMsg, true)
+	m.failedSessionInfos[sess.taskID] = newSessionInfo(sess, types.ProvingTaskFailed, errMsg, true)
 }
 
 // VerifyToken verifies pukey for token and expiration time

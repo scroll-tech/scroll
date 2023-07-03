@@ -68,13 +68,11 @@ func (m *Manager) ListRollers() ([]*RollerInfo, error) {
 func newSessionInfo(sess *session, status types.ProvingStatus, errMsg string, finished bool) *SessionInfo {
 	now := time.Now()
 	var nameList []string
-	var taskID string
 	for _, sessionInfo := range sess.sessionInfos {
-		taskID = sessionInfo.TaskID
 		nameList = append(nameList, sessionInfo.RollerName)
 	}
 	info := SessionInfo{
-		ID:              taskID,
+		ID:              sess.taskID,
 		Status:          status.String(),
 		AssignedRollers: nameList,
 		StartTime:       *sess.sessionInfos[0].CreatedAt,

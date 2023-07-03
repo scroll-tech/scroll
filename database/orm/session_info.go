@@ -3,6 +3,8 @@ package orm
 import (
 	"context"
 
+	"scroll-tech/common/types/message"
+
 	"scroll-tech/common/types"
 
 	"github.com/jmoiron/sqlx"
@@ -56,8 +58,8 @@ func (o *sessionInfoOrm) SetSessionInfo(rollersInfo *types.SessionInfo) error {
 }
 
 // UpdateSessionInfoProvingStatus update the session info proving status
-func (o *sessionInfoOrm) UpdateSessionInfoProvingStatus(ctx context.Context, taskID string, pk string, status types.RollerProveStatus) error {
-	if _, err := o.db.ExecContext(ctx, o.db.Rebind("update session_info set proving_status = ? where task_id = ? and roller_public_key = ?;"), int(status), taskID, pk); err != nil {
+func (o *sessionInfoOrm) UpdateSessionInfoProvingStatus(ctx context.Context, proveType message.ProveType, taskID string, pk string, status types.RollerProveStatus) error {
+	if _, err := o.db.ExecContext(ctx, o.db.Rebind("update session_info set proving_status = ? where prove_type = ? and task_id = ? and roller_public_key = ? ;"), int(proveType), int(status), taskID, pk); err != nil {
 		return err
 	}
 	return nil
