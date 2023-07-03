@@ -426,7 +426,7 @@ func (m *Manager) handleZkProof(pk string, msg *message.ProofDetail) error {
 }
 
 // checkAttempts use the count of session info to check the attempts
-func (m *Manager) checkAttempts(hash string) bool {
+func (m *Manager) checkAttemptsExceeded(hash string) bool {
 	sessionInfos, err := m.orm.GetSessionInfosByHashes([]string{hash})
 	if err != nil {
 		log.Error("get session info error", "hash id", hash, "error", err)
