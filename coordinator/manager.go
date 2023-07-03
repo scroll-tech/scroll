@@ -595,9 +595,7 @@ func (m *Manager) StartBasicProofGenerationSession(task *types.BlockBatch, prevS
 	if task != nil {
 		taskID = task.Hash
 	} else {
-		if len(prevSession.sessionInfos) != 0 {
-			taskID = prevSession.taskID
-		}
+		taskID = prevSession.taskID
 	}
 	if m.GetNumberOfIdleRollers(message.BasicProve) == 0 {
 		log.Warn("no idle basic roller when starting proof generation session", "id", taskID)
@@ -702,9 +700,7 @@ func (m *Manager) StartAggProofGenerationSession(task *types.AggTask, prevSessio
 	if task != nil {
 		taskID = task.ID
 	} else {
-		if len(prevSession.sessionInfos) > 0 {
-			taskID = prevSession.taskID
-		}
+		taskID = prevSession.taskID
 	}
 	if m.GetNumberOfIdleRollers(message.AggregatorProve) == 0 {
 		log.Warn("no idle common roller when starting proof generation session", "id", taskID)
@@ -802,10 +798,6 @@ func (m *Manager) StartAggProofGenerationSession(task *types.AggTask, prevSessio
 func (m *Manager) addFailedSession(sess *session, errMsg string) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	if len(sess.sessionInfos) == 0 {
-		log.Error("add failed session to manager failure as the empty session info")
-		return
-	}
 	m.failedSessionInfos[sess.taskID] = newSessionInfo(sess, types.ProvingTaskFailed, errMsg, true)
 }
 
