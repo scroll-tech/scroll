@@ -35,7 +35,7 @@ interface IL1GatewayRouter is IL1ETHGateway, IL1ERC20Gateway {
      * Public Mutating Functions *
      *****************************/
 
-    /// @notice Request ERC20 from some user by router.
+    /// @notice Request ERC20 token transfer from users to gateways.
     /// @param sender The address of sender to request fund.
     /// @param token The address of token to request.
     /// @param amount The amount of token to request.
