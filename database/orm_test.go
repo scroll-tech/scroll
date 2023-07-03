@@ -419,7 +419,8 @@ func testOrmSessionInfo(t *testing.T) {
 				Status:    types.RollerAssigned,
 			},
 		},
-		StartTimestamp: time.Now().Unix()}
+		StartTimestamp: time.Now().Unix()
+	}
 
 	// insert
 	assert.NoError(t, ormSession.SetSessionInfo(&sessionInfo))
