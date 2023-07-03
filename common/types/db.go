@@ -164,8 +164,8 @@ type SessionInfo struct {
 	RollerPublicKey string     `json:"roller_public_key" db:"roller_public_key"`
 	ProveType       int16      `json:"prove_type" db:"prove_type"`
 	RollerName      string     `json:"roller_name" db:"roller_name"`
-	ProvingStatus   int        `json:"proving_status" db:"proving_status"`
-	FailureType     int        `json:"failure_type" db:"failure_type"`
+	ProvingStatus   int16      `json:"proving_status" db:"proving_status"`
+	FailureType     int16      `json:"failure_type" db:"failure_type"`
 	Reward          uint64     `json:"reward" db:"reward"`
 	Proof           []byte     `json:"proof" db:"proof"`
 	CreatedAt       *time.Time `json:"created_at" db:"created_at"`

@@ -498,7 +498,7 @@ func (m *Manager) CollectProofs(sess *session) {
 			m.mu.Lock()
 			for idx := range sess.sessionInfos {
 				if sess.sessionInfos[idx].RollerPublicKey == ret.pk {
-					sess.sessionInfos[idx].ProvingStatus = int(ret.status)
+					sess.sessionInfos[idx].ProvingStatus = int16(ret.status)
 				}
 			}
 
@@ -652,10 +652,10 @@ func (m *Manager) StartBasicProofGenerationSession(task *types.BlockBatch, prevS
 		tmpSessionInfo := types.SessionInfo{
 			TaskID:          taskID,
 			RollerPublicKey: roller.PublicKey,
-			ProveType:       int(message.BasicProve),
+			ProveType:       int16(message.BasicProve),
 			RollerName:      roller.Name,
 			CreatedAt:       &now,
-			ProvingStatus:   int(types.RollerAssigned),
+			ProvingStatus:   int16(types.RollerAssigned),
 		}
 		// Store session info.
 		if err = m.orm.SetSessionInfo(&tmpSessionInfo); err != nil {
@@ -752,10 +752,10 @@ func (m *Manager) StartAggProofGenerationSession(task *types.AggTask, prevSessio
 		tmpSessionInfo := types.SessionInfo{
 			TaskID:          taskID,
 			RollerPublicKey: roller.PublicKey,
-			ProveType:       int(message.AggregatorProve),
+			ProveType:       int16(message.AggregatorProve),
 			RollerName:      roller.Name,
 			CreatedAt:       &now,
-			ProvingStatus:   int(types.RollerAssigned),
+			ProvingStatus:   int16(types.RollerAssigned),
 		}
 		// Store session info.
 		if err = m.orm.SetSessionInfo(&tmpSessionInfo); err != nil {
