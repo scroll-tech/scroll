@@ -655,6 +655,9 @@ func testListRollers(t *testing.T) {
 
 	// test ListRollers if one roller closed.
 	roller3.close()
+	// wait coordinator free completely
+	time.Sleep(time.Second * 5)
+
 	rollers, err = rollerManager.ListRollers()
 	assert.NoError(t, err)
 	var newRollersName []string

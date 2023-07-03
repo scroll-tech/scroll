@@ -380,7 +380,7 @@ contract L1MessageQueue is OwnableUpgradeable, IL1MessageQueue {
         messageQueue.push(_hash);
 
         // emit event
-        emit QueueTransaction(_sender, _target, _value, _queueIndex, _gasLimit, _data);
+        emit QueueTransaction(_sender, _target, _value, uint64(_queueIndex), _gasLimit, _data);
     }
 
     function _validateGasLimit(uint256 _gasLimit, bytes memory _calldata) internal view {

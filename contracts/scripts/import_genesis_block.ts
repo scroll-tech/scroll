@@ -15,7 +15,7 @@ async function main() {
 
   const [deployer] = await ethers.getSigners();
 
-  const rollupAddr = process.env.L1_ZK_ROLLUP_PROXY_ADDR || addressFile.get("ScrollChain.proxy") || "0x";
+  const rollupAddr = process.env.L1_SCROLL_CHAIN_PROXY_ADDR || addressFile.get("ScrollChain.proxy") || "0x";
   console.log("Using rollup proxy address:", rollupAddr);
 
   const ScrollChain = await ethers.getContractAt("ScrollChain", rollupAddr, deployer);
