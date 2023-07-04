@@ -49,6 +49,27 @@ func (o *submissionInfoOrm) GetSubmissionInfosByHashes(hashes []string) ([]*type
 	return submissionInfos, nil
 }
 
+func (o *submissionInfoOrm) GetSubmissionInfosByRoller(pubKey string) ([]*types.SubmissionInfo, error) {
+	rows, err := o.db.Queryx("SELECT * FROM submission_info WHERE roller_public_key = $1;", pubKey)
+	if err != nil {
+		return nil, err
+	}
+
+	var subs []*types.SubmissionInfo
+	for rows.Next() {
+		var sub types.SubmissionInfo
+		err = rows.StructScan(&sub)
+		if err != nil {
+			return nil, err
+		}
+		subs = append(subs, &sub)
+	}
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+	return subs, nil
+}
+
 func (o *submissionInfoOrm) SetSubmissionInfo(rollersInfo *types.SubmissionInfo) error {
 	sqlStr := "INSERT INTO submission_info (task_id, roller_public_key, prove_type, roller_name, proving_status, failure_type, reward, proof, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) ON CONFLICT (task_id, roller_public_key) DO UPDATE SET proving_status = EXCLUDED.proving_status;"
 	_, err := o.db.Exec(sqlStr, rollersInfo.TaskID, rollersInfo.RollerPublicKey, rollersInfo.ProveType, rollersInfo.RollerName,

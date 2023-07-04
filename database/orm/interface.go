@@ -43,6 +43,7 @@ type BlockTraceOrm interface {
 // SubmissionInfoOrm sessions info operation inte
 type SubmissionInfoOrm interface {
 	GetSubmissionInfosByHashes(hashes []string) ([]*types.SubmissionInfo, error)
+	GetSubmissionInfosByRoller(pubKey string) ([]*types.SubmissionInfo, error)
 	SetSubmissionInfo(rollersInfo *types.SubmissionInfo) error
 	UpdateSubmissionInfoProvingStatus(ctx context.Context, proveType message.ProveType, taskID string, pk string, status types.RollerProveStatus) error
 }
