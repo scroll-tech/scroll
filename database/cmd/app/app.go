@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/urfave/cli/v2"
 
 	"scroll-tech/common/utils"
@@ -12,7 +13,8 @@ import (
 
 var (
 	// Set up database app info.
-	app *cli.App
+	app    *cli.App
+	logger log.Logger
 )
 
 func init() {
@@ -24,7 +26,9 @@ func init() {
 	app.Flags = append(app.Flags, utils.CommonFlags...)
 
 	app.Before = func(ctx *cli.Context) error {
-		return utils.LogSetup(ctx)
+		var err error
+		logger, err = utils.LogSetup(ctx)
+		return err
 	}
 
 	app.Commands = []*cli.Command{
