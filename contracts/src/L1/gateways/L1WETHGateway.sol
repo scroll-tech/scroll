@@ -136,7 +136,8 @@ contract L1WETHGateway is Initializable, ScrollGatewayBase, L1ERC20Gateway {
             counterpart,
             _amount,
             _message,
-            _gasLimit
+            _gasLimit,
+            _from
         );
 
         emit DepositERC20(_token, l2WETH, _from, _to, _amount, _data);
