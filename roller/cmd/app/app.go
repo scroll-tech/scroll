@@ -17,7 +17,6 @@ import (
 )
 
 var app *cli.App
-var logger log.Logger
 
 func init() {
 	app = cli.NewApp()
@@ -27,8 +26,7 @@ func init() {
 	app.Version = version.Version
 	app.Flags = append(app.Flags, utils.CommonFlags...)
 	app.Before = func(ctx *cli.Context) error {
-		var err error
-		logger, err = utils.LogSetup(ctx)
+		_, err := utils.LogSetup(ctx)
 		return err
 	}
 

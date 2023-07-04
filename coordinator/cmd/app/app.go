@@ -22,8 +22,7 @@ import (
 
 var (
 	// Set up Coordinator app info.
-	app    *cli.App
-	logger log.Logger
+	app *cli.App
 )
 
 func init() {
@@ -36,8 +35,7 @@ func init() {
 	app.Flags = append(app.Flags, apiFlags...)
 
 	app.Before = func(ctx *cli.Context) error {
-		var err error
-		logger, err = utils.LogSetup(ctx)
+		_, err := utils.LogSetup(ctx)
 		return err
 	}
 
