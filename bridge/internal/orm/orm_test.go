@@ -45,7 +45,6 @@ func TestMain(m *testing.M) {
 func setupEnv(t *testing.T) {
 	base = docker.NewDockerApp()
 	base.RunDBImage(t)
-
 	var err error
 	db, err = utils.InitDB(
 		&config.DBConfig{

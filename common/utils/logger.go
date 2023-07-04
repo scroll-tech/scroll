@@ -37,7 +37,7 @@ func LogSetup(ctx *cli.Context) error {
 	log.PrintOrigins(ctx.Bool(LogDebugFlag.Name))
 	glogger := log.NewGlogHandler(ostream)
 	// Set log level
-	glogger.Verbosity(log.Lvl(4))
+	glogger.Verbosity(log.Lvl(ctx.Int(VerbosityFlag.Name)))
 	log.Root().SetHandler(glogger)
 	return nil
 }
