@@ -16,6 +16,7 @@ create table cross_message
     msg_type        SMALLINT NOT NULL,
     -- use array to support nft bridge
     token_ids       VARCHAR[] NOT NULL DEFAULT '{}',
+     -- use array to support nft bridge
     token_amounts   VARCHAR[] NOT NULL DEFAULT '{}',
     block_timestamp TIMESTAMP(0) DEFAULT NULL,
     created_at      TIMESTAMP(0) NOT NULL DEFAULT CURRENT_TIMESTAMP,
