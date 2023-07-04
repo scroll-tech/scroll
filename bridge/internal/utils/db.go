@@ -23,24 +23,24 @@ func (g *gormLogger) LogMode(level logger.LogLevel) logger.Interface {
 }
 
 func (g *gormLogger) Info(_ context.Context, msg string, data ...interface{}) {
-	infoMsg := fmt.Sprintf(msg, data)
+	infoMsg := fmt.Sprintf(msg, data...)
 	g.gethLogger.Info("gorm", "info message", infoMsg)
 }
 
 func (g *gormLogger) Warn(_ context.Context, msg string, data ...interface{}) {
-	warnMsg := fmt.Sprintf(msg, data)
+	warnMsg := fmt.Sprintf(msg, data...)
 	g.gethLogger.Warn("gorm", "warn message", warnMsg)
 }
 
 func (g *gormLogger) Error(_ context.Context, msg string, data ...interface{}) {
-	errMsg := fmt.Sprintf(msg, data)
+	errMsg := fmt.Sprintf(msg, data...)
 	g.gethLogger.Error("gorm", "err message", errMsg)
 }
 
 func (g *gormLogger) Trace(_ context.Context, begin time.Time, fc func() (string, int64), err error) {
 	elapsed := time.Since(begin)
 	rows, sql := fc()
-	g.gethLogger.Debug("gorm", "line", utils.FileWithLineNum(), "cost", elapsed, "rows", sql, "sql", rows)
+	g.gethLogger.Debug("gorm", "line", utils.FileWithLineNum(), "cost", elapsed, "rows", sql, "sql", rows, "err", err)
 }
 
 // InitDB init the db handler
