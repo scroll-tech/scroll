@@ -20,6 +20,7 @@ import (
 )
 
 var app *cli.App
+var logger log.Logger
 
 func init() {
 	// Set up message-relayer app info.
@@ -32,7 +33,9 @@ func init() {
 	app.Flags = append(app.Flags, cutils.CommonFlags...)
 	app.Commands = []*cli.Command{}
 	app.Before = func(ctx *cli.Context) error {
-		return cutils.LogSetup(ctx)
+		var err error
+		logger, err = cutils.LogSetup(ctx)
+		return err
 	}
 	// Register `message-relayer-test` app for integration-test.
 	cutils.RegisterSimulation(app, cutils.MessageRelayerApp)
@@ -48,7 +51,7 @@ func action(ctx *cli.Context) error {
 
 	subCtx, cancel := context.WithCancel(ctx.Context)
 	// Init db connection
-	db, err := utils.InitDB(cfg.DBConfig)
+	db, err := utils.InitDB(cfg.DBConfig, logger)
 	if err != nil {
 		log.Crit("failed to init db connection", "err", err)
 	}

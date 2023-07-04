@@ -7,7 +7,6 @@ import (
 	"os/signal"
 
 	"github.com/scroll-tech/go-ethereum/ethclient"
-
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/urfave/cli/v2"
 
@@ -36,7 +35,8 @@ func init() {
 	app.Flags = append(app.Flags, apiFlags...)
 
 	app.Before = func(ctx *cli.Context) error {
-		return utils.LogSetup(ctx)
+		_, err := utils.LogSetup(ctx)
+		return err
 	}
 
 	// Register `coordinator-test` app for integration-test.
