@@ -25,11 +25,11 @@ func TestGormLogger(t *testing.T) {
 	glogger.Verbosity(log.LvlTrace)
 	log.Root().SetHandler(glogger)
 
-	var gormLogger gormLogger
-	gormLogger.gethLogger = log.Root()
+	var gl gormLogger
+	gl.gethLogger = log.Root()
 
-	gormLogger.Error(context.Background(), "test %s error:%v", "testError", errors.New("test error"))
-	gormLogger.Warn(context.Background(), "test %s warn:%v", "testWarn", errors.New("test warn"))
-	gormLogger.Info(context.Background(), "test %s warn:%v", "testInfo", errors.New("test info"))
-	gormLogger.Trace(context.Background(), time.Now(), func() (string, int64) { return "test trace", 1 }, nil)
+	gl.Error(context.Background(), "test %s error:%v", "testError", errors.New("test error"))
+	gl.Warn(context.Background(), "test %s warn:%v", "testWarn", errors.New("test warn"))
+	gl.Info(context.Background(), "test %s warn:%v", "testInfo", errors.New("test info"))
+	gl.Trace(context.Background(), time.Now(), func() (string, int64) { return "test trace", 1 }, nil)
 }
