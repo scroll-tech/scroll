@@ -2,6 +2,7 @@ package utils
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/scroll-tech/go-ethereum/log"
@@ -22,15 +23,18 @@ func (g *gormLogger) LogMode(level logger.LogLevel) logger.Interface {
 }
 
 func (g *gormLogger) Info(_ context.Context, msg string, data ...interface{}) {
-	g.gethLogger.Info(msg, data)
+	infoMsg := fmt.Sprintf(msg, data)
+	g.gethLogger.Info("gorm", "info message", infoMsg)
 }
 
 func (g *gormLogger) Warn(_ context.Context, msg string, data ...interface{}) {
-	g.gethLogger.Warn(msg, data)
+	warnMsg := fmt.Sprintf(msg, data)
+	g.gethLogger.Warn("gorm", "warn message", warnMsg)
 }
 
 func (g *gormLogger) Error(_ context.Context, msg string, data ...interface{}) {
-	g.gethLogger.Error(msg, data)
+	errMsg := fmt.Sprintf(msg, data)
+	g.gethLogger.Error("gorm", "err message", errMsg)
 }
 
 func (g *gormLogger) Trace(_ context.Context, begin time.Time, fc func() (string, int64), err error) {
