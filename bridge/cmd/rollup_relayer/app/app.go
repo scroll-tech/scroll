@@ -21,7 +21,10 @@ import (
 	"scroll-tech/bridge/internal/utils"
 )
 
-var app *cli.App
+var (
+	app    *cli.App
+	logger log.Logger
+)
 
 func init() {
 	// Set up rollup-relayer app info.
@@ -34,7 +37,9 @@ func init() {
 	app.Flags = append(app.Flags, cutils.RollupRelayerFlags...)
 	app.Commands = []*cli.Command{}
 	app.Before = func(ctx *cli.Context) error {
-		return cutils.LogSetup(ctx)
+		var err error
+		logger, err = cutils.LogSetup(ctx)
+		return err
 	}
 	// Register `rollup-relayer-test` app for integration-test.
 	cutils.RegisterSimulation(app, cutils.RollupRelayerApp)
@@ -50,7 +55,7 @@ func action(ctx *cli.Context) error {
 
 	subCtx, cancel := context.WithCancel(ctx.Context)
 	// Init db connection
-	db, err := utils.InitDB(cfg.DBConfig)
+	db, err := utils.InitDB(cfg.DBConfig, logger)
 	if err != nil {
 		log.Crit("failed to init db connection", "err", err)
 	}

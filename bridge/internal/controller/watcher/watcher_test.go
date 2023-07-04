@@ -10,6 +10,7 @@ import (
 	"gorm.io/gorm"
 
 	"scroll-tech/common/docker"
+	cutils "scroll-tech/common/utils"
 
 	"scroll-tech/bridge/internal/config"
 	"scroll-tech/bridge/internal/orm/migrate"
@@ -74,7 +75,9 @@ func setupEnv(t *testing.T) (err error) {
 }
 
 func setupDB(t *testing.T) *gorm.DB {
-	db, err := utils.InitDB(cfg.DBConfig)
+	logger, err1 := cutils.LogSetup(nil)
+	assert.NoError(t, err1)
+	db, err := utils.InitDB(cfg.DBConfig, logger)
 	assert.NoError(t, err)
 	sqlDB, err := db.DB()
 	assert.NoError(t, err)
