@@ -58,7 +58,7 @@ type rollerProofStatus struct {
 // Contains all the information on an ongoing proof generation session.
 type session struct {
 	taskID       string
-	sessionInfos []*types.SessionInfo
+	sessionInfos []*types.SubmissionInfo
 	// finish channel is used to pass the public key of the rollers who finished proving process.
 	finishChan chan rollerProofStatus
 }
@@ -244,13 +244,13 @@ func (m *Manager) restorePrevSessions() {
 	}
 	hashes = append(hashes, batchHashes...)
 
-	prevSessions, err := m.orm.GetSessionInfosByHashes(hashes)
+	prevSessions, err := m.orm.GetSubmissionInfosByHashes(hashes)
 	if err != nil {
 		log.Error("failed to recover roller session info from db", "error", err)
 		return
 	}
 
-	sessionInfosMaps := make(map[string][]*types.SessionInfo)
+	sessionInfosMaps := make(map[string][]*types.SubmissionInfo)
 	for _, v := range prevSessions {
 		log.Info("restore roller info for session", "session start time", v.CreatedAt, "session id", v.TaskID, "roller name",
 			v.RollerName, "prove type", v.ProveType, "public key", v.RollerPublicKey, "proof status", v.ProvingStatus)
@@ -286,7 +286,7 @@ func (m *Manager) handleZkProof(pk string, msg *message.ProofDetail) error {
 		return fmt.Errorf("proof generation session for id %v does not existID", msg.ID)
 	}
 
-	var tmpSessionInfo *types.SessionInfo
+	var tmpSessionInfo *types.SubmissionInfo
 	for _, si := range sess.sessionInfos {
 		// get the send session info of this proof msg
 		if si.TaskID == msg.ID && si.RollerPublicKey == pk {
@@ -427,7 +427,7 @@ func (m *Manager) handleZkProof(pk string, msg *message.ProofDetail) error {
 
 // checkAttempts use the count of session info to check the attempts
 func (m *Manager) checkAttemptsExceeded(hash string) bool {
-	sessionInfos, err := m.orm.GetSessionInfosByHashes([]string{hash})
+	sessionInfos, err := m.orm.GetSubmissionInfosByHashes([]string{hash})
 	if err != nil {
 		log.Error("get session info error", "hash id", hash, "error", err)
 		return true
@@ -516,7 +516,7 @@ func (m *Manager) CollectProofs(sess *session) {
 				coordinatorSessionsFailedTotalCounter.Inc(1)
 			}
 
-			if err := m.orm.UpdateSessionInfoProvingStatus(m.ctx, ret.typ, ret.id, ret.pk, ret.status); err != nil {
+			if err := m.orm.UpdateSubmissionInfoProvingStatus(m.ctx, ret.typ, ret.id, ret.pk, ret.status); err != nil {
 				log.Error("db set session info fail", "pk", ret.pk, "error", err)
 			}
 
@@ -634,7 +634,7 @@ func (m *Manager) StartBasicProofGenerationSession(task *types.BlockBatch, prevS
 	}
 
 	// Dispatch task to basic rollers.
-	var sessionInfos []*types.SessionInfo
+	var sessionInfos []*types.SubmissionInfo
 	for i := 0; i < int(m.cfg.RollersPerSession); i++ {
 		roller := m.selectRoller(message.BasicProve)
 		if roller == nil {
@@ -649,7 +649,7 @@ func (m *Manager) StartBasicProofGenerationSession(task *types.BlockBatch, prevS
 		}
 		m.updateMetricRollerProofsLastAssignedTimestampGauge(roller.PublicKey)
 		now := time.Now()
-		tmpSessionInfo := types.SessionInfo{
+		tmpSessionInfo := types.SubmissionInfo{
 			TaskID:          taskID,
 			RollerPublicKey: roller.PublicKey,
 			ProveType:       int16(message.BasicProve),
@@ -658,7 +658,7 @@ func (m *Manager) StartBasicProofGenerationSession(task *types.BlockBatch, prevS
 			ProvingStatus:   int16(types.RollerAssigned),
 		}
 		// Store session info.
-		if err = m.orm.SetSessionInfo(&tmpSessionInfo); err != nil {
+		if err = m.orm.SetSubmissionInfo(&tmpSessionInfo); err != nil {
 			log.Error("db set session info fail", "session id", taskID, "error", err)
 			return false
 		}
@@ -730,7 +730,7 @@ func (m *Manager) StartAggProofGenerationSession(task *types.AggTask, prevSessio
 	}
 
 	// Dispatch task to basic rollers.
-	var sessionInfos []*types.SessionInfo
+	var sessionInfos []*types.SubmissionInfo
 	for i := 0; i < int(m.cfg.RollersPerSession); i++ {
 		roller := m.selectRoller(message.AggregatorProve)
 		if roller == nil {
@@ -749,7 +749,7 @@ func (m *Manager) StartAggProofGenerationSession(task *types.AggTask, prevSessio
 		}
 
 		now := time.Now()
-		tmpSessionInfo := types.SessionInfo{
+		tmpSessionInfo := types.SubmissionInfo{
 			TaskID:          taskID,
 			RollerPublicKey: roller.PublicKey,
 			ProveType:       int16(message.AggregatorProve),
@@ -758,7 +758,7 @@ func (m *Manager) StartAggProofGenerationSession(task *types.AggTask, prevSessio
 			ProvingStatus:   int16(types.RollerAssigned),
 		}
 		// Store session info.
-		if err = m.orm.SetSessionInfo(&tmpSessionInfo); err != nil {
+		if err = m.orm.SetSubmissionInfo(&tmpSessionInfo); err != nil {
 			log.Error("db set session info fail", "session id", taskID, "error", err)
 			return false
 		}

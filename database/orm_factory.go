@@ -14,7 +14,7 @@ type OrmFactory interface {
 	orm.L1BlockOrm
 	orm.L1MessageOrm
 	orm.L2MessageOrm
-	orm.SessionInfoOrm
+	orm.SubmissionInfoOrm
 	orm.AggTaskOrm
 	GetDB() *sqlx.DB
 	Beginx() (*sqlx.Tx, error)
@@ -27,7 +27,7 @@ type ormFactory struct {
 	orm.L1BlockOrm
 	orm.L1MessageOrm
 	orm.L2MessageOrm
-	orm.SessionInfoOrm
+	orm.SubmissionInfoOrm
 	orm.AggTaskOrm
 	*sqlx.DB
 }
@@ -47,14 +47,14 @@ func NewOrmFactory(cfg *DBConfig) (OrmFactory, error) {
 	}
 
 	return &ormFactory{
-		BlockTraceOrm:  orm.NewBlockTraceOrm(db),
-		BlockBatchOrm:  orm.NewBlockBatchOrm(db),
-		L1MessageOrm:   orm.NewL1MessageOrm(db),
-		L2MessageOrm:   orm.NewL2MessageOrm(db),
-		L1BlockOrm:     orm.NewL1BlockOrm(db),
-		SessionInfoOrm: orm.NewSessionInfoOrm(db),
-		AggTaskOrm:     orm.NewAggTaskOrm(db),
-		DB:             db,
+		BlockTraceOrm:     orm.NewBlockTraceOrm(db),
+		BlockBatchOrm:     orm.NewBlockBatchOrm(db),
+		L1MessageOrm:      orm.NewL1MessageOrm(db),
+		L2MessageOrm:      orm.NewL2MessageOrm(db),
+		L1BlockOrm:        orm.NewL1BlockOrm(db),
+		SubmissionInfoOrm: orm.NewSubmissionInfoOrm(db),
+		AggTaskOrm:        orm.NewAggTaskOrm(db),
+		DB:                db,
 	}, nil
 }
 

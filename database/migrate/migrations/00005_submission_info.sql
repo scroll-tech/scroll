@@ -1,7 +1,7 @@
 -- +goose Up
 -- +goose StatementBegin
 
-create table session_info
+create table submission_info
 (
     id                  BIGSERIAL      PRIMARY KEY,
     task_id             VARCHAR        NOT NULL,
@@ -23,5 +23,5 @@ create table session_info
 
 -- +goose Down
 -- +goose StatementBegin
-drop table if exists session_info;
+drop table if exists submission_info;
 -- +goose StatementEnd

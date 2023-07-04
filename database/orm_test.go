@@ -91,7 +91,7 @@ var (
 	ormLayer1  orm.L1MessageOrm
 	ormLayer2  orm.L2MessageOrm
 	ormBatch   orm.BlockBatchOrm
-	ormSession orm.SessionInfoOrm
+	ormSession orm.SubmissionInfoOrm
 	ormAggTask orm.AggTaskOrm
 )
 
@@ -110,7 +110,7 @@ func setupEnv(t *testing.T) error {
 	ormLayer1 = orm.NewL1MessageOrm(db)
 	ormLayer2 = orm.NewL2MessageOrm(db)
 	ormBatch = orm.NewBlockBatchOrm(db)
-	ormSession = orm.NewSessionInfoOrm(db)
+	ormSession = orm.NewSubmissionInfoOrm(db)
 	ormAggTask = orm.NewAggTaskOrm(db)
 
 	templateBlockTrace, err := os.ReadFile("../common/testdata/blockTrace_02.json")
@@ -406,12 +406,12 @@ func testOrmSessionInfo(t *testing.T) {
 	hashes, err := ormBatch.GetAssignedBatchHashes()
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(hashes))
-	sessionInfos, err := ormSession.GetSessionInfosByHashes(hashes)
+	sessionInfos, err := ormSession.GetSubmissionInfosByHashes(hashes)
 	assert.NoError(t, err)
 	assert.Equal(t, 0, len(sessionInfos))
 
 	now := time.Now()
-	sessionInfo := types.SessionInfo{
+	sessionInfo := types.SubmissionInfo{
 		TaskID:          batchHash,
 		RollerName:      "roller-0",
 		RollerPublicKey: "0",
@@ -420,16 +420,16 @@ func testOrmSessionInfo(t *testing.T) {
 	}
 
 	// insert
-	assert.NoError(t, ormSession.SetSessionInfo(&sessionInfo))
-	sessionInfos, err = ormSession.GetSessionInfosByHashes(hashes)
+	assert.NoError(t, ormSession.SetSubmissionInfo(&sessionInfo))
+	sessionInfos, err = ormSession.GetSubmissionInfosByHashes(hashes)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(sessionInfos))
 	assert.Equal(t, sessionInfo.RollerName, sessionInfos[0].RollerName)
 
 	// update
 	sessionInfo.ProvingStatus = int16(types.RollerProofValid)
-	assert.NoError(t, ormSession.SetSessionInfo(&sessionInfo))
-	sessionInfos, err = ormSession.GetSessionInfosByHashes(hashes)
+	assert.NoError(t, ormSession.SetSubmissionInfo(&sessionInfo))
+	sessionInfos, err = ormSession.GetSubmissionInfosByHashes(hashes)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(sessionInfos))
 	assert.Equal(t, sessionInfo.ProvingStatus, sessionInfos[0].ProvingStatus)
@@ -439,7 +439,7 @@ func testOrmSessionInfo(t *testing.T) {
 	hashes, err = ormBatch.GetAssignedBatchHashes()
 	assert.NoError(t, err)
 	assert.Equal(t, 0, len(hashes))
-	sessionInfos, err = ormSession.GetSessionInfosByHashes(hashes)
+	sessionInfos, err = ormSession.GetSubmissionInfosByHashes(hashes)
 	assert.NoError(t, err)
 	assert.Equal(t, 0, len(sessionInfos))
 }

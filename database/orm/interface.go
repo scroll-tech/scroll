@@ -40,11 +40,11 @@ type BlockTraceOrm interface {
 	SetBatchHashForL2BlocksInDBTx(dbTx *sqlx.Tx, numbers []uint64, batchHash string) error
 }
 
-// SessionInfoOrm sessions info operation inte
-type SessionInfoOrm interface {
-	GetSessionInfosByHashes(hashes []string) ([]*types.SessionInfo, error)
-	SetSessionInfo(rollersInfo *types.SessionInfo) error
-	UpdateSessionInfoProvingStatus(ctx context.Context, proveType message.ProveType, taskID string, pk string, status types.RollerProveStatus) error
+// SubmissionInfoOrm sessions info operation inte
+type SubmissionInfoOrm interface {
+	GetSubmissionInfosByHashes(hashes []string) ([]*types.SubmissionInfo, error)
+	SetSubmissionInfo(rollersInfo *types.SubmissionInfo) error
+	UpdateSubmissionInfoProvingStatus(ctx context.Context, proveType message.ProveType, taskID string, pk string, status types.RollerProveStatus) error
 }
 
 // AggTaskOrm is aggregator task

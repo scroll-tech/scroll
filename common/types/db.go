@@ -157,8 +157,8 @@ type RollerStatus struct {
 	Status    RollerProveStatus `json:"status"`
 }
 
-// SessionInfo is assigned rollers info of a block batch (session)
-type SessionInfo struct {
+// SubmissionInfo is assigned rollers info of a block batch (session)
+type SubmissionInfo struct {
 	ID              int        `json:"id" db:"id"`
 	TaskID          string     `json:"task_id" db:"task_id"`
 	RollerPublicKey string     `json:"roller_public_key" db:"roller_public_key"`
