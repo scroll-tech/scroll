@@ -3,13 +3,14 @@ package utils
 import (
 	"context"
 	"errors"
-	"github.com/mattn/go-colorable"
-	"github.com/mattn/go-isatty"
-	"github.com/scroll-tech/go-ethereum/log"
 	"io"
 	"os"
 	"testing"
 	"time"
+
+	"github.com/mattn/go-colorable"
+	"github.com/mattn/go-isatty"
+	"github.com/scroll-tech/go-ethereum/log"
 )
 
 func TestGormLogger(t *testing.T) {
