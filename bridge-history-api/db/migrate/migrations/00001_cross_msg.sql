@@ -14,7 +14,7 @@ create table cross_message
     layer2_token    VARCHAR NOT NULL DEFAULT '',
     asset           SMALLINT NOT NULL,
     msg_type        SMALLINT NOT NULL,
-    -- support nft bridge
+    -- use array to support nft bridge
     token_ids       VARCHAR[] NOT NULL DEFAULT '{}',
     token_amounts   VARCHAR[] NOT NULL DEFAULT '{}',
     block_timestamp TIMESTAMP(0) DEFAULT NULL,
@@ -23,8 +23,8 @@ create table cross_message
     deleted_at      TIMESTAMP(0) DEFAULT NULL
 );
 
-create unique index uk_msg_hash
-on cross_message (msg_hash) where deleted_at IS NULL;
+create unique index uk_msg_hash_msg_type
+on cross_message (msg_hash, msg_type) where deleted_at IS NULL;
 
 comment
 on column cross_message.asset is 'ETH, ERC20, ERC721, ERC1155';

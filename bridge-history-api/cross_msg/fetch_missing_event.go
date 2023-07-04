@@ -161,18 +161,18 @@ func L2FetchAndSaveEvents(ctx context.Context, client *ethclient.Client, databas
 		log.Warn("Failed to get l2 event logs", "err", err)
 		return err
 	}
-	depositL2CrossMsgs, relayedMsg, L2SentMsgWrapper, err := utils.ParseBackendL2EventLogs(logs)
+	depositL2CrossMsgs, relayedMsg, L2SentMsgWrappers, err := utils.ParseBackendL2EventLogs(logs)
 	if err != nil {
 		log.Error("l2FetchAndSaveEvents: Failed to parse cross msg event logs", "err", err)
 		return err
 	}
 	var l2SentMsgs []*orm.L2SentMsg
 	for i := range depositL2CrossMsgs {
-		for _, l := range L2SentMsgWrapper {
-			if depositL2CrossMsgs[i].Layer2Hash == l.TxHash.Hex() {
-				depositL2CrossMsgs[i].MsgHash = l.L2SentMsg.MsgHash
-				l.L2SentMsg.TxSender = depositL2CrossMsgs[i].Sender
-				l2SentMsgs = append(l2SentMsgs, l.L2SentMsg)
+		for _, l2SentMsgWrapper := range L2SentMsgWrappers {
+			if depositL2CrossMsgs[i].Layer2Hash == l2SentMsgWrapper.TxHash.Hex() {
+				depositL2CrossMsgs[i].MsgHash = l2SentMsgWrapper.L2SentMsg.MsgHash
+				l2SentMsgWrapper.L2SentMsg.TxSender = depositL2CrossMsgs[i].Sender
+				l2SentMsgs = append(l2SentMsgs, l2SentMsgWrapper.L2SentMsg)
 				break
 			}
 		}
