@@ -149,3 +149,28 @@ func (l *l2SentMsgOrm) DeleteL2SentMsgAfterHeightDBTx(dbTx *sqlx.Tx, height int6
 	_, err := dbTx.Exec(`UPDATE l2_sent_msg SET deleted_at = current_timestamp WHERE height > $1;`, height)
 	return err
 }
+
+func (l *l2SentMsgOrm) GetClaimableL2SentMsgByAddressWithOffset(address string, offset int64, limit int64) ([]*L2SentMsg, error) {
+	var results []*L2SentMsg
+	rows, err := l.db.Queryx(`SELECT * FROM l2_sent_msg WHERE id NOT IN (SELECT l2_sent_msg.id FROM l2_sent_msg INNER JOIN relayed_msg ON l2_sent_msg.msg_hash = relayed_msg.msg_hash WHERE l2_sent_msg.deleted_at IS NULL AND relayed_msg.deleted_at IS NULL) AND tx_sender=$1 ORDER BY ID DESC LIMIT $2 OFFSET $3;`, address, limit, offset)
+	if err != nil {
+		return nil, err
+	}
+	for rows.Next() {
+		msg := &L2SentMsg{}
+		if err = rows.StructScan(msg); err != nil {
+			break
+		}
+		results = append(results, msg)
+	}
+	return results, nil
+}
+
+func (l *l2SentMsgOrm) GetClaimableL2SentMsgByAddressTotalNum(address string) (uint64, error) {
+	var count uint64
+	row := l.db.QueryRowx(`SELECT COUNT(*) FROM l2_sent_msg WHERE id NOT IN (SELECT l2_sent_msg.id FROM l2_sent_msg INNER JOIN relayed_msg ON l2_sent_msg.msg_hash = relayed_msg.msg_hash WHERE l2_sent_msg.deleted_at IS NULL AND relayed_msg.deleted_at IS NULL) AND tx_sender=$1;`, address)
+	if err := row.Scan(&count); err != nil {
+		return 0, err
+	}
+	return count, nil
+}

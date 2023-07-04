@@ -76,6 +76,7 @@ type L1CrossMsgOrm interface {
 
 // L2CrossMsgOrm provides operations on cross_message table
 type L2CrossMsgOrm interface {
+	GetL2CrossMsgByMsgHash(msgHash string) (*CrossMsg, error)
 	GetL2CrossMsgByHash(l2Hash common.Hash) (*CrossMsg, error)
 	GetL2CrossMsgByAddress(sender common.Address) ([]*CrossMsg, error)
 	BatchInsertL2CrossMsgDBTx(dbTx *sqlx.Tx, messages []*CrossMsg) error
@@ -106,6 +107,8 @@ type L2SentMsgOrm interface {
 	GetL2SentMsgMsgHashByHeightRange(startHeight, endHeight uint64) ([]*L2SentMsg, error)
 	UpdateL2MessageProofInDBTx(ctx context.Context, dbTx *sqlx.Tx, msgHash string, proof string, batch_index uint64) error
 	GetLatestL2SentMsgBatchIndex() (int64, error)
+	GetClaimableL2SentMsgByAddressWithOffset(address string, offset int64, limit int64) ([]*L2SentMsg, error)
+	GetClaimableL2SentMsgByAddressTotalNum(address string) (uint64, error)
 	DeleteL2SentMsgAfterHeightDBTx(dbTx *sqlx.Tx, height int64) error
 }
 

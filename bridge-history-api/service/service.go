@@ -47,6 +47,7 @@ type TxHistoryInfo struct {
 type HistoryService interface {
 	GetTxsByAddress(address common.Address, offset int64, limit int64) ([]*TxHistoryInfo, uint64, error)
 	GetTxsByHashes(hashes []string) ([]*TxHistoryInfo, error)
+	GetClaimableTxsByAddress(address common.Address, offset int64, limit int64) ([]*TxHistoryInfo, uint64, error)
 }
 
 // NewHistoryService returns a service backed with a "db"
@@ -104,6 +105,35 @@ func updateCrossTxHash(msgHash string, txInfo *TxHistoryInfo, db db.OrmFactory) 
 		return
 	}
 
+}
+
+func (h *historyBackend) GetClaimableTxsByAddress(address common.Address, offset int64, limit int64) ([]*TxHistoryInfo, uint64, error) {
+	var txHistories []*TxHistoryInfo
+	total, err := h.db.GetClaimableL2SentMsgByAddressTotalNum(address.Hex())
+	if err != nil || total == 0 {
+		return txHistories, 0, err
+	}
+	results, err := h.db.GetClaimableL2SentMsgByAddressWithOffset(address.Hex(), offset, limit)
+	for _, result := range results {
+		l2CrossMsg, err := h.db.GetL2CrossMsgByMsgHash(result.MsgHash)
+		if err != nil {
+			log.Error("GetClaimableTxsByAddress failed", "error", err)
+			continue
+		}
+		txInfo := &TxHistoryInfo{
+			Hash:           l2CrossMsg.Layer2Hash,
+			Amount:         l2CrossMsg.Amount,
+			To:             l2CrossMsg.Target,
+			IsL1:           false,
+			BlockNumber:    result.Height,
+			BlockTimestamp: l2CrossMsg.Timestamp,
+			FinalizeTx:     &Finalized{},
+			ClaimInfo:      GetCrossTxClaimInfo(result.MsgHash, h.db),
+			CreatedAt:      l2CrossMsg.CreatedAt,
+		}
+		txHistories = append(txHistories, txInfo)
+	}
+	return txHistories, total, err
 }
 
 func (h *historyBackend) GetTxsByAddress(address common.Address, offset int64, limit int64) ([]*TxHistoryInfo, uint64, error) {
