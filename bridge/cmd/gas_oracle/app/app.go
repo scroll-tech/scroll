@@ -21,10 +21,7 @@ import (
 	"scroll-tech/bridge/internal/utils"
 )
 
-var (
-	app    *cli.App
-	logger log.Logger
-)
+var app *cli.App
 
 func init() {
 	// Set up gas-oracle app info.
@@ -37,9 +34,7 @@ func init() {
 	app.Flags = append(app.Flags, cutils.CommonFlags...)
 	app.Commands = []*cli.Command{}
 	app.Before = func(ctx *cli.Context) error {
-		var err error
-		logger, err = cutils.LogSetup(ctx)
-		return err
+		return cutils.LogSetup(ctx)
 	}
 	// Register `gas-oracle-test` app for integration-test.
 	cutils.RegisterSimulation(app, cutils.GasOracleApp)
@@ -54,7 +49,7 @@ func action(ctx *cli.Context) error {
 	}
 	subCtx, cancel := context.WithCancel(ctx.Context)
 	// Init db connection
-	db, err := utils.InitDB(cfg.DBConfig, logger)
+	db, err := utils.InitDB(cfg.DBConfig)
 	if err != nil {
 		log.Crit("failed to init db connection", "err", err)
 	}

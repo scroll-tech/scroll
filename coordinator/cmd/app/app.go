@@ -36,8 +36,7 @@ func init() {
 	app.Flags = append(app.Flags, apiFlags...)
 
 	app.Before = func(ctx *cli.Context) error {
-		_, err := utils.LogSetup(ctx)
-		return err
+		return utils.LogSetup(ctx)
 	}
 
 	// Register `coordinator-test` app for integration-test.

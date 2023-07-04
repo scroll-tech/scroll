@@ -12,7 +12,6 @@ import (
 	"gorm.io/gorm"
 
 	"scroll-tech/common/docker"
-	cutils "scroll-tech/common/utils"
 
 	bcmd "scroll-tech/bridge/cmd"
 	"scroll-tech/bridge/internal/config"
@@ -53,9 +52,7 @@ func setupDB(t *testing.T) *gorm.DB {
 		MaxOpenNum: base.DBConfig.MaxOpenNum,
 		MaxIdleNum: base.DBConfig.MaxIdleNum,
 	}
-	logger, err1 := cutils.LogSetup(nil)
-	assert.NoError(t, err1)
-	db, err := utils.InitDB(cfg, logger)
+	db, err := utils.InitDB(cfg)
 	assert.NoError(t, err)
 	sqlDB, err := db.DB()
 	assert.NoError(t, err)

@@ -12,7 +12,6 @@ import (
 
 	"scroll-tech/common/docker"
 	"scroll-tech/common/types"
-	cutils "scroll-tech/common/utils"
 
 	"scroll-tech/bridge/internal/config"
 	"scroll-tech/bridge/internal/orm/migrate"
@@ -47,9 +46,6 @@ func setupEnv(t *testing.T) {
 	base = docker.NewDockerApp()
 	base.RunDBImage(t)
 
-	logger, err1 := cutils.LogSetup(nil)
-	assert.NoError(t, err1)
-
 	var err error
 	db, err = utils.InitDB(
 		&config.DBConfig{
@@ -58,7 +54,6 @@ func setupEnv(t *testing.T) {
 			MaxOpenNum: base.DBConfig.MaxOpenNum,
 			MaxIdleNum: base.DBConfig.MaxIdleNum,
 		},
-		logger,
 	)
 	assert.NoError(t, err)
 	sqlDB, err := db.DB()

@@ -40,9 +40,9 @@ func (g *gormLogger) Trace(_ context.Context, begin time.Time, fc func() (string
 }
 
 // InitDB init the db handler
-func InitDB(config *config.DBConfig, gethLogger log.Logger) (*gorm.DB, error) {
+func InitDB(config *config.DBConfig) (*gorm.DB, error) {
 	tmpGormLogger := gormLogger{
-		gethLogger: gethLogger,
+		gethLogger: log.Root(),
 	}
 
 	db, err := gorm.Open(postgres.Open(config.DSN), &gorm.Config{

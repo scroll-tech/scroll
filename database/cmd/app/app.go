@@ -24,8 +24,7 @@ func init() {
 	app.Flags = append(app.Flags, utils.CommonFlags...)
 
 	app.Before = func(ctx *cli.Context) error {
-		_, err := utils.LogSetup(ctx)
-		return err
+		return utils.LogSetup(ctx)
 	}
 
 	app.Commands = []*cli.Command{

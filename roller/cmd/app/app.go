@@ -26,8 +26,7 @@ func init() {
 	app.Version = version.Version
 	app.Flags = append(app.Flags, utils.CommonFlags...)
 	app.Before = func(ctx *cli.Context) error {
-		_, err := utils.LogSetup(ctx)
-		return err
+		return utils.LogSetup(ctx)
 	}
 
 	// Register `roller-test` app for integration-test.

@@ -13,7 +13,7 @@ import (
 )
 
 // LogSetup is for setup logger
-func LogSetup(ctx *cli.Context) (log.Logger, error) {
+func LogSetup(ctx *cli.Context) error {
 	var ostream log.Handler
 	if logFile := ctx.String(LogFileFlag.Name); len(logFile) > 0 {
 		fp, err := os.OpenFile(filepath.Clean(logFile), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
@@ -37,8 +37,7 @@ func LogSetup(ctx *cli.Context) (log.Logger, error) {
 	log.PrintOrigins(ctx.Bool(LogDebugFlag.Name))
 	glogger := log.NewGlogHandler(ostream)
 	// Set log level
-	glogger.Verbosity(log.Lvl(ctx.Int(VerbosityFlag.Name)))
-	logger := log.Root()
-	logger.SetHandler(glogger)
-	return logger, nil
+	glogger.Verbosity(log.Lvl(4))
+	log.Root().SetHandler(glogger)
+	return nil
 }

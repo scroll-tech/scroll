@@ -49,9 +49,7 @@ var (
 )
 
 func setupL1RelayerDB(t *testing.T) *gorm.DB {
-	logger, err1 := utils.LogSetup(nil)
-	assert.NoError(t, err1)
-	db, err := bridgeUtils.InitDB(cfg.DBConfig, logger)
+	db, err := bridgeUtils.InitDB(cfg.DBConfig)
 	assert.NoError(t, err)
 	sqlDB, err := db.DB()
 	assert.NoError(t, err)
