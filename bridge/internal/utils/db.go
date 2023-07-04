@@ -8,6 +8,7 @@ import (
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
+	"gorm.io/gorm/utils"
 
 	"scroll-tech/bridge/internal/config"
 )
@@ -33,8 +34,9 @@ func (g *gormLogger) Error(_ context.Context, msg string, data ...interface{}) {
 }
 
 func (g *gormLogger) Trace(_ context.Context, begin time.Time, fc func() (string, int64), err error) {
+	elapsed := time.Since(begin)
 	rows, sql := fc()
-	g.gethLogger.Trace(rows, sql)
+	g.gethLogger.Debug("gorm", "line", utils.FileWithLineNum(), "cost", elapsed, "rows", sql, "sql", rows)
 }
 
 // InitDB init the db handler
