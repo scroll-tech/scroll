@@ -360,7 +360,7 @@ func (o *Batch) UpdateFinalizeTxHashAndRollupStatus(ctx context.Context, hash st
 	return nil
 }
 
-// UpdateProofByHash updates the block batch proof by hash.
+// UpdateProofByHash updates the batch proof by hash.
 // for unit test.
 func (o *Batch) UpdateProofByHash(ctx context.Context, hash string, proof *message.AggProof, proofTimeSec uint64) error {
 	proofBytes, err := json.Marshal(proof)

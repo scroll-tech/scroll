@@ -28,20 +28,20 @@ type ProofType uint8
 
 func (r ProofType) String() string {
 	switch r {
-	case ChunkProof:
-		return "Chunk Proof"
-	case BatchProof:
-		return "Batch Proof"
+	case ProofTypeChunk:
+		return "Proof Type Chunk"
+	case ProofTypeBatch:
+		return "Proof Type Batch"
 	default:
 		return "Illegal Proof type"
 	}
 }
 
 const (
-	// ChunkProof is default roller, it only generates zk proof from traces.
-	ChunkProof ProofType = iota
-	// BatchProof generates zk proof from other zk proofs and aggregate them into one proof.
-	BatchProof
+	// ProofTypeChunk is default roller, it only generates zk proof from traces.
+	ProofTypeChunk ProofType = iota
+	// ProofTypeBatch generates zk proof from other zk proofs and aggregate them into one proof.
+	ProofTypeBatch
 )
 
 // AuthMsg is the first message exchanged from the Roller to the Sequencer.

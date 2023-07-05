@@ -49,7 +49,7 @@ func TestGenerateToken(t *testing.T) {
 func TestIdentityHash(t *testing.T) {
 	identity := &Identity{
 		Name:       "testName",
-		RollerType: ChunkProof,
+		RollerType: ProofTypeChunk,
 		Timestamp:  uint32(1622428800),
 		Version:    "testVersion",
 		Token:      "testToken",
@@ -68,7 +68,7 @@ func TestProofMessageSignVerifyPublicKey(t *testing.T) {
 	proofMsg := &ProofMsg{
 		ProofDetail: &ProofDetail{
 			ID:     "testID",
-			Type:   ChunkProof,
+			Type:   ProofTypeChunk,
 			Status: StatusOk,
 			Proof: &AggProof{
 				Proof:      []byte("testProof"),
@@ -96,7 +96,7 @@ func TestProofMessageSignVerifyPublicKey(t *testing.T) {
 func TestProofDetailHash(t *testing.T) {
 	proofDetail := &ProofDetail{
 		ID:     "testID",
-		Type:   ChunkProof,
+		Type:   ProofTypeChunk,
 		Status: StatusOk,
 		Proof: &AggProof{
 			Proof:      []byte("testProof"),
@@ -114,11 +114,11 @@ func TestProofDetailHash(t *testing.T) {
 }
 
 func TestProveTypeString(t *testing.T) {
-	chunkProof := ProofType(0)
-	assert.Equal(t, "Chunk Proof", chunkProof.String())
+	proofTypeChunk := ProofType(0)
+	assert.Equal(t, "Proof Type Chunk", proofTypeChunk.String())
 
-	batchProof := ProofType(1)
-	assert.Equal(t, "Batch Proof", batchProof.String())
+	proofTypeBatch := ProofType(1)
+	assert.Equal(t, "Proof Type Batch", proofTypeBatch.String())
 
 	illegalProof := ProofType(3)
 	assert.Equal(t, "Illegal Proof type", illegalProof.String())
@@ -131,7 +131,7 @@ func TestProofMsgPublicKey(t *testing.T) {
 	proofMsg := &ProofMsg{
 		ProofDetail: &ProofDetail{
 			ID:     "testID",
-			Type:   ChunkProof,
+			Type:   ProofTypeChunk,
 			Status: StatusOk,
 			Proof: &AggProof{
 				Proof:      []byte("testProof"),

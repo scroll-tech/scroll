@@ -134,14 +134,14 @@ func testHandshake(t *testing.T) {
 		rollerManager.Stop()
 	}()
 
-	roller1 := newMockRoller(t, "roller_test", wsURL, message.ChunkProof)
+	roller1 := newMockRoller(t, "roller_test", wsURL, message.ProofTypeChunk)
 	defer roller1.close()
 
-	roller2 := newMockRoller(t, "roller_test", wsURL, message.BatchProof)
+	roller2 := newMockRoller(t, "roller_test", wsURL, message.ProofTypeBatch)
 	defer roller2.close()
 
-	assert.Equal(t, 1, rollerManager.GetNumberOfIdleRollers(message.ChunkProof))
-	assert.Equal(t, 1, rollerManager.GetNumberOfIdleRollers(message.BatchProof))
+	assert.Equal(t, 1, rollerManager.GetNumberOfIdleRollers(message.ProofTypeChunk))
+	assert.Equal(t, 1, rollerManager.GetNumberOfIdleRollers(message.ProofTypeBatch))
 }
 
 func testFailedHandshake(t *testing.T) {
@@ -201,7 +201,7 @@ func testFailedHandshake(t *testing.T) {
 	_, err = client.RegisterAndSubscribe(ctx, make(chan *message.TaskMsg, 4), authMsg)
 	assert.Error(t, err)
 
-	assert.Equal(t, 0, rollerManager.GetNumberOfIdleRollers(message.ChunkProof))
+	assert.Equal(t, 0, rollerManager.GetNumberOfIdleRollers(message.ProofTypeChunk))
 }
 
 func testSeveralConnections(t *testing.T) {
@@ -221,16 +221,16 @@ func testSeveralConnections(t *testing.T) {
 	for i := 0; i < batch; i += 2 {
 		idx := i
 		eg.Go(func() error {
-			rollers[idx] = newMockRoller(t, "roller_test_"+strconv.Itoa(idx), wsURL, message.ChunkProof)
-			rollers[idx+1] = newMockRoller(t, "roller_test_"+strconv.Itoa(idx+1), wsURL, message.BatchProof)
+			rollers[idx] = newMockRoller(t, "roller_test_"+strconv.Itoa(idx), wsURL, message.ProofTypeChunk)
+			rollers[idx+1] = newMockRoller(t, "roller_test_"+strconv.Itoa(idx+1), wsURL, message.ProofTypeBatch)
 			return nil
 		})
 	}
 	assert.NoError(t, eg.Wait())
 
 	// check roller's idle connections
-	assert.Equal(t, batch/2, rollerManager.GetNumberOfIdleRollers(message.ChunkProof))
-	assert.Equal(t, batch/2, rollerManager.GetNumberOfIdleRollers(message.BatchProof))
+	assert.Equal(t, batch/2, rollerManager.GetNumberOfIdleRollers(message.ProofTypeChunk))
+	assert.Equal(t, batch/2, rollerManager.GetNumberOfIdleRollers(message.ProofTypeBatch))
 
 	// close connection
 	for _, roller := range rollers {
@@ -244,7 +244,7 @@ func testSeveralConnections(t *testing.T) {
 	for {
 		select {
 		case <-tick:
-			if rollerManager.GetNumberOfIdleRollers(message.ChunkProof) == 0 {
+			if rollerManager.GetNumberOfIdleRollers(message.ProofTypeChunk) == 0 {
 				return
 			}
 		case <-tickStop:
@@ -268,9 +268,9 @@ func testValidProof(t *testing.T) {
 	for i := 0; i < len(rollers); i++ {
 		var proofType message.ProofType
 		if i%2 == 0 {
-			proofType = message.ChunkProof
+			proofType = message.ProofTypeChunk
 		} else {
-			proofType = message.BatchProof
+			proofType = message.ProofTypeBatch
 		}
 		rollers[i] = newMockRoller(t, "roller_test"+strconv.Itoa(i), wsURL, proofType)
 
@@ -288,8 +288,8 @@ func testValidProof(t *testing.T) {
 			roller.close()
 		}
 	}()
-	assert.Equal(t, 3, rollerManager.GetNumberOfIdleRollers(message.ChunkProof))
-	assert.Equal(t, 3, rollerManager.GetNumberOfIdleRollers(message.BatchProof))
+	assert.Equal(t, 3, rollerManager.GetNumberOfIdleRollers(message.ProofTypeChunk))
+	assert.Equal(t, 3, rollerManager.GetNumberOfIdleRollers(message.ProofTypeBatch))
 
 	err := l2BlockOrm.InsertL2Blocks(context.Background(), []*types.WrappedBlock{wrappedBlock1, wrappedBlock2})
 	assert.NoError(t, err)
@@ -333,7 +333,7 @@ func testInvalidProof(t *testing.T) {
 	// create mock rollers.
 	rollers := make([]*mockRoller, 3)
 	for i := 0; i < len(rollers); i++ {
-		rollers[i] = newMockRoller(t, "roller_test"+strconv.Itoa(i), wsURL, message.ChunkProof)
+		rollers[i] = newMockRoller(t, "roller_test"+strconv.Itoa(i), wsURL, message.ProofTypeChunk)
 		rollers[i].waitTaskAndSendProof(t, time.Second, false, verifiedFailed)
 	}
 	defer func() {
@@ -342,7 +342,7 @@ func testInvalidProof(t *testing.T) {
 			roller.close()
 		}
 	}()
-	assert.Equal(t, 3, rollerManager.GetNumberOfIdleRollers(message.ChunkProof))
+	assert.Equal(t, 3, rollerManager.GetNumberOfIdleRollers(message.ProofTypeChunk))
 
 	err := l2BlockOrm.InsertL2Blocks(context.Background(), []*types.WrappedBlock{wrappedBlock1, wrappedBlock2})
 	assert.NoError(t, err)
@@ -381,7 +381,7 @@ func testProofGeneratedFailed(t *testing.T) {
 	// create mock rollers.
 	rollers := make([]*mockRoller, 3)
 	for i := 0; i < len(rollers); i++ {
-		rollers[i] = newMockRoller(t, "roller_test"+strconv.Itoa(i), wsURL, message.ChunkProof)
+		rollers[i] = newMockRoller(t, "roller_test"+strconv.Itoa(i), wsURL, message.ProofTypeChunk)
 		rollers[i].waitTaskAndSendProof(t, time.Second, false, generatedFailed)
 	}
 	defer func() {
@@ -390,7 +390,7 @@ func testProofGeneratedFailed(t *testing.T) {
 			roller.close()
 		}
 	}()
-	assert.Equal(t, 3, rollerManager.GetNumberOfIdleRollers(message.ChunkProof))
+	assert.Equal(t, 3, rollerManager.GetNumberOfIdleRollers(message.ProofTypeChunk))
 
 	err := l2BlockOrm.InsertL2Blocks(context.Background(), []*types.WrappedBlock{wrappedBlock1, wrappedBlock2})
 	assert.NoError(t, err)
@@ -427,12 +427,12 @@ func testTimedoutProof(t *testing.T) {
 	}()
 
 	// create first mock roller, that will not send any proof.
-	roller1 := newMockRoller(t, "roller_test"+strconv.Itoa(0), wsURL, message.ChunkProof)
+	roller1 := newMockRoller(t, "roller_test"+strconv.Itoa(0), wsURL, message.ProofTypeChunk)
 	defer func() {
 		// close connection
 		roller1.close()
 	}()
-	assert.Equal(t, 1, rollerManager.GetNumberOfIdleRollers(message.ChunkProof))
+	assert.Equal(t, 1, rollerManager.GetNumberOfIdleRollers(message.ProofTypeChunk))
 
 	err := l2BlockOrm.InsertL2Blocks(context.Background(), []*types.WrappedBlock{wrappedBlock1, wrappedBlock2})
 	assert.NoError(t, err)
@@ -450,13 +450,13 @@ func testTimedoutProof(t *testing.T) {
 	assert.Falsef(t, !ok, "failed to check proof status")
 
 	// create second mock roller, that will send valid proof.
-	roller2 := newMockRoller(t, "roller_test"+strconv.Itoa(1), wsURL, message.ChunkProof)
+	roller2 := newMockRoller(t, "roller_test"+strconv.Itoa(1), wsURL, message.ProofTypeChunk)
 	roller2.waitTaskAndSendProof(t, time.Second, false, verifiedSuccess)
 	defer func() {
 		// close connection
 		roller2.close()
 	}()
-	assert.Equal(t, 1, rollerManager.GetNumberOfIdleRollers(message.ChunkProof))
+	assert.Equal(t, 1, rollerManager.GetNumberOfIdleRollers(message.ProofTypeChunk))
 
 	// verify proof status, it should be verified now, because second roller sent valid proof
 	ok = cutils.TryTimes(200, func() bool {
@@ -481,7 +481,7 @@ func testIdleRollerSelection(t *testing.T) {
 	// create mock rollers.
 	rollers := make([]*mockRoller, 20)
 	for i := 0; i < len(rollers); i++ {
-		rollers[i] = newMockRoller(t, "roller_test"+strconv.Itoa(i), wsURL, message.ChunkProof)
+		rollers[i] = newMockRoller(t, "roller_test"+strconv.Itoa(i), wsURL, message.ProofTypeChunk)
 		rollers[i].waitTaskAndSendProof(t, time.Second, false, verifiedSuccess)
 	}
 	defer func() {
@@ -491,7 +491,7 @@ func testIdleRollerSelection(t *testing.T) {
 		}
 	}()
 
-	assert.Equal(t, len(rollers), rollerManager.GetNumberOfIdleRollers(message.ChunkProof))
+	assert.Equal(t, len(rollers), rollerManager.GetNumberOfIdleRollers(message.ProofTypeChunk))
 
 	err := l2BlockOrm.InsertL2Blocks(context.Background(), []*types.WrappedBlock{wrappedBlock1, wrappedBlock2})
 	assert.NoError(t, err)
@@ -529,7 +529,7 @@ func testGracefulRestart(t *testing.T) {
 	assert.NoError(t, err)
 
 	// create mock roller
-	roller := newMockRoller(t, "roller_test", wsURL, message.ChunkProof)
+	roller := newMockRoller(t, "roller_test", wsURL, message.ProofTypeChunk)
 	// wait 10 seconds, coordinator restarts before roller submits proof
 	roller.waitTaskAndSendProof(t, 10*time.Second, false, verifiedSuccess)
 
@@ -604,9 +604,9 @@ func testListRollers(t *testing.T) {
 		"roller_test_3",
 	}
 
-	roller1 := newMockRoller(t, names[0], wsURL, message.ChunkProof)
-	roller2 := newMockRoller(t, names[1], wsURL, message.ChunkProof)
-	roller3 := newMockRoller(t, names[2], wsURL, message.ChunkProof)
+	roller1 := newMockRoller(t, names[0], wsURL, message.ProofTypeChunk)
+	roller2 := newMockRoller(t, names[1], wsURL, message.ProofTypeChunk)
+	roller3 := newMockRoller(t, names[2], wsURL, message.ProofTypeChunk)
 	defer func() {
 		roller1.close()
 		roller2.close()
