@@ -12,12 +12,12 @@ create table relayed_msg
     deleted_at  TIMESTAMP(0) DEFAULT NULL
 );
 
-create unique index uk_msg_hash
-on relayed_msg (msg_hash) where deleted_at IS NULL;
+create unique index uk_msg_hash_l1_hash_l2_hash
+on relayed_msg (msg_hash, layer1_hash, layer2_hash) where deleted_at IS NULL;
 
-CREATE INDEX idx_l1_msg_index ON relayed_msg (layer1_hash, deleted_at);
+CREATE INDEX idx_l1_msg_relayed_msg ON relayed_msg (layer1_hash, deleted_at);
 
-CREATE INDEX idx_l2_msg_index ON relayed_msg (layer2_hash, deleted_at);
+CREATE INDEX idx_l2_msg_relayed_msg ON relayed_msg (layer2_hash, deleted_at);
 
 CREATE OR REPLACE FUNCTION update_timestamp()
 RETURNS TRIGGER AS $$
