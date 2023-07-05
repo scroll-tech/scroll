@@ -468,13 +468,13 @@ func (m *Manager) CollectProofs(sess *session) {
 			// TODO: In real cases we should reset to orm.ProvingTaskUnassigned
 			// so as to re-distribute the task in the future
 			if message.ProofType(sess.sessionInfos[0].ProofType) == message.ChunkProof {
-				if err := m.chunkOrm.UpdateProvingStatus(m.ctx, sess.sessionInfos[0].TaskID, types.ProvingTaskFailed); err != nil {
-					log.Error("fail to reset basic task_status as Unassigned", "task id", sess.sessionInfos[0].TaskID, "err", err)
+				if err := m.chunkOrm.UpdateProvingStatus(m.ctx, sess.taskID, types.ProvingTaskFailed); err != nil {
+					log.Error("fail to reset basic task_status as Unassigned", "task id", sess.taskID, "err", err)
 				}
 			}
 			if message.ProofType(sess.sessionInfos[0].ProofType) == message.BatchProof {
-				if err := m.batchOrm.UpdateProvingStatus(m.ctx, sess.sessionInfos[0].TaskID, types.ProvingTaskFailed); err != nil {
-					log.Error("fail to reset aggregator task_status as Unassigned", "task id", sess.sessionInfos[0].TaskID, "err", err)
+				if err := m.batchOrm.UpdateProvingStatus(m.ctx, sess.taskID, types.ProvingTaskFailed); err != nil {
+					log.Error("fail to reset aggregator task_status as Unassigned", "task id", sess.taskID, "err", err)
 				}
 			}
 
