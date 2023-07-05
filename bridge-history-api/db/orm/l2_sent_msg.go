@@ -95,7 +95,7 @@ func (l *l2SentMsgOrm) UpdateL2MessageProofInDBTx(ctx context.Context, dbTx *sql
 }
 
 func (l *l2SentMsgOrm) GetLatestL2SentMsgBatchIndex() (int64, error) {
-	row := l.db.QueryRow(`SELECT batch_index FROM l2_sent_msg WHERE batch_index !=0 AND deleted_at IS NULL ORDER BY batch_index DESC LIMIT 1;`)
+	row := l.db.QueryRow(`SELECT batch_index FROM l2_sent_msg WHERE batch_index != 0 AND deleted_at IS NULL ORDER BY batch_index DESC LIMIT 1;`)
 	var result sql.NullInt64
 	if err := row.Scan(&result); err != nil {
 		if err == sql.ErrNoRows || !result.Valid {
