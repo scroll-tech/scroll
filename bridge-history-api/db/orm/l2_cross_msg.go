@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"strings"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -72,12 +71,6 @@ func (l *l2CrossMsgOrm) BatchInsertL2CrossMsgDBTx(dbTx *sqlx.Tx, messages []*Cro
 	var err error
 	messageMaps := make([]map[string]interface{}, len(messages))
 	for i, msg := range messages {
-		var tokenIds string
-		if len(msg.TokenIDs) > 0 {
-			tokenIds = strings.Join(msg.TokenIDs, ",")
-		} else {
-			tokenIds = "-1"
-		}
 		messageMaps[i] = map[string]interface{}{
 			"height":       msg.Height,
 			"sender":       msg.Sender,
@@ -87,7 +80,7 @@ func (l *l2CrossMsgOrm) BatchInsertL2CrossMsgDBTx(dbTx *sqlx.Tx, messages []*Cro
 			"layer2_hash":  msg.Layer2Hash,
 			"layer1_token": msg.Layer1Token,
 			"layer2_token": msg.Layer2Token,
-			"token_ids":    "{" + tokenIds + "}",
+			"token_ids":    msg.TokenIDs,
 			"amount":       msg.Amount,
 			"msg_type":     Layer2Msg,
 		}
