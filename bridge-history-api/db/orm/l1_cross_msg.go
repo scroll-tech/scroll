@@ -73,7 +73,7 @@ func (l *l1CrossMsgOrm) BatchInsertL1CrossMsgDBTx(dbTx *sqlx.Tx, messages []*Cro
 			"msg_type":     Layer1Msg,
 		}
 	}
-	_, err = dbTx.NamedExec(`insert into cross_message(height, sender, target, asset, layer1_hash, layer1_token, layer2_token, token_ids, amount, msg_type, msg_hash) values(:height, :sender, :target, :asset, :layer1_hash, :layer1_token, :layer2_token, :token_ids, :amount, :msg_type, :msg_hash);`, messageMaps)
+	_, err = dbTx.NamedExec(`insert into cross_message(height, sender, target, amount, asset, msg_hash, layer1_hash, layer1_token, layer2_token, token_ids, msg_type) values(:height, :sender, :target, :amount, :asset, :msg_hash, :layer1_hash, :layer1_token, :layer2_token, :token_ids, :msg_type);`, messageMaps)
 	if err != nil {
 		log.Error("BatchInsertL1CrossMsgDBTx: failed to insert l1 cross msgs", "err", err)
 		return err
