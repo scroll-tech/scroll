@@ -88,7 +88,7 @@ contract L2ETHGateway is Initializable, ScrollGatewayBase, IL2ETHGateway {
         uint256 _amount,
         bytes memory _data,
         uint256 _gasLimit
-    ) internal nonReentrant {
+    ) internal virtual nonReentrant {
         require(msg.value > 0, "withdraw zero eth");
 
         // 1. Extract real sender if this call is from L1GatewayRouter.
