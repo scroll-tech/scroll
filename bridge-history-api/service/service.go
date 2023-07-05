@@ -77,7 +77,7 @@ func GetCrossTxClaimInfo(msgHash string, db db.OrmFactory) *UserClaimInfo {
 		Value:      l2sentMsg.Value,
 		Nonce:      strconv.FormatUint(l2sentMsg.Nonce, 10),
 		Message:    l2sentMsg.MsgData,
-		Proof:      l2sentMsg.MsgProof,
+		Proof:      "0x" + l2sentMsg.MsgProof,
 		BatchHash:  batch.BatchHash,
 		BatchIndex: strconv.FormatUint(l2sentMsg.BatchIndex, 10),
 	}
