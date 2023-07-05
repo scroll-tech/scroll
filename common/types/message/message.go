@@ -29,11 +29,11 @@ type ProofType uint8
 func (r ProofType) String() string {
 	switch r {
 	case ProofTypeChunk:
-		return "Proof Type Chunk"
+		return "proof type chunk"
 	case ProofTypeBatch:
-		return "Proof Type Batch"
+		return "proof type batch"
 	default:
-		return "Illegal Proof type"
+		return "illegal proof type"
 	}
 }
 

@@ -40,6 +40,7 @@ func (*SessionInfo) TableName() string {
 }
 
 // GetSessionInfosByHashes retrieves the SessionInfo records associated with the specified hashes.
+// The returned session info objects are sorted in ascending order by their ids.
 func (o *SessionInfo) GetSessionInfosByHashes(ctx context.Context, hashes []string) ([]*SessionInfo, error) {
 	if len(hashes) == 0 {
 		return nil, nil

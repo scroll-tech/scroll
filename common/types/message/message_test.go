@@ -115,13 +115,13 @@ func TestProofDetailHash(t *testing.T) {
 
 func TestProveTypeString(t *testing.T) {
 	proofTypeChunk := ProofType(0)
-	assert.Equal(t, "Proof Type Chunk", proofTypeChunk.String())
+	assert.Equal(t, "proof type chunk", proofTypeChunk.String())
 
 	proofTypeBatch := ProofType(1)
-	assert.Equal(t, "Proof Type Batch", proofTypeBatch.String())
+	assert.Equal(t, "proof type batch", proofTypeBatch.String())
 
 	illegalProof := ProofType(3)
-	assert.Equal(t, "Illegal Proof type", illegalProof.String())
+	assert.Equal(t, "illegal proof type", illegalProof.String())
 }
 
 func TestProofMsgPublicKey(t *testing.T) {
