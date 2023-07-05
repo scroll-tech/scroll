@@ -96,12 +96,12 @@ Return the state root of a committed batch.
 ### importGenesisBatch
 
 ```solidity
-function importGenesisBatch(bytes _batchHeader, bytes32 _stateRoot, bytes32 _withdrawRoot) external nonpayable
+function importGenesisBatch(bytes _batchHeader, bytes32 _stateRoot) external nonpayable
 ```
 
 Import layer 2 genesis block
 
-*Although `_withdrawRoot` is always zero, we add this parameter for the convenience of unit testing.*
+
 
 #### Parameters
 
@@ -109,7 +109,6 @@ Import layer 2 genesis block
 |---|---|---|
 | _batchHeader | bytes | undefined |
 | _stateRoot | bytes32 | undefined |
-| _withdrawRoot | bytes32 | undefined |
 
 ### initialize
 
@@ -144,6 +143,28 @@ Return whether the batch is finalized by batch index.
 | Name | Type | Description |
 |---|---|---|
 | _batchIndex | uint256 | undefined |
+
+#### Returns
+
+| Name | Type | Description |
+|---|---|---|
+| _0 | bool | undefined |
+
+### isProver
+
+```solidity
+function isProver(address) external view returns (bool)
+```
+
+Whether an account is a prover.
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| _0 | address | undefined |
 
 #### Returns
 
@@ -193,7 +214,7 @@ The latest finalized batch index.
 ### layer2ChainId
 
 ```solidity
-function layer2ChainId() external view returns (uint32)
+function layer2ChainId() external view returns (uint64)
 ```
 
 The chain id of the corresponding layer 2 chain.
@@ -205,7 +226,7 @@ The chain id of the corresponding layer 2 chain.
 
 | Name | Type | Description |
 |---|---|---|
-| _0 | uint32 | undefined |
+| _0 | uint64 | undefined |
 
 ### maxNumL2TxInChunk
 
@@ -317,6 +338,23 @@ Update the value of `maxNumL2TxInChunk`.
 | Name | Type | Description |
 |---|---|---|
 | _maxNumL2TxInChunk | uint256 | The new value of `maxNumL2TxInChunk`. |
+
+### updateProver
+
+```solidity
+function updateProver(address _account, bool _status) external nonpayable
+```
+
+Update the status of prover.
+
+*This function can only called by contract owner.*
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| _account | address | The address of account to update. |
+| _status | bool | The status of the account to update. |
 
 ### updateSequencer
 
@@ -477,6 +515,23 @@ Emitted when the value of `maxNumL2TxInChunk` is updated.
 |---|---|---|
 | oldMaxNumL2TxInChunk  | uint256 | The old value of `maxNumL2TxInChunk`. |
 | newMaxNumL2TxInChunk  | uint256 | The new value of `maxNumL2TxInChunk`. |
+
+### UpdateProver
+
+```solidity
+event UpdateProver(address indexed account, bool status)
+```
+
+Emitted when owner updates the status of prover.
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| account `indexed` | address | The address of account updated. |
+| status  | bool | The status of the account updated. |
 
 ### UpdateSequencer
 
