@@ -98,8 +98,11 @@ contract L1StandardERC20Gateway is Initializable, ScrollGatewayBase, L1ERC20Gate
         require(getL2ERC20Address(_l1Token) == _l2Token, "l2 token mismatch");
 
         // update `tokenMapping` on first withdraw
-        if (tokenMapping[_l1Token] == address(0)) {
+        address _storedL2Token = tokenMapping[_l1Token];
+        if (_storedL2Token == address(0)) {
             tokenMapping[_l1Token] = _l2Token;
+        } else {
+            require(_storedL2Token == _l2Token, "l2 token mismatch");
         }
 
         // @note can possible trigger reentrant call to messenger,
@@ -148,8 +151,8 @@ contract L1StandardERC20Gateway is Initializable, ScrollGatewayBase, L1ERC20Gate
         bytes memory _l2Data;
         if (_l2Token == address(0)) {
             // @note we won't update `tokenMapping` here but update the `tokenMapping` on
-            // first success withdraw. This will prevent user to set arbitrary token metadata
-            // by setting a very small `_gasLimit` on the first tx.
+            // first successful withdraw. This will prevent user to set arbitrary token
+            // metadata by setting a very small `_gasLimit` on the first tx.
             _l2Token = getL2ERC20Address(_token);
 
             // passing symbol/name/decimal in order to deploy in L2.
