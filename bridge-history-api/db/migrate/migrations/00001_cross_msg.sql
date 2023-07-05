@@ -3,7 +3,7 @@
 create table cross_message
 (
     id              BIGSERIAL PRIMARY KEY,
-    msg_hash        VARCHAR NOT NULL DEFAULT '',
+    msg_hash        VARCHAR NOT NULL,
     height          BIGINT  NOT NULL,
     sender          VARCHAR NOT NULL,
     target          VARCHAR NOT NULL,

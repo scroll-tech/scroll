@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"strings"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -59,20 +60,27 @@ func (l *l1CrossMsgOrm) BatchInsertL1CrossMsgDBTx(dbTx *sqlx.Tx, messages []*Cro
 	var err error
 	messageMaps := make([]map[string]interface{}, len(messages))
 	for i, msg := range messages {
+		var tokenIds string
+		if len(msg.TokenIDs) > 0 {
+			tokenIds = strings.Join(msg.TokenIDs, ",")
+		} else {
+			tokenIds = "-1"
+		}
 		messageMaps[i] = map[string]interface{}{
 			"height":       msg.Height,
 			"sender":       msg.Sender,
 			"target":       msg.Target,
 			"amount":       msg.Amount,
 			"asset":        msg.Asset,
+			"msg_hash":     msg.MsgHash,
 			"layer1_hash":  msg.Layer1Hash,
 			"layer1_token": msg.Layer1Token,
 			"layer2_token": msg.Layer2Token,
-			"token_ids":    msg.TokenIDs,
+			"token_ids":    "{" + tokenIds + "}",
 			"msg_type":     Layer1Msg,
 		}
 	}
-	_, err = dbTx.NamedExec(`insert into cross_message(height, sender, target, asset, layer1_hash, layer1_token, layer2_token, token_ids, amount, msg_type) values(:height, :sender, :target, :asset, :layer1_hash, :layer1_token, :layer2_token, :token_ids, :amount, :msg_type);`, messageMaps)
+	_, err = dbTx.NamedExec(`insert into cross_message(height, sender, target, asset, layer1_hash, layer1_token, layer2_token, token_ids, amount, msg_type, msg_hash) values(:height, :sender, :target, :asset, :layer1_hash, :layer1_token, :layer2_token, :token_ids, :amount, :msg_type, :msg_hash);`, messageMaps)
 	if err != nil {
 		log.Error("BatchInsertL1CrossMsgDBTx: failed to insert l1 cross msgs", "err", err)
 		return err
