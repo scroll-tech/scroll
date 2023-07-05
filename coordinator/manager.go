@@ -175,7 +175,7 @@ func (m *Manager) Loop() {
 			// load and send aggregator tasks
 			if len(batchTasks) == 0 {
 				var err error
-				batchTasks, err = m.batchOrm.GetPendingBatches(m.ctx)
+				batchTasks, err = m.batchOrm.GetUnassignedBatches(m.ctx, m.GetNumberOfIdleRollers(message.AggregatorProve))
 				if err != nil {
 					log.Error("failed to get unassigned aggregator proving tasks", "error", err)
 					continue
@@ -190,7 +190,7 @@ func (m *Manager) Loop() {
 			if len(chunkTasks) == 0 {
 				// TODO: add cache
 				var err error
-				chunkTasks, err = m.chunkOrm.GetUnassignedChunks(m.ctx)
+				chunkTasks, err = m.chunkOrm.GetUnassignedChunks(m.ctx, m.GetNumberOfIdleRollers(message.BasicProve))
 				if err != nil {
 					log.Error("failed to get unassigned basic proving tasks", "error", err)
 					continue

@@ -58,13 +58,21 @@ func (*Chunk) TableName() string {
 	return "chunk"
 }
 
-// GetUnassignedChunks retrieves all or limited number of unassigned chunks based on the specified limit.
+// GetUnassignedChunks retrieves unassigned chunks based on the specified limit.
 // The returned chunks are sorted in ascending order by their index.
-func (o *Chunk) GetUnassignedChunks(ctx context.Context) ([]*Chunk, error) {
+func (o *Chunk) GetUnassignedChunks(ctx context.Context, limit int) ([]*Chunk, error) {
+	if limit < 0 {
+		return nil, errors.New("limit must not be smaller than zero")
+	}
+	if limit == 0 {
+		return nil, nil
+	}
+
 	var chunks []*Chunk
 	db := o.db.WithContext(ctx)
 	db = db.Where("proving_status = ?", types.ProvingTaskUnassigned)
 	db = db.Order("index ASC")
+	db = db.Limit(limit)
 
 	if err := db.Find(&chunks).Error; err != nil {
 		return nil, err

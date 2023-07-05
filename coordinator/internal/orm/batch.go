@@ -3,6 +3,7 @@ package orm
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"time"
 
 	"scroll-tech/common/types"
@@ -60,13 +61,21 @@ func (*Batch) TableName() string {
 	return "batch"
 }
 
-// GetPendingBatches retrieves all or limited number of pending batches based on the specified limit.
+// GetUnassignedBatches unassigned batches based on the specified limit.
 // The returned batches are sorted in ascending order by their index.
-func (o *Batch) GetPendingBatches(ctx context.Context) ([]*Batch, error) {
+func (o *Batch) GetUnassignedBatches(ctx context.Context, limit int) ([]*Batch, error) {
+	if limit < 0 {
+		return nil, errors.New("limit must not be smaller than zero")
+	}
+	if limit == 0 {
+		return nil, nil
+	}
+
 	var batches []*Batch
 	db := o.db.WithContext(ctx)
-	db = db.Where("rollup_status = ?", types.RollupPending)
+	db = db.Where("proving_status = ?", types.ProvingTaskUnassigned)
 	db = db.Order("index ASC")
+	db = db.Limit(limit)
 
 	if err := db.Find(&batches).Error; err != nil {
 		return nil, err
