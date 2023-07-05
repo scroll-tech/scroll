@@ -96,36 +96,3 @@ func (m *Manager) GetSessionInfo(sessionID string) (*SessionInfo, error) {
 	}
 	return nil, fmt.Errorf("no such session, sessionID: %s", sessionID)
 }
-
-// GetRollerSubmissions returns all submissions by given roller pubkey.
-func (m *Manager) GetRollerSubmissions(pubKey string) ([]*types.SubmissionInfo, error) {
-	return m.orm.GetSubmissionInfosByRoller(pubKey)
-}
-
-// GetTotalRewards returns the total rewards by given roller pubkey.
-func (m *Manager) GetTotalRewards(pubKey string) (uint64, error) {
-	subs, err := m.orm.GetSubmissionInfosByRoller(pubKey)
-	if err != nil {
-		return 0, err
-	}
-	var total uint64
-	for _, sub := range subs {
-		if types.ProvingStatus(sub.ProvingStatus) == types.ProvingTaskVerified {
-			total += sub.Reward
-		}
-	}
-	return total, nil
-}
-
-// GetSubmission returns submission by given task id.
-func (m *Manager) GetSubmission(taskID string) (sub *types.SubmissionInfo, err error) {
-	var subs []*types.SubmissionInfo
-	subs, err = m.orm.GetSubmissionInfosByHashes([]string{taskID})
-	if err != nil {
-		return
-	}
-	if len(subs) > 0 {
-		sub = subs[0]
-	}
-	return
-}
