@@ -16,6 +16,8 @@ type OrmFactory interface {
 	orm.L1CrossMsgOrm
 	orm.L2CrossMsgOrm
 	orm.RelayedMsgOrm
+	orm.L2SentMsgOrm
+	orm.RollupBatchOrm
 	GetTotalCrossMsgCountByAddress(sender string) (uint64, error)
 	GetCrossMsgsByAddressWithOffset(sender string, offset int64, limit int64) ([]*orm.CrossMsg, error)
 	GetDB() *sqlx.DB
@@ -27,6 +29,8 @@ type ormFactory struct {
 	orm.L1CrossMsgOrm
 	orm.L2CrossMsgOrm
 	orm.RelayedMsgOrm
+	orm.L2SentMsgOrm
+	orm.RollupBatchOrm
 	*sqlx.DB
 }
 
@@ -45,10 +49,12 @@ func NewOrmFactory(cfg *config.Config) (OrmFactory, error) {
 	}
 
 	return &ormFactory{
-		L1CrossMsgOrm: orm.NewL1CrossMsgOrm(db),
-		L2CrossMsgOrm: orm.NewL2CrossMsgOrm(db),
-		RelayedMsgOrm: orm.NewRelayedMsgOrm(db),
-		DB:            db,
+		L1CrossMsgOrm:  orm.NewL1CrossMsgOrm(db),
+		L2CrossMsgOrm:  orm.NewL2CrossMsgOrm(db),
+		RelayedMsgOrm:  orm.NewRelayedMsgOrm(db),
+		L2SentMsgOrm:   orm.NewL2SentMsgOrm(db),
+		RollupBatchOrm: orm.NewRollupBatchOrm(db),
+		DB:             db,
 	}, nil
 }
 
@@ -62,7 +68,7 @@ func (o *ormFactory) Beginx() (*sqlx.Tx, error) {
 
 func (o *ormFactory) GetTotalCrossMsgCountByAddress(sender string) (uint64, error) {
 	var count uint64
-	row := o.DB.QueryRowx(`SELECT COUNT(*) FROM cross_message WHERE sender = $1 AND NOT is_deleted;`, sender)
+	row := o.DB.QueryRowx(`SELECT COUNT(*) FROM cross_message WHERE sender = $1 AND deleted_at IS NULL;`, sender)
 	if err := row.Scan(&count); err != nil {
 		return 0, err
 	}
@@ -72,7 +78,7 @@ func (o *ormFactory) GetTotalCrossMsgCountByAddress(sender string) (uint64, erro
 func (o *ormFactory) GetCrossMsgsByAddressWithOffset(sender string, offset int64, limit int64) ([]*orm.CrossMsg, error) {
 	para := sender
 	var results []*orm.CrossMsg
-	rows, err := o.DB.Queryx(`SELECT * FROM cross_message WHERE sender = $1 AND NOT is_deleted ORDER BY block_timestamp DESC NULLS FIRST, id DESC LIMIT $2 OFFSET $3;`, para, limit, offset)
+	rows, err := o.DB.Queryx(`SELECT * FROM cross_message WHERE sender = $1 AND deleted_at IS NULL ORDER BY block_timestamp DESC NULLS FIRST, id DESC LIMIT $2 OFFSET $3;`, para, limit, offset)
 	if err != nil || rows == nil {
 		return nil, err
 	}

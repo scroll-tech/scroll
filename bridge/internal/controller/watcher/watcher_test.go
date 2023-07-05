@@ -100,23 +100,18 @@ func TestFunction(t *testing.T) {
 	t.Run("TestL1WatcherClientFetchBlockHeader", testL1WatcherClientFetchBlockHeader)
 	t.Run("TestL1WatcherClientFetchContractEvent", testL1WatcherClientFetchContractEvent)
 	t.Run("TestParseBridgeEventLogsL1QueueTransactionEventSignature", testParseBridgeEventLogsL1QueueTransactionEventSignature)
-	t.Run("TestParseBridgeEventLogsL1RelayedMessageEventSignature", testParseBridgeEventLogsL1RelayedMessageEventSignature)
-	t.Run("TestParseBridgeEventLogsL1FailedRelayedMessageEventSignature", testParseBridgeEventLogsL1FailedRelayedMessageEventSignature)
 	t.Run("TestParseBridgeEventLogsL1CommitBatchEventSignature", testParseBridgeEventLogsL1CommitBatchEventSignature)
 	t.Run("TestParseBridgeEventLogsL1FinalizeBatchEventSignature", testParseBridgeEventLogsL1FinalizeBatchEventSignature)
 
 	// Run l2 watcher test cases.
 	t.Run("TestCreateNewWatcherAndStop", testCreateNewWatcherAndStop)
-	t.Run("TestMonitorBridgeContract", testMonitorBridgeContract)
-	t.Run("TestFetchMultipleSentMessageInOneBlock", testFetchMultipleSentMessageInOneBlock)
 	t.Run("TestFetchRunningMissingBlocks", testFetchRunningMissingBlocks)
-	t.Run("TestParseBridgeEventLogsL2SentMessageEventSignature", testParseBridgeEventLogsL2SentMessageEventSignature)
 	t.Run("TestParseBridgeEventLogsL2RelayedMessageEventSignature", testParseBridgeEventLogsL2RelayedMessageEventSignature)
 	t.Run("TestParseBridgeEventLogsL2FailedRelayedMessageEventSignature", testParseBridgeEventLogsL2FailedRelayedMessageEventSignature)
-	t.Run("TestParseBridgeEventLogsL2AppendMessageEventSignature", testParseBridgeEventLogsL2AppendMessageEventSignature)
 
-	// Run batch proposer test cases.
-	t.Run("TestBatchProposerProposeBatch", testBatchProposerProposeBatch)
-	t.Run("TestBatchProposerBatchGeneration", testBatchProposerBatchGeneration)
-	t.Run("TestBatchProposerGracefulRestart", testBatchProposerGracefulRestart)
+	// Run chunk-proposer test cases.
+	t.Run("TestChunkProposer", testChunkProposer)
+
+	// Run batch-proposer test cases.
+	t.Run("TestBatchProposer", testBatchProposer)
 }
