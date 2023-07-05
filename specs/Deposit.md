@@ -1,13 +1,12 @@
 # Deposit Tokens from L1 to L2
 
 **Table of Contents**
-- [Deposit Tokens from L1 to L2](#deposit-tokens-from-l1-to-l2)
-  - [Depositing ETH](#depositing-eth)
-  - [Depositing ERC20 Tokens](#depositing-erc20-tokens)
-    - [Standard ERC20 Tokens](#standard-erc20-tokens)
-    - [Custom ERC20 Tokens](#custom-erc20-tokens)
-    - [WETH Token](#weth-token)
-  - [Depositing ERC-721/ERC-1155 Tokens](#depositing-erc-721erc-1155-tokens)
+* [Depositing ETH](#depositing-eth)
+* [Depositing ERC20 Tokens](#depositing-erc20-tokens)
+    * [Standard ERC20 Tokens](#standard-erc20-tokens)
+    * [Custom ERC20 Tokens](#custom-erc20-tokens)
+    * [WETH Token](#weth-token)
+* [Depositing ERC-721/ERC-1155 Tokens](#depositing-erc-721erc-1155-tokens)
 
 
 This document describes how users and developers can utilize gateways to deposit tokens from L1 to L2.
