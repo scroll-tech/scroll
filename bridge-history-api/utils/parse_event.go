@@ -144,7 +144,7 @@ func ParseBackendL2EventLogs(logs []types.Log) ([]*orm.CrossMsg, []*orm.RelayedM
 				log.Warn("Failed to unpack WithdrawETH event", "err", err)
 				return l2CrossMsg, relayedMsgs, l2SentMsgs, err
 			}
-			l2SentMsgs[len(l2SentMsgs)-1].TxSender = event.From.Hex()
+			l2SentMsgs[len(l2SentMsgs)-1].OriginalSender = event.From.Hex()
 			l2CrossMsg = append(l2CrossMsg, &orm.CrossMsg{
 				Height:     vlog.BlockNumber,
 				Sender:     event.From.String(),
@@ -161,7 +161,7 @@ func ParseBackendL2EventLogs(logs []types.Log) ([]*orm.CrossMsg, []*orm.RelayedM
 				log.Warn("Failed to unpack WithdrawERC20 event", "err", err)
 				return l2CrossMsg, relayedMsgs, l2SentMsgs, err
 			}
-			l2SentMsgs[len(l2SentMsgs)-1].TxSender = event.From.Hex()
+			l2SentMsgs[len(l2SentMsgs)-1].OriginalSender = event.From.Hex()
 			l2CrossMsg = append(l2CrossMsg, &orm.CrossMsg{
 				Height:      vlog.BlockNumber,
 				Sender:      event.From.String(),
@@ -179,7 +179,7 @@ func ParseBackendL2EventLogs(logs []types.Log) ([]*orm.CrossMsg, []*orm.RelayedM
 				log.Warn("Failed to unpack WithdrawERC721 event", "err", err)
 				return l2CrossMsg, relayedMsgs, l2SentMsgs, err
 			}
-			l2SentMsgs[len(l2SentMsgs)-1].TxSender = event.From.Hex()
+			l2SentMsgs[len(l2SentMsgs)-1].OriginalSender = event.From.Hex()
 			l2CrossMsg = append(l2CrossMsg, &orm.CrossMsg{
 				Height:      vlog.BlockNumber,
 				Sender:      event.From.String(),
@@ -197,7 +197,7 @@ func ParseBackendL2EventLogs(logs []types.Log) ([]*orm.CrossMsg, []*orm.RelayedM
 				log.Warn("Failed to unpack WithdrawERC1155 event", "err", err)
 				return l2CrossMsg, relayedMsgs, l2SentMsgs, err
 			}
-			l2SentMsgs[len(l2SentMsgs)-1].TxSender = event.From.Hex()
+			l2SentMsgs[len(l2SentMsgs)-1].OriginalSender = event.From.Hex()
 			l2CrossMsg = append(l2CrossMsg, &orm.CrossMsg{
 				Height:      vlog.BlockNumber,
 				Sender:      event.From.String(),
