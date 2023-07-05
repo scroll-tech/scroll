@@ -244,7 +244,7 @@ func (m *Manager) restorePrevSessions() {
 	sessionInfosMaps := make(map[string][]*orm.SessionInfo)
 	for _, v := range prevSessions {
 		log.Info("restore roller info for session", "session start time", v.CreatedAt, "session id", v.TaskID, "roller name",
-			v.RollerName, "prove type", v.ProveType, "public key", v.RollerPublicKey, "proof status", v.ProvingStatus)
+			v.RollerName, "prove type", v.ProofType, "public key", v.RollerPublicKey, "proof status", v.ProvingStatus)
 		sessionInfosMaps[v.TaskID] = append(sessionInfosMaps[v.TaskID], v)
 	}
 
@@ -301,14 +301,14 @@ func (m *Manager) handleZkProof(pk string, msg *message.ProofDetail) error {
 			"roller has already submitted valid proof in proof session",
 			"roller name", tmpSessionInfo.RollerName,
 			"roller pk", tmpSessionInfo.RollerPublicKey,
-			"prove type", tmpSessionInfo.ProveType,
+			"prove type", tmpSessionInfo.ProofType,
 			"proof id", msg.ID,
 		)
 		return nil
 	}
 
 	log.Info("handling zk proof", "proof id", msg.ID, "roller name", tmpSessionInfo.RollerName, "roller pk",
-		tmpSessionInfo.RollerPublicKey, "prove type", tmpSessionInfo.ProveType, "proof time", proofTimeSec)
+		tmpSessionInfo.RollerPublicKey, "prove type", tmpSessionInfo.ProofType, "proof time", proofTimeSec)
 
 	defer func() {
 		// TODO: maybe we should use db tx for the whole process?
@@ -444,9 +444,9 @@ func (m *Manager) CollectProofs(sess *session) {
 		case <-time.After(time.Duration(m.cfg.CollectionTime) * time.Minute):
 			if !m.checkAttemptsExceeded(sess.taskID) {
 				var success bool
-				if message.ProveType(sess.sessionInfos[0].ProveType) == message.AggregatorProve {
+				if message.ProveType(sess.sessionInfos[0].ProofType) == message.AggregatorProve {
 					success = m.StartAggProofGenerationSession(nil, sess)
-				} else if message.ProveType(sess.sessionInfos[0].ProveType) == message.BasicProve {
+				} else if message.ProveType(sess.sessionInfos[0].ProofType) == message.BasicProve {
 					success = m.StartBasicProofGenerationSession(nil, sess)
 				}
 				if success {
@@ -467,12 +467,12 @@ func (m *Manager) CollectProofs(sess *session) {
 			// Note that this is only a workaround for testnet here.
 			// TODO: In real cases we should reset to orm.ProvingTaskUnassigned
 			// so as to re-distribute the task in the future
-			if message.ProveType(sess.sessionInfos[0].ProveType) == message.BasicProve {
+			if message.ProveType(sess.sessionInfos[0].ProofType) == message.BasicProve {
 				if err := m.chunkOrm.UpdateProvingStatus(m.ctx, sess.sessionInfos[0].TaskID, types.ProvingTaskFailed); err != nil {
 					log.Error("fail to reset basic task_status as Unassigned", "task id", sess.sessionInfos[0].TaskID, "err", err)
 				}
 			}
-			if message.ProveType(sess.sessionInfos[0].ProveType) == message.AggregatorProve {
+			if message.ProveType(sess.sessionInfos[0].ProofType) == message.AggregatorProve {
 				if err := m.batchOrm.UpdateProvingStatus(m.ctx, sess.sessionInfos[0].TaskID, types.ProvingTaskFailed); err != nil {
 					log.Error("fail to reset aggregator task_status as Unassigned", "task id", sess.sessionInfos[0].TaskID, "err", err)
 				}
@@ -640,7 +640,7 @@ func (m *Manager) StartBasicProofGenerationSession(task *orm.Chunk, prevSession 
 		tmpSessionInfo := orm.SessionInfo{
 			TaskID:          taskID,
 			RollerPublicKey: roller.PublicKey,
-			ProveType:       int16(message.BasicProve),
+			ProofType:       int16(message.BasicProve),
 			RollerName:      roller.Name,
 			ProvingStatus:   int16(types.RollerAssigned),
 			CreatedAt:       time.Now(), // Used in sessionInfos, should be explicitly assigned here.
@@ -710,8 +710,8 @@ func (m *Manager) StartAggProofGenerationSession(task *orm.Batch, prevSession *s
 
 	}()
 
-	// get zkevm proofs (for chunks) from db
-	subProofs, err := m.chunkOrm.GetProofsByBatchHash(m.ctx, taskID)
+	// get chunk proofs from db
+	chunkProofs, err := m.chunkOrm.GetProofsByBatchHash(m.ctx, taskID)
 	if err != nil {
 		log.Error("failed to get sub proofs for aggregator task", "session id", taskID, "error", err)
 		return false
@@ -730,7 +730,7 @@ func (m *Manager) StartAggProofGenerationSession(task *orm.Batch, prevSession *s
 		if !roller.sendTask(&message.TaskMsg{
 			ID:        taskID,
 			Type:      message.AggregatorProve,
-			SubProofs: subProofs,
+			SubProofs: chunkProofs,
 		}) {
 			log.Error("send task failed", "roller name", roller.Name, "public key", roller.PublicKey, "id", taskID)
 			continue
@@ -739,7 +739,7 @@ func (m *Manager) StartAggProofGenerationSession(task *orm.Batch, prevSession *s
 		tmpSessionInfo := orm.SessionInfo{
 			TaskID:          taskID,
 			RollerPublicKey: roller.PublicKey,
-			ProveType:       int16(message.AggregatorProve),
+			ProofType:       int16(message.AggregatorProve),
 			RollerName:      roller.Name,
 			ProvingStatus:   int16(types.RollerAssigned),
 			CreatedAt:       time.Now(), // Used in sessionInfos, should be explicitly assigned here.

@@ -19,7 +19,7 @@ type SessionInfo struct {
 	TaskID          string         `json:"task_id" gorm:"column:task_id"`
 	RollerPublicKey string         `json:"roller_public_key" gorm:"column:roller_public_key"`
 	RollerName      string         `json:"roller_name" gorm:"column:roller_name"`
-	ProveType       int16          `json:"prove_type" gorm:"column:prove_type;default:0"`
+	ProofType       int16          `json:"proof_type" gorm:"column:proof_type;default:0"`
 	ProvingStatus   int16          `json:"proving_status" gorm:"column:proving_status;default:0"`
 	FailureType     int16          `json:"failure_type" gorm:"column:failure_type;default:0"`
 	Reward          uint64         `json:"reward" gorm:"column:reward;default:0"`
@@ -57,7 +57,7 @@ func (o *SessionInfo) SetSessionInfo(ctx context.Context, rollersInfo *SessionIn
 	sessionInfo := SessionInfo{
 		TaskID:          rollersInfo.TaskID,
 		RollerPublicKey: rollersInfo.RollerPublicKey,
-		ProveType:       rollersInfo.ProveType,
+		ProofType:       rollersInfo.ProofType,
 		RollerName:      rollersInfo.RollerName,
 		ProvingStatus:   rollersInfo.ProvingStatus,
 		FailureType:     rollersInfo.FailureType,
@@ -77,9 +77,9 @@ func (o *SessionInfo) SetSessionInfo(ctx context.Context, rollersInfo *SessionIn
 }
 
 // UpdateSessionInfoProvingStatus updates the proving_status of a specific SessionInfo record.
-func (o *SessionInfo) UpdateSessionInfoProvingStatus(ctx context.Context, proveType message.ProveType, taskID string, pk string, status types.RollerProveStatus) error {
+func (o *SessionInfo) UpdateSessionInfoProvingStatus(ctx context.Context, proofType message.ProveType, taskID string, pk string, status types.RollerProveStatus) error {
 	db := o.db.WithContext(ctx)
-	if err := db.Model(&SessionInfo{}).Where("prove_type = ? AND task_id = ? AND roller_public_key = ?", proveType, taskID, pk).Update("proving_status", status).Error; err != nil {
+	if err := db.Model(&SessionInfo{}).Where("proof_type = ? AND task_id = ? AND roller_public_key = ?", proofType, taskID, pk).Update("proving_status", status).Error; err != nil {
 		return err
 	}
 	return nil

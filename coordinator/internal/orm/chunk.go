@@ -101,9 +101,12 @@ func (o *Chunk) GetUnassignedChunks(ctx context.Context) ([]*Chunk, error) {
 // It returns a slice of decoded proofs (message.AggProof) obtained from the database.
 // The returned proofs are sorted in ascending order by their associated chunk index.
 func (o *Chunk) GetProofsByBatchHash(ctx context.Context, batchHash string) ([]*message.AggProof, error) {
-	// The returned chunks are sorted in ascending order by their index.
-	chunks, err := o.GetChunks(ctx, map[string]interface{}{"batch_hash": batchHash}, nil, 0)
-	if err != nil {
+	db := o.db.WithContext(ctx)
+	db = db.Where("batch_hash", batchHash)
+	db = db.Order("index ASC")
+
+	var chunks []*Chunk
+	if err := db.Find(&chunks).Error; err != nil {
 		return nil, err
 	}
 

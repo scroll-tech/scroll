@@ -7,7 +7,7 @@ create table session_info
     task_id             VARCHAR        NOT NULL,
     roller_public_key   VARCHAR        NOT NULL,
     roller_name         VARCHAR        NOT NULL,
-    prove_type          SMALLINT       DEFAULT 0,
+    proof_type          SMALLINT       DEFAULT 0,
     proving_status      SMALLINT       DEFAULT 0,
     failure_type        SMALLINT       DEFAULT 0,
     reward              BIGINT         DEFAULT 0,
