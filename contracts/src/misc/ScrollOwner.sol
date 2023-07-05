@@ -14,9 +14,6 @@ contract ScrollOwner is AccessControlEnumerable {
      * Constants *
      *************/
 
-    /// @notice The role for governance.
-    bytes32 public constant GOVERNANCE_ROLE = keccak256("Governance");
-
     /// @notice The role for owner.
     bytes32 public constant OWNER_ROLE = keccak256("Owner");
 
@@ -36,7 +33,8 @@ contract ScrollOwner is AccessControlEnumerable {
         bytes4 _selector,
         bytes32 _role
     ) {
-        require(targetAccess[_target][_selector].contains(_role), "no access");
+        // admin has access to all methods
+        require(_role == DEFAULT_ADMIN_ROLE || targetAccess[_target][_selector].contains(_role), "no access");
         _;
     }
 
@@ -78,18 +76,6 @@ contract ScrollOwner is AccessControlEnumerable {
         bytes calldata _data
     ) external payable {
         execute(_target, _value, _data, OWNER_ROLE);
-    }
-
-    /// @notice Governor perform a function call.
-    /// @param _target The address of target contract.
-    /// @param _value The value passing to target contract.
-    /// @param _data The calldata passing to target contract.
-    function governaceExecute(
-        address _target,
-        uint256 _value,
-        bytes calldata _data
-    ) external payable {
-        execute(_target, _value, _data, GOVERNANCE_ROLE);
     }
 
     /// @notice Perform a function call from arbitrary role.

@@ -72,35 +72,15 @@ contract ScrollOwnerTest is DSTestPlus {
         owner.ownerExecute(address(this), 0, abi.encodeWithSelector(ScrollOwnerTest.emitOnCall.selector));
     }
 
-    function testGovernaceExecute() external {
-        bytes4[] memory _selectors = new bytes4[](2);
-        _selectors[0] = ScrollOwnerTest.revertOnCall.selector;
-        _selectors[1] = ScrollOwnerTest.emitOnCall.selector;
-
-        // not owner, revert
-        hevm.startPrank(address(1));
-        hevm.expectRevert(
-            "AccessControl: account 0x0000000000000000000000000000000000000001 is missing role 0x9409903de1e6fd852dfc61c9dacb48196c48535b60e25abf92acc92dd689078d"
-        );
-        owner.governaceExecute(address(this), 0, abi.encodeWithSelector(ScrollOwnerTest.revertOnCall.selector));
-        hevm.stopPrank();
-
-        owner.grantRole(owner.GOVERNANCE_ROLE(), address(this));
-
-        // no access, revert
-        hevm.expectRevert("no access");
-        owner.governaceExecute(address(this), 0, abi.encodeWithSelector(ScrollOwnerTest.revertOnCall.selector));
-
-        owner.updateAccess(address(this), _selectors, owner.GOVERNANCE_ROLE(), true);
-
+    function testAdminExecute() external {
         // call with revert
         hevm.expectRevert("Called");
-        owner.governaceExecute(address(this), 0, abi.encodeWithSelector(ScrollOwnerTest.revertOnCall.selector));
+        owner.execute(address(this), 0, abi.encodeWithSelector(ScrollOwnerTest.revertOnCall.selector), bytes32(0));
 
         // call with emit
         hevm.expectEmit(false, false, false, true);
         emit Call();
-        owner.governaceExecute(address(this), 0, abi.encodeWithSelector(ScrollOwnerTest.emitOnCall.selector));
+        owner.execute(address(this), 0, abi.encodeWithSelector(ScrollOwnerTest.emitOnCall.selector), bytes32(0));
     }
 
     function testExecute(bytes32 _role) external {
