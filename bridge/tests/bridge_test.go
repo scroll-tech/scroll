@@ -63,9 +63,9 @@ func setupDB(t *testing.T) *gorm.DB {
 func TestMain(m *testing.M) {
 	base = docker.NewDockerApp()
 	bridgeApp = bcmd.NewBridgeApp(base, "../conf/config.json")
+	defer bridgeApp.Free()
+	defer base.Free()
 	m.Run()
-	bridgeApp.Free()
-	base.Free()
 }
 
 func setupEnv(t *testing.T) {
@@ -129,6 +129,10 @@ func prepareContracts(t *testing.T) {
 func TestFunction(t *testing.T) {
 	setupEnv(t)
 
+	// process start test
+	t.Run("TestProcessStart", testProcessStart)
+	t.Run("TestProcessStartEnableMetrics", testProcessStartEnableMetrics)
+
 	// l1 rollup and watch rollup events
 	t.Run("TestCommitBatchAndFinalizeBatch", testCommitBatchAndFinalizeBatch)
 
@@ -136,7 +140,7 @@ func TestFunction(t *testing.T) {
 	t.Run("TestRelayL1MessageSucceed", testRelayL1MessageSucceed)
 
 	// l2 message
-	t.Run("TestRelayL2MessageSucceed", testRelayL2MessageSucceed)
+	// TODO: add a "user relay l2msg Succeed" test
 
 	// l1/l2 gas oracle
 	t.Run("TestImportL1GasPrice", testImportL1GasPrice)

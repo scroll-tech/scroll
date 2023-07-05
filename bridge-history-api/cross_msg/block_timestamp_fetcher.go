@@ -9,30 +9,30 @@ import (
 	"github.com/ethereum/go-ethereum/log"
 )
 
-type GetEarliestNoBlocktimestampHeightFunc func() (uint64, error)
-type UpdateBlocktimestampFunc func(height uint64, timestamp time.Time) error
+type GetEarliestNoBlockTimestampHeightFunc func() (uint64, error)
+type UpdateBlockTimestampFunc func(height uint64, timestamp time.Time) error
 
-type BlocktimestampFetcher struct {
+type BlockTimestampFetcher struct {
 	ctx                                   context.Context
-	confirmation                          uint
+	confirmation                          uint64
 	blockTimeInSec                        int
 	client                                *ethclient.Client
-	updateBlocktimestampFunc              UpdateBlocktimestampFunc
-	getEarliestNoBlocktimestampHeightFunc GetEarliestNoBlocktimestampHeightFunc
+	updateBlockTimestampFunc              UpdateBlockTimestampFunc
+	getEarliestNoBlockTimestampHeightFunc GetEarliestNoBlockTimestampHeightFunc
 }
 
-func NewBlocktimestampFetcher(ctx context.Context, confirmation uint, blockTimeInSec int, client *ethclient.Client, updateBlocktimestampFunc UpdateBlocktimestampFunc, getEarliestNoBlocktimestampHeightFunc GetEarliestNoBlocktimestampHeightFunc) *BlocktimestampFetcher {
-	return &BlocktimestampFetcher{
+func NewBlockTimestampFetcher(ctx context.Context, confirmation uint64, blockTimeInSec int, client *ethclient.Client, updateBlockTimestampFunc UpdateBlockTimestampFunc, getEarliestNoBlockTimestampHeightFunc GetEarliestNoBlockTimestampHeightFunc) *BlockTimestampFetcher {
+	return &BlockTimestampFetcher{
 		ctx:                                   ctx,
 		confirmation:                          confirmation,
 		blockTimeInSec:                        blockTimeInSec,
 		client:                                client,
-		getEarliestNoBlocktimestampHeightFunc: getEarliestNoBlocktimestampHeightFunc,
-		updateBlocktimestampFunc:              updateBlocktimestampFunc,
+		getEarliestNoBlockTimestampHeightFunc: getEarliestNoBlockTimestampHeightFunc,
+		updateBlockTimestampFunc:              updateBlockTimestampFunc,
 	}
 }
 
-func (b *BlocktimestampFetcher) Start() {
+func (b *BlockTimestampFetcher) Start() {
 	go func() {
 		tick := time.NewTicker(time.Duration(b.blockTimeInSec) * time.Second)
 		for {
@@ -43,28 +43,28 @@ func (b *BlocktimestampFetcher) Start() {
 			case <-tick.C:
 				number, err := b.client.BlockNumber(b.ctx)
 				if err != nil {
-					log.Error("Can not get latest block number: ", err)
+					log.Error("Can not get latest block number", "err", err)
 					continue
 				}
-				startHeight, err := b.getEarliestNoBlocktimestampHeightFunc()
+				startHeight, err := b.getEarliestNoBlockTimestampHeightFunc()
 				if err != nil {
-					log.Error("Can not get latest record without block timestamp: ", err)
+					log.Error("Can not get latest record without block timestamp", "err", err)
 					continue
 				}
-				for height := startHeight; number >= height+uint64(b.confirmation) && height > 0; {
+				for height := startHeight; number >= height+b.confirmation && height > 0; {
 					block, err := b.client.HeaderByNumber(b.ctx, new(big.Int).SetUint64(height))
 					if err != nil {
-						log.Error("Can not get block by number: ", err)
+						log.Error("Can not get block by number", "err", err)
 						break
 					}
-					err = b.updateBlocktimestampFunc(height, time.Unix(int64(block.Time), 0))
+					err = b.updateBlockTimestampFunc(height, time.Unix(int64(block.Time), 0))
 					if err != nil {
-						log.Error("Can not update blocktimstamp into DB: ", err)
+						log.Error("Can not update blockTimestamp into DB ", "err", err)
 						break
 					}
-					height, err = b.getEarliestNoBlocktimestampHeightFunc()
+					height, err = b.getEarliestNoBlockTimestampHeightFunc()
 					if err != nil {
-						log.Error("Can not get latest record without block timestamp: ", err)
+						log.Error("Can not get latest record without block timestamp", "err", err)
 						break
 					}
 				}
@@ -73,7 +73,6 @@ func (b *BlocktimestampFetcher) Start() {
 	}()
 }
 
-func (b *BlocktimestampFetcher) Stop() {
-	log.Info("BlocktimestampFetcher Stop")
-	b.ctx.Done()
+func (b *BlockTimestampFetcher) Stop() {
+	log.Info("BlockTimestampFetcher Stop")
 }

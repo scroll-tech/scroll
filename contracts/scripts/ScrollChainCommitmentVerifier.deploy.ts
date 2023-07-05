@@ -11,7 +11,7 @@ async function main() {
 
   const ScrollChainCommitmentVerifier = await ethers.getContractFactory("ScrollChainCommitmentVerifier", deployer);
 
-  const L1ScrollChainAddress = process.env.L1_ZK_ROLLUP_PROXY_ADDR!;
+  const L1ScrollChainAddress = process.env.L1_SCROLL_CHAIN_PROXY_ADDR!;
   let PoseidonUnit2Address = process.env.POSEIDON_UNIT2_ADDR;
 
   if (!PoseidonUnit2Address) {

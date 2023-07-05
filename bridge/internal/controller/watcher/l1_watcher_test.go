@@ -159,14 +159,14 @@ func testL1WatcherClientFetchContractEvent(t *testing.T) {
 
 	convey.Convey("parse bridge event logs failure", t, func() {
 		targetErr := errors.New("parse log failure")
-		patchGuard.ApplyPrivateMethod(watcher, "parseBridgeEventLogs", func(*L1WatcherClient, []types.Log) ([]*orm.L1Message, []relayedMessage, []rollupEvent, error) {
-			return nil, nil, nil, targetErr
+		patchGuard.ApplyPrivateMethod(watcher, "parseBridgeEventLogs", func(*L1WatcherClient, []types.Log) ([]*orm.L1Message, []rollupEvent, error) {
+			return nil, nil, targetErr
 		})
 		err := watcher.FetchContractEvent()
-		assert.Equal(t, err.Error(), targetErr.Error())
+		assert.EqualError(t, err, targetErr.Error())
 	})
 
-	patchGuard.ApplyPrivateMethod(watcher, "parseBridgeEventLogs", func(*L1WatcherClient, []types.Log) ([]*orm.L1Message, []relayedMessage, []rollupEvent, error) {
+	patchGuard.ApplyPrivateMethod(watcher, "parseBridgeEventLogs", func(*L1WatcherClient, []types.Log) ([]*orm.L1Message, []rollupEvent, error) {
 		rollupEvents := []rollupEvent{
 			{
 				batchHash: common.HexToHash("0x1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347"),
@@ -179,26 +179,13 @@ func testL1WatcherClientFetchContractEvent(t *testing.T) {
 				status:    commonTypes.RollupCommitted,
 			},
 		}
-
-		relayedMessageEvents := []relayedMessage{
-			{
-				msgHash:      common.HexToHash("0x1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347"),
-				txHash:       common.HexToHash("0xad3228b676f7d3cd4284a5443f17f1962b36e491b30a40b2405849e597ba5fb5"),
-				isSuccessful: true,
-			},
-			{
-				msgHash:      common.HexToHash("0xad3228b676f7d3cd4284a5443f17f1962b36e491b30a40b2405849e597ba5fb5"),
-				txHash:       common.HexToHash("0xb4c11951957c6f8f642c4af61cd6b24640fec6dc7fc607ee8206a99e92410d30"),
-				isSuccessful: false,
-			},
-		}
-		return nil, relayedMessageEvents, rollupEvents, nil
+		return nil, rollupEvents, nil
 	})
 
-	var blockBatchOrm *orm.BlockBatch
+	var batchOrm *orm.Batch
 	convey.Convey("db get rollup status by hash list failure", t, func() {
 		targetErr := errors.New("get db failure")
-		patchGuard.ApplyMethodFunc(blockBatchOrm, "GetRollupStatusByHashList", func(hashes []string) ([]commonTypes.RollupStatus, error) {
+		patchGuard.ApplyMethodFunc(batchOrm, "GetRollupStatusByHashList", func(context.Context, []string) ([]commonTypes.RollupStatus, error) {
 			return nil, targetErr
 		})
 		err := watcher.FetchContractEvent()
@@ -206,7 +193,7 @@ func testL1WatcherClientFetchContractEvent(t *testing.T) {
 	})
 
 	convey.Convey("rollup status mismatch batch hashes length", t, func() {
-		patchGuard.ApplyMethodFunc(blockBatchOrm, "GetRollupStatusByHashList", func(hashes []string) ([]commonTypes.RollupStatus, error) {
+		patchGuard.ApplyMethodFunc(batchOrm, "GetRollupStatusByHashList", func(context.Context, []string) ([]commonTypes.RollupStatus, error) {
 			s := []commonTypes.RollupStatus{
 				commonTypes.RollupFinalized,
 			}
@@ -216,7 +203,7 @@ func testL1WatcherClientFetchContractEvent(t *testing.T) {
 		assert.NoError(t, err)
 	})
 
-	patchGuard.ApplyMethodFunc(blockBatchOrm, "GetRollupStatusByHashList", func(hashes []string) ([]commonTypes.RollupStatus, error) {
+	patchGuard.ApplyMethodFunc(batchOrm, "GetRollupStatusByHashList", func(context.Context, []string) ([]commonTypes.RollupStatus, error) {
 		s := []commonTypes.RollupStatus{
 			commonTypes.RollupPending,
 			commonTypes.RollupCommitting,
@@ -226,41 +213,27 @@ func testL1WatcherClientFetchContractEvent(t *testing.T) {
 
 	convey.Convey("db update RollupFinalized status failure", t, func() {
 		targetErr := errors.New("UpdateFinalizeTxHashAndRollupStatus RollupFinalized failure")
-		patchGuard.ApplyMethodFunc(blockBatchOrm, "UpdateFinalizeTxHashAndRollupStatus", func(context.Context, string, string, commonTypes.RollupStatus) error {
+		patchGuard.ApplyMethodFunc(batchOrm, "UpdateFinalizeTxHashAndRollupStatus", func(context.Context, string, string, commonTypes.RollupStatus) error {
 			return targetErr
 		})
 		err := watcher.FetchContractEvent()
 		assert.Equal(t, targetErr.Error(), err.Error())
 	})
 
-	patchGuard.ApplyMethodFunc(blockBatchOrm, "UpdateFinalizeTxHashAndRollupStatus", func(context.Context, string, string, commonTypes.RollupStatus) error {
+	patchGuard.ApplyMethodFunc(batchOrm, "UpdateFinalizeTxHashAndRollupStatus", func(context.Context, string, string, commonTypes.RollupStatus) error {
 		return nil
 	})
 
 	convey.Convey("db update RollupCommitted status failure", t, func() {
 		targetErr := errors.New("UpdateCommitTxHashAndRollupStatus RollupCommitted failure")
-		patchGuard.ApplyMethodFunc(blockBatchOrm, "UpdateCommitTxHashAndRollupStatus", func(context.Context, string, string, commonTypes.RollupStatus) error {
+		patchGuard.ApplyMethodFunc(batchOrm, "UpdateCommitTxHashAndRollupStatus", func(context.Context, string, string, commonTypes.RollupStatus) error {
 			return targetErr
 		})
 		err := watcher.FetchContractEvent()
 		assert.Equal(t, targetErr.Error(), err.Error())
 	})
 
-	patchGuard.ApplyMethodFunc(blockBatchOrm, "UpdateCommitTxHashAndRollupStatus", func(context.Context, string, string, commonTypes.RollupStatus) error {
-		return nil
-	})
-
-	var l2MessageOrm *orm.L2Message
-	convey.Convey("db update layer2 status and layer1 hash failure", t, func() {
-		targetErr := errors.New("UpdateLayer2StatusAndLayer1Hash failure")
-		patchGuard.ApplyMethodFunc(l2MessageOrm, "UpdateLayer2StatusAndLayer1Hash", func(context.Context, string, commonTypes.MsgStatus, string) error {
-			return targetErr
-		})
-		err := watcher.FetchContractEvent()
-		assert.Equal(t, targetErr.Error(), err.Error())
-	})
-
-	patchGuard.ApplyMethodFunc(l2MessageOrm, "UpdateLayer2StatusAndLayer1Hash", func(context.Context, string, commonTypes.MsgStatus, string) error {
+	patchGuard.ApplyMethodFunc(batchOrm, "UpdateCommitTxHashAndRollupStatus", func(context.Context, string, string, commonTypes.RollupStatus) error {
 		return nil
 	})
 
@@ -303,17 +276,16 @@ func testParseBridgeEventLogsL1QueueTransactionEventSignature(t *testing.T) {
 		})
 		defer patchGuard.Reset()
 
-		l2Messages, relayedMessages, rollupEvents, err := watcher.parseBridgeEventLogs(logs)
+		l2Messages, rollupEvents, err := watcher.parseBridgeEventLogs(logs)
 		assert.EqualError(t, err, targetErr.Error())
 		assert.Empty(t, l2Messages)
-		assert.Empty(t, relayedMessages)
 		assert.Empty(t, rollupEvents)
 	})
 
 	convey.Convey("L1QueueTransactionEventSignature success", t, func() {
 		patchGuard := gomonkey.ApplyFunc(utils.UnpackLog, func(c *abi.ABI, out interface{}, event string, log types.Log) error {
 			tmpOut := out.(*bridgeAbi.L1QueueTransactionEvent)
-			tmpOut.QueueIndex = big.NewInt(100)
+			tmpOut.QueueIndex = 100
 			tmpOut.Data = []byte("test data")
 			tmpOut.Sender = common.HexToAddress("0xb4c11951957c6f8f642c4af61cd6b24640fec6dc7fc607ee8206a99e92410d30")
 			tmpOut.Value = big.NewInt(1000)
@@ -323,99 +295,11 @@ func testParseBridgeEventLogsL1QueueTransactionEventSignature(t *testing.T) {
 		})
 		defer patchGuard.Reset()
 
-		l2Messages, relayedMessages, rollupEvents, err := watcher.parseBridgeEventLogs(logs)
+		l2Messages, rollupEvents, err := watcher.parseBridgeEventLogs(logs)
 		assert.NoError(t, err)
-		assert.Empty(t, relayedMessages)
 		assert.Empty(t, rollupEvents)
 		assert.Len(t, l2Messages, 1)
 		assert.Equal(t, l2Messages[0].Value, big.NewInt(1000).String())
-	})
-}
-
-func testParseBridgeEventLogsL1RelayedMessageEventSignature(t *testing.T) {
-	watcher, db := setupL1Watcher(t)
-	defer utils.CloseDB(db)
-
-	logs := []types.Log{
-		{
-			Topics:      []common.Hash{bridgeAbi.L1RelayedMessageEventSignature},
-			BlockNumber: 100,
-			TxHash:      common.HexToHash("0x1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347"),
-		},
-	}
-
-	convey.Convey("unpack RelayedMessage log failure", t, func() {
-		targetErr := errors.New("UnpackLog RelayedMessage failure")
-		patchGuard := gomonkey.ApplyFunc(utils.UnpackLog, func(c *abi.ABI, out interface{}, event string, log types.Log) error {
-			return targetErr
-		})
-		defer patchGuard.Reset()
-
-		l2Messages, relayedMessages, rollupEvents, err := watcher.parseBridgeEventLogs(logs)
-		assert.EqualError(t, err, targetErr.Error())
-		assert.Empty(t, l2Messages)
-		assert.Empty(t, relayedMessages)
-		assert.Empty(t, rollupEvents)
-	})
-
-	convey.Convey("L1RelayedMessageEventSignature success", t, func() {
-		msgHash := common.HexToHash("0xad3228b676f7d3cd4284a5443f17f1962b36e491b30a40b2405849e597ba5fb5")
-		patchGuard := gomonkey.ApplyFunc(utils.UnpackLog, func(c *abi.ABI, out interface{}, event string, log types.Log) error {
-			tmpOut := out.(*bridgeAbi.L1RelayedMessageEvent)
-			tmpOut.MessageHash = msgHash
-			return nil
-		})
-		defer patchGuard.Reset()
-
-		l2Messages, relayedMessages, rollupEvents, err := watcher.parseBridgeEventLogs(logs)
-		assert.NoError(t, err)
-		assert.Empty(t, l2Messages)
-		assert.Empty(t, rollupEvents)
-		assert.Len(t, relayedMessages, 1)
-		assert.Equal(t, relayedMessages[0].msgHash, msgHash)
-	})
-}
-
-func testParseBridgeEventLogsL1FailedRelayedMessageEventSignature(t *testing.T) {
-	watcher, db := setupL1Watcher(t)
-	defer utils.CloseDB(db)
-	logs := []types.Log{
-		{
-			Topics:      []common.Hash{bridgeAbi.L1FailedRelayedMessageEventSignature},
-			BlockNumber: 100,
-			TxHash:      common.HexToHash("0x1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347"),
-		},
-	}
-
-	convey.Convey("unpack FailedRelayedMessage log failure", t, func() {
-		targetErr := errors.New("UnpackLog FailedRelayedMessage failure")
-		patchGuard := gomonkey.ApplyFunc(utils.UnpackLog, func(c *abi.ABI, out interface{}, event string, log types.Log) error {
-			return targetErr
-		})
-		defer patchGuard.Reset()
-
-		l2Messages, relayedMessages, rollupEvents, err := watcher.parseBridgeEventLogs(logs)
-		assert.EqualError(t, err, targetErr.Error())
-		assert.Empty(t, l2Messages)
-		assert.Empty(t, relayedMessages)
-		assert.Empty(t, rollupEvents)
-	})
-
-	convey.Convey("L1FailedRelayedMessageEventSignature success", t, func() {
-		msgHash := common.HexToHash("0xad3228b676f7d3cd4284a5443f17f1962b36e491b30a40b2405849e597ba5fb5")
-		patchGuard := gomonkey.ApplyFunc(utils.UnpackLog, func(c *abi.ABI, out interface{}, event string, log types.Log) error {
-			tmpOut := out.(*bridgeAbi.L1FailedRelayedMessageEvent)
-			tmpOut.MessageHash = msgHash
-			return nil
-		})
-		defer patchGuard.Reset()
-
-		l2Messages, relayedMessages, rollupEvents, err := watcher.parseBridgeEventLogs(logs)
-		assert.NoError(t, err)
-		assert.Empty(t, l2Messages)
-		assert.Empty(t, rollupEvents)
-		assert.Len(t, relayedMessages, 1)
-		assert.Equal(t, relayedMessages[0].msgHash, msgHash)
 	})
 }
 
@@ -437,10 +321,9 @@ func testParseBridgeEventLogsL1CommitBatchEventSignature(t *testing.T) {
 		})
 		defer patchGuard.Reset()
 
-		l2Messages, relayedMessages, rollupEvents, err := watcher.parseBridgeEventLogs(logs)
+		l2Messages, rollupEvents, err := watcher.parseBridgeEventLogs(logs)
 		assert.EqualError(t, err, targetErr.Error())
 		assert.Empty(t, l2Messages)
-		assert.Empty(t, relayedMessages)
 		assert.Empty(t, rollupEvents)
 	})
 
@@ -453,10 +336,9 @@ func testParseBridgeEventLogsL1CommitBatchEventSignature(t *testing.T) {
 		})
 		defer patchGuard.Reset()
 
-		l2Messages, relayedMessages, rollupEvents, err := watcher.parseBridgeEventLogs(logs)
+		l2Messages, rollupEvents, err := watcher.parseBridgeEventLogs(logs)
 		assert.NoError(t, err)
 		assert.Empty(t, l2Messages)
-		assert.Empty(t, relayedMessages)
 		assert.Len(t, rollupEvents, 1)
 		assert.Equal(t, rollupEvents[0].batchHash, msgHash)
 		assert.Equal(t, rollupEvents[0].status, commonTypes.RollupCommitted)
@@ -481,10 +363,9 @@ func testParseBridgeEventLogsL1FinalizeBatchEventSignature(t *testing.T) {
 		})
 		defer patchGuard.Reset()
 
-		l2Messages, relayedMessages, rollupEvents, err := watcher.parseBridgeEventLogs(logs)
+		l2Messages, rollupEvents, err := watcher.parseBridgeEventLogs(logs)
 		assert.EqualError(t, err, targetErr.Error())
 		assert.Empty(t, l2Messages)
-		assert.Empty(t, relayedMessages)
 		assert.Empty(t, rollupEvents)
 	})
 
@@ -497,10 +378,9 @@ func testParseBridgeEventLogsL1FinalizeBatchEventSignature(t *testing.T) {
 		})
 		defer patchGuard.Reset()
 
-		l2Messages, relayedMessages, rollupEvents, err := watcher.parseBridgeEventLogs(logs)
+		l2Messages, rollupEvents, err := watcher.parseBridgeEventLogs(logs)
 		assert.NoError(t, err)
 		assert.Empty(t, l2Messages)
-		assert.Empty(t, relayedMessages)
 		assert.Len(t, rollupEvents, 1)
 		assert.Equal(t, rollupEvents[0].batchHash, msgHash)
 		assert.Equal(t, rollupEvents[0].status, commonTypes.RollupFinalized)
