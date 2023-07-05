@@ -29,7 +29,7 @@ func testCommitBatchAndFinalizeBatch(t *testing.T) {
 
 	// Create L2Relayer
 	l2Cfg := bridgeApp.Config.L2Config
-	l2Relayer, err := relayer.NewLayer2Relayer(context.Background(), l2Client, db, l2Cfg.RelayerConfig)
+	l2Relayer, err := relayer.NewLayer2Relayer(context.Background(), l2Client, db, l2Cfg.RelayerConfig, false)
 	assert.NoError(t, err)
 
 	// Create L1Watcher

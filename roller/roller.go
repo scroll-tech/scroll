@@ -232,29 +232,37 @@ func (r *Roller) prove() error {
 		var traces []*types.BlockTrace
 		traces, err = r.getSortedTracesByHashes(task.Task.BlockHashes)
 		if err != nil {
-			return err
-		}
-		// If FFI panic during Prove, the roller will restart and re-enter prove() function,
-		// the proof will not be submitted.
-		var proof *message.AggProof
-		proof, err = r.prover.Prove(task.Task.ID, traces)
-		if err != nil {
 			proofMsg = &message.ProofDetail{
 				Status: message.StatusProofError,
-				Error:  err.Error(),
+				Error:  "get traces failed",
 				ID:     task.Task.ID,
 				Type:   task.Task.Type,
-				Proof:  &message.AggProof{},
+				Proof:  nil,
 			}
-			log.Error("prove block failed!", "task-id", task.Task.ID)
+			log.Error("get traces failed!", "task-id", task.Task.ID, "err", err)
 		} else {
-			proofMsg = &message.ProofDetail{
-				Status: message.StatusOk,
-				ID:     task.Task.ID,
-				Type:   task.Task.Type,
-				Proof:  proof,
+			// If FFI panic during Prove, the roller will restart and re-enter prove() function,
+			// the proof will not be submitted.
+			var proof *message.AggProof
+			proof, err = r.prover.Prove(task.Task.ID, traces)
+			if err != nil {
+				proofMsg = &message.ProofDetail{
+					Status: message.StatusProofError,
+					Error:  err.Error(),
+					ID:     task.Task.ID,
+					Type:   task.Task.Type,
+					Proof:  nil,
+				}
+				log.Error("prove block failed!", "task-id", task.Task.ID)
+			} else {
+				proofMsg = &message.ProofDetail{
+					Status: message.StatusOk,
+					ID:     task.Task.ID,
+					Type:   task.Task.Type,
+					Proof:  proof,
+				}
+				log.Info("prove block successfully!", "task-id", task.Task.ID)
 			}
-			log.Info("prove block successfully!", "task-id", task.Task.ID)
 		}
 	} else {
 		// when the roller has more than 3 times panic,
@@ -264,7 +272,7 @@ func (r *Roller) prove() error {
 			Error:  "zk proving panic",
 			ID:     task.Task.ID,
 			Type:   task.Task.Type,
-			Proof:  &message.AggProof{},
+			Proof:  nil,
 		}
 	}
 

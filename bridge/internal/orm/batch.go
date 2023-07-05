@@ -189,9 +189,9 @@ func (o *Batch) GetBatchByIndex(ctx context.Context, index uint64) (*Batch, erro
 }
 
 // InsertBatch inserts a new batch into the database.
-func (o *Batch) InsertBatch(ctx context.Context, startChunkIndex, endChunkIndex uint64, startChunkHash, endChunkHash string, chunks []*bridgeTypes.Chunk, dbTX ...*gorm.DB) (string, error) {
+func (o *Batch) InsertBatch(ctx context.Context, startChunkIndex, endChunkIndex uint64, startChunkHash, endChunkHash string, chunks []*bridgeTypes.Chunk, dbTX ...*gorm.DB) (*Batch, error) {
 	if len(chunks) == 0 {
-		return "", errors.New("invalid args")
+		return nil, errors.New("invalid args")
 	}
 
 	db := o.db
@@ -202,7 +202,7 @@ func (o *Batch) InsertBatch(ctx context.Context, startChunkIndex, endChunkIndex 
 	parentBatch, err := o.GetLatestBatch(ctx)
 	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 		log.Error("failed to get the latest batch", "err", err)
-		return "", err
+		return nil, err
 	}
 
 	var batchIndex uint64
@@ -221,7 +221,7 @@ func (o *Batch) InsertBatch(ctx context.Context, startChunkIndex, endChunkIndex 
 		parentBatchHeader, err = bridgeTypes.DecodeBatchHeader(parentBatch.BatchHeader)
 		if err != nil {
 			log.Error("failed to decode parent batch header", "index", parentBatch.Index, "hash", parentBatch.Hash, "err", err)
-			return "", err
+			return nil, err
 		}
 
 		totalL1MessagePoppedBefore = parentBatchHeader.TotalL1MessagePopped()
@@ -233,7 +233,7 @@ func (o *Batch) InsertBatch(ctx context.Context, startChunkIndex, endChunkIndex 
 		log.Error("failed to create batch header",
 			"index", batchIndex, "total l1 message popped before", totalL1MessagePoppedBefore,
 			"parent hash", parentBatchHash, "number of chunks", len(chunks), "err", err)
-		return "", err
+		return nil, err
 	}
 
 	numChunks := len(chunks)
@@ -255,10 +255,10 @@ func (o *Batch) InsertBatch(ctx context.Context, startChunkIndex, endChunkIndex 
 
 	if err := db.WithContext(ctx).Create(&newBatch).Error; err != nil {
 		log.Error("failed to insert batch", "batch", newBatch, "err", err)
-		return "", err
+		return nil, err
 	}
 
-	return newBatch.Hash, nil
+	return &newBatch, nil
 }
 
 // UpdateSkippedBatches updates the skipped batches in the database.
