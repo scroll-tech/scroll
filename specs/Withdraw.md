@@ -1,12 +1,11 @@
 # Withdraw Tokens from L2 to L1
 
 **Table of Contents**
-- [Withdraw Tokens from L2 to L1](#withdraw-tokens-from-l2-to-l1)
-  - [Withdrawing ETH](#withdrawing-eth)
-  - [Withdrawing ERC20 Tokens](#withdrawing-erc20-tokens)
-    - [Standard and Custom ERC20 Tokens](#standard-and-custom-erc20-tokens)
-    - [WETH Token](#weth-token)
-  - [Withdrawing ERC-721/ERC-1155 Tokens](#withdrawing-erc-721erc-1155-tokens)
+* [Withdrawing ETH](#withdrawing-eth)
+* [Withdrawing ERC20 Tokens](#withdrawing-erc20-tokens)
+    * [Standard and Custom ERC20 Tokens](#standard-and-custom-erc20-tokens)
+    * [WETH Token](#weth-token)
+* [Withdrawing ERC-721/ERC-1155 Tokens](#withdrawing-erc-721erc-1155-tokens)
 
 This document describes how users and developers can utilize gateways to withdraw tokens from L2 to L1.
 We provide several gateways for standard tokens and a gateway router on L2, listed in the table below.
