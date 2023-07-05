@@ -3,18 +3,13 @@ package orm
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"time"
 
 	"scroll-tech/common/types"
 	"scroll-tech/common/types/message"
 
-	"github.com/scroll-tech/go-ethereum/common"
-	"github.com/scroll-tech/go-ethereum/log"
 	"gorm.io/gorm"
 )
-
-const defaultBatchHeaderVersion = 0
 
 // Batch represents a batch of chunks.
 type Batch struct {
@@ -65,16 +60,6 @@ func (*Batch) TableName() string {
 	return "batch"
 }
 
-// GetLatestBatch retrieves the latest batch from the database.
-func (o *Batch) GetLatestBatch(ctx context.Context) (*Batch, error) {
-	var latestBatch Batch
-	err := o.db.WithContext(ctx).Order("index desc").First(&latestBatch).Error
-	if err != nil {
-		return nil, err
-	}
-	return &latestBatch, nil
-}
-
 // GetPendingBatches retrieves all or limited number of pending batches based on the specified limit.
 // The returned batches are sorted in ascending order by their index.
 func (o *Batch) GetPendingBatches(ctx context.Context) ([]*Batch, error) {
@@ -99,79 +84,6 @@ func (o *Batch) GetAssignedBatches(ctx context.Context) ([]*Batch, error) {
 		return nil, err
 	}
 	return assignedBatches, nil
-}
-
-// InsertBatch inserts a new batch into the database.
-func (o *Batch) InsertBatch(ctx context.Context, startChunkIndex, endChunkIndex uint64, startChunkHash, endChunkHash string, chunks []*types.Chunk, dbTX ...*gorm.DB) (string, error) {
-	if len(chunks) == 0 {
-		return "", errors.New("invalid args")
-	}
-
-	db := o.db
-	if len(dbTX) > 0 && dbTX[0] != nil {
-		db = dbTX[0]
-	}
-
-	parentBatch, err := o.GetLatestBatch(ctx)
-	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
-		log.Error("failed to get the latest batch", "err", err)
-		return "", err
-	}
-
-	var batchIndex uint64
-	var parentBatchHash common.Hash
-	var totalL1MessagePoppedBefore uint64
-	var version uint8 = defaultBatchHeaderVersion
-
-	// if parentBatch==nil then err==gorm.ErrRecordNotFound, which means there's
-	// not batch record in the db, we then use default empty values for the creating batch;
-	// if parentBatch!=nil then err=nil, then we fill the parentBatch-related data into the creating batch
-	if parentBatch != nil {
-		batchIndex = parentBatch.Index + 1
-		parentBatchHash = common.HexToHash(parentBatch.Hash)
-
-		var parentBatchHeader *types.BatchHeader
-		parentBatchHeader, err = types.DecodeBatchHeader(parentBatch.BatchHeader)
-		if err != nil {
-			log.Error("failed to decode parent batch header", "index", parentBatch.Index, "hash", parentBatch.Hash, "err", err)
-			return "", err
-		}
-
-		totalL1MessagePoppedBefore = parentBatchHeader.TotalL1MessagePopped()
-		version = parentBatchHeader.Version()
-	}
-
-	batchHeader, err := types.NewBatchHeader(version, batchIndex, totalL1MessagePoppedBefore, parentBatchHash, chunks)
-	if err != nil {
-		log.Error("failed to create batch header",
-			"index", batchIndex, "total l1 message popped before", totalL1MessagePoppedBefore,
-			"parent hash", parentBatchHash, "number of chunks", len(chunks), "err", err)
-		return "", err
-	}
-
-	numChunks := len(chunks)
-	lastChunkBlockNum := len(chunks[numChunks-1].Blocks)
-
-	newBatch := Batch{
-		Index:           batchIndex,
-		Hash:            batchHeader.Hash().Hex(),
-		StartChunkHash:  startChunkHash,
-		StartChunkIndex: startChunkIndex,
-		EndChunkHash:    endChunkHash,
-		EndChunkIndex:   endChunkIndex,
-		StateRoot:       chunks[numChunks-1].Blocks[lastChunkBlockNum-1].Header.Root.Hex(),
-		WithdrawRoot:    chunks[numChunks-1].Blocks[lastChunkBlockNum-1].WithdrawTrieRoot.Hex(),
-		BatchHeader:     batchHeader.Encode(),
-		ProvingStatus:   int16(types.ProvingTaskUnassigned),
-		RollupStatus:    int16(types.RollupPending),
-	}
-
-	if err := db.WithContext(ctx).Create(&newBatch).Error; err != nil {
-		log.Error("failed to insert batch", "batch", newBatch, "err", err)
-		return "", err
-	}
-
-	return newBatch.Hash, nil
 }
 
 // UpdateProvingStatus updates the proving status of a batch.

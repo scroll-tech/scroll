@@ -58,32 +58,6 @@ func (*Chunk) TableName() string {
 	return "chunk"
 }
 
-// GetChunks retrieves selected chunks from the database.
-// The returned chunks are sorted in ascending order by their index.
-func (o *Chunk) GetChunks(ctx context.Context, fields map[string]interface{}, orderByList []string, limit int) ([]*Chunk, error) {
-	db := o.db.WithContext(ctx)
-
-	for key, value := range fields {
-		db = db.Where(key, value)
-	}
-
-	for _, orderBy := range orderByList {
-		db = db.Order(orderBy)
-	}
-
-	if limit > 0 {
-		db = db.Limit(limit)
-	}
-
-	db = db.Order("index ASC")
-
-	var chunks []*Chunk
-	if err := db.Find(&chunks).Error; err != nil {
-		return nil, err
-	}
-	return chunks, nil
-}
-
 // GetUnassignedChunks retrieves all or limited number of unassigned chunks based on the specified limit.
 // The returned chunks are sorted in ascending order by their index.
 func (o *Chunk) GetUnassignedChunks(ctx context.Context) ([]*Chunk, error) {
@@ -150,7 +124,7 @@ func (o *Chunk) GetProvingStatusByHash(ctx context.Context, hash string) (types.
 func (o *Chunk) GetAssignedChunks(ctx context.Context) ([]*Chunk, error) {
 	var chunks []*Chunk
 
-	err := o.db.Where("proving_status IN (?)", []int{int(types.ProvingTaskAssigned), int(types.ProvingTaskProved)}).
+	err := o.db.WithContext(ctx).Where("proving_status IN (?)", []int{int(types.ProvingTaskAssigned), int(types.ProvingTaskProved)}).
 		Find(&chunks).Error
 	if err != nil {
 		return nil, err

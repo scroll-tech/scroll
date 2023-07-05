@@ -218,13 +218,13 @@ func (m *Manager) restorePrevSessions() {
 
 	var hashes []string
 	// load assigned aggregator tasks from db
-	aggTasks, err := m.batchOrm.GetAssignedBatches(m.ctx)
+	batchTasks, err := m.batchOrm.GetAssignedBatches(m.ctx)
 	if err != nil {
 		log.Error("failed to load assigned aggregator tasks from db", "error", err)
 		return
 	}
-	for _, aggTask := range aggTasks {
-		hashes = append(hashes, aggTask.Hash)
+	for _, batchTask := range batchTasks {
+		hashes = append(hashes, batchTask.Hash)
 	}
 	// load assigned basic tasks from db
 	chunkTasks, err := m.chunkOrm.GetAssignedChunks(m.ctx)
