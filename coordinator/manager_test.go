@@ -137,7 +137,7 @@ func testHandshake(t *testing.T) {
 	roller := newMockRoller(t, "roller_test", wsURL)
 	defer roller.close()
 
-	assert.Equal(t, 1, rollerManager.GetNumberOfIdleRollers(message.BasicProve))
+	assert.Equal(t, 1, rollerManager.GetNumberOfIdleRollers(message.ChunkProof))
 }
 
 func testFailedHandshake(t *testing.T) {
@@ -197,7 +197,7 @@ func testFailedHandshake(t *testing.T) {
 	_, err = client.RegisterAndSubscribe(ctx, make(chan *message.TaskMsg, 4), authMsg)
 	assert.Error(t, err)
 
-	assert.Equal(t, 0, rollerManager.GetNumberOfIdleRollers(message.BasicProve))
+	assert.Equal(t, 0, rollerManager.GetNumberOfIdleRollers(message.ChunkProof))
 }
 
 func testSeveralConnections(t *testing.T) {
@@ -224,7 +224,7 @@ func testSeveralConnections(t *testing.T) {
 	assert.NoError(t, eg.Wait())
 
 	// check roller's idle connections
-	assert.Equal(t, batch, rollerManager.GetNumberOfIdleRollers(message.BasicProve))
+	assert.Equal(t, batch, rollerManager.GetNumberOfIdleRollers(message.ChunkProof))
 
 	// close connection
 	for _, roller := range rollers {
@@ -238,7 +238,7 @@ func testSeveralConnections(t *testing.T) {
 	for {
 		select {
 		case <-tick:
-			if rollerManager.GetNumberOfIdleRollers(message.BasicProve) == 0 {
+			if rollerManager.GetNumberOfIdleRollers(message.ChunkProof) == 0 {
 				return
 			}
 		case <-tickStop:
@@ -274,7 +274,7 @@ func testValidProof(t *testing.T) {
 			roller.close()
 		}
 	}()
-	assert.Equal(t, 3, rollerManager.GetNumberOfIdleRollers(message.BasicProve))
+	assert.Equal(t, 3, rollerManager.GetNumberOfIdleRollers(message.ChunkProof))
 
 	err := l2BlockOrm.InsertL2Blocks(context.Background(), []*types.WrappedBlock{wrappedBlock1, wrappedBlock2})
 	assert.NoError(t, err)
@@ -322,7 +322,7 @@ func testInvalidProof(t *testing.T) {
 			roller.close()
 		}
 	}()
-	assert.Equal(t, 3, rollerManager.GetNumberOfIdleRollers(message.BasicProve))
+	assert.Equal(t, 3, rollerManager.GetNumberOfIdleRollers(message.ChunkProof))
 
 	err := l2BlockOrm.InsertL2Blocks(context.Background(), []*types.WrappedBlock{wrappedBlock1, wrappedBlock2})
 	assert.NoError(t, err)
@@ -370,7 +370,7 @@ func testProofGeneratedFailed(t *testing.T) {
 			roller.close()
 		}
 	}()
-	assert.Equal(t, 3, rollerManager.GetNumberOfIdleRollers(message.BasicProve))
+	assert.Equal(t, 3, rollerManager.GetNumberOfIdleRollers(message.ChunkProof))
 
 	err := l2BlockOrm.InsertL2Blocks(context.Background(), []*types.WrappedBlock{wrappedBlock1, wrappedBlock2})
 	assert.NoError(t, err)
@@ -412,7 +412,7 @@ func testTimedoutProof(t *testing.T) {
 		// close connection
 		roller1.close()
 	}()
-	assert.Equal(t, 1, rollerManager.GetNumberOfIdleRollers(message.BasicProve))
+	assert.Equal(t, 1, rollerManager.GetNumberOfIdleRollers(message.ChunkProof))
 
 	err := l2BlockOrm.InsertL2Blocks(context.Background(), []*types.WrappedBlock{wrappedBlock1, wrappedBlock2})
 	assert.NoError(t, err)
@@ -436,7 +436,7 @@ func testTimedoutProof(t *testing.T) {
 		// close connection
 		roller2.close()
 	}()
-	assert.Equal(t, 1, rollerManager.GetNumberOfIdleRollers(message.BasicProve))
+	assert.Equal(t, 1, rollerManager.GetNumberOfIdleRollers(message.ChunkProof))
 
 	// verify proof status, it should be verified now, because second roller sent valid proof
 	ok = cutils.TryTimes(200, func() bool {
@@ -471,7 +471,7 @@ func testIdleRollerSelection(t *testing.T) {
 		}
 	}()
 
-	assert.Equal(t, len(rollers), rollerManager.GetNumberOfIdleRollers(message.BasicProve))
+	assert.Equal(t, len(rollers), rollerManager.GetNumberOfIdleRollers(message.ChunkProof))
 
 	err := l2BlockOrm.InsertL2Blocks(context.Background(), []*types.WrappedBlock{wrappedBlock1, wrappedBlock2})
 	assert.NoError(t, err)

@@ -66,7 +66,7 @@ func (o *SessionInfo) SetSessionInfo(ctx context.Context, sessionInfo *SessionIn
 }
 
 // UpdateSessionInfoProvingStatus updates the proving_status of a specific SessionInfo record.
-func (o *SessionInfo) UpdateSessionInfoProvingStatus(ctx context.Context, proofType message.ProveType, taskID string, pk string, status types.RollerProveStatus) error {
+func (o *SessionInfo) UpdateSessionInfoProvingStatus(ctx context.Context, proofType message.ProofType, taskID string, pk string, status types.RollerProveStatus) error {
 	db := o.db.WithContext(ctx)
 	db = db.Model(&SessionInfo{})
 	db = db.Where("proof_type = ? AND task_id = ? AND roller_public_key = ?", proofType, taskID, pk)
