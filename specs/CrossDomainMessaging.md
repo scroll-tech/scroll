@@ -3,16 +3,15 @@
 Scroll has an arbitrary message passing bridge that enables the token transfers and allows dapps to communicate between layer 1 and layer 2. This means that dapps on layer 1 can trigger contract functions on layer 2, and vice versa. Next, we will explain how the messages are relayed between layer 1 and layer 2.
 
 **Table of Contents**
-- [Cross-Domain Messaging](#cross-domain-messaging)
-  - [Sending Messages from L1 to L2](#sending-messages-from-l1-to-l2)
-    - [Sending Arbitrary Messages](#sending-arbitrary-messages)
-    - [Sending Enforced Transactions](#sending-enforced-transactions)
-    - [Retrying Failed Messages](#retrying-failed-messages)
-    - [L1 Message Transaction](#l1-message-transaction)
-    - [Message Relay Fee](#message-relay-fee)
-    - [Address Alias](#address-alias)
-  - [Sending Messages from L2 to L1](#sending-messages-from-l2-to-l1)
-    - [Withdraw Trie](#withdraw-trie)
+* [Sending Messages from L1 to L2](#sending-messages-from-l1-to-l2)
+    * [Sending Arbitrary Messages](#sending-arbitrary-messages)
+    * [Sending Enforced Transactions](#sending-enforced-transactions)
+    * [Retrying Failed Messages](#retrying-failed-messages)
+    * [L1 Message Transaction](#l1-message-transaction)
+    * [Message Relay Fee](#message-relay-fee)
+    * [Address Alias](#address-alias)
+* [Sending Messages from L2 to L1](#sending-messages-from-l2-to-l1)
+    * [Withdraw Trie](#withdraw-trie)
 
 
 ## Sending Messages from L1 to L2
