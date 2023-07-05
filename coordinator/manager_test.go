@@ -134,10 +134,14 @@ func testHandshake(t *testing.T) {
 		rollerManager.Stop()
 	}()
 
-	roller := newMockRoller(t, "roller_test", wsURL)
-	defer roller.close()
+	roller1 := newMockRoller(t, "roller_test", wsURL, message.ChunkProof)
+	defer roller1.close()
+
+	roller2 := newMockRoller(t, "roller_test", wsURL, message.BatchProof)
+	defer roller2.close()
 
 	assert.Equal(t, 1, rollerManager.GetNumberOfIdleRollers(message.ChunkProof))
+	assert.Equal(t, 1, rollerManager.GetNumberOfIdleRollers(message.BatchProof))
 }
 
 func testFailedHandshake(t *testing.T) {
@@ -210,21 +214,23 @@ func testSeveralConnections(t *testing.T) {
 	}()
 
 	var (
-		batch   = 100
+		batch   = 200
 		eg      = errgroup.Group{}
 		rollers = make([]*mockRoller, batch)
 	)
-	for i := 0; i < batch; i++ {
+	for i := 0; i < batch; i += 2 {
 		idx := i
 		eg.Go(func() error {
-			rollers[idx] = newMockRoller(t, "roller_test_"+strconv.Itoa(idx), wsURL)
+			rollers[idx] = newMockRoller(t, "roller_test_"+strconv.Itoa(idx), wsURL, message.ChunkProof)
+			rollers[idx+1] = newMockRoller(t, "roller_test_"+strconv.Itoa(idx+1), wsURL, message.BatchProof)
 			return nil
 		})
 	}
 	assert.NoError(t, eg.Wait())
 
 	// check roller's idle connections
-	assert.Equal(t, batch, rollerManager.GetNumberOfIdleRollers(message.ChunkProof))
+	assert.Equal(t, batch/2, rollerManager.GetNumberOfIdleRollers(message.ChunkProof))
+	assert.Equal(t, batch/2, rollerManager.GetNumberOfIdleRollers(message.BatchProof))
 
 	// close connection
 	for _, roller := range rollers {
@@ -258,16 +264,24 @@ func testValidProof(t *testing.T) {
 	}()
 
 	// create mock rollers.
-	rollers := make([]*mockRoller, 3)
+	rollers := make([]*mockRoller, 6)
 	for i := 0; i < len(rollers); i++ {
-		rollers[i] = newMockRoller(t, "roller_test"+strconv.Itoa(i), wsURL)
-		// only roller 0 submits valid proof.
-		proofStatus := verifiedSuccess
-		if i > 0 {
-			proofStatus = generatedFailed
+		var proofType message.ProofType
+		if i%2 == 0 {
+			proofType = message.ChunkProof
+		} else {
+			proofType = message.BatchProof
+		}
+		rollers[i] = newMockRoller(t, "roller_test"+strconv.Itoa(i), wsURL, proofType)
+
+		// only roller 0 & 1 submit valid proofs.
+		proofStatus := generatedFailed
+		if i <= 1 {
+			proofStatus = verifiedSuccess
 		}
 		rollers[i].waitTaskAndSendProof(t, time.Second, false, proofStatus)
 	}
+
 	defer func() {
 		// close connection
 		for _, roller := range rollers {
@@ -275,10 +289,13 @@ func testValidProof(t *testing.T) {
 		}
 	}()
 	assert.Equal(t, 3, rollerManager.GetNumberOfIdleRollers(message.ChunkProof))
+	assert.Equal(t, 3, rollerManager.GetNumberOfIdleRollers(message.BatchProof))
 
 	err := l2BlockOrm.InsertL2Blocks(context.Background(), []*types.WrappedBlock{wrappedBlock1, wrappedBlock2})
 	assert.NoError(t, err)
 	dbChunk, err := chunkOrm.InsertChunk(context.Background(), chunk)
+	assert.NoError(t, err)
+	batch, err := batchOrm.InsertBatch(context.Background(), 0, 0, dbChunk.Hash, dbChunk.Hash, []*types.Chunk{chunk})
 	assert.NoError(t, err)
 
 	// verify proof status
@@ -289,9 +306,12 @@ func testValidProof(t *testing.T) {
 	for {
 		select {
 		case <-tick:
-			status, err := chunkOrm.GetProvingStatusByHash(context.Background(), dbChunk.Hash)
+			chunkProofStatus, err := chunkOrm.GetProvingStatusByHash(context.Background(), dbChunk.Hash)
 			assert.NoError(t, err)
-			if status == types.ProvingTaskVerified {
+			batchProofStatus, err := batchOrm.GetProvingStatusByHash(context.Background(), batch.Hash)
+			assert.NoError(t, err)
+			fmt.Println("chunkProofStatus", chunkProofStatus, "batchProofStatus", batchProofStatus)
+			if chunkProofStatus == types.ProvingTaskVerified && batchProofStatus == types.ProvingTaskVerified {
 				return
 			}
 		case <-tickStop:
@@ -313,7 +333,7 @@ func testInvalidProof(t *testing.T) {
 	// create mock rollers.
 	rollers := make([]*mockRoller, 3)
 	for i := 0; i < len(rollers); i++ {
-		rollers[i] = newMockRoller(t, "roller_test"+strconv.Itoa(i), wsURL)
+		rollers[i] = newMockRoller(t, "roller_test"+strconv.Itoa(i), wsURL, message.ChunkProof)
 		rollers[i].waitTaskAndSendProof(t, time.Second, false, verifiedFailed)
 	}
 	defer func() {
@@ -361,7 +381,7 @@ func testProofGeneratedFailed(t *testing.T) {
 	// create mock rollers.
 	rollers := make([]*mockRoller, 3)
 	for i := 0; i < len(rollers); i++ {
-		rollers[i] = newMockRoller(t, "roller_test"+strconv.Itoa(i), wsURL)
+		rollers[i] = newMockRoller(t, "roller_test"+strconv.Itoa(i), wsURL, message.ChunkProof)
 		rollers[i].waitTaskAndSendProof(t, time.Second, false, generatedFailed)
 	}
 	defer func() {
@@ -407,7 +427,7 @@ func testTimedoutProof(t *testing.T) {
 	}()
 
 	// create first mock roller, that will not send any proof.
-	roller1 := newMockRoller(t, "roller_test"+strconv.Itoa(0), wsURL)
+	roller1 := newMockRoller(t, "roller_test"+strconv.Itoa(0), wsURL, message.ChunkProof)
 	defer func() {
 		// close connection
 		roller1.close()
@@ -430,7 +450,7 @@ func testTimedoutProof(t *testing.T) {
 	assert.Falsef(t, !ok, "failed to check proof status")
 
 	// create second mock roller, that will send valid proof.
-	roller2 := newMockRoller(t, "roller_test"+strconv.Itoa(1), wsURL)
+	roller2 := newMockRoller(t, "roller_test"+strconv.Itoa(1), wsURL, message.ChunkProof)
 	roller2.waitTaskAndSendProof(t, time.Second, false, verifiedSuccess)
 	defer func() {
 		// close connection
@@ -461,7 +481,7 @@ func testIdleRollerSelection(t *testing.T) {
 	// create mock rollers.
 	rollers := make([]*mockRoller, 20)
 	for i := 0; i < len(rollers); i++ {
-		rollers[i] = newMockRoller(t, "roller_test"+strconv.Itoa(i), wsURL)
+		rollers[i] = newMockRoller(t, "roller_test"+strconv.Itoa(i), wsURL, message.ChunkProof)
 		rollers[i].waitTaskAndSendProof(t, time.Second, false, verifiedSuccess)
 	}
 	defer func() {
@@ -509,7 +529,7 @@ func testGracefulRestart(t *testing.T) {
 	assert.NoError(t, err)
 
 	// create mock roller
-	roller := newMockRoller(t, "roller_test", wsURL)
+	roller := newMockRoller(t, "roller_test", wsURL, message.ChunkProof)
 	// wait 10 seconds, coordinator restarts before roller submits proof
 	roller.waitTaskAndSendProof(t, 10*time.Second, false, verifiedSuccess)
 
@@ -584,9 +604,9 @@ func testListRollers(t *testing.T) {
 		"roller_test_3",
 	}
 
-	roller1 := newMockRoller(t, names[0], wsURL)
-	roller2 := newMockRoller(t, names[1], wsURL)
-	roller3 := newMockRoller(t, names[2], wsURL)
+	roller1 := newMockRoller(t, names[0], wsURL, message.ChunkProof)
+	roller2 := newMockRoller(t, names[1], wsURL, message.ChunkProof)
+	roller3 := newMockRoller(t, names[2], wsURL, message.ChunkProof)
 	defer func() {
 		roller1.close()
 		roller2.close()
@@ -647,6 +667,7 @@ func setupCoordinator(t *testing.T, rollersPerSession uint8, wsURL string, reset
 type mockRoller struct {
 	rollerName string
 	privKey    *ecdsa.PrivateKey
+	proofType  message.ProofType
 
 	wsURL  string
 	client *client2.Client
@@ -658,13 +679,14 @@ type mockRoller struct {
 	stopCh chan struct{}
 }
 
-func newMockRoller(t *testing.T, rollerName string, wsURL string) *mockRoller {
+func newMockRoller(t *testing.T, rollerName string, wsURL string, proofType message.ProofType) *mockRoller {
 	privKey, err := crypto.GenerateKey()
 	assert.NoError(t, err)
 
 	roller := &mockRoller{
 		rollerName: rollerName,
 		privKey:    privKey,
+		proofType:  proofType,
 		wsURL:      wsURL,
 		taskCh:     make(chan *message.TaskMsg, 4),
 		stopCh:     make(chan struct{}),
@@ -686,8 +708,9 @@ func (r *mockRoller) connectToCoordinator() (*client2.Client, ethereum.Subscript
 	// create a new ws connection
 	authMsg := &message.AuthMsg{
 		Identity: &message.Identity{
-			Name:      r.rollerName,
-			Timestamp: uint32(time.Now().Unix()),
+			Name:       r.rollerName,
+			Timestamp:  uint32(time.Now().Unix()),
+			RollerType: r.proofType,
 		},
 	}
 	_ = authMsg.SignWithKey(r.privKey)
@@ -757,6 +780,7 @@ func (r *mockRoller) loop(t *testing.T, client *client2.Client, proofTime time.D
 			proof := &message.ProofMsg{
 				ProofDetail: &message.ProofDetail{
 					ID:     task.ID,
+					Type:   r.proofType,
 					Status: message.StatusOk,
 					Proof:  &message.AggProof{},
 				},
