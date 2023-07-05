@@ -11,7 +11,7 @@ import (
 // InitDB init the db handler
 func InitDB(config *config.DBConfig) (*gorm.DB, error) {
 	db, err := gorm.Open(postgres.Open(config.DSN), &gorm.Config{
-		Logger: logger.Default.LogMode(logger.Error),
+		Logger: logger.Default.LogMode(logger.Warn),
 	})
 	if err != nil {
 		return nil, err

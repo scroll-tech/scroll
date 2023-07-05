@@ -158,8 +158,7 @@ func (o *Batch) GetRollupStatusByHashList(ctx context.Context, hashes []string) 
 	return statuses, nil
 }
 
-// GetPendingBatches retrieves all or limited number of pending batches based on the specified limit.
-// If the limit is set to 0, it retrieves all pending batches.
+// GetPendingBatches retrieves pending batches up to the specified limit.
 // The returned batches are sorted in ascending order by their index.
 func (o *Batch) GetPendingBatches(ctx context.Context, limit int) ([]*Batch, error) {
 	if limit <= 0 {

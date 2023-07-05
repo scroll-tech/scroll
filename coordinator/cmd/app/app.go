@@ -65,6 +65,7 @@ func action(ctx *cli.Context) error {
 	if err != nil {
 		return err
 	}
+	defer rollerManager.Stop()
 
 	// Start all modules.
 	if err = rollerManager.Start(); err != nil {
