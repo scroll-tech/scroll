@@ -265,7 +265,7 @@ func (o *Batch) UpdateSkippedBatches(ctx context.Context) (uint64, error) {
 		int(types.ProvingTaskSkipped),
 		int(types.ProvingTaskFailed),
 	}
-	result := o.db.Model(&Batch{}).Where("rollup_status", int(types.RollupCommitted)).
+	result := o.db.WithContext(ctx).Model(&Batch{}).Where("rollup_status", int(types.RollupCommitted)).
 		Where("proving_status IN (?)", provingStatusList).Update("rollup_status", int(types.RollupFinalizationSkipped))
 	if result.Error != nil {
 		return 0, result.Error
@@ -304,7 +304,7 @@ func (o *Batch) UpdateProvingStatus(ctx context.Context, hash string, status typ
 	default:
 	}
 
-	if err := db.Model(&Batch{}).Where("hash", hash).Updates(updateFields).Error; err != nil {
+	if err := db.WithContext(ctx).Model(&Batch{}).Where("hash", hash).Updates(updateFields).Error; err != nil {
 		return err
 	}
 	return nil
@@ -326,7 +326,7 @@ func (o *Batch) UpdateRollupStatus(ctx context.Context, hash string, status type
 	case types.RollupFinalized:
 		updateFields["finalized_at"] = time.Now()
 	}
-	if err := db.Model(&Batch{}).WithContext(ctx).Where("hash", hash).Updates(updateFields).Error; err != nil {
+	if err := db.WithContext(ctx).Model(&Batch{}).Where("hash", hash).Updates(updateFields).Error; err != nil {
 		return err
 	}
 	return nil

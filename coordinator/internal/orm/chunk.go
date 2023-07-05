@@ -89,7 +89,8 @@ func (o *Chunk) GetChunks(ctx context.Context, fields map[string]interface{}, or
 func (o *Chunk) GetUnassignedChunks(ctx context.Context) ([]*Chunk, error) {
 	var chunks []*Chunk
 	db := o.db.WithContext(ctx)
-	db = db.Where("proving_status = ?", types.ProvingTaskUnassigned).Order("index ASC")
+	db = db.Where("proving_status = ?", types.ProvingTaskUnassigned)
+	db = db.Order("index ASC")
 
 	if err := db.Find(&chunks).Error; err != nil {
 		return nil, err
@@ -101,11 +102,11 @@ func (o *Chunk) GetUnassignedChunks(ctx context.Context) ([]*Chunk, error) {
 // It returns a slice of decoded proofs (message.AggProof) obtained from the database.
 // The returned proofs are sorted in ascending order by their associated chunk index.
 func (o *Chunk) GetProofsByBatchHash(ctx context.Context, batchHash string) ([]*message.AggProof, error) {
+	var chunks []*Chunk
 	db := o.db.WithContext(ctx)
 	db = db.Where("batch_hash", batchHash)
 	db = db.Order("index ASC")
 
-	var chunks []*Chunk
 	if err := db.Find(&chunks).Error; err != nil {
 		return nil, err
 	}
@@ -220,7 +221,7 @@ func (o *Chunk) InsertChunk(ctx context.Context, chunk *types.Chunk, dbTX ...*go
 		ProvingStatus:                int16(types.ProvingTaskUnassigned),
 	}
 
-	if err := db.Create(&newChunk).Error; err != nil {
+	if err := db.WithContext(ctx).Create(&newChunk).Error; err != nil {
 		log.Error("failed to insert chunk", "hash", hash, "err", err)
 		return nil, err
 	}
@@ -248,7 +249,7 @@ func (o *Chunk) UpdateProvingStatus(ctx context.Context, hash string, status typ
 	default:
 	}
 
-	if err := db.Model(&Chunk{}).Where("hash", hash).Updates(updateFields).Error; err != nil {
+	if err := db.WithContext(ctx).Model(&Chunk{}).Where("hash", hash).Updates(updateFields).Error; err != nil {
 		return err
 	}
 	return nil

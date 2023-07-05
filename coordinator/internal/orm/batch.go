@@ -80,8 +80,8 @@ func (o *Batch) GetLatestBatch(ctx context.Context) (*Batch, error) {
 func (o *Batch) GetPendingBatches(ctx context.Context) ([]*Batch, error) {
 	var batches []*Batch
 	db := o.db.WithContext(ctx)
-
-	db = db.Where("rollup_status = ?", types.RollupPending).Order("index ASC")
+	db = db.Where("rollup_status = ?", types.RollupPending)
+	db = db.Order("index ASC")
 
 	if err := db.Find(&batches).Error; err != nil {
 		return nil, err
@@ -194,7 +194,7 @@ func (o *Batch) UpdateProvingStatus(ctx context.Context, hash string, status typ
 	default:
 	}
 
-	if err := db.Model(&Batch{}).Where("hash", hash).Updates(updateFields).Error; err != nil {
+	if err := db.WithContext(ctx).Model(&Batch{}).Where("hash", hash).Updates(updateFields).Error; err != nil {
 		return err
 	}
 	return nil

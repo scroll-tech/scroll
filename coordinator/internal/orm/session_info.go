@@ -15,7 +15,7 @@ import (
 type SessionInfo struct {
 	db *gorm.DB `gorm:"column:-"`
 
-	ID              int            `json:"id" gorm:"column:id"`
+	ID              int64          `json:"id" gorm:"column:id"`
 	TaskID          string         `json:"task_id" gorm:"column:task_id"`
 	RollerPublicKey string         `json:"roller_public_key" gorm:"column:roller_public_key"`
 	RollerName      string         `json:"roller_name" gorm:"column:roller_name"`
@@ -46,41 +46,30 @@ func (o *SessionInfo) GetSessionInfosByHashes(ctx context.Context, hashes []stri
 	}
 	var sessionInfos []*SessionInfo
 	db := o.db.WithContext(ctx)
-	if err := db.Where("task_id IN ?", hashes).Find(&sessionInfos).Error; err != nil {
+	db = db.Where("task_id IN ?", hashes)
+	db = db.Order("id asc")
+
+	if err := db.Find(&sessionInfos).Error; err != nil {
 		return nil, err
 	}
 	return sessionInfos, nil
 }
 
 // SetSessionInfo updates or inserts a SessionInfo record.
-func (o *SessionInfo) SetSessionInfo(ctx context.Context, rollersInfo *SessionInfo) error {
-	sessionInfo := SessionInfo{
-		TaskID:          rollersInfo.TaskID,
-		RollerPublicKey: rollersInfo.RollerPublicKey,
-		ProofType:       rollersInfo.ProofType,
-		RollerName:      rollersInfo.RollerName,
-		ProvingStatus:   rollersInfo.ProvingStatus,
-		FailureType:     rollersInfo.FailureType,
-		Reward:          rollersInfo.Reward,
-		Proof:           rollersInfo.Proof,
-		CreatedAt:       rollersInfo.CreatedAt,
-	}
-
+func (o *SessionInfo) SetSessionInfo(ctx context.Context, sessionInfo *SessionInfo) error {
 	db := o.db.WithContext(ctx)
-	if err := db.Clauses(clause.OnConflict{
+	db = db.Clauses(clause.OnConflict{
 		Columns:   []clause.Column{{Name: "task_id"}, {Name: "roller_public_key"}},
 		DoUpdates: clause.AssignmentColumns([]string{"proving_status"}),
-	}).Create(&sessionInfo).Error; err != nil {
-		return err
-	}
-	return nil
+	})
+	return db.Create(&sessionInfo).Error
 }
 
 // UpdateSessionInfoProvingStatus updates the proving_status of a specific SessionInfo record.
 func (o *SessionInfo) UpdateSessionInfoProvingStatus(ctx context.Context, proofType message.ProveType, taskID string, pk string, status types.RollerProveStatus) error {
 	db := o.db.WithContext(ctx)
-	if err := db.Model(&SessionInfo{}).Where("proof_type = ? AND task_id = ? AND roller_public_key = ?", proofType, taskID, pk).Update("proving_status", status).Error; err != nil {
-		return err
-	}
-	return nil
+	db = db.Model(&SessionInfo{})
+	db = db.Where("proof_type = ? AND task_id = ? AND roller_public_key = ?", proofType, taskID, pk)
+
+	return db.Update("proving_status", status).Error
 }

@@ -227,13 +227,13 @@ func (m *Manager) restorePrevSessions() {
 		hashes = append(hashes, aggTask.Hash)
 	}
 	// load assigned basic tasks from db
-	basicTasks, err := m.chunkOrm.GetAssignedChunks(m.ctx)
+	chunkTasks, err := m.chunkOrm.GetAssignedChunks(m.ctx)
 	if err != nil {
 		log.Error("failed to get assigned batch batchHashes from db", "error", err)
 		return
 	}
-	for _, basicTask := range basicTasks {
-		hashes = append(hashes, basicTask.Hash)
+	for _, chunkTask := range chunkTasks {
+		hashes = append(hashes, chunkTask.Hash)
 	}
 	prevSessions, err := m.sessionInfoOrm.GetSessionInfosByHashes(m.ctx, hashes)
 	if err != nil {
@@ -509,6 +509,12 @@ func (m *Manager) CollectProofs(sess *session) {
 				}
 				coordinatorSessionsFailedTotalCounter.Inc(1)
 			}
+
+			if err := m.sessionInfoOrm.UpdateSessionInfoProvingStatus(m.ctx, ret.typ, ret.id, ret.pk, ret.status); err != nil {
+				log.Error("failed to update session info proving status",
+					"proof type", ret.typ, "task id", ret.id, "pk", ret.pk, "status", ret.status, "error", err)
+			}
+
 			//Check if all rollers have finished their tasks, and rollers with valid results are indexed by public key.
 			finished, validRollers := sess.isRollersFinished()
 
