@@ -172,11 +172,14 @@ func L2FetchAndSaveEvents(ctx context.Context, client *ethclient.Client, databas
 			if depositL2CrossMsgs[i].Layer2Hash == l2SentMsgWrapper.TxHash.Hex() {
 				depositL2CrossMsgs[i].MsgHash = l2SentMsgWrapper.L2SentMsg.MsgHash
 				l2SentMsgWrapper.L2SentMsg.TxSender = depositL2CrossMsgs[i].Sender
-				l2SentMsgs = append(l2SentMsgs, l2SentMsgWrapper.L2SentMsg)
 				break
 			}
 		}
 	}
+	for _, l2SentMsgWrapper := range L2SentMsgWrappers {
+		l2SentMsgs = append(l2SentMsgs, l2SentMsgWrapper.L2SentMsg)
+	}
+
 	dbTx, err := database.Beginx()
 	if err != nil {
 		log.Error("l2FetchAndSaveEvents: Failed to begin db transaction", "err", err)
