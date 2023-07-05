@@ -50,10 +50,11 @@ func (o *submissionInfoOrm) GetSubmissionInfosByHashes(hashes []string) ([]*type
 }
 
 func (o *submissionInfoOrm) GetSubmissionInfosByRoller(pubKey string) ([]*types.SubmissionInfo, error) {
-	rows, err := o.db.Queryx("SELECT * FROM submission_info WHERE roller_public_key = $1;", pubKey)
+	rows, err := o.db.Queryx(`SELECT * FROM submission_info WHERE roller_public_key = $1;`, pubKey)
 	if err != nil {
 		return nil, err
 	}
+	defer func() { _ = rows.Close() }()
 
 	var subs []*types.SubmissionInfo
 	for rows.Next() {
