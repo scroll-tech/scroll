@@ -16,7 +16,7 @@ create table prover_task
     updated_at          TIMESTAMP(0)   NOT NULL DEFAULT CURRENT_TIMESTAMP,
     deleted_at          TIMESTAMP(0)   DEFAULT NULL,
 
-    CONSTRAINT uk_prover_task_unique UNIQUE (task_type, task_id, prover_public_key)
+    CONSTRAINT idx_tasktype_taskid_publickey UNIQUE (task_type, task_id, prover_public_key)
 );
 
 comment
