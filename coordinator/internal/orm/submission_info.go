@@ -11,7 +11,7 @@ import (
 	"scroll-tech/common/types/message"
 )
 
-// SubmissionInfo is assigned rollers info of chunk/batch proof submission 
+// SubmissionInfo is assigned rollers info of chunk/batch proof submission
 type SubmissionInfo struct {
 	db *gorm.DB `gorm:"column:-"`
 
@@ -39,9 +39,9 @@ func (*SubmissionInfo) TableName() string {
 	return "submission_info"
 }
 
-// GetSessionInfosByHashes retrieves the SubmissionInfo records associated with the specified hashes.
+// GetSubmissionInfosByHashes retrieves the SubmissionInfo records associated with the specified hashes.
 // The returned session info objects are sorted in ascending order by their ids.
-func (o *SubmissionInfo) GetSessionInfosByHashes(ctx context.Context, hashes []string) ([]*SubmissionInfo, error) {
+func (o *SubmissionInfo) GetSubmissionInfosByHashes(ctx context.Context, hashes []string) ([]*SubmissionInfo, error) {
 	if len(hashes) == 0 {
 		return nil, nil
 	}
@@ -56,8 +56,8 @@ func (o *SubmissionInfo) GetSessionInfosByHashes(ctx context.Context, hashes []s
 	return sessionInfos, nil
 }
 
-// SetSessionInfo updates or inserts a SubmissionInfo record.
-func (o *SubmissionInfo) SetSessionInfo(ctx context.Context, sessionInfo *SubmissionInfo) error {
+// SetSubmissionInfo updates or inserts a SubmissionInfo record.
+func (o *SubmissionInfo) SetSubmissionInfo(ctx context.Context, sessionInfo *SubmissionInfo) error {
 	db := o.db.WithContext(ctx)
 	db = db.Clauses(clause.OnConflict{
 		Columns:   []clause.Column{{Name: "task_id"}, {Name: "roller_public_key"}},
@@ -66,8 +66,8 @@ func (o *SubmissionInfo) SetSessionInfo(ctx context.Context, sessionInfo *Submis
 	return db.Create(&sessionInfo).Error
 }
 
-// UpdateSessionInfoProvingStatus updates the proving_status of a specific SubmissionInfo record.
-func (o *SubmissionInfo) UpdateSessionInfoProvingStatus(ctx context.Context, proofType message.ProofType, taskID string, pk string, status types.RollerProveStatus) error {
+// UpdateSubmissionInfoProvingStatus updates the proving_status of a specific SubmissionInfo record.
+func (o *SubmissionInfo) UpdateSubmissionInfoProvingStatus(ctx context.Context, proofType message.ProofType, taskID string, pk string, status types.RollerProveStatus) error {
 	db := o.db.WithContext(ctx)
 	db = db.Model(&SubmissionInfo{})
 	db = db.Where("proof_type = ? AND task_id = ? AND roller_public_key = ?", proofType, taskID, pk)

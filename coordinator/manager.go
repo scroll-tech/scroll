@@ -235,7 +235,7 @@ func (m *Manager) restorePrevSessions() {
 	for _, chunkTask := range chunkTasks {
 		hashes = append(hashes, chunkTask.Hash)
 	}
-	prevSessions, err := m.submissionInfoOrm.GetSessionInfosByHashes(m.ctx, hashes)
+	prevSessions, err := m.submissionInfoOrm.GetSubmissionInfosByHashes(m.ctx, hashes)
 	if err != nil {
 		log.Error("failed to recover roller session info from db", "error", err)
 		return
@@ -421,7 +421,7 @@ func (m *Manager) handleZkProof(pk string, msg *message.ProofDetail) error {
 
 // checkAttempts use the count of session info to check the attempts
 func (m *Manager) checkAttemptsExceeded(hash string) bool {
-	sessionInfos, err := m.submissionInfoOrm.GetSessionInfosByHashes(context.Background(), []string{hash})
+	sessionInfos, err := m.submissionInfoOrm.GetSubmissionInfosByHashes(context.Background(), []string{hash})
 	if err != nil {
 		log.Error("get session info error", "hash id", hash, "error", err)
 		return true
@@ -510,7 +510,7 @@ func (m *Manager) CollectProofs(sess *session) {
 				coordinatorSessionsFailedTotalCounter.Inc(1)
 			}
 
-			if err := m.submissionInfoOrm.UpdateSessionInfoProvingStatus(m.ctx, ret.typ, ret.id, ret.pk, ret.status); err != nil {
+			if err := m.submissionInfoOrm.UpdateSubmissionInfoProvingStatus(m.ctx, ret.typ, ret.id, ret.pk, ret.status); err != nil {
 				log.Error("failed to update session info proving status",
 					"proof type", ret.typ, "task id", ret.id, "pk", ret.pk, "status", ret.status, "error", err)
 			}
@@ -652,7 +652,7 @@ func (m *Manager) StartChunkProofGenerationSession(task *orm.Chunk, prevSession 
 			CreatedAt:       time.Now(), // Used in submissionInfos, should be explicitly assigned here.
 		}
 		// Store session info.
-		if err = m.submissionInfoOrm.SetSessionInfo(m.ctx, &submissionInfo); err != nil {
+		if err = m.submissionInfoOrm.SetSubmissionInfo(m.ctx, &submissionInfo); err != nil {
 			log.Error("db set session info fail", "session id", taskID, "error", err)
 			return false
 		}
@@ -751,7 +751,7 @@ func (m *Manager) StartBatchProofGenerationSession(task *orm.Batch, prevSession 
 			CreatedAt:       time.Now(), // Used in submissionInfos, should be explicitly assigned here.
 		}
 		// Store session info.
-		if err = m.submissionInfoOrm.SetSessionInfo(context.Background(), &submissionInfo); err != nil {
+		if err = m.submissionInfoOrm.SetSubmissionInfo(context.Background(), &submissionInfo); err != nil {
 			log.Error("db set session info fail", "session id", taskID, "error", err)
 			return false
 		}

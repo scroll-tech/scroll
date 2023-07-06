@@ -69,17 +69,17 @@ func TestSessionInfoOrm(t *testing.T) {
 		ProvingStatus:   int16(types.RollerAssigned),
 	}
 
-	err = submissionInfoOrm.SetSessionInfo(context.Background(), &sessionInfo)
+	err = submissionInfoOrm.SetSubmissionInfo(context.Background(), &sessionInfo)
 	assert.NoError(t, err)
-	sessionInfos, err := submissionInfoOrm.GetSessionInfosByHashes(context.Background(), []string{"test-hash"})
+	sessionInfos, err := submissionInfoOrm.GetSubmissionInfosByHashes(context.Background(), []string{"test-hash"})
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(sessionInfos))
 	assert.Equal(t, sessionInfo.RollerName, sessionInfos[0].RollerName)
 
 	sessionInfo.ProvingStatus = int16(types.RollerProofValid)
-	err = submissionInfoOrm.SetSessionInfo(context.Background(), &sessionInfo)
+	err = submissionInfoOrm.SetSubmissionInfo(context.Background(), &sessionInfo)
 	assert.NoError(t, err)
-	sessionInfos, err = submissionInfoOrm.GetSessionInfosByHashes(context.Background(), []string{"test-hash"})
+	sessionInfos, err = submissionInfoOrm.GetSubmissionInfosByHashes(context.Background(), []string{"test-hash"})
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(sessionInfos))
 	assert.Equal(t, sessionInfo.ProvingStatus, sessionInfos[0].ProvingStatus)
