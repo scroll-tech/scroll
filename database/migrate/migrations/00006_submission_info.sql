@@ -16,7 +16,7 @@ create table submission_info
     updated_at          TIMESTAMP(0)   NOT NULL DEFAULT CURRENT_TIMESTAMP,
     deleted_at          TIMESTAMP(0)   DEFAULT NULL,
 
-    CONSTRAINT uk_submission_unique UNIQUE (task_id, roller_public_key)
+    CONSTRAINT uk_taskid_publickey UNIQUE (task_id, roller_public_key)
 );
 
 comment
