@@ -83,12 +83,12 @@ func (l *l2CrossMsgOrm) BatchInsertL2CrossMsgDBTx(dbTx *sqlx.Tx, messages []*Cro
 	var err error
 	messageMaps := make([]map[string]interface{}, len(messages))
 	for i, msg := range messages {
-
 		messageMaps[i] = map[string]interface{}{
 			"height":       msg.Height,
 			"sender":       msg.Sender,
 			"target":       msg.Target,
 			"asset":        msg.Asset,
+			"msg_hash":     msg.MsgHash,
 			"layer2_hash":  msg.Layer2Hash,
 			"layer1_token": msg.Layer1Token,
 			"layer2_token": msg.Layer2Token,
@@ -97,7 +97,7 @@ func (l *l2CrossMsgOrm) BatchInsertL2CrossMsgDBTx(dbTx *sqlx.Tx, messages []*Cro
 			"msg_type":     Layer2Msg,
 		}
 	}
-	_, err = dbTx.NamedExec(`insert into cross_message(height, sender, target, asset, layer2_hash, layer1_token, layer2_token, token_ids, amount, msg_type) values(:height, :sender, :target, :asset, :layer2_hash, :layer1_token, :layer2_token, :token_ids, :amount, :msg_type);`, messageMaps)
+	_, err = dbTx.NamedExec(`insert into cross_message(height, sender, target, asset, msg_hash, layer2_hash, layer1_token, layer2_token, token_ids, amount, msg_type) values(:height, :sender, :target, :asset, :msg_hash, :layer2_hash, :layer1_token, :layer2_token, :token_ids, :amount, :msg_type);`, messageMaps)
 	if err != nil {
 		log.Error("BatchInsertL2CrossMsgDBTx: failed to insert l2 cross msgs", "err", err)
 		return err

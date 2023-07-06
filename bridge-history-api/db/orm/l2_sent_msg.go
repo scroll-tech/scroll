@@ -10,20 +10,20 @@ import (
 )
 
 type L2SentMsg struct {
-	ID         uint64     `json:"id" db:"id"`
-	TxSender   string     `json:"tx_sender" db:"tx_sender"`
-	MsgHash    string     `json:"msg_hash" db:"msg_hash"`
-	Sender     string     `json:"sender" db:"sender"`
-	Target     string     `json:"target" db:"target"`
-	Value      string     `json:"value" db:"value"`
-	Height     uint64     `json:"height" db:"height"`
-	Nonce      uint64     `json:"nonce" db:"nonce"`
-	BatchIndex uint64     `json:"batch_index" db:"batch_index"`
-	MsgProof   string     `json:"msg_proof" db:"msg_proof"`
-	MsgData    string     `json:"msg_data" db:"msg_data"`
-	CreatedAt  *time.Time `json:"created_at" db:"created_at"`
-	UpdatedAt  *time.Time `json:"updated_at" db:"updated_at"`
-	DeletedAt  *time.Time `json:"deleted_at" db:"deleted_at"`
+	ID             uint64     `json:"id" db:"id"`
+	OriginalSender string     `json:"original_sender" db:"original_sender"`
+	MsgHash        string     `json:"msg_hash" db:"msg_hash"`
+	Sender         string     `json:"sender" db:"sender"`
+	Target         string     `json:"target" db:"target"`
+	Value          string     `json:"value" db:"value"`
+	Height         uint64     `json:"height" db:"height"`
+	Nonce          uint64     `json:"nonce" db:"nonce"`
+	BatchIndex     uint64     `json:"batch_index" db:"batch_index"`
+	MsgProof       string     `json:"msg_proof" db:"msg_proof"`
+	MsgData        string     `json:"msg_data" db:"msg_data"`
+	CreatedAt      *time.Time `json:"created_at" db:"created_at"`
+	UpdatedAt      *time.Time `json:"updated_at" db:"updated_at"`
+	DeletedAt      *time.Time `json:"deleted_at" db:"deleted_at"`
 }
 
 type l2SentMsgOrm struct {
@@ -52,19 +52,19 @@ func (l *l2SentMsgOrm) BatchInsertL2SentMsgDBTx(dbTx *sqlx.Tx, messages []*L2Sen
 	messageMaps := make([]map[string]interface{}, len(messages))
 	for i, msg := range messages {
 		messageMaps[i] = map[string]interface{}{
-			"tx_sender":   msg.TxSender,
-			"sender":      msg.Sender,
-			"target":      msg.Target,
-			"value":       msg.Value,
-			"msg_hash":    msg.MsgHash,
-			"height":      msg.Height,
-			"nonce":       msg.Nonce,
-			"batch_index": msg.BatchIndex,
-			"msg_proof":   msg.MsgProof,
-			"msg_data":    msg.MsgData,
+			"original_sender": msg.OriginalSender,
+			"sender":          msg.Sender,
+			"target":          msg.Target,
+			"value":           msg.Value,
+			"msg_hash":        msg.MsgHash,
+			"height":          msg.Height,
+			"nonce":           msg.Nonce,
+			"batch_index":     msg.BatchIndex,
+			"msg_proof":       msg.MsgProof,
+			"msg_data":        msg.MsgData,
 		}
 	}
-	_, err = dbTx.NamedExec(`insert into l2_sent_msg(tx_sender, sender, target, value, msg_hash, height, nonce, batch_index, msg_proof, msg_data) values(:tx_sender, :sender, :target, :value, :msg_hash, :height, :nonce, :batch_index, :msg_proof, :msg_data);`, messageMaps)
+	_, err = dbTx.NamedExec(`insert into l2_sent_msg(original_sender, sender, target, value, msg_hash, height, nonce, batch_index, msg_proof, msg_data) values(:original_sender, :sender, :target, :value, :msg_hash, :height, :nonce, :batch_index, :msg_proof, :msg_data);`, messageMaps)
 	if err != nil {
 		log.Error("BatchInsertL2SentMsgDBTx: failed to insert l2 sent msgs", "err", err)
 		return err
@@ -95,7 +95,7 @@ func (l *l2SentMsgOrm) UpdateL2MessageProofInDBTx(ctx context.Context, dbTx *sql
 }
 
 func (l *l2SentMsgOrm) GetLatestL2SentMsgBatchIndex() (int64, error) {
-	row := l.db.QueryRow(`SELECT batch_index FROM l2_sent_msg WHERE msg_proof != '' AND deleted_at IS NULL ORDER BY batch_index DESC LIMIT 1;`)
+	row := l.db.QueryRow(`SELECT batch_index FROM l2_sent_msg WHERE batch_index != 0 AND deleted_at IS NULL ORDER BY batch_index DESC LIMIT 1;`)
 	var result sql.NullInt64
 	if err := row.Scan(&result); err != nil {
 		if err == sql.ErrNoRows || !result.Valid {
