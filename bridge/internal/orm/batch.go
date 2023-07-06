@@ -132,7 +132,6 @@ func (o *Batch) GetLatestBatch(ctx context.Context) (*Batch, error) {
 }
 
 // GetRollupStatusByHashList retrieves the rollup statuses for a list of batch hashes.
-// GetRollupStatusByHashList retrieves the rollup statuses for a list of batch hashes.
 func (o *Batch) GetRollupStatusByHashList(ctx context.Context, hashes []string) ([]types.RollupStatus, error) {
 	if len(hashes) == 0 {
 		return nil, nil
