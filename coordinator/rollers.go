@@ -53,7 +53,7 @@ func (m *Manager) reloadRollerAssignedTasks(pubkey string) *cmap.ConcurrentMap {
 	defer m.mu.RUnlock()
 	taskIDs := cmap.New()
 	for id, sess := range m.sessions {
-		for _, sessionInfo := range sess.sessionInfos {
+		for _, sessionInfo := range sess.submissionInfos {
 			if sessionInfo.RollerPublicKey == pubkey && sessionInfo.ProvingStatus == int16(types.RollerAssigned) {
 				taskIDs.Set(id, struct{}{})
 			}

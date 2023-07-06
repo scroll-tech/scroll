@@ -56,8 +56,8 @@ type rollerProofStatus struct {
 
 // Contains all the information on an ongoing proof generation session.
 type session struct {
-	taskID       string
-	sessionInfos []*orm.SubmissionInfo
+	taskID          string
+	submissionInfos []*orm.SubmissionInfo
 	// finish channel is used to pass the public key of the rollers who finished proving process.
 	finishChan chan rollerProofStatus
 }
@@ -91,10 +91,10 @@ type Manager struct {
 	verifier *verifier.Verifier
 
 	// orm interface
-	l2BlockOrm     *orm.L2Block
-	chunkOrm       *orm.Chunk
-	batchOrm       *orm.Batch
-	sessionInfoOrm *orm.SubmissionInfo
+	l2BlockOrm        *orm.L2Block
+	chunkOrm          *orm.Chunk
+	batchOrm          *orm.Batch
+	submissionInfoOrm *orm.SubmissionInfo
 
 	// Token cache
 	tokenCache *cache.Cache
@@ -124,7 +124,7 @@ func New(ctx context.Context, cfg *config.RollerManagerConfig, db *gorm.DB) (*Ma
 		l2BlockOrm:         orm.NewL2Block(db),
 		chunkOrm:           orm.NewChunk(db),
 		batchOrm:           orm.NewBatch(db),
-		sessionInfoOrm:     orm.NewSubmissionInfo(db),
+		submissionInfoOrm:  orm.NewSubmissionInfo(db),
 		tokenCache:         cache.New(time.Duration(cfg.TokenTimeToLive)*time.Second, 1*time.Hour),
 		verifierWorkerPool: workerpool.NewWorkerPool(cfg.MaxVerifierWorkers),
 	}, nil
@@ -235,24 +235,24 @@ func (m *Manager) restorePrevSessions() {
 	for _, chunkTask := range chunkTasks {
 		hashes = append(hashes, chunkTask.Hash)
 	}
-	prevSessions, err := m.sessionInfoOrm.GetSessionInfosByHashes(m.ctx, hashes)
+	prevSessions, err := m.submissionInfoOrm.GetSessionInfosByHashes(m.ctx, hashes)
 	if err != nil {
 		log.Error("failed to recover roller session info from db", "error", err)
 		return
 	}
 
-	sessionInfosMaps := make(map[string][]*orm.SubmissionInfo)
+	submissionInfosMaps := make(map[string][]*orm.SubmissionInfo)
 	for _, v := range prevSessions {
 		log.Info("restore roller info for session", "session start time", v.CreatedAt, "session id", v.TaskID, "roller name",
 			v.RollerName, "proof type", v.ProofType, "public key", v.RollerPublicKey, "proof status", v.ProvingStatus)
-		sessionInfosMaps[v.TaskID] = append(sessionInfosMaps[v.TaskID], v)
+		submissionInfosMaps[v.TaskID] = append(submissionInfosMaps[v.TaskID], v)
 	}
 
-	for taskID, sessionInfos := range sessionInfosMaps {
+	for taskID, sessionInfos := range submissionInfosMaps {
 		sess := &session{
-			taskID:       taskID,
-			sessionInfos: sessionInfos,
-			finishChan:   make(chan rollerProofStatus, proofAndPkBufferSize),
+			taskID:          taskID,
+			submissionInfos: sessionInfos,
+			finishChan:      make(chan rollerProofStatus, proofAndPkBufferSize),
 		}
 		m.sessions[taskID] = sess
 		go m.CollectProofs(sess)
@@ -277,7 +277,7 @@ func (m *Manager) handleZkProof(pk string, msg *message.ProofDetail) error {
 	}
 
 	var submissionInfo *orm.SubmissionInfo
-	for _, si := range sess.sessionInfos {
+	for _, si := range sess.submissionInfos {
 		// get the send session info of this proof msg
 		if si.TaskID == msg.ID && si.RollerPublicKey == pk {
 			submissionInfo = si
@@ -421,7 +421,7 @@ func (m *Manager) handleZkProof(pk string, msg *message.ProofDetail) error {
 
 // checkAttempts use the count of session info to check the attempts
 func (m *Manager) checkAttemptsExceeded(hash string) bool {
-	sessionInfos, err := m.sessionInfoOrm.GetSessionInfosByHashes(context.Background(), []string{hash})
+	sessionInfos, err := m.submissionInfoOrm.GetSessionInfosByHashes(context.Background(), []string{hash})
 	if err != nil {
 		log.Error("get session info error", "hash id", hash, "error", err)
 		return true
@@ -444,14 +444,14 @@ func (m *Manager) CollectProofs(sess *session) {
 		case <-time.After(time.Duration(m.cfg.CollectionTime) * time.Minute):
 			if !m.checkAttemptsExceeded(sess.taskID) {
 				var success bool
-				if message.ProofType(sess.sessionInfos[0].ProofType) == message.ProofTypeBatch {
+				if message.ProofType(sess.submissionInfos[0].ProofType) == message.ProofTypeBatch {
 					success = m.StartBatchProofGenerationSession(nil, sess)
-				} else if message.ProofType(sess.sessionInfos[0].ProofType) == message.ProofTypeChunk {
+				} else if message.ProofType(sess.submissionInfos[0].ProofType) == message.ProofTypeChunk {
 					success = m.StartChunkProofGenerationSession(nil, sess)
 				}
 				if success {
 					m.mu.Lock()
-					for _, v := range sess.sessionInfos {
+					for _, v := range sess.submissionInfos {
 						m.freeTaskIDForRoller(v.RollerPublicKey, v.TaskID)
 					}
 					m.mu.Unlock()
@@ -467,19 +467,19 @@ func (m *Manager) CollectProofs(sess *session) {
 			// Note that this is only a workaround for testnet here.
 			// TODO: In real cases we should reset to orm.ProvingTaskUnassigned
 			// so as to re-distribute the task in the future
-			if message.ProofType(sess.sessionInfos[0].ProofType) == message.ProofTypeChunk {
+			if message.ProofType(sess.submissionInfos[0].ProofType) == message.ProofTypeChunk {
 				if err := m.chunkOrm.UpdateProvingStatus(m.ctx, sess.taskID, types.ProvingTaskFailed); err != nil {
 					log.Error("fail to reset chunk task_status as Unassigned", "task id", sess.taskID, "err", err)
 				}
 			}
-			if message.ProofType(sess.sessionInfos[0].ProofType) == message.ProofTypeBatch {
+			if message.ProofType(sess.submissionInfos[0].ProofType) == message.ProofTypeBatch {
 				if err := m.batchOrm.UpdateProvingStatus(m.ctx, sess.taskID, types.ProvingTaskFailed); err != nil {
 					log.Error("fail to reset batch task_status as Unassigned", "task id", sess.taskID, "err", err)
 				}
 			}
 
 			m.mu.Lock()
-			for _, v := range sess.sessionInfos {
+			for _, v := range sess.submissionInfos {
 				m.freeTaskIDForRoller(v.RollerPublicKey, v.TaskID)
 			}
 			delete(m.sessions, sess.taskID)
@@ -490,9 +490,9 @@ func (m *Manager) CollectProofs(sess *session) {
 		//Execute after one of the roller finishes sending proof, return early if all rollers had sent results.
 		case ret := <-sess.finishChan:
 			m.mu.Lock()
-			for idx := range sess.sessionInfos {
-				if sess.sessionInfos[idx].RollerPublicKey == ret.pk {
-					sess.sessionInfos[idx].ProvingStatus = int16(ret.status)
+			for idx := range sess.submissionInfos {
+				if sess.submissionInfos[idx].RollerPublicKey == ret.pk {
+					sess.submissionInfos[idx].ProvingStatus = int16(ret.status)
 				}
 			}
 
@@ -510,7 +510,7 @@ func (m *Manager) CollectProofs(sess *session) {
 				coordinatorSessionsFailedTotalCounter.Inc(1)
 			}
 
-			if err := m.sessionInfoOrm.UpdateSessionInfoProvingStatus(m.ctx, ret.typ, ret.id, ret.pk, ret.status); err != nil {
+			if err := m.submissionInfoOrm.UpdateSessionInfoProvingStatus(m.ctx, ret.typ, ret.id, ret.pk, ret.status); err != nil {
 				log.Error("failed to update session info proving status",
 					"proof type", ret.typ, "task id", ret.id, "pk", ret.pk, "status", ret.status, "error", err)
 			}
@@ -524,7 +524,7 @@ func (m *Manager) CollectProofs(sess *session) {
 				randIndex := rand.Int63n(int64(len(validRollers)))
 				_ = validRollers[randIndex]
 				// TODO: reward winner
-				for _, sessionInfo := range sess.sessionInfos {
+				for _, sessionInfo := range sess.submissionInfos {
 					m.freeTaskIDForRoller(sessionInfo.RollerPublicKey, sessionInfo.TaskID)
 					delete(m.sessions, sessionInfo.TaskID)
 				}
@@ -543,7 +543,7 @@ func (m *Manager) CollectProofs(sess *session) {
 // validRollers also records the public keys of rollers who have finished their tasks correctly as index.
 func (s *session) isRollersFinished() (bool, []string) {
 	var validRollers []string
-	for _, sessionInfo := range s.sessionInfos {
+	for _, sessionInfo := range s.submissionInfos {
 		if types.RollerProveStatus(sessionInfo.ProvingStatus) == types.RollerProofValid {
 			validRollers = append(validRollers, sessionInfo.RollerPublicKey)
 			continue
@@ -560,7 +560,7 @@ func (s *session) isRollersFinished() (bool, []string) {
 }
 
 func (s *session) isSessionFailed() bool {
-	for _, sessionInfo := range s.sessionInfos {
+	for _, sessionInfo := range s.submissionInfos {
 		if types.RollerProveStatus(sessionInfo.ProvingStatus) != types.RollerProofInvalid {
 			return false
 		}
@@ -629,7 +629,7 @@ func (m *Manager) StartChunkProofGenerationSession(task *orm.Chunk, prevSession 
 	}
 
 	// Dispatch task to chunk rollers.
-	var sessionInfos []*orm.SubmissionInfo
+	var submissionInfos []*orm.SubmissionInfo
 	for i := 0; i < int(m.cfg.RollersPerSession); i++ {
 		roller := m.selectRoller(message.ProofTypeChunk)
 		if roller == nil {
@@ -643,26 +643,26 @@ func (m *Manager) StartChunkProofGenerationSession(task *orm.Chunk, prevSession 
 			continue
 		}
 		m.updateMetricRollerProofsLastAssignedTimestampGauge(roller.PublicKey)
-		tmpSessionInfo := orm.SubmissionInfo{
+		submissionInfo := orm.SubmissionInfo{
 			TaskID:          taskID,
 			RollerPublicKey: roller.PublicKey,
 			ProofType:       int16(message.ProofTypeChunk),
 			RollerName:      roller.Name,
 			ProvingStatus:   int16(types.RollerAssigned),
-			CreatedAt:       time.Now(), // Used in sessionInfos, should be explicitly assigned here.
+			CreatedAt:       time.Now(), // Used in submissionInfos, should be explicitly assigned here.
 		}
 		// Store session info.
-		if err = m.sessionInfoOrm.SetSessionInfo(m.ctx, &tmpSessionInfo); err != nil {
+		if err = m.submissionInfoOrm.SetSessionInfo(m.ctx, &submissionInfo); err != nil {
 			log.Error("db set session info fail", "session id", taskID, "error", err)
 			return false
 		}
-		sessionInfos = append(sessionInfos, &tmpSessionInfo)
+		submissionInfos = append(submissionInfos, &submissionInfo)
 		log.Info("assigned proof to roller", "session id", taskID, "session type", message.ProofTypeChunk, "roller name", roller.Name,
-			"roller pk", roller.PublicKey, "proof status", tmpSessionInfo.ProvingStatus)
+			"roller pk", roller.PublicKey, "proof status", submissionInfo.ProvingStatus)
 
 	}
 	// No roller assigned.
-	if len(sessionInfos) == 0 {
+	if len(submissionInfos) == 0 {
 		log.Error("no roller assigned", "id", taskID, "number of idle chunk rollers", m.GetNumberOfIdleRollers(message.ProofTypeChunk))
 		return false
 	}
@@ -675,9 +675,9 @@ func (m *Manager) StartChunkProofGenerationSession(task *orm.Chunk, prevSession 
 
 	// Create a proof generation session.
 	sess := &session{
-		taskID:       taskID,
-		sessionInfos: sessionInfos,
-		finishChan:   make(chan rollerProofStatus, proofAndPkBufferSize),
+		taskID:          taskID,
+		submissionInfos: submissionInfos,
+		finishChan:      make(chan rollerProofStatus, proofAndPkBufferSize),
 	}
 
 	m.mu.Lock()
@@ -724,7 +724,7 @@ func (m *Manager) StartBatchProofGenerationSession(task *orm.Batch, prevSession 
 	}
 
 	// Dispatch task to chunk rollers.
-	var sessionInfos []*orm.SubmissionInfo
+	var submissionInfos []*orm.SubmissionInfo
 	for i := 0; i < int(m.cfg.RollersPerSession); i++ {
 		roller := m.selectRoller(message.ProofTypeBatch)
 		if roller == nil {
@@ -742,27 +742,27 @@ func (m *Manager) StartBatchProofGenerationSession(task *orm.Batch, prevSession 
 			continue
 		}
 
-		tmpSessionInfo := orm.SubmissionInfo{
+		submissionInfo := orm.SubmissionInfo{
 			TaskID:          taskID,
 			RollerPublicKey: roller.PublicKey,
 			ProofType:       int16(message.ProofTypeBatch),
 			RollerName:      roller.Name,
 			ProvingStatus:   int16(types.RollerAssigned),
-			CreatedAt:       time.Now(), // Used in sessionInfos, should be explicitly assigned here.
+			CreatedAt:       time.Now(), // Used in submissionInfos, should be explicitly assigned here.
 		}
 		// Store session info.
-		if err = m.sessionInfoOrm.SetSessionInfo(context.Background(), &tmpSessionInfo); err != nil {
+		if err = m.submissionInfoOrm.SetSessionInfo(context.Background(), &submissionInfo); err != nil {
 			log.Error("db set session info fail", "session id", taskID, "error", err)
 			return false
 		}
 
 		m.updateMetricRollerProofsLastAssignedTimestampGauge(roller.PublicKey)
-		sessionInfos = append(sessionInfos, &tmpSessionInfo)
+		submissionInfos = append(submissionInfos, &submissionInfo)
 		log.Info("assigned proof to roller", "session id", taskID, "session type", message.ProofTypeBatch, "roller name", roller.Name,
-			"roller pk", roller.PublicKey, "proof status", tmpSessionInfo.ProvingStatus)
+			"roller pk", roller.PublicKey, "proof status", submissionInfo.ProvingStatus)
 	}
 	// No roller assigned.
-	if len(sessionInfos) == 0 {
+	if len(submissionInfos) == 0 {
 		log.Error("no roller assigned", "id", taskID, "number of idle batch rollers", m.GetNumberOfIdleRollers(message.ProofTypeBatch))
 		return false
 	}
@@ -775,9 +775,9 @@ func (m *Manager) StartBatchProofGenerationSession(task *orm.Batch, prevSession 
 
 	// Create a proof generation session.
 	sess := &session{
-		taskID:       taskID,
-		sessionInfos: sessionInfos,
-		finishChan:   make(chan rollerProofStatus, proofAndPkBufferSize),
+		taskID:          taskID,
+		submissionInfos: submissionInfos,
+		finishChan:      make(chan rollerProofStatus, proofAndPkBufferSize),
 	}
 
 	m.mu.Lock()
