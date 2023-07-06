@@ -11,7 +11,7 @@ import (
 	"scroll-tech/common/types/message"
 )
 
-// SubmissionInfo is assigned rollers info of a block batch (session).
+// SubmissionInfo is assigned rollers info of chunk/batch proof submission 
 type SubmissionInfo struct {
 	db *gorm.DB `gorm:"column:-"`
 
