@@ -291,7 +291,7 @@ func (m *Manager) handleZkProof(pk string, msg *message.ProofDetail) error {
 	proofTime := time.Since(proverTask.CreatedAt)
 	proofTimeSec := uint64(proofTime.Seconds())
 
-	// Ensure this roller is eligible to participate in the session.
+	// Ensure this roller is eligible to participate in the prover task.
 	if types.RollerProveStatus(proverTask.ProvingStatus) == types.RollerProofValid {
 		// In order to prevent DoS attacks, it is forbidden to repeatedly submit valid proofs.
 		// TODO: Defend invalid proof resubmissions by one of the following two methods:
