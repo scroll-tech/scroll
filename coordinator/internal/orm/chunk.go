@@ -121,8 +121,11 @@ func (o *Chunk) GetLatestChunk(ctx context.Context) (*Chunk, error) {
 // GetProvingStatusByHash retrieves the proving status of a chunk given its hash.
 func (o *Chunk) GetProvingStatusByHash(ctx context.Context, hash string) (types.ProvingStatus, error) {
 	var chunk Chunk
-	err := o.db.WithContext(ctx).Where("hash = ?", hash).First(&chunk).Error
-	if err != nil {
+	db := o.db.WithContext(ctx)
+	db = db.Model(&Chunk{})
+	db = db.Where("hash = ?", hash)
+	db = db.Select("proving_status")
+	if err := db.Find(&chunk).Error; err != nil {
 		return types.ProvingStatusUndefined, err
 	}
 	return types.ProvingStatus(chunk.ProvingStatus), nil

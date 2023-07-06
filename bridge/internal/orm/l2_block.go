@@ -56,10 +56,12 @@ func (o *L2Block) GetL2BlocksLatestHeight(ctx context.Context) (int64, error) {
 // The returned blocks are sorted in ascending order by their block number.
 func (o *L2Block) GetUnchunkedBlocks(ctx context.Context) ([]*types.WrappedBlock, error) {
 	var l2Blocks []L2Block
-	if err := o.db.WithContext(ctx).Select("header, transactions, withdraw_trie_root").
-		Where("chunk_hash IS NULL").
-		Order("number asc").
-		Find(&l2Blocks).Error; err != nil {
+	db := o.db.WithContext(ctx)
+	db = db.Model(&L2Block{})
+	db = db.Select("header, transactions, withdraw_trie_root")
+	db = db.Where("chunk_hash IS NULL")
+	db = db.Order("number ASC")
+	if err := db.Find(&l2Blocks).Error; err != nil {
 		return nil, err
 	}
 
@@ -119,6 +121,7 @@ func (o *L2Block) GetL2BlocksInRange(ctx context.Context, startBlockNumber uint6
 
 	var l2Blocks []L2Block
 	db := o.db.WithContext(ctx)
+	db = db.Select("header, transactions, withdraw_trie_root")
 	db = db.Where("number >= ? AND number <= ?", startBlockNumber, endBlockNumber)
 	db = db.Order("number ASC")
 
