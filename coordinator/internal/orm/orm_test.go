@@ -69,17 +69,17 @@ func TestProverTaskOrm(t *testing.T) {
 		ProvingStatus:   int16(types.RollerAssigned),
 	}
 
-	err = proverTask.SetProverTask(context.Background(), &proverTask)
+	err = proverTaskOrm.SetProverTask(context.Background(), &proverTask)
 	assert.NoError(t, err)
-	proverTasks, err := proverTask.GetProverTasksByHashes(context.Background(), []string{"test-hash"})
+	proverTasks, err := proverTaskOrm.GetProverTasksByHashes(context.Background(), []string{"test-hash"})
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(proverTasks))
 	assert.Equal(t, proverTask.RollerName, proverTasks[0].RollerName)
 
 	proverTask.ProvingStatus = int16(types.RollerProofValid)
-	err = proverTask.SetProverTask(context.Background(), &proverTask)
+	err = proverTaskOrm.SetProverTask(context.Background(), &proverTask)
 	assert.NoError(t, err)
-	proverTasks, err = proverTask.GetProverTasksByHashes(context.Background(), []string{"test-hash"})
+	proverTasks, err = proverTaskOrm.GetProverTasksByHashes(context.Background(), []string{"test-hash"})
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(proverTasks))
 	assert.Equal(t, proverTask.ProvingStatus, proverTasks[0].ProvingStatus)
