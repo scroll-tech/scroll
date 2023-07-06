@@ -17,9 +17,9 @@ type ProverTask struct {
 
 	ID              int64          `json:"id" gorm:"column:id"`
 	TaskID          string         `json:"task_id" gorm:"column:task_id"`
-	RollerPublicKey string         `json:"roller_public_key" gorm:"column:roller_public_key"`
-	RollerName      string         `json:"roller_name" gorm:"column:roller_name"`
-	ProofType       int16          `json:"proof_type" gorm:"column:proof_type;default:0"`
+	ProverPublicKey string         `json:"prover_public_key" gorm:"column:prover_public_key"`
+	ProverName      string         `json:"roller_name" gorm:"column:roller_name"`
+	TaskType        int16          `json:"task_type" gorm:"column:task_type;default:0"`
 	ProvingStatus   int16          `json:"proving_status" gorm:"column:proving_status;default:0"`
 	FailureType     int16          `json:"failure_type" gorm:"column:failure_type;default:0"`
 	Reward          uint64         `json:"reward" gorm:"column:reward;default:0"`
@@ -60,7 +60,7 @@ func (o *ProverTask) GetProverTasksByHashes(ctx context.Context, hashes []string
 func (o *ProverTask) SetProverTask(ctx context.Context, sessionInfo *ProverTask) error {
 	db := o.db.WithContext(ctx)
 	db = db.Clauses(clause.OnConflict{
-		Columns:   []clause.Column{{Name: "task_id"}, {Name: "roller_public_key"}},
+		Columns:   []clause.Column{{Name: "task_id"}, {Name: "prover_public_key"}},
 		DoUpdates: clause.AssignmentColumns([]string{"proving_status"}),
 	})
 	return db.Create(&sessionInfo).Error
@@ -70,7 +70,7 @@ func (o *ProverTask) SetProverTask(ctx context.Context, sessionInfo *ProverTask)
 func (o *ProverTask) UpdateProverTaskProvingStatus(ctx context.Context, proofType message.ProofType, taskID string, pk string, status types.RollerProveStatus) error {
 	db := o.db.WithContext(ctx)
 	db = db.Model(&ProverTask{})
-	db = db.Where("proof_type = ? AND task_id = ? AND roller_public_key = ?", proofType, taskID, pk)
+	db = db.Where("task_type = ? AND task_id = ? AND prover_public_key = ?", proofType, taskID, pk)
 
 	return db.Update("proving_status", status).Error
 }

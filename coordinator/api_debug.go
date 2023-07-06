@@ -52,7 +52,7 @@ func (m *Manager) ListRollers() ([]*RollerInfo, error) {
 		}
 		for id, sess := range m.sessions {
 			for _, proverTask := range sess.proverTasks {
-				if proverTask.RollerPublicKey == pk {
+				if proverTask.ProverPublicKey == pk {
 					info.ActiveSessionStartTime = proverTask.CreatedAt
 					info.ActiveSession = id
 					break
@@ -69,7 +69,7 @@ func newSessionInfo(sess *session, status types.ProvingStatus, errMsg string, fi
 	now := time.Now()
 	var nameList []string
 	for _, proverTask := range sess.proverTasks {
-		nameList = append(nameList, proverTask.RollerName)
+		nameList = append(nameList, proverTask.ProverName)
 	}
 	info := SessionInfo{
 		ID:              sess.taskID,

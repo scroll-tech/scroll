@@ -64,8 +64,8 @@ func TestProverTaskOrm(t *testing.T) {
 
 	proverTask := ProverTask{
 		TaskID:          "test-hash",
-		RollerName:      "roller-0",
-		RollerPublicKey: "0",
+		ProverName:      "roller-0",
+		ProverPublicKey: "0",
 		ProvingStatus:   int16(types.RollerAssigned),
 	}
 
@@ -74,7 +74,7 @@ func TestProverTaskOrm(t *testing.T) {
 	proverTasks, err := proverTaskOrm.GetProverTasksByHashes(context.Background(), []string{"test-hash"})
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(proverTasks))
-	assert.Equal(t, proverTask.RollerName, proverTasks[0].RollerName)
+	assert.Equal(t, proverTask.ProverName, proverTasks[0].ProverName)
 
 	proverTask.ProvingStatus = int16(types.RollerProofValid)
 	err = proverTaskOrm.SetProverTask(context.Background(), &proverTask)
