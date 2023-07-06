@@ -303,7 +303,7 @@ function renounceOwnership() external nonpayable
 
 
 
-*Leaves the contract without owner. It will not be possible to call `onlyOwner` functions anymore. Can only be called by the current owner. NOTE: Renouncing ownership will leave the contract without an owner, thereby removing any functionality that is only available to the owner.*
+*Leaves the contract without owner. It will not be possible to call `onlyOwner` functions. Can only be called by the current owner. NOTE: Renouncing ownership will leave the contract without an owner, thereby disabling any functionality that is only available to the owner.*
 
 
 ### setDefaultERC20Gateway
@@ -454,6 +454,22 @@ Emitted when ETH is withdrawn from L2 to L1 and transfer to recipient.
 | to `indexed` | address | undefined |
 | amount  | uint256 | undefined |
 | data  | bytes | undefined |
+
+### Initialized
+
+```solidity
+event Initialized(uint8 version)
+```
+
+
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| version  | uint8 | undefined |
 
 ### OwnershipTransferred
 

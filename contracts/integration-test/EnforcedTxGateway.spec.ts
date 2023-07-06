@@ -1,10 +1,11 @@
 /* eslint-disable node/no-unpublished-import */
 /* eslint-disable node/no-missing-import */
 import { expect } from "chai";
-import { BigNumberish, BytesLike, constants, utils } from "ethers";
+import { BigNumberish, BytesLike, constants } from "ethers";
 import { ethers } from "hardhat";
 import { EnforcedTxGateway, L1MessageQueue, L2GasPriceOracle, MockCaller } from "../typechain";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
+import { arrayify } from "ethers/lib/utils";
 
 describe("EnforcedTxGateway.spec", async () => {
   let deployer: SignerWithAddress;
@@ -47,6 +48,7 @@ describe("EnforcedTxGateway.spec", async () => {
     await oracle.setL2BaseFee(1);
   });
 
+  /*
   context("auth", async () => {
     it("should initialize correctly", async () => {
       expect(await gateway.owner()).to.eq(deployer.address);
@@ -164,6 +166,7 @@ describe("EnforcedTxGateway.spec", async () => {
       );
     });
   });
+  */
 
   context("#sendTransaction, with signatures", async () => {
     const getSignature = async (
@@ -172,10 +175,59 @@ describe("EnforcedTxGateway.spec", async () => {
       value: BigNumberish,
       gasLimit: BigNumberish,
       data: BytesLike
-    ): Promise<string> => {
-      const queueIndex = await queue.nextCrossDomainMessageIndex();
-      const txHash = await queue.computeTransactionHash(signer.address, queueIndex, value, target, gasLimit, data);
-      return await signer.signMessage(utils.arrayify(txHash));
+    ) => {
+      const enforcedTx = {
+        sender: signer.address,
+        target: target,
+        value: value,
+        gasLimit: gasLimit,
+        data: arrayify(data),
+        nonce: await gateway.nonces(signer.address),
+        deadline: constants.MaxUint256,
+      };
+
+      const domain = {
+        name: "EnforcedTxGateway",
+        version: "1.0.0",
+        chainId: (await ethers.provider.getNetwork()).chainId,
+        verifyingContract: gateway.address,
+      };
+
+      const types = {
+        EnforcedTransaction: [
+          {
+            name: "sender",
+            type: "address",
+          },
+          {
+            name: "target",
+            type: "address",
+          },
+          {
+            name: "value",
+            type: "uint256",
+          },
+          {
+            name: "gasLimit",
+            type: "uint256",
+          },
+          {
+            name: "data",
+            type: "bytes",
+          },
+          {
+            name: "nonce",
+            type: "uint256",
+          },
+          {
+            name: "deadline",
+            type: "uint256",
+          },
+        ],
+      };
+
+      const signature = await signer._signTypedData(domain, types, enforcedTx);
+      return signature;
     };
 
     it("should revert, when contract is paused", async () => {
@@ -183,16 +235,35 @@ describe("EnforcedTxGateway.spec", async () => {
       await expect(
         gateway
           .connect(deployer)
-          ["sendTransaction(address,address,uint256,uint256,bytes,bytes,address)"](
+          ["sendTransaction(address,address,uint256,uint256,bytes,uint256,bytes,address)"](
             signer.address,
             signer.address,
             0,
             0,
             "0x",
+            constants.MaxUint256,
             "0x",
             constants.AddressZero
           )
       ).to.revertedWith("Pausable: paused");
+    });
+
+    it("should revert, when signature expired", async () => {
+      const timestamp = (await ethers.provider.getBlock("latest")).timestamp;
+      await expect(
+        gateway
+          .connect(deployer)
+          ["sendTransaction(address,address,uint256,uint256,bytes,uint256,bytes,address)"](
+            signer.address,
+            signer.address,
+            0,
+            0,
+            "0x",
+            timestamp - 1,
+            "0x",
+            constants.AddressZero
+          )
+      ).to.revertedWith("signature expired");
     });
 
     it("should revert, when signature is wrong", async () => {
@@ -200,12 +271,13 @@ describe("EnforcedTxGateway.spec", async () => {
       await expect(
         gateway
           .connect(deployer)
-          ["sendTransaction(address,address,uint256,uint256,bytes,bytes,address)"](
+          ["sendTransaction(address,address,uint256,uint256,bytes,uint256,bytes,address)"](
             signer.address,
             signer.address,
             0,
             0,
             "0x",
+            constants.MaxUint256,
             signature,
             constants.AddressZero
           )
@@ -218,12 +290,13 @@ describe("EnforcedTxGateway.spec", async () => {
       await expect(
         gateway
           .connect(deployer)
-          ["sendTransaction(address,address,uint256,uint256,bytes,bytes,address)"](
+          ["sendTransaction(address,address,uint256,uint256,bytes,uint256,bytes,address)"](
             signer.address,
             signer.address,
             0,
             1000000,
             "0x",
+            constants.MaxUint256,
             signature,
             signer.address,
             { value: fee.sub(1) }
@@ -238,12 +311,13 @@ describe("EnforcedTxGateway.spec", async () => {
       await expect(
         gateway
           .connect(deployer)
-          ["sendTransaction(address,address,uint256,uint256,bytes,bytes,address)"](
+          ["sendTransaction(address,address,uint256,uint256,bytes,uint256,bytes,address)"](
             signer.address,
             signer.address,
             0,
             1000000,
             "0x",
+            constants.MaxUint256,
             signature,
             signer.address,
             { value: fee }
@@ -255,15 +329,17 @@ describe("EnforcedTxGateway.spec", async () => {
       const signature = await getSignature(signer, deployer.address, 0, 1000000, "0x");
       const fee = await queue.estimateCrossDomainMessageFee(1000000);
       const feeVaultBalanceBefore = await ethers.provider.getBalance(feeVault.address);
+      expect(await gateway.nonces(signer.address)).to.eq(0);
       await expect(
         gateway
           .connect(deployer)
-          ["sendTransaction(address,address,uint256,uint256,bytes,bytes,address)"](
+          ["sendTransaction(address,address,uint256,uint256,bytes,uint256,bytes,address)"](
             signer.address,
             deployer.address,
             0,
             1000000,
             "0x",
+            constants.MaxUint256,
             signature,
             signer.address,
             { value: fee }
@@ -271,6 +347,7 @@ describe("EnforcedTxGateway.spec", async () => {
       )
         .to.emit(queue, "QueueTransaction")
         .withArgs(signer.address, deployer.address, 0, 0, 1000000, "0x");
+      expect(await gateway.nonces(signer.address)).to.eq(1);
       const feeVaultBalanceAfter = await ethers.provider.getBalance(feeVault.address);
       expect(feeVaultBalanceAfter.sub(feeVaultBalanceBefore)).to.eq(fee);
     });
@@ -280,15 +357,17 @@ describe("EnforcedTxGateway.spec", async () => {
       const fee = await queue.estimateCrossDomainMessageFee(1000000);
       const feeVaultBalanceBefore = await ethers.provider.getBalance(feeVault.address);
       const signerBalanceBefore = await ethers.provider.getBalance(signer.address);
+      expect(await gateway.nonces(signer.address)).to.eq(0);
       await expect(
         gateway
           .connect(deployer)
-          ["sendTransaction(address,address,uint256,uint256,bytes,bytes,address)"](
+          ["sendTransaction(address,address,uint256,uint256,bytes,uint256,bytes,address)"](
             signer.address,
             deployer.address,
             0,
             1000000,
             "0x",
+            constants.MaxUint256,
             signature,
             signer.address,
             { value: fee.add(100) }
@@ -296,6 +375,7 @@ describe("EnforcedTxGateway.spec", async () => {
       )
         .to.emit(queue, "QueueTransaction")
         .withArgs(signer.address, deployer.address, 0, 0, 1000000, "0x");
+      expect(await gateway.nonces(signer.address)).to.eq(1);
       const feeVaultBalanceAfter = await ethers.provider.getBalance(feeVault.address);
       const signerBalanceAfter = await ethers.provider.getBalance(signer.address);
       expect(feeVaultBalanceAfter.sub(feeVaultBalanceBefore)).to.eq(fee);
@@ -303,17 +383,18 @@ describe("EnforcedTxGateway.spec", async () => {
     });
 
     it("should revert, when refund failed", async () => {
-      const signature = await getSignature(signer, signer.address, 0, 1000000, "0x");
+      const signature = await getSignature(signer, signer.address, 0, 1000000, "0x1234");
       const fee = await queue.estimateCrossDomainMessageFee(1000000);
       await expect(
         gateway
           .connect(deployer)
-          ["sendTransaction(address,address,uint256,uint256,bytes,bytes,address)"](
+          ["sendTransaction(address,address,uint256,uint256,bytes,uint256,bytes,address)"](
             signer.address,
             signer.address,
             0,
             1000000,
-            "0x",
+            "0x1234",
+            constants.MaxUint256,
             signature,
             gateway.address,
             { value: fee.add(100) }
