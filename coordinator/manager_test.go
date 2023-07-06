@@ -310,7 +310,6 @@ func testValidProof(t *testing.T) {
 			assert.NoError(t, err)
 			batchProofStatus, err := batchOrm.GetProvingStatusByHash(context.Background(), batch.Hash)
 			assert.NoError(t, err)
-			fmt.Println("chunkProofStatus", chunkProofStatus, "batchProofStatus", batchProofStatus)
 			if chunkProofStatus == types.ProvingTaskVerified && batchProofStatus == types.ProvingTaskVerified {
 				return
 			}
@@ -331,9 +330,15 @@ func testInvalidProof(t *testing.T) {
 	}()
 
 	// create mock rollers.
-	rollers := make([]*mockRoller, 3)
+	rollers := make([]*mockRoller, 6)
 	for i := 0; i < len(rollers); i++ {
-		rollers[i] = newMockRoller(t, "roller_test"+strconv.Itoa(i), wsURL, message.ProofTypeChunk)
+		var proofType message.ProofType
+		if i%2 == 0 {
+			proofType = message.ProofTypeChunk
+		} else {
+			proofType = message.ProofTypeBatch
+		}
+		rollers[i] = newMockRoller(t, "roller_test"+strconv.Itoa(i), wsURL, proofType)
 		rollers[i].waitTaskAndSendProof(t, time.Second, false, verifiedFailed)
 	}
 	defer func() {
@@ -343,10 +348,13 @@ func testInvalidProof(t *testing.T) {
 		}
 	}()
 	assert.Equal(t, 3, rollerManager.GetNumberOfIdleRollers(message.ProofTypeChunk))
+	assert.Equal(t, 3, rollerManager.GetNumberOfIdleRollers(message.ProofTypeBatch))
 
 	err := l2BlockOrm.InsertL2Blocks(context.Background(), []*types.WrappedBlock{wrappedBlock1, wrappedBlock2})
 	assert.NoError(t, err)
 	dbChunk, err := chunkOrm.InsertChunk(context.Background(), chunk)
+	assert.NoError(t, err)
+	batch, err := batchOrm.InsertBatch(context.Background(), 0, 0, dbChunk.Hash, dbChunk.Hash, []*types.Chunk{chunk})
 	assert.NoError(t, err)
 
 	// verify proof status
@@ -357,9 +365,11 @@ func testInvalidProof(t *testing.T) {
 	for {
 		select {
 		case <-tick:
-			status, err := chunkOrm.GetProvingStatusByHash(context.Background(), dbChunk.Hash)
+			chunkProofStatus, err := chunkOrm.GetProvingStatusByHash(context.Background(), dbChunk.Hash)
 			assert.NoError(t, err)
-			if status == types.ProvingTaskFailed {
+			batchProofStatus, err := batchOrm.GetProvingStatusByHash(context.Background(), batch.Hash)
+			assert.NoError(t, err)
+			if chunkProofStatus == types.ProvingTaskFailed && batchProofStatus == types.ProvingTaskFailed {
 				return
 			}
 		case <-tickStop:
@@ -379,9 +389,15 @@ func testProofGeneratedFailed(t *testing.T) {
 	}()
 
 	// create mock rollers.
-	rollers := make([]*mockRoller, 3)
+	rollers := make([]*mockRoller, 6)
 	for i := 0; i < len(rollers); i++ {
-		rollers[i] = newMockRoller(t, "roller_test"+strconv.Itoa(i), wsURL, message.ProofTypeChunk)
+		var proofType message.ProofType
+		if i%2 == 0 {
+			proofType = message.ProofTypeChunk
+		} else {
+			proofType = message.ProofTypeBatch
+		}
+		rollers[i] = newMockRoller(t, "roller_test"+strconv.Itoa(i), wsURL, proofType)
 		rollers[i].waitTaskAndSendProof(t, time.Second, false, generatedFailed)
 	}
 	defer func() {
@@ -391,10 +407,13 @@ func testProofGeneratedFailed(t *testing.T) {
 		}
 	}()
 	assert.Equal(t, 3, rollerManager.GetNumberOfIdleRollers(message.ProofTypeChunk))
+	assert.Equal(t, 3, rollerManager.GetNumberOfIdleRollers(message.ProofTypeBatch))
 
 	err := l2BlockOrm.InsertL2Blocks(context.Background(), []*types.WrappedBlock{wrappedBlock1, wrappedBlock2})
 	assert.NoError(t, err)
 	dbChunk, err := chunkOrm.InsertChunk(context.Background(), chunk)
+	assert.NoError(t, err)
+	batch, err := batchOrm.InsertBatch(context.Background(), 0, 0, dbChunk.Hash, dbChunk.Hash, []*types.Chunk{chunk})
 	assert.NoError(t, err)
 
 	// verify proof status
@@ -405,9 +424,11 @@ func testProofGeneratedFailed(t *testing.T) {
 	for {
 		select {
 		case <-tick:
-			status, err := chunkOrm.GetProvingStatusByHash(context.Background(), dbChunk.Hash)
+			chunkProofStatus, err := chunkOrm.GetProvingStatusByHash(context.Background(), dbChunk.Hash)
 			assert.NoError(t, err)
-			if status == types.ProvingTaskFailed {
+			batchProofStatus, err := batchOrm.GetProvingStatusByHash(context.Background(), batch.Hash)
+			assert.NoError(t, err)
+			if chunkProofStatus == types.ProvingTaskFailed && batchProofStatus == types.ProvingTaskFailed {
 				return
 			}
 		case <-tickStop:
@@ -426,45 +447,62 @@ func testTimedoutProof(t *testing.T) {
 		rollerManager.Stop()
 	}()
 
-	// create first mock roller, that will not send any proof.
-	roller1 := newMockRoller(t, "roller_test"+strconv.Itoa(0), wsURL, message.ProofTypeChunk)
+	// create first chunk & batch mock roller, that will not send any proof.
+	chunkRoller1 := newMockRoller(t, "roller_test"+strconv.Itoa(0), wsURL, message.ProofTypeChunk)
+	batchRoller1 := newMockRoller(t, "roller_test"+strconv.Itoa(1), wsURL, message.ProofTypeBatch)
 	defer func() {
 		// close connection
-		roller1.close()
+		chunkRoller1.close()
+		batchRoller1.close()
 	}()
 	assert.Equal(t, 1, rollerManager.GetNumberOfIdleRollers(message.ProofTypeChunk))
+	assert.Equal(t, 1, rollerManager.GetNumberOfIdleRollers(message.ProofTypeBatch))
 
 	err := l2BlockOrm.InsertL2Blocks(context.Background(), []*types.WrappedBlock{wrappedBlock1, wrappedBlock2})
 	assert.NoError(t, err)
 	dbChunk, err := chunkOrm.InsertChunk(context.Background(), chunk)
 	assert.NoError(t, err)
+	batch, err := batchOrm.InsertBatch(context.Background(), 0, 0, dbChunk.Hash, dbChunk.Hash, []*types.Chunk{chunk})
+	assert.NoError(t, err)
 
 	// verify proof status, it should be assigned, because roller didn't send any proof
 	ok := cutils.TryTimes(30, func() bool {
-		status, err := chunkOrm.GetProvingStatusByHash(context.Background(), dbChunk.Hash)
+		chunkProofStatus, err := chunkOrm.GetProvingStatusByHash(context.Background(), dbChunk.Hash)
 		if err != nil {
 			return false
 		}
-		return status == types.ProvingTaskAssigned
+		batchProofStatus, err := batchOrm.GetProvingStatusByHash(context.Background(), batch.Hash)
+		if err != nil {
+			return false
+		}
+		return chunkProofStatus == types.ProvingTaskAssigned && batchProofStatus == types.ProvingTaskAssigned
 	})
 	assert.Falsef(t, !ok, "failed to check proof status")
 
 	// create second mock roller, that will send valid proof.
-	roller2 := newMockRoller(t, "roller_test"+strconv.Itoa(1), wsURL, message.ProofTypeChunk)
-	roller2.waitTaskAndSendProof(t, time.Second, false, verifiedSuccess)
+	chunkRoller2 := newMockRoller(t, "roller_test"+strconv.Itoa(2), wsURL, message.ProofTypeChunk)
+	chunkRoller2.waitTaskAndSendProof(t, time.Second, false, verifiedSuccess)
+	batchRoller2 := newMockRoller(t, "roller_test"+strconv.Itoa(3), wsURL, message.ProofTypeBatch)
+	batchRoller2.waitTaskAndSendProof(t, time.Second, false, verifiedSuccess)
 	defer func() {
 		// close connection
-		roller2.close()
+		chunkRoller2.close()
+		batchRoller2.close()
 	}()
 	assert.Equal(t, 1, rollerManager.GetNumberOfIdleRollers(message.ProofTypeChunk))
+	assert.Equal(t, 1, rollerManager.GetNumberOfIdleRollers(message.ProofTypeBatch))
 
 	// verify proof status, it should be verified now, because second roller sent valid proof
 	ok = cutils.TryTimes(200, func() bool {
-		status, err := chunkOrm.GetProvingStatusByHash(context.Background(), dbChunk.Hash)
+		chunkProofStatus, err := chunkOrm.GetProvingStatusByHash(context.Background(), dbChunk.Hash)
 		if err != nil {
 			return false
 		}
-		return status == types.ProvingTaskVerified
+		batchProofStatus, err := batchOrm.GetProvingStatusByHash(context.Background(), batch.Hash)
+		if err != nil {
+			return false
+		}
+		return chunkProofStatus == types.ProvingTaskVerified && batchProofStatus == types.ProvingTaskVerified
 	})
 	assert.Falsef(t, !ok, "failed to check proof status")
 }
@@ -481,7 +519,13 @@ func testIdleRollerSelection(t *testing.T) {
 	// create mock rollers.
 	rollers := make([]*mockRoller, 20)
 	for i := 0; i < len(rollers); i++ {
-		rollers[i] = newMockRoller(t, "roller_test"+strconv.Itoa(i), wsURL, message.ProofTypeChunk)
+		var proofType message.ProofType
+		if i%2 == 0 {
+			proofType = message.ProofTypeChunk
+		} else {
+			proofType = message.ProofTypeBatch
+		}
+		rollers[i] = newMockRoller(t, "roller_test"+strconv.Itoa(i), wsURL, proofType)
 		rollers[i].waitTaskAndSendProof(t, time.Second, false, verifiedSuccess)
 	}
 	defer func() {
@@ -491,11 +535,14 @@ func testIdleRollerSelection(t *testing.T) {
 		}
 	}()
 
-	assert.Equal(t, len(rollers), rollerManager.GetNumberOfIdleRollers(message.ProofTypeChunk))
+	assert.Equal(t, len(rollers)/2, rollerManager.GetNumberOfIdleRollers(message.ProofTypeChunk))
+	assert.Equal(t, len(rollers)/2, rollerManager.GetNumberOfIdleRollers(message.ProofTypeBatch))
 
 	err := l2BlockOrm.InsertL2Blocks(context.Background(), []*types.WrappedBlock{wrappedBlock1, wrappedBlock2})
 	assert.NoError(t, err)
 	dbChunk, err := chunkOrm.InsertChunk(context.Background(), chunk)
+	assert.NoError(t, err)
+	batch, err := batchOrm.InsertBatch(context.Background(), 0, 0, dbChunk.Hash, dbChunk.Hash, []*types.Chunk{chunk})
 	assert.NoError(t, err)
 
 	// verify proof status
@@ -506,9 +553,11 @@ func testIdleRollerSelection(t *testing.T) {
 	for {
 		select {
 		case <-tick:
-			status, err := chunkOrm.GetProvingStatusByHash(context.Background(), dbChunk.Hash)
+			chunkProofStatus, err := chunkOrm.GetProvingStatusByHash(context.Background(), dbChunk.Hash)
 			assert.NoError(t, err)
-			if status == types.ProvingTaskVerified {
+			batchProofStatus, err := batchOrm.GetProvingStatusByHash(context.Background(), batch.Hash)
+			assert.NoError(t, err)
+			if chunkProofStatus == types.ProvingTaskVerified && batchProofStatus == types.ProvingTaskVerified {
 				return
 			}
 		case <-tickStop:
@@ -527,16 +576,21 @@ func testGracefulRestart(t *testing.T) {
 	assert.NoError(t, err)
 	dbChunk, err := chunkOrm.InsertChunk(context.Background(), chunk)
 	assert.NoError(t, err)
+	batch, err := batchOrm.InsertBatch(context.Background(), 0, 0, dbChunk.Hash, dbChunk.Hash, []*types.Chunk{chunk})
+	assert.NoError(t, err)
 
 	// create mock roller
-	roller := newMockRoller(t, "roller_test", wsURL, message.ProofTypeChunk)
+	chunkRoller := newMockRoller(t, "roller_test", wsURL, message.ProofTypeChunk)
+	batchRoller := newMockRoller(t, "roller_test", wsURL, message.ProofTypeBatch)
 	// wait 10 seconds, coordinator restarts before roller submits proof
-	roller.waitTaskAndSendProof(t, 10*time.Second, false, verifiedSuccess)
+	chunkRoller.waitTaskAndSendProof(t, 10*time.Second, false, verifiedSuccess)
+	batchRoller.waitTaskAndSendProof(t, 10*time.Second, false, verifiedSuccess)
 
 	// wait for coordinator to dispatch task
 	<-time.After(5 * time.Second)
 	// the coordinator will delete the roller if the subscription is closed.
-	roller.close()
+	chunkRoller.close()
+	batchRoller.close()
 
 	info, err := rollerManager.GetSessionInfo(dbChunk.Hash)
 	assert.NoError(t, err)
@@ -561,10 +615,17 @@ func testGracefulRestart(t *testing.T) {
 	status, err := chunkOrm.GetProvingStatusByHash(context.Background(), dbChunk.Hash)
 	assert.NoError(t, err)
 	assert.Equal(t, types.ProvingTaskAssigned, status)
+	status, err = batchOrm.GetProvingStatusByHash(context.Background(), batch.Hash)
+	assert.NoError(t, err)
+	assert.Equal(t, types.ProvingTaskAssigned, status)
 
 	// will overwrite the roller client for `SubmitProof`
-	roller.waitTaskAndSendProof(t, time.Second, true, verifiedSuccess)
-	defer roller.close()
+	chunkRoller.waitTaskAndSendProof(t, time.Second, true, verifiedSuccess)
+	batchRoller.waitTaskAndSendProof(t, time.Second, true, verifiedSuccess)
+	defer func() {
+		chunkRoller.close()
+		batchRoller.close()
+	}()
 
 	// verify proof status
 	var (
@@ -576,12 +637,13 @@ func testGracefulRestart(t *testing.T) {
 		case <-tick:
 			// this proves that the roller submits to the new coordinator,
 			// because the roller client for `submitProof` has been overwritten
-			status, err := chunkOrm.GetProvingStatusByHash(context.Background(), dbChunk.Hash)
+			chunkProofStatus, err := chunkOrm.GetProvingStatusByHash(context.Background(), dbChunk.Hash)
 			assert.NoError(t, err)
-			if status == types.ProvingTaskVerified {
+			batchProofStatus, err := batchOrm.GetProvingStatusByHash(context.Background(), batch.Hash)
+			assert.NoError(t, err)
+			if chunkProofStatus == types.ProvingTaskVerified && batchProofStatus == types.ProvingTaskVerified {
 				return
 			}
-
 		case <-tickStop:
 			t.Error("failed to check proof status")
 			return
@@ -602,11 +664,13 @@ func testListRollers(t *testing.T) {
 		"roller_test_1",
 		"roller_test_2",
 		"roller_test_3",
+		"roller_test_4",
 	}
 
 	roller1 := newMockRoller(t, names[0], wsURL, message.ProofTypeChunk)
-	roller2 := newMockRoller(t, names[1], wsURL, message.ProofTypeChunk)
+	roller2 := newMockRoller(t, names[1], wsURL, message.ProofTypeBatch)
 	roller3 := newMockRoller(t, names[2], wsURL, message.ProofTypeChunk)
+	roller4 := newMockRoller(t, names[3], wsURL, message.ProofTypeBatch)
 	defer func() {
 		roller1.close()
 		roller2.close()
@@ -622,8 +686,9 @@ func testListRollers(t *testing.T) {
 	sort.Strings(rollersName)
 	assert.True(t, reflect.DeepEqual(names, rollersName))
 
-	// test ListRollers if one roller closed.
+	// test ListRollers if two rollers closed.
 	roller3.close()
+	roller4.close()
 	// wait coordinator free completely
 	time.Sleep(time.Second * 5)
 
