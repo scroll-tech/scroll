@@ -419,7 +419,7 @@ func (m *Manager) handleZkProof(pk string, msg *message.ProofDetail) error {
 	return nil
 }
 
-// checkAttempts use the count of session info to check the attempts
+// checkAttempts use the count of  submission info to check the attempts
 func (m *Manager) checkAttemptsExceeded(hash string) bool {
 	sessionInfos, err := m.submissionInfoOrm.GetSubmissionInfosByHashes(context.Background(), []string{hash})
 	if err != nil {
