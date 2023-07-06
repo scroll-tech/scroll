@@ -11,8 +11,8 @@ import (
 	"scroll-tech/common/types/message"
 )
 
-// SessionInfo is assigned rollers info of a block batch (session).
-type SessionInfo struct {
+// SubmissionInfo is assigned rollers info of a block batch (session).
+type SubmissionInfo struct {
 	db *gorm.DB `gorm:"column:-"`
 
 	ID              int64          `json:"id" gorm:"column:id"`
@@ -29,23 +29,23 @@ type SessionInfo struct {
 	DeletedAt       gorm.DeletedAt `json:"deleted_at" gorm:"column:deleted_at"`
 }
 
-// NewSessionInfo creates a new SessionInfo instance.
-func NewSessionInfo(db *gorm.DB) *SessionInfo {
-	return &SessionInfo{db: db}
+// NewSubmissionInfo creates a new SubmissionInfo instance.
+func NewSubmissionInfo(db *gorm.DB) *SubmissionInfo {
+	return &SubmissionInfo{db: db}
 }
 
-// TableName returns the name of the "session_info" table.
-func (*SessionInfo) TableName() string {
-	return "session_info"
+// TableName returns the name of the "submission_info" table.
+func (*SubmissionInfo) TableName() string {
+	return "submission_info"
 }
 
-// GetSessionInfosByHashes retrieves the SessionInfo records associated with the specified hashes.
+// GetSessionInfosByHashes retrieves the SubmissionInfo records associated with the specified hashes.
 // The returned session info objects are sorted in ascending order by their ids.
-func (o *SessionInfo) GetSessionInfosByHashes(ctx context.Context, hashes []string) ([]*SessionInfo, error) {
+func (o *SubmissionInfo) GetSessionInfosByHashes(ctx context.Context, hashes []string) ([]*SubmissionInfo, error) {
 	if len(hashes) == 0 {
 		return nil, nil
 	}
-	var sessionInfos []*SessionInfo
+	var sessionInfos []*SubmissionInfo
 	db := o.db.WithContext(ctx)
 	db = db.Where("task_id IN ?", hashes)
 	db = db.Order("id asc")
@@ -56,8 +56,8 @@ func (o *SessionInfo) GetSessionInfosByHashes(ctx context.Context, hashes []stri
 	return sessionInfos, nil
 }
 
-// SetSessionInfo updates or inserts a SessionInfo record.
-func (o *SessionInfo) SetSessionInfo(ctx context.Context, sessionInfo *SessionInfo) error {
+// SetSessionInfo updates or inserts a SubmissionInfo record.
+func (o *SubmissionInfo) SetSessionInfo(ctx context.Context, sessionInfo *SubmissionInfo) error {
 	db := o.db.WithContext(ctx)
 	db = db.Clauses(clause.OnConflict{
 		Columns:   []clause.Column{{Name: "task_id"}, {Name: "roller_public_key"}},
@@ -66,10 +66,10 @@ func (o *SessionInfo) SetSessionInfo(ctx context.Context, sessionInfo *SessionIn
 	return db.Create(&sessionInfo).Error
 }
 
-// UpdateSessionInfoProvingStatus updates the proving_status of a specific SessionInfo record.
-func (o *SessionInfo) UpdateSessionInfoProvingStatus(ctx context.Context, proofType message.ProofType, taskID string, pk string, status types.RollerProveStatus) error {
+// UpdateSessionInfoProvingStatus updates the proving_status of a specific SubmissionInfo record.
+func (o *SubmissionInfo) UpdateSessionInfoProvingStatus(ctx context.Context, proofType message.ProofType, taskID string, pk string, status types.RollerProveStatus) error {
 	db := o.db.WithContext(ctx)
-	db = db.Model(&SessionInfo{})
+	db = db.Model(&SubmissionInfo{})
 	db = db.Where("proof_type = ? AND task_id = ? AND roller_public_key = ?", proofType, taskID, pk)
 
 	return db.Update("proving_status", status).Error

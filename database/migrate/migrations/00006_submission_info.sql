@@ -1,7 +1,7 @@
 -- +goose Up
 -- +goose StatementBegin
 
-create table session_info
+create table submission_info
 (
     id                  BIGSERIAL      PRIMARY KEY,
     task_id             VARCHAR        NOT NULL,
@@ -16,7 +16,7 @@ create table session_info
     updated_at          TIMESTAMP(0)   NOT NULL DEFAULT CURRENT_TIMESTAMP,
     deleted_at          TIMESTAMP(0)   DEFAULT NULL,
 
-    CONSTRAINT uk_session_unique UNIQUE (task_id, roller_public_key)
+    CONSTRAINT uk_submission_unique UNIQUE (task_id, roller_public_key)
 );
 
 comment
@@ -26,5 +26,5 @@ on column batch.proving_status is 'roller assigned, roller proof valid, roller p
 
 -- +goose Down
 -- +goose StatementBegin
-drop table if exists session_info;
+drop table if exists submission_info;
 -- +goose StatementEnd

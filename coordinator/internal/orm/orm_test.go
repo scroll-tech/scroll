@@ -20,7 +20,7 @@ var (
 	base *docker.App
 
 	db             *gorm.DB
-	sessionInfoOrm *SessionInfo
+	sessionInfoOrm *SubmissionInfo
 )
 
 func TestMain(m *testing.M) {
@@ -47,7 +47,7 @@ func setupEnv(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(sqlDB))
 
-	sessionInfoOrm = NewSessionInfo(db)
+	sessionInfoOrm = NewSubmissionInfo(db)
 }
 
 func tearDownEnv(t *testing.T) {
@@ -62,7 +62,7 @@ func TestSessionInfoOrm(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(sqlDB))
 
-	sessionInfo := SessionInfo{
+	sessionInfo := SubmissionInfo{
 		TaskID:          "test-hash",
 		RollerName:      "roller-0",
 		RollerPublicKey: "0",
