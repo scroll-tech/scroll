@@ -40,7 +40,7 @@ func (*ProverTask) TableName() string {
 }
 
 // GetProverTasksByHashes retrieves the ProverTask records associated with the specified hashes.
-// The returned session info objects are sorted in ascending order by their ids.
+// The returned prover task objects are sorted in ascending order by their ids.
 func (o *ProverTask) GetProverTasksByHashes(ctx context.Context, hashes []string) ([]*ProverTask, error) {
 	if len(hashes) == 0 {
 		return nil, nil
