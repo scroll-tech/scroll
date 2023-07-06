@@ -3,7 +3,7 @@
 create table l2_sent_msg
 (
     id               BIGSERIAL PRIMARY KEY,
-    tx_sender        VARCHAR NOT NULL,
+    original_sender  VARCHAR NOT NULL DEFAULT '',
     sender           VARCHAR NOT NULL,
     target           VARCHAR NOT NULL,
     value            VARCHAR NOT NULL,
