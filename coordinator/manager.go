@@ -394,6 +394,10 @@ func (m *Manager) handleZkProof(pk string, msg *message.ProofDetail) error {
 					"error", dbErr)
 				return dbErr
 			}
+			if err := m.checkAreAllChunkProofsReady(msg.ID); err != nil {
+				log.Error("failed to check are all chunk proofs ready", "error", err)
+				return err
+			}
 		}
 		if msg.Type == message.ProofTypeBatch {
 			if dbErr = m.batchOrm.UpdateProvingStatus(m.ctx, msg.ID, types.ProvingTaskVerified); dbErr != nil {
@@ -415,6 +419,25 @@ func (m *Manager) handleZkProof(pk string, msg *message.ProofDetail) error {
 		m.updateMetricRollerProofsVerifiedFailedTimeTimer(proverTask.ProverPublicKey, proofTime)
 		log.Info("proof verified by coordinator failed", "proof id", msg.ID, "roller name", proverTask.ProverName,
 			"roller pk", proverTask.ProverPublicKey, "proof type", msg.Type, "proof time", proofTimeSec, "error", verifyErr)
+	}
+	return nil
+}
+
+func (m *Manager) checkAreAllChunkProofsReady(chunkHash string) error {
+	batchHash, err := m.chunkOrm.GetChunkBatchHash(m.ctx, chunkHash)
+	if err != nil {
+		return err
+	}
+
+	allReady, err := m.chunkOrm.CheckIfBatchChunkProofsAreReady(m.ctx, batchHash)
+	if err != nil {
+		return err
+	}
+	if allReady {
+		err := m.chunkOrm.UpdateChunkProofsStatusByBatchHash(m.ctx, batchHash, true)
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }

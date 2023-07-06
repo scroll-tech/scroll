@@ -32,6 +32,7 @@ type Batch struct {
 	BatchHeader     []byte `json:"batch_header" gorm:"column:batch_header"`
 
 	// proof
+	ChunkProofsReady bool       `json:"chunk_proofs_ready" gorm:"column:chunk_proofs_ready;default:FALSE"`
 	ProvingStatus    int16      `json:"proving_status" gorm:"column:proving_status;default:1"`
 	Proof            []byte     `json:"proof" gorm:"column:proof;default:NULL"`
 	ProverAssignedAt *time.Time `json:"prover_assigned_at" gorm:"column:prover_assigned_at;default:NULL"`
@@ -77,7 +78,7 @@ func (o *Batch) GetUnassignedBatches(ctx context.Context, limit int) ([]*Batch, 
 
 	var batches []*Batch
 	db := o.db.WithContext(ctx)
-	db = db.Where("proving_status = ?", types.ProvingTaskUnassigned)
+	db = db.Where("proving_status = ? AND chunk_proofs_ready = ?", types.ProvingTaskUnassigned, true)
 	db = db.Order("index ASC")
 	db = db.Limit(limit)
 
@@ -123,6 +124,7 @@ func (o *Batch) GetLatestBatch(ctx context.Context) (*Batch, error) {
 }
 
 // InsertBatch inserts a new batch into the database.
+// for unit test
 func (o *Batch) InsertBatch(ctx context.Context, startChunkIndex, endChunkIndex uint64, startChunkHash, endChunkHash string, chunks []*types.Chunk, dbTX ...*gorm.DB) (*Batch, error) {
 	if len(chunks) == 0 {
 		return nil, errors.New("invalid args")
@@ -193,6 +195,15 @@ func (o *Batch) InsertBatch(ctx context.Context, startChunkIndex, endChunkIndex 
 	}
 
 	return &newBatch, nil
+}
+
+// UpdateChunkProofsStatusByBatchHash updates the status of chunk_proofs_ready field for a given batch hash.
+// The function will set the chunk_proofs_ready to the status provided.
+func (o *Chunk) UpdateChunkProofsStatusByBatchHash(ctx context.Context, batchHash string, isReady bool) error {
+	db := o.db.WithContext(ctx)
+	db = db.Model(&Batch{})
+	db = db.Where("hash = ?", batchHash)
+	return db.Update("chunk_proofs_ready", isReady).Error
 }
 
 // UpdateProvingStatus updates the proving status of a batch.

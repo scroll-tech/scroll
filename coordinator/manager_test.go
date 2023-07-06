@@ -297,6 +297,8 @@ func testValidProof(t *testing.T) {
 	assert.NoError(t, err)
 	batch, err := batchOrm.InsertBatch(context.Background(), 0, 0, dbChunk.Hash, dbChunk.Hash, []*types.Chunk{chunk})
 	assert.NoError(t, err)
+	err = chunkOrm.UpdateBatchHashInRange(context.Background(), 0, 0, batch.Hash)
+	assert.NoError(t, err)
 
 	// verify proof status
 	var (
@@ -355,6 +357,8 @@ func testInvalidProof(t *testing.T) {
 	dbChunk, err := chunkOrm.InsertChunk(context.Background(), chunk)
 	assert.NoError(t, err)
 	batch, err := batchOrm.InsertBatch(context.Background(), 0, 0, dbChunk.Hash, dbChunk.Hash, []*types.Chunk{chunk})
+	assert.NoError(t, err)
+	err = chunkOrm.UpdateChunkProofsStatusByBatchHash(context.Background(), batch.Hash, true)
 	assert.NoError(t, err)
 
 	// verify proof status
@@ -415,6 +419,8 @@ func testProofGeneratedFailed(t *testing.T) {
 	assert.NoError(t, err)
 	batch, err := batchOrm.InsertBatch(context.Background(), 0, 0, dbChunk.Hash, dbChunk.Hash, []*types.Chunk{chunk})
 	assert.NoError(t, err)
+	err = chunkOrm.UpdateChunkProofsStatusByBatchHash(context.Background(), batch.Hash, true)
+	assert.NoError(t, err)
 
 	// verify proof status
 	var (
@@ -463,6 +469,8 @@ func testTimedoutProof(t *testing.T) {
 	dbChunk, err := chunkOrm.InsertChunk(context.Background(), chunk)
 	assert.NoError(t, err)
 	batch, err := batchOrm.InsertBatch(context.Background(), 0, 0, dbChunk.Hash, dbChunk.Hash, []*types.Chunk{chunk})
+	assert.NoError(t, err)
+	err = chunkOrm.UpdateChunkProofsStatusByBatchHash(context.Background(), batch.Hash, true)
 	assert.NoError(t, err)
 
 	// verify proof status, it should be assigned, because roller didn't send any proof
@@ -544,6 +552,8 @@ func testIdleRollerSelection(t *testing.T) {
 	assert.NoError(t, err)
 	batch, err := batchOrm.InsertBatch(context.Background(), 0, 0, dbChunk.Hash, dbChunk.Hash, []*types.Chunk{chunk})
 	assert.NoError(t, err)
+	err = chunkOrm.UpdateBatchHashInRange(context.Background(), 0, 0, batch.Hash)
+	assert.NoError(t, err)
 
 	// verify proof status
 	var (
@@ -577,6 +587,8 @@ func testGracefulRestart(t *testing.T) {
 	dbChunk, err := chunkOrm.InsertChunk(context.Background(), chunk)
 	assert.NoError(t, err)
 	batch, err := batchOrm.InsertBatch(context.Background(), 0, 0, dbChunk.Hash, dbChunk.Hash, []*types.Chunk{chunk})
+	assert.NoError(t, err)
+	err = chunkOrm.UpdateBatchHashInRange(context.Background(), 0, 0, batch.Hash)
 	assert.NoError(t, err)
 
 	// create mock roller
@@ -617,7 +629,7 @@ func testGracefulRestart(t *testing.T) {
 	assert.Equal(t, types.ProvingTaskAssigned, status)
 	status, err = batchOrm.GetProvingStatusByHash(context.Background(), batch.Hash)
 	assert.NoError(t, err)
-	assert.Equal(t, types.ProvingTaskAssigned, status)
+	assert.Equal(t, types.ProvingTaskUnassigned, status) // chunk proofs not ready yet
 
 	// will overwrite the roller client for `SubmitProof`
 	chunkRoller.waitTaskAndSendProof(t, time.Second, true, verifiedSuccess)

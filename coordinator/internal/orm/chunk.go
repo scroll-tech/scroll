@@ -144,7 +144,35 @@ func (o *Chunk) GetAssignedChunks(ctx context.Context) ([]*Chunk, error) {
 	return chunks, nil
 }
 
+// CheckIfBatchChunkProofsAreReady checks if all proofs for all chunks of a given batchHash are collected.
+func (o *Chunk) CheckIfBatchChunkProofsAreReady(ctx context.Context, batchHash string) (bool, error) {
+	var count int64
+	db := o.db.WithContext(ctx)
+	db = db.Model(&Chunk{})
+	db = db.Where("batch_hash = ? AND proving_status != ?", batchHash, types.ProvingTaskVerified)
+	err := db.Count(&count).Error
+	if err != nil {
+		return false, err
+	}
+
+	return count == 0, nil
+}
+
+// GetChunkBatchHash retrieves the batchHash of a given chunk.
+func (o *Chunk) GetChunkBatchHash(ctx context.Context, chunkHash string) (string, error) {
+	var chunk Chunk
+	db := o.db.WithContext(ctx)
+	db = db.Where("hash = ?", chunkHash)
+	db = db.Select("batch_hash")
+	if err := db.First(&chunk).Error; err != nil {
+		return "", err
+	}
+
+	return chunk.BatchHash, nil
+}
+
 // InsertChunk inserts a new chunk into the database.
+// for unit test
 func (o *Chunk) InsertChunk(ctx context.Context, chunk *types.Chunk, dbTX ...*gorm.DB) (*Chunk, error) {
 	if chunk == nil || len(chunk.Blocks) == 0 {
 		return nil, errors.New("invalid args")
@@ -252,4 +280,20 @@ func (o *Chunk) UpdateProofByHash(ctx context.Context, hash string, proof *messa
 	updateFields["proof_time_sec"] = proofTimeSec
 	err = o.db.WithContext(ctx).Model(&Chunk{}).Where("hash", hash).Updates(updateFields).Error
 	return err
+}
+
+// UpdateBatchHashInRange updates the batch_hash for chunks within the specified range (inclusive).
+// The range is closed, i.e., it includes both start and end indices.
+// for unit test
+func (o *Chunk) UpdateBatchHashInRange(ctx context.Context, startIndex uint64, endIndex uint64, batchHash string, dbTX ...*gorm.DB) error {
+	db := o.db
+	if len(dbTX) > 0 && dbTX[0] != nil {
+		db = dbTX[0]
+	}
+	db = db.Model(&Chunk{}).Where("index >= ? AND index <= ?", startIndex, endIndex)
+
+	if err := db.Update("batch_hash", batchHash).Error; err != nil {
+		return err
+	}
+	return nil
 }
