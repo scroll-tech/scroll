@@ -106,6 +106,7 @@ func ParseBackendL1EventLogs(logs []types.Log) ([]*orm.CrossMsg, []*orm.RelayedM
 				log.Warn("Failed to unpack SentMessage event", "err", err)
 				return l1CrossMsg, relayedMsgs, err
 			}
+			// since every deposit event will emit after a sent event, so can use this msg_hash as next withdraw event's msg_hash
 			msgHash = ComputeMessageHash(event.Sender, event.Target, event.Value, event.MessageNonce, event.Message).Hex()
 
 		case backendabi.L1RelayedMessageEventSignature:
@@ -216,6 +217,7 @@ func ParseBackendL2EventLogs(logs []types.Log) ([]*orm.CrossMsg, []*orm.RelayedM
 				log.Warn("Failed to unpack SentMessage event", "err", err)
 				return l2CrossMsg, relayedMsgs, l2SentMsgs, err
 			}
+			// since every withdraw event will emit after a sent event, so can use this msg_hash as next withdraw event's msg_hash
 			msgHash := ComputeMessageHash(event.Sender, event.Target, event.Value, event.MessageNonce, event.Message)
 			l2SentMsgs = append(l2SentMsgs,
 				&orm.L2SentMsg{
