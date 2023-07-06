@@ -44,28 +44,30 @@ func action(ctx *cli.Context) error {
 		log.Crit("failed to load config file", "config file", cfgFile, "error", err)
 	}
 
-	subCtx, cancel := context.WithCancel(ctx.Context)
 	// init db connection
 	db, err := utils.InitDB(cfg.DBConfig)
 	if err != nil {
 		log.Crit("failed to init db connection", "err", err)
 	}
 	defer func() {
-		cancel()
 		if err = utils.CloseDB(db); err != nil {
 			log.Error("can not close ormFactory", "error", err)
 		}
 	}()
 
-	// Start metrics server.
-	metrics.Serve(subCtx, ctx)
-
+	subCtx, cancel := context.WithCancel(ctx.Context)
 	// Initialize all coordinator modules.
 	rollerManager, err := coordinator.New(subCtx, cfg.RollerManagerConfig, db)
+	defer func() {
+		cancel()
+		rollerManager.Stop()
+	}()
+
 	if err != nil {
 		return err
 	}
-	defer rollerManager.Stop()
+	// Start metrics server.
+	metrics.Serve(subCtx, ctx)
 
 	// Start all modules.
 	if err = rollerManager.Start(); err != nil {
