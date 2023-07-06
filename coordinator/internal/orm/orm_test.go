@@ -19,8 +19,8 @@ import (
 var (
 	base *docker.App
 
-	db             *gorm.DB
-	sessionInfoOrm *SessionInfo
+	db            *gorm.DB
+	proverTaskOrm *ProverTask
 )
 
 func TestMain(m *testing.M) {
@@ -47,7 +47,7 @@ func setupEnv(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(sqlDB))
 
-	sessionInfoOrm = NewSessionInfo(db)
+	proverTaskOrm = NewProverTask(db)
 }
 
 func tearDownEnv(t *testing.T) {
@@ -57,30 +57,30 @@ func tearDownEnv(t *testing.T) {
 	base.Free()
 }
 
-func TestSessionInfoOrm(t *testing.T) {
+func TestProverTaskOrm(t *testing.T) {
 	sqlDB, err := db.DB()
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(sqlDB))
 
-	sessionInfo := SessionInfo{
+	proverTask := ProverTask{
 		TaskID:          "test-hash",
-		RollerName:      "roller-0",
-		RollerPublicKey: "0",
+		ProverName:      "roller-0",
+		ProverPublicKey: "0",
 		ProvingStatus:   int16(types.RollerAssigned),
 	}
 
-	err = sessionInfoOrm.SetSessionInfo(context.Background(), &sessionInfo)
+	err = proverTaskOrm.SetProverTask(context.Background(), &proverTask)
 	assert.NoError(t, err)
-	sessionInfos, err := sessionInfoOrm.GetSessionInfosByHashes(context.Background(), []string{"test-hash"})
+	proverTasks, err := proverTaskOrm.GetProverTasksByHashes(context.Background(), []string{"test-hash"})
 	assert.NoError(t, err)
-	assert.Equal(t, 1, len(sessionInfos))
-	assert.Equal(t, sessionInfo.RollerName, sessionInfos[0].RollerName)
+	assert.Equal(t, 1, len(proverTasks))
+	assert.Equal(t, proverTask.ProverName, proverTasks[0].ProverName)
 
-	sessionInfo.ProvingStatus = int16(types.RollerProofValid)
-	err = sessionInfoOrm.SetSessionInfo(context.Background(), &sessionInfo)
+	proverTask.ProvingStatus = int16(types.RollerProofValid)
+	err = proverTaskOrm.SetProverTask(context.Background(), &proverTask)
 	assert.NoError(t, err)
-	sessionInfos, err = sessionInfoOrm.GetSessionInfosByHashes(context.Background(), []string{"test-hash"})
+	proverTasks, err = proverTaskOrm.GetProverTasksByHashes(context.Background(), []string{"test-hash"})
 	assert.NoError(t, err)
-	assert.Equal(t, 1, len(sessionInfos))
-	assert.Equal(t, sessionInfo.ProvingStatus, sessionInfos[0].ProvingStatus)
+	assert.Equal(t, 1, len(proverTasks))
+	assert.Equal(t, proverTask.ProvingStatus, proverTasks[0].ProvingStatus)
 }
