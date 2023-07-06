@@ -65,7 +65,7 @@ func (*Batch) TableName() string {
 	return "batch"
 }
 
-// GetUnassignedBatches unassigned batches based on the specified limit.
+// GetUnassignedBatches retrieves unassigned batches based on the specified limit.
 // The returned batches are sorted in ascending order by their index.
 func (o *Batch) GetUnassignedBatches(ctx context.Context, limit int) ([]*Batch, error) {
 	if limit < 0 {
@@ -102,8 +102,11 @@ func (o *Batch) GetAssignedBatches(ctx context.Context) ([]*Batch, error) {
 // GetProvingStatusByHash retrieves the proving status of a batch given its hash.
 func (o *Batch) GetProvingStatusByHash(ctx context.Context, hash string) (types.ProvingStatus, error) {
 	var batch Batch
-	err := o.db.WithContext(ctx).Where("hash = ?", hash).First(&batch).Error
-	if err != nil {
+	db := o.db.WithContext(ctx)
+	db = db.Model(&Batch{})
+	db = db.Select("proving_status")
+	db = db.Where("hash = ?", hash)
+	if err := db.Find(&batch).Error; err != nil {
 		return types.ProvingStatusUndefined, err
 	}
 	return types.ProvingStatus(batch.ProvingStatus), nil

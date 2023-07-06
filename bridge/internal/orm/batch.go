@@ -105,14 +105,16 @@ func (o *Batch) GetBatchCount(ctx context.Context) (uint64, error) {
 // GetVerifiedProofByHash retrieves the verified aggregate proof for a batch with the given hash.
 func (o *Batch) GetVerifiedProofByHash(ctx context.Context, hash string) (*message.AggProof, error) {
 	var batch Batch
-	err := o.db.WithContext(ctx).Where("hash = ? AND proving_status = ?", hash, types.ProvingTaskVerified).First(&batch).Error
-	if err != nil {
+	db := o.db.WithContext(ctx)
+	db = db.Model(&Batch{})
+	db = db.Select("proof")
+	db = db.Where("hash = ? AND proving_status = ?", hash, types.ProvingTaskVerified)
+	if err := db.Find(&batch).Error; err != nil {
 		return nil, err
 	}
 
 	var proof message.AggProof
-	err = json.Unmarshal(batch.Proof, &proof)
-	if err != nil {
+	if err := json.Unmarshal(batch.Proof, &proof); err != nil {
 		return nil, err
 	}
 
@@ -130,14 +132,18 @@ func (o *Batch) GetLatestBatch(ctx context.Context) (*Batch, error) {
 }
 
 // GetRollupStatusByHashList retrieves the rollup statuses for a list of batch hashes.
+// GetRollupStatusByHashList retrieves the rollup statuses for a list of batch hashes.
 func (o *Batch) GetRollupStatusByHashList(ctx context.Context, hashes []string) ([]types.RollupStatus, error) {
 	if len(hashes) == 0 {
-		return []types.RollupStatus{}, nil
+		return nil, nil
 	}
 
 	var batches []Batch
-	err := o.db.WithContext(ctx).Where("hash IN ?", hashes).Find(&batches).Error
-	if err != nil {
+	db := o.db.WithContext(ctx)
+	db = db.Model(&Batch{})
+	db = db.Select("hash, rollup_status")
+	db = db.Where("hash IN ?", hashes)
+	if err := db.Find(&batches).Error; err != nil {
 		return nil, err
 	}
 

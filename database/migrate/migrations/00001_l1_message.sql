@@ -12,7 +12,7 @@ create table l1_message
     calldata     TEXT    NOT NULL,
     layer1_hash  VARCHAR NOT NULL,
     layer2_hash  VARCHAR DEFAULT NULL,
-    status       INTEGER  DEFAULT 1,
+    status       INTEGER NOT NULL DEFAULT 1,
     created_at TIMESTAMP(0) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP(0) NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
