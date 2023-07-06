@@ -19,8 +19,8 @@ import (
 var (
 	base *docker.App
 
-	db             *gorm.DB
-	sessionInfoOrm *SubmissionInfo
+	db                *gorm.DB
+	submissionInfoOrm *SubmissionInfo
 )
 
 func TestMain(m *testing.M) {
@@ -47,7 +47,7 @@ func setupEnv(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(sqlDB))
 
-	sessionInfoOrm = NewSubmissionInfo(db)
+	submissionInfoOrm = NewSubmissionInfo(db)
 }
 
 func tearDownEnv(t *testing.T) {
@@ -69,17 +69,17 @@ func TestSessionInfoOrm(t *testing.T) {
 		ProvingStatus:   int16(types.RollerAssigned),
 	}
 
-	err = sessionInfoOrm.SetSessionInfo(context.Background(), &sessionInfo)
+	err = submissionInfoOrm.SetSessionInfo(context.Background(), &sessionInfo)
 	assert.NoError(t, err)
-	sessionInfos, err := sessionInfoOrm.GetSessionInfosByHashes(context.Background(), []string{"test-hash"})
+	sessionInfos, err := submissionInfoOrm.GetSessionInfosByHashes(context.Background(), []string{"test-hash"})
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(sessionInfos))
 	assert.Equal(t, sessionInfo.RollerName, sessionInfos[0].RollerName)
 
 	sessionInfo.ProvingStatus = int16(types.RollerProofValid)
-	err = sessionInfoOrm.SetSessionInfo(context.Background(), &sessionInfo)
+	err = submissionInfoOrm.SetSessionInfo(context.Background(), &sessionInfo)
 	assert.NoError(t, err)
-	sessionInfos, err = sessionInfoOrm.GetSessionInfosByHashes(context.Background(), []string{"test-hash"})
+	sessionInfos, err = submissionInfoOrm.GetSessionInfosByHashes(context.Background(), []string{"test-hash"})
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(sessionInfos))
 	assert.Equal(t, sessionInfo.ProvingStatus, sessionInfos[0].ProvingStatus)
