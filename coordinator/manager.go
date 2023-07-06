@@ -177,12 +177,12 @@ func (m *Manager) Loop() {
 				var err error
 				batchTasks, err = m.batchOrm.GetUnassignedBatches(m.ctx, m.GetNumberOfIdleRollers(message.ProofTypeBatch))
 				if err != nil {
-					log.Error("failed to get unassigned aggregator proving tasks", "error", err)
+					log.Error("failed to get unassigned batch proving tasks", "error", err)
 					continue
 				}
 			}
-			// Select aggregator type roller and send message
-			for len(batchTasks) > 0 && m.StartAggProofGenerationSession(batchTasks[0], nil) {
+			// Select batch type roller and send message
+			for len(batchTasks) > 0 && m.StartBatchProofGenerationSession(batchTasks[0], nil) {
 				batchTasks = batchTasks[1:]
 			}
 
@@ -192,12 +192,12 @@ func (m *Manager) Loop() {
 				var err error
 				chunkTasks, err = m.chunkOrm.GetUnassignedChunks(m.ctx, m.GetNumberOfIdleRollers(message.ProofTypeChunk))
 				if err != nil {
-					log.Error("failed to get unassigned basic proving tasks", "error", err)
+					log.Error("failed to get unassigned chunk proving tasks", "error", err)
 					continue
 				}
 			}
-			// Select basic type roller and send message
-			for len(chunkTasks) > 0 && m.StartBasicProofGenerationSession(chunkTasks[0], nil) {
+			// Select chunk type roller and send message
+			for len(chunkTasks) > 0 && m.StartChunkProofGenerationSession(chunkTasks[0], nil) {
 				chunkTasks = chunkTasks[1:]
 			}
 		case <-m.ctx.Done():
@@ -220,7 +220,7 @@ func (m *Manager) restorePrevSessions() {
 	// load assigned batch tasks from db
 	batchTasks, err := m.batchOrm.GetAssignedBatches(m.ctx)
 	if err != nil {
-		log.Error("failed to load assigned aggregator tasks from db", "error", err)
+		log.Error("failed to load assigned batch tasks from db", "error", err)
 		return
 	}
 	for _, batchTask := range batchTasks {
@@ -316,12 +316,12 @@ func (m *Manager) handleZkProof(pk string, msg *message.ProofDetail) error {
 		if dbErr != nil {
 			if msg.Type == message.ProofTypeChunk {
 				if err := m.chunkOrm.UpdateProvingStatus(m.ctx, msg.ID, types.ProvingTaskUnassigned); err != nil {
-					log.Error("fail to reset basic task status as Unassigned", "msg.ID", msg.ID)
+					log.Error("fail to reset chunk task status as Unassigned", "msg.ID", msg.ID)
 				}
 			}
 			if msg.Type == message.ProofTypeBatch {
 				if err := m.batchOrm.UpdateProvingStatus(m.ctx, msg.ID, types.ProvingTaskUnassigned); err != nil {
-					log.Error("fail to reset aggregator task status as Unassigned", "msg.ID", msg.ID)
+					log.Error("fail to reset batch task status as Unassigned", "msg.ID", msg.ID)
 				}
 			}
 		}
@@ -352,21 +352,21 @@ func (m *Manager) handleZkProof(pk string, msg *message.ProofDetail) error {
 	// store proof content
 	if msg.Type == message.ProofTypeChunk {
 		if dbErr = m.chunkOrm.UpdateProofByHash(m.ctx, msg.ID, msg.Proof, proofTimeSec); dbErr != nil {
-			log.Error("failed to store basic proof into db", "error", dbErr)
+			log.Error("failed to store chunk proof into db", "error", dbErr)
 			return dbErr
 		}
 		if dbErr = m.chunkOrm.UpdateProvingStatus(m.ctx, msg.ID, types.ProvingTaskProved); dbErr != nil {
-			log.Error("failed to update basic task status as proved", "error", dbErr)
+			log.Error("failed to update chunk task status as proved", "error", dbErr)
 			return dbErr
 		}
 	}
 	if msg.Type == message.ProofTypeBatch {
 		if dbErr = m.batchOrm.UpdateProofByHash(m.ctx, msg.ID, msg.Proof, proofTimeSec); dbErr != nil {
-			log.Error("failed to store aggregator proof into db", "error", dbErr)
+			log.Error("failed to store batch proof into db", "error", dbErr)
 			return dbErr
 		}
 		if dbErr = m.batchOrm.UpdateProvingStatus(m.ctx, msg.ID, types.ProvingTaskProved); dbErr != nil {
-			log.Error("failed to update basic task status as proved", "error", dbErr)
+			log.Error("failed to update batch task status as proved", "error", dbErr)
 			return dbErr
 		}
 	}
@@ -374,7 +374,7 @@ func (m *Manager) handleZkProof(pk string, msg *message.ProofDetail) error {
 	coordinatorProofsReceivedTotalCounter.Inc(1)
 
 	var verifyErr error
-	// TODO: wrap both basic verifier and aggregator verifier
+	// TODO: wrap both chunk verifier and batch verifier
 	success, verifyErr = m.verifyProof(msg.Proof)
 	if verifyErr != nil {
 		// TODO: this is only a temp workaround for testnet, we should return err in real cases
@@ -388,7 +388,7 @@ func (m *Manager) handleZkProof(pk string, msg *message.ProofDetail) error {
 		if msg.Type == message.ProofTypeChunk {
 			if dbErr = m.chunkOrm.UpdateProvingStatus(m.ctx, msg.ID, types.ProvingTaskVerified); dbErr != nil {
 				log.Error(
-					"failed to update basic proving_status",
+					"failed to update chunk proving_status",
 					"msg.ID", msg.ID,
 					"status", types.ProvingTaskVerified,
 					"error", dbErr)
@@ -398,7 +398,7 @@ func (m *Manager) handleZkProof(pk string, msg *message.ProofDetail) error {
 		if msg.Type == message.ProofTypeBatch {
 			if dbErr = m.batchOrm.UpdateProvingStatus(m.ctx, msg.ID, types.ProvingTaskVerified); dbErr != nil {
 				log.Error(
-					"failed to update aggregator proving_status",
+					"failed to update batch proving_status",
 					"msg.ID", msg.ID,
 					"status", types.ProvingTaskVerified,
 					"error", dbErr)
@@ -445,9 +445,9 @@ func (m *Manager) CollectProofs(sess *session) {
 			if !m.checkAttemptsExceeded(sess.taskID) {
 				var success bool
 				if message.ProofType(sess.sessionInfos[0].ProofType) == message.ProofTypeBatch {
-					success = m.StartAggProofGenerationSession(nil, sess)
+					success = m.StartBatchProofGenerationSession(nil, sess)
 				} else if message.ProofType(sess.sessionInfos[0].ProofType) == message.ProofTypeChunk {
-					success = m.StartBasicProofGenerationSession(nil, sess)
+					success = m.StartChunkProofGenerationSession(nil, sess)
 				}
 				if success {
 					m.mu.Lock()
@@ -469,12 +469,12 @@ func (m *Manager) CollectProofs(sess *session) {
 			// so as to re-distribute the task in the future
 			if message.ProofType(sess.sessionInfos[0].ProofType) == message.ProofTypeChunk {
 				if err := m.chunkOrm.UpdateProvingStatus(m.ctx, sess.taskID, types.ProvingTaskFailed); err != nil {
-					log.Error("fail to reset basic task_status as Unassigned", "task id", sess.taskID, "err", err)
+					log.Error("fail to reset chunk task_status as Unassigned", "task id", sess.taskID, "err", err)
 				}
 			}
 			if message.ProofType(sess.sessionInfos[0].ProofType) == message.ProofTypeBatch {
 				if err := m.batchOrm.UpdateProvingStatus(m.ctx, sess.taskID, types.ProvingTaskFailed); err != nil {
-					log.Error("fail to reset aggregator task_status as Unassigned", "task id", sess.taskID, "err", err)
+					log.Error("fail to reset batch task_status as Unassigned", "task id", sess.taskID, "err", err)
 				}
 			}
 
@@ -499,12 +499,12 @@ func (m *Manager) CollectProofs(sess *session) {
 			if sess.isSessionFailed() {
 				if ret.typ == message.ProofTypeChunk {
 					if err := m.chunkOrm.UpdateProvingStatus(m.ctx, ret.id, types.ProvingTaskFailed); err != nil {
-						log.Error("failed to update basic proving_status as failed", "msg.ID", ret.id, "error", err)
+						log.Error("failed to update chunk proving_status as failed", "msg.ID", ret.id, "error", err)
 					}
 				}
 				if ret.typ == message.ProofTypeBatch {
 					if err := m.batchOrm.UpdateProvingStatus(m.ctx, ret.id, types.ProvingTaskFailed); err != nil {
-						log.Error("failed to update aggregator proving_status as failed", "msg.ID", ret.id, "error", err)
+						log.Error("failed to update batch proving_status as failed", "msg.ID", ret.id, "error", err)
 					}
 				}
 				coordinatorSessionsFailedTotalCounter.Inc(1)
@@ -584,8 +584,8 @@ func (m *Manager) APIs() []rpc.API {
 	}
 }
 
-// StartBasicProofGenerationSession starts a basic proof generation session
-func (m *Manager) StartBasicProofGenerationSession(task *orm.Chunk, prevSession *session) (success bool) {
+// StartChunkProofGenerationSession starts a chunk proof generation session
+func (m *Manager) StartChunkProofGenerationSession(task *orm.Chunk, prevSession *session) (success bool) {
 	var taskID string
 	if task != nil {
 		taskID = task.Hash
@@ -593,11 +593,11 @@ func (m *Manager) StartBasicProofGenerationSession(task *orm.Chunk, prevSession 
 		taskID = prevSession.taskID
 	}
 	if m.GetNumberOfIdleRollers(message.ProofTypeChunk) == 0 {
-		log.Warn("no idle basic roller when starting proof generation session", "id", taskID)
+		log.Warn("no idle chunk roller when starting proof generation session", "id", taskID)
 		return false
 	}
 
-	log.Info("start basic proof generation session", "id", taskID)
+	log.Info("start chunk proof generation session", "id", taskID)
 
 	defer func() {
 		if !success {
@@ -628,7 +628,7 @@ func (m *Manager) StartBasicProofGenerationSession(task *orm.Chunk, prevSession 
 		blockHashes[i] = wrappedBlock.Header.Hash()
 	}
 
-	// Dispatch task to basic rollers.
+	// Dispatch task to chunk rollers.
 	var sessionInfos []*orm.SessionInfo
 	for i := 0; i < int(m.cfg.RollersPerSession); i++ {
 		roller := m.selectRoller(message.ProofTypeChunk)
@@ -663,7 +663,7 @@ func (m *Manager) StartBasicProofGenerationSession(task *orm.Chunk, prevSession 
 	}
 	// No roller assigned.
 	if len(sessionInfos) == 0 {
-		log.Error("no roller assigned", "id", taskID, "number of idle basic rollers", m.GetNumberOfIdleRollers(message.ProofTypeChunk))
+		log.Error("no roller assigned", "id", taskID, "number of idle chunk rollers", m.GetNumberOfIdleRollers(message.ProofTypeChunk))
 		return false
 	}
 
@@ -688,8 +688,8 @@ func (m *Manager) StartBasicProofGenerationSession(task *orm.Chunk, prevSession 
 	return true
 }
 
-// StartAggProofGenerationSession starts an aggregator proof generation.
-func (m *Manager) StartAggProofGenerationSession(task *orm.Batch, prevSession *session) (success bool) {
+// StartBatchProofGenerationSession starts an batch proof generation.
+func (m *Manager) StartBatchProofGenerationSession(task *orm.Batch, prevSession *session) (success bool) {
 	var taskID string
 	if task != nil {
 		taskID = task.Hash
@@ -701,7 +701,7 @@ func (m *Manager) StartAggProofGenerationSession(task *orm.Batch, prevSession *s
 		return false
 	}
 
-	log.Info("start aggregator proof generation session", "id", taskID)
+	log.Info("start batch proof generation session", "id", taskID)
 
 	defer func() {
 		if !success {
@@ -719,11 +719,11 @@ func (m *Manager) StartAggProofGenerationSession(task *orm.Batch, prevSession *s
 	// get chunk proofs from db
 	chunkProofs, err := m.chunkOrm.GetProofsByBatchHash(m.ctx, taskID)
 	if err != nil {
-		log.Error("failed to get sub proofs for aggregator task", "session id", taskID, "error", err)
+		log.Error("failed to get chunk proofs for batch task", "session id", taskID, "error", err)
 		return false
 	}
 
-	// Dispatch task to basic rollers.
+	// Dispatch task to chunk rollers.
 	var sessionInfos []*orm.SessionInfo
 	for i := 0; i < int(m.cfg.RollersPerSession); i++ {
 		roller := m.selectRoller(message.ProofTypeBatch)
@@ -763,7 +763,7 @@ func (m *Manager) StartAggProofGenerationSession(task *orm.Batch, prevSession *s
 	}
 	// No roller assigned.
 	if len(sessionInfos) == 0 {
-		log.Error("no roller assigned", "id", taskID, "number of idle aggregator rollers", m.GetNumberOfIdleRollers(message.ProofTypeBatch))
+		log.Error("no roller assigned", "id", taskID, "number of idle batch rollers", m.GetNumberOfIdleRollers(message.ProofTypeBatch))
 		return false
 	}
 
