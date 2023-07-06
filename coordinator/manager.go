@@ -172,7 +172,7 @@ func (m *Manager) Loop() {
 	for {
 		select {
 		case <-tick.C:
-			// load and send aggregator tasks
+			// load and send batch tasks
 			if len(batchTasks) == 0 {
 				var err error
 				batchTasks, err = m.batchOrm.GetUnassignedBatches(m.ctx, m.GetNumberOfIdleRollers(message.ProofTypeBatch))
@@ -186,7 +186,7 @@ func (m *Manager) Loop() {
 				batchTasks = batchTasks[1:]
 			}
 
-			// load and send basic tasks
+			// load and send chunk tasks
 			if len(chunkTasks) == 0 {
 				// TODO: add cache
 				var err error
@@ -217,7 +217,7 @@ func (m *Manager) restorePrevSessions() {
 	defer m.mu.Unlock()
 
 	var hashes []string
-	// load assigned aggregator tasks from db
+	// load assigned batch tasks from db
 	batchTasks, err := m.batchOrm.GetAssignedBatches(m.ctx)
 	if err != nil {
 		log.Error("failed to load assigned aggregator tasks from db", "error", err)
@@ -226,7 +226,7 @@ func (m *Manager) restorePrevSessions() {
 	for _, batchTask := range batchTasks {
 		hashes = append(hashes, batchTask.Hash)
 	}
-	// load assigned basic tasks from db
+	// load assigned chunk tasks from db
 	chunkTasks, err := m.chunkOrm.GetAssignedChunks(m.ctx)
 	if err != nil {
 		log.Error("failed to get assigned batch batchHashes from db", "error", err)
