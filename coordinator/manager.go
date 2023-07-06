@@ -651,7 +651,7 @@ func (m *Manager) StartChunkProofGenerationSession(task *orm.Chunk, prevSession 
 			ProvingStatus:   int16(types.RollerAssigned),
 			CreatedAt:       time.Now(), // Used in submissionInfos, should be explicitly assigned here.
 		}
-		// Store session info.
+		// Store submission info.
 		if err = m.submissionInfoOrm.SetSubmissionInfo(m.ctx, &submissionInfo); err != nil {
 			log.Error("db set session info fail", "session id", taskID, "error", err)
 			return false
