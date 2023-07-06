@@ -60,7 +60,7 @@ func (o *ProverTask) GetProverTasksByHashes(ctx context.Context, hashes []string
 func (o *ProverTask) SetProverTask(ctx context.Context, sessionInfo *ProverTask) error {
 	db := o.db.WithContext(ctx)
 	db = db.Clauses(clause.OnConflict{
-		Columns:   []clause.Column{{Name: "task_id"}, {Name: "prover_public_key"}},
+		Columns:   []clause.Column{{Name: "task_type"}, {Name: "task_id"}, {Name: "prover_public_key"}},
 		DoUpdates: clause.AssignmentColumns([]string{"proving_status"}),
 	})
 	return db.Create(&sessionInfo).Error
