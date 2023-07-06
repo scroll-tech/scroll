@@ -390,8 +390,24 @@ library PatriciaMerkleTrieVerifier {
                         // Note: the value itself is not validated
                         // and it is instead assumed that any invalid
                         // value is invalidated by comparing the root hash.
-                        let prefixLen := shr(128, mload(memStart))
-                        depth := add(depth, prefixLen)
+                        let offset := mload(memStart)
+                        let prefixLen := shr(128, offset)
+                        // assuming 0xffffff is sufficient for storing calldata offset
+                        offset := and(offset, 0xffffff)
+                        let flag := shr(252, calldataload(offset))
+                        switch flag 
+                        case 0 {
+                            // extension with even legnth
+                            depth := add(depth, mul(2, sub(prefixLen, 1)))
+                        }
+                        case 1 {
+                            // extension with odd legnth
+                            depth := add(depth, sub(mul(2, prefixLen), 1))
+                        }
+                        default {
+                            // everything else is unexpected
+                            revertWith("Invalid extension node")
+                        }
                     }
                     case 17 {
                         let bits := sub(252, mul(depth, 4))
