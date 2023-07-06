@@ -11,8 +11,8 @@ import (
 	"scroll-tech/common/types/message"
 )
 
-// SubmissionInfo is assigned rollers info of chunk/batch proof submission
-type SubmissionInfo struct {
+// ProverTask is assigned rollers info of chunk/batch proof prover task
+type ProverTask struct {
 	db *gorm.DB `gorm:"column:-"`
 
 	ID              int64          `json:"id" gorm:"column:id"`
@@ -29,23 +29,23 @@ type SubmissionInfo struct {
 	DeletedAt       gorm.DeletedAt `json:"deleted_at" gorm:"column:deleted_at"`
 }
 
-// NewSubmissionInfo creates a new SubmissionInfo instance.
-func NewSubmissionInfo(db *gorm.DB) *SubmissionInfo {
-	return &SubmissionInfo{db: db}
+// NewProverTask creates a new ProverTask instance.
+func NewProverTask(db *gorm.DB) *ProverTask {
+	return &ProverTask{db: db}
 }
 
-// TableName returns the name of the "submission_info" table.
-func (*SubmissionInfo) TableName() string {
-	return "submission_info"
+// TableName returns the name of the "prover_task" table.
+func (*ProverTask) TableName() string {
+	return "prover_task"
 }
 
-// GetSubmissionInfosByHashes retrieves the SubmissionInfo records associated with the specified hashes.
+// GetProverTasksByHashes retrieves the ProverTask records associated with the specified hashes.
 // The returned session info objects are sorted in ascending order by their ids.
-func (o *SubmissionInfo) GetSubmissionInfosByHashes(ctx context.Context, hashes []string) ([]*SubmissionInfo, error) {
+func (o *ProverTask) GetProverTasksByHashes(ctx context.Context, hashes []string) ([]*ProverTask, error) {
 	if len(hashes) == 0 {
 		return nil, nil
 	}
-	var sessionInfos []*SubmissionInfo
+	var sessionInfos []*ProverTask
 	db := o.db.WithContext(ctx)
 	db = db.Where("task_id IN ?", hashes)
 	db = db.Order("id asc")
@@ -56,8 +56,8 @@ func (o *SubmissionInfo) GetSubmissionInfosByHashes(ctx context.Context, hashes 
 	return sessionInfos, nil
 }
 
-// SetSubmissionInfo updates or inserts a SubmissionInfo record.
-func (o *SubmissionInfo) SetSubmissionInfo(ctx context.Context, sessionInfo *SubmissionInfo) error {
+// SetProverTask updates or inserts a ProverTask record.
+func (o *ProverTask) SetProverTask(ctx context.Context, sessionInfo *ProverTask) error {
 	db := o.db.WithContext(ctx)
 	db = db.Clauses(clause.OnConflict{
 		Columns:   []clause.Column{{Name: "task_id"}, {Name: "roller_public_key"}},
@@ -66,10 +66,10 @@ func (o *SubmissionInfo) SetSubmissionInfo(ctx context.Context, sessionInfo *Sub
 	return db.Create(&sessionInfo).Error
 }
 
-// UpdateSubmissionInfoProvingStatus updates the proving_status of a specific SubmissionInfo record.
-func (o *SubmissionInfo) UpdateSubmissionInfoProvingStatus(ctx context.Context, proofType message.ProofType, taskID string, pk string, status types.RollerProveStatus) error {
+// UpdateProverTaskProvingStatus updates the proving_status of a specific ProverTask record.
+func (o *ProverTask) UpdateProverTaskProvingStatus(ctx context.Context, proofType message.ProofType, taskID string, pk string, status types.RollerProveStatus) error {
 	db := o.db.WithContext(ctx)
-	db = db.Model(&SubmissionInfo{})
+	db = db.Model(&ProverTask{})
 	db = db.Where("proof_type = ? AND task_id = ? AND roller_public_key = ?", proofType, taskID, pk)
 
 	return db.Update("proving_status", status).Error

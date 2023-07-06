@@ -1,7 +1,7 @@
 -- +goose Up
 -- +goose StatementBegin
 
-create table submission_info
+create table prover_task
 (
     id                  BIGSERIAL      PRIMARY KEY,
     task_id             VARCHAR        NOT NULL,
@@ -26,5 +26,5 @@ on column batch.proving_status is 'roller assigned, roller proof valid, roller p
 
 -- +goose Down
 -- +goose StatementBegin
-drop table if exists submission_info;
+drop table if exists prover_task;
 -- +goose StatementEnd
