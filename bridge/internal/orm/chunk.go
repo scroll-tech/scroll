@@ -171,7 +171,7 @@ func (o *Chunk) InsertChunk(ctx context.Context, chunk *types.Chunk, dbTX ...*go
 	if len(dbTX) > 0 && dbTX[0] != nil {
 		db = dbTX[0]
 	}
-	db = o.db.WithContext(ctx)
+	db = db.WithContext(ctx)
 	db = db.Model(&Chunk{})
 
 	if err := db.Create(&newChunk).Error; err != nil {
@@ -199,7 +199,7 @@ func (o *Chunk) UpdateProvingStatus(ctx context.Context, hash string, status typ
 	if len(dbTX) > 0 && dbTX[0] != nil {
 		db = dbTX[0]
 	}
-	db = o.db.WithContext(ctx)
+	db = db.WithContext(ctx)
 	db = db.Model(&Chunk{})
 	db = db.Where("hash", hash)
 
@@ -216,7 +216,7 @@ func (o *Chunk) UpdateBatchHashInRange(ctx context.Context, startIndex uint64, e
 	if len(dbTX) > 0 && dbTX[0] != nil {
 		db = dbTX[0]
 	}
-	db = o.db.WithContext(ctx)
+	db = db.WithContext(ctx)
 	db = db.Model(&Chunk{})
 	db = db.Where("index >= ? AND index <= ?", startIndex, endIndex)
 

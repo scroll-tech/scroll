@@ -6,6 +6,8 @@ import (
 	"fmt"
 )
 
+const undefined = "undefined"
+
 // L1BlockStatus represents current l1 block processing status
 type L1BlockStatus int
 
@@ -208,7 +210,7 @@ func (ps ProvingStatus) String() string {
 	case ProvingTaskFailed:
 		return "failed"
 	default:
-		return "undefined"
+		return undefined
 	}
 }
 
@@ -233,7 +235,7 @@ func (s ChunkProofsStatus) String() string {
 	case ChunkProofsStatusReady:
 		return "ChunkProofsStatusReady"
 	default:
-		return "undefined"
+		return undefined
 	}
 }
 
@@ -280,6 +282,6 @@ func (s RollupStatus) String() string {
 	case RollupFinalizeFailed:
 		return "RollupFinalizeFailed"
 	default:
-		return "undefined"
+		return undefined
 	}
 }

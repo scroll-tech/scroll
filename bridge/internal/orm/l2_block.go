@@ -207,7 +207,7 @@ func (o *L2Block) UpdateChunkHashInRange(ctx context.Context, startIndex uint64,
 	if len(dbTX) > 0 && dbTX[0] != nil {
 		db = dbTX[0]
 	}
-	db = o.db.WithContext(ctx)
+	db = db.WithContext(ctx)
 	db = db.Model(&L2Block{})
 	db = db.Where("number >= ? AND number <= ?", startIndex, endIndex)
 
