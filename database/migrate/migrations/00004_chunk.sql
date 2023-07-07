@@ -15,7 +15,7 @@ create table chunk
     start_block_time                  BIGINT          NOT NULL,
 
 -- proof
-    proving_status                    SMALLINT        NOT NULL DEFAULT 1,
+    proving_status                    SMALLINT        NOT NULL,
     proof                             BYTEA           DEFAULT NULL,
     prover_assigned_at                TIMESTAMP(0)    DEFAULT NULL,
     proved_at                         TIMESTAMP(0)    DEFAULT NULL,

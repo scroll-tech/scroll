@@ -38,8 +38,10 @@ func (r ProofType) String() string {
 }
 
 const (
+	// ProofTypeUndefined is an unknown proof type
+	ProofTypeUndefined ProofType = iota
 	// ProofTypeChunk is default roller, it only generates zk proof from traces.
-	ProofTypeChunk ProofType = iota
+	ProofTypeChunk
 	// ProofTypeBatch generates zk proof from other zk proofs and aggregate them into one proof.
 	ProofTypeBatch
 )

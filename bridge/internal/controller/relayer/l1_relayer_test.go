@@ -128,8 +128,8 @@ func testL1RelayerGasOracleConfirm(t *testing.T) {
 	l1BlockOrm := orm.NewL1Block(db)
 
 	l1Block := []orm.L1Block{
-		{Hash: "gas-oracle-1", Number: 0},
-		{Hash: "gas-oracle-2", Number: 1},
+		{Hash: "gas-oracle-1", Number: 0, GasOracleStatus: int(types.GasOraclePending), BlockStatus: int(types.L1BlockPending)},
+		{Hash: "gas-oracle-2", Number: 1, GasOracleStatus: int(types.GasOraclePending), BlockStatus: int(types.L1BlockPending)},
 	}
 	// Insert test data.
 	assert.NoError(t, l1BlockOrm.InsertL1Blocks(context.Background(), l1Block))

@@ -27,7 +27,7 @@ type Chunk struct {
 	TotalL1MessagesPoppedInChunk uint64 `json:"total_l1_messages_popped_in_chunk" gorm:"column:total_l1_messages_popped_in_chunk"`
 
 	// proof
-	ProvingStatus    int16      `json:"proving_status" gorm:"column:proving_status;default:1"`
+	ProvingStatus    int16      `json:"proving_status" gorm:"column:proving_status"`
 	Proof            []byte     `json:"proof" gorm:"column:proof;default:NULL"`
 	ProverAssignedAt *time.Time `json:"prover_assigned_at" gorm:"column:prover_assigned_at;default:NULL"`
 	ProvedAt         *time.Time `json:"proved_at" gorm:"column:proved_at;default:NULL"`

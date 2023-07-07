@@ -33,14 +33,14 @@ type Batch struct {
 
 	// proof
 	ChunkProofsStatus int16      `json:"chunk_proofs_status" gorm:"column:chunk_proofs_status"`
-	ProvingStatus     int16      `json:"proving_status" gorm:"column:proving_status;default:1"`
+	ProvingStatus     int16      `json:"proving_status" gorm:"column:proving_status"`
 	Proof             []byte     `json:"proof" gorm:"column:proof;default:NULL"`
 	ProverAssignedAt  *time.Time `json:"prover_assigned_at" gorm:"column:prover_assigned_at;default:NULL"`
 	ProvedAt          *time.Time `json:"proved_at" gorm:"column:proved_at;default:NULL"`
 	ProofTimeSec      int        `json:"proof_time_sec" gorm:"column:proof_time_sec;default:NULL"`
 
 	// rollup
-	RollupStatus   int16      `json:"rollup_status" gorm:"column:rollup_status;default:1"`
+	RollupStatus   int16      `json:"rollup_status" gorm:"column:rollup_status"`
 	CommitTxHash   string     `json:"commit_tx_hash" gorm:"column:commit_tx_hash;default:NULL"`
 	CommittedAt    *time.Time `json:"committed_at" gorm:"column:committed_at;default:NULL"`
 	FinalizeTxHash string     `json:"finalize_tx_hash" gorm:"column:finalize_tx_hash;default:NULL"`

@@ -19,9 +19,9 @@ type ProverTask struct {
 	TaskID          string         `json:"task_id" gorm:"column:task_id"`
 	ProverPublicKey string         `json:"prover_public_key" gorm:"column:prover_public_key"`
 	ProverName      string         `json:"prover_name" gorm:"column:prover_name"`
-	TaskType        int16          `json:"task_type" gorm:"column:task_type;default:0"`
-	ProvingStatus   int16          `json:"proving_status" gorm:"column:proving_status;default:0"`
-	FailureType     int16          `json:"failure_type" gorm:"column:failure_type;default:0"`
+	TaskType        int16          `json:"task_type" gorm:"column:task_type"`
+	ProvingStatus   int16          `json:"proving_status" gorm:"column:proving_status"`
+	FailureType     int16          `json:"failure_type" gorm:"column:failure_type"`
 	Reward          uint64         `json:"reward" gorm:"column:reward;default:0"`
 	Proof           []byte         `json:"proof" gorm:"column:proof;default:NULL"`
 	CreatedAt       time.Time      `json:"created_at" gorm:"column:created_at"`

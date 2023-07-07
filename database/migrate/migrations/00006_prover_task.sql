@@ -7,9 +7,9 @@ create table prover_task
     task_id             VARCHAR        NOT NULL,
     prover_public_key   VARCHAR        NOT NULL,
     prover_name         VARCHAR        NOT NULL,
-    task_type           SMALLINT       NOT NULL DEFAULT 0,
-    proving_status      SMALLINT       NOT NULL DEFAULT 0,
-    failure_type        SMALLINT       NOT NULL DEFAULT 0,
+    task_type           SMALLINT       NOT NULL,
+    proving_status      SMALLINT       NOT NULL,
+    failure_type        SMALLINT       NOT NULL,
     reward              BIGINT         NOT NULL DEFAULT 0,
     proof               BYTEA          DEFAULT NULL,
     created_at          TIMESTAMP(0)   NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -20,7 +20,13 @@ create table prover_task
 );
 
 comment
-on column batch.proving_status is 'roller assigned, roller proof valid, roller proof invalid';
+on column batch.task_type is 'undefined, chunk, batch';
+
+comment
+on column batch.proving_status is 'undefined, roller assigned, roller proof valid, roller proof invalid';
+
+comment
+on column batch.failure_type is 'undefined';
 
 -- +goose StatementEnd
 
