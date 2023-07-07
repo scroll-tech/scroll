@@ -343,6 +343,21 @@ func (s *Sender) resubmitTransaction(feeData *FeeData, auth *bind.TransactOpts, 
 		if gasTipCap.Cmp(feeData.gasTipCap) < 0 {
 			gasTipCap = feeData.gasTipCap
 		}
+
+		// adjust for rising basefee
+		baseFee := big.NewInt(0)
+		if feeGas := atomic.LoadUint64(&s.baseFeePerGas); feeGas != 0 {
+			baseFee.SetUint64(feeGas)
+		}
+		currentGasFeeCap := new(big.Int).Add(
+			gasTipCap,
+			new(big.Int).Mul(baseFee, big.NewInt(2)),
+		)
+		if gasFeeCap.Cmp(currentGasFeeCap) < 0 {
+			gasFeeCap = currentGasFeeCap
+		}
+
+		// but don't exceed maxGasPrice
 		if gasFeeCap.Cmp(maxGasPrice) > 0 {
 			gasFeeCap = maxGasPrice
 		}
