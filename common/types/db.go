@@ -195,6 +195,20 @@ func (ps ProvingStatus) String() string {
 	}
 }
 
+// ChunkProofsStatus describes the proving status of chunks that belong to a batch.
+type ChunkProofsStatus int
+
+const (
+	// ChunkProofsStatusUndefined represents an undefined chunk proofs status
+	ChunkProofsStatusUndefined ChunkProofsStatus = iota
+
+	// ChunkProofsStatusPending means that some chunks that belong to this batch have not been proven
+	ChunkProofsStatusPending
+
+	// ChunkProofsStatusReady means that all chunks that belong to this batch have been proven
+	ChunkProofsStatusReady
+)
+
 // RollupStatus block_batch rollup_status (pending, committing, committed, commit_failed, finalizing, finalized, finalize_skipped, finalize_failed)
 type RollupStatus int
 
