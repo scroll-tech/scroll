@@ -7,17 +7,17 @@ create table relayed_msg
     height      BIGINT NOT NULL,
     layer1_hash VARCHAR NOT NULL DEFAULT '',
     layer2_hash VARCHAR NOT NULL DEFAULT '',
-    is_deleted  BOOLEAN NOT NULL DEFAULT FALSE,
     created_at  TIMESTAMP(0) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at  TIMESTAMP(0) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     deleted_at  TIMESTAMP(0) DEFAULT NULL
 );
 
-comment 
-on column relayed_msg.is_deleted is 'NotDeleted, Deleted';
+create unique index uk_msg_hash_l1_hash_l2_hash
+on relayed_msg (msg_hash, layer1_hash, layer2_hash) where deleted_at IS NULL;
 
-create unique index relayed_msg_hash_uindex
-on relayed_msg (msg_hash);
+CREATE INDEX idx_l1_msg_relayed_msg ON relayed_msg (layer1_hash, deleted_at);
+
+CREATE INDEX idx_l2_msg_relayed_msg ON relayed_msg (layer2_hash, deleted_at);
 
 CREATE OR REPLACE FUNCTION update_timestamp()
 RETURNS TRIGGER AS $$
@@ -30,22 +30,6 @@ $$ language 'plpgsql';
 CREATE TRIGGER update_timestamp BEFORE UPDATE
 ON relayed_msg FOR EACH ROW EXECUTE PROCEDURE
 update_timestamp();
-
-CREATE OR REPLACE FUNCTION deleted_at_trigger()
-RETURNS TRIGGER AS $$
-BEGIN
-    IF NEW.is_deleted AND OLD.is_deleted != NEW.is_deleted THEN
-        UPDATE relayed_msg SET deleted_at = NOW() WHERE id = NEW.id;
-    END IF;
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
-CREATE TRIGGER deleted_at_trigger
-AFTER UPDATE ON relayed_msg
-FOR EACH ROW
-EXECUTE FUNCTION deleted_at_trigger();
-
 
 -- +goose StatementEnd
 

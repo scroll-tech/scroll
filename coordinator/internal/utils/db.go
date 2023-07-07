@@ -5,7 +5,7 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 
-	"scroll-tech/bridge/internal/config"
+	"scroll-tech/coordinator/internal/config"
 )
 
 // InitDB init the db handler

@@ -15,7 +15,7 @@ import (
 
 	"scroll-tech/common/types/message"
 
-	"scroll-tech/coordinator/config"
+	"scroll-tech/coordinator/internal/config"
 )
 
 func geneAuthMsg(t *testing.T) *message.AuthMsg {
@@ -36,7 +36,7 @@ var rollerManager *Manager
 func init() {
 	rmConfig := config.RollerManagerConfig{}
 	rmConfig.Verifier = &config.VerifierConfig{MockMode: true}
-	rollerManager, _ = New(context.Background(), &rmConfig, nil, nil)
+	rollerManager, _ = New(context.Background(), &rmConfig, nil)
 }
 
 func TestManager_RequestToken(t *testing.T) {

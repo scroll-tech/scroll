@@ -31,6 +31,20 @@ interface IL1GatewayRouter is IL1ETHGateway, IL1ERC20Gateway {
     /// @param _token The address of token to query.
     function getERC20Gateway(address _token) external view returns (address);
 
+    /*****************************
+     * Public Mutating Functions *
+     *****************************/
+
+    /// @notice Request ERC20 token transfer from users to gateways.
+    /// @param sender The address of sender to request fund.
+    /// @param token The address of token to request.
+    /// @param amount The amount of token to request.
+    function requestERC20(
+        address sender,
+        address token,
+        uint256 amount
+    ) external returns (uint256);
+
     /************************
      * Restricted Functions *
      ************************/
