@@ -15,7 +15,7 @@ create table batch
     batch_header            BYTEA           NOT NULL,
 
 -- proof
-    chunk_proofs_ready      BOOLEAN         NOT NULL DEFAULT FALSE,
+    chunk_proofs_ready      SMALLINT        NOT NULL DEFAULT 0,
     proving_status          SMALLINT        NOT NULL DEFAULT 1,
     proof                   BYTEA           DEFAULT NULL,
     prover_assigned_at      TIMESTAMP(0)    DEFAULT NULL,
