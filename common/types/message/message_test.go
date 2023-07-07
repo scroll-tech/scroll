@@ -114,10 +114,10 @@ func TestProofDetailHash(t *testing.T) {
 }
 
 func TestProveTypeString(t *testing.T) {
-	proofTypeChunk := ProofType(0)
+	proofTypeChunk := ProofType(1)
 	assert.Equal(t, "proof type chunk", proofTypeChunk.String())
 
-	proofTypeBatch := ProofType(1)
+	proofTypeBatch := ProofType(2)
 	assert.Equal(t, "proof type batch", proofTypeBatch.String())
 
 	illegalProof := ProofType(3)
