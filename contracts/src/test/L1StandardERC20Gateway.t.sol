@@ -81,12 +81,15 @@ contract L1StandardERC20GatewayTest is L1GatewayTestBase {
         l2Token = MockERC20(gateway.getL2ERC20Address(address(l1Token)));
         l1Token.mint(address(this), type(uint128).max);
         l1Token.approve(address(gateway), type(uint256).max);
+        l1Token.approve(address(router), type(uint256).max);
 
         reentrantToken.mint(address(this), type(uint128).max);
         reentrantToken.approve(address(gateway), type(uint256).max);
+        reentrantToken.approve(address(router), type(uint256).max);
 
         feeToken.mint(address(this), type(uint128).max);
         feeToken.approve(address(gateway), type(uint256).max);
+        feeToken.approve(address(router), type(uint256).max);
     }
 
     function testInitialized() public {
