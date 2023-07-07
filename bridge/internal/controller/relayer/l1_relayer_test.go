@@ -15,9 +15,10 @@ import (
 	"scroll-tech/common/types"
 	"scroll-tech/common/utils"
 
+	"scroll-tech/database/migrate"
+
 	"scroll-tech/bridge/internal/controller/sender"
 	"scroll-tech/bridge/internal/orm"
-	"scroll-tech/bridge/internal/orm/migrate"
 	bridgeUtils "scroll-tech/bridge/internal/utils"
 )
 

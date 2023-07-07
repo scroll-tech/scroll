@@ -17,7 +17,6 @@ import (
 	"scroll-tech/bridge/internal/controller/relayer"
 	"scroll-tech/bridge/internal/controller/watcher"
 	"scroll-tech/bridge/internal/orm"
-	bridgeTypes "scroll-tech/bridge/internal/types"
 	"scroll-tech/bridge/internal/utils"
 )
 
@@ -37,7 +36,7 @@ func testCommitBatchAndFinalizeBatch(t *testing.T) {
 	l1Watcher := watcher.NewL1WatcherClient(context.Background(), l1Client, 0, l1Cfg.Confirmations, l1Cfg.L1MessengerAddress, l1Cfg.L1MessageQueueAddress, l1Cfg.ScrollChainContractAddress, db)
 
 	// add some blocks to db
-	var wrappedBlocks []*bridgeTypes.WrappedBlock
+	var wrappedBlocks []*types.WrappedBlock
 	for i := 0; i < 10; i++ {
 		header := gethTypes.Header{
 			Number:     big.NewInt(int64(i)),
@@ -45,7 +44,7 @@ func testCommitBatchAndFinalizeBatch(t *testing.T) {
 			Difficulty: big.NewInt(0),
 			BaseFee:    big.NewInt(0),
 		}
-		wrappedBlocks = append(wrappedBlocks, &bridgeTypes.WrappedBlock{
+		wrappedBlocks = append(wrappedBlocks, &types.WrappedBlock{
 			Header:           &header,
 			Transactions:     nil,
 			WithdrawTrieRoot: common.Hash{},

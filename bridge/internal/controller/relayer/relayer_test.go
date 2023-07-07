@@ -10,9 +10,9 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"scroll-tech/common/docker"
+	"scroll-tech/common/types"
 
 	"scroll-tech/bridge/internal/config"
-	bridgeTypes "scroll-tech/bridge/internal/types"
 )
 
 var (
@@ -25,12 +25,12 @@ var (
 	l2Cli *ethclient.Client
 
 	// l2 block
-	wrappedBlock1 *bridgeTypes.WrappedBlock
-	wrappedBlock2 *bridgeTypes.WrappedBlock
+	wrappedBlock1 *types.WrappedBlock
+	wrappedBlock2 *types.WrappedBlock
 
 	// chunk
-	chunk1     *bridgeTypes.Chunk
-	chunk2     *bridgeTypes.Chunk
+	chunk1     *types.Chunk
+	chunk2     *types.Chunk
 	chunkHash1 common.Hash
 	chunkHash2 common.Hash
 )
@@ -58,19 +58,19 @@ func setupEnv(t *testing.T) {
 
 	templateBlockTrace1, err := os.ReadFile("../../../testdata/blockTrace_02.json")
 	assert.NoError(t, err)
-	wrappedBlock1 = &bridgeTypes.WrappedBlock{}
+	wrappedBlock1 = &types.WrappedBlock{}
 	err = json.Unmarshal(templateBlockTrace1, wrappedBlock1)
 	assert.NoError(t, err)
-	chunk1 = &bridgeTypes.Chunk{Blocks: []*bridgeTypes.WrappedBlock{wrappedBlock1}}
+	chunk1 = &types.Chunk{Blocks: []*types.WrappedBlock{wrappedBlock1}}
 	chunkHash1, err = chunk1.Hash(0)
 	assert.NoError(t, err)
 
 	templateBlockTrace2, err := os.ReadFile("../../../testdata/blockTrace_03.json")
 	assert.NoError(t, err)
-	wrappedBlock2 = &bridgeTypes.WrappedBlock{}
+	wrappedBlock2 = &types.WrappedBlock{}
 	err = json.Unmarshal(templateBlockTrace2, wrappedBlock2)
 	assert.NoError(t, err)
-	chunk2 = &bridgeTypes.Chunk{Blocks: []*bridgeTypes.WrappedBlock{wrappedBlock2}}
+	chunk2 = &types.Chunk{Blocks: []*types.WrappedBlock{wrappedBlock2}}
 	chunkHash2, err = chunk2.Hash(chunk1.NumL1Messages(0))
 	assert.NoError(t, err)
 }

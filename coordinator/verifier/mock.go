@@ -5,7 +5,7 @@ package verifier
 import (
 	"scroll-tech/common/types/message"
 
-	"scroll-tech/coordinator/config"
+	"scroll-tech/coordinator/internal/config"
 )
 
 const InvalidTestProof = "this is a invalid proof"
