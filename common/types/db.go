@@ -199,11 +199,13 @@ func (ps ProvingStatus) String() string {
 type ChunkProofsStatus int
 
 const (
-	// ChunkProofsStatusUndefined: undefined status
+	// ChunkProofsStatusUndefined represents an undefined chunk proofs status
 	ChunkProofsStatusUndefined ChunkProofsStatus = iota
-	// ChunkProofsStatusPending: Some chunks that belong to this batch have not been proven
+
+	// ChunkProofsStatusPending means that some chunks that belong to this batch have not been proven
 	ChunkProofsStatusPending
-	// ChunkProofsStatusReady: All chunks that belong to this batch have been proven
+
+	// ChunkProofsStatusReady means that all chunks that belong to this batch have been proven
 	ChunkProofsStatusReady
 )
 
