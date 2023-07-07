@@ -345,13 +345,15 @@ func (s *Sender) resubmitTransaction(feeData *FeeData, auth *bind.TransactOpts, 
 		}
 
 		// adjust for rising basefee
-		baseFee := big.NewInt(0)
+		adjBaseFee := big.NewInt(0)
 		if feeGas := atomic.LoadUint64(&s.baseFeePerGas); feeGas != 0 {
-			baseFee.SetUint64(feeGas)
+			adjBaseFee.SetUint64(feeGas)
 		}
+		adjBaseFee = adjBaseFee.Mul(adjBaseFee, escalateMultipleNum)
+		adjBaseFee = adjBaseFee.Div(adjBaseFee, escalateMultipleDen)
 		currentGasFeeCap := new(big.Int).Add(
 			gasTipCap,
-			new(big.Int).Mul(baseFee, big.NewInt(2)),
+			adjBaseFee,
 		)
 		if gasFeeCap.Cmp(currentGasFeeCap) < 0 {
 			gasFeeCap = currentGasFeeCap
