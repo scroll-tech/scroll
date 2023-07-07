@@ -41,15 +41,14 @@ func (*L2Block) TableName() string {
 
 // GetL2BlocksLatestHeight retrieves the height of the latest L2 block.
 // If the l2_block table is empty, it returns 0 to represent the genesis block height.
-// In case of an error, it returns -1 along with the error.
-func (o *L2Block) GetL2BlocksLatestHeight(ctx context.Context) (int64, error) {
+func (o *L2Block) GetL2BlocksLatestHeight(ctx context.Context) (uint64, error) {
 	db := o.db.WithContext(ctx)
 	db = db.Model(&L2Block{})
 	db = db.Select("COALESCE(MAX(number), 0)")
 
-	var maxNumber int64
+	var maxNumber uint64
 	if err := db.Row().Scan(&maxNumber); err != nil {
-		return -1, fmt.Errorf("L2Block.GetL2BlocksLatestHeight error: %w", err)
+		return 0, fmt.Errorf("L2Block.GetL2BlocksLatestHeight error: %w", err)
 	}
 	return maxNumber, nil
 }
@@ -136,7 +135,7 @@ func (o *L2Block) GetL2BlocksInRange(ctx context.Context, startBlockNumber uint6
 
 	// sanity check
 	if uint64(len(l2Blocks)) != endBlockNumber-startBlockNumber+1 {
-		return nil, fmt.Errorf("L2Block.GetL2BlocksInRange: number of blocks not expected in the specified range, expected: %v, got: %v", endBlockNumber-startBlockNumber+1, len(l2Blocks))
+		return nil, fmt.Errorf("L2Block.GetL2BlocksInRange: unexpected number of results, expected: %v, got: %v", endBlockNumber-startBlockNumber+1, len(l2Blocks))
 	}
 
 	var wrappedBlocks []*types.WrappedBlock
@@ -218,7 +217,7 @@ func (o *L2Block) UpdateChunkHashInRange(ctx context.Context, startIndex uint64,
 
 	// sanity check
 	if uint64(tx.RowsAffected) != endIndex-startIndex+1 {
-		return fmt.Errorf("L2Block.UpdateChunkHashInRange: incorrect number of affected rows after update, expected: %v, got: %v", endIndex-startIndex+1, tx.RowsAffected)
+		return fmt.Errorf("L2Block.UpdateChunkHashInRange: incorrect number of rows affected, expected: %v, got: %v", endIndex-startIndex+1, tx.RowsAffected)
 	}
 
 	return nil

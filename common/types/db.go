@@ -6,8 +6,6 @@ import (
 	"fmt"
 )
 
-const undefined = "undefined"
-
 // L1BlockStatus represents current l1 block processing status
 type L1BlockStatus int
 
@@ -61,7 +59,7 @@ func (s GasOracleStatus) String() string {
 	case GasOracleFailed:
 		return "GasOracleFailed"
 	default:
-		return fmt.Sprintf("Bad Value: %d", int32(s))
+		return fmt.Sprintf("Undefined (%d)", int32(s))
 	}
 }
 
@@ -210,7 +208,7 @@ func (ps ProvingStatus) String() string {
 	case ProvingTaskFailed:
 		return "failed"
 	default:
-		return undefined
+		return fmt.Sprintf("Undefined (%d)", int32(ps))
 	}
 }
 
@@ -235,7 +233,7 @@ func (s ChunkProofsStatus) String() string {
 	case ChunkProofsStatusReady:
 		return "ChunkProofsStatusReady"
 	default:
-		return undefined
+		return fmt.Sprintf("Undefined (%d)", int32(s))
 	}
 }
 
@@ -282,6 +280,6 @@ func (s RollupStatus) String() string {
 	case RollupFinalizeFailed:
 		return "RollupFinalizeFailed"
 	default:
-		return undefined
+		return fmt.Sprintf("Undefined (%d)", int32(s))
 	}
 }

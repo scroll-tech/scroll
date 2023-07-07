@@ -131,18 +131,13 @@ func (o *Batch) GetLatestBatch(ctx context.Context) (*Batch, error) {
 
 // InsertBatch inserts a new batch into the database.
 // for unit test
-func (o *Batch) InsertBatch(ctx context.Context, startChunkIndex, endChunkIndex uint64, startChunkHash, endChunkHash string, chunks []*types.Chunk, dbTX ...*gorm.DB) (*Batch, error) {
+func (o *Batch) InsertBatch(ctx context.Context, startChunkIndex, endChunkIndex uint64, startChunkHash, endChunkHash string, chunks []*types.Chunk) (*Batch, error) {
 	if len(chunks) == 0 {
 		return nil, errors.New("invalid args")
 	}
 
-	db := o.db
-	if len(dbTX) > 0 && dbTX[0] != nil {
-		db = dbTX[0]
-	}
-
 	parentBatch, err := o.GetLatestBatch(ctx)
-	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+	if err != nil && !errors.Is(errors.Unwrap(err), gorm.ErrRecordNotFound) {
 		log.Error("failed to get the latest batch", "err", err)
 		return nil, err
 	}
@@ -196,11 +191,13 @@ func (o *Batch) InsertBatch(ctx context.Context, startChunkIndex, endChunkIndex 
 		RollupStatus:      int16(types.RollupPending),
 	}
 
-	if err := db.WithContext(ctx).Create(&newBatch).Error; err != nil {
-		log.Error("failed to insert batch", "batch", newBatch, "err", err)
-		return nil, err
-	}
+	db := o.db.WithContext(ctx)
+	db = db.Model(&Batch{})
 
+	if err := db.Create(&newBatch).Error; err != nil {
+		log.Error("failed to insert batch", "batch", newBatch, "err", err)
+		return nil, fmt.Errorf("Batch.InsertBatch error: %w", err)
+	}
 	return &newBatch, nil
 }
 

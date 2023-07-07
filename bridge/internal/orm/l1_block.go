@@ -39,13 +39,8 @@ func (o *L1Block) GetLatestL1BlockHeight(ctx context.Context) (uint64, error) {
 	db = db.Model(&L1Block{})
 	db = db.Select("COALESCE(MAX(number), 0)")
 
-	result := db.Row()
-	if result.Err() != nil {
-		return 0, fmt.Errorf("L1Block.GetLatestL1BlockHeight error: %w", result.Err())
-	}
-
 	var maxNumber uint64
-	if err := result.Scan(&maxNumber); err != nil {
+	if err := db.Row().Scan(&maxNumber); err != nil {
 		return 0, fmt.Errorf("L1Block.GetLatestL1BlockHeight error: %w", err)
 	}
 	return maxNumber, nil

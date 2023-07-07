@@ -177,20 +177,15 @@ func (o *Chunk) GetChunkBatchHash(ctx context.Context, chunkHash string) (string
 
 // InsertChunk inserts a new chunk into the database.
 // for unit test
-func (o *Chunk) InsertChunk(ctx context.Context, chunk *types.Chunk, dbTX ...*gorm.DB) (*Chunk, error) {
+func (o *Chunk) InsertChunk(ctx context.Context, chunk *types.Chunk) (*Chunk, error) {
 	if chunk == nil || len(chunk.Blocks) == 0 {
 		return nil, errors.New("invalid args")
-	}
-
-	db := o.db
-	if len(dbTX) > 0 && dbTX[0] != nil {
-		db = dbTX[0]
 	}
 
 	var chunkIndex uint64
 	var totalL1MessagePoppedBefore uint64
 	parentChunk, err := o.GetLatestChunk(ctx)
-	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+	if err != nil && !errors.Is(errors.Unwrap(err), gorm.ErrRecordNotFound) {
 		log.Error("failed to get latest chunk", "err", err)
 		return nil, err
 	}
@@ -238,7 +233,10 @@ func (o *Chunk) InsertChunk(ctx context.Context, chunk *types.Chunk, dbTX ...*go
 		ProvingStatus:                int16(types.ProvingTaskUnassigned),
 	}
 
-	if err := db.WithContext(ctx).Create(&newChunk).Error; err != nil {
+	db := o.db.WithContext(ctx)
+	db = db.Model(&Chunk{})
+
+	if err := db.Create(&newChunk).Error; err != nil {
 		log.Error("failed to insert chunk", "hash", hash, "err", err)
 		return nil, err
 	}

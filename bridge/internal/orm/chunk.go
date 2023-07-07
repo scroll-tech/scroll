@@ -62,7 +62,7 @@ func (*Chunk) TableName() string {
 // The returned chunks are sorted in ascending order by their index.
 func (o *Chunk) GetChunksInRange(ctx context.Context, startIndex uint64, endIndex uint64) ([]*Chunk, error) {
 	if startIndex > endIndex {
-		return nil, errors.New("Chunk.GetChunksInRange: start index should be less than or equal to end index")
+		return nil, fmt.Errorf("Chunk.GetChunksInRange: start index should be less than or equal to end index, start index: %v, end index: %v", startIndex, endIndex)
 	}
 
 	db := o.db.WithContext(ctx)
@@ -77,7 +77,7 @@ func (o *Chunk) GetChunksInRange(ctx context.Context, startIndex uint64, endInde
 
 	// sanity check
 	if uint64(len(chunks)) != endIndex-startIndex+1 {
-		return nil, fmt.Errorf("Chunk.GetChunksInRange: incorrect number of chunks, expected: %v, got: %v", endIndex-startIndex+1, len(chunks))
+		return nil, fmt.Errorf("Chunk.GetChunksInRange: incorrect number of chunks, expected: %v, got: %v, start index: %v, end index: %v", endIndex-startIndex+1, len(chunks), startIndex, endIndex)
 	}
 
 	return chunks, nil
@@ -119,7 +119,7 @@ func (o *Chunk) InsertChunk(ctx context.Context, chunk *types.Chunk, dbTX ...*go
 	var chunkIndex uint64
 	var totalL1MessagePoppedBefore uint64
 	parentChunk, err := o.GetLatestChunk(ctx)
-	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+	if err != nil && !errors.Is(errors.Unwrap(err), gorm.ErrRecordNotFound) {
 		log.Error("failed to get latest chunk", "err", err)
 		return nil, fmt.Errorf("Chunk.InsertChunk error: %w", err)
 	}

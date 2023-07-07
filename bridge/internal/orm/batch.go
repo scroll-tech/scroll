@@ -122,7 +122,6 @@ func (o *Batch) GetVerifiedProofByHash(ctx context.Context, hash string) (*messa
 	if err := json.Unmarshal(batch.Proof, &proof); err != nil {
 		return nil, fmt.Errorf("Batch.GetVerifiedProofByHash error: %w, batch hash: %v", err, hash)
 	}
-
 	return &proof, nil
 }
 
@@ -212,7 +211,7 @@ func (o *Batch) InsertBatch(ctx context.Context, startChunkIndex, endChunkIndex 
 	}
 
 	parentBatch, err := o.GetLatestBatch(ctx)
-	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+	if err != nil && !errors.Is(errors.Unwrap(err), gorm.ErrRecordNotFound) {
 		log.Error("failed to get the latest batch", "err", err)
 		return nil, err
 	}
@@ -271,6 +270,7 @@ func (o *Batch) InsertBatch(ctx context.Context, startChunkIndex, endChunkIndex 
 		db = dbTX[0]
 	}
 	db.WithContext(ctx)
+	db = db.Model(&Batch{})
 
 	if err := db.Create(&newBatch).Error; err != nil {
 		log.Error("failed to insert batch", "batch", newBatch, "err", err)

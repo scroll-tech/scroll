@@ -101,7 +101,7 @@ func TestL2BlockOrm(t *testing.T) {
 
 	height, err := l2BlockOrm.GetL2BlocksLatestHeight(context.Background())
 	assert.NoError(t, err)
-	assert.Equal(t, int64(3), height)
+	assert.Equal(t, uint64(3), height)
 
 	blocks, err := l2BlockOrm.GetUnchunkedBlocks(context.Background())
 	assert.NoError(t, err)
