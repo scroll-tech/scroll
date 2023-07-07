@@ -164,19 +164,20 @@ func testResubmitTransactionWithRisingBaseFee(t *testing.T) {
 	assert.NoError(t, err)
 	auth := s.auths.getAccount()
 	tx := types.NewTransaction(auth.Nonce.Uint64(), common.Address{}, big.NewInt(0), 0, big.NewInt(0), nil)
+	s.baseFeePerGas = 1000
 	feeData, err := s.getFeeData(auth, &common.Address{}, big.NewInt(0), nil, 0)
 	assert.NoError(t, err)
 	// bump the basefee by 10x
 	s.baseFeePerGas *= 10
 	// resubmit and check that the gas fee has been adjusted accordingly
-	_, err = s.resubmitTransaction(feeData, auth, tx)
+	newTx, err := s.resubmitTransaction(feeData, auth, tx)
 	assert.NoError(t, err)
 
 	escalateMultipleNum := new(big.Int).SetUint64(s.config.EscalateMultipleNum)
 	escalateMultipleDen := new(big.Int).SetUint64(s.config.EscalateMultipleDen)
 	maxGasPrice := new(big.Int).SetUint64(s.config.MaxGasPrice)
 
-	adjBaseFee := big.NewInt(0)
+	adjBaseFee := new(big.Int)
 	adjBaseFee.SetUint64(s.baseFeePerGas)
 	adjBaseFee = adjBaseFee.Mul(adjBaseFee, escalateMultipleNum)
 	adjBaseFee = adjBaseFee.Div(adjBaseFee, escalateMultipleDen)
@@ -189,7 +190,7 @@ func testResubmitTransactionWithRisingBaseFee(t *testing.T) {
 		expectedGasFeeCap = maxGasPrice
 	}
 
-	assert.Equal(t, tx.GasFeeCap().Int64(), expectedGasFeeCap.Int64())
+	assert.Equal(t, expectedGasFeeCap.Int64(), newTx.GasFeeCap().Int64())
 
 	s.Stop()
 }
