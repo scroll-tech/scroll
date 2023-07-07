@@ -23,25 +23,25 @@ const (
 	StatusProofError
 )
 
-// ProveType represents the type of roller.
-type ProveType uint8
+// ProofType represents the type of roller.
+type ProofType uint8
 
-func (r ProveType) String() string {
+func (r ProofType) String() string {
 	switch r {
-	case BasicProve:
-		return "Basic Prove"
-	case AggregatorProve:
-		return "Aggregator Prove"
+	case ProofTypeChunk:
+		return "proof type chunk"
+	case ProofTypeBatch:
+		return "proof type batch"
 	default:
-		return "Illegal Prove type"
+		return "illegal proof type"
 	}
 }
 
 const (
-	// BasicProve is default roller, it only generates zk proof from traces.
-	BasicProve ProveType = iota
-	// AggregatorProve generates zk proof from other zk proofs and aggregate them into one proof.
-	AggregatorProve
+	// ProofTypeChunk is default roller, it only generates zk proof from traces.
+	ProofTypeChunk ProofType = iota
+	// ProofTypeBatch generates zk proof from other zk proofs and aggregate them into one proof.
+	ProofTypeBatch
 )
 
 // AuthMsg is the first message exchanged from the Roller to the Sequencer.
@@ -59,7 +59,7 @@ type Identity struct {
 	// Roller name
 	Name string `json:"name"`
 	// Roller RollerType
-	RollerType ProveType `json:"roller_type,omitempty"`
+	RollerType ProofType `json:"roller_type,omitempty"`
 	// Unverified Unix timestamp of message creation
 	Timestamp uint32 `json:"timestamp"`
 	// Version is common.Version+ZkVersion. Use the following to check the latest ZkVersion version.
@@ -203,7 +203,7 @@ func (a *ProofMsg) PublicKey() (string, error) {
 // TaskMsg is a wrapper type around db ProveTask type.
 type TaskMsg struct {
 	ID   string    `json:"id"`
-	Type ProveType `json:"type,omitempty"`
+	Type ProofType `json:"type,omitempty"`
 	// For decentralization, basic rollers will get block hashes from the coordinator. So that they can refer to the block hashes and fetch traces locally. Only applicable for basic rollers.
 	BlockHashes []common.Hash `json:"block_hashes,omitempty"`
 	// Only applicable for aggregator rollers.
@@ -214,7 +214,7 @@ type TaskMsg struct {
 // the proof generation succeeded, and an error message if proof generation failed.
 type ProofDetail struct {
 	ID     string     `json:"id"`
-	Type   ProveType  `json:"type,omitempty"`
+	Type   ProofType  `json:"type,omitempty"`
 	Status RespStatus `json:"status"`
 	Proof  *AggProof  `json:"proof"`
 	Error  string     `json:"error,omitempty"`

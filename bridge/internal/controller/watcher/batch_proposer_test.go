@@ -10,7 +10,6 @@ import (
 
 	"scroll-tech/bridge/internal/config"
 	"scroll-tech/bridge/internal/orm"
-	bridgeTypes "scroll-tech/bridge/internal/types"
 	"scroll-tech/bridge/internal/utils"
 )
 
@@ -20,7 +19,7 @@ func testBatchProposer(t *testing.T) {
 	defer utils.CloseDB(db)
 
 	l2BlockOrm := orm.NewL2Block(db)
-	err := l2BlockOrm.InsertL2Blocks(context.Background(), []*bridgeTypes.WrappedBlock{wrappedBlock1, wrappedBlock2})
+	err := l2BlockOrm.InsertL2Blocks(context.Background(), []*types.WrappedBlock{wrappedBlock1, wrappedBlock2})
 	assert.NoError(t, err)
 
 	cp := NewChunkProposer(context.Background(), &config.ChunkProposerConfig{

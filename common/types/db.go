@@ -4,7 +4,6 @@ package types
 import (
 	"database/sql"
 	"fmt"
-	"time"
 )
 
 // L1BlockStatus represents current l1 block processing status
@@ -157,22 +156,6 @@ type RollerStatus struct {
 	Status    RollerProveStatus `json:"status"`
 }
 
-// SessionInfo is assigned rollers info of a block batch (session)
-type SessionInfo struct {
-	ID              int        `json:"id" db:"id"`
-	TaskID          string     `json:"task_id" db:"task_id"`
-	RollerPublicKey string     `json:"roller_public_key" db:"roller_public_key"`
-	ProveType       int16      `json:"prove_type" db:"prove_type"`
-	RollerName      string     `json:"roller_name" db:"roller_name"`
-	ProvingStatus   int16      `json:"proving_status" db:"proving_status"`
-	FailureType     int16      `json:"failure_type" db:"failure_type"`
-	Reward          uint64     `json:"reward" db:"reward"`
-	Proof           []byte     `json:"proof" db:"proof"`
-	CreatedAt       *time.Time `json:"created_at" db:"created_at"`
-	UpdatedAt       *time.Time `json:"updated_at" db:"updated_at"`
-	DeletedAt       *time.Time `json:"deleted_at" db:"deleted_at"`
-}
-
 // ProvingStatus block_batch proving_status (unassigned, assigned, proved, verified, submitted)
 type ProvingStatus int
 
@@ -235,44 +218,3 @@ const (
 	// RollupFinalizeFailed : rollup finalize transaction is confirmed but failed
 	RollupFinalizeFailed
 )
-
-// BlockBatch is structure of stored block_batch
-type BlockBatch struct {
-	Hash             string          `json:"hash" db:"hash"`
-	Index            uint64          `json:"index" db:"index"`
-	ParentHash       string          `json:"parent_hash" db:"parent_hash"`
-	StartBlockNumber uint64          `json:"start_block_number" db:"start_block_number"`
-	StartBlockHash   string          `json:"start_block_hash" db:"start_block_hash"`
-	EndBlockNumber   uint64          `json:"end_block_number" db:"end_block_number"`
-	EndBlockHash     string          `json:"end_block_hash" db:"end_block_hash"`
-	StateRoot        string          `json:"state_root" db:"state_root"`
-	TotalTxNum       uint64          `json:"total_tx_num" db:"total_tx_num"`
-	TotalL1TxNum     uint64          `json:"total_l1_tx_num" db:"total_l1_tx_num"`
-	TotalL2Gas       uint64          `json:"total_l2_gas" db:"total_l2_gas"`
-	ProvingStatus    ProvingStatus   `json:"proving_status" db:"proving_status"`
-	Proof            []byte          `json:"proof" db:"proof"`
-	ProofTimeSec     uint64          `json:"proof_time_sec" db:"proof_time_sec"`
-	RollupStatus     RollupStatus    `json:"rollup_status" db:"rollup_status"`
-	OracleStatus     GasOracleStatus `json:"oracle_status" db:"oracle_status"`
-	CommitTxHash     sql.NullString  `json:"commit_tx_hash" db:"commit_tx_hash"`
-	FinalizeTxHash   sql.NullString  `json:"finalize_tx_hash" db:"finalize_tx_hash"`
-	OracleTxHash     sql.NullString  `json:"oracle_tx_hash" db:"oracle_tx_hash"`
-	CreatedAt        *time.Time      `json:"created_at" db:"created_at"`
-	ProverAssignedAt *time.Time      `json:"prover_assigned_at" db:"prover_assigned_at"`
-	ProvedAt         *time.Time      `json:"proved_at" db:"proved_at"`
-	CommittedAt      *time.Time      `json:"committed_at" db:"committed_at"`
-	FinalizedAt      *time.Time      `json:"finalized_at" db:"finalized_at"`
-}
-
-// AggTask is a wrapper type around db AggProveTask type.
-type AggTask struct {
-	ID              string        `json:"id" db:"id"`
-	StartBatchIndex uint64        `json:"start_batch_index" db:"start_batch_index"`
-	StartBatchHash  string        `json:"start_batch_hash" db:"start_batch_hash"`
-	EndBatchIndex   uint64        `json:"end_batch_index" db:"end_batch_index"`
-	EndBatchHash    string        `json:"end_batch_hash" db:"end_batch_hash"`
-	ProvingStatus   ProvingStatus `json:"proving_status" db:"proving_status"`
-	Proof           []byte        `json:"proof" db:"proof"`
-	CreatedAt       *time.Time    `json:"created_at" db:"created_at"`
-	UpdatedAt       *time.Time    `json:"updated_at" db:"updated_at"`
-}

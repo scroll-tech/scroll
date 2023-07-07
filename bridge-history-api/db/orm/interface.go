@@ -50,8 +50,8 @@ type CrossMsg struct {
 	Layer2Hash   string     `json:"layer2_hash" db:"layer2_hash"`
 	Layer1Token  string     `json:"layer1_token" db:"layer1_token"`
 	Layer2Token  string     `json:"layer2_token" db:"layer2_token"`
-	TokenIDs     []string   `json:"token_ids" db:"token_ids"`
-	TokenAmounts []string   `json:"token_amounts" db:"token_amounts"`
+	TokenIDs     string     `json:"token_ids" db:"token_ids"`
+	TokenAmounts string     `json:"token_amounts" db:"token_amounts"`
 	Asset        int        `json:"asset" db:"asset"`
 	MsgType      int        `json:"msg_type" db:"msg_type"`
 	Timestamp    *time.Time `json:"timestamp" db:"block_timestamp"`
