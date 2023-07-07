@@ -167,7 +167,7 @@ func (l *l2CrossMsgOrm) GetL2CrossMsgByMsgHashList(msgHashList []string) ([]*Cro
 		return nil, err
 	}
 	if len(results) == 0 {
-		log.Debug("No L2CrossMsg under given msg hashes")
+		log.Debug("no L2CrossMsg under given msg hashes", "msg hash list", msgHashList)
 	}
 	return results, nil
 }
