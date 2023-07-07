@@ -152,3 +152,21 @@ func (l *l2CrossMsgOrm) GetL2EarliestNoBlockTimestampHeight() (uint64, error) {
 	}
 	return result, nil
 }
+
+func (l *l2CrossMsgOrm) GetL2CrossMsgByMsgHashList(msgHashList []string) ([]*CrossMsg, error) {
+	var results []*CrossMsg
+	rows, err := l.db.Queryx(`SELECT * FROM cross_message WHERE msg_hash in ($1) AND msg_type = $2 AND deleted_at IS NULL;`, msgHashList, Layer2Msg)
+	for rows.Next() {
+		msg := &CrossMsg{}
+		if err = rows.StructScan(msg); err != nil {
+			break
+		}
+		results = append(results, msg)
+	}
+	if len(results) == 0 && errors.Is(err, sql.ErrNoRows) {
+		log.Debug("No L2CrossMsg under given msg hashes")
+	} else if err != nil {
+		return nil, err
+	}
+	return results, nil
+}

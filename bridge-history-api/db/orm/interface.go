@@ -87,6 +87,7 @@ type L2CrossMsgOrm interface {
 	DeleteL2CrossMsgFromHeightDBTx(dbTx *sqlx.Tx, height int64) error
 	UpdateL2BlockTimestamp(height uint64, timestamp time.Time) error
 	GetL2EarliestNoBlockTimestampHeight() (uint64, error)
+	GetL2CrossMsgByMsgHashList(msgHashList []string) ([]*CrossMsg, error)
 }
 
 type RelayedMsgOrm interface {

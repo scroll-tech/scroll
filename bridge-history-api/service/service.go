@@ -114,24 +114,36 @@ func (h *historyBackend) GetClaimableTxsByAddress(address common.Address, offset
 		return txHistories, 0, err
 	}
 	results, err := h.db.GetClaimableL2SentMsgByAddressWithOffset(address.Hex(), offset, limit)
+	if err != nil || len(results) == 0 {
+		return txHistories, 0, err
+	}
+	var msgHashList []string
 	for _, result := range results {
-		l2CrossMsg, err := h.db.GetL2CrossMsgByMsgHash(result.MsgHash)
-		if err != nil {
-			log.Error("GetClaimableTxsByAddress failed", "error", err)
-			continue
+		msgHashList = append(msgHashList, result.MsgHash)
+	}
+	crossMsgs, err := h.db.GetL2CrossMsgByMsgHashList(msgHashList)
+	if err != nil || len(crossMsgs) == 0 {
+		return txHistories, 0, err
+	}
+	for _, result := range results {
+		l2CrossMsg := &orm.CrossMsg{}
+		for _, crossMsg := range crossMsgs {
+			if crossMsg.MsgHash == result.MsgHash {
+				l2CrossMsg = crossMsg
+			}
+			txInfo := &TxHistoryInfo{
+				Hash:           l2CrossMsg.Layer2Hash,
+				Amount:         l2CrossMsg.Amount,
+				To:             l2CrossMsg.Target,
+				IsL1:           false,
+				BlockNumber:    result.Height,
+				BlockTimestamp: l2CrossMsg.Timestamp,
+				FinalizeTx:     &Finalized{},
+				ClaimInfo:      GetCrossTxClaimInfo(result.MsgHash, h.db),
+				CreatedAt:      l2CrossMsg.CreatedAt,
+			}
+			txHistories = append(txHistories, txInfo)
 		}
-		txInfo := &TxHistoryInfo{
-			Hash:           l2CrossMsg.Layer2Hash,
-			Amount:         l2CrossMsg.Amount,
-			To:             l2CrossMsg.Target,
-			IsL1:           false,
-			BlockNumber:    result.Height,
-			BlockTimestamp: l2CrossMsg.Timestamp,
-			FinalizeTx:     &Finalized{},
-			ClaimInfo:      GetCrossTxClaimInfo(result.MsgHash, h.db),
-			CreatedAt:      l2CrossMsg.CreatedAt,
-		}
-		txHistories = append(txHistories, txInfo)
 	}
 	return txHistories, total, err
 }
