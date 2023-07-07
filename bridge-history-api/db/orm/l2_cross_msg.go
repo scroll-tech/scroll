@@ -163,10 +163,11 @@ func (l *l2CrossMsgOrm) GetL2CrossMsgByMsgHashList(msgHashList []string) ([]*Cro
 		}
 		results = append(results, msg)
 	}
-	if len(results) == 0 && errors.Is(err, sql.ErrNoRows) {
-		log.Debug("No L2CrossMsg under given msg hashes")
-	} else if err != nil {
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return nil, err
+	}
+	if len(results) == 0 {
+		log.Debug("No L2CrossMsg under given msg hashes")
 	}
 	return results, nil
 }
