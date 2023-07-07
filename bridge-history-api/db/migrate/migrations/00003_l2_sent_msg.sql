@@ -4,6 +4,7 @@ create table l2_sent_msg
 (
     id               BIGSERIAL PRIMARY KEY,
     original_sender  VARCHAR NOT NULL DEFAULT '',
+    tx_hash          VARCHAR NOT NULL,
     sender           VARCHAR NOT NULL,
     target           VARCHAR NOT NULL,
     value            VARCHAR NOT NULL,

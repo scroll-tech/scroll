@@ -125,25 +125,26 @@ func (h *historyBackend) GetClaimableTxsByAddress(address common.Address, offset
 	if err != nil || len(crossMsgs) == 0 {
 		return txHistories, 0, err
 	}
+	crossMsgMap := make(map[string]*orm.CrossMsg)
+	for _, crossMsg := range crossMsgs {
+		crossMsgMap[crossMsg.MsgHash] = crossMsg
+	}
 	for _, result := range results {
-		l2CrossMsg := &orm.CrossMsg{}
-		for _, crossMsg := range crossMsgs {
-			if crossMsg.MsgHash == result.MsgHash {
-				l2CrossMsg = crossMsg
-			}
-			txInfo := &TxHistoryInfo{
-				Hash:           l2CrossMsg.Layer2Hash,
-				Amount:         l2CrossMsg.Amount,
-				To:             l2CrossMsg.Target,
-				IsL1:           false,
-				BlockNumber:    result.Height,
-				BlockTimestamp: l2CrossMsg.Timestamp,
-				FinalizeTx:     &Finalized{},
-				ClaimInfo:      GetCrossTxClaimInfo(result.MsgHash, h.db),
-				CreatedAt:      l2CrossMsg.CreatedAt,
-			}
-			txHistories = append(txHistories, txInfo)
+		txInfo := &TxHistoryInfo{
+			Hash:        result.TxHash,
+			IsL1:        false,
+			BlockNumber: result.Height,
+			FinalizeTx:  &Finalized{},
+			ClaimInfo:   GetCrossTxClaimInfo(result.MsgHash, h.db),
 		}
+		if crossMsg, exist := crossMsgMap[result.MsgHash]; exist {
+			txInfo.Hash = crossMsg.Layer2Hash
+			txInfo.Amount = crossMsg.Amount
+			txInfo.To = crossMsg.Target
+			txInfo.BlockTimestamp = crossMsg.Timestamp
+			txInfo.CreatedAt = crossMsg.CreatedAt
+		}
+		txHistories = append(txHistories, txInfo)
 	}
 	return txHistories, total, err
 }
