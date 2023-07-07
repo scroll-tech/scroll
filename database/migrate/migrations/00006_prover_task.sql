@@ -20,13 +20,13 @@ create table prover_task
 );
 
 comment
-on column batch.task_type is 'undefined, chunk, batch';
+on column prover_task.task_type is 'undefined, chunk, batch';
 
 comment
-on column batch.proving_status is 'undefined, roller assigned, roller proof valid, roller proof invalid';
+on column prover_task.proving_status is 'undefined, roller assigned, roller proof valid, roller proof invalid';
 
 comment
-on column batch.failure_type is 'undefined';
+on column prover_task.failure_type is 'undefined';
 
 -- +goose StatementEnd
 
