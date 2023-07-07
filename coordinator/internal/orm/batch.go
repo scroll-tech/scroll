@@ -208,7 +208,7 @@ func (o *Chunk) UpdateChunkProofsStatusByBatchHash(ctx context.Context, batchHas
 	db = db.Model(&Batch{})
 	db = db.Where("hash = ?", batchHash)
 
-	if err := db.Update("chunk_proofs_ready", status).Error; err != nil {
+	if err := db.Update("chunk_proofs_status", status).Error; err != nil {
 		return fmt.Errorf("Batch.UpdateChunkProofsStatusByBatchHash error: %w, batch hash: %v, status: %v", err, batchHash, status.String())
 	}
 	return nil
