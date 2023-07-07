@@ -434,7 +434,7 @@ func (m *Manager) checkAreAllChunkProofsReady(chunkHash string) error {
 		return err
 	}
 	if allReady {
-		err := m.chunkOrm.UpdateChunkProofsStatusByBatchHash(m.ctx, batchHash, true)
+		err := m.chunkOrm.UpdateChunkProofsStatusByBatchHash(m.ctx, batchHash, types.ChunkProofsStatusReady)
 		if err != nil {
 			return err
 		}
