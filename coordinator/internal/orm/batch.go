@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"time"
 
 	"scroll-tech/common/types"
@@ -76,49 +77,55 @@ func (o *Batch) GetUnassignedBatches(ctx context.Context, limit int) ([]*Batch, 
 		return nil, nil
 	}
 
-	var batches []*Batch
 	db := o.db.WithContext(ctx)
+	db = db.Model(&Batch{})
 	db = db.Where("proving_status = ? AND chunk_proofs_ready = ?", types.ProvingTaskUnassigned, 1)
 	db = db.Order("index ASC")
 	db = db.Limit(limit)
 
+	var batches []*Batch
 	if err := db.Find(&batches).Error; err != nil {
-		return nil, err
+		return nil, fmt.Errorf("Batch.GetUnassignedBatches error: %w", err)
 	}
 	return batches, nil
 }
 
 // GetAssignedBatches retrieves all batches whose proving_status is either types.ProvingTaskAssigned or types.ProvingTaskProved.
 func (o *Batch) GetAssignedBatches(ctx context.Context) ([]*Batch, error) {
+	db := o.db.WithContext(ctx)
+	db = db.Model(&Batch{})
+	db = db.Where("proving_status IN (?)", []int{int(types.ProvingTaskAssigned), int(types.ProvingTaskProved)})
+
 	var assignedBatches []*Batch
-	err := o.db.WithContext(ctx).
-		Where("proving_status IN (?)", []int{int(types.ProvingTaskAssigned), int(types.ProvingTaskProved)}).
-		Find(&assignedBatches).Error
-	if err != nil {
-		return nil, err
+	if err := db.Find(&assignedBatches).Error; err != nil {
+		return nil, fmt.Errorf("Batch.GetAssignedBatches error: %w", err)
 	}
 	return assignedBatches, nil
 }
 
 // GetProvingStatusByHash retrieves the proving status of a batch given its hash.
 func (o *Batch) GetProvingStatusByHash(ctx context.Context, hash string) (types.ProvingStatus, error) {
-	var batch Batch
 	db := o.db.WithContext(ctx)
 	db = db.Model(&Batch{})
 	db = db.Select("proving_status")
 	db = db.Where("hash = ?", hash)
+
+	var batch Batch
 	if err := db.Find(&batch).Error; err != nil {
-		return types.ProvingStatusUndefined, err
+		return types.ProvingStatusUndefined, fmt.Errorf("Batch.GetProvingStatusByHash error: %w, batch hash: %v", err, hash)
 	}
 	return types.ProvingStatus(batch.ProvingStatus), nil
 }
 
 // GetLatestBatch retrieves the latest batch from the database.
 func (o *Batch) GetLatestBatch(ctx context.Context) (*Batch, error) {
+	db := o.db.WithContext(ctx)
+	db = db.Model(&Batch{})
+	db = db.Order("index desc")
+
 	var latestBatch Batch
-	err := o.db.WithContext(ctx).Order("index desc").First(&latestBatch).Error
-	if err != nil {
-		return nil, err
+	if err := db.First(&latestBatch).Error; err != nil {
+		return nil, fmt.Errorf("Batch.GetLatestBatch error: %w", err)
 	}
 	return &latestBatch, nil
 }
@@ -211,16 +218,15 @@ func (o *Chunk) UpdateChunkProofsStatusByBatchHash(ctx context.Context, batchHas
 	db := o.db.WithContext(ctx)
 	db = db.Model(&Batch{})
 	db = db.Where("hash = ?", batchHash)
-	return db.Update("chunk_proofs_ready", chunkProofsStatus).Error
+
+	if err := db.Update("chunk_proofs_ready", chunkProofsStatus).Error; err != nil {
+		return fmt.Errorf("Batch.UpdateChunkProofsStatusByBatchHash error: %w, batch hash: %v, isReady: %v", err, batchHash, isReady)
+	}
+	return nil
 }
 
 // UpdateProvingStatus updates the proving status of a batch.
-func (o *Batch) UpdateProvingStatus(ctx context.Context, hash string, status types.ProvingStatus, dbTX ...*gorm.DB) error {
-	db := o.db
-	if len(dbTX) > 0 && dbTX[0] != nil {
-		db = dbTX[0]
-	}
-
+func (o *Batch) UpdateProvingStatus(ctx context.Context, hash string, status types.ProvingStatus) error {
 	updateFields := make(map[string]interface{})
 	updateFields["proving_status"] = int(status)
 
@@ -233,8 +239,12 @@ func (o *Batch) UpdateProvingStatus(ctx context.Context, hash string, status typ
 		updateFields["proved_at"] = time.Now()
 	}
 
-	if err := db.WithContext(ctx).Model(&Batch{}).Where("hash", hash).Updates(updateFields).Error; err != nil {
-		return err
+	db := o.db.WithContext(ctx)
+	db = db.Model(&Batch{})
+	db = db.Where("hash", hash)
+
+	if err := db.Updates(updateFields).Error; err != nil {
+		return fmt.Errorf("Batch.UpdateProvingStatus error: %w, batch hash: %v, status: %v", err, hash, status.String())
 	}
 	return nil
 }
@@ -249,6 +259,13 @@ func (o *Batch) UpdateProofByHash(ctx context.Context, hash string, proof *messa
 	updateFields := make(map[string]interface{})
 	updateFields["proof"] = proofBytes
 	updateFields["proof_time_sec"] = proofTimeSec
-	err = o.db.WithContext(ctx).Model(&Batch{}).Where("hash", hash).Updates(updateFields).Error
-	return err
+
+	db := o.db.WithContext(ctx)
+	db = db.Model(&Batch{})
+	db = db.Where("hash", hash)
+
+	if err := db.Updates(updateFields).Error; err != nil {
+		return fmt.Errorf("Batch.UpdateProofByHash error: %w, batch hash: %v", err, hash)
+	}
+	return nil
 }

@@ -9,9 +9,6 @@ import (
 // L1BlockStatus represents current l1 block processing status
 type L1BlockStatus int
 
-// GasOracleStatus represents current gas oracle processing status
-type GasOracleStatus int
-
 const (
 	// L1BlockUndefined : undefined l1 block status
 	L1BlockUndefined L1BlockStatus = iota
@@ -29,6 +26,9 @@ const (
 	L1BlockFailed
 )
 
+// GasOracleStatus represents current gas oracle processing status
+type GasOracleStatus int
+
 const (
 	// GasOracleUndefined : undefined gas oracle status
 	GasOracleUndefined GasOracleStatus = iota
@@ -45,6 +45,23 @@ const (
 	// GasOracleFailed represents the gas oracle status is failed
 	GasOracleFailed
 )
+
+func (s GasOracleStatus) String() string {
+	switch s {
+	case GasOracleUndefined:
+		return "GasOracleUndefined"
+	case GasOraclePending:
+		return "GasOraclePending"
+	case GasOracleImporting:
+		return "GasOracleImporting"
+	case GasOracleImported:
+		return "GasOracleImported"
+	case GasOracleFailed:
+		return "GasOracleFailed"
+	default:
+		return fmt.Sprintf("Bad Value: %d", int32(s))
+	}
+}
 
 // L1BlockInfo is structure of stored l1 block
 type L1BlockInfo struct {
@@ -218,3 +235,26 @@ const (
 	// RollupFinalizeFailed : rollup finalize transaction is confirmed but failed
 	RollupFinalizeFailed
 )
+
+func (s RollupStatus) String() string {
+	switch s {
+	case RollupPending:
+		return "RollupPending"
+	case RollupCommitting:
+		return "RollupCommitting"
+	case RollupCommitted:
+		return "RollupCommitted"
+	case RollupFinalizing:
+		return "RollupFinalizing"
+	case RollupFinalized:
+		return "RollupFinalized"
+	case RollupFinalizationSkipped:
+		return "RollupFinalizationSkipped"
+	case RollupCommitFailed:
+		return "RollupCommitFailed"
+	case RollupFinalizeFailed:
+		return "RollupFinalizeFailed"
+	default:
+		return "undefined"
+	}
+}

@@ -153,8 +153,8 @@ func testL1RelayerGasOracleConfirm(t *testing.T) {
 
 	// Check the database for the updated status using TryTimes.
 	ok := utils.TryTimes(5, func() bool {
-		msg1, err1 := l1BlockOrm.GetL1Blocks(map[string]interface{}{"hash": "gas-oracle-1"})
-		msg2, err2 := l1BlockOrm.GetL1Blocks(map[string]interface{}{"hash": "gas-oracle-2"})
+		msg1, err1 := l1BlockOrm.GetL1Blocks(ctx, map[string]interface{}{"hash": "gas-oracle-1"})
+		msg2, err2 := l1BlockOrm.GetL1Blocks(ctx, map[string]interface{}{"hash": "gas-oracle-2"})
 		return err1 == nil && len(msg1) == 1 && types.GasOracleStatus(msg1[0].GasOracleStatus) == types.GasOracleImported &&
 			err2 == nil && len(msg2) == 1 && types.GasOracleStatus(msg2[0].GasOracleStatus) == types.GasOracleFailed
 	})

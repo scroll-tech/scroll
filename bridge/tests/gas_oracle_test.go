@@ -43,10 +43,10 @@ func testImportL1GasPrice(t *testing.T) {
 
 	l1BlockOrm := orm.NewL1Block(db)
 	// check db status
-	latestBlockHeight, err := l1BlockOrm.GetLatestL1BlockHeight()
+	latestBlockHeight, err := l1BlockOrm.GetLatestL1BlockHeight(context.Background())
 	assert.NoError(t, err)
 	assert.Equal(t, number, latestBlockHeight)
-	blocks, err := l1BlockOrm.GetL1Blocks(map[string]interface{}{"number": latestBlockHeight})
+	blocks, err := l1BlockOrm.GetL1Blocks(context.Background(), map[string]interface{}{"number": latestBlockHeight})
 	assert.NoError(t, err)
 	assert.Equal(t, len(blocks), 1)
 	assert.Empty(t, blocks[0].OracleTxHash)
@@ -54,7 +54,7 @@ func testImportL1GasPrice(t *testing.T) {
 
 	// relay gas price
 	l1Relayer.ProcessGasPriceOracle()
-	blocks, err = l1BlockOrm.GetL1Blocks(map[string]interface{}{"number": latestBlockHeight})
+	blocks, err = l1BlockOrm.GetL1Blocks(context.Background(), map[string]interface{}{"number": latestBlockHeight})
 	assert.NoError(t, err)
 	assert.Equal(t, len(blocks), 1)
 	assert.NotEmpty(t, blocks[0].OracleTxHash)
