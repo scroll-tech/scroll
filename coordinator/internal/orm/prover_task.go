@@ -45,15 +45,15 @@ func (o *ProverTask) GetProverTasksByHashes(ctx context.Context, hashes []string
 	if len(hashes) == 0 {
 		return nil, nil
 	}
-	var sessionInfos []*ProverTask
+	var proverTasks []*ProverTask
 	db := o.db.WithContext(ctx)
 	db = db.Where("task_id IN ?", hashes)
 	db = db.Order("id asc")
 
-	if err := db.Find(&sessionInfos).Error; err != nil {
+	if err := db.Find(&proverTasks).Error; err != nil {
 		return nil, err
 	}
-	return sessionInfos, nil
+	return proverTasks, nil
 }
 
 // SetProverTask updates or inserts a ProverTask record.

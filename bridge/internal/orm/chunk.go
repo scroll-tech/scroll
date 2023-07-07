@@ -191,7 +191,6 @@ func (o *Chunk) UpdateProvingStatus(ctx context.Context, hash string, status typ
 		updateFields["prover_assigned_at"] = nil
 	case types.ProvingTaskProved, types.ProvingTaskVerified:
 		updateFields["proved_at"] = time.Now()
-	default:
 	}
 
 	if err := db.Model(&Chunk{}).Where("hash", hash).Updates(updateFields).Error; err != nil {
@@ -209,8 +208,5 @@ func (o *Chunk) UpdateBatchHashInRange(ctx context.Context, startIndex uint64, e
 	}
 	db = db.Model(&Chunk{}).Where("index >= ? AND index <= ?", startIndex, endIndex)
 
-	if err := db.Update("batch_hash", batchHash).Error; err != nil {
-		return err
-	}
-	return nil
+	return db.Update("batch_hash", batchHash).Error
 }

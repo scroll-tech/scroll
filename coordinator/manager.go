@@ -248,10 +248,10 @@ func (m *Manager) restorePrevSessions() {
 		proverTasksMaps[v.TaskID] = append(proverTasksMaps[v.TaskID], v)
 	}
 
-	for taskID, sessionInfos := range proverTasksMaps {
+	for taskID, proverTasks := range proverTasksMaps {
 		sess := &session{
 			taskID:      taskID,
-			proverTasks: sessionInfos,
+			proverTasks: proverTasks,
 			finishChan:  make(chan rollerProofStatus, proofAndPkBufferSize),
 		}
 		m.sessions[taskID] = sess
@@ -444,13 +444,13 @@ func (m *Manager) checkAreAllChunkProofsReady(chunkHash string) error {
 
 // checkAttempts use the count of prover task info to check the attempts
 func (m *Manager) checkAttemptsExceeded(hash string) bool {
-	sessionInfos, err := m.proverTaskOrm.GetProverTasksByHashes(context.Background(), []string{hash})
+	proverTasks, err := m.proverTaskOrm.GetProverTasksByHashes(context.Background(), []string{hash})
 	if err != nil {
 		log.Error("get session info error", "hash id", hash, "error", err)
 		return true
 	}
 
-	if len(sessionInfos) >= int(m.cfg.SessionAttempts) {
+	if len(proverTasks) >= int(m.cfg.SessionAttempts) {
 		return true
 	}
 	return false

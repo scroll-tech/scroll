@@ -120,15 +120,15 @@ func (o *Chunk) GetLatestChunk(ctx context.Context) (*Chunk, error) {
 
 // GetProvingStatusByHash retrieves the proving status of a chunk given its hash.
 func (o *Chunk) GetProvingStatusByHash(ctx context.Context, hash string) (types.ProvingStatus, error) {
-	var batch Batch
+	var chunk Chunk
 	db := o.db.WithContext(ctx)
 	db = db.Model(&Chunk{})
 	db = db.Select("proving_status")
 	db = db.Where("hash = ?", hash)
-	if err := db.Find(&batch).Error; err != nil {
+	if err := db.Find(&chunk).Error; err != nil {
 		return types.ProvingStatusUndefined, err
 	}
-	return types.ProvingStatus(batch.ProvingStatus), nil
+	return types.ProvingStatus(chunk.ProvingStatus), nil
 }
 
 // GetAssignedChunks retrieves all chunks whose proving_status is either types.ProvingTaskAssigned or types.ProvingTaskProved.
@@ -259,13 +259,12 @@ func (o *Chunk) UpdateProvingStatus(ctx context.Context, hash string, status typ
 		updateFields["prover_assigned_at"] = nil
 	case types.ProvingTaskProved, types.ProvingTaskVerified:
 		updateFields["proved_at"] = time.Now()
-	default:
 	}
 
-	if err := db.WithContext(ctx).Model(&Chunk{}).Where("hash", hash).Updates(updateFields).Error; err != nil {
-		return err
-	}
-	return nil
+	db = db.WithContext(ctx)
+	db = db.Model(&Chunk{})
+	db = db.Where("hash", hash)
+	return db.Updates(updateFields).Error
 }
 
 // UpdateProofByHash updates the chunk proof by hash.
@@ -278,8 +277,10 @@ func (o *Chunk) UpdateProofByHash(ctx context.Context, hash string, proof *messa
 	updateFields := make(map[string]interface{})
 	updateFields["proof"] = proofBytes
 	updateFields["proof_time_sec"] = proofTimeSec
-	err = o.db.WithContext(ctx).Model(&Chunk{}).Where("hash", hash).Updates(updateFields).Error
-	return err
+	db := o.db.WithContext(ctx)
+	db = db.Model(&Chunk{})
+	db = db.Where("hash", hash)
+	return db.Updates(updateFields).Error
 }
 
 // UpdateBatchHashInRange updates the batch_hash for chunks within the specified range (inclusive).
