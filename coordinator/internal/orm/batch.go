@@ -32,12 +32,12 @@ type Batch struct {
 	BatchHeader     []byte `json:"batch_header" gorm:"column:batch_header"`
 
 	// proof
-	ChunkProofsReady int16      `json:"chunk_proofs_ready" gorm:"column:chunk_proofs_ready;default:0"`
-	ProvingStatus    int16      `json:"proving_status" gorm:"column:proving_status;default:1"`
-	Proof            []byte     `json:"proof" gorm:"column:proof;default:NULL"`
-	ProverAssignedAt *time.Time `json:"prover_assigned_at" gorm:"column:prover_assigned_at;default:NULL"`
-	ProvedAt         *time.Time `json:"proved_at" gorm:"column:proved_at;default:NULL"`
-	ProofTimeSec     int        `json:"proof_time_sec" gorm:"column:proof_time_sec;default:NULL"`
+	ChunkProofsStatus int16      `json:"chunk_proofs_status" gorm:"column:chunk_proofs_status"`
+	ProvingStatus     int16      `json:"proving_status" gorm:"column:proving_status;default:1"`
+	Proof             []byte     `json:"proof" gorm:"column:proof;default:NULL"`
+	ProverAssignedAt  *time.Time `json:"prover_assigned_at" gorm:"column:prover_assigned_at;default:NULL"`
+	ProvedAt          *time.Time `json:"proved_at" gorm:"column:proved_at;default:NULL"`
+	ProofTimeSec      int        `json:"proof_time_sec" gorm:"column:proof_time_sec;default:NULL"`
 
 	// rollup
 	RollupStatus   int16      `json:"rollup_status" gorm:"column:rollup_status;default:1"`
@@ -78,7 +78,7 @@ func (o *Batch) GetUnassignedBatches(ctx context.Context, limit int) ([]*Batch, 
 
 	var batches []*Batch
 	db := o.db.WithContext(ctx)
-	db = db.Where("proving_status = ? AND chunk_proofs_ready = ?", types.ProvingTaskUnassigned, 1)
+	db = db.Where("proving_status = ? AND chunk_proofs_status = ?", types.ProvingTaskUnassigned, types.ChunkProofsStatusReady)
 	db = db.Order("index ASC")
 	db = db.Limit(limit)
 
@@ -176,18 +176,18 @@ func (o *Batch) InsertBatch(ctx context.Context, startChunkIndex, endChunkIndex 
 	lastChunkBlockNum := len(chunks[numChunks-1].Blocks)
 
 	newBatch := Batch{
-		Index:            batchIndex,
-		Hash:             batchHeader.Hash().Hex(),
-		StartChunkHash:   startChunkHash,
-		StartChunkIndex:  startChunkIndex,
-		EndChunkHash:     endChunkHash,
-		EndChunkIndex:    endChunkIndex,
-		StateRoot:        chunks[numChunks-1].Blocks[lastChunkBlockNum-1].Header.Root.Hex(),
-		WithdrawRoot:     chunks[numChunks-1].Blocks[lastChunkBlockNum-1].WithdrawTrieRoot.Hex(),
-		BatchHeader:      batchHeader.Encode(),
-		ProvingStatus:    int16(types.ProvingTaskUnassigned),
-		RollupStatus:     int16(types.RollupPending),
-		ChunkProofsReady: 0,
+		Index:             batchIndex,
+		Hash:              batchHeader.Hash().Hex(),
+		StartChunkHash:    startChunkHash,
+		StartChunkIndex:   startChunkIndex,
+		EndChunkHash:      endChunkHash,
+		EndChunkIndex:     endChunkIndex,
+		StateRoot:         chunks[numChunks-1].Blocks[lastChunkBlockNum-1].Header.Root.Hex(),
+		WithdrawRoot:      chunks[numChunks-1].Blocks[lastChunkBlockNum-1].WithdrawTrieRoot.Hex(),
+		BatchHeader:       batchHeader.Encode(),
+		ChunkProofsStatus: int16(types.ChunkProofsStatusPending),
+		ProvingStatus:     int16(types.ProvingTaskUnassigned),
+		RollupStatus:      int16(types.RollupPending),
 	}
 
 	if err := db.WithContext(ctx).Create(&newBatch).Error; err != nil {
@@ -198,20 +198,13 @@ func (o *Batch) InsertBatch(ctx context.Context, startChunkIndex, endChunkIndex 
 	return &newBatch, nil
 }
 
-// UpdateChunkProofsStatusByBatchHash updates the status of chunk_proofs_ready field for a given batch hash.
-// The function will set the chunk_proofs_ready to the status provided.
-func (o *Chunk) UpdateChunkProofsStatusByBatchHash(ctx context.Context, batchHash string, isReady bool) error {
-	var chunkProofsStatus int16
-	if isReady {
-		chunkProofsStatus = 1
-	} else {
-		chunkProofsStatus = 0
-	}
-
+// UpdateChunkProofsStatusByBatchHash updates the status of chunk_proofs_status field for a given batch hash.
+// The function will set the chunk_proofs_status to the status provided.
+func (o *Chunk) UpdateChunkProofsStatusByBatchHash(ctx context.Context, batchHash string, status types.ChunkProofsStatus) error {
 	db := o.db.WithContext(ctx)
 	db = db.Model(&Batch{})
 	db = db.Where("hash = ?", batchHash)
-	return db.Update("chunk_proofs_ready", chunkProofsStatus).Error
+	return db.Update("chunk_proofs_status", int(status)).Error
 }
 
 // UpdateProvingStatus updates the proving status of a batch.
