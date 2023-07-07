@@ -78,7 +78,7 @@ func (o *Batch) GetUnassignedBatches(ctx context.Context, limit int) ([]*Batch, 
 
 	var batches []*Batch
 	db := o.db.WithContext(ctx)
-	db = db.Where("proving_status = ? AND chunk_proofs_status = ?", types.ProvingTaskUnassigned, 1)
+	db = db.Where("proving_status = ? AND chunk_proofs_status = ?", types.ProvingTaskUnassigned, types.ChunkProofsStatusReady)
 	db = db.Order("index ASC")
 	db = db.Limit(limit)
 
