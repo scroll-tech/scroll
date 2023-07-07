@@ -1,6 +1,7 @@
 package app
 
 import (
+	cutils "bridge-history-api/utils"
 	"context"
 	"fmt"
 	"os"
@@ -11,13 +12,13 @@ import (
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/urfave/cli/v2"
 
+	"scroll-tech/common/db"
 	"scroll-tech/common/metrics"
-	cutils "scroll-tech/common/utils"
+	"scroll-tech/common/utils"
 	"scroll-tech/common/version"
 
 	"scroll-tech/bridge/internal/config"
 	"scroll-tech/bridge/internal/controller/watcher"
-	"scroll-tech/bridge/internal/utils"
 )
 
 var app *cli.App
@@ -29,13 +30,13 @@ func init() {
 	app.Name = "event-watcher"
 	app.Usage = "The Scroll Event Watcher"
 	app.Version = version.Version
-	app.Flags = append(app.Flags, cutils.CommonFlags...)
+	app.Flags = append(app.Flags, utils.CommonFlags...)
 	app.Commands = []*cli.Command{}
 	app.Before = func(ctx *cli.Context) error {
-		return cutils.LogSetup(ctx)
+		return utils.LogSetup(ctx)
 	}
 	// Register `event-watcher-test` app for integration-test.
-	cutils.RegisterSimulation(app, cutils.EventWatcherApp)
+	utils.RegisterSimulation(app, utils.EventWatcherApp)
 }
 
 func action(ctx *cli.Context) error {
@@ -48,13 +49,13 @@ func action(ctx *cli.Context) error {
 
 	subCtx, cancel := context.WithCancel(ctx.Context)
 	// Init db connection
-	db, err := utils.InitDB(cfg.DBConfig)
+	dbHandler, err := db.InitDB(cfg.DBConfig)
 	if err != nil {
 		log.Crit("failed to init db connection", "err", err)
 	}
 	defer func() {
 		cancel()
-		if err = utils.CloseDB(db); err != nil {
+		if err = db.CloseDB(dbHandler); err != nil {
 			log.Error("can not close ormFactory", "error", err)
 		}
 	}()
@@ -72,17 +73,17 @@ func action(ctx *cli.Context) error {
 		log.Error("failed to connect l2 geth", "config file", cfgFile, "error", err)
 		return err
 	}
-	l1watcher := watcher.NewL1WatcherClient(ctx.Context, l1client, cfg.L1Config.StartHeight, cfg.L1Config.Confirmations, cfg.L1Config.L1MessengerAddress, cfg.L1Config.L1MessageQueueAddress, cfg.L1Config.ScrollChainContractAddress, db)
-	l2watcher := watcher.NewL2WatcherClient(ctx.Context, l2client, cfg.L2Config.Confirmations, cfg.L2Config.L2MessengerAddress, cfg.L2Config.L2MessageQueueAddress, cfg.L2Config.WithdrawTrieRootSlot, db)
+	l1watcher := watcher.NewL1WatcherClient(ctx.Context, l1client, cfg.L1Config.StartHeight, cfg.L1Config.Confirmations, cfg.L1Config.L1MessengerAddress, cfg.L1Config.L1MessageQueueAddress, cfg.L1Config.ScrollChainContractAddress, dbHandler)
+	l2watcher := watcher.NewL2WatcherClient(ctx.Context, l2client, cfg.L2Config.Confirmations, cfg.L2Config.L2MessengerAddress, cfg.L2Config.L2MessageQueueAddress, cfg.L2Config.WithdrawTrieRootSlot, dbHandler)
 
-	go cutils.Loop(subCtx, 10*time.Second, func() {
+	go utils.Loop(subCtx, 10*time.Second, func() {
 		if loopErr := l1watcher.FetchContractEvent(); loopErr != nil {
 			log.Error("Failed to fetch bridge contract", "err", loopErr)
 		}
 	})
 
 	// Start l2 watcher process
-	go cutils.Loop(subCtx, 2*time.Second, l2watcher.FetchContractEvent)
+	go utils.Loop(subCtx, 2*time.Second, l2watcher.FetchContractEvent)
 	// Finish start all l2 functions
 	log.Info("Start event-watcher successfully")
 

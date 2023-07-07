@@ -1,4 +1,4 @@
-package utils
+package db
 
 import (
 	"context"
@@ -10,8 +10,6 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 	"gorm.io/gorm/utils"
-
-	"scroll-tech/bridge/internal/config"
 )
 
 type gormLogger struct {
@@ -44,7 +42,7 @@ func (g *gormLogger) Trace(_ context.Context, begin time.Time, fc func() (string
 }
 
 // InitDB init the db handler
-func InitDB(config *config.DBConfig) (*gorm.DB, error) {
+func InitDB(config *DBConfig) (*gorm.DB, error) {
 	tmpGormLogger := gormLogger{
 		gethLogger: log.Root(),
 	}

@@ -6,6 +6,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"scroll-tech/common/db"
 )
 
 const (
@@ -42,7 +44,7 @@ type L2Config struct {
 // Config load configuration items.
 type Config struct {
 	RollerManagerConfig *RollerManagerConfig `json:"roller_manager_config"`
-	DBConfig            *DBConfig            `json:"db_config"`
+	DBConfig            *db.DBConfig         `json:"db_config"`
 	L2Config            *L2Config            `json:"l2_config"`
 }
 
@@ -51,16 +53,6 @@ type VerifierConfig struct {
 	MockMode   bool   `json:"mock_mode"`
 	ParamsPath string `json:"params_path"`
 	AggVkPath  string `json:"agg_vk_path"`
-}
-
-// DBConfig db config
-type DBConfig struct {
-	// data source name
-	DSN        string `json:"dsn"`
-	DriverName string `json:"driver_name"`
-
-	MaxOpenNum int `json:"maxOpenNum"`
-	MaxIdleNum int `json:"maxIdleNum"`
 }
 
 // NewConfig returns a new instance of Config.
