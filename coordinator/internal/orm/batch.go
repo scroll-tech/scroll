@@ -102,18 +102,15 @@ func (o *Batch) GetAssignedBatches(ctx context.Context) ([]*Batch, error) {
 
 // GetProvingStatusByHash retrieves the proving status of a batch given its hash.
 func (o *Batch) GetProvingStatusByHash(ctx context.Context, hash string) (types.ProvingStatus, error) {
-	type Status struct {
-		ProvingStatus types.ProvingStatus `gorm:"column:proving_status"`
-	}
-	var status Status
+	var batch Batch
 	db := o.db.WithContext(ctx)
 	db = db.Model(&Batch{})
 	db = db.Select("proving_status")
 	db = db.Where("hash = ?", hash)
-	if err := db.Find(&status).Error; err != nil {
+	if err := db.Find(&batch).Error; err != nil {
 		return types.ProvingStatusUndefined, err
 	}
-	return status.ProvingStatus, nil
+	return types.ProvingStatus(batch.ProvingStatus), nil
 }
 
 // GetLatestBatch retrieves the latest batch from the database.

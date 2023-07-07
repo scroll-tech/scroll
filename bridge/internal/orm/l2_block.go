@@ -55,24 +55,18 @@ func (o *L2Block) GetL2BlocksLatestHeight(ctx context.Context) (int64, error) {
 // GetUnchunkedBlocks get the l2 blocks that have not been put into a chunk.
 // The returned blocks are sorted in ascending order by their block number.
 func (o *L2Block) GetUnchunkedBlocks(ctx context.Context) ([]*types.WrappedBlock, error) {
-	type Block struct {
-		Header           string `gorm:"column:header"`
-		Transactions     string `gorm:"column:transactions"`
-		WithdrawTrieRoot string `gorm:"column:withdraw_trie_root"`
-	}
-
-	var blocks []Block
+	var l2Blocks []L2Block
 	db := o.db.WithContext(ctx)
 	db = db.Model(&L2Block{})
 	db = db.Select("header, transactions, withdraw_trie_root")
 	db = db.Where("chunk_hash IS NULL")
 	db = db.Order("number ASC")
-	if err := db.Find(&blocks).Error; err != nil {
+	if err := db.Find(&l2Blocks).Error; err != nil {
 		return nil, err
 	}
 
 	var wrappedBlocks []*types.WrappedBlock
-	for _, v := range blocks {
+	for _, v := range l2Blocks {
 		var wrappedBlock types.WrappedBlock
 
 		if err := json.Unmarshal([]byte(v.Transactions), &wrappedBlock.Transactions); err != nil {
@@ -125,29 +119,23 @@ func (o *L2Block) GetL2BlocksInRange(ctx context.Context, startBlockNumber uint6
 		return nil, errors.New("start block number should be less than or equal to end block number")
 	}
 
-	type Block struct {
-		Header           string `gorm:"column:header"`
-		Transactions     string `gorm:"column:transactions"`
-		WithdrawTrieRoot string `gorm:"column:withdraw_trie_root"`
-	}
-
-	var blocks []Block
+	var l2Blocks []L2Block
 	db := o.db.WithContext(ctx)
 	db = db.Model(&L2Block{})
 	db = db.Select("header, transactions, withdraw_trie_root")
 	db = db.Where("number >= ? AND number <= ?", startBlockNumber, endBlockNumber)
 	db = db.Order("number ASC")
 
-	if err := db.Find(&blocks).Error; err != nil {
+	if err := db.Find(&l2Blocks).Error; err != nil {
 		return nil, err
 	}
 
-	if uint64(len(blocks)) != endBlockNumber-startBlockNumber+1 {
+	if uint64(len(l2Blocks)) != endBlockNumber-startBlockNumber+1 {
 		return nil, errors.New("number of blocks not expected in the specified range")
 	}
 
 	var wrappedBlocks []*types.WrappedBlock
-	for _, v := range blocks {
+	for _, v := range l2Blocks {
 		var wrappedBlock types.WrappedBlock
 
 		if err := json.Unmarshal([]byte(v.Transactions), &wrappedBlock.Transactions); err != nil {

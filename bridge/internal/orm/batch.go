@@ -104,21 +104,17 @@ func (o *Batch) GetBatchCount(ctx context.Context) (uint64, error) {
 
 // GetVerifiedProofByHash retrieves the verified aggregate proof for a batch with the given hash.
 func (o *Batch) GetVerifiedProofByHash(ctx context.Context, hash string) (*message.AggProof, error) {
-	type BatchProof struct {
-		Proof []byte `gorm:"column:proof"`
-	}
-
-	var batchProof BatchProof
+	var batch Batch
 	db := o.db.WithContext(ctx)
 	db = db.Model(&Batch{})
 	db = db.Select("proof")
 	db = db.Where("hash = ? AND proving_status = ?", hash, types.ProvingTaskVerified)
-	if err := db.Find(&batchProof).Error; err != nil {
+	if err := db.Find(&batch).Error; err != nil {
 		return nil, err
 	}
 
 	var proof message.AggProof
-	if err := json.Unmarshal(batchProof.Proof, &proof); err != nil {
+	if err := json.Unmarshal(batch.Proof, &proof); err != nil {
 		return nil, err
 	}
 
@@ -141,35 +137,30 @@ func (o *Batch) GetRollupStatusByHashList(ctx context.Context, hashes []string) 
 		return nil, nil
 	}
 
-	type Status struct {
-		Hash         string `gorm:"column:hash"`
-		RollupStatus int    `gorm:"column:rollup_status"`
-	}
-
-	var statuses []Status
+	var batches []Batch
 	db := o.db.WithContext(ctx)
 	db = db.Model(&Batch{})
 	db = db.Select("hash, rollup_status")
 	db = db.Where("hash IN ?", hashes)
-	if err := db.Find(&statuses).Error; err != nil {
+	if err := db.Find(&batches).Error; err != nil {
 		return nil, err
 	}
 
 	hashToStatusMap := make(map[string]types.RollupStatus)
-	for _, status := range statuses {
-		hashToStatusMap[status.Hash] = types.RollupStatus(status.RollupStatus)
+	for _, batch := range batches {
+		hashToStatusMap[batch.Hash] = types.RollupStatus(batch.RollupStatus)
 	}
 
-	var returnStatuses []types.RollupStatus
+	var statuses []types.RollupStatus
 	for _, hash := range hashes {
 		status, ok := hashToStatusMap[hash]
 		if !ok {
 			return nil, fmt.Errorf("hash not found in database: %s", hash)
 		}
-		returnStatuses = append(returnStatuses, status)
+		statuses = append(statuses, status)
 	}
 
-	return returnStatuses, nil
+	return statuses, nil
 }
 
 // GetPendingBatches retrieves pending batches up to the specified limit.
