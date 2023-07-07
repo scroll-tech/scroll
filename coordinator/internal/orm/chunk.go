@@ -120,15 +120,18 @@ func (o *Chunk) GetLatestChunk(ctx context.Context) (*Chunk, error) {
 
 // GetProvingStatusByHash retrieves the proving status of a chunk given its hash.
 func (o *Chunk) GetProvingStatusByHash(ctx context.Context, hash string) (types.ProvingStatus, error) {
-	var chunk Chunk
+	type Status struct {
+		ProvingStatus types.ProvingStatus `gorm:"column:proving_status"`
+	}
+	var status Status
 	db := o.db.WithContext(ctx)
 	db = db.Model(&Chunk{})
-	db = db.Where("hash = ?", hash)
 	db = db.Select("proving_status")
-	if err := db.Find(&chunk).Error; err != nil {
+	db = db.Where("hash = ?", hash)
+	if err := db.Find(&status).Error; err != nil {
 		return types.ProvingStatusUndefined, err
 	}
-	return types.ProvingStatus(chunk.ProvingStatus), nil
+	return status.ProvingStatus, nil
 }
 
 // GetAssignedChunks retrieves all chunks whose proving_status is either types.ProvingTaskAssigned or types.ProvingTaskProved.
