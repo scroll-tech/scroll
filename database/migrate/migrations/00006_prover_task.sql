@@ -7,7 +7,7 @@ create table prover_task
     task_id             VARCHAR        NOT NULL,
     prover_public_key   VARCHAR        NOT NULL,
     prover_name         VARCHAR        NOT NULL,
-    task_type          SMALLINT       NOT NULL DEFAULT 0,
+    task_type           SMALLINT       NOT NULL DEFAULT 0,
     proving_status      SMALLINT       NOT NULL DEFAULT 0,
     failure_type        SMALLINT       NOT NULL DEFAULT 0,
     reward              BIGINT         NOT NULL DEFAULT 0,
