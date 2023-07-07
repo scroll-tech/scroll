@@ -1,7 +1,6 @@
 package app
 
 import (
-	cutils "bridge-history-api/utils"
 	"context"
 	"fmt"
 	"os"
@@ -41,7 +40,7 @@ func init() {
 
 func action(ctx *cli.Context) error {
 	// Load config file.
-	cfgFile := ctx.String(cutils.ConfigFileFlag.Name)
+	cfgFile := ctx.String(utils.ConfigFileFlag.Name)
 	cfg, err := config.NewConfig(cfgFile)
 	if err != nil {
 		log.Crit("failed to load config file", "config file", cfgFile, "error", err)
