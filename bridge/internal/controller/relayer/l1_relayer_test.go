@@ -175,28 +175,28 @@ func testL1RelayerProcessGasPriceOracle(t *testing.T) {
 	var l1BlockOrm *orm.L1Block
 	convey.Convey("GetLatestL1BlockHeight failure", t, func() {
 		targetErr := errors.New("GetLatestL1BlockHeight error")
-		patchGuard := gomonkey.ApplyMethodFunc(l1BlockOrm, "GetLatestL1BlockHeight", func() (uint64, error) {
+		patchGuard := gomonkey.ApplyMethodFunc(l1BlockOrm, "GetLatestL1BlockHeight", func(ctx context.Context) (uint64, error) {
 			return 0, targetErr
 		})
 		defer patchGuard.Reset()
 		l1Relayer.ProcessGasPriceOracle()
 	})
 
-	patchGuard := gomonkey.ApplyMethodFunc(l1BlockOrm, "GetLatestL1BlockHeight", func() (uint64, error) {
+	patchGuard := gomonkey.ApplyMethodFunc(l1BlockOrm, "GetLatestL1BlockHeight", func(ctx context.Context) (uint64, error) {
 		return 100, nil
 	})
 	defer patchGuard.Reset()
 
 	convey.Convey("GetL1Blocks failure", t, func() {
 		targetErr := errors.New("GetL1Blocks error")
-		patchGuard.ApplyMethodFunc(l1BlockOrm, "GetL1Blocks", func(fields map[string]interface{}) ([]orm.L1Block, error) {
+		patchGuard.ApplyMethodFunc(l1BlockOrm, "GetL1Blocks", func(ctx context.Context, fields map[string]interface{}) ([]orm.L1Block, error) {
 			return nil, targetErr
 		})
 		l1Relayer.ProcessGasPriceOracle()
 	})
 
 	convey.Convey("Block not exist", t, func() {
-		patchGuard.ApplyMethodFunc(l1BlockOrm, "GetL1Blocks", func(fields map[string]interface{}) ([]orm.L1Block, error) {
+		patchGuard.ApplyMethodFunc(l1BlockOrm, "GetL1Blocks", func(ctx context.Context, fields map[string]interface{}) ([]orm.L1Block, error) {
 			tmpInfo := []orm.L1Block{
 				{Hash: "gas-oracle-1", Number: 0},
 				{Hash: "gas-oracle-2", Number: 1},
@@ -206,7 +206,7 @@ func testL1RelayerProcessGasPriceOracle(t *testing.T) {
 		l1Relayer.ProcessGasPriceOracle()
 	})
 
-	patchGuard.ApplyMethodFunc(l1BlockOrm, "GetL1Blocks", func(fields map[string]interface{}) ([]orm.L1Block, error) {
+	patchGuard.ApplyMethodFunc(l1BlockOrm, "GetL1Blocks", func(ctx context.Context, fields map[string]interface{}) ([]orm.L1Block, error) {
 		tmpInfo := []orm.L1Block{
 			{
 				Hash:            "gas-oracle-1",
