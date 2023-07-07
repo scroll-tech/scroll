@@ -30,21 +30,21 @@ import (
 	client2 "scroll-tech/coordinator/client"
 	"scroll-tech/coordinator/internal/config"
 	"scroll-tech/coordinator/internal/orm"
-	"scroll-tech/coordinator/internal/utils"
 	"scroll-tech/coordinator/verifier"
 
+	"scroll-tech/common/db"
 	"scroll-tech/common/docker"
 	"scroll-tech/common/types"
 	"scroll-tech/common/types/message"
-	cutils "scroll-tech/common/utils"
+	"scroll-tech/common/utils"
 )
 
 var (
-	dbCfg *config.DBConfig
+	dbCfg *db.DBConfig
 
 	base *docker.App
 
-	db         *gorm.DB
+	dbHandler  *gorm.DB
 	l2BlockOrm *orm.L2Block
 	chunkOrm   *orm.Chunk
 	batchOrm   *orm.Batch
@@ -69,7 +69,7 @@ func setEnv(t *testing.T) {
 	base = docker.NewDockerApp()
 	base.RunDBImage(t)
 
-	dbCfg = &config.DBConfig{
+	dbCfg = &db.DBConfig{
 		DSN:        base.DBConfig.DSN,
 		DriverName: base.DBConfig.DriverName,
 		MaxOpenNum: base.DBConfig.MaxOpenNum,
@@ -77,15 +77,15 @@ func setEnv(t *testing.T) {
 	}
 
 	var err error
-	db, err = utils.InitDB(dbCfg)
+	dbHandler, err = db.InitDB(dbCfg)
 	assert.NoError(t, err)
-	sqlDB, err := db.DB()
+	sqlDB, err := dbHandler.DB()
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(sqlDB))
 
-	batchOrm = orm.NewBatch(db)
-	chunkOrm = orm.NewChunk(db)
-	l2BlockOrm = orm.NewL2Block(db)
+	batchOrm = orm.NewBatch(dbHandler)
+	chunkOrm = orm.NewChunk(dbHandler)
+	l2BlockOrm = orm.NewL2Block(dbHandler)
 
 	templateBlockTrace, err := os.ReadFile("../common/testdata/blockTrace_02.json")
 	assert.NoError(t, err)
@@ -474,7 +474,7 @@ func testTimedoutProof(t *testing.T) {
 	assert.NoError(t, err)
 
 	// verify proof status, it should be assigned, because roller didn't send any proof
-	ok := cutils.TryTimes(30, func() bool {
+	ok := utils.TryTimes(30, func() bool {
 		chunkProofStatus, err := chunkOrm.GetProvingStatusByHash(context.Background(), dbChunk.Hash)
 		if err != nil {
 			return false
@@ -501,7 +501,7 @@ func testTimedoutProof(t *testing.T) {
 	assert.Equal(t, 1, rollerManager.GetNumberOfIdleRollers(message.ProofTypeBatch))
 
 	// verify proof status, it should be verified now, because second roller sent valid proof
-	ok = cutils.TryTimes(200, func() bool {
+	ok = utils.TryTimes(200, func() bool {
 		chunkProofStatus, err := chunkOrm.GetProvingStatusByHash(context.Background(), dbChunk.Hash)
 		if err != nil {
 			return false
@@ -715,9 +715,9 @@ func testListRollers(t *testing.T) {
 }
 
 func setupCoordinator(t *testing.T, rollersPerSession uint8, wsURL string, resetDB bool) (rollerManager *coordinator.Manager, handler *http.Server) {
-	db, err := utils.InitDB(dbCfg)
+	dbHandler, err := db.InitDB(dbCfg)
 	assert.NoError(t, err)
-	sqlDB, err := db.DB()
+	sqlDB, err := dbHandler.DB()
 	assert.NoError(t, err)
 	if resetDB {
 		assert.NoError(t, migrate.ResetDB(sqlDB))
@@ -730,12 +730,12 @@ func setupCoordinator(t *testing.T, rollersPerSession uint8, wsURL string, reset
 		TokenTimeToLive:    5,
 		MaxVerifierWorkers: 10,
 		SessionAttempts:    2,
-	}, db)
+	}, dbHandler)
 	assert.NoError(t, err)
 	assert.NoError(t, rollerManager.Start())
 
 	// start ws service
-	handler, _, err = cutils.StartWSEndpoint(strings.Split(wsURL, "//")[1], rollerManager.APIs(), flate.NoCompression)
+	handler, _, err = utils.StartWSEndpoint(strings.Split(wsURL, "//")[1], rollerManager.APIs(), flate.NoCompression)
 	assert.NoError(t, err)
 
 	return rollerManager, handler
