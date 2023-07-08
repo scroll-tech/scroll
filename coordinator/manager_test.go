@@ -40,7 +40,7 @@ import (
 )
 
 var (
-	dbCfg *db.Config
+	dbCfg *database.Config
 
 	base *docker.App
 
@@ -69,7 +69,7 @@ func setEnv(t *testing.T) {
 	base = docker.NewDockerApp()
 	base.RunDBImage(t)
 
-	dbCfg = &db.Config{
+	dbCfg = &database.Config{
 		DSN:        base.DBConfig.DSN,
 		DriverName: base.DBConfig.DriverName,
 		MaxOpenNum: base.DBConfig.MaxOpenNum,
