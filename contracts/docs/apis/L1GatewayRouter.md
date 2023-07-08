@@ -217,6 +217,23 @@ Complete ETH withdraw from L2 to L1 and send fund to recipient&#39;s account in 
 | _2 | uint256 | undefined |
 | _3 | bytes | undefined |
 
+### gatewayInContext
+
+```solidity
+function gatewayInContext() external view returns (address)
+```
+
+The address of gateway in current execution context.
+
+
+
+
+#### Returns
+
+| Name | Type | Description |
+|---|---|---|
+| _0 | address | undefined |
+
 ### getERC20Gateway
 
 ```solidity
@@ -305,6 +322,30 @@ function renounceOwnership() external nonpayable
 
 *Leaves the contract without owner. It will not be possible to call `onlyOwner` functions anymore. Can only be called by the current owner. NOTE: Renouncing ownership will leave the contract without an owner, thereby removing any functionality that is only available to the owner.*
 
+
+### requestERC20
+
+```solidity
+function requestERC20(address _sender, address _token, uint256 _amount) external nonpayable returns (uint256)
+```
+
+Request ERC20 token transfer from users to gateways.
+
+*All the gateways should have reentrancy guard to prevent potential attack though this function.*
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| _sender | address | undefined |
+| _token | address | undefined |
+| _amount | uint256 | undefined |
+
+#### Returns
+
+| Name | Type | Description |
+|---|---|---|
+| _0 | uint256 | undefined |
 
 ### setDefaultERC20Gateway
 
