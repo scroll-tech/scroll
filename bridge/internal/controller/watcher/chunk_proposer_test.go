@@ -6,9 +6,10 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"scroll-tech/common/types"
+
 	"scroll-tech/bridge/internal/config"
 	"scroll-tech/bridge/internal/orm"
-	bridgeTypes "scroll-tech/bridge/internal/types"
 	"scroll-tech/bridge/internal/utils"
 )
 
@@ -18,7 +19,7 @@ func testChunkProposer(t *testing.T) {
 	defer utils.CloseDB(db)
 
 	l2BlockOrm := orm.NewL2Block(db)
-	err := l2BlockOrm.InsertL2Blocks(context.Background(), []*bridgeTypes.WrappedBlock{wrappedBlock1, wrappedBlock2})
+	err := l2BlockOrm.InsertL2Blocks(context.Background(), []*types.WrappedBlock{wrappedBlock1, wrappedBlock2})
 	assert.NoError(t, err)
 
 	cp := NewChunkProposer(context.Background(), &config.ChunkProposerConfig{
@@ -31,8 +32,8 @@ func testChunkProposer(t *testing.T) {
 	}, db)
 	cp.TryProposeChunk()
 
-	expectedChunk := &bridgeTypes.Chunk{
-		Blocks: []*bridgeTypes.WrappedBlock{wrappedBlock1, wrappedBlock2},
+	expectedChunk := &types.Chunk{
+		Blocks: []*types.WrappedBlock{wrappedBlock1, wrappedBlock2},
 	}
 	expectedHash, err := expectedChunk.Hash(0)
 	assert.NoError(t, err)

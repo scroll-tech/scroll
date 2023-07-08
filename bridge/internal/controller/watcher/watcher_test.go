@@ -10,10 +10,11 @@ import (
 	"gorm.io/gorm"
 
 	"scroll-tech/common/docker"
+	"scroll-tech/common/types"
+
+	"scroll-tech/database/migrate"
 
 	"scroll-tech/bridge/internal/config"
-	"scroll-tech/bridge/internal/orm/migrate"
-	bridgeTypes "scroll-tech/bridge/internal/types"
 	"scroll-tech/bridge/internal/utils"
 )
 
@@ -27,8 +28,8 @@ var (
 	l2Cli *ethclient.Client
 
 	// block trace
-	wrappedBlock1 *bridgeTypes.WrappedBlock
-	wrappedBlock2 *bridgeTypes.WrappedBlock
+	wrappedBlock1 *types.WrappedBlock
+	wrappedBlock2 *types.WrappedBlock
 )
 
 func setupEnv(t *testing.T) (err error) {
@@ -56,7 +57,7 @@ func setupEnv(t *testing.T) (err error) {
 		return err
 	}
 	// unmarshal blockTrace
-	wrappedBlock1 = &bridgeTypes.WrappedBlock{}
+	wrappedBlock1 = &types.WrappedBlock{}
 	if err = json.Unmarshal(templateBlockTrace1, wrappedBlock1); err != nil {
 		return err
 	}
@@ -66,7 +67,7 @@ func setupEnv(t *testing.T) (err error) {
 		return err
 	}
 	// unmarshal blockTrace
-	wrappedBlock2 = &bridgeTypes.WrappedBlock{}
+	wrappedBlock2 = &types.WrappedBlock{}
 	if err = json.Unmarshal(templateBlockTrace2, wrappedBlock2); err != nil {
 		return err
 	}
