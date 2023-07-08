@@ -10,9 +10,9 @@ import (
 
 // Config load configuration items.
 type Config struct {
-	L1Config *L1Config    `json:"l1_config"`
-	L2Config *L2Config    `json:"l2_config"`
-	DBConfig *db.DBConfig `json:"db_config"`
+	L1Config *L1Config  `json:"l1_config"`
+	L2Config *L2Config  `json:"l2_config"`
+	DBConfig *db.Config `json:"db_config"`
 }
 
 // NewConfig returns a new instance of Config.

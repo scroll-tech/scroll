@@ -44,7 +44,7 @@ type L2Config struct {
 // Config load configuration items.
 type Config struct {
 	RollerManagerConfig *RollerManagerConfig `json:"roller_manager_config"`
-	DBConfig            *db.DBConfig         `json:"db_config"`
+	DBConfig            *db.Config           `json:"db_config"`
 	L2Config            *L2Config            `json:"l2_config"`
 }
 
