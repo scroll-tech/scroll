@@ -11,6 +11,7 @@ import (
 	"github.com/scroll-tech/go-ethereum/rpc"
 	"github.com/stretchr/testify/assert"
 
+	"scroll-tech/common/database"
 	"scroll-tech/common/types"
 
 	"scroll-tech/bridge/internal/controller/relayer"

@@ -21,6 +21,7 @@ import (
 	"github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 
+	"scroll-tech/common/database"
 	cutils "scroll-tech/common/utils"
 
 	bridgeAbi "scroll-tech/bridge/abi"

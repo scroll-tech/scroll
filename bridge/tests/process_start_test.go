@@ -11,6 +11,7 @@ import (
 	_ "scroll-tech/bridge/cmd/msg_relayer/app"
 	_ "scroll-tech/bridge/cmd/rollup_relayer/app"
 
+	"scroll-tech/common/database"
 	cutils "scroll-tech/common/utils"
 
 	"github.com/stretchr/testify/assert"
