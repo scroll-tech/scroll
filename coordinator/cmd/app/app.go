@@ -45,19 +45,19 @@ func action(ctx *cli.Context) error {
 	}
 
 	// init db handler
-	dbHandler, err := database.InitDB(cfg.DBConfig)
+	db, err := database.InitDB(cfg.DBConfig)
 	if err != nil {
 		log.Crit("failed to init db connection", "err", err)
 	}
 	defer func() {
-		if err = database.CloseDB(dbHandler); err != nil {
+		if err = database.CloseDB(db); err != nil {
 			log.Error("can not close ormFactory", "error", err)
 		}
 	}()
 
 	subCtx, cancel := context.WithCancel(ctx.Context)
 	// Initialize all coordinator modules.
-	rollerManager, err := coordinator.New(subCtx, cfg.RollerManagerConfig, dbHandler)
+	rollerManager, err := coordinator.New(subCtx, cfg.RollerManagerConfig, db)
 	defer func() {
 		cancel()
 		rollerManager.Stop()

@@ -44,7 +44,7 @@ var (
 
 	base *docker.App
 
-	dbHandler  *gorm.DB
+	db         *gorm.DB
 	l2BlockOrm *orm.L2Block
 	chunkOrm   *orm.Chunk
 	batchOrm   *orm.Batch
@@ -77,15 +77,15 @@ func setEnv(t *testing.T) {
 	}
 
 	var err error
-	dbHandler, err = database.InitDB(dbCfg)
+	db, err = database.InitDB(dbCfg)
 	assert.NoError(t, err)
-	sqlDB, err := dbHandler.DB()
+	sqlDB, err := db.DB()
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(sqlDB))
 
-	batchOrm = orm.NewBatch(dbHandler)
-	chunkOrm = orm.NewChunk(dbHandler)
-	l2BlockOrm = orm.NewL2Block(dbHandler)
+	batchOrm = orm.NewBatch(db)
+	chunkOrm = orm.NewChunk(db)
+	l2BlockOrm = orm.NewL2Block(db)
 
 	templateBlockTrace, err := os.ReadFile("../common/testdata/blockTrace_02.json")
 	assert.NoError(t, err)
@@ -715,9 +715,9 @@ func testListRollers(t *testing.T) {
 }
 
 func setupCoordinator(t *testing.T, rollersPerSession uint8, wsURL string, resetDB bool) (rollerManager *coordinator.Manager, handler *http.Server) {
-	dbHandler, err := database.InitDB(dbCfg)
+	db, err := database.InitDB(dbCfg)
 	assert.NoError(t, err)
-	sqlDB, err := dbHandler.DB()
+	sqlDB, err := db.DB()
 	assert.NoError(t, err)
 	if resetDB {
 		assert.NoError(t, migrate.ResetDB(sqlDB))
@@ -730,7 +730,7 @@ func setupCoordinator(t *testing.T, rollersPerSession uint8, wsURL string, reset
 		TokenTimeToLive:    5,
 		MaxVerifierWorkers: 10,
 		SessionAttempts:    2,
-	}, dbHandler)
+	}, db)
 	assert.NoError(t, err)
 	assert.NoError(t, rollerManager.Start())
 
