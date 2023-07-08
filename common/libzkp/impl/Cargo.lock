@@ -1898,7 +1898,7 @@ source = "git+https://github.com/scroll-tech/halo2-snark-aggregator?branch=scrol
 dependencies = [
  "group",
  "halo2_proofs",
- "halo2curves 0.3.1 (git+https://github.com/privacy-scaling-explorations/halo2curves.git?tag=0.3.1)",
+ "halo2curves 0.3.1 (git+https://github.com/privacy-scaling-explorations//halo2curves.git?rev=9b67e19)",
  "num-bigint",
  "num-integer",
 ]
@@ -1929,7 +1929,7 @@ dependencies = [
  "digest 0.10.3",
  "group",
  "halo2_proofs",
- "halo2curves 0.3.1 (git+https://github.com/privacy-scaling-explorations/halo2curves.git?tag=0.3.1)",
+ "halo2curves 0.3.1 (git+https://github.com/privacy-scaling-explorations//halo2curves.git?rev=9b67e19)",
  "log",
  "num-bigint",
  "poseidon",
@@ -1947,7 +1947,7 @@ dependencies = [
  "halo2-ecc-circuit-lib",
  "halo2-snark-aggregator-api",
  "halo2_proofs",
- "halo2curves 0.3.1 (git+https://github.com/privacy-scaling-explorations/halo2curves.git?tag=0.3.1)",
+ "halo2curves 0.3.1 (git+https://github.com/privacy-scaling-explorations//halo2curves.git?rev=9b67e19)",
  "log",
  "rand 0.8.5",
  "rand_core 0.6.3",
@@ -1966,7 +1966,7 @@ dependencies = [
  "halo2-snark-aggregator-api",
  "halo2-snark-aggregator-circuit",
  "halo2_proofs",
- "halo2curves 0.3.1 (git+https://github.com/privacy-scaling-explorations/halo2curves.git?tag=0.3.1)",
+ "halo2curves 0.3.1 (git+https://github.com/privacy-scaling-explorations//halo2curves.git?rev=9b67e19)",
  "log",
  "num-bigint",
  "sha3 0.10.1",
@@ -2015,7 +2015,7 @@ dependencies = [
  "cfg-if 0.1.10",
  "ff",
  "group",
- "halo2curves 0.3.1 (git+https://github.com/privacy-scaling-explorations/halo2curves.git?tag=0.3.1)",
+ "halo2curves 0.3.1 (git+https://github.com/privacy-scaling-explorations//halo2curves.git?rev=9b67e19)",
  "log",
  "num-bigint",
  "num-integer",
@@ -2030,7 +2030,7 @@ dependencies = [
 [[package]]
 name = "halo2curves"
 version = "0.3.1"
-source = "git+https://github.com/privacy-scaling-explorations/halo2curves.git?tag=0.3.1#9b67e19bca30a35208b0c1b41c1723771e2c9f49"
+source = "git+https://github.com/privacy-scaling-explorations//halo2curves.git?rev=9b67e19#9b67e19bca30a35208b0c1b41c1723771e2c9f49"
 dependencies = [
  "ff",
  "group",
@@ -3245,7 +3245,7 @@ version = "0.2.0"
 source = "git+https://github.com/scroll-tech/poseidon.git?branch=scroll-dev-0220#2fb4a2385bada39b50dce12fe50cb80d2fd33476"
 dependencies = [
  "group",
- "halo2curves 0.3.1 (git+https://github.com/privacy-scaling-explorations/halo2curves.git?tag=0.3.1)",
+ "halo2curves 0.3.1 (git+https://github.com/privacy-scaling-explorations//halo2curves.git?rev=9b67e19)",
  "subtle",
 ]
 
@@ -4121,7 +4121,7 @@ source = "git+https://github.com/privacy-scaling-explorations/snark-verifier?tag
 dependencies = [
  "ecc",
  "halo2_proofs",
- "halo2curves 0.3.1 (git+https://github.com/privacy-scaling-explorations/halo2curves.git?tag=0.3.1)",
+ "halo2curves 0.3.1 (git+https://github.com/privacy-scaling-explorations//halo2curves.git?rev=9b67e19)",
  "hex",
  "itertools",
  "lazy_static",
@@ -5051,7 +5051,7 @@ checksum = "dcf81ac59edc17cc8697ff311e8f5ef2d99fcbd9817b34cec66f90b6c3dfd987"
 [[package]]
 name = "types"
 version = "0.3.0"
-source = "git+https://github.com/scroll-tech/scroll-zkevm?rev=78ab7a7#78ab7a770f7753fa88c8aab4969296f06e1c811a"
+source = "git+https://github.com/scroll-tech/scroll-prover?rev=78ab7a7#78ab7a770f7753fa88c8aab4969296f06e1c811a"
 dependencies = [
  "base64 0.13.0",
  "blake2",
@@ -5727,7 +5727,7 @@ dependencies = [
 [[package]]
 name = "zkevm"
 version = "0.3.0"
-source = "git+https://github.com/scroll-tech/scroll-zkevm?rev=78ab7a7#78ab7a770f7753fa88c8aab4969296f06e1c811a"
+source = "git+https://github.com/scroll-tech/scroll-prover?rev=78ab7a7#78ab7a770f7753fa88c8aab4969296f06e1c811a"
 dependencies = [
  "anyhow",
  "blake2",
