@@ -13,14 +13,12 @@ import (
 
 	cutils "scroll-tech/common/utils"
 
-	"scroll-tech/bridge/internal/utils"
-
 	"github.com/stretchr/testify/assert"
 )
 
 func testProcessStart(t *testing.T) {
 	db := setupDB(t)
-	defer utils.CloseDB(db)
+	defer database.CloseDB(db)
 
 	bridgeApp.RunApp(t, cutils.EventWatcherApp)
 	bridgeApp.RunApp(t, cutils.GasOracleApp)
@@ -32,7 +30,7 @@ func testProcessStart(t *testing.T) {
 
 func testProcessStartEnableMetrics(t *testing.T) {
 	db := setupDB(t)
-	defer utils.CloseDB(db)
+	defer database.CloseDB(db)
 
 	port, err := rand.Int(rand.Reader, big.NewInt(2000))
 	assert.NoError(t, err)

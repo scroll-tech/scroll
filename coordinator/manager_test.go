@@ -32,7 +32,7 @@ import (
 	"scroll-tech/coordinator/internal/orm"
 	"scroll-tech/coordinator/verifier"
 
-	"scroll-tech/common/db"
+	"scroll-tech/common/database"
 	"scroll-tech/common/docker"
 	"scroll-tech/common/types"
 	"scroll-tech/common/types/message"
@@ -77,7 +77,7 @@ func setEnv(t *testing.T) {
 	}
 
 	var err error
-	dbHandler, err = db.InitDB(dbCfg)
+	dbHandler, err = database.InitDB(dbCfg)
 	assert.NoError(t, err)
 	sqlDB, err := dbHandler.DB()
 	assert.NoError(t, err)
@@ -715,7 +715,7 @@ func testListRollers(t *testing.T) {
 }
 
 func setupCoordinator(t *testing.T, rollersPerSession uint8, wsURL string, resetDB bool) (rollerManager *coordinator.Manager, handler *http.Server) {
-	dbHandler, err := db.InitDB(dbCfg)
+	dbHandler, err := database.InitDB(dbCfg)
 	assert.NoError(t, err)
 	sqlDB, err := dbHandler.DB()
 	assert.NoError(t, err)

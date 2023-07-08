@@ -11,7 +11,7 @@ import (
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/urfave/cli/v2"
 
-	"scroll-tech/common/db"
+	"scroll-tech/common/database"
 	"scroll-tech/common/metrics"
 	"scroll-tech/common/utils"
 	"scroll-tech/common/version"
@@ -51,13 +51,13 @@ func action(ctx *cli.Context) error {
 
 	subCtx, cancel := context.WithCancel(ctx.Context)
 	// Init db connection
-	dbHandler, err := db.InitDB(cfg.DBConfig)
+	dbHandler, err := database.InitDB(cfg.DBConfig)
 	if err != nil {
 		log.Crit("failed to init db connection", "err", err)
 	}
 	defer func() {
 		cancel()
-		if err = db.CloseDB(dbHandler); err != nil {
+		if err = database.CloseDB(dbHandler); err != nil {
 			log.Error("can not close ormFactory", "error", err)
 		}
 	}()

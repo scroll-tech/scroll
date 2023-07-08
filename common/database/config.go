@@ -1,4 +1,4 @@
-package db
+package database
 
 // Config db config
 type Config struct {
