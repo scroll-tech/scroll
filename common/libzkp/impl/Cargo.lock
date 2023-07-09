@@ -2030,7 +2030,7 @@ dependencies = [
 [[package]]
 name = "halo2curves"
 version = "0.3.1"
-source = "git+https://github.com/privacy-scaling-explorations//halo2curves.git?rev=9b67e19#9b67e19bca30a35208b0c1b41c1723771e2c9f49"
+source = "git+https://github.com/privacy-scaling-explorations//halo2curves.git?rev=9b67e19"
 dependencies = [
  "ff",
  "group",
