@@ -16,7 +16,7 @@ import (
 
 	"github.com/scroll-tech/go-ethereum/log"
 
-	"scroll-tech/coordinator/config"
+	"scroll-tech/coordinator/internal/config"
 
 	"scroll-tech/common/types/message"
 )

@@ -22,7 +22,6 @@ import (
 
 	bridgeAbi "scroll-tech/bridge/abi"
 	"scroll-tech/bridge/internal/orm"
-	bridgeTypes "scroll-tech/bridge/internal/types"
 	"scroll-tech/bridge/internal/utils"
 )
 
@@ -160,7 +159,7 @@ func txsToTxsData(txs gethTypes.Transactions) []*gethTypes.TransactionData {
 }
 
 func (w *L2WatcherClient) getAndStoreBlockTraces(ctx context.Context, from, to uint64) error {
-	var blocks []*bridgeTypes.WrappedBlock
+	var blocks []*types.WrappedBlock
 	for number := from; number <= to; number++ {
 		log.Debug("retrieving block", "height", number)
 		block, err2 := w.BlockByNumber(ctx, big.NewInt(int64(number)))
@@ -175,7 +174,7 @@ func (w *L2WatcherClient) getAndStoreBlockTraces(ctx context.Context, from, to u
 			return fmt.Errorf("failed to get withdrawTrieRoot: %v. number: %v", err3, number)
 		}
 
-		blocks = append(blocks, &bridgeTypes.WrappedBlock{
+		blocks = append(blocks, &types.WrappedBlock{
 			Header:           block.Header(),
 			Transactions:     txsToTxsData(block.Transactions()),
 			WithdrawTrieRoot: common.BytesToHash(withdrawTrieRoot),
