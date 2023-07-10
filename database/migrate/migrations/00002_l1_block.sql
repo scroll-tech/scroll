@@ -7,9 +7,9 @@ create table l1_block
     hash                    VARCHAR         NOT NULL,
     header_rlp              TEXT            NOT NULL,
     base_fee                BIGINT          NOT NULL,
-    block_status            INTEGER         NOT NULL,
+    block_status            INTEGER         NOT NULL DEFAULT 1,
     import_tx_hash          VARCHAR         DEFAULT NULL,
-    oracle_status           INTEGER         NOT NULL,
+    oracle_status           INTEGER         NOT NULL DEFAULT 1,
     oracle_tx_hash          VARCHAR         DEFAULT NULL
 );
 

@@ -15,22 +15,22 @@ create table batch
     batch_header            BYTEA           NOT NULL,
 
 -- proof
-    chunk_proofs_status     SMALLINT        NOT NULL,
-    proving_status          SMALLINT        NOT NULL,
+    chunk_proofs_status     SMALLINT        NOT NULL DEFAULT 1,
+    proving_status          SMALLINT        NOT NULL DEFAULT 1,
     proof                   BYTEA           DEFAULT NULL,
     prover_assigned_at      TIMESTAMP(0)    DEFAULT NULL,
     proved_at               TIMESTAMP(0)    DEFAULT NULL,
     proof_time_sec          INTEGER         DEFAULT NULL,
 
 -- rollup
-    rollup_status           SMALLINT        NOT NULL,
+    rollup_status           SMALLINT        NOT NULL DEFAULT 1,
     commit_tx_hash          VARCHAR         DEFAULT NULL,
     committed_at            TIMESTAMP(0)    DEFAULT NULL,
     finalize_tx_hash        VARCHAR         DEFAULT NULL,
     finalized_at            TIMESTAMP(0)    DEFAULT NULL,
 
 -- gas oracle
-    oracle_status           SMALLINT        NOT NULL,
+    oracle_status           SMALLINT        NOT NULL DEFAULT 1,
     oracle_tx_hash          VARCHAR         DEFAULT NULL,
 
 -- metadata
