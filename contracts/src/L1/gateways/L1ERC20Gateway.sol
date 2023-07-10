@@ -12,7 +12,7 @@ abstract contract L1ERC20Gateway is IL1ERC20Gateway {
      *************/
 
     /// @dev The storage slots for future usage.
-    uint256[46] private __gap;
+    uint256[50] private __gap;
 
     /*****************************
      * Public Mutating Functions *
