@@ -1,8 +1,5 @@
 .PHONY: lint docker clean roller mock_roller
 
-IMAGE_NAME=go-roller
-IMAGE_VERSION=latest
-
 ifeq (4.3,$(firstword $(sort $(MAKE_VERSION) 4.3)))
 	ZKEVM_VERSION=$(shell grep -m 1 "scroll-prover" ../common/libzkp/impl/Cargo.lock | cut -d "#" -f2 | cut -c-7)
 	HALO2_VERSION=$(shell grep -m 1 "halo2.git" ../common/libzkp/impl/Cargo.lock | cut -d "#" -f2 | cut -c-7)
@@ -11,7 +8,7 @@ else
 	HALO2_VERSION=$(shell grep -m 1 "halo2.git" ../common/libzkp/impl/Cargo.lock | cut -d "\#" -f2 | cut -c-7)
 endif
 
-HALO2_GPU_VERSION=$(shell ./halo2gpu_version.sh | sed -n '2p')
+HALO2_GPU_VERSION=$(shell ./print_halo2gpu_version.sh | sed -n '2p')
 
 ifeq (${HALO2_GPU_VERSION},)
 	# use halo2_proofs with CPU
@@ -50,6 +47,3 @@ lint: ## Lint the files - used for CI
 
 clean: ## Empty out the bin folder
 	@rm -rf build/bin
-
-# docker:
-# 	docker build -t scrolltech/${IMAGE_NAME}:${IMAGE_VERSION} ../ -f ./Dockerfile
