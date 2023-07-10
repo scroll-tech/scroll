@@ -7,9 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"gorm.io/gorm"
 
-	"scroll-tech/coordinator/internal/config"
-	"scroll-tech/coordinator/internal/utils"
-
+	"scroll-tech/common/database"
 	"scroll-tech/common/docker"
 	"scroll-tech/common/types"
 
@@ -34,8 +32,8 @@ func setupEnv(t *testing.T) {
 	base = docker.NewDockerApp()
 	base.RunDBImage(t)
 	var err error
-	db, err = utils.InitDB(
-		&config.DBConfig{
+	db, err = database.InitDB(
+		&database.Config{
 			DSN:        base.DBConfig.DSN,
 			DriverName: base.DBConfig.DriverName,
 			MaxOpenNum: base.DBConfig.MaxOpenNum,
