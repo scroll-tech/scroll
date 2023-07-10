@@ -75,7 +75,7 @@ func (c *CrossMsgFetcher) Start() {
 				return
 			case <-tick.C:
 				c.mu.Lock()
-				c.forwardFetchAndSaveMissingEvents(0)
+				c.forwardFetchAndSaveMissingEvents(1)
 				c.mu.Unlock()
 			}
 		}

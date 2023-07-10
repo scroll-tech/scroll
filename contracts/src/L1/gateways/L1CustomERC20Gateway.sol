@@ -121,25 +121,11 @@ contract L1CustomERC20Gateway is OwnableUpgradeable, ScrollGatewayBase, L1ERC20G
         address _l2Token = tokenMapping[_token];
         require(_l2Token != address(0), "no corresponding l2 token");
 
-        // 1. Extract real sender if this call is from L1GatewayRouter.
-        address _from = msg.sender;
-        if (router == msg.sender) {
-            (_from, _data) = abi.decode(_data, (address, bytes));
-        }
+        // 1. Transfer token into this contract.
+        address _from;
+        (_from, _amount, _data) = _transferERC20In(_token, _amount, _data);
 
-        // 2. Transfer token into this contract.
-        {
-            // common practice to handle fee on transfer token.
-            uint256 _before = IERC20Upgradeable(_token).balanceOf(address(this));
-            IERC20Upgradeable(_token).safeTransferFrom(_from, address(this), _amount);
-            uint256 _after = IERC20Upgradeable(_token).balanceOf(address(this));
-            // no unchecked here, since some weird token may return arbitrary balance.
-            _amount = _after - _before;
-            // ignore weird fee on transfer token
-            require(_amount > 0, "deposit zero amount");
-        }
-
-        // 3. Generate message passed to L2StandardERC20Gateway.
+        // 2. Generate message passed to L2CustomERC20Gateway.
         bytes memory _message = abi.encodeWithSelector(
             IL2ERC20Gateway.finalizeDepositERC20.selector,
             _token,
@@ -150,7 +136,7 @@ contract L1CustomERC20Gateway is OwnableUpgradeable, ScrollGatewayBase, L1ERC20G
             _data
         );
 
-        // 4. Send message to L1ScrollMessenger.
+        // 3. Send message to L1ScrollMessenger.
         IL1ScrollMessenger(messenger).sendMessage{value: msg.value}(counterpart, 0, _message, _gasLimit, _from);
 
         emit DepositERC20(_token, _l2Token, _from, _to, _amount, _data);

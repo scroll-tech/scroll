@@ -8,7 +8,6 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/log"
-	"github.com/jmoiron/sqlx"
 
 	backendabi "bridge-history-api/abi"
 	"bridge-history-api/db"
@@ -99,7 +98,7 @@ func L1FetchAndSaveEvents(ctx context.Context, client *ethclient.Client, databas
 		log.Warn("Failed to get l1 event logs", "err", err)
 		return err
 	}
-	depositL1CrossMsgs, msgHashes, relayedMsg, err := utils.ParseBackendL1EventLogs(logs)
+	depositL1CrossMsgs, relayedMsg, err := utils.ParseBackendL1EventLogs(logs)
 	if err != nil {
 		log.Error("l1FetchAndSaveEvents: Failed to parse cross msg event logs", "err", err)
 		return err
@@ -119,11 +118,6 @@ func L1FetchAndSaveEvents(ctx context.Context, client *ethclient.Client, databas
 	if err != nil {
 		dbTx.Rollback()
 		log.Crit("l1FetchAndSaveEvents: Failed to insert relayed message event logs", "err", err)
-	}
-	err = updateL1CrossMsgMsgHash(ctx, dbTx, database, msgHashes)
-	if err != nil {
-		dbTx.Rollback()
-		log.Crit("l1FetchAndSaveEvents: Failed to update msgHash in L1 cross msg", "err", err)
 	}
 	err = dbTx.Commit()
 	if err != nil {
@@ -157,11 +151,12 @@ func L2FetchAndSaveEvents(ctx context.Context, client *ethclient.Client, databas
 		log.Warn("Failed to get l2 event logs", "err", err)
 		return err
 	}
-	depositL2CrossMsgs, msgHashes, relayedMsg, l2sentMsgs, err := utils.ParseBackendL2EventLogs(logs)
+	depositL2CrossMsgs, relayedMsg, l2SentMsgs, err := utils.ParseBackendL2EventLogs(logs)
 	if err != nil {
 		log.Error("l2FetchAndSaveEvents: Failed to parse cross msg event logs", "err", err)
 		return err
 	}
+
 	dbTx, err := database.Beginx()
 	if err != nil {
 		log.Error("l2FetchAndSaveEvents: Failed to begin db transaction", "err", err)
@@ -179,13 +174,7 @@ func L2FetchAndSaveEvents(ctx context.Context, client *ethclient.Client, databas
 		log.Crit("l2FetchAndSaveEvents: Failed to insert relayed message event logs", "err", err)
 	}
 
-	err = updateL2CrossMsgMsgHash(ctx, dbTx, database, msgHashes)
-	if err != nil {
-		dbTx.Rollback()
-		log.Crit("l2FetchAndSaveEvents: Failed to update msgHash in L2 cross msg", "err", err)
-	}
-
-	err = database.BatchInsertL2SentMsgDBTx(dbTx, l2sentMsgs)
+	err = database.BatchInsertL2SentMsgDBTx(dbTx, l2SentMsgs)
 	if err != nil {
 		dbTx.Rollback()
 		log.Crit("l2FetchAndSaveEvents: Failed to insert l2 sent message", "err", err)
@@ -237,28 +226,6 @@ func FetchAndSaveBatchIndex(ctx context.Context, client *ethclient.Client, datab
 		dbTx.Rollback()
 		log.Error("FetchAndSaveBatchIndex: Failed to commit db transaction", "err", err)
 		return err
-	}
-	return nil
-}
-
-func updateL1CrossMsgMsgHash(ctx context.Context, dbTx *sqlx.Tx, database db.OrmFactory, msgHashes []utils.MsgHashWrapper) error {
-	for _, msgHash := range msgHashes {
-		err := database.UpdateL1CrossMsgHashDBTx(ctx, dbTx, msgHash.TxHash, msgHash.MsgHash)
-		if err != nil {
-			log.Error("updateL1CrossMsgMsgHash: can not update layer1 cross msg MsgHash", "layer1 hash", msgHash.TxHash, "err", err)
-			continue
-		}
-	}
-	return nil
-}
-
-func updateL2CrossMsgMsgHash(ctx context.Context, dbTx *sqlx.Tx, database db.OrmFactory, msgHashes []utils.MsgHashWrapper) error {
-	for _, msgHash := range msgHashes {
-		err := database.UpdateL2CrossMsgHashDBTx(ctx, dbTx, msgHash.TxHash, msgHash.MsgHash)
-		if err != nil {
-			log.Error("updateL2CrossMsgMsgHash: can not update layer2 cross msg MsgHash", "layer2 hash", msgHash.TxHash, "err", err)
-			continue
-		}
 	}
 	return nil
 }

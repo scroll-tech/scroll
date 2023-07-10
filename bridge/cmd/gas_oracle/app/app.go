@@ -11,14 +11,15 @@ import (
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/urfave/cli/v2"
 
+	"scroll-tech/common/database"
 	"scroll-tech/common/metrics"
-	cutils "scroll-tech/common/utils"
+	"scroll-tech/common/utils"
 	"scroll-tech/common/version"
 
 	"scroll-tech/bridge/internal/config"
 	"scroll-tech/bridge/internal/controller/relayer"
 	"scroll-tech/bridge/internal/controller/watcher"
-	"scroll-tech/bridge/internal/utils"
+	butils "scroll-tech/bridge/internal/utils"
 )
 
 var app *cli.App
@@ -31,31 +32,31 @@ func init() {
 	app.Usage = "The Scroll Gas Oracle"
 	app.Description = "Scroll Gas Oracle."
 	app.Version = version.Version
-	app.Flags = append(app.Flags, cutils.CommonFlags...)
+	app.Flags = append(app.Flags, utils.CommonFlags...)
 	app.Commands = []*cli.Command{}
 	app.Before = func(ctx *cli.Context) error {
-		return cutils.LogSetup(ctx)
+		return utils.LogSetup(ctx)
 	}
 	// Register `gas-oracle-test` app for integration-test.
-	cutils.RegisterSimulation(app, cutils.GasOracleApp)
+	utils.RegisterSimulation(app, utils.GasOracleApp)
 }
 
 func action(ctx *cli.Context) error {
 	// Load config file.
-	cfgFile := ctx.String(cutils.ConfigFileFlag.Name)
+	cfgFile := ctx.String(utils.ConfigFileFlag.Name)
 	cfg, err := config.NewConfig(cfgFile)
 	if err != nil {
 		log.Crit("failed to load config file", "config file", cfgFile, "error", err)
 	}
 	subCtx, cancel := context.WithCancel(ctx.Context)
 	// Init db connection
-	db, err := utils.InitDB(cfg.DBConfig)
+	db, err := database.InitDB(cfg.DBConfig)
 	if err != nil {
 		log.Crit("failed to init db connection", "err", err)
 	}
 	defer func() {
 		cancel()
-		if err = utils.CloseDB(db); err != nil {
+		if err = database.CloseDB(db); err != nil {
 			log.Error("can not close ormFactory", "error", err)
 		}
 	}()
@@ -76,7 +77,8 @@ func action(ctx *cli.Context) error {
 		return err
 	}
 
-	l1watcher := watcher.NewL1WatcherClient(ctx.Context, l1client, cfg.L1Config.StartHeight, cfg.L1Config.Confirmations, cfg.L1Config.L1MessengerAddress, cfg.L1Config.L1MessageQueueAddress, cfg.L1Config.ScrollChainContractAddress, db)
+	l1watcher := watcher.NewL1WatcherClient(ctx.Context, l1client, cfg.L1Config.StartHeight, cfg.L1Config.Confirmations,
+		cfg.L1Config.L1MessengerAddress, cfg.L1Config.L1MessageQueueAddress, cfg.L1Config.ScrollChainContractAddress, db)
 
 	l1relayer, err := relayer.NewLayer1Relayer(ctx.Context, db, cfg.L1Config.RelayerConfig)
 	if err != nil {
@@ -89,8 +91,8 @@ func action(ctx *cli.Context) error {
 		return err
 	}
 	// Start l1 watcher process
-	go cutils.LoopWithContext(subCtx, 10*time.Second, func(ctx context.Context) {
-		number, loopErr := utils.GetLatestConfirmedBlockNumber(ctx, l1client, cfg.L1Config.Confirmations)
+	go utils.LoopWithContext(subCtx, 10*time.Second, func(ctx context.Context) {
+		number, loopErr := butils.GetLatestConfirmedBlockNumber(ctx, l1client, cfg.L1Config.Confirmations)
 		if loopErr != nil {
 			log.Error("failed to get block number", "err", loopErr)
 			return
@@ -102,8 +104,8 @@ func action(ctx *cli.Context) error {
 	})
 
 	// Start l1relayer process
-	go cutils.Loop(subCtx, 10*time.Second, l1relayer.ProcessGasPriceOracle)
-	go cutils.Loop(subCtx, 2*time.Second, l2relayer.ProcessGasPriceOracle)
+	go utils.Loop(subCtx, 10*time.Second, l1relayer.ProcessGasPriceOracle)
+	go utils.Loop(subCtx, 2*time.Second, l2relayer.ProcessGasPriceOracle)
 
 	// Finish start all message relayer functions
 	log.Info("Start gas-oracle successfully")

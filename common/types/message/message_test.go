@@ -49,7 +49,7 @@ func TestGenerateToken(t *testing.T) {
 func TestIdentityHash(t *testing.T) {
 	identity := &Identity{
 		Name:       "testName",
-		RollerType: BasicProve,
+		RollerType: ProofTypeChunk,
 		Timestamp:  uint32(1622428800),
 		Version:    "testVersion",
 		Token:      "testToken",
@@ -57,7 +57,7 @@ func TestIdentityHash(t *testing.T) {
 	hash, err := identity.Hash()
 	assert.NoError(t, err)
 
-	expectedHash := "b3f152958dc881446fc131a250526139d909710c6b91b4d3281ceded28ce2e32"
+	expectedHash := "063a3620db7f71e5ae99dd622222e1e893247344727fb2a2b022524d06f35aaf"
 	assert.Equal(t, expectedHash, hex.EncodeToString(hash))
 }
 
@@ -68,7 +68,7 @@ func TestProofMessageSignVerifyPublicKey(t *testing.T) {
 	proofMsg := &ProofMsg{
 		ProofDetail: &ProofDetail{
 			ID:     "testID",
-			Type:   BasicProve,
+			Type:   ProofTypeChunk,
 			Status: StatusOk,
 			Proof: &AggProof{
 				Proof:      []byte("testProof"),
@@ -96,7 +96,7 @@ func TestProofMessageSignVerifyPublicKey(t *testing.T) {
 func TestProofDetailHash(t *testing.T) {
 	proofDetail := &ProofDetail{
 		ID:     "testID",
-		Type:   BasicProve,
+		Type:   ProofTypeChunk,
 		Status: StatusOk,
 		Proof: &AggProof{
 			Proof:      []byte("testProof"),
@@ -109,19 +109,19 @@ func TestProofDetailHash(t *testing.T) {
 	}
 	hash, err := proofDetail.Hash()
 	assert.NoError(t, err)
-	expectedHash := "fdfaae752d6fd72a7fdd2ad034ef504d3acda9e691a799323cfa6e371684ba2b"
+	expectedHash := "8ad894c2047166a98b1a389b716b06b01dc1bd29e950e2687ffbcb3c328edda5"
 	assert.Equal(t, expectedHash, hex.EncodeToString(hash))
 }
 
 func TestProveTypeString(t *testing.T) {
-	basicProve := ProveType(0)
-	assert.Equal(t, "Basic Prove", basicProve.String())
+	proofTypeChunk := ProofType(1)
+	assert.Equal(t, "proof type chunk", proofTypeChunk.String())
 
-	aggregatorProve := ProveType(1)
-	assert.Equal(t, "Aggregator Prove", aggregatorProve.String())
+	proofTypeBatch := ProofType(2)
+	assert.Equal(t, "proof type batch", proofTypeBatch.String())
 
-	illegalProve := ProveType(3)
-	assert.Equal(t, "Illegal Prove type", illegalProve.String())
+	illegalProof := ProofType(3)
+	assert.Equal(t, "illegal proof type", illegalProof.String())
 }
 
 func TestProofMsgPublicKey(t *testing.T) {
@@ -131,7 +131,7 @@ func TestProofMsgPublicKey(t *testing.T) {
 	proofMsg := &ProofMsg{
 		ProofDetail: &ProofDetail{
 			ID:     "testID",
-			Type:   BasicProve,
+			Type:   ProofTypeChunk,
 			Status: StatusOk,
 			Proof: &AggProof{
 				Proof:      []byte("testProof"),
