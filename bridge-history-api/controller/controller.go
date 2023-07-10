@@ -20,14 +20,14 @@ type QueryClaimableController struct {
 }
 
 func (c *QueryClaimableController) Get(req model.QueryByAddressRequest) (*model.QueryByAddressResponse, error) {
-	message, total, err := c.Service.GetClaimableTxsByAddress(common.HexToAddress(req.Address), int64(req.Offset), int64(req.Limit))
+	txs, total, err := c.Service.GetClaimableTxsByAddress(common.HexToAddress(req.Address), int64(req.Offset), int64(req.Limit))
 	if err != nil {
 		return &model.QueryByAddressResponse{Message: "500", Data: &model.Data{}}, err
 	}
 
 	return &model.QueryByAddressResponse{Message: "ok",
 		Data: &model.Data{
-			Result: message,
+			Result: txs,
 			Total:  total,
 		}}, nil
 }
