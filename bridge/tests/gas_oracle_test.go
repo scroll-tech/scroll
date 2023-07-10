@@ -9,17 +9,17 @@ import (
 	gethTypes "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/stretchr/testify/assert"
 
+	"scroll-tech/common/database"
 	"scroll-tech/common/types"
 
 	"scroll-tech/bridge/internal/controller/relayer"
 	"scroll-tech/bridge/internal/controller/watcher"
 	"scroll-tech/bridge/internal/orm"
-	"scroll-tech/bridge/internal/utils"
 )
 
 func testImportL1GasPrice(t *testing.T) {
 	db := setupDB(t)
-	defer utils.CloseDB(db)
+	defer database.CloseDB(db)
 
 	prepareContracts(t)
 
@@ -63,7 +63,7 @@ func testImportL1GasPrice(t *testing.T) {
 
 func testImportL2GasPrice(t *testing.T) {
 	db := setupDB(t)
-	defer utils.CloseDB(db)
+	defer database.CloseDB(db)
 	prepareContracts(t)
 
 	l2Cfg := bridgeApp.Config.L2Config
