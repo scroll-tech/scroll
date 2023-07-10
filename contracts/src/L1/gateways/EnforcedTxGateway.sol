@@ -43,7 +43,7 @@ contract EnforcedTxGateway is OwnableUpgradeable, ReentrancyGuardUpgradeable, Pa
     address public feeVault;
 
     /// @notice Mapping from EOA address to current nonce.
-    /// @dev Every successful call to ``sendTransaction`` with signature increases ``_sender``'s nonce by one.
+    /// @dev Every successful call to `sendTransaction` with signature increases `_sender`'s nonce by one.
     /// This prevents a signature from being used multiple times.
     mapping(address => uint256) public nonces;
 
