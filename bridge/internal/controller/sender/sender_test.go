@@ -182,10 +182,7 @@ func testResubmitTransactionWithRisingBaseFee(t *testing.T) {
 	adjBaseFee = adjBaseFee.Mul(adjBaseFee, escalateMultipleNum)
 	adjBaseFee = adjBaseFee.Div(adjBaseFee, escalateMultipleDen)
 
-	expectedGasFeeCap := new(big.Int).Add(
-		feeData.gasTipCap,
-		adjBaseFee,
-	)
+	expectedGasFeeCap := new(big.Int).Add(feeData.gasTipCap, adjBaseFee)
 	if expectedGasFeeCap.Cmp(maxGasPrice) > 0 {
 		expectedGasFeeCap = maxGasPrice
 	}
