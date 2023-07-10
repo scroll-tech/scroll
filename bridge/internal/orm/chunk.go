@@ -32,15 +32,15 @@ type Chunk struct {
 	Proof            []byte     `json:"proof" gorm:"column:proof;default:NULL"`
 	ProverAssignedAt *time.Time `json:"prover_assigned_at" gorm:"column:prover_assigned_at;default:NULL"`
 	ProvedAt         *time.Time `json:"proved_at" gorm:"column:proved_at;default:NULL"`
-	ProofTimeSec     int        `json:"proof_time_sec" gorm:"column:proof_time_sec;default:NULL"`
+	ProofTimeSec     int32      `json:"proof_time_sec" gorm:"column:proof_time_sec;default:NULL"`
 
 	// batch
 	BatchHash string `json:"batch_hash" gorm:"column:batch_hash;default:NULL"`
 
 	// metadata
 	TotalL2TxGas              uint64         `json:"total_l2_tx_gas" gorm:"column:total_l2_tx_gas"`
-	TotalL2TxNum              uint64         `json:"total_l2_tx_num" gorm:"column:total_l2_tx_num"`
-	TotalL1CommitCalldataSize uint64         `json:"total_l1_commit_calldata_size" gorm:"column:total_l1_commit_calldata_size"`
+	TotalL2TxNum              uint32         `json:"total_l2_tx_num" gorm:"column:total_l2_tx_num"`
+	TotalL1CommitCalldataSize uint32         `json:"total_l1_commit_calldata_size" gorm:"column:total_l1_commit_calldata_size"`
 	TotalL1CommitGas          uint64         `json:"total_l1_commit_gas" gorm:"column:total_l1_commit_gas"`
 	CreatedAt                 time.Time      `json:"created_at" gorm:"column:created_at"`
 	UpdatedAt                 time.Time      `json:"updated_at" gorm:"column:updated_at"`
@@ -158,8 +158,8 @@ func (o *Chunk) InsertChunk(ctx context.Context, chunk *types.Chunk, dbTX ...*go
 		EndBlockNumber:               chunk.Blocks[numBlocks-1].Header.Number.Uint64(),
 		EndBlockHash:                 chunk.Blocks[numBlocks-1].Header.Hash().Hex(),
 		TotalL2TxGas:                 totalL2TxGas,
-		TotalL2TxNum:                 totalL2TxNum,
-		TotalL1CommitCalldataSize:    totalL1CommitCalldataSize,
+		TotalL2TxNum:                 uint32(totalL2TxNum),
+		TotalL1CommitCalldataSize:    uint32(totalL1CommitCalldataSize),
 		TotalL1CommitGas:             totalL1CommitGas,
 		StartBlockTime:               chunk.Blocks[0].Header.Time,
 		TotalL1MessagesPoppedBefore:  totalL1MessagePoppedBefore,

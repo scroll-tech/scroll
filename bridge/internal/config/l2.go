@@ -40,7 +40,7 @@ type ChunkProposerConfig struct {
 type BatchProposerConfig struct {
 	MaxChunkNumPerBatch             uint64 `json:"max_chunk_num_per_batch"`
 	MaxL1CommitGasPerBatch          uint64 `json:"max_l1_commit_gas_per_batch"`
-	MaxL1CommitCalldataSizePerBatch uint64 `json:"max_l1_commit_calldata_size_per_batch"`
+	MaxL1CommitCalldataSizePerBatch uint32 `json:"max_l1_commit_calldata_size_per_batch"`
 	MinChunkNumPerBatch             uint64 `json:"min_chunk_num_per_batch"`
 	BatchTimeoutSec                 uint64 `json:"batch_timeout_sec"`
 }

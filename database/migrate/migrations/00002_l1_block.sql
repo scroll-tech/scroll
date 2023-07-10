@@ -3,14 +3,23 @@
 
 create table l1_block
 (
+-- block
     number                  BIGINT          NOT NULL,
     hash                    VARCHAR         NOT NULL,
-    header_rlp              TEXT            NOT NULL,
     base_fee                BIGINT          NOT NULL,
-    block_status            INTEGER         NOT NULL DEFAULT 1,
+
+-- import
+    block_status            SMALLINT        NOT NULL DEFAULT 1,
     import_tx_hash          VARCHAR         DEFAULT NULL,
-    oracle_status           INTEGER         NOT NULL DEFAULT 1,
-    oracle_tx_hash          VARCHAR         DEFAULT NULL
+
+-- oracle
+    oracle_status           SMALLINT        NOT NULL DEFAULT 1,
+    oracle_tx_hash          VARCHAR         DEFAULT NULL,
+
+-- metadata
+    created_at              TIMESTAMP(0)    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at              TIMESTAMP(0)    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    deleted_at              TIMESTAMP(0)    DEFAULT NULL
 );
 
 comment
