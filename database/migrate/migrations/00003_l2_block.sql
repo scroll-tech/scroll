@@ -3,6 +3,7 @@
 
 create table l2_block
 (
+-- block
     number                  BIGINT          NOT NULL,
     hash                    VARCHAR         NOT NULL,
     parent_hash             VARCHAR         NOT NULL,
@@ -12,7 +13,14 @@ create table l2_block
     tx_num                  INTEGER         NOT NULL,
     gas_used                BIGINT          NOT NULL,
     block_timestamp         NUMERIC         NOT NULL,
+
+-- chunk
     chunk_hash              VARCHAR         DEFAULT NULL
+
+-- metadata
+    created_at              TIMESTAMP(0)    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at              TIMESTAMP(0)    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    deleted_at              TIMESTAMP(0)    DEFAULT NULL
 );
 
 create unique index l2_block_hash_uindex

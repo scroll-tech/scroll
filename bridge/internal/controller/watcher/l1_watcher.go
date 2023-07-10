@@ -152,8 +152,8 @@ func (w *L1WatcherClient) FetchBlockHeader(blockHeight uint64) error {
 			Number:          uint64(height),
 			Hash:            block.Hash().String(),
 			BaseFee:         baseFee,
-			GasOracleStatus: int(types.GasOraclePending),
-			BlockStatus:     int(types.L1BlockPending),
+			GasOracleStatus: int16(types.GasOraclePending),
+			BlockStatus:     int16(types.L1BlockPending),
 		})
 	}
 

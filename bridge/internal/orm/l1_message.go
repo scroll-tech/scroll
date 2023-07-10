@@ -3,6 +3,7 @@ package orm
 import (
 	"context"
 	"database/sql"
+	"time"
 
 	"github.com/scroll-tech/go-ethereum/log"
 	"gorm.io/gorm"
@@ -25,6 +26,11 @@ type L1Message struct {
 	Layer1Hash string `json:"layer1_hash" gorm:"column:layer1_hash"`
 	Layer2Hash string `json:"layer2_hash" gorm:"column:layer2_hash;default:NULL"`
 	Status     int    `json:"status" gorm:"column:status;default:1"`
+
+	// metadata
+	CreatedAt time.Time      `json:"created_at" gorm:"column:created_at"`
+	UpdatedAt time.Time      `json:"updated_at" gorm:"column:updated_at"`
+	DeletedAt gorm.DeletedAt `json:"deleted_at" gorm:"column:deleted_at;default:NULL"`
 }
 
 // NewL1Message create an L1MessageOrm instance

@@ -38,7 +38,7 @@ type Batch struct {
 	Proof             []byte     `json:"proof" gorm:"column:proof;default:NULL"`
 	ProverAssignedAt  *time.Time `json:"prover_assigned_at" gorm:"column:prover_assigned_at;default:NULL"`
 	ProvedAt          *time.Time `json:"proved_at" gorm:"column:proved_at;default:NULL"`
-	ProofTimeSec      int        `json:"proof_time_sec" gorm:"column:proof_time_sec;default:NULL"`
+	ProofTimeSec      int32      `json:"proof_time_sec" gorm:"column:proof_time_sec;default:NULL"`
 
 	// rollup
 	RollupStatus   int16      `json:"rollup_status" gorm:"column:rollup_status;default:1"`
