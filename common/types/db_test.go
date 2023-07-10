@@ -80,7 +80,7 @@ func TestProvingStatus(t *testing.T) {
 		{
 			"Undefined",
 			ProvingStatus(999), // Invalid value.
-			"undefined",
+			"Undefined (999)",
 		},
 	}
 
