@@ -11,7 +11,7 @@ import (
 
 func TestNewBatchHeader(t *testing.T) {
 	// Without L1 Msg
-	templateBlockTrace, err := os.ReadFile("../../../common/testdata/blockTrace_02.json")
+	templateBlockTrace, err := os.ReadFile("../testdata/blockTrace_02.json")
 	assert.NoError(t, err)
 
 	wrappedBlock := &WrappedBlock{}
@@ -36,7 +36,7 @@ func TestNewBatchHeader(t *testing.T) {
 	assert.Equal(t, 0, len(batchHeader.skippedL1MessageBitmap))
 
 	// 1 L1 Msg in 1 bitmap
-	templateBlockTrace2, err := os.ReadFile("../../../common/testdata/blockTrace_04.json")
+	templateBlockTrace2, err := os.ReadFile("../testdata/blockTrace_04.json")
 	assert.NoError(t, err)
 
 	wrappedBlock2 := &WrappedBlock{}
@@ -54,7 +54,7 @@ func TestNewBatchHeader(t *testing.T) {
 	assert.Equal(t, expectedBitmap, common.Bytes2Hex(batchHeader.skippedL1MessageBitmap))
 
 	// many consecutive L1 Msgs in 1 bitmap, no leading skipped msgs
-	templateBlockTrace3, err := os.ReadFile("../../../common/testdata/blockTrace_05.json")
+	templateBlockTrace3, err := os.ReadFile("../testdata/blockTrace_05.json")
 	assert.NoError(t, err)
 
 	wrappedBlock3 := &WrappedBlock{}
@@ -87,7 +87,7 @@ func TestNewBatchHeader(t *testing.T) {
 	assert.Equal(t, expectedBitmap, common.Bytes2Hex(batchHeader.skippedL1MessageBitmap))
 
 	// many sparse L1 Msgs in 1 bitmap
-	templateBlockTrace4, err := os.ReadFile("../../../common/testdata/blockTrace_06.json")
+	templateBlockTrace4, err := os.ReadFile("../testdata/blockTrace_06.json")
 	assert.NoError(t, err)
 
 	wrappedBlock4 := &WrappedBlock{}
@@ -106,7 +106,7 @@ func TestNewBatchHeader(t *testing.T) {
 	assert.Equal(t, expectedBitmap, common.Bytes2Hex(batchHeader.skippedL1MessageBitmap))
 
 	// many L1 Msgs in each of 2 bitmaps
-	templateBlockTrace5, err := os.ReadFile("../../../common/testdata/blockTrace_07.json")
+	templateBlockTrace5, err := os.ReadFile("../testdata/blockTrace_07.json")
 	assert.NoError(t, err)
 
 	wrappedBlock5 := &WrappedBlock{}
@@ -127,7 +127,7 @@ func TestNewBatchHeader(t *testing.T) {
 
 func TestBatchHeaderEncode(t *testing.T) {
 	// Without L1 Msg
-	templateBlockTrace, err := os.ReadFile("../../../common/testdata/blockTrace_02.json")
+	templateBlockTrace, err := os.ReadFile("../testdata/blockTrace_02.json")
 	assert.NoError(t, err)
 
 	wrappedBlock := &WrappedBlock{}
@@ -154,7 +154,7 @@ func TestBatchHeaderEncode(t *testing.T) {
 	assert.Equal(t, "0100000000000000010000000000000000000000000000000010a64c9bd905f8caf5d668fbda622d6558c5a42cdb4b3895709743d159c22e534136709aabc8a23aa17fbcc833da2f7857d3c2884feec9aae73429c135f94985", common.Bytes2Hex(bytes))
 
 	// With L1 Msg
-	templateBlockTrace2, err := os.ReadFile("../../../common/testdata/blockTrace_04.json")
+	templateBlockTrace2, err := os.ReadFile("../testdata/blockTrace_04.json")
 	assert.NoError(t, err)
 
 	wrappedBlock2 := &WrappedBlock{}
@@ -174,7 +174,7 @@ func TestBatchHeaderEncode(t *testing.T) {
 
 func TestBatchHeaderHash(t *testing.T) {
 	// Without L1 Msg
-	templateBlockTrace, err := os.ReadFile("../../../common/testdata/blockTrace_02.json")
+	templateBlockTrace, err := os.ReadFile("../testdata/blockTrace_02.json")
 	assert.NoError(t, err)
 
 	wrappedBlock := &WrappedBlock{}
@@ -199,7 +199,7 @@ func TestBatchHeaderHash(t *testing.T) {
 	hash := batchHeader.Hash()
 	assert.Equal(t, "d69da4357da0073f4093c76e49f077e21bb52f48f57ee3e1fbd9c38a2881af81", common.Bytes2Hex(hash.Bytes()))
 
-	templateBlockTrace, err = os.ReadFile("../../../common/testdata/blockTrace_03.json")
+	templateBlockTrace, err = os.ReadFile("../testdata/blockTrace_03.json")
 	assert.NoError(t, err)
 
 	wrappedBlock2 := &WrappedBlock{}
@@ -216,7 +216,7 @@ func TestBatchHeaderHash(t *testing.T) {
 	assert.Equal(t, "34de600163aa745d4513113137a5b54960d13f0d3f2849e490c4b875028bf930", common.Bytes2Hex(hash2.Bytes()))
 
 	// With L1 Msg
-	templateBlockTrace3, err := os.ReadFile("../../../common/testdata/blockTrace_04.json")
+	templateBlockTrace3, err := os.ReadFile("../testdata/blockTrace_04.json")
 	assert.NoError(t, err)
 
 	wrappedBlock3 := &WrappedBlock{}

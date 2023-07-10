@@ -7,8 +7,6 @@ import (
 
 	"scroll-tech/common/types"
 
-	bridgeTypes "scroll-tech/bridge/internal/types"
-
 	"github.com/scroll-tech/go-ethereum/log"
 	"gorm.io/gorm"
 )
@@ -33,7 +31,7 @@ type Chunk struct {
 	Proof            []byte     `json:"proof" gorm:"column:proof;default:NULL"`
 	ProverAssignedAt *time.Time `json:"prover_assigned_at" gorm:"column:prover_assigned_at;default:NULL"`
 	ProvedAt         *time.Time `json:"proved_at" gorm:"column:proved_at;default:NULL"`
-	ProofTimeSec     int16      `json:"proof_time_sec" gorm:"column:proof_time_sec;default:NULL"`
+	ProofTimeSec     int        `json:"proof_time_sec" gorm:"column:proof_time_sec;default:NULL"`
 
 	// batch
 	BatchHash string `json:"batch_hash" gorm:"column:batch_hash;default:NULL"`
@@ -107,7 +105,7 @@ func (o *Chunk) GetLatestChunk(ctx context.Context) (*Chunk, error) {
 }
 
 // InsertChunk inserts a new chunk into the database.
-func (o *Chunk) InsertChunk(ctx context.Context, chunk *bridgeTypes.Chunk, dbTX ...*gorm.DB) (*Chunk, error) {
+func (o *Chunk) InsertChunk(ctx context.Context, chunk *types.Chunk, dbTX ...*gorm.DB) (*Chunk, error) {
 	if chunk == nil || len(chunk.Blocks) == 0 {
 		return nil, errors.New("invalid args")
 	}
@@ -193,7 +191,6 @@ func (o *Chunk) UpdateProvingStatus(ctx context.Context, hash string, status typ
 		updateFields["prover_assigned_at"] = nil
 	case types.ProvingTaskProved, types.ProvingTaskVerified:
 		updateFields["proved_at"] = time.Now()
-	default:
 	}
 
 	if err := db.Model(&Chunk{}).Where("hash", hash).Updates(updateFields).Error; err != nil {
@@ -211,8 +208,5 @@ func (o *Chunk) UpdateBatchHashInRange(ctx context.Context, startIndex uint64, e
 	}
 	db = db.Model(&Chunk{}).Where("index >= ? AND index <= ?", startIndex, endIndex)
 
-	if err := db.Update("batch_hash", batchHash).Error; err != nil {
-		return err
-	}
-	return nil
+	return db.Update("batch_hash", batchHash).Error
 }

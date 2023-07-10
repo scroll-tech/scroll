@@ -22,7 +22,6 @@ import (
 	"scroll-tech/bridge/internal/config"
 	"scroll-tech/bridge/internal/controller/sender"
 	"scroll-tech/bridge/internal/orm"
-	bridgeTypes "scroll-tech/bridge/internal/types"
 )
 
 var (
@@ -171,8 +170,8 @@ func (r *Layer2Relayer) initializeGenesis() error {
 
 	log.Info("retrieved L2 genesis header", "hash", genesis.Hash().String())
 
-	chunk := &bridgeTypes.Chunk{
-		Blocks: []*bridgeTypes.WrappedBlock{{
+	chunk := &types.Chunk{
+		Blocks: []*types.WrappedBlock{{
 			Header:           genesis,
 			Transactions:     nil,
 			WithdrawTrieRoot: common.Hash{},
@@ -191,7 +190,7 @@ func (r *Layer2Relayer) initializeGenesis() error {
 		}
 
 		var batch *orm.Batch
-		batch, err = r.batchOrm.InsertBatch(r.ctx, 0, 0, dbChunk.Hash, dbChunk.Hash, []*bridgeTypes.Chunk{chunk}, dbTX)
+		batch, err = r.batchOrm.InsertBatch(r.ctx, 0, 0, dbChunk.Hash, dbChunk.Hash, []*types.Chunk{chunk}, dbTX)
 		if err != nil {
 			return fmt.Errorf("failed to insert batch: %v", err)
 		}
@@ -319,7 +318,7 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 	}
 	for _, batch := range pendingBatches {
 		// get current header and parent header.
-		currentBatchHeader, err := bridgeTypes.DecodeBatchHeader(batch.BatchHeader)
+		currentBatchHeader, err := types.DecodeBatchHeader(batch.BatchHeader)
 		if err != nil {
 			log.Error("Failed to decode batch header", "index", batch.Index, "error", err)
 			return
@@ -346,7 +345,7 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 
 		encodedChunks := make([][]byte, len(dbChunks))
 		for i, c := range dbChunks {
-			var wrappedBlocks []*bridgeTypes.WrappedBlock
+			var wrappedBlocks []*types.WrappedBlock
 			wrappedBlocks, err = r.l2BlockOrm.GetL2BlocksInRange(r.ctx, c.StartBlockNumber, c.EndBlockNumber)
 			if err != nil {
 				log.Error("Failed to fetch wrapped blocks",
@@ -354,7 +353,7 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 					"end number", c.EndBlockNumber, "error", err)
 				return
 			}
-			chunk := &bridgeTypes.Chunk{
+			chunk := &types.Chunk{
 				Blocks: wrappedBlocks,
 			}
 			var chunkBytes []byte

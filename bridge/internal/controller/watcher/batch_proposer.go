@@ -8,9 +8,10 @@ import (
 	"github.com/scroll-tech/go-ethereum/log"
 	"gorm.io/gorm"
 
+	"scroll-tech/common/types"
+
 	"scroll-tech/bridge/internal/config"
 	"scroll-tech/bridge/internal/orm"
-	bridgeTypes "scroll-tech/bridge/internal/types"
 )
 
 // BatchProposer proposes batches based on available unbatched chunks.
@@ -154,8 +155,8 @@ func (p *BatchProposer) proposeBatchChunks() ([]*orm.Chunk, error) {
 	return dbChunks, nil
 }
 
-func (p *BatchProposer) dbChunksToBridgeChunks(dbChunks []*orm.Chunk) ([]*bridgeTypes.Chunk, error) {
-	chunks := make([]*bridgeTypes.Chunk, len(dbChunks))
+func (p *BatchProposer) dbChunksToBridgeChunks(dbChunks []*orm.Chunk) ([]*types.Chunk, error) {
+	chunks := make([]*types.Chunk, len(dbChunks))
 	for i, c := range dbChunks {
 		wrappedBlocks, err := p.l2Block.GetL2BlocksInRange(p.ctx, c.StartBlockNumber, c.EndBlockNumber)
 		if err != nil {
@@ -163,7 +164,7 @@ func (p *BatchProposer) dbChunksToBridgeChunks(dbChunks []*orm.Chunk) ([]*bridge
 				"start number", c.StartBlockNumber, "end number", c.EndBlockNumber, "error", err)
 			return nil, err
 		}
-		chunks[i] = &bridgeTypes.Chunk{
+		chunks[i] = &types.Chunk{
 			Blocks: wrappedBlocks,
 		}
 	}
