@@ -61,6 +61,7 @@ contract L1ScrollMessengerTest is L1GatewayTestBase {
     function testSendMessage(uint256 exceedValue, address refundAddress) external {
         hevm.assume(refundAddress.code.length == 0);
         hevm.assume(uint256(uint160(refundAddress)) > 100); // ignore some precompile contracts
+        hevm.assume(refundAddress != address(0x000000000000000000636F6e736F6c652e6c6f67)); // ignore console/console2
 
         exceedValue = bound(exceedValue, 1, address(this).balance / 2);
 

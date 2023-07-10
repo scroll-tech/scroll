@@ -62,6 +62,7 @@ contract L1WETHGatewayTest is L1GatewayTestBase {
         // Prepare token balances
         l1weth.deposit{value: address(this).balance / 2}();
         l1weth.approve(address(gateway), type(uint256).max);
+        l1weth.approve(address(router), type(uint256).max);
     }
 
     function testInitialized() public {

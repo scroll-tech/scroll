@@ -15,6 +15,7 @@ create table batch
     batch_header            BYTEA           NOT NULL,
 
 -- proof
+    chunk_proofs_status     SMALLINT        NOT NULL DEFAULT 1,
     proving_status          SMALLINT        NOT NULL DEFAULT 1,
     proof                   BYTEA           DEFAULT NULL,
     prover_assigned_at      TIMESTAMP(0)    DEFAULT NULL,
@@ -43,6 +44,9 @@ on batch (index);
 
 create unique index batch_hash_uindex
 on batch (hash);
+
+comment
+on column batch.chunk_proofs_status is 'undefined, pending, ready';
 
 comment
 on column batch.proving_status is 'undefined, unassigned, skipped, assigned, proved, verified, failed';

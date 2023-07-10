@@ -74,7 +74,7 @@ func NewL1WatcherClient(ctx context.Context, client *ethclient.Client, startHeig
 	}
 
 	l1BlockOrm := orm.NewL1Block(db)
-	savedL1BlockHeight, err := l1BlockOrm.GetLatestL1BlockHeight()
+	savedL1BlockHeight, err := l1BlockOrm.GetLatestL1BlockHeight(ctx)
 	if err != nil {
 		log.Warn("Failed to fetch latest L1 block height from db", "err", err)
 		savedL1BlockHeight = 0
@@ -149,9 +149,11 @@ func (w *L1WatcherClient) FetchBlockHeader(blockHeight uint64) error {
 			baseFee = block.BaseFee.Uint64()
 		}
 		blocks = append(blocks, orm.L1Block{
-			Number:  uint64(height),
-			Hash:    block.Hash().String(),
-			BaseFee: baseFee,
+			Number:          uint64(height),
+			Hash:            block.Hash().String(),
+			BaseFee:         baseFee,
+			GasOracleStatus: int(types.GasOraclePending),
+			BlockStatus:     int(types.L1BlockPending),
 		})
 	}
 

@@ -14,6 +14,8 @@ import {ScrollStandardERC20Factory} from "../libraries/token/ScrollStandardERC20
 
 import {L1GatewayTestBase} from "./L1GatewayTestBase.t.sol";
 
+import {TransferReentrantToken} from "./mocks/tokens/TransferReentrantToken.sol";
+
 contract L1GatewayRouterTest is L1GatewayTestBase {
     // from L1GatewayRouter
     event SetETHGateway(address indexed ethGateway);
@@ -131,5 +133,52 @@ contract L1GatewayRouterTest is L1GatewayTestBase {
     function testFinalizeWithdrawETH() public {
         hevm.expectRevert("should never be called");
         router.finalizeWithdrawETH(address(0), address(0), 0, "");
+    }
+
+    function testRequestERC20(
+        address _sender,
+        address _token,
+        uint256 _amount
+    ) public {
+        hevm.expectRevert("Only in deposit context");
+        router.requestERC20(_sender, _token, _amount);
+    }
+
+    function testReentrant() public {
+        TransferReentrantToken reentrantToken = new TransferReentrantToken("Reentrant", "R", 18);
+        reentrantToken.mint(address(this), type(uint128).max);
+        reentrantToken.approve(address(router), type(uint256).max);
+
+        reentrantToken.setReentrantCall(
+            address(router),
+            0,
+            abi.encodeWithSelector(
+                router.depositERC20AndCall.selector,
+                address(reentrantToken),
+                address(this),
+                0,
+                new bytes(0),
+                0
+            ),
+            true
+        );
+        hevm.expectRevert("Only not in context");
+        router.depositERC20(address(reentrantToken), 1, 0);
+
+        reentrantToken.setReentrantCall(
+            address(router),
+            0,
+            abi.encodeWithSelector(
+                router.depositERC20AndCall.selector,
+                address(reentrantToken),
+                address(this),
+                0,
+                new bytes(0),
+                0
+            ),
+            false
+        );
+        hevm.expectRevert("Only not in context");
+        router.depositERC20(address(reentrantToken), 1, 0);
     }
 }
