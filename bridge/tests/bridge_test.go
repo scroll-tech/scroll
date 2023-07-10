@@ -11,12 +11,12 @@ import (
 	"github.com/stretchr/testify/assert"
 	"gorm.io/gorm"
 
+	"scroll-tech/common/database"
 	"scroll-tech/common/docker"
 
+	"scroll-tech/database/migrate"
+
 	bcmd "scroll-tech/bridge/cmd"
-	"scroll-tech/bridge/internal/config"
-	"scroll-tech/bridge/internal/orm/migrate"
-	"scroll-tech/bridge/internal/utils"
 	"scroll-tech/bridge/mock_bridge"
 )
 
@@ -46,13 +46,13 @@ var (
 )
 
 func setupDB(t *testing.T) *gorm.DB {
-	cfg := &config.DBConfig{
+	cfg := &database.Config{
 		DSN:        base.DBConfig.DSN,
 		DriverName: base.DBConfig.DriverName,
 		MaxOpenNum: base.DBConfig.MaxOpenNum,
 		MaxIdleNum: base.DBConfig.MaxIdleNum,
 	}
-	db, err := utils.InitDB(cfg)
+	db, err := database.InitDB(cfg)
 	assert.NoError(t, err)
 	sqlDB, err := db.DB()
 	assert.NoError(t, err)
