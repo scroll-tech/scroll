@@ -20,18 +20,6 @@ func NewL2CrossMsgOrm(db *sqlx.DB) L2CrossMsgOrm {
 	return &l2CrossMsgOrm{db: db}
 }
 
-func (l *l2CrossMsgOrm) GetL2CrossMsgByMsgHash(msgHash string) (*CrossMsg, error) {
-	result := &CrossMsg{}
-	row := l.db.QueryRowx(`SELECT * FROM cross_message WHERE msg_hash = $1 AND deleted_at IS NULL;`, msgHash)
-	if err := row.StructScan(result); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, nil
-		}
-		return nil, err
-	}
-	return result, nil
-}
-
 func (l *l2CrossMsgOrm) GetL2CrossMsgByHash(l2Hash common.Hash) (*CrossMsg, error) {
 	result := &CrossMsg{}
 	row := l.db.QueryRowx(`SELECT * FROM cross_message WHERE layer2_hash = $1 AND deleted_at IS NULL;`, l2Hash.String())

@@ -76,7 +76,6 @@ type L1CrossMsgOrm interface {
 
 // L2CrossMsgOrm provides operations on cross_message table
 type L2CrossMsgOrm interface {
-	GetL2CrossMsgByMsgHash(msgHash string) (*CrossMsg, error)
 	GetL2CrossMsgByHash(l2Hash common.Hash) (*CrossMsg, error)
 	GetL2CrossMsgByAddress(sender common.Address) ([]*CrossMsg, error)
 	BatchInsertL2CrossMsgDBTx(dbTx *sqlx.Tx, messages []*CrossMsg) error
