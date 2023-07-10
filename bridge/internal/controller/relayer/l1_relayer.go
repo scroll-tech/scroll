@@ -159,13 +159,13 @@ func (r *Layer1Relayer) processSavedEvent(msg *orm.L1Message) error {
 
 // ProcessGasPriceOracle imports gas price to layer2
 func (r *Layer1Relayer) ProcessGasPriceOracle() {
-	latestBlockHeight, err := r.l1Block.GetLatestL1BlockHeight()
+	latestBlockHeight, err := r.l1Block.GetLatestL1BlockHeight(r.ctx)
 	if err != nil {
 		log.Warn("Failed to fetch latest L1 block height from db", "err", err)
 		return
 	}
 
-	blocks, err := r.l1Block.GetL1Blocks(map[string]interface{}{
+	blocks, err := r.l1Block.GetL1Blocks(r.ctx, map[string]interface{}{
 		"number": latestBlockHeight,
 	})
 	if err != nil {
