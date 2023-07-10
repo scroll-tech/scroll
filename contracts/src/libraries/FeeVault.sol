@@ -46,17 +46,17 @@ abstract contract FeeVault is OwnableBase {
     /// @param from  Address that triggered the withdrawal.
     event Withdrawal(uint256 value, address to, address from);
 
-    /// @notice Emits each time owner updates the address of `messenger`.
+    /// @notice Emits each time the owner updates the address of `messenger`.
     /// @param oldMessenger The address of old messenger.
     /// @param newMessenger The address of new messenger.
     event UpdateMessenger(address indexed oldMessenger, address indexed newMessenger);
 
-    /// @notice Emits each time owner updates the address of `recipient`.
+    /// @notice Emits each time the owner updates the address of `recipient`.
     /// @param oldRecipient The address of old recipient.
     /// @param newRecipient The address of new recipient.
     event UpdateRecipient(address indexed oldRecipient, address indexed newRecipient);
 
-    /// @notice Emits each time owner updates the value of `minWithdrawAmount`.
+    /// @notice Emits each time the owner updates the value of `minWithdrawAmount`.
     /// @param oldMinWithdrawAmount The value of old `minWithdrawAmount`.
     /// @param newMinWithdrawAmount The value of new `minWithdrawAmount`.
     event UpdateMinWithdrawAmount(uint256 oldMinWithdrawAmount, uint256 newMinWithdrawAmount);
@@ -134,7 +134,6 @@ abstract contract FeeVault is OwnableBase {
     /// @param _newMessenger The address of messenger to update.
     function updateMessenger(address _newMessenger) external onlyOwner {
         address _oldMessenger = messenger;
-
         messenger = _newMessenger;
 
         emit UpdateMessenger(_oldMessenger, _newMessenger);
@@ -144,7 +143,6 @@ abstract contract FeeVault is OwnableBase {
     /// @param _newRecipient The address of recipient to update.
     function updateRecipient(address _newRecipient) external onlyOwner {
         address _oldRecipient = recipient;
-
         recipient = _newRecipient;
 
         emit UpdateRecipient(_oldRecipient, _newRecipient);
@@ -154,7 +152,6 @@ abstract contract FeeVault is OwnableBase {
     /// @param _newMinWithdrawAmount The minimum withdraw amount to update.
     function updateMinWithdrawAmount(uint256 _newMinWithdrawAmount) external onlyOwner {
         uint256 _oldMinWithdrawAmount = minWithdrawAmount;
-
         minWithdrawAmount = _newMinWithdrawAmount;
 
         emit UpdateMinWithdrawAmount(_oldMinWithdrawAmount, _newMinWithdrawAmount);
