@@ -17,85 +17,42 @@
 
 pragma solidity ^0.8.0;
 
+import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {ERC20Permit} from "@openzeppelin/contracts/token/ERC20/extensions/draft-ERC20Permit.sol";
+
 // solhint-disable reason-string
+// solhint-disable no-empty-blocks
 
-contract WETH9 {
-    string public name = "Wrapped Ether";
-    string public symbol = "WETH";
-    uint8 public decimals = 18;
-
-    event Approval(address indexed src, address indexed guy, uint256 wad);
-    event Transfer(address indexed src, address indexed dst, uint256 wad);
+contract WETH9 is ERC20Permit {
+    /// @notice Emitted when user deposits Ether to this contract.
+    /// @param dst The address of depositor.
+    /// @param wad The amount of Ether in wei deposited.
     event Deposit(address indexed dst, uint256 wad);
+
+    /// @notice Emitted when user withdraws some Ether from this contract.
+    /// @param src The address of caller.
+    /// @param wad The amount of Ether in wei withdrawn.
     event Withdrawal(address indexed src, uint256 wad);
 
-    mapping(address => uint256) public balanceOf;
-    mapping(address => mapping(address => uint256)) public allowance;
+    constructor() ERC20Permit("Wrapped Ether") ERC20("Wrapped Ether", "WETH") {}
 
     receive() external payable {
         deposit();
     }
 
     function deposit() public payable {
-        unchecked {
-            balanceOf[msg.sender] += msg.value;
-        }
+        _mint(msg.sender, msg.value);
 
         emit Deposit(msg.sender, msg.value);
     }
 
-    function withdraw(uint256 wad) public {
-        require(balanceOf[msg.sender] >= wad);
+    function withdraw(uint256 wad) external {
+        _burn(msg.sender, wad);
 
-        unchecked {
-            balanceOf[msg.sender] -= wad;
-        }
-
-        (bool success, ) = msg.sender.call{value:wad}("");
+        (bool success, ) = msg.sender.call{value: wad}("");
         require(success, "withdraw ETH failed");
 
         emit Withdrawal(msg.sender, wad);
-    }
-
-    function totalSupply() public view returns (uint256) {
-        return address(this).balance;
-    }
-
-    function approve(address guy, uint256 wad) public returns (bool) {
-        allowance[msg.sender][guy] = wad;
-
-        emit Approval(msg.sender, guy, wad);
-
-        return true;
-    }
-
-    function transfer(address dst, uint256 wad) public returns (bool) {
-        return transferFrom(msg.sender, dst, wad);
-    }
-
-    function transferFrom(
-        address src,
-        address dst,
-        uint256 wad
-    ) public returns (bool) {
-        require(balanceOf[src] >= wad);
-
-        if (src != msg.sender && allowance[src][msg.sender] != type(uint256).max) {
-            require(allowance[src][msg.sender] >= wad);
-
-            unchecked {
-                allowance[src][msg.sender] -= wad;
-            }
-        }
-
-        unchecked {
-            balanceOf[src] -= wad;
-            balanceOf[dst] += wad;
-        }
-
-        emit Transfer(src, dst, wad);
-
-        return true;
     }
 }
 
