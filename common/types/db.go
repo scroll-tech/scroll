@@ -63,20 +63,6 @@ func (s GasOracleStatus) String() string {
 	}
 }
 
-// L1BlockInfo is structure of stored l1 block
-type L1BlockInfo struct {
-	Number    uint64 `json:"number" db:"number"`
-	Hash      string `json:"hash" db:"hash"`
-	HeaderRLP string `json:"header_rlp" db:"header_rlp"`
-	BaseFee   uint64 `json:"base_fee" db:"base_fee"`
-
-	BlockStatus     L1BlockStatus   `json:"block_status" db:"block_status"`
-	GasOracleStatus GasOracleStatus `json:"oracle_status" db:"oracle_status"`
-
-	ImportTxHash sql.NullString `json:"import_tx_hash" db:"import_tx_hash"`
-	OracleTxHash sql.NullString `json:"oracle_tx_hash" db:"oracle_tx_hash"`
-}
-
 // MsgStatus represents current layer1 transaction processing status
 type MsgStatus int
 
@@ -145,8 +131,10 @@ type BlockInfo struct {
 type RollerProveStatus int32
 
 const (
+	// RollerProveStatusUndefined indicates an unknown roller proving status
+	RollerProveStatusUndefined RollerProveStatus = iota
 	// RollerAssigned indicates roller assigned but has not submitted proof
-	RollerAssigned RollerProveStatus = iota
+	RollerAssigned
 	// RollerProofValid indicates roller has submitted valid proof
 	RollerProofValid
 	// RollerProofInvalid indicates roller has submitted invalid proof
@@ -166,11 +154,19 @@ func (s RollerProveStatus) String() string {
 	}
 }
 
-// RollerStatus is the roller name and roller prove status
-type RollerStatus struct {
-	PublicKey string            `json:"public_key"`
-	Name      string            `json:"name"`
-	Status    RollerProveStatus `json:"status"`
+// RollerFailureType is the type of a roller session's failure
+type RollerFailureType int
+
+const (
+	// RollerFailureTypeUndefined indicates an unknown roller failure type
+	RollerFailureTypeUndefined RollerFailureType = iota
+)
+
+func (s RollerFailureType) String() string {
+	switch s {
+	default:
+		return fmt.Sprintf("Undefined (%d)", int32(s))
+	}
 }
 
 // ProvingStatus block_batch proving_status (unassigned, assigned, proved, verified, submitted)
