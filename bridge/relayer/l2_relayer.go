@@ -3,9 +3,7 @@ package relayer
 import (
 	"context"
 	"errors"
-	"fmt"
 	"math/big"
-	"runtime"
 	"sync"
 
 	"github.com/scroll-tech/go-ethereum/accounts/abi"
@@ -14,8 +12,6 @@ import (
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
 	geth_metrics "github.com/scroll-tech/go-ethereum/metrics"
-	"golang.org/x/sync/errgroup"
-	"modernc.org/mathutil"
 
 	"scroll-tech/common/metrics"
 	"scroll-tech/common/types"
@@ -146,112 +142,6 @@ func NewLayer2Relayer(ctx context.Context, l2Client *ethclient.Client, db databa
 }
 
 const processMsgLimit = 100
-
-// ProcessSavedEvents relays saved un-processed cross-domain transactions to desired blockchain
-func (r *Layer2Relayer) ProcessSavedEvents() {
-	batch, err := r.db.GetLatestFinalizedBatch()
-	if err != nil {
-		log.Error("GetLatestFinalizedBatch failed", "err", err)
-		return
-	}
-
-	// msgs are sorted by nonce in increasing order
-	msgs, err := r.db.GetL2Messages(
-		map[string]interface{}{"status": types.MsgPending},
-		fmt.Sprintf("AND height<=%d", batch.EndBlockNumber),
-		fmt.Sprintf("ORDER BY nonce ASC LIMIT %d", processMsgLimit),
-	)
-
-	if err != nil {
-		log.Error("Failed to fetch unprocessed L2 messages", "err", err)
-		return
-	}
-
-	// process messages in batches
-	batchSize := mathutil.Min((runtime.GOMAXPROCS(0)+1)/2, r.messageSender.NumberOfAccounts())
-	for size := 0; len(msgs) > 0; msgs = msgs[size:] {
-		if size = len(msgs); size > batchSize {
-			size = batchSize
-		}
-		var g errgroup.Group
-		for _, msg := range msgs[:size] {
-			msg := msg
-			g.Go(func() error {
-				return r.processSavedEvent(msg)
-			})
-		}
-		if err := g.Wait(); err != nil {
-			if !errors.Is(err, sender.ErrNoAvailableAccount) && !errors.Is(err, sender.ErrFullPending) {
-				log.Error("failed to process l2 saved event", "err", err)
-			}
-			return
-		}
-	}
-}
-
-func (r *Layer2Relayer) processSavedEvent(msg *types.L2Message) error {
-	// @todo fetch merkle proof from l2geth
-	log.Info("Processing L2 Message", "msg.nonce", msg.Nonce, "msg.height", msg.Height)
-
-	// Get the block info that contains the message
-	blockInfos, err := r.db.GetL2BlockInfos(map[string]interface{}{"number": msg.Height})
-	if err != nil {
-		log.Error("Failed to GetL2BlockInfos from DB", "number", msg.Height)
-	}
-	blockInfo := blockInfos[0]
-	if !blockInfo.BatchHash.Valid {
-		log.Error("Block has not been batched yet", "number", blockInfo.Number, "msg.nonce", msg.Nonce)
-		return nil
-	}
-
-	// TODO: rebuild the withdraw trie to generate the merkle proof
-	proof := bridge_abi.IL1ScrollMessengerL2MessageProof{
-		BatchHash:   common.HexToHash(blockInfo.BatchHash.String),
-		MerkleProof: make([]byte, 0),
-	}
-	from := common.HexToAddress(msg.Sender)
-	target := common.HexToAddress(msg.Target)
-	value, ok := big.NewInt(0).SetString(msg.Value, 10)
-	if !ok {
-		// @todo maybe panic?
-		log.Error("Failed to parse message value", "msg.nonce", msg.Nonce, "msg.height", msg.Height)
-		// TODO: need to skip this message by changing its status to MsgError
-	}
-	msgNonce := big.NewInt(int64(msg.Nonce))
-	calldata := common.Hex2Bytes(msg.Calldata)
-	data, err := r.l1MessengerABI.Pack("relayMessageWithProof", from, target, value, msgNonce, calldata, proof)
-	if err != nil {
-		log.Error("Failed to pack relayMessageWithProof", "msg.nonce", msg.Nonce, "err", err)
-		// TODO: need to skip this message by changing its status to MsgError
-		return err
-	}
-
-	hash, err := r.messageSender.SendTransaction(msg.MsgHash, &r.cfg.MessengerContractAddress, big.NewInt(0), data, r.minGasLimitForMessageRelay)
-	if err != nil && err.Error() == "execution reverted: Message expired" {
-		return r.db.UpdateLayer2Status(r.ctx, msg.MsgHash, types.MsgExpired)
-	}
-	if err != nil && err.Error() == "execution reverted: Message was already successfully executed" {
-		return r.db.UpdateLayer2Status(r.ctx, msg.MsgHash, types.MsgConfirmed)
-	}
-	if err != nil {
-		if !errors.Is(err, sender.ErrNoAvailableAccount) && !errors.Is(err, sender.ErrFullPending) {
-			log.Error("Failed to send relayMessageWithProof tx to layer1 ", "msg.height", msg.Height, "msg.MsgHash", msg.MsgHash, "err", err)
-		}
-		return err
-	}
-	bridgeL2MsgsRelayedTotalCounter.Inc(1)
-	log.Info("relayMessageWithProof to layer1", "msgHash", msg.MsgHash, "txhash", hash.String())
-
-	// save status in db
-	// @todo handle db error
-	err = r.db.UpdateLayer2StatusAndLayer1Hash(r.ctx, msg.MsgHash, types.MsgSubmitted, hash.String())
-	if err != nil {
-		log.Error("UpdateLayer2StatusAndLayer1Hash failed", "msgHash", msg.MsgHash, "err", err)
-		return err
-	}
-	r.processingMessage.Store(msg.MsgHash, msg.MsgHash)
-	return nil
-}
 
 // ProcessGasPriceOracle imports gas price to layer1
 func (r *Layer2Relayer) ProcessGasPriceOracle() {
