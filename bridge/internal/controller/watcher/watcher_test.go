@@ -9,13 +9,13 @@ import (
 	"github.com/stretchr/testify/assert"
 	"gorm.io/gorm"
 
+	"scroll-tech/common/database"
 	"scroll-tech/common/docker"
 	"scroll-tech/common/types"
 
 	"scroll-tech/database/migrate"
 
 	"scroll-tech/bridge/internal/config"
-	"scroll-tech/bridge/internal/utils"
 )
 
 var (
@@ -41,7 +41,7 @@ func setupEnv(t *testing.T) (err error) {
 
 	cfg.L2Config.RelayerConfig.SenderConfig.Endpoint = base.L1gethImg.Endpoint()
 	cfg.L1Config.RelayerConfig.SenderConfig.Endpoint = base.L2gethImg.Endpoint()
-	cfg.DBConfig = &config.DBConfig{
+	cfg.DBConfig = &database.Config{
 		DSN:        base.DBConfig.DSN,
 		DriverName: base.DBConfig.DriverName,
 		MaxOpenNum: base.DBConfig.MaxOpenNum,
@@ -75,7 +75,7 @@ func setupEnv(t *testing.T) (err error) {
 }
 
 func setupDB(t *testing.T) *gorm.DB {
-	db, err := utils.InitDB(cfg.DBConfig)
+	db, err := database.InitDB(cfg.DBConfig)
 	assert.NoError(t, err)
 	sqlDB, err := db.DB()
 	assert.NoError(t, err)

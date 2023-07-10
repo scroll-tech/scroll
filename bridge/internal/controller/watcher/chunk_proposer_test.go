@@ -6,17 +6,17 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"scroll-tech/common/database"
 	"scroll-tech/common/types"
 
 	"scroll-tech/bridge/internal/config"
 	"scroll-tech/bridge/internal/orm"
-	"scroll-tech/bridge/internal/utils"
 )
 
 // TODO: Add unit tests that the limits are enforced correctly.
 func testChunkProposer(t *testing.T) {
 	db := setupDB(t)
-	defer utils.CloseDB(db)
+	defer database.CloseDB(db)
 
 	l2BlockOrm := orm.NewL2Block(db)
 	err := l2BlockOrm.InsertL2Blocks(context.Background(), []*types.WrappedBlock{wrappedBlock1, wrappedBlock2})

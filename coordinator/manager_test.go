@@ -30,17 +30,17 @@ import (
 	client2 "scroll-tech/coordinator/client"
 	"scroll-tech/coordinator/internal/config"
 	"scroll-tech/coordinator/internal/orm"
-	"scroll-tech/coordinator/internal/utils"
 	"scroll-tech/coordinator/verifier"
 
+	"scroll-tech/common/database"
 	"scroll-tech/common/docker"
 	"scroll-tech/common/types"
 	"scroll-tech/common/types/message"
-	cutils "scroll-tech/common/utils"
+	"scroll-tech/common/utils"
 )
 
 var (
-	dbCfg *config.DBConfig
+	dbCfg *database.Config
 
 	base *docker.App
 
@@ -69,7 +69,7 @@ func setEnv(t *testing.T) {
 	base = docker.NewDockerApp()
 	base.RunDBImage(t)
 
-	dbCfg = &config.DBConfig{
+	dbCfg = &database.Config{
 		DSN:        base.DBConfig.DSN,
 		DriverName: base.DBConfig.DriverName,
 		MaxOpenNum: base.DBConfig.MaxOpenNum,
@@ -77,7 +77,7 @@ func setEnv(t *testing.T) {
 	}
 
 	var err error
-	db, err = utils.InitDB(dbCfg)
+	db, err = database.InitDB(dbCfg)
 	assert.NoError(t, err)
 	sqlDB, err := db.DB()
 	assert.NoError(t, err)
@@ -474,7 +474,7 @@ func testTimedoutProof(t *testing.T) {
 	assert.NoError(t, err)
 
 	// verify proof status, it should be assigned, because roller didn't send any proof
-	ok := cutils.TryTimes(30, func() bool {
+	ok := utils.TryTimes(30, func() bool {
 		chunkProofStatus, err := chunkOrm.GetProvingStatusByHash(context.Background(), dbChunk.Hash)
 		if err != nil {
 			return false
@@ -501,7 +501,7 @@ func testTimedoutProof(t *testing.T) {
 	assert.Equal(t, 1, rollerManager.GetNumberOfIdleRollers(message.ProofTypeBatch))
 
 	// verify proof status, it should be verified now, because second roller sent valid proof
-	ok = cutils.TryTimes(200, func() bool {
+	ok = utils.TryTimes(200, func() bool {
 		chunkProofStatus, err := chunkOrm.GetProvingStatusByHash(context.Background(), dbChunk.Hash)
 		if err != nil {
 			return false
@@ -715,7 +715,7 @@ func testListRollers(t *testing.T) {
 }
 
 func setupCoordinator(t *testing.T, rollersPerSession uint8, wsURL string, resetDB bool) (rollerManager *coordinator.Manager, handler *http.Server) {
-	db, err := utils.InitDB(dbCfg)
+	db, err := database.InitDB(dbCfg)
 	assert.NoError(t, err)
 	sqlDB, err := db.DB()
 	assert.NoError(t, err)
@@ -735,7 +735,7 @@ func setupCoordinator(t *testing.T, rollersPerSession uint8, wsURL string, reset
 	assert.NoError(t, rollerManager.Start())
 
 	// start ws service
-	handler, _, err = cutils.StartWSEndpoint(strings.Split(wsURL, "//")[1], rollerManager.APIs(), flate.NoCompression)
+	handler, _, err = utils.StartWSEndpoint(strings.Split(wsURL, "//")[1], rollerManager.APIs(), flate.NoCompression)
 	assert.NoError(t, err)
 
 	return rollerManager, handler

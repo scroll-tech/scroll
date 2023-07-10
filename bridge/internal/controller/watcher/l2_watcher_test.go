@@ -21,6 +21,7 @@ import (
 	"github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 
+	"scroll-tech/common/database"
 	cutils "scroll-tech/common/utils"
 
 	bridgeAbi "scroll-tech/bridge/abi"
@@ -42,7 +43,7 @@ func testCreateNewWatcherAndStop(t *testing.T) {
 	subCtx, cancel := context.WithCancel(context.Background())
 	defer func() {
 		cancel()
-		defer utils.CloseDB(db)
+		defer database.CloseDB(db)
 	}()
 
 	loopToFetchEvent(subCtx, wc)
@@ -68,7 +69,7 @@ func testCreateNewWatcherAndStop(t *testing.T) {
 
 func testFetchRunningMissingBlocks(t *testing.T) {
 	_, db := setupL2Watcher(t)
-	defer utils.CloseDB(db)
+	defer database.CloseDB(db)
 
 	auth := prepareAuth(t, l2Cli, cfg.L2Config.RelayerConfig.MessageSenderPrivateKeys[0])
 
@@ -114,7 +115,7 @@ func loopToFetchEvent(subCtx context.Context, watcher *L2WatcherClient) {
 
 func testParseBridgeEventLogsL2RelayedMessageEventSignature(t *testing.T) {
 	watcher, db := setupL2Watcher(t)
-	defer utils.CloseDB(db)
+	defer database.CloseDB(db)
 
 	logs := []gethTypes.Log{
 		{
@@ -154,7 +155,7 @@ func testParseBridgeEventLogsL2RelayedMessageEventSignature(t *testing.T) {
 
 func testParseBridgeEventLogsL2FailedRelayedMessageEventSignature(t *testing.T) {
 	watcher, db := setupL2Watcher(t)
-	defer utils.CloseDB(db)
+	defer database.CloseDB(db)
 
 	logs := []gethTypes.Log{
 		{
