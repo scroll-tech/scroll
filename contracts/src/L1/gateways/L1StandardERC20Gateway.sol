@@ -97,6 +97,14 @@ contract L1StandardERC20Gateway is Initializable, ScrollGatewayBase, L1ERC20Gate
         require(_l2Token != address(0), "token address cannot be 0");
         require(getL2ERC20Address(_l1Token) == _l2Token, "l2 token mismatch");
 
+        // update `tokenMapping` on first withdraw
+        address _storedL2Token = tokenMapping[_l1Token];
+        if (_storedL2Token == address(0)) {
+            tokenMapping[_l1Token] = _l2Token;
+        } else {
+            require(_storedL2Token == _l2Token, "l2 token mismatch");
+        }
+
         // @note can possible trigger reentrant call to messenger,
         // but it seems not a big problem.
         IERC20(_l1Token).safeTransfer(_to, _amount);
@@ -126,17 +134,20 @@ contract L1StandardERC20Gateway is Initializable, ScrollGatewayBase, L1ERC20Gate
 
         // 2. Generate message passed to L2StandardERC20Gateway.
         address _l2Token = tokenMapping[_token];
-        bytes memory _l2Data = _data;
+        bytes memory _l2Data;
         if (_l2Token == address(0)) {
-            // It is a new token, compute and store mapping in storage.
+            // @note we won't update `tokenMapping` here but update the `tokenMapping` on
+            // first successful withdraw. This will prevent user to set arbitrary token
+            // metadata by setting a very small `_gasLimit` on the first tx.
             _l2Token = getL2ERC20Address(_token);
-            tokenMapping[_token] = _l2Token;
 
             // passing symbol/name/decimal in order to deploy in L2.
             string memory _symbol = IERC20Metadata(_token).symbol();
             string memory _name = IERC20Metadata(_token).name();
             uint8 _decimals = IERC20Metadata(_token).decimals();
-            _l2Data = abi.encode(_data, abi.encode(_symbol, _name, _decimals));
+            _l2Data = abi.encode(true, abi.encode(_data, abi.encode(_symbol, _name, _decimals)));
+        } else {
+            _l2Data = abi.encode(false, _data);
         }
         bytes memory _message = abi.encodeWithSelector(
             IL2ERC20Gateway.finalizeDepositERC20.selector,
