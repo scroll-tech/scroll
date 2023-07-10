@@ -55,7 +55,7 @@ contract EnforcedTxGateway is OwnableUpgradeable, ReentrancyGuardUpgradeable, Pa
         OwnableUpgradeable.__Ownable_init();
         ReentrancyGuardUpgradeable.__ReentrancyGuard_init();
         PausableUpgradeable.__Pausable_init();
-        EIP712Upgradeable.__EIP712_init_unchained("EnforcedTxGateway", "1.0.0");
+        EIP712Upgradeable.__EIP712_init("EnforcedTxGateway", "1");
 
         messageQueue = _queue;
         feeVault = _feeVault;

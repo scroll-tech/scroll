@@ -48,7 +48,6 @@ describe("EnforcedTxGateway.spec", async () => {
     await oracle.setL2BaseFee(1);
   });
 
-  /*
   context("auth", async () => {
     it("should initialize correctly", async () => {
       expect(await gateway.owner()).to.eq(deployer.address);
@@ -166,7 +165,6 @@ describe("EnforcedTxGateway.spec", async () => {
       );
     });
   });
-  */
 
   context("#sendTransaction, with signatures", async () => {
     const getSignature = async (
@@ -188,7 +186,7 @@ describe("EnforcedTxGateway.spec", async () => {
 
       const domain = {
         name: "EnforcedTxGateway",
-        version: "1.0.0",
+        version: "1",
         chainId: (await ethers.provider.getNetwork()).chainId,
         verifyingContract: gateway.address,
       };
@@ -350,6 +348,23 @@ describe("EnforcedTxGateway.spec", async () => {
       expect(await gateway.nonces(signer.address)).to.eq(1);
       const feeVaultBalanceAfter = await ethers.provider.getBalance(feeVault.address);
       expect(feeVaultBalanceAfter.sub(feeVaultBalanceBefore)).to.eq(fee);
+
+      // use the same nonce to sign should fail
+      await expect(
+        gateway
+          .connect(deployer)
+          ["sendTransaction(address,address,uint256,uint256,bytes,uint256,bytes,address)"](
+            signer.address,
+            deployer.address,
+            0,
+            1000000,
+            "0x",
+            constants.MaxUint256,
+            signature,
+            signer.address,
+            { value: fee }
+          )
+      ).to.revertedWith("Incorrect signature");
     });
 
     it("should succeed, with refund", async () => {
@@ -380,6 +395,23 @@ describe("EnforcedTxGateway.spec", async () => {
       const signerBalanceAfter = await ethers.provider.getBalance(signer.address);
       expect(feeVaultBalanceAfter.sub(feeVaultBalanceBefore)).to.eq(fee);
       expect(signerBalanceAfter.sub(signerBalanceBefore)).to.eq(100);
+
+      // use the same nonce to sign should fail
+      await expect(
+        gateway
+          .connect(deployer)
+          ["sendTransaction(address,address,uint256,uint256,bytes,uint256,bytes,address)"](
+            signer.address,
+            deployer.address,
+            0,
+            1000000,
+            "0x",
+            constants.MaxUint256,
+            signature,
+            signer.address,
+            { value: fee.add(100) }
+          )
+      ).to.revertedWith("Incorrect signature");
     });
 
     it("should revert, when refund failed", async () => {
