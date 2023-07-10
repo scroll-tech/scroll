@@ -4,14 +4,22 @@
 create table prover_task
 (
     id                  BIGSERIAL      PRIMARY KEY,
-    task_id             VARCHAR        NOT NULL,
+
+-- prover
     prover_public_key   VARCHAR        NOT NULL,
     prover_name         VARCHAR        NOT NULL,
+
+-- task
+    task_id             VARCHAR        NOT NULL,
     task_type           SMALLINT       NOT NULL DEFAULT 0,
+
+-- status
     proving_status      SMALLINT       NOT NULL DEFAULT 0,
     failure_type        SMALLINT       NOT NULL DEFAULT 0,
     reward              BIGINT         NOT NULL DEFAULT 0,
     proof               BYTEA          DEFAULT NULL,
+
+-- metadata
     created_at          TIMESTAMP(0)   NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at          TIMESTAMP(0)   NOT NULL DEFAULT CURRENT_TIMESTAMP,
     deleted_at          TIMESTAMP(0)   DEFAULT NULL,

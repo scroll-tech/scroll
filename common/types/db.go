@@ -2,7 +2,6 @@
 package types
 
 import (
-	"database/sql"
 	"fmt"
 )
 
@@ -88,44 +87,6 @@ const (
 	// MsgRelayFailed represents the from_layer message status is relay failed
 	MsgRelayFailed
 )
-
-// L1Message is structure of stored layer1 bridge message
-type L1Message struct {
-	QueueIndex uint64    `json:"queue_index" db:"queue_index"`
-	MsgHash    string    `json:"msg_hash" db:"msg_hash"`
-	Height     uint64    `json:"height" db:"height"`
-	Sender     string    `json:"sender" db:"sender"`
-	Value      string    `json:"value" db:"value"`
-	Target     string    `json:"target" db:"target"`
-	Calldata   string    `json:"calldata" db:"calldata"`
-	GasLimit   uint64    `json:"gas_limit" db:"gas_limit"`
-	Layer1Hash string    `json:"layer1_hash" db:"layer1_hash"`
-	Status     MsgStatus `json:"status" db:"status"`
-}
-
-// L2Message is structure of stored layer2 bridge message
-type L2Message struct {
-	Nonce      uint64    `json:"nonce" db:"nonce"`
-	MsgHash    string    `json:"msg_hash" db:"msg_hash"`
-	Height     uint64    `json:"height" db:"height"`
-	Sender     string    `json:"sender" db:"sender"`
-	Value      string    `json:"value" db:"value"`
-	Target     string    `json:"target" db:"target"`
-	Calldata   string    `json:"calldata" db:"calldata"`
-	Layer2Hash string    `json:"layer2_hash" db:"layer2_hash"`
-	Status     MsgStatus `json:"status" db:"status"`
-}
-
-// BlockInfo is structure of stored `block_trace` without `trace`
-type BlockInfo struct {
-	Number         uint64         `json:"number" db:"number"`
-	Hash           string         `json:"hash" db:"hash"`
-	ParentHash     string         `json:"parent_hash" db:"parent_hash"`
-	BatchHash      sql.NullString `json:"batch_hash" db:"batch_hash"`
-	TxNum          uint64         `json:"tx_num" db:"tx_num"`
-	GasUsed        uint64         `json:"gas_used" db:"gas_used"`
-	BlockTimestamp uint64         `json:"block_timestamp" db:"block_timestamp"`
-}
 
 // RollerProveStatus is the roller prove status of a block batch (session)
 type RollerProveStatus int32
