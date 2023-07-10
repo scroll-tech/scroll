@@ -351,10 +351,7 @@ func (s *Sender) resubmitTransaction(feeData *FeeData, auth *bind.TransactOpts, 
 		}
 		adjBaseFee = adjBaseFee.Mul(adjBaseFee, escalateMultipleNum)
 		adjBaseFee = adjBaseFee.Div(adjBaseFee, escalateMultipleDen)
-		currentGasFeeCap := new(big.Int).Add(
-			gasTipCap,
-			adjBaseFee,
-		)
+		currentGasFeeCap := new(big.Int).Add(gasTipCap, adjBaseFee)
 		if gasFeeCap.Cmp(currentGasFeeCap) < 0 {
 			gasFeeCap = currentGasFeeCap
 		}
