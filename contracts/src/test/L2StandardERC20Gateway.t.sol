@@ -83,7 +83,7 @@ contract L2StandardERC20GatewayTest is L2GatewayTestBase {
                 address(this),
                 address(this),
                 type(uint128).max,
-                abi.encode("", abi.encode("symbol", "name", 18))
+                abi.encode(true, abi.encode("", abi.encode("symbol", "name", 18)))
             )
         );
         hevm.stopPrank();
@@ -285,7 +285,7 @@ contract L2StandardERC20GatewayTest is L2GatewayTestBase {
             sender,
             address(recipient),
             amount,
-            dataToCall
+            abi.encode(false, dataToCall)
         );
         bytes memory xDomainCalldata = abi.encodeWithSignature(
             "relayMessage(address,address,uint256,uint256,bytes)",

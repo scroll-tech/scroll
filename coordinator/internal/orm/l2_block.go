@@ -3,6 +3,7 @@ package orm
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 
 	"github.com/scroll-tech/go-ethereum/common"
 	gethTypes "github.com/scroll-tech/go-ethereum/core/types"
@@ -41,14 +42,15 @@ func (*L2Block) TableName() string {
 // GetL2BlocksByChunkHash retrieves the L2 blocks associated with the specified chunk hash.
 // The returned blocks are sorted in ascending order by their block number.
 func (o *L2Block) GetL2BlocksByChunkHash(ctx context.Context, chunkHash string) ([]*types.WrappedBlock, error) {
-	var l2Blocks []L2Block
 	db := o.db.WithContext(ctx)
 	db = db.Model(&L2Block{})
 	db = db.Select("header, transactions, withdraw_trie_root")
 	db = db.Where("chunk_hash = ?", chunkHash)
 	db = db.Order("number ASC")
+
+	var l2Blocks []L2Block
 	if err := db.Find(&l2Blocks).Error; err != nil {
-		return nil, err
+		return nil, fmt.Errorf("L2Block.GetL2BlocksByChunkHash error: %w, chunk hash: %v", err, chunkHash)
 	}
 
 	var wrappedBlocks []*types.WrappedBlock
@@ -56,12 +58,12 @@ func (o *L2Block) GetL2BlocksByChunkHash(ctx context.Context, chunkHash string) 
 		var wrappedBlock types.WrappedBlock
 
 		if err := json.Unmarshal([]byte(v.Transactions), &wrappedBlock.Transactions); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("L2Block.GetL2BlocksByChunkHash error: %w, chunk hash: %v", err, chunkHash)
 		}
 
 		wrappedBlock.Header = &gethTypes.Header{}
 		if err := json.Unmarshal([]byte(v.Header), wrappedBlock.Header); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("L2Block.GetL2BlocksByChunkHash error: %w, chunk hash: %v", err, chunkHash)
 		}
 
 		wrappedBlock.WithdrawTrieRoot = common.HexToHash(v.WithdrawTrieRoot)
@@ -78,13 +80,13 @@ func (o *L2Block) InsertL2Blocks(ctx context.Context, blocks []*types.WrappedBlo
 		header, err := json.Marshal(block.Header)
 		if err != nil {
 			log.Error("failed to marshal block header", "hash", block.Header.Hash().String(), "err", err)
-			return err
+			return fmt.Errorf("L2Block.InsertL2Blocks error: %w, block hash: %v", err, block.Header.Hash().String())
 		}
 
 		txs, err := json.Marshal(block.Transactions)
 		if err != nil {
 			log.Error("failed to marshal transactions", "hash", block.Header.Hash().String(), "err", err)
-			return err
+			return fmt.Errorf("L2Block.InsertL2Blocks error: %w, block hash: %v", err, block.Header.Hash().String())
 		}
 
 		l2Block := L2Block{
@@ -101,9 +103,11 @@ func (o *L2Block) InsertL2Blocks(ctx context.Context, blocks []*types.WrappedBlo
 		l2Blocks = append(l2Blocks, l2Block)
 	}
 
-	if err := o.db.WithContext(ctx).Create(&l2Blocks).Error; err != nil {
-		log.Error("failed to insert l2Blocks", "err", err)
-		return err
+	db := o.db.WithContext(ctx)
+	db = db.Model(&L2Block{})
+
+	if err := db.Create(&l2Blocks).Error; err != nil {
+		return fmt.Errorf("L2Block.InsertL2Blocks error: %w", err)
 	}
 	return nil
 }
