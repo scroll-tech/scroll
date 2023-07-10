@@ -9,18 +9,17 @@ import (
 	gethTypes "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/stretchr/testify/assert"
 
+	"scroll-tech/common/database"
 	"scroll-tech/common/types"
 
 	"scroll-tech/bridge/internal/controller/relayer"
 	"scroll-tech/bridge/internal/controller/watcher"
 	"scroll-tech/bridge/internal/orm"
-	bridgeTypes "scroll-tech/bridge/internal/types"
-	"scroll-tech/bridge/internal/utils"
 )
 
 func testImportL1GasPrice(t *testing.T) {
 	db := setupDB(t)
-	defer utils.CloseDB(db)
+	defer database.CloseDB(db)
 
 	prepareContracts(t)
 
@@ -64,7 +63,7 @@ func testImportL1GasPrice(t *testing.T) {
 
 func testImportL2GasPrice(t *testing.T) {
 	db := setupDB(t)
-	defer utils.CloseDB(db)
+	defer database.CloseDB(db)
 	prepareContracts(t)
 
 	l2Cfg := bridgeApp.Config.L2Config
@@ -72,8 +71,8 @@ func testImportL2GasPrice(t *testing.T) {
 	assert.NoError(t, err)
 
 	// add fake chunk
-	chunk := &bridgeTypes.Chunk{
-		Blocks: []*bridgeTypes.WrappedBlock{
+	chunk := &types.Chunk{
+		Blocks: []*types.WrappedBlock{
 			{
 				Header: &gethTypes.Header{
 					Number:     big.NewInt(1),
@@ -90,7 +89,7 @@ func testImportL2GasPrice(t *testing.T) {
 	assert.NoError(t, err)
 
 	batchOrm := orm.NewBatch(db)
-	_, err = batchOrm.InsertBatch(context.Background(), 0, 0, chunkHash.Hex(), chunkHash.Hex(), []*bridgeTypes.Chunk{chunk})
+	_, err = batchOrm.InsertBatch(context.Background(), 0, 0, chunkHash.Hex(), chunkHash.Hex(), []*types.Chunk{chunk})
 	assert.NoError(t, err)
 
 	// check db status
