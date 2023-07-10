@@ -15,7 +15,7 @@ create table l2_block
     block_timestamp         NUMERIC         NOT NULL,
 
 -- chunk
-    chunk_hash              VARCHAR         DEFAULT NULL
+    chunk_hash              VARCHAR         DEFAULT NULL,
 
 -- metadata
     created_at              TIMESTAMP(0)    NOT NULL DEFAULT CURRENT_TIMESTAMP,

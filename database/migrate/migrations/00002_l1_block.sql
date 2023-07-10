@@ -14,7 +14,7 @@ create table l1_block
 
 -- oracle
     oracle_status           SMALLINT        NOT NULL DEFAULT 1,
-    oracle_tx_hash          VARCHAR         DEFAULT NULL
+    oracle_tx_hash          VARCHAR         DEFAULT NULL,
 
 -- metadata
     created_at              TIMESTAMP(0)    NOT NULL DEFAULT CURRENT_TIMESTAMP,
