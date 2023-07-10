@@ -12,6 +12,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"gorm.io/gorm"
 
+	"scroll-tech/common/database"
 	"scroll-tech/common/types"
 	"scroll-tech/common/types/message"
 	"scroll-tech/common/utils"
@@ -20,11 +21,10 @@ import (
 
 	"scroll-tech/bridge/internal/controller/sender"
 	"scroll-tech/bridge/internal/orm"
-	bridgeUtils "scroll-tech/bridge/internal/utils"
 )
 
 func setupL2RelayerDB(t *testing.T) *gorm.DB {
-	db, err := bridgeUtils.InitDB(cfg.DBConfig)
+	db, err := database.InitDB(cfg.DBConfig)
 	assert.NoError(t, err)
 	sqlDB, err := db.DB()
 	assert.NoError(t, err)
@@ -34,7 +34,7 @@ func setupL2RelayerDB(t *testing.T) *gorm.DB {
 
 func testCreateNewRelayer(t *testing.T) {
 	db := setupL2RelayerDB(t)
-	defer bridgeUtils.CloseDB(db)
+	defer database.CloseDB(db)
 	relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, cfg.L2Config.RelayerConfig, false)
 	assert.NoError(t, err)
 	assert.NotNil(t, relayer)
@@ -42,7 +42,7 @@ func testCreateNewRelayer(t *testing.T) {
 
 func testL2RelayerProcessPendingBatches(t *testing.T) {
 	db := setupL2RelayerDB(t)
-	defer bridgeUtils.CloseDB(db)
+	defer database.CloseDB(db)
 
 	l2Cfg := cfg.L2Config
 	relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, l2Cfg.RelayerConfig, false)
@@ -70,7 +70,7 @@ func testL2RelayerProcessPendingBatches(t *testing.T) {
 
 func testL2RelayerProcessCommittedBatches(t *testing.T) {
 	db := setupL2RelayerDB(t)
-	defer bridgeUtils.CloseDB(db)
+	defer database.CloseDB(db)
 
 	l2Cfg := cfg.L2Config
 	relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, l2Cfg.RelayerConfig, false)
@@ -110,7 +110,7 @@ func testL2RelayerProcessCommittedBatches(t *testing.T) {
 
 func testL2RelayerSkipBatches(t *testing.T) {
 	db := setupL2RelayerDB(t)
-	defer bridgeUtils.CloseDB(db)
+	defer database.CloseDB(db)
 
 	l2Cfg := cfg.L2Config
 	relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, l2Cfg.RelayerConfig, false)
@@ -171,7 +171,7 @@ func testL2RelayerSkipBatches(t *testing.T) {
 
 func testL2RelayerRollupConfirm(t *testing.T) {
 	db := setupL2RelayerDB(t)
-	defer bridgeUtils.CloseDB(db)
+	defer database.CloseDB(db)
 
 	// Create and set up the Layer2 Relayer.
 	l2Cfg := cfg.L2Config
@@ -232,7 +232,7 @@ func testL2RelayerRollupConfirm(t *testing.T) {
 
 func testL2RelayerGasOracleConfirm(t *testing.T) {
 	db := setupL2RelayerDB(t)
-	defer bridgeUtils.CloseDB(db)
+	defer database.CloseDB(db)
 
 	batchOrm := orm.NewBatch(db)
 	batch1, err := batchOrm.InsertBatch(context.Background(), 0, 0, chunkHash1.Hex(), chunkHash1.Hex(), []*types.Chunk{chunk1})
@@ -281,7 +281,7 @@ func testL2RelayerGasOracleConfirm(t *testing.T) {
 
 func testLayer2RelayerProcessGasPriceOracle(t *testing.T) {
 	db := setupL2RelayerDB(t)
-	defer bridgeUtils.CloseDB(db)
+	defer database.CloseDB(db)
 
 	relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, cfg.L2Config.RelayerConfig, false)
 	assert.NoError(t, err)
