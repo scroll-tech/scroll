@@ -9,9 +9,6 @@ import (
 // L1BlockStatus represents current l1 block processing status
 type L1BlockStatus int
 
-// GasOracleStatus represents current gas oracle processing status
-type GasOracleStatus int
-
 const (
 	// L1BlockUndefined : undefined l1 block status
 	L1BlockUndefined L1BlockStatus = iota
@@ -29,6 +26,9 @@ const (
 	L1BlockFailed
 )
 
+// GasOracleStatus represents current gas oracle processing status
+type GasOracleStatus int
+
 const (
 	// GasOracleUndefined : undefined gas oracle status
 	GasOracleUndefined GasOracleStatus = iota
@@ -45,6 +45,23 @@ const (
 	// GasOracleFailed represents the gas oracle status is failed
 	GasOracleFailed
 )
+
+func (s GasOracleStatus) String() string {
+	switch s {
+	case GasOracleUndefined:
+		return "GasOracleUndefined"
+	case GasOraclePending:
+		return "GasOraclePending"
+	case GasOracleImporting:
+		return "GasOracleImporting"
+	case GasOracleImported:
+		return "GasOracleImported"
+	case GasOracleFailed:
+		return "GasOracleFailed"
+	default:
+		return fmt.Sprintf("Undefined (%d)", int32(s))
+	}
+}
 
 // L1BlockInfo is structure of stored l1 block
 type L1BlockInfo struct {
@@ -191,7 +208,7 @@ func (ps ProvingStatus) String() string {
 	case ProvingTaskFailed:
 		return "failed"
 	default:
-		return "undefined"
+		return fmt.Sprintf("Undefined (%d)", int32(ps))
 	}
 }
 
@@ -208,6 +225,17 @@ const (
 	// ChunkProofsStatusReady means that all chunks that belong to this batch have been proven
 	ChunkProofsStatusReady
 )
+
+func (s ChunkProofsStatus) String() string {
+	switch s {
+	case ChunkProofsStatusPending:
+		return "ChunkProofsStatusPending"
+	case ChunkProofsStatusReady:
+		return "ChunkProofsStatusReady"
+	default:
+		return fmt.Sprintf("Undefined (%d)", int32(s))
+	}
+}
 
 // RollupStatus block_batch rollup_status (pending, committing, committed, commit_failed, finalizing, finalized, finalize_skipped, finalize_failed)
 type RollupStatus int
@@ -232,3 +260,26 @@ const (
 	// RollupFinalizeFailed : rollup finalize transaction is confirmed but failed
 	RollupFinalizeFailed
 )
+
+func (s RollupStatus) String() string {
+	switch s {
+	case RollupPending:
+		return "RollupPending"
+	case RollupCommitting:
+		return "RollupCommitting"
+	case RollupCommitted:
+		return "RollupCommitted"
+	case RollupFinalizing:
+		return "RollupFinalizing"
+	case RollupFinalized:
+		return "RollupFinalized"
+	case RollupFinalizationSkipped:
+		return "RollupFinalizationSkipped"
+	case RollupCommitFailed:
+		return "RollupCommitFailed"
+	case RollupFinalizeFailed:
+		return "RollupFinalizeFailed"
+	default:
+		return fmt.Sprintf("Undefined (%d)", int32(s))
+	}
+}
