@@ -33,7 +33,7 @@ type Batch struct {
 	BatchHeader     []byte `json:"batch_header" gorm:"column:batch_header"`
 
 	// proof
-	ChunkProofsStatus int16      `json:"chunk_proofs_status" gorm:"column:chunk_proofs_status"`
+	ChunkProofsStatus int16      `json:"chunk_proofs_status" gorm:"column:chunk_proofs_status;default:1"`
 	ProvingStatus     int16      `json:"proving_status" gorm:"column:proving_status;default:1"`
 	Proof             []byte     `json:"proof" gorm:"column:proof;default:NULL"`
 	ProverAssignedAt  *time.Time `json:"prover_assigned_at" gorm:"column:prover_assigned_at;default:NULL"`
@@ -263,6 +263,7 @@ func (o *Batch) InsertBatch(ctx context.Context, startChunkIndex, endChunkIndex 
 		ChunkProofsStatus: int16(types.ChunkProofsStatusPending),
 		ProvingStatus:     int16(types.ProvingTaskUnassigned),
 		RollupStatus:      int16(types.RollupPending),
+		OracleStatus:      int16(types.GasOraclePending),
 	}
 
 	db := o.db
