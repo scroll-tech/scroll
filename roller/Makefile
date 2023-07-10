@@ -1,10 +1,10 @@
 .PHONY: lint docker clean roller mock_roller
 
 ifeq (4.3,$(firstword $(sort $(MAKE_VERSION) 4.3)))
-	ZKEVM_VERSION=$(shell grep -m 1 "scroll-zkevm" ../common/libzkp/impl/Cargo.lock | cut -d "#" -f2 | cut -c-7)
+	ZKEVM_VERSION=$(shell grep -m 1 "scroll-prover" ../common/libzkp/impl/Cargo.lock | cut -d "#" -f2 | cut -c-7)
 	HALO2_VERSION=$(shell grep -m 1 "halo2.git" ../common/libzkp/impl/Cargo.lock | cut -d "#" -f2 | cut -c-7)
 else
-	ZKEVM_VERSION=$(shell grep -m 1 "scroll-zkevm" ../common/libzkp/impl/Cargo.lock | cut -d "\#" -f2 | cut -c-7)
+	ZKEVM_VERSION=$(shell grep -m 1 "scroll-prover" ../common/libzkp/impl/Cargo.lock | cut -d "\#" -f2 | cut -c-7)
 	HALO2_VERSION=$(shell grep -m 1 "halo2.git" ../common/libzkp/impl/Cargo.lock | cut -d "\#" -f2 | cut -c-7)
 endif
 
@@ -39,7 +39,7 @@ test-gpu-prover: libzkp
 	go test -tags="gpu ffi" -timeout 0 -v ./prover
 
 lastest-zk-version:
-	curl -sL https://api.github.com/repos/scroll-tech/scroll-zkevm/commits | jq -r ".[0].sha"
+	curl -sL https://api.github.com/repos/scroll-tech/scroll-prover/commits | jq -r ".[0].sha"
 
 lint: ## Lint the files - used for CI
 	cp -r ../common/libzkp/interface ./prover/lib
