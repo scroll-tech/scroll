@@ -138,7 +138,6 @@ func (h *historyBackend) GetClaimableTxsByAddress(address common.Address, offset
 			ClaimInfo:   GetCrossTxClaimInfo(result.MsgHash, h.db),
 		}
 		if crossMsg, exist := crossMsgMap[result.MsgHash]; exist {
-			txInfo.Hash = crossMsg.Layer2Hash
 			txInfo.Amount = crossMsg.Amount
 			txInfo.To = crossMsg.Target
 			txInfo.BlockTimestamp = crossMsg.Timestamp
