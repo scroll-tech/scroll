@@ -53,13 +53,13 @@ func NewProver(cfg *config.ProverConfig) (*Prover, error) {
 // Prove call rust ffi to generate proof, if first failed, try again.
 func (p *Prover) Prove(taskID string, traces []*types.BlockTrace) (*message.AggProof, error) {
 	var proofByt []byte
-	if p.cfg.ProveType == message.BasicProve {
+	if p.cfg.ProofType == message.ProofTypeChunk {
 		tracesByt, err := json.Marshal(traces)
 		if err != nil {
 			return nil, err
 		}
 		proofByt = p.prove(tracesByt)
-	} else if p.cfg.ProveType == message.AggregatorProve {
+	} else if p.cfg.ProofType == message.ProofTypeBatch {
 		// TODO: aggregator prove
 	}
 

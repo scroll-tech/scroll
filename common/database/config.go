@@ -1,7 +1,7 @@
-package config
+package database
 
-// DBConfig db config
-type DBConfig struct {
+// Config db config
+type Config struct {
 	// data source name
 	DSN        string `json:"dsn"`
 	DriverName string `json:"driver_name"`

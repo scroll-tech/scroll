@@ -12,13 +12,14 @@ import (
 	"github.com/stretchr/testify/assert"
 	"gorm.io/gorm"
 
+	"scroll-tech/common/database"
 	"scroll-tech/common/types"
 	"scroll-tech/common/utils"
 
+	"scroll-tech/database/migrate"
+
 	"scroll-tech/bridge/internal/controller/sender"
 	"scroll-tech/bridge/internal/orm"
-	"scroll-tech/bridge/internal/orm/migrate"
-	bridgeUtils "scroll-tech/bridge/internal/utils"
 )
 
 var (
@@ -49,7 +50,7 @@ var (
 )
 
 func setupL1RelayerDB(t *testing.T) *gorm.DB {
-	db, err := bridgeUtils.InitDB(cfg.DBConfig)
+	db, err := database.InitDB(cfg.DBConfig)
 	assert.NoError(t, err)
 	sqlDB, err := db.DB()
 	assert.NoError(t, err)
@@ -60,7 +61,7 @@ func setupL1RelayerDB(t *testing.T) *gorm.DB {
 // testCreateNewRelayer test create new relayer instance and stop
 func testCreateNewL1Relayer(t *testing.T) {
 	db := setupL1RelayerDB(t)
-	defer bridgeUtils.CloseDB(db)
+	defer database.CloseDB(db)
 	relayer, err := NewLayer1Relayer(context.Background(), db, cfg.L2Config.RelayerConfig)
 	assert.NoError(t, err)
 	assert.NotNil(t, relayer)
@@ -68,7 +69,7 @@ func testCreateNewL1Relayer(t *testing.T) {
 
 func testL1RelayerProcessSaveEvents(t *testing.T) {
 	db := setupL1RelayerDB(t)
-	defer bridgeUtils.CloseDB(db)
+	defer database.CloseDB(db)
 	l1MessageOrm := orm.NewL1Message(db)
 	l1Cfg := cfg.L1Config
 	relayer, err := NewLayer1Relayer(context.Background(), db, l1Cfg.RelayerConfig)
@@ -86,7 +87,7 @@ func testL1RelayerProcessSaveEvents(t *testing.T) {
 
 func testL1RelayerMsgConfirm(t *testing.T) {
 	db := setupL1RelayerDB(t)
-	defer bridgeUtils.CloseDB(db)
+	defer database.CloseDB(db)
 	l1MessageOrm := orm.NewL1Message(db)
 	l1Messages := []*orm.L1Message{
 		{MsgHash: "msg-1", QueueIndex: 0},
@@ -123,7 +124,7 @@ func testL1RelayerMsgConfirm(t *testing.T) {
 
 func testL1RelayerGasOracleConfirm(t *testing.T) {
 	db := setupL1RelayerDB(t)
-	defer bridgeUtils.CloseDB(db)
+	defer database.CloseDB(db)
 	l1BlockOrm := orm.NewL1Block(db)
 
 	l1Block := []orm.L1Block{
@@ -162,7 +163,7 @@ func testL1RelayerGasOracleConfirm(t *testing.T) {
 
 func testL1RelayerProcessGasPriceOracle(t *testing.T) {
 	db := setupL1RelayerDB(t)
-	defer bridgeUtils.CloseDB(db)
+	defer database.CloseDB(db)
 
 	l1Cfg := cfg.L1Config
 	ctx, cancel := context.WithCancel(context.Background())
