@@ -16,6 +16,11 @@ import (
 	"scroll-tech/common/database"
 	"scroll-tech/common/utils"
 	"scroll-tech/common/version"
+
+	_ "scroll-tech/miner-api/cmd/docs"
+
+	swaggerfiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 )
 
 var app *cli.App
@@ -58,6 +63,7 @@ func action(ctx *cli.Context) error {
 	taskService := service.NewProverTaskService(ptdb)
 
 	r := gin.Default()
+	r.GET("swagger/*any", ginSwagger.WrapHandler(swaggerfiles.Handler))
 	router := r.Group("/api/v1")
 
 	c := controller.NewProverTaskController(router, taskService)
