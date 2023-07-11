@@ -1,0 +1,81 @@
+name: MinerAPI
+
+on:
+  push:
+    branches:
+      - main
+      - staging
+      - develop
+      - alpha
+    paths:
+      - 'miner-api/**'
+      - '.github/workflows/miner_api.yml'
+  pull_request:
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - ready_for_review
+    paths:
+      - 'miner-api/**'
+      - '.github/workflows/bridge_history_api.yml'
+
+defaults:
+  run:
+    working-directory: 'miner-api'
+
+jobs:
+  # check:
+  #   if: github.event.pull_request.draft == false
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #   - name: Install Go
+  #     uses: actions/setup-go@v2
+  #     with:
+  #       go-version: 1.19.x
+  #   - name: Checkout code
+  #     uses: actions/checkout@v2
+  #   - name: Lint
+  #     run: |
+  #       rm -rf $HOME/.cache/golangci-lint
+  #       make lint
+  test:
+    if: github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.19.x
+      - name: Checkout code
+        uses: actions/checkout@v2
+      - name: Test
+        run: |
+          go get ./...
+          make test
+      - name: Upload coverage reports to Codecov
+        uses: codecov/codecov-action@v3
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+        with:
+          flags: miner-api
+  goimports-lint:
+    if: github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.19.x
+      - name: Checkout code
+        uses: actions/checkout@v2
+      - name: Install goimports
+        run: go install golang.org/x/tools/cmd/goimports
+      - run: goimports -local scroll-tech/miner-api/ -w .
+      - run: go mod tidy
+      # If there are any diffs from goimports or go mod tidy, fail.
+      - name: Verify no changes from goimports and go mod tidy
+        run: |
+          if [ -n "$(git status --porcelain)" ]; then
+            exit 1
+          fi
