@@ -47,6 +47,7 @@ type TxHistoryInfo struct {
 type HistoryService interface {
 	GetTxsByAddress(address common.Address, offset int64, limit int64) ([]*TxHistoryInfo, uint64, error)
 	GetTxsByHashes(hashes []string) ([]*TxHistoryInfo, error)
+	GetClaimableTxsByAddress(address common.Address, offset int64, limit int64) ([]*TxHistoryInfo, uint64, error)
 }
 
 // NewHistoryService returns a service backed with a "db"
@@ -104,6 +105,47 @@ func updateCrossTxHash(msgHash string, txInfo *TxHistoryInfo, db db.OrmFactory) 
 		return
 	}
 
+}
+
+func (h *historyBackend) GetClaimableTxsByAddress(address common.Address, offset int64, limit int64) ([]*TxHistoryInfo, uint64, error) {
+	var txHistories []*TxHistoryInfo
+	total, err := h.db.GetClaimableL2SentMsgByAddressTotalNum(address.Hex())
+	if err != nil || total == 0 {
+		return txHistories, 0, err
+	}
+	results, err := h.db.GetClaimableL2SentMsgByAddressWithOffset(address.Hex(), offset, limit)
+	if err != nil || len(results) == 0 {
+		return txHistories, 0, err
+	}
+	var msgHashList []string
+	for _, result := range results {
+		msgHashList = append(msgHashList, result.MsgHash)
+	}
+	crossMsgs, err := h.db.GetL2CrossMsgByMsgHashList(msgHashList)
+	if err != nil || len(crossMsgs) == 0 {
+		return txHistories, 0, err
+	}
+	crossMsgMap := make(map[string]*orm.CrossMsg)
+	for _, crossMsg := range crossMsgs {
+		crossMsgMap[crossMsg.MsgHash] = crossMsg
+	}
+	for _, result := range results {
+		txInfo := &TxHistoryInfo{
+			Hash:        result.TxHash,
+			IsL1:        false,
+			BlockNumber: result.Height,
+			FinalizeTx:  &Finalized{},
+			ClaimInfo:   GetCrossTxClaimInfo(result.MsgHash, h.db),
+		}
+		if crossMsg, exist := crossMsgMap[result.MsgHash]; exist {
+			txInfo.Amount = crossMsg.Amount
+			txInfo.To = crossMsg.Target
+			txInfo.BlockTimestamp = crossMsg.Timestamp
+			txInfo.CreatedAt = crossMsg.CreatedAt
+		}
+		txHistories = append(txHistories, txInfo)
+	}
+	return txHistories, total, err
 }
 
 func (h *historyBackend) GetTxsByAddress(address common.Address, offset int64, limit int64) ([]*TxHistoryInfo, uint64, error) {

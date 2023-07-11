@@ -222,6 +222,7 @@ func ParseBackendL2EventLogs(logs []types.Log) ([]*orm.CrossMsg, []*orm.RelayedM
 			l2SentMsgs = append(l2SentMsgs,
 				&orm.L2SentMsg{
 					Sender:  event.Sender.Hex(),
+					TxHash:  vlog.TxHash.Hex(),
 					Target:  event.Target.Hex(),
 					Value:   event.Value.String(),
 					MsgHash: msgHash.Hex(),
