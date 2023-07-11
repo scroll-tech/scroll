@@ -48,7 +48,7 @@ interface IL1ScrollMessenger is IScrollMessenger {
     /// @param from The address of the sender of the message.
     /// @param to The address of the recipient of the message.
     /// @param value The msg.value passed to the message call.
-    /// @param queueIndex The queue index for the message to replay.
+    /// @param messageNonce The nonce for the message to replay.
     /// @param message The content of the message.
     /// @param newGasLimit New gas limit to be used for this message.
     /// @param refundAddress The address of account who will receive the refunded fee.
@@ -56,7 +56,7 @@ interface IL1ScrollMessenger is IScrollMessenger {
         address from,
         address to,
         uint256 value,
-        uint256 queueIndex,
+        uint256 messageNonce,
         bytes memory message,
         uint32 newGasLimit,
         address refundAddress
@@ -66,13 +66,13 @@ interface IL1ScrollMessenger is IScrollMessenger {
     /// @param from The address of the sender of the message.
     /// @param to The address of the recipient of the message.
     /// @param value The msg.value passed to the message call.
-    /// @param queueIndex The queue index for the message to replay.
+    /// @param messageNonce The nonce for the message to drop.
     /// @param message The content of the message.
     function dropMessage(
         address from,
         address to,
         uint256 value,
-        uint256 queueIndex,
+        uint256 messageNonce,
         bytes memory message
     ) external;
 }

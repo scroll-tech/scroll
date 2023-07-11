@@ -166,7 +166,7 @@ contract L1ScrollMessenger is PausableUpgradeable, ScrollMessengerBase, IL1Scrol
         address _from,
         address _to,
         uint256 _value,
-        uint256 _queueIndex,
+        uint256 _messageNonce,
         bytes memory _message,
         uint32 _newGasLimit,
         address _refundAddress
@@ -177,7 +177,7 @@ contract L1ScrollMessenger is PausableUpgradeable, ScrollMessengerBase, IL1Scrol
         // will revert with "Message was already successfully executed".
         address _messageQueue = messageQueue;
         address _counterpart = counterpart;
-        bytes memory _xDomainCalldata = _encodeXDomainCalldata(_from, _to, _value, _queueIndex, _message);
+        bytes memory _xDomainCalldata = _encodeXDomainCalldata(_from, _to, _value, _messageNonce, _message);
         bytes32 _xDomainCalldataHash = keccak256(_xDomainCalldata);
 
         require(isL1MessageSent[_xDomainCalldataHash], "Provided message has not been enqueued");
@@ -202,7 +202,7 @@ contract L1ScrollMessenger is PausableUpgradeable, ScrollMessengerBase, IL1Scrol
         // update the replayed message chain.
         if (_replayState.lastIndex == 0) {
             // the message has not been replayed before.
-            prevReplayIndex[_nextQueueIndex] = _queueIndex;
+            prevReplayIndex[_nextQueueIndex] = _messageNonce;
         } else {
             prevReplayIndex[_nextQueueIndex] = _replayState.lastIndex;
         }
@@ -230,7 +230,7 @@ contract L1ScrollMessenger is PausableUpgradeable, ScrollMessengerBase, IL1Scrol
         address _from,
         address _to,
         uint256 _value,
-        uint256 _queueIndex,
+        uint256 _messageNonce,
         bytes memory _message
     ) external override whenNotPaused notInExecution {
         // The criteria for dropping a message:
@@ -248,7 +248,7 @@ contract L1ScrollMessenger is PausableUpgradeable, ScrollMessengerBase, IL1Scrol
         address _messageQueue = messageQueue;
 
         // check message exists
-        bytes memory _xDomainCalldata = _encodeXDomainCalldata(_from, _to, _value, _queueIndex, _message);
+        bytes memory _xDomainCalldata = _encodeXDomainCalldata(_from, _to, _value, _messageNonce, _message);
         bytes32 _xDomainCalldataHash = keccak256(_xDomainCalldata);
         require(isL1MessageSent[_xDomainCalldataHash], "Provided message has not been enqueued");
 
@@ -257,7 +257,7 @@ contract L1ScrollMessenger is PausableUpgradeable, ScrollMessengerBase, IL1Scrol
 
         // check message is finalized
         uint256 _lastIndex = replayStates[_xDomainCalldataHash].lastIndex;
-        if (_lastIndex == 0) _lastIndex = _queueIndex;
+        if (_lastIndex == 0) _lastIndex = _messageNonce;
 
         // check message is skipped and drop it.
         // @note If the list is very long, the message may never be dropped.

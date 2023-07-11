@@ -30,7 +30,7 @@ The address of counterpart ScrollMessenger contract in L1/L2.
 ### dropMessage
 
 ```solidity
-function dropMessage(address _from, address _to, uint256 _value, uint256 _queueIndex, bytes _message) external nonpayable
+function dropMessage(address _from, address _to, uint256 _value, uint256 _messageNonce, bytes _message) external nonpayable
 ```
 
 Drop a skipped message.
@@ -44,7 +44,7 @@ Drop a skipped message.
 | _from | address | undefined |
 | _to | address | undefined |
 | _value | uint256 | undefined |
-| _queueIndex | uint256 | undefined |
+| _messageNonce | uint256 | undefined |
 | _message | bytes | undefined |
 
 ### feeVault
@@ -274,7 +274,7 @@ function renounceOwnership() external nonpayable
 ### replayMessage
 
 ```solidity
-function replayMessage(address _from, address _to, uint256 _value, uint256 _queueIndex, bytes _message, uint32 _newGasLimit, address _refundAddress) external payable
+function replayMessage(address _from, address _to, uint256 _value, uint256 _messageNonce, bytes _message, uint32 _newGasLimit, address _refundAddress) external payable
 ```
 
 Replay an existing message.
@@ -288,7 +288,7 @@ Replay an existing message.
 | _from | address | undefined |
 | _to | address | undefined |
 | _value | uint256 | undefined |
-| _queueIndex | uint256 | undefined |
+| _messageNonce | uint256 | undefined |
 | _message | bytes | undefined |
 | _newGasLimit | uint32 | undefined |
 | _refundAddress | address | undefined |

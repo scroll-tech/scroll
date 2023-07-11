@@ -98,7 +98,13 @@ abstract contract L1ERC20Gateway is IL1ERC20Gateway, IMessageDropCallback, Scrol
      * Internal Functions *
      **********************/
 
-    /// @dev Internal function to some actions before finalize the withdraw.
+    /// @dev Internal function hook to perform checks and actions before finalizing the withdrawal.
+    /// @param _l1Token The address of corresponding L1 token in L1.
+    /// @param _l2Token The address of corresponding L2 token in L2.
+    /// @param _from The address of account who withdraw the token in L2.
+    /// @param _to The address of recipient in L1 to receive the token.
+    /// @param _amount The amount of the token to withdraw.
+    /// @param _data Optional data to forward to recipient's account.
     function _beforeFinalizeWithdrawERC20(
         address _l1Token,
         address _l2Token,
@@ -108,9 +114,9 @@ abstract contract L1ERC20Gateway is IL1ERC20Gateway, IMessageDropCallback, Scrol
         bytes calldata _data
     ) internal virtual;
 
-    /// @dev Internal function to some actions before dropping the message.
-    /// @param _token The address of token to refund in L1.
-    /// @param _receiver The address of recipient in L1.
+    /// @dev Internal function hook to perform checks and actions before dropping the message.
+    /// @param _token The L1 token address.
+    /// @param _receiver The recipient address on L1.
     /// @param _amount The amount of token to refund.
     function _beforeDropMessage(
         address _token,
