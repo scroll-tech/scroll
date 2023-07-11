@@ -89,7 +89,7 @@ Initialize the storage of L1ScrollMessenger.
 function isL1MessageDropped(bytes32) external view returns (bool)
 ```
 
-Mappging from L1 message hash to drop status.
+Mapping from L1 message hash to drop status.
 
 
 
