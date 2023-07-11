@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.0;
+pragma solidity =0.8.20;
 
 /// @title The interface for the ERC1155 cross chain gateway in layer 2.
 interface IL2ERC1155Gateway {

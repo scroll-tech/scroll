@@ -411,12 +411,12 @@ Emitted when ERC20 token is deposited from L1 to L2 and transfer to recipient.
 
 | Name | Type | Description |
 |---|---|---|
-| l1Token `indexed` | address | undefined |
-| l2Token `indexed` | address | undefined |
-| from `indexed` | address | undefined |
-| to  | address | undefined |
-| amount  | uint256 | undefined |
-| data  | bytes | undefined |
+| l1Token `indexed` | address | The address of the token in L1. |
+| l2Token `indexed` | address | The address of the token in L2. |
+| from `indexed` | address | The address of sender in L1. |
+| to  | address | The address of recipient in L2. |
+| amount  | uint256 | The amount of token withdrawn from L1 to L2. |
+| data  | bytes | The optional calldata passed to recipient in L2. |
 
 ### FinalizeDepositETH
 
@@ -432,10 +432,10 @@ Emitted when ETH is deposited from L1 to L2 and transfer to recipient.
 
 | Name | Type | Description |
 |---|---|---|
-| from `indexed` | address | undefined |
-| to `indexed` | address | undefined |
-| amount  | uint256 | undefined |
-| data  | bytes | undefined |
+| from `indexed` | address | The address of sender in L1. |
+| to `indexed` | address | The address of recipient in L2. |
+| amount  | uint256 | The amount of ETH deposited from L1 to L2. |
+| data  | bytes | The optional calldata passed to recipient in L2. |
 
 ### OwnershipTransferred
 
@@ -468,7 +468,7 @@ Emitted when the address of default ERC20 Gateway is updated.
 
 | Name | Type | Description |
 |---|---|---|
-| defaultERC20Gateway `indexed` | address | undefined |
+| defaultERC20Gateway `indexed` | address | The address of new default ERC20 Gateway. |
 
 ### SetERC20Gateway
 
@@ -484,8 +484,8 @@ Emitted when the `gateway` for `token` is updated.
 
 | Name | Type | Description |
 |---|---|---|
-| token `indexed` | address | undefined |
-| gateway `indexed` | address | undefined |
+| token `indexed` | address | The address of token updated. |
+| gateway `indexed` | address | The corresponding address of gateway updated. |
 
 ### SetETHGateway
 
@@ -501,7 +501,7 @@ Emitted when the address of ETH Gateway is updated.
 
 | Name | Type | Description |
 |---|---|---|
-| ethGateway `indexed` | address | undefined |
+| ethGateway `indexed` | address | The address of new ETH Gateway. |
 
 ### WithdrawERC20
 
@@ -517,12 +517,12 @@ Emitted when someone withdraw ERC20 token from L2 to L1.
 
 | Name | Type | Description |
 |---|---|---|
-| l1Token `indexed` | address | undefined |
-| l2Token `indexed` | address | undefined |
-| from `indexed` | address | undefined |
-| to  | address | undefined |
-| amount  | uint256 | undefined |
-| data  | bytes | undefined |
+| l1Token `indexed` | address | The address of the token in L1. |
+| l2Token `indexed` | address | The address of the token in L2. |
+| from `indexed` | address | The address of sender in L2. |
+| to  | address | The address of recipient in L1. |
+| amount  | uint256 | The amount of token will be deposited from L2 to L1. |
+| data  | bytes | The optional calldata passed to recipient in L1. |
 
 ### WithdrawETH
 
@@ -538,10 +538,10 @@ Emitted when someone withdraw ETH from L2 to L1.
 
 | Name | Type | Description |
 |---|---|---|
-| from `indexed` | address | undefined |
-| to `indexed` | address | undefined |
-| amount  | uint256 | undefined |
-| data  | bytes | undefined |
+| from `indexed` | address | The address of sender in L2. |
+| to `indexed` | address | The address of recipient in L1. |
+| amount  | uint256 | The amount of ETH will be deposited from L2 to L1. |
+| data  | bytes | The optional calldata passed to recipient in L1. |
 
 
 

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.0;
+pragma solidity =0.8.20;
 
 library ScrollPredeploy {
     address internal constant L1_MESSAGE_QUEUE = 0x5300000000000000000000000000000000000000;

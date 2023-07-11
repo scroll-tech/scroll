@@ -334,11 +334,11 @@ Emitted when the ERC721 NFT is batch deposited to gateway in layer 1.
 
 | Name | Type | Description |
 |---|---|---|
-| _l1Token `indexed` | address | undefined |
-| _l2Token `indexed` | address | undefined |
-| _from `indexed` | address | undefined |
-| _to  | address | undefined |
-| _tokenIds  | uint256[] | undefined |
+| _l1Token `indexed` | address | The address of ERC721 NFT in layer 1. |
+| _l2Token `indexed` | address | The address of ERC721 NFT in layer 2. |
+| _from `indexed` | address | The address of sender in layer 1. |
+| _to  | address | The address of recipient in layer 2. |
+| _tokenIds  | uint256[] | The list of token ids of the ERC721 NFT to deposit in layer 1. |
 
 ### BatchRefundERC721
 
@@ -354,9 +354,9 @@ Emitted when a batch of ERC721 tokens are refunded.
 
 | Name | Type | Description |
 |---|---|---|
-| token `indexed` | address | undefined |
-| recipient `indexed` | address | undefined |
-| tokenIds  | uint256[] | undefined |
+| token `indexed` | address | The address of the token in L1. |
+| recipient `indexed` | address | The address of receiver in L1. |
+| tokenIds  | uint256[] | The list of token ids of the ERC721 NFT refunded. |
 
 ### DepositERC721
 
@@ -372,11 +372,11 @@ Emitted when the ERC721 NFT is deposited to gateway in layer 1.
 
 | Name | Type | Description |
 |---|---|---|
-| _l1Token `indexed` | address | undefined |
-| _l2Token `indexed` | address | undefined |
-| _from `indexed` | address | undefined |
-| _to  | address | undefined |
-| _tokenId  | uint256 | undefined |
+| _l1Token `indexed` | address | The address of ERC721 NFT in layer 1. |
+| _l2Token `indexed` | address | The address of ERC721 NFT in layer 2. |
+| _from `indexed` | address | The address of sender in layer 1. |
+| _to  | address | The address of recipient in layer 2. |
+| _tokenId  | uint256 | The token id of the ERC721 NFT to deposit in layer 1. |
 
 ### FinalizeBatchWithdrawERC721
 
@@ -392,11 +392,11 @@ Emitted when the ERC721 NFT is batch transfered to recipient in layer 1.
 
 | Name | Type | Description |
 |---|---|---|
-| _l1Token `indexed` | address | undefined |
-| _l2Token `indexed` | address | undefined |
-| _from `indexed` | address | undefined |
-| _to  | address | undefined |
-| _tokenIds  | uint256[] | undefined |
+| _l1Token `indexed` | address | The address of ERC721 NFT in layer 1. |
+| _l2Token `indexed` | address | The address of ERC721 NFT in layer 2. |
+| _from `indexed` | address | The address of sender in layer 2. |
+| _to  | address | The address of recipient in layer 1. |
+| _tokenIds  | uint256[] | The list of token ids of the ERC721 NFT to withdraw from layer 2. |
 
 ### FinalizeWithdrawERC721
 
@@ -412,11 +412,11 @@ Emitted when the ERC721 NFT is transfered to recipient in layer 1.
 
 | Name | Type | Description |
 |---|---|---|
-| _l1Token `indexed` | address | undefined |
-| _l2Token `indexed` | address | undefined |
-| _from `indexed` | address | undefined |
-| _to  | address | undefined |
-| _tokenId  | uint256 | undefined |
+| _l1Token `indexed` | address | The address of ERC721 NFT in layer 1. |
+| _l2Token `indexed` | address | The address of ERC721 NFT in layer 2. |
+| _from `indexed` | address | The address of sender in layer 2. |
+| _to  | address | The address of recipient in layer 1. |
+| _tokenId  | uint256 | The token id of the ERC721 NFT to withdraw from layer 2. |
 
 ### OwnershipTransferred
 
@@ -449,9 +449,9 @@ Emitted when some ERC721 token is refunded.
 
 | Name | Type | Description |
 |---|---|---|
-| token `indexed` | address | undefined |
-| recipient `indexed` | address | undefined |
-| tokenId  | uint256 | undefined |
+| token `indexed` | address | The address of the token in L1. |
+| recipient `indexed` | address | The address of receiver in L1. |
+| tokenId  | uint256 | The id of token refunded. |
 
 ### UpdateTokenMapping
 

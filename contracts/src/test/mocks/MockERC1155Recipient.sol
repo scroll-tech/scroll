@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.0;
+pragma solidity =0.8.20;
 
 import {ERC1155TokenReceiver} from "solmate/tokens/ERC1155.sol";
 

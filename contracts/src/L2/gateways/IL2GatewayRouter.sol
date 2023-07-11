@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.0;
+pragma solidity =0.8.20;
 
 import {IL2ETHGateway} from "./IL2ETHGateway.sol";
 import {IL2ERC20Gateway} from "./IL2ERC20Gateway.sol";

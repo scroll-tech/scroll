@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0
-pragma solidity >=0.4.16 <0.9.0;
+pragma solidity =0.8.20;
 
 library RollupVerifier {
     function pairing(G1Point[] memory p1, G2Point[] memory p2) internal view returns (bool) {

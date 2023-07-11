@@ -373,12 +373,12 @@ Emitted when the ERC1155 NFT is batch transfered to gateway in layer 2.
 
 | Name | Type | Description |
 |---|---|---|
-| l1Token `indexed` | address | undefined |
-| l2Token `indexed` | address | undefined |
-| from `indexed` | address | undefined |
-| to  | address | undefined |
-| tokenIds  | uint256[] | undefined |
-| amounts  | uint256[] | undefined |
+| l1Token `indexed` | address | The address of ERC1155 NFT in layer 1. |
+| l2Token `indexed` | address | The address of ERC1155 NFT in layer 2. |
+| from `indexed` | address | The address of sender in layer 2. |
+| to  | address | The address of recipient in layer 1. |
+| tokenIds  | uint256[] | The list of token ids of the ERC1155 NFT to withdraw in layer 2. |
+| amounts  | uint256[] | The list of corresponding amounts to withdraw. |
 
 ### FinalizeBatchDepositERC1155
 
@@ -394,12 +394,12 @@ Emitted when the ERC1155 NFT is batch transfered to recipient in layer 2.
 
 | Name | Type | Description |
 |---|---|---|
-| l1Token `indexed` | address | undefined |
-| l2Token `indexed` | address | undefined |
-| from `indexed` | address | undefined |
-| to  | address | undefined |
-| tokenIds  | uint256[] | undefined |
-| amounts  | uint256[] | undefined |
+| l1Token `indexed` | address | The address of ERC1155 NFT in layer 1. |
+| l2Token `indexed` | address | The address of ERC1155 NFT in layer 2. |
+| from `indexed` | address | The address of sender in layer 1. |
+| to  | address | The address of recipient in layer 2. |
+| tokenIds  | uint256[] | The list of token ids of the ERC1155 NFT deposited in layer 1. |
+| amounts  | uint256[] | The list of corresponding amounts deposited. |
 
 ### FinalizeDepositERC1155
 
@@ -415,12 +415,12 @@ Emitted when the ERC1155 NFT is transfered to recipient in layer 2.
 
 | Name | Type | Description |
 |---|---|---|
-| l1Token `indexed` | address | undefined |
-| l2Token `indexed` | address | undefined |
-| from `indexed` | address | undefined |
-| to  | address | undefined |
-| tokenId  | uint256 | undefined |
-| amount  | uint256 | undefined |
+| l1Token `indexed` | address | The address of ERC1155 NFT in layer 1. |
+| l2Token `indexed` | address | The address of ERC1155 NFT in layer 2. |
+| from `indexed` | address | The address of sender in layer 1. |
+| to  | address | The address of recipient in layer 2. |
+| tokenId  | uint256 | The token id of the ERC1155 NFT deposited in layer 1. |
+| amount  | uint256 | The amount of token deposited. |
 
 ### OwnershipTransferred
 
@@ -470,12 +470,12 @@ Emitted when the ERC1155 NFT is transfered to gateway in layer 2.
 
 | Name | Type | Description |
 |---|---|---|
-| l1Token `indexed` | address | undefined |
-| l2Token `indexed` | address | undefined |
-| from `indexed` | address | undefined |
-| to  | address | undefined |
-| tokenId  | uint256 | undefined |
-| amount  | uint256 | undefined |
+| l1Token `indexed` | address | The address of ERC1155 NFT in layer 1. |
+| l2Token `indexed` | address | The address of ERC1155 NFT in layer 2. |
+| from `indexed` | address | The address of sender in layer 2. |
+| to  | address | The address of recipient in layer 1. |
+| tokenId  | uint256 | The token id of the ERC1155 NFT to withdraw in layer 2. |
+| amount  | uint256 | The amount of token to withdraw. |
 
 
 

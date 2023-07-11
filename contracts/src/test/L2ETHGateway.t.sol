@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.0;
+pragma solidity =0.8.20;
 
 import {L2GatewayRouter} from "../L2/gateways/L2GatewayRouter.sol";
 import {IL1ETHGateway, L1ETHGateway} from "../L1/gateways/L1ETHGateway.sol";
