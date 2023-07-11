@@ -50,7 +50,7 @@ contract L1ScrollMessenger is PausableUpgradeable, ScrollMessengerBase, IL1Scrol
     /// @notice Mapping from L2 message hash to a boolean value indicating if the message has been successfully executed.
     mapping(bytes32 => bool) public isL2MessageExecuted;
 
-    /// @notice Mappging from L1 message hash to drop status.
+    /// @notice Mapping from L1 message hash to drop status.
     mapping(bytes32 => bool) public isL1MessageDropped;
 
     /// @notice The address of Rollup contract.
