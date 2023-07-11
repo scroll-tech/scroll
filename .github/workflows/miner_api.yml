@@ -18,7 +18,7 @@ on:
       - ready_for_review
     paths:
       - 'miner-api/**'
-      - '.github/workflows/bridge_history_api.yml'
+      - '.github/workflows/miner_api.yml'
 
 defaults:
   run:
