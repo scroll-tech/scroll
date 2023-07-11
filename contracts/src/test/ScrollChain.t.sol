@@ -485,9 +485,13 @@ contract ScrollChainTest is DSTestPlus {
         rollup.revertBatch(batchHeader1, 1);
         batchHeader1[0] = bytes1(uint8(0)); // change back
 
+        // revert middle batch, revert
+        hevm.expectRevert("reverting must start from the ending");
+        rollup.revertBatch(batchHeader1, 1);
+
         // can only revert unfinalized batch, revert
         hevm.expectRevert("can only revert unfinalized batch");
-        rollup.revertBatch(batchHeader0, 1);
+        rollup.revertBatch(batchHeader0, 3);
 
         // succeed to revert next two pending batches.
         assertGt(uint256(rollup.committedBatches(1)), 0);

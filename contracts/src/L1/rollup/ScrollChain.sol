@@ -252,6 +252,8 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
     }
 
     /// @inheritdoc IScrollChain
+    /// @dev If the owner want to revet a sequence of batch with multiple transactions,
+    ///      make sure to revert recent batches first.
     function revertBatch(bytes calldata _batchHeader, uint256 _count) external onlyOwner {
         require(_count > 0, "count must be nonzero");
 
@@ -260,6 +262,8 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
         // check batch hash
         uint256 _batchIndex = BatchHeaderV0Codec.batchIndex(memPtr);
         require(committedBatches[_batchIndex] == _batchHash, "incorrect batch hash");
+        // make sure no gap is left when reverting from the ending to the beginning.
+        require(committedBatches[_batchIndex + _count] == bytes32(0), "reverting must start from the ending");
 
         // check finalization
         require(_batchIndex > lastFinalizedBatchIndex, "can only revert unfinalized batch");
