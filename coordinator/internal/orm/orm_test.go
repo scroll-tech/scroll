@@ -80,7 +80,7 @@ func TestProverTaskOrm(t *testing.T) {
 	assert.Equal(t, 1, len(proverTasks))
 	assert.Equal(t, proverTask.ProverName, proverTasks[0].ProverName)
 
-	// // test decimal reward, get reward
+	// test decimal reward, get reward
 	resultReward := proverTasks[0].Reward.BigInt()
 	assert.Equal(t, resultReward, reward)
 	assert.Equal(t, resultReward.String(), "18446744073709551616")
