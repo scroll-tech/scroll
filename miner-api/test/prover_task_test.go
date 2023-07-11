@@ -61,14 +61,14 @@ func TestProverTaskAPIs(t *testing.T) {
 func testGetProverTasksByProver(t *testing.T) {
 	var tasks []*orm.ProverTask
 	getResp(t, fmt.Sprintf("%s/tasks?pubkey=%s", basicPath, proverPubkey), &tasks)
-	assert.Equal(t, "2", tasks[0].TaskID)
-	assert.Equal(t, "1", tasks[1].TaskID)
+	assert.Equal(t, task2, *tasks[0])
+	assert.Equal(t, task1, *tasks[1])
 }
 
 func testGetTotalRewards(t *testing.T) {
-	rewards := make(map[string]decimal.Decimal)
+	rewards := make(map[string]int)
 	getResp(t, fmt.Sprintf("%s/total_rewards?pubkey=%s", basicPath, proverPubkey), &rewards)
-	assert.Equal(t, decimal.NewFromInt(22), rewards["rewards"])
+	assert.Equal(t, 22, rewards["rewards"])
 }
 
 func testGetProverTask(t *testing.T) {

@@ -61,14 +61,14 @@ func (o *ProverTask) GetProverTasksByHashes(ctx context.Context, hashes []string
 	return proverTasks, nil
 }
 
+// GetProverTasksByProver returns prover-tasks by the given prover's public key.
 func (o *ProverTask) GetProverTasksByProver(ctx context.Context, pubkey string) ([]*ProverTask, error) {
 	var proverTasks []*ProverTask
-	err := o.db.WithContext(ctx).Model(&ProverTask{}).Where(&ProverTask{ProverPublicKey: pubkey}).Order("created_at asc").Find(&proverTasks).Error
+	err := o.db.WithContext(ctx).Model(&ProverTask{}).Where(&ProverTask{ProverPublicKey: pubkey}).Order("id asc").Find(&proverTasks).Error
 	if err != nil {
 		return nil, fmt.Errorf("ProverTask.GetProverTasksByProver error: %w, prover %s", err, pubkey)
 	}
 	return proverTasks, nil
-
 }
 
 // SetProverTask updates or inserts a ProverTask record.
