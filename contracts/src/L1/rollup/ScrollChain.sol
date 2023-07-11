@@ -252,7 +252,7 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
     }
 
     /// @inheritdoc IScrollChain
-    /// @dev If the owner want to revet a sequence of batch with multiple transactions,
+    /// @dev If the owner want to revert a sequence of batches by sending multiple transactions,
     ///      make sure to revert recent batches first.
     function revertBatch(bytes calldata _batchHeader, uint256 _count) external onlyOwner {
         require(_count > 0, "count must be nonzero");
