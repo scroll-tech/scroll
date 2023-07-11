@@ -1,33 +1,28 @@
 package controller
 
 import (
-	"context"
 	"github.com/gin-gonic/gin"
 	"net/http"
-	"scroll-tech/miner-api/internal/orm"
+	"scroll-tech/miner-api/service"
 )
 
-type Controller struct {
-	engine *gin.Engine
-	db     *orm.ProverTask
+type ProverTaskController struct {
+	router  *gin.RouterGroup
+	service *service.ProverTaskService
 }
 
-func NewController(db *orm.ProverTask) *Controller {
-	r := gin.Default()
-	v1 := r.Group("/api/v1")
-	c := &Controller{
-		db: db,
+func NewProverTaskController(r *gin.RouterGroup, taskService *service.ProverTaskService) *ProverTaskController {
+	router := r.Group("/prover_task")
+	return &ProverTaskController{
+		router:  router,
+		service: taskService,
 	}
-	v1.GET("/tasks", c.GetTasksByProver)
-	v1.GET("/total_rewards", c.GetTotalRewards)
-	v1.GET("/task", c.GetTask)
-
-	c.engine = r
-	return c
 }
 
-func (c *Controller) Run(port string) {
-	c.engine.Run(port)
+func (c *ProverTaskController) Route() {
+	c.router.GET("/tasks", c.GetTasksByProver)
+	c.router.GET("/total_rewards", c.GetTotalRewards)
+	c.router.GET("/task", c.GetTask)
 }
 
 // GetTasksByProver godoc
@@ -40,10 +35,10 @@ func (c *Controller) Run(port string) {
 // @Success      200  {object}  []*orm.ProverTask
 // @Failure      404  {object}  string
 // @Failure      500  {object}  string
-// @Router       /tasks/{pubkey} [get]
-func (c *Controller) GetTasksByProver(ctx *gin.Context) {
+// @Router       /prover_task/tasks/{pubkey} [get]
+func (c *ProverTaskController) GetTasksByProver(ctx *gin.Context) {
 	pubkey := ctx.Param("pubkey")
-	tasks, err := c.db.GetProverTasksByProver(context.Background(), pubkey)
+	tasks, err := c.service.GetTasksByProver(pubkey)
 	if err != nil {
 		ctx.String(http.StatusNotFound, err.Error())
 		return
@@ -61,17 +56,13 @@ func (c *Controller) GetTasksByProver(ctx *gin.Context) {
 // @Success      200  {object}  map[string]uint64
 // @Failure      404  {object}  string
 // @Failure      500  {object}  string
-// @Router       /total_rewards/{pubkey} [get]
-func (c *Controller) GetTotalRewards(ctx *gin.Context) {
+// @Router       /prover_task/total_rewards/{pubkey} [get]
+func (c *ProverTaskController) GetTotalRewards(ctx *gin.Context) {
 	pubkey := ctx.Param("pubkey")
-	tasks, err := c.db.GetProverTasksByProver(context.Background(), pubkey)
+	rewards, err := c.service.GetTotalRewards(pubkey)
 	if err != nil {
 		ctx.String(http.StatusNotFound, err.Error())
 		return
-	}
-	var rewards uint64
-	for _, task := range tasks {
-		rewards += task.Reward
 	}
 	ctx.JSON(http.StatusOK, gin.H{"rewards": rewards})
 }
@@ -86,15 +77,14 @@ func (c *Controller) GetTotalRewards(ctx *gin.Context) {
 // @Success      200  {object}  *orm.ProverTask
 // @Failure      404  {object}  string
 // @Failure      500  {object}  string
-// @Router       /task/{pubkey} [get]
-func (c *Controller) GetTask(ctx *gin.Context) {
+// @Router       /prover_task/task/{pubkey} [get]
+func (c *ProverTaskController) GetTask(ctx *gin.Context) {
 	taskID := ctx.Param("task_id")
-	tasks, err := c.db.GetProverTasksByHashes(context.Background(), []string{taskID})
+	task, err := c.service.GetTask(taskID)
 	if err != nil {
 		ctx.String(http.StatusNotFound, err.Error())
 		return
 	}
-	if len(tasks) > 0 {
-		ctx.JSON(http.StatusOK, tasks[0])
-	}
+	ctx.JSON(http.StatusOK, task)
+
 }

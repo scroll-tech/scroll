@@ -2,11 +2,13 @@ package app
 
 import (
 	"fmt"
+	"github.com/gin-gonic/gin"
 	"os"
 	"os/signal"
 	"scroll-tech/miner-api/controller"
 	"scroll-tech/miner-api/internal/config"
 	"scroll-tech/miner-api/internal/orm"
+	"scroll-tech/miner-api/service"
 
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/urfave/cli/v2"
@@ -51,11 +53,18 @@ func action(ctx *cli.Context) error {
 		}
 	}()
 
+	// init miner api
 	ptdb := orm.NewProverTask(db)
+	taskService := service.NewProverTaskService(ptdb)
 
-	c := controller.NewController(ptdb)
+	r := gin.Default()
+	router := r.Group("/api/v1")
+
+	c := controller.NewProverTaskController(router, taskService)
+	c.Route()
+
 	go func() {
-		c.Run(ctx.String(httpPortFlag.Name))
+		r.Run(ctx.String(httpPortFlag.Name))
 	}()
 
 	// Catch CTRL-C to ensure a graceful shutdown.
