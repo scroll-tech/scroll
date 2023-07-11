@@ -86,6 +86,7 @@ type L2CrossMsgOrm interface {
 	DeleteL2CrossMsgFromHeightDBTx(dbTx *sqlx.Tx, height int64) error
 	UpdateL2BlockTimestamp(height uint64, timestamp time.Time) error
 	GetL2EarliestNoBlockTimestampHeight() (uint64, error)
+	GetL2CrossMsgByMsgHashList(msgHashList []string) ([]*CrossMsg, error)
 }
 
 type RelayedMsgOrm interface {
@@ -106,6 +107,8 @@ type L2SentMsgOrm interface {
 	GetL2SentMsgMsgHashByHeightRange(startHeight, endHeight uint64) ([]*L2SentMsg, error)
 	UpdateL2MessageProofInDBTx(ctx context.Context, dbTx *sqlx.Tx, msgHash string, proof string, batch_index uint64) error
 	GetLatestL2SentMsgBatchIndex() (int64, error)
+	GetClaimableL2SentMsgByAddressWithOffset(address string, offset int64, limit int64) ([]*L2SentMsg, error)
+	GetClaimableL2SentMsgByAddressTotalNum(address string) (uint64, error)
 	DeleteL2SentMsgAfterHeightDBTx(dbTx *sqlx.Tx, height int64) error
 }
 

@@ -12,6 +12,7 @@ import (
 type L2SentMsg struct {
 	ID             uint64     `json:"id" db:"id"`
 	OriginalSender string     `json:"original_sender" db:"original_sender"`
+	TxHash         string     `json:"tx_hash" db:"tx_hash"`
 	MsgHash        string     `json:"msg_hash" db:"msg_hash"`
 	Sender         string     `json:"sender" db:"sender"`
 	Target         string     `json:"target" db:"target"`
@@ -53,6 +54,7 @@ func (l *l2SentMsgOrm) BatchInsertL2SentMsgDBTx(dbTx *sqlx.Tx, messages []*L2Sen
 	for i, msg := range messages {
 		messageMaps[i] = map[string]interface{}{
 			"original_sender": msg.OriginalSender,
+			"tx_hash":         msg.TxHash,
 			"sender":          msg.Sender,
 			"target":          msg.Target,
 			"value":           msg.Value,
@@ -64,7 +66,7 @@ func (l *l2SentMsgOrm) BatchInsertL2SentMsgDBTx(dbTx *sqlx.Tx, messages []*L2Sen
 			"msg_data":        msg.MsgData,
 		}
 	}
-	_, err = dbTx.NamedExec(`insert into l2_sent_msg(original_sender, sender, target, value, msg_hash, height, nonce, batch_index, msg_proof, msg_data) values(:original_sender, :sender, :target, :value, :msg_hash, :height, :nonce, :batch_index, :msg_proof, :msg_data);`, messageMaps)
+	_, err = dbTx.NamedExec(`insert into l2_sent_msg(original_sender, tx_hash, sender, target, value, msg_hash, height, nonce, batch_index, msg_proof, msg_data) values(:original_sender, :tx_hash, :sender, :target, :value, :msg_hash, :height, :nonce, :batch_index, :msg_proof, :msg_data);`, messageMaps)
 	if err != nil {
 		log.Error("BatchInsertL2SentMsgDBTx: failed to insert l2 sent msgs", "err", err)
 		return err
@@ -148,4 +150,29 @@ func (l *l2SentMsgOrm) GetLatestL2SentMsgLEHeight(endBlockNumber uint64) (*L2Sen
 func (l *l2SentMsgOrm) DeleteL2SentMsgAfterHeightDBTx(dbTx *sqlx.Tx, height int64) error {
 	_, err := dbTx.Exec(`UPDATE l2_sent_msg SET deleted_at = current_timestamp WHERE height > $1;`, height)
 	return err
+}
+
+func (l *l2SentMsgOrm) GetClaimableL2SentMsgByAddressWithOffset(address string, offset int64, limit int64) ([]*L2SentMsg, error) {
+	var results []*L2SentMsg
+	rows, err := l.db.Queryx(`SELECT * FROM l2_sent_msg WHERE id NOT IN (SELECT l2_sent_msg.id FROM l2_sent_msg INNER JOIN relayed_msg ON l2_sent_msg.msg_hash = relayed_msg.msg_hash WHERE l2_sent_msg.deleted_at IS NULL AND relayed_msg.deleted_at IS NULL) AND (original_sender=$1 OR sender = $1) ORDER BY id DESC LIMIT $2 OFFSET $3;`, address, limit, offset)
+	if err != nil {
+		return nil, err
+	}
+	for rows.Next() {
+		msg := &L2SentMsg{}
+		if err = rows.StructScan(msg); err != nil {
+			break
+		}
+		results = append(results, msg)
+	}
+	return results, err
+}
+
+func (l *l2SentMsgOrm) GetClaimableL2SentMsgByAddressTotalNum(address string) (uint64, error) {
+	var count uint64
+	row := l.db.QueryRowx(`SELECT COUNT(*) FROM l2_sent_msg WHERE id NOT IN (SELECT l2_sent_msg.id FROM l2_sent_msg INNER JOIN relayed_msg ON l2_sent_msg.msg_hash = relayed_msg.msg_hash WHERE l2_sent_msg.deleted_at IS NULL AND relayed_msg.deleted_at IS NULL) AND (original_sender=$1 OR sender = $1);`, address)
+	if err := row.Scan(&count); err != nil {
+		return 0, err
+	}
+	return count, nil
 }

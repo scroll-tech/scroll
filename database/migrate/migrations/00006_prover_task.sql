@@ -14,10 +14,10 @@ create table prover_task
     task_type           SMALLINT       NOT NULL DEFAULT 0,
 
 -- status
-    proving_status      SMALLINT       NOT NULL DEFAULT 0,
-    failure_type        SMALLINT       NOT NULL DEFAULT 0,
-    reward              BIGINT         NOT NULL DEFAULT 0,
-    proof               BYTEA          DEFAULT NULL,
+    proving_status      SMALLINT        NOT NULL DEFAULT 0,
+    failure_type        SMALLINT        NOT NULL DEFAULT 0,
+    reward              DECIMAL(78, 0) NOT NULL DEFAULT 0,
+    proof               BYTEA           DEFAULT NULL,
 
 -- metadata
     created_at          TIMESTAMP(0)   NOT NULL DEFAULT CURRENT_TIMESTAMP,

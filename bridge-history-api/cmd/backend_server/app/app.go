@@ -38,6 +38,17 @@ func setupQueryByAddressHandler(backend_app *mvc.Application) {
 	backend_app.Handle(new(controller.QueryAddressController))
 }
 
+func setupQueryClaimableHandler(backend_app *mvc.Application) {
+	// Register Dependencies.
+	backend_app.Register(
+		database,
+		service.NewHistoryService,
+	)
+
+	// Register Controllers.
+	backend_app.Handle(new(controller.QueryClaimableController))
+}
+
 func setupQueryByHashHandler(backend_app *mvc.Application) {
 	backend_app.Register(
 		database,
@@ -83,6 +94,7 @@ func action(ctx *cli.Context) error {
 
 	mvc.Configure(bridgeApp.Party("/api/txs"), setupQueryByAddressHandler)
 	mvc.Configure(bridgeApp.Party("/api/txsbyhashes"), setupQueryByHashHandler)
+	mvc.Configure(bridgeApp.Party("/api/claimable"), setupQueryClaimableHandler)
 
 	// TODO: make debug mode configurable
 	err = bridgeApp.Listen(cfg.Server.HostPort, iris.WithLogLevel("debug"))
