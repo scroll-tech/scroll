@@ -8,4 +8,5 @@ use (
 	./database
 	./roller
 	./tests/integration-test
+	./miner-api
 )
