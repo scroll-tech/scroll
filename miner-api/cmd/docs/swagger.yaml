@@ -1,0 +1,17 @@
+basePath: /api/v1
+host: localhost:8990
+info:
+  contact:
+    email: Be Pending
+    name: Miner API Support
+  description: This is an API server for Miners.
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+  title: Zero-knowledge Miners API
+  version: "1.0"
+paths: {}
+securityDefinitions:
+  BasicAuth:
+    type: basic
+swagger: "2.0"
