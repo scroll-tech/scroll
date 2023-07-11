@@ -2,14 +2,12 @@ package test
 
 import (
 	"context"
-	"crypto/rand"
 	"encoding/json"
 	"fmt"
 	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
 	"gorm.io/gorm"
 	"io"
-	"math/big"
 	"net/http"
 	"scroll-tech/common/database"
 	"scroll-tech/common/docker"
@@ -22,18 +20,14 @@ import (
 )
 
 var (
-	port, addr, basicPath string
-
 	proverPubkey = "11111"
 )
 
-func init() {
-	portInt, _ := rand.Int(rand.Reader, big.NewInt(2000))
-
-	port = fmt.Sprintf(":%s", portInt.String())
-	addr = fmt.Sprintf("http://localhost%s", port)
+var (
+	port      = ":8990"
+	addr      = fmt.Sprintf("http://localhost%s", port)
 	basicPath = fmt.Sprintf("%s/api/v1/prover_task", addr)
-}
+)
 
 func TestProverTaskAPIs(t *testing.T) {
 	// start database image
