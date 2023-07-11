@@ -2,8 +2,10 @@ package orm
 
 import (
 	"context"
+	"math/big"
 	"testing"
 
+	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
 	"gorm.io/gorm"
 
@@ -60,11 +62,15 @@ func TestProverTaskOrm(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(sqlDB))
 
+	reward := big.NewInt(0)
+	reward.SetString("18446744073709551616", 10) // 1 << 64, uint64 maximum 1<<64 -1
+
 	proverTask := ProverTask{
 		TaskID:          "test-hash",
 		ProverName:      "roller-0",
 		ProverPublicKey: "0",
 		ProvingStatus:   int16(types.RollerAssigned),
+		Reward:          decimal.NewFromBigInt(reward, 0),
 	}
 
 	err = proverTaskOrm.SetProverTask(context.Background(), &proverTask)
@@ -73,6 +79,11 @@ func TestProverTaskOrm(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(proverTasks))
 	assert.Equal(t, proverTask.ProverName, proverTasks[0].ProverName)
+
+	// // test decimal reward, get reward
+	resultReward := proverTask.Reward.BigInt()
+	assert.Equal(t, resultReward, reward)
+	assert.Equal(t, resultReward.String(), "18446744073709551616")
 
 	proverTask.ProvingStatus = int16(types.RollerProofValid)
 	err = proverTaskOrm.SetProverTask(context.Background(), &proverTask)

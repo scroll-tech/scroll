@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/shopspring/decimal"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 
@@ -27,10 +28,10 @@ type ProverTask struct {
 	TaskType int16  `json:"task_type" gorm:"column:task_type;default:0"`
 
 	// status
-	ProvingStatus int16  `json:"proving_status" gorm:"column:proving_status;default:0"`
-	FailureType   int16  `json:"failure_type" gorm:"column:failure_type;default:0"`
-	Reward        uint64 `json:"reward" gorm:"column:reward;default:0"`
-	Proof         []byte `json:"proof" gorm:"column:proof;default:NULL"`
+	ProvingStatus int16           `json:"proving_status" gorm:"column:proving_status;default:0"`
+	FailureType   int16           `json:"failure_type" gorm:"column:failure_type;default:0"`
+	Reward        decimal.Decimal `json:"reward" gorm:"column:reward;default:0;type:decimal(100)"`
+	Proof         []byte          `json:"proof" gorm:"column:proof;default:NULL"`
 
 	// metadata
 	CreatedAt time.Time      `json:"created_at" gorm:"column:created_at"`
