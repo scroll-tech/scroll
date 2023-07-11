@@ -1,4 +1,4 @@
-.PHONY: clean build
+.PHONY: clean build test
 
 build:
 	GOBIN=$(PWD)/build/bin go build -o $(PWD)/build/bin/miner-api ./cmd
