@@ -39,7 +39,7 @@ func (c *ProverTaskController) Route() {
 // @Failure      500  {object}  string
 // @Router       /prover_task/tasks/{pubkey} [get]
 func (c *ProverTaskController) GetTasksByProver(ctx *gin.Context) {
-	pubkey := ctx.Param("pubkey")
+	pubkey := ctx.Query("pubkey")
 	tasks, err := c.service.GetTasksByProver(pubkey)
 	if err != nil {
 		ctx.String(http.StatusNotFound, err.Error())
@@ -60,7 +60,7 @@ func (c *ProverTaskController) GetTasksByProver(ctx *gin.Context) {
 // @Failure      500  {object}  string
 // @Router       /prover_task/total_rewards/{pubkey} [get]
 func (c *ProverTaskController) GetTotalRewards(ctx *gin.Context) {
-	pubkey := ctx.Param("pubkey")
+	pubkey := ctx.Query("pubkey")
 	rewards, err := c.service.GetTotalRewards(pubkey)
 	if err != nil {
 		ctx.String(http.StatusNotFound, err.Error())
@@ -81,7 +81,7 @@ func (c *ProverTaskController) GetTotalRewards(ctx *gin.Context) {
 // @Failure      500  {object}  string
 // @Router       /prover_task/task/{task_id} [get]
 func (c *ProverTaskController) GetTask(ctx *gin.Context) {
-	taskID := ctx.Param("task_id")
+	taskID := ctx.Query("task_id")
 	task, err := c.service.GetTask(taskID)
 	if err != nil {
 		ctx.String(http.StatusNotFound, err.Error())
