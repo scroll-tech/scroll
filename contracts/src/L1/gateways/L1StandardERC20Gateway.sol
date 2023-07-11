@@ -160,7 +160,7 @@ contract L1StandardERC20Gateway is Initializable, ScrollGatewayBase, L1ERC20Gate
         );
 
         // 3. Send message to L1ScrollMessenger.
-        IL1ScrollMessenger(messenger).sendMessage{value: msg.value}(counterpart, 0, _message, _gasLimit);
+        IL1ScrollMessenger(messenger).sendMessage{value: msg.value}(counterpart, 0, _message, _gasLimit, _from);
 
         emit DepositERC20(_token, _l2Token, _from, _to, _amount, _data);
     }

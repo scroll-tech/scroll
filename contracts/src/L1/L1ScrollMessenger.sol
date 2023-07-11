@@ -78,7 +78,7 @@ contract L1ScrollMessenger is PausableUpgradeable, ScrollMessengerBase, IL1Scrol
         bytes memory _message,
         uint256 _gasLimit
     ) external payable override whenNotPaused {
-        _sendMessage(_to, _value, _message, _gasLimit, tx.origin);
+        _sendMessage(_to, _value, _message, _gasLimit, msg.sender);
     }
 
     /// @inheritdoc IScrollMessenger

@@ -183,7 +183,7 @@ contract L1ERC1155Gateway is OwnableUpgradeable, ERC1155HolderUpgradeable, Scrol
         );
 
         // 3. Send message to L1ScrollMessenger.
-        IL1ScrollMessenger(messenger).sendMessage{value: msg.value}(counterpart, 0, _message, _gasLimit);
+        IL1ScrollMessenger(messenger).sendMessage{value: msg.value}(counterpart, 0, _message, _gasLimit, msg.sender);
 
         emit DepositERC1155(_token, _l2Token, msg.sender, _to, _tokenId, _amount);
     }
@@ -226,7 +226,7 @@ contract L1ERC1155Gateway is OwnableUpgradeable, ERC1155HolderUpgradeable, Scrol
         );
 
         // 3. Send message to L1ScrollMessenger.
-        IL1ScrollMessenger(messenger).sendMessage{value: msg.value}(counterpart, 0, _message, _gasLimit);
+        IL1ScrollMessenger(messenger).sendMessage{value: msg.value}(counterpart, 0, _message, _gasLimit, msg.sender);
 
         emit BatchDepositERC1155(_token, _l2Token, msg.sender, _to, _tokenIds, _amounts);
     }
