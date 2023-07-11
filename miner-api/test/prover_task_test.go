@@ -14,6 +14,7 @@ import (
 	"scroll-tech/common/database"
 	"scroll-tech/common/docker"
 	"scroll-tech/common/types"
+	"scroll-tech/database/migrate"
 	"scroll-tech/miner-api/cmd/app"
 	"scroll-tech/miner-api/internal/config"
 	"scroll-tech/miner-api/internal/orm"
@@ -105,11 +106,14 @@ var (
 )
 
 func insertSomeProverTasks(t *testing.T, db *gorm.DB) {
-	err := db.AutoMigrate(new(orm.ProverTask))
+	sqlDB, err := db.DB()
 	assert.NoError(t, err)
+	assert.NoError(t, migrate.ResetDB(sqlDB))
+
 	ptdb := orm.NewProverTask(db)
 	err = ptdb.SetProverTask(context.Background(), &task1)
 	assert.NoError(t, err)
+
 	err = ptdb.SetProverTask(context.Background(), &task2)
 	assert.NoError(t, err)
 }
