@@ -7,6 +7,9 @@ require (
 	gorm.io/gorm v1.25.2
 )
 
+replace github.com/ethereum/go-ethereum/log => github.com/scroll-tech/go-ethereum v1.10.26 // indirect
+
+
 require (
 	github.com/KyleBanks/depth v1.2.1 // indirect
 	github.com/PuerkitoBio/purell v1.2.0 // indirect
