@@ -25,6 +25,8 @@ on l2_sent_msg (msg_hash) where deleted_at IS NULL;
 create unique index uk_nonce
 on l2_sent_msg (nonce) where deleted_at IS NULL;
 
+CREATE INDEX idx_msg_hash_deleted_at_l2_sent_msg on l2_sent_msg (msg_hash, deleted_at);
+
 CREATE OR REPLACE FUNCTION update_timestamp()
 RETURNS TRIGGER AS $$
 BEGIN
