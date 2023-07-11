@@ -88,5 +88,4 @@ func (c *ProverTaskController) GetTask(ctx *gin.Context) {
 		return
 	}
 	ctx.JSON(http.StatusOK, task)
-
 }

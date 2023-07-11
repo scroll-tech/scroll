@@ -66,7 +66,7 @@ func testGetProverTasksByProver(t *testing.T) {
 }
 
 func testGetTotalRewards(t *testing.T) {
-	rewards := make(map[string]uint64)
+	rewards := make(map[string]decimal.Decimal)
 	getResp(t, fmt.Sprintf("%s/total_rewards?pubkey=%s", basicPath, proverPubkey), &rewards)
 	assert.Equal(t, decimal.NewFromInt(22), rewards["rewards"])
 }
