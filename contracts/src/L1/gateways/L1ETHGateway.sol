@@ -113,7 +113,7 @@ contract L1ETHGateway is Initializable, ScrollGatewayBase, IL1ETHGateway, IMessa
         uint256 _amount,
         bytes memory _data,
         uint256 _gasLimit
-    ) internal nonReentrant {
+    ) internal virtual nonReentrant {
         require(_amount > 0, "deposit zero eth");
 
         // 1. Extract real sender if this call is from L1GatewayRouter.
@@ -131,7 +131,7 @@ contract L1ETHGateway is Initializable, ScrollGatewayBase, IL1ETHGateway, IMessa
             _data
         );
 
-        IL1ScrollMessenger(messenger).sendMessage{value: msg.value}(counterpart, _amount, _message, _gasLimit);
+        IL1ScrollMessenger(messenger).sendMessage{value: msg.value}(counterpart, _amount, _message, _gasLimit, _from);
 
         emit DepositETH(_from, _to, _amount, _data);
     }

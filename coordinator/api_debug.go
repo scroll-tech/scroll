@@ -51,10 +51,12 @@ func (m *Manager) ListRollers() ([]*RollerInfo, error) {
 			PublicKey: pk,
 		}
 		for id, sess := range m.sessions {
-			if _, ok := sess.info.Rollers[pk]; ok {
-				info.ActiveSessionStartTime = time.Unix(sess.info.StartTimestamp, 0)
-				info.ActiveSession = id
-				break
+			for _, proverTask := range sess.proverTasks {
+				if proverTask.ProverPublicKey == pk {
+					info.ActiveSessionStartTime = proverTask.CreatedAt
+					info.ActiveSession = id
+					break
+				}
 			}
 		}
 		res = append(res, info)
@@ -66,14 +68,14 @@ func (m *Manager) ListRollers() ([]*RollerInfo, error) {
 func newSessionInfo(sess *session, status types.ProvingStatus, errMsg string, finished bool) *SessionInfo {
 	now := time.Now()
 	var nameList []string
-	for pk := range sess.info.Rollers {
-		nameList = append(nameList, sess.info.Rollers[pk].Name)
+	for _, proverTask := range sess.proverTasks {
+		nameList = append(nameList, proverTask.ProverName)
 	}
 	info := SessionInfo{
-		ID:              sess.info.ID,
+		ID:              sess.taskID,
 		Status:          status.String(),
 		AssignedRollers: nameList,
-		StartTime:       time.Unix(sess.info.StartTimestamp, 0),
+		StartTime:       sess.proverTasks[0].CreatedAt,
 		Error:           errMsg,
 	}
 	if finished {

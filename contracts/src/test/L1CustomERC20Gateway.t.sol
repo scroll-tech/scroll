@@ -63,6 +63,7 @@ contract L1CustomERC20GatewayTest is L1GatewayTestBase {
         // Prepare token balances
         l1Token.mint(address(this), type(uint128).max);
         l1Token.approve(address(gateway), type(uint256).max);
+        l1Token.approve(address(router), type(uint256).max);
     }
 
     function testInitialized() public {

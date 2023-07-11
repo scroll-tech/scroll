@@ -113,17 +113,12 @@ contract L1WETHGateway is Initializable, ScrollGatewayBase, L1ERC20Gateway {
         require(_amount > 0, "deposit zero amount");
         require(_token == WETH, "only WETH is allowed");
 
-        // 1. Extract real sender if this call is from L1GatewayRouter.
-        address _from = msg.sender;
-        if (router == msg.sender) {
-            (_from, _data) = abi.decode(_data, (address, bytes));
-        }
-
-        // 2. Transfer token into this contract.
-        IERC20(_token).safeTransferFrom(_from, address(this), _amount);
+        // 1. Transfer token into this contract.
+        address _from;
+        (_from, _amount, _data) = _transferERC20In(_token, _amount, _data);
         IWETH(_token).withdraw(_amount);
 
-        // 3. Generate message passed to L2StandardERC20Gateway.
+        // 2. Generate message passed to L2WETHGateway.
         bytes memory _message = abi.encodeWithSelector(
             IL2ERC20Gateway.finalizeDepositERC20.selector,
             _token,
@@ -134,12 +129,13 @@ contract L1WETHGateway is Initializable, ScrollGatewayBase, L1ERC20Gateway {
             _data
         );
 
-        // 4. Send message to L1ScrollMessenger.
+        // 3. Send message to L1ScrollMessenger.
         IL1ScrollMessenger(messenger).sendMessage{value: _amount + msg.value}(
             counterpart,
             _amount,
             _message,
-            _gasLimit
+            _gasLimit,
+            _from
         );
 
         emit DepositERC20(_token, l2WETH, _from, _to, _amount, _data);

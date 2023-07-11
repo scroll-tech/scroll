@@ -24,12 +24,6 @@ contract L1ETHGatewayTest is L1GatewayTestBase {
 
     L2ETHGateway private counterpartGateway;
 
-    bool private revertOnReceive;
-
-    receive() external payable {
-        if (revertOnReceive) revert("");
-    }
-
     function setUp() public {
         setUpBase();
 

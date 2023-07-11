@@ -6,6 +6,9 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import {IL1ERC20Gateway} from "./IL1ERC20Gateway.sol";
+import {IL1GatewayRouter} from "./IL1GatewayRouter.sol";
+
+import {ScrollGatewayBase} from "../../libraries/gateway/ScrollGatewayBase.sol";
 
 import {IL2ERC20Gateway} from "../../L2/gateways/IL2ERC20Gateway.sol";
 import {IScrollMessenger} from "../../libraries/IScrollMessenger.sol";
@@ -114,6 +117,41 @@ abstract contract L1ERC20Gateway is IL1ERC20Gateway, IMessageDropCallback, Scrol
         address _receiver,
         uint256 _amount
     ) internal virtual;
+
+    /// @dev Internal function to transfer ERC20 token to this contract.
+    /// @param _token The address of token to transfer.
+    /// @param _amount The amount of token to transfer.
+    /// @param _data The data passed by caller.
+    function _transferERC20In(
+        address _token,
+        uint256 _amount,
+        bytes memory _data
+    )
+        internal
+        returns (
+            address,
+            uint256,
+            bytes memory
+        )
+    {
+        address _from = msg.sender;
+        if (router == msg.sender) {
+            // Extract real sender if this call is from L1GatewayRouter.
+            (_from, _data) = abi.decode(_data, (address, bytes));
+            _amount = IL1GatewayRouter(msg.sender).requestERC20(_from, _token, _amount);
+        } else {
+            // common practice to handle fee on transfer token.
+            uint256 _before = IERC20(_token).balanceOf(address(this));
+            IERC20(_token).safeTransferFrom(_from, address(this), _amount);
+            uint256 _after = IERC20(_token).balanceOf(address(this));
+            // no unchecked here, since some weird token may return arbitrary balance.
+            _amount = _after - _before;
+        }
+        // ignore weird fee on transfer token
+        require(_amount > 0, "deposit zero amount");
+
+        return (_from, _amount, _data);
+    }
 
     /// @dev Internal function to do all the deposit operations.
     ///

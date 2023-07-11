@@ -10,13 +10,13 @@ import (
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/urfave/cli/v2"
 
+	"scroll-tech/common/database"
 	"scroll-tech/common/metrics"
-	cutils "scroll-tech/common/utils"
+	"scroll-tech/common/utils"
 	"scroll-tech/common/version"
 
 	"scroll-tech/bridge/internal/config"
 	"scroll-tech/bridge/internal/controller/relayer"
-	"scroll-tech/bridge/internal/utils"
 )
 
 var app *cli.App
@@ -29,18 +29,18 @@ func init() {
 	app.Usage = "The Scroll Message Relayer"
 	app.Description = "Message Relayer contains two main service: 1) relay l1 message to l2. 2) relay l2 message to l1."
 	app.Version = version.Version
-	app.Flags = append(app.Flags, cutils.CommonFlags...)
+	app.Flags = append(app.Flags, utils.CommonFlags...)
 	app.Commands = []*cli.Command{}
 	app.Before = func(ctx *cli.Context) error {
-		return cutils.LogSetup(ctx)
+		return utils.LogSetup(ctx)
 	}
 	// Register `message-relayer-test` app for integration-test.
-	cutils.RegisterSimulation(app, cutils.MessageRelayerApp)
+	utils.RegisterSimulation(app, utils.MessageRelayerApp)
 }
 
 func action(ctx *cli.Context) error {
 	// Load config file.
-	cfgFile := ctx.String(cutils.ConfigFileFlag.Name)
+	cfgFile := ctx.String(utils.ConfigFileFlag.Name)
 	cfg, err := config.NewConfig(cfgFile)
 	if err != nil {
 		log.Crit("failed to load config file", "config file", cfgFile, "error", err)
@@ -48,13 +48,13 @@ func action(ctx *cli.Context) error {
 
 	subCtx, cancel := context.WithCancel(ctx.Context)
 	// Init db connection
-	db, err := utils.InitDB(cfg.DBConfig)
+	db, err := database.InitDB(cfg.DBConfig)
 	if err != nil {
 		log.Crit("failed to init db connection", "err", err)
 	}
 	defer func() {
 		cancel()
-		if err = utils.CloseDB(db); err != nil {
+		if err = database.CloseDB(db); err != nil {
 			log.Error("can not close ormFactory", "error", err)
 		}
 	}()
@@ -69,7 +69,7 @@ func action(ctx *cli.Context) error {
 	}
 
 	// Start l1relayer process
-	go cutils.Loop(subCtx, 10*time.Second, l1relayer.ProcessSavedEvents)
+	go utils.Loop(subCtx, 10*time.Second, l1relayer.ProcessSavedEvents)
 
 	// Finish start all message relayer functions
 	log.Info("Start message-relayer successfully")

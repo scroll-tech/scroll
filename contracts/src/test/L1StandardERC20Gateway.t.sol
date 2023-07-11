@@ -83,12 +83,15 @@ contract L1StandardERC20GatewayTest is L1GatewayTestBase {
         l2Token = MockERC20(gateway.getL2ERC20Address(address(l1Token)));
         l1Token.mint(address(this), type(uint128).max);
         l1Token.approve(address(gateway), type(uint256).max);
+        l1Token.approve(address(router), type(uint256).max);
 
         reentrantToken.mint(address(this), type(uint128).max);
         reentrantToken.approve(address(gateway), type(uint256).max);
+        reentrantToken.approve(address(router), type(uint256).max);
 
         feeToken.mint(address(this), type(uint128).max);
         feeToken.approve(address(gateway), type(uint256).max);
+        feeToken.approve(address(router), type(uint256).max);
     }
 
     function testInitialized() public {
@@ -275,7 +278,7 @@ contract L1StandardERC20GatewayTest is L1GatewayTestBase {
             address(this),
             recipient,
             amount,
-            dataToCall
+            abi.encode(true, abi.encode(dataToCall, abi.encode(l1Token.symbol(), l1Token.name(), l1Token.decimals())))
         );
         gateway.depositERC20AndCall(address(l1Token), recipient, amount, dataToCall, 0);
         gateway.depositERC20AndCall(address(l1Token), recipient, amount, dataToCall, 0);
@@ -493,7 +496,7 @@ contract L1StandardERC20GatewayTest is L1GatewayTestBase {
             address(this),
             address(this),
             amount,
-            abi.encode(new bytes(0), abi.encode(l1Token.symbol(), l1Token.name(), l1Token.decimals()))
+            abi.encode(true, abi.encode(new bytes(0), abi.encode(l1Token.symbol(), l1Token.name(), l1Token.decimals())))
         );
         bytes memory xDomainCalldata = abi.encodeWithSignature(
             "relayMessage(address,address,uint256,uint256,bytes)",
@@ -564,7 +567,7 @@ contract L1StandardERC20GatewayTest is L1GatewayTestBase {
             address(this),
             recipient,
             amount,
-            abi.encode(new bytes(0), abi.encode(l1Token.symbol(), l1Token.name(), l1Token.decimals()))
+            abi.encode(true, abi.encode(new bytes(0), abi.encode(l1Token.symbol(), l1Token.name(), l1Token.decimals())))
         );
         bytes memory xDomainCalldata = abi.encodeWithSignature(
             "relayMessage(address,address,uint256,uint256,bytes)",
@@ -636,7 +639,7 @@ contract L1StandardERC20GatewayTest is L1GatewayTestBase {
             address(this),
             recipient,
             amount,
-            abi.encode(dataToCall, abi.encode(l1Token.symbol(), l1Token.name(), l1Token.decimals()))
+            abi.encode(true, abi.encode(dataToCall, abi.encode(l1Token.symbol(), l1Token.name(), l1Token.decimals())))
         );
         bytes memory xDomainCalldata = abi.encodeWithSignature(
             "relayMessage(address,address,uint256,uint256,bytes)",

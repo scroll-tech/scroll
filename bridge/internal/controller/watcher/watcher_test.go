@@ -9,12 +9,13 @@ import (
 	"github.com/stretchr/testify/assert"
 	"gorm.io/gorm"
 
+	"scroll-tech/common/database"
 	"scroll-tech/common/docker"
+	"scroll-tech/common/types"
+
+	"scroll-tech/database/migrate"
 
 	"scroll-tech/bridge/internal/config"
-	"scroll-tech/bridge/internal/orm/migrate"
-	bridgeTypes "scroll-tech/bridge/internal/types"
-	"scroll-tech/bridge/internal/utils"
 )
 
 var (
@@ -27,8 +28,8 @@ var (
 	l2Cli *ethclient.Client
 
 	// block trace
-	wrappedBlock1 *bridgeTypes.WrappedBlock
-	wrappedBlock2 *bridgeTypes.WrappedBlock
+	wrappedBlock1 *types.WrappedBlock
+	wrappedBlock2 *types.WrappedBlock
 )
 
 func setupEnv(t *testing.T) (err error) {
@@ -40,7 +41,7 @@ func setupEnv(t *testing.T) (err error) {
 
 	cfg.L2Config.RelayerConfig.SenderConfig.Endpoint = base.L1gethImg.Endpoint()
 	cfg.L1Config.RelayerConfig.SenderConfig.Endpoint = base.L2gethImg.Endpoint()
-	cfg.DBConfig = &config.DBConfig{
+	cfg.DBConfig = &database.Config{
 		DSN:        base.DBConfig.DSN,
 		DriverName: base.DBConfig.DriverName,
 		MaxOpenNum: base.DBConfig.MaxOpenNum,
@@ -56,7 +57,7 @@ func setupEnv(t *testing.T) (err error) {
 		return err
 	}
 	// unmarshal blockTrace
-	wrappedBlock1 = &bridgeTypes.WrappedBlock{}
+	wrappedBlock1 = &types.WrappedBlock{}
 	if err = json.Unmarshal(templateBlockTrace1, wrappedBlock1); err != nil {
 		return err
 	}
@@ -66,7 +67,7 @@ func setupEnv(t *testing.T) (err error) {
 		return err
 	}
 	// unmarshal blockTrace
-	wrappedBlock2 = &bridgeTypes.WrappedBlock{}
+	wrappedBlock2 = &types.WrappedBlock{}
 	if err = json.Unmarshal(templateBlockTrace2, wrappedBlock2); err != nil {
 		return err
 	}
@@ -74,7 +75,7 @@ func setupEnv(t *testing.T) (err error) {
 }
 
 func setupDB(t *testing.T) *gorm.DB {
-	db, err := utils.InitDB(cfg.DBConfig)
+	db, err := database.InitDB(cfg.DBConfig)
 	assert.NoError(t, err)
 	sqlDB, err := db.DB()
 	assert.NoError(t, err)
