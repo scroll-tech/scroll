@@ -11,7 +11,7 @@ create table chunk
     end_block_number                  BIGINT          NOT NULL,
     end_block_hash                    VARCHAR         NOT NULL,
     total_l1_messages_popped_before   BIGINT          NOT NULL,
-    total_l1_messages_popped_in_chunk BIGINT          NOT NULL,
+    total_l1_messages_popped_in_chunk INTEGER         NOT NULL,
     start_block_time                  BIGINT          NOT NULL,
 
 -- proof
