@@ -8,6 +8,8 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 
+	"github.com/shopspring/decimal"
+
 	"scroll-tech/common/types"
 	"scroll-tech/common/types/message"
 )
@@ -16,18 +18,18 @@ import (
 type ProverTask struct {
 	db *gorm.DB `gorm:"column:-"`
 
-	ID              int64          `json:"id" gorm:"column:id"`
-	TaskID          string         `json:"task_id" gorm:"column:task_id"`
-	ProverPublicKey string         `json:"prover_public_key" gorm:"column:prover_public_key"`
-	ProverName      string         `json:"prover_name" gorm:"column:prover_name"`
-	TaskType        int16          `json:"task_type" gorm:"column:task_type;default:0"`
-	ProvingStatus   int16          `json:"proving_status" gorm:"column:proving_status;default:0"`
-	FailureType     int16          `json:"failure_type" gorm:"column:failure_type;default:0"`
-	Reward          uint64         `json:"reward" gorm:"column:reward;default:0"`
-	Proof           []byte         `json:"proof" gorm:"column:proof;default:NULL"`
-	CreatedAt       time.Time      `json:"created_at" gorm:"column:created_at"`
-	UpdatedAt       time.Time      `json:"updated_at" gorm:"column:updated_at"`
-	DeletedAt       gorm.DeletedAt `json:"deleted_at" gorm:"column:deleted_at"`
+	ID              int64           `json:"id" gorm:"column:id"`
+	TaskID          string          `json:"task_id" gorm:"column:task_id"`
+	ProverPublicKey string          `json:"prover_public_key" gorm:"column:prover_public_key"`
+	ProverName      string          `json:"prover_name" gorm:"column:prover_name"`
+	TaskType        int16           `json:"task_type" gorm:"column:task_type;default:0"`
+	ProvingStatus   int16           `json:"proving_status" gorm:"column:proving_status;default:0"`
+	FailureType     int16           `json:"failure_type" gorm:"column:failure_type;default:0"`
+	Reward          decimal.Decimal `json:"reward" gorm:"column:reward;default:0;type:decimal(78)"`
+	Proof           []byte          `json:"proof" gorm:"column:proof;default:NULL"`
+	CreatedAt       time.Time       `json:"created_at" gorm:"column:created_at"`
+	UpdatedAt       time.Time       `json:"updated_at" gorm:"column:updated_at"`
+	DeletedAt       gorm.DeletedAt  `json:"deleted_at" gorm:"column:deleted_at"`
 }
 
 // NewProverTask creates a new ProverTask instance.

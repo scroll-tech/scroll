@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/json"
 	"fmt"
+	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
 	"gorm.io/gorm"
 	"io"
@@ -12,11 +13,11 @@ import (
 	"net/http"
 	"scroll-tech/common/database"
 	"scroll-tech/common/docker"
+	"scroll-tech/common/types"
 	"scroll-tech/miner-api/cmd/app"
 	"scroll-tech/miner-api/internal/config"
 	"scroll-tech/miner-api/internal/orm"
 	"testing"
-	"time"
 )
 
 var (
@@ -66,7 +67,7 @@ func testGetProverTasksByProver(t *testing.T) {
 func testGetTotalRewards(t *testing.T) {
 	rewards := make(map[string]uint64)
 	getResp(t, fmt.Sprintf("%s/total_rewards?pubkey=%s", basicPath, proverPubkey), &rewards)
-	assert.Equal(t, 22, rewards["rewards"])
+	assert.Equal(t, decimal.NewFromInt(22), rewards["rewards"])
 }
 
 func testGetProverTask(t *testing.T) {
@@ -87,31 +88,19 @@ func getResp(t *testing.T, url string, value interface{}) {
 
 var (
 	task1 = orm.ProverTask{
-		ID:              1,
 		TaskID:          "1",
 		ProverPublicKey: proverPubkey,
-		ProverName:      "prover",
-		TaskType:        0,
-		ProvingStatus:   0,
-		FailureType:     0,
-		Reward:          10,
-		Proof:           nil,
-		CreatedAt:       time.Now(),
-		UpdatedAt:       time.Now(),
+		ProverName:      "prover-0",
+		ProvingStatus:   int16(types.RollerAssigned),
+		Reward:          decimal.NewFromInt(10),
 	}
 
 	task2 = orm.ProverTask{
-		ID:              2,
 		TaskID:          "2",
 		ProverPublicKey: proverPubkey,
-		ProverName:      "prover",
-		TaskType:        0,
-		ProvingStatus:   0,
-		FailureType:     0,
-		Reward:          12,
-		Proof:           nil,
-		CreatedAt:       time.Now(),
-		UpdatedAt:       time.Now(),
+		ProverName:      "prover-1",
+		ProvingStatus:   int16(types.RollerAssigned),
+		Reward:          decimal.NewFromInt(12),
 	}
 )
 

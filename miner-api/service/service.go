@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"github.com/shopspring/decimal"
 
 	"scroll-tech/miner-api/internal/orm"
 )
@@ -18,14 +19,14 @@ func (p *ProverTaskService) GetTasksByProver(pubkey string) ([]*orm.ProverTask, 
 	return p.db.GetProverTasksByProver(context.Background(), pubkey)
 }
 
-func (p *ProverTaskService) GetTotalRewards(pubkey string) (uint64, error) {
+func (p *ProverTaskService) GetTotalRewards(pubkey string) (decimal.Decimal, error) {
 	tasks, err := p.db.GetProverTasksByProver(context.Background(), pubkey)
 	if err != nil {
-		return 0, err
+		return decimal.Decimal{}, err
 	}
-	var rewards uint64
+	var rewards decimal.Decimal
 	for _, task := range tasks {
-		rewards += task.Reward
+		rewards.Add(task.Reward)
 	}
 	return rewards, nil
 }
