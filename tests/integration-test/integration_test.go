@@ -1,45 +1,87 @@
-package integration
+package integration_test
 
 import (
+	"crypto/rand"
+	"io/ioutil"
+	"math/big"
+	"net/http"
+	"strconv"
+	"strings"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
+
+	bcmd "scroll-tech/bridge/cmd"
+
+	"scroll-tech/common/docker"
+
+	rapp "scroll-tech/roller/cmd/app"
+
+	"scroll-tech/database/migrate"
+
+	capp "scroll-tech/coordinator/cmd/app"
 )
 
-func TestIntegration(t *testing.T) {
-	setupEnv(t)
+var (
+	base           *docker.App
+	bridgeApp      *bcmd.MockApp
+	coordinatorApp *capp.CoordinatorApp
+	rollerApp      *rapp.RollerApp
+)
 
-	// test db_cli migrate cmd.
-	t.Run("testDBClientMigrate", func(t *testing.T) {
-		runDBCliApp(t, "migrate", "current version:")
-	})
-
-	// test bridge service
-	t.Run("testStartProcess", testStartProcess)
-
-	t.Cleanup(func() {
-		free(t)
-	})
+func TestMain(m *testing.M) {
+	base = docker.NewDockerApp()
+	bridgeApp = bcmd.NewBridgeApp(base, "../../bridge/conf/config.json")
+	coordinatorApp = capp.NewCoordinatorApp(base, "../../coordinator/config.json")
+	rollerApp = rapp.NewRollerApp(base, "../../roller/config.json", coordinatorApp.WSEndpoint())
+	m.Run()
+	bridgeApp.Free()
+	coordinatorApp.Free()
+	rollerApp.Free()
+	base.Free()
 }
 
-func testStartProcess(t *testing.T) {
-	// migrate db.
-	runDBCliApp(t, "reset", "successful to reset")
-	runDBCliApp(t, "migrate", "current version:")
+func TestStartProcess(t *testing.T) {
+	// Start l1geth l2geth and postgres docker containers.
+	base.RunImages(t)
+	// Reset db.
+	assert.NoError(t, migrate.ResetDB(base.DBClient(t)))
 
-	// Start bridge process.
-	bridgeCmd := runBridgeApp(t)
-	bridgeCmd.RunApp(func() bool { return bridgeCmd.WaitResult(time.Second*20, "Start bridge successfully") })
+	// Run coordinator app.
+	coordinatorApp.RunApp(t)
+	// Run roller app.
+	rollerApp.RunApp(t)
 
-	// Start coordinator process.
-	coordinatorCmd := runCoordinatorApp(t, "--ws", "--ws.port", "8391")
-	coordinatorCmd.RunApp(func() bool { return coordinatorCmd.WaitResult(time.Second*20, "Start coordinator successfully") })
+	// Free apps.
+	rollerApp.WaitExit()
+	coordinatorApp.WaitExit()
+}
 
-	// Start roller process.
-	rollerCmd := runRollerApp(t)
-	rollerCmd.ExpectWithTimeout(true, time.Second*60, "register to coordinator successfully!")
-	rollerCmd.RunApp(func() bool { return rollerCmd.WaitResult(time.Second*40, "roller start successfully") })
+func TestMonitorMetrics(t *testing.T) {
+	// Start l1geth l2geth and postgres docker containers.
+	base.RunImages(t)
+	// Reset db.
+	assert.NoError(t, migrate.ResetDB(base.DBClient(t)))
 
-	rollerCmd.WaitExit()
-	bridgeCmd.WaitExit()
-	coordinatorCmd.WaitExit()
+	// Start coordinator process with metrics server.
+	port, _ := rand.Int(rand.Reader, big.NewInt(2000))
+	svrPort := strconv.FormatInt(port.Int64()+52000, 10)
+	coordinatorApp.RunApp(t, "--metrics", "--metrics.addr", "localhost", "--metrics.port", svrPort)
+
+	time.Sleep(time.Second)
+
+	// Get coordinator monitor metrics.
+	resp, err := http.Get("http://localhost:" + svrPort)
+	assert.NoError(t, err)
+	defer resp.Body.Close()
+	body, err := ioutil.ReadAll(resp.Body)
+	assert.NoError(t, err)
+	bodyStr := string(body)
+	assert.Equal(t, 200, resp.StatusCode)
+	assert.Equal(t, true, strings.Contains(bodyStr, "coordinator_sessions_timeout_total"))
+	assert.Equal(t, true, strings.Contains(bodyStr, "coordinator_rollers_disconnects_total"))
+
+	// Exit.
+	coordinatorApp.WaitExit()
 }

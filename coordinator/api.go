@@ -7,16 +7,22 @@ import (
 
 	"github.com/patrickmn/go-cache"
 	"github.com/scroll-tech/go-ethereum/log"
+	geth_metrics "github.com/scroll-tech/go-ethereum/metrics"
 	"github.com/scroll-tech/go-ethereum/rpc"
 
-	"scroll-tech/common/message"
+	"scroll-tech/common/metrics"
+	"scroll-tech/common/types/message"
+)
+
+var (
+	coordinatorRollersDisconnectsTotalCounter = geth_metrics.NewRegisteredCounter("coordinator/rollers/disconnects/total", metrics.ScrollRegistry)
 )
 
 // RollerAPI for rollers inorder to register and submit proof
 type RollerAPI interface {
 	RequestToken(authMsg *message.AuthMsg) (string, error)
 	Register(ctx context.Context, authMsg *message.AuthMsg) (*rpc.Subscription, error)
-	SubmitProof(proof *message.ProofMsg) (bool, error)
+	SubmitProof(proof *message.ProofMsg) error
 }
 
 // RequestToken generates and sends back register token for roller
@@ -82,6 +88,7 @@ func (m *Manager) Register(ctx context.Context, authMsg *message.AuthMsg) (*rpc.
 			case task := <-taskCh:
 				notifier.Notify(rpcSub.ID, task) //nolint
 			case err := <-rpcSub.Err():
+				coordinatorRollersDisconnectsTotalCounter.Inc(1)
 				log.Warn("client stopped the ws connection", "name", authMsg.Identity.Name, "pubkey", pubkey, "err", err)
 				return
 			case <-notifier.Closed():
@@ -95,26 +102,28 @@ func (m *Manager) Register(ctx context.Context, authMsg *message.AuthMsg) (*rpc.
 }
 
 // SubmitProof roller pull proof
-func (m *Manager) SubmitProof(proof *message.ProofMsg) (bool, error) {
+func (m *Manager) SubmitProof(proof *message.ProofMsg) error {
 	// Verify the signature
 	if ok, err := proof.Verify(); !ok {
 		if err != nil {
 			log.Error("failed to verify proof message", "error", err)
 		}
-		return false, errors.New("auth signature verify fail")
+		return errors.New("auth signature verify fail")
 	}
 
 	pubkey, _ := proof.PublicKey()
 	// Only allow registered pub-key.
 	if !m.existTaskIDForRoller(pubkey, proof.ID) {
-		return false, fmt.Errorf("the roller or session id doesn't exist, pubkey: %s, ID: %s", pubkey, proof.ID)
+		return fmt.Errorf("the roller or session id doesn't exist, pubkey: %s, ID: %s", pubkey, proof.ID)
 	}
+
+	m.updateMetricRollerProofsLastFinishedTimestampGauge(pubkey)
 
 	err := m.handleZkProof(pubkey, proof.ProofDetail)
 	if err != nil {
-		return false, err
+		return err
 	}
 	defer m.freeTaskIDForRoller(pubkey, proof.ID)
 
-	return true, nil
+	return nil
 }

@@ -2,33 +2,27 @@ package tests
 
 import (
 	"context"
-	"crypto/ecdsa"
-	"math/big"
-	"scroll-tech/common/docker"
 	"testing"
-
-	"scroll-tech/bridge/config"
-	"scroll-tech/bridge/mock_bridge"
 
 	"github.com/scroll-tech/go-ethereum/accounts/abi/bind"
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/core/types"
-	"github.com/scroll-tech/go-ethereum/crypto"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/stretchr/testify/assert"
+	"gorm.io/gorm"
+
+	"scroll-tech/common/database"
+	"scroll-tech/common/docker"
+
+	"scroll-tech/database/migrate"
+
+	bcmd "scroll-tech/bridge/cmd"
+	"scroll-tech/bridge/mock_bridge"
 )
 
 var (
-	// config
-	cfg *config.Config
-
-	// private key
-	privateKey *ecdsa.PrivateKey
-
-	// docker consider handler.
-	l1gethImg docker.ImgInstance
-	l2gethImg docker.ImgInstance
-	dbImg     docker.ImgInstance
+	base      *docker.App
+	bridgeApp *bcmd.MockApp
 
 	// clients
 	l1Client *ethclient.Client
@@ -43,64 +37,57 @@ var (
 	l1MessengerAddress  common.Address
 
 	// l1 rollup contract
-	l1RollupInstance *mock_bridge.MockBridgeL1
-	l1RollupAddress  common.Address
+	scrollChainInstance *mock_bridge.MockBridgeL1
+	scrollChainAddress  common.Address
 
 	// l2 messenger contract
 	l2MessengerInstance *mock_bridge.MockBridgeL2
 	l2MessengerAddress  common.Address
 )
 
-func setupEnv(t *testing.T) {
-	var err error
-	privateKey, err = crypto.ToECDSA(common.FromHex("1212121212121212121212121212121212121212121212121212121212121212"))
+func setupDB(t *testing.T) *gorm.DB {
+	cfg := &database.Config{
+		DSN:        base.DBConfig.DSN,
+		DriverName: base.DBConfig.DriverName,
+		MaxOpenNum: base.DBConfig.MaxOpenNum,
+		MaxIdleNum: base.DBConfig.MaxIdleNum,
+	}
+	db, err := database.InitDB(cfg)
 	assert.NoError(t, err)
-
-	// Load config.
-	cfg, err = config.NewConfig("../config.json")
+	sqlDB, err := db.DB()
 	assert.NoError(t, err)
-	cfg.L1Config.Confirmations = 0
-	cfg.L1Config.RelayerConfig.MessageSenderPrivateKeys = []*ecdsa.PrivateKey{privateKey}
-	cfg.L1Config.RelayerConfig.RollupSenderPrivateKeys = []*ecdsa.PrivateKey{privateKey}
-	cfg.L2Config.Confirmations = 0
-	cfg.L2Config.RelayerConfig.MessageSenderPrivateKeys = []*ecdsa.PrivateKey{privateKey}
-	cfg.L2Config.RelayerConfig.RollupSenderPrivateKeys = []*ecdsa.PrivateKey{privateKey}
-
-	// Create l1geth container.
-	l1gethImg = docker.NewTestL1Docker(t)
-	cfg.L2Config.RelayerConfig.SenderConfig.Endpoint = l1gethImg.Endpoint()
-	cfg.L1Config.Endpoint = l1gethImg.Endpoint()
-
-	// Create l2geth container.
-	l2gethImg = docker.NewTestL2Docker(t)
-	cfg.L1Config.RelayerConfig.SenderConfig.Endpoint = l2gethImg.Endpoint()
-	cfg.L2Config.Endpoint = l2gethImg.Endpoint()
-
-	// Create db container.
-	dbImg = docker.NewTestDBDocker(t, cfg.DBConfig.DriverName)
-	cfg.DBConfig.DSN = dbImg.Endpoint()
-
-	// Create l1geth and l2geth client.
-	l1Client, err = ethclient.Dial(cfg.L1Config.Endpoint)
-	assert.NoError(t, err)
-	l2Client, err = ethclient.Dial(cfg.L2Config.Endpoint)
-	assert.NoError(t, err)
-
-	// Create l1 and l2 auth
-	l1Auth = prepareAuth(t, l1Client, privateKey)
-	l2Auth = prepareAuth(t, l2Client, privateKey)
+	assert.NoError(t, migrate.ResetDB(sqlDB))
+	return db
 }
 
-func free(t *testing.T) {
-	if dbImg != nil {
-		assert.NoError(t, dbImg.Stop())
-	}
-	if l1gethImg != nil {
-		assert.NoError(t, l1gethImg.Stop())
-	}
-	if l2gethImg != nil {
-		assert.NoError(t, l2gethImg.Stop())
-	}
+func TestMain(m *testing.M) {
+	base = docker.NewDockerApp()
+	bridgeApp = bcmd.NewBridgeApp(base, "../conf/config.json")
+	defer bridgeApp.Free()
+	defer base.Free()
+	m.Run()
+}
+
+func setupEnv(t *testing.T) {
+	base.RunImages(t)
+
+	var err error
+	l1Client, err = base.L1Client()
+	assert.NoError(t, err)
+	l2Client, err = base.L2Client()
+	assert.NoError(t, err)
+
+	l1Cfg, l2Cfg := bridgeApp.Config.L1Config, bridgeApp.Config.L2Config
+	l1Cfg.Confirmations = 0
+	l1Cfg.RelayerConfig.SenderConfig.Confirmations = 0
+	l2Cfg.Confirmations = 0
+	l2Cfg.RelayerConfig.SenderConfig.Confirmations = 0
+
+	l1Auth, err = bind.NewKeyedTransactorWithChainID(bridgeApp.Config.L2Config.RelayerConfig.MessageSenderPrivateKeys[0], base.L1gethImg.ChainID())
+	assert.NoError(t, err)
+
+	l2Auth, err = bind.NewKeyedTransactorWithChainID(bridgeApp.Config.L1Config.RelayerConfig.MessageSenderPrivateKeys[0], base.L2gethImg.ChainID())
+	assert.NoError(t, err)
 }
 
 func prepareContracts(t *testing.T) {
@@ -113,10 +100,10 @@ func prepareContracts(t *testing.T) {
 	l1MessengerAddress, err = bind.WaitDeployed(context.Background(), l1Client, tx)
 	assert.NoError(t, err)
 
-	// L1 rollup contract
-	_, tx, l1RollupInstance, err = mock_bridge.DeployMockBridgeL1(l1Auth, l1Client)
+	// L1 ScrolChain contract
+	_, tx, scrollChainInstance, err = mock_bridge.DeployMockBridgeL1(l1Auth, l1Client)
 	assert.NoError(t, err)
-	l1RollupAddress, err = bind.WaitDeployed(context.Background(), l1Client, tx)
+	scrollChainAddress, err = bind.WaitDeployed(context.Background(), l1Client, tx)
 	assert.NoError(t, err)
 
 	// L2 messenger contract
@@ -125,32 +112,38 @@ func prepareContracts(t *testing.T) {
 	l2MessengerAddress, err = bind.WaitDeployed(context.Background(), l2Client, tx)
 	assert.NoError(t, err)
 
-	cfg.L1Config.L1MessengerAddress = l1MessengerAddress
-	cfg.L1Config.RollupContractAddress = l1RollupAddress
-	cfg.L1Config.RelayerConfig.MessengerContractAddress = l2MessengerAddress
+	l1Config, l2Config := bridgeApp.Config.L1Config, bridgeApp.Config.L2Config
+	l1Config.L1MessengerAddress = l1MessengerAddress
+	l1Config.L1MessageQueueAddress = l1MessengerAddress
+	l1Config.ScrollChainContractAddress = scrollChainAddress
+	l1Config.RelayerConfig.MessengerContractAddress = l2MessengerAddress
+	l1Config.RelayerConfig.GasPriceOracleContractAddress = l1MessengerAddress
 
-	cfg.L2Config.L2MessengerAddress = l2MessengerAddress
-	cfg.L2Config.RelayerConfig.MessengerContractAddress = l1MessengerAddress
-	cfg.L2Config.RelayerConfig.RollupContractAddress = l1RollupAddress
-}
-
-func prepareAuth(t *testing.T, client *ethclient.Client, privateKey *ecdsa.PrivateKey) *bind.TransactOpts {
-	chainID, err := client.ChainID(context.Background())
-	assert.NoError(t, err)
-	auth, err := bind.NewKeyedTransactorWithChainID(privateKey, chainID)
-	assert.NoError(t, err)
-	auth.Value = big.NewInt(0) // in wei
-	assert.NoError(t, err)
-	return auth
+	l2Config.L2MessengerAddress = l2MessengerAddress
+	l2Config.L2MessageQueueAddress = l2MessengerAddress
+	l2Config.RelayerConfig.MessengerContractAddress = l1MessengerAddress
+	l2Config.RelayerConfig.RollupContractAddress = scrollChainAddress
+	l2Config.RelayerConfig.GasPriceOracleContractAddress = l2MessengerAddress
 }
 
 func TestFunction(t *testing.T) {
 	setupEnv(t)
 
+	// process start test
+	t.Run("TestProcessStart", testProcessStart)
+	t.Run("TestProcessStartEnableMetrics", testProcessStartEnableMetrics)
+
 	// l1 rollup and watch rollup events
 	t.Run("TestCommitBatchAndFinalizeBatch", testCommitBatchAndFinalizeBatch)
 
-	t.Cleanup(func() {
-		free(t)
-	})
+	// l1 message
+	t.Run("TestRelayL1MessageSucceed", testRelayL1MessageSucceed)
+
+	// l2 message
+	// TODO: add a "user relay l2msg Succeed" test
+
+	// l1/l2 gas oracle
+	t.Run("TestImportL1GasPrice", testImportL1GasPrice)
+	t.Run("TestImportL2GasPrice", testImportL2GasPrice)
+
 }

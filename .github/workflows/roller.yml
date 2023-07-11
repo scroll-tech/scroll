@@ -5,13 +5,17 @@ on:
     branches:
       - main
       - staging
+      - develop
+      - alpha
     paths:
       - 'roller/**'
       - '.github/workflows/roller.yml'
   pull_request:
-    branches:
-      - main
-      - staging
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - ready_for_review
     paths:
       - 'roller/**'
       - '.github/workflows/roller.yml'
@@ -22,17 +26,18 @@ defaults:
 
 jobs:
   test:
+    if: github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     steps:
     - uses: actions-rs/toolchain@v1
       with:
-        toolchain: nightly-2022-08-23
+        toolchain: nightly-2022-12-10
         override: true
         components: rustfmt, clippy
     - name: Install Go
       uses: actions/setup-go@v2
       with:
-        go-version: 1.18.x
+        go-version: 1.19.x
     - name: Checkout code
       uses: actions/checkout@v2
     - name: Cache cargo
@@ -42,14 +47,21 @@ jobs:
     - name: Test
       run: |
         make roller
-        go test -v ./...
+        go test -tags="mock_prover" -v -coverprofile=coverage.txt ./...
+    - name: Upload coverage reports to Codecov
+      uses: codecov/codecov-action@v3
+      env:
+        CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+      with:
+        flags: roller
   check:
+    if: github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     steps:
     - name: Install Go
       uses: actions/setup-go@v2
       with:
-        go-version: 1.18.x
+        go-version: 1.19.x
     - name: Checkout code
       uses: actions/checkout@v2
     - name: Lint
@@ -57,12 +69,13 @@ jobs:
         rm -rf $HOME/.cache/golangci-lint
         make lint
   goimports-lint:
+    if: github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     steps:
     - name: Install Go
       uses: actions/setup-go@v2
       with:
-        go-version: 1.18.x
+        go-version: 1.19.x
     - name: Checkout code
       uses: actions/checkout@v2
     - name: Install goimports

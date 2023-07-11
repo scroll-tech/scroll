@@ -41,23 +41,12 @@ Complete a deposit from L1 to L2 and send fund to recipient&#39;s account in L2.
 
 | Name | Type | Description |
 |---|---|---|
-| _l1Token | address | The address of corresponding L1 token. |
-| _l2Token | address | The address of corresponding L2 token. |
-| _from | address | The address of account who deposits the token in L1. |
-| _to | address | The address of recipient in L2 to receive the token. |
-| _amount | uint256 | The amount of the token to deposit. |
-| _data | bytes | Optional data to forward to recipient&#39;s account. |
-
-### finalizeDropMessage
-
-```solidity
-function finalizeDropMessage() external payable
-```
-
-
-
-
-
+| _l1Token | address | undefined |
+| _l2Token | address | undefined |
+| _from | address | undefined |
+| _to | address | undefined |
+| _amount | uint256 | undefined |
+| _data | bytes | undefined |
 
 ### getL1ERC20Address
 
@@ -73,7 +62,7 @@ Return the corresponding l1 token address given l2 token address.
 
 | Name | Type | Description |
 |---|---|---|
-| _l2Token | address | The address of l2 token. |
+| _l2Token | address | undefined |
 
 #### Returns
 
@@ -95,7 +84,7 @@ Return the corresponding l2 token address given l1 token address.
 
 | Name | Type | Description |
 |---|---|---|
-| _l1Token | address | The address of l1 token. |
+| _l1Token | address | undefined |
 
 #### Returns
 
@@ -128,7 +117,7 @@ function initialize(address _counterpart, address _router, address _messenger, a
 function messenger() external view returns (address)
 ```
 
-The address of L1ScrollMessenger/L2ScrollMessenger contract.
+The address of corresponding L1ScrollMessenger/L2ScrollMessenger contract.
 
 
 
@@ -187,9 +176,9 @@ Withdraw of some token to a caller&#39;s account on L1.
 
 | Name | Type | Description |
 |---|---|---|
-| _token | address | The address of token in L2. |
-| _amount | uint256 | The amount of token to transfer. |
-| _gasLimit | uint256 | Unused, but included for potential forward compatibility considerations. |
+| _token | address | undefined |
+| _amount | uint256 | undefined |
+| _gasLimit | uint256 | undefined |
 
 ### withdrawERC20
 
@@ -205,10 +194,10 @@ Withdraw of some token to a recipient&#39;s account on L1.
 
 | Name | Type | Description |
 |---|---|---|
-| _token | address | The address of token in L2. |
-| _to | address | The address of recipient&#39;s account on L1. |
-| _amount | uint256 | The amount of token to transfer. |
-| _gasLimit | uint256 | Unused, but included for potential forward compatibility considerations. |
+| _token | address | undefined |
+| _to | address | undefined |
+| _amount | uint256 | undefined |
+| _gasLimit | uint256 | undefined |
 
 ### withdrawERC20AndCall
 
@@ -224,11 +213,11 @@ Withdraw of some token to a recipient&#39;s account on L1 and call.
 
 | Name | Type | Description |
 |---|---|---|
-| _token | address | The address of token in L2. |
-| _to | address | The address of recipient&#39;s account on L1. |
-| _amount | uint256 | The amount of token to transfer. |
-| _data | bytes | Optional data to forward to recipient&#39;s account. |
-| _gasLimit | uint256 | Unused, but included for potential forward compatibility considerations. |
+| _token | address | undefined |
+| _to | address | undefined |
+| _amount | uint256 | undefined |
+| _data | bytes | undefined |
+| _gasLimit | uint256 | undefined |
 
 
 
@@ -237,10 +226,10 @@ Withdraw of some token to a recipient&#39;s account on L1 and call.
 ### FinalizeDepositERC20
 
 ```solidity
-event FinalizeDepositERC20(address indexed _l1Token, address indexed _l2Token, address indexed _from, address _to, uint256 _amount, bytes _data)
+event FinalizeDepositERC20(address indexed l1Token, address indexed l2Token, address indexed from, address to, uint256 amount, bytes data)
 ```
 
-
+Emitted when ERC20 token is deposited from L1 to L2 and transfer to recipient.
 
 
 
@@ -248,20 +237,20 @@ event FinalizeDepositERC20(address indexed _l1Token, address indexed _l2Token, a
 
 | Name | Type | Description |
 |---|---|---|
-| _l1Token `indexed` | address | undefined |
-| _l2Token `indexed` | address | undefined |
-| _from `indexed` | address | undefined |
-| _to  | address | undefined |
-| _amount  | uint256 | undefined |
-| _data  | bytes | undefined |
+| l1Token `indexed` | address | undefined |
+| l2Token `indexed` | address | undefined |
+| from `indexed` | address | undefined |
+| to  | address | undefined |
+| amount  | uint256 | undefined |
+| data  | bytes | undefined |
 
 ### WithdrawERC20
 
 ```solidity
-event WithdrawERC20(address indexed _l1Token, address indexed _l2Token, address indexed _from, address _to, uint256 _amount, bytes _data)
+event WithdrawERC20(address indexed l1Token, address indexed l2Token, address indexed from, address to, uint256 amount, bytes data)
 ```
 
-
+Emitted when someone withdraw ERC20 token from L2 to L1.
 
 
 
@@ -269,12 +258,12 @@ event WithdrawERC20(address indexed _l1Token, address indexed _l2Token, address 
 
 | Name | Type | Description |
 |---|---|---|
-| _l1Token `indexed` | address | undefined |
-| _l2Token `indexed` | address | undefined |
-| _from `indexed` | address | undefined |
-| _to  | address | undefined |
-| _amount  | uint256 | undefined |
-| _data  | bytes | undefined |
+| l1Token `indexed` | address | undefined |
+| l2Token `indexed` | address | undefined |
+| from `indexed` | address | undefined |
+| to  | address | undefined |
+| amount  | uint256 | undefined |
+| data  | bytes | undefined |
 
 
 

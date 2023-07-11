@@ -25,15 +25,15 @@ async function main() {
   const L1StandardERC20GatewayAddress = process.env.L1_STANDARD_ERC20_GATEWAY_PROXY_ADDR!;
 
   // if ((await L2StandardERC20Gateway.counterpart()) === constants.AddressZero) {
-    const tx = await L2StandardERC20Gateway.initialize(
-      L1StandardERC20GatewayAddress,
-      L2GatewayRouterAddress,
-      L2ScrollMessengerAddress,
-      L2StandardERC20FactoryAddress
-    );
-    console.log("initialize L2StandardERC20Gateway, hash:", tx.hash);
-    const receipt = await tx.wait();
-    console.log(`✅ Done, gas used: ${receipt.gasUsed}`);
+  const tx = await L2StandardERC20Gateway.initialize(
+    L1StandardERC20GatewayAddress,
+    L2GatewayRouterAddress,
+    L2ScrollMessengerAddress,
+    L2StandardERC20FactoryAddress
+  );
+  console.log("initialize L2StandardERC20Gateway, hash:", tx.hash);
+  const receipt = await tx.wait();
+  console.log(`✅ Done, gas used: ${receipt.gasUsed}`);
   // }
 }
 

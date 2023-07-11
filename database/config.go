@@ -12,8 +12,8 @@ type DBConfig struct {
 	DSN        string `json:"dsn"`
 	DriverName string `json:"driver_name"`
 
-	MaxOpenNum int `json:"maxOpenNum" default:"200"`
-	MaxIdleNum int `json:"maxIdleNum" default:"20"`
+	MaxOpenNum int `json:"maxOpenNum"`
+	MaxIdleNum int `json:"maxIdleNum"`
 }
 
 // NewConfig returns a new instance of Config.

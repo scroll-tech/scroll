@@ -1,4 +1,4 @@
-package docker
+package docker_test
 
 import (
 	"context"
@@ -6,54 +6,49 @@ import (
 
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq" //nolint:golint
-	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/stretchr/testify/assert"
+
+	"scroll-tech/common/docker"
 )
 
-func TestDocker(t *testing.T) {
-	t.Parallel()
+var (
+	base *docker.App
+)
 
-	t.Run("testL1Geth", testL1Geth)
-	t.Run("testL2Geth", testL2Geth)
-	t.Run("testDB", testDB)
+func TestMain(m *testing.M) {
+	base = docker.NewDockerApp()
+
+	m.Run()
+
+	base.Free()
 }
 
-func testL1Geth(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+func TestDB(t *testing.T) {
+	base.RunDBImage(t)
 
-	img := NewTestL1Docker(t)
-	defer img.Stop()
-
-	client, err := ethclient.Dial(img.Endpoint())
-	assert.NoError(t, err)
-
-	chainID, err := client.ChainID(ctx)
-	assert.NoError(t, err)
-	t.Logf("chainId: %s", chainID.String())
-}
-
-func testL2Geth(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	img := NewTestL2Docker(t)
-	defer img.Stop()
-
-	client, err := ethclient.Dial(img.Endpoint())
-	assert.NoError(t, err)
-
-	chainID, err := client.ChainID(ctx)
-	assert.NoError(t, err)
-	t.Logf("chainId: %s", chainID.String())
-}
-
-func testDB(t *testing.T) {
-	driverName := "postgres"
-	dbImg := NewTestDBDocker(t, driverName)
-	defer dbImg.Stop()
-
-	db, err := sqlx.Open(driverName, dbImg.Endpoint())
+	db, err := sqlx.Open("postgres", base.DBImg.Endpoint())
 	assert.NoError(t, err)
 	assert.NoError(t, db.Ping())
+}
+
+func TestL1Geth(t *testing.T) {
+	base.RunL1Geth(t)
+
+	client, err := base.L1Client()
+	assert.NoError(t, err)
+
+	chainID, err := client.ChainID(context.Background())
+	assert.NoError(t, err)
+	t.Logf("chainId: %s", chainID.String())
+}
+
+func TestL2Geth(t *testing.T) {
+	base.RunL2Geth(t)
+
+	client, err := base.L2Client()
+	assert.NoError(t, err)
+
+	chainID, err := client.ChainID(context.Background())
+	assert.NoError(t, err)
+	t.Logf("chainId: %s", chainID.String())
 }

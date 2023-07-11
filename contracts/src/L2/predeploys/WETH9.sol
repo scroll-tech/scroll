@@ -20,82 +20,83 @@ pragma solidity ^0.8.0;
 // solhint-disable reason-string
 
 contract WETH9 {
-  string public name = "Wrapped Ether";
-  string public symbol = "WETH";
-  uint8 public decimals = 18;
+    string public name = "Wrapped Ether";
+    string public symbol = "WETH";
+    uint8 public decimals = 18;
 
-  event Approval(address indexed src, address indexed guy, uint256 wad);
-  event Transfer(address indexed src, address indexed dst, uint256 wad);
-  event Deposit(address indexed dst, uint256 wad);
-  event Withdrawal(address indexed src, uint256 wad);
+    event Approval(address indexed src, address indexed guy, uint256 wad);
+    event Transfer(address indexed src, address indexed dst, uint256 wad);
+    event Deposit(address indexed dst, uint256 wad);
+    event Withdrawal(address indexed src, uint256 wad);
 
-  mapping(address => uint256) public balanceOf;
-  mapping(address => mapping(address => uint256)) public allowance;
+    mapping(address => uint256) public balanceOf;
+    mapping(address => mapping(address => uint256)) public allowance;
 
-  receive() external payable {
-    deposit();
-  }
-
-  function deposit() public payable {
-    unchecked {
-      balanceOf[msg.sender] += msg.value;
+    receive() external payable {
+        deposit();
     }
 
-    emit Deposit(msg.sender, msg.value);
-  }
+    function deposit() public payable {
+        unchecked {
+            balanceOf[msg.sender] += msg.value;
+        }
 
-  function withdraw(uint256 wad) public {
-    require(balanceOf[msg.sender] >= wad);
-
-    unchecked {
-      balanceOf[msg.sender] -= wad;
+        emit Deposit(msg.sender, msg.value);
     }
 
-    payable(msg.sender).transfer(wad);
+    function withdraw(uint256 wad) public {
+        require(balanceOf[msg.sender] >= wad);
 
-    emit Withdrawal(msg.sender, wad);
-  }
+        unchecked {
+            balanceOf[msg.sender] -= wad;
+        }
 
-  function totalSupply() public view returns (uint256) {
-    return address(this).balance;
-  }
+        (bool success, ) = msg.sender.call{value: wad}("");
+        require(success, "withdraw ETH failed");
 
-  function approve(address guy, uint256 wad) public returns (bool) {
-    allowance[msg.sender][guy] = wad;
-
-    emit Approval(msg.sender, guy, wad);
-
-    return true;
-  }
-
-  function transfer(address dst, uint256 wad) public returns (bool) {
-    return transferFrom(msg.sender, dst, wad);
-  }
-
-  function transferFrom(
-    address src,
-    address dst,
-    uint256 wad
-  ) public returns (bool) {
-    require(balanceOf[src] >= wad);
-
-    if (src != msg.sender && allowance[src][msg.sender] != type(uint256).max) {
-      require(allowance[src][msg.sender] >= wad);
-
-      unchecked {
-        allowance[src][msg.sender] -= wad;
-      }
+        emit Withdrawal(msg.sender, wad);
     }
 
-    unchecked {
-      balanceOf[src] -= wad;
-      balanceOf[dst] += wad;
+    function totalSupply() public view returns (uint256) {
+        return address(this).balance;
     }
 
-    emit Transfer(src, dst, wad);
+    function approve(address guy, uint256 wad) public returns (bool) {
+        allowance[msg.sender][guy] = wad;
 
-    return true;
-  }
+        emit Approval(msg.sender, guy, wad);
+
+        return true;
+    }
+
+    function transfer(address dst, uint256 wad) public returns (bool) {
+        return transferFrom(msg.sender, dst, wad);
+    }
+
+    function transferFrom(
+        address src,
+        address dst,
+        uint256 wad
+    ) public returns (bool) {
+        require(balanceOf[src] >= wad);
+
+        if (src != msg.sender && allowance[src][msg.sender] != type(uint256).max) {
+            require(allowance[src][msg.sender] >= wad);
+
+            unchecked {
+                allowance[src][msg.sender] -= wad;
+            }
+        }
+
+        unchecked {
+            balanceOf[src] -= wad;
+            balanceOf[dst] += wad;
+        }
+
+        emit Transfer(src, dst, wad);
+
+        return true;
+    }
 }
 
 /*

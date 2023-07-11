@@ -2,15 +2,15 @@
 
 pragma solidity ^0.8.0;
 
-import { OwnableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-import { IERC1155Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC1155/IERC1155Upgradeable.sol";
-import { ERC1155HolderUpgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC1155/utils/ERC1155HolderUpgradeable.sol";
+import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import {IERC1155Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC1155/IERC1155Upgradeable.sol";
+import {ERC1155HolderUpgradeable, ERC1155ReceiverUpgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC1155/utils/ERC1155HolderUpgradeable.sol";
 
-import { IL2ERC1155Gateway } from "./IL2ERC1155Gateway.sol";
-import { IL2ScrollMessenger } from "../IL2ScrollMessenger.sol";
-import { IL1ERC1155Gateway } from "../../L1/gateways/IL1ERC1155Gateway.sol";
-import { ScrollGatewayBase, IScrollGateway } from "../../libraries/gateway/ScrollGatewayBase.sol";
-import { IScrollERC1155 } from "../../libraries/token/IScrollERC1155.sol";
+import {IL2ERC1155Gateway} from "./IL2ERC1155Gateway.sol";
+import {IL2ScrollMessenger} from "../IL2ScrollMessenger.sol";
+import {IL1ERC1155Gateway} from "../../L1/gateways/IL1ERC1155Gateway.sol";
+import {ScrollGatewayBase, IScrollGateway} from "../../libraries/gateway/ScrollGatewayBase.sol";
+import {IScrollERC1155} from "../../libraries/token/IScrollERC1155.sol";
 
 /// @title L2ERC1155Gateway
 /// @notice The `L2ERC1155Gateway` is used to withdraw ERC1155 compatible NFTs in layer 2 and
@@ -19,198 +19,213 @@ import { IScrollERC1155 } from "../../libraries/token/IScrollERC1155.sol";
 /// NFT will be minted and transfered to the recipient.
 ///
 /// This will be changed if we have more specific scenarios.
-// @todo Current implementation doesn't support calling from `L2GatewayRouter`.
 contract L2ERC1155Gateway is OwnableUpgradeable, ERC1155HolderUpgradeable, ScrollGatewayBase, IL2ERC1155Gateway {
-  /**************************************** Events ****************************************/
+    /**********
+     * Events *
+     **********/
 
-  /// @notice Emitted when token mapping for ERC1155 token is updated.
-  /// @param _l1Token The address of corresponding ERC1155 token in layer 2.
-  /// @param _l1Token The address of ERC1155 token in layer 1.
-  event UpdateTokenMapping(address _l2Token, address _l1Token);
+    /// @notice Emitted when token mapping for ERC1155 token is updated.
+    /// @param _l1Token The address of corresponding ERC1155 token in layer 2.
+    /// @param _l1Token The address of ERC1155 token in layer 1.
+    event UpdateTokenMapping(address _l2Token, address _l1Token);
 
-  /**************************************** Variables ****************************************/
+    /*************
+     * Variables *
+     *************/
 
-  /// @notice Mapping from layer 2 token address to layer 1 token address for ERC1155 NFT.
-  // solhint-disable-next-line var-name-mixedcase
-  mapping(address => address) public tokenMapping;
+    /// @notice Mapping from layer 2 token address to layer 1 token address for ERC1155 NFT.
+    // solhint-disable-next-line var-name-mixedcase
+    mapping(address => address) public tokenMapping;
 
-  /**************************************** Constructor ****************************************/
+    /***************
+     * Constructor *
+     ***************/
 
-  function initialize(address _counterpart, address _messenger) external initializer {
-    OwnableUpgradeable.__Ownable_init();
-    ScrollGatewayBase._initialize(_counterpart, address(0), _messenger);
-  }
+    function initialize(address _counterpart, address _messenger) external initializer {
+        OwnableUpgradeable.__Ownable_init();
+        ERC1155HolderUpgradeable.__ERC1155Holder_init();
+        ERC1155ReceiverUpgradeable.__ERC1155Receiver_init();
 
-  /**************************************** Mutate Funtions ****************************************/
-
-  /// @inheritdoc IL2ERC1155Gateway
-  function withdrawERC1155(
-    address _token,
-    uint256 _tokenId,
-    uint256 _amount,
-    uint256 _gasLimit
-  ) external override {
-    _withdrawERC1155(_token, msg.sender, _tokenId, _amount, _gasLimit);
-  }
-
-  /// @inheritdoc IL2ERC1155Gateway
-  function withdrawERC1155(
-    address _token,
-    address _to,
-    uint256 _tokenId,
-    uint256 _amount,
-    uint256 _gasLimit
-  ) external override {
-    _withdrawERC1155(_token, _to, _tokenId, _amount, _gasLimit);
-  }
-
-  /// @inheritdoc IL2ERC1155Gateway
-  function batchWithdrawERC1155(
-    address _token,
-    uint256[] calldata _tokenIds,
-    uint256[] calldata _amounts,
-    uint256 _gasLimit
-  ) external override {
-    _batchWithdrawERC1155(_token, msg.sender, _tokenIds, _amounts, _gasLimit);
-  }
-
-  /// @inheritdoc IL2ERC1155Gateway
-  function batchWithdrawERC1155(
-    address _token,
-    address _to,
-    uint256[] calldata _tokenIds,
-    uint256[] calldata _amounts,
-    uint256 _gasLimit
-  ) external override {
-    _batchWithdrawERC1155(_token, _to, _tokenIds, _amounts, _gasLimit);
-  }
-
-  /// @inheritdoc IL2ERC1155Gateway
-  function finalizeDepositERC1155(
-    address _l1Token,
-    address _l2Token,
-    address _from,
-    address _to,
-    uint256 _tokenId,
-    uint256 _amount
-  ) external override nonReentrant onlyCallByCounterpart {
-    IScrollERC1155(_l2Token).mint(_to, _tokenId, _amount, "");
-
-    emit FinalizeDepositERC1155(_l1Token, _l2Token, _from, _to, _tokenId, _amount);
-  }
-
-  /// @inheritdoc IL2ERC1155Gateway
-  function finalizeBatchDepositERC1155(
-    address _l1Token,
-    address _l2Token,
-    address _from,
-    address _to,
-    uint256[] calldata _tokenIds,
-    uint256[] calldata _amounts
-  ) external override nonReentrant onlyCallByCounterpart {
-    IScrollERC1155(_l2Token).batchMint(_to, _tokenIds, _amounts, "");
-
-    emit FinalizeBatchDepositERC1155(_l1Token, _l2Token, _from, _to, _tokenIds, _amounts);
-  }
-
-  /// @inheritdoc IScrollGateway
-  function finalizeDropMessage() external payable {
-    // @todo finish the logic later
-  }
-
-  /**************************************** Restricted Funtions ****************************************/
-
-  /// @notice Update layer 2 to layer 1 token mapping.
-  /// @param _l1Token The address of corresponding ERC1155 token in layer 2.
-  /// @param _l1Token The address of ERC1155 token in layer 1.
-  function updateTokenMapping(address _l2Token, address _l1Token) external onlyOwner {
-    require(_l1Token != address(0), "map to zero address");
-
-    tokenMapping[_l2Token] = _l1Token;
-
-    emit UpdateTokenMapping(_l2Token, _l1Token);
-  }
-
-  /**************************************** Internal Funtions ****************************************/
-
-  /// @dev Internal function to withdraw ERC1155 NFT to layer 2.
-  /// @param _token The address of ERC1155 NFT in layer 1.
-  /// @param _to The address of recipient in layer 2.
-  /// @param _tokenId The token id to withdraw.
-  /// @param _amount The amount of token to withdraw.
-  /// @param _gasLimit Estimated gas limit required to complete the withdraw on layer 2.
-  function _withdrawERC1155(
-    address _token,
-    address _to,
-    uint256 _tokenId,
-    uint256 _amount,
-    uint256 _gasLimit
-  ) internal nonReentrant {
-    require(_amount > 0, "withdraw zero amount");
-
-    address _l1Token = tokenMapping[_token];
-    require(_l1Token != address(0), "token not supported");
-
-    // 1. burn token
-    IScrollERC1155(_token).burn(msg.sender, _tokenId, _amount);
-
-    // 2. Generate message passed to L1ERC1155Gateway.
-    bytes memory _message = abi.encodeWithSelector(
-      IL1ERC1155Gateway.finalizeWithdrawERC1155.selector,
-      _l1Token,
-      _token,
-      msg.sender,
-      _to,
-      _tokenId,
-      _amount
-    );
-
-    // 3. Send message to L2ScrollMessenger.
-    IL2ScrollMessenger(messenger).sendMessage(counterpart, msg.value, _message, _gasLimit);
-
-    emit WithdrawERC1155(_l1Token, _token, msg.sender, _to, _tokenId, _amount);
-  }
-
-  /// @dev Internal function to batch withdraw ERC1155 NFT to layer 2.
-  /// @param _token The address of ERC1155 NFT in layer 1.
-  /// @param _to The address of recipient in layer 2.
-  /// @param _tokenIds The list of token ids to withdraw.
-  /// @param _amounts The list of corresponding number of token to withdraw.
-  /// @param _gasLimit Estimated gas limit required to complete the withdraw on layer 1.
-  function _batchWithdrawERC1155(
-    address _token,
-    address _to,
-    uint256[] calldata _tokenIds,
-    uint256[] calldata _amounts,
-    uint256 _gasLimit
-  ) internal nonReentrant {
-    require(_tokenIds.length > 0, "no token to withdraw");
-    require(_tokenIds.length == _amounts.length, "length mismatch");
-
-    for (uint256 i = 0; i < _amounts.length; i++) {
-      require(_amounts[i] > 0, "withdraw zero amount");
+        ScrollGatewayBase._initialize(_counterpart, address(0), _messenger);
     }
 
-    address _l1Token = tokenMapping[_token];
-    require(_l1Token != address(0), "token not supported");
+    /*****************************
+     * Public Mutating Functions *
+     *****************************/
 
-    // 1. transfer token to this contract
-    IScrollERC1155(_token).batchBurn(msg.sender, _tokenIds, _amounts);
+    /// @inheritdoc IL2ERC1155Gateway
+    function withdrawERC1155(
+        address _token,
+        uint256 _tokenId,
+        uint256 _amount,
+        uint256 _gasLimit
+    ) external payable override {
+        _withdrawERC1155(_token, msg.sender, _tokenId, _amount, _gasLimit);
+    }
 
-    // 2. Generate message passed to L1ERC1155Gateway.
-    bytes memory _message = abi.encodeWithSelector(
-      IL1ERC1155Gateway.finalizeBatchWithdrawERC1155.selector,
-      _l1Token,
-      _token,
-      msg.sender,
-      _to,
-      _tokenIds,
-      _amounts
-    );
+    /// @inheritdoc IL2ERC1155Gateway
+    function withdrawERC1155(
+        address _token,
+        address _to,
+        uint256 _tokenId,
+        uint256 _amount,
+        uint256 _gasLimit
+    ) external payable override {
+        _withdrawERC1155(_token, _to, _tokenId, _amount, _gasLimit);
+    }
 
-    // 3. Send message to L2ScrollMessenger.
-    IL2ScrollMessenger(messenger).sendMessage{ value: msg.value }(counterpart, msg.value, _message, _gasLimit);
+    /// @inheritdoc IL2ERC1155Gateway
+    function batchWithdrawERC1155(
+        address _token,
+        uint256[] calldata _tokenIds,
+        uint256[] calldata _amounts,
+        uint256 _gasLimit
+    ) external payable override {
+        _batchWithdrawERC1155(_token, msg.sender, _tokenIds, _amounts, _gasLimit);
+    }
 
-    emit BatchWithdrawERC1155(_l1Token, _token, msg.sender, _to, _tokenIds, _amounts);
-  }
+    /// @inheritdoc IL2ERC1155Gateway
+    function batchWithdrawERC1155(
+        address _token,
+        address _to,
+        uint256[] calldata _tokenIds,
+        uint256[] calldata _amounts,
+        uint256 _gasLimit
+    ) external payable override {
+        _batchWithdrawERC1155(_token, _to, _tokenIds, _amounts, _gasLimit);
+    }
+
+    /// @inheritdoc IL2ERC1155Gateway
+    function finalizeDepositERC1155(
+        address _l1Token,
+        address _l2Token,
+        address _from,
+        address _to,
+        uint256 _tokenId,
+        uint256 _amount
+    ) external virtual onlyCallByCounterpart nonReentrant {
+        require(_l1Token != address(0), "token address cannot be 0");
+        require(_l1Token == tokenMapping[_l2Token], "l2 token mismatch");
+
+        IScrollERC1155(_l2Token).mint(_to, _tokenId, _amount, "");
+
+        emit FinalizeDepositERC1155(_l1Token, _l2Token, _from, _to, _tokenId, _amount);
+    }
+
+    /// @inheritdoc IL2ERC1155Gateway
+    function finalizeBatchDepositERC1155(
+        address _l1Token,
+        address _l2Token,
+        address _from,
+        address _to,
+        uint256[] calldata _tokenIds,
+        uint256[] calldata _amounts
+    ) external virtual onlyCallByCounterpart nonReentrant {
+        require(_l1Token != address(0), "token address cannot be 0");
+        require(_l1Token == tokenMapping[_l2Token], "l2 token mismatch");
+
+        IScrollERC1155(_l2Token).batchMint(_to, _tokenIds, _amounts, "");
+
+        emit FinalizeBatchDepositERC1155(_l1Token, _l2Token, _from, _to, _tokenIds, _amounts);
+    }
+
+    /************************
+     * Restricted Functions *
+     ************************/
+
+    /// @notice Update layer 2 to layer 1 token mapping.
+    /// @param _l1Token The address of corresponding ERC1155 token in layer 2.
+    /// @param _l1Token The address of ERC1155 token in layer 1.
+    function updateTokenMapping(address _l2Token, address _l1Token) external onlyOwner {
+        require(_l1Token != address(0), "token address cannot be 0");
+
+        tokenMapping[_l2Token] = _l1Token;
+
+        emit UpdateTokenMapping(_l2Token, _l1Token);
+    }
+
+    /**********************
+     * Internal Functions *
+     **********************/
+
+    /// @dev Internal function to withdraw ERC1155 NFT to layer 2.
+    /// @param _token The address of ERC1155 NFT in layer 1.
+    /// @param _to The address of recipient in layer 2.
+    /// @param _tokenId The token id to withdraw.
+    /// @param _amount The amount of token to withdraw.
+    /// @param _gasLimit Estimated gas limit required to complete the withdraw on layer 2.
+    function _withdrawERC1155(
+        address _token,
+        address _to,
+        uint256 _tokenId,
+        uint256 _amount,
+        uint256 _gasLimit
+    ) internal virtual nonReentrant {
+        require(_amount > 0, "withdraw zero amount");
+
+        address _l1Token = tokenMapping[_token];
+        require(_l1Token != address(0), "no corresponding l1 token");
+
+        // 1. burn token
+        IScrollERC1155(_token).burn(msg.sender, _tokenId, _amount);
+
+        // 2. Generate message passed to L1ERC1155Gateway.
+        bytes memory _message = abi.encodeWithSelector(
+            IL1ERC1155Gateway.finalizeWithdrawERC1155.selector,
+            _l1Token,
+            _token,
+            msg.sender,
+            _to,
+            _tokenId,
+            _amount
+        );
+
+        // 3. Send message to L2ScrollMessenger.
+        IL2ScrollMessenger(messenger).sendMessage{value: msg.value}(counterpart, 0, _message, _gasLimit);
+
+        emit WithdrawERC1155(_l1Token, _token, msg.sender, _to, _tokenId, _amount);
+    }
+
+    /// @dev Internal function to batch withdraw ERC1155 NFT to layer 2.
+    /// @param _token The address of ERC1155 NFT in layer 1.
+    /// @param _to The address of recipient in layer 2.
+    /// @param _tokenIds The list of token ids to withdraw.
+    /// @param _amounts The list of corresponding number of token to withdraw.
+    /// @param _gasLimit Estimated gas limit required to complete the withdraw on layer 1.
+    function _batchWithdrawERC1155(
+        address _token,
+        address _to,
+        uint256[] calldata _tokenIds,
+        uint256[] calldata _amounts,
+        uint256 _gasLimit
+    ) internal virtual nonReentrant {
+        require(_tokenIds.length > 0, "no token to withdraw");
+        require(_tokenIds.length == _amounts.length, "length mismatch");
+
+        for (uint256 i = 0; i < _amounts.length; i++) {
+            require(_amounts[i] > 0, "withdraw zero amount");
+        }
+
+        address _l1Token = tokenMapping[_token];
+        require(_l1Token != address(0), "no corresponding l1 token");
+
+        // 1. transfer token to this contract
+        IScrollERC1155(_token).batchBurn(msg.sender, _tokenIds, _amounts);
+
+        // 2. Generate message passed to L1ERC1155Gateway.
+        bytes memory _message = abi.encodeWithSelector(
+            IL1ERC1155Gateway.finalizeBatchWithdrawERC1155.selector,
+            _l1Token,
+            _token,
+            msg.sender,
+            _to,
+            _tokenIds,
+            _amounts
+        );
+
+        // 3. Send message to L2ScrollMessenger.
+        IL2ScrollMessenger(messenger).sendMessage{value: msg.value}(counterpart, 0, _message, _gasLimit);
+
+        emit BatchWithdrawERC1155(_l1Token, _token, msg.sender, _to, _tokenIds, _amounts);
+    }
 }

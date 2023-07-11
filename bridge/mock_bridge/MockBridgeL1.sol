@@ -1,99 +1,78 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 
+import {BatchHeaderV0Codec} from "../../contracts/src/libraries/codec/BatchHeaderV0Codec.sol";
+import {ChunkCodec} from "../../contracts/src/libraries/codec/ChunkCodec.sol";
+import {IL1MessageQueue} from "../../contracts/src/L1/rollup/IL1MessageQueue.sol";
+
 contract MockBridgeL1 {
+  /******************************
+   * Events from L1MessageQueue *
+   ******************************/
+
+  /// @notice Emitted when a new L1 => L2 transaction is appended to the queue.
+  /// @param sender The address of account who initiates the transaction.
+  /// @param target The address of account who will recieve the transaction.
+  /// @param value The value passed with the transaction.
+  /// @param queueIndex The index of this transaction in the queue.
+  /// @param gasLimit Gas limit required to complete the message relay on L2.
+  /// @param data The calldata of the transaction.
+  event QueueTransaction(
+    address indexed sender,
+    address indexed target,
+    uint256 value,
+    uint64 queueIndex,
+    uint256 gasLimit,
+    bytes data
+  );
+
   /*********************************
    * Events from L1ScrollMessenger *
    *********************************/
 
+  /// @notice Emitted when a cross domain message is sent.
+  /// @param sender The address of the sender who initiates the message.
+  /// @param target The address of target contract to call.
+  /// @param value The amount of value passed to the target contract.
+  /// @param messageNonce The nonce of the message.
+  /// @param gasLimit The optional gas limit passed to L1 or L2.
+  /// @param message The calldata passed to the target contract.
   event SentMessage(
+    address indexed sender,
     address indexed target,
-    address sender,
     uint256 value,
-    uint256 fee,
-    uint256 deadline,
-    bytes message,
     uint256 messageNonce,
-    uint256 gasLimit
+    uint256 gasLimit,
+    bytes message
   );
 
-  event MessageDropped(bytes32 indexed msgHash);
+  /// @notice Emitted when a cross domain message is relayed successfully.
+  /// @param messageHash The hash of the message.
+  event RelayedMessage(bytes32 indexed messageHash);
 
-  event RelayedMessage(bytes32 indexed msgHash);
+  /***************************
+   * Events from ScrollChain *
+   ***************************/
 
-  event FailedRelayedMessage(bytes32 indexed msgHash);
-
-  /************************
-   * Events from ZKRollup *
-   ************************/
-
-  /// @notice Emitted when a new batch is commited.
-  /// @param _batchHash The hash of the batch
-  /// @param _batchIndex The index of the batch
-  /// @param _parentHash The hash of parent batch
-  event CommitBatch(bytes32 indexed _batchId, bytes32 _batchHash, uint256 _batchIndex, bytes32 _parentHash);
-
-  /// @notice Emitted when a batch is reverted.
-  /// @param _batchId The identification of the batch.
-  event RevertBatch(bytes32 indexed _batchId);
+  /// @notice Emitted when a new batch is committed.
+  /// @param batchHash The hash of the batch.
+  event CommitBatch(bytes32 indexed batchHash);
 
   /// @notice Emitted when a batch is finalized.
-  /// @param _batchHash The hash of the batch
-  /// @param _batchIndex The index of the batch
-  /// @param _parentHash The hash of parent batch
-  event FinalizeBatch(bytes32 indexed _batchId, bytes32 _batchHash, uint256 _batchIndex, bytes32 _parentHash);
+  /// @param batchHash The hash of the batch
+  /// @param stateRoot The state root in layer 2 after this batch.
+  /// @param withdrawRoot The merkle root in layer2 after this batch.
+  event FinalizeBatch(bytes32 indexed batchHash, bytes32 stateRoot, bytes32 withdrawRoot);
 
   /***********
    * Structs *
    ***********/
 
   struct L2MessageProof {
+    // The index of the batch where the message belongs to.
     uint256 batchIndex;
-    uint256 blockHeight;
+    // Concatenation of merkle proof for withdraw merkle trie.
     bytes merkleProof;
-  }
-
-  /// @dev The transanction struct
-  struct Layer2Transaction {
-    address caller;
-    uint64 nonce;
-    address target;
-    uint64 gas;
-    uint256 gasPrice;
-    uint256 value;
-    bytes data;
-    // signature
-    uint256 r;
-    uint256 s;
-    uint64 v;
-  }
-
-  /// @dev The block header struct
-  struct Layer2BlockHeader {
-    bytes32 blockHash;
-    bytes32 parentHash;
-    uint256 baseFee;
-    bytes32 stateRoot;
-    uint64 blockHeight;
-    uint64 gasUsed;
-    uint64 timestamp;
-    bytes extraData;
-    Layer2Transaction[] txs;
-  }
-
-  /// @dev The batch struct, the batch hash is always the last block hash of `blocks`.
-  struct Layer2Batch {
-    uint64 batchIndex;
-    // The hash of the last block in the parent batch
-    bytes32 parentHash;
-    Layer2BlockHeader[] blocks;
-  }
-
-  struct Layer2BatchStored {
-    bytes32 batchHash;
-    bytes32 parentHash;
-    uint64 batchIndex;
-    bool verified;
   }
 
   /*************
@@ -103,27 +82,32 @@ contract MockBridgeL1 {
   /// @notice Message nonce, used to avoid relay attack.
   uint256 public messageNonce;
 
-  /// @notice Mapping from batch id to batch struct.
-  mapping(bytes32 => Layer2BatchStored) public batches;
+  mapping(uint256 => bytes32) public committedBatches;
+
+  /***********************************
+   * Functions from L2GasPriceOracle *
+   ***********************************/
+
+  function setL2BaseFee(uint256) external {
+  }
 
   /************************************
    * Functions from L1ScrollMessenger *
    ************************************/
 
   function sendMessage(
-    address _to,
-    uint256 _fee,
-    bytes memory _message,
-    uint256 _gasLimit
+    address target,
+    uint256 value,
+    bytes calldata message,
+    uint256 gasLimit
   ) external payable {
-    // solhint-disable-next-line not-rely-on-time
-    uint256 _deadline = block.timestamp + 1 days;
-    uint256 _value;
-    unchecked {
-      _value = msg.value - _fee;
+    bytes memory _xDomainCalldata = _encodeXDomainCalldata(msg.sender, target, value, messageNonce, message);
+    {
+      address _sender = applyL1ToL2Alias(address(this));
+      emit QueueTransaction(_sender, target, 0, uint64(messageNonce), gasLimit, _xDomainCalldata);
     }
-    uint256 _nonce = messageNonce;
-    emit SentMessage(_to, msg.sender, _value, _fee, _deadline, _message, _nonce, _gasLimit);
+
+    emit SentMessage(msg.sender, target, value, messageNonce, gasLimit, message);
     messageNonce += 1;
   }
 
@@ -131,57 +115,175 @@ contract MockBridgeL1 {
     address _from,
     address _to,
     uint256 _value,
-    uint256 _fee,
-    uint256 _deadline,
     uint256 _nonce,
     bytes memory _message,
     L2MessageProof memory
   ) external {
-    bytes32 _msghash = keccak256(abi.encodePacked(_from, _to, _value, _fee, _deadline, _nonce, _message));
-    emit RelayedMessage(_msghash);
+    bytes memory _xDomainCalldata = _encodeXDomainCalldata(_from, _to, _value, _nonce, _message);
+    bytes32 _xDomainCalldataHash = keccak256(_xDomainCalldata);
+    emit RelayedMessage(_xDomainCalldataHash);
   }
 
-  /***************************
-   * Functions from ZKRollup *
-   ***************************/
+  /******************************
+   * Functions from ScrollChain *
+   ******************************/
 
-  function commitBatch(Layer2Batch memory _batch) external {
-    bytes32 _batchHash = _batch.blocks[_batch.blocks.length - 1].blockHash;
-    bytes32 _batchId = _computeBatchId(_batchHash, _batch.parentHash, _batch.batchIndex);
+  function commitBatch(
+    uint8 /*version*/,
+    bytes calldata /*parentBatchHeader*/,
+    bytes[] memory chunks,
+    bytes calldata /*skippedL1MessageBitmap*/
+  ) external {
+    // check whether the batch is empty
+    uint256 _chunksLength = chunks.length;
+    require(_chunksLength > 0, "batch is empty");
 
-    Layer2BatchStored storage _batchStored = batches[_batchId];
-    _batchStored.batchHash = _batchHash;
-    _batchStored.parentHash = _batch.parentHash;
-    _batchStored.batchIndex = _batch.batchIndex;
+    uint256 dataPtr;
+    assembly {
+      dataPtr := mload(0x40)
+      mstore(0x40, add(dataPtr, mul(_chunksLength, 32)))
+    }
 
-    emit CommitBatch(_batchId, _batchHash, _batch.batchIndex, _batch.parentHash);
-  }
-  
-  function revertBatch(bytes32 _batchId) external {
-    emit RevertBatch(_batchId);
+    for (uint256 i = 0; i < _chunksLength; i++) {
+      _commitChunk(dataPtr, chunks[i]);
+
+      unchecked {
+        dataPtr += 32;
+      }
+    }
+
+    bytes32 _dataHash;
+    assembly {
+      let dataLen := mul(_chunksLength, 0x20)
+      _dataHash := keccak256(sub(dataPtr, dataLen), dataLen)
+    }
+
+    bytes memory paddedData = new bytes(89);
+    assembly {
+      mstore(add(paddedData, 57), _dataHash)
+    }
+
+    uint256 batchPtr;
+    assembly {
+      batchPtr := add(paddedData, 32)
+    }
+    bytes32 _batchHash = BatchHeaderV0Codec.computeBatchHash(batchPtr, 89);
+    committedBatches[0] = _batchHash;
+    emit CommitBatch(_batchHash);
   }
 
   function finalizeBatchWithProof(
-    bytes32 _batchId,
-    uint256[] memory,
-    uint256[] memory
+    bytes calldata /*batchHeader*/,
+    bytes32 /*prevStateRoot*/,
+    bytes32 postStateRoot,
+    bytes32 withdrawRoot,
+    bytes calldata /*aggrProof*/
   ) external {
-    Layer2BatchStored storage _batch = batches[_batchId];
-    uint256 _batchIndex = _batch.batchIndex;
-
-    emit FinalizeBatch(_batchId, _batch.batchHash, _batchIndex, _batch.parentHash);
+    bytes32 _batchHash = committedBatches[0];
+    emit FinalizeBatch(_batchHash, postStateRoot, withdrawRoot);
   }
 
-  /// @dev Internal function to compute a unique batch id for mapping.
-  /// @param _batchHash The hash of the batch.
-  /// @param _parentHash The hash of the batch.
-  /// @param _batchIndex The index of the batch.
-  /// @return Return the computed batch id.
-  function _computeBatchId(
-    bytes32 _batchHash,
-    bytes32 _parentHash,
-    uint256 _batchIndex
-  ) internal pure returns (bytes32) {
-    return keccak256(abi.encode(_batchHash, _parentHash, _batchIndex));
+  /**********************
+   * Internal Functions *
+   **********************/
+
+  /// @dev Internal function to generate the correct cross domain calldata for a message.
+  /// @param _sender Message sender address.
+  /// @param _target Target contract address.
+  /// @param _value The amount of ETH pass to the target.
+  /// @param _messageNonce Nonce for the provided message.
+  /// @param _message Message to send to the target.
+  /// @return ABI encoded cross domain calldata.
+  function _encodeXDomainCalldata(
+    address _sender,
+    address _target,
+    uint256 _value,
+    uint256 _messageNonce,
+    bytes memory _message
+  ) internal pure returns (bytes memory) {
+    return
+      abi.encodeWithSignature(
+        "relayMessage(address,address,uint256,uint256,bytes)",
+        _sender,
+        _target,
+        _value,
+        _messageNonce,
+        _message
+      );
+  }
+
+  /// @notice Utility function that converts the address in the L1 that submitted a tx to
+  /// the inbox to the msg.sender viewed in the L2
+  /// @param l1Address the address in the L1 that triggered the tx to L2
+  /// @return l2Address L2 address as viewed in msg.sender
+  function applyL1ToL2Alias(address l1Address) internal pure returns (address l2Address) {
+    uint160 offset = uint160(0x1111000000000000000000000000000000001111);
+    unchecked {
+      l2Address = address(uint160(l1Address) + offset);
+    }
+  }
+
+  function _commitChunk(
+    uint256 memPtr,
+    bytes memory _chunk
+  ) internal pure {
+    uint256 chunkPtr;
+    uint256 startDataPtr;
+    uint256 dataPtr;
+    uint256 blockPtr;
+
+    assembly {
+      dataPtr := mload(0x40)
+      startDataPtr := dataPtr
+      chunkPtr := add(_chunk, 0x20) // skip chunkLength
+      blockPtr := add(chunkPtr, 1) // skip numBlocks
+    }
+
+    uint256 _numBlocks = ChunkCodec.validateChunkLength(chunkPtr, _chunk.length);
+
+    // concatenate block contexts
+    uint256 _totalTransactionsInChunk;
+    for (uint256 i = 0; i < _numBlocks; i++) {
+      dataPtr = ChunkCodec.copyBlockContext(chunkPtr, dataPtr, i);
+      uint256 _numTransactionsInBlock = ChunkCodec.numTransactions(blockPtr);
+      unchecked {
+        _totalTransactionsInChunk += _numTransactionsInBlock;
+        blockPtr += ChunkCodec.BLOCK_CONTEXT_LENGTH;
+      }
+    }
+
+    assembly {
+      mstore(0x40, add(dataPtr, mul(_totalTransactionsInChunk, 0x20))) // reserve memory for tx hashes
+      blockPtr := add(chunkPtr, 1) // reset block ptr
+    }
+
+    // concatenate tx hashes
+    uint256 l2TxPtr = ChunkCodec.l2TxPtr(chunkPtr, _numBlocks);
+    while (_numBlocks > 0) {
+      // concatenate l2 transaction hashes
+      uint256 _numTransactionsInBlock = ChunkCodec.numTransactions(blockPtr);
+      for (uint256 j = 0; j < _numTransactionsInBlock; j++) {
+        bytes32 txHash;
+        (txHash, l2TxPtr) = ChunkCodec.loadL2TxHash(l2TxPtr);
+        assembly {
+          mstore(dataPtr, txHash)
+          dataPtr := add(dataPtr, 0x20)
+        }
+      }
+
+      unchecked {
+        _numBlocks -= 1;
+        blockPtr += ChunkCodec.BLOCK_CONTEXT_LENGTH;
+      }
+    }
+
+    // check chunk has correct length
+    require(l2TxPtr - chunkPtr == _chunk.length, "incomplete l2 transaction data");
+
+    // compute data hash and store to memory
+    assembly {
+      let dataHash := keccak256(startDataPtr, sub(dataPtr, startDataPtr))
+      mstore(memPtr, dataHash)
+    }
   }
 }

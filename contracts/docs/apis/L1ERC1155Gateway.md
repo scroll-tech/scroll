@@ -13,7 +13,7 @@ The `L1ERC1155Gateway` is used to deposit ERC1155 compatible NFT in layer 1 and 
 ### batchDepositERC1155
 
 ```solidity
-function batchDepositERC1155(address _token, uint256[] _tokenIds, uint256[] _amounts, uint256 _gasLimit) external nonpayable
+function batchDepositERC1155(address _token, uint256[] _tokenIds, uint256[] _amounts, uint256 _gasLimit) external payable
 ```
 
 Deposit a list of some ERC1155 NFT to caller&#39;s account on layer 2.
@@ -32,7 +32,7 @@ Deposit a list of some ERC1155 NFT to caller&#39;s account on layer 2.
 ### batchDepositERC1155
 
 ```solidity
-function batchDepositERC1155(address _token, address _to, uint256[] _tokenIds, uint256[] _amounts, uint256 _gasLimit) external nonpayable
+function batchDepositERC1155(address _token, address _to, uint256[] _tokenIds, uint256[] _amounts, uint256 _gasLimit) external payable
 ```
 
 Deposit a list of some ERC1155 NFT to a recipient&#39;s account on layer 2.
@@ -69,7 +69,7 @@ The address of corresponding L1/L2 Gateway contract.
 ### depositERC1155
 
 ```solidity
-function depositERC1155(address _token, address _to, uint256 _tokenId, uint256 _amount, uint256 _gasLimit) external nonpayable
+function depositERC1155(address _token, address _to, uint256 _tokenId, uint256 _amount, uint256 _gasLimit) external payable
 ```
 
 Deposit some ERC1155 NFT to a recipient&#39;s account on layer 2.
@@ -89,7 +89,7 @@ Deposit some ERC1155 NFT to a recipient&#39;s account on layer 2.
 ### depositERC1155
 
 ```solidity
-function depositERC1155(address _token, uint256 _tokenId, uint256 _amount, uint256 _gasLimit) external nonpayable
+function depositERC1155(address _token, uint256 _tokenId, uint256 _amount, uint256 _gasLimit) external payable
 ```
 
 Deposit some ERC1155 NFT to caller&#39;s account on layer 2.
@@ -126,17 +126,6 @@ Complete ERC1155 batch withdraw from layer 2 to layer 1 and send fund to recipie
 | _tokenIds | uint256[] | The list of token ids to withdraw. |
 | _amounts | uint256[] | The list of corresponding number of token to withdraw. |
 
-### finalizeDropMessage
-
-```solidity
-function finalizeDropMessage() external payable
-```
-
-
-
-
-
-
 ### finalizeWithdrawERC1155
 
 ```solidity
@@ -164,7 +153,7 @@ Complete ERC1155 withdraw from layer 2 to layer 1 and send fund to recipient&#39
 function initialize(address _counterpart, address _messenger) external nonpayable
 ```
 
-
+Initialize the storage of L1ERC1155Gateway.
 
 
 
@@ -172,8 +161,8 @@ function initialize(address _counterpart, address _messenger) external nonpayabl
 
 | Name | Type | Description |
 |---|---|---|
-| _counterpart | address | undefined |
-| _messenger | address | undefined |
+| _counterpart | address | The address of L2ERC1155Gateway in L2. |
+| _messenger | address | The address of L1ScrollMessenger. |
 
 ### messenger
 
@@ -181,7 +170,7 @@ function initialize(address _counterpart, address _messenger) external nonpayabl
 function messenger() external view returns (address)
 ```
 
-The address of L1ScrollMessenger/L2ScrollMessenger contract.
+The address of corresponding L1ScrollMessenger/L2ScrollMessenger contract.
 
 
 
@@ -191,6 +180,22 @@ The address of L1ScrollMessenger/L2ScrollMessenger contract.
 | Name | Type | Description |
 |---|---|---|
 | _0 | address | undefined |
+
+### onDropMessage
+
+```solidity
+function onDropMessage(bytes _message) external payable
+```
+
+
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| _message | bytes | undefined |
 
 ### onERC1155BatchReceived
 
@@ -391,6 +396,25 @@ Emitted when the ERC1155 NFT is batch deposited to gateway in layer 1.
 | _tokenIds  | uint256[] | undefined |
 | _amounts  | uint256[] | undefined |
 
+### BatchRefundERC1155
+
+```solidity
+event BatchRefundERC1155(address indexed token, address indexed recipient, uint256[] tokenIds, uint256[] amounts)
+```
+
+Emitted when some ERC1155 token is refunded.
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| token `indexed` | address | undefined |
+| recipient `indexed` | address | undefined |
+| tokenIds  | uint256[] | undefined |
+| amounts  | uint256[] | undefined |
+
 ### DepositERC1155
 
 ```solidity
@@ -470,6 +494,25 @@ event OwnershipTransferred(address indexed previousOwner, address indexed newOwn
 |---|---|---|
 | previousOwner `indexed` | address | undefined |
 | newOwner `indexed` | address | undefined |
+
+### RefundERC1155
+
+```solidity
+event RefundERC1155(address indexed token, address indexed recipient, uint256 tokenId, uint256 amount)
+```
+
+Emitted when some ERC1155 token is refunded.
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| token `indexed` | address | undefined |
+| recipient `indexed` | address | undefined |
+| tokenId  | uint256 | undefined |
+| amount  | uint256 | undefined |
 
 ### UpdateTokenMapping
 

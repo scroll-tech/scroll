@@ -32,23 +32,6 @@ Mapping from ERC20 token address to corresponding L1ERC20Gateway.
 |---|---|---|
 | _0 | address | undefined |
 
-### counterpart
-
-```solidity
-function counterpart() external view returns (address)
-```
-
-The address of corresponding L1/L2 Gateway contract.
-
-
-
-
-#### Returns
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | address | undefined |
-
 ### defaultERC20Gateway
 
 ```solidity
@@ -126,10 +109,10 @@ Deposit some token to a recipient&#39;s account on L2 and call.
 ### depositETH
 
 ```solidity
-function depositETH(address _to, uint256 _gasLimit) external payable
+function depositETH(uint256 _amount, uint256 _gasLimit) external payable
 ```
 
-Deposit ETH to recipient&#39;s account in L2.
+Deposit ETH to caller&#39;s account in L2.
 
 
 
@@ -137,16 +120,16 @@ Deposit ETH to recipient&#39;s account in L2.
 
 | Name | Type | Description |
 |---|---|---|
-| _to | address | The address of recipient&#39;s account on L2. |
-| _gasLimit | uint256 | Gas limit required to complete the deposit on L2. |
+| _amount | uint256 | undefined |
+| _gasLimit | uint256 | undefined |
 
 ### depositETH
 
 ```solidity
-function depositETH(uint256 _gasLimit) external payable
+function depositETH(address _to, uint256 _amount, uint256 _gasLimit) external payable
 ```
 
-Deposit ETH to call&#39;s account in L2.
+Deposit ETH to some recipient&#39;s account in L2.
 
 
 
@@ -154,18 +137,45 @@ Deposit ETH to call&#39;s account in L2.
 
 | Name | Type | Description |
 |---|---|---|
-| _gasLimit | uint256 | Gas limit required to complete the deposit on L2. |
+| _to | address | undefined |
+| _amount | uint256 | undefined |
+| _gasLimit | uint256 | undefined |
 
-### finalizeDropMessage
+### depositETHAndCall
 
 ```solidity
-function finalizeDropMessage() external payable
+function depositETHAndCall(address _to, uint256 _amount, bytes _data, uint256 _gasLimit) external payable
 ```
 
+Deposit ETH to some recipient&#39;s account in L2 and call the target contract.
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| _to | address | undefined |
+| _amount | uint256 | undefined |
+| _data | bytes | undefined |
+| _gasLimit | uint256 | undefined |
+
+### ethGateway
+
+```solidity
+function ethGateway() external view returns (address)
+```
+
+The address of L1ETHGateway.
 
 
 
 
+#### Returns
+
+| Name | Type | Description |
+|---|---|---|
+| _0 | address | undefined |
 
 ### finalizeWithdrawERC20
 
@@ -191,21 +201,38 @@ Complete ERC20 withdraw from L2 to L1 and send fund to recipient&#39;s account i
 ### finalizeWithdrawETH
 
 ```solidity
-function finalizeWithdrawETH(address _from, address _to, uint256 _amount, bytes _data) external payable
+function finalizeWithdrawETH(address, address, uint256, bytes) external payable
 ```
 
 Complete ETH withdraw from L2 to L1 and send fund to recipient&#39;s account in L1.
 
-*This function should only be called by L1ScrollMessenger.      This function should also only be called by L2GatewayRouter in L2.*
+*This function should only be called by L1ScrollMessenger.      This function should also only be called by L1ETHGateway in L2.*
 
 #### Parameters
 
 | Name | Type | Description |
 |---|---|---|
-| _from | address | The address of account who withdraw ETH in L2. |
-| _to | address | The address of recipient in L1 to receive ETH. |
-| _amount | uint256 | The amount of ETH to withdraw. |
-| _data | bytes | Optional data to forward to recipient&#39;s account. |
+| _0 | address | undefined |
+| _1 | address | undefined |
+| _2 | uint256 | undefined |
+| _3 | bytes | undefined |
+
+### gatewayInContext
+
+```solidity
+function gatewayInContext() external view returns (address)
+```
+
+The address of gateway in current execution context.
+
+
+
+
+#### Returns
+
+| Name | Type | Description |
+|---|---|---|
+| _0 | address | undefined |
 
 ### getERC20Gateway
 
@@ -254,10 +281,10 @@ Return the corresponding l2 token address given l1 token address.
 ### initialize
 
 ```solidity
-function initialize(address _defaultERC20Gateway, address _counterpart, address _messenger) external nonpayable
+function initialize(address _ethGateway, address _defaultERC20Gateway) external nonpayable
 ```
 
-
+Initialize the storage of L1GatewayRouter.
 
 
 
@@ -265,26 +292,8 @@ function initialize(address _defaultERC20Gateway, address _counterpart, address 
 
 | Name | Type | Description |
 |---|---|---|
-| _defaultERC20Gateway | address | undefined |
-| _counterpart | address | undefined |
-| _messenger | address | undefined |
-
-### messenger
-
-```solidity
-function messenger() external view returns (address)
-```
-
-The address of L1ScrollMessenger/L2ScrollMessenger contract.
-
-
-
-
-#### Returns
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | address | undefined |
+| _ethGateway | address | The address of L1ETHGateway contract. |
+| _defaultERC20Gateway | address | The address of default ERC20 Gateway contract. |
 
 ### owner
 
@@ -314,22 +323,29 @@ function renounceOwnership() external nonpayable
 *Leaves the contract without owner. It will not be possible to call `onlyOwner` functions anymore. Can only be called by the current owner. NOTE: Renouncing ownership will leave the contract without an owner, thereby removing any functionality that is only available to the owner.*
 
 
-### router
+### requestERC20
 
 ```solidity
-function router() external view returns (address)
+function requestERC20(address _sender, address _token, uint256 _amount) external nonpayable returns (uint256)
 ```
 
-The address of L1GatewayRouter/L2GatewayRouter contract.
+Request ERC20 token transfer from users to gateways.
 
+*All the gateways should have reentrancy guard to prevent potential attack though this function.*
 
+#### Parameters
 
+| Name | Type | Description |
+|---|---|---|
+| _sender | address | undefined |
+| _token | address | undefined |
+| _amount | uint256 | undefined |
 
 #### Returns
 
 | Name | Type | Description |
 |---|---|---|
-| _0 | address | undefined |
+| _0 | uint256 | undefined |
 
 ### setDefaultERC20Gateway
 
@@ -364,6 +380,22 @@ Update the mapping from token address to gateway address.
 | _tokens | address[] | The list of addresses of tokens to update. |
 | _gateways | address[] | The list of addresses of gateways to update. |
 
+### setETHGateway
+
+```solidity
+function setETHGateway(address _ethGateway) external nonpayable
+```
+
+Update the address of ETH gateway contract.
+
+*This function should only be called by contract owner.*
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| _ethGateway | address | The address to update. |
+
 ### transferOwnership
 
 ```solidity
@@ -387,10 +419,10 @@ function transferOwnership(address newOwner) external nonpayable
 ### DepositERC20
 
 ```solidity
-event DepositERC20(address indexed _l1Token, address indexed _l2Token, address indexed _from, address _to, uint256 _amount, bytes _data)
+event DepositERC20(address indexed l1Token, address indexed l2Token, address indexed from, address to, uint256 amount, bytes data)
 ```
 
-
+Emitted when someone deposit ERC20 token from L1 to L2.
 
 
 
@@ -398,20 +430,20 @@ event DepositERC20(address indexed _l1Token, address indexed _l2Token, address i
 
 | Name | Type | Description |
 |---|---|---|
-| _l1Token `indexed` | address | undefined |
-| _l2Token `indexed` | address | undefined |
-| _from `indexed` | address | undefined |
-| _to  | address | undefined |
-| _amount  | uint256 | undefined |
-| _data  | bytes | undefined |
+| l1Token `indexed` | address | undefined |
+| l2Token `indexed` | address | undefined |
+| from `indexed` | address | undefined |
+| to  | address | undefined |
+| amount  | uint256 | undefined |
+| data  | bytes | undefined |
 
 ### DepositETH
 
 ```solidity
-event DepositETH(address indexed _from, address indexed _to, uint256 _amount, bytes _data)
+event DepositETH(address indexed from, address indexed to, uint256 amount, bytes data)
 ```
 
-
+Emitted when someone deposit ETH from L1 to L2.
 
 
 
@@ -419,18 +451,18 @@ event DepositETH(address indexed _from, address indexed _to, uint256 _amount, by
 
 | Name | Type | Description |
 |---|---|---|
-| _from `indexed` | address | undefined |
-| _to `indexed` | address | undefined |
-| _amount  | uint256 | undefined |
-| _data  | bytes | undefined |
+| from `indexed` | address | undefined |
+| to `indexed` | address | undefined |
+| amount  | uint256 | undefined |
+| data  | bytes | undefined |
 
 ### FinalizeWithdrawERC20
 
 ```solidity
-event FinalizeWithdrawERC20(address indexed _l1Token, address indexed _l2Token, address indexed _from, address _to, uint256 _amount, bytes _data)
+event FinalizeWithdrawERC20(address indexed l1Token, address indexed l2Token, address indexed from, address to, uint256 amount, bytes data)
 ```
 
-
+Emitted when ERC20 token is withdrawn from L2 to L1 and transfer to recipient.
 
 
 
@@ -438,20 +470,20 @@ event FinalizeWithdrawERC20(address indexed _l1Token, address indexed _l2Token, 
 
 | Name | Type | Description |
 |---|---|---|
-| _l1Token `indexed` | address | undefined |
-| _l2Token `indexed` | address | undefined |
-| _from `indexed` | address | undefined |
-| _to  | address | undefined |
-| _amount  | uint256 | undefined |
-| _data  | bytes | undefined |
+| l1Token `indexed` | address | undefined |
+| l2Token `indexed` | address | undefined |
+| from `indexed` | address | undefined |
+| to  | address | undefined |
+| amount  | uint256 | undefined |
+| data  | bytes | undefined |
 
 ### FinalizeWithdrawETH
 
 ```solidity
-event FinalizeWithdrawETH(address indexed _from, address indexed _to, uint256 _amount, bytes _data)
+event FinalizeWithdrawETH(address indexed from, address indexed to, uint256 amount, bytes data)
 ```
 
-
+Emitted when ETH is withdrawn from L2 to L1 and transfer to recipient.
 
 
 
@@ -459,10 +491,10 @@ event FinalizeWithdrawETH(address indexed _from, address indexed _to, uint256 _a
 
 | Name | Type | Description |
 |---|---|---|
-| _from `indexed` | address | undefined |
-| _to `indexed` | address | undefined |
-| _amount  | uint256 | undefined |
-| _data  | bytes | undefined |
+| from `indexed` | address | undefined |
+| to `indexed` | address | undefined |
+| amount  | uint256 | undefined |
+| data  | bytes | undefined |
 
 ### OwnershipTransferred
 
@@ -481,13 +513,13 @@ event OwnershipTransferred(address indexed previousOwner, address indexed newOwn
 | previousOwner `indexed` | address | undefined |
 | newOwner `indexed` | address | undefined |
 
-### SetDefaultERC20Gateway
+### RefundERC20
 
 ```solidity
-event SetDefaultERC20Gateway(address indexed _defaultERC20Gateway)
+event RefundERC20(address indexed token, address indexed recipient, uint256 amount)
 ```
 
-
+Emitted when some ERC20 token is refunded.
 
 
 
@@ -495,15 +527,50 @@ event SetDefaultERC20Gateway(address indexed _defaultERC20Gateway)
 
 | Name | Type | Description |
 |---|---|---|
-| _defaultERC20Gateway `indexed` | address | undefined |
+| token `indexed` | address | undefined |
+| recipient `indexed` | address | undefined |
+| amount  | uint256 | undefined |
+
+### RefundETH
+
+```solidity
+event RefundETH(address indexed recipient, uint256 amount)
+```
+
+Emitted when some ETH is refunded.
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| recipient `indexed` | address | undefined |
+| amount  | uint256 | undefined |
+
+### SetDefaultERC20Gateway
+
+```solidity
+event SetDefaultERC20Gateway(address indexed defaultERC20Gateway)
+```
+
+Emitted when the address of default ERC20 Gateway is updated.
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| defaultERC20Gateway `indexed` | address | undefined |
 
 ### SetERC20Gateway
 
 ```solidity
-event SetERC20Gateway(address indexed _token, address indexed _gateway)
+event SetERC20Gateway(address indexed token, address indexed gateway)
 ```
 
-
+Emitted when the `gateway` for `token` is updated.
 
 
 
@@ -511,8 +578,24 @@ event SetERC20Gateway(address indexed _token, address indexed _gateway)
 
 | Name | Type | Description |
 |---|---|---|
-| _token `indexed` | address | undefined |
-| _gateway `indexed` | address | undefined |
+| token `indexed` | address | undefined |
+| gateway `indexed` | address | undefined |
+
+### SetETHGateway
+
+```solidity
+event SetETHGateway(address indexed ethGateway)
+```
+
+Emitted when the address of ETH Gateway is updated.
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| ethGateway `indexed` | address | undefined |
 
 
 

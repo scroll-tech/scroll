@@ -3,7 +3,12 @@
 pragma solidity ^0.8.0;
 
 interface IScrollGateway {
-  function counterpart() external view returns (address);
+    /// @notice The address of corresponding L1/L2 Gateway contract.
+    function counterpart() external view returns (address);
 
-  function finalizeDropMessage() external payable;
+    /// @notice The address of L1GatewayRouter/L2GatewayRouter contract.
+    function router() external view returns (address);
+
+    /// @notice The address of corresponding L1ScrollMessenger/L2ScrollMessenger contract.
+    function messenger() external view returns (address);
 }

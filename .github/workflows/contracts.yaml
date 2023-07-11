@@ -3,21 +3,19 @@ name: Contracts
 on:
   push:
     branches:
-      - master
       - main
-      - prod
-      - release/*
       - staging
+      - develop
+      - alpha
     paths:
       - 'contracts/**'
       - '.github/workflows/contracts.yaml'
   pull_request:
-    branches:
-      - master
-      - main
-      - prod
-      - release/*
-      - staging
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - ready_for_review
     paths:
       - 'contracts/**'
       - '.github/workflows/contracts.yaml'
@@ -28,6 +26,7 @@ defaults:
 
 jobs:
   foundry:
+    if: github.event.pull_request.draft == false
     runs-on: ubuntu-latest
 
     steps:
@@ -40,6 +39,9 @@ jobs:
         uses: foundry-rs/foundry-toolchain@v1
         with:
           version: nightly
+
+      - name: Setup LCOV
+        uses: hrishikesh-kadam/setup-lcov@v1
 
       - name: Install Node.js 14
         uses: actions/setup-node@v2
@@ -76,7 +78,24 @@ jobs:
       - name: Run foundry tests
         run: forge test -vvv
 
+      - name: Run foundry coverage
+        run : forge coverage --report lcov
+
+      - name : Prune coverage
+        run : lcov --remove ./lcov.info -o ./lcov.info.pruned 'src/mocks/*' 'src/test/*' 'scripts/*' 'node_modules/*' 'lib/*'
+
+      - name: Report code coverage
+        uses: zgosalvez/github-actions-report-lcov@v3
+        with:
+          coverage-files: contracts/lcov.info.pruned
+          minimum-coverage: 0
+          artifact-name: code-coverage-report
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          working-directory: contracts
+          update-comment: true
+
   hardhat:
+    if: github.event.pull_request.draft == false
     runs-on: ubuntu-latest
 
     steps:

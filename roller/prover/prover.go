@@ -1,11 +1,10 @@
 //go:build !mock_prover
 
-//nolint:typecheck
 package prover
 
 /*
-#cgo LDFLAGS: ${SRCDIR}/lib/libzkp.a -lm -ldl
-#cgo gpu LDFLAGS: ${SRCDIR}/lib/libzkp.a -lm -ldl -lgmp -lstdc++ -lprocps -L/usr/local/cuda/lib64/ -lcudart
+#cgo LDFLAGS: -lzkp -lm -ldl -lzktrie -L${SRCDIR}/lib/ -Wl,-rpath=${SRCDIR}/lib
+#cgo gpu LDFLAGS: -lzkp -lm -ldl -lgmp -lstdc++ -lprocps -lzktrie -L/usr/local/cuda/lib64/ -lcudart -L${SRCDIR}/lib/ -Wl,-rpath=${SRCDIR}/lib
 #include <stdlib.h>
 #include "./lib/libzkp.h"
 */
@@ -13,12 +12,14 @@ import "C" //nolint:typecheck
 
 import (
 	"encoding/json"
+	"os"
+	"path/filepath"
 	"unsafe"
 
 	"github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/log"
 
-	"scroll-tech/common/message"
+	"scroll-tech/common/types/message"
 
 	"scroll-tech/roller/config"
 )
@@ -38,19 +39,42 @@ func NewProver(cfg *config.ProverConfig) (*Prover, error) {
 	}()
 	C.init_prover(paramsPathStr, seedPathStr)
 
+	if cfg.DumpDir != "" {
+		err := os.MkdirAll(cfg.DumpDir, os.ModePerm)
+		if err != nil {
+			return nil, err
+		}
+		log.Info("Enabled dump_proof", "dir", cfg.DumpDir)
+	}
+
 	return &Prover{cfg: cfg}, nil
 }
 
 // Prove call rust ffi to generate proof, if first failed, try again.
-func (p *Prover) Prove(traces []*types.BlockTrace) (*message.AggProof, error) {
-	return p.prove(traces)
+func (p *Prover) Prove(taskID string, traces []*types.BlockTrace) (*message.AggProof, error) {
+	var proofByt []byte
+	if p.cfg.ProofType == message.ProofTypeChunk {
+		tracesByt, err := json.Marshal(traces)
+		if err != nil {
+			return nil, err
+		}
+		proofByt = p.prove(tracesByt)
+	} else if p.cfg.ProofType == message.ProofTypeBatch {
+		// TODO: aggregator prove
+	}
+
+	// dump proof
+	err := p.dumpProof(taskID, proofByt)
+	if err != nil {
+		log.Error("Dump proof failed", "task-id", taskID, "error", err)
+	}
+
+	zkProof := &message.AggProof{}
+	return zkProof, json.Unmarshal(proofByt, zkProof)
 }
 
-func (p *Prover) prove(traces []*types.BlockTrace) (*message.AggProof, error) {
-	tracesByt, err := json.Marshal(traces)
-	if err != nil {
-		return nil, err
-	}
+// Call cgo to generate proof.
+func (p *Prover) prove(tracesByt []byte) []byte {
 	tracesStr := C.CString(string(tracesByt))
 
 	defer func() {
@@ -62,7 +86,19 @@ func (p *Prover) prove(traces []*types.BlockTrace) (*message.AggProof, error) {
 	log.Info("Finish creating agg proof!")
 
 	proof := C.GoString(cProof)
-	zkProof := &message.AggProof{}
-	err = json.Unmarshal([]byte(proof), zkProof)
-	return zkProof, err
+	return []byte(proof)
+}
+
+func (p *Prover) dumpProof(id string, proofByt []byte) error {
+	if p.cfg.DumpDir == "" {
+		return nil
+	}
+	path := filepath.Join(p.cfg.DumpDir, id)
+	f, err := os.Create(path)
+	if err != nil {
+		return err
+	}
+	log.Info("Saving proof", "task-id", id)
+	_, err = f.Write(proofByt)
+	return err
 }

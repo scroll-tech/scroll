@@ -1,4 +1,5 @@
 {
+    "withdrawTrieRoot": "0x0000000000000000000000000000000000000000",
     "coinbase": {
         "address": "0x1c5a77d9fa7ef466951b2f01f724bca3a5820b63",
         "nonce": 3,
@@ -28,7 +29,7 @@
         {
             "type": 2,
             "nonce": 2,
-            "txHash": "0xaaaeb971adfac989c7db5426737bc2932756091a5730ea6d5324f93e4cff9713",
+            "txHash": "0x6b50040f5f14bad253f202b0775d6742131bcaee6b992f05578386f00e53b7e4",
             "gas": 1152994,
             "gasPrice": "0x3b9b0a17",
             "from": "0x1c5a77d9fa7ef466951b2f01f724bca3a5820b63",

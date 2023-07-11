@@ -1,44 +1,34 @@
 /* eslint-disable node/no-missing-import */
-import * as dotenv from "dotenv"
+import * as dotenv from "dotenv";
+import { constants } from "ethers";
 
-import * as hre from "hardhat"
-import { ethers } from "hardhat"
-import { selectAddressFile } from "./utils"
+import * as hre from "hardhat";
+import { ethers } from "hardhat";
+import { selectAddressFile } from "./utils";
 
 dotenv.config();
 
-const CHAIN_ID_L2 = process.env.CHAIN_ID_L2 || "none";
+const L1_MESSAGE_QUEUE = process.env.L1_MESSAGE_QUEUE || "none";
 
 async function main() {
   const addressFile = selectAddressFile(hre.network.name);
 
   const [deployer] = await ethers.getSigners();
 
-  const ZKRollup = await ethers.getContractAt("ZKRollup", addressFile.get("ZKRollup.proxy"), deployer);
+  const ScrollChain = await ethers.getContractAt("ScrollChain", addressFile.get("ScrollChain.proxy"), deployer);
 
-  // if ((await ZKRollup.owner()) === constants.AddressZero) {
-  {
-    const tx = await ZKRollup.initialize(CHAIN_ID_L2);
-    console.log("initialize ZKRollup, hash:", tx.hash);
-    const receipt = await tx.wait();
-    console.log(`✅ Done, gas used: ${receipt.gasUsed}`);
-  }
-
-  const L1ScrollMessengerAddress = addressFile.get("L1ScrollMessenger.proxy");
-  // if ((await ZKRollup.messenger()) === constants.AddressZero) {
-  {
-    const tx = await ZKRollup.updateMessenger(L1ScrollMessengerAddress);
-    console.log("updateMessenger ZKRollup, hash:", tx.hash);
+  if ((await ScrollChain.owner()) === constants.AddressZero) {
+    const tx = await ScrollChain.initialize(L1_MESSAGE_QUEUE, constants.AddressZero);
+    console.log("initialize ScrollChain, hash:", tx.hash);
     const receipt = await tx.wait();
     console.log(`✅ Done, gas used: ${receipt.gasUsed}`);
   }
 
   const L1RollupOperatorAddress = process.env.L1_ROLLUP_OPERATOR_ADDR!;
-  // if ((await ZKRollup.operator()) === constants.AddressZero) 
-  {
+  if ((await ScrollChain.isBatchFinalized(L1RollupOperatorAddress)) === false) {
     console.log("L1_ROLLUP_OPERATOR_ADDR", L1RollupOperatorAddress);
-    const tx = await ZKRollup.updateOperator(L1RollupOperatorAddress);
-    console.log("updateOperator ZKRollup, hash:", tx.hash);
+    const tx = await ScrollChain.updateSequencer(L1RollupOperatorAddress, true);
+    console.log("updateOperator ScrollChain, hash:", tx.hash);
     const receipt = await tx.wait();
     console.log(`✅ Done, gas used: ${receipt.gasUsed}`);
   }

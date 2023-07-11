@@ -12,6 +12,13 @@ var (
 		&LogFileFlag,
 		&LogJSONFormat,
 		&LogDebugFlag,
+		&MetricsEnabled,
+		&MetricsAddr,
+		&MetricsPort,
+	}
+	// RollupRelayerFlags contains flags only used in rollup-relayer
+	RollupRelayerFlags = []cli.Flag{
+		&ImportGenesisFlag,
 	}
 	// ConfigFileFlag load json type config file.
 	ConfigFileFlag = cli.StringFlag{
@@ -41,5 +48,32 @@ var (
 	LogDebugFlag = cli.BoolFlag{
 		Name:  "log.debug",
 		Usage: "Prepends log messages with call-site location (file and line number)",
+	}
+	// MetricsEnabled enable metrics collection and reporting
+	MetricsEnabled = cli.BoolFlag{
+		Name:     "metrics",
+		Usage:    "Enable metrics collection and reporting",
+		Category: "METRICS",
+		Value:    false,
+	}
+	// MetricsAddr is listening address of Metrics reporting server
+	MetricsAddr = cli.StringFlag{
+		Name:     "metrics.addr",
+		Usage:    "Metrics reporting server listening address",
+		Category: "METRICS",
+		Value:    "127.0.0.1",
+	}
+	// MetricsPort is listening port of Metrics reporting server
+	MetricsPort = cli.IntFlag{
+		Name:     "metrics.port",
+		Usage:    "Metrics reporting server listening port",
+		Category: "METRICS",
+		Value:    6060,
+	}
+	// ImportGenesisFlag import genesis batch during startup
+	ImportGenesisFlag = cli.BoolFlag{
+		Name:  "import-genesis",
+		Usage: "Import genesis batch into L1 contract during startup",
+		Value: false,
 	}
 )

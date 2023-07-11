@@ -5,6 +5,8 @@ import (
 	"os"
 	"path/filepath"
 
+	"scroll-tech/common/types/message"
+
 	"github.com/scroll-tech/go-ethereum/log"
 )
 
@@ -14,14 +16,17 @@ type Config struct {
 	KeystorePath     string        `json:"keystore_path"`
 	KeystorePassword string        `json:"keystore_password"`
 	CoordinatorURL   string        `json:"coordinator_url"`
+	TraceEndpoint    string        `json:"trace_endpoint"`
 	Prover           *ProverConfig `json:"prover"`
 	DBPath           string        `json:"db_path"`
 }
 
 // ProverConfig load zk prover config.
 type ProverConfig struct {
-	ParamsPath string `json:"params_path"`
-	SeedPath   string `json:"seed_path"`
+	ParamsPath string            `json:"params_path"`
+	SeedPath   string            `json:"seed_path"`
+	ProofType  message.ProofType `json:"prove_type,omitempty"` // 0: basic roller (default type), 1: aggregator roller
+	DumpDir    string            `json:"dump_dir,omitempty"`
 }
 
 // NewConfig returns a new instance of Config.

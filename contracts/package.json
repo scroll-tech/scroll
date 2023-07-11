@@ -11,7 +11,8 @@
     "lint:sol": "./node_modules/.bin/prettier --write 'src/**/*.sol'",
     "lint:ts": "./node_modules/.bin/prettier --write 'integration-test/**/*.ts' 'scripts/**/*.ts' *.ts",
     "lint": "yarn lint:ts && yarn lint:sol",
-    "coverage": "hardhat coverage"
+    "coverage": "hardhat coverage",
+    "prepare": "cd .. && husky install contracts/.husky"
   },
   "devDependencies": {
     "@nomiclabs/hardhat-ethers": "^2.0.0",
@@ -27,6 +28,8 @@
     "@typescript-eslint/eslint-plugin": "^4.29.1",
     "@typescript-eslint/parser": "^4.29.1",
     "chai": "^4.2.0",
+    "circom": "^0.5.46",
+    "circomlib": "^0.5.0",
     "dotenv": "^10.0.0",
     "edit-json-file": "^1.7.0",
     "eslint": "^7.29.0",

@@ -1,10 +1,12 @@
 ARG ALPINE_VERSION=3.15
-FROM alpine:${ALPINE_VERSION}
+ARG RUST_VERSION=nightly-2022-12-10
 ARG CARGO_CHEF_TAG=0.1.41
-ARG DEFAULT_RUST_TOOLCHAIN=nightly-2022-08-23
+
+FROM alpine:${ALPINE_VERSION}
 
 RUN apk add --no-cache \
         ca-certificates \
+        openssl-dev \
         gcc \
         git \
         musl-dev
@@ -26,12 +28,14 @@ RUN set -eux; \
     wget "$url"; \
     chmod +x rustup-init;
 
-RUN ./rustup-init -y --no-modify-path --default-toolchain ${DEFAULT_RUST_TOOLCHAIN}; \
+ARG RUST_VERSION
+RUN ./rustup-init -y --no-modify-path --default-toolchain ${RUST_VERSION}; \
     rm rustup-init; \
     chmod -R a+w $RUSTUP_HOME $CARGO_HOME; \
     rustup --version; \
     cargo --version; \
     rustc --version;
 
+ARG CARGO_CHEF_TAG
 RUN cargo install cargo-chef --locked --version ${CARGO_CHEF_TAG} \
     && rm -rf $CARGO_HOME/registry/

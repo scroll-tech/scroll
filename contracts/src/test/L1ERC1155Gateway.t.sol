@@ -2,404 +2,1052 @@
 
 pragma solidity ^0.8.0;
 
-import { console2 } from "forge-std/console2.sol";
-import { DSTestPlus } from "solmate/test/utils/DSTestPlus.sol";
-import { MockERC1155 } from "solmate/test/utils/mocks/MockERC1155.sol";
-import { ERC1155TokenReceiver } from "solmate/tokens/ERC1155.sol";
+import {DSTestPlus} from "solmate/test/utils/DSTestPlus.sol";
+import {MockERC1155} from "solmate/test/utils/mocks/MockERC1155.sol";
+import {ERC1155TokenReceiver} from "solmate/tokens/ERC1155.sol";
 
-import { L1ERC1155Gateway } from "../L1/gateways/L1ERC1155Gateway.sol";
-import { L2ERC1155Gateway } from "../L2/gateways/L2ERC1155Gateway.sol";
-import { MockScrollMessenger } from "./mocks/MockScrollMessenger.sol";
-import { MockERC1155Recipient } from "./mocks/MockERC1155Recipient.sol";
+import {IL1ERC1155Gateway, L1ERC1155Gateway} from "../L1/gateways/L1ERC1155Gateway.sol";
+import {IL1ScrollMessenger} from "../L1/IL1ScrollMessenger.sol";
+import {IL2ERC1155Gateway, L2ERC1155Gateway} from "../L2/gateways/L2ERC1155Gateway.sol";
+import {AddressAliasHelper} from "../libraries/common/AddressAliasHelper.sol";
+import {ScrollConstants} from "../libraries/constants/ScrollConstants.sol";
 
-contract L1ERC1155GatewayTest is DSTestPlus, ERC1155TokenReceiver {
-  uint256 private constant TOKEN_COUNT = 100;
+import {L1GatewayTestBase} from "./L1GatewayTestBase.t.sol";
+import {MockScrollMessenger} from "./mocks/MockScrollMessenger.sol";
+import {MockERC1155Recipient} from "./mocks/MockERC1155Recipient.sol";
 
-  MockScrollMessenger private messenger;
-  L2ERC1155Gateway private counterpart;
-  L1ERC1155Gateway private gateway;
-
-  MockERC1155 private token;
-  MockERC1155Recipient private mockRecipient;
-
-  function setUp() public {
-    messenger = new MockScrollMessenger();
-
-    counterpart = new L2ERC1155Gateway();
-    gateway = new L1ERC1155Gateway();
-    gateway.initialize(address(counterpart), address(messenger));
-
-    token = new MockERC1155();
-    for (uint256 i = 0; i < TOKEN_COUNT; i++) {
-      token.mint(address(this), i, type(uint256).max, "");
-    }
-    token.setApprovalForAll(address(gateway), true);
-
-    mockRecipient = new MockERC1155Recipient();
-  }
-
-  function testReinitilize() public {
-    hevm.expectRevert("Initializable: contract is already initialized");
-    gateway.initialize(address(1), address(messenger));
-  }
-
-  function testUpdateTokenMappingFailed(address token1) public {
-    // call by non-owner, should revert
-    hevm.startPrank(address(1));
-    hevm.expectRevert("Ownable: caller is not the owner");
-    gateway.updateTokenMapping(token1, token1);
-    hevm.stopPrank();
-
-    // l2 token is zero, should revert
-    hevm.expectRevert("map to zero address");
-    gateway.updateTokenMapping(token1, address(0));
-  }
-
-  function testUpdateTokenMappingSuccess(address token1, address token2) public {
-    if (token2 == address(0)) token2 = address(1);
-
-    assertEq(gateway.tokenMapping(token1), address(0));
-    gateway.updateTokenMapping(token1, token2);
-    assertEq(gateway.tokenMapping(token1), token2);
-  }
-
-  /// @dev failed to deposit erc1155
-  function testDepositERC1155WithGatewayFailed(address to) public {
-    // token not support
-    hevm.expectRevert("token not supported");
-    if (to == address(0)) {
-      gateway.depositERC1155(address(token), 0, 1, 0);
-    } else {
-      gateway.depositERC1155(address(token), to, 0, 1, 0);
-    }
-
-    // deposit zero amount
-    hevm.expectRevert("deposit zero amount");
-    if (to == address(0)) {
-      gateway.depositERC1155(address(token), 0, 0, 0);
-    } else {
-      gateway.depositERC1155(address(token), to, 0, 0, 0);
-    }
-  }
-
-  /// @dev deposit erc1155 without recipient
-  function testDepositERC1155WithGatewaySuccess(uint256 tokenId, uint256 amount) public {
-    tokenId = bound(tokenId, 0, TOKEN_COUNT - 1);
-    amount = bound(amount, 1, type(uint256).max);
-    gateway.updateTokenMapping(address(token), address(token));
-
-    gateway.depositERC1155(address(token), tokenId, amount, 0);
-    assertEq(token.balanceOf(address(gateway), tokenId), amount);
-
-    // @todo check event
-  }
-
-  /// @dev deposit erc1155 with recipient
-  function testDepositERC1155WithGatewaySuccess(
-    uint256 tokenId,
-    uint256 amount,
-    address to
-  ) public {
-    tokenId = bound(tokenId, 0, TOKEN_COUNT - 1);
-    amount = bound(amount, 1, type(uint256).max);
-    gateway.updateTokenMapping(address(token), address(token));
-
-    gateway.depositERC1155(address(token), to, tokenId, amount, 0);
-    assertEq(token.balanceOf(address(gateway), tokenId), amount);
-
-    // @todo check event
-  }
-
-  /// @dev failed to batch deposit erc1155
-  function testBatchDepositERC1155WithGatewayFailed(address to) public {
-    // no token to deposit
-    hevm.expectRevert("no token to deposit");
-    if (to == address(0)) {
-      gateway.batchDepositERC1155(address(token), new uint256[](0), new uint256[](0), 0);
-    } else {
-      gateway.batchDepositERC1155(address(token), to, new uint256[](0), new uint256[](0), 0);
-    }
-
-    // length mismatch
-    hevm.expectRevert("length mismatch");
-    if (to == address(0)) {
-      gateway.batchDepositERC1155(address(token), new uint256[](1), new uint256[](0), 0);
-    } else {
-      gateway.batchDepositERC1155(address(token), to, new uint256[](1), new uint256[](0), 0);
-    }
-
-    uint256[] memory amounts = new uint256[](1);
-    // deposit zero amount
-    hevm.expectRevert("deposit zero amount");
-    if (to == address(0)) {
-      gateway.batchDepositERC1155(address(token), new uint256[](1), amounts, 0);
-    } else {
-      gateway.batchDepositERC1155(address(token), to, new uint256[](1), amounts, 0);
-    }
-
-    // token not support
-    amounts[0] = 1;
-    hevm.expectRevert("token not supported");
-    if (to == address(0)) {
-      gateway.batchDepositERC1155(address(token), new uint256[](1), amounts, 0);
-    } else {
-      gateway.batchDepositERC1155(address(token), to, new uint256[](1), amounts, 0);
-    }
-  }
-
-  /// @dev batch deposit erc1155 without recipient
-  function testBatchDepositERC1155WithGatewaySuccess(uint256 count, uint256 amount) public {
-    count = bound(count, 1, TOKEN_COUNT);
-    amount = bound(amount, 1, type(uint256).max);
-    gateway.updateTokenMapping(address(token), address(token));
-
-    uint256[] memory _tokenIds = new uint256[](count);
-    uint256[] memory _amounts = new uint256[](count);
-    for (uint256 i = 0; i < count; i++) {
-      _tokenIds[i] = i;
-      _amounts[i] = amount;
-    }
-
-    gateway.batchDepositERC1155(address(token), _tokenIds, _amounts, 0);
-    for (uint256 i = 0; i < count; i++) {
-      assertEq(token.balanceOf(address(gateway), i), _amounts[i]);
-    }
-
-    // @todo check event
-  }
-
-  /// @dev batch deposit erc1155 with recipient
-  function testBatchDepositERC1155WithGatewaySuccess(
-    uint256 count,
-    uint256 amount,
-    address to
-  ) public {
-    count = bound(count, 1, TOKEN_COUNT);
-    amount = bound(amount, 1, type(uint256).max);
-    gateway.updateTokenMapping(address(token), address(token));
-
-    uint256[] memory _tokenIds = new uint256[](count);
-    uint256[] memory _amounts = new uint256[](count);
-    for (uint256 i = 0; i < count; i++) {
-      _tokenIds[i] = i;
-      _amounts[i] = amount;
-    }
-
-    gateway.batchDepositERC1155(address(token), to, _tokenIds, _amounts, 0);
-    for (uint256 i = 0; i < count; i++) {
-      assertEq(token.balanceOf(address(gateway), i), _amounts[i]);
-    }
-
-    // @todo check event
-  }
-
-  /// @dev failed to finalize withdraw erc1155
-  function testFinalizeWithdrawERC1155Failed() public {
-    // should revert, called by non-messenger
-    hevm.expectRevert("only messenger can call");
-    gateway.finalizeWithdrawERC1155(address(0), address(0), address(0), address(0), 0, 1);
-
-    // should revert, called by messenger, xDomainMessageSender not set
-    hevm.expectRevert("only call by conterpart");
-    messenger.callTarget(
-      address(gateway),
-      abi.encodeWithSelector(
-        L1ERC1155Gateway.finalizeWithdrawERC1155.selector,
-        address(0),
-        address(0),
-        address(0),
-        address(0),
-        0,
-        1
-      )
+contract L1ERC1155GatewayTest is L1GatewayTestBase, ERC1155TokenReceiver {
+    // from L1ERC1155Gateway
+    event FinalizeWithdrawERC1155(
+        address indexed _l1Token,
+        address indexed _l2Token,
+        address indexed _from,
+        address _to,
+        uint256 _tokenId,
+        uint256 _amount
     );
-
-    // should revert, called by messenger, xDomainMessageSender set wrong
-    messenger.setXDomainMessageSender(address(2));
-    hevm.expectRevert("only call by conterpart");
-    messenger.callTarget(
-      address(gateway),
-      abi.encodeWithSelector(
-        L1ERC1155Gateway.finalizeWithdrawERC1155.selector,
-        address(0),
-        address(0),
-        address(0),
-        address(0),
-        0,
-        1
-      )
+    event FinalizeBatchWithdrawERC1155(
+        address indexed _l1Token,
+        address indexed _l2Token,
+        address indexed _from,
+        address _to,
+        uint256[] _tokenIds,
+        uint256[] _amounts
     );
-  }
-
-  /// @dev finalize withdraw erc1155
-  function testFinalizeWithdrawERC1155(
-    address from,
-    address to,
-    uint256 tokenId,
-    uint256 amount
-  ) public {
-    if (to == address(0) || to.code.length > 0) to = address(1);
-
-    // deposit first
-    gateway.updateTokenMapping(address(token), address(token));
-    tokenId = bound(tokenId, 0, TOKEN_COUNT - 1);
-    amount = bound(amount, 1, type(uint256).max);
-    gateway.depositERC1155(address(token), tokenId, amount, 0);
-
-    // then withdraw
-    messenger.setXDomainMessageSender(address(counterpart));
-    messenger.callTarget(
-      address(gateway),
-      abi.encodeWithSelector(
-        L1ERC1155Gateway.finalizeWithdrawERC1155.selector,
-        address(token),
-        address(token),
-        from,
-        to,
-        tokenId,
-        amount
-      )
+    event DepositERC1155(
+        address indexed _l1Token,
+        address indexed _l2Token,
+        address indexed _from,
+        address _to,
+        uint256 _tokenId,
+        uint256 _amount
     );
-    assertEq(token.balanceOf(to, tokenId), amount);
-  }
-
-  /// @dev failed to finalize batch withdraw erc1155
-  function testFinalizeBatchWithdrawERC1155Failed() public {
-    // should revert, called by non-messenger
-    hevm.expectRevert("only messenger can call");
-    gateway.finalizeBatchWithdrawERC1155(
-      address(0),
-      address(0),
-      address(0),
-      address(0),
-      new uint256[](0),
-      new uint256[](0)
+    event BatchDepositERC1155(
+        address indexed _l1Token,
+        address indexed _l2Token,
+        address indexed _from,
+        address _to,
+        uint256[] _tokenIds,
+        uint256[] _amounts
     );
+    event RefundERC1155(address indexed token, address indexed recipient, uint256 tokenId, uint256 amount);
+    event BatchRefundERC1155(address indexed token, address indexed recipient, uint256[] tokenIds, uint256[] amounts);
 
-    // should revert, called by messenger, xDomainMessageSender not set
-    hevm.expectRevert("only call by conterpart");
-    messenger.callTarget(
-      address(gateway),
-      abi.encodeWithSelector(
-        L1ERC1155Gateway.finalizeBatchWithdrawERC1155.selector,
-        address(0),
-        address(0),
-        address(0),
-        address(0),
-        new uint256[](0),
-        new uint256[](0)
-      )
-    );
+    uint256 private constant TOKEN_COUNT = 100;
+    uint256 private constant MAX_TOKEN_BALANCE = 1000000000;
 
-    // should revert, called by messenger, xDomainMessageSender set wrong
-    messenger.setXDomainMessageSender(address(2));
-    hevm.expectRevert("only call by conterpart");
-    messenger.callTarget(
-      address(gateway),
-      abi.encodeWithSelector(
-        L1ERC1155Gateway.finalizeBatchWithdrawERC1155.selector,
-        address(0),
-        address(0),
-        address(0),
-        address(0),
-        new uint256[](0),
-        new uint256[](0)
-      )
-    );
-  }
+    L1ERC1155Gateway private gateway;
 
-  /// @dev finalize batch withdraw erc1155
-  function testFinalizeBatchWithdrawERC1155(
-    address from,
-    address to,
-    uint256 count,
-    uint256 amount
-  ) public {
-    if (to == address(0) || to.code.length > 0) to = address(1);
-    gateway.updateTokenMapping(address(token), address(token));
+    L2ERC1155Gateway private counterpartGateway;
 
-    // deposit first
-    count = bound(count, 1, TOKEN_COUNT);
-    amount = bound(amount, 1, type(uint256).max);
-    uint256[] memory _tokenIds = new uint256[](count);
-    uint256[] memory _amounts = new uint256[](count);
-    for (uint256 i = 0; i < count; i++) {
-      _tokenIds[i] = i;
-      _amounts[i] = amount;
+    MockERC1155 private l1Token;
+    MockERC1155 private l2Token;
+    MockERC1155Recipient private mockRecipient;
+
+    function setUp() public {
+        setUpBase();
+
+        // Deploy tokens
+        l1Token = new MockERC1155();
+        l2Token = new MockERC1155();
+
+        // Deploy L1 contracts
+        gateway = new L1ERC1155Gateway();
+
+        // Deploy L2 contracts
+        counterpartGateway = new L2ERC1155Gateway();
+
+        // Initialize L1 contracts
+        gateway.initialize(address(counterpartGateway), address(l1Messenger));
+
+        // Prepare token balances
+        for (uint256 i = 0; i < TOKEN_COUNT; i++) {
+            l1Token.mint(address(this), i, MAX_TOKEN_BALANCE, "");
+        }
+        l1Token.setApprovalForAll(address(gateway), true);
+
+        mockRecipient = new MockERC1155Recipient();
     }
-    gateway.batchDepositERC1155(address(token), _tokenIds, _amounts, 0);
 
-    // then withdraw
-    messenger.setXDomainMessageSender(address(counterpart));
-    messenger.callTarget(
-      address(gateway),
-      abi.encodeWithSelector(
-        L1ERC1155Gateway.finalizeBatchWithdrawERC1155.selector,
-        address(token),
-        address(token),
-        from,
-        to,
-        _tokenIds,
-        _amounts
-      )
-    );
-    for (uint256 i = 0; i < count; i++) {
-      assertEq(token.balanceOf(to, i), _amounts[i]);
+    function testInitialized() public {
+        assertEq(address(counterpartGateway), gateway.counterpart());
+        assertEq(address(0), gateway.router());
+        assertEq(address(l1Messenger), gateway.messenger());
+
+        assertEq(address(0), gateway.tokenMapping(address(l1Token)));
+
+        hevm.expectRevert("Initializable: contract is already initialized");
+        gateway.initialize(address(1), address(l1Messenger));
     }
-  }
 
-  /// @dev should detect reentrance
-  function testReentranceWhenFinalizeWithdraw(
-    address from,
-    uint256 tokenId,
-    uint256 amount
-  ) public {
-    // deposit first
-    gateway.updateTokenMapping(address(token), address(token));
-    tokenId = bound(tokenId, 0, TOKEN_COUNT - 1);
-    amount = bound(amount, 1, type(uint256).max);
-    gateway.depositERC1155(address(token), tokenId, amount, 0);
+    function testUpdateTokenMappingFailed(address token1) public {
+        // call by non-owner, should revert
+        hevm.startPrank(address(1));
+        hevm.expectRevert("Ownable: caller is not the owner");
+        gateway.updateTokenMapping(token1, token1);
+        hevm.stopPrank();
 
-    mockRecipient.setCall(
-      address(gateway),
-      0,
-      abi.encodeWithSignature("depositERC1155(address,uint256,uint256,uint256)", address(token), tokenId, amount, 0)
-    );
+        // l2 token is zero, should revert
+        hevm.expectRevert("token address cannot be 0");
+        gateway.updateTokenMapping(token1, address(0));
+    }
 
-    // finalize withdraw
-    messenger.setXDomainMessageSender(address(counterpart));
-    hevm.expectRevert("ReentrancyGuard: reentrant call");
-    messenger.callTarget(
-      address(gateway),
-      abi.encodeWithSelector(
-        L1ERC1155Gateway.finalizeWithdrawERC1155.selector,
-        address(token),
-        address(token),
-        from,
-        address(mockRecipient),
-        tokenId,
-        amount
-      )
-    );
+    function testUpdateTokenMappingSuccess(address token1, address token2) public {
+        hevm.assume(token2 != address(0));
 
-    // finalize batch withdraw
-    messenger.setXDomainMessageSender(address(counterpart));
-    hevm.expectRevert("ReentrancyGuard: reentrant call");
-    uint256[] memory tokenIds = new uint256[](1);
-    uint256[] memory amounts = new uint256[](1);
-    tokenIds[0] = tokenId;
-    amounts[0] = amount;
-    messenger.callTarget(
-      address(gateway),
-      abi.encodeWithSelector(
-        L1ERC1155Gateway.finalizeBatchWithdrawERC1155.selector,
-        address(token),
-        address(token),
-        from,
-        address(mockRecipient),
-        tokenIds,
-        amounts
-      )
-    );
-  }
+        assertEq(gateway.tokenMapping(token1), address(0));
+        gateway.updateTokenMapping(token1, token2);
+        assertEq(gateway.tokenMapping(token1), token2);
+    }
+
+    function testDepositERC1155(
+        uint256 tokenId,
+        uint256 amount,
+        uint256 gasLimit,
+        uint256 feePerGas
+    ) public {
+        _testDepositERC1155(tokenId, amount, gasLimit, feePerGas);
+    }
+
+    function testDepositERC1155WithRecipient(
+        uint256 tokenId,
+        uint256 amount,
+        address recipient,
+        uint256 gasLimit,
+        uint256 feePerGas
+    ) public {
+        _testDepositERC1155WithRecipient(tokenId, amount, recipient, gasLimit, feePerGas);
+    }
+
+    function testBatchDepositERC1155(
+        uint256 tokenCount,
+        uint256 amount,
+        uint256 gasLimit,
+        uint256 feePerGas
+    ) public {
+        _testBatchDepositERC1155(tokenCount, amount, gasLimit, feePerGas);
+    }
+
+    function testBatchDepositERC1155WithRecipient(
+        uint256 tokenCount,
+        uint256 amount,
+        address recipient,
+        uint256 gasLimit,
+        uint256 feePerGas
+    ) public {
+        _testBatchDepositERC1155WithRecipient(tokenCount, amount, recipient, gasLimit, feePerGas);
+    }
+
+    function testDropMessageMocking() public {
+        MockScrollMessenger mockMessenger = new MockScrollMessenger();
+        gateway = new L1ERC1155Gateway();
+        gateway.initialize(address(counterpartGateway), address(mockMessenger));
+
+        // only messenger can call, revert
+        hevm.expectRevert("only messenger can call");
+        gateway.onDropMessage(new bytes(0));
+
+        // only called in drop context, revert
+        hevm.expectRevert("only called in drop context");
+        mockMessenger.callTarget(
+            address(gateway),
+            abi.encodeWithSelector(gateway.onDropMessage.selector, new bytes(0))
+        );
+
+        mockMessenger.setXDomainMessageSender(ScrollConstants.DROP_XDOMAIN_MESSAGE_SENDER);
+
+        // invalid selector, revert
+        hevm.expectRevert("invalid selector");
+        mockMessenger.callTarget(
+            address(gateway),
+            abi.encodeWithSelector(gateway.onDropMessage.selector, new bytes(4))
+        );
+
+        bytes memory message = abi.encodeWithSelector(
+            IL2ERC1155Gateway.finalizeDepositERC1155.selector,
+            address(l1Token),
+            address(l2Token),
+            address(this),
+            address(this),
+            0,
+            0
+        );
+
+        // nonzero msg.value, revert
+        hevm.expectRevert("nonzero msg.value");
+        mockMessenger.callTarget{value: 1}(
+            address(gateway),
+            abi.encodeWithSelector(gateway.onDropMessage.selector, message)
+        );
+    }
+
+    function testDropMessage(uint256 tokenId, uint256 amount) public {
+        gateway.updateTokenMapping(address(l1Token), address(l2Token));
+
+        tokenId = bound(tokenId, 0, TOKEN_COUNT - 1);
+        amount = bound(amount, 1, MAX_TOKEN_BALANCE);
+        bytes memory message = abi.encodeWithSelector(
+            IL2ERC1155Gateway.finalizeDepositERC1155.selector,
+            address(l1Token),
+            address(l2Token),
+            address(this),
+            address(this),
+            tokenId,
+            amount
+        );
+        gateway.depositERC1155(address(l1Token), tokenId, amount, 0);
+
+        // skip message 0
+        hevm.startPrank(address(rollup));
+        messageQueue.popCrossDomainMessage(0, 1, 0x1);
+        assertEq(messageQueue.pendingQueueIndex(), 1);
+        hevm.stopPrank();
+
+        // drop message 0
+        hevm.expectEmit(true, true, false, true);
+        emit RefundERC1155(address(l1Token), address(this), tokenId, amount);
+
+        uint256 balance = l1Token.balanceOf(address(this), tokenId);
+        l1Messenger.dropMessage(address(gateway), address(counterpartGateway), 0, 0, message);
+        assertEq(balance + amount, l1Token.balanceOf(address(this), tokenId));
+    }
+
+    function testDropMessageBatch(uint256 tokenCount, uint256 amount) public {
+        tokenCount = bound(tokenCount, 1, TOKEN_COUNT);
+        amount = bound(amount, 1, MAX_TOKEN_BALANCE);
+        gateway.updateTokenMapping(address(l1Token), address(l2Token));
+
+        uint256[] memory _tokenIds = new uint256[](tokenCount);
+        uint256[] memory _amounts = new uint256[](tokenCount);
+        for (uint256 i = 0; i < tokenCount; i++) {
+            _tokenIds[i] = i;
+            _amounts[i] = amount;
+        }
+
+        bytes memory message = abi.encodeWithSelector(
+            IL2ERC1155Gateway.finalizeBatchDepositERC1155.selector,
+            address(l1Token),
+            address(l2Token),
+            address(this),
+            address(this),
+            _tokenIds,
+            _amounts
+        );
+        gateway.batchDepositERC1155(address(l1Token), _tokenIds, _amounts, 0);
+
+        // skip message 0
+        hevm.startPrank(address(rollup));
+        messageQueue.popCrossDomainMessage(0, 1, 0x1);
+        assertEq(messageQueue.pendingQueueIndex(), 1);
+        hevm.stopPrank();
+
+        // drop message 0
+        hevm.expectEmit(true, true, false, true);
+        emit BatchRefundERC1155(address(l1Token), address(this), _tokenIds, _amounts);
+
+        uint256[] memory balances = new uint256[](tokenCount);
+        for (uint256 i = 0; i < tokenCount; i++) {
+            balances[i] = l1Token.balanceOf(address(this), _tokenIds[i]);
+        }
+        l1Messenger.dropMessage(address(gateway), address(counterpartGateway), 0, 0, message);
+        for (uint256 i = 0; i < tokenCount; i++) {
+            assertEq(balances[i] + _amounts[i], l1Token.balanceOf(address(this), _tokenIds[i]));
+        }
+    }
+
+    function testFinalizeWithdrawERC1155FailedMocking(
+        address sender,
+        address recipient,
+        uint256 tokenId,
+        uint256 amount
+    ) public {
+        tokenId = bound(tokenId, 0, TOKEN_COUNT - 1);
+        amount = bound(amount, 1, MAX_TOKEN_BALANCE);
+
+        // revert when caller is not messenger
+        hevm.expectRevert("only messenger can call");
+        gateway.finalizeWithdrawERC1155(address(l1Token), address(l2Token), sender, recipient, tokenId, amount);
+
+        MockScrollMessenger mockMessenger = new MockScrollMessenger();
+        gateway = new L1ERC1155Gateway();
+        gateway.initialize(address(counterpartGateway), address(mockMessenger));
+
+        // only call by counterpart
+        hevm.expectRevert("only call by counterpart");
+        mockMessenger.callTarget(
+            address(gateway),
+            abi.encodeWithSelector(
+                gateway.finalizeWithdrawERC1155.selector,
+                address(l1Token),
+                address(l2Token),
+                sender,
+                recipient,
+                tokenId,
+                amount
+            )
+        );
+
+        mockMessenger.setXDomainMessageSender(address(counterpartGateway));
+
+        // msg.value mismatch
+        hevm.expectRevert("l2 token mismatch");
+        mockMessenger.callTarget(
+            address(gateway),
+            abi.encodeWithSelector(
+                gateway.finalizeWithdrawERC1155.selector,
+                address(l1Token),
+                address(l2Token),
+                sender,
+                recipient,
+                tokenId,
+                amount
+            )
+        );
+    }
+
+    function testFinalizeWithdrawERC1155Failed(
+        address sender,
+        address recipient,
+        uint256 tokenId,
+        uint256 amount
+    ) public {
+        hevm.assume(recipient != address(0));
+        tokenId = bound(tokenId, 0, TOKEN_COUNT - 1);
+        amount = bound(amount, 1, MAX_TOKEN_BALANCE);
+
+        gateway.updateTokenMapping(address(l1Token), address(l2Token));
+        gateway.depositERC1155(address(l1Token), tokenId, amount, 0);
+
+        // do finalize withdraw token
+        bytes memory message = abi.encodeWithSelector(
+            IL1ERC1155Gateway.finalizeWithdrawERC1155.selector,
+            address(l1Token),
+            address(l2Token),
+            sender,
+            recipient,
+            tokenId,
+            amount
+        );
+        bytes memory xDomainCalldata = abi.encodeWithSignature(
+            "relayMessage(address,address,uint256,uint256,bytes)",
+            address(uint160(address(counterpartGateway)) + 1),
+            address(gateway),
+            0,
+            0,
+            message
+        );
+
+        prepareL2MessageRoot(keccak256(xDomainCalldata));
+
+        IL1ScrollMessenger.L2MessageProof memory proof;
+        proof.batchIndex = rollup.lastFinalizedBatchIndex();
+
+        // counterpart is not L2WETHGateway
+        // emit FailedRelayedMessage from L1ScrollMessenger
+        hevm.expectEmit(true, false, false, true);
+        emit FailedRelayedMessage(keccak256(xDomainCalldata));
+
+        uint256 gatewayBalance = l1Token.balanceOf(address(gateway), tokenId);
+        uint256 recipientBalance = l1Token.balanceOf(recipient, tokenId);
+        assertBoolEq(false, l1Messenger.isL2MessageExecuted(keccak256(xDomainCalldata)));
+        l1Messenger.relayMessageWithProof(
+            address(uint160(address(counterpartGateway)) + 1),
+            address(gateway),
+            0,
+            0,
+            message,
+            proof
+        );
+        assertEq(gatewayBalance, l1Token.balanceOf(address(gateway), tokenId));
+        assertEq(recipientBalance, l1Token.balanceOf(recipient, tokenId));
+        assertBoolEq(false, l1Messenger.isL2MessageExecuted(keccak256(xDomainCalldata)));
+    }
+
+    function testFinalizeWithdrawERC1155(
+        address sender,
+        address recipient,
+        uint256 tokenId,
+        uint256 amount
+    ) public {
+        uint256 size;
+        assembly {
+            size := extcodesize(recipient)
+        }
+        hevm.assume(size == 0);
+        hevm.assume(recipient != address(0));
+
+        tokenId = bound(tokenId, 0, TOKEN_COUNT - 1);
+        amount = bound(amount, 1, MAX_TOKEN_BALANCE);
+
+        gateway.updateTokenMapping(address(l1Token), address(l2Token));
+        gateway.depositERC1155(address(l1Token), tokenId, amount, 0);
+
+        // do finalize withdraw token
+        bytes memory message = abi.encodeWithSelector(
+            IL1ERC1155Gateway.finalizeWithdrawERC1155.selector,
+            address(l1Token),
+            address(l2Token),
+            sender,
+            recipient,
+            tokenId,
+            amount
+        );
+        bytes memory xDomainCalldata = abi.encodeWithSignature(
+            "relayMessage(address,address,uint256,uint256,bytes)",
+            address(counterpartGateway),
+            address(gateway),
+            0,
+            0,
+            message
+        );
+
+        prepareL2MessageRoot(keccak256(xDomainCalldata));
+
+        IL1ScrollMessenger.L2MessageProof memory proof;
+        proof.batchIndex = rollup.lastFinalizedBatchIndex();
+
+        // emit FinalizeWithdrawERC1155 from L1ERC1155Gateway
+        {
+            hevm.expectEmit(true, true, true, true);
+            emit FinalizeWithdrawERC1155(address(l1Token), address(l2Token), sender, recipient, tokenId, amount);
+        }
+
+        // emit RelayedMessage from L1ScrollMessenger
+        {
+            hevm.expectEmit(true, false, false, true);
+            emit RelayedMessage(keccak256(xDomainCalldata));
+        }
+
+        uint256 gatewayBalance = l1Token.balanceOf(address(gateway), tokenId);
+        uint256 recipientBalance = l1Token.balanceOf(recipient, tokenId);
+        assertBoolEq(false, l1Messenger.isL2MessageExecuted(keccak256(xDomainCalldata)));
+        l1Messenger.relayMessageWithProof(address(counterpartGateway), address(gateway), 0, 0, message, proof);
+        assertEq(gatewayBalance - amount, l1Token.balanceOf(address(gateway), tokenId));
+        assertEq(recipientBalance + amount, l1Token.balanceOf(recipient, tokenId));
+        assertBoolEq(true, l1Messenger.isL2MessageExecuted(keccak256(xDomainCalldata)));
+    }
+
+    function testFinalizeBatchWithdrawERC1155FailedMocking(
+        address sender,
+        address recipient,
+        uint256 tokenCount,
+        uint256 amount
+    ) public {
+        tokenCount = bound(tokenCount, 1, TOKEN_COUNT);
+        amount = bound(amount, 1, MAX_TOKEN_BALANCE);
+        uint256[] memory _tokenIds = new uint256[](tokenCount);
+        uint256[] memory _amounts = new uint256[](tokenCount);
+        for (uint256 i = 0; i < tokenCount; i++) {
+            _tokenIds[i] = i;
+            _amounts[i] = amount;
+        }
+
+        // revert when caller is not messenger
+        hevm.expectRevert("only messenger can call");
+        gateway.finalizeBatchWithdrawERC1155(
+            address(l1Token),
+            address(l2Token),
+            sender,
+            recipient,
+            _tokenIds,
+            _amounts
+        );
+
+        MockScrollMessenger mockMessenger = new MockScrollMessenger();
+        gateway = new L1ERC1155Gateway();
+        gateway.initialize(address(counterpartGateway), address(mockMessenger));
+
+        // only call by counterpart
+        hevm.expectRevert("only call by counterpart");
+        mockMessenger.callTarget(
+            address(gateway),
+            abi.encodeWithSelector(
+                gateway.finalizeBatchWithdrawERC1155.selector,
+                address(l1Token),
+                address(l2Token),
+                sender,
+                recipient,
+                _tokenIds,
+                _amounts
+            )
+        );
+
+        mockMessenger.setXDomainMessageSender(address(counterpartGateway));
+
+        // msg.value mismatch
+        hevm.expectRevert("l2 token mismatch");
+        mockMessenger.callTarget(
+            address(gateway),
+            abi.encodeWithSelector(
+                gateway.finalizeBatchWithdrawERC1155.selector,
+                address(l1Token),
+                address(l2Token),
+                sender,
+                recipient,
+                _tokenIds,
+                _amounts
+            )
+        );
+    }
+
+    function testFinalizeBatchWithdrawERC1155Failed(
+        address sender,
+        address recipient,
+        uint256 tokenCount,
+        uint256 amount
+    ) public {
+        hevm.assume(recipient != address(0));
+        tokenCount = bound(tokenCount, 1, TOKEN_COUNT);
+        amount = bound(amount, 1, MAX_TOKEN_BALANCE);
+        uint256[] memory _tokenIds = new uint256[](tokenCount);
+        uint256[] memory _amounts = new uint256[](tokenCount);
+        for (uint256 i = 0; i < tokenCount; i++) {
+            _tokenIds[i] = i;
+            _amounts[i] = amount;
+        }
+
+        gateway.updateTokenMapping(address(l1Token), address(l2Token));
+        gateway.batchDepositERC1155(address(l1Token), _tokenIds, _amounts, 0);
+
+        // do finalize withdraw token
+        bytes memory message = abi.encodeWithSelector(
+            IL1ERC1155Gateway.finalizeBatchWithdrawERC1155.selector,
+            address(l1Token),
+            address(l2Token),
+            sender,
+            recipient,
+            _tokenIds,
+            _amounts
+        );
+        bytes memory xDomainCalldata = abi.encodeWithSignature(
+            "relayMessage(address,address,uint256,uint256,bytes)",
+            address(uint160(address(counterpartGateway)) + 1),
+            address(gateway),
+            0,
+            0,
+            message
+        );
+
+        prepareL2MessageRoot(keccak256(xDomainCalldata));
+
+        IL1ScrollMessenger.L2MessageProof memory proof;
+        proof.batchIndex = rollup.lastFinalizedBatchIndex();
+
+        // counterpart is not L2WETHGateway
+        // emit FailedRelayedMessage from L1ScrollMessenger
+        hevm.expectEmit(true, false, false, true);
+        emit FailedRelayedMessage(keccak256(xDomainCalldata));
+
+        uint256[] memory gatewayBalances = new uint256[](tokenCount);
+        uint256[] memory recipientBalances = new uint256[](tokenCount);
+        for (uint256 i = 0; i < tokenCount; i++) {
+            gatewayBalances[i] = l1Token.balanceOf(address(gateway), i);
+            recipientBalances[i] = l1Token.balanceOf(recipient, i);
+        }
+        assertBoolEq(false, l1Messenger.isL2MessageExecuted(keccak256(xDomainCalldata)));
+        l1Messenger.relayMessageWithProof(
+            address(uint160(address(counterpartGateway)) + 1),
+            address(gateway),
+            0,
+            0,
+            message,
+            proof
+        );
+        for (uint256 i = 0; i < tokenCount; i++) {
+            assertEq(gatewayBalances[i], l1Token.balanceOf(address(gateway), i));
+            assertEq(recipientBalances[i], l1Token.balanceOf(recipient, i));
+        }
+        assertBoolEq(false, l1Messenger.isL2MessageExecuted(keccak256(xDomainCalldata)));
+    }
+
+    function testFinalizeBatchWithdrawERC1155(
+        address sender,
+        address recipient,
+        uint256 tokenCount,
+        uint256 amount
+    ) public {
+        uint256 size;
+        assembly {
+            size := extcodesize(recipient)
+        }
+        hevm.assume(size == 0);
+        hevm.assume(recipient != address(0));
+
+        tokenCount = bound(tokenCount, 1, TOKEN_COUNT);
+        amount = bound(amount, 1, MAX_TOKEN_BALANCE);
+        uint256[] memory _tokenIds = new uint256[](tokenCount);
+        uint256[] memory _amounts = new uint256[](tokenCount);
+        for (uint256 i = 0; i < tokenCount; i++) {
+            _tokenIds[i] = i;
+            _amounts[i] = amount;
+        }
+
+        gateway.updateTokenMapping(address(l1Token), address(l2Token));
+        gateway.batchDepositERC1155(address(l1Token), _tokenIds, _amounts, 0);
+
+        // do finalize withdraw token
+        bytes memory message = abi.encodeWithSelector(
+            IL1ERC1155Gateway.finalizeBatchWithdrawERC1155.selector,
+            address(l1Token),
+            address(l2Token),
+            sender,
+            recipient,
+            _tokenIds,
+            _amounts
+        );
+        bytes memory xDomainCalldata = abi.encodeWithSignature(
+            "relayMessage(address,address,uint256,uint256,bytes)",
+            address(counterpartGateway),
+            address(gateway),
+            0,
+            0,
+            message
+        );
+
+        prepareL2MessageRoot(keccak256(xDomainCalldata));
+
+        IL1ScrollMessenger.L2MessageProof memory proof;
+        proof.batchIndex = rollup.lastFinalizedBatchIndex();
+
+        // emit FinalizeBatchWithdrawERC1155 from L1ERC1155Gateway
+        {
+            hevm.expectEmit(true, true, true, true);
+            emit FinalizeBatchWithdrawERC1155(
+                address(l1Token),
+                address(l2Token),
+                sender,
+                recipient,
+                _tokenIds,
+                _amounts
+            );
+        }
+
+        // emit RelayedMessage from L1ScrollMessenger
+        {
+            hevm.expectEmit(true, false, false, true);
+            emit RelayedMessage(keccak256(xDomainCalldata));
+        }
+
+        uint256[] memory gatewayBalances = new uint256[](tokenCount);
+        uint256[] memory recipientBalances = new uint256[](tokenCount);
+        for (uint256 i = 0; i < tokenCount; i++) {
+            gatewayBalances[i] = l1Token.balanceOf(address(gateway), i);
+            recipientBalances[i] = l1Token.balanceOf(recipient, i);
+        }
+        assertBoolEq(false, l1Messenger.isL2MessageExecuted(keccak256(xDomainCalldata)));
+        l1Messenger.relayMessageWithProof(address(counterpartGateway), address(gateway), 0, 0, message, proof);
+
+        for (uint256 i = 0; i < tokenCount; i++) {
+            assertEq(gatewayBalances[i] - _amounts[i], l1Token.balanceOf(address(gateway), i));
+            assertEq(recipientBalances[i] + _amounts[i], l1Token.balanceOf(recipient, i));
+        }
+        assertBoolEq(true, l1Messenger.isL2MessageExecuted(keccak256(xDomainCalldata)));
+    }
+
+    function testReentranceWhenFinalizeWithdraw(
+        address from,
+        uint256 tokenId,
+        uint256 amount
+    ) public {
+        MockScrollMessenger mockMessenger = new MockScrollMessenger();
+        gateway = new L1ERC1155Gateway();
+        gateway.initialize(address(counterpartGateway), address(mockMessenger));
+        l1Token.setApprovalForAll(address(gateway), true);
+
+        // deposit first
+        gateway.updateTokenMapping(address(l1Token), address(l2Token));
+        tokenId = bound(tokenId, 0, TOKEN_COUNT - 1);
+        amount = bound(amount, 1, MAX_TOKEN_BALANCE);
+        gateway.depositERC1155(address(l1Token), tokenId, amount, 0);
+
+        mockRecipient.setCall(
+            address(gateway),
+            0,
+            abi.encodeWithSignature(
+                "depositERC1155(address,uint256,uint256,uint256)",
+                address(l1Token),
+                tokenId,
+                amount,
+                0
+            )
+        );
+
+        // finalize withdraw
+        mockMessenger.setXDomainMessageSender(address(counterpartGateway));
+        hevm.expectRevert("ReentrancyGuard: reentrant call");
+        mockMessenger.callTarget(
+            address(gateway),
+            abi.encodeWithSelector(
+                IL1ERC1155Gateway.finalizeWithdrawERC1155.selector,
+                address(l1Token),
+                address(l2Token),
+                from,
+                address(mockRecipient),
+                tokenId,
+                amount
+            )
+        );
+
+        // finalize batch withdraw
+        mockMessenger.setXDomainMessageSender(address(counterpartGateway));
+        hevm.expectRevert("ReentrancyGuard: reentrant call");
+        uint256[] memory tokenIds = new uint256[](1);
+        uint256[] memory amounts = new uint256[](1);
+        tokenIds[0] = tokenId;
+        amounts[0] = amount;
+        mockMessenger.callTarget(
+            address(gateway),
+            abi.encodeWithSelector(
+                IL1ERC1155Gateway.finalizeBatchWithdrawERC1155.selector,
+                address(l1Token),
+                address(l2Token),
+                from,
+                address(mockRecipient),
+                tokenIds,
+                amounts
+            )
+        );
+    }
+
+    function _testDepositERC1155(
+        uint256 tokenId,
+        uint256 amount,
+        uint256 gasLimit,
+        uint256 feePerGas
+    ) internal {
+        tokenId = bound(tokenId, 0, TOKEN_COUNT - 1);
+        amount = bound(amount, 0, MAX_TOKEN_BALANCE);
+        gasLimit = bound(gasLimit, 0, 1000000);
+        feePerGas = bound(feePerGas, 0, 1000);
+
+        gasOracle.setL2BaseFee(feePerGas);
+        uint256 feeToPay = feePerGas * gasLimit;
+
+        bytes memory message = abi.encodeWithSelector(
+            IL2ERC1155Gateway.finalizeDepositERC1155.selector,
+            address(l1Token),
+            address(l2Token),
+            address(this),
+            address(this),
+            tokenId,
+            amount
+        );
+        bytes memory xDomainCalldata = abi.encodeWithSignature(
+            "relayMessage(address,address,uint256,uint256,bytes)",
+            address(gateway),
+            address(counterpartGateway),
+            0,
+            0,
+            message
+        );
+
+        if (amount == 0) {
+            hevm.expectRevert("deposit zero amount");
+            gateway.depositERC1155{value: feeToPay + extraValue}(address(l1Token), tokenId, amount, gasLimit);
+        } else {
+            hevm.expectRevert("no corresponding l2 token");
+            gateway.depositERC1155(address(l1Token), tokenId, amount, gasLimit);
+
+            gateway.updateTokenMapping(address(l1Token), address(l2Token));
+            // emit QueueTransaction from L1MessageQueue
+            {
+                hevm.expectEmit(true, true, false, true);
+                address sender = AddressAliasHelper.applyL1ToL2Alias(address(l1Messenger));
+                emit QueueTransaction(sender, address(l2Messenger), 0, 0, gasLimit, xDomainCalldata);
+            }
+
+            // emit SentMessage from L1ScrollMessenger
+            {
+                hevm.expectEmit(true, true, false, true);
+                emit SentMessage(address(gateway), address(counterpartGateway), 0, 0, gasLimit, message);
+            }
+
+            // emit FinalizeWithdrawERC1155 from L1ERC1155Gateway
+            hevm.expectEmit(true, true, true, true);
+            emit DepositERC1155(address(l1Token), address(l2Token), address(this), address(this), tokenId, amount);
+
+            uint256 gatewayBalance = l1Token.balanceOf(address(gateway), tokenId);
+            uint256 feeVaultBalance = address(feeVault).balance;
+            assertBoolEq(false, l1Messenger.isL1MessageSent(keccak256(xDomainCalldata)));
+            gateway.depositERC1155{value: feeToPay + extraValue}(address(l1Token), tokenId, amount, gasLimit);
+            assertEq(amount + gatewayBalance, l1Token.balanceOf(address(gateway), tokenId));
+            assertEq(feeToPay + feeVaultBalance, address(feeVault).balance);
+            assertBoolEq(true, l1Messenger.isL1MessageSent(keccak256(xDomainCalldata)));
+        }
+    }
+
+    function _testDepositERC1155WithRecipient(
+        uint256 tokenId,
+        uint256 amount,
+        address recipient,
+        uint256 gasLimit,
+        uint256 feePerGas
+    ) internal {
+        tokenId = bound(tokenId, 0, TOKEN_COUNT - 1);
+        amount = bound(amount, 0, MAX_TOKEN_BALANCE);
+        gasLimit = bound(gasLimit, 0, 1000000);
+        feePerGas = bound(feePerGas, 0, 1000);
+
+        gasOracle.setL2BaseFee(feePerGas);
+        uint256 feeToPay = feePerGas * gasLimit;
+
+        bytes memory message = abi.encodeWithSelector(
+            IL2ERC1155Gateway.finalizeDepositERC1155.selector,
+            address(l1Token),
+            address(l2Token),
+            address(this),
+            recipient,
+            tokenId,
+            amount
+        );
+        bytes memory xDomainCalldata = abi.encodeWithSignature(
+            "relayMessage(address,address,uint256,uint256,bytes)",
+            address(gateway),
+            address(counterpartGateway),
+            0,
+            0,
+            message
+        );
+
+        if (amount == 0) {
+            hevm.expectRevert("deposit zero amount");
+            gateway.depositERC1155{value: feeToPay + extraValue}(
+                address(l1Token),
+                recipient,
+                tokenId,
+                amount,
+                gasLimit
+            );
+        } else {
+            hevm.expectRevert("no corresponding l2 token");
+            gateway.depositERC1155(address(l1Token), tokenId, amount, gasLimit);
+
+            gateway.updateTokenMapping(address(l1Token), address(l2Token));
+            // emit QueueTransaction from L1MessageQueue
+            {
+                hevm.expectEmit(true, true, false, true);
+                address sender = AddressAliasHelper.applyL1ToL2Alias(address(l1Messenger));
+                emit QueueTransaction(sender, address(l2Messenger), 0, 0, gasLimit, xDomainCalldata);
+            }
+
+            // emit SentMessage from L1ScrollMessenger
+            {
+                hevm.expectEmit(true, true, false, true);
+                emit SentMessage(address(gateway), address(counterpartGateway), 0, 0, gasLimit, message);
+            }
+
+            // emit FinalizeWithdrawERC1155 from L1ERC1155Gateway
+            hevm.expectEmit(true, true, true, true);
+            emit DepositERC1155(address(l1Token), address(l2Token), address(this), recipient, tokenId, amount);
+
+            uint256 gatewayBalance = l1Token.balanceOf(address(gateway), tokenId);
+            uint256 feeVaultBalance = address(feeVault).balance;
+            assertBoolEq(false, l1Messenger.isL1MessageSent(keccak256(xDomainCalldata)));
+            gateway.depositERC1155{value: feeToPay + extraValue}(
+                address(l1Token),
+                recipient,
+                tokenId,
+                amount,
+                gasLimit
+            );
+            assertEq(amount + gatewayBalance, l1Token.balanceOf(address(gateway), tokenId));
+            assertEq(feeToPay + feeVaultBalance, address(feeVault).balance);
+            assertBoolEq(true, l1Messenger.isL1MessageSent(keccak256(xDomainCalldata)));
+        }
+    }
+
+    function _testBatchDepositERC1155(
+        uint256 tokenCount,
+        uint256 amount,
+        uint256 gasLimit,
+        uint256 feePerGas
+    ) internal {
+        tokenCount = bound(tokenCount, 1, TOKEN_COUNT);
+        amount = bound(amount, 1, MAX_TOKEN_BALANCE);
+        gasLimit = bound(gasLimit, 0, 1000000);
+        feePerGas = bound(feePerGas, 0, 1000);
+
+        gasOracle.setL2BaseFee(feePerGas);
+        uint256 feeToPay = feePerGas * gasLimit;
+
+        uint256[] memory _tokenIds = new uint256[](tokenCount);
+        uint256[] memory _amounts = new uint256[](tokenCount);
+        for (uint256 i = 0; i < tokenCount; i++) {
+            _tokenIds[i] = i;
+            _amounts[i] = amount;
+        }
+
+        hevm.expectRevert("no token to deposit");
+        gateway.batchDepositERC1155(address(l1Token), new uint256[](0), new uint256[](0), gasLimit);
+
+        hevm.expectRevert("length mismatch");
+        gateway.batchDepositERC1155(address(l1Token), new uint256[](1), new uint256[](0), gasLimit);
+
+        hevm.expectRevert("deposit zero amount");
+        gateway.batchDepositERC1155(address(l1Token), _tokenIds, new uint256[](tokenCount), gasLimit);
+
+        hevm.expectRevert("no corresponding l2 token");
+        gateway.batchDepositERC1155(address(l1Token), _tokenIds, _amounts, gasLimit);
+
+        bytes memory message = abi.encodeWithSelector(
+            IL2ERC1155Gateway.finalizeBatchDepositERC1155.selector,
+            address(l1Token),
+            address(l2Token),
+            address(this),
+            address(this),
+            _tokenIds,
+            _amounts
+        );
+        bytes memory xDomainCalldata = abi.encodeWithSignature(
+            "relayMessage(address,address,uint256,uint256,bytes)",
+            address(gateway),
+            address(counterpartGateway),
+            0,
+            0,
+            message
+        );
+
+        gateway.updateTokenMapping(address(l1Token), address(l2Token));
+
+        // emit QueueTransaction from L1MessageQueue
+        {
+            hevm.expectEmit(true, true, false, true);
+            address sender = AddressAliasHelper.applyL1ToL2Alias(address(l1Messenger));
+            emit QueueTransaction(sender, address(l2Messenger), 0, 0, gasLimit, xDomainCalldata);
+        }
+
+        // emit SentMessage from L1ScrollMessenger
+        {
+            hevm.expectEmit(true, true, false, true);
+            emit SentMessage(address(gateway), address(counterpartGateway), 0, 0, gasLimit, message);
+        }
+
+        // emit FinalizeWithdrawERC1155 from L1ERC1155Gateway
+        hevm.expectEmit(true, true, true, true);
+        emit BatchDepositERC1155(address(l1Token), address(l2Token), address(this), address(this), _tokenIds, _amounts);
+
+        uint256[] memory gatewayBalances = new uint256[](tokenCount);
+        for (uint256 i = 0; i < tokenCount; i++) {
+            gatewayBalances[i] = l1Token.balanceOf(address(gateway), i);
+        }
+        uint256 feeVaultBalance = address(feeVault).balance;
+        assertBoolEq(false, l1Messenger.isL1MessageSent(keccak256(xDomainCalldata)));
+        gateway.batchDepositERC1155{value: feeToPay + extraValue}(address(l1Token), _tokenIds, _amounts, gasLimit);
+        for (uint256 i = 0; i < tokenCount; i++) {
+            assertEq(gatewayBalances[i] + amount, l1Token.balanceOf(address(gateway), i));
+        }
+        assertEq(feeToPay + feeVaultBalance, address(feeVault).balance);
+        assertBoolEq(true, l1Messenger.isL1MessageSent(keccak256(xDomainCalldata)));
+    }
+
+    function _testBatchDepositERC1155WithRecipient(
+        uint256 tokenCount,
+        uint256 amount,
+        address recipient,
+        uint256 gasLimit,
+        uint256 feePerGas
+    ) internal {
+        tokenCount = bound(tokenCount, 1, TOKEN_COUNT);
+        amount = bound(amount, 1, MAX_TOKEN_BALANCE);
+        gasLimit = bound(gasLimit, 0, 1000000);
+        feePerGas = bound(feePerGas, 0, 1000);
+
+        gasOracle.setL2BaseFee(feePerGas);
+        uint256 feeToPay = feePerGas * gasLimit;
+
+        uint256[] memory _tokenIds = new uint256[](tokenCount);
+        uint256[] memory _amounts = new uint256[](tokenCount);
+        for (uint256 i = 0; i < tokenCount; i++) {
+            _tokenIds[i] = i;
+            _amounts[i] = amount;
+        }
+
+        hevm.expectRevert("no token to deposit");
+        gateway.batchDepositERC1155(address(l1Token), recipient, new uint256[](0), new uint256[](0), gasLimit);
+
+        hevm.expectRevert("length mismatch");
+        gateway.batchDepositERC1155(address(l1Token), recipient, new uint256[](1), new uint256[](0), gasLimit);
+
+        hevm.expectRevert("deposit zero amount");
+        gateway.batchDepositERC1155(address(l1Token), recipient, _tokenIds, new uint256[](tokenCount), gasLimit);
+
+        hevm.expectRevert("no corresponding l2 token");
+        gateway.batchDepositERC1155(address(l1Token), recipient, _tokenIds, _amounts, gasLimit);
+
+        bytes memory message = abi.encodeWithSelector(
+            IL2ERC1155Gateway.finalizeBatchDepositERC1155.selector,
+            address(l1Token),
+            address(l2Token),
+            address(this),
+            recipient,
+            _tokenIds,
+            _amounts
+        );
+        bytes memory xDomainCalldata = abi.encodeWithSignature(
+            "relayMessage(address,address,uint256,uint256,bytes)",
+            address(gateway),
+            address(counterpartGateway),
+            0,
+            0,
+            message
+        );
+
+        gateway.updateTokenMapping(address(l1Token), address(l2Token));
+
+        // emit QueueTransaction from L1MessageQueue
+        {
+            hevm.expectEmit(true, true, false, true);
+            address sender = AddressAliasHelper.applyL1ToL2Alias(address(l1Messenger));
+            emit QueueTransaction(sender, address(l2Messenger), 0, 0, gasLimit, xDomainCalldata);
+        }
+
+        // emit SentMessage from L1ScrollMessenger
+        {
+            hevm.expectEmit(true, true, false, true);
+            emit SentMessage(address(gateway), address(counterpartGateway), 0, 0, gasLimit, message);
+        }
+
+        // emit FinalizeWithdrawERC1155 from L1ERC1155Gateway
+        hevm.expectEmit(true, true, true, true);
+        emit BatchDepositERC1155(address(l1Token), address(l2Token), address(this), recipient, _tokenIds, _amounts);
+
+        uint256[] memory gatewayBalances = new uint256[](tokenCount);
+        for (uint256 i = 0; i < tokenCount; i++) {
+            gatewayBalances[i] = l1Token.balanceOf(address(gateway), i);
+        }
+        uint256 feeVaultBalance = address(feeVault).balance;
+        assertBoolEq(false, l1Messenger.isL1MessageSent(keccak256(xDomainCalldata)));
+        gateway.batchDepositERC1155{value: feeToPay + extraValue}(
+            address(l1Token),
+            recipient,
+            _tokenIds,
+            _amounts,
+            gasLimit
+        );
+        for (uint256 i = 0; i < tokenCount; i++) {
+            assertEq(gatewayBalances[i] + amount, l1Token.balanceOf(address(gateway), i));
+        }
+        assertEq(feeToPay + feeVaultBalance, address(feeVault).balance);
+        assertBoolEq(true, l1Messenger.isL1MessageSent(keccak256(xDomainCalldata)));
+    }
 }

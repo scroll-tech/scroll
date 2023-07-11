@@ -2,26 +2,38 @@
 pragma solidity ^0.8.0;
 
 contract MockBridgeL2 {
+  /******************************
+   * Events from L2MessageQueue *
+   ******************************/
+
+  /// @notice Emitted when a new message is added to the merkle tree.
+  /// @param index The index of the corresponding message.
+  /// @param messageHash The hash of the corresponding message.
+  event AppendMessage(uint256 index, bytes32 messageHash);
+
   /*********************************
    * Events from L2ScrollMessenger *
    *********************************/
 
+  /// @notice Emitted when a cross domain message is sent.
+  /// @param sender The address of the sender who initiates the message.
+  /// @param target The address of target contract to call.
+  /// @param value The amount of value passed to the target contract.
+  /// @param messageNonce The nonce of the message.
+  /// @param gasLimit The optional gas limit passed to L1 or L2.
+  /// @param message The calldata passed to the target contract.
   event SentMessage(
+    address indexed sender,
     address indexed target,
-    address sender,
     uint256 value,
-    uint256 fee,
-    uint256 deadline,
-    bytes message,
     uint256 messageNonce,
-    uint256 gasLimit
+    uint256 gasLimit,
+    bytes message
   );
 
-  event MessageDropped(bytes32 indexed msgHash);
-  
-  event RelayedMessage(bytes32 indexed msgHash);
-  
-  event FailedRelayedMessage(bytes32 indexed msgHash);
+  /// @notice Emitted when a cross domain message is relayed successfully.
+  /// @param messageHash The hash of the message.
+  event RelayedMessage(bytes32 indexed messageHash);
 
   /*************
    * Variables *
@@ -30,38 +42,70 @@ contract MockBridgeL2 {
   /// @notice Message nonce, used to avoid relay attack.
   uint256 public messageNonce;
 
+  /***********************************
+   * Functions from L1GasPriceOracle *
+   ***********************************/
+
+  function setL1BaseFee(uint256) external {
+  }
+
   /************************************
    * Functions from L2ScrollMessenger *
    ************************************/
 
   function sendMessage(
     address _to,
-    uint256 _fee,
+    uint256 _value,
     bytes memory _message,
     uint256 _gasLimit
   ) external payable {
-    // solhint-disable-next-line not-rely-on-time
-    uint256 _deadline = block.timestamp + 1 days;
-    uint256 _nonce = messageNonce;
-    uint256 _value;
-    unchecked {
-      _value = msg.value - _fee;
-    }
-    bytes32 _msghash = keccak256(abi.encodePacked(msg.sender, _to, _value, _fee, _deadline, _nonce, _message));
-    emit SentMessage(_to, msg.sender, _value, _fee, _deadline, _message, _nonce, _gasLimit);
-    messageNonce = _nonce + 1;
+    bytes memory _xDomainCalldata = _encodeXDomainCalldata(msg.sender, _to, _value, messageNonce, _message);
+    bytes32 _xDomainCalldataHash = keccak256(_xDomainCalldata);
+
+    emit AppendMessage(messageNonce, _xDomainCalldataHash);
+    emit SentMessage(msg.sender, _to, _value, messageNonce, _gasLimit, _message);
+
+    messageNonce += 1;
   }
 
-  function relayMessageWithProof(
+  function relayMessage(
     address _from,
     address _to,
     uint256 _value,
-    uint256 _fee,
-    uint256 _deadline,
     uint256 _nonce,
-    bytes memory _message
+    bytes calldata _message
   ) external {
-    bytes32 _msghash = keccak256(abi.encodePacked(_from, _to, _value, _fee, _deadline, _nonce, _message));
-    emit RelayedMessage(_msghash);
+    bytes memory _xDomainCalldata = _encodeXDomainCalldata(_from, _to, _value, _nonce, _message);
+    bytes32 _xDomainCalldataHash = keccak256(_xDomainCalldata);
+    emit RelayedMessage(_xDomainCalldataHash);
+  }
+
+  /**********************
+   * Internal Functions *
+   **********************/
+
+  /// @dev Internal function to generate the correct cross domain calldata for a message.
+  /// @param _sender Message sender address.
+  /// @param _target Target contract address.
+  /// @param _value The amount of ETH pass to the target.
+  /// @param _messageNonce Nonce for the provided message.
+  /// @param _message Message to send to the target.
+  /// @return ABI encoded cross domain calldata.
+  function _encodeXDomainCalldata(
+    address _sender,
+    address _target,
+    uint256 _value,
+    uint256 _messageNonce,
+    bytes memory _message
+  ) internal pure returns (bytes memory) {
+    return
+      abi.encodeWithSignature(
+        "relayMessage(address,address,uint256,uint256,bytes)",
+        _sender,
+        _target,
+        _value,
+        _messageNonce,
+        _message
+      );
   }
 }

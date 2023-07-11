@@ -3,6 +3,7 @@ assets/params*
 assets/seed
 coverage.txt
 build/bin
+*.integration.txt
 
 # misc
 sftp-config.json

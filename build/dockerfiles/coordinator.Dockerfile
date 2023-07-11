@@ -1,5 +1,5 @@
 # Build libzkp dependency
-FROM scrolltech/go-rust-builder:go-1.18-rust-nightly-2022-08-23 as chef
+FROM scrolltech/go-rust-builder:go-1.18-rust-nightly-2022-12-10 as chef
 WORKDIR app
 
 FROM chef as planner
@@ -13,10 +13,11 @@ RUN cargo chef cook --release --recipe-path recipe.json
 
 COPY ./common/libzkp/impl .
 RUN cargo build --release
+RUN find ./ | grep libzktrie.so | xargs -I{} cp {} /app/target/release/
 
 
 # Download Go dependencies
-FROM scrolltech/go-rust-builder:go-1.18-rust-nightly-2022-08-23 as base
+FROM scrolltech/go-rust-builder:go-1.18-rust-nightly-2022-12-10 as base
 WORKDIR /src
 COPY go.work* ./
 COPY ./bridge/go.* ./bridge/
@@ -25,6 +26,7 @@ COPY ./coordinator/go.* ./coordinator/
 COPY ./database/go.* ./database/
 COPY ./roller/go.* ./roller/
 COPY ./tests/integration-test/go.* ./tests/integration-test/
+COPY ./bridge-history-api/go.* ./bridge-history-api/
 RUN go mod download -x
 
 
@@ -32,12 +34,17 @@ RUN go mod download -x
 FROM base as builder
 COPY . .
 RUN cp -r ./common/libzkp/interface ./coordinator/verifier/lib
-COPY --from=zkp-builder /app/target/release/libzkp.a ./coordinator/verifier/lib/
-RUN cd ./coordinator && go build -v -p 4 -o /bin/coordinator ./cmd
+COPY --from=zkp-builder /app/target/release/libzkp.so ./coordinator/verifier/lib/
+COPY --from=zkp-builder /app/target/release/libzktrie.so ./coordinator/verifier/lib/
+RUN cd ./coordinator && go build -v -p 4 -o /bin/coordinator ./cmd && mv verifier/lib /bin/
 
 # Pull coordinator into a second stage deploy alpine container
 FROM ubuntu:20.04
-
+ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/src/coordinator/verifier/lib
+# ENV CHAIN_ID=534353
+RUN mkdir -p /src/coordinator/verifier/lib
+COPY --from=builder /bin/lib /src/coordinator/verifier/lib
 COPY --from=builder /bin/coordinator /bin/
+
 
 ENTRYPOINT ["/bin/coordinator"]

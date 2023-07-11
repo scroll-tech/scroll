@@ -3,8 +3,8 @@
 package verifier
 
 /*
-#cgo LDFLAGS: ${SRCDIR}/lib/libzkp.a -lm -ldl
-#cgo gpu LDFLAGS: ${SRCDIR}/lib/libzkp.a -lm -ldl -lgmp -lstdc++ -lprocps -L/usr/local/cuda/lib64/ -lcudart
+#cgo LDFLAGS: -lzkp -lm -ldl -lzktrie -L${SRCDIR}/lib/ -Wl,-rpath=${SRCDIR}/lib
+#cgo gpu LDFLAGS: -lzkp -lm -ldl -lgmp -lstdc++ -lprocps -lzktrie -L/usr/local/cuda/lib64/ -lcudart -L${SRCDIR}/lib/ -Wl,-rpath=${SRCDIR}/lib
 #include <stdlib.h>
 #include "./lib/libzkp.h"
 */
@@ -16,10 +16,13 @@ import (
 
 	"github.com/scroll-tech/go-ethereum/log"
 
-	"scroll-tech/coordinator/config"
+	"scroll-tech/coordinator/internal/config"
 
-	"scroll-tech/common/message"
+	"scroll-tech/common/types/message"
 )
+
+// InvalidTestProof invalid proof used in tests
+const InvalidTestProof = "this is a invalid proof"
 
 // Verifier represents a rust ffi to a halo2 verifier.
 type Verifier struct {
@@ -46,7 +49,10 @@ func NewVerifier(cfg *config.VerifierConfig) (*Verifier, error) {
 // VerifyProof Verify a ZkProof by marshaling it and sending it to the Halo2 Verifier.
 func (v *Verifier) VerifyProof(proof *message.AggProof) (bool, error) {
 	if v.cfg.MockMode {
-		log.Info("Verifier disabled, VerifyProof skipped")
+		log.Info("Mock mode, verifier disabled")
+		if string(proof.Proof) == InvalidTestProof {
+			return false, nil
+		}
 		return true, nil
 
 	}

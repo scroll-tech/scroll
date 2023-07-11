@@ -1,4 +1,4 @@
-package bridgeabi_test
+package bridgeabi
 
 import (
 	"math/big"
@@ -6,92 +6,123 @@ import (
 
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/stretchr/testify/assert"
-
-	bridge_abi "scroll-tech/bridge/abi"
 )
 
-func TestPackRelayMessageWithProof(t *testing.T) {
+func TestEventSignature(t *testing.T) {
 	assert := assert.New(t)
 
-	l1MessengerABI, err := bridge_abi.L1MessengerMetaData.GetAbi()
+	assert.Equal(L1SentMessageEventSignature, common.HexToHash("104371f3b442861a2a7b82a070afbbaab748bb13757bf47769e170e37809ec1e"))
+	assert.Equal(L1RelayedMessageEventSignature, common.HexToHash("4641df4a962071e12719d8c8c8e5ac7fc4d97b927346a3d7a335b1f7517e133c"))
+	assert.Equal(L1FailedRelayedMessageEventSignature, common.HexToHash("99d0e048484baa1b1540b1367cb128acd7ab2946d1ed91ec10e3c85e4bf51b8f"))
+
+	assert.Equal(L1CommitBatchEventSignature, common.HexToHash("2cdc615c74452778c0fb6184735e014c13aad2b62774fe0b09bd1dcc2cc14a62"))
+	assert.Equal(L1FinalizeBatchEventSignature, common.HexToHash("9d3058a3cb9739a2527f22dd9a4138065844037d3004254952e2458d808cc364"))
+
+	assert.Equal(L1QueueTransactionEventSignature, common.HexToHash("69cfcb8e6d4192b8aba9902243912587f37e550d75c1fa801491fce26717f37e"))
+
+	assert.Equal(L2SentMessageEventSignature, common.HexToHash("104371f3b442861a2a7b82a070afbbaab748bb13757bf47769e170e37809ec1e"))
+	assert.Equal(L2RelayedMessageEventSignature, common.HexToHash("4641df4a962071e12719d8c8c8e5ac7fc4d97b927346a3d7a335b1f7517e133c"))
+	assert.Equal(L2FailedRelayedMessageEventSignature, common.HexToHash("99d0e048484baa1b1540b1367cb128acd7ab2946d1ed91ec10e3c85e4bf51b8f"))
+
+	assert.Equal(L2ImportBlockEventSignature, common.HexToHash("a7823f45e1ee21f9530b77959b57507ad515a14fa9fa24d262ee80e79b2b5745"))
+
+	assert.Equal(L2AppendMessageEventSignature, common.HexToHash("faa617c2d8ce12c62637dbce76efcc18dae60574aa95709bdcedce7e76071693"))
+}
+
+func TestPackRelayL2MessageWithProof(t *testing.T) {
+	assert := assert.New(t)
+	l1MessengerABI, err := L1ScrollMessengerMetaData.GetAbi()
 	assert.NoError(err)
 
-	proof := bridge_abi.IL1ScrollMessengerL2MessageProof{
-		BlockHeight: big.NewInt(0),
+	proof := IL1ScrollMessengerL2MessageProof{
 		BatchIndex:  big.NewInt(0),
-		MerkleProof: make([]byte, 0),
+		MerkleProof: []byte{},
 	}
-	_, err = l1MessengerABI.Pack("relayMessageWithProof", common.Address{}, common.Address{}, big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), make([]byte, 0), proof)
+	_, err = l1MessengerABI.Pack("relayMessageWithProof", common.Address{}, common.Address{}, big.NewInt(0), big.NewInt(0), []byte{}, proof)
 	assert.NoError(err)
 }
 
 func TestPackCommitBatch(t *testing.T) {
 	assert := assert.New(t)
 
-	l1RollupABI, err := bridge_abi.RollupMetaData.GetAbi()
+	scrollChainABI, err := ScrollChainMetaData.GetAbi()
 	assert.NoError(err)
 
-	txns := make([]bridge_abi.IZKRollupLayer2Transaction, 5)
-	for i := 0; i < 5; i++ {
-		txns[i] = bridge_abi.IZKRollupLayer2Transaction{
-			Caller:   common.Address{},
-			Target:   common.Address{},
-			Nonce:    0,
-			Gas:      0,
-			GasPrice: big.NewInt(0),
-			Value:    big.NewInt(0),
-			Data:     make([]byte, 0),
-			R:        big.NewInt(0),
-			S:        big.NewInt(0),
-			V:        0,
-		}
-	}
+	version := uint8(1)
+	var parentBatchHeader []byte
+	var chunks [][]byte
+	var skippedL1MessageBitmap []byte
 
-	header := bridge_abi.IZKRollupLayer2BlockHeader{
-		BlockHash:   common.Hash{},
-		ParentHash:  common.Hash{},
-		BaseFee:     big.NewInt(0),
-		StateRoot:   common.Hash{},
-		BlockHeight: 0,
-		GasUsed:     0,
-		Timestamp:   0,
-		ExtraData:   make([]byte, 0),
-		Txs:         txns,
-	}
-
-	batch := bridge_abi.IZKRollupLayer2Batch{
-		BatchIndex: 0,
-		ParentHash: common.Hash{},
-		Blocks:     []bridge_abi.IZKRollupLayer2BlockHeader{header},
-	}
-
-	_, err = l1RollupABI.Pack("commitBatch", batch)
+	_, err = scrollChainABI.Pack("commitBatch", version, parentBatchHeader, chunks, skippedL1MessageBitmap)
 	assert.NoError(err)
 }
 
 func TestPackFinalizeBatchWithProof(t *testing.T) {
 	assert := assert.New(t)
 
-	l1RollupABI, err := bridge_abi.RollupMetaData.GetAbi()
+	l1RollupABI, err := ScrollChainMetaData.GetAbi()
 	assert.NoError(err)
 
-	proof := make([]*big.Int, 10)
-	instance := make([]*big.Int, 10)
-	for i := 0; i < 10; i++ {
-		proof[i] = big.NewInt(0)
-		instance[i] = big.NewInt(0)
-	}
+	batchHeader := []byte{}
+	prevStateRoot := common.Hash{}
+	postStateRoot := common.Hash{}
+	withdrawRoot := common.Hash{}
+	aggrProof := []byte{}
 
-	_, err = l1RollupABI.Pack("finalizeBatchWithProof", common.Hash{}, proof, instance)
+	_, err = l1RollupABI.Pack("finalizeBatchWithProof", batchHeader, prevStateRoot, postStateRoot, withdrawRoot, aggrProof)
 	assert.NoError(err)
 }
 
-func TestPackRelayMessage(t *testing.T) {
+func TestPackImportGenesisBatch(t *testing.T) {
 	assert := assert.New(t)
 
-	l2MessengerABI, err := bridge_abi.L2MessengerMetaData.GetAbi()
+	l1RollupABI, err := ScrollChainMetaData.GetAbi()
 	assert.NoError(err)
 
-	_, err = l2MessengerABI.Pack("relayMessage", common.Address{}, common.Address{}, big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), make([]byte, 0))
+	batchHeader := []byte{}
+	stateRoot := common.Hash{}
+
+	_, err = l1RollupABI.Pack("importGenesisBatch", batchHeader, stateRoot)
+	assert.NoError(err)
+}
+
+func TestPackRelayL1Message(t *testing.T) {
+	assert := assert.New(t)
+
+	l2MessengerABI, err := L2ScrollMessengerMetaData.GetAbi()
+	assert.NoError(err)
+
+	_, err = l2MessengerABI.Pack("relayMessage", common.Address{}, common.Address{}, big.NewInt(0), big.NewInt(0), []byte{})
+	assert.NoError(err)
+}
+
+func TestPackSetL1BaseFee(t *testing.T) {
+	assert := assert.New(t)
+
+	l1GasOracleABI, err := L1GasPriceOracleMetaData.GetAbi()
+	assert.NoError(err)
+
+	baseFee := big.NewInt(2333)
+	_, err = l1GasOracleABI.Pack("setL1BaseFee", baseFee)
+	assert.NoError(err)
+}
+
+func TestPackSetL2BaseFee(t *testing.T) {
+	assert := assert.New(t)
+
+	l2GasOracleABI, err := L2GasPriceOracleMetaData.GetAbi()
+	assert.NoError(err)
+
+	baseFee := big.NewInt(2333)
+	_, err = l2GasOracleABI.Pack("setL2BaseFee", baseFee)
+	assert.NoError(err)
+}
+
+func TestPackImportBlock(t *testing.T) {
+	assert := assert.New(t)
+
+	l1BlockContainerABI := L1BlockContainerABI
+
+	_, err := l1BlockContainerABI.Pack("importBlockHeader", common.Hash{}, []byte{}, false)
 	assert.NoError(err)
 }

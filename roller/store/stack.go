@@ -7,7 +7,7 @@ import (
 	"github.com/scroll-tech/go-ethereum/log"
 	"go.etcd.io/bbolt"
 
-	"scroll-tech/common/message"
+	"scroll-tech/common/types/message"
 )
 
 var (
@@ -81,28 +81,12 @@ func (s *Stack) Peek() (*ProvingTask, error) {
 	return traces, nil
 }
 
-// Pop pops the proving-task on the top of Stack.
-func (s *Stack) Pop() (*ProvingTask, error) {
-	var value []byte
-	if err := s.Update(func(tx *bbolt.Tx) error {
-		var key []byte
+// Delete pops the proving-task on the top of Stack.
+func (s *Stack) Delete(taskID string) error {
+	return s.Update(func(tx *bbolt.Tx) error {
 		bu := tx.Bucket(bucket)
-		c := bu.Cursor()
-		key, value = c.Last()
-		return bu.Delete(key)
-	}); err != nil {
-		return nil, err
-	}
-	if len(value) == 0 {
-		return nil, ErrEmpty
-	}
-
-	task := &ProvingTask{}
-	err := json.Unmarshal(value, task)
-	if err != nil {
-		return nil, err
-	}
-	return task, nil
+		return bu.Delete([]byte(taskID))
+	})
 }
 
 // UpdateTimes udpates the roller prove times of the proving task.

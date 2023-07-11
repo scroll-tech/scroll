@@ -15,16 +15,16 @@ async function main() {
 
   const [deployer] = await ethers.getSigners();
 
-  const rollupAddr = process.env.L1_ZK_ROLLUP_PROXY_ADDR || addressFile.get("ZKRollup.proxy") || "0x";
+  const rollupAddr = process.env.L1_SCROLL_CHAIN_PROXY_ADDR || addressFile.get("ScrollChain.proxy") || "0x";
   console.log("Using rollup proxy address:", rollupAddr);
 
-  const ZKRollup = await ethers.getContractAt("ZKRollup", rollupAddr, deployer);
-  const genesis = JSON.parse(fs.readFileSync(GENESIS_FILE_PATH, 'utf8'));
+  const ScrollChain = await ethers.getContractAt("ScrollChain", rollupAddr, deployer);
+  const genesis = JSON.parse(fs.readFileSync(GENESIS_FILE_PATH, "utf8"));
   console.log("Using genesis block:", genesis.blockHash);
 
-  const tx = await ZKRollup.importGenesisBlock(genesis);
+  const tx = await ScrollChain.importGenesisBatch(genesis);
 
-  console.log("importGenesisBlock ZKRollup, hash:", tx.hash);
+  console.log("importGenesisBatch ScrollChain, hash:", tx.hash);
   const receipt = await tx.wait();
   console.log(`✅ Done, gas used: ${receipt.gasUsed}`);
 }

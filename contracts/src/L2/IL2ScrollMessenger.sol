@@ -2,27 +2,50 @@
 
 pragma solidity ^0.8.0;
 
-import { IScrollMessenger } from "../libraries/IScrollMessenger.sol";
+import {IScrollMessenger} from "../libraries/IScrollMessenger.sol";
 
 interface IL2ScrollMessenger is IScrollMessenger {
-  /**************************************** Mutate Functions ****************************************/
+    /***********
+     * Structs *
+     ***********/
 
-  /// @notice execute L1 => L2 message
-  /// @dev Make sure this is only called by privileged accounts.
-  /// @param _from The address of the sender of the message.
-  /// @param _to The address of the recipient of the message.
-  /// @param _value The msg.value passed to the message call.
-  /// @param _fee The amount of fee in ETH to charge.
-  /// @param _deadline The deadline of the message.
-  /// @param _nonce The nonce of the message to avoid replay attack.
-  /// @param _message The content of the message.
-  function relayMessage(
-    address _from,
-    address _to,
-    uint256 _value,
-    uint256 _fee,
-    uint256 _deadline,
-    uint256 _nonce,
-    bytes memory _message
-  ) external;
+    struct L1MessageProof {
+        bytes32 blockHash;
+        bytes stateRootProof;
+    }
+
+    /*****************************
+     * Public Mutating Functions *
+     *****************************/
+
+    /// @notice execute L1 => L2 message
+    /// @dev Make sure this is only called by privileged accounts.
+    /// @param from The address of the sender of the message.
+    /// @param to The address of the recipient of the message.
+    /// @param value The msg.value passed to the message call.
+    /// @param nonce The nonce of the message to avoid replay attack.
+    /// @param message The content of the message.
+    function relayMessage(
+        address from,
+        address to,
+        uint256 value,
+        uint256 nonce,
+        bytes calldata message
+    ) external;
+
+    /// @notice execute L1 => L2 message with proof
+    /// @param from The address of the sender of the message.
+    /// @param to The address of the recipient of the message.
+    /// @param value The msg.value passed to the message call.
+    /// @param nonce The nonce of the message to avoid replay attack.
+    /// @param message The content of the message.
+    /// @param proof The message proof.
+    function retryMessageWithProof(
+        address from,
+        address to,
+        uint256 value,
+        uint256 nonce,
+        bytes calldata message,
+        L1MessageProof calldata proof
+    ) external;
 }

@@ -5,11 +5,20 @@ edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [lib]
-crate-type = ["staticlib"]
+crate-type = ["cdylib"]
+
+# `//` is used to skip https://github.com/rust-lang/cargo/issues/5478#issuecomment-522719793.
+[patch."https://github.com/privacy-scaling-explorations/halo2curves.git"]
+halo2curves = { git = 'https://github.com/privacy-scaling-explorations//halo2curves.git', rev = "9b67e19" }
+[patch."https://github.com/privacy-scaling-explorations/halo2.git"]
+halo2_proofs = { git = "https://github.com/scroll-tech/halo2.git", branch = "scroll-dev-0220"  }
+[patch."https://github.com/privacy-scaling-explorations/poseidon.git"]
+poseidon = { git = "https://github.com/scroll-tech/poseidon.git", branch = "scroll-dev-0220" }
 
 [dependencies]
-zkevm = { git = "https://github.com/scroll-tech/scroll-zkevm", branch="fix/mpt_limit" }
-types = { git = "https://github.com/scroll-tech/scroll-zkevm", branch="fix/mpt_limit" }
+zkevm = { git = "https://github.com/scroll-tech/scroll-prover", rev="78ab7a7" }
+types = { git = "https://github.com/scroll-tech/scroll-prover", rev="78ab7a7" }
+halo2_proofs = { git = "https://github.com/privacy-scaling-explorations/halo2.git", tag = "v2022_09_10" }
 
 log = "0.4"
 env_logger = "0.9.0"

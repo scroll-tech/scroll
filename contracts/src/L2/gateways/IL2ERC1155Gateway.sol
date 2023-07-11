@@ -4,91 +4,165 @@ pragma solidity ^0.8.0;
 
 /// @title The interface for the ERC1155 cross chain gateway in layer 2.
 interface IL2ERC1155Gateway {
-  /**************************************** Events ****************************************/
+    /**********
+     * Events *
+     **********/
 
-  event FinalizeDepositERC1155(
-    address indexed _l1Token,
-    address indexed _l2Token,
-    address indexed _from,
-    address _to,
-    uint256 _tokenId,
-    uint256 _amount
-  );
+    /// @notice Emitted when the ERC1155 NFT is transfered to recipient in layer 2.
+    /// @param l1Token The address of ERC1155 NFT in layer 1.
+    /// @param l2Token The address of ERC1155 NFT in layer 2.
+    /// @param from The address of sender in layer 1.
+    /// @param to The address of recipient in layer 2.
+    /// @param tokenId The token id of the ERC1155 NFT deposited in layer 1.
+    /// @param amount The amount of token deposited.
+    event FinalizeDepositERC1155(
+        address indexed l1Token,
+        address indexed l2Token,
+        address indexed from,
+        address to,
+        uint256 tokenId,
+        uint256 amount
+    );
 
-  event FinalizeBatchDepositERC1155(
-    address indexed _l1Token,
-    address indexed _l2Token,
-    address indexed _from,
-    address _to,
-    uint256[] _tokenIds,
-    uint256[] _amounts
-  );
+    /// @notice Emitted when the ERC1155 NFT is batch transfered to recipient in layer 2.
+    /// @param l1Token The address of ERC1155 NFT in layer 1.
+    /// @param l2Token The address of ERC1155 NFT in layer 2.
+    /// @param from The address of sender in layer 1.
+    /// @param to The address of recipient in layer 2.
+    /// @param tokenIds The list of token ids of the ERC1155 NFT deposited in layer 1.
+    /// @param amounts The list of corresponding amounts deposited.
+    event FinalizeBatchDepositERC1155(
+        address indexed l1Token,
+        address indexed l2Token,
+        address indexed from,
+        address to,
+        uint256[] tokenIds,
+        uint256[] amounts
+    );
 
-  event WithdrawERC1155(
-    address indexed _l1Token,
-    address indexed _l2Token,
-    address indexed _from,
-    address _to,
-    uint256 _tokenId,
-    uint256 _amount
-  );
+    /// @notice Emitted when the ERC1155 NFT is transfered to gateway in layer 2.
+    /// @param l1Token The address of ERC1155 NFT in layer 1.
+    /// @param l2Token The address of ERC1155 NFT in layer 2.
+    /// @param from The address of sender in layer 2.
+    /// @param to The address of recipient in layer 1.
+    /// @param tokenId The token id of the ERC1155 NFT to withdraw in layer 2.
+    /// @param amount The amount of token to withdraw.
+    event WithdrawERC1155(
+        address indexed l1Token,
+        address indexed l2Token,
+        address indexed from,
+        address to,
+        uint256 tokenId,
+        uint256 amount
+    );
 
-  event BatchWithdrawERC1155(
-    address indexed _l1Token,
-    address indexed _l2Token,
-    address indexed _from,
-    address _to,
-    uint256[] _tokenIds,
-    uint256[] _amounts
-  );
+    /// @notice Emitted when the ERC1155 NFT is batch transfered to gateway in layer 2.
+    /// @param l1Token The address of ERC1155 NFT in layer 1.
+    /// @param l2Token The address of ERC1155 NFT in layer 2.
+    /// @param from The address of sender in layer 2.
+    /// @param to The address of recipient in layer 1.
+    /// @param tokenIds The list of token ids of the ERC1155 NFT to withdraw in layer 2.
+    /// @param amounts The list of corresponding amounts to withdraw.
+    event BatchWithdrawERC1155(
+        address indexed l1Token,
+        address indexed l2Token,
+        address indexed from,
+        address to,
+        uint256[] tokenIds,
+        uint256[] amounts
+    );
 
-  /**************************************** Mutated Funtions ****************************************/
+    /*****************************
+     * Public Mutating Functions *
+     *****************************/
 
-  function withdrawERC1155(
-    address _token,
-    uint256 _tokenId,
-    uint256 _amount,
-    uint256 _gasLimit
-  ) external;
+    /// @notice Withdraw some ERC1155 NFT to caller's account on layer 1.
+    /// @param token The address of ERC1155 NFT in layer 2.
+    /// @param tokenId The token id to withdraw.
+    /// @param amount The amount of token to withdraw.
+    /// @param gasLimit Unused, but included for potential forward compatibility considerations.
+    function withdrawERC1155(
+        address token,
+        uint256 tokenId,
+        uint256 amount,
+        uint256 gasLimit
+    ) external payable;
 
-  function withdrawERC1155(
-    address _token,
-    address _to,
-    uint256 _tokenId,
-    uint256 _amount,
-    uint256 _gasLimit
-  ) external;
+    /// @notice Withdraw some ERC1155 NFT to caller's account on layer 1.
+    /// @param token The address of ERC1155 NFT in layer 2.
+    /// @param to The address of recipient in layer 1.
+    /// @param tokenId The token id to withdraw.
+    /// @param amount The amount of token to withdraw.
+    /// @param gasLimit Unused, but included for potential forward compatibility considerations.
+    function withdrawERC1155(
+        address token,
+        address to,
+        uint256 tokenId,
+        uint256 amount,
+        uint256 gasLimit
+    ) external payable;
 
-  function batchWithdrawERC1155(
-    address _token,
-    uint256[] memory _tokenIds,
-    uint256[] memory _amounts,
-    uint256 _gasLimit
-  ) external;
+    /// @notice Batch withdraw a list of ERC1155 NFT to caller's account on layer 1.
+    /// @param token The address of ERC1155 NFT in layer 2.
+    /// @param tokenIds The list of token ids to withdraw.
+    /// @param amounts The list of corresponding amounts to withdraw.
+    /// @param gasLimit Unused, but included for potential forward compatibility considerations.
+    function batchWithdrawERC1155(
+        address token,
+        uint256[] memory tokenIds,
+        uint256[] memory amounts,
+        uint256 gasLimit
+    ) external payable;
 
-  function batchWithdrawERC1155(
-    address _token,
-    address _to,
-    uint256[] memory _tokenIds,
-    uint256[] memory _amounts,
-    uint256 _gasLimit
-  ) external;
+    /// @notice Batch withdraw a list of ERC1155 NFT to caller's account on layer 1.
+    /// @param token The address of ERC1155 NFT in layer 2.
+    /// @param to The address of recipient in layer 1.
+    /// @param tokenIds The list of token ids to withdraw.
+    /// @param amounts The list of corresponding amounts to withdraw.
+    /// @param gasLimit Unused, but included for potential forward compatibility considerations.
+    function batchWithdrawERC1155(
+        address token,
+        address to,
+        uint256[] memory tokenIds,
+        uint256[] memory amounts,
+        uint256 gasLimit
+    ) external payable;
 
-  function finalizeDepositERC1155(
-    address _l1Token,
-    address _l2Token,
-    address _from,
-    address _to,
-    uint256 _tokenId,
-    uint256 _amount
-  ) external;
+    /// @notice Complete ERC1155 deposit from layer 1 to layer 2 and send NFT to recipient's account in layer 2.
+    /// @dev Requirements:
+    ///  - The function should only be called by L2ScrollMessenger.
+    ///  - The function should also only be called by L1ERC1155Gateway in layer 1.
+    /// @param l1Token The address of corresponding layer 1 token.
+    /// @param l2Token The address of corresponding layer 2 token.
+    /// @param from The address of account who deposits the token in layer 1.
+    /// @param to The address of recipient in layer 2 to receive the token.
+    /// @param tokenId The token id to deposit.
+    /// @param amount The amount of token to deposit.
+    function finalizeDepositERC1155(
+        address l1Token,
+        address l2Token,
+        address from,
+        address to,
+        uint256 tokenId,
+        uint256 amount
+    ) external;
 
-  function finalizeBatchDepositERC1155(
-    address _l1Token,
-    address _l2Token,
-    address _from,
-    address _to,
-    uint256[] calldata _tokenIds,
-    uint256[] calldata _amounts
-  ) external;
+    /// @notice Complete ERC1155 deposit from layer 1 to layer 2 and send NFT to recipient's account in layer 2.
+    /// @dev Requirements:
+    ///  - The function should only be called by L2ScrollMessenger.
+    ///  - The function should also only be called by L1ERC1155Gateway in layer 1.
+    /// @param l1Token The address of corresponding layer 1 token.
+    /// @param l2Token The address of corresponding layer 2 token.
+    /// @param from The address of account who deposits the token in layer 1.
+    /// @param to The address of recipient in layer 2 to receive the token.
+    /// @param tokenIds The list of token ids to deposit.
+    /// @param amounts The list of corresponding amounts to deposit.
+    function finalizeBatchDepositERC1155(
+        address l1Token,
+        address l2Token,
+        address from,
+        address to,
+        uint256[] calldata tokenIds,
+        uint256[] calldata amounts
+    ) external;
 }

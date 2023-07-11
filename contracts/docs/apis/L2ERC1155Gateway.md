@@ -13,10 +13,10 @@ The `L2ERC1155Gateway` is used to withdraw ERC1155 compatible NFTs in layer 2 an
 ### batchWithdrawERC1155
 
 ```solidity
-function batchWithdrawERC1155(address _token, uint256[] _tokenIds, uint256[] _amounts, uint256 _gasLimit) external nonpayable
+function batchWithdrawERC1155(address _token, uint256[] _tokenIds, uint256[] _amounts, uint256 _gasLimit) external payable
 ```
 
-
+Batch withdraw a list of ERC1155 NFT to caller&#39;s account on layer 1.
 
 
 
@@ -32,10 +32,10 @@ function batchWithdrawERC1155(address _token, uint256[] _tokenIds, uint256[] _am
 ### batchWithdrawERC1155
 
 ```solidity
-function batchWithdrawERC1155(address _token, address _to, uint256[] _tokenIds, uint256[] _amounts, uint256 _gasLimit) external nonpayable
+function batchWithdrawERC1155(address _token, address _to, uint256[] _tokenIds, uint256[] _amounts, uint256 _gasLimit) external payable
 ```
 
-
+Batch withdraw a list of ERC1155 NFT to caller&#39;s account on layer 1.
 
 
 
@@ -72,9 +72,9 @@ The address of corresponding L1/L2 Gateway contract.
 function finalizeBatchDepositERC1155(address _l1Token, address _l2Token, address _from, address _to, uint256[] _tokenIds, uint256[] _amounts) external nonpayable
 ```
 
+Complete ERC1155 deposit from layer 1 to layer 2 and send NFT to recipient&#39;s account in layer 2.
 
-
-
+*Requirements:  - The function should only be called by L2ScrollMessenger.  - The function should also only be called by L1ERC1155Gateway in layer 1.*
 
 #### Parameters
 
@@ -93,9 +93,9 @@ function finalizeBatchDepositERC1155(address _l1Token, address _l2Token, address
 function finalizeDepositERC1155(address _l1Token, address _l2Token, address _from, address _to, uint256 _tokenId, uint256 _amount) external nonpayable
 ```
 
+Complete ERC1155 deposit from layer 1 to layer 2 and send NFT to recipient&#39;s account in layer 2.
 
-
-
+*Requirements:  - The function should only be called by L2ScrollMessenger.  - The function should also only be called by L1ERC1155Gateway in layer 1.*
 
 #### Parameters
 
@@ -107,17 +107,6 @@ function finalizeDepositERC1155(address _l1Token, address _l2Token, address _fro
 | _to | address | undefined |
 | _tokenId | uint256 | undefined |
 | _amount | uint256 | undefined |
-
-### finalizeDropMessage
-
-```solidity
-function finalizeDropMessage() external payable
-```
-
-
-
-
-
 
 ### initialize
 
@@ -142,7 +131,7 @@ function initialize(address _counterpart, address _messenger) external nonpayabl
 function messenger() external view returns (address)
 ```
 
-The address of L1ScrollMessenger/L2ScrollMessenger contract.
+The address of corresponding L1ScrollMessenger/L2ScrollMessenger contract.
 
 
 
@@ -330,10 +319,10 @@ Update layer 2 to layer 1 token mapping.
 ### withdrawERC1155
 
 ```solidity
-function withdrawERC1155(address _token, uint256 _tokenId, uint256 _amount, uint256 _gasLimit) external nonpayable
+function withdrawERC1155(address _token, uint256 _tokenId, uint256 _amount, uint256 _gasLimit) external payable
 ```
 
-
+Withdraw some ERC1155 NFT to caller&#39;s account on layer 1.
 
 
 
@@ -349,10 +338,10 @@ function withdrawERC1155(address _token, uint256 _tokenId, uint256 _amount, uint
 ### withdrawERC1155
 
 ```solidity
-function withdrawERC1155(address _token, address _to, uint256 _tokenId, uint256 _amount, uint256 _gasLimit) external nonpayable
+function withdrawERC1155(address _token, address _to, uint256 _tokenId, uint256 _amount, uint256 _gasLimit) external payable
 ```
 
-
+Withdraw some ERC1155 NFT to caller&#39;s account on layer 1.
 
 
 
@@ -373,10 +362,10 @@ function withdrawERC1155(address _token, address _to, uint256 _tokenId, uint256 
 ### BatchWithdrawERC1155
 
 ```solidity
-event BatchWithdrawERC1155(address indexed _l1Token, address indexed _l2Token, address indexed _from, address _to, uint256[] _tokenIds, uint256[] _amounts)
+event BatchWithdrawERC1155(address indexed l1Token, address indexed l2Token, address indexed from, address to, uint256[] tokenIds, uint256[] amounts)
 ```
 
-
+Emitted when the ERC1155 NFT is batch transfered to gateway in layer 2.
 
 
 
@@ -384,20 +373,20 @@ event BatchWithdrawERC1155(address indexed _l1Token, address indexed _l2Token, a
 
 | Name | Type | Description |
 |---|---|---|
-| _l1Token `indexed` | address | undefined |
-| _l2Token `indexed` | address | undefined |
-| _from `indexed` | address | undefined |
-| _to  | address | undefined |
-| _tokenIds  | uint256[] | undefined |
-| _amounts  | uint256[] | undefined |
+| l1Token `indexed` | address | undefined |
+| l2Token `indexed` | address | undefined |
+| from `indexed` | address | undefined |
+| to  | address | undefined |
+| tokenIds  | uint256[] | undefined |
+| amounts  | uint256[] | undefined |
 
 ### FinalizeBatchDepositERC1155
 
 ```solidity
-event FinalizeBatchDepositERC1155(address indexed _l1Token, address indexed _l2Token, address indexed _from, address _to, uint256[] _tokenIds, uint256[] _amounts)
+event FinalizeBatchDepositERC1155(address indexed l1Token, address indexed l2Token, address indexed from, address to, uint256[] tokenIds, uint256[] amounts)
 ```
 
-
+Emitted when the ERC1155 NFT is batch transfered to recipient in layer 2.
 
 
 
@@ -405,20 +394,20 @@ event FinalizeBatchDepositERC1155(address indexed _l1Token, address indexed _l2T
 
 | Name | Type | Description |
 |---|---|---|
-| _l1Token `indexed` | address | undefined |
-| _l2Token `indexed` | address | undefined |
-| _from `indexed` | address | undefined |
-| _to  | address | undefined |
-| _tokenIds  | uint256[] | undefined |
-| _amounts  | uint256[] | undefined |
+| l1Token `indexed` | address | undefined |
+| l2Token `indexed` | address | undefined |
+| from `indexed` | address | undefined |
+| to  | address | undefined |
+| tokenIds  | uint256[] | undefined |
+| amounts  | uint256[] | undefined |
 
 ### FinalizeDepositERC1155
 
 ```solidity
-event FinalizeDepositERC1155(address indexed _l1Token, address indexed _l2Token, address indexed _from, address _to, uint256 _tokenId, uint256 _amount)
+event FinalizeDepositERC1155(address indexed l1Token, address indexed l2Token, address indexed from, address to, uint256 tokenId, uint256 amount)
 ```
 
-
+Emitted when the ERC1155 NFT is transfered to recipient in layer 2.
 
 
 
@@ -426,12 +415,12 @@ event FinalizeDepositERC1155(address indexed _l1Token, address indexed _l2Token,
 
 | Name | Type | Description |
 |---|---|---|
-| _l1Token `indexed` | address | undefined |
-| _l2Token `indexed` | address | undefined |
-| _from `indexed` | address | undefined |
-| _to  | address | undefined |
-| _tokenId  | uint256 | undefined |
-| _amount  | uint256 | undefined |
+| l1Token `indexed` | address | undefined |
+| l2Token `indexed` | address | undefined |
+| from `indexed` | address | undefined |
+| to  | address | undefined |
+| tokenId  | uint256 | undefined |
+| amount  | uint256 | undefined |
 
 ### OwnershipTransferred
 
@@ -470,10 +459,10 @@ Emitted when token mapping for ERC1155 token is updated.
 ### WithdrawERC1155
 
 ```solidity
-event WithdrawERC1155(address indexed _l1Token, address indexed _l2Token, address indexed _from, address _to, uint256 _tokenId, uint256 _amount)
+event WithdrawERC1155(address indexed l1Token, address indexed l2Token, address indexed from, address to, uint256 tokenId, uint256 amount)
 ```
 
-
+Emitted when the ERC1155 NFT is transfered to gateway in layer 2.
 
 
 
@@ -481,12 +470,12 @@ event WithdrawERC1155(address indexed _l1Token, address indexed _l2Token, addres
 
 | Name | Type | Description |
 |---|---|---|
-| _l1Token `indexed` | address | undefined |
-| _l2Token `indexed` | address | undefined |
-| _from `indexed` | address | undefined |
-| _to  | address | undefined |
-| _tokenId  | uint256 | undefined |
-| _amount  | uint256 | undefined |
+| l1Token `indexed` | address | undefined |
+| l2Token `indexed` | address | undefined |
+| from `indexed` | address | undefined |
+| to  | address | undefined |
+| tokenId  | uint256 | undefined |
+| amount  | uint256 | undefined |
 
 
 

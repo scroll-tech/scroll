@@ -1,8 +1,10 @@
-FROM golang:1.18-alpine
+ARG GO_VERSION=1.19
+ARG RUST_VERSION=nightly-2022-12-10
 ARG CARGO_CHEF_TAG=0.1.41
-ARG DEFAULT_RUST_TOOLCHAIN=nightly-2022-08-23
 
-RUN apk add --no-cache gcc musl-dev linux-headers git ca-certificates
+FROM golang:${GO_VERSION}-alpine
+
+RUN apk add --no-cache gcc musl-dev linux-headers git ca-certificates openssl-dev
 
 # RUN apk add --no-cache libc6-compat
 # RUN apk add --no-cache gcompat
@@ -24,12 +26,14 @@ RUN set -eux; \
     wget "$url"; \
     chmod +x rustup-init;
 
-RUN ./rustup-init -y --no-modify-path --default-toolchain ${DEFAULT_RUST_TOOLCHAIN}; \
+ARG RUST_VERSION
+RUN ./rustup-init -y --no-modify-path --default-toolchain ${RUST_VERSION}; \
     rm rustup-init; \
     chmod -R a+w $RUSTUP_HOME $CARGO_HOME; \
     rustup --version; \
     cargo --version; \
     rustc --version;
 
+ARG CARGO_CHEF_TAG
 RUN cargo install cargo-chef --locked --version ${CARGO_CHEF_TAG} \
     && rm -rf $CARGO_HOME/registry/

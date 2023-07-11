@@ -13,7 +13,7 @@ The `L1ERC721Gateway` is used to deposit ERC721 compatible NFT in layer 1 and fi
 ### batchDepositERC721
 
 ```solidity
-function batchDepositERC721(address _token, address _to, uint256[] _tokenIds, uint256 _gasLimit) external nonpayable
+function batchDepositERC721(address _token, address _to, uint256[] _tokenIds, uint256 _gasLimit) external payable
 ```
 
 Deposit a list of some ERC721 NFT to a recipient&#39;s account on layer 2.
@@ -32,7 +32,7 @@ Deposit a list of some ERC721 NFT to a recipient&#39;s account on layer 2.
 ### batchDepositERC721
 
 ```solidity
-function batchDepositERC721(address _token, uint256[] _tokenIds, uint256 _gasLimit) external nonpayable
+function batchDepositERC721(address _token, uint256[] _tokenIds, uint256 _gasLimit) external payable
 ```
 
 Deposit a list of some ERC721 NFT to caller&#39;s account on layer 2.
@@ -67,7 +67,7 @@ The address of corresponding L1/L2 Gateway contract.
 ### depositERC721
 
 ```solidity
-function depositERC721(address _token, address _to, uint256 _tokenId, uint256 _gasLimit) external nonpayable
+function depositERC721(address _token, address _to, uint256 _tokenId, uint256 _gasLimit) external payable
 ```
 
 Deposit some ERC721 NFT to a recipient&#39;s account on layer 2.
@@ -86,7 +86,7 @@ Deposit some ERC721 NFT to a recipient&#39;s account on layer 2.
 ### depositERC721
 
 ```solidity
-function depositERC721(address _token, uint256 _tokenId, uint256 _gasLimit) external nonpayable
+function depositERC721(address _token, uint256 _tokenId, uint256 _gasLimit) external payable
 ```
 
 Deposit some ERC721 NFT to caller&#39;s account on layer 2.
@@ -121,17 +121,6 @@ Complete ERC721 batch withdraw from layer 2 to layer 1 and send NFT to recipient
 | _to | address | The address of recipient in layer 1 to receive the token. |
 | _tokenIds | uint256[] | The list of token ids to withdraw. |
 
-### finalizeDropMessage
-
-```solidity
-function finalizeDropMessage() external payable
-```
-
-
-
-
-
-
 ### finalizeWithdrawERC721
 
 ```solidity
@@ -158,7 +147,7 @@ Complete ERC721 withdraw from layer 2 to layer 1 and send NFT to recipient&#39;s
 function initialize(address _counterpart, address _messenger) external nonpayable
 ```
 
-
+Initialize the storage of L1ERC721Gateway.
 
 
 
@@ -166,8 +155,8 @@ function initialize(address _counterpart, address _messenger) external nonpayabl
 
 | Name | Type | Description |
 |---|---|---|
-| _counterpart | address | undefined |
-| _messenger | address | undefined |
+| _counterpart | address | The address of L2ERC721Gateway in L2. |
+| _messenger | address | The address of L1ScrollMessenger. |
 
 ### messenger
 
@@ -175,7 +164,7 @@ function initialize(address _counterpart, address _messenger) external nonpayabl
 function messenger() external view returns (address)
 ```
 
-The address of L1ScrollMessenger/L2ScrollMessenger contract.
+The address of corresponding L1ScrollMessenger/L2ScrollMessenger contract.
 
 
 
@@ -185,6 +174,22 @@ The address of L1ScrollMessenger/L2ScrollMessenger contract.
 | Name | Type | Description |
 |---|---|---|
 | _0 | address | undefined |
+
+### onDropMessage
+
+```solidity
+function onDropMessage(bytes _message) external payable
+```
+
+
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| _message | bytes | undefined |
 
 ### onERC721Received
 
@@ -335,6 +340,24 @@ Emitted when the ERC721 NFT is batch deposited to gateway in layer 1.
 | _to  | address | undefined |
 | _tokenIds  | uint256[] | undefined |
 
+### BatchRefundERC721
+
+```solidity
+event BatchRefundERC721(address indexed token, address indexed recipient, uint256[] tokenIds)
+```
+
+Emitted when a batch of ERC721 tokens are refunded.
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| token `indexed` | address | undefined |
+| recipient `indexed` | address | undefined |
+| tokenIds  | uint256[] | undefined |
+
 ### DepositERC721
 
 ```solidity
@@ -411,6 +434,24 @@ event OwnershipTransferred(address indexed previousOwner, address indexed newOwn
 |---|---|---|
 | previousOwner `indexed` | address | undefined |
 | newOwner `indexed` | address | undefined |
+
+### RefundERC721
+
+```solidity
+event RefundERC721(address indexed token, address indexed recipient, uint256 tokenId)
+```
+
+Emitted when some ERC721 token is refunded.
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| token `indexed` | address | undefined |
+| recipient `indexed` | address | undefined |
+| tokenId  | uint256 | undefined |
 
 ### UpdateTokenMapping
 

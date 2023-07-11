@@ -2,40 +2,66 @@
 
 pragma solidity ^0.8.0;
 
-import { IL1ERC20Gateway } from "./IL1ERC20Gateway.sol";
+import {IL1ETHGateway} from "./IL1ETHGateway.sol";
+import {IL1ERC20Gateway} from "./IL1ERC20Gateway.sol";
 
-import { IScrollGateway } from "../../libraries/gateway/IScrollGateway.sol";
+interface IL1GatewayRouter is IL1ETHGateway, IL1ERC20Gateway {
+    /**********
+     * Events *
+     **********/
 
-interface IL1GatewayRouter is IL1ERC20Gateway, IScrollGateway {
-  /**************************************** Events ****************************************/
+    /// @notice Emitted when the address of ETH Gateway is updated.
+    /// @param ethGateway The address of new ETH Gateway.
+    event SetETHGateway(address indexed ethGateway);
 
-  event FinalizeWithdrawETH(address indexed _from, address indexed _to, uint256 _amount, bytes _data);
-  event DepositETH(address indexed _from, address indexed _to, uint256 _amount, bytes _data);
+    /// @notice Emitted when the address of default ERC20 Gateway is updated.
+    /// @param defaultERC20Gateway The address of new default ERC20 Gateway.
+    event SetDefaultERC20Gateway(address indexed defaultERC20Gateway);
 
-  /**************************************** Mutated Functions ****************************************/
+    /// @notice Emitted when the `gateway` for `token` is updated.
+    /// @param token The address of token updated.
+    /// @param gateway The corresponding address of gateway updated.
+    event SetERC20Gateway(address indexed token, address indexed gateway);
 
-  /// @notice Deposit ETH to call's account in L2.
-  /// @param _gasLimit Gas limit required to complete the deposit on L2.
-  function depositETH(uint256 _gasLimit) external payable;
+    /*************************
+     * Public View Functions *
+     *************************/
 
-  /// @notice Deposit ETH to recipient's account in L2.
-  /// @param _to The address of recipient's account on L2.
-  /// @param _gasLimit Gas limit required to complete the deposit on L2.
-  function depositETH(address _to, uint256 _gasLimit) external payable;
+    /// @notice Return the corresponding gateway address for given token address.
+    /// @param _token The address of token to query.
+    function getERC20Gateway(address _token) external view returns (address);
 
-  // @todo add depositETHAndCall;
+    /*****************************
+     * Public Mutating Functions *
+     *****************************/
 
-  /// @notice Complete ETH withdraw from L2 to L1 and send fund to recipient's account in L1.
-  /// @dev This function should only be called by L1ScrollMessenger.
-  ///      This function should also only be called by L2GatewayRouter in L2.
-  /// @param _from The address of account who withdraw ETH in L2.
-  /// @param _to The address of recipient in L1 to receive ETH.
-  /// @param _amount The amount of ETH to withdraw.
-  /// @param _data Optional data to forward to recipient's account.
-  function finalizeWithdrawETH(
-    address _from,
-    address _to,
-    uint256 _amount,
-    bytes calldata _data
-  ) external payable;
+    /// @notice Request ERC20 token transfer from users to gateways.
+    /// @param sender The address of sender to request fund.
+    /// @param token The address of token to request.
+    /// @param amount The amount of token to request.
+    function requestERC20(
+        address sender,
+        address token,
+        uint256 amount
+    ) external returns (uint256);
+
+    /************************
+     * Restricted Functions *
+     ************************/
+
+    /// @notice Update the address of ETH gateway contract.
+    /// @dev This function should only be called by contract owner.
+    /// @param _ethGateway The address to update.
+    function setETHGateway(address _ethGateway) external;
+
+    /// @notice Update the address of default ERC20 gateway contract.
+    /// @dev This function should only be called by contract owner.
+    /// @param _defaultERC20Gateway The address to update.
+    function setDefaultERC20Gateway(address _defaultERC20Gateway) external;
+
+    /// @notice Update the mapping from token address to gateway address.
+    /// @dev This function should only be called by contract owner.
+    /// @param _tokens The list of addresses of tokens to update.
+    /// @param _gateways The list of addresses of gateways to update.
+    function setERC20Gateway(address[] memory _tokens, address[] memory _gateways) external;
 }

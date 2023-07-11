@@ -5,23 +5,77 @@ on:
     branches:
       - main
       - staging
+      - develop
+      - alpha
     paths:
       - 'bridge/**'
+      - 'common/**'
+      - 'database/**'
       - '.github/workflows/bridge.yml'
   pull_request:
-    branches:
-      - main
-      - staging
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - ready_for_review
     paths:
       - 'bridge/**'
+      - 'common/**'
+      - 'database/**'
       - '.github/workflows/bridge.yml'
-
-defaults:
-  run:
-    working-directory: 'bridge'
 
 jobs:
   check:
+    if: github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    steps:
+    - name: Install Go
+      uses: actions/setup-go@v2
+      with:
+        go-version: 1.19.x
+    - name: Checkout code
+      uses: actions/checkout@v2
+    - name: Install Solc
+      uses: supplypike/setup-bin@v3
+      with:
+        uri: 'https://github.com/ethereum/solidity/releases/download/v0.8.16/solc-static-linux'
+        name: 'solc'
+        version: '0.8.16'
+    - name: Install Geth Tools
+      uses: gacts/install-geth-tools@v1
+    - name: Lint
+      working-directory: 'bridge'
+      run: |
+        rm -rf $HOME/.cache/golangci-lint
+        make mock_abi
+        make lint
+  goimports-lint:
+    if: github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    steps:
+    - name: Install Go
+      uses: actions/setup-go@v2
+      with:
+        go-version: 1.19.x
+    - name: Checkout code
+      uses: actions/checkout@v2
+    - name: Install goimports
+      run: go install golang.org/x/tools/cmd/goimports
+    - name: Run goimports lint
+      run: goimports -local scroll-tech/bridge/ -w .
+      working-directory: 'bridge'
+    - name: Run go mod tidy
+      run: go mod tidy
+      working-directory: 'bridge'
+    # If there are any diffs from goimports or go mod tidy, fail.
+    - name: Verify no changes from goimports and go mod tidy
+      working-directory: 'bridge'
+      run: |
+        if [ -n "$(git status --porcelain)" ]; then
+          exit 1
+        fi
+  tests:
+    if: github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     steps:
     - name: Install Go
@@ -38,27 +92,30 @@ jobs:
         version: '0.8.16'
     - name: Install Geth Tools
       uses: gacts/install-geth-tools@v1
-    - name: Lint
+    - name: Build prerequisites
       run: |
-        rm -rf $HOME/.cache/golangci-lint
-        make mock_abi
-        make lint
-  goimports-lint:
-    runs-on: ubuntu-latest
-    steps:
-    - name: Install Go
-      uses: actions/setup-go@v2
+        make dev_docker
+        make -C bridge mock_abi
+    - name: Build bridge binaries
+      working-directory: 'bridge'
+      run: |
+        make bridge_bins
+    - name: Test bridge packages
+      working-directory: 'bridge'
+      run: |
+        go test -v -race -gcflags="-l" -ldflags="-s=false" -coverprofile=coverage.txt -covermode=atomic ./...
+    - name: Upload coverage reports to Codecov
+      uses: codecov/codecov-action@v3
+      env:
+        CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
       with:
-        go-version: 1.18.x
-    - name: Checkout code
-      uses: actions/checkout@v2
-    - name: Install goimports
-      run: go install golang.org/x/tools/cmd/goimports
-    - run: goimports -local scroll-tech/bridge/ -w .
-    - run: go mod tidy
-    # If there are any diffs from goimports or go mod tidy, fail.
-    - name: Verify no changes from goimports and go mod tidy
-      run: |
-        if [ -n "$(git status --porcelain)" ]; then
-          exit 1
-        fi
+        flags: bridge
+  # docker-build:
+  #   if: github.event.pull_request.draft == false
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #   - name: Checkout code
+  #     uses: actions/checkout@v2
+  #   - name: Set up Docker Buildx
+  #     uses: docker/setup-buildx-action@v2
+  #   - run: make docker

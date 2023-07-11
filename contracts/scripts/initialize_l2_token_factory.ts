@@ -21,10 +21,10 @@ async function main() {
   const L2StandardERC20GatewayAddress = addressFile.get("L2StandardERC20Gateway.proxy");
 
   // if ((await ScrollStandardERC20Factory.owner()) !== L2StandardERC20GatewayAddress) {
-    const tx = await ScrollStandardERC20Factory.transferOwnership(L2StandardERC20GatewayAddress);
-    console.log("transfer ownernship ScrollStandardERC20Factory, hash:", tx.hash);
-    const receipt = await tx.wait();
-    console.log(`✅ Done, gas used: ${receipt.gasUsed}`);
+  const tx = await ScrollStandardERC20Factory.transferOwnership(L2StandardERC20GatewayAddress);
+  console.log("transfer ownernship ScrollStandardERC20Factory, hash:", tx.hash);
+  const receipt = await tx.wait();
+  console.log(`✅ Done, gas used: ${receipt.gasUsed}`);
   // }
 }
 

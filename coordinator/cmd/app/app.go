@@ -1,30 +1,27 @@
 package app
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/signal"
 
-	"github.com/scroll-tech/go-ethereum/ethclient"
-
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/urfave/cli/v2"
 
-	"scroll-tech/database"
-
+	"scroll-tech/common/database"
+	"scroll-tech/common/metrics"
 	"scroll-tech/common/utils"
 	"scroll-tech/common/version"
 
 	"scroll-tech/coordinator"
-	"scroll-tech/coordinator/config"
+	"scroll-tech/coordinator/internal/config"
 )
 
-var (
-	// Set up Coordinator app info.
-	app *cli.App
-)
+var app *cli.App
 
 func init() {
+	// Set up coordinator app info.
 	app = cli.NewApp()
 	app.Action = action
 	app.Name = "coordinator"
@@ -32,13 +29,11 @@ func init() {
 	app.Version = version.Version
 	app.Flags = append(app.Flags, utils.CommonFlags...)
 	app.Flags = append(app.Flags, apiFlags...)
-
 	app.Before = func(ctx *cli.Context) error {
 		return utils.LogSetup(ctx)
 	}
-
 	// Register `coordinator-test` app for integration-test.
-	utils.RegisterSimulation(app, "coordinator-test")
+	utils.RegisterSimulation(app, utils.CoordinatorApp)
 }
 
 func action(ctx *cli.Context) error {
@@ -49,29 +44,30 @@ func action(ctx *cli.Context) error {
 		log.Crit("failed to load config file", "config file", cfgFile, "error", err)
 	}
 
-	// init db connection
-	var ormFactory database.OrmFactory
-	if ormFactory, err = database.NewOrmFactory(cfg.DBConfig); err != nil {
+	// init db handler
+	db, err := database.InitDB(cfg.DBConfig)
+	if err != nil {
 		log.Crit("failed to init db connection", "err", err)
 	}
-
-	client, err := ethclient.Dial(cfg.L2Config.Endpoint)
-	if err != nil {
-		return err
-	}
-
-	// Initialize all coordinator modules.
-	rollerManager, err := coordinator.New(ctx.Context, cfg.RollerManagerConfig, ormFactory, client)
-	if err != nil {
-		return err
-	}
 	defer func() {
-		rollerManager.Stop()
-		err = ormFactory.Close()
-		if err != nil {
+		if err = database.CloseDB(db); err != nil {
 			log.Error("can not close ormFactory", "error", err)
 		}
 	}()
+
+	subCtx, cancel := context.WithCancel(ctx.Context)
+	// Initialize all coordinator modules.
+	rollerManager, err := coordinator.New(subCtx, cfg.RollerManagerConfig, db)
+	defer func() {
+		cancel()
+		rollerManager.Stop()
+	}()
+
+	if err != nil {
+		return err
+	}
+	// Start metrics server.
+	metrics.Serve(subCtx, ctx)
 
 	// Start all modules.
 	if err = rollerManager.Start(); err != nil {
@@ -81,12 +77,7 @@ func action(ctx *cli.Context) error {
 	apis := rollerManager.APIs()
 	// Register api and start rpc service.
 	if ctx.Bool(httpEnabledFlag.Name) {
-		handler, addr, err := utils.StartHTTPEndpoint(
-			fmt.Sprintf(
-				"%s:%d",
-				ctx.String(httpListenAddrFlag.Name),
-				ctx.Int(httpPortFlag.Name)),
-			apis)
+		handler, addr, err := utils.StartHTTPEndpoint(fmt.Sprintf("%s:%d", ctx.String(httpListenAddrFlag.Name), ctx.Int(httpPortFlag.Name)), apis)
 		if err != nil {
 			log.Crit("Could not start RPC api", "error", err)
 		}
@@ -98,12 +89,8 @@ func action(ctx *cli.Context) error {
 	}
 	// Register api and start ws service.
 	if ctx.Bool(wsEnabledFlag.Name) {
-		handler, addr, err := utils.StartWSEndpoint(
-			fmt.Sprintf(
-				"%s:%d",
-				ctx.String(wsListenAddrFlag.Name),
-				ctx.Int(wsPortFlag.Name)),
-			apis)
+		handler, addr, err := utils.StartWSEndpoint(fmt.Sprintf("%s:%d", ctx.String(wsListenAddrFlag.Name), ctx.Int(wsPortFlag.Name)),
+			apis, cfg.RollerManagerConfig.CompressionLevel)
 		if err != nil {
 			log.Crit("Could not start WS api", "error", err)
 		}
