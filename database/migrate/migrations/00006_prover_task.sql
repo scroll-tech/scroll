@@ -16,7 +16,7 @@ create table prover_task
 -- status
     proving_status      SMALLINT        NOT NULL DEFAULT 0,
     failure_type        SMALLINT        NOT NULL DEFAULT 0,
-    reward              DECIMAL(100, 0) NOT NULL DEFAULT 0,
+    reward              DECIMAL(78, 0) NOT NULL DEFAULT 0,
     proof               BYTEA           DEFAULT NULL,
 
 -- metadata

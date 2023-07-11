@@ -30,7 +30,7 @@ type ProverTask struct {
 	// status
 	ProvingStatus int16           `json:"proving_status" gorm:"column:proving_status;default:0"`
 	FailureType   int16           `json:"failure_type" gorm:"column:failure_type;default:0"`
-	Reward        decimal.Decimal `json:"reward" gorm:"column:reward;default:0;type:decimal(100)"`
+	Reward        decimal.Decimal `json:"reward" gorm:"column:reward;default:0;type:decimal(78)"`
 	Proof         []byte          `json:"proof" gorm:"column:proof;default:NULL"`
 
 	// metadata
