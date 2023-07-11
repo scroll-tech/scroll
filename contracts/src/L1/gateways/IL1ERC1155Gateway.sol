@@ -72,6 +72,20 @@ interface IL1ERC1155Gateway {
         uint256[] _amounts
     );
 
+    /// @notice Emitted when some ERC1155 token is refunded.
+    /// @param token The address of the token in L1.
+    /// @param recipient The address of receiver in L1.
+    /// @param tokenId The id of token refunded.
+    /// @param amount The amount of token refunded.
+    event RefundERC1155(address indexed token, address indexed recipient, uint256 tokenId, uint256 amount);
+
+    /// @notice Emitted when some ERC1155 token is refunded.
+    /// @param token The address of the token in L1.
+    /// @param recipient The address of receiver in L1.
+    /// @param tokenIds The list of ids of token refunded.
+    /// @param amounts The list of amount of token refunded.
+    event BatchRefundERC1155(address indexed token, address indexed recipient, uint256[] tokenIds, uint256[] amounts);
+
     /*************************
      * Public View Functions *
      *************************/

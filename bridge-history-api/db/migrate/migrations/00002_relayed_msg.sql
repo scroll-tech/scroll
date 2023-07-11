@@ -19,6 +19,8 @@ CREATE INDEX idx_l1_msg_relayed_msg ON relayed_msg (layer1_hash, deleted_at);
 
 CREATE INDEX idx_l2_msg_relayed_msg ON relayed_msg (layer2_hash, deleted_at);
 
+CREATE INDEX idx_msg_hash_deleted_at_relayed_msg on relayed_msg (msg_hash, deleted_at);
+
 CREATE OR REPLACE FUNCTION update_timestamp()
 RETURNS TRIGGER AS $$
 BEGIN

@@ -70,34 +70,37 @@ contract L1WETHGateway is Initializable, ScrollGatewayBase, L1ERC20Gateway {
         return l2WETH;
     }
 
-    /*****************************
-     * Public Mutating Functions *
-     *****************************/
+    /**********************
+     * Internal Functions *
+     **********************/
 
-    /// @inheritdoc IL1ERC20Gateway
-    function finalizeWithdrawERC20(
+    /// @inheritdoc L1ERC20Gateway
+    function _beforeFinalizeWithdrawERC20(
         address _l1Token,
         address _l2Token,
-        address _from,
-        address _to,
+        address,
+        address,
         uint256 _amount,
-        bytes calldata _data
-    ) external payable override onlyCallByCounterpart nonReentrant {
+        bytes calldata
+    ) internal virtual override {
         require(_l1Token == WETH, "l1 token not WETH");
         require(_l2Token == l2WETH, "l2 token not WETH");
         require(_amount == msg.value, "msg.value mismatch");
 
         IWETH(_l1Token).deposit{value: _amount}();
-        IERC20(_l1Token).safeTransfer(_to, _amount);
-
-        _doCallback(_to, _data);
-
-        emit FinalizeWithdrawERC20(_l1Token, _l2Token, _from, _to, _amount, _data);
     }
 
-    /**********************
-     * Internal Functions *
-     **********************/
+    /// @inheritdoc L1ERC20Gateway
+    function _beforeDropMessage(
+        address _token,
+        address,
+        uint256 _amount
+    ) internal virtual override {
+        require(_token == WETH, "token not WETH");
+        require(_amount == msg.value, "msg.value mismatch");
+
+        IWETH(_token).deposit{value: _amount}();
+    }
 
     /// @inheritdoc L1ERC20Gateway
     function _deposit(
