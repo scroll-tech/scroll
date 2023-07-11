@@ -20,12 +20,18 @@ import (
 )
 
 var (
-	port      string
-	addr      = fmt.Sprintf("http://localhost%s", port)
-	basicPath = fmt.Sprintf("%s/api/v1/prover_task", addr)
+	port, addr, basicPath string
 
 	proverPubkey = "11111"
 )
+
+func init() {
+	portInt, _ := rand.Int(rand.Reader, big.NewInt(2000))
+
+	port = fmt.Sprintf(":%s", portInt.String())
+	addr = fmt.Sprintf("http://localhost%s", port)
+	basicPath = fmt.Sprintf("%s/api/v1/prover_task", addr)
+}
 
 func TestProverTaskAPIs(t *testing.T) {
 	// start database image
@@ -41,9 +47,6 @@ func TestProverTaskAPIs(t *testing.T) {
 
 	// insert some tasks
 	insertSomeProverTasks(t, db)
-
-	portInt, _ := rand.Int(rand.Reader, big.NewInt(2000))
-	port = fmt.Sprintf(":%s", portInt.String())
 
 	// run miner APIs
 	app.RunMinerAPIs(db, port)
@@ -113,8 +116,10 @@ var (
 )
 
 func insertSomeProverTasks(t *testing.T, db *gorm.DB) {
+	err := db.AutoMigrate(new(orm.ProverTask))
+	assert.NoError(t, err)
 	ptdb := orm.NewProverTask(db)
-	err := ptdb.SetProverTask(context.Background(), &task1)
+	err = ptdb.SetProverTask(context.Background(), &task1)
 	assert.NoError(t, err)
 	err = ptdb.SetProverTask(context.Background(), &task2)
 	assert.NoError(t, err)
