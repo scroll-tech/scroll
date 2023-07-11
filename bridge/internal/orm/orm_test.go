@@ -227,7 +227,7 @@ func TestBatchOrm(t *testing.T) {
 	assert.NoError(t, err)
 
 	dbProof, err := batchOrm.GetVerifiedProofByHash(context.Background(), batchHash1)
-	assert.Error(t, err, gorm.ErrRecordNotFound)
+	assert.Error(t, err)
 	assert.Nil(t, dbProof)
 
 	err = batchOrm.UpdateProvingStatus(context.Background(), batchHash2, types.ProvingTaskVerified)

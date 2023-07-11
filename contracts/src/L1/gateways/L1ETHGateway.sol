@@ -113,7 +113,7 @@ contract L1ETHGateway is Initializable, ScrollGatewayBase, IL1ETHGateway {
             _data
         );
 
-        IL1ScrollMessenger(messenger).sendMessage{value: msg.value}(counterpart, _amount, _message, _gasLimit);
+        IL1ScrollMessenger(messenger).sendMessage{value: msg.value}(counterpart, _amount, _message, _gasLimit, _from);
 
         emit DepositETH(_from, _to, _amount, _data);
     }

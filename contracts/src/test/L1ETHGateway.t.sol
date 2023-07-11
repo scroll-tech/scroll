@@ -133,6 +133,7 @@ contract L1ETHGatewayTest is L1GatewayTestBase {
         );
 
         // ETH transfer failed
+        revertOnReceive = true;
         hevm.expectRevert("ETH transfer failed");
         mockMessenger.callTarget{value: amount}(
             address(gateway),
