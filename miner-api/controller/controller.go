@@ -1,8 +1,10 @@
 package controller
 
 import (
-	"github.com/gin-gonic/gin"
 	"net/http"
+
+	"github.com/gin-gonic/gin"
+
 	"scroll-tech/miner-api/service"
 )
 
@@ -77,7 +79,7 @@ func (c *ProverTaskController) GetTotalRewards(ctx *gin.Context) {
 // @Success      200  {object}  *orm.ProverTask
 // @Failure      404  {object}  string
 // @Failure      500  {object}  string
-// @Router       /prover_task/task/{pubkey} [get]
+// @Router       /prover_task/task/{task_id} [get]
 func (c *ProverTaskController) GetTask(ctx *gin.Context) {
 	taskID := ctx.Param("task_id")
 	task, err := c.service.GetTask(taskID)

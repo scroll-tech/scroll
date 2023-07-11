@@ -2,9 +2,12 @@ package app
 
 import (
 	"fmt"
-	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 	"os"
 	"os/signal"
+
+	"github.com/gin-gonic/gin"
+
 	"scroll-tech/miner-api/controller"
 	"scroll-tech/miner-api/internal/config"
 	"scroll-tech/miner-api/internal/orm"
@@ -59,6 +62,20 @@ func action(ctx *cli.Context) error {
 	}()
 
 	// init miner api
+	port := ctx.String(httpPortFlag.Name)
+	RunMinerAPIs(db, port)
+
+	// Catch CTRL-C to ensure a graceful shutdown.
+	interrupt := make(chan os.Signal, 1)
+	signal.Notify(interrupt, os.Interrupt)
+
+	// Wait until the interrupt signal is received from an OS signal.
+	<-interrupt
+
+	return nil
+}
+
+func RunMinerAPIs(db *gorm.DB, port string) {
 	ptdb := orm.NewProverTask(db)
 	taskService := service.NewProverTaskService(ptdb)
 
@@ -70,17 +87,8 @@ func action(ctx *cli.Context) error {
 	c.Route()
 
 	go func() {
-		r.Run(ctx.String(httpPortFlag.Name))
+		r.Run(port)
 	}()
-
-	// Catch CTRL-C to ensure a graceful shutdown.
-	interrupt := make(chan os.Signal, 1)
-	signal.Notify(interrupt, os.Interrupt)
-
-	// Wait until the interrupt signal is received from an OS signal.
-	<-interrupt
-
-	return nil
 }
 
 // Run run miner-api.
