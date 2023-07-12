@@ -55,7 +55,7 @@ func (c *ProverTaskController) GetTasksByProver(ctx *gin.Context) {
 // @Accept       string
 // @Produce      json
 // @Param        pubkey   path  string  true  "prover public key"
-// @Success      200  {object}  map[string]decimal.Decimal
+// @Success      200  {object}  map[string]*big.Int
 // @Failure      404  {object}  string
 // @Failure      500  {object}  string
 // @Router       /prover_task/total_rewards/{pubkey} [get]

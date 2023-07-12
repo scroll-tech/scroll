@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"gorm.io/gorm"
 	"io"
+	"math/big"
 	"net/http"
 	"scroll-tech/common/database"
 	"scroll-tech/common/docker"
@@ -60,9 +61,9 @@ func testGetProverTasksByProver(t *testing.T) {
 }
 
 func testGetTotalRewards(t *testing.T) {
-	rewards := make(map[string]int)
+	rewards := make(map[string]*big.Int)
 	getResp(t, fmt.Sprintf("%s/total_rewards?pubkey=%s", basicPath, proverPubkey), &rewards)
-	assert.Equal(t, 22, rewards["rewards"])
+	assert.Equal(t, big.NewInt(22), rewards["rewards"])
 }
 
 func testGetProverTask(t *testing.T) {

@@ -5,6 +5,7 @@ import (
 	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
 	"gorm.io/gorm"
+	"math/big"
 	"scroll-tech/common/database"
 	"scroll-tech/common/docker"
 	"scroll-tech/common/types"
@@ -82,7 +83,7 @@ func testGetTasksByProver(t *testing.T) {
 func testGetTotalRewards(t *testing.T) {
 	rewards, err := service.GetTotalRewards(proverPubkey)
 	assert.NoError(t, err)
-	assert.Equal(t, decimal.NewFromInt(22), rewards)
+	assert.Equal(t, big.NewInt(22), rewards)
 }
 
 func testGetTask(t *testing.T) {
