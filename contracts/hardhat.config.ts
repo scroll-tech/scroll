@@ -116,7 +116,7 @@ const config: HardhatUserConfig = {
       "IL2ERC1155Gateway",
       "IScrollStandardERC20Factory",
       "IZKRollup",
-      "WETH9",
+      "WrappedEther",
     ],
   },
 };
