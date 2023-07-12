@@ -35,6 +35,10 @@ contract L2GatewayRouter is OwnableUpgradeable, IL2GatewayRouter {
      * Constructor *
      ***************/
 
+    constructor() {
+        _disableInitializers();
+    }
+
     function initialize(address _ethGateway, address _defaultERC20Gateway) external initializer {
         OwnableUpgradeable.__Ownable_init();
 

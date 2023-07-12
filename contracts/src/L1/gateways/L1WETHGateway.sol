@@ -40,6 +40,8 @@ contract L1WETHGateway is Initializable, ScrollGatewayBase, L1ERC20Gateway {
      ***************/
 
     constructor(address _WETH, address _l2WETH) {
+        _disableInitializers();
+
         WETH = _WETH;
         l2WETH = _l2WETH;
     }

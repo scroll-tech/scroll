@@ -4,6 +4,8 @@ pragma solidity ^0.8.0;
 
 import {WETH} from "solmate/tokens/WETH.sol";
 
+import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
+
 import {IL1ERC20Gateway, L1WETHGateway} from "../L1/gateways/L1WETHGateway.sol";
 import {L2GatewayRouter} from "../L2/gateways/L2GatewayRouter.sol";
 import {IL2ERC20Gateway, L2WETHGateway} from "../L2/gateways/L2WETHGateway.sol";
@@ -49,8 +51,8 @@ contract L2WETHGatewayTest is L2GatewayTestBase {
         l2weth = new WETH();
 
         // Deploy L2 contracts
-        gateway = new L2WETHGateway(address(l2weth), address(l1weth));
-        router = new L2GatewayRouter();
+        gateway = _deployGateway();
+        router = L2GatewayRouter(address(new ERC1967Proxy(address(new L2GatewayRouter()), new bytes(0))));
 
         // Deploy L1 contracts
         counterpartGateway = new L1WETHGateway(address(l1weth), address(l2weth));
@@ -152,7 +154,7 @@ contract L2WETHGatewayTest is L2GatewayTestBase {
         gateway.finalizeDepositERC20(address(l1weth), address(l2weth), sender, recipient, amount, dataToCall);
 
         MockScrollMessenger mockMessenger = new MockScrollMessenger();
-        gateway = new L2WETHGateway(address(l2weth), address(l1weth));
+        gateway = _deployGateway();
         gateway.initialize(address(counterpartGateway), address(router), address(mockMessenger));
 
         // only call by counterpart
@@ -276,7 +278,6 @@ contract L2WETHGatewayTest is L2GatewayTestBase {
 
     function testFinalizeDepositERC20(
         address sender,
-        address recipient,
         uint256 amount,
         bytes memory dataToCall
     ) public {
@@ -549,5 +550,12 @@ contract L2WETHGatewayTest is L2GatewayTestBase {
             assertEq(feeToPay + feeVaultBalance, address(feeVault).balance);
             assertBoolEq(true, l2Messenger.isL2MessageSent(keccak256(xDomainCalldata)));
         }
+    }
+
+    function _deployGateway() internal returns (L2WETHGateway) {
+        return
+            L2WETHGateway(
+                payable(new ERC1967Proxy(address(new L2WETHGateway(address(l2weth), address(l1weth))), new bytes(0)))
+            );
     }
 }

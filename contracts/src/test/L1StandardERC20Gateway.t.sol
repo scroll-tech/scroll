@@ -4,6 +4,8 @@ pragma solidity ^0.8.0;
 
 import {MockERC20} from "solmate/test/utils/mocks/MockERC20.sol";
 
+import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
+
 import {L1GatewayRouter} from "../L1/gateways/L1GatewayRouter.sol";
 import {IL1ERC20Gateway, L1StandardERC20Gateway} from "../L1/gateways/L1StandardERC20Gateway.sol";
 import {IL1ScrollMessenger} from "../L1/IL1ScrollMessenger.sol";
@@ -61,8 +63,8 @@ contract L1StandardERC20GatewayTest is L1GatewayTestBase {
         feeToken = new FeeOnTransferToken("Fee", "F", 18);
 
         // Deploy L1 contracts
-        gateway = new L1StandardERC20Gateway();
-        router = new L1GatewayRouter();
+        gateway = _deployGateway();
+        router = L1GatewayRouter(address(new ERC1967Proxy(address(new L1GatewayRouter()), new bytes(0))));
 
         // Deploy L2 contracts
         counterpartGateway = new L2StandardERC20Gateway();
@@ -218,7 +220,7 @@ contract L1StandardERC20GatewayTest is L1GatewayTestBase {
 
     function testDropMessageMocking() public {
         MockScrollMessenger mockMessenger = new MockScrollMessenger();
-        gateway = new L1StandardERC20Gateway();
+        gateway = _deployGateway();
         gateway.initialize(
             address(counterpartGateway),
             address(router),
@@ -311,7 +313,7 @@ contract L1StandardERC20GatewayTest is L1GatewayTestBase {
         gateway.finalizeWithdrawERC20(address(l1Token), address(l2Token), sender, recipient, amount, dataToCall);
 
         MockScrollMessenger mockMessenger = new MockScrollMessenger();
-        gateway = new L1StandardERC20Gateway();
+        gateway = _deployGateway();
         gateway.initialize(
             address(counterpartGateway),
             address(router),
@@ -711,5 +713,9 @@ contract L1StandardERC20GatewayTest is L1GatewayTestBase {
             assertEq(feeToPay + feeVaultBalance, address(feeVault).balance);
             assertBoolEq(true, l1Messenger.isL1MessageSent(keccak256(xDomainCalldata)));
         }
+    }
+
+    function _deployGateway() internal returns (L1StandardERC20Gateway) {
+        return L1StandardERC20Gateway(address(new ERC1967Proxy(address(new L1StandardERC20Gateway()), new bytes(0))));
     }
 }

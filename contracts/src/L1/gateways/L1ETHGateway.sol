@@ -23,6 +23,10 @@ contract L1ETHGateway is Initializable, ScrollGatewayBase, IL1ETHGateway, IMessa
      * Constructor *
      ***************/
 
+    constructor() {
+        _disableInitializers();
+    }
+
     /// @notice Initialize the storage of L1ETHGateway.
     /// @param _counterpart The address of L2ETHGateway in L2.
     /// @param _router The address of L1GatewayRouter.

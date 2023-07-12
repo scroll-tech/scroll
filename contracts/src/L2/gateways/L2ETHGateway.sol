@@ -19,6 +19,9 @@ contract L2ETHGateway is Initializable, ScrollGatewayBase, IL2ETHGateway {
     /***************
      * Constructor *
      ***************/
+    constructor() {
+        _disableInitializers();
+    }
 
     /// @notice Initialize the storage of L2ETHGateway.
     /// @param _counterpart The address of L1ETHGateway in L2.

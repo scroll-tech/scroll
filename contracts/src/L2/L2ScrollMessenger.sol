@@ -71,6 +71,8 @@ contract L2ScrollMessenger is ScrollMessengerBase, PausableUpgradeable, IL2Scrol
         address _gasOracle,
         address _messageQueue
     ) {
+        _disableInitializers();
+
         blockContainer = _blockContainer;
         gasOracle = _gasOracle;
         messageQueue = _messageQueue;

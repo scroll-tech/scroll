@@ -5,6 +5,8 @@ pragma solidity ^0.8.0;
 import {DSTestPlus} from "solmate/test/utils/DSTestPlus.sol";
 import {MockERC721} from "solmate/test/utils/mocks/MockERC721.sol";
 
+import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
+
 import {L1ERC721Gateway} from "../L1/gateways/L1ERC721Gateway.sol";
 import {L2ERC721Gateway} from "../L2/gateways/L2ERC721Gateway.sol";
 import {MockScrollMessenger} from "./mocks/MockScrollMessenger.sol";
@@ -25,7 +27,7 @@ contract L2ERC721GatewayTest is DSTestPlus {
         messenger = new MockScrollMessenger();
 
         counterpart = new L1ERC721Gateway();
-        gateway = new L2ERC721Gateway();
+        gateway = _deployGateway();
         gateway.initialize(address(counterpart), address(messenger));
 
         token = new MockERC721("Mock", "M");
@@ -315,5 +317,9 @@ contract L2ERC721GatewayTest is DSTestPlus {
         for (uint256 i = 0; i < count; i++) {
             assertEq(token.ownerOf(_tokenIds[i]), to);
         }
+    }
+
+    function _deployGateway() internal returns (L2ERC721Gateway) {
+        return L2ERC721Gateway(address(new ERC1967Proxy(address(new L2ERC721Gateway()), new bytes(0))));
     }
 }

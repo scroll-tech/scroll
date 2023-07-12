@@ -4,6 +4,8 @@ pragma solidity ^0.8.0;
 
 import {MockERC20} from "solmate/test/utils/mocks/MockERC20.sol";
 
+import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
+
 import {L1ETHGateway} from "../L1/gateways/L1ETHGateway.sol";
 import {L1GatewayRouter} from "../L1/gateways/L1GatewayRouter.sol";
 import {L1StandardERC20Gateway} from "../L1/gateways/L1StandardERC20Gateway.sol";
@@ -41,9 +43,11 @@ contract L1GatewayRouterTest is L1GatewayTestBase {
         l1Token = new MockERC20("Mock", "M", 18);
 
         // Deploy L1 contracts
-        l1StandardERC20Gateway = new L1StandardERC20Gateway();
-        l1ETHGateway = new L1ETHGateway();
-        router = new L1GatewayRouter();
+        l1StandardERC20Gateway = L1StandardERC20Gateway(
+            address(new ERC1967Proxy(address(new L1StandardERC20Gateway()), new bytes(0)))
+        );
+        l1ETHGateway = L1ETHGateway(address(new ERC1967Proxy(address(new L1ETHGateway()), new bytes(0))));
+        router = L1GatewayRouter(address(new ERC1967Proxy(address(new L1GatewayRouter()), new bytes(0))));
 
         // Deploy L2 contracts
         l2StandardERC20Gateway = new L2StandardERC20Gateway();

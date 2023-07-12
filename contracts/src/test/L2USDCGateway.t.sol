@@ -2,6 +2,8 @@
 
 pragma solidity ^0.8.0;
 
+import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
+
 import {L1USDCGateway} from "../L1/gateways/usdc/L1USDCGateway.sol";
 import {IL1ERC20Gateway} from "../L1/gateways/IL1ERC20Gateway.sol";
 import {L2GatewayRouter} from "../L2/gateways/L2GatewayRouter.sol";
@@ -50,8 +52,8 @@ contract L2USDCGatewayTest is L2GatewayTestBase {
         l2USDC = new MockERC20("USDC", "USDC", 6);
 
         // Deploy L2 contracts
-        gateway = new L2USDCGateway(address(l1USDC), address(l2USDC));
-        router = new L2GatewayRouter();
+        gateway = _deployGateway();
+        router = L2GatewayRouter(address(new ERC1967Proxy(address(new L2GatewayRouter()), new bytes(0))));
 
         // Deploy L1 contracts
         counterpartGateway = new L1USDCGateway();
@@ -176,7 +178,7 @@ contract L2USDCGatewayTest is L2GatewayTestBase {
         gateway.finalizeDepositERC20(address(l1USDC), address(l2USDC), sender, recipient, amount, dataToCall);
 
         MockScrollMessenger mockMessenger = new MockScrollMessenger();
-        gateway = new L2USDCGateway(address(l1USDC), address(l2USDC));
+        gateway = _deployGateway();
         gateway.initialize(address(counterpartGateway), address(router), address(mockMessenger));
 
         // only call by counterpart
@@ -576,5 +578,12 @@ contract L2USDCGatewayTest is L2GatewayTestBase {
             assertEq(feeToPay + feeVaultBalance, address(feeVault).balance);
             assertBoolEq(true, l2Messenger.isL2MessageSent(keccak256(xDomainCalldata)));
         }
+    }
+
+    function _deployGateway() internal returns (L2USDCGateway) {
+        return
+            L2USDCGateway(
+                address(new ERC1967Proxy(address(new L2USDCGateway(address(l1USDC), address(l2USDC))), new bytes(0)))
+            );
     }
 }
