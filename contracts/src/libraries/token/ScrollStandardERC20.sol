@@ -28,6 +28,10 @@ contract ScrollStandardERC20 is ERC20PermitUpgradeable, IScrollERC20Upgradeable 
         _;
     }
 
+    constructor() {
+        _disableInitializers();
+    }
+
     function initialize(
         string memory _name,
         string memory _symbol,
