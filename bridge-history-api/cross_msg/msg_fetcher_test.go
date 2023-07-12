@@ -53,7 +53,7 @@ func generateHeaders(amount int) ([]*types.Header, error) {
 			Time:        uint64(i * 15),
 			Extra:       []byte{},
 			MixDigest:   common.Hash{},
-			Nonce:       types.EncodeNonce(uint64(nonce.Uint64())),
+			Nonce:       types.EncodeNonce(nonce.Uint64()),
 		}
 		headers[i] = header
 	}

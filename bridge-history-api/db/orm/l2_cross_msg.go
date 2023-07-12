@@ -40,7 +40,11 @@ func (l *l2CrossMsgOrm) GetL2CrossMsgByAddress(sender common.Address) ([]*CrossM
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() {
+		if err = rows.Close(); err != nil {
+			log.Warn("failed to close rows", "err", err)
+		}
+	}()
 	for rows.Next() {
 		msg := &CrossMsg{}
 		if err = rows.StructScan(msg); err != nil {
@@ -150,7 +154,11 @@ func (l *l2CrossMsgOrm) GetL2CrossMsgByMsgHashList(msgHashList []string) ([]*Cro
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() {
+		if err = rows.Close(); err != nil {
+			log.Warn("failed to close rows", "err", err)
+		}
+	}()
 	for rows.Next() {
 		msg := &CrossMsg{}
 		if err = rows.StructScan(msg); err != nil {

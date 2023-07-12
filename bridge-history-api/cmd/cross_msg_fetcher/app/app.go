@@ -91,7 +91,7 @@ func action(ctx *cli.Context) error {
 		common.HexToAddress(cfg.L2.WETHGatewayAddr),
 	}
 
-	l1crossMsgFetcher, err := crossmsg.NewCrossMsgFetcher(subCtx, cfg.L1, db, l1client, l1worker, l1AddressList, crossmsg.L1ReorgHandling)
+	l1crossMsgFetcher, err := crossmsg.NewMsgFetcher(subCtx, cfg.L1, db, l1client, l1worker, l1AddressList, crossmsg.L1ReorgHandling)
 	if err != nil {
 		log.Crit("failed to create l1 cross message fetcher", "error", err)
 	}
@@ -99,7 +99,7 @@ func action(ctx *cli.Context) error {
 	go l1crossMsgFetcher.Start()
 	defer l1crossMsgFetcher.Stop()
 
-	l2crossMsgFetcher, err := crossmsg.NewCrossMsgFetcher(subCtx, cfg.L2, db, l2client, l2worker, l2AddressList, crossmsg.L2ReorgHandling)
+	l2crossMsgFetcher, err := crossmsg.NewMsgFetcher(subCtx, cfg.L2, db, l2client, l2worker, l2AddressList, crossmsg.L2ReorgHandling)
 	if err != nil {
 		log.Crit("failed to create l2 cross message fetcher", "error", err)
 	}

@@ -41,9 +41,8 @@ func MergeAddIntoHeaderList(baseArr, extraArr []*types.Header, maxLength int) []
 func BackwardFindReorgBlock(ctx context.Context, headers []*types.Header, client *ethclient.Client, lastHeader *types.Header) (int, bool, []*types.Header) {
 	maxStep := len(headers)
 	backwardHeaderList := []*types.Header{lastHeader}
-	header := lastHeader
 	for iterRound := 0; iterRound < maxStep; iterRound++ {
-		header, err := client.HeaderByHash(ctx, header.ParentHash)
+		header, err := client.HeaderByHash(ctx, lastHeader.ParentHash)
 		if err != nil {
 			log.Error("BackwardFindReorgBlock failed", "error", err)
 			return -1, false, nil
@@ -55,6 +54,7 @@ func BackwardFindReorgBlock(ctx context.Context, headers []*types.Header, client
 				return j, true, backwardHeaderList
 			}
 		}
+		lastHeader = header
 	}
 	return -1, false, nil
 }

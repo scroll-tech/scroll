@@ -118,7 +118,11 @@ func (l *l2SentMsgOrm) GetL2SentMsgMsgHashByHeightRange(startHeight, endHeight u
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() {
+		if err = rows.Close(); err != nil {
+			log.Warn("failed to close rows", "err", err)
+		}
+	}()
 	for rows.Next() {
 		msg := &L2SentMsg{}
 		if err = rows.StructScan(msg); err != nil {
@@ -160,7 +164,11 @@ func (l *l2SentMsgOrm) GetClaimableL2SentMsgByAddressWithOffset(address string, 
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() {
+		if err = rows.Close(); err != nil {
+			log.Warn("failed to close rows", "err", err)
+		}
+	}()
 	for rows.Next() {
 		msg := &L2SentMsg{}
 		if err = rows.StructScan(msg); err != nil {

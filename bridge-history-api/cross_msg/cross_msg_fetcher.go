@@ -18,8 +18,8 @@ import (
 	"bridge-history-api/utils"
 )
 
-// CrossMsgFetcher is a struct that fetches cross message events from blockchain and saves them to database
-type CrossMsgFetcher struct {
+// MsgFetcher is a struct that fetches cross message events from blockchain and saves them to database
+type MsgFetcher struct {
 	ctx           context.Context
 	config        *config.LayerConfig
 	db            db.OrmFactory
@@ -33,9 +33,9 @@ type CrossMsgFetcher struct {
 	reorgEndCh    chan struct{}
 }
 
-// NewCrossMsgFetcher creates a new CrossMsgFetcher instance
-func NewCrossMsgFetcher(ctx context.Context, config *config.LayerConfig, db db.OrmFactory, client *ethclient.Client, worker *FetchEventWorker, addressList []common.Address, reorg ReorgHandling) (*CrossMsgFetcher, error) {
-	crossMsgFetcher := &CrossMsgFetcher{
+// NewMsgFetcher creates a new MsgFetcher instance
+func NewMsgFetcher(ctx context.Context, config *config.LayerConfig, db db.OrmFactory, client *ethclient.Client, worker *FetchEventWorker, addressList []common.Address, reorg ReorgHandling) (*MsgFetcher, error) {
+	crossMsgFetcher := &MsgFetcher{
 		ctx:           ctx,
 		config:        config,
 		db:            db,
@@ -50,9 +50,9 @@ func NewCrossMsgFetcher(ctx context.Context, config *config.LayerConfig, db db.O
 	return crossMsgFetcher, nil
 }
 
-// Start starts the CrossMsgFetcher
-func (c *CrossMsgFetcher) Start() {
-	log.Info("CrossMsgFetcher Start")
+// Start starts the MsgFetcher
+func (c *MsgFetcher) Start() {
+	log.Info("MsgFetcher Start")
 	// fetch missing events from finalized blocks, we don't handle reorgs here
 	c.forwardFetchAndSaveMissingEvents(c.config.Confirmation)
 
@@ -97,13 +97,13 @@ func (c *CrossMsgFetcher) Start() {
 	}()
 }
 
-// Stop stops the CrossMsgFetcher and log the info
-func (c *CrossMsgFetcher) Stop() {
-	log.Info("CrossMsgFetcher Stop")
+// Stop stops the MsgFetcher and log the info
+func (c *MsgFetcher) Stop() {
+	log.Info("MsgFetcher Stop")
 }
 
 // forwardFetchAndSaveMissingEvents will fetch all events from the latest processed height to the latest block number.
-func (c *CrossMsgFetcher) forwardFetchAndSaveMissingEvents(confirmation uint64) {
+func (c *MsgFetcher) forwardFetchAndSaveMissingEvents(confirmation uint64) {
 	// if we fetch to the latest block, shall not exceed cachedHeaders
 	var number uint64
 	var err error
@@ -128,7 +128,7 @@ func (c *CrossMsgFetcher) forwardFetchAndSaveMissingEvents(confirmation uint64) 
 	if processedHeight <= 0 || processedHeight < int64(c.config.StartHeight) {
 		processedHeight = int64(c.config.StartHeight)
 	} else {
-		processedHeight += 1
+		processedHeight++
 	}
 	for from := processedHeight; from <= int64(number); from += fetchLimit {
 		to := from + fetchLimit - 1
@@ -143,7 +143,7 @@ func (c *CrossMsgFetcher) forwardFetchAndSaveMissingEvents(confirmation uint64) 
 	}
 }
 
-func (c *CrossMsgFetcher) fetchMissingLatestHeaders() {
+func (c *MsgFetcher) fetchMissingLatestHeaders() {
 	var start int64
 	number, err := c.client.BlockNumber(c.ctx)
 	if err != nil {

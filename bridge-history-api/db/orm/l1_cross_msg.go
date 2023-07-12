@@ -40,7 +40,11 @@ func (l *l1CrossMsgOrm) GetL1CrossMsgsByAddress(sender common.Address) ([]*Cross
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() {
+		if err = rows.Close(); err != nil {
+			log.Warn("failed to close rows", "err", err)
+		}
+	}()
 	for rows.Next() {
 		msg := &CrossMsg{}
 		if err = rows.StructScan(msg); err != nil {
