@@ -1,4 +1,4 @@
-package cross_msg
+package crossmsg
 
 import (
 	"context"
@@ -38,9 +38,10 @@ func MergeAddIntoHeaderList(baseArr, extraArr []*types.Header, maxLength int) []
 }
 
 // BackwardFindReorgBlock finds the reorg block by backward search
-func BackwardFindReorgBlock(ctx context.Context, headers []*types.Header, client *ethclient.Client, header *types.Header) (int, bool, []*types.Header) {
+func BackwardFindReorgBlock(ctx context.Context, headers []*types.Header, client *ethclient.Client, lastHeader *types.Header) (int, bool, []*types.Header) {
 	maxStep := len(headers)
-	backwardHeaderList := []*types.Header{header}
+	backwardHeaderList := []*types.Header{lastHeader}
+	header := lastHeader
 	for iterRound := 0; iterRound < maxStep; iterRound++ {
 		header, err := client.HeaderByHash(ctx, header.ParentHash)
 		if err != nil {

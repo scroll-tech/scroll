@@ -82,6 +82,7 @@ func (o *ormFactory) GetCrossMsgsByAddressWithOffset(sender string, offset int64
 	if err != nil || rows == nil {
 		return nil, err
 	}
+	defer rows.Close()
 	for rows.Next() {
 		msg := &orm.CrossMsg{}
 		if err = rows.StructScan(msg); err != nil {

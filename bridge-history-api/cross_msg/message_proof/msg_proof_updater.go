@@ -1,4 +1,4 @@
-package messageProof
+package messageproof
 
 import (
 	"context"
@@ -116,7 +116,7 @@ func (m *MsgProofUpdater) initializeWithdrawTrie() error {
 		return fmt.Errorf("failed to get first l2 message: %v", err)
 	}
 	// no l2 message
-	// 	TO DO: check if we realy dont have l2 sent message with nonce 0
+	// 	TO DO: check if we really dont have l2 sent message with nonce 0
 	if firstMsg == nil {
 		log.Info("No first l2sentmsg in db")
 		return nil
@@ -187,7 +187,7 @@ func (m *MsgProofUpdater) updateMsgProof(msgs []*orm.L2SentMsg, proofs [][]byte,
 	if len(msgs) == 0 {
 		return nil
 	}
-	// this should not happend, but double checked
+	// this should not happened, but double checked
 	if len(msgs) != len(proofs) {
 		return fmt.Errorf("illegal state: len(msgs) != len(proofs)")
 	}

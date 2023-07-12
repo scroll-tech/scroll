@@ -1,4 +1,4 @@
-package cross_msg
+package crossmsg
 
 import (
 	"context"
@@ -163,7 +163,7 @@ func (c *CrossMsgFetcher) fetchMissingLatestHeaders() {
 			close(c.reorgEndCh)
 			return
 		default:
-			header, err := c.client.HeaderByNumber(c.ctx, big.NewInt(int64(i)))
+			header, err := c.client.HeaderByNumber(c.ctx, big.NewInt(i))
 			if err != nil {
 				log.Error("failed to get latest header", "err", err)
 				return
@@ -185,9 +185,9 @@ func (c *CrossMsgFetcher) fetchMissingLatestHeaders() {
 			c.mu.Lock()
 			index, ok, validHeaders := BackwardFindReorgBlock(c.ctx, c.cachedHeaders, c.client, header)
 			if !ok {
-				log.Error("Reorg happended too earlier than cached headers", "reorg height", header.Number)
-				num, err := utils.GetSafeBlockNumber(c.ctx, c.client, c.config.Confirmation)
-				if err != nil {
+				log.Error("Reorg happened too earlier than cached headers", "reorg height", header.Number)
+				num, getSafeErr := utils.GetSafeBlockNumber(c.ctx, c.client, c.config.Confirmation)
+				if getSafeErr != nil {
 					log.Crit("Can not get safe number during reorg, quit the process", "err", err)
 				}
 				// clear all our saved data, because no data is safe now

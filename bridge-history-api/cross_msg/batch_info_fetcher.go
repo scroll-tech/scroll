@@ -1,4 +1,4 @@
-package cross_msg
+package crossmsg
 
 import (
 	"context"
@@ -8,7 +8,7 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/log"
 
-	messageProof "bridge-history-api/cross_msg/message_proof"
+	messageproof "bridge-history-api/cross_msg/message_proof"
 	"bridge-history-api/db"
 	"bridge-history-api/utils"
 )
@@ -22,11 +22,11 @@ type BatchInfoFetcher struct {
 	blockTimeInSec       int
 	client               *ethclient.Client
 	db                   db.OrmFactory
-	msgProofUpdater      *messageProof.MsgProofUpdater
+	msgProofUpdater      *messageproof.MsgProofUpdater
 }
 
 // NewBatchInfoFetcher creates a new BatchInfoFetcher instance
-func NewBatchInfoFetcher(ctx context.Context, scrollChainAddr common.Address, batchInfoStartNumber uint64, confirmation uint64, blockTimeInSec int, client *ethclient.Client, db db.OrmFactory, msgProofUpdater *messageProof.MsgProofUpdater) *BatchInfoFetcher {
+func NewBatchInfoFetcher(ctx context.Context, scrollChainAddr common.Address, batchInfoStartNumber uint64, confirmation uint64, blockTimeInSec int, client *ethclient.Client, db db.OrmFactory, msgProofUpdater *messageproof.MsgProofUpdater) *BatchInfoFetcher {
 	return &BatchInfoFetcher{
 		ctx:                  ctx,
 		scrollChainAddr:      scrollChainAddr,
@@ -46,7 +46,7 @@ func (b *BatchInfoFetcher) Start() {
 	// Then start msg proof updater after db have some bridge batch
 	err := b.fetchBatchInfo()
 	if err != nil {
-		log.Error("fetch batch info at begining failed: ", "err", err)
+		log.Error("fetch batch info at beginning failed: ", "err", err)
 	}
 
 	go b.msgProofUpdater.Start()

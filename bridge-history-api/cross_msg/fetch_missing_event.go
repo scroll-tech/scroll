@@ -1,4 +1,4 @@
-package cross_msg
+package crossmsg
 
 import (
 	"context"
@@ -47,9 +47,8 @@ func GetLatestL1ProcessedHeight(db db.OrmFactory) (int64, error) {
 	}
 	if crossHeight > relayedHeight {
 		return crossHeight, nil
-	} else {
-		return relayedHeight, nil
 	}
+	return relayedHeight, nil
 }
 
 // GetLatestL2ProcessedHeight gets the latest processed height on L2

@@ -30,34 +30,34 @@ func pong(ctx iris.Context) {
 	}
 }
 
-func setupQueryByAddressHandler(backend_app *mvc.Application) {
+func setupQueryByAddressHandler(backendApp *mvc.Application) {
 	// Register Dependencies.
-	backend_app.Register(
+	backendApp.Register(
 		database,
 		service.NewHistoryService,
 	)
 
 	// Register Controllers.
-	backend_app.Handle(new(controller.QueryAddressController))
+	backendApp.Handle(new(controller.QueryAddressController))
 }
 
-func setupQueryClaimableHandler(backend_app *mvc.Application) {
+func setupQueryClaimableHandler(backendApp *mvc.Application) {
 	// Register Dependencies.
-	backend_app.Register(
+	backendApp.Register(
 		database,
 		service.NewHistoryService,
 	)
 
 	// Register Controllers.
-	backend_app.Handle(new(controller.QueryClaimableController))
+	backendApp.Handle(new(controller.QueryClaimableController))
 }
 
-func setupQueryByHashHandler(backend_app *mvc.Application) {
-	backend_app.Register(
+func setupQueryByHashHandler(backendApp *mvc.Application) {
+	backendApp.Register(
 		database,
 		service.NewHistoryService,
 	)
-	backend_app.Handle(new(controller.QueryHashController))
+	backendApp.Handle(new(controller.QueryHashController))
 }
 
 func init() {
@@ -91,7 +91,7 @@ func action(ctx *cli.Context) error {
 		log.Crit("can not connect to database", "err", err)
 	}
 	defer func() {
-		err := database.Close()
+		err = database.Close()
 		if err != nil {
 			log.Error("failed to close database", "err", err)
 		}

@@ -1,4 +1,4 @@
-package cross_msg
+package crossmsg
 
 import (
 	"context"
