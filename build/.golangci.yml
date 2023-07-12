@@ -209,7 +209,11 @@ issues:
       linters:
         - errcheck
         - gosec
-
+    # Exclude abi files in bridge-history-api
+    - path: bridge-history-api/abi/*.go
+      linters:
+        - errcheck
+        - gosec
     # Exclude some staticcheck messages
     - linters:
         - staticcheck

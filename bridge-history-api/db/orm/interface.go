@@ -29,17 +29,22 @@ func (a AssetType) String() string {
 }
 
 const (
-	// ETH asset
+	// ETH = 0
 	ETH AssetType = iota
+	// ERC20 = 1
 	ERC20
+	// ERC721 = 2
 	ERC721
+	// ERC1155 = 3
 	ERC1155
 )
 
 const (
 	// UnknownMsg = 0
 	UnknownMsg MsgType = iota
+	// Layer1Msg = 1
 	Layer1Msg
+	// Layer2Msg = 2
 	Layer2Msg
 )
 
@@ -94,7 +99,7 @@ type L2CrossMsgOrm interface {
 	GetL2CrossMsgByMsgHashList(msgHashList []string) ([]*CrossMsg, error)
 }
 
-// RelayedMsg provides operations on relayed_msg table
+// RelayedMsgOrm provides operations on relayed_msg table
 type RelayedMsgOrm interface {
 	BatchInsertRelayedMsgDBTx(dbTx *sqlx.Tx, messages []*RelayedMsg) error
 	GetRelayedMsgByHash(msgHash string) (*RelayedMsg, error)
@@ -104,7 +109,7 @@ type RelayedMsgOrm interface {
 	DeleteL2RelayedHashAfterHeightDBTx(dbTx *sqlx.Tx, height int64) error
 }
 
-// L2SentMsg provides operations on l2_sent_msg table
+// L2SentMsgOrm provides operations on l2_sent_msg table
 type L2SentMsgOrm interface {
 	BatchInsertL2SentMsgDBTx(dbTx *sqlx.Tx, messages []*L2SentMsg) error
 	GetL2SentMsgByHash(l2Hash string) (*L2SentMsg, error)
@@ -119,7 +124,7 @@ type L2SentMsgOrm interface {
 	DeleteL2SentMsgAfterHeightDBTx(dbTx *sqlx.Tx, height int64) error
 }
 
-// RollupBatch provides operations on rollup_batch table
+// RollupBatchOrm provides operations on rollup_batch table
 type RollupBatchOrm interface {
 	GetLatestRollupBatch() (*RollupBatch, error)
 	GetRollupBatchByIndex(index uint64) (*RollupBatch, error)

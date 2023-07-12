@@ -11,7 +11,7 @@ import (
 	"bridge-history-api/db/orm"
 )
 
-// FinalizedService is the response struct for tx finalized infos
+// Finalized is the response struct for tx finalized infos
 type Finalized struct {
 	Hash           string     `json:"hash"`
 	Amount         string     `json:"amount"`
