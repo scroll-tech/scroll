@@ -24,7 +24,7 @@ func (p *ProverTaskService) GetTotalRewards(pubkey string) (decimal.Decimal, err
 	if err != nil {
 		return decimal.Decimal{}, err
 	}
-	var rewards decimal.Decimal
+	rewards := decimal.New(0, 0)
 	for _, task := range tasks {
 		rewards.Add(task.Reward)
 	}
