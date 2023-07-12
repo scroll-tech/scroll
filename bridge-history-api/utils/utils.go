@@ -22,7 +22,7 @@ func Keccak2(a common.Hash, b common.Hash) common.Hash {
 	return common.BytesToHash(crypto.Keccak256(append(a.Bytes()[:], b.Bytes()[:]...)))
 }
 
-// GetSafeBlockNumber get the safe block number, which is the current block number minus the confirmations
+// GetSafeBlockNumber returns the safe block number, which is the current block number minus the confirmations
 func GetSafeBlockNumber(ctx context.Context, client *ethclient.Client, confirmations uint64) (uint64, error) {
 	number, err := client.BlockNumber(ctx)
 	if err != nil || number <= confirmations {
