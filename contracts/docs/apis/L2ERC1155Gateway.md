@@ -13,7 +13,7 @@ The `L2ERC1155Gateway` is used to withdraw ERC1155 compatible NFTs in layer 2 an
 ### batchWithdrawERC1155
 
 ```solidity
-function batchWithdrawERC1155(address _token, uint256[] _tokenIds, uint256[] _amounts, uint256 _gasLimit) external nonpayable
+function batchWithdrawERC1155(address _token, uint256[] _tokenIds, uint256[] _amounts, uint256 _gasLimit) external payable
 ```
 
 Batch withdraw a list of ERC1155 NFT to caller&#39;s account on layer 1.
@@ -32,7 +32,7 @@ Batch withdraw a list of ERC1155 NFT to caller&#39;s account on layer 1.
 ### batchWithdrawERC1155
 
 ```solidity
-function batchWithdrawERC1155(address _token, address _to, uint256[] _tokenIds, uint256[] _amounts, uint256 _gasLimit) external nonpayable
+function batchWithdrawERC1155(address _token, address _to, uint256[] _tokenIds, uint256[] _amounts, uint256 _gasLimit) external payable
 ```
 
 Batch withdraw a list of ERC1155 NFT to caller&#39;s account on layer 1.
@@ -319,7 +319,7 @@ Update layer 2 to layer 1 token mapping.
 ### withdrawERC1155
 
 ```solidity
-function withdrawERC1155(address _token, uint256 _tokenId, uint256 _amount, uint256 _gasLimit) external nonpayable
+function withdrawERC1155(address _token, uint256 _tokenId, uint256 _amount, uint256 _gasLimit) external payable
 ```
 
 Withdraw some ERC1155 NFT to caller&#39;s account on layer 1.
@@ -338,7 +338,7 @@ Withdraw some ERC1155 NFT to caller&#39;s account on layer 1.
 ### withdrawERC1155
 
 ```solidity
-function withdrawERC1155(address _token, address _to, uint256 _tokenId, uint256 _amount, uint256 _gasLimit) external nonpayable
+function withdrawERC1155(address _token, address _to, uint256 _tokenId, uint256 _amount, uint256 _gasLimit) external payable
 ```
 
 Withdraw some ERC1155 NFT to caller&#39;s account on layer 1.

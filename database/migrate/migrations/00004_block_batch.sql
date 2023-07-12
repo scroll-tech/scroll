@@ -33,7 +33,7 @@ create table block_batch
 comment
 on column block_batch.proving_status is 'undefined, unassigned, skipped, assigned, proved, verified, failed';
 comment
-on column block_batch.rollup_status is 'undefined, pending, committing, committed, finalizing, finalized, finalization_skipped';
+on column block_batch.rollup_status is 'undefined, pending, committing, committed, finalizing, finalized, finalization_skipped, commit_failed, finalize_failed';
 comment
 on column block_batch.oracle_status is 'undefined, pending, importing, imported, failed';
 

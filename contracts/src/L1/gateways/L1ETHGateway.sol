@@ -74,7 +74,7 @@ contract L1ETHGateway is Initializable, ScrollGatewayBase, IL1ETHGateway {
         (bool _success, ) = _to.call{value: _amount}("");
         require(_success, "ETH transfer failed");
 
-        // @todo farward _data to `_to` in near future.
+        _doCallback(_to, _data);
 
         emit FinalizeWithdrawETH(_from, _to, _amount, _data);
     }

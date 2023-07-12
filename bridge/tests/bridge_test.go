@@ -82,15 +82,15 @@ func setupEnv(t *testing.T) {
 	base.RunImages(t)
 
 	// Create l1geth container.
-	cfg.L2Config.RelayerConfig.SenderConfig.Endpoint = base.L1GethEndpoint()
-	cfg.L1Config.Endpoint = base.L1GethEndpoint()
+	cfg.L2Config.RelayerConfig.SenderConfig.Endpoint = base.L1gethImg.Endpoint()
+	cfg.L1Config.Endpoint = base.L1gethImg.Endpoint()
 
 	// Create l2geth container.
-	cfg.L1Config.RelayerConfig.SenderConfig.Endpoint = base.L2GethEndpoint()
-	cfg.L2Config.Endpoint = base.L2GethEndpoint()
+	cfg.L1Config.RelayerConfig.SenderConfig.Endpoint = base.L2gethImg.Endpoint()
+	cfg.L2Config.Endpoint = base.L2gethImg.Endpoint()
 
 	// Create db container.
-	cfg.DBConfig.DSN = base.DBEndpoint()
+	cfg.DBConfig = base.DBConfig
 
 	// Create l1geth and l2geth client.
 	l1Client, err = ethclient.Dial(cfg.L1Config.Endpoint)

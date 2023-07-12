@@ -76,7 +76,7 @@ interface IL2ERC721Gateway {
         address token,
         uint256 tokenId,
         uint256 gasLimit
-    ) external;
+    ) external payable;
 
     /// @notice Withdraw some ERC721 NFT to caller's account on layer 1.
     /// @param token The address of ERC721 NFT in layer 2.
@@ -88,7 +88,7 @@ interface IL2ERC721Gateway {
         address to,
         uint256 tokenId,
         uint256 gasLimit
-    ) external;
+    ) external payable;
 
     /// @notice Batch withdraw a list of ERC721 NFT to caller's account on layer 1.
     /// @param token The address of ERC721 NFT in layer 2.
@@ -98,7 +98,7 @@ interface IL2ERC721Gateway {
         address token,
         uint256[] memory tokenIds,
         uint256 gasLimit
-    ) external;
+    ) external payable;
 
     /// @notice Batch withdraw a list of ERC721 NFT to caller's account on layer 1.
     /// @param token The address of ERC721 NFT in layer 2.
@@ -110,7 +110,7 @@ interface IL2ERC721Gateway {
         address to,
         uint256[] memory tokenIds,
         uint256 gasLimit
-    ) external;
+    ) external payable;
 
     /// @notice Complete ERC721 deposit from layer 1 to layer 2 and send NFT to recipient's account in layer 2.
     /// @dev Requirements:

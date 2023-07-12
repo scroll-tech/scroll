@@ -18,7 +18,7 @@ create table l1_message
 );
 
 comment
-on column l1_message.status is 'undefined, pending, submitted, confirmed, failed, expired';
+on column l1_message.status is 'undefined, pending, submitted, confirmed, failed, expired, relay_failed';
 
 create unique index l1_message_hash_uindex
 on l1_message (msg_hash);

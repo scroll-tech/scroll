@@ -6,7 +6,7 @@ import (
 	"github.com/scroll-tech/go-ethereum"
 	"github.com/scroll-tech/go-ethereum/rpc"
 
-	"scroll-tech/common/message"
+	"scroll-tech/common/types/message"
 )
 
 // Client defines typed wrappers for the Ethereum RPC API.

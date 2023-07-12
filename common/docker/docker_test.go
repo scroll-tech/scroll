@@ -8,8 +8,6 @@ import (
 	_ "github.com/lib/pq" //nolint:golint
 	"github.com/stretchr/testify/assert"
 
-	_ "scroll-tech/database/cmd/app"
-
 	"scroll-tech/common/docker"
 )
 
@@ -25,50 +23,32 @@ func TestMain(m *testing.M) {
 	base.Free()
 }
 
-func TestStartProcess(t *testing.T) {
-	base.RunImages(t)
+func TestDB(t *testing.T) {
+	base.RunDBImage(t)
 
-	// migrate db.
-	base.RunDBApp(t, "reset", "successful to reset")
-	base.RunDBApp(t, "migrate", "current version:")
+	db, err := sqlx.Open("postgres", base.DBImg.Endpoint())
+	assert.NoError(t, err)
+	assert.NoError(t, db.Ping())
 }
 
-func TestDocker(t *testing.T) {
-	base.RunImages(t)
-	t.Parallel()
-	t.Run("testL1Geth", testL1Geth)
-	t.Run("testL2Geth", testL2Geth)
-	t.Run("testDB", testDB)
-}
-
-func testL1Geth(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+func TestL1Geth(t *testing.T) {
+	base.RunL1Geth(t)
 
 	client, err := base.L1Client()
 	assert.NoError(t, err)
 
-	chainID, err := client.ChainID(ctx)
+	chainID, err := client.ChainID(context.Background())
 	assert.NoError(t, err)
 	t.Logf("chainId: %s", chainID.String())
 }
 
-func testL2Geth(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+func TestL2Geth(t *testing.T) {
+	base.RunL2Geth(t)
 
 	client, err := base.L2Client()
 	assert.NoError(t, err)
 
-	chainID, err := client.ChainID(ctx)
+	chainID, err := client.ChainID(context.Background())
 	assert.NoError(t, err)
 	t.Logf("chainId: %s", chainID.String())
-}
-
-func testDB(t *testing.T) {
-	driverName := "postgres"
-
-	db, err := sqlx.Open(driverName, base.DBEndpoint())
-	assert.NoError(t, err)
-	assert.NoError(t, db.Ping())
 }

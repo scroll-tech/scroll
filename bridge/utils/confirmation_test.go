@@ -1,4 +1,4 @@
-package utils_test
+package utils
 
 import (
 	"context"
@@ -11,8 +11,6 @@ import (
 	"github.com/scroll-tech/go-ethereum/common/math"
 	"github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/rpc"
-
-	"scroll-tech/bridge/utils"
 )
 
 var (
@@ -65,15 +63,14 @@ func TestMarshalJSON(t *testing.T) {
 	for i, test := range tests {
 		var num rpc.BlockNumber
 		want, err := json.Marshal(test.expected)
-		assert.Nil(t, err)
+		assert.NoError(t, err)
 		if !test.mustFail {
 			err = json.Unmarshal([]byte(test.input), &num)
-			assert.Nil(t, err)
+			assert.NoError(t, err)
 			got, err := json.Marshal(&num)
-			assert.Nil(t, err)
+			assert.NoError(t, err)
 			if string(want) != string(got) {
 				t.Errorf("Test %d got unexpected value, want %d, got %d", i, test.expected, num)
-
 			}
 		}
 	}
@@ -88,20 +85,50 @@ func (e MockEthClient) BlockNumber(ctx context.Context) (uint64, error) {
 }
 
 func (e MockEthClient) HeaderByNumber(ctx context.Context, number *big.Int) (*types.Header, error) {
-	return &types.Header{Number: new(big.Int).SetUint64(e.val)}, nil
+	var blockNumber int64
+	switch number.Int64() {
+	case int64(rpc.LatestBlockNumber):
+		blockNumber = int64(e.val)
+	case int64(rpc.SafeBlockNumber):
+		blockNumber = int64(e.val) - 6
+	case int64(rpc.FinalizedBlockNumber):
+		blockNumber = int64(e.val) - 12
+	default:
+		blockNumber = number.Int64()
+	}
+	if blockNumber < 0 {
+		blockNumber = 0
+	}
+
+	return &types.Header{Number: new(big.Int).SetInt64(blockNumber)}, nil
 }
 
 func TestGetLatestConfirmedBlockNumber(t *testing.T) {
 	ctx := context.Background()
 	client := MockEthClient{}
 
-	client.val = 5
-	confirmed, err := utils.GetLatestConfirmedBlockNumber(ctx, &client, 6)
-	assert.Nil(t, err)
-	assert.Equal(t, uint64(0), confirmed)
+	testCases := []struct {
+		blockNumber    uint64
+		confirmation   rpc.BlockNumber
+		expectedResult uint64
+	}{
+		{5, 6, 0},
+		{7, 6, 1},
+		{10, 2, 8},
+		{0, 1, 0},
+		{3, 0, 3},
+		{15, 15, 0},
+		{16, rpc.SafeBlockNumber, 10},
+		{22, rpc.FinalizedBlockNumber, 10},
+		{10, rpc.LatestBlockNumber, 10},
+		{5, rpc.SafeBlockNumber, 0},
+		{11, rpc.FinalizedBlockNumber, 0},
+	}
 
-	client.val = 7
-	confirmed, err = utils.GetLatestConfirmedBlockNumber(ctx, &client, 6)
-	assert.Nil(t, err)
-	assert.Equal(t, uint64(1), confirmed)
+	for _, testCase := range testCases {
+		client.val = testCase.blockNumber
+		confirmed, err := GetLatestConfirmedBlockNumber(ctx, &client, testCase.confirmation)
+		assert.NoError(t, err)
+		assert.Equal(t, testCase.expectedResult, confirmed)
+	}
 }

@@ -23,10 +23,6 @@ type accountPool struct {
 
 // newAccounts creates an accountPool instance.
 func newAccountPool(ctx context.Context, minBalance *big.Int, client *ethclient.Client, privs []*ecdsa.PrivateKey) (*accountPool, error) {
-	if minBalance == nil {
-		minBalance = big.NewInt(0)
-		minBalance.SetString("100000000000000000000", 10)
-	}
 	accs := &accountPool{
 		client:     client,
 		minBalance: minBalance,

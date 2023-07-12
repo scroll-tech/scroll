@@ -11,8 +11,8 @@ import (
 
 	"scroll-tech/common/types"
 
-	"scroll-tech/bridge/l1"
-	"scroll-tech/bridge/l2"
+	"scroll-tech/bridge/relayer"
+	"scroll-tech/bridge/watcher"
 
 	"scroll-tech/database"
 	"scroll-tech/database/migrate"
@@ -30,14 +30,13 @@ func testImportL1GasPrice(t *testing.T) {
 	l1Cfg := cfg.L1Config
 
 	// Create L1Relayer
-	l1Relayer, err := l1.NewLayer1Relayer(context.Background(), db, l1Cfg.RelayerConfig)
+	l1Relayer, err := relayer.NewLayer1Relayer(context.Background(), db, l1Cfg.RelayerConfig)
 	assert.NoError(t, err)
-	defer l1Relayer.Stop()
 
 	// Create L1Watcher
 	startHeight, err := l1Client.BlockNumber(context.Background())
 	assert.NoError(t, err)
-	l1Watcher := l1.NewWatcher(context.Background(), l1Client, startHeight-1, 0, l1Cfg.L1MessengerAddress, l1Cfg.L1MessageQueueAddress, l1Cfg.ScrollChainContractAddress, db)
+	l1Watcher := watcher.NewL1WatcherClient(context.Background(), l1Client, startHeight-1, 0, l1Cfg.L1MessengerAddress, l1Cfg.L1MessageQueueAddress, l1Cfg.ScrollChainContractAddress, db)
 
 	// fetch new blocks
 	number, err := l1Client.BlockNumber(context.Background())
@@ -81,12 +80,11 @@ func testImportL2GasPrice(t *testing.T) {
 	l2Cfg := cfg.L2Config
 
 	// Create L2Relayer
-	l2Relayer, err := l2.NewLayer2Relayer(context.Background(), l2Client, db, l2Cfg.RelayerConfig)
+	l2Relayer, err := relayer.NewLayer2Relayer(context.Background(), l2Client, db, l2Cfg.RelayerConfig)
 	assert.NoError(t, err)
-	defer l2Relayer.Stop()
 
 	// add fake blocks
-	traces := []*geth_types.BlockTrace{
+	traces := []*types.WrappedBlock{
 		{
 			Header: &geth_types.Header{
 				Number:     big.NewInt(1),
@@ -94,16 +92,17 @@ func testImportL2GasPrice(t *testing.T) {
 				Difficulty: big.NewInt(0),
 				BaseFee:    big.NewInt(0),
 			},
-			StorageTrace: &geth_types.StorageTrace{},
+			Transactions:     nil,
+			WithdrawTrieRoot: common.Hash{},
 		},
 	}
-	assert.NoError(t, db.InsertL2BlockTraces(traces))
+	assert.NoError(t, db.InsertWrappedBlocks(traces))
 
 	parentBatch := &types.BlockBatch{
 		Index: 0,
 		Hash:  "0x0000000000000000000000000000000000000000",
 	}
-	batchData := types.NewBatchData(parentBatch, []*geth_types.BlockTrace{
+	batchData := types.NewBatchData(parentBatch, []*types.WrappedBlock{
 		traces[0],
 	}, cfg.L2Config.BatchProposerConfig.PublicInputConfig)
 

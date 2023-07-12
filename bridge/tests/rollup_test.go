@@ -12,8 +12,8 @@ import (
 
 	"scroll-tech/common/types"
 
-	"scroll-tech/bridge/l1"
-	"scroll-tech/bridge/l2"
+	"scroll-tech/bridge/relayer"
+	"scroll-tech/bridge/watcher"
 
 	"scroll-tech/database"
 	"scroll-tech/database/migrate"
@@ -30,16 +30,15 @@ func testCommitBatchAndFinalizeBatch(t *testing.T) {
 
 	// Create L2Relayer
 	l2Cfg := cfg.L2Config
-	l2Relayer, err := l2.NewLayer2Relayer(context.Background(), l2Client, db, l2Cfg.RelayerConfig)
+	l2Relayer, err := relayer.NewLayer2Relayer(context.Background(), l2Client, db, l2Cfg.RelayerConfig)
 	assert.NoError(t, err)
-	defer l2Relayer.Stop()
 
 	// Create L1Watcher
 	l1Cfg := cfg.L1Config
-	l1Watcher := l1.NewWatcher(context.Background(), l1Client, 0, l1Cfg.Confirmations, l1Cfg.L1MessengerAddress, l1Cfg.L1MessageQueueAddress, l1Cfg.ScrollChainContractAddress, db)
+	l1Watcher := watcher.NewL1WatcherClient(context.Background(), l1Client, 0, l1Cfg.Confirmations, l1Cfg.L1MessengerAddress, l1Cfg.L1MessageQueueAddress, l1Cfg.ScrollChainContractAddress, db)
 
 	// add some blocks to db
-	var traces []*geth_types.BlockTrace
+	var wrappedBlocks []*types.WrappedBlock
 	var parentHash common.Hash
 	for i := 1; i <= 10; i++ {
 		header := geth_types.Header{
@@ -48,21 +47,22 @@ func testCommitBatchAndFinalizeBatch(t *testing.T) {
 			Difficulty: big.NewInt(0),
 			BaseFee:    big.NewInt(0),
 		}
-		traces = append(traces, &geth_types.BlockTrace{
-			Header:       &header,
-			StorageTrace: &geth_types.StorageTrace{},
+		wrappedBlocks = append(wrappedBlocks, &types.WrappedBlock{
+			Header:           &header,
+			Transactions:     nil,
+			WithdrawTrieRoot: common.Hash{},
 		})
 		parentHash = header.Hash()
 	}
-	assert.NoError(t, db.InsertL2BlockTraces(traces))
+	assert.NoError(t, db.InsertWrappedBlocks(wrappedBlocks))
 
 	parentBatch := &types.BlockBatch{
 		Index: 0,
 		Hash:  "0x0000000000000000000000000000000000000000",
 	}
-	batchData := types.NewBatchData(parentBatch, []*geth_types.BlockTrace{
-		traces[0],
-		traces[1],
+	batchData := types.NewBatchData(parentBatch, []*types.WrappedBlock{
+		wrappedBlocks[0],
+		wrappedBlocks[1],
 	}, cfg.L2Config.BatchProposerConfig.PublicInputConfig)
 
 	batchHash := batchData.Hash().String()
@@ -95,7 +95,7 @@ func testCommitBatchAndFinalizeBatch(t *testing.T) {
 	assert.Equal(t, len(commitTxReceipt.Logs), 1)
 
 	// fetch rollup events
-	err = l1Watcher.FetchContractEvent(commitTxReceipt.BlockNumber.Uint64())
+	err = l1Watcher.FetchContractEvent()
 	assert.NoError(t, err)
 	status, err = db.GetRollupStatus(batchHash)
 	assert.NoError(t, err)
@@ -125,7 +125,7 @@ func testCommitBatchAndFinalizeBatch(t *testing.T) {
 	assert.Equal(t, len(finalizeTxReceipt.Logs), 1)
 
 	// fetch rollup events
-	err = l1Watcher.FetchContractEvent(finalizeTxReceipt.BlockNumber.Uint64())
+	err = l1Watcher.FetchContractEvent()
 	assert.NoError(t, err)
 	status, err = db.GetRollupStatus(batchHash)
 	assert.NoError(t, err)

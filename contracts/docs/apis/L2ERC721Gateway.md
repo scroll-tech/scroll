@@ -13,7 +13,7 @@ The `L2ERC721Gateway` is used to withdraw ERC721 compatible NFTs in layer 2 and 
 ### batchWithdrawERC721
 
 ```solidity
-function batchWithdrawERC721(address _token, uint256[] _tokenIds, uint256 _gasLimit) external nonpayable
+function batchWithdrawERC721(address _token, uint256[] _tokenIds, uint256 _gasLimit) external payable
 ```
 
 Batch withdraw a list of ERC721 NFT to caller&#39;s account on layer 1.
@@ -31,7 +31,7 @@ Batch withdraw a list of ERC721 NFT to caller&#39;s account on layer 1.
 ### batchWithdrawERC721
 
 ```solidity
-function batchWithdrawERC721(address _token, address _to, uint256[] _tokenIds, uint256 _gasLimit) external nonpayable
+function batchWithdrawERC721(address _token, address _to, uint256[] _tokenIds, uint256 _gasLimit) external payable
 ```
 
 Batch withdraw a list of ERC721 NFT to caller&#39;s account on layer 1.
@@ -266,7 +266,7 @@ Update layer 2 to layer 1 token mapping.
 ### withdrawERC721
 
 ```solidity
-function withdrawERC721(address _token, uint256 _tokenId, uint256 _gasLimit) external nonpayable
+function withdrawERC721(address _token, uint256 _tokenId, uint256 _gasLimit) external payable
 ```
 
 Withdraw some ERC721 NFT to caller&#39;s account on layer 1.
@@ -284,7 +284,7 @@ Withdraw some ERC721 NFT to caller&#39;s account on layer 1.
 ### withdrawERC721
 
 ```solidity
-function withdrawERC721(address _token, address _to, uint256 _tokenId, uint256 _gasLimit) external nonpayable
+function withdrawERC721(address _token, address _to, uint256 _tokenId, uint256 _gasLimit) external payable
 ```
 
 Withdraw some ERC721 NFT to caller&#39;s account on layer 1.

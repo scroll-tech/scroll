@@ -57,7 +57,7 @@ contract L2ERC1155Gateway is OwnableUpgradeable, ERC1155HolderUpgradeable, Scrol
         uint256 _tokenId,
         uint256 _amount,
         uint256 _gasLimit
-    ) external override {
+    ) external payable override {
         _withdrawERC1155(_token, msg.sender, _tokenId, _amount, _gasLimit);
     }
 
@@ -68,7 +68,7 @@ contract L2ERC1155Gateway is OwnableUpgradeable, ERC1155HolderUpgradeable, Scrol
         uint256 _tokenId,
         uint256 _amount,
         uint256 _gasLimit
-    ) external override {
+    ) external payable override {
         _withdrawERC1155(_token, _to, _tokenId, _amount, _gasLimit);
     }
 
@@ -78,7 +78,7 @@ contract L2ERC1155Gateway is OwnableUpgradeable, ERC1155HolderUpgradeable, Scrol
         uint256[] calldata _tokenIds,
         uint256[] calldata _amounts,
         uint256 _gasLimit
-    ) external override {
+    ) external payable override {
         _batchWithdrawERC1155(_token, msg.sender, _tokenIds, _amounts, _gasLimit);
     }
 
@@ -89,7 +89,7 @@ contract L2ERC1155Gateway is OwnableUpgradeable, ERC1155HolderUpgradeable, Scrol
         uint256[] calldata _tokenIds,
         uint256[] calldata _amounts,
         uint256 _gasLimit
-    ) external override {
+    ) external payable override {
         _batchWithdrawERC1155(_token, _to, _tokenIds, _amounts, _gasLimit);
     }
 
@@ -173,7 +173,7 @@ contract L2ERC1155Gateway is OwnableUpgradeable, ERC1155HolderUpgradeable, Scrol
         );
 
         // 3. Send message to L2ScrollMessenger.
-        IL2ScrollMessenger(messenger).sendMessage(counterpart, msg.value, _message, _gasLimit);
+        IL2ScrollMessenger(messenger).sendMessage{value: msg.value}(counterpart, 0, _message, _gasLimit);
 
         emit WithdrawERC1155(_l1Token, _token, msg.sender, _to, _tokenId, _amount);
     }
@@ -216,7 +216,7 @@ contract L2ERC1155Gateway is OwnableUpgradeable, ERC1155HolderUpgradeable, Scrol
         );
 
         // 3. Send message to L2ScrollMessenger.
-        IL2ScrollMessenger(messenger).sendMessage{value: msg.value}(counterpart, msg.value, _message, _gasLimit);
+        IL2ScrollMessenger(messenger).sendMessage{value: msg.value}(counterpart, 0, _message, _gasLimit);
 
         emit BatchWithdrawERC1155(_l1Token, _token, msg.sender, _to, _tokenIds, _amounts);
     }

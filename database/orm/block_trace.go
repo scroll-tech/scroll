@@ -9,11 +9,9 @@ import (
 
 	"github.com/jmoiron/sqlx"
 	"github.com/scroll-tech/go-ethereum/common"
-	geth_types "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/log"
 
 	"scroll-tech/common/types"
-	"scroll-tech/common/utils"
 )
 
 type blockTraceOrm struct {
@@ -39,7 +37,7 @@ func (o *blockTraceOrm) IsL2BlockExists(number uint64) (bool, error) {
 	return true, nil
 }
 
-func (o *blockTraceOrm) GetL2BlockTracesLatestHeight() (int64, error) {
+func (o *blockTraceOrm) GetL2BlocksLatestHeight() (int64, error) {
 	row := o.db.QueryRow("SELECT COALESCE(MAX(number), -1) FROM block_trace;")
 
 	var height int64
@@ -49,7 +47,7 @@ func (o *blockTraceOrm) GetL2BlockTracesLatestHeight() (int64, error) {
 	return height, nil
 }
 
-func (o *blockTraceOrm) GetL2BlockTraces(fields map[string]interface{}, args ...string) ([]*geth_types.BlockTrace, error) {
+func (o *blockTraceOrm) GetL2WrappedBlocks(fields map[string]interface{}, args ...string) ([]*types.WrappedBlock, error) {
 	type Result struct {
 		Trace string
 	}
@@ -66,24 +64,24 @@ func (o *blockTraceOrm) GetL2BlockTraces(fields map[string]interface{}, args ...
 		return nil, err
 	}
 
-	var traces []*geth_types.BlockTrace
+	var wrappedBlocks []*types.WrappedBlock
 	for rows.Next() {
 		result := &Result{}
 		if err = rows.StructScan(result); err != nil {
 			break
 		}
-		trace := geth_types.BlockTrace{}
-		err = json.Unmarshal([]byte(result.Trace), &trace)
+		wrappedBlock := types.WrappedBlock{}
+		err = json.Unmarshal([]byte(result.Trace), &wrappedBlock)
 		if err != nil {
 			break
 		}
-		traces = append(traces, &trace)
+		wrappedBlocks = append(wrappedBlocks, &wrappedBlock)
 	}
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return nil, err
 	}
 
-	return traces, rows.Close()
+	return wrappedBlocks, rows.Close()
 }
 
 func (o *blockTraceOrm) GetL2BlockInfos(fields map[string]interface{}, args ...string) ([]*types.BlockInfo, error) {
@@ -152,35 +150,31 @@ func (o *blockTraceOrm) GetL2BlockHashByNumber(number uint64) (*common.Hash, err
 	return &hash, nil
 }
 
-func (o *blockTraceOrm) InsertL2BlockTraces(blockTraces []*geth_types.BlockTrace) error {
-	traceMaps := make([]map[string]interface{}, len(blockTraces))
-	for i, trace := range blockTraces {
-		number, hash, txNum, mtime := trace.Header.Number.Int64(),
-			trace.Header.Hash().String(),
-			len(trace.Transactions),
-			trace.Header.Time
+func (o *blockTraceOrm) InsertWrappedBlocks(blocks []*types.WrappedBlock) error {
+	blockMaps := make([]map[string]interface{}, len(blocks))
+	for i, block := range blocks {
+		number, hash, txNum, mtime := block.Header.Number.Int64(),
+			block.Header.Hash().String(),
+			len(block.Transactions),
+			block.Header.Time
 
-		gasCost := utils.ComputeTraceGasCost(trace)
-		// clear the `StructLogs` to reduce storage cost
-		for _, executionResult := range trace.ExecutionResults {
-			executionResult.StructLogs = nil
-		}
-		data, err := json.Marshal(trace)
+		gasCost := block.Header.GasUsed
+		data, err := json.Marshal(block)
 		if err != nil {
-			log.Error("failed to marshal blockTrace", "hash", hash, "err", err)
+			log.Error("failed to marshal block", "hash", hash, "err", err)
 			return err
 		}
-		traceMaps[i] = map[string]interface{}{
+		blockMaps[i] = map[string]interface{}{
 			"number":          number,
 			"hash":            hash,
-			"parent_hash":     trace.Header.ParentHash.String(),
+			"parent_hash":     block.Header.ParentHash.String(),
 			"trace":           string(data),
 			"tx_num":          txNum,
 			"gas_used":        gasCost,
 			"block_timestamp": mtime,
 		}
 	}
-	_, err := o.db.NamedExec(`INSERT INTO public.block_trace (number, hash, parent_hash, trace, tx_num, gas_used, block_timestamp) VALUES (:number, :hash, :parent_hash, :trace, :tx_num, :gas_used, :block_timestamp);`, traceMaps)
+	_, err := o.db.NamedExec(`INSERT INTO public.block_trace (number, hash, parent_hash, trace, tx_num, gas_used, block_timestamp) VALUES (:number, :hash, :parent_hash, :trace, :tx_num, :gas_used, :block_timestamp);`, blockMaps)
 	if err != nil {
 		log.Error("failed to insert blockTraces", "err", err)
 	}

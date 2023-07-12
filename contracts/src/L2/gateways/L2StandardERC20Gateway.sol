@@ -105,9 +105,9 @@ contract L2StandardERC20Gateway is Initializable, ScrollGatewayBase, L2ERC20Gate
             _deployL2Token(_deployData, _l1Token);
         }
 
-        // @todo forward `_callData` to `_to` using transferAndCall in the near future
-
         IScrollStandardERC20(_l2Token).mint(_to, _amount);
+
+        _doCallback(_to, _callData);
 
         emit FinalizeDepositERC20(_l1Token, _l2Token, _from, _to, _amount, _callData);
     }

@@ -3,6 +3,8 @@ package utils
 import (
 	"context"
 	"time"
+
+	"github.com/modern-go/reflect2"
 )
 
 // TryTimes try run several times until the function return true.
@@ -41,4 +43,9 @@ func Loop(ctx context.Context, period time.Duration, f func()) {
 			f()
 		}
 	}
+}
+
+// IsNil Check if the interface is empty.
+func IsNil(i interface{}) bool {
+	return i == nil || reflect2.IsNil(i)
 }

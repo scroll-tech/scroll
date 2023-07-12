@@ -10,8 +10,8 @@ import (
 	geth_metrics "github.com/scroll-tech/go-ethereum/metrics"
 	"github.com/scroll-tech/go-ethereum/rpc"
 
-	"scroll-tech/common/message"
 	"scroll-tech/common/metrics"
+	"scroll-tech/common/types/message"
 )
 
 var (
@@ -116,6 +116,8 @@ func (m *Manager) SubmitProof(proof *message.ProofMsg) (bool, error) {
 	if !m.existTaskIDForRoller(pubkey, proof.ID) {
 		return false, fmt.Errorf("the roller or session id doesn't exist, pubkey: %s, ID: %s", pubkey, proof.ID)
 	}
+
+	m.updateMetricRollerProofsLastFinishedTimestampGauge(pubkey)
 
 	err := m.handleZkProof(pubkey, proof.ProofDetail)
 	if err != nil {

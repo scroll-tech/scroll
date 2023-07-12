@@ -62,15 +62,15 @@ func (o *blockBatchOrm) GetProvingStatusByHash(hash string) (types.ProvingStatus
 	return status, nil
 }
 
-func (o *blockBatchOrm) GetVerifiedProofAndInstanceByHash(hash string) ([]byte, []byte, error) {
+func (o *blockBatchOrm) GetVerifiedProofAndInstanceCommitmentsByHash(hash string) ([]byte, []byte, error) {
 	var proof []byte
-	var instance []byte
+	var instanceCommitments []byte
 	row := o.db.QueryRow(`SELECT proof, instance_commitments FROM block_batch WHERE hash = $1 and proving_status = $2`, hash, types.ProvingTaskVerified)
 
-	if err := row.Scan(&proof, &instance); err != nil {
+	if err := row.Scan(&proof, &instanceCommitments); err != nil {
 		return nil, nil, err
 	}
-	return proof, instance, nil
+	return proof, instanceCommitments, nil
 }
 
 func (o *blockBatchOrm) UpdateProofByHash(ctx context.Context, hash string, proof, instanceCommitments []byte, proofTimeSec uint64) error {

@@ -19,7 +19,8 @@
         "escalate_multiple_den": 10,
         "max_gas_price": 10000000000,
         "tx_type": "LegacyTx",
-        "min_balance": 100000000000000000000
+        "min_balance": 100000000000000000000,
+        "pending_limit": 10
       },
       "gas_oracle_config": {
         "min_gas_price": 0,
@@ -53,7 +54,8 @@
         "escalate_multiple_den": 10,
         "max_gas_price": 10000000000,
         "tx_type": "LegacyTx",
-        "min_balance": 100000000000000000000
+        "min_balance": 100000000000000000000,
+        "pending_limit": 10
       },
       "gas_oracle_config": {
         "min_gas_price": 0,

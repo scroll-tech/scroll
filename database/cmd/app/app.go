@@ -67,7 +67,7 @@ func init() {
 	}
 
 	// Register `db_cli-test` app for integration-test.
-	utils.RegisterSimulation(app, "db_cli-test")
+	utils.RegisterSimulation(app, utils.DBCliApp)
 }
 
 // Run run database cmd instance.

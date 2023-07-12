@@ -30,7 +30,7 @@ func init() {
 	}
 
 	// Register `roller-test` app for integration-test.
-	utils.RegisterSimulation(app, "roller-test")
+	utils.RegisterSimulation(app, utils.RollerApp)
 }
 
 func action(ctx *cli.Context) error {

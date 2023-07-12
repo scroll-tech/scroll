@@ -29,19 +29,6 @@ func ComputeMessageHash(
 	return common.BytesToHash(crypto.Keccak256(data))
 }
 
-// BufferToUint256Be convert bytes array to uint256 array assuming big-endian
-func BufferToUint256Be(buffer []byte) []*big.Int {
-	buffer256 := make([]*big.Int, len(buffer)/32)
-	for i := 0; i < len(buffer)/32; i++ {
-		buffer256[i] = big.NewInt(0)
-		for j := 0; j < 32; j++ {
-			buffer256[i] = buffer256[i].Lsh(buffer256[i], 8)
-			buffer256[i] = buffer256[i].Add(buffer256[i], big.NewInt(int64(buffer[i*32+j])))
-		}
-	}
-	return buffer256
-}
-
 // BufferToUint256Le convert bytes array to uint256 array assuming little-endian
 func BufferToUint256Le(buffer []byte) []*big.Int {
 	buffer256 := make([]*big.Int, len(buffer)/32)
@@ -75,24 +62,4 @@ func UnpackLog(c *abi.ABI, out interface{}, event string, log types.Log) error {
 		}
 	}
 	return abi.ParseTopics(out, indexed, log.Topics[1:])
-}
-
-// UnpackLogIntoMap unpacks a retrieved log into the provided map.
-// @todo: add unit test.
-func UnpackLogIntoMap(c *abi.ABI, out map[string]interface{}, event string, log types.Log) error {
-	if log.Topics[0] != c.Events[event].ID {
-		return fmt.Errorf("event signature mismatch")
-	}
-	if len(log.Data) > 0 {
-		if err := c.UnpackIntoMap(out, event, log.Data); err != nil {
-			return err
-		}
-	}
-	var indexed abi.Arguments
-	for _, arg := range c.Events[event].Inputs {
-		if arg.Indexed {
-			indexed = append(indexed, arg)
-		}
-	}
-	return abi.ParseTopicsIntoMap(out, indexed, log.Topics[1:])
 }

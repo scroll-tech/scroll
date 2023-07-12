@@ -38,22 +38,33 @@ func (c *Cmd) RunApp(waitResult func() bool) {
 
 // WaitExit wait util process exit.
 func (c *Cmd) WaitExit() {
-	// Wait all the check funcs are finished or test status is failed.
-	for !(c.Err != nil || c.checkFuncs.IsEmpty()) {
-		<-time.After(time.Millisecond * 500)
+	// Wait all the check functions are finished, interrupt loop when appear error.
+	var err error
+	for err == nil && !c.checkFuncs.IsEmpty() {
+		select {
+		case err = <-c.ErrChan:
+			if err != nil {
+				fmt.Printf("%s appear error durning running, err: %v\n", c.name, err)
+			}
+		default:
+			<-time.After(time.Millisecond * 500)
+		}
 	}
 
 	// Send interrupt signal.
 	c.mu.Lock()
 	_ = c.cmd.Process.Signal(os.Interrupt)
-	_, _ = c.cmd.Process.Wait()
+	// should use `_ = c.cmd.Process.Wait()` here, but we have some bugs in coordinator's graceful exit,
+	// so we use `Kill` as a temp workaround. And since `WaitExit` is only used in integration tests, so
+	// it won't really affect our functionalities.
+	_ = c.cmd.Process.Kill()
 	c.mu.Unlock()
 }
 
 // Interrupt send interrupt signal.
 func (c *Cmd) Interrupt() {
 	c.mu.Lock()
-	c.Err = c.cmd.Process.Signal(os.Interrupt)
+	c.ErrChan <- c.cmd.Process.Signal(os.Interrupt)
 	c.mu.Unlock()
 }
 

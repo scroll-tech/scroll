@@ -99,7 +99,7 @@ contract L1StandardERC20Gateway is Initializable, ScrollGatewayBase, L1ERC20Gate
         // but it seems not a big problem.
         IERC20(_l1Token).safeTransfer(_to, _amount);
 
-        // @todo forward `_data` to `_to` in the near future
+        _doCallback(_to, _data);
 
         emit FinalizeWithdrawERC20(_l1Token, _l2Token, _from, _to, _amount, _data);
     }

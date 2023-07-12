@@ -3,9 +3,7 @@
 package prover
 
 import (
-	"github.com/scroll-tech/go-ethereum/core/types"
-
-	"scroll-tech/common/message"
+	"scroll-tech/common/types/message"
 
 	"scroll-tech/roller/config"
 )
@@ -21,7 +19,7 @@ func NewProver(cfg *config.ProverConfig) (*Prover, error) {
 }
 
 // Prove call rust ffi to generate proof, if first failed, try again.
-func (p *Prover) Prove(_ []*types.BlockTrace) (*message.AggProof, error) {
+func (p *Prover) Prove(_ *message.TaskMsg) (*message.AggProof, error) {
 	return &message.AggProof{
 		Proof:     []byte{},
 		Instance:  []byte{},
