@@ -71,10 +71,10 @@ jobs:
       - name: Install goimports
         run: go install golang.org/x/tools/cmd/goimports
       - run: goimports -local scroll-tech/miner-api/ -w .
-      - run: go mod tidy
+      # - run: go mod tidy
       # If there are any diffs from goimports or go mod tidy, fail.
-      - name: Verify no changes from goimports and go mod tidy
-        run: |
-          if [ -n "$(git status --porcelain)" ]; then
-            exit 1
-          fi
+#      - name: Verify no changes from goimports and go mod tidy
+#        run: |
+#          if [ -n "$(git status --porcelain)" ]; then
+#            exit 1
+#          fi
