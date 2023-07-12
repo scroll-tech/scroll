@@ -9,9 +9,13 @@ import (
 	"github.com/ethereum/go-ethereum/log"
 )
 
+// GetEarliestNoBlockTimestampHeightFunc is a function type that gets the earliest record without block timestamp from database
 type GetEarliestNoBlockTimestampHeightFunc func() (uint64, error)
+
+// UpdateBlockTimestampFunc is a function type that updates block timestamp into database
 type UpdateBlockTimestampFunc func(height uint64, timestamp time.Time) error
 
+// BlockTimestampFetcher is a struct that fetches block timestamp from blockchain and saves them to database
 type BlockTimestampFetcher struct {
 	ctx                                   context.Context
 	confirmation                          uint64
@@ -21,6 +25,7 @@ type BlockTimestampFetcher struct {
 	getEarliestNoBlockTimestampHeightFunc GetEarliestNoBlockTimestampHeightFunc
 }
 
+// NewBlockTimestampFetcher creates a new BlockTimestampFetcher instance
 func NewBlockTimestampFetcher(ctx context.Context, confirmation uint64, blockTimeInSec int, client *ethclient.Client, updateBlockTimestampFunc UpdateBlockTimestampFunc, getEarliestNoBlockTimestampHeightFunc GetEarliestNoBlockTimestampHeightFunc) *BlockTimestampFetcher {
 	return &BlockTimestampFetcher{
 		ctx:                                   ctx,
@@ -32,6 +37,7 @@ func NewBlockTimestampFetcher(ctx context.Context, confirmation uint64, blockTim
 	}
 }
 
+// Start starts the BlockTimestampFetcher
 func (b *BlockTimestampFetcher) Start() {
 	go func() {
 		tick := time.NewTicker(time.Duration(b.blockTimeInSec) * time.Second)
@@ -73,6 +79,7 @@ func (b *BlockTimestampFetcher) Start() {
 	}()
 }
 
+// Stop stops the BlockTimestampFetcher and log the info
 func (b *BlockTimestampFetcher) Stop() {
 	log.Info("BlockTimestampFetcher Stop")
 }

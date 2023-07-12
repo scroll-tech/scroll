@@ -9,6 +9,7 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
+// L2SentMsg defines the struct for l2_sent_msg table record
 type L2SentMsg struct {
 	ID             uint64     `json:"id" db:"id"`
 	OriginalSender string     `json:"original_sender" db:"original_sender"`

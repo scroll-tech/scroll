@@ -10,6 +10,7 @@ import (
 	"bridge-history-api/db"
 )
 
+// ReorgHandling is a function that handles reorg
 type ReorgHandling func(ctx context.Context, reorgHeight int64, db db.OrmFactory) error
 
 func reverseArray(arr []*types.Header) []*types.Header {
@@ -20,10 +21,12 @@ func reverseArray(arr []*types.Header) []*types.Header {
 	return arr
 }
 
+// IsParentAndChild checks if the two headers are parent and child
 func IsParentAndChild(parentHeader *types.Header, header *types.Header) bool {
 	return header.ParentHash == parentHeader.Hash()
 }
 
+// MergeAddIntoHeaderList merges two header lists if exceed the max lenth then drop the oldest ones
 func MergeAddIntoHeaderList(baseArr, extraArr []*types.Header, maxLength int) []*types.Header {
 	mergedArr := append(baseArr, extraArr...)
 	if len(mergedArr) <= maxLength {
@@ -34,6 +37,7 @@ func MergeAddIntoHeaderList(baseArr, extraArr []*types.Header, maxLength int) []
 	return mergedArr[startIndex:]
 }
 
+// BackwardFindReorgBlock finds the reorg block by backward search
 func BackwardFindReorgBlock(ctx context.Context, headers []*types.Header, client *ethclient.Client, header *types.Header) (int, bool, []*types.Header) {
 	maxStep := len(headers)
 	backwardHeaderList := []*types.Header{header}
@@ -54,6 +58,7 @@ func BackwardFindReorgBlock(ctx context.Context, headers []*types.Header, client
 	return -1, false, nil
 }
 
+// L1ReorgHandling handles l1 reorg
 func L1ReorgHandling(ctx context.Context, reorgHeight int64, db db.OrmFactory) error {
 	dbTx, err := db.Beginx()
 	if err != nil {
@@ -87,6 +92,7 @@ func L1ReorgHandling(ctx context.Context, reorgHeight int64, db db.OrmFactory) e
 	return nil
 }
 
+// L2ReorgHandling handles l2 reorg
 func L2ReorgHandling(ctx context.Context, reorgHeight int64, db db.OrmFactory) error {
 	dbTx, err := db.Beginx()
 	if err != nil {

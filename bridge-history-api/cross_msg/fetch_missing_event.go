@@ -25,14 +25,15 @@ type FetchAndSave func(ctx context.Context, client *ethclient.Client, database d
 
 // GetLatestProcessed is a function type that gets the latest processed block height from database
 type GetLatestProcessed func(db db.OrmFactory) (int64, error)
-type UpdateXHash func(ctx context.Context)
 
+// FetchEventWorker is a struct that defines a worker with fetch and save function, a processed number getter, and a name
 type FetchEventWorker struct {
 	F    FetchAndSave
 	G    GetLatestProcessed
 	Name string
 }
 
+// GetLatestL1ProcessedHeight gets the latest processed height on L1
 func GetLatestL1ProcessedHeight(db db.OrmFactory) (int64, error) {
 	crossHeight, err := db.GetLatestL1ProcessedHeight()
 	if err != nil {
@@ -51,6 +52,7 @@ func GetLatestL1ProcessedHeight(db db.OrmFactory) (int64, error) {
 	}
 }
 
+// GetLatestL2ProcessedHeight gets the latest processed height on L2
 func GetLatestL2ProcessedHeight(db db.OrmFactory) (int64, error) {
 	crossHeight, err := db.GetLatestL2ProcessedHeight()
 	if err != nil {
@@ -77,6 +79,7 @@ func GetLatestL2ProcessedHeight(db db.OrmFactory) (int64, error) {
 	return maxHeight, nil
 }
 
+// L1FetchAndSaveEvents fetches and saves events on L1
 func L1FetchAndSaveEvents(ctx context.Context, client *ethclient.Client, database db.OrmFactory, from int64, to int64, addrList []common.Address) error {
 	query := geth.FilterQuery{
 		FromBlock: big.NewInt(from), // inclusive
@@ -139,6 +142,7 @@ func L1FetchAndSaveEvents(ctx context.Context, client *ethclient.Client, databas
 	return nil
 }
 
+// L2FetchAndSaveEvents fetches and saves events on L2
 func L2FetchAndSaveEvents(ctx context.Context, client *ethclient.Client, database db.OrmFactory, from int64, to int64, addrList []common.Address) error {
 	query := geth.FilterQuery{
 		FromBlock: big.NewInt(from), // inclusive
@@ -212,6 +216,7 @@ func L2FetchAndSaveEvents(ctx context.Context, client *ethclient.Client, databas
 	return nil
 }
 
+// FetchAndSaveBatchIndex fetches and saves batch index
 func FetchAndSaveBatchIndex(ctx context.Context, client *ethclient.Client, database db.OrmFactory, from int64, to int64, scrollChainAddr common.Address) error {
 	query := geth.FilterQuery{
 		FromBlock: big.NewInt(from), // inclusive

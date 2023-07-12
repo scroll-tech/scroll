@@ -1,4 +1,4 @@
-package message_proof
+package messageProof
 
 import (
 	"context"
@@ -14,12 +14,14 @@ import (
 	"bridge-history-api/db/orm"
 )
 
+// MsgProofUpdater is used to update message proof in db
 type MsgProofUpdater struct {
 	ctx          context.Context
 	db           db.OrmFactory
 	withdrawTrie *WithdrawTrie
 }
 
+// NewMsgProofUpdater returns a new MsgProofUpdater instance
 func NewMsgProofUpdater(ctx context.Context, confirmations uint64, startBlock uint64, db db.OrmFactory) *MsgProofUpdater {
 	return &MsgProofUpdater{
 		ctx:          ctx,
@@ -28,6 +30,7 @@ func NewMsgProofUpdater(ctx context.Context, confirmations uint64, startBlock ui
 	}
 }
 
+// Start starts the MsgProofUpdater
 func (m *MsgProofUpdater) Start() {
 	log.Info("MsgProofUpdater Start")
 	m.initialize(m.ctx)
@@ -83,6 +86,7 @@ func (m *MsgProofUpdater) Start() {
 
 }
 
+// Stop informs the MsgProofUpdater stoped
 func (m *MsgProofUpdater) Stop() {
 	log.Info("MsgProofUpdater Stop")
 }

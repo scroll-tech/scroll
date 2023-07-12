@@ -13,7 +13,7 @@ import (
 
 	"bridge-history-api/config"
 	"bridge-history-api/cross_msg"
-	"bridge-history-api/cross_msg/message_proof"
+	messageProof "bridge-history-api/cross_msg/message_proof"
 	"bridge-history-api/db"
 	cutils "bridge-history-api/utils"
 )
@@ -117,7 +117,7 @@ func action(ctx *cli.Context) error {
 	defer l2BlockTimeFetcher.Stop()
 
 	// Proof updater and batch fetcher
-	l2msgProofUpdater := message_proof.NewMsgProofUpdater(subCtx, cfg.L1.Confirmation, cfg.BatchInfoFetcher.BatchIndexStartBlock, db)
+	l2msgProofUpdater := messageProof.NewMsgProofUpdater(subCtx, cfg.L1.Confirmation, cfg.BatchInfoFetcher.BatchIndexStartBlock, db)
 	batchFetcher := cross_msg.NewBatchInfoFetcher(subCtx, common.HexToAddress(cfg.BatchInfoFetcher.ScrollChainAddr), cfg.BatchInfoFetcher.BatchIndexStartBlock, cfg.L1.Confirmation, int(cfg.L1.BlockTime), l1client, db, l2msgProofUpdater)
 	go batchFetcher.Start()
 	defer batchFetcher.Stop()

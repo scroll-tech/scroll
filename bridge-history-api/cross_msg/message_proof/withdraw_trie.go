@@ -1,4 +1,4 @@
-package message_proof
+package messageProof
 
 import (
 	"github.com/ethereum/go-ethereum/common"

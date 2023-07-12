@@ -18,6 +18,7 @@ import (
 	"bridge-history-api/utils"
 )
 
+// CrossMsgFetcher is a struct that fetches cross message events from blockchain and saves them to database
 type CrossMsgFetcher struct {
 	ctx           context.Context
 	config        *config.LayerConfig
@@ -32,6 +33,7 @@ type CrossMsgFetcher struct {
 	reorgEndCh    chan struct{}
 }
 
+// NewCrossMsgFetcher creates a new CrossMsgFetcher instance
 func NewCrossMsgFetcher(ctx context.Context, config *config.LayerConfig, db db.OrmFactory, client *ethclient.Client, worker *FetchEventWorker, addressList []common.Address, reorg ReorgHandling) (*CrossMsgFetcher, error) {
 	crossMsgFetcher := &CrossMsgFetcher{
 		ctx:           ctx,
@@ -48,6 +50,7 @@ func NewCrossMsgFetcher(ctx context.Context, config *config.LayerConfig, db db.O
 	return crossMsgFetcher, nil
 }
 
+// Start starts the CrossMsgFetcher
 func (c *CrossMsgFetcher) Start() {
 	log.Info("CrossMsgFetcher Start")
 	// fetch missing events from finalized blocks, we don't handle reorgs here
@@ -94,6 +97,7 @@ func (c *CrossMsgFetcher) Start() {
 	}()
 }
 
+// Stop stops the CrossMsgFetcher and log the info
 func (c *CrossMsgFetcher) Stop() {
 	log.Info("CrossMsgFetcher Stop")
 }
