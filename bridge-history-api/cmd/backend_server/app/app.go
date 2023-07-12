@@ -24,7 +24,10 @@ var (
 var database db.OrmFactory
 
 func pong(ctx iris.Context) {
-	ctx.WriteString("pong")
+	_, err := ctx.WriteString("pong")
+	if err != nil {
+		log.Error("failed to write pong", "err", err)
+	}
 }
 
 func setupQueryByAddressHandler(backend_app *mvc.Application) {
@@ -87,7 +90,12 @@ func action(ctx *cli.Context) error {
 	if err != nil {
 		log.Crit("can not connect to database", "err", err)
 	}
-	defer database.Close()
+	defer func() {
+		err := database.Close()
+		if err != nil {
+			log.Error("failed to close database", "err", err)
+		}
+	}()
 	bridgeApp := iris.New()
 	bridgeApp.UseRouter(corsOptions)
 	bridgeApp.Get("/ping", pong).Describe("healthcheck")

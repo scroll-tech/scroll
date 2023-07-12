@@ -110,19 +110,28 @@ func L1FetchAndSaveEvents(ctx context.Context, client *ethclient.Client, databas
 	}
 	err = database.BatchInsertL1CrossMsgDBTx(dbTx, depositL1CrossMsgs)
 	if err != nil {
-		dbTx.Rollback()
+		rollBackErr := dbTx.Rollback()
+		if rollBackErr != nil {
+			log.Error("dbTx Rollback failed", "err", rollBackErr)
+		}
 		log.Crit("l1FetchAndSaveEvents: Failed to insert cross msg event logs", "err", err)
 	}
 
 	err = database.BatchInsertRelayedMsgDBTx(dbTx, relayedMsg)
 	if err != nil {
-		dbTx.Rollback()
+		rollBackErr := dbTx.Rollback()
+		if rollBackErr != nil {
+			log.Error("dbTx Rollback failed", "err", rollBackErr)
+		}
 		log.Crit("l1FetchAndSaveEvents: Failed to insert relayed message event logs", "err", err)
 	}
 	err = dbTx.Commit()
 	if err != nil {
 		// if we can not insert into DB, there must something wrong, need a on-call member handle the dababase manually
-		dbTx.Rollback()
+		rollBackErr := dbTx.Rollback()
+		if rollBackErr != nil {
+			log.Error("dbTx Rollback failed", "err", rollBackErr)
+		}
 		log.Error("l1FetchAndSaveEvents: Failed to commit db transaction", "err", err)
 		return err
 	}
@@ -164,26 +173,38 @@ func L2FetchAndSaveEvents(ctx context.Context, client *ethclient.Client, databas
 	}
 	err = database.BatchInsertL2CrossMsgDBTx(dbTx, depositL2CrossMsgs)
 	if err != nil {
-		dbTx.Rollback()
+		rollBackErr := dbTx.Rollback()
+		if rollBackErr != nil {
+			log.Error("dbTx Rollback failed", "err", rollBackErr)
+		}
 		log.Crit("l2FetchAndSaveEvents: Failed to insert cross msg event logs", "err", err)
 	}
 
 	err = database.BatchInsertRelayedMsgDBTx(dbTx, relayedMsg)
 	if err != nil {
-		dbTx.Rollback()
+		rollBackErr := dbTx.Rollback()
+		if rollBackErr != nil {
+			log.Error("dbTx Rollback failed", "err", rollBackErr)
+		}
 		log.Crit("l2FetchAndSaveEvents: Failed to insert relayed message event logs", "err", err)
 	}
 
 	err = database.BatchInsertL2SentMsgDBTx(dbTx, l2SentMsgs)
 	if err != nil {
-		dbTx.Rollback()
+		rollBackErr := dbTx.Rollback()
+		if rollBackErr != nil {
+			log.Error("dbTx Rollback failed", "err", rollBackErr)
+		}
 		log.Crit("l2FetchAndSaveEvents: Failed to insert l2 sent message", "err", err)
 	}
 
 	err = dbTx.Commit()
 	if err != nil {
 		// if we can not insert into DB, there must something wrong, need a on-call member handle the dababase manually
-		dbTx.Rollback()
+		rollBackErr := dbTx.Rollback()
+		if rollBackErr != nil {
+			log.Error("dbTx Rollback failed", "err", rollBackErr)
+		}
 		log.Error("l2FetchAndSaveEvents: Failed to commit db transaction", "err", err)
 		return err
 	}
@@ -217,13 +238,19 @@ func FetchAndSaveBatchIndex(ctx context.Context, client *ethclient.Client, datab
 	}
 	err = database.BatchInsertRollupBatchDBTx(dbTx, rollupBatches)
 	if err != nil {
-		dbTx.Rollback()
+		rollBackErr := dbTx.Rollback()
+		if rollBackErr != nil {
+			log.Error("dbTx Rollback failed", "err", rollBackErr)
+		}
 		log.Crit("FetchAndSaveBatchIndex: Failed to insert batch commit msg event logs", "err", err)
 	}
 	err = dbTx.Commit()
 	if err != nil {
 		// if we can not insert into DB, there must something wrong, need a on-call member handle the dababase manually
-		dbTx.Rollback()
+		rollBackErr := dbTx.Rollback()
+		if rollBackErr != nil {
+			log.Error("dbTx Rollback failed", "err", rollBackErr)
+		}
 		log.Error("FetchAndSaveBatchIndex: Failed to commit db transaction", "err", err)
 		return err
 	}

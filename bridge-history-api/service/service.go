@@ -11,6 +11,7 @@ import (
 	"bridge-history-api/db/orm"
 )
 
+// FinalizedService is the response struct for tx finalized infos
 type Finalized struct {
 	Hash           string     `json:"hash"`
 	Amount         string     `json:"amount"`
@@ -20,6 +21,7 @@ type Finalized struct {
 	BlockTimestamp *time.Time `json:"blockTimestamp"` // uselesss
 }
 
+// UserClaimInfo is the response struct for tx claim infos
 type UserClaimInfo struct {
 	From       string `json:"from"`
 	To         string `json:"to"`
@@ -31,6 +33,7 @@ type UserClaimInfo struct {
 	BatchIndex string `json:"batch_index"`
 }
 
+// TxHistoryInfo is the response struct for tx history infos
 type TxHistoryInfo struct {
 	Hash           string         `json:"hash"`
 	Amount         string         `json:"amount"`
@@ -61,6 +64,7 @@ type historyBackend struct {
 	db     db.OrmFactory
 }
 
+// GetCrossTxClaimInfo returns UserClaimInfos by address
 func GetCrossTxClaimInfo(msgHash string, db db.OrmFactory) *UserClaimInfo {
 	l2sentMsg, err := db.GetL2SentMsgByHash(msgHash)
 	if err != nil {
@@ -107,6 +111,7 @@ func updateCrossTxHash(msgHash string, txInfo *TxHistoryInfo, db db.OrmFactory) 
 
 }
 
+// GetClaimableTxsByAddress returns all claimable txs under given address
 func (h *historyBackend) GetClaimableTxsByAddress(address common.Address, offset int64, limit int64) ([]*TxHistoryInfo, uint64, error) {
 	var txHistories []*TxHistoryInfo
 	total, err := h.db.GetClaimableL2SentMsgByAddressTotalNum(address.Hex())
@@ -148,6 +153,7 @@ func (h *historyBackend) GetClaimableTxsByAddress(address common.Address, offset
 	return txHistories, total, err
 }
 
+// GetTxsByAddress returns all txs under given address
 func (h *historyBackend) GetTxsByAddress(address common.Address, offset int64, limit int64) ([]*TxHistoryInfo, uint64, error) {
 	var txHistories []*TxHistoryInfo
 	total, err := h.db.GetTotalCrossMsgCountByAddress(address.String())
@@ -179,6 +185,7 @@ func (h *historyBackend) GetTxsByAddress(address common.Address, offset int64, l
 	return txHistories, total, nil
 }
 
+// GetTxsByHashes returns tx infos under given tx hashes
 func (h *historyBackend) GetTxsByHashes(hashes []string) ([]*TxHistoryInfo, error) {
 	txHistories := make([]*TxHistoryInfo, 0)
 	for _, hash := range hashes {
