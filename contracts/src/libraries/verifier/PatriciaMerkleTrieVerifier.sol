@@ -397,11 +397,11 @@ library PatriciaMerkleTrieVerifier {
                         let flag := shr(252, calldataload(offset))
                         switch flag 
                         case 0 {
-                            // extension with even legnth
+                            // extension with even length
                             depth := add(depth, mul(2, sub(prefixLen, 1)))
                         }
                         case 1 {
-                            // extension with odd legnth
+                            // extension with odd length
                             depth := add(depth, sub(mul(2, prefixLen), 1))
                         }
                         default {
