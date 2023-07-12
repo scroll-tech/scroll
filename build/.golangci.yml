@@ -210,7 +210,7 @@ issues:
         - errcheck
         - gosec
     # Exclude abi files in bridge-history-api
-    - path: bridge-history-api/abi/*.go
+    - path: backend_abi\.go
       linters:
         - errcheck
         - gosec
