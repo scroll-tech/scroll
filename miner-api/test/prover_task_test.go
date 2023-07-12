@@ -25,7 +25,7 @@ var (
 )
 
 var (
-	port      = ":8990"
+	port      = ":12990"
 	addr      = fmt.Sprintf("http://localhost%s", port)
 	basicPath = fmt.Sprintf("%s/api/v1/prover_task", addr)
 )
