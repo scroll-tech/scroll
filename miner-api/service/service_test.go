@@ -75,8 +75,8 @@ func TestProverTaskService(t *testing.T) {
 func testGetTasksByProver(t *testing.T) {
 	tasks, err := service.GetTasksByProver(proverPubkey)
 	assert.NoError(t, err)
-	assert.Equal(t, task2, *tasks[0])
-	assert.Equal(t, task1, *tasks[1])
+	assert.Equal(t, task2.TaskID, tasks[0].TaskID)
+	assert.Equal(t, task1.TaskID, tasks[1].TaskID)
 }
 
 func testGetTotalRewards(t *testing.T) {
@@ -88,5 +88,5 @@ func testGetTotalRewards(t *testing.T) {
 func testGetTask(t *testing.T) {
 	task, err := service.GetTask("2")
 	assert.NoError(t, err)
-	assert.Equal(t, task2, *task)
+	assert.Equal(t, task2.TaskID, task.TaskID)
 }

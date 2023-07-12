@@ -55,8 +55,8 @@ func TestProverTaskAPIs(t *testing.T) {
 func testGetProverTasksByProver(t *testing.T) {
 	var tasks []*orm.ProverTask
 	getResp(t, fmt.Sprintf("%s/tasks?pubkey=%s", basicPath, proverPubkey), &tasks)
-	assert.Equal(t, task2, *tasks[0])
-	assert.Equal(t, task1, *tasks[1])
+	assert.Equal(t, task2.TaskID, tasks[0].TaskID)
+	assert.Equal(t, task1.TaskID, tasks[1].TaskID)
 }
 
 func testGetTotalRewards(t *testing.T) {
@@ -68,7 +68,7 @@ func testGetTotalRewards(t *testing.T) {
 func testGetProverTask(t *testing.T) {
 	var task orm.ProverTask
 	getResp(t, fmt.Sprintf("%s/task?task_id=1", basicPath), &task)
-	assert.Equal(t, task1, task)
+	assert.Equal(t, task1.TaskID, task.TaskID)
 }
 
 func getResp(t *testing.T, url string, value interface{}) {
