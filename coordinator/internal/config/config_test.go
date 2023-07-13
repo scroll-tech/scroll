@@ -60,7 +60,7 @@ func TestConfig(t *testing.T) {
 			}
 		}()
 
-		assert.NoError(t, os.WriteFile(tmpJSON, data, 0644))
+		assert.NoError(t, os.WriteFile(tmpJSON, data, 0o644))
 
 		cfg2, err := NewConfig(tmpJSON)
 		assert.NoError(t, err)
@@ -116,7 +116,7 @@ func TestConfig(t *testing.T) {
 
 		cfg, err := NewConfig(tmpFile.Name())
 		assert.NoError(t, err)
-		assert.Equal(t, defaultNumberOfVerifierWorkers, cfg.RollerManagerConfig.MaxVerifierWorkers)
+		assert.Equal(t, defaultNumberOfVerifierWorkers, cfg.MaxVerifierWorkers)
 	})
 
 	t.Run("Default SessionAttempts", func(t *testing.T) {
@@ -132,6 +132,6 @@ func TestConfig(t *testing.T) {
 
 		cfg, err := NewConfig(tmpFile.Name())
 		assert.NoError(t, err)
-		assert.Equal(t, uint8(defaultNumberOfSessionRetryAttempts), cfg.RollerManagerConfig.SessionAttempts)
+		assert.Equal(t, defaultNumberOfSessionRetryAttempts, cfg.SessionAttempts)
 	})
 }

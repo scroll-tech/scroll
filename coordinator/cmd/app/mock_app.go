@@ -17,9 +17,7 @@ import (
 	"scroll-tech/common/utils"
 )
 
-var (
-	wsStartPort int64 = 40000
-)
+var wsStartPort int64 = 40000
 
 // CoordinatorApp coordinator-test client manager.
 type CoordinatorApp struct {
@@ -99,5 +97,5 @@ func (c *CoordinatorApp) MockConfig(store bool) error {
 		return err
 	}
 
-	return os.WriteFile(c.coordinatorFile, data, 0600)
+	return os.WriteFile(c.coordinatorFile, data, 0o600)
 }

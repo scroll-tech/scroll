@@ -3,6 +3,7 @@ package orm
 import (
 	"context"
 	"fmt"
+	coordinatorType "scroll-tech/coordinator/internal/types"
 	"time"
 
 	"github.com/shopspring/decimal"
@@ -49,6 +50,28 @@ func (*ProverTask) TableName() string {
 	return "prover_task"
 }
 
+// GetProverTasks get prover tasks
+func (o *ProverTask) GetProverTasks(fields map[string]interface{}, orderByList []string, limit int) ([]ProverTask, error) {
+	var proverTasks []ProverTask
+	db := o.db
+	for k, v := range fields {
+		db = db.Where(k, v)
+	}
+
+	for _, orderBy := range orderByList {
+		db = db.Order(orderBy)
+	}
+
+	if limit != 0 {
+		db = db.Limit(limit)
+	}
+
+	if err := db.Find(&proverTasks).Error; err != nil {
+		return nil, err
+	}
+	return proverTasks, nil
+}
+
 // GetProverTasksByHashes retrieves the ProverTask records associated with the specified hashes.
 // The returned prover task objects are sorted in ascending order by their ids.
 func (o *ProverTask) GetProverTasksByHashes(ctx context.Context, hashes []string) ([]*ProverTask, error) {
@@ -68,9 +91,42 @@ func (o *ProverTask) GetProverTasksByHashes(ctx context.Context, hashes []string
 	return proverTasks, nil
 }
 
-// SetProverTask updates or inserts a ProverTask record.
-func (o *ProverTask) SetProverTask(ctx context.Context, proverTask *ProverTask) error {
+// GetProverTaskByHashAndPubKey get prover task hash and public key
+func (o *ProverTask) GetProverTaskByHashAndPubKey(ctx context.Context, hash, proverPublicKey string) (*ProverTask, error) {
 	db := o.db.WithContext(ctx)
+	db = db.Model(&ProverTask{})
+	db = db.Where("hash", hash).Where("roller_public_key", proverPublicKey)
+
+	var proverTask ProverTask
+	err := db.First(&proverTask).Error
+	if err != nil {
+		return nil, fmt.Errorf("ProverTask.GetProverTaskByHashAndPubKey err:%w, hash:%s, pubukey:%s", err, hash, proverPublicKey)
+	}
+	return &proverTask, nil
+}
+
+// GetAssignedProverTasks get the unassigned prover task
+func (o *ProverTask) GetAssignedProverTasks(ctx context.Context, limit int) ([]ProverTask, error) {
+	db := o.db.WithContext(ctx)
+	db = db.Model(&ProverTask{})
+	db = db.Where("proving_status", int(types.RollerAssigned))
+	db = db.Limit(limit)
+
+	var proverTasks []ProverTask
+	err := db.Find(&proverTasks).Error
+	if err != nil {
+		return nil, fmt.Errorf("ProverTask.GetAssignedProverTasks error:%w", err)
+	}
+	return proverTasks, nil
+}
+
+// SetProverTask updates or inserts a ProverTask record.
+func (o *ProverTask) SetProverTask(ctx context.Context, proverTask *ProverTask, dbTX ...*gorm.DB) error {
+	db := o.db.WithContext(ctx)
+	if len(dbTX) > 0 && dbTX[0] != nil {
+		db = dbTX[0]
+	}
+
 	db = db.Model(&ProverTask{})
 	db = db.Clauses(clause.OnConflict{
 		Columns:   []clause.Column{{Name: "task_type"}, {Name: "task_id"}, {Name: "prover_public_key"}},
@@ -84,13 +140,30 @@ func (o *ProverTask) SetProverTask(ctx context.Context, proverTask *ProverTask) 
 }
 
 // UpdateProverTaskProvingStatus updates the proving_status of a specific ProverTask record.
-func (o *ProverTask) UpdateProverTaskProvingStatus(ctx context.Context, proofType message.ProofType, taskID string, pk string, status types.RollerProveStatus) error {
+func (o *ProverTask) UpdateProverTaskProvingStatus(ctx context.Context, proofType message.ProofType, taskID string, pk string, status types.RollerProveStatus, dbTX ...*gorm.DB) error {
 	db := o.db.WithContext(ctx)
+	if len(dbTX) > 0 && dbTX[0] != nil {
+		db = dbTX[0]
+	}
 	db = db.Model(&ProverTask{})
-	db = db.Where("task_type = ? AND task_id = ? AND prover_public_key = ?", proofType, taskID, pk)
+	db = db.Where("task_type = ? AND task_id = ? AND prover_public_key = ?", int(proofType), taskID, pk)
 
 	if err := db.Update("proving_status", status).Error; err != nil {
 		return fmt.Errorf("ProverTask.UpdateProverTaskProvingStatus error: %w, proof type: %v, taskID: %v, prover public key: %v, status: %v", err, proofType.String(), taskID, pk, status.String())
+	}
+	return nil
+}
+
+// UpdateProverTaskFailureType update the prover task failure type
+func (o *ProverTask) UpdateProverTaskFailureType(ctx context.Context, proofType message.ProofType, hash string, pk string, failureType coordinatorType.ProverTaskFailureType, dbTX ...*gorm.DB) error {
+	db := o.db.WithContext(ctx)
+	if len(dbTX) > 0 && dbTX[0] != nil {
+		db = dbTX[0]
+	}
+	db = db.Model(&ProverTask{})
+	db = db.Where("hash", hash).Where("roller_public_key", pk).Where("task_type", int(proofType))
+	if err := db.Update("failure_type", int(failureType)).Error; err != nil {
+		return fmt.Errorf("ProverTask.UpdateProverTaskFailureType error: %w, proof type: %v, taskID: %v, prover public key: %v, failure type: %v", err, proofType.String(), hash, pk, failureType.String())
 	}
 	return nil
 }

@@ -8,6 +8,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/docker/docker/api/types/container"
+
 	"github.com/docker/docker/api/types"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 
@@ -135,8 +137,11 @@ func (i *ImgGeth) Stop() error {
 	// check if container is running, stop the running container.
 	id := GetContainerID(i.name)
 	if id != "" {
-		timeout := time.Second * 3
-		if err := cli.ContainerStop(ctx, id, &timeout); err != nil {
+		timeoutSec := 3
+		timeout := container.StopOptions{
+			Timeout: &timeoutSec,
+		}
+		if err := cli.ContainerStop(ctx, id, timeout); err != nil {
 			return err
 		}
 		i.id = id
