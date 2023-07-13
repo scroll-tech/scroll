@@ -8,7 +8,7 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/log"
 
-	messageproof "bridge-history-api/cross_msg/message_proof"
+	"bridge-history-api/crossmsg/messageproof"
 	"bridge-history-api/db"
 	"bridge-history-api/utils"
 )

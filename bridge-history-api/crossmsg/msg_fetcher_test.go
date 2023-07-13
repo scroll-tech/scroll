@@ -9,7 +9,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/stretchr/testify/assert"
 
-	crossmsg "bridge-history-api/cross_msg"
+	"bridge-history-api/crossmsg"
 )
 
 func TestMergeIntoList(t *testing.T) {

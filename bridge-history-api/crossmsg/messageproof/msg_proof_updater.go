@@ -187,7 +187,7 @@ func (m *MsgProofUpdater) updateMsgProof(msgs []*orm.L2SentMsg, proofs [][]byte,
 	if len(msgs) == 0 {
 		return nil
 	}
-	// this should not happened, but double checked
+	// this should not happen, but double check
 	if len(msgs) != len(proofs) {
 		return fmt.Errorf("illegal state: len(msgs) != len(proofs)")
 	}

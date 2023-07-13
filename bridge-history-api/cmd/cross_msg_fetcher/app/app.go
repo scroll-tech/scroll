@@ -12,8 +12,8 @@ import (
 	"github.com/urfave/cli/v2"
 
 	"bridge-history-api/config"
-	crossmsg "bridge-history-api/cross_msg"
-	messageproof "bridge-history-api/cross_msg/message_proof"
+	"bridge-history-api/crossmsg"
+	"bridge-history-api/crossmsg/messageproof"
 	"bridge-history-api/db"
 	cutils "bridge-history-api/utils"
 )
