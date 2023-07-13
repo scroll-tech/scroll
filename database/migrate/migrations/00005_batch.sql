@@ -49,7 +49,7 @@ comment
 on column batch.chunk_proofs_status is 'undefined, pending, ready';
 
 comment
-on column batch.proving_status is 'undefined, unassigned, skipped, assigned, proved, verified, failed';
+on column batch.proving_status is 'undefined, unassigned, assigned, proved, verified, failed';
 
 comment
 on column batch.rollup_status is 'undefined, pending, committing, committed, finalizing, finalized, finalization_skipped, commit_failed, finalize_failed';

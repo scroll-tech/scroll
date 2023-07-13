@@ -138,8 +138,6 @@ const (
 	ProvingStatusUndefined ProvingStatus = iota
 	// ProvingTaskUnassigned : proving_task is not assigned to be proved
 	ProvingTaskUnassigned
-	// ProvingTaskSkipped : proving_task is skipped for proof generation
-	ProvingTaskSkipped
 	// ProvingTaskAssigned : proving_task is assigned to be proved
 	ProvingTaskAssigned
 	// ProvingTaskProved : proof has been returned by prover
@@ -154,8 +152,6 @@ func (ps ProvingStatus) String() string {
 	switch ps {
 	case ProvingTaskUnassigned:
 		return "unassigned"
-	case ProvingTaskSkipped:
-		return "skipped"
 	case ProvingTaskAssigned:
 		return "assigned"
 	case ProvingTaskProved:
