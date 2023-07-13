@@ -257,7 +257,7 @@ function renounceOwnership() external nonpayable
 
 
 
-*Leaves the contract without owner. It will not be possible to call `onlyOwner` functions anymore. Can only be called by the current owner. NOTE: Renouncing ownership will leave the contract without an owner, thereby removing any functionality that is only available to the owner.*
+*Leaves the contract without owner. It will not be possible to call `onlyOwner` functions. Can only be called by the current owner. NOTE: Renouncing ownership will leave the contract without an owner, thereby disabling any functionality that is only available to the owner.*
 
 
 ### retryMessageWithProof
@@ -467,7 +467,23 @@ Emitted when a cross domain message is failed to relay.
 
 | Name | Type | Description |
 |---|---|---|
-| messageHash `indexed` | bytes32 | The hash of the message. |
+| messageHash `indexed` | bytes32 | undefined |
+
+### Initialized
+
+```solidity
+event Initialized(uint8 version)
+```
+
+
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| version  | uint8 | undefined |
 
 ### OwnershipTransferred
 
@@ -494,7 +510,7 @@ event Paused(address account)
 
 
 
-*Emitted when the pause is triggered by `account`.*
+
 
 #### Parameters
 
@@ -516,7 +532,7 @@ Emitted when a cross domain message is relayed successfully.
 
 | Name | Type | Description |
 |---|---|---|
-| messageHash `indexed` | bytes32 | The hash of the message. |
+| messageHash `indexed` | bytes32 | undefined |
 
 ### SentMessage
 
@@ -532,12 +548,12 @@ Emitted when a cross domain message is sent.
 
 | Name | Type | Description |
 |---|---|---|
-| sender `indexed` | address | The address of the sender who initiates the message. |
-| target `indexed` | address | The address of target contract to call. |
-| value  | uint256 | The amount of value passed to the target contract. |
-| messageNonce  | uint256 | The nonce of the message. |
-| gasLimit  | uint256 | The optional gas limit passed to L1 or L2. |
-| message  | bytes | The calldata passed to the target contract. |
+| sender `indexed` | address | undefined |
+| target `indexed` | address | undefined |
+| value  | uint256 | undefined |
+| messageNonce  | uint256 | undefined |
+| gasLimit  | uint256 | undefined |
+| message  | bytes | undefined |
 
 ### Unpaused
 
@@ -547,7 +563,7 @@ event Unpaused(address account)
 
 
 
-*Emitted when the pause is lifted by `account`.*
+
 
 #### Parameters
 
@@ -569,8 +585,8 @@ Emitted when owner updates fee vault contract.
 
 | Name | Type | Description |
 |---|---|---|
-| _oldFeeVault  | address | The address of old fee vault contract. |
-| _newFeeVault  | address | The address of new fee vault contract. |
+| _oldFeeVault  | address | undefined |
+| _newFeeVault  | address | undefined |
 
 ### UpdateMaxFailedExecutionTimes
 

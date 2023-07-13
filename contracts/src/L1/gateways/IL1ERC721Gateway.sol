@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity =0.8.20;
+pragma solidity ^0.8.16;
 
 /// @title The interface for the ERC721 cross chain gateway in layer 1.
 interface IL1ERC721Gateway {

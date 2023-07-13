@@ -274,7 +274,7 @@ function renounceOwnership() external nonpayable
 
 
 
-*Leaves the contract without owner. It will not be possible to call `onlyOwner` functions anymore. Can only be called by the current owner. NOTE: Renouncing ownership will leave the contract without an owner, thereby removing any functionality that is only available to the owner.*
+*Leaves the contract without owner. It will not be possible to call `onlyOwner` functions. Can only be called by the current owner. NOTE: Renouncing ownership will leave the contract without an owner, thereby disabling any functionality that is only available to the owner.*
 
 
 ### router
@@ -389,12 +389,12 @@ Emitted when the ERC1155 NFT is batch deposited to gateway in layer 1.
 
 | Name | Type | Description |
 |---|---|---|
-| _l1Token `indexed` | address | The address of ERC1155 NFT in layer 1. |
-| _l2Token `indexed` | address | The address of ERC1155 NFT in layer 2. |
-| _from `indexed` | address | The address of sender in layer 1. |
-| _to  | address | The address of recipient in layer 2. |
-| _tokenIds  | uint256[] | The list of token ids of the ERC1155 NFT to deposit in layer 1. |
-| _amounts  | uint256[] | The list of corresponding number of token to deposit in layer 1. |
+| _l1Token `indexed` | address | undefined |
+| _l2Token `indexed` | address | undefined |
+| _from `indexed` | address | undefined |
+| _to  | address | undefined |
+| _tokenIds  | uint256[] | undefined |
+| _amounts  | uint256[] | undefined |
 
 ### BatchRefundERC1155
 
@@ -410,10 +410,10 @@ Emitted when some ERC1155 token is refunded.
 
 | Name | Type | Description |
 |---|---|---|
-| token `indexed` | address | The address of the token in L1. |
-| recipient `indexed` | address | The address of receiver in L1. |
-| tokenIds  | uint256[] | The list of ids of token refunded. |
-| amounts  | uint256[] | The list of amount of token refunded. |
+| token `indexed` | address | undefined |
+| recipient `indexed` | address | undefined |
+| tokenIds  | uint256[] | undefined |
+| amounts  | uint256[] | undefined |
 
 ### DepositERC1155
 
@@ -429,12 +429,12 @@ Emitted when the ERC1155 NFT is deposited to gateway in layer 1.
 
 | Name | Type | Description |
 |---|---|---|
-| _l1Token `indexed` | address | The address of ERC1155 NFT in layer 1. |
-| _l2Token `indexed` | address | The address of ERC1155 NFT in layer 2. |
-| _from `indexed` | address | The address of sender in layer 1. |
-| _to  | address | The address of recipient in layer 2. |
-| _tokenId  | uint256 | The token id of the ERC1155 NFT to deposit in layer 1. |
-| _amount  | uint256 | The number of token to deposit in layer 1. |
+| _l1Token `indexed` | address | undefined |
+| _l2Token `indexed` | address | undefined |
+| _from `indexed` | address | undefined |
+| _to  | address | undefined |
+| _tokenId  | uint256 | undefined |
+| _amount  | uint256 | undefined |
 
 ### FinalizeBatchWithdrawERC1155
 
@@ -450,12 +450,12 @@ Emitted when the ERC1155 NFT is batch transfered to recipient in layer 1.
 
 | Name | Type | Description |
 |---|---|---|
-| _l1Token `indexed` | address | The address of ERC1155 NFT in layer 1. |
-| _l2Token `indexed` | address | The address of ERC1155 NFT in layer 2. |
-| _from `indexed` | address | The address of sender in layer 2. |
-| _to  | address | The address of recipient in layer 1. |
-| _tokenIds  | uint256[] | The list of token ids of the ERC1155 NFT to withdraw from layer 2. |
-| _amounts  | uint256[] | The list of corresponding number of token to withdraw from layer 2. |
+| _l1Token `indexed` | address | undefined |
+| _l2Token `indexed` | address | undefined |
+| _from `indexed` | address | undefined |
+| _to  | address | undefined |
+| _tokenIds  | uint256[] | undefined |
+| _amounts  | uint256[] | undefined |
 
 ### FinalizeWithdrawERC1155
 
@@ -471,12 +471,28 @@ Emitted when the ERC1155 NFT is transfered to recipient in layer 1.
 
 | Name | Type | Description |
 |---|---|---|
-| _l1Token `indexed` | address | The address of ERC1155 NFT in layer 1. |
-| _l2Token `indexed` | address | The address of ERC1155 NFT in layer 2. |
-| _from `indexed` | address | The address of sender in layer 2. |
-| _to  | address | The address of recipient in layer 1. |
-| _tokenId  | uint256 | The token id of the ERC1155 NFT to withdraw from layer 2. |
-| _amount  | uint256 | The number of token to withdraw from layer 2. |
+| _l1Token `indexed` | address | undefined |
+| _l2Token `indexed` | address | undefined |
+| _from `indexed` | address | undefined |
+| _to  | address | undefined |
+| _tokenId  | uint256 | undefined |
+| _amount  | uint256 | undefined |
+
+### Initialized
+
+```solidity
+event Initialized(uint8 version)
+```
+
+
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| version  | uint8 | undefined |
 
 ### OwnershipTransferred
 
@@ -509,10 +525,10 @@ Emitted when some ERC1155 token is refunded.
 
 | Name | Type | Description |
 |---|---|---|
-| token `indexed` | address | The address of the token in L1. |
-| recipient `indexed` | address | The address of receiver in L1. |
-| tokenId  | uint256 | The id of token refunded. |
-| amount  | uint256 | The amount of token refunded. |
+| token `indexed` | address | undefined |
+| recipient `indexed` | address | undefined |
+| tokenId  | uint256 | undefined |
+| amount  | uint256 | undefined |
 
 ### UpdateTokenMapping
 

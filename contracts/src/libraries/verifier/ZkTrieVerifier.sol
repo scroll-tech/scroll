@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity =0.8.20;
+pragma solidity ^0.8.16;
 
 interface PoseidonUnit2 {
     function poseidon(uint256[2] memory) external view returns (uint256);

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity =0.8.20;
+pragma solidity ^0.8.16;
 
 contract MockCaller {
     function callTarget(address to, bytes calldata data) external payable {

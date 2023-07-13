@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity =0.8.20;
+pragma solidity ^0.8.16;
 
 interface IScrollGateway {
     /// @notice The address of corresponding L1/L2 Gateway contract.

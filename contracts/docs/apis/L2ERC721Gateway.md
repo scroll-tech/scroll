@@ -188,7 +188,7 @@ function renounceOwnership() external nonpayable
 
 
 
-*Leaves the contract without owner. It will not be possible to call `onlyOwner` functions anymore. Can only be called by the current owner. NOTE: Renouncing ownership will leave the contract without an owner, thereby removing any functionality that is only available to the owner.*
+*Leaves the contract without owner. It will not be possible to call `onlyOwner` functions. Can only be called by the current owner. NOTE: Renouncing ownership will leave the contract without an owner, thereby disabling any functionality that is only available to the owner.*
 
 
 ### router
@@ -318,11 +318,11 @@ Emitted when the ERC721 NFT is batch transfered to gateway in layer 2.
 
 | Name | Type | Description |
 |---|---|---|
-| l1Token `indexed` | address | The address of ERC721 NFT in layer 1. |
-| l2Token `indexed` | address | The address of ERC721 NFT in layer 2. |
-| from `indexed` | address | The address of sender in layer 2. |
-| to  | address | The address of recipient in layer 1. |
-| tokenIds  | uint256[] | The list of token ids of the ERC721 NFT to withdraw in layer 2. |
+| l1Token `indexed` | address | undefined |
+| l2Token `indexed` | address | undefined |
+| from `indexed` | address | undefined |
+| to  | address | undefined |
+| tokenIds  | uint256[] | undefined |
 
 ### FinalizeBatchDepositERC721
 
@@ -338,11 +338,11 @@ Emitted when the ERC721 NFT is batch transfered to recipient in layer 2.
 
 | Name | Type | Description |
 |---|---|---|
-| l1Token `indexed` | address | The address of ERC721 NFT in layer 1. |
-| l2Token `indexed` | address | The address of ERC721 NFT in layer 2. |
-| from `indexed` | address | The address of sender in layer 1. |
-| to  | address | The address of recipient in layer 2. |
-| tokenIds  | uint256[] | The list of token ids of the ERC721 NFT deposited in layer 1. |
+| l1Token `indexed` | address | undefined |
+| l2Token `indexed` | address | undefined |
+| from `indexed` | address | undefined |
+| to  | address | undefined |
+| tokenIds  | uint256[] | undefined |
 
 ### FinalizeDepositERC721
 
@@ -358,11 +358,27 @@ Emitted when the ERC721 NFT is transfered to recipient in layer 2.
 
 | Name | Type | Description |
 |---|---|---|
-| l1Token `indexed` | address | The address of ERC721 NFT in layer 1. |
-| l2Token `indexed` | address | The address of ERC721 NFT in layer 2. |
-| from `indexed` | address | The address of sender in layer 1. |
-| to  | address | The address of recipient in layer 2. |
-| tokenId  | uint256 | The token id of the ERC721 NFT deposited in layer 1. |
+| l1Token `indexed` | address | undefined |
+| l2Token `indexed` | address | undefined |
+| from `indexed` | address | undefined |
+| to  | address | undefined |
+| tokenId  | uint256 | undefined |
+
+### Initialized
+
+```solidity
+event Initialized(uint8 version)
+```
+
+
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| version  | uint8 | undefined |
 
 ### OwnershipTransferred
 
@@ -412,11 +428,11 @@ Emitted when the ERC721 NFT is transfered to gateway in layer 2.
 
 | Name | Type | Description |
 |---|---|---|
-| l1Token `indexed` | address | The address of ERC721 NFT in layer 1. |
-| l2Token `indexed` | address | The address of ERC721 NFT in layer 2. |
-| from `indexed` | address | The address of sender in layer 2. |
-| to  | address | The address of recipient in layer 1. |
-| tokenId  | uint256 | The token id of the ERC721 NFT to withdraw in layer 2. |
+| l1Token `indexed` | address | undefined |
+| l2Token `indexed` | address | undefined |
+| from `indexed` | address | undefined |
+| to  | address | undefined |
+| tokenId  | uint256 | undefined |
 
 
 

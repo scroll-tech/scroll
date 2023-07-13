@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity =0.8.20;
+pragma solidity ^0.8.16;
 
 interface IWhitelist {
     /// @notice Check whether the sender is allowed to do something.

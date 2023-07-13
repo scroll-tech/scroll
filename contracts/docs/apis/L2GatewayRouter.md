@@ -214,7 +214,7 @@ function renounceOwnership() external nonpayable
 
 
 
-*Leaves the contract without owner. It will not be possible to call `onlyOwner` functions anymore. Can only be called by the current owner. NOTE: Renouncing ownership will leave the contract without an owner, thereby removing any functionality that is only available to the owner.*
+*Leaves the contract without owner. It will not be possible to call `onlyOwner` functions. Can only be called by the current owner. NOTE: Renouncing ownership will leave the contract without an owner, thereby disabling any functionality that is only available to the owner.*
 
 
 ### setDefaultERC20Gateway
@@ -411,12 +411,12 @@ Emitted when ERC20 token is deposited from L1 to L2 and transfer to recipient.
 
 | Name | Type | Description |
 |---|---|---|
-| l1Token `indexed` | address | The address of the token in L1. |
-| l2Token `indexed` | address | The address of the token in L2. |
-| from `indexed` | address | The address of sender in L1. |
-| to  | address | The address of recipient in L2. |
-| amount  | uint256 | The amount of token withdrawn from L1 to L2. |
-| data  | bytes | The optional calldata passed to recipient in L2. |
+| l1Token `indexed` | address | undefined |
+| l2Token `indexed` | address | undefined |
+| from `indexed` | address | undefined |
+| to  | address | undefined |
+| amount  | uint256 | undefined |
+| data  | bytes | undefined |
 
 ### FinalizeDepositETH
 
@@ -432,10 +432,26 @@ Emitted when ETH is deposited from L1 to L2 and transfer to recipient.
 
 | Name | Type | Description |
 |---|---|---|
-| from `indexed` | address | The address of sender in L1. |
-| to `indexed` | address | The address of recipient in L2. |
-| amount  | uint256 | The amount of ETH deposited from L1 to L2. |
-| data  | bytes | The optional calldata passed to recipient in L2. |
+| from `indexed` | address | undefined |
+| to `indexed` | address | undefined |
+| amount  | uint256 | undefined |
+| data  | bytes | undefined |
+
+### Initialized
+
+```solidity
+event Initialized(uint8 version)
+```
+
+
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| version  | uint8 | undefined |
 
 ### OwnershipTransferred
 
@@ -468,7 +484,7 @@ Emitted when the address of default ERC20 Gateway is updated.
 
 | Name | Type | Description |
 |---|---|---|
-| defaultERC20Gateway `indexed` | address | The address of new default ERC20 Gateway. |
+| defaultERC20Gateway `indexed` | address | undefined |
 
 ### SetERC20Gateway
 
@@ -484,8 +500,8 @@ Emitted when the `gateway` for `token` is updated.
 
 | Name | Type | Description |
 |---|---|---|
-| token `indexed` | address | The address of token updated. |
-| gateway `indexed` | address | The corresponding address of gateway updated. |
+| token `indexed` | address | undefined |
+| gateway `indexed` | address | undefined |
 
 ### SetETHGateway
 
@@ -501,7 +517,7 @@ Emitted when the address of ETH Gateway is updated.
 
 | Name | Type | Description |
 |---|---|---|
-| ethGateway `indexed` | address | The address of new ETH Gateway. |
+| ethGateway `indexed` | address | undefined |
 
 ### WithdrawERC20
 
@@ -517,12 +533,12 @@ Emitted when someone withdraw ERC20 token from L2 to L1.
 
 | Name | Type | Description |
 |---|---|---|
-| l1Token `indexed` | address | The address of the token in L1. |
-| l2Token `indexed` | address | The address of the token in L2. |
-| from `indexed` | address | The address of sender in L2. |
-| to  | address | The address of recipient in L1. |
-| amount  | uint256 | The amount of token will be deposited from L2 to L1. |
-| data  | bytes | The optional calldata passed to recipient in L1. |
+| l1Token `indexed` | address | undefined |
+| l2Token `indexed` | address | undefined |
+| from `indexed` | address | undefined |
+| to  | address | undefined |
+| amount  | uint256 | undefined |
+| data  | bytes | undefined |
 
 ### WithdrawETH
 
@@ -538,10 +554,10 @@ Emitted when someone withdraw ETH from L2 to L1.
 
 | Name | Type | Description |
 |---|---|---|
-| from `indexed` | address | The address of sender in L2. |
-| to `indexed` | address | The address of recipient in L1. |
-| amount  | uint256 | The amount of ETH will be deposited from L2 to L1. |
-| data  | bytes | The optional calldata passed to recipient in L1. |
+| from `indexed` | address | undefined |
+| to `indexed` | address | undefined |
+| amount  | uint256 | undefined |
+| data  | bytes | undefined |
 
 
 

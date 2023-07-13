@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity =0.8.20;
+pragma solidity ^0.8.16;
 
 import {ScrollChain} from "./ScrollChain.sol";
 import {ZkTrieVerifier} from "../../libraries/verifier/ZkTrieVerifier.sol";

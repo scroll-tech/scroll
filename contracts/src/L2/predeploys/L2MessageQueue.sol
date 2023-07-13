@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity =0.8.20;
+pragma solidity ^0.8.16;
 
 import {AppendOnlyMerkleTree} from "../../libraries/common/AppendOnlyMerkleTree.sol";
 import {OwnableBase} from "../../libraries/common/OwnableBase.sol";
