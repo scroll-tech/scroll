@@ -45,7 +45,7 @@ jobs:
       with:
         flags: roller
   compile:
-    if: github.event.type == push # will only be triggered when pushing to main & staging & develop & alpha
+    if: github.event_name == 'push' # will only be triggered when pushing to main & staging & develop & alpha
     runs-on: ubuntu-latest
     steps:
     - uses: actions-rs/toolchain@v1
