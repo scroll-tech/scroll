@@ -13,8 +13,8 @@ import (
 
 	"scroll-tech/prover-stats-api/internal/config"
 	"scroll-tech/prover-stats-api/internal/controller"
+	"scroll-tech/prover-stats-api/internal/logic"
 	"scroll-tech/prover-stats-api/internal/orm"
-	"scroll-tech/prover-stats-api/internal/service"
 
 	"scroll-tech/common/database"
 	"scroll-tech/common/utils"
@@ -77,7 +77,7 @@ func action(ctx *cli.Context) error {
 
 func RunMinerAPIs(db *gorm.DB, port string) {
 	ptdb := orm.NewProverTask(db)
-	taskService := service.NewProverTaskService(ptdb)
+	taskService := logic.NewProverTaskService(ptdb)
 
 	r := gin.Default()
 	r.GET("swagger/*any", ginSwagger.WrapHandler(swaggerfiles.Handler))

@@ -3,17 +3,17 @@ package controller
 import (
 	"net/http"
 
-	"scroll-tech/prover-stats-api/internal/service"
+	"scroll-tech/prover-stats-api/internal/logic"
 
 	"github.com/gin-gonic/gin"
 )
 
 type ProverTaskController struct {
 	router  *gin.RouterGroup
-	service *service.ProverTaskService
+	service *logic.ProverTaskService
 }
 
-func NewProverTaskController(r *gin.RouterGroup, taskService *service.ProverTaskService) *ProverTaskController {
+func NewProverTaskController(r *gin.RouterGroup, taskService *logic.ProverTaskService) *ProverTaskController {
 	router := r.Group("/prover_task")
 	return &ProverTaskController{
 		router:  router,
