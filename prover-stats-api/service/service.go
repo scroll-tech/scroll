@@ -4,7 +4,7 @@ import (
 	"context"
 	"math/big"
 
-	"scroll-tech/miner-api/internal/orm"
+	"scroll-tech/prover-stats-api/internal/orm"
 )
 
 type ProverTaskService struct {

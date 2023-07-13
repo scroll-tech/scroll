@@ -5,7 +5,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"scroll-tech/miner-api/service"
+	"scroll-tech/prover-stats-api/service"
 )
 
 type ProverTaskController struct {

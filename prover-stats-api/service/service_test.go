@@ -2,17 +2,19 @@ package service
 
 import (
 	"context"
-	"github.com/shopspring/decimal"
-	"github.com/stretchr/testify/assert"
-	"gorm.io/gorm"
 	"math/big"
 	"scroll-tech/common/database"
 	"scroll-tech/common/docker"
 	"scroll-tech/common/types"
 	"scroll-tech/database/migrate"
-	"scroll-tech/miner-api/internal/config"
-	"scroll-tech/miner-api/internal/orm"
 	"testing"
+
+	"github.com/shopspring/decimal"
+	"github.com/stretchr/testify/assert"
+	"gorm.io/gorm"
+
+	"scroll-tech/prover-stats-api/internal/config"
+	"scroll-tech/prover-stats-api/internal/orm"
 )
 
 var (

@@ -2,16 +2,17 @@ package app
 
 import (
 	"fmt"
-	"gorm.io/gorm"
 	"os"
 	"os/signal"
 
+	"gorm.io/gorm"
+
 	"github.com/gin-gonic/gin"
 
-	"scroll-tech/miner-api/controller"
-	"scroll-tech/miner-api/internal/config"
-	"scroll-tech/miner-api/internal/orm"
-	"scroll-tech/miner-api/service"
+	"scroll-tech/prover-stats-api/controller"
+	"scroll-tech/prover-stats-api/internal/config"
+	"scroll-tech/prover-stats-api/internal/orm"
+	"scroll-tech/prover-stats-api/service"
 
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/urfave/cli/v2"
@@ -20,7 +21,7 @@ import (
 	"scroll-tech/common/utils"
 	"scroll-tech/common/version"
 
-	_ "scroll-tech/miner-api/cmd/docs"
+	_ "scroll-tech/prover-stats-api/cmd/docs"
 
 	swaggerfiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
@@ -29,11 +30,11 @@ import (
 var app *cli.App
 
 func init() {
-	// Set up miner-api info.
+	// Set up prover-stats-api info.
 	app = cli.NewApp()
 	app.Action = action
-	app.Name = "Miner API"
-	app.Usage = "The Scroll L2 ZK Miner API"
+	app.Name = "Prover Stats API"
+	app.Usage = "The Scroll L2 ZK Prover Stats API"
 	app.Version = version.Version
 	app.Flags = append(app.Flags, utils.CommonFlags...)
 	app.Flags = append(app.Flags, apiFlags...)
@@ -61,7 +62,7 @@ func action(ctx *cli.Context) error {
 		}
 	}()
 
-	// init miner api
+	// init Prover Stats API
 	port := ctx.String(httpPortFlag.Name)
 	RunMinerAPIs(db, port)
 
@@ -91,9 +92,9 @@ func RunMinerAPIs(db *gorm.DB, port string) {
 	}()
 }
 
-// Run run miner-api.
+// Run run prover-stats-api.
 func Run() {
-	// RunApp the miner-api.
+	// RunApp the prover-stats-api.
 	if err := app.Run(os.Args); err != nil {
 		_, _ = fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)

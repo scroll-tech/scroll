@@ -8,7 +8,7 @@ on:
       - develop
       - alpha
     paths:
-      - 'miner-api/**'
+      - 'prover-stats-api/**'
       - '.github/workflows/miner_api.yml'
   pull_request:
     types:
@@ -17,12 +17,12 @@ on:
       - synchronize
       - ready_for_review
     paths:
-      - 'miner-api/**'
+      - 'prover-stats-api/**'
       - '.github/workflows/miner_api.yml'
 
 defaults:
   run:
-    working-directory: 'miner-api'
+    working-directory: 'prover-stats-api'
 
 jobs:
   # check:
@@ -57,7 +57,7 @@ jobs:
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
         with:
-          flags: miner-api
+          flags: prover-stats-api
   goimports-lint:
     if: github.event.pull_request.draft == false
     runs-on: ubuntu-latest
@@ -70,7 +70,7 @@ jobs:
         uses: actions/checkout@v2
       - name: Install goimports
         run: go install golang.org/x/tools/cmd/goimports
-      - run: goimports -local scroll-tech/miner-api/ -w .
+      - run: goimports -local scroll-tech/prover-stats-api/ -w .
       # - run: go mod tidy
       # If there are any diffs from goimports or go mod tidy, fail.
 #      - name: Verify no changes from goimports and go mod tidy

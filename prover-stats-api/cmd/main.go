@@ -1,12 +1,12 @@
 package main
 
-import "scroll-tech/miner-api/cmd/app"
+import "scroll-tech/prover-stats-api/cmd/app"
 
-// @title           Zero-knowledge Miners API
+// @title           Zero-knowledge Prover Stats API
 // @version         1.0
-// @description     This is an API server for Miners.
+// @description     This is an API server for Provers.
 
-// @contact.name   Miner API Support
+// @contact.name   Prover Stats API Support
 // @contact.email  Be Pending
 
 // @license.name  Apache 2.0

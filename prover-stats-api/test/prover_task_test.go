@@ -4,9 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/shopspring/decimal"
-	"github.com/stretchr/testify/assert"
-	"gorm.io/gorm"
 	"io"
 	"math/big"
 	"net/http"
@@ -14,10 +11,15 @@ import (
 	"scroll-tech/common/docker"
 	"scroll-tech/common/types"
 	"scroll-tech/database/migrate"
-	"scroll-tech/miner-api/cmd/app"
-	"scroll-tech/miner-api/internal/config"
-	"scroll-tech/miner-api/internal/orm"
 	"testing"
+
+	"github.com/shopspring/decimal"
+	"github.com/stretchr/testify/assert"
+	"gorm.io/gorm"
+
+	"scroll-tech/prover-stats-api/cmd/app"
+	"scroll-tech/prover-stats-api/internal/config"
+	"scroll-tech/prover-stats-api/internal/orm"
 )
 
 var (
@@ -45,7 +47,7 @@ func TestProverTaskAPIs(t *testing.T) {
 	// insert some tasks
 	insertSomeProverTasks(t, db)
 
-	// run miner APIs
+	// run Prover Stats APIs
 	app.RunMinerAPIs(db, port)
 
 	t.Run("testGetProverTasksByProver", testGetProverTasksByProver)

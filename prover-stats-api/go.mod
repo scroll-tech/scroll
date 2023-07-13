@@ -1,4 +1,4 @@
-module scroll-tech/miner-api
+module scroll-tech/prover-stats-api
 
 go 1.19
 

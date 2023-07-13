@@ -1,10 +1,10 @@
 {
     "swagger": "2.0",
     "info": {
-        "description": "This is an API server for Miners.",
-        "title": "Zero-knowledge Miners API",
+        "description": "This is an API server for Provers.",
+        "title": "Zero-knowledge Prover Stats API",
         "contact": {
-            "name": "Miner API Support",
+            "name": "Prover Stats API Support",
             "email": "Be Pending"
         },
         "license": {
