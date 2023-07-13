@@ -25,7 +25,7 @@ type BatchProposer struct {
 
 	maxChunkNumPerBatch             uint64
 	maxL1CommitGasPerBatch          uint64
-	maxL1CommitCalldataSizePerBatch uint64
+	maxL1CommitCalldataSizePerBatch uint32
 	minChunkNumPerBatch             uint64
 	batchTimeoutSec                 uint64
 }

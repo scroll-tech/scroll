@@ -15,6 +15,23 @@ type QueryHashController struct {
 	Service service.HistoryService
 }
 
+type QueryClaimableController struct {
+	Service service.HistoryService
+}
+
+func (c *QueryClaimableController) Get(req model.QueryByAddressRequest) (*model.QueryByAddressResponse, error) {
+	txs, total, err := c.Service.GetClaimableTxsByAddress(common.HexToAddress(req.Address), int64(req.Offset), int64(req.Limit))
+	if err != nil {
+		return &model.QueryByAddressResponse{Message: "500", Data: &model.Data{}}, err
+	}
+
+	return &model.QueryByAddressResponse{Message: "ok",
+		Data: &model.Data{
+			Result: txs,
+			Total:  total,
+		}}, nil
+}
+
 func (c *QueryAddressController) Get(req model.QueryByAddressRequest) (*model.QueryByAddressResponse, error) {
 	message, total, err := c.Service.GetTxsByAddress(common.HexToAddress(req.Address), int64(req.Offset), int64(req.Limit))
 	if err != nil {

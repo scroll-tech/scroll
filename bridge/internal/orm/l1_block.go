@@ -3,6 +3,7 @@ package orm
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"gorm.io/gorm"
 
@@ -13,14 +14,23 @@ import (
 type L1Block struct {
 	db *gorm.DB `gorm:"column:-"`
 
-	Number          uint64 `json:"number" gorm:"column:number"`
-	Hash            string `json:"hash" gorm:"column:hash"`
-	HeaderRLP       string `json:"header_rlp" gorm:"column:header_rlp"`
-	BaseFee         uint64 `json:"base_fee" gorm:"column:base_fee"`
-	BlockStatus     int    `json:"block_status" gorm:"column:block_status;default:1"`
-	ImportTxHash    string `json:"import_tx_hash" gorm:"column:import_tx_hash;default:NULL"`
-	GasOracleStatus int    `json:"oracle_status" gorm:"column:oracle_status;default:1"`
+	// block
+	Number  uint64 `json:"number" gorm:"column:number"`
+	Hash    string `json:"hash" gorm:"column:hash"`
+	BaseFee uint64 `json:"base_fee" gorm:"column:base_fee"`
+
+	// import
+	BlockStatus  int16  `json:"block_status" gorm:"column:block_status;default:1"`
+	ImportTxHash string `json:"import_tx_hash" gorm:"column:import_tx_hash;default:NULL"`
+
+	// oracle
+	GasOracleStatus int16  `json:"oracle_status" gorm:"column:oracle_status;default:1"`
 	OracleTxHash    string `json:"oracle_tx_hash" gorm:"column:oracle_tx_hash;default:NULL"`
+
+	// metadata
+	CreatedAt time.Time      `json:"created_at" gorm:"column:created_at"`
+	UpdatedAt time.Time      `json:"updated_at" gorm:"column:updated_at"`
+	DeletedAt gorm.DeletedAt `json:"deleted_at" gorm:"column:deleted_at;default:NULL"`
 }
 
 // NewL1Block create an l1Block instance

@@ -55,6 +55,14 @@ abstract contract L1GatewayTestBase is DSTestPlus {
 
     L2ScrollMessenger internal l2Messenger;
 
+    bool internal revertOnReceive;
+
+    receive() external payable {
+        if (revertOnReceive) {
+            revert("RevertOnReceive");
+        }
+    }
+
     function setUpBase() internal {
         feeVault = address(uint160(address(this)) - 1);
 
