@@ -9,7 +9,7 @@ on:
       - alpha
     paths:
       - 'prover-stats-api/**'
-      - '.github/workflows/miner_api.yml'
+      - '.github/workflows/prover_stats_api.yml'
   pull_request:
     types:
       - opened
@@ -18,7 +18,7 @@ on:
       - ready_for_review
     paths:
       - 'prover-stats-api/**'
-      - '.github/workflows/miner_api.yml'
+      - '.github/workflows/prover_stats_api.yml'
 
 defaults:
   run:
