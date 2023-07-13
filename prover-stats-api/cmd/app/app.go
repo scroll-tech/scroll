@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"scroll-tech/prover-stats-api/internal/middleware"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -63,7 +64,7 @@ func action(ctx *cli.Context) error {
 
 	// init Prover Stats API
 	port := ctx.String(httpPortFlag.Name)
-	RunMinerAPIs(db, port)
+	RunMinerAPIs(db, port, cfg)
 
 	// Catch CTRL-C to ensure a graceful shutdown.
 	interrupt := make(chan os.Signal, 1)
@@ -75,11 +76,13 @@ func action(ctx *cli.Context) error {
 	return nil
 }
 
-func RunMinerAPIs(db *gorm.DB, port string) {
+func RunMinerAPIs(db *gorm.DB, port string, cfg *config.Config) {
 	ptdb := orm.NewProverTask(db)
-	taskService := logic.NewProverTaskService(ptdb)
+	taskService := logic.NewProverTaskLogic(ptdb)
 
 	r := gin.Default()
+	middleware.Secret = cfg.ApiSecret
+	r.Use(middleware.JWTAuthMiddleware())
 	r.GET("swagger/*any", ginSwagger.WrapHandler(swaggerfiles.Handler))
 	router := r.Group("/api/v1")
 

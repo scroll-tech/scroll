@@ -4,5 +4,6 @@
     "dsn": "postgres://admin:123456@localhost/test?sslmode=disable",
     "maxOpenNum": 200,
     "maxIdleNum": 20
-  }
+  },
+  "api_secret": "test-api"
 }

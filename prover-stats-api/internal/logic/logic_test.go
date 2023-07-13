@@ -36,7 +36,7 @@ var (
 		Reward:          decimal.NewFromInt(12),
 	}
 
-	service *ProverTaskService
+	service *ProverTaskLogic
 )
 
 func insertSomeProverTasks(t *testing.T, db *gorm.DB) {
@@ -68,7 +68,7 @@ func TestProverTaskService(t *testing.T) {
 	insertSomeProverTasks(t, db)
 
 	ptdb := orm.NewProverTask(db)
-	service = NewProverTaskService(ptdb)
+	service = NewProverTaskLogic(ptdb)
 
 	t.Run("testGetTasksByProver", testGetTasksByProver)
 	t.Run("testGetTotalRewards", testGetTotalRewards)

@@ -8,7 +8,8 @@ import (
 )
 
 type Config struct {
-	DBConfig *database.Config `json:"db_config"`
+	DBConfig  *database.Config `json:"db_config"`
+	ApiSecret string           `json:"api_secret"`
 }
 
 // NewConfig returns a new instance of Config.

@@ -7,19 +7,19 @@ import (
 	"scroll-tech/prover-stats-api/internal/orm"
 )
 
-type ProverTaskService struct {
+type ProverTaskLogic struct {
 	db *orm.ProverTask
 }
 
-func NewProverTaskService(db *orm.ProverTask) *ProverTaskService {
-	return &ProverTaskService{db: db}
+func NewProverTaskLogic(db *orm.ProverTask) *ProverTaskLogic {
+	return &ProverTaskLogic{db: db}
 }
 
-func (p *ProverTaskService) GetTasksByProver(pubkey string) ([]*orm.ProverTask, error) {
+func (p *ProverTaskLogic) GetTasksByProver(pubkey string) ([]*orm.ProverTask, error) {
 	return p.db.GetProverTasksByProver(context.Background(), pubkey)
 }
 
-func (p *ProverTaskService) GetTotalRewards(pubkey string) (*big.Int, error) {
+func (p *ProverTaskLogic) GetTotalRewards(pubkey string) (*big.Int, error) {
 	tasks, err := p.db.GetProverTasksByProver(context.Background(), pubkey)
 	if err != nil {
 		return nil, err
@@ -31,7 +31,7 @@ func (p *ProverTaskService) GetTotalRewards(pubkey string) (*big.Int, error) {
 	return rewards, nil
 }
 
-func (p *ProverTaskService) GetTask(taskID string) (*orm.ProverTask, error) {
+func (p *ProverTaskLogic) GetTask(taskID string) (*orm.ProverTask, error) {
 	tasks, err := p.db.GetProverTasksByHashes(context.Background(), []string{taskID})
 	if err != nil {
 		return nil, err

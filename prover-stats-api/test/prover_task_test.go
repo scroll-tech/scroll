@@ -30,6 +30,7 @@ var (
 	port      = ":12990"
 	addr      = fmt.Sprintf("http://localhost%s", port)
 	basicPath = fmt.Sprintf("%s/api/v1/prover_task", addr)
+	token     string
 )
 
 func TestProverTaskAPIs(t *testing.T) {
@@ -48,11 +49,18 @@ func TestProverTaskAPIs(t *testing.T) {
 	insertSomeProverTasks(t, db)
 
 	// run Prover Stats APIs
-	app.RunMinerAPIs(db, port)
+	app.RunMinerAPIs(db, port, cfg)
 
+	t.Run("testRequestToken", testRequestToken)
 	t.Run("testGetProverTasksByProver", testGetProverTasksByProver)
 	t.Run("testGetTotalRewards", testGetTotalRewards)
 	t.Run("testGetProverTask", testGetProverTask)
+}
+
+func testRequestToken(t *testing.T) {
+	var tokenMap map[string]string
+	getResp(t, fmt.Sprintf("%s/request_token", basicPath), &tokenMap)
+	token = tokenMap["token"]
 }
 
 func testGetProverTasksByProver(t *testing.T) {
@@ -75,7 +83,11 @@ func testGetProverTask(t *testing.T) {
 }
 
 func getResp(t *testing.T, url string, value interface{}) {
-	resp, err := http.Get(url)
+	req, err := http.NewRequest(http.MethodGet, url, nil)
+	assert.NoError(t, err)
+	req.Header.Set("Authorization", token)
+
+	resp, err := http.DefaultClient.Do(req)
 	assert.NoError(t, err)
 	assert.Equal(t, resp.StatusCode, http.StatusOK)
 	byt, err := io.ReadAll(resp.Body)
