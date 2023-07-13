@@ -2,6 +2,7 @@ package controller
 
 import (
 	"net/http"
+
 	"scroll-tech/prover-stats-api/internal/middleware"
 
 	"scroll-tech/prover-stats-api/internal/logic"

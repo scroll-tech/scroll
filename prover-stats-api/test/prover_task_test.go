@@ -58,9 +58,10 @@ func TestProverTaskAPIs(t *testing.T) {
 }
 
 func testRequestToken(t *testing.T) {
-	var tokenMap map[string]string
+	tokenMap := make(map[string]string)
 	getResp(t, fmt.Sprintf("%s/request_token", basicPath), &tokenMap)
 	token = tokenMap["token"]
+	t.Log("token: ", token)
 }
 
 func testGetProverTasksByProver(t *testing.T) {
@@ -85,15 +86,15 @@ func testGetProverTask(t *testing.T) {
 func getResp(t *testing.T, url string, value interface{}) {
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	assert.NoError(t, err)
-	req.Header.Set("Authorization", token)
+	req.Header.Add("Authorization", token)
 
 	resp, err := http.DefaultClient.Do(req)
 	assert.NoError(t, err)
-	assert.Equal(t, resp.StatusCode, http.StatusOK, err.Error())
+	assert.Equal(t, resp.StatusCode, http.StatusOK)
+
 	byt, err := io.ReadAll(resp.Body)
 	assert.NoError(t, err)
-	err = json.Unmarshal(byt, value)
-	assert.NoError(t, err)
+	assert.NoError(t, json.Unmarshal(byt, value))
 }
 
 var (

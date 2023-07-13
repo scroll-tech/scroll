@@ -3,10 +3,11 @@ package middleware
 import (
 	"errors"
 	"fmt"
-	"github.com/dgrijalva/jwt-go"
-	"github.com/gin-gonic/gin"
 	"net/http"
 	"time"
+
+	"github.com/dgrijalva/jwt-go"
+	"github.com/gin-gonic/gin"
 )
 
 const TokenExpireDuration = time.Minute * 10
@@ -27,12 +28,12 @@ func GenToken() (string, error) {
 		},
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, c)
-	return token.SignedString(Secret)
+	return token.SignedString([]byte(Secret))
 }
 
 func ParseToken(tokenStr string) (*ApiClaims, error) {
 	token, err := jwt.ParseWithClaims(tokenStr, &ApiClaims{}, func(token *jwt.Token) (interface{}, error) {
-		return Secret, nil
+		return []byte(Secret), nil
 	})
 	if err != nil {
 		return nil, err

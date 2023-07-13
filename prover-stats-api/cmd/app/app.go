@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+
 	"scroll-tech/prover-stats-api/internal/middleware"
 
 	"github.com/gin-gonic/gin"
