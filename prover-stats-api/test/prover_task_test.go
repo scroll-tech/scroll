@@ -89,7 +89,7 @@ func getResp(t *testing.T, url string, value interface{}) {
 
 	resp, err := http.DefaultClient.Do(req)
 	assert.NoError(t, err)
-	assert.Equal(t, resp.StatusCode, http.StatusOK)
+	assert.Equal(t, resp.StatusCode, http.StatusOK, err.Error())
 	byt, err := io.ReadAll(resp.Body)
 	assert.NoError(t, err)
 	err = json.Unmarshal(byt, value)
