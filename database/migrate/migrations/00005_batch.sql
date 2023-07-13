@@ -52,7 +52,7 @@ comment
 on column batch.proving_status is 'undefined, unassigned, assigned, proved, verified, failed';
 
 comment
-on column batch.rollup_status is 'undefined, pending, committing, committed, finalizing, finalized, finalization_skipped, commit_failed, finalize_failed';
+on column batch.rollup_status is 'undefined, pending, committing, committed, finalizing, finalized, commit_failed, finalize_failed';
 
 -- +goose StatementEnd
 

@@ -439,8 +439,8 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 		defer func() {
 			// TODO: need to revisit this and have a more fine-grained error handling
 			if !success {
-				log.Info("Failed to upload the proof, change rollup status to FinalizationSkipped", "hash", hash)
-				if err = r.batchOrm.UpdateRollupStatus(r.ctx, hash, types.RollupFinalizationSkipped); err != nil {
+				log.Info("Failed to upload the proof, change rollup status to RollupFinalizeFailed", "hash", hash)
+				if err = r.batchOrm.UpdateRollupStatus(r.ctx, hash, types.RollupFinalizeFailed); err != nil {
 					log.Warn("UpdateRollupStatus failed", "hash", hash, "err", err)
 				}
 			}

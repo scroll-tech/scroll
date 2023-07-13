@@ -206,8 +206,6 @@ const (
 	RollupFinalizing
 	// RollupFinalized : finalize transaction is confirmed to layer1
 	RollupFinalized
-	// RollupFinalizationSkipped : batch finalization is skipped
-	RollupFinalizationSkipped
 	// RollupCommitFailed : rollup commit transaction confirmed but failed
 	RollupCommitFailed
 	// RollupFinalizeFailed : rollup finalize transaction is confirmed but failed
@@ -226,8 +224,6 @@ func (s RollupStatus) String() string {
 		return "RollupFinalizing"
 	case RollupFinalized:
 		return "RollupFinalized"
-	case RollupFinalizationSkipped:
-		return "RollupFinalizationSkipped"
 	case RollupCommitFailed:
 		return "RollupCommitFailed"
 	case RollupFinalizeFailed:

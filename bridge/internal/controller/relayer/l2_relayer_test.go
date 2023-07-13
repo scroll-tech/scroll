@@ -90,7 +90,7 @@ func testL2RelayerProcessCommittedBatches(t *testing.T) {
 	statuses, err := batchOrm.GetRollupStatusByHashList(context.Background(), []string{batch.Hash})
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(statuses))
-	assert.Equal(t, types.RollupFinalizationSkipped, statuses[0])
+	assert.Equal(t, types.RollupFinalizeFailed, statuses[0])
 
 	err = batchOrm.UpdateRollupStatus(context.Background(), batch.Hash, types.RollupCommitted)
 	assert.NoError(t, err)
