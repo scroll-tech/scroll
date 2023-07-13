@@ -1,9 +1,11 @@
 package app
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/signal"
+	"scroll-tech/common/metrics"
 
 	"scroll-tech/prover-stats-api/internal/middleware"
 
@@ -63,9 +65,18 @@ func action(ctx *cli.Context) error {
 		}
 	}()
 
+	subCtx, cancel := context.WithCancel(ctx.Context)
+
 	// init Prover Stats API
 	port := ctx.String(httpPortFlag.Name)
 	RunMinerAPIs(db, port, cfg)
+
+	defer func() {
+		cancel()
+	}()
+
+	// Start metrics server.
+	metrics.Serve(subCtx, ctx)
 
 	// Catch CTRL-C to ensure a graceful shutdown.
 	interrupt := make(chan os.Signal, 1)
