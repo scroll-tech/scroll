@@ -56,7 +56,7 @@ func TestProverTaskService(t *testing.T) {
 	// start database image
 	base := docker.NewDockerApp()
 	defer base.Free()
-	cfg, err := config.NewConfig("../config.json")
+	cfg, err := config.NewConfig("../conf/config.json")
 	assert.NoError(t, err)
 	cfg.DBConfig.DSN = base.DBImg.Endpoint()
 	base.RunDBImage(t)

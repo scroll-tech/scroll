@@ -5,17 +5,16 @@ import (
 	"os"
 	"os/signal"
 
-	"gorm.io/gorm"
-
 	"github.com/gin-gonic/gin"
-
-	"scroll-tech/prover-stats-api/controller"
-	"scroll-tech/prover-stats-api/internal/config"
-	"scroll-tech/prover-stats-api/internal/orm"
-	"scroll-tech/prover-stats-api/service"
+	"gorm.io/gorm"
 
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/urfave/cli/v2"
+
+	"scroll-tech/prover-stats-api/internal/config"
+	"scroll-tech/prover-stats-api/internal/controller"
+	"scroll-tech/prover-stats-api/internal/orm"
+	"scroll-tech/prover-stats-api/internal/service"
 
 	"scroll-tech/common/database"
 	"scroll-tech/common/utils"

@@ -3,9 +3,9 @@ package controller
 import (
 	"net/http"
 
-	"github.com/gin-gonic/gin"
+	"scroll-tech/prover-stats-api/internal/service"
 
-	"scroll-tech/prover-stats-api/service"
+	"github.com/gin-gonic/gin"
 )
 
 type ProverTaskController struct {
