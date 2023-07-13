@@ -53,11 +53,6 @@ func TestProvingStatus(t *testing.T) {
 			"unassigned",
 		},
 		{
-			"ProvingTaskSkipped",
-			ProvingTaskSkipped,
-			"skipped",
-		},
-		{
 			"ProvingTaskAssigned",
 			ProvingTaskAssigned,
 			"assigned",
