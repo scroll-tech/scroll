@@ -13,7 +13,7 @@ const TokenExpireDuration = time.Minute * 10
 
 var (
 	Secret    string
-	skipPaths = []string{"/request_token"}
+	skipPaths = []string{"/api/v1/prover_task/request_token"}
 )
 
 type ApiClaims struct {
