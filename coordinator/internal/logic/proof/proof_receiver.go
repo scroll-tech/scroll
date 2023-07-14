@@ -73,9 +73,11 @@ func NewZKProofReceiver(cfg *config.Config, db *gorm.DB) *ZKProofReceiver {
 // db/unmarshal errors will not because they are errors on the business logic side.
 func (m *ZKProofReceiver) HandleZkProof(ctx context.Context, proofMsg *message.ProofMsg) error {
 	pk, _ := proofMsg.PublicKey()
-	proverTask, err := m.proverTaskOrm.GetProverTaskByHashAndPubKey(ctx, proofMsg.ID, pk)
+	rollermanager.Manager.UpdateMetricRollerProofsLastFinishedTimestampGauge(pk)
+
+	proverTask, err := m.proverTaskOrm.GetProverTaskByHashAndPubKey(ctx, proofMsg.ProofDetail.ID, pk)
 	if proverTask == nil || err != nil {
-		log.Error("get none rollers for the proof key", pk, "id", proofMsg.ID)
+		log.Error("get none rollers for the proof key", pk, "id", proofMsg.ProofDetail.ID)
 		return ErrValidatorFailureRollerEmpty
 	}
 
@@ -135,8 +137,8 @@ func (m *ZKProofReceiver) HandleZkProof(ctx context.Context, proofMsg *message.P
 
 		rollermanager.Manager.UpdateMetricRollerProofsVerifiedFailedTimeTimer(pk, proofTime)
 
-		log.Info("proof verified by coordinator failed", "proof id", proofMsg.ID, "roller name", "roller pk",
-			pk, "prove type", proofMsg.Type, "proof time", proofTimeSec, "error", verifyErr)
+		log.Info("proof verified by coordinator failed", "proof id", proofMsg.ID, "roller name", "roller pk", pk,
+			"prove type", proofMsg.Type, "proof time", proofTimeSec, "error", verifyErr)
 		return nil
 	}
 
@@ -150,9 +152,36 @@ func (m *ZKProofReceiver) HandleZkProof(ctx context.Context, proofMsg *message.P
 	return nil
 }
 
+func (m *ZKProofReceiver) checkAreAllChunkProofsReady(ctx context.Context, chunkHash string) error {
+	batchHash, err := m.chunkOrm.GetChunkBatchHash(ctx, chunkHash)
+	if err != nil {
+		return err
+	}
+
+	allReady, err := m.chunkOrm.CheckIfBatchChunkProofsAreReady(ctx, batchHash)
+	if err != nil {
+		return err
+	}
+	if allReady {
+		err := m.chunkOrm.UpdateChunkProofsStatusByBatchHash(ctx, batchHash, types.ChunkProofsStatusReady)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (m *ZKProofReceiver) validator(proverTask *orm.ProverTask, pk string, proofMsg *message.ProofMsg) error {
-	pubKey, _ := proofMsg.PublicKey()
-	rollermanager.Manager.UpdateMetricRollerProofsLastFinishedTimestampGauge(pubKey)
+	// Ensure this roller is eligible to participate in the prover task.
+	if types.RollerProveStatus(proverTask.ProvingStatus) == types.RollerProofValid {
+		// In order to prevent DoS attacks, it is forbidden to repeatedly submit valid proofs.
+		// TODO: Defend invalid proof resubmissions by one of the following two methods:
+		// (i) slash the roller for each submission of invalid proof
+		// (ii) set the maximum failure retry times
+		log.Warn("roller has already submitted valid proof in proof session", "roller name", proverTask.ProverName,
+			"roller pk", proverTask.ProverPublicKey, "proof type", proverTask.TaskType, "proof id", proofMsg.ProofDetail.ID)
+		return ErrValidatorFailureRollerInfoHasProofValid
+	}
 
 	proofTime := time.Since(proverTask.CreatedAt)
 	proofTimeSec := uint64(proofTime.Seconds())
@@ -203,50 +232,41 @@ func (m *ZKProofReceiver) updateProofStatus(ctx context.Context, hash string, pr
 		return nil
 	}
 
+	var proverTaskStatus types.RollerProveStatus
+	switch status {
+	case types.ProvingTaskProved, types.ProvingTaskUnassigned:
+		proverTaskStatus = types.RollerProofInvalid
+	case types.ProvingTaskVerified:
+		proverTaskStatus = types.RollerProofValid
+	}
+
 	err := m.db.Transaction(func(tx *gorm.DB) error {
-		// if the block batch has proof verified, so the failed status not update block batch proving status
-		if status == types.ProvingTaskFailed && !m.checkIsTaskSuccess(ctx, hash, proofMsgType) {
-			switch proofMsgType {
-			case message.ProofTypeChunk:
-				if err := m.chunkOrm.UpdateProvingStatus(ctx, hash, status, tx); err != nil {
-					log.Error("failed to update basic proving_status as failed", "msg.ID", hash, "error", err)
-					return err
-				}
-			case message.ProofTypeBatch:
-				if err := m.batchOrm.UpdateProvingStatus(ctx, hash, status, tx); err != nil {
-					log.Error("failed to update aggregator proving_status as failed", "msg.ID", hash, "error", err)
-					return err
-				}
-			}
-		}
-
-		if status != types.ProvingTaskFailed {
-			switch proofMsgType {
-			case message.ProofTypeChunk:
-				if err := m.chunkOrm.UpdateProvingStatus(ctx, hash, status, tx); err != nil {
-					log.Error("failed to update basic proving_status as failed", "msg.ID", hash, "error", err)
-					return err
-				}
-			case message.ProofTypeBatch:
-				if err := m.batchOrm.UpdateProvingStatus(ctx, hash, status, tx); err != nil {
-					log.Error("failed to update aggregator proving_status as failed", "msg.ID", hash, "error", err)
-					return err
-				}
-			}
-		}
-
-		var proverTaskStatus types.RollerProveStatus
-		switch status {
-		case types.ProvingTaskProved:
-			proverTaskStatus = types.RollerProofInvalid
-		case types.ProvingTaskUnassigned:
-			proverTaskStatus = types.RollerProveStatusUndefined
-		case types.ProvingTaskVerified:
-			proverTaskStatus = types.RollerProofValid
-		}
-
 		if updateErr := m.proverTaskOrm.UpdateProverTaskProvingStatus(ctx, proofMsgType, hash, proverPublicKey, proverTaskStatus); updateErr != nil {
 			return updateErr
+		}
+
+		// if the block batch has proof verified, so the failed status not update block batch proving status
+		if status == types.ProvingTaskFailed && m.checkIsTaskSuccess(ctx, hash, proofMsgType) {
+			return nil
+		}
+
+		switch proofMsgType {
+		case message.ProofTypeChunk:
+			if err := m.chunkOrm.UpdateProvingStatus(ctx, hash, status, tx); err != nil {
+				log.Error("failed to update basic proving_status as failed", "msg.ID", hash, "error", err)
+				return err
+			}
+			if status == types.ProvingTaskVerified {
+				if err := m.checkAreAllChunkProofsReady(ctx, hash); err != nil {
+					log.Error("failed to check are all chunk proofs ready", "error", err)
+					return err
+				}
+			}
+		case message.ProofTypeBatch:
+			if err := m.batchOrm.UpdateProvingStatus(ctx, hash, status, tx); err != nil {
+				log.Error("failed to update aggregator proving_status as failed", "msg.ID", hash, "error", err)
+				return err
+			}
 		}
 		return nil
 	})
@@ -255,23 +275,23 @@ func (m *ZKProofReceiver) updateProofStatus(ctx context.Context, hash string, pr
 }
 
 func (m *ZKProofReceiver) checkIsTaskSuccess(ctx context.Context, hash string, proofType message.ProofType) bool {
+	var provingStatus types.ProvingStatus
+	var err error
+
 	switch proofType {
 	case message.ProofTypeChunk:
-		provingStatus, err := m.chunkOrm.GetProvingStatusByHash(ctx, hash)
+		provingStatus, err = m.chunkOrm.GetProvingStatusByHash(ctx, hash)
 		if err != nil {
 			return false
-		}
-		if provingStatus == types.ProvingTaskVerified {
-			return true
 		}
 	case message.ProofTypeBatch:
-		provingStatus, err := m.batchOrm.GetProvingStatusByHash(ctx, hash)
+		provingStatus, err = m.batchOrm.GetProvingStatusByHash(ctx, hash)
 		if err != nil {
 			return false
 		}
-		if provingStatus == types.ProvingTaskVerified {
-			return true
-		}
+	}
+	if provingStatus == types.ProvingTaskVerified || provingStatus == types.ProvingTaskProved {
+		return true
 	}
 	return false
 }
