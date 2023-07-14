@@ -3,7 +3,6 @@ package orm
 import (
 	"context"
 	"fmt"
-	coordinatorType "scroll-tech/coordinator/internal/types"
 	"time"
 
 	"github.com/shopspring/decimal"
@@ -12,6 +11,8 @@ import (
 
 	"scroll-tech/common/types"
 	"scroll-tech/common/types/message"
+
+	coordinatorType "scroll-tech/coordinator/internal/types"
 )
 
 // ProverTask is assigned rollers info of chunk/batch proof prover task
