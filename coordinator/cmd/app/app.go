@@ -61,6 +61,8 @@ func action(ctx *cli.Context) error {
 
 	rollermanager.InitRollerManager()
 
+	log.Info("Start coordinator successfully.")
+
 	defer func() {
 		proofCollector.Stop()
 		cancel()
