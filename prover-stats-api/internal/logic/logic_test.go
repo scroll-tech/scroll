@@ -67,8 +67,7 @@ func TestProverTaskService(t *testing.T) {
 	// insert some tasks
 	insertSomeProverTasks(t, db)
 
-	ptdb := orm.NewProverTask(db)
-	service = NewProverTaskLogic(ptdb)
+	service = NewProverTaskLogic(db)
 
 	t.Run("testGetTasksByProver", testGetTasksByProver)
 	t.Run("testGetTotalRewards", testGetTotalRewards)
