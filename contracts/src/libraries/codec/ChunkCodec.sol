@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.16;
+pragma solidity =0.8.16;
 
 /// @dev Below is the encoding for `Chunk`, total 60*n+1+m bytes.
 /// ```text
