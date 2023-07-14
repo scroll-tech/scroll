@@ -174,6 +174,7 @@ func (r *Layer2Relayer) initializeGenesis() error {
 			Header:           genesis,
 			Transactions:     nil,
 			WithdrawTrieRoot: common.Hash{},
+			RowConsumption:   0,
 		}},
 	}
 

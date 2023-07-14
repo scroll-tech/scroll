@@ -27,6 +27,7 @@ type ChunkProposer struct {
 	maxL1CommitGasPerChunk          uint64
 	maxL1CommitCalldataSizePerChunk uint64
 	minL1CommitCalldataSizePerChunk uint64
+	maxRowConsumptionPerChunk       uint64
 	chunkTimeoutSec                 uint64
 }
 
@@ -42,6 +43,7 @@ func NewChunkProposer(ctx context.Context, cfg *config.ChunkProposerConfig, db *
 		maxL1CommitGasPerChunk:          cfg.MaxL1CommitGasPerChunk,
 		maxL1CommitCalldataSizePerChunk: cfg.MaxL1CommitCalldataSizePerChunk,
 		minL1CommitCalldataSizePerChunk: cfg.MinL1CommitCalldataSizePerChunk,
+		maxRowConsumptionPerChunk:       cfg.MaxRowConsumptionPerChunk,
 		chunkTimeoutSec:                 cfg.ChunkTimeoutSec,
 	}
 }
@@ -95,6 +97,7 @@ func (p *ChunkProposer) proposeChunk() (*types.Chunk, error) {
 	totalL2TxNum := firstBlock.L2TxsNum()
 	totalL1CommitCalldataSize := firstBlock.EstimateL1CommitCalldataSize()
 	totalL1CommitGas := firstBlock.EstimateL1CommitGas()
+	totalRowConsumption := firstBlock.RowConsumption
 
 	// Check if the first block breaks hard limits.
 	// If so, it indicates there are bugs in sequencer, manual fix is needed.
@@ -134,6 +137,14 @@ func (p *ChunkProposer) proposeChunk() (*types.Chunk, error) {
 			"max gas limit", p.maxTxGasPerChunk,
 		)
 	}
+	if totalRowConsumption > p.maxRowConsumptionPerChunk {
+		return nil, fmt.Errorf(
+			"the first block exceeds row consumption limit; block number: %v, row consumption: %v, max row consumption limit: %v",
+			firstBlock.Header.Number,
+			totalRowConsumption,
+			p.maxRowConsumptionPerChunk,
+		)
+	}
 
 	for i, block := range blocks[1:] {
 		totalTxGasUsed += block.Header.GasUsed
@@ -143,7 +154,8 @@ func (p *ChunkProposer) proposeChunk() (*types.Chunk, error) {
 		if totalTxGasUsed > p.maxTxGasPerChunk ||
 			totalL2TxNum > p.maxL2TxNumPerChunk ||
 			totalL1CommitCalldataSize > p.maxL1CommitCalldataSizePerChunk ||
-			totalL1CommitGas > p.maxL1CommitGasPerChunk {
+			totalL1CommitGas > p.maxL1CommitGasPerChunk ||
+			totalRowConsumption > p.maxRowConsumptionPerChunk {
 			blocks = blocks[:i+1]
 			break
 		}

@@ -34,6 +34,7 @@ type ChunkProposerConfig struct {
 	MaxL1CommitCalldataSizePerChunk uint64 `json:"max_l1_commit_calldata_size_per_chunk"`
 	MinL1CommitCalldataSizePerChunk uint64 `json:"min_l1_commit_calldata_size_per_chunk"`
 	ChunkTimeoutSec                 uint64 `json:"chunk_timeout_sec"`
+	MaxRowConsumptionPerChunk       uint64 `json:"max_row_consumption_per_chunk"`
 }
 
 // BatchProposerConfig loads batch_proposer configuration items.

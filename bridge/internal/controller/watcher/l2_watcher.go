@@ -162,7 +162,11 @@ func (w *L2WatcherClient) getAndStoreBlockTraces(ctx context.Context, from, to u
 	var blocks []*types.WrappedBlock
 	for number := from; number <= to; number++ {
 		log.Debug("retrieving block", "height", number)
-		block, err2 := w.BlockByNumber(ctx, big.NewInt(int64(number)))
+		header, err2 := w.HeaderByNumber(ctx, big.NewInt(int64(number)))
+		if err2 != nil {
+			return fmt.Errorf("failed to GetHeaderNyNumber: %v. number: %v", err2, number)
+		}
+		block, err2 := w.GetBlockByHash(ctx, header.Hash())
 		if err2 != nil {
 			return fmt.Errorf("failed to GetBlockByNumber: %v. number: %v", err2, number)
 		}
@@ -178,6 +182,7 @@ func (w *L2WatcherClient) getAndStoreBlockTraces(ctx context.Context, from, to u
 			Header:           block.Header(),
 			Transactions:     txsToTxsData(block.Transactions()),
 			WithdrawTrieRoot: common.BytesToHash(withdrawTrieRoot),
+			RowConsumption:   block.RowConsumption.Rows,
 		})
 	}
 

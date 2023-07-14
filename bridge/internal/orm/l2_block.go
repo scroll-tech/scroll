@@ -28,6 +28,7 @@ type L2Block struct {
 	TxNum            uint32 `json:"tx_num" gorm:"tx_num"`
 	GasUsed          uint64 `json:"gas_used" gorm:"gas_used"`
 	BlockTimestamp   uint64 `json:"block_timestamp" gorm:"block_timestamp"`
+	RowConsumption   uint64 `json:"row_consumption" gorm:"row_consumption"`
 
 	// chunk
 	ChunkHash string `json:"chunk_hash" gorm:"chunk_hash;default:NULL"`
@@ -90,6 +91,7 @@ func (o *L2Block) GetUnchunkedBlocks(ctx context.Context) ([]*types.WrappedBlock
 		}
 
 		wrappedBlock.WithdrawTrieRoot = common.HexToHash(v.WithdrawTrieRoot)
+		wrappedBlock.RowConsumption = v.RowConsumption
 		wrappedBlocks = append(wrappedBlocks, &wrappedBlock)
 	}
 
@@ -161,6 +163,7 @@ func (o *L2Block) GetL2BlocksInRange(ctx context.Context, startBlockNumber uint6
 		}
 
 		wrappedBlock.WithdrawTrieRoot = common.HexToHash(v.WithdrawTrieRoot)
+		wrappedBlock.RowConsumption = v.RowConsumption
 		wrappedBlocks = append(wrappedBlocks, &wrappedBlock)
 	}
 
@@ -192,6 +195,7 @@ func (o *L2Block) InsertL2Blocks(ctx context.Context, blocks []*types.WrappedBlo
 			TxNum:            uint32(len(block.Transactions)),
 			GasUsed:          block.Header.GasUsed,
 			BlockTimestamp:   block.Header.Time,
+			RowConsumption:   block.RowConsumption,
 			Header:           string(header),
 		}
 		l2Blocks = append(l2Blocks, l2Block)

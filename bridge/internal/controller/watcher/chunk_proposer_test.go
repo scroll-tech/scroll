@@ -28,6 +28,7 @@ func testChunkProposer(t *testing.T) {
 		MaxL1CommitGasPerChunk:          50000000000,
 		MaxL1CommitCalldataSizePerChunk: 1000000,
 		MinL1CommitCalldataSizePerChunk: 0,
+		MaxRowConsumptionPerChunk:       1048319,
 		ChunkTimeoutSec:                 300,
 	}, db)
 	cp.TryProposeChunk()

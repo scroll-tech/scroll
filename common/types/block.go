@@ -13,12 +13,13 @@ import (
 const nonZeroByteGas uint64 = 16
 const zeroByteGas uint64 = 4
 
-// WrappedBlock contains the block's Header, Transactions and WithdrawTrieRoot hash.
+// WrappedBlock contains the block's Header, Transactions, WithdrawTrieRoot hash and RowConsumption.
 type WrappedBlock struct {
 	Header *types.Header `json:"header"`
 	// Transactions is only used for recover types.Transactions, the from of types.TransactionData field is missing.
 	Transactions     []*types.TransactionData `json:"transactions"`
 	WithdrawTrieRoot common.Hash              `json:"withdraw_trie_root,omitempty"`
+	RowConsumption   uint64                   `json:"row_consumption"`
 }
 
 // NumL1Messages returns the number of L1 messages in this block.
