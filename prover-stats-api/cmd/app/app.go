@@ -13,6 +13,7 @@ import (
 	"scroll-tech/common/database"
 	"scroll-tech/common/utils"
 	"scroll-tech/common/version"
+
 	_ "scroll-tech/prover-stats-api/cmd/docs"
 	"scroll-tech/prover-stats-api/internal/config"
 	"scroll-tech/prover-stats-api/internal/controller"

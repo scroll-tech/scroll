@@ -2,8 +2,9 @@ package logic
 
 import (
 	"context"
-	"gorm.io/gorm"
 	"math/big"
+
+	"gorm.io/gorm"
 
 	"scroll-tech/prover-stats-api/internal/orm"
 )

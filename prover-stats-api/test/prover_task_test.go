@@ -11,8 +11,9 @@ import (
 	"scroll-tech/common/docker"
 	"scroll-tech/common/types"
 	"scroll-tech/database/migrate"
-	"scroll-tech/prover-stats-api/internal/controller"
 	"testing"
+
+	"scroll-tech/prover-stats-api/internal/controller"
 
 	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
