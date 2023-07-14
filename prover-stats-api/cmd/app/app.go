@@ -7,27 +7,15 @@ import (
 	"os/signal"
 	"scroll-tech/common/metrics"
 
-	"scroll-tech/prover-stats-api/internal/middleware"
-
-	"github.com/gin-gonic/gin"
-	"gorm.io/gorm"
-
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/urfave/cli/v2"
-
-	"scroll-tech/prover-stats-api/internal/config"
-	"scroll-tech/prover-stats-api/internal/controller"
-	"scroll-tech/prover-stats-api/internal/logic"
-	"scroll-tech/prover-stats-api/internal/orm"
 
 	"scroll-tech/common/database"
 	"scroll-tech/common/utils"
 	"scroll-tech/common/version"
-
 	_ "scroll-tech/prover-stats-api/cmd/docs"
-
-	swaggerfiles "github.com/swaggo/files"
-	ginSwagger "github.com/swaggo/gin-swagger"
+	"scroll-tech/prover-stats-api/internal/config"
+	"scroll-tech/prover-stats-api/internal/controller"
 )
 
 var app *cli.App
@@ -69,7 +57,7 @@ func action(ctx *cli.Context) error {
 
 	// init Prover Stats API
 	port := ctx.String(httpPortFlag.Name)
-	RunMinerAPIs(db, port, cfg)
+	controller.Route(db, port, cfg)
 
 	defer func() {
 		cancel()
@@ -86,24 +74,6 @@ func action(ctx *cli.Context) error {
 	<-interrupt
 
 	return nil
-}
-
-func RunMinerAPIs(db *gorm.DB, port string, cfg *config.Config) {
-	ptdb := orm.NewProverTask(db)
-	taskService := logic.NewProverTaskLogic(ptdb)
-
-	r := gin.Default()
-	middleware.Secret = cfg.ApiSecret
-	r.Use(middleware.JWTAuthMiddleware())
-	r.GET("swagger/*any", ginSwagger.WrapHandler(swaggerfiles.Handler))
-	router := r.Group("/api/v1")
-
-	c := controller.NewProverTaskController(router, taskService)
-	c.Route()
-
-	go func() {
-		r.Run(port)
-	}()
 }
 
 // Run run prover-stats-api.

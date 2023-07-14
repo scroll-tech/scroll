@@ -2,6 +2,7 @@ package logic
 
 import (
 	"context"
+	"gorm.io/gorm"
 	"math/big"
 
 	"scroll-tech/prover-stats-api/internal/orm"
@@ -11,8 +12,8 @@ type ProverTaskLogic struct {
 	db *orm.ProverTask
 }
 
-func NewProverTaskLogic(db *orm.ProverTask) *ProverTaskLogic {
-	return &ProverTaskLogic{db: db}
+func NewProverTaskLogic(db *gorm.DB) *ProverTaskLogic {
+	return &ProverTaskLogic{db: orm.NewProverTask(db)}
 }
 
 func (p *ProverTaskLogic) GetTasksByProver(pubkey string) ([]*orm.ProverTask, error) {

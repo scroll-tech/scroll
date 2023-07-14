@@ -11,13 +11,13 @@ import (
 	"scroll-tech/common/docker"
 	"scroll-tech/common/types"
 	"scroll-tech/database/migrate"
+	"scroll-tech/prover-stats-api/internal/controller"
 	"testing"
 
 	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
 	"gorm.io/gorm"
 
-	"scroll-tech/prover-stats-api/cmd/app"
 	"scroll-tech/prover-stats-api/internal/config"
 	"scroll-tech/prover-stats-api/internal/orm"
 )
@@ -49,7 +49,7 @@ func TestProverTaskAPIs(t *testing.T) {
 	insertSomeProverTasks(t, db)
 
 	// run Prover Stats APIs
-	app.RunMinerAPIs(db, port, cfg)
+	controller.Route(db, port, cfg)
 
 	t.Run("testRequestToken", testRequestToken)
 	t.Run("testGetProverTasksByProver", testGetProverTasksByProver)
