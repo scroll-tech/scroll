@@ -126,19 +126,20 @@ func (m *ZKProofReceiver) HandleZkProof(ctx context.Context, proofMsg *message.P
 	// TODO: wrap both basic verifier and aggregator verifier
 	success, verifyErr := m.verifier.VerifyProof(proofMsg.Proof)
 	if verifyErr != nil || !success {
+		if verifyErr != nil {
+			// TODO: this is only a temp workaround for testnet, we should return err in real cases
+			log.Error("failed to verify zk proof", "proof id", proofMsg.ID, "roller pk", pk, "prove type",
+				proofMsg.Type, "proof time", proofTimeSec, "error", verifyErr)
+		}
 		m.proofFailure(ctx, proofMsg.ID, pk, proofMsg.Type)
-
-		// TODO: this is only a temp workaround for testnet, we should return err in real cases
-		log.Error("Failed to verify zk proof", "proof id", proofMsg.ID, "roller pk", pk, "prove type",
-			proofMsg.Type, "proof time", proofTimeSec, "error", verifyErr)
 
 		// TODO: Roller needs to be slashed if proof is invalid.
 		coordinatorProofsVerifiedFailedTimeTimer.Update(proofTime)
 
 		rollermanager.Manager.UpdateMetricRollerProofsVerifiedFailedTimeTimer(pk, proofTime)
 
-		log.Info("proof verified by coordinator failed", "proof id", proofMsg.ID, "roller name", "roller pk", pk,
-			"prove type", proofMsg.Type, "proof time", proofTimeSec, "error", verifyErr)
+		log.Info("proof verified by coordinator failed", "proof id", proofMsg.ID, "roller name", proverTask.ProverName,
+			"roller pk", pk, "prove type", proofMsg.Type, "proof time", proofTimeSec, "error", verifyErr)
 		return nil
 	}
 
@@ -234,7 +235,7 @@ func (m *ZKProofReceiver) updateProofStatus(ctx context.Context, hash string, pr
 
 	var proverTaskStatus types.RollerProveStatus
 	switch status {
-	case types.ProvingTaskProved, types.ProvingTaskUnassigned:
+	case types.ProvingTaskFailed, types.ProvingTaskUnassigned:
 		proverTaskStatus = types.RollerProofInvalid
 	case types.ProvingTaskVerified:
 		proverTaskStatus = types.RollerProofValid
@@ -291,7 +292,7 @@ func (m *ZKProofReceiver) checkIsTaskSuccess(ctx context.Context, hash string, p
 			return false
 		}
 	}
-	if provingStatus == types.ProvingTaskVerified || provingStatus == types.ProvingTaskProved {
+	if provingStatus == types.ProvingTaskVerified {
 		return true
 	}
 	return false
