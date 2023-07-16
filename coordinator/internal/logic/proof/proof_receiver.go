@@ -266,14 +266,18 @@ func (m *ZKProofReceiver) updateProofStatus(ctx context.Context, hash string, pr
 		return nil
 	})
 
+	if err != nil {
+		return err
+	}
+
 	if status == types.ProvingTaskVerified && proofMsgType == message.ProofTypeChunk {
-		if err := m.checkAreAllChunkProofsReady(ctx, hash); err != nil {
-			log.Error("failed to check are all chunk proofs ready", "error", err)
-			return err
+		if checkReadyErr := m.checkAreAllChunkProofsReady(ctx, hash); checkReadyErr != nil {
+			log.Error("failed to check are all chunk proofs ready", "error", checkReadyErr)
+			return checkReadyErr
 		}
 	}
 
-	return err
+	return nil
 }
 
 func (m *ZKProofReceiver) checkIsTaskSuccess(ctx context.Context, hash string, proofType message.ProofType) bool {
@@ -292,10 +296,8 @@ func (m *ZKProofReceiver) checkIsTaskSuccess(ctx context.Context, hash string, p
 			return false
 		}
 	}
-	if provingStatus == types.ProvingTaskVerified {
-		return true
-	}
-	return false
+
+	return provingStatus == types.ProvingTaskVerified
 }
 
 func (m *ZKProofReceiver) checkIsTimeoutFailure(ctx context.Context, hash, proverPublicKey string) bool {
