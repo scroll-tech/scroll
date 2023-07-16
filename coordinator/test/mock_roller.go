@@ -7,14 +7,14 @@ import (
 	"testing"
 	"time"
 
-	client2 "scroll-tech/coordinator/client"
-	"scroll-tech/coordinator/internal/logic/verifier"
-
-	"scroll-tech/common/types/message"
-
 	"github.com/scroll-tech/go-ethereum"
 	"github.com/scroll-tech/go-ethereum/crypto"
 	"github.com/stretchr/testify/assert"
+
+	"scroll-tech/common/types/message"
+
+	client2 "scroll-tech/coordinator/client"
+	"scroll-tech/coordinator/internal/logic/verifier"
 )
 
 type proofStatus uint32
@@ -69,7 +69,8 @@ func (r *mockRoller) connectToCoordinator() (*client2.Client, ethereum.Subscript
 	// create a new ws connection
 	authMsg := &message.AuthMsg{
 		Identity: &message.Identity{
-			Name: r.rollerName,
+			Name:       r.rollerName,
+			RollerType: r.proofType,
 		},
 	}
 	_ = authMsg.SignWithKey(r.privKey)
@@ -131,6 +132,7 @@ func (r *mockRoller) loop(t *testing.T, client *client2.Client, proofTime time.D
 			proof := &message.ProofMsg{
 				ProofDetail: &message.ProofDetail{
 					ID:     task.ID,
+					Type:   r.proofType,
 					Status: message.StatusOk,
 					Proof:  &message.AggProof{},
 				},

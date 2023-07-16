@@ -36,7 +36,14 @@ import (
 )
 
 var (
+	dbCfg *database.Config
+
 	base *docker.App
+
+	db         *gorm.DB
+	l2BlockOrm *orm.L2Block
+	chunkOrm   *orm.Chunk
+	batchOrm   *orm.Batch
 
 	wrappedBlock1 *types.WrappedBlock
 	wrappedBlock2 *types.WrappedBlock
@@ -54,8 +61,54 @@ func randomURL() string {
 	return fmt.Sprintf("localhost:%d", 10000+2000+id.Int64())
 }
 
+func setupCoordinator(t *testing.T, rollersPerSession uint8, wsURL string, resetDB bool) (*http.Server, *cron.Collector) {
+	db, err := database.InitDB(dbCfg)
+	assert.NoError(t, err)
+	sqlDB, err := db.DB()
+	assert.NoError(t, err)
+	if resetDB {
+		assert.NoError(t, migrate.ResetDB(sqlDB))
+	}
+
+	conf := config.Config{
+		RollersPerSession:  rollersPerSession,
+		Verifier:           &config.VerifierConfig{MockMode: true},
+		CollectionTime:     1,
+		TokenTimeToLive:    5,
+		MaxVerifierWorkers: 10,
+		SessionAttempts:    2,
+	}
+	proofCollector := cron.NewCollector(context.Background(), db, &conf)
+	tmpAPI := api.APIs(&conf, db)
+	handler, _, err := utils.StartWSEndpoint(strings.Split(wsURL, "//")[1], tmpAPI, flate.NoCompression)
+	assert.NoError(t, err)
+	rollermanager.InitRollerManager()
+	return handler, proofCollector
+}
+
 func setEnv(t *testing.T) {
+	base = docker.NewDockerApp()
 	base.RunDBImage(t)
+
+	dbCfg = &database.Config{
+		DSN:        base.DBConfig.DSN,
+		DriverName: base.DBConfig.DriverName,
+		MaxOpenNum: base.DBConfig.MaxOpenNum,
+		MaxIdleNum: base.DBConfig.MaxIdleNum,
+	}
+
+	var err error
+	err = utils.LogSetup(nil, 3)
+	assert.NoError(t, err)
+	db, err = database.InitDB(dbCfg)
+	assert.NoError(t, err)
+	sqlDB, err := db.DB()
+	assert.NoError(t, err)
+	assert.NoError(t, migrate.ResetDB(sqlDB))
+
+	batchOrm = orm.NewBatch(db)
+	chunkOrm = orm.NewChunk(db)
+	l2BlockOrm = orm.NewL2Block(db)
 
 	templateBlockTrace, err := os.ReadFile("../testdata/blockTrace_02.json")
 	assert.NoError(t, err)
@@ -70,45 +123,12 @@ func setEnv(t *testing.T) {
 	assert.NoError(t, err)
 
 	chunk = &types.Chunk{Blocks: []*types.WrappedBlock{wrappedBlock1, wrappedBlock2}}
-}
-
-func setupDB(t *testing.T) *gorm.DB {
-	dbConf := database.Config{
-		DSN:        base.DBConfig.DSN,
-		DriverName: base.DBConfig.DriverName,
-		MaxOpenNum: base.DBConfig.MaxOpenNum,
-		MaxIdleNum: base.DBConfig.MaxIdleNum,
-	}
-	db, err := database.InitDB(&dbConf)
 	assert.NoError(t, err)
-	sqlDB, err := db.DB()
-	assert.NoError(t, err)
-	assert.NoError(t, migrate.ResetDB(sqlDB))
-	return db
-}
-
-func setupCoordinator(t *testing.T, rollersPerSession uint8, wsURL string, db *gorm.DB) (*http.Server, *gorm.DB, *cron.Collector) {
-	if db == nil {
-		db = setupDB(t)
-	}
-	conf := config.Config{
-		RollersPerSession:  rollersPerSession,
-		Verifier:           &config.VerifierConfig{MockMode: true},
-		CollectionTime:     1,
-		TokenTimeToLive:    5,
-		MaxVerifierWorkers: 10,
-		SessionAttempts:    2,
-	}
-	proofCollector := cron.NewCollector(context.Background(), db, &conf)
-	tmpAPI := api.APIs(&conf, db)
-	handler, _, err := utils.StartWSEndpoint(strings.Split(wsURL, "//")[1], tmpAPI, flate.NoCompression)
-	assert.NoError(t, err)
-	rollermanager.InitRollerManager()
-
-	return handler, db, proofCollector
 }
 
 func TestApis(t *testing.T) {
+	// Set up the test environment.
+	base = docker.NewDockerApp()
 	setEnv(t)
 
 	t.Run("TestHandshake", testHandshake)
@@ -120,7 +140,6 @@ func TestApis(t *testing.T) {
 	t.Run("TestTimeoutProof", testTimeoutProof)
 	t.Run("TestIdleRollerSelection", testIdleRollerSelection)
 	t.Run("TestGracefulRestart", testGracefulRestart)
-	// t.Run("TestListRollers", testListRollers)
 
 	// Teardown
 	t.Cleanup(func() {
@@ -131,9 +150,8 @@ func TestApis(t *testing.T) {
 func testHandshake(t *testing.T) {
 	// Setup coordinator and ws server.
 	wsURL := "ws://" + randomURL()
-	handler, db, proofCollector := setupCoordinator(t, 1, wsURL, nil)
+	handler, proofCollector := setupCoordinator(t, 1, wsURL, true)
 	defer func() {
-		database.CloseDB(db)
 		handler.Shutdown(context.Background())
 		proofCollector.Stop()
 	}()
@@ -151,9 +169,8 @@ func testHandshake(t *testing.T) {
 func testFailedHandshake(t *testing.T) {
 	// Setup coordinator and ws server.
 	wsURL := "ws://" + randomURL()
-	handler, db, proofCollector := setupCoordinator(t, 1, wsURL, nil)
+	handler, proofCollector := setupCoordinator(t, 1, wsURL, true)
 	defer func() {
-		database.CloseDB(db)
 		handler.Shutdown(context.Background())
 		proofCollector.Stop()
 	}()
@@ -209,9 +226,8 @@ func testFailedHandshake(t *testing.T) {
 
 func testSeveralConnections(t *testing.T) {
 	wsURL := "ws://" + randomURL()
-	handler, db, proofCollector := setupCoordinator(t, 1, wsURL, nil)
+	handler, proofCollector := setupCoordinator(t, 1, wsURL, true)
 	defer func() {
-		database.CloseDB(db)
 		handler.Shutdown(context.Background())
 		proofCollector.Stop()
 	}()
@@ -259,9 +275,8 @@ func testSeveralConnections(t *testing.T) {
 
 func testValidProof(t *testing.T) {
 	wsURL := "ws://" + randomURL()
-	handler, db, collector := setupCoordinator(t, 3, wsURL, nil)
+	handler, collector := setupCoordinator(t, 3, wsURL, true)
 	defer func() {
-		database.CloseDB(db)
 		handler.Shutdown(context.Background())
 		collector.Stop()
 	}()
@@ -293,10 +308,6 @@ func testValidProof(t *testing.T) {
 	}()
 	assert.Equal(t, 3, rollermanager.Manager.GetNumberOfIdleRollers(message.ProofTypeChunk))
 	assert.Equal(t, 3, rollermanager.Manager.GetNumberOfIdleRollers(message.ProofTypeBatch))
-
-	l2BlockOrm := orm.NewL2Block(db)
-	chunkOrm := orm.NewChunk(db)
-	batchOrm := orm.NewBatch(db)
 
 	err := l2BlockOrm.InsertL2Blocks(context.Background(), []*types.WrappedBlock{wrappedBlock1, wrappedBlock2})
 	assert.NoError(t, err)
@@ -332,9 +343,8 @@ func testValidProof(t *testing.T) {
 func testInvalidProof(t *testing.T) {
 	// Setup coordinator and ws server.
 	wsURL := "ws://" + randomURL()
-	handler, db, collector := setupCoordinator(t, 3, wsURL, nil)
+	handler, collector := setupCoordinator(t, 3, wsURL, true)
 	defer func() {
-		database.CloseDB(db)
 		handler.Shutdown(context.Background())
 		collector.Stop()
 	}()
@@ -359,10 +369,6 @@ func testInvalidProof(t *testing.T) {
 	}()
 	assert.Equal(t, 3, rollermanager.Manager.GetNumberOfIdleRollers(message.ProofTypeChunk))
 	assert.Equal(t, 3, rollermanager.Manager.GetNumberOfIdleRollers(message.ProofTypeBatch))
-
-	l2BlockOrm := orm.NewL2Block(db)
-	chunkOrm := orm.NewChunk(db)
-	batchOrm := orm.NewBatch(db)
 
 	err := l2BlockOrm.InsertL2Blocks(context.Background(), []*types.WrappedBlock{wrappedBlock1, wrappedBlock2})
 	assert.NoError(t, err)
@@ -398,9 +404,8 @@ func testInvalidProof(t *testing.T) {
 func testProofGeneratedFailed(t *testing.T) {
 	// Setup coordinator and ws server.
 	wsURL := "ws://" + randomURL()
-	handler, db, collector := setupCoordinator(t, 3, wsURL, nil)
+	handler, collector := setupCoordinator(t, 3, wsURL, true)
 	defer func() {
-		database.CloseDB(db)
 		handler.Shutdown(context.Background())
 		collector.Stop()
 	}()
@@ -425,10 +430,6 @@ func testProofGeneratedFailed(t *testing.T) {
 	}()
 	assert.Equal(t, 3, rollermanager.Manager.GetNumberOfIdleRollers(message.ProofTypeChunk))
 	assert.Equal(t, 3, rollermanager.Manager.GetNumberOfIdleRollers(message.ProofTypeBatch))
-
-	l2BlockOrm := orm.NewL2Block(db)
-	chunkOrm := orm.NewChunk(db)
-	batchOrm := orm.NewBatch(db)
 
 	err := l2BlockOrm.InsertL2Blocks(context.Background(), []*types.WrappedBlock{wrappedBlock1, wrappedBlock2})
 	assert.NoError(t, err)
@@ -464,9 +465,8 @@ func testProofGeneratedFailed(t *testing.T) {
 func testTimeoutProof(t *testing.T) {
 	// Setup coordinator and ws server.
 	wsURL := "ws://" + randomURL()
-	handler, db, collector := setupCoordinator(t, 1, wsURL, nil)
+	handler, collector := setupCoordinator(t, 1, wsURL, true)
 	defer func() {
-		database.CloseDB(db)
 		handler.Shutdown(context.Background())
 		collector.Stop()
 	}()
@@ -481,10 +481,6 @@ func testTimeoutProof(t *testing.T) {
 	}()
 	assert.Equal(t, 1, rollermanager.Manager.GetNumberOfIdleRollers(message.ProofTypeChunk))
 	assert.Equal(t, 1, rollermanager.Manager.GetNumberOfIdleRollers(message.ProofTypeBatch))
-
-	l2BlockOrm := orm.NewL2Block(db)
-	chunkOrm := orm.NewChunk(db)
-	batchOrm := orm.NewBatch(db)
 
 	err := l2BlockOrm.InsertL2Blocks(context.Background(), []*types.WrappedBlock{wrappedBlock1, wrappedBlock2})
 	assert.NoError(t, err)
@@ -540,9 +536,8 @@ func testTimeoutProof(t *testing.T) {
 func testIdleRollerSelection(t *testing.T) {
 	// Setup coordinator and ws server.
 	wsURL := "ws://" + randomURL()
-	handler, db, collector := setupCoordinator(t, 1, wsURL, nil)
+	handler, collector := setupCoordinator(t, 1, wsURL, true)
 	defer func() {
-		database.CloseDB(db)
 		handler.Shutdown(context.Background())
 		collector.Stop()
 	}()
@@ -568,10 +563,6 @@ func testIdleRollerSelection(t *testing.T) {
 
 	assert.Equal(t, len(rollers)/2, rollermanager.Manager.GetNumberOfIdleRollers(message.ProofTypeChunk))
 	assert.Equal(t, len(rollers)/2, rollermanager.Manager.GetNumberOfIdleRollers(message.ProofTypeBatch))
-
-	l2BlockOrm := orm.NewL2Block(db)
-	chunkOrm := orm.NewChunk(db)
-	batchOrm := orm.NewBatch(db)
 
 	err := l2BlockOrm.InsertL2Blocks(context.Background(), []*types.WrappedBlock{wrappedBlock1, wrappedBlock2})
 	assert.NoError(t, err)
@@ -607,11 +598,7 @@ func testIdleRollerSelection(t *testing.T) {
 func testGracefulRestart(t *testing.T) {
 	// Setup coordinator and ws server.
 	wsURL := "ws://" + randomURL()
-	handler, db, collector := setupCoordinator(t, 1, wsURL, nil)
-
-	l2BlockOrm := orm.NewL2Block(db)
-	chunkOrm := orm.NewChunk(db)
-	batchOrm := orm.NewBatch(db)
+	handler, collector := setupCoordinator(t, 1, wsURL, true)
 
 	err := l2BlockOrm.InsertL2Blocks(context.Background(), []*types.WrappedBlock{wrappedBlock1, wrappedBlock2})
 	assert.NoError(t, err)
@@ -644,11 +631,10 @@ func testGracefulRestart(t *testing.T) {
 	collector.Stop()
 
 	// Setup new coordinator and ws server.
-	newHandler, newDb, newCollector := setupCoordinator(t, 1, wsURL, db)
+	newHandler, newCollector := setupCoordinator(t, 1, wsURL, false)
 	defer func() {
 		newHandler.Shutdown(context.Background())
 		newCollector.Stop()
-		database.CloseDB(newDb)
 	}()
 
 	// at this point, roller haven't submitted

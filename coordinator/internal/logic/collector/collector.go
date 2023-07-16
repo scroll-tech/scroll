@@ -52,10 +52,10 @@ type BaseCollector struct {
 // checkAttempts use the count of prover task info to check the attempts
 func (b *BaseCollector) checkAttemptsExceeded(hash string) bool {
 	whereFields := make(map[string]interface{})
-	whereFields["hash"] = hash
+	whereFields["task_id"] = hash
 	proverTasks, err := b.proverTaskOrm.GetProverTasks(whereFields, nil, 0)
 	if err != nil {
-		log.Error("get session info error", "hash id", hash, "error", err)
+		log.Error("get prover task error", "hash id", hash, "error", err)
 		return true
 	}
 

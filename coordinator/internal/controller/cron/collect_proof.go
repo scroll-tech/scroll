@@ -19,10 +19,12 @@ import (
 
 // Collector collect the block batch or agg task to send to prover
 type Collector struct {
-	cfg      *config.Config
-	db       *gorm.DB
-	ctx      context.Context
-	stopChan chan struct{}
+	cfg *config.Config
+	db  *gorm.DB
+	ctx context.Context
+
+	stopRunChan     chan struct{}
+	stopTimeoutChan chan struct{}
 
 	collectors map[message.ProofType]collector.Collector
 
@@ -32,12 +34,13 @@ type Collector struct {
 // NewCollector create a collector to cron collect the data to send to prover
 func NewCollector(ctx context.Context, db *gorm.DB, cfg *config.Config) *Collector {
 	c := &Collector{
-		cfg:        cfg,
-		db:         db,
-		ctx:        ctx,
-		stopChan:   make(chan struct{}),
-		collectors: make(map[message.ProofType]collector.Collector),
-		proverTask: orm.NewProverTask(db),
+		cfg:             cfg,
+		db:              db,
+		ctx:             ctx,
+		stopRunChan:     make(chan struct{}),
+		stopTimeoutChan: make(chan struct{}),
+		collectors:      make(map[message.ProofType]collector.Collector),
+		proverTask:      orm.NewProverTask(db),
 	}
 
 	c.collectors[message.ProofTypeBatch] = collector.NewBatchProofCollector(cfg, db)
@@ -51,7 +54,8 @@ func NewCollector(ctx context.Context, db *gorm.DB, cfg *config.Config) *Collect
 
 // Stop all the collector
 func (c *Collector) Stop() {
-	c.stopChan <- struct{}{}
+	c.stopRunChan <- struct{}{}
+	c.stopTimeoutChan <- struct{}{}
 }
 
 // run loop and cron collect
@@ -69,7 +73,7 @@ func (c *Collector) run() {
 		case <-ticker.C:
 			for _, tmpCollector := range c.collectors {
 				if err := tmpCollector.Collect(c.ctx); err != nil {
-					log.Warn("%s collect data to prover failure:%v", tmpCollector.Name(), err)
+					log.Warn("collect data to prover failure", "collector name", tmpCollector.Name(), "error", err)
 				}
 			}
 		case <-c.ctx.Done():
@@ -77,7 +81,7 @@ func (c *Collector) run() {
 				log.Error("manager context canceled with error", "error", c.ctx.Err())
 			}
 			return
-		case <-c.stopChan:
+		case <-c.stopRunChan:
 			log.Info("the coordinator run loop exit")
 			return
 		}
@@ -99,7 +103,7 @@ func (c *Collector) timeoutProofTask() {
 		case <-ticker.C:
 			unsignedProverTasks, err := c.proverTask.GetAssignedProverTasks(c.ctx, 10)
 			if err != nil {
-				log.Error("get unassigned session info failure", err)
+				log.Error("get unassigned session info failure", "error", err)
 				break
 			}
 
@@ -137,7 +141,7 @@ func (c *Collector) timeoutProofTask() {
 				log.Error("manager context canceled with error", "error", c.ctx.Err())
 			}
 			return
-		case <-c.stopChan:
+		case <-c.stopTimeoutChan:
 			log.Info("the coordinator run loop exit")
 			return
 		}

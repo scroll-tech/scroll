@@ -16,7 +16,7 @@ type rollerMetrics struct {
 
 func (r *rollerManager) UpdateMetricRollerProofsLastFinishedTimestampGauge(pk string) {
 	if node, ok := r.rollerPool.Get(pk); ok {
-		rMs := node.(*rollerNode).rollerMetrics
+		rMs := node.(*rollerNode).metrics
 		if rMs != nil {
 			rMs.rollerProofsLastFinishedTimestampGauge.Update(time.Now().Unix())
 		}
@@ -25,7 +25,7 @@ func (r *rollerManager) UpdateMetricRollerProofsLastFinishedTimestampGauge(pk st
 
 func (r *rollerManager) UpdateMetricRollerProofsLastAssignedTimestampGauge(pk string) {
 	if node, ok := r.rollerPool.Get(pk); ok {
-		rMs := node.(*rollerNode).rollerMetrics
+		rMs := node.(*rollerNode).metrics
 		if rMs != nil {
 			rMs.rollerProofsLastAssignedTimestampGauge.Update(time.Now().Unix())
 		}
@@ -34,7 +34,7 @@ func (r *rollerManager) UpdateMetricRollerProofsLastAssignedTimestampGauge(pk st
 
 func (r *rollerManager) UpdateMetricRollerProofsVerifiedSuccessTimeTimer(pk string, d time.Duration) {
 	if node, ok := r.rollerPool.Get(pk); ok {
-		rMs := node.(*rollerNode).rollerMetrics
+		rMs := node.(*rollerNode).metrics
 		if rMs != nil {
 			rMs.rollerProofsVerifiedSuccessTimeTimer.Update(d)
 		}
@@ -43,7 +43,7 @@ func (r *rollerManager) UpdateMetricRollerProofsVerifiedSuccessTimeTimer(pk stri
 
 func (r *rollerManager) UpdateMetricRollerProofsVerifiedFailedTimeTimer(pk string, d time.Duration) {
 	if node, ok := r.rollerPool.Get(pk); ok {
-		rMs := node.(*rollerNode).rollerMetrics
+		rMs := node.(*rollerNode).metrics
 		if rMs != nil {
 			rMs.rollerProofsVerifiedFailedTimeTimer.Update(d)
 		}
@@ -52,7 +52,7 @@ func (r *rollerManager) UpdateMetricRollerProofsVerifiedFailedTimeTimer(pk strin
 
 func (r *rollerManager) UpdateMetricRollerProofsGeneratedFailedTimeTimer(pk string, d time.Duration) {
 	if node, ok := r.rollerPool.Get(pk); ok {
-		rMs := node.(*rollerNode).rollerMetrics
+		rMs := node.(*rollerNode).metrics
 		if rMs != nil {
 			rMs.rollerProofsGeneratedFailedTimeTimer.Update(d)
 		}

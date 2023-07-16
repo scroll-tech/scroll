@@ -92,16 +92,16 @@ func (o *ProverTask) GetProverTasksByHashes(ctx context.Context, hashes []string
 	return proverTasks, nil
 }
 
-// GetProverTaskByHashAndPubKey get prover task hash and public key
-func (o *ProverTask) GetProverTaskByHashAndPubKey(ctx context.Context, hash, proverPublicKey string) (*ProverTask, error) {
+// GetProverTaskByTaskIDAndPubKey get prover task taskID and public key
+func (o *ProverTask) GetProverTaskByTaskIDAndPubKey(ctx context.Context, taskID, proverPublicKey string) (*ProverTask, error) {
 	db := o.db.WithContext(ctx)
 	db = db.Model(&ProverTask{})
-	db = db.Where("hash", hash).Where("roller_public_key", proverPublicKey)
+	db = db.Where("task_id", taskID).Where("prover_public_key", proverPublicKey)
 
 	var proverTask ProverTask
 	err := db.First(&proverTask).Error
 	if err != nil {
-		return nil, fmt.Errorf("ProverTask.GetProverTaskByHashAndPubKey err:%w, hash:%s, pubukey:%s", err, hash, proverPublicKey)
+		return nil, fmt.Errorf("ProverTask.GetProverTaskByTaskIDAndPubKey err:%w, taskID:%s, pubukey:%s", err, taskID, proverPublicKey)
 	}
 	return &proverTask, nil
 }
@@ -156,15 +156,15 @@ func (o *ProverTask) UpdateProverTaskProvingStatus(ctx context.Context, proofTyp
 }
 
 // UpdateProverTaskFailureType update the prover task failure type
-func (o *ProverTask) UpdateProverTaskFailureType(ctx context.Context, proofType message.ProofType, hash string, pk string, failureType coordinatorType.ProverTaskFailureType, dbTX ...*gorm.DB) error {
+func (o *ProverTask) UpdateProverTaskFailureType(ctx context.Context, proofType message.ProofType, taskID string, pk string, failureType coordinatorType.ProverTaskFailureType, dbTX ...*gorm.DB) error {
 	db := o.db.WithContext(ctx)
 	if len(dbTX) > 0 && dbTX[0] != nil {
 		db = dbTX[0]
 	}
 	db = db.Model(&ProverTask{})
-	db = db.Where("hash", hash).Where("roller_public_key", pk).Where("task_type", int(proofType))
+	db = db.Where("task_id", taskID).Where("prover_public_key", pk).Where("task_type", int(proofType))
 	if err := db.Update("failure_type", int(failureType)).Error; err != nil {
-		return fmt.Errorf("ProverTask.UpdateProverTaskFailureType error: %w, proof type: %v, taskID: %v, prover public key: %v, failure type: %v", err, proofType.String(), hash, pk, failureType.String())
+		return fmt.Errorf("ProverTask.UpdateProverTaskFailureType error: %w, proof type: %v, taskID: %v, prover public key: %v, failure type: %v", err, proofType.String(), taskID, pk, failureType.String())
 	}
 	return nil
 }

@@ -13,17 +13,19 @@ import (
 )
 
 // LogSetup is for setup logger
-func LogSetup(ctx *cli.Context) error {
+func LogSetup(ctx *cli.Context, loglevel ...int) error {
 	var ostream log.Handler
-	if logFile := ctx.String(LogFileFlag.Name); len(logFile) > 0 {
-		fp, err := os.OpenFile(filepath.Clean(logFile), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
-		if err != nil {
-			utils.Fatalf("Failed to open log file", "err", err)
-		}
-		if ctx.Bool(LogJSONFormat.Name) {
-			ostream = log.StreamHandler(io.Writer(fp), log.JSONFormat())
-		} else {
-			ostream = log.StreamHandler(io.Writer(fp), log.TerminalFormat(true))
+	if ctx != nil {
+		if logFile := ctx.String(LogFileFlag.Name); len(logFile) > 0 {
+			fp, err := os.OpenFile(filepath.Clean(logFile), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
+			if err != nil {
+				utils.Fatalf("Failed to open log file", "err", err)
+			}
+			if ctx.Bool(LogJSONFormat.Name) {
+				ostream = log.StreamHandler(io.Writer(fp), log.JSONFormat())
+			} else {
+				ostream = log.StreamHandler(io.Writer(fp), log.TerminalFormat(true))
+			}
 		}
 	} else {
 		output := io.Writer(os.Stderr)
@@ -37,7 +39,11 @@ func LogSetup(ctx *cli.Context) error {
 	log.PrintOrigins(ctx.Bool(LogDebugFlag.Name))
 	glogger := log.NewGlogHandler(ostream)
 	// Set log level
-	glogger.Verbosity(log.Lvl(ctx.Int(VerbosityFlag.Name)))
+	if len(loglevel) > 0 {
+		glogger.Verbosity(log.Lvl(loglevel[0]))
+	} else {
+		glogger.Verbosity(log.Lvl(ctx.Int(VerbosityFlag.Name)))
+	}
 	log.Root().SetHandler(glogger)
 	return nil
 }

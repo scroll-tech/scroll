@@ -32,10 +32,10 @@ var (
 var (
 	// ErrValidatorFailureProofMsgStatusNotOk proof msg status not ok
 	ErrValidatorFailureProofMsgStatusNotOk = errors.New("validator failure proof msg status not ok")
-	// ErrValidatorFailureRollerEmpty get none rollers
-	ErrValidatorFailureRollerEmpty = errors.New("validator failure get none rollers for the proof")
+	// ErrValidatorFailureProverTaskEmpty get none prover task
+	ErrValidatorFailureProverTaskEmpty = errors.New("validator failure get none prover task for the proof")
 	// ErrValidatorFailureRollerInfoHasProofValid proof is vaild
-	ErrValidatorFailureRollerInfoHasProofValid = errors.New("validator failure roller info has proof valid")
+	ErrValidatorFailureRollerInfoHasProofValid = errors.New("validator failure prover task info has proof valid")
 )
 
 // ZKProofReceiver the proof receiver
@@ -75,10 +75,10 @@ func (m *ZKProofReceiver) HandleZkProof(ctx context.Context, proofMsg *message.P
 	pk, _ := proofMsg.PublicKey()
 	rollermanager.Manager.UpdateMetricRollerProofsLastFinishedTimestampGauge(pk)
 
-	proverTask, err := m.proverTaskOrm.GetProverTaskByHashAndPubKey(ctx, proofMsg.ProofDetail.ID, pk)
+	proverTask, err := m.proverTaskOrm.GetProverTaskByTaskIDAndPubKey(ctx, proofMsg.ID, pk)
 	if proverTask == nil || err != nil {
-		log.Error("get none rollers for the proof key", pk, "id", proofMsg.ProofDetail.ID)
-		return ErrValidatorFailureRollerEmpty
+		log.Error("get none prover task for the proof", "key", pk, "taskID", proofMsg.ID, "error", err)
+		return ErrValidatorFailureProverTaskEmpty
 	}
 
 	if err = m.validator(proverTask, pk, proofMsg); err != nil {
@@ -256,12 +256,6 @@ func (m *ZKProofReceiver) updateProofStatus(ctx context.Context, hash string, pr
 				log.Error("failed to update basic proving_status as failed", "msg.ID", hash, "error", err)
 				return err
 			}
-			if status == types.ProvingTaskVerified {
-				if err := m.checkAreAllChunkProofsReady(ctx, hash); err != nil {
-					log.Error("failed to check are all chunk proofs ready", "error", err)
-					return err
-				}
-			}
 		case message.ProofTypeBatch:
 			if err := m.batchOrm.UpdateProvingStatus(ctx, hash, status, tx); err != nil {
 				log.Error("failed to update aggregator proving_status as failed", "msg.ID", hash, "error", err)
@@ -270,6 +264,13 @@ func (m *ZKProofReceiver) updateProofStatus(ctx context.Context, hash string, pr
 		}
 		return nil
 	})
+
+	if status == types.ProvingTaskVerified && proofMsgType == message.ProofTypeChunk {
+		if err := m.checkAreAllChunkProofsReady(ctx, hash); err != nil {
+			log.Error("failed to check are all chunk proofs ready", "error", err)
+			return err
+		}
+	}
 
 	return err
 }
@@ -297,7 +298,7 @@ func (m *ZKProofReceiver) checkIsTaskSuccess(ctx context.Context, hash string, p
 }
 
 func (m *ZKProofReceiver) checkIsTimeoutFailure(ctx context.Context, hash, proverPublicKey string) bool {
-	proverTask, err := m.proverTaskOrm.GetProverTaskByHashAndPubKey(ctx, hash, proverPublicKey)
+	proverTask, err := m.proverTaskOrm.GetProverTaskByTaskIDAndPubKey(ctx, hash, proverPublicKey)
 	if err != nil {
 		return false
 	}

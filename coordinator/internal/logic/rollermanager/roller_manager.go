@@ -41,7 +41,7 @@ type rollerNode struct {
 	// Time of message creation
 	registerTime time.Time
 
-	*rollerMetrics
+	metrics *rollerMetrics
 }
 
 type rollerManager struct {
@@ -69,20 +69,20 @@ func (r *rollerManager) Register(pubkey string, identity *message.Identity) (<-c
 			rollerProofsLastFinishedTimestampGauge: gethMetrics.GetOrRegisterGauge(fmt.Sprintf("roller/proofs/last/finished/timestamp/%s", pubkey), metrics.ScrollRegistry),
 		}
 		node = &rollerNode{
-			Name:          identity.Name,
-			Type:          identity.RollerType,
-			Version:       identity.Version,
-			PublicKey:     pubkey,
-			TaskIDs:       cmap.New(),
-			taskChan:      make(chan *message.TaskMsg, 4),
-			rollerMetrics: rMs,
+			Name:      identity.Name,
+			Type:      identity.RollerType,
+			Version:   identity.Version,
+			PublicKey: pubkey,
+			TaskIDs:   cmap.New(),
+			taskChan:  make(chan *message.TaskMsg, 4),
+			metrics:   rMs,
 		}
 		r.rollerPool.Set(pubkey, node)
 	}
 	roller := node.(*rollerNode)
 	// avoid reconnection too frequently.
 	if time.Since(roller.registerTime) < 60 {
-		log.Warn("roller reconnect too frequently", "roller_name", identity.Name, "roller_type", identity.RollerType, "public key", pubkey)
+		log.Warn("roller reconnect too frequently", "prover_name", identity.Name, "roller_type", identity.RollerType, "public key", pubkey)
 		return nil, fmt.Errorf("roller reconnect too frequently")
 	}
 	// update register time and status
