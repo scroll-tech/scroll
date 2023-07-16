@@ -79,10 +79,10 @@ func (c *CoordinatorApp) MockConfig(store bool) error {
 	}
 
 	// Reset roller manager config for manager test cases.
-	cfg.RollersPerSession = 1
-	cfg.Verifier = &coordinatorConfig.VerifierConfig{MockMode: true}
-	cfg.CollectionTime = 1
-	cfg.TokenTimeToLive = 1
+	cfg.RollerManagerConfig.RollersPerSession = 1
+	cfg.RollerManagerConfig.Verifier = &coordinatorConfig.VerifierConfig{MockMode: true}
+	cfg.RollerManagerConfig.CollectionTime = 1
+	cfg.RollerManagerConfig.TokenTimeToLive = 1
 
 	cfg.DBConfig.DSN = base.DBImg.Endpoint()
 	cfg.L2Config.Endpoint = base.L2gethImg.Endpoint()
