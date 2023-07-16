@@ -86,7 +86,7 @@ func action(ctx *cli.Context) error {
 	}
 	// Register api and start ws service.
 	if ctx.Bool(wsEnabledFlag.Name) {
-		handler, addr, err := utils.StartWSEndpoint(fmt.Sprintf("%s:%d", ctx.String(wsListenAddrFlag.Name), ctx.Int(wsPortFlag.Name)), apis, cfg.CompressionLevel)
+		handler, addr, err := utils.StartWSEndpoint(fmt.Sprintf("%s:%d", ctx.String(wsListenAddrFlag.Name), ctx.Int(wsPortFlag.Name)), apis, cfg.RollerManagerConfig.CompressionLevel)
 		if err != nil {
 			log.Crit("Could not start WS api", "error", err)
 		}
