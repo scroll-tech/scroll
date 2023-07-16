@@ -17,7 +17,9 @@ import (
 	"scroll-tech/common/utils"
 )
 
-var wsStartPort int64 = 40000
+var (
+	wsStartPort int64 = 40000
+)
 
 // CoordinatorApp coordinator-test client manager.
 type CoordinatorApp struct {
@@ -77,13 +79,13 @@ func (c *CoordinatorApp) MockConfig(store bool) error {
 	if err != nil {
 		return err
 	}
-
 	// Reset roller manager config for manager test cases.
-	cfg.RollerManagerConfig.RollersPerSession = 1
-	cfg.RollerManagerConfig.Verifier = &coordinatorConfig.VerifierConfig{MockMode: true}
-	cfg.RollerManagerConfig.CollectionTime = 1
-	cfg.RollerManagerConfig.TokenTimeToLive = 1
-
+	cfg.RollerManagerConfig = &coordinatorConfig.RollerManagerConfig{
+		RollersPerSession: 1,
+		Verifier:          &coordinatorConfig.VerifierConfig{MockMode: true},
+		CollectionTime:    1,
+		TokenTimeToLive:   1,
+	}
 	cfg.DBConfig.DSN = base.DBImg.Endpoint()
 	cfg.L2Config.Endpoint = base.L2gethImg.Endpoint()
 	c.Config = cfg
@@ -97,5 +99,5 @@ func (c *CoordinatorApp) MockConfig(store bool) error {
 		return err
 	}
 
-	return os.WriteFile(c.coordinatorFile, data, 0o600)
+	return os.WriteFile(c.coordinatorFile, data, 0600)
 }
