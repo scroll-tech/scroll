@@ -3,6 +3,7 @@ package collector
 import (
 	"context"
 	"fmt"
+
 	"github.com/scroll-tech/go-ethereum/log"
 	"gorm.io/gorm"
 

@@ -73,7 +73,7 @@ func (b *BaseCollector) checkAttemptsExceeded(hash string, taskType message.Proo
 			}
 		}
 
-		b.db.Transaction(func(tx *gorm.DB) error {
+		transErr := b.db.Transaction(func(tx *gorm.DB) error {
 			// Set status as skipped.
 			// Note that this is only a workaround for testnet here.
 			// TODO: In real cases we should reset to orm.ProvingTaskUnassigned
@@ -94,8 +94,9 @@ func (b *BaseCollector) checkAttemptsExceeded(hash string, taskType message.Proo
 			}
 			return nil
 		})
-
-		return false
+		if transErr == nil {
+			return false
+		}
 	}
 	return true
 }
