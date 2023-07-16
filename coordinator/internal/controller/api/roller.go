@@ -25,7 +25,7 @@ type RollerController struct {
 }
 
 // NewRollerController create a roller controller
-func NewRollerController(cfg *config.Config, db *gorm.DB) *RollerController {
+func NewRollerController(cfg *config.RollerManagerConfig, db *gorm.DB) *RollerController {
 	return &RollerController{
 		proofReceiver: proof.NewZKProofReceiver(cfg, db),
 		taskWorker:    proof.NewTaskWorker(),

@@ -41,7 +41,7 @@ func geneAuthMsg(t *testing.T) (*message.AuthMsg, *ecdsa.PrivateKey) {
 var rollerController *RollerController
 
 func init() {
-	conf := &config.Config{
+	conf := &config.RollerManagerConfig{
 		TokenTimeToLive: 120,
 	}
 	conf.Verifier = &config.VerifierConfig{MockMode: true}

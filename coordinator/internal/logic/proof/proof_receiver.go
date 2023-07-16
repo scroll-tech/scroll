@@ -45,13 +45,13 @@ type ZKProofReceiver struct {
 	proverTaskOrm *orm.ProverTask
 
 	db  *gorm.DB
-	cfg *config.Config
+	cfg *config.RollerManagerConfig
 
 	verifier *verifier.Verifier
 }
 
 // NewZKProofReceiver create a proof receiver
-func NewZKProofReceiver(cfg *config.Config, db *gorm.DB) *ZKProofReceiver {
+func NewZKProofReceiver(cfg *config.RollerManagerConfig, db *gorm.DB) *ZKProofReceiver {
 	vf, err := verifier.NewVerifier(cfg.Verifier)
 	if err != nil {
 		panic("proof receiver new verifier failure")

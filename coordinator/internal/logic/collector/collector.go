@@ -62,7 +62,7 @@ func (b *BaseCollector) checkAttemptsExceeded(hash string, taskType message.Proo
 		return true
 	}
 
-	if len(proverTasks) >= b.cfg.SessionAttempts {
+	if len(proverTasks) >= int(b.cfg.RollerManagerConfig.SessionAttempts) {
 		coordinatorSessionsTimeoutTotalCounter.Inc(1)
 
 		log.Warn("proof generation prover task %s ended because reach the max attempts", hash)
@@ -111,7 +111,7 @@ func (b *BaseCollector) sendTask(proveType message.ProofType, hash string, block
 
 	var err error
 	var rollerStatusList []*coordinatorType.RollerStatus
-	for i := uint8(0); i < b.cfg.RollersPerSession; i++ {
+	for i := uint8(0); i < b.cfg.RollerManagerConfig.RollersPerSession; i++ {
 		rollerPubKey, rollerName, sendErr := rollermanager.Manager.SendTask(proveType, sendMsg)
 		if sendErr != nil {
 			err = sendErr

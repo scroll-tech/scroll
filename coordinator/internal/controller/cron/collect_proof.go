@@ -113,7 +113,7 @@ func (c *Collector) timeoutProofTask() {
 			}
 
 			for _, assignedProverTask := range assignedProverTasks {
-				timeoutDuration := time.Duration(c.cfg.CollectionTime) * time.Minute
+				timeoutDuration := time.Duration(c.cfg.RollerManagerConfig.CollectionTime) * time.Minute
 				// here not update the block batch proving status failed, because the collector loop
 				// will check the attempt times. if reach the times, the collector will set the block batch
 				// proving status.

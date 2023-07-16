@@ -12,18 +12,20 @@ import (
 
 func TestConfig(t *testing.T) {
 	configTemplate := `{
-		"compression_level": 9,
-		"rollers_per_session": 1,
-		"session_attempts": %d,
-		"collection_time": 180,
-		"token_time_to_live": 60,
-		"verifier": {
-			"mock_mode": true,
-			"params_path": "",
-			"agg_vk_path": ""
+		"roller_manager_config": {
+			"compression_level": 9,
+			"rollers_per_session": 1,
+			"session_attempts": %d,
+			"collection_time": 180,
+			"token_time_to_live": 60,
+			"verifier": {
+				"mock_mode": true,
+				"params_path": "",
+				"agg_vk_path": ""
+			},
+			"max_verifier_workers": %d,
+			"order_session": "%s"
 		},
-		"max_verifier_workers": %d,
-		"order_session": "%s",
 		"db_config": {
 			"driver_name": "postgres",
 			"dsn": "postgres://admin:123456@localhost/test?sslmode=disable",
@@ -58,7 +60,7 @@ func TestConfig(t *testing.T) {
 			}
 		}()
 
-		assert.NoError(t, os.WriteFile(tmpJSON, data, 0o644))
+		assert.NoError(t, os.WriteFile(tmpJSON, data, 0644))
 
 		cfg2, err := NewConfig(tmpJSON)
 		assert.NoError(t, err)
@@ -114,7 +116,7 @@ func TestConfig(t *testing.T) {
 
 		cfg, err := NewConfig(tmpFile.Name())
 		assert.NoError(t, err)
-		assert.Equal(t, defaultNumberOfVerifierWorkers, cfg.MaxVerifierWorkers)
+		assert.Equal(t, defaultNumberOfVerifierWorkers, cfg.RollerManagerConfig.MaxVerifierWorkers)
 	})
 
 	t.Run("Default SessionAttempts", func(t *testing.T) {
@@ -130,6 +132,6 @@ func TestConfig(t *testing.T) {
 
 		cfg, err := NewConfig(tmpFile.Name())
 		assert.NoError(t, err)
-		assert.Equal(t, defaultNumberOfSessionRetryAttempts, cfg.SessionAttempts)
+		assert.Equal(t, uint8(defaultNumberOfSessionRetryAttempts), cfg.RollerManagerConfig.SessionAttempts)
 	})
 }

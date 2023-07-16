@@ -23,7 +23,7 @@ func APIs(cfg *config.Config, db *gorm.DB) []rpc.API {
 	return []rpc.API{
 		{
 			Namespace: "roller",
-			Service:   RollerAPI(NewRollerController(cfg, db)),
+			Service:   RollerAPI(NewRollerController(cfg.RollerManagerConfig, db)),
 			Public:    true,
 		},
 	}

@@ -72,12 +72,14 @@ func setupCoordinator(t *testing.T, rollersPerSession uint8, wsURL string, reset
 	}
 
 	conf := config.Config{
-		RollersPerSession:  rollersPerSession,
-		Verifier:           &config.VerifierConfig{MockMode: true},
-		CollectionTime:     1,
-		TokenTimeToLive:    5,
-		MaxVerifierWorkers: 10,
-		SessionAttempts:    2,
+		RollerManagerConfig: &config.RollerManagerConfig{
+			RollersPerSession:  rollersPerSession,
+			Verifier:           &config.VerifierConfig{MockMode: true},
+			CollectionTime:     1,
+			TokenTimeToLive:    5,
+			MaxVerifierWorkers: 10,
+			SessionAttempts:    2,
+		},
 	}
 	proofCollector := cron.NewCollector(context.Background(), db, &conf)
 	tmpAPI := api.APIs(&conf, db)

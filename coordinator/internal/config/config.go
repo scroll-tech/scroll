@@ -15,17 +15,8 @@ const (
 	defaultNumberOfSessionRetryAttempts = 2
 )
 
-// L2Config loads l2geth configuration items.
-type L2Config struct {
-	// l2geth node url.
-	Endpoint string `json:"endpoint"`
-}
-
-// Config load configuration items.
-type Config struct {
-	DBConfig *database.Config `json:"db_config"`
-	L2Config *L2Config        `json:"l2_config"`
-
+// RollerManagerConfig loads sequencer configuration items.
+type RollerManagerConfig struct {
 	CompressionLevel int `json:"compression_level,omitempty"`
 	// asc or desc (default: asc)
 	OrderSession string `json:"order_session,omitempty"`
@@ -33,7 +24,7 @@ type Config struct {
 	RollersPerSession uint8 `json:"rollers_per_session"`
 	// Number of attempts that a session can be retried if previous attempts failed.
 	// Currently we only consider proving timeout as failure here.
-	SessionAttempts int `json:"session_attempts,omitempty"`
+	SessionAttempts uint8 `json:"session_attempts,omitempty"`
 	// Zk verifier config.
 	Verifier *VerifierConfig `json:"verifier,omitempty"`
 	// Proof collection time (in minutes).
@@ -42,6 +33,19 @@ type Config struct {
 	TokenTimeToLive int `json:"token_time_to_live"`
 	// Max number of workers in verifier worker pool
 	MaxVerifierWorkers int `json:"max_verifier_workers,omitempty"`
+}
+
+// L2Config loads l2geth configuration items.
+type L2Config struct {
+	// l2geth node url.
+	Endpoint string `json:"endpoint"`
+}
+
+// Config load configuration items.
+type Config struct {
+	RollerManagerConfig *RollerManagerConfig `json:"roller_manager_config"`
+	DBConfig            *database.Config     `json:"db_config"`
+	L2Config            *L2Config            `json:"l2_config"`
 }
 
 // VerifierConfig load zk verifier config.
@@ -65,17 +69,17 @@ func NewConfig(file string) (*Config, error) {
 	}
 
 	// Check roller's order session
-	order := strings.ToUpper(cfg.OrderSession)
+	order := strings.ToUpper(cfg.RollerManagerConfig.OrderSession)
 	if len(order) > 0 && !(order == "ASC" || order == "DESC") {
 		return nil, errors.New("roller config's order session is invalid")
 	}
-	cfg.OrderSession = order
+	cfg.RollerManagerConfig.OrderSession = order
 
-	if cfg.MaxVerifierWorkers == 0 {
-		cfg.MaxVerifierWorkers = defaultNumberOfVerifierWorkers
+	if cfg.RollerManagerConfig.MaxVerifierWorkers == 0 {
+		cfg.RollerManagerConfig.MaxVerifierWorkers = defaultNumberOfVerifierWorkers
 	}
-	if cfg.SessionAttempts == 0 {
-		cfg.SessionAttempts = defaultNumberOfSessionRetryAttempts
+	if cfg.RollerManagerConfig.SessionAttempts == 0 {
+		cfg.RollerManagerConfig.SessionAttempts = defaultNumberOfSessionRetryAttempts
 	}
 
 	return cfg, nil
