@@ -3,8 +3,6 @@ package collector
 import (
 	"context"
 	"fmt"
-	"time"
-
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/log"
 	"gorm.io/gorm"
@@ -20,16 +18,14 @@ import (
 
 // ChunkProofCollector the chunk proof collector
 type ChunkProofCollector struct {
-	db *gorm.DB
-
 	BaseCollector
 }
 
 // NewChunkProofCollector new a chunk proof collector
 func NewChunkProofCollector(cfg *config.Config, db *gorm.DB) *ChunkProofCollector {
 	cp := &ChunkProofCollector{
-		db: db,
 		BaseCollector: BaseCollector{
+			db:            db,
 			cfg:           cfg,
 			chunkOrm:      orm.NewChunk(db),
 			blockOrm:      orm.NewL2Block(db),
@@ -64,8 +60,8 @@ func (cp *ChunkProofCollector) Collect(ctx context.Context) error {
 
 	log.Info("start chunk generation session", "id", chunkTask.Hash)
 
-	if !cp.checkAttemptsExceeded(chunkTask.Hash) {
-		return fmt.Errorf("the session id:%s check attempts have reach the maximum", chunkTask.Hash)
+	if !cp.checkAttemptsExceeded(chunkTask.Hash, message.ProofTypeChunk) {
+		return fmt.Errorf("chunk proof hash id:%s check attempts have reach the maximum", chunkTask.Hash)
 	}
 
 	if rollermanager.Manager.GetNumberOfIdleRollers(message.ProofTypeChunk) == 0 {
@@ -92,7 +88,6 @@ func (cp *ChunkProofCollector) Collect(ctx context.Context) error {
 				ProverName:      rollerStatus.Name,
 				ProvingStatus:   int16(types.RollerAssigned),
 				FailureType:     int16(types.RollerFailureTypeUndefined),
-				CreatedAt:       time.Now(), // Used in proverTasks, should be explicitly assigned here.
 			}
 			if err = cp.proverTaskOrm.SetProverTask(ctx, &proverTask, tx); err != nil {
 				return fmt.Errorf("db set session info fail, session id:%s , public key:%s, err:%w", chunkTask.Hash, rollerStatus.PublicKey, err)

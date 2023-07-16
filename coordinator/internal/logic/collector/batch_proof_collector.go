@@ -3,8 +3,6 @@ package collector
 import (
 	"context"
 	"fmt"
-	"time"
-
 	"github.com/scroll-tech/go-ethereum/log"
 	"gorm.io/gorm"
 
@@ -20,15 +18,13 @@ import (
 // BatchProofCollector is collector implement for batch proof
 type BatchProofCollector struct {
 	BaseCollector
-
-	db *gorm.DB
 }
 
 // NewBatchProofCollector new a batch collector
 func NewBatchProofCollector(cfg *config.Config, db *gorm.DB) *BatchProofCollector {
 	ac := &BatchProofCollector{
-		db: db,
 		BaseCollector: BaseCollector{
+			db:            db,
 			cfg:           cfg,
 			chunkOrm:      orm.NewChunk(db),
 			batchOrm:      orm.NewBatch(db),
@@ -65,7 +61,7 @@ func (ac *BatchProofCollector) Collect(ctx context.Context) error {
 		return fmt.Errorf("no idle common roller when starting proof generation session, id:%s", batchTask.Hash)
 	}
 
-	if !ac.checkAttemptsExceeded(batchTask.Hash) {
+	if !ac.checkAttemptsExceeded(batchTask.Hash, message.ProofTypeBatch) {
 		return fmt.Errorf("the batch task id:%s check attempts have reach the maximum", batchTask.Hash)
 	}
 
@@ -88,7 +84,6 @@ func (ac *BatchProofCollector) Collect(ctx context.Context) error {
 				ProverName:      rollerStatus.Name,
 				ProvingStatus:   int16(types.RollerAssigned),
 				FailureType:     int16(types.RollerFailureTypeUndefined),
-				CreatedAt:       time.Now(), // Used in proverTasks, should be explicitly assigned here.
 			}
 
 			// Store session info.

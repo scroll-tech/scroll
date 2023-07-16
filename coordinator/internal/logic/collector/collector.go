@@ -6,6 +6,7 @@ import (
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/log"
 	gethMetrics "github.com/scroll-tech/go-ethereum/metrics"
+	"gorm.io/gorm"
 
 	"scroll-tech/common/metrics"
 	"scroll-tech/common/types"
@@ -42,6 +43,7 @@ type HashTaskPublicKey struct {
 type BaseCollector struct {
 	cfg *config.Config
 	ctx context.Context
+	db  *gorm.DB
 
 	batchOrm      *orm.Batch
 	chunkOrm      *orm.Chunk
@@ -50,9 +52,10 @@ type BaseCollector struct {
 }
 
 // checkAttempts use the count of prover task info to check the attempts
-func (b *BaseCollector) checkAttemptsExceeded(hash string) bool {
+func (b *BaseCollector) checkAttemptsExceeded(hash string, taskType message.ProofType) bool {
 	whereFields := make(map[string]interface{})
 	whereFields["task_id"] = hash
+	whereFields["task_type"] = int16(taskType)
 	proverTasks, err := b.proverTaskOrm.GetProverTasks(whereFields, nil, 0)
 	if err != nil {
 		log.Error("get prover task error", "hash id", hash, "error", err)
@@ -60,37 +63,37 @@ func (b *BaseCollector) checkAttemptsExceeded(hash string) bool {
 	}
 
 	if len(proverTasks) >= b.cfg.SessionAttempts {
+		coordinatorSessionsTimeoutTotalCounter.Inc(1)
+
 		log.Warn("proof generation prover task %s ended because reach the max attempts", hash)
 
-		var isAllFailed bool
 		for _, proverTask := range proverTasks {
-			if types.ProvingStatus(proverTask.ProvingStatus) != types.ProvingTaskFailed {
-				isAllFailed = false
-			}
-
 			if types.ProvingStatus(proverTask.ProvingStatus) == types.ProvingTaskFailed {
 				rollermanager.Manager.FreeTaskIDForRoller(proverTask.ProverPublicKey, hash)
 			}
 		}
 
-		if isAllFailed {
+		b.db.Transaction(func(tx *gorm.DB) error {
 			// Set status as skipped.
 			// Note that this is only a workaround for testnet here.
 			// TODO: In real cases we should reset to orm.ProvingTaskUnassigned
 			// so as to re-distribute the task in the future
-
-			if message.ProofType(proverTasks[0].TaskType) == message.ProofTypeChunk {
-				if err := b.chunkOrm.UpdateProvingStatus(b.ctx, hash, types.ProvingTaskFailed); err != nil {
+			switch message.ProofType(proverTasks[0].TaskType) {
+			case message.ProofTypeChunk:
+				if err := b.chunkOrm.UpdateProvingStatus(b.ctx, hash, types.ProvingTaskFailed, tx); err != nil {
 					log.Error("failed to update chunk proving_status as failed", "msg.ID", hash, "error", err)
 				}
-			}
-			if message.ProofType(proverTasks[0].TaskType) == message.ProofTypeBatch {
-				if err := b.batchOrm.UpdateProvingStatus(b.ctx, hash, types.ProvingTaskFailed); err != nil {
+			case message.ProofTypeBatch:
+				if err := b.batchOrm.UpdateProvingStatus(b.ctx, hash, types.ProvingTaskFailed, tx); err != nil {
 					log.Error("failed to update batch proving_status as failed", "msg.ID", hash, "error", err)
 				}
 			}
-			coordinatorSessionsTimeoutTotalCounter.Inc(1)
-		}
+			// update the prover task status to let timeout checker don't check it.
+			if err := b.proverTaskOrm.UpdateAllProverTaskProvingStatusOfTaskID(b.ctx, message.ProofType(proverTasks[0].TaskType), hash, types.RollerProofInvalid, tx); err != nil {
+				log.Error("failed to update prover task proving_status as failed", "msg.ID", hash, "error", err)
+			}
+			return nil
+		})
 
 		return false
 	}

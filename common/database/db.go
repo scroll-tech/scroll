@@ -49,6 +49,10 @@ func InitDB(config *Config) (*gorm.DB, error) {
 
 	db, err := gorm.Open(postgres.Open(config.DSN), &gorm.Config{
 		Logger: &tmpGormLogger,
+		NowFunc: func() time.Time {
+			utc, _ := time.LoadLocation("")
+			return time.Now().In(utc)
+		},
 	})
 	if err != nil {
 		return nil, err
