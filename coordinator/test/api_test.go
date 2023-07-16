@@ -62,7 +62,8 @@ func randomURL() string {
 }
 
 func setupCoordinator(t *testing.T, rollersPerSession uint8, wsURL string, resetDB bool) (*http.Server, *cron.Collector) {
-	db, err := database.InitDB(dbCfg)
+	var err error
+	db, err = database.InitDB(dbCfg)
 	assert.NoError(t, err)
 	sqlDB, err := db.DB()
 	assert.NoError(t, err)
