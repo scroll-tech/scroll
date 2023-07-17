@@ -1,59 +1,50 @@
 package orm
 
 import (
-	"database/sql"
-
 	"github.com/ethereum/go-ethereum/log"
-	"github.com/jmoiron/sqlx"
+	"gorm.io/gorm"
 )
-
-type rollupBatchOrm struct {
-	db *sqlx.DB
-}
 
 // RollupBatch is the struct for rollup_batch table
 type RollupBatch struct {
-	ID               uint64 `json:"id" db:"id"`
-	BatchIndex       uint64 `json:"batch_index" db:"batch_index"`
-	BatchHash        string `json:"batch_hash" db:"batch_hash"`
-	CommitHeight     uint64 `json:"commit_height" db:"commit_height"`
-	StartBlockNumber uint64 `json:"start_block_number" db:"start_block_number"`
-	EndBlockNumber   uint64 `json:"end_block_number" db:"end_block_number"`
+	db *gorm.DB `gorm:"column:-"`
+
+	ID               uint64 `json:"id" gorm:"column:id"`
+	BatchIndex       uint64 `json:"batch_index" gorm:"column:batch_index"`
+	BatchHash        string `json:"batch_hash" gorm:"column:batch_hash"`
+	CommitHeight     uint64 `json:"commit_height" gorm:"column:commit_height"`
+	StartBlockNumber uint64 `json:"start_block_number" gorm:"column:start_block_number"`
+	EndBlockNumber   uint64 `json:"end_block_number" gorm:"column:end_block_number"`
 }
 
-// NewRollupBatchOrm create an NewRollupBatchOrm instance
-func NewRollupBatchOrm(db *sqlx.DB) RollupBatchOrm {
-	return &rollupBatchOrm{db: db}
+// NewRollupBatch create an RollupBatch instance
+func NewRollupBatch(db *gorm.DB) *RollupBatch {
+	return &RollupBatch{db: db}
 }
 
-func (b *rollupBatchOrm) BatchInsertRollupBatchDBTx(dbTx *sqlx.Tx, batches []*RollupBatch) error {
+func (r *RollupBatch) BatchInsertRollupBatchDBTx(dbTx *gorm.DB, batches []*RollupBatch) error {
 	if len(batches) == 0 {
 		return nil
 	}
-	var err error
-	batchMaps := make([]map[string]interface{}, len(batches))
-	for i, batch := range batches {
-		batchMaps[i] = map[string]interface{}{
-			"commit_height":      batch.CommitHeight,
-			"batch_index":        batch.BatchIndex,
-			"batch_hash":         batch.BatchHash,
-			"start_block_number": batch.StartBlockNumber,
-			"end_block_number":   batch.EndBlockNumber,
-		}
-	}
-	_, err = dbTx.NamedExec(`insert into rollup_batch(commit_height, batch_index, batch_hash, start_block_number, end_block_number) values(:commit_height, :batch_index, :batch_hash, :start_block_number, :end_block_number);`, batchMaps)
+	err := dbTx.Create(&batches).Error
+
 	if err != nil {
-		log.Error("BatchInsertRollupBatchDBTx: failed to insert batch event msgs", "err", err)
-		return err
+		batchIndexes := make([]uint64, 0, len(batches))
+		heights := make([]uint64, 0, len(batches))
+		for _, msg := range batches {
+			batchIndexes = append(batchIndexes, msg.BatchIndex)
+			heights = append(heights, msg.CommitHeight)
+		}
+		log.Error("failed to insert rollup batch", "batchIndexes", batchIndexes, "heights", heights, "err", err)
 	}
 	return nil
 }
 
-func (b *rollupBatchOrm) GetLatestRollupBatch() (*RollupBatch, error) {
+func (r *RollupBatch) GetLatestRollupBatch() (*RollupBatch, error) {
 	result := &RollupBatch{}
-	row := b.db.QueryRowx(`SELECT id, batch_index, commit_height, batch_hash, start_block_number, end_block_number FROM rollup_batch ORDER BY batch_index DESC LIMIT 1;`)
-	if err := row.StructScan(result); err != nil {
-		if err == sql.ErrNoRows {
+	err := r.db.Model(result).Select("id, batch_index, commit_height, batch_hash, start_block_number, end_block_number").Order("batch_index desc").Limit(1).Find(result).Error
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
 			return nil, nil
 		}
 		return nil, err
@@ -61,10 +52,13 @@ func (b *rollupBatchOrm) GetLatestRollupBatch() (*RollupBatch, error) {
 	return result, nil
 }
 
-func (b *rollupBatchOrm) GetRollupBatchByIndex(index uint64) (*RollupBatch, error) {
+func (r *RollupBatch) GetRollupBatchByIndex(index uint64) (*RollupBatch, error) {
 	result := &RollupBatch{}
-	row := b.db.QueryRowx(`SELECT id, batch_index, batch_hash, commit_height, start_block_number, end_block_number FROM rollup_batch WHERE batch_index = $1;`, index)
-	if err := row.StructScan(result); err != nil {
+	err := r.db.Select("id, batch_index, commit_height, batch_hash, start_block_number, end_block_number").Where("batch_index = ?", index).Find(result).Error
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, nil
+		}
 		return nil, err
 	}
 	return result, nil
