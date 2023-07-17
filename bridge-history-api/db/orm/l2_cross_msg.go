@@ -10,27 +10,27 @@ import (
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/jmoiron/sqlx"
 	"github.com/lib/pq"
+	"gorm.io/gorm"
 )
 
-type l2CrossMsgOrm struct {
-	db *sqlx.DB
+type L2CrossMsg struct {
+	*CrossMsg
 }
 
-// NewL2CrossMsgOrm create an NewL2CrossMsgOrm instance
-func NewL2CrossMsgOrm(db *sqlx.DB) L2CrossMsgOrm {
-	return &l2CrossMsgOrm{db: db}
+// NewL2CrossMsg create an NewL2CrossMsg instance
+func NewL2CrossMsg(db *gorm.DB) *L2CrossMsg {
+	return &L2CrossMsg{&CrossMsg{db: db}}
 }
 
-func (l *l2CrossMsgOrm) GetL2CrossMsgByHash(l2Hash common.Hash) (*CrossMsg, error) {
+func (l *L2CrossMsg) GetL2CrossMsgByHash(l2Hash common.Hash) (*CrossMsg, error) {
 	result := &CrossMsg{}
-	row := l.db.QueryRowx(`SELECT * FROM cross_message WHERE layer2_hash = $1 AND deleted_at IS NULL;`, l2Hash.String())
-	if err := row.StructScan(result); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+	err := l.db.Where("layer2_hash = ? AND msg_type = ? AND deleted_at IS NULL", l2Hash.String(), Layer1Msg).First(&result).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
 		}
-		return nil, err
 	}
-	return result, nil
+	return result, err
 }
 
 // GetL2CrossMsgByAddress returns all layer2 cross messages under given address
