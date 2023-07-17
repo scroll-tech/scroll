@@ -10,7 +10,7 @@ import (
 	"bridge-history-api/db"
 )
 
-// ReorgHandling is a function that handles reorg
+// ReorgHandling handles reorg function type
 type ReorgHandling func(ctx context.Context, reorgHeight int64, db db.OrmFactory) error
 
 func reverseArray(arr []*types.Header) []*types.Header {
@@ -21,12 +21,12 @@ func reverseArray(arr []*types.Header) []*types.Header {
 	return arr
 }
 
-// IsParentAndChild checks if the two headers are parent and child
+// IsParentAndChild match the child header ParentHash with parent header Hash
 func IsParentAndChild(parentHeader *types.Header, header *types.Header) bool {
 	return header.ParentHash == parentHeader.Hash()
 }
 
-// MergeAddIntoHeaderList merges two header lists if exceed the max lenth then drop the oldest ones
+// MergeAddIntoHeaderList merges two header lists, if exceed the max length then drop the oldest entries
 func MergeAddIntoHeaderList(baseArr, extraArr []*types.Header, maxLength int) []*types.Header {
 	mergedArr := append(baseArr, extraArr...)
 	if len(mergedArr) <= maxLength {
@@ -67,24 +67,21 @@ func L1ReorgHandling(ctx context.Context, reorgHeight int64, db db.OrmFactory) e
 	}
 	err = db.DeleteL1CrossMsgAfterHeightDBTx(dbTx, reorgHeight)
 	if err != nil {
-		rollBackErr := dbTx.Rollback()
-		if rollBackErr != nil {
+		if rollBackErr := dbTx.Rollback(); rollBackErr != nil {
 			log.Error("dbTx Rollback failed", "err", rollBackErr)
 		}
 		log.Crit("delete l1 cross msg from height", "height", reorgHeight, "err", err)
 	}
 	err = db.DeleteL1RelayedHashAfterHeightDBTx(dbTx, reorgHeight)
 	if err != nil {
-		rollBackErr := dbTx.Rollback()
-		if rollBackErr != nil {
+		if rollBackErr := dbTx.Rollback(); rollBackErr != nil {
 			log.Error("dbTx Rollback failed", "err", rollBackErr)
 		}
 		log.Crit("delete l1 relayed hash from height", "height", reorgHeight, "err", err)
 	}
 	err = dbTx.Commit()
 	if err != nil {
-		rollBackErr := dbTx.Rollback()
-		if rollBackErr != nil {
+		if rollBackErr := dbTx.Rollback(); rollBackErr != nil {
 			log.Error("dbTx Rollback failed", "err", rollBackErr)
 		}
 		log.Error("commit tx failed", "err", err)
@@ -97,40 +94,35 @@ func L1ReorgHandling(ctx context.Context, reorgHeight int64, db db.OrmFactory) e
 func L2ReorgHandling(ctx context.Context, reorgHeight int64, db db.OrmFactory) error {
 	dbTx, err := db.Beginx()
 	if err != nil {
-		rollBackErr := dbTx.Rollback()
-		if rollBackErr != nil {
+		if rollBackErr := dbTx.Rollback(); rollBackErr != nil {
 			log.Error("dbTx Rollback failed", "err", rollBackErr)
 		}
 		log.Crit("begin db tx failed", "err", err)
 	}
 	err = db.DeleteL2CrossMsgFromHeightDBTx(dbTx, reorgHeight)
 	if err != nil {
-		rollBackErr := dbTx.Rollback()
-		if rollBackErr != nil {
+		if rollBackErr := dbTx.Rollback(); rollBackErr != nil {
 			log.Error("dbTx Rollback failed", "err", rollBackErr)
 		}
 		log.Crit("delete l2 cross msg from height", "height", reorgHeight, "err", err)
 	}
 	err = db.DeleteL2RelayedHashAfterHeightDBTx(dbTx, reorgHeight)
 	if err != nil {
-		rollBackErr := dbTx.Rollback()
-		if rollBackErr != nil {
+		if rollBackErr := dbTx.Rollback(); rollBackErr != nil {
 			log.Error("dbTx Rollback failed", "err", rollBackErr)
 		}
 		log.Crit("delete l2 relayed hash from height", "height", reorgHeight, "err", err)
 	}
 	err = db.DeleteL2SentMsgAfterHeightDBTx(dbTx, reorgHeight)
 	if err != nil {
-		rollBackErr := dbTx.Rollback()
-		if rollBackErr != nil {
+		if rollBackErr := dbTx.Rollback(); rollBackErr != nil {
 			log.Error("dbTx Rollback failed", "err", rollBackErr)
 		}
 		log.Crit("delete l2 sent msg from height", "height", reorgHeight, "err", err)
 	}
 	err = dbTx.Commit()
 	if err != nil {
-		rollBackErr := dbTx.Rollback()
-		if rollBackErr != nil {
+		if rollBackErr := dbTx.Rollback(); rollBackErr != nil {
 			log.Error("dbTx Rollback failed", "err", rollBackErr)
 		}
 		log.Error("commit tx failed", "err", err)

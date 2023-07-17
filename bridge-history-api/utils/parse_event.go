@@ -12,7 +12,7 @@ import (
 	"bridge-history-api/db/orm"
 )
 
-// CachedParsedTxCalldata defines the cache struct for store parsed batch infos
+// CachedParsedTxCalldata store parsed batch infos
 type CachedParsedTxCalldata struct {
 	CallDataIndex uint64
 	BatchIndices  []uint64

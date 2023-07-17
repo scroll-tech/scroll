@@ -21,7 +21,7 @@ type MsgProofUpdater struct {
 	withdrawTrie *WithdrawTrie
 }
 
-// NewMsgProofUpdater returns a new MsgProofUpdater instance
+// NewMsgProofUpdater new MsgProofUpdater instance
 func NewMsgProofUpdater(ctx context.Context, confirmations uint64, startBlock uint64, db db.OrmFactory) *MsgProofUpdater {
 	return &MsgProofUpdater{
 		ctx:          ctx,
