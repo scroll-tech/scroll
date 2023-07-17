@@ -127,7 +127,8 @@ func (h *historyBackend) GetClaimableTxsByAddress(address common.Address, offset
 		msgHashList = append(msgHashList, result.MsgHash)
 	}
 	crossMsgs, err := h.db.GetL2CrossMsgByMsgHashList(msgHashList)
-	if err != nil || len(crossMsgs) == 0 {
+	// crossMsgs can be empty, because they can be emitted by user directly call contract
+	if err != nil {
 		return txHistories, 0, err
 	}
 	crossMsgMap := make(map[string]*orm.CrossMsg)
