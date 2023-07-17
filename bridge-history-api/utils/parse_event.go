@@ -2,6 +2,8 @@ package utils
 
 import (
 	"context"
+	"math/big"
+	"strings"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -108,7 +110,43 @@ func ParseBackendL1EventLogs(logs []types.Log) ([]*orm.CrossMsg, []*orm.RelayedM
 			}
 			// since every deposit event will emit after a sent event, so can use this msg_hash as next withdraw event's msg_hash
 			msgHash = ComputeMessageHash(event.Sender, event.Target, event.Value, event.MessageNonce, event.Message).Hex()
-
+		case backendabi.L1BatchDepositERC721Sig:
+			event := backendabi.BatchERC721MessageEvent{}
+			err := UnpackLog(backendabi.L1ERC721GatewayABI, &event, "BatchDepositERC721", vlog)
+			if err != nil {
+				log.Warn("Failed to unpack BatchDepositERC721 event", "err", err)
+				return l1CrossMsg, relayedMsgs, err
+			}
+			l1CrossMsg = append(l1CrossMsg, &orm.CrossMsg{
+				Height:      vlog.BlockNumber,
+				Sender:      event.From.String(),
+				Target:      event.To.String(),
+				Asset:       int(orm.ERC721),
+				Layer1Hash:  vlog.TxHash.Hex(),
+				Layer1Token: event.L1Token.Hex(),
+				Layer2Token: event.L2Token.Hex(),
+				TokenIDs:    convertBigIntArrayToString(event.TokenIDs),
+				MsgHash:     msgHash,
+			})
+		case backendabi.L1BatchDepositERC1155Sig:
+			event := backendabi.BatchERC1155MessageEvent{}
+			err := UnpackLog(backendabi.L1ERC1155GatewayABI, &event, "BatchDepositERC1155", vlog)
+			if err != nil {
+				log.Warn("Failed to unpack BatchDepositERC1155 event", "err", err)
+				return l1CrossMsg, relayedMsgs, err
+			}
+			l1CrossMsg = append(l1CrossMsg, &orm.CrossMsg{
+				Height:       vlog.BlockNumber,
+				Sender:       event.From.String(),
+				Target:       event.To.String(),
+				Asset:        int(orm.ERC1155),
+				Layer1Hash:   vlog.TxHash.Hex(),
+				Layer1Token:  event.L1Token.Hex(),
+				Layer2Token:  event.L2Token.Hex(),
+				TokenIDs:     convertBigIntArrayToString(event.TokenIDs),
+				TokenAmounts: convertBigIntArrayToString(event.TokenAmounts),
+				MsgHash:      msgHash,
+			})
 		case backendabi.L1RelayedMessageEventSignature:
 			event := backendabi.L1RelayedMessageEvent{}
 			err := UnpackLog(backendabi.L1ScrollMessengerABI, &event, "RelayedMessage", vlog)
@@ -172,6 +210,7 @@ func ParseBackendL2EventLogs(logs []types.Log) ([]*orm.CrossMsg, []*orm.RelayedM
 				Layer2Hash:  vlog.TxHash.Hex(),
 				Layer1Token: event.L1Token.Hex(),
 				Layer2Token: event.L2Token.Hex(),
+				MsgHash:     l2SentMsgs[len(l2SentMsgs)-1].MsgHash,
 			})
 		case backendabi.L2WithdrawERC721Sig:
 			event := backendabi.ERC721MessageEvent{}
@@ -190,6 +229,7 @@ func ParseBackendL2EventLogs(logs []types.Log) ([]*orm.CrossMsg, []*orm.RelayedM
 				Layer1Token: event.L1Token.Hex(),
 				Layer2Token: event.L2Token.Hex(),
 				TokenIDs:    event.TokenID.String(),
+				MsgHash:     l2SentMsgs[len(l2SentMsgs)-1].MsgHash,
 			})
 		case backendabi.L2WithdrawERC1155Sig:
 			event := backendabi.ERC1155MessageEvent{}
@@ -209,6 +249,46 @@ func ParseBackendL2EventLogs(logs []types.Log) ([]*orm.CrossMsg, []*orm.RelayedM
 				Layer2Token: event.L2Token.Hex(),
 				TokenIDs:    event.TokenID.String(),
 				Amount:      event.Amount.String(),
+				MsgHash:     l2SentMsgs[len(l2SentMsgs)-1].MsgHash,
+			})
+		case backendabi.L2BatchWithdrawERC721Sig:
+			event := backendabi.BatchERC721MessageEvent{}
+			err := UnpackLog(backendabi.L2ERC721GatewayABI, &event, "BatchWithdrawERC721", vlog)
+			if err != nil {
+				log.Warn("Failed to unpack BatchWithdrawERC721 event", "err", err)
+				return l2CrossMsg, relayedMsgs, l2SentMsgs, err
+			}
+			l2SentMsgs[len(l2SentMsgs)-1].OriginalSender = event.From.Hex()
+			l2CrossMsg = append(l2CrossMsg, &orm.CrossMsg{
+				Height:      vlog.BlockNumber,
+				Sender:      event.From.String(),
+				Target:      event.To.String(),
+				Asset:       int(orm.ERC721),
+				Layer1Hash:  vlog.TxHash.Hex(),
+				Layer1Token: event.L1Token.Hex(),
+				Layer2Token: event.L2Token.Hex(),
+				TokenIDs:    convertBigIntArrayToString(event.TokenIDs),
+				MsgHash:     l2SentMsgs[len(l2SentMsgs)-1].MsgHash,
+			})
+		case backendabi.L2BatchWithdrawERC1155Sig:
+			event := backendabi.BatchERC1155MessageEvent{}
+			err := UnpackLog(backendabi.L2ERC1155GatewayABI, &event, "BatchWithdrawERC1155", vlog)
+			if err != nil {
+				log.Warn("Failed to unpack BatchWithdrawERC1155 event", "err", err)
+				return l2CrossMsg, relayedMsgs, l2SentMsgs, err
+			}
+			l2SentMsgs[len(l2SentMsgs)-1].OriginalSender = event.From.Hex()
+			l2CrossMsg = append(l2CrossMsg, &orm.CrossMsg{
+				Height:       vlog.BlockNumber,
+				Sender:       event.From.String(),
+				Target:       event.To.String(),
+				Asset:        int(orm.ERC1155),
+				Layer1Hash:   vlog.TxHash.Hex(),
+				Layer1Token:  event.L1Token.Hex(),
+				Layer2Token:  event.L2Token.Hex(),
+				TokenIDs:     convertBigIntArrayToString(event.TokenIDs),
+				TokenAmounts: convertBigIntArrayToString(event.TokenAmounts),
+				MsgHash:      l2SentMsgs[len(l2SentMsgs)-1].MsgHash,
 			})
 		case backendabi.L2SentMessageEventSignature:
 			event := backendabi.L2SentMessageEvent{}
@@ -303,4 +383,14 @@ func ParseBatchInfoFromScrollChain(ctx context.Context, client *ethclient.Client
 		}
 	}
 	return rollupBatches, nil
+}
+
+func convertBigIntArrayToString(array []*big.Int) string {
+	stringArray := make([]string, len(array))
+	for i, num := range array {
+		stringArray[i] = num.String()
+	}
+
+	result := strings.Join(stringArray, ", ")
+	return result
 }
