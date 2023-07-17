@@ -53,6 +53,8 @@ func NewCollector(ctx context.Context, db *gorm.DB, cfg *config.Config) *Collect
 	go c.run()
 	go c.timeoutProofTask()
 
+	log.Info("Start coordinator successfully.")
+
 	return c
 }
 

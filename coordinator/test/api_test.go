@@ -101,8 +101,6 @@ func setEnv(t *testing.T) {
 	}
 
 	var err error
-	err = utils.LogSetup(nil, 3)
-	assert.NoError(t, err)
 	db, err = database.InitDB(dbCfg)
 	assert.NoError(t, err)
 	sqlDB, err := db.DB()

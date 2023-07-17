@@ -48,9 +48,6 @@ func action(ctx *cli.Context) error {
 		log.Crit("failed to load config file", "config file", cfgFile, "error", err)
 	}
 
-	// Start metrics server.
-	metrics.Serve(context.Background(), ctx)
-
 	subCtx, cancel := context.WithCancel(ctx.Context)
 	db, err := database.InitDB(cfg.DBConfig)
 	if err != nil {
@@ -61,8 +58,6 @@ func action(ctx *cli.Context) error {
 
 	rollermanager.InitRollerManager()
 
-	log.Info("Start coordinator successfully.")
-
 	defer func() {
 		proofCollector.Stop()
 		cancel()
@@ -70,6 +65,9 @@ func action(ctx *cli.Context) error {
 			log.Error("can not close db connection", "error", err)
 		}
 	}()
+
+	// Start metrics server.
+	metrics.Serve(context.Background(), ctx)
 
 	apis := api.APIs(cfg, db)
 	// Register api and start rpc service.
