@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"encoding/json"
 	"net/http"
 
 	"scroll-tech/prover-stats-api/internal/middleware"
@@ -44,7 +45,7 @@ func (c *ProverTaskController) RequestToken(ctx *gin.Context) {
 		ctx.JSON(http.StatusOK, Err(err))
 		return
 	}
-	ctx.JSON(http.StatusOK, Ok(token))
+	ctx.JSON(http.StatusOK, Ok([]byte(token)))
 }
 
 // GetTasksByProver godoc
@@ -65,7 +66,12 @@ func (c *ProverTaskController) GetTasksByProver(ctx *gin.Context) {
 		ctx.JSON(http.StatusOK, Err(err))
 		return
 	}
-	ctx.JSON(http.StatusOK, Ok(tasks))
+	byt, err := json.Marshal(tasks)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, Err(err))
+		return
+	}
+	ctx.JSON(http.StatusOK, Ok(byt))
 }
 
 // GetTotalRewards godoc
@@ -86,7 +92,7 @@ func (c *ProverTaskController) GetTotalRewards(ctx *gin.Context) {
 		ctx.JSON(http.StatusOK, Err(err))
 		return
 	}
-	ctx.JSON(http.StatusOK, Ok(rewards))
+	ctx.JSON(http.StatusOK, Ok(rewards.Bytes()))
 }
 
 // GetTask godoc
@@ -106,5 +112,10 @@ func (c *ProverTaskController) GetTask(ctx *gin.Context) {
 		ctx.JSON(http.StatusOK, Err(err))
 		return
 	}
-	ctx.JSON(http.StatusOK, Ok(task))
+	byt, err := json.Marshal(task)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, Err(err))
+		return
+	}
+	ctx.JSON(http.StatusOK, Ok(byt))
 }

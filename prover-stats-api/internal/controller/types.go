@@ -1,8 +1,9 @@
 package controller
 
 type Resp struct {
-	Code   int `json:"code"`
-	Object any `json:"object"`
+	Code   int    `json:"code"`
+	Object []byte `json:"object"`
+	Error  error  `json:"error"`
 }
 
 const (
@@ -10,16 +11,16 @@ const (
 	ERR = 1001
 )
 
-func Ok(obj any) *Resp {
+func Ok(obj []byte) *Resp {
 	return &Resp{
 		Code:   OK,
 		Object: obj,
 	}
 }
 
-func Err(obj any) *Resp {
+func Err(err error) *Resp {
 	return &Resp{
-		Code:   ERR,
-		Object: obj,
+		Code:  ERR,
+		Error: err,
 	}
 }

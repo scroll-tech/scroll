@@ -59,32 +59,32 @@ func TestProverTaskAPIs(t *testing.T) {
 }
 
 func testRequestToken(t *testing.T) {
-	tokenMap := make(map[string]string)
-	getResp(t, fmt.Sprintf("%s/request_token", basicPath), &tokenMap)
-	token = tokenMap["token"]
+	tokenByt := getResp(t, fmt.Sprintf("%s/request_token", basicPath))
+	token = string(tokenByt)
 	t.Log("token: ", token)
 }
 
 func testGetProverTasksByProver(t *testing.T) {
 	var tasks []*orm.ProverTask
-	getResp(t, fmt.Sprintf("%s/tasks?pubkey=%s", basicPath, proverPubkey), &tasks)
+	byt := getResp(t, fmt.Sprintf("%s/tasks?pubkey=%s", basicPath, proverPubkey))
+	assert.NoError(t, json.Unmarshal(byt, &tasks))
 	assert.Equal(t, task2.TaskID, tasks[0].TaskID)
 	assert.Equal(t, task1.TaskID, tasks[1].TaskID)
 }
 
 func testGetTotalRewards(t *testing.T) {
-	rewards := make(map[string]*big.Int)
-	getResp(t, fmt.Sprintf("%s/total_rewards?pubkey=%s", basicPath, proverPubkey), &rewards)
-	assert.Equal(t, big.NewInt(22), rewards["rewards"])
+	rewards := getResp(t, fmt.Sprintf("%s/total_rewards?pubkey=%s", basicPath, proverPubkey))
+	assert.Equal(t, big.NewInt(22), new(big.Int).SetBytes(rewards))
 }
 
 func testGetProverTask(t *testing.T) {
 	var task orm.ProverTask
-	getResp(t, fmt.Sprintf("%s/task?task_id=1", basicPath), &task)
+	byt := getResp(t, fmt.Sprintf("%s/task?task_id=1", basicPath))
+	assert.NoError(t, json.Unmarshal(byt, &task))
 	assert.Equal(t, task1.TaskID, task.TaskID)
 }
 
-func getResp(t *testing.T, url string, value interface{}) {
+func getResp(t *testing.T, url string) []byte {
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	assert.NoError(t, err)
 	req.Header.Add("Authorization", token)
@@ -95,7 +95,11 @@ func getResp(t *testing.T, url string, value interface{}) {
 
 	byt, err := io.ReadAll(resp.Body)
 	assert.NoError(t, err)
-	assert.NoError(t, json.Unmarshal(byt, value))
+
+	res := new(controller.Resp)
+	assert.NoError(t, json.Unmarshal(byt, res))
+	assert.Equal(t, controller.OK, res.Code)
+	return res.Object
 }
 
 var (
