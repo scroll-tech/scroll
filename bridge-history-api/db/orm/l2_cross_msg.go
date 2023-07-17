@@ -159,7 +159,7 @@ func (l *l2CrossMsgOrm) GetL2CrossMsgByMsgHashList(msgHashList []string) ([]*Cro
 		if err = rows.Close(); err != nil {
 			log.Warn("failed to close rows", "err", err)
 		}
-	}()	
+	}()
 	for rows.Next() {
 		msg := &CrossMsg{}
 		if err = rows.StructScan(msg); err != nil {
