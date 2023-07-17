@@ -61,6 +61,7 @@ func (p *ChunkProposer) TryProposeChunk() {
 
 func (p *ChunkProposer) updateChunkInfoInDB(chunk *types.Chunk) error {
 	if chunk == nil {
+		log.Warn("proposed chunk is nil, cannot update in DB")
 		return nil
 	}
 
@@ -85,6 +86,7 @@ func (p *ChunkProposer) proposeChunk() (*types.Chunk, error) {
 	}
 
 	if len(blocks) == 0 {
+		log.Warn("no un-chunked blocks")
 		return nil, nil
 	}
 
