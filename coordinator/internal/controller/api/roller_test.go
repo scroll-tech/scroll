@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"crypto/ecdsa"
+	"database/sql"
 	"errors"
 	"fmt"
 	"testing"
@@ -223,7 +224,7 @@ func TestRoller_SubmitProof(t *testing.T) {
 
 	var proverTaskOrm *orm.ProverTask
 	convey.Convey("get none rollers of prover task", t, func() {
-		patchGuard.ApplyMethodFunc(proverTaskOrm, "GetProverTaskByHashAndPubKey", func(ctx context.Context, hash, pubKey string) (*orm.ProverTask, error) {
+		patchGuard.ApplyMethodFunc(proverTaskOrm, "GetProverTaskByTaskIDAndPubKey", func(ctx context.Context, hash, pubKey string) (*orm.ProverTask, error) {
 			return nil, nil
 		})
 		tmpProof1 := &message.ProofMsg{
@@ -240,11 +241,11 @@ func TestRoller_SubmitProof(t *testing.T) {
 		assert.NoError(t, err1)
 		err2 := rollerController.SubmitProof(tmpProof1)
 		fmt.Println(err2)
-		targetErr := fmt.Errorf("validator failure get none rollers for the proof")
+		targetErr := fmt.Errorf("validator failure get none prover task for the proof")
 		assert.Equal(t, err2.Error(), targetErr.Error())
 	})
 
-	patchGuard.ApplyMethodFunc(proverTaskOrm, "GetProverTaskByHashAndPubKey", func(ctx context.Context, hash, pubKey string) (*orm.ProverTask, error) {
+	patchGuard.ApplyMethodFunc(proverTaskOrm, "GetProverTaskByTaskIDAndPubKey", func(ctx context.Context, hash, pubKey string) (*orm.ProverTask, error) {
 		now := time.Now()
 		s := &orm.ProverTask{
 			TaskID:          id,
@@ -270,6 +271,11 @@ func TestRoller_SubmitProof(t *testing.T) {
 		assert.NoError(t, err1)
 	})
 	tmpProof.Status = message.StatusOk
+
+	var db *gorm.DB
+	patchGuard.ApplyMethodFunc(db, "Transaction", func(fc func(tx *gorm.DB) error, opts ...*sql.TxOptions) (err error) {
+		return nil
+	})
 
 	var tmpVerifier *verifier.Verifier
 	convey.Convey("verifier proof failure", t, func() {
