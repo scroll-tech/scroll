@@ -18,7 +18,7 @@ import (
 	"bridge-history-api/utils"
 )
 
-// MsgFetcher is a struct that fetches cross message events from blockchain and saves them to database
+// MsgFetcher fetches cross message events from blockchain and saves them to database
 type MsgFetcher struct {
 	ctx           context.Context
 	config        *config.LayerConfig
@@ -50,7 +50,7 @@ func NewMsgFetcher(ctx context.Context, config *config.LayerConfig, db db.OrmFac
 	return crossMsgFetcher, nil
 }
 
-// Start starts the MsgFetcher
+// Start the MsgFetcher
 func (c *MsgFetcher) Start() {
 	log.Info("MsgFetcher Start")
 	// fetch missing events from finalized blocks, we don't handle reorgs here
@@ -97,7 +97,7 @@ func (c *MsgFetcher) Start() {
 	}()
 }
 
-// Stop stops the MsgFetcher and log the info
+// Stop the MsgFetcher and log the info
 func (c *MsgFetcher) Stop() {
 	log.Info("MsgFetcher Stop")
 }

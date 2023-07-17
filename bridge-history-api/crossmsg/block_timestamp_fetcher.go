@@ -15,7 +15,7 @@ type GetEarliestNoBlockTimestampHeightFunc func() (uint64, error)
 // UpdateBlockTimestampFunc is a function type that updates block timestamp into database
 type UpdateBlockTimestampFunc func(height uint64, timestamp time.Time) error
 
-// BlockTimestampFetcher is a struct that fetches block timestamp from blockchain and saves them to database
+// BlockTimestampFetcher fetches block timestamp from blockchain and saves them to database
 type BlockTimestampFetcher struct {
 	ctx                                   context.Context
 	confirmation                          uint64
@@ -37,7 +37,7 @@ func NewBlockTimestampFetcher(ctx context.Context, confirmation uint64, blockTim
 	}
 }
 
-// Start starts the BlockTimestampFetcher
+// Start the BlockTimestampFetcher
 func (b *BlockTimestampFetcher) Start() {
 	go func() {
 		tick := time.NewTicker(time.Duration(b.blockTimeInSec) * time.Second)
@@ -79,7 +79,7 @@ func (b *BlockTimestampFetcher) Start() {
 	}()
 }
 
-// Stop stops the BlockTimestampFetcher and log the info
+// Stop the BlockTimestampFetcher and log the info
 func (b *BlockTimestampFetcher) Stop() {
 	log.Info("BlockTimestampFetcher Stop")
 }

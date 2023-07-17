@@ -120,7 +120,7 @@ func (l *l2SentMsgOrm) GetL2SentMsgMsgHashByHeightRange(startHeight, endHeight u
 	}
 	defer func() {
 		if err = rows.Close(); err != nil {
-			log.Warn("failed to close rows", "err", err)
+			log.Error("failed to close rows", "err", err)
 		}
 	}()
 	for rows.Next() {
@@ -166,7 +166,7 @@ func (l *l2SentMsgOrm) GetClaimableL2SentMsgByAddressWithOffset(address string, 
 	}
 	defer func() {
 		if err = rows.Close(); err != nil {
-			log.Warn("failed to close rows", "err", err)
+			log.Error("failed to close rows", "err", err)
 		}
 	}()
 	for rows.Next() {

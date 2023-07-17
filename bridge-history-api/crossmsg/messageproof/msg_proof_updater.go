@@ -30,7 +30,7 @@ func NewMsgProofUpdater(ctx context.Context, confirmations uint64, startBlock ui
 	}
 }
 
-// Start starts the MsgProofUpdater
+// Start the MsgProofUpdater
 func (m *MsgProofUpdater) Start() {
 	log.Info("MsgProofUpdater Start")
 	m.initialize(m.ctx)
@@ -86,7 +86,7 @@ func (m *MsgProofUpdater) Start() {
 
 }
 
-// Stop informs the MsgProofUpdater stoped
+// Stop the MsgProofUpdater
 func (m *MsgProofUpdater) Stop() {
 	log.Info("MsgProofUpdater Stop")
 }

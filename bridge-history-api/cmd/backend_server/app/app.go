@@ -91,8 +91,7 @@ func action(ctx *cli.Context) error {
 		log.Crit("can not connect to database", "err", err)
 	}
 	defer func() {
-		err = database.Close()
-		if err != nil {
+		if err = database.Close(); err != nil {
 			log.Error("failed to close database", "err", err)
 		}
 	}()

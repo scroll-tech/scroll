@@ -85,7 +85,7 @@ func (o *ormFactory) GetCrossMsgsByAddressWithOffset(sender string, offset int64
 	}
 	defer func() {
 		if err = rows.Close(); err != nil {
-			log.Warn("failed to close rows", "err", err)
+			log.Error("failed to close rows", "err", err)
 		}
 	}()
 	for rows.Next() {

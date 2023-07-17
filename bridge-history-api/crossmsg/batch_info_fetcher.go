@@ -39,7 +39,7 @@ func NewBatchInfoFetcher(ctx context.Context, scrollChainAddr common.Address, ba
 	}
 }
 
-// Start starts the BatchInfoFetcher
+// Start the BatchInfoFetcher
 func (b *BatchInfoFetcher) Start() {
 	log.Info("BatchInfoFetcher Start")
 	// Fetch batch info at beginning
@@ -68,7 +68,7 @@ func (b *BatchInfoFetcher) Start() {
 	}()
 }
 
-// Stop stops the BatchInfoFetcher and call msg proof updater to stop
+// Stop the BatchInfoFetcher and call msg proof updater to stop
 func (b *BatchInfoFetcher) Stop() {
 	log.Info("BatchInfoFetcher Stop")
 	b.msgProofUpdater.Stop()
