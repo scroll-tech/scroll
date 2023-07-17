@@ -41,10 +41,10 @@ func (c *ProverTaskController) Route() {
 func (c *ProverTaskController) RequestToken(ctx *gin.Context) {
 	token, err := middleware.GenToken()
 	if err != nil {
-		ctx.String(http.StatusBadRequest, err.Error())
+		ctx.JSON(http.StatusOK, Err(err))
 		return
 	}
-	ctx.JSON(http.StatusOK, gin.H{"token": token})
+	ctx.JSON(http.StatusOK, Ok(token))
 }
 
 // GetTasksByProver godoc
@@ -62,10 +62,10 @@ func (c *ProverTaskController) GetTasksByProver(ctx *gin.Context) {
 	pubkey := ctx.Query("pubkey")
 	tasks, err := c.logic.GetTasksByProver(pubkey)
 	if err != nil {
-		ctx.String(http.StatusNotFound, err.Error())
+		ctx.JSON(http.StatusOK, Err(err))
 		return
 	}
-	ctx.JSON(http.StatusOK, tasks)
+	ctx.JSON(http.StatusOK, Ok(tasks))
 }
 
 // GetTotalRewards godoc
@@ -83,10 +83,10 @@ func (c *ProverTaskController) GetTotalRewards(ctx *gin.Context) {
 	pubkey := ctx.Query("pubkey")
 	rewards, err := c.logic.GetTotalRewards(pubkey)
 	if err != nil {
-		ctx.String(http.StatusNotFound, err.Error())
+		ctx.JSON(http.StatusOK, Err(err))
 		return
 	}
-	ctx.JSON(http.StatusOK, gin.H{"rewards": rewards})
+	ctx.JSON(http.StatusOK, Ok(rewards))
 }
 
 // GetTask godoc
@@ -97,15 +97,14 @@ func (c *ProverTaskController) GetTotalRewards(ctx *gin.Context) {
 // @Produce      json
 // @Param        task_id  path  string  true  "prover task hash"
 // @Success      200  {object}  *orm.ProverTask
-// @Failure      404  {object}  string
 // @Failure      500  {object}  string
 // @Router       /prover_task/task/{task_id} [get]
 func (c *ProverTaskController) GetTask(ctx *gin.Context) {
 	taskID := ctx.Query("task_id")
 	task, err := c.logic.GetTask(taskID)
 	if err != nil {
-		ctx.String(http.StatusNotFound, err.Error())
+		ctx.JSON(http.StatusOK, Err(err))
 		return
 	}
-	ctx.JSON(http.StatusOK, task)
+	ctx.JSON(http.StatusOK, Ok(task))
 }
