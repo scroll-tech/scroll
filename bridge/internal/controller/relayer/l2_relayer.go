@@ -496,8 +496,6 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 
 	default:
 		log.Error("encounter unreachable case in ProcessCommittedBatches", "proving status", status)
-			"proving status", status,
-		)
 	}
 }
 
