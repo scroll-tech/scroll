@@ -68,7 +68,7 @@ func (c *ProverTaskController) GetTasksByProver(ctx *gin.Context) {
 	}
 	byt, err := json.Marshal(tasks)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, Err(err))
+		ctx.JSON(http.StatusOK, Err(err))
 		return
 	}
 	ctx.JSON(http.StatusOK, Ok(byt))
@@ -114,7 +114,7 @@ func (c *ProverTaskController) GetTask(ctx *gin.Context) {
 	}
 	byt, err := json.Marshal(task)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, Err(err))
+		ctx.JSON(http.StatusOK, Err(err))
 		return
 	}
 	ctx.JSON(http.StatusOK, Ok(byt))
