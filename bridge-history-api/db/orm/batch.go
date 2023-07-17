@@ -31,13 +31,13 @@ func (r *RollupBatch) BatchInsertRollupBatchDBTx(dbTx *gorm.DB, batches []*Rollu
 	if err != nil {
 		batchIndexes := make([]uint64, 0, len(batches))
 		heights := make([]uint64, 0, len(batches))
-		for _, msg := range batches {
-			batchIndexes = append(batchIndexes, msg.BatchIndex)
-			heights = append(heights, msg.CommitHeight)
+		for _, batch := range batches {
+			batchIndexes = append(batchIndexes, batch.BatchIndex)
+			heights = append(heights, batch.CommitHeight)
 		}
 		log.Error("failed to insert rollup batch", "batchIndexes", batchIndexes, "heights", heights, "err", err)
 	}
-	return nil
+	return err
 }
 
 func (r *RollupBatch) GetLatestRollupBatch() (*RollupBatch, error) {
