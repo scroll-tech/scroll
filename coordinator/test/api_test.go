@@ -82,7 +82,7 @@ func setupCoordinator(t *testing.T, rollersPerSession uint8, wsURL string, reset
 		},
 	}
 	proofCollector := cron.NewCollector(context.Background(), db, &conf)
-	tmpAPI := api.APIs(&conf, db)
+	tmpAPI := api.RegisterAPIs(&conf, db)
 	handler, _, err := utils.StartWSEndpoint(strings.Split(wsURL, "//")[1], tmpAPI, flate.NoCompression)
 	assert.NoError(t, err)
 	rollermanager.InitRollerManager()
