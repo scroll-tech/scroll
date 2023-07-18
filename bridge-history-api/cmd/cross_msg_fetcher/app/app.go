@@ -54,14 +54,13 @@ func action(ctx *cli.Context) error {
 	if err != nil {
 		log.Crit("failed to connect l2 geth", "config file", cfgFile, "error", err)
 	}
-	db, err := db.NewOrmFactory(cfg)
 
+	db, err := db.NewOrmFactory(cfg)
 	defer func() {
-		if err := db.Close(); err != nil {
+		if deferErr := db.Close(); deferErr != nil {
 			log.Error("failed to close db", "err", err)
 		}
 	}()
-
 	if err != nil {
 		log.Crit("failed to connect to db", "config file", cfgFile, "error", err)
 	}
