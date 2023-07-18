@@ -8,6 +8,7 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
+// RelayedMsg is the struct for relayed_msg table
 type RelayedMsg struct {
 	MsgHash    string `json:"msg_hash" db:"msg_hash"`
 	Height     uint64 `json:"height" db:"height"`
@@ -46,9 +47,9 @@ func (l *relayedMsgOrm) BatchInsertRelayedMsgDBTx(dbTx *sqlx.Tx, messages []*Rel
 	return nil
 }
 
-func (l *relayedMsgOrm) GetRelayedMsgByHash(msg_hash string) (*RelayedMsg, error) {
+func (l *relayedMsgOrm) GetRelayedMsgByHash(msgHash string) (*RelayedMsg, error) {
 	result := &RelayedMsg{}
-	row := l.db.QueryRowx(`SELECT msg_hash, height, layer1_hash, layer2_hash FROM relayed_msg WHERE msg_hash = $1 AND deleted_at IS NULL;`, msg_hash)
+	row := l.db.QueryRowx(`SELECT msg_hash, height, layer1_hash, layer2_hash FROM relayed_msg WHERE msg_hash = $1 AND deleted_at IS NULL;`, msgHash)
 	if err := row.StructScan(result); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil

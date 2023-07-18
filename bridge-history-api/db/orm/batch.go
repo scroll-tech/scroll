@@ -11,6 +11,7 @@ type rollupBatchOrm struct {
 	db *sqlx.DB
 }
 
+// RollupBatch is the struct for rollup_batch table
 type RollupBatch struct {
 	ID               uint64 `json:"id" db:"id"`
 	BatchIndex       uint64 `json:"batch_index" db:"batch_index"`

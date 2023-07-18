@@ -14,6 +14,7 @@ import (
 	"bridge-history-api/db/orm"
 )
 
+// CachedParsedTxCalldata store parsed batch infos
 type CachedParsedTxCalldata struct {
 	CallDataIndex uint64
 	BatchIndices  []uint64
@@ -21,6 +22,7 @@ type CachedParsedTxCalldata struct {
 	EndBlocks     []uint64
 }
 
+// ParseBackendL1EventLogs parses L1 watched events
 func ParseBackendL1EventLogs(logs []types.Log) ([]*orm.CrossMsg, []*orm.RelayedMsg, error) {
 	// Need use contract abi to parse event Log
 	// Can only be tested after we have our contracts set up
@@ -166,6 +168,7 @@ func ParseBackendL1EventLogs(logs []types.Log) ([]*orm.CrossMsg, []*orm.RelayedM
 	return l1CrossMsg, relayedMsgs, nil
 }
 
+// ParseBackendL2EventLogs parses L2 watched events
 func ParseBackendL2EventLogs(logs []types.Log) ([]*orm.CrossMsg, []*orm.RelayedMsg, []*orm.L2SentMsg, error) {
 	// Need use contract abi to parse event Log
 	// Can only be tested after we have our contracts set up
@@ -328,6 +331,7 @@ func ParseBackendL2EventLogs(logs []types.Log) ([]*orm.CrossMsg, []*orm.RelayedM
 	return l2CrossMsg, relayedMsgs, l2SentMsgs, nil
 }
 
+// ParseBatchInfoFromScrollChain parses ScrollChain events
 func ParseBatchInfoFromScrollChain(ctx context.Context, client *ethclient.Client, logs []types.Log) ([]*orm.RollupBatch, error) {
 	var rollupBatches []*orm.RollupBatch
 	cache := make(map[string]CachedParsedTxCalldata)
