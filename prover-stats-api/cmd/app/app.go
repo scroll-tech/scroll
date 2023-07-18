@@ -5,18 +5,19 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
-	"scroll-tech/common/metrics"
 
+	"github.com/gin-gonic/gin"
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/urfave/cli/v2"
 
 	"scroll-tech/common/database"
+	"scroll-tech/common/metrics"
 	"scroll-tech/common/utils"
 	"scroll-tech/common/version"
 
-	_ "scroll-tech/prover-stats-api/cmd/docs"
 	"scroll-tech/prover-stats-api/internal/config"
 	"scroll-tech/prover-stats-api/internal/controller"
+	"scroll-tech/prover-stats-api/internal/route"
 )
 
 var app *cli.App
@@ -55,17 +56,25 @@ func action(ctx *cli.Context) error {
 	}()
 
 	subCtx, cancel := context.WithCancel(ctx.Context)
-
-	// init Prover Stats API
-	port := ctx.String(httpPortFlag.Name)
-	controller.Route(db, port, cfg)
-
 	defer func() {
 		cancel()
 	}()
 
 	// Start metrics server.
 	metrics.Serve(subCtx, ctx)
+
+	// init Prover Stats API
+	port := ctx.String(httpPortFlag.Name)
+
+	router := gin.Default()
+	controller.InitController(db)
+	route.Route(router, cfg)
+
+	go func() {
+		if runServerErr := router.Run(fmt.Sprintf(":%s", port)); runServerErr != nil {
+			log.Crit("run http server failure", "error", runServerErr)
+		}
+	}()
 
 	// Catch CTRL-C to ensure a graceful shutdown.
 	interrupt := make(chan os.Signal, 1)

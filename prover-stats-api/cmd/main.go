@@ -1,6 +1,9 @@
 package main
 
-import "scroll-tech/prover-stats-api/cmd/app"
+import (
+	"scroll-tech/prover-stats-api/cmd/app"
+	_ "scroll-tech/prover-stats-api/docs"
+)
 
 // @title           Zero-knowledge Prover Stats API
 // @version         1.0

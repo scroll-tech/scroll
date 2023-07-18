@@ -8,8 +8,13 @@ import (
 )
 
 type Config struct {
-	DBConfig  *database.Config `json:"db_config"`
-	ApiSecret string           `json:"api_secret"`
+	DBConfig *database.Config `json:"db_config"`
+	Auth     Auth             `json:"auth"`
+}
+
+type Auth struct {
+	Secret              string `json:"secret"`
+	TokenExpireDuration int    `json:"token_expire_duration"` // unit: seconds
 }
 
 // NewConfig returns a new instance of Config.

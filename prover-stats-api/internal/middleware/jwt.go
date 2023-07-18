@@ -2,67 +2,64 @@ package middleware
 
 import (
 	"errors"
-	"fmt"
-	"net/http"
 	"time"
 
-	"github.com/dgrijalva/jwt-go"
+	jwt "github.com/appleboy/gin-jwt/v2"
 	"github.com/gin-gonic/gin"
+
+	"github.com/scroll-tech/go-ethereum/log"
+	"scroll-tech/prover-stats-api/internal/config"
+	"scroll-tech/prover-stats-api/internal/controller"
+	"scroll-tech/prover-stats-api/internal/types"
 )
 
-const TokenExpireDuration = time.Minute * 10
+const IdentityKey = "public_key"
 
-var (
-	Secret    string
-	skipPaths = []string{"/api/v1/prover_task/request_token"}
-)
-
-type ApiClaims struct {
-	jwt.StandardClaims
-}
-
-func GenToken() (string, error) {
-	c := ApiClaims{
-		jwt.StandardClaims{
-			ExpiresAt: time.Now().Add(TokenExpireDuration).Unix(),
-		},
-	}
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, c)
-	return token.SignedString([]byte(Secret))
-}
-
-func ParseToken(tokenStr string) (*ApiClaims, error) {
-	token, err := jwt.ParseWithClaims(tokenStr, &ApiClaims{}, func(token *jwt.Token) (interface{}, error) {
-		return []byte(Secret), nil
+// AuthMiddleware jwt auth middleware
+func AuthMiddleware(conf *config.Config) *jwt.GinJWTMiddleware {
+	authLogic := controller.NewAuthController()
+	jwtMiddleware, err := jwt.New(&jwt.GinJWTMiddleware{
+		PayloadFunc:     PayloadFunc,
+		IdentityHandler: IdentityHandler,
+		IdentityKey:     IdentityKey,
+		Key:             []byte(conf.Auth.Secret),
+		Timeout:         time.Second * time.Duration(conf.Auth.TokenExpireDuration),
+		Authenticator:   authLogic.Login,
+		Unauthorized:    Unauthorized,
+		TokenLookup:     "header: Authorization, query: token, cookie: jwt",
+		TokenHeadName:   "Bearer",
+		TimeFunc:        time.Now,
+		LoginResponse:   authLogic.LoginResponse,
 	})
+
 	if err != nil {
-		return nil, err
+		log.Crit("new jwt middleware panic", "error", err)
 	}
-	if claims, ok := token.Claims.(*ApiClaims); ok && token.Valid {
-		return claims, nil
+
+	if errInit := jwtMiddleware.MiddlewareInit(); errInit != nil {
+		log.Crit("init jwt middleware panic", "error", errInit)
 	}
-	return nil, errors.New("invalid token")
+
+	return jwtMiddleware
 }
 
-func JWTAuthMiddleware() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		for _, path := range skipPaths {
-			if path == c.FullPath() {
-				c.Next()
-				return
-			}
-		}
-		tokenString := c.Request.Header.Get("Authorization")
-		if tokenString == "" {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Null token"})
-			return
-		}
+func Unauthorized(c *gin.Context, code int, message string) {
+	err := errors.New(message)
+	types.RenderJson(c, code, err, nil)
+}
 
-		_, err := ParseToken(tokenString)
-		if err != nil {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": fmt.Sprintf("Unauthorized: %v", err)})
-			return
+func PayloadFunc(data interface{}) jwt.MapClaims {
+	if v, ok := data.(types.LoginParameter); ok {
+		return jwt.MapClaims{
+			IdentityKey: v.PublicKey,
 		}
-		c.Next()
+	}
+	return jwt.MapClaims{}
+}
+
+func IdentityHandler(c *gin.Context) interface{} {
+	claims := jwt.ExtractClaims(c)
+	return &types.LoginParameter{
+		PublicKey: claims[IdentityKey].(string),
 	}
 }
