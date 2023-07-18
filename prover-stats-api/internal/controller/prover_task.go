@@ -63,7 +63,7 @@ func (c *ProverTaskController) ProverTasks(ctx *gin.Context) {
 		proverTaskSchemas = append(proverTaskSchemas, proverTaskSchema)
 	}
 
-	types.RenderJson(ctx, 0, nil, proverTaskSchemas)
+	types.RenderJson(ctx, types.Success, nil, proverTaskSchemas)
 }
 
 // GetTotalRewards godoc
@@ -95,7 +95,7 @@ func (c *ProverTaskController) GetTotalRewards(ctx *gin.Context) {
 		Rewards: rewards.String(),
 	}
 
-	types.RenderJson(ctx, 0, nil, resp)
+	types.RenderJson(ctx, types.Success, nil, resp)
 }
 
 // GetTask godoc
@@ -132,5 +132,5 @@ func (c *ProverTaskController) GetTask(ctx *gin.Context) {
 		CreatedAt:     task.CreatedAt,
 	}
 
-	types.RenderJson(ctx, 0, nil, schema)
+	types.RenderJson(ctx, types.Success, nil, schema)
 }

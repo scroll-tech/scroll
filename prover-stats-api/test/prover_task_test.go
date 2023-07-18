@@ -34,7 +34,7 @@ var (
 var (
 	port      = ":12990"
 	addr      = fmt.Sprintf("http://localhost%s", port)
-	basicPath = fmt.Sprintf("%s/api/v1/prover_task", addr)
+	basicPath = fmt.Sprintf("%s/api/prover_task/v1", addr)
 	token     string
 )
 
@@ -68,20 +68,20 @@ func TestProverTaskAPIs(t *testing.T) {
 }
 
 func testRequestToken(t *testing.T) {
-	data := getResp(t, fmt.Sprintf("%s/request_token", basicPath))
-	token = data.(string)
+	data := getResp(t, fmt.Sprintf("%s/request_token?public_key=%s&page=%d&page_size=%d", basicPath, proverPubkey, 1, 2))
+	token = data.(map[string]interface{})["token"].(string)
 	t.Log("token: ", token)
 }
 
 func testGetProverTasksByProver(t *testing.T) {
-	data := getResp(t, fmt.Sprintf("%s/tasks?pubkey=%s", basicPath, proverPubkey))
+	data := getResp(t, fmt.Sprintf("%s/tasks?public_key=%s", basicPath, proverPubkey))
 	tasks := data.([]api_types.ProverTaskSchema)
 	assert.Equal(t, task2.TaskID, tasks[0].TaskID)
 	assert.Equal(t, task1.TaskID, tasks[1].TaskID)
 }
 
 func testGetTotalRewards(t *testing.T) {
-	data := getResp(t, fmt.Sprintf("%s/total_rewards?pubkey=%s", basicPath, proverPubkey))
+	data := getResp(t, fmt.Sprintf("%s/total_rewards?public_key=%s", basicPath, proverPubkey))
 	schema := data.(api_types.ProverTotalRewardsSchema)
 	assert.Equal(t, big.NewInt(22).String(), schema.Rewards)
 }
@@ -106,7 +106,8 @@ func getResp(t *testing.T, url string) interface{} {
 
 	res := new(api_types.Response)
 	assert.NoError(t, json.Unmarshal(byt, res))
-	assert.Equal(t, 0, res.ErrCode)
+	t.Log("----byt is ", string(byt))
+	assert.Equal(t, api_types.Success, res.ErrCode)
 	return res.Data
 }
 
