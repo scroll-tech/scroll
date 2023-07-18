@@ -21,3 +21,10 @@ open this documents in your browser
 ```
 http://localhost:8990/swagger/index.html
 ```
+
+## how to update the prover-stats-api docs
+
+```
+cd ./prover-stats-api
+make swag
+```

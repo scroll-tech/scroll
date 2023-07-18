@@ -5,7 +5,7 @@ import (
 	_ "scroll-tech/prover-stats-api/docs"
 )
 
-// @title           Zero-knowledge Prover Stats API
+// @title           Scroll Prover Stats API
 // @version         1.0
 // @description     This is an API server for Provers.
 
