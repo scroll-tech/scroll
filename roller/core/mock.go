@@ -1,6 +1,6 @@
 //go:build mock_prover
 
-package prover
+package core
 
 import (
 	"math/big"
@@ -13,18 +13,18 @@ import (
 	"scroll-tech/roller/config"
 )
 
-// Prover sends block-traces to rust-prover through socket and get back the zk-proof.
-type Prover struct {
+// ProverCore sends block-traces to rust-prover through socket and get back the zk-proof.
+type ProverCore struct {
 	cfg *config.ProverConfig
 }
 
-// NewProver inits a Prover object.
-func NewProver(cfg *config.ProverConfig) (*Prover, error) {
-	return &Prover{cfg: cfg}, nil
+// NewProver inits a ProverCore object.
+func NewProver(cfg *config.ProverConfig) (*ProverCore, error) {
+	return &ProverCore{cfg: cfg}, nil
 }
 
 // Prove call rust ffi to generate proof, if first failed, try again.
-func (p *Prover) Prove(taskID string, traces []*types.BlockTrace) (*message.AggProof, error) {
+func (p *ProverCore) Prove(taskID string, traces []*types.BlockTrace) (*message.AggProof, error) {
 	_empty := common.BigToHash(big.NewInt(0))
 	return &message.AggProof{
 		Proof:     _empty[:],

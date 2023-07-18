@@ -1,6 +1,6 @@
 //go:build ffi
 
-package prover_test
+package core_test
 
 import (
 	"encoding/json"
