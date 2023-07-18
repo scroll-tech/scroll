@@ -2,14 +2,11 @@ package orm
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/log"
-	"github.com/jmoiron/sqlx"
-	"github.com/lib/pq"
 	"gorm.io/gorm"
 )
 
@@ -35,143 +32,121 @@ func (l *L2CrossMsg) GetL2CrossMsgByHash(l2Hash common.Hash) (*CrossMsg, error) 
 
 // GetL2CrossMsgByAddress returns all layer2 cross messages under given address
 // Warning: return empty slice if no data found
-func (l *l2CrossMsgOrm) GetL2CrossMsgByAddress(sender common.Address) ([]*CrossMsg, error) {
+func (l *L2CrossMsg) GetL2CrossMsgByAddress(sender common.Address) ([]*CrossMsg, error) {
 	var results []*CrossMsg
-	rows, err := l.db.Queryx(`SELECT * FROM cross_message WHERE sender = $1 AND msg_type = $2 AND deleted_at IS NULL;`, sender.String(), Layer2Msg)
+	err := l.db.Where("sender = ? AND msg_type = ? AND deleted_at IS NULL", sender.String(), Layer2Msg).
+		Find(&results).Error
 	if err != nil {
-		return nil, err
-	}
-	defer func() {
-		if err = rows.Close(); err != nil {
-			log.Error("failed to close rows", "err", err)
+		if err == gorm.ErrRecordNotFound {
+			return nil, nil
 		}
-	}()
-	for rows.Next() {
-		msg := &CrossMsg{}
-		if err = rows.StructScan(msg); err != nil {
-			break
-		}
-		results = append(results, msg)
 	}
-	if len(results) == 0 && errors.Is(err, sql.ErrNoRows) {
-		// log.Warn("no unprocessed layer1 messages in db", "err", err)
-	} else if err != nil {
-		return nil, err
-	}
-	return results, nil
+	return results, err
 
 }
 
-func (l *l2CrossMsgOrm) DeleteL2CrossMsgFromHeightDBTx(dbTx *sqlx.Tx, height int64) error {
-	_, err := dbTx.Exec(`UPDATE cross_message SET deleted_at = current_timestamp where height > $1 AND msg_type = $2 ;`, height, Layer2Msg)
+func (l *L2CrossMsg) DeleteL2CrossMsgFromHeightDBTx(dbTx *gorm.DB, height int64) error {
+	err := dbTx.Table("cross_message").
+		Where("height > ? AND msg_type = ?", height, Layer2Msg).
+		Update("deleted_at", gorm.Expr("current_timestamp")).
+		Error
+
 	if err != nil {
-		log.Error("DeleteL1CrossMsgAfterHeightDBTx: failed to delete", "height", height, "err", err)
-		return err
+		if err == gorm.ErrRecordNotFound {
+			return nil
+		}
 	}
-	return nil
+	return err
 }
 
-func (l *l2CrossMsgOrm) BatchInsertL2CrossMsgDBTx(dbTx *sqlx.Tx, messages []*CrossMsg) error {
+func (l *L2CrossMsg) BatchInsertL2CrossMsgDBTx(dbTx *gorm.DB, messages []*CrossMsg) error {
 	if len(messages) == 0 {
 		return nil
 	}
-
-	var err error
-	messageMaps := make([]map[string]interface{}, len(messages))
-	for i, msg := range messages {
-		messageMaps[i] = map[string]interface{}{
-			"height":       msg.Height,
-			"sender":       msg.Sender,
-			"target":       msg.Target,
-			"asset":        msg.Asset,
-			"msg_hash":     msg.MsgHash,
-			"layer2_hash":  msg.Layer2Hash,
-			"layer1_token": msg.Layer1Token,
-			"layer2_token": msg.Layer2Token,
-			"token_ids":    msg.TokenIDs,
-			"amount":       msg.Amount,
-			"msg_type":     Layer2Msg,
-		}
-	}
-	_, err = dbTx.NamedExec(`insert into cross_message(height, sender, target, asset, msg_hash, layer2_hash, layer1_token, layer2_token, token_ids, amount, msg_type) values(:height, :sender, :target, :asset, :msg_hash, :layer2_hash, :layer1_token, :layer2_token, :token_ids, :amount, :msg_type);`, messageMaps)
+	err := dbTx.Model(&CrossMsg{}).Create(&messages).Error
 	if err != nil {
-		log.Error("BatchInsertL2CrossMsgDBTx: failed to insert l2 cross msgs", "err", err)
-		return err
-	}
-	return nil
-}
-
-func (l *l2CrossMsgOrm) UpdateL2CrossMsgHashDBTx(ctx context.Context, dbTx *sqlx.Tx, l2Hash, msgHash common.Hash) error {
-	if _, err := dbTx.ExecContext(ctx, l.db.Rebind("update cross_message set msg_hash = ? where layer2_hash = ? AND deleted_at IS NULL;"), msgHash.String(), l2Hash.String()); err != nil {
-		return err
-	}
-	return nil
-}
-
-func (l *l2CrossMsgOrm) UpdateL2CrossMsgHash(ctx context.Context, l2Hash, msgHash common.Hash) error {
-	if _, err := l.db.ExecContext(ctx, l.db.Rebind("update cross_message set msg_hash = ? where layer2_hash = ? AND deleted_at IS NULL;"), msgHash.String(), l2Hash.String()); err != nil {
-		return err
-	}
-	return nil
-}
-
-func (l *l2CrossMsgOrm) GetLatestL2ProcessedHeight() (int64, error) {
-	row := l.db.QueryRowx(`SELECT height FROM cross_message WHERE msg_type = $1 AND deleted_at IS NULL ORDER BY id DESC LIMIT 1;`, Layer2Msg)
-	var result sql.NullInt64
-	if err := row.Scan(&result); err != nil {
-		if err == sql.ErrNoRows || !result.Valid {
-			return -1, nil
+		l2hashes := make([]string, 0, len(messages))
+		heights := make([]uint64, 0, len(messages))
+		for _, msg := range messages {
+			l2hashes = append(l2hashes, msg.Layer2Hash)
+			heights = append(heights, msg.Height)
 		}
-		return 0, err
+		log.Error("failed to insert l2 cross messages", "l2hashes", l2hashes, "heights", heights, "err", err)
 	}
-	if result.Valid {
-		return result.Int64, nil
-	}
-	return 0, nil
+	return err
 }
 
-func (l *l2CrossMsgOrm) UpdateL2BlockTimestamp(height uint64, timestamp time.Time) error {
-	if _, err := l.db.Exec(`UPDATE cross_message SET block_timestamp = $1 where height = $2 AND msg_type = $3 AND deleted_at IS NULL`, timestamp, height, Layer2Msg); err != nil {
-		return err
-	}
-	return nil
+func (l *L2CrossMsg) UpdateL2CrossMsgHashDBTx(ctx context.Context, dbTx *gorm.DB, l2Hash, msgHash common.Hash) error {
+	err := dbTx.Table("cross_message").
+		Where("layer2_hash = ? AND deleted_at IS NULL", l2Hash.String()).
+		Update("msg_hash", msgHash.String()).
+		Error
+	return err
 }
 
-func (l *l2CrossMsgOrm) GetL2EarliestNoBlockTimestampHeight() (uint64, error) {
-	row := l.db.QueryRowx(`SELECT height FROM cross_message WHERE block_timestamp IS NULL AND msg_type = $1 AND deleted_at IS NULL ORDER BY height ASC LIMIT 1;`, Layer2Msg)
-	var result uint64
-	if err := row.Scan(&result); err != nil {
-		if err == sql.ErrNoRows {
+func (l *L2CrossMsg) UpdateL2CrossMsgHash(ctx context.Context, l2Hash, msgHash common.Hash) error {
+	err := l.db.Table("cross_message").
+		Where("layer2_hash = ? AND deleted_at IS NULL", l2Hash.String()).
+		UpdateColumn("msg_hash", msgHash.String()).
+		Error
+	return err
+}
+
+func (l *L2CrossMsg) GetLatestL2ProcessedHeight() (int64, error) {
+	var height int64
+	err := l.db.Table("cross_message").
+		Where("msg_type = ? AND deleted_at IS NULL", Layer2Msg).
+		Order("id DESC").
+		Limit(1).
+		Select("height").
+		Scan(&height).
+		Error
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
 			return 0, nil
 		}
-		return 0, err
 	}
-	return result, nil
+	return height, err
 }
 
-func (l *l2CrossMsgOrm) GetL2CrossMsgByMsgHashList(msgHashList []string) ([]*CrossMsg, error) {
-	var results []*CrossMsg
-	rows, err := l.db.Queryx(`SELECT * FROM cross_message WHERE msg_hash = ANY($1) AND msg_type = $2 AND deleted_at IS NULL;`, pq.Array(msgHashList), Layer2Msg)
+func (l *L2CrossMsg) UpdateL2BlockTimestamp(height uint64, timestamp time.Time) error {
+	err := l.db.Table("cross_message").
+		Where("height = ? AND msg_type = ? AND deleted_at IS NULL", height, Layer2Msg).
+		Update("block_timestamp", timestamp).Error
+	return err
+}
+
+func (l *L2CrossMsg) GetL2EarliestNoBlockTimestampHeight() (uint64, error) {
+	var height int64
+	err := l.db.Table("cross_message").
+		Where("block_timestamp IS NULL AND msg_type = ? AND deleted_at IS NULL", Layer2Msg).
+		Order("height ASC").
+		Select("height").
+		Limit(1).
+		Scan(&height).
+		Error
 	if err != nil {
-		return nil, err
-	}
-	defer func() {
-		if err = rows.Close(); err != nil {
-			log.Error("failed to close rows", "err", err)
+		if err == gorm.ErrRecordNotFound {
+			return 0, nil
 		}
-	}()
-	for rows.Next() {
-		msg := &CrossMsg{}
-		if err = rows.StructScan(msg); err != nil {
-			break
-		}
-		results = append(results, msg)
 	}
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		return nil, err
+	return uint64(height), err
+}
+
+func (l *L2CrossMsg) GetL2CrossMsgByMsgHashList(msgHashList []string) ([]*CrossMsg, error) {
+	var results []*CrossMsg
+	err := l.db.Table("cross_message").
+		Where("msg_hash IN (?) AND msg_type = ? AND deleted_at IS NULL", msgHashList, Layer2Msg).
+		Find(&results).
+		Error
+
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, nil
+		}
 	}
 	if len(results) == 0 {
 		log.Debug("no L2CrossMsg under given msg hashes", "msg hash list", msgHashList)
 	}
-	return results, nil
+	return results, err
 }

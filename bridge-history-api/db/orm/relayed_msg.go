@@ -1,100 +1,106 @@
 package orm
 
 import (
-	"database/sql"
-	"errors"
+	"time"
 
 	"github.com/ethereum/go-ethereum/log"
-	"github.com/jmoiron/sqlx"
+	"gorm.io/gorm"
 )
 
 // RelayedMsg is the struct for relayed_msg table
 type RelayedMsg struct {
-	MsgHash    string `json:"msg_hash" db:"msg_hash"`
-	Height     uint64 `json:"height" db:"height"`
-	Layer1Hash string `json:"layer1_hash" db:"layer1_hash"`
-	Layer2Hash string `json:"layer2_hash" db:"layer2_hash"`
+	db *gorm.DB `gorm:"column:-"`
+
+	ID         uint64     `json:"id" gorm:"column:id"`
+	MsgHash    string     `json:"msg_hash" gorm:"column:msg_hash"`
+	Height     uint64     `json:"height" gorm:"column:height"`
+	Layer1Hash string     `json:"layer1_hash" gorm:"column:layer1_hash;default:''"`
+	Layer2Hash string     `json:"layer2_hash" gorm:"column:layer2_hash;default:''"`
+	CreatedAt  *time.Time `json:"created_at" gorm:"column:created_at"`
+	UpdatedAt  *time.Time `json:"updated_at" gorm:"column:updated_at"`
+	DeletedAt  *time.Time `json:"deleted_at" gorm:"column:deleted_at;default:NULL"`
 }
 
-type relayedMsgOrm struct {
-	db *sqlx.DB
+// NewRelayedMsg create an NewRelayedMsg instance
+func NewRelayedMsg(db *gorm.DB) *RelayedMsg {
+	return &RelayedMsg{db: db}
 }
 
-// NewRelayedMsgOrm create an NewRelayedMsgOrm instance
-func NewRelayedMsgOrm(db *sqlx.DB) RelayedMsgOrm {
-	return &relayedMsgOrm{db: db}
-}
-
-func (l *relayedMsgOrm) BatchInsertRelayedMsgDBTx(dbTx *sqlx.Tx, messages []*RelayedMsg) error {
+func (r *RelayedMsg) BatchInsertRelayedMsgDBTx(dbTx *gorm.DB, messages []*RelayedMsg) error {
 	if len(messages) == 0 {
 		return nil
 	}
-	var err error
-	messageMaps := make([]map[string]interface{}, len(messages))
-	for i, msg := range messages {
-		messageMaps[i] = map[string]interface{}{
-			"msg_hash":    msg.MsgHash,
-			"height":      msg.Height,
-			"layer1_hash": msg.Layer1Hash,
-			"layer2_hash": msg.Layer2Hash,
-		}
-	}
-	_, err = dbTx.NamedExec(`insert into relayed_msg(msg_hash, height, layer1_hash, layer2_hash) values(:msg_hash, :height, :layer1_hash, :layer2_hash);`, messageMaps)
+
+	err := dbTx.Model(&RelayedMsg{}).Create(&messages).Error
 	if err != nil {
-		log.Error("BatchInsertRelayedMsgDBTx: failed to insert relayed msgs", "err", err)
-		return err
+		l2hashes := make([]string, 0, len(messages))
+		l1hashes := make([]string, 0, len(messages))
+		heights := make([]uint64, 0, len(messages))
+		for _, msg := range messages {
+			l2hashes = append(l2hashes, msg.Layer2Hash)
+			l1hashes = append(l1hashes, msg.Layer1Hash)
+			heights = append(heights, msg.Height)
+		}
+		log.Error("failed to insert l2 sent messages", "l2hashes", l2hashes, "l1hashes", l1hashes, "heights", heights, "err", err)
 	}
 	return nil
 }
 
-func (l *relayedMsgOrm) GetRelayedMsgByHash(msgHash string) (*RelayedMsg, error) {
+func (r *RelayedMsg) GetRelayedMsgByHash(msgHash string) (*RelayedMsg, error) {
 	result := &RelayedMsg{}
-	row := l.db.QueryRowx(`SELECT msg_hash, height, layer1_hash, layer2_hash FROM relayed_msg WHERE msg_hash = $1 AND deleted_at IS NULL;`, msgHash)
-	if err := row.StructScan(result); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, nil
-		}
-		return nil, err
-	}
-	return result, nil
+	err := r.db.Table("relayed_msg").
+		Select("msg_hash, height, layer1_hash, layer2_hash").
+		Where("msg_hash = ? AND deleted_at IS NULL", msgHash).
+		First(&result).
+		Error
+	return result, err
 }
 
-func (l *relayedMsgOrm) GetLatestRelayedHeightOnL1() (int64, error) {
-	row := l.db.QueryRow(`SELECT height FROM relayed_msg WHERE layer1_hash != '' AND deleted_at IS NULL ORDER BY height DESC LIMIT 1;`)
-	var result sql.NullInt64
-	if err := row.Scan(&result); err != nil {
-		if err == sql.ErrNoRows || !result.Valid {
-			return -1, nil
+func (r *RelayedMsg) GetLatestRelayedHeightOnL1() (int64, error) {
+	var height int64
+	err := r.db.Table("relayed_msg").
+		Select("height").
+		Where("layer1_hash != '' AND deleted_at IS NULL").
+		Order("height DESC").
+		Limit(1).
+		Scan(&height).
+		Error
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return 0, nil
 		}
-		return 0, err
 	}
-	if result.Valid {
-		return result.Int64, nil
-	}
-	return 0, nil
+	return height, err
 }
 
-func (l *relayedMsgOrm) GetLatestRelayedHeightOnL2() (int64, error) {
-	row := l.db.QueryRow(`SELECT height FROM relayed_msg WHERE layer2_hash != '' AND deleted_at IS NULL ORDER BY height DESC LIMIT 1;`)
-	var result sql.NullInt64
-	if err := row.Scan(&result); err != nil {
-		if err == sql.ErrNoRows || !result.Valid {
-			return -1, nil
+func (r *RelayedMsg) GetLatestRelayedHeightOnL2() (int64, error) {
+	var height int64
+	err := r.db.Table("relayed_msg").
+		Select("height").
+		Where("layer2_hash != '' AND deleted_at IS NULL").
+		Order("height DESC").
+		Limit(1).
+		Scan(&height).
+		Error
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return 0, nil
 		}
-		return 0, err
 	}
-	if result.Valid {
-		return result.Int64, nil
-	}
-	return 0, nil
+	return height, nil
 }
 
-func (l *relayedMsgOrm) DeleteL1RelayedHashAfterHeightDBTx(dbTx *sqlx.Tx, height int64) error {
-	_, err := dbTx.Exec(`UPDATE relayed_msg SET deleted_at = current_timestamp WHERE height > $1 AND layer1_hash != '';`, height)
+func (r *RelayedMsg) DeleteL1RelayedHashAfterHeightDBTx(dbTx *gorm.DB, height int64) error {
+	err := dbTx.Table("relayed_msg").
+		Where("height > ? AND layer1_hash != ''", height).
+		Update("deleted_at", gorm.Expr("current_timestamp")).Error
 	return err
+
 }
 
-func (l *relayedMsgOrm) DeleteL2RelayedHashAfterHeightDBTx(dbTx *sqlx.Tx, height int64) error {
-	_, err := dbTx.Exec(`UPDATE relayed_msg SET deleted_at = current_timestamp WHERE height > $1 AND layer2_hash != '';`, height)
+func (r *RelayedMsg) DeleteL2RelayedHashAfterHeightDBTx(dbTx *gorm.DB, height int64) error {
+	err := dbTx.Table("relayed_msg").
+		Where("height > ? AND layer2_hash != ''", height).
+		Update("deleted_at", gorm.Expr("current_timestamp")).Error
 	return err
 }
