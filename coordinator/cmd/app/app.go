@@ -67,7 +67,7 @@ func action(ctx *cli.Context) error {
 	}()
 
 	// Start metrics server.
-	metrics.Serve(context.Background(), ctx)
+	metrics.Serve(subCtx, ctx)
 
 	apis := api.RegisterAPIs(cfg, db)
 	// Register api and start rpc service.
