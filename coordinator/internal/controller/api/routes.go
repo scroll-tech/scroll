@@ -18,8 +18,8 @@ type RollerAPI interface {
 	SubmitProof(proof *message.ProofMsg) error
 }
 
-// APIs register api for coordinator
-func APIs(cfg *config.Config, db *gorm.DB) []rpc.API {
+// RegisterAPIs register api for coordinator
+func RegisterAPIs(cfg *config.Config, db *gorm.DB) []rpc.API {
 	return []rpc.API{
 		{
 			Namespace: "roller",

@@ -69,7 +69,7 @@ func action(ctx *cli.Context) error {
 	// Start metrics server.
 	metrics.Serve(context.Background(), ctx)
 
-	apis := api.APIs(cfg, db)
+	apis := api.RegisterAPIs(cfg, db)
 	// Register api and start rpc service.
 	if ctx.Bool(httpEnabledFlag.Name) {
 		handler, addr, err := utils.StartHTTPEndpoint(fmt.Sprintf("%s:%d", ctx.String(httpListenAddrFlag.Name), ctx.Int(httpPortFlag.Name)), apis)

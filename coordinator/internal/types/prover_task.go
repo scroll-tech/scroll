@@ -17,6 +17,6 @@ func (r ProverTaskFailureType) String() string {
 	case ProverTaskFailureTypeTimeout:
 		return "prover task failure timeout"
 	default:
-		return "illegal failure type"
+		return "illegal prover task failure type"
 	}
 }

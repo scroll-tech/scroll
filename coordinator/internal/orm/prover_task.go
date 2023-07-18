@@ -106,7 +106,7 @@ func (o *ProverTask) GetProverTaskByTaskIDAndPubKey(ctx context.Context, taskID,
 	return &proverTask, nil
 }
 
-// GetAssignedProverTasks get the unassigned prover task
+// GetAssignedProverTasks get the assigned prover task
 func (o *ProverTask) GetAssignedProverTasks(ctx context.Context, limit int) ([]ProverTask, error) {
 	db := o.db.WithContext(ctx)
 	db = db.Model(&ProverTask{})

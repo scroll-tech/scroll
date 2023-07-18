@@ -8,9 +8,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/docker/docker/api/types/container"
-
 	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/container"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 
 	"scroll-tech/common/cmd"

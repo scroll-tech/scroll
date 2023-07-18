@@ -73,7 +73,7 @@ func (ac *BatchProofCollector) Collect(ctx context.Context) error {
 
 	transErr := ac.db.Transaction(func(tx *gorm.DB) error {
 		// Update session proving status as assigned.
-		if err = ac.batchOrm.UpdateProvingStatus(ctx, batchTask.Hash, types.ProvingTaskAssigned); err != nil {
+		if err = ac.batchOrm.UpdateProvingStatus(ctx, batchTask.Hash, types.ProvingTaskAssigned, tx); err != nil {
 			return fmt.Errorf("failed to update task status, id:%s, error:%w", batchTask.Hash, err)
 		}
 
@@ -88,7 +88,7 @@ func (ac *BatchProofCollector) Collect(ctx context.Context) error {
 			}
 
 			// Store session info.
-			if err = ac.proverTaskOrm.SetProverTask(ctx, &proverTask); err != nil {
+			if err = ac.proverTaskOrm.SetProverTask(ctx, &proverTask, tx); err != nil {
 				return fmt.Errorf("db set session info fail, session id:%s, error:%w", proverTask.TaskID, err)
 			}
 		}

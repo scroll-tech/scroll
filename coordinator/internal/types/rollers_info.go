@@ -5,7 +5,7 @@ import (
 	"scroll-tech/common/types/message"
 )
 
-// RollersInfo is assigned rollers info of a block batch (session)
+// RollersInfo is assigned rollers info of a task (session)
 type RollersInfo struct {
 	ID               string            `json:"id"`
 	RollerStatusList []*RollerStatus   `json:"rollers"`

@@ -6,9 +6,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/docker/docker/api/types/container"
-
 	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/container"
 
 	"scroll-tech/common/cmd"
 	"scroll-tech/common/utils"
