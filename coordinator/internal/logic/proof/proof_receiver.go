@@ -18,7 +18,6 @@ import (
 	"scroll-tech/coordinator/internal/logic/rollermanager"
 	"scroll-tech/coordinator/internal/logic/verifier"
 	"scroll-tech/coordinator/internal/orm"
-	types2 "scroll-tech/coordinator/internal/types"
 )
 
 var (
@@ -306,7 +305,7 @@ func (m *ZKProofReceiver) checkIsTimeoutFailure(ctx context.Context, hash, prove
 		return false
 	}
 
-	if types2.ProverTaskFailureType(proverTask.FailureType) == types2.ProverTaskFailureTypeTimeout {
+	if types.ProverTaskFailureType(proverTask.FailureType) == types.ProverTaskFailureTypeTimeout {
 		return true
 	}
 	return false
