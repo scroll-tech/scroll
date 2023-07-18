@@ -6,6 +6,8 @@ import (
 	"math/big"
 	"time"
 
+	"gorm.io/gorm/clause"
+
 	"github.com/shopspring/decimal"
 	"gorm.io/gorm"
 )
@@ -79,4 +81,19 @@ func (o *ProverTask) GetProverTasksByHash(ctx context.Context, hash string) (*Pr
 		return nil, fmt.Errorf("ProverTask.GetProverTasksByHash error: %w, hash: %v", err, hash)
 	}
 	return proverTask, nil
+}
+
+// SetProverTask updates or inserts a ProverTask record.
+func (o *ProverTask) SetProverTask(ctx context.Context, proverTask *ProverTask) error {
+	db := o.db.WithContext(ctx)
+	db = db.Model(&ProverTask{})
+	db = db.Clauses(clause.OnConflict{
+		Columns:   []clause.Column{{Name: "task_type"}, {Name: "task_id"}, {Name: "prover_public_key"}},
+		DoUpdates: clause.AssignmentColumns([]string{"proving_status"}),
+	})
+
+	if err := db.Create(&proverTask).Error; err != nil {
+		return fmt.Errorf("ProverTask.SetProverTask error: %w, prover task: %v", err, proverTask)
+	}
+	return nil
 }

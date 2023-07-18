@@ -11,16 +11,20 @@ import (
 	"scroll-tech/common/docker"
 	"scroll-tech/common/types"
 	"scroll-tech/database/migrate"
+
+	"github.com/gin-gonic/gin"
+
 	"testing"
 
+	"scroll-tech/prover-stats-api/internal/config"
 	"scroll-tech/prover-stats-api/internal/controller"
+	"scroll-tech/prover-stats-api/internal/orm"
+	"scroll-tech/prover-stats-api/internal/route"
+	api_types "scroll-tech/prover-stats-api/internal/types"
 
 	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
 	"gorm.io/gorm"
-
-	"scroll-tech/prover-stats-api/internal/config"
-	"scroll-tech/prover-stats-api/internal/orm"
 )
 
 var (
@@ -50,7 +54,12 @@ func TestProverTaskAPIs(t *testing.T) {
 	insertSomeProverTasks(t, db)
 
 	// run Prover Stats APIs
-	controller.Route(db, port, cfg)
+	router := gin.Default()
+	controller.InitController(db)
+	route.Route(router, cfg)
+	go func() {
+		router.Run(port)
+	}()
 
 	t.Run("testRequestToken", testRequestToken)
 	t.Run("testGetProverTasksByProver", testGetProverTasksByProver)
@@ -59,32 +68,31 @@ func TestProverTaskAPIs(t *testing.T) {
 }
 
 func testRequestToken(t *testing.T) {
-	tokenByt := getResp(t, fmt.Sprintf("%s/request_token", basicPath))
-	token = string(tokenByt)
+	data := getResp(t, fmt.Sprintf("%s/request_token", basicPath))
+	token = data.(string)
 	t.Log("token: ", token)
 }
 
 func testGetProverTasksByProver(t *testing.T) {
-	var tasks []*orm.ProverTask
-	byt := getResp(t, fmt.Sprintf("%s/tasks?pubkey=%s", basicPath, proverPubkey))
-	assert.NoError(t, json.Unmarshal(byt, &tasks))
+	data := getResp(t, fmt.Sprintf("%s/tasks?pubkey=%s", basicPath, proverPubkey))
+	tasks := data.([]api_types.ProverTaskSchema)
 	assert.Equal(t, task2.TaskID, tasks[0].TaskID)
 	assert.Equal(t, task1.TaskID, tasks[1].TaskID)
 }
 
 func testGetTotalRewards(t *testing.T) {
-	rewards := getResp(t, fmt.Sprintf("%s/total_rewards?pubkey=%s", basicPath, proverPubkey))
-	assert.Equal(t, big.NewInt(22), new(big.Int).SetBytes(rewards))
+	data := getResp(t, fmt.Sprintf("%s/total_rewards?pubkey=%s", basicPath, proverPubkey))
+	schema := data.(api_types.ProverTotalRewardsSchema)
+	assert.Equal(t, big.NewInt(22).String(), schema.Rewards)
 }
 
 func testGetProverTask(t *testing.T) {
-	var task orm.ProverTask
-	byt := getResp(t, fmt.Sprintf("%s/task?task_id=1", basicPath))
-	assert.NoError(t, json.Unmarshal(byt, &task))
+	data := getResp(t, fmt.Sprintf("%s/task?task_id=1", basicPath))
+	task := data.(api_types.ProverTaskSchema)
 	assert.Equal(t, task1.TaskID, task.TaskID)
 }
 
-func getResp(t *testing.T, url string) []byte {
+func getResp(t *testing.T, url string) interface{} {
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	assert.NoError(t, err)
 	req.Header.Add("Authorization", token)
@@ -96,10 +104,10 @@ func getResp(t *testing.T, url string) []byte {
 	byt, err := io.ReadAll(resp.Body)
 	assert.NoError(t, err)
 
-	res := new(controller.Resp)
+	res := new(api_types.Response)
 	assert.NoError(t, json.Unmarshal(byt, res))
-	assert.Equal(t, controller.OK, res.Code)
-	return res.Object
+	assert.Equal(t, 0, res.ErrCode)
+	return res.Data
 }
 
 var (

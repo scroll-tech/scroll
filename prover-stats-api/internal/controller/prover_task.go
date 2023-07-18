@@ -123,5 +123,14 @@ func (c *ProverTaskController) GetTask(ctx *gin.Context) {
 		return
 	}
 
-	types.RenderJson(ctx, 0, nil, task)
+	schema := types.ProverTaskSchema{
+		TaskID:        task.TaskID,
+		ProverName:    task.ProverName,
+		TaskType:      message.ProofType(task.TaskType).String(),
+		ProvingStatus: ctype.ProvingStatus(task.ProvingStatus).String(),
+		Reward:        task.Reward.String(),
+		CreatedAt:     task.CreatedAt,
+	}
+
+	types.RenderJson(ctx, 0, nil, schema)
 }
