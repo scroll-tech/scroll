@@ -55,7 +55,7 @@ func setupEnv(t *testing.T) {
 	assert.NoError(t, err)
 	sqlDB, err := db.DB()
 	assert.NoError(t, err)
-	assert.NoError(t, migrate.ResetDB(sqlDB, "migrations"))
+	assert.NoError(t, migrate.ResetDB(sqlDB))
 
 	batchOrm = NewBatch(db)
 	chunkOrm = NewChunk(db)
@@ -92,7 +92,7 @@ func tearDownEnv(t *testing.T) {
 func TestL2BlockOrm(t *testing.T) {
 	sqlDB, err := db.DB()
 	assert.NoError(t, err)
-	assert.NoError(t, migrate.ResetDB(sqlDB, "migrations"))
+	assert.NoError(t, migrate.ResetDB(sqlDB))
 
 	err = l2BlockOrm.InsertL2Blocks(context.Background(), []*types.WrappedBlock{wrappedBlock1, wrappedBlock2})
 	assert.NoError(t, err)
@@ -125,7 +125,7 @@ func TestL2BlockOrm(t *testing.T) {
 func TestChunkOrm(t *testing.T) {
 	sqlDB, err := db.DB()
 	assert.NoError(t, err)
-	assert.NoError(t, migrate.ResetDB(sqlDB, "migrations"))
+	assert.NoError(t, migrate.ResetDB(sqlDB))
 
 	dbChunk1, err := chunkOrm.InsertChunk(context.Background(), chunk1)
 	assert.NoError(t, err)
@@ -164,7 +164,7 @@ func TestChunkOrm(t *testing.T) {
 func TestBatchOrm(t *testing.T) {
 	sqlDB, err := db.DB()
 	assert.NoError(t, err)
-	assert.NoError(t, migrate.ResetDB(sqlDB, "migrations"))
+	assert.NoError(t, migrate.ResetDB(sqlDB))
 
 	batch1, err := batchOrm.InsertBatch(context.Background(), 0, 0, chunkHash1.Hex(), chunkHash1.Hex(), []*types.Chunk{chunk1})
 	assert.NoError(t, err)

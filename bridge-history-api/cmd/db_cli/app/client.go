@@ -2,8 +2,8 @@ package app
 
 import (
 	"github.com/ethereum/go-ethereum/log"
-	"github.com/jmoiron/sqlx"
 	"github.com/urfave/cli/v2"
+	"gorm.io/gorm"
 
 	"bridge-history-api/config"
 	"bridge-history-api/db"
@@ -20,14 +20,14 @@ func getConfig(ctx *cli.Context) (*config.Config, error) {
 	return dbCfg, nil
 }
 
-func initDB(dbCfg *config.Config) (*sqlx.DB, error) {
-	factory, err := db.NewOrmFactory(dbCfg)
+func initDB(dbCfg *config.Config) (*gorm.DB, error) {
+	factory, err := db.NewOrmFactory(dbCfg.DB)
 	if err != nil {
 		return nil, err
 	}
 	log.Debug("Got db config from env", "driver name", dbCfg.DB.DriverName, "dsn", dbCfg.DB.DSN)
 
-	return factory.GetDB(), nil
+	return factory.Db, nil
 }
 
 // resetDB clean or reset database.
@@ -40,7 +40,7 @@ func resetDB(ctx *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	err = migrate.ResetDB(db.DB)
+	err = migrate.ResetDB()
 	if err != nil {
 		return err
 	}

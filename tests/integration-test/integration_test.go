@@ -46,7 +46,7 @@ func TestStartProcess(t *testing.T) {
 	// Start l1geth l2geth and postgres docker containers.
 	base.RunImages(t)
 	// Reset db.
-	assert.NoError(t, migrate.ResetDB(base.DBClient(t), "migrations"))
+	assert.NoError(t, migrate.ResetDB(base.DBClient(t)))
 
 	// Run coordinator app.
 	coordinatorApp.RunApp(t)
@@ -62,7 +62,7 @@ func TestMonitorMetrics(t *testing.T) {
 	// Start l1geth l2geth and postgres docker containers.
 	base.RunImages(t)
 	// Reset db.
-	assert.NoError(t, migrate.ResetDB(base.DBClient(t), "migrations"))
+	assert.NoError(t, migrate.ResetDB(base.DBClient(t)))
 
 	// Start coordinator process with metrics server.
 	port, _ := rand.Int(rand.Reader, big.NewInt(2000))
