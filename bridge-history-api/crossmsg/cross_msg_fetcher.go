@@ -22,7 +22,7 @@ import (
 type MsgFetcher struct {
 	ctx           context.Context
 	config        *config.LayerConfig
-	db            db.OrmFactory
+	db            *db.OrmFactory
 	client        *ethclient.Client
 	worker        *FetchEventWorker
 	reorgHandling ReorgHandling
@@ -34,7 +34,7 @@ type MsgFetcher struct {
 }
 
 // NewMsgFetcher creates a new MsgFetcher instance
-func NewMsgFetcher(ctx context.Context, config *config.LayerConfig, db db.OrmFactory, client *ethclient.Client, worker *FetchEventWorker, addressList []common.Address, reorg ReorgHandling) (*MsgFetcher, error) {
+func NewMsgFetcher(ctx context.Context, config *config.LayerConfig, db *db.OrmFactory, client *ethclient.Client, worker *FetchEventWorker, addressList []common.Address, reorg ReorgHandling) (*MsgFetcher, error) {
 	msgFetcher := &MsgFetcher{
 		ctx:           ctx,
 		config:        config,

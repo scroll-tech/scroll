@@ -56,7 +56,7 @@ func setupDB(t *testing.T) *gorm.DB {
 	assert.NoError(t, err)
 	sqlDB, err := db.DB()
 	assert.NoError(t, err)
-	assert.NoError(t, migrate.ResetDB(sqlDB))
+	assert.NoError(t, migrate.ResetDB(sqlDB, "migrations"))
 	return db
 }
 

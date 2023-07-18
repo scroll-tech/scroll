@@ -48,9 +48,9 @@ type TxHistoryInfo struct {
 
 // HistoryService example service.
 type HistoryService interface {
-	GetTxsByAddress(address common.Address, offset int64, limit int64) ([]*TxHistoryInfo, uint64, error)
+	GetTxsByAddress(address common.Address, offset int, limit int) ([]*TxHistoryInfo, uint64, error)
 	GetTxsByHashes(hashes []string) ([]*TxHistoryInfo, error)
-	GetClaimableTxsByAddress(address common.Address, offset int64, limit int64) ([]*TxHistoryInfo, uint64, error)
+	GetClaimableTxsByAddress(address common.Address, offset int, limit int) ([]*TxHistoryInfo, uint64, error)
 }
 
 // NewHistoryService returns a service backed with a "db"
@@ -112,7 +112,7 @@ func updateCrossTxHash(msgHash string, txInfo *TxHistoryInfo, db db.OrmFactory) 
 }
 
 // GetClaimableTxsByAddress get all claimable txs under given address
-func (h *historyBackend) GetClaimableTxsByAddress(address common.Address, offset int64, limit int64) ([]*TxHistoryInfo, uint64, error) {
+func (h *historyBackend) GetClaimableTxsByAddress(address common.Address, offset int, limit int) ([]*TxHistoryInfo, uint64, error) {
 	var txHistories []*TxHistoryInfo
 	total, err := h.db.GetClaimableL2SentMsgByAddressTotalNum(address.Hex())
 	if err != nil || total == 0 {
@@ -155,7 +155,7 @@ func (h *historyBackend) GetClaimableTxsByAddress(address common.Address, offset
 }
 
 // GetTxsByAddress get all txs under given address
-func (h *historyBackend) GetTxsByAddress(address common.Address, offset int64, limit int64) ([]*TxHistoryInfo, uint64, error) {
+func (h *historyBackend) GetTxsByAddress(address common.Address, offset int, limit int) ([]*TxHistoryInfo, uint64, error) {
 	var txHistories []*TxHistoryInfo
 	total, err := h.db.GetTotalCrossMsgCountByAddress(address.String())
 	if err != nil || total == 0 {

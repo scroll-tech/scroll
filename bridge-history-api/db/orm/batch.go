@@ -22,9 +22,9 @@ func NewRollupBatch(db *gorm.DB) *RollupBatch {
 	return &RollupBatch{db: db}
 }
 
-func (r *RollupBatch) BatchInsertRollupBatchDBTx(dbTx *gorm.DB, batches []*RollupBatch) error {
+func (r *RollupBatch) BatchInsertRollupBatchDBTx(dbTx *gorm.DB, batches []*RollupBatch) (*gorm.DB, error) {
 	if len(batches) == 0 {
-		return nil
+		return dbTx, nil
 	}
 	err := dbTx.Create(&batches).Error
 
@@ -37,7 +37,7 @@ func (r *RollupBatch) BatchInsertRollupBatchDBTx(dbTx *gorm.DB, batches []*Rollu
 		}
 		log.Error("failed to insert rollup batch", "batchIndexes", batchIndexes, "heights", heights, "err", err)
 	}
-	return err
+	return dbTx, err
 }
 
 func (r *RollupBatch) GetLatestRollupBatch() (*RollupBatch, error) {

@@ -21,7 +21,7 @@ var (
 	app *cli.App
 )
 
-var database db.OrmFactory
+var database *db.OrmFactory
 
 func pong(ctx iris.Context) {
 	_, err := ctx.WriteString("pong")
@@ -86,7 +86,7 @@ func action(ctx *cli.Context) error {
 	if err != nil {
 		log.Crit("failed to load config file", "config file", cfgFile, "error", err)
 	}
-	database, err = db.NewOrmFactory(cfg)
+	database, err = db.NewOrmFactory(cfg.DB)
 	if err != nil {
 		log.Crit("can not connect to database", "err", err)
 	}

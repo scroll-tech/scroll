@@ -17,12 +17,12 @@ import (
 // MsgProofUpdater is used to update message proof in db
 type MsgProofUpdater struct {
 	ctx          context.Context
-	db           db.OrmFactory
+	db           *db.OrmFactory
 	withdrawTrie *WithdrawTrie
 }
 
 // NewMsgProofUpdater new MsgProofUpdater instance
-func NewMsgProofUpdater(ctx context.Context, confirmations uint64, startBlock uint64, db db.OrmFactory) *MsgProofUpdater {
+func NewMsgProofUpdater(ctx context.Context, confirmations uint64, startBlock uint64, db *db.OrmFactory) *MsgProofUpdater {
 	return &MsgProofUpdater{
 		ctx:          ctx,
 		db:           db,
@@ -191,23 +191,20 @@ func (m *MsgProofUpdater) updateMsgProof(msgs []*orm.L2SentMsg, proofs [][]byte,
 	if len(msgs) != len(proofs) {
 		return fmt.Errorf("illegal state: len(msgs) != len(proofs)")
 	}
-	dbTx, err := m.db.Beginx()
-	if err != nil {
-		return err
-	}
-
+	dbTx := m.db.Db.Begin()
+	var err error
 	for i, msg := range msgs {
 		proofHex := common.Bytes2Hex(proofs[i])
 		log.Debug("updateMsgProof", "msgHash", msg.MsgHash, "batchIndex", batchIndex, "proof", proofHex)
-		if dbTxErr := m.db.UpdateL2MessageProofInDBTx(m.ctx, dbTx, msg.MsgHash, proofHex, batchIndex); dbTxErr != nil {
-			if err := dbTx.Rollback(); err != nil {
-				log.Error("dbTx.Rollback()", "err", err)
+		if dbTx, err = m.db.UpdateL2MessageProofInDBTx(m.ctx, dbTx, msg.MsgHash, proofHex, batchIndex); err != nil {
+			if Rollbackerr := dbTx.Rollback(); Rollbackerr != nil {
+				log.Error("dbTx.Rollback()", "err", Rollbackerr)
 			}
-			return dbTxErr
+			return err
 		}
 	}
 
-	if dbTxErr := dbTx.Commit(); dbTxErr != nil {
+	if dbTxErr := dbTx.Commit().Error; dbTxErr != nil {
 		if err := dbTx.Rollback(); err != nil {
 			log.Error("dbTx.Rollback()", "err", err)
 		}

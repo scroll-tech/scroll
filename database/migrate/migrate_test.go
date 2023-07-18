@@ -54,12 +54,12 @@ func testCurrent(t *testing.T) {
 }
 
 func testStatus(t *testing.T) {
-	status := Status(pgDB.DB)
+	status := Status(pgDB.DB, "migrations")
 	assert.NoError(t, status)
 }
 
 func testResetDB(t *testing.T) {
-	assert.NoError(t, ResetDB(pgDB.DB))
+	assert.NoError(t, ResetDB(pgDB.DB, "migrations"))
 	cur, err := Current(pgDB.DB)
 	assert.NoError(t, err)
 	// total number of tables.
@@ -67,7 +67,7 @@ func testResetDB(t *testing.T) {
 }
 
 func testMigrate(t *testing.T) {
-	assert.NoError(t, Migrate(pgDB.DB))
+	assert.NoError(t, Migrate(pgDB.DB, "migrations"))
 	cur, err := Current(pgDB.DB)
 	assert.NoError(t, err)
 	assert.Equal(t, true, cur > 0)
@@ -78,7 +78,7 @@ func testRollback(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, true, version > 0)
 
-	assert.NoError(t, Rollback(pgDB.DB, nil))
+	assert.NoError(t, Rollback(pgDB.DB, nil, "migrations"))
 
 	cur, err := Current(pgDB.DB)
 	assert.NoError(t, err)

@@ -45,7 +45,7 @@ func (l *L2CrossMsg) GetL2CrossMsgByAddress(sender common.Address) ([]*CrossMsg,
 
 }
 
-func (l *L2CrossMsg) DeleteL2CrossMsgFromHeightDBTx(dbTx *gorm.DB, height int64) error {
+func (l *L2CrossMsg) DeleteL2CrossMsgFromHeightDBTx(dbTx *gorm.DB, height int64) (*gorm.DB, error) {
 	err := dbTx.Table("cross_message").
 		Where("height > ? AND msg_type = ?", height, Layer2Msg).
 		Update("deleted_at", gorm.Expr("current_timestamp")).
@@ -53,15 +53,15 @@ func (l *L2CrossMsg) DeleteL2CrossMsgFromHeightDBTx(dbTx *gorm.DB, height int64)
 
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
-			return nil
+			return dbTx, nil
 		}
 	}
-	return err
+	return dbTx, err
 }
 
-func (l *L2CrossMsg) BatchInsertL2CrossMsgDBTx(dbTx *gorm.DB, messages []*CrossMsg) error {
+func (l *L2CrossMsg) BatchInsertL2CrossMsgDBTx(dbTx *gorm.DB, messages []*CrossMsg) (*gorm.DB, error) {
 	if len(messages) == 0 {
-		return nil
+		return dbTx, nil
 	}
 	err := dbTx.Model(&CrossMsg{}).Create(&messages).Error
 	if err != nil {
@@ -73,7 +73,7 @@ func (l *L2CrossMsg) BatchInsertL2CrossMsgDBTx(dbTx *gorm.DB, messages []*CrossM
 		}
 		log.Error("failed to insert l2 cross messages", "l2hashes", l2hashes, "heights", heights, "err", err)
 	}
-	return err
+	return dbTx, err
 }
 
 func (l *L2CrossMsg) UpdateL2CrossMsgHashDBTx(ctx context.Context, dbTx *gorm.DB, l2Hash, msgHash common.Hash) error {

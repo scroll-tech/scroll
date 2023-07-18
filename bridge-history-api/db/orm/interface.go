@@ -1,11 +1,8 @@
 package orm
 
 import (
-	"context"
 	"time"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/jmoiron/sqlx"
 	"gorm.io/gorm"
 )
 
@@ -71,65 +68,4 @@ type CrossMsg struct {
 	CreatedAt    *time.Time `json:"created_at" gorm:"created_at"`
 	UpdatedAt    *time.Time `json:"updated_at" gorm:"updated_at"`
 	DeletedAt    *time.Time `json:"deleted_at" gorm:"deleted_at;default:NULL"`
-}
-
-// L1CrossMsgOrm provides operations on l1_cross_message table
-type L1CrossMsgOrm interface {
-	GetL1CrossMsgByHash(l1Hash common.Hash) (*CrossMsg, error)
-	GetL1CrossMsgsByAddress(sender common.Address) ([]*CrossMsg, error)
-	BatchInsertL1CrossMsgDBTx(dbTx *sqlx.Tx, messages []*CrossMsg) error
-	// UpdateL1CrossMsgHashDBTx invoked when SentMessage event is received
-	UpdateL1CrossMsgHashDBTx(ctx context.Context, dbTx *sqlx.Tx, l1Hash, msgHash common.Hash) error
-	UpdateL1CrossMsgHash(ctx context.Context, l1Hash, msgHash common.Hash) error
-	GetLatestL1ProcessedHeight() (int64, error)
-	DeleteL1CrossMsgAfterHeightDBTx(dbTx *sqlx.Tx, height int64) error
-	UpdateL1BlockTimestamp(height uint64, timestamp time.Time) error
-	GetL1EarliestNoBlockTimestampHeight() (uint64, error)
-}
-
-// L2CrossMsgOrm provides operations on cross_message table
-type L2CrossMsgOrm interface {
-	GetL2CrossMsgByHash(l2Hash common.Hash) (*CrossMsg, error)
-	GetL2CrossMsgByAddress(sender common.Address) ([]*CrossMsg, error)
-	BatchInsertL2CrossMsgDBTx(dbTx *sqlx.Tx, messages []*CrossMsg) error
-	// UpdateL2CrossMsgHashDBTx invoked when SentMessage event is received
-	UpdateL2CrossMsgHashDBTx(ctx context.Context, dbTx *sqlx.Tx, l2Hash, msgHash common.Hash) error
-	UpdateL2CrossMsgHash(ctx context.Context, l2Hash, msgHash common.Hash) error
-	GetLatestL2ProcessedHeight() (int64, error)
-	DeleteL2CrossMsgFromHeightDBTx(dbTx *sqlx.Tx, height int64) error
-	UpdateL2BlockTimestamp(height uint64, timestamp time.Time) error
-	GetL2EarliestNoBlockTimestampHeight() (uint64, error)
-	GetL2CrossMsgByMsgHashList(msgHashList []string) ([]*CrossMsg, error)
-}
-
-// RelayedMsgOrm provides operations on relayed_msg table
-type RelayedMsgOrm interface {
-	BatchInsertRelayedMsgDBTx(dbTx *sqlx.Tx, messages []*RelayedMsg) error
-	GetRelayedMsgByHash(msgHash string) (*RelayedMsg, error)
-	GetLatestRelayedHeightOnL1() (int64, error)
-	GetLatestRelayedHeightOnL2() (int64, error)
-	DeleteL1RelayedHashAfterHeightDBTx(dbTx *sqlx.Tx, height int64) error
-	DeleteL2RelayedHashAfterHeightDBTx(dbTx *sqlx.Tx, height int64) error
-}
-
-// L2SentMsgOrm provides operations on l2_sent_msg table
-type L2SentMsgOrm interface {
-	BatchInsertL2SentMsgDBTx(dbTx *sqlx.Tx, messages []*L2SentMsg) error
-	GetL2SentMsgByHash(l2Hash string) (*L2SentMsg, error)
-	GetLatestSentMsgHeightOnL2() (int64, error)
-	GetL2SentMessageByNonce(nonce uint64) (*L2SentMsg, error)
-	GetLatestL2SentMsgLEHeight(endBlockNumber uint64) (*L2SentMsg, error)
-	GetL2SentMsgMsgHashByHeightRange(startHeight, endHeight uint64) ([]*L2SentMsg, error)
-	UpdateL2MessageProofInDBTx(ctx context.Context, dbTx *sqlx.Tx, msgHash string, proof string, batchIndex uint64) error
-	GetLatestL2SentMsgBatchIndex() (int64, error)
-	GetClaimableL2SentMsgByAddressWithOffset(address string, offset int64, limit int64) ([]*L2SentMsg, error)
-	GetClaimableL2SentMsgByAddressTotalNum(address string) (uint64, error)
-	DeleteL2SentMsgAfterHeightDBTx(dbTx *sqlx.Tx, height int64) error
-}
-
-// RollupBatchOrm provides operations on rollup_batch table
-type RollupBatchOrm interface {
-	GetLatestRollupBatch() (*RollupBatch, error)
-	GetRollupBatchByIndex(index uint64) (*RollupBatch, error)
-	BatchInsertRollupBatchDBTx(dbTx *sqlx.Tx, messages []*RollupBatch) error
 }

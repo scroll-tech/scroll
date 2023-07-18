@@ -1,103 +1,146 @@
 package db
 
 import (
-	"database/sql"
-	"errors"
+	"context"
+	"fmt"
+	"time"
 
 	"github.com/ethereum/go-ethereum/log"
-	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq" //nolint:golint
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
+	"gorm.io/gorm/utils"
 
 	"bridge-history-api/config"
 	"bridge-history-api/db/orm"
 )
 
-// OrmFactory include all ormFactory interface
-type OrmFactory interface {
-	orm.L1CrossMsgOrm
-	orm.L2CrossMsgOrm
-	orm.RelayedMsgOrm
-	orm.L2SentMsgOrm
-	orm.RollupBatchOrm
-	GetTotalCrossMsgCountByAddress(sender string) (uint64, error)
-	GetCrossMsgsByAddressWithOffset(sender string, offset int64, limit int64) ([]*orm.CrossMsg, error)
-	GetDB() *sqlx.DB
-	Beginx() (*sqlx.Tx, error)
-	Close() error
+// UtilDBOrm provide combined db operations
+type UtilDBOrm struct {
+	db *gorm.DB
 }
 
-type ormFactory struct {
-	orm.L1CrossMsgOrm
-	orm.L2CrossMsgOrm
-	orm.RelayedMsgOrm
-	orm.L2SentMsgOrm
-	orm.RollupBatchOrm
-	*sqlx.DB
+type OrmFactory struct {
+	*orm.L1CrossMsg
+	*orm.L2CrossMsg
+	*orm.RelayedMsg
+	*orm.L2SentMsg
+	*orm.RollupBatch
+	*UtilDBOrm
+	Db *gorm.DB
 }
 
-// NewOrmFactory create an ormFactory factory include all ormFactory interface
-func NewOrmFactory(cfg *config.Config) (OrmFactory, error) {
-	// Initialize sql/sqlx
-	db, err := sqlx.Open(cfg.DB.DriverName, cfg.DB.DSN)
+type gormLogger struct {
+	gethLogger log.Logger
+}
+
+func (g *gormLogger) LogMode(level logger.LogLevel) logger.Interface {
+	return g
+}
+
+func (g *gormLogger) Info(_ context.Context, msg string, data ...interface{}) {
+	infoMsg := fmt.Sprintf(msg, data...)
+	g.gethLogger.Info("gorm", "info message", infoMsg)
+}
+
+func (g *gormLogger) Warn(_ context.Context, msg string, data ...interface{}) {
+	warnMsg := fmt.Sprintf(msg, data...)
+	g.gethLogger.Warn("gorm", "warn message", warnMsg)
+}
+
+func (g *gormLogger) Error(_ context.Context, msg string, data ...interface{}) {
+	errMsg := fmt.Sprintf(msg, data...)
+	g.gethLogger.Error("gorm", "err message", errMsg)
+}
+
+func (g *gormLogger) Trace(_ context.Context, begin time.Time, fc func() (string, int64), err error) {
+	elapsed := time.Since(begin)
+	sql, rowsAffected := fc()
+	g.gethLogger.Debug("gorm", "line", utils.FileWithLineNum(), "cost", elapsed, "sql", sql, "rowsAffected", rowsAffected, "err", err)
+}
+
+// NewOrmFactory init the db handler
+func NewOrmFactory(config *config.DBConfig) (*OrmFactory, error) {
+	tmpGormLogger := gormLogger{
+		gethLogger: log.Root(),
+	}
+
+	db, err := gorm.Open(postgres.Open(config.DSN), &gorm.Config{
+		Logger: &tmpGormLogger,
+	})
+	if err != nil {
+		return nil, err
+	}
+	sqlDB, err := db.DB()
 	if err != nil {
 		return nil, err
 	}
 
-	db.SetMaxOpenConns(cfg.DB.MaxOpenNum)
-	db.SetMaxIdleConns(cfg.DB.MaxIdleNum)
-	if err = db.Ping(); err != nil {
+	sqlDB.SetMaxOpenConns(config.MaxOpenNum)
+	sqlDB.SetMaxIdleConns(config.MaxIdleNum)
+
+	if err = sqlDB.Ping(); err != nil {
 		return nil, err
 	}
 
-	return &ormFactory{
-		L1CrossMsgOrm:  orm.NewL1CrossMsgOrm(db),
-		L2CrossMsgOrm:  orm.NewL2CrossMsgOrm(db),
-		RelayedMsgOrm:  orm.NewRelayedMsgOrm(db),
-		L2SentMsgOrm:   orm.NewL2SentMsgOrm(db),
-		RollupBatchOrm: orm.NewRollupBatchOrm(db),
-		DB:             db,
+	return &OrmFactory{
+		L1CrossMsg:  orm.NewL1CrossMsg(db),
+		L2CrossMsg:  orm.NewL2CrossMsg(db),
+		RelayedMsg:  orm.NewRelayedMsg(db),
+		L2SentMsg:   orm.NewL2SentMsg(db),
+		RollupBatch: orm.NewRollupBatch(db),
+		UtilDBOrm:   NewUtilDBOrm(db),
+		Db:          db,
 	}, nil
 }
 
-func (o *ormFactory) GetDB() *sqlx.DB {
-	return o.DB
-}
-
-func (o *ormFactory) Beginx() (*sqlx.Tx, error) {
-	return o.DB.Beginx()
-}
-
-func (o *ormFactory) GetTotalCrossMsgCountByAddress(sender string) (uint64, error) {
-	var count uint64
-	row := o.DB.QueryRowx(`SELECT COUNT(*) FROM cross_message WHERE sender = $1 AND deleted_at IS NULL;`, sender)
-	if err := row.Scan(&count); err != nil {
-		return 0, err
+// Close close the db handler. notice the db handler only can close when then program exit.
+func (o *OrmFactory) Close() error {
+	sqlDB, err := o.Db.DB()
+	if err != nil {
+		return err
 	}
-	return count, nil
+	if err := sqlDB.Close(); err != nil {
+		return err
+	}
+	return nil
 }
 
-func (o *ormFactory) GetCrossMsgsByAddressWithOffset(sender string, offset int64, limit int64) ([]*orm.CrossMsg, error) {
-	para := sender
-	var results []*orm.CrossMsg
-	rows, err := o.DB.Queryx(`SELECT * FROM cross_message WHERE sender = $1 AND deleted_at IS NULL ORDER BY block_timestamp DESC NULLS FIRST, id DESC LIMIT $2 OFFSET $3;`, para, limit, offset)
-	if err != nil || rows == nil {
-		return nil, err
+// UtilDBOrm return the util db orm
+func NewUtilDBOrm(db *gorm.DB) *UtilDBOrm {
+	return &UtilDBOrm{
+		db: db,
 	}
-	defer func() {
-		if err = rows.Close(); err != nil {
-			log.Error("failed to close rows", "err", err)
+}
+
+func (u *UtilDBOrm) GetTotalCrossMsgCountByAddress(sender string) (uint64, error) {
+	var count int64
+	err := u.db.Table("cross_message").
+		Where("sender = ? AND deleted_at IS NULL", sender).
+		Count(&count).
+		Error
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return 0, nil
 		}
-	}()
-	for rows.Next() {
-		msg := &orm.CrossMsg{}
-		if err = rows.StructScan(msg); err != nil {
-			break
+	}
+	return uint64(count), err
+}
+
+func (u *UtilDBOrm) GetCrossMsgsByAddressWithOffset(sender string, offset int, limit int) ([]orm.CrossMsg, error) {
+	var messages []orm.CrossMsg
+	err := u.db.Table("cross_message").
+		Where("sender = ? AND deleted_at IS NULL", sender).
+		Order("block_timestamp DESC NULLS FIRST, id DESC").
+		Limit(limit).
+		Offset(offset).
+		Find(&messages).
+		Error
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, nil
 		}
-		results = append(results, msg)
 	}
-	if len(results) == 0 && errors.Is(err, sql.ErrNoRows) {
-	} else if err != nil {
-		return nil, err
-	}
-	return results, nil
+	return messages, err
 }

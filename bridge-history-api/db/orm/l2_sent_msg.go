@@ -43,9 +43,9 @@ func (l *L2SentMsg) GetL2SentMsgByHash(msgHash string) (*L2SentMsg, error) {
 	return result, err
 }
 
-func (l *L2SentMsg) BatchInsertL2SentMsgDBTx(dbTx *gorm.DB, messages []*L2SentMsg) error {
+func (l *L2SentMsg) BatchInsertL2SentMsgDBTx(dbTx *gorm.DB, messages []*L2SentMsg) (*gorm.DB, error) {
 	if len(messages) == 0 {
-		return nil
+		return dbTx, nil
 	}
 
 	err := dbTx.Model(&L2SentMsg{}).Create(&messages).Error
@@ -58,7 +58,7 @@ func (l *L2SentMsg) BatchInsertL2SentMsgDBTx(dbTx *gorm.DB, messages []*L2SentMs
 		}
 		log.Error("failed to insert l2 sent messages", "l2hashes", l2hashes, "heights", heights, "err", err)
 	}
-	return err
+	return dbTx, err
 }
 
 func (l *L2SentMsg) GetLatestSentMsgHeightOnL2() (int64, error) {
@@ -77,14 +77,14 @@ func (l *L2SentMsg) GetLatestSentMsgHeightOnL2() (int64, error) {
 	return height, err
 }
 
-func (l *L2SentMsg) UpdateL2MessageProofInDBTx(ctx context.Context, dbTx *gorm.DB, msgHash string, proof string, batchIndex uint64) error {
+func (l *L2SentMsg) UpdateL2MessageProofInDBTx(ctx context.Context, dbTx *gorm.DB, msgHash string, proof string, batchIndex uint64) (*gorm.DB, error) {
 	err := dbTx.Table("l2_sent_msg").
 		Where("msg_hash = ? AND deleted_at IS NULL", msgHash).
 		Updates(map[string]interface{}{
 			"msg_proof":   proof,
 			"batch_index": batchIndex,
 		}).Error
-	return err
+	return dbTx, err
 }
 
 func (l *L2SentMsg) GetLatestL2SentMsgBatchIndex() (int64, error) {
@@ -131,16 +131,16 @@ func (l *L2SentMsg) GetLatestL2SentMsgLEHeight(endBlockNumber uint64) (*L2SentMs
 	return result, err
 }
 
-func (l *L2SentMsg) DeleteL2SentMsgAfterHeightDBTx(dbTx *gorm.DB, height int64) error {
+func (l *L2SentMsg) DeleteL2SentMsgAfterHeightDBTx(dbTx *gorm.DB, height int64) (*gorm.DB, error) {
 	err := dbTx.Table("l2_sent_msg").
 		Where("height > ?", height).
 		Updates(map[string]interface{}{
 			"deleted_at": gorm.Expr("current_timestamp"),
 		}).Error
-	return err
+	return dbTx, err
 }
 
-func (l *L2SentMsg) GetClaimableL2SentMsgByAddressWithOffset(address string, offset int64, limit int64) ([]*L2SentMsg, error) {
+func (l *L2SentMsg) GetClaimableL2SentMsgByAddressWithOffset(address string, offset int, limit int) ([]*L2SentMsg, error) {
 	var results []*L2SentMsg
 	err := l.db.Raw(`SELECT * FROM l2_sent_msg WHERE id NOT IN (SELECT l2_sent_msg.id FROM l2_sent_msg INNER JOIN relayed_msg ON l2_sent_msg.msg_hash = relayed_msg.msg_hash WHERE l2_sent_msg.deleted_at IS NULL AND relayed_msg.deleted_at IS NULL) AND (original_sender=$1 OR sender = $1) ORDER BY id DESC LIMIT $2 OFFSET $3;`, address, limit, offset).
 		Scan(&results).Error

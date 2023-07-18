@@ -21,12 +21,12 @@ type BatchInfoFetcher struct {
 	confirmation         uint64
 	blockTimeInSec       int
 	client               *ethclient.Client
-	db                   db.OrmFactory
+	db                   *db.OrmFactory
 	msgProofUpdater      *messageproof.MsgProofUpdater
 }
 
 // NewBatchInfoFetcher creates a new BatchInfoFetcher instance
-func NewBatchInfoFetcher(ctx context.Context, scrollChainAddr common.Address, batchInfoStartNumber uint64, confirmation uint64, blockTimeInSec int, client *ethclient.Client, db db.OrmFactory, msgProofUpdater *messageproof.MsgProofUpdater) *BatchInfoFetcher {
+func NewBatchInfoFetcher(ctx context.Context, scrollChainAddr common.Address, batchInfoStartNumber uint64, confirmation uint64, blockTimeInSec int, client *ethclient.Client, db *db.OrmFactory, msgProofUpdater *messageproof.MsgProofUpdater) *BatchInfoFetcher {
 	return &BatchInfoFetcher{
 		ctx:                  ctx,
 		scrollChainAddr:      scrollChainAddr,

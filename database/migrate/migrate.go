@@ -12,9 +12,6 @@ import (
 //go:embed migrations/*.sql
 var embedMigrations embed.FS
 
-// MigrationsDir migration dir
-const MigrationsDir string = "migrations"
-
 func init() {
 	goose.SetBaseFS(embedMigrations)
 	goose.SetSequential(true)
@@ -25,25 +22,25 @@ func init() {
 }
 
 // Migrate migrate db
-func Migrate(db *sql.DB) error {
+func Migrate(db *sql.DB, path string) error {
 	//return goose.Up(db, MIGRATIONS_DIR, goose.WithAllowMissing())
-	return goose.Up(db, MigrationsDir, goose.WithAllowMissing())
+	return goose.Up(db, path, goose.WithAllowMissing())
 }
 
 // Rollback rollback to the given version
-func Rollback(db *sql.DB, version *int64) error {
+func Rollback(db *sql.DB, version *int64, path string) error {
 	if version != nil {
-		return goose.DownTo(db, MigrationsDir, *version)
+		return goose.DownTo(db, path, *version)
 	}
-	return goose.Down(db, MigrationsDir)
+	return goose.Down(db, path)
 }
 
 // ResetDB clean and migrate db.
-func ResetDB(db *sql.DB) error {
-	if err := Rollback(db, new(int64)); err != nil {
+func ResetDB(db *sql.DB, path string) error {
+	if err := Rollback(db, new(int64), path); err != nil {
 		return err
 	}
-	return Migrate(db)
+	return Migrate(db, path)
 }
 
 // Current get current version
@@ -52,11 +49,11 @@ func Current(db *sql.DB) (int64, error) {
 }
 
 // Status is normal or not
-func Status(db *sql.DB) error {
-	return goose.Version(db, MigrationsDir)
+func Status(db *sql.DB, path string) error {
+	return goose.Version(db, path)
 }
 
 // Create a new migration folder
-func Create(db *sql.DB, name, migrationType string) error {
-	return goose.Create(db, MigrationsDir, name, migrationType)
+func Create(db *sql.DB, name, migrationType string, path string) error {
+	return goose.Create(db, path, name, migrationType)
 }

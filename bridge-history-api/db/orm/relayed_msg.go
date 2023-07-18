@@ -26,9 +26,9 @@ func NewRelayedMsg(db *gorm.DB) *RelayedMsg {
 	return &RelayedMsg{db: db}
 }
 
-func (r *RelayedMsg) BatchInsertRelayedMsgDBTx(dbTx *gorm.DB, messages []*RelayedMsg) error {
+func (r *RelayedMsg) BatchInsertRelayedMsgDBTx(dbTx *gorm.DB, messages []*RelayedMsg) (*gorm.DB, error) {
 	if len(messages) == 0 {
-		return nil
+		return dbTx, nil
 	}
 
 	err := dbTx.Model(&RelayedMsg{}).Create(&messages).Error
@@ -43,7 +43,7 @@ func (r *RelayedMsg) BatchInsertRelayedMsgDBTx(dbTx *gorm.DB, messages []*Relaye
 		}
 		log.Error("failed to insert l2 sent messages", "l2hashes", l2hashes, "l1hashes", l1hashes, "heights", heights, "err", err)
 	}
-	return nil
+	return dbTx, err
 }
 
 func (r *RelayedMsg) GetRelayedMsgByHash(msgHash string) (*RelayedMsg, error) {
@@ -90,17 +90,17 @@ func (r *RelayedMsg) GetLatestRelayedHeightOnL2() (int64, error) {
 	return height, nil
 }
 
-func (r *RelayedMsg) DeleteL1RelayedHashAfterHeightDBTx(dbTx *gorm.DB, height int64) error {
+func (r *RelayedMsg) DeleteL1RelayedHashAfterHeightDBTx(dbTx *gorm.DB, height int64) (*gorm.DB, error) {
 	err := dbTx.Table("relayed_msg").
 		Where("height > ? AND layer1_hash != ''", height).
 		Update("deleted_at", gorm.Expr("current_timestamp")).Error
-	return err
+	return dbTx, err
 
 }
 
-func (r *RelayedMsg) DeleteL2RelayedHashAfterHeightDBTx(dbTx *gorm.DB, height int64) error {
+func (r *RelayedMsg) DeleteL2RelayedHashAfterHeightDBTx(dbTx *gorm.DB, height int64) (*gorm.DB, error) {
 	err := dbTx.Table("relayed_msg").
 		Where("height > ? AND layer2_hash != ''", height).
 		Update("deleted_at", gorm.Expr("current_timestamp")).Error
-	return err
+	return dbTx, err
 }
