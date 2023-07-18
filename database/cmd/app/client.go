@@ -20,11 +20,6 @@ func getConfig(ctx *cli.Context) (*database.DBConfig, error) {
 	return dbCfg, nil
 }
 
-func getMigrationConfig(ctx *cli.Context) string {
-	path := ctx.String(utils.MigrationDirFlag.Name)
-	return path
-}
-
 func initDB(dbCfg *database.DBConfig) (*sqlx.DB, error) {
 	factory, err := database.NewOrmFactory(dbCfg)
 	if err != nil {
@@ -45,8 +40,9 @@ func resetDB(ctx *cli.Context) error {
 	if err != nil {
 		return err
 	}
+
 	var version int64
-	err = migrate.Rollback(db.DB, &version, getMigrationConfig(ctx))
+	err = migrate.Rollback(db.DB, &version)
 	if err != nil {
 		return err
 	}
@@ -66,7 +62,7 @@ func checkDBStatus(ctx *cli.Context) error {
 		return err
 	}
 
-	return migrate.Status(db.DB, getMigrationConfig(ctx))
+	return migrate.Status(db.DB)
 }
 
 // dbVersion return the latest version
@@ -96,7 +92,8 @@ func migrateDB(ctx *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	return migrate.Migrate(db.DB, getMigrationConfig(ctx))
+
+	return migrate.Migrate(db.DB)
 }
 
 // rollbackDB rollback db by version
@@ -110,5 +107,5 @@ func rollbackDB(ctx *cli.Context) error {
 		return err
 	}
 	version := ctx.Int64("version")
-	return migrate.Rollback(db.DB, &version, getMigrationConfig(ctx))
+	return migrate.Rollback(db.DB, &version)
 }

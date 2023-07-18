@@ -50,7 +50,7 @@ func init() {
 			Name:   "migrate",
 			Usage:  "Migrate the database to the latest version.",
 			Action: migrateDB,
-			Flags:  []cli.Flag{&utils.ConfigFileFlag, &utils.MigrationDirFlag},
+			Flags:  []cli.Flag{&utils.ConfigFileFlag},
 		},
 		{
 			Name:   "rollback",
