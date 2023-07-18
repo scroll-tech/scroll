@@ -57,8 +57,7 @@ func action(ctx *cli.Context) error {
 	db, err := db.NewOrmFactory(cfg)
 
 	defer func() {
-		err = db.Close()
-		if err != nil {
+		if err := db.Close(); err != nil {
 			log.Error("failed to close db", "err", err)
 		}
 	}()

@@ -35,7 +35,7 @@ type MsgFetcher struct {
 
 // NewMsgFetcher creates a new MsgFetcher instance
 func NewMsgFetcher(ctx context.Context, config *config.LayerConfig, db db.OrmFactory, client *ethclient.Client, worker *FetchEventWorker, addressList []common.Address, reorg ReorgHandling) (*MsgFetcher, error) {
-	crossMsgFetcher := &MsgFetcher{
+	msgFetcher := &MsgFetcher{
 		ctx:           ctx,
 		config:        config,
 		db:            db,
@@ -47,7 +47,7 @@ func NewMsgFetcher(ctx context.Context, config *config.LayerConfig, db db.OrmFac
 		reorgStartCh:  make(chan struct{}),
 		reorgEndCh:    make(chan struct{}),
 	}
-	return crossMsgFetcher, nil
+	return msgFetcher, nil
 }
 
 // Start the MsgFetcher
