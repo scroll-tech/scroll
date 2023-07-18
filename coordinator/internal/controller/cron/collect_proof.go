@@ -14,7 +14,6 @@ import (
 	"scroll-tech/coordinator/internal/config"
 	"scroll-tech/coordinator/internal/logic/collector"
 	"scroll-tech/coordinator/internal/orm"
-	coordinatorType "scroll-tech/coordinator/internal/types"
 )
 
 // Collector collect the block batch or agg task to send to prover
@@ -132,7 +131,7 @@ func (c *Collector) timeoutProofTask() {
 
 						// update prover task failure type
 						if err = c.proverTaskOrm.UpdateProverTaskFailureType(c.ctx, message.ProofType(assignedProverTask.TaskType),
-							assignedProverTask.TaskID, assignedProverTask.ProverPublicKey, coordinatorType.ProverTaskFailureTypeTimeout, tx); err != nil {
+							assignedProverTask.TaskID, assignedProverTask.ProverPublicKey, types.ProverTaskFailureTypeTimeout, tx); err != nil {
 							log.Error("update prover task failure type failure", "hash", assignedProverTask.TaskID, "pubKey", assignedProverTask.ProverPublicKey, "err", err)
 							return err
 						}

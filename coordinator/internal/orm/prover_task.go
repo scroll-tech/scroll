@@ -11,8 +11,6 @@ import (
 
 	"scroll-tech/common/types"
 	"scroll-tech/common/types/message"
-
-	coordinatorType "scroll-tech/coordinator/internal/types"
 )
 
 // ProverTask is assigned rollers info of chunk/batch proof prover task
@@ -173,7 +171,7 @@ func (o *ProverTask) UpdateAllProverTaskProvingStatusOfTaskID(ctx context.Contex
 }
 
 // UpdateProverTaskFailureType update the prover task failure type
-func (o *ProverTask) UpdateProverTaskFailureType(ctx context.Context, proofType message.ProofType, taskID string, pk string, failureType coordinatorType.ProverTaskFailureType, dbTX ...*gorm.DB) error {
+func (o *ProverTask) UpdateProverTaskFailureType(ctx context.Context, proofType message.ProofType, taskID string, pk string, failureType types.ProverTaskFailureType, dbTX ...*gorm.DB) error {
 	db := o.db
 	if len(dbTX) > 0 && dbTX[0] != nil {
 		db = dbTX[0]
@@ -188,7 +186,7 @@ func (o *ProverTask) UpdateProverTaskFailureType(ctx context.Context, proofType 
 }
 
 // UpdateAllProverTaskFailureTypeOfTaskID update the prover task failure type
-func (o *ProverTask) UpdateAllProverTaskFailureTypeOfTaskID(ctx context.Context, proofType message.ProofType, taskID string, failureType coordinatorType.ProverTaskFailureType, dbTX ...*gorm.DB) error {
+func (o *ProverTask) UpdateAllProverTaskFailureTypeOfTaskID(ctx context.Context, proofType message.ProofType, taskID string, failureType types.ProverTaskFailureType, dbTX ...*gorm.DB) error {
 	db := o.db
 	if len(dbTX) > 0 && dbTX[0] != nil {
 		db = dbTX[0]

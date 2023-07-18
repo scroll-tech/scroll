@@ -84,7 +84,7 @@ func (ac *BatchProofCollector) Collect(ctx context.Context) error {
 				TaskType:        int16(message.ProofTypeBatch),
 				ProverName:      rollerStatus.Name,
 				ProvingStatus:   int16(types.RollerAssigned),
-				FailureType:     int16(types.RollerFailureTypeUndefined),
+				FailureType:     int16(types.ProverTaskFailureTypeUndefined),
 			}
 
 			// Store session info.

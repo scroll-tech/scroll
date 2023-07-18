@@ -88,7 +88,7 @@ func (cp *ChunkProofCollector) Collect(ctx context.Context) error {
 				TaskType:        int16(message.ProofTypeChunk),
 				ProverName:      rollerStatus.Name,
 				ProvingStatus:   int16(types.RollerAssigned),
-				FailureType:     int16(types.RollerFailureTypeUndefined),
+				FailureType:     int16(types.ProverTaskFailureTypeUndefined),
 			}
 			if err = cp.proverTaskOrm.SetProverTask(ctx, &proverTask, tx); err != nil {
 				return fmt.Errorf("db set session info fail, session id:%s , public key:%s, err:%w", chunkTask.Hash, rollerStatus.PublicKey, err)
