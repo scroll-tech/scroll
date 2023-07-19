@@ -1,11 +1,21 @@
 package controller
 
-import "gorm.io/gorm"
+import (
+	"sync"
+
+	"gorm.io/gorm"
+)
 
 var (
 	ProverTask *ProverTaskController
+	Auth       *AuthController
+
+	initControllerOnce sync.Once
 )
 
 func InitController(db *gorm.DB) {
-	ProverTask = NewProverTaskController(db)
+	initControllerOnce.Do(func() {
+		ProverTask = NewProverTaskController(db)
+		Auth = NewAuthController()
+	})
 }

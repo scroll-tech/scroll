@@ -18,19 +18,18 @@ const IdentityKey = "public_key"
 
 // AuthMiddleware jwt auth middleware
 func AuthMiddleware(conf *config.Config) *jwt.GinJWTMiddleware {
-	authLogic := controller.NewAuthController()
 	jwtMiddleware, err := jwt.New(&jwt.GinJWTMiddleware{
 		PayloadFunc:     PayloadFunc,
 		IdentityHandler: IdentityHandler,
 		IdentityKey:     IdentityKey,
 		Key:             []byte(conf.Auth.Secret),
 		Timeout:         time.Second * time.Duration(conf.Auth.TokenExpireDuration),
-		Authenticator:   authLogic.Login,
+		Authenticator:   controller.Auth.Login,
 		Unauthorized:    Unauthorized,
 		TokenLookup:     "header: Authorization, query: token, cookie: jwt",
 		TokenHeadName:   "Bearer",
 		TimeFunc:        time.Now,
-		LoginResponse:   authLogic.LoginResponse,
+		LoginResponse:   controller.Auth.LoginResponse,
 	})
 
 	if err != nil {
