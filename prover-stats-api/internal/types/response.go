@@ -13,7 +13,8 @@ type Response struct {
 	Data    interface{} `json:"data"`
 }
 
-func RenderJson(ctx *gin.Context, errCode int, err error, data interface{}) {
+// RenderJSON renders response with json
+func RenderJSON(ctx *gin.Context, errCode int, err error, data interface{}) {
 	var errMsg string
 	if err != nil {
 		errMsg = err.Error()

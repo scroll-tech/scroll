@@ -10,6 +10,7 @@ import (
 	"scroll-tech/prover-stats-api/internal/middleware"
 )
 
+// Route routes the APIs
 func Route(router *gin.Engine, conf *config.Config) {
 	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 

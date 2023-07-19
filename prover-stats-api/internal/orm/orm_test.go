@@ -75,23 +75,21 @@ func TestProverTaskOrm(t *testing.T) {
 
 	err = proverTaskOrm.SetProverTask(context.Background(), &proverTask)
 	assert.NoError(t, err)
-	proverTasks, err := proverTaskOrm.GetProverTasksByHashes(context.Background(), []string{"test-hash"})
+	getTask, err := proverTaskOrm.GetProverTasksByHash(context.Background(), "test-hash")
 	assert.NoError(t, err)
-	assert.Equal(t, 1, len(proverTasks))
-	assert.Equal(t, proverTask.ProverName, proverTasks[0].ProverName)
+	assert.Equal(t, proverTask.ProverName, getTask.ProverName)
 
 	// test decimal reward, get reward
-	resultReward := proverTasks[0].Reward.BigInt()
+	resultReward := getTask.Reward.BigInt()
 	assert.Equal(t, resultReward, reward)
 	assert.Equal(t, resultReward.String(), "18446744073709551616")
 
 	proverTask.ProvingStatus = int16(types.RollerProofValid)
 	err = proverTaskOrm.SetProverTask(context.Background(), &proverTask)
 	assert.NoError(t, err)
-	proverTasks, err = proverTaskOrm.GetProverTasksByHashes(context.Background(), []string{"test-hash"})
+	getTask, err = proverTaskOrm.GetProverTasksByHash(context.Background(), "test-hash")
 	assert.NoError(t, err)
-	assert.Equal(t, 1, len(proverTasks))
-	assert.Equal(t, proverTask.ProvingStatus, proverTasks[0].ProvingStatus)
+	assert.Equal(t, proverTask.ProvingStatus, getTask.ProvingStatus)
 }
 
 func TestProverTaskOrmUint256(t *testing.T) {
@@ -112,10 +110,9 @@ func TestProverTaskOrmUint256(t *testing.T) {
 
 	err = proverTaskOrm.SetProverTask(context.Background(), &proverTask)
 	assert.NoError(t, err)
-	proverTasksUint256, err := proverTaskOrm.GetProverTasksByHashes(context.Background(), []string{"test-hash"})
+	proverTasksUint256, err := proverTaskOrm.GetProverTasksByHash(context.Background(), "test-hash")
 	assert.NoError(t, err)
-	assert.Equal(t, 1, len(proverTasksUint256))
-	resultRewardUint256 := proverTasksUint256[0].Reward.BigInt()
+	resultRewardUint256 := proverTasksUint256.Reward.BigInt()
 	assert.Equal(t, resultRewardUint256, rewardUint256)
 	assert.Equal(t, resultRewardUint256.String(), "115792089237316195423570985008687907853269984665640564039457584007913129639935")
 }

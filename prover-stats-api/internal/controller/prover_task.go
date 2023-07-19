@@ -13,10 +13,12 @@ import (
 	"scroll-tech/prover-stats-api/internal/types"
 )
 
+// ProverTaskController provides API controller.
 type ProverTaskController struct {
 	logic *logic.ProverTaskLogic
 }
 
+// NewProverTaskController provides a ProverTask instance.
 func NewProverTaskController(db *gorm.DB) *ProverTaskController {
 	return &ProverTaskController{
 		logic: logic.NewProverTaskLogic(db),
@@ -39,14 +41,14 @@ func (c *ProverTaskController) ProverTasks(ctx *gin.Context) {
 	var pp types.ProverTasksPaginationParameter
 	if err := ctx.ShouldBind(&pp); err != nil {
 		nerr := fmt.Errorf("parameter invalid, err:%w", err)
-		types.RenderJson(ctx, types.ErrParameterInvalidNo, nerr, nil)
+		types.RenderJSON(ctx, types.ErrParameterInvalidNo, nerr, nil)
 		return
 	}
 
 	tasks, err := c.logic.GetTasksByProver(ctx, pp.PublicKey, pp.Page, pp.PageSize)
 	if err != nil {
 		nerr := fmt.Errorf("controller.ProverTasks err:%w", err)
-		types.RenderJson(ctx, types.ErrProverTaskFailure, nerr, nil)
+		types.RenderJSON(ctx, types.ErrProverTaskFailure, nerr, nil)
 		return
 	}
 
@@ -63,7 +65,7 @@ func (c *ProverTaskController) ProverTasks(ctx *gin.Context) {
 		proverTaskSchemas = append(proverTaskSchemas, proverTaskSchema)
 	}
 
-	types.RenderJson(ctx, types.Success, nil, proverTaskSchemas)
+	types.RenderJSON(ctx, types.Success, nil, proverTaskSchemas)
 }
 
 // GetTotalRewards godoc
@@ -80,14 +82,14 @@ func (c *ProverTaskController) GetTotalRewards(ctx *gin.Context) {
 	var pp types.ProverTotalRewardsParameter
 	if err := ctx.ShouldBind(&pp); err != nil {
 		nerr := fmt.Errorf("parameter invalid, err:%w", err)
-		types.RenderJson(ctx, types.ErrParameterInvalidNo, nerr, nil)
+		types.RenderJSON(ctx, types.ErrParameterInvalidNo, nerr, nil)
 		return
 	}
 
 	rewards, err := c.logic.GetTotalRewards(ctx, pp.PublicKey)
 	if err != nil {
 		nerr := fmt.Errorf("controller.GetTotalRewards, err:%w", err)
-		types.RenderJson(ctx, types.ErrProverTotalRewardFailure, nerr, nil)
+		types.RenderJSON(ctx, types.ErrProverTotalRewardFailure, nerr, nil)
 		return
 	}
 
@@ -95,7 +97,7 @@ func (c *ProverTaskController) GetTotalRewards(ctx *gin.Context) {
 		Rewards: rewards.String(),
 	}
 
-	types.RenderJson(ctx, types.Success, nil, resp)
+	types.RenderJSON(ctx, types.Success, nil, resp)
 }
 
 // GetTask godoc
@@ -112,14 +114,14 @@ func (c *ProverTaskController) GetTask(ctx *gin.Context) {
 	var pp types.ProverTaskParameter
 	if err := ctx.ShouldBind(&pp); err != nil {
 		nerr := fmt.Errorf("parameter invalid, err:%w", err)
-		types.RenderJson(ctx, types.ErrParameterInvalidNo, nerr, nil)
+		types.RenderJSON(ctx, types.ErrParameterInvalidNo, nerr, nil)
 		return
 	}
 
 	task, err := c.logic.GetTask(ctx, pp.TaskID)
 	if err != nil {
 		nerr := fmt.Errorf("controller.GetTask, err:%w", err)
-		types.RenderJson(ctx, types.ErrProverTotalRewardFailure, nerr, nil)
+		types.RenderJSON(ctx, types.ErrProverTotalRewardFailure, nerr, nil)
 		return
 	}
 
@@ -132,5 +134,5 @@ func (c *ProverTaskController) GetTask(ctx *gin.Context) {
 		CreatedAt:     task.CreatedAt,
 	}
 
-	types.RenderJson(ctx, types.Success, nil, schema)
+	types.RenderJSON(ctx, types.Success, nil, schema)
 }

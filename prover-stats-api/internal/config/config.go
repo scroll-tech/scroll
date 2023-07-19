@@ -7,11 +7,13 @@ import (
 	"scroll-tech/common/database"
 )
 
+// Config provides the config of prover-stats-api
 type Config struct {
 	DBConfig *database.Config `json:"db_config"`
 	Auth     Auth             `json:"auth"`
 }
 
+// Auth provides the auth of prover-stats-api
 type Auth struct {
 	Secret              string `json:"secret"`
 	TokenExpireDuration int    `json:"token_expire_duration"` // unit: seconds

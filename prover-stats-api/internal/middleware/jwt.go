@@ -14,6 +14,7 @@ import (
 	"scroll-tech/prover-stats-api/internal/types"
 )
 
+// IdentityKey is auth key
 const IdentityKey = "public_key"
 
 // AuthMiddleware jwt auth middleware
@@ -43,11 +44,13 @@ func AuthMiddleware(conf *config.Config) *jwt.GinJWTMiddleware {
 	return jwtMiddleware
 }
 
+// Unauthorized response Unauthorized error message to client
 func Unauthorized(c *gin.Context, code int, message string) {
 	err := errors.New(message)
-	types.RenderJson(c, code, err, nil)
+	types.RenderJSON(c, code, err, nil)
 }
 
+// PayloadFunc returns jwt.MapClaims with public key.
 func PayloadFunc(data interface{}) jwt.MapClaims {
 	if v, ok := data.(types.LoginParameter); ok {
 		return jwt.MapClaims{
@@ -57,6 +60,7 @@ func PayloadFunc(data interface{}) jwt.MapClaims {
 	return jwt.MapClaims{}
 }
 
+// IdentityHandler replies to client for /login
 func IdentityHandler(c *gin.Context) interface{} {
 	claims := jwt.ExtractClaims(c)
 	return &types.LoginParameter{

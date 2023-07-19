@@ -74,22 +74,28 @@ func testRequestToken(t *testing.T) {
 }
 
 func testGetProverTasksByProver(t *testing.T) {
-	data := getResp(t, fmt.Sprintf("%s/tasks?public_key=%s&page=%d&page_size=%d", basicPath, proverPubkey, 0, 10))
-	tasks := data.([]api_types.ProverTaskSchema)
-	assert.Equal(t, task2.TaskID, tasks[0].TaskID)
-	assert.Equal(t, task1.TaskID, tasks[1].TaskID)
+	datas := getResp(t, fmt.Sprintf("%s/tasks?public_key=%s&page=%d&page_size=%d", basicPath, proverPubkey, 1, 10))
+	anys := datas.([]interface{})
+	var tasks []map[string]interface{}
+	for _, data := range anys {
+		task := data.(map[string]interface{})
+		tasks = append(tasks, task)
+	}
+
+	assert.Equal(t, task2.TaskID, tasks[0]["task_id"])
+	assert.Equal(t, task1.TaskID, tasks[1]["task_id"])
 }
 
 func testGetTotalRewards(t *testing.T) {
 	data := getResp(t, fmt.Sprintf("%s/total_rewards?public_key=%s", basicPath, proverPubkey))
-	schema := data.(api_types.ProverTotalRewardsSchema)
-	assert.Equal(t, big.NewInt(22).String(), schema.Rewards)
+	schema := data.(map[string]interface{})
+	assert.Equal(t, big.NewInt(22).String(), schema["rewards"])
 }
 
 func testGetProverTask(t *testing.T) {
 	data := getResp(t, fmt.Sprintf("%s/task?task_id=1", basicPath))
-	task := data.(api_types.ProverTaskSchema)
-	assert.Equal(t, task1.TaskID, task.TaskID)
+	task := data.(map[string]interface{})
+	assert.Equal(t, task1.TaskID, task["task_id"])
 }
 
 func getResp(t *testing.T, url string) interface{} {
@@ -99,6 +105,7 @@ func getResp(t *testing.T, url string) interface{} {
 
 	resp, err := http.DefaultClient.Do(req)
 	assert.NoError(t, err)
+	defer resp.Body.Close()
 	assert.Equal(t, resp.StatusCode, http.StatusOK)
 
 	byt, err := io.ReadAll(resp.Body)

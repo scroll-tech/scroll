@@ -10,9 +10,11 @@ import (
 	"scroll-tech/prover-stats-api/internal/types"
 )
 
+// AuthController is auth API
 type AuthController struct {
 }
 
+// NewAuthController returns an AuthController instance
 func NewAuthController() *AuthController {
 	return &AuthController{}
 }
@@ -45,10 +47,11 @@ func (a *AuthController) checkValidPublicKey() bool {
 	return true
 }
 
+// LoginResponse response login api
 func (a *AuthController) LoginResponse(c *gin.Context, code int, message string, time time.Time) {
 	resp := types.LoginSchema{
 		Time:  time,
 		Token: message,
 	}
-	types.RenderJson(c, code, nil, resp)
+	types.RenderJSON(c, code, nil, resp)
 }
