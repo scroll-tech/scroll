@@ -35,19 +35,15 @@ func (a *AuthController) Login(c *gin.Context) (interface{}, error) {
 		return "", fmt.Errorf("missing the public_key, err:%w", err)
 	}
 
-	if strings.TrimSpace(login.PublicKey) == "" {
-		return nil, errors.New("empty public_key")
-	}
-
-	if a.checkValidPublicKey() {
+	if a.checkValidPublicKey(login.PublicKey) {
 		return types.LoginParameter{PublicKey: login.PublicKey}, nil
 	}
 
 	return nil, errors.New("incorrect public_key")
 }
 
-func (a *AuthController) checkValidPublicKey() bool {
-	return true
+func (a *AuthController) checkValidPublicKey(pubkey string) bool {
+	return strings.TrimSpace(pubkey) != ""
 }
 
 // LoginResponse response login api
