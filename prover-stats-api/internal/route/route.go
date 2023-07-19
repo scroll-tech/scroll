@@ -5,9 +5,8 @@ import (
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
 
-	"scroll-tech/prover-stats-api/internal/controller"
-
 	"scroll-tech/prover-stats-api/internal/config"
+	"scroll-tech/prover-stats-api/internal/controller"
 	"scroll-tech/prover-stats-api/internal/middleware"
 )
 
