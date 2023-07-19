@@ -1,20 +1,20 @@
-package roller
+package prover
 
 import (
 	"context"
 	"crypto/ecdsa"
 	"errors"
 	"fmt"
+
 	"sort"
 	"sync/atomic"
 	"time"
 
-	"github.com/scroll-tech/go-ethereum/core/types"
-	"github.com/scroll-tech/go-ethereum/ethclient"
-
 	"github.com/scroll-tech/go-ethereum"
 	"github.com/scroll-tech/go-ethereum/common"
+	"github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/crypto"
+	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
 
 	"scroll-tech/common/types/message"
@@ -23,9 +23,9 @@ import (
 
 	"scroll-tech/coordinator/client"
 
-	"scroll-tech/roller/config"
-	"scroll-tech/roller/prover"
-	"scroll-tech/roller/store"
+	"scroll-tech/prover/config"
+	"scroll-tech/prover/core"
+	"scroll-tech/prover/store"
 )
 
 var (
@@ -39,7 +39,7 @@ type Roller struct {
 	client      *client.Client
 	traceClient *ethclient.Client
 	stack       *store.Stack
-	prover      *prover.Prover
+	prover      *core.ProverCore
 	taskChan    chan *message.TaskMsg
 	sub         ethereum.Subscription
 
@@ -72,7 +72,7 @@ func NewRoller(cfg *config.Config) (*Roller, error) {
 
 	// Create prover instance
 	log.Info("init prover")
-	newProver, err := prover.NewProver(cfg.Prover)
+	newProver, err := core.NewProverCore(cfg.Prover)
 	if err != nil {
 		return nil, err
 	}
@@ -96,7 +96,7 @@ func NewRoller(cfg *config.Config) (*Roller, error) {
 	}, nil
 }
 
-// Type returns roller type.
+// Type returns prover type.
 func (r *Roller) Type() message.ProofType {
 	return r.cfg.Prover.ProofType
 }
@@ -233,7 +233,7 @@ func (r *Roller) prove() error {
 			}
 			log.Error("get traces failed!", "task-id", task.Task.ID, "err", err)
 		} else {
-			// If FFI panic during Prove, the roller will restart and re-enter prove() function,
+			// If FFI panic during Prove, the prover will restart and re-enter prove() function,
 			// the proof will not be submitted.
 			var proof *message.AggProof
 			proof, err = r.prover.Prove(task.Task.ID, traces)
@@ -257,7 +257,7 @@ func (r *Roller) prove() error {
 			}
 		}
 	} else {
-		// when the roller has more than 3 times panic,
+		// when the prover has more than 3 times panic,
 		// it will omit to prove the task, submit StatusProofError and then Delete the task.
 		proofMsg = &message.ProofDetail{
 			Status: message.StatusProofError,
@@ -271,7 +271,7 @@ func (r *Roller) prove() error {
 	defer func() {
 		err = r.stack.Delete(task.Task.ID)
 		if err != nil {
-			log.Error("roller stack pop failed!", "err", err)
+			log.Error("prover stack pop failed!", "err", err)
 		}
 	}()
 
@@ -288,8 +288,8 @@ func (r *Roller) signAndSubmitProof(msg *message.ProofDetail) {
 
 	// Retry SubmitProof several times.
 	for i := 0; i < 3; i++ {
-		// When the roller is disconnected from the coordinator,
-		// wait until the roller reconnects to the coordinator.
+		// When the prover is disconnected from the coordinator,
+		// wait until the prover reconnects to the coordinator.
 		for atomic.LoadInt64(&r.isDisconnected) == 1 {
 			time.Sleep(retryWait)
 		}

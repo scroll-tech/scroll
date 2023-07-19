@@ -13,7 +13,7 @@ import (
 	"github.com/scroll-tech/go-ethereum/rlp"
 )
 
-// RespStatus represents status code from roller to scroll
+// RespStatus represents status code from prover to scroll
 type RespStatus uint32
 
 const (
@@ -23,7 +23,7 @@ const (
 	StatusProofError
 )
 
-// ProofType represents the type of roller.
+// ProofType represents the type of prover.
 type ProofType uint8
 
 func (r ProofType) String() string {
@@ -40,7 +40,7 @@ func (r ProofType) String() string {
 const (
 	// ProofTypeUndefined is an unknown proof type
 	ProofTypeUndefined ProofType = iota
-	// ProofTypeChunk is default roller, it only generates zk proof from traces.
+	// ProofTypeChunk is default prover, it only generates zk proof from traces.
 	ProofTypeChunk
 	// ProofTypeBatch generates zk proof from other zk proofs and aggregate them into one proof.
 	ProofTypeBatch
@@ -56,7 +56,7 @@ type AuthMsg struct {
 	Signature string `json:"signature"`
 }
 
-// Identity contains all the fields to be signed by the roller.
+// Identity contains all the fields to be signed by the prover.
 type Identity struct {
 	// Roller name
 	Name string `json:"name"`

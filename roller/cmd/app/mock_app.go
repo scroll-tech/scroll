@@ -10,7 +10,7 @@ import (
 
 	"golang.org/x/sync/errgroup"
 
-	rollerConfig "scroll-tech/roller/config"
+	rollerConfig "scroll-tech/prover/config"
 
 	"scroll-tech/common/cmd"
 	"scroll-tech/common/docker"
@@ -26,7 +26,7 @@ func getIndex() int {
 	return rollerIndex
 }
 
-// RollerApp roller-test client manager.
+// RollerApp prover-test client manager.
 type RollerApp struct {
 	Config *rollerConfig.Config
 
@@ -60,13 +60,13 @@ func NewRollerApp(base *docker.App, file string, wsURL string) *RollerApp {
 	return rollerApp
 }
 
-// RunApp run roller-test child process by multi parameters.
+// RunApp run prover-test child process by multi parameters.
 func (r *RollerApp) RunApp(t *testing.T, args ...string) {
 	r.AppAPI = cmd.NewCmd(r.name, append(r.args, args...)...)
-	r.AppAPI.RunApp(func() bool { return r.AppAPI.WaitResult(t, time.Second*40, "roller start successfully") })
+	r.AppAPI.RunApp(func() bool { return r.AppAPI.WaitResult(t, time.Second*40, "prover start successfully") })
 }
 
-// Free stop and release roller-test.
+// Free stop and release prover-test.
 func (r *RollerApp) Free() {
 	if !utils.IsNil(r.AppAPI) {
 		r.AppAPI.WaitExit()
@@ -76,7 +76,7 @@ func (r *RollerApp) Free() {
 	_ = os.Remove(r.bboltDB)
 }
 
-// MockConfig creates a new roller config.
+// MockConfig creates a new prover config.
 func (r *RollerApp) MockConfig(store bool, wsURL string) error {
 	cfg, err := rollerConfig.NewConfig(r.originFile)
 	if err != nil {

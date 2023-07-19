@@ -21,7 +21,7 @@ import (
 
 	"scroll-tech/common/types/message"
 
-	"scroll-tech/roller/config"
+	"scroll-tech/prover/config"
 )
 
 // ProverCore sends block-traces to rust-prover through ffi and get back the zk-proof.
@@ -47,7 +47,7 @@ func NewProverCore(cfg *config.ProverConfig) (*ProverCore, error) {
 		log.Info("Enabled dump_proof", "dir", cfg.DumpDir)
 	}
 
-	return &Prover{cfg: cfg}, nil
+	return &ProverCore{cfg: cfg}, nil
 }
 
 // Prove call rust ffi to generate proof, if first failed, try again.

@@ -8,8 +8,8 @@ on:
       - develop
       - alpha
     paths:
-      - 'roller/**'
-      - '.github/workflows/roller.yml'
+      - 'prover/**'
+      - '.github/workflows/prover.yml'
   pull_request:
     types:
       - opened
@@ -17,12 +17,12 @@ on:
       - synchronize
       - ready_for_review
     paths:
-      - 'roller/**'
-      - '.github/workflows/roller.yml'
+      - 'prover/**'
+      - '.github/workflows/prover.yml'
 
 defaults:
   run:
-    working-directory: 'roller'
+    working-directory: 'prover'
 
 jobs:
   test:
@@ -43,7 +43,7 @@ jobs:
       env:
         CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
       with:
-        flags: roller
+        flags: prover
   compile:
     if: github.event_name == 'push' # will only be triggered when pushing to main & staging & develop & alpha
     runs-on: ubuntu-latest
@@ -92,7 +92,7 @@ jobs:
       uses: actions/checkout@v2
     - name: Install goimports
       run: go install golang.org/x/tools/cmd/goimports
-    - run: goimports -local scroll-tech/roller/ -w .
+    - run: goimports -local scroll-tech/prover/ -w .
     - run: go mod tidy
     # If there are any diffs from goimports or go mod tidy, fail.
     - name: Verify no changes from goimports and go mod tidy

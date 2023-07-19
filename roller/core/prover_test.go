@@ -13,8 +13,8 @@ import (
 	"github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/stretchr/testify/assert"
 
-	"scroll-tech/roller/config"
-	"scroll-tech/roller/prover"
+	"scroll-tech/prover/config"
+	"scroll-tech/prover/prover"
 )
 
 var (

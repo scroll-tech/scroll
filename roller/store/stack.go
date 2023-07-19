@@ -24,7 +24,7 @@ type Stack struct {
 // It contains TaskMsg and proved times.
 type ProvingTask struct {
 	Task *message.TaskMsg `json:"task"`
-	// Times is how many times roller proved.
+	// Times is how many times prover proved.
 	Times int `json:"times"`
 }
 
@@ -89,7 +89,7 @@ func (s *Stack) Delete(taskID string) error {
 	})
 }
 
-// UpdateTimes udpates the roller prove times of the proving task.
+// UpdateTimes udpates the prover prove times of the proving task.
 func (s *Stack) UpdateTimes(task *ProvingTask, udpateTimes int) error {
 	task.Times = udpateTimes
 	byt, err := json.Marshal(task)
