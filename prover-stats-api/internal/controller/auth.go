@@ -3,6 +3,7 @@ package controller
 import (
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -34,7 +35,9 @@ func (a *AuthController) Login(c *gin.Context) (interface{}, error) {
 		return "", fmt.Errorf("missing the public_key, err:%w", err)
 	}
 
-	// TODO check public key is exist
+	if strings.TrimSpace(login.PublicKey) == "" {
+		return nil, errors.New("empty public_key")
+	}
 
 	if a.checkValidPublicKey() {
 		return types.LoginParameter{PublicKey: login.PublicKey}, nil
