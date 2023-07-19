@@ -74,7 +74,7 @@ func testRequestToken(t *testing.T) {
 }
 
 func testGetProverTasksByProver(t *testing.T) {
-	data := getResp(t, fmt.Sprintf("%s/tasks?public_key=%s&page=%d&limit=%d", basicPath, proverPubkey, 0, 10))
+	data := getResp(t, fmt.Sprintf("%s/tasks?public_key=%s&page=%d&page_size=%d", basicPath, proverPubkey, 0, 10))
 	tasks := data.([]api_types.ProverTaskSchema)
 	assert.Equal(t, task2.TaskID, tasks[0].TaskID)
 	assert.Equal(t, task1.TaskID, tasks[1].TaskID)

@@ -5,7 +5,7 @@ import "time"
 type ProverTasksPaginationParameter struct {
 	PublicKey string `form:"public_key" json:"public_key" binding:"required"`
 	Page      int    `form:"page" json:"page" binding:"required"`
-	PageSize  int    `form:"page_size" json:"limit" binding:"required"`
+	PageSize  int    `form:"page_size" json:"page_size" binding:"required"`
 }
 
 type ProverTaskSchema struct {
