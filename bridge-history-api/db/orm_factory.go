@@ -113,7 +113,7 @@ func (o *OrmFactory) Close() error {
 	return nil
 }
 
-// UtilDBOrm return the util db orm
+// NewUtilDBOrm init the UtilDBOrm
 func NewUtilDBOrm(db *gorm.DB) *UtilDBOrm {
 	return &UtilDBOrm{
 		db: db,
