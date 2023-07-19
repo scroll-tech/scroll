@@ -34,6 +34,7 @@ func NewL2SentMsg(db *gorm.DB) *L2SentMsg {
 	return &L2SentMsg{db: db}
 }
 
+// GetL2SentMsgByHash get l2 sent msg by hash
 func (l *L2SentMsg) GetL2SentMsgByHash(msgHash string) (*L2SentMsg, error) {
 	result := &L2SentMsg{}
 	err := l.db.Table("l2_sent_msg").
@@ -43,6 +44,7 @@ func (l *L2SentMsg) GetL2SentMsgByHash(msgHash string) (*L2SentMsg, error) {
 	return result, err
 }
 
+// BatchInsertL2SentMsgDBTx batch insert l2 sent msg
 func (l *L2SentMsg) BatchInsertL2SentMsgDBTx(dbTx *gorm.DB, messages []*L2SentMsg) (*gorm.DB, error) {
 	if len(messages) == 0 {
 		return dbTx, nil
@@ -61,6 +63,7 @@ func (l *L2SentMsg) BatchInsertL2SentMsgDBTx(dbTx *gorm.DB, messages []*L2SentMs
 	return dbTx, err
 }
 
+// GetLatestSentMsgHeightOnL2 get latest sent msg height on l2
 func (l *L2SentMsg) GetLatestSentMsgHeightOnL2() (int64, error) {
 	var height int64
 	err := l.db.Table("l2_sent_msg").
@@ -78,6 +81,7 @@ func (l *L2SentMsg) GetLatestSentMsgHeightOnL2() (int64, error) {
 	return height, err
 }
 
+// UpdateL2MessageProofInDBTx update l2 message proof in db tx
 func (l *L2SentMsg) UpdateL2MessageProofInDBTx(ctx context.Context, dbTx *gorm.DB, msgHash string, proof string, batchIndex uint64) (*gorm.DB, error) {
 	err := dbTx.Table("l2_sent_msg").
 		Where("msg_hash = ? AND deleted_at IS NULL", msgHash).
@@ -88,6 +92,7 @@ func (l *L2SentMsg) UpdateL2MessageProofInDBTx(ctx context.Context, dbTx *gorm.D
 	return dbTx, err
 }
 
+// GetLatestL2SentMsgBatchIndex get latest l2 sent msg batch index
 func (l *L2SentMsg) GetLatestL2SentMsgBatchIndex() (int64, error) {
 	var batchIndex int64
 	err := l.db.Table("l2_sent_msg").
@@ -102,6 +107,7 @@ func (l *L2SentMsg) GetLatestL2SentMsgBatchIndex() (int64, error) {
 	return batchIndex, nil
 }
 
+// GetL2SentMsgMsgHashByHeightRange get l2 sent msg msg hash by height range
 func (l *L2SentMsg) GetL2SentMsgMsgHashByHeightRange(startHeight, endHeight uint64) ([]*L2SentMsg, error) {
 	var results []*L2SentMsg
 	err := l.db.Table("l2_sent_msg").
@@ -112,6 +118,7 @@ func (l *L2SentMsg) GetL2SentMsgMsgHashByHeightRange(startHeight, endHeight uint
 	return results, err
 }
 
+// GetL2SentMessageByNonce get l2 sent message by nonce
 func (l *L2SentMsg) GetL2SentMessageByNonce(nonce uint64) (*L2SentMsg, error) {
 	result := &L2SentMsg{}
 	err := l.db.Table("l2_sent_msg").
@@ -121,6 +128,7 @@ func (l *L2SentMsg) GetL2SentMessageByNonce(nonce uint64) (*L2SentMsg, error) {
 	return result, err
 }
 
+// GetLatestL2SentMsgLEHeight get latest l2 sent msg less than or equal to end block number
 func (l *L2SentMsg) GetLatestL2SentMsgLEHeight(endBlockNumber uint64) (*L2SentMsg, error) {
 	result := &L2SentMsg{}
 	err := l.db.Table("l2_sent_msg").
@@ -131,6 +139,7 @@ func (l *L2SentMsg) GetLatestL2SentMsgLEHeight(endBlockNumber uint64) (*L2SentMs
 	return result, err
 }
 
+// DeleteL2SentMsgAfterHeightDBTx delete l2 sent msg after height
 func (l *L2SentMsg) DeleteL2SentMsgAfterHeightDBTx(dbTx *gorm.DB, height int64) (*gorm.DB, error) {
 	err := dbTx.Table("l2_sent_msg").
 		Where("height > ?", height).
@@ -140,6 +149,7 @@ func (l *L2SentMsg) DeleteL2SentMsgAfterHeightDBTx(dbTx *gorm.DB, height int64) 
 	return dbTx, err
 }
 
+// GetClaimableL2SentMsgByAddressWithOffset get claimable l2 sent msg by address with offset
 func (l *L2SentMsg) GetClaimableL2SentMsgByAddressWithOffset(address string, offset int, limit int) ([]*L2SentMsg, error) {
 	var results []*L2SentMsg
 	err := l.db.Raw(`SELECT * FROM l2_sent_msg WHERE id NOT IN (SELECT l2_sent_msg.id FROM l2_sent_msg INNER JOIN relayed_msg ON l2_sent_msg.msg_hash = relayed_msg.msg_hash WHERE l2_sent_msg.deleted_at IS NULL AND relayed_msg.deleted_at IS NULL) AND (original_sender=$1 OR sender = $1) AND msg_proof !='' ORDER BY id DESC LIMIT $2 OFFSET $3;`, address, limit, offset).
@@ -147,6 +157,7 @@ func (l *L2SentMsg) GetClaimableL2SentMsgByAddressWithOffset(address string, off
 	return results, err
 }
 
+// GetClaimableL2SentMsgByAddressTotalNum get claimable l2 sent msg by address total num
 func (l *L2SentMsg) GetClaimableL2SentMsgByAddressTotalNum(address string) (uint64, error) {
 	var count uint64
 	err := l.db.Raw(`SELECT COUNT(*) FROM l2_sent_msg WHERE id NOT IN (SELECT l2_sent_msg.id FROM l2_sent_msg INNER JOIN relayed_msg ON l2_sent_msg.msg_hash = relayed_msg.msg_hash WHERE l2_sent_msg.deleted_at IS NULL AND relayed_msg.deleted_at IS NULL) AND (original_sender=$1 OR sender = $1) AND msg_proof !='';`, address).

@@ -26,6 +26,7 @@ func NewRelayedMsg(db *gorm.DB) *RelayedMsg {
 	return &RelayedMsg{db: db}
 }
 
+// BatchInsertRelayedMsgDBTx batch insert relayed msg into db and return the transaction
 func (r *RelayedMsg) BatchInsertRelayedMsgDBTx(dbTx *gorm.DB, messages []*RelayedMsg) (*gorm.DB, error) {
 	if len(messages) == 0 {
 		return dbTx, nil
@@ -46,6 +47,7 @@ func (r *RelayedMsg) BatchInsertRelayedMsgDBTx(dbTx *gorm.DB, messages []*Relaye
 	return dbTx, err
 }
 
+// GetRelayedMsgByHash get relayed msg by hash
 func (r *RelayedMsg) GetRelayedMsgByHash(msgHash string) (*RelayedMsg, error) {
 	result := &RelayedMsg{}
 	err := r.db.Table("relayed_msg").
@@ -55,6 +57,7 @@ func (r *RelayedMsg) GetRelayedMsgByHash(msgHash string) (*RelayedMsg, error) {
 	return result, err
 }
 
+// GetLatestRelayedHeightOnL1 get latest relayed height on l1
 func (r *RelayedMsg) GetLatestRelayedHeightOnL1() (int64, error) {
 	var height int64
 	err := r.db.Table("relayed_msg").
@@ -72,6 +75,7 @@ func (r *RelayedMsg) GetLatestRelayedHeightOnL1() (int64, error) {
 	return height, err
 }
 
+// GetLatestRelayedHeightOnL2 get latest relayed height on l2
 func (r *RelayedMsg) GetLatestRelayedHeightOnL2() (int64, error) {
 	var height int64
 	err := r.db.Table("relayed_msg").
@@ -89,6 +93,7 @@ func (r *RelayedMsg) GetLatestRelayedHeightOnL2() (int64, error) {
 	return height, nil
 }
 
+// DeleteL1RelayedHashAfterHeightDBTx delete l1 relayed hash after height
 func (r *RelayedMsg) DeleteL1RelayedHashAfterHeightDBTx(dbTx *gorm.DB, height int64) (*gorm.DB, error) {
 	err := dbTx.Table("relayed_msg").
 		Where("height > ? AND layer1_hash != ''", height).
@@ -97,6 +102,7 @@ func (r *RelayedMsg) DeleteL1RelayedHashAfterHeightDBTx(dbTx *gorm.DB, height in
 
 }
 
+// DeleteL2RelayedHashAfterHeightDBTx delete l2 relayed hash after heights
 func (r *RelayedMsg) DeleteL2RelayedHashAfterHeightDBTx(dbTx *gorm.DB, height int64) (*gorm.DB, error) {
 	err := dbTx.Table("relayed_msg").
 		Where("height > ? AND layer2_hash != ''", height).

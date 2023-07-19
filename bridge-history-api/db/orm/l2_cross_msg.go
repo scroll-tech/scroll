@@ -10,6 +10,7 @@ import (
 	"gorm.io/gorm"
 )
 
+// L2CrossMsg specify the orm operations for layer2 cross messages
 type L2CrossMsg struct {
 	*CrossMsg
 }
@@ -19,6 +20,7 @@ func NewL2CrossMsg(db *gorm.DB) *L2CrossMsg {
 	return &L2CrossMsg{&CrossMsg{db: db}}
 }
 
+// GetL2CrossMsgByHash returns layer2 cross message by given hash
 func (l *L2CrossMsg) GetL2CrossMsgByHash(l2Hash common.Hash) (*CrossMsg, error) {
 	result := &CrossMsg{}
 	err := l.db.Table("cross_message").Where("layer2_hash = ? AND msg_type = ? AND deleted_at IS NULL", l2Hash.String(), Layer1Msg).First(&result).Error
@@ -45,6 +47,7 @@ func (l *L2CrossMsg) GetL2CrossMsgByAddress(sender common.Address) ([]*CrossMsg,
 
 }
 
+// DeleteL2CrossMsgFromHeightDBTx delete layer2 cross messages from given height
 func (l *L2CrossMsg) DeleteL2CrossMsgFromHeightDBTx(dbTx *gorm.DB, height int64) (*gorm.DB, error) {
 	err := dbTx.Table("cross_message").
 		Where("height > ? AND msg_type = ?", height, Layer2Msg).
@@ -59,6 +62,7 @@ func (l *L2CrossMsg) DeleteL2CrossMsgFromHeightDBTx(dbTx *gorm.DB, height int64)
 	return dbTx, err
 }
 
+// BatchInsertL2CrossMsgDBTx batch insert layer2 cross messages
 func (l *L2CrossMsg) BatchInsertL2CrossMsgDBTx(dbTx *gorm.DB, messages []*CrossMsg) (*gorm.DB, error) {
 	if len(messages) == 0 {
 		return dbTx, nil
@@ -76,6 +80,7 @@ func (l *L2CrossMsg) BatchInsertL2CrossMsgDBTx(dbTx *gorm.DB, messages []*CrossM
 	return dbTx, err
 }
 
+// UpdateL2CrossMsgHashDBTx update layer2 cross message hash
 func (l *L2CrossMsg) UpdateL2CrossMsgHashDBTx(ctx context.Context, dbTx *gorm.DB, l2Hash, msgHash common.Hash) error {
 	err := dbTx.Table("cross_message").
 		Where("layer2_hash = ? AND deleted_at IS NULL", l2Hash.String()).
@@ -84,6 +89,7 @@ func (l *L2CrossMsg) UpdateL2CrossMsgHashDBTx(ctx context.Context, dbTx *gorm.DB
 	return err
 }
 
+// UpdateL2CrossMsgHash update layer2 cross message hash
 func (l *L2CrossMsg) UpdateL2CrossMsgHash(ctx context.Context, l2Hash, msgHash common.Hash) error {
 	err := l.db.Table("cross_message").
 		Where("layer2_hash = ? AND deleted_at IS NULL", l2Hash.String()).
@@ -92,6 +98,7 @@ func (l *L2CrossMsg) UpdateL2CrossMsgHash(ctx context.Context, l2Hash, msgHash c
 	return err
 }
 
+// GetLatestL2ProcessedHeight returns the latest processed height of layer2 cross messages
 func (l *L2CrossMsg) GetLatestL2ProcessedHeight() (int64, error) {
 	var height int64
 	err := l.db.Table("cross_message").
@@ -109,6 +116,7 @@ func (l *L2CrossMsg) GetLatestL2ProcessedHeight() (int64, error) {
 	return height, err
 }
 
+// UpdateL2BlockTimestamp update layer2 cross message block timestamp
 func (l *L2CrossMsg) UpdateL2BlockTimestamp(height uint64, timestamp time.Time) error {
 	err := l.db.Table("cross_message").
 		Where("height = ? AND msg_type = ? AND deleted_at IS NULL", height, Layer2Msg).
@@ -116,6 +124,7 @@ func (l *L2CrossMsg) UpdateL2BlockTimestamp(height uint64, timestamp time.Time) 
 	return err
 }
 
+// GetL2EarliestNoBlockTimestampHeight returns the earliest layer2 cross message height which has no block timestamp
 func (l *L2CrossMsg) GetL2EarliestNoBlockTimestampHeight() (uint64, error) {
 	var height int64
 	err := l.db.Table("cross_message").
@@ -133,6 +142,7 @@ func (l *L2CrossMsg) GetL2EarliestNoBlockTimestampHeight() (uint64, error) {
 	return uint64(height), err
 }
 
+// GetL2CrossMsgByMsgHashList returns layer2 cross messages under given msg hashes
 func (l *L2CrossMsg) GetL2CrossMsgByMsgHashList(msgHashList []string) ([]*CrossMsg, error) {
 	var results []*CrossMsg
 	err := l.db.Table("cross_message").

@@ -27,6 +27,7 @@ func NewRollupBatch(db *gorm.DB) *RollupBatch {
 	return &RollupBatch{db: db}
 }
 
+// BatchInsertRollupBatchDBTx batch insert rollup batch into db and return the transaction
 func (r *RollupBatch) BatchInsertRollupBatchDBTx(dbTx *gorm.DB, batches []*RollupBatch) (*gorm.DB, error) {
 	if len(batches) == 0 {
 		return dbTx, nil
@@ -45,6 +46,7 @@ func (r *RollupBatch) BatchInsertRollupBatchDBTx(dbTx *gorm.DB, batches []*Rollu
 	return dbTx, err
 }
 
+// GetLatestRollupBatch return the latest rollup batch in db
 func (r *RollupBatch) GetLatestRollupBatch() (*RollupBatch, error) {
 	result := &RollupBatch{}
 	err := r.db.Table("rollup_batch").Where("batch_hash is not NULL").Order("batch_index desc").First(result).Error
@@ -57,6 +59,7 @@ func (r *RollupBatch) GetLatestRollupBatch() (*RollupBatch, error) {
 	return result, nil
 }
 
+// GetRollupBatchByIndex return the rollup batch by index
 func (r *RollupBatch) GetRollupBatchByIndex(index uint64) (*RollupBatch, error) {
 	result := &RollupBatch{}
 	err := r.db.Table("rollup_batch").Where("batch_index = ?", index).First(result).Error

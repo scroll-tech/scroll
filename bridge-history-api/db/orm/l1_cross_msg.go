@@ -10,6 +10,7 @@ import (
 	"gorm.io/gorm"
 )
 
+// L1CrossMsg specify the orm operations for layer1 cross messages
 type L1CrossMsg struct {
 	*CrossMsg
 }
@@ -19,6 +20,7 @@ func NewL1CrossMsg(db *gorm.DB) *L1CrossMsg {
 	return &L1CrossMsg{&CrossMsg{db: db}}
 }
 
+// GetL1CrossMsgByHash returns layer1 cross message by given hash
 func (l *L1CrossMsg) GetL1CrossMsgByHash(l1Hash common.Hash) (*CrossMsg, error) {
 	result := &CrossMsg{}
 	err := l.db.Table("cross_message").Where("layer1_hash = ? AND msg_type = ? AND deleted_at IS NULL", l1Hash.String(), Layer1Msg).First(&result).Error
@@ -30,6 +32,7 @@ func (l *L1CrossMsg) GetL1CrossMsgByHash(l1Hash common.Hash) (*CrossMsg, error) 
 	return result, err
 }
 
+// BatchInsertL1CrossMsgDBTx batch insert layer1 cross messages into db
 func (l *L1CrossMsg) BatchInsertL1CrossMsgDBTx(dbTx *gorm.DB, messages []*CrossMsg) (*gorm.DB, error) {
 	if len(messages) == 0 {
 		return dbTx, nil
@@ -54,6 +57,7 @@ func (l *L1CrossMsg) UpdateL1CrossMsgHashDBTx(ctx context.Context, dbTx *gorm.DB
 
 }
 
+// GetLatestL1ProcessedHeight returns the latest processed height of layer1 cross messages
 func (l *L1CrossMsg) GetLatestL1ProcessedHeight() (int64, error) {
 	var height int64
 	err := l.db.Table("cross_message").Where("msg_type = ? AND deleted_at IS NULL", Layer1Msg).Order("id DESC").Limit(1).Select("height").Scan(&height).Error
@@ -65,6 +69,7 @@ func (l *L1CrossMsg) GetLatestL1ProcessedHeight() (int64, error) {
 	return height, err
 }
 
+// DeleteL1CrossMsgAfterHeightDBTx soft delete layer1 cross messages after given height
 func (l *L1CrossMsg) DeleteL1CrossMsgAfterHeightDBTx(dbTx *gorm.DB, height int64) (*gorm.DB, error) {
 	err := dbTx.Table("cross_message").
 		Where("height > ? AND msg_type = ?", height, Layer1Msg).
@@ -72,6 +77,7 @@ func (l *L1CrossMsg) DeleteL1CrossMsgAfterHeightDBTx(dbTx *gorm.DB, height int64
 	return dbTx, err
 }
 
+// UpdateL1BlockTimestamp update layer1 block timestamp
 func (l *L1CrossMsg) UpdateL1BlockTimestamp(height uint64, timestamp time.Time) error {
 	err := l.db.Table("cross_message").
 		Where("height = ? AND msg_type = ? AND deleted_at IS NULL", height, Layer1Msg).
@@ -79,6 +85,7 @@ func (l *L1CrossMsg) UpdateL1BlockTimestamp(height uint64, timestamp time.Time) 
 	return err
 }
 
+// GetL1EarliestNoBlockTimestampHeight returns the earliest layer1 cross message height which has no block timestamp
 func (l *L1CrossMsg) GetL1EarliestNoBlockTimestampHeight() (uint64, error) {
 	var height int64
 	err := l.db.Table("cross_message").

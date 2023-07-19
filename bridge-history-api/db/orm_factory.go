@@ -21,6 +21,7 @@ type UtilDBOrm struct {
 	db *gorm.DB
 }
 
+// OrmFactory contain all operations for db
 type OrmFactory struct {
 	*orm.L1CrossMsg
 	*orm.L2CrossMsg
@@ -35,25 +36,30 @@ type gormLogger struct {
 	gethLogger log.Logger
 }
 
+// LogMode set log mode
 func (g *gormLogger) LogMode(level logger.LogLevel) logger.Interface {
 	return g
 }
 
+// Info print info
 func (g *gormLogger) Info(_ context.Context, msg string, data ...interface{}) {
 	infoMsg := fmt.Sprintf(msg, data...)
 	g.gethLogger.Info("gorm", "info message", infoMsg)
 }
 
+// Warn print warn messages
 func (g *gormLogger) Warn(_ context.Context, msg string, data ...interface{}) {
 	warnMsg := fmt.Sprintf(msg, data...)
 	g.gethLogger.Warn("gorm", "warn message", warnMsg)
 }
 
+// Error print error messages
 func (g *gormLogger) Error(_ context.Context, msg string, data ...interface{}) {
 	errMsg := fmt.Sprintf(msg, data...)
 	g.gethLogger.Error("gorm", "err message", errMsg)
 }
 
+// Trace print sql trace
 func (g *gormLogger) Trace(_ context.Context, begin time.Time, fc func() (string, int64), err error) {
 	elapsed := time.Since(begin)
 	sql, rowsAffected := fc()
@@ -114,6 +120,7 @@ func NewUtilDBOrm(db *gorm.DB) *UtilDBOrm {
 	}
 }
 
+// GetTotalCrossMsgCountByAddress get total cross msg count by address
 func (u *UtilDBOrm) GetTotalCrossMsgCountByAddress(sender string) (uint64, error) {
 	var count int64
 	err := u.db.Table("cross_message").
@@ -128,6 +135,7 @@ func (u *UtilDBOrm) GetTotalCrossMsgCountByAddress(sender string) (uint64, error
 	return uint64(count), err
 }
 
+// GetCrossMsgsByAddressWithOffset get cross msgs by address with offset
 func (u *UtilDBOrm) GetCrossMsgsByAddressWithOffset(sender string, offset int, limit int) ([]orm.CrossMsg, error) {
 	var messages []orm.CrossMsg
 	err := u.db.Table("cross_message").
