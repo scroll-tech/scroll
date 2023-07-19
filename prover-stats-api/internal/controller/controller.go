@@ -9,7 +9,8 @@ import (
 var (
 	// ProverTask is controller instance
 	ProverTask *ProverTaskController
-	Auth       *AuthController
+	// Auth is controller instance
+	Auth *AuthController
 
 	initControllerOnce sync.Once
 )
