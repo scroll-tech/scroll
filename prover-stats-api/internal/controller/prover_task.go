@@ -30,9 +30,9 @@ func NewProverTaskController(db *gorm.DB) *ProverTaskController {
 // @Accept       plain
 // @Produce      plain
 // @Param        pubkey   query  string  true  "prover public key"
-// @Param 		 page     query  int 	 true  "page"
-// @Param 		 page_size query  int 	 true  "page_size"
-// @Param 		 Authorization header string false "Bearer license"
+// @Param        page     query  int 	 true  "page"
+// @Param        page_size query  int 	 true  "page_size"
+// @Param        Authorization header string false "Bearer license"
 // @Success      200  {array}   types.ProverTaskSchema
 // @Router       /api/prover_task/v1/tasks [get]
 func (c *ProverTaskController) ProverTasks(ctx *gin.Context) {
@@ -73,7 +73,7 @@ func (c *ProverTaskController) ProverTasks(ctx *gin.Context) {
 // @Accept       plain
 // @Produce      plain
 // @Param        pubkey   path  string  true  "prover public key"
-// @Param 		 Authorization header string false "Bearer license"
+// @Param        Authorization header string false "Bearer license"
 // @Success      200  {object} types.ProverTotalRewardsSchema
 // @Router       /api/prover_task/v1/total_rewards [get]
 func (c *ProverTaskController) GetTotalRewards(ctx *gin.Context) {
@@ -105,7 +105,7 @@ func (c *ProverTaskController) GetTotalRewards(ctx *gin.Context) {
 // @Accept       plain
 // @Produce      plain
 // @Param        task_id  path  string  true  "prover task hash"
-// @Param 	     Authorization header string false "Bearer license"
+// @Param        Authorization header string false "Bearer license"
 // @Success      200  {object}  types.ProverTaskSchema
 // @Router       /api/prover_task/v1/task [get]
 func (c *ProverTaskController) GetTask(ctx *gin.Context) {
