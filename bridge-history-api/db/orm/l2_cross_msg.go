@@ -38,7 +38,14 @@ func (l *l2CrossMsgOrm) GetL2CrossMsgByHash(l2Hash common.Hash) (*CrossMsg, erro
 func (l *l2CrossMsgOrm) GetL2CrossMsgByAddress(sender common.Address) ([]*CrossMsg, error) {
 	var results []*CrossMsg
 	rows, err := l.db.Queryx(`SELECT * FROM cross_message WHERE sender = $1 AND msg_type = $2 AND deleted_at IS NULL;`, sender.String(), Layer2Msg)
-
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		if err = rows.Close(); err != nil {
+			log.Error("failed to close rows", "err", err)
+		}
+	}()
 	for rows.Next() {
 		msg := &CrossMsg{}
 		if err = rows.StructScan(msg); err != nil {
@@ -145,6 +152,14 @@ func (l *l2CrossMsgOrm) GetL2EarliestNoBlockTimestampHeight() (uint64, error) {
 func (l *l2CrossMsgOrm) GetL2CrossMsgByMsgHashList(msgHashList []string) ([]*CrossMsg, error) {
 	var results []*CrossMsg
 	rows, err := l.db.Queryx(`SELECT * FROM cross_message WHERE msg_hash = ANY($1) AND msg_type = $2 AND deleted_at IS NULL;`, pq.Array(msgHashList), Layer2Msg)
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		if err = rows.Close(); err != nil {
+			log.Error("failed to close rows", "err", err)
+		}
+	}()
 	for rows.Next() {
 		msg := &CrossMsg{}
 		if err = rows.StructScan(msg); err != nil {
