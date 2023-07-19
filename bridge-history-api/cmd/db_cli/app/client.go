@@ -2,11 +2,10 @@ package app
 
 import (
 	"github.com/ethereum/go-ethereum/log"
+	"github.com/jmoiron/sqlx"
 	"github.com/urfave/cli/v2"
-	"gorm.io/gorm"
 
 	"bridge-history-api/config"
-	"bridge-history-api/db"
 	"bridge-history-api/db/migrate"
 	"bridge-history-api/utils"
 )
@@ -20,14 +19,21 @@ func getConfig(ctx *cli.Context) (*config.Config, error) {
 	return dbCfg, nil
 }
 
-func initDB(dbCfg *config.Config) (*gorm.DB, error) {
-	factory, err := db.NewOrmFactory(dbCfg.DB)
+func initDB(dbCfg *config.DBConfig) (*sqlx.DB, error) {
+	// Initialize sql/sqlx
+	db, err := sqlx.Open(dbCfg.DriverName, dbCfg.DSN)
 	if err != nil {
 		return nil, err
 	}
-	log.Debug("Got db config from env", "driver name", dbCfg.DB.DriverName, "dsn", dbCfg.DB.DSN)
 
-	return factory.Db, nil
+	db.SetMaxOpenConns(dbCfg.MaxOpenNum)
+	db.SetMaxIdleConns(dbCfg.MaxIdleNum)
+	if err = db.Ping(); err != nil {
+		return nil, err
+	}
+	log.Debug("Got db config from env", "driver name", dbCfg.DriverName, "dsn", dbCfg.DSN)
+
+	return db, nil
 }
 
 // resetDB clean or reset database.
@@ -36,11 +42,11 @@ func resetDB(ctx *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	db, err := initDB(cfg)
+	db, err := initDB(cfg.DB)
 	if err != nil {
 		return err
 	}
-	err = migrate.ResetDB()
+	err = migrate.ResetDB(db.DB)
 	if err != nil {
 		return err
 	}
@@ -54,7 +60,7 @@ func checkDBStatus(ctx *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	db, err := initDB(cfg)
+	db, err := initDB(cfg.DB)
 	if err != nil {
 		return err
 	}
@@ -68,7 +74,7 @@ func dbVersion(ctx *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	db, err := initDB(cfg)
+	db, err := initDB(cfg.DB)
 	if err != nil {
 		return err
 	}
@@ -85,7 +91,7 @@ func migrateDB(ctx *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	db, err := initDB(cfg)
+	db, err := initDB(cfg.DB)
 	if err != nil {
 		return err
 	}
@@ -99,7 +105,7 @@ func rollbackDB(ctx *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	db, err := initDB(cfg)
+	db, err := initDB(cfg.DB)
 	if err != nil {
 		return err
 	}
