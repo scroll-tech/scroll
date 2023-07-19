@@ -51,7 +51,7 @@ abstract contract L2GatewayTestBase is DSTestPlus {
         l1BlockContainer = new L1BlockContainer(address(this));
         l2MessageQueue = new L2MessageQueue(address(this));
         l1GasOracle = new L1GasPriceOracle(address(this));
-        l2Messenger = new L2ScrollMessenger(address(l1BlockContainer), address(l1GasOracle), address(l2MessageQueue));
+        l2Messenger = new L2ScrollMessenger(address(l2MessageQueue));
 
         // Initialize L2 contracts
         l2Messenger.initialize(address(l1Messenger), feeVault);
