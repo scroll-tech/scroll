@@ -54,18 +54,18 @@ type HistoryService interface {
 }
 
 // NewHistoryService returns a service backed with a "db"
-func NewHistoryService(db db.OrmFactory) HistoryService {
+func NewHistoryService(db *db.OrmFactory) HistoryService {
 	service := &historyBackend{db: db, prefix: "Scroll-Bridge-History-Server"}
 	return service
 }
 
 type historyBackend struct {
 	prefix string
-	db     db.OrmFactory
+	db     *db.OrmFactory
 }
 
 // GetCrossTxClaimInfo get UserClaimInfos by address
-func GetCrossTxClaimInfo(msgHash string, db db.OrmFactory) *UserClaimInfo {
+func GetCrossTxClaimInfo(msgHash string, db *db.OrmFactory) *UserClaimInfo {
 	l2sentMsg, err := db.GetL2SentMsgByHash(msgHash)
 	if err != nil {
 		log.Debug("GetCrossTxClaimInfo failed", "error", err)
@@ -89,7 +89,7 @@ func GetCrossTxClaimInfo(msgHash string, db db.OrmFactory) *UserClaimInfo {
 
 }
 
-func updateCrossTxHash(msgHash string, txInfo *TxHistoryInfo, db db.OrmFactory) {
+func updateCrossTxHash(msgHash string, txInfo *TxHistoryInfo, db *db.OrmFactory) {
 	relayed, err := db.GetRelayedMsgByHash(msgHash)
 	if err != nil {
 		log.Error("updateCrossTxHash failed", "error", err)

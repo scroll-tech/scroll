@@ -46,6 +46,7 @@ func ParseBackendL1EventLogs(logs []types.Log) ([]*orm.CrossMsg, []*orm.RelayedM
 				Amount:     event.Amount.String(),
 				Asset:      int(orm.ETH),
 				Layer1Hash: vlog.TxHash.Hex(),
+				MsgType:    int(orm.Layer1Msg),
 				MsgHash:    msgHash,
 			})
 		case backendabi.L1DepositERC20Sig:
@@ -64,6 +65,7 @@ func ParseBackendL1EventLogs(logs []types.Log) ([]*orm.CrossMsg, []*orm.RelayedM
 				Layer1Hash:  vlog.TxHash.Hex(),
 				Layer1Token: event.L1Token.Hex(),
 				Layer2Token: event.L2Token.Hex(),
+				MsgType:     int(orm.Layer1Msg),
 				MsgHash:     msgHash,
 			})
 		case backendabi.L1DepositERC721Sig:
@@ -82,6 +84,7 @@ func ParseBackendL1EventLogs(logs []types.Log) ([]*orm.CrossMsg, []*orm.RelayedM
 				Layer1Token: event.L1Token.Hex(),
 				Layer2Token: event.L2Token.Hex(),
 				TokenIDs:    event.TokenID.String(),
+				MsgType:     int(orm.Layer1Msg),
 				MsgHash:     msgHash,
 			})
 		case backendabi.L1DepositERC1155Sig:
@@ -101,6 +104,7 @@ func ParseBackendL1EventLogs(logs []types.Log) ([]*orm.CrossMsg, []*orm.RelayedM
 				Layer2Token: event.L2Token.Hex(),
 				TokenIDs:    event.TokenID.String(),
 				Amount:      event.Amount.String(),
+				MsgType:     int(orm.Layer1Msg),
 				MsgHash:     msgHash,
 			})
 		case backendabi.L1SentMessageEventSignature:
@@ -128,6 +132,7 @@ func ParseBackendL1EventLogs(logs []types.Log) ([]*orm.CrossMsg, []*orm.RelayedM
 				Layer1Token: event.L1Token.Hex(),
 				Layer2Token: event.L2Token.Hex(),
 				TokenIDs:    convertBigIntArrayToString(event.TokenIDs),
+				MsgType:     int(orm.Layer1Msg),
 				MsgHash:     msgHash,
 			})
 		case backendabi.L1BatchDepositERC1155Sig:
@@ -147,6 +152,7 @@ func ParseBackendL1EventLogs(logs []types.Log) ([]*orm.CrossMsg, []*orm.RelayedM
 				Layer2Token:  event.L2Token.Hex(),
 				TokenIDs:     convertBigIntArrayToString(event.TokenIDs),
 				TokenAmounts: convertBigIntArrayToString(event.TokenAmounts),
+				MsgType:      int(orm.Layer1Msg),
 				MsgHash:      msgHash,
 			})
 		case backendabi.L1RelayedMessageEventSignature:
@@ -194,6 +200,7 @@ func ParseBackendL2EventLogs(logs []types.Log) ([]*orm.CrossMsg, []*orm.RelayedM
 				Amount:     event.Amount.String(),
 				Asset:      int(orm.ETH),
 				Layer2Hash: vlog.TxHash.Hex(),
+				MsgType:    int(orm.Layer2Msg),
 				MsgHash:    l2SentMsgs[len(l2SentMsgs)-1].MsgHash,
 			})
 		case backendabi.L2WithdrawERC20Sig:
@@ -213,6 +220,7 @@ func ParseBackendL2EventLogs(logs []types.Log) ([]*orm.CrossMsg, []*orm.RelayedM
 				Layer2Hash:  vlog.TxHash.Hex(),
 				Layer1Token: event.L1Token.Hex(),
 				Layer2Token: event.L2Token.Hex(),
+				MsgType:     int(orm.Layer2Msg),
 				MsgHash:     l2SentMsgs[len(l2SentMsgs)-1].MsgHash,
 			})
 		case backendabi.L2WithdrawERC721Sig:
@@ -232,6 +240,7 @@ func ParseBackendL2EventLogs(logs []types.Log) ([]*orm.CrossMsg, []*orm.RelayedM
 				Layer1Token: event.L1Token.Hex(),
 				Layer2Token: event.L2Token.Hex(),
 				TokenIDs:    event.TokenID.String(),
+				MsgType:     int(orm.Layer2Msg),
 				MsgHash:     l2SentMsgs[len(l2SentMsgs)-1].MsgHash,
 			})
 		case backendabi.L2WithdrawERC1155Sig:
@@ -252,6 +261,7 @@ func ParseBackendL2EventLogs(logs []types.Log) ([]*orm.CrossMsg, []*orm.RelayedM
 				Layer2Token: event.L2Token.Hex(),
 				TokenIDs:    event.TokenID.String(),
 				Amount:      event.Amount.String(),
+				MsgType:     int(orm.Layer2Msg),
 				MsgHash:     l2SentMsgs[len(l2SentMsgs)-1].MsgHash,
 			})
 		case backendabi.L2BatchWithdrawERC721Sig:
@@ -270,6 +280,7 @@ func ParseBackendL2EventLogs(logs []types.Log) ([]*orm.CrossMsg, []*orm.RelayedM
 				Layer1Hash:  vlog.TxHash.Hex(),
 				Layer1Token: event.L1Token.Hex(),
 				Layer2Token: event.L2Token.Hex(),
+				MsgType:     int(orm.Layer2Msg),
 				TokenIDs:    convertBigIntArrayToString(event.TokenIDs),
 				MsgHash:     l2SentMsgs[len(l2SentMsgs)-1].MsgHash,
 			})
@@ -289,6 +300,7 @@ func ParseBackendL2EventLogs(logs []types.Log) ([]*orm.CrossMsg, []*orm.RelayedM
 				Layer1Hash:   vlog.TxHash.Hex(),
 				Layer1Token:  event.L1Token.Hex(),
 				Layer2Token:  event.L2Token.Hex(),
+				MsgType:      int(orm.Layer2Msg),
 				TokenIDs:     convertBigIntArrayToString(event.TokenIDs),
 				TokenAmounts: convertBigIntArrayToString(event.TokenAmounts),
 				MsgHash:      l2SentMsgs[len(l2SentMsgs)-1].MsgHash,

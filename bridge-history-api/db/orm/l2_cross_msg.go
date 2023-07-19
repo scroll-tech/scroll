@@ -21,7 +21,7 @@ func NewL2CrossMsg(db *gorm.DB) *L2CrossMsg {
 
 func (l *L2CrossMsg) GetL2CrossMsgByHash(l2Hash common.Hash) (*CrossMsg, error) {
 	result := &CrossMsg{}
-	err := l.db.Where("layer2_hash = ? AND msg_type = ? AND deleted_at IS NULL", l2Hash.String(), Layer1Msg).First(&result).Error
+	err := l.db.Table("cross_message").Where("layer2_hash = ? AND msg_type = ? AND deleted_at IS NULL", l2Hash.String(), Layer1Msg).First(&result).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
@@ -34,7 +34,7 @@ func (l *L2CrossMsg) GetL2CrossMsgByHash(l2Hash common.Hash) (*CrossMsg, error) 
 // Warning: return empty slice if no data found
 func (l *L2CrossMsg) GetL2CrossMsgByAddress(sender common.Address) ([]*CrossMsg, error) {
 	var results []*CrossMsg
-	err := l.db.Where("sender = ? AND msg_type = ? AND deleted_at IS NULL", sender.String(), Layer2Msg).
+	err := l.db.Table("cross_message").Where("sender = ? AND msg_type = ? AND deleted_at IS NULL", sender.String(), Layer2Msg).
 		Find(&results).Error
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
@@ -63,7 +63,7 @@ func (l *L2CrossMsg) BatchInsertL2CrossMsgDBTx(dbTx *gorm.DB, messages []*CrossM
 	if len(messages) == 0 {
 		return dbTx, nil
 	}
-	err := dbTx.Model(&CrossMsg{}).Create(&messages).Error
+	err := dbTx.Model(&CrossMsg{}).Table("cross_message").Create(&messages).Error
 	if err != nil {
 		l2hashes := make([]string, 0, len(messages))
 		heights := make([]uint64, 0, len(messages))

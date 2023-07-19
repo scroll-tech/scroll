@@ -50,22 +50,22 @@ const (
 type CrossMsg struct {
 	db *gorm.DB `gorm:"column:-"`
 
-	ID           uint64     `json:"id" gorm:"id"`
-	MsgHash      string     `json:"msg_hash" gorm:"msg_hash"`
-	Height       uint64     `json:"height" gorm:"height"`
-	Sender       string     `json:"sender" gorm:"sender"`
-	Target       string     `json:"target" gorm:"target"`
-	Amount       string     `json:"amount" gorm:"amount"`
-	Layer1Hash   string     `json:"layer1_hash" gorm:"layer1_hash;default:''"`
-	Layer2Hash   string     `json:"layer2_hash" gorm:"layer2_hash;default:''"`
-	Layer1Token  string     `json:"layer1_token" gorm:"layer1_token;default:''"`
-	Layer2Token  string     `json:"layer2_token" gorm:"layer2_token;default:''"`
-	TokenIDs     string     `json:"token_ids" gorm:"token_ids;default:''"`
-	TokenAmounts string     `json:"token_amounts" gorm:"token_amounts;default:''"`
-	Asset        int        `json:"asset" gorm:"asset"`
-	MsgType      int        `json:"msg_type" gorm:"msg_type"`
-	Timestamp    *time.Time `json:"timestamp" gorm:"block_timestamp;default;NULL"`
-	CreatedAt    *time.Time `json:"created_at" gorm:"created_at"`
-	UpdatedAt    *time.Time `json:"updated_at" gorm:"updated_at"`
-	DeletedAt    *time.Time `json:"deleted_at" gorm:"deleted_at;default:NULL"`
+	ID           uint64     `json:"id" gorm:"column:id"`
+	MsgHash      string     `json:"msg_hash" gorm:"column:msg_hash"`
+	Height       uint64     `json:"height" gorm:"column:height"`
+	Sender       string     `json:"sender" gorm:"column:sender"`
+	Target       string     `json:"target" gorm:"column:target"`
+	Amount       string     `json:"amount" gorm:"column:amount"`
+	Layer1Hash   string     `json:"layer1_hash" gorm:"column:layer1_hash;default:''"`
+	Layer2Hash   string     `json:"layer2_hash" gorm:"column:layer2_hash;default:''"`
+	Layer1Token  string     `json:"layer1_token" gorm:"column:layer1_token;default:''"`
+	Layer2Token  string     `json:"layer2_token" gorm:"column:layer2_token;default:''"`
+	TokenIDs     string     `json:"token_ids" gorm:"column:token_ids;default:''"`
+	TokenAmounts string     `json:"token_amounts" gorm:"column:token_amounts;default:''"`
+	Asset        int        `json:"asset" gorm:"column:asset"`
+	MsgType      int        `json:"msg_type" gorm:"column:msg_type"`
+	Timestamp    *time.Time `json:"timestamp" gorm:"column:block_timestamp;default;NULL"`
+	CreatedAt    *time.Time `json:"created_at" gorm:"column:created_at"`
+	UpdatedAt    *time.Time `json:"updated_at" gorm:"column:updated_at"`
+	DeletedAt    *time.Time `json:"deleted_at" gorm:"column:deleted_at;default:NULL"`
 }

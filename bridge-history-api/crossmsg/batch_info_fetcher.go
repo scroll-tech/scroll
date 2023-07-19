@@ -87,6 +87,7 @@ func (b *BatchInfoFetcher) fetchBatchInfo() error {
 	}
 	var startHeight uint64
 	if latestBatch == nil {
+		log.Info("no batch record in database, start from batchInfoStartNumber", "batchInfoStartNumber", b.batchInfoStartNumber)
 		startHeight = b.batchInfoStartNumber
 	} else {
 		startHeight = latestBatch.CommitHeight + 1

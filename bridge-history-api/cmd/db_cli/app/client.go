@@ -3,6 +3,7 @@ package app
 import (
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/jmoiron/sqlx"
+	_ "github.com/lib/pq"
 	"github.com/urfave/cli/v2"
 
 	"bridge-history-api/config"

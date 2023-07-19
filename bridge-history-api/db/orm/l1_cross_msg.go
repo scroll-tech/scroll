@@ -21,7 +21,7 @@ func NewL1CrossMsg(db *gorm.DB) *L1CrossMsg {
 
 func (l *L1CrossMsg) GetL1CrossMsgByHash(l1Hash common.Hash) (*CrossMsg, error) {
 	result := &CrossMsg{}
-	err := l.db.Where("layer1_hash = ? AND msg_type = ? AND deleted_at IS NULL", l1Hash.String(), Layer1Msg).First(&result).Error
+	err := l.db.Table("cross_message").Where("layer1_hash = ? AND msg_type = ? AND deleted_at IS NULL", l1Hash.String(), Layer1Msg).First(&result).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
@@ -34,7 +34,7 @@ func (l *L1CrossMsg) BatchInsertL1CrossMsgDBTx(dbTx *gorm.DB, messages []*CrossM
 	if len(messages) == 0 {
 		return dbTx, nil
 	}
-	err := dbTx.Model(&CrossMsg{}).Create(&messages).Error
+	err := dbTx.Model(&CrossMsg{}).Table("cross_message").Create(&messages).Error
 	if err != nil {
 		l1hashes := make([]string, 0, len(messages))
 		heights := make([]uint64, 0, len(messages))
@@ -49,7 +49,7 @@ func (l *L1CrossMsg) BatchInsertL1CrossMsgDBTx(dbTx *gorm.DB, messages []*CrossM
 
 // UpdateL1CrossMsgHashDBTx update l1 cross msg hash in db, no need to check msg_type since layer1_hash wont be empty if its layer1 msg
 func (l *L1CrossMsg) UpdateL1CrossMsgHashDBTx(ctx context.Context, dbTx *gorm.DB, l1Hash, msgHash common.Hash) (*gorm.DB, error) {
-	err := l.db.Model(&CrossMsg{}).Where("layer1_hash = ? AND deleted_at IS NULL", l1Hash.Hex()).Update("msg_hash", msgHash.Hex()).Error
+	err := l.db.Model(&CrossMsg{}).Table("cross_message").Where("layer1_hash = ? AND deleted_at IS NULL", l1Hash.Hex()).Update("msg_hash", msgHash.Hex()).Error
 	return dbTx, err
 
 }

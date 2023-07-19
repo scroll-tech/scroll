@@ -31,7 +31,7 @@ func (r *RelayedMsg) BatchInsertRelayedMsgDBTx(dbTx *gorm.DB, messages []*Relaye
 		return dbTx, nil
 	}
 
-	err := dbTx.Model(&RelayedMsg{}).Create(&messages).Error
+	err := dbTx.Model(&RelayedMsg{}).Table("relayed_msg").Create(&messages).Error
 	if err != nil {
 		l2hashes := make([]string, 0, len(messages))
 		l1hashes := make([]string, 0, len(messages))
@@ -49,7 +49,6 @@ func (r *RelayedMsg) BatchInsertRelayedMsgDBTx(dbTx *gorm.DB, messages []*Relaye
 func (r *RelayedMsg) GetRelayedMsgByHash(msgHash string) (*RelayedMsg, error) {
 	result := &RelayedMsg{}
 	err := r.db.Table("relayed_msg").
-		Select("msg_hash, height, layer1_hash, layer2_hash").
 		Where("msg_hash = ? AND deleted_at IS NULL", msgHash).
 		First(&result).
 		Error

@@ -48,7 +48,7 @@ func (l *L2SentMsg) BatchInsertL2SentMsgDBTx(dbTx *gorm.DB, messages []*L2SentMs
 		return dbTx, nil
 	}
 
-	err := dbTx.Model(&L2SentMsg{}).Create(&messages).Error
+	err := dbTx.Model(&L2SentMsg{}).Table("l2_sent_msg").Create(&messages).Error
 	if err != nil {
 		l2hashes := make([]string, 0, len(messages))
 		heights := make([]uint64, 0, len(messages))
@@ -67,7 +67,8 @@ func (l *L2SentMsg) GetLatestSentMsgHeightOnL2() (int64, error) {
 		Where("deleted_at IS NULL").
 		Order("nonce DESC").
 		Limit(1).
-		Select("height").Error
+		Select("height").
+		Scan(&height).Error
 
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
@@ -125,7 +126,6 @@ func (l *L2SentMsg) GetLatestL2SentMsgLEHeight(endBlockNumber uint64) (*L2SentMs
 	err := l.db.Table("l2_sent_msg").
 		Where("height <= ? AND deleted_at IS NULL", endBlockNumber).
 		Order("nonce DESC").
-		Limit(1).
 		First(&result).
 		Error
 	return result, err
@@ -142,14 +142,14 @@ func (l *L2SentMsg) DeleteL2SentMsgAfterHeightDBTx(dbTx *gorm.DB, height int64) 
 
 func (l *L2SentMsg) GetClaimableL2SentMsgByAddressWithOffset(address string, offset int, limit int) ([]*L2SentMsg, error) {
 	var results []*L2SentMsg
-	err := l.db.Raw(`SELECT * FROM l2_sent_msg WHERE id NOT IN (SELECT l2_sent_msg.id FROM l2_sent_msg INNER JOIN relayed_msg ON l2_sent_msg.msg_hash = relayed_msg.msg_hash WHERE l2_sent_msg.deleted_at IS NULL AND relayed_msg.deleted_at IS NULL) AND (original_sender=$1 OR sender = $1) ORDER BY id DESC LIMIT $2 OFFSET $3;`, address, limit, offset).
+	err := l.db.Raw(`SELECT * FROM l2_sent_msg WHERE id NOT IN (SELECT l2_sent_msg.id FROM l2_sent_msg INNER JOIN relayed_msg ON l2_sent_msg.msg_hash = relayed_msg.msg_hash WHERE l2_sent_msg.deleted_at IS NULL AND relayed_msg.deleted_at IS NULL) AND (original_sender=$1 OR sender = $1) AND msg_proof !='' ORDER BY id DESC LIMIT $2 OFFSET $3;`, address, limit, offset).
 		Scan(&results).Error
 	return results, err
 }
 
 func (l *L2SentMsg) GetClaimableL2SentMsgByAddressTotalNum(address string) (uint64, error) {
 	var count uint64
-	err := l.db.Raw(`SELECT COUNT(*) FROM l2_sent_msg WHERE id NOT IN (SELECT l2_sent_msg.id FROM l2_sent_msg INNER JOIN relayed_msg ON l2_sent_msg.msg_hash = relayed_msg.msg_hash WHERE l2_sent_msg.deleted_at IS NULL AND relayed_msg.deleted_at IS NULL) AND (original_sender=$1 OR sender = $1);`, address).
+	err := l.db.Raw(`SELECT COUNT(*) FROM l2_sent_msg WHERE id NOT IN (SELECT l2_sent_msg.id FROM l2_sent_msg INNER JOIN relayed_msg ON l2_sent_msg.msg_hash = relayed_msg.msg_hash WHERE l2_sent_msg.deleted_at IS NULL AND relayed_msg.deleted_at IS NULL) AND (original_sender=$1 OR sender = $1) AND msg_proof !='';`, address).
 		Scan(&count).Error
 	return count, err
 }
