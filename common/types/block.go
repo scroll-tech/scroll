@@ -6,12 +6,8 @@ import (
 	"math"
 
 	"github.com/scroll-tech/go-ethereum/common"
-	"github.com/scroll-tech/go-ethereum/common/hexutil"
 	"github.com/scroll-tech/go-ethereum/core/types"
 )
-
-const nonZeroByteGas uint64 = 16
-const zeroByteGas uint64 = 4
 
 // WrappedBlock contains the block's Header, Transactions and WithdrawTrieRoot hash.
 type WrappedBlock struct {
@@ -79,48 +75,23 @@ func (w *WrappedBlock) EstimateL1CommitCalldataSize() uint64 {
 }
 
 // EstimateL1CommitGas calculates the calldata gas in l1 commit approximately.
-// TODO: This will need to be adjusted.
-// The part added here is only the calldata cost,
-// but we have execution cost for verifying blocks / chunks / batches and storing the batch hash.
 func (w *WrappedBlock) EstimateL1CommitGas() uint64 {
 	var total uint64
+	var numL1Messages uint64
 	for _, txData := range w.Transactions {
 		if txData.Type == types.L1MessageTxType {
+			numL1Messages++
 			continue
 		}
-		data, _ := hexutil.Decode(txData.Data)
-		tx := types.NewTx(&types.LegacyTx{
-			Nonce:    txData.Nonce,
-			To:       txData.To,
-			Value:    txData.Value.ToInt(),
-			Gas:      txData.Gas,
-			GasPrice: txData.GasPrice.ToInt(),
-			Data:     data,
-			V:        txData.V.ToInt(),
-			R:        txData.R.ToInt(),
-			S:        txData.S.ToInt(),
-		})
-		rlpTxData, _ := tx.MarshalBinary()
-
-		for _, b := range rlpTxData {
-			if b == 0 {
-				total += zeroByteGas
-			} else {
-				total += nonZeroByteGas
-			}
-		}
-
-		var txLen [4]byte
-		binary.BigEndian.PutUint32(txLen[:], uint32(len(rlpTxData)))
-
-		for _, b := range txLen {
-			if b == 0 {
-				total += zeroByteGas
-			} else {
-				total += nonZeroByteGas
-			}
-		}
 	}
+
+	// sload
+	total += numL1Messages * 2100 // numL1Messages times cold sload in L1MessageQueue
+
+	// staticcall
+	total += numL1Messages * 100 // numL1Messages times call to L1MessageQueue
+	total += numL1Messages * 100 // numL1Messages times warm address access to L1MessageQueue
+
 	return total
 }
 

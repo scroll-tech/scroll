@@ -149,7 +149,18 @@ func (o *Chunk) InsertChunk(ctx context.Context, chunk *types.Chunk, dbTX ...*go
 		totalL1CommitGas += block.EstimateL1CommitGas()
 	}
 
-	numBlocks := len(chunk.Blocks)
+	numBlocks := uint64(len(chunk.Blocks))
+
+	// Calculate additional gas costs
+	totalL1CommitGas += numBlocks * 100 // numBlocks times warm sload
+
+	getKeccakGas := func(size uint64) uint64 {
+		return 30 + 6*((size+31)/32) // 30 + 6 * ceil(size / 32)
+	}
+
+	totalL1MessagesPoppedInChunk := chunk.NumL1Messages(totalL1MessagePoppedBefore)
+	totalL1CommitGas += getKeccakGas(58*numBlocks + 32*(totalL1MessagesPoppedInChunk+totalL2TxNum)) // chunk hash
+
 	newChunk := Chunk{
 		Index:                        chunkIndex,
 		Hash:                         hash.Hex(),
@@ -163,7 +174,7 @@ func (o *Chunk) InsertChunk(ctx context.Context, chunk *types.Chunk, dbTX ...*go
 		TotalL1CommitGas:             totalL1CommitGas,
 		StartBlockTime:               chunk.Blocks[0].Header.Time,
 		TotalL1MessagesPoppedBefore:  totalL1MessagePoppedBefore,
-		TotalL1MessagesPoppedInChunk: uint32(chunk.NumL1Messages(totalL1MessagePoppedBefore)),
+		TotalL1MessagesPoppedInChunk: uint32(totalL1MessagesPoppedInChunk),
 		ProvingStatus:                int16(types.ProvingTaskUnassigned),
 	}
 

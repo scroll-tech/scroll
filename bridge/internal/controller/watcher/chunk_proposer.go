@@ -2,6 +2,7 @@ package watcher
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -88,11 +89,29 @@ func (p *ChunkProposer) proposeChunk() (*types.Chunk, error) {
 		return nil, nil
 	}
 
+	parentChunk, err := p.chunkOrm.GetLatestChunk(p.ctx)
+	if err != nil && !errors.Is(errors.Unwrap(err), gorm.ErrRecordNotFound) {
+		return nil, err
+	}
+
 	firstBlock := blocks[0]
 	totalTxGasUsed := firstBlock.Header.GasUsed
 	totalL2TxNum := firstBlock.L2TxsNum()
 	totalL1CommitCalldataSize := firstBlock.EstimateL1CommitCalldataSize()
+	totalBlocks := uint64(1)
 	totalL1CommitGas := firstBlock.EstimateL1CommitGas()
+	totalL1CommitGas += 100 // warm sload per block
+
+	getKeccakGas := func(size uint64) uint64 {
+		return 30 + 6*((size+31)/32) // 30 + 6 * ceil(size / 32)
+	}
+
+	var totalL1MessagesPoppedBefore uint64
+	if parentChunk != nil {
+		totalL1MessagesPoppedBefore = parentChunk.TotalL1MessagesPoppedBefore + uint64(parentChunk.TotalL1MessagesPoppedInChunk)
+	}
+	totalL1MessagesPoppedInChunk := firstBlock.NumL1Messages(totalL1MessagesPoppedBefore)
+	totalL1CommitGas += getKeccakGas(58*totalBlocks + 32*(totalL1MessagesPoppedInChunk+totalL2TxNum))
 
 	// Check if the first block breaks hard limits.
 	// If so, it indicates there are bugs in sequencer, manual fix is needed.
@@ -138,6 +157,12 @@ func (p *ChunkProposer) proposeChunk() (*types.Chunk, error) {
 		totalL2TxNum += block.L2TxsNum()
 		totalL1CommitCalldataSize += block.EstimateL1CommitCalldataSize()
 		totalL1CommitGas += block.EstimateL1CommitGas()
+		totalL1CommitGas += 100 // warm sload per block
+		// adjust chunk hash gas cost: add one block
+		totalL1CommitGas -= getKeccakGas(58*totalBlocks + 32*(totalL1MessagesPoppedInChunk+totalL2TxNum))
+		totalBlocks++
+		totalL1MessagesPoppedInChunk += block.NumL1Messages(totalL1MessagesPoppedBefore + totalL1MessagesPoppedInChunk)
+		totalL1CommitGas += getKeccakGas(58*totalBlocks + 32*(totalL1MessagesPoppedInChunk+totalL2TxNum))
 		if totalTxGasUsed > p.maxTxGasPerChunk ||
 			totalL2TxNum > p.maxL2TxNumPerChunk ||
 			totalL1CommitCalldataSize > p.maxL1CommitCalldataSizePerChunk ||

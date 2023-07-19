@@ -2,6 +2,7 @@ package watcher
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -99,7 +100,32 @@ func (p *BatchProposer) proposeBatchChunks() ([]*orm.Chunk, error) {
 	firstChunk := dbChunks[0]
 	totalL1CommitCalldataSize := firstChunk.TotalL1CommitCalldataSize
 	totalL1CommitGas := firstChunk.TotalL1CommitGas
-	var totalChunks uint64 = 1
+	totalChunks := uint64(1)
+	totalL1MessagePopped := firstChunk.TotalL1MessagesPoppedBefore + uint64(firstChunk.TotalL1MessagesPoppedInChunk)
+
+	parentBatch, err := p.batchOrm.GetLatestBatch(p.ctx)
+	if err != nil && !errors.Is(errors.Unwrap(err), gorm.ErrRecordNotFound) {
+		return nil, err
+	}
+
+	getKeccakGas := func(size uint64) uint64 {
+		return 30 + 6*((size+31)/32) // 30 + 6 * ceil(size / 32)
+	}
+
+	// Add extra gas costs
+	totalL1CommitGas += 4 * 2100 // 4 one-time cold sload for commitBatch
+	totalL1CommitGas += 20000    // 1 time sstore
+	// adjusting gas:
+	// add 1 time cold sload (2100 gas) for L1MessageQueue
+	// add 1 time cold address access (2600 gas) for L1MessageQueue
+	// minus 1 time warm sload (100 gas) & 1 time warm address access (100 gas)
+	totalL1CommitGas += (2100 + 2600 - 100 - 100)
+	totalL1CommitGas += getKeccakGas(32 * totalChunks) // batch data hash
+	if parentBatch != nil {                            // parent batch header hash
+		totalL1CommitGas += getKeccakGas(uint64(len(parentBatch.BatchHeader)))
+	}
+	// batch header size: 89 + 32 * ceil(l1MessagePopped / 256)
+	totalL1CommitGas += getKeccakGas(89 + 32*(totalL1MessagePopped+255)/256)
 
 	// Check if the first chunk breaks hard limits.
 	// If so, it indicates there are bugs in chunk-proposer, manual fix is needed.
@@ -124,9 +150,16 @@ func (p *BatchProposer) proposeBatchChunks() ([]*orm.Chunk, error) {
 	}
 
 	for i, chunk := range dbChunks[1:] {
-		totalChunks++
 		totalL1CommitCalldataSize += chunk.TotalL1CommitCalldataSize
 		totalL1CommitGas += chunk.TotalL1CommitGas
+		// adjust batch data hash gas cost: add one chunk
+		totalL1CommitGas -= getKeccakGas(32 * totalChunks)
+		totalChunks++
+		totalL1CommitGas += getKeccakGas(32 * totalChunks)
+		// adjust batch header hash gas cost: adjust totalL1MessagePopped in calculating header length
+		totalL1CommitGas -= getKeccakGas(89 + 32*(totalL1MessagePopped+255)/256)
+		totalL1MessagePopped += uint64(chunk.TotalL1MessagesPoppedInChunk)
+		totalL1CommitGas += getKeccakGas(89 + 32*(totalL1MessagePopped+255)/256)
 		if totalChunks > p.maxChunkNumPerBatch ||
 			totalL1CommitCalldataSize > p.maxL1CommitCalldataSizePerBatch ||
 			totalL1CommitGas > p.maxL1CommitGasPerBatch {
