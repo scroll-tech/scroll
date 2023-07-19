@@ -92,7 +92,7 @@ func GetCrossTxClaimInfo(msgHash string, db *db.OrmFactory) *UserClaimInfo {
 func updateCrossTxHash(msgHash string, txInfo *TxHistoryInfo, db *db.OrmFactory) {
 	relayed, err := db.GetRelayedMsgByHash(msgHash)
 	if err != nil {
-		log.Error("updateCrossTxHash failed", "error", err)
+		log.Debug("updateCrossTxHash failed", "error", err)
 		return
 	}
 	if relayed == nil {
