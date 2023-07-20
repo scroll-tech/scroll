@@ -53,11 +53,6 @@ func TestProvingStatus(t *testing.T) {
 			"unassigned",
 		},
 		{
-			"ProvingTaskSkipped",
-			ProvingTaskSkipped,
-			"skipped",
-		},
-		{
 			"ProvingTaskAssigned",
 			ProvingTaskAssigned,
 			"assigned",
@@ -80,7 +75,7 @@ func TestProvingStatus(t *testing.T) {
 		{
 			"Undefined",
 			ProvingStatus(999), // Invalid value.
-			"undefined",
+			"Undefined (999)",
 		},
 	}
 

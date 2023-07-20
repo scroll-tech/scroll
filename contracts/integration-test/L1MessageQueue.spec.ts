@@ -2,16 +2,7 @@
 /* eslint-disable node/no-missing-import */
 import { expect } from "chai";
 import { BigNumber, constants } from "ethers";
-import {
-  concat,
-  getAddress,
-  hexlify,
-  keccak256,
-  randomBytes,
-  RLP,
-  stripZeros,
-  TransactionTypes,
-} from "ethers/lib/utils";
+import { concat, getAddress, hexlify, keccak256, randomBytes, RLP, stripZeros } from "ethers/lib/utils";
 import { ethers } from "hardhat";
 import { L1MessageQueue, L2GasPriceOracle } from "../typechain";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
@@ -290,6 +281,57 @@ describe("L1MessageQueue", async () => {
         expect(BigNumber.from(await queue.getCrossDomainMessage(i))).to.gt(constants.Zero);
       }
       for (let i = 65; i < 80; i++) {
+        expect(await queue.getCrossDomainMessage(i)).to.eq(constants.HashZero);
+      }
+    });
+  });
+
+  context("#dropCrossDomainMessage", async () => {
+    it("should revert, when non-messenger call", async () => {
+      await expect(queue.connect(signer).dropCrossDomainMessage(0)).to.revertedWith(
+        "Only callable by the L1ScrollMessenger"
+      );
+    });
+
+    it("should revert, when drop executed message", async () => {
+      // append 10 messages
+      for (let i = 0; i < 10; i++) {
+        await queue.connect(messenger).appendCrossDomainMessage(constants.AddressZero, 1000000, "0x");
+      }
+      // pop 5 messages with no skip
+      await expect(queue.connect(scrollChain).popCrossDomainMessage(0, 5, 0))
+        .to.emit(queue, "DequeueTransaction")
+        .withArgs(0, 5, 0);
+      for (let i = 0; i < 5; i++) {
+        expect(await queue.getCrossDomainMessage(i)).to.eq(constants.HashZero);
+      }
+      expect(await queue.pendingQueueIndex()).to.eq(5);
+
+      for (let i = 0; i < 5; i++) {
+        await expect(queue.connect(messenger).dropCrossDomainMessage(i)).to.revertedWith(
+          "message already dropped or executed"
+        );
+      }
+
+      // drop pending message
+      for (let i = 6; i < 10; i++) {
+        await expect(queue.connect(messenger).dropCrossDomainMessage(i)).to.revertedWith("cannot drop pending message");
+      }
+    });
+
+    it("should succeed", async () => {
+      // append 10 messages
+      for (let i = 0; i < 10; i++) {
+        await queue.connect(messenger).appendCrossDomainMessage(constants.AddressZero, 1000000, "0x");
+      }
+      // pop 10 messages, all skipped
+      await expect(queue.connect(scrollChain).popCrossDomainMessage(0, 10, 0x3ff))
+        .to.emit(queue, "DequeueTransaction")
+        .withArgs(0, 10, 0x3ff);
+
+      for (let i = 0; i < 10; i++) {
+        expect(BigNumber.from(await queue.getCrossDomainMessage(i))).to.gt(constants.Zero);
+        await expect(queue.connect(messenger).dropCrossDomainMessage(i)).to.emit(queue, "DropTransaction").withArgs(i);
         expect(await queue.getCrossDomainMessage(i)).to.eq(constants.HashZero);
       }
     });
