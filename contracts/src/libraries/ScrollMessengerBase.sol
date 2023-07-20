@@ -7,6 +7,8 @@ import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/Own
 import {ScrollConstants} from "./constants/ScrollConstants.sol";
 import {IScrollMessenger} from "./IScrollMessenger.sol";
 
+// solhint-disable var-name-mixedcase
+
 abstract contract ScrollMessengerBase is OwnableUpgradeable, IScrollMessenger {
     /**********
      * Events *
@@ -41,6 +43,9 @@ abstract contract ScrollMessengerBase is OwnableUpgradeable, IScrollMessenger {
     // @note move to ScrollMessengerBase in next big refactor
     /// @dev The status of for non-reentrant check.
     uint256 private _lock_status;
+
+    /// @dev The storage slots for future usage.
+    uint256[46] private __gap;
 
     /**********************
      * Function Modifiers *
@@ -82,8 +87,8 @@ abstract contract ScrollMessengerBase is OwnableUpgradeable, IScrollMessenger {
         feeVault = _feeVault;
     }
 
-    // allow others to send ether to messenger
-    receive() external payable {}
+    // make sure only owner can send ether to messenger to avoid possible user fund loss.
+    receive() external payable onlyOwner {}
 
     /************************
      * Restricted Functions *
