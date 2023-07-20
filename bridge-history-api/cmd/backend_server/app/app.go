@@ -93,7 +93,10 @@ func action(ctx *cli.Context) error {
 		MaxOpenNum: cfg.DB.MaxOpenNum,
 		MaxIdleNum: cfg.DB.MaxIdleNum,
 	}
-	db, err := database.InitDB(dbCfg)
+	db, err = database.InitDB(dbCfg)
+	if err != nil {
+		log.Crit("failed to init db", "err", err)
+	}
 	defer func() {
 		if deferErr := database.CloseDB(db); deferErr != nil {
 			log.Error("failed to close db", "err", err)
