@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.0;
+pragma solidity =0.8.16;
 
 import {ERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 import {ERC20PermitUpgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/draft-ERC20PermitUpgradeable.sol";
@@ -26,6 +26,10 @@ contract ScrollStandardERC20 is ERC20PermitUpgradeable, IScrollERC20Upgradeable 
     modifier onlyGateway() {
         require(gateway == msg.sender, "Only Gateway");
         _;
+    }
+
+    constructor() {
+        _disableInitializers();
     }
 
     function initialize(

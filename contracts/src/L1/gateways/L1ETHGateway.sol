@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.0;
+pragma solidity =0.8.16;
 
 import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 
@@ -22,6 +22,10 @@ contract L1ETHGateway is Initializable, ScrollGatewayBase, IL1ETHGateway, IMessa
     /***************
      * Constructor *
      ***************/
+
+    constructor() {
+        _disableInitializers();
+    }
 
     /// @notice Initialize the storage of L1ETHGateway.
     /// @param _counterpart The address of L2ETHGateway in L2.
