@@ -4,10 +4,10 @@ go 1.19
 
 require (
 	github.com/scroll-tech/go-ethereum v1.10.14-0.20230719161034-a677ee3ccf91
-	github.com/stretchr/testify v1.8.2
-	github.com/urfave/cli/v2 v2.17.2-0.20221006022127-8f469abc00aa
+	github.com/stretchr/testify v1.8.3
+	github.com/urfave/cli/v2 v2.25.7
 	go.etcd.io/bbolt v1.3.7
-	golang.org/x/sync v0.1.0
+	golang.org/x/sync v0.3.0
 )
 
 require (
@@ -27,7 +27,7 @@ require (
 	github.com/jackpal/go-nat-pmp v1.0.2 // indirect
 	github.com/kr/pretty v0.3.1 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
-	github.com/mattn/go-isatty v0.0.18 // indirect
+	github.com/mattn/go-isatty v0.0.19 // indirect
 	github.com/mattn/go-runewidth v0.0.14 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect

@@ -153,8 +153,8 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
         committedBatches[0] = _batchHash;
         finalizedStateRoots[0] = _stateRoot;
 
-        emit CommitBatch(_batchHash);
-        emit FinalizeBatch(_batchHash, _stateRoot, bytes32(0));
+        emit CommitBatch(0, _batchHash);
+        emit FinalizeBatch(0, _batchHash, _stateRoot, bytes32(0));
     }
 
     /// @inheritdoc IScrollChain
@@ -248,10 +248,12 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
         bytes32 _batchHash = BatchHeaderV0Codec.computeBatchHash(batchPtr, 89 + _skippedL1MessageBitmap.length);
 
         committedBatches[_batchIndex] = _batchHash;
-        emit CommitBatch(_batchHash);
+        emit CommitBatch(_batchIndex, _batchHash);
     }
 
     /// @inheritdoc IScrollChain
+    /// @dev If the owner want to revert a sequence of batches by sending multiple transactions,
+    ///      make sure to revert recent batches first.
     function revertBatch(bytes calldata _batchHeader, uint256 _count) external onlyOwner {
         require(_count > 0, "count must be nonzero");
 
@@ -260,18 +262,20 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
         // check batch hash
         uint256 _batchIndex = BatchHeaderV0Codec.batchIndex(memPtr);
         require(committedBatches[_batchIndex] == _batchHash, "incorrect batch hash");
+        // make sure no gap is left when reverting from the ending to the beginning.
+        require(committedBatches[_batchIndex + _count] == bytes32(0), "reverting must start from the ending");
 
         // check finalization
         require(_batchIndex > lastFinalizedBatchIndex, "can only revert unfinalized batch");
 
         while (_count > 0) {
+            emit RevertBatch(_batchIndex, _batchHash);
+
             committedBatches[_batchIndex] = bytes32(0);
             unchecked {
                 _batchIndex += 1;
                 _count -= 1;
             }
-
-            emit RevertBatch(_batchHash);
 
             _batchHash = committedBatches[_batchIndex];
             if (_batchHash == bytes32(0)) break;
@@ -342,7 +346,7 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
             }
         }
 
-        emit FinalizeBatch(_batchHash, _postStateRoot, _withdrawRoot);
+        emit FinalizeBatch(_batchIndex, _batchHash, _postStateRoot, _withdrawRoot);
     }
 
     /************************

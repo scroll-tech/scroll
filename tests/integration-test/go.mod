@@ -4,7 +4,7 @@ go 1.19
 
 require (
 	github.com/scroll-tech/go-ethereum v1.10.14-0.20230719161034-a677ee3ccf91
-	github.com/stretchr/testify v1.8.2
+	github.com/stretchr/testify v1.8.3
 )
 
 require (

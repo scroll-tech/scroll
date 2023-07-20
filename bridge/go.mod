@@ -8,10 +8,10 @@ require (
 	github.com/orcaman/concurrent-map/v2 v2.0.1
 	github.com/scroll-tech/go-ethereum v1.10.14-0.20230719161034-a677ee3ccf91
 	github.com/smartystreets/goconvey v1.8.0
-	github.com/stretchr/testify v1.8.2
-	github.com/urfave/cli/v2 v2.17.2-0.20221006022127-8f469abc00aa
-	golang.org/x/sync v0.1.0
-	gorm.io/gorm v1.25.1
+	github.com/stretchr/testify v1.8.3
+	github.com/urfave/cli/v2 v2.25.7
+	golang.org/x/sync v0.3.0
+	gorm.io/gorm v1.25.2
 )
 
 require (
@@ -35,7 +35,7 @@ require (
 	github.com/jtolds/gls v4.20.0+incompatible // indirect
 	github.com/kr/pretty v0.3.1 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
-	github.com/mattn/go-isatty v0.0.18 // indirect
+	github.com/mattn/go-isatty v0.0.19 // indirect
 	github.com/mattn/go-runewidth v0.0.14 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
