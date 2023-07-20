@@ -89,7 +89,7 @@ Initialize the storage of L1ScrollMessenger.
 function isL1MessageDropped(bytes32) external view returns (bool)
 ```
 
-Mappging from L1 message hash to drop status.
+Mapping from L1 message hash to drop status.
 
 
 
@@ -225,7 +225,7 @@ function prevReplayIndex(uint256) external view returns (uint256)
 
 Mapping from queue index to previous replay queue index.
 
-*If a message `x` was replayed 3 times with index `q1`, `q2` and `q3`, the value of `prevReplayIndex` and `replayStates` will be `replayStates[hash(x)].lastIndex = q3`, `replayStates[hash(x)].times = 3`, `prevReplayIndex[q3] = q2`, `prevReplayIndex[q2] = q1` and `prevReplayIndex[q1] = x`.*
+*If a message `x` was replayed 3 times with index `q1`, `q2` and `q3`, the value of `prevReplayIndex` and `replayStates` will be `replayStates[hash(x)].lastIndex = q3`, `replayStates[hash(x)].times = 3`, `prevReplayIndex[q3] = q2`, `prevReplayIndex[q2] = q1`, `prevReplayIndex[q1] = x` and `prevReplayIndex[x]=nil`.The index `x` that `prevReplayIndex[x]=nil` is used as the termination of the list. Usually we use `0` to represent `nil`, but we cannot distinguish it with the first message with index zero. So a nonzero offset `1` is added to the value of `prevReplayIndex[x]` to avoid such situation.*
 
 #### Parameters
 
@@ -268,7 +268,7 @@ function renounceOwnership() external nonpayable
 
 
 
-*Leaves the contract without owner. It will not be possible to call `onlyOwner` functions anymore. Can only be called by the current owner. NOTE: Renouncing ownership will leave the contract without an owner, thereby removing any functionality that is only available to the owner.*
+*Leaves the contract without owner. It will not be possible to call `onlyOwner` functions. Can only be called by the current owner. NOTE: Renouncing ownership will leave the contract without an owner, thereby disabling any functionality that is only available to the owner.*
 
 
 ### replayMessage
@@ -472,6 +472,22 @@ Emitted when a cross domain message is failed to relay.
 | Name | Type | Description |
 |---|---|---|
 | messageHash `indexed` | bytes32 | undefined |
+
+### Initialized
+
+```solidity
+event Initialized(uint8 version)
+```
+
+
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| version  | uint8 | undefined |
 
 ### OwnershipTransferred
 
