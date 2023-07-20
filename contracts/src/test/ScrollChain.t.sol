@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.0;
+pragma solidity =0.8.16;
 
 import {DSTestPlus} from "solmate/test/utils/DSTestPlus.sol";
+
+import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
 import {L1MessageQueue} from "../L1/rollup/L1MessageQueue.sol";
 import {ScrollChain, IScrollChain} from "../L1/rollup/ScrollChain.sol";
@@ -29,8 +31,8 @@ contract ScrollChainTest is DSTestPlus {
     MockRollupVerifier internal verifier;
 
     function setUp() public {
-        messageQueue = new L1MessageQueue();
-        rollup = new ScrollChain(233);
+        messageQueue = L1MessageQueue(address(new ERC1967Proxy(address(new L1MessageQueue()), new bytes(0))));
+        rollup = ScrollChain(address(new ERC1967Proxy(address(new ScrollChain(233)), new bytes(0))));
         verifier = new MockRollupVerifier();
 
         rollup.initialize(address(messageQueue), address(verifier), 100);
