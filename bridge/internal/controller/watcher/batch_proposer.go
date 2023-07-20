@@ -25,7 +25,7 @@ type BatchProposer struct {
 
 	maxChunkNumPerBatch             uint64
 	maxL1CommitGasPerBatch          uint64
-	maxL1CommitCalldataSizePerBatch uint64
+	maxL1CommitCalldataSizePerBatch uint32
 	minChunkNumPerBatch             uint64
 	batchTimeoutSec                 uint64
 }
@@ -93,7 +93,6 @@ func (p *BatchProposer) proposeBatchChunks() ([]*orm.Chunk, error) {
 	}
 
 	if len(dbChunks) == 0 {
-		log.Warn("No Unbatched Chunks")
 		return nil, nil
 	}
 
@@ -147,7 +146,7 @@ func (p *BatchProposer) proposeBatchChunks() ([]*orm.Chunk, error) {
 	}
 
 	if !hasChunkTimeout && uint64(len(dbChunks)) < p.minChunkNumPerBatch {
-		log.Warn("The payload size of the batch is less than the minimum limit",
+		log.Warn("The chunk number of the batch is less than the minimum limit",
 			"chunk num", len(dbChunks), "minChunkNumPerBatch", p.minChunkNumPerBatch,
 		)
 		return nil, nil

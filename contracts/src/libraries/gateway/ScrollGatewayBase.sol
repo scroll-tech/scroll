@@ -5,6 +5,7 @@ pragma solidity ^0.8.0;
 import {IScrollGateway} from "./IScrollGateway.sol";
 import {IScrollMessenger} from "../IScrollMessenger.sol";
 import {IScrollGatewayCallback} from "../callbacks/IScrollGatewayCallback.sol";
+import {ScrollConstants} from "../constants/ScrollConstants.sol";
 
 abstract contract ScrollGatewayBase is IScrollGateway {
     /*************
@@ -61,6 +62,16 @@ abstract contract ScrollGatewayBase is IScrollGateway {
         address _messenger = messenger; // gas saving
         require(msg.sender == _messenger, "only messenger can call");
         require(counterpart == IScrollMessenger(_messenger).xDomainMessageSender(), "only call by counterpart");
+        _;
+    }
+
+    modifier onlyInDropContext() {
+        address _messenger = messenger; // gas saving
+        require(msg.sender == _messenger, "only messenger can call");
+        require(
+            ScrollConstants.DROP_XDOMAIN_MESSAGE_SENDER == IScrollMessenger(_messenger).xDomainMessageSender(),
+            "only called in drop context"
+        );
         _;
     }
 

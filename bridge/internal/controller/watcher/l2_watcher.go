@@ -109,7 +109,7 @@ func (w *L2WatcherClient) TryFetchRunningMissingBlocks(blockHeight uint64) {
 	}
 
 	// Fetch and store block traces for missing blocks
-	for from := uint64(heightInDB) + 1; from <= blockHeight; from += blockTracesFetchLimit {
+	for from := heightInDB + 1; from <= blockHeight; from += blockTracesFetchLimit {
 		to := from + blockTracesFetchLimit - 1
 
 		if to > blockHeight {

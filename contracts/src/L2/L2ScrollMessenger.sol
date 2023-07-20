@@ -81,9 +81,6 @@ contract L2ScrollMessenger is ScrollMessengerBase, PausableUpgradeable, IL2Scrol
         ScrollMessengerBase._initialize(_counterpart, _feeVault);
 
         maxFailedExecutionTimes = 3;
-
-        // initialize to a nonzero value
-        xDomainMessageSender = ScrollConstants.DEFAULT_XDOMAIN_MESSAGE_SENDER;
     }
 
     /*************************
@@ -214,10 +211,7 @@ contract L2ScrollMessenger is ScrollMessengerBase, PausableUpgradeable, IL2Scrol
         uint256 _nonce,
         bytes memory _message,
         L1MessageProof calldata _proof
-    ) external override whenNotPaused {
-        // anti reentrance
-        require(xDomainMessageSender == ScrollConstants.DEFAULT_XDOMAIN_MESSAGE_SENDER, "Already in execution");
-
+    ) external override notInExecution whenNotPaused {
         // check message status
         bytes32 _xDomainCalldataHash = keccak256(_encodeXDomainCalldata(_from, _to, _value, _nonce, _message));
         require(!isL1MessageExecuted[_xDomainCalldataHash], "Message successfully executed");

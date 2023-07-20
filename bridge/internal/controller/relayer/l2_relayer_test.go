@@ -90,7 +90,7 @@ func testL2RelayerProcessCommittedBatches(t *testing.T) {
 	statuses, err := batchOrm.GetRollupStatusByHashList(context.Background(), []string{batch.Hash})
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(statuses))
-	assert.Equal(t, types.RollupFinalizationSkipped, statuses[0])
+	assert.Equal(t, types.RollupFinalizeFailed, statuses[0])
 
 	err = batchOrm.UpdateRollupStatus(context.Background(), batch.Hash, types.RollupCommitted)
 	assert.NoError(t, err)
@@ -106,67 +106,6 @@ func testL2RelayerProcessCommittedBatches(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(statuses))
 	assert.Equal(t, types.RollupFinalizing, statuses[0])
-}
-
-func testL2RelayerSkipBatches(t *testing.T) {
-	db := setupL2RelayerDB(t)
-	defer database.CloseDB(db)
-
-	l2Cfg := cfg.L2Config
-	relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, l2Cfg.RelayerConfig, false)
-	assert.NoError(t, err)
-
-	batchOrm := orm.NewBatch(db)
-	createBatch := func(rollupStatus types.RollupStatus, provingStatus types.ProvingStatus) string {
-		batch, err := batchOrm.InsertBatch(context.Background(), 0, 1, chunkHash1.Hex(), chunkHash2.Hex(), []*types.Chunk{chunk1, chunk2})
-		assert.NoError(t, err)
-
-		err = batchOrm.UpdateRollupStatus(context.Background(), batch.Hash, rollupStatus)
-		assert.NoError(t, err)
-
-		proof := &message.AggProof{
-			Proof:     []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31},
-			FinalPair: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31},
-		}
-		err = batchOrm.UpdateProofByHash(context.Background(), batch.Hash, proof, 100)
-		assert.NoError(t, err)
-		err = batchOrm.UpdateProvingStatus(context.Background(), batch.Hash, provingStatus)
-		assert.NoError(t, err)
-		return batch.Hash
-	}
-
-	skipped := []string{
-		createBatch(types.RollupCommitted, types.ProvingTaskSkipped),
-		createBatch(types.RollupCommitted, types.ProvingTaskFailed),
-	}
-
-	notSkipped := []string{
-		createBatch(types.RollupPending, types.ProvingTaskSkipped),
-		createBatch(types.RollupCommitting, types.ProvingTaskSkipped),
-		createBatch(types.RollupFinalizing, types.ProvingTaskSkipped),
-		createBatch(types.RollupFinalized, types.ProvingTaskSkipped),
-		createBatch(types.RollupPending, types.ProvingTaskFailed),
-		createBatch(types.RollupCommitting, types.ProvingTaskFailed),
-		createBatch(types.RollupFinalizing, types.ProvingTaskFailed),
-		createBatch(types.RollupFinalized, types.ProvingTaskFailed),
-		createBatch(types.RollupCommitted, types.ProvingTaskVerified),
-	}
-
-	relayer.ProcessCommittedBatches()
-
-	for _, id := range skipped {
-		statuses, err := batchOrm.GetRollupStatusByHashList(context.Background(), []string{id})
-		assert.NoError(t, err)
-		assert.Equal(t, 1, len(statuses))
-		assert.Equal(t, types.RollupFinalizationSkipped, statuses[0])
-	}
-
-	for _, id := range notSkipped {
-		statuses, err := batchOrm.GetRollupStatusByHashList(context.Background(), []string{id})
-		assert.NoError(t, err)
-		assert.Equal(t, 1, len(statuses))
-		assert.NotEqual(t, types.RollupFinalizationSkipped, statuses[0])
-	}
 }
 
 func testL2RelayerRollupConfirm(t *testing.T) {

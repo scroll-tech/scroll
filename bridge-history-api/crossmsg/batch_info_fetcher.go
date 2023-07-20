@@ -1,4 +1,4 @@
-package cross_msg
+package crossmsg
 
 import (
 	"context"
@@ -8,11 +8,12 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/log"
 
-	"bridge-history-api/cross_msg/message_proof"
+	"bridge-history-api/crossmsg/messageproof"
 	"bridge-history-api/db"
 	"bridge-history-api/utils"
 )
 
+// BatchInfoFetcher fetches batch info from l1 chain and update db
 type BatchInfoFetcher struct {
 	ctx                  context.Context
 	scrollChainAddr      common.Address
@@ -21,10 +22,11 @@ type BatchInfoFetcher struct {
 	blockTimeInSec       int
 	client               *ethclient.Client
 	db                   db.OrmFactory
-	msgProofUpdater      *message_proof.MsgProofUpdater
+	msgProofUpdater      *messageproof.MsgProofUpdater
 }
 
-func NewBatchInfoFetcher(ctx context.Context, scrollChainAddr common.Address, batchInfoStartNumber uint64, confirmation uint64, blockTimeInSec int, client *ethclient.Client, db db.OrmFactory, msgProofUpdater *message_proof.MsgProofUpdater) *BatchInfoFetcher {
+// NewBatchInfoFetcher creates a new BatchInfoFetcher instance
+func NewBatchInfoFetcher(ctx context.Context, scrollChainAddr common.Address, batchInfoStartNumber uint64, confirmation uint64, blockTimeInSec int, client *ethclient.Client, db db.OrmFactory, msgProofUpdater *messageproof.MsgProofUpdater) *BatchInfoFetcher {
 	return &BatchInfoFetcher{
 		ctx:                  ctx,
 		scrollChainAddr:      scrollChainAddr,
@@ -37,13 +39,14 @@ func NewBatchInfoFetcher(ctx context.Context, scrollChainAddr common.Address, ba
 	}
 }
 
+// Start the BatchInfoFetcher
 func (b *BatchInfoFetcher) Start() {
 	log.Info("BatchInfoFetcher Start")
 	// Fetch batch info at beginning
 	// Then start msg proof updater after db have some bridge batch
 	err := b.fetchBatchInfo()
 	if err != nil {
-		log.Error("fetch batch info at begining failed: ", "err", err)
+		log.Error("fetch batch info at beginning failed: ", "err", err)
 	}
 
 	go b.msgProofUpdater.Start()
@@ -65,6 +68,7 @@ func (b *BatchInfoFetcher) Start() {
 	}()
 }
 
+// Stop the BatchInfoFetcher and call msg proof updater to stop
 func (b *BatchInfoFetcher) Stop() {
 	log.Info("BatchInfoFetcher Stop")
 	b.msgProofUpdater.Stop()

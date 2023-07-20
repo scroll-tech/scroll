@@ -39,6 +39,12 @@ interface IL1ERC20Gateway {
         bytes data
     );
 
+    /// @notice Emitted when some ERC20 token is refunded.
+    /// @param token The address of the token in L1.
+    /// @param recipient The address of receiver in L1.
+    /// @param amount The amount of token refunded to receiver.
+    event RefundERC20(address indexed token, address indexed recipient, uint256 amount);
+
     /*************************
      * Public View Functions *
      *************************/
